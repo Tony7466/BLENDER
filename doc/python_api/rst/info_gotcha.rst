@@ -86,7 +86,8 @@ No updates after setting values
 Sometimes you want to modify values from Python and immediately access the updated values, e.g:
 Once changing the objects :class:`bpy.types.Object.location`
 you may want to access its transformation right after from :class:`bpy.types.Object.matrix_world`,
-but this doesn't work as you might expect.
+but this doesn't work as you might expect. There are similar issues with changes to the UI, that
+are covered in the next section.
 
 Consider the calculations that might contribute to the object's final transformation, this includes:
 
@@ -108,6 +109,35 @@ In this case you need to call :class:`bpy.types.ViewLayer.update` after modifyin
 
 Now all dependent data (child objects, modifiers, drivers, etc.)
 have been recalculated and are available to the script within the active view layer.
+
+
+No updates after changing UI context
+------------------------------------
+
+Similar to the previous issue, some changes to the UI  may also not have an immediate effect. For example, setting
+:class:`bpy.types.Window.workspace` doesn't seem to cause an observable effect in the immediately following code
+(:class:`bpy.types.Window.workspace` is still the same), but the UI will in fact reflect the change. Some of the
+properties that behave that way are:
+
+- :class:`bpy.types.Window.workspace`
+- :class:`bpy.types.Window.screen`
+- :class:`bpy.types.Window.scene`
+- :class:`bpy.types.Area.type`
+- :class:`bpy.types.Area.uitype`
+
+Such changes impact the UI, and with that the context (:class:`bpy.context`) quite drastically. This can break
+Blender's context management. So Blender delays this change until after operators have run and just before the UI is
+redrawn, making sure that context can be changed safely.
+
+If you rely on executing code with an updated context this can be worked around by executing the code in a delayed
+fashion as well. Possible options include:
+
+ - :ref:`Modal Operator <modal_operator>`.
+ - :class:`bpy.app.handlers`.
+ - :class:`bpy.app.timer`.
+
+It's also possible to depend on drawing callbacks although these should generally be avoided as failure to draw a
+hidden panel, region, cursor, etc. could cause your script to be unreliable
 
 
 Can I redraw during script execution?
@@ -242,7 +272,7 @@ Editing is where the three data types vary most.
 - Polygons are very limited for editing,
   changing materials and options like smooth works, but for anything else
   they are too inflexible and are only intended for storage.
-- Tessfaces should not be used for editing geometry because doing so will cause existing n-gons to be tessellated.
+- Loop-triangles should not be used for editing geometry because doing so will cause existing n-gons to be tessellated.
 - BMesh-faces are by far the best way to manipulate geometry.
 
 
@@ -253,7 +283,7 @@ All three data types can be used for exporting,
 the choice mostly depends on whether the target format supports n-gons or not.
 
 - Polygons are the most direct and efficient way to export providing they convert into the output format easily enough.
-- Tessfaces work well for exporting to formats which don't support n-gons,
+- Loop-triangles work well for exporting to formats which don't support n-gons,
   in fact this is the only place where their use is encouraged.
 - BMesh-Faces can work for exporting too but may not be necessary if polygons can be used
   since using BMesh gives some overhead because it's not the native storage format in Object-Mode.
@@ -835,9 +865,40 @@ Unfortunate Corner Cases
 Besides all expected cases listed above, there are a few others that should not be
 an issue but, due to internal implementation details, currently are:
 
-- ``Object.hide_viewport``, ``Object.hide_select`` and ``Object.hide_render``:
-  Setting any of those Booleans will trigger a rebuild of Collection caches,
-  thus breaking any current iteration over ``Collection.all_objects``.
+
+Collection Objects
+^^^^^^^^^^^^^^^^^^
+
+Changing: ``Object.hide_viewport``, ``Object.hide_select`` or ``Object.hide_render``
+will trigger a rebuild of Collection caches, thus breaking any current iteration over ``Collection.all_objects``.
+
+ .. rubric:: Do not:
+
+ .. code-block:: python
+
+    # `all_objects` is an iterator. Using it directly while performing operations on its members that will update
+    # the memory accessed by the `all_objects` iterator will lead to invalid memory accesses and crashes.
+    for object in bpy.data.collections["Collection"].all_objects:
+         object.hide_viewport = True
+
+
+ .. rubric:: Do:
+
+ .. code-block:: python
+
+    # `all_objects[:]` is an independent list generated from the iterator. As long as no objects are deleted,
+    # its content will remain valid even if the data accessed by the `all_objects` iterator is modified.
+    for object in bpy.data.collections["Collection"].all_objects[:]:
+         object.hide_viewport = True
+
+
+Data-Blocks Renaming During Iteration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Data-blocks accessed from ``bpy.data`` are sorted when their name is set.
+Any loop that iterates of a data such as ``bpy.data.objects`` for example,
+and sets the objects ``name`` must get all items from the iterator first (typically by converting to a list or tuple)
+to avoid missing some objects and iterating over others multiple times.
 
 
 sys.exit

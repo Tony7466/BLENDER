@@ -1,13 +1,6 @@
-
-uniform mat4 prevViewProjMatrix;
-uniform mat4 currViewProjMatrix;
-uniform mat4 nextViewProjMatrix;
-
-in vec3 prevWorldPos;
-in vec3 currWorldPos;
-in vec3 nextWorldPos;
-
-out vec4 outData;
+/* SPDX-FileCopyrightText: 2020-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 void main()
 {

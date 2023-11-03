@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2018-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -38,5 +41,5 @@ void main()
   view_clipping_distances(sp);
 
   vec4 pos_4d = vec4(sp, 1.0);
-  gl_Position = drw_view.persmat * pos_4d;
+  gl_Position = drw_view.winmat * (drw_view.viewmat * pos_4d);
 }

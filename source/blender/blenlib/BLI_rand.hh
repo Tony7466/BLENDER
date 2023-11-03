@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -6,8 +8,7 @@
 
 #pragma once
 
-#include "BLI_math.h"
-#include "BLI_math_vec_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
@@ -29,7 +30,7 @@ class RandomNumberGenerator {
   void seed(uint32_t seed)
   {
     constexpr uint64_t lowseed = 0x330E;
-    x_ = (static_cast<uint64_t>(seed) << 16) | lowseed;
+    x_ = (uint64_t(seed) << 16) | lowseed;
   }
 
   /**
@@ -40,13 +41,13 @@ class RandomNumberGenerator {
   uint32_t get_uint32()
   {
     this->step();
-    return static_cast<uint32_t>(x_ >> 17);
+    return uint32_t(x_ >> 17);
   }
 
   int32_t get_int32()
   {
     this->step();
-    return static_cast<int32_t>(x_ >> 17);
+    return int32_t(x_ >> 17);
   }
 
   /**
@@ -63,7 +64,7 @@ class RandomNumberGenerator {
    */
   double get_double()
   {
-    return (double)this->get_int32() / 0x80000000;
+    return double(this->get_int32()) / 0x80000000;
   }
 
   /**

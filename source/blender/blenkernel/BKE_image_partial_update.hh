@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -18,16 +19,15 @@
 
 #include "BLI_rect.h"
 
+#include "BKE_image_wrappers.hh"
+
 #include "DNA_image_types.h"
 
 extern "C" {
-struct PartialUpdateRegister;
 struct PartialUpdateUser;
 }
 
 namespace blender::bke::image {
-
-using TileNumber = int;
 
 namespace partial_update {
 
@@ -90,11 +90,11 @@ enum class ePartialUpdateIterResult {
  * last invoke for the same user. The changes can be read by using
  * #BKE_image_partial_update_get_next_change.
  */
-ePartialUpdateCollectResult BKE_image_partial_update_collect_changes(
-    struct Image *image, struct PartialUpdateUser *user);
+ePartialUpdateCollectResult BKE_image_partial_update_collect_changes(Image *image,
+                                                                     PartialUpdateUser *user);
 
-ePartialUpdateIterResult BKE_image_partial_update_get_next_change(
-    struct PartialUpdateUser *user, struct PartialUpdateRegion *r_region);
+ePartialUpdateIterResult BKE_image_partial_update_get_next_change(PartialUpdateUser *user,
+                                                                  PartialUpdateRegion *r_region);
 
 /** \brief Abstract class to load tile data when using the PartialUpdateChecker. */
 class AbstractTileData {
@@ -122,17 +122,11 @@ class AbstractTileData {
  */
 class NoTileData : AbstractTileData {
  public:
-  NoTileData(Image *UNUSED(image), ImageUser *UNUSED(image_user))
-  {
-  }
+  NoTileData(Image * /*image*/, ImageUser * /*image_user*/) {}
 
-  void init_data(TileNumber UNUSED(new_tile_number)) override
-  {
-  }
+  void init_data(TileNumber /*new_tile_number*/) override {}
 
-  void free_data() override
-  {
-  }
+  void free_data() override {}
 };
 
 /**

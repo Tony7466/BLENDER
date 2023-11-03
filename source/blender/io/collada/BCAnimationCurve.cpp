@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "RNA_path.h"
+#include "RNA_path.hh"
 
 #include "BCAnimationCurve.h"
 
@@ -49,23 +50,28 @@ void BCAnimationCurve::init_pointer_rna(Object *ob)
   switch (this->curve_key.get_animation_type()) {
     case BC_ANIMATION_TYPE_BONE: {
       bArmature *arm = (bArmature *)ob->data;
-      RNA_id_pointer_create(&arm->id, &id_ptr);
-    } break;
+      id_ptr = RNA_id_pointer_create(&arm->id);
+      break;
+    }
     case BC_ANIMATION_TYPE_OBJECT: {
-      RNA_id_pointer_create(&ob->id, &id_ptr);
-    } break;
+      id_ptr = RNA_id_pointer_create(&ob->id);
+      break;
+    }
     case BC_ANIMATION_TYPE_MATERIAL: {
       Material *ma = BKE_object_material_get(ob, curve_key.get_subindex() + 1);
-      RNA_id_pointer_create(&ma->id, &id_ptr);
-    } break;
+      id_ptr = RNA_id_pointer_create(&ma->id);
+      break;
+    }
     case BC_ANIMATION_TYPE_CAMERA: {
       Camera *camera = (Camera *)ob->data;
-      RNA_id_pointer_create(&camera->id, &id_ptr);
-    } break;
+      id_ptr = RNA_id_pointer_create(&camera->id);
+      break;
+    }
     case BC_ANIMATION_TYPE_LIGHT: {
       Light *lamp = (Light *)ob->data;
-      RNA_id_pointer_create(&lamp->id, &id_ptr);
-    } break;
+      id_ptr = RNA_id_pointer_create(&lamp->id);
+      break;
+    }
     default:
       fprintf(
           stderr, "BC_animation_curve_type %d not supported", this->curve_key.get_array_index());
@@ -152,8 +158,8 @@ std::string BCAnimationCurve::get_animation_name(Object *ob) const
   switch (curve_key.get_animation_type()) {
     case BC_ANIMATION_TYPE_OBJECT: {
       name = id_name(ob);
-    } break;
-
+      break;
+    }
     case BC_ANIMATION_TYPE_BONE: {
       if (fcurve == nullptr || fcurve->rna_path == nullptr) {
         name = "";
@@ -167,23 +173,23 @@ std::string BCAnimationCurve::get_animation_name(Object *ob) const
           name = "";
         }
       }
-    } break;
-
+      break;
+    }
     case BC_ANIMATION_TYPE_CAMERA: {
       Camera *camera = (Camera *)ob->data;
       name = id_name(ob) + "-" + id_name(camera) + "-camera";
-    } break;
-
+      break;
+    }
     case BC_ANIMATION_TYPE_LIGHT: {
       Light *lamp = (Light *)ob->data;
       name = id_name(ob) + "-" + id_name(lamp) + "-light";
-    } break;
-
+      break;
+    }
     case BC_ANIMATION_TYPE_MATERIAL: {
       Material *ma = BKE_object_material_get(ob, this->curve_key.get_subindex() + 1);
       name = id_name(ob) + "-" + id_name(ma) + "-material";
-    } break;
-
+      break;
+    }
     default: {
       name = "";
     }
@@ -329,8 +335,7 @@ bool BCAnimationCurve::is_transform_curve() const
 bool BCAnimationCurve::is_rotation_curve() const
 {
   std::string channel_type = this->get_channel_type();
-  return (channel_type == "rotation" || channel_type == "rotation_euler" ||
-          channel_type == "rotation_quaternion");
+  return ELEM(channel_type, "rotation", "rotation_euler", "rotation_quaternion");
 }
 
 float BCAnimationCurve::get_value(const float frame)
@@ -426,10 +431,10 @@ bool BCAnimationCurve::add_value_from_rna(const int frame_index)
       if ((array_index >= 0) && (array_index < RNA_property_array_length(&ptr, prop))) {
         switch (RNA_property_type(prop)) {
           case PROP_BOOLEAN:
-            value = (float)RNA_property_boolean_get_index(&ptr, prop, array_index);
+            value = float(RNA_property_boolean_get_index(&ptr, prop, array_index));
             break;
           case PROP_INT:
-            value = (float)RNA_property_int_get_index(&ptr, prop, array_index);
+            value = float(RNA_property_int_get_index(&ptr, prop, array_index));
             break;
           case PROP_FLOAT:
             value = RNA_property_float_get_index(&ptr, prop, array_index);
@@ -449,16 +454,16 @@ bool BCAnimationCurve::add_value_from_rna(const int frame_index)
       /* not an array */
       switch (RNA_property_type(prop)) {
         case PROP_BOOLEAN:
-          value = (float)RNA_property_boolean_get(&ptr, prop);
+          value = float(RNA_property_boolean_get(&ptr, prop));
           break;
         case PROP_INT:
-          value = (float)RNA_property_int_get(&ptr, prop);
+          value = float(RNA_property_int_get(&ptr, prop));
           break;
         case PROP_FLOAT:
           value = RNA_property_float_get(&ptr, prop);
           break;
         case PROP_ENUM:
-          value = (float)RNA_property_enum_get(&ptr, prop);
+          value = float(RNA_property_enum_get(&ptr, prop));
           break;
         default:
           fprintf(stderr,
@@ -629,9 +634,7 @@ bool BCCurveKey::operator<(const BCCurveKey &other) const
   return this->curve_array_index < other.curve_array_index;
 }
 
-BCBezTriple::BCBezTriple(BezTriple &bezt) : bezt(bezt)
-{
-}
+BCBezTriple::BCBezTriple(BezTriple &bezt) : bezt(bezt) {}
 
 float BCBezTriple::get_frame() const
 {

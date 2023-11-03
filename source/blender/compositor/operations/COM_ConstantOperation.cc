@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ConstantOperation.h"
 
@@ -19,7 +20,7 @@ bool ConstantOperation::can_get_constant_elem() const
 
 void ConstantOperation::update_memory_buffer(MemoryBuffer *output,
                                              const rcti &area,
-                                             Span<MemoryBuffer *> UNUSED(inputs))
+                                             Span<MemoryBuffer *> /*inputs*/)
 {
   BLI_assert(output->is_a_single_elem());
   const float *constant = get_constant_elem();

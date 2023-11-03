@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -34,29 +37,16 @@ void main()
   float unused_strength;
   vec2 unused_uv;
 
-  gl_Position = gpencil_vertex(ma,
-                               ma1,
-                               ma2,
-                               ma3,
-                               pos,
-                               pos1,
-                               pos2,
-                               pos3,
-                               uv1,
-                               uv2,
-                               col1,
-                               col2,
-                               fcol1,
-                               vec4(drw_view.viewport_size, drw_view.viewport_size_inverse),
+  gl_Position = gpencil_vertex(vec4(sizeViewport, sizeViewportInv),
                                world_pos,
                                unused_N,
                                unused_color,
                                unused_strength,
                                unused_uv,
-                               gp_interp.sspos,
-                               gp_interp.aspect,
-                               gp_interp.thickness,
-                               gp_interp.hardness);
+                               gp_interp_flat.sspos,
+                               gp_interp_flat.aspect,
+                               gp_interp_noperspective.thickness,
+                               gp_interp_noperspective.hardness);
 
   /* Small bias to always be on top of the geom. */
   gl_Position.z -= 1e-3;

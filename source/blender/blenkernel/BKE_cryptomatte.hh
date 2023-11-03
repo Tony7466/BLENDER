@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -12,6 +13,7 @@
 
 #include "BKE_cryptomatte.h"
 
+#include "BLI_hash_mm3.h"
 #include "BLI_map.hh"
 #include "BLI_string_ref.hh"
 
@@ -54,10 +56,14 @@ struct CryptomatteHash {
   uint32_t hash;
 
   CryptomatteHash(uint32_t hash);
-  CryptomatteHash(const char *name, int name_len);
-  static CryptomatteHash from_hex_encoded(blender::StringRef hex_encoded);
+  CryptomatteHash(const char *name, int name_len)
+  {
+    hash = BLI_hash_mm3((const unsigned char *)name, name_len, 0);
+  }
 
+  static CryptomatteHash from_hex_encoded(blender::StringRef hex_encoded);
   std::string hex_encoded() const;
+
   /**
    * Convert a cryptomatte hash to a float.
    *
@@ -70,7 +76,20 @@ struct CryptomatteHash {
    *
    * Note that this conversion assumes to be running on a L-endian system.
    */
-  float float_encoded() const;
+  float float_encoded() const
+  {
+    uint32_t mantissa = hash & ((1 << 23) - 1);
+    uint32_t exponent = (hash >> 23) & ((1 << 8) - 1);
+    exponent = MAX2(exponent, uint32_t(1));
+    exponent = MIN2(exponent, uint32_t(254));
+    exponent = exponent << 23;
+    uint32_t sign = (hash >> 31);
+    sign = sign << 31;
+    uint32_t float_bits = sign | exponent | mantissa;
+    float f;
+    memcpy(&f, &float_bits, sizeof(uint32_t));
+    return f;
+  }
 };
 
 struct CryptomatteLayer {
@@ -81,7 +100,7 @@ struct CryptomatteLayer {
 #endif
 
   static std::unique_ptr<CryptomatteLayer> read_from_manifest(blender::StringRefNull manifest);
-  uint32_t add_ID(const struct ID &id);
+  uint32_t add_ID(const ID &id);
   void add_hash(blender::StringRef name, CryptomatteHash cryptomatte_hash);
   std::string manifest() const;
 
@@ -89,7 +108,7 @@ struct CryptomatteLayer {
 };
 
 struct CryptomatteStampDataCallbackData {
-  struct CryptomatteSession *session;
+  CryptomatteSession *session;
   blender::Map<std::string, std::string> hash_to_layer_name;
 
   /**
@@ -100,13 +119,21 @@ struct CryptomatteStampDataCallbackData {
   static blender::StringRef extract_layer_hash(blender::StringRefNull key);
 
   /* C type callback function (StampCallback). */
-  static void extract_layer_names(void *_data, const char *propname, char *propvalue, int len);
+  static void extract_layer_names(void *_data,
+                                  const char *propname,
+                                  char *propvalue,
+                                  int propvalue_maxncpy);
   /* C type callback function (StampCallback). */
-  static void extract_layer_manifest(void *_data, const char *propname, char *propvalue, int len);
+  static void extract_layer_manifest(void *_data,
+                                     const char *propname,
+                                     char *propvalue,
+                                     int propvalue_maxncpy);
 };
 
 const blender::Vector<std::string> &BKE_cryptomatte_layer_names_get(
     const CryptomatteSession &session);
+CryptomatteLayer *BKE_cryptomatte_layer_get(CryptomatteSession &session,
+                                            const StringRef layer_name);
 
 struct CryptomatteSessionDeleter {
   void operator()(CryptomatteSession *session)

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 1999-2001 David Hodson <hodsond@acm.org>. */
+/* SPDX-FileCopyrightText: 1999-2001 David Hodson <hodsond@acm.org>.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup imbcineon
@@ -38,10 +39,10 @@ typedef struct {
 } CineonFileHeader;
 
 typedef struct {
-  unsigned char descriptor1;
-  unsigned char descriptor2;
-  unsigned char bits_per_sample;
-  unsigned char filler;
+  uchar descriptor1;
+  uchar descriptor2;
+  uchar bits_per_sample;
+  uchar filler;
   unsigned int pixels_per_line;
   unsigned int lines_per_image;
   unsigned int ref_low_data;
@@ -51,8 +52,8 @@ typedef struct {
 } CineonElementHeader;
 
 typedef struct {
-  unsigned char orientation;
-  unsigned char elements_per_image;
+  uchar orientation;
+  uchar elements_per_image;
   unsigned short filler;
   CineonElementHeader element[8];
   float white_point_x;
@@ -65,10 +66,10 @@ typedef struct {
   float blue_primary_y;
   char label[200];
   char reserved[28];
-  unsigned char interleave;
-  unsigned char packing;
-  unsigned char data_sign;
-  unsigned char sense;
+  uchar interleave;
+  uchar packing;
+  uchar data_sign;
+  uchar sense;
   unsigned int line_padding;
   unsigned int element_padding;
   char reserved2[20];
@@ -90,10 +91,10 @@ typedef struct {
 } CineonOriginationHeader;
 
 typedef struct {
-  unsigned char film_code;
-  unsigned char film_type;
-  unsigned char edge_code_perforation_offset;
-  unsigned char filler;
+  uchar film_code;
+  uchar film_type;
+  uchar edge_code_perforation_offset;
+  uchar filler;
   unsigned int prefix;
   unsigned int count;
   char format[32];
@@ -112,7 +113,7 @@ typedef struct {
 } CineonMainHeader;
 
 void cineonSetVerbose(int);
-LogImageFile *cineonOpen(const unsigned char *byteStuff, int fromMemory, size_t bufferSize);
+LogImageFile *cineonOpen(const uchar *byteStuff, int fromMemory, size_t bufferSize);
 LogImageFile *cineonCreate(
     const char *filepath, int width, int height, int bitsPerSample, const char *creator);
 

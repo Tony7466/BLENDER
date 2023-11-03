@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -23,14 +24,59 @@ ccl_device_inline bool intersection_ray_valid(ccl_private const Ray *ray)
 /* Offset intersection distance by the smallest possible amount, to skip
  * intersections at this distance. This works in cases where the ray start
  * position is unchanged and only tmin is updated, since for self
- * intersection we'll be comparing against the exact same distances. */
+ * intersection we'll be comparing against the exact same distances.
+ *
+ * Always returns normalized floating point value. */
 ccl_device_forceinline float intersection_t_offset(const float t)
 {
   /* This is a simplified version of `nextafterf(t, FLT_MAX)`, only dealing with
    * non-negative and finite t. */
   kernel_assert(t >= 0.0f && isfinite_safe(t));
-  const uint32_t bits = (t == 0.0f) ? 1 : __float_as_uint(t) + 1;
-  return __uint_as_float(bits);
+
+  /* Special handling of zero, which also includes handling of denormal values:
+   * always return smallest normalized value. If a denormalized zero is returned
+   * it will cause false-positive intersection detection with a distance of 0.
+   *
+   * The check relies on the fact that comparison of de-normal values with zero
+   * returns true. */
+  if (t == 0.0f) {
+    /* The exact bit value of this should be 0x1p-126, but hex floating point values notation is
+     * not available in CUDA/OptiX. */
+    return FLT_MIN;
+  }
+
+  const uint32_t bits = __float_as_uint(t) + 1;
+  const float result = __uint_as_float(bits);
+
+  /* Assert that the calculated value is indeed considered to be offset from the
+   * original value. */
+  kernel_assert(result > t);
+
+  return result;
+}
+
+/* Ray offset to avoid self intersection.
+ *
+ * This function can be used to compute a modified ray start position for rays
+ * leaving from a surface. This is from:
+ * "A Fast and Robust Method for Avoiding Self-Intersection"
+ * Ray Tracing Gems, chapter 6.
+ */
+ccl_device_inline float3 ray_offset(const float3 P, const float3 Ng)
+{
+  const float int_scale = 256.0f;
+  const int3 of_i = make_int3(
+      (int)(int_scale * Ng.x), (int)(int_scale * Ng.y), (int)(int_scale * Ng.z));
+
+  const float3 p_i = make_float3(
+      __int_as_float(__float_as_int(P.x) + ((P.x < 0) ? -of_i.x : of_i.x)),
+      __int_as_float(__float_as_int(P.y) + ((P.y < 0) ? -of_i.y : of_i.y)),
+      __int_as_float(__float_as_int(P.z) + ((P.z < 0) ? -of_i.z : of_i.z)));
+  const float origin = 1.0f / 32.0f;
+  const float float_scale = 1.0f / 65536.0f;
+  return make_float3(fabsf(P.x) < origin ? P.x + float_scale * Ng.x : p_i.x,
+                     fabsf(P.y) < origin ? P.y + float_scale * Ng.y : p_i.y,
+                     fabsf(P.z) < origin ? P.z + float_scale * Ng.z : p_i.z);
 }
 
 #ifndef __KERNEL_GPU__
@@ -166,10 +212,8 @@ ccl_device_inline int intersection_find_attribute(KernelGlobals kg,
 /* Cut-off value to stop transparent shadow tracing when practically opaque. */
 #define CURVE_SHADOW_TRANSPARENCY_CUTOFF 0.001f
 
-ccl_device_inline float intersection_curve_shadow_transparency(KernelGlobals kg,
-                                                               const int object,
-                                                               const int prim,
-                                                               const float u)
+ccl_device_inline float intersection_curve_shadow_transparency(
+    KernelGlobals kg, const int object, const int prim, const int type, const float u)
 {
   /* Find attribute. */
   const int offset = intersection_find_attribute(kg, object, ATTR_STD_SHADOW_TRANSPARENCY);
@@ -180,7 +224,7 @@ ccl_device_inline float intersection_curve_shadow_transparency(KernelGlobals kg,
 
   /* Interpolate transparency between curve keys. */
   const KernelCurve kcurve = kernel_data_fetch(curves, prim);
-  const int k0 = kcurve.first_key + PRIMITIVE_UNPACK_SEGMENT(kcurve.type);
+  const int k0 = kcurve.first_key + PRIMITIVE_UNPACK_SEGMENT(type);
   const int k1 = k0 + 1;
 
   const float f0 = kernel_data_fetch(attributes_float, offset + k0);
@@ -189,14 +233,14 @@ ccl_device_inline float intersection_curve_shadow_transparency(KernelGlobals kg,
   return (1.0f - u) * f0 + u * f1;
 }
 
-ccl_device_inline bool intersection_skip_self(ccl_private const RaySelfPrimitives &self,
+ccl_device_inline bool intersection_skip_self(ccl_ray_data const RaySelfPrimitives &self,
                                               const int object,
                                               const int prim)
 {
   return (self.prim == prim) && (self.object == object);
 }
 
-ccl_device_inline bool intersection_skip_self_shadow(ccl_private const RaySelfPrimitives &self,
+ccl_device_inline bool intersection_skip_self_shadow(ccl_ray_data const RaySelfPrimitives &self,
                                                      const int object,
                                                      const int prim)
 {
@@ -204,10 +248,47 @@ ccl_device_inline bool intersection_skip_self_shadow(ccl_private const RaySelfPr
          ((self.light_prim == prim) && (self.light_object == object));
 }
 
-ccl_device_inline bool intersection_skip_self_local(ccl_private const RaySelfPrimitives &self,
+ccl_device_inline bool intersection_skip_self_local(ccl_ray_data const RaySelfPrimitives &self,
                                                     const int prim)
 {
   return (self.prim == prim);
+}
+
+#ifdef __SHADOW_LINKING__
+ccl_device_inline uint64_t
+ray_get_shadow_set_membership(KernelGlobals kg, ccl_ray_data const RaySelfPrimitives &self)
+{
+  if (self.light != LAMP_NONE) {
+    return kernel_data_fetch(lights, self.light).shadow_set_membership;
+  }
+
+  if (self.light_object != OBJECT_NONE) {
+    return kernel_data_fetch(objects, self.light_object).shadow_set_membership;
+  }
+
+  return LIGHT_LINK_MASK_ALL;
+}
+#endif
+
+ccl_device_inline bool intersection_skip_shadow_link(KernelGlobals kg,
+                                                     ccl_ray_data const RaySelfPrimitives &self,
+                                                     const int isect_object)
+{
+#ifdef __SHADOW_LINKING__
+  if (!(kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_LINKING)) {
+    return false;
+  }
+
+  const uint64_t set_membership = ray_get_shadow_set_membership(kg, self);
+  if (set_membership == LIGHT_LINK_MASK_ALL) {
+    return false;
+  }
+
+  const uint blocker_set = kernel_data_fetch(objects, isect_object).blocker_shadow_set;
+  return ((uint64_t(1) << uint64_t(blocker_set)) & set_membership) == 0;
+#else
+  return false;
+#endif
 }
 
 CCL_NAMESPACE_END

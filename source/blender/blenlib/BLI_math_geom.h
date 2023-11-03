@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -145,11 +146,6 @@ bool is_quad_flip_v3_first_third_fast(const float v1[3],
                                       const float v2[3],
                                       const float v3[3],
                                       const float v4[3]);
-bool is_quad_flip_v3_first_third_fast_with_normal(const float v1[3],
-                                                  const float v2[3],
-                                                  const float v3[3],
-                                                  const float v4[3],
-                                                  const float normal[3]);
 
 /** \} */
 
@@ -1164,8 +1160,8 @@ void box_minmax_bounds_m4(float min[3], float max[3], float boundbox[2][3], floa
 /** \name Mapping
  * \{ */
 
-void map_to_tube(float *r_u, float *r_v, float x, float y, float z);
-void map_to_sphere(float *r_u, float *r_v, float x, float y, float z);
+bool map_to_tube(float *r_u, float *r_v, float x, float y, float z);
+bool map_to_sphere(float *r_u, float *r_v, float x, float y, float z);
 void map_to_plane_v2_v3v3(float r_co[2], const float co[3], const float no[3]);
 void map_to_plane_axis_angle_v2_v3v3fl(float r_co[2],
                                        const float co[3],
@@ -1270,8 +1266,8 @@ MINLINE void mul_sh_fl(float r[9], float f);
 MINLINE void add_sh_shsh(float r[9], const float a[9], const float b[9]);
 MINLINE float dot_shsh(const float a[9], const float b[9]);
 
-MINLINE float eval_shv3(float r[9], const float v[3]);
-MINLINE float diffuse_shv3(const float r[9], const float v[3]);
+MINLINE float eval_shv3(float sh[9], const float v[3]);
+MINLINE float diffuse_shv3(const float sh[9], const float v[3]);
 MINLINE void vec_fac_to_sh(float r[9], const float v[3], float f);
 MINLINE void madd_sh_shfl(float r[9], const float sh[9], float f);
 
@@ -1407,6 +1403,10 @@ float geodesic_distance_propagate_across_triangle(
 
 /** \} */
 
+#ifdef __cplusplus
+}
+#endif
+
 /* -------------------------------------------------------------------- */
 /** \name Inline Definitions
  * \{ */
@@ -1420,7 +1420,3 @@ float geodesic_distance_propagate_across_triangle(
 #endif
 
 /** \} */
-
-#ifdef __cplusplus
-}
-#endif

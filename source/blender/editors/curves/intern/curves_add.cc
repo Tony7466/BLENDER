@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edcurves
@@ -8,12 +10,14 @@
 
 #include "BKE_context.h"
 #include "BKE_curves.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
-#include "ED_curves.h"
-#include "ED_node.h"
-#include "ED_object.h"
+#include "BLT_translation.h"
+
+#include "ED_curves.hh"
+#include "ED_node.hh"
+#include "ED_object.hh"
 
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
@@ -23,15 +27,13 @@ namespace blender::ed::curves {
 
 static bool has_surface_deformation_node(const bNodeTree &ntree)
 {
-  LISTBASE_FOREACH (const bNode *, node, &ntree.nodes) {
-    if (node->type == GEO_NODE_DEFORM_CURVES_ON_SURFACE) {
-      return true;
-    }
-    if (node->type == NODE_GROUP) {
-      if (node->id != nullptr) {
-        if (has_surface_deformation_node(*reinterpret_cast<const bNodeTree *>(node->id))) {
-          return true;
-        }
+  if (!ntree.nodes_by_type("GeometryNodeDeformCurvesOnSurface").is_empty()) {
+    return true;
+  }
+  for (const bNode *node : ntree.group_nodes()) {
+    if (const bNodeTree *sub_tree = reinterpret_cast<const bNodeTree *>(node->id)) {
+      if (has_surface_deformation_node(*sub_tree)) {
+        return true;
       }
     }
   }
@@ -65,13 +67,16 @@ void ensure_surface_deformation_node_exists(bContext &C, Object &curves_ob)
   Scene *scene = CTX_data_scene(&C);
 
   ModifierData *md = ED_object_modifier_add(
-      nullptr, bmain, scene, &curves_ob, "Surface Deform", eModifierType_Nodes);
+      nullptr, bmain, scene, &curves_ob, DATA_("Surface Deform"), eModifierType_Nodes);
   NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
-  nmd.node_group = ntreeAddTree(bmain, "Surface Deform", "GeometryNodeTree");
+  nmd.node_group = ntreeAddTree(bmain, DATA_("Surface Deform"), "GeometryNodeTree");
 
   bNodeTree *ntree = nmd.node_group;
-  ntreeAddSocketInterface(ntree, SOCK_IN, "NodeSocketGeometry", "Geometry");
-  ntreeAddSocketInterface(ntree, SOCK_OUT, "NodeSocketGeometry", "Geometry");
+  ntree->tree_interface.add_socket("Geometry",
+                                   "",
+                                   "NodeSocketGeometry",
+                                   NODE_INTERFACE_SOCKET_INPUT | NODE_INTERFACE_SOCKET_OUTPUT,
+                                   nullptr);
   bNode *group_input = nodeAddStaticNode(&C, ntree, NODE_GROUP_INPUT);
   bNode *group_output = nodeAddStaticNode(&C, ntree, NODE_GROUP_OUTPUT);
   bNode *deform_node = nodeAddStaticNode(&C, ntree, GEO_NODE_DEFORM_CURVES_ON_SURFACE);
@@ -102,10 +107,9 @@ bke::CurvesGeometry primitive_random_sphere(const int curves_size, const int poi
 
   MutableSpan<int> offsets = curves.offsets_for_write();
   MutableSpan<float3> positions = curves.positions_for_write();
-
-  float *radius_data = (float *)CustomData_add_layer_named(
-      &curves.point_data, CD_PROP_FLOAT, CD_DEFAULT, nullptr, curves.point_num, "radius");
-  MutableSpan<float> radii{radius_data, curves.points_num()};
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::SpanAttributeWriter<float> radius = attributes.lookup_or_add_for_write_only_span<float>(
+      "radius", ATTR_DOMAIN_POINT);
 
   for (const int i : offsets.index_range()) {
     offsets[i] = points_per_curve * i;
@@ -113,10 +117,11 @@ bke::CurvesGeometry primitive_random_sphere(const int curves_size, const int poi
 
   RandomNumberGenerator rng;
 
+  const OffsetIndices points_by_curve = curves.points_by_curve();
   for (const int i : curves.curves_range()) {
-    const IndexRange curve_range = curves.points_for_curve(i);
-    MutableSpan<float3> curve_positions = positions.slice(curve_range);
-    MutableSpan<float> curve_radii = radii.slice(curve_range);
+    const IndexRange points = points_by_curve[i];
+    MutableSpan<float3> curve_positions = positions.slice(points);
+    MutableSpan<float> curve_radii = radius.span.slice(points);
 
     const float theta = 2.0f * M_PI * rng.get_float();
     const float phi = saacosf(2.0f * rng.get_float() - 1.0f);
@@ -126,7 +131,7 @@ bke::CurvesGeometry primitive_random_sphere(const int curves_size, const int poi
 
     float3 co = no;
     for (int key = 0; key < points_per_curve; key++) {
-      float t = key / (float)(points_per_curve - 1);
+      float t = key / float(points_per_curve - 1);
       curve_positions[key] = co;
       curve_radii[key] = 0.02f * (1.0f - t);
 
@@ -134,6 +139,8 @@ bke::CurvesGeometry primitive_random_sphere(const int curves_size, const int poi
       co += (offset + no) / points_per_curve;
     }
   }
+
+  radius.finish();
 
   return curves;
 }

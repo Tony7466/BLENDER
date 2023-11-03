@@ -1,9 +1,6 @@
-
-
-in vec4 uvcoordsvar;
-uniform sampler2D imageTexture;
-uniform int mip;
-out vec4 fragColor;
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 void main()
 {

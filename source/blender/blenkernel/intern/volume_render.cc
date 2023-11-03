@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -8,13 +10,14 @@
 
 #include "BLI_array.hh"
 #include "BLI_math_matrix.h"
-#include "BLI_math_vec_types.hh"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
 
 #include "DNA_volume_types.h"
 
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 #include "BKE_volume_render.h"
 
 #ifdef WITH_OPENVDB
@@ -102,9 +105,8 @@ bool BKE_volume_grid_dense_floats(const Volume *volume,
   }
 
   const openvdb::Vec3i resolution = bbox.dim().asVec3i();
-  const int64_t num_voxels = static_cast<int64_t>(resolution[0]) *
-                             static_cast<int64_t>(resolution[1]) *
-                             static_cast<int64_t>(resolution[2]);
+  const int64_t num_voxels = int64_t(resolution[0]) * int64_t(resolution[1]) *
+                             int64_t(resolution[2]);
   const int channels = BKE_volume_grid_channels(volume_grid);
   const int elem_size = sizeof(float) * channels;
   float *voxels = static_cast<float *>(MEM_malloc_arrayN(num_voxels, elem_size, __func__));
@@ -383,14 +385,20 @@ static void grow_triangles(blender::MutableSpan<blender::float3> verts,
   /* Compute the offset for every vertex based on the connected edges.
    * This formula simply tries increases the length of all edges. */
   blender::Array<blender::float3> offsets(verts.size(), {0, 0, 0});
+  blender::Array<float> weights(verts.size(), 0.0f);
   for (const std::array<int, 3> &tri : tris) {
     offsets[tri[0]] += factor * (2 * verts[tri[0]] - verts[tri[1]] - verts[tri[2]]);
     offsets[tri[1]] += factor * (2 * verts[tri[1]] - verts[tri[0]] - verts[tri[2]]);
     offsets[tri[2]] += factor * (2 * verts[tri[2]] - verts[tri[0]] - verts[tri[1]]);
+    weights[tri[0]] += 1.0;
+    weights[tri[1]] += 1.0;
+    weights[tri[2]] += 1.0;
   }
   /* Apply the computed offsets. */
   for (const int i : verts.index_range()) {
-    verts[i] += offsets[i];
+    if (weights[i] > 0.0f) {
+      verts[i] += offsets[i] / weights[i];
+    }
   }
 }
 #endif /* WITH_OPENVDB */

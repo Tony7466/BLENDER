@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "util/debug.h"
 
@@ -13,7 +14,6 @@
 CCL_NAMESPACE_BEGIN
 
 DebugFlags::CPU::CPU()
-    : avx2(true), avx(true), sse41(true), sse3(true), sse2(true), bvh_layout(BVH_LAYOUT_AUTO)
 {
   reset();
 }
@@ -30,9 +30,7 @@ void DebugFlags::CPU::reset()
   } while (0)
 
   CHECK_CPU_FLAGS(avx2, "CYCLES_CPU_NO_AVX2");
-  CHECK_CPU_FLAGS(avx, "CYCLES_CPU_NO_AVX");
   CHECK_CPU_FLAGS(sse41, "CYCLES_CPU_NO_SSE41");
-  CHECK_CPU_FLAGS(sse3, "CYCLES_CPU_NO_SSE3");
   CHECK_CPU_FLAGS(sse2, "CYCLES_CPU_NO_SSE2");
 
 #undef STRINGIFY
@@ -41,37 +39,52 @@ void DebugFlags::CPU::reset()
   bvh_layout = BVH_LAYOUT_AUTO;
 }
 
-DebugFlags::CUDA::CUDA() : adaptive_compile(false)
+DebugFlags::CUDA::CUDA()
 {
   reset();
 }
 
-DebugFlags::HIP::HIP() : adaptive_compile(false)
+DebugFlags::HIP::HIP()
 {
   reset();
 }
 
-DebugFlags::Metal::Metal() : adaptive_compile(false)
+DebugFlags::Metal::Metal()
 {
   reset();
 }
 
 void DebugFlags::CUDA::reset()
 {
-  if (getenv("CYCLES_CUDA_ADAPTIVE_COMPILE") != NULL)
+  if (getenv("CYCLES_CUDA_ADAPTIVE_COMPILE") != NULL) {
     adaptive_compile = true;
+  }
 }
 
 void DebugFlags::HIP::reset()
 {
-  if (getenv("CYCLES_HIP_ADAPTIVE_COMPILE") != NULL)
+  if (getenv("CYCLES_HIP_ADAPTIVE_COMPILE") != NULL) {
     adaptive_compile = true;
+  }
 }
 
 void DebugFlags::Metal::reset()
 {
-  if (getenv("CYCLES_METAL_ADAPTIVE_COMPILE") != NULL)
+  if (getenv("CYCLES_METAL_ADAPTIVE_COMPILE") != NULL) {
     adaptive_compile = true;
+  }
+
+  if (auto str = getenv("CYCLES_METAL_LOCAL_ATOMIC_SORT")) {
+    use_local_atomic_sort = (atoi(str) != 0);
+  }
+
+  if (auto str = getenv("CYCLES_METAL_NANOVDB")) {
+    use_nanovdb = (atoi(str) != 0);
+  }
+
+  if (auto str = getenv("CYCLES_METAL_ASYNC_PSO_CREATION")) {
+    use_async_pso_creation = (atoi(str) != 0);
+  }
 }
 
 DebugFlags::OptiX::OptiX()
@@ -84,14 +97,13 @@ void DebugFlags::OptiX::reset()
   use_debug = false;
 }
 
-DebugFlags::DebugFlags() : viewport_static_bvh(false), running_inside_blender(false)
+DebugFlags::DebugFlags()
 {
   /* Nothing for now. */
 }
 
 void DebugFlags::reset()
 {
-  viewport_static_bvh = false;
   cpu.reset();
   cuda.reset();
   optix.reset();

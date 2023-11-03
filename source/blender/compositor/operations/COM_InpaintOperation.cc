@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "MEM_guardedalloc.h"
 
@@ -178,7 +179,7 @@ void InpaintSimpleOperation::pix_step(int x, int y)
             weight = 1.0f;
           }
           else {
-            weight = M_SQRT1_2; /* 1.0f / sqrt(2) */
+            weight = M_SQRT1_2; /* `1.0f / sqrt(2)`. */
           }
 
           madd_v3_v3fl(pix, this->get_pixel(x_ofs, y_ofs), weight);
@@ -267,7 +268,7 @@ bool InpaintSimpleOperation::determine_depending_area_of_interest(
 }
 
 void InpaintSimpleOperation::get_area_of_interest(const int input_idx,
-                                                  const rcti &UNUSED(output_area),
+                                                  const rcti & /*output_area*/,
                                                   rcti &r_input_area)
 {
   BLI_assert(input_idx == 0);

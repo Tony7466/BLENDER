@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2007 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -14,7 +15,10 @@
 #include "DNA_ID.h"
 
 #ifdef __cplusplus
-extern "C" {
+#  include <mutex>
+using std_mutex_type = std::mutex;
+#else
+#  define std_mutex_type void
 #endif
 
 /* Defined here: */
@@ -22,8 +26,8 @@ extern "C" {
 struct wmWindow;
 struct wmWindowManager;
 
+struct wmEvent_ConsecutiveData;
 struct wmEvent;
-struct wmGesture;
 struct wmKeyConfig;
 struct wmKeyMap;
 struct wmMsgBus;
@@ -56,6 +60,7 @@ typedef enum eReportType {
   RPT_ERROR_INVALID_CONTEXT = (1 << 7),
   RPT_ERROR_OUT_OF_MEMORY = (1 << 8),
 } eReportType;
+ENUM_OPERATORS(eReportType, RPT_ERROR_OUT_OF_MEMORY)
 
 #define RPT_DEBUG_ALL (RPT_DEBUG)
 #define RPT_INFO_ALL (RPT_INFO)
@@ -70,9 +75,11 @@ enum ReportListFlags {
   RPT_STORE = (1 << 1),
   RPT_FREE = (1 << 2),
   RPT_OP_HOLD = (1 << 3), /* don't move them into the operator global list (caller will use) */
+  /** Don't print (the owner of the #ReportList will handle printing to the `stdout`). */
+  RPT_PRINT_HANDLED_BY_OWNER = (1 << 4),
 };
 
-/* These two Lines with # tell makesdna this struct can be excluded. */
+/* These two lines with # tell `makesdna` this struct can be excluded. */
 #
 #
 typedef struct Report {
@@ -87,26 +94,29 @@ typedef struct Report {
 } Report;
 
 /**
- * \note Saved in the wm, don't remove.
+ * \note Saved in the #wmWindowManager, don't remove.
  */
 typedef struct ReportList {
   ListBase list;
-  /** eReportType. */
+  /** #eReportType. */
   int printlevel;
-  /** eReportType. */
+  /** #eReportType. */
   int storelevel;
   int flag;
   char _pad[4];
   struct wmTimer *reporttimer;
+
+  /** Mutex for thread-safety, runtime only. */
+  std_mutex_type *lock;
 } ReportList;
 
-/* timer customdata to control reports display */
-/* These two Lines with # tell makesdna this struct can be excluded. */
+/* Timer custom-data to control reports display. */
+/* These two lines with # tell `makesdna` this struct can be excluded. */
 #
 #
 typedef struct ReportTimerInfo {
-  float col[4];
   float widthfac;
+  float flash_progress;
 } ReportTimerInfo;
 
 //#ifdef WITH_XR_OPENXR
@@ -137,7 +147,8 @@ typedef struct wmWindowManager {
   ListBase windows;
 
   /** Set on file read. */
-  short initialized;
+  uint8_t init_flag;
+  char _pad0[1];
   /** Indicator whether data was saved. */
   short file_saved;
   /** Operator stack depth to avoid nested undo pushes. */
@@ -149,8 +160,19 @@ typedef struct wmWindowManager {
   /** Operator registry. */
   ListBase operators;
 
-  /** Refresh/redraw #wmNotifier structs. */
+  /**
+   * Refresh/redraw #wmNotifier structs.
+   * \note Once in the queue, notifiers should be considered read-only.
+   * With the exception of clearing notifiers for data which has been removed,
+   * see: #NOTE_CATEGORY_TAG_CLEARED.
+   */
   ListBase notifier_queue;
+  /**
+   * For duplicate detection.
+   * \note keep in sync with `notifier_queue` adding/removing elements must also update this set.
+   */
+  struct GSet *notifier_queue_set;
+  void *_pad1;
 
   /** Information and error reports. */
   struct ReportList reports;
@@ -164,8 +186,12 @@ typedef struct wmWindowManager {
   /** Active dragged items. */
   ListBase drags;
 
-  /** Known key configurations. */
+  /**
+   * Known key configurations.
+   * This includes all the #wmKeyConfig members (`defaultconf`, `addonconf`, etc).
+   */
   ListBase keyconfigs;
+
   /** Default configuration. */
   struct wmKeyConfig *defaultconf;
   /** Addon configuration. */
@@ -192,10 +218,12 @@ typedef struct wmWindowManager {
   //#endif
 } wmWindowManager;
 
-/** #wmWindowManager.initialized */
+#define WM_KEYCONFIG_ARRAY_P(wm) &(wm)->defaultconf, &(wm)->addonconf, &(wm)->userconf
+
+/** #wmWindowManager.init_flag */
 enum {
-  WM_WINDOW_IS_INIT = (1 << 0),
-  WM_KEYCONFIG_IS_INIT = (1 << 1),
+  WM_INIT_FLAG_WINDOW = (1 << 0),
+  WM_INIT_FLAG_KEYCONFIG = (1 << 1),
 };
 
 /** #wmWindowManager.outliner_sync_select_dirty */
@@ -251,11 +279,22 @@ typedef struct wmWindow {
 
   struct bScreen *screen DNA_DEPRECATED;
 
-  /** Winid also in screens, is for retrieving this window after read. */
+  /** Window-ID also in screens, is for retrieving this window after read. */
   int winid;
-  /** Window coords. */
-  short posx, posy, sizex, sizey;
-  /** Borderless, full. */
+  /** Window coords (in pixels). */
+  short posx, posy;
+  /**
+   * Window size (in pixels).
+   *
+   * \note Loading a window typically uses the size & position saved in the blend-file,
+   * there is an exception for startup files which works as follows:
+   * Setting the window size to zero before `ghostwin` has been set has a special meaning,
+   * it causes the window size to be initialized to `wm_init_state.size_x` (& `size_y`).
+   * These default to the main screen size but can be overridden by the `--window-geometry`
+   * command line argument.
+   */
+  short sizex, sizey;
+  /** Normal, maximized, full-screen, #GHOST_TWindowState. */
   char windowstate;
   /** Set to 1 if an active window, for quick rejects. */
   char active;
@@ -265,10 +304,19 @@ typedef struct wmWindow {
   short lastcursor;
   /** The current modal cursor. */
   short modalcursor;
-  /** Cursor grab mode. */
+  /** Cursor grab mode #GHOST_TGrabCursorMode (run-time only) */
   short grabcursor;
   /** Internal: tag this for extra mouse-move event,
    * makes cursors/buttons active on UI switching. */
+
+  /** Internal, lock pie creation from this event until released. */
+  short pie_event_type_lock;
+  /**
+   * Exception to the above rule for nested pies, store last pie event for operators
+   * that spawn a new pie right after destruction of last pie.
+   */
+  short pie_event_type_last;
+
   char addmousemove;
   char tag_cursor_refresh;
 
@@ -281,28 +329,49 @@ typedef struct wmWindow {
   /**
    * Enable when the drag was handled,
    * to avoid mouse-motion continually triggering drag events which are not handled
-   * but add overhead to gizmo handling (for example), see T87511.
+   * but add overhead to gizmo handling (for example), see #87511.
    */
   char event_queue_check_drag_handled;
 
-  char _pad0[1];
+  /** The last event type (that passed #WM_event_consecutive_gesture_test check). */
+  char event_queue_consecutive_gesture_type;
+  /** The cursor location when `event_queue_consecutive_gesture_type` was set. */
+  int event_queue_consecutive_gesture_xy[2];
+  /** See #WM_event_consecutive_data_get and related API. Freed when consecutive events end. */
+  struct wmEvent_ConsecutiveData *event_queue_consecutive_gesture_data;
 
-  /** Internal, lock pie creation from this event until released. */
-  short pie_event_type_lock;
   /**
-   * Exception to the above rule for nested pies, store last pie event for operators
-   * that spawn a new pie right after destruction of last pie.
+   * Storage for event system.
+   *
+   * For the most part this is storage for `wmEvent.xy` & `wmEvent.modifiers`.
+   * newly added key/button events copy the cursor location and modifier state stored here.
+   *
+   * It's also convenient at times to be able to pass this as if it's a regular event.
+   *
+   * - This is not simply the current event being handled.
+   *   The type and value is always set to the last press/release events
+   *   otherwise cursor motion would always clear these values.
+   *
+   * - The value of `eventstate->modifiers` is set from the last pressed/released modifier key.
+   *   This has the down side that the modifier value will be incorrect if users hold both
+   *   left/right modifiers then release one. See note in #wm_event_add_ghostevent for details.
    */
-  short pie_event_type_last;
-
-  /** Storage for event system. */
   struct wmEvent *eventstate;
-  /** Keep the last handled event in `event_queue` here (owned and must be freed). */
+  /**
+   * Keep the last handled event in `event_queue` here (owned and must be freed).
+   *
+   * \warning This must only to be used for event queue logic.
+   * User interactions should use `eventstate` instead (if the event isn't passed to the function).
+   */
   struct wmEvent *event_last_handled;
 
-  /* Input Method Editor data - complex character input (especially for Asian character input)
-   * Currently WIN32 and APPLE, runtime-only data. */
-  struct wmIMEData *ime_data;
+  /**
+   * Input Method Editor data - complex character input (especially for Asian character input)
+   * Currently WIN32 and APPLE, runtime-only data.
+   */
+  const struct wmIMEData *ime_data;
+  char ime_data_is_composing;
+  char _pad1[7];
 
   /** All events #wmEvent (ghost level events were handled). */
   ListBase event_queue;
@@ -317,18 +386,25 @@ typedef struct wmWindow {
   /** Properties for stereoscopic displays. */
   struct Stereo3dFormat *stereo3d_format;
 
-  /* custom drawing callbacks */
+  /** Custom drawing callbacks. */
   ListBase drawcalls;
 
-  /* Private runtime info to show text in the status bar. */
+  /** Private runtime info to show text in the status bar. */
   void *cursor_keymap_status;
+
+  /**
+   * The time when the key is pressed in milliseconds (see #GHOST_GetEventTime).
+   * Used to detect double-click events.
+   */
+  uint64_t eventstate_prev_press_time_ms;
+
 } wmWindow;
 
 #ifdef ime_data
 #  undef ime_data
 #endif
 
-/* These two Lines with # tell makesdna this struct can be excluded. */
+/* These two lines with # tell `makesdna` this struct can be excluded. */
 /* should be something like DNA_EXCLUDE
  * but the preprocessor first removes all comments, spaces etc */
 #
@@ -337,7 +413,7 @@ typedef struct wmOperatorTypeMacro {
   struct wmOperatorTypeMacro *next, *prev;
 
   /* operator id */
-  char idname[64];
+  char idname[64]; /* OP_MAX_TYPENAME */
   /* rna pointer to access properties, like keymap */
   /** Operator properties, assigned to ptr->data and can be written to a file. */
   struct IDProperty *properties;
@@ -363,11 +439,14 @@ typedef struct wmKeyMapItem {
   short propvalue;
 
   /* event */
-  /** Event code itself. */
+  /** Event code itself (#EVT_LEFTCTRLKEY, #LEFTMOUSE etc). */
   short type;
-  /** KM_ANY, KM_PRESS, KM_NOTHING etc. */
+  /** Button state (#KM_ANY, #KM_PRESS, #KM_DBL_CLICK, #KM_CLICK_DRAG, #KM_NOTHING etc). */
   int8_t val;
-  /** Use when `val == KM_CLICK_DRAG`. */
+  /**
+   * The 2D direction of the event to use when `val == KM_CLICK_DRAG`.
+   * Set to #KM_DIRECTION_N, #KM_DIRECTION_S & related values, #KM_NOTHING for any direction.
+   */
   int8_t direction;
   /** `oskey` also known as apple, windows-key or super. */
   short shift, ctrl, alt, oskey;
@@ -483,7 +562,7 @@ enum {
 
 /**
  * This is similar to addon-preferences,
- * however unlike add-ons key-config's aren't saved to disk.
+ * however unlike add-ons key-configurations aren't saved to disk.
  *
  * #wmKeyConfigPref is written to DNA,
  * #wmKeyConfigPrefType_Runtime has the RNA type.
@@ -524,7 +603,7 @@ typedef struct wmOperator {
 
   /* saved */
   /** Used to retrieve type pointer. */
-  char idname[64];
+  char idname[64]; /* OP_MAX_TYPENAME */
   /** Saved, user-settable properties. */
   IDProperty *properties;
 
@@ -591,7 +670,7 @@ enum {
    * This difference can be important because previous settings may be used,
    * even with #PROP_SKIP_SAVE the repeat last operator will use the previous settings.
    * Unlike #OP_IS_REPEAT the selection (and context generally) may be different each time.
-   * See T60777 for an example of when this is needed.
+   * See #60777 for an example of when this is needed.
    */
   OP_IS_REPEAT_LAST = (1 << 1),
 
@@ -604,7 +683,3 @@ enum {
    */
   OP_IS_MODAL_CURSOR_REGION = (1 << 3),
 };
-
-#ifdef __cplusplus
-}
-#endif

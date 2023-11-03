@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -8,6 +10,7 @@
 
 typedef struct ImportSettings {
   bool import_units;
+  bool custom_normals;
   bool find_chains;
   bool auto_connect;
   bool fix_orientation;

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __BLENDER_SESSION_H__
 #define __BLENDER_SESSION_H__
@@ -146,6 +147,8 @@ class BlenderSession {
   BlenderDisplayDriver *display_driver_ = nullptr;
 
   vector<string> full_buffer_files_;
+
+  int bake_id = 0;
 };
 
 CCL_NAMESPACE_END

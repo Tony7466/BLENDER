@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2017-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
@@ -5,22 +8,6 @@
 #pragma BLENDER_REQUIRE(common_uniforms_lib.glsl)
 
 /* Based on Separable SSS. by Jorge Jimenez and Diego Gutierrez */
-
-#define MAX_SSS_SAMPLES 65
-layout(std140) uniform sssProfile
-{
-  vec4 sss_kernel[MAX_SSS_SAMPLES];
-  vec4 radii_max_radius;
-  float avg_inv_radius;
-  int sss_samples;
-};
-
-uniform sampler2D depthBuffer;
-uniform sampler2D sssIrradiance;
-uniform sampler2D sssRadius;
-uniform sampler2D sssAlbedo;
-
-layout(location = 0) out vec4 sssRadiance;
 
 void main(void)
 {

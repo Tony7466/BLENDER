@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -8,6 +10,8 @@
 #include "BPy_Convert.h"
 
 #include "../system/RandGen.h"
+
+#include "BLI_sys_types.h"
 
 #include <sstream>
 
@@ -42,7 +46,7 @@ PyDoc_STRVAR(FrsNoise_doc,
              "\n"
              ".. method:: __init__(seed = -1)\n"
              "\n"
-             "   Builds a Noise object.  Seed is an optional argument.  The seed value is used\n"
+             "   Builds a Noise object. Seed is an optional argument. The seed value is used\n"
              "   as a seed for random number generation if it is equal to or greater than zero;\n"
              "   otherwise, time is used as a seed.\n"
              "\n"
@@ -109,7 +113,7 @@ static PyObject *FrsNoise_turbulence_smooth(BPy_FrsNoise *self, PyObject *args, 
   static const char *kwlist[] = {"v", "oct", nullptr};
 
   double x;  // NOTE: this has to be a double (not float)
-  unsigned nbOctaves = 8;
+  uint nbOctaves = 8;
 
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "d|I", (char **)kwlist, &x, &nbOctaves)) {
     return nullptr;
@@ -121,7 +125,7 @@ static PyObject *FrsNoise_turbulence1(BPy_FrsNoise *self, PyObject *args, PyObje
 {
   static const char *kwlist[] = {"v", "freq", "amp", "oct", nullptr};
   float f1, f2, f3;
-  unsigned int i = 4;
+  uint i = 4;
 
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "fff|I", (char **)kwlist, &f1, &f2, &f3, &i)) {
     return nullptr;
@@ -150,7 +154,7 @@ static PyObject *FrsNoise_turbulence2(BPy_FrsNoise *self, PyObject *args, PyObje
   static const char *kwlist[] = {"v", "freq", "amp", "oct", nullptr};
   PyObject *obj1;
   float f2, f3;
-  unsigned int i = 4;
+  uint i = 4;
   Vec2f vec;
 
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "Off|I", (char **)kwlist, &obj1, &f2, &f3, &i)) {
@@ -186,7 +190,7 @@ static PyObject *FrsNoise_turbulence3(BPy_FrsNoise *self, PyObject *args, PyObje
   static const char *kwlist[] = {"v", "freq", "amp", "oct", nullptr};
   PyObject *obj1;
   float f2, f3;
-  unsigned int i = 4;
+  uint i = 4;
   Vec3f vec;
 
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "Off|I", (char **)kwlist, &obj1, &f2, &f3, &i)) {
@@ -314,43 +318,44 @@ static PyMethodDef BPy_FrsNoise_methods[] = {
 /*-----------------------BPy_FrsNoise type definition ------------------------------*/
 
 PyTypeObject FrsNoise_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "Noise", /* tp_name */
-    sizeof(BPy_FrsNoise),                      /* tp_basicsize */
-    0,                                         /* tp_itemsize */
-    (destructor)FrsNoise_dealloc,              /* tp_dealloc */
-    0,                                         /* tp_vectorcall_offset */
-    nullptr,                                   /* tp_getattr */
-    nullptr,                                   /* tp_setattr */
-    nullptr,                                   /* tp_reserved */
-    (reprfunc)FrsNoise_repr,                   /* tp_repr */
-    nullptr,                                   /* tp_as_number */
-    nullptr,                                   /* tp_as_sequence */
-    nullptr,                                   /* tp_as_mapping */
-    nullptr,                                   /* tp_hash */
-    nullptr,                                   /* tp_call */
-    nullptr,                                   /* tp_str */
-    nullptr,                                   /* tp_getattro */
-    nullptr,                                   /* tp_setattro */
-    nullptr,                                   /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,  /* tp_flags */
-    FrsNoise_doc,                              /* tp_doc */
-    nullptr,                                   /* tp_traverse */
-    nullptr,                                   /* tp_clear */
-    nullptr,                                   /* tp_richcompare */
-    0,                                         /* tp_weaklistoffset */
-    nullptr,                                   /* tp_iter */
-    nullptr,                                   /* tp_iternext */
-    BPy_FrsNoise_methods,                      /* tp_methods */
-    nullptr,                                   /* tp_members */
-    nullptr,                                   /* tp_getset */
-    nullptr,                                   /* tp_base */
-    nullptr,                                   /* tp_dict */
-    nullptr,                                   /* tp_descr_get */
-    nullptr,                                   /* tp_descr_set */
-    0,                                         /* tp_dictoffset */
-    (initproc)FrsNoise_init,                   /* tp_init */
-    nullptr,                                   /* tp_alloc */
-    PyType_GenericNew,                         /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "Noise",
+    /*tp_basicsize*/ sizeof(BPy_FrsNoise),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ (destructor)FrsNoise_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ (reprfunc)FrsNoise_repr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ FrsNoise_doc,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ BPy_FrsNoise_methods,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)FrsNoise_init,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ PyType_GenericNew,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

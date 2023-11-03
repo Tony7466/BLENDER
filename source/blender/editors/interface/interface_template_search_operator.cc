@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -15,7 +17,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_ghash.h"
-#include "BLI_math_vec_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -24,17 +26,17 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "interface_intern.h"
+#include "UI_interface.hh"
+#include "interface_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Operator Search Template Implementation
  * \{ */
 
-static void operator_search_exec_fn(bContext *C, void *UNUSED(arg1), void *arg2)
+static void operator_search_exec_fn(bContext *C, void * /*arg1*/, void *arg2)
 {
   wmOperatorType *ot = static_cast<wmOperatorType *>(arg2);
 
@@ -44,10 +46,10 @@ static void operator_search_exec_fn(bContext *C, void *UNUSED(arg1), void *arg2)
 }
 
 static void operator_search_update_fn(const bContext *C,
-                                      void *UNUSED(arg),
+                                      void * /*arg*/,
                                       const char *str,
                                       uiSearchItems *items,
-                                      const bool UNUSED(is_first))
+                                      const bool /*is_first*/)
 {
   GHashIterator iter;
 
@@ -58,8 +60,8 @@ static void operator_search_update_fn(const bContext *C,
   const int words_len = BLI_string_find_split_words(
       str, str_len, ' ', (int(*)[2])words.data(), words_max);
 
-  for (WM_operatortype_iter(&iter); !BLI_ghashIterator_done(&iter);
-       BLI_ghashIterator_step(&iter)) {
+  for (WM_operatortype_iter(&iter); !BLI_ghashIterator_done(&iter); BLI_ghashIterator_step(&iter))
+  {
     wmOperatorType *ot = static_cast<wmOperatorType *>(BLI_ghashIterator_getValue(&iter));
     const char *ot_ui_name = CTX_IFACE_(ot->translation_context, ot->name);
 
@@ -73,7 +75,7 @@ static void operator_search_update_fn(const bContext *C,
         const int len = strlen(ot_ui_name);
 
         /* display name for menu, can hold hotkey */
-        BLI_strncpy(name, ot_ui_name, sizeof(name));
+        STRNCPY(name, ot_ui_name);
 
         /* check for hotkey */
         if (len < sizeof(name) - 6) {
@@ -83,7 +85,8 @@ static void operator_search_update_fn(const bContext *C,
                                            nullptr,
                                            true,
                                            &name[len + 1],
-                                           sizeof(name) - len - 1)) {
+                                           sizeof(name) - len - 1))
+          {
             name[len] = UI_SEP_CHAR;
           }
         }

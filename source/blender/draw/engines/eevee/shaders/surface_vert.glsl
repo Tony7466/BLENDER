@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2017-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_hair_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -5,11 +8,6 @@
 #pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
 #pragma BLENDER_REQUIRE(closure_eval_surface_lib.glsl)
 #pragma BLENDER_REQUIRE(surface_lib.glsl)
-
-#ifndef HAIR_SHADER
-in vec3 pos;
-in vec3 nor;
-#endif
 
 RESOURCE_ID_VARYING
 
@@ -37,7 +35,7 @@ void main()
   vec3 world_pos = pos;
 #elif defined(POINTCLOUD_SHADER)
   pointcloud_get_pos_and_radius(pointPosition, pointRadius);
-  pointID = gl_VertexID;
+  pointID = pointcloud_get_point_id();
 #else
   vec3 world_pos = point_object_to_world(pos);
 #endif
@@ -45,7 +43,7 @@ void main()
   gl_Position = point_world_to_ndc(world_pos);
 
   /* Used for planar reflections */
-  gl_ClipDistance[0] = dot(vec4(world_pos, 1.0), clipPlanes[0]);
+  gl_ClipDistance[0] = dot(vec4(world_pos, 1.0), planarClipPlane);
 
 #ifdef MESH_SHADER
   worldPosition = world_pos;
@@ -58,7 +56,9 @@ void main()
   /* No need to normalize since this is just a rotation. */
   viewNormal = normal_world_to_view(worldNormal);
 
+#  ifndef NO_ATTRIB_LOAD
   attrib_load();
+#  endif
 #endif
 }
 
@@ -80,7 +80,7 @@ int g_curves_attr_id = 0;
 int curves_attribute_element_id()
 {
   int id = hairStrandID;
-  if (drw_curves.is_point_attribute[g_curves_attr_id][0] != 0) {
+  if (drw_curves.is_point_attribute[g_curves_attr_id][0] != 0u) {
     id = hair_get_base_id();
   }
 
@@ -162,6 +162,10 @@ float attr_load_temperature_post(float attr)
   return attr;
 }
 vec4 attr_load_color_post(vec4 attr)
+{
+  return attr;
+}
+vec4 attr_load_uniform(vec4 attr, const uint attr_hash)
 {
   return attr;
 }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* Functions for retrieving attributes on triangles produced from subdivision meshes */
 
@@ -13,7 +14,7 @@ ccl_device_inline void subd_triangle_patch_uv(KernelGlobals kg,
                                               ccl_private const ShaderData *sd,
                                               float2 uv[3])
 {
-  uint4 tri_vindex = kernel_data_fetch(tri_vindex, sd->prim);
+  uint3 tri_vindex = kernel_data_fetch(tri_vindex, sd->prim);
 
   uv[0] = kernel_data_fetch(tri_patch_uv, tri_vindex.x);
   uv[1] = kernel_data_fetch(tri_patch_uv, tri_vindex.y);
@@ -87,7 +88,7 @@ ccl_device_noinline float subd_triangle_attribute_float(KernelGlobals kg,
                                                         ccl_private float *dx,
                                                         ccl_private float *dy)
 {
-  int patch = subd_triangle_patch(kg, sd);
+  int patch = subd_triangle_patch(kg, sd->prim);
 
 #ifdef __PATCH_EVAL__
   if (desc.flags & ATTR_SUBDIVIDED) {
@@ -135,7 +136,8 @@ ccl_device_noinline float subd_triangle_attribute_float(KernelGlobals kg,
   }
   else
 #endif /* __PATCH_EVAL__ */
-      if (desc.element == ATTR_ELEMENT_FACE) {
+      if (desc.element == ATTR_ELEMENT_FACE)
+  {
     if (dx)
       *dx = 0.0f;
     if (dy)
@@ -226,7 +228,7 @@ ccl_device_noinline float2 subd_triangle_attribute_float2(KernelGlobals kg,
                                                           ccl_private float2 *dx,
                                                           ccl_private float2 *dy)
 {
-  int patch = subd_triangle_patch(kg, sd);
+  int patch = subd_triangle_patch(kg, sd->prim);
 
 #ifdef __PATCH_EVAL__
   if (desc.flags & ATTR_SUBDIVIDED) {
@@ -275,7 +277,8 @@ ccl_device_noinline float2 subd_triangle_attribute_float2(KernelGlobals kg,
   }
   else
 #endif /* __PATCH_EVAL__ */
-      if (desc.element == ATTR_ELEMENT_FACE) {
+      if (desc.element == ATTR_ELEMENT_FACE)
+  {
     if (dx)
       *dx = make_float2(0.0f, 0.0f);
     if (dy)
@@ -368,7 +371,7 @@ ccl_device_noinline float3 subd_triangle_attribute_float3(KernelGlobals kg,
                                                           ccl_private float3 *dx,
                                                           ccl_private float3 *dy)
 {
-  int patch = subd_triangle_patch(kg, sd);
+  int patch = subd_triangle_patch(kg, sd->prim);
 
 #ifdef __PATCH_EVAL__
   if (desc.flags & ATTR_SUBDIVIDED) {
@@ -416,7 +419,8 @@ ccl_device_noinline float3 subd_triangle_attribute_float3(KernelGlobals kg,
   }
   else
 #endif /* __PATCH_EVAL__ */
-      if (desc.element == ATTR_ELEMENT_FACE) {
+      if (desc.element == ATTR_ELEMENT_FACE)
+  {
     if (dx)
       *dx = make_float3(0.0f, 0.0f, 0.0f);
     if (dy)
@@ -509,7 +513,7 @@ ccl_device_noinline float4 subd_triangle_attribute_float4(KernelGlobals kg,
                                                           ccl_private float4 *dx,
                                                           ccl_private float4 *dy)
 {
-  int patch = subd_triangle_patch(kg, sd);
+  int patch = subd_triangle_patch(kg, sd->prim);
 
 #ifdef __PATCH_EVAL__
   if (desc.flags & ATTR_SUBDIVIDED) {
@@ -562,7 +566,8 @@ ccl_device_noinline float4 subd_triangle_attribute_float4(KernelGlobals kg,
   }
   else
 #endif /* __PATCH_EVAL__ */
-      if (desc.element == ATTR_ELEMENT_FACE) {
+      if (desc.element == ATTR_ELEMENT_FACE)
+  {
     if (dx)
       *dx = zero_float4();
     if (dy)

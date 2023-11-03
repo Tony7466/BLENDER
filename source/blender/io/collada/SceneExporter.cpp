@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2011-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -6,7 +8,7 @@
 
 #include "BKE_collection.h"
 #include "BKE_lib_id.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
@@ -46,7 +48,7 @@ void SceneExporter::exportHierarchy()
         case OB_CAMERA:
         case OB_LAMP:
         case OB_EMPTY:
-        case OB_GPENCIL:
+        case OB_GPENCIL_LEGACY:
         case OB_ARMATURE:
           base_objects.add(ob);
           break;
@@ -82,11 +84,13 @@ void SceneExporter::writeNodeList(std::vector<Object *> &child_objects, Object *
 
 void SceneExporter::writeNode(Object *ob)
 {
+  const Scene *scene = blender_context.get_scene();
   ViewLayer *view_layer = blender_context.get_view_layer();
 
   std::vector<Object *> child_objects;
-  bc_get_children(child_objects, ob, view_layer);
-  bool can_export = bc_is_in_Export_set(this->export_settings.get_export_set(), ob, view_layer);
+  bc_get_children(child_objects, ob, scene, view_layer);
+  bool can_export = bc_is_in_Export_set(
+      this->export_settings.get_export_set(), ob, scene, view_layer);
 
   /* Add associated armature first if available */
   bool armature_exported = false;
@@ -94,7 +98,7 @@ void SceneExporter::writeNode(Object *ob)
 
   if (ob_arm != nullptr) {
     armature_exported = bc_is_in_Export_set(
-        this->export_settings.get_export_set(), ob_arm, view_layer);
+        this->export_settings.get_export_set(), ob_arm, scene, view_layer);
     if (armature_exported && bc_is_marked(ob_arm)) {
       writeNode(ob_arm);
       bc_remove_mark(ob_arm);
@@ -137,6 +141,7 @@ void SceneExporter::writeNode(Object *ob)
 
     /* <instance_controller> */
     else if (ob->type == OB_ARMATURE) {
+      arm_exporter->add_bone_collections(ob, colladaNode);
       arm_exporter->add_armature_bones(ob, view_layer, this, child_objects);
     }
 
@@ -194,10 +199,9 @@ void SceneExporter::writeNode(Object *ob)
 
           ListBase targets = {nullptr, nullptr};
           if (BKE_constraint_targets_get(con, &targets)) {
-            bConstraintTarget *ct;
             Object *obtar;
 
-            for (ct = (bConstraintTarget *)targets.first; ct; ct = ct->next) {
+            LISTBASE_FOREACH (bConstraintTarget *, ct, &targets) {
               obtar = ct->tar;
               std::string tar_id((obtar) ? id_name(obtar) : "");
               colladaNode.addExtraTechniqueChildParameter("blender", con_tag, "target_id", tar_id);

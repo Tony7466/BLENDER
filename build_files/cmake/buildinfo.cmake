@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # This is called by cmake as an external process from
@@ -23,19 +25,19 @@ if(EXISTS ${SOURCE_DIR}/.git)
 
   if(MY_WC_BRANCH STREQUAL "HEAD")
     # Detached HEAD, check whether commit hash is reachable
-    # in the master branch
+    # in the main branch
     execute_process(COMMAND git rev-parse --short=12 HEAD
                     WORKING_DIRECTORY ${SOURCE_DIR}
                     OUTPUT_VARIABLE MY_WC_HASH
                     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-    execute_process(COMMAND git branch --list master blender-v* --contains ${MY_WC_HASH}
+    execute_process(COMMAND git branch --list main blender-v* --contains ${MY_WC_HASH}
                     WORKING_DIRECTORY ${SOURCE_DIR}
                     OUTPUT_VARIABLE _git_contains_check
                     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
     if(NOT _git_contains_check STREQUAL "")
-      set(MY_WC_BRANCH "master")
+      set(MY_WC_BRANCH "main")
     else()
       execute_process(COMMAND git show-ref --tags -d
                       WORKING_DIRECTORY ${SOURCE_DIR}
@@ -48,7 +50,7 @@ if(EXISTS ${SOURCE_DIR}/.git)
                       OUTPUT_STRIP_TRAILING_WHITESPACE)
 
       if(_git_tag_hashes MATCHES "${_git_head_hash}")
-        set(MY_WC_BRANCH "master")
+        set(MY_WC_BRANCH "main")
       else()
         execute_process(COMMAND git branch --contains ${MY_WC_HASH}
                         WORKING_DIRECTORY ${SOURCE_DIR}
@@ -103,10 +105,6 @@ if(EXISTS ${SOURCE_DIR}/.git)
       endif()
     endif()
 
-    if(MY_WC_BRANCH MATCHES "^blender-v")
-      set(MY_WC_BRANCH "master")
-    endif()
-
     unset(_git_below_check)
   endif()
 
@@ -150,10 +148,10 @@ endif()
 # BUILD_PLATFORM is taken from CMake
 # but BUILD_DATE and BUILD_TIME are platform dependent
 if(NOT BUILD_DATE)
-  STRING(TIMESTAMP BUILD_DATE "%Y-%m-%d" UTC)
+  string(TIMESTAMP BUILD_DATE "%Y-%m-%d" UTC)
 endif()
 if(NOT BUILD_TIME)
-  STRING(TIMESTAMP BUILD_TIME "%H:%M:%S" UTC)
+  string(TIMESTAMP BUILD_TIME "%H:%M:%S" UTC)
 endif()
 
 # Write a file with the BUILD_HASH define

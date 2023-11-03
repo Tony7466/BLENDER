@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2018-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -19,7 +22,7 @@ void main()
   bool is_persp = (drw_view.winmat[3][3] == 0.0);
 
   /* This is the local space camera ray (not normalize).
-   * In perspective mode it's also the viewspace position
+   * In perspective mode it's also the view-space position
    * of the sphere center. */
   vec3 cam_ray = (is_persp) ? model_view_matrix[3].xyz : vec3(0.0, 0.0, -1.0);
   cam_ray = mat3(sphereMatrix) * cam_ray;
@@ -63,7 +66,7 @@ void main()
 
   /* Offset away from the center to avoid overlap with solid shape. */
   vec2 ofs_dir = normalize(proj(gl_Position) - proj(center));
-  gl_Position.xy += ofs_dir * drw_view.viewport_size_inverse * gl_Position.w;
+  gl_Position.xy += ofs_dir * sizeViewportInv * gl_Position.w;
 
   edgeStart = edgePos = proj(gl_Position);
 

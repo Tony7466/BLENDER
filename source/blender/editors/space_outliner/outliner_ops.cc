@@ -1,21 +1,23 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
  */
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "outliner_intern.hh"
 
+namespace blender::ed::outliner {
 /* -------------------------------------------------------------------- */
 /** \name Registration
  * \{ */
 
-void outliner_operatortypes(void)
+void outliner_operatortypes()
 {
   WM_operatortype_append(OUTLINER_OT_highlight_update);
   WM_operatortype_append(OUTLINER_OT_item_activate);
@@ -29,6 +31,8 @@ void outliner_operatortypes(void)
   WM_operatortype_append(OUTLINER_OT_object_operation);
   WM_operatortype_append(OUTLINER_OT_lib_operation);
   WM_operatortype_append(OUTLINER_OT_lib_relocate);
+  WM_operatortype_append(OUTLINER_OT_liboverride_operation);
+  WM_operatortype_append(OUTLINER_OT_liboverride_troubleshoot_operation);
   WM_operatortype_append(OUTLINER_OT_id_operation);
   WM_operatortype_append(OUTLINER_OT_id_delete);
   WM_operatortype_append(OUTLINER_OT_id_remap);
@@ -97,7 +101,9 @@ void outliner_operatortypes(void)
 
 void outliner_keymap(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "Outliner", SPACE_OUTLINER, 0);
+  WM_keymap_ensure(keyconf, "Outliner", SPACE_OUTLINER, RGN_TYPE_WINDOW);
 }
 
 /** \} */
+
+}  // namespace blender::ed::outliner

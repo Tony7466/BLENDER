@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_PlaneTrackDeformNode.h"
 
@@ -15,7 +16,7 @@ PlaneTrackDeformNode::PlaneTrackDeformNode(bNode *editor_node) : Node(editor_nod
 void PlaneTrackDeformNode::convert_to_operations(NodeConverter &converter,
                                                  const CompositorContext &context) const
 {
-  bNode *editor_node = this->get_bnode();
+  const bNode *editor_node = this->get_bnode();
   MovieClip *clip = (MovieClip *)editor_node->id;
   NodePlaneTrackDeformData *data = (NodePlaneTrackDeformData *)editor_node->storage;
 
@@ -30,7 +31,7 @@ void PlaneTrackDeformNode::convert_to_operations(NodeConverter &converter,
   warp_image_operation->set_tracking_object(data->tracking_object);
   warp_image_operation->set_plane_track_name(data->plane_track_name);
   warp_image_operation->set_framenumber(frame_number);
-  if (data->flag & CMP_NODEFLAG_PLANETRACKDEFORM_MOTION_BLUR) {
+  if (data->flag & CMP_NODE_PLANE_TRACK_DEFORM_FLAG_MOTION_BLUR) {
     warp_image_operation->set_motion_blur_samples(data->motion_blur_samples);
     warp_image_operation->set_motion_blur_shutter(data->motion_blur_shutter);
   }
@@ -44,7 +45,7 @@ void PlaneTrackDeformNode::convert_to_operations(NodeConverter &converter,
   plane_mask_operation->set_tracking_object(data->tracking_object);
   plane_mask_operation->set_plane_track_name(data->plane_track_name);
   plane_mask_operation->set_framenumber(frame_number);
-  if (data->flag & CMP_NODEFLAG_PLANETRACKDEFORM_MOTION_BLUR) {
+  if (data->flag & CMP_NODE_PLANE_TRACK_DEFORM_FLAG_MOTION_BLUR) {
     plane_mask_operation->set_motion_blur_samples(data->motion_blur_samples);
     plane_mask_operation->set_motion_blur_shutter(data->motion_blur_shutter);
   }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -10,26 +11,25 @@
 #include <cstdio>
 #include <cstring>
 
-#include "intern/depsgraph_type.h"
+#include "intern/depsgraph_type.hh"
 
 #include "DNA_ID.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
-#include "RNA_types.h"
+#include "RNA_path.hh"
 
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "intern/builder/deg_builder.h"
+#include "intern/builder/deg_builder_key.h"
 #include "intern/builder/deg_builder_map.h"
 #include "intern/builder/deg_builder_rna.h"
 #include "intern/builder/deg_builder_stack.h"
-#include "intern/depsgraph.h"
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_id.h"
-#include "intern/node/deg_node_operation.h"
+#include "intern/depsgraph.hh"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_id.hh"
+#include "intern/node/deg_node_operation.hh"
 
 struct CacheFile;
 struct Camera;
@@ -54,7 +54,6 @@ struct Object;
 struct ParticleSettings;
 struct ParticleSystem;
 struct Scene;
-struct Simulation;
 struct Speaker;
 struct Tex;
 struct VFont;
@@ -63,13 +62,10 @@ struct World;
 struct bAction;
 struct bArmature;
 struct bConstraint;
-struct bGPdata;
 struct bNodeSocket;
 struct bNodeTree;
 struct bPoseChannel;
 struct bSound;
-
-struct PropertyRNA;
 
 namespace blender::deg {
 
@@ -83,128 +79,6 @@ struct OperationNode;
 struct Relation;
 struct RootPChanMap;
 struct TimeSourceNode;
-
-struct TimeSourceKey {
-  TimeSourceKey() = default;
-
-  string identifier() const;
-};
-
-struct ComponentKey {
-  ComponentKey() = default;
-
-  inline ComponentKey(const ID *id, NodeType type, const char *name = "")
-      : id(id), type(type), name(name)
-  {
-  }
-
-  string identifier() const;
-
-  const ID *id = nullptr;
-  NodeType type = NodeType::UNDEFINED;
-  const char *name = "";
-};
-
-struct OperationKey {
-  OperationKey() = default;
-
-  inline OperationKey(const ID *id, NodeType component_type, const char *name, int name_tag = -1)
-      : id(id),
-        component_type(component_type),
-        component_name(""),
-        opcode(OperationCode::OPERATION),
-        name(name),
-        name_tag(name_tag)
-  {
-  }
-
-  OperationKey(const ID *id,
-               NodeType component_type,
-               const char *component_name,
-               const char *name,
-               int name_tag)
-      : id(id),
-        component_type(component_type),
-        component_name(component_name),
-        opcode(OperationCode::OPERATION),
-        name(name),
-        name_tag(name_tag)
-  {
-  }
-
-  OperationKey(const ID *id, NodeType component_type, OperationCode opcode)
-      : id(id),
-        component_type(component_type),
-        component_name(""),
-        opcode(opcode),
-        name(""),
-        name_tag(-1)
-  {
-  }
-
-  OperationKey(const ID *id,
-               NodeType component_type,
-               const char *component_name,
-               OperationCode opcode)
-      : id(id),
-        component_type(component_type),
-        component_name(component_name),
-        opcode(opcode),
-        name(""),
-        name_tag(-1)
-  {
-  }
-
-  OperationKey(const ID *id,
-               NodeType component_type,
-               OperationCode opcode,
-               const char *name,
-               int name_tag = -1)
-      : id(id),
-        component_type(component_type),
-        component_name(""),
-        opcode(opcode),
-        name(name),
-        name_tag(name_tag)
-  {
-  }
-
-  OperationKey(const ID *id,
-               NodeType component_type,
-               const char *component_name,
-               OperationCode opcode,
-               const char *name,
-               int name_tag = -1)
-      : id(id),
-        component_type(component_type),
-        component_name(component_name),
-        opcode(opcode),
-        name(name),
-        name_tag(name_tag)
-  {
-  }
-
-  string identifier() const;
-
-  const ID *id = nullptr;
-  NodeType component_type = NodeType::UNDEFINED;
-  const char *component_name = "";
-  OperationCode opcode = OperationCode::OPERATION;
-  const char *name = "";
-  int name_tag = -1;
-};
-
-struct RNAPathKey {
-  RNAPathKey(ID *id, const char *path, RNAPointerSource source);
-  RNAPathKey(ID *id, const PointerRNA &ptr, PropertyRNA *prop, RNAPointerSource source);
-
-  string identifier() const;
-
-  ID *id;
-  PointerRNA ptr;
-  PropertyRNA *prop;
-  RNAPointerSource source;
-};
 
 class DepsgraphRelationBuilder : public DepsgraphBuilder {
  public:
@@ -255,16 +129,17 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   virtual void build_scene_parameters(Scene *scene);
   virtual void build_scene_compositor(Scene *scene);
 
-  virtual void build_layer_collections(ListBase *lb);
+  virtual bool build_layer_collection(LayerCollection *layer_collection);
+  virtual void build_view_layer_collections(ViewLayer *view_layer);
+
   virtual void build_view_layer(Scene *scene,
                                 ViewLayer *view_layer,
                                 eDepsNode_LinkedState_Type linked_state);
-  virtual void build_collection(LayerCollection *from_layer_collection,
-                                Object *object,
-                                Collection *collection);
+  virtual void build_collection(LayerCollection *from_layer_collection, Collection *collection);
   virtual void build_object(Object *object);
   virtual void build_object_from_view_layer_base(Object *object);
   virtual void build_object_layer_component_relations(Object *object);
+  virtual void build_object_modifiers(Object *object);
   virtual void build_object_data(Object *object);
   virtual void build_object_data_camera(Object *object);
   virtual void build_object_data_geometry(Object *object);
@@ -274,6 +149,11 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   virtual void build_object_data_speaker(Object *object);
   virtual void build_object_parent(Object *object);
   virtual void build_object_pointcache(Object *object);
+  virtual void build_object_instance_collection(Object *object);
+
+  virtual void build_object_light_linking(Object *emitter);
+  virtual void build_light_linking_collection(Object *emitter, Collection *collection);
+
   virtual void build_constraints(ID *id,
                                  NodeType component_type,
                                  const char *component_subdata,
@@ -296,7 +176,30 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   virtual void build_driver(ID *id, FCurve *fcurve);
   virtual void build_driver_data(ID *id, FCurve *fcurve);
   virtual void build_driver_variables(ID *id, FCurve *fcurve);
-  virtual void build_driver_id_property(ID *id, const char *rna_path);
+
+  virtual void build_driver_scene_camera_variable(const OperationKey &driver_key,
+                                                  const RNAPathKey &self_key,
+                                                  Scene *scene,
+                                                  const char *rna_path);
+  virtual void build_driver_rna_path_variable(const OperationKey &driver_key,
+                                              const RNAPathKey &self_key,
+                                              ID *target_id,
+                                              const PointerRNA &target_prop,
+                                              const char *rna_path);
+
+  /* Build operations of a property value from which is read by a driver target.
+   *
+   * The driver target points to a data-block (or a sub-data-block like View Layer).
+   * This data-block is presented in the interface as a "Prop" and its resolved RNA pointer is
+   * passed here as `target_prop`.
+   *
+   * The tricky part (and a bit confusing naming) is that the driver target accesses a property of
+   * the `target_prop` to get its value. The property which is read to give an actual target value
+   * is denoted by its RNA path relative to the `target_prop`. In the interface it is called "Path"
+   * and here it is called `rna_path_from_target_prop`. */
+  virtual void build_driver_id_property(const PointerRNA &target_prop,
+                                        const char *rna_path_from_target_prop);
+
   virtual void build_parameters(ID *id);
   virtual void build_dimensions(Object *object);
   virtual void build_world(World *world);
@@ -322,6 +225,7 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   virtual void build_shapekeys(Key *key);
   virtual void build_armature(bArmature *armature);
   virtual void build_armature_bones(ListBase *bones);
+  virtual void build_armature_bone_collections(ListBase *collections);
   virtual void build_camera(Camera *camera);
   virtual void build_light(Light *lamp);
   virtual void build_nodetree(bNodeTree *ntree);
@@ -338,7 +242,6 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   virtual void build_lightprobe(LightProbe *probe);
   virtual void build_speaker(Speaker *speaker);
   virtual void build_sound(bSound *sound);
-  virtual void build_simulation(Simulation *simulation);
   virtual void build_scene_sequencer(Scene *scene);
   virtual void build_scene_audio(Scene *scene);
   virtual void build_scene_speakers(Scene *scene, ViewLayer *view_layer);
@@ -375,6 +278,8 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   Node *get_node(const RNAPathKey &key);
 
   OperationNode *find_node(const OperationKey &key) const;
+  ComponentNode *find_node(const ComponentKey &key) const;
+  bool has_node(const ComponentKey &key) const;
   bool has_node(const OperationKey &key) const;
 
   Relation *add_time_relation(TimeSourceNode *timesrc,

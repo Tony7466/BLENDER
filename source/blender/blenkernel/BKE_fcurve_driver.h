@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -21,6 +22,8 @@ struct FCurve;
 struct PathResolvedRNA;
 struct PointerRNA;
 struct PropertyRNA;
+struct Scene;
+struct ViewLayer;
 
 /* ************** F-Curve Drivers ***************** */
 
@@ -60,6 +63,32 @@ void fcurve_free_driver(struct FCurve *fcu);
 struct ChannelDriver *fcurve_copy_driver(const struct ChannelDriver *driver);
 
 /**
+ * Get property from which the specific property can be found from.
+ *
+ * This depends on the type of `dvar`:
+ *
+ *   - For the Single Property the `r_prop` is a pointer to an ID, which is used to resolve the
+ *     target rna_path.
+ *
+ *   - For Transform Channel, Rotational Difference, Distance the `r_prop` is a pointer to an
+ *     object from which transformation is read.
+ *
+ *   - For Context Property the `r_prop` points to a resolved data corresponding to the
+ *     dtar->context_property accessed from the given evaluated context. This could either be an ID
+ *     property for Active Scene, or a data property for Active View Layer.
+ *
+ * If the target property can not be resolved false is returned.
+ */
+typedef struct DriverTargetContext {
+  struct Scene *scene;
+  struct ViewLayer *view_layer;
+} DriverTargetContext;
+bool driver_get_target_property(const DriverTargetContext *driver_target_context,
+                                struct DriverVar *dvar,
+                                struct DriverTarget *dtar,
+                                struct PointerRNA *r_prop);
+
+/**
  * Copy driver variables from src_vars list to dst_vars list.
  */
 void driver_variables_copy(struct ListBase *dst_vars, const struct ListBase *src_vars);
@@ -85,7 +114,6 @@ void driver_free_variable_ex(struct ChannelDriver *driver, struct DriverVar *dva
 void driver_change_variable_type(struct DriverVar *dvar, int type);
 /**
  * Validate driver variable name (after being renamed).
- *
  */
 void driver_variable_name_validate(struct DriverVar *dvar);
 /**
@@ -103,11 +131,15 @@ struct DriverVar *driver_add_new_variable(struct ChannelDriver *driver);
 /**
  * Evaluate a Driver Variable to get a value that contributes to the final.
  */
-float driver_get_variable_value(struct ChannelDriver *driver, struct DriverVar *dvar);
+float driver_get_variable_value(const struct AnimationEvalContext *anim_eval_context,
+                                struct ChannelDriver *driver,
+                                struct DriverVar *dvar);
 /**
  * Same as 'dtar_get_prop_val'. but get the RNA property.
  */
-bool driver_get_variable_property(struct ChannelDriver *driver,
+bool driver_get_variable_property(const struct AnimationEvalContext *anim_eval_context,
+                                  struct ChannelDriver *driver,
+                                  struct DriverVar *dvar,
                                   struct DriverTarget *dtar,
                                   struct PointerRNA *r_ptr,
                                   struct PropertyRNA **r_prop,

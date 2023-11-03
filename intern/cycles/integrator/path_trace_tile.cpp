@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "integrator/path_trace_tile.h"
 #include "integrator/pass_accessor_cpu.h"
@@ -33,7 +34,7 @@ bool PathTraceTile::get_pass_pixels(const string_view pass_name,
   if (!copied_from_device_) {
     /* Copy from device on demand. */
     path_trace_.copy_render_tile_from_device();
-    const_cast<PathTraceTile *>(this)->copied_from_device_ = true;
+    copied_from_device_ = true;
   }
 
   const BufferParams &buffer_params = path_trace_.get_render_tile_params();
@@ -53,6 +54,11 @@ bool PathTraceTile::get_pass_pixels(const string_view pass_name,
   }
 
   pass = buffer_params.get_actual_display_pass(pass);
+  if (pass == nullptr) {
+    /* Happens when interactive sesssion changes display pass but render
+     * buffer does not contain it yet. */
+    return false;
+  }
 
   const float exposure = buffer_params.exposure;
   const int num_samples = path_trace_.get_num_render_tile_samples();

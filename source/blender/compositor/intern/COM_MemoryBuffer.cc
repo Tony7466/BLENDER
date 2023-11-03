@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_MemoryBuffer.h"
 
@@ -133,8 +134,8 @@ MemoryBuffer *MemoryBuffer::inflate() const
 float MemoryBuffer::get_max_value() const
 {
   float result = buffer_[0];
-  const unsigned int size = this->buffer_len();
-  unsigned int i;
+  const uint size = this->buffer_len();
+  uint i;
 
   const float *fp_src = buffer_;
 
@@ -208,7 +209,8 @@ void MemoryBuffer::copy_from(const MemoryBuffer *src,
     copy_single_elem_from(src, channel_offset, elem_size, to_channel_offset);
   }
   else if (!src->is_a_single_elem() && elem_size == src->get_num_channels() &&
-           elem_size == this->get_num_channels()) {
+           elem_size == this->get_num_channels())
+  {
     BLI_assert(to_channel_offset == 0);
     BLI_assert(channel_offset == 0);
     copy_rows_from(src, area, to_x, to_y);
@@ -266,7 +268,7 @@ void MemoryBuffer::copy_from(const uchar *src,
     const float *row_end = to_elem + width * this->elem_stride;
     while (to_elem < row_end) {
       for (int i = 0; i < elem_size; i++) {
-        to_elem[i] = ((float)from_elem[i]) * (1.0f / 255.0f);
+        to_elem[i] = float(from_elem[i]) * (1.0f / 255.0f);
       }
       to_elem += this->elem_stride;
       from_elem += elem_stride;
@@ -341,12 +343,12 @@ void MemoryBuffer::copy_from(const ImBuf *src,
                              const int to_channel_offset,
                              const bool ensure_linear_space)
 {
-  if (src->rect_float) {
-    const MemoryBuffer mem_buf(src->rect_float, src->channels, src->x, src->y, false);
+  if (src->float_buffer.data) {
+    const MemoryBuffer mem_buf(src->float_buffer.data, src->channels, src->x, src->y, false);
     copy_from(&mem_buf, area, channel_offset, elem_size, to_x, to_y, to_channel_offset);
   }
-  else if (src->rect) {
-    const uchar *uc_buf = (uchar *)src->rect;
+  else if (src->byte_buffer.data) {
+    const uchar *uc_buf = src->byte_buffer.data;
     const int elem_stride = src->channels;
     const int row_stride = elem_stride * src->x;
     copy_from(uc_buf,
@@ -359,7 +361,7 @@ void MemoryBuffer::copy_from(const ImBuf *src,
               to_y,
               to_channel_offset);
     if (ensure_linear_space) {
-      colorspace_to_scene_linear(this, area, src->rect_colorspace);
+      colorspace_to_scene_linear(this, area, src->byte_buffer.colorspace);
     }
   }
   else {
@@ -427,7 +429,7 @@ void MemoryBuffer::read_elem_filtered(
 
   const float deriv[2][2] = {{dx[0], dx[1]}, {dy[0], dy[1]}};
 
-  float inv_width = 1.0f / (float)this->get_width(), inv_height = 1.0f / (float)this->get_height();
+  float inv_width = 1.0f / float(this->get_width()), inv_height = 1.0f / float(this->get_height());
   /* TODO(sergey): Render pipeline uses normalized coordinates and derivatives,
    * but compositor uses pixel space. For now let's just divide the values and
    * switch compositor to normalized space for EWA later.
@@ -463,8 +465,8 @@ void MemoryBuffer::readEWA(float *result, const float uv[2], const float derivat
   }
   else {
     BLI_assert(datatype_ == DataType::Color);
-    float inv_width = 1.0f / (float)this->get_width(),
-          inv_height = 1.0f / (float)this->get_height();
+    float inv_width = 1.0f / float(this->get_width()),
+          inv_height = 1.0f / float(this->get_height());
     /* TODO(sergey): Render pipeline uses normalized coordinates and derivatives,
      * but compositor uses pixel space. For now let's just divide the values and
      * switch compositor to normalized space for EWA later.

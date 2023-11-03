@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* Constant Globals */
 
@@ -25,6 +26,7 @@ struct KernelParamsOptiX {
   /* Kernel arguments */
   const int *path_index_array;
   float *render_buffer;
+  int offset;
 
   /* Global scene data and textures */
   KernelData data;
@@ -36,7 +38,11 @@ struct KernelParamsOptiX {
 };
 
 #ifdef __NVCC__
-extern "C" static __constant__ KernelParamsOptiX kernel_params;
+extern "C"
+#  ifndef __CUDACC_RDC__
+    static
+#  endif
+    __constant__ KernelParamsOptiX kernel_params;
 #endif
 
 /* Abstraction macros */

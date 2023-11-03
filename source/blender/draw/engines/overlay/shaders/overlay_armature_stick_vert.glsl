@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2018-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -35,10 +38,10 @@ void main()
   vec4 v1 = drw_view.viewmat * boneEnd_4d;
 
   /* Clip the bone to the camera origin plane (not the clip plane)
-   * to avoid glitches if one end is behind the camera origin (in persp). */
+   * to avoid glitches if one end is behind the camera origin (in perspective mode). */
   float clip_dist = (drw_view.winmat[3][3] == 0.0) ?
                         -1e-7 :
-                        1e20; /* hardcoded, -1e-8 is giving gliches. */
+                        1e20; /* hard-coded, -1e-8 is giving glitches. */
   vec3 bvec = v1.xyz - v0.xyz;
   vec3 clip_pt = v0.xyz + bvec * ((v0.z - clip_dist) / -bvec.z);
   if (v0.z > clip_dist) {
@@ -64,7 +67,7 @@ void main()
   if (finalInnerColor.a > 0.0) {
     float stick_size = sizePixel * 5.0;
     gl_Position = (is_head) ? p0 : p1;
-    gl_Position.xy += stick_size * (vpos * drw_view.viewport_size_inverse);
+    gl_Position.xy += stick_size * (vpos * sizeViewportInv);
     gl_Position.z += (is_bone) ? 0.0 : 1e-6; /* Avoid Z fighting of head/tails. */
     view_clipping_distances((is_head ? boneStart_4d : boneEnd_4d).xyz);
   }

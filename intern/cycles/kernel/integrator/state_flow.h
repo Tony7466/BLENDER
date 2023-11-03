@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -76,6 +77,9 @@ ccl_device_forceinline IntegratorShadowState integrator_shadow_path_init(
       &kernel_integrator_state.next_shadow_path_index[0], 1);
   atomic_fetch_and_add_uint32(&kernel_integrator_state.queue_counter->num_queued[next_kernel], 1);
   INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, queued_kernel) = next_kernel;
+#  ifdef __PATH_GUIDING__
+  INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, path_segment) = nullptr;
+#  endif
   return shadow_state;
 }
 
@@ -112,6 +116,13 @@ ccl_device_forceinline void integrator_path_init_sorted(KernelGlobals kg,
   atomic_fetch_and_add_uint32(&kernel_integrator_state.queue_counter->num_queued[next_kernel], 1);
   INTEGRATOR_STATE_WRITE(state, path, queued_kernel) = next_kernel;
   INTEGRATOR_STATE_WRITE(state, path, shader_sort_key) = key_;
+
+#  if defined(__KERNEL_LOCAL_ATOMIC_SORT__)
+  if (!kernel_integrator_state.sort_key_counter[next_kernel]) {
+    return;
+  }
+#  endif
+
   atomic_fetch_and_add_uint32(&kernel_integrator_state.sort_key_counter[next_kernel][key_], 1);
 }
 
@@ -127,6 +138,13 @@ ccl_device_forceinline void integrator_path_next_sorted(KernelGlobals kg,
   atomic_fetch_and_add_uint32(&kernel_integrator_state.queue_counter->num_queued[next_kernel], 1);
   INTEGRATOR_STATE_WRITE(state, path, queued_kernel) = next_kernel;
   INTEGRATOR_STATE_WRITE(state, path, shader_sort_key) = key_;
+
+#  if defined(__KERNEL_LOCAL_ATOMIC_SORT__)
+  if (!kernel_integrator_state.sort_key_counter[next_kernel]) {
+    return;
+  }
+#  endif
+
   atomic_fetch_and_add_uint32(&kernel_integrator_state.sort_key_counter[next_kernel][key_], 1);
 }
 
@@ -181,6 +199,9 @@ ccl_device_forceinline IntegratorShadowState integrator_shadow_path_init(
 {
   IntegratorShadowState shadow_state = (is_ao) ? &state->ao : &state->shadow;
   INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, queued_kernel) = next_kernel;
+#  ifdef __PATH_GUIDING__
+  INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, path_segment) = nullptr;
+#  endif
   return shadow_state;
 }
 

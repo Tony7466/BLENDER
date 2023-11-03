@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2020-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 vec3 calc_barycentric_distances(vec3 pos0, vec3 pos1, vec3 pos2)
 {
@@ -67,7 +70,7 @@ vec3 orco_get(vec3 local_pos, mat4 modelmatinv, vec4 orco_madd[2], vec4 orco)
   /* If the object does not have any deformation, the orco layer calculation is done on the fly
    * using the orco_madd factors.
    * We know when there is no orco layer when orco.w is 1.0 because it uses the generic vertex
-   * attrib (which is [0,0,0,1]). */
+   * attribute (which is [0,0,0,1]). */
   if (orco.w == 0.0) {
     return orco.xyz * 0.5 + 0.5;
   }
@@ -98,11 +101,11 @@ vec4 tangent_get(vec4 attr, mat3 normalmat)
 
 /* Assumes GPU_VEC4 is color data. So converting to luminance like cycles. */
 #define float_from_vec4(v) dot(v.rgb, vec3(0.2126, 0.7152, 0.0722))
-#define float_from_vec3(v) avg(v.rgb)
+#define float_from_vec3(v) ((v.r + v.g + v.b) * (1.0 / 3.0))
 #define float_from_vec2(v) v.r
 
-#define vec2_from_vec4(v) vec2(avg(v.rgb), v.a)
-#define vec2_from_vec3(v) vec2(avg(v.rgb), 1.0)
+#define vec2_from_vec4(v) vec2(((v.r + v.g + v.b) * (1.0 / 3.0)), v.a)
+#define vec2_from_vec3(v) vec2(((v.r + v.g + v.b) * (1.0 / 3.0)), 1.0)
 #define vec2_from_float(v) vec2(v)
 
 #define vec3_from_vec4(v) v.rgb
@@ -187,8 +190,10 @@ struct ClosureTransparency {
 struct GlobalData {
   /** World position. */
   vec3 P;
-  /** Surface Normal. */
+  /** Surface Normal. Normalized, overridden by bump displacement. */
   vec3 N;
+  /** Raw interpolated normal (non-normalized) data. */
+  vec3 Ni;
   /** Geometric Normal. */
   vec3 Ng;
   /** Curve Tangent Space. */
@@ -222,6 +227,11 @@ vec3 dF_impl(vec3 v)
 }
 
 void dF_branch(float fn, out vec2 result)
+{
+  result = vec2(0.0);
+}
+
+void dF_branch_incomplete(float fn, out vec2 result)
 {
   result = vec2(0.0);
 }
@@ -264,6 +274,15 @@ vec3 dF_impl(vec3 v)
       result -= vec2((fn)); \
     }
 
+/* Used when the non-offset value is already computed elsewhere */
+#  define dF_branch_incomplete(fn, result) \
+    if (true) { \
+      g_derivative_flag = 1; \
+      result.x = (fn); \
+      g_derivative_flag = -1; \
+      result.y = (fn); \
+      g_derivative_flag = 0; \
+    }
 #endif
 
 /* TODO(fclem): Remove. */

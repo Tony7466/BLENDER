@@ -1,11 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
  *
  * Dead simple, fast memory allocator for allocating many elements of the same size.
- *
  */
 
 #include <stdlib.h>

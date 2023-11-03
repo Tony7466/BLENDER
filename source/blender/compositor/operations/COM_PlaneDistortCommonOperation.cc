@@ -1,9 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_PlaneDistortCommonOperation.h"
 
 #include "BLI_jitter_2d.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 
 #include "BKE_tracking.h"
 
@@ -82,7 +85,7 @@ void PlaneDistortWarpImageOperation::calculate_corners(const float corners[4][2]
   }
 
   float frame_corners[4][2] = {
-      {0.0f, 0.0f}, {(float)width, 0.0f}, {(float)width, (float)height}, {0.0f, (float)height}};
+      {0.0f, 0.0f}, {float(width), 0.0f}, {float(width), float(height)}, {0.0f, float(height)}};
   BKE_tracking_homography_between_two_quads(
       sample_data->frame_space_corners, frame_corners, sample_data->perspective_matrix);
 }
@@ -116,7 +119,7 @@ void PlaneDistortWarpImageOperation::execute_pixel_sampled(float output[4],
       pixel_reader_->read_filtered(color, uv[0], uv[1], deriv[0], deriv[1]);
       add_v4_v4(output, color);
     }
-    mul_v4_fl(output, 1.0f / (float)motion_blur_samples_);
+    mul_v4_fl(output, 1.0f / float(motion_blur_samples_));
   }
 }
 
@@ -143,7 +146,7 @@ void PlaneDistortWarpImageOperation::update_memory_buffer_partial(MemoryBuffer *
         input_img->read_elem_filtered(uv[0], uv[1], deriv[0], deriv[1], color);
         add_v4_v4(it.out, color);
       }
-      mul_v4_fl(it.out, 1.0f / (float)motion_blur_samples_);
+      mul_v4_fl(it.out, 1.0f / float(motion_blur_samples_));
     }
   }
 }
@@ -200,14 +203,26 @@ void PlaneDistortWarpImageOperation::get_area_of_interest(const int input_idx,
     float deriv[2][2];
     MotionSample *sample_data = &samples_[sample];
     /* TODO(sergey): figure out proper way to do this. */
-    warp_coord(
-        output_area.xmin - 2, output_area.ymin - 2, sample_data->perspective_matrix, UVs[0], deriv);
-    warp_coord(
-        output_area.xmax + 2, output_area.ymin - 2, sample_data->perspective_matrix, UVs[1], deriv);
-    warp_coord(
-        output_area.xmax + 2, output_area.ymax + 2, sample_data->perspective_matrix, UVs[2], deriv);
-    warp_coord(
-        output_area.xmin - 2, output_area.ymax + 2, sample_data->perspective_matrix, UVs[3], deriv);
+    warp_coord(output_area.xmin - 2,
+               output_area.ymin - 2,
+               sample_data->perspective_matrix,
+               UVs[0],
+               deriv);
+    warp_coord(output_area.xmax + 2,
+               output_area.ymin - 2,
+               sample_data->perspective_matrix,
+               UVs[1],
+               deriv);
+    warp_coord(output_area.xmax + 2,
+               output_area.ymax + 2,
+               sample_data->perspective_matrix,
+               UVs[2],
+               deriv);
+    warp_coord(output_area.xmin - 2,
+               output_area.ymax + 2,
+               sample_data->perspective_matrix,
+               UVs[3],
+               deriv);
     for (int i = 0; i < 4; i++) {
       minmax_v2v2_v2(min, max, UVs[i]);
     }
@@ -254,11 +269,12 @@ void PlaneDistortMaskOperation::execute_pixel_sampled(float output[4],
           isect_point_tri_v2(point,
                              sample_data->frame_space_corners[0],
                              sample_data->frame_space_corners[2],
-                             sample_data->frame_space_corners[3])) {
+                             sample_data->frame_space_corners[3]))
+      {
         inside_counter++;
       }
     }
-    output[0] = (float)inside_counter / osa_;
+    output[0] = float(inside_counter) / osa_;
   }
   else {
     for (int motion_sample = 0; motion_sample < motion_blur_samples_; motion_sample++) {
@@ -273,18 +289,19 @@ void PlaneDistortMaskOperation::execute_pixel_sampled(float output[4],
             isect_point_tri_v2(point,
                                sample_data->frame_space_corners[0],
                                sample_data->frame_space_corners[2],
-                               sample_data->frame_space_corners[3])) {
+                               sample_data->frame_space_corners[3]))
+        {
           inside_counter++;
         }
       }
     }
-    output[0] = (float)inside_counter / (osa_ * motion_blur_samples_);
+    output[0] = float(inside_counter) / (osa_ * motion_blur_samples_);
   }
 }
 
 void PlaneDistortMaskOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                              const rcti &area,
-                                                             Span<MemoryBuffer *> UNUSED(inputs))
+                                                             Span<MemoryBuffer *> /*inputs*/)
 {
   for (BuffersIterator<float> it = output->iterate_with({}, area); !it.is_end(); ++it) {
     int inside_count = 0;
@@ -292,7 +309,7 @@ void PlaneDistortMaskOperation::update_memory_buffer_partial(MemoryBuffer *outpu
       MotionSample &sample = samples_[motion_sample];
       inside_count += get_jitter_samples_inside_count(it.x, it.y, sample);
     }
-    *it.out = (float)inside_count / (osa_ * motion_blur_samples_);
+    *it.out = float(inside_count) / (osa_ * motion_blur_samples_);
   }
 }
 
@@ -312,7 +329,8 @@ int PlaneDistortMaskOperation::get_jitter_samples_inside_count(int x,
         isect_point_tri_v2(point,
                            sample_data.frame_space_corners[0],
                            sample_data.frame_space_corners[2],
-                           sample_data.frame_space_corners[3])) {
+                           sample_data.frame_space_corners[3]))
+    {
       inside_count++;
     }
   }

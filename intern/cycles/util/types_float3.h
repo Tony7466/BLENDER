@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -10,7 +11,12 @@
 CCL_NAMESPACE_BEGIN
 
 #ifndef __KERNEL_NATIVE_VECTOR_TYPES__
+#  ifdef __KERNEL_ONEAPI__
+/* Define float3 as packed for oneAPI. */
+struct float3
+#  else
 struct ccl_try_align(16) float3
+#  endif
 {
 #  ifdef __KERNEL_GPU__
   /* Compact structure for GPU. */
@@ -47,26 +53,24 @@ struct ccl_try_align(16) float3
 #  endif
 };
 
-ccl_device_inline float3 make_float3(float f);
 ccl_device_inline float3 make_float3(float x, float y, float z);
-ccl_device_inline void print_float3(const char *label, const float3 &a);
 #endif /* __KERNEL_NATIVE_VECTOR_TYPES__ */
+
+ccl_device_inline float3 make_float3(float f);
+ccl_device_inline void print_float3(ccl_private const char *label, const float3 a);
 
 /* Smaller float3 for storage. For math operations this must be converted to float3, so that on the
  * CPU SIMD instructions can be used. */
 #if defined(__KERNEL_METAL__)
 /* Metal has native packed_float3. */
-#elif defined(__KERNEL_CUDA__)
-/* CUDA float3 is already packed. */
+#elif defined(__KERNEL_CUDA__) || defined(__KERNEL_HIP__)
+/* CUDA and HIP float3 are already packed. */
 typedef float3 packed_float3;
 #else
-/* HIP float3 is not packed (https://github.com/ROCm-Developer-Tools/HIP/issues/706). */
 struct packed_float3 {
   ccl_device_inline_method packed_float3(){};
 
-  ccl_device_inline_method packed_float3(const float3 &a) : x(a.x), y(a.y), z(a.z)
-  {
-  }
+  ccl_device_inline_method packed_float3(const float3 &a) : x(a.x), y(a.y), z(a.z) {}
 
   ccl_device_inline_method operator float3() const
   {

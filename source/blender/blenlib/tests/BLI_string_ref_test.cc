@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "BLI_strict_flags.h"
 #include "BLI_string_ref.hh"
@@ -357,7 +359,7 @@ TEST(string_ref, Constexpr)
   constexpr StringRef sref("World");
   BLI_STATIC_ASSERT(sref[2] == 'r', "");
   BLI_STATIC_ASSERT(sref.size() == 5, "");
-  std::array<int, static_cast<std::size_t>(sref.find_first_of('o'))> compiles = {1};
+  std::array<int, std::size_t(sref.find_first_of('o'))> compiles = {1};
   EXPECT_EQ(compiles[0], 1);
 }
 }  // namespace blender::tests

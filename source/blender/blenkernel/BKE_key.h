@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -13,7 +14,6 @@ struct Lattice;
 struct ListBase;
 struct Main;
 struct Mesh;
-struct MVert;
 struct Object;
 
 /* Kernel prototypes */
@@ -22,7 +22,7 @@ extern "C" {
 #endif
 
 /**
- * Free (or release) any data used by this shapekey (does not free the key itself).
+ * Free (or release) any data used by this shape-key (does not free the key itself).
  */
 void BKE_key_free_data(struct Key *key);
 void BKE_key_free_nolib(struct Key *key);
@@ -47,7 +47,7 @@ void key_curve_normal_weights(float t, float data[4], int type);
 /**
  * Returns key coordinates (+ tilt) when key applied, NULL otherwise.
  *
- * \param obdata if given, also update that geometry with the result of the shape keys evaluation.
+ * \param obdata: if given, also update that geometry with the result of the shape keys evaluation.
  */
 float *BKE_key_evaluate_object_ex(
     struct Object *ob, int *r_totelem, float *arr, size_t arr_size, struct ID *obdata);
@@ -95,6 +95,9 @@ struct KeyBlock *BKE_keyblock_from_key(struct Key *key, int index);
  * Get the appropriate #KeyBlock given a name to search for.
  */
 struct KeyBlock *BKE_keyblock_find_name(struct Key *key, const char name[]);
+
+struct KeyBlock *BKE_keyblock_find_uid(struct Key *key, int uid);
+
 /**
  * \brief copy shape-key attributes, but not key data or name/UID.
  */
@@ -129,22 +132,24 @@ void BKE_keyblock_update_from_mesh(const struct Mesh *me, struct KeyBlock *kb);
 void BKE_keyblock_convert_from_mesh(const struct Mesh *me,
                                     const struct Key *key,
                                     struct KeyBlock *kb);
-void BKE_keyblock_convert_to_mesh(const struct KeyBlock *kb, struct MVert *mvert, int totvert);
+void BKE_keyblock_convert_to_mesh(const struct KeyBlock *kb,
+                                  float (*vert_positions)[3],
+                                  int totvert);
 
 /**
- * Computes normals (vertices, polygons and/or loops ones) of given mesh for given shape key.
+ * Computes normals (vertices, faces and/or loops ones) of given mesh for given shape key.
  *
  * \param kb: the KeyBlock to use to compute normals.
  * \param mesh: the Mesh to apply key-block to.
- * \param r_vertnors: if non-NULL, an array of vectors, same length as number of vertices.
- * \param r_polynors: if non-NULL, an array of vectors, same length as number of polygons.
- * \param r_loopnors: if non-NULL, an array of vectors, same length as number of loops.
+ * \param r_vert_normals: if non-NULL, an array of vectors, same length as number of vertices.
+ * \param r_face_normals: if non-NULL, an array of vectors, same length as number of faces.
+ * \param r_loop_normals: if non-NULL, an array of vectors, same length as number of loops.
  */
 void BKE_keyblock_mesh_calc_normals(const struct KeyBlock *kb,
-                                    const struct Mesh *mesh,
-                                    float (*r_vertnors)[3],
-                                    float (*r_polynors)[3],
-                                    float (*r_loopnors)[3]);
+                                    struct Mesh *mesh,
+                                    float (*r_vert_normals)[3],
+                                    float (*r_face_normals)[3],
+                                    float (*r_loop_normals)[3]);
 
 void BKE_keyblock_update_from_vertcos(const struct Object *ob,
                                       struct KeyBlock *kb,
@@ -154,6 +159,7 @@ void BKE_keyblock_convert_from_vertcos(const struct Object *ob,
                                        const float (*vertCos)[3]);
 float (*BKE_keyblock_convert_to_vertcos(const struct Object *ob, const struct KeyBlock *kb))[3];
 
+/** RAW coordinates offsets. */
 void BKE_keyblock_update_from_offset(const struct Object *ob,
                                      struct KeyBlock *kb,
                                      const float (*ofs)[3]);
@@ -164,9 +170,9 @@ void BKE_keyblock_update_from_offset(const struct Object *ob,
  * Move shape key from org_index to new_index. Safe, clamps index to valid range,
  * updates reference keys, the object's active shape index,
  * the 'frame' value in case of absolute keys, etc.
- * Note indices are expected in real values (not 'fake' shapenr +1 ones).
+ * Note indices are expected in real values (not *fake* `shapenr +1` ones).
  *
- * \param org_index: if < 0, current object's active shape will be used as skey to move.
+ * \param org_index: if < 0, current object's active shape will be used as shape-key to move.
  * \return true if something was done, else false.
  */
 bool BKE_keyblock_move(struct Object *ob, int org_index, int new_index);
@@ -175,6 +181,12 @@ bool BKE_keyblock_move(struct Object *ob, int org_index, int new_index);
  * Check if given key-block (as index) is used as basis by others in given key.
  */
 bool BKE_keyblock_is_basis(const struct Key *key, int index);
+
+/**
+ * Returns a newly allocated array containing true for every key that has this one as basis.
+ * If none are found, returns null.
+ */
+bool *BKE_keyblock_get_dependent_keys(const struct Key *key, int index);
 
 /* -------------------------------------------------------------------- */
 /** \name Key-Block Data Access

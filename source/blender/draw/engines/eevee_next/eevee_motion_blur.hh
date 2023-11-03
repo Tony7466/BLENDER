@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -43,7 +43,7 @@
 #pragma once
 
 #include "BLI_map.hh"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "eevee_sampling.hh"
 #include "eevee_shader_shared.hh"
@@ -95,9 +95,7 @@ class MotionBlurModule {
   GPUTexture *input_color_tx_ = nullptr;
   GPUTexture *output_color_tx_ = nullptr;
 
-  DRWPass *tiles_flatten_ps_ = nullptr;
-  DRWPass *tiles_dilate_ps_ = nullptr;
-  DRWPass *gather_ps_ = nullptr;
+  PassSimple motion_blur_ps_ = {"MotionBlur"};
 
   MotionBlurTileIndirectionBuf tile_indirection_buf_;
   MotionBlurDataBuf data_;
@@ -121,7 +119,7 @@ class MotionBlurModule {
     return motion_blur_fx_enabled_;
   }
 
-  void render(GPUTexture **input_tx, GPUTexture **output_tx);
+  void render(View &view, GPUTexture **input_tx, GPUTexture **output_tx);
 
  private:
   float shutter_time_to_scene_time(float time);

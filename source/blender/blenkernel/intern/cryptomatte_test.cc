@@ -1,6 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 #include "testing/testing.h"
+
+#include "BLI_string.h"
 
 #include "BKE_cryptomatte.h"
 #include "BKE_cryptomatte.hh"
@@ -88,10 +92,10 @@ TEST(cryptomatte, extract_layer_hash_from_metadata_key)
                 "cryptomatte/"));
 }
 
-static void validate_cryptomatte_session_from_stamp_data(void *UNUSED(data),
+static void validate_cryptomatte_session_from_stamp_data(void * /*data*/,
                                                          const char *propname,
                                                          char *propvalue,
-                                                         int UNUSED(len))
+                                                         int /*propvalue_maxncpy*/)
 {
   blender::StringRefNull prop_name(propname);
   if (!prop_name.startswith("cryptomatte/")) {
@@ -146,7 +150,7 @@ TEST(cryptomatte, session_from_stamp_data)
 
   /* Create StampData from CryptomatteSession. */
   ViewLayer view_layer;
-  BLI_strncpy(view_layer.name, "viewlayername", sizeof(view_layer.name));
+  STRNCPY(view_layer.name, "viewlayername");
   RenderResult *render_result2 = static_cast<RenderResult *>(
       MEM_callocN(sizeof(RenderResult), __func__));
   BKE_cryptomatte_store_metadata(session.get(), render_result2, &view_layer);
@@ -163,7 +167,7 @@ TEST(cryptomatte, session_from_stamp_data)
  * best as possible. */
 TEST(cryptomatte, parsing_malformed_manifests)
 {
-  /* Manifest from multilayer.exr in the cryptomatte git-repository. */
+  /* Manifest from `multilayer.exr` in the cryptomatte git-repository. */
   test_cryptomatte_manifest(
       R"({"/obj/instance1:instances:0":"0d54c6cc","/obj/instance1:instances:1":"293d9340","/obj/instance1:instances:110":"ccb9e1f2","/obj/instance1:instances:111":"f8dd3a48","/obj/instance1:instances:112":"a99e07a8","/obj/instance1:instances:113":"e75599a4","/obj/instance1:instances:114":"794200f3","/obj/instance1:instances:115":"2a3a1728","/obj/instance1:instances:116":"478544a1","/obj/instance1:instances:117":"b2bd969a","/obj/instance1:instances:10":"3a0c8681","/obj/instance1:instances:11":"01e5970d","/obj/box:polygons:1":"9d416418","/obj/instance1:instances:100":"2dcd2966","/obj/instance1:instances:101":"9331cd82","/obj/instance1:instances:102":"df50fccb","/obj/instance1:instances:103":"97f8590d","/obj/instance1:instances:104":"bbcd220d","/obj/instance1:instances:105":"4ae06139","/obj/instance1:instances:106":"8873d5ea","/obj/instance1:instances:107":"39d8af8d","/obj/instance1:instances:108":"bb11bd4e","/obj/instance1:instances:109":"a32bba35"})",
       R"({"\/obj\/box:polygons:1":"9d416418","\/obj\/instance1:instances:0":"0d54c6cc","\/obj\/instance1:instances:1":"293d9340","\/obj\/instance1:instances:10":"3a0c8681","\/obj\/instance1:instances:100":"2dcd2966","\/obj\/instance1:instances:101":"9331cd82","\/obj\/instance1:instances:102":"df50fccb","\/obj\/instance1:instances:103":"97f8590d","\/obj\/instance1:instances:104":"bbcd220d","\/obj\/instance1:instances:105":"4ae06139","\/obj\/instance1:instances:106":"8873d5ea","\/obj\/instance1:instances:107":"39d8af8d","\/obj\/instance1:instances:108":"bb11bd4e","\/obj\/instance1:instances:109":"a32bba35","\/obj\/instance1:instances:11":"01e5970d","\/obj\/instance1:instances:110":"ccb9e1f2","\/obj\/instance1:instances:111":"f8dd3a48","\/obj\/instance1:instances:112":"a99e07a8","\/obj\/instance1:instances:113":"e75599a4","\/obj\/instance1:instances:114":"794200f3","\/obj\/instance1:instances:115":"2a3a1728","\/obj\/instance1:instances:116":"478544a1","\/obj\/instance1:instances:117":"b2bd969a","\/obj\/instance1:instance)");

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -22,7 +23,6 @@ struct AnimData;
 struct AnimationEvalContext;
 struct BezTriple;
 struct BlendDataReader;
-struct BlendExpander;
 struct BlendLibReader;
 struct BlendWriter;
 struct LibraryForeachIDData;
@@ -33,18 +33,10 @@ struct StructRNA;
 struct bAction;
 struct bContext;
 
-/* ************** Keyframe Tools ***************** */
-
-typedef struct CfraElem {
-  struct CfraElem *next, *prev;
-  float cfra;
-  int sel;
-} CfraElem;
-
 /* ************** F-Curve Modifiers *************** */
 
 /**
- * F-Curve Modifier Type-Info (fmi):
+ * F-Curve Modifier Type-Info (`fmi`):
  * This struct provides function pointers for runtime, so that functions can be
  * written more generally (with fewer/no special exceptions for various modifiers).
  *
@@ -55,7 +47,7 @@ typedef struct CfraElem {
  * as you'll have to edit quite a few (#FMODIFIER_NUM_TYPES) of these structs.
  */
 typedef struct FModifierTypeInfo {
-  /* admin/ident */
+  /* Admin/identity. */
   /** #FMODIFIER_TYPE_* */
   short type;
   /** size in bytes of the struct. */
@@ -63,11 +55,11 @@ typedef struct FModifierTypeInfo {
   /** #eFMI_Action_Types. */
   short acttype;
   /** #eFMI_Requirement_Flags. */
-  short requires;
+  short requires_flag;
   /** name of modifier in interface. */
   char name[64];
   /** name of struct for SDNA. */
-  char structName[64];
+  char struct_name[64];
   /** Size of buffer that can be reused between time and value evaluation. */
   uint storage_size;
 
@@ -106,7 +98,7 @@ typedef enum eFMI_Action_Types {
 
 /* Flags for the requirements of a FModifier Type */
 typedef enum eFMI_Requirement_Flags {
-  /* modifier requires original data-points (kindof beats the purpose of a modifier stack?) */
+  /* modifier requires original data-points (kind of beats the purpose of a modifier stack?) */
   FMI_REQUIRES_ORIGINAL_DATA = (1 << 0),
   /* modifier doesn't require on any preceding data (i.e. it will generate a curve).
    * Use in conjunction with FMI_TYPE_GENRATE_CURVE
@@ -167,7 +159,7 @@ void set_active_fmodifier(ListBase *modifiers, struct FModifier *fcm);
  * \param mtype: Type of modifier (if 0, doesn't matter).
  * \param acttype: Type of action to perform (if -1, doesn't matter).
  */
-bool list_has_suitable_fmodifier(ListBase *modifiers, int mtype, short acttype);
+bool list_has_suitable_fmodifier(const ListBase *modifiers, int mtype, short acttype);
 
 typedef struct FModifiersStackStorage {
   uint modifier_count;
@@ -239,6 +231,16 @@ void BKE_fcurves_free(ListBase *list);
  * Duplicate a list of F-Curves.
  */
 void BKE_fcurves_copy(ListBase *dst, ListBase *src);
+
+/* Set fcurve modifier name and ensure uniqueness.
+ * Pass new name string when it's been edited otherwise pass empty string. */
+void BKE_fmodifier_name_set(struct FModifier *fcm, const char *name);
+
+/**
+ * Callback used by lib_query to walk over all ID usages
+ * (mimics `foreach_id` callback of #IDTypeInfo structure).
+ */
+void BKE_fmodifiers_foreach_id(struct ListBase *fmodifiers, struct LibraryForeachIDData *data);
 
 /**
  * Callback used by lib_query to walk over all ID usages
@@ -344,7 +346,7 @@ int BKE_fcurve_bezt_binarysearch_index(const struct BezTriple array[],
                                        int arraylen,
                                        bool *r_replace);
 
-/* fcurve_cache.c */
+/* `fcurve_cache.cc` */
 
 /**
  * Cached f-curve look-ups, use when this needs to be done many times.
@@ -366,21 +368,25 @@ int BKE_fcurve_pathcache_find_array(struct FCurvePathCache *fcache,
                                     int fcurve_result_len);
 
 /**
- * Calculate the extents of F-Curve's keyframes.
+ * Calculate the x range of the given F-Curve's data.
+ * \return true if a range has been found.
  */
-bool BKE_fcurve_calc_range(
-    struct FCurve *fcu, float *min, float *max, bool do_sel_only, bool do_min_length);
+bool BKE_fcurve_calc_range(const struct FCurve *fcu,
+                           float *r_min,
+                           float *r_max,
+                           bool selected_keys_only);
 
 /**
- * Calculate the extents of F-Curve's data.
+ * Calculate the x and y extents of F-Curve's data.
+ * \param frame_range: Only calculate the bounds of the FCurve in the given range.
+ * Does the full range if NULL.
+ * \return true if the bounds have been found.
  */
-bool BKE_fcurve_calc_bounds(struct FCurve *fcu,
-                            float *xmin,
-                            float *xmax,
-                            float *ymin,
-                            float *ymax,
-                            bool do_sel_only,
-                            bool include_handles);
+bool BKE_fcurve_calc_bounds(const struct FCurve *fcu,
+                            bool selected_keys_only,
+                            bool include_handles,
+                            const float frame_range[2],
+                            struct rctf *r_bounds);
 
 /**
  * Return an array of keyed frames, rounded to `interval`.
@@ -412,6 +418,7 @@ int BKE_fcurve_active_keyframe_index(const struct FCurve *fcu);
  * Move the indexed keyframe to the given value,
  * and move the handles with it to ensure the slope remains the same.
  */
+void BKE_fcurve_keyframe_move_time_with_handles(BezTriple *keyframe, const float new_time);
 void BKE_fcurve_keyframe_move_value_with_handles(struct BezTriple *keyframe, float new_value);
 
 /* .............. */
@@ -421,20 +428,25 @@ void BKE_fcurve_keyframe_move_value_with_handles(struct BezTriple *keyframe, flo
  * Usability of keyframes refers to whether they should be displayed,
  * and also whether they will have any influence on the final result.
  */
-bool BKE_fcurve_are_keyframes_usable(struct FCurve *fcu);
+bool BKE_fcurve_are_keyframes_usable(const struct FCurve *fcu);
 
 /**
  * Can keyframes be added to F-Curve?
  * Keyframes can only be added if they are already visible.
  */
-bool BKE_fcurve_is_keyframable(struct FCurve *fcu);
-bool BKE_fcurve_is_protected(struct FCurve *fcu);
+bool BKE_fcurve_is_keyframable(const struct FCurve *fcu);
+bool BKE_fcurve_is_protected(const struct FCurve *fcu);
+
+/**
+ * Are any of the keyframe control points selected on the F-Curve?
+ */
+bool BKE_fcurve_has_selected_control_points(const struct FCurve *fcu);
 
 /**
  * Checks if the F-Curve has a Cycles modifier with simple settings
  * that warrant transition smoothing.
  */
-bool BKE_fcurve_is_cyclic(struct FCurve *fcu);
+bool BKE_fcurve_is_cyclic(const struct FCurve *fcu);
 
 /* Type of infinite cycle for a curve. */
 typedef enum eFCU_Cycle_Type {
@@ -448,7 +460,7 @@ typedef enum eFCU_Cycle_Type {
 /**
  * Checks if the F-Curve has a Cycles modifier, and returns the type of the cycle behavior.
  */
-eFCU_Cycle_Type BKE_fcurve_get_cycle_type(struct FCurve *fcu);
+eFCU_Cycle_Type BKE_fcurve_get_cycle_type(const struct FCurve *fcu);
 
 /**
  * Recompute bezier handles of all three given BezTriples, so that `bezt` can be inserted between
@@ -464,6 +476,14 @@ bool BKE_fcurve_bezt_subdivide_handles(struct BezTriple *bezt,
                                        float *r_pdelta);
 
 /**
+ * Resize the FCurve 'bezt' array to fit the given length.
+ *
+ * \param new_totvert: new number of elements in the FCurve's `bezt` array.
+ * Constraint: `0 <= new_totvert <= fcu->totvert`
+ */
+void BKE_fcurve_bezt_shrink(struct FCurve *fcu, int new_totvert);
+
+/**
  * Delete a keyframe from an F-curve at a specific index.
  */
 void BKE_fcurve_delete_key(struct FCurve *fcu, int index);
@@ -477,6 +497,33 @@ bool BKE_fcurve_delete_keys_selected(struct FCurve *fcu);
  * Delete all keyframes from an F-curve.
  */
 void BKE_fcurve_delete_keys_all(struct FCurve *fcu);
+
+/**
+ * Called during transform/snapping to make sure selected keyframes replace
+ * any other keyframes which may reside on that frame (that is not selected).
+ *
+ * \param sel_flag: The flag (bezt.f1/2/3) value to use to determine selection. Usually `SELECT`,
+ *                  but may want to use a different one at times (if caller does not operate on
+ *                  selection).
+ */
+void BKE_fcurve_merge_duplicate_keys(struct FCurve *fcu,
+                                     const int sel_flag,
+                                     const bool use_handle);
+
+/**
+ * Ensure the FCurve is a proper function, such that every X-coordinate of the
+ * timeline has only one value of the FCurve. In other words, removes duplicate
+ * keyframes.
+ *
+ * Contrary to #BKE_fcurve_merge_duplicate_keys, which is intended for
+ * interactive use, and where selection matters, this is a simpler deduplication
+ * where the last duplicate "wins".
+ *
+ * Assumes the keys are sorted (see #sort_time_fcurve).
+ *
+ * After deduplication, call `BKE_fcurve_handles_recalc(fcu);`
+ */
+void BKE_fcurve_deduplicate_keys(struct FCurve *fcu);
 
 /* -------- Curve Sanity -------- */
 
@@ -539,7 +586,7 @@ float evaluate_fcurve_driver(struct PathResolvedRNA *anim_rna,
 /**
  * Checks if the curve has valid keys, drivers or modifiers that produce an actual curve.
  */
-bool BKE_fcurve_is_empty(struct FCurve *fcu);
+bool BKE_fcurve_is_empty(const struct FCurve *fcu);
 /**
  * Calculate the value of the given F-Curve at the given frame,
  * and store it's value in #FCurve.curval.
@@ -588,17 +635,9 @@ void BKE_fmodifiers_blend_write(struct BlendWriter *writer, struct ListBase *fmo
 void BKE_fmodifiers_blend_read_data(struct BlendDataReader *reader,
                                     ListBase *fmodifiers,
                                     struct FCurve *curve);
-void BKE_fmodifiers_blend_read_lib(struct BlendLibReader *reader,
-                                   struct ID *id,
-                                   struct ListBase *fmodifiers);
-void BKE_fmodifiers_blend_read_expand(struct BlendExpander *expander, struct ListBase *fmodifiers);
 
 void BKE_fcurve_blend_write(struct BlendWriter *writer, struct ListBase *fcurves);
 void BKE_fcurve_blend_read_data(struct BlendDataReader *reader, struct ListBase *fcurves);
-void BKE_fcurve_blend_read_lib(struct BlendLibReader *reader,
-                               struct ID *id,
-                               struct ListBase *fcurves);
-void BKE_fcurve_blend_read_expand(struct BlendExpander *expander, struct ListBase *fcurves);
 
 #ifdef __cplusplus
 }

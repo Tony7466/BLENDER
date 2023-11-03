@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -28,8 +29,8 @@ extern "C" {
 #  define MALWAYS_INLINE
 #endif
 
-/* gcc 4.6 (supports push/pop) */
-#if (defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 406))
+/* Check for GCC push/pop pragma support. */
+#ifdef __GNUC__
 #  define BLI_MATH_GCC_WARN_PRAGMA 1
 #endif
 

@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2018-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -30,7 +33,7 @@ vec4 sample_tricubic(sampler3D ima, vec3 co)
   vec3 f = co - tc;
   vec3 f2 = f * f;
   vec3 f3 = f2 * f;
-  /* Bspline coefs (optimized) */
+  /* Bspline coefficients (optimized). */
   vec3 w3 = f3 / 6.0;
   vec3 w0 = -w3 + f2 * 0.5 - f * 0.5 + 1.0 / 6.0;
   vec3 w1 = f3 * 0.5 - f2 + 2.0 / 3.0;
@@ -182,13 +185,15 @@ void eval_volume_step(inout vec3 Lscat, float extinction, float step_len, out fl
 }
 
 #define P(x) ((x + 0.5) * (1.0 / 16.0))
-const vec4 dither_mat[4] = vec4[4](vec4(P(0.0), P(8.0), P(2.0), P(10.0)),
-                                   vec4(P(12.0), P(4.0), P(14.0), P(6.0)),
-                                   vec4(P(3.0), P(11.0), P(1.0), P(9.0)),
-                                   vec4(P(15.0), P(7.0), P(13.0), P(5.0)));
 
 vec4 volume_integration(vec3 ray_ori, vec3 ray_dir, float ray_inc, float ray_max, float step_len)
 {
+  /* Note: Constant array declared inside function scope to reduce shader core thread memory
+   * pressure on Apple Silicon. */
+  const vec4 dither_mat[4] = vec4[4](vec4(P(0.0), P(8.0), P(2.0), P(10.0)),
+                                     vec4(P(12.0), P(4.0), P(14.0), P(6.0)),
+                                     vec4(P(3.0), P(11.0), P(1.0), P(9.0)),
+                                     vec4(P(15.0), P(7.0), P(13.0), P(5.0)));
   /* Start with full transmittance and no scattered light. */
   vec3 final_scattering = vec3(0.0);
   float final_transmittance = 1.0;
@@ -207,6 +212,12 @@ vec4 volume_integration(vec3 ray_ori, vec3 ray_dir, float ray_inc, float ray_max
     /* accumulate and also take into account the transmittance from previous steps */
     final_scattering += final_transmittance * Lscat;
     final_transmittance *= Tr;
+
+    if (final_transmittance <= 0.01) {
+      /* Early out */
+      final_transmittance = 0.0;
+      break;
+    }
   }
 
   return vec4(final_scattering, final_transmittance);
@@ -214,6 +225,14 @@ vec4 volume_integration(vec3 ray_ori, vec3 ray_dir, float ray_inc, float ray_max
 
 void main()
 {
+  uint stencil = texelFetch(stencil_tx, ivec2(gl_FragCoord.xy), 0).r;
+  const uint in_front_stencil_bits = 1u << 1;
+  if ((stencil & in_front_stencil_bits) != 0) {
+    /* Don't draw on top of "in front" objects. */
+    discard;
+    return;
+  }
+
 #ifdef VOLUME_SLICE
   /* Manual depth test. TODO: remove. */
   float depth = texelFetch(depthBuffer, ivec2(gl_FragCoord.xy), 0).r;
@@ -286,6 +305,6 @@ void main()
                                  length(vs_ray_dir) * stepLength);
 #endif
 
-  /* Convert transmitance to alpha so we can use premul blending. */
+  /* Convert transmittance to alpha so we can use pre-multiply blending. */
   fragColor.a = 1.0 - fragColor.a;
 }

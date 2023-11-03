@@ -1,7 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_OutputFileNode.h"
+
+#include "BLI_string.h"
 
 namespace blender::compositor {
 
@@ -37,6 +40,10 @@ void OutputFileNode::map_input_sockets(NodeConverter &converter,
 
 void OutputFileNode::add_preview_to_first_linked_input(NodeConverter &converter) const
 {
+  if (get_input_sockets().is_empty()) {
+    return;
+  }
+
   NodeInput *first_socket = this->get_input_socket(0);
   if (first_socket->is_linked()) {
     converter.add_node_input_preview(first_socket);
@@ -46,7 +53,7 @@ void OutputFileNode::add_preview_to_first_linked_input(NodeConverter &converter)
 void OutputFileNode::convert_to_operations(NodeConverter &converter,
                                            const CompositorContext &context) const
 {
-  NodeImageMultiFile *storage = (NodeImageMultiFile *)this->get_bnode()->storage;
+  const NodeImageMultiFile *storage = (const NodeImageMultiFile *)this->get_bnode()->storage;
   const bool is_multiview = (context.get_render_data()->scemode & R_MULTIVIEW) != 0;
 
   add_preview_to_first_linked_input(converter);
@@ -61,7 +68,7 @@ void OutputFileNode::convert_to_operations(NodeConverter &converter,
 
   if (storage->format.imtype == R_IMF_IMTYPE_MULTILAYER) {
     const bool use_half_float = (storage->format.depth == R_IMF_CHAN_DEPTH_16);
-    /* single output operation for the multilayer file */
+    /* Single output operation for the multi-layer file. */
     OutputOpenExrMultiLayerOperation *output_operation;
 
     if (is_multiview && storage->format.views_format == R_IMF_VIEWS_MULTIVIEW) {
@@ -95,12 +102,18 @@ void OutputFileNode::convert_to_operations(NodeConverter &converter,
       if (input->is_linked()) {
         NodeImageMultiFileSocket *sockdata =
             (NodeImageMultiFileSocket *)input->get_bnode_socket()->storage;
-        ImageFormatData *format = (sockdata->use_node_format ? &storage->format :
-                                                               &sockdata->format);
+        const ImageFormatData *format = (sockdata->use_node_format ? &storage->format :
+                                                                     &sockdata->format);
         char path[FILE_MAX];
 
         /* combine file path for the input */
-        BLI_join_dirfile(path, FILE_MAX, storage->base_path, sockdata->path);
+        if (sockdata->path[0]) {
+          BLI_path_join(path, FILE_MAX, storage->base_path, sockdata->path);
+        }
+        else {
+          STRNCPY(path, storage->base_path);
+          BLI_path_slash_ensure(path, FILE_MAX);
+        }
 
         NodeOperation *output_operation = nullptr;
 

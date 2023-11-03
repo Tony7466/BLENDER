@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2018-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(workbench_common_lib.glsl)
@@ -5,18 +8,17 @@
 
 void main()
 {
-  normalData = workbench_normal_encode(gl_FrontFacing, normal_interp);
+  out_object_id = uint(object_id);
+  out_normal = workbench_normal_encode(gl_FrontFacing, normal_interp);
 
-  materialData = vec4(color_interp, workbench_float_pair_encode(_roughness, metallic));
+  out_material = vec4(color_interp, workbench_float_pair_encode(_roughness, metallic));
 
-  objectId = uint(object_id);
+#ifdef WORKBENCH_COLOR_TEXTURE
+  out_material.rgb = workbench_image_color(uv_interp);
+#endif
 
-  if (useMatcap) {
-    /* For matcaps, save front facing in alpha channel. */
-    materialData.a = float(gl_FrontFacing);
-  }
-
-#ifdef V3D_SHADING_TEXTURE_COLOR
-  materialData.rgb = workbench_image_color(uv_interp);
+#ifdef WORKBENCH_LIGHTING_MATCAP
+  /* For matcaps, save front facing in alpha channel. */
+  out_material.a = float(gl_FrontFacing);
 #endif
 }

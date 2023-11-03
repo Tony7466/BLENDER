@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -23,15 +24,15 @@
 
 #include "BKE_constraint.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "intern/builder/deg_builder.h"
-#include "intern/depsgraph.h"
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_id.h"
-#include "intern/node/deg_node_operation.h"
+#include "intern/depsgraph.hh"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_id.hh"
+#include "intern/node/deg_node_operation.hh"
 
 namespace blender::deg {
 
@@ -39,9 +40,7 @@ namespace blender::deg {
 
 class RNANodeQueryIDData {
  public:
-  explicit RNANodeQueryIDData(const ID *id) : id_(id)
-  {
-  }
+  explicit RNANodeQueryIDData(const ID *id) : id_(id) {}
 
   ~RNANodeQueryIDData()
   {
@@ -138,8 +137,8 @@ bool RNANodeQuery::contains(const char *prop_identifier, const char *rna_path_co
     return false;
   }
 
-  /* If substr != prop_identifier, it means that the substring is found further in prop_identifier,
-   * and that thus index -1 is a valid memory location. */
+  /* If `substr != prop_identifier`, it means that the sub-string is found further in
+   * `prop_identifier`, and that thus index -1 is a valid memory location. */
   const bool start_ok = substr == prop_identifier || substr[-1] == '.';
   if (!start_ok) {
     return false;
@@ -225,6 +224,10 @@ RNANodeIdentifier RNANodeQuery::construct_node_identifier(const PointerRNA *ptr,
     }
     return node_identifier;
   }
+
+  const char *prop_identifier = prop != nullptr ? RNA_property_identifier((PropertyRNA *)prop) :
+                                                  "";
+
   if (RNA_struct_is_a(ptr->type, &RNA_Constraint)) {
     const Object *object = reinterpret_cast<const Object *>(ptr->owner_id);
     const bConstraint *constraint = static_cast<const bConstraint *>(ptr->data);
@@ -264,6 +267,14 @@ RNANodeIdentifier RNANodeQuery::construct_node_identifier(const PointerRNA *ptr,
       return node_identifier;
     }
   }
+  else if (RNA_struct_is_a(ptr->type, &RNA_Modifier) &&
+           (contains(prop_identifier, "show_viewport") ||
+            contains(prop_identifier, "show_render")))
+  {
+    node_identifier.type = NodeType::GEOMETRY;
+    node_identifier.operation_code = OperationCode::VISIBILITY;
+    return node_identifier;
+  }
   else if (RNA_struct_is_a(ptr->type, &RNA_Mesh) || RNA_struct_is_a(ptr->type, &RNA_Modifier) ||
            RNA_struct_is_a(ptr->type, &RNA_GpencilModifier) ||
            RNA_struct_is_a(ptr->type, &RNA_Spline) || RNA_struct_is_a(ptr->type, &RNA_TextBox) ||
@@ -272,7 +283,8 @@ RNANodeIdentifier RNANodeQuery::construct_node_identifier(const PointerRNA *ptr,
            RNA_struct_is_a(ptr->type, &RNA_MeshUVLoop) ||
            RNA_struct_is_a(ptr->type, &RNA_MeshLoopColor) ||
            RNA_struct_is_a(ptr->type, &RNA_VertexGroupElement) ||
-           RNA_struct_is_a(ptr->type, &RNA_ShaderFx)) {
+           RNA_struct_is_a(ptr->type, &RNA_ShaderFx))
+  {
     /* When modifier is used as FROM operation this is likely referencing to
      * the property (for example, modifier's influence).
      * But when it's used as TO operation, this is geometry component. */
@@ -290,7 +302,6 @@ RNANodeIdentifier RNANodeQuery::construct_node_identifier(const PointerRNA *ptr,
   else if (ptr->type == &RNA_Object) {
     /* Transforms props? */
     if (prop != nullptr) {
-      const char *prop_identifier = RNA_property_identifier((PropertyRNA *)prop);
       /* TODO(sergey): How to optimize this? */
       if (contains(prop_identifier, "location") || contains(prop_identifier, "matrix_basis") ||
           contains(prop_identifier, "matrix_channel") ||
@@ -305,7 +316,8 @@ RNANodeIdentifier RNANodeQuery::construct_node_identifier(const PointerRNA *ptr,
           contains(prop_identifier, "delta_location") ||
           contains(prop_identifier, "delta_rotation_euler") ||
           contains(prop_identifier, "delta_rotation_quaternion") ||
-          contains(prop_identifier, "delta_scale")) {
+          contains(prop_identifier, "delta_scale"))
+      {
         node_identifier.type = NodeType::TRANSFORM;
         return node_identifier;
       }

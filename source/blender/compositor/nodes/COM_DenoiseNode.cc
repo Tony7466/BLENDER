@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "COM_DenoiseNode.h"
 #include "COM_DenoiseOperation.h"
 
@@ -19,8 +20,8 @@ void DenoiseNode::convert_to_operations(NodeConverter &converter,
     return;
   }
 
-  bNode *node = this->get_bnode();
-  NodeDenoise *denoise = (NodeDenoise *)node->storage;
+  const bNode *node = this->get_bnode();
+  const NodeDenoise *denoise = (const NodeDenoise *)node->storage;
 
   DenoiseOperation *operation = new DenoiseOperation();
   converter.add_operation(operation);

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2012 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -19,7 +20,6 @@ extern "C" {
 struct ColorManagedColorspaceSettings;
 struct ColorManagedDisplaySettings;
 struct ColorManagedViewSettings;
-struct ColorManagedOutputSettings;
 struct ColormanageProcessor;
 struct EnumPropertyItem;
 struct ImBuf;
@@ -44,7 +44,7 @@ const char *IMB_colormanagement_role_colorspace_name_get(int role);
 void IMB_colormanagement_check_is_data(struct ImBuf *ibuf, const char *name);
 void IMB_colormanagegent_copy_settings(struct ImBuf *ibuf_src, struct ImBuf *ibuf_dst);
 void IMB_colormanagement_assign_float_colorspace(struct ImBuf *ibuf, const char *name);
-void IMB_colormanagement_assign_rect_colorspace(struct ImBuf *ibuf, const char *name);
+void IMB_colormanagement_assign_byte_colorspace(struct ImBuf *ibuf, const char *name);
 
 const char *IMB_colormanagement_get_float_colorspace(struct ImBuf *ibuf);
 const char *IMB_colormanagement_get_rect_colorspace(struct ImBuf *ibuf);
@@ -55,6 +55,8 @@ bool IMB_colormanagement_space_is_srgb(struct ColorSpace *colorspace);
 bool IMB_colormanagement_space_name_is_data(const char *name);
 bool IMB_colormanagement_space_name_is_scene_linear(const char *name);
 bool IMB_colormanagement_space_name_is_srgb(const char *name);
+
+BLI_INLINE void IMB_colormanagement_get_luminance_coefficients(float r_rgb[3]);
 
 /**
  * Convert a float RGB triplet to the correct luminance weighted average.
@@ -295,6 +297,15 @@ void IMB_display_buffer_transform_apply(unsigned char *display_buffer,
                                         const struct ColorManagedViewSettings *view_settings,
                                         const struct ColorManagedDisplaySettings *display_settings,
                                         bool predivide);
+void IMB_display_buffer_transform_apply_float(
+    float *float_display_buffer,
+    float *linear_buffer,
+    int width,
+    int height,
+    int channels,
+    const struct ColorManagedViewSettings *view_settings,
+    const struct ColorManagedDisplaySettings *display_settings,
+    bool predivide);
 
 void IMB_display_buffer_release(void *cache_handle);
 
@@ -332,6 +343,9 @@ const char *IMB_colormanagement_view_get_indexed_name(int index);
 
 int IMB_colormanagement_look_get_named_index(const char *name);
 const char *IMB_colormanagement_look_get_indexed_name(int index);
+const char *IMB_colormanagement_look_get_default_name(void);
+const char *IMB_colormanagement_look_validate_for_view(const char *view_name,
+                                                       const char *look_name);
 
 /** \} */
 
@@ -343,6 +357,7 @@ int IMB_colormanagement_colorspace_get_named_index(const char *name);
 const char *IMB_colormanagement_colorspace_get_indexed_name(int index);
 const char *IMB_colormanagement_colorspace_get_name(const struct ColorSpace *colorspace);
 const char *IMB_colormanagement_view_get_default_name(const char *display_name);
+const char *IMB_colormanagement_view_get_raw_or_default_name(const char *display_name);
 
 void IMB_colormanagement_colorspace_from_ibuf_ftype(
     struct ColorManagedColorspaceSettings *colorspace_settings, struct ImBuf *ibuf);
@@ -409,6 +424,7 @@ struct ColormanageProcessor *IMB_colormanagement_display_processor_new(
     const struct ColorManagedDisplaySettings *display_settings);
 struct ColormanageProcessor *IMB_colormanagement_colorspace_processor_new(
     const char *from_colorspace, const char *to_colorspace);
+bool IMB_colormanagement_processor_is_noop(struct ColormanageProcessor *cm_processor);
 void IMB_colormanagement_processor_apply_v4(struct ColormanageProcessor *cm_processor,
                                             float pixel[4]);
 void IMB_colormanagement_processor_apply_v4_predivide(struct ColormanageProcessor *cm_processor,
@@ -530,4 +546,4 @@ void IMB_colormanagement_wavelength_to_rgb_table(float *r_table, int width);
 }
 #endif
 
-#include "intern/colormanagement_inline.c"
+#include "intern/colormanagement_inline.h"

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -8,12 +9,13 @@ CCL_NAMESPACE_BEGIN
 ccl_device ccl_private ShaderClosure *closure_alloc(ccl_private ShaderData *sd,
                                                     int size,
                                                     ClosureType type,
-                                                    float3 weight)
+                                                    Spectrum weight)
 {
   kernel_assert(size <= sizeof(ShaderClosure));
 
-  if (sd->num_closure_left == 0)
+  if (sd->num_closure_left == 0) {
     return NULL;
+  }
 
   ccl_private ShaderClosure *sc = &sd->closure[sd->num_closure];
 
@@ -49,9 +51,12 @@ ccl_device ccl_private void *closure_alloc_extra(ccl_private ShaderData *sd, int
 
 ccl_device_inline ccl_private ShaderClosure *bsdf_alloc(ccl_private ShaderData *sd,
                                                         int size,
-                                                        float3 weight)
+                                                        Spectrum weight)
 {
   kernel_assert(isfinite_safe(weight));
+
+  /* No negative weights allowed. */
+  weight = max(weight, zero_float3());
 
   const float sample_weight = fabsf(average(weight));
 
@@ -59,39 +64,10 @@ ccl_device_inline ccl_private ShaderClosure *bsdf_alloc(ccl_private ShaderData *
    * we will not allocate new closure. */
   if (sample_weight >= CLOSURE_WEIGHT_CUTOFF) {
     ccl_private ShaderClosure *sc = closure_alloc(sd, size, CLOSURE_NONE_ID, weight);
-    if (sc == NULL) {
-      return NULL;
-    }
-
-    sc->sample_weight = sample_weight;
-
-    return sc;
-  }
-
-  return NULL;
-}
-
-#ifdef __OSL__
-ccl_device_inline ShaderClosure *bsdf_alloc_osl(ShaderData *sd,
-                                                int size,
-                                                float3 weight,
-                                                void *data)
-{
-  kernel_assert(isfinite_safe(weight));
-
-  const float sample_weight = fabsf(average(weight));
-
-  /* Use comparison this way to help dealing with non-finite weight: if the average is not finite
-   * we will not allocate new closure. */
-  if (sample_weight >= CLOSURE_WEIGHT_CUTOFF) {
-    ShaderClosure *sc = closure_alloc(sd, size, CLOSURE_NONE_ID, weight);
     if (!sc) {
       return NULL;
     }
 
-    memcpy((void *)sc, data, size);
-
-    sc->weight = weight;
     sc->sample_weight = sample_weight;
 
     return sc;
@@ -99,6 +75,5 @@ ccl_device_inline ShaderClosure *bsdf_alloc_osl(ShaderData *sd,
 
   return NULL;
 }
-#endif
 
 CCL_NAMESPACE_END

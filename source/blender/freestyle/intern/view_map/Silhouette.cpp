@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -159,7 +161,8 @@ FEdge *SVertex::getFEdge(Interface0D &inter)
   vector<FEdge *>::const_iterator fe = _FEdges.begin(), feend = _FEdges.end();
   for (; fe != feend; ++fe) {
     if ((((*fe)->vertexA() == this) && ((*fe)->vertexB() == iVertexB)) ||
-        (((*fe)->vertexB() == this) && ((*fe)->vertexA() == iVertexB))) {
+        (((*fe)->vertexB() == this) && ((*fe)->vertexA() == iVertexB)))
+    {
       result = (*fe);
     }
   }
@@ -175,7 +178,8 @@ FEdge *SVertex::getFEdge(Interface0D &inter)
       const vector<FEdge *> &fedges = brother->fedges();
       for (fe = fedges.begin(), feend = fedges.end(); fe != feend; ++fe) {
         if ((((*fe)->vertexA() == brother) && ((*fe)->vertexB() == iVertexB)) ||
-            (((*fe)->vertexB() == brother) && ((*fe)->vertexA() == iVertexB))) {
+            (((*fe)->vertexB() == brother) && ((*fe)->vertexA() == iVertexB)))
+        {
           result = (*fe);
         }
       }
@@ -192,7 +196,8 @@ FEdge *SVertex::getFEdge(Interface0D &inter)
       }
       for (fe = _FEdges.begin(), feend = _FEdges.end(); fe != feend; ++fe) {
         if ((((*fe)->vertexA() == this) && ((*fe)->vertexB() == brother)) ||
-            (((*fe)->vertexB() == this) && ((*fe)->vertexA() == brother))) {
+            (((*fe)->vertexB() == this) && ((*fe)->vertexA() == brother)))
+        {
           result = (*fe);
         }
       }
@@ -297,7 +302,7 @@ real FEdge::z_discontinuity() const
   z_discontinuity_functor<SVertex> _functor;
   Evaluate<SVertex, z_discontinuity_functor<SVertex>>(&_functor, iCombination, result);
 #endif
-  Vec3r middle((_VertexB->point3d() - _VertexA->point3d()));
+  Vec3r middle(_VertexB->point3d() - _VertexA->point3d());
   middle /= 2;
   Vec3r disc_vec(middle - _occludeeIntersection);
   real res = disc_vec.norm() / bboxsize;

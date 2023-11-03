@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -16,6 +17,7 @@
 
 #include "GPU_capabilities.h"
 
+using namespace blender::gpu::shader;
 namespace blender::gpu {
 
 /* -------------------------------------------------------------------- */
@@ -151,8 +153,57 @@ static inline int ssbo_binding(int32_t program, uint32_t ssbo_index)
 /** \name Creation / Destruction
  * \{ */
 
+static Type gpu_type_from_gl_type(int gl_type)
+{
+  switch (gl_type) {
+    case GL_FLOAT:
+      return Type::FLOAT;
+    case GL_FLOAT_VEC2:
+      return Type::VEC2;
+    case GL_FLOAT_VEC3:
+      return Type::VEC3;
+    case GL_FLOAT_VEC4:
+      return Type::VEC4;
+    case GL_FLOAT_MAT3:
+      return Type::MAT3;
+    case GL_FLOAT_MAT4:
+      return Type::MAT4;
+    case GL_UNSIGNED_INT:
+      return Type::UINT;
+    case GL_UNSIGNED_INT_VEC2:
+      return Type::UVEC2;
+    case GL_UNSIGNED_INT_VEC3:
+      return Type::UVEC3;
+    case GL_UNSIGNED_INT_VEC4:
+      return Type::UVEC4;
+    case GL_INT:
+      return Type::INT;
+    case GL_INT_VEC2:
+      return Type::IVEC2;
+    case GL_INT_VEC3:
+      return Type::IVEC3;
+    case GL_INT_VEC4:
+      return Type::IVEC4;
+    case GL_BOOL:
+      return Type::BOOL;
+    case GL_FLOAT_MAT2:
+    case GL_FLOAT_MAT2x3:
+    case GL_FLOAT_MAT2x4:
+    case GL_FLOAT_MAT3x2:
+    case GL_FLOAT_MAT3x4:
+    case GL_FLOAT_MAT4x2:
+    case GL_FLOAT_MAT4x3:
+    default:
+      BLI_assert(0);
+  }
+  return Type::FLOAT;
+}
+
 GLShaderInterface::GLShaderInterface(GLuint program)
 {
+  GLuint last_program;
+  glGetIntegerv(GL_CURRENT_PROGRAM, (GLint *)&last_program);
+
   /* Necessary to make #glUniform works. */
   glUseProgram(program);
 
@@ -170,11 +221,9 @@ GLShaderInterface::GLShaderInterface(GLuint program)
   uniform_len = active_uniform_len;
 
   GLint max_ssbo_name_len = 0, ssbo_len = 0;
-  if (GPU_shader_storage_buffer_objects_support()) {
-    glGetProgramInterfaceiv(program, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, &ssbo_len);
-    glGetProgramInterfaceiv(
-        program, GL_SHADER_STORAGE_BLOCK, GL_MAX_NAME_LENGTH, &max_ssbo_name_len);
-  }
+  glGetProgramInterfaceiv(program, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, &ssbo_len);
+  glGetProgramInterfaceiv(
+      program, GL_SHADER_STORAGE_BLOCK, GL_MAX_NAME_LENGTH, &max_ssbo_name_len);
 
   BLI_assert_msg(ubo_len <= 16, "enabled_ubo_mask_ is uint16_t");
 
@@ -246,6 +295,9 @@ GLShaderInterface::GLShaderInterface(GLuint program)
 
     name_buffer_offset += set_input_name(input, name, name_len);
     enabled_attr_mask_ |= (1 << input->location);
+
+    /* Used in `GPU_shader_get_attribute_info`. */
+    attr_types_[input->location] = uint8_t(gpu_type_from_gl_type(type));
   }
 
   /* Uniform Blocks */
@@ -328,6 +380,8 @@ GLShaderInterface::GLShaderInterface(GLuint program)
   // this->debug_print();
 
   this->sort_inputs();
+
+  glUseProgram(last_program);
 }
 
 GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateInfo &info)
@@ -385,6 +439,9 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
   uint32_t name_buffer_offset = 0;
 
   /* Necessary to make #glUniform works. TODO(fclem) Remove. */
+  GLuint last_program;
+  glGetIntegerv(GL_CURRENT_PROGRAM, (GLint *)&last_program);
+
   glUseProgram(program);
 
   /* Attributes */
@@ -398,7 +455,11 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
     }
     if (input->location != -1) {
       enabled_attr_mask_ |= (1 << input->location);
+
+      /* Used in `GPU_shader_get_attribute_info`. */
+      attr_types_[input->location] = uint8_t(attr.type);
     }
+
     input++;
   }
 
@@ -467,6 +528,9 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
     }
   }
 
+  this->sort_inputs();
+
+  /* Resolving builtins must happen after the inputs have been sorted. */
   /* Builtin Uniforms */
   for (int32_t u_int = 0; u_int < GPU_NUM_UNIFORMS; u_int++) {
     GPUUniformBuiltin u = static_cast<GPUUniformBuiltin>(u_int);
@@ -481,9 +545,9 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
     builtin_blocks_[u] = (block != nullptr) ? block->binding : -1;
   }
 
-  this->sort_inputs();
-
   // this->debug_print();
+
+  glUseProgram(last_program);
 }
 
 GLShaderInterface::~GLShaderInterface()

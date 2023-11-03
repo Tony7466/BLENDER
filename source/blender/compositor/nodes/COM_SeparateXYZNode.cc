@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_SeparateXYZNode.h"
 
@@ -13,7 +14,7 @@ SeparateXYZNode::SeparateXYZNode(bNode *editor_node) : Node(editor_node)
 }
 
 void SeparateXYZNode::convert_to_operations(NodeConverter &converter,
-                                            const CompositorContext &UNUSED(context)) const
+                                            const CompositorContext & /*context*/) const
 {
   NodeInput *vector_socket = this->get_input_socket(0);
   NodeOutput *output_x_socket = this->get_output_socket(0);

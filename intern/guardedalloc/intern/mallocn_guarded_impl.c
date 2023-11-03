@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup intern_mem
@@ -39,13 +40,37 @@
 //#define DEBUG_MEMCOUNTER
 
 /* Only for debugging:
- * Defining DEBUG_BACKTRACE will store a backtrace from where
- * memory block was allocated and print this trace for all
- * unfreed blocks.
+ * Defining DEBUG_BACKTRACE will display a back-trace from where memory block was allocated and
+ * print this trace for all unfreed blocks. This will only work for ASAN enabled builds. This
+ * option will be on by default for MSVC as it currently does not have LSAN which would normally
+ * report these leaks, off by default on all other platforms because it would report the leaks
+ * twice, once here, and once by LSAN.
  */
-//#define DEBUG_BACKTRACE
+#if defined(_MSC_VER)
+#  ifdef WITH_ASAN
+#    define DEBUG_BACKTRACE
+#  endif
+#else
+/* Un-comment to report back-traces with leaks, uses ASAN when enabled.
+ * NOTE: The default linking options cause the stack traces only to include addresses.
+ * Use `addr2line` to expand into file, line & function identifiers,
+ * see: `tools/utils/addr2line_backtrace.py` convenience utility. */
+// #  define DEBUG_BACKTRACE
+#endif
 
 #ifdef DEBUG_BACKTRACE
+#  ifdef WITH_ASAN
+/* Rely on address sanitizer. */
+#  else
+#    if defined(__linux__) || defined(__APPLE__)
+#      define DEBUG_BACKTRACE_EXECINFO
+#    else
+#      error "DEBUG_BACKTRACE: not supported for this platform!"
+#    endif
+#  endif
+#endif
+
+#ifdef DEBUG_BACKTRACE_EXECINFO
 #  define BACKTRACE_SIZE 100
 #endif
 
@@ -92,26 +117,22 @@ typedef struct MemHead {
   int need_free_name, pad;
 #endif
 
-#ifdef DEBUG_BACKTRACE
+#ifdef DEBUG_BACKTRACE_EXECINFO
   void *backtrace[BACKTRACE_SIZE];
   int backtrace_size;
 #endif
+
 } MemHead;
 
 typedef MemHead MemHeadAligned;
 
-#ifdef DEBUG_BACKTRACE
-#  if defined(__linux__) || defined(__APPLE__)
-#    include <execinfo.h>
-// Windows is not supported yet.
-//#  elif defined(_MSV_VER)
-//#    include <DbgHelp.h>
-#  endif
-#endif
-
 typedef struct MemTail {
   int tag3, pad;
 } MemTail;
+
+#ifdef DEBUG_BACKTRACE_EXECINFO
+#  include <execinfo.h>
+#endif
 
 /* --------------------------------------------------------------------- */
 /* local functions                                                       */
@@ -144,11 +165,11 @@ static const char *check_memlist(MemHead *memh);
 /* vars                                                                  */
 /* --------------------------------------------------------------------- */
 
-static unsigned int totblock = 0;
+static uint totblock = 0;
 static size_t mem_in_use = 0, peak_mem = 0;
 
-static volatile struct localListBase _membase;
-static volatile struct localListBase *membase = &_membase;
+static volatile localListBase _membase;
+static volatile localListBase *membase = &_membase;
 static void (*error_callback)(const char *) = NULL;
 
 static bool malloc_debug_memset = false;
@@ -260,14 +281,17 @@ void *MEM_guarded_dupallocN(const void *vmemh)
 #else
     {
       MemHead *nmemh;
-      char *name = malloc(strlen(memh->name) + 24);
+      const char name_prefix[] = "dupli_alloc ";
+      const size_t name_prefix_len = sizeof(name_prefix) - 1;
+      const size_t name_size = strlen(memh->name) + 1;
+      char *name = malloc(name_prefix_len + name_size);
+      memcpy(name, name_prefix, sizeof(name_prefix));
+      memcpy(name + name_prefix_len, memh->name, name_size);
 
       if (LIKELY(memh->alignment == 0)) {
-        sprintf(name, "%s %s", "dupli_alloc", memh->name);
         newp = MEM_guarded_mallocN(memh->len, name);
       }
       else {
-        sprintf(name, "%s %s", "dupli_alloc", memh->name);
         newp = MEM_guarded_mallocN_aligned(memh->len, (size_t)memh->alignment, name);
       }
 
@@ -362,8 +386,7 @@ void *MEM_guarded_recallocN_id(void *vmemh, size_t len, const char *str)
   return newp;
 }
 
-#ifdef DEBUG_BACKTRACE
-#  if defined(__linux__) || defined(__APPLE__)
+#ifdef DEBUG_BACKTRACE_EXECINFO
 static void make_memhead_backtrace(MemHead *memh)
 {
   memh->backtrace_size = backtrace(memh->backtrace, BACKTRACE_SIZE);
@@ -381,18 +404,7 @@ static void print_memhead_backtrace(MemHead *memh)
 
   free(strings);
 }
-#  else
-static void make_memhead_backtrace(MemHead *memh)
-{
-  (void)memh; /* Ignored. */
-}
-
-static void print_memhead_backtrace(MemHead *memh)
-{
-  (void)memh; /* Ignored. */
-}
-#  endif /* defined(__linux__) || defined(__APPLE__) */
-#endif   /* DEBUG_BACKTRACE */
+#endif /* DEBUG_BACKTRACE_EXECINFO */
 
 static void make_memhead_header(MemHead *memh, size_t len, const char *str)
 {
@@ -410,7 +422,7 @@ static void make_memhead_header(MemHead *memh, size_t len, const char *str)
   memh->need_free_name = 0;
 #endif
 
-#ifdef DEBUG_BACKTRACE
+#ifdef DEBUG_BACKTRACE_EXECINFO
   make_memhead_backtrace(memh);
 #endif
 
@@ -450,10 +462,10 @@ void *MEM_guarded_mallocN(size_t len, const char *str)
 #endif
     return (++memh);
   }
-  print_error("Malloc returns null: len=" SIZET_FORMAT " in %s, total %u\n",
+  print_error("Malloc returns null: len=" SIZET_FORMAT " in %s, total " SIZET_FORMAT "\n",
               SIZET_ARG(len),
               str,
-              (unsigned int)mem_in_use);
+              mem_in_use);
   return NULL;
 }
 
@@ -463,11 +475,11 @@ void *MEM_guarded_malloc_arrayN(size_t len, size_t size, const char *str)
   if (UNLIKELY(!MEM_size_safe_multiply(len, size, &total_size))) {
     print_error(
         "Malloc array aborted due to integer overflow: "
-        "len=" SIZET_FORMAT "x" SIZET_FORMAT " in %s, total %u\n",
+        "len=" SIZET_FORMAT "x" SIZET_FORMAT " in %s, total " SIZET_FORMAT "\n",
         SIZET_ARG(len),
         SIZET_ARG(size),
         str,
-        (unsigned int)mem_in_use);
+        mem_in_use);
     abort();
     return NULL;
   }
@@ -523,10 +535,10 @@ void *MEM_guarded_mallocN_aligned(size_t len, size_t alignment, const char *str)
 #endif
     return (++memh);
   }
-  print_error("aligned_malloc returns null: len=" SIZET_FORMAT " in %s, total %u\n",
+  print_error("aligned_malloc returns null: len=" SIZET_FORMAT " in %s, total " SIZET_FORMAT "\n",
               SIZET_ARG(len),
               str,
-              (unsigned int)mem_in_use);
+              mem_in_use);
   return NULL;
 }
 
@@ -547,10 +559,10 @@ void *MEM_guarded_callocN(size_t len, const char *str)
 #endif
     return (++memh);
   }
-  print_error("Calloc returns null: len=" SIZET_FORMAT " in %s, total %u\n",
+  print_error("Calloc returns null: len=" SIZET_FORMAT " in %s, total " SIZET_FORMAT "\n",
               SIZET_ARG(len),
               str,
-              (unsigned int)mem_in_use);
+              mem_in_use);
   return NULL;
 }
 
@@ -560,11 +572,11 @@ void *MEM_guarded_calloc_arrayN(size_t len, size_t size, const char *str)
   if (UNLIKELY(!MEM_size_safe_multiply(len, size, &total_size))) {
     print_error(
         "Calloc array aborted due to integer overflow: "
-        "len=" SIZET_FORMAT "x" SIZET_FORMAT " in %s, total %u\n",
+        "len=" SIZET_FORMAT "x" SIZET_FORMAT " in %s, total " SIZET_FORMAT "\n",
         SIZET_ARG(len),
         SIZET_ARG(size),
         str,
-        (unsigned int)mem_in_use);
+        mem_in_use);
     abort();
     return NULL;
   }
@@ -606,7 +618,7 @@ void MEM_guarded_printmemlist_stats(void)
 {
   MemHead *membl;
   MemPrintBlock *pb, *printblock;
-  unsigned int totpb, a, b;
+  uint totpb, a, b;
   size_t mem_in_use_slop = 0;
 
   mem_lock_thread();
@@ -764,8 +776,11 @@ static void MEM_guarded_printmemlist_internal(int pydict)
                   SIZET_ARG(membl->len),
                   (void *)(membl + 1));
 #endif
-#ifdef DEBUG_BACKTRACE
+
+#ifdef DEBUG_BACKTRACE_EXECINFO
       print_memhead_backtrace(membl);
+#elif defined(DEBUG_BACKTRACE) && defined(WITH_ASAN)
+      __asan_describe_address(membl);
 #endif
     }
     if (membl->next) {
@@ -845,6 +860,10 @@ void MEM_guarded_printmemlist_pydict(void)
 {
   MEM_guarded_printmemlist_internal(1);
 }
+void mem_guarded_clearmemlist(void)
+{
+  membase->first = membase->last = NULL;
+}
 
 void MEM_guarded_freeN(void *vmemh)
 {
@@ -923,7 +942,7 @@ void MEM_guarded_freeN(void *vmemh)
 
 static void addtail(volatile localListBase *listbase, void *vlink)
 {
-  struct localLink *link = vlink;
+  localLink *link = vlink;
 
   /* for a generic API error checks here is fine but
    * the limited use here they will never be NULL */
@@ -938,7 +957,7 @@ static void addtail(volatile localListBase *listbase, void *vlink)
   link->prev = listbase->last;
 
   if (listbase->last) {
-    ((struct localLink *)listbase->last)->next = link;
+    ((localLink *)listbase->last)->next = link;
   }
   if (listbase->first == NULL) {
     listbase->first = link;
@@ -948,7 +967,7 @@ static void addtail(volatile localListBase *listbase, void *vlink)
 
 static void remlink(volatile localListBase *listbase, void *vlink)
 {
-  struct localLink *link = vlink;
+  localLink *link = vlink;
 
   /* for a generic API error checks here is fine but
    * the limited use here they will never be NULL */
@@ -1127,7 +1146,7 @@ static const char *check_memlist(MemHead *memh)
       }
       else {
         forwok->next = NULL;
-        membase->last = (struct localLink *)&forwok->next;
+        membase->last = (localLink *)&forwok->next;
       }
     }
     else {
@@ -1177,9 +1196,9 @@ size_t MEM_guarded_get_memory_in_use(void)
   return _mem_in_use;
 }
 
-unsigned int MEM_guarded_get_memory_blocks_in_use(void)
+uint MEM_guarded_get_memory_blocks_in_use(void)
 {
-  unsigned int _totblock;
+  uint _totblock;
 
   mem_lock_thread();
   _totblock = totblock;

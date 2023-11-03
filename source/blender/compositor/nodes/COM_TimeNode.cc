@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_TimeNode.h"
 
@@ -18,7 +19,7 @@ void TimeNode::convert_to_operations(NodeConverter &converter,
                                      const CompositorContext &context) const
 {
   SetValueOperation *operation = new SetValueOperation();
-  bNode *node = this->get_bnode();
+  const bNode *node = this->get_bnode();
 
   /* stack order output: fac */
   float fac = 0.0f;
@@ -31,7 +32,7 @@ void TimeNode::convert_to_operations(NodeConverter &converter,
     fac = 1.0f;
   }
   else if (node->custom1 < node->custom2) {
-    fac = (context.get_framenumber() - node->custom1) / (float)(node->custom2 - node->custom1);
+    fac = (context.get_framenumber() - node->custom1) / float(node->custom2 - node->custom1);
   }
 
   BKE_curvemapping_init((CurveMapping *)node->storage);

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __UTIL_TRANSFORM_H__
 #define __UTIL_TRANSFORM_H__
@@ -10,6 +11,10 @@
 
 #include "util/math.h"
 #include "util/types.h"
+
+#ifndef __KERNEL_GPU__
+#  include "util/system.h"
+#endif
 
 CCL_NAMESPACE_BEGIN
 
@@ -38,6 +43,12 @@ typedef struct DecomposedTransform {
   float4 x, y, z, w;
 } DecomposedTransform;
 
+CCL_NAMESPACE_END
+
+#include "util/transform_inverse.h"
+
+CCL_NAMESPACE_BEGIN
+
 /* Functions */
 
 #ifdef __KERNEL_METAL__
@@ -53,17 +64,16 @@ ccl_device_inline float3 transform_point(ccl_private const Transform *t, const f
 {
   /* TODO(sergey): Disabled for now, causes crashes in certain cases. */
 #if defined(__KERNEL_SSE__) && defined(__KERNEL_SSE2__)
-  ssef x, y, z, w, aa;
-  aa = a.m128;
+  const float4 aa(a.m128);
 
-  x = _mm_loadu_ps(&t->x.x);
-  y = _mm_loadu_ps(&t->y.x);
-  z = _mm_loadu_ps(&t->z.x);
-  w = _mm_set_ps(1.0f, 0.0f, 0.0f, 0.0f);
+  float4 x(_mm_loadu_ps(&t->x.x));
+  float4 y(_mm_loadu_ps(&t->y.x));
+  float4 z(_mm_loadu_ps(&t->z.x));
+  float4 w(_mm_set_ps(1.0f, 0.0f, 0.0f, 0.0f));
 
-  _MM_TRANSPOSE4_PS(x, y, z, w);
+  _MM_TRANSPOSE4_PS(x.m128, y.m128, z.m128, w.m128);
 
-  ssef tmp = w;
+  float4 tmp = w;
   tmp = madd(shuffle<2>(aa), z, tmp);
   tmp = madd(shuffle<1>(aa), y, tmp);
   tmp = madd(shuffle<0>(aa), x, tmp);
@@ -84,16 +94,16 @@ ccl_device_inline float3 transform_point(ccl_private const Transform *t, const f
 ccl_device_inline float3 transform_direction(ccl_private const Transform *t, const float3 a)
 {
 #if defined(__KERNEL_SSE__) && defined(__KERNEL_SSE2__)
-  ssef x, y, z, w, aa;
-  aa = a.m128;
-  x = _mm_loadu_ps(&t->x.x);
-  y = _mm_loadu_ps(&t->y.x);
-  z = _mm_loadu_ps(&t->z.x);
-  w = _mm_setzero_ps();
+  const float4 aa(a.m128);
 
-  _MM_TRANSPOSE4_PS(x, y, z, w);
+  float4 x(_mm_loadu_ps(&t->x.x));
+  float4 y(_mm_loadu_ps(&t->y.x));
+  float4 z(_mm_loadu_ps(&t->z.x));
+  float4 w(_mm_setzero_ps());
 
-  ssef tmp = shuffle<2>(aa) * z;
+  _MM_TRANSPOSE4_PS(x.m128, y.m128, z.m128, w.m128);
+
+  float4 tmp = shuffle<2>(aa) * z;
   tmp = madd(shuffle<1>(aa), y, tmp);
   tmp = madd(shuffle<0>(aa), x, tmp);
 
@@ -187,14 +197,7 @@ ccl_device_inline Transform make_transform_frame(float3 N)
   return make_transform(dx.x, dx.y, dx.z, 0.0f, dy.x, dy.y, dy.z, 0.0f, N.x, N.y, N.z, 0.0f);
 }
 
-#ifndef __KERNEL_GPU__
-
-ccl_device_inline Transform transform_zero()
-{
-  Transform zero = {zero_float4(), zero_float4(), zero_float4()};
-  return zero;
-}
-
+#if !defined(__KERNEL_METAL__)
 ccl_device_inline Transform operator*(const Transform a, const Transform b)
 {
   float4 c_x = make_float4(b.x.x, b.y.x, b.z.x, 0.0f);
@@ -208,6 +211,15 @@ ccl_device_inline Transform operator*(const Transform a, const Transform b)
   t.z = make_float4(dot(a.z, c_x), dot(a.z, c_y), dot(a.z, c_z), dot(a.z, c_w));
 
   return t;
+}
+#endif
+
+#ifndef __KERNEL_GPU__
+
+ccl_device_inline Transform transform_zero()
+{
+  Transform zero = {zero_float4(), zero_float4(), zero_float4()};
+  return zero;
 }
 
 ccl_device_inline void print_transform(const char *label, const Transform &t)
@@ -328,7 +340,8 @@ ccl_device_inline bool transform_uniform_scale(const Transform &tfm, float &scal
   float stz = len_squared(transform_get_column(&tfm, 2));
 
   if (fabsf(sx - sy) < eps && fabsf(sx - sz) < eps && fabsf(sx - stx) < eps &&
-      fabsf(sx - sty) < eps && fabsf(sx - stz) < eps) {
+      fabsf(sx - sty) < eps && fabsf(sx - stz) < eps)
+  {
     scale = sx;
     return true;
   }
@@ -367,7 +380,7 @@ ccl_device_inline Transform transform_empty()
 
 ccl_device_inline float4 quat_interpolate(float4 q1, float4 q2, float t)
 {
-  /* Optix and MetalRT are using lerp to interpolate motion transformations. */
+  /* Optix and MetalRT are using linear interpolation to interpolate motion transformations. */
 #if defined(__KERNEL_GPU_RAYTRACING__)
   return normalize((1.0f - t) * q1 + t * q2);
 #else  /* defined(__KERNEL_GPU_RAYTRACING__) */
@@ -391,47 +404,28 @@ ccl_device_inline float4 quat_interpolate(float4 q1, float4 q2, float t)
 #endif /* defined(__KERNEL_GPU_RAYTRACING__) */
 }
 
+#ifndef __KERNEL_GPU__
+void transform_inverse_cpu_sse41(const Transform &tfm, Transform &itfm);
+void transform_inverse_cpu_avx2(const Transform &tfm, Transform &itfm);
+#endif
+
 ccl_device_inline Transform transform_inverse(const Transform tfm)
 {
-  /* This implementation matches the one in Embree exactly, to ensure consistent
-   * results with the ray intersection of instances. */
-  float3 x = make_float3(tfm.x.x, tfm.y.x, tfm.z.x);
-  float3 y = make_float3(tfm.x.y, tfm.y.y, tfm.z.y);
-  float3 z = make_float3(tfm.x.z, tfm.y.z, tfm.z.z);
-  float3 w = make_float3(tfm.x.w, tfm.y.w, tfm.z.w);
-
-  /* Compute determinant. */
-  float det = dot(x, cross(y, z));
-
-  if (det == 0.0f) {
-    /* Matrix is degenerate (e.g. 0 scale on some axis), ideally we should
-     * never be in this situation, but try to invert it anyway with tweak.
-     *
-     * This logic does not match Embree which would just give an invalid
-     * matrix. A better solution would be to remove this and ensure any object
-     * matrix is valid. */
-    x.x += 1e-8f;
-    y.y += 1e-8f;
-    z.z += 1e-8f;
-
-    det = dot(x, cross(y, z));
-    if (det == 0.0f) {
-      det = FLT_MAX;
-    }
+  /* Optimized transform implementations. */
+#ifndef __KERNEL_GPU__
+  if (system_cpu_support_avx2()) {
+    Transform itfm;
+    transform_inverse_cpu_avx2(tfm, itfm);
+    return itfm;
   }
+  else if (system_cpu_support_sse41()) {
+    Transform itfm;
+    transform_inverse_cpu_sse41(tfm, itfm);
+    return itfm;
+  }
+#endif
 
-  /* Divide adjoint matrix by the determinant to compute inverse of 3x3 matrix. */
-  const float3 inverse_x = cross(y, z) / det;
-  const float3 inverse_y = cross(z, x) / det;
-  const float3 inverse_z = cross(x, y) / det;
-
-  /* Compute translation and fill transform. */
-  Transform itfm;
-  itfm.x = float3_to_float4(inverse_x, -dot(inverse_x, w));
-  itfm.y = float3_to_float4(inverse_y, -dot(inverse_y, w));
-  itfm.z = float3_to_float4(inverse_z, -dot(inverse_z, w));
-
-  return itfm;
+  return transform_inverse_impl(tfm);
 }
 
 ccl_device_inline void transform_compose(ccl_private Transform *tfm,

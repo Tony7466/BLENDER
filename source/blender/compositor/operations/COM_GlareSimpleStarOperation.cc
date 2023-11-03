@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_GlareSimpleStarOperation.h"
 
@@ -7,7 +8,7 @@ namespace blender::compositor {
 
 void GlareSimpleStarOperation::generate_glare(float *data,
                                               MemoryBuffer *input_tile,
-                                              NodeGlare *settings)
+                                              const NodeGlare *settings)
 {
   int i, x, y, ym, yp, xm, xp;
   float c[4] = {0, 0, 0, 0}, tc[4] = {0, 0, 0, 0};

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_DilateErodeOperation.h"
 #include "COM_OpenCLDevice.h"
@@ -181,8 +182,8 @@ static float get_min_distance(DilateErodeThresholdOperation::PixelData &p)
    * true. */
   const TCompare compare;
   float min_dist = p.distance;
-  const float *row = p.elem + ((intptr_t)p.ymin - p.y) * p.row_stride +
-                     ((intptr_t)p.xmin - p.x) * p.elem_stride;
+  const float *row = p.elem + (intptr_t(p.ymin) - p.y) * p.row_stride +
+                     (intptr_t(p.xmin) - p.x) * p.elem_stride;
   for (int yi = p.ymin; yi < p.ymax; yi++) {
     const float dy = yi - p.y;
     const float dist_y = dy * dy;
@@ -410,8 +411,8 @@ static float get_distance_value(DilateDistanceOperation::PixelData &p, const flo
   const TCompare compare;
   const float min_dist = p.min_distance;
   float value = start_value;
-  const float *row = p.elem + ((intptr_t)p.ymin - p.y) * p.row_stride +
-                     ((intptr_t)p.xmin - p.x) * p.elem_stride;
+  const float *row = p.elem + (intptr_t(p.ymin) - p.y) * p.row_stride +
+                     (intptr_t(p.xmin) - p.x) * p.elem_stride;
   for (int yi = p.ymin; yi < p.ymax; yi++) {
     const float dy = yi - p.y;
     const float dist_y = dy * dy;

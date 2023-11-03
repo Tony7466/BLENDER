@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_CalculateMeanOperation.h"
 
@@ -144,15 +145,15 @@ void CalculateMeanOperation::set_setting(int setting)
 }
 
 void CalculateMeanOperation::get_area_of_interest(int input_idx,
-                                                  const rcti &UNUSED(output_area),
+                                                  const rcti & /*output_area*/,
                                                   rcti &r_input_area)
 {
   BLI_assert(input_idx == 0);
   r_input_area = get_input_operation(input_idx)->get_canvas();
 }
 
-void CalculateMeanOperation::update_memory_buffer_started(MemoryBuffer *UNUSED(output),
-                                                          const rcti &UNUSED(area),
+void CalculateMeanOperation::update_memory_buffer_started(MemoryBuffer * /*output*/,
+                                                          const rcti & /*area*/,
                                                           Span<MemoryBuffer *> inputs)
 {
   if (!iscalculated_) {
@@ -164,7 +165,7 @@ void CalculateMeanOperation::update_memory_buffer_started(MemoryBuffer *UNUSED(o
 
 void CalculateMeanOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                           const rcti &area,
-                                                          Span<MemoryBuffer *> UNUSED(inputs))
+                                                          Span<MemoryBuffer *> /*inputs*/)
 {
   output->fill(area, &result_);
 }

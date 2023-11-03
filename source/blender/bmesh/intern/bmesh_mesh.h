@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -8,16 +10,17 @@
 
 #include "bmesh_class.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct BMAllocTemplate;
-struct BMLoopNorEditDataArray;
-struct BMPartialUpdate;
-struct MLoopNorSpaceArray;
 
 void BM_mesh_elem_toolflags_ensure(BMesh *bm);
 void BM_mesh_elem_toolflags_clear(BMesh *bm);
 
 struct BMeshCreateParams {
-  bool use_toolflags : true;
+  bool use_toolflags : 1;
 };
 
 /**
@@ -184,7 +187,8 @@ extern const BMAllocTemplate bm_mesh_chunksize_default;
 
 #define _VA_BMALLOC_TEMPLATE_FROM_ME_1(me) \
   { \
-    (CHECK_TYPE_INLINE(me, Mesh *), (me)->totvert), (me)->totedge, (me)->totloop, (me)->totpoly, \
+    (CHECK_TYPE_INLINE(me, Mesh *), (me)->totvert), (me)->totedge, (me)->totloop, \
+        (me)->faces_num, \
   }
 #define _VA_BMALLOC_TEMPLATE_FROM_ME_2(me_a, me_b) \
   { \
@@ -192,7 +196,7 @@ extern const BMAllocTemplate bm_mesh_chunksize_default;
      CHECK_TYPE_INLINE(me_b, Mesh *), \
      (me_a)->totvert + (me_b)->totvert), \
         (me_a)->totedge + (me_b)->totedge, (me_a)->totloop + (me_b)->totloop, \
-        (me_a)->totpoly + (me_b)->totpoly, \
+        (me_a)->faces_num + (me_b)->faces_num, \
   }
 #define BMALLOC_TEMPLATE_FROM_ME(...) \
   VA_NARGS_CALL_OVERLOAD(_VA_BMALLOC_TEMPLATE_FROM_ME_, __VA_ARGS__)
@@ -204,3 +208,7 @@ void BM_mesh_vert_coords_apply(BMesh *bm, const float (*vert_coords)[3]);
 void BM_mesh_vert_coords_apply_with_mat4(BMesh *bm,
                                          const float (*vert_coords)[3],
                                          const float mat[4][4]);
+
+#ifdef __cplusplus
+}
+#endif

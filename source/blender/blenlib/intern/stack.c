@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -141,7 +143,7 @@ void BLI_stack_pop(BLI_Stack *stack, void *dst)
   BLI_stack_discard(stack);
 }
 
-void BLI_stack_pop_n(BLI_Stack *stack, void *dst, unsigned int n)
+void BLI_stack_pop_n(BLI_Stack *stack, void *dst, uint n)
 {
   BLI_assert(n <= BLI_stack_count(stack));
 
@@ -151,7 +153,7 @@ void BLI_stack_pop_n(BLI_Stack *stack, void *dst, unsigned int n)
   }
 }
 
-void BLI_stack_pop_n_reverse(BLI_Stack *stack, void *dst, unsigned int n)
+void BLI_stack_pop_n_reverse(BLI_Stack *stack, void *dst, uint n)
 {
   BLI_assert(n <= BLI_stack_count(stack));
 

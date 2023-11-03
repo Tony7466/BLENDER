@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_DirectionalBlurNode.h"
 #include "COM_DirectionalBlurOperation.h"
@@ -14,7 +15,7 @@ DirectionalBlurNode::DirectionalBlurNode(bNode *editor_node) : Node(editor_node)
 void DirectionalBlurNode::convert_to_operations(NodeConverter &converter,
                                                 const CompositorContext &context) const
 {
-  NodeDBlurData *data = (NodeDBlurData *)this->get_bnode()->storage;
+  const NodeDBlurData *data = (const NodeDBlurData *)this->get_bnode()->storage;
   DirectionalBlurOperation *operation = new DirectionalBlurOperation();
   operation->set_quality(context.get_quality());
   operation->set_data(data);

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_LuminanceMatteNode.h"
 #include "COM_LuminanceMatteOperation.h"
@@ -15,7 +16,7 @@ LuminanceMatteNode::LuminanceMatteNode(bNode *editor_node) : Node(editor_node)
 void LuminanceMatteNode::convert_to_operations(NodeConverter &converter,
                                                const CompositorContext & /*context*/) const
 {
-  bNode *editorsnode = get_bnode();
+  const bNode *editorsnode = get_bnode();
   NodeInput *input_socket = this->get_input_socket(0);
   NodeOutput *output_socket_image = this->get_output_socket(0);
   NodeOutput *output_socket_matte = this->get_output_socket(1);

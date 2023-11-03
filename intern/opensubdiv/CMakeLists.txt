@@ -1,9 +1,9 @@
+# SPDX-FileCopyrightText: 2013 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2013 Blender Foundation. All rights reserved.
 
 set(INC
   .
-  ../guardedalloc
 )
 
 set(INC_SYS
@@ -18,6 +18,7 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::intern::guardedalloc
 )
 
 if(WITH_OPENSUBDIV)
@@ -29,7 +30,7 @@ if(WITH_OPENSUBDIV)
 
   list(APPEND INC_SYS
     ${OPENSUBDIV_INCLUDE_DIRS}
-    ${GLEW_INCLUDE_PATH}
+    ${Epoxy_INCLUDE_DIRS}
   )
 
   list(APPEND SRC
@@ -81,21 +82,16 @@ if(WITH_OPENSUBDIV)
     )
   endif()
 
-  OPENSUBDIV_DEFINE_COMPONENT(OPENSUBDIV_HAS_OPENMP)
-  OPENSUBDIV_DEFINE_COMPONENT(OPENSUBDIV_HAS_OPENCL)
-  OPENSUBDIV_DEFINE_COMPONENT(OPENSUBDIV_HAS_CUDA)
-  OPENSUBDIV_DEFINE_COMPONENT(OPENSUBDIV_HAS_GLSL_TRANSFORM_FEEDBACK)
-  OPENSUBDIV_DEFINE_COMPONENT(OPENSUBDIV_HAS_GLSL_COMPUTE)
-
-  add_definitions(${GL_DEFINITIONS})
-  add_definitions(-DOSD_USES_GLEW)
-
   if(WIN32)
     add_definitions(-DNOMINMAX)
     add_definitions(-D_USE_MATH_DEFINES)
   endif()
 
-  data_to_c_simple(internal/evaluator/shaders/glsl_compute_kernel.glsl SRC)
+  data_to_c_simple(
+    internal/evaluator/shaders/glsl_compute_kernel.glsl
+    SRC
+    STRIP_LEADING_C_COMMENTS
+  )
 else()
   list(APPEND SRC
     stub/opensubdiv_stub.cc
@@ -113,7 +109,6 @@ if(WITH_GTESTS AND WITH_OPENSUBDIV)
 
   add_definitions(${GFLAGS_DEFINES})
   add_definitions(${GLOG_DEFINES})
-  add_definitions(-DBLENDER_GFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
 
   blender_add_test_executable(opensubdiv_mesh_topology_test "internal/topology/mesh_topology_test.cc" "${INC}" "${INC_SYS}" "${LIB};bf_intern_opensubdiv")
 endif()

@@ -1,10 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 /** \file
  * \ingroup bmesh
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * \brief Dissolve Vert
@@ -189,8 +195,6 @@ BMVert *BM_edge_split_n(BMesh *bm, BMEdge *e, int numcuts, BMVert **r_varr);
  */
 void BM_edge_verts_swap(BMEdge *e);
 
-bool BM_face_validate(BMFace *face, FILE *err);
-
 /**
  * Calculate the 2 loops which _would_ make up the newly rotated Edge
  * but don't actually change anything.
@@ -260,3 +264,7 @@ enum {
 BMVert *BM_face_loop_separate(BMesh *bm, BMLoop *l_sep);
 BMVert *BM_face_loop_separate_multi_isolated(BMesh *bm, BMLoop *l_sep);
 BMVert *BM_face_loop_separate_multi(BMesh *bm, BMLoop **larr, int larr_len);
+
+#ifdef __cplusplus
+}
+#endif

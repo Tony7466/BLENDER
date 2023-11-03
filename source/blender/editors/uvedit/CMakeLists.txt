@@ -1,15 +1,15 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
   ../../blenkernel
-  ../../blenlib
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
   ../../geometry
   ../../gpu
-  ../../makesdna
   ../../makesrna
   ../../windowmanager
   ../../../../intern/eigen
@@ -20,24 +20,32 @@ set(INC
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
+set(INC_SYS
+)
 
 set(SRC
-  uvedit_buttons.c
-  uvedit_draw.c
-  uvedit_islands.c
-  uvedit_ops.c
-  uvedit_path.c
-  uvedit_rip.c
-  uvedit_select.c
-  uvedit_smart_stitch.c
-  uvedit_unwrap_ops.c
+  uvedit_buttons.cc
+  uvedit_clipboard.cc
+  uvedit_clipboard_graph_iso.cc
+  uvedit_draw.cc
+  uvedit_islands.cc
+  uvedit_ops.cc
+  uvedit_path.cc
+  uvedit_rip.cc
+  uvedit_select.cc
+  uvedit_smart_stitch.cc
+  uvedit_unwrap_ops.cc
 
+  uvedit_clipboard_graph_iso.hh
   uvedit_intern.h
 )
 
 set(LIB
+  PRIVATE bf::blenlib
   bf_bmesh
   bf_intern_slim
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 

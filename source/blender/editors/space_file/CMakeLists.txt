@@ -1,47 +1,62 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../asset
   ../include
+  ../../asset_system
   ../../blenfont
   ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../blentranslation
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../render
   ../../windowmanager
-  ../../../../intern/atomic
-  ../../../../intern/glew-mx
-  ../../../../intern/guardedalloc
+  ../../../../extern/fmtlib/include
+
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
+set(INC_SYS
+)
+
 set(SRC
   asset_catalog_tree_view.cc
-  file_draw.c
+  file_context.cc
+  file_draw.cc
   file_indexer.cc
-  file_ops.c
-  file_panels.c
-  file_utils.c
-  filelist.c
-  filesel.c
-  fsmenu.c
-  space_file.c
+  file_ops.cc
+  file_panels.cc
+  file_utils.cc
+  filelist.cc
+  filesel.cc
+  folder_history.cc
+  fsmenu.cc
+  fsmenu_system.cc
+  space_file.cc
 
-  file_indexer.h
-  file_intern.h
-  filelist.h
+  file_indexer.hh
+  file_intern.hh
+  filelist.hh
   fsmenu.h
 )
 
 set(LIB
   bf_blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
+  extern_fmtlib
+  PRIVATE bf::intern::atomic
 )
+
+if(WIN32)
+  add_definitions(-DNOMINMAX)
+endif()
 
 if(WITH_HEADLESS)
   add_definitions(-DWITH_HEADLESS)
@@ -55,28 +70,12 @@ if(WITH_IMAGE_OPENEXR)
   add_definitions(-DWITH_OPENEXR)
 endif()
 
-if(WITH_OPENIMAGEIO)
-  add_definitions(-DWITH_OPENIMAGEIO)
-endif()
-
-if(WITH_IMAGE_TIFF)
-  add_definitions(-DWITH_TIFF)
-endif()
-
 if(WITH_IMAGE_OPENJPEG)
   add_definitions(-DWITH_OPENJPEG)
 endif()
 
-if(WITH_IMAGE_DDS)
-  add_definitions(-DWITH_DDS)
-endif()
-
 if(WITH_IMAGE_CINEON)
   add_definitions(-DWITH_CINEON)
-endif()
-
-if(WITH_IMAGE_HDR)
-  add_definitions(-DWITH_HDR)
 endif()
 
 if(WITH_IMAGE_WEBP)
@@ -89,5 +88,5 @@ endif()
 
 blender_add_lib(bf_editor_space_file "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.h dna_type_offsets.h
 add_dependencies(bf_editor_space_file bf_rna)

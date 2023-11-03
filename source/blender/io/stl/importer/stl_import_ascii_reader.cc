@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup stl
@@ -7,7 +9,7 @@
 #include <cstdint>
 #include <cstdio>
 
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 
 #include "BLI_fileops.hh"
 #include "BLI_memory_utils.hh"
@@ -97,7 +99,7 @@ class StringBuffer {
       start++;
     }
     fast_float::from_chars_result res = fast_float::from_chars(start, end, out);
-    if (res.ec == std::errc::invalid_argument || res.ec == std::errc::result_out_of_range) {
+    if (ELEM(res.ec, std::errc::invalid_argument, std::errc::result_out_of_range)) {
       out = 0.0f;
     }
     start = const_cast<char *>(res.ptr);
@@ -111,13 +113,13 @@ static inline void parse_float3(StringBuffer &buf, float out[3])
   }
 }
 
-Mesh *read_stl_ascii(const char *filepath, Main *bmain, char *mesh_name, bool use_custom_normals)
+Mesh *read_stl_ascii(const char *filepath, const bool use_custom_normals)
 {
   size_t buffer_len;
   void *buffer = BLI_file_read_text_as_mem(filepath, 0, &buffer_len);
   if (buffer == nullptr) {
     fprintf(stderr, "STL Importer: cannot read from ASCII STL file: '%s'\n", filepath);
-    return BKE_mesh_add(bmain, mesh_name);
+    return nullptr;
   }
   BLI_SCOPED_DEFER([&]() { MEM_freeN(buffer); });
 
@@ -154,7 +156,7 @@ Mesh *read_stl_ascii(const char *filepath, Main *bmain, char *mesh_name, bool us
     }
   }
 
-  return stl_mesh.to_mesh(bmain, mesh_name);
+  return stl_mesh.to_mesh();
 }
 
 }  // namespace blender::io::stl

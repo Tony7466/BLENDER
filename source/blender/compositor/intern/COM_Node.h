@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -31,7 +32,7 @@ class Node {
   /**
    * \brief stores the reference to the SDNA bNode struct
    */
-  bNode *editor_node_;
+  const bNode *editor_node_;
 
   /**
    * \brief Is this node part of the active group
@@ -61,7 +62,7 @@ class Node {
   /**
    * \brief get the reference to the SDNA bNode struct
    */
-  bNode *get_bnode() const
+  const bNode *get_bnode() const
   {
     return editor_node_;
   }

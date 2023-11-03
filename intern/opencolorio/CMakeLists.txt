@@ -1,14 +1,11 @@
+# SPDX-FileCopyrightText: 2012 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2012 Blender Foundation. All rights reserved.
 
 set(INC
   .
-  ../glew-mx
-  ../guardedalloc
-  ../../source/blender/blenlib
   ../../source/blender/gpu
   ../../source/blender/gpu/intern
-  ../../source/blender/makesdna
 )
 
 set(INC_SYS
@@ -25,6 +22,9 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 if(WITH_OPENCOLORIO)
@@ -32,12 +32,11 @@ if(WITH_OPENCOLORIO)
     -DWITH_OCIO
   )
 
-  add_definitions(${GL_DEFINITIONS})
   add_definitions(${OPENCOLORIO_DEFINITIONS})
 
   list(APPEND INC_SYS
     ${OPENCOLORIO_INCLUDE_DIRS}
-    ${GLEW_INCLUDE_PATH}
+    ${Epoxy_INCLUDE_DIRS}
   )
 
   list(APPEND SRC
@@ -67,7 +66,7 @@ if(WITH_OPENCOLORIO)
 
   set(GLSL_C)
   foreach(GLSL_FILE ${GLSL_SRC})
-    data_to_c_simple(${GLSL_FILE} GLSL_C)
+    data_to_c_simple(${GLSL_FILE} GLSL_C STRIP_LEADING_C_COMMENTS)
   endforeach()
 
   blender_add_lib(bf_ocio_shaders "${GLSL_C}" "" "" "")

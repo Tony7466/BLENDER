@@ -1,18 +1,24 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2015 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2015 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
  */
 
+#include "BLI_math_base.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_solvers.h"
+#include "BLI_math_vector.h"
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLI_strict_flags.h"
 
 #include "eigen_capi.h"
+
+#include <string.h>
 
 /********************************** Eigen Solvers *********************************/
 
@@ -45,7 +51,7 @@ bool BLI_tridiagonal_solve(
     return false;
   }
 
-  size_t bytes = sizeof(double) * (unsigned)count;
+  size_t bytes = sizeof(double) * (uint)count;
   double *c1 = (double *)MEM_mallocN(bytes * 2, "tridiagonal_c1d1");
   double *d1 = c1 + count;
 
@@ -112,7 +118,7 @@ bool BLI_tridiagonal_solve_cyclic(
     return BLI_tridiagonal_solve(a, b, c, d, r_x, count);
   }
 
-  size_t bytes = sizeof(float) * (unsigned)count;
+  size_t bytes = sizeof(float) * (uint)count;
   float *tmp = (float *)MEM_mallocN(bytes * 2, "tridiagonal_ex");
   float *b2 = tmp + count;
 

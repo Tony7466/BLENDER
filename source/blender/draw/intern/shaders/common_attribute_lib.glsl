@@ -1,7 +1,11 @@
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Prototype of functions to implement to load attributes data.
  * Implementation changes based on object data type. */
 
+#ifndef GPU_METAL /* MSL does not require prototypes. */
 vec3 attr_load_orco(vec4 orco);
 vec4 attr_load_tangent(vec4 tangent);
 vec4 attr_load_vec4(vec4 attr);
@@ -25,3 +29,5 @@ float attr_load_float(sampler3D tex);
 
 float attr_load_temperature_post(float attr);
 vec4 attr_load_color_post(vec4 attr);
+vec4 attr_load_uniform(vec4 attr, const uint attr_hash);
+#endif

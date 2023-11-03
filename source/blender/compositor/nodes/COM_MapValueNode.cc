@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_MapValueNode.h"
 
@@ -15,7 +16,7 @@ MapValueNode::MapValueNode(bNode *editor_node) : Node(editor_node)
 void MapValueNode::convert_to_operations(NodeConverter &converter,
                                          const CompositorContext & /*context*/) const
 {
-  TexMapping *storage = (TexMapping *)this->get_bnode()->storage;
+  const TexMapping *storage = (const TexMapping *)this->get_bnode()->storage;
 
   NodeInput *color_socket = this->get_input_socket(0);
   NodeOutput *value_socket = this->get_output_socket(0);

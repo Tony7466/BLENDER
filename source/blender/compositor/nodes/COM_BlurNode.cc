@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_BlurNode.h"
 #include "COM_FastGaussianBlurOperation.h"
@@ -22,8 +23,8 @@ BlurNode::BlurNode(bNode *editor_node) : Node(editor_node)
 void BlurNode::convert_to_operations(NodeConverter &converter,
                                      const CompositorContext &context) const
 {
-  bNode *editor_node = this->get_bnode();
-  NodeBlurData *data = (NodeBlurData *)editor_node->storage;
+  const bNode *editor_node = this->get_bnode();
+  const NodeBlurData *data = (const NodeBlurData *)editor_node->storage;
   NodeInput *input_size_socket = this->get_input_socket(1);
   bool connected_size_socket = input_size_socket->is_linked();
 

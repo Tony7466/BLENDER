@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -10,6 +12,8 @@
 
 #include "../system/PseudoNoise.h"
 #include "../system/RandGen.h"
+
+#include "BLI_sys_types.h"
 
 namespace Freestyle {
 
@@ -71,7 +75,7 @@ int CalligraphicShader::shade(Stroke &ioStroke) const
 //
 /////////////////////////////////////////
 
-static const unsigned NB_VALUE_NOISE = 512;
+static const uint NB_VALUE_NOISE = 512;
 
 SpatialNoiseShader::SpatialNoiseShader(
     float iAmount, float ixScale, int nbOctave, bool smooth, bool pureRandom)

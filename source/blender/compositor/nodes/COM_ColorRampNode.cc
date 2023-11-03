@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ColorRampNode.h"
 #include "COM_ColorRampOperation.h"
@@ -18,7 +19,7 @@ void ColorRampNode::convert_to_operations(NodeConverter &converter,
   NodeInput *input_socket = this->get_input_socket(0);
   NodeOutput *output_socket = this->get_output_socket(0);
   NodeOutput *output_socket_alpha = this->get_output_socket(1);
-  bNode *editor_node = this->get_bnode();
+  const bNode *editor_node = this->get_bnode();
 
   ColorRampOperation *operation = new ColorRampOperation();
   operation->set_color_band((ColorBand *)editor_node->storage);

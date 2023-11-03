@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_GaussianAlphaBlurBaseOperation.h"
 
@@ -102,7 +103,7 @@ void GaussianAlphaBlurBaseOperation::update_memory_buffer_partial(MemoryBuffer *
     const int coord_min = max_ii(coord - filtersize_, min_input_coord);
     const int coord_max = min_ii(coord + filtersize_ + 1, max_input_coord);
 
-    /* *** This is the main part which is different to #GaussianBlurBaseOperation.  *** */
+    /* *** This is the main part which is different to #GaussianBlurBaseOperation. *** */
     /* Gauss. */
     float alpha_accum = 0.0f;
     float multiplier_accum = 0.0f;
@@ -114,7 +115,7 @@ void GaussianAlphaBlurBaseOperation::update_memory_buffer_partial(MemoryBuffer *
     float distfacinv_max = 1.0f; /* 0 to 1 */
 
     const int step = QualityStepHelper::get_step();
-    const float *in = it.in(0) + ((intptr_t)coord_min - coord) * elem_stride;
+    const float *in = it.in(0) + (intptr_t(coord_min) - coord) * elem_stride;
     const int in_stride = elem_stride * step;
     int index = (coord_min - coord) + filtersize_;
     const int index_end = index + (coord_max - coord_min);

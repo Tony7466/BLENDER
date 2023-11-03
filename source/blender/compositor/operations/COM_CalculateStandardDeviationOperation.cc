@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_CalculateStandardDeviationOperation.h"
 
@@ -74,15 +75,16 @@ void *CalculateStandardDeviationOperation::initialize_tile_data(rcti *rect)
         }
       }
     }
-    standard_deviation_ = sqrt(sum / (float)(pixels - 1));
+    standard_deviation_ = sqrt(sum / float(pixels - 1));
     iscalculated_ = true;
   }
   unlock_mutex();
   return nullptr;
 }
 
-void CalculateStandardDeviationOperation::update_memory_buffer_started(
-    MemoryBuffer *UNUSED(output), const rcti &UNUSED(area), Span<MemoryBuffer *> inputs)
+void CalculateStandardDeviationOperation::update_memory_buffer_started(MemoryBuffer * /*output*/,
+                                                                       const rcti & /*area*/,
+                                                                       Span<MemoryBuffer *> inputs)
 {
   if (!iscalculated_) {
     const MemoryBuffer *input = inputs[0];
@@ -98,13 +100,13 @@ void CalculateStandardDeviationOperation::update_memory_buffer_started(
           join.num_pixels += chunk.num_pixels;
         });
     standard_deviation_ = total.num_pixels <= 1 ? 0.0f :
-                                                  sqrt(total.sum / (float)(total.num_pixels - 1));
+                                                  sqrt(total.sum / float(total.num_pixels - 1));
     iscalculated_ = true;
   }
 }
 
 void CalculateStandardDeviationOperation::update_memory_buffer_partial(
-    MemoryBuffer *output, const rcti &area, Span<MemoryBuffer *> UNUSED(inputs))
+    MemoryBuffer *output, const rcti &area, Span<MemoryBuffer *> /*inputs*/)
 {
   output->fill(area, &standard_deviation_);
 }

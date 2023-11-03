@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -16,33 +18,29 @@
 
 namespace blender {
 
-template<typename T> class ListBaseWrapper {
+template<typename LB, typename T> class ListBaseWrapperTemplate {
  private:
-  ListBase *listbase_;
+  LB *listbase_;
 
  public:
-  ListBaseWrapper(ListBase *listbase) : listbase_(listbase)
+  ListBaseWrapperTemplate(LB *listbase) : listbase_(listbase)
   {
     BLI_assert(listbase);
   }
 
-  ListBaseWrapper(ListBase &listbase) : ListBaseWrapper(&listbase)
-  {
-  }
+  ListBaseWrapperTemplate(LB &listbase) : ListBaseWrapperTemplate(&listbase) {}
 
   class Iterator {
    private:
-    ListBase *listbase_;
+    LB *listbase_;
     T *current_;
 
    public:
-    Iterator(ListBase *listbase, T *current) : listbase_(listbase), current_(current)
-    {
-    }
+    Iterator(LB *listbase, T *current) : listbase_(listbase), current_(current) {}
 
     Iterator &operator++()
     {
-      /* Some types store next/prev using `void *`, so cast is necessary. */
+      /* Some types store `next/prev` using `void *`, so cast is necessary. */
       current_ = static_cast<T *>(current_->next);
       return *this;
     }
@@ -75,7 +73,7 @@ template<typename T> class ListBaseWrapper {
     return Iterator(listbase_, nullptr);
   }
 
-  T get(uint index) const
+  T *get(uint index) const
   {
     void *ptr = BLI_findlink(listbase_, index);
     BLI_assert(ptr);
@@ -95,5 +93,8 @@ template<typename T> class ListBaseWrapper {
     return -1;
   }
 };
+
+template<typename T> using ListBaseWrapper = ListBaseWrapperTemplate<ListBase, T>;
+template<typename T> using ConstListBaseWrapper = ListBaseWrapperTemplate<const ListBase, const T>;
 
 } /* namespace blender */

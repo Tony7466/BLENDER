@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2017-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Required by some nodes. */
 #pragma BLENDER_REQUIRE(common_hair_lib.glsl)
@@ -11,8 +14,6 @@
 #pragma BLENDER_REQUIRE(surface_lib.glsl)
 
 #ifdef USE_ALPHA_HASH
-/* A value of -1.0 will disable alpha clip and use alpha hash. */
-uniform float alphaClipThreshold;
 
 /* From the paper "Hashed Alpha Testing" by Chris Wyman and Morgan McGuire */
 float hash(vec2 a)
@@ -48,7 +49,7 @@ float hashed_alpha_threshold(vec3 co)
   /* Interpolate alpha threshold from noise at two scales. */
   float x = mix(alpha.x, alpha.y, fac);
 
-  /* Pass into CDF to compute uniformly distrib threshold. */
+  /* Pass into CDF to compute uniformly distributed threshold. */
   float a = min(fac, 1.0 - fac);
   float one_a = 1.0 - a;
   float denom = 1.0 / (2 * a * one_a);
@@ -90,4 +91,18 @@ void main()
     }
   }
 #endif
+}
+
+/* Passthrough. */
+float attr_load_temperature_post(float attr)
+{
+  return attr;
+}
+vec4 attr_load_color_post(vec4 attr)
+{
+  return attr;
+}
+vec4 attr_load_uniform(vec4 attr, const uint attr_hash)
+{
+  return attr;
 }

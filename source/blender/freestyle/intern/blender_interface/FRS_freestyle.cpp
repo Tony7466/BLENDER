@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -38,20 +40,23 @@ using namespace Freestyle;
 #include "BLT_translation.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_math_color_blend.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 
 #include "BPY_extern.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "pipeline.h"
+#include "IMB_imbuf.h"
+
+#include "pipeline.hh"
 
 #include "FRS_freestyle.h"
 
 extern "C" {
 
-struct FreestyleGlobals g_freestyle;
+FreestyleGlobals g_freestyle;
 
 // Freestyle configuration
 static bool freestyle_is_initialized = false;
@@ -63,8 +68,8 @@ static AppView *view = nullptr;
 static FreestyleLineSet lineset_buffer;
 static bool lineset_copied = false;
 
-static void load_post_callback(struct Main * /*main*/,
-                               struct PointerRNA ** /*pointers*/,
+static void load_post_callback(Main * /*main*/,
+                               PointerRNA ** /*pointers*/,
                                const int /*num_pointers*/,
                                void * /*arg*/)
 {
@@ -72,12 +77,11 @@ static void load_post_callback(struct Main * /*main*/,
 }
 
 static bCallbackFuncStore load_post_callback_funcstore = {
-    nullptr,            /* next */
-    nullptr,            /* prev */
-    load_post_callback, /* func */
-    nullptr,            /* arg */
-    0                   /* alloc */
-};
+    /*next*/ nullptr,
+    /*prev*/ nullptr,
+    /*func*/ load_post_callback,
+    /*arg*/ nullptr,
+    /*alloc*/ 0};
 
 //=======================================================
 //   Initialization
@@ -131,9 +135,9 @@ static void init_view(Render *re)
   int ymax = re->disprect.ymax;
 
   float thickness = 1.0f;
-  switch (re->r.line_thickness_mode) {
+  switch (re->scene->r.line_thickness_mode) {
     case R_LINE_THICKNESS_ABSOLUTE:
-      thickness = re->r.unit_line_thickness * (re->r.size / 100.0f);
+      thickness = re->scene->r.unit_line_thickness * (re->r.size / 100.0f);
       break;
     case R_LINE_THICKNESS_RELATIVE:
       thickness = height / 480.0f;
@@ -191,7 +195,7 @@ struct edge_type_condition {
 };
 
 // examines the conditions and returns true if the target edge type needs to be computed
-static bool test_edge_type_conditions(struct edge_type_condition *conditions,
+static bool test_edge_type_conditions(edge_type_condition *conditions,
                                       int num_edge_types,
                                       bool logical_and,
                                       int target,
@@ -276,13 +280,13 @@ static void prepare(Render *re, ViewLayer *view_layer, Depsgraph *depsgraph)
 {
   // load mesh
   re->i.infostr = TIP_("Freestyle: Mesh loading");
-  re->stats_draw(re->sdh, &re->i);
+  re->stats_draw(&re->i);
   re->i.infostr = nullptr;
-  if (controller->LoadMesh(
-          re, view_layer, depsgraph)) {  // returns if scene cannot be loaded or if empty
+  if (controller->LoadMesh(re, view_layer, depsgraph)) {
+    /* Returns if scene cannot be loaded or if empty. */
     return;
   }
-  if (re->test_break(re->tbh)) {
+  if (re->test_break()) {
     return;
   }
 
@@ -299,9 +303,7 @@ static void prepare(Render *re, ViewLayer *view_layer, Depsgraph *depsgraph)
       if (G.debug & G_DEBUG_FREESTYLE) {
         cout << "Modules :" << endl;
       }
-      for (FreestyleModuleConfig *module_conf = (FreestyleModuleConfig *)config->modules.first;
-           module_conf;
-           module_conf = module_conf->next) {
+      LISTBASE_FOREACH (FreestyleModuleConfig *, module_conf, &config->modules) {
         if (module_conf->script && module_conf->is_displayed) {
           const char *id_name = module_conf->script->id.name + 2;
           if (G.debug & G_DEBUG_FREESTYLE) {
@@ -330,7 +332,7 @@ static void prepare(Render *re, ViewLayer *view_layer, Depsgraph *depsgraph)
       int use_ridges_and_valleys = 0;
       int use_suggestive_contours = 0;
       int use_material_boundaries = 0;
-      struct edge_type_condition conditions[] = {
+      edge_type_condition conditions[] = {
           {FREESTYLE_FE_SILHOUETTE, 0},
           {FREESTYLE_FE_BORDER, 0},
           {FREESTYLE_FE_CREASE, 0},
@@ -345,12 +347,11 @@ static void prepare(Render *re, ViewLayer *view_layer, Depsgraph *depsgraph)
       if (G.debug & G_DEBUG_FREESTYLE) {
         cout << "Linesets:" << endl;
       }
-      for (FreestyleLineSet *lineset = (FreestyleLineSet *)config->linesets.first; lineset;
-           lineset = lineset->next) {
+      LISTBASE_FOREACH (FreestyleLineSet *, lineset, &config->linesets) {
         if (lineset->flags & FREESTYLE_LINESET_ENABLED) {
           if (G.debug & G_DEBUG_FREESTYLE) {
             cout << "  " << layer_count + 1 << ": " << lineset->name << " - "
-                 << (lineset->linestyle ? (lineset->linestyle->id.name + 2) : "<NULL>") << endl;
+                 << (lineset->linestyle ? (lineset->linestyle->id.name + 2) : "<null>") << endl;
           }
           char *buffer = create_lineset_handler(view_layer->name, lineset->name);
           controller->InsertStyleModule(layer_count, lineset->name, buffer);
@@ -388,21 +389,21 @@ static void prepare(Render *re, ViewLayer *view_layer, Depsgraph *depsgraph)
               logical_and = !logical_and;
             }
             if (test_edge_type_conditions(
-                    conditions, num_edge_types, logical_and, FREESTYLE_FE_RIDGE_VALLEY, true)) {
+                    conditions, num_edge_types, logical_and, FREESTYLE_FE_RIDGE_VALLEY, true))
+            {
               ++use_ridges_and_valleys;
             }
             if (test_edge_type_conditions(conditions,
                                           num_edge_types,
                                           logical_and,
                                           FREESTYLE_FE_SUGGESTIVE_CONTOUR,
-                                          true)) {
+                                          true))
+            {
               ++use_suggestive_contours;
             }
-            if (test_edge_type_conditions(conditions,
-                                          num_edge_types,
-                                          logical_and,
-                                          FREESTYLE_FE_MATERIAL_BOUNDARY,
-                                          true)) {
+            if (test_edge_type_conditions(
+                    conditions, num_edge_types, logical_and, FREESTYLE_FE_MATERIAL_BOUNDARY, true))
+            {
               ++use_material_boundaries;
             }
           }
@@ -443,13 +444,14 @@ static void prepare(Render *re, ViewLayer *view_layer, Depsgraph *depsgraph)
   // set diffuse and z depth passes
   RenderLayer *rl = RE_GetRenderLayer(re->result, view_layer->name);
   bool diffuse = false, z = false;
-  for (RenderPass *rpass = (RenderPass *)rl->passes.first; rpass; rpass = rpass->next) {
+  LISTBASE_FOREACH (RenderPass *, rpass, &rl->passes) {
+    float *rpass_buffer_data = rpass->ibuf->float_buffer.data;
     if (STREQ(rpass->name, RE_PASSNAME_DIFFUSE_COLOR)) {
-      controller->setPassDiffuse(rpass->rect, rpass->rectx, rpass->recty);
+      controller->setPassDiffuse(rpass_buffer_data, rpass->rectx, rpass->recty);
       diffuse = true;
     }
     if (STREQ(rpass->name, RE_PASSNAME_Z)) {
-      controller->setPassZ(rpass->rect, rpass->rectx, rpass->recty);
+      controller->setPassZ(rpass_buffer_data, rpass->rectx, rpass->recty);
       z = true;
     }
   }
@@ -465,7 +467,7 @@ static void prepare(Render *re, ViewLayer *view_layer, Depsgraph *depsgraph)
 
   // compute view map
   re->i.infostr = TIP_("Freestyle: View map creation");
-  re->stats_draw(re->sdh, &re->i);
+  re->stats_draw(&re->i);
   re->i.infostr = nullptr;
   controller->ComputeViewMap();
 }
@@ -485,7 +487,7 @@ void FRS_composite_result(Render *re, ViewLayer *view_layer, Render *freestyle_r
     return;
   }
 
-  rl = render_get_active_layer(freestyle_render, freestyle_render->result);
+  rl = render_get_single_layer(freestyle_render, freestyle_render->result);
   if (!rl) {
     if (G.debug & G_DEBUG_FREESTYLE) {
       cout << "No source render layer to composite" << endl;
@@ -553,20 +555,14 @@ static int displayed_layer_count(ViewLayer *view_layer)
 
   switch (view_layer->freestyle_config.mode) {
     case FREESTYLE_CONTROL_SCRIPT_MODE:
-      for (FreestyleModuleConfig *module =
-               (FreestyleModuleConfig *)view_layer->freestyle_config.modules.first;
-           module;
-           module = module->next) {
+      LISTBASE_FOREACH (FreestyleModuleConfig *, module, &view_layer->freestyle_config.modules) {
         if (module->script && module->is_displayed) {
           count++;
         }
       }
       break;
     case FREESTYLE_CONTROL_EDITOR_MODE:
-      for (FreestyleLineSet *lineset =
-               (FreestyleLineSet *)view_layer->freestyle_config.linesets.first;
-           lineset;
-           lineset = lineset->next) {
+      LISTBASE_FOREACH (FreestyleLineSet *, lineset, &view_layer->freestyle_config.linesets) {
         if (lineset->flags & FREESTYLE_LINESET_ENABLED) {
           count++;
         }
@@ -596,9 +592,7 @@ void FRS_init_stroke_renderer(Render *re)
   controller->ResetRenderCount();
 }
 
-void FRS_begin_stroke_rendering(Render *UNUSED(re))
-{
-}
+void FRS_begin_stroke_rendering(Render * /*re*/) {}
 
 void FRS_do_stroke_rendering(Render *re, ViewLayer *view_layer)
 {
@@ -636,7 +630,7 @@ void FRS_do_stroke_rendering(Render *re, ViewLayer *view_layer)
   //   - compute view map
   prepare(re, view_layer, depsgraph);
 
-  if (re->test_break(re->tbh)) {
+  if (re->test_break()) {
     controller->CloseFile();
     if (G.debug & G_DEBUG_FREESTYLE) {
       cout << "Break" << endl;
@@ -647,7 +641,7 @@ void FRS_do_stroke_rendering(Render *re, ViewLayer *view_layer)
     if (controller->_ViewMap) {
       // render strokes
       re->i.infostr = TIP_("Freestyle: Stroke rendering");
-      re->stats_draw(re->sdh, &re->i);
+      re->stats_draw(&re->i);
       re->i.infostr = nullptr;
       g_freestyle.scene = DEG_get_evaluated_scene(depsgraph);
       int strokeCount = controller->DrawStrokes();
@@ -675,7 +669,7 @@ void FRS_end_stroke_rendering(Render * /*re*/)
   controller->Clear();
 }
 
-void FRS_free_view_map_cache(void)
+void FRS_free_view_map_cache()
 {
   // free cache
   controller->DeleteViewMap(true);
@@ -704,7 +698,7 @@ void FRS_copy_active_lineset(FreestyleConfig *config)
     lineset_buffer.edge_types = lineset->edge_types;
     lineset_buffer.exclude_edge_types = lineset->exclude_edge_types;
     lineset_buffer.group = lineset->group;
-    strcpy(lineset_buffer.name, lineset->name);
+    STRNCPY(lineset_buffer.name, lineset->name);
     lineset_copied = true;
   }
 }
@@ -740,7 +734,7 @@ void FRS_paste_active_lineset(FreestyleConfig *config)
       lineset->group = lineset_buffer.group;
       id_us_plus(&lineset->group->id);
     }
-    strcpy(lineset->name, lineset_buffer.name);
+    STRNCPY(lineset->name, lineset_buffer.name);
     BKE_freestyle_lineset_unique_name(config, lineset);
     lineset->flags |= FREESTYLE_LINESET_CURRENT;
   }
@@ -763,7 +757,7 @@ bool FRS_move_active_lineset(FreestyleConfig *config, int direction)
 
 // Testing
 
-Material *FRS_create_stroke_material(Main *bmain, struct FreestyleLineStyle *linestyle)
+Material *FRS_create_stroke_material(Main *bmain, FreestyleLineStyle *linestyle)
 {
   bNodeTree *nt = (linestyle->use_nodes) ? linestyle->nodetree : nullptr;
   Material *ma = BlenderStrokeRenderer::GetStrokeShader(bmain, nt, true);

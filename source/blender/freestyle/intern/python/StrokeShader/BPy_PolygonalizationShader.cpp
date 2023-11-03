@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -28,8 +30,8 @@ static char PolygonalizationShader___doc__[] =
     "   Builds a PolygonalizationShader object.\n"
     "\n"
     "   :arg error: The error we want our polygonal approximation to have\n"
-    "      with respect to the original geometry.  The smaller, the closer\n"
-    "      the new stroke is to the original one.  This error corresponds to\n"
+    "      with respect to the original geometry. The smaller, the closer\n"
+    "      the new stroke is to the original one. This error corresponds to\n"
     "      the maximum distance between the new stroke and the old one.\n"
     "   :type error: float\n"
     "\n"
@@ -61,43 +63,44 @@ static int PolygonalizationShader___init__(BPy_PolygonalizationShader *self,
 /*-----------------------BPy_PolygonalizationShader type definition -----------------------------*/
 
 PyTypeObject PolygonalizationShader_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "PolygonalizationShader", /* tp_name */
-    sizeof(BPy_PolygonalizationShader),                         /* tp_basicsize */
-    0,                                                          /* tp_itemsize */
-    nullptr,                                                    /* tp_dealloc */
-    0,                                                          /* tp_vectorcall_offset */
-    nullptr,                                                    /* tp_getattr */
-    nullptr,                                                    /* tp_setattr */
-    nullptr,                                                    /* tp_reserved */
-    nullptr,                                                    /* tp_repr */
-    nullptr,                                                    /* tp_as_number */
-    nullptr,                                                    /* tp_as_sequence */
-    nullptr,                                                    /* tp_as_mapping */
-    nullptr,                                                    /* tp_hash */
-    nullptr,                                                    /* tp_call */
-    nullptr,                                                    /* tp_str */
-    nullptr,                                                    /* tp_getattro */
-    nullptr,                                                    /* tp_setattro */
-    nullptr,                                                    /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,                   /* tp_flags */
-    PolygonalizationShader___doc__,                             /* tp_doc */
-    nullptr,                                                    /* tp_traverse */
-    nullptr,                                                    /* tp_clear */
-    nullptr,                                                    /* tp_richcompare */
-    0,                                                          /* tp_weaklistoffset */
-    nullptr,                                                    /* tp_iter */
-    nullptr,                                                    /* tp_iternext */
-    nullptr,                                                    /* tp_methods */
-    nullptr,                                                    /* tp_members */
-    nullptr,                                                    /* tp_getset */
-    &StrokeShader_Type,                                         /* tp_base */
-    nullptr,                                                    /* tp_dict */
-    nullptr,                                                    /* tp_descr_get */
-    nullptr,                                                    /* tp_descr_set */
-    0,                                                          /* tp_dictoffset */
-    (initproc)PolygonalizationShader___init__,                  /* tp_init */
-    nullptr,                                                    /* tp_alloc */
-    nullptr,                                                    /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "PolygonalizationShader",
+    /*tp_basicsize*/ sizeof(BPy_PolygonalizationShader),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ nullptr,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ PolygonalizationShader___doc__,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ &StrokeShader_Type,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)PolygonalizationShader___init__,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

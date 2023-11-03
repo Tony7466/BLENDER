@@ -1,9 +1,10 @@
+# SPDX-FileCopyrightText: 2021-2023 Blender Authors
+#
 # SPDX-License-Identifier: Apache-2.0
 
 import fnmatch
 import json
 import pathlib
-import sys
 
 from dataclasses import dataclass, field
 from typing import Dict, List
@@ -13,7 +14,6 @@ from .test import TestCollection
 
 def get_build_hash(args: None) -> str:
     import bpy
-    import sys
     build_hash = bpy.app.build_hash.decode('utf-8')
     return '' if build_hash == 'Unknown' else build_hash
 
@@ -150,7 +150,7 @@ class TestConfig:
         default_config += """tests = ['*']\n"""
         default_config += """categories = ['*']\n"""
         default_config += """builds = {\n"""
-        default_config += """    'master': '/home/user/blender-git/build/bin/blender',"""
+        default_config += """    'main': '/home/user/blender-git/build/bin/blender',"""
         default_config += """    '2.93': '/home/user/blender-2.93/blender',"""
         default_config += """}\n"""
         default_config += """revisions = {\n"""
@@ -218,6 +218,7 @@ class TestConfig:
             executable, environment = self._split_environment_variables(executable)
             executable_path = env._blender_executable_from_path(pathlib.Path(executable))
             if not executable_path:
+                import sys
                 sys.stderr.write(f'Error: build {executable} not found\n')
                 sys.exit(1)
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -36,17 +37,6 @@
 #endif
 
 #include "atomic_ops.h"
-
-#if defined(__APPLE__) && defined(_OPENMP) && (__GNUC__ == 4) && (__GNUC_MINOR__ == 2) && \
-    !defined(__clang__)
-#  define USE_APPLE_OMP_FIX
-#endif
-
-#ifdef USE_APPLE_OMP_FIX
-/* ************** libgomp (Apple gcc 4.2.1) TLS bug workaround *************** */
-extern pthread_key_t gomp_tls_key;
-static void *thread_tls_data;
-#endif
 
 /**
  * Basic Thread Control API
@@ -108,14 +98,14 @@ static pthread_mutex_t _colormanage_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _fftw_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _view3d_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t mainid;
-static unsigned int thread_levels = 0; /* threads can be invoked inside threads */
+static uint thread_levels = 0; /* threads can be invoked inside threads */
 static int threads_override_num = 0;
 
 /* just a max for security reasons */
 #define RE_MAX_THREAD BLENDER_MAX_THREADS
 
 struct ThreadSlot {
-  struct ThreadSlot *next, *prev;
+  ThreadSlot *next, *prev;
   void *(*do_thread)(void *);
   void *callerdata;
   pthread_t pthread;
@@ -127,9 +117,7 @@ void BLI_threadapi_init()
   mainid = pthread_self();
 }
 
-void BLI_threadapi_exit()
-{
-}
+void BLI_threadapi_exit() {}
 
 void BLI_threadpool_init(ListBase *threadbase, void *(*do_thread)(void *), int tot)
 {
@@ -153,15 +141,7 @@ void BLI_threadpool_init(ListBase *threadbase, void *(*do_thread)(void *), int t
     }
   }
 
-  unsigned int level = atomic_fetch_and_add_u(&thread_levels, 1);
-  if (level == 0) {
-#ifdef USE_APPLE_OMP_FIX
-    /* Workaround for Apple gcc 4.2.1 OMP vs background thread bug,
-     * we copy GOMP thread local storage pointer to setting it again
-     * inside the thread that we start. */
-    thread_tls_data = pthread_getspecific(gomp_tls_key);
-#endif
-  }
+  atomic_fetch_and_add_u(&thread_levels, 1);
 }
 
 int BLI_available_threads(ListBase *threadbase)
@@ -194,13 +174,6 @@ int BLI_threadpool_available_thread_index(ListBase *threadbase)
 static void *tslot_thread_start(void *tslot_p)
 {
   ThreadSlot *tslot = (ThreadSlot *)tslot_p;
-
-#ifdef USE_APPLE_OMP_FIX
-  /* Workaround for Apple gcc 4.2.1 OMP vs background thread bug,
-   * set GOMP thread local storage pointer which was copied beforehand */
-  pthread_setspecific(gomp_tls_key, thread_tls_data);
-#endif
-
   return tslot->do_thread(tslot->callerdata);
 }
 
@@ -293,7 +266,7 @@ int BLI_system_thread_count()
 #ifdef WIN32
     SYSTEM_INFO info;
     GetSystemInfo(&info);
-    t = (int)info.dwNumberOfProcessors;
+    t = int(info.dwNumberOfProcessors);
 #else
 #  ifdef __APPLE__
     int mib[2];
@@ -304,7 +277,7 @@ int BLI_system_thread_count()
     len = sizeof(t);
     sysctl(mib, 2, &t, &len, nullptr, 0);
 #  else
-    t = (int)sysconf(_SC_NPROCESSORS_ONLN);
+    t = int(sysconf(_SC_NPROCESSORS_ONLN));
 #  endif
 #endif
   }
@@ -473,6 +446,7 @@ void BLI_spin_end(SpinLock *spin)
   BLI_mutex_end(spin);
 #elif defined(_MSC_VER)
   /* Nothing to do, spin is a simple integer type. */
+  UNUSED_VARS(spin);
 #else
   pthread_spin_destroy(spin);
 #endif
@@ -524,7 +498,7 @@ void BLI_rw_mutex_free(ThreadRWMutex *mutex)
 struct TicketMutex {
   pthread_cond_t cond;
   pthread_mutex_t mutex;
-  unsigned int queue_head, queue_tail;
+  uint queue_head, queue_tail;
 };
 
 TicketMutex *BLI_ticket_mutex_alloc()
@@ -547,7 +521,7 @@ void BLI_ticket_mutex_free(TicketMutex *ticket)
 
 void BLI_ticket_mutex_lock(TicketMutex *ticket)
 {
-  unsigned int queue_me;
+  uint queue_me;
 
   pthread_mutex_lock(&ticket->mutex);
   queue_me = ticket->queue_tail++;
@@ -673,7 +647,7 @@ void *BLI_thread_queue_pop(ThreadQueue *queue)
   return work;
 }
 
-static void wait_timeout(struct timespec *timeout, int ms)
+static void wait_timeout(timespec *timeout, int ms)
 {
   ldiv_t div_result;
   long sec, usec, x;
@@ -687,7 +661,7 @@ static void wait_timeout(struct timespec *timeout, int ms)
   }
 #else
   {
-    struct timeval now;
+    timeval now;
     gettimeofday(&now, nullptr);
     sec = now.tv_sec;
     usec = now.tv_usec;
@@ -712,7 +686,7 @@ void *BLI_thread_queue_pop_timeout(ThreadQueue *queue, int ms)
 {
   double t;
   void *work = nullptr;
-  struct timespec timeout;
+  timespec timeout;
 
   t = PIL_check_seconds_timer();
   wait_timeout(&timeout, ms);

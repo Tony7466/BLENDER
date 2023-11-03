@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup intern_mem
@@ -10,6 +11,9 @@
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_##x __attribute__((__unused__))
+#elif defined(_MSC_VER)
+/* NOTE: This suppresses the warning for the line, not the attribute. */
+#  define UNUSED(x) UNUSED_##x __pragma(warning(suppress : 4100))
 #else
 #  define UNUSED(x) UNUSED_##x
 #endif
@@ -17,12 +21,13 @@
 #undef HAVE_MALLOC_STATS
 #define USE_MALLOC_USABLE_SIZE /* internal, when we have malloc_usable_size() */
 
-#if defined(__linux__) || (defined(__FreeBSD_kernel__) && !defined(__FreeBSD__)) || \
-    defined(__GLIBC__)
+#if defined(HAVE_MALLOC_STATS_H)
 #  include <malloc.h>
 #  define HAVE_MALLOC_STATS
 #elif defined(__FreeBSD__)
 #  include <malloc_np.h>
+#elif defined(__NetBSD__) || defined(__OpenBSD__)
+#  undef USE_MALLOC_USABLE_SIZE
 #elif defined(__APPLE__)
 #  include <malloc/malloc.h>
 #  define malloc_usable_size malloc_size
@@ -50,7 +55,7 @@ size_t malloc_usable_size(void *ptr);
 #  define UNLIKELY(x) (x)
 #endif
 
-#if !defined(__APPLE__) && !defined(__FreeBSD__) && !defined(__NetBSD__)
+#if !defined(__APPLE__) && !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__OpenBSD__)
 // Needed for memalign on Linux and _aligned_alloc on Windows.
 
 #  include <malloc.h>
@@ -66,6 +71,21 @@ size_t malloc_usable_size(void *ptr);
 #else
 #  define MEM_INLINE static inline
 #endif
+
+/* BEGIN copied from BLI_asan.h */
+
+/* Clang defines this. */
+#ifndef __has_feature
+#  define __has_feature(x) 0
+#endif
+
+#if (defined(__SANITIZE_ADDRESS__) || __has_feature(address_sanitizer)) && \
+    (!defined(_MSC_VER) || _MSC_VER > 1929) /* MSVC 2019 and below doesn't ship ASAN headers. */
+#  include "sanitizer/asan_interface.h"
+#  define WITH_ASAN
+#endif
+
+/* END copied from BLI_asan.h */
 
 #define IS_POW2(a) (((a) & ((a)-1)) == 0)
 
@@ -89,6 +109,24 @@ void aligned_free(void *ptr);
 
 extern bool leak_detector_has_run;
 extern char free_after_leak_detection_message[];
+
+void memory_usage_init(void);
+void memory_usage_block_alloc(size_t size);
+void memory_usage_block_free(size_t size);
+size_t memory_usage_block_num(void);
+size_t memory_usage_current(void);
+size_t memory_usage_peak(void);
+void memory_usage_peak_reset(void);
+
+/**
+ * Clear the listbase of allocated memory blocks.
+ *
+ * WARNING: This will make the whole guardedalloc system fully inconsistent. It is only indented to
+ * be called in one place: the destructor of the #MemLeakPrinter class, which is only
+ * instantiated once as a static variable by #MEM_init_memleak_detection, and therefore destructed
+ * once at program exit.
+ */
+extern void (*mem_clearmemlist)(void);
 
 /* Prototypes for counted allocator functions */
 size_t MEM_lockfree_allocN_len(const void *vmemh) ATTR_WARN_UNUSED_RESULT;
@@ -129,6 +167,9 @@ size_t MEM_lockfree_get_memory_in_use(void);
 unsigned int MEM_lockfree_get_memory_blocks_in_use(void);
 void MEM_lockfree_reset_peak_memory(void);
 size_t MEM_lockfree_get_peak_memory(void) ATTR_WARN_UNUSED_RESULT;
+
+void mem_lockfree_clearmemlist(void);
+
 #ifndef NDEBUG
 const char *MEM_lockfree_name_ptr(void *vmemh);
 void MEM_lockfree_name_ptr_set(void *vmemh, const char *str);
@@ -173,6 +214,9 @@ size_t MEM_guarded_get_memory_in_use(void);
 unsigned int MEM_guarded_get_memory_blocks_in_use(void);
 void MEM_guarded_reset_peak_memory(void);
 size_t MEM_guarded_get_peak_memory(void) ATTR_WARN_UNUSED_RESULT;
+
+void mem_guarded_clearmemlist(void);
+
 #ifndef NDEBUG
 const char *MEM_guarded_name_ptr(void *vmemh);
 void MEM_guarded_name_ptr_set(void *vmemh, const char *str);

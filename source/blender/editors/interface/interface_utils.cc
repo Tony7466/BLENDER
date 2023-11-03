@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -13,34 +14,35 @@
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string.h"
-#include "BLI_string_search.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
+#include "BKE_idprop.h"
 #include "BKE_lib_id.h"
 #include "BKE_report.h"
+#include "BKE_screen.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
+#include "UI_string_search.hh"
+#include "UI_view2d.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "interface_intern.h"
+#include "interface_intern.hh"
 
 /*************************** RNA Utilities ******************************/
 
@@ -146,7 +148,8 @@ uiBut *uiDefAutoButR(uiBlock *block,
         }
       }
       else if (RNA_property_subtype(prop) == PROP_PERCENTAGE ||
-               RNA_property_subtype(prop) == PROP_FACTOR) {
+               RNA_property_subtype(prop) == PROP_FACTOR)
+      {
         but = uiDefButR_prop(block,
                              UI_BTYPE_NUM_SLIDER,
                              0,
@@ -339,8 +342,7 @@ uiBut *uiDefAutoButR(uiBlock *block,
     }
     case PROP_COLLECTION: {
       char text[256];
-      BLI_snprintf(
-          text, sizeof(text), IFACE_("%d items"), RNA_property_collection_length(ptr, prop));
+      SNPRINTF(text, IFACE_("%d items"), RNA_property_collection_length(ptr, prop));
       but = uiDefBut(
           block, UI_BTYPE_LABEL, 0, text, x, y, width, height, nullptr, 0, 0, 0, 0, nullptr);
       UI_but_flag_enable(but, UI_BUT_DISABLED);
@@ -435,13 +437,14 @@ eAutoPropButsReturn uiDefAutoButsRNA(uiLayout *layout,
 
     /* Only buttons that can be edited as text. */
     const bool use_activate_init = ((prop == prop_activate_init) &&
-                                    (ELEM(type, PROP_STRING, PROP_INT, PROP_FLOAT)));
+                                    ELEM(type, PROP_STRING, PROP_INT, PROP_FLOAT));
 
     if (use_activate_init) {
       uiLayoutSetActivateInit(col, true);
     }
 
-    uiItemFullR(col, ptr, prop, -1, 0, compact ? UI_ITEM_R_COMPACT : 0, name, ICON_NONE);
+    uiItemFullR(
+        col, ptr, prop, -1, 0, compact ? UI_ITEM_R_COMPACT : UI_ITEM_NONE, name, ICON_NONE);
     return_info &= ~UI_PROP_BUTS_NONE_ADDED;
 
     if (use_activate_init) {
@@ -461,7 +464,7 @@ void UI_but_func_identity_compare_set(uiBut *but, uiButIdentityCompareFunc cmp_f
 /* *** RNA collection search menu *** */
 
 struct CollItemSearch {
-  struct CollItemSearch *next, *prev;
+  CollItemSearch *next, *prev;
   void *data;
   char *name;
   int index;
@@ -487,15 +490,16 @@ static bool add_collection_search_item(CollItemSearch *cis,
      * removed). */
     BKE_id_full_name_ui_prefix_get(
         name_buf, static_cast<const ID *>(cis->data), false, UI_SEP_CHAR, &name_prefix_offset);
-    BLI_assert(strlen(name_buf) <= MEM_allocN_len(cis->name));
-    strcpy(cis->name, name_buf);
+    const int name_buf_len = strlen(name_buf);
+    BLI_assert(name_buf_len <= strlen(cis->name));
+    memcpy(cis->name, name_buf, name_buf_len + 1);
   }
 
   return UI_search_item_add(items,
                             cis->name,
                             cis->data,
                             cis->iconid,
-                            cis->has_sep_char ? (int)UI_BUT_HAS_SEP_CHAR : 0,
+                            cis->has_sep_char ? int(UI_BUT_HAS_SEP_CHAR) : 0,
                             name_prefix_offset);
 }
 
@@ -515,7 +519,7 @@ void ui_rna_collection_search_update_fn(
   char *name;
   bool has_id_icon = false;
 
-  StringSearch *search = skip_filter ? nullptr : BLI_string_search_new();
+  blender::ui::string_search::StringSearch<CollItemSearch> search;
 
   if (data->search_prop != nullptr) {
     /* build a temporary list of relevant items first */
@@ -572,7 +576,7 @@ void ui_rna_collection_search_update_fn(
         cis->name_prefix_offset = name_prefix_offset;
         cis->has_sep_char = has_sep_char;
         if (!skip_filter) {
-          BLI_string_search_add(search, name, cis, 0);
+          search.add(name, cis);
         }
         BLI_addtail(items_list, cis);
         if (name != name_buf) {
@@ -591,14 +595,14 @@ void ui_rna_collection_search_update_fn(
     BLI_assert(search_flag & PROP_STRING_SEARCH_SUPPORTED);
 
     struct SearchVisitUserData {
-      StringSearch *search;
+      blender::string_search::StringSearch<CollItemSearch> *search;
       bool skip_filter;
       int item_index;
       ListBase *items_list;
       const char *func_id;
     } user_data = {nullptr};
 
-    user_data.search = search;
+    user_data.search = &search;
     user_data.skip_filter = skip_filter;
     user_data.items_list = items_list;
     user_data.func_id = __func__;
@@ -611,7 +615,7 @@ void ui_rna_collection_search_update_fn(
         [](void *user_data, const StringPropertySearchVisitParams *visit_params) {
           const bool show_extra_info = (G.debug_value == 102);
 
-          SearchVisitUserData *search_data = (struct SearchVisitUserData *)user_data;
+          SearchVisitUserData *search_data = (SearchVisitUserData *)user_data;
           CollItemSearch *cis = MEM_cnew<CollItemSearch>(search_data->func_id);
           cis->data = nullptr;
           if (visit_params->info && show_extra_info) {
@@ -627,7 +631,7 @@ void ui_rna_collection_search_update_fn(
           cis->name_prefix_offset = 0;
           cis->has_sep_char = visit_params->info != nullptr;
           if (!search_data->skip_filter) {
-            BLI_string_search_add(search_data->search, visit_params->text, cis, 0);
+            search_data->search->add(visit_params->text, cis);
           }
           BLI_addtail(search_data->items_list, cis);
           search_data->item_index++;
@@ -656,18 +660,12 @@ void ui_rna_collection_search_update_fn(
     }
   }
   else {
-    CollItemSearch **filtered_items;
-    int filtered_amount = BLI_string_search_query(search, str, (void ***)&filtered_items);
-
-    for (int i = 0; i < filtered_amount; i++) {
-      CollItemSearch *cis = filtered_items[i];
+    const blender::Vector<CollItemSearch *> filtered_items = search.query(str);
+    for (CollItemSearch *cis : filtered_items) {
       if (!add_collection_search_item(cis, requires_exact_data_name, has_id_icon, items)) {
         break;
       }
     }
-
-    MEM_freeN(filtered_items);
-    BLI_string_search_free(search);
   }
 
   LISTBASE_FOREACH (CollItemSearch *, cis, items_list) {
@@ -695,8 +693,7 @@ int UI_icon_from_id(const ID *id)
 
   /* otherwise get it through RNA, creating the pointer
    * will set the right type, also with subclassing */
-  PointerRNA ptr;
-  RNA_id_pointer_create((ID *)id, &ptr);
+  PointerRNA ptr = RNA_id_pointer_create((ID *)id);
 
   return (ptr.type) ? RNA_struct_ui_icon(ptr.type) : ICON_NONE;
 }
@@ -787,7 +784,7 @@ int UI_calc_float_precision(int prec, double value)
    */
   value = fabs(value);
   if ((value < pow10_neg[prec]) && (value > (1.0 / max_pow))) {
-    int value_i = (int)((value * max_pow) + 0.5);
+    int value_i = int(lround(value * max_pow));
     if (value_i != 0) {
       const int prec_span = 3; /* show: 0.01001, 5 would allow 0.0100001 for eg. */
       int test_prec;
@@ -824,11 +821,11 @@ int UI_calc_float_precision(int prec, double value)
   return prec;
 }
 
-bool UI_but_online_manual_id(const uiBut *but, char *r_str, size_t maxlength)
+bool UI_but_online_manual_id(const uiBut *but, char *r_str, size_t str_maxncpy)
 {
   if (but->rnapoin.owner_id && but->rnapoin.data && but->rnaprop) {
     BLI_snprintf(r_str,
-                 maxlength,
+                 str_maxncpy,
                  "%s.%s",
                  RNA_struct_identifier(but->rnapoin.type),
                  RNA_property_identifier(but->rnaprop));
@@ -843,12 +840,12 @@ bool UI_but_online_manual_id(const uiBut *but, char *r_str, size_t maxlength)
   return false;
 }
 
-bool UI_but_online_manual_id_from_active(const bContext *C, char *r_str, size_t maxlength)
+bool UI_but_online_manual_id_from_active(const bContext *C, char *r_str, size_t str_maxncpy)
 {
   uiBut *but = UI_context_active_but_get(C);
 
   if (but) {
-    return UI_but_online_manual_id(but, r_str, maxlength);
+    return UI_but_online_manual_id(but, r_str, str_maxncpy);
   }
 
   *r_str = '\0';
@@ -950,13 +947,13 @@ void UI_but_ensure_in_view(const bContext *C, ARegion *region, const uiBut *but)
  * \{ */
 
 struct uiButStore {
-  struct uiButStore *next, *prev;
+  uiButStore *next, *prev;
   uiBlock *block;
   ListBase items;
 };
 
 struct uiButStoreElem {
-  struct uiButStoreElem *next, *prev;
+  uiButStoreElem *next, *prev;
   uiBut **but_p;
 };
 
@@ -976,7 +973,7 @@ void UI_butstore_free(uiBlock *block, uiButStore *bs_handle)
    * which then can't use the previous buttons state
    * ('ui_but_update_from_old_block' fails to find a match),
    * keeping the active button in the old block holding a reference
-   * to the button-state in the new block: see T49034.
+   * to the button-state in the new block: see #49034.
    *
    * Ideally we would manage moving the 'uiButStore', keeping a correct state.
    * All things considered this is the most straightforward fix - Campbell.
@@ -1091,6 +1088,113 @@ void UI_butstore_update(uiBlock *block)
       }
     }
   }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Key Event from UI
+ * \{ */
+
+/**
+ * Follow the logic from #wm_keymap_item_find_in_keymap.
+ */
+static bool ui_key_event_property_match(const char *opname,
+                                        IDProperty *properties,
+                                        const bool is_strict,
+                                        wmOperatorType *ui_optype,
+                                        PointerRNA *ui_opptr)
+{
+  if (!STREQ(ui_optype->idname, opname)) {
+    return false;
+  }
+
+  bool match = false;
+  if (properties) {
+    if (ui_opptr &&
+        IDP_EqualsProperties_ex(properties, static_cast<IDProperty *>(ui_opptr->data), is_strict))
+    {
+      match = true;
+    }
+  }
+  else {
+    match = true;
+  }
+  return match;
+}
+
+const char *UI_key_event_operator_string(const bContext *C,
+                                         const char *opname,
+                                         IDProperty *properties,
+                                         const bool is_strict,
+                                         char *result,
+                                         const int result_maxncpy)
+{
+  /* NOTE: currently only actions on UI Lists are supported (for the asset manager).
+   * Other kinds of events can be supported as needed. */
+
+  ARegion *region = CTX_wm_region(C);
+  if (region == nullptr) {
+    return nullptr;
+  }
+
+  /* Early exit regions which don't have UI-Lists. */
+  if ((region->type->keymapflag & ED_KEYMAP_UI) == 0) {
+    return nullptr;
+  }
+
+  uiBut *but = UI_region_active_but_get(region);
+  if (but == nullptr) {
+    return nullptr;
+  }
+
+  if (but->type != UI_BTYPE_PREVIEW_TILE) {
+    return nullptr;
+  }
+
+  short event_val = KM_NOTHING;
+  short event_type = KM_NOTHING;
+
+  uiBut *listbox = nullptr;
+  LISTBASE_FOREACH_BACKWARD (uiBut *, but_iter, &but->block->buttons) {
+    if ((but_iter->type == UI_BTYPE_LISTBOX) && ui_but_contains_rect(but_iter, &but->rect)) {
+      listbox = but_iter;
+      break;
+    }
+  }
+
+  if (listbox && listbox->custom_data) {
+    uiList *list = static_cast<uiList *>(listbox->custom_data);
+    uiListDyn *dyn_data = list->dyn_data;
+    if ((dyn_data->custom_activate_optype != nullptr) &&
+        ui_key_event_property_match(opname,
+                                    properties,
+                                    is_strict,
+                                    dyn_data->custom_activate_optype,
+                                    dyn_data->custom_activate_opptr))
+    {
+      event_val = KM_CLICK;
+      event_type = LEFTMOUSE;
+    }
+    else if ((dyn_data->custom_activate_optype != nullptr) &&
+             ui_key_event_property_match(opname,
+                                         properties,
+                                         is_strict,
+                                         dyn_data->custom_drag_optype,
+                                         dyn_data->custom_drag_opptr))
+    {
+      event_val = KM_CLICK_DRAG;
+      event_type = LEFTMOUSE;
+    }
+  }
+
+  if ((event_val != KM_NOTHING) && (event_type != KM_NOTHING)) {
+    WM_keymap_item_raw_to_string(
+        false, false, false, false, 0, event_val, event_type, false, result, result_maxncpy);
+    return result;
+  }
+
+  return nullptr;
 }
 
 /** \} */

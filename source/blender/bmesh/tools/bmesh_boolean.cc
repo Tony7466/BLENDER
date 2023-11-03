@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -7,7 +9,6 @@
  */
 
 #include "BLI_array.hh"
-#include "BLI_math.h"
 #include "BLI_math_mpq.hh"
 #include "BLI_mesh_boolean.hh"
 #include "BLI_mesh_intersect.hh"
@@ -34,7 +35,7 @@ namespace blender::meshintersect {
  * the faces in the returned (polygonal) mesh.
  */
 static IMesh mesh_from_bm(BMesh *bm,
-                          struct BMLoop *(*looptris)[3],
+                          BMLoop *(*looptris)[3],
                           const int looptris_tot,
                           IMesh *r_triangulated,
                           IMeshArena *arena)
@@ -112,7 +113,8 @@ static bool bmvert_attached_to_hidden_face(BMVert *bmv)
   BMIter iter;
   for (BMFace *bmf = static_cast<BMFace *>(BM_iter_new(&iter, nullptr, BM_FACES_OF_VERT, bmv));
        bmf;
-       bmf = static_cast<BMFace *>(BM_iter_step(&iter))) {
+       bmf = static_cast<BMFace *>(BM_iter_step(&iter)))
+  {
     if (BM_elem_flag_test(bmf, BM_ELEM_HIDDEN)) {
       return true;
     }
@@ -155,7 +157,8 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
     BMVert *bmv = BM_vert_at_index(bm, v);
     if ((keep_hidden &&
          (BM_elem_flag_test(bmv, BM_ELEM_HIDDEN) || bmvert_attached_to_hidden_face(bmv))) ||
-        bmvert_attached_to_wire(bmv)) {
+        bmvert_attached_to_wire(bmv))
+    {
       BM_elem_flag_enable(bmv, KEEP_FLAG);
     }
     else {
@@ -187,7 +190,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
       float co[3];
       const double3 &d_co = vertp->co;
       for (int i = 0; i < 3; ++i) {
-        co[i] = static_cast<float>(d_co[i]);
+        co[i] = float(d_co[i]);
       }
       BMVert *bmv = BM_vert_create(bm, co, nullptr, BM_CREATE_NOP);
       new_bmvs[v] = bmv;
@@ -213,7 +216,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
 
   /* Save the original #BMEdge's so we can use them as examples. */
   Array<BMEdge *> old_edges(bm->totedge);
-  std::copy(bm->etable, bm->etable + bm->totedge, old_edges.begin());
+  std::copy_n(bm->etable, bm->totedge, old_edges.begin());
 
   /* Reuse or make new #BMFace's, as the faces are identical to old ones or not.
    * If reusing, mark them as "keep". First find the maximum face length
@@ -278,7 +281,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
         BM_elem_select_copy(bm, bmf, orig_face);
       }
       BM_elem_flag_enable(bmf, KEEP_FLAG);
-      /* Now do interpolation of loop data (e.g., UV's) using the example face. */
+      /* Now do interpolation of loop data (e.g., UVs) using the example face. */
       if (orig_face != nullptr) {
         BMIter liter;
         BMLoop *l = static_cast<BMLoop *>(BM_iter_new(&liter, bm, BM_LOOPS_OF_FACE, bmf));
@@ -333,7 +336,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
 }
 
 static bool bmesh_boolean(BMesh *bm,
-                          struct BMLoop *(*looptris)[3],
+                          BMLoop *(*looptris)[3],
                           const int looptris_tot,
                           int (*test_fn)(BMFace *f, void *user_data),
                           void *user_data,
@@ -418,7 +421,7 @@ extern "C" {
  */
 #ifdef WITH_GMP
 bool BM_mesh_boolean(BMesh *bm,
-                     struct BMLoop *(*looptris)[3],
+                     BMLoop *(*looptris)[3],
                      const int looptris_tot,
                      int (*test_fn)(BMFace *f, void *user_data),
                      void *user_data,
@@ -443,7 +446,7 @@ bool BM_mesh_boolean(BMesh *bm,
 }
 
 bool BM_mesh_boolean_knife(BMesh *bm,
-                           struct BMLoop *(*looptris)[3],
+                           BMLoop *(*looptris)[3],
                            const int looptris_tot,
                            int (*test_fn)(BMFace *f, void *user_data),
                            void *user_data,
@@ -466,16 +469,16 @@ bool BM_mesh_boolean_knife(BMesh *bm,
                                                blender::meshintersect::BoolOpType::None);
 }
 #else
-bool BM_mesh_boolean(BMesh *UNUSED(bm),
-                     struct BMLoop *(*looptris)[3],
-                     const int UNUSED(looptris_tot),
+bool BM_mesh_boolean(BMesh * /*bm*/,
+                     BMLoop *(*looptris)[3],
+                     const int /*looptris_tot*/,
                      int (*test_fn)(BMFace *, void *),
-                     void *UNUSED(user_data),
-                     const int UNUSED(nshapes),
-                     const bool UNUSED(use_self),
-                     const bool UNUSED(keep_hidden),
-                     const bool UNUSED(hole_tolerant),
-                     const int UNUSED(boolean_mode))
+                     void * /*user_data*/,
+                     const int /*nshapes*/,
+                     const bool /*use_self*/,
+                     const bool /*keep_hidden*/,
+                     const bool /*hole_tolerant*/,
+                     const int /*boolean_mode*/)
 {
   UNUSED_VARS(looptris, test_fn);
   return false;
@@ -489,16 +492,16 @@ bool BM_mesh_boolean(BMesh *UNUSED(bm),
  * TODO: need to ensure that "selected/non-selected" flag of original faces gets propagated
  * to the intersection result faces.
  */
-bool BM_mesh_boolean_knife(BMesh *UNUSED(bm),
-                           struct BMLoop *(*looptris)[3],
-                           const int UNUSED(looptris_tot),
+bool BM_mesh_boolean_knife(BMesh * /*bm*/,
+                           BMLoop *(*looptris)[3],
+                           const int /*looptris_tot*/,
                            int (*test_fn)(BMFace *, void *),
-                           void *UNUSED(user_data),
-                           const int UNUSED(nshapes),
-                           const bool UNUSED(use_self),
-                           const bool UNUSED(use_separate_all),
-                           const bool UNUSED(hole_tolerant),
-                           const bool UNUSED(keep_hidden))
+                           void * /*user_data*/,
+                           const int /*nshapes*/,
+                           const bool /*use_self*/,
+                           const bool /*use_separate_all*/,
+                           const bool /*hole_tolerant*/,
+                           const bool /*keep_hidden*/)
 {
   UNUSED_VARS(looptris, test_fn);
   return false;

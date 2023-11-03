@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -32,17 +34,11 @@ class GSpan {
     BLI_assert(type == nullptr || type->pointer_has_valid_alignment(buffer));
   }
 
-  GSpan(const CPPType &type, const void *buffer, int64_t size) : GSpan(&type, buffer, size)
-  {
-  }
+  GSpan(const CPPType &type, const void *buffer, int64_t size) : GSpan(&type, buffer, size) {}
 
-  GSpan(const CPPType &type) : type_(&type)
-  {
-  }
+  GSpan(const CPPType &type) : type_(&type) {}
 
-  GSpan(const CPPType *type) : type_(type)
-  {
-  }
+  GSpan(const CPPType *type) : type_(type) {}
 
   template<typename T>
   GSpan(Span<T> array)
@@ -71,6 +67,11 @@ class GSpan {
     return size_;
   }
 
+  int64_t size_in_bytes() const
+  {
+    return type_->size() * size_;
+  }
+
   const void *data() const
   {
     return data_;
@@ -92,13 +93,41 @@ class GSpan {
   {
     BLI_assert(start >= 0);
     BLI_assert(size >= 0);
-    const int64_t new_size = std::max<int64_t>(0, std::min(size, size_ - start));
-    return GSpan(type_, POINTER_OFFSET(data_, type_->size() * start), new_size);
+    BLI_assert(start + size <= size_ || size == 0);
+    return GSpan(type_, POINTER_OFFSET(data_, type_->size() * start), size);
   }
 
   GSpan slice(const IndexRange range) const
   {
     return this->slice(range.start(), range.size());
+  }
+
+  GSpan drop_front(const int64_t n) const
+  {
+    BLI_assert(n >= 0);
+    const int64_t new_size = std::max<int64_t>(0, size_ - n);
+    return GSpan(*type_, POINTER_OFFSET(data_, type_->size() * n), new_size);
+  }
+
+  GSpan drop_back(const int64_t n) const
+  {
+    BLI_assert(n >= 0);
+    const int64_t new_size = std::max<int64_t>(0, size_ - n);
+    return GSpan(*type_, data_, new_size);
+  }
+
+  GSpan take_front(const int64_t n) const
+  {
+    BLI_assert(n >= 0);
+    const int64_t new_size = std::min<int64_t>(size_, n);
+    return GSpan(*type_, data_, new_size);
+  }
+
+  GSpan take_back(const int64_t n) const
+  {
+    BLI_assert(n >= 0);
+    const int64_t new_size = std::min<int64_t>(size_, n);
+    return GSpan(*type_, POINTER_OFFSET(data_, type_->size() * (size_ - new_size)), new_size);
   }
 };
 
@@ -128,13 +157,9 @@ class GMutableSpan {
   {
   }
 
-  GMutableSpan(const CPPType &type) : type_(&type)
-  {
-  }
+  GMutableSpan(const CPPType &type) : type_(&type) {}
 
-  GMutableSpan(const CPPType *type) : type_(type)
-  {
-  }
+  GMutableSpan(const CPPType *type) : type_(type) {}
 
   template<typename T>
   GMutableSpan(MutableSpan<T> array)
@@ -168,6 +193,11 @@ class GMutableSpan {
     return size_;
   }
 
+  int64_t size_in_bytes() const
+  {
+    return type_->size() * size_;
+  }
+
   void *data() const
   {
     return data_;
@@ -190,13 +220,42 @@ class GMutableSpan {
   {
     BLI_assert(start >= 0);
     BLI_assert(size >= 0);
-    const int64_t new_size = std::max<int64_t>(0, std::min(size, size_ - start));
-    return GMutableSpan(*type_, POINTER_OFFSET(data_, type_->size() * start), new_size);
+    BLI_assert(start + size <= size_ || size == 0);
+    return GMutableSpan(type_, POINTER_OFFSET(data_, type_->size() * start), size);
   }
 
   GMutableSpan slice(IndexRange range) const
   {
     return this->slice(range.start(), range.size());
+  }
+
+  GMutableSpan drop_front(const int64_t n) const
+  {
+    BLI_assert(n >= 0);
+    const int64_t new_size = std::max<int64_t>(0, size_ - n);
+    return GMutableSpan(*type_, POINTER_OFFSET(data_, type_->size() * n), new_size);
+  }
+
+  GMutableSpan drop_back(const int64_t n) const
+  {
+    BLI_assert(n >= 0);
+    const int64_t new_size = std::max<int64_t>(0, size_ - n);
+    return GMutableSpan(*type_, data_, new_size);
+  }
+
+  GMutableSpan take_front(const int64_t n) const
+  {
+    BLI_assert(n >= 0);
+    const int64_t new_size = std::min<int64_t>(size_, n);
+    return GMutableSpan(*type_, data_, new_size);
+  }
+
+  GMutableSpan take_back(const int64_t n) const
+  {
+    BLI_assert(n >= 0);
+    const int64_t new_size = std::min<int64_t>(size_, n);
+    return GMutableSpan(
+        *type_, POINTER_OFFSET(data_, type_->size() * (size_ - new_size)), new_size);
   }
 
   /**

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __UTIL_MATH_INT3_H__
 #define __UTIL_MATH_INT3_H__
@@ -9,21 +10,6 @@
 #endif
 
 CCL_NAMESPACE_BEGIN
-
-/*******************************************************************************
- * Declaration.
- */
-
-#if !defined(__KERNEL_METAL__)
-ccl_device_inline int3 min(int3 a, int3 b);
-ccl_device_inline int3 max(int3 a, int3 b);
-ccl_device_inline int3 clamp(const int3 &a, int mn, int mx);
-ccl_device_inline int3 clamp(const int3 &a, int3 &mn, int mx);
-#endif /*  !defined(__KERNEL_METAL__) */
-
-/*******************************************************************************
- * Definition.
- */
 
 #if !defined(__KERNEL_METAL__)
 ccl_device_inline int3 min(int3 a, int3 b)
@@ -44,7 +30,7 @@ ccl_device_inline int3 max(int3 a, int3 b)
 #  endif
 }
 
-ccl_device_inline int3 clamp(const int3 &a, int mn, int mx)
+ccl_device_inline int3 clamp(const int3 a, int mn, int mx)
 {
 #  ifdef __KERNEL_SSE__
   return min(max(a, make_int3(mn)), make_int3(mx));
@@ -53,7 +39,7 @@ ccl_device_inline int3 clamp(const int3 &a, int mn, int mx)
 #  endif
 }
 
-ccl_device_inline int3 clamp(const int3 &a, int3 &mn, int mx)
+ccl_device_inline int3 clamp(const int3 a, int3 &mn, int mx)
 {
 #  ifdef __KERNEL_SSE__
   return min(max(a, mn), make_int3(mx));
@@ -62,22 +48,22 @@ ccl_device_inline int3 clamp(const int3 &a, int3 &mn, int mx)
 #  endif
 }
 
-ccl_device_inline bool operator==(const int3 &a, const int3 &b)
+ccl_device_inline bool operator==(const int3 a, const int3 b)
 {
   return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
-ccl_device_inline bool operator!=(const int3 &a, const int3 &b)
+ccl_device_inline bool operator!=(const int3 a, const int3 b)
 {
   return !(a == b);
 }
 
-ccl_device_inline bool operator<(const int3 &a, const int3 &b)
+ccl_device_inline bool operator<(const int3 a, const int3 b)
 {
   return a.x < b.x && a.y < b.y && a.z < b.z;
 }
 
-ccl_device_inline int3 operator+(const int3 &a, const int3 &b)
+ccl_device_inline int3 operator+(const int3 a, const int3 b)
 {
 #  ifdef __KERNEL_SSE__
   return int3(_mm_add_epi32(a.m128, b.m128));
@@ -86,7 +72,7 @@ ccl_device_inline int3 operator+(const int3 &a, const int3 &b)
 #  endif
 }
 
-ccl_device_inline int3 operator-(const int3 &a, const int3 &b)
+ccl_device_inline int3 operator-(const int3 a, const int3 b)
 {
 #  ifdef __KERNEL_SSE__
   return int3(_mm_sub_epi32(a.m128, b.m128));

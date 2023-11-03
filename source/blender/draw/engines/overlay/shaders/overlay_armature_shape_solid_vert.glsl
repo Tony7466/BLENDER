@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2018-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -25,7 +28,7 @@ void main()
   finalColor.a = 1.0;
 
   vec4 world_pos = model_mat * vec4(pos, 1.0);
-  gl_Position = drw_view.persmat * world_pos;
+  gl_Position = drw_view.winmat * (drw_view.viewmat * world_pos);
 
   view_clipping_distances(world_pos.xyz);
 }

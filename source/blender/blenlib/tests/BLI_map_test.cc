@@ -1,4 +1,9 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+#include <memory>
+#include <unordered_map>
 
 #include "BLI_exception_safety_test_utils.hh"
 #include "BLI_map.hh"
@@ -7,8 +12,8 @@
 #include "BLI_strict_flags.h"
 #include "BLI_timeit.hh"
 #include "BLI_vector.hh"
+
 #include "testing/testing.h"
-#include <memory>
 
 namespace blender::tests {
 
@@ -240,7 +245,7 @@ TEST(map, MutableItemToItemConversion)
   map.add(2, 1);
 
   Vector<int> keys, values;
-  for (Map<int, int>::Item item : map.items()) {
+  for (MapItem<int, int> item : map.items()) {
     keys.append(item.key);
     values.append(item.value);
   }
@@ -560,8 +565,8 @@ TEST(map, PopExceptions)
 TEST(map, AddOrModifyExceptions)
 {
   Map<ExceptionThrower, ExceptionThrower> map;
-  auto create_fn = [](ExceptionThrower *UNUSED(v)) { throw std::runtime_error(""); };
-  auto modify_fn = [](ExceptionThrower *UNUSED(v)) {};
+  auto create_fn = [](ExceptionThrower * /*v*/) { throw std::runtime_error(""); };
+  auto modify_fn = [](ExceptionThrower * /*v*/) {};
   EXPECT_ANY_THROW({ map.add_or_modify(3, create_fn, modify_fn); });
 }
 
@@ -628,7 +633,7 @@ TEST(map, RemoveDuringIteration)
   Iter begin = map.items().begin();
   Iter end = map.items().end();
   for (Iter iter = begin; iter != end; ++iter) {
-    Map<int, int>::MutableItem item = *iter;
+    MutableMapItem<int, int> item = *iter;
     if (item.value == 2) {
       map.remove(iter);
     }
@@ -638,6 +643,24 @@ TEST(map, RemoveDuringIteration)
   EXPECT_EQ(map.lookup(2), 1);
   EXPECT_EQ(map.lookup(6), 0);
   EXPECT_EQ(map.lookup(3), 3);
+}
+
+TEST(map, RemoveIf)
+{
+  Map<int64_t, int64_t> map;
+  for (const int64_t i : IndexRange(100)) {
+    map.add(i * i, i);
+  }
+  const int64_t removed = map.remove_if([](auto item) { return item.key > 100; });
+  EXPECT_EQ(map.size() + removed, 100);
+  for (const int64_t i : IndexRange(100)) {
+    if (i <= 10) {
+      EXPECT_EQ(map.lookup(i * i), i);
+    }
+    else {
+      EXPECT_FALSE(map.contains(i * i));
+    }
+  }
 }
 
 TEST(map, LookupKey)
@@ -651,6 +674,24 @@ TEST(map, LookupKey)
   EXPECT_EQ(map.lookup_key_ptr_as("d"), nullptr);
   EXPECT_EQ(map.lookup_key_ptr_as("b")->size(), 1);
   EXPECT_EQ(map.lookup_key_ptr("a"), map.lookup_key_ptr_as("a"));
+}
+
+TEST(map, VectorKey)
+{
+  Map<Vector<int>, int> map;
+  map.add({1, 2, 3}, 100);
+  map.add({3, 2, 1}, 200);
+
+  EXPECT_EQ(map.size(), 2);
+  EXPECT_EQ(map.lookup({1, 2, 3}), 100);
+  EXPECT_EQ(map.lookup({3, 2, 1}), 200);
+  EXPECT_FALSE(map.contains({1, 2}));
+
+  std::array<int, 3> array = {1, 2, 3};
+  EXPECT_EQ(map.lookup_as(array), 100);
+
+  map.remove_as(Vector<int>({1, 2, 3}).as_mutable_span());
+  EXPECT_EQ(map.size(), 1);
 }
 
 /**
@@ -692,11 +733,79 @@ BLI_NOINLINE void benchmark_random_ints(StringRef name, int amount, int factor)
   std::cout << "Count: " << count << "\n";
 }
 
+/**
+ * A wrapper for std::unordered_map with the API of blender::Map. This can be used for
+ * benchmarking.
+ */
+template<typename Key, typename Value> class StdUnorderedMapWrapper {
+ private:
+  using MapType = std::unordered_map<Key, Value, blender::DefaultHash<Key>>;
+  MapType map_;
+
+ public:
+  int64_t size() const
+  {
+    return int64_t(map_.size());
+  }
+
+  bool is_empty() const
+  {
+    return map_.empty();
+  }
+
+  void reserve(int64_t n)
+  {
+    map_.reserve(n);
+  }
+
+  template<typename ForwardKey, typename... ForwardValue>
+  void add_new(ForwardKey &&key, ForwardValue &&...value)
+  {
+    map_.insert({std::forward<ForwardKey>(key), Value(std::forward<ForwardValue>(value)...)});
+  }
+
+  template<typename ForwardKey, typename... ForwardValue>
+  bool add(ForwardKey &&key, ForwardValue &&...value)
+  {
+    return map_
+        .insert({std::forward<ForwardKey>(key), Value(std::forward<ForwardValue>(value)...)})
+        .second;
+  }
+
+  bool contains(const Key &key) const
+  {
+    return map_.find(key) != map_.end();
+  }
+
+  bool remove(const Key &key)
+  {
+    return bool(map_.erase(key));
+  }
+
+  Value &lookup(const Key &key)
+  {
+    return map_.find(key)->second;
+  }
+
+  const Value &lookup(const Key &key) const
+  {
+    return map_.find(key)->second;
+  }
+
+  void clear()
+  {
+    map_.clear();
+  }
+
+  void print_stats(StringRef /*name*/ = "") const {}
+};
+
 TEST(map, Benchmark)
 {
   for (int i = 0; i < 3; i++) {
     benchmark_random_ints<blender::Map<int, int>>("blender::Map          ", 1000000, 1);
-    benchmark_random_ints<blender::StdUnorderedMapWrapper<int, int>>("std::unordered_map", 1000000, 1);
+    benchmark_random_ints<blender::StdUnorderedMapWrapper<int, int>>(
+        "std::unordered_map", 1000000, 1);
   }
   std::cout << "\n";
   for (int i = 0; i < 3; i++) {

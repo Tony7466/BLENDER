@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -28,6 +29,7 @@ typedef unsigned long long uint64_t;
 /* Qualifiers */
 
 #define ccl_device __device__ __inline__
+#define ccl_device_extern extern "C" __device__
 #define ccl_device_inline __device__ __inline__
 #define ccl_device_forceinline __device__ __forceinline__
 #define ccl_device_noinline __device__ __noinline__
@@ -39,6 +41,7 @@ typedef unsigned long long uint64_t;
 #define ccl_constant const
 #define ccl_gpu_shared __shared__
 #define ccl_private
+#define ccl_ray_data ccl_private
 #define ccl_may_alias
 #define ccl_restrict __restrict__
 #define ccl_loop_no_unroll

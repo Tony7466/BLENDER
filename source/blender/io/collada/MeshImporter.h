@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -23,7 +25,7 @@
 #include "ArmatureImporter.h"
 #include "collada_utils.h"
 
-#include "BLI_edgehash.h"
+#include "BLI_math_vector_types.hh"
 
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
@@ -63,6 +65,7 @@ class VCOLDataWrapper {
 class MeshImporter : public MeshImporterBase {
  private:
   UnitConverter *unitconverter;
+  bool use_custom_normals;
 
   Main *m_bmain;
   Scene *scene;
@@ -75,12 +78,13 @@ class MeshImporter : public MeshImporterBase {
   std::map<COLLADAFW::UniqueId, Object *> uid_object_map; /* geom UID-to-object */
   std::vector<Object *> imported_objects;                 /* list of imported objects */
 
-  /* this structure is used to assign material indices to polygons
+  /* this structure is used to assign material indices to faces
    * it holds a portion of Mesh faces and corresponds to a DAE primitive list
-   * (<triangles>, <polylist>, etc.) */
+   * (`<triangles>`, `<polylist>`, etc.) */
   struct Primitive {
-    MPoly *mpoly;
-    unsigned int totpoly;
+    int face_index;
+    int *material_indices;
+    uint faces_num;
   };
   typedef std::map<COLLADAFW::MaterialId, std::vector<Primitive>> MaterialIdPrimitiveArrayMap;
   /* crazy name! */
@@ -89,10 +93,9 @@ class MeshImporter : public MeshImporterBase {
    * A pair/of geom UID and mat UID, one geometry can have several materials. */
   std::multimap<COLLADAFW::UniqueId, COLLADAFW::UniqueId> materials_mapped_to_geom;
 
-  bool set_poly_indices(
-      MPoly *mpoly, MLoop *mloop, int loop_index, const unsigned int *indices, int loop_count);
+  bool set_poly_indices(int *face_verts, int loop_index, const uint *indices, int loop_count);
 
-  void set_face_uv(MLoopUV *mloopuv,
+  void set_face_uv(blender::float2 *mloopuv,
                    UVDataWrapper &uvs,
                    int start_index,
                    COLLADAFW::IndexList &index_list,
@@ -108,7 +111,10 @@ class MeshImporter : public MeshImporterBase {
   void print_index_list(COLLADAFW::IndexList &index_list);
 #endif
 
-  /** Checks if mesh has supported primitive types: lines, polylist, triangles, triangle_fans. */
+  /**
+   * Checks if mesh has supported primitive types:
+   * `lines`, `polylist`, `triangles`, `triangle_fans`.
+   */
   bool is_nice_mesh(COLLADAFW::Mesh *mesh);
 
   void read_vertices(COLLADAFW::Mesh *mesh, Mesh *me);
@@ -127,17 +133,15 @@ class MeshImporter : public MeshImporterBase {
   bool primitive_has_faces(COLLADAFW::MeshPrimitive *mp);
 
   /**
-   * This function is copied from source/blender/editors/mesh/mesh_data.c
+   * This function is copied from `source/blender/editors/mesh/mesh_data.cc`
    *
    * TODO: (As discussed with sergey-) :
-   * Maybe move this function to `blenderkernel/intern/mesh.c`.
+   * Maybe move this function to `blenderkernel/intern/mesh.cc`.
    * and add definition to BKE_mesh.c.
    */
   static void mesh_add_edges(Mesh *mesh, int len);
 
-  unsigned int get_loose_edge_count(COLLADAFW::Mesh *mesh);
-
-  CustomData create_edge_custom_data(EdgeHash *eh);
+  uint get_loose_edge_count(COLLADAFW::Mesh *mesh);
 
   /**
    * Return the number of faces by summing up
@@ -155,7 +159,7 @@ class MeshImporter : public MeshImporterBase {
    *
    * TODO: import uv set names.
    */
-  void read_polys(COLLADAFW::Mesh *mesh, Mesh *me);
+  void read_polys(COLLADAFW::Mesh *mesh, Mesh *me, blender::Vector<blender::float3> &loop_normals);
   /**
    * Read all loose edges.
    * IMPORTANT: This function assumes that all edges from existing
@@ -163,11 +167,11 @@ class MeshImporter : public MeshImporterBase {
    * So this function MUST be called after read_faces() (see below)
    */
   void read_lines(COLLADAFW::Mesh *mesh, Mesh *me);
-  unsigned int get_vertex_count(COLLADAFW::Polygons *mp, int index);
+  uint get_vertex_count(COLLADAFW::Polygons *mp, int index);
 
   void get_vector(float v[3], COLLADAFW::MeshVertexData &arr, int i, int stride);
 
-  bool is_flat_face(unsigned int *nind, COLLADAFW::MeshVertexData &nor, int count);
+  bool is_flat_face(uint *nind, COLLADAFW::MeshVertexData &nor, int count);
 
   /**
    * Returns the list of Users of the given Mesh object.
@@ -178,6 +182,7 @@ class MeshImporter : public MeshImporterBase {
 
  public:
   MeshImporter(UnitConverter *unitconv,
+               bool use_custom_normals,
                ArmatureImporter *arm,
                Main *bmain,
                Scene *sce,
@@ -203,7 +208,6 @@ class MeshImporter : public MeshImporterBase {
    *         if the check is positive:
    *             Add the materials of the first user to the geometry
    *             adjust all other users accordingly.
-   *
    */
   void optimize_material_assignements();
 

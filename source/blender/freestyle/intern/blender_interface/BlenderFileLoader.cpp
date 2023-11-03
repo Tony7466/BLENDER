@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -6,12 +8,20 @@
 
 #include "BlenderFileLoader.h"
 
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_global.h"
-#include "BKE_object.h"
+#include "BKE_mesh.hh"
+#include "BKE_object.hh"
 
 #include <sstream>
+
+using blender::float3;
+using blender::Span;
 
 namespace Freestyle {
 
@@ -46,7 +56,7 @@ NodeGroup *BlenderFileLoader::Load()
     // Adjust clipping start/end and set up a Z offset when the viewport preview
     // is used with the orthographic view.  In this case, _re->clip_start is negative,
     // while Freestyle assumes that imported mesh data are in the camera coordinate
-    // system with the view point located at origin [bug T36009].
+    // system with the view point located at origin [bug #36009].
     _z_near = -0.001f;
     _z_offset = _re->clip_start + _z_near;
     _z_far = -_re->clip_end + _z_offset;
@@ -60,20 +70,27 @@ NodeGroup *BlenderFileLoader::Load()
   int id = 0;
   const eEvaluationMode eval_mode = DEG_get_mode(_depsgraph);
 
-  DEG_OBJECT_ITER_BEGIN (_depsgraph,
-                         ob,
-                         DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
-                             DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
-                             DEG_ITER_OBJECT_FLAG_DUPLI) {
+  DEGObjectIterSettings deg_iter_settings{};
+  deg_iter_settings.depsgraph = _depsgraph;
+  deg_iter_settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
+                            DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
+                            DEG_ITER_OBJECT_FLAG_DUPLI;
+  DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
     if (_pRenderMonitor && _pRenderMonitor->testBreak()) {
       break;
     }
 
-    if (ob->base_flag & (BASE_HOLDOUT | BASE_INDIRECT_ONLY)) {
+    if ((ob->base_flag & (BASE_HOLDOUT | BASE_INDIRECT_ONLY)) ||
+        (ob->visibility_flag & OB_HOLDOUT)) {
       continue;
     }
 
     if (!(BKE_object_visibility(ob, eval_mode) & OB_VISIBLE_SELF)) {
+      continue;
+    }
+
+    /* Evaluated metaballs will appear as mesh objects in the iterator. */
+    if (ob->type == OB_MBALL) {
       continue;
     }
 
@@ -121,7 +138,9 @@ int BlenderFileLoader::countClippedFaces(float v1[3], float v2[3], float v3[3], 
     if (G.debug & G_DEBUG_FREESTYLE) {
       printf("%d %s\n",
              i,
-             (clip[i] == NOT_CLIPPED) ? "not" : (clip[i] == CLIPPED_BY_NEAR) ? "near" : "far");
+             (clip[i] == NOT_CLIPPED)     ? "not" :
+             (clip[i] == CLIPPED_BY_NEAR) ? "near" :
+                                            "far");
     }
 #endif
     sum += clip[i];
@@ -191,7 +210,7 @@ void BlenderFileLoader::clipTriangle(int numTris,
                                      float n1[3],
                                      float n2[3],
                                      float n3[3],
-                                     bool edgeMarks[],
+                                     bool edgeMarks[5],
                                      bool em1,
                                      bool em2,
                                      bool em3,
@@ -248,7 +267,7 @@ void BlenderFileLoader::clipTriangle(int numTris,
   (void)numTris; /* Ignored in release builds. */
 }
 
-void BlenderFileLoader::addTriangle(struct LoaderState *ls,
+void BlenderFileLoader::addTriangle(LoaderState *ls,
                                     float v1[3],
                                     float v2[3],
                                     float v3[3],
@@ -264,7 +283,7 @@ void BlenderFileLoader::addTriangle(struct LoaderState *ls,
 #if 0
   float len;
 #endif
-  unsigned int i, j;
+  uint i, j;
   IndexedFaceSet::FaceEdgeMark marks = 0;
 
   // initialize the bounding box by the first vertex
@@ -354,7 +373,8 @@ int BlenderFileLoader::testDegenerateTriangle(float v1[3], float v2[3], float v3
   }
   if (dist_squared_to_line_segment_v3(v1, v2, v3) < eps_sq ||
       dist_squared_to_line_segment_v3(v2, v1, v3) < eps_sq ||
-      dist_squared_to_line_segment_v3(v3, v1, v2) < eps_sq) {
+      dist_squared_to_line_segment_v3(v3, v1, v2) < eps_sq)
+  {
 #if 0
     if (verbose && G.debug & G_DEBUG_FREESTYLE) {
       printf("BlenderFileLoader::testDegenerateTriangle = 2\n");
@@ -372,41 +392,43 @@ int BlenderFileLoader::testDegenerateTriangle(float v1[3], float v2[3], float v3
 
 static bool testEdgeMark(Mesh *me, const FreestyleEdge *fed, const MLoopTri *lt, int i)
 {
-  MLoop *mloop = &me->mloop[lt->tri[i]];
-  MLoop *mloop_next = &me->mloop[lt->tri[(i + 1) % 3]];
-  MEdge *medge = &me->medge[mloop->e];
+  const Span<blender::int2> edges = me->edges();
+  const Span<int> corner_verts = me->corner_verts();
+  const Span<int> corner_edges = me->corner_edges();
 
-  if (!ELEM(mloop_next->v, medge->v1, medge->v2)) {
+  const int corner = lt->tri[i];
+  const int corner_next = lt->tri[(i + 1) % 3];
+  const blender::int2 &edge = edges[corner_edges[corner]];
+
+  if (!ELEM(corner_verts[corner_next], edge[0], edge[1])) {
     /* Not an edge in the original mesh before triangulation. */
     return false;
   }
 
-  return (fed[mloop->e].flag & FREESTYLE_EDGE_MARK) != 0;
+  return (fed[corner_edges[corner]].flag & FREESTYLE_EDGE_MARK) != 0;
 }
 
 void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
 {
+  using namespace blender;
   char *name = ob->id.name + 2;
 
+  const Span<float3> vert_positions = me->vert_positions();
+  const OffsetIndices mesh_polys = me->faces();
+  const Span<int> corner_verts = me->corner_verts();
+
   // Compute loop triangles
-  int tottri = poly_to_tri_count(me->totpoly, me->totloop);
+  int tottri = poly_to_tri_count(me->faces_num, me->totloop);
   MLoopTri *mlooptri = (MLoopTri *)MEM_malloc_arrayN(tottri, sizeof(*mlooptri), __func__);
-  BKE_mesh_recalc_looptri(me->mloop, me->mpoly, me->mvert, me->totloop, me->totpoly, mlooptri);
-
-  // Compute loop normals
-  BKE_mesh_calc_normals_split(me);
-  const float(*lnors)[3] = nullptr;
-
-  if (CustomData_has_layer(&me->ldata, CD_NORMAL)) {
-    lnors = (float(*)[3])CustomData_get_layer(&me->ldata, CD_NORMAL);
-  }
+  blender::bke::mesh::looptris_calc(vert_positions, mesh_polys, corner_verts, {mlooptri, tottri});
+  const blender::Span<int> looptri_faces = me->looptri_faces();
+  const blender::Span<blender::float3> lnors = me->corner_normals();
 
   // Get other mesh data
-  MVert *mvert = me->mvert;
-  MLoop *mloop = me->mloop;
-  MPoly *mpoly = me->mpoly;
-  const FreestyleEdge *fed = (FreestyleEdge *)CustomData_get_layer(&me->edata, CD_FREESTYLE_EDGE);
-  const FreestyleFace *ffa = (FreestyleFace *)CustomData_get_layer(&me->pdata, CD_FREESTYLE_FACE);
+  const FreestyleEdge *fed = (const FreestyleEdge *)CustomData_get_layer(&me->edge_data,
+                                                                         CD_FREESTYLE_EDGE);
+  const FreestyleFace *ffa = (const FreestyleFace *)CustomData_get_layer(&me->face_data,
+                                                                         CD_FREESTYLE_FACE);
 
   // Compute view matrix
   Object *ob_camera_eval = DEG_get_evaluated_object(_depsgraph, RE_GetCamera(_re));
@@ -416,22 +438,22 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
 
   // Compute matrix including camera transform
   float obmat[4][4], nmat[4][4];
-  mul_m4_m4m4(obmat, viewmat, ob->obmat);
+  mul_m4_m4m4(obmat, viewmat, ob->object_to_world);
   invert_m4_m4(nmat, obmat);
   transpose_m4(nmat);
 
   // We count the number of triangles after the clipping by the near and far view
   // planes is applied (NOTE: mesh vertices are in the camera coordinate system).
-  unsigned numFaces = 0;
+  uint numFaces = 0;
   float v1[3], v2[3], v3[3];
   float n1[3], n2[3], n3[3], facenormal[3];
   int clip[3];
   for (int a = 0; a < tottri; a++) {
     const MLoopTri *lt = &mlooptri[a];
 
-    copy_v3_v3(v1, mvert[mloop[lt->tri[0]].v].co);
-    copy_v3_v3(v2, mvert[mloop[lt->tri[1]].v].co);
-    copy_v3_v3(v3, mvert[mloop[lt->tri[2]].v].co);
+    copy_v3_v3(v1, vert_positions[corner_verts[lt->tri[0]]]);
+    copy_v3_v3(v2, vert_positions[corner_verts[lt->tri[1]]]);
+    copy_v3_v3(v3, vert_positions[corner_verts[lt->tri[2]]]);
 
     mul_m4_v3(obmat, v1);
     mul_m4_v3(obmat, v2);
@@ -457,16 +479,16 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
   NodeGroup *currentMesh = new NodeGroup;
   NodeShape *shape = new NodeShape;
 
-  unsigned vSize = 3 * 3 * numFaces;
+  uint vSize = 3 * 3 * numFaces;
   float *vertices = new float[vSize];
-  unsigned nSize = vSize;
+  uint nSize = vSize;
   float *normals = new float[nSize];
-  unsigned *numVertexPerFaces = new unsigned[numFaces];
+  uint *numVertexPerFaces = new uint[numFaces];
   vector<Material *> meshMaterials;
   vector<FrsMaterial> meshFrsMaterials;
 
   IndexedFaceSet::TRIANGLES_STYLE *faceStyle = new IndexedFaceSet::TRIANGLES_STYLE[numFaces];
-  unsigned i;
+  uint i;
   for (i = 0; i < numFaces; i++) {
     faceStyle[i] = IndexedFaceSet::TRIANGLES;
     numVertexPerFaces[i] = 3;
@@ -474,13 +496,13 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
 
   IndexedFaceSet::FaceEdgeMark *faceEdgeMarks = new IndexedFaceSet::FaceEdgeMark[numFaces];
 
-  unsigned viSize = 3 * numFaces;
-  unsigned *VIndices = new unsigned[viSize];
-  unsigned niSize = viSize;
-  unsigned *NIndices = new unsigned[niSize];
-  unsigned *MIndices = new unsigned[viSize];  // Material Indices
+  uint viSize = 3 * numFaces;
+  uint *VIndices = new uint[viSize];
+  uint niSize = viSize;
+  uint *NIndices = new uint[niSize];
+  uint *MIndices = new uint[viSize];  // Material Indices
 
-  struct LoaderState ls;
+  LoaderState ls;
   ls.pv = vertices;
   ls.pn = normals;
   ls.pm = faceEdgeMarks;
@@ -492,16 +514,22 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
 
   FrsMaterial tmpMat;
 
+  const bke::AttributeAccessor attributes = me->attributes();
+  const VArray<int> material_indices = *attributes.lookup_or_default<int>(
+      "material_index", ATTR_DOMAIN_FACE, 0);
+  const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE, false);
+
   // We parse the vlak nodes again and import meshes while applying the clipping
   // by the near and far view planes.
   for (int a = 0; a < tottri; a++) {
     const MLoopTri *lt = &mlooptri[a];
-    const MPoly *mp = &mpoly[lt->poly];
-    Material *mat = BKE_object_material_get(ob, mp->mat_nr + 1);
+    const int poly_i = looptri_faces[a];
+    Material *mat = BKE_object_material_get(ob, material_indices[poly_i] + 1);
 
-    copy_v3_v3(v1, mvert[mloop[lt->tri[0]].v].co);
-    copy_v3_v3(v2, mvert[mloop[lt->tri[1]].v].co);
-    copy_v3_v3(v3, mvert[mloop[lt->tri[2]].v].co);
+    copy_v3_v3(v1, vert_positions[corner_verts[lt->tri[0]]]);
+    copy_v3_v3(v2, vert_positions[corner_verts[lt->tri[1]]]);
+    copy_v3_v3(v3, vert_positions[corner_verts[lt->tri[2]]]);
 
     mul_m4_v3(obmat, v1);
     mul_m4_v3(obmat, v2);
@@ -511,7 +539,7 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
     v2[2] += _z_offset;
     v3[2] += _z_offset;
 
-    if (_smooth && (mp->flag & ME_SMOOTH) && lnors) {
+    if (_smooth && (!sharp_faces[poly_i])) {
       copy_v3_v3(n1, lnors[lt->tri[0]]);
       copy_v3_v3(n2, lnors[lt->tri[1]]);
       copy_v3_v3(n3, lnors[lt->tri[2]]);
@@ -532,12 +560,12 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
       copy_v3_v3(n3, facenormal);
     }
 
-    unsigned int numTris = countClippedFaces(v1, v2, v3, clip);
+    uint numTris = countClippedFaces(v1, v2, v3, clip);
     if (numTris == 0) {
       continue;
     }
 
-    bool fm = (ffa) ? (ffa[lt->poly].flag & FREESTYLE_FACE_MARK) != 0 : false;
+    bool fm = (ffa) ? (ffa[poly_i].flag & FREESTYLE_FACE_MARK) != 0 : false;
     bool em1 = false, em2 = false, em3 = false;
 
     if (fed) {
@@ -561,12 +589,13 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
     }
     else {
       // find if the Blender material is already in the list
-      unsigned int i = 0;
+      uint i = 0;
       bool found = false;
 
       for (vector<Material *>::iterator it = meshMaterials.begin(), itend = meshMaterials.end();
            it != itend;
-           it++, i++) {
+           it++, i++)
+      {
         if (*it == mat) {
           ls.currentMIndex = i;
           found = true;
@@ -607,25 +636,26 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
   // We might have several times the same vertex. We want a clean
   // shape with no real-vertex. Here, we are making a cleaning pass.
   float *cleanVertices = nullptr;
-  unsigned int cvSize;
-  unsigned int *cleanVIndices = nullptr;
+  uint cvSize;
+  uint *cleanVIndices = nullptr;
 
   GeomCleaner::CleanIndexedVertexArray(
       vertices, vSize, VIndices, viSize, &cleanVertices, &cvSize, &cleanVIndices);
 
   float *cleanNormals = nullptr;
-  unsigned int cnSize;
-  unsigned int *cleanNIndices = nullptr;
+  uint cnSize;
+  uint *cleanNIndices = nullptr;
 
   GeomCleaner::CleanIndexedVertexArray(
       normals, nSize, NIndices, niSize, &cleanNormals, &cnSize, &cleanNIndices);
 
   // format materials array
   FrsMaterial **marray = new FrsMaterial *[meshFrsMaterials.size()];
-  unsigned int mindex = 0;
+  uint mindex = 0;
   for (vector<FrsMaterial>::iterator m = meshFrsMaterials.begin(), mend = meshFrsMaterials.end();
        m != mend;
-       ++m) {
+       ++m)
+  {
     marray[mindex] = new FrsMaterial(*m);
     ++mindex;
   }
@@ -645,7 +675,7 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
   // addressed later in WShape::MakeFace().
   vector<detri_t> detriList;
   Vec3r zero(0.0, 0.0, 0.0);
-  unsigned vi0, vi1, vi2;
+  uint vi0, vi1, vi2;
   for (i = 0; i < viSize; i += 3) {
     detri_t detri;
     vi0 = cleanVIndices[i];
@@ -678,7 +708,7 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
 
     detri.v = zero;
     detri.n = 0;
-    for (unsigned int j = 0; j < viSize; j += 3) {
+    for (uint j = 0; j < viSize; j += 3) {
       if (i == j) {
         continue;
       }
@@ -737,7 +767,7 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
     if (G.debug & G_DEBUG_FREESTYLE) {
       printf("Warning: Object %s contains %lu degenerated triangle%s (strokes may be incorrect)\n",
              name,
-             (long unsigned int)detriList.size(),
+             ulong(detriList.size()),
              (detriList.size() > 1) ? "s" : "");
     }
   }

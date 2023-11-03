@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -21,7 +22,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_memarena.h"
 #include "BLI_scanfill.h"
 #include "BLI_span.hh"
@@ -34,19 +35,17 @@
 #include "BKE_displist.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_key.h"
-#include "BKE_lattice.h"
 #include "BKE_lib_id.h"
 #include "BKE_mball.h"
-#include "BKE_mball_tessellate.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_vfont.h"
 
 #include "BLI_sys_types.h" /* For #intptr_t support. */
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 using blender::IndexRange;
 
@@ -68,9 +67,7 @@ static void displist_elem_free(DispList *dl)
 
 void BKE_displist_free(ListBase *lb)
 {
-  DispList *dl;
-
-  while ((dl = (DispList *)BLI_pophead(lb))) {
+  while (DispList *dl = (DispList *)BLI_pophead(lb)) {
     displist_elem_free(dl);
   }
 }
@@ -84,120 +81,6 @@ DispList *BKE_displist_find(ListBase *lb, int type)
   }
 
   return nullptr;
-}
-
-void BKE_displist_normals_add(ListBase *lb)
-{
-  float *vdata, *ndata, nor[3];
-  float *v1, *v2, *v3, *v4;
-  float *n1, *n2, *n3, *n4;
-  int a, b, p1, p2, p3, p4;
-
-  LISTBASE_FOREACH (DispList *, dl, lb) {
-    if (dl->type == DL_INDEX3) {
-      if (dl->nors == nullptr) {
-        dl->nors = (float *)MEM_callocN(sizeof(float[3]), __func__);
-
-        if (dl->flag & DL_BACK_CURVE) {
-          dl->nors[2] = -1.0f;
-        }
-        else {
-          dl->nors[2] = 1.0f;
-        }
-      }
-    }
-    else if (dl->type == DL_SURF) {
-      if (dl->nors == nullptr) {
-        dl->nors = (float *)MEM_callocN(sizeof(float[3]) * dl->nr * dl->parts, __func__);
-
-        vdata = dl->verts;
-        ndata = dl->nors;
-
-        for (a = 0; a < dl->parts; a++) {
-
-          if (BKE_displist_surfindex_get(dl, a, &b, &p1, &p2, &p3, &p4) == 0) {
-            break;
-          }
-
-          v1 = vdata + 3 * p1;
-          n1 = ndata + 3 * p1;
-          v2 = vdata + 3 * p2;
-          n2 = ndata + 3 * p2;
-          v3 = vdata + 3 * p3;
-          n3 = ndata + 3 * p3;
-          v4 = vdata + 3 * p4;
-          n4 = ndata + 3 * p4;
-
-          for (; b < dl->nr; b++) {
-            normal_quad_v3(nor, v1, v3, v4, v2);
-
-            add_v3_v3(n1, nor);
-            add_v3_v3(n2, nor);
-            add_v3_v3(n3, nor);
-            add_v3_v3(n4, nor);
-
-            v2 = v1;
-            v1 += 3;
-            v4 = v3;
-            v3 += 3;
-            n2 = n1;
-            n1 += 3;
-            n4 = n3;
-            n3 += 3;
-          }
-        }
-        a = dl->parts * dl->nr;
-        v1 = ndata;
-        while (a--) {
-          normalize_v3(v1);
-          v1 += 3;
-        }
-      }
-    }
-  }
-}
-
-void BKE_displist_count(const ListBase *lb, int *totvert, int *totface, int *tottri)
-{
-  LISTBASE_FOREACH (const DispList *, dl, lb) {
-    int vert_tot = 0;
-    int face_tot = 0;
-    int tri_tot = 0;
-    bool cyclic_u = dl->flag & DL_CYCL_U;
-    bool cyclic_v = dl->flag & DL_CYCL_V;
-
-    switch (dl->type) {
-      case DL_SURF: {
-        int segments_u = dl->nr - (cyclic_u == false);
-        int segments_v = dl->parts - (cyclic_v == false);
-        vert_tot = dl->nr * dl->parts;
-        face_tot = segments_u * segments_v;
-        tri_tot = face_tot * 2;
-        break;
-      }
-      case DL_INDEX3: {
-        vert_tot = dl->nr;
-        face_tot = dl->parts;
-        tri_tot = face_tot;
-        break;
-      }
-      case DL_INDEX4: {
-        vert_tot = dl->nr;
-        face_tot = dl->parts;
-        tri_tot = face_tot * 2;
-        break;
-      }
-      case DL_POLY:
-      case DL_SEGM: {
-        vert_tot = dl->nr * dl->parts;
-        break;
-      }
-    }
-
-    *totvert += vert_tot;
-    *totface += face_tot;
-    *tottri += tri_tot;
-  }
 }
 
 bool BKE_displist_surfindex_get(
@@ -230,7 +113,6 @@ bool BKE_displist_surfindex_get(
   return true;
 }
 
-/* ****************** Make #DispList ********************* */
 #ifdef __INTEL_COMPILER
 /* ICC with the optimization -02 causes crashes. */
 #  pragma intel optimization_level 1
@@ -620,30 +502,9 @@ static float displist_calc_taper(Depsgraph *depsgraph,
 float BKE_displist_calc_taper(
     Depsgraph *depsgraph, const Scene *scene, Object *taperobj, int cur, int tot)
 {
-  const float fac = ((float)cur) / (float)(tot - 1);
+  const float fac = float(cur) / float(tot - 1);
 
   return displist_calc_taper(depsgraph, scene, taperobj, fac);
-}
-
-void BKE_displist_make_mball(Depsgraph *depsgraph, Scene *scene, Object *ob)
-{
-  if (!ob || ob->type != OB_MBALL) {
-    return;
-  }
-
-  if (ob == BKE_mball_basis_find(scene, ob)) {
-    if (ob->runtime.curve_cache) {
-      BKE_displist_free(&(ob->runtime.curve_cache->disp));
-    }
-    else {
-      ob->runtime.curve_cache = MEM_cnew<CurveCache>(__func__);
-    }
-
-    BKE_mball_polygonize(depsgraph, scene, ob, &ob->runtime.curve_cache->disp);
-    BKE_mball_texspace_calc(ob);
-
-    object_deform_mball(ob, &ob->runtime.curve_cache->disp);
-  }
 }
 
 static ModifierData *curve_get_tessellate_point(const Scene *scene,
@@ -651,12 +512,12 @@ static ModifierData *curve_get_tessellate_point(const Scene *scene,
                                                 const bool for_render,
                                                 const bool editmode)
 {
-  VirtualModifierData virtualModifierData;
-  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData);
+  VirtualModifierData virtual_modifier_data;
+  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data);
 
   ModifierMode required_mode = for_render ? eModifierMode_Render : eModifierMode_Realtime;
   if (editmode) {
-    required_mode = (ModifierMode)((int)required_mode | eModifierMode_Editmode);
+    required_mode = (ModifierMode)(int(required_mode) | eModifierMode_Editmode);
   }
 
   ModifierData *pretessellatePoint = nullptr;
@@ -670,6 +531,12 @@ static ModifierData *curve_get_tessellate_point(const Scene *scene,
       return pretessellatePoint;
     }
 
+    if (md->type == eModifierType_Smooth) {
+      /* Smooth modifier works with mesh edges explicitly
+       * (so needs tessellation, thus cannot work on control points). */
+      md->mode &= ~eModifierMode_ApplyOnSpline;
+      return pretessellatePoint;
+    }
     if (ELEM(md->type, eModifierType_Hook, eModifierType_Softbody, eModifierType_MeshDeform)) {
       pretessellatePoint = md;
 
@@ -700,10 +567,10 @@ void BKE_curve_calc_modifiers_pre(Depsgraph *depsgraph,
   const bool editmode = (!for_render && (cu->editnurb || cu->editfont));
   ModifierMode required_mode = for_render ? eModifierMode_Render : eModifierMode_Realtime;
   if (editmode) {
-    required_mode = (ModifierMode)((int)required_mode | eModifierMode_Editmode);
+    required_mode = (ModifierMode)(int(required_mode) | eModifierMode_Editmode);
   }
 
-  ModifierApplyFlag apply_flag = (ModifierApplyFlag)0;
+  ModifierApplyFlag apply_flag = ModifierApplyFlag(0);
   if (editmode) {
     apply_flag = MOD_APPLY_USECACHE;
   }
@@ -733,9 +600,10 @@ void BKE_curve_calc_modifiers_pre(Depsgraph *depsgraph,
   ModifierData *pretessellatePoint = curve_get_tessellate_point(scene, ob, for_render, editmode);
 
   if (pretessellatePoint) {
-    VirtualModifierData virtualModifierData;
-    for (ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData); md;
-         md = md->next) {
+    VirtualModifierData virtual_modifier_data;
+    for (ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data); md;
+         md = md->next)
+    {
       const ModifierTypeInfo *mti = BKE_modifier_get_info((ModifierType)md->type);
 
       if (!BKE_modifier_is_enabled(scene, md, required_mode)) {
@@ -745,11 +613,13 @@ void BKE_curve_calc_modifiers_pre(Depsgraph *depsgraph,
         continue;
       }
 
+      blender::bke::ScopedModifierTimer modifier_timer{*md};
+
       if (!deformedVerts) {
         deformedVerts = BKE_curve_nurbs_vert_coords_alloc(source_nurb, &numVerts);
       }
 
-      mti->deformVerts(md, &mectx, nullptr, deformedVerts, numVerts);
+      mti->deform_verts(md, &mectx, nullptr, deformedVerts, numVerts);
 
       if (md == pretessellatePoint) {
         break;
@@ -772,7 +642,7 @@ void BKE_curve_calc_modifiers_pre(Depsgraph *depsgraph,
 
 /**
  * \return True if the deformed curve control point data should be implicitly
- * converted directly to a mesh, or false if it can be left as curve data via #CurveEval.
+ * converted directly to a mesh, or false if it can be left as curve data via the #Curves type.
  */
 static bool do_curve_implicit_mesh_conversion(const Curve *curve,
                                               ModifierData *first_modifier,
@@ -814,37 +684,35 @@ static bool do_curve_implicit_mesh_conversion(const Curve *curve,
   return false;
 }
 
-static GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
-                                             const Scene *scene,
-                                             Object *ob,
-                                             const ListBase *dispbase,
-                                             const bool for_render)
+static blender::bke::GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
+                                                           const Scene *scene,
+                                                           Object *ob,
+                                                           const ListBase *dispbase,
+                                                           const bool for_render)
 {
   const Curve *cu = (const Curve *)ob->data;
   const bool editmode = (!for_render && (cu->editnurb || cu->editfont));
   const bool use_cache = !for_render;
 
-  ModifierApplyFlag apply_flag = for_render ? MOD_APPLY_RENDER : (ModifierApplyFlag)0;
+  ModifierApplyFlag apply_flag = for_render ? MOD_APPLY_RENDER : ModifierApplyFlag(0);
   ModifierMode required_mode = for_render ? eModifierMode_Render : eModifierMode_Realtime;
   if (editmode) {
-    required_mode = (ModifierMode)((int)required_mode | eModifierMode_Editmode);
+    required_mode = ModifierMode(int(required_mode) | eModifierMode_Editmode);
   }
 
   const ModifierEvalContext mectx_deform = {
-      depsgraph, ob, editmode ? (ModifierApplyFlag)(apply_flag | MOD_APPLY_USECACHE) : apply_flag};
+      depsgraph, ob, editmode ? (apply_flag | MOD_APPLY_USECACHE) : apply_flag};
   const ModifierEvalContext mectx_apply = {
-      depsgraph,
-      ob,
-      use_cache ? (ModifierApplyFlag)(apply_flag | MOD_APPLY_USECACHE) : apply_flag};
+      depsgraph, ob, use_cache ? (apply_flag | MOD_APPLY_USECACHE) : apply_flag};
 
   ModifierData *pretessellatePoint = curve_get_tessellate_point(scene, ob, for_render, editmode);
 
-  VirtualModifierData virtualModifierData;
+  VirtualModifierData virtual_modifier_data;
   ModifierData *md = pretessellatePoint == nullptr ?
-                         BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData) :
+                         BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data) :
                          pretessellatePoint->next;
 
-  GeometrySet geometry_set;
+  blender::bke::GeometrySet geometry_set;
   if (ob->type == OB_SURF || do_curve_implicit_mesh_conversion(cu, md, scene, required_mode)) {
     Mesh *mesh = BKE_mesh_new_nomain_from_curve_displist(ob, dispbase);
     geometry_set.replace_mesh(mesh);
@@ -860,25 +728,28 @@ static GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
       continue;
     }
 
+    blender::bke::ScopedModifierTimer modifier_timer{*md};
+
     if (md->type == eModifierType_Nodes) {
-      mti->modifyGeometrySet(md, &mectx_apply, &geometry_set);
+      mti->modify_geometry_set(md, &mectx_apply, &geometry_set);
       continue;
     }
 
     if (!geometry_set.has_mesh()) {
-      geometry_set.replace_mesh(BKE_mesh_new_nomain(0, 0, 0, 0, 0));
+      geometry_set.replace_mesh(BKE_mesh_new_nomain(0, 0, 0, 0));
     }
     Mesh *mesh = geometry_set.get_mesh_for_write();
 
     if (mti->type == eModifierTypeType_OnlyDeform) {
-      int totvert;
-      float(*vertex_coords)[3] = BKE_mesh_vert_coords_alloc(mesh, &totvert);
-      mti->deformVerts(md, &mectx_deform, mesh, vertex_coords, totvert);
-      BKE_mesh_vert_coords_apply(mesh, vertex_coords);
-      MEM_freeN(vertex_coords);
+      mti->deform_verts(md,
+                        &mectx_deform,
+                        mesh,
+                        reinterpret_cast<float(*)[3]>(mesh->vert_positions_for_write().data()),
+                        mesh->totvert);
+      BKE_mesh_tag_positions_changed(mesh);
     }
     else {
-      Mesh *output_mesh = mti->modifyMesh(md, &mectx_apply, mesh);
+      Mesh *output_mesh = mti->modify_mesh(md, &mectx_apply, mesh);
       if (mesh != output_mesh) {
         geometry_set.replace_mesh(output_mesh);
       }
@@ -887,10 +758,7 @@ static GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
 
   if (geometry_set.has_mesh()) {
     Mesh *final_mesh = geometry_set.get_mesh_for_write();
-
-    BKE_mesh_ensure_normals_for_display(final_mesh);
-
-    BLI_strncpy(final_mesh->id.name, cu->id.name, sizeof(final_mesh->id.name));
+    STRNCPY(final_mesh->id.name, cu->id.name);
     *((short *)final_mesh->id.name) = ID_ME;
   }
 
@@ -928,11 +796,11 @@ static void displist_surf_indices(DispList *dl)
   }
 }
 
-static GeometrySet evaluate_surface_object(Depsgraph *depsgraph,
-                                           const Scene *scene,
-                                           Object *ob,
-                                           const bool for_render,
-                                           ListBase *r_dispbase)
+static blender::bke::GeometrySet evaluate_surface_object(Depsgraph *depsgraph,
+                                                         const Scene *scene,
+                                                         Object *ob,
+                                                         const bool for_render,
+                                                         ListBase *r_dispbase)
 {
   BLI_assert(ob->type == OB_SURF);
   const Curve *cu = (const Curve *)ob->data;
@@ -1010,10 +878,10 @@ static GeometrySet evaluate_surface_object(Depsgraph *depsgraph,
   }
 
   curve_to_filledpoly(cu, r_dispbase);
-  GeometrySet geometry_set = curve_calc_modifiers_post(
+  blender::bke::GeometrySet geometry_set = curve_calc_modifiers_post(
       depsgraph, scene, ob, r_dispbase, for_render);
   if (!geometry_set.has_mesh()) {
-    geometry_set.replace_mesh(BKE_mesh_new_nomain(0, 0, 0, 0, 0));
+    geometry_set.replace_mesh(BKE_mesh_new_nomain(0, 0, 0, 0));
   }
   return geometry_set;
 }
@@ -1108,13 +976,13 @@ static void calc_bevfac_segment_mapping(
   int bevcount = 0, nr = bl->nr;
 
   float bev_fl = bevfac * (bl->nr - 1);
-  *r_bev = (int)bev_fl;
+  *r_bev = int(bev_fl);
 
   while (bevcount < nr - 1) {
     float normlen = *seglen / spline_length;
     if (normsum + normlen > bevfac) {
       bev_fl = bevcount + (bevfac - normsum) / normlen * *segbevcount;
-      *r_bev = (int)bev_fl;
+      *r_bev = int(bev_fl);
       *r_blend = bev_fl - *r_bev;
       break;
     }
@@ -1169,13 +1037,15 @@ static void calc_bevfac_mapping(const Curve *cu,
 
   if ((BKE_nurb_check_valid_u(nu) == false) ||
       /* not essential, but skips unnecessary calculation */
-      (min_ff(cu->bevfac1, cu->bevfac2) == 0.0f && max_ff(cu->bevfac1, cu->bevfac2) == 1.0f)) {
+      (min_ff(cu->bevfac1, cu->bevfac2) == 0.0f && max_ff(cu->bevfac1, cu->bevfac2) == 1.0f))
+  {
     calc_bevfac_mapping_default(bl, r_start, r_firstblend, r_steps, r_lastblend);
     return;
   }
 
   if (ELEM(cu->bevfac1_mapping, CU_BEVFAC_MAP_SEGMENT, CU_BEVFAC_MAP_SPLINE) ||
-      ELEM(cu->bevfac2_mapping, CU_BEVFAC_MAP_SEGMENT, CU_BEVFAC_MAP_SPLINE)) {
+      ELEM(cu->bevfac2_mapping, CU_BEVFAC_MAP_SEGMENT, CU_BEVFAC_MAP_SPLINE))
+  {
     for (i = 0; i < SEGMENTSU(nu); i++) {
       total_length += bl->seglen[i];
     }
@@ -1184,7 +1054,7 @@ static void calc_bevfac_mapping(const Curve *cu,
   switch (cu->bevfac1_mapping) {
     case CU_BEVFAC_MAP_RESOLU: {
       const float start_fl = cu->bevfac1 * (bl->nr - 1);
-      *r_start = (int)start_fl;
+      *r_start = int(start_fl);
       *r_firstblend = 1.0f - (start_fl - (*r_start));
       break;
     }
@@ -1203,7 +1073,7 @@ static void calc_bevfac_mapping(const Curve *cu,
   switch (cu->bevfac2_mapping) {
     case CU_BEVFAC_MAP_RESOLU: {
       const float end_fl = cu->bevfac2 * (bl->nr - 1);
-      end = (int)end_fl;
+      end = int(end_fl);
 
       *r_steps = 2 + end - *r_start;
       *r_lastblend = end_fl - end;
@@ -1222,7 +1092,7 @@ static void calc_bevfac_mapping(const Curve *cu,
   }
 
   if (end < *r_start || (end == *r_start && *r_lastblend < 1.0f - *r_firstblend)) {
-    SWAP(int, *r_start, end);
+    std::swap(*r_start, end);
     tmpf = *r_lastblend;
     *r_lastblend = 1.0f - *r_firstblend;
     *r_firstblend = 1.0f - tmpf;
@@ -1235,11 +1105,11 @@ static void calc_bevfac_mapping(const Curve *cu,
   }
 }
 
-static GeometrySet evaluate_curve_type_object(Depsgraph *depsgraph,
-                                              const Scene *scene,
-                                              Object *ob,
-                                              const bool for_render,
-                                              ListBase *r_dispbase)
+static blender::bke::GeometrySet evaluate_curve_type_object(Depsgraph *depsgraph,
+                                                            const Scene *scene,
+                                                            Object *ob,
+                                                            const bool for_render,
+                                                            ListBase *r_dispbase)
 {
   BLI_assert(ELEM(ob->type, OB_CURVES_LEGACY, OB_FONT));
   const Curve *cu = (const Curve *)ob->data;
@@ -1258,7 +1128,8 @@ static GeometrySet evaluate_curve_type_object(Depsgraph *depsgraph,
   BKE_curve_bevelList_make(ob, deformed_nurbs, for_render);
 
   if ((cu->flag & CU_PATH) ||
-      DEG_get_eval_flags_for_id(depsgraph, &ob->id) & DAG_EVAL_NEED_CURVE_PATH) {
+      DEG_get_eval_flags_for_id(depsgraph, &ob->id) & DAG_EVAL_NEED_CURVE_PATH)
+  {
     BKE_anim_path_calc_data(ob);
   }
 
@@ -1332,7 +1203,7 @@ static GeometrySet evaluate_curve_type_object(Depsgraph *depsgraph,
         }
 
         LISTBASE_FOREACH (DispList *, dlb, &dlbev) {
-          /* for each part of the bevel use a separate displblock */
+          /* For each part of the bevel use a separate display-block. */
           DispList *dl = MEM_cnew<DispList>(__func__);
           dl->verts = data = (float *)MEM_mallocN(sizeof(float[3]) * dlb->nr * steps, __func__);
           BLI_addtail(r_dispbase, dl);
@@ -1376,12 +1247,12 @@ static GeometrySet evaluate_curve_type_object(Depsgraph *depsgraph,
                   taper_factor = 1.0f;
                 }
                 else {
-                  taper_factor = ((float)a - (1.0f - first_blend)) / len;
+                  taper_factor = (float(a) - (1.0f - first_blend)) / len;
                 }
               }
               else {
                 float len = bl->nr - 1;
-                taper_factor = (float)i / len;
+                taper_factor = float(i) / len;
 
                 if (a == 0) {
                   taper_factor += (1.0f - first_blend) / len;
@@ -1463,11 +1334,13 @@ void BKE_displist_make_curveTypes(Depsgraph *depsgraph,
   ListBase *dispbase = &ob->runtime.curve_cache->disp;
 
   if (ob->type == OB_SURF) {
-    GeometrySet geometry = evaluate_surface_object(depsgraph, scene, ob, for_render, dispbase);
-    ob->runtime.geometry_set_eval = new GeometrySet(std::move(geometry));
+    blender::bke::GeometrySet geometry = evaluate_surface_object(
+        depsgraph, scene, ob, for_render, dispbase);
+    ob->runtime.geometry_set_eval = new blender::bke::GeometrySet(std::move(geometry));
   }
   else {
-    GeometrySet geometry = evaluate_curve_type_object(depsgraph, scene, ob, for_render, dispbase);
+    blender::bke::GeometrySet geometry = evaluate_curve_type_object(
+        depsgraph, scene, ob, for_render, dispbase);
 
     if (geometry.has_curves()) {
       /* Create a copy of the original curve and add necessary pointers to evaluated and edit mode
@@ -1480,12 +1353,12 @@ void BKE_displist_make_curveTypes(Depsgraph *depsgraph,
        * - The dependency graph has handling of edit mode pointers (see #update_edit_mode_pointers)
        *   but it doesn't seem to work in this case.
        *
-       * Since the the plan is to replace this legacy curve object with the curves data-block
-       * (see T95355), this somewhat hacky inefficient solution is relatively temporary.
+       * Since the plan is to replace this legacy curve object with the curves data-block
+       * (see #95355), this somewhat hacky inefficient solution is relatively temporary.
        */
       Curve &cow_curve = *reinterpret_cast<Curve *>(
           BKE_id_copy_ex(nullptr, &original_curve.id, nullptr, LIB_ID_COPY_LOCALIZE));
-      cow_curve.curve_eval = geometry.get_curves_for_read();
+      cow_curve.curve_eval = geometry.get_curves();
       /* Copy edit mode pointers necessary for drawing to the duplicated curve. */
       cow_curve.editnurb = original_curve.editnurb;
       cow_curve.editfont = original_curve.editfont;
@@ -1493,7 +1366,7 @@ void BKE_displist_make_curveTypes(Depsgraph *depsgraph,
       BKE_object_eval_assign_data(ob, &cow_curve.id, true);
     }
 
-    ob->runtime.geometry_set_eval = new GeometrySet(std::move(geometry));
+    ob->runtime.geometry_set_eval = new blender::bke::GeometrySet(std::move(geometry));
   }
 
   BKE_object_boundbox_calc_from_evaluated_geometry(ob);
@@ -1501,20 +1374,19 @@ void BKE_displist_make_curveTypes(Depsgraph *depsgraph,
 
 void BKE_displist_minmax(const ListBase *dispbase, float min[3], float max[3])
 {
-  bool doit = false;
+  bool empty = true;
 
   LISTBASE_FOREACH (const DispList *, dl, dispbase) {
-    const int tot = (ELEM(dl->type, DL_INDEX3, DL_INDEX4)) ? dl->nr : dl->nr * dl->parts;
+    const int tot = dl->type == DL_INDEX3 ? dl->nr : dl->nr * dl->parts;
     for (const int i : IndexRange(tot)) {
       minmax_v3v3_v3(min, max, &dl->verts[i * 3]);
     }
     if (tot != 0) {
-      doit = true;
+      empty = false;
     }
   }
 
-  if (!doit) {
-    /* there's no geometry in displist, use zero-sized boundbox */
+  if (empty) {
     zero_v3(min);
     zero_v3(max);
   }

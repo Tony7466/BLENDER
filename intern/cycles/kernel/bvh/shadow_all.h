@@ -1,8 +1,10 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Adapted from code Copyright 2009-2010 NVIDIA Corporation,
- * and code copyright 2009-2012 Intel Corporation
+/* SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2009-2012 Intel Corporation
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
- * Modifications Copyright 2011-2022 Blender Foundation. */
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Adapted code from NVIDIA Corporation. */
 
 #if BVH_FEATURE(BVH_HAIR)
 #  define NODE_INTERSECT bvh_node_intersect
@@ -144,6 +146,12 @@ ccl_device_inline
               continue;
             }
 
+#ifdef __SHADOW_LINKING__
+            if (intersection_skip_shadow_link(kg, ray->self, prim_object)) {
+              continue;
+            }
+#endif
+
             switch (type & PRIMITIVE_ALL) {
               case PRIMITIVE_TRIANGLE: {
                 hit = triangle_intersect(
@@ -229,7 +237,7 @@ ccl_device_inline
               /* Always use baked shadow transparency for curves. */
               if (isect.type & PRIMITIVE_CURVE) {
                 *r_throughput *= intersection_curve_shadow_transparency(
-                    kg, isect.object, isect.prim, isect.u);
+                    kg, isect.object, isect.prim, isect.type, isect.u);
 
                 if (*r_throughput < CURVE_SHADOW_TRANSPARENCY_CUTOFF) {
                   return true;

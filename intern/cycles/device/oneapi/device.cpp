@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Intel Corporation */
+/* SPDX-FileCopyrightText: 2021-2022 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/oneapi/device.h"
 
@@ -19,59 +20,11 @@
 
 CCL_NAMESPACE_BEGIN
 
-#ifdef WITH_ONEAPI
-static OneAPIDLLInterface oneapi_dll;
-#endif
-
-#ifdef _WIN32
-#  define LOAD_ONEAPI_SHARED_LIBRARY(path) (void *)(LoadLibrary(path))
-#  define FREE_SHARED_LIBRARY(handle) FreeLibrary((HMODULE)handle)
-#  define GET_SHARED_LIBRARY_SYMBOL(handle, name) GetProcAddress((HMODULE)handle, name)
-#elif __linux__
-#  define LOAD_ONEAPI_SHARED_LIBRARY(path) dlopen(path, RTLD_NOW)
-#  define FREE_SHARED_LIBRARY(handle) dlclose(handle)
-#  define GET_SHARED_LIBRARY_SYMBOL(handle, name) dlsym(handle, name)
-#endif
-
 bool device_oneapi_init()
 {
 #if !defined(WITH_ONEAPI)
   return false;
 #else
-
-  string lib_path = path_get("lib");
-#  ifdef _WIN32
-  lib_path = path_join(lib_path, "cycles_kernel_oneapi.dll");
-#  else
-  lib_path = path_join(lib_path, "cycles_kernel_oneapi.so");
-#  endif
-  void *lib_handle = LOAD_ONEAPI_SHARED_LIBRARY(lib_path.c_str());
-
-  /* This shouldn't happen, but it still makes sense to have a branch for this. */
-  if (lib_handle == NULL) {
-    LOG(ERROR) << "oneAPI kernel shared library cannot be loaded for some reason. This should not "
-                  "happen, however, it occurs hence oneAPI rendering will be disabled";
-    return false;
-  }
-
-#  define DLL_INTERFACE_CALL(function, return_type, ...) \
-    (oneapi_dll.function) = reinterpret_cast<decltype(oneapi_dll.function)>( \
-        GET_SHARED_LIBRARY_SYMBOL(lib_handle, #function)); \
-    if (oneapi_dll.function == NULL) { \
-      LOG(ERROR) << "oneAPI shared library function \"" << #function \
-                 << "\" has not been loaded from kernel shared  - disable oneAPI " \
-                    "library disable oneAPI implementation due to this"; \
-      FREE_SHARED_LIBRARY(lib_handle); \
-      return false; \
-    }
-#  include "kernel/device/oneapi/dll_interface_template.h"
-#  undef DLL_INTERFACE_CALL
-
-  VLOG_INFO << "oneAPI kernel shared library has been loaded successfully";
-
-  /* We need to have this oneapi kernel shared library during all life-span of the Blender.
-   * So it is not unloaded because of this.
-   * FREE_SHARED_LIBRARY(lib_handle); */
 
   /* NOTE(@nsirgien): we need to enable JIT cache from here and
    * right now this cache policy is controlled by env. variables. */
@@ -79,6 +32,8 @@ bool device_oneapi_init()
    * improves stability as of intel/LLVM SYCL-nightly/20220529.
    * All these env variable can be set beforehand by end-users and
    * will in that case -not- be overwritten. */
+  /* By default, enable only Level-Zero and if all devices are allowed, also CUDA and HIP.
+   * OpenCL backend isn't currently well supported. */
 #  ifdef _WIN32
   if (getenv("SYCL_CACHE_PERSISTENT") == nullptr) {
     _putenv_s("SYCL_CACHE_PERSISTENT", "1");
@@ -86,8 +41,13 @@ bool device_oneapi_init()
   if (getenv("SYCL_CACHE_TRESHOLD") == nullptr) {
     _putenv_s("SYCL_CACHE_THRESHOLD", "0");
   }
-  if (getenv("SYCL_DEVICE_FILTER") == nullptr) {
-    _putenv_s("SYCL_DEVICE_FILTER", "host,level_zero");
+  if (getenv("ONEAPI_DEVICE_SELECTOR") == nullptr) {
+    if (getenv("CYCLES_ONEAPI_ALL_DEVICES") == nullptr) {
+      _putenv_s("ONEAPI_DEVICE_SELECTOR", "level_zero:*");
+    }
+    else {
+      _putenv_s("ONEAPI_DEVICE_SELECTOR", "!opencl:*");
+    }
   }
   if (getenv("SYCL_ENABLE_PCI") == nullptr) {
     _putenv_s("SYCL_ENABLE_PCI", "1");
@@ -95,29 +55,31 @@ bool device_oneapi_init()
   if (getenv("SYCL_PI_LEVEL_ZERO_USE_COPY_ENGINE_FOR_IN_ORDER_QUEUE") == nullptr) {
     _putenv_s("SYCL_PI_LEVEL_ZERO_USE_COPY_ENGINE_FOR_IN_ORDER_QUEUE", "0");
   }
+  if (getenv("SYCL_PI_LEVEL_ZERO_USE_COPY_ENGINE") == nullptr) {
+    _putenv_s("SYCL_PI_LEVEL_ZERO_USE_COPY_ENGINE", "0");
+  }
 #  elif __linux__
   setenv("SYCL_CACHE_PERSISTENT", "1", false);
   setenv("SYCL_CACHE_THRESHOLD", "0", false);
-  setenv("SYCL_DEVICE_FILTER", "host,level_zero", false);
+  if (getenv("CYCLES_ONEAPI_ALL_DEVICES") == nullptr) {
+    setenv("ONEAPI_DEVICE_SELECTOR", "level_zero:*", false);
+  }
+  else {
+    setenv("ONEAPI_DEVICE_SELECTOR", "!opencl:*", false);
+  }
   setenv("SYCL_ENABLE_PCI", "1", false);
   setenv("SYCL_PI_LEVEL_ZERO_USE_COPY_ENGINE_FOR_IN_ORDER_QUEUE", "0", false);
+  setenv("SYCL_PI_LEVEL_ZERO_USE_COPY_ENGINE", "0", false);
 #  endif
 
   return true;
 #endif
 }
 
-#if defined(_WIN32) || defined(__linux__)
-#  undef LOAD_SYCL_SHARED_LIBRARY
-#  undef LOAD_ONEAPI_SHARED_LIBRARY
-#  undef FREE_SHARED_LIBRARY
-#  undef GET_SHARED_LIBRARY_SYMBOL
-#endif
-
 Device *device_oneapi_create(const DeviceInfo &info, Stats &stats, Profiler &profiler)
 {
 #ifdef WITH_ONEAPI
-  return new OneapiDevice(info, oneapi_dll, stats, profiler);
+  return new OneapiDevice(info, stats, profiler);
 #else
   (void)info;
   (void)stats;
@@ -130,7 +92,8 @@ Device *device_oneapi_create(const DeviceInfo &info, Stats &stats, Profiler &pro
 }
 
 #ifdef WITH_ONEAPI
-static void device_iterator_cb(const char *id, const char *name, int num, void *user_ptr)
+static void device_iterator_cb(
+    const char *id, const char *name, int num, bool hwrt_support, void *user_ptr)
 {
   vector<DeviceInfo> *devices = (vector<DeviceInfo> *)user_ptr;
 
@@ -155,6 +118,13 @@ static void device_iterator_cb(const char *id, const char *name, int num, void *
   /* NOTE(@nsirgien): Seems not possible to know from SYCL/oneAPI or Level0. */
   info.display_device = false;
 
+#  ifdef WITH_EMBREE_GPU
+  info.use_hardware_raytracing = hwrt_support;
+#  else
+  info.use_hardware_raytracing = false;
+  (void)hwrt_support;
+#  endif
+
   devices->push_back(info);
   VLOG_INFO << "Added device \"" << name << "\" with id \"" << info.id << "\".";
 }
@@ -163,7 +133,7 @@ static void device_iterator_cb(const char *id, const char *name, int num, void *
 void device_oneapi_info(vector<DeviceInfo> &devices)
 {
 #ifdef WITH_ONEAPI
-  (oneapi_dll.oneapi_iterate_devices)(device_iterator_cb, &devices);
+  OneapiDevice::iterate_devices(device_iterator_cb, &devices);
 #else  /* WITH_ONEAPI */
   (void)devices;
 #endif /* WITH_ONEAPI */
@@ -173,10 +143,10 @@ string device_oneapi_capabilities()
 {
   string capabilities;
 #ifdef WITH_ONEAPI
-  char *c_capabilities = (oneapi_dll.oneapi_device_capabilities)();
+  char *c_capabilities = OneapiDevice::device_capabilities();
   if (c_capabilities) {
     capabilities = c_capabilities;
-    (oneapi_dll.oneapi_free)(c_capabilities);
+    free(c_capabilities);
   }
 #endif
   return capabilities;

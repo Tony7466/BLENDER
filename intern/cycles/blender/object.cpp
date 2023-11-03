@@ -1,6 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
+#include "blender/light_linking.h"
 #include "blender/object_cull.h"
 #include "blender/sync.h"
 #include "blender/util.h"
@@ -22,6 +24,8 @@
 #include "util/hash.h"
 #include "util/log.h"
 #include "util/task.h"
+
+#include "BKE_duplilist.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -61,14 +65,9 @@ bool BlenderSync::object_is_geometry(BObjectInfo &b_ob_info)
   BL::Object::type_enum type = b_ob_info.iter_object.type();
 
   if (type == BL::Object::type_VOLUME || type == BL::Object::type_CURVES ||
-      type == BL::Object::type_POINTCLOUD) {
+      type == BL::Object::type_POINTCLOUD)
+  {
     /* Will be exported attached to mesh. */
-    return true;
-  }
-
-  /* Other object types that are not meshes but evaluate to meshes are presented to render engines
-   * as separate instance objects. Metaballs have not been affected by that change yet. */
-  if (type == BL::Object::type_META) {
     return true;
   }
 
@@ -98,6 +97,13 @@ bool BlenderSync::object_is_light(BL::Object &b_ob)
   BL::ID b_ob_data = b_ob.data();
 
   return (b_ob_data && b_ob_data.is_a(&RNA_Light));
+}
+
+bool BlenderSync::object_is_camera(BL::Object &b_ob)
+{
+  BL::ID b_ob_data = b_ob.data();
+
+  return (b_ob_data && b_ob_data.is_a(&RNA_Camera));
 }
 
 void BlenderSync::sync_object_motion_init(BL::Object &b_parent, BL::Object &b_ob, Object *object)
@@ -254,9 +260,10 @@ Object *BlenderSync::sync_object(BL::Depsgraph &b_depsgraph,
       }
 
       /* mesh deformation */
-      if (object->get_geometry())
+      if (object->get_geometry()) {
         sync_geometry_motion(
             b_depsgraph, b_ob_info, object, motion_time, use_particle_hair, object_geom_task_pool);
+      }
     }
 
     return object;
@@ -322,7 +329,8 @@ Object *BlenderSync::sync_object(BL::Depsgraph &b_depsgraph,
    * transform comparison should not be needed, but duplis don't work perfect
    * in the depsgraph and may not signal changes, so this is a workaround */
   if (object->is_modified() || object_updated ||
-      (object->get_geometry() && object->get_geometry()->is_modified())) {
+      (object->get_geometry() && object->get_geometry()->is_modified()))
+  {
     object->name = b_ob.name().c_str();
     object->set_pass_id(b_ob.pass_index());
     const BL::Array<float, 4> object_color = b_ob.color();
@@ -343,8 +351,17 @@ Object *BlenderSync::sync_object(BL::Depsgraph &b_depsgraph,
       object->set_random_id(hash_uint2(hash_string(object->name.c_str()), 0));
     }
 
-    /* lightgroup */
-    object->set_lightgroup(ustring(b_ob.lightgroup()));
+    /* Light group and linking. */
+    string lightgroup = b_ob.lightgroup();
+    if (lightgroup.empty()) {
+      lightgroup = b_parent.lightgroup();
+    }
+    object->set_lightgroup(ustring(lightgroup));
+
+    object->set_light_set_membership(BlenderLightLink::get_light_set_membership(b_parent, b_ob));
+    object->set_receiver_light_set(BlenderLightLink::get_receiver_light_set(b_parent, b_ob));
+    object->set_shadow_set_membership(BlenderLightLink::get_shadow_set_membership(b_parent, b_ob));
+    object->set_blocker_shadow_set(BlenderLightLink::get_blocker_shadow_set(b_parent, b_ob));
 
     object->tag_update(scene);
   }
@@ -359,79 +376,26 @@ Object *BlenderSync::sync_object(BL::Depsgraph &b_depsgraph,
   return object;
 }
 
-/* This function mirrors drw_uniform_property_lookup in draw_instance_data.cpp */
-static bool lookup_property(BL::ID b_id, const string &name, float4 *r_value)
-{
-  PointerRNA ptr;
-  PropertyRNA *prop;
+extern "C" DupliObject *rna_hack_DepsgraphObjectInstance_dupli_object_get(PointerRNA *ptr);
 
-  if (!RNA_path_resolve(&b_id.ptr, name.c_str(), &ptr, &prop)) {
-    return false;
-  }
-
-  if (prop == NULL) {
-    return false;
-  }
-
-  PropertyType type = RNA_property_type(prop);
-  int arraylen = RNA_property_array_length(&ptr, prop);
-
-  if (arraylen == 0) {
-    float value;
-
-    if (type == PROP_FLOAT)
-      value = RNA_property_float_get(&ptr, prop);
-    else if (type == PROP_INT)
-      value = static_cast<float>(RNA_property_int_get(&ptr, prop));
-    else
-      return false;
-
-    *r_value = make_float4(value, value, value, 1.0f);
-    return true;
-  }
-  else if (type == PROP_FLOAT && arraylen <= 4) {
-    *r_value = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
-    RNA_property_float_get_array(&ptr, prop, &r_value->x);
-    return true;
-  }
-
-  return false;
-}
-
-/* This function mirrors drw_uniform_attribute_lookup in draw_instance_data.cpp */
 static float4 lookup_instance_property(BL::DepsgraphObjectInstance &b_instance,
                                        const string &name,
                                        bool use_instancer)
 {
-  string idprop_name = string_printf("[\"%s\"]", name.c_str());
-  float4 value;
+  ::Object *ob = (::Object *)b_instance.object().ptr.data;
+  ::DupliObject *dupli = nullptr;
+  ::Object *dupli_parent = nullptr;
 
   /* If requesting instance data, check the parent particle system and object. */
   if (use_instancer && b_instance.is_instance()) {
-    BL::ParticleSystem b_psys = b_instance.particle_system();
-
-    if (b_psys) {
-      if (lookup_property(b_psys.settings(), idprop_name, &value) ||
-          lookup_property(b_psys.settings(), name, &value)) {
-        return value;
-      }
-    }
-    if (lookup_property(b_instance.parent(), idprop_name, &value) ||
-        lookup_property(b_instance.parent(), name, &value)) {
-      return value;
-    }
+    dupli = rna_hack_DepsgraphObjectInstance_dupli_object_get(&b_instance.ptr);
+    dupli_parent = (::Object *)b_instance.parent().ptr.data;
   }
 
-  /* Check the object and mesh. */
-  BL::Object b_ob = b_instance.object();
-  BL::ID b_data = b_ob.data();
+  float4 value;
+  BKE_object_dupli_find_rgba_attribute(ob, dupli, dupli_parent, name.c_str(), &value.x);
 
-  if (lookup_property(b_ob, idprop_name, &value) || lookup_property(b_ob, name, &value) ||
-      lookup_property(b_data, idprop_name, &value) || lookup_property(b_data, name, &value)) {
-    return value;
-  }
-
-  return zero_float4();
+  return value;
 }
 
 bool BlenderSync::sync_object_attributes(BL::DepsgraphObjectInstance &b_instance, Object *object)
@@ -457,7 +421,9 @@ bool BlenderSync::sync_object_attributes(BL::DepsgraphObjectInstance &b_instance
     std::string real_name;
     BlenderAttributeType type = blender_attribute_name_split_type(name, &real_name);
 
-    if (type != BL::ShaderNodeAttribute::attribute_type_GEOMETRY) {
+    if (type == BL::ShaderNodeAttribute::attribute_type_OBJECT ||
+        type == BL::ShaderNodeAttribute::attribute_type_INSTANCER)
+    {
       bool use_instancer = (type == BL::ShaderNodeAttribute::attribute_type_INSTANCER);
       float4 value = lookup_instance_property(b_instance, real_name, use_instancer);
 
@@ -605,7 +571,8 @@ void BlenderSync::sync_objects(BL::Depsgraph &b_depsgraph,
 
   for (b_depsgraph.object_instances.begin(b_instance_iter);
        b_instance_iter != b_depsgraph.object_instances.end() && !cancel;
-       ++b_instance_iter) {
+       ++b_instance_iter)
+  {
     BL::DepsgraphObjectInstance b_instance = *b_instance_iter;
     BL::Object b_ob = b_instance.object();
 
@@ -703,20 +670,23 @@ void BlenderSync::sync_motion(BL::RenderSettings &b_render,
                               int height,
                               void **python_thread_state)
 {
-  if (scene->need_motion() == Scene::MOTION_NONE)
+  if (scene->need_motion() == Scene::MOTION_NONE) {
     return;
+  }
 
   /* get camera object here to deal with camera switch */
   BL::Object b_cam = b_scene.camera();
-  if (b_override)
+  if (b_override) {
     b_cam = b_override;
+  }
 
   int frame_center = b_scene.frame_current();
   float subframe_center = b_scene.frame_subframe();
   float frame_center_delta = 0.0f;
 
   if (scene->need_motion() != Scene::MOTION_PASS &&
-      scene->camera->get_motion_position() != MOTION_POSITION_CENTER) {
+      scene->camera->get_motion_position() != MOTION_POSITION_CENTER)
+  {
     float shuttertime = scene->camera->get_shuttertime();
     if (scene->camera->get_motion_position() == MOTION_POSITION_END) {
       frame_center_delta = -shuttertime * 0.5f;

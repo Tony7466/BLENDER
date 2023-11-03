@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -7,6 +9,10 @@
  */
 
 #include "bmesh_operator_api.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*----------- bmop error system ----------*/
 
@@ -87,3 +93,7 @@ void BMO_error_clear(BMesh *bm);
                     _BMESH_DUMMY_ABORT(), \
                     NULL)) : \
                   NULL)
+
+#ifdef __cplusplus
+}
+#endif

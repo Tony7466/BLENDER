@@ -40,6 +40,103 @@
         </screenshot>
     </screenshots>
     <releases>
+        <release version="3.6" date="2023-06-27">
+            <description>
+                <p>New features:</p>
+                <ul>
+                    <li>Simulation Nodes</li>
+                    <li>New transparent Render Pass</li>
+                    <li>Animation: A new Gaussian Smooth operator for keyframe data was added.</li>
+                </ul>
+                <p>Enhancements:</p>
+                <ul>
+                    <li> PLY I/O:About 4x-20x faster export, 8x-30x faster import</li>
+                    <li>Improved UV packing</li>
+                    <li>Python API: Custom script directories</li>
+                    <li>USD Curves/Hair export</li>
+                    <li>Major improvements to the Library Overrides resyncing process</li>
+                </ul>
+            </description>
+        </release>
+        <release version="3.5" date="2023-03-29">
+            <description>
+                <p>New features:</p>
+                <ul>
+                    <li>Real-Time compositor</li>
+                    <li>Vector displacement sculpting</li>
+                    <li>Built-in hair node groups</li>
+                    <li>Cycles many light sampling</li>
+                    <li>Metal Viewport for macOS</li>
+                </ul>
+                <p>Enhancements:</p>
+                <ul>
+                    <li>Support for importing and exporting compressed .USDZ files</li>
+                    <li>New Ease operator in the graph editor</li>
+                    <li>New Geometry Nodes, like Image Info and Blur Attribute</li>
+                    <li>Font previews now differentiate better between Korean, Japanese, Simplified and Traditional Chinese</li>
+                </ul>
+            </description>
+        </release>
+        <release version="3.4" date="2022-12-07">
+            <description>
+                <p>New features:</p>
+                <ul>
+                    <li>Cycles Path Guiding</li>
+                    <li>Sculpt geometry-based relax brush</li>
+                    <li>Viewport overlay for Geometry Nodes Viewer Node</li>
+                    <li>EEVEE headless rendering support on Linux</li>
+                </ul>
+                <p>Enhancements:</p>
+                <ul>
+                    <li>Many new Geometry Nodes for meshes, curves and more</li>
+                    <li>NLA editor usability improvements</li>
+                    <li>FFmpeg AV1 codec encoding</li>
+                    <li>Improved font thumbnails</li>
+                    <li>Blender as a Python Module</li>
+                </ul>
+            </description>
+        </release>
+        <release version="3.3" date="2022-09-07">
+            <description>
+                <p>New features:</p>
+                <ul>
+                    <li>New hair system</li>
+                    <li>Cycles Rendering on Intel Arc GPUs</li>
+                    <li>Grease Pencil Light and Shadow calculations</li>
+                    <li>Motion Tracker Image Plane Marker</li>
+                </ul>
+                <p>Enhancements:</p>
+                <ul>
+                    <li>Faster Line Art loading time</li>
+                    <li>Library Overrides improvements</li>
+                    <li>Massive performance gains importing large amounts of objects in USD, Alembic, and OBJ</li>
+                    <li>UV improvements</li>
+                    <li>Improved sculpting performance in EEVEE</li>
+                    <li>Cycles GPU rendering improvements for AMD GPUs and Apple Silicon</li>
+                </ul>
+            </description>
+        </release>
+        <release version="3.2" date="2022-06-08">
+            <description>
+                <p>New features:</p>
+                <ul>
+                    <li>Cycles Light Groups</li>
+                    <li>Cycles Shadow Caustics using Manifold Next Event Estimation</li>
+                    <li>New Tools and usability improvements for Polygon Painting</li>
+                    <li>More Geometry Nodes, including Duplicate Elements</li>
+                    <li>Asset Browser: Support for Asset Collections</li>
+                </ul>
+                <p>Enhancements:</p>
+                <ul>
+                    <li>Enhanced channels in the video sequencer</li>
+                    <li>Support for WebP format</li>
+                    <li>New experimental OBJ importer</li>
+                    <li>Motion Paths improvements</li>
+                    <li>Grease Pencil Envelope Modifier</li>
+                    <li>New Curve Pen Tool</li>
+                </ul>
+            </description>
+        </release>
         <release version="3.1" date="2022-03-09">
             <description>
                 <p>New features:</p>
@@ -185,7 +282,7 @@
                 <p>Enhancements:</p>
                 <ul>
                     <li>Grease Pencil closer integration and improved performance</li>
-                    <li>Eevee improved render passes, light cache and hair transparency</li>
+                    <li>EEVEE improved render passes, light cache and hair transparency</li>
                     <li>Faster undo system</li>
                     <li>Rewritten multiresolution modifier</li>
                     <li>Improved hair physics collisions</li>
@@ -225,8 +322,8 @@
                 </ul>
                 <p>Enhancements:</p>
                 <ul>
-                    <li>Eevee shadows, transparency and bump mapping redesigned</li>
-                    <li>Viewport options for look development with Cycles and Eevee</li>
+                    <li>EEVEE shadows, transparency and bump mapping redesigned</li>
+                    <li>Viewport options for look development with Cycles and EEVEE</li>
                     <li>Finer control over rotations and scale in bones, constraints and drivers</li>
                     <li>Outliner improvements, new file browser and batch rename</li>
                 </ul>
@@ -238,7 +335,7 @@
                 <ul>
                     <li>Revamped user interface</li>
                     <li>Toolbar with tools and gizmos</li>
-                    <li>Eevee - physically based realtime renderer</li>
+                    <li>EEVEE - physically based realtime renderer</li>
                     <li>Modern 3D viewport</li>
                     <li>Full 2D animation and drawing system</li>
                     <li>New shaders for hair, sss, volumes, bevel and AO</li>

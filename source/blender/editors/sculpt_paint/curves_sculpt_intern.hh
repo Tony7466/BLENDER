@@ -1,21 +1,23 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 #include <optional>
 
-#include "curves_sculpt_intern.h"
-#include "paint_intern.h"
+#include "paint_intern.hh"
 
 #include "BLI_math_vector.hh"
 #include "BLI_vector.hh"
 #include "BLI_virtual_array.hh"
 
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
 
-#include "ED_curves_sculpt.h"
+#include "ED_curves.hh"
+#include "ED_curves_sculpt.hh"
 
 struct ARegion;
 struct RegionView3D;
@@ -92,17 +94,25 @@ std::optional<CurvesBrush3D> sample_curves_3d_brush(const Depsgraph &depsgraph,
 
 Vector<float4x4> get_symmetry_brush_transforms(eCurvesSymmetryType symmetry);
 
-/**
- * Get the floating point selection on the curve domain, averaged from points if necessary.
- */
-VArray<float> get_curves_selection(const Curves &curves_id);
+bke::SpanAttributeWriter<float> float_selection_ensure(Curves &curves_id);
+
+/** See #move_last_point_and_resample. */
+struct MoveAndResampleBuffers {
+  Array<float> orig_lengths;
+  Array<float> new_lengths;
+
+  Array<int> sample_indices;
+  Array<float> sample_factors;
+
+  Array<float3> new_positions;
+};
 
 /**
- * Get the floating point selection on the curve domain, copied from curves if necessary.
+ * \param buffer: Reused memory to avoid reallocations when the function is called many times.
  */
-VArray<float> get_point_selection(const Curves &curves_id);
-
-void move_last_point_and_resample(MutableSpan<float3> positions, const float3 &new_last_position);
+void move_last_point_and_resample(MoveAndResampleBuffers &buffer,
+                                  MutableSpan<float3> positions,
+                                  const float3 &new_last_position);
 
 class CurvesSculptCommonContext {
  public:
@@ -135,4 +145,33 @@ void report_missing_uv_map_on_original_surface(ReportList *reports);
 void report_missing_uv_map_on_evaluated_surface(ReportList *reports);
 void report_invalid_uv_map(ReportList *reports);
 
+/**
+ * Utility class to make it easy for brushes to implement length preservation and surface
+ * collision.
+ */
+struct CurvesConstraintSolver {
+ private:
+  bool use_surface_collision_;
+  Array<float3> start_positions_;
+  Array<float> segment_lengths_;
+
+ public:
+  void initialize(const bke::CurvesGeometry &curves,
+                  const IndexMask &curve_selection,
+                  const bool use_surface_collision);
+
+  void solve_step(bke::CurvesGeometry &curves,
+                  const IndexMask &curve_selection,
+                  const Mesh *surface,
+                  const CurvesSurfaceTransforms &transforms);
+
+  Span<float> segment_lengths() const
+  {
+    return segment_lengths_;
+  }
+};
+
 }  // namespace blender::ed::sculpt_paint
+
+bool CURVES_SCULPT_mode_poll(bContext *C);
+bool CURVES_SCULPT_mode_poll_view3d(bContext *C);

@@ -1,27 +1,29 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup shdnodes
  */
 
 #include "node_shader_util.hh"
+#include "node_util.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_shader_vector_transform_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Vector>(N_("Vector"))
+  b.add_input<decl::Vector>("Vector")
       .default_value({0.5f, 0.5f, 0.5f})
       .min(-10000.0f)
       .max(10000.0f);
-  b.add_output<decl::Vector>(N_("Vector"));
+  b.add_output<decl::Vector>("Vector");
 }
 
-static void node_shader_buts_vect_transform(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+static void node_shader_buts_vect_transform(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout,
           ptr,
@@ -33,7 +35,7 @@ static void node_shader_buts_vect_transform(uiLayout *layout, bContext *UNUSED(C
   uiItemR(layout, ptr, "convert_to", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
 }
 
-static void node_shader_init_vect_transform(bNodeTree *UNUSED(ntree), bNode *node)
+static void node_shader_init_vect_transform(bNodeTree * /*ntree*/, bNode *node)
 {
   NodeShaderVectTransform *vect = MEM_cnew<NodeShaderVectTransform>("NodeShaderVectTransform");
 
@@ -83,16 +85,16 @@ static const char *get_gpufn_name_from_to(short from, short to, bool is_directio
       }
       break;
   }
-  return NULL;
+  return nullptr;
 }
 
 static int gpu_shader_vect_transform(GPUMaterial *mat,
                                      bNode *node,
-                                     bNodeExecData *UNUSED(execdata),
+                                     bNodeExecData * /*execdata*/,
                                      GPUNodeStack *in,
                                      GPUNodeStack *out)
 {
-  struct GPUNodeLink *inputlink;
+  GPUNodeLink *inputlink;
 
   NodeShaderVectTransform *nodeprop = (NodeShaderVectTransform *)node->storage;
 
@@ -111,14 +113,16 @@ static int gpu_shader_vect_transform(GPUMaterial *mat,
     /* For cycles we have inverted Z */
     /* TODO: pass here the correct matrices */
     if (nodeprop->convert_from == SHD_VECT_TRANSFORM_SPACE_CAMERA &&
-        nodeprop->convert_to != SHD_VECT_TRANSFORM_SPACE_CAMERA) {
+        nodeprop->convert_to != SHD_VECT_TRANSFORM_SPACE_CAMERA)
+    {
       GPU_link(mat, "invert_z", inputlink, &inputlink);
     }
 
     GPU_link(mat, func_name, inputlink, &out[0].link);
 
     if (nodeprop->convert_to == SHD_VECT_TRANSFORM_SPACE_CAMERA &&
-        nodeprop->convert_from != SHD_VECT_TRANSFORM_SPACE_CAMERA) {
+        nodeprop->convert_from != SHD_VECT_TRANSFORM_SPACE_CAMERA)
+    {
       GPU_link(mat, "invert_z", out[0].link, &out[0].link);
     }
   }
@@ -133,6 +137,68 @@ static int gpu_shader_vect_transform(GPUMaterial *mat,
   return true;
 }
 
+NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
+{
+  NodeItem res = empty();
+  NodeShaderVectTransform *nodeprop = (NodeShaderVectTransform *)node_->storage;
+  std::string fromspace;
+  std::string tospace;
+  std::string category;
+  NodeItem vector = get_input_value("Vector", NodeItem::Type::Vector3);
+
+  switch (nodeprop->convert_from) {
+    case SHD_VECT_TRANSFORM_SPACE_WORLD:
+      fromspace = "world";
+      break;
+    case SHD_VECT_TRANSFORM_SPACE_OBJECT:
+      fromspace = "object";
+      break;
+    default:
+      /* NOTE: SHD_VECT_TRANSFORM_SPACE_CAMERA don't have an implementation in MaterialX.*/
+      BLI_assert_unreachable();
+      return vector;
+  }
+
+  switch (nodeprop->convert_to) {
+    case SHD_VECT_TRANSFORM_SPACE_WORLD:
+      tospace = "world";
+      break;
+    case SHD_VECT_TRANSFORM_SPACE_OBJECT:
+      tospace = "object";
+      break;
+    default:
+      /* NOTE: SHD_VECT_TRANSFORM_SPACE_CAMERA don't have an implementation in MaterialX.*/
+      BLI_assert_unreachable();
+      return vector;
+  }
+
+  if (fromspace == tospace) {
+    return vector;
+  }
+
+  switch (nodeprop->type) {
+    case SHD_VECT_TRANSFORM_TYPE_POINT:
+      category = "transformpoint";
+      break;
+    case SHD_VECT_TRANSFORM_TYPE_NORMAL:
+      category = "transformnormal";
+      break;
+    case SHD_VECT_TRANSFORM_TYPE_VECTOR:
+      category = "transformvector";
+      break;
+    default:
+      BLI_assert_unreachable();
+      return vector;
+  }
+
+  return create_node(category,
+                     NodeItem::Type::Vector3,
+                     {{"in", vector}, {"fromspace", val(fromspace)}, {"tospace", val(tospace)}});
+}
+#endif
+NODE_SHADER_MATERIALX_END
+
 }  // namespace blender::nodes::node_shader_vector_transform_cc
 
 void register_node_type_sh_vect_transform()
@@ -144,10 +210,11 @@ void register_node_type_sh_vect_transform()
   sh_node_type_base(&ntype, SH_NODE_VECT_TRANSFORM, "Vector Transform", NODE_CLASS_OP_VECTOR);
   ntype.declare = file_ns::node_declare;
   ntype.draw_buttons = file_ns::node_shader_buts_vect_transform;
-  node_type_init(&ntype, file_ns::node_shader_init_vect_transform);
+  ntype.initfunc = file_ns::node_shader_init_vect_transform;
   node_type_storage(
       &ntype, "NodeShaderVectTransform", node_free_standard_storage, node_copy_standard_storage);
-  node_type_gpu(&ntype, file_ns::gpu_shader_vect_transform);
+  ntype.gpu_fn = file_ns::gpu_shader_vect_transform;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }

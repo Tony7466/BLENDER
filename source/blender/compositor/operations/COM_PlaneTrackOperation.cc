@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_PlaneTrackOperation.h"
 
@@ -28,7 +29,7 @@ void PlaneTrackCommon::read_and_calculate_corners(PlaneDistortBaseOperation *dis
     distort_op->calculate_corners(corners, true, 0);
   }
   else {
-    const float frame = (float)framenumber_ - distort_op->motion_blur_shutter_;
+    const float frame = float(framenumber_) - distort_op->motion_blur_shutter_;
     const float frame_step = (distort_op->motion_blur_shutter_ * 2.0f) /
                              distort_op->motion_blur_samples_;
     float frame_iter = frame;
@@ -42,19 +43,18 @@ void PlaneTrackCommon::read_and_calculate_corners(PlaneDistortBaseOperation *dis
 
 void PlaneTrackCommon::read_corners_from_track(float corners[4][2], float frame)
 {
-  MovieTracking *tracking;
-  MovieTrackingObject *object;
-
   if (!movie_clip_) {
     return;
   }
 
-  tracking = &movie_clip_->tracking;
+  MovieTracking *tracking = &movie_clip_->tracking;
 
-  object = BKE_tracking_object_get_named(tracking, tracking_object_name_);
-  if (object) {
+  MovieTrackingObject *tracking_object = BKE_tracking_object_get_named(tracking,
+                                                                       tracking_object_name_);
+  if (tracking_object) {
     MovieTrackingPlaneTrack *plane_track;
-    plane_track = BKE_tracking_plane_track_get_named(tracking, object, plane_track_name_);
+    plane_track = BKE_tracking_object_find_plane_track_with_name(tracking_object,
+                                                                 plane_track_name_);
     if (plane_track) {
       float clip_framenr = BKE_movieclip_remap_scene_to_clip_frame(movie_clip_, frame);
       BKE_tracking_plane_marker_get_subframe_corners(plane_track, clip_framenr, corners);

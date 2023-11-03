@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
 
 # add_subdirectory(atomic)  # header only
 add_subdirectory(atomic)
@@ -11,7 +12,6 @@ add_subdirectory(memutil)
 add_subdirectory(opencolorio)
 add_subdirectory(opensubdiv)
 add_subdirectory(mikktspace)
-add_subdirectory(glew-mx)
 add_subdirectory(eigen)
 add_subdirectory(sky)
 add_subdirectory(slim)
@@ -67,6 +67,10 @@ endif()
 
 if(UNIX AND NOT APPLE)
   add_subdirectory(libc_compat)
+endif()
+
+if(WITH_RENDERDOC)
+  add_subdirectory(renderdoc_dynload)
 endif()
 
 if(UNIX AND NOT APPLE)

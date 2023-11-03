@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2019-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
@@ -12,17 +15,6 @@
 #define PASS_POST_NORMAL 7
 #define PASS_POST_TWO_LIGHT_BUFFERS 8
 #define PASS_POST_ACCUMULATED_TRANSMITTANCE_COLOR 9
-
-uniform int postProcessType;
-uniform int currentSample;
-
-uniform depth2D depthBuffer;
-uniform sampler2D inputBuffer;
-uniform sampler2D inputSecondLightBuffer;
-uniform sampler2D inputColorBuffer;
-uniform sampler2D inputTransmittanceBuffer;
-
-out vec4 fragColor;
 
 vec3 safe_divide_even_color(vec3 a, vec3 b)
 {

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -44,9 +45,10 @@ void *BLI_findlink(const struct ListBase *listbase, int number) ATTR_WARN_UNUSED
     ATTR_NONNULL(1);
 
 /**
- * Returns the nth element after \a link, numbering from 0.
+ * Returns the element before/after \a link that is \a step links away, numbering from 0. \a step
+ * is allowed to be negative. Returns NULL when the link is out-of-bounds.
  */
-void *BLI_findlinkfrom(struct Link *start, int number) ATTR_WARN_UNUSED_RESULT;
+void *BLI_findlinkfrom(struct Link *start, int step) ATTR_WARN_UNUSED_RESULT;
 
 /**
  * Finds the first element of \a listbase which contains the null-terminated
@@ -62,6 +64,12 @@ void *BLI_findstring(const struct ListBase *listbase,
 void *BLI_findstring_ptr(const struct ListBase *listbase,
                          const char *id,
                          int offset) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
+/**
+ * Finds the first element in the listbase after the given \a link element which contains a pointer
+ * to the null-terminated string \a id at the specified offset, returning NULL if not found.
+ */
+void *BLI_listbase_findafter_string_ptr(struct Link *link, const char *id, const int offset);
+
 /**
  * Finds the first element of listbase which contains the specified pointer value
  * at the specified offset, returning NULL if not found.
@@ -136,6 +144,8 @@ void BLI_freelistN(struct ListBase *listbase) ATTR_NONNULL(1);
 void BLI_addtail(struct ListBase *listbase, void *vlink) ATTR_NONNULL(1);
 /**
  * Removes \a vlink from \a listbase. Assumes it is linked into there!
+ *
+ * \warning Does _not_ clear the `prev`/`next` pointers of the removed `vlink`.
  */
 void BLI_remlink(struct ListBase *listbase, void *vlink) ATTR_NONNULL(1);
 /**
@@ -244,6 +254,16 @@ void BLI_movelisttolist(struct ListBase *dst, struct ListBase *src) ATTR_NONNULL
  */
 void BLI_movelisttolist_reverse(struct ListBase *dst, struct ListBase *src) ATTR_NONNULL(1, 2);
 /**
+ * Split `original_listbase` after given `vlink`, putting the remaining of the list into given
+ * `split_listbase`.
+ *
+ * \note If `vlink` is nullptr, it is considered as 'the item before the first item', so the whole
+ * list is moved from `original_listbase` to `split_listbase`.
+ */
+void BLI_listbase_split_after(struct ListBase *original_listbase,
+                              struct ListBase *split_listbase,
+                              void *vlink) ATTR_NONNULL(1, 2);
+/**
  * Sets dst to a duplicate of the entire contents of src. dst may be the same as src.
  */
 void BLI_duplicatelist(struct ListBase *dst, const struct ListBase *src) ATTR_NONNULL(1, 2);
@@ -274,6 +294,12 @@ BLI_INLINE void BLI_listbase_clear(struct ListBase *lb)
 }
 
 /**
+ * Validate the integrity of a given ListBase.
+ * \return true if everything is OK, false otherwise.
+ */
+bool BLI_listbase_validate(struct ListBase *lb);
+
+/**
  * Equality check for ListBase.
  *
  * This only shallowly compares the ListBase itself (so the first/last
@@ -301,21 +327,22 @@ struct LinkData *BLI_genericNodeN(void *data);
  *
  * \code{.c}
  *
- * LISTBASE_CIRCULAR_FORWARD_BEGIN(listbase, item, item_init)
+ * LISTBASE_CIRCULAR_FORWARD_BEGIN(type, listbase, item, item_init)
  * {
  *     ...operate on marker...
  * }
- * LISTBASE_CIRCULAR_FORWARD_END (listbase, item, item_init);
+ * LISTBASE_CIRCULAR_FORWARD_END (type, listbase, item, item_init);
  *
  * \endcode
  */
-#define LISTBASE_CIRCULAR_FORWARD_BEGIN(lb, lb_iter, lb_init) \
-  if ((lb)->first && (lb_init || (lb_init = (lb)->first))) { \
-    lb_iter = lb_init; \
+#define LISTBASE_CIRCULAR_FORWARD_BEGIN(type, lb, lb_iter, lb_init) \
+  if ((lb)->first && (lb_init || (lb_init = (type)(lb)->first))) { \
+    lb_iter = (type)(lb_init); \
     do {
-#define LISTBASE_CIRCULAR_FORWARD_END(lb, lb_iter, lb_init) \
+#define LISTBASE_CIRCULAR_FORWARD_END(type, lb, lb_iter, lb_init) \
   } \
-  while ((lb_iter = (lb_iter)->next ? (lb_iter)->next : (lb)->first), (lb_iter != lb_init)) \
+  while ((lb_iter = (lb_iter)->next ? (type)(lb_iter)->next : (type)(lb)->first), \
+         (lb_iter != lb_init)) \
     ; \
   } \
   ((void)0)

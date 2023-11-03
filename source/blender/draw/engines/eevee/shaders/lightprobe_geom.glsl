@@ -1,17 +1,6 @@
-
-layout(triangles) in;
-layout(triangle_strip, max_vertices = 3) out;
-
-uniform int Layer;
-
-in vec4 vPos[];
-flat in int face[];
-flat out int fFace;
-
-out vec3 worldPosition;
-out vec3 viewPosition; /* Required. otherwise generate linking error. */
-out vec3 worldNormal;  /* Required. otherwise generate linking error. */
-out vec3 viewNormal;   /* Required. otherwise generate linking error. */
+/* SPDX-FileCopyrightText: 2017-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 const vec3 maj_axes[6] = vec3[6](vec3(1.0, 0.0, 0.0),
                                  vec3(-1.0, 0.0, 0.0),
@@ -34,12 +23,14 @@ const vec3 y_axis[6] = vec3[6](vec3(0.0, -1.0, 0.0),
 
 void main()
 {
-  fFace = face[0];
-  gl_Layer = Layer + fFace;
+  geom_iface_flat.fFace = vert_iface_flat[0].face;
+  gl_Layer = Layer + geom_iface_flat.fFace;
 
   for (int v = 0; v < 3; v++) {
-    gl_Position = vPos[v];
-    worldPosition = x_axis[fFace] * vPos[v].x + y_axis[fFace] * vPos[v].y + maj_axes[fFace];
+    gl_Position = vert_iface[v].vPos;
+    geom_iface.worldPosition = x_axis[geom_iface_flat.fFace] * vert_iface[v].vPos.x +
+                               y_axis[geom_iface_flat.fFace] * vert_iface[v].vPos.y +
+                               maj_axes[geom_iface_flat.fFace];
     EmitVertex();
   }
 

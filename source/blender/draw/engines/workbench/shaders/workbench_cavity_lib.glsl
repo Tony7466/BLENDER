@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2017-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(workbench_common_lib.glsl)
@@ -5,10 +8,16 @@
 /*  From The Alchemy screen-space ambient obscurance algorithm
  * http://graphics.cs.williams.edu/papers/AlchemyHPG11/VV11AlchemyAO.pdf */
 
+#ifdef WORKBENCH_CAVITY
+#  define USE_CAVITY
+#  define cavityJitter jitter_tx
+#  define samples_coords cavity_samples
+#endif
+
 #ifdef USE_CAVITY
 
 void cavity_compute(vec2 screenco,
-                    sampler2D depthBuffer,
+                    depth2D depthBuffer,
                     sampler2D normalBuffer,
                     out float cavities,
                     out float edges)

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "blendfile_loading_base_test.h"
 
 #include "MEM_guardedalloc.h"
@@ -11,10 +12,11 @@
 #include "BKE_global.h"
 #include "BKE_idtype.h"
 #include "BKE_image.h"
+#include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_mball_tessellate.h"
 #include "BKE_modifier.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_scene.h"
 #include "BKE_vfont.h"
 
@@ -23,8 +25,8 @@
 
 #include "BLO_readfile.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "DNA_genfile.h" /* for DNA_sdna_current_init() */
 #include "DNA_windowmanager_types.h"
@@ -33,12 +35,12 @@
 
 #include "ED_datafiles.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "wm.h"
+#include "WM_api.hh"
+#include "wm.hh"
 
-#include "GHOST_Path-api.h"
+#include "GHOST_Path-api.hh"
 
 #include "CLG_log.h"
 
@@ -80,7 +82,7 @@ void BlendfileLoadingBaseTest::TearDownTestCase()
     G.main->wm.first = nullptr;
   }
 
-  /* Copied from WM_exit_ex() in wm_init_exit.c, and cherry-picked those lines that match the
+  /* Copied from WM_exit_ex() in wm_init_exit.cc, and cherry-picked those lines that match the
    * allocation/initialization done in SetUpTestCase(). */
   BKE_blender_free();
   RNA_exit();
@@ -102,8 +104,8 @@ void BlendfileLoadingBaseTest::TearDownTestCase()
 void BlendfileLoadingBaseTest::TearDown()
 {
   BKE_mball_cubeTable_free();
-  depsgraph_free();
   blendfile_free();
+  depsgraph_free();
 
   testing::Test::TearDown();
 }
@@ -115,16 +117,23 @@ bool BlendfileLoadingBaseTest::blendfile_load(const char *filepath)
     return false;
   }
 
-  char abspath[FILENAME_MAX];
-  BLI_path_join(abspath, sizeof(abspath), test_assets_dir.c_str(), filepath, NULL);
+  char abspath[FILE_MAX];
+  BLI_path_join(abspath, sizeof(abspath), test_assets_dir.c_str(), filepath);
 
-  BlendFileReadReport bf_reports = {nullptr};
+  BlendFileReadReport bf_reports = {};
   bfile = BLO_read_from_file(abspath, BLO_READ_SKIP_NONE, &bf_reports);
   if (bfile == nullptr) {
     ADD_FAILURE() << "Unable to load file '" << filepath << "' from test assets dir '"
                   << test_assets_dir << "'";
     return false;
   }
+
+  /* Make sure that all view_layers in the file are synced. Depsgraph can make a copy of the whole
+   * scene, which will fail when one view layer isn't synced. */
+  LISTBASE_FOREACH (ViewLayer *, view_layer, &bfile->curscene->view_layers) {
+    BKE_view_layer_synced_ensure(bfile->curscene, view_layer);
+  }
+
   return true;
 }
 
@@ -134,10 +143,6 @@ void BlendfileLoadingBaseTest::blendfile_free()
     return;
   }
 
-  wmWindowManager *wm = static_cast<wmWindowManager *>(bfile->main->wm.first);
-  if (wm != nullptr) {
-    wm_close_and_free(nullptr, wm);
-  }
   BLO_blendfiledata_free(bfile);
   bfile = nullptr;
 }

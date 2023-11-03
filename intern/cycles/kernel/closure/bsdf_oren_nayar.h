@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -15,10 +16,10 @@ typedef struct OrenNayarBsdf {
 
 static_assert(sizeof(ShaderClosure) >= sizeof(OrenNayarBsdf), "OrenNayarBsdf is too large!");
 
-ccl_device float3 bsdf_oren_nayar_get_intensity(ccl_private const ShaderClosure *sc,
-                                                float3 n,
-                                                float3 v,
-                                                float3 l)
+ccl_device Spectrum bsdf_oren_nayar_get_intensity(ccl_private const ShaderClosure *sc,
+                                                  float3 n,
+                                                  float3 v,
+                                                  float3 l)
 {
   ccl_private const OrenNayarBsdf *bsdf = (ccl_private const OrenNayarBsdf *)sc;
   float nl = max(dot(n, l), 0.0f);
@@ -28,7 +29,7 @@ ccl_device float3 bsdf_oren_nayar_get_intensity(ccl_private const ShaderClosure 
   if (t > 0.0f)
     t /= max(nl, nv) + FLT_MIN;
   float is = nl * (bsdf->a + bsdf->b * t);
-  return make_float3(is, is, is);
+  return make_spectrum(is);
 }
 
 ccl_device int bsdf_oren_nayar_setup(ccl_private OrenNayarBsdf *bsdf)
@@ -47,59 +48,39 @@ ccl_device int bsdf_oren_nayar_setup(ccl_private OrenNayarBsdf *bsdf)
   return SD_BSDF | SD_BSDF_HAS_EVAL;
 }
 
-ccl_device float3 bsdf_oren_nayar_eval_reflect(ccl_private const ShaderClosure *sc,
-                                               const float3 I,
-                                               const float3 omega_in,
-                                               ccl_private float *pdf)
+ccl_device Spectrum bsdf_oren_nayar_eval(ccl_private const ShaderClosure *sc,
+                                         const float3 wi,
+                                         const float3 wo,
+                                         ccl_private float *pdf)
 {
   ccl_private const OrenNayarBsdf *bsdf = (ccl_private const OrenNayarBsdf *)sc;
-  if (dot(bsdf->N, omega_in) > 0.0f) {
+  if (dot(bsdf->N, wo) > 0.0f) {
     *pdf = 0.5f * M_1_PI_F;
-    return bsdf_oren_nayar_get_intensity(sc, bsdf->N, I, omega_in);
+    return bsdf_oren_nayar_get_intensity(sc, bsdf->N, wi, wo);
   }
   else {
     *pdf = 0.0f;
-    return make_float3(0.0f, 0.0f, 0.0f);
+    return zero_spectrum();
   }
-}
-
-ccl_device float3 bsdf_oren_nayar_eval_transmit(ccl_private const ShaderClosure *sc,
-                                                const float3 I,
-                                                const float3 omega_in,
-                                                ccl_private float *pdf)
-{
-  *pdf = 0.0f;
-  return make_float3(0.0f, 0.0f, 0.0f);
 }
 
 ccl_device int bsdf_oren_nayar_sample(ccl_private const ShaderClosure *sc,
                                       float3 Ng,
-                                      float3 I,
-                                      float3 dIdx,
-                                      float3 dIdy,
-                                      float randu,
-                                      float randv,
-                                      ccl_private float3 *eval,
-                                      ccl_private float3 *omega_in,
-                                      ccl_private float3 *domega_in_dx,
-                                      ccl_private float3 *domega_in_dy,
+                                      float3 wi,
+                                      float2 rand,
+                                      ccl_private Spectrum *eval,
+                                      ccl_private float3 *wo,
                                       ccl_private float *pdf)
 {
   ccl_private const OrenNayarBsdf *bsdf = (ccl_private const OrenNayarBsdf *)sc;
-  sample_uniform_hemisphere(bsdf->N, randu, randv, omega_in, pdf);
+  sample_uniform_hemisphere(bsdf->N, rand, wo, pdf);
 
-  if (dot(Ng, *omega_in) > 0.0f) {
-    *eval = bsdf_oren_nayar_get_intensity(sc, bsdf->N, I, *omega_in);
-
-#ifdef __RAY_DIFFERENTIALS__
-    // TODO: find a better approximation for the bounce
-    *domega_in_dx = (2.0f * dot(bsdf->N, dIdx)) * bsdf->N - dIdx;
-    *domega_in_dy = (2.0f * dot(bsdf->N, dIdy)) * bsdf->N - dIdy;
-#endif
+  if (dot(Ng, *wo) > 0.0f) {
+    *eval = bsdf_oren_nayar_get_intensity(sc, bsdf->N, wi, *wo);
   }
   else {
     *pdf = 0.0f;
-    *eval = make_float3(0.0f, 0.0f, 0.0f);
+    *eval = zero_spectrum();
   }
 
   return LABEL_REFLECT | LABEL_DIFFUSE;

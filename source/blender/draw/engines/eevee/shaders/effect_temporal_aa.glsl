@@ -1,7 +1,11 @@
+/* SPDX-FileCopyrightText: 2017-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 
+#if 0
 uniform sampler2D colorBuffer;
 uniform depth2D depthBuffer;
 uniform sampler2D colorHistoryBuffer;
@@ -9,6 +13,7 @@ uniform sampler2D colorHistoryBuffer;
 uniform mat4 prevViewProjectionMatrix;
 
 out vec4 FragColor;
+#endif
 
 #ifdef USE_REPROJECTION
 
@@ -104,8 +109,6 @@ void main()
 }
 
 #else
-
-uniform float alpha;
 
 void main()
 {

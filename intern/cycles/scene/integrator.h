@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __INTEGRATOR_H__
 #define __INTEGRATOR_H__
@@ -9,6 +10,7 @@
 #include "device/denoise.h" /* For the parameters and type enum. */
 #include "graph/node.h"
 #include "integrator/adaptive_sampling.h"
+#include "integrator/guiding.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -43,6 +45,19 @@ class Integrator : public Node {
   NODE_SOCKET_API(int, volume_max_steps)
   NODE_SOCKET_API(float, volume_step_rate)
 
+  NODE_SOCKET_API(bool, use_guiding);
+  NODE_SOCKET_API(bool, deterministic_guiding);
+  NODE_SOCKET_API(bool, use_surface_guiding);
+  NODE_SOCKET_API(float, surface_guiding_probability);
+  NODE_SOCKET_API(bool, use_volume_guiding);
+  NODE_SOCKET_API(float, volume_guiding_probability);
+  NODE_SOCKET_API(int, guiding_training_samples);
+  NODE_SOCKET_API(bool, use_guiding_direct_light);
+  NODE_SOCKET_API(bool, use_guiding_mis_weights);
+  NODE_SOCKET_API(GuidingDistributionType, guiding_distribution_type);
+  NODE_SOCKET_API(GuidingDirectionalSamplingType, guiding_directional_sampling_type);
+  NODE_SOCKET_API(float, guiding_roughness_threshold);
+
   NODE_SOCKET_API(bool, caustics_reflective)
   NODE_SOCKET_API(bool, caustics_refractive)
   NODE_SOCKET_API(float, filter_glossy)
@@ -67,6 +82,7 @@ class Integrator : public Node {
   NODE_SOCKET_API(int, aa_samples)
   NODE_SOCKET_API(int, start_sample)
 
+  NODE_SOCKET_API(bool, use_light_tree)
   NODE_SOCKET_API(float, light_sampling_threshold)
 
   NODE_SOCKET_API(bool, use_adaptive_sampling)
@@ -105,6 +121,7 @@ class Integrator : public Node {
 
   AdaptiveSampling get_adaptive_sampling() const;
   DenoiseParams get_denoise_params() const;
+  GuidingParams get_guiding_params(const Device *device) const;
 };
 
 CCL_NAMESPACE_END

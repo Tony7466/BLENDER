@@ -1,8 +1,6 @@
-
-uniform isampler2D source_data;
-uniform int mip;
-
-in vec2 texCoord_interp;
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 void main()
 {

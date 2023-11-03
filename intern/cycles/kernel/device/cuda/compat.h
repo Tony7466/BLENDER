@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -30,6 +31,7 @@ typedef unsigned long long uint64_t;
 /* Qualifiers */
 
 #define ccl_device __device__ __inline__
+#define ccl_device_extern extern "C" __device__
 #if __CUDA_ARCH__ < 500
 #  define ccl_device_inline __device__ __forceinline__
 #  define ccl_device_forceinline __device__ __forceinline__
@@ -46,6 +48,7 @@ typedef unsigned long long uint64_t;
 #define ccl_constant const
 #define ccl_gpu_shared __shared__
 #define ccl_private
+#define ccl_ray_data ccl_private
 #define ccl_may_alias
 #define ccl_restrict __restrict__
 #define ccl_loop_no_unroll
@@ -109,14 +112,14 @@ ccl_device_forceinline T ccl_gpu_tex_object_read_3D(const ccl_gpu_tex_object_3D 
 
 typedef unsigned short half;
 
-__device__ half __float2half(const float f)
+ccl_device_forceinline half __float2half(const float f)
 {
   half val;
   asm("{  cvt.rn.f16.f32 %0, %1;}\n" : "=h"(val) : "f"(f));
   return val;
 }
 
-__device__ float __half2float(const half h)
+ccl_device_forceinline float __half2float(const half h)
 {
   float val;
   asm("{  cvt.f32.f16 %0, %1;}\n" : "=f"(val) : "h"(h));

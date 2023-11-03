@@ -1,22 +1,10 @@
+/* SPDX-FileCopyrightText: 2017-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(random_lib.glsl)
 #pragma BLENDER_REQUIRE(bsdf_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
-
-uniform samplerCube probeHdr;
-uniform float probe_roughness;
-uniform float texelSize;
-uniform float lodFactor;
-uniform float lodMax;
-uniform float paddingSize;
-uniform float intensityFac;
-uniform float fireflyFactor;
-
-uniform float sampleCount;
-
-in vec3 worldPosition;
-
-out vec4 FragColor;
 
 vec3 octahedral_to_cubemap_proj(vec2 co)
 {
@@ -36,14 +24,14 @@ void main()
 {
   vec3 N, T, B, V;
 
-  vec3 R = normalize(worldPosition);
+  vec3 R = normalize(geom_iface.worldPosition);
 
   /* Isotropic assumption */
   N = V = R;
 
   make_orthonormal_basis(N, T, B); /* Generate tangent space */
 
-  /* Integrating Envmap */
+  /* Integrating environment-map. */
   float weight = 0.0;
   vec3 out_radiance = vec3(0.0);
   for (float i = 0; i < sampleCount; i++) {
@@ -59,7 +47,7 @@ void main()
       float NH = max(1e-8, dot(N, H)); /* cosTheta */
 
       /* Coarse Approximation of the mapping distortion
-       * Unit Sphere -> Cubemap Face */
+       * Unit Sphere -> Cube-map Face. */
       const float dist = 4.0 * M_PI / 6.0;
       /* http://http.developer.nvidia.com/GPUGems3/gpugems3_ch20.html : Equation 13 */
       float lod = clamp(lodFactor - 0.5 * log2(pdf * dist), 0.0, lodMax);

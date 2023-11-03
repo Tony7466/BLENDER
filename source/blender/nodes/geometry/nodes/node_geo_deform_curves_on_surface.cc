@@ -1,20 +1,22 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 #include "BKE_type_conversions.hh"
 
-#include "BLI_float3x3.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_task.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -23,22 +25,24 @@
 
 #include "GEO_reverse_uv_sampler.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "node_geometry_util.hh"
 
+#include <fmt/format.h>
+
 namespace blender::nodes::node_geo_deform_curves_on_surface_cc {
 
-using attribute_math::mix3;
 using bke::CurvesGeometry;
+using bke::attribute_math::mix3;
 using geometry::ReverseUVSampler;
 
 NODE_STORAGE_FUNCS(NodeGeometryCurveTrim)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Curves")).supported_type(GEO_COMPONENT_TYPE_CURVE);
-  b.add_output<decl::Geometry>(N_("Curves"));
+  b.add_input<decl::Geometry>("Curves").supported_type(GeometryComponent::Type::Curve);
+  b.add_output<decl::Geometry>("Curves").propagate_all();
 }
 
 static void deform_curves(const CurvesGeometry &curves,
@@ -64,7 +68,17 @@ static void deform_curves(const CurvesGeometry &curves,
       [&]() { reverse_uv_sampler_old.sample_many(curve_attachment_uvs, surface_samples_old); },
       [&]() { reverse_uv_sampler_new.sample_many(curve_attachment_uvs, surface_samples_new); });
 
-  const float4x4 curves_to_surface = surface_to_curves.inverted();
+  const float4x4 curves_to_surface = math::invert(surface_to_curves);
+
+  const Span<float3> surface_positions_old = surface_mesh_old.vert_positions();
+  const Span<int> surface_corner_verts_old = surface_mesh_old.corner_verts();
+  const Span<MLoopTri> surface_looptris_old = surface_mesh_old.looptris();
+
+  const Span<float3> surface_positions_new = surface_mesh_new.vert_positions();
+  const Span<int> surface_corner_verts_new = surface_mesh_new.corner_verts();
+  const Span<MLoopTri> surface_looptris_new = surface_mesh_new.looptris();
+
+  const OffsetIndices points_by_curve = curves.points_by_curve();
 
   threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : range) {
@@ -79,8 +93,8 @@ static void deform_curves(const CurvesGeometry &curves,
         continue;
       }
 
-      const MLoopTri &looptri_old = *surface_sample_old.looptri;
-      const MLoopTri &looptri_new = *surface_sample_new.looptri;
+      const MLoopTri &looptri_old = surface_looptris_old[surface_sample_old.looptri_index];
+      const MLoopTri &looptri_new = surface_looptris_new[surface_sample_new.looptri_index];
       const float3 &bary_weights_old = surface_sample_old.bary_weights;
       const float3 &bary_weights_new = surface_sample_new.bary_weights;
 
@@ -92,13 +106,13 @@ static void deform_curves(const CurvesGeometry &curves,
       const int corner_1_new = looptri_new.tri[1];
       const int corner_2_new = looptri_new.tri[2];
 
-      const int vert_0_old = surface_mesh_old.mloop[corner_0_old].v;
-      const int vert_1_old = surface_mesh_old.mloop[corner_1_old].v;
-      const int vert_2_old = surface_mesh_old.mloop[corner_2_old].v;
+      const int vert_0_old = surface_corner_verts_old[corner_0_old];
+      const int vert_1_old = surface_corner_verts_old[corner_1_old];
+      const int vert_2_old = surface_corner_verts_old[corner_2_old];
 
-      const int vert_0_new = surface_mesh_new.mloop[corner_0_new].v;
-      const int vert_1_new = surface_mesh_new.mloop[corner_1_new].v;
-      const int vert_2_new = surface_mesh_new.mloop[corner_2_new].v;
+      const int vert_0_new = surface_corner_verts_new[corner_0_new];
+      const int vert_1_new = surface_corner_verts_new[corner_1_new];
+      const int vert_2_new = surface_corner_verts_new[corner_2_new];
 
       const float3 &normal_0_old = corner_normals_old[corner_0_old];
       const float3 &normal_1_old = corner_normals_old[corner_1_old];
@@ -112,14 +126,14 @@ static void deform_curves(const CurvesGeometry &curves,
       const float3 normal_new = math::normalize(
           mix3(bary_weights_new, normal_0_new, normal_1_new, normal_2_new));
 
-      const float3 &pos_0_old = surface_mesh_old.mvert[vert_0_old].co;
-      const float3 &pos_1_old = surface_mesh_old.mvert[vert_1_old].co;
-      const float3 &pos_2_old = surface_mesh_old.mvert[vert_2_old].co;
+      const float3 &pos_0_old = surface_positions_old[vert_0_old];
+      const float3 &pos_1_old = surface_positions_old[vert_1_old];
+      const float3 &pos_2_old = surface_positions_old[vert_2_old];
       const float3 pos_old = mix3(bary_weights_old, pos_0_old, pos_1_old, pos_2_old);
 
-      const float3 &pos_0_new = surface_mesh_new.mvert[vert_0_new].co;
-      const float3 &pos_1_new = surface_mesh_new.mvert[vert_1_new].co;
-      const float3 &pos_2_new = surface_mesh_new.mvert[vert_2_new].co;
+      const float3 &pos_0_new = surface_positions_new[vert_0_new];
+      const float3 &pos_1_new = surface_positions_new[vert_1_new];
+      const float3 &pos_2_new = surface_positions_new[vert_2_new];
       const float3 pos_new = mix3(bary_weights_new, pos_0_new, pos_1_new, pos_2_new);
 
       /* The translation is just the difference between the old and new position on the surface. */
@@ -153,46 +167,36 @@ static void deform_curves(const CurvesGeometry &curves,
       const float3 tangent_y_new = math::normalize(math::cross(normal_new, tangent_x_new));
 
       /* Construct rotation matrix that encodes the orientation of the old surface position. */
-      float3x3 rotation_old;
-      copy_v3_v3(rotation_old.values[0], tangent_x_old);
-      copy_v3_v3(rotation_old.values[1], tangent_y_old);
-      copy_v3_v3(rotation_old.values[2], normal_old);
+      float3x3 rotation_old(tangent_x_old, tangent_y_old, normal_old);
 
       /* Construct rotation matrix that encodes the orientation of the new surface position. */
-      float3x3 rotation_new;
-      copy_v3_v3(rotation_new.values[0], tangent_x_new);
-      copy_v3_v3(rotation_new.values[1], tangent_y_new);
-      copy_v3_v3(rotation_new.values[2], normal_new);
+      float3x3 rotation_new(tangent_x_new, tangent_y_new, normal_new);
 
       /* Can use transpose instead of inverse because the matrix is orthonormal. In the case of
        * zero-area triangles, the matrix would not be orthonormal, but in this case, none of this
        * works anyway. */
-      const float3x3 rotation_old_inv = rotation_old.transposed();
+      const float3x3 rotation_old_inv = math::transpose(rotation_old);
 
       /* Compute a rotation matrix that rotates points from the old to the new surface
        * orientation. */
       const float3x3 rotation = rotation_new * rotation_old_inv;
-      float4x4 rotation_4x4;
-      copy_m4_m3(rotation_4x4.values, rotation.values);
 
       /* Construction transformation matrix for this surface position that includes rotation and
        * translation. */
-      float4x4 surface_transform = float4x4::identity();
       /* Subtract and add #pos_old, so that the rotation origin is the position on the surface. */
-      sub_v3_v3(surface_transform.values[3], pos_old);
-      mul_m4_m4_pre(surface_transform.values, rotation_4x4.values);
-      add_v3_v3(surface_transform.values[3], pos_old);
-      add_v3_v3(surface_transform.values[3], translation);
+      float4x4 surface_transform = math::from_origin_transform<float4x4>(float4x4(rotation),
+                                                                         pos_old);
+      surface_transform.location() += translation;
 
       /* Change the basis of the transformation so to that it can be applied in the local space of
        * the curves. */
       const float4x4 curve_transform = surface_to_curves * surface_transform * curves_to_surface;
 
       /* Actually transform all points. */
-      const IndexRange points = curves.points_for_curve(curve_i);
+      const IndexRange points = points_by_curve[curve_i];
       for (const int point_i : points) {
         const float3 old_point_pos = r_positions[point_i];
-        const float3 new_point_pos = curve_transform * old_point_pos;
+        const float3 new_point_pos = math::transform_point(curve_transform, old_point_pos);
         r_positions[point_i] = new_point_pos;
       }
 
@@ -249,7 +253,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   Mesh &surface_object_data = *static_cast<Mesh *>(surface_ob_orig->data);
 
   if (BMEditMesh *em = surface_object_data.edit_mesh) {
-    surface_mesh_orig = BKE_mesh_from_bmesh_for_eval_nomain(em->bm, NULL, &surface_object_data);
+    surface_mesh_orig = BKE_mesh_from_bmesh_for_eval_nomain(em->bm, nullptr, &surface_object_data);
     free_suface_mesh_orig = true;
   }
   else {
@@ -264,26 +268,24 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   BKE_mesh_wrapper_ensure_mdata(surface_mesh_eval);
 
-  const AttributeAccessor mesh_attributes_eval = bke::mesh_attributes(*surface_mesh_eval);
-  const AttributeAccessor mesh_attributes_orig = bke::mesh_attributes(*surface_mesh_orig);
+  const AttributeAccessor mesh_attributes_eval = surface_mesh_eval->attributes();
+  const AttributeAccessor mesh_attributes_orig = surface_mesh_orig->attributes();
 
   Curves &curves_id = *curves_geometry.get_curves_for_write();
-  CurvesGeometry &curves = CurvesGeometry::wrap(curves_id.geometry);
+  CurvesGeometry &curves = curves_id.geometry.wrap();
 
   if (!mesh_attributes_eval.contains(uv_map_name)) {
     pass_through_input();
-    char *message = BLI_sprintfN(TIP_("Evaluated surface missing UV map: \"%s\""),
-                                 uv_map_name.c_str());
+    const std::string message = fmt::format(TIP_("Evaluated surface missing UV map: \"{}\""),
+                                            std::string_view(uv_map_name));
     params.error_message_add(NodeWarningType::Error, message);
-    MEM_freeN(message);
     return;
   }
   if (!mesh_attributes_orig.contains(uv_map_name)) {
     pass_through_input();
-    char *message = BLI_sprintfN(TIP_("Original surface missing UV map: \"%s\""),
-                                 uv_map_name.c_str());
+    const std::string message = fmt::format(TIP_("Original surface missing UV map: \"{}\""),
+                                            std::string_view(uv_map_name));
     params.error_message_add(NodeWarningType::Error, message);
-    MEM_freeN(message);
     return;
   }
   if (!mesh_attributes_eval.contains(rest_position_name)) {
@@ -298,31 +300,25 @@ static void node_geo_exec(GeoNodeExecParams params)
                              TIP_("Curves are not attached to any UV map"));
     return;
   }
-  const VArraySpan<float2> uv_map_orig = mesh_attributes_orig.lookup<float2>(uv_map_name,
-                                                                             ATTR_DOMAIN_CORNER);
-  const VArraySpan<float2> uv_map_eval = mesh_attributes_eval.lookup<float2>(uv_map_name,
-                                                                             ATTR_DOMAIN_CORNER);
-  const VArraySpan<float3> rest_positions = mesh_attributes_eval.lookup<float3>(rest_position_name,
-                                                                                ATTR_DOMAIN_POINT);
-  const Span<float2> surface_uv_coords = curves.surface_uv_coords();
+  const VArraySpan uv_map_orig = *mesh_attributes_orig.lookup<float2>(uv_map_name,
+                                                                      ATTR_DOMAIN_CORNER);
+  const VArraySpan uv_map_eval = *mesh_attributes_eval.lookup<float2>(uv_map_name,
+                                                                      ATTR_DOMAIN_CORNER);
+  const VArraySpan rest_positions = *mesh_attributes_eval.lookup<float3>(rest_position_name,
+                                                                         ATTR_DOMAIN_POINT);
+  const VArraySpan surface_uv_coords = *curves.attributes().lookup_or_default<float2>(
+      "surface_uv_coordinate", ATTR_DOMAIN_CURVE, float2(0));
 
-  const Span<MLoopTri> looptris_orig{BKE_mesh_runtime_looptri_ensure(surface_mesh_orig),
-                                     BKE_mesh_runtime_looptri_len(surface_mesh_orig)};
-  const Span<MLoopTri> looptris_eval{BKE_mesh_runtime_looptri_ensure(surface_mesh_eval),
-                                     BKE_mesh_runtime_looptri_len(surface_mesh_eval)};
+  const Span<MLoopTri> looptris_orig = surface_mesh_orig->looptris();
+  const Span<MLoopTri> looptris_eval = surface_mesh_eval->looptris();
   const ReverseUVSampler reverse_uv_sampler_orig{uv_map_orig, looptris_orig};
   const ReverseUVSampler reverse_uv_sampler_eval{uv_map_eval, looptris_eval};
 
   /* Retrieve face corner normals from each mesh. It's necessary to use face corner normals
    * because face normals or vertex normals may lose information (custom normals, auto smooth) in
-   * some cases. It isn't yet possible to retrieve lazily calculated face corner normals from a
-   * const mesh, so they are calculated here every time. */
-  Array<float3> corner_normals_orig(surface_mesh_orig->totloop);
-  Array<float3> corner_normals_eval(surface_mesh_eval->totloop);
-  BKE_mesh_calc_normals_split_ex(
-      surface_mesh_orig, nullptr, reinterpret_cast<float(*)[3]>(corner_normals_orig.data()));
-  BKE_mesh_calc_normals_split_ex(
-      surface_mesh_eval, nullptr, reinterpret_cast<float(*)[3]>(corner_normals_eval.data()));
+   * some cases. */
+  const Span<float3> corner_normals_orig = surface_mesh_orig->corner_normals();
+  const Span<float3> corner_normals_eval = surface_mesh_eval->corner_normals();
 
   std::atomic<int> invalid_uv_count = 0;
 
@@ -374,45 +370,47 @@ static void node_geo_exec(GeoNodeExecParams params)
                   {},
                   invalid_uv_count);
     /* Then also deform edit curve information for use in sculpt mode. */
-    const CurvesGeometry &curves_orig = CurvesGeometry::wrap(edit_hints->curves_id_orig.geometry);
-    deform_curves(curves_orig,
-                  *surface_mesh_orig,
-                  *surface_mesh_eval,
-                  surface_uv_coords,
-                  reverse_uv_sampler_orig,
-                  reverse_uv_sampler_eval,
-                  corner_normals_orig,
-                  corner_normals_eval,
-                  rest_positions,
-                  transforms.surface_to_curves,
-                  edit_hint_positions,
-                  edit_hint_rotations,
-                  invalid_uv_count);
+    const CurvesGeometry &curves_orig = edit_hints->curves_id_orig.geometry.wrap();
+    const VArraySpan<float2> surface_uv_coords_orig = *curves_orig.attributes().lookup_or_default(
+        "surface_uv_coordinate", ATTR_DOMAIN_CURVE, float2(0));
+    if (!surface_uv_coords_orig.is_empty()) {
+      deform_curves(curves_orig,
+                    *surface_mesh_orig,
+                    *surface_mesh_eval,
+                    surface_uv_coords_orig,
+                    reverse_uv_sampler_orig,
+                    reverse_uv_sampler_eval,
+                    corner_normals_orig,
+                    corner_normals_eval,
+                    rest_positions,
+                    transforms.surface_to_curves,
+                    edit_hint_positions,
+                    edit_hint_rotations,
+                    invalid_uv_count);
+    }
   }
 
   curves.tag_positions_changed();
 
   if (invalid_uv_count) {
-    char *message = BLI_sprintfN(TIP_("Invalid surface UVs on %d curves"),
-                                 invalid_uv_count.load());
+    const std::string message = fmt::format(TIP_("Invalid surface UVs on {} curves"),
+                                            invalid_uv_count.load());
     params.error_message_add(NodeWarningType::Warning, message);
-    MEM_freeN(message);
   }
 
   params.set_output("Curves", curves_geometry);
 }
 
-}  // namespace blender::nodes::node_geo_deform_curves_on_surface_cc
-
-void register_node_type_geo_deform_curves_on_surface()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_deform_curves_on_surface_cc;
-
   static bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_DEFORM_CURVES_ON_SURFACE, "Deform Curves on Surface", NODE_CLASS_GEOMETRY);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
-  node_type_size(&ntype, 170, 120, 700);
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
+  blender::bke::node_type_size(&ntype, 170, 120, 700);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_deform_curves_on_surface_cc

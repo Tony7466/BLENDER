@@ -1,7 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_RotateOperation.h"
+
+#include "BLI_math_rotation.h"
 
 namespace blender::compositor {
 
@@ -143,7 +146,7 @@ inline void RotateOperation::ensure_degree()
 
     double rad;
     if (do_degree2_rad_conversion_) {
-      rad = DEG2RAD((double)degree[0]);
+      rad = DEG2RAD(double(degree[0]));
     }
     else {
       rad = degree[0];

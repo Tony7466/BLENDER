@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -12,19 +13,19 @@ CCL_NAMESPACE_BEGIN
 
 /* Perspective Camera */
 
-ccl_device float2 camera_sample_aperture(ccl_constant KernelCamera *cam, float u, float v)
+ccl_device float2 camera_sample_aperture(ccl_constant KernelCamera *cam, const float2 rand)
 {
   float blades = cam->blades;
   float2 bokeh;
 
   if (blades == 0.0f) {
     /* sample disk */
-    bokeh = concentric_sample_disk(u, v);
+    bokeh = sample_uniform_disk(rand);
   }
   else {
     /* sample polygon */
     float rotation = cam->bladesrotation;
-    bokeh = regular_polygon_sample(blades, rotation, u, v);
+    bokeh = regular_polygon_sample(blades, rotation, rand);
   }
 
   /* anamorphic lens bokeh */
@@ -34,18 +35,15 @@ ccl_device float2 camera_sample_aperture(ccl_constant KernelCamera *cam, float u
 }
 
 ccl_device void camera_sample_perspective(KernelGlobals kg,
-                                          float raster_x,
-                                          float raster_y,
-                                          float lens_u,
-                                          float lens_v,
+                                          const float2 raster_xy,
+                                          const float2 rand_lens,
                                           ccl_private Ray *ray)
 {
   /* create ray form raster position */
   ProjectionTransform rastertocamera = kernel_data.cam.rastertocamera;
-  float3 raster = make_float3(raster_x, raster_y, 0.0f);
+  const float3 raster = float2_to_float3(raster_xy);
   float3 Pcamera = transform_perspective(&rastertocamera, raster);
 
-#ifdef __CAMERA_MOTION__
   if (kernel_data.cam.have_perspective_motion) {
     /* TODO(sergey): Currently we interpolate projected coordinate which
      * gives nice looking result and which is simple, but is in fact a bit
@@ -63,7 +61,6 @@ ccl_device void camera_sample_perspective(KernelGlobals kg,
       Pcamera = interp(Pcamera, Pcamera_post, (ray->time - 0.5f) * 2.0f);
     }
   }
-#endif
 
   float3 P = zero_float3();
   float3 D = Pcamera;
@@ -73,28 +70,26 @@ ccl_device void camera_sample_perspective(KernelGlobals kg,
 
   if (aperturesize > 0.0f) {
     /* sample point on aperture */
-    float2 lensuv = camera_sample_aperture(&kernel_data.cam, lens_u, lens_v) * aperturesize;
+    float2 lens_uv = camera_sample_aperture(&kernel_data.cam, rand_lens) * aperturesize;
 
     /* compute point on plane of focus */
     float ft = kernel_data.cam.focaldistance / D.z;
     float3 Pfocus = D * ft;
 
     /* update ray for effect of lens */
-    P = make_float3(lensuv.x, lensuv.y, 0.0f);
+    P = float2_to_float3(lens_uv);
     D = normalize(Pfocus - P);
   }
 
   /* transform ray from camera to world */
   Transform cameratoworld = kernel_data.cam.cameratoworld;
 
-#ifdef __CAMERA_MOTION__
   if (kernel_data.cam.num_motion_steps) {
     transform_motion_array_interpolate(&cameratoworld,
                                        kernel_data_array(camera_motion),
                                        kernel_data.cam.num_motion_steps,
                                        ray->time);
   }
-#endif
 
   P = transform_point(&cameratoworld, P);
   D = normalize(transform_direction(&cameratoworld, D));
@@ -137,7 +132,7 @@ ccl_device void camera_sample_perspective(KernelGlobals kg,
 
     float3 Px = Pnostereo;
     float3 Dx = transform_perspective(&rastertocamera,
-                                      make_float3(raster_x + 1.0f, raster_y, 0.0f));
+                                      make_float3(raster.x + 1.0f, raster.y, 0.0f));
     Dx = normalize(transform_direction(&cameratoworld, Dx));
     spherical_stereo_transform(&kernel_data.cam, &Px, &Dx);
 
@@ -148,7 +143,7 @@ ccl_device void camera_sample_perspective(KernelGlobals kg,
 
     float3 Py = Pnostereo;
     float3 Dy = transform_perspective(&rastertocamera,
-                                      make_float3(raster_x, raster_y + 1.0f, 0.0f));
+                                      make_float3(raster.x, raster.y + 1.0f, 0.0f));
     Dy = normalize(transform_direction(&cameratoworld, Dy));
     spherical_stereo_transform(&kernel_data.cam, &Py, &Dy);
 
@@ -159,7 +154,6 @@ ccl_device void camera_sample_perspective(KernelGlobals kg,
 #endif
   }
 
-#ifdef __CAMERA_CLIPPING__
   /* clipping */
   float z_inv = 1.0f / normalize(Pcamera).z;
   float nearclip = kernel_data.cam.nearclip * z_inv;
@@ -167,23 +161,17 @@ ccl_device void camera_sample_perspective(KernelGlobals kg,
   ray->dP += nearclip * ray->dD;
   ray->tmin = 0.0f;
   ray->tmax = kernel_data.cam.cliplength * z_inv;
-#else
-  ray->tmin = 0.0f;
-  ray->tmax = FLT_MAX;
-#endif
 }
 
 /* Orthographic Camera */
 ccl_device void camera_sample_orthographic(KernelGlobals kg,
-                                           float raster_x,
-                                           float raster_y,
-                                           float lens_u,
-                                           float lens_v,
+                                           const float2 raster_xy,
+                                           const float2 rand_lens,
                                            ccl_private Ray *ray)
 {
   /* create ray form raster position */
   ProjectionTransform rastertocamera = kernel_data.cam.rastertocamera;
-  float3 Pcamera = transform_perspective(&rastertocamera, make_float3(raster_x, raster_y, 0.0f));
+  float3 Pcamera = transform_perspective(&rastertocamera, float2_to_float3(raster_xy));
 
   float3 P;
   float3 D = make_float3(0.0f, 0.0f, 1.0f);
@@ -193,15 +181,15 @@ ccl_device void camera_sample_orthographic(KernelGlobals kg,
 
   if (aperturesize > 0.0f) {
     /* sample point on aperture */
-    float2 lensuv = camera_sample_aperture(&kernel_data.cam, lens_u, lens_v) * aperturesize;
+    float2 lens_uv = camera_sample_aperture(&kernel_data.cam, rand_lens) * aperturesize;
 
     /* compute point on plane of focus */
     float3 Pfocus = D * kernel_data.cam.focaldistance;
 
     /* update ray for effect of lens */
-    float3 lensuvw = make_float3(lensuv.x, lensuv.y, 0.0f);
-    P = Pcamera + lensuvw;
-    D = normalize(Pfocus - lensuvw);
+    float3 lens_uvw = float2_to_float3(lens_uv);
+    P = Pcamera + lens_uvw;
+    D = normalize(Pfocus - lens_uvw);
   }
   else {
     P = Pcamera;
@@ -209,14 +197,12 @@ ccl_device void camera_sample_orthographic(KernelGlobals kg,
   /* transform ray from camera to world */
   Transform cameratoworld = kernel_data.cam.cameratoworld;
 
-#ifdef __CAMERA_MOTION__
   if (kernel_data.cam.num_motion_steps) {
     transform_motion_array_interpolate(&cameratoworld,
                                        kernel_data_array(camera_motion),
                                        kernel_data.cam.num_motion_steps,
                                        ray->time);
   }
-#endif
 
   ray->P = transform_point(&cameratoworld, P);
   ray->D = normalize(transform_direction(&cameratoworld, D));
@@ -231,30 +217,21 @@ ccl_device void camera_sample_orthographic(KernelGlobals kg,
   ray->dD = differential_zero_compact();
 #endif
 
-#ifdef __CAMERA_CLIPPING__
   /* clipping */
   ray->tmin = 0.0f;
   ray->tmax = kernel_data.cam.cliplength;
-#else
-  ray->tmin = 0.0f;
-  ray->tmax = FLT_MAX;
-#endif
 }
 
 /* Panorama Camera */
 
 ccl_device_inline void camera_sample_panorama(ccl_constant KernelCamera *cam,
-#ifdef __CAMERA_MOTION__
                                               ccl_global const DecomposedTransform *cam_motion,
-#endif
-                                              float raster_x,
-                                              float raster_y,
-                                              float lens_u,
-                                              float lens_v,
+                                              const float2 raster,
+                                              const float2 rand_lens,
                                               ccl_private Ray *ray)
 {
   ProjectionTransform rastertocamera = cam->rastertocamera;
-  float3 Pcamera = transform_perspective(&rastertocamera, make_float3(raster_x, raster_y, 0.0f));
+  float3 Pcamera = transform_perspective(&rastertocamera, float2_to_float3(raster));
 
   /* create ray form raster position */
   float3 P = zero_float3();
@@ -271,7 +248,7 @@ ccl_device_inline void camera_sample_panorama(ccl_constant KernelCamera *cam,
 
   if (aperturesize > 0.0f) {
     /* sample point on aperture */
-    float2 lensuv = camera_sample_aperture(cam, lens_u, lens_v) * aperturesize;
+    float2 lens_uv = camera_sample_aperture(cam, rand_lens) * aperturesize;
 
     /* compute point on plane of focus */
     float3 Dfocus = normalize(D);
@@ -283,19 +260,17 @@ ccl_device_inline void camera_sample_panorama(ccl_constant KernelCamera *cam,
     V = normalize(cross(Dfocus, U));
 
     /* update ray for effect of lens */
-    P = U * lensuv.x + V * lensuv.y;
+    P = U * lens_uv.x + V * lens_uv.y;
     D = normalize(Pfocus - P);
   }
 
   /* transform ray from camera to world */
   Transform cameratoworld = cam->cameratoworld;
 
-#ifdef __CAMERA_MOTION__
   if (cam->num_motion_steps) {
     transform_motion_array_interpolate(
         &cameratoworld, cam_motion, cam->num_motion_steps, ray->time);
   }
-#endif
 
   /* Stereo transform */
   bool use_stereo = cam->interocular_offset != 0.0f;
@@ -322,7 +297,7 @@ ccl_device_inline void camera_sample_panorama(ccl_constant KernelCamera *cam,
   Pcenter = transform_point(&cameratoworld, Pcenter);
   Dcenter = normalize(transform_direction(&cameratoworld, Dcenter));
 
-  float3 Px = transform_perspective(&rastertocamera, make_float3(raster_x + 1.0f, raster_y, 0.0f));
+  float3 Px = transform_perspective(&rastertocamera, make_float3(raster.x + 1.0f, raster.y, 0.0f));
   float3 Dx = panorama_to_direction(cam, Px.x, Px.y);
   if (use_stereo) {
     spherical_stereo_transform(cam, &Px, &Dx);
@@ -334,7 +309,7 @@ ccl_device_inline void camera_sample_panorama(ccl_constant KernelCamera *cam,
   dP.dx = Px - Pcenter;
   dD.dx = Dx - Dcenter;
 
-  float3 Py = transform_perspective(&rastertocamera, make_float3(raster_x, raster_y + 1.0f, 0.0f));
+  float3 Py = transform_perspective(&rastertocamera, make_float3(raster.x, raster.y + 1.0f, 0.0f));
   float3 Dy = panorama_to_direction(cam, Py.x, Py.y);
   if (use_stereo) {
     spherical_stereo_transform(cam, &Py, &Dy);
@@ -348,17 +323,12 @@ ccl_device_inline void camera_sample_panorama(ccl_constant KernelCamera *cam,
   ray->dP = differential_make_compact(dP);
 #endif
 
-#ifdef __CAMERA_CLIPPING__
   /* clipping */
   float nearclip = cam->nearclip;
   ray->P += nearclip * ray->D;
   ray->dP += nearclip * ray->dD;
   ray->tmin = 0.0f;
   ray->tmax = cam->cliplength;
-#else
-  ray->tmin = 0.0f;
-  ray->tmax = FLT_MAX;
-#endif
 }
 
 /* Common */
@@ -366,19 +336,17 @@ ccl_device_inline void camera_sample_panorama(ccl_constant KernelCamera *cam,
 ccl_device_inline void camera_sample(KernelGlobals kg,
                                      int x,
                                      int y,
-                                     float filter_u,
-                                     float filter_v,
-                                     float lens_u,
-                                     float lens_v,
-                                     float time,
+                                     const float2 filter_uv,
+                                     const float time,
+                                     const float2 lens_uv,
                                      ccl_private Ray *ray)
 {
   /* pixel filter */
   int filter_table_offset = kernel_data.tables.filter_table_offset;
-  float raster_x = x + lookup_table_read(kg, filter_u, filter_table_offset, FILTER_TABLE_SIZE);
-  float raster_y = y + lookup_table_read(kg, filter_v, filter_table_offset, FILTER_TABLE_SIZE);
+  const float2 raster = make_float2(
+      x + lookup_table_read(kg, filter_uv.x, filter_table_offset, FILTER_TABLE_SIZE),
+      y + lookup_table_read(kg, filter_uv.y, filter_table_offset, FILTER_TABLE_SIZE));
 
-#ifdef __CAMERA_MOTION__
   /* motion blur */
   if (kernel_data.cam.shuttertime == -1.0f) {
     ray->time = 0.5f;
@@ -416,22 +384,17 @@ ccl_device_inline void camera_sample(KernelGlobals kg,
       }
     }
   }
-#endif
 
   /* sample */
   if (kernel_data.cam.type == CAMERA_PERSPECTIVE) {
-    camera_sample_perspective(kg, raster_x, raster_y, lens_u, lens_v, ray);
+    camera_sample_perspective(kg, raster, lens_uv, ray);
   }
   else if (kernel_data.cam.type == CAMERA_ORTHOGRAPHIC) {
-    camera_sample_orthographic(kg, raster_x, raster_y, lens_u, lens_v, ray);
+    camera_sample_orthographic(kg, raster, lens_uv, ray);
   }
   else {
-#ifdef __CAMERA_MOTION__
     ccl_global const DecomposedTransform *cam_motion = kernel_data_array(camera_motion);
-    camera_sample_panorama(&kernel_data.cam, cam_motion, raster_x, raster_y, lens_u, lens_v, ray);
-#else
-    camera_sample_panorama(&kernel_data.cam, raster_x, raster_y, lens_u, lens_v, ray);
-#endif
+    camera_sample_panorama(&kernel_data.cam, cam_motion, raster, lens_uv, ray);
   }
 }
 

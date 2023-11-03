@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ConvertColorSpaceNode.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "BLI_utildefines.h"
 
@@ -25,9 +26,9 @@ ConvertColorSpaceNode::ConvertColorSpaceNode(bNode *editorNode) : Node(editorNod
 }
 
 void ConvertColorSpaceNode::convert_to_operations(NodeConverter &converter,
-                                                  const CompositorContext &UNUSED(context)) const
+                                                  const CompositorContext & /*context*/) const
 {
-  bNode *b_node = get_bnode();
+  const bNode *b_node = get_bnode();
 
   NodeInput *inputSocketImage = this->get_input_socket(0);
   NodeOutput *outputSocketImage = this->get_output_socket(0);
@@ -50,7 +51,7 @@ void ConvertColorSpaceNode::convert_to_operations(NodeConverter &converter,
 
 bool ConvertColorSpaceNode::performs_conversion(NodeConvertColorSpace &settings) const
 {
-  bNode *b_node = get_bnode();
+  const bNode *b_node = get_bnode();
 
   if (IMB_colormanagement_space_name_is_data(settings.from_color_space)) {
     CLOG_INFO(&LOG,
@@ -71,7 +72,8 @@ bool ConvertColorSpaceNode::performs_conversion(NodeConvertColorSpace &settings)
   }
 
   if (STREQLEN(
-          settings.from_color_space, settings.to_color_space, sizeof(settings.from_color_space))) {
+          settings.from_color_space, settings.to_color_space, sizeof(settings.from_color_space)))
+  {
     CLOG_INFO(&LOG,
               2,
               "Color space conversion bypassed for node: %s. To and from are the same: %s.",

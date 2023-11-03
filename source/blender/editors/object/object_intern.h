@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -40,7 +41,7 @@ void OBJECT_OT_parent_inverse_apply(wmOperatorType *ot);
 void OBJECT_OT_transform_axis_target(struct wmOperatorType *ot);
 void OBJECT_OT_origin_set(struct wmOperatorType *ot);
 
-/* object_relations.c */
+/* `object_relations.cc` */
 
 void OBJECT_OT_parent_set(struct wmOperatorType *ot);
 void OBJECT_OT_parent_no_inverse_set(struct wmOperatorType *ot);
@@ -49,21 +50,30 @@ void OBJECT_OT_vertex_parent_set(struct wmOperatorType *ot);
 void OBJECT_OT_track_set(struct wmOperatorType *ot);
 void OBJECT_OT_track_clear(struct wmOperatorType *ot);
 void OBJECT_OT_make_local(struct wmOperatorType *ot);
-void OBJECT_OT_make_override_library(struct wmOperatorType *ot);
 void OBJECT_OT_make_single_user(struct wmOperatorType *ot);
 void OBJECT_OT_make_links_scene(struct wmOperatorType *ot);
 void OBJECT_OT_make_links_data(struct wmOperatorType *ot);
+
+void OBJECT_OT_make_override_library(struct wmOperatorType *ot);
+void OBJECT_OT_reset_override_library(struct wmOperatorType *ot);
+void OBJECT_OT_clear_override_library(struct wmOperatorType *ot);
+
 /**
  * Used for drop-box.
  * Assigns to object under cursor, only first material slot.
  */
 void OBJECT_OT_drop_named_material(struct wmOperatorType *ot);
 /**
+ * Used for drop-box.
+ * Assigns to object under cursor, creates a new geometry nodes modifier.
+ */
+void OBJECT_OT_drop_geometry_nodes(struct wmOperatorType *ot);
+/**
  * \note Only for empty-image objects, this operator is needed
  */
 void OBJECT_OT_unlink_data(struct wmOperatorType *ot);
 
-/* object_edit.c */
+/* object_edit.cc */
 
 void OBJECT_OT_hide_view_set(struct wmOperatorType *ot);
 void OBJECT_OT_hide_view_clear(struct wmOperatorType *ot);
@@ -73,6 +83,7 @@ void OBJECT_OT_mode_set_with_submode(struct wmOperatorType *ot);
 void OBJECT_OT_editmode_toggle(struct wmOperatorType *ot);
 void OBJECT_OT_posemode_toggle(struct wmOperatorType *ot);
 void OBJECT_OT_shade_smooth(struct wmOperatorType *ot);
+void OBJECT_OT_shade_smooth_by_angle(struct wmOperatorType *ot);
 void OBJECT_OT_shade_flat(struct wmOperatorType *ot);
 void OBJECT_OT_paths_calculate(struct wmOperatorType *ot);
 void OBJECT_OT_paths_update(struct wmOperatorType *ot);
@@ -85,7 +96,7 @@ void OBJECT_OT_link_to_collection(struct wmOperatorType *ot);
 
 void OBJECT_OT_transfer_mode(struct wmOperatorType *ot);
 
-/* object_select.c */
+/* `object_select.cc` */
 
 void OBJECT_OT_select_all(struct wmOperatorType *ot);
 void OBJECT_OT_select_random(struct wmOperatorType *ot);
@@ -109,6 +120,7 @@ void OBJECT_OT_empty_add(struct wmOperatorType *ot);
 void OBJECT_OT_lightprobe_add(struct wmOperatorType *ot);
 void OBJECT_OT_drop_named_image(struct wmOperatorType *ot);
 void OBJECT_OT_gpencil_add(struct wmOperatorType *ot);
+void OBJECT_OT_grease_pencil_add(struct wmOperatorType *ot);
 void OBJECT_OT_light_add(struct wmOperatorType *ot);
 void OBJECT_OT_effector_add(struct wmOperatorType *ot);
 void OBJECT_OT_camera_add(struct wmOperatorType *ot);
@@ -130,7 +142,7 @@ void OBJECT_OT_join(struct wmOperatorType *ot);
 void OBJECT_OT_join_shapes(struct wmOperatorType *ot);
 void OBJECT_OT_convert(struct wmOperatorType *ot);
 
-/* object_volume.c */
+/* `object_volume.cc` */
 
 void OBJECT_OT_volume_add(struct wmOperatorType *ot);
 /**
@@ -138,7 +150,7 @@ void OBJECT_OT_volume_add(struct wmOperatorType *ot);
  */
 void OBJECT_OT_volume_import(struct wmOperatorType *ot);
 
-/* object_hook.c */
+/* `object_hook.cc` */
 
 void OBJECT_OT_hook_add_selob(struct wmOperatorType *ot);
 void OBJECT_OT_hook_add_newob(struct wmOperatorType *ot);
@@ -148,7 +160,7 @@ void OBJECT_OT_hook_assign(struct wmOperatorType *ot);
 void OBJECT_OT_hook_reset(struct wmOperatorType *ot);
 void OBJECT_OT_hook_recenter(struct wmOperatorType *ot);
 
-/* object_collection.c */
+/* `object_collection.cc` */
 
 void COLLECTION_OT_create(struct wmOperatorType *ot);
 void COLLECTION_OT_objects_remove_all(struct wmOperatorType *ot);
@@ -156,7 +168,19 @@ void COLLECTION_OT_objects_remove(struct wmOperatorType *ot);
 void COLLECTION_OT_objects_add_active(struct wmOperatorType *ot);
 void COLLECTION_OT_objects_remove_active(struct wmOperatorType *ot);
 
-/* object_modifier.c */
+/* object_light_linking_ops.cc */
+
+void OBJECT_OT_light_linking_receiver_collection_new(struct wmOperatorType *ot);
+void OBJECT_OT_light_linking_receivers_select(struct wmOperatorType *ot);
+void OBJECT_OT_light_linking_receivers_link(struct wmOperatorType *ot);
+
+void OBJECT_OT_light_linking_blocker_collection_new(struct wmOperatorType *ot);
+void OBJECT_OT_light_linking_blockers_select(struct wmOperatorType *ot);
+void OBJECT_OT_light_linking_blockers_link(struct wmOperatorType *ot);
+
+void OBJECT_OT_light_linking_unlink_from_collection(struct wmOperatorType *ot);
+
+/* `object_modifier.cc` */
 
 bool edit_modifier_poll_generic(struct bContext *C,
                                 struct StructRNA *rna_type,
@@ -217,7 +241,11 @@ void GPENCIL_OT_segment_add(struct wmOperatorType *ot);
 void GPENCIL_OT_segment_remove(struct wmOperatorType *ot);
 void GPENCIL_OT_segment_move(struct wmOperatorType *ot);
 
-/* object_shader_fx.c */
+void GPENCIL_OT_time_segment_add(struct wmOperatorType *ot);
+void GPENCIL_OT_time_segment_remove(struct wmOperatorType *ot);
+void GPENCIL_OT_time_segment_move(struct wmOperatorType *ot);
+
+/* `object_shader_fx.cc` */
 
 void OBJECT_OT_shaderfx_add(struct wmOperatorType *ot);
 void OBJECT_OT_shaderfx_copy(struct wmOperatorType *ot);
@@ -226,7 +254,7 @@ void OBJECT_OT_shaderfx_move_up(struct wmOperatorType *ot);
 void OBJECT_OT_shaderfx_move_down(struct wmOperatorType *ot);
 void OBJECT_OT_shaderfx_move_to_index(struct wmOperatorType *ot);
 
-/* object_constraint.c */
+/* `object_constraint.cc` */
 
 void OBJECT_OT_constraint_add(struct wmOperatorType *ot);
 void OBJECT_OT_constraint_add_with_targets(struct wmOperatorType *ot);
@@ -259,7 +287,7 @@ void CONSTRAINT_OT_objectsolver_set_inverse(struct wmOperatorType *ot);
 void CONSTRAINT_OT_objectsolver_clear_inverse(struct wmOperatorType *ot);
 void CONSTRAINT_OT_followpath_path_animate(struct wmOperatorType *ot);
 
-/* object_vgroup.c */
+/* object_vgroup.cc */
 
 void OBJECT_OT_vertex_group_add(struct wmOperatorType *ot);
 void OBJECT_OT_vertex_group_remove(struct wmOperatorType *ot);
@@ -274,7 +302,6 @@ void OBJECT_OT_vertex_group_normalize(struct wmOperatorType *ot);
 void OBJECT_OT_vertex_group_normalize_all(struct wmOperatorType *ot);
 void OBJECT_OT_vertex_group_levels(struct wmOperatorType *ot);
 void OBJECT_OT_vertex_group_lock(struct wmOperatorType *ot);
-void OBJECT_OT_vertex_group_fix(struct wmOperatorType *ot);
 void OBJECT_OT_vertex_group_invert(struct wmOperatorType *ot);
 void OBJECT_OT_vertex_group_smooth(struct wmOperatorType *ot);
 void OBJECT_OT_vertex_group_clean(struct wmOperatorType *ot);
@@ -290,21 +317,11 @@ void OBJECT_OT_vertex_weight_set_active(struct wmOperatorType *ot);
 void OBJECT_OT_vertex_weight_normalize_active_vertex(struct wmOperatorType *ot);
 void OBJECT_OT_vertex_weight_copy(struct wmOperatorType *ot);
 
-/* object_facemap_ops.c */
-
-void OBJECT_OT_face_map_add(struct wmOperatorType *ot);
-void OBJECT_OT_face_map_remove(struct wmOperatorType *ot);
-void OBJECT_OT_face_map_assign(struct wmOperatorType *ot);
-void OBJECT_OT_face_map_remove_from(struct wmOperatorType *ot);
-void OBJECT_OT_face_map_select(struct wmOperatorType *ot);
-void OBJECT_OT_face_map_deselect(struct wmOperatorType *ot);
-void OBJECT_OT_face_map_move(struct wmOperatorType *ot);
-
-/* object_warp.c */
+/* `object_warp.cc` */
 
 void TRANSFORM_OT_vertex_warp(struct wmOperatorType *ot);
 
-/* object_shapekey.c */
+/* `object_shapekey.cc` */
 
 void OBJECT_OT_shape_key_add(struct wmOperatorType *ot);
 void OBJECT_OT_shape_key_remove(struct wmOperatorType *ot);
@@ -313,7 +330,7 @@ void OBJECT_OT_shape_key_retime(struct wmOperatorType *ot);
 void OBJECT_OT_shape_key_mirror(struct wmOperatorType *ot);
 void OBJECT_OT_shape_key_move(struct wmOperatorType *ot);
 
-/* object_collection.c */
+/* `object_collection.cc` */
 
 void OBJECT_OT_collection_add(struct wmOperatorType *ot);
 void OBJECT_OT_collection_link(struct wmOperatorType *ot);
@@ -321,12 +338,20 @@ void OBJECT_OT_collection_remove(struct wmOperatorType *ot);
 void OBJECT_OT_collection_unlink(struct wmOperatorType *ot);
 void OBJECT_OT_collection_objects_select(struct wmOperatorType *ot);
 
-/* object_bake.c */
+/* `object_bake.cc` */
 
 void OBJECT_OT_bake_image(wmOperatorType *ot);
 void OBJECT_OT_bake(wmOperatorType *ot);
 
-/* object_random.c */
+/* object_bake_simulation.cc */
+
+void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot);
+void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot);
+void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot);
+void OBJECT_OT_simulation_nodes_cache_bake_single(wmOperatorType *ot);
+void OBJECT_OT_simulation_nodes_cache_delete_single(wmOperatorType *ot);
+
+/* `object_random.cc` */
 
 void TRANSFORM_OT_vertex_random(struct wmOperatorType *ot);
 
@@ -346,4 +371,14 @@ void OBJECT_OT_datalayout_transfer(struct wmOperatorType *ot);
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
+
+namespace blender::ed::object {
+
+void object_modifier_add_asset_register();
+
+}
+
 #endif

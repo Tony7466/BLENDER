@@ -1,9 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <set>
 
 #include "BLI_multi_value_map.hh"
+
+#include "BKE_node_runtime.hh"
 
 #include "COM_Converter.h"
 #include "COM_Debug.h"
@@ -49,7 +52,7 @@ void NodeOperationBuilder::convert_to_operations(ExecutionSystem *system)
    * so multiple operations can use the same node input.
    */
   blender::MultiValueMap<NodeInput *, NodeOperationInput *> inverse_input_map;
-  for (Map<NodeOperationInput *, NodeInput *>::MutableItem item : input_map_.items()) {
+  for (MutableMapItem<NodeOperationInput *, NodeInput *> item : input_map_.items()) {
     inverse_input_map.add(item.value, item.key);
   }
 
@@ -222,10 +225,11 @@ PreviewOperation *NodeOperationBuilder::make_preview_operation() const
   bNodeInstanceHash *previews = context_->get_preview_hash();
   if (previews) {
     Scene *scene = context_->get_scene();
-    PreviewOperation *operation = new PreviewOperation(&scene->view_settings,
-                                                       &scene->display_settings,
-                                                       current_node_->get_bnode()->preview_xsize,
-                                                       current_node_->get_bnode()->preview_ysize);
+    PreviewOperation *operation = new PreviewOperation(
+        &scene->view_settings,
+        &scene->display_settings,
+        current_node_->get_bnode()->runtime->preview_xsize,
+        current_node_->get_bnode()->runtime->preview_ysize);
     operation->set_bnodetree(context_->get_bnodetree());
     operation->verify_preview(previews, current_node_->get_instance_key());
     return operation;
@@ -382,7 +386,8 @@ void NodeOperationBuilder::resolve_proxies()
   for (const Link &link : links_) {
     /* don't replace links from proxy to proxy, since we may need them for replacing others! */
     if (link.from()->get_operation().get_flags().is_proxy_operation &&
-        !link.to()->get_operation().get_flags().is_proxy_operation) {
+        !link.to()->get_operation().get_flags().is_proxy_operation)
+    {
       proxy_links.append(link);
     }
   }
@@ -410,8 +415,8 @@ void NodeOperationBuilder::determine_canvases()
   /* Determine all canvas areas of the operations. */
   const rcti &preferred_area = COM_AREA_NONE;
   for (NodeOperation *op : operations_) {
-    if (op->is_output_operation(context_->is_rendering()) &&
-        !op->get_flags().is_preview_operation) {
+    if (op->is_output_operation(context_->is_rendering()) && !op->get_flags().is_preview_operation)
+    {
       rcti canvas = COM_AREA_NONE;
       op->determine_canvas(preferred_area, canvas);
       op->set_canvas(canvas);
@@ -419,8 +424,8 @@ void NodeOperationBuilder::determine_canvases()
   }
 
   for (NodeOperation *op : operations_) {
-    if (op->is_output_operation(context_->is_rendering()) &&
-        op->get_flags().is_preview_operation) {
+    if (op->is_output_operation(context_->is_rendering()) && op->get_flags().is_preview_operation)
+    {
       rcti canvas = COM_AREA_NONE;
       op->determine_canvas(preferred_area, canvas);
       op->set_canvas(canvas);
@@ -576,7 +581,7 @@ void NodeOperationBuilder::add_output_buffers(NodeOperation *operation,
     /* try to find existing write buffer operation */
     if (target->get_operation().get_flags().is_write_buffer_operation) {
       BLI_assert(write_operation == nullptr); /* there should only be one write op connected */
-      write_operation = (WriteBufferOperation *)(&target->get_operation());
+      write_operation = (WriteBufferOperation *)&target->get_operation();
     }
     else {
       /* remove all links to other nodes */

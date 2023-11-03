@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2019, NVIDIA Corporation.
- * Copyright 2019-2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2019-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/optix/device.h"
 
@@ -8,6 +9,10 @@
 #include "device/optix/device_impl.h"
 
 #include "util/log.h"
+
+#ifdef WITH_OSL
+#  include <OSL/oslversion.h>
+#endif
 
 #ifdef WITH_OPTIX
 #  include <optix_function_table_definition.h>
@@ -65,6 +70,9 @@ void device_optix_info(const vector<DeviceInfo> &cuda_devices, vector<DeviceInfo
 
     info.type = DEVICE_OPTIX;
     info.id += "_OptiX";
+#  if defined(WITH_OSL) && (OSL_VERSION_MINOR >= 13 || OSL_VERSION_MAJOR > 1)
+    info.has_osl = true;
+#  endif
     info.denoisers |= DENOISER_OPTIX;
 
     devices.push_back(info);

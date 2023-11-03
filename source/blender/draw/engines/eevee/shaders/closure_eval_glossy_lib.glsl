@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2021-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
 #pragma BLENDER_REQUIRE(lights_lib.glsl)
@@ -26,7 +29,7 @@ struct ClosureEvalGlossy {
   float ltc_brdf_scale;    /** LTC BRDF scaling. */
   vec3 probe_sampling_dir; /** Direction to sample probes from. */
   float spec_occlusion;    /** Specular Occlusion. */
-  vec3 raytrace_radiance;  /** Raytrace reflection to be accumulated after occlusion. */
+  vec3 raytrace_radiance;  /** Ray-trace reflection to be accumulated after occlusion. */
 };
 
 /* Stubs. */
@@ -53,7 +56,7 @@ ClosureEvalGlossy closure_Glossy_eval_init(inout ClosureInputGlossy cl_in,
   cl_out.radiance = vec3(0.0);
 
 #ifndef STEP_RESOLVE /* SSR */
-  cl_in.N = ensure_valid_reflection(cl_common.Ng, cl_common.V, cl_in.N);
+  cl_in.N = ensure_valid_specular_reflection(cl_common.Ng, cl_common.V, cl_in.N);
 #endif
 
   float NV = dot(cl_in.N, cl_common.V);
@@ -73,12 +76,9 @@ ClosureEvalGlossy closure_Glossy_eval_init(inout ClosureInputGlossy cl_in,
   raytrace_resolve(cl_in, cl_eval, cl_common, cl_out);
 #endif
 
-  /* The brdf split sum LUT is applied after the radiance accumulation.
+  /* The BRDF split sum LUT is applied after the radiance accumulation.
    * Correct the LTC so that its energy is constant. */
-  /* TODO(@fclem): Optimize this so that only one scale factor is stored. */
-  vec4 ltc_brdf = texture(utilTex, vec3(lut_uv, LTC_BRDF_LAYER)).barg;
-  vec2 split_sum_brdf = ltc_brdf.zw;
-  cl_eval.ltc_brdf_scale = (ltc_brdf.x + ltc_brdf.y) / (split_sum_brdf.x + split_sum_brdf.y);
+  cl_eval.ltc_brdf_scale = texture(utilTex, vec3(lut_uv, LTC_BRDF_LAYER)).g;
   return cl_eval;
 }
 
@@ -88,10 +88,13 @@ void closure_Glossy_light_eval(ClosureInputGlossy cl_in,
                                ClosureLightData light,
                                inout ClosureOutputGlossy cl_out)
 {
+/* Ensure specular light contribution only gets applied once when running split pass */
+#ifndef RESOLVE_SSR
   float radiance = light_specular(light.data, cl_eval.ltc_mat, cl_in.N, cl_common.V, light.L);
   radiance *= cl_eval.ltc_brdf_scale;
   cl_out.radiance += light.data.l_color *
                      (light.data.l_spec * light.vis * light.contact_shadow * radiance);
+#endif
 }
 
 void closure_Glossy_planar_eval(ClosureInputGlossy cl_in,
@@ -117,9 +120,12 @@ void closure_Glossy_cubemap_eval(ClosureInputGlossy cl_in,
                                  ClosureCubemapData cube,
                                  inout ClosureOutputGlossy cl_out)
 {
+/* Ensure cube-map probes contribution only gets applied once when running split pass */
+#ifndef RESOLVE_SSR
   vec3 probe_radiance = probe_evaluate_cube(
       cube.id, cl_common.P, cl_eval.probe_sampling_dir, cl_in.roughness);
   cl_out.radiance += cube.attenuation * probe_radiance;
+#endif
 }
 
 void closure_Glossy_indirect_end(ClosureInputGlossy cl_in,
@@ -127,7 +133,9 @@ void closure_Glossy_indirect_end(ClosureInputGlossy cl_in,
                                  ClosureEvalCommon cl_common,
                                  inout ClosureOutputGlossy cl_out)
 {
-  /* If not enough light has been accumulated from probes, use the world specular cubemap
+/* Ensure specular contribution only gets applied once when running split pass */
+#ifndef RESOLVE_SSR
+  /* If not enough light has been accumulated from probes, use the world specular cube-map
    * to fill the remaining energy needed. */
   if (specToggle && cl_common.specular_accum > 0.0) {
     vec3 probe_radiance = probe_evaluate_world_spec(cl_eval.probe_sampling_dir, cl_in.roughness);
@@ -136,8 +144,17 @@ void closure_Glossy_indirect_end(ClosureInputGlossy cl_in,
 
   /* Apply occlusion on distant lighting. */
   cl_out.radiance *= cl_eval.spec_occlusion;
-  /* Apply Raytrace reflections after occlusion since they are direct, local reflections. */
+#endif
+  /* Apply Ray-trace reflections after occlusion since they are direct, local reflections. */
+#if defined(RESOLVE_PROBE)
+  /* NO OP - output base radiance. */
+#elif defined(RESOLVE_SSR)
+  /* Output only ray-trace radiance. */
+  cl_out.radiance = cl_eval.raytrace_radiance;
+#else
+  /* Standard resolve */
   cl_out.radiance += cl_eval.raytrace_radiance;
+#endif
 }
 
 void closure_Glossy_eval_end(ClosureInputGlossy cl_in,
@@ -147,7 +164,7 @@ void closure_Glossy_eval_end(ClosureInputGlossy cl_in,
 {
   cl_out.radiance = render_pass_glossy_mask(cl_out.radiance);
 #if defined(DEPTH_SHADER) || defined(WORLD_BACKGROUND)
-  /* This makes shader resources become unused and avoid issues with samplers. (see T59747) */
+  /* This makes shader resources become unused and avoid issues with samplers. (see #59747) */
   cl_out.radiance = vec3(0.0);
   return;
 #endif

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -29,7 +30,11 @@ class Batch : public GPUBatch {
   virtual ~Batch() = default;
 
   virtual void draw(int v_first, int v_count, int i_first, int i_count) = 0;
-  virtual void draw_indirect(GPUStorageBuf *indirect_buf) = 0;
+  virtual void draw_indirect(GPUStorageBuf *indirect_buf, intptr_t offset) = 0;
+  virtual void multi_draw_indirect(GPUStorageBuf *indirect_buf,
+                                   int count,
+                                   intptr_t offset,
+                                   intptr_t stride) = 0;
 
   /* Convenience casts. */
   IndexBuf *elem_() const

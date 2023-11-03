@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2019-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -16,7 +19,7 @@ void main()
   radii[3] = radius - outline_width - 1.0;
   radii /= sizeObjectCenter;
 
-  fillColor = color;
+  fillColor = ucolor;
   outlineColor = colorOutline;
 
   view_clipping_distances(world_pos);

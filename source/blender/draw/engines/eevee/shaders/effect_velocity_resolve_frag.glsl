@@ -1,13 +1,8 @@
+/* SPDX-FileCopyrightText: 2018-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
-
-uniform depth2D depthBuffer;
-
-uniform mat4 prevViewProjMatrix;
-uniform mat4 currViewProjMatrixInv;
-uniform mat4 nextViewProjMatrix;
-
-out vec4 outData;
 
 void main()
 {

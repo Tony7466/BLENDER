@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2009-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -33,7 +35,7 @@
 
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -53,13 +55,13 @@
 #include "DNA_camera_types.h"
 #include "DNA_light_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "DocumentImporter.h"
 #include "ErrorHandler.h"
@@ -90,8 +92,12 @@ DocumentImporter::DocumentImporter(bContext *C, const ImportSettings *import_set
                         CTX_data_scene(C),
                         view_layer,
                         import_settings),
-      mesh_importer(
-          &unit_converter, &armature_importer, CTX_data_main(C), CTX_data_scene(C), view_layer),
+      mesh_importer(&unit_converter,
+                    import_settings->custom_normals,
+                    &armature_importer,
+                    CTX_data_main(C),
+                    CTX_data_scene(C),
+                    view_layer),
       anim_importer(C, &unit_converter, &armature_importer, CTX_data_scene(C))
 {
 }
@@ -116,7 +122,7 @@ bool DocumentImporter::import()
   loader.registerExtraDataCallbackHandler(ehandler);
 
   /* deselect all to select new objects */
-  BKE_view_layer_base_deselect_all(view_layer);
+  BKE_view_layer_base_deselect_all(CTX_data_scene(mContext), view_layer);
 
   std::string mFilename = std::string(this->import_settings->filepath);
   const std::string encodedFilename = bc_url_encode(mFilename);
@@ -157,9 +163,7 @@ void DocumentImporter::cancel(const COLLADAFW::String &errorMessage)
    * The latter sounds better. */
 }
 
-void DocumentImporter::start()
-{
-}
+void DocumentImporter::start() {}
 
 void DocumentImporter::finish()
 {
@@ -178,12 +182,12 @@ void DocumentImporter::finish()
   /** TODO: Break up and put into 2-pass parsing of DAE. */
   std::vector<const COLLADAFW::VisualScene *>::iterator sit;
   for (sit = vscenes.begin(); sit != vscenes.end(); sit++) {
-    PointerRNA sceneptr, unit_settings;
+    PointerRNA unit_settings;
     PropertyRNA *system, *scale;
 
     /* for scene unit settings: system, scale_length */
 
-    RNA_id_pointer_create(&sce->id, &sceneptr);
+    PointerRNA sceneptr = RNA_id_pointer_create(&sce->id);
     unit_settings = RNA_pointer_get(&sceneptr, "unit_settings");
     system = RNA_struct_find_property(&unit_settings, "system");
     scale = RNA_struct_find_property(&unit_settings, "scale_length");
@@ -209,7 +213,7 @@ void DocumentImporter::finish()
     /* Write nodes to scene */
     fprintf(stderr, "+-- Import Scene --------\n");
     const COLLADAFW::NodePointerArray &roots = (*sit)->getRootNodes();
-    for (unsigned int i = 0; i < roots.getCount(); i++) {
+    for (uint i = 0; i < roots.getCount(); i++) {
       std::vector<Object *> *objects_done = write_node(roots[i], nullptr, sce, nullptr, false);
       objects_to_scale->insert(
           objects_to_scale->end(), objects_done->begin(), objects_done->end());
@@ -230,14 +234,14 @@ void DocumentImporter::finish()
   for (const COLLADAFW::VisualScene *vscene : vscenes) {
     const COLLADAFW::NodePointerArray &roots = vscene->getRootNodes();
 
-    for (unsigned int i = 0; i < roots.getCount(); i++) {
+    for (uint i = 0; i < roots.getCount(); i++) {
       translate_anim_recursive(roots[i], nullptr, nullptr);
     }
   }
 
   if (!libnode_ob.empty()) {
 
-    fprintf(stderr, "| Cleanup: free %d library nodes\n", (int)libnode_ob.size());
+    fprintf(stderr, "| Cleanup: free %d library nodes\n", int(libnode_ob.size()));
     /* free all library_nodes */
     std::vector<Object *>::iterator it;
     for (it = libnode_ob.begin(); it != libnode_ob.end(); it++) {
@@ -261,7 +265,7 @@ void DocumentImporter::translate_anim_recursive(COLLADAFW::Node *node,
                                                 COLLADAFW::Node *par = nullptr,
                                                 Object *parob = nullptr)
 {
-  /* The split in T29246, root_map must point at actual root when
+  /* The split in #29246, root_map must point at actual root when
    * calculating bones in apply_curves_as_matrix. - actual root is the root node.
    * This has to do with inverse bind poses being world space
    * (the sources for skinned bones' rest-poses) and the way
@@ -288,7 +292,7 @@ void DocumentImporter::translate_anim_recursive(COLLADAFW::Node *node,
 
   Object *ob;
 #endif
-  unsigned int i;
+  uint i;
 
   if (node->getType() == COLLADAFW::Node::JOINT && par == nullptr) {
     /* For Skeletons without root node we have to simulate the
@@ -383,8 +387,8 @@ Object *DocumentImporter::create_instance_node(Object *source_ob,
                                                bool is_library_node)
 {
   // fprintf(stderr, "create <instance_node> under node id=%s from node id=%s\n", instance_node ?
-  // instance_node->getOriginalId().c_str() : NULL, source_node ?
-  // source_node->getOriginalId().c_str() : NULL);
+  // instance_node->getOriginalId().c_str() : nullptr, source_node ?
+  // source_node->getOriginalId().c_str() : nullptr);
 
   Main *bmain = CTX_data_main(mContext);
   Object *obn = (Object *)BKE_id_copy(bmain, &source_ob->id);
@@ -408,8 +412,8 @@ Object *DocumentImporter::create_instance_node(Object *source_ob,
         }
       }
       /* calc new matrix and apply */
-      mul_m4_m4m4(obn->obmat, obn->obmat, mat);
-      BKE_object_apply_mat4(obn, obn->obmat, false, false);
+      mul_m4_m4m4(obn->object_to_world, obn->object_to_world, mat);
+      BKE_object_apply_mat4(obn, obn->object_to_world, false, false);
     }
   }
   else {
@@ -420,7 +424,7 @@ Object *DocumentImporter::create_instance_node(Object *source_ob,
 
   COLLADAFW::NodePointerArray &children = source_node->getChildNodes();
   if (children.getCount()) {
-    for (unsigned int i = 0; i < children.getCount(); i++) {
+    for (uint i = 0; i < children.getCount(); i++) {
       COLLADAFW::Node *child_node = children[i];
       const COLLADAFW::UniqueId &child_id = child_node->getUniqueId();
       if (object_map.find(child_id) == object_map.end()) {
@@ -430,7 +434,7 @@ Object *DocumentImporter::create_instance_node(Object *source_ob,
       Object *new_child = nullptr;
       if (inodes.getCount()) { /* \todo loop through instance nodes */
         const COLLADAFW::UniqueId &id = inodes[0]->getInstanciatedObjectId();
-        fprintf(stderr, "Doing %d child nodes\n", (int)node_map.count(id));
+        fprintf(stderr, "Doing %d child nodes\n", int(node_map.count(id)));
         new_child = create_instance_node(
             object_map.find(id)->second, node_map[id], child_node, sce, is_library_node);
       }
@@ -597,7 +601,8 @@ std::vector<Object *> *DocumentImporter::write_node(COLLADAFW::Node *node,
             pair_iter = object_map.equal_range(node_id);
         for (std::multimap<COLLADAFW::UniqueId, Object *>::iterator it2 = pair_iter.first;
              it2 != pair_iter.second;
-             it2++) {
+             it2++)
+        {
           Object *source_ob = (Object *)it2->second;
           COLLADAFW::Node *source_node = node_map[node_id];
           ob = create_instance_node(source_ob, source_node, node, sce, is_library_node);
@@ -617,7 +622,8 @@ std::vector<Object *> *DocumentImporter::write_node(COLLADAFW::Node *node,
     if ((geom_done + camera_done + lamp_done + controller_done + inst_done) < 1) {
       /* Check if Object is armature, by checking if immediate child is a JOINT node. */
       if (is_armature(node)) {
-        ob = bc_add_object(bmain, sce, view_layer, OB_ARMATURE, name.c_str());
+        ExtraTags *et = getExtraTags(node->getUniqueId());
+        ob = bc_add_armature(node, et, bmain, sce, view_layer, OB_ARMATURE, name.c_str());
       }
       else {
         ob = bc_add_object(bmain, sce, view_layer, OB_EMPTY, nullptr);
@@ -645,7 +651,7 @@ std::vector<Object *> *DocumentImporter::write_node(COLLADAFW::Node *node,
       }
     }
 
-    /* create_constraints(et,ob); */
+    // create_constraints(et, ob);
   }
 
   for (Object *ob : *objects_done) {
@@ -671,7 +677,7 @@ std::vector<Object *> *DocumentImporter::write_node(COLLADAFW::Node *node,
     ob = *objects_done->begin();
   }
 
-  for (unsigned int i = 0; i < child_nodes.getCount(); i++) {
+  for (uint i = 0; i < child_nodes.getCount(); i++) {
     std::vector<Object *> *child_objects;
     child_objects = write_node(child_nodes[i], node, sce, ob, is_library_node);
     delete child_objects;
@@ -716,7 +722,7 @@ bool DocumentImporter::writeLibraryNodes(const COLLADAFW::LibraryNodes *libraryN
   const COLLADAFW::NodePointerArray &nodes = libraryNodes->getNodes();
 
   fprintf(stderr, "+-- Read Library nodes ----------\n");
-  for (unsigned int i = 0; i < nodes.getCount(); i++) {
+  for (uint i = 0; i < nodes.getCount(); i++) {
     std::vector<Object *> *child_objects;
     child_objects = write_node(nodes[i], nullptr, sce, nullptr, true);
     delete child_objects;
@@ -743,6 +749,7 @@ bool DocumentImporter::writeMaterial(const COLLADAFW::Material *cmat)
   const std::string &str_mat_id = cmat->getName().empty() ? cmat->getOriginalId() :
                                                             cmat->getName();
   Material *ma = BKE_material_add(bmain, (char *)str_mat_id.c_str());
+  id_us_min(&ma->id);
 
   this->uid_effect_map[cmat->getInstantiatedEffect()] = ma;
   this->uid_material_map[cmat->getUniqueId()] = ma;
@@ -847,14 +854,17 @@ bool DocumentImporter::writeCamera(const COLLADAFW::Camera *camera)
   switch (type) {
     case COLLADAFW::Camera::ORTHOGRAPHIC: {
       cam->type = CAM_ORTHO;
-    } break;
+      break;
+    }
     case COLLADAFW::Camera::PERSPECTIVE: {
       cam->type = CAM_PERSP;
-    } break;
+      break;
+    }
     case COLLADAFW::Camera::UNDEFINED_CAMERATYPE: {
       fprintf(stderr, "Current camera type is not supported.\n");
       cam->type = CAM_PERSP;
-    } break;
+      break;
+    }
   }
 
   switch (camera->getDescriptionType()) {
@@ -864,8 +874,9 @@ bool DocumentImporter::writeCamera(const COLLADAFW::Camera *camera)
           double ymag = 2 * camera->getYMag().getValue();
           double aspect = camera->getAspectRatio().getValue();
           double xmag = aspect * ymag;
-          cam->ortho_scale = (float)xmag;
-        } break;
+          cam->ortho_scale = float(xmag);
+          break;
+        }
         case CAM_PERSP:
         default: {
           double yfov = camera->getYFov().getValue();
@@ -875,9 +886,11 @@ bool DocumentImporter::writeCamera(const COLLADAFW::Camera *camera)
 
           double xfov = 2.0f * atanf(aspect * tanf(DEG2RADF(yfov) * 0.5f));
           cam->lens = fov_to_focallength(xfov, cam->sensor_x);
-        } break;
+          break;
+        }
       }
-    } break;
+      break;
+    }
     /* XXX correct way to do following four is probably to get also render
      * size and determine proper settings from that somehow */
     case COLLADAFW::Camera::ASPECTRATIO_AND_X:
@@ -885,29 +898,33 @@ bool DocumentImporter::writeCamera(const COLLADAFW::Camera *camera)
     case COLLADAFW::Camera::X_AND_Y: {
       switch (cam->type) {
         case CAM_ORTHO:
-          cam->ortho_scale = (float)camera->getXMag().getValue() * 2;
+          cam->ortho_scale = float(camera->getXMag().getValue()) * 2;
           break;
         case CAM_PERSP:
         default: {
           double x = camera->getXFov().getValue();
           /* X is in degrees, cam->lens is in millimeters. */
           cam->lens = fov_to_focallength(DEG2RADF(x), cam->sensor_x);
-        } break;
+          break;
+        }
       }
-    } break;
+      break;
+    }
     case COLLADAFW::Camera::SINGLE_Y: {
       switch (cam->type) {
         case CAM_ORTHO:
-          cam->ortho_scale = (float)camera->getYMag().getValue();
+          cam->ortho_scale = float(camera->getYMag().getValue());
           break;
         case CAM_PERSP:
         default: {
           double yfov = camera->getYFov().getValue();
           /* yfov is in degrees, cam->lens is in millimeters. */
           cam->lens = fov_to_focallength(DEG2RADF(yfov), cam->sensor_x);
-        } break;
+          break;
+        }
       }
-    } break;
+      break;
+    }
     case COLLADAFW::Camera::UNDEFINED:
       /* read nothing, use blender defaults. */
       break;
@@ -931,8 +948,8 @@ bool DocumentImporter::writeImage(const COLLADAFW::Image *image)
   char absolute_path[FILE_MAX];
   const char *workpath;
 
-  BLI_split_dir_part(this->import_settings->filepath, dir, sizeof(dir));
-  BLI_join_dirfile(absolute_path, sizeof(absolute_path), dir, imagepath.c_str());
+  BLI_path_split_dir_part(this->import_settings->filepath, dir, sizeof(dir));
+  BLI_path_join(absolute_path, sizeof(absolute_path), dir, imagepath.c_str());
   if (BLI_exists(absolute_path)) {
     workpath = absolute_path;
   }
@@ -994,7 +1011,6 @@ bool DocumentImporter::writeLight(const COLLADAFW::Light *light)
     et->setData("type", &(lamp->type));
     et->setData("flag", &(lamp->flag));
     et->setData("mode", &(lamp->mode));
-    et->setData("gamma", &(lamp->k));
     et->setData("red", &(lamp->r));
     et->setData("green", &(lamp->g));
     et->setData("blue", &(lamp->b));
@@ -1002,31 +1018,20 @@ bool DocumentImporter::writeLight(const COLLADAFW::Light *light)
     et->setData("shadow_g", &(lamp->shdwg));
     et->setData("shadow_b", &(lamp->shdwb));
     et->setData("energy", &(lamp->energy));
-    et->setData("dist", &(lamp->dist));
     et->setData("spotsize", &(lamp->spotsize));
     lamp->spotsize = DEG2RADF(lamp->spotsize);
     et->setData("spotblend", &(lamp->spotblend));
-    et->setData("att1", &(lamp->att1));
-    et->setData("att2", &(lamp->att2));
-    et->setData("falloff_type", &(lamp->falloff_type));
     et->setData("clipsta", &(lamp->clipsta));
     et->setData("clipend", &(lamp->clipend));
     et->setData("bias", &(lamp->bias));
-    et->setData("soft", &(lamp->soft));
-    et->setData("bufsize", &(lamp->bufsize));
-    et->setData("buffers", &(lamp->buffers));
+    et->setData("radius", &(lamp->radius));
     et->setData("area_shape", &(lamp->area_shape));
     et->setData("area_size", &(lamp->area_size));
     et->setData("area_sizey", &(lamp->area_sizey));
     et->setData("area_sizez", &(lamp->area_sizez));
   }
   else {
-    float constatt = light->getConstantAttenuation().getValue();
-    float linatt = light->getLinearAttenuation().getValue();
-    float quadatt = light->getQuadraticAttenuation().getValue();
     float d = 25.0f;
-    float att1 = 0.0f;
-    float att2 = 0.0f;
     float e = 1.0f;
 
     if (light->getColor().isValid()) {
@@ -1036,64 +1041,33 @@ bool DocumentImporter::writeLight(const COLLADAFW::Light *light)
       lamp->b = col.getBlue();
     }
 
-    if (IS_EQ(linatt, 0.0f) && quadatt > 0.0f) {
-      att2 = quadatt;
-      d = sqrt(1.0f / quadatt);
-    }
-    /* linear light */
-    else if (IS_EQ(quadatt, 0.0f) && linatt > 0.0f) {
-      att1 = linatt;
-      d = (1.0f / linatt);
-    }
-    else if (IS_EQ(constatt, 1.0f)) {
-      att1 = 1.0f;
-    }
-    else {
-      /* assuming point light (const att = 1.0); */
-      att1 = 1.0f;
-    }
-
-    d *= (1.0f / unit_converter.getLinearMeter());
-
     lamp->energy = e;
-    lamp->dist = d;
 
     switch (light->getLightType()) {
       case COLLADAFW::Light::AMBIENT_LIGHT: {
         lamp->type = LA_SUN; /* TODO: needs more thoughts. */
-      } break;
+        break;
+      }
       case COLLADAFW::Light::SPOT_LIGHT: {
         lamp->type = LA_SPOT;
-        lamp->att1 = att1;
-        lamp->att2 = att2;
-        if (IS_EQ(att1, 0.0f) && att2 > 0) {
-          lamp->falloff_type = LA_FALLOFF_INVSQUARE;
-        }
-        if (IS_EQ(att2, 0.0f) && att1 > 0) {
-          lamp->falloff_type = LA_FALLOFF_INVLINEAR;
-        }
         lamp->spotsize = DEG2RADF(light->getFallOffAngle().getValue());
         lamp->spotblend = light->getFallOffExponent().getValue();
-      } break;
+        break;
+      }
       case COLLADAFW::Light::DIRECTIONAL_LIGHT: {
         /* our sun is very strong, so pick a smaller energy level */
         lamp->type = LA_SUN;
-      } break;
+        break;
+      }
       case COLLADAFW::Light::POINT_LIGHT: {
         lamp->type = LA_LOCAL;
-        lamp->att1 = att1;
-        lamp->att2 = att2;
-        if (IS_EQ(att1, 0.0f) && att2 > 0) {
-          lamp->falloff_type = LA_FALLOFF_INVSQUARE;
-        }
-        if (IS_EQ(att2, 0.0f) && att1 > 0) {
-          lamp->falloff_type = LA_FALLOFF_INVLINEAR;
-        }
-      } break;
+        break;
+      }
       case COLLADAFW::Light::UNDEFINED: {
         fprintf(stderr, "Current light type is not supported.\n");
         lamp->type = LA_LOCAL;
-      } break;
+        break;
+      }
     }
   }
 
@@ -1117,7 +1091,7 @@ bool DocumentImporter::writeAnimationList(const COLLADAFW::AnimationList *animat
     return true;
   }
 
-  /* return true; */
+  // return true;
   return anim_importer.write_animation_list(animationList);
 }
 
@@ -1177,7 +1151,7 @@ bool DocumentImporter::addExtraTags(const COLLADAFW::UniqueId &uid, ExtraTags *e
 bool DocumentImporter::is_armature(COLLADAFW::Node *node)
 {
   COLLADAFW::NodePointerArray &child_nodes = node->getChildNodes();
-  for (unsigned int i = 0; i < child_nodes.getCount(); i++) {
+  for (uint i = 0; i < child_nodes.getCount(); i++) {
     if (child_nodes[i]->getType() == COLLADAFW::Node::JOINT) {
       return true;
     }

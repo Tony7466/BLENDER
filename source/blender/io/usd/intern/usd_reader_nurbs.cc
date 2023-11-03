@@ -1,12 +1,15 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Adapted from the Blender Alembic importer implementation.
- * Modifications Copyright 2021 Tangent Animation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Tangent Animation. All rights reserved.
+ * SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * Adapted from the Blender Alembic importer implementation. */
 
 #include "usd_reader_nurbs.h"
 
 #include "BKE_curve.h"
-#include "BKE_mesh.h"
-#include "BKE_object.h"
+#include "BKE_mesh.hh"
+#include "BKE_object.hh"
 
 #include "BLI_listbase.h"
 
@@ -33,7 +36,7 @@ static bool set_knots(const pxr::VtDoubleArray &knots, float *&nu_knots)
   nu_knots = static_cast<float *>(MEM_callocN(num_knots * sizeof(float), __func__));
 
   for (size_t i = 0; i < num_knots; i++) {
-    nu_knots[i] = (float)knots[i];
+    nu_knots[i] = float(knots[i]);
   }
 
   return true;
@@ -41,7 +44,7 @@ static bool set_knots(const pxr::VtDoubleArray &knots, float *&nu_knots)
 
 namespace blender::io::usd {
 
-void USDNurbsReader::create_object(Main *bmain, const double /* motionSampleTime */)
+void USDNurbsReader::create_object(Main *bmain, const double /*motionSampleTime*/)
 {
   curve_ = BKE_curve_add(bmain, name_.c_str(), OB_CURVES_LEGACY);
 
@@ -117,7 +120,7 @@ void USDNurbsReader::read_curve_sample(Curve *cu, const double motionSampleTime)
     nu->pntsv = 1;
 
     if (i < orders.size()) {
-      nu->orderu = static_cast<short>(orders[i]);
+      nu->orderu = short(orders[i]);
     }
     else {
       nu->orderu = 4;
@@ -126,13 +129,14 @@ void USDNurbsReader::read_curve_sample(Curve *cu, const double motionSampleTime)
 
     /* TODO(makowalski): investigate setting Cyclic U and Endpoint U options. */
 #if 0
-     if (knots.size() > 3) {
-       if ((knots[0] == knots[1]) && (knots[knots.size()] == knots[knots.size() - 1])) {
-         nu->flagu |= CU_NURB_ENDPOINT;
-       } else {
-         nu->flagu |= CU_NURB_CYCLIC;
-       }
-     }
+    if (knots.size() > 3) {
+      if ((knots[0] == knots[1]) && (knots[knots.size()] == knots[knots.size() - 1])) {
+        nu->flagu |= CU_NURB_ENDPOINT;
+      }
+      else {
+        nu->flagu |= CU_NURB_CYCLIC;
+      }
+    }
 #endif
 
     float weight = 1.0f;
@@ -141,9 +145,9 @@ void USDNurbsReader::read_curve_sample(Curve *cu, const double motionSampleTime)
     BPoint *bp = nu->bp;
 
     for (int j = 0; j < nu->pntsu; j++, bp++, idx++) {
-      bp->vec[0] = (float)usdPoints[idx][0];
-      bp->vec[1] = (float)usdPoints[idx][1];
-      bp->vec[2] = (float)usdPoints[idx][2];
+      bp->vec[0] = float(usdPoints[idx][0]);
+      bp->vec[1] = float(usdPoints[idx][1]);
+      bp->vec[2] = float(usdPoints[idx][2]);
       bp->vec[3] = weight;
       bp->f1 = SELECT;
       bp->weight = weight;
@@ -164,10 +168,9 @@ void USDNurbsReader::read_curve_sample(Curve *cu, const double motionSampleTime)
   }
 }
 
-Mesh *USDNurbsReader::read_mesh(struct Mesh * /* existing_mesh */,
-                                const double motionSampleTime,
-                                const int /* read_flag */,
-                                const char ** /* err_str */)
+Mesh *USDNurbsReader::read_mesh(Mesh * /*existing_mesh*/,
+                                const USDMeshReadParams params,
+                                const char ** /*err_str*/)
 {
   pxr::UsdGeomCurves curve_prim_(prim_);
 
@@ -177,11 +180,11 @@ Mesh *USDNurbsReader::read_mesh(struct Mesh * /* existing_mesh */,
 
   pxr::VtIntArray usdCounts;
 
-  vertexAttr.Get(&usdCounts, motionSampleTime);
+  vertexAttr.Get(&usdCounts, params.motion_sample_time);
   int num_subcurves = usdCounts.size();
 
   pxr::VtVec3fArray usdPoints;
-  pointsAttr.Get(&usdPoints, motionSampleTime);
+  pointsAttr.Get(&usdPoints, params.motion_sample_time);
 
   int vertex_idx = 0;
   int curve_idx;
@@ -205,7 +208,7 @@ Mesh *USDNurbsReader::read_mesh(struct Mesh * /* existing_mesh */,
 
   if (!same_topology) {
     BKE_nurbList_free(&curve->nurb);
-    read_curve_sample(curve, motionSampleTime);
+    read_curve_sample(curve, params.motion_sample_time);
   }
   else {
     Nurb *nurbs = static_cast<Nurb *>(curve->nurb.first);

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -20,10 +22,12 @@
 #  include "BLI_kdopbvh.h"
 #  include "BLI_map.hh"
 #  include "BLI_math_boolean.hh"
+#  include "BLI_math_geom.h"
+#  include "BLI_math_matrix.h"
 #  include "BLI_math_mpq.hh"
-#  include "BLI_math_vec_mpq_types.hh"
-#  include "BLI_math_vec_types.hh"
 #  include "BLI_math_vector.h"
+#  include "BLI_math_vector_mpq_types.hh"
+#  include "BLI_math_vector_types.hh"
 #  include "BLI_polyfill_2d.h"
 #  include "BLI_set.hh"
 #  include "BLI_sort.hh"
@@ -162,9 +166,7 @@ Face::Face(
 {
 }
 
-Face::Face(Span<const Vert *> verts, int id, int orig) : vert(verts), id(id), orig(orig)
-{
-}
+Face::Face(Span<const Vert *> verts, int id, int orig) : vert(verts), id(id), orig(orig) {}
 
 void Face::populate_plane(bool need_exact)
 {
@@ -305,9 +307,7 @@ class IMeshArena::IMeshArenaImpl : NonCopyable, NonMovable {
   struct VSetKey {
     Vert *vert;
 
-    VSetKey(Vert *p) : vert(p)
-    {
-    }
+    VSetKey(Vert *p) : vert(p) {}
 
     uint64_t hash() const
     {
@@ -710,7 +710,7 @@ bool IMesh::erase_face_positions(int f_index, Span<bool> face_pos_erase, IMeshAr
      * mark with null pointer and caller should call remove_null_faces().
      * the loop is done.
      */
-    this->face_[f_index] = NULL;
+    this->face_[f_index] = nullptr;
     return true;
   }
   Array<const Vert *> new_vert(new_len);
@@ -829,13 +829,13 @@ struct BBPadData {
 
 static void pad_face_bb_range_func(void *__restrict userdata,
                                    const int iter,
-                                   const TaskParallelTLS *__restrict UNUSED(tls))
+                                   const TaskParallelTLS *__restrict /*tls*/)
 {
   BBPadData *pad_data = static_cast<BBPadData *>(userdata);
   (*pad_data->face_bounding_box)[iter].expand(pad_data->pad);
 }
 
-static void calc_face_bb_reduce(const void *__restrict UNUSED(userdata),
+static void calc_face_bb_reduce(const void *__restrict /*userdata*/,
                                 void *__restrict chunk_join,
                                 void *__restrict chunk)
 {
@@ -998,18 +998,10 @@ struct ITT_value {
   enum ITT_value_kind kind = INONE;
 
   ITT_value() = default;
-  explicit ITT_value(ITT_value_kind k) : kind(k)
-  {
-  }
-  ITT_value(ITT_value_kind k, int tsrc) : t_source(tsrc), kind(k)
-  {
-  }
-  ITT_value(ITT_value_kind k, const mpq3 &p1) : p1(p1), kind(k)
-  {
-  }
-  ITT_value(ITT_value_kind k, const mpq3 &p1, const mpq3 &p2) : p1(p1), p2(p2), kind(k)
-  {
-  }
+  explicit ITT_value(ITT_value_kind k) : kind(k) {}
+  ITT_value(ITT_value_kind k, int tsrc) : t_source(tsrc), kind(k) {}
+  ITT_value(ITT_value_kind k, const mpq3 &p1) : p1(p1), kind(k) {}
+  ITT_value(ITT_value_kind k, const mpq3 &p1, const mpq3 &p2) : p1(p1), p2(p2), kind(k) {}
 };
 
 static std::ostream &operator<<(std::ostream &os, const ITT_value &itt);
@@ -1147,7 +1139,7 @@ static int filter_plane_side(const double3 &p,
  * This works because the ratio of the projections of ab and ac onto n is the same as
  * the ratio along the line ab of the intersection point to the whole of ab.
  * The ab, ac, and dotbuf arguments are used as a temporaries; declaring them
- * in the caller can avoid many allocs and frees of mpq3 and mpq_class structures.
+ * in the caller can avoid many allocations and frees of mpq3 and mpq_class structures.
  */
 static inline mpq3 tti_interp(
     const mpq3 &a, const mpq3 &b, const mpq3 &c, const mpq3 &n, mpq3 &ab, mpq3 &ac, mpq3 &dotbuf)
@@ -1167,7 +1159,7 @@ static inline mpq3 tti_interp(
  * order. This is the same as -oriented(a, b, c, a + ad), but uses fewer arithmetic operations.
  * TODO: change arguments to `const Vert *` and use floating filters.
  * The ba, ca, n, and dotbuf arguments are used as temporaries; declaring them
- * in the caller can avoid many allocs and frees of mpq3 and mpq_class structures.
+ * in the caller can avoid many allocations and frees of mpq3 and mpq_class structures.
  */
 static inline int tti_above(const mpq3 &a,
                             const mpq3 &b,
@@ -1595,7 +1587,8 @@ struct CDT_data {
   Vector<bool> is_reversed;
   /** Result of running CDT on input with (vert, edge, face). */
   CDT_result<mpq_class> cdt_out;
-  /** To speed up get_cdt_edge_orig, sometimes populate this map from vertex pair to output edge.
+  /**
+   * To speed up get_cdt_edge_orig, sometimes populate this map from vertex pair to output edge.
    */
   Map<std::pair<int, int>, int> verts_to_edge;
   int proj_axis;
@@ -1974,17 +1967,19 @@ static Face *cdt_tri_as_imesh_face(
   return facep;
 }
 
-/* Like BLI_math's is_quad_flip_v3_first_third_fast_with_normal, with const double3's. */
+/* Like BLI_math's is_quad_flip_v3_first_third_fast, with const double3's. */
 static bool is_quad_flip_first_third(const double3 &v1,
                                      const double3 &v2,
                                      const double3 &v3,
-                                     const double3 &v4,
-                                     const double3 &normal)
+                                     const double3 &v4)
 {
-  double3 dir_v3v1 = v3 - v1;
-  double3 tangent = math::cross(dir_v3v1, normal);
-  double dot = math::dot(v1, tangent);
-  return (math::dot(v4, tangent) >= dot) || (math::dot(v2, tangent) <= dot);
+  const double3 d_12 = v2 - v1;
+  const double3 d_13 = v3 - v1;
+  const double3 d_14 = v4 - v1;
+
+  const double3 cross_a = math::cross(d_12, d_13);
+  const double3 cross_b = math::cross(d_14, d_13);
+  return math::dot(cross_a, cross_b) > 0.0f;
 }
 
 /**
@@ -2020,7 +2015,7 @@ static Array<Face *> polyfill_triangulate_poly(Face *f, IMeshArena *arena)
     int eo_23 = f->edge_orig[2];
     int eo_30 = f->edge_orig[3];
     Face *f0, *f1;
-    if (UNLIKELY(is_quad_flip_first_third(v0->co, v1->co, v2->co, v3->co, f->plane->norm))) {
+    if (UNLIKELY(is_quad_flip_first_third(v0->co, v1->co, v2->co, v3->co))) {
       f0 = arena->add_face({v0, v1, v3}, f->orig, {eo_01, -1, eo_30}, {false, false, false});
       f1 = arena->add_face({v1, v2, v3}, f->orig, {eo_12, eo_23, -1}, {false, false, false});
     }
@@ -2030,12 +2025,13 @@ static Array<Face *> polyfill_triangulate_poly(Face *f, IMeshArena *arena)
     }
     return Array<Face *>{f0, f1};
   }
-  /* Project along negative face normal so (x,y) can be used in 2d. */ float axis_mat[3][3];
+  /* Project along negative face normal so (x,y) can be used in 2d. */
+  float axis_mat[3][3];
   float(*projverts)[2];
-  unsigned int(*tris)[3];
+  uint(*tris)[3];
   const int totfilltri = flen - 2;
   /* Prepare projected vertices and array to receive triangles in tessellation. */
-  tris = static_cast<unsigned int(*)[3]>(MEM_malloc_arrayN(totfilltri, sizeof(*tris), __func__));
+  tris = static_cast<uint(*)[3]>(MEM_malloc_arrayN(totfilltri, sizeof(*tris), __func__));
   projverts = static_cast<float(*)[2]>(MEM_malloc_arrayN(flen, sizeof(*projverts), __func__));
   axis_dominant_v3_to_m3_negate(axis_mat, no);
   for (int j = 0; j < flen; ++j) {
@@ -2047,7 +2043,7 @@ static Array<Face *> polyfill_triangulate_poly(Face *f, IMeshArena *arena)
   /* Put tessellation triangles into Face form. Record original edges where they exist. */
   Array<Face *> ans(totfilltri);
   for (int t = 0; t < totfilltri; ++t) {
-    unsigned int *tri = tris[t];
+    uint *tri = tris[t];
     int eo[3];
     const Vert *v[3];
     for (int k = 0; k < 3; k++) {
@@ -2104,7 +2100,7 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
   const double3 &poly_normal = f->plane->norm;
   int axis = math::dominant_axis(poly_normal);
   /* If project down y axis as opposed to x or z, the orientation
-   * of the polygon will be reversed.
+   * of the face will be reversed.
    * Yet another reversal happens if the poly normal in the dominant
    * direction is opposite that of the positive dominant axis. */
   bool rev1 = (axis == 1);
@@ -2419,7 +2415,7 @@ class TriOverlaps {
       }
     }
     first_overlap_ = Array<int>(tm.face_size(), -1);
-    for (int i = 0; i < static_cast<int>(overlap_num_); ++i) {
+    for (int i = 0; i < int(overlap_num_); ++i) {
       int t = overlap_[i].indexA;
       if (first_overlap_[t] == -1) {
         first_overlap_[t] = i;
@@ -2451,7 +2447,7 @@ class TriOverlaps {
   }
 
  private:
-  static bool only_different_shapes(void *userdata, int index_a, int index_b, int UNUSED(thread))
+  static bool only_different_shapes(void *userdata, int index_a, int index_b, int /*thread*/)
   {
     CBData *cbdata = static_cast<CBData *>(userdata);
     return cbdata->tm.face(index_a)->orig != cbdata->tm.face(index_b)->orig;
@@ -2487,7 +2483,7 @@ static std::pair<int, int> canon_int_pair(int a, int b)
 
 static void calc_overlap_itts_range_func(void *__restrict userdata,
                                          const int iter,
-                                         const TaskParallelTLS *__restrict UNUSED(tls))
+                                         const TaskParallelTLS *__restrict /*tls*/)
 {
   constexpr int dbg_level = 0;
   OverlapIttsData *data = static_cast<OverlapIttsData *>(userdata);
@@ -2682,7 +2678,7 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
                                         const IMesh &tm,
                                         const TriOverlaps &ov,
                                         const Map<std::pair<int, int>, ITT_value> &itt_map,
-                                        IMeshArena *UNUSED(arena))
+                                        IMeshArena * /*arena*/)
 {
   constexpr int dbg_level = 0;
   BLI_assert(c < clinfo.tot_cluster());
@@ -2889,7 +2885,7 @@ static void degenerate_range_func(void *__restrict userdata,
   chunk_data->has_degenerate_tri |= is_degenerate;
 }
 
-static void degenerate_reduce(const void *__restrict UNUSED(userdata),
+static void degenerate_reduce(const void *__restrict /*userdata*/,
                               void *__restrict chunk_join,
                               void *__restrict chunk)
 {
@@ -2931,7 +2927,7 @@ static IMesh remove_degenerate_tris(const IMesh &tm_in)
 IMesh trimesh_self_intersect(const IMesh &tm_in, IMeshArena *arena)
 {
   return trimesh_nary_intersect(
-      tm_in, 1, [](int UNUSED(t)) { return 0; }, true, arena);
+      tm_in, 1, [](int /*t*/) { return 0; }, true, arena);
 }
 
 IMesh trimesh_nary_intersect(const IMesh &tm_in,
@@ -3131,7 +3127,6 @@ void write_obj_mesh(IMesh &m, const std::string &objname)
     const double3 dv = v->co;
     f << "v " << dv[0] << " " << dv[1] << " " << dv[2] << "\n";
   }
-  int i = 0;
   for (const Face *face : m.faces()) {
     /* OBJ files use 1-indexing for vertices. */
     f << "f ";
@@ -3142,7 +3137,6 @@ void write_obj_mesh(IMesh &m, const std::string &objname)
       f << i + 1 << " ";
     }
     f << "\n";
-    ++i;
   }
   f.close();
 }

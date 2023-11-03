@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -8,12 +9,13 @@
 #pragma once
 
 #include "intern/builder/deg_builder.h"
+#include "intern/builder/deg_builder_key.h"
 #include "intern/builder/deg_builder_map.h"
-#include "intern/depsgraph_type.h"
-#include "intern/node/deg_node_id.h"
-#include "intern/node/deg_node_operation.h"
+#include "intern/depsgraph_type.hh"
+#include "intern/node/deg_node_id.hh"
+#include "intern/node/deg_node_operation.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 struct CacheFile;
 struct Camera;
@@ -36,7 +38,6 @@ struct MovieClip;
 struct Object;
 struct ParticleSettings;
 struct Scene;
-struct Simulation;
 struct Speaker;
 struct Tex;
 struct VFont;
@@ -44,11 +45,11 @@ struct World;
 struct bAction;
 struct bArmature;
 struct bConstraint;
-struct bGPdata;
 struct bNodeSocket;
 struct bNodeTree;
 struct bPoseChannel;
 struct bSound;
+struct PointerRNA;
 
 namespace blender::deg {
 
@@ -56,6 +57,7 @@ struct ComponentNode;
 struct Depsgraph;
 class DepsgraphBuilderCache;
 struct IDNode;
+struct OperationKey;
 struct OperationNode;
 struct TimeSourceNode;
 
@@ -92,10 +94,11 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
   int foreach_id_cow_detect_need_for_update_callback(ID *id_cow_self, ID *id_pointer);
 
   IDNode *add_id_node(ID *id);
-  IDNode *find_id_node(ID *id);
+  IDNode *find_id_node(const ID *id);
   TimeSourceNode *add_time_source();
 
   ComponentNode *add_component_node(ID *id, NodeType comp_type, const char *comp_name = "");
+  ComponentNode *find_component_node(const ID *id, NodeType comp_type, const char *comp_name = "");
 
   OperationNode *add_operation_node(ComponentNode *comp_node,
                                     OperationCode opcode,
@@ -136,18 +139,24 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
                           OperationCode opcode,
                           const char *name = "",
                           int name_tag = -1);
+  bool has_operation_node(ID *id, NodeType comp_type, OperationCode opcode);
 
-  OperationNode *find_operation_node(ID *id,
+  OperationNode *find_operation_node(const ID *id,
                                      NodeType comp_type,
                                      const char *comp_name,
                                      OperationCode opcode,
                                      const char *name = "",
                                      int name_tag = -1);
 
-  OperationNode *find_operation_node(
-      ID *id, NodeType comp_type, OperationCode opcode, const char *name = "", int name_tag = -1);
+  OperationNode *find_operation_node(const ID *id,
+                                     NodeType comp_type,
+                                     OperationCode opcode,
+                                     const char *name = "",
+                                     int name_tag = -1);
 
-  virtual void build_id(ID *id);
+  OperationNode *find_operation_node(const OperationKey &key);
+
+  virtual void build_id(ID *id, bool force_be_visible = false);
 
   /* Build function for ID types that do not need their own build_xxx() function. */
   virtual void build_generic_id(ID *id);
@@ -155,6 +164,7 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
   virtual void build_idproperties(IDProperty *id_property);
 
   virtual void build_scene_render(Scene *scene, ViewLayer *view_layer);
+  virtual void build_scene_camera(Scene *scene);
   virtual void build_scene_parameters(Scene *scene);
   virtual void build_scene_compositor(Scene *scene);
 
@@ -174,6 +184,7 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
   virtual void build_object_flags(int base_index,
                                   Object *object,
                                   eDepsNode_LinkedState_Type linked_state);
+  virtual void build_object_modifiers(Object *object);
   virtual void build_object_data(Object *object);
   virtual void build_object_data_camera(Object *object);
   virtual void build_object_data_geometry(Object *object);
@@ -184,6 +195,10 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
   virtual void build_object_transform(Object *object);
   virtual void build_object_constraints(Object *object);
   virtual void build_object_pointcache(Object *object);
+
+  virtual void build_object_light_linking(Object *object);
+  virtual void build_light_linking_collection(Collection *collection);
+
   virtual void build_pose_constraints(Object *object, bPoseChannel *pchan, int pchan_index);
   virtual void build_rigidbody(Scene *scene);
   virtual void build_particle_systems(Object *object, bool is_object_visible);
@@ -199,6 +214,7 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
    */
   virtual void build_animation_images(ID *id);
   virtual void build_action(bAction *action);
+
   /**
    * Build graph node(s) for Driver
    * \param id: ID-Block that driver is attached to
@@ -206,8 +222,23 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
    * \param driver_index: Index in animation data drivers list
    */
   virtual void build_driver(ID *id, FCurve *fcurve, int driver_index);
+
   virtual void build_driver_variables(ID *id, FCurve *fcurve);
-  virtual void build_driver_id_property(ID *id, const char *rna_path);
+  virtual void build_driver_scene_camera_variable(Scene *scene, const char *camera_path);
+
+  /* Build operations of a property value from which is read by a driver target.
+   *
+   * The driver target points to a data-block (or a sub-data-block like View Layer).
+   * This data-block is presented in the interface as a "Prop" and its resolved RNA pointer is
+   * passed here as `target_prop`.
+   *
+   * The tricky part (and a bit confusing naming) is that the driver target accesses a property of
+   * the `target_prop` to get its value. The property which is read to give an actual target value
+   * is denoted by its RNA path relative to the `target_prop`. In the interface it is called "Path"
+   * and here it is called `rna_path_from_target_prop`. */
+  virtual void build_driver_id_property(const PointerRNA &target_prop,
+                                        const char *rna_path_from_target_prop);
+
   virtual void build_parameters(ID *id);
   virtual void build_dimensions(Object *object);
   virtual void build_ik_pose(Object *object, bPoseChannel *pchan, bConstraint *con);
@@ -215,6 +246,7 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
   virtual void build_rig(Object *object);
   virtual void build_armature(bArmature *armature);
   virtual void build_armature_bones(ListBase *bones);
+  virtual void build_armature_bone_collections(ListBase *collections);
   virtual void build_shapekeys(Key *key);
   virtual void build_camera(Camera *camera);
   virtual void build_light(Light *lamp);
@@ -233,7 +265,6 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
   virtual void build_lightprobe(LightProbe *probe);
   virtual void build_speaker(Speaker *speaker);
   virtual void build_sound(bSound *sound);
-  virtual void build_simulation(Simulation *simulation);
   virtual void build_scene_sequencer(Scene *scene);
   virtual void build_scene_audio(Scene *scene);
   virtual void build_scene_speakers(Scene *scene, ViewLayer *view_layer);
@@ -254,17 +285,9 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
   };
 
  protected:
-  /* Allows to identify an operation which was tagged for update at the time
-   * relations are being updated. We can not reuse operation node pointer
-   * since it will change during dependency graph construction. */
-  struct SavedEntryTag {
-    ID *id_orig;
-    NodeType component_type;
-    OperationCode opcode;
-    string name;
-    int name_tag;
-  };
-  Vector<SavedEntryTag> saved_entry_tags_;
+  /* Entry tags from the previous state of the dependency graph.
+   * Stored before the graph is re-created so that they can be transferred over. */
+  Vector<PersistentOperationKey> saved_entry_tags_;
 
   struct BuilderWalkUserData {
     DepsgraphNodeBuilder *builder;
@@ -291,7 +314,6 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
   int view_layer_index_;
   /* NOTE: Collection are possibly built recursively, so be careful when
    * setting the current state. */
-  Collection *collection_;
   /* Accumulated flag over the hierarchy of currently building collections.
    * Denotes whether all the hierarchy from parent of `collection_` to the
    * very root is visible (aka not restricted.). */

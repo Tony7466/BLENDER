@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2014-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -62,7 +64,7 @@ Geometry::Vec2r Interface0D::getPoint2D() const
   return 0;
 }
 
-FEdge *Interface0D::getFEdge(Interface0D &UNUSED(element))
+FEdge *Interface0D::getFEdge(Interface0D & /*element*/)
 {
   PyErr_SetString(PyExc_TypeError, "method getFEdge() not properly overridden");
   return nullptr;

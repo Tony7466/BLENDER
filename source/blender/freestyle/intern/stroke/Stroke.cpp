@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -11,7 +13,7 @@
 #include "StrokeRenderer.h"
 
 #include "BKE_global.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 namespace Freestyle {
 
@@ -410,7 +412,8 @@ Stroke::Stroke(const Stroke &iBrother) : Interface1D(iBrother)
   for (vertex_container::const_iterator v = iBrother._Vertices.begin(),
                                         vend = iBrother._Vertices.end();
        v != vend;
-       v++) {
+       v++)
+  {
     _Vertices.push_back(*v);
   }
   _Length = 0;
@@ -436,8 +439,8 @@ Stroke::Stroke(const Stroke &iBrother) : Interface1D(iBrother)
 Stroke::~Stroke()
 {
   if (!_Vertices.empty()) {
-    for (vertex_container::iterator v = _Vertices.begin(), vend = _Vertices.end(); v != vend;
-         v++) {
+    for (vertex_container::iterator v = _Vertices.begin(), vend = _Vertices.end(); v != vend; v++)
+    {
       delete (*v);
     }
     _Vertices.clear();
@@ -459,7 +462,8 @@ Stroke &Stroke::operator=(const Stroke &iBrother)
   for (vertex_container::const_iterator v = iBrother._Vertices.begin(),
                                         vend = iBrother._Vertices.end();
        v != vend;
-       v++) {
+       v++)
+  {
     _Vertices.push_back(*v);
   }
   _Length = iBrother._Length;
@@ -486,11 +490,11 @@ void Stroke::setLength(float iLength)
 
 float Stroke::ComputeSampling(int iNVertices)
 {
-  if (iNVertices <= (int)_Vertices.size()) {  // soc
+  if (iNVertices <= int(_Vertices.size())) {  // soc
     return _sampling;
   }
 
-  float sampling = _Length / (float)(iNVertices - _Vertices.size() + 1);
+  float sampling = _Length / float(iNVertices - _Vertices.size() + 1);
   return sampling;
 }
 
@@ -542,8 +546,8 @@ int Stroke::Resample(int iNPoints)
     Vec2r b((next)->getPoint());
     Vec2r vec_tmp(b - a);
     real norm_var = vec_tmp.norm();
-    int numberOfPointsToAdd = (int)floor(NPointsToAdd * norm_var / _Length);
-    float csampling = norm_var / (float)(numberOfPointsToAdd + 1);
+    int numberOfPointsToAdd = int(floor(NPointsToAdd * norm_var / _Length));
+    float csampling = norm_var / float(numberOfPointsToAdd + 1);
     strokeSegments.emplace_back(it, next, norm_var, numberOfPointsToAdd, csampling);
     N += numberOfPointsToAdd;
     meanlength += norm_var;
@@ -551,7 +555,7 @@ int Stroke::Resample(int iNPoints)
     ++it;
     ++next;
   }
-  meanlength /= (float)nsegments;
+  meanlength /= float(nsegments);
 
   // if we don't have enough points let's resample finer some segments
   bool checkEveryone = false;
@@ -560,7 +564,8 @@ int Stroke::Resample(int iNPoints)
     resampled = false;
     for (vector<StrokeSegment>::iterator s = strokeSegments.begin(), send = strokeSegments.end();
          s != send;
-         ++s) {
+         ++s)
+    {
       if (s->_sampling == 0.0f) {
         continue;
       }
@@ -571,7 +576,7 @@ int Stroke::Resample(int iNPoints)
         }
         // resample
         s->_n = s->_n + 1;
-        s->_sampling = s->_length / (float)(s->_n + 1);
+        s->_sampling = s->_length / float(s->_n + 1);
         s->_resampled = resampled = true;
         N++;
         if (N == NPointsToAdd) {
@@ -592,15 +597,16 @@ int Stroke::Resample(int iNPoints)
   // actually resample:
   for (vector<StrokeSegment>::iterator s = strokeSegments.begin(), send = strokeSegments.end();
        s != send;
-       ++s) {
-    newVertices.push_back(&(*(s->_begin)));
+       ++s)
+  {
+    newVertices.push_back(&*(s->_begin));
     if (s->_sampling < _sampling) {
       _sampling = s->_sampling;
     }
 
     t = s->_sampling / s->_length;
     for (int i = 0; i < s->_n; ++i) {
-      newVertex = new StrokeVertex(&(*(s->_begin)), &(*(s->_end)), t);
+      newVertex = new StrokeVertex(&*(s->_begin), &*(s->_end), t);
       newVertices.push_back(newVertex);
       t += s->_sampling / s->_length;
     }
@@ -929,7 +935,7 @@ bool Stroke::occluders_empty() const
 }
 
 #  if 0
-inline const polygon3d& occludee() const
+inline const polygon3d &occludee() const
 {
   return *(_FEdgeA->aFace());
 }

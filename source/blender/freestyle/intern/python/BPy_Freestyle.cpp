@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -34,9 +36,11 @@
 #include "BKE_appdir.h"
 #include "DNA_scene_types.h"
 #include "FRS_freestyle.h"
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 #include "bpy_rna.h" /* pyrna_struct_CreatePyObject() */
+
+#include "../generic/py_capi_utils.h" /* #PyC_UnicodeFromBytes */
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,8 +65,7 @@ static PyObject *Freestyle_getCurrentScene(PyObject * /*self*/)
     PyErr_SetString(PyExc_TypeError, "current scene not available");
     return nullptr;
   }
-  PointerRNA ptr_scene;
-  RNA_pointer_create(&scene->id, &RNA_Scene, scene, &ptr_scene);
+  PointerRNA ptr_scene = RNA_pointer_create(&scene->id, &RNA_Scene, scene);
   return pyrna_struct_CreatePyObject(&ptr_scene);
 }
 
@@ -90,6 +93,9 @@ static int ramp_blend_type(const char *type)
   }
   if (STREQ(type, "DIFFERENCE")) {
     return MA_RAMP_DIFF;
+  }
+  if (STREQ(type, "EXCLUSION")) {
+    return MA_RAMP_EXCLUSION;
   }
   if (STREQ(type, "DARKEN")) {
     return MA_RAMP_DARK;
@@ -165,7 +171,8 @@ static PyObject *Freestyle_blendRamp(PyObject * /*self*/, PyObject *args)
                             3,
                             obj1,
                             "argument 2 must be a 3D vector "
-                            "(either a tuple/list of 3 elements or Vector)") == -1) {
+                            "(either a tuple/list of 3 elements or Vector)") == -1)
+  {
     return nullptr;
   }
   if (mathutils_array_parse(b,
@@ -173,7 +180,8 @@ static PyObject *Freestyle_blendRamp(PyObject * /*self*/, PyObject *args)
                             3,
                             obj2,
                             "argument 4 must be a 3D vector "
-                            "(either a tuple/list of 3 elements or Vector)") == -1) {
+                            "(either a tuple/list of 3 elements or Vector)") == -1)
+  {
     return nullptr;
   }
   ramp_blend(type, a, fac, b);
@@ -200,7 +208,7 @@ static PyObject *Freestyle_evaluateColorRamp(PyObject * /*self*/, PyObject *args
   ColorBand *coba;
   float in, out[4];
 
-  if (!(PyArg_ParseTuple(args, "O!f", &pyrna_struct_Type, &py_srna, &in))) {
+  if (!PyArg_ParseTuple(args, "O!f", &pyrna_struct_Type, &py_srna, &in)) {
     return nullptr;
   }
   if (!RNA_struct_is_a(py_srna->ptr.type, &RNA_ColorRamp)) {
@@ -239,7 +247,7 @@ static PyObject *Freestyle_evaluateCurveMappingF(PyObject * /*self*/, PyObject *
   int cur;
   float value;
 
-  if (!(PyArg_ParseTuple(args, "O!if", &pyrna_struct_Type, &py_srna, &cur, &value))) {
+  if (!PyArg_ParseTuple(args, "O!if", &pyrna_struct_Type, &py_srna, &cur, &value)) {
     return nullptr;
   }
   if (!RNA_struct_is_a(py_srna->ptr.type, &RNA_CurveMapping)) {
@@ -508,15 +516,19 @@ static PyMethodDef module_functions[] = {
 /*-----------------------Freestyle module definition---------------------------*/
 
 static PyModuleDef module_definition = {
-    PyModuleDef_HEAD_INIT,
-    "_freestyle",
-    module_docstring,
-    -1,
-    module_functions,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
+    /*m_name*/ "_freestyle",
+    /*m_doc*/ module_docstring,
+    /*m_size*/ -1,
+    /*m_methods*/ module_functions,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 //-------------------MODULE INITIALIZATION--------------------------------
-PyObject *Freestyle_Init(void)
+PyObject *Freestyle_Init()
 {
   PyObject *module;
 
@@ -531,9 +543,9 @@ PyObject *Freestyle_Init(void)
   const char *const path = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS, "freestyle");
   if (path) {
     char modpath[FILE_MAX];
-    BLI_join_dirfile(modpath, sizeof(modpath), path, "modules");
+    BLI_path_join(modpath, sizeof(modpath), path, "modules");
     PyObject *sys_path = PySys_GetObject("path"); /* borrow */
-    PyObject *py_modpath = PyUnicode_FromString(modpath);
+    PyObject *py_modpath = PyC_UnicodeFromBytes(modpath);
     PyList_Append(sys_path, py_modpath);
     Py_DECREF(py_modpath);
 #if 0

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2018-2022 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(SQLITE_CONFIGURE_ENV echo .)
@@ -48,7 +50,6 @@ ExternalProject_Add(external_sqlite
   DOWNLOAD_DIR ${DOWNLOAD_DIR}
   URL_HASH ${SQLITE_HASH_TYPE}=${SQLITE_HASH}
   PREFIX ${BUILD_DIR}/sqlite
-  PATCH_COMMAND ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/sqlite/src/external_sqlite < ${PATCH_DIR}/sqlite.diff
   CONFIGURE_COMMAND ${SQLITE_CONFIGURE_ENV} && cd ${BUILD_DIR}/sqlite/src/external_sqlite/ && ${CONFIGURE_COMMAND} --prefix=${LIBDIR}/sqlite ${SQLITE_CONFIGURATION_ARGS}
   BUILD_COMMAND ${CONFIGURE_ENV} && cd ${BUILD_DIR}/sqlite/src/external_sqlite/ && make -j${MAKE_THREADS}
   INSTALL_COMMAND ${CONFIGURE_ENV} && cd ${BUILD_DIR}/sqlite/src/external_sqlite/ && make install

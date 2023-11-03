@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -76,26 +77,6 @@ class DenoiseParams : public Node {
              use_pass_normal == other.use_pass_normal &&
              temporally_stable == other.temporally_stable && prefilter == other.prefilter);
   }
-};
-
-/* All the parameters needed to perform buffer denoising on a device.
- * Is not really a task in its canonical terms (as in, is not an asynchronous running task). Is
- * more like a wrapper for all the arguments and parameters needed to perform denoising. Is a
- * single place where they are all listed, so that it's not required to modify all device methods
- * when these parameters do change. */
-class DeviceDenoiseTask {
- public:
-  DenoiseParams params;
-
-  int num_samples;
-
-  RenderBuffers *render_buffers;
-  BufferParams buffer_params;
-
-  /* Allow to do in-place modification of the input passes (scaling them down i.e.). This will
-   * lower the memory footprint of the denoiser but will make input passes "invalid" (from path
-   * tracer) point of view. */
-  bool allow_inplace_modification;
 };
 
 CCL_NAMESPACE_END

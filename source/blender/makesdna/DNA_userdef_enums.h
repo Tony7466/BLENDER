@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -6,9 +8,7 @@
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "BLI_utildefines.h"
 
 /**
  * #UserDef.dupflag
@@ -39,6 +39,7 @@ typedef enum eDupli_ID_Flags {
   USER_DUP_LATTICE = (1 << 17),
   USER_DUP_CAMERA = (1 << 18),
   USER_DUP_SPEAKER = (1 << 19),
+  USER_DUP_NTREE = (1 << 20),
 
   USER_DUP_OBDATA = (~0) & ((1 << 24) - 1),
 
@@ -49,7 +50,4 @@ typedef enum eDupli_ID_Flags {
   /* Duplicate (and hence make local) linked data. */
   USER_DUP_LINKED_ID = (1 << 30),
 } eDupli_ID_Flags;
-
-#ifdef __cplusplus
-}
-#endif
+ENUM_OPERATORS(eDupli_ID_Flags, USER_DUP_LINKED_ID)

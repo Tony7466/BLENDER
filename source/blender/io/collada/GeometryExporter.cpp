@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2010-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -15,16 +17,21 @@
 
 #include "DNA_meshdata_types.h"
 
+#include "BLI_math_vector_types.hh"
 #include "BLI_utildefines.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_customdata.h"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 
 #include "collada_internal.h"
 #include "collada_utils.h"
+
+using blender::float3;
+using blender::Span;
 
 void GeometryExporter::exportGeom()
 {
@@ -61,7 +68,7 @@ void GeometryExporter::operator()(Object *ob)
 
   exportedGeometry.insert(geom_id);
 
-  bool has_color = (bool)CustomData_has_layer(&me->fdata, CD_MCOL);
+  bool has_color = bool(CustomData_has_layer(&me->fdata_legacy, CD_MCOL));
 
   create_normals(nor, norind, me);
 
@@ -74,7 +81,7 @@ void GeometryExporter::operator()(Object *ob)
   /* writes <source> for normal coords */
   createNormalsSource(geom_id, me, nor);
 
-  bool has_uvs = (bool)CustomData_has_layer(&me->ldata, CD_MLOOPUV);
+  bool has_uvs = bool(CustomData_has_layer(&me->loop_data, CD_PROP_FLOAT2));
 
   /* writes <source> for uv coords if mesh has uv coords */
   if (has_uvs) {
@@ -96,8 +103,8 @@ void GeometryExporter::operator()(Object *ob)
 
   createLooseEdgeList(ob, me, geom_id);
 
-  /* Only create Polylists if number of faces > 0 */
-  if (me->totface > 0) {
+  /* Only create poly-lists if number of faces > 0. */
+  if (me->totface_legacy > 0) {
     /* XXX slow */
     if (ob->totcol) {
       for (int a = 0; a < ob->totcol; a++) {
@@ -116,11 +123,13 @@ void GeometryExporter::operator()(Object *ob)
   if (this->export_settings.get_include_shapekeys()) {
     Key *key = BKE_key_from_object(ob);
     if (key) {
+      blender::MutableSpan<float3> positions = me->vert_positions_for_write();
       KeyBlock *kb = (KeyBlock *)key->block.first;
       /* skip the basis */
       kb = kb->next;
       for (; kb; kb = kb->next) {
-        BKE_keyblock_convert_to_mesh(kb, me->mvert, me->totvert);
+        BKE_keyblock_convert_to_mesh(
+            kb, reinterpret_cast<float(*)[3]>(positions.data()), me->totvert);
         export_key_mesh(ob, me, kb);
       }
     }
@@ -143,7 +152,7 @@ void GeometryExporter::export_key_mesh(Object *ob, Mesh *me, KeyBlock *kb)
 
   exportedGeometry.insert(geom_id);
 
-  bool has_color = (bool)CustomData_has_layer(&me->fdata, CD_MCOL);
+  bool has_color = bool(CustomData_has_layer(&me->fdata_legacy, CD_MCOL));
 
   create_normals(nor, norind, me);
 
@@ -156,7 +165,7 @@ void GeometryExporter::export_key_mesh(Object *ob, Mesh *me, KeyBlock *kb)
   /* writes <source> for normal coords */
   createNormalsSource(geom_id, me, nor);
 
-  bool has_uvs = (bool)CustomData_has_layer(&me->ldata, CD_MLOOPUV);
+  bool has_uvs = bool(CustomData_has_layer(&me->loop_data, CD_PROP_FLOAT2));
 
   /* writes <source> for uv coords if mesh has uv coords */
   if (has_uvs) {
@@ -196,22 +205,23 @@ void GeometryExporter::export_key_mesh(Object *ob, Mesh *me, KeyBlock *kb)
 
 void GeometryExporter::createLooseEdgeList(Object *ob, Mesh *me, std::string &geom_id)
 {
-
-  MEdge *medges = me->medge;
-  int totedges = me->totedge;
+  using namespace blender;
+  const Span<int2> edges = me->edges();
   int edges_in_linelist = 0;
-  std::vector<unsigned int> edge_list;
+  std::vector<uint> edge_list;
   int index;
 
   /* Find all loose edges in Mesh
    * and save vertex indices in edge_list */
-  for (index = 0; index < totedges; index++) {
-    MEdge *edge = &medges[index];
-
-    if (edge->flag & ME_LOOSEEDGE) {
-      edges_in_linelist += 1;
-      edge_list.push_back(edge->v1);
-      edge_list.push_back(edge->v2);
+  const bke::LooseEdgeCache &loose_edges = me->loose_edges();
+  if (loose_edges.count > 0) {
+    for (const int64_t i : edges.index_range()) {
+      if (loose_edges.is_loose_bits[i]) {
+        const int2 &edge = edges[i];
+        edges_in_linelist += 1;
+        edge_list.push_back(edge[0]);
+        edge_list.push_back(edge[1]);
+      }
     }
   }
 
@@ -241,7 +251,7 @@ void GeometryExporter::createLooseEdgeList(Object *ob, Mesh *me, std::string &ge
 
 static void prepareToAppendValues(bool is_triangulated,
                                   COLLADASW::PrimitivesBase &primitive_list,
-                                  std::vector<unsigned long> &vcount_list)
+                                  std::vector<ulong> &vcount_list)
 {
   /* performs the actual writing */
   if (is_triangulated) {
@@ -282,18 +292,18 @@ static COLLADASW::PrimitivesBase *create_primitive_list(bool is_triangulated,
 
 static bool collect_vertex_counts_per_poly(Mesh *me,
                                            int material_index,
-                                           std::vector<unsigned long> &vcount_list)
+                                           std::vector<ulong> &vcount_list)
 {
-  MPoly *mpolys = me->mpoly;
-  int totpolys = me->totpoly;
+  const blender::OffsetIndices faces = me->faces();
+  const blender::bke::AttributeAccessor attributes = me->attributes();
+  const blender::VArray<int> material_indices = *attributes.lookup_or_default<int>(
+      "material_index", ATTR_DOMAIN_FACE, 0);
   bool is_triangulated = true;
 
-  int i;
-  /* Expecting that p->mat_nr is always 0 if the mesh has no materials assigned */
-  for (i = 0; i < totpolys; i++) {
-    MPoly *p = &mpolys[i];
-    if (p->mat_nr == material_index) {
-      int vertex_count = p->totloop;
+  /* Expecting that the material index is always 0 if the mesh has no materials assigned */
+  for (const int i : faces.index_range()) {
+    if (material_indices[i] == material_index) {
+      const int vertex_count = faces[i].size();
       vcount_list.push_back(vertex_count);
       if (vertex_count != 3) {
         is_triangulated = false;
@@ -303,7 +313,7 @@ static bool collect_vertex_counts_per_poly(Mesh *me,
   return is_triangulated;
 }
 
-std::string GeometryExporter::makeVertexColorSourceId(std::string &geom_id, char *layer_name)
+std::string GeometryExporter::makeVertexColorSourceId(std::string &geom_id, const char *layer_name)
 {
   std::string result = getIdBySemantics(geom_id, COLLADASW::InputSemantic::COLOR) + "-" +
                        layer_name;
@@ -318,12 +328,10 @@ void GeometryExporter::create_mesh_primitive_list(short material_index,
                                                   std::string &geom_id,
                                                   std::vector<BCPolygonNormalsIndices> &norind)
 {
+  const blender::OffsetIndices faces = me->faces();
+  const Span<int> corner_verts = me->corner_verts();
 
-  MPoly *mpolys = me->mpoly;
-  MLoop *mloops = me->mloop;
-  int totpolys = me->totpoly;
-
-  std::vector<unsigned long> vcount_list;
+  std::vector<ulong> vcount_list;
 
   bool is_triangulated = collect_vertex_counts_per_poly(me, material_index, vcount_list);
   int polygon_count = vcount_list.size();
@@ -338,7 +346,7 @@ void GeometryExporter::create_mesh_primitive_list(short material_index,
   Material *ma = ob->totcol ? BKE_object_material_get(ob, material_index + 1) : nullptr;
   COLLADASW::PrimitivesBase *primitive_list = create_primitive_list(is_triangulated, mSW);
 
-  /* sets count attribute in <polylist> */
+  /* sets count attribute in `<polylist>`. */
   primitive_list->setCount(polygon_count);
 
   /* sets material name */
@@ -361,29 +369,28 @@ void GeometryExporter::create_mesh_primitive_list(short material_index,
   til.push_back(normals_input);
 
   /* if mesh has uv coords writes <input> for TEXCOORD */
-  int num_layers = CustomData_number_of_layers(&me->ldata, CD_MLOOPUV);
-  int active_uv_index = CustomData_get_active_layer_index(&me->ldata, CD_MLOOPUV);
+  int num_layers = CustomData_number_of_layers(&me->loop_data, CD_PROP_FLOAT2);
+  int active_uv = CustomData_get_active_layer(&me->loop_data, CD_PROP_FLOAT2);
   for (int i = 0; i < num_layers; i++) {
-    int layer_index = CustomData_get_layer_index_n(&me->ldata, CD_MLOOPUV, i);
-    if (!this->export_settings.get_active_uv_only() || layer_index == active_uv_index) {
+    if (!this->export_settings.get_active_uv_only() || i == active_uv) {
 
-      // char *name = CustomData_get_layer_name(&me->ldata, CD_MLOOPUV, i);
+      // char *name = CustomData_get_layer_name(&me->ldata, CD_PROP_FLOAT2, i);
       COLLADASW::Input texcoord_input(
           COLLADASW::InputSemantic::TEXCOORD,
           makeUrl(makeTexcoordSourceId(geom_id, i, this->export_settings.get_active_uv_only())),
           2, /* this is only until we have optimized UV sets */
-          (this->export_settings.get_active_uv_only()) ? 0 : layer_index - 1 /* set (0,1,2,...) */
+          this->export_settings.get_active_uv_only() ? 0 : i /* set (0,1,2,...) */
       );
       til.push_back(texcoord_input);
     }
   }
 
-  int totlayer_mcol = CustomData_number_of_layers(&me->ldata, CD_PROP_BYTE_COLOR);
+  int totlayer_mcol = CustomData_number_of_layers(&me->loop_data, CD_PROP_BYTE_COLOR);
   if (totlayer_mcol > 0) {
     int map_index = 0;
 
     for (int a = 0; a < totlayer_mcol; a++) {
-      char *layer_name = bc_CustomData_get_layer_name(&me->ldata, CD_PROP_BYTE_COLOR, a);
+      const char *layer_name = bc_CustomData_get_layer_name(&me->loop_data, CD_PROP_BYTE_COLOR, a);
       COLLADASW::Input input4(COLLADASW::InputSemantic::COLOR,
                               makeUrl(makeVertexColorSourceId(geom_id, layer_name)),
                               (has_uvs) ? 3 : 2, /* all color layers have same index order */
@@ -397,18 +404,22 @@ void GeometryExporter::create_mesh_primitive_list(short material_index,
   /* performs the actual writing */
   prepareToAppendValues(is_triangulated, *primitive_list, vcount_list);
 
+  const blender::bke::AttributeAccessor attributes = me->attributes();
+  const blender::VArray<int> material_indices = *attributes.lookup_or_default<int>(
+      "material_index", ATTR_DOMAIN_FACE, 0);
+
   /* <p> */
   int texindex = 0;
-  for (int i = 0; i < totpolys; i++) {
-    MPoly *p = &mpolys[i];
-    int loop_count = p->totloop;
+  for (const int i : faces.index_range()) {
+    const blender::IndexRange poly = faces[i];
+    int loop_count = poly.size();
 
-    if (p->mat_nr == material_index) {
-      MLoop *l = &mloops[p->loopstart];
+    if (material_indices[i] == material_index) {
       BCPolygonNormalsIndices normal_indices = norind[i];
 
       for (int j = 0; j < loop_count; j++) {
-        primitive_list->appendValues(l[j].v);
+        const int vert = corner_verts[poly[j]];
+        primitive_list->appendValues(vert);
         primitive_list->appendValues(normal_indices[j]);
         if (has_uvs) {
           primitive_list->appendValues(texindex + j);
@@ -428,18 +439,13 @@ void GeometryExporter::create_mesh_primitive_list(short material_index,
 
 void GeometryExporter::createVertsSource(std::string geom_id, Mesh *me)
 {
-#if 0
-  int totverts = dm->getNumVerts(dm);
-  MVert *verts = dm->getVertArray(dm);
-#endif
-  int totverts = me->totvert;
-  MVert *verts = me->mvert;
+  const Span<float3> positions = me->vert_positions();
 
   COLLADASW::FloatSourceF source(mSW);
   source.setId(getIdBySemantics(geom_id, COLLADASW::InputSemantic::POSITION));
   source.setArrayId(getIdBySemantics(geom_id, COLLADASW::InputSemantic::POSITION) +
                     ARRAY_ID_SUFFIX);
-  source.setAccessorCount(totverts);
+  source.setAccessorCount(positions.size());
   source.setAccessorStride(3);
 
   COLLADASW::SourceBase::ParameterNameList &param = source.getParameterNameList();
@@ -450,14 +456,15 @@ void GeometryExporter::createVertsSource(std::string geom_id, Mesh *me)
    * count = ""> */
   source.prepareToAppendValues();
   /* appends data to <float_array> */
-  int i = 0;
-  for (i = 0; i < totverts; i++) {
+  for (const int i : positions.index_range()) {
     Vector co;
     if (export_settings.get_apply_global_orientation()) {
-      bc_add_global_transform(co, verts[i].co, export_settings.get_global_transform());
+      float co_c[3];
+      copy_v3_v3(co_c, positions[i]);
+      bc_add_global_transform(co, co_c, export_settings.get_global_transform());
     }
     else {
-      copy_v3_v3(co, verts[i].co);
+      copy_v3_v3(co, positions[i]);
     }
     source.appendValues(co[0], co[1], co[2]);
   }
@@ -468,7 +475,7 @@ void GeometryExporter::createVertsSource(std::string geom_id, Mesh *me)
 void GeometryExporter::createVertexColorSource(std::string geom_id, Mesh *me)
 {
   /* Find number of vertex color layers */
-  int totlayer_mcol = CustomData_number_of_layers(&me->ldata, CD_PROP_BYTE_COLOR);
+  int totlayer_mcol = CustomData_number_of_layers(&me->loop_data, CD_PROP_BYTE_COLOR);
   if (totlayer_mcol == 0) {
     return;
   }
@@ -478,11 +485,11 @@ void GeometryExporter::createVertexColorSource(std::string geom_id, Mesh *me)
 
     map_index++;
     const MLoopCol *mloopcol = (const MLoopCol *)CustomData_get_layer_n(
-        &me->ldata, CD_PROP_BYTE_COLOR, a);
+        &me->loop_data, CD_PROP_BYTE_COLOR, a);
 
     COLLADASW::FloatSourceF source(mSW);
 
-    char *layer_name = bc_CustomData_get_layer_name(&me->ldata, CD_PROP_BYTE_COLOR, a);
+    const char *layer_name = bc_CustomData_get_layer_name(&me->loop_data, CD_PROP_BYTE_COLOR, a);
     std::string layer_id = makeVertexColorSourceId(geom_id, layer_name);
     source.setId(layer_id);
 
@@ -500,11 +507,10 @@ void GeometryExporter::createVertexColorSource(std::string geom_id, Mesh *me)
 
     source.prepareToAppendValues();
 
-    MPoly *mpoly;
-    int i;
-    for (i = 0, mpoly = me->mpoly; i < me->totpoly; i++, mpoly++) {
-      const MLoopCol *mlc = mloopcol + mpoly->loopstart;
-      for (int j = 0; j < mpoly->totloop; j++, mlc++) {
+    const blender::OffsetIndices faces = me->faces();
+    for (const int i : faces.index_range()) {
+      for (const int corner : faces[i]) {
+        const MLoopCol *mlc = &mloopcol[corner];
         source.appendValues(mlc->r / 255.0f, mlc->g / 255.0f, mlc->b / 255.0f, mlc->a / 255.0f);
       }
     }
@@ -522,27 +528,26 @@ std::string GeometryExporter::makeTexcoordSourceId(std::string &geom_id,
     suffix[0] = '\0';
   }
   else {
-    sprintf(suffix, "-%d", layer_index);
+    SNPRINTF(suffix, "-%d", layer_index);
   }
   return getIdBySemantics(geom_id, COLLADASW::InputSemantic::TEXCOORD) + suffix;
 }
 
 void GeometryExporter::createTexcoordsSource(std::string geom_id, Mesh *me)
 {
-
-  int totpoly = me->totpoly;
   int totuv = me->totloop;
-  MPoly *mpolys = me->mpoly;
+  const blender::OffsetIndices faces = me->faces();
 
-  int num_layers = CustomData_number_of_layers(&me->ldata, CD_MLOOPUV);
+  int num_layers = CustomData_number_of_layers(&me->loop_data, CD_PROP_FLOAT2);
 
   /* write <source> for each layer
    * each <source> will get id like meshName + "map-channel-1" */
-  int active_uv_index = CustomData_get_active_layer_index(&me->ldata, CD_MLOOPUV);
+  int active_uv_index = CustomData_get_active_layer_index(&me->loop_data, CD_PROP_FLOAT2);
   for (int a = 0; a < num_layers; a++) {
-    int layer_index = CustomData_get_layer_index_n(&me->ldata, CD_MLOOPUV, a);
+    int layer_index = CustomData_get_layer_index_n(&me->loop_data, CD_PROP_FLOAT2, a);
     if (!this->export_settings.get_active_uv_only() || layer_index == active_uv_index) {
-      MLoopUV *mloops = (MLoopUV *)CustomData_get_layer_n(&me->ldata, CD_MLOOPUV, a);
+      const blender::float2 *uv_map = static_cast<const blender::float2 *>(
+          CustomData_get_layer_n(&me->loop_data, CD_PROP_FLOAT2, a));
 
       COLLADASW::FloatSourceF source(mSW);
       std::string layer_id = makeTexcoordSourceId(
@@ -558,11 +563,9 @@ void GeometryExporter::createTexcoordsSource(std::string geom_id, Mesh *me)
 
       source.prepareToAppendValues();
 
-      for (int index = 0; index < totpoly; index++) {
-        MPoly *mpoly = mpolys + index;
-        MLoopUV *mloop = mloops + mpoly->loopstart;
-        for (int j = 0; j < mpoly->totloop; j++) {
-          source.appendValues(mloop[j].uv[0], mloop[j].uv[1]);
+      for (const int i : faces.index_range()) {
+        for (const int corner : faces[i]) {
+          source.appendValues(uv_map[corner][0], uv_map[corner][1]);
         }
       }
 
@@ -579,15 +582,10 @@ bool operator<(const Normal &a, const Normal &b)
 
 void GeometryExporter::createNormalsSource(std::string geom_id, Mesh *me, std::vector<Normal> &nor)
 {
-#if 0
-  int totverts = dm->getNumVerts(dm);
-  MVert *verts = dm->getVertArray(dm);
-#endif
-
   COLLADASW::FloatSourceF source(mSW);
   source.setId(getIdBySemantics(geom_id, COLLADASW::InputSemantic::NORMAL));
   source.setArrayId(getIdBySemantics(geom_id, COLLADASW::InputSemantic::NORMAL) + ARRAY_ID_SUFFIX);
-  source.setAccessorCount((unsigned long)nor.size());
+  source.setAccessorCount(ulong(nor.size()));
   source.setAccessorStride(3);
   COLLADASW::SourceBase::ParameterNameList &param = source.getParameterNameList();
   param.push_back("X");
@@ -614,30 +612,33 @@ void GeometryExporter::create_normals(std::vector<Normal> &normals,
                                       std::vector<BCPolygonNormalsIndices> &polygons_normals,
                                       Mesh *me)
 {
-  std::map<Normal, unsigned int> shared_normal_indices;
+  using namespace blender;
+  std::map<Normal, uint> shared_normal_indices;
   int last_normal_index = -1;
 
-  MVert *verts = me->mvert;
-  const float(*vert_normals)[3] = BKE_mesh_vertex_normals_ensure(me);
-  MLoop *mloops = me->mloop;
-  const float(*lnors)[3] = nullptr;
-  bool use_custom_normals = false;
+  const Span<float3> positions = me->vert_positions();
+  const Span<float3> vert_normals = me->vert_normals();
+  const blender::OffsetIndices faces = me->faces();
+  const Span<int> corner_verts = me->corner_verts();
 
-  BKE_mesh_calc_normals_split(me);
-  if (CustomData_has_layer(&me->ldata, CD_NORMAL)) {
-    lnors = (float(*)[3])CustomData_get_layer(&me->ldata, CD_NORMAL);
-    use_custom_normals = true;
+  const bke::AttributeAccessor attributes = me->attributes();
+  const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE, false);
+
+  blender::Span<blender::float3> corner_normals;
+  if (me->normals_domain() == blender::bke::MeshNormalDomain::Corner) {
+    corner_normals = me->corner_normals();
   }
 
-  for (int poly_index = 0; poly_index < me->totpoly; poly_index++) {
-    MPoly *mpoly = &me->mpoly[poly_index];
-    bool use_vertex_normals = use_custom_normals || mpoly->flag & ME_SMOOTH;
+  for (const int face_index : faces.index_range()) {
+    const IndexRange face = faces[face_index];
+    bool use_vert_normals = !corner_normals.is_empty() || !sharp_faces[face_index];
 
-    if (!use_vertex_normals) {
+    if (!use_vert_normals) {
       /* For flat faces use face normal as vertex normal: */
 
-      float vector[3];
-      BKE_mesh_calc_poly_normal(mpoly, mloops + mpoly->loopstart, verts, vector);
+      const float3 vector = blender::bke::mesh::face_normal_calc(positions,
+                                                                 corner_verts.slice(face));
 
       Normal n = {vector[0], vector[1], vector[2]};
       normals.push_back(n);
@@ -645,16 +646,15 @@ void GeometryExporter::create_normals(std::vector<Normal> &normals,
     }
 
     BCPolygonNormalsIndices poly_indices;
-    for (int loop_index = 0; loop_index < mpoly->totloop; loop_index++) {
-      unsigned int loop_idx = mpoly->loopstart + loop_index;
-      if (use_vertex_normals) {
+    for (const int corner : face) {
+      if (use_vert_normals) {
         float normalized[3];
 
-        if (use_custom_normals) {
-          normalize_v3_v3(normalized, lnors[loop_idx]);
+        if (!corner_normals.is_empty()) {
+          normalize_v3_v3(normalized, corner_normals[corner]);
         }
         else {
-          copy_v3_v3(normalized, vert_normals[mloops[loop_index].v]);
+          copy_v3_v3(normalized, vert_normals[corner_verts[corner]]);
           normalize_v3(normalized);
         }
         Normal n = {normalized[0], normalized[1], normalized[2]};

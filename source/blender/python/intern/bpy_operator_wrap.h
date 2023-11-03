@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -12,10 +14,11 @@ struct wmOperatorType;
 extern "C" {
 #endif
 
-/* these are used for operator methods, used by bpy_operator.c */
+/** These are used for operator methods, used by `bpy_operator.cc`. */
 PyObject *PYOP_wrap_macro_define(PyObject *self, PyObject *args);
 
-/* exposed to rna/wm api */
+/* Exposed to RNA/WM API. */
+
 /**
  * Generic function used by all Python defined operators
  * it's passed as an argument to #WM_operatortype_append_ptr in for operator registration.

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -64,7 +66,7 @@ NodeGroup *StrokeTesselator::Tesselate(StrokeVertexIterator begin, StrokeVertexI
   tshape->setFrsMaterial(_FrsMaterial);
 
   for (StrokeVertexIterator c = begin, cend = end; c != cend; c++) {
-    tshape->AddRep(Tesselate((*c)));
+    tshape->AddRep(Tesselate(*c));
   }
 
   return group;

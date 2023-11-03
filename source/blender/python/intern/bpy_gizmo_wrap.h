@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -13,7 +15,7 @@ struct wmGizmoType;
 extern "C" {
 #endif
 
-/* exposed to rna/wm api */
+/* Exposed to RNA/WM API. */
 void BPY_RNA_gizmo_wrapper(struct wmGizmoType *gzt, void *userdata);
 void BPY_RNA_gizmogroup_wrapper(struct wmGizmoGroupType *gzgt, void *userdata);
 

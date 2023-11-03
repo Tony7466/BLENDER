@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -15,10 +16,10 @@
 
 namespace blender::gpu {
 
-typedef enum {
+enum GPUIndexBufType {
   GPU_INDEX_U16,
   GPU_INDEX_U32,
-} GPUIndexBufType;
+};
 
 static inline size_t to_bytesize(GPUIndexBufType type)
 {
@@ -59,7 +60,12 @@ class IndexBuf {
   IndexBuf(){};
   virtual ~IndexBuf();
 
-  void init(uint indices_len, uint32_t *indices, uint min_index, uint max_index);
+  void init(uint indices_len,
+            uint32_t *indices,
+            uint min_index,
+            uint max_index,
+            GPUPrimType prim_type,
+            bool uses_restart_indices);
   void init_subrange(IndexBuf *elem_src, uint start, uint length);
   void init_build_on_device(uint index_len);
 
@@ -67,8 +73,16 @@ class IndexBuf {
   uint32_t index_len_get() const
   {
     /* Return 0 to bypass drawing for index buffers full of restart indices.
-     * They can lead to graphical glitches on some systems. (See T96892) */
+     * They can lead to graphical glitches on some systems. (See #96892) */
     return is_empty_ ? 0 : index_len_;
+  }
+  uint32_t index_start_get() const
+  {
+    return index_start_;
+  }
+  uint32_t index_base_get() const
+  {
+    return index_base_;
   }
   /* Return size in byte of the drawable data buffer range. Actual buffer size might be bigger. */
   size_t size_get() const
@@ -85,14 +99,17 @@ class IndexBuf {
 
   virtual void bind_as_ssbo(uint binding) = 0;
 
-  virtual const uint32_t *read() const = 0;
-  uint32_t *unmap(const uint32_t *mapped_memory) const;
+  virtual void read(uint32_t *data) const = 0;
 
   virtual void update_sub(uint start, uint len, const void *data) = 0;
 
  private:
-  inline void squeeze_indices_short(uint min_idx, uint max_idx);
+  inline void squeeze_indices_short(uint min_idx,
+                                    uint max_idx,
+                                    GPUPrimType prim_type,
+                                    bool clamp_indices_in_range);
   inline uint index_range(uint *r_min, uint *r_max);
+  virtual void strip_restart_indices() = 0;
 };
 
 /* Syntactic sugar. */

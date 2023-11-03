@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -27,9 +29,9 @@ BArrayStore *BLI_array_store_at_size_ensure(struct BArrayStore_AtSize *bs_stride
 
   if ((*bs_p) == NULL) {
     /* calculate best chunk-count to fit a power of two */
-    unsigned int chunk_count = chunk_size;
+    uint chunk_count = chunk_size;
     {
-      unsigned int size = chunk_count * stride;
+      uint size = chunk_count * stride;
       size = power_of_2_max_u(size);
       size = MEM_SIZE_OPTIMAL(size);
       chunk_count = size / stride;
@@ -54,8 +56,8 @@ void BLI_array_store_at_size_clear(struct BArrayStore_AtSize *bs_stride)
     }
   }
 
-  MEM_freeN(bs_stride->stride_table);
-  bs_stride->stride_table = NULL;
+  /* It's possible this table was never used. */
+  MEM_SAFE_FREE(bs_stride->stride_table);
   bs_stride->stride_table_len = 0;
 }
 

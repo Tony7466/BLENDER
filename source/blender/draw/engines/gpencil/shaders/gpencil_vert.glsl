@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2020-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_gpencil_lib.glsl)
 
@@ -31,23 +34,11 @@ void main()
   vec4 vert_color;
   vec3 vert_N;
 
-  gpMaterial gp_mat = materials[ma1.x + gpMaterialOffset];
+  ivec4 ma1 = floatBitsToInt(texelFetch(gp_pos_tx, gpencil_stroke_point_id() * 3 + 1));
+  gpMaterial gp_mat = gp_materials[ma1.x + gpMaterialOffset];
   gpMaterialFlag gp_flag = floatBitsToUint(gp_mat._flag);
 
-  gl_Position = gpencil_vertex(ma,
-                               ma1,
-                               ma2,
-                               ma3,
-                               pos,
-                               pos1,
-                               pos2,
-                               pos3,
-                               uv1,
-                               uv2,
-                               col1,
-                               col2,
-                               fcol1,
-                               vec4(drw_view.viewport_size, drw_view.viewport_size_inverse),
+  gl_Position = gpencil_vertex(vec4(viewportSize, 1.0 / viewportSize),
                                gp_flag,
                                gp_mat._alignment_rot,
                                gp_interp.pos,
@@ -55,12 +46,12 @@ void main()
                                vert_color,
                                vert_strength,
                                gp_interp.uv,
-                               gp_interp.sspos,
-                               gp_interp.aspect,
-                               gp_interp.thickness,
-                               gp_interp.hardness);
+                               gp_interp_flat.sspos,
+                               gp_interp_flat.aspect,
+                               gp_interp_noperspective.thickness,
+                               gp_interp_noperspective.hardness);
 
-  if (GPENCIL_IS_STROKE_VERTEX) {
+  if (gpencil_is_stroke_vertex()) {
     if (!flag_test(gp_flag, GP_STROKE_ALIGNMENT)) {
       gp_interp.uv.x *= gp_mat._stroke_u_scale;
     }
@@ -73,17 +64,17 @@ void main()
     gpencil_color_output(
         gp_mat.stroke_color, vert_color, vert_strength, gp_mat._stroke_texture_mix);
 
-    gp_interp.mat_flag = gp_flag & ~GP_FILL_FLAGS;
+    gp_interp_flat.mat_flag = gp_flag & ~GP_FILL_FLAGS;
 
     if (gpStrokeOrder3d) {
       /* Use the fragment depth (see fragment shader). */
-      gp_interp.depth = -1.0;
+      gp_interp_flat.depth = -1.0;
     }
     else if (flag_test(gp_flag, GP_STROKE_OVERLAP)) {
       /* Use the index of the point as depth.
        * This means the stroke can overlap itself. */
       float point_index = float(ma1.z);
-      gp_interp.depth = (point_index + gpStrokeIndexOffset + 1.0) * 0.0000002;
+      gp_interp_flat.depth = (point_index + gpStrokeIndexOffset + 2.0) * 0.0000002;
     }
     else {
       /* Use the index of first point of the stroke as depth.
@@ -92,10 +83,13 @@ void main()
        * We offset by one so that the fill can be overlapped by its stroke.
        * The offset is ok since we pad the strokes data because of adjacency infos. */
       float stroke_index = float(ma1.y);
-      gp_interp.depth = (stroke_index + gpStrokeIndexOffset + 1.0) * 0.0000002;
+      gp_interp_flat.depth = (stroke_index + gpStrokeIndexOffset + 2.0) * 0.0000002;
     }
   }
   else {
+    int stroke_point_id = gpencil_stroke_point_id();
+    vec4 uv1 = texelFetch(gp_pos_tx, stroke_point_id * 3 + 2);
+    vec4 fcol1 = texelFetch(gp_col_tx, stroke_point_id * 2 + 1);
     vec4 fill_col = gp_mat.fill_color;
 
     /* Special case: We don't modulate alpha in gradient mode. */
@@ -124,20 +118,20 @@ void main()
 
     gpencil_color_output(fill_col, fcol_decode, 1.0, gp_mat._fill_texture_mix);
 
-    gp_interp.mat_flag = gp_flag & GP_FILL_FLAGS;
-    gp_interp.mat_flag |= uint(ma1.x + gpMaterialOffset) << GPENCIl_MATID_SHIFT;
+    gp_interp_flat.mat_flag = gp_flag & GP_FILL_FLAGS;
+    gp_interp_flat.mat_flag |= uint(ma1.x + gpMaterialOffset) << GPENCIl_MATID_SHIFT;
 
     gp_interp.uv = mat2(gp_mat.fill_uv_rot_scale.xy, gp_mat.fill_uv_rot_scale.zw) * uv1.xy +
                    gp_mat._fill_uv_offset;
 
     if (gpStrokeOrder3d) {
       /* Use the fragment depth (see fragment shader). */
-      gp_interp.depth = -1.0;
+      gp_interp_flat.depth = -1.0;
     }
     else {
       /* Use the index of first point of the stroke as depth. */
       float stroke_index = float(ma1.y);
-      gp_interp.depth = (stroke_index + gpStrokeIndexOffset) * 0.0000002;
+      gp_interp_flat.depth = (stroke_index + gpStrokeIndexOffset + 1.0) * 0.0000002;
     }
   }
 }

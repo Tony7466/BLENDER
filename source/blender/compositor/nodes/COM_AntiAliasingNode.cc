@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2017 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_AntiAliasingNode.h"
 #include "COM_SMAAOperation.h"
@@ -9,8 +10,8 @@ namespace blender::compositor {
 void AntiAliasingNode::convert_to_operations(NodeConverter &converter,
                                              const CompositorContext & /*context*/) const
 {
-  bNode *node = this->get_bnode();
-  NodeAntiAliasingData *data = (NodeAntiAliasingData *)node->storage;
+  const bNode *node = this->get_bnode();
+  const NodeAntiAliasingData *data = (const NodeAntiAliasingData *)node->storage;
 
   /* Edge Detection (First Pass) */
   SMAAEdgeDetectionOperation *operation1 = nullptr;

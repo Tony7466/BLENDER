@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -18,17 +19,26 @@
 #include "BLI_utildefines.h"
 
 #include "GPU_shader.h"
+#include "GPU_vertex_format.h" /* GPU_VERT_ATTR_MAX_LEN */
 #include "gpu_shader_create_info.hh"
 
 namespace blender::gpu {
 
-typedef struct ShaderInput {
+struct ShaderInput {
   uint32_t name_offset;
   uint32_t name_hash;
+  /**
+   * Location is openGl legacy and its legacy usages should be phased out in Blender 3.7.
+   *
+   * Vulkan backend use location to encode the descriptor set binding. This binding is different
+   * than the binding stored in the binding attribute. In Vulkan the binding inside a descriptor
+   * set must be unique. In future the location will also be used to select the right descriptor
+   * set.
+   */
   int32_t location;
   /** Defined at interface creation or in shader. Only for Samplers, UBOs and Vertex Attributes. */
   int32_t binding;
-} ShaderInput;
+};
 
 /**
  * Implementation of Shader interface.
@@ -57,16 +67,26 @@ class ShaderInterface {
   int32_t builtins_[GPU_NUM_UNIFORMS];
   int32_t builtin_blocks_[GPU_NUM_UNIFORM_BLOCKS];
 
+  /**
+   * Currently only used for `GPU_shader_get_attribute_info`.
+   * This utility is useful for automatic creation of `GPUVertFormat` in Python.
+   * Use `ShaderInput::location` to identify the `Type`.
+   */
+  uint8_t attr_types_[GPU_VERT_ATTR_MAX_LEN];
+
  public:
   ShaderInterface();
-  ShaderInterface(const shader::ShaderCreateInfo &info);
   virtual ~ShaderInterface();
 
-  void debug_print();
+  void debug_print() const;
 
   inline const ShaderInput *attr_get(const char *name) const
   {
     return input_lookup(inputs_, attr_len_, name);
+  }
+  inline const ShaderInput *attr_get(const int binding) const
+  {
+    return input_lookup(inputs_, attr_len_, binding);
   }
 
   inline const ShaderInput *ubo_get(const char *name) const
@@ -202,11 +222,13 @@ inline const char *ShaderInterface::builtin_uniform_block_name(GPUUniformBlockBu
       return "infoBlock";
 
     case GPU_UNIFORM_BLOCK_DRW_VIEW:
-      return "drw_view";
+      return "drw_view_";
     case GPU_UNIFORM_BLOCK_DRW_MODEL:
       return "drw_matrices";
     case GPU_UNIFORM_BLOCK_DRW_INFOS:
       return "drw_infos";
+    case GPU_UNIFORM_BLOCK_DRW_CLIPPING:
+      return "drw_clipping_";
     default:
       return nullptr;
   }

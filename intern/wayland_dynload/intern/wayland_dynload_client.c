@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup intern_wayland_dynload
@@ -44,7 +46,8 @@ bool wayland_dynload_client_init(const bool verbose)
 #define WAYLAND_DYNLOAD_IFACE(symbol) \
   { \
     const void *symbol_val; \
-    if (!(symbol_val = dynamic_library_find_with_error(lib, #symbol, paths[path_found]))) { \
+    if (!(symbol_val = dynamic_library_find_with_error( \
+              lib, #symbol, paths[path_found], verbose))) { \
       return false; \
     } \
     memcpy(&symbol, symbol_val, sizeof(symbol)); \
@@ -54,7 +57,7 @@ bool wayland_dynload_client_init(const bool verbose)
 
 #define WAYLAND_DYNLOAD_FN(symbol) \
   if (!(wayland_dynload_client.symbol = dynamic_library_find_with_error( \
-            lib, #symbol, paths[path_found]))) { \
+            lib, #symbol, paths[path_found], verbose))) { \
     return false; \
   }
 #include "wayland_dynload_client.h"

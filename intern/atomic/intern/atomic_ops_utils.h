@@ -38,10 +38,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2016 Blender Foundation.
- * All rights reserved.
- *
- * The Original Code is: adapted from jemalloc.
+ * The Original Code is adapted from jemalloc.
+ * Modifications Copyright (C) 2016 Blender Foundation
  */
 
 /** \file
@@ -106,8 +104,7 @@
 /* Copied from BLI_utils... */
 /* C++ can't use _Static_assert, expects static_assert() but c++0x only,
  * Coverity also errors out. */
-#if (!defined(__cplusplus)) && (!defined(__COVERITY__)) && \
-    (defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 406)) /* gcc4.6+ only */
+#if (!defined(__cplusplus)) && (!defined(__COVERITY__)) && (defined(__GNUC__)) /* GCC only. */
 #  define ATOMIC_STATIC_ASSERT(a, msg) __extension__ _Static_assert(a, msg);
 #else
 /* Code adapted from http://www.pixelbeat.org/programming/gcc/static_assert.html */

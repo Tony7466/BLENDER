@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -30,6 +31,11 @@ class VertBuf {
   GPUVertBufStatus flag = GPU_VERTBUF_INVALID;
   /** NULL indicates data in VRAM (unmapped) */
   uchar *data = nullptr;
+
+#ifndef NDEBUG
+  /** Usage including extended usage flags. */
+  GPUUsageType extended_usage_ = GPU_USAGE_STATIC;
+#endif
 
  protected:
   /** Usage hint for GL optimization. */
@@ -83,9 +89,13 @@ class VertBuf {
     }
   }
 
+  GPUUsageType get_usage_type() const
+  {
+    return usage_;
+  }
+
   virtual void update_sub(uint start, uint len, const void *data) = 0;
-  virtual const void *read() const = 0;
-  virtual void *unmap(const void *mapped_data) const = 0;
+  virtual void read(void *data) const = 0;
 
  protected:
   virtual void acquire_data() = 0;

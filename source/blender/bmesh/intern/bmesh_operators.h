@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -6,7 +8,11 @@
  * \ingroup bmesh
  */
 
-/* See comments in `intern/bmesh_opdefines.c` for documentation of specific operators. */
+/* See comments in `intern/bmesh_opdefines.cc` for documentation of specific operators. */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*--------defines/enumerations for specific operators-------*/
 
@@ -56,7 +62,6 @@ enum {
   SIMFACE_NORMAL,
   SIMFACE_COPLANAR,
   SIMFACE_SMOOTH,
-  SIMFACE_FACEMAP,
   SIMFACE_FREESTYLE,
 };
 
@@ -158,7 +163,7 @@ void BM_mesh_esubdivide(BMesh *bm,
                         int seed);
 
 /**
- * Fills first available UV-map with grid-like UV's for all faces with `oflag` set.
+ * Fills first available UV-map with grid-like UVs for all faces with `oflag` set.
  *
  * \param bm: The BMesh to operate on
  * \param x_segments: The x-resolution of the grid
@@ -215,3 +220,7 @@ void BM_mesh_calc_uvs_cone(BMesh *bm,
 void BM_mesh_calc_uvs_cube(BMesh *bm, short oflag);
 
 #include "intern/bmesh_operator_api_inline.h"
+
+#ifdef __cplusplus
+}
+#endif

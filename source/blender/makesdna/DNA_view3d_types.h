@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -9,10 +10,9 @@
 
 struct BoundBox;
 struct Object;
-struct RenderEngine;
+struct ViewRender;
 struct SmoothView3DStore;
 struct SpaceLink;
-struct ViewDepths;
 struct bGPdata;
 struct wmTimer;
 
@@ -22,10 +22,7 @@ struct wmTimer;
 #include "DNA_movieclip_types.h"
 #include "DNA_object_types.h"
 #include "DNA_view3d_enums.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "DNA_viewer_path_types.h"
 
 typedef struct RegionView3D {
 
@@ -39,7 +36,7 @@ typedef struct RegionView3D {
   float persmat[4][4];
   /** Inverse of persmat. */
   float persinv[4][4];
-  /** Offset/scale for camera glsl texcoords. */
+  /** Offset/scale for camera GLSL texture-coordinates. */
   float viewcamtexcofac[4];
 
   /** viewmat/persmat multiplied with object matrix, while drawing and selection. */
@@ -57,7 +54,7 @@ typedef struct RegionView3D {
 
   /** Allocated backup of itself while in local-view. */
   struct RegionView3D *localvd;
-  struct RenderEngine *render_engine;
+  struct ViewRender *view_render;
 
   /** Animated smooth view. */
   struct SmoothView3DStore *sms;
@@ -146,7 +143,11 @@ typedef struct View3DShading {
   char background_type;
   char cavity_type;
   char wire_color_type;
-  char _pad[2];
+
+  /** When to preview the compositor output in the viewport. View3DShadingUseCompositor. */
+  char use_compositor;
+
+  char _pad;
 
   /** FILE_MAXFILE. */
   char studio_light[256];
@@ -205,11 +206,11 @@ typedef struct View3DOverlay {
   float weight_paint_mode_opacity;
   float sculpt_mode_mask_opacity;
   float sculpt_mode_face_sets_opacity;
+  float viewer_attribute_opacity;
 
   /** Armature edit/pose mode settings. */
   float xray_alpha_bone;
   float bone_wire_alpha;
-  char _pad1[4];
 
   /** Darken Inactive. */
   float fade_alpha;
@@ -217,6 +218,7 @@ typedef struct View3DOverlay {
   /** Other settings. */
   float wireframe_threshold;
   float wireframe_opacity;
+  float retopology_offset;
 
   /** Grease pencil settings. */
   float gpencil_paper_opacity;
@@ -228,6 +230,8 @@ typedef struct View3DOverlay {
   /** Handles display type for curves. */
   int handle_display;
 
+  /** Curves sculpt mode settings. */
+  float sculpt_curves_cage_opacity;
   char _pad[4];
 } View3DOverlay;
 
@@ -244,6 +248,7 @@ typedef enum eHandleDisplay {
 typedef struct View3D_Runtime {
   /** Nkey panel stores stuff here. */
   void *properties_storage;
+  void (*properties_storage_free)(void *properties_storage);
   /** Runtime only flags. */
   int flag;
 
@@ -254,6 +259,8 @@ typedef struct View3D_Runtime {
 
 /** 3D ViewPort Struct. */
 typedef struct View3D {
+  DNA_DEFINE_CXX_METHODS(View3D)
+
   struct SpaceLink *next, *prev;
   /** Storage of regions for inactive spaces. */
   ListBase regionbase;
@@ -296,7 +303,9 @@ typedef struct View3D {
   char _pad6[2];
   int layact DNA_DEPRECATED;
   unsigned short local_collections_uuid;
-  short _pad7[3];
+  short _pad7[2];
+
+  short debug_flag;
 
   /** Optional bool for 3d cursor to define center. */
   short ob_center_cursor;
@@ -346,28 +355,35 @@ typedef struct View3D {
   View3DShading shading;
   View3DOverlay overlay;
 
+  /** Path to the viewer node that is currently previewed. This is retrieved from the workspace. */
+  ViewerPath viewer_path;
+
   /** Runtime evaluation data (keep last). */
   View3D_Runtime runtime;
 } View3D;
 
-/** #View3D.stereo3d_flag */
-#define V3D_S3D_DISPCAMERAS (1 << 0)
-#define V3D_S3D_DISPPLANE (1 << 1)
-#define V3D_S3D_DISPVOLUME (1 << 2)
+/** #View3D::stereo3d_flag */
+enum {
+  V3D_S3D_DISPCAMERAS = 1 << 0,
+  V3D_S3D_DISPPLANE = 1 << 1,
+  V3D_S3D_DISPVOLUME = 1 << 2,
+};
 
-/** #View3D.flag */
-#define V3D_LOCAL_COLLECTIONS (1 << 0)
-#define V3D_FLAG_UNUSED_1 (1 << 1) /* cleared */
-#define V3D_HIDE_HELPLINES (1 << 2)
-#define V3D_FLAG_UNUSED_2 (1 << 3) /* cleared */
-#define V3D_XR_SESSION_MIRROR (1 << 4)
-#define V3D_XR_SESSION_SURFACE (1 << 5)
+/** #View3D::flag */
+enum {
+  V3D_LOCAL_COLLECTIONS = 1 << 0,
+  V3D_FLAG_UNUSED_1 = 1 << 1, /* cleared */
+  V3D_HIDE_HELPLINES = 1 << 2,
+  V3D_FLAG_UNUSED_2 = 1 << 3, /* cleared */
+  V3D_XR_SESSION_MIRROR = 1 << 4,
+  V3D_XR_SESSION_SURFACE = 1 << 5,
 
-#define V3D_FLAG_UNUSED_10 (1 << 10) /* cleared */
-#define V3D_SELECT_OUTLINE (1 << 11)
-#define V3D_FLAG_UNUSED_12 (1 << 12) /* cleared */
-#define V3D_GLOBAL_STATS (1 << 13)
-#define V3D_DRAW_CENTERS (1 << 15)
+  V3D_FLAG_UNUSED_10 = 1 << 10, /* cleared */
+  V3D_SELECT_OUTLINE = 1 << 11,
+  V3D_FLAG_UNUSED_12 = 1 << 12, /* cleared */
+  V3D_GLOBAL_STATS = 1 << 13,
+  V3D_DRAW_CENTERS = 1 << 15,
+};
 
 /** #View3D_Runtime.flag */
 enum {
@@ -377,22 +393,26 @@ enum {
   V3D_RUNTIME_DEPTHBUF_OVERRIDDEN = (1 << 1),
 };
 
-/** #RegionView3D.persp */
-#define RV3D_ORTHO 0
-#define RV3D_PERSP 1
-#define RV3D_CAMOB 2
+/** #RegionView3D::persp */
+enum {
+  RV3D_ORTHO = 0,
+  RV3D_PERSP = 1,
+  RV3D_CAMOB = 2,
+};
 
-/** #RegionView3D.rflag */
-#define RV3D_CLIPPING (1 << 2)
-#define RV3D_NAVIGATING (1 << 3)
-#define RV3D_GPULIGHT_UPDATE (1 << 4)
-#define RV3D_PAINTING (1 << 5)
-/*#define RV3D_IS_GAME_ENGINE       (1 << 5) */ /* UNUSED */
-/**
- * Disable zbuffer offset, skip calls to #ED_view3d_polygon_offset.
- * Use when precise surface depth is needed and picking bias isn't, see T45434).
- */
-#define RV3D_ZOFFSET_DISABLED 64
+/** #RegionView3D::rflag */
+enum {
+  RV3D_CLIPPING = 1 << 2,
+  RV3D_NAVIGATING = 1 << 3,
+  RV3D_GPULIGHT_UPDATE = 1 << 4,
+  RV3D_PAINTING = 1 << 5,
+  // RV3D_IS_GAME_ENGINE = 1 << 5, /* UNUSED */
+  /**
+   * Disable Z-buffer offset, skip calls to #ED_view3d_polygon_offset.
+   * Use when precise surface depth is needed and picking bias isn't, see #45434).
+   */
+  RV3D_ZOFFSET_DISABLED = 1 << 6,
+};
 
 /** #RegionView3D.viewlock */
 enum {
@@ -408,18 +428,22 @@ enum {
 /** Bit-wise OR of the regular lock-flags with runtime only lock-flags. */
 #define RV3D_LOCK_FLAGS(rv3d) ((rv3d)->viewlock | ((rv3d)->runtime_viewlock))
 
-/** #RegionView3D.viewlock_quad */
-#define RV3D_VIEWLOCK_INIT (1 << 7)
+/** #RegionView3D::viewlock_quad */
+enum {
+  RV3D_VIEWLOCK_INIT = 1 << 7,
+};
 
-/** #RegionView3D.view */
-#define RV3D_VIEW_USER 0
-#define RV3D_VIEW_FRONT 1
-#define RV3D_VIEW_BACK 2
-#define RV3D_VIEW_LEFT 3
-#define RV3D_VIEW_RIGHT 4
-#define RV3D_VIEW_TOP 5
-#define RV3D_VIEW_BOTTOM 6
-#define RV3D_VIEW_CAMERA 8
+/** #RegionView3D::view */
+enum {
+  RV3D_VIEW_USER = 0,
+  RV3D_VIEW_FRONT = 1,
+  RV3D_VIEW_BACK = 2,
+  RV3D_VIEW_LEFT = 3,
+  RV3D_VIEW_RIGHT = 4,
+  RV3D_VIEW_TOP = 5,
+  RV3D_VIEW_BOTTOM = 6,
+  RV3D_VIEW_CAMERA = 8,
+};
 
 #define RV3D_VIEW_IS_AXIS(view) (((view) >= RV3D_VIEW_FRONT) && ((view) <= RV3D_VIEW_BOTTOM))
 
@@ -439,35 +463,47 @@ enum {
   ((rv3d) && (v3d) && ((rv3d)->rflag & RV3D_CLIPPING) && \
    ELEM((v3d)->shading.type, OB_WIRE, OB_SOLID) && (rv3d)->clipbb)
 
-/** #View3D.flag2 (int) */
-#define V3D_HIDE_OVERLAYS (1 << 2)
-#define V3D_FLAG2_UNUSED_3 (1 << 3) /* cleared */
-#define V3D_SHOW_ANNOTATION (1 << 4)
-#define V3D_LOCK_CAMERA (1 << 5)
-#define V3D_FLAG2_UNUSED_6 (1 << 6) /* cleared */
-#define V3D_SHOW_RECONSTRUCTION (1 << 7)
-#define V3D_SHOW_CAMERAPATH (1 << 8)
-#define V3D_SHOW_BUNDLENAME (1 << 9)
-#define V3D_FLAG2_UNUSED_10 (1 << 10) /* cleared */
-#define V3D_RENDER_BORDER (1 << 11)
-#define V3D_FLAG2_UNUSED_12 (1 << 12) /* cleared */
-#define V3D_FLAG2_UNUSED_13 (1 << 13) /* cleared */
-#define V3D_FLAG2_UNUSED_14 (1 << 14) /* cleared */
-#define V3D_FLAG2_UNUSED_15 (1 << 15) /* cleared */
-#define V3D_XR_SHOW_CONTROLLERS (1 << 16)
-#define V3D_XR_SHOW_CUSTOM_OVERLAYS (1 << 17)
+/** #View3D::flag2 (int) */
+enum {
+  V3D_HIDE_OVERLAYS = 1 << 2,
+  V3D_SHOW_VIEWER = 1 << 3,
+  V3D_SHOW_ANNOTATION = 1 << 4,
+  V3D_LOCK_CAMERA = 1 << 5,
+  V3D_FLAG2_UNUSED_6 = 1 << 6, /* cleared */
+  V3D_SHOW_RECONSTRUCTION = 1 << 7,
+  V3D_SHOW_CAMERAPATH = 1 << 8,
+  V3D_SHOW_BUNDLENAME = 1 << 9,
+  V3D_FLAG2_UNUSED_10 = 1 << 10, /* cleared */
+  V3D_RENDER_BORDER = 1 << 11,
+  V3D_FLAG2_UNUSED_12 = 1 << 12, /* cleared */
+  V3D_FLAG2_UNUSED_13 = 1 << 13, /* cleared */
+  V3D_FLAG2_UNUSED_14 = 1 << 14, /* cleared */
+  V3D_FLAG2_UNUSED_15 = 1 << 15, /* cleared */
+  V3D_XR_SHOW_CONTROLLERS = 1 << 16,
+  V3D_XR_SHOW_CUSTOM_OVERLAYS = 1 << 17,
+};
 
-/** #View3D.gp_flag (short) */
-#define V3D_GP_FADE_OBJECTS (1 << 0) /* Fade all non GP objects */
-#define V3D_GP_SHOW_GRID (1 << 1)    /* Activate paper grid */
-#define V3D_GP_SHOW_EDIT_LINES (1 << 2)
-#define V3D_GP_SHOW_MULTIEDIT_LINES (1 << 3)
-#define V3D_GP_SHOW_ONION_SKIN (1 << 4)       /* main switch at view level */
-#define V3D_GP_FADE_NOACTIVE_LAYERS (1 << 5)  /* fade layers not active */
-#define V3D_GP_FADE_NOACTIVE_GPENCIL (1 << 6) /* Fade other GPencil objects */
-#define V3D_GP_SHOW_STROKE_DIRECTION (1 << 7) /* Show Strokes Directions */
-#define V3D_GP_SHOW_MATERIAL_NAME (1 << 8)    /* Show Material names */
-#define V3D_GP_SHOW_GRID_XRAY (1 << 9)        /* Show Canvas Grid on Top */
+/** #View3D::gp_flag (short) */
+enum {
+  /** Fade all non GP objects. */
+  V3D_GP_FADE_OBJECTS = 1 << 0,
+  /** Activate paper grid. */
+  V3D_GP_SHOW_GRID = 1 << 1,
+  V3D_GP_SHOW_EDIT_LINES = 1 << 2,
+  V3D_GP_SHOW_MULTIEDIT_LINES = 1 << 3,
+  /** main switch at view level. */
+  V3D_GP_SHOW_ONION_SKIN = 1 << 4,
+  /** fade layers not active. */
+  V3D_GP_FADE_NOACTIVE_LAYERS = 1 << 5,
+  /** Fade other GPencil objects. */
+  V3D_GP_FADE_NOACTIVE_GPENCIL = 1 << 6,
+  /** Show Strokes Directions. */
+  V3D_GP_SHOW_STROKE_DIRECTION = 1 << 7,
+  /** Show Material names. */
+  V3D_GP_SHOW_MATERIAL_NAME = 1 << 8,
+  /** Show Canvas Grid on Top. */
+  V3D_GP_SHOW_GRID_XRAY = 1 << 9,
+};
 
 /** #View3DShading.flag */
 enum {
@@ -488,6 +524,11 @@ enum {
   V3D_SHADING_STUDIOLIGHT_VIEW_ROTATION = (1 << 14),
 };
 
+/** #View3D.debug_flag */
+enum {
+  V3D_DEBUG_FREEZE_CULLING = (1 << 0),
+};
+
 #define V3D_USES_SCENE_LIGHTS(v3d) \
   ((((v3d)->shading.type == OB_MATERIAL) && ((v3d)->shading.flag & V3D_SHADING_SCENE_LIGHTS)) || \
    (((v3d)->shading.type == OB_RENDER) && \
@@ -505,6 +546,15 @@ enum {
   V3D_SHADING_CAVITY_BOTH = 2,
 };
 
+/** #View3DShading.use_compositor */
+typedef enum View3DShadingUseCompositor {
+  V3D_SHADING_USE_COMPOSITOR_DISABLED = 0,
+  /** The compositor is enabled only in camera view. */
+  V3D_SHADING_USE_COMPOSITOR_CAMERA = 1,
+  /** The compositor is always enabled regardless of the view. */
+  V3D_SHADING_USE_COMPOSITOR_ALWAYS = 2,
+} View3DShadingUseCompositor;
+
 /** #View3DOverlay.flag */
 enum {
   V3D_OVERLAY_FACE_ORIENTATION = (1 << 0),
@@ -520,6 +570,11 @@ enum {
   V3D_OVERLAY_HIDE_OBJECT_ORIGINS = (1 << 10),
   V3D_OVERLAY_STATS = (1 << 11),
   V3D_OVERLAY_FADE_INACTIVE = (1 << 12),
+  V3D_OVERLAY_VIEWER_ATTRIBUTE = (1 << 13),
+  V3D_OVERLAY_SCULPT_SHOW_MASK = (1 << 14),
+  V3D_OVERLAY_SCULPT_SHOW_FACE_SETS = (1 << 15),
+  V3D_OVERLAY_SCULPT_CURVES_CAGE = (1 << 16),
+  V3D_OVERLAY_SHOW_LIGHT_COLORS = (1 << 17),
 };
 
 /** #View3DOverlay.edit_flag */
@@ -528,11 +583,11 @@ enum {
   V3D_OVERLAY_EDIT_LOOP_NORMALS = (1 << 1),
   V3D_OVERLAY_EDIT_FACE_NORMALS = (1 << 2),
 
-  V3D_OVERLAY_EDIT_OCCLUDE_WIRE = (1 << 3),
+  V3D_OVERLAY_EDIT_RETOPOLOGY = (1 << 3),
 
   V3D_OVERLAY_EDIT_WEIGHT = (1 << 4),
 
-  V3D_OVERLAY_EDIT_EDGES = (1 << 5),
+  V3D_OVERLAY_EDIT_EDGES_DEPRECATED = (1 << 5),
   V3D_OVERLAY_EDIT_FACES = (1 << 6),
   V3D_OVERLAY_EDIT_FACE_DOT = (1 << 7),
 
@@ -583,11 +638,13 @@ enum {
 };
 
 /** #View3D.gridflag */
-#define V3D_SHOW_FLOOR (1 << 0)
-#define V3D_SHOW_X (1 << 1)
-#define V3D_SHOW_Y (1 << 2)
-#define V3D_SHOW_Z (1 << 3)
-#define V3D_SHOW_ORTHO_GRID (1 << 4)
+enum {
+  V3D_SHOW_FLOOR = 1 << 0,
+  V3D_SHOW_X = 1 << 1,
+  V3D_SHOW_Y = 1 << 2,
+  V3D_SHOW_Z = 1 << 3,
+  V3D_SHOW_ORTHO_GRID = 1 << 4,
+};
 
 /** #TransformOrientationSlot.type */
 enum {
@@ -597,6 +654,7 @@ enum {
   V3D_ORIENT_VIEW = 3,
   V3D_ORIENT_GIMBAL = 4,
   V3D_ORIENT_CURSOR = 5,
+  V3D_ORIENT_PARENT = 6,
   V3D_ORIENT_CUSTOM = 1024,
   /** Runtime only, never saved to DNA. */
   V3D_ORIENT_CUSTOM_MATRIX = (V3D_ORIENT_CUSTOM - 1),
@@ -642,13 +700,21 @@ enum {
   V3D_GIZMO_SHOW_CAMERA_DOF_DIST = (1 << 2),
 };
 
+/** #ToolSettings.plane_depth */
+typedef enum {
+  V3D_PLACE_DEPTH_SURFACE = 0,
+  V3D_PLACE_DEPTH_CURSOR_PLANE = 1,
+  V3D_PLACE_DEPTH_CURSOR_VIEW = 2,
+} eV3DPlaceDepth;
+/** #ToolSettings.plane_orient */
+typedef enum {
+  V3D_PLACE_ORIENT_SURFACE = 0,
+  V3D_PLACE_ORIENT_DEFAULT = 1,
+} eV3DPlaceOrient;
+
 #define RV3D_CAMZOOM_MIN -30
 #define RV3D_CAMZOOM_MAX 600
 
 /** #BKE_screen_view3d_zoom_to_fac() values above */
 #define RV3D_CAMZOOM_MIN_FACTOR 0.1657359312880714853f
 #define RV3D_CAMZOOM_MAX_FACTOR 44.9852813742385702928f
-
-#ifdef __cplusplus
-}
-#endif

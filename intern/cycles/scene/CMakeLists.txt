@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2011-2021 Blender Foundation
+#
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2011-2021 Blender Foundation
 
 set(INC
   ..
@@ -15,16 +16,20 @@ set(SRC
   camera.cpp
   colorspace.cpp
   constant_fold.cpp
+  devicescene.cpp
   film.cpp
   geometry.cpp
+  geometry_attributes.cpp
+  geometry_bvh.cpp
+  geometry_mesh.cpp
   hair.cpp
   image.cpp
   image_oiio.cpp
   image_sky.cpp
   image_vdb.cpp
   integrator.cpp
-  jitter.cpp
   light.cpp
+  light_tree.cpp
   mesh.cpp
   mesh_displace.cpp
   mesh_subdivision.cpp
@@ -39,10 +44,10 @@ set(SRC
   shader.cpp
   shader_graph.cpp
   shader_nodes.cpp
-  sobol.cpp
   stats.cpp
   svm.cpp
   tables.cpp
+  tabulated_sobol.cpp
   volume.cpp
 )
 
@@ -55,6 +60,7 @@ set(SRC_HEADERS
   camera.h
   colorspace.h
   constant_fold.h
+  devicescene.h
   film.h
   geometry.h
   hair.h
@@ -64,7 +70,7 @@ set(SRC_HEADERS
   image_vdb.h
   integrator.h
   light.h
-  jitter.h
+  light_tree.h
   mesh.h
   object.h
   osl.h
@@ -77,10 +83,10 @@ set(SRC_HEADERS
   shader.h
   shader_graph.h
   shader_nodes.h
-  sobol.h
   stats.h
   svm.h
   tables.h
+  tabulated_sobol.h
   volume.h
 )
 
@@ -103,7 +109,7 @@ if(WITH_CYCLES_OSL)
     cycles_kernel_osl
   )
 
-  SET_PROPERTY(SOURCE osl.cpp PROPERTY COMPILE_FLAGS ${RTTI_DISABLE_FLAGS})
+  set_property(SOURCE osl.cpp PROPERTY COMPILE_FLAGS ${RTTI_DISABLE_FLAGS})
 endif()
 
 if(WITH_OPENCOLORIO)
@@ -147,7 +153,5 @@ endif()
 
 include_directories(${INC})
 include_directories(SYSTEM ${INC_SYS})
-
-add_definitions(${GL_DEFINITIONS})
 
 cycles_add_library(cycles_scene "${LIB}" ${SRC} ${SRC_HEADERS})

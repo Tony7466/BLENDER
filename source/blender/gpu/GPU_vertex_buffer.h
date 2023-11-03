@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -40,11 +41,19 @@ extern "C" {
 
 typedef enum {
   /* can be extended to support more types */
-  GPU_USAGE_STREAM,
-  GPU_USAGE_STATIC, /* do not keep data in memory */
-  GPU_USAGE_DYNAMIC,
-  GPU_USAGE_DEVICE_ONLY, /* Do not do host->device data transfers. */
+  GPU_USAGE_STREAM = 0,
+  GPU_USAGE_STATIC = 1, /* do not keep data in memory */
+  GPU_USAGE_DYNAMIC = 2,
+  GPU_USAGE_DEVICE_ONLY = 3, /* Do not do host->device data transfers. */
+
+  /** Extended usage flags. */
+  /* Flag for vertex buffers used for textures. Skips additional padding/compaction to ensure
+   * format matches the texture exactly. Can be masked with other properties, and is stripped
+   * during VertBuf::init. */
+  GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY = 1 << 3,
 } GPUUsageType;
+
+ENUM_OPERATORS(GPUUsageType, GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
 
 /** Opaque type hiding blender::gpu::VertBuf. */
 typedef struct GPUVertBuf GPUVertBuf;
@@ -56,13 +65,10 @@ GPUVertBuf *GPU_vertbuf_create_with_format_ex(const GPUVertFormat *, GPUUsageTyp
   GPU_vertbuf_create_with_format_ex(format, GPU_USAGE_STATIC)
 
 /**
- * (Download and) return a pointer containing the data of a vertex buffer.
- *
- * Note that the returned pointer is still owned by the driver. To get an
- * local copy, use `GPU_vertbuf_unmap` after calling `GPU_vertbuf_read`.
+ * (Download and) fill data with the data from the vertex buffer.
+ * NOTE: caller is responsible to reserve enough memory of the data parameter.
  */
-const void *GPU_vertbuf_read(GPUVertBuf *verts);
-void *GPU_vertbuf_unmap(const GPUVertBuf *verts, const void *mapped_data);
+void GPU_vertbuf_read(GPUVertBuf *verts, void *data);
 /** Same as discard but does not free. */
 void GPU_vertbuf_clear(GPUVertBuf *verts);
 void GPU_vertbuf_discard(GPUVertBuf *);
@@ -133,7 +139,9 @@ GPU_INLINE void *GPU_vertbuf_raw_step(GPUVertBufRaw *a)
 {
   unsigned char *data = a->data;
   a->data += a->stride;
+#ifdef DEBUG
   BLI_assert(data < a->_data_end);
+#endif
   return (void *)data;
 }
 

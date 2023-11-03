@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -11,14 +13,14 @@
 
 #ifdef WITH_GMP
 
-#  include <iostream>
+#  include <iosfwd>
 
 #  include "BLI_array.hh"
 #  include "BLI_index_range.hh"
 #  include "BLI_map.hh"
 #  include "BLI_math_mpq.hh"
-#  include "BLI_math_vec_mpq_types.hh"
-#  include "BLI_math_vec_types.hh"
+#  include "BLI_math_vector_mpq_types.hh"
+#  include "BLI_math_vector_types.hh"
 #  include "BLI_span.hh"
 #  include "BLI_utility_mixins.hh"
 #  include "BLI_vector.hh"
@@ -237,7 +239,6 @@ class IMeshArena : NonCopyable, NonMovable {
  * internal structures for indexing exactly the set of needed Verts,
  * and also going from a Vert pointer to the index in that system.
  */
-
 class IMesh {
   Array<Face *> face_;                   /* Not `const` so can lazily populate planes. */
   Array<const Vert *> vert_;             /* Only valid if vert_populated_. */
@@ -246,9 +247,7 @@ class IMesh {
 
  public:
   IMesh() = default;
-  IMesh(Span<Face *> faces) : face_(faces)
-  {
-  }
+  IMesh(Span<Face *> faces) : face_(faces) {}
 
   void set_faces(Span<Face *> faces);
   Face *face(int index) const
@@ -338,9 +337,7 @@ struct BoundingBox {
   float3 max{-FLT_MAX, -FLT_MAX, -FLT_MAX};
 
   BoundingBox() = default;
-  BoundingBox(const float3 &min, const float3 &max) : min(min), max(max)
-  {
-  }
+  BoundingBox(const float3 &min, const float3 &max) : min(min), max(max) {}
 
   void combine(const float3 &p)
   {
@@ -354,12 +351,12 @@ struct BoundingBox {
 
   void combine(const double3 &p)
   {
-    min.x = min_ff(min.x, static_cast<float>(p.x));
-    min.y = min_ff(min.y, static_cast<float>(p.y));
-    min.z = min_ff(min.z, static_cast<float>(p.z));
-    max.x = max_ff(max.x, static_cast<float>(p.x));
-    max.y = max_ff(max.y, static_cast<float>(p.y));
-    max.z = max_ff(max.z, static_cast<float>(p.z));
+    min.x = min_ff(min.x, float(p.x));
+    min.y = min_ff(min.y, float(p.y));
+    min.z = min_ff(min.z, float(p.z));
+    max.x = max_ff(max.x, float(p.x));
+    max.y = max_ff(max.y, float(p.y));
+    max.z = max_ff(max.z, float(p.z));
   }
 
   void combine(const BoundingBox &bb)

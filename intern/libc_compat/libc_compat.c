@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* On Linux, precompiled libraries may be made with an glibc version that is
  * incompatible with the system libraries that Blender is built on. To solve
@@ -12,8 +13,10 @@
 #ifdef __linux__
 #  include <features.h>
 #  include <math.h>
+#  include <stdlib.h>
 
-#  if defined(__GLIBC_PREREQ) && __GLIBC_PREREQ(2, 31)
+#  if defined(__GLIBC_PREREQ)
+#    if __GLIBC_PREREQ(2, 31)
 
 double __exp_finite(double x);
 double __exp2_finite(double x);
@@ -111,6 +114,22 @@ float __powf_finite(float x, float y)
 {
   return powf(x, y);
 }
+
+#    endif /* __GLIBC_PREREQ(2, 31) */
+
+#    if __GLIBC_PREREQ(2, 34) && defined(WITH_LIBC_MALLOC_HOOK_WORKAROUND)
+
+extern void *(*__malloc_hook)(size_t __size, const void *);
+extern void *(*__realloc_hook)(void *__ptr, size_t __size, const void *);
+extern void *(*__memalign_hook)(size_t __alignment, size_t __size, const void *);
+extern void (*__free_hook)(void *__ptr, const void *);
+
+void *(*__malloc_hook)(size_t __size, const void *) = NULL;
+void *(*__realloc_hook)(void *__ptr, size_t __size, const void *) = NULL;
+void *(*__memalign_hook)(size_t __alignment, size_t __size, const void *) = NULL;
+void (*__free_hook)(void *__ptr, const void *) = NULL;
+
+#    endif /* __GLIBC_PREREQ(2, 34) */
 
 #  endif /* __GLIBC_PREREQ */
 #endif   /* __linux__ */

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -24,10 +25,6 @@ struct Mesh;
  * calculate normals as those functions will automatically create new
  * data to not overwrite the original. */
 struct DerivedMesh *CDDM_from_mesh(struct Mesh *mesh);
-
-/* Copies the given DerivedMesh with verts, faces & edges stored as
- * custom element data. */
-struct DerivedMesh *CDDM_copy(struct DerivedMesh *source);
 
 #ifdef __cplusplus
 }

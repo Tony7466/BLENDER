@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -12,6 +13,7 @@
 #include "BLI_string_ref.hh"
 
 #include "GPU_capabilities.h"
+#include "GPU_context.h"
 #include "GPU_platform.h"
 #include "GPU_shader.h"
 #include "GPU_texture.h"
@@ -31,6 +33,64 @@ using InterfaceDictionnary = Map<StringRef, StageInterfaceInfo *>;
 static CreateInfoDictionnary *g_create_infos = nullptr;
 static InterfaceDictionnary *g_interfaces = nullptr;
 
+/* -------------------------------------------------------------------- */
+/** \name Check Backend Support
+ *
+ * \{ */
+
+static bool is_vulkan_compatible_interface(const StageInterfaceInfo &iface)
+{
+  if (iface.instance_name.is_empty()) {
+    return true;
+  }
+
+  bool use_flat = false;
+  bool use_smooth = false;
+  bool use_noperspective = false;
+  for (const StageInterfaceInfo::InOut &attr : iface.inouts) {
+    switch (attr.interp) {
+      case Interpolation::FLAT:
+        use_flat = true;
+        break;
+      case Interpolation::SMOOTH:
+        use_smooth = true;
+        break;
+      case Interpolation::NO_PERSPECTIVE:
+        use_noperspective = true;
+        break;
+    }
+  }
+  int num_used_interpolation_types = (use_flat ? 1 : 0) + (use_smooth ? 1 : 0) +
+                                     (use_noperspective ? 1 : 0);
+
+#if 0
+  if (num_used_interpolation_types > 1) {
+    std::cout << "'" << iface.name << "' uses multiple interpolation types\n";
+  }
+#endif
+
+  return num_used_interpolation_types <= 1;
+}
+
+bool ShaderCreateInfo::is_vulkan_compatible() const
+{
+  /* Vulkan doesn't support setting an interpolation mode per attribute in a struct. */
+  for (const StageInterfaceInfo *iface : vertex_out_interfaces_) {
+    if (!is_vulkan_compatible_interface(*iface)) {
+      return false;
+    }
+  }
+  for (const StageInterfaceInfo *iface : geometry_out_interfaces_) {
+    if (!is_vulkan_compatible_interface(*iface)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/** \} */
+
 void ShaderCreateInfo::finalize()
 {
   if (finalized_) {
@@ -43,6 +103,8 @@ void ShaderCreateInfo::finalize()
   validate_vertex_attributes();
 
   for (auto &info_name : additional_infos_) {
+
+    /* Fetch create info. */
     const ShaderCreateInfo &info = *reinterpret_cast<const ShaderCreateInfo *>(
         gpu_shader_create_info_get(info_name.c_str()));
 
@@ -51,26 +113,36 @@ void ShaderCreateInfo::finalize()
 
     interface_names_size_ += info.interface_names_size_;
 
-    vertex_inputs_.extend(info.vertex_inputs_);
-    fragment_outputs_.extend(info.fragment_outputs_);
-    vertex_out_interfaces_.extend(info.vertex_out_interfaces_);
-    geometry_out_interfaces_.extend(info.geometry_out_interfaces_);
+    /* NOTE: EEVEE Materials can result in nested includes. To avoid duplicate
+     * shader resources, we need to avoid inserting duplicates.
+     * TODO: Optimize create info preparation to include each individual "additional_info"
+     * only a single time. */
+    vertex_inputs_.extend_non_duplicates(info.vertex_inputs_);
+    fragment_outputs_.extend_non_duplicates(info.fragment_outputs_);
+    vertex_out_interfaces_.extend_non_duplicates(info.vertex_out_interfaces_);
+    geometry_out_interfaces_.extend_non_duplicates(info.geometry_out_interfaces_);
+    subpass_inputs_.extend_non_duplicates(info.subpass_inputs_);
 
     validate_vertex_attributes(&info);
 
-    push_constants_.extend(info.push_constants_);
-    defines_.extend(info.defines_);
-
-    batch_resources_.extend(info.batch_resources_);
-    pass_resources_.extend(info.pass_resources_);
+    /* Insert with duplicate check. */
+    push_constants_.extend_non_duplicates(info.push_constants_);
+    defines_.extend_non_duplicates(info.defines_);
+    batch_resources_.extend_non_duplicates(info.batch_resources_);
+    pass_resources_.extend_non_duplicates(info.pass_resources_);
     typedef_sources_.extend_non_duplicates(info.typedef_sources_);
 
     if (info.early_fragment_test_) {
       early_fragment_test_ = true;
     }
-    if (info.depth_write_ != DepthWrite::ANY) {
+    /* Modify depth write if has been changed from default.
+     * `UNCHANGED` implies gl_FragDepth is not used at all. */
+    if (info.depth_write_ != DepthWrite::UNCHANGED) {
       depth_write_ = info.depth_write_;
     }
+
+    /* Inherit builtin bits from additional info. */
+    builtins_ |= info.builtins_;
 
     validate_merge(info);
 
@@ -108,6 +180,13 @@ void ShaderCreateInfo::finalize()
       assert_no_overlap(compute_source_.is_empty(), "Compute source already existing");
       compute_source_ = info.compute_source_;
     }
+  }
+
+  if (!geometry_source_.is_empty() && bool(builtins_ & BuiltinBits::LAYER)) {
+    std::cout << name_
+              << ": Validation failed. BuiltinBits::LAYER shouldn't be used with geometry shaders."
+              << std::endl;
+    BLI_assert(0);
   }
 
   if (auto_resource_location_) {
@@ -148,7 +227,7 @@ std::string ShaderCreateInfo::check_error() const
     if (this->vertex_source_.is_empty()) {
       error += "Missing vertex shader in " + this->name_ + ".\n";
     }
-    if (this->fragment_source_.is_empty()) {
+    if (tf_type_ == GPU_SHADER_TFB_NONE && this->fragment_source_.is_empty()) {
       error += "Missing fragment shader in " + this->name_ + ".\n";
     }
   }
@@ -163,6 +242,44 @@ std::string ShaderCreateInfo::check_error() const
       error += "Compute shader has fragment_source_ shader attached in " + this->name_ + ".\n";
     }
   }
+
+  if (!this->geometry_source_.is_empty()) {
+    if (bool(this->builtins_ & BuiltinBits::BARYCENTRIC_COORD)) {
+      error += "Shader " + this->name_ +
+               " has geometry stage and uses barycentric coordinates. This is not allowed as "
+               "fallback injects a geometry stage.\n";
+    }
+    if (bool(this->builtins_ & BuiltinBits::VIEWPORT_INDEX)) {
+      error += "Shader " + this->name_ +
+               " has geometry stage and uses multi-viewport. This is not allowed as "
+               "fallback injects a geometry stage.\n";
+    }
+    if (bool(this->builtins_ & BuiltinBits::LAYER)) {
+      error += "Shader " + this->name_ +
+               " has geometry stage and uses layer output. This is not allowed as "
+               "fallback injects a geometry stage.\n";
+    }
+  }
+
+#ifndef NDEBUG
+  if (bool(this->builtins_ &
+           (BuiltinBits::BARYCENTRIC_COORD | BuiltinBits::VIEWPORT_INDEX | BuiltinBits::LAYER)))
+  {
+    for (const StageInterfaceInfo *interface : this->vertex_out_interfaces_) {
+      if (interface->instance_name.is_empty()) {
+        error += "Shader " + this->name_ + " uses interface " + interface->name +
+                 " that doesn't contain an instance name, but is required for the fallback "
+                 "geometry shader.\n";
+      }
+    }
+  }
+
+  if (!this->is_vulkan_compatible()) {
+    error += this->name_ +
+             " contains a stage interface using an instance name and mixed interpolation modes. "
+             "This is not compatible with Vulkan and need to be adjusted.\n";
+  }
+#endif
 
   return error;
 }
@@ -188,38 +305,49 @@ void ShaderCreateInfo::validate_merge(const ShaderCreateInfo &other_info)
       }
     };
 
-    auto print_error_msg = [&](const Resource &res) {
-      std::cout << name_ << ": Validation failed : Overlapping ";
+    auto print_error_msg = [&](const Resource &res, Vector<Resource> &resources) {
+      auto print_resource_name = [&](const Resource &res) {
+        switch (res.bind_type) {
+          case Resource::BindType::UNIFORM_BUFFER:
+            std::cout << "Uniform Buffer " << res.uniformbuf.name;
+            break;
+          case Resource::BindType::STORAGE_BUFFER:
+            std::cout << "Storage Buffer " << res.storagebuf.name;
+            break;
+          case Resource::BindType::SAMPLER:
+            std::cout << "Sampler " << res.sampler.name;
+            break;
+          case Resource::BindType::IMAGE:
+            std::cout << "Image " << res.image.name;
+            break;
+          default:
+            std::cout << "Unknown Type";
+            break;
+        }
+      };
 
-      switch (res.bind_type) {
-        case Resource::BindType::UNIFORM_BUFFER:
-          std::cout << "Uniform Buffer " << res.uniformbuf.name;
-          break;
-        case Resource::BindType::STORAGE_BUFFER:
-          std::cout << "Storage Buffer " << res.storagebuf.name;
-          break;
-        case Resource::BindType::SAMPLER:
-          std::cout << "Sampler " << res.sampler.name;
-          break;
-        case Resource::BindType::IMAGE:
-          std::cout << "Image " << res.image.name;
-          break;
-        default:
-          std::cout << "Unknown Type";
-          break;
+      for (const Resource &_res : resources) {
+        if (&res != &_res && res.bind_type == _res.bind_type && res.slot == _res.slot) {
+          std::cout << name_ << ": Validation failed : Overlapping ";
+          print_resource_name(res);
+          std::cout << " and ";
+          print_resource_name(_res);
+          std::cout << " at (" << res.slot << ") while merging " << other_info.name_ << std::endl;
+        }
       }
-      std::cout << " (" << res.slot << ") while merging " << other_info.name_ << std::endl;
     };
 
     for (auto &res : batch_resources_) {
       if (register_resource(res) == false) {
-        print_error_msg(res);
+        print_error_msg(res, batch_resources_);
+        print_error_msg(res, pass_resources_);
       }
     }
 
     for (auto &res : pass_resources_) {
       if (register_resource(res) == false) {
-        print_error_msg(res);
+        print_error_msg(res, batch_resources_);
+        print_error_msg(res, pass_resources_);
       }
     }
   }
@@ -272,18 +400,19 @@ void gpu_shader_create_info_init()
   g_interfaces = new InterfaceDictionnary();
 
 #define GPU_SHADER_INTERFACE_INFO(_interface, _inst_name) \
-  auto *ptr_##_interface = new StageInterfaceInfo(#_interface, _inst_name); \
-  auto &_interface = *ptr_##_interface; \
+  StageInterfaceInfo *ptr_##_interface = new StageInterfaceInfo(#_interface, _inst_name); \
+  StageInterfaceInfo &_interface = *ptr_##_interface; \
   g_interfaces->add_new(#_interface, ptr_##_interface); \
   _interface
 
 #define GPU_SHADER_CREATE_INFO(_info) \
-  auto *ptr_##_info = new ShaderCreateInfo(#_info); \
-  auto &_info = *ptr_##_info; \
+  ShaderCreateInfo *ptr_##_info = new ShaderCreateInfo(#_info); \
+  ShaderCreateInfo &_info = *ptr_##_info; \
   g_create_infos->add_new(#_info, ptr_##_info); \
   _info
 
 /* Declare, register and construct the infos. */
+#include "compositor_shader_create_info_list.hh"
 #include "gpu_shader_create_info_list.hh"
 
 /* Baked shader data appended to create infos. */
@@ -295,18 +424,103 @@ void gpu_shader_create_info_init()
 
   /* WORKAROUND: Replace draw_mesh info with the legacy one for systems that have problems with UBO
    * indexing. */
-  if (GPU_type_matches(GPU_DEVICE_INTEL | GPU_DEVICE_INTEL_UHD, GPU_OS_ANY, GPU_DRIVER_ANY) ||
-      GPU_type_matches(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY) || GPU_crappy_amd_driver()) {
+  if (GPU_type_matches_ex(GPU_DEVICE_INTEL | GPU_DEVICE_INTEL_UHD,
+                          GPU_OS_ANY,
+                          GPU_DRIVER_ANY,
+                          GPU_BACKEND_OPENGL) ||
+      GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL) ||
+      GPU_crappy_amd_driver())
+  {
     draw_modelmat = draw_modelmat_legacy;
   }
 
+  /* WORKAROUND: Replace the use of gpu_BaseInstance by an instance attribute. */
+  if (GPU_shader_draw_parameters_support() == false) {
+    draw_resource_id_new = draw_resource_id_fallback;
+    draw_resource_with_custom_id_new = draw_resource_with_custom_id_fallback;
+  }
+
+#ifdef WITH_METAL_BACKEND
+  /* Metal-specific alternatives for Geometry shaders. */
+  if (GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_METAL)) {
+    /* 3D polyline. */
+    gpu_shader_3D_polyline_uniform_color = gpu_shader_3D_polyline_uniform_color_no_geom;
+    gpu_shader_3D_polyline_flat_color = gpu_shader_3D_polyline_flat_color_no_geom;
+    gpu_shader_3D_polyline_smooth_color = gpu_shader_3D_polyline_smooth_color_no_geom;
+    gpu_shader_3D_polyline_uniform_color_clipped =
+        gpu_shader_3D_polyline_uniform_color_clipped_no_geom;
+
+    /* Overlay Edit Mesh. */
+    overlay_edit_mesh_edge = overlay_edit_mesh_edge_no_geom;
+    overlay_edit_mesh_edge_flat = overlay_edit_mesh_edge_flat_no_geom;
+    overlay_edit_mesh_edge_clipped = overlay_edit_mesh_edge_clipped_no_geom;
+    overlay_edit_mesh_edge_flat_clipped = overlay_edit_mesh_edge_flat_clipped_no_geom;
+    overlay_edit_curve_handle = overlay_edit_curve_handle_no_geom;
+    overlay_edit_curve_handle_clipped = overlay_edit_curve_handle_clipped_no_geom;
+
+    /* Overlay Armature Shape outline. */
+    overlay_armature_shape_outline = overlay_armature_shape_outline_no_geom;
+    overlay_armature_shape_outline_clipped = overlay_armature_shape_outline_clipped_no_geom;
+
+    /* Overlay Motion Path Line. */
+    overlay_motion_path_line = overlay_motion_path_line_no_geom;
+    overlay_motion_path_line_clipped = overlay_motion_path_line_clipped_no_geom;
+
+    /* Workbench shadows.
+     * NOTE: Updates additional-info used by workbench shadow permutations.
+     * Must be prepared prior to permutation preparation. */
+    workbench_shadow_manifold = workbench_shadow_manifold_no_geom;
+    workbench_shadow_no_manifold = workbench_shadow_no_manifold_no_geom;
+    workbench_shadow_caps = workbench_shadow_caps_no_geom;
+
+    /* Conservative rasterization. */
+    basic_depth_mesh_conservative = basic_depth_mesh_conservative_no_geom;
+    basic_depth_mesh_conservative_clipped = basic_depth_mesh_conservative_no_geom_clipped;
+    basic_depth_pointcloud_conservative = basic_depth_pointcloud_conservative_no_geom;
+    basic_depth_pointcloud_conservative_clipped =
+        basic_depth_pointcloud_conservative_no_geom_clipped;
+
+    /* Overlay pre-pass wire. */
+    overlay_outline_prepass_wire = overlay_outline_prepass_wire_no_geom;
+
+    /* Edit UV Edges. */
+    overlay_edit_uv_edges = overlay_edit_uv_edges_no_geom;
+
+    /* Down-sample Cube/Probe rendering. */
+    eevee_legacy_effect_downsample_cube = eevee_legacy_effect_downsample_cube_no_geom;
+    eevee_legacy_probe_filter_glossy = eevee_legacy_probe_filter_glossy_no_geom;
+    eevee_legacy_lightprobe_planar_downsample = eevee_legacy_lightprobe_planar_downsample_no_geom;
+
+    /* EEVEE Volumetrics */
+    eevee_legacy_volumes_clear = eevee_legacy_volumes_clear_no_geom;
+    eevee_legacy_volumes_scatter = eevee_legacy_volumes_scatter_no_geom;
+    eevee_legacy_volumes_scatter_with_lights = eevee_legacy_volumes_scatter_with_lights_no_geom;
+    eevee_legacy_volumes_integration = eevee_legacy_volumes_integration_no_geom;
+    eevee_legacy_volumes_integration_OPTI = eevee_legacy_volumes_integration_OPTI_no_geom;
+
+    /* EEVEE Volumetric Material */
+    eevee_legacy_material_volumetric_vert = eevee_legacy_material_volumetric_vert_no_geom;
+
+    /* GPencil stroke. */
+    gpu_shader_gpencil_stroke = gpu_shader_gpencil_stroke_no_geom;
+  }
+#endif
+
   for (ShaderCreateInfo *info : g_create_infos->values()) {
-    if (info->do_static_compilation_) {
-      info->builtins_ |= gpu_shader_dependency_get_builtins(info->vertex_source_);
-      info->builtins_ |= gpu_shader_dependency_get_builtins(info->fragment_source_);
-      info->builtins_ |= gpu_shader_dependency_get_builtins(info->geometry_source_);
-      info->builtins_ |= gpu_shader_dependency_get_builtins(info->compute_source_);
+    info->builtins_ |= gpu_shader_dependency_get_builtins(info->vertex_source_);
+    info->builtins_ |= gpu_shader_dependency_get_builtins(info->fragment_source_);
+    info->builtins_ |= gpu_shader_dependency_get_builtins(info->geometry_source_);
+    info->builtins_ |= gpu_shader_dependency_get_builtins(info->compute_source_);
+
+#ifdef DEBUG
+    /* Automatically amend the create info for ease of use of the debug feature. */
+    if ((info->builtins_ & BuiltinBits::USE_DEBUG_DRAW) == BuiltinBits::USE_DEBUG_DRAW) {
+      info->additional_info("draw_debug_draw");
     }
+    if ((info->builtins_ & BuiltinBits::USE_DEBUG_PRINT) == BuiltinBits::USE_DEBUG_PRINT) {
+      info->additional_info("draw_debug_print");
+    }
+#endif
   }
 
   /* TEST */
@@ -335,9 +549,12 @@ bool gpu_shader_create_info_compile_all()
   for (ShaderCreateInfo *info : g_create_infos->values()) {
     info->finalize();
     if (info->do_static_compilation_) {
-      if ((GPU_compute_shader_support() == false && info->compute_source_ != nullptr) ||
+      if ((info->metal_backend_only_ && GPU_backend_get_type() != GPU_BACKEND_METAL) ||
+          (GPU_compute_shader_support() == false && info->compute_source_ != nullptr) ||
+          (GPU_geometry_shader_support() == false && info->geometry_source_ != nullptr) ||
           (GPU_shader_image_load_store_support() == false && info->has_resource_image()) ||
-          (GPU_shader_storage_buffer_objects_support() == false && info->has_resource_storage())) {
+          (GPU_transform_feedback_support() == false && info->tf_type_ != GPU_SHADER_TFB_NONE))
+      {
         skipped++;
         continue;
       }
@@ -345,7 +562,7 @@ bool gpu_shader_create_info_compile_all()
       GPUShader *shader = GPU_shader_create_from_info(
           reinterpret_cast<const GPUShaderCreateInfo *>(info));
       if (shader == nullptr) {
-        printf("Compilation %s Failed\n", info->name_.c_str());
+        std::cerr << "Compilation " << info->name_.c_str() << " Failed\n";
       }
       else {
         success++;
@@ -383,12 +600,12 @@ bool gpu_shader_create_info_compile_all()
           }
 
           if (input == nullptr) {
-            std::cout << "Error: " << info->name_;
-            std::cout << ": Resource « " << name << " » not found in the shader interface\n";
+            std::cerr << "Error: " << info->name_;
+            std::cerr << ": Resource « " << name << " » not found in the shader interface\n";
           }
           else if (input->location == -1) {
-            std::cout << "Warning: " << info->name_;
-            std::cout << ": Resource « " << name << " » is optimized out\n";
+            std::cerr << "Warning: " << info->name_;
+            std::cerr << ": Resource « " << name << " » is optimized out\n";
           }
         }
 #endif
@@ -404,7 +621,6 @@ bool gpu_shader_create_info_compile_all()
   return success == total;
 }
 
-/* Runtime create infos are not registered in the dictionary and cannot be searched. */
 const GPUShaderCreateInfo *gpu_shader_create_info_get(const char *info_name)
 {
   if (g_create_infos->contains(info_name) == false) {

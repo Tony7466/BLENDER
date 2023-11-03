@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
@@ -15,41 +17,41 @@
 
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 
 namespace blender::nodes::node_geo_volume_cube_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>(N_("Density"))
-      .description(N_("Volume density per voxel"))
-      .supports_field()
-      .default_value(1.0f);
-  b.add_input<decl::Float>(N_("Background"))
-      .description(N_("Value for voxels outside of the cube"));
+  b.add_input<decl::Float>("Density")
+      .default_value(1.0f)
+      .description("Volume density per voxel")
+      .supports_field();
+  b.add_input<decl::Float>("Background").description("Value for voxels outside of the cube");
 
-  b.add_input<decl::Vector>(N_("Min"))
-      .description(N_("Minimum boundary of volume"))
-      .default_value(float3(-1.0f));
-  b.add_input<decl::Vector>(N_("Max"))
-      .description(N_("Maximum boundary of volume"))
-      .default_value(float3(1.0f));
+  b.add_input<decl::Vector>("Min")
+      .default_value(float3(-1.0f))
+      .description("Minimum boundary of volume");
+  b.add_input<decl::Vector>("Max")
+      .default_value(float3(1.0f))
+      .description("Maximum boundary of volume");
 
-  b.add_input<decl::Int>(N_("Resolution X"))
-      .description(N_("Number of voxels in the X axis"))
+  b.add_input<decl::Int>("Resolution X")
       .default_value(32)
-      .min(2);
-  b.add_input<decl::Int>(N_("Resolution Y"))
-      .description(N_("Number of voxels in the Y axis"))
+      .min(2)
+      .description("Number of voxels in the X axis");
+  b.add_input<decl::Int>("Resolution Y")
       .default_value(32)
-      .min(2);
-  b.add_input<decl::Int>(N_("Resolution Z"))
-      .description(N_("Number of voxels in the Z axis"))
+      .min(2)
+      .description("Number of voxels in the Y axis");
+  b.add_input<decl::Int>("Resolution Z")
       .default_value(32)
-      .min(2);
+      .min(2)
+      .description("Number of voxels in the Z axis");
 
-  b.add_output<decl::Geometry>(N_("Volume"));
+  b.add_output<decl::Geometry>("Volume").translation_context(BLT_I18NCONTEXT_ID_ID);
 }
 
 static float map(const float x,
@@ -75,13 +77,12 @@ class Grid3DFieldContext : public FieldContext {
 
   int64_t points_num() const
   {
-    return static_cast<int64_t>(resolution_.x) * static_cast<int64_t>(resolution_.y) *
-           static_cast<int64_t>(resolution_.z);
+    return int64_t(resolution_.x) * int64_t(resolution_.y) * int64_t(resolution_.z);
   }
 
   GVArray get_varray_for_input(const FieldInput &field_input,
-                               const IndexMask UNUSED(mask),
-                               ResourceScope &UNUSED(scope)) const
+                               const IndexMask & /*mask*/,
+                               ResourceScope & /*scope*/) const
   {
     const bke::AttributeFieldInput *attribute_field_input =
         dynamic_cast<const bke::AttributeFieldInput *>(&field_input);
@@ -113,9 +114,9 @@ class Grid3DFieldContext : public FieldContext {
   }
 };
 
-#ifdef WITH_OPENVDB
 static void node_geo_exec(GeoNodeExecParams params)
 {
+#ifdef WITH_OPENVDB
   const float3 bounds_min = params.extract_input<float3>("Min");
   const float3 bounds_max = params.extract_input<float3>("Max");
 
@@ -129,10 +130,18 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  if (bounds_min.x == bounds_max.x || bounds_min.y == bounds_max.y ||
-      bounds_min.z == bounds_max.z) {
+  if (bounds_min.x == bounds_max.x || bounds_min.y == bounds_max.y || bounds_min.z == bounds_max.z)
+  {
     params.error_message_add(NodeWarningType::Error,
                              TIP_("Bounding box volume must be greater than 0"));
+    params.set_default_remaining_outputs();
+    return;
+  }
+
+  const double3 scale_fac = double3(bounds_max - bounds_min) / double3(resolution - 1);
+  if (!BKE_volume_grid_determinant_valid(scale_fac.x * scale_fac.y * scale_fac.z)) {
+    params.error_message_add(NodeWarningType::Warning,
+                             TIP_("Volume scale is lower than permitted by OpenVDB"));
     params.set_default_remaining_outputs();
     return;
   }
@@ -157,41 +166,33 @@ static void node_geo_exec(GeoNodeExecParams params)
   openvdb::tools::copyFromDense(dense_grid, *grid, 0.0f);
 
   grid->transform().preTranslate(openvdb::math::Vec3<float>(-0.5f));
-  const float3 scale_fac = (bounds_max - bounds_min) / float3(resolution - 1);
-  grid->transform().postScale(openvdb::math::Vec3<float>(scale_fac.x, scale_fac.y, scale_fac.z));
+  grid->transform().postScale(openvdb::math::Vec3<double>(scale_fac.x, scale_fac.y, scale_fac.z));
   grid->transform().postTranslate(
       openvdb::math::Vec3<float>(bounds_min.x, bounds_min.y, bounds_min.z));
 
-  Volume *volume = (Volume *)BKE_id_new_nomain(ID_VO, nullptr);
-  BKE_volume_init_grids(volume);
-
+  Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
   BKE_volume_grid_add_vdb(*volume, "density", std::move(grid));
 
   GeometrySet r_geometry_set;
   r_geometry_set.replace_volume(volume);
   params.set_output("Volume", r_geometry_set);
-}
-
 #else
-static void node_geo_exec(GeoNodeExecParams params)
-{
+  params.set_default_remaining_outputs();
   params.error_message_add(NodeWarningType::Error,
                            TIP_("Disabled, Blender was compiled without OpenVDB"));
-  params.set_default_remaining_outputs();
+#endif
 }
-#endif /* WITH_OPENVDB */
 
-}  // namespace blender::nodes::node_geo_volume_cube_cc
-
-void register_node_type_geo_volume_cube()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_volume_cube_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_VOLUME_CUBE, "Volume Cube", NODE_CLASS_GEOMETRY);
 
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_volume_cube_cc

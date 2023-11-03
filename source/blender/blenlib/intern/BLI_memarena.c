@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -38,7 +39,7 @@ struct MemBuf {
 };
 
 struct MemArena {
-  unsigned char *curbuf;
+  uchar *curbuf;
   const char *name;
   struct MemBuf *bufs;
 
@@ -53,7 +54,7 @@ static void memarena_buf_free_all(struct MemBuf *mb)
   while (mb != NULL) {
     struct MemBuf *mb_next = mb->next;
 
-    /* Unpoison memory because MEM_freeN might overwrite it. */
+    /* Unpoison memory because #MEM_freeN might overwrite it. */
     BLI_asan_unpoison(mb, (uint)MEM_allocN_len(mb));
 
     MEM_freeN(mb);
@@ -83,7 +84,7 @@ void BLI_memarena_use_malloc(MemArena *ma)
   ma->use_calloc = 0;
 }
 
-void BLI_memarena_use_align(struct MemArena *ma, const size_t align)
+void BLI_memarena_use_align(MemArena *ma, const size_t align)
 {
   /* Align must be a power of two. */
   BLI_assert((align & (align - 1)) == 0);
@@ -106,9 +107,9 @@ void BLI_memarena_free(MemArena *ma)
 /** Align alloc'ed memory (needed if `align > 8`). */
 static void memarena_curbuf_align(MemArena *ma)
 {
-  unsigned char *tmp;
+  uchar *tmp;
 
-  tmp = (unsigned char *)PADUP((intptr_t)ma->curbuf, (int)ma->align);
+  tmp = (uchar *)PADUP((intptr_t)ma->curbuf, (int)ma->align);
   ma->cursize -= (size_t)(tmp - ma->curbuf);
   ma->curbuf = tmp;
 }
@@ -158,6 +159,7 @@ void *BLI_memarena_calloc(MemArena *ma, size_t size)
   BLI_assert(ma->use_calloc == false);
 
   ptr = BLI_memarena_alloc(ma, size);
+  BLI_assert(ptr != NULL);
   memset(ptr, 0, size);
 
   return ptr;
@@ -208,7 +210,7 @@ void BLI_memarena_merge(MemArena *ma_dst, MemArena *ma_src)
 void BLI_memarena_clear(MemArena *ma)
 {
   if (ma->bufs) {
-    unsigned char *curbuf_prev;
+    uchar *curbuf_prev;
     size_t curbuf_used;
 
     if (ma->bufs->next) {

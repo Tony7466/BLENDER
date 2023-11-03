@@ -1,9 +1,6 @@
-
-uniform vec2 extent;
-uniform vec2 offset;
-uniform vec2 size;
-out vec2 texCoord_interp;
-in vec2 pos;
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 void main()
 {

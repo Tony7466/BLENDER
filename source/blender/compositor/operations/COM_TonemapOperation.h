@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -21,7 +22,7 @@ typedef struct AvgLogLum {
 } AvgLogLum;
 
 /**
- * \brief base class of tonemap, implementing the simple tonemap
+ * \brief base class of tone-map, implementing the simple tone-map
  * \ingroup operation
  */
 class TonemapOperation : public MultiThreadedOperation {
@@ -32,9 +33,9 @@ class TonemapOperation : public MultiThreadedOperation {
   SocketReader *image_reader_;
 
   /**
-   * \brief settings of the Tonemap
+   * \brief settings of the Tone-map
    */
-  NodeTonemap *data_;
+  const NodeTonemap *data_;
 
   /**
    * \brief temporarily cache of the execution storage
@@ -62,7 +63,7 @@ class TonemapOperation : public MultiThreadedOperation {
    */
   void deinit_execution() override;
 
-  void set_data(NodeTonemap *data)
+  void set_data(const NodeTonemap *data)
   {
     data_ = data;
   }
@@ -85,7 +86,6 @@ class TonemapOperation : public MultiThreadedOperation {
  * most parts have already been done in #TonemapOperation.
  * \ingroup operation
  */
-
 class PhotoreceptorTonemapOperation : public TonemapOperation {
  public:
   /**

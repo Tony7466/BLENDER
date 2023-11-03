@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edasset
@@ -14,26 +16,29 @@
 #include "DNA_ID_enums.h"
 
 #ifdef __cplusplus
+namespace blender::asset_system {
+class AssetRepresentation;
+}
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct AssetTempIDConsumer AssetTempIDConsumer;
 
-struct AssetHandle;
-struct AssetLibraryReference;
 struct Main;
 struct ReportList;
-struct bContext;
 
-AssetTempIDConsumer *ED_asset_temp_id_consumer_create(const struct AssetHandle *handle);
+#ifdef __cplusplus
+extern "C++" AssetTempIDConsumer *ED_asset_temp_id_consumer_create(
+    const blender::asset_system::AssetRepresentation *asset);
+#endif
 void ED_asset_temp_id_consumer_free(AssetTempIDConsumer **consumer);
-struct ID *ED_asset_temp_id_consumer_ensure_local_id(
-    AssetTempIDConsumer *consumer,
-    const struct bContext *C,
-    const struct AssetLibraryReference *asset_library_ref,
-    ID_Type id_type,
-    struct Main *bmain,
-    struct ReportList *reports);
+struct ID *ED_asset_temp_id_consumer_ensure_local_id(AssetTempIDConsumer *consumer,
+                                                     ID_Type id_type,
+                                                     struct Main *bmain,
+                                                     struct ReportList *reports);
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2014-2022 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 _IS_BIG_ENDIAN = (__import__("sys").byteorder != 'little')
 
 
@@ -75,8 +78,8 @@ def icon_merge(file_src, pixels_canvas, canvas_w, canvas_h):
      orig_x, orig_y,
      w_canvas_test, h_canvas_test) = head
 
-    assert(w_canvas_test == canvas_w)
-    assert(h_canvas_test == canvas_h)
+    assert w_canvas_test == canvas_w
+    assert h_canvas_test == canvas_h
 
     for x in range(icon_w):
         for y in range(icon_h):

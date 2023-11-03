@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -10,16 +11,15 @@
 #include "DNA_defs.h"
 #include "DNA_vec_types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* general defines for kernel functions */
 #define CM_RESOL 32
 #define CM_TABLE 256
 #define CM_TABLEDIV (1.0f / 256.0f)
 
 #define CM_TOT 4
+
+#define GPU_SKY_WIDTH 512
+#define GPU_SKY_HEIGHT 128
 
 typedef struct CurveMapPoint {
   float x, y;
@@ -32,6 +32,8 @@ enum {
   CUMA_SELECT = (1 << 0),
   CUMA_HANDLE_VECTOR = (1 << 1),
   CUMA_HANDLE_AUTO_ANIM = (1 << 2),
+  /** Temporary tag for point deletion. */
+  CUMA_REMOVE = (1 << 3),
 };
 
 typedef struct CurveMap {
@@ -54,6 +56,8 @@ typedef struct CurveMap {
   /** For RGB curves, pre-multiplied extrapolation vector. */
   float premul_ext_in[2];
   float premul_ext_out[2];
+  short default_handle_type;
+  char _pad[6];
 } CurveMap;
 
 typedef struct CurveMapping {
@@ -101,6 +105,7 @@ typedef enum eCurveMappingPreset {
   CURVE_PRESET_ROOT = 6,
   CURVE_PRESET_GAUSS = 7,
   CURVE_PRESET_BELL = 8,
+  CURVE_PRESET_CONSTANT_MEDIAN = 9,
 } eCurveMappingPreset;
 
 /** #CurveMapping.tone */
@@ -201,8 +206,5 @@ typedef struct ColorManagedColorspaceSettings {
 /** #ColorManagedViewSettings.flag */
 enum {
   COLORMANAGE_VIEW_USE_CURVES = (1 << 0),
+  COLORMANAGE_VIEW_USE_HDR = (1 << 1),
 };
-
-#ifdef __cplusplus
-}
-#endif

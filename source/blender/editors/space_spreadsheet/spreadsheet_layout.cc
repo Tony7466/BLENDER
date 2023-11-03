@@ -1,11 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <iomanip>
 #include <sstream>
 
-#include "BLI_math_vec_types.hh"
+#include "BLI_math_color.hh"
+#include "BLI_math_quaternion_types.hh"
+#include "BLI_math_vector_types.hh"
+#include "BLI_string.h"
 
 #include "BKE_geometry_set.hh"
+#include "BKE_instances.hh"
 
 #include "spreadsheet_column_values.hh"
 #include "spreadsheet_layout.hh"
@@ -14,8 +20,8 @@
 #include "DNA_object_types.h"
 #include "DNA_userdef_types.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "BLF_api.h"
 
@@ -137,6 +143,10 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
       UI_but_drawflag_enable(but, UI_BUT_TEXT_RIGHT);
     }
+    else if (data.type().is<int2>()) {
+      const int2 value = data.get<int2>(real_index);
+      this->draw_int_vector(params, Span(&value.x, 2));
+    }
     else if (data.type().is<float>()) {
       const float value = data.get<float>(real_index);
       std::stringstream ss;
@@ -197,10 +207,14 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       const ColorGeometry4b value = data.get<ColorGeometry4b>(real_index);
       this->draw_byte_color(params, value);
     }
-    else if (data.type().is<InstanceReference>()) {
-      const InstanceReference value = data.get<InstanceReference>(real_index);
+    else if (data.type().is<math::Quaternion>()) {
+      const float4 value = float4(data.get<math::Quaternion>(real_index));
+      this->draw_float_vector(params, Span(&value.x, 4));
+    }
+    else if (data.type().is<bke::InstanceReference>()) {
+      const bke::InstanceReference value = data.get<bke::InstanceReference>(real_index);
       switch (value.type()) {
-        case InstanceReference::Type::Object: {
+        case bke::InstanceReference::Type::Object: {
           const Object &object = value.object();
           uiDefIconTextBut(params.block,
                            UI_BTYPE_LABEL,
@@ -219,7 +233,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                            nullptr);
           break;
         }
-        case InstanceReference::Type::Collection: {
+        case bke::InstanceReference::Type::Collection: {
           Collection &collection = value.collection();
           uiDefIconTextBut(params.block,
                            UI_BTYPE_LABEL,
@@ -238,7 +252,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                            nullptr);
           break;
         }
-        case InstanceReference::Type::GeometrySet: {
+        case bke::InstanceReference::Type::GeometrySet: {
           uiDefIconTextBut(params.block,
                            UI_BTYPE_LABEL,
                            0,
@@ -256,7 +270,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                            nullptr);
           break;
         }
-        case InstanceReference::Type::None: {
+        case bke::InstanceReference::Type::None: {
           break;
         }
       }
@@ -283,7 +297,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
   void draw_float_vector(const CellDrawParams &params, const Span<float> values) const
   {
     BLI_assert(!values.is_empty());
-    const float segment_width = (float)params.width / values.size();
+    const float segment_width = float(params.width) / values.size();
     for (const int i : values.index_range()) {
       std::stringstream ss;
       const float value = values[i];
@@ -310,11 +324,41 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
     }
   }
 
+  void draw_int_vector(const CellDrawParams &params, const Span<int> values) const
+  {
+    BLI_assert(!values.is_empty());
+    const float segment_width = float(params.width) / values.size();
+    for (const int i : values.index_range()) {
+      std::stringstream ss;
+      const int value = values[i];
+      ss << " " << value;
+      const std::string value_str = ss.str();
+      uiBut *but = uiDefIconTextBut(params.block,
+                                    UI_BTYPE_LABEL,
+                                    0,
+                                    ICON_NONE,
+                                    value_str.c_str(),
+                                    params.xmin + i * segment_width,
+                                    params.ymin,
+                                    segment_width,
+                                    params.height,
+                                    nullptr,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    nullptr);
+      /* Right-align Floats. */
+      UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+      UI_but_drawflag_enable(but, UI_BUT_TEXT_RIGHT);
+    }
+  }
+
   void draw_byte_color(const CellDrawParams &params, const ColorGeometry4b color) const
   {
     const ColorGeometry4f float_color = color.decode();
     Span<float> values(&float_color.r, 4);
-    const float segment_width = (float)params.width / values.size();
+    const float segment_width = float(params.width) / values.size();
     for (const int i : values.index_range()) {
       std::stringstream ss;
       const float value = values[i];
@@ -342,7 +386,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       /* Tooltip showing raw byte values. Encode values in pointer to avoid memory allocation. */
       UI_but_func_tooltip_set(
           but,
-          [](bContext * /*C*/, void *argN, const char *UNUSED(tip)) {
+          [](bContext * /*C*/, void *argN, const char * /*tip*/) {
             const uint32_t uint_color = POINTER_AS_UINT(argN);
             ColorGeometry4b color = *(ColorGeometry4b *)&uint_color;
             return BLI_sprintfN(TIP_("Byte Color (sRGB encoded):\n%3d  %3d  %3d  %3d"),

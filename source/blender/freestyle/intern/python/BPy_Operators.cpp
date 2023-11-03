@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -15,6 +17,8 @@
 #include "Iterator/BPy_ViewEdgeIterator.h"
 #include "UnaryFunction0D/BPy_UnaryFunction0DDouble.h"
 #include "UnaryFunction1D/BPy_UnaryFunction1DVoid.h"
+
+#include "BLI_sys_types.h"
 
 #include <sstream>
 
@@ -45,9 +49,9 @@ int Operators_Init(PyObject *module)
 //------------------------INSTANCE METHODS ----------------------------------
 
 PyDoc_STRVAR(Operators_doc,
-             "Class defining the operators used in a style module.  There are five\n"
+             "Class defining the operators used in a style module. There are five\n"
              "types of operators: Selection, chaining, splitting, sorting and\n"
-             "creation.  All these operators are user controlled through functors,\n"
+             "creation. All these operators are user controlled through functors,\n"
              "predicates and shaders that are taken as arguments.");
 
 static void Operators_dealloc(BPy_Operators *self)
@@ -91,10 +95,10 @@ PyDoc_STRVAR(Operators_chain_doc,
              ".. staticmethod:: chain(it, pred, modifier)\n"
              "                  chain(it, pred)\n"
              "\n"
-             "   Builds a set of chains from the current set of ViewEdges.  Each\n"
-             "   ViewEdge of the current list starts a new chain.  The chaining\n"
+             "   Builds a set of chains from the current set of ViewEdges. Each\n"
+             "   ViewEdge of the current list starts a new chain. The chaining\n"
              "   operator then iterates over the ViewEdges of the ViewMap using the\n"
-             "   user specified iterator.  This operator only iterates using the\n"
+             "   user specified iterator. This operator only iterates using the\n"
              "   increment operator and is therefore unidirectional.\n"
              "\n"
              "   :arg it: The iterator on the ViewEdges of the ViewMap. It contains\n"
@@ -123,7 +127,8 @@ static PyObject *Operators_chain(BPy_Operators * /*self*/, PyObject *args, PyObj
                                    &UnaryPredicate1D_Type,
                                    &obj2,
                                    &UnaryFunction1DVoid_Type,
-                                   &obj3)) {
+                                   &obj3))
+  {
     return nullptr;
   }
   if (!((BPy_ChainingIterator *)obj1)->c_it) {
@@ -138,7 +143,8 @@ static PyObject *Operators_chain(BPy_Operators * /*self*/, PyObject *args, PyObj
   }
   if (!obj3) {
     if (Operators::chain(*(((BPy_ChainingIterator *)obj1)->c_it),
-                         *(((BPy_UnaryPredicate1D *)obj2)->up1D)) < 0) {
+                         *(((BPy_UnaryPredicate1D *)obj2)->up1D)) < 0)
+    {
       if (!PyErr_Occurred()) {
         PyErr_SetString(PyExc_RuntimeError, "Operators.chain() failed");
       }
@@ -153,7 +159,8 @@ static PyObject *Operators_chain(BPy_Operators * /*self*/, PyObject *args, PyObj
     }
     if (Operators::chain(*(((BPy_ChainingIterator *)obj1)->c_it),
                          *(((BPy_UnaryPredicate1D *)obj2)->up1D),
-                         *(((BPy_UnaryFunction1DVoid *)obj3)->uf1D_void)) < 0) {
+                         *(((BPy_UnaryFunction1DVoid *)obj3)->uf1D_void)) < 0)
+    {
       if (!PyErr_Occurred()) {
         PyErr_SetString(PyExc_RuntimeError, "Operators.chain() failed");
       }
@@ -167,19 +174,19 @@ PyDoc_STRVAR(Operators_bidirectional_chain_doc,
              ".. staticmethod:: bidirectional_chain(it, pred)\n"
              "                  bidirectional_chain(it)\n"
              "\n"
-             "   Builds a set of chains from the current set of ViewEdges.  Each\n"
-             "   ViewEdge of the current list potentially starts a new chain.  The\n"
+             "   Builds a set of chains from the current set of ViewEdges. Each\n"
+             "   ViewEdge of the current list potentially starts a new chain. The\n"
              "   chaining operator then iterates over the ViewEdges of the ViewMap\n"
-             "   using the user specified iterator.  This operator iterates both using\n"
+             "   using the user specified iterator. This operator iterates both using\n"
              "   the increment and decrement operators and is therefore bidirectional.\n"
              "   This operator works with a ChainingIterator which contains the\n"
-             "   chaining rules.  It is this last one which can be told to chain only\n"
+             "   chaining rules. It is this last one which can be told to chain only\n"
              "   edges that belong to the selection or not to process twice a ViewEdge\n"
-             "   during the chaining.  Each time a ViewEdge is added to a chain, its\n"
-             "   chaining time stamp is incremented.  This allows you to keep track of\n"
+             "   during the chaining. Each time a ViewEdge is added to a chain, its\n"
+             "   chaining time stamp is incremented. This allows you to keep track of\n"
              "   the number of chains to which a ViewEdge belongs to.\n"
              "\n"
-             "   :arg it: The ChainingIterator on the ViewEdges of the ViewMap.  It\n"
+             "   :arg it: The ChainingIterator on the ViewEdges of the ViewMap. It\n"
              "      contains the chaining rule.\n"
              "   :type it: :class:`ChainingIterator`\n"
              "   :arg pred: The predicate on the ViewEdge that expresses the stopping condition.\n"
@@ -201,7 +208,8 @@ static PyObject *Operators_bidirectional_chain(BPy_Operators * /*self*/,
                                    &ChainingIterator_Type,
                                    &obj1,
                                    &UnaryPredicate1D_Type,
-                                   &obj2)) {
+                                   &obj2))
+  {
     return nullptr;
   }
   if (!((BPy_ChainingIterator *)obj1)->c_it) {
@@ -226,7 +234,8 @@ static PyObject *Operators_bidirectional_chain(BPy_Operators * /*self*/,
       return nullptr;
     }
     if (Operators::bidirectionalChain(*(((BPy_ChainingIterator *)obj1)->c_it),
-                                      *(((BPy_UnaryPredicate1D *)obj2)->up1D)) < 0) {
+                                      *(((BPy_UnaryPredicate1D *)obj2)->up1D)) < 0)
+    {
       if (!PyErr_Occurred()) {
         PyErr_SetString(PyExc_RuntimeError, "Operators.bidirectional_chain() failed");
       }
@@ -284,7 +293,8 @@ static PyObject *Operators_sequential_split(BPy_Operators * /*self*/,
                                   &obj1,
                                   &UnaryPredicate0D_Type,
                                   &obj2,
-                                  &f)) {
+                                  &f))
+  {
     if (!((BPy_UnaryPredicate0D *)obj1)->up0D) {
       PyErr_SetString(
           PyExc_TypeError,
@@ -299,7 +309,8 @@ static PyObject *Operators_sequential_split(BPy_Operators * /*self*/,
     }
     if (Operators::sequentialSplit(*(((BPy_UnaryPredicate0D *)obj1)->up0D),
                                    *(((BPy_UnaryPredicate0D *)obj2)->up0D),
-                                   f) < 0) {
+                                   f) < 0)
+    {
       if (!PyErr_Occurred()) {
         PyErr_SetString(PyExc_RuntimeError, "Operators.sequential_split() failed");
       }
@@ -309,7 +320,8 @@ static PyObject *Operators_sequential_split(BPy_Operators * /*self*/,
   else if ((void)PyErr_Clear(),
            (void)(f = 0.0f),
            PyArg_ParseTupleAndKeywords(
-               args, kwds, "O!|f", (char **)kwlist_2, &UnaryPredicate0D_Type, &obj1, &f)) {
+               args, kwds, "O!|f", (char **)kwlist_2, &UnaryPredicate0D_Type, &obj1, &f))
+  {
     if (!((BPy_UnaryPredicate0D *)obj1)->up0D) {
       PyErr_SetString(
           PyExc_TypeError,
@@ -335,7 +347,7 @@ PyDoc_STRVAR(
     ".. staticmethod:: recursive_split(func, pred_1d, sampling=0.0)\n"
     "                  recursive_split(func, pred_0d, pred_1d, sampling=0.0)\n"
     "\n"
-    "   Splits the current set of chains in a recursive way.  We process the\n"
+    "   Splits the current set of chains in a recursive way. We process the\n"
     "   points of each chain (with a specified sampling) to find the point\n"
     "   minimizing a specified function. The chain is split in two at this\n"
     "   point and the two new chains are processed in the same way. The\n"
@@ -350,14 +362,14 @@ PyDoc_STRVAR(
     "     The splitting point is the point minimizing this function.\n"
     "   :type func: :class:`UnaryFunction0DDouble`\n"
     "   :arg pred_0d: The Unary Predicate 0D used to select the candidate\n"
-    "      points where the split can occur.  For example, it is very likely\n"
+    "      points where the split can occur. For example, it is very likely\n"
     "      that would rather have your chain splitting around its middle\n"
-    "      point than around one of its extremities.  A 0D predicate working\n"
+    "      point than around one of its extremities. A 0D predicate working\n"
     "      on the curvilinear abscissa allows to add this kind of constraints.\n"
     "   :type pred_0d: :class:`UnaryPredicate0D`\n"
     "   :arg pred_1d: The Unary Predicate expressing the recursivity stopping\n"
-    "      condition.  This predicate is evaluated for each curve before it\n"
-    "      actually gets split.  If pred_1d(chain) is true, the curve won't be\n"
+    "      condition. This predicate is evaluated for each curve before it\n"
+    "      actually gets split. If pred_1d(chain) is true, the curve won't be\n"
     "      split anymore.\n"
     "   :type pred_1d: :class:`UnaryPredicate1D`\n"
     "   :arg sampling: The resolution used to sample the chain for the\n"
@@ -383,7 +395,8 @@ static PyObject *Operators_recursive_split(BPy_Operators * /*self*/,
                                   &obj1,
                                   &UnaryPredicate1D_Type,
                                   &obj2,
-                                  &f)) {
+                                  &f))
+  {
     if (!((BPy_UnaryFunction0DDouble *)obj1)->uf0D_double) {
       PyErr_SetString(
           PyExc_TypeError,
@@ -398,7 +411,8 @@ static PyObject *Operators_recursive_split(BPy_Operators * /*self*/,
     }
     if (Operators::recursiveSplit(*(((BPy_UnaryFunction0DDouble *)obj1)->uf0D_double),
                                   *(((BPy_UnaryPredicate1D *)obj2)->up1D),
-                                  f) < 0) {
+                                  f) < 0)
+    {
       if (!PyErr_Occurred()) {
         PyErr_SetString(PyExc_RuntimeError, "Operators.recursive_split() failed");
       }
@@ -417,7 +431,8 @@ static PyObject *Operators_recursive_split(BPy_Operators * /*self*/,
                                        &obj2,
                                        &UnaryPredicate1D_Type,
                                        &obj3,
-                                       &f)) {
+                                       &f))
+  {
     if (!((BPy_UnaryFunction0DDouble *)obj1)->uf0D_double) {
       PyErr_SetString(
           PyExc_TypeError,
@@ -439,7 +454,8 @@ static PyObject *Operators_recursive_split(BPy_Operators * /*self*/,
     if (Operators::recursiveSplit(*(((BPy_UnaryFunction0DDouble *)obj1)->uf0D_double),
                                   *(((BPy_UnaryPredicate0D *)obj2)->up0D),
                                   *(((BPy_UnaryPredicate1D *)obj3)->up1D),
-                                  f) < 0) {
+                                  f) < 0)
+    {
       if (!PyErr_Occurred()) {
         PyErr_SetString(PyExc_RuntimeError, "Operators.recursive_split() failed");
       }
@@ -488,7 +504,7 @@ static PyObject *Operators_sort(BPy_Operators * /*self*/, PyObject *args, PyObje
 PyDoc_STRVAR(Operators_create_doc,
              ".. staticmethod:: create(pred, shaders)\n"
              "\n"
-             "   Creates and shades the strokes from the current set of chains.  A\n"
+             "   Creates and shades the strokes from the current set of chains. A\n"
              "   predicate can be specified to make a selection pass on the chains.\n"
              "\n"
              "   :arg pred: The predicate that a chain must verify in order to be\n"
@@ -502,14 +518,9 @@ static PyObject *Operators_create(BPy_Operators * /*self*/, PyObject *args, PyOb
   static const char *kwlist[] = {"pred", "shaders", nullptr};
   PyObject *obj1 = nullptr, *obj2 = nullptr;
 
-  if (!PyArg_ParseTupleAndKeywords(args,
-                                   kwds,
-                                   "O!O!",
-                                   (char **)kwlist,
-                                   &UnaryPredicate1D_Type,
-                                   &obj1,
-                                   &PyList_Type,
-                                   &obj2)) {
+  if (!PyArg_ParseTupleAndKeywords(
+          args, kwds, "O!O!", (char **)kwlist, &UnaryPredicate1D_Type, &obj1, &PyList_Type, &obj2))
+  {
     return nullptr;
   }
   if (!((BPy_UnaryPredicate1D *)obj1)->up1D) {
@@ -549,7 +560,7 @@ static PyObject *Operators_create(BPy_Operators * /*self*/, PyObject *args, PyOb
 PyDoc_STRVAR(Operators_reset_doc,
              ".. staticmethod:: reset(delete_strokes=True)\n"
              "\n"
-             "   Resets the line stylization process to the initial state.  The results of\n"
+             "   Resets the line stylization process to the initial state. The results of\n"
              "   stroke creation are accumulated if **delete_strokes** is set to False.\n"
              "\n"
              "   :arg delete_strokes: Delete the strokes that are currently stored.\n"
@@ -585,7 +596,7 @@ static PyObject *Operators_get_viewedge_from_index(BPy_Operators * /*self*/,
                                                    PyObject *kwds)
 {
   static const char *kwlist[] = {"i", nullptr};
-  unsigned int i;
+  uint i;
 
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "I", (char **)kwlist, &i)) {
     return nullptr;
@@ -612,7 +623,7 @@ static PyObject *Operators_get_chain_from_index(BPy_Operators * /*self*/,
                                                 PyObject *kwds)
 {
   static const char *kwlist[] = {"i", nullptr};
-  unsigned int i;
+  uint i;
 
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "I", (char **)kwlist, &i)) {
     return nullptr;
@@ -639,7 +650,7 @@ static PyObject *Operators_get_stroke_from_index(BPy_Operators * /*self*/,
                                                  PyObject *kwds)
 {
   static const char *kwlist[] = {"i", nullptr};
-  unsigned int i;
+  uint i;
 
   if (!PyArg_ParseTupleAndKeywords(args, kwds, "I", (char **)kwlist, &i)) {
     return nullptr;
@@ -754,43 +765,44 @@ static PyMethodDef BPy_Operators_methods[] = {
 /*-----------------------BPy_Operators type definition ------------------------------*/
 
 PyTypeObject Operators_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "Operators", /* tp_name */
-    sizeof(BPy_Operators),                         /* tp_basicsize */
-    0,                                             /* tp_itemsize */
-    (destructor)Operators_dealloc,                 /* tp_dealloc */
-    0,                                             /* tp_vectorcall_offset */
-    nullptr,                                       /* tp_getattr */
-    nullptr,                                       /* tp_setattr */
-    nullptr,                                       /* tp_reserved */
-    nullptr,                                       /* tp_repr */
-    nullptr,                                       /* tp_as_number */
-    nullptr,                                       /* tp_as_sequence */
-    nullptr,                                       /* tp_as_mapping */
-    nullptr,                                       /* tp_hash */
-    nullptr,                                       /* tp_call */
-    nullptr,                                       /* tp_str */
-    nullptr,                                       /* tp_getattro */
-    nullptr,                                       /* tp_setattro */
-    nullptr,                                       /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,                            /* tp_flags */
-    Operators_doc,                                 /* tp_doc */
-    nullptr,                                       /* tp_traverse */
-    nullptr,                                       /* tp_clear */
-    nullptr,                                       /* tp_richcompare */
-    0,                                             /* tp_weaklistoffset */
-    nullptr,                                       /* tp_iter */
-    nullptr,                                       /* tp_iternext */
-    BPy_Operators_methods,                         /* tp_methods */
-    nullptr,                                       /* tp_members */
-    nullptr,                                       /* tp_getset */
-    nullptr,                                       /* tp_base */
-    nullptr,                                       /* tp_dict */
-    nullptr,                                       /* tp_descr_get */
-    nullptr,                                       /* tp_descr_set */
-    0,                                             /* tp_dictoffset */
-    nullptr,                                       /* tp_init */
-    nullptr,                                       /* tp_alloc */
-    PyType_GenericNew,                             /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "Operators",
+    /*tp_basicsize*/ sizeof(BPy_Operators),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ (destructor)Operators_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
+    /*tp_doc*/ Operators_doc,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ BPy_Operators_methods,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ PyType_GenericNew,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

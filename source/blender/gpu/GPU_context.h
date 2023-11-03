@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -21,12 +22,38 @@ extern "C" {
  * automatically initializes the back-end, and #GPU_context_discard frees it when there
  * are no more contexts. */
 bool GPU_backend_supported(void);
+void GPU_backend_type_selection_set(const eGPUBackendType backend);
+eGPUBackendType GPU_backend_type_selection_get(void);
 eGPUBackendType GPU_backend_get_type(void);
+
+/**
+ * Detect the most suited eGPUBackendType.
+ *
+ * - The detected backend will be set in `GPU_backend_type_selection_set`.
+ * - When GPU_backend_type_selection_is_overridden it checks the overridden backend.
+ *   When not overridden it checks a default list.
+ * - OpenGL backend will be checked as fallback for Metal.
+ *
+ * Returns true when detection found a supported backend, otherwise returns false.
+ * When no supported backend is found GPU_backend_type_selection_set is called with
+ * GPU_BACKEND_NONE.
+ */
+bool GPU_backend_type_selection_detect(void);
+
+/**
+ * Alter the GPU_backend_type_selection_detect to only test a specific backend
+ */
+void GPU_backend_type_selection_set_override(eGPUBackendType backend_type);
+
+/**
+ * Check if the GPU_backend_type_selection_detect is overridden to only test a specific backend.
+ */
+bool GPU_backend_type_selection_is_overridden(void);
 
 /** Opaque type hiding blender::gpu::Context. */
 typedef struct GPUContext GPUContext;
 
-GPUContext *GPU_context_create(void *ghost_window);
+GPUContext *GPU_context_create(void *ghost_window, void *ghost_context);
 /**
  * To be called after #GPU_context_active_set(ctx_to_destroy).
  */

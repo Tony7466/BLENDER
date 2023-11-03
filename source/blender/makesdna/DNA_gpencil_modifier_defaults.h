@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -54,6 +56,9 @@
     .mode = 0, \
     .transition = 0, \
     .time_alignment = 0, \
+    .time_mode = 0, \
+    .speed_fac = 1.2f, \
+    .speed_maxgap = 0.5f, \
     .percentage_fac = 0.0f, \
   }
 
@@ -152,6 +157,9 @@
     .vgname = "", \
     .pass_index = 0, \
     .flag = 0, \
+    .stroke_step = 1, \
+    .mode = GP_OFFSET_RANDOM, \
+    .stroke_start_offset = 0, \
     .loc = {0.0f, 0.0f, 0.0f}, \
     .rot = {0.0f, 0.0f, 0.0f}, \
     .scale = {0.0f, 0.0f, 0.0f}, \
@@ -168,8 +176,21 @@
     .factor = 1.0f, \
     .modify_color = GP_MODIFY_COLOR_BOTH, \
     .layer_pass = 0, \
-    .hardeness = 1.0f, \
+    .hardness = 1.0f, \
     .curve_intensity = NULL, \
+  }
+
+#define _DNA_DEFAULT_OutlineGpencilModifierData \
+  { \
+    .material = NULL, \
+    .layername = "", \
+    .pass_index = 0, \
+    .flag = GP_OUTLINE_KEEP_SHAPE, \
+    .thickness = 1, \
+    .sample_length = 0.0f, \
+    .subdiv = 3, \
+    .layer_pass = 0, \
+    .outline_material = NULL, \
   }
 
 #define _DNA_DEFAULT_SimplifyGpencilModifierData \
@@ -249,6 +270,18 @@
     .mode = 0, \
     .sfra = 1, \
     .efra = 250, \
+    .segments = NULL, \
+    .segments_len = 1, \
+    .segment_active_index = 0, \
+  }
+
+  #define _DNA_DEFAULT_TimeGpencilModifierSegment \
+  { \
+    .name = "", \
+    .seg_start = 1, \
+    .seg_end = 2, \
+    .seg_mode = 0, \
+    .seg_repeat = 1, \
   }
 
 #define _DNA_DEFAULT_TintGpencilModifierData \
@@ -299,10 +332,10 @@
     .edge_types = LRT_EDGE_FLAG_INIT_TYPE, \
     .thickness = 25, \
     .opacity = 1.0f, \
-    .flags = LRT_GPENCIL_MATCH_OUTPUT_VGROUP, \
     .crease_threshold = DEG2RAD(140.0f), \
     .calculation_flags = LRT_ALLOW_DUPLI_OBJECTS | LRT_ALLOW_CLIPPING_BOUNDARIES | \
-                         LRT_USE_CREASE_ON_SHARP_EDGES | LRT_FILTER_FACE_MARK_KEEP_CONTOUR, \
+                         LRT_USE_CREASE_ON_SHARP_EDGES | LRT_FILTER_FACE_MARK_KEEP_CONTOUR | \
+                         LRT_GPENCIL_MATCH_OUTPUT_VGROUP, \
     /* Do not split by default, this is for better chaining quality. */ \
     .angle_splitting_threshold = 0.0f, \
     .chaining_image_threshold = 0.001f, \

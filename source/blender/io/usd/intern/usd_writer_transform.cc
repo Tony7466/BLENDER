@@ -1,12 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "usd_writer_transform.h"
 #include "usd_hierarchy_iterator.h"
 
 #include <pxr/base/gf/matrix4f.h>
 #include <pxr/usd/usdGeom/xform.h>
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "BLI_math_matrix.h"
 
@@ -14,9 +15,7 @@
 
 namespace blender::io::usd {
 
-USDTransformWriter::USDTransformWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
-{
-}
+USDTransformWriter::USDTransformWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx) {}
 
 void USDTransformWriter::do_write(HierarchyContext &context)
 {

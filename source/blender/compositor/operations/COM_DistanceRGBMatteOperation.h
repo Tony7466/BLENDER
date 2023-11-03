@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -13,7 +14,7 @@ namespace blender::compositor {
  */
 class DistanceRGBMatteOperation : public MultiThreadedOperation {
  protected:
-  NodeChroma *settings_;
+  const NodeChroma *settings_;
   SocketReader *input_image_program_;
   SocketReader *input_key_program_;
 
@@ -33,7 +34,7 @@ class DistanceRGBMatteOperation : public MultiThreadedOperation {
   void init_execution() override;
   void deinit_execution() override;
 
-  void set_settings(NodeChroma *node_chroma)
+  void set_settings(const NodeChroma *node_chroma)
   {
     settings_ = node_chroma;
   }

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -10,9 +12,11 @@
 
 struct ListBase;
 struct SpaceOutliner;
-struct TreeElement;
 
 namespace blender::ed::outliner {
+
+struct TreeElement;
+
 namespace tree_iterator {
 
 using VisitorFn = FunctionRef<void(TreeElement *)>;

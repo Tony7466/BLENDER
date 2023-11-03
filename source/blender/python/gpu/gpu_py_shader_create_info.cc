@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -15,6 +17,7 @@
 #include "intern/gpu_shader_create_info.hh"
 
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 
 #include "gpu_py_shader.h" /* own include */
 
@@ -35,9 +38,9 @@ using blender::gpu::shader::Qualifier;
     "      - ``READ``\n" \
     "      - ``WRITE``\n"
 static const struct PyC_FlagSet pygpu_qualifiers[] = {
-    {(int)Qualifier::NO_RESTRICT, "NO_RESTRICT"},
-    {(int)Qualifier::READ, "READ"},
-    {(int)Qualifier::WRITE, "WRITE"},
+    {int(Qualifier::NO_RESTRICT), "NO_RESTRICT"},
+    {int(Qualifier::READ), "READ"},
+    {int(Qualifier::WRITE), "WRITE"},
     {0, nullptr},
 };
 #endif
@@ -58,22 +61,22 @@ static const struct PyC_FlagSet pygpu_qualifiers[] = {
   "      - ``IVEC3``\n" \
   "      - ``IVEC4``\n" \
   "      - ``BOOL``\n"
-static const struct PyC_StringEnumItems pygpu_attrtype_items[] = {
-    {(int)Type::FLOAT, "FLOAT"},
-    {(int)Type::VEC2, "VEC2"},
-    {(int)Type::VEC3, "VEC3"},
-    {(int)Type::VEC4, "VEC4"},
-    {(int)Type::MAT3, "MAT3"},
-    {(int)Type::MAT4, "MAT4"},
-    {(int)Type::UINT, "UINT"},
-    {(int)Type::UVEC2, "UVEC2"},
-    {(int)Type::UVEC3, "UVEC3"},
-    {(int)Type::UVEC4, "UVEC4"},
-    {(int)Type::INT, "INT"},
-    {(int)Type::IVEC2, "IVEC2"},
-    {(int)Type::IVEC3, "IVEC3"},
-    {(int)Type::IVEC4, "IVEC4"},
-    {(int)Type::BOOL, "BOOL"},
+const PyC_StringEnumItems pygpu_attrtype_items[] = {
+    {int(Type::FLOAT), "FLOAT"},
+    {int(Type::VEC2), "VEC2"},
+    {int(Type::VEC3), "VEC3"},
+    {int(Type::VEC4), "VEC4"},
+    {int(Type::MAT3), "MAT3"},
+    {int(Type::MAT4), "MAT4"},
+    {int(Type::UINT), "UINT"},
+    {int(Type::UVEC2), "UVEC2"},
+    {int(Type::UVEC3), "UVEC3"},
+    {int(Type::UVEC4), "UVEC4"},
+    {int(Type::INT), "INT"},
+    {int(Type::IVEC2), "IVEC2"},
+    {int(Type::IVEC3), "IVEC3"},
+    {int(Type::IVEC4), "IVEC4"},
+    {int(Type::BOOL), "BOOL"},
     {0, nullptr},
 };
 
@@ -110,46 +113,46 @@ static const struct PyC_StringEnumItems pygpu_attrtype_items[] = {
   "      - ``DEPTH_2D_ARRAY``\n" \
   "      - ``DEPTH_CUBE``\n" \
   "      - ``DEPTH_CUBE_ARRAY``\n"
-static const struct PyC_StringEnumItems pygpu_imagetype_items[] = {
-    {(int)ImageType::FLOAT_BUFFER, "FLOAT_BUFFER"},
-    {(int)ImageType::FLOAT_1D, "FLOAT_1D"},
-    {(int)ImageType::FLOAT_1D_ARRAY, "FLOAT_1D_ARRAY"},
-    {(int)ImageType::FLOAT_2D, "FLOAT_2D"},
-    {(int)ImageType::FLOAT_2D_ARRAY, "FLOAT"},
-    {(int)ImageType::FLOAT_3D, "FLOAT_2D_ARRAY"},
-    {(int)ImageType::FLOAT_CUBE, "FLOAT_CUBE"},
-    {(int)ImageType::FLOAT_CUBE_ARRAY, "FLOAT_CUBE_ARRAY"},
-    {(int)ImageType::INT_BUFFER, "INT_BUFFER"},
-    {(int)ImageType::INT_1D, "INT_1D"},
-    {(int)ImageType::INT_1D_ARRAY, "INT_1D_ARRAY"},
-    {(int)ImageType::INT_2D, "INT_2D"},
-    {(int)ImageType::INT_2D_ARRAY, "INT_2D_ARRAY"},
-    {(int)ImageType::INT_3D, "INT_3D"},
-    {(int)ImageType::INT_CUBE, "INT_CUBE"},
-    {(int)ImageType::INT_CUBE_ARRAY, "INT_CUBE_ARRAY"},
-    {(int)ImageType::UINT_BUFFER, "UINT_BUFFER"},
-    {(int)ImageType::UINT_1D, "UINT_1D"},
-    {(int)ImageType::UINT_1D_ARRAY, "UINT_1D_ARRAY"},
-    {(int)ImageType::UINT_2D, "UINT_2D"},
-    {(int)ImageType::UINT_2D_ARRAY, "UINT_2D_ARRAY"},
-    {(int)ImageType::UINT_3D, "UINT_3D"},
-    {(int)ImageType::UINT_CUBE, "UINT_CUBE"},
-    {(int)ImageType::UINT_CUBE_ARRAY, "UINT_CUBE_ARRAY"},
-    {(int)ImageType::SHADOW_2D, "SHADOW_2D"},
-    {(int)ImageType::SHADOW_2D_ARRAY, "SHADOW_2D_ARRAY"},
-    {(int)ImageType::SHADOW_CUBE, "SHADOW_CUBE"},
-    {(int)ImageType::SHADOW_CUBE_ARRAY, "SHADOW_CUBE_ARRAY"},
-    {(int)ImageType::DEPTH_2D, "DEPTH_2D"},
-    {(int)ImageType::DEPTH_2D_ARRAY, "DEPTH_2D_ARRAY"},
-    {(int)ImageType::DEPTH_CUBE, "DEPTH_CUBE"},
-    {(int)ImageType::DEPTH_CUBE_ARRAY, "DEPTH_CUBE_ARRAY"},
+static const PyC_StringEnumItems pygpu_imagetype_items[] = {
+    {int(ImageType::FLOAT_BUFFER), "FLOAT_BUFFER"},
+    {int(ImageType::FLOAT_1D), "FLOAT_1D"},
+    {int(ImageType::FLOAT_1D_ARRAY), "FLOAT_1D_ARRAY"},
+    {int(ImageType::FLOAT_2D), "FLOAT_2D"},
+    {int(ImageType::FLOAT_2D_ARRAY), "FLOAT_2D_ARRAY"},
+    {int(ImageType::FLOAT_3D), "FLOAT_3D"},
+    {int(ImageType::FLOAT_CUBE), "FLOAT_CUBE"},
+    {int(ImageType::FLOAT_CUBE_ARRAY), "FLOAT_CUBE_ARRAY"},
+    {int(ImageType::INT_BUFFER), "INT_BUFFER"},
+    {int(ImageType::INT_1D), "INT_1D"},
+    {int(ImageType::INT_1D_ARRAY), "INT_1D_ARRAY"},
+    {int(ImageType::INT_2D), "INT_2D"},
+    {int(ImageType::INT_2D_ARRAY), "INT_2D_ARRAY"},
+    {int(ImageType::INT_3D), "INT_3D"},
+    {int(ImageType::INT_CUBE), "INT_CUBE"},
+    {int(ImageType::INT_CUBE_ARRAY), "INT_CUBE_ARRAY"},
+    {int(ImageType::UINT_BUFFER), "UINT_BUFFER"},
+    {int(ImageType::UINT_1D), "UINT_1D"},
+    {int(ImageType::UINT_1D_ARRAY), "UINT_1D_ARRAY"},
+    {int(ImageType::UINT_2D), "UINT_2D"},
+    {int(ImageType::UINT_2D_ARRAY), "UINT_2D_ARRAY"},
+    {int(ImageType::UINT_3D), "UINT_3D"},
+    {int(ImageType::UINT_CUBE), "UINT_CUBE"},
+    {int(ImageType::UINT_CUBE_ARRAY), "UINT_CUBE_ARRAY"},
+    {int(ImageType::SHADOW_2D), "SHADOW_2D"},
+    {int(ImageType::SHADOW_2D_ARRAY), "SHADOW_2D_ARRAY"},
+    {int(ImageType::SHADOW_CUBE), "SHADOW_CUBE"},
+    {int(ImageType::SHADOW_CUBE_ARRAY), "SHADOW_CUBE_ARRAY"},
+    {int(ImageType::DEPTH_2D), "DEPTH_2D"},
+    {int(ImageType::DEPTH_2D_ARRAY), "DEPTH_2D_ARRAY"},
+    {int(ImageType::DEPTH_CUBE), "DEPTH_CUBE"},
+    {int(ImageType::DEPTH_CUBE_ARRAY), "DEPTH_CUBE_ARRAY"},
     {0, nullptr},
 };
 
-static const struct PyC_StringEnumItems pygpu_dualblend_items[] = {
-    {(int)DualBlend::NONE, "NONE"},
-    {(int)DualBlend::SRC_0, "SRC_0"},
-    {(int)DualBlend::SRC_1, "SRC_1"},
+static const PyC_StringEnumItems pygpu_dualblend_items[] = {
+    {int(DualBlend::NONE), "NONE"},
+    {int(DualBlend::SRC_0), "SRC_0"},
+    {int(DualBlend::SRC_1), "SRC_1"},
     {0, nullptr},
 };
 
@@ -163,7 +166,7 @@ static bool pygpu_interface_info_get_args(BPyGPUStageInterfaceInfo *self,
                                           Type *r_type,
                                           const char **r_name)
 {
-  struct PyC_StringEnum pygpu_type = {pygpu_attrtype_items};
+  PyC_StringEnum pygpu_type = {pygpu_attrtype_items};
   PyObject *py_name;
 
   if (!PyArg_ParseTuple(args, format, PyC_ParseStringEnum, &pygpu_type, &py_name)) {
@@ -189,11 +192,11 @@ PyDoc_STRVAR(pygpu_interface_info_smooth_doc,
              "\n"
              "   Add an attribute with qualifier of type `smooth` to the interface block.\n"
              "\n"
-             "   :param type: One of these types:\n"
+             "   :arg type: One of these types:\n"
              "\n" PYDOC_TYPE_LIST
              "\n"
              "   :type type: str\n"
-             "   :param name: name of the attribute.\n"
+             "   :arg name: name of the attribute.\n"
              "   :type name: str\n");
 static PyObject *pygpu_interface_info_smooth(BPyGPUStageInterfaceInfo *self, PyObject *args)
 {
@@ -213,11 +216,11 @@ PyDoc_STRVAR(pygpu_interface_info_flat_doc,
              "\n"
              "   Add an attribute with qualifier of type `flat` to the interface block.\n"
              "\n"
-             "   :param type: One of these types:\n"
+             "   :arg type: One of these types:\n"
              "\n" PYDOC_TYPE_LIST
              "\n"
              "   :type type: str\n"
-             "   :param name: name of the attribute.\n"
+             "   :arg name: name of the attribute.\n"
              "   :type name: str\n");
 static PyObject *pygpu_interface_info_flat(BPyGPUStageInterfaceInfo *self, PyObject *args)
 {
@@ -238,11 +241,11 @@ PyDoc_STRVAR(
     "\n"
     "   Add an attribute with qualifier of type `no_perspective` to the interface block.\n"
     "\n"
-    "   :param type: One of these types:\n"
+    "   :arg type: One of these types:\n"
     "\n" PYDOC_TYPE_LIST
     "\n"
     "   :type type: str\n"
-    "   :param name: name of the attribute.\n"
+    "   :arg name: name of the attribute.\n"
     "   :type name: str\n");
 static PyObject *pygpu_interface_info_no_perspective(BPyGPUStageInterfaceInfo *self,
                                                      PyObject *args)
@@ -258,7 +261,7 @@ static PyObject *pygpu_interface_info_no_perspective(BPyGPUStageInterfaceInfo *s
   Py_RETURN_NONE;
 }
 
-static struct PyMethodDef pygpu_interface_info__tp_methods[] = {
+static PyMethodDef pygpu_interface_info__tp_methods[] = {
     {"smooth",
      (PyCFunction)pygpu_interface_info_smooth,
      METH_VARARGS,
@@ -281,8 +284,7 @@ PyDoc_STRVAR(pygpu_interface_info_name_doc,
              "Name of the interface block.\n"
              "\n"
              ":type: str");
-static PyObject *pygpu_interface_info_name_get(BPyGPUStageInterfaceInfo *self,
-                                               void *UNUSED(closure))
+static PyObject *pygpu_interface_info_name_get(BPyGPUStageInterfaceInfo *self, void * /*closure*/)
 {
   StageInterfaceInfo *interface = reinterpret_cast<StageInterfaceInfo *>(self->interface);
   return PyUnicode_FromString(interface->name.c_str());
@@ -303,7 +305,7 @@ static PyGetSetDef pygpu_interface_info__tp_getseters[] = {
 /** \name GPUStageInterfaceInfo Type
  * \{ */
 
-static PyObject *pygpu_interface_info__tp_new(PyTypeObject *UNUSED(type),
+static PyObject *pygpu_interface_info__tp_new(PyTypeObject * /*type*/,
                                               PyObject *args,
                                               PyObject *kwds)
 {
@@ -320,7 +322,7 @@ static PyObject *pygpu_interface_info__tp_new(PyTypeObject *UNUSED(type),
   StageInterfaceInfo *interface = new StageInterfaceInfo(name, "");
   GPUStageInterfaceInfo *interface_info = reinterpret_cast<GPUStageInterfaceInfo *>(interface);
 
-  auto *self = BPyGPUStageInterfaceInfo_CreatePyObject(interface_info);
+  PyObject *self = BPyGPUStageInterfaceInfo_CreatePyObject(interface_info);
 
 #ifdef USE_GPU_PY_REFERENCES
   PyObject *py_name = PyTuple_GET_ITEM(args, 0);
@@ -370,27 +372,71 @@ PyDoc_STRVAR(pygpu_interface_info__tp_doc,
              "\n"
              "   List of varyings between shader stages.\n\n"
              "\n"
-             "   :param name: Name of the interface block.\n"
+             "   :arg name: Name of the interface block.\n"
              "   :type value: str\n");
-constexpr PyTypeObject pygpu_interface_info_type()
-{
-  PyTypeObject pytype = {PyVarObject_HEAD_INIT(nullptr, 0)};
-  pytype.tp_name = "GPUStageInterfaceInfo";
-  pytype.tp_basicsize = sizeof(BPyGPUStageInterfaceInfo);
-  pytype.tp_dealloc = pygpu_interface_info__tp_dealloc;
-  pytype.tp_doc = pygpu_interface_info__tp_doc;
+PyTypeObject BPyGPUStageInterfaceInfo_Type = {
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "GPUStageInterfaceInfo",
+    /*tp_basicsize*/ sizeof(BPyGPUStageInterfaceInfo),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ pygpu_interface_info__tp_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_compare*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
 #ifdef USE_GPU_PY_REFERENCES
-  pytype.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC;
-  pytype.tp_traverse = pygpu_interface_info__tp_traverse;
-  pytype.tp_clear = pygpu_interface_info__tp_clear;
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
 #else
-  pytype.tp_flags = Py_TPFLAGS_DEFAULT,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
 #endif
-  pytype.tp_methods = pygpu_interface_info__tp_methods;
-  pytype.tp_getset = pygpu_interface_info__tp_getseters;
-  pytype.tp_new = pygpu_interface_info__tp_new;
-  return pytype;
-}
+    /*tp_doc*/ pygpu_interface_info__tp_doc,
+#ifdef USE_GPU_PY_REFERENCES
+    /*tp_traverse*/ pygpu_interface_info__tp_traverse,
+#else
+    /*tp_traverse*/ nullptr,
+#endif
+#ifdef USE_GPU_PY_REFERENCES
+    /*tp_clear*/ pygpu_interface_info__tp_clear,
+#else
+    /*tp_clear*/ nullptr,
+#endif
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ pygpu_interface_info__tp_methods,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ pygpu_interface_info__tp_getseters,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ pygpu_interface_info__tp_new,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
+    /*tp_version_tag*/ 0,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
+};
 
 /** \} */
 
@@ -403,18 +449,18 @@ PyDoc_STRVAR(pygpu_shader_info_vertex_in_doc,
              "\n"
              "   Add a vertex shader input attribute.\n"
              "\n"
-             "   :param slot: The attribute index.\n"
+             "   :arg slot: The attribute index.\n"
              "   :type slot: int\n"
-             "   :param type: One of these types:\n"
+             "   :arg type: One of these types:\n"
              "\n" PYDOC_TYPE_LIST
              "\n"
              "   :type type: str\n"
-             "   :param name: name of the attribute.\n"
+             "   :arg name: name of the attribute.\n"
              "   :type name: str\n");
 static PyObject *pygpu_shader_info_vertex_in(BPyGPUShaderCreateInfo *self, PyObject *args)
 {
   int slot;
-  struct PyC_StringEnum pygpu_type = {pygpu_attrtype_items};
+  PyC_StringEnum pygpu_type = {pygpu_attrtype_items};
   const char *param;
 
   if (!PyArg_ParseTuple(args, "iO&s:vertex_in", &slot, PyC_ParseStringEnum, &pygpu_type, &param)) {
@@ -436,7 +482,7 @@ PyDoc_STRVAR(pygpu_shader_info_vertex_out_doc,
              "\n"
              "   Add a vertex shader output interface block.\n"
              "\n"
-             "   :param interface: Object describing the block.\n"
+             "   :arg interface: Object describing the block.\n"
              "   :type interface: :class:`gpu.types.GPUStageInterfaceInfo`\n");
 static PyObject *pygpu_shader_info_vertex_out(BPyGPUShaderCreateInfo *self,
                                               BPyGPUStageInterfaceInfo *o)
@@ -462,27 +508,28 @@ PyDoc_STRVAR(pygpu_shader_info_fragment_out_doc,
              "\n"
              "   Specify a fragment output corresponding to a framebuffer target slot.\n"
              "\n"
-             "   :param slot: The attribute index.\n"
+             "   :arg slot: The attribute index.\n"
              "   :type slot: int\n"
-             "   :param type: One of these types:\n"
+             "   :arg type: One of these types:\n"
              "\n" PYDOC_TYPE_LIST
              "\n"
              "   :type type: str\n"
-             "   :param name: Name of the attribute.\n"
+             "   :arg name: Name of the attribute.\n"
              "   :type name: str\n"
-             "   :param blend: Dual Source Blending Index. It can be 'NONE', 'SRC_0' or 'SRC_1'.\n"
+             "   :arg blend: Dual Source Blending Index. It can be 'NONE', 'SRC_0' or 'SRC_1'.\n"
              "   :type blend: str\n");
 static PyObject *pygpu_shader_info_fragment_out(BPyGPUShaderCreateInfo *self,
                                                 PyObject *args,
                                                 PyObject *kwds)
 {
   int slot;
-  struct PyC_StringEnum pygpu_type = {pygpu_attrtype_items};
+  PyC_StringEnum pygpu_type = {pygpu_attrtype_items};
   const char *name;
-  struct PyC_StringEnum blend_type = {pygpu_dualblend_items, (int)DualBlend::NONE};
+  PyC_StringEnum blend_type = {pygpu_dualblend_items, int(DualBlend::NONE)};
 
   static const char *_keywords[] = {"slot", "type", "name", "blend", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "i"  /* `slot` */
       "O&" /* `type` */
       "s"  /* `name` */
@@ -500,7 +547,8 @@ static PyObject *pygpu_shader_info_fragment_out(BPyGPUShaderCreateInfo *self,
                                         &pygpu_type,
                                         &name,
                                         PyC_ParseStringEnum,
-                                        &blend_type)) {
+                                        &blend_type))
+  {
     return nullptr;
   }
 
@@ -521,12 +569,12 @@ PyDoc_STRVAR(
     "\n"
     "   Specify a uniform variable whose type can be one of those declared in `typedef_source`.\n"
     "\n"
-    "   :param slot: The uniform variable index.\n"
+    "   :arg slot: The uniform variable index.\n"
     "   :type slot: int\n"
-    "   :param type_name: Name of the data type. It can be a struct type defined in the source "
+    "   :arg type_name: Name of the data type. It can be a struct type defined in the source "
     "passed through the :meth:`gpu.types.GPUShaderCreateInfo.typedef_source`.\n"
     "   :type type_name: str\n"
-    "   :param name: The uniform variable name.\n"
+    "   :arg name: The uniform variable name.\n"
     "   :type name: str\n");
 static PyObject *pygpu_shader_info_uniform_buf(BPyGPUShaderCreateInfo *self, PyObject *args)
 {
@@ -556,19 +604,19 @@ PyDoc_STRVAR(
     "\n"
     "   Specify an image resource used for arbitrary load and store operations.\n"
     "\n"
-    "   :param slot: The image resource index.\n"
+    "   :arg slot: The image resource index.\n"
     "   :type slot: int\n"
-    "   :param format: The GPUTexture format that is passed to the shader. Possible values are:\n"
+    "   :arg format: The GPUTexture format that is passed to the shader. Possible values are:\n"
     "" PYDOC_TEX_FORMAT_ITEMS
     "   :type format: str\n"
-    "   :param type: The data type describing how the image is to be read in the shader. "
+    "   :arg type: The data type describing how the image is to be read in the shader. "
     "Possible values are:\n"
     "\n" PYDOC_IMAGE_TYPES
     "\n"
     "   :type type: str\n"
-    "   :param name: The image resource name.\n"
+    "   :arg name: The image resource name.\n"
     "   :type name: str\n"
-    "   :param qualifiers: Set containing values that describe how the image resource is to be "
+    "   :arg qualifiers: Set containing values that describe how the image resource is to be "
     "read or written. Possible values are:\n"
     "" PYDOC_QUALIFIERS
     ""
@@ -586,6 +634,7 @@ static PyObject *pygpu_shader_info_image(BPyGPUShaderCreateInfo *self,
 
   static const char *_keywords[] = {"slot", "format", "type", "name", "qualifiers", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "i"  /* `slot` */
       "O&" /* `format` */
       "O&" /* `type` */
@@ -605,13 +654,15 @@ static PyObject *pygpu_shader_info_image(BPyGPUShaderCreateInfo *self,
                                         PyC_ParseStringEnum,
                                         &pygpu_imagetype,
                                         &name,
-                                        &py_qualifiers)) {
+                                        &py_qualifiers))
+  {
     return nullptr;
   }
 
   if (py_qualifiers &&
       PyC_FlagSet_ToBitfield(
-          pygpu_qualifiers, py_qualifiers, (int *)&qualifier, "shader_info.image") == -1) {
+          pygpu_qualifiers, py_qualifiers, (int *)&qualifier, "shader_info.image") == -1)
+  {
     return nullptr;
   }
 
@@ -636,19 +687,19 @@ PyDoc_STRVAR(
     "\n"
     "   Specify an image texture sampler.\n"
     "\n"
-    "   :param slot: The image texture sampler index.\n"
+    "   :arg slot: The image texture sampler index.\n"
     "   :type slot: int\n"
-    "   :param type: The data type describing the format of each sampler unit. Possible values "
+    "   :arg type: The data type describing the format of each sampler unit. Possible values "
     "are:\n"
     "\n" PYDOC_IMAGE_TYPES
     "\n"
     "   :type type: str\n"
-    "   :param name: The image texture sampler name.\n"
+    "   :arg name: The image texture sampler name.\n"
     "   :type name: str\n");
 static PyObject *pygpu_shader_info_sampler(BPyGPUShaderCreateInfo *self, PyObject *args)
 {
   int slot;
-  struct PyC_StringEnum pygpu_samplertype = {pygpu_imagetype_items};
+  PyC_StringEnum pygpu_samplertype = {pygpu_imagetype_items};
   const char *name;
 
   if (!PyArg_ParseTuple(
@@ -673,11 +724,22 @@ static int constant_type_size(Type type)
     case Type::FLOAT:
     case Type::INT:
     case Type::UINT:
+    case Type::UCHAR4:
+    case Type::CHAR4:
+    case Type::VEC3_101010I2:
+    case Type::USHORT2:
+    case Type::SHORT2:
       return 4;
+      break;
+    case Type::USHORT3:
+    case Type::SHORT3:
+      return 6;
       break;
     case Type::VEC2:
     case Type::UVEC2:
     case Type::IVEC2:
+    case Type::USHORT4:
+    case Type::SHORT4:
       return 8;
       break;
     case Type::VEC3:
@@ -694,6 +756,20 @@ static int constant_type_size(Type type)
       return 36 + 3 * 4;
     case Type::MAT4:
       return 64;
+      break;
+    case Type::UCHAR:
+    case Type::CHAR:
+      return 1;
+      break;
+    case Type::UCHAR2:
+    case Type::CHAR2:
+    case Type::USHORT:
+    case Type::SHORT:
+      return 2;
+      break;
+    case Type::UCHAR3:
+    case Type::CHAR3:
+      return 3;
       break;
   }
   BLI_assert(false);
@@ -733,25 +809,26 @@ PyDoc_STRVAR(pygpu_shader_info_push_constant_doc,
              "\n"
              "   Specify a global access constant.\n"
              "\n"
-             "   :param type: One of these types:\n"
+             "   :arg type: One of these types:\n"
              "\n" PYDOC_TYPE_LIST
              "\n"
              "   :type type: str\n"
-             "   :param name: Name of the constant.\n"
+             "   :arg name: Name of the constant.\n"
              "   :type name: str\n"
-             "   :param size: If not zero, indicates that the constant is an array with the "
+             "   :arg size: If not zero, indicates that the constant is an array with the "
              "specified size.\n"
              "   :type size: uint\n");
 static PyObject *pygpu_shader_info_push_constant(BPyGPUShaderCreateInfo *self,
                                                  PyObject *args,
                                                  PyObject *kwds)
 {
-  struct PyC_StringEnum pygpu_type = {pygpu_attrtype_items};
+  PyC_StringEnum pygpu_type = {pygpu_attrtype_items};
   const char *name = nullptr;
   int array_size = 0;
 
   static const char *_keywords[] = {"type", "name", "size", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `type` */
       "s"  /* `name` */
       "|"  /* Optional arguments. */
@@ -761,7 +838,8 @@ static PyObject *pygpu_shader_info_push_constant(BPyGPUShaderCreateInfo *self,
       nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, kwds, &_parser, PyC_ParseStringEnum, &pygpu_type, &name, &array_size)) {
+          args, kwds, &_parser, PyC_ParseStringEnum, &pygpu_type, &name, &array_size))
+  {
     return nullptr;
   }
 
@@ -776,9 +854,7 @@ static PyObject *pygpu_shader_info_push_constant(BPyGPUShaderCreateInfo *self,
 #define VULKAN_LIMIT 128
   int size = constants_calc_size(info);
   if (size > VULKAN_LIMIT) {
-    printf("Push constants have a minimum supported size of "
-    STRINGIFY(VULKAN_LIMIT)
-    " bytes, however the constants added so far already reach %d bytes. Consider using UBO.\n", size);
+    printf("Push constants have a minimum supported size of " STRINGIFY(VULKAN_LIMIT) " bytes, however the constants added so far already reach %d bytes. Consider using UBO.\n", size);
   }
 #undef VULKAN_LIMIT
 
@@ -797,7 +873,7 @@ PyDoc_STRVAR(
     "\n"
     "      \"void main {gl_Position = vec4(pos, 1.0);}\"\n"
     "\n"
-    "   :param source: The vertex shader source code.\n"
+    "   :arg source: The vertex shader source code.\n"
     "   :type source: str\n"
     "\n"
     "   .. seealso:: `GLSL Cross Compilation "
@@ -838,7 +914,7 @@ PyDoc_STRVAR(
     "\n"
     "      \"void main {fragColor = vec4(0.0, 0.0, 0.0, 1.0);}\"\n"
     "\n"
-    "   :param source: The fragment shader source code.\n"
+    "   :arg source: The fragment shader source code.\n"
     "   :type source: str\n"
     "\n"
     "   .. seealso:: `GLSL Cross Compilation "
@@ -879,7 +955,7 @@ PyDoc_STRVAR(pygpu_shader_info_typedef_source_doc,
              "\n"
              "   \"struct MyType {int foo; float bar;};\"\n"
              "\n"
-             "   :param source: The source code defining types.\n"
+             "   :arg source: The source code defining types.\n"
              "   :type source: str\n");
 static PyObject *pygpu_shader_info_typedef_source(BPyGPUShaderCreateInfo *self, PyObject *o)
 {
@@ -918,9 +994,9 @@ PyDoc_STRVAR(pygpu_shader_info_define_doc,
              "\n"
              "   #define name value\n"
              "\n"
-             "   :param name: Token name.\n"
+             "   :arg name: Token name.\n"
              "   :type name: str\n"
-             "   :param value: Text that replaces token occurrences.\n"
+             "   :arg value: Text that replaces token occurrences.\n"
              "   :type value: str\n");
 static PyObject *pygpu_shader_info_define(BPyGPUShaderCreateInfo *self, PyObject *args)
 {
@@ -949,7 +1025,7 @@ static PyObject *pygpu_shader_info_define(BPyGPUShaderCreateInfo *self, PyObject
   Py_RETURN_NONE;
 }
 
-static struct PyMethodDef pygpu_shader_info__tp_methods[] = {
+static PyMethodDef pygpu_shader_info__tp_methods[] = {
     {"vertex_in",
      (PyCFunction)pygpu_shader_info_vertex_in,
      METH_VARARGS,
@@ -999,12 +1075,10 @@ static struct PyMethodDef pygpu_shader_info__tp_methods[] = {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name GPUShaderCreateInfo Init
+/** \name GPUShaderCreateInfo Initialization
  * \{ */
 
-static PyObject *pygpu_shader_info__tp_new(PyTypeObject *UNUSED(type),
-                                           PyObject *args,
-                                           PyObject *kwds)
+static PyObject *pygpu_shader_info__tp_new(PyTypeObject * /*type*/, PyObject *args, PyObject *kwds)
 {
   if (PyTuple_Size(args) || kwds) {
     PyErr_SetString(PyExc_TypeError, "no args or keywords are expected");
@@ -1062,33 +1136,76 @@ PyDoc_STRVAR(pygpu_shader_info__tp_doc,
              ".. class:: GPUShaderCreateInfo()\n"
              "\n"
              "   Stores and describes types and variables that are used in shader sources.\n");
-constexpr PyTypeObject pygpu_shader_info_type()
-{
-  PyTypeObject pytype = {PyVarObject_HEAD_INIT(nullptr, 0)};
-  pytype.tp_name = "GPUShaderCreateInfo";
-  pytype.tp_basicsize = sizeof(BPyGPUShaderCreateInfo);
-  pytype.tp_dealloc = pygpu_shader_info__tp_dealloc;
-  pytype.tp_doc = pygpu_shader_info__tp_doc;
+
+PyTypeObject BPyGPUShaderCreateInfo_Type = {
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "GPUShaderCreateInfo",
+    /*tp_basicsize*/ sizeof(BPyGPUShaderCreateInfo),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ pygpu_shader_info__tp_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_compare*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
 #ifdef USE_GPU_PY_REFERENCES
-  pytype.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC;
-  pytype.tp_traverse = pygpu_shader_info__tp_traverse;
-  pytype.tp_clear = pygpu_shader_info__tp_clear;
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
 #else
-  pytype.tp_flags = Py_TPFLAGS_DEFAULT,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
 #endif
-  pytype.tp_methods = pygpu_shader_info__tp_methods;
-  pytype.tp_new = pygpu_shader_info__tp_new;
-  return pytype;
-}
+    /*tp_doc*/ pygpu_shader_info__tp_doc,
+#ifdef USE_GPU_PY_REFERENCES
+    /*tp_traverse*/ pygpu_shader_info__tp_traverse,
+#else
+    /*tp_traverse*/ nullptr,
+#endif
+#ifdef USE_GPU_PY_REFERENCES
+    /*tp_clear*/ pygpu_shader_info__tp_clear,
+#else
+    /*tp_clear*/ nullptr,
+#endif
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ pygpu_shader_info__tp_methods,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ pygpu_shader_info__tp_new,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
+    /*tp_version_tag*/ 0,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
+};
 
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Public API
  * \{ */
-
-PyTypeObject BPyGPUStageInterfaceInfo_Type = pygpu_interface_info_type();
-PyTypeObject BPyGPUShaderCreateInfo_Type = pygpu_shader_info_type();
 
 PyObject *BPyGPUStageInterfaceInfo_CreatePyObject(GPUStageInterfaceInfo *interface)
 {

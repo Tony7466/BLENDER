@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -37,7 +39,7 @@ static char LocalAverageDepthF1D___doc__[] =
     "\n"
     ".. method:: __call__(inter)\n"
     "\n"
-    "   Returns the average depth evaluated for an Interface1D.  The average\n"
+    "   Returns the average depth evaluated for an Interface1D. The average\n"
     "   depth is evaluated for a set of points along the Interface1D (using\n"
     "   the :class:`freestyle.functions.LocalAverageDepthF0D` functor) with a\n"
     "   user-defined sampling and then integrated into a single value using a\n"
@@ -57,7 +59,8 @@ static int LocalAverageDepthF1D___init__(BPy_LocalAverageDepthF1D *self,
   double d;
 
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwds, "d|O!", (char **)kwlist, &d, &IntegrationType_Type, &obj)) {
+          args, kwds, "d|O!", (char **)kwlist, &d, &IntegrationType_Type, &obj))
+  {
     return -1;
   }
   IntegrationType t = (obj) ? IntegrationType_from_BPy_IntegrationType(obj) : MEAN;
@@ -68,43 +71,44 @@ static int LocalAverageDepthF1D___init__(BPy_LocalAverageDepthF1D *self,
 /*-----------------------BPy_LocalAverageDepthF1D type definition ------------------------------*/
 
 PyTypeObject LocalAverageDepthF1D_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "LocalAverageDepthF1D", /* tp_name */
-    sizeof(BPy_LocalAverageDepthF1D),                         /* tp_basicsize */
-    0,                                                        /* tp_itemsize */
-    nullptr,                                                  /* tp_dealloc */
-    0,                                                        /* tp_vectorcall_offset */
-    nullptr,                                                  /* tp_getattr */
-    nullptr,                                                  /* tp_setattr */
-    nullptr,                                                  /* tp_reserved */
-    nullptr,                                                  /* tp_repr */
-    nullptr,                                                  /* tp_as_number */
-    nullptr,                                                  /* tp_as_sequence */
-    nullptr,                                                  /* tp_as_mapping */
-    nullptr,                                                  /* tp_hash */
-    nullptr,                                                  /* tp_call */
-    nullptr,                                                  /* tp_str */
-    nullptr,                                                  /* tp_getattro */
-    nullptr,                                                  /* tp_setattro */
-    nullptr,                                                  /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,                 /* tp_flags */
-    LocalAverageDepthF1D___doc__,                             /* tp_doc */
-    nullptr,                                                  /* tp_traverse */
-    nullptr,                                                  /* tp_clear */
-    nullptr,                                                  /* tp_richcompare */
-    0,                                                        /* tp_weaklistoffset */
-    nullptr,                                                  /* tp_iter */
-    nullptr,                                                  /* tp_iternext */
-    nullptr,                                                  /* tp_methods */
-    nullptr,                                                  /* tp_members */
-    nullptr,                                                  /* tp_getset */
-    &UnaryFunction1DDouble_Type,                              /* tp_base */
-    nullptr,                                                  /* tp_dict */
-    nullptr,                                                  /* tp_descr_get */
-    nullptr,                                                  /* tp_descr_set */
-    0,                                                        /* tp_dictoffset */
-    (initproc)LocalAverageDepthF1D___init__,                  /* tp_init */
-    nullptr,                                                  /* tp_alloc */
-    nullptr,                                                  /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "LocalAverageDepthF1D",
+    /*tp_basicsize*/ sizeof(BPy_LocalAverageDepthF1D),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ nullptr,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ LocalAverageDepthF1D___doc__,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ &UnaryFunction1DDouble_Type,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)LocalAverageDepthF1D___init__,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

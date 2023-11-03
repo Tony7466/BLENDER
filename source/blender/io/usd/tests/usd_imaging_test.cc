@@ -1,8 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "testing/testing.h"
-
-#include "usd_tests_common.h"
 
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/capsule.h>
@@ -20,13 +19,6 @@ TEST_F(USDImagingTest, CapsuleAdapterTest)
    * We create a capsule shape on an in-memory stage and attempt
    * to access the shape's points and topology. */
 
-  /* We must register USD plugin paths before creating the stage
-   * to avoid a crash in the USD asset resolver initialization code. */
-  if (register_usd_plugins_for_tests().empty()) {
-    FAIL();
-    return;
-  }
-
   pxr::UsdStageRefPtr stage = pxr::UsdStage::CreateInMemory();
 
   if (!stage) {
@@ -42,8 +34,8 @@ TEST_F(USDImagingTest, CapsuleAdapterTest)
   }
 
   pxr::UsdImagingCapsuleAdapter capsule_adapter;
-  pxr::VtValue points_value = pxr::UsdImagingCapsuleAdapter::GetMeshPoints(
-      capsule.GetPrim(), pxr::UsdTimeCode::Default());
+  pxr::VtValue points_value = capsule_adapter.GetPoints(capsule.GetPrim(),
+                                                        pxr::UsdTimeCode::Default());
   if (!points_value.IsHolding<pxr::VtArray<pxr::GfVec3f>>()) {
     FAIL() << "Mesh points value holding unexpected type.";
     return;
@@ -52,7 +44,8 @@ TEST_F(USDImagingTest, CapsuleAdapterTest)
   pxr::VtArray<pxr::GfVec3f> points = points_value.Get<pxr::VtArray<pxr::GfVec3f>>();
   EXPECT_FALSE(points.empty());
 
-  pxr::VtValue topology_value = pxr::UsdImagingCapsuleAdapter::GetMeshTopology();
+  pxr::VtValue topology_value = capsule_adapter.GetTopology(
+      capsule.GetPrim(), pxr::SdfPath(), pxr::UsdTimeCode::Default());
 
   if (!topology_value.IsHolding<pxr::HdMeshTopology>()) {
     FAIL() << "Mesh topology value holding unexpected type.";

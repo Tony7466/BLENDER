@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_task.hh"
 
@@ -10,11 +12,13 @@ namespace blender::nodes::node_geo_input_tangent_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Vector>(N_("Tangent")).field_source();
+  b.add_output<decl::Vector>("Tangent").field_source();
 }
 
 static Array<float3> curve_tangent_point_domain(const bke::CurvesGeometry &curves)
 {
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  const OffsetIndices evaluated_points_by_curve = curves.evaluated_points_by_curve();
   const VArray<int8_t> types = curves.curve_types();
   const VArray<int> resolutions = curves.resolution();
   const VArray<bool> cyclic = curves.cyclic();
@@ -26,8 +30,8 @@ static Array<float3> curve_tangent_point_domain(const bke::CurvesGeometry &curve
 
   threading::parallel_for(curves.curves_range(), 128, [&](IndexRange range) {
     for (const int i_curve : range) {
-      const IndexRange points = curves.points_for_curve(i_curve);
-      const IndexRange evaluated_points = curves.evaluated_points_for_curve(i_curve);
+      const IndexRange points = points_by_curve[i_curve];
+      const IndexRange evaluated_points = evaluated_points_by_curve[i_curve];
 
       MutableSpan<float3> curve_tangents = results.as_mutable_span().slice(points);
 
@@ -48,7 +52,7 @@ static Array<float3> curve_tangent_point_domain(const bke::CurvesGeometry &curve
           curve_tangents.first() = tangents.first();
           const Span<int> offsets = curves.bezier_evaluated_offsets_for_curve(i_curve);
           for (const int i : IndexRange(points.size()).drop_front(1)) {
-            curve_tangents[i] = tangents[offsets[i - 1]];
+            curve_tangents[i] = tangents[offsets[i]];
           }
           break;
         }
@@ -63,19 +67,12 @@ static Array<float3> curve_tangent_point_domain(const bke::CurvesGeometry &curve
   return results;
 }
 
-static VArray<float3> construct_curve_tangent_gvarray(const CurveComponent &component,
+static VArray<float3> construct_curve_tangent_gvarray(const bke::CurvesGeometry &curves,
                                                       const eAttrDomain domain)
 {
-  if (!component.has_curves()) {
-    return {};
-  }
-
-  const Curves &curves_id = *component.get_for_read();
-  const bke::CurvesGeometry &curves = bke::CurvesGeometry::wrap(curves_id.geometry);
-
   const VArray<int8_t> types = curves.curve_types();
   if (curves.is_single_type(CURVE_TYPE_POLY)) {
-    return component.attributes()->adapt_domain<float3>(
+    return curves.adapt_domain<float3>(
         VArray<float3>::ForSpan(curves.evaluated_tangents()), ATTR_DOMAIN_POINT, domain);
   }
 
@@ -86,29 +83,25 @@ static VArray<float3> construct_curve_tangent_gvarray(const CurveComponent &comp
   }
 
   if (domain == ATTR_DOMAIN_CURVE) {
-    return component.attributes()->adapt_domain<float3>(
+    return curves.adapt_domain<float3>(
         VArray<float3>::ForContainer(std::move(tangents)), ATTR_DOMAIN_POINT, ATTR_DOMAIN_CURVE);
   }
 
   return nullptr;
 }
 
-class TangentFieldInput final : public GeometryFieldInput {
+class TangentFieldInput final : public bke::CurvesFieldInput {
  public:
-  TangentFieldInput() : GeometryFieldInput(CPPType::get<float3>(), "Tangent node")
+  TangentFieldInput() : bke::CurvesFieldInput(CPPType::get<float3>(), "Tangent node")
   {
     category_ = Category::Generated;
   }
 
-  GVArray get_varray_for_context(const GeometryComponent &component,
+  GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
                                  const eAttrDomain domain,
-                                 IndexMask UNUSED(mask)) const final
+                                 const IndexMask & /*mask*/) const final
   {
-    if (component.type() == GEO_COMPONENT_TYPE_CURVE) {
-      const CurveComponent &curve_component = static_cast<const CurveComponent &>(component);
-      return construct_curve_tangent_gvarray(curve_component, domain);
-    }
-    return {};
+    return construct_curve_tangent_gvarray(curves, domain);
   }
 
   uint64_t hash() const override
@@ -121,6 +114,11 @@ class TangentFieldInput final : public GeometryFieldInput {
   {
     return dynamic_cast<const TangentFieldInput *>(&other) != nullptr;
   }
+
+  std::optional<eAttrDomain> preferred_domain(const bke::CurvesGeometry & /*curves*/) const final
+  {
+    return ATTR_DOMAIN_POINT;
+  }
 };
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -129,16 +127,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Tangent", std::move(tangent_field));
 }
 
-}  // namespace blender::nodes::node_geo_input_tangent_cc
-
-void register_node_type_geo_input_tangent()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_input_tangent_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_INPUT_TANGENT, "Curve Tangent", NODE_CLASS_INPUT);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_input_tangent_cc

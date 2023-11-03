@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -40,12 +41,12 @@ typedef enum GPUAttachmentType : int {
 
 inline constexpr GPUAttachmentType operator-(GPUAttachmentType a, int b)
 {
-  return static_cast<GPUAttachmentType>(static_cast<int>(a) - b);
+  return static_cast<GPUAttachmentType>(int(a) - b);
 }
 
 inline constexpr GPUAttachmentType operator+(GPUAttachmentType a, int b)
 {
-  return static_cast<GPUAttachmentType>(static_cast<int>(a) + b);
+  return static_cast<GPUAttachmentType>(int(a) + b);
 }
 
 inline GPUAttachmentType &operator++(GPUAttachmentType &a)
@@ -74,14 +75,15 @@ class FrameBuffer {
   /** Set of texture attachments to render to. DEPTH and DEPTH_STENCIL are mutually exclusive. */
   GPUAttachment attachments_[GPU_FB_MAX_ATTACHMENT];
   /** Is true if internal representation need to be updated. */
-  bool dirty_attachments_;
+  bool dirty_attachments_ = true;
   /** Size of attachment textures. */
-  int width_, height_;
+  int width_ = 0, height_ = 0;
   /** Debug name. */
   char name_[DEBUG_NAME_LEN];
   /** Frame-buffer state. */
-  int viewport_[4] = {0};
+  int viewport_[GPU_MAX_VIEWPORTS][4] = {{0}};
   int scissor_[4] = {0};
+  bool multi_viewport_ = false;
   bool scissor_test_ = false;
   bool dirty_state_ = true;
 
@@ -93,11 +95,6 @@ class FrameBuffer {
    */
   void **py_ref = nullptr;
 #endif
-
- public:
-  /* Reference of a pointer that needs to be cleaned when deallocating the frame-buffer.
-   * Points to #BPyGPUFrameBuffer::fb */
-  void **ref = nullptr;
 
  public:
   FrameBuffer(const char *name);
@@ -114,9 +111,7 @@ class FrameBuffer {
                                 eGPUDataFormat data_format,
                                 const void *clear_value) = 0;
 
-  virtual void attachment_set_loadstore_op(GPUAttachmentType type,
-                                           eGPULoadOp load_action,
-                                           eGPUStoreOp store_action) = 0;
+  virtual void attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore ls) = 0;
 
   virtual void read(eGPUFrameBufferBits planes,
                     eGPUDataFormat format,
@@ -132,16 +127,20 @@ class FrameBuffer {
                        int dst_offset_x,
                        int dst_offset_y) = 0;
 
+  virtual void subpass_transition(const GPUAttachmentState depth_attachment_state,
+                                  Span<GPUAttachmentState> color_attachment_states) = 0;
+
   void load_store_config_array(const GPULoadStore *load_store_actions, uint actions_len);
 
   void attachment_set(GPUAttachmentType type, const GPUAttachment &new_attachment);
   void attachment_remove(GPUAttachmentType type);
 
   void recursive_downsample(int max_lvl,
-                            void (*callback)(void *userData, int level),
-                            void *userData);
+                            void (*callback)(void *user_data, int level),
+                            void *user_data);
   uint get_bits_per_pixel();
 
+  /* Sets the size after creation. */
   inline void size_set(int width, int height)
   {
     width_ = width;
@@ -149,12 +148,33 @@ class FrameBuffer {
     dirty_state_ = true;
   }
 
+  /* Sets the size for frame-buffer with no attachments. */
+  inline void default_size_set(int width, int height)
+  {
+    width_ = width;
+    height_ = height;
+    dirty_attachments_ = true;
+    dirty_state_ = true;
+  }
+
   inline void viewport_set(const int viewport[4])
   {
-    if (!equals_v4v4_int(viewport_, viewport)) {
-      copy_v4_v4_int(viewport_, viewport);
+    if (!equals_v4v4_int(viewport_[0], viewport)) {
+      copy_v4_v4_int(viewport_[0], viewport);
       dirty_state_ = true;
     }
+    multi_viewport_ = false;
+  }
+
+  inline void viewport_multi_set(const int viewports[GPU_MAX_VIEWPORTS][4])
+  {
+    for (size_t i = 0; i < GPU_MAX_VIEWPORTS; i++) {
+      if (!equals_v4v4_int(viewport_[i], viewports[i])) {
+        copy_v4_v4_int(viewport_[i], viewports[i]);
+        dirty_state_ = true;
+      }
+    }
+    multi_viewport_ = true;
   }
 
   inline void scissor_set(const int scissor[4])
@@ -168,11 +188,12 @@ class FrameBuffer {
   inline void scissor_test_set(bool test)
   {
     scissor_test_ = test;
+    dirty_state_ = true;
   }
 
   inline void viewport_get(int r_viewport[4]) const
   {
-    copy_v4_v4_int(r_viewport, viewport_);
+    copy_v4_v4_int(r_viewport, viewport_[0]);
   }
 
   inline void scissor_get(int r_scissor[4]) const
@@ -208,6 +229,11 @@ class FrameBuffer {
   inline GPUTexture *color_tex(int slot) const
   {
     return attachments_[GPU_FB_COLOR_ATTACHMENT0 + slot].tex;
+  };
+
+  inline const char *const name_get() const
+  {
+    return name_;
   };
 };
 

@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2016 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2016 Blender Foundation. All rights reserved.
 
 # Libraries configuration for Apple.
 
@@ -31,22 +32,18 @@ find_package(BZip2 REQUIRED)
 list(APPEND ZLIB_LIBRARIES ${BZIP2_LIBRARIES})
 
 if(WITH_OPENAL)
-  find_package(OpenAL)
-  if(NOT OPENAL_FOUND)
-    message(WARNING "OpenAL not found, disabling WITH_OPENAL")
-    set(WITH_OPENAL OFF)
-  endif()
+  find_package(OpenAL REQUIRED)
 endif()
 
 if(WITH_JACK)
   find_library(JACK_FRAMEWORK
     NAMES jackmp
   )
-  if(NOT JACK_FRAMEWORK)
-    message(STATUS "JACK not found, disabling WITH_JACK")
-    set(WITH_JACK OFF)
-  else()
+
+  if(JACK_FRAMEWORK)
     set(JACK_INCLUDE_DIRS ${JACK_FRAMEWORK}/headers)
+  else()
+    set_and_warn_library_found("JACK" JACK_FRAMEWORK WITH_JACK)
   endif()
 endif()
 
@@ -57,10 +54,27 @@ if(NOT DEFINED LIBDIR)
     set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/darwin_${CMAKE_OSX_ARCHITECTURES})
   endif()
 else()
-  message(STATUS "Using pre-compiled LIBDIR: ${LIBDIR}")
+  if(FIRST_RUN)
+    message(STATUS "Using pre-compiled LIBDIR: ${LIBDIR}")
+  endif()
 endif()
 if(NOT EXISTS "${LIBDIR}/")
   message(FATAL_ERROR "Mac OSX requires pre-compiled libs at: '${LIBDIR}'")
+endif()
+
+# Avoid searching for headers since this would otherwise override our lib
+# directory as well as PYTHON_ROOT_DIR.
+set(CMAKE_FIND_FRAMEWORK NEVER)
+
+# Optionally use system Python if PYTHON_ROOT_DIR is specified.
+if(WITH_PYTHON)
+  if(WITH_PYTHON_MODULE AND PYTHON_ROOT_DIR)
+    find_package(PythonLibsUnix REQUIRED)
+  endif()
+else()
+  # Python executable is needed as part of the build-process,
+  # note that building without Python is quite unusual.
+  find_program(PYTHON_EXECUTABLE "python3")
 endif()
 
 # Prefer lib directory paths
@@ -80,16 +94,20 @@ if(WITH_ALEMBIC)
 endif()
 
 if(WITH_USD)
-  find_package(USD)
-  if(NOT USD_FOUND)
-    message(STATUS "USD not found, disabling WITH_USD")
-    set(WITH_USD OFF)
-  endif()
+  find_package(USD REQUIRED)
 endif()
+add_bundled_libraries(usd/lib)
+
+if(WITH_MATERIALX)
+  find_package(MaterialX)
+  set_and_warn_library_found("MaterialX" MaterialX_FOUND WITH_MATERIALX)
+endif()
+add_bundled_libraries(materialx/lib)
 
 if(WITH_OPENSUBDIV)
   find_package(OpenSubdiv)
 endif()
+add_bundled_libraries(opensubdiv/lib)
 
 if(WITH_CODEC_SNDFILE)
   find_package(SndFile)
@@ -112,32 +130,8 @@ if(WITH_CODEC_SNDFILE)
 endif()
 
 if(WITH_PYTHON)
-  # Use precompiled libraries by default.
-  set(PYTHON_VERSION 3.10)
-  if(NOT WITH_PYTHON_MODULE AND NOT WITH_PYTHON_FRAMEWORK)
-    # Normally cached but not since we include them with blender.
-    set(PYTHON_INCLUDE_DIR "${LIBDIR}/python/include/python${PYTHON_VERSION}")
-    set(PYTHON_EXECUTABLE "${LIBDIR}/python/bin/python${PYTHON_VERSION}")
-    set(PYTHON_LIBRARY ${LIBDIR}/python/lib/libpython${PYTHON_VERSION}.a)
-    set(PYTHON_LIBPATH "${LIBDIR}/python/lib/python${PYTHON_VERSION}")
-  else()
-    # Module must be compiled against Python framework.
-    set(_py_framework "/Library/Frameworks/Python.framework/Versions/${PYTHON_VERSION}")
-    set(PYTHON_INCLUDE_DIR "${_py_framework}/include/python${PYTHON_VERSION}")
-    set(PYTHON_EXECUTABLE "${_py_framework}/bin/python${PYTHON_VERSION}")
-    set(PYTHON_LIBPATH "${_py_framework}/lib/python${PYTHON_VERSION}")
-    unset(_py_framework)
-  endif()
-
-  # uncached vars
-  set(PYTHON_INCLUDE_DIRS "${PYTHON_INCLUDE_DIR}")
-  set(PYTHON_LIBRARIES  "${PYTHON_LIBRARY}")
-
-  # needed for Audaspace, numpy is installed into python site-packages
-  set(PYTHON_NUMPY_INCLUDE_DIRS "${PYTHON_LIBPATH}/site-packages/numpy/core/include")
-
-  if(NOT EXISTS "${PYTHON_EXECUTABLE}")
-    message(FATAL_ERROR "Python executable missing: ${PYTHON_EXECUTABLE}")
+  if(NOT (WITH_PYTHON_MODULE AND PYTHON_ROOT_DIR))
+    find_package(PythonLibsUnix REQUIRED)
   endif()
 endif()
 
@@ -147,13 +141,16 @@ endif()
 
 # FreeType compiled with Brotli compression for woff2.
 find_package(Freetype REQUIRED)
-list(APPEND FREETYPE_LIBRARIES
+set(BROTLI_LIBRARIES
   ${LIBDIR}/brotli/lib/libbrotlicommon-static.a
-  ${LIBDIR}/brotli/lib/libbrotlidec-static.a)
+  ${LIBDIR}/brotli/lib/libbrotlidec-static.a
+)
 
 if(WITH_IMAGE_OPENEXR)
   find_package(OpenEXR)
 endif()
+add_bundled_libraries(openexr/lib)
+add_bundled_libraries(imath/lib)
 
 if(WITH_CODEC_FFMPEG)
   set(FFMPEG_ROOT_DIR ${LIBDIR}/ffmpeg)
@@ -161,9 +158,12 @@ if(WITH_CODEC_FFMPEG)
     avcodec avdevice avformat avutil
     mp3lame ogg opus swresample swscale
     theora theoradec theoraenc vorbis vorbisenc
-    vorbisfile vpx x264 xvidcore)
+    vorbisfile vpx x264)
   if(EXISTS ${LIBDIR}/ffmpeg/lib/libaom.a)
     list(APPEND FFMPEG_FIND_COMPONENTS aom)
+  endif()
+  if(EXISTS ${LIBDIR}/ffmpeg/lib/libxvidcore.a)
+    list(APPEND FFMPEG_FIND_COMPONENTS xvidcore)
   endif()
   find_package(FFmpeg)
 endif()
@@ -183,12 +183,10 @@ if(SYSTEMSTUBS_LIBRARY)
   list(APPEND PLATFORM_LINKLIBS SystemStubs)
 endif()
 
-string(APPEND PLATFORM_CFLAGS " -pipe -funsigned-char -fno-strict-aliasing")
+string(APPEND PLATFORM_CFLAGS " -pipe -funsigned-char -fno-strict-aliasing -ffp-contract=off")
 set(PLATFORM_LINKFLAGS
   "-fexceptions -framework CoreServices -framework Foundation -framework IOKit -framework AppKit -framework Cocoa -framework Carbon -framework AudioUnit -framework AudioToolbox -framework CoreAudio -framework Metal -framework QuartzCore"
 )
-
-list(APPEND PLATFORM_LINKLIBS c++)
 
 if(WITH_OPENIMAGEDENOISE)
   if("${CMAKE_OSX_ARCHITECTURES}" STREQUAL "arm64")
@@ -199,11 +197,6 @@ endif()
 
 if(WITH_JACK)
   string(APPEND PLATFORM_LINKFLAGS " -F/Library/Frameworks -weak_framework jackmp")
-endif()
-
-if(WITH_PYTHON_MODULE OR WITH_PYTHON_FRAMEWORK)
-  # force cmake to link right framework
-  string(APPEND PLATFORM_LINKFLAGS " /Library/Frameworks/Python.framework/Versions/${PYTHON_VERSION}/Python")
 endif()
 
 if(WITH_OPENCOLLADA)
@@ -226,33 +219,26 @@ if(WITH_SDL)
   endif()
 endif()
 
+set(EPOXY_ROOT_DIR ${LIBDIR}/epoxy)
+find_package(Epoxy REQUIRED)
+
 set(PNG_ROOT ${LIBDIR}/png)
 find_package(PNG REQUIRED)
 
 set(JPEG_ROOT ${LIBDIR}/jpeg)
 find_package(JPEG REQUIRED)
 
-if(WITH_IMAGE_TIFF)
-  set(TIFF_ROOT ${LIBDIR}/tiff)
-  find_package(TIFF)
-  if(NOT TIFF_FOUND)
-    message(WARNING "TIFF not found, disabling WITH_IMAGE_TIFF")
-    set(WITH_IMAGE_TIFF OFF)
-  endif()
-endif()
+set(TIFF_ROOT ${LIBDIR}/tiff)
+find_package(TIFF REQUIRED)
 
 if(WITH_IMAGE_WEBP)
   set(WEBP_ROOT_DIR ${LIBDIR}/webp)
-  find_package(WebP)
-  if(NOT WEBP_FOUND)
-    message(WARNING "WebP not found, disabling WITH_IMAGE_WEBP")
-    set(WITH_IMAGE_WEBP OFF)
-  endif()
+  find_package(WebP REQUIRED)
 endif()
 
 if(WITH_BOOST)
   set(Boost_NO_BOOST_CMAKE ON)
-  set(BOOST_ROOT ${LIBDIR}/boost)
+  set(Boost_ROOT ${LIBDIR}/boost)
   set(Boost_NO_SYSTEM_PATHS ON)
   set(_boost_FIND_COMPONENTS date_time filesystem regex system thread wave)
   if(WITH_INTERNATIONAL)
@@ -261,9 +247,18 @@ if(WITH_BOOST)
   if(WITH_OPENVDB)
     list(APPEND _boost_FIND_COMPONENTS iostreams)
   endif()
+  if(WITH_USD AND USD_PYTHON_SUPPORT)
+    list(APPEND _boost_FIND_COMPONENTS python${PYTHON_VERSION_NO_DOTS})
+  endif()
+  set(Boost_NO_WARN_NEW_VERSIONS ON)
   find_package(Boost COMPONENTS ${_boost_FIND_COMPONENTS})
 
+  # Boost Python is separate to avoid linking Python into tests that don't need it.
   set(BOOST_LIBRARIES ${Boost_LIBRARIES})
+  if(WITH_USD AND USD_PYTHON_SUPPORT)
+    set(BOOST_PYTHON_LIBRARIES ${Boost_PYTHON${PYTHON_VERSION_NO_DOTS}_LIBRARY})
+    list(REMOVE_ITEM BOOST_LIBRARIES ${BOOST_PYTHON_LIBRARIES})
+  endif()
   set(BOOST_INCLUDE_DIR ${Boost_INCLUDE_DIRS})
   set(BOOST_DEFINITIONS)
 
@@ -271,49 +266,35 @@ if(WITH_BOOST)
   mark_as_advanced(Boost_INCLUDE_DIRS)
   unset(_boost_FIND_COMPONENTS)
 endif()
+add_bundled_libraries(boost/lib)
 
 if(WITH_INTERNATIONAL OR WITH_CODEC_FFMPEG)
   string(APPEND PLATFORM_LINKFLAGS " -liconv") # boost_locale and ffmpeg needs it !
 endif()
 
 if(WITH_PUGIXML)
-  find_package(PugiXML)
-  if(NOT PUGIXML_FOUND)
-    message(WARNING "PugiXML not found, disabling WITH_PUGIXML")
-    set(WITH_PUGIXML OFF)
-  endif()
+  find_package(PugiXML REQUIRED)
 endif()
 
-if(WITH_OPENIMAGEIO)
-  find_package(OpenImageIO)
-  list(APPEND OPENIMAGEIO_LIBRARIES
-    ${PNG_LIBRARIES}
-    ${JPEG_LIBRARIES}
-    ${TIFF_LIBRARY}
-    ${OPENEXR_LIBRARIES}
-    ${OPENJPEG_LIBRARIES}
-    ${ZLIB_LIBRARIES}
-  )
-  set(OPENIMAGEIO_DEFINITIONS "-DOIIO_STATIC_BUILD")
-  set(OPENIMAGEIO_IDIFF "${LIBDIR}/openimageio/bin/idiff")
-endif()
+find_package(OpenImageIO REQUIRED)
+add_bundled_libraries(openimageio/lib)
 
 if(WITH_OPENCOLORIO)
-  find_package(OpenColorIO 2.0.0)
-
-  if(NOT OPENCOLORIO_FOUND)
-    set(WITH_OPENCOLORIO OFF)
-    message(STATUS "OpenColorIO not found, disabling WITH_OPENCOLORIO")
-  endif()
+  find_package(OpenColorIO 2.0.0 REQUIRED)
 endif()
+add_bundled_libraries(opencolorio/lib)
 
 if(WITH_OPENVDB)
   find_package(OpenVDB)
   find_library(BLOSC_LIBRARIES NAMES blosc HINTS ${LIBDIR}/openvdb/lib)
-  print_found_status("Blosc" "${BLOSC_LIBRARIES}")
-  list(APPEND OPENVDB_LIBRARIES ${BLOSC_LIBRARIES})
+  if(BLOSC_LIBRARIES)
+    list(APPEND OPENVDB_LIBRARIES ${BLOSC_LIBRARIES})
+  else()
+    unset(BLOSC_LIBRARIES CACHE)
+  endif()
   set(OPENVDB_DEFINITIONS)
 endif()
+add_bundled_libraries(openvdb/lib)
 
 if(WITH_NANOVDB)
   find_package(NanoVDB)
@@ -331,73 +312,32 @@ if(WITH_LLVM)
   if(WITH_CLANG)
     find_package(Clang)
     if(NOT CLANG_FOUND)
-       message(FATAL_ERROR "Clang not found.")
+      message(FATAL_ERROR "Clang not found.")
     endif()
   endif()
 
 endif()
 
 if(WITH_CYCLES AND WITH_CYCLES_OSL)
-  set(CYCLES_OSL ${LIBDIR}/osl)
-
-  find_library(OSL_LIB_EXEC NAMES oslexec PATHS ${CYCLES_OSL}/lib)
-  find_library(OSL_LIB_COMP NAMES oslcomp PATHS ${CYCLES_OSL}/lib)
-  find_library(OSL_LIB_QUERY NAMES oslquery PATHS ${CYCLES_OSL}/lib)
-  # WARNING! depends on correct order of OSL libs linking
-  list(APPEND OSL_LIBRARIES ${OSL_LIB_COMP} -force_load ${OSL_LIB_EXEC} ${OSL_LIB_QUERY})
-  find_path(OSL_INCLUDE_DIR OSL/oslclosure.h PATHS ${CYCLES_OSL}/include)
-  find_program(OSL_COMPILER NAMES oslc PATHS ${CYCLES_OSL}/bin)
-  find_path(OSL_SHADER_DIR NAMES stdosl.h PATHS ${CYCLES_OSL}/share/OSL/shaders)
-
-  if(OSL_INCLUDE_DIR AND OSL_LIBRARIES AND OSL_COMPILER AND OSL_SHADER_DIR)
-    set(OSL_FOUND TRUE)
-  else()
-    message(WARNING "OSL not found, disabling WITH_CYCLES_OSL")
-    set(WITH_CYCLES_OSL OFF)
-  endif()
+  find_package(OSL REQUIRED)
 endif()
 
 if(WITH_CYCLES AND WITH_CYCLES_EMBREE)
   find_package(Embree 3.8.0 REQUIRED)
-  # Increase stack size for Embree, only works for executables.
-  if(NOT WITH_PYTHON_MODULE)
-    string(APPEND PLATFORM_LINKFLAGS " -Wl,-stack_size,0x100000")
-  endif()
-
-  # Embree static library linking can mix up SSE and AVX symbols, causing
-  # crashes on macOS systems with older CPUs that don't have AVX. Using
-  # force load avoids that. The Embree shared library does not suffer from
-  # this problem, precisely because linking a shared library uses force load.
-  set(_embree_libraries_force_load)
-  foreach(_embree_library ${EMBREE_LIBRARIES})
-    list(APPEND _embree_libraries_force_load "-Wl,-force_load,${_embree_library}")
-  endforeach()
-  set(EMBREE_LIBRARIES ${_embree_libraries_force_load})
 endif()
+add_bundled_libraries(embree/lib)
 
 if(WITH_OPENIMAGEDENOISE)
-  find_package(OpenImageDenoise)
-
-  if(NOT OPENIMAGEDENOISE_FOUND)
-    set(WITH_OPENIMAGEDENOISE OFF)
-    message(STATUS "OpenImageDenoise not found, disabling WITH_OPENIMAGEDENOISE")
-  endif()
+  find_package(OpenImageDenoise REQUIRED)
 endif()
 
 if(WITH_TBB)
-  find_package(TBB)
-  if(NOT TBB_FOUND)
-    message(WARNING "TBB not found, disabling WITH_TBB")
-    set(WITH_TBB OFF)
-  endif()
+  find_package(TBB REQUIRED)
 endif()
+add_bundled_libraries(tbb/lib)
 
 if(WITH_POTRACE)
-  find_package(Potrace)
-  if(NOT POTRACE_FOUND)
-    message(WARNING "potrace not found, disabling WITH_POTRACE")
-    set(WITH_POTRACE OFF)
-  endif()
+  find_package(Potrace REQUIRED)
 endif()
 
 # CMake FindOpenMP doesn't know about AppleClang before 3.12, so provide custom flags.
@@ -414,28 +354,29 @@ if(WITH_OPENMP)
     set(OpenMP_LIBRARY "${OpenMP_LIBRARY_DIR}/libomp.dylib")
   endif()
 endif()
+add_bundled_libraries(openmp/lib)
 
 if(WITH_XR_OPENXR)
-  find_package(XR_OpenXR_SDK)
-  if(NOT XR_OPENXR_SDK_FOUND)
-    message(WARNING "OpenXR-SDK was not found, disabling WITH_XR_OPENXR")
-    set(WITH_XR_OPENXR OFF)
-  endif()
+  find_package(XR_OpenXR_SDK REQUIRED)
 endif()
 
 if(WITH_GMP)
-  find_package(GMP)
-  if(NOT GMP_FOUND)
-    message(WARNING "GMP not found, disabling WITH_GMP")
-    set(WITH_GMP OFF)
-  endif()
+  find_package(GMP REQUIRED)
 endif()
 
 if(WITH_HARU)
-  find_package(Haru)
-  if(NOT HARU_FOUND)
-    message(WARNING "Haru not found, disabling WITH_HARU")
-    set(WITH_HARU OFF)
+  find_package(Haru REQUIRED)
+endif()
+
+if(WITH_CYCLES AND WITH_CYCLES_PATH_GUIDING)
+  find_package(openpgl QUIET)
+  if(openpgl_FOUND)
+    get_target_property(OPENPGL_LIBRARIES openpgl::openpgl LOCATION)
+    get_target_property(OPENPGL_INCLUDE_DIR openpgl::openpgl INTERFACE_INCLUDE_DIRECTORIES)
+    message(STATUS "Found OpenPGL: ${OPENPGL_LIBRARIES}")
+  else()
+    set(WITH_CYCLES_PATH_GUIDING OFF)
+    message(STATUS "OpenPGL not found, disabling WITH_CYCLES_PATH_GUIDING")
   endif()
 endif()
 
@@ -445,6 +386,9 @@ find_package(Zstd REQUIRED)
 if(EXISTS ${LIBDIR})
   without_system_libs_end()
 endif()
+
+# Restore to default.
+set(CMAKE_FIND_FRAMEWORK FIRST)
 
 # ---------------------------------------------------------------------
 # Set compiler and linker flags.
@@ -475,10 +419,15 @@ string(APPEND PLATFORM_LINKFLAGS
   " -Wl,-unexported_symbols_list,'${PLATFORM_SYMBOLS_MAP}'"
 )
 
-string(APPEND CMAKE_CXX_FLAGS " -stdlib=libc++")
-string(APPEND PLATFORM_LINKFLAGS " -stdlib=libc++")
+# Use old, slower linker for now to avoid many linker warnings.
+if(${XCODE_VERSION} VERSION_GREATER_EQUAL 15.0)
+  string(APPEND PLATFORM_LINKFLAGS " -Wl,-ld_classic")
+endif()
 
-# Suppress ranlib "has no symbols" warnings (workaround for T48250)
+# Make stack size more similar to Embree, required for Embree.
+string(APPEND PLATFORM_LINKFLAGS_EXECUTABLE " -Wl,-stack_size,0x100000")
+
+# Suppress ranlib "has no symbols" warnings (workaround for #48250).
 set(CMAKE_C_ARCHIVE_CREATE   "<CMAKE_AR> Scr <TARGET> <LINK_FLAGS> <OBJECTS>")
 set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> Scr <TARGET> <LINK_FLAGS> <OBJECTS>")
 # llvm-ranlib doesn't support this flag. Xcode's libtool does.
@@ -490,10 +439,15 @@ endif()
 if(WITH_COMPILER_CCACHE)
   if(NOT CMAKE_GENERATOR STREQUAL "Xcode")
     find_program(CCACHE_PROGRAM ccache)
+    mark_as_advanced(CCACHE_PROGRAM)
     if(CCACHE_PROGRAM)
       # Makefiles and ninja
       set(CMAKE_C_COMPILER_LAUNCHER   "${CCACHE_PROGRAM}" CACHE STRING "" FORCE)
       set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "" FORCE)
+      mark_as_advanced(
+        CMAKE_C_COMPILER_LAUNCHER
+        CMAKE_CXX_COMPILER_LAUNCHER
+      )
     else()
       message(WARNING "Ccache NOT found, disabling WITH_COMPILER_CCACHE")
       set(WITH_COMPILER_CCACHE OFF)
@@ -501,17 +455,58 @@ if(WITH_COMPILER_CCACHE)
   endif()
 endif()
 
-# For binaries that are built but not installed (also not distributed) (datatoc,
-# makesdna, tests, etc.), we add an rpath to the OpenMP library dir through
-# CMAKE_BUILD_RPATH. This avoids having to make many copies of the dylib next to each binary.
-#
-# For the installed Python module and installed Blender executable, CMAKE_INSTALL_RPATH
-# is modified to find the dylib in an adjacent folder. Install step puts the libraries there.
-set(CMAKE_SKIP_BUILD_RPATH FALSE)
-list(APPEND CMAKE_BUILD_RPATH "${OpenMP_LIBRARY_DIR}")
+unset(_custom_LINKER_FUSE_FLAG)
+if(WITH_LINKER_LLD)
+  find_program(LLD_PROGRAM ld.lld)
+  if(LLD_PROGRAM)
+    set(_custom_LINKER_FUSE_FLAG "-fuse-ld=lld")
+  else()
+    message(WARNING "LLD linker NOT found, disabling WITH_LINKER_LLD")
+    set(WITH_LINKER_LLD OFF)
+  endif()
+endif()
+if(WITH_LINKER_MOLD)
+  find_program(MOLD_PROGRAM mold)
+  if(MOLD_PROGRAM)
+    set(_custom_LINKER_FUSE_FLAG "-fuse-ld=mold")
+  else()
+    message(WARNING "Mold linker NOT found, disabling WITH_LINKER_MOLD")
+    set(WITH_LINKER_MOLD OFF)
+  endif()
+endif()
 
-set(CMAKE_SKIP_INSTALL_RPATH FALSE)
-list(APPEND CMAKE_INSTALL_RPATH "@loader_path/../Resources/${BLENDER_VERSION}/lib")
+if(_custom_LINKER_FUSE_FLAG)
+  add_link_options(${_custom_LINKER_FUSE_FLAG})
+endif()
+
+
+if(WITH_COMPILER_ASAN)
+  list(APPEND PLATFORM_BUNDLED_LIBRARIES ${COMPILER_ASAN_LIBRARY})
+endif()
+
+if(PLATFORM_BUNDLED_LIBRARIES)
+  # For the installed Python module and installed Blender executable, we set the
+  # rpath to the location where install step will copy the shared libraries.
+  set(CMAKE_SKIP_INSTALL_RPATH FALSE)
+  if(WITH_PYTHON_MODULE)
+    list(APPEND CMAKE_INSTALL_RPATH "@loader_path/lib")
+  else()
+    list(APPEND CMAKE_INSTALL_RPATH "@loader_path/../Resources/lib")
+  endif()
+
+  # For binaries that are built but not installed (like makesdan or tests), we add
+  # the original directory of all shared libraries to the rpath. This is needed because
+  # these can be in different folders, and because the build and install folder may be
+  # different.
+  set(CMAKE_SKIP_BUILD_RPATH FALSE)
+  list(APPEND CMAKE_BUILD_RPATH ${PLATFORM_BUNDLED_LIBRARY_DIRS})
+
+  # Environment variables to run precompiled executables that needed libraries.
+  list(JOIN PLATFORM_BUNDLED_LIBRARY_DIRS ":" _library_paths)
+  set(PLATFORM_ENV_BUILD "DYLD_LIBRARY_PATH=\"${_library_paths};$DYLD_LIBRARY_PATH\"")
+  set(PLATFORM_ENV_INSTALL "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/Blender.app/Contents/Resources/lib/;$DYLD_LIBRARY_PATH")
+  unset(_library_paths)
+endif()
 
 # Same as `CFBundleIdentifier` in Info.plist.
 set(CMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "org.blenderfoundation.blender")

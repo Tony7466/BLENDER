@@ -1,10 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 /** \file
  * \ingroup bmesh
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * NOTE: do NOT modify topology while walking a mesh!
@@ -159,7 +165,7 @@ enum {
   BMW_ISLAND,
   BMW_ISLAND_MANIFOLD,
   BMW_CONNECTED_VERTEX,
-  /* end of array index enum vals */
+  /* End of array index enum values. */
 
   /* Do not initialize function pointers and struct size in #BMW_init. */
   BMW_CUSTOM,
@@ -168,3 +174,7 @@ enum {
 
 /* use with BMW_init, so as not to confuse with restrict flags */
 #define BMW_NIL_LAY 0
+
+#ifdef __cplusplus
+}
+#endif

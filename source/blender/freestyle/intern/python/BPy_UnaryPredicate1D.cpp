@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -109,11 +111,11 @@ int UnaryPredicate1D_Init(PyObject *module)
 //------------------------INSTANCE METHODS ----------------------------------
 
 static char UnaryPredicate1D___doc__[] =
-    "Base class for unary predicates that work on :class:`Interface1D`.  A\n"
+    "Base class for unary predicates that work on :class:`Interface1D`. A\n"
     "UnaryPredicate1D is a functor that evaluates a condition on a\n"
     "Interface1D and returns true or false depending on whether this\n"
-    "condition is satisfied or not.  The UnaryPredicate1D is used by\n"
-    "invoking its __call__() method.  Any inherited class must overload the\n"
+    "condition is satisfied or not. The UnaryPredicate1D is used by\n"
+    "invoking its __call__() method. Any inherited class must overload the\n"
     "__call__() method.\n"
     "\n"
     ".. method:: __init__()\n"
@@ -159,8 +161,8 @@ static PyObject *UnaryPredicate1D___call__(BPy_UnaryPredicate1D *self,
   static const char *kwlist[] = {"inter", nullptr};
   PyObject *py_if1D;
 
-  if (!PyArg_ParseTupleAndKeywords(
-          args, kwds, "O!", (char **)kwlist, &Interface1D_Type, &py_if1D)) {
+  if (!PyArg_ParseTupleAndKeywords(args, kwds, "O!", (char **)kwlist, &Interface1D_Type, &py_if1D))
+  {
     return nullptr;
   }
 
@@ -192,7 +194,7 @@ PyDoc_STRVAR(UnaryPredicate1D_name_doc,
              "\n"
              ":type: str");
 
-static PyObject *UnaryPredicate1D_name_get(BPy_UnaryPredicate1D *self, void *UNUSED(closure))
+static PyObject *UnaryPredicate1D_name_get(BPy_UnaryPredicate1D *self, void * /*closure*/)
 {
   return PyUnicode_FromString(Py_TYPE(self)->tp_name);
 }
@@ -209,43 +211,44 @@ static PyGetSetDef BPy_UnaryPredicate1D_getseters[] = {
 /*-----------------------BPy_UnaryPredicate1D type definition ------------------------------*/
 
 PyTypeObject UnaryPredicate1D_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "UnaryPredicate1D", /* tp_name */
-    sizeof(BPy_UnaryPredicate1D),                         /* tp_basicsize */
-    0,                                                    /* tp_itemsize */
-    (destructor)UnaryPredicate1D___dealloc__,             /* tp_dealloc */
-    0,                                                    /* tp_vectorcall_offset */
-    nullptr,                                              /* tp_getattr */
-    nullptr,                                              /* tp_setattr */
-    nullptr,                                              /* tp_reserved */
-    (reprfunc)UnaryPredicate1D___repr__,                  /* tp_repr */
-    nullptr,                                              /* tp_as_number */
-    nullptr,                                              /* tp_as_sequence */
-    nullptr,                                              /* tp_as_mapping */
-    nullptr,                                              /* tp_hash */
-    (ternaryfunc)UnaryPredicate1D___call__,               /* tp_call */
-    nullptr,                                              /* tp_str */
-    nullptr,                                              /* tp_getattro */
-    nullptr,                                              /* tp_setattro */
-    nullptr,                                              /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,             /* tp_flags */
-    UnaryPredicate1D___doc__,                             /* tp_doc */
-    nullptr,                                              /* tp_traverse */
-    nullptr,                                              /* tp_clear */
-    nullptr,                                              /* tp_richcompare */
-    0,                                                    /* tp_weaklistoffset */
-    nullptr,                                              /* tp_iter */
-    nullptr,                                              /* tp_iternext */
-    nullptr,                                              /* tp_methods */
-    nullptr,                                              /* tp_members */
-    BPy_UnaryPredicate1D_getseters,                       /* tp_getset */
-    nullptr,                                              /* tp_base */
-    nullptr,                                              /* tp_dict */
-    nullptr,                                              /* tp_descr_get */
-    nullptr,                                              /* tp_descr_set */
-    0,                                                    /* tp_dictoffset */
-    (initproc)UnaryPredicate1D___init__,                  /* tp_init */
-    nullptr,                                              /* tp_alloc */
-    PyType_GenericNew,                                    /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "UnaryPredicate1D",
+    /*tp_basicsize*/ sizeof(BPy_UnaryPredicate1D),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ (destructor)UnaryPredicate1D___dealloc__,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ (reprfunc)UnaryPredicate1D___repr__,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ (ternaryfunc)UnaryPredicate1D___call__,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ UnaryPredicate1D___doc__,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ BPy_UnaryPredicate1D_getseters,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)UnaryPredicate1D___init__,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ PyType_GenericNew,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

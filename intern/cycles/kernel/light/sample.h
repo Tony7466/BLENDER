@@ -1,12 +1,18 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
 #include "kernel/integrator/path_state.h"
-#include "kernel/integrator/shader_eval.h"
+#include "kernel/integrator/surface_shader.h"
 
+#include "kernel/light/distribution.h"
 #include "kernel/light/light.h"
+
+#ifdef __LIGHT_TREE__
+#  include "kernel/light/tree.h"
+#endif
 
 #include "kernel/sample/mapping.h"
 #include "kernel/sample/mis.h"
@@ -14,7 +20,7 @@
 CCL_NAMESPACE_BEGIN
 
 /* Evaluate shader on light. */
-ccl_device_noinline_cpu float3
+ccl_device_noinline_cpu Spectrum
 light_sample_shader_eval(KernelGlobals kg,
                          IntegratorState state,
                          ccl_private ShaderData *ccl_restrict emission_sd,
@@ -22,24 +28,21 @@ light_sample_shader_eval(KernelGlobals kg,
                          float time)
 {
   /* setup shading at emitter */
-  float3 eval = zero_float3();
+  Spectrum eval = zero_spectrum();
 
-  if (shader_constant_emission_eval(kg, ls->shader, &eval)) {
+  if (surface_shader_constant_emission(kg, ls->shader, &eval)) {
     if ((ls->prim != PRIM_NONE) && dot(ls->Ng, ls->D) > 0.0f) {
       ls->Ng = -ls->Ng;
     }
   }
   else {
-    /* Setup shader data and call shader_eval_surface once, better
+    /* Setup shader data and call surface_shader_eval once, better
      * for GPU coherence and compile times. */
     PROFILING_INIT_FOR_SHADER(kg, PROFILING_SHADE_LIGHT_SETUP);
-#ifdef __BACKGROUND_MIS__
     if (ls->type == LIGHT_BACKGROUND) {
       shader_setup_from_background(kg, emission_sd, ls->P, ls->D, time);
     }
-    else
-#endif
-    {
+    else {
       shader_setup_from_sample(kg,
                                emission_sd,
                                ls->P,
@@ -63,18 +66,15 @@ light_sample_shader_eval(KernelGlobals kg,
 
     /* No proper path flag, we're evaluating this for all closures. that's
      * weak but we'd have to do multiple evaluations otherwise. */
-    shader_eval_surface<KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT>(
+    surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT>(
         kg, state, emission_sd, NULL, PATH_RAY_EMISSION);
 
     /* Evaluate closures. */
-#ifdef __BACKGROUND_MIS__
     if (ls->type == LIGHT_BACKGROUND) {
-      eval = shader_background_eval(emission_sd);
+      eval = surface_shader_background(emission_sd);
     }
-    else
-#endif
-    {
-      eval = shader_emissive_eval(emission_sd);
+    else {
+      eval = surface_shader_emission(emission_sd);
     }
   }
 
@@ -82,17 +82,11 @@ light_sample_shader_eval(KernelGlobals kg,
 
   if (ls->lamp != LAMP_NONE) {
     ccl_global const KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
-    eval *= make_float3(klight->strength[0], klight->strength[1], klight->strength[2]);
+    eval *= rgb_to_spectrum(
+        make_float3(klight->strength[0], klight->strength[1], klight->strength[2]));
   }
 
   return eval;
-}
-
-/* Test if light sample is from a light or emission from geometry. */
-ccl_device_inline bool light_sample_is_light(ccl_private const LightSample *ccl_restrict ls)
-{
-  /* return if it's a lamp for shadow pass */
-  return (ls->prim == PRIM_NONE && ls->type != LIGHT_BACKGROUND);
 }
 
 /* Early path termination of shadow rays. */
@@ -257,6 +251,7 @@ ccl_device_inline void shadow_ray_setup(ccl_private const ShaderData *ccl_restri
   ray->self.prim = (skip_self) ? sd->prim : PRIM_NONE;
   ray->self.light_object = ls->object;
   ray->self.light_prim = ls->prim;
+  ray->self.light = ls->lamp;
 }
 
 /* Create shadow ray towards light sample. */
@@ -281,6 +276,8 @@ ccl_device_inline void light_sample_to_volume_shadow_ray(
 {
   shadow_ray_setup(sd, ls, P, ray, false);
 }
+
+/* Multiple importance sampling weights. */
 
 ccl_device_inline float light_sample_mis_weight_forward(KernelGlobals kg,
                                                         const float forward_pdf,
@@ -312,6 +309,193 @@ ccl_device_inline float light_sample_mis_weight_nee(KernelGlobals kg,
   else
 #endif
     return power_heuristic(nee_pdf, forward_pdf);
+}
+
+/* Next event estimation sampling.
+ *
+ * Sample a position on a light in the scene, from a position on a surface or
+ * from a volume segment.
+ *
+ * Uses either a flat distribution or light tree. */
+
+ccl_device_inline bool light_sample_from_volume_segment(KernelGlobals kg,
+                                                        const float3 rand,
+                                                        const float time,
+                                                        const float3 P,
+                                                        const float3 D,
+                                                        const float t,
+                                                        const int object_receiver,
+                                                        const int bounce,
+                                                        const uint32_t path_flag,
+                                                        ccl_private LightSample *ls)
+{
+#ifdef __LIGHT_TREE__
+  if (kernel_data.integrator.use_light_tree) {
+    return light_tree_sample<true>(
+        kg, rand, time, P, D, t, object_receiver, SD_BSDF_HAS_TRANSMISSION, bounce, path_flag, ls);
+  }
+  else
+#endif
+  {
+    return light_distribution_sample<true>(
+        kg, rand, time, P, D, object_receiver, SD_BSDF_HAS_TRANSMISSION, bounce, path_flag, ls);
+  }
+}
+
+ccl_device bool light_sample_from_position(KernelGlobals kg,
+                                           ccl_private const RNGState *rng_state,
+                                           const float3 rand,
+                                           const float time,
+                                           const float3 P,
+                                           const float3 N,
+                                           const int object_receiver,
+                                           const int shader_flags,
+                                           const int bounce,
+                                           const uint32_t path_flag,
+                                           ccl_private LightSample *ls)
+{
+#ifdef __LIGHT_TREE__
+  if (kernel_data.integrator.use_light_tree) {
+    return light_tree_sample<false>(
+        kg, rand, time, P, N, 0.0f, object_receiver, shader_flags, bounce, path_flag, ls);
+  }
+  else
+#endif
+  {
+    return light_distribution_sample<false>(
+        kg, rand, time, P, N, object_receiver, shader_flags, bounce, path_flag, ls);
+  }
+}
+
+/* Update light sample with new shading point position for MNEE. The position on the light is fixed
+ * except for directional light. */
+ccl_device_forceinline void light_sample_update(KernelGlobals kg,
+                                                ccl_private LightSample *ls,
+                                                const float3 P,
+                                                const float3 N,
+                                                const uint32_t path_flag)
+{
+  const ccl_global KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
+
+  if (ls->type == LIGHT_POINT) {
+    point_light_mnee_sample_update(klight, ls, P, N, path_flag);
+  }
+  else if (ls->type == LIGHT_SPOT) {
+    spot_light_mnee_sample_update(klight, ls, P, N, path_flag);
+  }
+  else if (ls->type == LIGHT_AREA) {
+    area_light_mnee_sample_update(klight, ls, P);
+  }
+  else {
+    /* Keep previous values. */
+  }
+
+  /* Re-apply already computed selection pdf. */
+  ls->pdf *= ls->pdf_selection;
+}
+
+/* Forward sampling.
+ *
+ * Multiple importance sampling weights for hitting surface, light or background
+ * through indirect light ray.
+ *
+ * The BSDF or phase pdf from the previous bounce was stored in mis_ray_pdf and
+ * is used for balancing with the light sampling pdf. */
+
+ccl_device_inline float light_sample_mis_weight_forward_surface(KernelGlobals kg,
+                                                                IntegratorState state,
+                                                                const uint32_t path_flag,
+                                                                const ccl_private ShaderData *sd)
+{
+  const float bsdf_pdf = INTEGRATOR_STATE(state, path, mis_ray_pdf);
+  const float t = sd->ray_length;
+  float pdf = triangle_light_pdf(kg, sd, t);
+
+  /* Light selection pdf. */
+#ifdef __LIGHT_TREE__
+  if (kernel_data.integrator.use_light_tree) {
+    float3 ray_P = INTEGRATOR_STATE(state, ray, P);
+    const float3 N = INTEGRATOR_STATE(state, path, mis_origin_n);
+    uint lookup_offset = kernel_data_fetch(object_lookup_offset, sd->object);
+    uint prim_offset = kernel_data_fetch(object_prim_offset, sd->object);
+    uint triangle = kernel_data_fetch(triangle_to_tree, sd->prim - prim_offset + lookup_offset);
+
+    pdf *= light_tree_pdf(
+        kg, ray_P, N, path_flag, sd->object, triangle, light_link_receiver_forward(kg, state));
+  }
+  else
+#endif
+  {
+    /* Handled in triangle_light_pdf for efficiency. */
+  }
+
+  return light_sample_mis_weight_forward(kg, bsdf_pdf, pdf);
+}
+
+ccl_device_inline float light_sample_mis_weight_forward_lamp(KernelGlobals kg,
+                                                             IntegratorState state,
+                                                             const uint32_t path_flag,
+                                                             const ccl_private LightSample *ls,
+                                                             const float3 P)
+{
+  const float mis_ray_pdf = INTEGRATOR_STATE(state, path, mis_ray_pdf);
+  float pdf = ls->pdf;
+
+  /* Light selection pdf. */
+#ifdef __LIGHT_TREE__
+  if (kernel_data.integrator.use_light_tree) {
+    const float3 N = INTEGRATOR_STATE(state, path, mis_origin_n);
+    pdf *= light_tree_pdf(kg,
+                          P,
+                          N,
+                          path_flag,
+                          0,
+                          kernel_data_fetch(light_to_tree, ls->lamp),
+                          light_link_receiver_forward(kg, state));
+  }
+  else
+#endif
+  {
+    pdf *= light_distribution_pdf_lamp(kg);
+  }
+
+  return light_sample_mis_weight_forward(kg, mis_ray_pdf, pdf);
+}
+
+ccl_device_inline float light_sample_mis_weight_forward_distant(KernelGlobals kg,
+                                                                IntegratorState state,
+                                                                const uint32_t path_flag,
+                                                                const ccl_private LightSample *ls)
+{
+  const float3 ray_P = INTEGRATOR_STATE(state, ray, P);
+  return light_sample_mis_weight_forward_lamp(kg, state, path_flag, ls, ray_P);
+}
+
+ccl_device_inline float light_sample_mis_weight_forward_background(KernelGlobals kg,
+                                                                   IntegratorState state,
+                                                                   const uint32_t path_flag)
+{
+  const float3 ray_P = INTEGRATOR_STATE(state, ray, P);
+  const float3 ray_D = INTEGRATOR_STATE(state, ray, D);
+  const float mis_ray_pdf = INTEGRATOR_STATE(state, path, mis_ray_pdf);
+
+  float pdf = background_light_pdf(kg, ray_P, ray_D);
+
+  /* Light selection pdf. */
+#ifdef __LIGHT_TREE__
+  if (kernel_data.integrator.use_light_tree) {
+    const float3 N = INTEGRATOR_STATE(state, path, mis_origin_n);
+    uint light = kernel_data_fetch(light_to_tree, kernel_data.background.light_index);
+    pdf *= light_tree_pdf(
+        kg, ray_P, N, path_flag, 0, light, light_link_receiver_forward(kg, state));
+  }
+  else
+#endif
+  {
+    pdf *= light_distribution_pdf_lamp(kg);
+  }
+
+  return light_sample_mis_weight_forward(kg, mis_ray_pdf, pdf);
 }
 
 CCL_NAMESPACE_END

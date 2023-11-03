@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "gpu_shader_create_info.hh"
 
@@ -15,7 +17,7 @@ GPU_SHADER_CREATE_INFO(overlay_background)
 
 GPU_SHADER_CREATE_INFO(overlay_clipbound)
     .do_static_compilation(true)
-    .push_constant(Type::VEC4, "color")
+    .push_constant(Type::VEC4, "ucolor")
     .push_constant(Type::VEC3, "boundbox", 8)
     .vertex_source("overlay_clipbound_vert.glsl")
     .fragment_out(0, Type::VEC4, "fragColor")

@@ -1,6 +1,10 @@
+/* SPDX-FileCopyrightText: 2019-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(select_lib.glsl)
 
 #define lamp_area_size inst_data.xy
 #define lamp_clip_sta inst_data.z
@@ -41,6 +45,8 @@
 
 void main()
 {
+  select_id_set(in_select_buf[gl_InstanceID]);
+
   /* Extract data packed inside the unused mat4 members. */
   vec4 inst_data = vec4(inst_obmat[0][3], inst_obmat[1][3], inst_obmat[2][3], inst_obmat[3][3]);
   float inst_color_data = color.a;
@@ -171,14 +177,14 @@ void main()
   vec3 world_pos;
   if ((vclass & VCLASS_SCREENSPACE) != 0) {
     /* Relative to DPI scaling. Have constant screen size. */
-    vec3 screen_pos = screenVecs[0].xyz * vpos.x + screenVecs[1].xyz * vpos.y;
+    vec3 screen_pos = ViewMatrixInverse[0].xyz * vpos.x + ViewMatrixInverse[1].xyz * vpos.y;
     vec3 p = (obmat * vec4(vofs, 1.0)).xyz;
     float screen_size = mul_project_m4_v3_zfac(p) * sizePixel;
     world_pos = p + screen_pos * screen_size;
   }
   else if ((vclass & VCLASS_SCREENALIGNED) != 0) {
     /* World sized, camera facing geometry. */
-    vec3 screen_pos = screenVecs[0].xyz * vpos.x + screenVecs[1].xyz * vpos.y;
+    vec3 screen_pos = ViewMatrixInverse[0].xyz * vpos.x + ViewMatrixInverse[1].xyz * vpos.y;
     world_pos = (obmat * vec4(vofs, 1.0)).xyz + screen_pos;
   }
   else {
@@ -218,8 +224,7 @@ void main()
   /* HACK: to avoid losing sub-pixel object in selections, we add a bit of randomness to the
    * wire to at least create one fragment that will pass the occlusion query. */
   /* TODO(fclem): Limit this workaround to selection. It's not very noticeable but still... */
-  gl_Position.xy += drw_view.viewport_size_inverse * gl_Position.w *
-                    ((gl_VertexID % 2 == 0) ? -1.0 : 1.0);
+  gl_Position.xy += sizeViewportInv * gl_Position.w * ((gl_VertexID % 2 == 0) ? -1.0 : 1.0);
 #endif
 
   view_clipping_distances(world_pos);

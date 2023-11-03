@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2012 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_KeyingNode.h"
 
@@ -19,6 +20,8 @@
 
 #include "COM_GaussianAlphaXBlurOperation.h"
 #include "COM_GaussianAlphaYBlurOperation.h"
+
+#include "BLI_math_color.h"
 
 namespace blender::compositor {
 
@@ -205,8 +208,8 @@ NodeOperationOutput *KeyingNode::setup_clip(NodeConverter &converter,
 void KeyingNode::convert_to_operations(NodeConverter &converter,
                                        const CompositorContext &context) const
 {
-  bNode *editor_node = this->get_bnode();
-  NodeKeyingData *keying_data = (NodeKeyingData *)editor_node->storage;
+  const bNode *editor_node = this->get_bnode();
+  const NodeKeyingData *keying_data = (const NodeKeyingData *)editor_node->storage;
 
   NodeInput *input_image = this->get_input_socket(0);
   NodeInput *input_screen = this->get_input_socket(1);

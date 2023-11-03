@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
@@ -10,7 +12,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_math_mpq.hh"
-#include "BLI_math_vec_mpq_types.hh"
+#include "BLI_math_vector_mpq_types.hh"
 #include "BLI_mesh_intersect.hh"
 #include "BLI_task.h"
 #include "BLI_vector.hh"
@@ -153,7 +155,7 @@ static int find_edge_pos_in_tri(const Vert *v0, const Vert *v1, const Face *f)
   for (int pos : f->index_range()) {
     int nextpos = f->next_pos(pos);
     if (((*f)[pos] == v0 && (*f)[nextpos] == v1) || ((*f)[pos] == v1 && (*f)[nextpos] == v0)) {
-      return static_cast<int>(pos);
+      return int(pos);
     }
   }
   return -1;
@@ -298,7 +300,8 @@ TEST(mesh_intersect, TriTri)
     EXPECT_TRUE(v0 != nullptr && v1 != nullptr && v2 != nullptr);
     EXPECT_TRUE(v3 != nullptr && v4 != nullptr && v5 != nullptr);
     if (v0 != nullptr && v1 != nullptr && v2 != nullptr && v3 != nullptr && v4 != nullptr &&
-        v5 != nullptr) {
+        v5 != nullptr)
+    {
       EXPECT_EQ(v0->orig, 0);
       EXPECT_EQ(v1->orig, 1);
       const Face *f0 = find_tri_with_verts(out, v4, v1, v5);
@@ -369,7 +372,8 @@ TEST(mesh_intersect, TriTriReversed)
     EXPECT_TRUE(v0 != nullptr && v1 != nullptr && v2 != nullptr);
     EXPECT_TRUE(v3 != nullptr && v4 != nullptr && v5 != nullptr);
     if (v0 != nullptr && v1 != nullptr && v2 != nullptr && v3 != nullptr && v4 != nullptr &&
-        v5 != nullptr) {
+        v5 != nullptr)
+    {
       EXPECT_EQ(v0->orig, 0);
       EXPECT_EQ(v1->orig, 1);
       const Face *f0 = find_tri_with_verts(out, v4, v5, v1);

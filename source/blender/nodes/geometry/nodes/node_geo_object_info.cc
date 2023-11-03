@@ -1,11 +1,18 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
 
 #include "BKE_geometry_set_instances.hh"
+#include "BKE_instances.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "DNA_object_types.h"
+
+#include "NOD_rna_define.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
 
@@ -15,17 +22,18 @@ NODE_STORAGE_FUNCS(NodeGeometryObjectInfo)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Object>(N_("Object")).hide_label();
-  b.add_input<decl::Bool>(N_("As Instance"))
-      .description(N_("Output the entire object as single instance. "
-                      "This allows instancing non-geometry object types"));
-  b.add_output<decl::Vector>(N_("Location"));
-  b.add_output<decl::Vector>(N_("Rotation"));
-  b.add_output<decl::Vector>(N_("Scale"));
-  b.add_output<decl::Geometry>(N_("Geometry"));
+  b.add_input<decl::Object>("Object").hide_label();
+  b.add_input<decl::Bool>("As Instance")
+      .description(
+          "Output the entire object as single instance. "
+          "This allows instancing non-geometry object types");
+  b.add_output<decl::Vector>("Location");
+  b.add_output<decl::Vector>("Rotation");
+  b.add_output<decl::Vector>("Scale");
+  b.add_output<decl::Geometry>("Geometry");
 }
 
-static void node_layout(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "transform_space", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 }
@@ -44,19 +52,20 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  const float4x4 &object_matrix = object->obmat;
-  const float4x4 transform = float4x4(self_object->imat) * object_matrix;
+  const float4x4 object_matrix = float4x4(object->object_to_world);
+  const float4x4 transform = float4x4(self_object->world_to_object) * object_matrix;
 
+  float3 location, scale;
+  math::EulerXYZ rotation;
   if (transform_space_relative) {
-    params.set_output("Location", transform.translation());
-    params.set_output("Rotation", transform.to_euler());
-    params.set_output("Scale", transform.scale());
+    math::to_loc_rot_scale(transform, location, rotation, scale);
   }
   else {
-    params.set_output("Location", object_matrix.translation());
-    params.set_output("Rotation", object_matrix.to_euler());
-    params.set_output("Scale", object_matrix.scale());
+    math::to_loc_rot_scale(object_matrix, location, rotation, scale);
   }
+  params.set_output("Location", location);
+  params.set_output("Rotation", float3(rotation));
+  params.set_output("Scale", scale);
 
   if (params.output_is_required("Geometry")) {
     if (object == self_object) {
@@ -68,19 +77,20 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     GeometrySet geometry_set;
     if (params.get_input<bool>("As Instance")) {
-      InstancesComponent &instances = geometry_set.get_component_for_write<InstancesComponent>();
-      const int handle = instances.add_reference(*object);
+      std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
+      const int handle = instances->add_reference(*object);
       if (transform_space_relative) {
-        instances.add_instance(handle, transform);
+        instances->add_instance(handle, transform);
       }
       else {
-        instances.add_instance(handle, float4x4::identity());
+        instances->add_instance(handle, float4x4::identity());
       }
+      geometry_set = GeometrySet::from_instances(instances.release());
     }
     else {
       geometry_set = bke::object_get_evaluated_geometry_set(*object);
       if (transform_space_relative) {
-        transform_geometry_set(geometry_set, transform, *params.depsgraph());
+        transform_geometry_set(params, geometry_set, transform, *params.depsgraph());
       }
     }
 
@@ -88,27 +98,56 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 }
 
-static void node_node_init(bNodeTree *UNUSED(tree), bNode *node)
+static void node_node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryObjectInfo *data = MEM_cnew<NodeGeometryObjectInfo>(__func__);
   data->transform_space = GEO_NODE_TRANSFORM_SPACE_ORIGINAL;
   node->storage = data;
 }
 
-}  // namespace blender::nodes::node_geo_object_info_cc
-
-void register_node_type_geo_object_info()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_geo_object_info_cc;
+  static const EnumPropertyItem rna_node_geometry_object_info_transform_space_items[] = {
+      {GEO_NODE_TRANSFORM_SPACE_ORIGINAL,
+       "ORIGINAL",
+       0,
+       "Original",
+       "Output the geometry relative to the input object transform, and the location, rotation "
+       "and "
+       "scale relative to the world origin"},
+      {GEO_NODE_TRANSFORM_SPACE_RELATIVE,
+       "RELATIVE",
+       0,
+       "Relative",
+       "Bring the input object geometry, location, rotation and scale into the modified object, "
+       "maintaining the relative position between the two objects in the scene"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
 
+  RNA_def_node_enum(srna,
+                    "transform_space",
+                    "Transform Space",
+                    "The transformation of the vector and geometry outputs",
+                    rna_node_geometry_object_info_transform_space_items,
+                    NOD_storage_enum_accessors(transform_space),
+                    GEO_NODE_TRANSFORM_SPACE_ORIGINAL);
+}
+
+static void node_register()
+{
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_OBJECT_INFO, "Object Info", NODE_CLASS_INPUT);
-  node_type_init(&ntype, file_ns::node_node_init);
+  ntype.initfunc = node_node_init;
   node_type_storage(
       &ntype, "NodeGeometryObjectInfo", node_free_standard_storage, node_copy_standard_storage);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_object_info_cc

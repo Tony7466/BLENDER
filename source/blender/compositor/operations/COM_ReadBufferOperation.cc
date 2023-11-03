@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ReadBufferOperation.h"
 
@@ -31,8 +32,7 @@ void ReadBufferOperation::determine_canvas(const rcti &preferred_area, rcti &r_a
 
     /** \todo may not occur! But does with blur node. */
     if (memory_proxy_->get_executor()) {
-      uint resolution[2] = {static_cast<uint>(BLI_rcti_size_x(&r_area)),
-                            static_cast<uint>(BLI_rcti_size_y(&r_area))};
+      uint resolution[2] = {uint(BLI_rcti_size_x(&r_area)), uint(BLI_rcti_size_y(&r_area))};
       memory_proxy_->get_executor()->set_resolution(resolution);
     }
 

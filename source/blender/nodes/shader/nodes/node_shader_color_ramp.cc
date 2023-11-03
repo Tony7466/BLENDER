@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup shdnodes
@@ -7,32 +8,39 @@
 
 #include "DNA_texture_types.h"
 
+#include "BKE_colorband.h"
+
 #include "BLI_color.hh"
 
+#include "FN_multi_function_builder.hh"
+
+#include "NOD_multi_function.hh"
+
 #include "node_shader_util.hh"
+#include "node_util.hh"
 
 namespace blender::nodes::node_shader_color_ramp_cc {
 
 static void sh_node_valtorgb_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Float>(N_("Fac")).default_value(0.5f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
-  b.add_output<decl::Color>(N_("Color"));
-  b.add_output<decl::Float>(N_("Alpha"));
+  b.add_input<decl::Float>("Fac").default_value(0.5f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+  b.add_output<decl::Color>("Color");
+  b.add_output<decl::Float>("Alpha");
 }
 
-static void node_shader_init_valtorgb(bNodeTree *UNUSED(ntree), bNode *node)
+static void node_shader_init_valtorgb(bNodeTree * /*ntree*/, bNode *node)
 {
   node->storage = BKE_colorband_add(true);
 }
 
 static int gpu_shader_valtorgb(GPUMaterial *mat,
                                bNode *node,
-                               bNodeExecData *UNUSED(execdata),
+                               bNodeExecData * /*execdata*/,
                                GPUNodeStack *in,
                                GPUNodeStack *out)
 {
-  struct ColorBand *coba = (ColorBand *)node->storage;
+  ColorBand *coba = (ColorBand *)node->storage;
   float *array, layer;
   int size;
 
@@ -87,48 +95,56 @@ static int gpu_shader_valtorgb(GPUMaterial *mat,
   return GPU_stack_link(mat, node, "valtorgb", in, out, tex, GPU_constant(&layer));
 }
 
-class ColorBandFunction : public fn::MultiFunction {
+class ColorBandFunction : public mf::MultiFunction {
  private:
   const ColorBand &color_band_;
 
  public:
   ColorBandFunction(const ColorBand &color_band) : color_band_(color_band)
   {
-    static fn::MFSignature signature = create_signature();
+    static const mf::Signature signature = []() {
+      mf::Signature signature;
+      mf::SignatureBuilder builder{"Color Band", signature};
+      builder.single_input<float>("Value");
+      builder.single_output<ColorGeometry4f>("Color");
+      builder.single_output<float>("Alpha");
+      return signature;
+    }();
     this->set_signature(&signature);
   }
 
-  static fn::MFSignature create_signature()
-  {
-    fn::MFSignatureBuilder signature{"Color Band"};
-    signature.single_input<float>("Value");
-    signature.single_output<ColorGeometry4f>("Color");
-    signature.single_output<float>("Alpha");
-    return signature.build();
-  }
-
-  void call(IndexMask mask, fn::MFParams params, fn::MFContext UNUSED(context)) const override
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float> &values = params.readonly_single_input<float>(0, "Value");
     MutableSpan<ColorGeometry4f> colors = params.uninitialized_single_output<ColorGeometry4f>(
         1, "Color");
     MutableSpan<float> alphas = params.uninitialized_single_output<float>(2, "Alpha");
 
-    for (int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       ColorGeometry4f color;
       BKE_colorband_evaluate(&color_band_, values[i], color);
       colors[i] = color;
       alphas[i] = color.a;
-    }
+    });
   }
 };
 
 static void sh_node_valtorgb_build_multi_function(nodes::NodeMultiFunctionBuilder &builder)
 {
-  bNode &bnode = builder.node();
+  const bNode &bnode = builder.node();
   const ColorBand *color_band = (const ColorBand *)bnode.storage;
   builder.construct_and_set_matching_fn<ColorBandFunction>(*color_band);
 }
+
+NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
+{
+  /* TODO: Implement */
+  NodeItem res = empty();
+  return res;
+}
+#endif
+NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_color_ramp_cc
 
@@ -138,13 +154,14 @@ void register_node_type_sh_valtorgb()
 
   static bNodeType ntype;
 
-  sh_fn_node_type_base(&ntype, SH_NODE_VALTORGB, "ColorRamp", NODE_CLASS_CONVERTER);
+  sh_fn_node_type_base(&ntype, SH_NODE_VALTORGB, "Color Ramp", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::sh_node_valtorgb_declare;
-  node_type_init(&ntype, file_ns::node_shader_init_valtorgb);
-  node_type_size_preset(&ntype, NODE_SIZE_LARGE);
+  ntype.initfunc = file_ns::node_shader_init_valtorgb;
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
   node_type_storage(&ntype, "ColorBand", node_free_standard_storage, node_copy_standard_storage);
-  node_type_gpu(&ntype, file_ns::gpu_shader_valtorgb);
+  ntype.gpu_fn = file_ns::gpu_shader_valtorgb;
   ntype.build_multi_function = file_ns::sh_node_valtorgb_build_multi_function;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -25,13 +27,13 @@ using namespace Freestyle;
 PyDoc_STRVAR(FEdge_doc,
              "Class hierarchy: :class:`Interface1D` > :class:`FEdge`\n"
              "\n"
-             "Base Class for feature edges.  This FEdge can represent a silhouette,\n"
-             "a crease, a ridge/valley, a border or a suggestive contour.  For\n"
+             "Base Class for feature edges. This FEdge can represent a silhouette,\n"
+             "a crease, a ridge/valley, a border or a suggestive contour. For\n"
              "silhouettes, the FEdge is oriented so that the visible face lies on\n"
-             "the left of the edge.  For borders, the FEdge is oriented so that the\n"
-             "face lies on the left of the edge.  An FEdge can represent an initial\n"
+             "the left of the edge. For borders, the FEdge is oriented so that the\n"
+             "face lies on the left of the edge. An FEdge can represent an initial\n"
              "edge of the mesh or runs across a face of the initial mesh depending\n"
-             "on the smoothness or sharpness of the mesh.  This class is specialized\n"
+             "on the smoothness or sharpness of the mesh. This class is specialized\n"
              "into a smooth and a sharp version since their properties slightly vary\n"
              "from one to the other.\n"
              "\n"
@@ -63,14 +65,9 @@ static int FEdge_init(BPy_FEdge *self, PyObject *args, PyObject *kwds)
     }
   }
   else if ((void)PyErr_Clear(),
-           PyArg_ParseTupleAndKeywords(args,
-                                       kwds,
-                                       "O!O!",
-                                       (char **)kwlist_2,
-                                       &SVertex_Type,
-                                       &obj1,
-                                       &SVertex_Type,
-                                       &obj2)) {
+           PyArg_ParseTupleAndKeywords(
+               args, kwds, "O!O!", (char **)kwlist_2, &SVertex_Type, &obj1, &SVertex_Type, &obj2))
+  {
     self->fe = new FEdge(((BPy_SVertex *)obj1)->sv, ((BPy_SVertex *)obj2)->sv);
   }
   else {
@@ -89,7 +86,7 @@ static Py_ssize_t FEdge_sq_length(BPy_FEdge * /*self*/)
   return 2;
 }
 
-static PyObject *FEdge_sq_item(BPy_FEdge *self, int keynum)
+static PyObject *FEdge_sq_item(BPy_FEdge *self, Py_ssize_t keynum)
 {
   if (keynum < 0) {
     keynum += FEdge_sq_length(self);
@@ -106,16 +103,16 @@ static PyObject *FEdge_sq_item(BPy_FEdge *self, int keynum)
 }
 
 static PySequenceMethods BPy_FEdge_as_sequence = {
-    (lenfunc)FEdge_sq_length,    /* sq_length */
-    nullptr,                     /* sq_concat */
-    nullptr,                     /* sq_repeat */
-    (ssizeargfunc)FEdge_sq_item, /* sq_item */
-    nullptr,                     /* sq_slice */
-    nullptr,                     /* sq_ass_item */
-    nullptr,                     /* *was* sq_ass_slice */
-    nullptr,                     /* sq_contains */
-    nullptr,                     /* sq_inplace_concat */
-    nullptr,                     /* sq_inplace_repeat */
+    /*sq_length*/ (lenfunc)FEdge_sq_length,
+    /*sq_concat*/ nullptr,
+    /*sq_repeat*/ nullptr,
+    /*sq_item*/ (ssizeargfunc)FEdge_sq_item,
+    /*was_sq_slice*/ nullptr, /* DEPRECATED. */
+    /*sq_ass_item*/ nullptr,
+    /*was_sq_ass_slice*/ nullptr, /* DEPRECATED. */
+    /*sq_contains*/ nullptr,
+    /*sq_inplace_concat*/ nullptr,
+    /*sq_inplace_repeat*/ nullptr,
 };
 
 /*----------------------FEdge get/setters ----------------------------*/
@@ -125,7 +122,7 @@ PyDoc_STRVAR(FEdge_first_svertex_doc,
              "\n"
              ":type: :class:`SVertex`");
 
-static PyObject *FEdge_first_svertex_get(BPy_FEdge *self, void *UNUSED(closure))
+static PyObject *FEdge_first_svertex_get(BPy_FEdge *self, void * /*closure*/)
 {
   SVertex *A = self->fe->vertexA();
   if (A) {
@@ -134,7 +131,7 @@ static PyObject *FEdge_first_svertex_get(BPy_FEdge *self, void *UNUSED(closure))
   Py_RETURN_NONE;
 }
 
-static int FEdge_first_svertex_set(BPy_FEdge *self, PyObject *value, void *UNUSED(closure))
+static int FEdge_first_svertex_set(BPy_FEdge *self, PyObject *value, void * /*closure*/)
 {
   if (!BPy_SVertex_Check(value)) {
     PyErr_SetString(PyExc_TypeError, "value must be an SVertex");
@@ -149,7 +146,7 @@ PyDoc_STRVAR(FEdge_second_svertex_doc,
              "\n"
              ":type: :class:`SVertex`");
 
-static PyObject *FEdge_second_svertex_get(BPy_FEdge *self, void *UNUSED(closure))
+static PyObject *FEdge_second_svertex_get(BPy_FEdge *self, void * /*closure*/)
 {
   SVertex *B = self->fe->vertexB();
   if (B) {
@@ -158,7 +155,7 @@ static PyObject *FEdge_second_svertex_get(BPy_FEdge *self, void *UNUSED(closure)
   Py_RETURN_NONE;
 }
 
-static int FEdge_second_svertex_set(BPy_FEdge *self, PyObject *value, void *UNUSED(closure))
+static int FEdge_second_svertex_set(BPy_FEdge *self, PyObject *value, void * /*closure*/)
 {
   if (!BPy_SVertex_Check(value)) {
     PyErr_SetString(PyExc_TypeError, "value must be an SVertex");
@@ -169,12 +166,12 @@ static int FEdge_second_svertex_set(BPy_FEdge *self, PyObject *value, void *UNUS
 }
 
 PyDoc_STRVAR(FEdge_next_fedge_doc,
-             "The FEdge following this one in the ViewEdge.  The value is None if\n"
+             "The FEdge following this one in the ViewEdge. The value is None if\n"
              "this FEdge is the last of the ViewEdge.\n"
              "\n"
              ":type: :class:`FEdge`");
 
-static PyObject *FEdge_next_fedge_get(BPy_FEdge *self, void *UNUSED(closure))
+static PyObject *FEdge_next_fedge_get(BPy_FEdge *self, void * /*closure*/)
 {
   FEdge *fe = self->fe->nextEdge();
   if (fe) {
@@ -183,7 +180,7 @@ static PyObject *FEdge_next_fedge_get(BPy_FEdge *self, void *UNUSED(closure))
   Py_RETURN_NONE;
 }
 
-static int FEdge_next_fedge_set(BPy_FEdge *self, PyObject *value, void *UNUSED(closure))
+static int FEdge_next_fedge_set(BPy_FEdge *self, PyObject *value, void * /*closure*/)
 {
   if (!BPy_FEdge_Check(value)) {
     PyErr_SetString(PyExc_TypeError, "value must be an FEdge");
@@ -194,12 +191,12 @@ static int FEdge_next_fedge_set(BPy_FEdge *self, PyObject *value, void *UNUSED(c
 }
 
 PyDoc_STRVAR(FEdge_previous_fedge_doc,
-             "The FEdge preceding this one in the ViewEdge.  The value is None if\n"
+             "The FEdge preceding this one in the ViewEdge. The value is None if\n"
              "this FEdge is the first one of the ViewEdge.\n"
              "\n"
              ":type: :class:`FEdge`");
 
-static PyObject *FEdge_previous_fedge_get(BPy_FEdge *self, void *UNUSED(closure))
+static PyObject *FEdge_previous_fedge_get(BPy_FEdge *self, void * /*closure*/)
 {
   FEdge *fe = self->fe->previousEdge();
   if (fe) {
@@ -208,7 +205,7 @@ static PyObject *FEdge_previous_fedge_get(BPy_FEdge *self, void *UNUSED(closure)
   Py_RETURN_NONE;
 }
 
-static int FEdge_previous_fedge_set(BPy_FEdge *self, PyObject *value, void *UNUSED(closure))
+static int FEdge_previous_fedge_set(BPy_FEdge *self, PyObject *value, void * /*closure*/)
 {
   if (!BPy_FEdge_Check(value)) {
     PyErr_SetString(PyExc_TypeError, "value must be an FEdge");
@@ -223,7 +220,7 @@ PyDoc_STRVAR(FEdge_viewedge_doc,
              "\n"
              ":type: :class:`ViewEdge`");
 
-static PyObject *FEdge_viewedge_get(BPy_FEdge *self, void *UNUSED(closure))
+static PyObject *FEdge_viewedge_get(BPy_FEdge *self, void * /*closure*/)
 {
   ViewEdge *ve = self->fe->viewedge();
   if (ve) {
@@ -232,7 +229,7 @@ static PyObject *FEdge_viewedge_get(BPy_FEdge *self, void *UNUSED(closure))
   Py_RETURN_NONE;
 }
 
-static int FEdge_viewedge_set(BPy_FEdge *self, PyObject *value, void *UNUSED(closure))
+static int FEdge_viewedge_set(BPy_FEdge *self, PyObject *value, void * /*closure*/)
 {
   if (!BPy_ViewEdge_Check(value)) {
     PyErr_SetString(PyExc_TypeError, "value must be an ViewEdge");
@@ -247,12 +244,12 @@ PyDoc_STRVAR(FEdge_is_smooth_doc,
              "\n"
              ":type: bool");
 
-static PyObject *FEdge_is_smooth_get(BPy_FEdge *self, void *UNUSED(closure))
+static PyObject *FEdge_is_smooth_get(BPy_FEdge *self, void * /*closure*/)
 {
   return PyBool_from_bool(self->fe->isSmooth());
 }
 
-static int FEdge_is_smooth_set(BPy_FEdge *self, PyObject *value, void *UNUSED(closure))
+static int FEdge_is_smooth_set(BPy_FEdge *self, PyObject *value, void * /*closure*/)
 {
   if (!PyBool_Check(value)) {
     PyErr_SetString(PyExc_TypeError, "value must be boolean");
@@ -267,13 +264,13 @@ PyDoc_STRVAR(FEdge_id_doc,
              "\n"
              ":type: :class:`Id`");
 
-static PyObject *FEdge_id_get(BPy_FEdge *self, void *UNUSED(closure))
+static PyObject *FEdge_id_get(BPy_FEdge *self, void * /*closure*/)
 {
   Id id(self->fe->getId());
   return BPy_Id_from_Id(id);  // return a copy
 }
 
-static int FEdge_id_set(BPy_FEdge *self, PyObject *value, void *UNUSED(closure))
+static int FEdge_id_set(BPy_FEdge *self, PyObject *value, void * /*closure*/)
 {
   if (!BPy_Id_Check(value)) {
     PyErr_SetString(PyExc_TypeError, "value must be an Id");
@@ -288,12 +285,12 @@ PyDoc_STRVAR(FEdge_nature_doc,
              "\n"
              ":type: :class:`Nature`");
 
-static PyObject *FEdge_nature_get(BPy_FEdge *self, void *UNUSED(closure))
+static PyObject *FEdge_nature_get(BPy_FEdge *self, void * /*closure*/)
 {
   return BPy_Nature_from_Nature(self->fe->getNature());
 }
 
-static int FEdge_nature_set(BPy_FEdge *self, PyObject *value, void *UNUSED(closure))
+static int FEdge_nature_set(BPy_FEdge *self, PyObject *value, void * /*closure*/)
 {
   if (!BPy_Nature_Check(value)) {
     PyErr_SetString(PyExc_TypeError, "value must be a Nature");
@@ -342,43 +339,44 @@ static PyGetSetDef BPy_FEdge_getseters[] = {
 /*-----------------------BPy_FEdge type definition ------------------------------*/
 
 PyTypeObject FEdge_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "FEdge", /* tp_name */
-    sizeof(BPy_FEdge),                         /* tp_basicsize */
-    0,                                         /* tp_itemsize */
-    nullptr,                                   /* tp_dealloc */
-    0,                                         /* tp_vectorcall_offset */
-    nullptr,                                   /* tp_getattr */
-    nullptr,                                   /* tp_setattr */
-    nullptr,                                   /* tp_reserved */
-    nullptr,                                   /* tp_repr */
-    nullptr,                                   /* tp_as_number */
-    &BPy_FEdge_as_sequence,                    /* tp_as_sequence */
-    nullptr,                                   /* tp_as_mapping */
-    nullptr,                                   /* tp_hash */
-    nullptr,                                   /* tp_call */
-    nullptr,                                   /* tp_str */
-    nullptr,                                   /* tp_getattro */
-    nullptr,                                   /* tp_setattro */
-    nullptr,                                   /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,  /* tp_flags */
-    FEdge_doc,                                 /* tp_doc */
-    nullptr,                                   /* tp_traverse */
-    nullptr,                                   /* tp_clear */
-    nullptr,                                   /* tp_richcompare */
-    0,                                         /* tp_weaklistoffset */
-    nullptr,                                   /* tp_iter */
-    nullptr,                                   /* tp_iternext */
-    nullptr,                                   /* tp_methods */
-    nullptr,                                   /* tp_members */
-    BPy_FEdge_getseters,                       /* tp_getset */
-    &Interface1D_Type,                         /* tp_base */
-    nullptr,                                   /* tp_dict */
-    nullptr,                                   /* tp_descr_get */
-    nullptr,                                   /* tp_descr_set */
-    0,                                         /* tp_dictoffset */
-    (initproc)FEdge_init,                      /* tp_init */
-    nullptr,                                   /* tp_alloc */
-    nullptr,                                   /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "FEdge",
+    /*tp_basicsize*/ sizeof(BPy_FEdge),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ nullptr,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ &BPy_FEdge_as_sequence,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ FEdge_doc,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ BPy_FEdge_getseters,
+    /*tp_base*/ &Interface1D_Type,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)FEdge_init,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

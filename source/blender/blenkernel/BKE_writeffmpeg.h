@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -27,6 +28,7 @@ enum {
   FFMPEG_OGG = 10,
   FFMPEG_INVALID = 11,
   FFMPEG_WEBM = 12,
+  FFMPEG_AV1 = 13,
 };
 
 enum {
@@ -38,6 +40,7 @@ enum {
   FFMPEG_PRESET_H264 = 5,
   FFMPEG_PRESET_THEORA = 6,
   FFMPEG_PRESET_XVID = 7,
+  FFMPEG_PRESET_AV1 = 8,
 };
 
 struct RenderData;
@@ -62,7 +65,7 @@ int BKE_ffmpeg_append(void *context_v,
                       int recty,
                       const char *suffix,
                       struct ReportList *reports);
-void BKE_ffmpeg_filepath_get(char *string,
+void BKE_ffmpeg_filepath_get(char filepath[/*FILE_MAX*/ 1024],
                              const struct RenderData *rd,
                              bool preview,
                              const char *suffix);

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -22,8 +24,8 @@ PyDoc_STRVAR(orientedViewEdgeIterator_doc,
              "Class hierarchy: :class:`Iterator` > :class:`orientedViewEdgeIterator`\n"
              "\n"
              "Class representing an iterator over oriented ViewEdges around a\n"
-             ":class:`ViewVertex`.  This iterator allows a CCW iteration (in the image\n"
-             "plane).  An instance of an orientedViewEdgeIterator can only be\n"
+             ":class:`ViewVertex`. This iterator allows a CCW iteration (in the image\n"
+             "plane). An instance of an orientedViewEdgeIterator can only be\n"
              "obtained from a ViewVertex by calling edges_begin() or edges_end().\n"
              "\n"
              ".. method:: __init__()\n"
@@ -43,7 +45,8 @@ static int orientedViewEdgeIterator_init(BPy_orientedViewEdgeIterator *self,
   PyObject *brother = nullptr;
 
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwds, "|O!", (char **)kwlist, &orientedViewEdgeIterator_Type, &brother)) {
+          args, kwds, "|O!", (char **)kwlist, &orientedViewEdgeIterator_Type, &brother))
+  {
     return -1;
   }
   if (!brother) {
@@ -107,7 +110,7 @@ PyDoc_STRVAR(orientedViewEdgeIterator_object_doc,
              ":type: (:class:`ViewEdge`, bool)");
 
 static PyObject *orientedViewEdgeIterator_object_get(BPy_orientedViewEdgeIterator *self,
-                                                     void *UNUSED(closure))
+                                                     void * /*closure*/)
 {
   if (self->ove_it->isEnd()) {
     PyErr_SetString(PyExc_RuntimeError, "iteration has stopped");
@@ -128,43 +131,44 @@ static PyGetSetDef BPy_orientedViewEdgeIterator_getseters[] = {
 /*-----------------------BPy_orientedViewEdgeIterator type definition ---------------------------*/
 
 PyTypeObject orientedViewEdgeIterator_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "orientedViewEdgeIterator", /* tp_name */
-    sizeof(BPy_orientedViewEdgeIterator),                         /* tp_basicsize */
-    0,                                                            /* tp_itemsize */
-    nullptr,                                                      /* tp_dealloc */
-    0,                                                            /* tp_vectorcall_offset */
-    nullptr,                                                      /* tp_getattr */
-    nullptr,                                                      /* tp_setattr */
-    nullptr,                                                      /* tp_reserved */
-    nullptr,                                                      /* tp_repr */
-    nullptr,                                                      /* tp_as_number */
-    nullptr,                                                      /* tp_as_sequence */
-    nullptr,                                                      /* tp_as_mapping */
-    nullptr,                                                      /* tp_hash */
-    nullptr,                                                      /* tp_call */
-    nullptr,                                                      /* tp_str */
-    nullptr,                                                      /* tp_getattro */
-    nullptr,                                                      /* tp_setattro */
-    nullptr,                                                      /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,                     /* tp_flags */
-    orientedViewEdgeIterator_doc,                                 /* tp_doc */
-    nullptr,                                                      /* tp_traverse */
-    nullptr,                                                      /* tp_clear */
-    nullptr,                                                      /* tp_richcompare */
-    0,                                                            /* tp_weaklistoffset */
-    (getiterfunc)orientedViewEdgeIterator_iter,                   /* tp_iter */
-    (iternextfunc)orientedViewEdgeIterator_iternext,              /* tp_iternext */
-    nullptr,                                                      /* tp_methods */
-    nullptr,                                                      /* tp_members */
-    BPy_orientedViewEdgeIterator_getseters,                       /* tp_getset */
-    &Iterator_Type,                                               /* tp_base */
-    nullptr,                                                      /* tp_dict */
-    nullptr,                                                      /* tp_descr_get */
-    nullptr,                                                      /* tp_descr_set */
-    0,                                                            /* tp_dictoffset */
-    (initproc)orientedViewEdgeIterator_init,                      /* tp_init */
-    nullptr,                                                      /* tp_alloc */
-    nullptr,                                                      /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "orientedViewEdgeIterator",
+    /*tp_basicsize*/ sizeof(BPy_orientedViewEdgeIterator),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ nullptr,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ orientedViewEdgeIterator_doc,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ (getiterfunc)orientedViewEdgeIterator_iter,
+    /*tp_iternext*/ (iternextfunc)orientedViewEdgeIterator_iternext,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ BPy_orientedViewEdgeIterator_getseters,
+    /*tp_base*/ &Iterator_Type,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)orientedViewEdgeIterator_init,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

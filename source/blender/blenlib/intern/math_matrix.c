@@ -1,17 +1,23 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
  */
 
-#include "BLI_math.h"
-
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_solvers.h"
+#include "BLI_math_vector.h"
+#include "BLI_simd.h"
 #include "BLI_strict_flags.h"
 
 #ifndef MATH_STANDALONE
 #  include "eigen_capi.h"
 #endif
+
+#include <string.h>
 
 /********************************* Init **************************************/
 
@@ -113,7 +119,6 @@ void copy_m4_m3(float m1[4][4], const float m2[3][3]) /* no clear */
   m1[2][1] = m2[2][1];
   m1[2][2] = m2[2][2];
 
-  /*  Reevan's Bugfix */
   m1[0][3] = 0.0f;
   m1[1][3] = 0.0f;
   m1[2][3] = 0.0f;
@@ -258,23 +263,15 @@ void shuffle_m4(float R[4][4], const int index[4])
 
 void mul_m4_m4m4(float R[4][4], const float A[4][4], const float B[4][4])
 {
-  if (A == R) {
-    mul_m4_m4_post(R, B);
+  if (ELEM(R, A, B)) {
+    float T[4][4];
+    mul_m4_m4m4(T, A, B);
+    copy_m4_m4(R, T);
+    return;
   }
-  else if (B == R) {
-    mul_m4_m4_pre(R, A);
-  }
-  else {
-    mul_m4_m4m4_uniq(R, A, B);
-  }
-}
 
-void mul_m4_m4m4_uniq(float R[4][4], const float A[4][4], const float B[4][4])
-{
-  BLI_assert(!ELEM(R, A, B));
-
-  /* Matrix product: `R[j][k] = A[j][i] . B[i][k]`. */
-#ifdef BLI_HAVE_SSE2
+  /* Matrix product: `R[j][k] = B[j][i] . A[i][k]`. */
+#if BLI_HAVE_SSE2
   __m128 A0 = _mm_loadu_ps(A[0]);
   __m128 A1 = _mm_loadu_ps(A[1]);
   __m128 A2 = _mm_loadu_ps(A[2]);
@@ -314,39 +311,16 @@ void mul_m4_m4m4_uniq(float R[4][4], const float A[4][4], const float B[4][4])
 #endif
 }
 
-void mul_m4_m4m4_db_uniq(double R[4][4], const double A[4][4], const double B[4][4])
+void mul_m4db_m4db_m4fl(double R[4][4], const double A[4][4], const float B[4][4])
 {
-  BLI_assert(!ELEM(R, A, B));
+  if (R == A) {
+    double T[4][4];
+    mul_m4db_m4db_m4fl(T, A, B);
+    copy_m4_m4_db(R, T);
+    return;
+  }
 
-  /* Matrix product: `R[j][k] = A[j][i] . B[i][k]`. */
-
-  R[0][0] = B[0][0] * A[0][0] + B[0][1] * A[1][0] + B[0][2] * A[2][0] + B[0][3] * A[3][0];
-  R[0][1] = B[0][0] * A[0][1] + B[0][1] * A[1][1] + B[0][2] * A[2][1] + B[0][3] * A[3][1];
-  R[0][2] = B[0][0] * A[0][2] + B[0][1] * A[1][2] + B[0][2] * A[2][2] + B[0][3] * A[3][2];
-  R[0][3] = B[0][0] * A[0][3] + B[0][1] * A[1][3] + B[0][2] * A[2][3] + B[0][3] * A[3][3];
-
-  R[1][0] = B[1][0] * A[0][0] + B[1][1] * A[1][0] + B[1][2] * A[2][0] + B[1][3] * A[3][0];
-  R[1][1] = B[1][0] * A[0][1] + B[1][1] * A[1][1] + B[1][2] * A[2][1] + B[1][3] * A[3][1];
-  R[1][2] = B[1][0] * A[0][2] + B[1][1] * A[1][2] + B[1][2] * A[2][2] + B[1][3] * A[3][2];
-  R[1][3] = B[1][0] * A[0][3] + B[1][1] * A[1][3] + B[1][2] * A[2][3] + B[1][3] * A[3][3];
-
-  R[2][0] = B[2][0] * A[0][0] + B[2][1] * A[1][0] + B[2][2] * A[2][0] + B[2][3] * A[3][0];
-  R[2][1] = B[2][0] * A[0][1] + B[2][1] * A[1][1] + B[2][2] * A[2][1] + B[2][3] * A[3][1];
-  R[2][2] = B[2][0] * A[0][2] + B[2][1] * A[1][2] + B[2][2] * A[2][2] + B[2][3] * A[3][2];
-  R[2][3] = B[2][0] * A[0][3] + B[2][1] * A[1][3] + B[2][2] * A[2][3] + B[2][3] * A[3][3];
-
-  R[3][0] = B[3][0] * A[0][0] + B[3][1] * A[1][0] + B[3][2] * A[2][0] + B[3][3] * A[3][0];
-  R[3][1] = B[3][0] * A[0][1] + B[3][1] * A[1][1] + B[3][2] * A[2][1] + B[3][3] * A[3][1];
-  R[3][2] = B[3][0] * A[0][2] + B[3][1] * A[1][2] + B[3][2] * A[2][2] + B[3][3] * A[3][2];
-  R[3][3] = B[3][0] * A[0][3] + B[3][1] * A[1][3] + B[3][2] * A[2][3] + B[3][3] * A[3][3];
-}
-
-void mul_m4db_m4db_m4fl_uniq(double R[4][4], const double A[4][4], const float B[4][4])
-{
-  /* Remove second check since types don't match. */
-  BLI_assert(!ELEM(R, A /*, B */));
-
-  /* Matrix product: `R[j][k] = A[j][i] . B[i][k]`. */
+  /* Matrix product: `R[j][k] = B[j][i] . A[i][k]`. */
 
   R[0][0] = B[0][0] * A[0][0] + B[0][1] * A[1][0] + B[0][2] * A[2][0] + B[0][3] * A[3][0];
   R[0][1] = B[0][0] * A[0][1] + B[0][1] * A[1][1] + B[0][2] * A[2][1] + B[0][3] * A[3][1];
@@ -371,53 +345,32 @@ void mul_m4db_m4db_m4fl_uniq(double R[4][4], const double A[4][4], const float B
 
 void mul_m4_m4_pre(float R[4][4], const float A[4][4])
 {
-  BLI_assert(A != R);
-  float B[4][4];
-  copy_m4_m4(B, R);
-  mul_m4_m4m4_uniq(R, A, B);
+  mul_m4_m4m4(R, A, R);
 }
 
 void mul_m4_m4_post(float R[4][4], const float B[4][4])
 {
-  BLI_assert(B != R);
-  float A[4][4];
-  copy_m4_m4(A, R);
-  mul_m4_m4m4_uniq(R, A, B);
-}
-
-void mul_m3_m3m3(float R[3][3], const float A[3][3], const float B[3][3])
-{
-  if (A == R) {
-    mul_m3_m3_post(R, B);
-  }
-  else if (B == R) {
-    mul_m3_m3_pre(R, A);
-  }
-  else {
-    mul_m3_m3m3_uniq(R, A, B);
-  }
+  mul_m4_m4m4(R, R, B);
 }
 
 void mul_m3_m3_pre(float R[3][3], const float A[3][3])
 {
-  BLI_assert(A != R);
-  float B[3][3];
-  copy_m3_m3(B, R);
-  mul_m3_m3m3_uniq(R, A, B);
+  mul_m3_m3m3(R, A, R);
 }
 
 void mul_m3_m3_post(float R[3][3], const float B[3][3])
 {
-  BLI_assert(B != R);
-  float A[3][3];
-  copy_m3_m3(A, R);
-  mul_m3_m3m3_uniq(R, A, B);
+  mul_m3_m3m3(R, R, B);
 }
 
-void mul_m3_m3m3_uniq(float R[3][3], const float A[3][3], const float B[3][3])
+void mul_m3_m3m3(float R[3][3], const float A[3][3], const float B[3][3])
 {
-  BLI_assert(!ELEM(R, A, B));
-
+  if (ELEM(R, A, B)) {
+    float T[3][3];
+    mul_m3_m3m3(T, A, B);
+    copy_m3_m3(R, T);
+    return;
+  }
   R[0][0] = B[0][0] * A[0][0] + B[0][1] * A[1][0] + B[0][2] * A[2][0];
   R[0][1] = B[0][0] * A[0][1] + B[0][1] * A[1][1] + B[0][2] * A[2][1];
   R[0][2] = B[0][0] * A[0][2] + B[0][1] * A[1][2] + B[0][2] * A[2][2];
@@ -433,88 +386,102 @@ void mul_m3_m3m3_uniq(float R[3][3], const float A[3][3], const float B[3][3])
 
 void mul_m4_m4m3(float R[4][4], const float A[4][4], const float B[3][3])
 {
-  float B_[3][3], A_[4][4];
+  if (R == A) {
+    float T[4][4];
+    /* The mul_m4_m4m3 only writes to the upper-left 3x3 block, so make it so the rest of the
+     * matrix is copied from the input to the output.
+     *
+     * TODO(sergey): It does sound a bit redundant from the number of copy operations, so there is
+     * a potential for optimization. */
+    copy_m4_m4(T, A);
+    mul_m4_m4m3(T, A, B);
+    copy_m4_m4(R, T);
+    return;
+  }
 
-  /* copy so it works when R is the same pointer as A or B */
-  /* TODO: avoid copying when matrices are different */
-  copy_m4_m4(A_, A);
-  copy_m3_m3(B_, B);
-
-  R[0][0] = B_[0][0] * A_[0][0] + B_[0][1] * A_[1][0] + B_[0][2] * A_[2][0];
-  R[0][1] = B_[0][0] * A_[0][1] + B_[0][1] * A_[1][1] + B_[0][2] * A_[2][1];
-  R[0][2] = B_[0][0] * A_[0][2] + B_[0][1] * A_[1][2] + B_[0][2] * A_[2][2];
-  R[1][0] = B_[1][0] * A_[0][0] + B_[1][1] * A_[1][0] + B_[1][2] * A_[2][0];
-  R[1][1] = B_[1][0] * A_[0][1] + B_[1][1] * A_[1][1] + B_[1][2] * A_[2][1];
-  R[1][2] = B_[1][0] * A_[0][2] + B_[1][1] * A_[1][2] + B_[1][2] * A_[2][2];
-  R[2][0] = B_[2][0] * A_[0][0] + B_[2][1] * A_[1][0] + B_[2][2] * A_[2][0];
-  R[2][1] = B_[2][0] * A_[0][1] + B_[2][1] * A_[1][1] + B_[2][2] * A_[2][1];
-  R[2][2] = B_[2][0] * A_[0][2] + B_[2][1] * A_[1][2] + B_[2][2] * A_[2][2];
+  R[0][0] = B[0][0] * A[0][0] + B[0][1] * A[1][0] + B[0][2] * A[2][0];
+  R[0][1] = B[0][0] * A[0][1] + B[0][1] * A[1][1] + B[0][2] * A[2][1];
+  R[0][2] = B[0][0] * A[0][2] + B[0][1] * A[1][2] + B[0][2] * A[2][2];
+  R[1][0] = B[1][0] * A[0][0] + B[1][1] * A[1][0] + B[1][2] * A[2][0];
+  R[1][1] = B[1][0] * A[0][1] + B[1][1] * A[1][1] + B[1][2] * A[2][1];
+  R[1][2] = B[1][0] * A[0][2] + B[1][1] * A[1][2] + B[1][2] * A[2][2];
+  R[2][0] = B[2][0] * A[0][0] + B[2][1] * A[1][0] + B[2][2] * A[2][0];
+  R[2][1] = B[2][0] * A[0][1] + B[2][1] * A[1][1] + B[2][2] * A[2][1];
+  R[2][2] = B[2][0] * A[0][2] + B[2][1] * A[1][2] + B[2][2] * A[2][2];
 }
 
 void mul_m3_m3m4(float R[3][3], const float A[3][3], const float B[4][4])
 {
-  float B_[4][4], A_[3][3];
+  if (R == A) {
+    float T[3][3];
+    mul_m3_m3m4(T, A, B);
+    copy_m3_m3(R, T);
+    return;
+  }
 
-  /* copy so it works when R is the same pointer as A or B */
-  /* TODO: avoid copying when matrices are different */
-  copy_m3_m3(A_, A);
-  copy_m4_m4(B_, B);
+  /* Matrix product: `R[j][k] = B[j][i] . A[i][k]`. */
 
-  /* R[i][j] = B_[i][k] * A_[k][j] */
-  R[0][0] = B_[0][0] * A_[0][0] + B_[0][1] * A_[1][0] + B_[0][2] * A_[2][0];
-  R[0][1] = B_[0][0] * A_[0][1] + B_[0][1] * A_[1][1] + B_[0][2] * A_[2][1];
-  R[0][2] = B_[0][0] * A_[0][2] + B_[0][1] * A_[1][2] + B_[0][2] * A_[2][2];
+  R[0][0] = B[0][0] * A[0][0] + B[0][1] * A[1][0] + B[0][2] * A[2][0];
+  R[0][1] = B[0][0] * A[0][1] + B[0][1] * A[1][1] + B[0][2] * A[2][1];
+  R[0][2] = B[0][0] * A[0][2] + B[0][1] * A[1][2] + B[0][2] * A[2][2];
 
-  R[1][0] = B_[1][0] * A_[0][0] + B_[1][1] * A_[1][0] + B_[1][2] * A_[2][0];
-  R[1][1] = B_[1][0] * A_[0][1] + B_[1][1] * A_[1][1] + B_[1][2] * A_[2][1];
-  R[1][2] = B_[1][0] * A_[0][2] + B_[1][1] * A_[1][2] + B_[1][2] * A_[2][2];
+  R[1][0] = B[1][0] * A[0][0] + B[1][1] * A[1][0] + B[1][2] * A[2][0];
+  R[1][1] = B[1][0] * A[0][1] + B[1][1] * A[1][1] + B[1][2] * A[2][1];
+  R[1][2] = B[1][0] * A[0][2] + B[1][1] * A[1][2] + B[1][2] * A[2][2];
 
-  R[2][0] = B_[2][0] * A_[0][0] + B_[2][1] * A_[1][0] + B_[2][2] * A_[2][0];
-  R[2][1] = B_[2][0] * A_[0][1] + B_[2][1] * A_[1][1] + B_[2][2] * A_[2][1];
-  R[2][2] = B_[2][0] * A_[0][2] + B_[2][1] * A_[1][2] + B_[2][2] * A_[2][2];
+  R[2][0] = B[2][0] * A[0][0] + B[2][1] * A[1][0] + B[2][2] * A[2][0];
+  R[2][1] = B[2][0] * A[0][1] + B[2][1] * A[1][1] + B[2][2] * A[2][1];
+  R[2][2] = B[2][0] * A[0][2] + B[2][1] * A[1][2] + B[2][2] * A[2][2];
 }
 
 void mul_m3_m4m3(float R[3][3], const float A[4][4], const float B[3][3])
 {
-  float B_[3][3], A_[4][4];
+  if (R == B) {
+    float T[3][3];
+    mul_m3_m4m3(T, A, B);
+    copy_m3_m3(R, T);
+    return;
+  }
 
-  /* copy so it works when R is the same pointer as A or B */
-  /* TODO: avoid copying when matrices are different */
-  copy_m4_m4(A_, A);
-  copy_m3_m3(B_, B);
+  /* Matrix product: `R[j][k] = B[j][i] . A[i][k]`. */
 
-  /* R[i][j] = B[i][k] * A[k][j] */
-  R[0][0] = B_[0][0] * A_[0][0] + B_[0][1] * A_[1][0] + B_[0][2] * A_[2][0];
-  R[0][1] = B_[0][0] * A_[0][1] + B_[0][1] * A_[1][1] + B_[0][2] * A_[2][1];
-  R[0][2] = B_[0][0] * A_[0][2] + B_[0][1] * A_[1][2] + B_[0][2] * A_[2][2];
+  R[0][0] = B[0][0] * A[0][0] + B[0][1] * A[1][0] + B[0][2] * A[2][0];
+  R[0][1] = B[0][0] * A[0][1] + B[0][1] * A[1][1] + B[0][2] * A[2][1];
+  R[0][2] = B[0][0] * A[0][2] + B[0][1] * A[1][2] + B[0][2] * A[2][2];
 
-  R[1][0] = B_[1][0] * A_[0][0] + B_[1][1] * A_[1][0] + B_[1][2] * A_[2][0];
-  R[1][1] = B_[1][0] * A_[0][1] + B_[1][1] * A_[1][1] + B_[1][2] * A_[2][1];
-  R[1][2] = B_[1][0] * A_[0][2] + B_[1][1] * A_[1][2] + B_[1][2] * A_[2][2];
+  R[1][0] = B[1][0] * A[0][0] + B[1][1] * A[1][0] + B[1][2] * A[2][0];
+  R[1][1] = B[1][0] * A[0][1] + B[1][1] * A[1][1] + B[1][2] * A[2][1];
+  R[1][2] = B[1][0] * A[0][2] + B[1][1] * A[1][2] + B[1][2] * A[2][2];
 
-  R[2][0] = B_[2][0] * A_[0][0] + B_[2][1] * A_[1][0] + B_[2][2] * A_[2][0];
-  R[2][1] = B_[2][0] * A_[0][1] + B_[2][1] * A_[1][1] + B_[2][2] * A_[2][1];
-  R[2][2] = B_[2][0] * A_[0][2] + B_[2][1] * A_[1][2] + B_[2][2] * A_[2][2];
+  R[2][0] = B[2][0] * A[0][0] + B[2][1] * A[1][0] + B[2][2] * A[2][0];
+  R[2][1] = B[2][0] * A[0][1] + B[2][1] * A[1][1] + B[2][2] * A[2][1];
+  R[2][2] = B[2][0] * A[0][2] + B[2][1] * A[1][2] + B[2][2] * A[2][2];
 }
 
 void mul_m4_m3m4(float R[4][4], const float A[3][3], const float B[4][4])
 {
-  float B_[4][4], A_[3][3];
+  if (R == B) {
+    float T[4][4];
+    /* The mul_m4_m4m3 only writes to the upper-left 3x3 block, so make it so the rest of the
+     * matrix is copied from the input to the output.
+     *
+     * TODO(sergey): It does sound a bit redundant from the number of copy operations, so there is
+     * a potential for optimization. */
+    copy_m4_m4(T, B);
+    mul_m4_m3m4(T, A, B);
+    copy_m4_m4(R, T);
+    return;
+  }
 
-  /* copy so it works when R is the same pointer as A or B */
-  /* TODO: avoid copying when matrices are different */
-  copy_m3_m3(A_, A);
-  copy_m4_m4(B_, B);
-
-  R[0][0] = B_[0][0] * A_[0][0] + B_[0][1] * A_[1][0] + B_[0][2] * A_[2][0];
-  R[0][1] = B_[0][0] * A_[0][1] + B_[0][1] * A_[1][1] + B_[0][2] * A_[2][1];
-  R[0][2] = B_[0][0] * A_[0][2] + B_[0][1] * A_[1][2] + B_[0][2] * A_[2][2];
-  R[1][0] = B_[1][0] * A_[0][0] + B_[1][1] * A_[1][0] + B_[1][2] * A_[2][0];
-  R[1][1] = B_[1][0] * A_[0][1] + B_[1][1] * A_[1][1] + B_[1][2] * A_[2][1];
-  R[1][2] = B_[1][0] * A_[0][2] + B_[1][1] * A_[1][2] + B_[1][2] * A_[2][2];
-  R[2][0] = B_[2][0] * A_[0][0] + B_[2][1] * A_[1][0] + B_[2][2] * A_[2][0];
-  R[2][1] = B_[2][0] * A_[0][1] + B_[2][1] * A_[1][1] + B_[2][2] * A_[2][1];
-  R[2][2] = B_[2][0] * A_[0][2] + B_[2][1] * A_[1][2] + B_[2][2] * A_[2][2];
+  R[0][0] = B[0][0] * A[0][0] + B[0][1] * A[1][0] + B[0][2] * A[2][0];
+  R[0][1] = B[0][0] * A[0][1] + B[0][1] * A[1][1] + B[0][2] * A[2][1];
+  R[0][2] = B[0][0] * A[0][2] + B[0][1] * A[1][2] + B[0][2] * A[2][2];
+  R[1][0] = B[1][0] * A[0][0] + B[1][1] * A[1][0] + B[1][2] * A[2][0];
+  R[1][1] = B[1][0] * A[0][1] + B[1][1] * A[1][1] + B[1][2] * A[2][1];
+  R[1][2] = B[1][0] * A[0][2] + B[1][1] * A[1][2] + B[1][2] * A[2][2];
+  R[2][0] = B[2][0] * A[0][0] + B[2][1] * A[1][0] + B[2][2] * A[2][0];
+  R[2][1] = B[2][0] * A[0][1] + B[2][1] * A[1][1] + B[2][2] * A[2][1];
+  R[2][2] = B[2][0] * A[0][2] + B[2][1] * A[1][2] + B[2][2] * A[2][2];
 }
 
 void mul_m3_m4m4(float R[3][3], const float A[4][4], const float B[4][4])
@@ -543,8 +510,9 @@ void _va_mul_m3_series_4(float r[3][3],
                          const float m2[3][3],
                          const float m3[3][3])
 {
-  mul_m3_m3m3(r, m1, m2);
-  mul_m3_m3m3(r, r, m3);
+  float s[3][3];
+  mul_m3_m3m3(s, m1, m2);
+  mul_m3_m3m3(r, s, m3);
 }
 void _va_mul_m3_series_5(float r[3][3],
                          const float m1[3][3],
@@ -552,9 +520,11 @@ void _va_mul_m3_series_5(float r[3][3],
                          const float m3[3][3],
                          const float m4[3][3])
 {
-  mul_m3_m3m3(r, m1, m2);
-  mul_m3_m3m3(r, r, m3);
-  mul_m3_m3m3(r, r, m4);
+  float s[3][3];
+  float t[3][3];
+  mul_m3_m3m3(s, m1, m2);
+  mul_m3_m3m3(t, s, m3);
+  mul_m3_m3m3(r, t, m4);
 }
 void _va_mul_m3_series_6(float r[3][3],
                          const float m1[3][3],
@@ -563,10 +533,12 @@ void _va_mul_m3_series_6(float r[3][3],
                          const float m4[3][3],
                          const float m5[3][3])
 {
-  mul_m3_m3m3(r, m1, m2);
-  mul_m3_m3m3(r, r, m3);
-  mul_m3_m3m3(r, r, m4);
-  mul_m3_m3m3(r, r, m5);
+  float s[3][3];
+  float t[3][3];
+  mul_m3_m3m3(s, m1, m2);
+  mul_m3_m3m3(t, s, m3);
+  mul_m3_m3m3(s, t, m4);
+  mul_m3_m3m3(r, s, m5);
 }
 void _va_mul_m3_series_7(float r[3][3],
                          const float m1[3][3],
@@ -576,11 +548,13 @@ void _va_mul_m3_series_7(float r[3][3],
                          const float m5[3][3],
                          const float m6[3][3])
 {
-  mul_m3_m3m3(r, m1, m2);
-  mul_m3_m3m3(r, r, m3);
-  mul_m3_m3m3(r, r, m4);
-  mul_m3_m3m3(r, r, m5);
-  mul_m3_m3m3(r, r, m6);
+  float s[3][3];
+  float t[3][3];
+  mul_m3_m3m3(s, m1, m2);
+  mul_m3_m3m3(t, s, m3);
+  mul_m3_m3m3(s, t, m4);
+  mul_m3_m3m3(t, s, m5);
+  mul_m3_m3m3(r, t, m6);
 }
 void _va_mul_m3_series_8(float r[3][3],
                          const float m1[3][3],
@@ -591,12 +565,14 @@ void _va_mul_m3_series_8(float r[3][3],
                          const float m6[3][3],
                          const float m7[3][3])
 {
-  mul_m3_m3m3(r, m1, m2);
-  mul_m3_m3m3(r, r, m3);
-  mul_m3_m3m3(r, r, m4);
-  mul_m3_m3m3(r, r, m5);
-  mul_m3_m3m3(r, r, m6);
-  mul_m3_m3m3(r, r, m7);
+  float s[3][3];
+  float t[3][3];
+  mul_m3_m3m3(s, m1, m2);
+  mul_m3_m3m3(t, s, m3);
+  mul_m3_m3m3(s, t, m4);
+  mul_m3_m3m3(t, s, m5);
+  mul_m3_m3m3(s, t, m6);
+  mul_m3_m3m3(r, s, m7);
 }
 void _va_mul_m3_series_9(float r[3][3],
                          const float m1[3][3],
@@ -608,13 +584,15 @@ void _va_mul_m3_series_9(float r[3][3],
                          const float m7[3][3],
                          const float m8[3][3])
 {
-  mul_m3_m3m3(r, m1, m2);
-  mul_m3_m3m3(r, r, m3);
-  mul_m3_m3m3(r, r, m4);
-  mul_m3_m3m3(r, r, m5);
-  mul_m3_m3m3(r, r, m6);
-  mul_m3_m3m3(r, r, m7);
-  mul_m3_m3m3(r, r, m8);
+  float s[3][3];
+  float t[3][3];
+  mul_m3_m3m3(s, m1, m2);
+  mul_m3_m3m3(t, s, m3);
+  mul_m3_m3m3(s, t, m4);
+  mul_m3_m3m3(t, s, m5);
+  mul_m3_m3m3(s, t, m6);
+  mul_m3_m3m3(t, s, m7);
+  mul_m3_m3m3(r, t, m8);
 }
 
 /** \} */
@@ -632,8 +610,9 @@ void _va_mul_m4_series_4(float r[4][4],
                          const float m2[4][4],
                          const float m3[4][4])
 {
-  mul_m4_m4m4(r, m1, m2);
-  mul_m4_m4m4(r, r, m3);
+  float s[4][4];
+  mul_m4_m4m4(s, m1, m2);
+  mul_m4_m4m4(r, s, m3);
 }
 void _va_mul_m4_series_5(float r[4][4],
                          const float m1[4][4],
@@ -641,9 +620,11 @@ void _va_mul_m4_series_5(float r[4][4],
                          const float m3[4][4],
                          const float m4[4][4])
 {
-  mul_m4_m4m4(r, m1, m2);
-  mul_m4_m4m4(r, r, m3);
-  mul_m4_m4m4(r, r, m4);
+  float s[4][4];
+  float t[4][4];
+  mul_m4_m4m4(s, m1, m2);
+  mul_m4_m4m4(t, s, m3);
+  mul_m4_m4m4(r, t, m4);
 }
 void _va_mul_m4_series_6(float r[4][4],
                          const float m1[4][4],
@@ -652,10 +633,12 @@ void _va_mul_m4_series_6(float r[4][4],
                          const float m4[4][4],
                          const float m5[4][4])
 {
-  mul_m4_m4m4(r, m1, m2);
-  mul_m4_m4m4(r, r, m3);
-  mul_m4_m4m4(r, r, m4);
-  mul_m4_m4m4(r, r, m5);
+  float s[4][4];
+  float t[4][4];
+  mul_m4_m4m4(s, m1, m2);
+  mul_m4_m4m4(t, s, m3);
+  mul_m4_m4m4(s, t, m4);
+  mul_m4_m4m4(r, s, m5);
 }
 void _va_mul_m4_series_7(float r[4][4],
                          const float m1[4][4],
@@ -665,11 +648,13 @@ void _va_mul_m4_series_7(float r[4][4],
                          const float m5[4][4],
                          const float m6[4][4])
 {
-  mul_m4_m4m4(r, m1, m2);
-  mul_m4_m4m4(r, r, m3);
-  mul_m4_m4m4(r, r, m4);
-  mul_m4_m4m4(r, r, m5);
-  mul_m4_m4m4(r, r, m6);
+  float s[4][4];
+  float t[4][4];
+  mul_m4_m4m4(s, m1, m2);
+  mul_m4_m4m4(t, s, m3);
+  mul_m4_m4m4(s, t, m4);
+  mul_m4_m4m4(t, s, m5);
+  mul_m4_m4m4(r, t, m6);
 }
 void _va_mul_m4_series_8(float r[4][4],
                          const float m1[4][4],
@@ -680,12 +665,14 @@ void _va_mul_m4_series_8(float r[4][4],
                          const float m6[4][4],
                          const float m7[4][4])
 {
-  mul_m4_m4m4(r, m1, m2);
-  mul_m4_m4m4(r, r, m3);
-  mul_m4_m4m4(r, r, m4);
-  mul_m4_m4m4(r, r, m5);
-  mul_m4_m4m4(r, r, m6);
-  mul_m4_m4m4(r, r, m7);
+  float s[4][4];
+  float t[4][4];
+  mul_m4_m4m4(s, m1, m2);
+  mul_m4_m4m4(t, s, m3);
+  mul_m4_m4m4(s, t, m4);
+  mul_m4_m4m4(t, s, m5);
+  mul_m4_m4m4(s, t, m6);
+  mul_m4_m4m4(r, s, m7);
 }
 void _va_mul_m4_series_9(float r[4][4],
                          const float m1[4][4],
@@ -697,13 +684,15 @@ void _va_mul_m4_series_9(float r[4][4],
                          const float m7[4][4],
                          const float m8[4][4])
 {
-  mul_m4_m4m4(r, m1, m2);
-  mul_m4_m4m4(r, r, m3);
-  mul_m4_m4m4(r, r, m4);
-  mul_m4_m4m4(r, r, m5);
-  mul_m4_m4m4(r, r, m6);
-  mul_m4_m4m4(r, r, m7);
-  mul_m4_m4m4(r, r, m8);
+  float s[4][4];
+  float t[4][4];
+  mul_m4_m4m4(s, m1, m2);
+  mul_m4_m4m4(t, s, m3);
+  mul_m4_m4m4(s, t, m4);
+  mul_m4_m4m4(t, s, m5);
+  mul_m4_m4m4(s, t, m6);
+  mul_m4_m4m4(t, s, m7);
+  mul_m4_m4m4(r, t, m8);
 }
 
 /** \} */
@@ -787,14 +776,14 @@ void mul_m2_v2(const float mat[2][2], float vec[2])
   mul_v2_m2v2(vec, mat, vec);
 }
 
-void mul_mat3_m4_v3(const float M[4][4], float r[3])
+void mul_mat3_m4_v3(const float mat[4][4], float r[3])
 {
   const float x = r[0];
   const float y = r[1];
 
-  r[0] = x * M[0][0] + y * M[1][0] + M[2][0] * r[2];
-  r[1] = x * M[0][1] + y * M[1][1] + M[2][1] * r[2];
-  r[2] = x * M[0][2] + y * M[1][2] + M[2][2] * r[2];
+  r[0] = x * mat[0][0] + y * mat[1][0] + mat[2][0] * r[2];
+  r[1] = x * mat[0][1] + y * mat[1][1] + mat[2][1] * r[2];
+  r[2] = x * mat[0][2] + y * mat[1][2] + mat[2][2] * r[2];
 }
 
 void mul_v3_mat3_m4v3(float r[3], const float mat[4][4], const float vec[3])
@@ -1116,32 +1105,32 @@ double determinant_m3_array_db(const double m[3][3])
           m[2][0] * (m[0][1] * m[1][2] - m[0][2] * m[1][1]));
 }
 
-bool invert_m2_m2(float m1[2][2], const float m2[2][2])
+bool invert_m2_m2(float inverse[2][2], const float mat[2][2])
 {
-  adjoint_m2_m2(m1, m2);
-  float det = determinant_m2(m2[0][0], m2[1][0], m2[0][1], m2[1][1]);
+  const float det = determinant_m2(mat[0][0], mat[1][0], mat[0][1], mat[1][1]);
+  adjoint_m2_m2(inverse, mat);
 
   bool success = (det != 0.0f);
   if (success) {
-    m1[0][0] /= det;
-    m1[1][0] /= det;
-    m1[0][1] /= det;
-    m1[1][1] /= det;
+    inverse[0][0] /= det;
+    inverse[1][0] /= det;
+    inverse[0][1] /= det;
+    inverse[1][1] /= det;
   }
 
   return success;
 }
 
-bool invert_m3_ex(float m[3][3], const float epsilon)
+bool invert_m3_ex(float mat[3][3], const float epsilon)
 {
-  float tmp[3][3];
-  const bool success = invert_m3_m3_ex(tmp, m, epsilon);
+  float mat_tmp[3][3];
+  const bool success = invert_m3_m3_ex(mat_tmp, mat, epsilon);
 
-  copy_m3_m3(m, tmp);
+  copy_m3_m3(mat, mat_tmp);
   return success;
 }
 
-bool invert_m3_m3_ex(float m1[3][3], const float m2[3][3], const float epsilon)
+bool invert_m3_m3_ex(float inverse[3][3], const float mat[3][3], const float epsilon)
 {
   float det;
   int a, b;
@@ -1150,10 +1139,10 @@ bool invert_m3_m3_ex(float m1[3][3], const float m2[3][3], const float epsilon)
   BLI_assert(epsilon >= 0.0f);
 
   /* calc adjoint */
-  adjoint_m3_m3(m1, m2);
+  adjoint_m3_m3(inverse, mat);
 
   /* then determinant old matrix! */
-  det = determinant_m3_array(m2);
+  det = determinant_m3_array(mat);
 
   success = (fabsf(det) > epsilon);
 
@@ -1161,33 +1150,33 @@ bool invert_m3_m3_ex(float m1[3][3], const float m2[3][3], const float epsilon)
     det = 1.0f / det;
     for (a = 0; a < 3; a++) {
       for (b = 0; b < 3; b++) {
-        m1[a][b] *= det;
+        inverse[a][b] *= det;
       }
     }
   }
   return success;
 }
 
-bool invert_m3(float m[3][3])
+bool invert_m3(float mat[3][3])
 {
-  float tmp[3][3];
-  const bool success = invert_m3_m3(tmp, m);
+  float mat_tmp[3][3];
+  const bool success = invert_m3_m3(mat_tmp, mat);
 
-  copy_m3_m3(m, tmp);
+  copy_m3_m3(mat, mat_tmp);
   return success;
 }
 
-bool invert_m3_m3(float m1[3][3], const float m2[3][3])
+bool invert_m3_m3(float inverse[3][3], const float mat[3][3])
 {
   float det;
   int a, b;
   bool success;
 
   /* calc adjoint */
-  adjoint_m3_m3(m1, m2);
+  adjoint_m3_m3(inverse, mat);
 
   /* then determinant old matrix! */
-  det = determinant_m3_array(m2);
+  det = determinant_m3_array(mat);
 
   success = (det != 0.0f);
 
@@ -1195,7 +1184,7 @@ bool invert_m3_m3(float m1[3][3], const float m2[3][3])
     det = 1.0f / det;
     for (a = 0; a < 3; a++) {
       for (b = 0; b < 3; b++) {
-        m1[a][b] *= det;
+        inverse[a][b] *= det;
       }
     }
   }
@@ -1203,12 +1192,12 @@ bool invert_m3_m3(float m1[3][3], const float m2[3][3])
   return success;
 }
 
-bool invert_m4(float m[4][4])
+bool invert_m4(float mat[4][4])
 {
-  float tmp[4][4];
-  const bool success = invert_m4_m4(tmp, m);
+  float mat_tmp[4][4];
+  const bool success = invert_m4_m4(mat_tmp, mat);
 
-  copy_m4_m4(m, tmp);
+  copy_m4_m4(mat, mat_tmp);
   return success;
 }
 
@@ -1305,7 +1294,7 @@ void mul_m4_m4m4_aligned_scale(float R[4][4], const float A[4][4], const float B
   mat4_to_loc_rot_size(loc_b, rot_b, size_b, B);
 
   mul_v3_m4v3(loc_r, A, loc_b);
-  mul_m3_m3m3_uniq(rot_r, rot_a, rot_b);
+  mul_m3_m3m3(rot_r, rot_a, rot_b);
   mul_v3_v3v3(size_r, size_a, size_b);
 
   loc_rot_size_to_mat4(R, loc_r, rot_r, size_r);
@@ -1321,7 +1310,7 @@ void mul_m4_m4m4_split_channels(float R[4][4], const float A[4][4], const float 
   mat4_to_loc_rot_size(loc_b, rot_b, size_b, B);
 
   add_v3_v3v3(loc_r, loc_a, loc_b);
-  mul_m3_m3m3_uniq(rot_r, rot_a, rot_b);
+  mul_m3_m3m3(rot_r, rot_a, rot_b);
   mul_v3_v3v3(size_r, size_a, size_b);
 
   loc_rot_size_to_mat4(R, loc_r, rot_r, size_r);
@@ -1702,7 +1691,7 @@ void orthogonalize_m4_stable(float R[4][4], int axis, bool normalize)
  *
  * \note If an object has a zero scaled axis, this function can be used to "clean" the matrix
  * to behave as if the scale on that axis was `unit_length`. So it can be inverted
- * or used in matrix multiply without creating degenerate matrices, see: T50103
+ * or used in matrix multiply without creating degenerate matrices, see: #50103
  * \{ */
 
 /**
@@ -1857,7 +1846,8 @@ bool is_uniform_scaled_m3(const float m[3][3])
   l6 = len_squared_v3(t[2]);
 
   if (fabsf(l2 - l1) <= eps && fabsf(l3 - l1) <= eps && fabsf(l4 - l1) <= eps &&
-      fabsf(l5 - l1) <= eps && fabsf(l6 - l1) <= eps) {
+      fabsf(l5 - l1) <= eps && fabsf(l6 - l1) <= eps)
+  {
     return true;
   }
 
@@ -1974,11 +1964,15 @@ void normalize_m4_m4(float rmat[4][4], const float mat[4][4])
 
 void adjoint_m2_m2(float R[2][2], const float M[2][2])
 {
-  BLI_assert(R != M);
-  R[0][0] = M[1][1];
-  R[0][1] = -M[0][1];
-  R[1][0] = -M[1][0];
-  R[1][1] = M[0][0];
+  const float r00 = M[1][1];
+  const float r01 = -M[0][1];
+  const float r10 = -M[1][0];
+  const float r11 = M[0][0];
+
+  R[0][0] = r00;
+  R[0][1] = r01;
+  R[1][0] = r10;
+  R[1][1] = r11;
 }
 
 void adjoint_m3_m3(float R[3][3], const float M[3][3])
@@ -2043,9 +2037,8 @@ void adjoint_m4_m4(float R[4][4], const float M[4][4]) /* out = ADJ(in) */
   R[3][3] = determinant_m3(a1, a2, a3, b1, b2, b3, c1, c2, c3);
 }
 
-float determinant_m2(float a, float b, float c, float d)
+float determinant_m2(const float a, const float b, const float c, const float d)
 {
-
   return a * d - b * c;
 }
 
@@ -2128,6 +2121,12 @@ void size_to_mat4(float R[4][4], const float size[3])
   R[3][3] = 1.0f;
 }
 
+void mat3_to_size_2d(float size[2], const float M[3][3])
+{
+  size[0] = len_v2(M[0]);
+  size[1] = len_v2(M[1]);
+}
+
 void mat3_to_size(float size[3], const float M[3][3])
 {
   size[0] = len_v3(M[0]);
@@ -2191,11 +2190,11 @@ float mat4_to_scale(const float mat[4][4])
   return len_v3(unit_vec);
 }
 
-float mat4_to_xy_scale(const float M[4][4])
+float mat4_to_xy_scale(const float mat[4][4])
 {
   /* unit length vector in xy plane */
   float unit_vec[3] = {(float)M_SQRT1_2, (float)M_SQRT1_2, 0.0f};
-  mul_mat3_m4_v3(M, unit_vec);
+  mul_mat3_m4_v3(mat, unit_vec);
   return len_v3(unit_vec);
 }
 
@@ -2240,12 +2239,6 @@ void mat4_to_loc_quat(float loc[3], float quat[4], const float wmat[4][4])
   copy_m3_m4(mat3, wmat);
   normalize_m3_m3(mat3_n, mat3);
 
-  /* So scale doesn't interfere with rotation T24291. */
-  /* FIXME: this is a workaround for negative matrix not working for rotation conversion. */
-  if (is_negative_m3(mat3)) {
-    negate_m3(mat3_n);
-  }
-
   mat3_normalized_to_quat(quat, mat3_n);
   copy_v3_v3(loc, wmat[3]);
 }
@@ -2254,7 +2247,7 @@ void mat4_decompose(float loc[3], float quat[4], float size[3], const float wmat
 {
   float rot[3][3];
   mat4_to_loc_rot_size(loc, rot, size, wmat);
-  mat3_normalized_to_quat(quat, rot);
+  mat3_normalized_to_quat_fast(quat, rot);
 }
 
 /**
@@ -2393,8 +2386,8 @@ void blend_m3_m3m3(float out[3][3],
   mat3_to_rot_size(drot, dscale, dst);
   mat3_to_rot_size(srot, sscale, src);
 
-  mat3_normalized_to_quat(dquat, drot);
-  mat3_normalized_to_quat(squat, srot);
+  mat3_normalized_to_quat_fast(dquat, drot);
+  mat3_normalized_to_quat_fast(squat, srot);
 
   /* do blending */
   interp_qt_qtqt(fquat, dquat, squat, srcweight);
@@ -2419,8 +2412,8 @@ void blend_m4_m4m4(float out[4][4],
   mat4_to_loc_rot_size(dloc, drot, dscale, dst);
   mat4_to_loc_rot_size(sloc, srot, sscale, src);
 
-  mat3_normalized_to_quat(dquat, drot);
-  mat3_normalized_to_quat(squat, srot);
+  mat3_normalized_to_quat_fast(dquat, drot);
+  mat3_normalized_to_quat_fast(squat, srot);
 
   /* do blending */
   interp_v3_v3v3(floc, dloc, sloc, srcweight);
@@ -2451,16 +2444,16 @@ void interp_m3_m3m3(float R[3][3], const float A[3][3], const float B[3][3], con
 
   /* Quaternions cannot represent an axis flip. If such a singularity is detected, choose a
    * different decomposition of the matrix that still satisfies A = U_A * P_A but which has a
-   * positive determinant and thus no axis flips. This resolves T77154.
+   * positive determinant and thus no axis flips. This resolves #77154.
    *
    * Note that a flip of two axes is just a rotation of 180 degrees around the third axis, and
    * three flipped axes are just an 180 degree rotation + a single axis flip. It is thus sufficient
    * to solve this problem for single axis flips. */
-  if (determinant_m3_array(U_A) < 0) {
+  if (is_negative_m3(U_A)) {
     mul_m3_fl(U_A, -1.0f);
     mul_m3_fl(P_A, -1.0f);
   }
-  if (determinant_m3_array(U_B) < 0) {
+  if (is_negative_m3(U_B)) {
     mul_m3_fl(U_B, -1.0f);
     mul_m3_fl(P_B, -1.0f);
   }
@@ -2501,16 +2494,14 @@ void interp_m4_m4m4(float R[4][4], const float A[4][4], const float B[4][4], con
 
 bool is_negative_m3(const float mat[3][3])
 {
-  float vec[3];
-  cross_v3_v3v3(vec, mat[0], mat[1]);
-  return (dot_v3v3(vec, mat[2]) < 0.0f);
+  return determinant_m3_array(mat) < 0.0f;
 }
 
 bool is_negative_m4(const float mat[4][4])
 {
-  float vec[3];
-  cross_v3_v3v3(vec, mat[0], mat[1]);
-  return (dot_v3v3(vec, mat[2]) < 0.0f);
+  /* Don't use #determinant_m4 as only the 3x3 components are needed
+   * when the matrix is used as a transformation to represent location/scale/rotation. */
+  return determinant_m4_mat3_array(mat) < 0.0f;
 }
 
 bool is_zero_m3(const float mat[3][3])
@@ -2568,11 +2559,8 @@ void loc_eul_size_to_mat4(float R[4][4],
   R[3][2] = loc[2];
 }
 
-void loc_eulO_size_to_mat4(float R[4][4],
-                           const float loc[3],
-                           const float eul[3],
-                           const float size[3],
-                           const short rotOrder)
+void loc_eulO_size_to_mat4(
+    float R[4][4], const float loc[3], const float eul[3], const float size[3], const short order)
 {
   float rmat[3][3], smat[3][3], tmat[3][3];
 
@@ -2580,7 +2568,7 @@ void loc_eulO_size_to_mat4(float R[4][4],
   unit_m4(R);
 
   /* Make rotation + scaling part. */
-  eulO_to_mat3(rmat, eul, rotOrder);
+  eulO_to_mat3(rmat, eul, order);
   size_to_mat3(smat, size);
   mul_m3_m3m3(tmat, rmat, smat);
 
@@ -2747,7 +2735,7 @@ void svd_m4(float U[4][4], float s[4], float V[4][4], float A_[4][4])
         e[k + 1] += 1.0f;
       }
       e[k] = -e[k];
-      if ((k + 1 < m) & (e[k] != 0.0f)) {
+      if ((k + 1 < m) && (e[k] != 0.0f)) {
         float invek1;
 
         /* Apply the transformation. */
@@ -2831,7 +2819,7 @@ void svd_m4(float U[4][4], float s[4], float V[4][4], float A_[4][4])
   /* If required, generate V. */
 
   for (k = n - 1; k >= 0; k--) {
-    if ((k < nrt) & (e[k] != 0.0f)) {
+    if ((k < nrt) && (e[k] != 0.0f)) {
       for (j = k + 1; j < nu; j++) {
         float t = 0;
         for (i = k + 1; i < n; i++) {
@@ -3082,14 +3070,14 @@ void svd_m4(float U[4][4], float s[4], float V[4][4], float A_[4][4])
   }
 }
 
-void pseudoinverse_m4_m4(float Ainv[4][4], const float A_[4][4], float epsilon)
+void pseudoinverse_m4_m4(float inverse[4][4], const float mat[4][4], float epsilon)
 {
   /* compute Moore-Penrose pseudo inverse of matrix, singular values
    * below epsilon are ignored for stability (truncated SVD) */
   float A[4][4], V[4][4], W[4], Wm[4][4], U[4][4];
   int i;
 
-  transpose_m4_m4(A, A_);
+  transpose_m4_m4(A, mat);
   svd_m4(V, W, U, A);
   transpose_m4(U);
   transpose_m4(V);
@@ -3101,18 +3089,18 @@ void pseudoinverse_m4_m4(float Ainv[4][4], const float A_[4][4], float epsilon)
 
   transpose_m4(V);
 
-  mul_m4_series(Ainv, U, Wm, V);
+  mul_m4_series(inverse, U, Wm, V);
 }
 
-void pseudoinverse_m3_m3(float Ainv[3][3], const float A[3][3], float epsilon)
+void pseudoinverse_m3_m3(float inverse[3][3], const float mat[3][3], float epsilon)
 {
   /* try regular inverse when possible, otherwise fall back to slow svd */
-  if (!invert_m3_m3(Ainv, A)) {
-    float tmp[4][4], tmpinv[4][4];
+  if (!invert_m3_m3(inverse, mat)) {
+    float mat_tmp[4][4], tmpinv[4][4];
 
-    copy_m4_m3(tmp, A);
-    pseudoinverse_m4_m4(tmpinv, tmp, epsilon);
-    copy_m3_m4(Ainv, tmpinv);
+    copy_m4_m3(mat_tmp, mat);
+    pseudoinverse_m4_m4(tmpinv, mat_tmp, epsilon);
+    copy_m3_m4(inverse, tmpinv);
   }
 }
 
@@ -3122,22 +3110,50 @@ bool has_zero_axis_m4(const float matrix[4][4])
          len_squared_v3(matrix[2]) < FLT_EPSILON;
 }
 
-void invert_m4_m4_safe(float Ainv[4][4], const float A[4][4])
+void zero_axis_bias_m4(float mat[4][4])
 {
-  if (!invert_m4_m4(Ainv, A)) {
-    float Atemp[4][4];
+  const bool axis_x_degenerate = len_squared_v3(mat[0]) < FLT_EPSILON;
+  const bool axis_y_degenerate = len_squared_v3(mat[1]) < FLT_EPSILON;
+  const bool axis_z_degenerate = len_squared_v3(mat[2]) < FLT_EPSILON;
 
-    copy_m4_m4(Atemp, A);
+  /* X Axis. */
+  if (axis_x_degenerate && !axis_y_degenerate && !axis_z_degenerate) {
+    cross_v3_v3v3(mat[0], mat[1], mat[2]);
+    mul_v3_fl(mat[0], FLT_EPSILON);
+    return;
+  }
+
+  /* Y Axis. */
+  if (!axis_x_degenerate && axis_y_degenerate && !axis_z_degenerate) {
+    cross_v3_v3v3(mat[1], mat[2], mat[0]);
+    mul_v3_fl(mat[1], FLT_EPSILON);
+    return;
+  }
+
+  /* Z Axis. */
+  if (!axis_x_degenerate && !axis_y_degenerate && axis_z_degenerate) {
+    cross_v3_v3v3(mat[2], mat[0], mat[1]);
+    mul_v3_fl(mat[2], FLT_EPSILON);
+    return;
+  }
+}
+
+void invert_m4_m4_safe(float inverse[4][4], const float mat[4][4])
+{
+  if (!invert_m4_m4(inverse, mat)) {
+    float mat_tmp[4][4];
+
+    copy_m4_m4(mat_tmp, mat);
 
     /* Matrix is degenerate (e.g. 0 scale on some axis), ideally we should
      * never be in this situation, but try to invert it anyway with tweak.
      */
-    Atemp[0][0] += 1e-8f;
-    Atemp[1][1] += 1e-8f;
-    Atemp[2][2] += 1e-8f;
+    mat_tmp[0][0] += 1e-8f;
+    mat_tmp[1][1] += 1e-8f;
+    mat_tmp[2][2] += 1e-8f;
 
-    if (!invert_m4_m4(Ainv, Atemp)) {
-      unit_m4(Ainv);
+    if (!invert_m4_m4(inverse, mat_tmp)) {
+      unit_m4(inverse);
     }
   }
 }
@@ -3157,24 +3173,24 @@ void invert_m4_m4_safe(float Ainv[4][4], const float A[4][4])
  * where we want to specify the length of the degenerate axes.
  * \{ */
 
-void invert_m4_m4_safe_ortho(float Ainv[4][4], const float A[4][4])
+void invert_m4_m4_safe_ortho(float inverse[4][4], const float mat[4][4])
 {
-  if (UNLIKELY(!invert_m4_m4(Ainv, A))) {
-    float Atemp[4][4];
-    copy_m4_m4(Atemp, A);
-    if (UNLIKELY(!(orthogonalize_m4_zero_axes(Atemp, 1.0f) && invert_m4_m4(Ainv, Atemp)))) {
-      unit_m4(Ainv);
+  if (UNLIKELY(!invert_m4_m4(inverse, mat))) {
+    float mat_tmp[4][4];
+    copy_m4_m4(mat_tmp, mat);
+    if (UNLIKELY(!(orthogonalize_m4_zero_axes(mat_tmp, 1.0f) && invert_m4_m4(inverse, mat_tmp)))) {
+      unit_m4(inverse);
     }
   }
 }
 
-void invert_m3_m3_safe_ortho(float Ainv[3][3], const float A[3][3])
+void invert_m3_m3_safe_ortho(float inverse[3][3], const float mat[3][3])
 {
-  if (UNLIKELY(!invert_m3_m3(Ainv, A))) {
-    float Atemp[3][3];
-    copy_m3_m3(Atemp, A);
-    if (UNLIKELY(!(orthogonalize_m3_zero_axes(Atemp, 1.0f) && invert_m3_m3(Ainv, Atemp)))) {
-      unit_m3(Ainv);
+  if (UNLIKELY(!invert_m3_m3(inverse, mat))) {
+    float mat_tmp[3][3];
+    copy_m3_m3(mat_tmp, mat);
+    if (UNLIKELY(!(orthogonalize_m3_zero_axes(mat_tmp, 1.0f) && invert_m3_m3(inverse, mat_tmp)))) {
+      unit_m3(inverse);
     }
   }
 }

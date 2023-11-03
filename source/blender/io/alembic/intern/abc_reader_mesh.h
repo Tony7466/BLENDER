@@ -1,9 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
  * \ingroup balembic
  */
+
+#include "BLI_span.hh"
 
 #include "abc_customdata.h"
 #include "abc_reader_object.h"
@@ -38,10 +42,9 @@ class AbcMeshReader final : public AbcObjectReader {
                           Mesh *mesh,
                           const Alembic::AbcGeom::ISampleSelector &sample_sel);
 
-  void assign_facesets_to_mpoly(const Alembic::Abc::ISampleSelector &sample_sel,
-                                MPoly *mpoly,
-                                int totpoly,
-                                std::map<std::string, int> &r_mat_map);
+  void assign_facesets_to_material_indices(const Alembic::Abc::ISampleSelector &sample_sel,
+                                           MutableSpan<int> material_indices,
+                                           std::map<std::string, int> &r_mat_map);
 };
 
 class AbcSubDReader final : public AbcObjectReader {
@@ -67,6 +70,6 @@ void read_mverts(Mesh &mesh,
                  const Alembic::AbcGeom::P3fArraySamplePtr positions,
                  const Alembic::AbcGeom::N3fArraySamplePtr normals);
 
-CDStreamConfig get_config(struct Mesh *mesh, bool use_vertex_interpolation);
+CDStreamConfig get_config(struct Mesh *mesh);
 
 }  // namespace blender::io::alembic

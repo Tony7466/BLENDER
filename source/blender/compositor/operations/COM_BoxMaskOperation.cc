@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_BoxMaskOperation.h"
 
@@ -19,10 +20,10 @@ void BoxMaskOperation::init_execution()
 {
   input_mask_ = this->get_input_socket_reader(0);
   input_value_ = this->get_input_socket_reader(1);
-  const double rad = (double)data_->rotation;
+  const double rad = double(data_->rotation);
   cosine_ = cos(rad);
   sine_ = sin(rad);
-  aspect_ratio_ = ((float)this->get_width()) / this->get_height();
+  aspect_ratio_ = float(this->get_width()) / this->get_height();
 }
 
 void BoxMaskOperation::execute_pixel_sampled(float output[4],

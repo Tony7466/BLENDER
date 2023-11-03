@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -40,7 +42,7 @@ struct MTLAttachment {
 
 /**
  * Implementation of FrameBuffer object using Metal.
- **/
+ */
 class MTLFrameBuffer : public FrameBuffer {
  private:
   /* Context Handle. */
@@ -54,24 +56,32 @@ class MTLFrameBuffer : public FrameBuffer {
   bool use_multilayered_rendering_ = false;
 
   /* State. */
-  /* Whether global framebuffer properties have changed and require
-   * re-generation of MTLRenderPassDescriptor/RenderCommandEncoders. */
+
+  /**
+   * Whether global frame-buffer properties have changed and require
+   * re-generation of #MTLRenderPassDescriptor / #RenderCommandEncoders.
+   */
   bool is_dirty_;
 
-  /* Whether loadstore properties have changed (only affects certain cached configs). */
+  /** Whether `loadstore` properties have changed (only affects certain cached configurations). */
   bool is_loadstore_dirty_;
 
-  /* Context that the latest modified state was last applied to.
-   * If this does not match current ctx, re-apply state. */
+  /**
+   * Context that the latest modified state was last applied to.
+   * If this does not match current ctx, re-apply state.
+   */
   MTLContext *dirty_state_ctx_;
 
-  /* Whether a clear is pending -- Used to toggle between clear and load FB configurations
+  /**
+   * Whether a clear is pending -- Used to toggle between clear and load FB configurations
    * (without dirtying the state) - Frame-buffer load config is used if no `GPU_clear_*` command
-   * was issued after binding the FrameBuffer. */
+   * was issued after binding the #FrameBuffer.
+   */
   bool has_pending_clear_;
 
-  /* Render Pass Descriptors:
-   * There are 3 MTLRenderPassDescriptors for different ways in which a frame-buffer
+  /**
+   * Render Pass Descriptors:
+   * There are 3 #MTLRenderPassDescriptors for different ways in which a frame-buffer
    * can be configured:
    * [0] = CLEAR CONFIG -- Used when a GPU_framebuffer_clear_* command has been issued.
    * [1] = LOAD CONFIG -- Used if bound, but no clear is required.
@@ -89,17 +99,27 @@ class MTLFrameBuffer : public FrameBuffer {
   MTLRenderPassDescriptor *framebuffer_descriptor_[MTL_FB_CONFIG_MAX];
   MTLRenderPassColorAttachmentDescriptor
       *colour_attachment_descriptors_[GPU_FB_MAX_COLOR_ATTACHMENT];
-  /* Whether MTLRenderPassDescriptor[N] requires updating with latest state. */
+  /** Whether `MTLRenderPassDescriptor[N]` requires updating with latest state. */
   bool descriptor_dirty_[MTL_FB_CONFIG_MAX];
-  /* Whether SRGB is enabled for this framebuffer configuration. */
-  bool srgb_enabled_;
-  /* Whether the primary Frame-buffer attachment is an SRGB target or not. */
-  bool is_srgb_;
+  /** Whether SRGB is enabled for this frame-buffer configuration. */
+  bool enabled_srgb_;
+  /** Whether the primary Frame-buffer attachment is an SRGB target or not. */
+  bool srgb_;
+
+  /** Default width/height represent raw size of active framebuffer attachments.
+   * For consistency with OpenGL backend, as width_/height_ can affect viewport and scissor
+   * size, we need to track this differently to ensure viewport state does not get reset.
+   * This size is only used to reset viewport/scissor regions when viewports and scissor are
+   * disabled, as Metal does not provide a utility to fully disable either without manually
+   * specifying the size.
+   */
+  int default_width_ = 0;
+  int default_height_ = 0;
 
  public:
   /**
    * Create a conventional framebuffer to attach texture to.
-   **/
+   */
   MTLFrameBuffer(MTLContext *ctx, const char *name);
 
   ~MTLFrameBuffer();
@@ -117,9 +137,7 @@ class MTLFrameBuffer : public FrameBuffer {
                         eGPUDataFormat data_format,
                         const void *clear_value) override;
 
-  void attachment_set_loadstore_op(GPUAttachmentType type,
-                                   eGPULoadOp load_action,
-                                   eGPUStoreOp store_action) override;
+  void attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore ls) override;
 
   void read(eGPUFrameBufferBits planes,
             eGPUDataFormat format,
@@ -135,6 +153,9 @@ class MTLFrameBuffer : public FrameBuffer {
                int dst_offset_x,
                int dst_offset_y) override;
 
+  void subpass_transition(const GPUAttachmentState /*depth_attachment_state*/,
+                          Span<GPUAttachmentState> /*color_attachment_states*/) override{};
+
   void apply_state();
 
   /* State. */
@@ -149,6 +170,7 @@ class MTLFrameBuffer : public FrameBuffer {
   /* Attachment management. */
   /* When dirty_attachments_ is true, we need to reprocess attachments to extract Metal
    * information. */
+  void ensure_attachments_and_viewport();
   void update_attachments(bool update_viewport);
   bool add_color_attachment(gpu::MTLTexture *texture, uint slot, int miplevel, int layer);
   bool add_depth_attachment(gpu::MTLTexture *texture, int miplevel, int layer);
@@ -203,6 +225,9 @@ class MTLFrameBuffer : public FrameBuffer {
 
   int get_width();
   int get_height();
+  int get_default_width();
+  int get_default_height();
+
   bool get_dirty()
   {
     return is_dirty_ || is_loadstore_dirty_;
@@ -215,12 +240,18 @@ class MTLFrameBuffer : public FrameBuffer {
 
   bool get_srgb_enabled()
   {
-    return srgb_enabled_;
+    return enabled_srgb_;
   }
 
   bool get_is_srgb()
   {
-    return is_srgb_;
+    return srgb_;
+  }
+
+  inline void default_size_set(int w, int h)
+  {
+    default_width_ = w;
+    default_height_ = h;
   }
 
  private:

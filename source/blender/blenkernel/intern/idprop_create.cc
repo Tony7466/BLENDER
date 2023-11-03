@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <type_traits>
 
@@ -18,6 +19,15 @@ std::unique_ptr<IDProperty, IDPropertyDeleter> create(const StringRefNull prop_n
   IDPropertyTemplate prop_template{0};
   prop_template.i = value;
   IDProperty *property = IDP_New(IDP_INT, &prop_template, prop_name.c_str());
+  return std::unique_ptr<IDProperty, IDPropertyDeleter>(property);
+}
+
+std::unique_ptr<IDProperty, IDPropertyDeleter> create_bool(const StringRefNull prop_name,
+                                                           bool value)
+{
+  IDPropertyTemplate prop_template{0};
+  prop_template.i = value;
+  IDProperty *property = IDP_New(IDP_BOOLEAN, &prop_template, prop_name.c_str());
   return std::unique_ptr<IDProperty, IDPropertyDeleter>(property);
 }
 
@@ -40,7 +50,7 @@ std::unique_ptr<IDProperty, IDPropertyDeleter> create(const StringRefNull prop_n
 std::unique_ptr<IDProperty, IDPropertyDeleter> create(const StringRefNull prop_name,
                                                       const StringRefNull value)
 {
-  IDProperty *property = IDP_NewString(value.c_str(), prop_name.c_str(), value.size() + 1);
+  IDProperty *property = IDP_NewString(value.c_str(), prop_name.c_str());
   return std::unique_ptr<IDProperty, IDPropertyDeleter>(property);
 }
 
@@ -79,12 +89,12 @@ static void array_values_set(IDProperty *property,
 template<
     /** C-Primitive type of the array. Can be int32_t, float, double. */
     typename PrimitiveType,
-    /** Subtype of the ID_ARRAY. Must match PrimitiveType. */
+    /** Sub-type of the #ID_ARRAY. Must match #PrimitiveType. */
     eIDPropertyType id_property_subtype>
 std::unique_ptr<IDProperty, IDPropertyDeleter> create_array(StringRefNull prop_name,
                                                             Span<PrimitiveType> values)
 {
-  static_assert(std::is_same_v<PrimitiveType, int32_t> || std::is_same_v<PrimitiveType, float_t> ||
+  static_assert(std::is_same_v<PrimitiveType, int32_t> || std::is_same_v<PrimitiveType, float> ||
                     std::is_same_v<PrimitiveType, double>,
                 "Allowed values for PrimitiveType are int32_t, float and double.");
   static_assert(!std::is_same_v<PrimitiveType, int32_t> || id_property_subtype == IDP_INT,

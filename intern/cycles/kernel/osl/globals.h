@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __OSL_GLOBALS_H__
 #define __OSL_GLOBALS_H__
@@ -10,6 +11,8 @@
 
 #  include <OpenImageIO/refcnt.h>
 #  include <OpenImageIO/unordered_map_concurrent.h>
+
+#  include "kernel/osl/compat.h"
 
 #  include "util/map.h"
 #  include "util/param.h"
@@ -41,6 +44,10 @@ struct OSLGlobals {
     use = false;
   }
 
+  /* per thread data */
+  static void thread_init(struct KernelGlobalsCPU *kg, OSLGlobals *osl_globals);
+  static void thread_free(struct KernelGlobalsCPU *kg);
+
   bool use;
 
   /* shading system */
@@ -56,16 +63,8 @@ struct OSLGlobals {
   OSL::ShaderGroupRef background_state;
 
   /* attributes */
-  struct Attribute {
-    TypeDesc type;
-    AttributeDescriptor desc;
-    ParamValue value;
-  };
+  typedef unordered_map<OSLUStringHash, int> ObjectNameMap;
 
-  typedef unordered_map<ustring, Attribute, ustringHash> AttributeMap;
-  typedef unordered_map<ustring, int, ustringHash> ObjectNameMap;
-
-  vector<AttributeMap> attribute_map;
   ObjectNameMap object_name_map;
   vector<ustring> object_names;
 };

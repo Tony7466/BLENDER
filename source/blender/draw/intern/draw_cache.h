@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -13,6 +14,7 @@ extern "C" {
 
 struct GPUBatch;
 struct GPUMaterial;
+struct GPUVertBuf;
 struct ModifierData;
 struct Object;
 struct PTCacheEdit;
@@ -21,6 +23,7 @@ struct Volume;
 struct VolumeGrid;
 struct bGPDstroke;
 struct bGPdata;
+struct Scene;
 
 /**
  * Shape resolution level of detail.
@@ -105,6 +108,9 @@ struct GPUBatch *DRW_cache_field_sphere_limit_get(void);
 
 /* Lights */
 
+struct GPUBatch *DRW_cache_light_icon_inner_lines_get(void);
+struct GPUBatch *DRW_cache_light_icon_outer_lines_get(void);
+struct GPUBatch *DRW_cache_light_icon_sun_rays_get(void);
 struct GPUBatch *DRW_cache_light_point_lines_get(void);
 struct GPUBatch *DRW_cache_light_sun_lines_get(void);
 struct GPUBatch *DRW_cache_light_spot_lines_get(void);
@@ -170,10 +176,12 @@ struct GPUBatch *DRW_cache_mesh_surface_sculptcolors_get(struct Object *ob);
 struct GPUBatch *DRW_cache_mesh_surface_weights_get(struct Object *ob);
 struct GPUBatch *DRW_cache_mesh_surface_mesh_analysis_get(struct Object *ob);
 struct GPUBatch *DRW_cache_mesh_face_wireframe_get(struct Object *ob);
+struct GPUBatch *DRW_cache_mesh_surface_viewer_attribute_get(struct Object *ob);
 
 /* Curve */
 
 struct GPUBatch *DRW_cache_curve_edge_wire_get(struct Object *ob);
+struct GPUBatch *DRW_cache_curve_edge_wire_viewer_attribute_get(struct Object *ob);
 
 /* edit-mode */
 
@@ -213,15 +221,6 @@ struct GPUBatch *DRW_cache_particles_get_edit_tip_points(struct Object *object,
                                                          struct PTCacheEdit *edit);
 struct GPUBatch *DRW_cache_particles_get_prim(int type);
 
-/* Metaball */
-
-struct GPUBatch *DRW_cache_mball_surface_get(struct Object *ob);
-struct GPUBatch **DRW_cache_mball_surface_shaded_get(struct Object *ob,
-                                                     struct GPUMaterial **gpumat_array,
-                                                     uint gpumat_array_len);
-struct GPUBatch *DRW_cache_mball_face_wireframe_get(struct Object *ob);
-struct GPUBatch *DRW_cache_mball_edge_detection_get(struct Object *ob, bool *r_is_manifold);
-
 /* Curves */
 
 struct GPUBatch *DRW_cache_curves_surface_get(struct Object *ob);
@@ -230,11 +229,6 @@ struct GPUBatch **DRW_cache_curves_surface_shaded_get(struct Object *ob,
                                                       uint gpumat_array_len);
 struct GPUBatch *DRW_cache_curves_face_wireframe_get(struct Object *ob);
 struct GPUBatch *DRW_cache_curves_edge_detection_get(struct Object *ob, bool *r_is_manifold);
-
-/* PointCloud */
-
-struct GPUBatch *DRW_cache_pointcloud_get_dots(struct Object *obj);
-struct GPUBatch *DRW_cache_pointcloud_surface_get(struct Object *obj);
 
 /* Volume */
 
@@ -261,16 +255,19 @@ DRWVolumeGrid *DRW_volume_batch_cache_get_grid(struct Volume *volume,
 struct GPUBatch *DRW_cache_volume_face_wireframe_get(struct Object *ob);
 struct GPUBatch *DRW_cache_volume_selection_surface_get(struct Object *ob);
 
-/* GPencil */
+/* GPencil (legacy) */
 
-struct GPUBatch *DRW_cache_gpencil_strokes_get(struct Object *ob, int cfra);
-struct GPUBatch *DRW_cache_gpencil_fills_get(struct Object *ob, int cfra);
+struct GPUBatch *DRW_cache_gpencil_get(struct Object *ob, int cfra);
+struct GPUVertBuf *DRW_cache_gpencil_position_buffer_get(struct Object *ob, int cfra);
+struct GPUVertBuf *DRW_cache_gpencil_color_buffer_get(struct Object *ob, int cfra);
 struct GPUBatch *DRW_cache_gpencil_edit_lines_get(struct Object *ob, int cfra);
 struct GPUBatch *DRW_cache_gpencil_edit_points_get(struct Object *ob, int cfra);
 struct GPUBatch *DRW_cache_gpencil_edit_curve_handles_get(struct Object *ob, int cfra);
 struct GPUBatch *DRW_cache_gpencil_edit_curve_points_get(struct Object *ob, int cfra);
-struct GPUBatch *DRW_cache_gpencil_sbuffer_stroke_get(struct Object *ob);
-struct GPUBatch *DRW_cache_gpencil_sbuffer_fill_get(struct Object *ob);
+struct GPUBatch *DRW_cache_gpencil_sbuffer_get(struct Object *ob, bool show_fill);
+struct GPUVertBuf *DRW_cache_gpencil_sbuffer_position_buffer_get(struct Object *ob,
+                                                                 bool show_fill);
+struct GPUVertBuf *DRW_cache_gpencil_sbuffer_color_buffer_get(struct Object *ob, bool show_fill);
 int DRW_gpencil_material_count_get(struct bGPdata *gpd);
 
 struct GPUBatch *DRW_cache_gpencil_face_wireframe_get(struct Object *ob);
@@ -280,6 +277,18 @@ struct bGPDstroke *DRW_cache_gpencil_sbuffer_stroke_data_get(struct Object *ob);
  * Sbuffer batches are temporary. We need to clear it after drawing.
  */
 void DRW_cache_gpencil_sbuffer_clear(struct Object *ob);
+
+/* Grease Pencil */
+
+struct GPUBatch *DRW_cache_grease_pencil_get(const struct Scene *scene, struct Object *ob);
+struct GPUBatch *DRW_cache_grease_pencil_edit_points_get(const struct Scene *scene,
+                                                         struct Object *ob);
+struct GPUBatch *DRW_cache_grease_pencil_edit_lines_get(const struct Scene *scene,
+                                                        struct Object *ob);
+struct GPUVertBuf *DRW_cache_grease_pencil_position_buffer_get(const struct Scene *scene,
+                                                               struct Object *ob);
+struct GPUVertBuf *DRW_cache_grease_pencil_color_buffer_get(const struct Scene *scene,
+                                                            struct Object *ob);
 
 #ifdef __cplusplus
 }

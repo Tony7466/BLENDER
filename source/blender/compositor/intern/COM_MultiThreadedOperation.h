@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -24,9 +25,9 @@ class MultiThreadedOperation : public NodeOperation {
   /**
    * Called before an update memory buffer pass is executed. Single-threaded calls.
    */
-  virtual void update_memory_buffer_started(MemoryBuffer *UNUSED(output),
-                                            const rcti &UNUSED(area),
-                                            Span<MemoryBuffer *> UNUSED(inputs))
+  virtual void update_memory_buffer_started(MemoryBuffer * /*output*/,
+                                            const rcti & /*area*/,
+                                            Span<MemoryBuffer *> /*inputs*/)
   {
   }
 
@@ -40,9 +41,9 @@ class MultiThreadedOperation : public NodeOperation {
   /**
    * Called after an update memory buffer pass is executed. Single-threaded calls.
    */
-  virtual void update_memory_buffer_finished(MemoryBuffer *UNUSED(output),
-                                             const rcti &UNUSED(area),
-                                             Span<MemoryBuffer *> UNUSED(inputs))
+  virtual void update_memory_buffer_finished(MemoryBuffer * /*output*/,
+                                             const rcti & /*area*/,
+                                             Span<MemoryBuffer *> /*inputs*/)
   {
   }
 

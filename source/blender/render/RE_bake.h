@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2010 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2010 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup render
@@ -7,9 +8,10 @@
 
 #pragma once
 
+#include "RE_pipeline.h"
+
 struct Depsgraph;
 struct ImBuf;
-struct MLoopUV;
 struct Mesh;
 struct Render;
 
@@ -24,6 +26,9 @@ typedef struct BakeImage {
   int width;
   int height;
   size_t offset;
+
+  /* For associating render result layer with image. */
+  char render_layer_name[RE_MAXNAME];
 } BakeImage;
 
 typedef struct BakeTargets {
@@ -62,7 +67,7 @@ typedef struct BakeHighPolyData {
   float imat[4][4];
 } BakeHighPolyData;
 
-/* external_engine.c */
+/* `external_engine.cc` */
 
 bool RE_bake_has_engine(const struct Render *re);
 
@@ -76,7 +81,7 @@ bool RE_bake_engine(struct Render *re,
                     int pass_filter,
                     float result[]);
 
-/* bake.c */
+/* `bake.cc` */
 
 int RE_pass_depth(eScenePassType pass_type);
 

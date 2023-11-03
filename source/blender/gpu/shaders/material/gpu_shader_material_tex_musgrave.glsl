@@ -1,5 +1,6 @@
-#pragma BLENDER_REQUIRE(gpu_shader_common_hash.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_material_noise.glsl)
+/* SPDX-FileCopyrightText: 2019-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* 1D Musgrave fBm
  *
@@ -9,6 +10,9 @@
  *
  * from "Texturing and Modelling: A procedural approach"
  */
+
+#pragma BLENDER_REQUIRE(gpu_shader_common_hash.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_material_noise.glsl)
 
 void node_tex_musgrave_fBm_1d(vec3 co,
                               float w,
@@ -43,7 +47,7 @@ void node_tex_musgrave_fBm_1d(vec3 co,
   fac = value;
 }
 
-/* 1D Musgrave Multifractal
+/* 1D Musgrave Multi-fractal
  *
  * H: highest fractal dimension
  * lacunarity: gap between successive frequencies
@@ -129,7 +133,7 @@ void node_tex_musgrave_hetero_terrain_1d(vec3 co,
   fac = value;
 }
 
-/* 1D Hybrid Additive/Multiplicative Multifractal Terrain
+/* 1D Hybrid Additive/Multiplicative Multi-fractal Terrain
  *
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
@@ -153,13 +157,12 @@ void node_tex_musgrave_hybrid_multi_fractal_1d(vec3 co,
   float lacunarity = max(lac, 1e-5);
 
   float pwHL = pow(lacunarity, -H);
-  float pwr = pwHL;
 
-  float value = snoise(p) + offset;
-  float weight = gain * value;
-  p *= lacunarity;
+  float pwr = 1.0;
+  float value = 0.0;
+  float weight = 1.0;
 
-  for (int i = 1; (weight > 0.001f) && (i < int(octaves)); i++) {
+  for (int i = 0; (weight > 0.001f) && (i < int(octaves)); i++) {
     if (weight > 1.0) {
       weight = 1.0;
     }
@@ -172,14 +175,18 @@ void node_tex_musgrave_hybrid_multi_fractal_1d(vec3 co,
   }
 
   float rmd = octaves - floor(octaves);
-  if (rmd != 0.0) {
-    value += rmd * ((snoise(p) + offset) * pwr);
+  if ((rmd != 0.0) && (weight > 0.001f)) {
+    if (weight > 1.0) {
+      weight = 1.0;
+    }
+    float signal = (snoise(p) + offset) * pwr;
+    value += rmd * weight * signal;
   }
 
   fac = value;
 }
 
-/* 1D Ridged Multifractal Terrain
+/* 1D Ridged Multi-fractal Terrain
  *
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
@@ -265,7 +272,7 @@ void node_tex_musgrave_fBm_2d(vec3 co,
   fac = value;
 }
 
-/* 2D Musgrave Multifractal
+/* 2D Musgrave Multi-fractal
  *
  * H: highest fractal dimension
  * lacunarity: gap between successive frequencies
@@ -351,7 +358,7 @@ void node_tex_musgrave_hetero_terrain_2d(vec3 co,
   fac = value;
 }
 
-/* 2D Hybrid Additive/Multiplicative Multifractal Terrain
+/* 2D Hybrid Additive/Multiplicative Multi-fractal Terrain
  *
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
@@ -375,13 +382,12 @@ void node_tex_musgrave_hybrid_multi_fractal_2d(vec3 co,
   float lacunarity = max(lac, 1e-5);
 
   float pwHL = pow(lacunarity, -H);
-  float pwr = pwHL;
 
-  float value = snoise(p) + offset;
-  float weight = gain * value;
-  p *= lacunarity;
+  float pwr = 1.0;
+  float value = 0.0;
+  float weight = 1.0;
 
-  for (int i = 1; (weight > 0.001f) && (i < int(octaves)); i++) {
+  for (int i = 0; (weight > 0.001f) && (i < int(octaves)); i++) {
     if (weight > 1.0) {
       weight = 1.0;
     }
@@ -394,14 +400,18 @@ void node_tex_musgrave_hybrid_multi_fractal_2d(vec3 co,
   }
 
   float rmd = octaves - floor(octaves);
-  if (rmd != 0.0) {
-    value += rmd * ((snoise(p) + offset) * pwr);
+  if ((rmd != 0.0) && (weight > 0.001f)) {
+    if (weight > 1.0) {
+      weight = 1.0;
+    }
+    float signal = (snoise(p) + offset) * pwr;
+    value += rmd * weight * signal;
   }
 
   fac = value;
 }
 
-/* 2D Ridged Multifractal Terrain
+/* 2D Ridged Multi-fractal Terrain
  *
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
@@ -487,7 +497,7 @@ void node_tex_musgrave_fBm_3d(vec3 co,
   fac = value;
 }
 
-/* 3D Musgrave Multifractal
+/* 3D Musgrave Multi-fractal
  *
  * H: highest fractal dimension
  * lacunarity: gap between successive frequencies
@@ -573,7 +583,7 @@ void node_tex_musgrave_hetero_terrain_3d(vec3 co,
   fac = value;
 }
 
-/* 3D Hybrid Additive/Multiplicative Multifractal Terrain
+/* 3D Hybrid Additive/Multiplicative Multi-fractal Terrain
  *
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
@@ -597,13 +607,12 @@ void node_tex_musgrave_hybrid_multi_fractal_3d(vec3 co,
   float lacunarity = max(lac, 1e-5);
 
   float pwHL = pow(lacunarity, -H);
-  float pwr = pwHL;
 
-  float value = snoise(p) + offset;
-  float weight = gain * value;
-  p *= lacunarity;
+  float pwr = 1.0;
+  float value = 0.0;
+  float weight = 1.0;
 
-  for (int i = 1; (weight > 0.001f) && (i < int(octaves)); i++) {
+  for (int i = 0; (weight > 0.001f) && (i < int(octaves)); i++) {
     if (weight > 1.0) {
       weight = 1.0;
     }
@@ -616,14 +625,18 @@ void node_tex_musgrave_hybrid_multi_fractal_3d(vec3 co,
   }
 
   float rmd = octaves - floor(octaves);
-  if (rmd != 0.0) {
-    value += rmd * ((snoise(p) + offset) * pwr);
+  if ((rmd != 0.0) && (weight > 0.001f)) {
+    if (weight > 1.0) {
+      weight = 1.0;
+    }
+    float signal = (snoise(p) + offset) * pwr;
+    value += rmd * weight * signal;
   }
 
   fac = value;
 }
 
-/* 3D Ridged Multifractal Terrain
+/* 3D Ridged Multi-fractal Terrain
  *
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
@@ -709,7 +722,7 @@ void node_tex_musgrave_fBm_4d(vec3 co,
   fac = value;
 }
 
-/* 4D Musgrave Multifractal
+/* 4D Musgrave Multi-fractal
  *
  * H: highest fractal dimension
  * lacunarity: gap between successive frequencies
@@ -795,7 +808,7 @@ void node_tex_musgrave_hetero_terrain_4d(vec3 co,
   fac = value;
 }
 
-/* 4D Hybrid Additive/Multiplicative Multifractal Terrain
+/* 4D Hybrid Additive/Multiplicative Multi-fractal Terrain
  *
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
@@ -819,13 +832,12 @@ void node_tex_musgrave_hybrid_multi_fractal_4d(vec3 co,
   float lacunarity = max(lac, 1e-5);
 
   float pwHL = pow(lacunarity, -H);
-  float pwr = pwHL;
 
-  float value = snoise(p) + offset;
-  float weight = gain * value;
-  p *= lacunarity;
+  float pwr = 1.0;
+  float value = 0.0;
+  float weight = 1.0;
 
-  for (int i = 1; (weight > 0.001f) && (i < int(octaves)); i++) {
+  for (int i = 0; (weight > 0.001f) && (i < int(octaves)); i++) {
     if (weight > 1.0) {
       weight = 1.0;
     }
@@ -838,14 +850,18 @@ void node_tex_musgrave_hybrid_multi_fractal_4d(vec3 co,
   }
 
   float rmd = octaves - floor(octaves);
-  if (rmd != 0.0) {
-    value += rmd * ((snoise(p) + offset) * pwr);
+  if ((rmd != 0.0) && (weight > 0.001f)) {
+    if (weight > 1.0) {
+      weight = 1.0;
+    }
+    float signal = (snoise(p) + offset) * pwr;
+    value += rmd * weight * signal;
   }
 
   fac = value;
 }
 
-/* 4D Ridged Multifractal Terrain
+/* 4D Ridged Multi-fractal Terrain
  *
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies

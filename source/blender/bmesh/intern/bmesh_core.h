@@ -1,10 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 /** \file
  * \ingroup bmesh
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 BMFace *BM_face_copy(BMesh *bm_dst, BMesh *bm_src, BMFace *f, bool copy_verts, bool copy_edges);
 
@@ -46,8 +52,8 @@ BMEdge *BM_edge_create(
  * \param create_flag: Options for creating the face
  */
 BMFace *BM_face_create(BMesh *bm,
-                       BMVert **verts,
-                       BMEdge **edges,
+                       BMVert *const *verts,
+                       BMEdge *const *edges,
                        int len,
                        const BMFace *f_example,
                        eBMCreateFlag create_flag);
@@ -391,3 +397,7 @@ BMVert *bmesh_kernel_unglue_region_make_vert_multi(BMesh *bm, BMLoop **larr, int
  * isolated by calling #bmesh_kernel_edge_separate to segregate it radially.
  */
 BMVert *bmesh_kernel_unglue_region_make_vert_multi_isolated(BMesh *bm, BMLoop *l_sep);
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include <stdlib.h>
 
@@ -10,6 +11,7 @@
 #include "scene/bake.h"
 #include "scene/camera.h"
 #include "scene/curves.h"
+#include "scene/devicescene.h"
 #include "scene/film.h"
 #include "scene/integrator.h"
 #include "scene/light.h"
@@ -33,54 +35,6 @@
 
 CCL_NAMESPACE_BEGIN
 
-DeviceScene::DeviceScene(Device *device)
-    : bvh_nodes(device, "bvh_nodes", MEM_GLOBAL),
-      bvh_leaf_nodes(device, "bvh_leaf_nodes", MEM_GLOBAL),
-      object_node(device, "object_node", MEM_GLOBAL),
-      prim_type(device, "prim_type", MEM_GLOBAL),
-      prim_visibility(device, "prim_visibility", MEM_GLOBAL),
-      prim_index(device, "prim_index", MEM_GLOBAL),
-      prim_object(device, "prim_object", MEM_GLOBAL),
-      prim_time(device, "prim_time", MEM_GLOBAL),
-      tri_verts(device, "tri_verts", MEM_GLOBAL),
-      tri_shader(device, "tri_shader", MEM_GLOBAL),
-      tri_vnormal(device, "tri_vnormal", MEM_GLOBAL),
-      tri_vindex(device, "tri_vindex", MEM_GLOBAL),
-      tri_patch(device, "tri_patch", MEM_GLOBAL),
-      tri_patch_uv(device, "tri_patch_uv", MEM_GLOBAL),
-      curves(device, "curves", MEM_GLOBAL),
-      curve_keys(device, "curve_keys", MEM_GLOBAL),
-      curve_segments(device, "curve_segments", MEM_GLOBAL),
-      patches(device, "patches", MEM_GLOBAL),
-      points(device, "points", MEM_GLOBAL),
-      points_shader(device, "points_shader", MEM_GLOBAL),
-      objects(device, "objects", MEM_GLOBAL),
-      object_motion_pass(device, "object_motion_pass", MEM_GLOBAL),
-      object_motion(device, "object_motion", MEM_GLOBAL),
-      object_flag(device, "object_flag", MEM_GLOBAL),
-      object_volume_step(device, "object_volume_step", MEM_GLOBAL),
-      object_prim_offset(device, "object_prim_offset", MEM_GLOBAL),
-      camera_motion(device, "camera_motion", MEM_GLOBAL),
-      attributes_map(device, "attributes_map", MEM_GLOBAL),
-      attributes_float(device, "attributes_float", MEM_GLOBAL),
-      attributes_float2(device, "attributes_float2", MEM_GLOBAL),
-      attributes_float3(device, "attributes_float3", MEM_GLOBAL),
-      attributes_float4(device, "attributes_float4", MEM_GLOBAL),
-      attributes_uchar4(device, "attributes_uchar4", MEM_GLOBAL),
-      light_distribution(device, "light_distribution", MEM_GLOBAL),
-      lights(device, "lights", MEM_GLOBAL),
-      light_background_marginal_cdf(device, "light_background_marginal_cdf", MEM_GLOBAL),
-      light_background_conditional_cdf(device, "light_background_conditional_cdf", MEM_GLOBAL),
-      particles(device, "particles", MEM_GLOBAL),
-      svm_nodes(device, "svm_nodes", MEM_GLOBAL),
-      shaders(device, "shaders", MEM_GLOBAL),
-      lookup_table(device, "lookup_table", MEM_GLOBAL),
-      sample_pattern_lut(device, "sample_pattern_lut", MEM_GLOBAL),
-      ies_lights(device, "ies", MEM_GLOBAL)
-{
-  memset((void *)&data, 0, sizeof(data));
-}
-
 Scene::Scene(const SceneParams &params_, Device *device)
     : name("Scene"),
       bvh(NULL),
@@ -99,11 +53,8 @@ Scene::Scene(const SceneParams &params_, Device *device)
 {
   memset((void *)&dscene.data, 0, sizeof(dscene.data));
 
-  /* OSL only works on the CPU */
-  if (device->info.has_osl)
-    shader_manager = ShaderManager::create(params.shadingsystem);
-  else
-    shader_manager = ShaderManager::create(SHADINGSYSTEM_SVM);
+  shader_manager = ShaderManager::create(
+      device->info.has_osl ? params.shadingsystem : SHADINGSYSTEM_SVM, device);
 
   light_manager = new LightManager();
   geometry_manager = new GeometryManager();
@@ -198,10 +149,12 @@ void Scene::free_memory(bool final)
 
     bake_manager->device_free(device, &dscene);
 
-    if (final)
+    if (final) {
       image_manager->device_free(device);
-    else
+    }
+    else {
       image_manager->device_free_builtin(device);
+    }
 
     lookup_tables->device_free(device, &dscene);
   }
@@ -222,8 +175,9 @@ void Scene::free_memory(bool final)
 
 void Scene::device_update(Device *device_, Progress &progress)
 {
-  if (!device)
+  if (!device) {
     device = device_;
+  }
 
   bool print_stats = need_data_update();
 
@@ -255,112 +209,133 @@ void Scene::device_update(Device *device_, Progress &progress)
     light_manager->tag_update(this, ccl::LightManager::LIGHT_MODIFIED);
     object_manager->tag_update(this, ccl::ObjectManager::OBJECT_MODIFIED);
   }
+  if (film->exposure_is_modified()) {
+    integrator->tag_modified();
+  }
 
   progress.set_status("Updating Shaders");
   shader_manager->device_update(device, &dscene, this, progress);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   procedural_manager->update(this, progress);
 
-  if (progress.get_cancel())
+  if (progress.get_cancel()) {
     return;
+  }
 
   progress.set_status("Updating Background");
   background->device_update(device, &dscene, this);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Camera");
   camera->device_update(device, &dscene, this);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   geometry_manager->device_update_preprocess(device, this, progress);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Objects");
   object_manager->device_update(device, &dscene, this, progress);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Particle Systems");
   particle_system_manager->device_update(device, &dscene, this, progress);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Meshes");
   geometry_manager->device_update(device, &dscene, this, progress);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Objects Flags");
   object_manager->device_update_flags(device, &dscene, this, progress);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Primitive Offsets");
   object_manager->device_update_prim_offsets(device, &dscene, this);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Images");
   image_manager->device_update(device, this, progress);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Camera Volume");
   camera->device_update_volume(device, &dscene, this);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Lookup Tables");
   lookup_tables->device_update(device, &dscene, this);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Lights");
   light_manager->device_update(device, &dscene, this, progress);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Integrator");
   integrator->device_update(device, &dscene, this);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Film");
   film->device_update(device, &dscene, this);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Lookup Tables");
   lookup_tables->device_update(device, &dscene, this);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   progress.set_status("Updating Baking");
   bake_manager->device_update(device, &dscene, this, progress);
 
-  if (progress.get_cancel() || device->have_error())
+  if (progress.get_cancel() || device->have_error()) {
     return;
+  }
 
   if (device->have_error() == false) {
     dscene.data.volume_stack_size = get_volume_stack_size();
@@ -385,32 +360,41 @@ void Scene::device_update(Device *device_, Progress &progress)
 
 Scene::MotionType Scene::need_motion() const
 {
-  if (integrator->get_motion_blur())
+  if (integrator->get_motion_blur()) {
     return MOTION_BLUR;
-  else if (Pass::contains(passes, PASS_MOTION))
+  }
+  else if (Pass::contains(passes, PASS_MOTION)) {
     return MOTION_PASS;
-  else
+  }
+  else {
     return MOTION_NONE;
+  }
 }
 
 float Scene::motion_shutter_time()
 {
-  if (need_motion() == Scene::MOTION_PASS)
+  if (need_motion() == Scene::MOTION_PASS) {
     return 2.0f;
-  else
+  }
+  else {
     return camera->get_shuttertime();
+  }
 }
 
 bool Scene::need_global_attribute(AttributeStandard std)
 {
-  if (std == ATTR_STD_UV)
+  if (std == ATTR_STD_UV) {
     return Pass::contains(passes, PASS_UV);
-  else if (std == ATTR_STD_MOTION_VERTEX_POSITION)
+  }
+  else if (std == ATTR_STD_MOTION_VERTEX_POSITION) {
     return need_motion() != MOTION_NONE;
-  else if (std == ATTR_STD_MOTION_VERTEX_NORMAL)
+  }
+  else if (std == ATTR_STD_MOTION_VERTEX_NORMAL) {
     return need_motion() == MOTION_BLUR;
+  }
   else if (std == ATTR_STD_VOLUME_VELOCITY || std == ATTR_STD_VOLUME_VELOCITY_X ||
-           std == ATTR_STD_VOLUME_VELOCITY_Y || std == ATTR_STD_VOLUME_VELOCITY_Z) {
+           std == ATTR_STD_VOLUME_VELOCITY_Y || std == ATTR_STD_VOLUME_VELOCITY_Z)
+  {
     return need_motion() != MOTION_NONE;
   }
 
@@ -419,9 +403,11 @@ bool Scene::need_global_attribute(AttributeStandard std)
 
 void Scene::need_global_attributes(AttributeRequestSet &attributes)
 {
-  for (int std = ATTR_STD_NONE; std < ATTR_STD_NUM; std++)
-    if (need_global_attribute((AttributeStandard)std))
+  for (int std = ATTR_STD_NONE; std < ATTR_STD_NUM; std++) {
+    if (need_global_attribute((AttributeStandard)std)) {
       attributes.add((AttributeStandard)std);
+    }
+  }
 }
 
 bool Scene::need_update()
@@ -439,9 +425,9 @@ bool Scene::need_data_update()
           film->is_modified() || procedural_manager->need_update());
 }
 
-bool Scene::need_reset()
+bool Scene::need_reset(const bool check_camera)
 {
-  return need_data_update() || camera->is_modified();
+  return need_data_update() || (check_camera && camera->is_modified());
 }
 
 void Scene::reset()
@@ -488,6 +474,8 @@ void Scene::update_kernel_features()
     return;
   }
 
+  thread_scoped_lock scene_lock(mutex);
+
   /* These features are not being tweaked as often as shaders,
    * so could be done selective magic for the viewport as well. */
   uint kernel_features = shader_manager->get_kernel_features(this);
@@ -496,9 +484,6 @@ void Scene::update_kernel_features()
   kernel_features |= KERNEL_FEATURE_PATH_TRACING;
   if (params.hair_shape == CURVE_THICK) {
     kernel_features |= KERNEL_FEATURE_HAIR_THICK;
-  }
-  if (use_motion && camera->use_motion()) {
-    kernel_features |= KERNEL_FEATURE_CAMERA_MOTION;
   }
 
   /* Figure out whether the scene will use shader ray-trace we need at least
@@ -520,9 +505,6 @@ void Scene::update_kernel_features()
       if (object->use_motion() || geom->get_use_motion_blur()) {
         kernel_features |= KERNEL_FEATURE_OBJECT_MOTION;
       }
-      if (geom->get_use_motion_blur()) {
-        kernel_features |= KERNEL_FEATURE_CAMERA_MOTION;
-      }
     }
     if (object->get_is_shadow_catcher()) {
       kernel_features |= KERNEL_FEATURE_SHADOW_CATCHER;
@@ -541,11 +523,24 @@ void Scene::update_kernel_features()
     else if (geom->is_pointcloud()) {
       kernel_features |= KERNEL_FEATURE_POINTCLOUD;
     }
+    if (object->has_light_linking()) {
+      kernel_features |= KERNEL_FEATURE_LIGHT_LINKING;
+    }
+    if (object->has_shadow_linking()) {
+      kernel_features |= KERNEL_FEATURE_SHADOW_LINKING;
+    }
   }
 
   foreach (Light *light, lights) {
     if (light->get_use_caustics()) {
       has_caustics_light = true;
+    }
+
+    if (light->has_light_linking()) {
+      kernel_features |= KERNEL_FEATURE_LIGHT_LINKING;
+    }
+    if (light->has_shadow_linking()) {
+      kernel_features |= KERNEL_FEATURE_SHADOW_LINKING;
     }
   }
 
@@ -553,6 +548,10 @@ void Scene::update_kernel_features()
   if (has_caustics_caster && has_caustics_receiver && has_caustics_light) {
     dscene.data.integrator.use_caustics = true;
     kernel_features |= KERNEL_FEATURE_MNEE;
+  }
+
+  if (integrator->get_guiding_params(device).use) {
+    kernel_features |= KERNEL_FEATURE_PATH_GUIDING;
   }
 
   if (bake_manager->get_baking()) {
@@ -576,9 +575,6 @@ bool Scene::update(Progress &progress)
     return false;
   }
 
-  /* Load render kernels, before device update where we upload data to the GPU. */
-  load_kernels(progress, false);
-
   /* Upload scene data to the GPU. */
   progress.set_status("Updating Scene");
   MEM_GUARDED_CALL(&progress, device_update, device, progress);
@@ -590,8 +586,6 @@ static void log_kernel_features(const uint features)
 {
   VLOG_INFO << "Requested features:\n";
   VLOG_INFO << "Use BSDF " << string_from_bool(features & KERNEL_FEATURE_NODE_BSDF) << "\n";
-  VLOG_INFO << "Use Principled BSDF " << string_from_bool(features & KERNEL_FEATURE_PRINCIPLED)
-            << "\n";
   VLOG_INFO << "Use Emission " << string_from_bool(features & KERNEL_FEATURE_NODE_EMISSION)
             << "\n";
   VLOG_INFO << "Use Volume " << string_from_bool(features & KERNEL_FEATURE_NODE_VOLUME) << "\n";
@@ -600,7 +594,7 @@ static void log_kernel_features(const uint features)
             << "\n";
   VLOG_INFO << "Use Shader Raytrace " << string_from_bool(features & KERNEL_FEATURE_NODE_RAYTRACE)
             << "\n";
-  VLOG_INFO << "Use MNEE" << string_from_bool(features & KERNEL_FEATURE_MNEE) << "\n";
+  VLOG_INFO << "Use MNEE " << string_from_bool(features & KERNEL_FEATURE_MNEE) << "\n";
   VLOG_INFO << "Use Transparent " << string_from_bool(features & KERNEL_FEATURE_TRANSPARENT)
             << "\n";
   VLOG_INFO << "Use Denoising " << string_from_bool(features & KERNEL_FEATURE_DENOISING) << "\n";
@@ -611,8 +605,6 @@ static void log_kernel_features(const uint features)
             << "\n";
   VLOG_INFO << "Use Object Motion " << string_from_bool(features & KERNEL_FEATURE_OBJECT_MOTION)
             << "\n";
-  VLOG_INFO << "Use Camera Motion " << string_from_bool(features & KERNEL_FEATURE_CAMERA_MOTION)
-            << "\n";
   VLOG_INFO << "Use Baking " << string_from_bool(features & KERNEL_FEATURE_BAKING) << "\n";
   VLOG_INFO << "Use Subsurface " << string_from_bool(features & KERNEL_FEATURE_SUBSURFACE) << "\n";
   VLOG_INFO << "Use Volume " << string_from_bool(features & KERNEL_FEATURE_VOLUME) << "\n";
@@ -622,13 +614,8 @@ static void log_kernel_features(const uint features)
             << "\n";
 }
 
-bool Scene::load_kernels(Progress &progress, bool lock_scene)
+bool Scene::load_kernels(Progress &progress)
 {
-  thread_scoped_lock scene_lock;
-  if (lock_scene) {
-    scene_lock = thread_scoped_lock(mutex);
-  }
-
   update_kernel_features();
 
   const uint kernel_features = dscene.data.kernel_features;
@@ -641,8 +628,9 @@ bool Scene::load_kernels(Progress &progress, bool lock_scene)
     log_kernel_features(kernel_features);
     if (!device->load_kernels(kernel_features)) {
       string message = device->error_message();
-      if (message.empty())
+      if (message.empty()) {
         message = "Failed loading render kernel, see console for errors";
+      }
 
       progress.set_error(message);
       progress.set_status(message);

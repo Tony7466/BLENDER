@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnode
@@ -13,42 +14,40 @@
 #include "BKE_context.h"
 #include "BKE_material.h"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "node_intern.hh"
 
-struct Curve;
-struct Light;
 struct Material;
-struct Mesh;
-struct World;
 
 namespace blender::ed::space_node {
 
 static void context_path_add_object_data(Vector<ui::ContextPathItem> &path, Object &object)
 {
-  if (object.type == OB_MESH && object.data) {
-    Mesh *mesh = (Mesh *)object.data;
-    ui::context_path_add_generic(path, RNA_Mesh, mesh);
+  if (!object.data) {
+    return;
   }
-  if (object.type == OB_LAMP && object.data) {
-    Light *light = (Light *)object.data;
-    ui::context_path_add_generic(path, RNA_Light, light);
+  if (object.type == OB_MESH) {
+    ui::context_path_add_generic(path, RNA_Mesh, object.data);
   }
-  if (ELEM(object.type, OB_CURVES_LEGACY, OB_FONT, OB_SURF) && object.data) {
-    Curve *curve = (Curve *)object.data;
-    ui::context_path_add_generic(path, RNA_Curve, curve);
+  else if (object.type == OB_CURVES) {
+    ui::context_path_add_generic(path, RNA_Curves, object.data);
+  }
+  else if (object.type == OB_LAMP) {
+    ui::context_path_add_generic(path, RNA_Light, object.data);
+  }
+  else if (ELEM(object.type, OB_CURVES_LEGACY, OB_FONT, OB_SURF)) {
+    ui::context_path_add_generic(path, RNA_Curve, object.data);
   }
 }
 
@@ -56,9 +55,10 @@ static void context_path_add_node_tree_and_node_groups(const SpaceNode &snode,
                                                        Vector<ui::ContextPathItem> &path,
                                                        const bool skip_base = false)
 {
-  Vector<const bNodeTreePath *> tree_path = snode.treepath;
-  for (const bNodeTreePath *path_item : tree_path.as_span().drop_front(int(skip_base))) {
-    ui::context_path_add_generic(path, RNA_NodeTree, path_item->nodetree, ICON_NODETREE);
+  LISTBASE_FOREACH (const bNodeTreePath *, path_item, &snode.treepath) {
+    if (!(skip_base && path_item == snode.treepath.first)) {
+      ui::context_path_add_generic(path, RNA_NodeTree, path_item->nodetree, ICON_NODETREE);
+    }
   }
 }
 
@@ -71,8 +71,7 @@ static void get_context_path_node_shader(const bContext &C,
       Scene *scene = CTX_data_scene(&C);
       ui::context_path_add_generic(path, RNA_Scene, scene);
       if (scene != nullptr) {
-        World *world = scene->world;
-        ui::context_path_add_generic(path, RNA_World, world);
+        ui::context_path_add_generic(path, RNA_World, scene->world);
       }
       /* Skip the base node tree here, because the world contains a node tree already. */
       context_path_add_node_tree_and_node_groups(snode, path, true);
@@ -95,8 +94,7 @@ static void get_context_path_node_shader(const bContext &C,
       Scene *scene = CTX_data_scene(&C);
       ui::context_path_add_generic(path, RNA_Scene, scene);
       if (scene != nullptr) {
-        World *world = scene->world;
-        ui::context_path_add_generic(path, RNA_World, world);
+        ui::context_path_add_generic(path, RNA_World, scene->world);
       }
     }
 #ifdef WITH_FREESTYLE
@@ -130,7 +128,7 @@ static void get_context_path_node_geometry(const bContext &C,
                                            SpaceNode &snode,
                                            Vector<ui::ContextPathItem> &path)
 {
-  if (snode.flag & SNODE_PIN) {
+  if (snode.flag & SNODE_PIN || snode.geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
     context_path_add_node_tree_and_node_groups(snode, path);
   }
   else {

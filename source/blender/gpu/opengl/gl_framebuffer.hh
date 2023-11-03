@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -10,8 +11,6 @@
 #pragma once
 
 #include "MEM_guardedalloc.h"
-
-#include "glew-mx.h"
 
 #include "gpu_framebuffer_private.hh"
 
@@ -34,11 +33,13 @@ class GLFrameBuffer : public FrameBuffer {
   /** State Manager of the same contexts. */
   GLStateManager *state_manager_ = nullptr;
   /** Copy of the GL state. Contains ONLY color attachments enums for slot binding. */
-  GLenum gl_attachments_[GPU_FB_MAX_COLOR_ATTACHMENT];
+  GLenum gl_attachments_[GPU_FB_MAX_COLOR_ATTACHMENT] = {0};
+  /** List of attachment that are associated with this frame-buffer but temporarily detached. */
+  GPUAttachment tmp_detached_[GPU_FB_MAX_ATTACHMENT];
   /** Internal frame-buffers are immutable. */
-  bool immutable_;
+  bool immutable_ = false;
   /** True is the frame-buffer has its first color target using the GPU_SRGB8_A8 format. */
-  bool srgb_;
+  bool srgb_ = false;
   /** True is the frame-buffer has been bound using the GL_FRAMEBUFFER_SRGB feature. */
   bool enabled_srgb_ = false;
 
@@ -78,9 +79,10 @@ class GLFrameBuffer : public FrameBuffer {
                         const void *clear_value) override;
 
   /* Attachment load-stores are currently no-op's in OpenGL. */
-  void attachment_set_loadstore_op(GPUAttachmentType /*type*/,
-                                   eGPULoadOp /*load_action*/,
-                                   eGPUStoreOp /*store_action*/) override{};
+  void attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore ls) override;
+
+  void subpass_transition(const GPUAttachmentState depth_attachment_state,
+                          Span<GPUAttachmentState> color_attachment_states) override;
 
   void read(eGPUFrameBufferBits planes,
             eGPUDataFormat format,

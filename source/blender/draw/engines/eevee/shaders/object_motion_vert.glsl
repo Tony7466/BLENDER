@@ -1,24 +1,9 @@
+/* SPDX-FileCopyrightText: 2020-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_hair_lib.glsl)
-
-uniform mat4 currModelMatrix;
-uniform mat4 prevModelMatrix;
-uniform mat4 nextModelMatrix;
-uniform bool useDeform;
-
-#ifdef HAIR
-uniform samplerBuffer prvBuffer; /* RGBA32F */
-uniform samplerBuffer nxtBuffer; /* RGBA32F */
-#else
-in vec3 pos;
-in vec3 prv; /* Previous frame position. */
-in vec3 nxt; /* Next frame position. */
-#endif
-
-out vec3 currWorldPos;
-out vec3 prevWorldPos;
-out vec3 nextWorldPos;
 
 void main()
 {
@@ -52,8 +37,8 @@ void main()
   /* Use jittered projmatrix to be able to match exact sample depth (depth equal test).
    * Note that currModelMatrix needs to also be equal to ModelMatrix for the samples to match. */
 #ifndef HAIR
-  gl_Position = ViewProjectionMatrix * vec4(currWorldPos, 1.0);
+  gl_Position = ProjectionMatrix * (ViewMatrix * vec4(currWorldPos, 1.0));
 #else
-  gl_Position = ViewProjectionMatrix * vec4(wpos, 1.0);
+  gl_Position = ProjectionMatrix * (ViewMatrix * vec4(wpos, 1.0));
 #endif
 }

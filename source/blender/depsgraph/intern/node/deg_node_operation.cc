@@ -1,20 +1,21 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
  */
 
-#include "intern/node/deg_node_operation.h"
+#include "intern/node/deg_node_operation.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_utildefines.h"
 
-#include "intern/depsgraph.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_factory.h"
-#include "intern/node/deg_node_id.h"
+#include "intern/depsgraph.hh"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_factory.hh"
+#include "intern/node/deg_node_id.hh"
 
 namespace blender::deg {
 
@@ -34,6 +35,9 @@ const char *operationCodeAsString(OperationCode opcode)
       return "PARAMETERS_EXIT";
     case OperationCode::VISIBILITY:
       return "VISIBILITY";
+    /* Hierarchy. */
+    case OperationCode::HIERARCHY:
+      return "HIERARCHY";
     /* Animation, Drivers, etc. */
     case OperationCode::ANIMATION_ENTRY:
       return "ANIMATION_ENTRY";
@@ -84,6 +88,8 @@ const char *operationCodeAsString(OperationCode opcode)
     /* Geometry. */
     case OperationCode::GEOMETRY_EVAL_INIT:
       return "GEOMETRY_EVAL_INIT";
+    case OperationCode::MODIFIER:
+      return "MODIFIER";
     case OperationCode::GEOMETRY_EVAL:
       return "GEOMETRY_EVAL";
     case OperationCode::GEOMETRY_EVAL_DONE:
@@ -168,14 +174,17 @@ const char *operationCodeAsString(OperationCode opcode)
       return "LIGHT_UPDATE";
     case OperationCode::WORLD_UPDATE:
       return "WORLD_UPDATE";
+    /* Light linking. */
+    case OperationCode::LIGHT_LINKING_UPDATE:
+      return "LIGHT_LINKING_UPDATE";
     /* Node Tree. */
     case OperationCode::NTREE_OUTPUT:
       return "NTREE_OUTPUT";
+    case OperationCode::NTREE_GEOMETRY_PREPROCESS:
+      return "NTREE_GEOMETRY_PREPROCESS";
     /* Movie clip. */
     case OperationCode::MOVIECLIP_EVAL:
       return "MOVIECLIP_EVAL";
-    case OperationCode::MOVIECLIP_SELECT_UPDATE:
-      return "MOVIECLIP_SELECT_UPDATE";
     /* Image. */
     case OperationCode::IMAGE_ANIMATION:
       return "IMAGE_ANIMATION";
@@ -191,16 +200,12 @@ const char *operationCodeAsString(OperationCode opcode)
     /* instancing/duplication. */
     case OperationCode::DUPLI:
       return "DUPLI";
-    case OperationCode::SIMULATION_EVAL:
-      return "SIMULATION_EVAL";
   }
   BLI_assert_msg(0, "Unhandled operation code, should never happen.");
   return "UNKNOWN";
 }
 
-OperationNode::OperationNode() : name_tag(-1), flag(0)
-{
-}
+OperationNode::OperationNode() : name_tag(-1), flag(0) {}
 
 string OperationNode::identifier() const
 {
@@ -224,6 +229,16 @@ void OperationNode::tag_update(Depsgraph *graph, eUpdateSource source)
    * during previous dependency evaluation. Here the node gets re-tagged, so we need to give
    * the evaluated clues that evaluation needs to happen again. */
   graph->add_entry_tag(this);
+
+  /* Enforce dynamic visibility code-path update.
+   * This ensures visibility flags are consistently propagated throughout the dependency graph when
+   * there is no animated visibility in the graph.
+   *
+   * For example this ensures that graph is updated properly when manually toggling non-animated
+   * modifier visibility. */
+  if (opcode == OperationCode::VISIBILITY) {
+    graph->need_update_nodes_visibility = true;
+  }
 
   /* Tag for update, but also note that this was the source of an update. */
   flag |= (DEPSOP_FLAG_NEEDS_UPDATE | DEPSOP_FLAG_DIRECTLY_MODIFIED);

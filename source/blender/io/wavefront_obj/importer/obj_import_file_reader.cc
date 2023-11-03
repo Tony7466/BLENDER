@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -7,14 +9,17 @@
 #include "BLI_map.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_vector.h"
+#include "BLI_string.h"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
+#include "obj_export_mtl.hh"
 #include "obj_import_file_reader.hh"
 #include "obj_import_string_utils.hh"
 
 #include <algorithm>
 #include <charconv>
+#include <iostream>
 
 namespace blender::io::obj {
 
@@ -82,7 +87,8 @@ static void geom_add_vertex(const char *p, const char *end, GlobalVertices &r_gl
       /* If we don't have vertex colors yet, or the previous vertex
        * was without color, we need to start a new vertex colors block. */
       if (blocks.is_empty() || (blocks.last().start_vertex_index + blocks.last().colors.size() !=
-                                r_global_vertices.vertices.size() - 1)) {
+                                r_global_vertices.vertices.size() - 1))
+      {
         GlobalVertices::VertexColorsBlock block;
         block.start_vertex_index = r_global_vertices.vertices.size() - 1;
         blocks.append(block);
@@ -102,10 +108,10 @@ static void geom_add_mrgb_colors(const char *p, const char *end, GlobalVertices 
   while (p + mrgb_length <= end) {
     uint32_t value = 0;
     std::from_chars_result res = std::from_chars(p, p + mrgb_length, value, 16);
-    if (res.ec == std::errc::invalid_argument || res.ec == std::errc::result_out_of_range) {
+    if (ELEM(res.ec, std::errc::invalid_argument, std::errc::result_out_of_range)) {
       return;
     }
-    unsigned char srgb[4];
+    uchar srgb[4];
     srgb[0] = (value >> 16) & 0xFF;
     srgb[1] = (value >> 8) & 0xFF;
     srgb[2] = value & 0xFF;
@@ -117,7 +123,8 @@ static void geom_add_mrgb_colors(const char *p, const char *end, GlobalVertices 
     /* If we don't have vertex colors yet, or the previous vertex
      * was without color, we need to start a new vertex colors block. */
     if (blocks.is_empty() || (blocks.last().start_vertex_index + blocks.last().colors.size() !=
-                              r_global_vertices.vertices.size())) {
+                              r_global_vertices.vertices.size()))
+    {
       GlobalVertices::VertexColorsBlock block;
       block.start_vertex_index = r_global_vertices.vertices.size();
       blocks.append(block);
@@ -141,7 +148,7 @@ static void geom_add_vertex_normal(const char *p,
    * making them ever-so-slightly non unit length. Make sure they are
    * normalized. */
   normalize_v3(normal);
-  r_global_vertices.vertex_normals.append(normal);
+  r_global_vertices.vert_normals.append(normal);
 }
 
 static void geom_add_uv_vertex(const char *p, const char *end, GlobalVertices &r_global_vertices)
@@ -151,21 +158,67 @@ static void geom_add_uv_vertex(const char *p, const char *end, GlobalVertices &r
   r_global_vertices.uv_vertices.append(uv);
 }
 
-static void geom_add_edge(Geometry *geom,
-                          const char *p,
-                          const char *end,
-                          GlobalVertices &r_global_vertices)
+/**
+ * Parse vertex index and transform to non-negative, zero-based.
+ * Sets r_index to the index or INT32_MAX on error.
+ * Index is transformed and bounds-checked using n_vertices,
+ * which specifies the number of vertices that have been read before.
+ * Returns updated p.
+ */
+static const char *parse_vertex_index(const char *p, const char *end, size_t n_elems, int &r_index)
 {
-  int edge_v1, edge_v2;
-  p = parse_int(p, end, -1, edge_v1);
-  p = parse_int(p, end, -1, edge_v2);
-  /* Always keep stored indices non-negative and zero-based. */
-  edge_v1 += edge_v1 < 0 ? r_global_vertices.vertices.size() : -1;
-  edge_v2 += edge_v2 < 0 ? r_global_vertices.vertices.size() : -1;
-  BLI_assert(edge_v1 >= 0 && edge_v2 >= 0);
-  geom->edges_.append({static_cast<uint>(edge_v1), static_cast<uint>(edge_v2)});
-  geom->track_vertex_index(edge_v1);
-  geom->track_vertex_index(edge_v2);
+  p = parse_int(p, end, INT32_MAX, r_index, false);
+  if (r_index != INT32_MAX) {
+    r_index += r_index < 0 ? n_elems : -1;
+    if (r_index < 0 || r_index >= n_elems) {
+      fprintf(stderr, "Invalid vertex index %i (valid range [0, %zu))\n", r_index, n_elems);
+      r_index = INT32_MAX;
+    }
+  }
+  return p;
+}
+
+/**
+ * Parse a polyline and add its line segments as loose edges.
+ * We support the following polyline specifications:
+ * - "l v1/vt1 v2/vt2 ..."
+ * - "l v1 v2 ..."
+ * If a line only has one vertex (technically not allowed by the spec),
+ * no line is created, but the vertex will be added to
+ * the mesh even if it is unconnected.
+ */
+static void geom_add_polyline(Geometry *geom,
+                              const char *p,
+                              const char *end,
+                              GlobalVertices &r_global_vertices)
+{
+  int last_vertex_index;
+  p = drop_whitespace(p, end);
+  p = parse_vertex_index(p, end, r_global_vertices.vertices.size(), last_vertex_index);
+
+  if (last_vertex_index == INT32_MAX) {
+    fprintf(stderr, "Skipping invalid OBJ polyline.\n");
+    return;
+  }
+  geom->track_vertex_index(last_vertex_index);
+
+  while (p < end) {
+    int vertex_index;
+
+    /* Lines can contain texture coordinate indices, just ignore them. */
+    p = drop_non_whitespace(p, end);
+    /* Skip whitespace to get to the next vertex. */
+    p = drop_whitespace(p, end);
+
+    p = parse_vertex_index(p, end, r_global_vertices.vertices.size(), vertex_index);
+    if (vertex_index == INT32_MAX) {
+      break;
+    }
+
+    geom->edges_.append({last_vertex_index, vertex_index});
+    geom->track_vertex_index(vertex_index);
+    last_vertex_index = vertex_index;
+  }
 }
 
 static void geom_add_polygon(Geometry *geom,
@@ -215,41 +268,45 @@ static void geom_add_polygon(Geometry *geom,
       fprintf(stderr,
               "Invalid vertex index %i (valid range [0, %zu)), ignoring face\n",
               corner.vert_index,
-              (size_t)global_vertices.vertices.size());
+              size_t(global_vertices.vertices.size()));
       face_valid = false;
     }
     else {
       geom->track_vertex_index(corner.vert_index);
     }
-    if (got_uv) {
+    /* Ignore UV index, if the geometry does not have any UVs (#103212). */
+    if (got_uv && !global_vertices.uv_vertices.is_empty()) {
       corner.uv_vert_index += corner.uv_vert_index < 0 ? global_vertices.uv_vertices.size() : -1;
       if (corner.uv_vert_index < 0 || corner.uv_vert_index >= global_vertices.uv_vertices.size()) {
         fprintf(stderr,
                 "Invalid UV index %i (valid range [0, %zu)), ignoring face\n",
                 corner.uv_vert_index,
-                (size_t)global_vertices.uv_vertices.size());
+                size_t(global_vertices.uv_vertices.size()));
         face_valid = false;
       }
     }
     /* Ignore corner normal index, if the geometry does not have any normals.
      * Some obj files out there do have face definitions that refer to normal indices,
-     * without any normals being present (T98782). */
-    if (got_normal && !global_vertices.vertex_normals.is_empty()) {
+     * without any normals being present (#98782). */
+    if (got_normal && !global_vertices.vert_normals.is_empty()) {
       corner.vertex_normal_index += corner.vertex_normal_index < 0 ?
-                                        global_vertices.vertex_normals.size() :
+                                        global_vertices.vert_normals.size() :
                                         -1;
       if (corner.vertex_normal_index < 0 ||
-          corner.vertex_normal_index >= global_vertices.vertex_normals.size()) {
+          corner.vertex_normal_index >= global_vertices.vert_normals.size())
+      {
         fprintf(stderr,
                 "Invalid normal index %i (valid range [0, %zu)), ignoring face\n",
                 corner.vertex_normal_index,
-                (size_t)global_vertices.vertex_normals.size());
+                size_t(global_vertices.vert_normals.size()));
         face_valid = false;
       }
     }
     geom->face_corners_.append(corner);
     curr_face.corner_count_++;
 
+    /* Some files contain extra stuff per face (e.g. 4 indices); skip any remainder (#103441). */
+    p = drop_non_whitespace(p, end);
     /* Skip whitespace to get to the next face corner. */
     p = drop_whitespace(p, end);
   }
@@ -261,7 +318,7 @@ static void geom_add_polygon(Geometry *geom,
   else {
     /* Remove just-added corners for the invalid face. */
     geom->face_corners_.resize(orig_corners_size);
-    geom->has_invalid_polys_ = true;
+    geom->has_invalid_faces_ = true;
   }
 }
 
@@ -336,7 +393,8 @@ static void geom_add_curve_parameters(Geometry *geom, const char *p, const char 
 static void geom_update_group(const StringRef rest_line, std::string &r_group_name)
 {
   if (rest_line.find("off") != string::npos || rest_line.find("null") != string::npos ||
-      rest_line.find("default") != string::npos) {
+      rest_line.find("default") != string::npos)
+  {
     /* Set group for future elements like faces or curves to empty. */
     r_group_name = "";
     return;
@@ -359,7 +417,25 @@ static void geom_update_smooth_group(const char *p, const char *end, bool &r_sta
   r_state_shaded_smooth = smooth != 0;
 }
 
-OBJParser::OBJParser(const OBJImportParams &import_params, size_t read_buffer_size = 64 * 1024)
+static void geom_new_object(const char *p,
+                            const char *end,
+                            bool &r_state_shaded_smooth,
+                            std::string &r_state_group_name,
+                            int &r_state_material_index,
+                            Geometry *&r_curr_geom,
+                            Vector<std::unique_ptr<Geometry>> &r_all_geometries)
+{
+  r_state_shaded_smooth = false;
+  r_state_group_name = "";
+  /* Reset object-local material index that's used in face infos.
+   * NOTE: do not reset the material name; that has to carry over
+   * into the next object if needed. */
+  r_state_material_index = -1;
+  r_curr_geom = create_geometry(
+      r_curr_geom, GEOM_MESH, StringRef(p, end).trim(), r_all_geometries);
+}
+
+OBJParser::OBJParser(const OBJImportParams &import_params, size_t read_buffer_size)
     : import_params_(import_params), read_buffer_size_(read_buffer_size)
 {
   obj_file_ = BLI_fopen(import_params_.filepath, "rb");
@@ -402,12 +478,11 @@ static void use_all_vertices_if_no_faces(Geometry *geom,
                                          const GlobalVertices &global_vertices)
 {
   if (!global_vertices.vertices.is_empty() && geom && geom->geom_type_ == GEOM_MESH) {
-    if (std::all_of(
-            all_geometries.begin(), all_geometries.end(), [](const std::unique_ptr<Geometry> &g) {
-              return g->get_vertex_count() == 0;
-            })) {
-      geom->track_vertex_index(0);
-      geom->track_vertex_index(global_vertices.vertices.size() - 1);
+    if (std::all_of(all_geometries.begin(),
+                    all_geometries.end(),
+                    [](const std::unique_ptr<Geometry> &g) { return g->get_vertex_count() == 0; }))
+    {
+      geom->track_all_vertices(global_vertices.vertices.size());
     }
   }
 }
@@ -421,8 +496,8 @@ void OBJParser::parse(Vector<std::unique_ptr<Geometry>> &r_all_geometries,
 
   /* Use the filename as the default name given to the initial object. */
   char ob_name[FILE_MAXFILE];
-  BLI_strncpy(ob_name, BLI_path_basename(import_params_.filepath), FILE_MAXFILE);
-  BLI_path_extension_replace(ob_name, FILE_MAXFILE, "");
+  STRNCPY(ob_name, BLI_path_basename(import_params_.filepath));
+  BLI_path_extension_strip(ob_name);
 
   Geometry *curr_geom = create_geometry(nullptr, GEOM_MESH, ob_name, r_all_geometries);
 
@@ -485,7 +560,7 @@ void OBJParser::parse(Vector<std::unique_ptr<Geometry>> &r_all_geometries,
 
     /* Parse the buffer (until last newline) that we have so far,
      * line by line. */
-    StringRef buffer_str{buffer.data(), (int64_t)last_nl};
+    StringRef buffer_str{buffer.data(), int64_t(last_nl)};
     while (!buffer_str.is_empty()) {
       StringRef line = read_next_line(buffer_str);
       const char *p = line.begin(), *end = line.end();
@@ -508,6 +583,16 @@ void OBJParser::parse(Vector<std::unique_ptr<Geometry>> &r_all_geometries,
       }
       /* Faces. */
       else if (parse_keyword(p, end, "f")) {
+        /* If we don't have a material index assigned yet, get one.
+         * It means "usemtl" state came from the previous object. */
+        if (state_material_index == -1 && !state_material_name.empty() &&
+            curr_geom->material_indices_.is_empty())
+        {
+          curr_geom->material_indices_.add_new(state_material_name, 0);
+          curr_geom->material_order_.append(state_material_name);
+          state_material_index = 0;
+        }
+
         geom_add_polygon(curr_geom,
                          p,
                          end,
@@ -518,23 +603,38 @@ void OBJParser::parse(Vector<std::unique_ptr<Geometry>> &r_all_geometries,
       }
       /* Faces. */
       else if (parse_keyword(p, end, "l")) {
-        geom_add_edge(curr_geom, p, end, r_global_vertices);
+        geom_add_polyline(curr_geom, p, end, r_global_vertices);
       }
       /* Objects. */
       else if (parse_keyword(p, end, "o")) {
-        state_shaded_smooth = false;
-        state_group_name = "";
-        state_material_name = "";
-        curr_geom = create_geometry(
-            curr_geom, GEOM_MESH, StringRef(p, end).trim(), r_all_geometries);
+        if (import_params_.use_split_objects) {
+          geom_new_object(p,
+                          end,
+                          state_shaded_smooth,
+                          state_group_name,
+                          state_material_index,
+                          curr_geom,
+                          r_all_geometries);
+        }
       }
       /* Groups. */
       else if (parse_keyword(p, end, "g")) {
-        geom_update_group(StringRef(p, end).trim(), state_group_name);
-        int new_index = curr_geom->group_indices_.size();
-        state_group_index = curr_geom->group_indices_.lookup_or_add(state_group_name, new_index);
-        if (new_index == state_group_index) {
-          curr_geom->group_order_.append(state_group_name);
+        if (import_params_.use_split_groups) {
+          geom_new_object(p,
+                          end,
+                          state_shaded_smooth,
+                          state_group_name,
+                          state_material_index,
+                          curr_geom,
+                          r_all_geometries);
+        }
+        else {
+          geom_update_group(StringRef(p, end).trim(), state_group_name);
+          int new_index = curr_geom->group_indices_.size();
+          state_group_index = curr_geom->group_indices_.lookup_or_add(state_group_name, new_index);
+          if (new_index == state_group_index) {
+            curr_geom->group_order_.append(state_group_name);
+          }
         }
       }
       /* Smoothing groups. */
@@ -593,36 +693,41 @@ void OBJParser::parse(Vector<std::unique_ptr<Geometry>> &r_all_geometries,
   add_default_mtl_library();
 }
 
-static eMTLSyntaxElement mtl_line_start_to_enum(const char *&p, const char *end)
+static MTLTexMapType mtl_line_start_to_texture_type(const char *&p, const char *end)
 {
   if (parse_keyword(p, end, "map_Kd")) {
-    return eMTLSyntaxElement::map_Kd;
+    return MTLTexMapType::Color;
   }
   if (parse_keyword(p, end, "map_Ks")) {
-    return eMTLSyntaxElement::map_Ks;
+    return MTLTexMapType::Specular;
   }
   if (parse_keyword(p, end, "map_Ns")) {
-    return eMTLSyntaxElement::map_Ns;
+    return MTLTexMapType::SpecularExponent;
   }
   if (parse_keyword(p, end, "map_d")) {
-    return eMTLSyntaxElement::map_d;
+    return MTLTexMapType::Alpha;
   }
-  if (parse_keyword(p, end, "refl")) {
-    return eMTLSyntaxElement::map_refl;
-  }
-  if (parse_keyword(p, end, "map_refl")) {
-    return eMTLSyntaxElement::map_refl;
+  if (parse_keyword(p, end, "refl") || parse_keyword(p, end, "map_refl")) {
+    return MTLTexMapType::Reflection;
   }
   if (parse_keyword(p, end, "map_Ke")) {
-    return eMTLSyntaxElement::map_Ke;
+    return MTLTexMapType::Emission;
   }
-  if (parse_keyword(p, end, "bump")) {
-    return eMTLSyntaxElement::map_Bump;
+  if (parse_keyword(p, end, "bump") || parse_keyword(p, end, "map_Bump") ||
+      parse_keyword(p, end, "map_bump"))
+  {
+    return MTLTexMapType::Normal;
   }
-  if (parse_keyword(p, end, "map_Bump") || parse_keyword(p, end, "map_bump")) {
-    return eMTLSyntaxElement::map_Bump;
+  if (parse_keyword(p, end, "map_Pr")) {
+    return MTLTexMapType::Roughness;
   }
-  return eMTLSyntaxElement::string;
+  if (parse_keyword(p, end, "map_Pm")) {
+    return MTLTexMapType::Metallic;
+  }
+  if (parse_keyword(p, end, "map_Ps")) {
+    return MTLTexMapType::Sheen;
+  }
+  return MTLTexMapType::Count;
 }
 
 static const std::pair<StringRef, int> unsupported_texture_options[] = {
@@ -640,7 +745,7 @@ static const std::pair<StringRef, int> unsupported_texture_options[] = {
 static bool parse_texture_option(const char *&p,
                                  const char *end,
                                  MTLMaterial *material,
-                                 tex_map_XX &tex_map)
+                                 MTLTexMap &tex_map)
 {
   p = drop_whitespace(p, end);
   if (parse_keyword(p, end, "-o")) {
@@ -652,7 +757,7 @@ static bool parse_texture_option(const char *&p,
     return true;
   }
   if (parse_keyword(p, end, "-bm")) {
-    p = parse_float(p, end, 1.0f, material->map_Bump_strength, true, true);
+    p = parse_float(p, end, 1.0f, material->normal_strength, true, true);
     return true;
   }
   if (parse_keyword(p, end, "-type")) {
@@ -694,13 +799,13 @@ static void parse_texture_map(const char *p,
   if (!is_map && !is_refl && !is_bump) {
     return;
   }
-  eMTLSyntaxElement key = mtl_line_start_to_enum(p, end);
-  if (key == eMTLSyntaxElement::string || !material->texture_maps.contains(key)) {
+  MTLTexMapType key = mtl_line_start_to_texture_type(p, end);
+  if (key == MTLTexMapType::Count) {
     /* No supported texture map found. */
     std::cerr << "OBJ import: MTL texture map type not supported: '" << line << "'" << std::endl;
     return;
   }
-  tex_map_XX &tex_map = material->texture_maps.lookup(key);
+  MTLTexMap &tex_map = material->tex_map_of_type(key);
   tex_map.mtl_dir_path = mtl_dir_path;
 
   /* Parse texture map options. */
@@ -718,7 +823,7 @@ Span<std::string> OBJParser::mtl_libraries() const
 
 void OBJParser::add_mtl_library(StringRef path)
 {
-  /* Remove any quotes from start and end (T67266, T97794). */
+  /* Remove any quotes from start and end (#67266, #97794). */
   if (path.size() > 2 && path.startswith("\"") && path.endswith("\"")) {
     path = path.drop_prefix(1).drop_suffix(1);
   }
@@ -734,13 +839,13 @@ void OBJParser::add_default_mtl_library()
    * into candidate .mtl files to search through. This is not technically following the
    * spec, but the old python importer was doing it, and there are user files out there
    * that contain "mtllib bar.mtl" for a foo.obj, and depend on finding materials
-   * from foo.mtl (see T97757). */
+   * from foo.mtl (see #97757). */
   char mtl_file_path[FILE_MAX];
-  BLI_strncpy(mtl_file_path, import_params_.filepath, sizeof(mtl_file_path));
+  STRNCPY(mtl_file_path, import_params_.filepath);
   BLI_path_extension_replace(mtl_file_path, sizeof(mtl_file_path), ".mtl");
   if (BLI_exists(mtl_file_path)) {
     char mtl_file_base[FILE_MAX];
-    BLI_split_file_part(mtl_file_path, mtl_file_base, sizeof(mtl_file_base));
+    BLI_path_split_file_part(mtl_file_path, mtl_file_base, sizeof(mtl_file_base));
     add_mtl_library(mtl_file_base);
   }
 }
@@ -748,9 +853,9 @@ void OBJParser::add_default_mtl_library()
 MTLParser::MTLParser(StringRefNull mtl_library, StringRefNull obj_filepath)
 {
   char obj_file_dir[FILE_MAXDIR];
-  BLI_split_dir_part(obj_filepath.data(), obj_file_dir, FILE_MAXDIR);
-  BLI_path_join(mtl_file_path_, FILE_MAX, obj_file_dir, mtl_library.data(), NULL);
-  BLI_split_dir_part(mtl_file_path_, mtl_dir_path_, FILE_MAXDIR);
+  BLI_path_split_dir_part(obj_filepath.data(), obj_file_dir, FILE_MAXDIR);
+  BLI_path_join(mtl_file_path_, FILE_MAX, obj_file_dir, mtl_library.data());
+  BLI_path_split_dir_part(mtl_file_path_, mtl_dir_path_, FILE_MAXDIR);
 }
 
 void MTLParser::parse_and_store(Map<string, std::unique_ptr<MTLMaterial>> &r_materials)
@@ -764,7 +869,7 @@ void MTLParser::parse_and_store(Map<string, std::unique_ptr<MTLMaterial>> &r_mat
 
   MTLMaterial *material = nullptr;
 
-  StringRef buffer_str{(const char *)buffer, (int64_t)buffer_len};
+  StringRef buffer_str{(const char *)buffer, int64_t(buffer_len)};
   while (!buffer_str.is_empty()) {
     const StringRef line = read_next_line(buffer_str);
     const char *p = line.begin(), *end = line.end();
@@ -785,31 +890,55 @@ void MTLParser::parse_and_store(Map<string, std::unique_ptr<MTLMaterial>> &r_mat
     }
     else if (material != nullptr) {
       if (parse_keyword(p, end, "Ns")) {
-        parse_float(p, end, 324.0f, material->Ns);
+        parse_float(p, end, 324.0f, material->spec_exponent);
       }
       else if (parse_keyword(p, end, "Ka")) {
-        parse_floats(p, end, 0.0f, material->Ka, 3);
+        parse_floats(p, end, 0.0f, material->ambient_color, 3);
       }
       else if (parse_keyword(p, end, "Kd")) {
-        parse_floats(p, end, 0.8f, material->Kd, 3);
+        parse_floats(p, end, 0.8f, material->color, 3);
       }
       else if (parse_keyword(p, end, "Ks")) {
-        parse_floats(p, end, 0.5f, material->Ks, 3);
+        parse_floats(p, end, 0.5f, material->spec_color, 3);
       }
       else if (parse_keyword(p, end, "Ke")) {
-        parse_floats(p, end, 0.0f, material->Ke, 3);
+        parse_floats(p, end, 0.0f, material->emission_color, 3);
       }
       else if (parse_keyword(p, end, "Ni")) {
-        parse_float(p, end, 1.45f, material->Ni);
+        parse_float(p, end, 1.45f, material->ior);
       }
       else if (parse_keyword(p, end, "d")) {
-        parse_float(p, end, 1.0f, material->d);
+        parse_float(p, end, 1.0f, material->alpha);
       }
       else if (parse_keyword(p, end, "illum")) {
-        /* Some files incorrectly use a float (T60135). */
+        /* Some files incorrectly use a float (#60135). */
         float val;
         parse_float(p, end, 1.0f, val);
-        material->illum = val;
+        material->illum_mode = val;
+      }
+      else if (parse_keyword(p, end, "Pr")) {
+        parse_float(p, end, 0.5f, material->roughness);
+      }
+      else if (parse_keyword(p, end, "Pm")) {
+        parse_float(p, end, 0.0f, material->metallic);
+      }
+      else if (parse_keyword(p, end, "Ps")) {
+        parse_float(p, end, 0.0f, material->sheen);
+      }
+      else if (parse_keyword(p, end, "Pc")) {
+        parse_float(p, end, 0.0f, material->cc_thickness);
+      }
+      else if (parse_keyword(p, end, "Pcr")) {
+        parse_float(p, end, 0.0f, material->cc_roughness);
+      }
+      else if (parse_keyword(p, end, "aniso")) {
+        parse_float(p, end, 0.0f, material->aniso);
+      }
+      else if (parse_keyword(p, end, "anisor")) {
+        parse_float(p, end, 0.0f, material->aniso_rot);
+      }
+      else if (parse_keyword(p, end, "Kt") || parse_keyword(p, end, "Tf")) {
+        parse_floats(p, end, 0.0f, material->transmit_color, 3);
       }
       else {
         parse_texture_map(p, end, material, mtl_dir_path_);

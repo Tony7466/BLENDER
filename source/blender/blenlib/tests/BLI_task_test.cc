@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 #include <atomic>
@@ -27,7 +29,7 @@ static void task_range_iter_func(void *userdata, int index, const TaskParallelTL
   //  printf("%d, %d, %d\n", index, data[index], *((int *)tls->userdata_chunk));
 }
 
-static void task_range_iter_reduce_func(const void *__restrict UNUSED(userdata),
+static void task_range_iter_reduce_func(const void *__restrict /*userdata*/,
                                         void *__restrict join_v,
                                         void *__restrict userdata_chunk)
 {
@@ -71,7 +73,7 @@ TEST(task, RangeIter)
 
 static void task_mempool_iter_func(void *userdata,
                                    MempoolIterData *item,
-                                   const TaskParallelTLS *__restrict UNUSED(tls))
+                                   const TaskParallelTLS *__restrict /*tls*/)
 {
   int *data = (int *)item;
   int *count = (int *)userdata;
@@ -147,7 +149,7 @@ using TaskMemPool_Chunk = struct TaskMemPool_Chunk {
   ListBase *accumulate_items;
 };
 
-static void task_mempool_iter_tls_func(void *UNUSED(userdata),
+static void task_mempool_iter_tls_func(void * /*userdata*/,
                                        MempoolIterData *item,
                                        const TaskParallelTLS *__restrict tls)
 {
@@ -165,7 +167,7 @@ static void task_mempool_iter_tls_func(void *UNUSED(userdata),
   BLI_addtail(task_data->accumulate_items, BLI_genericNodeN(data));
 }
 
-static void task_mempool_iter_tls_reduce(const void *__restrict UNUSED(userdata),
+static void task_mempool_iter_tls_reduce(const void *__restrict /*userdata*/,
                                          void *__restrict chunk_join,
                                          void *__restrict chunk)
 {
@@ -180,8 +182,7 @@ static void task_mempool_iter_tls_reduce(const void *__restrict UNUSED(userdata)
   }
 }
 
-static void task_mempool_iter_tls_free(const void *UNUSED(userdata),
-                                       void *__restrict userdata_chunk)
+static void task_mempool_iter_tls_free(const void * /*userdata*/, void *__restrict userdata_chunk)
 {
   TaskMemPool_Chunk *task_data = (TaskMemPool_Chunk *)userdata_chunk;
   MEM_freeN(task_data->accumulate_items);
@@ -197,11 +198,9 @@ TEST(task, MempoolIterTLS)
   int i;
 
   /* Add numbers negative `1..ITEMS_NUM` inclusive. */
-  int items_num = 0;
   for (i = 0; i < ITEMS_NUM; i++) {
     data[i] = (int *)BLI_mempool_alloc(mempool);
     *data[i] = -(i + 1);
-    items_num++;
   }
 
   TaskParallelSettings settings;
@@ -222,7 +221,7 @@ TEST(task, MempoolIterTLS)
 
   /* Check that all elements are added into the list once. */
   int number_accum = 0;
-  for (LinkData *link = (LinkData *)tls_data.accumulate_items->first; link; link = link->next) {
+  LISTBASE_FOREACH (LinkData *, link, tls_data.accumulate_items) {
     int *data = (int *)link->data;
     number_accum += *data;
   }
@@ -240,7 +239,7 @@ TEST(task, MempoolIterTLS)
 static void task_listbase_iter_func(void *userdata,
                                     void *item,
                                     int index,
-                                    const TaskParallelTLS *__restrict UNUSED(tls))
+                                    const TaskParallelTLS *__restrict /*tls*/)
 {
   LinkData *data = (LinkData *)item;
   int *count = (int *)userdata;
@@ -274,7 +273,8 @@ TEST(task, ListBaseIter)
   EXPECT_EQ(items_num, 0);
   LinkData *item;
   for (i = 0, item = (LinkData *)list.first; i < ITEMS_NUM && item != nullptr;
-       i++, item = item->next) {
+       i++, item = item->next)
+  {
     EXPECT_EQ(POINTER_AS_INT(item->data), i);
   }
   EXPECT_EQ(ITEMS_NUM, i);

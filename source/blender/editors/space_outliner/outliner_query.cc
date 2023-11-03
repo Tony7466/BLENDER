@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -13,13 +15,13 @@
 #include "outliner_intern.hh"
 #include "tree/tree_display.hh"
 
-using namespace blender::ed::outliner;
+namespace blender::ed::outliner {
 
 bool outliner_shows_mode_column(const SpaceOutliner &space_outliner)
 {
   const AbstractTreeDisplay &tree_display = *space_outliner.runtime->tree_display;
 
-  return tree_display.supportsModeColumn() && (space_outliner.flag & SO_MODE_COLUMN);
+  return tree_display.supports_mode_column() && (space_outliner.flag & SO_MODE_COLUMN);
 }
 
 /**
@@ -32,7 +34,7 @@ bool outliner_has_element_warnings(const SpaceOutliner &space_outliner)
 
   recursive_fn = [&](const ListBase &lb) {
     LISTBASE_FOREACH (const TreeElement *, te, &lb) {
-      if (te->abstract_element && !te->abstract_element->getWarning().is_empty()) {
+      if (te->abstract_element && !te->abstract_element->get_warning().is_empty()) {
         return true;
       }
 
@@ -46,3 +48,5 @@ bool outliner_has_element_warnings(const SpaceOutliner &space_outliner)
 
   return recursive_fn(space_outliner.tree);
 }
+
+}  // namespace blender::ed::outliner

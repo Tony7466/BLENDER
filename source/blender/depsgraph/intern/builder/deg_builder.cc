@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -13,29 +14,31 @@
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_layer_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
 #include "BLI_stack.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"
+#include "BKE_collection.h"
 
 #include "RNA_prototypes.h"
 
 #include "intern/builder/deg_builder_cache.h"
 #include "intern/builder/deg_builder_remove_noop.h"
-#include "intern/depsgraph.h"
-#include "intern/depsgraph_relation.h"
-#include "intern/depsgraph_tag.h"
-#include "intern/depsgraph_type.h"
+#include "intern/depsgraph.hh"
+#include "intern/depsgraph_relation.hh"
+#include "intern/depsgraph_tag.hh"
+#include "intern/depsgraph_type.hh"
 #include "intern/eval/deg_eval_copy_on_write.h"
 #include "intern/eval/deg_eval_visibility.h"
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_id.h"
-#include "intern/node/deg_node_operation.h"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_id.hh"
+#include "intern/node/deg_node_operation.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 namespace blender::deg {
 
@@ -95,6 +98,24 @@ bool DepsgraphBuilder::is_object_visibility_animated(const Object *object)
   return cache_->isPropertyAnimated(&object->id, property_id);
 }
 
+bool DepsgraphBuilder::is_modifier_visibility_animated(const Object *object,
+                                                       const ModifierData *modifier)
+{
+  AnimatedPropertyID property_id;
+  if (graph_->mode == DAG_EVAL_VIEWPORT) {
+    property_id = AnimatedPropertyID(
+        &object->id, &RNA_Modifier, (void *)modifier, "show_viewport");
+  }
+  else if (graph_->mode == DAG_EVAL_RENDER) {
+    property_id = AnimatedPropertyID(&object->id, &RNA_Modifier, (void *)modifier, "show_render");
+  }
+  else {
+    BLI_assert_msg(0, "Unknown evaluation mode.");
+    return false;
+  }
+  return cache_->isPropertyAnimated(&object->id, property_id);
+}
+
 bool DepsgraphBuilder::check_pchan_has_bbone(const Object *object, const bPoseChannel *pchan)
 {
   BLI_assert(object->type == OB_ARMATURE);
@@ -125,6 +146,27 @@ bool DepsgraphBuilder::check_pchan_has_bbone_segments(const Object *object, cons
 {
   const bPoseChannel *pchan = BKE_pose_channel_find_name(object->pose, bone_name);
   return check_pchan_has_bbone_segments(object, pchan);
+}
+
+const char *DepsgraphBuilder::get_rna_path_relative_to_scene_camera(const Scene *scene,
+                                                                    const PointerRNA &target_prop,
+                                                                    const char *rna_path)
+{
+  if (rna_path == nullptr || target_prop.data != scene || target_prop.type != &RNA_Scene ||
+      !BLI_str_startswith(rna_path, "camera"))
+  {
+    return nullptr;
+  }
+
+  /* Return the part of the path relative to the camera. */
+  switch (rna_path[6]) {
+    case '.':
+      return rna_path + 7;
+    case '[':
+      return rna_path + 6;
+    default:
+      return nullptr;
+  }
 }
 
 /** \} */
@@ -158,6 +200,17 @@ void deg_graph_build_finalize(Main *bmain, Depsgraph *graph)
        * time, which is similar to "ob-visible-change" */
       if (GS(id_orig->name) == ID_OB) {
         flag |= ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY;
+      }
+      if (GS(id_orig->name) == ID_NT) {
+        flag |= ID_RECALC_NTREE_OUTPUT;
+      }
+    }
+    else {
+      /* Collection content might have changed (children collection might have been added or
+       * removed from the graph based on their inclusion and visibility flags). */
+      const ID_Type id_type = GS(id_node->id_cow->name);
+      if (id_type == ID_GR) {
+        BKE_collection_object_cache_free(reinterpret_cast<Collection *>(id_node->id_cow));
       }
     }
     /* Restore recalc flags from original ID, which could possibly contain recalc flags set by

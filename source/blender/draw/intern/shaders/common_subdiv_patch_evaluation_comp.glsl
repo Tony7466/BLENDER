@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2021-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* To be compiled with common_subdiv_lib.glsl */
 
@@ -54,7 +57,7 @@ layout(std430, binding = 8) writeonly buffer outputFVarData
 #elif defined(FDOTS_EVALUATION)
 /* For face dots, we build the position, normals, and index buffers in one go. */
 
-/* vec3 is padded to vec4, but the format used for fdots does not have any padding. */
+/* vec3 is padded to vec4, but the format used for face-dots does not have any padding. */
 struct FDotVert {
   float x, y, z;
 };
@@ -87,16 +90,30 @@ layout(std430, binding = 11) readonly buffer extraCoarseFaceData
   uint extra_coarse_face_data[];
 };
 #else
-layout(std430, binding = 8) writeonly buffer outputVertexData
+layout(std430, binding = 8) readonly buffer inputFlagsBuffer
+{
+  int flags_buffer[]; /*char*/
+};
+float get_flag(int vertex)
+{
+  int char4 = flags_buffer[vertex / 4];
+  int flag = (char4 >> ((vertex % 4) * 8)) & 0xFF;
+  if (flag >= 128) {
+    flag = -128 + (flag - 128);
+  }
+
+  return float(flag);
+}
+layout(std430, binding = 9) writeonly buffer outputVertexData
 {
   PosNorLoop output_verts[];
 };
 #  if defined(ORCO_EVALUATION)
-layout(std430, binding = 9) buffer src_extra_buffer
+layout(std430, binding = 10) buffer src_extra_buffer
 {
   float srcExtraVertexBuffer[];
 };
-layout(std430, binding = 10) writeonly buffer outputOrcoData
+layout(std430, binding = 11) writeonly buffer outputOrcoData
 {
   vec4 output_orcos[];
 };
@@ -462,6 +479,9 @@ void main()
     float flag = 0.0;
     if (origindex == -1) {
       flag = -1.0;
+    }
+    else {
+      flag = get_flag(origindex);
     }
 
     PosNorLoop vertex_data;

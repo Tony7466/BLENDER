@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "gpu_shader_create_info.hh"
 
@@ -13,8 +15,7 @@ GPU_SHADER_CREATE_INFO(overlay_wireframe)
     .push_constant(Type::FLOAT, "wireOpacity")
     .push_constant(Type::BOOL, "useColoring")
     .push_constant(Type::BOOL, "isTransform")
-    .push_constant(Type::BOOL, "isObjectColor")
-    .push_constant(Type::BOOL, "isRandomColor")
+    .push_constant(Type::INT, "colorType")
     .push_constant(Type::BOOL, "isHair")
     .push_constant(Type::MAT4, "hairDupliMatrix")
     /* Scene Depth texture copy for manual depth test. */
@@ -27,6 +28,7 @@ GPU_SHADER_CREATE_INFO(overlay_wireframe)
     .fragment_source("overlay_wireframe_frag.glsl")
     .fragment_out(0, Type::VEC4, "fragColor")
     .fragment_out(1, Type::VEC4, "lineOutput")
+    .depth_write(DepthWrite::ANY)
     .additional_info("draw_mesh", "draw_object_infos", "draw_globals");
 
 GPU_SHADER_CREATE_INFO(overlay_wireframe_clipped)

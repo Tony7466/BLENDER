@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2018-2022 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import functools
@@ -46,8 +48,8 @@ class AbstractBlenderRunnerTest(unittest.TestCase):
 
         Returns Blender's stdout + stderr combined into one string.
 
-        :param filepath: taken relative to self.testdir.
-        :param timeout: in seconds
+        :arg filepath: taken relative to self.testdir.
+        :arg timeout: in seconds
         """
 
         assert self.blender, "Path to Blender binary is to be set in setUpClass()"

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "gpu_shader_create_info.hh"
 
@@ -13,6 +15,7 @@ GPU_SHADER_INTERFACE_INFO(overlay_extra_iface, "")
 
 GPU_SHADER_CREATE_INFO(overlay_extra)
     .do_static_compilation(true)
+    .typedef_source("overlay_shader_shared.h")
     .vertex_in(0, Type::VEC3, "pos")
     .vertex_in(1, Type::INT, "vclass")
     /* Instance attributes. */
@@ -110,12 +113,12 @@ GPU_SHADER_CREATE_INFO(overlay_extra_wire)
 GPU_SHADER_CREATE_INFO(overlay_extra_wire_select)
     .do_static_compilation(true)
     .define("SELECT_EDGES")
-    .additional_info("overlay_extra_wire", "drw_clipped");
+    .additional_info("overlay_extra_wire");
 
 GPU_SHADER_CREATE_INFO(overlay_extra_wire_object)
     .do_static_compilation(true)
     .define("OBJECT_WIRE")
-    .additional_info("overlay_extra_wire", "drw_clipped");
+    .additional_info("overlay_extra_wire");
 
 GPU_SHADER_CREATE_INFO(overlay_extra_wire_select_clipped)
     .do_static_compilation(true)
@@ -145,7 +148,7 @@ GPU_SHADER_CREATE_INFO(overlay_extra_point)
     /* TODO(fclem): Move the vertex shader to Overlay engine and remove this bypass. */
     .define("blender_srgb_to_framebuffer_space(a)", "a")
     .vertex_in(0, Type::VEC3, "pos")
-    .push_constant(Type::VEC4, "color")
+    .push_constant(Type::VEC4, "ucolor")
     .vertex_out(overlay_extra_point_iface)
     .fragment_out(0, Type::VEC4, "fragColor")
     .vertex_source("overlay_extra_point_vert.glsl")
@@ -161,7 +164,7 @@ GPU_SHADER_INTERFACE_INFO(overlay_extra_loose_point_iface, "").smooth(Type::VEC4
 GPU_SHADER_CREATE_INFO(overlay_extra_loose_point)
     .do_static_compilation(true)
     .vertex_in(0, Type::VEC3, "pos")
-    .push_constant(Type::VEC4, "color")
+    .push_constant(Type::VEC4, "ucolor")
     .vertex_out(overlay_extra_loose_point_iface)
     .fragment_out(0, Type::VEC4, "fragColor")
     .fragment_out(1, Type::VEC4, "lineOutput")
@@ -179,9 +182,9 @@ GPU_SHADER_CREATE_INFO(overlay_extra_loose_point_clipped)
 /** \name Motion Path
  * \{ */
 
-GPU_SHADER_INTERFACE_INFO(overlay_motion_path_line_iface, "interp")
-    .flat(Type::VEC2, "ss_pos")
-    .smooth(Type::VEC4, "color");
+GPU_SHADER_INTERFACE_INFO(overlay_motion_path_line_iface, "interp").smooth(Type::VEC4, "color");
+GPU_SHADER_INTERFACE_INFO(overlay_motion_path_line_flat_iface, "interp_flat")
+    .flat(Type::VEC2, "ss_pos");
 
 GPU_SHADER_CREATE_INFO(overlay_motion_path_line)
     .do_static_compilation(true)
@@ -191,6 +194,7 @@ GPU_SHADER_CREATE_INFO(overlay_motion_path_line)
     .push_constant(Type::VEC3, "customColor")
     .push_constant(Type::INT, "lineThickness") /* In pixels. */
     .vertex_out(overlay_motion_path_line_iface)
+    .vertex_out(overlay_motion_path_line_flat_iface)
     .geometry_out(overlay_motion_path_line_iface)
     .geometry_layout(PrimitiveIn::LINES, PrimitiveOut::TRIANGLE_STRIP, 4)
     .fragment_out(0, Type::VEC4, "fragColor")
@@ -199,9 +203,28 @@ GPU_SHADER_CREATE_INFO(overlay_motion_path_line)
     .fragment_source("overlay_motion_path_line_frag.glsl")
     .additional_info("draw_view", "draw_globals");
 
+GPU_SHADER_CREATE_INFO(overlay_motion_path_line_no_geom)
+    .metal_backend_only(true)
+    .do_static_compilation(true)
+    .vertex_in(0, Type::VEC3, "pos")
+    .push_constant(Type::IVEC4, "mpathLineSettings")
+    .push_constant(Type::BOOL, "selected")
+    .push_constant(Type::VEC3, "customColor")
+    .push_constant(Type::INT, "lineThickness") /* In pixels. */
+    .vertex_out(overlay_motion_path_line_iface)
+    .fragment_out(0, Type::VEC4, "fragColor")
+    .vertex_source("overlay_motion_path_line_vert_no_geom.glsl")
+    .fragment_source("overlay_motion_path_line_frag.glsl")
+    .additional_info("draw_view", "draw_globals");
+
 GPU_SHADER_CREATE_INFO(overlay_motion_path_line_clipped)
     .do_static_compilation(true)
     .additional_info("overlay_motion_path_line", "drw_clipped");
+
+GPU_SHADER_CREATE_INFO(overlay_motion_path_line_clipped_no_geom)
+    .metal_backend_only(true)
+    .do_static_compilation(true)
+    .additional_info("overlay_motion_path_line_no_geom", "drw_clipped");
 
 GPU_SHADER_INTERFACE_INFO(overlay_motion_path_point_iface, "").flat(Type::VEC4, "finalColor");
 
@@ -209,7 +232,7 @@ GPU_SHADER_CREATE_INFO(overlay_motion_path_point)
     .do_static_compilation(true)
     .typedef_source("overlay_shader_shared.h")
     .vertex_in(0, Type::VEC3, "pos")
-    .vertex_in(1, Type::INT, "flag")
+    .vertex_in(1, Type::UINT, "flag")
     .push_constant(Type::IVEC4, "mpathPointSettings")
     .push_constant(Type::BOOL, "showKeyFrames")
     .push_constant(Type::VEC3, "customColor")
@@ -237,7 +260,7 @@ GPU_SHADER_CREATE_INFO(overlay_image)
     .push_constant(Type::BOOL, "isCameraBackground")
     .push_constant(Type::BOOL, "imgPremultiplied")
     .push_constant(Type::BOOL, "imgAlphaBlend")
-    .push_constant(Type::VEC4, "color")
+    .push_constant(Type::VEC4, "ucolor")
     .vertex_in(0, Type::VEC3, "pos")
     .vertex_out(overlay_image_iface)
     .sampler(0, ImageType::FLOAT_2D, "imgTexture")
@@ -284,7 +307,7 @@ GPU_SHADER_INTERFACE_INFO(overlay_particle_iface, "").flat(Type::VEC4, "finalCol
 
 GPU_SHADER_CREATE_INFO(overlay_particle)
     .sampler(0, ImageType::FLOAT_1D, "weightTex")
-    .push_constant(Type::VEC4, "color") /* Draw-size packed in alpha. */
+    .push_constant(Type::VEC4, "ucolor") /* Draw-size packed in alpha. */
     .vertex_in(0, Type::VEC3, "part_pos")
     .vertex_in(1, Type::VEC4, "part_rot")
     .vertex_in(2, Type::FLOAT, "part_val")

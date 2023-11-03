@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -31,6 +32,8 @@
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
+
+#include "DNA_userdef_enums.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,19 +80,19 @@ void BKE_libblock_runtime_reset_remapping_status(struct ID *id) ATTR_NONNULL(1);
 /* *** ID's session_uuid management. *** */
 
 /**
- * When an ID's uuid is of that value, it is unset/invalid (e.g. for runtime IDs, etc.).
+ * When an ID's UUID is of that value, it is unset/invalid (e.g. for runtime IDs, etc.).
  */
 #define MAIN_ID_SESSION_UUID_UNSET 0
 
 /**
- * Generate a session-wise uuid for the given \a id.
+ * Generate a session-wise UUID for the given \a id.
  *
  * \note "session-wise" here means while editing a given .blend file. Once a new .blend file is
- * loaded or created, undo history is cleared/reset, and so is the uuid counter.
+ * loaded or created, undo history is cleared/reset, and so is the UUID counter.
  */
 void BKE_lib_libblock_session_uuid_ensure(struct ID *id);
 /**
- * Re-generate a new session-wise uuid for the given \a id.
+ * Re-generate a new session-wise UUID for the given \a id.
  *
  * \warning This has a few very specific use-cases, no other usage is expected currently:
  *   - To handle UI-related data-blocks that are kept across new file reading, when we do keep
@@ -117,14 +120,14 @@ void *BKE_id_new_nomain(short type, const char *name);
  */
 enum {
   /* *** Generic options (should be handled by all ID types copying, ID creation, etc.). *** */
-  /** Create datablock outside of any main database -
+  /** Create data-block outside of any main database -
    * similar to 'localize' functions of materials etc. */
   LIB_ID_CREATE_NO_MAIN = 1 << 0,
-  /** Do not affect user refcount of datablocks used by new one
-   * (which also gets zero usercount then).
+  /** Do not affect user refcount of data-blocks used by new one
+   * (which also gets zero user-count then).
    * Implies LIB_ID_CREATE_NO_MAIN. */
   LIB_ID_CREATE_NO_USER_REFCOUNT = 1 << 1,
-  /** Assume given 'newid' already points to allocated memory for whole datablock
+  /** Assume given 'newid' already points to allocated memory for whole data-block
    * (ID + data) - USE WITH CAUTION!
    * Implies LIB_ID_CREATE_NO_MAIN. */
   LIB_ID_CREATE_NO_ALLOCATE = 1 << 2,
@@ -150,10 +153,8 @@ enum {
   LIB_ID_COPY_NO_PREVIEW = 1 << 17,
   /** Copy runtime data caches. */
   LIB_ID_COPY_CACHES = 1 << 18,
-  /** Don't copy id->adt, used by ID data-block localization routines. */
+  /** Don't copy `id->adt`, used by ID data-block localization routines. */
   LIB_ID_COPY_NO_ANIMDATA = 1 << 19,
-  /** Mesh: Reference CD data layers instead of doing real copy - USE WITH CAUTION! */
-  LIB_ID_COPY_CD_REFERENCE = 1 << 20,
   /** Do not copy id->override_library, used by ID data-block override routines. */
   LIB_ID_COPY_NO_LIB_OVERRIDE = 1 << 21,
   /** When copying local sub-data (like constraints or modifiers), do not set their "library
@@ -230,7 +231,7 @@ typedef enum eLibIDDuplicateFlags {
 
 ENUM_OPERATORS(eLibIDDuplicateFlags, LIB_ID_DUPLICATE_IS_ROOT_ID)
 
-/* lib_remap.c (keep here since they're general functions) */
+/* `lib_remap.cc` (keep here since they're general functions) */
 /**
  * New freeing logic options.
  */
@@ -239,12 +240,12 @@ enum {
   /** Do not try to remove freed ID from given Main (passed Main may be NULL). */
   LIB_ID_FREE_NO_MAIN = 1 << 0,
   /**
-   * Do not affect user refcount of datablocks used by freed one.
+   * Do not affect user refcount of data-blocks used by freed one.
    * Implies LIB_ID_FREE_NO_MAIN.
    */
   LIB_ID_FREE_NO_USER_REFCOUNT = 1 << 1,
   /**
-   * Assume freed ID datablock memory is managed elsewhere, do not free it
+   * Assume freed ID data-block memory is managed elsewhere, do not free it
    * (still calls relevant ID type's freeing function though) - USE WITH CAUTION!
    * Implies LIB_ID_FREE_NO_MAIN.
    */
@@ -254,7 +255,7 @@ enum {
   LIB_ID_FREE_NO_DEG_TAG = 1 << 8,
   /** Do not attempt to remove freed ID from UI data/notifiers/... */
   LIB_ID_FREE_NO_UI_USER = 1 << 9,
-  /** Do not remove freed ID's name from a potential runtime namemap. */
+  /** Do not remove freed ID's name from a potential runtime name-map. */
   LIB_ID_FREE_NO_NAMEMAP_REMOVE = 1 << 10,
 };
 
@@ -283,7 +284,7 @@ void BKE_libblock_free_data_py(struct ID *id);
  * \param idv: Pointer to ID to be freed.
  * \param flag: Set of \a LIB_ID_FREE_... flags controlling/overriding usual freeing process,
  * 0 to get default safe behavior.
- * \param use_flag_from_idtag: Still use freeing info flags from given #ID datablock,
+ * \param use_flag_from_idtag: Still use freeing info flags from given #ID data-block,
  * even if some overriding ones are passed in \a flag parameter.
  */
 void BKE_id_free_ex(struct Main *bmain, void *idv, int flag, bool use_flag_from_idtag);
@@ -300,7 +301,7 @@ void BKE_id_free(struct Main *bmain, void *idv);
 
 /**
  * Not really a freeing function by itself,
- * it decrements usercount of given id, and only frees it if it reaches 0.
+ * it decrements user-count of given id, and only frees it if it reaches 0.
  */
 void BKE_id_free_us(struct Main *bmain, void *idv) ATTR_NONNULL();
 
@@ -309,6 +310,16 @@ void BKE_id_free_us(struct Main *bmain, void *idv) ATTR_NONNULL();
  */
 void BKE_id_delete(struct Main *bmain, void *idv) ATTR_NONNULL();
 /**
+ * Like BKE_id_delete, but with extra corner-case options.
+ *
+ * \param extra_remapping_flags: Additional `ID_REMAP_` flags to pass to remapping code when
+ * ensuring that deleted IDs are not used by any other ID in given `bmain`. Typical example would
+ * be e.g. `ID_REMAP_FORCE_UI_POINTERS`, required when default UI-handling callbacks of remapping
+ * code won't be working (e.g. from readfile code).
+ */
+void BKE_id_delete_ex(struct Main *bmain, void *idv, const int extra_remapping_flags)
+    ATTR_NONNULL(1, 2);
+/**
  * Properly delete all IDs tagged with \a LIB_TAG_DOIT, in given \a bmain database.
  *
  * This is more efficient than calling #BKE_id_delete repetitively on a large set of IDs
@@ -316,12 +327,12 @@ void BKE_id_delete(struct Main *bmain, void *idv) ATTR_NONNULL();
  *
  * \warning Considered experimental for now, seems to be working OK but this is
  * risky code in a complicated area.
- * \return Number of deleted datablocks.
+ * \return Number of deleted data-blocks.
  */
 size_t BKE_id_multi_tagged_delete(struct Main *bmain) ATTR_NONNULL();
 
 /**
- * Add a 'NO_MAIN' data-block to given main (also sets usercounts of its IDs if needed).
+ * Add a 'NO_MAIN' data-block to given main (also sets user-counts of its IDs if needed).
  */
 void BKE_libblock_management_main_add(struct Main *bmain, void *idv);
 /** Remove a data-block from given main (set it to 'NO_MAIN' status). */
@@ -344,7 +355,7 @@ void id_us_ensure_real(struct ID *id);
 void id_us_clear_real(struct ID *id);
 /**
  * Same as \a id_us_plus, but does not handle lib indirect -> extern.
- * Only used by readfile.c so far, but simpler/safer to keep it here nonetheless.
+ * Only used by `readfile.cc` so far, but simpler/safer to keep it here nonetheless.
  */
 void id_us_plus_no_lib(struct ID *id);
 void id_us_plus(struct ID *id);
@@ -367,6 +378,9 @@ enum {
   /** Clear asset data (in case the ID can actually be made local, in copy case asset data is never
    * copied over). */
   LIB_ID_MAKELOCAL_ASSET_DATA_CLEAR = 1 << 3,
+
+  /** Clear any liboverride data as part of making this linked data local. */
+  LIB_ID_MAKELOCAL_LIBOVERRIDE_CLEAR = 1 << 4,
 };
 
 /**
@@ -444,36 +458,47 @@ struct ID *BKE_id_copy(struct Main *bmain, const struct ID *id);
  * Currently, it only handles the given ID, and their shape keys and actions if any, according to
  * the given `duplicate_flags`.
  *
- * \param duplicate_flags is of type #eDupli_ID_Flags, see #UserDef.dupflag. Currently only
+ * \param duplicate_flags: is of type #eDupli_ID_Flags, see #UserDef.dupflag. Currently only
  * `USER_DUP_LINKED_ID` and `USER_DUP_ACT` have an effect here.
- * \param copy_flags flags passed to #BKE_id_copy_ex.
+ * \param copy_flags: flags passed to #BKE_id_copy_ex.
  */
 struct ID *BKE_id_copy_for_duplicate(struct Main *bmain,
                                      struct ID *id,
-                                     uint duplicate_flags,
+                                     eDupli_ID_Flags duplicate_flags,
                                      int copy_flags);
 
-/* Special version of BKE_id_copy which is safe from using evaluated id as source with a copy
+/**
+ * Special version of #BKE_id_copy which is safe from using evaluated id as source with a copy
  * result appearing in the main database.
- * Takes care of the referenced data-blocks consistency. */
+ * Takes care of the referenced data-blocks consistency.
+ */
 struct ID *BKE_id_copy_for_use_in_bmain(struct Main *bmain, const struct ID *id);
 
 /**
  * Does a mere memory swap over the whole IDs data (including type-specific memory).
  * \note Most internal ID data itself is not swapped (only IDProperties are).
  *
- * \param bmain: May be NULL, in which case there will be no remapping of internal pointers to
- * itself.
+ * \param bmain: May be NULL, in which case there is no guarantee that internal remapping of ID
+ * pointers to themselves will be complete (regarding depsgraph and/or runtime data updates).
+ * \param do_self_remap: Whether to remap internal pointers to itself or not.
+ * \param self_remap_flags: Flags controlling self remapping, see BKE_lib_remap.h.
  */
-void BKE_lib_id_swap(struct Main *bmain, struct ID *id_a, struct ID *id_b);
+void BKE_lib_id_swap(struct Main *bmain,
+                     struct ID *id_a,
+                     struct ID *id_b,
+                     const bool do_self_remap,
+                     const int self_remap_flags);
 /**
  * Does a mere memory swap over the whole IDs data (including type-specific memory).
  * \note All internal ID data itself is also swapped.
  *
- * \param bmain: May be NULL, in which case there will be no remapping of internal pointers to
- * itself.
+ * For parameters description, see #BKE_lib_id_swap above.
  */
-void BKE_lib_id_swap_full(struct Main *bmain, struct ID *id_a, struct ID *id_b);
+void BKE_lib_id_swap_full(struct Main *bmain,
+                          struct ID *id_a,
+                          struct ID *id_b,
+                          const bool do_self_remap,
+                          const int self_remap_flags);
 
 /**
  * Sort given \a id into given \a lb list, using case-insensitive comparison of the id names.
@@ -495,6 +520,7 @@ void BKE_lib_id_expand_local(struct Main *bmain, struct ID *id, int flags);
  *
  * Only for local IDs (linked ones already have a unique ID in their library).
  *
+ * \param name: The new name of the given ID, if NULL the current given ID name is used instead.
  * \param do_linked_data: if true, also ensure a unique name in case the given \a id is linked
  * (otherwise, just ensure that it is properly sorted).
  *
@@ -539,7 +565,7 @@ void BKE_main_id_flag_listbase(struct ListBase *lb, int flag, bool value);
 void BKE_main_id_flag_all(struct Main *bmain, int flag, bool value);
 
 /**
- * Next to indirect usage in `readfile.c/writefile.c` also in `editobject.c`, `scene.cc`.
+ * Next to indirect usage in `readfile.cc` / `writefile.cc` also in `editobject.c`, `scene.cc`.
  */
 void BKE_main_id_newptr_and_tag_clear(struct Main *bmain);
 
@@ -618,7 +644,15 @@ bool BKE_id_is_in_global_main(struct ID *id);
 
 bool BKE_id_can_be_asset(const struct ID *id);
 
-/** Check if that ID can be considered as editable from a high-level (editor) perspective.
+/**
+ * Return the owner ID of the given `id`, if any.
+ *
+ * \note This will only return non-NULL for embedded IDs (master collections etc.), and shape-keys.
+ */
+struct ID *BKE_id_owner_get(struct ID *id);
+
+/**
+ * Check if that ID can be considered as editable from a high-level (editor) perspective.
  *
  * NOTE: This used to be done with a check on whether ID was linked or not, but now with system
  * overrides this is not enough anymore.
@@ -643,7 +677,7 @@ void BKE_id_blend_write(struct BlendWriter *writer, struct ID *id);
 
 #define IS_TAGGED(_id) ((_id) && (((ID *)_id)->tag & LIB_TAG_DOIT))
 
-/* lib_id_eval.c */
+/* `lib_id_eval.cc` */
 
 /**
  * Copy relatives parameters, from `id` to `id_cow`.

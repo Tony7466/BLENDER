@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2021-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Reduce pass: Downsample the color buffer to generate mipmaps.
@@ -6,34 +9,12 @@
 
 #pragma BLENDER_REQUIRE(effect_dof_lib.glsl)
 
-/** Inputs:
- * COPY_PASS: Is output of setup pass (halfres) and downsample pass (quarter res).
- * REDUCE_PASS: Is previous Gather input miplvl (halfres >> miplvl).
- */
-uniform sampler2D colorBuffer;
-uniform sampler2D cocBuffer;
-uniform sampler2D downsampledBuffer;
-
-uniform vec2 bokehAnisotropy;
-uniform float scatterColorThreshold;
-uniform float scatterCocThreshold;
-uniform float scatterColorNeighborMax;
-uniform float colorNeighborClamping;
-
-/** Outputs:
- * COPY_PASS: Gather input mip0.
- * REDUCE_PASS: Is next Gather input miplvl (halfres >> miplvl).
- */
-layout(location = 0) out vec4 outColor;
-layout(location = 1) out float outCoc;
-
 #ifdef COPY_PASS
-
-layout(location = 2) out vec3 outScatterColor;
 
 /* NOTE: Do not compare alpha as it is not scattered by the scatter pass. */
 float dof_scatter_neighborhood_rejection(vec3 color)
 {
+  DEFINE_DOF_QUAD_OFFSETS;
   color = min(vec3(scatterColorNeighborMax), color);
 
   float validity = 0.0;
@@ -64,11 +45,11 @@ float dof_scatter_screen_border_rejection(float coc, vec2 uv, vec2 screen_size)
 {
   vec2 screen_pos = uv * screen_size;
   float min_screen_border_distance = min_v2(min(screen_pos, screen_size - screen_pos));
-  /* Fullres to halfres CoC. */
+  /* Full-resolution to half-resolution CoC. */
   coc *= 0.5;
   /* Allow 10px transition. */
-  const float rejection_hardeness = 1.0 / 10.0;
-  return saturate((min_screen_border_distance - abs(coc)) * rejection_hardeness + 1.0);
+  const float rejection_hardness = 1.0 / 10.0;
+  return saturate((min_screen_border_distance - abs(coc)) * rejection_hardness + 1.0);
 }
 
 float dof_scatter_luminosity_rejection(vec3 color)
@@ -155,6 +136,7 @@ void main()
 /* Downsample pass done for each mip starting from mip1. */
 void main()
 {
+  DEFINE_DOF_QUAD_OFFSETS
   vec2 input_texel_size = 1.0 / vec2(textureSize(colorBuffer, 0).xy);
   /* Center uv around the 4 pixels of the previous mip. */
   vec2 quad_center = (floor(gl_FragCoord.xy) * 2.0 + 1.0) * input_texel_size;

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blendthumb
@@ -61,7 +62,7 @@ static blender::Vector<uint8_t> filtered_rows_from_thumb(const Thumbnail *thumb)
 
 static std::optional<blender::Vector<uint8_t>> zlib_compress(const blender::Vector<uint8_t> &data)
 {
-  unsigned long uncompressed_size = data.size();
+  ulong uncompressed_size = data.size();
   uLongf compressed_size = compressBound(uncompressed_size);
 
   blender::Vector<uint8_t> compressed(compressed_size, 0x00);
@@ -110,7 +111,7 @@ std::optional<blender::Vector<uint8_t>> blendthumb_create_png_data_from_thumb(
         0x00, /* Filter method. */
         0x00, /* Interlace method. */
     });
-    BLI_assert((size_t)ihdr_data.size() == ihdr_data_final_size);
+    BLI_assert(size_t(ihdr_data.size()) == ihdr_data_final_size);
   }
 
   /* Join it all together to create a PNG image. */
@@ -135,7 +136,7 @@ std::optional<blender::Vector<uint8_t>> blendthumb_create_png_data_from_thumb(
     png_chunk_create(png_buf, MAKE_ID('I', 'D', 'A', 'T'), image_data);
     png_chunk_create(png_buf, MAKE_ID('I', 'E', 'N', 'D'), {});
 
-    BLI_assert((size_t)png_buf.size() == png_buf_final_size);
+    BLI_assert(size_t(png_buf.size()) == png_buf_final_size);
   }
 
   return png_buf;

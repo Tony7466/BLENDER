@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_DenoiseOperation.h"
 #include "BLI_system.h"
@@ -31,16 +32,16 @@ class DenoiseFilter {
 #ifdef WITH_OPENIMAGEDENOISE
   oidn::DeviceRef device_;
   oidn::FilterRef filter_;
-#endif
   bool initialized_ = false;
+#endif
 
  public:
+#ifdef WITH_OPENIMAGEDENOISE
   ~DenoiseFilter()
   {
     BLI_assert(!initialized_);
   }
 
-#ifdef WITH_OPENIMAGEDENOISE
   void init_and_lock_denoiser(MemoryBuffer *output)
   {
     /* Since it's memory intensive, it's better to run only one instance of OIDN at a time.
@@ -89,25 +90,15 @@ class DenoiseFilter {
   }
 
 #else
-  void init_and_lock_denoiser(MemoryBuffer *UNUSED(output))
-  {
-  }
+  void init_and_lock_denoiser(MemoryBuffer * /*output*/) {}
 
-  void deinit_and_unlock_denoiser()
-  {
-  }
+  void deinit_and_unlock_denoiser() {}
 
-  void set_image(const StringRef UNUSED(name), MemoryBuffer *UNUSED(buffer))
-  {
-  }
+  void set_image(const StringRef /*name*/, MemoryBuffer * /*buffer*/) {}
 
-  template<typename T> void set(const StringRef UNUSED(option_name), T UNUSED(value))
-  {
-  }
+  template<typename T> void set(const StringRef /*option_name*/, T /*value*/) {}
 
-  void execute()
-  {
-  }
+  void execute() {}
 #endif
 };
 
@@ -132,8 +123,8 @@ bool DenoiseBaseOperation::determine_depending_area_of_interest(
   return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
-void DenoiseBaseOperation::get_area_of_interest(const int UNUSED(input_idx),
-                                                const rcti &UNUSED(output_area),
+void DenoiseBaseOperation::get_area_of_interest(const int /*input_idx*/,
+                                                const rcti & /*output_area*/,
                                                 rcti &r_input_area)
 {
   r_input_area = this->get_canvas();
@@ -163,7 +154,7 @@ void DenoiseOperation::deinit_execution()
   SingleThreadedOperation::deinit_execution();
 }
 
-static bool are_guiding_passes_noise_free(NodeDenoise *settings)
+static bool are_guiding_passes_noise_free(const NodeDenoise *settings)
 {
   switch (settings->prefilter) {
     case CMP_NODE_DENOISE_PREFILTER_NONE:
@@ -178,7 +169,7 @@ static bool are_guiding_passes_noise_free(NodeDenoise *settings)
 void DenoiseOperation::hash_output_params()
 {
   if (settings_) {
-    hash_params((int)settings_->hdr, are_guiding_passes_noise_free(settings_));
+    hash_params(int(settings_->hdr), are_guiding_passes_noise_free(settings_));
   }
 }
 
@@ -201,7 +192,7 @@ void DenoiseOperation::generate_denoise(MemoryBuffer *output,
                                         MemoryBuffer *input_color,
                                         MemoryBuffer *input_normal,
                                         MemoryBuffer *input_albedo,
-                                        NodeDenoise *settings)
+                                        const NodeDenoise *settings)
 {
   BLI_assert(input_color->get_buffer());
   if (!input_color->get_buffer()) {
@@ -251,7 +242,7 @@ void DenoiseOperation::generate_denoise(MemoryBuffer *output,
 }
 
 void DenoiseOperation::update_memory_buffer(MemoryBuffer *output,
-                                            const rcti &UNUSED(area),
+                                            const rcti & /*area*/,
                                             Span<MemoryBuffer *> inputs)
 {
   if (!output_rendered_) {
@@ -304,7 +295,7 @@ void DenoisePrefilterOperation::generate_denoise(MemoryBuffer *output, MemoryBuf
 }
 
 void DenoisePrefilterOperation::update_memory_buffer(MemoryBuffer *output,
-                                                     const rcti &UNUSED(area),
+                                                     const rcti & /*area*/,
                                                      Span<MemoryBuffer *> inputs)
 {
   if (!output_rendered_) {

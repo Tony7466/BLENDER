@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -103,6 +104,7 @@ void BKE_partdeflect_free(struct PartDeflect *pd);
  * lookup of effectors during evaluation.
  */
 struct ListBase *BKE_effector_relations_create(struct Depsgraph *depsgraph,
+                                               const struct Scene *scene,
                                                struct ViewLayer *view_layer,
                                                struct Collection *collection);
 void BKE_effector_relations_free(struct ListBase *lb);
@@ -151,7 +153,7 @@ bool get_effector_data(struct EffectorCache *eff,
                        struct EffectedPoint *point,
                        int real_velocity);
 
-/* required for particle_system.c */
+/* Required for `particle_system.cc`. */
 #if 0
 void do_physical_effector(struct EffectorData *eff,
                           struct EffectorPoint *point,

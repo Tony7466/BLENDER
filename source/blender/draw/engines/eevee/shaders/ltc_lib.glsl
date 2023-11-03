@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2017-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 /**
  * Adapted from :
  * Real-Time Polygonal-Light Shading with Linearly Transformed Cosines.
@@ -5,6 +9,9 @@
  * ACM Transactions on Graphics (Proceedings of ACM SIGGRAPH 2016) 35(4), 2016.
  * Project page: https://eheitzresearch.wordpress.com/415-2/
  */
+
+/* Ensure common_utiltex_lib is included first. */
+#pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
 
 #define USE_LTC
 
@@ -16,7 +23,7 @@ float diffuse_sphere_integral(float avg_dir_z, float form_factor)
   vec2 uv = vec2(avg_dir_z * 0.5 + 0.5, form_factor);
   uv = uv * (LUT_SIZE - 1.0) / LUT_SIZE + 0.5 / LUT_SIZE;
 
-  return texture(utilTex, vec3(uv, 3.0)).x;
+  return texture(utilTex, vec3(uv, LTC_DISK_LAYER)).x;
 #else
   /* Cheap approximation. Less smooth and have energy issues. */
   return max((form_factor * form_factor + avg_dir_z) / (form_factor + 1.0), 0.0);
@@ -46,7 +53,7 @@ vec3 solve_cubic(vec4 coefs)
   /* Discriminant */
   float discr = dot(vec2(4.0 * delta.x, -delta.y), delta.zy);
 
-  /* Clamping avoid NaN output on some platform. (see T67060) */
+  /* Clamping avoid NaN output on some platform. (see #67060) */
   float sqrt_discr = sqrt(clamp(discr, 0.0, FLT_MAX));
 
   vec2 xlc, xsc;
@@ -141,7 +148,11 @@ mat3 ltc_matrix(vec4 lut)
   return Minv;
 }
 
+#ifdef GPU_METAL
+void ltc_transform_quad(vec3 N, vec3 V, mat3 Minv, thread vec3 *corners)
+#else
 void ltc_transform_quad(vec3 N, vec3 V, mat3 Minv, inout vec3 corners[4])
+#endif
 {
   /* Avoid dot(N, V) == 1 in ortho mode, leading T1 normalize to fail. */
   V = normalize(V + 1e-8);
@@ -182,8 +193,7 @@ float ltc_evaluate_quad(vec3 corners[4], vec3 N)
 float ltc_evaluate_disk_simple(float disk_radius, float NL)
 {
   float r_sqr = disk_radius * disk_radius;
-  float one_r_sqr = 1.0 + r_sqr;
-  float form_factor = r_sqr * inversesqrt(one_r_sqr * one_r_sqr);
+  float form_factor = r_sqr / (1.0 + r_sqr);
   return form_factor * diffuse_sphere_integral(NL, form_factor);
 }
 

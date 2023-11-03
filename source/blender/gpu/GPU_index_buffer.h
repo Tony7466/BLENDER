@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -26,14 +27,17 @@ typedef struct GPUIndexBufBuilder {
   uint index_len;
   uint index_min;
   uint index_max;
+  uint restart_index_value;
+  bool uses_restart_indices;
+
   GPUPrimType prim_type;
   uint32_t *data;
 } GPUIndexBufBuilder;
 
-/* supports all primitive types. */
+/** Supports all primitive types. */
 void GPU_indexbuf_init_ex(GPUIndexBufBuilder *, GPUPrimType, uint index_len, uint vertex_len);
 
-/* supports only GPU_PRIM_POINTS, GPU_PRIM_LINES and GPU_PRIM_TRIS. */
+/** Supports only #GPU_PRIM_POINTS, #GPU_PRIM_LINES and #GPU_PRIM_TRIS. */
 void GPU_indexbuf_init(GPUIndexBufBuilder *, GPUPrimType, uint prim_len, uint vertex_len);
 GPUIndexBuf *GPU_indexbuf_build_on_device(uint index_len);
 
@@ -86,13 +90,11 @@ void GPU_indexbuf_create_subrange_in_place(GPUIndexBuf *elem,
                                            uint length);
 
 /**
- * (Download and) return a pointer containing the data of an index buffer.
+ * (Download and) fill data with the contents of the index buffer.
  *
- * Note that the returned pointer is still owned by the driver. To get an
- * local copy, use `GPU_indexbuf_unmap` after calling `GPU_indexbuf_read`.
+ * NOTE: caller is responsible to reserve enough memory.
  */
-const uint32_t *GPU_indexbuf_read(GPUIndexBuf *elem);
-uint32_t *GPU_indexbuf_unmap(const GPUIndexBuf *elem, const uint32_t *mapped_buffer);
+void GPU_indexbuf_read(GPUIndexBuf *elem, uint32_t *data);
 
 void GPU_indexbuf_discard(GPUIndexBuf *elem);
 

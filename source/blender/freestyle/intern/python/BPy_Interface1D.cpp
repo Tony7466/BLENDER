@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -186,7 +188,7 @@ PyDoc_STRVAR(Interface1D_points_end_doc,
              "\n"
              "   Returns an iterator over the Interface1D points, pointing after the\n"
              "   last point. The difference with vertices_end() is that here we can\n"
-             "   iterate over points of the 1D element at a given sampling.  Indeed,\n"
+             "   iterate over points of the 1D element at a given sampling. Indeed,\n"
              "   for each iteration, a virtual point is created.\n"
              "\n"
              "   :arg t: A sampling with which we want to iterate over points of\n"
@@ -234,7 +236,7 @@ PyDoc_STRVAR(Interface1D_name_doc,
              "\n"
              ":type: str");
 
-static PyObject *Interface1D_name_get(BPy_Interface1D *self, void *UNUSED(closure))
+static PyObject *Interface1D_name_get(BPy_Interface1D *self, void * /*closure*/)
 {
   return PyUnicode_FromString(Py_TYPE(self)->tp_name);
 }
@@ -244,7 +246,7 @@ PyDoc_STRVAR(Interface1D_id_doc,
              "\n"
              ":type: :class:`Id`");
 
-static PyObject *Interface1D_id_get(BPy_Interface1D *self, void *UNUSED(closure))
+static PyObject *Interface1D_id_get(BPy_Interface1D *self, void * /*closure*/)
 {
   Id id(self->if1D->getId());
   if (PyErr_Occurred()) {
@@ -258,7 +260,7 @@ PyDoc_STRVAR(Interface1D_nature_doc,
              "\n"
              ":type: :class:`Nature`");
 
-static PyObject *Interface1D_nature_get(BPy_Interface1D *self, void *UNUSED(closure))
+static PyObject *Interface1D_nature_get(BPy_Interface1D *self, void * /*closure*/)
 {
   Nature::VertexNature nature = self->if1D->getNature();
   if (PyErr_Occurred()) {
@@ -272,13 +274,13 @@ PyDoc_STRVAR(Interface1D_length_2d_doc,
              "\n"
              ":type: float");
 
-static PyObject *Interface1D_length_2d_get(BPy_Interface1D *self, void *UNUSED(closure))
+static PyObject *Interface1D_length_2d_get(BPy_Interface1D *self, void * /*closure*/)
 {
   real length = self->if1D->getLength2D();
   if (PyErr_Occurred()) {
     return nullptr;
   }
-  return PyFloat_FromDouble((double)length);
+  return PyFloat_FromDouble(double(length));
 }
 
 PyDoc_STRVAR(Interface1D_time_stamp_doc,
@@ -286,14 +288,12 @@ PyDoc_STRVAR(Interface1D_time_stamp_doc,
              "\n"
              ":type: int");
 
-static PyObject *Interface1D_time_stamp_get(BPy_Interface1D *self, void *UNUSED(closure))
+static PyObject *Interface1D_time_stamp_get(BPy_Interface1D *self, void * /*closure*/)
 {
   return PyLong_FromLong(self->if1D->getTimeStamp());
 }
 
-static int Interface1D_time_stamp_set(BPy_Interface1D *self,
-                                      PyObject *value,
-                                      void *UNUSED(closure))
+static int Interface1D_time_stamp_set(BPy_Interface1D *self, PyObject *value, void * /*closure*/)
 {
   int timestamp;
 
@@ -325,43 +325,44 @@ static PyGetSetDef BPy_Interface1D_getseters[] = {
 /*-----------------------BPy_Interface1D type definition ------------------------------*/
 
 PyTypeObject Interface1D_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "Interface1D", /* tp_name */
-    sizeof(BPy_Interface1D),                         /* tp_basicsize */
-    0,                                               /* tp_itemsize */
-    (destructor)Interface1D_dealloc,                 /* tp_dealloc */
-    0,                                               /* tp_vectorcall_offset */
-    nullptr,                                         /* tp_getattr */
-    nullptr,                                         /* tp_setattr */
-    nullptr,                                         /* tp_reserved */
-    (reprfunc)Interface1D_repr,                      /* tp_repr */
-    nullptr,                                         /* tp_as_number */
-    nullptr,                                         /* tp_as_sequence */
-    nullptr,                                         /* tp_as_mapping */
-    nullptr,                                         /* tp_hash */
-    nullptr,                                         /* tp_call */
-    nullptr,                                         /* tp_str */
-    nullptr,                                         /* tp_getattro */
-    nullptr,                                         /* tp_setattro */
-    nullptr,                                         /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,        /* tp_flags */
-    Interface1D_doc,                                 /* tp_doc */
-    nullptr,                                         /* tp_traverse */
-    nullptr,                                         /* tp_clear */
-    nullptr,                                         /* tp_richcompare */
-    0,                                               /* tp_weaklistoffset */
-    nullptr,                                         /* tp_iter */
-    nullptr,                                         /* tp_iternext */
-    BPy_Interface1D_methods,                         /* tp_methods */
-    nullptr,                                         /* tp_members */
-    BPy_Interface1D_getseters,                       /* tp_getset */
-    nullptr,                                         /* tp_base */
-    nullptr,                                         /* tp_dict */
-    nullptr,                                         /* tp_descr_get */
-    nullptr,                                         /* tp_descr_set */
-    0,                                               /* tp_dictoffset */
-    (initproc)Interface1D_init,                      /* tp_init */
-    nullptr,                                         /* tp_alloc */
-    PyType_GenericNew,                               /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "Interface1D",
+    /*tp_basicsize*/ sizeof(BPy_Interface1D),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ (destructor)Interface1D_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ (reprfunc)Interface1D_repr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ Interface1D_doc,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ BPy_Interface1D_methods,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ BPy_Interface1D_getseters,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)Interface1D_init,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ PyType_GenericNew,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

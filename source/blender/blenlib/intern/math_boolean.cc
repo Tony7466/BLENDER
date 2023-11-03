@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -7,7 +9,7 @@
 #include "BLI_hash.hh"
 #include "BLI_math_boolean.hh"
 #include "BLI_math_mpq.hh"
-#include "BLI_math_vec_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
@@ -157,7 +159,7 @@ static RobustInitCaller init_caller;
  * thus forcing them to be stored to memory and rounded off.  This isn't
  * a great solution, though, as it slows the arithmetic down.
  *
- * To try this out, write "#define INEXACT volatile" below.  Normally,
+ * To try this out, write "#define INEXACT volatile" below. Normally,
  * however, INEXACT should be defined to be nothing.  ("#define INEXACT".)
  */
 
@@ -193,7 +195,7 @@ static RobustInitCaller init_caller;
   y = b - bvirt
 
 #define Fast_Two_Sum(a, b, x, y) \
-  x = (double)(a + b); \
+  x = double(a + b); \
   Fast_Two_Sum_Tail(a, b, x, y)
 
 #define Fast_Two_Diff_Tail(a, b, x, y) \
@@ -201,34 +203,34 @@ static RobustInitCaller init_caller;
   y = bvirt - b
 
 #define Fast_Two_Diff(a, b, x, y) \
-  x = (double)(a - b); \
+  x = double(a - b); \
   Fast_Two_Diff_Tail(a, b, x, y)
 
 #define Two_Sum_Tail(a, b, x, y) \
-  bvirt = (double)(x - a); \
+  bvirt = double(x - a); \
   avirt = x - bvirt; \
   bround = b - bvirt; \
   around = a - avirt; \
   y = around + bround
 
 #define Two_Sum(a, b, x, y) \
-  x = (double)(a + b); \
+  x = double(a + b); \
   Two_Sum_Tail(a, b, x, y)
 
 #define Two_Diff_Tail(a, b, x, y) \
-  bvirt = (double)(a - x); \
+  bvirt = double(a - x); \
   avirt = x + bvirt; \
   bround = bvirt - b; \
   around = a - avirt; \
   y = around + bround
 
 #define Two_Diff(a, b, x, y) \
-  x = (double)(a - b); \
+  x = double(a - b); \
   Two_Diff_Tail(a, b, x, y)
 
 #define Split(a, ahi, alo) \
-  c = (double)(splitter * a); \
-  abig = (double)(c - a); \
+  c = double(splitter * a); \
+  abig = double(c - a); \
   ahi = c - abig; \
   alo = a - ahi
 
@@ -241,11 +243,11 @@ static RobustInitCaller init_caller;
   y = (alo * blo) - err3
 
 #define Two_Product(a, b, x, y) \
-  x = (double)(a * b); \
+  x = double(a * b); \
   Two_Product_Tail(a, b, x, y)
 
 #define Two_Product_Presplit(a, b, bhi, blo, x, y) \
-  x = (double)(a * b); \
+  x = double(a * b); \
   Split(a, ahi, alo); \
   err1 = x - (ahi * bhi); \
   err2 = err1 - (alo * bhi); \
@@ -253,7 +255,7 @@ static RobustInitCaller init_caller;
   y = (alo * blo) - err3
 
 #define Two_Product_2Presplit(a, ahi, alo, b, bhi, blo, x, y) \
-  x = (double)(a * b); \
+  x = double(a * b); \
   err1 = x - (ahi * bhi); \
   err2 = err1 - (alo * bhi); \
   err3 = err2 - (ahi * blo); \
@@ -266,7 +268,7 @@ static RobustInitCaller init_caller;
   y = (alo * alo) - err3
 
 #define Square(a, x, y) \
-  x = (double)(a * a); \
+  x = double(a * a); \
   Square_Tail(a, x, y)
 
 #define Two_One_Sum(a1, a0, b, x2, x1, x0) \
@@ -412,7 +414,6 @@ static double isperrboundA, isperrboundB, isperrboundC;
  *
  *  Don't change this routine unless you fully understand it.
  */
-
 void exactinit()
 {
   double half;
@@ -501,11 +502,15 @@ static int fast_expansion_sum_zeroelim(
     while ((eindex < elen) && (findex < flen)) {
       if ((fnow > enow) == (fnow > -enow)) {
         Two_Sum(Q, enow, Qnew, hh);
-        enow = e[++eindex];
+        if (++eindex < elen) {
+          enow = e[eindex];
+        }
       }
       else {
         Two_Sum(Q, fnow, Qnew, hh);
-        fnow = f[++findex];
+        if (++findex < flen) {
+          fnow = f[findex];
+        }
       }
       Q = Qnew;
       if (hh != 0.0) {
@@ -515,7 +520,9 @@ static int fast_expansion_sum_zeroelim(
   }
   while (eindex < elen) {
     Two_Sum(Q, enow, Qnew, hh);
-    enow = e[++eindex];
+    if (++eindex < elen) {
+      enow = e[eindex];
+    }
     Q = Qnew;
     if (hh != 0.0) {
       h[hindex++] = hh;
@@ -523,7 +530,9 @@ static int fast_expansion_sum_zeroelim(
   }
   while (findex < flen) {
     Two_Sum(Q, fnow, Qnew, hh);
-    fnow = f[++findex];
+    if (++findex < flen) {
+      fnow = f[findex];
+    }
     Q = Qnew;
     if (hh != 0.0) {
       h[hindex++] = hh;
@@ -647,10 +656,10 @@ static double orient2dadapt(const double *pa, const double *pb, const double *pc
   INEXACT double _i, _j;
   double _0;
 
-  acx = (double)(pa[0] - pc[0]);
-  bcx = (double)(pb[0] - pc[0]);
-  acy = (double)(pa[1] - pc[1]);
-  bcy = (double)(pb[1] - pc[1]);
+  acx = double(pa[0] - pc[0]);
+  bcx = double(pb[0] - pc[0]);
+  acy = double(pa[1] - pc[1]);
+  bcy = double(pb[1] - pc[1]);
 
   Two_Product(acx, bcy, detleft, detlefttail);
   Two_Product(acy, bcx, detright, detrighttail);
@@ -834,15 +843,15 @@ static double orient3dadapt(
   INEXACT double _i, _j, _k;
   double _0;
 
-  adx = (double)(pa[0] - pd[0]);
-  bdx = (double)(pb[0] - pd[0]);
-  cdx = (double)(pc[0] - pd[0]);
-  ady = (double)(pa[1] - pd[1]);
-  bdy = (double)(pb[1] - pd[1]);
-  cdy = (double)(pc[1] - pd[1]);
-  adz = (double)(pa[2] - pd[2]);
-  bdz = (double)(pb[2] - pd[2]);
-  cdz = (double)(pc[2] - pd[2]);
+  adx = double(pa[0] - pd[0]);
+  bdx = double(pb[0] - pd[0]);
+  cdx = double(pc[0] - pd[0]);
+  ady = double(pa[1] - pd[1]);
+  bdy = double(pb[1] - pd[1]);
+  cdy = double(pc[1] - pd[1]);
+  adz = double(pa[2] - pd[2]);
+  bdz = double(pb[2] - pd[2]);
+  cdz = double(pc[2] - pd[2]);
 
   Two_Product(bdx, cdy, bdxcdy1, bdxcdy0);
   Two_Product(cdx, bdy, cdxbdy1, cdxbdy0);
@@ -883,7 +892,8 @@ static double orient3dadapt(
 
   if ((adxtail == 0.0) && (bdxtail == 0.0) && (cdxtail == 0.0) && (adytail == 0.0) &&
       (bdytail == 0.0) && (cdytail == 0.0) && (adztail == 0.0) && (bdztail == 0.0) &&
-      (cdztail == 0.0)) {
+      (cdztail == 0.0))
+  {
     return det;
   }
 
@@ -1358,12 +1368,12 @@ static double incircleadapt(
   INEXACT double _i, _j;
   double _0;
 
-  adx = (double)(pa[0] - pd[0]);
-  bdx = (double)(pb[0] - pd[0]);
-  cdx = (double)(pc[0] - pd[0]);
-  ady = (double)(pa[1] - pd[1]);
-  bdy = (double)(pb[1] - pd[1]);
-  cdy = (double)(pc[1] - pd[1]);
+  adx = double(pa[0] - pd[0]);
+  bdx = double(pb[0] - pd[0]);
+  cdx = double(pc[0] - pd[0]);
+  ady = double(pa[1] - pd[1]);
+  bdy = double(pb[1] - pd[1]);
+  cdy = double(pc[1] - pd[1]);
 
   Two_Product(bdx, cdy, bdxcdy1, bdxcdy0);
   Two_Product(cdx, bdy, cdxbdy1, cdxbdy0);
@@ -1411,7 +1421,8 @@ static double incircleadapt(
   Two_Diff_Tail(pc[0], pd[0], cdx, cdxtail);
   Two_Diff_Tail(pc[1], pd[1], cdy, cdytail);
   if ((adxtail == 0.0) && (bdxtail == 0.0) && (cdxtail == 0.0) && (adytail == 0.0) &&
-      (bdytail == 0.0) && (cdytail == 0.0)) {
+      (bdytail == 0.0) && (cdytail == 0.0))
+  {
     return det;
   }
 
@@ -2191,18 +2202,18 @@ static double insphereadapt(const double *pa,
   INEXACT double _i, _j;
   double _0;
 
-  aex = (double)(pa[0] - pe[0]);
-  bex = (double)(pb[0] - pe[0]);
-  cex = (double)(pc[0] - pe[0]);
-  dex = (double)(pd[0] - pe[0]);
-  aey = (double)(pa[1] - pe[1]);
-  bey = (double)(pb[1] - pe[1]);
-  cey = (double)(pc[1] - pe[1]);
-  dey = (double)(pd[1] - pe[1]);
-  aez = (double)(pa[2] - pe[2]);
-  bez = (double)(pb[2] - pe[2]);
-  cez = (double)(pc[2] - pe[2]);
-  dez = (double)(pd[2] - pe[2]);
+  aex = double(pa[0] - pe[0]);
+  bex = double(pb[0] - pe[0]);
+  cex = double(pc[0] - pe[0]);
+  dex = double(pd[0] - pe[0]);
+  aey = double(pa[1] - pe[1]);
+  bey = double(pb[1] - pe[1]);
+  cey = double(pc[1] - pe[1]);
+  dey = double(pd[1] - pe[1]);
+  aez = double(pa[2] - pe[2]);
+  bez = double(pb[2] - pe[2]);
+  cez = double(pc[2] - pe[2]);
+  dez = double(pd[2] - pe[2]);
 
   Two_Product(aex, bey, aexbey1, aexbey0);
   Two_Product(bex, aey, bexaey1, bexaey0);
@@ -2314,7 +2325,8 @@ static double insphereadapt(const double *pa,
   Two_Diff_Tail(pd[2], pe[2], dez, deztail);
   if ((aextail == 0.0) && (aeytail == 0.0) && (aeztail == 0.0) && (bextail == 0.0) &&
       (beytail == 0.0) && (beztail == 0.0) && (cextail == 0.0) && (ceytail == 0.0) &&
-      (ceztail == 0.0) && (dextail == 0.0) && (deytail == 0.0) && (deztail == 0.0)) {
+      (ceztail == 0.0) && (dextail == 0.0) && (deytail == 0.0) && (deztail == 0.0))
+  {
     return det;
   }
 

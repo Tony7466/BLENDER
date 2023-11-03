@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -8,6 +10,8 @@
 
 #include "WXEdgeBuilder.h"
 #include "WXEdge.h"
+
+#include "BLI_sys_types.h"
 
 namespace Freestyle {
 
@@ -27,10 +31,10 @@ void WXEdgeBuilder::visitIndexedFaceSet(IndexedFaceSet &ifs)
   // ifs.setId(shape->GetId());
 }
 
-void WXEdgeBuilder::buildWVertices(WShape &shape, const float *vertices, unsigned vsize)
+void WXEdgeBuilder::buildWVertices(WShape &shape, const float *vertices, uint vsize)
 {
   WXVertex *vertex;
-  for (unsigned int i = 0; i < vsize; i += 3) {
+  for (uint i = 0; i < vsize; i += 3) {
     vertex = new WXVertex(Vec3f(vertices[i], vertices[i + 1], vertices[i + 2]));
     vertex->setId(i / 3);
     shape.AddVertex(vertex);

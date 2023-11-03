@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -29,10 +30,16 @@ typedef struct Global {
    */
   struct Main *main;
 
+  /**
+   * Preview main is stored to avoid loading the preview file in multiple scenarios.
+   * It is actually shared between shader node previews and asset previews.
+   */
+  struct Main *pr_main;
+
   /** Last saved location for images. */
-  char ima[1024]; /* 1024 = FILE_MAX */
+  char filepath_last_image[/*FILE_MAX*/ 1024];
   /** Last used location for library link/append. */
-  char lib[1024];
+  char filepath_last_library[/*FILE_MAX*/ 1024];
 
   /**
    * Strings of recently opened files to show in the file menu.
@@ -80,7 +87,7 @@ typedef struct Global {
    *   *     -1: Disable faster motion paths computation (since 08/2018).
    *   * 1 - 30: EEVEE debug/stats values (01/2018).
    *   *     31: Enable the Select Debug Engine. Only available with #WITH_DRAW_DEBUG (08/2021).
-   *   *    101: Enable UI debug drawing of fullscreen area's corner widget (10/2014).
+   *   *    101: Enable UI debug drawing of full-screen area's corner widget (10/2014).
    *   *    102: Enable extra items in string search UI (05/2022).
    *   *    666: Use quicker batch delete for outliners' delete hierarchy (01/2019).
    *   *    777: Enable UI node panel's sockets polling (11/2011).
@@ -123,6 +130,15 @@ typedef struct Global {
   int debug;
 
   /**
+   * When true, various geometry processing algorithms randomize the order of elements (e.g.
+   * vertices or edges) in the output. In many cases, we don't make guarantees about the exact
+   * order of elements. So if users depend on the indices with e.g. geometry nodes, their file can
+   * break in a different Blender version. Explicitly turning on randomization can help protect
+   * oneself against such breakages.
+   */
+  bool randomize_geometry_element_order;
+
+  /**
    * Control behavior of file reading/writing.
    *
    * This variable is written to / read from #FileGlobal.fileflags.
@@ -139,6 +155,13 @@ typedef struct Global {
    * Typically Python drivers.
    */
   char autoexec_fail[200];
+
+  /**
+   * Has there been an opengl deprecation call detected when running on a none OpenGL backend.
+   */
+  bool opengl_deprecation_usage_detected;
+  const char *opengl_deprecation_usage_filename;
+  int opengl_deprecation_usage_lineno;
 } Global;
 
 /* **************** GLOBAL ********************* */
@@ -152,7 +175,7 @@ enum {
   G_FLAG_USERPREF_NO_SAVE_ON_EXIT = (1 << 4),
 
   G_FLAG_SCRIPT_AUTOEXEC = (1 << 13),
-  /** When this flag is set ignore the prefs #USER_SCRIPT_AUTOEXEC_DISABLE. */
+  /** When this flag is set ignore the preferences #USER_SCRIPT_AUTOEXEC_DISABLE. */
   G_FLAG_SCRIPT_OVERRIDE_PREF = (1 << 14),
   G_FLAG_SCRIPT_AUTOEXEC_FAIL = (1 << 15),
   G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET = (1 << 16),
@@ -193,11 +216,12 @@ enum {
   G_DEBUG_GPU = (1 << 16),                   /* gpu debug */
   G_DEBUG_IO = (1 << 17),                    /* IO Debugging (for Collada, ...). */
   G_DEBUG_GPU_FORCE_WORKAROUNDS = (1 << 18), /* force gpu workarounds bypassing detections. */
-  G_DEBUG_XR = (1 << 19),                    /* XR/OpenXR messages */
-  G_DEBUG_XR_TIME = (1 << 20),               /* XR/OpenXR timing messages */
+  G_DEBUG_GPU_RENDERDOC = (1 << 19),         /* Enable RenderDoc integration. */
+  G_DEBUG_XR = (1 << 20),                    /* XR/OpenXR messages */
+  G_DEBUG_XR_TIME = (1 << 21),               /* XR/OpenXR timing messages */
 
-  G_DEBUG_GHOST = (1 << 21),  /* Debug GHOST module. */
-  G_DEBUG_WINTAB = (1 << 22), /* Debug Wintab. */
+  G_DEBUG_GHOST = (1 << 22),  /* Debug GHOST module. */
+  G_DEBUG_WINTAB = (1 << 23), /* Debug Wintab. */
 };
 
 #define G_DEBUG_ALL \
@@ -257,7 +281,7 @@ enum {
   G_TRANSFORM_CURSOR = (1 << 5),
 };
 
-/** Defined in blender.c */
+/** Defined in `blender.cc` */
 extern Global G;
 
 /**

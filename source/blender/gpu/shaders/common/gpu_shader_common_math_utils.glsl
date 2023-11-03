@@ -1,15 +1,27 @@
+/* SPDX-FileCopyrightText: 2019-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 /* Float Math */
+
+/* WORKAROUND: To be removed once we port all code to use `gpu_shader_math_base_lib.glsl`. */
+#ifndef GPU_SHADER_MATH_BASE_LIB_GLSL
 
 float safe_divide(float a, float b)
 {
   return (b != 0.0) ? a / b : 0.0;
 }
 
-/* fmod function compatible with OSL using nvidia reference example. */
+#endif
+
+/* fmod function compatible with OSL (copy from OSL/dual.h) */
 float compatible_fmod(float a, float b)
 {
-  float c = (b != 0.0) ? fract(abs(a / b)) * abs(b) : 0.0;
-  return (a < 0.0) ? -c : c;
+  if (b != 0.0) {
+    int N = int(a / b);
+    return a - N * b;
+  }
+  return 0.0;
 }
 
 float compatible_pow(float x, float y)
@@ -18,7 +30,7 @@ float compatible_pow(float x, float y)
     return 1.0;
   }
 
-  /* glsl pow doesn't accept negative x */
+  /* GLSL pow doesn't accept negative x. */
   if (x < 0.0) {
     if (mod(-y, 2.0) == 0.0) {
       return pow(-x, y);
@@ -29,6 +41,17 @@ float compatible_pow(float x, float y)
   }
   else if (x == 0.0) {
     return 0.0;
+  }
+
+  return pow(x, y);
+}
+
+/* A version of pow that returns a fallback value if the computation is undefined. From the spec:
+ * The result is undefined if x < 0 or if x = 0 and y is less than or equal 0. */
+float fallback_pow(float x, float y, float fallback)
+{
+  if (x < 0.0 || (x == 0.0 && y <= 0.0)) {
+    return fallback;
   }
 
   return pow(x, y);
@@ -45,10 +68,15 @@ vec3 wrap(vec3 a, vec3 b, vec3 c)
   return vec3(wrap(a.x, b.x, c.x), wrap(a.y, b.y, c.y), wrap(a.z, b.z, c.z));
 }
 
+/* WORKAROUND: To be removed once we port all code to use gpu_shader_math_base_lib.glsl. */
+#ifndef GPU_SHADER_MATH_BASE_LIB_GLSL
+
 float hypot(float x, float y)
 {
   return sqrt(x * x + y * y);
 }
+
+#endif
 
 int floor_to_int(float x)
 {
@@ -61,6 +89,9 @@ int quick_floor(float x)
 }
 
 /* Vector Math */
+
+/* WORKAROUND: To be removed once we port all code to use gpu_shader_math_base_lib.glsl. */
+#ifndef GPU_SHADER_MATH_BASE_LIB_GLSL
 
 vec2 safe_divide(vec2 a, vec2 b)
 {
@@ -93,6 +124,8 @@ vec4 safe_divide(vec4 a, float b)
   return (b != 0.0) ? a / b : vec4(0.0);
 }
 
+#endif
+
 vec3 compatible_fmod(vec3 a, vec3 b)
 {
   return vec3(compatible_fmod(a.x, b.x), compatible_fmod(a.y, b.y), compatible_fmod(a.z, b.z));
@@ -114,7 +147,23 @@ void vector_copy(vec3 normal, out vec3 outnormal)
   outnormal = normal;
 }
 
-/* Matirx Math */
+vec3 fallback_pow(vec3 a, float b, vec3 fallback)
+{
+  return vec3(fallback_pow(a.x, b, fallback.x),
+              fallback_pow(a.y, b, fallback.y),
+              fallback_pow(a.z, b, fallback.z));
+}
+
+/* Matrix Math */
+
+/* Return a 2D rotation matrix with the angle that the input 2D vector makes with the x axis. */
+mat2 vector_to_rotation_matrix(vec2 vector)
+{
+  vec2 normalized_vector = normalize(vector);
+  float cos_angle = normalized_vector.x;
+  float sin_angle = normalized_vector.y;
+  return mat2(cos_angle, sin_angle, -sin_angle, cos_angle);
+}
 
 mat3 euler_to_mat3(vec3 euler)
 {

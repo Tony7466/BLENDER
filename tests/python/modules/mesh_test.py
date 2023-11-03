@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2020-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # A framework to run regression tests on mesh modifiers and operators based on howardt's mesh_ops_test.py
@@ -43,10 +45,11 @@ class ModifierSpec:
     def __init__(self, modifier_name: str, modifier_type: str, modifier_parameters: dict, frame_end=0):
         """
         Constructs a modifier spec.
-        :param modifier_name: str - name of object modifier, e.g. "myFirstSubsurfModif"
-        :param modifier_type: str - type of object modifier, e.g. "SUBSURF"
-        :param modifier_parameters: dict - {name : val} dictionary giving modifier parameters, e.g. {"quality" : 4}
-        :param frame_end: int - frame at which simulation needs to be baked or modifier needs to be applied.
+
+        :arg modifier_name: str - name of object modifier, e.g. "myFirstSubsurfModif"
+        :arg modifier_type: str - type of object modifier, e.g. "SUBSURF"
+        :arg modifier_parameters: dict - {name : val} dictionary giving modifier parameters, e.g. {"quality" : 4}
+        :arg frame_end: int - frame at which simulation needs to be baked or modifier needs to be applied.
         """
         self.modifier_name = modifier_name
         self.modifier_type = modifier_type
@@ -66,10 +69,11 @@ class ParticleSystemSpec:
     def __init__(self, modifier_name: str, modifier_type: str, modifier_parameters: dict, frame_end: int):
         """
         Constructs a particle system spec.
-        :param modifier_name: str - name of object modifier, e.g. "Particles"
-        :param modifier_type: str - type of object modifier, e.g. "PARTICLE_SYSTEM"
-        :param modifier_parameters: dict - {name : val} dictionary giving modifier parameters, e.g. {"seed" : 1}
-        :param frame_end: int - the last frame of the simulation at which the modifier is applied
+
+        :arg modifier_name: str - name of object modifier, e.g. "Particles"
+        :arg modifier_type: str - type of object modifier, e.g. "PARTICLE_SYSTEM"
+        :arg modifier_parameters: dict - {name : val} dictionary giving modifier parameters, e.g. {"seed" : 1}
+        :arg frame_end: int - the last frame of the simulation at which the modifier is applied
         """
         self.modifier_name = modifier_name
         self.modifier_type = modifier_type
@@ -97,11 +101,12 @@ class OperatorSpecEditMode:
     ):
         """
         Constructs an OperatorSpecEditMode. Raises ValueError if selec_mode is invalid.
-        :param operator_name: str - name of mesh operator from bpy.ops.mesh, e.g. "bevel" or "fill"
-        :param operator_parameters: dict - {name : val} dictionary containing operator parameters.
-        :param select_mode: str - mesh selection mode, must be either 'VERT', 'EDGE' or 'FACE'
-        :param selection: sequence - vertices/edges/faces indices to select, e.g. [0, 9, 10].
-        :param: select_history: bool - load selection into bmesh selection history.
+
+        :arg operator_name: str - name of mesh operator from bpy.ops.mesh, e.g. "bevel" or "fill"
+        :arg operator_parameters: dict - {name : val} dictionary containing operator parameters.
+        :arg select_mode: str - mesh selection mode, must be either 'VERT', 'EDGE' or 'FACE'
+        :arg selection: sequence - vertices/edges/faces indices to select, e.g. [0, 9, 10].
+        :arg: select_history: bool - load selection into bmesh selection history.
         """
         self.operator_name = operator_name
         self.operator_parameters = operator_parameters
@@ -125,8 +130,8 @@ class OperatorSpecObjectMode:
 
     def __init__(self, operator_name: str, operator_parameters: dict):
         """
-        :param operator_name: str - name of the object operator from bpy.ops.object, e.g. "shade_smooth" or "shape_keys"
-        :param operator_parameters: dict - contains operator parameters.
+        :arg operator_name: str - name of the object operator from bpy.ops.object, e.g. "shade_smooth" or "shape_keys"
+        :arg operator_parameters: dict - contains operator parameters.
         """
         self.operator_name = operator_name
         self.operator_parameters = operator_parameters
@@ -143,10 +148,11 @@ class DeformModifierSpec:
 
     def __init__(self, frame_number: int, modifier_list: list, object_operator_spec: OperatorSpecObjectMode = None):
         """
-        Constructs a Deform Modifier spec (for user input)
-        :param frame_number: int - the frame at which animated keyframe is inserted
-        :param modifier_list: ModifierSpec - contains modifiers
-        :param object_operator_spec: OperatorSpecObjectMode - contains object operators
+        Constructs a Deform Modifier spec (for user input).
+
+        :arg frame_number: int - the frame at which animated keyframe is inserted
+        :arg modifier_list: ModifierSpec - contains modifiers
+        :arg object_operator_spec: OperatorSpecObjectMode - contains object operators
         """
         self.frame_number = frame_number
         self.modifier_list = modifier_list
@@ -163,12 +169,12 @@ class MeshTest(ABC):
 
     def __init__(self, test_object_name, exp_object_name, test_name=None, threshold=None, do_compare=True):
         """
-        :param test_object_name: str - Name of object of mesh type to run the operations on.
-        :param exp_object_name: str - Name of object of mesh type that has the expected
+        :arg test_object_name: str - Name of object of mesh type to run the operations on.
+        :arg exp_object_name: str - Name of object of mesh type that has the expected
                                 geometry after running the operations.
-        :param test_name: str - Name of the test.
-        :param threshold: exponent: To allow variations and accept difference to a certain degree.
-        :param do_compare: bool - True if we want to compare the test and expected objects, False otherwise.
+        :arg test_name: str - Name of the test.
+        :arg threshold: exponent: To allow variations and accept difference to a certain degree.
+        :arg do_compare: bool - True if we want to compare the test and expected objects, False otherwise.
         """
         self.test_object_name = test_object_name
         self.exp_object_name = exp_object_name
@@ -238,6 +244,7 @@ class MeshTest(ABC):
         """
         Runs a single test, runs it again if test file is updated.
         """
+        print("\nSTART {} test.".format(self.test_name))
 
         self.create_evaluated_object()
         self.apply_operations(self.evaluated_object.name)
@@ -289,23 +296,24 @@ class MeshTest(ABC):
         """
         Print results for failed test.
         """
-        print("\nFAILED {} test with the following: ".format(self.test_name))
+        print("FAILED {} test with the following: ".format(self.test_name))
         self._print_result(result)
 
     def print_passed_test_result(self, result):
         """
         Print results for passing test.
         """
-        print("\nPASSED {} test successfully.".format(self.test_name))
+        print("PASSED {} test successfully.".format(self.test_name))
         self._print_result(result)
 
     def do_selection(self, mesh: bpy.types.Mesh, select_mode: str, selection, select_history: bool):
         """
         Do selection on a mesh.
-        :param mesh: bpy.types.Mesh - input mesh
-        :param: select_mode: str - selection mode. Must be 'VERT', 'EDGE' or 'FACE'
-        :param: selection: sequence - indices of selection.
-        :param: select_history: bool - load selection into bmesh selection history
+
+        :arg mesh: bpy.types.Mesh - input mesh
+        :arg: select_mode: str - selection mode. Must be 'VERT', 'EDGE' or 'FACE'
+        :arg: selection: sequence - indices of selection.
+        :arg: select_history: bool - load selection into bmesh selection history
 
         Example: select_mode='VERT' and selection={1,2,3} selects veritces 1, 2 and 3 of input mesh
         """
@@ -366,9 +374,10 @@ class MeshTest(ABC):
     def compare_meshes(evaluated_object, expected_object, threshold):
         """
         Compares evaluated object mesh with expected object mesh.
-        :param evaluated_object: first object for comparison.
-        :param expected_object: second object for comparison.
-        :param threshold: exponent: To allow variations and accept difference to a certain degree.
+
+        :arg evaluated_object: first object for comparison.
+        :arg expected_object: second object for comparison.
+        :arg threshold: exponent: To allow variations and accept difference to a certain degree.
         :return: dict: Contains results of different comparisons.
         """
         objects = bpy.data.objects
@@ -439,14 +448,14 @@ class SpecMeshTest(MeshTest):
         """
         Constructor for SpecMeshTest.
 
-        :param test_name: str - Name of the test.
-        :param test_object_name: str - Name of object of mesh type to run the operations on.
-        :param exp_object_name: str - Name of object of mesh type that has the expected
-                                geometry after running the operations.
-        :param operations_stack: list - stack holding operations to perform on the test_object.
-        :param apply_modifier: bool - True if we want to apply the modifiers right after adding them to the object.
-                                    - True if we want to apply the modifier to list of modifiers, after some operation.
-                               This affects operations of type ModifierSpec and DeformModifierSpec.
+        :arg test_name: str - Name of the test.
+        :arg test_object_name: str - Name of object of mesh type to run the operations on.
+        :arg exp_object_name: str - Name of object of mesh type that has the expected
+                              geometry after running the operations.
+        :arg operations_stack: list - stack holding operations to perform on the test_object.
+        :arg apply_modifier: bool - True if we want to apply the modifiers right after adding them to the object.
+                                  - True if we want to apply the modifier to list of modifiers, after some operation.
+                             This affects operations of type ModifierSpec and DeformModifierSpec.
         """
 
         super().__init__(test_object_name, exp_object_name, test_name, threshold)
@@ -491,9 +500,9 @@ class SpecMeshTest(MeshTest):
     def _set_parameters_impl(self, modifier, modifier_parameters, nested_settings_path, modifier_name):
         """
         Doing a depth first traversal of the modifier parameters and setting their values.
-        :param: modifier: Of type modifier, its altered to become a setting in recursion.
-        :param: modifier_parameters : dict or sequence, a simple/nested dictionary of modifier parameters.
-        :param: nested_settings_path : list(stack): helps in tracing path to each node.
+        :arg: modifier: Of type modifier, its altered to become a setting in recursion.
+        :arg: modifier_parameters : dict or sequence, a simple/nested dictionary of modifier parameters.
+        :arg: nested_settings_path : list(stack): helps in tracing path to each node.
         """
         if not isinstance(modifier_parameters, dict):
             param_setting = None
@@ -540,8 +549,9 @@ class SpecMeshTest(MeshTest):
     def _add_modifier(self, test_object, modifier_spec: ModifierSpec):
         """
         Add modifier to object.
-        :param test_object: bpy.types.Object - Blender object to apply modifier on.
-        :param modifier_spec: ModifierSpec - ModifierSpec object with parameters
+
+        :arg test_object: bpy.types.Object - Blender object to apply modifier on.
+        :arg modifier_spec: ModifierSpec - ModifierSpec object with parameters
         """
         bakers_list = ['CLOTH', 'SOFT_BODY', 'DYNAMIC_PAINT', 'FLUID']
         scene = bpy.context.scene
@@ -591,15 +601,17 @@ class SpecMeshTest(MeshTest):
                 elif modifier.type == 'CLOTH' or modifier.type == 'SOFT_BODY':
                     test_object.modifiers[test_modifier_name].point_cache.frame_end = frame_end
                     override_setting = modifier.point_cache
-                    override = {'scene': scene, 'active_object': test_object, 'point_cache': override_setting}
-                    bpy.ops.ptcache.bake(override, bake=True)
+                    context_override = {'scene': scene, 'active_object': test_object, 'point_cache': override_setting}
+                    with bpy.context.temp_override(**context_override):
+                        bpy.ops.ptcache.bake(bake=True)
                     break
 
                 elif modifier.type == 'DYNAMIC_PAINT':
                     dynamic_paint_setting = modifier.canvas_settings.canvas_surfaces.active
                     override_setting = dynamic_paint_setting.point_cache
-                    override = {'scene': scene, 'active_object': test_object, 'point_cache': override_setting}
-                    bpy.ops.ptcache.bake(override, bake=True)
+                    context_override = {'scene': scene, 'active_object': test_object, 'point_cache': override_setting}
+                    with bpy.context.temp_override(**context_override):
+                        bpy.ops.ptcache.bake(bake=True)
                     break
 
     def _apply_particle_system(self, test_object, particle_sys_spec: ParticleSystemSpec):
@@ -645,8 +657,9 @@ class SpecMeshTest(MeshTest):
     def _apply_operator_edit_mode(self, test_object, operator: OperatorSpecEditMode):
         """
         Apply operator on test object.
-        :param test_object: bpy.types.Object - Blender object to apply operator on.
-        :param operator: OperatorSpecEditMode - OperatorSpecEditMode object with parameters.
+
+        :arg test_object: bpy.types.Object - Blender object to apply operator on.
+        :arg operator: OperatorSpecEditMode - OperatorSpecEditMode object with parameters.
         """
         self.do_selection(
             test_object.data,
@@ -695,7 +708,7 @@ class SpecMeshTest(MeshTest):
 
     def _apply_deform_modifier(self, test_object, operation: list):
         """
-        param: operation: list: List of modifiers or combination of modifier and object operator.
+        arg: operation: list: List of modifiers or combination of modifier and object operator.
         """
 
         scene = bpy.context.scene
@@ -736,6 +749,32 @@ class BlendFileTest(MeshTest):
             bpy.ops.object.modifier_apply(modifier=modifier.name)
 
 
+class GeoNodesSimulationTest(MeshTest):
+    """
+    A mesh test that works similar to BlendFileTest but evaluates the scene at multiple
+    frames so that simulations can run.
+    """
+
+    def __init__(self, test_object_name, exp_object_name, *, frames_num, **kwargs):
+        super().__init__(test_object_name, exp_object_name, **kwargs)
+        self.frames_num = frames_num
+
+    def apply_operations(self, evaluated_test_object_name):
+        GeoNodesSimulationTest.apply_operations.__doc__ = MeshTest.apply_operations.__doc__
+
+        evaluated_test_object = bpy.data.objects[evaluated_test_object_name]
+        modifiers_list = evaluated_test_object.modifiers
+        if not modifiers_list:
+            raise Exception("The object has no modifiers.")
+
+        scene = bpy.context.scene
+        for frame in range(1, self.frames_num + 1):
+            scene.frame_set(frame)
+
+        for modifier in modifiers_list:
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+
+
 class RunTest:
     """
     Helper class that stores and executes SpecMeshTest tests.
@@ -761,9 +800,9 @@ class RunTest:
     def __init__(self, tests, apply_modifiers=False, do_compare=False):
         """
         Construct a test suite.
-        :param tests: list - list of modifier or operator test cases. Each element in the list must contain the
-        following
-         in the correct order:
+
+        :arg tests: list - list of modifier or operator test cases. Each element in the list must contain the
+        following in the correct order:
              0) test_name: str - unique test name
              1) test_object_name: bpy.Types.Object - test object
              2) expected_object_name: bpy.Types.Object - expected object
@@ -824,8 +863,9 @@ class RunTest:
 
     def run_test(self, test_name: str):
         """
-        Run a single test from self.tests list
-        :param test_name: int - name of test
+        Run a single test from self.tests list.
+
+        :arg test_name: int - name of test
         :return: bool - True if test passed, False otherwise.
         """
         case = None

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -19,8 +20,7 @@
 
 #include "CLG_log.h"
 
-#include "glew-mx.h"
-
+#include "gl_backend.hh"
 #include "gl_context.hh"
 #include "gl_uniform_buffer.hh"
 
@@ -51,13 +51,13 @@ namespace blender::gpu::debug {
 #  define APIENTRY
 #endif
 
-static void APIENTRY debug_callback(GLenum UNUSED(source),
+static void APIENTRY debug_callback(GLenum /*source*/,
                                     GLenum type,
-                                    GLuint UNUSED(id),
+                                    GLuint /*id*/,
                                     GLenum severity,
-                                    GLsizei UNUSED(length),
+                                    GLsizei /*length*/,
                                     const GLchar *message,
-                                    const GLvoid *UNUSED(userParm))
+                                    const GLvoid * /*userParm*/)
 {
   if (ELEM(type, GL_DEBUG_TYPE_PUSH_GROUP, GL_DEBUG_TYPE_POP_GROUP)) {
     /* The debug layer will emit a message each time a debug group is pushed or popped.
@@ -69,20 +69,21 @@ static void APIENTRY debug_callback(GLenum UNUSED(source),
    *       In this case invoking `GPU_type_matches` would fail and
    *       therefore the message is checked before the platform matching. */
   if (TRIM_NVIDIA_BUFFER_INFO && STRPREFIX(message, "Buffer detailed info") &&
-      GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_OFFICIAL)) {
-    /** Suppress buffer infos flooding the output. */
+      GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_OFFICIAL))
+  {
+    /* Suppress buffer infos flooding the output. */
     return;
   }
 
   if (TRIM_SHADER_STATS_INFO && STRPREFIX(message, "Shader Stats")) {
-    /** Suppress buffer infos flooding the output. */
+    /* Suppress buffer infos flooding the output. */
     return;
   }
 
   const bool use_color = CLG_color_support_get(&LOG);
 
   if (ELEM(severity, GL_DEBUG_SEVERITY_LOW, GL_DEBUG_SEVERITY_NOTIFICATION)) {
-    if (((LOG.type->flag & CLG_FLAG_USE) && (LOG.type->level >= CLG_SEVERITY_INFO))) {
+    if ((LOG.type->flag & CLG_FLAG_USE) && (LOG.type->level >= CLG_SEVERITY_INFO)) {
       const char *format = use_color ? "\033[2m%s\033[0m" : "%s";
       CLG_logf(LOG.type, CLG_SEVERITY_INFO, "Notification", "", format, message);
     }
@@ -93,7 +94,7 @@ static void APIENTRY debug_callback(GLenum UNUSED(source),
     CLG_Severity clog_severity;
 
     if (GPU_debug_group_match(GPU_DEBUG_SHADER_COMPILATION_GROUP)) {
-      /** Do not duplicate shader compilation error/warnings. */
+      /* Do not duplicate shader compilation error/warnings. */
       return;
     }
 
@@ -112,7 +113,7 @@ static void APIENTRY debug_callback(GLenum UNUSED(source),
         break;
     }
 
-    if (((LOG.type->flag & CLG_FLAG_USE) && (LOG.type->level <= clog_severity))) {
+    if ((LOG.type->flag & CLG_FLAG_USE) && (LOG.type->level <= clog_severity)) {
       CLG_logf(LOG.type, clog_severity, debug_groups, "", "%s", message);
       if (severity == GL_DEBUG_SEVERITY_HIGH) {
         /* Focus on error message. */
@@ -138,8 +139,8 @@ void init_gl_callbacks()
   char msg[256] = "";
   const char format[] = "Successfully hooked OpenGL debug callback using %s";
 
-  if (GLEW_VERSION_4_3 || GLEW_KHR_debug) {
-    SNPRINTF(msg, format, GLEW_VERSION_4_3 ? "OpenGL 4.3" : "KHR_debug extension");
+  if (epoxy_gl_version() >= 43 || epoxy_has_gl_extension("GL_KHR_debug")) {
+    SNPRINTF(msg, format, epoxy_gl_version() >= 43 ? "OpenGL 4.3" : "KHR_debug extension");
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback((GLDEBUGPROC)debug_callback, nullptr);
@@ -151,7 +152,7 @@ void init_gl_callbacks()
                          -1,
                          msg);
   }
-  else if (GLEW_ARB_debug_output) {
+  else if (epoxy_has_gl_extension("GL_ARB_debug_output")) {
     SNPRINTF(msg, format, "ARB_debug_output");
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallbackARB((GLDEBUGPROCARB)debug_callback, nullptr);
@@ -327,7 +328,9 @@ static const char *to_str_suffix(GLenum type)
 
 void object_label(GLenum type, GLuint object, const char *name)
 {
-  if ((G.debug & G_DEBUG_GPU) && (GLEW_VERSION_4_3 || GLEW_KHR_debug)) {
+  if ((G.debug & G_DEBUG_GPU) &&
+      (epoxy_gl_version() >= 43 || epoxy_has_gl_extension("GL_KHR_debug")))
+  {
     char label[64];
     SNPRINTF(label, "%s%s%s", to_str_prefix(type), name, to_str_suffix(type));
     /* Small convenience for caller. */
@@ -365,7 +368,9 @@ namespace blender::gpu {
 
 void GLContext::debug_group_begin(const char *name, int index)
 {
-  if ((G.debug & G_DEBUG_GPU) && (GLEW_VERSION_4_3 || GLEW_KHR_debug)) {
+  if ((G.debug & G_DEBUG_GPU) &&
+      (epoxy_gl_version() >= 43 || epoxy_has_gl_extension("GL_KHR_debug")))
+  {
     /* Add 10 to avoid collision with other indices from other possible callback layers. */
     index += 10;
     glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, index, -1, name);
@@ -374,10 +379,53 @@ void GLContext::debug_group_begin(const char *name, int index)
 
 void GLContext::debug_group_end()
 {
-  if ((G.debug & G_DEBUG_GPU) && (GLEW_VERSION_4_3 || GLEW_KHR_debug)) {
+  if ((G.debug & G_DEBUG_GPU) &&
+      (epoxy_gl_version() >= 43 || epoxy_has_gl_extension("GL_KHR_debug")))
+  {
     glPopDebugGroup();
   }
 }
+
+bool GLContext::debug_capture_begin()
+{
+  return GLBackend::get()->debug_capture_begin();
+}
+
+bool GLBackend::debug_capture_begin()
+{
+#ifdef WITH_RENDERDOC
+  if (G.debug & G_DEBUG_GPU_RENDERDOC) {
+    return renderdoc_.start_frame_capture(nullptr, nullptr);
+  }
+#endif
+  return false;
+}
+
+void GLContext::debug_capture_end()
+{
+  GLBackend::get()->debug_capture_end();
+}
+
+void GLBackend::debug_capture_end()
+{
+#ifdef WITH_RENDERDOC
+  if (G.debug & G_DEBUG_GPU_RENDERDOC) {
+    renderdoc_.end_frame_capture(nullptr, nullptr);
+  }
+#endif
+}
+
+void *GLContext::debug_capture_scope_create(const char * /*name*/)
+{
+  return nullptr;
+}
+
+bool GLContext::debug_capture_scope_begin(void * /*scope*/)
+{
+  return false;
+}
+
+void GLContext::debug_capture_scope_end(void * /*scope*/) {}
 
 /** \} */
 

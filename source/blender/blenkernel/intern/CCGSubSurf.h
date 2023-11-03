@@ -1,10 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 /** \file
  * \ingroup bke
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef void *CCGMeshHDL;
 typedef void *CCGVertHDL;
@@ -215,3 +221,7 @@ void ccgEdgeIterator_next(CCGEdgeIterator *ei);
 CCGFace *ccgFaceIterator_getCurrent(CCGFaceIterator *fi);
 int ccgFaceIterator_isStopped(CCGFaceIterator *fi);
 void ccgFaceIterator_next(CCGFaceIterator *fi);
+
+#ifdef __cplusplus
+}
+#endif

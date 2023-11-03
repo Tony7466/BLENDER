@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ScaleOperation.h"
 #include "COM_ConstantOperation.h"
@@ -7,7 +8,7 @@
 namespace blender::compositor {
 
 #define USE_FORCE_BILINEAR
-/* XXX(campbell): ignore input and use default from old compositor,
+/* XXX(@ideasman42): ignore input and use default from old compositor,
  * could become an option like the transform node.
  *
  * NOTE: use bilinear because bicubic makes fuzzy even when not scaling at all (1:1)
@@ -16,7 +17,7 @@ namespace blender::compositor {
 BaseScaleOperation::BaseScaleOperation()
 {
 #ifdef USE_FORCE_BILINEAR
-  sampler_ = (int)PixelSampler::Bilinear;
+  sampler_ = int(PixelSampler::Bilinear);
 #else
   sampler_ = -1;
 #endif
@@ -28,9 +29,7 @@ void BaseScaleOperation::set_scale_canvas_max_size(Size2f size)
   max_scale_canvas_size_ = size;
 }
 
-ScaleOperation::ScaleOperation() : ScaleOperation(DataType::Color)
-{
-}
+ScaleOperation::ScaleOperation() : ScaleOperation(DataType::Color) {}
 
 ScaleOperation::ScaleOperation(DataType data_type) : BaseScaleOperation()
 {
@@ -236,13 +235,9 @@ void ScaleOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
   }
 }
 
-ScaleRelativeOperation::ScaleRelativeOperation() : ScaleOperation()
-{
-}
+ScaleRelativeOperation::ScaleRelativeOperation() : ScaleOperation() {}
 
-ScaleRelativeOperation::ScaleRelativeOperation(DataType data_type) : ScaleOperation(data_type)
-{
-}
+ScaleRelativeOperation::ScaleRelativeOperation(DataType data_type) : ScaleOperation(data_type) {}
 
 void ScaleRelativeOperation::execute_pixel_sampled(float output[4],
                                                    float x,
@@ -372,8 +367,8 @@ void ScaleFixedSizeOperation::init_data(const rcti &input_canvas)
 {
   const int input_width = BLI_rcti_size_x(&input_canvas);
   const int input_height = BLI_rcti_size_y(&input_canvas);
-  rel_x_ = input_width / (float)new_width_;
-  rel_y_ = input_height / (float)new_height_;
+  rel_x_ = input_width / float(new_width_);
+  rel_y_ = input_height / float(new_height_);
 
   /* *** all the options below are for a fairly special case - camera framing *** */
   if (offset_x_ != 0.0f || offset_y_ != 0.0f) {

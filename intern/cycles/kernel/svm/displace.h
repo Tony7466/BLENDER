@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -14,6 +15,9 @@ ccl_device_noinline void svm_node_set_bump(KernelGlobals kg,
                                            ccl_private float *stack,
                                            uint4 node)
 {
+  uint out_offset, bump_state_offset, dummy;
+  svm_unpack_node_uchar4(node.w, &out_offset, &bump_state_offset, &dummy, &dummy);
+
 #ifdef __RAY_DIFFERENTIALS__
   IF_KERNEL_NODES_FEATURE(BUMP)
   {
@@ -24,18 +28,26 @@ ccl_device_noinline void svm_node_set_bump(KernelGlobals kg,
     float3 normal_in = stack_valid(normal_offset) ? stack_load_float3(stack, normal_offset) :
                                                     sd->N;
 
-    float3 dPdx = sd->dP.dx;
-    float3 dPdy = sd->dP.dy;
+    /* If we have saved bump state, read the full differential from there.
+     * Just using the compact form in those cases leads to incorrect normals (see #111588). */
+    differential3 dP;
+    if (bump_state_offset == SVM_STACK_INVALID) {
+      dP = differential_from_compact(sd->Ng, sd->dP);
+    }
+    else {
+      dP.dx = stack_load_float3(stack, bump_state_offset + 4);
+      dP.dy = stack_load_float3(stack, bump_state_offset + 7);
+    }
 
     if (use_object_space) {
       object_inverse_normal_transform(kg, sd, &normal_in);
-      object_inverse_dir_transform(kg, sd, &dPdx);
-      object_inverse_dir_transform(kg, sd, &dPdy);
+      object_inverse_dir_transform(kg, sd, &dP.dx);
+      object_inverse_dir_transform(kg, sd, &dP.dy);
     }
 
     /* get surface tangents from normal */
-    float3 Rx = cross(dPdy, normal_in);
-    float3 Ry = cross(normal_in, dPdx);
+    float3 Rx = cross(dP.dy, normal_in);
+    float3 Ry = cross(normal_in, dP.dx);
 
     /* get bump values */
     uint c_offset, x_offset, y_offset, strength_offset;
@@ -46,7 +58,7 @@ ccl_device_noinline void svm_node_set_bump(KernelGlobals kg,
     float h_y = stack_load_float(stack, y_offset);
 
     /* compute surface gradient and determinant */
-    float det = dot(dPdx, Rx);
+    float det = dot(dP.dx, Rx);
     float3 surfgrad = (h_x - h_c) * Rx + (h_y - h_c) * Ry;
 
     float absdet = fabsf(det);
@@ -72,12 +84,10 @@ ccl_device_noinline void svm_node_set_bump(KernelGlobals kg,
       object_normal_transform(kg, sd, &normal_out);
     }
 
-    normal_out = ensure_valid_reflection(sd->Ng, sd->I, normal_out);
-    stack_store_float3(stack, node.w, normal_out);
+    stack_store_float3(stack, out_offset, normal_out);
   }
-  else
-  {
-    stack_store_float3(stack, node.w, zero_float3());
+  else {
+    stack_store_float3(stack, out_offset, zero_float3());
   }
 #endif
 }
@@ -130,8 +140,7 @@ ccl_device_noinline void svm_node_displacement(KernelGlobals kg,
 
     stack_store_float3(stack, node.z, dP);
   }
-  else
-  {
+  else {
     stack_store_float3(stack, node.z, zero_float3());
   }
 }
@@ -168,7 +177,7 @@ ccl_device_noinline int svm_node_vector_displacement(
         tangent = normalize(sd->dPdu);
       }
 
-      float3 bitangent = normalize(cross(normal, tangent));
+      float3 bitangent = safe_normalize(cross(normal, tangent));
       const AttributeDescriptor attr_sign = find_attribute(kg, sd, node.w);
       if (attr_sign.offset != ATTR_STD_NOT_FOUND) {
         float sign = primitive_surface_attribute_float(kg, sd, attr_sign, NULL, NULL);
@@ -185,8 +194,7 @@ ccl_device_noinline int svm_node_vector_displacement(
 
     stack_store_float3(stack, displacement_offset, dP);
   }
-  else
-  {
+  else {
     stack_store_float3(stack, displacement_offset, zero_float3());
     (void)data_node;
   }

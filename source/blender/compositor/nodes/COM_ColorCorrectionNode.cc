@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ColorCorrectionNode.h"
 #include "COM_ColorCorrectionOperation.h"
@@ -14,7 +15,7 @@ ColorCorrectionNode::ColorCorrectionNode(bNode *editor_node) : Node(editor_node)
 void ColorCorrectionNode::convert_to_operations(NodeConverter &converter,
                                                 const CompositorContext & /*context*/) const
 {
-  bNode *editor_node = get_bnode();
+  const bNode *editor_node = get_bnode();
 
   ColorCorrectionOperation *operation = new ColorCorrectionOperation();
   operation->set_data((NodeColorCorrection *)editor_node->storage);

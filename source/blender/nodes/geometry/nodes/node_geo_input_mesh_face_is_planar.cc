@@ -1,9 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "BLI_math_vector.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 
 #include "node_geometry_util.hh"
 
@@ -12,64 +16,56 @@ namespace blender::nodes::node_geo_input_mesh_face_is_planar_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Float>("Threshold")
-      .field_source()
       .default_value(0.01f)
+      .min(0.0f)
       .subtype(PROP_DISTANCE)
+      .field_source()
       .supports_field()
-      .description(N_("The distance a point can be from the surface before the face is no longer "
-                      "considered planar"))
-      .min(0.0f);
+      .description(
+          "The distance a point can be from the surface before the face is no longer "
+          "considered planar");
   b.add_output<decl::Bool>("Planar").field_source();
 }
 
-class PlanarFieldInput final : public GeometryFieldInput {
+class PlanarFieldInput final : public bke::MeshFieldInput {
  private:
   Field<float> threshold_;
 
  public:
   PlanarFieldInput(Field<float> threshold)
-      : GeometryFieldInput(CPPType::get<bool>(), "Planar"), threshold_(threshold)
+      : bke::MeshFieldInput(CPPType::get<bool>(), "Planar"), threshold_(threshold)
   {
     category_ = Category::Generated;
   }
 
-  GVArray get_varray_for_context(const GeometryComponent &component,
+  GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 [[maybe_unused]] IndexMask mask) const final
+                                 const IndexMask & /*mask*/) const final
   {
-    if (component.type() != GEO_COMPONENT_TYPE_MESH) {
-      return {};
-    }
+    const Span<float3> positions = mesh.vert_positions();
+    const OffsetIndices faces = mesh.faces();
+    const Span<int> corner_verts = mesh.corner_verts();
+    const Span<float3> face_normals = mesh.face_normals();
 
-    const MeshComponent &mesh_component = static_cast<const MeshComponent &>(component);
-    const Mesh *mesh = mesh_component.get_for_read();
-    if (mesh == nullptr) {
-      return {};
-    }
-
-    GeometryComponentFieldContext context{mesh_component, ATTR_DOMAIN_FACE};
-    fn::FieldEvaluator evaluator{context, mesh->totpoly};
+    const bke::MeshFieldContext context{mesh, ATTR_DOMAIN_FACE};
+    fn::FieldEvaluator evaluator{context, faces.size()};
     evaluator.add(threshold_);
     evaluator.evaluate();
     const VArray<float> thresholds = evaluator.get_evaluated<float>(0);
 
-    Span<float3> poly_normals{(float3 *)BKE_mesh_poly_normals_ensure(mesh), mesh->totpoly};
-
-    auto planar_fn = [mesh, thresholds, poly_normals](const int i_poly) -> bool {
-      if (mesh->mpoly[i_poly].totloop <= 3) {
+    auto planar_fn =
+        [positions, faces, corner_verts, thresholds, face_normals](const int i) -> bool {
+      const IndexRange face = faces[i];
+      if (face.size() <= 3) {
         return true;
       }
-      const int loopstart = mesh->mpoly[i_poly].loopstart;
-      const int loops = mesh->mpoly[i_poly].totloop;
-      Span<MLoop> poly_loops(&mesh->mloop[loopstart], loops);
-      float3 reference_normal = poly_normals[i_poly];
+      const float3 &reference_normal = face_normals[i];
 
       float min = FLT_MAX;
       float max = -FLT_MAX;
 
-      for (const int i_loop : poly_loops.index_range()) {
-        const float3 vert = mesh->mvert[poly_loops[i_loop].v].co;
-        float dot = math::dot(reference_normal, vert);
+      for (const int vert : corner_verts.slice(face)) {
+        float dot = math::dot(reference_normal, positions[vert]);
         if (dot > max) {
           max = dot;
         }
@@ -77,11 +73,16 @@ class PlanarFieldInput final : public GeometryFieldInput {
           min = dot;
         }
       }
-      return max - min < thresholds[i_poly] / 2.0f;
+      return max - min < thresholds[i] / 2.0f;
     };
 
-    return component.attributes()->adapt_domain<bool>(
-        VArray<bool>::ForFunc(mesh->totpoly, planar_fn), ATTR_DOMAIN_FACE, domain);
+    return mesh.attributes().adapt_domain<bool>(
+        VArray<bool>::ForFunc(faces.size(), planar_fn), ATTR_DOMAIN_FACE, domain);
+  }
+
+  void for_each_field_input_recursive(FunctionRef<void(const FieldInput &)> fn) const override
+  {
+    threshold_.node().for_each_field_input_recursive(fn);
   }
 
   uint64_t hash() const override
@@ -94,6 +95,11 @@ class PlanarFieldInput final : public GeometryFieldInput {
   {
     return dynamic_cast<const PlanarFieldInput *>(&other) != nullptr;
   }
+
+  std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const override
+  {
+    return ATTR_DOMAIN_FACE;
+  }
 };
 
 static void geo_node_exec(GeoNodeExecParams params)
@@ -103,17 +109,16 @@ static void geo_node_exec(GeoNodeExecParams params)
   params.set_output("Planar", std::move(planar_field));
 }
 
-}  // namespace blender::nodes::node_geo_input_mesh_face_is_planar_cc
-
-void register_node_type_geo_input_mesh_face_is_planar()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_input_mesh_face_is_planar_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(
-      &ntype, GEO_NODE_INPUT_MESH_FACE_IS_PLANAR, "Face is Planar", NODE_CLASS_INPUT);
-  ntype.geometry_node_execute = file_ns::geo_node_exec;
-  ntype.declare = file_ns::node_declare;
+      &ntype, GEO_NODE_INPUT_MESH_FACE_IS_PLANAR, "Is Face Planar", NODE_CLASS_INPUT);
+  ntype.geometry_node_execute = geo_node_exec;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_input_mesh_face_is_planar_cc

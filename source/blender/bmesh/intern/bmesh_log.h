@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -14,6 +16,10 @@ struct RangeTreeUInt;
 typedef struct BMLog BMLog;
 typedef struct BMLogEntry BMLogEntry;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Allocate, initialize, and assign a new BMLog.
  */
@@ -22,7 +28,7 @@ BMLog *BM_log_create(BMesh *bm);
 /**
  * Allocate and initialize a new #BMLog using existing #BMLogEntries
  *
- * The 'entry' should be the last entry in the BMLog. Its prev pointer
+ * The 'entry' should be the last entry in the #BMLog. Its `prev` pointer
  * will be followed back to find the first entry.
  *
  * The unused IDs field of the log will be initialized by taking all
@@ -193,7 +199,8 @@ const float *BM_log_original_vert_co(BMLog *log, BMVert *v);
  */
 const float *BM_log_original_vert_no(BMLog *log, BMVert *v);
 
-/** Get the logged mask of a vertex
+/**
+ * Get the logged mask of a vertex
  *
  * Does not modify the log or the vertex.
  */
@@ -206,3 +213,9 @@ void BM_log_original_vert_data(BMLog *log, BMVert *v, const float **r_co, const 
 BMLogEntry *BM_log_current_entry(BMLog *log);
 /** For internal use only (unit testing) */
 struct RangeTreeUInt *BM_log_unused_ids(BMLog *log);
+
+void BM_log_print_entry(BMesh *bm, BMLogEntry *entry);
+
+#ifdef __cplusplus
+}
+#endif

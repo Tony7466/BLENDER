@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2020-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* WORKAROUND: to guard against double include in EEVEE. */
 #ifndef COMMON_MATH_LIB_GLSL
@@ -16,7 +19,11 @@
 #define M_1_PI2 0.101321183642337771443  /* 1/(pi^2) */
 #define M_SQRT2 1.41421356237309504880   /* sqrt(2) */
 #define M_SQRT1_2 0.70710678118654752440 /* 1/sqrt(2) */
-#define FLT_MAX 3.402823e+38
+#ifndef FLT_MAX
+#  define FLT_MAX 3.402823e+38
+#  define FLT_MIN 1.175494e-38
+#  define FLT_EPSILON 1.192092896e-07F
+#endif
 
 vec3 mul(mat3 m, vec3 v)
 {
@@ -26,6 +33,8 @@ mat3 mul(mat3 m1, mat3 m2)
 {
   return m1 * m2;
 }
+/* WORKAROUND: To be removed once we port all code to use gpu_shader_math_base_lib.glsl. */
+#ifndef GPU_SHADER_MATH_MATRIX_LIB_GLSL
 vec3 transform_direction(mat4 m, vec3 v)
 {
   return mat3(m) * v;
@@ -39,12 +48,27 @@ vec3 project_point(mat4 m, vec3 v)
   vec4 tmp = m * vec4(v, 1.0);
   return tmp.xyz / tmp.w;
 }
+#endif
 
 mat2 rot2_from_angle(float a)
 {
   float c = cos(a);
   float s = sin(a);
   return mat2(c, -s, s, c);
+}
+
+/* Computes the full argmax of the given vector, that is, the index of the greatest component will
+ * be in the returned x component, the index of the smallest component will be in the returned z
+ * component, and the index of the middle component will be in the returned y component.
+ *
+ * This is computed by utilizing the fact that booleans are converted to the integers 0 and 1 for
+ * false and true respectively. So if we compare every component to all other components using the
+ * greaterThan comparator, we get 0 for the greatest component, because no other component is
+ * greater, 1 for the middle component, and 2 for the smallest component. */
+ivec3 argmax(vec3 v)
+{
+  return ivec3(greaterThan(v, v.xxx)) + ivec3(greaterThan(v, v.yyy)) +
+         ivec3(greaterThan(v, v.zzz));
 }
 
 #define min3(a, b, c) min(a, min(b, c))
@@ -87,14 +111,17 @@ float avg(vec2 v) { return dot(vec2(1.0 / 2.0), v); }
 float avg(vec3 v) { return dot(vec3(1.0 / 3.0), v); }
 float avg(vec4 v) { return dot(vec4(1.0 / 4.0), v); }
 
+/* WORKAROUND: To be removed once we port all code to use gpu_shader_math_base_lib.glsl. */
+#ifndef GPU_SHADER_MATH_BASE_LIB_GLSL
 float safe_rcp(float a) { return (a != 0.0) ? (1.0 / a) : 0.0; }
+float safe_sqrt(float a) { return sqrt(max(a, 0.0)); }
+float safe_acos(float a) { return acos(clamp(a, -1.0, 1.0)); }
+#endif
+#ifndef GPU_SHADER_MATH_VECTOR_LIB_GLSL
 vec2 safe_rcp(vec2 a) { return select(vec2(0.0), (1.0 / a), notEqual(a, vec2(0.0))); }
 vec3 safe_rcp(vec3 a) { return select(vec3(0.0), (1.0 / a), notEqual(a, vec3(0.0))); }
 vec4 safe_rcp(vec4 a) { return select(vec4(0.0), (1.0 / a), notEqual(a, vec4(0.0))); }
-
-float safe_sqrt(float a) { return sqrt(max(a, 0.0)); }
-
-float safe_acos(float a) { return acos(clamp(a, -1.0, 1.0)); }
+#endif
 
 float sqr(float a) { return a * a; }
 vec2 sqr(vec2 a) { return a * a; }
@@ -102,13 +129,15 @@ vec3 sqr(vec3 a) { return a * a; }
 vec4 sqr(vec4 a) { return a * a; }
 
 /* Use manual powers for fixed powers. pow() can have unpredictable results on some implementations.
- * (see T87369, T87541) */
+ * (see #87369, #87541) */
 float pow6(float x) { return sqr(sqr(x) * x); }
 float pow8(float x) { return sqr(sqr(sqr(x))); }
 
 float len_squared(vec3 a) { return dot(a, a); }
 float len_squared(vec2 a) { return dot(a, a); }
 
+/* WORKAROUND: To be removed once we port all code to use gpu_shader_math_base_lib.glsl. */
+#ifndef GPU_SHADER_UTILDEFINES_GLSL
 bool flag_test(uint flag, uint val) { return (flag & val) != 0u; }
 bool flag_test(int flag, uint val) { return flag_test(uint(flag), val); }
 bool flag_test(int flag, int val) { return (flag & val) != 0; }
@@ -118,6 +147,7 @@ void set_flag_from_test(inout int value, bool test, int flag) { if (test) { valu
 
 #define weighted_sum(val0, val1, val2, val3, weights) ((val0 * weights[0] + val1 * weights[1] + val2 * weights[2] + val3 * weights[3]) * safe_rcp(sum(weights)))
 #define weighted_sum_array(val, weights) ((val[0] * weights[0] + val[1] * weights[1] + val[2] * weights[2] + val[3] * weights[3]) * safe_rcp(sum(weights)))
+#endif
 
 /* clang-format on */
 
@@ -130,15 +160,26 @@ void set_flag_from_test(inout int value, bool test, int flag) { if (test) { valu
 #define in_texture_range(texel, tex) \
   (all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, textureSize(tex, 0).xy)))
 
-uint divide_ceil_u(uint visible_count, uint divisor)
+/* WORKAROUND: To be removed once we port all code to use gpu_shader_math_base_lib.glsl. */
+#ifndef GPU_SHADER_MATH_BASE_LIB_GLSL
+uint divide_ceil(uint visible_count, uint divisor)
 {
   return (visible_count + (divisor - 1u)) / divisor;
 }
 
-int divide_ceil_i(int visible_count, int divisor)
+int divide_ceil(int visible_count, int divisor)
 {
   return (visible_count + (divisor - 1)) / divisor;
 }
+#endif
+
+/* WORKAROUND: To be removed once we port all code to use gpu_shader_math_base_lib.glsl. */
+#ifndef GPU_SHADER_MATH_VECTOR_LIB_GLSL
+ivec2 divide_ceil(ivec2 visible_count, ivec2 divisor)
+{
+  return (visible_count + (divisor - 1)) / divisor;
+}
+#endif
 
 uint bit_field_mask(uint bit_width, uint bit_min)
 {
@@ -147,6 +188,8 @@ uint bit_field_mask(uint bit_width, uint bit_min)
   return ~mask << bit_min;
 }
 
+/* WORKAROUND: To be removed once we port all code to use gpu_shader_math_base_lib.glsl. */
+#ifndef GPU_SHADER_UTILDEFINES_GLSL
 uvec2 unpackUvec2x16(uint data)
 {
   return (uvec2(data) >> uvec2(0u, 16u)) & uvec2(0xFFFFu);
@@ -168,7 +211,10 @@ uint packUvec4x8(uvec4 data)
   data = (data & 0xFFu) << uvec4(0u, 8u, 16u, 24u);
   return data.x | data.y | data.z | data.w;
 }
+#endif
 
+/* WORKAROUND: To be removed once we port all code to use gpu_shader_math_base_lib.glsl. */
+#ifndef GPU_SHADER_MATH_VECTOR_LIB_GLSL
 float distance_squared(vec2 a, vec2 b)
 {
   a -= b;
@@ -189,6 +235,7 @@ vec3 safe_normalize(vec3 v)
   }
   return v / len;
 }
+#endif
 
 vec2 safe_normalize_len(vec2 v, out float len)
 {
@@ -199,11 +246,14 @@ vec2 safe_normalize_len(vec2 v, out float len)
   return v / len;
 }
 
+/* WORKAROUND: To be removed once we port all code to use gpu_shader_math_base_lib.glsl. */
+#ifndef GPU_SHADER_MATH_VECTOR_LIB_GLSL
 vec2 safe_normalize(vec2 v)
 {
   float len;
   return safe_normalize_len(v, len);
 }
+#endif
 
 vec3 normalize_len(vec3 v, out float len)
 {

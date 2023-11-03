@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_WriteBufferOperation.h"
 #include "COM_OpenCLDevice.h"
@@ -42,7 +43,7 @@ void WriteBufferOperation::deinit_execution()
   memory_proxy_->free();
 }
 
-void WriteBufferOperation::execute_region(rcti *rect, unsigned int /*tile_number*/)
+void WriteBufferOperation::execute_region(rcti *rect, uint /*tile_number*/)
 {
   MemoryBuffer *memory_buffer = memory_proxy_->get_buffer();
   float *buffer = memory_buffer->get_buffer();
@@ -95,23 +96,23 @@ void WriteBufferOperation::execute_region(rcti *rect, unsigned int /*tile_number
 
 void WriteBufferOperation::execute_opencl_region(OpenCLDevice *device,
                                                  rcti * /*rect*/,
-                                                 unsigned int /*chunk_number*/,
+                                                 uint /*chunk_number*/,
                                                  MemoryBuffer **input_memory_buffers,
                                                  MemoryBuffer *output_buffer)
 {
   float *output_float_buffer = output_buffer->get_buffer();
   cl_int error;
   /*
-   * 1. create cl_mem from outputbuffer
-   * 2. call NodeOperation (input) executeOpenCLChunk(.....)
-   * 3. schedule read back from opencl to main device (outputbuffer)
-   * 4. schedule native callback
+   * 1. create cl_mem from output_buffer.
+   * 2. call NodeOperation (input) executeOpenCLChunk(...).
+   * 3. schedule read back from OPENCL to main device (output_buffer).
+   * 4. schedule native callback.
    *
    * NOTE: list of cl_mem will be filled by 2, and needs to be cleaned up by 4
    */
   /* STEP 1 */
-  const unsigned int output_buffer_width = output_buffer->get_width();
-  const unsigned int output_buffer_height = output_buffer->get_height();
+  const uint output_buffer_width = output_buffer->get_width();
+  const uint output_buffer_height = output_buffer->get_height();
 
   const cl_image_format *image_format = OpenCLDevice::determine_image_format(output_buffer);
 

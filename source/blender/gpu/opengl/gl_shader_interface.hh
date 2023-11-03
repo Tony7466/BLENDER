@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -15,8 +16,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_vector.hh"
-
-#include "glew-mx.h"
 
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_interface.hh"

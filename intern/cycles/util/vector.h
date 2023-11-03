@@ -1,16 +1,15 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __UTIL_VECTOR_H__
 #define __UTIL_VECTOR_H__
 
-#include <cassert>
 #include <cstring>
 #include <vector>
 
 #include "util/aligned_malloc.h"
 #include "util/guarded_allocator.h"
-#include "util/types.h"
 
 CCL_NAMESPACE_BEGIN
 

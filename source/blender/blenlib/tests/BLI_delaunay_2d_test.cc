@@ -1,14 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
 #include "MEM_guardedalloc.h"
 
-extern "C" {
-#include "BLI_math.h"
 #include "BLI_rand.h"
 #include "PIL_time.h"
-}
 
 #include <fstream>
 #include <iostream>
@@ -23,7 +22,7 @@ extern "C" {
 #include "BLI_array.hh"
 #include "BLI_math_boolean.hh"
 #include "BLI_math_mpq.hh"
-#include "BLI_math_vec_mpq_types.hh"
+#include "BLI_math_vector_mpq_types.hh"
 #include "BLI_vector.hh"
 
 #include "BLI_delaunay_2d.h"
@@ -99,7 +98,7 @@ template<typename T> CDT_input<T> fill_input_from_string(const char *spec)
  */
 static int get_orig_index(const Array<Vector<int>> &out_to_orig, int orig_index)
 {
-  int n = static_cast<int>(out_to_orig.size());
+  int n = int(out_to_orig.size());
   for (int i = 0; i < n; ++i) {
     for (int orig : out_to_orig[i]) {
       if (orig == orig_index) {
@@ -110,7 +109,7 @@ static int get_orig_index(const Array<Vector<int>> &out_to_orig, int orig_index)
   return -1;
 }
 
-template<typename T> static double math_to_double(const T UNUSED(v))
+template<typename T> static double math_to_double(const T /*v*/)
 {
   BLI_assert(false); /* Need implementation for other type. */
   return 0.0;
@@ -147,7 +146,7 @@ template<> double math_abs(const double v)
  */
 template<typename T> int get_vertex_by_coord(const CDT_result<T> &out, double x, double y)
 {
-  int nv = static_cast<int>(out.vert.size());
+  int nv = int(out.vert.size());
   for (int i = 0; i < nv; ++i) {
     double vx = math_to_double(out.vert[i][0]);
     double vy = math_to_double(out.vert[i][1]);
@@ -162,10 +161,11 @@ template<typename T> int get_vertex_by_coord(const CDT_result<T> &out, double x,
 template<typename T>
 int get_output_edge_index(const CDT_result<T> &out, int out_index_1, int out_index_2)
 {
-  int ne = static_cast<int>(out.edge.size());
+  int ne = int(out.edge.size());
   for (int i = 0; i < ne; ++i) {
     if ((out.edge[i].first == out_index_1 && out.edge[i].second == out_index_2) ||
-        (out.edge[i].first == out_index_2 && out.edge[i].second == out_index_1)) {
+        (out.edge[i].first == out_index_2 && out.edge[i].second == out_index_1))
+    {
       return i;
     }
   }
@@ -175,7 +175,7 @@ int get_output_edge_index(const CDT_result<T> &out, int out_index_1, int out_ind
 template<typename T>
 bool output_edge_has_input_id(const CDT_result<T> &out, int out_edge_index, int in_edge_index)
 {
-  return out_edge_index < static_cast<int>(out.edge_orig.size()) &&
+  return out_edge_index < int(out.edge_orig.size()) &&
          out.edge_orig[out_edge_index].contains(in_edge_index);
 }
 
@@ -184,8 +184,8 @@ bool output_edge_has_input_id(const CDT_result<T> &out, int out_edge_index, int 
  */
 template<typename T> int get_output_face_index(const CDT_result<T> &out, const Array<int> &poly)
 {
-  int nf = static_cast<int>(out.face.size());
-  int npolyv = static_cast<int>(poly.size());
+  int nf = int(out.face.size());
+  int npolyv = int(poly.size());
   for (int f = 0; f < nf; ++f) {
     if (out.face[f].size() != poly.size()) {
       continue;
@@ -218,7 +218,7 @@ int get_output_tri_index(const CDT_result<T> &out,
 template<typename T>
 bool output_face_has_input_id(const CDT_result<T> &out, int out_face_index, int in_face_index)
 {
-  return out_face_index < static_cast<int>(out.face_orig.size()) &&
+  return out_face_index < int(out.face_orig.size()) &&
          out.face_orig[out_face_index].contains(in_face_index);
 }
 
@@ -310,10 +310,10 @@ void graph_draw(const std::string &label,
   double height = maxy - miny;
   double aspect = height / width;
   int view_width = max_draw_width;
-  int view_height = static_cast<int>(view_width * aspect);
+  int view_height = int(view_width * aspect);
   if (view_height > max_draw_height) {
     view_height = max_draw_height;
-    view_width = static_cast<int>(view_height / aspect);
+    view_width = int(view_height / aspect);
   }
   double scale = view_width / width;
 
@@ -1062,7 +1062,7 @@ template<typename T> void twoface2_test()
   EXPECT_EQ(out.edge.size(), 18);
   EXPECT_EQ(out.face.size(), 9);
   if (out.vert.size() == 10 && out.edge.size() == 18 && out.face.size() == 9) {
-    /* Input verts have no dups, so expect output ones match input ones. */
+    /* Input verts have no duplicates, so expect output ones match input ones. */
     for (int i = 0; i < 6; i++) {
       EXPECT_EQ(get_orig_index(out.vert_orig, i), i);
     }
@@ -2087,17 +2087,20 @@ void rand_delaunay_test(int test_kind,
         case RANDOM_PTS: {
           npts = size;
           test_label = std::to_string(npts) + "Random points";
-        } break;
+          break;
+        }
         case RANDOM_SEGS: {
           npts = size;
           nedges = npts - 1;
           test_label = std::to_string(nedges) + "Random edges";
-        } break;
+          break;
+        }
         case RANDOM_POLY: {
           npts = size;
           nedges = npts;
           test_label = "Random poly with " + std::to_string(nedges) + " edges";
-        } break;
+          break;
+        }
         case RANDOM_TILTED_GRID: {
           /* A 'size' x 'size' grid of points, tilted by angle 'param'.
            * Edges will go from left ends to right ends and tops to bottoms,
@@ -2110,7 +2113,8 @@ void rand_delaunay_test(int test_kind,
           nedges = 2 * size;
           test_label = "Tilted grid " + std::to_string(npts) + "x" + std::to_string(npts) +
                        " (tilt=" + std::to_string(param) + ")";
-        } break;
+          break;
+        }
         case RANDOM_CIRCLE: {
           /* A circle with 'size' points, a random start angle,
            * and equal spacing thereafter. Will be input as one face.
@@ -2118,7 +2122,8 @@ void rand_delaunay_test(int test_kind,
           npts = size;
           nfaces = 1;
           test_label = "Circle with " + std::to_string(npts) + " points";
-        } break;
+          break;
+        }
         case RANDOM_TRI_BETWEEN_CIRCLES: {
           /* A set of 'size' triangles, each has two random points on the unit circle,
            * and the third point is a random point on the circle with radius 'param'.
@@ -2128,7 +2133,8 @@ void rand_delaunay_test(int test_kind,
           nfaces = size;
           test_label = "Random " + std::to_string(nfaces) +
                        " triangles between circles (inner radius=" + std::to_string(param) + ")";
-        } break;
+          break;
+        }
         default:
           std::cout << "unknown delaunay test type\n";
           return;
@@ -2173,8 +2179,8 @@ void rand_delaunay_test(int test_kind,
             in.edge[size - 1].first = size - 1;
             in.edge[size - 1].second = 0;
           }
-        } break;
-
+          break;
+        }
         case RANDOM_TILTED_GRID: {
           for (int i = 0; i < size; ++i) {
             for (int j = 0; j < size; ++j) {
@@ -2190,8 +2196,8 @@ void rand_delaunay_test(int test_kind,
             in.edge[size + i].first = i;
             in.edge[size + i].second = (size - 1) * size + i;
           }
-        } break;
-
+          break;
+        }
         case RANDOM_CIRCLE: {
           double start_angle = BLI_rng_get_double(rng) * 2.0 * M_PI;
           double angle_delta = 2.0 * M_PI / size;
@@ -2200,8 +2206,8 @@ void rand_delaunay_test(int test_kind,
             in.vert[i][1] = T(sin(start_angle + i * angle_delta));
             in.face[0].append(i);
           }
-        } break;
-
+          break;
+        }
         case RANDOM_TRI_BETWEEN_CIRCLES: {
           for (int i = 0; i < size; i++) {
             /* Get three random angles in [0, 2pi). */
@@ -2229,7 +2235,8 @@ void rand_delaunay_test(int test_kind,
               in.face[i].append(ib);
             }
           }
-        } break;
+          break;
+        }
       }
 
       /* Run the test. */

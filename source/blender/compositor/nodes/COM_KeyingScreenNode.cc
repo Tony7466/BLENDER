@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2012 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_KeyingScreenNode.h"
 #include "COM_KeyingScreenOperation.h"
@@ -14,7 +15,7 @@ KeyingScreenNode::KeyingScreenNode(bNode *editor_node) : Node(editor_node)
 void KeyingScreenNode::convert_to_operations(NodeConverter &converter,
                                              const CompositorContext &context) const
 {
-  bNode *editor_node = this->get_bnode();
+  const bNode *editor_node = this->get_bnode();
   MovieClip *clip = (MovieClip *)editor_node->id;
   NodeKeyingScreenData *keyingscreen_data = (NodeKeyingScreenData *)editor_node->storage;
 
@@ -24,6 +25,7 @@ void KeyingScreenNode::convert_to_operations(NodeConverter &converter,
   KeyingScreenOperation *operation = new KeyingScreenOperation();
   operation->set_movie_clip(clip);
   operation->set_tracking_object(keyingscreen_data->tracking_object);
+  operation->set_smoothness(keyingscreen_data->smoothness);
   operation->set_framenumber(context.get_framenumber());
   converter.add_operation(operation);
 

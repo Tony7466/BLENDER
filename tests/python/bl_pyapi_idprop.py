@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2017-2022 Blender Authors
+#
 # SPDX-License-Identifier: Apache-2.0
 
 # ./blender.bin --background -noaudio --python tests/python/bl_pyapi_idprop.py -- --verbose
@@ -22,7 +24,7 @@ class TestHelper:
     def setUp(self):
         self._id = bpy.context.scene
         self._id.pop("cycles", None)
-        assert(len(self._id.keys()) == 0)
+        assert len(self._id.keys()) == 0
 
     def tearDown(self):
         for key in list(self._id.keys()):
@@ -218,7 +220,7 @@ class TestBufferProtocol(TestHelper, unittest.TestCase):
     def assertEqualMemviews(self, view1, view2):
         props_to_compare = (
             "contiguous", "format", "itemsize", "nbytes", "ndim",
-            "readonly", "shape", "strides", "suboffsets"
+            "readonly", "shape", "strides", "suboffsets",
         )
         for attr in props_to_compare:
             self.assertEqual(getattr(view1, attr), getattr(view2, attr))
@@ -263,6 +265,29 @@ if np is not None:
 
 
 class TestRNAData(TestHelper, unittest.TestCase):
+
+    def test_custom_properties_access(self):
+        # Ensure the RNA path resolving behaves as expected & is compatible with ID-property keys.
+        keys_to_test = (
+            "test",
+            "\\"
+            '"',
+            '""',
+            '"""',
+            '[',
+            ']',
+            '[]',
+            '["]',
+            '[""]',
+            '["""]',
+            '[""""]',
+            # Empty properties are also valid.
+            "",
+        )
+        for key_id in keys_to_test:
+            self.id[key_id] = 1
+            self.assertEqual(self.id[key_id], self.id.path_resolve('["%s"]' % bpy.utils.escape_identifier(key_id)))
+            del self.id[key_id]
 
     def test_custom_properties_none(self):
         bpy.data.objects.new("test", None)

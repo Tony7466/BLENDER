@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -10,6 +12,8 @@
 
 #include "../view_map/SteerableViewMap.h"
 
+#include "BLI_sys_types.h"
+
 namespace Freestyle::Functions1D {
 
 int GetSteerableViewMapDensityF1D::operator()(Interface1D &inter)
@@ -19,7 +23,7 @@ int GetSteerableViewMapDensityF1D::operator()(Interface1D &inter)
   Interface0DIterator itnext = it;
   ++itnext;
   FEdge *fe;
-  unsigned nSVM;
+  uint nSVM;
   vector<float> values;
 
   while (!itnext.isEnd()) {
@@ -38,14 +42,14 @@ int GetSteerableViewMapDensityF1D::operator()(Interface1D &inter)
     }
     Vec2r m((i0D.getProjectedX() + i0Dnext.getProjectedX()) / 2.0,
             (i0D.getProjectedY() + i0Dnext.getProjectedY()) / 2.0);
-    values.push_back(svm->readSteerableViewMapPixel(nSVM, _level, (int)m[0], (int)m[1]));
+    values.push_back(svm->readSteerableViewMapPixel(nSVM, _level, int(m[0]), int(m[1])));
     ++it;
     ++itnext;
   }
 
   float res, res_tmp;
   vector<float>::iterator v = values.begin(), vend = values.end();
-  unsigned size = 1;
+  uint size = 1;
   switch (_integration) {
     case MIN:
       res = *v;
@@ -90,14 +94,14 @@ int GetSteerableViewMapDensityF1D::operator()(Interface1D &inter)
 
 int GetDirectionalViewMapDensityF1D::operator()(Interface1D &inter)
 {
-  // soc unsigned size;
+  // soc uint size;
   result = integrate(_fun, inter.pointsBegin(_sampling), inter.pointsEnd(_sampling), _integration);
   return 0;
 }
 
 int GetCompleteViewMapDensityF1D::operator()(Interface1D &inter)
 {
-  // soc unsigned size;
+  // soc uint size;
   // Id id = inter.getId(); /* UNUSED */
   result = integrate(_fun, inter.pointsBegin(_sampling), inter.pointsEnd(_sampling), _integration);
   return 0;

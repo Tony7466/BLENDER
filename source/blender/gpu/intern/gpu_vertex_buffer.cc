@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -40,10 +41,21 @@ VertBuf::~VertBuf()
 
 void VertBuf::init(const GPUVertFormat *format, GPUUsageType usage)
 {
-  usage_ = usage;
+  /* Strip extended usage flags. */
+  usage_ = usage & ~GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
+#ifndef NDEBUG
+  /* Store extended usage. */
+  extended_usage_ = usage;
+#endif
   flag = GPU_VERTBUF_DATA_DIRTY;
   GPU_vertformat_copy(&this->format, format);
-  if (!format->packed) {
+  /* Avoid packing vertex formats which are used for texture buffers.
+   * These cases use singular types and do not need packing. They must
+   * also not have increased alignment padding to the minimum per-vertex stride. */
+  if (usage & GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY) {
+    VertexFormat_texture_buffer_pack(&this->format);
+  }
+  if (!this->format.packed) {
     VertexFormat_pack(&this->format);
   }
   flag |= GPU_VERTBUF_INIT;
@@ -62,6 +74,10 @@ VertBuf *VertBuf::duplicate()
   *dst = *this;
   /* Almost full copy... */
   dst->handle_refcount_ = 1;
+  /* Metadata. */
+#ifndef NDEBUG
+  dst->extended_usage_ = extended_usage_;
+#endif
   /* Duplicate all needed implementation specifics data. */
   this->duplicate_data(dst);
   return dst;
@@ -138,14 +154,9 @@ GPUVertBuf *GPU_vertbuf_duplicate(GPUVertBuf *verts_)
   return wrap(unwrap(verts_)->duplicate());
 }
 
-const void *GPU_vertbuf_read(GPUVertBuf *verts)
+void GPU_vertbuf_read(GPUVertBuf *verts, void *data)
 {
-  return unwrap(verts)->read();
-}
-
-void *GPU_vertbuf_unmap(const GPUVertBuf *verts, const void *mapped_data)
-{
-  return unwrap(verts)->unmap(mapped_data);
+  unwrap(verts)->read(data);
 }
 
 void GPU_vertbuf_clear(GPUVertBuf *verts)
@@ -192,6 +203,7 @@ void GPU_vertbuf_data_len_set(GPUVertBuf *verts_, uint v_len)
 void GPU_vertbuf_attr_set(GPUVertBuf *verts_, uint a_idx, uint v_idx, const void *data)
 {
   VertBuf *verts = unwrap(verts_);
+  BLI_assert(verts->get_usage_type() != GPU_USAGE_DEVICE_ONLY);
   const GPUVertFormat *format = &verts->format;
   const GPUVertAttr *a = &format->attrs[a_idx];
   BLI_assert(v_idx < verts->vertex_alloc);
@@ -215,6 +227,7 @@ void GPU_vertbuf_attr_fill(GPUVertBuf *verts_, uint a_idx, const void *data)
 void GPU_vertbuf_vert_set(GPUVertBuf *verts_, uint v_idx, const void *data)
 {
   VertBuf *verts = unwrap(verts_);
+  BLI_assert(verts->get_usage_type() != GPU_USAGE_DEVICE_ONLY);
   const GPUVertFormat *format = &verts->format;
   BLI_assert(v_idx < verts->vertex_alloc);
   BLI_assert(verts->data != nullptr);
@@ -225,6 +238,7 @@ void GPU_vertbuf_vert_set(GPUVertBuf *verts_, uint v_idx, const void *data)
 void GPU_vertbuf_attr_fill_stride(GPUVertBuf *verts_, uint a_idx, uint stride, const void *data)
 {
   VertBuf *verts = unwrap(verts_);
+  BLI_assert(verts->get_usage_type() != GPU_USAGE_DEVICE_ONLY);
   const GPUVertFormat *format = &verts->format;
   const GPUVertAttr *a = &format->attrs[a_idx];
   BLI_assert(a_idx < format->attr_len);
@@ -260,7 +274,7 @@ void GPU_vertbuf_attr_get_raw_data(GPUVertBuf *verts_, uint a_idx, GPUVertBufRaw
   access->data = (uchar *)verts->data + a->offset;
   access->data_init = access->data;
 #ifdef DEBUG
-  access->_data_end = access->data_init + (size_t)(verts->vertex_alloc * format->stride);
+  access->_data_end = access->data_init + size_t(verts->vertex_alloc * format->stride);
 #endif
 }
 
@@ -322,12 +336,12 @@ void GPU_vertbuf_wrap_handle(GPUVertBuf *verts, uint64_t handle)
   unwrap(verts)->wrap_handle(handle);
 }
 
-void GPU_vertbuf_bind_as_ssbo(struct GPUVertBuf *verts, int binding)
+void GPU_vertbuf_bind_as_ssbo(GPUVertBuf *verts, int binding)
 {
   unwrap(verts)->bind_as_ssbo(binding);
 }
 
-void GPU_vertbuf_bind_as_texture(struct GPUVertBuf *verts, int binding)
+void GPU_vertbuf_bind_as_texture(GPUVertBuf *verts, int binding)
 {
   unwrap(verts)->bind_as_texture(binding);
 }

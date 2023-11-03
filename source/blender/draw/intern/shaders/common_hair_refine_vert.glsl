@@ -1,8 +1,8 @@
-#pragma BLENDER_REQUIRE(common_hair_lib.glsl)
+/* SPDX-FileCopyrightText: 2018-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#ifdef USE_TF
-out vec4 finalColor;
-#endif
+#pragma BLENDER_REQUIRE(common_hair_lib.glsl)
 
 void main(void)
 {

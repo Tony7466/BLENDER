@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup intern_mem
@@ -99,7 +100,7 @@ extern void *(*MEM_callocN)(size_t len, const char *str) /* ATTR_MALLOC */ ATTR_
  * Allocate a block of memory of size (len * size), with tag name
  * str, aborting in case of integer overflows to prevent vulnerabilities.
  * The memory is cleared. The name must be static, because only a
- * pointer to it is stored ! */
+ * pointer to it is stored! */
 extern void *(*MEM_calloc_arrayN)(size_t len,
                                   size_t size,
                                   const char *str) /* ATTR_MALLOC */ ATTR_WARN_UNUSED_RESULT
@@ -107,7 +108,7 @@ extern void *(*MEM_calloc_arrayN)(size_t len,
 
 /**
  * Allocate a block of memory of size len, with tag name str. The
- * name must be a static, because only a pointer to it is stored !
+ * name must be a static, because only a pointer to it is stored!
  */
 extern void *(*MEM_mallocN)(size_t len, const char *str) /* ATTR_MALLOC */ ATTR_WARN_UNUSED_RESULT
     ATTR_ALLOC_SIZE(1) ATTR_NONNULL(2);
@@ -115,7 +116,7 @@ extern void *(*MEM_mallocN)(size_t len, const char *str) /* ATTR_MALLOC */ ATTR_
 /**
  * Allocate a block of memory of size (len * size), with tag name str,
  * aborting in case of integer overflow to prevent vulnerabilities. The
- * name must be a static, because only a pointer to it is stored !
+ * name must be a static, because only a pointer to it is stored!
  */
 extern void *(*MEM_malloc_arrayN)(size_t len,
                                   size_t size,
@@ -124,7 +125,7 @@ extern void *(*MEM_malloc_arrayN)(size_t len,
 
 /**
  * Allocate an aligned block of memory of size len, with tag name str. The
- * name must be a static, because only a pointer to it is stored !
+ * name must be a static, because only a pointer to it is stored!
  */
 extern void *(*MEM_mallocN_aligned)(size_t len,
                                     size_t alignment,
@@ -169,16 +170,16 @@ extern unsigned int (*MEM_get_memory_blocks_in_use)(void);
 /** Reset the peak memory statistic to zero. */
 extern void (*MEM_reset_peak_memory)(void);
 
-/** Get the peak memory usage in bytes, including mmap allocations. */
+/** Get the peak memory usage in bytes, including `mmap` allocations. */
 extern size_t (*MEM_get_peak_memory)(void) ATTR_WARN_UNUSED_RESULT;
 
-#ifdef __GNUC__
+#ifdef __cplusplus
 #  define MEM_SAFE_FREE(v) \
     do { \
-      typeof(&(v)) _v = &(v); \
+      static_assert(std::is_pointer_v<std::decay_t<decltype(v)>>); \
+      void **_v = (void **)&(v); \
       if (*_v) { \
-        /* Cast so we can free constant arrays. */ \
-        MEM_freeN((void *)*_v); \
+        MEM_freeN(*_v); \
         *_v = NULL; \
       } \
     } while (0)
@@ -271,8 +272,25 @@ void MEM_use_guarded_allocator(void);
 template<typename T, typename... Args>
 inline T *MEM_new(const char *allocation_name, Args &&...args)
 {
-  void *buffer = MEM_mallocN(sizeof(T), allocation_name);
+  void *buffer = MEM_mallocN_aligned(sizeof(T), alignof(T), allocation_name);
   return new (buffer) T(std::forward<Args>(args)...);
+}
+
+/**
+ * Destructs and deallocates an object previously allocated with any `MEM_*` function.
+ * Passing in null does nothing.
+ */
+template<typename T> inline void MEM_delete(const T *ptr)
+{
+  static_assert(!std::is_void_v<T>,
+                "MEM_delete on a void pointer not possible. Cast it to a non-void type?");
+  if (ptr == nullptr) {
+    /* Support #ptr being null, because C++ `delete` supports that as well. */
+    return;
+  }
+  /* C++ allows destruction of const objects, so the pointer is allowed to be const. */
+  ptr->~T();
+  MEM_freeN(const_cast<T *>(ptr));
 }
 
 /**
@@ -285,6 +303,15 @@ template<typename T> inline T *MEM_cnew(const char *allocation_name)
 {
   static_assert(std::is_trivial_v<T>, "For non-trivial types, MEM_new should be used.");
   return static_cast<T *>(MEM_callocN(sizeof(T), allocation_name));
+}
+
+/**
+ * Same as MEM_cnew but for arrays, better alternative to #MEM_calloc_arrayN.
+ */
+template<typename T> inline T *MEM_cnew_array(const size_t length, const char *allocation_name)
+{
+  static_assert(std::is_trivial_v<T>, "For non-trivial types, MEM_new should be used.");
+  return static_cast<T *>(MEM_calloc_arrayN(length, sizeof(T), allocation_name));
 }
 
 /**
@@ -301,23 +328,10 @@ template<typename T> inline T *MEM_cnew(const char *allocation_name, const T &ot
 {
   static_assert(std::is_trivial_v<T>, "For non-trivial types, MEM_new should be used.");
   T *new_object = static_cast<T *>(MEM_mallocN(sizeof(T), allocation_name));
-  memcpy(new_object, &other, sizeof(T));
-  return new_object;
-}
-
-/**
- * Destructs and deallocates an object previously allocated with any `MEM_*` function.
- * Passing in null does nothing.
- */
-template<typename T> inline void MEM_delete(const T *ptr)
-{
-  if (ptr == nullptr) {
-    /* Support #ptr being null, because C++ `delete` supports that as well. */
-    return;
+  if (new_object) {
+    memcpy(new_object, &other, sizeof(T));
   }
-  /* C++ allows destruction of const objects, so the pointer is allowed to be const. */
-  ptr->~T();
-  MEM_freeN(const_cast<T *>(ptr));
+  return new_object;
 }
 
 /* Allocation functions (for C++ only). */
@@ -349,9 +363,7 @@ template<typename T> inline void MEM_delete(const T *ptr)
     } \
     /* This is the matching delete operator to the placement-new operator above. Both parameters \
      * will have the same value. Without this, we get the warning C4291 on windows. */ \
-    void operator delete(void * /*ptr_to_free*/, void * /*ptr*/) \
-    { \
-    }
+    void operator delete(void * /*ptr_to_free*/, void * /*ptr*/) {}
 
 #endif /* __cplusplus */
 

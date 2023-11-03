@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2020-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 /**
  * Shaders that down-sample velocity buffer,
  *
@@ -7,13 +11,6 @@
  *
  * Adapted from G3D Innovation Engine implementation.
  */
-
-uniform sampler2D velocityBuffer;
-uniform vec2 viewportSize;
-uniform vec2 viewportSizeInv;
-uniform ivec2 velocityBufferSize;
-
-out vec4 tileMaxVelocity;
 
 vec4 sample_velocity(ivec2 texel)
 {
@@ -29,8 +26,6 @@ vec4 encode_velocity(vec4 velocity)
 }
 
 #ifdef TILE_GATHER
-
-uniform ivec2 gatherStep;
 
 void main()
 {

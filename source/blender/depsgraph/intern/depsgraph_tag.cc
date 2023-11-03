@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -7,7 +8,7 @@
  * Core routines for how the Depsgraph works.
  */
 
-#include "intern/depsgraph_tag.h"
+#include "intern/depsgraph_tag.hh"
 
 #include <cstdio>
 #include <cstring> /* required for memset */
@@ -30,27 +31,27 @@
 #include "BKE_anim_data.h"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_debug.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_debug.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "intern/builder/deg_builder.h"
-#include "intern/depsgraph.h"
-#include "intern/depsgraph_registry.h"
-#include "intern/depsgraph_update.h"
+#include "intern/depsgraph.hh"
+#include "intern/depsgraph_registry.hh"
+#include "intern/depsgraph_update.hh"
 #include "intern/eval/deg_eval_copy_on_write.h"
 #include "intern/eval/deg_eval_flush.h"
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_factory.h"
-#include "intern/node/deg_node_id.h"
-#include "intern/node/deg_node_operation.h"
-#include "intern/node/deg_node_time.h"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_factory.hh"
+#include "intern/node/deg_node_id.hh"
+#include "intern/node/deg_node_operation.hh"
+#include "intern/node/deg_node_time.hh"
 
 namespace deg = blender::deg;
 
@@ -71,7 +72,7 @@ void depsgraph_geometry_tag_to_component(const ID *id, NodeType *component_type)
 
 bool is_selectable_data_id_type(const ID_Type id_type)
 {
-  return ELEM(id_type, ID_ME, ID_CU_LEGACY, ID_MB, ID_LT, ID_GD, ID_CV, ID_PT, ID_VO);
+  return ELEM(id_type, ID_ME, ID_CU_LEGACY, ID_MB, ID_LT, ID_GD_LEGACY, ID_CV, ID_PT, ID_VO);
 }
 
 void depsgraph_select_tag_to_component_opcode(const ID *id,
@@ -94,10 +95,6 @@ void depsgraph_select_tag_to_component_opcode(const ID *id,
   else if (id_type == ID_OB) {
     *component_type = NodeType::OBJECT_FROM_LAYER;
     *operation_code = OperationCode::OBJECT_FROM_LAYER_ENTRY;
-  }
-  else if (id_type == ID_MC) {
-    *component_type = NodeType::BATCH_CACHE;
-    *operation_code = OperationCode::MOVIECLIP_SELECT_UPDATE;
   }
   else if (is_selectable_data_id_type(id_type)) {
     *component_type = NodeType::BATCH_CACHE;
@@ -221,7 +218,11 @@ void depsgraph_tag_to_component_opcode(const ID *id,
       *operation_code = OperationCode::NTREE_OUTPUT;
       break;
 
-    case ID_RECALC_PROVISION_26:
+    case ID_RECALC_HIERARCHY:
+      *component_type = NodeType::HIERARCHY;
+      *operation_code = OperationCode::HIERARCHY;
+      break;
+
     case ID_RECALC_PROVISION_27:
     case ID_RECALC_PROVISION_28:
     case ID_RECALC_PROVISION_29:
@@ -235,7 +236,7 @@ void depsgraph_tag_to_component_opcode(const ID *id,
 }
 
 void id_tag_update_ntree_special(
-    Main *bmain, Depsgraph *graph, ID *id, unsigned int flags, eUpdateSource update_source)
+    Main *bmain, Depsgraph *graph, ID *id, uint flags, eUpdateSource update_source)
 {
   bNodeTree *ntree = ntreeFromID(id);
   if (ntree == nullptr) {
@@ -418,13 +419,13 @@ string stringify_append_bit(const string &str, IDRecalcFlag tag)
   return result;
 }
 
-string stringify_update_bitfield(unsigned int flags)
+string stringify_update_bitfield(uint flags)
 {
   if (flags == 0) {
     return "LEGACY_0";
   }
   string result;
-  unsigned int current_flag = flags;
+  uint current_flag = flags;
   /* Special cases to avoid ALL flags form being split into
    * individual bits. */
   if ((current_flag & ID_RECALC_PSYS_ALL) == ID_RECALC_PSYS_ALL) {
@@ -460,7 +461,7 @@ int deg_recalc_flags_for_legacy_zero()
                            ID_RECALC_SOURCE | ID_RECALC_EDITORS);
 }
 
-int deg_recalc_flags_effective(Depsgraph *graph, unsigned int flags)
+int deg_recalc_flags_effective(Depsgraph *graph, uint flags)
 {
   if (graph != nullptr) {
     if (!graph->is_active) {
@@ -531,7 +532,7 @@ void graph_tag_ids_for_visible_update(Depsgraph *graph)
        * No need bother with it to tag or anything. */
       continue;
     }
-    unsigned int flags = 0;
+    uint flags = 0;
     if (!deg::deg_copy_on_write_is_expanded(id_node->id_cow)) {
       flags |= ID_RECALC_COPY_ON_WRITE;
       if (do_time) {
@@ -589,10 +590,11 @@ NodeType geometry_tag_to_component(const ID *id)
         case OB_FONT:
         case OB_LATTICE:
         case OB_MBALL:
-        case OB_GPENCIL:
+        case OB_GPENCIL_LEGACY:
         case OB_CURVES:
         case OB_POINTCLOUD:
         case OB_VOLUME:
+        case OB_GREASE_PENCIL:
           return NodeType::GEOMETRY;
         case OB_ARMATURE:
           return NodeType::EVAL_POSE;
@@ -613,19 +615,21 @@ NodeType geometry_tag_to_component(const ID *id)
       return NodeType::UNDEFINED;
     case ID_LP:
       return NodeType::PARAMETERS;
-    case ID_GD:
+    case ID_GD_LEGACY:
       return NodeType::GEOMETRY;
     case ID_PAL: /* Palettes */
       return NodeType::PARAMETERS;
     case ID_MSK:
       return NodeType::PARAMETERS;
+    case ID_GP:
+      return NodeType::GEOMETRY;
     default:
       break;
   }
   return NodeType::UNDEFINED;
 }
 
-void id_tag_update(Main *bmain, ID *id, unsigned int flags, eUpdateSource update_source)
+void id_tag_update(Main *bmain, ID *id, uint flags, eUpdateSource update_source)
 {
   graph_id_tag_update(bmain, nullptr, id, flags, update_source);
   for (deg::Depsgraph *depsgraph : deg::get_all_registered_graphs(bmain)) {
@@ -638,7 +642,7 @@ void id_tag_update(Main *bmain, ID *id, unsigned int flags, eUpdateSource update
 }
 
 void graph_id_tag_update(
-    Main *bmain, Depsgraph *graph, ID *id, unsigned int flags, eUpdateSource update_source)
+    Main *bmain, Depsgraph *graph, ID *id, uint flags, eUpdateSource update_source)
 {
   const int debug_flags = (graph != nullptr) ? DEG_debug_flags_get((::Depsgraph *)graph) : G.debug;
   if (graph != nullptr && graph->is_evaluating) {
@@ -676,7 +680,7 @@ void graph_id_tag_update(
   if (update_source == DEG_UPDATE_SOURCE_USER_EDIT) {
     id->recalc |= deg_recalc_flags_effective(graph, flags);
   }
-  unsigned int current_flag = flags;
+  uint current_flag = flags;
   while (current_flag != 0) {
     IDRecalcFlag tag = (IDRecalcFlag)(1 << bitscan_forward_clear_uint(&current_flag));
     graph_id_tag_update_single_flag(bmain, graph, id, id_node, tag, update_source);
@@ -753,7 +757,9 @@ const char *DEG_update_tag_as_string(IDRecalcFlag flag)
     case ID_RECALC_NTREE_OUTPUT:
       return "ID_RECALC_NTREE_OUTPUT";
 
-    case ID_RECALC_PROVISION_26:
+    case ID_RECALC_HIERARCHY:
+      return "ID_RECALC_HIERARCHY";
+
     case ID_RECALC_PROVISION_27:
     case ID_RECALC_PROVISION_28:
     case ID_RECALC_PROVISION_29:
@@ -770,12 +776,12 @@ const char *DEG_update_tag_as_string(IDRecalcFlag flag)
 
 /* Data-Based Tagging. */
 
-void DEG_id_tag_update(ID *id, unsigned int flags)
+void DEG_id_tag_update(ID *id, uint flags)
 {
   DEG_id_tag_update_ex(G.main, id, flags);
 }
 
-void DEG_id_tag_update_ex(Main *bmain, ID *id, unsigned int flags)
+void DEG_id_tag_update_ex(Main *bmain, ID *id, uint flags)
 {
   if (id == nullptr) {
     /* Ideally should not happen, but old depsgraph allowed this. */
@@ -784,23 +790,20 @@ void DEG_id_tag_update_ex(Main *bmain, ID *id, unsigned int flags)
   deg::id_tag_update(bmain, id, flags, deg::DEG_UPDATE_SOURCE_USER_EDIT);
 }
 
-void DEG_graph_id_tag_update(struct Main *bmain,
-                             struct Depsgraph *depsgraph,
-                             struct ID *id,
-                             unsigned int flags)
+void DEG_graph_id_tag_update(Main *bmain, Depsgraph *depsgraph, ID *id, uint flags)
 {
   deg::Depsgraph *graph = (deg::Depsgraph *)depsgraph;
   deg::graph_id_tag_update(bmain, graph, id, flags, deg::DEG_UPDATE_SOURCE_USER_EDIT);
 }
 
-void DEG_time_tag_update(struct Main *bmain)
+void DEG_time_tag_update(Main *bmain)
 {
   for (deg::Depsgraph *depsgraph : deg::get_all_registered_graphs(bmain)) {
     DEG_graph_time_tag_update(reinterpret_cast<::Depsgraph *>(depsgraph));
   }
 }
 
-void DEG_graph_time_tag_update(struct Depsgraph *depsgraph)
+void DEG_graph_time_tag_update(Depsgraph *depsgraph)
 {
   deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(depsgraph);
   deg_graph->tag_time_source();
@@ -816,7 +819,6 @@ void DEG_graph_id_type_tag(Depsgraph *depsgraph, short id_type)
     DEG_graph_id_type_tag(depsgraph, ID_LA);
     DEG_graph_id_type_tag(depsgraph, ID_WO);
     DEG_graph_id_type_tag(depsgraph, ID_SCE);
-    DEG_graph_id_type_tag(depsgraph, ID_SIM);
   }
   const int id_type_index = BKE_idtype_idcode_to_index(id_type);
   deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(depsgraph);

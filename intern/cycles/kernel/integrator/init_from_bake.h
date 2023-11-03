@@ -1,13 +1,15 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
 #include "kernel/camera/camera.h"
 
-#include "kernel/film/accumulate.h"
 #include "kernel/film/adaptive_sampling.h"
+#include "kernel/film/light_passes.h"
 
+#include "kernel/integrator/intersect_closest.h"
 #include "kernel/integrator/path_state.h"
 
 #include "kernel/sample/pattern.h"
@@ -16,18 +18,40 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* This helps with AA but it's not the real solution as it does not AA the geometry
- * but it's better than nothing, thus committed. */
-ccl_device_inline float bake_clamp_mirror_repeat(float u, float max)
+/* In order to perform anti-aliasing during baking, we jitter the input barycentric coordinates
+ * (which are for the center of the texel) within the texel.
+ * However, the baking code currently doesn't support going to neighboring triangle, so if the
+ * jittered location falls outside of the input triangle, we need to bring it back in somehow.
+ * Clamping is a bad choice here since it can produce noticeable artifacts at triangle edges,
+ * but properly uniformly sampling the intersection of triangle and texel would be very
+ * performance-heavy, so cheat by just trying different jittering until we end up inside the
+ * triangle.
+ * For triangles that are smaller than a texel, this might take too many attempts, so eventually
+ * we just give up and don't jitter in that case.
+ * This is not a particularly elegant solution, but it's probably the best we can do. */
+ccl_device_inline void bake_jitter_barycentric(ccl_private float &u,
+                                               ccl_private float &v,
+                                               float2 rand_filter,
+                                               const float dudx,
+                                               const float dudy,
+                                               const float dvdx,
+                                               const float dvdy)
 {
-  /* use mirror repeat (like opengl texture) so that if the barycentric
-   * coordinate goes past the end of the triangle it is not always clamped
-   * to the same value, gives ugly patterns */
-  u /= max;
-  float fu = floorf(u);
-  u = u - fu;
-
-  return ((((int)fu) & 1) ? 1.0f - u : u) * max;
+  for (int i = 0; i < 10; i++) {
+    /* Offset UV according to differentials. */
+    float jitterU = u + (rand_filter.x - 0.5f) * dudx + (rand_filter.y - 0.5f) * dudy;
+    float jitterV = v + (rand_filter.x - 0.5f) * dvdx + (rand_filter.y - 0.5f) * dvdy;
+    /* If this location is inside the triangle, return. */
+    if (jitterU > 0.0f && jitterV > 0.0f && jitterU + jitterV < 1.0f) {
+      u = jitterU;
+      v = jitterV;
+      return;
+    }
+    /* Retry with new jitter value. */
+    rand_filter = hash_float2_to_float2(rand_filter);
+  }
+  /* Retries exceeded, give up and just use center value. */
+  return;
 }
 
 /* Offset towards center of triangle to avoid ray-tracing precision issues. */
@@ -92,12 +116,12 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
   path_state_init(state, tile, x, y);
 
   /* Check whether the pixel has converged and should not be sampled anymore. */
-  if (!kernel_need_sample_pixel(kg, state, render_buffer)) {
+  if (!film_need_sample_pixel(kg, state, render_buffer)) {
     return false;
   }
 
   /* Always count the sample, even if the camera sample will reject the ray. */
-  const int sample = kernel_accum_sample(
+  const int sample = film_write_sample(
       kg, state, render_buffer, scheduled_sample, tile->sample_offset);
 
   /* Setup render buffers. */
@@ -112,8 +136,8 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
   int prim = __float_as_uint(primitive[1]);
   if (prim == -1) {
     /* Accumulate transparency for empty pixels. */
-    kernel_accum_transparent(kg, state, 0, 1.0f, buffer);
-    return false;
+    film_write_transparent(kg, state, 0, 1.0f, buffer);
+    return true;
   }
 
   prim += kernel_data.bake.tri_offset;
@@ -121,13 +145,8 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
   /* Random number generator. */
   const uint rng_hash = hash_uint(seed) ^ kernel_data.integrator.seed;
 
-  float filter_x, filter_y;
-  if (sample == 0) {
-    filter_x = filter_y = 0.5f;
-  }
-  else {
-    path_rng_2D(kg, rng_hash, sample, PRNG_FILTER_U, &filter_x, &filter_y);
-  }
+  const float2 rand_filter = (sample == 0) ? make_float2(0.5f, 0.5f) :
+                                             path_rng_2D(kg, rng_hash, sample, PRNG_FILTER);
 
   /* Initialize path state for path integration. */
   path_state_init_integrator(kg, state, sample, rng_hash);
@@ -149,16 +168,19 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
   }
 
   /* Sub-pixel offset. */
-  if (sample > 0) {
-    u = bake_clamp_mirror_repeat(u + dudx * (filter_x - 0.5f) + dudy * (filter_y - 0.5f), 1.0f);
-    v = bake_clamp_mirror_repeat(v + dvdx * (filter_x - 0.5f) + dvdy * (filter_y - 0.5f),
-                                 1.0f - u);
-  }
+  bake_jitter_barycentric(u, v, rand_filter, dudx, dudy, dvdx, dvdy);
 
   /* Convert from Blender to Cycles/Embree/OptiX barycentric convention. */
   const float tmp = u;
   u = v;
   v = 1.0f - tmp - v;
+
+  const float tmpdx = dudx;
+  const float tmpdy = dudy;
+  dudx = dvdx;
+  dudy = dvdy;
+  dvdx = -tmpdx - dvdx;
+  dvdy = -tmpdy - dvdy;
 
   /* Position and normal on triangle. */
   const int object = kernel_data.bake.object_index;
@@ -184,7 +206,7 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
     ray.time = 0.5f;
     ray.dP = differential_zero_compact();
     ray.dD = differential_zero_compact();
-    integrator_state_write_ray(kg, state, &ray);
+    integrator_state_write_ray(state, &ray);
 
     /* Setup next kernel to execute. */
     integrator_path_init(kg, state, DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
@@ -204,18 +226,61 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
 
     /* Fast path for position and normal passes not affected by shaders. */
     if (kernel_data.film.pass_position != PASS_UNUSED) {
-      kernel_write_pass_float3(buffer + kernel_data.film.pass_position, P);
+      film_write_pass_float3(buffer + kernel_data.film.pass_position, P);
       return true;
     }
     else if (kernel_data.film.pass_normal != PASS_UNUSED && !(shader_flags & SD_HAS_BUMP)) {
-      kernel_write_pass_float3(buffer + kernel_data.film.pass_normal, N);
+      film_write_pass_float3(buffer + kernel_data.film.pass_normal, N);
       return true;
     }
 
     /* Setup ray. */
     Ray ray ccl_optional_struct_init;
-    ray.P = P + N;
-    ray.D = -N;
+
+    if (kernel_data.bake.use_camera) {
+      float3 D = camera_direction_from_point(kg, P);
+
+      const float DN = dot(D, N);
+
+      /* Nudge camera direction, so that the faces facing away from the camera still have
+       * somewhat usable shading. (Otherwise, glossy faces would be simply black.)
+       *
+       * The surface normal offset affects smooth surfaces. Lower values will make
+       * smooth surfaces more faceted, but higher values may show up from the camera
+       * at grazing angles.
+       *
+       * This value can actually be pretty high before it's noticeably wrong. */
+      const float surface_normal_offset = 0.2f;
+
+      /* Keep the ray direction at least `surface_normal_offset` "above" the smooth normal. */
+      if (DN <= surface_normal_offset) {
+        D -= N * (DN - surface_normal_offset);
+        D = normalize(D);
+      }
+
+      /* On the backside, just lerp towards the surface normal for the ray direction,
+       * as DN goes from 0.0 to -1.0. */
+      if (DN <= 0.0f) {
+        D = normalize(mix(D, N, -DN));
+      }
+
+      /* We don't want to bake the back face, so make sure the ray direction never
+       * goes behind the geometry (flat) normal. This is a fail-safe, and should rarely happen. */
+      const float true_normal_epsilon = 0.00001f;
+
+      if (dot(D, Ng) <= true_normal_epsilon) {
+        D -= Ng * (dot(D, Ng) - true_normal_epsilon);
+        D = normalize(D);
+      }
+
+      ray.P = P + D;
+      ray.D = -D;
+    }
+    else {
+      ray.P = P + N;
+      ray.D = -N;
+    }
+
     ray.tmin = 0.0f;
     ray.tmax = FLT_MAX;
     ray.time = 0.5f;
@@ -236,7 +301,7 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
     ray.dD = differential_zero_compact();
 
     /* Write ray. */
-    integrator_state_write_ray(kg, state, &ray);
+    integrator_state_write_ray(state, &ray);
 
     /* Setup and write intersection. */
     Intersection isect ccl_optional_struct_init;
@@ -246,7 +311,7 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
     isect.v = v;
     isect.t = 1.0f;
     isect.type = PRIMITIVE_TRIANGLE;
-    integrator_state_write_isect(kg, state, &isect);
+    integrator_state_write_isect(state, &isect);
 
     /* Setup next kernel to execute. */
     const bool use_caustics = kernel_data.integrator.use_caustics &&
@@ -264,6 +329,8 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
     else {
       integrator_path_init_sorted(kg, state, DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE, shader_index);
     }
+
+    integrator_split_shadow_catcher(kg, state, &isect, render_buffer);
   }
 
   return true;

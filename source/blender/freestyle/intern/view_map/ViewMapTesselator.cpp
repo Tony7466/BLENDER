@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2012-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -19,7 +21,7 @@ NodeGroup *ViewMapTesselator::Tesselate(ViewMap *iViewMap)
   return Tesselate(viewedges.begin(), viewedges.end());
 }
 
-NodeGroup *ViewMapTesselator::Tesselate(WShape *UNUSED(iWShape))
+NodeGroup *ViewMapTesselator::Tesselate(WShape * /*iWShape*/)
 {
   return nullptr;
 }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -31,6 +32,21 @@ ccl_device float3 rec709_to_rgb(KernelGlobals kg, float3 rec709)
 ccl_device float linear_rgb_to_gray(KernelGlobals kg, float3 c)
 {
   return dot(c, float4_to_float3(kernel_data.film.rgb_to_y));
+}
+
+ccl_device_inline Spectrum rgb_to_spectrum(float3 rgb)
+{
+  return rgb;
+}
+
+ccl_device_inline float3 spectrum_to_rgb(Spectrum s)
+{
+  return s;
+}
+
+ccl_device float spectrum_to_gray(KernelGlobals kg, Spectrum c)
+{
+  return linear_rgb_to_gray(kg, spectrum_to_rgb(c));
 }
 
 CCL_NAMESPACE_END

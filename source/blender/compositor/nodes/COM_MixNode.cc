@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_MixNode.h"
 
@@ -21,7 +22,7 @@ void MixNode::convert_to_operations(NodeConverter &converter,
   NodeInput *color1Socket = this->get_input_socket(1);
   NodeInput *color2Socket = this->get_input_socket(2);
   NodeOutput *output_socket = this->get_output_socket(0);
-  bNode *editor_node = this->get_bnode();
+  const bNode *editor_node = this->get_bnode();
   bool use_alpha_premultiply = (this->get_bnode()->custom2 & 1) != 0;
   bool use_clamp = (this->get_bnode()->custom2 & 2) != 0;
 
@@ -56,6 +57,9 @@ void MixNode::convert_to_operations(NodeConverter &converter,
       break;
     case MA_RAMP_DIFF:
       convert_prog = new MixDifferenceOperation();
+      break;
+    case MA_RAMP_EXCLUSION:
+      convert_prog = new MixExclusionOperation();
       break;
     case MA_RAMP_SAT:
       convert_prog = new MixSaturationOperation();

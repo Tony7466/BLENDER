@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -26,7 +28,7 @@ BLI_INLINE void BLI_endian_switch_int16(short *val)
 }
 BLI_INLINE void BLI_endian_switch_uint16(unsigned short *val)
 {
-#if (defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 408)) /* gcc4.8+ only */
+#ifdef __GNUC__
   *val = __builtin_bswap16(*val);
 #else
   unsigned short tval = *val;

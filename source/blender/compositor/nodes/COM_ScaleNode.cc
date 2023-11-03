@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ScaleNode.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "COM_ScaleOperation.h"
 #include "COM_SetValueOperation.h"
 
@@ -17,7 +18,7 @@ ScaleNode::ScaleNode(bNode *editor_node) : Node(editor_node)
 void ScaleNode::convert_to_operations(NodeConverter &converter,
                                       const CompositorContext &context) const
 {
-  bNode *bnode = this->get_bnode();
+  const bNode *bnode = this->get_bnode();
 
   NodeInput *input_socket = this->get_input_socket(0);
   NodeInput *input_xsocket = this->get_input_socket(1);
@@ -25,7 +26,7 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
   NodeOutput *output_socket = this->get_output_socket(0);
 
   switch (bnode->custom1) {
-    case CMP_SCALE_RELATIVE: {
+    case CMP_NODE_SCALE_RELATIVE: {
       ScaleRelativeOperation *operation = new ScaleRelativeOperation();
       converter.add_operation(operation);
 
@@ -39,7 +40,7 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
 
       break;
     }
-    case CMP_SCALE_SCENEPERCENT: {
+    case CMP_NODE_SCALE_RENDER_PERCENT: {
       SetValueOperation *scale_factor_operation = new SetValueOperation();
       scale_factor_operation->set_value(context.get_render_percentage_as_factor());
       converter.add_operation(scale_factor_operation);
@@ -59,13 +60,14 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
 
       break;
     }
-    case CMP_SCALE_RENDERPERCENT: {
+    case CMP_NODE_SCALE_RENDER_SIZE: {
       const RenderData *rd = context.get_render_data();
       const float render_size_factor = context.get_render_percentage_as_factor();
       ScaleFixedSizeOperation *operation = new ScaleFixedSizeOperation();
       /* framing options */
-      operation->set_is_aspect((bnode->custom2 & CMP_SCALE_RENDERSIZE_FRAME_ASPECT) != 0);
-      operation->set_is_crop((bnode->custom2 & CMP_SCALE_RENDERSIZE_FRAME_CROP) != 0);
+      operation->set_is_aspect(
+          ELEM(bnode->custom2, CMP_NODE_SCALE_RENDER_SIZE_FIT, CMP_NODE_SCALE_RENDER_SIZE_CROP));
+      operation->set_is_crop(bnode->custom2 == CMP_NODE_SCALE_RENDER_SIZE_CROP);
       operation->set_offset(bnode->custom3, bnode->custom4);
       operation->set_new_width(rd->xsch * render_size_factor);
       operation->set_new_height(rd->ysch * render_size_factor);
@@ -79,7 +81,7 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
 
       break;
     }
-    case CMP_SCALE_ABSOLUTE: {
+    case CMP_NODE_SCALE_ABSOLUTE: {
       /* TODO: what is the use of this one.... perhaps some issues when the ui was updated... */
       ScaleAbsoluteOperation *operation = new ScaleAbsoluteOperation();
       converter.add_operation(operation);

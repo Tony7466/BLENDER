@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2002-2022 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(TIFF_EXTRA_ARGS
@@ -11,6 +13,7 @@ set(TIFF_EXTRA_ARGS
   -Djbig=OFF
   -Dzstd=OFF
   -Dwebp=OFF
+  -Dtiff-tests=OFF
 )
 
 ExternalProject_Add(external_tiff
@@ -25,6 +28,7 @@ ExternalProject_Add(external_tiff
 add_dependencies(
   external_tiff
   external_zlib
+  external_jpeg
 )
 if(WIN32)
   if(BUILD_MODE STREQUAL Release)

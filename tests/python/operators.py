@@ -1,9 +1,11 @@
+# SPDX-FileCopyrightText: 2020-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
 import os
 import sys
-from random import shuffle, seed
+from random import seed
 
 seed(0)
 
@@ -480,6 +482,12 @@ def main():
                                                     "use_center": True}, "VERT", {i for i in range(5)})],
         ),
 
+        # Triangulate Faces
+        SpecMeshTest(
+            "Triangulate Faces", "testCubeTriangulate", "expectedCubeTriangulate",
+            [OperatorSpecEditMode("quads_convert_to_tris", {}, "FACE", {i for i in range(6)})],
+        ),
+
         # Tris to Quads
         SpecMeshTest(
             "TrisToQuads", "testPlanesTrisToQuad", "expectedPlanesTrisToQuad",
@@ -543,7 +551,7 @@ def main():
         ),
 
 
-        # T87259 - test cases
+        # #87259 - test cases
         SpecMeshTest(
             "CubeEdgeUnsubdivide", "testCubeEdgeUnsubdivide", "expectedCubeEdgeUnsubdivide",
             [OperatorSpecEditMode("unsubdivide", {}, "EDGE", {i for i in range(6)})],

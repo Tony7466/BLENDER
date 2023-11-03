@@ -1,11 +1,10 @@
+# SPDX-FileCopyrightText: 2016 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2016 Blender Foundation. All rights reserved.
 
 # Too noisy for code we don't maintain.
 if(CMAKE_COMPILER_IS_GNUCC)
-  if(NOT "${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS "8.0")
-    add_cxx_flag("-Wno-cast-function-type")
-  endif()
+  add_cxx_flag("-Wno-cast-function-type")
 endif()
 
 set(INC

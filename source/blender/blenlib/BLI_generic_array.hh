@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -41,13 +43,9 @@ class GArray {
    * allowed to be null. This default constructor exists so `GArray` can be used in containers,
    * but the type should be supplied before doing anything else to the array.
    */
-  GArray(Allocator allocator = {}) noexcept : allocator_(allocator)
-  {
-  }
+  GArray(Allocator allocator = {}) noexcept : allocator_(allocator) {}
 
-  GArray(NoExceptConstructor, Allocator allocator = {}) noexcept : GArray(allocator)
-  {
-  }
+  GArray(NoExceptConstructor, Allocator allocator = {}) noexcept : GArray(allocator) {}
 
   /**
    * Create and allocate a new array, with elements default constructed
@@ -89,24 +87,20 @@ class GArray {
    */
   GArray(const GSpan span, Allocator allocator = {}) : GArray(span.type(), span.size(), allocator)
   {
-    if (span.data() != nullptr) {
-      BLI_assert(span.size() != 0);
-      /* Use copy assign rather than construct since the memory is already initialized. */
-      type_->copy_assign_n(span.data(), data_, size_);
-    }
+    /* Use copy assign rather than construct since the memory is already initialized. */
+    type_->copy_assign_n(span.data(), data_, size_);
   }
 
   /**
    * Create an array by copying values from another generic array.
    */
-  GArray(const GArray &other) : GArray(other.as_span(), other.allocator())
-  {
-  }
+  GArray(const GArray &other) : GArray(other.as_span(), other.allocator()) {}
 
   /**
    * Create an array by taking ownership of another array's data, clearing the data in the other.
    */
-  GArray(GArray &&other) : GArray(other.type(), other.data(), other.size(), other.allocator())
+  GArray(GArray &&other)
+      : type_(other.type_), data_(other.data_), size_(other.size_), allocator_(other.allocator_)
   {
     other.data_ = nullptr;
     other.size_ = 0;
@@ -231,7 +225,9 @@ class GArray {
         this->deallocate(new_data);
         throw;
       }
-      this->deallocate(data_);
+      if (this->data_) {
+        this->deallocate(data_);
+      }
       data_ = new_data;
     }
 
@@ -243,7 +239,7 @@ class GArray {
   {
     const int64_t item_size = type_->size();
     const int64_t alignment = type_->alignment();
-    return allocator_.allocate(static_cast<size_t>(size) * item_size, alignment, AT);
+    return allocator_.allocate(size_t(size) * item_size, alignment, AT);
   }
 
   void deallocate(void *ptr)

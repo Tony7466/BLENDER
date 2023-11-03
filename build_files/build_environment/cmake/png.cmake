@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2002-2022 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(PNG_EXTRA_ARGS
@@ -23,6 +25,14 @@ add_dependencies(
   external_png
   external_zlib
 )
+
+if(WIN32 AND BUILD_MODE STREQUAL Release)
+  ExternalProject_Add_Step(external_png after_install
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/png/include/ ${HARVEST_TARGET}/png/include/
+    COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/png/lib/libpng16_static${LIBEXT} ${HARVEST_TARGET}/png/lib/libpng${LIBEXT}
+    DEPENDEES install
+  )
+endif()
 
 if(WIN32 AND BUILD_MODE STREQUAL Debug)
   ExternalProject_Add_Step(external_png after_install

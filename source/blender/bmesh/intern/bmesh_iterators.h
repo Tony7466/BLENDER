@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -19,6 +21,14 @@
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_mempool.h"
+
+#ifdef __cplusplus
+#  include "BLI_bit_span.hh"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* these iterator over all elements of a specific
  * type in the mesh.
@@ -69,7 +79,7 @@ extern const char bm_iter_itype_htype_map[BM_ITYPE_MAX];
        BM_CHECK_TYPE_ELEM_ASSIGN(ele) = BM_iter_step(iter), (indexvar)++)
 
 /* a version of BM_ITER_MESH which keeps the next item in storage
- * so we can delete the current item, see bug T36923. */
+ * so we can delete the current item, see bug #36923. */
 #ifdef DEBUG
 #  define BM_ITER_MESH_MUTABLE(ele, ele_next, iter, bm, itype) \
     for (BM_CHECK_TYPE_ELEM_ASSIGN(ele) = BM_iter_new(iter, bm, itype, NULL); \
@@ -216,18 +226,22 @@ void *BMO_iter_as_arrayN(BMOpSlot slot_args[BMO_OP_MAX_SLOTS],
                          void **stack_array,
                          int stack_array_size);
 
+#ifdef __cplusplus
+
 int BM_iter_mesh_bitmap_from_filter(char itype,
                                     BMesh *bm,
-                                    uint *bitmap,
+                                    blender::MutableBitSpan bitmap,
                                     bool (*test_fn)(BMElem *, void *user_data),
                                     void *user_data);
 /**
  * Needed when we want to check faces, but return a loop aligned array.
  */
 int BM_iter_mesh_bitmap_from_filter_tessface(BMesh *bm,
-                                             uint *bitmap,
+                                             blender::MutableBitSpan bitmap,
                                              bool (*test_fn)(BMFace *, void *user_data),
                                              void *user_data);
+
+#endif
 
 /**
  * \brief Elem Iter Flag Count
@@ -272,6 +286,10 @@ BMITER_CB_DEF(edge_of_face);
 BMITER_CB_DEF(loop_of_face);
 
 #undef BMITER_CB_DEF
+
+#ifdef __cplusplus
+}
+#endif
 
 #include "intern/bmesh_iterators_inline.h"
 

@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
  * \ingroup bgpencil
  */
 
-#include "BLI_float4x4.hh"
-#include "BLI_math_vec_types.hh"
+#include "BLI_math_matrix_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
 
 #include "DNA_space_types.h" /* for FILE_MAX */
@@ -45,18 +46,18 @@ class GpencilIO {
   /* Used for sorting objects. */
   struct ObjectZ {
     float zdepth;
-    struct Object *ob;
+    Object *ob;
   };
 
   /** List of included objects. */
   blender::Vector<ObjectZ> ob_list_;
 
   /* Data for easy access. */
-  struct Depsgraph *depsgraph_;
-  struct bGPdata *gpd_;
-  struct Main *bmain_;
-  struct Scene *scene_;
-  struct RegionView3D *rv3d_;
+  Depsgraph *depsgraph_;
+  bGPdata *gpd_;
+  Main *bmain_;
+  Scene *scene_;
+  RegionView3D *rv3d_;
 
   int winx_, winy_;
   int render_x_, render_y_;
@@ -67,10 +68,10 @@ class GpencilIO {
 
   int cfra_;
 
-  float stroke_color_[4], fill_color_[4];
+  float4 stroke_color_, fill_color_;
 
   /* Geometry functions. */
-  /** Convert to screenspace. */
+  /** Convert to screen-space. */
   bool gpencil_3D_point_to_screen_space(const float3 co, float2 &r_co);
   /** Convert to render space. */
   float2 gpencil_3D_point_to_render_space(const float3 co);
@@ -78,7 +79,7 @@ class GpencilIO {
   float2 gpencil_3D_point_to_2D(const float3 co);
 
   /** Get radius of point. */
-  float stroke_point_radius_get(struct bGPDlayer *gpl, struct bGPDstroke *gps);
+  float stroke_point_radius_get(bGPDlayer *gpl, bGPDstroke *gps);
   /** Create a list of selected objects sorted from back to front */
   void create_object_list();
 
@@ -86,8 +87,8 @@ class GpencilIO {
 
   float stroke_average_opacity_get();
 
-  void prepare_layer_export_matrix(struct Object *ob, struct bGPDlayer *gpl);
-  void prepare_stroke_export_colors(struct Object *ob, struct bGPDstroke *gps);
+  void prepare_layer_export_matrix(Object *ob, bGPDlayer *gpl);
+  void prepare_stroke_export_colors(Object *ob, bGPDstroke *gps);
 
   /* Calculate selected strokes boundbox. */
   void selected_objects_boundbox_calc();
@@ -104,7 +105,7 @@ class GpencilIO {
   rctf select_boundbox_;
 
   /* Camera matrix. */
-  float persmat_[4][4];
+  float4x4 persmat_;
 };
 
 }  // namespace blender::io::gpencil

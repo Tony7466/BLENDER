@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -81,7 +83,10 @@ typedef struct ExportSettings {
 #ifdef __cplusplus
 }
 
-void bc_get_children(std::vector<Object *> &child_set, Object *ob, ViewLayer *view_layer);
+void bc_get_children(std::vector<Object *> &child_set,
+                     Object *ob,
+                     const Scene *scene,
+                     ViewLayer *view_layer);
 
 class BCExportSettings {
 
@@ -95,7 +100,6 @@ class BCExportSettings {
       : export_settings(*exportSettings),
         blender_context(blenderContext),
         global_transform(BCMatrix(exportSettings->global_forward, exportSettings->global_up))
-
   {
   }
 
@@ -271,7 +275,7 @@ class BCExportSettings {
 
   bool is_export_root(Object *ob)
   {
-    return bc_is_base_node(get_export_set(), ob, get_view_layer());
+    return bc_is_base_node(get_export_set(), ob, get_scene(), get_view_layer());
   }
 };
 

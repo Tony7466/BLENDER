@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2020-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Required by some nodes. */
 #pragma BLENDER_REQUIRE(common_hair_lib.glsl)
@@ -11,23 +14,6 @@
 #pragma BLENDER_REQUIRE(volumetric_lib.glsl)
 #pragma BLENDER_REQUIRE(renderpass_lib.glsl)
 
-#ifdef USE_ALPHA_BLEND
-/* Use dual source blending to be able to make a whole range of effects. */
-layout(location = 0, index = 0) out vec4 outRadiance;
-layout(location = 0, index = 1) out vec4 outTransmittance;
-
-#else /* OPAQUE */
-layout(location = 0) out vec4 outRadiance;
-layout(location = 1) out vec2 ssrNormals;
-layout(location = 2) out vec4 ssrData;
-layout(location = 3) out vec3 sssIrradiance;
-layout(location = 4) out float sssRadius;
-layout(location = 5) out vec3 sssAlbedo;
-
-#endif
-
-uniform float backgroundAlpha;
-
 #ifdef EEVEE_DISPLACEMENT_BUMP
 
 #  ifndef GPU_METAL
@@ -38,6 +24,11 @@ vec3 displacement_exec();
 /* Return new shading normal. */
 vec3 displacement_bump()
 {
+#  ifdef HAIR_SHADER
+  /* Not supported. */
+  return normalize(g_data.N);
+#  else
+
   vec2 dHd;
   dF_branch(dot(displacement_exec(), g_data.N + dF_impl(g_data.N)), dHd);
 
@@ -55,6 +46,7 @@ vec3 displacement_bump()
 
   float facing = FrontFacing ? 1.0 : -1.0;
   return normalize(abs(det) * g_data.N - facing * sign(det) * surfgrad);
+#  endif
 }
 
 #endif
@@ -68,7 +60,11 @@ void main()
 #endif
 
 #if defined(WORLD_BACKGROUND) || defined(PROBE_CAPTURE)
+
+/* Skip attribute load for shaders which do not require this part of the path. E.g. Cryptomatte. */
+#  ifndef NO_ATTRIB_LOAD
   attrib_load();
+#  endif
 #endif
 
   out_ssr_color = vec3(0.0);
@@ -152,8 +148,8 @@ void main()
 /* Only supported attrib for world/background shaders. */
 vec3 attr_load_orco(vec4 orco)
 {
-  /* Retain precision better than g_data.P (see T99128). */
-  return transform_direction(ViewMatrixInverse, normalize(viewPosition));
+  /* Retain precision better than g_data.P (see #99128). */
+  return -normal_view_to_world(viewCameraVec(viewPosition));
 }
 /* Unsupported. */
 vec4 attr_load_tangent(vec4 tangent)
@@ -179,6 +175,10 @@ float attr_load_temperature_post(float attr)
   return attr;
 }
 vec4 attr_load_color_post(vec4 attr)
+{
+  return attr;
+}
+vec4 attr_load_uniform(vec4 attr, const uint attr_hash)
 {
   return attr;
 }

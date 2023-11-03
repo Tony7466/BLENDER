@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_BilateralBlurOperation.h"
 
@@ -95,7 +96,7 @@ bool BilateralBlurOperation::determine_depending_area_of_interest(
   return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
-void BilateralBlurOperation::get_area_of_interest(const int UNUSED(input_idx),
+void BilateralBlurOperation::get_area_of_interest(const int /*input_idx*/,
                                                   const rcti &output_area,
                                                   rcti &r_input_area)
 {

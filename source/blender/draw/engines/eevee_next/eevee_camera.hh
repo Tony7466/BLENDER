@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -13,42 +14,52 @@ namespace blender::eevee {
 
 class Instance;
 
-static const float cubeface_mat[6][4][4] = {
-    /* Pos X */
-    {{0.0f, 0.0f, -1.0f, 0.0f},
-     {0.0f, -1.0f, 0.0f, 0.0f},
-     {-1.0f, 0.0f, 0.0f, 0.0f},
-     {0.0f, 0.0f, 0.0f, 1.0f}},
-    /* Neg X */
-    {{0.0f, 0.0f, 1.0f, 0.0f},
-     {0.0f, -1.0f, 0.0f, 0.0f},
-     {1.0f, 0.0f, 0.0f, 0.0f},
-     {0.0f, 0.0f, 0.0f, 1.0f}},
-    /* Pos Y */
-    {{1.0f, 0.0f, 0.0f, 0.0f},
-     {0.0f, 0.0f, -1.0f, 0.0f},
-     {0.0f, 1.0f, 0.0f, 0.0f},
-     {0.0f, 0.0f, 0.0f, 1.0f}},
-    /* Neg Y */
-    {{1.0f, 0.0f, 0.0f, 0.0f},
-     {0.0f, 0.0f, 1.0f, 0.0f},
-     {0.0f, -1.0f, 0.0f, 0.0f},
-     {0.0f, 0.0f, 0.0f, 1.0f}},
-    /* Pos Z */
-    {{1.0f, 0.0f, 0.0f, 0.0f},
-     {0.0f, -1.0f, 0.0f, 0.0f},
-     {0.0f, 0.0f, -1.0f, 0.0f},
-     {0.0f, 0.0f, 0.0f, 1.0f}},
-    /* Neg Z */
-    {{-1.0f, 0.0f, 0.0f, 0.0f},
-     {0.0f, -1.0f, 0.0f, 0.0f},
-     {0.0f, 0.0f, 1.0f, 0.0f},
-     {0.0f, 0.0f, 0.0f, 1.0f}},
-};
+inline float4x4 cubeface_mat(int face)
+{
+  switch (face) {
+    default:
+    case 0:
+      /* Pos X */
+      return float4x4({0.0f, 0.0f, -1.0f, 0.0f},
+                      {0.0f, -1.0f, 0.0f, 0.0f},
+                      {-1.0f, 0.0f, 0.0f, 0.0f},
+                      {0.0f, 0.0f, 0.0f, 1.0f});
+    case 1:
+      /* Neg X */
+      return float4x4({0.0f, 0.0f, 1.0f, 0.0f},
+                      {0.0f, -1.0f, 0.0f, 0.0f},
+                      {1.0f, 0.0f, 0.0f, 0.0f},
+                      {0.0f, 0.0f, 0.0f, 1.0f});
+    case 2:
+      /* Pos Y */
+      return float4x4({1.0f, 0.0f, 0.0f, 0.0f},
+                      {0.0f, 0.0f, -1.0f, 0.0f},
+                      {0.0f, 1.0f, 0.0f, 0.0f},
+                      {0.0f, 0.0f, 0.0f, 1.0f});
+    case 3:
+      /* Neg Y */
+      return float4x4({1.0f, 0.0f, 0.0f, 0.0f},
+                      {0.0f, 0.0f, 1.0f, 0.0f},
+                      {0.0f, -1.0f, 0.0f, 0.0f},
+                      {0.0f, 0.0f, 0.0f, 1.0f});
+    case 4:
+      /* Pos Z */
+      return float4x4({1.0f, 0.0f, 0.0f, 0.0f},
+                      {0.0f, -1.0f, 0.0f, 0.0f},
+                      {0.0f, 0.0f, -1.0f, 0.0f},
+                      {0.0f, 0.0f, 0.0f, 1.0f});
+    case 5:
+      /* Neg Z */
+      return float4x4({-1.0f, 0.0f, 0.0f, 0.0f},
+                      {0.0f, -1.0f, 0.0f, 0.0f},
+                      {0.0f, 0.0f, 1.0f, 0.0f},
+                      {0.0f, 0.0f, 0.0f, 1.0f});
+  }
+}
 
 inline void cubeface_winmat_get(float4x4 &winmat, float near, float far)
 {
-  /* Simple 90° FOV projection. */
+  /* Simple 90 degree FOV projection. */
   perspective_m4(winmat.ptr(), -near, near, -near, near, near, far);
 }
 
@@ -82,10 +93,18 @@ class Camera {
  private:
   Instance &inst_;
 
-  CameraDataBuf data_;
+  CameraData &data_;
+
+  struct {
+    float3 center;
+    float radius;
+  } bound_sphere;
+
+  float overscan_;
+  bool overscan_changed_;
 
  public:
-  Camera(Instance &inst) : inst_(inst){};
+  Camera(Instance &inst, CameraData &data) : inst_(inst), data_(data){};
   ~Camera(){};
 
   void init();
@@ -97,10 +116,6 @@ class Camera {
   const CameraData &data_get() const
   {
     BLI_assert(data_.initialized);
-    return data_;
-  }
-  const GPUUniformBuf *ubo_get() const
-  {
     return data_;
   }
   bool is_panoramic() const
@@ -117,12 +132,31 @@ class Camera {
   }
   const float3 &position() const
   {
-    return *reinterpret_cast<const float3 *>(data_.viewinv[3]);
+    return data_.viewinv.location();
   }
   const float3 &forward() const
   {
-    return *reinterpret_cast<const float3 *>(data_.viewinv[2]);
+    return data_.viewinv.z_axis();
   }
+  const float3 &bound_center() const
+  {
+    return bound_sphere.center;
+  }
+  const float &bound_radius() const
+  {
+    return bound_sphere.radius;
+  }
+  float overscan() const
+  {
+    return overscan_;
+  }
+  bool overscan_changed() const
+  {
+    return overscan_changed_;
+  }
+
+ private:
+  void update_bounds();
 };
 
 /** \} */

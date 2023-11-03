@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2014 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2014 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -46,13 +47,13 @@ bool data_transfer_layersmapping_vgroups(struct ListBase *r_map,
                                          bool use_delete,
                                          struct Object *ob_src,
                                          struct Object *ob_dst,
-                                         struct CustomData *cd_src,
+                                         const struct CustomData *cd_src,
                                          struct CustomData *cd_dst,
                                          bool use_dupref_dst,
                                          int fromlayers,
                                          int tolayers);
 
-/* Defined in customdata.c */
+/* Defined in `customdata.cc`. */
 
 /**
  * Normals are special, we need to take care of source & destination spaces.

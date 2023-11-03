@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/cpu/device_impl.h"
 
@@ -14,7 +15,11 @@
 #endif
 
 #ifdef WITH_EMBREE
-#  include <embree3/rtcore.h>
+#  if EMBREE_MAJOR_VERSION >= 4
+#    include <embree4/rtcore.h>
+#  else
+#    include <embree3/rtcore.h>
+#  endif
 #endif
 
 #include "device/cpu/kernel.h"
@@ -28,7 +33,6 @@
 #include "kernel/device/cpu/kernel.h"
 #include "kernel/types.h"
 
-#include "kernel/osl/shader.h"
 #include "kernel/osl/globals.h"
 // clang-format on
 
@@ -39,6 +43,7 @@
 #include "util/debug.h"
 #include "util/foreach.h"
 #include "util/function.h"
+#include "util/guiding.h"
 #include "util/log.h"
 #include "util/map.h"
 #include "util/openimagedenoise.h"
@@ -80,7 +85,7 @@ CPUDevice::~CPUDevice()
   texture_info.free();
 }
 
-BVHLayoutMask CPUDevice::get_bvh_layout_mask() const
+BVHLayoutMask CPUDevice::get_bvh_layout_mask(uint /*kernel_features*/) const
 {
   BVHLayoutMask bvh_layout_mask = BVH_LAYOUT_BVH2;
 #ifdef WITH_EMBREE
@@ -261,7 +266,10 @@ void CPUDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
 #ifdef WITH_EMBREE
   if (bvh->params.bvh_layout == BVH_LAYOUT_EMBREE ||
       bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE ||
-      bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE) {
+      bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE ||
+      bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE ||
+      bvh->params.bvh_layout == BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE)
+  {
     BVHEmbree *const bvh_embree = static_cast<BVHEmbree *>(bvh);
     if (refit) {
       bvh_embree->refit(progress);
@@ -277,6 +285,23 @@ void CPUDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
   else
 #endif
     Device::build_bvh(bvh, progress, refit);
+}
+
+void *CPUDevice::get_guiding_device() const
+{
+#ifdef WITH_PATH_GUIDING
+  if (!guiding_device) {
+    if (guiding_device_type() == 8) {
+      guiding_device = make_unique<openpgl::cpp::Device>(PGL_DEVICE_TYPE_CPU_8);
+    }
+    else if (guiding_device_type() == 4) {
+      guiding_device = make_unique<openpgl::cpp::Device>(PGL_DEVICE_TYPE_CPU_4);
+    }
+  }
+  return guiding_device.get();
+#else
+  return nullptr;
+#endif
 }
 
 void CPUDevice::get_cpu_kernel_thread_globals(

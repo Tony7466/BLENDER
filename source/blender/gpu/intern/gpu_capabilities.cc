@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -31,6 +32,11 @@ using namespace blender::gpu;
 int GPU_max_texture_size()
 {
   return GCaps.max_texture_size;
+}
+
+int GPU_max_texture_3d_size()
+{
+  return GCaps.max_texture_3d_size;
 }
 
 int GPU_texture_size_with_limit(int res)
@@ -115,6 +121,11 @@ const char *GPU_extension_get(int i)
   return GCaps.extension_get ? GCaps.extension_get(i) : "\0";
 }
 
+int GPU_max_samplers()
+{
+  return GCaps.max_samplers;
+}
+
 bool GPU_mip_render_workaround()
 {
   return GCaps.mip_render_workaround;
@@ -151,14 +162,29 @@ bool GPU_compute_shader_support()
   return GCaps.compute_shader_support;
 }
 
-bool GPU_shader_storage_buffer_objects_support()
+bool GPU_geometry_shader_support()
 {
-  return GCaps.shader_storage_buffer_objects_support;
+  return GCaps.geometry_shader_support;
 }
 
 bool GPU_shader_image_load_store_support()
 {
   return GCaps.shader_image_load_store_support;
+}
+
+bool GPU_shader_draw_parameters_support()
+{
+  return GCaps.shader_draw_parameters_support;
+}
+
+bool GPU_hdr_support()
+{
+  return GCaps.hdr_viewport_support;
+}
+
+bool GPU_texture_view_support()
+{
+  return GCaps.texture_view_support;
 }
 
 int GPU_max_shader_storage_buffer_bindings()
@@ -169,6 +195,21 @@ int GPU_max_shader_storage_buffer_bindings()
 int GPU_max_compute_shader_storage_blocks()
 {
   return GCaps.max_compute_shader_storage_blocks;
+}
+
+int GPU_minimum_per_vertex_stride()
+{
+  return GCaps.minimum_per_vertex_stride;
+}
+
+bool GPU_transform_feedback_support()
+{
+  return GCaps.transform_feedback_support;
+}
+
+size_t GPU_max_storage_buffer_size()
+{
+  return GCaps.max_storage_buffer_size;
 }
 
 /** \} */

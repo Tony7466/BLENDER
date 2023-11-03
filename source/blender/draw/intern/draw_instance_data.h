@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -15,6 +16,10 @@
 #define MAX_INSTANCE_DATA_SIZE 64 /* Can be adjusted for more */
 
 #define DRW_BUFFER_VERTS_CHUNK 128
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct GHash;
 struct GPUUniformAttrList;
@@ -106,4 +111,8 @@ struct GHash *DRW_uniform_attrs_pool_new(void);
 void DRW_uniform_attrs_pool_flush_all(struct GHash *table);
 void DRW_uniform_attrs_pool_clear_all(struct GHash *table);
 struct DRWSparseUniformBuf *DRW_uniform_attrs_pool_find_ubo(struct GHash *table,
-                                                            struct GPUUniformAttrList *key);
+                                                            const struct GPUUniformAttrList *key);
+
+#ifdef __cplusplus
+}
+#endif

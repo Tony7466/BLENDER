@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+#
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2011-2022 Blender Foundation
 
 set(INC
   ../..
@@ -10,21 +11,19 @@ set(INC_SYS
 )
 
 set(SRC
-  background.cpp
-  bsdf_diffuse_ramp.cpp
-  bsdf_phong_ramp.cpp
-  emissive.cpp
-  bssrdf.cpp
   closures.cpp
+  globals.cpp
   services.cpp
-  shader.cpp
 )
 
 set(HEADER_SRC
-  closures.h
+  closures_setup.h
+  closures_template.h
+  compat.h
   globals.h
+  osl.h
   services.h
-  shader.h
+  types.h
 )
 
 set(LIB

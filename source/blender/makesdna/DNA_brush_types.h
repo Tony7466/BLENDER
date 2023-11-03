@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -10,11 +11,8 @@
 #include "DNA_ID.h"
 #include "DNA_brush_enums.h"
 #include "DNA_curve_types.h"
+#include "DNA_defs.h"
 #include "DNA_texture_types.h" /* for MTex */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct CurveMapping;
 struct Image;
@@ -58,11 +56,10 @@ typedef struct BrushGpencilSettings {
 
   /** Factor for transparency. */
   float fill_threshold;
-  /** Number of pixel to consider the leak is too small (x 2). */
-  short fill_leak;
+  char _pad2[2];
   /* Type of caps: eGPDstroke_Caps. */
   int8_t caps_type;
-  char _pad;
+  char _pad[5];
 
   int flag2;
 
@@ -70,6 +67,8 @@ typedef struct BrushGpencilSettings {
   int fill_simplylvl;
   /** Type of control lines drawing mode. */
   int fill_draw_mode;
+  /** Type of gap filling extension to use. */
+  int fill_extend_mode;
   /** Icon identifier. */
   int icon_id;
 
@@ -91,7 +90,7 @@ typedef struct BrushGpencilSettings {
   int flag;
 
   /** gradient control along y for color */
-  float hardeness;
+  float hardness;
   /** factor xy of shape for dots gradients */
   float aspect_ratio[2];
   /** Simplify adaptive factor */
@@ -132,9 +131,15 @@ typedef struct BrushGpencilSettings {
   struct CurveMapping *curve_rand_saturation;
   struct CurveMapping *curve_rand_value;
 
+  /** Factor for external line thickness conversion to outline. */
+  float outline_fac;
+  char _pad1[4];
+
   /* optional link of material to replace default in context */
   /** Material. */
   struct Material *material;
+  /** Material Alternative for secondary operations. */
+  struct Material *material_alt;
 } BrushGpencilSettings;
 
 typedef struct BrushCurvesSculptSettings {
@@ -154,10 +159,13 @@ typedef struct BrushCurvesSculptSettings {
   int density_add_attempts;
   /** #eBrushCurvesSculptDensityMode. */
   uint8_t density_mode;
-  char _pad[7];
+  char _pad[3];
+  struct CurveMapping *curve_parameter_falloff;
 } BrushCurvesSculptSettings;
 
 typedef struct Brush {
+  DNA_DEFINE_CXX_METHODS(Brush)
+
   ID id;
 
   struct BrushClone clone;
@@ -381,6 +389,11 @@ typedef struct Brush {
 
   struct BrushGpencilSettings *gpencil_settings;
   struct BrushCurvesSculptSettings *curves_sculpt_settings;
+
+  int automasking_cavity_blur_steps;
+  float automasking_cavity_factor;
+
+  struct CurveMapping *automasking_cavity_curve;
 } Brush;
 
 /* Struct to hold palette colors for sorting. */
@@ -424,7 +437,3 @@ typedef struct PaintCurve {
   /** Index where next point will be added. */
   int add_index;
 } PaintCurve;
-
-#ifdef __cplusplus
-}
-#endif

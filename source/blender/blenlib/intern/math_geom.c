@@ -1,14 +1,20 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
  */
 
+#include "BLI_math_base.h"
+#include "BLI_math_geom.h"
+
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
 #include "BLI_math_bits.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLI_strict_flags.h"
@@ -68,7 +74,7 @@ float normal_quad_v3(
   return normalize_v3(n);
 }
 
-float normal_poly_v3(float n[3], const float verts[][3], unsigned int nr)
+float normal_poly_v3(float n[3], const float verts[][3], uint nr)
 {
   cross_poly_v3(n, verts, nr);
   return normalize_v3(n);
@@ -122,14 +128,14 @@ float area_tri_signed_v3(const float v1[3],
   return area;
 }
 
-float area_poly_v3(const float verts[][3], unsigned int nr)
+float area_poly_v3(const float verts[][3], uint nr)
 {
   float n[3];
   cross_poly_v3(n, verts, nr);
   return len_v3(n) * 0.5f;
 }
 
-float area_squared_poly_v3(const float verts[][3], unsigned int nr)
+float area_squared_poly_v3(const float verts[][3], uint nr)
 {
   float n[3];
 
@@ -138,9 +144,9 @@ float area_squared_poly_v3(const float verts[][3], unsigned int nr)
   return len_squared_v3(n);
 }
 
-float cross_poly_v2(const float verts[][2], unsigned int nr)
+float cross_poly_v2(const float verts[][2], uint nr)
 {
-  unsigned int a;
+  uint a;
   float cross;
   const float *co_curr, *co_prev;
 
@@ -157,11 +163,11 @@ float cross_poly_v2(const float verts[][2], unsigned int nr)
   return cross;
 }
 
-void cross_poly_v3(float n[3], const float verts[][3], unsigned int nr)
+void cross_poly_v3(float n[3], const float verts[][3], uint nr)
 {
   const float *v_prev = verts[nr - 1];
   const float *v_curr = verts[0];
-  unsigned int i;
+  uint i;
 
   zero_v3(n);
 
@@ -171,17 +177,17 @@ void cross_poly_v3(float n[3], const float verts[][3], unsigned int nr)
   }
 }
 
-float area_poly_v2(const float verts[][2], unsigned int nr)
+float area_poly_v2(const float verts[][2], uint nr)
 {
   return fabsf(0.5f * cross_poly_v2(verts, nr));
 }
 
-float area_poly_signed_v2(const float verts[][2], unsigned int nr)
+float area_poly_signed_v2(const float verts[][2], uint nr)
 {
   return (0.5f * cross_poly_v2(verts, nr));
 }
 
-float area_squared_poly_v2(const float verts[][2], unsigned int nr)
+float area_squared_poly_v2(const float verts[][2], uint nr)
 {
   float area = area_poly_signed_v2(verts, nr);
   return area * area;
@@ -527,7 +533,7 @@ float dist_signed_squared_to_corner_v3v3v3(const float p[3],
 
   cross_v3_v3v3(axis, dir_a, dir_b);
 
-  if ((len_squared_v3(axis) < FLT_EPSILON)) {
+  if (len_squared_v3(axis) < FLT_EPSILON) {
     copy_v3_v3(axis, axis_ref);
   }
   else if (dot_v3v3(axis, axis_ref) < 0.0f) {
@@ -794,14 +800,15 @@ void dist_squared_to_projected_aabb_precalc(struct DistProjectedAABBPrecalc *pre
   float projmat_trans[4][4];
   transpose_m4_m4(projmat_trans, projmat);
   if (!isect_plane_plane_plane_v3(
-          projmat_trans[0], projmat_trans[1], projmat_trans[3], precalc->ray_origin)) {
+          projmat_trans[0], projmat_trans[1], projmat_trans[3], precalc->ray_origin))
+  {
     /* Orthographic projection. */
     isect_plane_plane_v3(px, py, precalc->ray_origin, precalc->ray_direction);
   }
   else {
     /* Perspective projection. */
     cross_v3_v3v3(precalc->ray_direction, py, px);
-    //normalize_v3(precalc->ray_direction);
+    // normalize_v3(precalc->ray_direction);
   }
 #else
   if (!isect_plane_plane_v3(px, py, precalc->ray_origin, precalc->ray_direction)) {
@@ -1225,7 +1232,7 @@ int isect_seg_seg_v2_point_ex(const float v0[2],
 
       /* When 'd' approaches zero, float precision lets non-overlapping co-linear segments
        * detect as an intersection. So re-calculate 'v' to ensure the point overlaps both.
-       * see T45123 */
+       * see #45123 */
 
       /* inline since we have most vars already */
 #if 0
@@ -1458,18 +1465,19 @@ int isect_line_sphere_v2(const float l1[2],
 
 bool isect_point_poly_v2(const float pt[2],
                          const float verts[][2],
-                         const unsigned int nr,
+                         const uint nr,
                          const bool UNUSED(use_holes))
 {
   /* Keep in sync with #isect_point_poly_v2_int. */
 
-  unsigned int i, j;
+  uint i, j;
   bool isect = false;
   for (i = 0, j = nr - 1; i < nr; j = i++) {
     if (((verts[i][1] > pt[1]) != (verts[j][1] > pt[1])) &&
         (pt[0] <
          (verts[j][0] - verts[i][0]) * (pt[1] - verts[i][1]) / (verts[j][1] - verts[i][1]) +
-             verts[i][0])) {
+             verts[i][0]))
+    {
       isect = !isect;
     }
   }
@@ -1477,18 +1485,19 @@ bool isect_point_poly_v2(const float pt[2],
 }
 bool isect_point_poly_v2_int(const int pt[2],
                              const int verts[][2],
-                             const unsigned int nr,
+                             const uint nr,
                              const bool UNUSED(use_holes))
 {
   /* Keep in sync with #isect_point_poly_v2. */
 
-  unsigned int i, j;
+  uint i, j;
   bool isect = false;
   for (i = 0, j = nr - 1; i < nr; j = i++) {
     if (((verts[i][1] > pt[1]) != (verts[j][1] > pt[1])) &&
         (pt[0] <
          (verts[j][0] - verts[i][0]) * (pt[1] - verts[i][1]) / (verts[j][1] - verts[i][1]) +
-             verts[i][0])) {
+             verts[i][0]))
+    {
       isect = !isect;
     }
   }
@@ -1667,8 +1676,8 @@ bool isect_ray_tri_v3(const float ray_origin[3],
                       float *r_lambda,
                       float r_uv[2])
 {
-  /* NOTE(campbell): these values were 0.000001 in 2.4x but for projection snapping on
-   * a human head (1BU == 1m), subsurf level 2, this gave many errors. */
+  /* NOTE(@ideasman42): these values were 0.000001 in 2.4x but for projection snapping on
+   * a human head `(1BU == 1m)`, subdivision-surface level 2, this gave many errors. */
   const float epsilon = 0.00000001f;
   float p[3], s[3], e1[3], e2[3], q[3];
   float a, f, u, v;
@@ -1867,9 +1876,10 @@ bool isect_ray_tri_watertight_v3(const float ray_origin[3],
    * otherwise we won't match any of the other intersect functions here...
    * which would be confusing. */
 #if 0
-        || (sign_T > *r_lambda * xor_signmask(det, sign_mask))
+      || (sign_T > *r_lambda * xor_signmask(det, sign_mask))
 #endif
-  ) {
+  )
+  {
     return false;
   }
 
@@ -2208,7 +2218,7 @@ bool isect_planes_v3_fn(
         int i_test;
         for (i_test = 0; i_test < planes_len; i_test++) {
           const float *np_test = planes[i_test];
-          if (((dot_v3v3(np_test, co_test) + np_test[3]) > eps_isect)) {
+          if ((dot_v3v3(np_test, co_test) + np_test[3]) > eps_isect) {
             /* For low epsilon values the point could intersect its own plane. */
             if (!ELEM(i_test, i, j, k)) {
               break;
@@ -2259,7 +2269,8 @@ bool isect_tri_tri_v3_ex(const float tri_a[3][3],
   }
 
   if ((side[1][0] && side[1][1] && side[1][2]) && (side[1][0] < 0.0f) == (side[1][1] < 0.0f) &&
-      (side[1][0] < 0.0f) == (side[1][2] < 0.0f)) {
+      (side[1][0] < 0.0f) == (side[1][2] < 0.0f))
+  {
     /* All vertices of the 2nd triangle are positioned on the same side to the
      * plane defined by the 1st triangle. */
     return false;
@@ -2274,7 +2285,8 @@ bool isect_tri_tri_v3_ex(const float tri_a[3][3],
   side[0][2] = (float)(dot_v3db_v3fl(plane_b, tri_a[2]) + plane_b[3]);
 
   if ((side[0][0] && side[0][1] && side[0][2]) && (side[0][0] < 0.0f) == (side[0][1] < 0.0f) &&
-      (side[0][0] < 0.0f) == (side[0][2] < 0.0f)) {
+      (side[0][0] < 0.0f) == (side[0][2] < 0.0f))
+  {
     /* All vertices of the 1st triangle are positioned on the same side to the
      * plane defined by the 2nd triangle. */
     return false;
@@ -2696,7 +2708,7 @@ bool isect_sweeping_sphere_tri_v3(const float p1[3],
     z = x + y - (a * c - b * b);
 
     if (z <= 0.0f && (x >= 0.0f && y >= 0.0f)) {
-      //(((unsigned int)z)& ~(((unsigned int)x)|((unsigned int)y))) & 0x80000000) {
+      //(((uint)z)& ~(((uint)x)|((uint)y))) & 0x80000000) {
       *r_lambda = t0;
       copy_v3_v3(ipoint, point);
       return true;
@@ -2748,7 +2760,7 @@ bool isect_sweeping_sphere_tri_v3(const float p1[3],
   edotv = dot_v3v3(e1, vel);
   edotbv = dot_v3v3(e1, bv);
 
-  a = elen2 * (-dot_v3v3(vel, vel)) + edotv * edotv;
+  a = elen2 * -dot_v3v3(vel, vel) + edotv * edotv;
   b = 2.0f * (elen2 * dot_v3v3(vel, bv) - edotv * edotbv);
   c = elen2 * (radius2 - dot_v3v3(bv, bv)) + edotbv * edotbv;
 
@@ -2770,7 +2782,7 @@ bool isect_sweeping_sphere_tri_v3(const float p1[3],
   edotv = dot_v3v3(e2, vel);
   edotbv = dot_v3v3(e2, bv);
 
-  a = elen2 * (-dot_v3v3(vel, vel)) + edotv * edotv;
+  a = elen2 * -dot_v3v3(vel, vel) + edotv * edotv;
   b = 2.0f * (elen2 * dot_v3v3(vel, bv) - edotv * edotbv);
   c = elen2 * (radius2 - dot_v3v3(bv, bv)) + edotbv * edotbv;
 
@@ -2797,7 +2809,7 @@ bool isect_sweeping_sphere_tri_v3(const float p1[3],
   edotv = dot_v3v3(e3, vel);
   edotbv = dot_v3v3(e3, bv);
 
-  a = elen2 * (-dot_v3v3(vel, vel)) + edotv * edotv;
+  a = elen2 * -dot_v3v3(vel, vel) + edotv * edotv;
   b = 2.0f * (elen2 * dot_v3v3(vel, bv) - edotv * edotbv);
   c = elen2 * (radius2 - dot_v3v3(bv, bv)) + edotbv * edotbv;
 
@@ -2887,7 +2899,7 @@ int isect_line_line_epsilon_v3(const float v1[3],
   d = dot_v3v3(c, ab);
   div = dot_v3v3(ab, ab);
 
-  /* important not to use an epsilon here, see: T45919 */
+  /* important not to use an epsilon here, see: #45919 */
   /* test zero length line */
   if (UNLIKELY(div == 0.0f)) {
     return 0;
@@ -2962,7 +2974,7 @@ bool isect_line_line_strict_v3(const float v1[3],
   d = dot_v3v3(c, ab);
   div = dot_v3v3(ab, ab);
 
-  /* important not to use an epsilon here, see: T45919 */
+  /* important not to use an epsilon here, see: #45919 */
   /* test zero length line */
   if (UNLIKELY(div == 0.0f)) {
     return false;
@@ -3666,7 +3678,8 @@ int barycentric_inside_triangle_v2(const float w[3])
     return 1;
   }
   if (IN_RANGE_INCL(w[0], 0.0f, 1.0f) && IN_RANGE_INCL(w[1], 0.0f, 1.0f) &&
-      IN_RANGE_INCL(w[2], 0.0f, 1.0f)) {
+      IN_RANGE_INCL(w[2], 0.0f, 1.0f))
+  {
     return 2;
   }
 
@@ -3773,7 +3786,7 @@ void barycentric_weights_v2_quad(const float v1[2],
                                  const float co[2],
                                  float w[4])
 {
-  /* NOTE(campbell): fabsf() here is not needed for convex quads
+  /* NOTE(@ideasman42): fabsf() here is not needed for convex quads
    * (and not used in #interp_weights_poly_v2).
    * But in the case of concave/bow-tie quads for the mask rasterizer it
    * gives unreliable results without adding `absf()`. If this becomes an issue for more general
@@ -4034,7 +4047,7 @@ static float mean_value_half_tan_v3(const struct Float3_Len *d_curr,
   float cross[3];
   cross_v3_v3v3(cross, d_curr->dir, d_next->dir);
   const float area = len_v3(cross);
-  /* Compare against zero since 'FLT_EPSILON' can be too large, see: T73348. */
+  /* Compare against zero since 'FLT_EPSILON' can be too large, see: #73348. */
   if (LIKELY(area != 0.0f)) {
     const float dot = dot_v3v3(d_curr->dir, d_next->dir);
     const float len = d_curr->len * d_next->len;
@@ -4060,7 +4073,7 @@ static double mean_value_half_tan_v2_db(const struct Double2_Len *d_curr,
 {
   /* Different from the 3d version but still correct. */
   const double area = cross_v2v2_db(d_curr->dir, d_next->dir);
-  /* Compare against zero since 'FLT_EPSILON' can be too large, see: T73348. */
+  /* Compare against zero since 'FLT_EPSILON' can be too large, see: #73348. */
   if (LIKELY(area != 0.0)) {
     const double dot = dot_v2v2_db(d_curr->dir, d_next->dir);
     const double len = d_curr->len * d_next->len;
@@ -4914,39 +4927,59 @@ void box_minmax_bounds_m4(float min[3], float max[3], float boundbox[2][3], floa
 
 /********************************** Mapping **********************************/
 
-void map_to_tube(float *r_u, float *r_v, const float x, const float y, const float z)
+static float snap_coordinate(float u)
 {
-  float len;
-
-  *r_v = (z + 1.0f) / 2.0f;
-
-  len = sqrtf(x * x + y * y);
-  if (len > 0.0f) {
-    *r_u = (1.0f - (atan2f(x / len, y / len) / (float)M_PI)) / 2.0f;
+  /* Adjust a coordinate value `u` to obtain a value inside the (closed) unit interval.
+   *   i.e. 0.0 <= snap_coordinate(u) <= 1.0.
+   * Due to round-off errors, it is possible that the value of `u` may be close to the boundary of
+   * the unit interval, but not exactly on it. In order to handle these cases, `snap_coordinate`
+   * checks whether `u` is within `epsilon` of the boundary, and if so, it snaps the return value
+   * to the boundary. */
+  if (u < 0.0f) {
+    u += 1.0f; /* Get back into the unit interval. */
   }
-  else {
-    *r_v = *r_u = 0.0f; /* to avoid un-initialized variables */
+  BLI_assert(0.0f <= u);
+  BLI_assert(u <= 1.0f);
+  const float epsilon = 0.25f / 65536.0f; /* i.e. Quarter of a texel on a 65536 x 65536 texture. */
+  if (u < epsilon) {
+    return 0.0f; /* `u` is close to 0, just return 0. */
   }
+  if (1.0f - epsilon < u) {
+    return 1.0f; /* `u` is close to 1, just return 1. */
+  }
+  return u;
 }
 
-void map_to_sphere(float *r_u, float *r_v, const float x, const float y, const float z)
+bool map_to_tube(float *r_u, float *r_v, const float x, const float y, const float z)
 {
-  float len;
-
-  len = sqrtf(x * x + y * y + z * z);
-  if (len > 0.0f) {
-    if (UNLIKELY(x == 0.0f && y == 0.0f)) {
-      *r_u = 0.0f; /* Otherwise domain error. */
-    }
-    else {
-      *r_u = (1.0f - atan2f(x, y) / (float)M_PI) / 2.0f;
-    }
-
-    *r_v = 1.0f - saacos(z / len) / (float)M_PI;
+  bool regular = true;
+  if (x * x + y * y < 1e-6f * 1e-6f) {
+    regular = false; /* We're too close to the cylinder's axis. */
+    *r_u = 0.5f;
   }
   else {
-    *r_v = *r_u = 0.0f; /* to avoid un-initialized variables */
+    /* The "Regular" case, just compute the coordinate. */
+    *r_u = snap_coordinate(atan2f(x, -y) / (float)(2.0f * M_PI));
   }
+  *r_v = (z + 1.0f) / 2.0f;
+  return regular;
+}
+
+bool map_to_sphere(float *r_u, float *r_v, const float x, const float y, const float z)
+{
+  bool regular = true;
+  const float epsilon = 0.25f / 65536.0f; /* i.e. Quarter of a texel on a 65536 x 65536 texture. */
+  const float len_xy = sqrtf(x * x + y * y);
+  if (len_xy <= fabsf(z) * epsilon) {
+    regular = false; /* We're on the line that runs through the north and south poles. */
+    *r_u = 0.5f;
+  }
+  else {
+    /* The "Regular" case, just compute the coordinate. */
+    *r_u = snap_coordinate(atan2f(x, -y) / (float)(2.0f * M_PI));
+  }
+  *r_v = snap_coordinate(atan2f(len_xy, -z) / (float)M_PI);
+  return regular;
 }
 
 void map_to_plane_v2_v3v3(float r_co[2], const float co[3], const float no[3])
@@ -5218,9 +5251,9 @@ void vcloud_estimate_transform_v3(const int list_size,
       /* build 'projection' matrix */
       for (a = 0; a < list_size; a++) {
         sub_v3_v3v3(va, rpos[a], accu_rcom);
-        /* mul_v3_fl(va, bp->mass);  mass needs re-normalization here ?? */
+        // mul_v3_fl(va, bp->mass); /* Mass needs re-normalization here? */
         sub_v3_v3v3(vb, pos[a], accu_com);
-        /* mul_v3_fl(va, rp->mass); */
+        // mul_v3_fl(va, rp->mass);
         m[0][0] += va[0] * vb[0];
         m[0][1] += va[0] * vb[1];
         m[0][2] += va[0] * vb[2];
@@ -5803,10 +5836,10 @@ bool is_quad_convex_v2(const float v1[2], const float v2[2], const float v3[2], 
   return (isect_seg_seg_v2(v1, v3, v2, v4) > 0);
 }
 
-bool is_poly_convex_v2(const float verts[][2], unsigned int nr)
+bool is_poly_convex_v2(const float verts[][2], uint nr)
 {
-  unsigned int sign_flag = 0;
-  unsigned int a;
+  uint sign_flag = 0;
+  uint a;
   const float *co_curr, *co_prev;
   float dir_curr[2], dir_prev[2];
 
@@ -5869,6 +5902,9 @@ bool is_quad_flip_v3_first_third_fast(const float v1[3],
                                       const float v3[3],
                                       const float v4[3])
 {
+  /* NOTE: if the faces normal has been calculated it's possible to simplify the following checks,
+   * however this means the solution may be different depending on the existence of normals
+   * causing tessellation to be "unstable" depending on the existence of normals, see #106469. */
   float d_12[3], d_13[3], d_14[3];
   float cross_a[3], cross_b[3];
   sub_v3_v3v3(d_12, v2, v1);
@@ -5877,19 +5913,6 @@ bool is_quad_flip_v3_first_third_fast(const float v1[3],
   cross_v3_v3v3(cross_a, d_12, d_13);
   cross_v3_v3v3(cross_b, d_14, d_13);
   return dot_v3v3(cross_a, cross_b) > 0.0f;
-}
-
-bool is_quad_flip_v3_first_third_fast_with_normal(const float v1[3],
-                                                  const float v2[3],
-                                                  const float v3[3],
-                                                  const float v4[3],
-                                                  const float normal[3])
-{
-  float dir_v3v1[3], tangent[3];
-  sub_v3_v3v3(dir_v3v1, v3, v1);
-  cross_v3_v3v3(tangent, dir_v3v1, normal);
-  const float dot = dot_v3v3(v1, tangent);
-  return (dot_v3v3(v4, tangent) >= dot) || (dot_v3v3(v2, tangent) <= dot);
 }
 
 float cubic_tangent_factor_circle_v3(const float tan_l[3], const float tan_r[3])

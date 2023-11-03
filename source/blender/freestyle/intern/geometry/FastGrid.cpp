@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2009-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -20,7 +22,7 @@ void FastGrid::clear()
     return;
   }
 
-  for (unsigned int i = 0; i < _cells_size; i++) {
+  for (uint i = 0; i < _cells_size; i++) {
     if (_cells[i]) {
       delete _cells[i];
     }
@@ -32,7 +34,7 @@ void FastGrid::clear()
   Grid::clear();
 }
 
-void FastGrid::configure(const Vec3r &orig, const Vec3r &size, unsigned nb)
+void FastGrid::configure(const Vec3r &orig, const Vec3r &size, uint nb)
 {
   Grid::configure(orig, size, nb);
   _cells_size = _cells_nb[0] * _cells_nb[1] * _cells_nb[2];

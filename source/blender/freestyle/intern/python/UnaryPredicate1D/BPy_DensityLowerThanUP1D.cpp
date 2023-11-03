@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -25,7 +27,7 @@ static char DensityLowerThanUP1D___doc__[] =
     "\n"
     "   Builds a DensityLowerThanUP1D object.\n"
     "\n"
-    "   :arg threshold: The value of the threshold density.  Any Interface1D\n"
+    "   :arg threshold: The value of the threshold density. Any Interface1D\n"
     "      having a density lower than this threshold will match.\n"
     "   :type threshold: float\n"
     "   :arg sigma: The sigma value defining the density evaluation window\n"
@@ -59,43 +61,44 @@ static int DensityLowerThanUP1D___init__(BPy_DensityLowerThanUP1D *self,
 /*-----------------------BPy_DensityLowerThanUP1D type definition ------------------------------*/
 
 PyTypeObject DensityLowerThanUP1D_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "DensityLowerThanUP1D", /* tp_name */
-    sizeof(BPy_DensityLowerThanUP1D),                         /* tp_basicsize */
-    0,                                                        /* tp_itemsize */
-    nullptr,                                                  /* tp_dealloc */
-    0,                                                        /* tp_vectorcall_offset */
-    nullptr,                                                  /* tp_getattr */
-    nullptr,                                                  /* tp_setattr */
-    nullptr,                                                  /* tp_reserved */
-    nullptr,                                                  /* tp_repr */
-    nullptr,                                                  /* tp_as_number */
-    nullptr,                                                  /* tp_as_sequence */
-    nullptr,                                                  /* tp_as_mapping */
-    nullptr,                                                  /* tp_hash */
-    nullptr,                                                  /* tp_call */
-    nullptr,                                                  /* tp_str */
-    nullptr,                                                  /* tp_getattro */
-    nullptr,                                                  /* tp_setattro */
-    nullptr,                                                  /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,                 /* tp_flags */
-    DensityLowerThanUP1D___doc__,                             /* tp_doc */
-    nullptr,                                                  /* tp_traverse */
-    nullptr,                                                  /* tp_clear */
-    nullptr,                                                  /* tp_richcompare */
-    0,                                                        /* tp_weaklistoffset */
-    nullptr,                                                  /* tp_iter */
-    nullptr,                                                  /* tp_iternext */
-    nullptr,                                                  /* tp_methods */
-    nullptr,                                                  /* tp_members */
-    nullptr,                                                  /* tp_getset */
-    &UnaryPredicate1D_Type,                                   /* tp_base */
-    nullptr,                                                  /* tp_dict */
-    nullptr,                                                  /* tp_descr_get */
-    nullptr,                                                  /* tp_descr_set */
-    0,                                                        /* tp_dictoffset */
-    (initproc)DensityLowerThanUP1D___init__,                  /* tp_init */
-    nullptr,                                                  /* tp_alloc */
-    nullptr,                                                  /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "DensityLowerThanUP1D",
+    /*tp_basicsize*/ sizeof(BPy_DensityLowerThanUP1D),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ nullptr,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ DensityLowerThanUP1D___doc__,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ &UnaryPredicate1D_Type,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)DensityLowerThanUP1D___init__,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

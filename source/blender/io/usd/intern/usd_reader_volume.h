@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Tangent Animation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Tangent Animation. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 #include "usd.h"
@@ -23,7 +24,7 @@ class USDVolumeReader : public USDXformReader {
 
   bool valid() const override
   {
-    return static_cast<bool>(volume_);
+    return bool(volume_);
   }
 
   void create_object(Main *bmain, double motionSampleTime) override;

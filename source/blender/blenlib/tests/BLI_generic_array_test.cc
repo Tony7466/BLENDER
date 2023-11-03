@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
@@ -20,7 +22,7 @@ TEST(generic_array, TypeConstructor)
 
 TEST(generic_array, MoveConstructor)
 {
-  GArray array_a(CPPType::get<int32_t>(), (int64_t)10);
+  GArray array_a(CPPType::get<int32_t>(), int64_t(10));
   GMutableSpan span_a = array_a.as_mutable_span();
   MutableSpan<int32_t> typed_span_a = span_a.typed<int32_t>();
   typed_span_a.fill(42);
@@ -40,7 +42,7 @@ TEST(generic_array, MoveConstructor)
 
 TEST(generic_array, CopyConstructor)
 {
-  GArray array_a(CPPType::get<int32_t>(), (int64_t)10);
+  GArray array_a(CPPType::get<int32_t>(), int64_t(10));
   GMutableSpan span_a = array_a.as_mutable_span();
   MutableSpan<int32_t> typed_span_a = span_a.typed<int32_t>();
   typed_span_a.fill(42);
@@ -79,7 +81,7 @@ TEST(generic_array, BufferAndSizeConstructor)
 
 TEST(generic_array, Reinitialize)
 {
-  GArray array(CPPType::get<int32_t>(), (int64_t)5);
+  GArray array(CPPType::get<int32_t>(), int64_t(5));
   EXPECT_FALSE(array.data() == nullptr);
   GMutableSpan span = array.as_mutable_span();
   MutableSpan<int32_t> typed_span = span.typed<int32_t>();
@@ -106,12 +108,29 @@ TEST(generic_array, InContainer)
 {
   blender::Array<GArray<>> arrays;
   for (GArray<> &array : arrays) {
-    array = GArray(CPPType::get<int32_t>(), (int64_t)5);
+    array = GArray(CPPType::get<int32_t>(), int64_t(5));
     array.as_mutable_span().typed<int32_t>().fill(55);
   }
   for (GArray<> &array : arrays) {
     EXPECT_EQ(array.as_span().typed<int32_t>()[3], 55);
   }
+}
+
+TEST(generic_array, ReinitEmpty)
+{
+  GArray<> array(CPPType::get<int>());
+  array.reinitialize(10);
+  array.as_mutable_span().typed<int>()[9] = 7;
+  EXPECT_EQ(array.size(), 10);
+  EXPECT_EQ(array.as_span().typed<int>()[9], 7);
+}
+
+TEST(generic_array, AssignDefault)
+{
+  GArray<> array(CPPType::get<int32_t>(), int64_t(5));
+  array = {};
+  EXPECT_EQ(array.size(), 0);
+  EXPECT_EQ(array.data(), nullptr);
 }
 
 }  // namespace blender::tests

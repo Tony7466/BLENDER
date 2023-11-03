@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -12,11 +13,8 @@
 #include "DNA_listBase.h"
 #include "DNA_vec_types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#define MAXTEXTBOX 256 /* used in readfile.c and editfont.c */
+/** Used in `readfile.cc` and `editfont.cc`. */
+#define MAXTEXTBOX 256
 
 struct AnimData;
 struct Curves;
@@ -29,7 +27,7 @@ struct Material;
 struct Object;
 struct VFont;
 
-/* These two Lines with # tell makesdna this struct can be excluded. */
+/* These two Lines with # tell `makesdna` this struct can be excluded. */
 #
 #
 typedef struct BevPoint {
@@ -41,13 +39,15 @@ typedef struct BevPoint {
   short dupe_tag;
 } BevPoint;
 
-/* These two Lines with # tell makesdna this struct can be excluded. */
+/* These two Lines with # tell `makesdna` this struct can be excluded. */
 #
 #
 typedef struct BevList {
   struct BevList *next, *prev;
   int nr, dupe_nr;
-  int poly, hole;
+  /** Cyclic when set to any value besides -1. */
+  int poly;
+  int hole;
   int charidx;
   int *segbevcount;
   float *seglen;
@@ -156,18 +156,17 @@ typedef struct Nurb {
 } Nurb;
 
 typedef struct CharInfo {
-  short kern;
-  /** Index start at 1, unlike mesh & nurbs. */
+  float kern;
   short mat_nr;
   char flag;
-  char _pad[3];
+  char _pad[1];
 } CharInfo;
 
 typedef struct TextBox {
   float x, y, w, h;
 } TextBox;
 
-/* These two Lines with # tell makesdna this struct can be excluded. */
+/* These two Lines with # tell `makesdna` this struct can be excluded. */
 #
 #
 typedef struct EditNurb {
@@ -211,14 +210,13 @@ typedef struct Curve {
 
   struct CurveProfile *bevel_profile;
 
-  /* texture space, copied as one block in editobject.c */
-  float loc[3];
-  float size[3];
+  float texspace_location[3];
+  float texspace_size[3];
 
   /** Creation-time type of curve datablock. */
   short type;
 
-  char texflag;
+  char texspace_flag;
   char _pad0[7];
   short twist_mode;
   float twist_smooth, smallcaps_scale;
@@ -282,7 +280,7 @@ typedef struct Curve {
   struct CharInfo curinfo;
   /* font part end */
 
-  /** Current evaltime - for use by Objects parented to curves. */
+  /** Current evaluation-time, for use by Objects parented to curves. */
   float ctime;
   float bevfac1, bevfac2;
   char bevfac1_mapping, bevfac2_mapping;
@@ -313,10 +311,10 @@ typedef struct Curve {
 
 /* **************** CURVE ********************* */
 
-/** #Curve.texflag */
+/** #Curve.texspace_flag */
 enum {
-  CU_AUTOSPACE = 1,
-  CU_AUTOSPACE_EVALUATED = 2,
+  CU_TEXSPACE_FLAG_AUTO = 1 << 0,
+  CU_TEXSPACE_FLAG_AUTO_EVALUATED = 1 << 1,
 };
 
 /** #Curve.flag */
@@ -439,9 +437,9 @@ enum {
 
 /* *************** BEZTRIPLE **************** */
 
-/* BezTriple.f1,2,3 */
+/** #BezTriple.f1, #BezTriple.f2, #BezTriple.f3. */
 typedef enum eBezTriple_Flag {
-  /* SELECT */
+  /* `SELECT = (1 << 0)` */
   BEZT_FLAG_TEMP_TAG = (1 << 1), /* always clear. */
   /* Can be used to ignore keyframe points for certain operations. */
   BEZT_FLAG_IGNORE_TAG = (1 << 2),
@@ -601,12 +599,12 @@ enum {
   CU_CHINFO_OVERFLOW = 1 << 6,
 };
 
+/** User adjustable as styles (not relating to run-time layout calculation). */
+#define CU_CHINFO_STYLE_ALL \
+  (CU_CHINFO_BOLD | CU_CHINFO_ITALIC | CU_CHINFO_UNDERLINE | CU_CHINFO_SMALLCAPS)
+
 /* mixed with KEY_LINEAR but define here since only curve supports */
 #define KEY_CU_EASE 3
 
 /* indicates point has been seen during surface duplication */
-#define SURF_SEEN 4
-
-#ifdef __cplusplus
-}
-#endif
+#define SURF_SEEN (1 << 2)

@@ -1,10 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 /** \file
  * \ingroup bmesh
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct BMPartialUpdate;
 
@@ -33,3 +39,7 @@ void BM_mesh_calc_tessellation_with_partial_ex(BMesh *bm,
 void BM_mesh_calc_tessellation_with_partial(BMesh *bm,
                                             BMLoop *(*looptris)[3],
                                             const struct BMPartialUpdate *bmpinfo);
+
+#ifdef __cplusplus
+}
+#endif

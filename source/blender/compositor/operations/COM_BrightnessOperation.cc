@@ -1,7 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_BrightnessOperation.h"
+
+#include "BLI_math_color.h"
 
 namespace blender::compositor {
 
@@ -47,7 +50,7 @@ void BrightnessOperation::execute_pixel_sampled(float output[4],
   /*
    * The algorithm is by Werner D. Streidt
    * (http://visca.com/ffactory/archives/5-99/msg00021.html)
-   * Extracted of OpenCV demhist.c
+   * Extracted of OpenCV `demhist.c`.
    */
   if (contrast > 0) {
     a = 1.0f - delta * 2.0f;
@@ -84,7 +87,7 @@ void BrightnessOperation::update_memory_buffer_partial(MemoryBuffer *output,
     /*
      * The algorithm is by Werner D. Streidt
      * (http://visca.com/ffactory/archives/5-99/msg00021.html)
-     * Extracted of OpenCV demhist.c
+     * Extracted of OpenCV `demhist.c`.
      */
     float a, b;
     if (contrast > 0) {

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -67,7 +69,7 @@ void _BLI_assert_unreachable_print(const char *file, int line, const char *funct
 #  define BLI_STATIC_ASSERT(a, msg) static_assert(a, msg);
 #elif defined(_MSC_VER)
 /* Visual Studio */
-#  if (_MSC_VER > 1910) && !defined(__clang__)
+#  if !defined(__clang__)
 #    define BLI_STATIC_ASSERT(a, msg) static_assert(a, msg);
 #  else
 #    define BLI_STATIC_ASSERT(a, msg) _STATIC_ASSERT(a);

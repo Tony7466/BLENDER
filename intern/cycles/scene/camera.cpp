@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/camera.h"
 #include "scene/mesh.h"
@@ -32,11 +33,11 @@ static float shutter_curve_eval(float x, array<float> &shutter_curve)
     return 1.0f;
   }
 
-  x *= shutter_curve.size();
+  x = saturatef(x) * shutter_curve.size() - 1;
   int index = (int)x;
   float frac = x - index;
   if (index < shutter_curve.size() - 1) {
-    return lerp(shutter_curve[index], shutter_curve[index + 1], frac);
+    return mix(shutter_curve[index], shutter_curve[index + 1], frac);
   }
   else {
     return shutter_curve[shutter_curve.size() - 1];
@@ -84,6 +85,7 @@ NODE_DEFINE(Camera)
 
   static NodeEnum panorama_type_enum;
   panorama_type_enum.insert("equirectangular", PANORAMA_EQUIRECTANGULAR);
+  panorama_type_enum.insert("equiangular_cubemap_face", PANORAMA_EQUIANGULAR_CUBEMAP_FACE);
   panorama_type_enum.insert("mirrorball", PANORAMA_MIRRORBALL);
   panorama_type_enum.insert("fisheye_equidistant", PANORAMA_FISHEYE_EQUIDISTANT);
   panorama_type_enum.insert("fisheye_equisolid", PANORAMA_FISHEYE_EQUISOLID);
@@ -187,9 +189,7 @@ Camera::Camera() : Node(get_node_type())
   memset((void *)&kernel_camera, 0, sizeof(kernel_camera));
 }
 
-Camera::~Camera()
-{
-}
+Camera::~Camera() {}
 
 void Camera::compute_auto_viewplane()
 {
@@ -227,8 +227,9 @@ void Camera::update(Scene *scene)
     need_device_update = true;
   }
 
-  if (!is_modified())
+  if (!is_modified()) {
     return;
+  }
 
   scoped_callback_timer timer([scene](double time) {
     if (scene->update_stats) {
@@ -254,12 +255,15 @@ void Camera::update(Scene *scene)
 
   /* Screen to camera. */
   ProjectionTransform cameratoscreen;
-  if (camera_type == CAMERA_PERSPECTIVE)
+  if (camera_type == CAMERA_PERSPECTIVE) {
     cameratoscreen = projection_perspective(fov, nearclip, farclip);
-  else if (camera_type == CAMERA_ORTHOGRAPHIC)
+  }
+  else if (camera_type == CAMERA_ORTHOGRAPHIC) {
     cameratoscreen = projection_orthographic(nearclip, farclip);
-  else
+  }
+  else {
     cameratoscreen = projection_identity();
+  }
 
   ProjectionTransform screentocamera = projection_inverse(cameratoscreen);
 
@@ -474,8 +478,9 @@ void Camera::device_update(Device * /* device */, DeviceScene *dscene, Scene *sc
 {
   update(scene);
 
-  if (!need_device_update)
+  if (!need_device_update) {
     return;
+  }
 
   scoped_callback_timer timer([scene](double time) {
     if (scene->update_stats) {
@@ -753,29 +758,20 @@ float Camera::world_to_raster_size(float3 P)
       /* No differentials, just use from directly ahead. */
       camera_sample_panorama(&kernel_camera,
                              kernel_camera_motion.data(),
-                             0.5f * full_width,
-                             0.5f * full_height,
-                             0.0f,
-                             0.0f,
+                             0.5f * make_float2(full_width, full_height),
+                             zero_float2(),
                              &ray);
     }
 #else
     camera_sample_panorama(&kernel_camera,
-#  ifdef __CAMERA_MOTION__
                            kernel_camera_motion.data(),
-#  endif
-                           0.5f * full_width,
-                           0.5f * full_height,
-                           0.0f,
-                           0.0f,
+                           0.5f * make_float2(full_width, full_height),
+                           zero_float2(),
                            &ray);
 #endif
 
     /* TODO: would it help to use more accurate differentials here? */
-    differential3 dP;
-    differential_transfer_compact(&dP, ray.dP, ray.D, ray.dD, ray.D, dist);
-
-    return max(len(dP.dx), len(dP.dy));
+    return differential_transfer_compact(ray.dP, ray.D, ray.dD, dist);
   }
 
   return res;

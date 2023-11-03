@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -24,7 +25,7 @@ class PathTraceTile : public OutputDriver::Tile {
 
  private:
   PathTrace &path_trace_;
-  bool copied_from_device_;
+  mutable bool copied_from_device_;
 };
 
 CCL_NAMESPACE_END

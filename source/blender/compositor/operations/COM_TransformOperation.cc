@@ -1,7 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_TransformOperation.h"
+#include "BLI_math_rotation.h"
 #include "COM_RotateOperation.h"
 #include "COM_ScaleOperation.h"
 
@@ -38,7 +40,7 @@ void TransformOperation::init_data()
                  translate_factor_y_;
 
   const float degree = get_input_operation(DEGREE_INPUT_INDEX)->get_constant_value_default(0.0f);
-  const double rad = convert_degree_to_rad_ ? DEG2RAD((double)degree) : degree;
+  const double rad = convert_degree_to_rad_ ? DEG2RAD(double(degree)) : degree;
   rotate_cosine_ = cos(rad);
   rotate_sine_ = sin(rad);
 

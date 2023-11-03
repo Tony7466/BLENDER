@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -9,7 +10,7 @@
 
 #include <stdio.h>
 
-#include "BLI_math.h"
+#include "BLI_math_base.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -73,7 +74,8 @@ size_t BLI_timecode_string_from_time(char *str,
        *   within this length. Hours will only be included if relevant.
        * - Only show frames when zoomed in enough for them to be relevant
        *   (using separator of '+' for frames).
-       *   When showing frames, use slightly different display to avoid confusion with mm:ss format
+       *   When showing frames, use slightly different display
+       *   to avoid confusion with `mm:ss` format.
        */
       if (brevity_level <= 0) {
         /* include "frames" in display */
@@ -176,7 +178,7 @@ size_t BLI_timecode_string_from_time_simple(char *str,
   const int hr = ((int)time_seconds) / (60 * 60);
   const int min = (((int)time_seconds) / 60) % 60;
   const int sec = ((int)time_seconds) % 60;
-  const int hun = ((int)(fmod(time_seconds, 1.0) * 100));
+  const int hun = (int)(fmod(time_seconds, 1.0) * 100);
 
   if (hr) {
     rlen = BLI_snprintf_rlen(str, maxncpy, "%.2d:%.2d:%.2d.%.2d", hr, min, sec, hun);

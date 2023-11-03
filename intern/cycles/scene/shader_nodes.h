@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __NODES_H__
 #define __NODES_H__
@@ -53,9 +54,7 @@ class TextureMapping {
 
 class TextureNode : public ShaderNode {
  public:
-  explicit TextureNode(const NodeType *node_type) : ShaderNode(node_type)
-  {
-  }
+  explicit TextureNode(const NodeType *node_type) : ShaderNode(node_type) {}
   TextureMapping tex_mapping;
   NODE_SOCKET_API_STRUCT_MEMBER(float3, tex_mapping, translation)
   NODE_SOCKET_API_STRUCT_MEMBER(float3, tex_mapping, rotation)
@@ -169,11 +168,15 @@ class SkyTextureNode : public TextureNode {
   NODE_SOCKET_API(float3, vector)
   ImageHandle handle;
 
+  void simplify_settings(Scene *scene);
+
   float get_sun_size()
   {
     /* Clamping for numerical precision. */
     return fmaxf(sun_size, 0.0005f);
   }
+
+  float get_sun_average_radiance();
 };
 
 class OutputNode : public ShaderNode {
@@ -225,10 +228,12 @@ class NoiseTextureNode : public TextureNode {
   SHADER_NODE_CLASS(NoiseTextureNode)
 
   NODE_SOCKET_API(int, dimensions)
+  NODE_SOCKET_API(bool, use_normalize)
   NODE_SOCKET_API(float, w)
   NODE_SOCKET_API(float, scale)
   NODE_SOCKET_API(float, detail)
   NODE_SOCKET_API(float, roughness)
+  NODE_SOCKET_API(float, lacunarity)
   NODE_SOCKET_API(float, distortion)
   NODE_SOCKET_API(float3, vector)
 };
@@ -252,8 +257,12 @@ class VoronoiTextureNode : public TextureNode {
   NODE_SOCKET_API(int, dimensions)
   NODE_SOCKET_API(NodeVoronoiDistanceMetric, metric)
   NODE_SOCKET_API(NodeVoronoiFeature, feature)
+  NODE_SOCKET_API(bool, use_normalize)
   NODE_SOCKET_API(float, w)
   NODE_SOCKET_API(float, scale)
+  NODE_SOCKET_API(float, detail)
+  NODE_SOCKET_API(float, roughness)
+  NODE_SOCKET_API(float, lacunarity)
   NODE_SOCKET_API(float, exponent)
   NODE_SOCKET_API(float, smoothness)
   NODE_SOCKET_API(float, randomness)
@@ -441,7 +450,7 @@ class ConvertNode : public ShaderNode {
   };
   ustring value_string;
 
-  static const int MAX_TYPE = 12;
+  static const int MAX_TYPE = 13;
   static bool register_types();
   static Node *create(const NodeType *type);
   static const NodeType *node_types[MAX_TYPE][MAX_TYPE];
@@ -493,27 +502,6 @@ class BsdfNode : public BsdfBaseNode {
   NODE_SOCKET_API(float, surface_mix_weight)
 };
 
-class AnisotropicBsdfNode : public BsdfNode {
- public:
-  SHADER_NODE_CLASS(AnisotropicBsdfNode)
-
-  NODE_SOCKET_API(float3, tangent)
-  NODE_SOCKET_API(float, roughness)
-  NODE_SOCKET_API(float, anisotropy)
-  NODE_SOCKET_API(float, rotation)
-  NODE_SOCKET_API(ClosureType, distribution)
-
-  ClosureType get_closure_type()
-  {
-    return distribution;
-  }
-  void attributes(Shader *shader, AttributeRequestSet *attributes);
-  bool has_attribute_dependency()
-  {
-    return true;
-  }
-};
-
 class DiffuseBsdfNode : public BsdfNode {
  public:
   SHADER_NODE_CLASS(DiffuseBsdfNode)
@@ -526,67 +514,49 @@ class PrincipledBsdfNode : public BsdfBaseNode {
  public:
   SHADER_NODE_CLASS(PrincipledBsdfNode)
 
-  void expand(ShaderGraph *graph);
   bool has_surface_bssrdf();
   bool has_bssrdf_bump();
-  void compile(SVMCompiler &compiler,
-               ShaderInput *metallic,
-               ShaderInput *subsurface,
-               ShaderInput *subsurface_radius,
-               ShaderInput *subsurface_ior,
-               ShaderInput *subsurface_anisotropy,
-               ShaderInput *specular,
-               ShaderInput *roughness,
-               ShaderInput *specular_tint,
-               ShaderInput *anisotropic,
-               ShaderInput *sheen,
-               ShaderInput *sheen_tint,
-               ShaderInput *clearcoat,
-               ShaderInput *clearcoat_roughness,
-               ShaderInput *ior,
-               ShaderInput *transmission,
-               ShaderInput *anisotropic_rotation,
-               ShaderInput *transmission_roughness);
+  void simplify_settings(Scene *scene);
 
   NODE_SOCKET_API(float3, base_color)
-  NODE_SOCKET_API(float3, subsurface_color)
+  NODE_SOCKET_API(float, metallic)
+  NODE_SOCKET_API(float, roughness)
+  NODE_SOCKET_API(float, ior)
+  NODE_SOCKET_API(float3, normal)
+  NODE_SOCKET_API(float, alpha)
+  NODE_SOCKET_API(ClosureType, subsurface_method)
+  NODE_SOCKET_API(float, subsurface_weight)
   NODE_SOCKET_API(float3, subsurface_radius)
+  NODE_SOCKET_API(float, subsurface_scale)
   NODE_SOCKET_API(float, subsurface_ior)
   NODE_SOCKET_API(float, subsurface_anisotropy)
-  NODE_SOCKET_API(float, metallic)
-  NODE_SOCKET_API(float, subsurface)
-  NODE_SOCKET_API(float, specular)
-  NODE_SOCKET_API(float, roughness)
-  NODE_SOCKET_API(float, specular_tint)
-  NODE_SOCKET_API(float, anisotropic)
-  NODE_SOCKET_API(float, sheen)
-  NODE_SOCKET_API(float, sheen_tint)
-  NODE_SOCKET_API(float, clearcoat)
-  NODE_SOCKET_API(float, clearcoat_roughness)
-  NODE_SOCKET_API(float, ior)
-  NODE_SOCKET_API(float, transmission)
-  NODE_SOCKET_API(float, anisotropic_rotation)
-  NODE_SOCKET_API(float, transmission_roughness)
-  NODE_SOCKET_API(float3, normal)
-  NODE_SOCKET_API(float3, clearcoat_normal)
-  NODE_SOCKET_API(float3, tangent)
-  NODE_SOCKET_API(float, surface_mix_weight)
   NODE_SOCKET_API(ClosureType, distribution)
-  NODE_SOCKET_API(ClosureType, subsurface_method)
-  NODE_SOCKET_API(float3, emission)
+  NODE_SOCKET_API(float, specular_ior_level)
+  NODE_SOCKET_API(float3, specular_tint)
+  NODE_SOCKET_API(float, anisotropic)
+  NODE_SOCKET_API(float, anisotropic_rotation)
+  NODE_SOCKET_API(float3, tangent)
+  NODE_SOCKET_API(float, transmission_weight)
+  NODE_SOCKET_API(float, sheen_weight)
+  NODE_SOCKET_API(float, sheen_roughness)
+  NODE_SOCKET_API(float3, sheen_tint)
+  NODE_SOCKET_API(float, coat_weight)
+  NODE_SOCKET_API(float, coat_roughness)
+  NODE_SOCKET_API(float, coat_ior)
+  NODE_SOCKET_API(float3, coat_tint)
+  NODE_SOCKET_API(float3, coat_normal)
+  NODE_SOCKET_API(float3, emission_color)
   NODE_SOCKET_API(float, emission_strength)
-  NODE_SOCKET_API(float, alpha)
-
- private:
-  ClosureType distribution_orig;
+  NODE_SOCKET_API(float, surface_mix_weight)
 
  public:
-  bool has_integrator_dependency();
   void attributes(Shader *shader, AttributeRequestSet *attributes);
   bool has_attribute_dependency()
   {
     return true;
   }
+  bool has_surface_transparent();
+  bool has_surface_emission();
 };
 
 class TranslucentBsdfNode : public BsdfNode {
@@ -604,11 +574,17 @@ class TransparentBsdfNode : public BsdfNode {
   }
 };
 
-class VelvetBsdfNode : public BsdfNode {
+class SheenBsdfNode : public BsdfNode {
  public:
-  SHADER_NODE_CLASS(VelvetBsdfNode)
+  SHADER_NODE_CLASS(SheenBsdfNode)
 
-  NODE_SOCKET_API(float, sigma)
+  NODE_SOCKET_API(float, roughness)
+  NODE_SOCKET_API(ClosureType, distribution)
+
+  ClosureType get_closure_type()
+  {
+    return distribution;
+  }
 };
 
 class GlossyBsdfNode : public BsdfNode {
@@ -616,26 +592,30 @@ class GlossyBsdfNode : public BsdfNode {
   SHADER_NODE_CLASS(GlossyBsdfNode)
 
   void simplify_settings(Scene *scene);
-  bool has_integrator_dependency();
   ClosureType get_closure_type()
   {
     return distribution;
   }
 
+  NODE_SOCKET_API(float3, tangent)
   NODE_SOCKET_API(float, roughness)
+  NODE_SOCKET_API(float, anisotropy)
+  NODE_SOCKET_API(float, rotation)
   NODE_SOCKET_API(ClosureType, distribution)
 
- private:
-  float roughness_orig;
-  ClosureType distribution_orig;
+  void attributes(Shader *shader, AttributeRequestSet *attributes);
+  bool has_attribute_dependency()
+  {
+    return true;
+  }
+
+  bool is_isotropic();
 };
 
 class GlassBsdfNode : public BsdfNode {
  public:
   SHADER_NODE_CLASS(GlassBsdfNode)
 
-  void simplify_settings(Scene *scene);
-  bool has_integrator_dependency();
   ClosureType get_closure_type()
   {
     return distribution;
@@ -644,18 +624,12 @@ class GlassBsdfNode : public BsdfNode {
   NODE_SOCKET_API(float, roughness)
   NODE_SOCKET_API(float, IOR)
   NODE_SOCKET_API(ClosureType, distribution)
-
- private:
-  float roughness_orig;
-  ClosureType distribution_orig;
 };
 
 class RefractionBsdfNode : public BsdfNode {
  public:
   SHADER_NODE_CLASS(RefractionBsdfNode)
 
-  void simplify_settings(Scene *scene);
-  bool has_integrator_dependency();
   ClosureType get_closure_type()
   {
     return distribution;
@@ -664,10 +638,6 @@ class RefractionBsdfNode : public BsdfNode {
   NODE_SOCKET_API(float, roughness)
   NODE_SOCKET_API(float, IOR)
   NODE_SOCKET_API(ClosureType, distribution)
-
- private:
-  float roughness_orig;
-  ClosureType distribution_orig;
 };
 
 class ToonBsdfNode : public BsdfNode {
@@ -721,6 +691,8 @@ class EmissionNode : public ShaderNode {
   NODE_SOCKET_API(float3, color)
   NODE_SOCKET_API(float, strength)
   NODE_SOCKET_API(float, surface_mix_weight)
+
+  bool from_auto_conversion = false;
 };
 
 class BackgroundNode : public ShaderNode {
@@ -871,12 +843,27 @@ class PrincipledHairBsdfNode : public BsdfBaseNode {
   /* Absorption coefficient (unfiltered). */
   NODE_SOCKET_API(float3, absorption_coefficient)
 
-  NODE_SOCKET_API(float3, normal)
+  /* Aspect Ratio. */
+  NODE_SOCKET_API(float, aspect_ratio)
+
+  /* Optional modulation factors for the lobes. */
+  NODE_SOCKET_API(float, R)
+  NODE_SOCKET_API(float, TT)
+  NODE_SOCKET_API(float, TRT)
+
+  /* Weight for mix shader. */
   NODE_SOCKET_API(float, surface_mix_weight)
   /* If linked, here will be the given random number. */
   NODE_SOCKET_API(float, random)
   /* Selected coloring parametrization. */
   NODE_SOCKET_API(NodePrincipledHairParametrization, parametrization)
+  /* Selected scattering model (near-/far-field). */
+  NODE_SOCKET_API(NodePrincipledHairModel, model)
+
+  virtual int get_feature()
+  {
+    return ShaderNode::get_feature() | KERNEL_FEATURE_NODE_PRINCIPLED_HAIR;
+  }
 };
 
 class HairBsdfNode : public BsdfNode {
@@ -907,8 +894,6 @@ class GeometryNode : public ShaderNode {
     return true;
   }
   int get_group();
-
-  NODE_SOCKET_API(float3, normal_osl)
 };
 
 class TextureCoordinateNode : public ShaderNode {
@@ -924,7 +909,6 @@ class TextureCoordinateNode : public ShaderNode {
     return true;
   }
 
-  NODE_SOCKET_API(float3, normal_osl)
   NODE_SOCKET_API(bool, from_dupli)
   NODE_SOCKET_API(bool, use_transform)
   NODE_SOCKET_API(Transform, ob_tfm)
@@ -1099,6 +1083,52 @@ class MixNode : public ShaderNode {
   NODE_SOCKET_API(float3, color1)
   NODE_SOCKET_API(float3, color2)
   NODE_SOCKET_API(float, fac)
+};
+
+class MixColorNode : public ShaderNode {
+ public:
+  SHADER_NODE_CLASS(MixColorNode)
+  void constant_fold(const ConstantFolder &folder);
+
+  NODE_SOCKET_API(float3, a)
+  NODE_SOCKET_API(float3, b)
+  NODE_SOCKET_API(float, fac)
+  NODE_SOCKET_API(bool, use_clamp)
+  NODE_SOCKET_API(bool, use_clamp_result)
+  NODE_SOCKET_API(NodeMix, blend_type)
+};
+
+class MixFloatNode : public ShaderNode {
+ public:
+  SHADER_NODE_CLASS(MixFloatNode)
+  void constant_fold(const ConstantFolder &folder);
+
+  NODE_SOCKET_API(float, a)
+  NODE_SOCKET_API(float, b)
+  NODE_SOCKET_API(float, fac)
+  NODE_SOCKET_API(bool, use_clamp)
+};
+
+class MixVectorNode : public ShaderNode {
+ public:
+  SHADER_NODE_CLASS(MixVectorNode)
+  void constant_fold(const ConstantFolder &folder);
+
+  NODE_SOCKET_API(float3, a)
+  NODE_SOCKET_API(float3, b)
+  NODE_SOCKET_API(float, fac)
+  NODE_SOCKET_API(bool, use_clamp)
+};
+
+class MixVectorNonUniformNode : public ShaderNode {
+ public:
+  SHADER_NODE_CLASS(MixVectorNonUniformNode)
+  void constant_fold(const ConstantFolder &folder);
+
+  NODE_SOCKET_API(float3, a)
+  NODE_SOCKET_API(float3, b)
+  NODE_SOCKET_API(float3, fac)
+  NODE_SOCKET_API(bool, use_clamp)
 };
 
 class CombineColorNode : public ShaderNode {
@@ -1482,10 +1512,15 @@ class OSLNode final : public ShaderNode {
   ShaderNode *clone(ShaderGraph *graph) const;
 
   char *input_default_value();
-  void add_input(ustring name, SocketType::Type type);
+  void add_input(ustring name, SocketType::Type type, const int flags = 0);
   void add_output(ustring name, SocketType::Type type);
 
   SHADER_NODE_NO_CLONE_CLASS(OSLNode)
+
+  bool has_surface_emission()
+  {
+    return has_emission;
+  }
 
   /* Ideally we could better detect this, but we can't query this now. */
   bool has_spatial_varying()
@@ -1496,6 +1531,10 @@ class OSLNode final : public ShaderNode {
   {
     return true;
   }
+  virtual int get_feature()
+  {
+    return ShaderNode::get_feature() | KERNEL_FEATURE_NODE_RAYTRACE;
+  }
 
   virtual bool equals(const ShaderNode & /*other*/)
   {
@@ -1504,6 +1543,7 @@ class OSLNode final : public ShaderNode {
 
   string filepath;
   string bytecode_hash;
+  bool has_emission;
 };
 
 class NormalMapNode : public ShaderNode {
@@ -1523,7 +1563,6 @@ class NormalMapNode : public ShaderNode {
   NODE_SOCKET_API(ustring, attribute)
   NODE_SOCKET_API(float, strength)
   NODE_SOCKET_API(float3, color)
-  NODE_SOCKET_API(float3, normal_osl)
 };
 
 class TangentNode : public ShaderNode {
@@ -1542,7 +1581,6 @@ class TangentNode : public ShaderNode {
   NODE_SOCKET_API(NodeTangentDirectionType, direction_type)
   NODE_SOCKET_API(NodeTangentAxis, axis)
   NODE_SOCKET_API(ustring, attribute)
-  NODE_SOCKET_API(float3, normal_osl)
 };
 
 class BevelNode : public ShaderNode {

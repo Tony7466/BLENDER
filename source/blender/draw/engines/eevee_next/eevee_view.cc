@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -39,7 +39,7 @@ void ShadingView::sync()
   int2 render_extent = inst_.film.render_extent_get();
 
   if (false /* inst_.camera.is_panoramic() */) {
-    int64_t render_pixel_count = render_extent.x * (int64_t)render_extent.y;
+    int64_t render_pixel_count = render_extent.x * int64_t(render_extent.y);
     /* Divide pixel count between the 6 views. Rendering to a square target. */
     extent_[0] = extent_[1] = ceilf(sqrtf(1 + (render_pixel_count / 6)));
     /* TODO(@fclem): Clip unused views here. */
@@ -105,6 +105,8 @@ void ShadingView::render()
   DRW_stats_group_start(name_);
   DRW_view_set_active(render_view_);
 
+  inst_.planar_probes.set_view(render_view_new_, extent_);
+
   /* If camera has any motion, compute motion vector in the film pass. Otherwise, we avoid float
    * precision issue by setting the motion of all static geometry to 0. */
   float4 clear_velocity = float4(inst_.velocity.camera_has_motion() ? VELOCITY_INVALID : 0.0f);
@@ -116,23 +118,44 @@ void ShadingView::render()
   GPU_framebuffer_bind(combined_fb_);
   GPU_framebuffer_clear_color_depth(combined_fb_, clear_color, 1.0f);
 
-  inst_.pipelines.world.render();
+  inst_.hiz_buffer.set_source(&inst_.render_buffers.depth_tx);
+  inst_.hiz_buffer.set_dirty();
 
-  // inst_.pipelines.deferred.render(
-  //     render_view_, rt_buffer_opaque_, rt_buffer_refract_, depth_tx_, combined_tx_);
+  inst_.pipelines.background.render(render_view_new_);
 
-  // inst_.lightprobes.draw_cache_display();
+  /* TODO(fclem): Move it after the first prepass (and hiz update) once pipeline is stabilized. */
+  inst_.lights.set_view(render_view_new_, extent_);
+  inst_.reflection_probes.set_view(render_view_new_);
+
+  inst_.volume.draw_prepass(render_view_new_);
+
+  /* TODO: cleanup. */
+  View main_view_new("MainView", main_view_);
+  /* TODO(Miguel Pozo): Deferred and forward prepass should happen before the GBuffer pass. */
+  inst_.pipelines.deferred.render(main_view_new,
+                                  render_view_new_,
+                                  prepass_fb_,
+                                  combined_fb_,
+                                  extent_,
+                                  rt_buffer_opaque_,
+                                  rt_buffer_refract_);
+
+  inst_.volume.draw_compute(render_view_new_);
 
   // inst_.lookdev.render_overlay(view_fb_);
 
-  inst_.pipelines.forward.render(
-      render_view_, prepass_fb_, combined_fb_, rbufs.depth_tx, rbufs.combined_tx);
+  inst_.pipelines.forward.render(render_view_new_, prepass_fb_, combined_fb_, rbufs.combined_tx);
 
-  // inst_.lights.debug_draw(view_fb_);
-  // inst_.shadows.debug_draw(view_fb_);
+  inst_.lights.debug_draw(render_view_new_, combined_fb_);
+  inst_.hiz_buffer.debug_draw(render_view_new_, combined_fb_);
+  inst_.shadows.debug_draw(render_view_new_, combined_fb_);
+  inst_.irradiance_cache.viewport_draw(render_view_new_, combined_fb_);
+  inst_.reflection_probes.viewport_draw(render_view_new_, combined_fb_);
+  inst_.planar_probes.viewport_draw(render_view_new_, combined_fb_);
+
+  inst_.ambient_occlusion.render_pass(render_view_new_);
 
   GPUTexture *combined_final_tx = render_postfx(rbufs.combined_tx);
-
   inst_.film.accumulate(sub_view_, combined_final_tx);
 
   rbufs.release();
@@ -151,8 +174,8 @@ GPUTexture *ShadingView::render_postfx(GPUTexture *input_tx)
   GPUTexture *output_tx = postfx_tx_;
 
   /* Swapping is done internally. Actual output is set to the next input. */
-  inst_.depth_of_field.render(&input_tx, &output_tx, dof_buffer_);
-  inst_.motion_blur.render(&input_tx, &output_tx);
+  inst_.depth_of_field.render(render_view_new_, &input_tx, &output_tx, dof_buffer_);
+  inst_.motion_blur.render(render_view_new_, &input_tx, &output_tx);
 
   return input_tx;
 }
@@ -176,13 +199,107 @@ void ShadingView::update_view()
   window_translate_m4(winmat.ptr(), winmat.ptr(), UNPACK2(jitter));
   DRW_view_update_sub(sub_view_, viewmat.ptr(), winmat.ptr());
 
-  /* FIXME(fclem): The offset may be is noticeably large and the culling might make object pop
+  /* FIXME(fclem): The offset may be noticeably large and the culling might make object pop
    * out of the blurring radius. To fix this, use custom enlarged culling matrix. */
   inst_.depth_of_field.jitter_apply(winmat, viewmat);
   DRW_view_update_sub(render_view_, viewmat.ptr(), winmat.ptr());
 
-  // inst_.lightprobes.set_view(render_view_, extent_);
-  // inst_.lights.set_view(render_view_, extent_, !inst_.use_scene_lights());
+  render_view_new_.sync(viewmat, winmat);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Capture View
+ * \{ */
+
+void CaptureView::render_world()
+{
+  const std::optional<ReflectionProbeUpdateInfo> update_info =
+      inst_.reflection_probes.update_info_pop(ReflectionProbe::Type::WORLD);
+  if (!update_info.has_value()) {
+    return;
+  }
+
+  View view = {"Capture.View"};
+  GPU_debug_group_begin("World.Capture");
+
+  if (update_info->do_render) {
+    for (int face : IndexRange(6)) {
+      float4x4 view_m4 = cubeface_mat(face);
+      float4x4 win_m4 = math::projection::perspective(-update_info->clipping_distances.x,
+                                                      update_info->clipping_distances.x,
+                                                      -update_info->clipping_distances.x,
+                                                      update_info->clipping_distances.x,
+                                                      update_info->clipping_distances.x,
+                                                      update_info->clipping_distances.y);
+      view.sync(view_m4, win_m4);
+
+      capture_fb_.ensure(
+          GPU_ATTACHMENT_NONE,
+          GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.reflection_probes.cubemap_tx_, face));
+      GPU_framebuffer_bind(capture_fb_);
+      inst_.pipelines.world.render(view);
+    }
+
+    inst_.reflection_probes.remap_to_octahedral_projection(update_info->atlas_coord);
+    inst_.reflection_probes.update_probes_texture_mipmaps();
+  }
+
+  if (update_info->do_world_irradiance_update) {
+    inst_.reflection_probes.update_world_irradiance();
+  }
+
+  GPU_debug_group_end();
+}
+
+void CaptureView::render_probes()
+{
+  Framebuffer prepass_fb;
+  View view = {"Capture.View"};
+  bool do_update_mipmap_chain = false;
+  while (const std::optional<ReflectionProbeUpdateInfo> update_info =
+             inst_.reflection_probes.update_info_pop(ReflectionProbe::Type::PROBE))
+  {
+    GPU_debug_group_begin("Probe.Capture");
+    do_update_mipmap_chain = true;
+
+    int2 extent = int2(update_info->resolution);
+    inst_.render_buffers.acquire(extent);
+
+    inst_.render_buffers.vector_tx.clear(float4(0.0f));
+    prepass_fb.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
+                      GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.vector_tx));
+
+    for (int face : IndexRange(6)) {
+      float4x4 view_m4 = cubeface_mat(face);
+      view_m4 = math::translate(view_m4, -update_info->probe_pos);
+      float4x4 win_m4 = math::projection::perspective(-update_info->clipping_distances.x,
+                                                      update_info->clipping_distances.x,
+                                                      -update_info->clipping_distances.x,
+                                                      update_info->clipping_distances.x,
+                                                      update_info->clipping_distances.x,
+                                                      update_info->clipping_distances.y);
+      view.sync(view_m4, win_m4);
+
+      capture_fb_.ensure(
+          GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
+          GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.reflection_probes.cubemap_tx_, face));
+
+      GPU_framebuffer_bind(capture_fb_);
+      GPU_framebuffer_clear_color_depth(capture_fb_, float4(0.0f, 0.0f, 0.0f, 1.0f), 1.0f);
+      inst_.pipelines.probe.render(view, prepass_fb, capture_fb_, extent);
+    }
+
+    inst_.render_buffers.release();
+    GPU_debug_group_end();
+    inst_.reflection_probes.remap_to_octahedral_projection(update_info->atlas_coord);
+  }
+
+  if (do_update_mipmap_chain) {
+    /* TODO: only update the regions that have been updated. */
+    inst_.reflection_probes.update_probes_texture_mipmaps();
+  }
 }
 
 /** \} */

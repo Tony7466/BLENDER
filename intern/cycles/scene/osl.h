@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __OSL_H__
 #define __OSL_H__
@@ -54,7 +55,7 @@ struct OSLShaderInfo {
 
 class OSLShaderManager : public ShaderManager {
  public:
-  OSLShaderManager();
+  OSLShaderManager(Device *device);
   ~OSLShaderManager();
 
   static void free_memory();
@@ -65,6 +66,9 @@ class OSLShaderManager : public ShaderManager {
   {
     return true;
   }
+
+  uint64_t get_attribute_id(ustring name) override;
+  uint64_t get_attribute_id(AttributeStandard std) override;
 
   void device_update_specific(Device *device,
                               DeviceScene *dscene,
@@ -89,25 +93,25 @@ class OSLShaderManager : public ShaderManager {
                            const std::string &bytecode_hash = "",
                            const std::string &bytecode = "");
 
- protected:
+  /* Get image slots used by OSL services on device. */
+  static void osl_image_slots(Device *device, ImageManager *image_manager, set<int> &image_slots);
+
+ private:
   void texture_system_init();
   void texture_system_free();
 
   void shading_system_init();
   void shading_system_free();
 
-  OSL::ShadingSystem *ss;
-  OSL::TextureSystem *ts;
-  OSLRenderServices *services;
-  OSL::ErrorHandler errhandler;
+  Device *device_;
   map<string, OSLShaderInfo> loaded_shaders;
 
   static OSL::TextureSystem *ts_shared;
   static thread_mutex ts_shared_mutex;
   static int ts_shared_users;
 
-  static OSL::ShadingSystem *ss_shared;
-  static OSLRenderServices *services_shared;
+  static OSL::ErrorHandler errhandler;
+  static map<int, OSL::ShadingSystem *> ss_shared;
   static thread_mutex ss_shared_mutex;
   static thread_mutex ss_mutex;
   static int ss_shared_users;
@@ -120,10 +124,7 @@ class OSLShaderManager : public ShaderManager {
 class OSLCompiler {
  public:
 #ifdef WITH_OSL
-  OSLCompiler(OSLShaderManager *manager,
-              OSLRenderServices *services,
-              OSL::ShadingSystem *shadingsys,
-              Scene *scene);
+  OSLCompiler(OSLShaderManager *manager, OSL::ShadingSystem *shadingsys, Scene *scene);
 #endif
   void compile(OSLGlobals *og, Shader *shader);
 

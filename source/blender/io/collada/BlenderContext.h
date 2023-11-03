@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -10,8 +12,8 @@
 #include "BKE_main.h"
 #include "BLI_linklist.h"
 #include "BlenderTypes.h"
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 #include "DNA_layer_types.h"
 #include "DNA_object_types.h"
 
@@ -22,8 +24,11 @@ extern "C" {
 static const BC_global_forward_axis BC_DEFAULT_FORWARD = BC_GLOBAL_FORWARD_Y;
 static const BC_global_up_axis BC_DEFAULT_UP = BC_GLOBAL_UP_Z;
 
-bool bc_is_in_Export_set(LinkNode *export_set, Object *ob, ViewLayer *view_layer);
-bool bc_is_base_node(LinkNode *export_set, Object *ob, ViewLayer *view_layer);
+bool bc_is_in_Export_set(LinkNode *export_set,
+                         Object *ob,
+                         const Scene *scene,
+                         ViewLayer *view_layer);
+bool bc_is_base_node(LinkNode *export_set, Object *ob, const Scene *scene, ViewLayer *view_layer);
 /**
  * Returns the highest selected ancestor
  * returns NULL if no ancestor is selected
@@ -32,6 +37,7 @@ bool bc_is_base_node(LinkNode *export_set, Object *ob, ViewLayer *view_layer);
  */
 Object *bc_get_highest_exported_ancestor_or_self(LinkNode *export_set,
                                                  Object *ob,
+                                                 const Scene *scene,
                                                  ViewLayer *view_layer);
 int bc_is_marked(Object *ob);
 void bc_remove_mark(Object *ob);

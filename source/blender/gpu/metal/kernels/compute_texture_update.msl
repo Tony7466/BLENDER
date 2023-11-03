@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 using namespace metal;
 
 /* MATCHING eGPUTextureType. */
@@ -29,7 +33,17 @@ using namespace metal;
 #  define DIMS 3
 #endif
 
-/* Position dimensionality for threadgroup. */
+/* `base_offset` refers to the base read offset in bytes of the input data buffer.
+ * Component offset adds an additional offset to read components. When clearing a buffer
+ * and only one source color data element is provided, the base_offset is always zero.*/
+#if IS_TEXTURE_CLEAR == 1
+#  define READ_INPUT_DATA(base_offset, component_offset) (input_data[0 + component_offset])
+#else
+#  define READ_INPUT_DATA(base_offset, component_offset) \
+    (input_data[base_offset + component_offset])
+#endif
+
+/* Position dimensionality for thread-group. */
 #if DIMS == 1
 #  define POSITION_TYPE uint
 #elif DIMS == 2
@@ -37,22 +51,6 @@ using namespace metal;
 #elif DIMS == 3
 #  define POSITION_TYPE uint3
 #endif
-
-float3 mtl_linear_to_srgb_attr(float3 c)
-{
-  c = max(c, float3(0.0));
-  float3 c1 = c * 12.92;
-  float3 c2 = 1.055 * pow(c, float3(1.0 / 2.4)) - 0.055;
-  return mix(c1, c2, step(float3(0.0031308), c));
-}
-
-float3 mtl_srgb_to_linear_attr(float3 c)
-{
-  c = max(c, float3(0.0));
-  float3 c1 = c * (1.0 / 12.92);
-  float3 c2 = pow((c + 0.055) * (1.0 / 1.055), float3(2.4));
-  return mix(c1, c2, step(float3(0.04045), c));
-}
 
 struct TextureUpdateParams {
   int mip_index;
@@ -77,7 +75,7 @@ kernel void compute_texture_update(constant TextureUpdateParams &params [[buffer
 
   vec<OUTPUT_DATA_TYPE, /*COMPONENT_COUNT_OUTPUT*/ 4> output;
   for (int i = 0; i < COMPONENT_COUNT_INPUT; i++) {
-    output[i] = OUTPUT_DATA_TYPE(input_data[index + i]);
+    output[i] = OUTPUT_DATA_TYPE(READ_INPUT_DATA(index, i));
   }
   for (int i = COMPONENT_COUNT_INPUT; i < COMPONENT_COUNT_OUTPUT; i++) {
     output[i] = OUTPUT_DATA_TYPE(0);
@@ -94,7 +92,7 @@ kernel void compute_texture_update(constant TextureUpdateParams &params [[buffer
 
   vec<OUTPUT_DATA_TYPE, /*COMPONENT_COUNT_OUTPUT*/ 4> output;
   for (int i = 0; i < COMPONENT_COUNT_INPUT; i++) {
-    output[i] = OUTPUT_DATA_TYPE(input_data[index + i]);
+    output[i] = OUTPUT_DATA_TYPE(READ_INPUT_DATA(index, i));
   }
   for (int i = COMPONENT_COUNT_INPUT; i < COMPONENT_COUNT_OUTPUT; i++) {
     output[i] = OUTPUT_DATA_TYPE(0);
@@ -114,7 +112,7 @@ kernel void compute_texture_update(constant TextureUpdateParams &params [[buffer
 
   vec<OUTPUT_DATA_TYPE, /*COMPONENT_COUNT_OUTPUT*/ 4> output;
   for (int i = 0; i < COMPONENT_COUNT_INPUT; i++) {
-    output[i] = OUTPUT_DATA_TYPE(input_data[index + i]);
+    output[i] = OUTPUT_DATA_TYPE(READ_INPUT_DATA(index, i));
   }
   for (int i = COMPONENT_COUNT_INPUT; i < COMPONENT_COUNT_OUTPUT; i++) {
     output[i] = OUTPUT_DATA_TYPE(0);
@@ -132,7 +130,7 @@ kernel void compute_texture_update(constant TextureUpdateParams &params [[buffer
 
   vec<OUTPUT_DATA_TYPE, /*COMPONENT_COUNT_OUTPUT*/ 4> output;
   for (int i = 0; i < COMPONENT_COUNT_INPUT; i++) {
-    output[i] = OUTPUT_DATA_TYPE(input_data[index + i]);
+    output[i] = OUTPUT_DATA_TYPE(READ_INPUT_DATA(index, i));
   }
   for (int i = COMPONENT_COUNT_INPUT; i < COMPONENT_COUNT_OUTPUT; i++) {
     output[i] = OUTPUT_DATA_TYPE(0);
@@ -153,7 +151,7 @@ kernel void compute_texture_update(constant TextureUpdateParams &params [[buffer
 
   vec<OUTPUT_DATA_TYPE, /*COMPONENT_COUNT_OUTPUT*/ 4> output;
   for (int i = 0; i < COMPONENT_COUNT_INPUT; i++) {
-    output[i] = OUTPUT_DATA_TYPE(input_data[index + i]);
+    output[i] = OUTPUT_DATA_TYPE(READ_INPUT_DATA(index, i));
   }
   for (int i = COMPONENT_COUNT_INPUT; i < COMPONENT_COUNT_OUTPUT; i++) {
     output[i] = OUTPUT_DATA_TYPE(0);

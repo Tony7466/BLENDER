@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2014 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2014 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_SunBeamsNode.h"
 #include "COM_SunBeamsOperation.h"
@@ -16,7 +17,7 @@ void SunBeamsNode::convert_to_operations(NodeConverter &converter,
 {
   NodeInput *input_socket = this->get_input_socket(0);
   NodeOutput *output_socket = this->get_output_socket(0);
-  NodeSunBeams *data = (NodeSunBeams *)get_bnode()->storage;
+  const NodeSunBeams *data = (const NodeSunBeams *)get_bnode()->storage;
 
   SunBeamsOperation *operation = new SunBeamsOperation();
   operation->set_data(*data);

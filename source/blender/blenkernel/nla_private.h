@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -9,7 +10,7 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_ghash.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #ifdef __cplusplus
 extern "C" {
@@ -128,7 +129,7 @@ typedef struct NlaEvalData {
   int num_channels;
   NlaEvalSnapshot base_snapshot;
 
-  /* Evaluation result shapshot. */
+  /* Evaluation result snapshot. */
   NlaEvalSnapshot eval_snapshot;
 } NlaEvalData;
 
@@ -241,6 +242,17 @@ void nlasnapshot_blend_get_inverted_upper_snapshot(NlaEvalData *eval_data,
                                                    float upper_influence,
                                                    NlaEvalSnapshot *r_upper_snapshot);
 
+/**
+ * Using \a blended_snapshot and \a upper_snapshot, we can solve for the \a r_lower_snapshot.
+ *
+ * Only channels that exist within \a blended_snapshot are processed.
+ * Only blended values within the \a remap_domain are processed.
+ *
+ * Writes to \a r_upper_snapshot `NlaEvalChannelSnapshot->remap_domain` to match remapping success.
+ *
+ * Assumes caller marked upper values that are in the \a blend_domain. This determines whether the
+ * blended value came directly from the lower snapshot or a result of blending.
+ */
 void nlasnapshot_blend_get_inverted_lower_snapshot(NlaEvalData *eval_data,
                                                    NlaEvalSnapshot *blended_snapshot,
                                                    NlaEvalSnapshot *upper_snapshot,

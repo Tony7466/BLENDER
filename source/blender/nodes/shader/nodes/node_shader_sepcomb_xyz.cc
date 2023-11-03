@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2014 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2014 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup shdnodes
@@ -7,45 +8,47 @@
 
 #include "node_shader_util.hh"
 
-namespace blender::nodes::node_shader_sepcomb_xyz_cc {
+#include "FN_multi_function_builder.hh"
+
+#include "NOD_multi_function.hh"
+
+namespace blender::nodes::node_shader_sepcomb_xyz_cc::sep {
 
 static void sh_node_sepxyz_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Vector>(N_("Vector")).min(-10000.0f).max(10000.0f);
-  b.add_output<decl::Float>(N_("X"));
-  b.add_output<decl::Float>(N_("Y"));
-  b.add_output<decl::Float>(N_("Z"));
+  b.add_input<decl::Vector>("Vector").min(-10000.0f).max(10000.0f);
+  b.add_output<decl::Float>("X");
+  b.add_output<decl::Float>("Y");
+  b.add_output<decl::Float>("Z");
 }
 
 static int gpu_shader_sepxyz(GPUMaterial *mat,
                              bNode *node,
-                             bNodeExecData *UNUSED(execdata),
+                             bNodeExecData * /*execdata*/,
                              GPUNodeStack *in,
                              GPUNodeStack *out)
 {
   return GPU_stack_link(mat, node, "separate_xyz", in, out);
 }
 
-class MF_SeparateXYZ : public fn::MultiFunction {
+class MF_SeparateXYZ : public mf::MultiFunction {
  public:
   MF_SeparateXYZ()
   {
-    static fn::MFSignature signature = create_signature();
+    static const mf::Signature signature = []() {
+      mf::Signature signature;
+      mf::SignatureBuilder builder{"Separate XYZ", signature};
+      builder.single_input<float3>("XYZ");
+      builder.single_output<float>("X", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Y", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Z", mf::ParamFlag::SupportsUnusedOutput);
+      return signature;
+    }();
     this->set_signature(&signature);
   }
 
-  static fn::MFSignature create_signature()
-  {
-    fn::MFSignatureBuilder signature{"Separate XYZ"};
-    signature.single_input<float3>("XYZ");
-    signature.single_output<float>("X");
-    signature.single_output<float>("Y");
-    signature.single_output<float>("Z");
-    return signature.build();
-  }
-
-  void call(IndexMask mask, fn::MFParams params, fn::MFContext UNUSED(context)) const override
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float3> &vectors = params.readonly_single_input<float3>(0, "XYZ");
     MutableSpan<float> xs = params.uninitialized_single_output_if_required<float>(1, "X");
@@ -65,11 +68,11 @@ class MF_SeparateXYZ : public fn::MultiFunction {
     }
 
     devirtualize_varray(vectors, [&](auto vectors) {
-      mask.to_best_mask_type([&](auto mask) {
+      mask.foreach_segment_optimized([&](const auto segment) {
         const int used_outputs_num = used_outputs.size();
         const int *used_outputs_data = used_outputs.data();
 
-        for (const int64_t i : mask) {
+        for (const int64_t i : segment) {
           const float3 &vector = vectors[i];
           for (const int out_i : IndexRange(used_outputs_num)) {
             const int coordinate = used_outputs_data[out_i];
@@ -87,36 +90,47 @@ static void sh_node_sepxyz_build_multi_function(NodeMultiFunctionBuilder &builde
   builder.set_matching_fn(separate_fn);
 }
 
-}  // namespace blender::nodes::node_shader_sepcomb_xyz_cc
+NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
+{
+  NodeItem vector = get_input_value("Vector", NodeItem::Type::Vector3);
+  int index = STREQ(socket_out_->name, "X") ? 0 : STREQ(socket_out_->name, "Y") ? 1 : 2;
+  return vector[index];
+}
+#endif
+NODE_SHADER_MATERIALX_END
+
+}  // namespace blender::nodes::node_shader_sepcomb_xyz_cc::sep
 
 void register_node_type_sh_sepxyz()
 {
-  namespace file_ns = blender::nodes::node_shader_sepcomb_xyz_cc;
+  namespace file_ns = blender::nodes::node_shader_sepcomb_xyz_cc::sep;
 
   static bNodeType ntype;
 
   sh_fn_node_type_base(&ntype, SH_NODE_SEPXYZ, "Separate XYZ", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::sh_node_sepxyz_declare;
-  node_type_gpu(&ntype, file_ns::gpu_shader_sepxyz);
+  ntype.gpu_fn = file_ns::gpu_shader_sepxyz;
   ntype.build_multi_function = file_ns::sh_node_sepxyz_build_multi_function;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }
 
-namespace blender::nodes::node_shader_sepcomb_xyz_cc {
+namespace blender::nodes::node_shader_sepcomb_xyz_cc::comb {
 
 static void sh_node_combxyz_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Float>(N_("X")).min(-10000.0f).max(10000.0f);
-  b.add_input<decl::Float>(N_("Y")).min(-10000.0f).max(10000.0f);
-  b.add_input<decl::Float>(N_("Z")).min(-10000.0f).max(10000.0f);
-  b.add_output<decl::Vector>(N_("Vector"));
+  b.add_input<decl::Float>("X").min(-10000.0f).max(10000.0f);
+  b.add_input<decl::Float>("Y").min(-10000.0f).max(10000.0f);
+  b.add_input<decl::Float>("Z").min(-10000.0f).max(10000.0f);
+  b.add_output<decl::Vector>("Vector");
 }
 
 static int gpu_shader_combxyz(GPUMaterial *mat,
                               bNode *node,
-                              bNodeExecData *UNUSED(execdata),
+                              bNodeExecData * /*execdata*/,
                               GPUNodeStack *in,
                               GPUNodeStack *out)
 {
@@ -125,25 +139,38 @@ static int gpu_shader_combxyz(GPUMaterial *mat,
 
 static void sh_node_combxyz_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
-  static fn::CustomMF_SI_SI_SI_SO<float, float, float, float3> fn{
+  static auto fn = mf::build::SI3_SO<float, float, float, float3>(
       "Combine Vector",
       [](float x, float y, float z) { return float3(x, y, z); },
-      fn::CustomMF_presets::AllSpanOrSingle()};
+      mf::build::exec_presets::AllSpanOrSingle());
   builder.set_matching_fn(fn);
 }
 
-}  // namespace blender::nodes::node_shader_sepcomb_xyz_cc
+NODE_SHADER_MATERIALX_BEGIN
+#ifdef WITH_MATERIALX
+{
+  NodeItem x = get_input_value("X", NodeItem::Type::Float);
+  NodeItem y = get_input_value("Y", NodeItem::Type::Float);
+  NodeItem z = get_input_value("Z", NodeItem::Type::Float);
+
+  return create_node("combine3", NodeItem::Type::Vector3, {{"in1", x}, {"in2", y}, {"in3", z}});
+}
+#endif
+NODE_SHADER_MATERIALX_END
+
+}  // namespace blender::nodes::node_shader_sepcomb_xyz_cc::comb
 
 void register_node_type_sh_combxyz()
 {
-  namespace file_ns = blender::nodes::node_shader_sepcomb_xyz_cc;
+  namespace file_ns = blender::nodes::node_shader_sepcomb_xyz_cc::comb;
 
   static bNodeType ntype;
 
   sh_fn_node_type_base(&ntype, SH_NODE_COMBXYZ, "Combine XYZ", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::sh_node_combxyz_declare;
-  node_type_gpu(&ntype, file_ns::gpu_shader_combxyz);
+  ntype.gpu_fn = file_ns::gpu_shader_combxyz;
   ntype.build_multi_function = file_ns::sh_node_combxyz_build_multi_function;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }

@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2018-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -19,14 +22,15 @@ void main()
   geom_in.vPos = view_pos.xyz;
   geom_in.pPos = drw_view.winmat * view_pos;
 
-  geom_in.inverted = int(dot(cross(model_mat[0].xyz, model_mat[1].xyz), model_mat[2].xyz) < 0.0);
+  geom_flat_in.inverted = int(dot(cross(model_mat[0].xyz, model_mat[1].xyz), model_mat[2].xyz) <
+                              0.0);
 
   /* This is slow and run per vertex, but it's still faster than
    * doing it per instance on CPU and sending it on via instance attribute. */
   mat3 normal_mat = transpose(inverse(mat3(model_mat)));
   /* TODO: FIX: there is still a problem with this vector
-   * when the bone is scaled or in persp mode. But it's
-   * barely visible at the outline corners. */
+   * when the bone is scaled or in perspective mode.
+   * But it's barely visible at the outline corners. */
   geom_in.ssNor = normalize(normal_world_to_view(normal_mat * snor).xy);
 
   geom_in.ssPos = proj(geom_in.pPos);

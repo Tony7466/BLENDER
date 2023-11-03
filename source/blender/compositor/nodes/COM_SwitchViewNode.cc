@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2015 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2015 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_SwitchViewNode.h"
 
@@ -15,7 +16,7 @@ void SwitchViewNode::convert_to_operations(NodeConverter &converter,
 {
   NodeOperationOutput *result;
   const char *view_name = context.get_view_name();
-  bNode *bnode = this->get_bnode();
+  const bNode *bnode = this->get_bnode();
 
   /* get the internal index of the socket with a matching name */
   int nr = BLI_findstringindex(&bnode->inputs, view_name, offsetof(bNodeSocket, name));

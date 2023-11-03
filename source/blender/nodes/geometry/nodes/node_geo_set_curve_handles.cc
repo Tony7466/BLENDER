@@ -1,11 +1,19 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <atomic>
 
+#include "BLI_task.hh"
+
 #include "BKE_curves.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "NOD_rna_define.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+
+#include "RNA_enum_types.hh"
 
 #include "node_geometry_util.hh"
 
@@ -15,19 +23,25 @@ NODE_STORAGE_FUNCS(NodeGeometrySetCurveHandlePositions)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Curve")).supported_type(GEO_COMPONENT_TYPE_CURVE);
-  b.add_input<decl::Bool>(N_("Selection")).default_value(true).hide_value().supports_field();
-  b.add_input<decl::Vector>(N_("Position")).implicit_field();
-  b.add_input<decl::Vector>(N_("Offset")).default_value(float3(0.0f, 0.0f, 0.0f)).supports_field();
-  b.add_output<decl::Geometry>(N_("Curve"));
+  b.add_input<decl::Geometry>("Curve").supported_type(GeometryComponent::Type::Curve);
+  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
+  b.add_input<decl::Vector>("Position")
+      .implicit_field_on_all([](const bNode &node, void *r_value) {
+        const StringRef side = node_storage(node).mode == GEO_NODE_CURVE_HANDLE_LEFT ?
+                                   "handle_left" :
+                                   "handle_right";
+        new (r_value) ValueOrField<float3>(bke::AttributeFieldInput::Create<float3>(side));
+      });
+  b.add_input<decl::Vector>("Offset").default_value(float3(0.0f, 0.0f, 0.0f)).field_on_all();
+  b.add_output<decl::Geometry>("Curve").propagate_all();
 }
 
-static void node_layout(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "mode", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 }
 
-static void node_init(bNodeTree *UNUSED(tree), bNode *node)
+static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometrySetCurveHandlePositions *data = MEM_cnew<NodeGeometrySetCurveHandlePositions>(
       __func__);
@@ -68,19 +82,18 @@ static void update_handle_types_for_movement(int8_t &type, int8_t &other)
   }
 }
 
-static void set_position_in_component(CurveComponent &component,
+static void set_position_in_component(bke::CurvesGeometry &curves,
                                       const GeometryNodeCurveHandleMode mode,
                                       const Field<bool> &selection_field,
                                       const Field<float3> &position_field,
                                       const Field<float3> &offset_field)
 {
-  GeometryComponentFieldContext field_context{component, ATTR_DOMAIN_POINT};
-  const int domain_size = component.attribute_domain_size(ATTR_DOMAIN_POINT);
-  if (domain_size == 0) {
+  if (curves.points_num() == 0) {
     return;
   }
 
-  fn::FieldEvaluator evaluator{field_context, domain_size};
+  const bke::CurvesFieldContext field_context{curves, ATTR_DOMAIN_POINT};
+  fn::FieldEvaluator evaluator{field_context, curves.points_num()};
   evaluator.set_selection(selection_field);
   evaluator.add(position_field);
   evaluator.add(offset_field);
@@ -88,9 +101,6 @@ static void set_position_in_component(CurveComponent &component,
   const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
   const VArray<float3> new_positions = evaluator.get_evaluated<float3>(0);
   const VArray<float3> new_offsets = evaluator.get_evaluated<float3>(1);
-
-  Curves &curves_id = *component.get_for_write();
-  bke::CurvesGeometry &curves = bke::CurvesGeometry::wrap(curves_id.geometry);
 
   Span<float3> positions = curves.positions();
 
@@ -105,14 +115,11 @@ static void set_position_in_component(CurveComponent &component,
                                                    curves.handle_positions_right_for_write() :
                                                    curves.handle_positions_left_for_write();
 
-  threading::parallel_for(selection.index_range(), 2048, [&](IndexRange range) {
-    for (const int i : selection.slice(range)) {
+  selection.foreach_segment(GrainSize(2048), [&](const IndexMaskSegment segment) {
+    for (const int i : segment) {
       update_handle_types_for_movement(handle_types[i], handle_types_other[i]);
     }
-  });
-
-  threading::parallel_for(selection.index_range(), 2048, [&](IndexRange range) {
-    for (const int i : selection.slice(range)) {
+    for (const int i : segment) {
       bke::curves::bezier::set_handle_position(positions[i],
                                                HandleType(handle_types[i]),
                                                HandleType(handle_types_other[i]),
@@ -141,22 +148,17 @@ static void node_geo_exec(GeoNodeExecParams params)
   std::atomic<bool> has_bezier = false;
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    if (!geometry_set.has_curves()) {
-      return;
-    }
-    has_curves = true;
-    const CurveComponent &component = *geometry_set.get_component_for_read<CurveComponent>();
-    const AttributeAccessor attributes = *component.attributes();
-    if (!attributes.contains("handle_left") || !attributes.contains("handle_right")) {
-      return;
-    }
-    has_bezier = true;
+    if (Curves *curves_id = geometry_set.get_curves_for_write()) {
+      bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+      has_curves = true;
+      const AttributeAccessor attributes = curves.attributes();
+      if (!attributes.contains("handle_left") || !attributes.contains("handle_right")) {
+        return;
+      }
+      has_bezier = true;
 
-    set_position_in_component(geometry_set.get_component_for_write<CurveComponent>(),
-                              mode,
-                              selection_field,
-                              position_field,
-                              offset_field);
+      set_position_in_component(curves, mode, selection_field, position_field, offset_field);
+    }
   });
 
   if (has_curves && !has_bezier) {
@@ -166,24 +168,36 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Curve", std::move(geometry_set));
 }
 
-}  // namespace blender::nodes::node_geo_set_curve_handles_cc
-
-void register_node_type_geo_set_curve_handles()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_geo_set_curve_handles_cc;
+  RNA_def_node_enum(srna,
+                    "mode",
+                    "Mode",
+                    "Whether to update left and right handles",
+                    rna_enum_node_geometry_curve_handle_side_items,
+                    NOD_storage_enum_accessors(mode),
+                    GEO_NODE_CURVE_HANDLE_LEFT);
+}
 
+static void node_register()
+{
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_SET_CURVE_HANDLES, "Set Handle Positions", NODE_CLASS_GEOMETRY);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
   ntype.minwidth = 100.0f;
-  node_type_init(&ntype, file_ns::node_init);
+  ntype.initfunc = node_init;
   node_type_storage(&ntype,
                     "NodeGeometrySetCurveHandlePositions",
                     node_free_standard_storage,
                     node_copy_standard_storage);
-  ntype.draw_buttons = file_ns::node_layout;
+  ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_set_curve_handles_cc

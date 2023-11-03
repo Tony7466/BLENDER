@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -36,7 +37,7 @@ class CPUKernelThreadGlobals : public KernelGlobalsCPU {
   void stop_profiling();
 
  protected:
-  void reset_runtime_memory();
+  void clear_runtime_pointers();
 
   Profiler &cpu_profiler_;
 };

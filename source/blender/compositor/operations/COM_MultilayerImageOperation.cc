@@ -1,7 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_MultilayerImageOperation.h"
+
+#include "BLI_string.h"
 
 #include "IMB_imbuf.h"
 
@@ -37,9 +40,14 @@ ImBuf *MultilayerBaseOperation::get_im_buf()
 
 void MultilayerBaseOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                            const rcti &area,
-                                                           Span<MemoryBuffer *> UNUSED(inputs))
+                                                           Span<MemoryBuffer *> /*inputs*/)
 {
-  output->copy_from(buffer_, area);
+  if (buffer_) {
+    output->copy_from(buffer_, area);
+  }
+  else {
+    output->clear();
+  }
 }
 
 std::unique_ptr<MetaData> MultilayerColorOperation::get_meta_data()
@@ -93,8 +101,7 @@ void MultilayerColorOperation::execute_pixel_sampled(float output[4],
     else {
       int yi = y;
       int xi = x;
-      if (xi < 0 || yi < 0 || (unsigned int)xi >= this->get_width() ||
-          (unsigned int)yi >= this->get_height()) {
+      if (xi < 0 || yi < 0 || uint(xi) >= this->get_width() || uint(yi) >= this->get_height()) {
         zero_v4(output);
       }
       else {
@@ -116,8 +123,7 @@ void MultilayerValueOperation::execute_pixel_sampled(float output[4],
   else {
     int yi = y;
     int xi = x;
-    if (xi < 0 || yi < 0 || (unsigned int)xi >= this->get_width() ||
-        (unsigned int)yi >= this->get_height()) {
+    if (xi < 0 || yi < 0 || uint(xi) >= this->get_width() || uint(yi) >= this->get_height()) {
       output[0] = 0.0f;
     }
     else {
@@ -138,8 +144,7 @@ void MultilayerVectorOperation::execute_pixel_sampled(float output[4],
   else {
     int yi = y;
     int xi = x;
-    if (xi < 0 || yi < 0 || (unsigned int)xi >= this->get_width() ||
-        (unsigned int)yi >= this->get_height()) {
+    if (xi < 0 || yi < 0 || uint(xi) >= this->get_width() || uint(yi) >= this->get_height()) {
       output[0] = 0.0f;
     }
     else {

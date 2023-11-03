@@ -1,11 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
  */
 
-#include "intern/node/deg_node_component.h"
+#include "intern/node/deg_node_component.hh"
 
 #include <cstdio>
 #include <cstring> /* required for STREQ later on. */
@@ -18,9 +19,9 @@
 
 #include "BKE_action.h"
 
-#include "intern/node/deg_node_factory.h"
-#include "intern/node/deg_node_id.h"
-#include "intern/node/deg_node_operation.h"
+#include "intern/node/deg_node_factory.hh"
+#include "intern/node/deg_node_id.hh"
+#include "intern/node/deg_node_operation.hh"
 
 namespace blender::deg {
 
@@ -48,18 +49,18 @@ ComponentNode::OperationIDKey::OperationIDKey(OperationCode opcode, const char *
 
 string ComponentNode::OperationIDKey::identifier() const
 {
-  const string codebuf = to_string(static_cast<int>(opcode));
+  const string codebuf = to_string(int(opcode));
   return "OperationIDKey(" + codebuf + ", " + name + ")";
 }
 
 bool ComponentNode::OperationIDKey::operator==(const OperationIDKey &other) const
 {
-  return (opcode == other.opcode) && (STREQ(name, other.name)) && (name_tag == other.name_tag);
+  return (opcode == other.opcode) && STREQ(name, other.name) && (name_tag == other.name_tag);
 }
 
 uint64_t ComponentNode::OperationIDKey::hash() const
 {
-  const int opcode_as_int = static_cast<int>(opcode);
+  const int opcode_as_int = int(opcode);
   return BLI_ghashutil_combine_hash(
       name_tag,
       BLI_ghashutil_combine_hash(BLI_ghashutil_uinthash(opcode_as_int),
@@ -90,10 +91,11 @@ ComponentNode::~ComponentNode()
 
 string ComponentNode::identifier() const
 {
-  const string idname = this->owner->name;
-  const string typebuf = "" + to_string(static_cast<int>(type)) + ")";
-  return typebuf + name + " : " + idname +
-         "( affects_visible_id: " + (affects_visible_id ? "true" : "false") + ")";
+  const string type_name = type_get_factory(type)->type_name();
+  const string name_part = name[0] ? (string(" '") + name + "'") : "";
+
+  return "[" + type_name + "]" + name_part + " : " +
+         "(affects_visible_id: " + (affects_visible_id ? "true" : "false") + ")";
 }
 
 OperationNode *ComponentNode::find_operation(OperationIDKey key) const
@@ -105,7 +107,8 @@ OperationNode *ComponentNode::find_operation(OperationIDKey key) const
   else {
     for (OperationNode *op_node : operations) {
       if (op_node->opcode == key.opcode && op_node->name_tag == key.name_tag &&
-          STREQ(op_node->name.c_str(), key.name)) {
+          STREQ(op_node->name.c_str(), key.name))
+      {
         node = op_node;
         break;
       }
@@ -166,7 +169,7 @@ OperationNode *ComponentNode::add_operation(const DepsEvalOperationCb &op,
     op_node = (OperationNode *)factory->create_node(this->owner->id_orig, "", name);
 
     /* register opnode in this component's operation set */
-    OperationIDKey key(opcode, name, name_tag);
+    OperationIDKey key(opcode, op_node->name.c_str(), name_tag);
     operations_map->add(key, op_node);
 
     /* Set back-link. */
@@ -329,14 +332,15 @@ DEG_COMPONENT_NODE_DEFINE(Sequencer, SEQUENCER, 0);
 DEG_COMPONENT_NODE_DEFINE(Shading, SHADING, ID_RECALC_SHADING);
 DEG_COMPONENT_NODE_DEFINE(Transform, TRANSFORM, ID_RECALC_TRANSFORM);
 DEG_COMPONENT_NODE_DEFINE(ObjectFromLayer, OBJECT_FROM_LAYER, 0);
+DEG_COMPONENT_NODE_DEFINE(Hierarchy, HIERARCHY, 0);
 DEG_COMPONENT_NODE_DEFINE(Dupli, DUPLI, 0);
 DEG_COMPONENT_NODE_DEFINE(Synchronization, SYNCHRONIZATION, 0);
 DEG_COMPONENT_NODE_DEFINE(Audio, AUDIO, 0);
 DEG_COMPONENT_NODE_DEFINE(Armature, ARMATURE, 0);
 DEG_COMPONENT_NODE_DEFINE(GenericDatablock, GENERIC_DATABLOCK, 0);
 DEG_COMPONENT_NODE_DEFINE(Visibility, VISIBILITY, 0);
-DEG_COMPONENT_NODE_DEFINE(Simulation, SIMULATION, 0);
 DEG_COMPONENT_NODE_DEFINE(NTreeOutput, NTREE_OUTPUT, ID_RECALC_NTREE_OUTPUT);
+DEG_COMPONENT_NODE_DEFINE(NTreeGeometryPreprocess, NTREE_GEOMETRY_PREPROCESS, 0);
 
 /** \} */
 
@@ -363,14 +367,15 @@ void deg_register_component_depsnodes()
   register_node_typeinfo(&DNTI_SHADING);
   register_node_typeinfo(&DNTI_TRANSFORM);
   register_node_typeinfo(&DNTI_OBJECT_FROM_LAYER);
+  register_node_typeinfo(&DNTI_HIERARCHY);
   register_node_typeinfo(&DNTI_DUPLI);
   register_node_typeinfo(&DNTI_SYNCHRONIZATION);
   register_node_typeinfo(&DNTI_AUDIO);
   register_node_typeinfo(&DNTI_ARMATURE);
   register_node_typeinfo(&DNTI_GENERIC_DATABLOCK);
   register_node_typeinfo(&DNTI_VISIBILITY);
-  register_node_typeinfo(&DNTI_SIMULATION);
   register_node_typeinfo(&DNTI_NTREE_OUTPUT);
+  register_node_typeinfo(&DNTI_NTREE_GEOMETRY_PREPROCESS);
 }
 
 /** \} */

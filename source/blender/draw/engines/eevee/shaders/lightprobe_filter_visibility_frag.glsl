@@ -1,22 +1,11 @@
+/* SPDX-FileCopyrightText: 2017-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(random_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
 #pragma BLENDER_REQUIRE(bsdf_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(irradiance_lib.glsl)
-
-uniform samplerCube probeDepth;
-uniform int outputSize;
-uniform float lodFactor;
-uniform float storedTexelSize;
-uniform float lodMax;
-uniform float nearClip;
-uniform float farClip;
-uniform float visibilityRange;
-uniform float visibilityBlur;
-
-uniform float sampleCount;
-
-out vec4 FragColor;
 
 vec3 octahedral_to_cubemap_proj(vec2 co)
 {
@@ -71,7 +60,7 @@ void main()
   /* clamp to [0-1] */
   cos.xy = fract(cos.xy);
 
-  /* get cubemap vector */
+  /* Get cube-map vector. */
   cos = normalize(octahedral_to_cubemap_proj(cos.xy));
 
   vec3 T, B;

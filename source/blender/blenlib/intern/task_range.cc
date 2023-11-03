@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -12,7 +14,9 @@
 
 #include "DNA_listBase.h"
 
+#include "BLI_lazy_threading.hh"
 #include "BLI_task.h"
+#include "BLI_task.hh"
 #include "BLI_threads.h"
 
 #include "atomic_ops.h"
@@ -49,7 +53,7 @@ struct RangeTask {
   }
 
   /* Splitting constructor for parallel reduce. */
-  RangeTask(RangeTask &other, tbb::split /* unused */)
+  RangeTask(RangeTask &other, tbb::split /*unused*/)
       : func(other.func), userdata(other.userdata), settings(other.settings)
   {
     init_chunk(settings->userdata_chunk);
@@ -104,6 +108,8 @@ void BLI_task_parallel_range(const int start,
     const size_t grainsize = MAX2(settings->min_iter_per_thread, 1);
     const tbb::blocked_range<int> range(start, stop, grainsize);
 
+    blender::lazy_threading::send_hint();
+
     if (settings->func_reduce) {
       parallel_reduce(range, task);
       if (settings->userdata_chunk) {
@@ -129,7 +135,7 @@ void BLI_task_parallel_range(const int start,
   }
 }
 
-int BLI_task_parallel_thread_id(const TaskParallelTLS *UNUSED(tls))
+int BLI_task_parallel_thread_id(const TaskParallelTLS * /*tls*/)
 {
 #ifdef WITH_TBB
   /* Get a unique thread ID for texture nodes. In the future we should get rid
@@ -151,3 +157,28 @@ int BLI_task_parallel_thread_id(const TaskParallelTLS *UNUSED(tls))
   return 0;
 #endif
 }
+
+namespace blender::threading::detail {
+
+void parallel_for_impl(const IndexRange range,
+                       const int64_t grain_size,
+                       const FunctionRef<void(IndexRange)> function)
+{
+#ifdef WITH_TBB
+  /* Invoking tbb for small workloads has a large overhead. */
+  if (range.size() >= grain_size) {
+    lazy_threading::send_hint();
+    tbb::parallel_for(
+        tbb::blocked_range<int64_t>(range.first(), range.one_after_last(), grain_size),
+        [function](const tbb::blocked_range<int64_t> &subrange) {
+          function(IndexRange(subrange.begin(), subrange.size()));
+        });
+    return;
+  }
+#else
+  UNUSED_VARS(grain_size);
+#endif
+  function(range);
+}
+
+}  // namespace blender::threading::detail

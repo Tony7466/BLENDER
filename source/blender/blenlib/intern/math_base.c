@@ -1,12 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
  */
 
-#include "BLI_math.h"
-
+#include "BLI_math_base.h"
 #include "BLI_strict_flags.h"
 
 int pow_i(int base, int exp)
@@ -65,7 +65,7 @@ float floor_power_of_10(float f)
 {
   BLI_assert(!(f < 0.0f));
   if (f != 0.0f) {
-    return 1.0f / (powf(10.0f, ceilf(log10f(1.0f / f))));
+    return 1.0f / powf(10.0f, ceilf(log10f(1.0f / f)));
   }
   return 0.0f;
 }
@@ -74,7 +74,7 @@ float ceil_power_of_10(float f)
 {
   BLI_assert(!(f < 0.0f));
   if (f != 0.0f) {
-    return 1.0f / (powf(10.0f, floorf(log10f(1.0f / f))));
+    return 1.0f / powf(10.0f, floorf(log10f(1.0f / f)));
   }
   return 0.0f;
 }

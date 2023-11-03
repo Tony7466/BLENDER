@@ -1,26 +1,29 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <numeric>
 
 #include "BKE_attribute_math.hh"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
 #include "BKE_geometry_set.hh"
-#include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_sample.hh"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "BLI_index_mask_ops.hh"
+#include "BLI_array_utils.hh"
+#include "BLI_enumerable_thread_specific.hh"
 #include "BLI_kdtree.h"
 #include "BLI_rand.hh"
 #include "BLI_task.hh"
@@ -32,7 +35,7 @@
 #include "DNA_brush_types.h"
 #include "DNA_mesh_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "curves_sculpt_intern.hh"
 
@@ -73,7 +76,7 @@ struct DensityAddOperationExecutor {
   CurvesGeometry *curves_orig_ = nullptr;
 
   Object *surface_ob_orig_ = nullptr;
-  Mesh *surface_orig_ = nullptr;
+  const Mesh *surface_orig_ = nullptr;
 
   Object *surface_ob_eval_ = nullptr;
   Mesh *surface_eval_ = nullptr;
@@ -91,9 +94,7 @@ struct DensityAddOperationExecutor {
 
   CurvesSurfaceTransforms transforms_;
 
-  DensityAddOperationExecutor(const bContext &C) : ctx_(C)
-  {
-  }
+  DensityAddOperationExecutor(const bContext &C) : ctx_(C) {}
 
   void execute(DensityAddOperation &self,
                const bContext &C,
@@ -102,7 +103,7 @@ struct DensityAddOperationExecutor {
     self_ = &self;
     curves_ob_orig_ = CTX_data_active_object(&C);
     curves_id_orig_ = static_cast<Curves *>(curves_ob_orig_->data);
-    curves_orig_ = &CurvesGeometry::wrap(curves_id_orig_->geometry);
+    curves_orig_ = &curves_id_orig_->geometry.wrap();
 
     if (stroke_extension.is_first) {
       self_->original_curve_num_ = curves_orig_->curves_num();
@@ -114,8 +115,8 @@ struct DensityAddOperationExecutor {
     }
 
     surface_ob_orig_ = curves_id_orig_->surface;
-    surface_orig_ = static_cast<Mesh *>(surface_ob_orig_->data);
-    if (surface_orig_->totpoly == 0) {
+    surface_orig_ = static_cast<const Mesh *>(surface_ob_orig_->data);
+    if (surface_orig_->faces_num == 0) {
       report_empty_original_surface(stroke_extension.reports);
       return;
     }
@@ -125,23 +126,21 @@ struct DensityAddOperationExecutor {
       return;
     }
     surface_eval_ = BKE_object_get_evaluated_mesh(surface_ob_eval_);
-    if (surface_eval_->totpoly == 0) {
+    if (surface_eval_->faces_num == 0) {
       report_empty_evaluated_surface(stroke_extension.reports);
       return;
     }
 
     BKE_bvhtree_from_mesh_get(&surface_bvh_eval_, surface_eval_, BVHTREE_FROM_LOOPTRI, 2);
     BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&surface_bvh_eval_); });
-    surface_looptris_eval_ = {BKE_mesh_runtime_looptri_ensure(surface_eval_),
-                              BKE_mesh_runtime_looptri_len(surface_eval_)};
+    surface_looptris_eval_ = surface_eval_->looptris();
     /* Find UV map. */
     VArraySpan<float2> surface_uv_map;
     if (curves_id_orig_->surface_uv_map != nullptr) {
-      surface_uv_map = bke::mesh_attributes(*surface_orig_)
-                           .lookup<float2>(curves_id_orig_->surface_uv_map, ATTR_DOMAIN_CORNER);
-      surface_uv_map_eval_ = bke::mesh_attributes(*surface_eval_)
-                                 .lookup<float2>(curves_id_orig_->surface_uv_map,
-                                                 ATTR_DOMAIN_CORNER);
+      surface_uv_map = *surface_orig_->attributes().lookup<float2>(curves_id_orig_->surface_uv_map,
+                                                                   ATTR_DOMAIN_CORNER);
+      surface_uv_map_eval_ = *surface_eval_->attributes().lookup<float2>(
+          curves_id_orig_->surface_uv_map, ATTR_DOMAIN_CORNER);
     }
     if (surface_uv_map.is_empty()) {
       report_missing_uv_map_on_original_surface(stroke_extension.reports);
@@ -180,7 +179,7 @@ struct DensityAddOperationExecutor {
       BLI_assert_unreachable();
     }
     for (float3 &pos : new_positions_cu) {
-      pos = transforms_.surface_to_curves * pos;
+      pos = math::transform_point(transforms_.surface_to_curves, pos);
     }
 
     if (stroke_extension.is_first) {
@@ -236,7 +235,7 @@ struct DensityAddOperationExecutor {
           new_roots_kdtree,
           root_pos_cu,
           brush_settings_->minimum_distance,
-          [&](const int other_new_i, const float *UNUSED(co), float UNUSED(dist_sq)) {
+          [&](const int other_new_i, const float * /*co*/, float /*dist_sq*/) {
             if (other_new_i == -1) {
               new_curve_skipped[new_i] = true;
               return false;
@@ -258,16 +257,8 @@ struct DensityAddOperationExecutor {
     }
     self_->new_deformed_root_positions_.extend(new_positions_cu);
 
-    /* Find normals. */
-    if (!CustomData_has_layer(&surface_orig_->ldata, CD_NORMAL)) {
-      BKE_mesh_calc_normals_split(surface_orig_);
-    }
-    const Span<float3> corner_normals_su = {
-        reinterpret_cast<const float3 *>(CustomData_get_layer(&surface_orig_->ldata, CD_NORMAL)),
-        surface_orig_->totloop};
-
-    const Span<MLoopTri> surface_looptris_orig = {BKE_mesh_runtime_looptri_ensure(surface_orig_),
-                                                  BKE_mesh_runtime_looptri_len(surface_orig_)};
+    const Span<float3> corner_normals_su = surface_orig_->corner_normals();
+    const Span<MLoopTri> surface_looptris_orig = surface_orig_->looptris();
     const geometry::ReverseUVSampler reverse_uv_sampler{surface_uv_map, surface_looptris_orig};
 
     geometry::AddCurvesOnMeshInputs add_inputs;
@@ -278,16 +269,25 @@ struct DensityAddOperationExecutor {
                                    BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_SHAPE;
     add_inputs.interpolate_point_count = brush_settings_->flag &
                                          BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_POINT_COUNT;
+    add_inputs.interpolate_resolution = curves_orig_->attributes().contains("resolution");
     add_inputs.fallback_curve_length = brush_settings_->curve_length;
     add_inputs.fallback_point_count = std::max(2, brush_settings_->points_per_curve);
     add_inputs.transforms = &transforms_;
     add_inputs.surface = surface_orig_;
     add_inputs.corner_normals_su = corner_normals_su;
+    add_inputs.surface_looptris = surface_looptris_orig;
     add_inputs.reverse_uv_sampler = &reverse_uv_sampler;
     add_inputs.old_roots_kdtree = self_->original_curve_roots_kdtree_;
 
     const geometry::AddCurvesOnMeshOutputs add_outputs = geometry::add_curves_on_mesh(
         *curves_orig_, add_inputs);
+    bke::MutableAttributeAccessor attributes = curves_orig_->attributes_for_write();
+    if (bke::GSpanAttributeWriter selection = attributes.lookup_for_write_span(".selection")) {
+      curves::fill_selection_true(selection.span.slice(selection.domain == ATTR_DOMAIN_POINT ?
+                                                           add_outputs.new_points_range :
+                                                           add_outputs.new_curves_range));
+      selection.finish();
+    }
 
     if (add_outputs.uv_error) {
       report_invalid_uv_map(stroke_extension.reports);
@@ -332,12 +332,12 @@ struct DensityAddOperationExecutor {
                                       Vector<float3> &r_positions_su)
   {
     float4x4 projection;
-    ED_view3d_ob_project_mat_get(ctx_.rv3d, curves_ob_orig_, projection.values);
+    ED_view3d_ob_project_mat_get(ctx_.rv3d, curves_ob_orig_, projection.ptr());
 
     const Vector<float4x4> symmetry_brush_transforms = get_symmetry_brush_transforms(
         eCurvesSymmetryType(curves_id_orig_->symmetry));
     for (const float4x4 &brush_transform : symmetry_brush_transforms) {
-      const float4x4 brush_transform_inv = brush_transform.inverted();
+      const float4x4 brush_transform_inv = math::invert(brush_transform);
       const float4x4 transform = transforms_.curves_to_surface * brush_transform *
                                  transforms_.world_to_curves;
       Vector<float3> positions_su;
@@ -353,8 +353,8 @@ struct DensityAddOperationExecutor {
             float3 start_wo, end_wo;
             ED_view3d_win_to_segment_clipped(
                 ctx_.depsgraph, ctx_.region, ctx_.v3d, pos_re, start_wo, end_wo, true);
-            r_start_su = transform * start_wo;
-            r_end_su = transform * end_wo;
+            r_start_su = math::transform_point(transform, start_wo);
+            r_end_su = math::transform_point(transform, end_wo);
           },
           true,
           brush_settings_->density_add_attempts,
@@ -366,9 +366,10 @@ struct DensityAddOperationExecutor {
       /* Remove some sampled points randomly based on the brush falloff and strength. */
       for (int i = new_points - 1; i >= 0; i--) {
         const float3 pos_su = positions_su[i];
-        const float3 pos_cu = brush_transform_inv * transforms_.surface_to_curves * pos_su;
+        const float3 pos_cu = math::transform_point(
+            brush_transform_inv, math::transform_point(transforms_.surface_to_curves, pos_su));
         float2 pos_re;
-        ED_view3d_project_float_v2_m4(ctx_.region, pos_cu, pos_re, projection.values);
+        ED_view3d_project_float_v2_m4(ctx_.region, pos_cu, pos_re, projection.ptr());
         const float dist_to_brush_re = math::distance(brush_pos_re_, pos_re);
         const float radius_falloff = BKE_brush_curve_strength(
             brush_, dist_to_brush_re, brush_radius_re_);
@@ -381,7 +382,7 @@ struct DensityAddOperationExecutor {
       }
 
       for (const int i : bary_coords.index_range()) {
-        const float2 uv = bke::mesh_surface_sample::sample_corner_attrribute_with_bary_coords(
+        const float2 uv = bke::mesh_surface_sample::sample_corner_attribute_with_bary_coords(
             bary_coords[i], surface_looptris_eval_[looptri_indices[i]], surface_uv_map_eval_);
         r_uvs.append(uv);
       }
@@ -407,8 +408,9 @@ struct DensityAddOperationExecutor {
     const Vector<float4x4> symmetry_brush_transforms = get_symmetry_brush_transforms(
         eCurvesSymmetryType(curves_id_orig_->symmetry));
     for (const float4x4 &brush_transform : symmetry_brush_transforms) {
-      const float3 brush_pos_cu = brush_transform * brush_3d->position_cu;
-      const float3 brush_pos_su = transforms_.curves_to_surface * brush_pos_cu;
+      const float3 brush_pos_cu = math::transform_point(brush_transform, brush_3d->position_cu);
+      const float3 brush_pos_su = math::transform_point(transforms_.curves_to_surface,
+                                                        brush_pos_cu);
       const float brush_radius_su = transform_brush_radius(
           transforms_.curves_to_surface, brush_pos_cu, brush_3d->radius_cu);
       const float brush_radius_sq_su = pow2f(brush_radius_su);
@@ -418,7 +420,7 @@ struct DensityAddOperationExecutor {
           *surface_bvh_eval_.tree,
           brush_pos_su,
           brush_radius_su,
-          [&](const int index, const float3 &UNUSED(co), const float UNUSED(dist_sq)) {
+          [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
             selected_looptri_indices.append(index);
           });
 
@@ -443,7 +445,7 @@ struct DensityAddOperationExecutor {
       /* Remove some sampled points randomly based on the brush falloff and strength. */
       for (int i = new_points - 1; i >= 0; i--) {
         const float3 pos_su = positions_su[i];
-        const float3 pos_cu = transforms_.surface_to_curves * pos_su;
+        const float3 pos_cu = math::transform_point(transforms_.surface_to_curves, pos_su);
         const float dist_to_brush_cu = math::distance(pos_cu, brush_pos_cu);
         const float radius_falloff = BKE_brush_curve_strength(
             brush_, dist_to_brush_cu, brush_3d->radius_cu);
@@ -456,7 +458,7 @@ struct DensityAddOperationExecutor {
       }
 
       for (const int i : bary_coords.index_range()) {
-        const float2 uv = bke::mesh_surface_sample::sample_corner_attrribute_with_bary_coords(
+        const float2 uv = bke::mesh_surface_sample::sample_corner_attribute_with_bary_coords(
             bary_coords[i], surface_looptris_eval_[looptri_indices[i]], surface_uv_map_eval_);
         r_uvs.append(uv);
       }
@@ -499,7 +501,7 @@ struct DensitySubtractOperationExecutor {
   Curves *curves_id_ = nullptr;
   CurvesGeometry *curves_ = nullptr;
 
-  Vector<int64_t> selected_curve_indices_;
+  IndexMaskMemory selected_curve_memory_;
   IndexMask curve_selection_;
 
   Object *surface_ob_orig_ = nullptr;
@@ -522,9 +524,7 @@ struct DensitySubtractOperationExecutor {
 
   KDTree_3d *root_points_kdtree_;
 
-  DensitySubtractOperationExecutor(const bContext &C) : ctx_(C)
-  {
-  }
+  DensitySubtractOperationExecutor(const bContext &C) : ctx_(C) {}
 
   void execute(DensitySubtractOperation &self,
                const bContext &C,
@@ -535,7 +535,7 @@ struct DensitySubtractOperationExecutor {
     object_ = CTX_data_active_object(&C);
 
     curves_id_ = static_cast<Curves *>(object_->data);
-    curves_ = &CurvesGeometry::wrap(curves_id_->geometry);
+    curves_ = &curves_id_->geometry.wrap();
     if (curves_->curves_num() == 0) {
       return;
     }
@@ -564,7 +564,7 @@ struct DensitySubtractOperationExecutor {
 
     minimum_distance_ = brush_->curves_sculpt_settings->minimum_distance;
 
-    curve_selection_ = retrieve_selected_curves(*curves_id_, selected_curve_indices_);
+    curve_selection_ = curves::retrieve_selected_curves(*curves_id_, selected_curve_memory_);
 
     transforms_ = CurvesSurfaceTransforms(*object_, curves_id_->surface);
     const eBrushFalloffShape falloff_shape = static_cast<eBrushFalloffShape>(
@@ -581,41 +581,36 @@ struct DensitySubtractOperationExecutor {
 
     root_points_kdtree_ = BLI_kdtree_3d_new(curve_selection_.size());
     BLI_SCOPED_DEFER([&]() { BLI_kdtree_3d_free(root_points_kdtree_); });
-    for (const int curve_i : curve_selection_) {
+    curve_selection_.foreach_index([&](const int curve_i) {
       const float3 &pos_cu = self_->deformed_root_positions_[curve_i];
       BLI_kdtree_3d_insert(root_points_kdtree_, curve_i, pos_cu);
-    }
+    });
     BLI_kdtree_3d_balance(root_points_kdtree_);
 
     /* Find all curves that should be deleted. */
-    Array<bool> curves_to_delete(curves_->curves_num(), false);
+    Array<bool> curves_to_keep(curves_->curves_num(), true);
     if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
-      this->reduce_density_projected_with_symmetry(curves_to_delete);
+      this->reduce_density_projected_with_symmetry(curves_to_keep);
     }
     else if (falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE) {
-      this->reduce_density_spherical_with_symmetry(curves_to_delete);
+      this->reduce_density_spherical_with_symmetry(curves_to_keep);
     }
     else {
       BLI_assert_unreachable();
     }
 
-    Vector<int64_t> indices;
-    const IndexMask mask_to_delete = index_mask_ops::find_indices_based_on_predicate(
-        curves_->curves_range(), 4096, indices, [&](const int curve_i) {
-          return curves_to_delete[curve_i];
-        });
+    IndexMaskMemory mask_memory;
+    const IndexMask mask_to_keep = IndexMask::from_bools(curves_to_keep, mask_memory);
 
     /* Remove deleted curves from the stored deformed root positions. */
-    const Vector<IndexRange> ranges_to_keep = mask_to_delete.extract_ranges_invert(
-        curves_->curves_range());
     BLI_assert(curves_->curves_num() == self_->deformed_root_positions_.size());
-    Vector<float3> new_deformed_positions;
-    for (const IndexRange range : ranges_to_keep) {
-      new_deformed_positions.extend(self_->deformed_root_positions_.as_span().slice(range));
-    }
+    Vector<float3> new_deformed_positions(mask_to_keep.size());
+    array_utils::gather(self_->deformed_root_positions_.as_span(),
+                        mask_to_keep,
+                        new_deformed_positions.as_mutable_span());
     self_->deformed_root_positions_ = std::move(new_deformed_positions);
 
-    curves_->remove_curves(mask_to_delete);
+    *curves_ = bke::curves_copy_curve_selection(*curves_, mask_to_keep, {});
     BLI_assert(curves_->curves_num() == self_->deformed_root_positions_.size());
 
     DEG_id_tag_update(&curves_id_->id, ID_RECALC_GEOMETRY);
@@ -623,39 +618,39 @@ struct DensitySubtractOperationExecutor {
     ED_region_tag_redraw(ctx_.region);
   }
 
-  void reduce_density_projected_with_symmetry(MutableSpan<bool> curves_to_delete)
+  void reduce_density_projected_with_symmetry(MutableSpan<bool> curves_to_keep)
   {
     const Vector<float4x4> symmetry_brush_transforms = get_symmetry_brush_transforms(
         eCurvesSymmetryType(curves_id_->symmetry));
     for (const float4x4 &brush_transform : symmetry_brush_transforms) {
-      this->reduce_density_projected(brush_transform, curves_to_delete);
+      this->reduce_density_projected(brush_transform, curves_to_keep);
     }
   }
 
-  void reduce_density_projected(const float4x4 &brush_transform,
-                                MutableSpan<bool> curves_to_delete)
+  void reduce_density_projected(const float4x4 &brush_transform, MutableSpan<bool> curves_to_keep)
   {
     const float brush_radius_re = brush_radius_base_re_ * brush_radius_factor_;
     const float brush_radius_sq_re = pow2f(brush_radius_re);
 
     float4x4 projection;
-    ED_view3d_ob_project_mat_get(ctx_.rv3d, object_, projection.values);
+    ED_view3d_ob_project_mat_get(ctx_.rv3d, object_, projection.ptr());
 
     /* Randomly select the curves that are allowed to be removed, based on the brush radius and
      * strength. */
     Array<bool> allow_remove_curve(curves_->curves_num(), false);
     threading::parallel_for(curves_->curves_range(), 512, [&](const IndexRange range) {
-      RandomNumberGenerator rng((int)(PIL_check_seconds_timer() * 1000000.0));
+      RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
 
       for (const int curve_i : range) {
-        if (curves_to_delete[curve_i]) {
+        if (!curves_to_keep[curve_i]) {
           allow_remove_curve[curve_i] = true;
           continue;
         }
-        const float3 pos_cu = brush_transform * self_->deformed_root_positions_[curve_i];
+        const float3 pos_cu = math::transform_point(brush_transform,
+                                                    self_->deformed_root_positions_[curve_i]);
 
         float2 pos_re;
-        ED_view3d_project_float_v2_m4(ctx_.region, pos_cu, pos_re, projection.values);
+        ED_view3d_project_float_v2_m4(ctx_.region, pos_cu, pos_re, projection.ptr());
         const float dist_to_brush_sq_re = math::distance_squared(brush_pos_re_, pos_re);
         if (dist_to_brush_sq_re > brush_radius_sq_re) {
           continue;
@@ -671,38 +666,40 @@ struct DensitySubtractOperationExecutor {
     });
 
     /* Detect curves that are too close to other existing curves. */
-    for (const int curve_i : curve_selection_) {
-      if (curves_to_delete[curve_i]) {
-        continue;
-      }
-      if (!allow_remove_curve[curve_i]) {
-        continue;
-      }
-      const float3 orig_pos_cu = self_->deformed_root_positions_[curve_i];
-      const float3 pos_cu = brush_transform * orig_pos_cu;
-      float2 pos_re;
-      ED_view3d_project_float_v2_m4(ctx_.region, pos_cu, pos_re, projection.values);
-      const float dist_to_brush_sq_re = math::distance_squared(brush_pos_re_, pos_re);
-      if (dist_to_brush_sq_re > brush_radius_sq_re) {
-        continue;
-      }
-      BLI_kdtree_3d_range_search_cb_cpp(
-          root_points_kdtree_,
-          orig_pos_cu,
-          minimum_distance_,
-          [&](const int other_curve_i, const float *UNUSED(co), float UNUSED(dist_sq)) {
-            if (other_curve_i == curve_i) {
+    curve_selection_.foreach_segment([&](const IndexMaskSegment segment) {
+      for (const int curve_i : segment) {
+        if (!curves_to_keep[curve_i]) {
+          continue;
+        }
+        if (!allow_remove_curve[curve_i]) {
+          continue;
+        }
+        const float3 orig_pos_cu = self_->deformed_root_positions_[curve_i];
+        const float3 pos_cu = math::transform_point(brush_transform, orig_pos_cu);
+        float2 pos_re;
+        ED_view3d_project_float_v2_m4(ctx_.region, pos_cu, pos_re, projection.ptr());
+        const float dist_to_brush_sq_re = math::distance_squared(brush_pos_re_, pos_re);
+        if (dist_to_brush_sq_re > brush_radius_sq_re) {
+          continue;
+        }
+        BLI_kdtree_3d_range_search_cb_cpp(
+            root_points_kdtree_,
+            orig_pos_cu,
+            minimum_distance_,
+            [&](const int other_curve_i, const float * /*co*/, float /*dist_sq*/) {
+              if (other_curve_i == curve_i) {
+                return true;
+              }
+              if (allow_remove_curve[other_curve_i]) {
+                curves_to_keep[other_curve_i] = false;
+              }
               return true;
-            }
-            if (allow_remove_curve[other_curve_i]) {
-              curves_to_delete[other_curve_i] = true;
-            }
-            return true;
-          });
-    }
+            });
+      }
+    });
   }
 
-  void reduce_density_spherical_with_symmetry(MutableSpan<bool> curves_to_delete)
+  void reduce_density_spherical_with_symmetry(MutableSpan<bool> curves_to_keep)
   {
     const float brush_radius_re = brush_radius_base_re_ * brush_radius_factor_;
     const std::optional<CurvesBrush3D> brush_3d = sample_curves_surface_3d_brush(*ctx_.depsgraph,
@@ -719,14 +716,14 @@ struct DensitySubtractOperationExecutor {
     const Vector<float4x4> symmetry_brush_transforms = get_symmetry_brush_transforms(
         eCurvesSymmetryType(curves_id_->symmetry));
     for (const float4x4 &brush_transform : symmetry_brush_transforms) {
-      const float3 brush_pos_cu = brush_transform * brush_3d->position_cu;
-      this->reduce_density_spherical(brush_pos_cu, brush_3d->radius_cu, curves_to_delete);
+      const float3 brush_pos_cu = math::transform_point(brush_transform, brush_3d->position_cu);
+      this->reduce_density_spherical(brush_pos_cu, brush_3d->radius_cu, curves_to_keep);
     }
   }
 
   void reduce_density_spherical(const float3 &brush_pos_cu,
                                 const float brush_radius_cu,
-                                MutableSpan<bool> curves_to_delete)
+                                MutableSpan<bool> curves_to_keep)
   {
     const float brush_radius_sq_cu = pow2f(brush_radius_cu);
 
@@ -734,10 +731,10 @@ struct DensitySubtractOperationExecutor {
      * strength. */
     Array<bool> allow_remove_curve(curves_->curves_num(), false);
     threading::parallel_for(curves_->curves_range(), 512, [&](const IndexRange range) {
-      RandomNumberGenerator rng((int)(PIL_check_seconds_timer() * 1000000.0));
+      RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
 
       for (const int curve_i : range) {
-        if (curves_to_delete[curve_i]) {
+        if (!curves_to_keep[curve_i]) {
           allow_remove_curve[curve_i] = true;
           continue;
         }
@@ -758,33 +755,35 @@ struct DensitySubtractOperationExecutor {
     });
 
     /* Detect curves that are too close to other existing curves. */
-    for (const int curve_i : curve_selection_) {
-      if (curves_to_delete[curve_i]) {
-        continue;
-      }
-      if (!allow_remove_curve[curve_i]) {
-        continue;
-      }
-      const float3 &pos_cu = self_->deformed_root_positions_[curve_i];
-      const float dist_to_brush_sq_cu = math::distance_squared(pos_cu, brush_pos_cu);
-      if (dist_to_brush_sq_cu > brush_radius_sq_cu) {
-        continue;
-      }
+    curve_selection_.foreach_segment([&](const IndexMaskSegment segment) {
+      for (const int curve_i : segment) {
+        if (!curves_to_keep[curve_i]) {
+          continue;
+        }
+        if (!allow_remove_curve[curve_i]) {
+          continue;
+        }
+        const float3 &pos_cu = self_->deformed_root_positions_[curve_i];
+        const float dist_to_brush_sq_cu = math::distance_squared(pos_cu, brush_pos_cu);
+        if (dist_to_brush_sq_cu > brush_radius_sq_cu) {
+          continue;
+        }
 
-      BLI_kdtree_3d_range_search_cb_cpp(
-          root_points_kdtree_,
-          pos_cu,
-          minimum_distance_,
-          [&](const int other_curve_i, const float *UNUSED(co), float UNUSED(dist_sq)) {
-            if (other_curve_i == curve_i) {
+        BLI_kdtree_3d_range_search_cb_cpp(
+            root_points_kdtree_,
+            pos_cu,
+            minimum_distance_,
+            [&](const int other_curve_i, const float * /*co*/, float /*dist_sq*/) {
+              if (other_curve_i == curve_i) {
+                return true;
+              }
+              if (allow_remove_curve[other_curve_i]) {
+                curves_to_keep[other_curve_i] = false;
+              }
               return true;
-            }
-            if (allow_remove_curve[other_curve_i]) {
-              curves_to_delete[other_curve_i] = true;
-            }
-            return true;
-          });
-    }
+            });
+      }
+    });
   }
 };
 
@@ -829,7 +828,7 @@ static bool use_add_density_mode(const BrushStrokeMode brush_mode,
   if (surface_ob_eval == nullptr) {
     return true;
   }
-  const CurvesGeometry &curves = CurvesGeometry::wrap(curves_id_orig.geometry);
+  const CurvesGeometry &curves = curves_id_orig.geometry.wrap();
   if (curves.curves_num() <= 1) {
     return true;
   }

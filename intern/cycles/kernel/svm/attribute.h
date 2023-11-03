@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -71,6 +72,11 @@ ccl_device_noinline void svm_node_attr(KernelGlobals kg,
   }
 #endif
 
+  if (sd->type == PRIMITIVE_LAMP && node.y == ATTR_STD_UV) {
+    stack_store_float3(stack, out_offset, make_float3(1.0f - sd->u - sd->v, sd->u, 0.0f));
+    return;
+  }
+
   if (node.y == ATTR_STD_GENERATED && desc.element == ATTR_ELEMENT_NONE) {
     /* No generated attribute, fall back to object coordinates. */
     float3 f = sd->P;
@@ -140,6 +146,16 @@ ccl_device_noinline void svm_node_attr(KernelGlobals kg,
   }
 }
 
+ccl_device_forceinline float3 svm_node_bump_P_dx(const ccl_private ShaderData *sd)
+{
+  return sd->P + differential_from_compact(sd->Ng, sd->dP).dx;
+}
+
+ccl_device_forceinline float3 svm_node_bump_P_dy(const ccl_private ShaderData *sd)
+{
+  return sd->P + differential_from_compact(sd->Ng, sd->dP).dy;
+}
+
 ccl_device_noinline void svm_node_attr_bump_dx(KernelGlobals kg,
                                                ccl_private ShaderData *sd,
                                                ccl_private float *stack,
@@ -167,7 +183,7 @@ ccl_device_noinline void svm_node_attr_bump_dx(KernelGlobals kg,
 
   if (node.y == ATTR_STD_GENERATED && desc.element == ATTR_ELEMENT_NONE) {
     /* No generated attribute, fall back to object coordinates. */
-    float3 f = sd->P + sd->dP.dx;
+    float3 f = svm_node_bump_P_dx(sd);
     if (sd->object != OBJECT_NONE) {
       object_inverse_position_transform(kg, sd, &f);
     }
@@ -265,7 +281,7 @@ ccl_device_noinline void svm_node_attr_bump_dy(KernelGlobals kg,
 
   if (node.y == ATTR_STD_GENERATED && desc.element == ATTR_ELEMENT_NONE) {
     /* No generated attribute, fall back to object coordinates. */
-    float3 f = sd->P + sd->dP.dy;
+    float3 f = svm_node_bump_P_dy(sd);
     if (sd->object != OBJECT_NONE) {
       object_inverse_position_transform(kg, sd, &f);
     }

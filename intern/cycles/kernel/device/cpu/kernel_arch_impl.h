@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* Templated common implementation part of all CPU kernels.
  *
@@ -34,7 +35,7 @@
 #    include "kernel/integrator/megakernel.h"
 
 #    include "kernel/film/adaptive_sampling.h"
-#    include "kernel/film/id_passes.h"
+#    include "kernel/film/cryptomatte_passes.h"
 #    include "kernel/film/read.h"
 
 #    include "kernel/bake/bake.h"
@@ -102,10 +103,12 @@ DEFINE_INTEGRATOR_INIT_KERNEL(init_from_bake)
 DEFINE_INTEGRATOR_SHADE_KERNEL(intersect_closest)
 DEFINE_INTEGRATOR_KERNEL(intersect_subsurface)
 DEFINE_INTEGRATOR_KERNEL(intersect_volume_stack)
+DEFINE_INTEGRATOR_KERNEL(intersect_dedicated_light)
 DEFINE_INTEGRATOR_SHADE_KERNEL(shade_background)
 DEFINE_INTEGRATOR_SHADE_KERNEL(shade_light)
 DEFINE_INTEGRATOR_SHADE_KERNEL(shade_surface)
 DEFINE_INTEGRATOR_SHADE_KERNEL(shade_volume)
+DEFINE_INTEGRATOR_SHADE_KERNEL(shade_dedicated_light)
 DEFINE_INTEGRATOR_SHADE_KERNEL(megakernel)
 DEFINE_INTEGRATOR_SHADOW_KERNEL(intersect_shadow)
 DEFINE_INTEGRATOR_SHADOW_SHADE_KERNEL(shade_shadow)
@@ -169,7 +172,7 @@ bool KERNEL_FUNCTION_FULL_NAME(adaptive_sampling_convergence_check)(
   STUB_ASSERT(KERNEL_ARCH, adaptive_sampling_convergence_check);
   return false;
 #else
-  return kernel_adaptive_sampling_convergence_check(
+  return film_adaptive_sampling_convergence_check(
       kg, render_buffer, x, y, threshold, reset, offset, stride);
 #endif
 }
@@ -185,7 +188,7 @@ void KERNEL_FUNCTION_FULL_NAME(adaptive_sampling_filter_x)(const KernelGlobalsCP
 #ifdef KERNEL_STUB
   STUB_ASSERT(KERNEL_ARCH, adaptive_sampling_filter_x);
 #else
-  kernel_adaptive_sampling_filter_x(kg, render_buffer, y, start_x, width, offset, stride);
+  film_adaptive_sampling_filter_x(kg, render_buffer, y, start_x, width, offset, stride);
 #endif
 }
 
@@ -200,7 +203,7 @@ void KERNEL_FUNCTION_FULL_NAME(adaptive_sampling_filter_y)(const KernelGlobalsCP
 #ifdef KERNEL_STUB
   STUB_ASSERT(KERNEL_ARCH, adaptive_sampling_filter_y);
 #else
-  kernel_adaptive_sampling_filter_y(kg, render_buffer, x, start_y, height, offset, stride);
+  film_adaptive_sampling_filter_y(kg, render_buffer, x, start_y, height, offset, stride);
 #endif
 }
 
@@ -215,7 +218,7 @@ void KERNEL_FUNCTION_FULL_NAME(cryptomatte_postprocess)(const KernelGlobalsCPU *
 #ifdef KERNEL_STUB
   STUB_ASSERT(KERNEL_ARCH, cryptomatte_postprocess);
 #else
-  kernel_cryptomatte_post(kg, render_buffer, pixel_index);
+  film_cryptomatte_post(kg, render_buffer, pixel_index);
 #endif
 }
 

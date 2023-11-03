@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -28,7 +30,7 @@ static char GuidingLinesShader___doc__[] =
     "   Builds a GuidingLinesShader object.\n"
     "\n"
     "   :arg offset: The line that replaces the stroke is initially in the\n"
-    "      middle of the initial stroke bounding box.  offset is the value\n"
+    "      middle of the initial stroke bounding box. offset is the value\n"
     "      of the displacement which is applied to this line along its\n"
     "      normal.\n"
     "   :type offset: float\n"
@@ -36,10 +38,10 @@ static char GuidingLinesShader___doc__[] =
     ".. method:: shade(stroke)\n"
     "\n"
     "   Shader to modify the Stroke geometry so that it corresponds to its\n"
-    "   main direction line.  This shader must be used together with the\n"
+    "   main direction line. This shader must be used together with the\n"
     "   splitting operator using the curvature criterion. Indeed, the\n"
     "   precision of the approximation will depend on the size of the\n"
-    "   stroke's pieces.  The bigger the pieces are, the rougher the\n"
+    "   stroke's pieces. The bigger the pieces are, the rougher the\n"
     "   approximation is.\n"
     "\n"
     "   :arg stroke: A Stroke object.\n"
@@ -62,43 +64,44 @@ static int GuidingLinesShader___init__(BPy_GuidingLinesShader *self,
 /*-----------------------BPy_GuidingLinesShader type definition ------------------------------*/
 
 PyTypeObject GuidingLinesShader_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "GuidingLinesShader", /* tp_name */
-    sizeof(BPy_GuidingLinesShader),                         /* tp_basicsize */
-    0,                                                      /* tp_itemsize */
-    nullptr,                                                /* tp_dealloc */
-    0,                                                      /* tp_vectorcall_offset */
-    nullptr,                                                /* tp_getattr */
-    nullptr,                                                /* tp_setattr */
-    nullptr,                                                /* tp_reserved */
-    nullptr,                                                /* tp_repr */
-    nullptr,                                                /* tp_as_number */
-    nullptr,                                                /* tp_as_sequence */
-    nullptr,                                                /* tp_as_mapping */
-    nullptr,                                                /* tp_hash */
-    nullptr,                                                /* tp_call */
-    nullptr,                                                /* tp_str */
-    nullptr,                                                /* tp_getattro */
-    nullptr,                                                /* tp_setattro */
-    nullptr,                                                /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,               /* tp_flags */
-    GuidingLinesShader___doc__,                             /* tp_doc */
-    nullptr,                                                /* tp_traverse */
-    nullptr,                                                /* tp_clear */
-    nullptr,                                                /* tp_richcompare */
-    0,                                                      /* tp_weaklistoffset */
-    nullptr,                                                /* tp_iter */
-    nullptr,                                                /* tp_iternext */
-    nullptr,                                                /* tp_methods */
-    nullptr,                                                /* tp_members */
-    nullptr,                                                /* tp_getset */
-    &StrokeShader_Type,                                     /* tp_base */
-    nullptr,                                                /* tp_dict */
-    nullptr,                                                /* tp_descr_get */
-    nullptr,                                                /* tp_descr_set */
-    0,                                                      /* tp_dictoffset */
-    (initproc)GuidingLinesShader___init__,                  /* tp_init */
-    nullptr,                                                /* tp_alloc */
-    nullptr,                                                /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "GuidingLinesShader",
+    /*tp_basicsize*/ sizeof(BPy_GuidingLinesShader),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ nullptr,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ GuidingLinesShader___doc__,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ &StrokeShader_Type,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)GuidingLinesShader___init__,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

@@ -1,16 +1,13 @@
+/* SPDX-FileCopyrightText: 2018-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 
-/* Convert depth to Mist factor */
-uniform vec3 mistSettings;
-uniform depth2D depthBuffer;
-
 #define mistStart mistSettings.x
 #define mistInvDistance mistSettings.y
 #define mistFalloff mistSettings.z
-
-out vec4 fragColor;
 
 void main()
 {

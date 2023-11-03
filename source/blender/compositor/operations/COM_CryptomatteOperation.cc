@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2018 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_CryptomatteOperation.h"
 
@@ -42,8 +43,8 @@ void CryptomatteOperation::execute_pixel(float output[4], int x, int y, void *da
       ::memcpy(&m3hash, &input[0], sizeof(uint32_t));
       /* Since the red channel is likely to be out of display range,
        * setting green and blue gives more meaningful images. */
-      output[1] = ((float)(m3hash << 8) / (float)UINT32_MAX);
-      output[2] = ((float)(m3hash << 16) / (float)UINT32_MAX);
+      output[1] = (float(m3hash << 8) / float(UINT32_MAX));
+      output[2] = (float(m3hash << 16) / float(UINT32_MAX));
     }
     for (float hash : object_index_) {
       if (input[0] == hash) {
@@ -71,8 +72,8 @@ void CryptomatteOperation::update_memory_buffer_partial(MemoryBuffer *output,
         ::memcpy(&m3hash, &input[0], sizeof(uint32_t));
         /* Since the red channel is likely to be out of display range,
          * setting green and blue gives more meaningful images. */
-        it.out[1] = ((float)(m3hash << 8) / (float)UINT32_MAX);
-        it.out[2] = ((float)(m3hash << 16) / (float)UINT32_MAX);
+        it.out[1] = (float(m3hash << 8) / float(UINT32_MAX));
+        it.out[2] = (float(m3hash << 16) / float(UINT32_MAX));
       }
       for (const float hash : object_index_) {
         if (input[0] == hash) {

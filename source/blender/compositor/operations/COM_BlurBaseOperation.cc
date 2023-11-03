@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_BlurBaseOperation.h"
 #include "COM_ConstantOperation.h"
@@ -71,7 +72,7 @@ float *BlurBaseOperation::make_gausstab(float rad, int size)
   sum = 0.0f;
   float fac = (rad > 0.0f ? 1.0f / rad : 0.0f);
   for (i = -size; i <= size; i++) {
-    val = RE_filter_value(data_.filtertype, (float)i * fac);
+    val = RE_filter_value(data_.filtertype, float(i) * fac);
     sum += val;
     gausstab[i + size] = val;
   }
@@ -84,7 +85,7 @@ float *BlurBaseOperation::make_gausstab(float rad, int size)
   return gausstab;
 }
 
-#ifdef BLI_HAVE_SSE2
+#if BLI_HAVE_SSE2
 __m128 *BlurBaseOperation::convert_gausstab_sse(const float *gausstab, int size)
 {
   int n = 2 * size + 1;
@@ -107,7 +108,7 @@ float *BlurBaseOperation::make_dist_fac_inverse(float rad, int size, int falloff
 
   float fac = (rad > 0.0f ? 1.0f / rad : 0.0f);
   for (i = -size; i <= size; i++) {
-    val = 1.0f - fabsf((float)i * fac);
+    val = 1.0f - fabsf(float(i) * fac);
 
     /* keep in sync with rna_enum_proportional_falloff_curve_only_items */
     switch (falloff) {

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -18,7 +20,7 @@ void BLI_endian_switch_int16_array(short *val, const int size)
   }
 }
 
-void BLI_endian_switch_uint16_array(unsigned short *val, const int size)
+void BLI_endian_switch_uint16_array(ushort *val, const int size)
 {
   if (size > 0) {
     int i = size;
@@ -38,7 +40,7 @@ void BLI_endian_switch_int32_array(int *val, const int size)
   }
 }
 
-void BLI_endian_switch_uint32_array(unsigned int *val, const int size)
+void BLI_endian_switch_uint32_array(uint *val, const int size)
 {
   if (size > 0) {
     int i = size;

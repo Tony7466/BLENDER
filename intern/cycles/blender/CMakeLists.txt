@@ -1,20 +1,20 @@
+# SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+#
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2011-2022 Blender Foundation
 
 set(INC
   ..
-  ../../glew-mx
-  ../../guardedalloc
   ../../mikktspace
-  ../../../source/blender/makesdna
   ../../../source/blender/makesrna
-  ../../../source/blender/blenlib
+  ../../../source/blender/blenkernel
+  ../../../source/blender/gpu
+  ../../../source/blender/render
   ${CMAKE_BINARY_DIR}/source/blender/makesrna/intern
 )
 
 set(INC_SYS
+  ${Epoxy_INCLUDE_DIRS}
   ${PYTHON_INCLUDE_DIRS}
-  ${GLEW_INCLUDE_DIR}
 )
 
 set(SRC
@@ -24,6 +24,7 @@ set(SRC
   image.cpp
   geometry.cpp
   light.cpp
+  light_linking.cpp
   mesh.cpp
   object.cpp
   object_cull.cpp
@@ -40,11 +41,13 @@ set(SRC
   viewport.cpp
   volume.cpp
 
+  attribute_convert.h
   CCL_api.h
   device.h
   display_driver.h
   id_map.h
   image.h
+  light_linking.h
   object_cull.h
   output_driver.h
   sync.h
@@ -55,6 +58,9 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   cycles_bvh
   cycles_device
   cycles_graph
@@ -64,6 +70,9 @@ set(LIB
   cycles_subd
   cycles_util
 
+  bf_intern_mikktspace
+
+  ${Epoxy_LIBRARIES}
   ${PYTHON_LINKFLAGS}
   ${PYTHON_LIBRARIES}
 )
@@ -87,8 +96,6 @@ set(ADDON_FILES
   addon/version_update.py
 )
 
-add_definitions(${GL_DEFINITIONS})
-
 if(WITH_CYCLES_DEVICE_HIP)
   add_definitions(-DWITH_HIP)
 endif()
@@ -99,6 +106,10 @@ endif()
 
 if(WITH_MOD_FLUID)
   add_definitions(-DWITH_FLUID)
+endif()
+
+if(WITH_TBB)
+  add_definitions(-DWITH_TBB)
 endif()
 
 if(WITH_OPENVDB)

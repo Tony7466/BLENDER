@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2017 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -17,19 +18,20 @@
 #include "BKE_armature.h"
 #include "BKE_context.h"
 #include "BKE_layer.h"
-#include "BKE_object.h"
-#include "BKE_outliner_treehash.h"
+#include "BKE_object.hh"
+#include "BKE_outliner_treehash.hh"
 
-#include "ED_outliner.h"
-#include "ED_screen.h"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
 #include "outliner_intern.hh"
+#include "tree/tree_display.hh"
 #include "tree/tree_iterator.hh"
 
-using namespace blender::ed::outliner;
+namespace blender::ed::outliner {
 
 /* -------------------------------------------------------------------- */
 /** \name Tree View Context
@@ -44,13 +46,15 @@ void outliner_viewcontext_init(const bContext *C, TreeViewContext *tvc)
   tvc->view_layer = CTX_data_view_layer(C);
 
   /* Objects. */
-  tvc->obact = OBACT(tvc->view_layer);
+  BKE_view_layer_synced_ensure(tvc->scene, tvc->view_layer);
+  tvc->obact = BKE_view_layer_active_object_get(tvc->view_layer);
   if (tvc->obact != nullptr) {
     tvc->ob_edit = OBEDIT_FROM_OBACT(tvc->obact);
 
     if ((tvc->obact->type == OB_ARMATURE) ||
         /* This could be made into its own function. */
-        ((tvc->obact->type == OB_MESH) && tvc->obact->mode & OB_MODE_WEIGHT_PAINT)) {
+        ((tvc->obact->type == OB_MESH) && tvc->obact->mode & OB_MODE_WEIGHT_PAINT))
+    {
       tvc->ob_pose = BKE_object_pose_armature_get(tvc->obact);
     }
   }
@@ -131,9 +135,11 @@ TreeElement *outliner_find_item_at_x_in_row(const SpaceOutliner *space_outliner,
                                             bool *r_is_merged_icon,
                                             bool *r_is_over_icon)
 {
-  /* if parent_te is opened, it doesn't show children in row */
+  TreeStoreElem *parent_tselem = TREESTORE(parent_te);
   TreeElement *te = parent_te;
-  if (!TSELEM_OPEN(TREESTORE(parent_te), space_outliner)) {
+
+  /* If parent_te is opened, or it is a ViewLayer, it doesn't show children in row. */
+  if (!TSELEM_OPEN(parent_tselem, space_outliner) && parent_tselem->type != TSE_R_LAYER) {
     te = outliner_find_item_at_x_in_row_recursive(parent_te, view_co_x, r_is_merged_icon);
   }
 
@@ -172,24 +178,6 @@ TreeElement *outliner_find_parent_element(ListBase *lb,
       return find_te;
     }
   }
-  return nullptr;
-}
-
-TreeElement *outliner_find_tse(SpaceOutliner *space_outliner, const TreeStoreElem *tse)
-{
-  TreeStoreElem *tselem;
-
-  if (tse->id == nullptr) {
-    return nullptr;
-  }
-
-  /* Check if 'tse' is in tree-store. */
-  tselem = BKE_outliner_treehash_lookup_any(
-      space_outliner->runtime->treehash, tse->type, tse->nr, tse->id);
-  if (tselem) {
-    return outliner_find_tree_element(&space_outliner->tree, tselem);
-  }
-
   return nullptr;
 }
 
@@ -308,7 +296,8 @@ bool outliner_tree_traverse(const SpaceOutliner *space_outliner,
       /* skip */
     }
     else if (!outliner_tree_traverse(
-                 space_outliner, &subtree, filter_te_flag, filter_tselem_flag, func, customdata)) {
+                 space_outliner, &subtree, filter_te_flag, filter_tselem_flag, func, customdata))
+    {
       return false;
     }
   }
@@ -454,7 +443,7 @@ void outliner_tag_redraw_avoid_rebuild_on_open_change(const SpaceOutliner *space
                                                       ARegion *region)
 {
   /* Avoid rebuild if possible. */
-  if (outliner_requires_rebuild_on_open_change(space_outliner)) {
+  if (space_outliner->runtime->tree_display->is_lazy_built()) {
     ED_region_tag_redraw(region);
   }
   else {
@@ -462,9 +451,14 @@ void outliner_tag_redraw_avoid_rebuild_on_open_change(const SpaceOutliner *space
   }
 }
 
+}  // namespace blender::ed::outliner
+
+using namespace blender::ed::outliner;
+
 Base *ED_outliner_give_base_under_cursor(bContext *C, const int mval[2])
 {
   ARegion *region = CTX_wm_region(C);
+  const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
   TreeElement *te;
@@ -478,6 +472,7 @@ Base *ED_outliner_give_base_under_cursor(bContext *C, const int mval[2])
     TreeStoreElem *tselem = TREESTORE(te);
     if ((tselem->type == TSE_SOME_ID) && (te->idcode == ID_OB)) {
       Object *ob = (Object *)tselem->id;
+      BKE_view_layer_synced_ensure(scene, view_layer);
       base = (te->directdata) ? (Base *)te->directdata : BKE_view_layer_base_find(view_layer, ob);
     }
   }

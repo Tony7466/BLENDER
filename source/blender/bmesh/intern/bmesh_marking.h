@@ -1,10 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 /** \file
  * \ingroup bmesh
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct BMEditSelection {
   struct BMEditSelection *next, *prev;
@@ -188,3 +194,7 @@ void BM_select_history_merge_from_targetmap(
   (bm)->selected = _bm_prev_selected; \
   } \
   (void)0
+
+#ifdef __cplusplus
+}
+#endif

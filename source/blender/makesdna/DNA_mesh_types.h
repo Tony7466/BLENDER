@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -10,143 +11,43 @@
 #include "DNA_ID.h"
 #include "DNA_customdata_types.h"
 #include "DNA_defs.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_session_uuid_types.h"
 
+/** Workaround to forward-declare C++ type in C header. */
 #ifdef __cplusplus
-extern "C" {
+
+#  include <optional>
+
+#  include "BLI_bounds_types.hh"
+#  include "BLI_math_vector_types.hh"
+#  include "BLI_offset_indices.hh"
+
+namespace blender {
+template<typename T> class Span;
+template<typename T> class MutableSpan;
+namespace bke {
+struct MeshRuntime;
+class AttributeAccessor;
+class MutableAttributeAccessor;
+struct LooseVertCache;
+struct LooseEdgeCache;
+enum class MeshNormalDomain : int8_t;
+}  // namespace bke
+}  // namespace blender
+using MeshRuntimeHandle = blender::bke::MeshRuntime;
+#else
+typedef struct MeshRuntimeHandle MeshRuntimeHandle;
 #endif
 
 struct AnimData;
-struct BVHCache;
 struct Ipo;
 struct Key;
 struct MCol;
 struct MEdge;
 struct MFace;
-struct MLoop;
-struct MLoopCol;
 struct MLoopTri;
-struct MLoopUV;
-struct MPoly;
-struct MVert;
 struct Material;
-struct Mesh;
-struct SubdivCCG;
-struct SubsurfRuntimeData;
-
-#
-#
-typedef struct EditMeshData {
-  /** when set, \a vertexNos, polyNos are lazy initialized */
-  const float (*vertexCos)[3];
-
-  /** lazy initialize (when \a vertexCos is set) */
-  float const (*vertexNos)[3];
-  float const (*polyNos)[3];
-  /** also lazy init but don't depend on \a vertexCos */
-  const float (*polyCos)[3];
-} EditMeshData;
-
-/**
- * \warning Typical access is done via
- * #BKE_mesh_runtime_looptri_ensure, #BKE_mesh_runtime_looptri_len.
- */
-struct MLoopTri_Store {
-  DNA_DEFINE_CXX_METHODS(MLoopTri_Store)
-
-  /* WARNING! swapping between array (ready-to-be-used data) and array_wip
-   * (where data is actually computed)
-   * shall always be protected by same lock as one used for looptris computing. */
-  struct MLoopTri *array, *array_wip;
-  int len;
-  int len_alloc;
-};
-
-/** Runtime data, not saved in files. */
-typedef struct Mesh_Runtime {
-  DNA_DEFINE_CXX_METHODS(Mesh_Runtime)
-
-  /* Evaluated mesh for objects which do not have effective modifiers.
-   * This mesh is used as a result of modifier stack evaluation.
-   * Since modifier stack evaluation is threaded on object level we need some synchronization. */
-  struct Mesh *mesh_eval;
-  void *eval_mutex;
-
-  /* A separate mutex is needed for normal calculation, because sometimes
-   * the normals are needed while #eval_mutex is already locked. */
-  void *normals_mutex;
-
-  /** Needed to ensure some thread-safety during render data pre-processing. */
-  void *render_mutex;
-
-  /** Lazily initialized SoA data from the #edit_mesh field in #Mesh. */
-  struct EditMeshData *edit_data;
-
-  /**
-   * Data used to efficiently draw the mesh in the viewport, especially useful when
-   * the same mesh is used in many objects or instances. See `draw_cache_impl_mesh.cc`.
-   */
-  void *batch_cache;
-
-  /** Cache for derived triangulation of the mesh. */
-  struct MLoopTri_Store looptris;
-
-  /** Cache for BVH trees generated for the mesh. Defined in 'BKE_bvhutil.c' */
-  struct BVHCache *bvh_cache;
-
-  /** Cache of non-manifold boundary data for Shrinkwrap Target Project. */
-  struct ShrinkwrapBoundaryData *shrinkwrap_data;
-
-  /** Needed in case we need to lazily initialize the mesh. */
-  CustomData_MeshMasks cd_mask_extra;
-
-  struct SubdivCCG *subdiv_ccg;
-  int subdiv_ccg_tot_level;
-
-  /** Set by modifier stack if only deformed from original. */
-  char deformed_only;
-  /**
-   * Copied from edit-mesh (hint, draw with edit-mesh data when true).
-   *
-   * Modifiers that edit the mesh data in-place must set this to false
-   * (most #eModifierTypeType_NonGeometrical modifiers). Otherwise the edit-mesh
-   * data will be used for drawing, missing changes from modifiers. See T79517.
-   */
-  char is_original;
-
-  /** #eMeshWrapperType and others. */
-  char wrapper_type;
-  /**
-   * A type mask from wrapper_type,
-   * in case there are differences in finalizing logic between types.
-   */
-  char wrapper_type_finalize;
-
-  /**
-   * Settings for lazily evaluating the subdivision on the CPU if needed. These are
-   * set in the modifier when GPU subdivision can be performed, and owned by the by
-   * the modifier in the object.
-   */
-  struct SubsurfRuntimeData *subsurf_runtime_data;
-  void *_pad1;
-
-  /**
-   * Caches for lazily computed vertex and polygon normals. These are stored here rather than in
-   * #CustomData because they can be calculated on a const mesh, and adding custom data layers on a
-   * const mesh is not thread-safe.
-   */
-  char _pad2[6];
-  char vert_normals_dirty;
-  char poly_normals_dirty;
-  float (*vert_normals)[3];
-  float (*poly_normals)[3];
-
-  /**
-   * A #BLI_bitmap containing tags for the center vertices of subdivided polygons, set by the
-   * subdivision surface modifier and used by drawing code instead of polygon center face dots.
-   */
-  uint32_t *subsurf_face_dot_tags;
-} Mesh_Runtime;
 
 typedef struct Mesh {
   DNA_DEFINE_CXX_METHODS(Mesh)
@@ -161,50 +62,36 @@ typedef struct Mesh {
 
   /**
    * An array of materials, with length #totcol. These can be overridden by material slots
-   * on #Object. Indices in #MPoly.mat_nr control which material is used for every face.
+   * on #Object. Indices in the "material_index" attribute control which material is used for every
+   * face.
    */
   struct Material **mat;
 
-  /**
-   * Array of vertices. Edges and faces are defined by indices into this array.
-   * \note This pointer is for convenient access to the #CD_MVERT layer in #vdata.
-   */
-  struct MVert *mvert;
-  /**
-   * Array of edges, containing vertex indices. For simple triangle or quad meshes, edges could be
-   * calculated from the #MPoly and #MLoop arrays, however, edges need to be stored explicitly to
-   * edge domain attributes and to support loose edges that aren't connected to faces.
-   * \note This pointer is for convenient access to the #CD_MEDGE layer in #edata.
-   */
-  struct MEdge *medge;
-  /**
-   * Face topology storage of the size and offset of each face's section of the #mloop face corner
-   * array. Also stores various flags and the `material_index` attribute.
-   * \note This pointer is for convenient access to the #CD_MPOLY layer in #pdata.
-   */
-  struct MPoly *mpoly;
-  /**
-   * The vertex and edge index at each face corner.
-   * \note This pointer is for convenient access to the #CD_MLOOP layer in #ldata.
-   */
-  struct MLoop *mloop;
-
-  /** The number of vertices (#MVert) in the mesh, and the size of #vdata. */
+  /** The number of vertices in the mesh, and the size of #vert_data. */
   int totvert;
-  /** The number of edges (#MEdge) in the mesh, and the size of #edata. */
+  /** The number of edges in the mesh, and the size of #edge_data. */
   int totedge;
-  /** The number of polygons/faces (#MPoly) in the mesh, and the size of #pdata. */
-  int totpoly;
-  /** The number of face corners (#MLoop) in the mesh, and the size of #ldata. */
+  /** The number of polygons/faces in the mesh, and the size of #face_data. */
+  int faces_num;
+  /** The number of face corners in the mesh, and the size of #loop_data. */
   int totloop;
 
-  CustomData vdata, edata, pdata, ldata;
+  /**
+   * Array owned by mesh. See #Mesh::faces() and #OffsetIndices.
+   *
+   * This array is shared based on the bke::MeshRuntime::poly_offsets_sharing_info.
+   * Avoid accessing directly when possible.
+   */
+  int *face_offset_indices;
 
-  /** "Vertex group" vertices. */
-  struct MDeformVert *dvert;
+  CustomData vert_data;
+  CustomData edge_data;
+  CustomData face_data;
+  CustomData loop_data;
+
   /**
    * List of vertex group (#bDeformGroup) names and flags only. Actual weights are stored in dvert.
-   * \note This pointer is for convenient access to the #CD_MDEFORMVERT layer in #vdata.
+   * \note This pointer is for convenient access to the #CD_MDEFORMVERT layer in #vert_data.
    */
   ListBase vertex_group_names;
   /** The active index in the #vertex_group_names list. */
@@ -215,18 +102,6 @@ typedef struct Mesh {
    * generic type attributes from vertex, edge, face, and corner custom data.
    */
   int attributes_active_index;
-
-  /**
-   * 2D vector data used for UVs. "UV" data can also be stored as generic attributes in #ldata.
-   * \note This pointer is for convenient access to the #CD_MLOOPUV layer in #ldata.
-   */
-  struct MLoopUV *mloopuv;
-  /**
-   * The active vertex corner color layer, if it exists. Also called "Vertex Color" in Blender's
-   * UI, even though it is stored per face corner.
-   * \note This pointer is for convenient access to the #CD_PROP_BYTE_COLOR layer in #ldata.
-   */
-  struct MLoopCol *mloopcol;
 
   /**
    * Runtime storage of the edit mode mesh. If it exists, it generally has the most up-to-date
@@ -266,69 +141,16 @@ typedef struct Mesh {
   struct Mesh *texcomesh;
 
   /** Texture space location and size, used for procedural coordinates when rendering. */
-  float loc[3];
-  float size[3];
-  char texflag;
+  float texspace_location[3];
+  float texspace_size[3];
+  char texspace_flag;
 
   /** Various flags used when editing the mesh. */
   char editflag;
   /** Mostly more flags used when editing or displaying the mesh. */
   uint16_t flag;
 
-  /**
-   * The angle for auto smooth in radians. `M_PI` (180 degrees) causes all edges to be smooth.
-   */
-  float smoothresh;
-
-  /**
-   * Flag for choosing whether or not so store bevel weight and crease as custom data layers in the
-   * edit mesh (they are always stored in #MVert and #MEdge currently). In the future, this data
-   * may be stored as generic named attributes (see T89054 and T93602).
-   */
-  char cd_flag;
-
-  /**
-   * User-defined symmetry flag (#eMeshSymmetryType) that causes editing operations to maintain
-   * symmetrical geometry. Supported by operations such as transform and weight-painting.
-   */
-  char symmetry;
-
-  /** The length of the #mat array. */
-  short totcol;
-
-  /** Choice between different remesh methods in the UI. */
-  char remesh_mode;
-
-  char subdiv DNA_DEPRECATED;
-  char subdivr DNA_DEPRECATED;
-  char subsurftype DNA_DEPRECATED;
-
-  /**
-   * Deprecated. Store of runtime data for tessellation face UVs and texture.
-   *
-   * \note This would be marked deprecated, however the particles still use this at run-time
-   * for placing particles on the mesh (something which should be eventually upgraded).
-   */
-  struct MTFace *mtface;
-  /** Deprecated, use mtface. */
-  struct TFace *tface DNA_DEPRECATED;
-
-  /* Deprecated. Array of colors for the tessellated faces, must be number of tessellated
-   * faces * 4 in length. This is stored in #fdata, and deprecated. */
-  struct MCol *mcol;
-
-  /**
-   * Deprecated face storage (quads & triangles only);
-   * faces are now pointed to by #Mesh.mpoly and #Mesh.mloop.
-   *
-   * \note This would be marked deprecated, however the particles still use this at run-time
-   * for placing particles on the mesh (something which should be eventually upgraded).
-   */
-  struct MFace *mface;
-  /* Deprecated storage of old faces (only triangles or quads). */
-  CustomData fdata;
-  /* Deprecated size of #fdata. */
-  int totface;
+  float smoothresh_legacy DNA_DEPRECATED;
 
   /** Per-mesh settings for voxel remesh. */
   float remesh_voxel_size;
@@ -339,11 +161,231 @@ typedef struct Mesh {
    * default and Face Sets can be used without affecting the color of the mesh. */
   int face_sets_color_default;
 
+  /** The color attribute currently selected in the list and edited by a user. */
+  char *active_color_attribute;
+  /** The color attribute used by default (i.e. for rendering) if no name is given explicitly. */
+  char *default_color_attribute;
+
+  /**
+   * User-defined symmetry flag (#eMeshSymmetryType) that causes editing operations to maintain
+   * symmetrical geometry. Supported by operations such as transform and weight-painting.
+   */
+  char symmetry;
+
+  /** Choice between different remesh methods in the UI. */
+  char remesh_mode;
+
+  /** The length of the #mat array. */
+  short totcol;
+
+  /**
+   * Deprecated flag for choosing whether to store specific custom data that was built into #Mesh
+   * structs in edit mode. Replaced by separating that data to separate layers. Kept for forward
+   * and backwards compatibility.
+   */
+  char cd_flag DNA_DEPRECATED;
+  char subdiv DNA_DEPRECATED;
+  char subdivr DNA_DEPRECATED;
+  char subsurftype DNA_DEPRECATED;
+
+  /** Deprecated pointer to mesh polygons, kept for forward compatibility. */
+  struct MPoly *mpoly DNA_DEPRECATED;
+  /** Deprecated pointer to face corners, kept for forward compatibility. */
+  struct MLoop *mloop DNA_DEPRECATED;
+
+  /** Deprecated array of mesh vertices, kept for reading old files, now stored in #CustomData. */
+  struct MVert *mvert DNA_DEPRECATED;
+  /** Deprecated array of mesh edges, kept for reading old files, now stored in #CustomData. */
+  struct MEdge *medge DNA_DEPRECATED;
+  /** Deprecated "Vertex group" data. Kept for reading old files, now stored in #CustomData. */
+  struct MDeformVert *dvert DNA_DEPRECATED;
+  /** Deprecated runtime data for tessellation face UVs and texture, kept for reading old files. */
+  struct MTFace *mtface DNA_DEPRECATED;
+  /** Deprecated, use mtface. */
+  struct TFace *tface DNA_DEPRECATED;
+  /** Deprecated array of colors for the tessellated faces, kept for reading old files. */
+  struct MCol *mcol DNA_DEPRECATED;
+  /** Deprecated face storage (quads & triangles only). Kept for reading old files. */
+  struct MFace *mface DNA_DEPRECATED;
+
+  /**
+   * Deprecated storage of old faces (only triangles or quads).
+   *
+   * \note This would be marked deprecated, however the particles still use this at run-time
+   * for placing particles on the mesh (something which should be eventually upgraded).
+   */
+  CustomData fdata_legacy;
+  /* Deprecated size of #fdata. */
+  int totface_legacy;
+
   char _pad1[4];
 
-  void *_pad2;
+  /**
+   * Data that isn't saved in files, including caches of derived data, temporary data to improve
+   * the editing experience, etc. The struct is created when reading files and can be accessed
+   * without null checks, with the exception of some temporary meshes which should allocate and
+   * free the data if they are passed to functions that expect run-time data.
+   */
+  MeshRuntimeHandle *runtime;
+#ifdef __cplusplus
+  /**
+   * Array of vertex positions. Edges and faces are defined by indices into this array.
+   */
+  blender::Span<blender::float3> vert_positions() const;
+  /** Write access to vertex data. */
+  blender::MutableSpan<blender::float3> vert_positions_for_write();
+  /**
+   * Array of edges, containing vertex indices, stored in the ".edge_verts" attributes. For simple
+   * triangle or quad meshes, edges could be calculated from the face and "corner edge" arrays,
+   * however, edges need to be stored explicitly to edge domain attributes and to support loose
+   * edges that aren't connected to faces.
+   */
+  blender::Span<blender::int2> edges() const;
+  /** Write access to edge data. */
+  blender::MutableSpan<blender::int2> edges_for_write();
+  /**
+   * Face topology storage of the offset of each face's section of the face corners. The size of
+   * each face is encoded using the next offset value. Can be used to slice the #corner_verts or
+   * #corner_edges arrays to find the vertices or edges that make up each face.
+   */
+  blender::OffsetIndices<int> faces() const;
+  /**
+   * Index of the first corner of each face, and the size of the face encoded as the next
+   * offset. The total number of corners is the final value, and the first value is always zero.
+   * May be empty if there are no polygons.
+   */
+  blender::Span<int> face_offsets() const;
+  /** Write access to #poly_offsets data. */
+  blender::MutableSpan<int> face_offsets_for_write();
 
-  Mesh_Runtime runtime;
+  /**
+   * Array of vertices for every face corner,  stored in the ".corner_vert" integer attribute.
+   * For example, the vertices in a face can be retrieved with the #slice method:
+   * \code{.cc}
+   * const Span<int> poly_verts = corner_verts.slice(face);
+   * \endcode
+   * Such a span can often be passed as an argument in lieu of a polygon or the entire corner
+   * verts array.
+   */
+  blender::Span<int> corner_verts() const;
+  /** Write access to the #corner_verts data. */
+  blender::MutableSpan<int> corner_verts_for_write();
+
+  /**
+   * Array of edges following every face corner traveling around each face, stored in the
+   * ".corner_edge" attribute. The array sliced the same way as the #corner_verts data. The edge
+   * previous to a corner must be accessed with the index of the previous face corner.
+   */
+  blender::Span<int> corner_edges() const;
+  /** Write access to the #corner_edges data. */
+  blender::MutableSpan<int> corner_edges_for_write();
+
+  blender::bke::AttributeAccessor attributes() const;
+  blender::bke::MutableAttributeAccessor attributes_for_write();
+
+  /**
+   * Vertex group data, encoded as an array of indices and weights for every vertex.
+   * \warning: May be empty.
+   */
+  blender::Span<MDeformVert> deform_verts() const;
+  /** Write access to vertex group data. */
+  blender::MutableSpan<MDeformVert> deform_verts_for_write();
+
+  /**
+   * Cached triangulation of mesh faces, depending on the face topology and the vertex positions.
+   */
+  blender::Span<MLoopTri> looptris() const;
+
+  /**
+   * A map containing the face index that each cached triangle from #Mesh::looptris() came from.
+   */
+  blender::Span<int> looptri_faces() const;
+
+  /**
+   * Calculate the largest and smallest position values of vertices.
+   * \note Does not take non-mesh data (edit mesh) into account, see #BKE_mesh_wrapper_minmax,
+   */
+  std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
+
+  /** Set cached mesh bounds to a known-correct value to avoid their lazy calculation later on. */
+  void bounds_set_eager(const blender::Bounds<blender::float3> &bounds);
+
+  /**
+   * Cached map containing the index of the face using each face corner.
+   */
+  blender::Span<int> corner_to_face_map() const;
+  /**
+   * Offsets per vertex used to slice arrays containing data for connected faces or face corners.
+   */
+  blender::OffsetIndices<int> vert_to_face_map_offsets() const;
+  /**
+   * Cached map from each vertex to the corners using it.
+   */
+  blender::GroupedSpan<int> vert_to_corner_map() const;
+  /**
+   * Cached map from each vertex to the faces using it.
+   */
+  blender::GroupedSpan<int> vert_to_face_map() const;
+
+  /**
+   * Cached information about loose edges, calculated lazily when necessary.
+   */
+  const blender::bke::LooseEdgeCache &loose_edges() const;
+  /**
+   * Cached information about vertices that aren't used by any edges.
+   */
+  const blender::bke::LooseVertCache &loose_verts() const;
+  /**
+   * Cached information about vertices that aren't used by faces (but may be used by loose edges).
+   */
+  const blender::bke::LooseVertCache &verts_no_face() const;
+
+  /**
+   * Explicitly set the cached number of loose edges to zero. This can improve performance
+   * later on, because finding loose edges lazily can be skipped entirely.
+   *
+   * \note To allow setting this status on meshes without changing them, this does not tag the
+   * cache dirty. If the mesh was changed first, the relevant dirty tags should be called first.
+   */
+  void tag_loose_edges_none() const;
+  /**
+   * Set the number of vertices not connected to edges to zero. Similar to #tag_loose_edges_none().
+   * There may still be vertices only used by loose edges though.
+   *
+   * \note If both #tag_loose_edges_none() and #tag_loose_verts_none() are called,
+   * all vertices are used by faces, so #verts_no_faces() will be tagged empty as well.
+   */
+  void tag_loose_verts_none() const;
+
+  /**
+   * Returns the least complex attribute domain needed to store normals encoding all relevant mesh
+   * data. When all edges or faces are sharp, face normals are enough. When all are smooth, vertex
+   * normals are enough. With a combination of sharp and smooth, normals may be "split",
+   * requiring face corner storage.
+   *
+   * When possible, it's preferred to use face normals over vertex normals and vertex normals over
+   * face corner normals, since there is a 2-4x performance cost increase for each more complex
+   * domain.
+   */
+  blender::bke::MeshNormalDomain normals_domain() const;
+  /**
+   * Normal direction of polygons, defined by positions and the winding direction of face corners.
+   */
+  blender::Span<blender::float3> face_normals() const;
+  /**
+   * Normal direction of vertices, defined as the weighted average of face normals
+   * surrounding each vertex and the normalized position for loose vertices.
+   */
+  blender::Span<blender::float3> vert_normals() const;
+  /**
+   * Normal direction at each face corner. Defined by a combination of face normals, vertex
+   * normals, the `sharp_edge` and `sharp_face` attributes, and potentially by custom normals.
+   *
+   * \note Because of the large memory requirements of storing normals per face corner, prefer
+   * using #face_normals() or #vert_normals() when possible (see #normals_domain()).
+   */
+  blender::Span<blender::float3> corner_normals() const;
+#endif
 } Mesh;
 
 /* deprecated by MTFace, only here for file reading */
@@ -362,20 +404,10 @@ typedef struct TFace {
 
 /* **************** MESH ********************* */
 
-/** #Mesh_Runtime.wrapper_type */
-typedef enum eMeshWrapperType {
-  /** Use mesh data (#Mesh.mvert, #Mesh.medge, #Mesh.mloop, #Mesh.mpoly). */
-  ME_WRAPPER_TYPE_MDATA = 0,
-  /** Use edit-mesh data (#Mesh.edit_mesh, #Mesh_Runtime.edit_data). */
-  ME_WRAPPER_TYPE_BMESH = 1,
-  /** Use subdivision mesh data (#Mesh_Runtime.mesh_eval). */
-  ME_WRAPPER_TYPE_SUBD = 2,
-} eMeshWrapperType;
-
-/** #Mesh.texflag */
+/** #Mesh.texspace_flag */
 enum {
-  ME_AUTOSPACE = 1,
-  ME_AUTOSPACE_EVALUATED = 2,
+  ME_TEXSPACE_FLAG_AUTO = 1 << 0,
+  ME_TEXSPACE_FLAG_AUTO_EVALUATED = 1 << 1,
 };
 
 /** #Mesh.editflag */
@@ -407,9 +439,9 @@ enum {
   ME_FLAG_DEPRECATED_2 = 1 << 2, /* deprecated */
   ME_FLAG_UNUSED_3 = 1 << 3,     /* cleared */
   ME_FLAG_UNUSED_4 = 1 << 4,     /* cleared */
-  ME_AUTOSMOOTH = 1 << 5,
-  ME_FLAG_UNUSED_6 = 1 << 6, /* cleared */
-  ME_FLAG_UNUSED_7 = 1 << 7, /* cleared */
+  ME_AUTOSMOOTH_LEGACY = 1 << 5, /* deprecated */
+  ME_FLAG_UNUSED_6 = 1 << 6,     /* cleared */
+  ME_FLAG_UNUSED_7 = 1 << 7,     /* cleared */
   ME_REMESH_REPROJECT_VERTEX_COLORS = 1 << 8,
   ME_DS_EXPAND = 1 << 9,
   ME_SCULPT_DYNAMIC_TOPOLOGY = 1 << 10,
@@ -420,6 +452,7 @@ enum {
   ME_REMESH_REPROJECT_SCULPT_FACE_SETS = 1 << 15,
 };
 
+#ifdef DNA_DEPRECATED_ALLOW
 /** #Mesh.cd_flag */
 enum {
   ME_CDFLAG_VERT_BWEIGHT = 1 << 0,
@@ -427,6 +460,7 @@ enum {
   ME_CDFLAG_EDGE_CREASE = 1 << 2,
   ME_CDFLAG_VERT_CREASE = 1 << 3,
 };
+#endif
 
 /** #Mesh.remesh_mode */
 enum {
@@ -448,7 +482,3 @@ typedef enum eMeshSymmetryType {
 } eMeshSymmetryType;
 
 #define MESH_MAX_VERTS 2000000000L
-
-#ifdef __cplusplus
-}
-#endif

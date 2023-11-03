@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __UTIL_TYPES_H__
 #define __UTIL_TYPES_H__
@@ -71,6 +72,18 @@ ccl_device_inline bool is_power_of_two(size_t x)
 
 CCL_NAMESPACE_END
 
+/* Device side printf only tested on CUDA, may work on more GPU devices. */
+#if !defined(__KERNEL_GPU__) || defined(__KERNEL_CUDA__)
+#  define __KERNEL_PRINTF__
+#endif
+
+ccl_device_inline void print_float(ccl_private const char *label, const float a)
+{
+#ifdef __KERNEL_PRINTF__
+  printf("%s: %.8f\n", label, (double)a);
+#endif
+}
+
 /* Most GPU APIs matching native vector types, so we only need to implement them for
  * CPU and oneAPI. */
 #if defined(__KERNEL_GPU__) && !defined(__KERNEL_ONEAPI__)
@@ -85,6 +98,7 @@ CCL_NAMESPACE_END
 #include "util/types_int2.h"
 #include "util/types_int3.h"
 #include "util/types_int4.h"
+#include "util/types_int8.h"
 
 #include "util/types_uint2.h"
 #include "util/types_uint3.h"
@@ -97,6 +111,8 @@ CCL_NAMESPACE_END
 #include "util/types_float4.h"
 #include "util/types_float8.h"
 
+#include "util/types_spectrum.h"
+
 /* Vectorized types implementation. */
 #include "util/types_uchar2_impl.h"
 #include "util/types_uchar3_impl.h"
@@ -105,6 +121,7 @@ CCL_NAMESPACE_END
 #include "util/types_int2_impl.h"
 #include "util/types_int3_impl.h"
 #include "util/types_int4_impl.h"
+#include "util/types_int8_impl.h"
 
 #include "util/types_uint2_impl.h"
 #include "util/types_uint3_impl.h"
@@ -114,17 +131,5 @@ CCL_NAMESPACE_END
 #include "util/types_float3_impl.h"
 #include "util/types_float4_impl.h"
 #include "util/types_float8_impl.h"
-
-/* SSE types. */
-#ifndef __KERNEL_GPU__
-#  include "util/sseb.h"
-#  include "util/ssef.h"
-#  include "util/ssei.h"
-#  if defined(__KERNEL_AVX__) || defined(__KERNEL_AVX2__)
-#    include "util/avxb.h"
-#    include "util/avxf.h"
-#    include "util/avxi.h"
-#  endif
-#endif
 
 #endif /* __UTIL_TYPES_H__ */

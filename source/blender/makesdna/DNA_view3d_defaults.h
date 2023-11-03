@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -36,8 +38,11 @@
 
 #define _DNA_DEFAULT_View3DOverlay \
   { \
+    .flag = V3D_OVERLAY_VIEWER_ATTRIBUTE | V3D_OVERLAY_SCULPT_SHOW_MASK | V3D_OVERLAY_SCULPT_SHOW_FACE_SETS, \
     .wireframe_threshold = 1.0f, \
     .wireframe_opacity = 1.0f, \
+    .retopology_offset = 0.2f, \
+    .viewer_attribute_opacity = 1.0f, \
     .xray_alpha_bone = 0.5f, \
     .bone_wire_alpha = 1.0f, \
     .fade_alpha = 0.40f, \
@@ -51,8 +56,8 @@
  \
     .edit_flag = V3D_OVERLAY_EDIT_FACES | V3D_OVERLAY_EDIT_SEAMS | \
                              V3D_OVERLAY_EDIT_SHARP | V3D_OVERLAY_EDIT_FREESTYLE_EDGE | \
-                             V3D_OVERLAY_EDIT_FREESTYLE_FACE | V3D_OVERLAY_EDIT_EDGES | \
-                             V3D_OVERLAY_EDIT_CREASES | V3D_OVERLAY_EDIT_BWEIGHTS, \
+                             V3D_OVERLAY_EDIT_FREESTYLE_FACE | V3D_OVERLAY_EDIT_CREASES | \
+                             V3D_OVERLAY_EDIT_BWEIGHTS, \
     .handle_display = CURVE_HANDLE_SELECTED, \
  \
     .gpencil_paper_opacity = 0.5f, \
@@ -81,7 +86,7 @@
     .gridflag = V3D_SHOW_X | V3D_SHOW_Y | V3D_SHOW_FLOOR | V3D_SHOW_ORTHO_GRID, \
  \
     .flag = V3D_SELECT_OUTLINE, \
-    .flag2 = V3D_SHOW_RECONSTRUCTION | V3D_SHOW_ANNOTATION, \
+    .flag2 = V3D_SHOW_RECONSTRUCTION | V3D_SHOW_ANNOTATION | V3D_SHOW_VIEWER, \
  \
     .lens = 50.0f, \
     .clip_start = 0.01f, \

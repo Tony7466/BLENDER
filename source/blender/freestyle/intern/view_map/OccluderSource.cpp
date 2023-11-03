@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -8,6 +10,8 @@
 #include <algorithm>
 
 #include "OccluderSource.h"
+
+#include "BLI_sys_types.h"
 
 #include "BKE_global.h"
 
@@ -114,7 +118,7 @@ void OccluderSource::getOccluderProscenium(real proscenium[4])
 real OccluderSource::averageOccluderArea()
 {
   real area = 0.0;
-  unsigned numFaces = 0;
+  uint numFaces = 0;
   for (begin(); isValid(); next()) {
     Vec3r min, max;
     cachedPolygon.getBBox(min, max);

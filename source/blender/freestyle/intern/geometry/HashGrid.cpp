@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2012-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -6,6 +8,8 @@
  */
 
 #include "HashGrid.h"
+
+#include "BLI_sys_types.h"
 
 namespace Freestyle {
 
@@ -22,7 +26,7 @@ void HashGrid::clear()
   Grid::clear();
 }
 
-void HashGrid::configure(const Vec3r &orig, const Vec3r &size, unsigned nb)
+void HashGrid::configure(const Vec3r &orig, const Vec3r &size, uint nb)
 {
   Grid::configure(orig, size, nb);
 }

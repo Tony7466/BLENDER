@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -11,7 +12,7 @@ namespace blender::compositor {
 class DirectionalBlurOperation : public MultiThreadedOperation, public QualityStepHelper {
  private:
   SocketReader *input_program_;
-  NodeDBlurData *data_;
+  const NodeDBlurData *data_;
 
   float center_x_pix_, center_y_pix_;
   float tx_, ty_;
@@ -39,7 +40,7 @@ class DirectionalBlurOperation : public MultiThreadedOperation, public QualitySt
                                             ReadBufferOperation *read_operation,
                                             rcti *output) override;
 
-  void set_data(NodeDBlurData *data)
+  void set_data(const NodeDBlurData *data)
   {
     data_ = data;
   }

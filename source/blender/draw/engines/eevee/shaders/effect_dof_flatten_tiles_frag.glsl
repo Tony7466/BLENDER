@@ -1,6 +1,9 @@
+/* SPDX-FileCopyrightText: 2021-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
- * Tile flatten pass: Takes the halfres CoC buffer and converts it to 8x8 tiles.
+ * Tile flatten pass: Takes the half-resolution CoC buffer and converts it to 8x8 tiles.
  *
  * Output min and max values for each tile and for both foreground & background.
  * Also outputs min intersectable CoC for the background, which is the minimum CoC
@@ -9,14 +12,7 @@
 
 #pragma BLENDER_REQUIRE(effect_dof_lib.glsl)
 
-/* Half resolution. */
-uniform sampler2D halfResCocBuffer;
-
-/* 1/8th of halfResCocBuffer resolution. So 1/16th of fullres. */
-layout(location = 0) out vec4 outFgCoc;
-layout(location = 1) out vec3 outBgCoc;
-
-const int halfres_tile_divisor = DOF_TILE_DIVISOR / 2;
+#define halfres_tile_divisor (DOF_TILE_DIVISOR / 2)
 
 void main()
 {

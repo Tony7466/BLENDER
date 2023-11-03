@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -10,10 +12,7 @@
 
 #include "DNA_ID.h"
 #include "DNA_asset_types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "DNA_viewer_path_types.h"
 
 /** #bToolRef_Runtime.flag */
 enum {
@@ -59,7 +58,7 @@ typedef struct bToolRef {
   /** Use to avoid initializing the same tool multiple times. */
   short tag;
 
-  /** #bToolKey (spacetype, mode), used in 'WM_api.h' */
+  /** #bToolKey (space-type, mode), used in 'WM_api.hh' */
   short space_type;
   /**
    * Value depends on the 'space_type', object mode for 3D view, image editor has own mode too.
@@ -143,6 +142,13 @@ typedef struct WorkSpace {
   /** Workspace-wide active asset library, for asset UIs to use (e.g. asset view UI template). The
    * Asset Browser has its own and doesn't use this. */
   AssetLibraryReference asset_library_ref;
+
+  /**
+   * Ground truth for the currently active viewer node. When a viewer node is activated its path is
+   * set here. Editors can check here for which node is active (currently the node editor,
+   * spreadsheet and viewport do this).
+   */
+  ViewerPath viewer_path;
 } WorkSpace;
 
 /**
@@ -178,7 +184,7 @@ typedef struct WorkSpaceDataRelation {
   /** The value for this parent-data/workspace relation. */
   void *value;
 
-  /** Reference to the actual parent window, wmWindow->winid. Used in read/write code. */
+  /** Reference to the actual parent window, #wmWindow.winid. Used in read/write code. */
   int parentid;
   char _pad_0[4];
 } WorkSpaceDataRelation;
@@ -191,8 +197,10 @@ typedef struct WorkSpaceInstanceHook {
   WorkSpace *active;
   struct WorkSpaceLayout *act_layout;
 
-  /** Needed because we can't change workspaces/layouts in running handler loop,
-   * it would break context. */
+  /**
+   * Needed because we can't change work-spaces/layouts in running handler loop,
+   * it would break context.
+   */
   WorkSpace *temp_workspace_store;
   struct WorkSpaceLayout *temp_layout_store;
 } WorkSpaceInstanceHook;
@@ -201,7 +209,3 @@ typedef enum eWorkSpaceFlags {
   WORKSPACE_USE_FILTER_BY_ORIGIN = (1 << 1),
   WORKSPACE_USE_PIN_SCENE = (1 << 2),
 } eWorkSpaceFlags;
-
-#ifdef __cplusplus
-}
-#endif

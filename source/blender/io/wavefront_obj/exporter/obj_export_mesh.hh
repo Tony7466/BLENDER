@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -8,39 +10,23 @@
 
 #include <optional>
 
-#include "BLI_math_vec_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
-
-#include "bmesh.h"
-#include "bmesh_tools.h"
+#include "BLI_virtual_array.hh"
 
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
-#include "IO_wavefront_obj.h"
+#include "IO_wavefront_obj.hh"
 
 namespace blender::io::obj {
 /** Denote absence for usually non-negative numbers. */
 const int NOT_FOUND = -1;
 /** Any negative number other than `NOT_FOUND` to initialize usually non-negative numbers. */
 const int NEGATIVE_INIT = -10;
-
-/**
- * #std::unique_ptr than handles freeing #BMesh.
- */
-struct CustomBMeshDeleter {
-  void operator()(BMesh *bmesh)
-  {
-    if (bmesh) {
-      BM_mesh_free(bmesh);
-    }
-  }
-};
-
-using unique_bmesh_ptr = std::unique_ptr<BMesh, CustomBMeshDeleter>;
 
 class OBJMesh : NonCopyable {
  private:
@@ -49,11 +35,16 @@ class OBJMesh : NonCopyable {
    * sometimes builds an Object in a temporary space that doesn't persist.
    */
   Object export_object_eval_;
-  Mesh *export_mesh_eval_;
-  /**
-   * For curves which are converted to mesh, and triangulated meshes, a new mesh is allocated.
-   */
-  bool mesh_eval_needs_free_ = false;
+  /** A pointer to #owned_export_mesh_ or the object'ed evaluated/original mesh. */
+  const Mesh *export_mesh_;
+  /** A mesh owned here, if created or modified for the export. May be null. */
+  Mesh *owned_export_mesh_ = nullptr;
+  Span<float3> mesh_positions_;
+  Span<int2> mesh_edges_;
+  OffsetIndices<int> mesh_faces_;
+  Span<int> mesh_corner_verts_;
+  VArray<bool> sharp_faces_;
+
   /**
    * Final transform of an object obtained from export settings (up_axis, forward_axis) and the
    * object's world transform matrix.
@@ -63,17 +54,14 @@ class OBJMesh : NonCopyable {
   bool mirrored_transform_;
 
   /**
-   * Total UV vertices in a mesh's texture map.
+   * Per-loop UV index.
    */
-  int tot_uv_vertices_ = 0;
-  /**
-   * Per-polygon-per-vertex UV vertex indices.
-   */
-  Vector<Vector<int>> uv_indices_;
+  Vector<int> loop_to_uv_index_;
   /*
    * UV vertices.
    */
   Vector<float2> uv_coords_;
+
   /**
    * Per-loop normal index.
    */
@@ -112,7 +100,7 @@ class OBJMesh : NonCopyable {
   void clear();
 
   int tot_vertices() const;
-  int tot_polygons() const;
+  int tot_faces() const;
   int tot_uv_vertices() const;
   int tot_normal_indices() const;
   int tot_edges() const;
@@ -130,14 +118,6 @@ class OBJMesh : NonCopyable {
    * Return mat_nr-th material of the object. The given index should be zero-based.
    */
   const Material *get_object_material(int16_t mat_nr) const;
-  /**
-   * Returns a zero-based index of a polygon's material indexing into
-   * the Object's material slots.
-   */
-  int16_t ith_poly_matnr(int poly_index) const;
-
-  void ensure_mesh_normals() const;
-  void ensure_mesh_edges() const;
 
   /**
    * Calculate smooth groups of a smooth-shaded object.
@@ -147,8 +127,8 @@ class OBJMesh : NonCopyable {
   /**
    * \return Smooth group of the polygon at the given index.
    */
-  int ith_smooth_group(int poly_index) const;
-  bool is_ith_poly_smooth(int poly_index) const;
+  int ith_smooth_group(int face_index) const;
+  bool is_ith_poly_smooth(int face_index) const;
 
   /**
    * Get object name as it appears in the outliner.
@@ -166,11 +146,11 @@ class OBJMesh : NonCopyable {
   /**
    * Calculate coordinates of the vertex at the given index.
    */
-  float3 calc_vertex_coords(int vert_index, float scaling_factor) const;
+  float3 calc_vertex_coords(int vert_index, float global_scale) const;
   /**
    * Calculate vertex indices of all vertices of the polygon at the given index.
    */
-  Vector<int> calc_poly_vertex_indices(int poly_index) const;
+  Span<int> calc_poly_vertex_indices(int face_index) const;
   /**
    * Calculate UV vertex coordinates of an Object.
    * Stores the coordinates and UV vertex indices in the member variables.
@@ -181,13 +161,13 @@ class OBJMesh : NonCopyable {
   {
     return uv_coords_;
   }
-  Span<int> calc_poly_uv_indices(int poly_index) const;
+  Span<int> calc_poly_uv_indices(int face_index) const;
   /**
    * Calculate polygon normal of a polygon at given index.
    *
    * Should be used for flat-shaded polygons.
    */
-  float3 calc_poly_normal(int poly_index) const;
+  float3 calc_poly_normal(int face_index) const;
   /**
    * Find the unique normals of the mesh and stores them in a member variable.
    * Also stores the indices into that vector with for each loop.
@@ -200,10 +180,10 @@ class OBJMesh : NonCopyable {
   }
   /**
    * Calculate a polygon's polygon/loop normal indices.
-   * \param poly_index: Index of the polygon to calculate indices for.
+   * \param face_index: Index of the polygon to calculate indices for.
    * \return Vector of normal indices, aligned with vertices of polygon.
    */
-  Vector<int> calc_poly_normal_indices(int poly_index) const;
+  Vector<int> calc_poly_normal_indices(int face_index) const;
   /**
    * Find the most representative vertex group of a polygon.
    *
@@ -213,17 +193,12 @@ class OBJMesh : NonCopyable {
    * group_weights is temporary storage to avoid reallocations, it must
    * be the size of amount of vertex groups in the object.
    */
-  int16_t get_poly_deform_group_index(int poly_index, MutableSpan<float> group_weights) const;
+  int16_t get_poly_deform_group_index(int face_index, MutableSpan<float> group_weights) const;
   /**
    * Find the name of the vertex deform group at the given index.
    * The index indices into the #Object.defbase.
    */
   const char *get_poly_deform_group_name(int16_t def_group_index) const;
-
-  /**
-   * Calculate vertex indices of an edge's corners if it is a loose edge.
-   */
-  std::optional<std::array<int, 2>> calc_loose_edge_vert_indices(int edge_index) const;
 
   /**
    * Calculate the order in which the polygons should be written into the file (sorted by material
@@ -236,28 +211,24 @@ class OBJMesh : NonCopyable {
    * When materials are not being written, the polygon order array
    * might be empty, in which case remap is a no-op.
    */
-  int remap_poly_index(int i) const
+  int remap_face_index(int i) const
   {
     return i < 0 || i >= poly_order_.size() ? i : poly_order_[i];
   }
 
-  Mesh *get_mesh() const
+  const Mesh *get_mesh() const
   {
-    return export_mesh_eval_;
+    return export_mesh_;
   }
 
  private:
+  /** Override the mesh from the export scene's object. Takes ownership of the mesh. */
+  void set_mesh(Mesh *mesh);
   /**
-   * Free the mesh if _the exporter_ created it.
+   * Triangulate the mesh pointed to by this object, potentially replacing it with a newly created
+   * mesh.
    */
-  void free_mesh_if_needed();
-  /**
-   * Allocate a new Mesh with triangulated polygons.
-   *
-   * The returned mesh can be the same as the old one.
-   * \return Owning pointer to the new Mesh, and whether a new Mesh was created.
-   */
-  std::pair<Mesh *, bool> triangulate_mesh_eval();
+  void triangulate_mesh_eval();
   /**
    * Set the final transform after applying axes settings and an Object's world transform.
    */

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -15,6 +17,7 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 
@@ -32,13 +35,13 @@ TreeDisplayOverrideLibraryHierarchies::TreeDisplayOverrideLibraryHierarchies(
 {
 }
 
-ListBase TreeDisplayOverrideLibraryHierarchies::buildTree(const TreeSourceData &source_data)
+ListBase TreeDisplayOverrideLibraryHierarchies::build_tree(const TreeSourceData &source_data)
 {
   ListBase tree = {nullptr};
 
   /* First step: Build "Current File" hierarchy. */
-  TreeElement *current_file_te = outliner_add_element(
-      &space_outliner_, &tree, source_data.bmain, nullptr, TSE_ID_BASE, -1);
+  TreeElement *current_file_te = AbstractTreeDisplay::add_element(
+      &space_outliner_, &tree, nullptr, source_data.bmain, nullptr, TSE_ID_BASE, -1);
   current_file_te->name = IFACE_("Current File");
   AbstractTreeElement::uncollapse_by_default(current_file_te);
   {
@@ -46,17 +49,23 @@ ListBase TreeDisplayOverrideLibraryHierarchies::buildTree(const TreeSourceData &
 
     /* Add dummy child if there's nothing to display. */
     if (BLI_listbase_is_empty(&current_file_te->subtree)) {
-      TreeElement *dummy_te = outliner_add_element(
-          &space_outliner_, &current_file_te->subtree, nullptr, current_file_te, TSE_ID_BASE, 0);
+      TreeElement *dummy_te = AbstractTreeDisplay::add_element(&space_outliner_,
+                                                               &current_file_te->subtree,
+                                                               nullptr,
+                                                               nullptr,
+                                                               current_file_te,
+                                                               TSE_ID_BASE,
+                                                               0);
       dummy_te->name = IFACE_("No Library Overrides");
     }
   }
 
   /* Second step: Build hierarchies for external libraries. */
   for (Library *lib = (Library *)source_data.bmain->libraries.first; lib;
-       lib = (Library *)lib->id.next) {
-    TreeElement *tenlib = outliner_add_element(
-        &space_outliner_, &tree, lib, nullptr, TSE_SOME_ID, 0);
+       lib = (Library *)lib->id.next)
+  {
+    TreeElement *tenlib = AbstractTreeDisplay::add_element(
+        &space_outliner_, &tree, reinterpret_cast<ID *>(lib), nullptr, nullptr, TSE_SOME_ID, 0);
     build_hierarchy_for_lib_or_main(source_data.bmain, *tenlib, lib);
   }
 
@@ -74,12 +83,18 @@ ListBase TreeDisplayOverrideLibraryHierarchies::buildTree(const TreeSourceData &
   return tree;
 }
 
+bool TreeDisplayOverrideLibraryHierarchies::is_lazy_built() const
+{
+  return true;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Library override hierarchy building
  * \{ */
 
 class OverrideIDHierarchyBuilder {
   SpaceOutliner &space_outliner_;
+  Main &bmain_;
   MainIDRelations &id_relations_;
 
   struct HierarchyBuildData {
@@ -93,8 +108,10 @@ class OverrideIDHierarchyBuilder {
   };
 
  public:
-  OverrideIDHierarchyBuilder(SpaceOutliner &space_outliner, MainIDRelations &id_relations)
-      : space_outliner_(space_outliner), id_relations_(id_relations)
+  OverrideIDHierarchyBuilder(SpaceOutliner &space_outliner,
+                             Main &bmain,
+                             MainIDRelations &id_relations)
+      : space_outliner_(space_outliner), bmain_(bmain), id_relations_(id_relations)
   {
   }
 
@@ -115,7 +132,7 @@ ListBase TreeDisplayOverrideLibraryHierarchies::build_hierarchy_for_lib_or_main(
    * returning. */
   BKE_main_relations_create(bmain, 0);
 
-  OverrideIDHierarchyBuilder builder(space_outliner_, *bmain->relations);
+  OverrideIDHierarchyBuilder builder(space_outliner_, *bmain, *bmain->relations);
 
   /* Keep track over which ID base elements were already added, and expand them once added. */
   Map<ID_Type, TreeElement *> id_base_te_map;
@@ -132,18 +149,25 @@ ListBase TreeDisplayOverrideLibraryHierarchies::build_hierarchy_for_lib_or_main(
     }
 
     TreeElement *new_base_te = id_base_te_map.lookup_or_add_cb(GS(iter_id->name), [&]() {
-      TreeElement *new_te = outliner_add_element(&space_outliner_,
-                                                 &parent_te.subtree,
-                                                 lib ? (void *)lib : bmain,
-                                                 &parent_te,
-                                                 TSE_ID_BASE,
-                                                 base_index++);
+      TreeElement *new_te = AbstractTreeDisplay::add_element(&space_outliner_,
+                                                             &parent_te.subtree,
+                                                             reinterpret_cast<ID *>(lib),
+                                                             bmain,
+                                                             &parent_te,
+                                                             TSE_ID_BASE,
+                                                             base_index++);
       new_te->name = outliner_idcode_to_plural(GS(iter_id->name));
       return new_te;
     });
 
-    TreeElement *new_id_te = outliner_add_element(
-        &space_outliner_, &new_base_te->subtree, iter_id, new_base_te, TSE_SOME_ID, 0, false);
+    TreeElement *new_id_te = AbstractTreeDisplay::add_element(&space_outliner_,
+                                                              &new_base_te->subtree,
+                                                              iter_id,
+                                                              nullptr,
+                                                              new_base_te,
+                                                              TSE_SOME_ID,
+                                                              0,
+                                                              false);
 
     builder.build_hierarchy_for_ID(*iter_id, *new_id_te);
   }
@@ -161,11 +185,16 @@ void OverrideIDHierarchyBuilder::build_hierarchy_for_ID(ID &override_root_id,
   build_hierarchy_for_ID_recursive(override_root_id, build_data, te_to_expand);
 }
 
+enum ForeachChildReturn {
+  FOREACH_CONTINUE,
+  FOREACH_BREAK,
+};
 /* Helpers (defined below). */
 static void foreach_natural_hierarchy_child(const MainIDRelations &id_relations,
                                             const ID &parent_id,
-                                            FunctionRef<void(ID &)> fn);
-static bool id_is_in_override_hierarchy(const ID &id,
+                                            FunctionRef<ForeachChildReturn(ID &)> fn);
+static bool id_is_in_override_hierarchy(const Main &bmain,
+                                        const ID &id,
                                         const ID &relationship_parent_id,
                                         const ID &override_root_id);
 
@@ -177,24 +206,42 @@ void OverrideIDHierarchyBuilder::build_hierarchy_for_ID_recursive(const ID &pare
   build_data.parent_ids.add(&parent_id);
 
   foreach_natural_hierarchy_child(id_relations_, parent_id, [&](ID &id) {
-    if (!id_is_in_override_hierarchy(id, parent_id, build_data.override_root_id_)) {
-      return;
+    /* Some IDs can use themselves, early abort. */
+    if (&id == &parent_id) {
+      return FOREACH_CONTINUE;
+    }
+    if (!id_is_in_override_hierarchy(bmain_, id, parent_id, build_data.override_root_id_)) {
+      return FOREACH_CONTINUE;
     }
 
     /* Avoid endless recursion: If there is an ancestor for this ID already, it recurses into
      * itself. */
     if (build_data.parent_ids.lookup_key_default(&id, nullptr)) {
-      return;
+      return FOREACH_CONTINUE;
     }
 
     /* Avoid duplicates: If there is a sibling for this ID already, the same ID is just used
      * multiple times by the same parent. */
     if (build_data.sibling_ids.lookup_key_default(&id, nullptr)) {
-      return;
+      return FOREACH_CONTINUE;
     }
 
-    TreeElement *new_te = outliner_add_element(
-        &space_outliner_, &te_to_expand.subtree, &id, &te_to_expand, TSE_SOME_ID, 0, false);
+    /* We only want to add children whose parent isn't collapsed. Otherwise, in complex scenes with
+     * thousands of relationships, the building can slow down tremendously. Tag the parent to allow
+     * un-collapsing, but don't actually add the children. */
+    if (!TSELEM_OPEN(TREESTORE(&te_to_expand), &space_outliner_)) {
+      te_to_expand.flag |= TE_PRETEND_HAS_CHILDREN;
+      return FOREACH_BREAK;
+    }
+
+    TreeElement *new_te = AbstractTreeDisplay::add_element(&space_outliner_,
+                                                           &te_to_expand.subtree,
+                                                           &id,
+                                                           nullptr,
+                                                           &te_to_expand,
+                                                           TSE_SOME_ID,
+                                                           0,
+                                                           false);
 
     build_data.sibling_ids.add(&id);
 
@@ -204,6 +251,8 @@ void OverrideIDHierarchyBuilder::build_hierarchy_for_ID_recursive(const ID &pare
     child_build_data.parent_ids.add(&id);
     child_build_data.sibling_ids.reserve(10);
     build_hierarchy_for_ID_recursive(id, child_build_data, *new_te);
+
+    return FOREACH_CONTINUE;
   });
 }
 
@@ -229,14 +278,15 @@ void OverrideIDHierarchyBuilder::build_hierarchy_for_ID_recursive(const ID &pare
  */
 static void foreach_natural_hierarchy_child(const MainIDRelations &id_relations,
                                             const ID &parent_id,
-                                            FunctionRef<void(ID &)> fn)
+                                            FunctionRef<ForeachChildReturn(ID &)> fn)
 {
   const MainIDRelationsEntry *relations_of_id = static_cast<MainIDRelationsEntry *>(
       BLI_ghash_lookup(id_relations.relations_from_pointers, &parent_id));
 
   /* Iterate over all IDs used by the parent ID (e.g. the child-collections of a collection). */
   for (MainIDRelationsEntryItem *to_id_entry = relations_of_id->to_ids; to_id_entry;
-       to_id_entry = to_id_entry->next) {
+       to_id_entry = to_id_entry->next)
+  {
     /* An ID pointed to (used) by the ID to recurse into. */
     ID &target_id = **to_id_entry->id_pointer.to;
 
@@ -250,33 +300,43 @@ static void foreach_natural_hierarchy_child(const MainIDRelations &id_relations,
     if (GS(target_id.name) == ID_OB) {
       const Object &potential_child_ob = reinterpret_cast<const Object &>(target_id);
       if (potential_child_ob.parent) {
-        fn(potential_child_ob.parent->id);
+        if (fn(potential_child_ob.parent->id) == FOREACH_BREAK) {
+          return;
+        }
         continue;
       }
     }
 
-    fn(target_id);
+    if (fn(target_id) == FOREACH_BREAK) {
+      return;
+    }
   }
 
   /* If the ID is an object, find and iterate over any child objects. */
   if (GS(parent_id.name) == ID_OB) {
     for (MainIDRelationsEntryItem *from_id_entry = relations_of_id->from_ids; from_id_entry;
-         from_id_entry = from_id_entry->next) {
+         from_id_entry = from_id_entry->next)
+    {
       ID &potential_child_id = *from_id_entry->id_pointer.from;
 
       if (GS(potential_child_id.name) != ID_OB) {
         continue;
       }
 
-      Object &potential_child_ob = reinterpret_cast<Object &>(potential_child_id);
-      if (potential_child_ob.parent && &potential_child_ob.parent->id == &parent_id) {
-        fn(potential_child_id);
+      const Object &potential_child_ob = reinterpret_cast<Object &>(potential_child_id);
+      if (!potential_child_ob.parent || &potential_child_ob.parent->id != &parent_id) {
+        continue;
+      }
+
+      if (fn(potential_child_id) == FOREACH_BREAK) {
+        return;
       }
     }
   }
 }
 
-static bool id_is_in_override_hierarchy(const ID &id,
+static bool id_is_in_override_hierarchy(const Main &bmain,
+                                        const ID &id,
                                         const ID &relationship_parent_id,
                                         const ID &override_root_id)
 {
@@ -286,20 +346,12 @@ static bool id_is_in_override_hierarchy(const ID &id,
   const ID *real_override_id = &id;
 
   if (ID_IS_OVERRIDE_LIBRARY_VIRTUAL(&id)) {
-    /* This assumes that the parent ID is always the owner of the 'embedded' one, I.e. that no
-     * other ID directly uses the embedded one. Should be true, but the debug code adds some checks
-     * to validate this assumption. */
-    real_override_id = &relationship_parent_id;
-
-#ifndef NDEBUG
-    if (GS(id.name) == ID_KE) {
-      const Key *key = (Key *)&id;
-      BLI_assert(real_override_id == key->from);
-    }
-    else {
-      BLI_assert((id.flag & LIB_EMBEDDED_DATA) != 0);
-    }
-#endif
+    /* In many cases, `relationship_parent_id` is the owner, but not always (e.g. there can be
+     * drivers directly between an object and a shape-key). */
+    BKE_lib_override_library_get(const_cast<Main *>(&bmain),
+                                 const_cast<ID *>(&id),
+                                 const_cast<ID *>(&relationship_parent_id),
+                                 const_cast<ID **>(&real_override_id));
   }
 
   if (!ID_IS_OVERRIDE_LIBRARY(real_override_id)) {

@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Janne Karhu. All rights reserved.
- *           2011-2012 AutoCRC (adaptive time step, Classical SPH). */
+/* SPDX-FileCopyrightText: 2007 Janne Karhu. All rights reserved.
+ * SPDX-FileCopyrightText: 2011-2012 AutoCRC (adaptive time step, Classical SPH).
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -8,7 +9,12 @@
  * \ingroup bke
  */
 
+#include <optional>
+
 #include "BLI_buffer.h"
+#include "BLI_compiler_attrs.h"
+#include "BLI_map.hh"
+#include "BLI_ordered_edge.hh"
 #include "BLI_utildefines.h"
 
 #include "DNA_particle_types.h"
@@ -29,14 +35,11 @@ struct BlendLibReader;
 struct BlendWriter;
 struct CustomData_MeshMasks;
 struct Depsgraph;
-struct EdgeHash;
 struct KDTree_3d;
-struct LatticeDeformData;
 struct LinkNode;
 struct MCol;
 struct MFace;
 struct MTFace;
-struct MVert;
 struct Main;
 struct ModifierData;
 struct Object;
@@ -84,7 +87,7 @@ typedef struct SPHData {
   ParticleSystem *psys[10];
   ParticleData *pa;
   float mass;
-  struct EdgeHash *eh;
+  std::optional<blender::Map<blender::OrderedEdge, int>> eh;
   float *gravity;
   float hfac;
   /* Average distance to neighbors (other particles in the support domain),
@@ -211,10 +214,12 @@ typedef struct ParticleCollision {
 
   ParticleCollisionElement pce;
 
-  /* total_time is the amount of time in this subframe
-   * inv_total_time is the opposite
-   * inv_timestep is the inverse of the amount of time in this frame */
-  float total_time, inv_total_time, inv_timestep;
+  /** The amount of time in this sub-frame. */
+  float total_time;
+  /** The inverse of `total_time`. */
+  float inv_total_time;
+  /** The inverse of the amount of time in this frame. */
+  float inv_timestep;
 
   float radius;
   float co1[3], co2[3];
@@ -267,7 +272,7 @@ BLI_INLINE void psys_frand_vec(ParticleSystem *psys, unsigned int seed, float ve
 }
 
 /* ----------- functions needed outside particlesystem ---------------- */
-/* particle.c */
+/* particle.cc */
 
 /* Few helpers for count-all etc. */
 
@@ -291,7 +296,11 @@ void psys_set_current_num(struct Object *ob, int index);
 /* UNUSED */
 // struct Object *psys_find_object(struct Scene *scene, struct ParticleSystem *psys);
 
-struct LatticeDeformData *psys_create_lattice_deform_data(struct ParticleSimulationData *sim);
+/**
+ * Initialize/free data for particle simulation evaluation.
+ */
+void psys_sim_data_init(struct ParticleSimulationData *sim);
+void psys_sim_data_free(struct ParticleSimulationData *sim);
 
 /**
  * For a given evaluated particle system get its original.
@@ -372,7 +381,8 @@ void psys_reset(struct ParticleSystem *psys, int mode);
 
 void psys_find_parents(struct ParticleSimulationData *sim, bool use_render_params);
 
-void psys_unique_name(struct Object *object, struct ParticleSystem *psys, const char *defname);
+void psys_unique_name(struct Object *object, struct ParticleSystem *psys, const char *defname)
+    ATTR_NONNULL(1, 2, 3);
 
 /**
  * Calculates paths ready for drawing/rendering
@@ -416,7 +426,7 @@ void psys_get_particle_on_path(struct ParticleSimulationData *sim,
                                struct ParticleKey *state,
                                bool vel);
 /**
- * Gets particle's state at a time.
+ * Gets particle's state at a time. Must call psys_sim_data_init before this.
  * \return true if particle exists and can be seen and false if not.
  */
 bool psys_get_particle_state(struct ParticleSimulationData *sim,
@@ -480,7 +490,7 @@ void psys_apply_hair_lattice(struct Depsgraph *depsgraph,
                              struct Object *ob,
                              struct ParticleSystem *psys);
 
-/* particle_system.c */
+/* `particle_system.cc` */
 
 struct ParticleSystem *psys_get_target_system(struct Object *ob, struct ParticleTarget *pt);
 /**
@@ -536,7 +546,7 @@ void BKE_particlesystem_reset_all(struct Object *object);
 
 /* ----------- functions needed only inside particlesystem ------------ */
 
-/* particle.c */
+/* particle.cc */
 
 void psys_disable_all(struct Object *ob);
 void psys_enable_all(struct Object *ob);
@@ -579,9 +589,9 @@ void psys_get_texture(struct ParticleSimulationData *sim,
  * Interpolate a location on a face based on face coordinates.
  */
 void psys_interpolate_face(struct Mesh *mesh,
-                           struct MVert *mvert,
+                           const float (*vert_positions)[3],
                            const float (*vert_normals)[3],
-                           struct MFace *mface,
+                           const struct MFace *mface,
                            struct MTFace *tface,
                            const float (*orcodata)[3],
                            float w[4],
@@ -619,7 +629,7 @@ void psys_particle_on_dm(struct Mesh *mesh_final,
                          float vtan[3],
                          float orco[3]);
 
-/* particle_system.c */
+/* `particle_system.cc` */
 
 void distribute_particles(struct ParticleSimulationData *sim, int from);
 /**
@@ -635,11 +645,11 @@ void psys_calc_dmcache(struct Object *ob,
  * This is slow and can be optimized but only for many lookups.
  *
  * \param mesh_final: Final mesh, it may not have the same topology as original mesh.
- * \param mesh_original: Original mesh, use for accessing #MPoly to #MFace mapping.
+ * \param mesh_original: Original mesh, use for accessing poly to #MFace mapping.
  * \param findex_orig: The input tessface index.
  * \param fw: Face weights (position of the particle inside the \a findex_orig tessface).
  * \param poly_nodes: May be NULL, otherwise an array of linked list,
- * one for each final \a mesh_final polygon, containing all its tessfaces indices.
+ * one for each final \a mesh_final face, containing all its tessfaces indices.
  * \return The \a mesh_final tessface index.
  */
 int psys_particle_dm_face_lookup(struct Mesh *mesh_final,
@@ -661,7 +671,7 @@ float psys_get_current_display_percentage(struct ParticleSystem *psys, bool use_
 /* psys_reset */
 #define PSYS_RESET_ALL 1
 #define PSYS_RESET_DEPSGRAPH 2
-/* #define PSYS_RESET_CHILDREN  3 */ /*UNUSED*/
+// #define PSYS_RESET_CHILDREN  3 /*UNUSED*/
 #define PSYS_RESET_CACHE_MISS 4
 
 /* index_dmcache */
@@ -691,16 +701,13 @@ extern void (*BKE_particle_batch_cache_free_cb)(struct ParticleSystem *psys);
 
 void BKE_particle_partdeflect_blend_read_data(struct BlendDataReader *reader,
                                               struct PartDeflect *pd);
-void BKE_particle_partdeflect_blend_read_lib(struct BlendLibReader *reader,
-                                             struct ID *id,
-                                             struct PartDeflect *pd);
 void BKE_particle_system_blend_write(struct BlendWriter *writer, struct ListBase *particles);
 void BKE_particle_system_blend_read_data(struct BlendDataReader *reader,
                                          struct ListBase *particles);
-void BKE_particle_system_blend_read_lib(struct BlendLibReader *reader,
-                                        struct Object *ob,
-                                        struct ID *id,
-                                        struct ListBase *particles);
+void BKE_particle_system_blend_read_after_liblink(struct BlendLibReader *reader,
+                                                  struct Object *ob,
+                                                  struct ID *id,
+                                                  struct ListBase *particles);
 
 #ifdef __cplusplus
 }

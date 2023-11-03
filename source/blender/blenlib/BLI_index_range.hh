@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -33,15 +35,11 @@
  *
  * Ideally this could be could be even closer to Python's enumerate(). We might get that in the
  * future with newer C++ versions.
- *
- * One other important feature is the as_span method. This method returns a Span<int64_t>
- * that contains the interval as individual numbers.
  */
 
 #include <algorithm>
-#include <atomic>
 #include <cmath>
-#include <iostream>
+#include <iosfwd>
 
 #include "BLI_utildefines.h"
 
@@ -80,9 +78,7 @@ class IndexRange {
     int64_t current_;
 
    public:
-    constexpr explicit Iterator(int64_t current) : current_(current)
-    {
-    }
+    constexpr explicit Iterator(int64_t current) : current_(current) {}
 
     constexpr Iterator &operator++()
     {
@@ -105,6 +101,11 @@ class IndexRange {
     constexpr friend bool operator==(const Iterator &a, const Iterator &b)
     {
       return a.current_ == b.current_;
+    }
+
+    constexpr friend int64_t operator-(const Iterator &a, const Iterator &b)
+    {
+      return a.current_ - b.current_;
     }
 
     constexpr int64_t operator*() const
@@ -140,6 +141,10 @@ class IndexRange {
   {
     return (a.size_ == b.size_) && (a.start_ == b.start_ || a.size_ == 0);
   }
+  constexpr friend bool operator!=(IndexRange a, IndexRange b)
+  {
+    return !(a == b);
+  }
 
   /**
    * Get the amount of numbers in the range.
@@ -147,6 +152,11 @@ class IndexRange {
   constexpr int64_t size() const
   {
     return size_;
+  }
+
+  constexpr IndexRange index_range() const
+  {
+    return IndexRange(size_);
   }
 
   /**
@@ -248,6 +258,19 @@ class IndexRange {
   }
 
   /**
+   * Returns a new IndexRange that contains the intersection of the current one with the given
+   * range. Returns empty range if there are no overlapping indices. The returned range is always
+   * a valid slice of this range.
+   */
+  constexpr IndexRange intersect(IndexRange other) const
+  {
+    const int64_t old_end = start_ + size_;
+    const int64_t new_start = std::min(old_end, std::max(start_, other.start_));
+    const int64_t new_end = std::max(new_start, std::min(old_end, other.start_ + other.size_));
+    return IndexRange(new_start, new_end - new_start);
+  }
+
+  /**
    * Returns a new IndexRange with n elements removed from the beginning of the range.
    * This invokes undefined behavior when n is negative.
    */
@@ -300,22 +323,22 @@ class IndexRange {
     return IndexRange(start_ + n, size_);
   }
 
-  /**
-   * Get read-only access to a memory buffer that contains the range as actual numbers.
-   */
-  Span<int64_t> as_span() const;
-
-  friend std::ostream &operator<<(std::ostream &stream, IndexRange range)
-  {
-    stream << "[" << range.start() << ", " << range.one_after_last() << ")";
-    return stream;
-  }
-
- private:
-  static std::atomic<int64_t> s_current_array_size;
-  static std::atomic<int64_t *> s_current_array;
-
-  Span<int64_t> as_span_internal() const;
+  friend std::ostream &operator<<(std::ostream &stream, IndexRange range);
 };
+
+struct AlignedIndexRanges {
+  IndexRange prefix;
+  IndexRange aligned;
+  IndexRange suffix;
+};
+
+/**
+ * Split a range into three parts so that the boundaries of the middle part are aligned to some
+ * power of two.
+ *
+ * This can be used when an algorithm can be optimized on aligned indices/memory. The algorithm
+ * then needs a slow path for the beginning and end, and a fast path for the aligned elements.
+ */
+AlignedIndexRanges split_index_range_by_alignment(const IndexRange range, const int64_t alignment);
 
 }  // namespace blender

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __UTIL_MATH_H__
 #define __UTIL_MATH_H__
@@ -100,7 +101,6 @@ using std::isfinite;
 using std::isnan;
 using std::sqrt;
 #  else
-using sycl::sqrt;
 #    define isfinite(x) sycl::isfinite((x))
 #    define isnan(x) sycl::isnan((x))
 #  endif
@@ -206,7 +206,7 @@ ccl_device_inline float max4(float a, float b, float c, float d)
   return max(max(a, b), max(c, d));
 }
 
-#if !defined(__KERNEL_METAL__)
+#if !defined(__KERNEL_METAL__) && !defined(__KERNEL_ONEAPI__)
 /* Int/Float conversion */
 
 ccl_device_inline int as_int(uint i)
@@ -382,10 +382,12 @@ ccl_device_inline float mix(float a, float b, float t)
 ccl_device_inline float smoothstep(float edge0, float edge1, float x)
 {
   float result;
-  if (x < edge0)
+  if (x < edge0) {
     result = 0.0f;
-  else if (x >= edge1)
+  }
+  else if (x >= edge1) {
     result = 1.0f;
+  }
   else {
     float t = (x - edge0) / (edge1 - edge0);
     result = (3.0f - 2.0f * t) * (t * t);
@@ -417,15 +419,11 @@ ccl_device_inline int floor_to_int(float f)
   return float_to_int(floorf(f));
 }
 
-ccl_device_inline int quick_floor_to_int(float x)
-{
-  return float_to_int(x) - ((x < 0) ? 1 : 0);
-}
-
 ccl_device_inline float floorfrac(float x, ccl_private int *i)
 {
-  *i = quick_floor_to_int(x);
-  return x - *i;
+  float f = floorf(x);
+  *i = float_to_int(f);
+  return x - f;
 }
 
 ccl_device_inline int ceil_to_int(float f)
@@ -468,10 +466,12 @@ ccl_device_inline float signf(float f)
 
 ccl_device_inline float nonzerof(float f, float eps)
 {
-  if (fabsf(f) < eps)
+  if (fabsf(f) < eps) {
     return signf(f) * eps;
-  else
+  }
+  else {
     return f;
+  }
 }
 
 /* `signum` function testing for zero. Matches GLSL and OSL functions. */
@@ -487,6 +487,12 @@ ccl_device_inline float compatible_signf(float f)
 
 ccl_device_inline float smoothstepf(float f)
 {
+  if (f <= 0.0f) {
+    return 0.0f;
+  }
+  if (f >= 1.0f) {
+    return 1.0f;
+  }
   float ff = f * f;
   return (3.0f * ff - 2.0f * ff * f);
 }
@@ -499,6 +505,11 @@ ccl_device_inline int mod(int x, int m)
 ccl_device_inline float3 float2_to_float3(const float2 a)
 {
   return make_float3(a.x, a.y, 0.0f);
+}
+
+ccl_device_inline float2 float3_to_float2(const float3 a)
+{
+  return make_float2(a.x, a.y);
 }
 
 ccl_device_inline float3 float4_to_float3(const float4 a)
@@ -536,25 +547,17 @@ CCL_NAMESPACE_END
 #include "util/math_int2.h"
 #include "util/math_int3.h"
 #include "util/math_int4.h"
+#include "util/math_int8.h"
 
 #include "util/math_float2.h"
-#include "util/math_float3.h"
 #include "util/math_float4.h"
 #include "util/math_float8.h"
+
+#include "util/math_float3.h"
 
 #include "util/rect.h"
 
 CCL_NAMESPACE_BEGIN
-
-#if !defined(__KERNEL_METAL__)
-/* Interpolation */
-
-template<class A, class B> A lerp(const A &a, const A &b, const B &t)
-{
-  return (A)(a * ((B)1 - t) + b * t);
-}
-
-#endif /* __KERNEL_METAL__ */
 
 /* Triangle */
 
@@ -595,26 +598,26 @@ ccl_device_inline void make_orthonormals(const float3 N,
 
 /* Color division */
 
-ccl_device_inline float3 safe_invert_color(float3 a)
+ccl_device_inline Spectrum safe_invert_color(Spectrum a)
 {
-  float x, y, z;
+  FOREACH_SPECTRUM_CHANNEL (i) {
+    GET_SPECTRUM_CHANNEL(a, i) = (GET_SPECTRUM_CHANNEL(a, i) != 0.0f) ?
+                                     1.0f / GET_SPECTRUM_CHANNEL(a, i) :
+                                     0.0f;
+  }
 
-  x = (a.x != 0.0f) ? 1.0f / a.x : 0.0f;
-  y = (a.y != 0.0f) ? 1.0f / a.y : 0.0f;
-  z = (a.z != 0.0f) ? 1.0f / a.z : 0.0f;
-
-  return make_float3(x, y, z);
+  return a;
 }
 
-ccl_device_inline float3 safe_divide_color(float3 a, float3 b)
+ccl_device_inline Spectrum safe_divide_color(Spectrum a, Spectrum b)
 {
-  float x, y, z;
+  FOREACH_SPECTRUM_CHANNEL (i) {
+    GET_SPECTRUM_CHANNEL(a, i) = (GET_SPECTRUM_CHANNEL(b, i) != 0.0f) ?
+                                     GET_SPECTRUM_CHANNEL(a, i) / GET_SPECTRUM_CHANNEL(b, i) :
+                                     0.0f;
+  }
 
-  x = (b.x != 0.0f) ? a.x / b.x : 0.0f;
-  y = (b.y != 0.0f) ? a.y / b.y : 0.0f;
-  z = (b.z != 0.0f) ? a.z / b.z : 0.0f;
-
-  return make_float3(x, y, z);
+  return a;
 }
 
 ccl_device_inline float3 safe_divide_even_color(float3 a, float3 b)
@@ -635,16 +638,18 @@ ccl_device_inline float3 safe_divide_even_color(float3 a, float3 b)
       x = y;
       z = y;
     }
-    else
+    else {
       x = 0.5f * (y + z);
+    }
   }
   else if (b.y == 0.0f) {
     if (b.z == 0.0f) {
       y = x;
       z = x;
     }
-    else
+    else {
       y = 0.5f * (x + z);
+    }
   }
   else if (b.z == 0.0f) {
     z = 0.5f * (x + y);
@@ -723,8 +728,9 @@ ccl_device float compatible_powf(float x, float y)
 
 ccl_device float safe_powf(float a, float b)
 {
-  if (UNLIKELY(a < 0.0f && b != float_to_int(b)))
+  if (UNLIKELY(a < 0.0f && b != float_to_int(b))) {
     return 0.0f;
+  }
 
   return compatible_powf(a, b);
 }
@@ -736,8 +742,9 @@ ccl_device float safe_divide(float a, float b)
 
 ccl_device float safe_logf(float a, float b)
 {
-  if (UNLIKELY(a <= 0.0f || b <= 0.0f))
+  if (UNLIKELY(a <= 0.0f || b <= 0.0f)) {
     return 0.0f;
+  }
 
   return safe_divide(logf(a), logf(b));
 }
@@ -747,9 +754,36 @@ ccl_device float safe_modulo(float a, float b)
   return (b != 0.0f) ? fmodf(a, b) : 0.0f;
 }
 
+ccl_device float safe_floored_modulo(float a, float b)
+{
+  return (b != 0.0f) ? a - floorf(a / b) * b : 0.0f;
+}
+
 ccl_device_inline float sqr(float a)
 {
   return a * a;
+}
+
+ccl_device_inline float sin_from_cos(const float c)
+{
+  return safe_sqrtf(1.0f - sqr(c));
+}
+
+ccl_device_inline float cos_from_sin(const float s)
+{
+  return safe_sqrtf(1.0f - sqr(s));
+}
+
+ccl_device_inline float sin_sqr_to_one_minus_cos(const float s_sq)
+{
+  /* Using second-order Taylor expansion at small angles for better accuracy. */
+  return s_sq > 0.0004f ? 1.0f - safe_sqrtf(1.0f - s_sq) : 0.5f * s_sq;
+}
+
+ccl_device_inline float one_minus_cos(const float angle)
+{
+  /* Using second-order Taylor expansion at small angles for better accuracy. */
+  return angle > 0.02f ? 1.0f - cosf(angle) : 0.5f * sqr(angle);
 }
 
 ccl_device_inline float pow20(float a)
@@ -793,16 +827,19 @@ ccl_device float bits_to_01(uint bits)
 
 #if !defined(__KERNEL_GPU__)
 #  if defined(__GNUC__)
-#    define popcount(x) __builtin_popcount(x)
+ccl_device_inline uint popcount(uint x)
+{
+  return __builtin_popcount(x);
+}
 #  else
 ccl_device_inline uint popcount(uint x)
 {
   /* TODO(Stefan): pop-count intrinsic for Windows with fallback for older CPUs. */
-  uint i = x & 0xaaaaaaaa;
+  uint i = x;
   i = i - ((i >> 1) & 0x55555555);
   i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
   i = (((i + (i >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
-  return i & 1;
+  return i;
 }
 #  endif
 #elif defined(__KERNEL_ONEAPI__)
@@ -862,7 +899,7 @@ ccl_device_inline uint find_first_set(uint x)
   return (x != 0) ? ctz(x) + 1 : 0;
 #else
 #  ifdef _MSC_VER
-  return (x != 0) ? (32 - count_leading_zeros(x & (-x))) : 0;
+  return (x != 0) ? (32 - count_leading_zeros(x & (~x + 1))) : 0;
 #  else
   return __builtin_ffs(x);
 #  endif
@@ -886,16 +923,16 @@ ccl_device_inline float2 map_to_tube(const float3 co)
 
 ccl_device_inline float2 map_to_sphere(const float3 co)
 {
-  float l = len(co);
+  float l = dot(co, co);
   float u, v;
   if (l > 0.0f) {
     if (UNLIKELY(co.x == 0.0f && co.y == 0.0f)) {
       u = 0.0f; /* Otherwise domain error. */
     }
     else {
-      u = (1.0f - atan2f(co.x, co.y) / M_PI_F) / 2.0f;
+      u = (0.5f - atan2f(co.x, co.y) * M_1_2PI_F);
     }
-    v = 1.0f - safe_acosf(co.z / l) / M_PI_F;
+    v = 1.0f - safe_acosf(co.z / sqrtf(l)) * M_1_PI_F;
   }
   else {
     u = v = 0.0f;
@@ -931,6 +968,12 @@ ccl_device_inline bool compare_floats(float a, float b, float abs_diff, int ulp_
 ccl_device_inline float precise_angle(float3 a, float3 b)
 {
   return 2.0f * atan2f(len(a - b), len(a + b));
+}
+
+/* Tangent of the angle between vectors a and b. */
+ccl_device_inline float tan_angle(float3 a, float3 b)
+{
+  return len(cross(a, b)) / dot(a, b);
 }
 
 /* Return value which is greater than the given one and is a power of two. */

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "BLI_ressource_strings.h"
 #include "testing/testing.h"
@@ -36,10 +38,10 @@ static uint gen_pseudo_random_number(uint num)
 
 /* *** Parallel iterations over double-linked list items. *** */
 
-static void task_listbase_light_iter_func(void *UNUSED(userdata),
+static void task_listbase_light_iter_func(void * /*userdata*/,
                                           void *item,
                                           int index,
-                                          const TaskParallelTLS *__restrict UNUSED(tls))
+                                          const TaskParallelTLS *__restrict /*tls*/)
 
 {
   LinkData *data = (LinkData *)item;
@@ -50,7 +52,7 @@ static void task_listbase_light_iter_func(void *UNUSED(userdata),
 static void task_listbase_light_membarrier_iter_func(void *userdata,
                                                      void *item,
                                                      int index,
-                                                     const TaskParallelTLS *__restrict UNUSED(tls))
+                                                     const TaskParallelTLS *__restrict /*tls*/)
 
 {
   LinkData *data = (LinkData *)item;
@@ -60,16 +62,16 @@ static void task_listbase_light_membarrier_iter_func(void *userdata,
   atomic_sub_and_fetch_uint32((uint32_t *)count, 1);
 }
 
-static void task_listbase_heavy_iter_func(void *UNUSED(userdata),
+static void task_listbase_heavy_iter_func(void * /*userdata*/,
                                           void *item,
                                           int index,
-                                          const TaskParallelTLS *__restrict UNUSED(tls))
+                                          const TaskParallelTLS *__restrict /*tls*/)
 
 {
   LinkData *data = (LinkData *)item;
 
   /* 'Random' number of iterations. */
-  const uint num = gen_pseudo_random_number((uint)index);
+  const uint num = gen_pseudo_random_number(uint(index));
 
   for (uint i = 0; i < num; i++) {
     data->data = POINTER_FROM_INT(POINTER_AS_INT(data->data) + ((i % 2) ? -index : index));
@@ -79,14 +81,14 @@ static void task_listbase_heavy_iter_func(void *UNUSED(userdata),
 static void task_listbase_heavy_membarrier_iter_func(void *userdata,
                                                      void *item,
                                                      int index,
-                                                     const TaskParallelTLS *__restrict UNUSED(tls))
+                                                     const TaskParallelTLS *__restrict /*tls*/)
 
 {
   LinkData *data = (LinkData *)item;
   int *count = (int *)userdata;
 
   /* 'Random' number of iterations. */
-  const uint num = gen_pseudo_random_number((uint)index);
+  const uint num = gen_pseudo_random_number(uint(index));
 
   for (uint i = 0; i < num; i++) {
     data->data = POINTER_FROM_INT(POINTER_AS_INT(data->data) + ((i % 2) ? -index : index));
@@ -120,7 +122,8 @@ static void task_listbase_test_do(ListBase *list,
     LinkData *item;
     int j;
     for (j = 0, item = (LinkData *)list->first; j < items_num && item != nullptr;
-         j++, item = item->next) {
+         j++, item = item->next)
+    {
       EXPECT_EQ(POINTER_AS_INT(item->data), j);
       item->data = POINTER_FROM_INT(0);
     }

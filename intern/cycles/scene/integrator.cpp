@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/device.h"
 
@@ -8,13 +9,12 @@
 #include "scene/camera.h"
 #include "scene/film.h"
 #include "scene/integrator.h"
-#include "scene/jitter.h"
 #include "scene/light.h"
 #include "scene/object.h"
 #include "scene/scene.h"
 #include "scene/shader.h"
-#include "scene/sobol.h"
 #include "scene/stats.h"
+#include "scene/tabulated_sobol.h"
 
 #include "kernel/types.h"
 
@@ -61,6 +61,37 @@ NODE_DEFINE(Integrator)
   SOCKET_INT(volume_max_steps, "Volume Max Steps", 1024);
   SOCKET_FLOAT(volume_step_rate, "Volume Step Rate", 1.0f);
 
+  static NodeEnum guiding_distribution_enum;
+  guiding_distribution_enum.insert("PARALLAX_AWARE_VMM", GUIDING_TYPE_PARALLAX_AWARE_VMM);
+  guiding_distribution_enum.insert("DIRECTIONAL_QUAD_TREE", GUIDING_TYPE_DIRECTIONAL_QUAD_TREE);
+  guiding_distribution_enum.insert("VMM", GUIDING_TYPE_VMM);
+
+  static NodeEnum guiding_directional_sampling_type_enum;
+  guiding_directional_sampling_type_enum.insert("MIS",
+                                                GUIDING_DIRECTIONAL_SAMPLING_TYPE_PRODUCT_MIS);
+  guiding_directional_sampling_type_enum.insert("RIS", GUIDING_DIRECTIONAL_SAMPLING_TYPE_RIS);
+  guiding_directional_sampling_type_enum.insert("ROUGHNESS",
+                                                GUIDING_DIRECTIONAL_SAMPLING_TYPE_ROUGHNESS);
+
+  SOCKET_BOOLEAN(use_guiding, "Guiding", false);
+  SOCKET_BOOLEAN(deterministic_guiding, "Deterministic Guiding", true);
+  SOCKET_BOOLEAN(use_surface_guiding, "Surface Guiding", true);
+  SOCKET_FLOAT(surface_guiding_probability, "Surface Guiding Probability", 0.5f);
+  SOCKET_BOOLEAN(use_volume_guiding, "Volume Guiding", true);
+  SOCKET_FLOAT(volume_guiding_probability, "Volume Guiding Probability", 0.5f);
+  SOCKET_INT(guiding_training_samples, "Training Samples", 128);
+  SOCKET_BOOLEAN(use_guiding_direct_light, "Guide Direct Light", true);
+  SOCKET_BOOLEAN(use_guiding_mis_weights, "Use MIS Weights", true);
+  SOCKET_ENUM(guiding_distribution_type,
+              "Guiding Distribution Type",
+              guiding_distribution_enum,
+              GUIDING_TYPE_PARALLAX_AWARE_VMM);
+  SOCKET_ENUM(guiding_directional_sampling_type,
+              "Guiding Directional Sampling Type",
+              guiding_directional_sampling_type_enum,
+              GUIDING_DIRECTIONAL_SAMPLING_TYPE_RIS);
+  SOCKET_FLOAT(guiding_roughness_threshold, "Guiding Roughness Threshold", 0.05f);
+
   SOCKET_BOOLEAN(caustics_reflective, "Reflective Caustics", true);
   SOCKET_BOOLEAN(caustics_refractive, "Refractive Caustics", true);
   SOCKET_FLOAT(filter_glossy, "Filter Glossy", 0.0f);
@@ -84,12 +115,16 @@ NODE_DEFINE(Integrator)
   SOCKET_FLOAT(adaptive_threshold, "Adaptive Threshold", 0.01f);
   SOCKET_INT(adaptive_min_samples, "Adaptive Min Samples", 0);
 
-  SOCKET_FLOAT(light_sampling_threshold, "Light Sampling Threshold", 0.01f);
+  SOCKET_BOOLEAN(use_light_tree, "Use light tree to optimize many light sampling", true);
+  SOCKET_FLOAT(light_sampling_threshold, "Light Sampling Threshold", 0.0f);
 
   static NodeEnum sampling_pattern_enum;
-  sampling_pattern_enum.insert("sobol", SAMPLING_PATTERN_SOBOL);
-  sampling_pattern_enum.insert("pmj", SAMPLING_PATTERN_PMJ);
-  SOCKET_ENUM(sampling_pattern, "Sampling Pattern", sampling_pattern_enum, SAMPLING_PATTERN_SOBOL);
+  sampling_pattern_enum.insert("sobol_burley", SAMPLING_PATTERN_SOBOL_BURLEY);
+  sampling_pattern_enum.insert("tabulated_sobol", SAMPLING_PATTERN_TABULATED_SOBOL);
+  SOCKET_ENUM(sampling_pattern,
+              "Sampling Pattern",
+              sampling_pattern_enum,
+              SAMPLING_PATTERN_TABULATED_SOBOL);
   SOCKET_FLOAT(scrambling_distance, "Scrambling Distance", 1.0f);
 
   static NodeEnum denoiser_type_enum;
@@ -117,18 +152,15 @@ NODE_DEFINE(Integrator)
   return type;
 }
 
-Integrator::Integrator() : Node(get_node_type())
-{
-}
+Integrator::Integrator() : Node(get_node_type()) {}
 
-Integrator::~Integrator()
-{
-}
+Integrator::~Integrator() {}
 
 void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene)
 {
-  if (!is_modified())
+  if (!is_modified()) {
     return;
+  }
 
   scoped_callback_timer timer([scene](double time) {
     if (scene->update_stats) {
@@ -137,23 +169,6 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
   });
 
   KernelIntegrator *kintegrator = &dscene->data.integrator;
-
-  /* Adaptive sampling requires PMJ samples.
-   *
-   * This also makes detection of sampling pattern a bit more involved: can not rely on the changed
-   * state of socket, since its value might be different from the effective value used here. So
-   * instead compare with previous value in the KernelIntegrator. Only do it if the device was
-   * updated once (in which case the `sample_pattern_lut` will be allocated to a non-zero size). */
-  const SamplingPattern new_sampling_pattern = (use_adaptive_sampling) ? SAMPLING_PATTERN_PMJ :
-                                                                         sampling_pattern;
-
-  const bool need_update_lut = max_bounce_is_modified() || max_transmission_bounce_is_modified() ||
-                               dscene->sample_pattern_lut.size() == 0 ||
-                               kintegrator->sampling_pattern != new_sampling_pattern;
-
-  if (need_update_lut) {
-    dscene->sample_pattern_lut.tag_realloc();
-  }
 
   device_free(device, dscene);
 
@@ -188,7 +203,8 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
   foreach (Shader *shader, scene->shaders) {
     /* keep this in sync with SD_HAS_TRANSPARENT_SHADOW in shader.cpp */
     if ((shader->has_surface_transparent && shader->get_use_transparent_shadow()) ||
-        shader->has_volume) {
+        shader->has_volume)
+    {
       kintegrator->transparent_shadows = true;
       break;
     }
@@ -227,6 +243,19 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
     kintegrator->filter_closures |= FILTER_CLOSURE_TRANSPARENT;
   }
 
+  GuidingParams guiding_params = get_guiding_params(device);
+  kintegrator->use_guiding = guiding_params.use;
+  kintegrator->train_guiding = kintegrator->use_guiding;
+  kintegrator->use_surface_guiding = guiding_params.use_surface_guiding;
+  kintegrator->use_volume_guiding = guiding_params.use_volume_guiding;
+  kintegrator->surface_guiding_probability = surface_guiding_probability;
+  kintegrator->volume_guiding_probability = volume_guiding_probability;
+  kintegrator->use_guiding_direct_light = use_guiding_direct_light;
+  kintegrator->use_guiding_mis_weights = use_guiding_mis_weights;
+  kintegrator->guiding_distribution_type = guiding_params.type;
+  kintegrator->guiding_directional_sampling_type = guiding_params.sampling_type;
+  kintegrator->guiding_roughness_threshold = guiding_params.roughness_threshold;
+
   kintegrator->seed = seed;
 
   kintegrator->sample_clamp_direct = (sample_clamp_direct == 0.0f) ? FLT_MAX :
@@ -235,46 +264,42 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
                                            FLT_MAX :
                                            sample_clamp_indirect * 3.0f;
 
-  kintegrator->sampling_pattern = new_sampling_pattern;
+  kintegrator->sampling_pattern = sampling_pattern;
   kintegrator->scrambling_distance = scrambling_distance;
+  kintegrator->sobol_index_mask = reverse_integer_bits(next_power_of_two(aa_samples - 1) - 1);
 
-  if (light_sampling_threshold > 0.0f) {
-    kintegrator->light_inv_rr_threshold = 1.0f / light_sampling_threshold;
+  /* NOTE: The kintegrator->use_light_tree is assigned to the efficient value in the light manager,
+   * and the synchronization code is expected to tag the light manager for update when the
+   * `use_light_tree` is changed. */
+  if (light_sampling_threshold > 0.0f && !kintegrator->use_light_tree) {
+    kintegrator->light_inv_rr_threshold = scene->film->get_exposure() / light_sampling_threshold;
   }
   else {
     kintegrator->light_inv_rr_threshold = 0.0f;
   }
 
-  /* sobol directions table */
-  int max_samples = max_bounce + transparent_max_bounce + 3 + VOLUME_BOUNDS_MAX +
-                    max(BSSRDF_MAX_HITS, BSSRDF_MAX_BOUNCES);
+  /* Build pre-tabulated Sobol samples if needed. */
+  int sequence_size = clamp(
+      next_power_of_two(aa_samples - 1), MIN_TAB_SOBOL_SAMPLES, MAX_TAB_SOBOL_SAMPLES);
+  if (kintegrator->sampling_pattern == SAMPLING_PATTERN_TABULATED_SOBOL &&
+      dscene->sample_pattern_lut.size() !=
+          (sequence_size * NUM_TAB_SOBOL_PATTERNS * NUM_TAB_SOBOL_DIMENSIONS))
+  {
+    kintegrator->tabulated_sobol_sequence_size = sequence_size;
 
-  int dimensions = PRNG_BASE_NUM + max_samples * PRNG_BOUNCE_NUM;
-  dimensions = min(dimensions, SOBOL_MAX_DIMENSIONS);
-
-  if (need_update_lut) {
-    if (kintegrator->sampling_pattern == SAMPLING_PATTERN_SOBOL) {
-      uint *directions = (uint *)dscene->sample_pattern_lut.alloc(SOBOL_BITS * dimensions);
-
-      sobol_generate_direction_vectors((uint(*)[SOBOL_BITS])directions, dimensions);
-
-      dscene->sample_pattern_lut.copy_to_device();
+    if (dscene->sample_pattern_lut.size() != 0) {
+      dscene->sample_pattern_lut.free();
     }
-    else {
-      constexpr int sequence_size = NUM_PMJ_SAMPLES;
-      constexpr int num_sequences = NUM_PMJ_PATTERNS;
-      float2 *directions = (float2 *)dscene->sample_pattern_lut.alloc(sequence_size *
-                                                                      num_sequences * 2);
-      TaskPool pool;
-      for (int j = 0; j < num_sequences; ++j) {
-        float2 *sequence = directions + j * sequence_size;
-        pool.push(
-            function_bind(&progressive_multi_jitter_02_generate_2D, sequence, sequence_size, j));
-      }
-      pool.wait_work();
-
-      dscene->sample_pattern_lut.copy_to_device();
+    float4 *directions = (float4 *)dscene->sample_pattern_lut.alloc(
+        sequence_size * NUM_TAB_SOBOL_PATTERNS * NUM_TAB_SOBOL_DIMENSIONS);
+    TaskPool pool;
+    for (int j = 0; j < NUM_TAB_SOBOL_PATTERNS; ++j) {
+      float4 *sequence = directions + j * sequence_size;
+      pool.push(function_bind(&tabulated_sobol_generate_4D, sequence, sequence_size, j));
     }
+    pool.wait_work();
+
+    dscene->sample_pattern_lut.copy_to_device();
   }
 
   kintegrator->has_shadow_catcher = scene->has_shadow_catcher();
@@ -298,15 +323,6 @@ void Integrator::tag_update(Scene *scene, uint32_t flag)
     /* tag only the ao_bounces socket as modified so we avoid updating sample_pattern_lut
      * unnecessarily */
     tag_ao_bounces_modified();
-  }
-
-  if (filter_glossy_is_modified()) {
-    foreach (Shader *shader, scene->shaders) {
-      if (shader->has_integrator_dependency) {
-        scene->shader_manager->tag_update(scene, ShaderManager::INTEGRATOR_MODIFIED);
-        break;
-      }
-    }
   }
 
   if (motion_blur_is_modified()) {
@@ -387,4 +403,22 @@ DenoiseParams Integrator::get_denoise_params() const
   return denoise_params;
 }
 
+GuidingParams Integrator::get_guiding_params(const Device *device) const
+{
+  const bool use = use_guiding && device->info.has_guiding;
+
+  GuidingParams guiding_params;
+  guiding_params.use_surface_guiding = use && use_surface_guiding &&
+                                       surface_guiding_probability > 0.0f;
+  guiding_params.use_volume_guiding = use && use_volume_guiding &&
+                                      volume_guiding_probability > 0.0f;
+  guiding_params.use = guiding_params.use_surface_guiding || guiding_params.use_volume_guiding;
+  guiding_params.type = guiding_distribution_type;
+  guiding_params.training_samples = guiding_training_samples;
+  guiding_params.deterministic = deterministic_guiding;
+  guiding_params.sampling_type = guiding_directional_sampling_type;
+  // In Blender/Cycles the user set roughness is squared to behave more linear.
+  guiding_params.roughness_threshold = guiding_roughness_threshold * guiding_roughness_threshold;
+  return guiding_params;
+}
 CCL_NAMESPACE_END

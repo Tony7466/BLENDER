@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "eevee_defines.hh"
 #include "gpu_shader_create_info.hh"
@@ -10,7 +13,7 @@ GPU_SHADER_CREATE_INFO(eevee_depth_of_field_bokeh_lut)
     .do_static_compilation(true)
     .local_group_size(DOF_BOKEH_LUT_SIZE, DOF_BOKEH_LUT_SIZE)
     .additional_info("eevee_shared", "draw_view")
-    .uniform_buf(1, "DepthOfFieldData", "dof_buf")
+    .uniform_buf(6, "DepthOfFieldData", "dof_buf")
     .image(0, GPU_RG16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_gather_lut_img")
     .image(1, GPU_R16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_scatter_lut_img")
     .image(2, GPU_R16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_resolve_lut_img")
@@ -20,7 +23,7 @@ GPU_SHADER_CREATE_INFO(eevee_depth_of_field_setup)
     .do_static_compilation(true)
     .local_group_size(DOF_DEFAULT_GROUP_SIZE, DOF_DEFAULT_GROUP_SIZE)
     .additional_info("eevee_shared", "draw_view")
-    .uniform_buf(1, "DepthOfFieldData", "dof_buf")
+    .uniform_buf(6, "DepthOfFieldData", "dof_buf")
     .sampler(0, ImageType::FLOAT_2D, "color_tx")
     .sampler(1, ImageType::DEPTH_2D, "depth_tx")
     .image(0, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_color_img")
@@ -31,13 +34,13 @@ GPU_SHADER_CREATE_INFO(eevee_depth_of_field_stabilize)
     .do_static_compilation(true)
     .local_group_size(DOF_STABILIZE_GROUP_SIZE, DOF_STABILIZE_GROUP_SIZE)
     .additional_info("eevee_shared", "draw_view", "eevee_velocity_camera")
-    .uniform_buf(4, "DepthOfFieldData", "dof_buf")
+    .uniform_buf(6, "DepthOfFieldData", "dof_buf")
     .sampler(0, ImageType::FLOAT_2D, "coc_tx")
     .sampler(1, ImageType::FLOAT_2D, "color_tx")
     .sampler(2, ImageType::FLOAT_2D, "velocity_tx")
     .sampler(3, ImageType::FLOAT_2D, "in_history_tx")
     .sampler(4, ImageType::DEPTH_2D, "depth_tx")
-    .push_constant(Type::BOOL, "use_history")
+    .push_constant(Type::BOOL, "u_use_history")
     .image(0, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_color_img")
     .image(1, GPU_R16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_coc_img")
     .image(2, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_history_img")
@@ -56,7 +59,7 @@ GPU_SHADER_CREATE_INFO(eevee_depth_of_field_reduce)
     .do_static_compilation(true)
     .local_group_size(DOF_REDUCE_GROUP_SIZE, DOF_REDUCE_GROUP_SIZE)
     .additional_info("eevee_shared", "draw_view")
-    .uniform_buf(1, "DepthOfFieldData", "dof_buf")
+    .uniform_buf(6, "DepthOfFieldData", "dof_buf")
     .sampler(0, ImageType::FLOAT_2D, "downsample_tx")
     .storage_buf(0, Qualifier::WRITE, "ScatterRect", "scatter_fg_list_buf[]")
     .storage_buf(1, Qualifier::WRITE, "ScatterRect", "scatter_bg_list_buf[]")
@@ -153,7 +156,7 @@ GPU_SHADER_CREATE_INFO(eevee_depth_of_field_gather_common)
                      "draw_view",
                      "eevee_depth_of_field_tiles_common",
                      "eevee_sampling_data")
-    .uniform_buf(2, "DepthOfFieldData", "dof_buf")
+    .uniform_buf(6, "DepthOfFieldData", "dof_buf")
     .local_group_size(DOF_GATHER_GROUP_SIZE, DOF_GATHER_GROUP_SIZE)
     .sampler(0, ImageType::FLOAT_2D, "color_tx")
     .sampler(1, ImageType::FLOAT_2D, "color_bilinear_tx")
@@ -189,19 +192,20 @@ GPU_SHADER_CREATE_INFO(eevee_depth_of_field_filter)
 /** \name Scatter
  * \{ */
 
-GPU_SHADER_INTERFACE_INFO(eevee_depth_of_field_scatter_iface, "interp")
+GPU_SHADER_INTERFACE_INFO(eevee_depth_of_field_scatter_flat_iface, "interp_flat")
     /** Colors, weights, and Circle of confusion radii for the 4 pixels to scatter. */
     .flat(Type::VEC4, "color_and_coc1")
     .flat(Type::VEC4, "color_and_coc2")
     .flat(Type::VEC4, "color_and_coc3")
     .flat(Type::VEC4, "color_and_coc4")
+    /** Scaling factor for the bokeh distance. */
+    .flat(Type::FLOAT, "distance_scale");
+GPU_SHADER_INTERFACE_INFO(eevee_depth_of_field_scatter_noperspective_iface, "interp_noperspective")
     /** Sprite pixel position with origin at sprite center. In pixels. */
     .no_perspective(Type::VEC2, "rect_uv1")
     .no_perspective(Type::VEC2, "rect_uv2")
     .no_perspective(Type::VEC2, "rect_uv3")
-    .no_perspective(Type::VEC2, "rect_uv4")
-    /** Scaling factor for the bokeh distance. */
-    .flat(Type::FLOAT, "distance_scale");
+    .no_perspective(Type::VEC2, "rect_uv4");
 
 GPU_SHADER_CREATE_INFO(eevee_depth_of_field_scatter)
     .do_static_compilation(true)
@@ -211,7 +215,8 @@ GPU_SHADER_CREATE_INFO(eevee_depth_of_field_scatter)
     .storage_buf(0, Qualifier::READ, "ScatterRect", "scatter_list_buf[]")
     .fragment_out(0, Type::VEC4, "out_color")
     .push_constant(Type::BOOL, "use_bokeh_lut")
-    .vertex_out(eevee_depth_of_field_scatter_iface)
+    .vertex_out(eevee_depth_of_field_scatter_flat_iface)
+    .vertex_out(eevee_depth_of_field_scatter_noperspective_iface)
     .vertex_source("eevee_depth_of_field_scatter_vert.glsl")
     .fragment_source("eevee_depth_of_field_scatter_frag.glsl");
 
@@ -228,7 +233,7 @@ GPU_SHADER_CREATE_INFO(eevee_depth_of_field_resolve)
                      "draw_view",
                      "eevee_depth_of_field_tiles_common",
                      "eevee_sampling_data")
-    .uniform_buf(2, "DepthOfFieldData", "dof_buf")
+    .uniform_buf(6, "DepthOfFieldData", "dof_buf")
     .sampler(0, ImageType::DEPTH_2D, "depth_tx")
     .sampler(1, ImageType::FLOAT_2D, "color_tx")
     .sampler(2, ImageType::FLOAT_2D, "color_bg_tx")

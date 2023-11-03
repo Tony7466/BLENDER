@@ -1,5 +1,6 @@
-uniform vec4 cryptohash;
-out vec4 fragColor;
+/* SPDX-FileCopyrightText: 2020-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 void main()
 {

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup cmpnodes
@@ -7,22 +8,25 @@
 
 #include <cstring>
 
+#include "BLI_string.h"
 #include "BLI_string_utf8.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
 #include "BKE_image_format.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "IMB_openexr.h"
+
+#include "COM_node_operation.hh"
 
 #include "node_composite_util.hh"
 
@@ -124,9 +128,9 @@ bNodeSocket *ntreeCompositOutputFileAddSocket(bNodeTree *ntree,
   NodeImageMultiFileSocket *sockdata = MEM_cnew<NodeImageMultiFileSocket>(__func__);
   sock->storage = sockdata;
 
-  BLI_strncpy_utf8(sockdata->path, name, sizeof(sockdata->path));
+  STRNCPY_UTF8(sockdata->path, name);
   ntreeCompositOutputFileUniquePath(&node->inputs, sock, name, '_');
-  BLI_strncpy_utf8(sockdata->layer, name, sizeof(sockdata->layer));
+  STRNCPY_UTF8(sockdata->layer, name);
   ntreeCompositOutputFileUniqueLayer(&node->inputs, sock, name, '_');
 
   if (im_format) {
@@ -172,14 +176,14 @@ int ntreeCompositOutputFileRemoveActiveSocket(bNodeTree *ntree, bNode *node)
 void ntreeCompositOutputFileSetPath(bNode *node, bNodeSocket *sock, const char *name)
 {
   NodeImageMultiFileSocket *sockdata = (NodeImageMultiFileSocket *)sock->storage;
-  BLI_strncpy_utf8(sockdata->path, name, sizeof(sockdata->path));
+  STRNCPY_UTF8(sockdata->path, name);
   ntreeCompositOutputFileUniquePath(&node->inputs, sock, name, '_');
 }
 
 void ntreeCompositOutputFileSetLayer(bNode *node, bNodeSocket *sock, const char *name)
 {
   NodeImageMultiFileSocket *sockdata = (NodeImageMultiFileSocket *)sock->storage;
-  BLI_strncpy_utf8(sockdata->layer, name, sizeof(sockdata->layer));
+  STRNCPY_UTF8(sockdata->layer, name);
   ntreeCompositOutputFileUniqueLayer(&node->inputs, sock, name, '_');
 }
 
@@ -198,7 +202,7 @@ static void init_output_file(const bContext *C, PointerRNA *ptr)
   if (scene) {
     RenderData *rd = &scene->r;
 
-    BLI_strncpy(nimf->base_path, rd->pic, sizeof(nimf->base_path));
+    STRNCPY(nimf->base_path, rd->pic);
     BKE_image_format_copy(&nimf->format, &rd->im_format);
     nimf->format.color_management = R_IMF_COLOR_MANAGEMENT_FOLLOW_SCENE;
     if (BKE_imtype_is_movie(nimf->format.imtype)) {
@@ -229,9 +233,7 @@ static void free_output_file(bNode *node)
   MEM_freeN(node->storage);
 }
 
-static void copy_output_file(bNodeTree *UNUSED(dest_ntree),
-                             bNode *dest_node,
-                             const bNode *src_node)
+static void copy_output_file(bNodeTree * /*dst_ntree*/, bNode *dest_node, const bNode *src_node)
 {
   bNodeSocket *src_sock, *dest_sock;
 
@@ -244,7 +246,8 @@ static void copy_output_file(bNodeTree *UNUSED(dest_ntree),
   for (src_sock = (bNodeSocket *)src_node->inputs.first,
       dest_sock = (bNodeSocket *)dest_node->inputs.first;
        src_sock && dest_sock;
-       src_sock = src_sock->next, dest_sock = (bNodeSocket *)dest_sock->next) {
+       src_sock = src_sock->next, dest_sock = (bNodeSocket *)dest_sock->next)
+  {
     dest_sock->storage = MEM_dupallocN(src_sock->storage);
     NodeImageMultiFileSocket *dest_sockdata = (NodeImageMultiFileSocket *)dest_sock->storage;
     NodeImageMultiFileSocket *src_sockdata = (NodeImageMultiFileSocket *)src_sock->storage;
@@ -254,9 +257,7 @@ static void copy_output_file(bNodeTree *UNUSED(dest_ntree),
 
 static void update_output_file(bNodeTree *ntree, bNode *node)
 {
-  PointerRNA ptr;
-
-  /* XXX fix for T36706: remove invalid sockets added with bpy API.
+  /* XXX fix for #36706: remove invalid sockets added with bpy API.
    * This is not ideal, but prevents crashes from missing storage.
    * FileOutput node needs a redesign to support this properly.
    */
@@ -274,13 +275,13 @@ static void update_output_file(bNodeTree *ntree, bNode *node)
   /* automatically update the socket type based on linked input */
   LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
     if (sock->link) {
-      RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, sock, &ptr);
+      PointerRNA ptr = RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, sock);
       RNA_enum_set(&ptr, "type", sock->link->fromsock->type);
     }
   }
 }
 
-static void node_composit_buts_file_output(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+static void node_composit_buts_file_output(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   PointerRNA imfptr = RNA_pointer_get(ptr, "format");
   const bool multilayer = RNA_enum_get(&imfptr, "file_format") == R_IMF_IMTYPE_MULTILAYER;
@@ -364,9 +365,10 @@ static void node_composit_buts_file_output_ex(uiLayout *layout, bContext *C, Poi
 
   col = uiLayoutColumn(row, true);
   wmOperatorType *ot = WM_operatortype_find("NODE_OT_output_file_move_active_socket", false);
-  uiItemFullO_ptr(col, ot, "", ICON_TRIA_UP, nullptr, WM_OP_INVOKE_DEFAULT, 0, &op_ptr);
+  uiItemFullO_ptr(col, ot, "", ICON_TRIA_UP, nullptr, WM_OP_INVOKE_DEFAULT, UI_ITEM_NONE, &op_ptr);
   RNA_enum_set(&op_ptr, "direction", 1);
-  uiItemFullO_ptr(col, ot, "", ICON_TRIA_DOWN, nullptr, WM_OP_INVOKE_DEFAULT, 0, &op_ptr);
+  uiItemFullO_ptr(
+      col, ot, "", ICON_TRIA_DOWN, nullptr, WM_OP_INVOKE_DEFAULT, UI_ITEM_NONE, &op_ptr);
   RNA_enum_set(&op_ptr, "direction", 2);
 
   if (active_input_ptr.data) {
@@ -439,6 +441,25 @@ static void node_composit_buts_file_output_ex(uiLayout *layout, bContext *C, Poi
   }
 }
 
+using namespace blender::realtime_compositor;
+
+class OutputFileOperation : public NodeOperation {
+ public:
+  using NodeOperation::NodeOperation;
+
+  void execute() override
+  {
+    if (context().use_file_output()) {
+      context().set_info_message("Viewport compositor setup not fully supported");
+    }
+  }
+};
+
+static NodeOperation *get_compositor_operation(Context &context, DNode node)
+{
+  return new OutputFileOperation(context, node);
+}
+
 }  // namespace blender::nodes::node_composite_output_file_cc
 
 void register_node_type_cmp_output_file()
@@ -454,7 +475,10 @@ void register_node_type_cmp_output_file()
   ntype.flag |= NODE_PREVIEW;
   node_type_storage(
       &ntype, "NodeImageMultiFile", file_ns::free_output_file, file_ns::copy_output_file);
-  node_type_update(&ntype, file_ns::update_output_file);
+  ntype.updatefunc = file_ns::update_output_file;
+  ntype.get_compositor_operation = file_ns::get_compositor_operation;
+  ntype.realtime_compositor_unsupported_message = N_(
+      "Node not supported in the Viewport compositor");
 
   nodeRegisterType(&ntype);
 }

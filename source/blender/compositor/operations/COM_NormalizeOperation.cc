@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2012 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_NormalizeOperation.h"
 
@@ -114,15 +115,15 @@ void NormalizeOperation::deinitialize_tile_data(rcti * /*rect*/, void * /*data*/
   /* pass */
 }
 
-void NormalizeOperation::get_area_of_interest(const int UNUSED(input_idx),
-                                              const rcti &UNUSED(output_area),
+void NormalizeOperation::get_area_of_interest(const int /*input_idx*/,
+                                              const rcti & /*output_area*/,
                                               rcti &r_input_area)
 {
   r_input_area = get_input_operation(0)->get_canvas();
 }
 
-void NormalizeOperation::update_memory_buffer_started(MemoryBuffer *UNUSED(output),
-                                                      const rcti &UNUSED(area),
+void NormalizeOperation::update_memory_buffer_started(MemoryBuffer * /*output*/,
+                                                      const rcti & /*area*/,
                                                       Span<MemoryBuffer *> inputs)
 {
   if (cached_instance_ == nullptr) {

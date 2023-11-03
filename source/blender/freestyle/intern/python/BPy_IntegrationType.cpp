@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -11,6 +13,8 @@
 #include "UnaryFunction0D/BPy_UnaryFunction0DDouble.h"
 #include "UnaryFunction0D/BPy_UnaryFunction0DFloat.h"
 #include "UnaryFunction0D/BPy_UnaryFunction0DUnsigned.h"
+
+#include "BLI_sys_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +45,7 @@ PyDoc_STRVAR(Integrator_integrate_doc,
              "   :arg integration_type: The integration method used to compute a\n"
              "      single value from a set of values.\n"
              "   :type integration_type: :class:`IntegrationType`\n"
-             "   :return: The single value obtained for the 1D element.  The return\n"
+             "   :return: The single value obtained for the 1D element. The return\n"
              "      value type is float if func is of the :class:`UnaryFunction0DDouble`\n"
              "      or :class:`UnaryFunction0DFloat` type, and int if func is of the\n"
              "      :class:`UnaryFunction0DUnsigned` type.\n"
@@ -64,7 +68,8 @@ static PyObject *Integrator_integrate(PyObject * /*self*/, PyObject *args, PyObj
                                    &Interface0DIterator_Type,
                                    &obj3,
                                    &IntegrationType_Type,
-                                   &obj4)) {
+                                   &obj4))
+  {
     return nullptr;
   }
 
@@ -82,8 +87,8 @@ static PyObject *Integrator_integrate(PyObject * /*self*/, PyObject *args, PyObj
     return PyFloat_FromDouble(res);
   }
   if (BPy_UnaryFunction0DUnsigned_Check(obj1)) {
-    UnaryFunction0D<unsigned int> *fun = ((BPy_UnaryFunction0DUnsigned *)obj1)->uf0D_unsigned;
-    unsigned int res = integrate(*fun, it, it_end, t);
+    UnaryFunction0D<uint> *fun = ((BPy_UnaryFunction0DUnsigned *)obj1)->uf0D_unsigned;
+    uint res = integrate(*fun, it, it_end, t);
     return PyLong_FromLong(res);
   }
 
@@ -109,11 +114,15 @@ static PyMethodDef module_functions[] = {
 /*-----------------------Integrator module definition--------------------------------------*/
 
 static PyModuleDef module_definition = {
-    PyModuleDef_HEAD_INIT,
-    "Freestyle.Integrator",
-    module_docstring,
-    -1,
-    module_functions,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
+    /*m_name*/ "Freestyle.Integrator",
+    /*m_doc*/ module_docstring,
+    /*m_size*/ -1,
+    /*m_methods*/ module_functions,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 /*-----------------------BPy_IntegrationType type definition ------------------------------*/
@@ -137,43 +146,44 @@ PyDoc_STRVAR(IntegrationType_doc,
              "  last of the values obtained for the 0D elements.");
 
 PyTypeObject IntegrationType_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "IntegrationType", /* tp_name */
-    sizeof(PyLongObject),                                /* tp_basicsize */
-    0,                                                   /* tp_itemsize */
-    nullptr,                                             /* tp_dealloc */
-    0,                                                   /* tp_vectorcall_offset */
-    nullptr,                                             /* tp_getattr */
-    nullptr,                                             /* tp_setattr */
-    nullptr,                                             /* tp_reserved */
-    nullptr,                                             /* tp_repr */
-    nullptr,                                             /* tp_as_number */
-    nullptr,                                             /* tp_as_sequence */
-    nullptr,                                             /* tp_as_mapping */
-    nullptr,                                             /* tp_hash */
-    nullptr,                                             /* tp_call */
-    nullptr,                                             /* tp_str */
-    nullptr,                                             /* tp_getattro */
-    nullptr,                                             /* tp_setattro */
-    nullptr,                                             /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,                                  /* tp_flags */
-    IntegrationType_doc,                                 /* tp_doc */
-    nullptr,                                             /* tp_traverse */
-    nullptr,                                             /* tp_clear */
-    nullptr,                                             /* tp_richcompare */
-    0,                                                   /* tp_weaklistoffset */
-    nullptr,                                             /* tp_iter */
-    nullptr,                                             /* tp_iternext */
-    nullptr,                                             /* tp_methods */
-    nullptr,                                             /* tp_members */
-    nullptr,                                             /* tp_getset */
-    &PyLong_Type,                                        /* tp_base */
-    nullptr,                                             /* tp_dict */
-    nullptr,                                             /* tp_descr_get */
-    nullptr,                                             /* tp_descr_set */
-    0,                                                   /* tp_dictoffset */
-    nullptr,                                             /* tp_init */
-    nullptr,                                             /* tp_alloc */
-    nullptr,                                             /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "IntegrationType",
+    /*tp_basicsize*/ sizeof(PyLongObject),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ nullptr,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
+    /*tp_doc*/ IntegrationType_doc,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ &PyLong_Type,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
 };
 
 /*-----------------------BPy_IntegrationType instance definitions -------------------------*/

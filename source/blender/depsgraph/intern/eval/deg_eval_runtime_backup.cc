@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2017 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -60,8 +61,9 @@ void RuntimeBackup::init_from_id(ID *id)
     case ID_VO:
       volume_backup.init_from_volume(reinterpret_cast<Volume *>(id));
       break;
-    case ID_GD:
+    case ID_GD_LEGACY:
       gpencil_backup.init_from_gpencil(reinterpret_cast<bGPdata *>(id));
+      break;
     default:
       break;
   }
@@ -102,8 +104,9 @@ void RuntimeBackup::restore_to_id(ID *id)
     case ID_VO:
       volume_backup.restore_to_volume(reinterpret_cast<Volume *>(id));
       break;
-    case ID_GD:
+    case ID_GD_LEGACY:
       gpencil_backup.restore_to_gpencil(reinterpret_cast<bGPdata *>(id));
+      break;
     default:
       break;
   }

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
@@ -77,13 +79,13 @@ SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 USE_ONLY_BUILTIN_RNA_TYPES = True
 
 # Write a page for each static enum defined in:
-# `source/blender/makesrna/RNA_enum_items.h` so the enums can be linked to instead of being expanded everywhere.
+# `source/blender/makesrna/RNA_enum_items.hh` so the enums can be linked to instead of being expanded everywhere.
 USE_SHARED_RNA_ENUM_ITEMS_STATIC = True
 
 if USE_SHARED_RNA_ENUM_ITEMS_STATIC:
     from _bpy import rna_enum_items_static
     rna_enum_dict = rna_enum_items_static()
-    for key in ("DummyRNA_DEFAULT_items", "DummyRNA_NULL_items"):
+    for key in ("rna_enum_dummy_NULL_items", "rna_enum_dummy_DEFAULT_items"):
         del rna_enum_dict[key]
     del key, rna_enum_items_static
 
@@ -367,13 +369,13 @@ except ImportError:
 # Note that ".." is replaced by "__" in the RST files,
 # to avoid having to match Blender's source tree.
 EXTRA_SOURCE_FILES = (
-    "../../../release/scripts/templates_py/bmesh_simple.py",
-    "../../../release/scripts/templates_py/gizmo_operator.py",
-    "../../../release/scripts/templates_py/gizmo_operator_target.py",
-    "../../../release/scripts/templates_py/gizmo_simple.py",
-    "../../../release/scripts/templates_py/operator_simple.py",
-    "../../../release/scripts/templates_py/ui_panel_simple.py",
-    "../../../release/scripts/templates_py/ui_previews_custom_icon.py",
+    "../../../scripts/templates_py/bmesh_simple.py",
+    "../../../scripts/templates_py/gizmo_operator.py",
+    "../../../scripts/templates_py/gizmo_operator_target.py",
+    "../../../scripts/templates_py/gizmo_simple.py",
+    "../../../scripts/templates_py/operator_simple.py",
+    "../../../scripts/templates_py/ui_panel_simple.py",
+    "../../../scripts/templates_py/ui_previews_custom_icon.py",
     "../examples/bmesh.ops.1.py",
     "../examples/bpy.app.translations.py",
 )
@@ -387,23 +389,35 @@ EXAMPLE_SET_USED = set()
 # RST files directory.
 RST_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "rst"))
 
-# extra info, not api reference docs
-# stored in ./rst/info_*
+# Extra info, not api reference docs stored in `./rst/info_*`.
+# Pairs of (file, description), the title makes from the RST files are displayed before the description.
 INFO_DOCS = (
     ("info_quickstart.rst",
-     "Quickstart: New to Blender or scripting and want to get your feet wet?"),
+     "New to Blender or scripting and want to get your feet wet?"),
     ("info_overview.rst",
-     "API Overview: A more complete explanation of Python integration"),
+     "A more complete explanation of Python integration."),
     ("info_api_reference.rst",
-     "API Reference Usage: examples of how to use the API reference docs"),
+     "Examples of how to use the API reference docs."),
     ("info_best_practice.rst",
-     "Best Practice: Conventions to follow for writing good scripts"),
+     "Conventions to follow for writing good scripts."),
     ("info_tips_and_tricks.rst",
-     "Tips and Tricks: Hints to help you while writing scripts for Blender"),
+     "Hints to help you while writing scripts for Blender."),
     ("info_gotcha.rst",
-     "Gotcha's: Some of the problems you may encounter when writing scripts"),
-    ("change_log.rst", "Change Log: List of changes since last Blender release"),
+     "Some of the problems you may encounter when writing scripts."),
+    ("info_advanced.rst",
+     "Topics which may not be required for typical usage."),
+    ("change_log.rst",
+     "List of changes since last Blender release"),
 )
+# Referenced indirectly.
+INFO_DOCS_OTHER = (
+    # Included by: `info_advanced.rst`.
+    "info_advanced_blender_as_bpy.rst",
+)
+
+# Hide the actual TOC, use a separate list that links to the items.
+# This is done so a short description can be included with each link.
+USE_INFO_DOCS_FANCY_INDEX = True
 
 # only support for properties atm.
 RNA_BLACKLIST = {
@@ -464,7 +478,7 @@ MODULE_GROUPING = {
 
 # -------------------------------BLENDER----------------------------------------
 
-# converting bytes to strings, due to T30154
+# Converting bytes to strings, due to #30154.
 BLENDER_REVISION = str(bpy.app.build_hash, 'utf_8')
 BLENDER_REVISION_TIMESTAMP = bpy.app.build_commit_timestamp
 
@@ -475,7 +489,7 @@ BLENDER_VERSION_DOTS = "%d.%d" % (bpy.app.version[0], bpy.app.version[1])
 if BLENDER_REVISION != "Unknown":
     # SHA1 Git hash
     BLENDER_VERSION_HASH = BLENDER_REVISION
-    BLENDER_VERSION_HASH_HTML_LINK = "<a href=https://developer.blender.org/rB%s>%s</a>" % (
+    BLENDER_VERSION_HASH_HTML_LINK = "<a href=https://projects.blender.org/blender/blender/commit/%s>%s</a>" % (
         BLENDER_VERSION_HASH, BLENDER_VERSION_HASH,
     )
     BLENDER_VERSION_DATE = time.strftime("%d/%m/%Y", time.localtime(BLENDER_REVISION_TIMESTAMP))
@@ -635,7 +649,7 @@ def undocumented_message(module_name, type_name, identifier):
         module_name, type_name, identifier,
     )
 
-    return "Undocumented, consider `contributing <https://developer.blender.org/T51061>`__."
+    return "Undocumented, consider `contributing <https://developer.blender.org/>`__."
 
 
 def range_str(val):
@@ -972,9 +986,21 @@ def pymodule2sphinx(basepath, module_name, module, title, module_all_extra):
         # `type_name` is only used for examples and messages:
         # `<class 'bpy.app.handlers'>` -> `bpy.app.handlers`.
         type_name = str(type(module)).strip("<>").split(" ", 1)[-1][1:-1]
+
+        # The type typically contains the module in the case of PyStruct's (defined by Blender).
+        # Assign a temporary module name: `module_name_split`.
+        if module_name == type_name:
+            assert "." in module_name
+            module_name_split, type_name = module_name.rpartition(".")[0::2]
+        elif type_name.startswith(module_name + "."):
+            type_name = type_name.removeprefix(module_name + ".")
+        else:
+            module_name_split = module_name
+
         if type(descr) == types.GetSetDescriptorType:
-            py_descr2sphinx("", fw, descr, module_name, type_name, key)
+            py_descr2sphinx("", fw, descr, module_name_split, type_name, key)
             attribute_set.add(key)
+        del module_name_split
     descr_sorted = []
     for key, descr in sorted(type(module).__dict__.items()):
         if key.startswith("__"):
@@ -1148,7 +1174,7 @@ context_type_map = {
     "annotation_data": ("GreasePencil", False),
     "annotation_data_owner": ("ID", False),
     "armature": ("Armature", False),
-    "asset_library_ref": ("AssetLibraryReference", False),
+    "asset_library_reference": ("AssetLibraryReference", False),
     "bone": ("Bone", False),
     "brush": ("Brush", False),
     "camera": ("Camera", False),
@@ -1171,6 +1197,7 @@ context_type_map = {
     "fluid": ("FluidSimulationModifier", False),
     "gpencil": ("GreasePencil", False),
     "gpencil_data": ("GreasePencil", False),
+    "grease_pencil": ("GreasePencilv3", False),
     "gpencil_data_owner": ("ID", False),
     "curves": ("Hair Curves", False),
     "id": ("ID", False),
@@ -1190,13 +1217,14 @@ context_type_map = {
     "particle_settings": ("ParticleSettings", False),
     "particle_system": ("ParticleSystem", False),
     "particle_system_editable": ("ParticleSystem", False),
+    "property": ("(:class:`bpy.types.ID`, :class:`string`, :class:`int`)", False),
     "pointcloud": ("PointCloud", False),
     "pose_bone": ("PoseBone", False),
     "pose_object": ("Object", False),
     "scene": ("Scene", False),
     "sculpt_object": ("Object", False),
     "selectable_objects": ("Object", True),
-    "selected_asset_files": ("FileSelectEntry", True),
+    "selected_assets": ("AssetRepresentation", True),
     "selected_bones": ("EditBone", True),
     "selected_editable_actions": ("Action", True),
     "selected_editable_bones": ("EditBone", True),
@@ -1282,6 +1310,7 @@ def pycontext2sphinx(basepath):
 
             type_descr = prop.get_type_description(
                 class_fmt=":class:`bpy.types.%s`",
+                mathutils_fmt=":class:`mathutils.%s`",
                 collection_id=_BPY_PROP_COLLECTION_ID,
                 enum_descr_override=enum_descr_override,
             )
@@ -1334,7 +1363,11 @@ def pycontext2sphinx(basepath):
                 raise SystemExit(
                     "Error: context key %r not found in context_type_map; update %s" %
                     (member, __file__)) from None
-            fw("   :type: %s :class:`bpy.types.%s`\n\n" % ("sequence of " if is_seq else "", member_type))
+
+            if member_type.isidentifier():
+                member_type = ":class:`bpy.types.%s`" % member_type
+            fw("   :type: %s %s\n\n" % ("sequence of " if is_seq else "", member_type))
+            write_example_ref("   ", fw, "bpy.context." + member)
 
     # Generate type-map:
     # for member in sorted(unique_context_strings):
@@ -1434,6 +1467,7 @@ def pyrna2sphinx(basepath):
             identifier = " %s" % prop.identifier
 
         kwargs["class_fmt"] = ":class:`%s`"
+        kwargs["mathutils_fmt"] = ":class:`mathutils.%s`"
 
         kwargs["collection_id"] = _BPY_PROP_COLLECTION_ID
 
@@ -1447,15 +1481,15 @@ def pyrna2sphinx(basepath):
         # If the link has been written, no need to inline the enum items.
         enum_text = "" if enum_descr_override else pyrna_enum2sphinx(prop)
         if prop.name or prop.description or enum_text:
-            fw(ident + ":%s%s:\n\n" % (id_name, identifier))
+            fw(ident + ":%s%s: " % (id_name, identifier))
 
             if prop.name or prop.description:
-                fw(indent(", ".join(val for val in (prop.name, prop.description) if val), ident + "   ") + "\n\n")
+                fw(", ".join(val for val in (prop.name, prop.description.replace("\n", "")) if val) + "\n")
 
             # Special exception, can't use generic code here for enums.
             if enum_text:
-                write_indented_lines(ident + "   ", fw, enum_text)
                 fw("\n")
+                write_indented_lines(ident + "   ", fw, enum_text)
             del enum_text
             # end enum exception
 
@@ -1470,7 +1504,7 @@ def pyrna2sphinx(basepath):
 
         struct_module_name = struct.module_name
         if USE_ONLY_BUILTIN_RNA_TYPES:
-            assert(struct_module_name == "bpy.types")
+            assert struct_module_name == "bpy.types"
         filepath = os.path.join(basepath, "%s.%s.rst" % (struct_module_name, struct.identifier))
         file = open(filepath, "w", encoding="utf-8")
         fw = file.write
@@ -1553,6 +1587,7 @@ def pyrna2sphinx(basepath):
 
             type_descr = prop.get_type_description(
                 class_fmt=":class:`%s`",
+                mathutils_fmt=":class:`mathutils.%s`",
                 collection_id=_BPY_PROP_COLLECTION_ID,
                 enum_descr_override=enum_descr_override,
             )
@@ -1619,6 +1654,7 @@ def pyrna2sphinx(basepath):
 
                     type_descr = prop.get_type_description(
                         as_ret=True, class_fmt=":class:`%s`",
+                        mathutils_fmt=":class:`mathutils.%s`",
                         collection_id=_BPY_PROP_COLLECTION_ID,
                         enum_descr_override=enum_descr_override,
                     )
@@ -1800,9 +1836,9 @@ def pyrna2sphinx(basepath):
 
     # operators
     def write_ops():
-        API_BASEURL = "https://developer.blender.org/diffusion/B/browse/master/release/scripts"
-        API_BASEURL_ADDON = "https://developer.blender.org/diffusion/BA"
-        API_BASEURL_ADDON_CONTRIB = "https://developer.blender.org/diffusion/BAC"
+        API_BASEURL = "https://projects.blender.org/blender/blender/src/branch/main/scripts"
+        API_BASEURL_ADDON = "https://projects.blender.org/blender/blender-addons"
+        API_BASEURL_ADDON_CONTRIB = "https://projects.blender.org/blender/blender-addons-contrib"
 
         op_modules = {}
         op = None
@@ -1837,8 +1873,6 @@ def pyrna2sphinx(basepath):
                 fw("   %s\n\n" % operator_description)
                 for prop in op.args:
                     write_param("   ", fw, prop)
-                if op.args:
-                    fw("\n")
 
                 location = op.get_location()
                 if location != (None, None):
@@ -1849,8 +1883,11 @@ def pyrna2sphinx(basepath):
                     else:
                         url_base = API_BASEURL
 
-                    fw("   :file: `%s\\:%d <%s/%s$%d>`_\n\n" %
+                    fw("   :File: `%s\\:%d <%s/%s#L%d>`__\n\n" %
                        (location[0], location[1], url_base, location[0], location[1]))
+
+                if op.args:
+                    fw("\n")
 
             file.close()
 
@@ -1871,7 +1908,7 @@ def write_sphinx_conf_py(basepath):
     fw("intersphinx_mapping = {'blender_manual': ('https://docs.blender.org/manual/en/dev/', None)}\n\n")
     fw("project = 'Blender %s Python API'\n" % BLENDER_VERSION_STRING)
     fw("root_doc = 'index'\n")
-    fw("copyright = 'Blender Foundation'\n")
+    fw("copyright = 'Blender Authors'\n")
     fw("version = '%s'\n" % BLENDER_VERSION_DOTS)
     fw("release = '%s'\n" % BLENDER_VERSION_DOTS)
 
@@ -1904,7 +1941,7 @@ except ModuleNotFoundError:
     # fw("        'collapse_navigation': True,\n")
     fw("        'sticky_navigation': False,\n")
     fw("        'navigation_depth': 1,\n")
-    # fw("        'includehidden': True,\n")
+    fw("        'includehidden': False,\n")
     # fw("        'titles_only': False\n")
     fw("    }\n\n")
 
@@ -1976,11 +2013,20 @@ def write_rst_index(basepath):
 
     if not EXCLUDE_INFO_DOCS:
         fw(".. toctree::\n")
+        if USE_INFO_DOCS_FANCY_INDEX:
+            fw("   :hidden:\n")
         fw("   :maxdepth: 1\n")
         fw("   :caption: Documentation\n\n")
         for info, info_desc in INFO_DOCS:
-            fw("   %s <%s>\n" % (info_desc, info))
+            fw("   %s\n" % info)
         fw("\n")
+
+        if USE_INFO_DOCS_FANCY_INDEX:
+            # Show a fake TOC, allowing for an extra description to be shown as well as the title.
+            fw(title_string("Documentation", "="))
+            for info, info_desc in INFO_DOCS:
+                fw("- :doc:`%s`: %s\n" % (info.removesuffix(".rst"), info_desc))
+            fw("\n")
 
     fw(".. toctree::\n")
     fw("   :maxdepth: 1\n")
@@ -2073,6 +2119,8 @@ def write_rst_types_index(basepath):
         fw(title_string("Types (bpy.types)", "="))
         fw(".. module:: bpy.types\n\n")
         fw(".. toctree::\n")
+        # Only show top-level entries (avoids unreasonably large pages).
+        fw("   :maxdepth: 1\n")
         fw("   :glob:\n\n")
         fw("   bpy.types.*\n\n")
 
@@ -2099,6 +2147,8 @@ def write_rst_ops_index(basepath):
         write_example_ref("", fw, "bpy.ops")
         fw(".. toctree::\n")
         fw("   :caption: Submodules\n")
+        # Only show top-level entries (avoids unreasonably large pages).
+        fw("   :maxdepth: 1\n")
         fw("   :glob:\n\n")
         fw("   bpy.ops.*\n\n")
         file.close()
@@ -2171,7 +2221,7 @@ def write_rst_enum_items(basepath, key, key_no_prefix, enum_items):
     Write a single page for a static enum in RST.
 
     This helps avoiding very large lists being in-lined in many places which is an issue
-    especially with icons in ``bpy.types.UILayout``. See T87008.
+    especially with icons in ``bpy.types.UILayout``. See #87008.
     """
     filepath = os.path.join(basepath, "%s.rst" % key_no_prefix)
     with open(filepath, "w", encoding="utf-8") as fh:
@@ -2313,6 +2363,8 @@ def copy_handwritten_rsts(basepath):
     # Info docs.
     if not EXCLUDE_INFO_DOCS:
         for info, _info_desc in INFO_DOCS:
+            shutil.copy2(os.path.join(RST_DIR, info), basepath)
+        for info in INFO_DOCS_OTHER:
             shutil.copy2(os.path.join(RST_DIR, info), basepath)
 
     # TODO: put this docs in Blender's code and use import as per modules above.

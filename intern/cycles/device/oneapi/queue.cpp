@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Intel Corporation */
+/* SPDX-FileCopyrightText: 2021-2022 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_ONEAPI
 
@@ -22,10 +23,7 @@ struct KernelExecutionInfo {
 /* OneapiDeviceQueue */
 
 OneapiDeviceQueue::OneapiDeviceQueue(OneapiDevice *device)
-    : DeviceQueue(device),
-      oneapi_device_(device),
-      oneapi_dll_(device->oneapi_dll_object()),
-      kernel_context_(nullptr)
+    : DeviceQueue(device), oneapi_device_(device), kernel_context_(nullptr)
 {
 }
 
@@ -46,7 +44,7 @@ int OneapiDeviceQueue::num_concurrent_states(const size_t state_size) const
   return num_states;
 }
 
-int OneapiDeviceQueue::num_concurrent_busy_states() const
+int OneapiDeviceQueue::num_concurrent_busy_states(const size_t /*state_size*/) const
 {
   const int max_num_threads = oneapi_device_->get_num_multiprocessors() *
                               oneapi_device_->get_max_num_threads_per_multiprocessor();
@@ -62,7 +60,7 @@ void OneapiDeviceQueue::init_execution()
   void *kg_dptr = (void *)oneapi_device_->kernel_globals_device_pointer();
   assert(device_queue);
   assert(kg_dptr);
-  kernel_context_ = new KernelContext{device_queue, kg_dptr};
+  kernel_context_ = new KernelContext{device_queue, kg_dptr, 0};
 
   debug_init_execution();
 }
@@ -77,25 +75,28 @@ bool OneapiDeviceQueue::enqueue(DeviceKernel kernel,
 
   void **args = const_cast<void **>(_args.values);
 
-  debug_enqueue(kernel, signed_kernel_work_size);
+  debug_enqueue_begin(kernel, signed_kernel_work_size);
   assert(signed_kernel_work_size >= 0);
-  size_t kernel_work_size = (size_t)signed_kernel_work_size;
-
-  size_t kernel_local_size = oneapi_dll_.oneapi_kernel_preferred_local_size(
-      kernel_context_->queue, (::DeviceKernel)kernel, kernel_work_size);
-  size_t uniformed_kernel_work_size = round_up(kernel_work_size, kernel_local_size);
+  size_t kernel_global_size = (size_t)signed_kernel_work_size;
+  size_t kernel_local_size;
 
   assert(kernel_context_);
+  kernel_context_->scene_max_shaders = oneapi_device_->scene_max_shaders();
+
+  oneapi_device_->get_adjusted_global_and_local_sizes(
+      kernel_context_->queue, kernel, kernel_global_size, kernel_local_size);
 
   /* Call the oneAPI kernel DLL to launch the requested kernel. */
-  bool is_finished_ok = oneapi_dll_.oneapi_enqueue_kernel(
-      kernel_context_, kernel, uniformed_kernel_work_size, args);
+  bool is_finished_ok = oneapi_device_->enqueue_kernel(
+      kernel_context_, kernel, kernel_global_size, kernel_local_size, args);
 
   if (is_finished_ok == false) {
     oneapi_device_->set_error("oneAPI kernel \"" + std::string(device_kernel_as_string(kernel)) +
                               "\" execution error: got runtime exception \"" +
                               oneapi_device_->oneapi_error_message() + "\"");
   }
+
+  debug_enqueue_end();
 
   return is_finished_ok;
 }
@@ -106,7 +107,7 @@ bool OneapiDeviceQueue::synchronize()
     return false;
   }
 
-  bool is_finished_ok = oneapi_dll_.oneapi_queue_synchronize(oneapi_device_->sycl_queue());
+  bool is_finished_ok = oneapi_device_->queue_synchronize(oneapi_device_->sycl_queue());
   if (is_finished_ok == false)
     oneapi_device_->set_error("oneAPI unknown kernel execution error: got runtime exception \"" +
                               oneapi_device_->oneapi_error_message() + "\"");

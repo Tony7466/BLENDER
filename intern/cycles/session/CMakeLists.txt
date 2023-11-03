@@ -1,8 +1,12 @@
+# SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+#
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2011-2022 Blender Foundation
 
 set(INC
   ..
+)
+
+set(INC_SYS
 )
 
 set(SRC
@@ -31,7 +35,5 @@ set(LIB
 
 include_directories(${INC})
 include_directories(SYSTEM ${INC_SYS})
-
-add_definitions(${GL_DEFINITIONS})
 
 cycles_add_library(cycles_session "${LIB}" ${SRC} ${SRC_HEADERS})

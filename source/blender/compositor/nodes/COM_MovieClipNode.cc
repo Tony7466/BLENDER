@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_MovieClipNode.h"
 
@@ -29,7 +30,7 @@ void MovieClipNode::convert_to_operations(NodeConverter &converter,
   NodeOutput *scale_movie_clip = this->get_output_socket(4);
   NodeOutput *angle_movie_clip = this->get_output_socket(5);
 
-  bNode *editor_node = this->get_bnode();
+  const bNode *editor_node = this->get_bnode();
   MovieClip *movie_clip = (MovieClip *)editor_node->id;
   MovieClipUser *movie_clip_user = (MovieClipUser *)editor_node->storage;
   bool cache_frame = !context.is_rendering();

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -8,6 +9,8 @@
  */
 
 #pragma once
+
+#include <optional>
 
 #include "GPU_batch.h"
 #include "GPU_primitive.h"
@@ -42,9 +45,9 @@ class Immediate {
   /** Wide Line workaround. */
 
   /** Previously bound shader to restore after drawing. */
-  eGPUBuiltinShader prev_builtin_shader = GPU_SHADER_TEXT;
-  /** Builtin shader index. Used to test if the workaround can be done. */
-  eGPUBuiltinShader builtin_shader_bound = GPU_SHADER_TEXT;
+  std::optional<eGPUBuiltinShader> prev_builtin_shader;
+  /** Builtin shader index. Used to test if the line width workaround can be done. */
+  std::optional<eGPUBuiltinShader> builtin_shader_bound;
   /** Uniform color: Kept here to update the wide-line shader just before #immBegin. */
   float uniform_color[4];
 

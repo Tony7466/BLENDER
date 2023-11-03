@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -7,6 +9,12 @@
  */
 
 #include "bmesh_class.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct BMPartialUpdate;
 
 struct BMeshNormalsUpdate_Params {
   /**
@@ -54,7 +62,6 @@ void BM_loops_calc_normal_vcos(BMesh *bm,
                                const float (*vnos)[3],
                                const float (*fnos)[3],
                                bool use_split_normals,
-                               float split_angle,
                                float (*r_lnos)[3],
                                struct MLoopNorSpaceArray *r_lnors_spacearr,
                                short (*clnors_data)[2],
@@ -99,3 +106,7 @@ void BM_custom_loop_normals_from_vector_layer(struct BMesh *bm, bool add_sharp_e
  * to keep same shading as with auto-smooth!
  */
 void BM_edges_sharp_from_angle_set(BMesh *bm, float split_angle);
+
+#ifdef __cplusplus
+}
+#endif

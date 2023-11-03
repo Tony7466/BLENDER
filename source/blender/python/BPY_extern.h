@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup python
@@ -34,7 +36,7 @@ void BPY_pyconstraint_exec(struct bPythonConstraint *con,
 //  void BPY_pyconstraint_settings(void *arg1, void *arg2);
 void BPY_pyconstraint_target(struct bPythonConstraint *con, struct bConstraintTarget *ct);
 void BPY_pyconstraint_update(struct Object *owner, struct bConstraint *con);
-int BPY_is_pyconstraint(struct Text *text);
+bool BPY_is_pyconstraint(struct Text *text);
 //  void BPY_free_pyconstraint_links(struct Text *text);
 
 /* global interpreter lock */
@@ -106,20 +108,13 @@ void BPY_context_set(struct bContext *C);
  */
 void BPY_context_update(struct bContext *C);
 
-#define BPY_context_dict_clear_members(C, ...) \
-  BPY_context_dict_clear_members_array(&((C)->data.py_context), \
-                                       (C)->data.py_context_orig, \
-                                       ((const char *[]){__VA_ARGS__}), \
-                                       VA_NARGS_COUNT(__VA_ARGS__))
 /**
  * Use for `CTX_*_set(..)` functions need to set values which are later read back as expected.
  * In this case we don't want the Python context to override the values as it causes problems
- * see T66256.
+ * see #66256.
  *
  * \param dict_p: A pointer to #bContext.data.py_context so we can assign a new value.
  * \param dict_orig: The value of #bContext.data.py_context_orig to check if we need to copy.
- *
- * \note Typically accessed via #BPY_context_dict_clear_members macro.
  */
 void BPY_context_dict_clear_members_array(void **dict_p,
                                           void *dict_orig,
@@ -133,7 +128,7 @@ void BPY_id_release(struct ID *id);
  */
 bool BPY_string_is_keyword(const char *str);
 
-/* bpy_rna_callback.c */
+/* `bpy_rna_callback.cc` */
 
 void BPY_callback_screen_free(struct ARegionType *art);
 void BPY_callback_wm_free(struct wmWindowManager *wm);

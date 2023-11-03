@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -164,7 +165,9 @@ void rgba_float_to_uchar(unsigned char r_col[4], const float col_f[4]);
 MINLINE float rgb_to_grayscale(const float rgb[3]);
 MINLINE unsigned char rgb_to_grayscale_byte(const unsigned char rgb[3]);
 
-MINLINE int compare_rgb_uchar(const unsigned char a[3], const unsigned char b[3], int limit);
+MINLINE int compare_rgb_uchar(const unsigned char col_a[3],
+                              const unsigned char col_b[3],
+                              int limit);
 
 /**
  * Return triangle noise in [-0.5..1.5] range.
@@ -199,12 +202,12 @@ void lift_gamma_gain_to_asc_cdl(const float *lift,
                                 float *slope,
                                 float *power);
 
-#if BLI_MATH_DO_INLINE
-#  include "intern/math_color_inline.c"
-#endif
-
 /** \} */
 
 #ifdef __cplusplus
 }
+#endif
+
+#if BLI_MATH_DO_INLINE
+#  include "intern/math_color_inline.c"
 #endif

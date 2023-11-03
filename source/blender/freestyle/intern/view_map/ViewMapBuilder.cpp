@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -23,6 +25,8 @@
 #include "../geometry/GridHelpers.h"
 
 #include "../winged_edge/WFillGrid.h"
+
+#include "BLI_sys_types.h"
 
 #include "BKE_global.h"
 
@@ -73,7 +77,7 @@ static void findOccludee(FEdge *fe,
 #endif
       oface = occluders.getWFace();
       Polygon3r *p = occluders.getCameraSpacePolygon();
-      real d = -((p->getVertices())[0] * p->getNormal());
+      real d = -(p->getVertices()[0] * p->getNormal());
       real t, t_u, t_v;
 
       if (nullptr != face) {
@@ -89,7 +93,8 @@ static void findOccludee(FEdge *fe,
 
         for (vector<WVertex *>::iterator fv = faceVertices.begin(), fvend = faceVertices.end();
              fv != fvend;
-             ++fv) {
+             ++fv)
+        {
           if ((*fv)->isBoundary()) {
             continue;
           }
@@ -119,7 +124,8 @@ static void findOccludee(FEdge *fe,
         //-------------------------------------------------------------
         // first let us compute the plane equation.
         if (GeomUtils::COINCIDENT ==
-            GeomUtils::intersectRayPlane(origin, edgeDir, p->getNormal(), d, t, epsilon)) {
+            GeomUtils::intersectRayPlane(origin, edgeDir, p->getNormal(), d, t, epsilon))
+        {
 #if LOGGING
           if (_global.debug & G_DEBUG_FREESTYLE) {
             cout << "\t\tRejecting occluder for target coincidence." << endl;
@@ -273,7 +279,8 @@ static int computeVisibility(ViewMap *viewMap,
     for (vector<WOEdge *>::const_iterator woe = oface->getEdgeList().begin(),
                                           woend = oface->getEdgeList().end();
          woe != woend;
-         woe++) {
+         woe++)
+    {
       points.push_back(Vec3r((*woe)->GetaVertex()->GetVertex()));
     }
     Polygon3r p1(points, oface->GetNormal());
@@ -286,7 +293,7 @@ static int computeVisibility(ViewMap *viewMap,
            << ", norm: " << p1.getNormal() << endl;
     }
 #else
-    real d = -((p->getVertices())[0] * p->getNormal());
+    real d = -(p->getVertices()[0] * p->getNormal());
 #endif
 
     if (face) {
@@ -308,7 +315,8 @@ static int computeVisibility(ViewMap *viewMap,
 
       for (vector<WVertex *>::iterator fv = faceVertices.begin(), fvend = faceVertices.end();
            fv != fvend;
-           ++fv) {
+           ++fv)
+      {
         if ((*fv)->isBoundary()) {
           continue;
         }
@@ -346,7 +354,8 @@ static int computeVisibility(ViewMap *viewMap,
       //-------------------------------------------------------------
       // first let us compute the plane equation.
       if (GeomUtils::COINCIDENT ==
-          GeomUtils::intersectRayPlane(origin, edgeDir, p->getNormal(), d, t, epsilon)) {
+          GeomUtils::intersectRayPlane(origin, edgeDir, p->getNormal(), d, t, epsilon))
+      {
 #if LOGGING
         if (_global.debug & G_DEBUG_FREESTYLE) {
           cout << "\t\tRejecting occluder for target coincidence." << endl;
@@ -430,12 +439,12 @@ static void computeCumulativeVisibility(ViewMap *ioViewMap,
   int nSamples = 0;
   vector<WFace *> wFaces;
   WFace *wFace = nullptr;
-  unsigned count = 0;
-  unsigned count_step = (unsigned)ceil(0.01f * vedges.size());
-  unsigned tmpQI = 0;
-  unsigned qiClasses[256];
-  unsigned maxIndex, maxCard;
-  unsigned qiMajority;
+  uint count = 0;
+  uint count_step = uint(ceil(0.01f * vedges.size()));
+  uint tmpQI = 0;
+  uint qiClasses[256];
+  uint maxIndex, maxCard;
+  uint qiMajority;
   for (vector<ViewEdge *>::iterator ve = vedges.begin(), veend = vedges.end(); ve != veend; ve++) {
     if (iRenderMonitor) {
       if (iRenderMonitor->testBreak()) {
@@ -445,7 +454,7 @@ static void computeCumulativeVisibility(ViewMap *ioViewMap,
         stringstream ss;
         ss << "Freestyle: Visibility computations " << (100 * count / vedges.size()) << "%";
         iRenderMonitor->setInfo(ss.str());
-        iRenderMonitor->progress((float)count / vedges.size());
+        iRenderMonitor->progress(float(count) / vedges.size());
       }
       count++;
     }
@@ -542,7 +551,7 @@ static void computeCumulativeVisibility(ViewMap *ioViewMap,
         findOccludee<G, I>(fe, grid, epsilon, *ve, &wFace);
 #if LOGGING
         if (_global.debug & G_DEBUG_FREESTYLE) {
-          cout << "\tFEdge: occludee only (" << (wFace != NULL ? "found" : "not found") << ")"
+          cout << "\tFEdge: occludee only (" << (wFace != nullptr ? "found" : "not found") << ")"
                << endl;
         }
 #endif
@@ -582,7 +591,7 @@ static void computeCumulativeVisibility(ViewMap *ioViewMap,
     // ViewEdge
     // qi --
     // Find the minimum value that is >= the majority of the QI
-    for (unsigned count = 0, i = 0; i < 256; ++i) {
+    for (uint count = 0, i = 0; i < 256; ++i) {
       count += qiClasses[i];
       if (count >= qiMajority) {
         (*ve)->setQI(i);
@@ -594,8 +603,9 @@ static void computeCumulativeVisibility(ViewMap *ioViewMap,
     // its contents. Is there a reason why ViewEdge::_Occluders cannot be converted to a set<>?
     for (set<ViewShape *>::iterator o = foundOccluders.begin(), oend = foundOccluders.end();
          o != oend;
-         ++o) {
-      (*ve)->AddOccluder((*o));
+         ++o)
+    {
+      (*ve)->AddOccluder(*o);
     }
 #if LOGGING
     if (_global.debug & G_DEBUG_FREESTYLE) {
@@ -607,7 +617,7 @@ static void computeCumulativeVisibility(ViewMap *ioViewMap,
 #endif
     // occludee --
     if (!wFaces.empty()) {
-      if (wFaces.size() <= (float)nSamples / 2.0f) {
+      if (wFaces.size() <= float(nSamples) / 2.0f) {
         (*ve)->setaShape(nullptr);
       }
       else {
@@ -623,7 +633,7 @@ static void computeCumulativeVisibility(ViewMap *ioViewMap,
     stringstream ss;
     ss << "Freestyle: Visibility computations " << (100 * count / vedges.size()) << "%";
     iRenderMonitor->setInfo(ss.str());
-    iRenderMonitor->progress((float)count / vedges.size());
+    iRenderMonitor->progress(float(count) / vedges.size());
   }
 }
 
@@ -639,10 +649,10 @@ static void computeDetailedVisibility(ViewMap *ioViewMap,
   int nSamples = 0;
   vector<WFace *> wFaces;
   WFace *wFace = nullptr;
-  unsigned tmpQI = 0;
-  unsigned qiClasses[256];
-  unsigned maxIndex, maxCard;
-  unsigned qiMajority;
+  uint tmpQI = 0;
+  uint qiClasses[256];
+  uint maxIndex, maxCard;
+  uint qiMajority;
   for (vector<ViewEdge *>::iterator ve = vedges.begin(), veend = vedges.end(); ve != veend; ve++) {
     if (iRenderMonitor && iRenderMonitor->testBreak()) {
       break;
@@ -740,7 +750,7 @@ static void computeDetailedVisibility(ViewMap *ioViewMap,
         findOccludee<G, I>(fe, grid, epsilon, *ve, &wFace);
 #if LOGGING
         if (_global.debug & G_DEBUG_FREESTYLE) {
-          cout << "\tFEdge: occludee only (" << (wFace != NULL ? "found" : "not found") << ")"
+          cout << "\tFEdge: occludee only (" << (wFace != nullptr ? "found" : "not found") << ")"
                << endl;
         }
 #endif
@@ -785,8 +795,9 @@ static void computeDetailedVisibility(ViewMap *ioViewMap,
     // out its contents. Is there a reason why ViewEdge::_Occluders cannot be converted to a set<>?
     for (set<ViewShape *>::iterator o = foundOccluders.begin(), oend = foundOccluders.end();
          o != oend;
-         ++o) {
-      (*ve)->AddOccluder((*o));
+         ++o)
+    {
+      (*ve)->AddOccluder(*o);
     }
 #if LOGGING
     if (_global.debug & G_DEBUG_FREESTYLE) {
@@ -796,7 +807,7 @@ static void computeDetailedVisibility(ViewMap *ioViewMap,
 #endif
     // occludee --
     if (!wFaces.empty()) {
-      if (wFaces.size() <= (float)nSamples / 2.0f) {
+      if (wFaces.size() <= float(nSamples) / 2.0f) {
         (*ve)->setaShape(nullptr);
       }
       else {
@@ -816,13 +827,13 @@ static void computeFastVisibility(ViewMap *ioViewMap, G &grid, real epsilon)
   vector<ViewEdge *> &vedges = ioViewMap->ViewEdges();
 
   FEdge *fe, *festart;
-  unsigned nSamples = 0;
+  uint nSamples = 0;
   vector<WFace *> wFaces;
   WFace *wFace = nullptr;
-  unsigned tmpQI = 0;
-  unsigned qiClasses[256];
-  unsigned maxIndex, maxCard;
-  unsigned qiMajority;
+  uint tmpQI = 0;
+  uint qiClasses[256];
+  uint maxIndex, maxCard;
+  uint qiMajority;
   bool even_test;
   for (vector<ViewEdge *>::iterator ve = vedges.begin(), veend = vedges.end(); ve != veend; ve++) {
     // Find an edge to test
@@ -924,8 +935,9 @@ static void computeFastVisibility(ViewMap *ioViewMap, G &grid, real epsilon)
     // occluders --
     for (set<ViewShape *>::iterator o = foundOccluders.begin(), oend = foundOccluders.end();
          o != oend;
-         ++o) {
-      (*ve)->AddOccluder((*o));
+         ++o)
+    {
+      (*ve)->AddOccluder(*o);
     }
 
     // occludee --
@@ -950,7 +962,7 @@ static void computeVeryFastVisibility(ViewMap *ioViewMap, G &grid, real epsilon)
   vector<ViewEdge *> &vedges = ioViewMap->ViewEdges();
 
   FEdge *fe;
-  unsigned qi = 0;
+  uint qi = 0;
   WFace *wFace = nullptr;
 
   for (vector<ViewEdge *>::iterator ve = vedges.begin(), veend = vedges.end(); ve != veend; ve++) {
@@ -981,7 +993,7 @@ static void computeVeryFastVisibility(ViewMap *ioViewMap, G &grid, real epsilon)
       wFace = nullptr;
     }
     else {
-      qi = computeVisibility<G, I>(ioViewMap, fe, grid, epsilon, *ve, &wFace, NULL);
+      qi = computeVisibility<G, I>(ioViewMap, fe, grid, epsilon, *ve, &wFace, nullptr);
     }
 
     // Store test results
@@ -1003,11 +1015,11 @@ static void computeVeryFastVisibility(ViewMap *ioViewMap, G &grid, real epsilon)
   }
 }
 
-void ViewMapBuilder::BuildGrid(WingedEdge &we, const BBox<Vec3r> &bbox, unsigned int sceneNumFaces)
+void ViewMapBuilder::BuildGrid(WingedEdge &we, const BBox<Vec3r> &bbox, uint sceneNumFaces)
 {
   _Grid->clear();
   Vec3r size;
-  for (unsigned int i = 0; i < 3; i++) {
+  for (uint i = 0; i < 3; i++) {
     size[i] = fabs(bbox.getMax()[i] - bbox.getMin()[i]);
     // let make the grid 1/10 bigger to avoid numerical errors while computing triangles/cells
     // intersections.
@@ -1032,7 +1044,7 @@ ViewMap *ViewMapBuilder::BuildViewMap(WingedEdge &we,
                                       visibility_algo iAlgo,
                                       real epsilon,
                                       const BBox<Vec3r> &bbox,
-                                      unsigned int sceneNumFaces)
+                                      uint sceneNumFaces)
 {
   _ViewMap = new ViewMap;
   _currentId = 1;
@@ -1289,7 +1301,7 @@ void ViewMapBuilder::computeCusps(ViewMap *ioViewMap)
     if (_pRenderMonitor && _pRenderMonitor->testBreak()) {
       break;
     }
-    if ((!((*ve)->getNature() & Nature::SILHOUETTE)) || (!((*ve)->fedgeA()->isSmooth()))) {
+    if (!((*ve)->getNature() & Nature::SILHOUETTE) || !(*ve)->fedgeA()->isSmooth()) {
       continue;
     }
     FEdge *fe = (*ve)->fedgeA();
@@ -1435,7 +1447,7 @@ void ViewMapBuilder::ComputeDetailedVisibility(ViewMap *ioViewMap,
 void ViewMapBuilder::ComputeEdgesVisibility(ViewMap *ioViewMap,
                                             WingedEdge &we,
                                             const BBox<Vec3r> &bbox,
-                                            unsigned int sceneNumFaces,
+                                            uint sceneNumFaces,
                                             visibility_algo iAlgo,
                                             real epsilon)
 {
@@ -1531,19 +1543,19 @@ void ViewMapBuilder::ComputeEdgesVisibility(ViewMap *ioViewMap,
   }
 }
 
-static const unsigned gProgressBarMaxSteps = 10;
-static const unsigned gProgressBarMinSize = 2000;
+static const uint gProgressBarMaxSteps = 10;
+static const uint gProgressBarMinSize = 2000;
 
 void ViewMapBuilder::ComputeRayCastingVisibility(ViewMap *ioViewMap, real epsilon)
 {
   vector<ViewEdge *> &vedges = ioViewMap->ViewEdges();
   bool progressBarDisplay = false;
-  unsigned progressBarStep = 0;
-  unsigned vEdgesSize = vedges.size();
-  unsigned fEdgesSize = ioViewMap->FEdges().size();
+  uint progressBarStep = 0;
+  uint vEdgesSize = vedges.size();
+  uint fEdgesSize = ioViewMap->FEdges().size();
 
   if (_pProgressBar != nullptr && fEdgesSize > gProgressBarMinSize) {
-    unsigned progressBarSteps = min(gProgressBarMaxSteps, vEdgesSize);
+    uint progressBarSteps = min(gProgressBarMaxSteps, vEdgesSize);
     progressBarStep = vEdgesSize / progressBarSteps;
     _pProgressBar->reset();
     _pProgressBar->setLabelText("Computing Ray casting Visibility");
@@ -1552,16 +1564,16 @@ void ViewMapBuilder::ComputeRayCastingVisibility(ViewMap *ioViewMap, real epsilo
     progressBarDisplay = true;
   }
 
-  unsigned counter = progressBarStep;
+  uint counter = progressBarStep;
   FEdge *fe, *festart;
   int nSamples = 0;
   vector<Polygon3r *> aFaces;
   Polygon3r *aFace = nullptr;
-  unsigned tmpQI = 0;
-  unsigned qiClasses[256];
-  unsigned maxIndex, maxCard;
-  unsigned qiMajority;
-  static unsigned timestamp = 1;
+  uint tmpQI = 0;
+  uint qiClasses[256];
+  uint maxIndex, maxCard;
+  uint qiMajority;
+  static uint timestamp = 1;
   for (vector<ViewEdge *>::iterator ve = vedges.begin(), veend = vedges.end(); ve != veend; ve++) {
     if (_pRenderMonitor && _pRenderMonitor->testBreak()) {
       break;
@@ -1619,7 +1631,7 @@ void ViewMapBuilder::ComputeRayCastingVisibility(ViewMap *ioViewMap, real epsilo
         FindOccludee(fe, _Grid, epsilon, &aFace, timestamp++);
 #if LOGGING
         if (_global.debug & G_DEBUG_FREESTYLE) {
-          cout << "\tFEdge: occludee only (" << (aFace != NULL ? "found" : "not found") << ")"
+          cout << "\tFEdge: occludee only (" << (aFace != nullptr ? "found" : "not found") << ")"
                << endl;
         }
 #endif
@@ -1656,9 +1668,9 @@ void ViewMapBuilder::ComputeRayCastingVisibility(ViewMap *ioViewMap, real epsilo
     // qi --
     (*ve)->setQI(maxIndex);
     // occluders --
-    for (set<ViewShape *>::iterator o = occluders.begin(), oend = occluders.end(); o != oend;
-         ++o) {
-      (*ve)->AddOccluder((*o));
+    for (set<ViewShape *>::iterator o = occluders.begin(), oend = occluders.end(); o != oend; ++o)
+    {
+      (*ve)->AddOccluder(*o);
     }
 #if LOGGING
     if (_global.debug & G_DEBUG_FREESTYLE) {
@@ -1668,7 +1680,7 @@ void ViewMapBuilder::ComputeRayCastingVisibility(ViewMap *ioViewMap, real epsilo
 #endif
     // occludee --
     if (!aFaces.empty()) {
-      if (aFaces.size() <= (float)nSamples / 2.0f) {
+      if (aFaces.size() <= float(nSamples) / 2.0f) {
         (*ve)->setaShape(nullptr);
       }
       else {
@@ -1695,12 +1707,12 @@ void ViewMapBuilder::ComputeFastRayCastingVisibility(ViewMap *ioViewMap, real ep
 {
   vector<ViewEdge *> &vedges = ioViewMap->ViewEdges();
   bool progressBarDisplay = false;
-  unsigned progressBarStep = 0;
-  unsigned vEdgesSize = vedges.size();
-  unsigned fEdgesSize = ioViewMap->FEdges().size();
+  uint progressBarStep = 0;
+  uint vEdgesSize = vedges.size();
+  uint fEdgesSize = ioViewMap->FEdges().size();
 
   if (_pProgressBar != nullptr && fEdgesSize > gProgressBarMinSize) {
-    unsigned progressBarSteps = min(gProgressBarMaxSteps, vEdgesSize);
+    uint progressBarSteps = min(gProgressBarMaxSteps, vEdgesSize);
     progressBarStep = vEdgesSize / progressBarSteps;
     _pProgressBar->reset();
     _pProgressBar->setLabelText("Computing Ray casting Visibility");
@@ -1709,16 +1721,16 @@ void ViewMapBuilder::ComputeFastRayCastingVisibility(ViewMap *ioViewMap, real ep
     progressBarDisplay = true;
   }
 
-  unsigned counter = progressBarStep;
+  uint counter = progressBarStep;
   FEdge *fe, *festart;
-  unsigned nSamples = 0;
+  uint nSamples = 0;
   vector<Polygon3r *> aFaces;
   Polygon3r *aFace = nullptr;
-  unsigned tmpQI = 0;
-  unsigned qiClasses[256];
-  unsigned maxIndex, maxCard;
-  unsigned qiMajority;
-  static unsigned timestamp = 1;
+  uint tmpQI = 0;
+  uint qiClasses[256];
+  uint maxIndex, maxCard;
+  uint qiMajority;
+  static uint timestamp = 1;
   bool even_test;
   for (vector<ViewEdge *>::iterator ve = vedges.begin(), veend = vedges.end(); ve != veend; ve++) {
     if (_pRenderMonitor && _pRenderMonitor->testBreak()) {
@@ -1828,12 +1840,12 @@ void ViewMapBuilder::ComputeVeryFastRayCastingVisibility(ViewMap *ioViewMap, rea
 {
   vector<ViewEdge *> &vedges = ioViewMap->ViewEdges();
   bool progressBarDisplay = false;
-  unsigned progressBarStep = 0;
-  unsigned vEdgesSize = vedges.size();
-  unsigned fEdgesSize = ioViewMap->FEdges().size();
+  uint progressBarStep = 0;
+  uint vEdgesSize = vedges.size();
+  uint fEdgesSize = ioViewMap->FEdges().size();
 
   if (_pProgressBar != nullptr && fEdgesSize > gProgressBarMinSize) {
-    unsigned progressBarSteps = min(gProgressBarMaxSteps, vEdgesSize);
+    uint progressBarSteps = min(gProgressBarMaxSteps, vEdgesSize);
     progressBarStep = vEdgesSize / progressBarSteps;
     _pProgressBar->reset();
     _pProgressBar->setLabelText("Computing Ray casting Visibility");
@@ -1842,11 +1854,11 @@ void ViewMapBuilder::ComputeVeryFastRayCastingVisibility(ViewMap *ioViewMap, rea
     progressBarDisplay = true;
   }
 
-  unsigned counter = progressBarStep;
+  uint counter = progressBarStep;
   FEdge *fe;
-  unsigned qi = 0;
+  uint qi = 0;
   Polygon3r *aFace = nullptr;
-  static unsigned timestamp = 1;
+  static uint timestamp = 1;
   for (vector<ViewEdge *>::iterator ve = vedges.begin(), veend = vedges.end(); ve != veend; ve++) {
     if (_pRenderMonitor && _pRenderMonitor->testBreak()) {
       break;
@@ -1882,7 +1894,7 @@ void ViewMapBuilder::FindOccludee(FEdge *fe,
                                   Grid *iGrid,
                                   real epsilon,
                                   Polygon3r **oaPolygon,
-                                  unsigned timestamp,
+                                  uint timestamp,
                                   Vec3r &u,
                                   Vec3r &A,
                                   Vec3r &origin,
@@ -1916,7 +1928,7 @@ void ViewMapBuilder::FindOccludee(FEdge *fe,
       //-------------------------------------------------------------
       // first let us compute the plane equation.
       oface = (WFace *)(*p)->userdata;
-      Vec3r v1(((*p)->getVertices())[0]);
+      Vec3r v1((*p)->getVertices()[0]);
       Vec3r normal((*p)->getNormal());
       real d = -(v1 * normal);
       real t, t_u, t_v;
@@ -1934,7 +1946,8 @@ void ViewMapBuilder::FindOccludee(FEdge *fe,
 
         for (vector<WVertex *>::iterator fv = faceVertices.begin(), fvend = faceVertices.end();
              fv != fvend;
-             ++fv) {
+             ++fv)
+        {
           if ((*fv)->isBoundary()) {
             continue;
           }
@@ -1986,7 +1999,7 @@ void ViewMapBuilder::FindOccludee(FEdge *fe,
 }
 
 void ViewMapBuilder::FindOccludee(
-    FEdge *fe, Grid *iGrid, real epsilon, Polygon3r **oaPolygon, unsigned timestamp)
+    FEdge *fe, Grid *iGrid, real epsilon, Polygon3r **oaPolygon, uint timestamp)
 {
   OccludersSet occluders;
 
@@ -2030,7 +2043,7 @@ int ViewMapBuilder::ComputeRayCastingVisibility(FEdge *fe,
                                                 real epsilon,
                                                 set<ViewShape *> &oOccluders,
                                                 Polygon3r **oaPolygon,
-                                                unsigned timestamp)
+                                                uint timestamp)
 {
   OccludersSet occluders;
   int qi = 0;
@@ -2049,7 +2062,8 @@ int ViewMapBuilder::ComputeRayCastingVisibility(FEdge *fe,
 
   if ((center.x() < gridOrigin.x()) || (center.y() < gridOrigin.y()) ||
       (center.z() < gridOrigin.z()) || (center.x() > gridExtremity.x()) ||
-      (center.y() > gridExtremity.y()) || (center.z() > gridExtremity.z())) {
+      (center.y() > gridExtremity.y()) || (center.z() > gridExtremity.z()))
+  {
     cerr << "Warning: point is out of the grid for fedge " << fe->getId() << endl;
     // return 0;
   }
@@ -2061,9 +2075,10 @@ int ViewMapBuilder::ComputeRayCastingVisibility(FEdge *fe,
   SilhouetteGeomEngine::retrieveViewport(viewport);
   if ((A.x() < viewport[0]) || (A.x() > viewport[2]) || (A.y() < viewport[1]) ||
       (A.y() > viewport[3]) || (B.x() < viewport[0]) || (B.x() > viewport[2]) ||
-      (B.y() < viewport[1]) || (B.y() > viewport[3])) {
+      (B.y() < viewport[1]) || (B.y() > viewport[3]))
+  {
     cerr << "Warning: point is out of the grid for fedge " << fe->getId() << endl;
-    //return 0;
+    // return 0;
   }
 #endif
 
@@ -2115,7 +2130,7 @@ int ViewMapBuilder::ComputeRayCastingVisibility(FEdge *fe,
            << "\t\t\tand ray " << vp << " * " << u << " (center " << center << ")" << endl;
     }
 #endif
-    Vec3r v1(((*p)->getVertices())[0]);
+    Vec3r v1((*p)->getVertices()[0]);
     Vec3r normal((*p)->getNormal());
     real d = -(v1 * normal);
     real t, t_u, t_v;
@@ -2146,7 +2161,8 @@ int ViewMapBuilder::ComputeRayCastingVisibility(FEdge *fe,
 
       for (vector<WVertex *>::iterator fv = faceVertices.begin(), fvend = faceVertices.end();
            fv != fvend;
-           ++fv) {
+           ++fv)
+      {
         if ((*fv)->isBoundary()) {
           continue;
         }
@@ -2244,7 +2260,8 @@ void ViewMapBuilder::ComputeIntersections(ViewMap *ioViewMap,
     ViewMap::viewvertices_container &vvertices = ioViewMap->ViewVertices();
     for (ViewMap::viewvertices_container::iterator vv = vvertices.begin(), vvend = vvertices.end();
          vv != vvend;
-         ++vv) {
+         ++vv)
+    {
       if ((*vv)->getNature() == Nature::T_VERTEX) {
         TVertex *tvertex = (TVertex *)(*vv);
         cout << "TVertex " << tvertex->getId() << " has :" << endl;
@@ -2270,7 +2287,7 @@ struct less_SVertex2D {
   {
     Vec3r A = x->point2D();
     Vec3r B = y->point2D();
-    for (unsigned int i = 0; i < 3; i++) {
+    for (uint i = 0; i < 3; i++) {
       if (fabs(A[i] - B[i]) < epsilon) {
         continue;
       }
@@ -2313,8 +2330,9 @@ struct silhouette_binary_rule : public binary_rule<segment, segment> {
     FEdge *f1 = s1.edge();
     FEdge *f2 = s2.edge();
 
-    if ((!(((f1)->getNature() & Nature::SILHOUETTE) || ((f1)->getNature() & Nature::BORDER))) &&
-        (!(((f2)->getNature() & Nature::SILHOUETTE) || ((f2)->getNature() & Nature::BORDER)))) {
+    if (!(((f1)->getNature() & Nature::SILHOUETTE) || ((f1)->getNature() & Nature::BORDER)) &&
+        !(((f2)->getNature() & Nature::SILHOUETTE) || ((f2)->getNature() & Nature::BORDER)))
+    {
       return false;
     }
 
@@ -2326,22 +2344,23 @@ void ViewMapBuilder::ComputeSweepLineIntersections(ViewMap *ioViewMap, real epsi
 {
   vector<SVertex *> &svertices = ioViewMap->SVertices();
   bool progressBarDisplay = false;
-  unsigned sVerticesSize = svertices.size();
-  unsigned fEdgesSize = ioViewMap->FEdges().size();
+  uint sVerticesSize = svertices.size();
+  uint fEdgesSize = ioViewMap->FEdges().size();
 #if 0
   if (_global.debug & G_DEBUG_FREESTYLE) {
     ViewMap::fedges_container &fedges = ioViewMap->FEdges();
     for (ViewMap::fedges_container::const_iterator f = fedges.begin(), end = fedges.end();
          f != end;
-         ++f) {
+         ++f)
+    {
       cout << (*f)->aMaterialIndex() << "-" << (*f)->bMaterialIndex() << endl;
     }
   }
 #endif
-  unsigned progressBarStep = 0;
+  uint progressBarStep = 0;
 
   if (_pProgressBar != nullptr && fEdgesSize > gProgressBarMinSize) {
-    unsigned progressBarSteps = min(gProgressBarMaxSteps, sVerticesSize);
+    uint progressBarSteps = min(gProgressBarMaxSteps, sVerticesSize);
     progressBarStep = sVerticesSize / progressBarSteps;
     _pProgressBar->reset();
     _pProgressBar->setLabelText("Computing Sweep Line Intersections");
@@ -2350,7 +2369,7 @@ void ViewMapBuilder::ComputeSweepLineIntersections(ViewMap *ioViewMap, real epsi
     progressBarDisplay = true;
   }
 
-  unsigned counter = progressBarStep;
+  uint counter = progressBarStep;
 
   sort(svertices.begin(), svertices.end(), less_SVertex2D(epsilon));
 
@@ -2370,7 +2389,8 @@ void ViewMapBuilder::ComputeSweepLineIntersections(ViewMap *ioViewMap, real epsi
 
   vector<segment *> vsegments;
   for (vector<SVertex *>::iterator sv = svertices.begin(), svend = svertices.end(); sv != svend;
-       sv++) {
+       sv++)
+  {
     if (_pRenderMonitor && _pRenderMonitor->testBreak()) {
       break;
     }
@@ -2379,7 +2399,8 @@ void ViewMapBuilder::ComputeSweepLineIntersections(ViewMap *ioViewMap, real epsi
 
     for (vector<FEdge *>::const_iterator sve = vedges.begin(), sveend = vedges.end();
          sve != sveend;
-         sve++) {
+         sve++)
+    {
       vsegments.push_back((segment *)((*sve)->userdata));
     }
 
@@ -2471,8 +2492,8 @@ void ViewMapBuilder::ComputeSweepLineIntersections(ViewMap *ioViewMap, real epsi
         printf("tb %.12e\n", tb);
         printf("a1 %e, %e -- a2 %e, %e\n", a1[0], a1[1], a2[0], a2[1]);
         printf("b1 %e, %e -- b2 %e, %e\n", b1[0], b1[1], b2[0], b2[1]);
-        //printf("line([%e, %e], [%e, %e]);\n", a1[0], a2[0], a1[1], a2[1]);
-        //printf("line([%e, %e], [%e, %e]);\n", b1[0], b2[0], b1[1], b2[1]);
+        // printf("line([%e, %e], [%e, %e]);\n", a1[0], a2[0], a1[1], a2[1]);
+        // printf("line([%e, %e], [%e, %e]);\n", b1[0], b2[0], b1[1], b2[1]);
         if ((Ta < -epsilon) || (Ta > 1 + epsilon)) {
           printf("Ta %.12e\n", Ta);
         }
@@ -2500,8 +2521,8 @@ void ViewMapBuilder::ComputeSweepLineIntersections(ViewMap *ioViewMap, real epsi
   progressBarStep = 0;
 
   if (progressBarDisplay) {
-    unsigned iEdgesSize = iedges.size();
-    unsigned progressBarSteps = min(gProgressBarMaxSteps, iEdgesSize);
+    uint iEdgesSize = iedges.size();
+    uint progressBarSteps = min(gProgressBarMaxSteps, iEdgesSize);
     progressBarStep = iEdgesSize / progressBarSteps;
     _pProgressBar->reset();
     _pProgressBar->setLabelText("Splitting intersected edges");

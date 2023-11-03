@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -56,7 +58,6 @@
 
 #include <algorithm>
 #include <array>
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -65,6 +66,8 @@
 #include "BLI_utildefines.h"
 
 namespace blender {
+
+template<typename T> uint64_t get_default_hash(const T &v);
 
 /**
  * References an array of type T that is owned by someone else. The data in the array cannot be
@@ -112,19 +115,13 @@ template<typename T> class Span {
    *  Span<int> span = {1, 2, 3, 4};
    *  call_function_with_array(span);
    */
-  constexpr Span(const std::initializer_list<T> &list)
-      : Span(list.begin(), static_cast<int64_t>(list.size()))
+  constexpr Span(const std::initializer_list<T> &list) : Span(list.begin(), int64_t(list.size()))
   {
   }
 
-  constexpr Span(const std::vector<T> &vector)
-      : Span(vector.data(), static_cast<int64_t>(vector.size()))
-  {
-  }
+  constexpr Span(const std::vector<T> &vector) : Span(vector.data(), int64_t(vector.size())) {}
 
-  template<std::size_t N> constexpr Span(const std::array<T, N> &array) : Span(array.data(), N)
-  {
-  }
+  template<std::size_t N> constexpr Span(const std::array<T, N> &array) : Span(array.data(), N) {}
 
   /**
    * Support implicit conversions like the one below:
@@ -143,13 +140,30 @@ template<typename T> class Span {
   {
     BLI_assert(start >= 0);
     BLI_assert(size >= 0);
-    const int64_t new_size = std::max<int64_t>(0, std::min(size, size_ - start));
-    return Span(data_ + start, new_size);
+    BLI_assert(start + size <= size_ || size == 0);
+    return Span(data_ + start, size);
   }
 
   constexpr Span slice(IndexRange range) const
   {
     return this->slice(range.start(), range.size());
+  }
+
+  /**
+   * Returns a contiguous part of the array. This invokes undefined behavior when the start or size
+   * is negative. Clamps the size of the new span so it fits in the current one.
+   */
+  constexpr Span slice_safe(const int64_t start, const int64_t size) const
+  {
+    BLI_assert(start >= 0);
+    BLI_assert(size >= 0);
+    const int64_t new_size = std::max<int64_t>(0, std::min(size, size_ - start));
+    return Span(data_ + start, new_size);
+  }
+
+  constexpr Span slice_safe(IndexRange range) const
+  {
+    return this->slice_safe(range.start(), range.size());
   }
 
   /**
@@ -403,6 +417,15 @@ template<typename T> class Span {
     return IndexRange(size_);
   }
 
+  constexpr uint64_t hash() const
+  {
+    uint64_t hash = 0;
+    for (const T &value : *this) {
+      hash = hash * 33 ^ get_default_hash(value);
+    }
+    return hash;
+  }
+
   /**
    * Returns a new Span to the same underlying memory buffer. No conversions are done.
    */
@@ -424,29 +447,6 @@ template<typename T> class Span {
   friend bool operator!=(const Span<T> a, const Span<T> b)
   {
     return !(a == b);
-  }
-
-  /**
-   * A debug utility to print the content of the Span. Every element will be printed on a
-   * separate line using the given callback.
-   */
-  template<typename PrintLineF> void print_as_lines(std::string name, PrintLineF print_line) const
-  {
-    std::cout << "Span: " << name << " \tSize:" << size_ << '\n';
-    for (const T &value : *this) {
-      std::cout << "  ";
-      print_line(value);
-      std::cout << '\n';
-    }
-  }
-
-  /**
-   * A debug utility to print the content of the span. Every element be printed on a separate
-   * line.
-   */
-  void print_as_lines(std::string name) const
-  {
-    this->print_as_lines(name, [](const T &value) { std::cout << value; });
   }
 };
 
@@ -471,13 +471,9 @@ template<typename T> class MutableSpan {
  public:
   constexpr MutableSpan() = default;
 
-  constexpr MutableSpan(T *start, const int64_t size) : data_(start), size_(size)
-  {
-  }
+  constexpr MutableSpan(T *start, const int64_t size) : data_(start), size_(size) {}
 
-  constexpr MutableSpan(std::vector<T> &vector) : MutableSpan(vector.data(), vector.size())
-  {
-  }
+  constexpr MutableSpan(std::vector<T> &vector) : MutableSpan(vector.data(), vector.size()) {}
 
   template<std::size_t N>
   constexpr MutableSpan(std::array<T, N> &array) : MutableSpan(array.data(), N)
@@ -514,6 +510,14 @@ template<typename T> class MutableSpan {
   }
 
   /**
+   * Returns the number of bytes referenced by this Span.
+   */
+  constexpr int64_t size_in_bytes() const
+  {
+    return sizeof(T) * size_;
+  }
+
+  /**
    * Returns true if the size is zero.
    */
   constexpr bool is_empty() const
@@ -533,9 +537,10 @@ template<typename T> class MutableSpan {
    * Replace a subset of all elements with the given value. This invokes undefined behavior when
    * one of the indices is out of bounds.
    */
-  constexpr void fill_indices(Span<int64_t> indices, const T &value)
+  template<typename IndexT> constexpr void fill_indices(Span<IndexT> indices, const T &value)
   {
-    for (int64_t i : indices) {
+    static_assert(std::is_integral_v<IndexT>);
+    for (IndexT i : indices) {
       BLI_assert(i < size_);
       data_[i] = value;
     }
@@ -570,7 +575,8 @@ template<typename T> class MutableSpan {
 
   constexpr T &operator[](const int64_t index) const
   {
-    BLI_assert(index < this->size());
+    BLI_assert(index >= 0);
+    BLI_assert(index < size_);
     return data_[index];
   }
 
@@ -582,13 +588,30 @@ template<typename T> class MutableSpan {
   {
     BLI_assert(start >= 0);
     BLI_assert(size >= 0);
-    const int64_t new_size = std::max<int64_t>(0, std::min(size, size_ - start));
-    return MutableSpan(data_ + start, new_size);
+    BLI_assert(start + size <= size_ || size == 0);
+    return MutableSpan(data_ + start, size);
   }
 
   constexpr MutableSpan slice(IndexRange range) const
   {
     return this->slice(range.start(), range.size());
+  }
+
+  /**
+   * Returns a contiguous part of the array. This invokes undefined behavior when the start or size
+   * is negative. Clamps the size of the new span so it fits in the current one.
+   */
+  constexpr MutableSpan slice_safe(const int64_t start, const int64_t size) const
+  {
+    BLI_assert(start >= 0);
+    BLI_assert(size >= 0);
+    const int64_t new_size = std::max<int64_t>(0, std::min(size, size_ - start));
+    return MutableSpan(data_ + start, new_size);
+  }
+
+  constexpr MutableSpan slice_safe(IndexRange range) const
+  {
+    return this->slice_safe(range.start(), range.size());
   }
 
   /**
@@ -700,6 +723,15 @@ template<typename T> class MutableSpan {
   }
 
   /**
+   * Does a constant time check to see if the pointer points to a value in the referenced array.
+   * Return true if it is, otherwise false.
+   */
+  constexpr bool contains_ptr(const T *ptr) const
+  {
+    return (this->begin() <= ptr) && (ptr < this->end());
+  }
+
+  /**
    * Copy all values from another span into this span. This invokes undefined behavior when the
    * destination contains uninitialized data and T is not trivially copy constructible.
    * The size of both spans is expected to be the same.
@@ -718,20 +750,8 @@ template<typename T> class MutableSpan {
   {
     BLI_assert((size_ * sizeof(T)) % sizeof(NewT) == 0);
     int64_t new_size = size_ * sizeof(T) / sizeof(NewT);
-    return MutableSpan<NewT>((NewT *)data_, new_size);
+    return MutableSpan<NewT>(reinterpret_cast<NewT *>(data_), new_size);
   }
 };
-
-/** This is defined here, because in `BLI_index_range.hh` `Span` is not yet defined. */
-inline Span<int64_t> IndexRange::as_span() const
-{
-  const int64_t min_required_size = start_ + size_;
-  const int64_t current_array_size = s_current_array_size.load(std::memory_order_acquire);
-  const int64_t *current_array = s_current_array.load(std::memory_order_acquire);
-  if (min_required_size <= current_array_size) {
-    return Span<int64_t>(current_array + start_, size_);
-  }
-  return this->as_span_internal();
-}
 
 } /* namespace blender */

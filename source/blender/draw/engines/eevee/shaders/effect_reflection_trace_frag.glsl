@@ -1,11 +1,6 @@
-
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
-#pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
-#pragma BLENDER_REQUIRE(raytrace_lib.glsl)
-#pragma BLENDER_REQUIRE(lightprobe_lib.glsl)
-#pragma BLENDER_REQUIRE(bsdf_sampling_lib.glsl)
-#pragma BLENDER_REQUIRE(effect_reflection_lib.glsl)
+/* SPDX-FileCopyrightText: 2021-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Based on:
  * "Stochastic Screen Space Reflections"
@@ -17,15 +12,13 @@
  * https://media.contentapi.ea.com/content/dam/ea/seed/presentations/dd18-seed-raytracing-in-hybrid-real-time-rendering.pdf
  */
 
-uniform sampler2D normalBuffer;
-uniform sampler2D specroughBuffer;
-uniform vec2 targetSize;
-uniform float randomScale;
-
-in vec4 uvcoordsvar;
-
-layout(location = 0) out vec4 hitData;
-layout(location = 1) out float hitDepth;
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
+#pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
+#pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
+#pragma BLENDER_REQUIRE(raytrace_lib.glsl)
+#pragma BLENDER_REQUIRE(lightprobe_lib.glsl)
+#pragma BLENDER_REQUIRE(bsdf_sampling_lib.glsl)
+#pragma BLENDER_REQUIRE(effect_reflection_lib.glsl)
 
 void main()
 {
@@ -36,7 +29,7 @@ void main()
   rand.xy = fract(rand.xy * 3.2471795724474602596);
 
   /* Randomly choose the pixel to start the ray from when tracing at lower resolution.
-   * This method also make sure we always start from the center of a fullres texel. */
+   * This method also make sure we always start from the center of a full-resolution texel. */
   vec2 uvs = (gl_FragCoord.xy + random_px * randomScale) / (targetSize * ssrUvScale);
 
   float depth = textureLod(maxzBuffer, uvs * hizUvScale.xy, 0.0).r;

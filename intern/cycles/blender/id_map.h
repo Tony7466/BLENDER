@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __BLENDER_ID_MAP_H__
 #define __BLENDER_ID_MAP_H__
@@ -11,7 +12,6 @@
 
 #include "util/map.h"
 #include "util/set.h"
-#include "util/vector.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -20,11 +20,9 @@ CCL_NAMESPACE_BEGIN
  * Utility class to map between Blender datablocks and Cycles data structures,
  * and keep track of recalc tags from the dependency graph. */
 
-template<typename K, typename T> class id_map {
+template<typename K, typename T, typename Flags = uint> class id_map {
  public:
-  id_map(Scene *scene_) : scene(scene_)
-  {
-  }
+  id_map(Scene *scene_) : scene(scene_) {}
 
   ~id_map()
   {
@@ -61,6 +59,11 @@ template<typename K, typename T> class id_map {
   void set_recalc(void *id_ptr)
   {
     b_recalc.insert(id_ptr);
+  }
+
+  bool check_recalc(const BL::ID &id)
+  {
+    return id.ptr.data && b_recalc.find(id.ptr.data) != b_recalc.end();
   }
 
   bool has_recalc()
@@ -154,6 +157,7 @@ template<typename K, typename T> class id_map {
       TMapPair &pair = *jt;
 
       if (do_delete && used_set.find(pair.second) == used_set.end()) {
+        flags.erase(pair.second);
         scene->delete_node(pair.second);
       }
       else {
@@ -171,9 +175,33 @@ template<typename K, typename T> class id_map {
     return b_map;
   }
 
+  bool test_flag(T *data, Flags val)
+  {
+    typename map<T *, uint>::iterator it = flags.find(data);
+    return it != flags.end() && (it->second & (1 << val)) != 0;
+  }
+
+  void set_flag(T *data, Flags val)
+  {
+    flags[data] |= (1 << val);
+  }
+
+  void clear_flag(T *data, Flags val)
+  {
+    typename map<T *, uint>::iterator it = flags.find(data);
+    if (it != flags.end()) {
+      it->second &= ~(1 << val);
+
+      if (it->second == 0) {
+        flags.erase(it);
+      }
+    }
+  }
+
  protected:
   map<K, T *> b_map;
   set<T *> used_set;
+  map<T *, uint> flags;
   set<void *> b_recalc;
   Scene *scene;
 };
@@ -194,10 +222,12 @@ struct ObjectKey {
   ObjectKey(void *parent_, int id_[OBJECT_PERSISTENT_ID_SIZE], void *ob_, bool use_particle_hair_)
       : parent(parent_), ob(ob_), use_particle_hair(use_particle_hair_)
   {
-    if (id_)
+    if (id_) {
       memcpy(id, id_, sizeof(id));
-    else
+    }
+    else {
       memset(id, 0, sizeof(id));
+    }
   }
 
   bool operator<(const ObjectKey &k) const
@@ -232,9 +262,7 @@ struct GeometryKey {
   void *id;
   Geometry::Type geometry_type;
 
-  GeometryKey(void *id, Geometry::Type geometry_type) : id(id), geometry_type(geometry_type)
-  {
-  }
+  GeometryKey(void *id, Geometry::Type geometry_type) : id(id), geometry_type(geometry_type) {}
 
   bool operator<(const GeometryKey &k) const
   {
@@ -259,19 +287,23 @@ struct ParticleSystemKey {
 
   ParticleSystemKey(void *ob_, int id_[OBJECT_PERSISTENT_ID_SIZE]) : ob(ob_)
   {
-    if (id_)
+    if (id_) {
       memcpy(id, id_, sizeof(id));
-    else
+    }
+    else {
       memset(id, 0, sizeof(id));
+    }
   }
 
   bool operator<(const ParticleSystemKey &k) const
   {
     /* first id is particle index, we don't compare that */
-    if (ob < k.ob)
+    if (ob < k.ob) {
       return true;
-    else if (ob == k.ob)
+    }
+    else if (ob == k.ob) {
       return memcmp(id + 1, k.id + 1, sizeof(int) * (OBJECT_PERSISTENT_ID_SIZE - 1)) < 0;
+    }
 
     return false;
   }

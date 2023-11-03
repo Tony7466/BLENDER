@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2012-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -50,7 +52,7 @@ void BezierCurveSegment::Build()
   y[3] = p0->y();
 
   int nvertices = 12;
-  float increment = 1.0 / (float)nvertices;
+  float increment = 1.0 / float(nvertices);
   float t = 0.0f;
   for (int i = 0; i <= nvertices; ++i) {
     _Vertices.emplace_back((x[3] + t * (x[2] + t * (x[1] + t * x[0]))),

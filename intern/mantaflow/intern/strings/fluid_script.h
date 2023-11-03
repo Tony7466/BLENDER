@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup intern_mantaflow
@@ -14,6 +15,7 @@
 const std::string manta_import =
     "\
 from manta import *\n\
+from math import inf\n\
 import os.path, shutil, math, sys, gc, multiprocessing, platform, time\n\
 \n\
 withMPBake = False # Bake files asynchronously\n\

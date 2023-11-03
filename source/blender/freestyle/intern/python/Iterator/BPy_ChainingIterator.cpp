@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -25,11 +27,11 @@ PyDoc_STRVAR(
     ChainingIterator_doc,
     "Class hierarchy: :class:`Iterator` > :class:`ViewEdgeIterator` > :class:`ChainingIterator`\n"
     "\n"
-    "Base class for chaining iterators.  This class is designed to be\n"
-    "overloaded in order to describe chaining rules.  It makes the\n"
-    "description of chaining rules easier.  The two main methods that need\n"
-    "to overloaded are traverse() and init().  traverse() tells which\n"
-    ":class:`ViewEdge` to follow, among the adjacent ones.  If you specify\n"
+    "Base class for chaining iterators. This class is designed to be\n"
+    "overloaded in order to describe chaining rules. It makes the\n"
+    "description of chaining rules easier. The two main methods that need\n"
+    "to overloaded are traverse() and init(). traverse() tells which\n"
+    ":class:`ViewEdge` to follow, among the adjacent ones. If you specify\n"
     "restriction rules (such as \"Chain only ViewEdges of the selection\"),\n"
     "they will be included in the adjacency iterator (i.e, the adjacent\n"
     "iterator will only stop on \"valid\" edges).\n"
@@ -49,7 +51,7 @@ PyDoc_STRVAR(
     "   :type restrict_to_unvisited: bool\n"
     "   :arg begin: The ViewEdge from which to start the chain.\n"
     "   :type begin: :class:`ViewEdge` or None\n"
-    "   :arg orientation: The direction to follow to explore the graph.  If\n"
+    "   :arg orientation: The direction to follow to explore the graph. If\n"
     "      true, the direction indicated by the first ViewEdge is used.\n"
     "   :type orientation: bool\n"
     "   :arg brother: \n"
@@ -72,7 +74,8 @@ static int ChainingIterator___init__(BPy_ChainingIterator *self, PyObject *args,
   PyObject *obj1 = nullptr, *obj2 = nullptr, *obj3 = nullptr, *obj4 = nullptr;
 
   if (PyArg_ParseTupleAndKeywords(
-          args, kwds, "O!", (char **)kwlist_1, &ChainingIterator_Type, &obj1)) {
+          args, kwds, "O!", (char **)kwlist_1, &ChainingIterator_Type, &obj1))
+  {
     self->c_it = new ChainingIterator(*(((BPy_ChainingIterator *)obj1)->c_it));
   }
   else if ((void)PyErr_Clear(),
@@ -88,7 +91,8 @@ static int ChainingIterator___init__(BPy_ChainingIterator *self, PyObject *args,
                                        check_begin,
                                        &obj3,
                                        &PyBool_Type,
-                                       &obj4)) {
+                                       &obj4))
+  {
     bool restrict_to_selection = (!obj1) ? true : bool_from_PyBool(obj1);
     bool restrict_to_unvisited = (!obj2) ? true : bool_from_PyBool(obj2);
     ViewEdge *begin = (!obj3 || obj3 == Py_None) ? nullptr : ((BPy_ViewEdge *)obj3)->ve;
@@ -111,8 +115,8 @@ static int ChainingIterator___init__(BPy_ChainingIterator *self, PyObject *args,
 PyDoc_STRVAR(ChainingIterator_init_doc,
              ".. method:: init()\n"
              "\n"
-             "   Initializes the iterator context.  This method is called each\n"
-             "   time a new chain is started.  It can be used to reset some\n"
+             "   Initializes the iterator context. This method is called each\n"
+             "   time a new chain is started. It can be used to reset some\n"
              "   history information that you might want to keep.");
 
 static PyObject *ChainingIterator_init(BPy_ChainingIterator *self)
@@ -129,11 +133,11 @@ PyDoc_STRVAR(ChainingIterator_traverse_doc,
              ".. method:: traverse(it)\n"
              "\n"
              "   This method iterates over the potential next ViewEdges and returns\n"
-             "   the one that will be followed next.  Returns the next ViewEdge to\n"
+             "   the one that will be followed next. Returns the next ViewEdge to\n"
              "   follow or None when the end of the chain is reached.\n"
              "\n"
              "   :arg it: The iterator over the ViewEdges adjacent to the end vertex\n"
-             "      of the current ViewEdge.  The adjacency iterator reflects the\n"
+             "      of the current ViewEdge. The adjacency iterator reflects the\n"
              "      restriction rules by only iterating over the valid ViewEdges.\n"
              "   :type it: :class:`AdjacencyIterator`\n"
              "   :return: Returns the next ViewEdge to follow, or None if chaining ends.\n"
@@ -151,7 +155,8 @@ static PyObject *ChainingIterator_traverse(BPy_ChainingIterator *self,
     return nullptr;
   }
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwds, "O!", (char **)kwlist, &AdjacencyIterator_Type, &py_a_it)) {
+          args, kwds, "O!", (char **)kwlist, &AdjacencyIterator_Type, &py_a_it))
+  {
     return nullptr;
   }
   if (((BPy_AdjacencyIterator *)py_a_it)->a_it) {
@@ -176,7 +181,7 @@ PyDoc_STRVAR(ChainingIterator_object_doc,
              "\n"
              ":type: :class:`ViewEdge`");
 
-static PyObject *ChainingIterator_object_get(BPy_ChainingIterator *self, void *UNUSED(closure))
+static PyObject *ChainingIterator_object_get(BPy_ChainingIterator *self, void * /*closure*/)
 {
   if (self->c_it->isEnd()) {
     PyErr_SetString(PyExc_RuntimeError, "iteration has stopped");
@@ -195,8 +200,7 @@ PyDoc_STRVAR(ChainingIterator_next_vertex_doc,
              "\n"
              ":type: :class:`ViewVertex`");
 
-static PyObject *ChainingIterator_next_vertex_get(BPy_ChainingIterator *self,
-                                                  void *UNUSED(closure))
+static PyObject *ChainingIterator_next_vertex_get(BPy_ChainingIterator *self, void * /*closure*/)
 {
   ViewVertex *v = self->c_it->getVertex();
   if (v) {
@@ -212,7 +216,7 @@ PyDoc_STRVAR(ChainingIterator_is_incrementing_doc,
              ":type: bool");
 
 static PyObject *ChainingIterator_is_incrementing_get(BPy_ChainingIterator *self,
-                                                      void *UNUSED(closure))
+                                                      void * /*closure*/)
 {
   return PyBool_from_bool(self->c_it->isIncrementing());
 }
@@ -239,43 +243,44 @@ static PyGetSetDef BPy_ChainingIterator_getseters[] = {
 /*-----------------------BPy_ChainingIterator type definition ------------------------------*/
 
 PyTypeObject ChainingIterator_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "ChainingIterator", /* tp_name */
-    sizeof(BPy_ChainingIterator),                         /* tp_basicsize */
-    0,                                                    /* tp_itemsize */
-    nullptr,                                              /* tp_dealloc */
-    0,                                                    /* tp_vectorcall_offset */
-    nullptr,                                              /* tp_getattr */
-    nullptr,                                              /* tp_setattr */
-    nullptr,                                              /* tp_reserved */
-    nullptr,                                              /* tp_repr */
-    nullptr,                                              /* tp_as_number */
-    nullptr,                                              /* tp_as_sequence */
-    nullptr,                                              /* tp_as_mapping */
-    nullptr,                                              /* tp_hash */
-    nullptr,                                              /* tp_call */
-    nullptr,                                              /* tp_str */
-    nullptr,                                              /* tp_getattro */
-    nullptr,                                              /* tp_setattro */
-    nullptr,                                              /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,             /* tp_flags */
-    ChainingIterator_doc,                                 /* tp_doc */
-    nullptr,                                              /* tp_traverse */
-    nullptr,                                              /* tp_clear */
-    nullptr,                                              /* tp_richcompare */
-    0,                                                    /* tp_weaklistoffset */
-    nullptr,                                              /* tp_iter */
-    nullptr,                                              /* tp_iternext */
-    BPy_ChainingIterator_methods,                         /* tp_methods */
-    nullptr,                                              /* tp_members */
-    BPy_ChainingIterator_getseters,                       /* tp_getset */
-    &ViewEdgeIterator_Type,                               /* tp_base */
-    nullptr,                                              /* tp_dict */
-    nullptr,                                              /* tp_descr_get */
-    nullptr,                                              /* tp_descr_set */
-    0,                                                    /* tp_dictoffset */
-    (initproc)ChainingIterator___init__,                  /* tp_init */
-    nullptr,                                              /* tp_alloc */
-    nullptr,                                              /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "ChainingIterator",
+    /*tp_basicsize*/ sizeof(BPy_ChainingIterator),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ nullptr,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ ChainingIterator_doc,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ BPy_ChainingIterator_methods,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ BPy_ChainingIterator_getseters,
+    /*tp_base*/ &ViewEdgeIterator_Type,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)ChainingIterator___init__,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

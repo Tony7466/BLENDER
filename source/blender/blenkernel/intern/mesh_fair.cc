@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -7,7 +9,8 @@
  */
 
 #include "BLI_map.hh"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_vector.hh"
 
 #include "DNA_mesh_types.h"
@@ -16,9 +19,9 @@
 
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_fair.h"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_fair.hh"
+#include "BKE_mesh_mapping.hh"
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
@@ -26,7 +29,11 @@
 #include "MEM_guardedalloc.h"
 #include "eigen_capi.h"
 
+using blender::Array;
+using blender::float3;
 using blender::Map;
+using blender::MutableSpan;
+using blender::Span;
 using blender::Vector;
 using std::array;
 
@@ -50,7 +57,7 @@ class FairingContext {
                                           float r_adj_prev[3]) = 0;
 
   /* Get the other vertex index for a loop. */
-  virtual int other_vertex_index_from_loop(const int loop, const uint v) = 0;
+  virtual int other_vertex_index_from_loop(const int loop, const int v) = 0;
 
   int vertex_count_get()
   {
@@ -62,9 +69,9 @@ class FairingContext {
     return totvert_;
   }
 
-  MeshElemMap *vertex_loop_map_get(const int v)
+  Span<int> vertex_loop_map_get(const int v)
   {
-    return &vlmap_[v];
+    return vlmap_[v];
   }
 
   float *vertex_deformation_co_get(const int v)
@@ -74,13 +81,13 @@ class FairingContext {
 
   virtual ~FairingContext() = default;
 
-  void fair_vertices(bool *affected,
-                     const eMeshFairingDepth depth,
-                     VertexWeight *vertex_weight,
-                     LoopWeight *loop_weight)
+  void fair_verts(bool *affected,
+                  const eMeshFairingDepth depth,
+                  VertexWeight *vertex_weight,
+                  LoopWeight *loop_weight)
   {
 
-    fair_vertices_ex(affected, (int)depth, vertex_weight, loop_weight);
+    fair_verts_ex(affected, int(depth), vertex_weight, loop_weight);
   }
 
  protected:
@@ -89,8 +96,7 @@ class FairingContext {
   int totvert_;
   int totloop_;
 
-  MeshElemMap *vlmap_;
-  int *vlmap_mem_;
+  blender::GroupedSpan<int> vlmap_;
 
  private:
   void fair_setup_fairing(const int v,
@@ -116,9 +122,9 @@ class FairingContext {
 
     float w_ij_sum = 0;
     const float w_i = vertex_weight->weight_at_index(v);
-    MeshElemMap *vlmap_elem = &vlmap_[v];
-    for (int l = 0; l < vlmap_elem->count; l++) {
-      const int l_index = vlmap_elem->indices[l];
+    const Span<int> vlmap_elem = vlmap_[v];
+    for (const int l : vlmap_elem.index_range()) {
+      const int l_index = vlmap_elem[l];
       const int other_vert = other_vertex_index_from_loop(l_index, v);
       const float w_ij = loop_weight->weight_at_index(l_index);
       w_ij_sum += w_ij;
@@ -141,28 +147,28 @@ class FairingContext {
                        loop_weight);
   }
 
-  void fair_vertices_ex(const bool *affected,
-                        const int order,
-                        VertexWeight *vertex_weight,
-                        LoopWeight *loop_weight)
+  void fair_verts_ex(const bool *affected,
+                     const int order,
+                     VertexWeight *vertex_weight,
+                     LoopWeight *loop_weight)
   {
     Map<int, int> vert_col_map;
-    int num_affected_vertices = 0;
+    int affected_verts_num = 0;
     for (int i = 0; i < totvert_; i++) {
       if (!affected[i]) {
         continue;
       }
-      vert_col_map.add(i, num_affected_vertices);
-      num_affected_vertices++;
+      vert_col_map.add(i, affected_verts_num);
+      affected_verts_num++;
     }
 
     /* Early return, nothing to do. */
-    if (ELEM(num_affected_vertices, 0, totvert_)) {
+    if (ELEM(affected_verts_num, 0, totvert_)) {
       return;
     }
 
     /* Setup fairing matrices */
-    LinearSolver *solver = EIG_linear_solver_new(num_affected_vertices, num_affected_vertices, 3);
+    LinearSolver *solver = EIG_linear_solver_new(affected_verts_num, affected_verts_num, 3);
     for (auto item : vert_col_map.items()) {
       const int v = item.key;
       const int col = item.value;
@@ -188,75 +194,59 @@ class FairingContext {
 
 class MeshFairingContext : public FairingContext {
  public:
-  MeshFairingContext(Mesh *mesh, MVert *deform_mverts)
+  MeshFairingContext(Mesh *mesh, MutableSpan<float3> deform_positions)
   {
     totvert_ = mesh->totvert;
     totloop_ = mesh->totloop;
 
-    medge_ = mesh->medge;
-    mpoly_ = mesh->mpoly;
-    mloop_ = mesh->mloop;
-    BKE_mesh_vert_loop_map_create(&vlmap_,
-                                  &vlmap_mem_,
-                                  mesh->mpoly,
-                                  mesh->mloop,
-                                  mesh->totvert,
-                                  mesh->totpoly,
-                                  mesh->totloop);
+    MutableSpan<float3> positions = mesh->vert_positions_for_write();
+    edges_ = mesh->edges();
+    faces = mesh->faces();
+    corner_verts_ = mesh->corner_verts();
+    corner_edges_ = mesh->corner_edges();
+    vlmap_ = mesh->vert_to_corner_map();
 
     /* Deformation coords. */
     co_.reserve(mesh->totvert);
-    if (deform_mverts) {
+    if (!deform_positions.is_empty()) {
       for (int i = 0; i < mesh->totvert; i++) {
-        co_[i] = deform_mverts[i].co;
+        co_[i] = deform_positions[i];
       }
     }
     else {
       for (int i = 0; i < mesh->totvert; i++) {
-        co_[i] = mesh->mvert[i].co;
+        co_[i] = positions[i];
       }
     }
 
-    loop_to_poly_map_.reserve(mesh->totloop);
-    for (int i = 0; i < mesh->totpoly; i++) {
-      for (int l = 0; l < mesh->mpoly[i].totloop; l++) {
-        loop_to_poly_map_[l + mesh->mpoly[i].loopstart] = i;
-      }
-    }
-  }
-
-  ~MeshFairingContext() override
-  {
-    MEM_SAFE_FREE(vlmap_);
-    MEM_SAFE_FREE(vlmap_mem_);
+    loop_to_face_map_ = mesh->corner_to_face_map();
   }
 
   void adjacents_coords_from_loop(const int loop,
                                   float r_adj_next[3],
                                   float r_adj_prev[3]) override
   {
-    const int vert = mloop_[loop].v;
-    const MPoly *p = &mpoly_[loop_to_poly_map_[loop]];
-    const int corner = poly_find_loop_from_vert(p, &mloop_[p->loopstart], vert);
-    copy_v3_v3(r_adj_next, co_[ME_POLY_LOOP_NEXT(mloop_, p, corner)->v]);
-    copy_v3_v3(r_adj_prev, co_[ME_POLY_LOOP_PREV(mloop_, p, corner)->v]);
+    using namespace blender;
+    const int vert = corner_verts_[loop];
+    const blender::IndexRange face = faces[loop_to_face_map_[loop]];
+    const int2 adjecent_verts = bke::mesh::face_find_adjecent_verts(face, corner_verts_, vert);
+    copy_v3_v3(r_adj_next, co_[adjecent_verts[0]]);
+    copy_v3_v3(r_adj_prev, co_[adjecent_verts[1]]);
   }
 
-  int other_vertex_index_from_loop(const int loop, const uint v) override
+  int other_vertex_index_from_loop(const int loop, const int v) override
   {
-    MEdge *e = &medge_[mloop_[loop].e];
-    if (e->v1 == v) {
-      return e->v2;
-    }
-    return e->v1;
+    const blender::int2 &edge = edges_[corner_edges_[loop]];
+    return blender::bke::mesh::edge_other_vert(edge, v);
   }
 
  protected:
   Mesh *mesh_;
-  MLoop *mloop_;
-  MPoly *mpoly_;
-  MEdge *medge_;
-  Vector<int> loop_to_poly_map_;
+  Span<int> corner_verts_;
+  Span<int> corner_edges_;
+  blender::OffsetIndices<int> faces;
+  Span<blender::int2> edges_;
+  Span<int> loop_to_face_map_;
 };
 
 class BMeshFairingContext : public FairingContext {
@@ -277,9 +267,9 @@ class BMeshFairingContext : public FairingContext {
       co_[i] = v->co;
     }
 
-    bmloop_.reserve(bm->totloop);
-    vlmap_ = (MeshElemMap *)MEM_calloc_arrayN(bm->totvert, sizeof(MeshElemMap), "bmesh loop map");
-    vlmap_mem_ = (int *)MEM_malloc_arrayN(bm->totloop, sizeof(int), "bmesh loop map mempool");
+    bmloop_.reinitialize(bm->totloop);
+    vert_to_loop_offsets_ = Array<int>(bm->totvert, 0);
+    vert_to_loop_indices_.reinitialize(bm->totloop);
 
     BMVert *v;
     BMLoop *l;
@@ -289,24 +279,16 @@ class BMeshFairingContext : public FairingContext {
 
     /* This initializes both the bmloop and the vlmap for bmesh in a single loop. */
     BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
-      int loop_count = 0;
       const int vert_index = BM_elem_index_get(v);
-      vlmap_[vert_index].indices = &vlmap_mem_[index_iter];
+      vert_to_loop_offsets_[vert_index] = index_iter;
       BM_ITER_ELEM (l, &loop_iter, v, BM_LOOPS_OF_VERT) {
         const int loop_index = BM_elem_index_get(l);
         bmloop_[loop_index] = l;
-        vlmap_mem_[index_iter] = loop_index;
+        vert_to_loop_indices_[index_iter] = loop_index;
         index_iter++;
-        loop_count++;
       }
-      vlmap_[vert_index].count = loop_count;
     }
-  }
-
-  ~BMeshFairingContext() override
-  {
-    MEM_SAFE_FREE(vlmap_);
-    MEM_SAFE_FREE(vlmap_mem_);
+    vert_to_loop_offsets_.last() = index_iter;
   }
 
   void adjacents_coords_from_loop(const int loop,
@@ -317,7 +299,7 @@ class BMeshFairingContext : public FairingContext {
     copy_v3_v3(r_adj_prev, bmloop_[loop]->prev->v->co);
   }
 
-  int other_vertex_index_from_loop(const int loop, const uint v) override
+  int other_vertex_index_from_loop(const int loop, const int v) override
   {
     BMLoop *l = bmloop_[loop];
     BMVert *bmvert = BM_vert_at_index(bm, v);
@@ -327,7 +309,9 @@ class BMeshFairingContext : public FairingContext {
 
  protected:
   BMesh *bm;
-  Vector<BMLoop *> bmloop_;
+  Array<BMLoop *> bmloop_;
+  Array<int> vert_to_loop_offsets_;
+  Array<int> vert_to_loop_indices_;
 };
 
 class UniformVertexWeight : public VertexWeight {
@@ -337,7 +321,7 @@ class UniformVertexWeight : public VertexWeight {
     const int totvert = fairing_context->vertex_count_get();
     vertex_weights_.reserve(totvert);
     for (int i = 0; i < totvert; i++) {
-      const int tot_loop = fairing_context->vertex_loop_map_get(i)->count;
+      const int tot_loop = fairing_context->vertex_loop_map_get(i).size();
       if (tot_loop != 0) {
         vertex_weights_[i] = 1.0f / tot_loop;
       }
@@ -371,9 +355,9 @@ class VoronoiVertexWeight : public VertexWeight {
       copy_v3_v3(a, fairing_context->vertex_deformation_co_get(i));
       const float acute_threshold = M_PI_2;
 
-      MeshElemMap *vlmap_elem = fairing_context->vertex_loop_map_get(i);
-      for (int l = 0; l < vlmap_elem->count; l++) {
-        const int l_index = vlmap_elem->indices[l];
+      const Span<int> vlmap_elem = fairing_context->vertex_loop_map_get(i);
+      for (const int l : vlmap_elem.index_range()) {
+        const int l_index = vlmap_elem[l];
 
         float b[3], c[3], d[3];
         fairing_context->adjacents_coords_from_loop(l_index, b, c);
@@ -441,48 +425,48 @@ class VoronoiVertexWeight : public VertexWeight {
 
 class UniformLoopWeight : public LoopWeight {
  public:
-  float weight_at_index(const int UNUSED(index)) override
+  float weight_at_index(const int /*index*/) override
   {
     return 1.0f;
   }
 };
 
-static void prefair_and_fair_vertices(FairingContext *fairing_context,
-                                      bool *affected_vertices,
-                                      const eMeshFairingDepth depth)
+static void prefair_and_fair_verts(FairingContext *fairing_context,
+                                   bool *affected_verts,
+                                   const eMeshFairingDepth depth)
 {
-  /* Prefair. */
+  /* Pre-fair. */
   UniformVertexWeight *uniform_vertex_weights = new UniformVertexWeight(fairing_context);
   UniformLoopWeight *uniform_loop_weights = new UniformLoopWeight();
-  fairing_context->fair_vertices(
-      affected_vertices, depth, uniform_vertex_weights, uniform_loop_weights);
+  fairing_context->fair_verts(affected_verts, depth, uniform_vertex_weights, uniform_loop_weights);
   delete uniform_vertex_weights;
 
   /* Fair. */
   VoronoiVertexWeight *voronoi_vertex_weights = new VoronoiVertexWeight(fairing_context);
   /* TODO: Implement cotangent loop weights. */
-  fairing_context->fair_vertices(
-      affected_vertices, depth, voronoi_vertex_weights, uniform_loop_weights);
+  fairing_context->fair_verts(affected_verts, depth, voronoi_vertex_weights, uniform_loop_weights);
 
   delete uniform_loop_weights;
   delete voronoi_vertex_weights;
 }
 
-void BKE_mesh_prefair_and_fair_vertices(struct Mesh *mesh,
-                                        struct MVert *deform_mverts,
-                                        bool *affect_vertices,
-                                        const eMeshFairingDepth depth)
+void BKE_mesh_prefair_and_fair_verts(Mesh *mesh,
+                                     float (*deform_vert_positions)[3],
+                                     bool *affect_verts,
+                                     const eMeshFairingDepth depth)
 {
-  MeshFairingContext *fairing_context = new MeshFairingContext(mesh, deform_mverts);
-  prefair_and_fair_vertices(fairing_context, affect_vertices, depth);
+  MutableSpan<float3> deform_positions_span;
+  if (deform_vert_positions) {
+    deform_positions_span = {reinterpret_cast<float3 *>(deform_vert_positions), mesh->totvert};
+  }
+  MeshFairingContext *fairing_context = new MeshFairingContext(mesh, deform_positions_span);
+  prefair_and_fair_verts(fairing_context, affect_verts, depth);
   delete fairing_context;
 }
 
-void BKE_bmesh_prefair_and_fair_vertices(struct BMesh *bm,
-                                         bool *affect_vertices,
-                                         const eMeshFairingDepth depth)
+void BKE_bmesh_prefair_and_fair_verts(BMesh *bm, bool *affect_verts, const eMeshFairingDepth depth)
 {
   BMeshFairingContext *fairing_context = new BMeshFairingContext(bm);
-  prefair_and_fair_vertices(fairing_context, affect_vertices, depth);
+  prefair_and_fair_verts(fairing_context, affect_verts, depth);
   delete fairing_context;
 }

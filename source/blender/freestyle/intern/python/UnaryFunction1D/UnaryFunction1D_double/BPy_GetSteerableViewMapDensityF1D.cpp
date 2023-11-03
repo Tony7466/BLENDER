@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -42,7 +44,7 @@ static char GetSteerableViewMapDensityF1D___doc__[] =
     "\n"
     ".. method:: __call__(inter)\n"
     "\n"
-    "   Returns the density of the ViewMap for a given Interface1D.  The\n"
+    "   Returns the density of the ViewMap for a given Interface1D. The\n"
     "   density of each :class:`freestyle.types.FEdge` is evaluated in the\n"
     "   proper steerable :class:`freestyle.types.ViewMap` depending on its\n"
     "   orientation.\n"
@@ -62,7 +64,8 @@ static int GetSteerableViewMapDensityF1D___init__(BPy_GetSteerableViewMapDensity
   float f = 2.0;
 
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwds, "i|O!f", (char **)kwlist, &i, &IntegrationType_Type, &obj, &f)) {
+          args, kwds, "i|O!f", (char **)kwlist, &i, &IntegrationType_Type, &obj, &f))
+  {
     return -1;
   }
   IntegrationType t = (obj) ? IntegrationType_from_BPy_IntegrationType(obj) : MEAN;
@@ -73,43 +76,44 @@ static int GetSteerableViewMapDensityF1D___init__(BPy_GetSteerableViewMapDensity
 /*-----------------------BPy_GetSteerableViewMapDensityF1D type definition ----------------------*/
 
 PyTypeObject GetSteerableViewMapDensityF1D_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "GetSteerableViewMapDensityF1D", /* tp_name */
-    sizeof(BPy_GetSteerableViewMapDensityF1D),                         /* tp_basicsize */
-    0,                                                                 /* tp_itemsize */
-    nullptr,                                                           /* tp_dealloc */
-    0,                                                                 /* tp_vectorcall_offset */
-    nullptr,                                                           /* tp_getattr */
-    nullptr,                                                           /* tp_setattr */
-    nullptr,                                                           /* tp_reserved */
-    nullptr,                                                           /* tp_repr */
-    nullptr,                                                           /* tp_as_number */
-    nullptr,                                                           /* tp_as_sequence */
-    nullptr,                                                           /* tp_as_mapping */
-    nullptr,                                                           /* tp_hash */
-    nullptr,                                                           /* tp_call */
-    nullptr,                                                           /* tp_str */
-    nullptr,                                                           /* tp_getattro */
-    nullptr,                                                           /* tp_setattro */
-    nullptr,                                                           /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,                          /* tp_flags */
-    GetSteerableViewMapDensityF1D___doc__,                             /* tp_doc */
-    nullptr,                                                           /* tp_traverse */
-    nullptr,                                                           /* tp_clear */
-    nullptr,                                                           /* tp_richcompare */
-    0,                                                                 /* tp_weaklistoffset */
-    nullptr,                                                           /* tp_iter */
-    nullptr,                                                           /* tp_iternext */
-    nullptr,                                                           /* tp_methods */
-    nullptr,                                                           /* tp_members */
-    nullptr,                                                           /* tp_getset */
-    &UnaryFunction1DDouble_Type,                                       /* tp_base */
-    nullptr,                                                           /* tp_dict */
-    nullptr,                                                           /* tp_descr_get */
-    nullptr,                                                           /* tp_descr_set */
-    0,                                                                 /* tp_dictoffset */
-    (initproc)GetSteerableViewMapDensityF1D___init__,                  /* tp_init */
-    nullptr,                                                           /* tp_alloc */
-    nullptr,                                                           /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "GetSteerableViewMapDensityF1D",
+    /*tp_basicsize*/ sizeof(BPy_GetSteerableViewMapDensityF1D),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ nullptr,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ GetSteerableViewMapDensityF1D___doc__,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ &UnaryFunction1DDouble_Type,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)GetSteerableViewMapDensityF1D___init__,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

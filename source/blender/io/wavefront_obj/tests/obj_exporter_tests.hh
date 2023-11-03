@@ -1,8 +1,10 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
-#include "IO_wavefront_obj.h"
+#include "IO_wavefront_obj.hh"
 
 namespace blender::io::obj {
 
@@ -19,7 +21,7 @@ struct OBJExportParamsDefault {
 
     params.forward_axis = IO_AXIS_NEGATIVE_Z;
     params.up_axis = IO_AXIS_Y;
-    params.scaling_factor = 1.f;
+    params.global_scale = 1.f;
 
     params.apply_modifiers = true;
     params.export_eval_mode = DAG_EVAL_VIEWPORT;
@@ -31,6 +33,7 @@ struct OBJExportParamsDefault {
     params.path_mode = PATH_REFERENCE_AUTO;
     params.export_triangulated_mesh = false;
     params.export_curves_as_nurbs = false;
+    params.export_pbr_extensions = false;
 
     params.export_object_groups = false;
     params.export_material_groups = false;

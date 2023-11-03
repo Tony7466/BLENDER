@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_OpenCLDevice.h"
 
@@ -56,7 +57,7 @@ OpenCLDevice::~OpenCLDevice()
 
 void OpenCLDevice::execute(WorkPackage *work_package)
 {
-  const unsigned int chunk_number = work_package->chunk_number;
+  const uint chunk_number = work_package->chunk_number;
   ExecutionGroup *execution_group = work_package->execution_group;
 
   MemoryBuffer **input_buffers = execution_group->get_input_buffers_opencl(chunk_number);
@@ -187,8 +188,8 @@ void OpenCLDevice::COM_cl_enqueue_range(cl_kernel kernel, MemoryBuffer *output_m
 {
   cl_int error;
   const size_t size[] = {
-      (size_t)output_memory_buffer->get_width(),
-      (size_t)output_memory_buffer->get_height(),
+      size_t(output_memory_buffer->get_width()),
+      size_t(output_memory_buffer->get_height()),
   };
 
   error = clEnqueueNDRangeKernel(queue_, kernel, 2, nullptr, size, nullptr, 0, nullptr, nullptr);

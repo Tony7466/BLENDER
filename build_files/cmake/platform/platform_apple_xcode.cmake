@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2016 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2016 Blender Foundation. All rights reserved.
 
 # Xcode and system configuration for Apple.
 
@@ -155,8 +156,8 @@ if("${CMAKE_OSX_ARCHITECTURES}" STREQUAL "arm64")
   # M1 chips run Big Sur onwards.
   set(OSX_MIN_DEPLOYMENT_TARGET 11.00)
 else()
-  # 10.13 is our min. target, if you use higher sdk, weak linking happens
-  set(OSX_MIN_DEPLOYMENT_TARGET 10.13)
+  # 10.15 is our min. target, if you use higher sdk, weak linking happens
+  set(OSX_MIN_DEPLOYMENT_TARGET 10.15)
 endif()
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "${OSX_MIN_DEPLOYMENT_TARGET}" CACHE STRING "" FORCE)
@@ -171,6 +172,7 @@ endif()
 if(WITH_COMPILER_CCACHE)
   if(CMAKE_GENERATOR STREQUAL "Xcode")
     find_program(CCACHE_PROGRAM ccache)
+    mark_as_advanced(CCACHE_PROGRAM)
     if(CCACHE_PROGRAM)
       get_filename_component(ccompiler "${CMAKE_C_COMPILER}" NAME)
       get_filename_component(cxxcompiler "${CMAKE_CXX_COMPILER}" NAME)

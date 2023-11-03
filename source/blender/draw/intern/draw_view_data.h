@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -10,7 +11,7 @@
 
 #pragma once
 
-#define GPU_INFO_SIZE 512 /* IMA_MAX_RENDER_TEXT */
+#define GPU_INFO_SIZE 512 /* IMA_MAX_RENDER_TEXT_SIZE */
 
 #ifdef __cplusplus
 extern "C" {
@@ -107,6 +108,7 @@ ViewportEngineData *DRW_view_data_engine_data_get_ensure(DRWViewData *view_data,
 void DRW_view_data_use_engine(DRWViewData *view_data, struct DrawEngineType *engine_type);
 void DRW_view_data_reset(DRWViewData *view_data);
 void DRW_view_data_free_unused(DRWViewData *view_data);
+void DRW_view_data_engines_view_update(DRWViewData *view_data);
 double *DRW_view_data_cache_time_get(DRWViewData *view_data);
 DefaultFramebufferList *DRW_view_data_default_framebuffer_list_get(DRWViewData *view_data);
 DefaultTextureList *DRW_view_data_default_texture_list_get(DRWViewData *view_data);

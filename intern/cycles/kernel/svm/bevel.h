@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -22,8 +23,9 @@ ccl_device float svm_bevel_cubic_eval(const float radius, float r)
 {
   const float Rm = radius;
 
-  if (r >= Rm)
+  if (r >= Rm) {
     return 0.0f;
+  }
 
   /* integrate (2*pi*r * 10*(R - r)^3)/(pi * R^5) from 0 to R = 1 */
   const float Rm5 = (Rm * Rm) * (Rm * Rm) * Rm;
@@ -57,8 +59,9 @@ ccl_device_forceinline float svm_bevel_cubic_quintic_root_find(float xi)
     float f = 10.0f * x2 - 20.0f * x3 + 15.0f * x2 * x2 - 4.0f * x2 * x3 - xi;
     float f_ = 20.0f * (x * nx) * (nx * nx);
 
-    if (fabsf(f) < tolerance || f_ == 0.0f)
+    if (fabsf(f) < tolerance || f_ == 0.0f) {
       break;
+    }
 
     x = saturatef(x - f / f_);
   }
@@ -128,8 +131,8 @@ ccl_device float3 svm_bevel(
   path_state_rng_load(state, &rng_state);
 
   for (int sample = 0; sample < num_samples; sample++) {
-    float disk_u, disk_v;
-    path_branched_rng_2D(kg, &rng_state, sample, num_samples, PRNG_BEVEL_U, &disk_u, &disk_v);
+    float2 rand_disk = path_branched_rng_2D(
+        kg, &rng_state, sample, num_samples, PRNG_SURFACE_BEVEL);
 
     /* Pick random axis in local frame and point on disk. */
     float3 disk_N, disk_T, disk_B;
@@ -138,13 +141,13 @@ ccl_device float3 svm_bevel(
     disk_N = sd->Ng;
     make_orthonormals(disk_N, &disk_T, &disk_B);
 
-    float axisu = disk_u;
+    float axisu = rand_disk.x;
 
     if (axisu < 0.5f) {
       pick_pdf_N = 0.5f;
       pick_pdf_T = 0.25f;
       pick_pdf_B = 0.25f;
-      disk_u *= 2.0f;
+      rand_disk.x *= 2.0f;
     }
     else if (axisu < 0.75f) {
       float3 tmp = disk_N;
@@ -153,7 +156,7 @@ ccl_device float3 svm_bevel(
       pick_pdf_N = 0.25f;
       pick_pdf_T = 0.5f;
       pick_pdf_B = 0.25f;
-      disk_u = (disk_u - 0.5f) * 4.0f;
+      rand_disk.x = (rand_disk.x - 0.5f) * 4.0f;
     }
     else {
       float3 tmp = disk_N;
@@ -162,12 +165,12 @@ ccl_device float3 svm_bevel(
       pick_pdf_N = 0.25f;
       pick_pdf_T = 0.25f;
       pick_pdf_B = 0.5f;
-      disk_u = (disk_u - 0.75f) * 4.0f;
+      rand_disk.x = (rand_disk.x - 0.75f) * 4.0f;
     }
 
     /* Sample point on disk. */
-    float phi = M_2PI_F * disk_u;
-    float disk_r = disk_v;
+    float phi = M_2PI_F * rand_disk.x;
+    float disk_r = rand_disk.y;
     float disk_height;
 
     /* Perhaps find something better than Cubic BSSRDF, but happens to work well. */
@@ -188,6 +191,7 @@ ccl_device float3 svm_bevel(
     ray.self.prim = PRIM_NONE;
     ray.self.light_object = OBJECT_NONE;
     ray.self.light_prim = PRIM_NONE;
+    ray.self.light = LAMP_NONE;
 
     /* Intersect with the same object. if multiple intersections are found it
      * will use at most LOCAL_MAX_HITS hits, a random subset of all hits. */
@@ -224,7 +228,7 @@ ccl_device float3 svm_bevel(
       float3 hit_Ng = isect.Ng[hit];
       int object = isect.hits[hit].object;
       int object_flag = kernel_data_fetch(object_flag, object);
-      if (object_flag & SD_OBJECT_NEGATIVE_SCALE_APPLIED) {
+      if (object_negative_scale_applied(object_flag)) {
         hit_Ng = -hit_Ng;
       }
 

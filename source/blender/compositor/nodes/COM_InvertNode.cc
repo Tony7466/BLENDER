@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_InvertNode.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "COM_InvertOperation.h"
 
 namespace blender::compositor {
@@ -16,7 +17,7 @@ void InvertNode::convert_to_operations(NodeConverter &converter,
                                        const CompositorContext & /*context*/) const
 {
   InvertOperation *operation = new InvertOperation();
-  bNode *node = this->get_bnode();
+  const bNode *node = this->get_bnode();
   operation->set_color(node->custom1 & CMP_CHAN_RGB);
   operation->set_alpha(node->custom1 & CMP_CHAN_A);
   converter.add_operation(operation);

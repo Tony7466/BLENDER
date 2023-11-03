@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # see "cmake --help-policy CMP0003"
@@ -89,8 +91,6 @@ if(UNIX AND NOT APPLE)
   set(WITH_GHOST_X11 ON)
 endif()
 
-# for now... default to this
-add_definitions(-DWITH_GL_PROFILE_COMPAT)
 # BLF needs this to ignore GPU library
 add_definitions(-DBLF_STANDALONE)
 
@@ -155,13 +155,6 @@ suffix_relpaths(SRC_NEW "${SRC}" "../../../extern/wcwidth/")
 include_directories(${INC_NEW})
 add_library(wcwidth_lib ${SRC_NEW})
 
-# glew-mx
-include(${CMAKE_SOURCE_DIR}/../../../intern/glew-mx/CMakeLists.txt)
-suffix_relpaths(INC_NEW "${INC}" "../../../intern/glew-mx/")
-suffix_relpaths(SRC_NEW "${SRC}" "../../../intern/glew-mx/")
-include_directories(${INC_NEW})
-add_library(glewmx_lib ${SRC_NEW})
-
 # grr, blenfont needs BLI
 include_directories(
   "../../../source/blender/blenlib"
@@ -176,7 +169,7 @@ add_library(bli_lib
   "../../../source/blender/blenlib/intern/rct.c"
   "../../../source/blender/blenlib/intern/string.c"
   "../../../source/blender/blenlib/intern/string_utf8.c"
-  "../../../source/blender/blenlib/intern/listbase.c"
+  "../../../source/blender/blenlib/intern/listbase.cc"
   "../../../source/blender/blenlib/intern/math_color.c"
   "../../../source/blender/blenlib/intern/math_geom.c"
   "../../../source/blender/blenlib/intern/math_matrix.c"
@@ -217,21 +210,12 @@ endif()
 
 if(UNIX AND NOT APPLE)
   find_package(X11 REQUIRED)
-  find_package(GLEW)
-
-  if(NOT GLEW_FOUND)
-    message(FATAL_ERROR "GLEW is required to build blender, install it or disable WITH_SYSTEM_GLEW")
-  endif()
 
   set(PLATFORM_LINKLIBS
     ${X11_X11_LIB}
     ${X11_Xinput_LIB}
-    ${GLEW_LIBRARY}
     -lpthread
   )
-else()
-  # set(GLEW_LIBRARY "")  # unused
-  set(GLEW_INCLUDE_PATH "${CMAKE_SOURCE_DIR}/extern/glew/include")
 endif()
 
 string(APPEND CMAKE_C_FLAGS " ${PLATFORM_CFLAGS}")
@@ -242,30 +226,30 @@ string(APPEND CMAKE_CXX_FLAGS " ${PLATFORM_CFLAGS}")
 
 # Gears (C)
 add_executable(gears_c
-    ${CMAKE_SOURCE_DIR}/gears/GHOST_C-Test.c)
+  ${CMAKE_SOURCE_DIR}/gears/GHOST_C-Test.c
+)
 
 target_link_libraries(gears_c
-    ghost_lib
-    glewmx_lib
-    string_lib
-    ${OPENGL_gl_LIBRARY}
-    ${CMAKE_DL_LIBS}
-    ${PLATFORM_LINKLIBS}
-    )
+  ghost_lib
+  string_lib
+  ${OPENGL_gl_LIBRARY}
+  ${CMAKE_DL_LIBS}
+  ${PLATFORM_LINKLIBS}
+)
 
 
 # Gears (C++)
 add_executable(gears_cpp
-    ${CMAKE_SOURCE_DIR}/gears/GHOST_Test.cpp)
+  ${CMAKE_SOURCE_DIR}/gears/GHOST_Test.cpp
+)
 
 target_link_libraries(gears_cpp
-    ghost_lib
-    glewmx_lib
-    string_lib
-    ${OPENGL_gl_LIBRARY}
-    ${CMAKE_DL_LIBS}
-    ${PLATFORM_LINKLIBS}
-    )
+  ghost_lib
+  string_lib
+  ${OPENGL_gl_LIBRARY}
+  ${CMAKE_DL_LIBS}
+  ${PLATFORM_LINKLIBS}
+)
 
 
 # MultiTest (C)
@@ -287,7 +271,6 @@ target_link_libraries(multitest_c
   # imbuf_lib
   ghost_lib
   bli_lib  # again...
-  glewmx_lib
   string_lib
   numaapi_lib
   guardedalloc_lib

@@ -1,11 +1,15 @@
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
+/* SPDX-FileCopyrightText: 2019-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Separable Hexagonal Bokeh Blur by Colin Barré-Brisebois
  * https://colinbarrebrisebois.com/2017/04/18/hexagonal-bokeh-blur-revisited-part-1-basic-3-pass-version/
  * Converted and adapted from HLSL to GLSL by Clément Foucault
  */
+
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 
 #define dof_aperturesize dofParams.x
 #define dof_distance dofParams.y
@@ -36,7 +40,7 @@ float decode_signed_coc(vec2 cocs)
 
 /**
  * ----------------- STEP 0 ------------------
- * Custom Coc aware downsampling. Half res pass.
+ * Custom COC aware down-sampling. Half res pass.
  */
 #ifdef PREPARE
 
@@ -79,7 +83,7 @@ void main()
 
 /**
  * ----------------- STEP 0.5 ------------------
- * Custom Coc aware downsampling. Quarter res pass.
+ * Custom COC aware down-sampling. Quarter res pass.
  */
 #ifdef DOWNSAMPLE
 
@@ -89,7 +93,7 @@ void main()
   texel = (texel - 0.5) / vec4(textureSize(sceneColorTex, 0).xyxy);
 
   /* Using texelFetch can bypass the mip range setting on some platform.
-   * Using texture Lod fix this issue. Note that we need to disable filtering to get the right
+   * Using texture LOD fixes this issue. Note that we need to disable filtering to get the right
    * texel values. */
   vec4 color1 = textureLod(sceneColorTex, texel.xy, 0.0);
   vec4 color2 = textureLod(sceneColorTex, texel.zw, 0.0);
@@ -200,7 +204,7 @@ void main()
 
 vec2 get_random_vector(float offset)
 {
-  /* Interlieved gradient noise by Jorge Jimenez
+  /* Interleaved gradient noise by Jorge Jimenez
    * http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare */
   float ign = fract(offset +
                     52.9829189 * fract(0.06711056 * gl_FragCoord.x + 0.00583715 * gl_FragCoord.y));
@@ -336,7 +340,7 @@ void main()
 
 void main()
 {
-  /* Fullscreen pass */
+  /* Full-screen pass. */
   vec2 pixel_size = 0.5 / vec2(textureSize(halfResColorTex, 0).xy);
   vec2 uv = gl_FragCoord.xy * pixel_size;
 

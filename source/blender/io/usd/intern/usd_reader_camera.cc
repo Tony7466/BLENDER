@@ -1,23 +1,26 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Adapted from the Blender Alembic importer implementation.
- * Modifications Copyright 2021 Tangent Animation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Tangent Animation. All rights reserved.
+ * SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * Adapted from the Blender Alembic importer implementation. */
 
 #include "usd_reader_camera.h"
 
 #include "DNA_camera_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_camera.h"
-#include "BKE_object.h"
+#include "BLI_math_base.h"
 
-#include "BLI_math.h"
+#include "BKE_camera.h"
+#include "BKE_object.hh"
 
 #include <pxr/pxr.h>
 #include <pxr/usd/usdGeom/camera.h>
 
 namespace blender::io::usd {
 
-void USDCameraReader::create_object(Main *bmain, const double /* motionSampleTime */)
+void USDCameraReader::create_object(Main *bmain, const double /*motionSampleTime*/)
 {
   Camera *bcam = static_cast<Camera *>(BKE_camera_add(bmain, name_.c_str()));
 
@@ -54,24 +57,35 @@ void USDCameraReader::read_object_data(Main *bmain, const double motionSampleTim
   pxr::VtValue horAp;
   cam_prim.GetHorizontalApertureAttr().Get(&horAp, motionSampleTime);
 
-  bcam->lens = val.Get<float>();
-  /* TODO(@makowalski): support sensor size. */
-#if 0
-   bcam->sensor_x = 0.0f;
-   bcam->sensor_y = 0.0f;
-#endif
-  bcam->shiftx = verApOffset.Get<float>();
-  bcam->shifty = horApOffset.Get<float>();
+  /*
+   * For USD, these camera properties are in tenths of a world unit.
+   * https://graphics.pixar.com/usd/release/api/class_usd_geom_camera.html#UsdGeom_CameraUnits
+   *
+   * tenth_unit_to_meters  = stage_meters_per_unit / 10
+   * tenth_unit_to_millimeters = 1000 * unit_to_tenth_unit
+   *                           = 100 * stage_meters_per_unit
+   */
+  const double tenth_unit_to_millimeters = 100.0 * settings_->stage_meters_per_unit;
+  bcam->lens = val.Get<float>() * tenth_unit_to_millimeters;
+  bcam->sensor_x = horAp.Get<float>() * tenth_unit_to_millimeters;
+  bcam->sensor_y = verAp.Get<float>() * tenth_unit_to_millimeters;
+
+  bcam->sensor_fit = bcam->sensor_x >= bcam->sensor_y ? CAMERA_SENSOR_FIT_HOR :
+                                                        CAMERA_SENSOR_FIT_VERT;
+
+  float sensor_size = bcam->sensor_x >= bcam->sensor_y ? bcam->sensor_x : bcam->sensor_y;
+  bcam->shiftx = (horApOffset.Get<float>() * tenth_unit_to_millimeters) / sensor_size;
+  bcam->shifty = (verApOffset.Get<float>() * tenth_unit_to_millimeters) / sensor_size;
 
   bcam->type = (projectionVal.Get<pxr::TfToken>().GetString() == "perspective") ? CAM_PERSP :
                                                                                   CAM_ORTHO;
 
-  /* Calling UncheckedGet() to silence compiler warnings. */
-  bcam->clip_start = max_ff(0.1f, clippingRangeVal.UncheckedGet<pxr::GfVec2f>()[0]);
+  /* Call UncheckedGet() to silence compiler warnings.
+   * Clamp to 1e-6 matching range defined in RNA. */
   bcam->clip_end = clippingRangeVal.UncheckedGet<pxr::GfVec2f>()[1];
 
   bcam->dof.focus_distance = focalDistanceVal.Get<float>();
-  bcam->dof.aperture_fstop = static_cast<float>(fstopVal.Get<float>());
+  bcam->dof.aperture_fstop = float(fstopVal.Get<float>());
 
   if (bcam->type == CAM_ORTHO) {
     bcam->ortho_scale = max_ff(verAp.Get<float>(), horAp.Get<float>());

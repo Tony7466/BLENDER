@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -18,7 +19,7 @@ ccl_device_noinline int svm_node_tex_coord(KernelGlobals kg,
                                            uint4 node,
                                            int offset)
 {
-  float3 data;
+  float3 data = zero_float3();
   uint type = node.y;
   uint out_offset = node.z;
 
@@ -64,9 +65,9 @@ ccl_device_noinline int svm_node_tex_coord(KernelGlobals kg,
     }
     case NODE_TEXCO_REFLECTION: {
       if (sd->object != OBJECT_NONE)
-        data = 2.0f * dot(sd->N, sd->I) * sd->N - sd->I;
+        data = 2.0f * dot(sd->N, sd->wi) * sd->N - sd->wi;
       else
-        data = sd->I;
+        data = sd->wi;
       break;
     }
     case NODE_TEXCO_DUPLI_GENERATED: {
@@ -100,13 +101,13 @@ ccl_device_noinline int svm_node_tex_coord_bump_dx(KernelGlobals kg,
                                                    int offset)
 {
 #ifdef __RAY_DIFFERENTIALS__
-  float3 data;
+  float3 data = zero_float3();
   uint type = node.y;
   uint out_offset = node.z;
 
   switch (type) {
     case NODE_TEXCO_OBJECT: {
-      data = sd->P + sd->dP.dx;
+      data = svm_node_bump_P_dx(sd);
       if (node.w == 0) {
         if (sd->object != OBJECT_NONE) {
           object_inverse_position_transform(kg, sd, &data);
@@ -130,9 +131,9 @@ ccl_device_noinline int svm_node_tex_coord_bump_dx(KernelGlobals kg,
       Transform tfm = kernel_data.cam.worldtocamera;
 
       if (sd->object != OBJECT_NONE)
-        data = transform_point(&tfm, sd->P + sd->dP.dx);
+        data = transform_point(&tfm, svm_node_bump_P_dx(sd));
       else
-        data = transform_point(&tfm, sd->P + sd->dP.dx + camera_position(kg));
+        data = transform_point(&tfm, svm_node_bump_P_dx(sd) + camera_position(kg));
       break;
     }
     case NODE_TEXCO_WINDOW: {
@@ -140,15 +141,15 @@ ccl_device_noinline int svm_node_tex_coord_bump_dx(KernelGlobals kg,
           kernel_data.cam.type == CAMERA_ORTHOGRAPHIC)
         data = camera_world_to_ndc(kg, sd, sd->ray_P);
       else
-        data = camera_world_to_ndc(kg, sd, sd->P + sd->dP.dx);
+        data = camera_world_to_ndc(kg, sd, svm_node_bump_P_dx(sd));
       data.z = 0.0f;
       break;
     }
     case NODE_TEXCO_REFLECTION: {
       if (sd->object != OBJECT_NONE)
-        data = 2.0f * dot(sd->N, sd->I) * sd->N - sd->I;
+        data = 2.0f * dot(sd->N, sd->wi) * sd->N - sd->wi;
       else
-        data = sd->I;
+        data = sd->wi;
       break;
     }
     case NODE_TEXCO_DUPLI_GENERATED: {
@@ -160,7 +161,7 @@ ccl_device_noinline int svm_node_tex_coord_bump_dx(KernelGlobals kg,
       break;
     }
     case NODE_TEXCO_VOLUME_GENERATED: {
-      data = sd->P + sd->dP.dx;
+      data = svm_node_bump_P_dx(sd);
 
 #  ifdef __VOLUME__
       if (sd->object != OBJECT_NONE)
@@ -185,13 +186,13 @@ ccl_device_noinline int svm_node_tex_coord_bump_dy(KernelGlobals kg,
                                                    int offset)
 {
 #ifdef __RAY_DIFFERENTIALS__
-  float3 data;
+  float3 data = zero_float3();
   uint type = node.y;
   uint out_offset = node.z;
 
   switch (type) {
     case NODE_TEXCO_OBJECT: {
-      data = sd->P + sd->dP.dy;
+      data = svm_node_bump_P_dy(sd);
       if (node.w == 0) {
         if (sd->object != OBJECT_NONE) {
           object_inverse_position_transform(kg, sd, &data);
@@ -215,9 +216,9 @@ ccl_device_noinline int svm_node_tex_coord_bump_dy(KernelGlobals kg,
       Transform tfm = kernel_data.cam.worldtocamera;
 
       if (sd->object != OBJECT_NONE)
-        data = transform_point(&tfm, sd->P + sd->dP.dy);
+        data = transform_point(&tfm, svm_node_bump_P_dy(sd));
       else
-        data = transform_point(&tfm, sd->P + sd->dP.dy + camera_position(kg));
+        data = transform_point(&tfm, svm_node_bump_P_dy(sd) + camera_position(kg));
       break;
     }
     case NODE_TEXCO_WINDOW: {
@@ -225,15 +226,15 @@ ccl_device_noinline int svm_node_tex_coord_bump_dy(KernelGlobals kg,
           kernel_data.cam.type == CAMERA_ORTHOGRAPHIC)
         data = camera_world_to_ndc(kg, sd, sd->ray_P);
       else
-        data = camera_world_to_ndc(kg, sd, sd->P + sd->dP.dy);
+        data = camera_world_to_ndc(kg, sd, svm_node_bump_P_dy(sd));
       data.z = 0.0f;
       break;
     }
     case NODE_TEXCO_REFLECTION: {
       if (sd->object != OBJECT_NONE)
-        data = 2.0f * dot(sd->N, sd->I) * sd->N - sd->I;
+        data = 2.0f * dot(sd->N, sd->wi) * sd->N - sd->wi;
       else
-        data = sd->I;
+        data = sd->wi;
       break;
     }
     case NODE_TEXCO_DUPLI_GENERATED: {
@@ -245,7 +246,7 @@ ccl_device_noinline int svm_node_tex_coord_bump_dy(KernelGlobals kg,
       break;
     }
     case NODE_TEXCO_VOLUME_GENERATED: {
-      data = sd->P + sd->dP.dy;
+      data = svm_node_bump_P_dy(sd);
 
 #  ifdef __VOLUME__
       if (sd->object != OBJECT_NONE)
@@ -275,7 +276,7 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
 
   bool is_backfacing = (sd->flag & SD_BACKFACING) != 0;
   float3 N;
-
+  float strength = stack_load_float(stack, strength_offset);
   if (space == NODE_NORMAL_MAP_TANGENT) {
     /* tangent space */
     if (sd->object == OBJECT_NONE || (sd->type & PRIMITIVE_TRIANGLE) == 0) {
@@ -312,6 +313,10 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
 
       object_inverse_normal_transform(kg, sd, &normal);
     }
+    /* Apply strength in the tangent case. */
+    color.x *= strength;
+    color.y *= strength;
+    color.z = mix(1.0f, color.z, saturatef(strength));
 
     /* apply normal map */
     float3 B = sign * cross(normal, tangent);
@@ -334,18 +339,16 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
       object_normal_transform(kg, sd, &N);
     else
       N = safe_normalize(N);
+    /* Apply strength in all but tangent space. */
+    if (strength != 1.0f) {
+      strength = max(strength, 0.0f);
+      N = safe_normalize(sd->N + (N - sd->N) * strength);
+    }
   }
 
   /* invert normal for backfacing polygons */
   if (is_backfacing) {
     N = -N;
-  }
-
-  float strength = stack_load_float(stack, strength_offset);
-
-  if (strength != 1.0f) {
-    strength = max(strength, 0.0f);
-    N = safe_normalize(sd->N + (N - sd->N) * strength);
   }
 
   if (is_zero(N)) {

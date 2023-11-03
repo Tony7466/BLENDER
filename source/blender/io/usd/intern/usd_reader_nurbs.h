@@ -1,6 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Adapted from the Blender Alembic importer implementation.
- * Modifications Copyright 2021 Tangent Animation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Tangent Animation. All rights reserved.
+ * SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * Adapted from the Blender Alembic importer implementation. */
+
 #pragma once
 
 #include "usd.h"
@@ -27,7 +31,7 @@ class USDNurbsReader : public USDGeomReader {
 
   bool valid() const override
   {
-    return static_cast<bool>(curve_prim_);
+    return bool(curve_prim_);
   }
 
   void create_object(Main *bmain, double motionSampleTime) override;
@@ -36,8 +40,7 @@ class USDNurbsReader : public USDGeomReader {
   void read_curve_sample(Curve *cu, double motionSampleTime);
 
   Mesh *read_mesh(struct Mesh *existing_mesh,
-                  double motionSampleTime,
-                  int read_flag,
+                  USDMeshReadParams params,
                   const char **err_str) override;
 };
 

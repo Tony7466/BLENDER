@@ -1,11 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* Functions to initialize ShaderData given.
  *
  * Could be from an incoming ray, intersection or sampled position. */
 
 #pragma once
+
+#include "kernel/util/differential.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -53,7 +56,7 @@ ccl_device_inline void shader_setup_from_ray(KernelGlobals kg,
 #endif
 
   /* Read ray data into shader globals. */
-  sd->I = -ray->D;
+  sd->wi = -ray->D;
 
 #ifdef __HAIR__
   if (sd->type & PRIMITIVE_CURVE) {
@@ -63,7 +66,8 @@ ccl_device_inline void shader_setup_from_ray(KernelGlobals kg,
   else
 #endif
 #ifdef __POINTCLOUD__
-      if (sd->type & PRIMITIVE_POINT) {
+      if (sd->type & PRIMITIVE_POINT)
+  {
     /* point */
     point_shader_setup(kg, sd, isect, ray);
   }
@@ -109,7 +113,7 @@ ccl_device_inline void shader_setup_from_ray(KernelGlobals kg,
   sd->flag = kernel_data_fetch(shaders, (sd->shader & SHADER_MASK)).flags;
 
   /* backfacing test */
-  bool backfacing = (dot(sd->Ng, sd->I) < 0.0f);
+  bool backfacing = (dot(sd->Ng, sd->wi) < 0.0f);
 
   if (backfacing) {
     sd->flag |= SD_BACKFACING;
@@ -123,9 +127,9 @@ ccl_device_inline void shader_setup_from_ray(KernelGlobals kg,
 
 #ifdef __RAY_DIFFERENTIALS__
   /* differentials */
-  differential_transfer_compact(&sd->dP, ray->dP, ray->D, ray->dD, sd->Ng, sd->ray_length);
-  differential_incoming_compact(&sd->dI, ray->D, ray->dD);
-  differential_dudv(&sd->du, &sd->dv, sd->dPdu, sd->dPdv, sd->dP, sd->Ng);
+  sd->dP = differential_transfer_compact(ray->dP, ray->D, ray->dD, sd->ray_length);
+  sd->dI = differential_incoming_compact(ray->dD);
+  differential_dudv_compact(&sd->du, &sd->dv, sd->dPdu, sd->dPdv, sd->dP, sd->Ng);
 #endif
 }
 
@@ -150,14 +154,17 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals kg,
   sd->P = P;
   sd->N = Ng;
   sd->Ng = Ng;
-  sd->I = I;
+  sd->wi = I;
   sd->shader = shader;
-  if (prim != PRIM_NONE)
-    sd->type = PRIMITIVE_TRIANGLE;
-  else if (lamp != LAMP_NONE)
+  if (lamp != LAMP_NONE) {
     sd->type = PRIMITIVE_LAMP;
-  else
+  }
+  else if (prim != PRIM_NONE) {
+    sd->type = PRIMITIVE_TRIANGLE;
+  }
+  else {
     sd->type = PRIMITIVE_NONE;
+  }
 
   /* primitive */
   sd->object = object;
@@ -183,7 +190,7 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals kg,
       object_position_transform_auto(kg, sd, &sd->P);
       object_normal_transform_auto(kg, sd, &sd->Ng);
       sd->N = sd->Ng;
-      object_dir_transform_auto(kg, sd, &sd->I);
+      object_dir_transform_auto(kg, sd, &sd->wi);
     }
 
     if (sd->type == PRIMITIVE_TRIANGLE) {
@@ -225,7 +232,7 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals kg,
 
   /* backfacing test */
   if (sd->prim != PRIM_NONE) {
-    bool backfacing = (dot(sd->Ng, sd->I) < 0.0f);
+    bool backfacing = (dot(sd->Ng, sd->wi) < 0.0f);
 
     if (backfacing) {
       sd->flag |= SD_BACKFACING;
@@ -240,8 +247,8 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals kg,
 
 #ifdef __RAY_DIFFERENTIALS__
   /* no ray differentials here yet */
-  sd->dP = differential3_zero();
-  sd->dI = differential3_zero();
+  sd->dP = differential_zero_compact();
+  sd->dI = differential_zero_compact();
   sd->du = differential_zero();
   sd->dv = differential_zero();
 #endif
@@ -339,7 +346,7 @@ ccl_device void shader_setup_from_curve(KernelGlobals kg,
   }
 
   /* No view direction, normals or bitangent. */
-  sd->I = zero_float3();
+  sd->wi = zero_float3();
   sd->N = zero_float3();
   sd->Ng = zero_float3();
 #ifdef __DPDU__
@@ -348,8 +355,8 @@ ccl_device void shader_setup_from_curve(KernelGlobals kg,
 
   /* No ray differentials currently. */
 #ifdef __RAY_DIFFERENTIALS__
-  sd->dP = differential3_zero();
-  sd->dI = differential3_zero();
+  sd->dP = differential_zero_compact();
+  sd->dI = differential_zero_compact();
   sd->du = differential_zero();
   sd->dv = differential_zero();
 #endif
@@ -370,7 +377,7 @@ ccl_device_inline void shader_setup_from_background(KernelGlobals kg,
   sd->P = ray_D;
   sd->N = -ray_D;
   sd->Ng = -ray_D;
-  sd->I = -ray_D;
+  sd->wi = -ray_D;
   sd->shader = kernel_data.background.surface_shader;
   sd->flag = kernel_data_fetch(shaders, (sd->shader & SHADER_MASK)).flags;
   sd->object_flag = 0;
@@ -391,8 +398,8 @@ ccl_device_inline void shader_setup_from_background(KernelGlobals kg,
 
 #ifdef __RAY_DIFFERENTIALS__
   /* differentials */
-  sd->dP = differential3_zero(); /* TODO: ray->dP */
-  differential_incoming(&sd->dI, sd->dP);
+  sd->dP = differential_zero_compact(); /* TODO: ray->dP */
+  sd->dI = differential_zero_compact();
   sd->du = differential_zero();
   sd->dv = differential_zero();
 #endif
@@ -410,7 +417,7 @@ ccl_device_inline void shader_setup_from_volume(KernelGlobals kg,
   sd->P = ray->P + ray->D * ray->tmin;
   sd->N = -ray->D;
   sd->Ng = -ray->D;
-  sd->I = -ray->D;
+  sd->wi = -ray->D;
   sd->shader = SHADER_NONE;
   sd->flag = 0;
   sd->object_flag = 0;
@@ -433,8 +440,8 @@ ccl_device_inline void shader_setup_from_volume(KernelGlobals kg,
 
 #  ifdef __RAY_DIFFERENTIALS__
   /* differentials */
-  sd->dP = differential3_zero(); /* TODO ray->dD */
-  differential_incoming(&sd->dI, sd->dP);
+  sd->dP = differential_zero_compact(); /* TODO ray->dD */
+  sd->dI = differential_zero_compact();
   sd->du = differential_zero();
   sd->dv = differential_zero();
 #  endif

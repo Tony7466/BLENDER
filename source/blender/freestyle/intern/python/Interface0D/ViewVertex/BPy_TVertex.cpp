@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -26,9 +28,9 @@ PyDoc_STRVAR(TVertex_doc,
              "Class hierarchy: :class:`Interface0D` > :class:`ViewVertex` > :class:`TVertex`\n"
              "\n"
              "Class to define a T vertex, i.e. an intersection between two edges.\n"
-             "It points towards two SVertex and four ViewEdges.  Among the\n"
-             "ViewEdges, two are front and the other two are back.  Basically a\n"
-             "front edge hides part of a back edge.  So, among the back edges, one\n"
+             "It points towards two SVertex and four ViewEdges. Among the\n"
+             "ViewEdges, two are front and the other two are back. Basically a\n"
+             "front edge hides part of a back edge. So, among the back edges, one\n"
              "is of invisibility N and the other of invisibility N+1.\n"
              "\n"
              ".. method:: __init__()\n"
@@ -79,9 +81,9 @@ static PyObject *TVertex_get_svertex(BPy_TVertex *self, PyObject *args, PyObject
 PyDoc_STRVAR(TVertex_get_mate_doc,
              ".. method:: get_mate(viewedge)\n"
              "\n"
-             "   Returns the mate edge of the ViewEdge given as argument.  If the\n"
-             "   ViewEdge is frontEdgeA, frontEdgeB is returned.  If the ViewEdge is\n"
-             "   frontEdgeB, frontEdgeA is returned.  Same for back edges.\n"
+             "   Returns the mate edge of the ViewEdge given as argument. If the\n"
+             "   ViewEdge is frontEdgeA, frontEdgeB is returned. If the ViewEdge is\n"
+             "   frontEdgeB, frontEdgeA is returned. Same for back edges.\n"
              "\n"
              "   :arg viewedge: A ViewEdge object.\n"
              "   :type viewedge: :class:`ViewEdge`\n"
@@ -122,7 +124,7 @@ PyDoc_STRVAR(TVertex_front_svertex_doc,
              "\n"
              ":type: :class:`SVertex`");
 
-static PyObject *TVertex_front_svertex_get(BPy_TVertex *self, void *UNUSED(closure))
+static PyObject *TVertex_front_svertex_get(BPy_TVertex *self, void * /*closure*/)
 {
   SVertex *v = self->tv->frontSVertex();
   if (v) {
@@ -131,7 +133,7 @@ static PyObject *TVertex_front_svertex_get(BPy_TVertex *self, void *UNUSED(closu
   Py_RETURN_NONE;
 }
 
-static int TVertex_front_svertex_set(BPy_TVertex *self, PyObject *value, void *UNUSED(closure))
+static int TVertex_front_svertex_set(BPy_TVertex *self, PyObject *value, void * /*closure*/)
 {
   if (!BPy_SVertex_Check(value)) {
     PyErr_SetString(PyExc_TypeError, "value must be an SVertex");
@@ -146,7 +148,7 @@ PyDoc_STRVAR(TVertex_back_svertex_doc,
              "\n"
              ":type: :class:`SVertex`");
 
-static PyObject *TVertex_back_svertex_get(BPy_TVertex *self, void *UNUSED(closure))
+static PyObject *TVertex_back_svertex_get(BPy_TVertex *self, void * /*closure*/)
 {
   SVertex *v = self->tv->backSVertex();
   if (v) {
@@ -155,7 +157,7 @@ static PyObject *TVertex_back_svertex_get(BPy_TVertex *self, void *UNUSED(closur
   Py_RETURN_NONE;
 }
 
-static int TVertex_back_svertex_set(BPy_TVertex *self, PyObject *value, void *UNUSED(closure))
+static int TVertex_back_svertex_set(BPy_TVertex *self, PyObject *value, void * /*closure*/)
 {
   if (!BPy_SVertex_Check(value)) {
     PyErr_SetString(PyExc_TypeError, "value must be an SVertex");
@@ -170,13 +172,13 @@ PyDoc_STRVAR(TVertex_id_doc,
              "\n"
              ":type: :class:`Id`");
 
-static PyObject *TVertex_id_get(BPy_TVertex *self, void *UNUSED(closure))
+static PyObject *TVertex_id_get(BPy_TVertex *self, void * /*closure*/)
 {
   Id id(self->tv->getId());
   return BPy_Id_from_Id(id);  // return a copy
 }
 
-static int TVertex_id_set(BPy_TVertex *self, PyObject *value, void *UNUSED(closure))
+static int TVertex_id_set(BPy_TVertex *self, PyObject *value, void * /*closure*/)
 {
   if (!BPy_Id_Check(value)) {
     PyErr_SetString(PyExc_TypeError, "value must be an Id");
@@ -202,44 +204,46 @@ static PyGetSetDef BPy_TVertex_getseters[] = {
 };
 
 /*-----------------------BPy_TVertex type definition ------------------------------*/
+
 PyTypeObject TVertex_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "TVertex", /* tp_name */
-    sizeof(BPy_TVertex),                         /* tp_basicsize */
-    0,                                           /* tp_itemsize */
-    nullptr,                                     /* tp_dealloc */
-    0,                                           /* tp_vectorcall_offset */
-    nullptr,                                     /* tp_getattr */
-    nullptr,                                     /* tp_setattr */
-    nullptr,                                     /* tp_reserved */
-    nullptr,                                     /* tp_repr */
-    nullptr,                                     /* tp_as_number */
-    nullptr,                                     /* tp_as_sequence */
-    nullptr,                                     /* tp_as_mapping */
-    nullptr,                                     /* tp_hash */
-    nullptr,                                     /* tp_call */
-    nullptr,                                     /* tp_str */
-    nullptr,                                     /* tp_getattro */
-    nullptr,                                     /* tp_setattro */
-    nullptr,                                     /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,    /* tp_flags */
-    TVertex_doc,                                 /* tp_doc */
-    nullptr,                                     /* tp_traverse */
-    nullptr,                                     /* tp_clear */
-    nullptr,                                     /* tp_richcompare */
-    0,                                           /* tp_weaklistoffset */
-    nullptr,                                     /* tp_iter */
-    nullptr,                                     /* tp_iternext */
-    BPy_TVertex_methods,                         /* tp_methods */
-    nullptr,                                     /* tp_members */
-    BPy_TVertex_getseters,                       /* tp_getset */
-    &ViewVertex_Type,                            /* tp_base */
-    nullptr,                                     /* tp_dict */
-    nullptr,                                     /* tp_descr_get */
-    nullptr,                                     /* tp_descr_set */
-    0,                                           /* tp_dictoffset */
-    (initproc)TVertex_init,                      /* tp_init */
-    nullptr,                                     /* tp_alloc */
-    nullptr,                                     /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "TVertex",
+    /*tp_basicsize*/ sizeof(BPy_TVertex),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ nullptr,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ TVertex_doc,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ BPy_TVertex_methods,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ BPy_TVertex_getseters,
+    /*tp_base*/ &ViewVertex_Type,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)TVertex_init,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -11,7 +12,7 @@
 
 #include "gpu_index_buffer_private.hh"
 
-#include "glew-mx.h"
+#include <epoxy/gl.h>
 
 namespace blender::gpu {
 
@@ -29,15 +30,15 @@ class GLIndexBuf : public IndexBuf {
   void bind();
   void bind_as_ssbo(uint binding) override;
 
-  const uint32_t *read() const override;
+  void read(uint32_t *data) const override;
 
   void *offset_ptr(uint additional_vertex_offset) const
   {
     additional_vertex_offset += index_start_;
     if (index_type_ == GPU_INDEX_U32) {
-      return (GLuint *)0 + additional_vertex_offset;
+      return reinterpret_cast<void *>(intptr_t(additional_vertex_offset) * sizeof(GLuint));
     }
-    return (GLushort *)0 + additional_vertex_offset;
+    return reinterpret_cast<void *>(intptr_t(additional_vertex_offset) * sizeof(GLushort));
   }
 
   GLuint restart_index() const
@@ -51,6 +52,10 @@ class GLIndexBuf : public IndexBuf {
 
  private:
   bool is_active() const;
+  void strip_restart_indices() override
+  {
+    /* No-op. */
+  }
 
   MEM_CXX_CLASS_ALLOC_FUNCS("GLIndexBuf")
 };

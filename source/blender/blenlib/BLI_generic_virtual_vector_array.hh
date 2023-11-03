@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -21,9 +23,7 @@ class GVVectorArray {
   int64_t size_;
 
  public:
-  GVVectorArray(const CPPType &type, const int64_t size) : type_(&type), size_(size)
-  {
-  }
+  GVVectorArray(const CPPType &type, const int64_t size) : type_(&type), size_(size) {}
 
   virtual ~GVVectorArray() = default;
 
@@ -133,8 +133,8 @@ class GVVectorArray_For_SingleGSpan : public GVVectorArray {
   }
 
  protected:
-  int64_t get_vector_size_impl(int64_t UNUSED(index)) const override;
-  void get_vector_element_impl(int64_t UNUSED(index),
+  int64_t get_vector_size_impl(int64_t /*index*/) const override;
+  void get_vector_element_impl(int64_t /*index*/,
                                int64_t index_in_vector,
                                void *r_value) const override;
 

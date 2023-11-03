@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -26,29 +27,21 @@ using namespace metal::raytracing;
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wsign-compare"
 #pragma clang diagnostic ignored "-Wuninitialized"
+#pragma clang diagnostic ignored "-Wc++17-extensions"
+#pragma clang diagnostic ignored "-Wmacro-redefined"
 
 /* Qualifiers */
 
+#define ccl_device
+#define ccl_device_inline ccl_device __attribute__((always_inline))
+#define ccl_device_forceinline ccl_device __attribute__((always_inline))
 #if defined(__KERNEL_METAL_APPLE__)
-
-/* Inline everything for Apple GPUs.
- * This gives ~1.1x speedup and 10% spill reduction for integator_shade_surface
- * at the cost of longer compile times (~4.5 minutes on M1 Max). */
-
-#  define ccl_device __attribute__((always_inline))
-#  define ccl_device_inline __attribute__((always_inline))
-#  define ccl_device_forceinline __attribute__((always_inline))
-#  define ccl_device_noinline __attribute__((always_inline))
-
+#  define ccl_device_noinline ccl_device
 #else
-
-#  define ccl_device
-#  define ccl_device_inline ccl_device
-#  define ccl_device_forceinline ccl_device
 #  define ccl_device_noinline ccl_device __attribute__((noinline))
-
 #endif
 
+#define ccl_device_extern extern "C"
 #define ccl_device_noinline_cpu ccl_device
 #define ccl_device_inline_method ccl_device
 #define ccl_global device
@@ -57,6 +50,11 @@ using namespace metal::raytracing;
 #define ccl_constant constant
 #define ccl_gpu_shared threadgroup
 #define ccl_private thread
+#ifdef __METALRT__
+#  define ccl_ray_data ray_data
+#else
+#  define ccl_ray_data ccl_private
+#endif
 #define ccl_may_alias
 #define ccl_restrict __restrict
 #define ccl_loop_no_unroll
@@ -115,10 +113,11 @@ struct kernel_gpu_##name \
 { \
   PARAMS_MAKER(__VA_ARGS__)(__VA_ARGS__) \
   void run(thread MetalKernelContext& context, \
-           threadgroup int *simdgroup_offset, \
+           threadgroup atomic_int *threadgroup_array, \
            const uint metal_global_id, \
            const ushort metal_local_id, \
            const ushort metal_local_size, \
+           const uint metal_grid_id, \
            uint simdgroup_size, \
            uint simd_lane_index, \
            uint simd_group_index, \
@@ -127,22 +126,24 @@ struct kernel_gpu_##name \
 kernel void cycles_metal_##name(device const kernel_gpu_##name *params_struct, \
                                 constant KernelParamsMetal &ccl_restrict   _launch_params_metal, \
                                 constant MetalAncillaries *_metal_ancillaries, \
-                                threadgroup int *simdgroup_offset[[ threadgroup(0) ]], \
+                                threadgroup atomic_int *threadgroup_array[[ threadgroup(0) ]], \
                                 const uint metal_global_id [[thread_position_in_grid]], \
                                 const ushort metal_local_id   [[thread_position_in_threadgroup]], \
                                 const ushort metal_local_size [[threads_per_threadgroup]], \
+                                const uint metal_grid_id    [[threadgroup_position_in_grid]], \
                                 uint simdgroup_size [[threads_per_simdgroup]], \
                                 uint simd_lane_index [[thread_index_in_simdgroup]], \
                                 uint simd_group_index [[simdgroup_index_in_threadgroup]], \
                                 uint num_simd_groups [[simdgroups_per_threadgroup]]) { \
   MetalKernelContext context(_launch_params_metal, _metal_ancillaries); \
-  params_struct->run(context, simdgroup_offset, metal_global_id, metal_local_id, metal_local_size, simdgroup_size, simd_lane_index, simd_group_index, num_simd_groups); \
+  params_struct->run(context, threadgroup_array, metal_global_id, metal_local_id, metal_local_size, metal_grid_id, simdgroup_size, simd_lane_index, simd_group_index, num_simd_groups); \
 } \
 void kernel_gpu_##name::run(thread MetalKernelContext& context, \
-                  threadgroup int *simdgroup_offset, \
+                  threadgroup atomic_int *threadgroup_array, \
                   const uint metal_global_id, \
                   const ushort metal_local_id, \
                   const ushort metal_local_size, \
+                  const uint metal_grid_id, \
                   uint simdgroup_size, \
                   uint simd_lane_index, \
                   uint simd_group_index, \
@@ -150,6 +151,7 @@ void kernel_gpu_##name::run(thread MetalKernelContext& context, \
 
 #define ccl_gpu_kernel_postfix
 #define ccl_gpu_kernel_call(x) context.x
+#define ccl_gpu_kernel_within_bounds(i,n) true
 
 /* define a function object where "func" is the lambda body, and additional parameters are used to specify captured state  */
 #define ccl_gpu_kernel_lambda(func, ...) \
@@ -189,35 +191,46 @@ void kernel_gpu_##name::run(thread MetalKernelContext& context, \
   } volume_write_lambda_pass{kg, this, state};
 
 /* make_type definitions with Metal style element initializers */
-#ifdef make_float2
-#  undef make_float2
-#endif
-#ifdef make_float3
-#  undef make_float3
-#endif
-#ifdef make_float4
-#  undef make_float4
-#endif
-#ifdef make_int2
-#  undef make_int2
-#endif
-#ifdef make_int3
-#  undef make_int3
-#endif
-#ifdef make_int4
-#  undef make_int4
-#endif
-#ifdef make_uchar4
-#  undef make_uchar4
-#endif
+ccl_device_forceinline float2 make_float2(const float x, const float y)
+{
+  return float2(x, y);
+}
 
-#define make_float2(x, y) float2(x, y)
-#define make_float3(x, y, z) float3(x, y, z)
-#define make_float4(x, y, z, w) float4(x, y, z, w)
-#define make_int2(x, y) int2(x, y)
-#define make_int3(x, y, z) int3(x, y, z)
-#define make_int4(x, y, z, w) int4(x, y, z, w)
-#define make_uchar4(x, y, z, w) uchar4(x, y, z, w)
+ccl_device_forceinline float3 make_float3(const float x, const float y, const float z)
+{
+  return float3(x, y, z);
+}
+
+ccl_device_forceinline float4 make_float4(const float x,
+                                          const float y,
+                                          const float z,
+                                          const float w)
+{
+  return float4(x, y, z, w);
+}
+
+ccl_device_forceinline int2 make_int2(const int x, const int y)
+{
+  return int2(x, y);
+}
+
+ccl_device_forceinline int3 make_int3(const int x, const int y, const int z)
+{
+  return int3(x, y, z);
+}
+
+ccl_device_forceinline int4 make_int4(const int x, const int y, const int z, const int w)
+{
+  return int4(x, y, z, w);
+}
+
+ccl_device_forceinline uchar4 make_uchar4(const uchar x,
+                                          const uchar y,
+                                          const uchar z,
+                                          const uchar w)
+{
+  return uchar4(x, y, z, w);
+}
 
 /* Math functions */
 
@@ -262,17 +275,39 @@ void kernel_gpu_##name::run(thread MetalKernelContext& context, \
 
 #  if defined(__METALRT_MOTION__)
 #    define METALRT_TAGS instancing, instance_motion, primitive_motion
+#    define METALRT_BLAS_TAGS , primitive_motion
 #  else
 #    define METALRT_TAGS instancing
+#    define METALRT_BLAS_TAGS
 #  endif /* __METALRT_MOTION__ */
 
 typedef acceleration_structure<METALRT_TAGS> metalrt_as_type;
-typedef intersection_function_table<triangle_data, METALRT_TAGS> metalrt_ift_type;
-typedef metal::raytracing::intersector<triangle_data, METALRT_TAGS> metalrt_intersector_type;
+typedef intersection_function_table<triangle_data, curve_data, METALRT_TAGS, extended_limits>
+    metalrt_ift_type;
+typedef metal::raytracing::intersector<triangle_data, curve_data, METALRT_TAGS, extended_limits>
+    metalrt_intersector_type;
+#  if defined(__METALRT_MOTION__)
+typedef acceleration_structure<primitive_motion> metalrt_blas_as_type;
+typedef intersection_function_table<triangle_data, curve_data, primitive_motion, extended_limits>
+    metalrt_blas_ift_type;
+typedef metal::raytracing::
+    intersector<triangle_data, curve_data, primitive_motion, extended_limits>
+        metalrt_blas_intersector_type;
+#  else
+typedef acceleration_structure<> metalrt_blas_as_type;
+typedef intersection_function_table<triangle_data, curve_data, extended_limits>
+    metalrt_blas_ift_type;
+typedef metal::raytracing::intersector<triangle_data, curve_data, extended_limits>
+    metalrt_blas_intersector_type;
+#  endif
 
 #endif /* __METALRT__ */
 
 /* texture bindings and sampler setup */
+
+struct Buffer1DParamsMetal {
+  device float *buf;
+};
 
 struct Texture2DParamsMetal {
   texture2d<float, access::sample> tex;
@@ -281,15 +316,25 @@ struct Texture3DParamsMetal {
   texture3d<float, access::sample> tex;
 };
 
+#ifdef __METALRT__
+struct MetalRTBlasWrapper {
+  metalrt_blas_as_type blas;
+};
+#endif
+
 struct MetalAncillaries {
   device Texture2DParamsMetal *textures_2d;
   device Texture3DParamsMetal *textures_3d;
+  device Buffer1DParamsMetal *buffers;
 
 #ifdef __METALRT__
   metalrt_as_type accel_struct;
   metalrt_ift_type ift_default;
   metalrt_ift_type ift_shadow;
+  metalrt_ift_type ift_volume;
   metalrt_ift_type ift_local;
+  metalrt_blas_ift_type ift_local_prim;
+  constant MetalRTBlasWrapper *blas_accel_structs;
 #endif
 };
 
@@ -300,10 +345,12 @@ enum SamplerType {
   SamplerFilterNearest_AddressRepeat,
   SamplerFilterNearest_AddressClampEdge,
   SamplerFilterNearest_AddressClampZero,
+  SamplerFilterNearest_AddressMirroredRepeat,
 
   SamplerFilterLinear_AddressRepeat,
   SamplerFilterLinear_AddressClampEdge,
   SamplerFilterLinear_AddressClampZero,
+  SamplerFilterLinear_AddressMirroredRepeat,
 
   SamplerCount
 };
@@ -312,7 +359,9 @@ constant constexpr array<sampler, SamplerCount> metal_samplers = {
     sampler(address::repeat, filter::nearest),
     sampler(address::clamp_to_edge, filter::nearest),
     sampler(address::clamp_to_zero, filter::nearest),
+    sampler(address::mirrored_repeat, filter::nearest),
     sampler(address::repeat, filter::linear),
     sampler(address::clamp_to_edge, filter::linear),
     sampler(address::clamp_to_zero, filter::linear),
+    sampler(address::mirrored_repeat, filter::linear),
 };

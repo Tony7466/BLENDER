@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -22,7 +23,7 @@ class BoxMaskOperation : public MultiThreadedOperation {
   float aspect_ratio_;
   int mask_type_;
 
-  NodeBoxMask *data_;
+  const NodeBoxMask *data_;
 
  public:
   BoxMaskOperation();
@@ -42,7 +43,7 @@ class BoxMaskOperation : public MultiThreadedOperation {
    */
   void deinit_execution() override;
 
-  void set_data(NodeBoxMask *data)
+  void set_data(const NodeBoxMask *data)
   {
     data_ = data;
   }

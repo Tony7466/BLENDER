@@ -1,10 +1,8 @@
+/* SPDX-FileCopyrightText: 2018-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
-
-uniform sampler2D blueNoise;
-uniform vec3 offsets;
-
-out vec4 FragColor;
 
 void main(void)
 {

@@ -1,10 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2012 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ChannelMatteNode.h"
 #include "COM_ChannelMatteOperation.h"
 #include "COM_ConvertOperation.h"
 #include "COM_SetAlphaMultiplyOperation.h"
+
+#include "BLI_math_color.h"
 
 namespace blender::compositor {
 
@@ -16,14 +19,14 @@ ChannelMatteNode::ChannelMatteNode(bNode *editor_node) : Node(editor_node)
 void ChannelMatteNode::convert_to_operations(NodeConverter &converter,
                                              const CompositorContext & /*context*/) const
 {
-  bNode *node = this->get_bnode();
+  const bNode *node = this->get_bnode();
 
   NodeInput *input_socket_image = this->get_input_socket(0);
   NodeOutput *output_socket_image = this->get_output_socket(0);
   NodeOutput *output_socket_matte = this->get_output_socket(1);
 
   NodeOperation *convert = nullptr, *inv_convert = nullptr;
-  /* colorspace */
+  /* color-space */
   switch (node->custom1) {
     case CMP_NODE_CHANNEL_MATTE_CS_RGB:
       break;

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -11,7 +12,6 @@ namespace blender::compositor {
  * All this programs converts an input color to an output value.
  * it assumes we are in sRGB color space.
  */
-
 class MixBaseOperation : public MultiThreadedOperation {
  protected:
   struct PixelCursor {
@@ -136,6 +136,14 @@ class MixDarkenOperation : public MixBaseOperation {
 };
 
 class MixDifferenceOperation : public MixBaseOperation {
+ public:
+  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
+
+ protected:
+  void update_memory_buffer_row(PixelCursor &p) override;
+};
+
+class MixExclusionOperation : public MixBaseOperation {
  public:
   void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
 

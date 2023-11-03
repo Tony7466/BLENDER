@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -14,6 +15,8 @@
 #include "GPU_context.h"
 #include "GPU_init_exit.h"
 #include "gpu_shader_create_info_private.hh"
+
+#include "BLI_vector.hh"
 
 #include "CLG_log.h"
 
@@ -40,12 +43,36 @@ void ShaderBuilder::init()
 {
   CLG_init();
 
-  GHOST_GLSettings glSettings = {0};
-  ghost_system_ = GHOST_CreateSystem();
-  ghost_context_ = GHOST_CreateOpenGLContext(ghost_system_, glSettings);
-  GHOST_ActivateOpenGLContext(ghost_context_);
+  GHOST_GPUSettings gpuSettings = {0};
+  switch (GPU_backend_type_selection_get()) {
+#ifdef WITH_OPENGL_BACKEND
+    case GPU_BACKEND_OPENGL:
+      gpuSettings.context_type = GHOST_kDrawingContextTypeOpenGL;
+      break;
+#endif
 
-  gpu_context_ = GPU_context_create(nullptr);
+#ifdef WITH_METAL_BACKEND
+    case GPU_BACKEND_METAL:
+      gpuSettings.context_type = GHOST_kDrawingContextTypeMetal;
+      break;
+#endif
+
+#ifdef WITH_VULKAN_BACKEND
+    case GPU_BACKEND_VULKAN:
+      gpuSettings.context_type = GHOST_kDrawingContextTypeVulkan;
+      break;
+#endif
+
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+
+  ghost_system_ = GHOST_CreateSystemBackground();
+  ghost_context_ = GHOST_CreateGPUContext(ghost_system_, gpuSettings);
+  GHOST_ActivateGPUContext(ghost_context_);
+
+  gpu_context_ = GPU_context_create(nullptr, ghost_context_);
   GPU_init();
 }
 
@@ -55,7 +82,7 @@ void ShaderBuilder::exit()
 
   GPU_context_discard(gpu_context_);
 
-  GHOST_DisposeOpenGLContext(ghost_system_, ghost_context_);
+  GHOST_DisposeGPUContext(ghost_system_, ghost_context_);
   GHOST_DisposeSystem(ghost_system_);
 
   CLG_exit();
@@ -73,13 +100,40 @@ int main(int argc, const char *argv[])
 
   int exit_code = 0;
 
-  blender::gpu::shader_builder::ShaderBuilder builder;
-  builder.init();
-  if (!builder.bake_create_infos()) {
-    exit_code = 1;
-  }
-  builder.exit();
-  exit(exit_code);
+  struct NamedBackend {
+    std::string name;
+    eGPUBackendType backend;
+  };
 
+  blender::Vector<NamedBackend> backends_to_validate;
+#ifdef WITH_OPENGL_BACKEND
+  backends_to_validate.append({"OpenGL", GPU_BACKEND_OPENGL});
+#endif
+#ifdef WITH_METAL_BACKEND
+  backends_to_validate.append({"Metal", GPU_BACKEND_METAL});
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  backends_to_validate.append({"Vulkan", GPU_BACKEND_VULKAN});
+#endif
+  for (NamedBackend &backend : backends_to_validate) {
+    GPU_backend_type_selection_set(backend.backend);
+    if (!GPU_backend_supported()) {
+      printf("%s isn't supported on this platform. Shader compilation is skipped\n",
+             backend.name.c_str());
+      continue;
+    }
+    blender::gpu::shader_builder::ShaderBuilder builder;
+    builder.init();
+    if (!builder.bake_create_infos()) {
+      printf("Shader compilation failed for %s backend\n", backend.name.c_str());
+      exit_code = 1;
+    }
+    else {
+      printf("%s backend shader compilation succeeded.\n", backend.name.c_str());
+    }
+    builder.exit();
+  }
+
+  exit(exit_code);
   return exit_code;
 }

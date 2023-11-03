@@ -1,36 +1,17 @@
+/* SPDX-FileCopyrightText: 2021-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Recombine Pass: Load separate convolution layer and composite with self slight defocus
  * convolution and in-focus fields.
  *
- * The halfres gather methods are fast but lack precision for small CoC areas. To fix this we
- * do a bruteforce gather to have a smooth transition between in-focus and defocus regions.
+ * The half-resolution gather methods are fast but lack precision for small CoC areas. To fix this
+ * we do a brute-force gather to have a smooth transition between in-focus and defocus regions.
  */
 
 #pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
 #pragma BLENDER_REQUIRE(effect_dof_lib.glsl)
-
-uniform sampler2D fullResColorBuffer;
-uniform sampler2D fullResDepthBuffer;
-
-uniform sampler2D bgColorBuffer;
-uniform sampler2D bgWeightBuffer;
-uniform sampler2D bgTileBuffer;
-
-uniform sampler2D fgColorBuffer;
-uniform sampler2D fgWeightBuffer;
-uniform sampler2D fgTileBuffer;
-
-uniform sampler2D holefillColorBuffer;
-uniform sampler2D holefillWeightBuffer;
-
-uniform sampler2D bokehLut;
-
-uniform float bokehMaxSize;
-
-in vec4 uvcoordsvar;
-
-out vec4 fragColor;
 
 void dof_slight_focus_gather(float radius, out vec4 out_color, out float out_weight)
 {
@@ -70,7 +51,7 @@ void dof_slight_focus_gather(float radius, out vec4 out_color, out float out_wei
         pair_data[i].coc = dof_coc_from_zdepth(depth);
         pair_data[i].dist = ring_dist;
 #ifdef DOF_BOKEH_TEXTURE
-        /* Contains subpixel distance to bokeh shape. */
+        /* Contains sub-pixel distance to bokeh shape. */
         pair_data[i].dist = texelFetch(bokehLut, sample_offset + DOF_MAX_SLIGHT_FOCUS_RADIUS, 0).r;
 #endif
         pair_data[i].coc = clamp(pair_data[i].coc, -bokehMaxSize, bokehMaxSize);
@@ -124,7 +105,7 @@ void dof_slight_focus_gather(float radius, out vec4 out_color, out float out_wei
   dof_gather_accumulate_resolve(total_sample_count, bg_accum, bg_col, bg_weight, unused_occlusion);
   dof_gather_accumulate_resolve(total_sample_count, fg_accum, fg_col, fg_weight, unused_occlusion);
 
-  /* Fix weighting issues on perfectly focus > slight focus transitionning areas. */
+  /* Fix weighting issues on perfectly focus > slight focus transitioning areas. */
   if (abs(center_data.coc) < 0.5) {
     bg_col = center_data.color;
     bg_weight = 1.0;

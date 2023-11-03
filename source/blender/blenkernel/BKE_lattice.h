@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -27,7 +28,6 @@ void BKE_lattice_resize(struct Lattice *lt, int u, int v, int w, struct Object *
 struct Lattice *BKE_lattice_add(struct Main *bmain, const char *name);
 void calc_lat_fudu(int flag, int res, float *r_fu, float *r_du);
 
-bool object_deform_mball(struct Object *ob, struct ListBase *dispbase);
 void outside_lattice(struct Lattice *lt);
 
 float (*BKE_lattice_vert_coords_alloc(const struct Lattice *lt, int *r_vert_len))[3];
@@ -77,7 +77,7 @@ extern void (*BKE_lattice_batch_cache_dirty_tag_cb)(struct Lattice *lt, int mode
 extern void (*BKE_lattice_batch_cache_free_cb)(struct Lattice *lt);
 
 /* -------------------------------------------------------------------- */
-/** \name Deform 3D Coordinates by Lattice (lattice_deform.c)
+/** \name Deform 3D Coordinates by Lattice (`lattice_deform.cc`)
  * \{ */
 
 struct LatticeDeformData *BKE_lattice_deform_data_create(

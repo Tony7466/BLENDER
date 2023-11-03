@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2004 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -9,13 +10,23 @@
 
 #include "bmesh.h"
 
+#ifdef __cplusplus
+#  include "BLI_string_ref.hh"
+
+/**
+ * \return Whether attributes with the given name are stored in special flags or fields in BMesh
+ * rather than in the regular custom data blocks.
+ */
+bool BM_attribute_stored_in_bmesh_builtin(const blender::StringRef name);
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct CustomData_MeshMasks;
 struct Main;
 struct Mesh;
-
-void BM_mesh_cd_flag_ensure(BMesh *bm, struct Mesh *mesh, char cd_flag);
-void BM_mesh_cd_flag_apply(BMesh *bm, char cd_flag);
-char BM_mesh_cd_flag_from_bmesh(BMesh *bm);
 
 struct BMeshFromMeshParams {
   bool calc_face_normal;
@@ -51,18 +62,18 @@ struct BMeshToMeshParams {
    *
    * This is needed when flushing changes from edit-mode into object mode,
    * so a second flush or edit-mode exit doesn't run with indices
-   * that have become invalid from updating the shape-key, see T71865.
+   * that have become invalid from updating the shape-key, see #71865.
    */
   bool update_shapekey_indices;
   /**
-   * Instead of copying the basis shape-key into the #MVert array,
-   * copy the #BMVert.co directly to #MVert.co (used for reading undo data).
+   * Instead of copying the basis shape-key into the position array,
+   * copy the #BMVert.co directly to the #Mesh position (used for reading undo data).
    */
   bool active_shapekey_to_mvert;
   struct CustomData_MeshMasks cd_mask_extra;
 };
+
 /**
- *
  * \param bmain: May be NULL in case \a calc_object_remap parameter option is not set.
  */
 void BM_mesh_bm_to_me(struct Main *bmain,
@@ -82,7 +93,6 @@ void BM_mesh_bm_to_me(struct Main *bmain,
  * - Ignore shape-keys.
  * - Ignore vertex-parents.
  * - Ignore selection history.
- * - Uses simpler method to calculate #ME_EDGEDRAW
  * - Uses #CD_MASK_DERIVEDMESH instead of #CD_MASK_MESH.
  *
  * \note Was `cddm_from_bmesh_ex` in 2.7x, removed `MFace` support.
@@ -91,3 +101,7 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm,
                                struct Mesh *me,
                                const struct CustomData_MeshMasks *cd_mask_extra)
     ATTR_NONNULL(1, 2);
+
+#ifdef __cplusplus
+}
+#endif

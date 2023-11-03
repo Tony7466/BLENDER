@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/bake.h"
 #include "scene/integrator.h"
@@ -16,11 +17,10 @@ CCL_NAMESPACE_BEGIN
 BakeManager::BakeManager()
 {
   need_update_ = true;
+  use_camera_ = false;
 }
 
-BakeManager::~BakeManager()
-{
-}
+BakeManager::~BakeManager() {}
 
 bool BakeManager::get_baking() const
 {
@@ -38,16 +38,27 @@ void BakeManager::set(Scene *scene, const std::string &object_name_)
   need_update_ = true;
 }
 
+void BakeManager::set_use_camera(const bool use_camera)
+{
+  if (use_camera_ != use_camera) {
+    use_camera_ = use_camera;
+    need_update_ = true;
+  }
+}
+
 void BakeManager::device_update(Device * /*device*/,
                                 DeviceScene *dscene,
                                 Scene *scene,
                                 Progress & /* progress */)
 {
-  if (!need_update())
+  if (!need_update()) {
     return;
+  }
 
   KernelBake *kbake = &dscene->data.bake;
   memset(kbake, 0, sizeof(*kbake));
+
+  kbake->use_camera = use_camera_;
 
   if (!object_name.empty()) {
     scoped_callback_timer timer([scene](double time) {
@@ -74,9 +85,7 @@ void BakeManager::device_update(Device * /*device*/,
   need_update_ = false;
 }
 
-void BakeManager::device_free(Device * /*device*/, DeviceScene * /*dscene*/)
-{
-}
+void BakeManager::device_free(Device * /*device*/, DeviceScene * /*dscene*/) {}
 
 void BakeManager::tag_update()
 {

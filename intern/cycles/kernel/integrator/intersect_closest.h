@@ -1,22 +1,34 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
 #include "kernel/camera/projection.h"
 
+#include "kernel/film/light_passes.h"
+
+#include "kernel/integrator/guiding.h"
 #include "kernel/integrator/path_state.h"
 #include "kernel/integrator/shadow_catcher.h"
 
-#include "kernel/light/light.h"
-
-#include "kernel/util/differential.h"
-
 #include "kernel/geom/geom.h"
+
+#include "kernel/light/light.h"
 
 #include "kernel/bvh/bvh.h"
 
 CCL_NAMESPACE_BEGIN
+
+ccl_device_forceinline bool integrator_intersect_skip_lights(KernelGlobals kg,
+                                                             IntegratorState state)
+{
+  /* When direct lighting is disabled for baking, we skip light sampling in
+   * integrate_surface_direct_light for the first bounce. Therefore, in order
+   * for MIS to be consistent, we also need to skip evaluating lights here. */
+  return (kernel_data.integrator.filter_closures & FILTER_CLOSURE_DIRECT_LIGHT) &&
+         (INTEGRATOR_STATE(state, path, bounce) == 1);
+}
 
 ccl_device_forceinline bool integrator_intersect_terminate(KernelGlobals kg,
                                                            IntegratorState state,
@@ -48,13 +60,15 @@ ccl_device_forceinline bool integrator_intersect_terminate(KernelGlobals kg,
    * surfaces in front of emission do we need to evaluate the shader, since we
    * perform MIS as part of indirect rays. */
   const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
-  const float probability = path_state_continuation_probability(kg, state, path_flag);
-  INTEGRATOR_STATE_WRITE(state, path, continuation_probability) = probability;
+  const float continuation_probability = path_state_continuation_probability(kg, state, path_flag);
+  INTEGRATOR_STATE_WRITE(state, path, continuation_probability) = continuation_probability;
 
-  if (probability != 1.0f) {
+  guiding_record_continuation_probability(kg, state, continuation_probability);
+
+  if (continuation_probability != 1.0f) {
     const float terminate = path_state_rng_1D(kg, &rng_state, PRNG_TERMINATE);
 
-    if (probability == 0.0f || terminate >= probability) {
+    if (continuation_probability == 0.0f || terminate >= continuation_probability) {
       if (shader_flags & SD_HAS_EMISSION) {
         /* Mark path to be terminated right after shader evaluation on the surface. */
         INTEGRATOR_STATE_WRITE(state, path, flag) |= PATH_RAY_TERMINATE_ON_NEXT_SURFACE;
@@ -87,7 +101,7 @@ ccl_device_forceinline void integrator_split_shadow_catcher(
     return;
   }
 
-  kernel_write_shadow_catcher_bounce_data(kg, state, render_buffer);
+  film_write_shadow_catcher_bounce_data(kg, state, render_buffer);
 
   /* Mark state as having done a shadow catcher split so that it stops contributing to
    * the shadow catcher matte pass, but keeps contributing to the combined pass. */
@@ -147,7 +161,7 @@ ccl_device_forceinline void integrator_intersect_next_kernel_after_shadow_catche
   /* Continue with shading shadow catcher surface. Same as integrator_split_shadow_catcher, but
    * using NEXT instead of INIT. */
   Intersection isect ccl_optional_struct_init;
-  integrator_state_read_isect(kg, state, &isect);
+  integrator_state_read_isect(state, &isect);
 
   const int shader = intersection_get_shader(kg, &isect);
   const int flags = kernel_data_fetch(shaders, shader).flags;
@@ -258,7 +272,12 @@ ccl_device_forceinline void integrator_intersect_next_kernel(
   }
   else {
     /* Nothing hit, continue with background kernel. */
-    integrator_path_next(kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
+    if (integrator_intersect_skip_lights(kg, state)) {
+      integrator_path_terminate(kg, state, current_kernel);
+    }
+    else {
+      integrator_path_next(kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
+    }
   }
 }
 
@@ -310,8 +329,12 @@ ccl_device_forceinline void integrator_intersect_next_kernel_after_volume(
   }
   else {
     /* Nothing hit, continue with background kernel. */
-    integrator_path_next(kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
-    return;
+    if (integrator_intersect_skip_lights(kg, state)) {
+      integrator_path_terminate(kg, state, current_kernel);
+    }
+    else {
+      integrator_path_next(kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
+    }
   }
 }
 
@@ -323,7 +346,7 @@ ccl_device void integrator_intersect_closest(KernelGlobals kg,
 
   /* Read ray from integrator state into local memory. */
   Ray ray ccl_optional_struct_init;
-  integrator_state_read_ray(kg, state, &ray);
+  integrator_state_read_ray(state, &ray);
   kernel_assert(ray.tmax != 0.0f);
 
   const uint visibility = path_state_ray_visibility(state);
@@ -350,6 +373,7 @@ ccl_device void integrator_intersect_closest(KernelGlobals kg,
   ray.self.prim = last_isect_prim;
   ray.self.light_object = OBJECT_NONE;
   ray.self.light_prim = PRIM_NONE;
+  ray.self.light = LAMP_NONE;
   bool hit = scene_intersect(kg, &ray, visibility, &isect);
 
   /* TODO: remove this and do it in the various intersection functions instead. */
@@ -376,15 +400,17 @@ ccl_device void integrator_intersect_closest(KernelGlobals kg,
 
     bool has_receiver_ancestor = INTEGRATOR_STATE(state, path, mnee) & PATH_MNEE_RECEIVER_ANCESTOR;
     INTEGRATOR_STATE_WRITE(state, path, mnee) &= ~PATH_MNEE_CULL_LIGHT_CONNECTION;
-    if (from_caustic_caster && has_receiver_ancestor)
+    if (from_caustic_caster && has_receiver_ancestor) {
       INTEGRATOR_STATE_WRITE(state, path, mnee) |= PATH_MNEE_CULL_LIGHT_CONNECTION;
-    if (from_caustic_receiver)
+    }
+    if (from_caustic_receiver) {
       INTEGRATOR_STATE_WRITE(state, path, mnee) |= PATH_MNEE_RECEIVER_ANCESTOR;
+    }
   }
 #endif /* __MNEE__ */
 
   /* Light intersection for MIS. */
-  if (kernel_data.integrator.use_lamp_mis) {
+  if (kernel_data.integrator.use_light_mis && !integrator_intersect_skip_lights(kg, state)) {
     /* NOTE: if we make lights visible to camera rays, we'll need to initialize
      * these in the path_state_init. */
     const int last_type = INTEGRATOR_STATE(state, isect, type);
@@ -394,7 +420,7 @@ ccl_device void integrator_intersect_closest(KernelGlobals kg,
   }
 
   /* Write intersection result into global integrator state memory. */
-  integrator_state_write_isect(kg, state, &isect);
+  integrator_state_write_isect(state, &isect);
 
   /* Setup up next kernel to be executed. */
   integrator_intersect_next_kernel<DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST>(

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_jitter_2d.h"
 
@@ -103,8 +104,8 @@ bool VectorBlurOperation::determine_depending_area_of_interest(rcti * /*input*/,
   return false;
 }
 
-void VectorBlurOperation::get_area_of_interest(const int UNUSED(input_idx),
-                                               const rcti &UNUSED(output_area),
+void VectorBlurOperation::get_area_of_interest(const int /*input_idx*/,
+                                               const rcti & /*output_area*/,
                                                rcti &r_input_area)
 {
   r_input_area = this->get_canvas();
@@ -168,7 +169,7 @@ void VectorBlurOperation::generate_vector_blur(float *data,
 /* -------------------------------------------------------------------- */
 /** \name Spans
  *
- * Duplicated logic from `zbuf.c`.
+ * Duplicated logic from `zbuf.cc`.
  * \{ */
 
 /** Span fill in method, is also used to localize data for Z-buffering. */
@@ -190,7 +191,10 @@ struct ZSpan {
   float clipcrop;
 };
 
-/* each zbuffer has coordinates transformed to local rect coordinates, so we can simply clip */
+/**
+ * Each Z-buffer has coordinates transformed to local rectangle coordinates,
+ * so we can simply clip.
+ */
 void zbuf_alloc_span(ZSpan *zspan, int rectx, int recty, float clipcrop)
 {
   memset(zspan, 0, sizeof(ZSpan));
@@ -332,7 +336,7 @@ struct DrawBufPixel {
 };
 
 /**
- * \note Near duplicate of `zspan_scanconvert` in `zbuf.c` with some minor adjustments.
+ * \note Near duplicate of `zspan_scanconvert` in `zbuf.cc` with some minor adjustments.
  */
 static void zbuf_fill_in_rgba(
     ZSpan *zspan, DrawBufPixel *col, float *v1, float *v2, float *v3, float *v4)
@@ -385,9 +389,9 @@ static void zbuf_fill_in_rgba(
 
   xx1 = (x0 * v1[0] + y0 * v1[1]) / z0 + v1[2];
 
-  zxd = -(double)x0 / (double)z0;
-  zyd = -(double)y0 / (double)z0;
-  zy0 = ((double)my2) * zyd + (double)xx1;
+  zxd = -double(x0) / double(z0);
+  zyd = -double(y0) / double(z0);
+  zy0 = double(my2) * zyd + double(xx1);
 
   /* start-offset in rect */
   rectx = zspan->rectx;
@@ -419,13 +423,13 @@ static void zbuf_fill_in_rgba(
     }
 
     if (sn2 >= sn1) {
-      zverg = (double)sn1 * zxd + zy0;
+      zverg = double(sn1) * zxd + zy0;
       rz = rectzofs + sn1;
       rp = rectpofs + sn1;
       x = sn2 - sn1;
 
       while (x >= 0) {
-        if (zverg < (double)*rz) {
+        if (zverg < double(*rz)) {
           *rz = zverg;
           *rp = *col;
         }
@@ -528,7 +532,7 @@ void antialias_tagbuf(int xsize, int ysize, char *rectmove)
     }
   }
 
-  /* last: pixels with 0 we fill in zbuffer, with 1 we skip for mask */
+  /* last: pixels with 0 we fill in Z-buffer, with 1 we skip for mask */
   for (y = 2; y < ysize; y++) {
     /* setup rows */
     row1 = rectmove + (y - 2) * xsize;
@@ -590,15 +594,15 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
   const float *dimg, *dz, *ro;
   float *rectvz, *dvz, *dvec1, *dvec2, *dz1, *dz2, *rectz;
   float *minvecbufrect = nullptr, *rectweight, *rw, *rectmax, *rm;
-  float maxspeedsq = (float)nbd->maxspeed * nbd->maxspeed;
+  float maxspeedsq = float(nbd->maxspeed) * nbd->maxspeed;
   int y, x, step, maxspeed = nbd->maxspeed, samples = nbd->samples;
   int tsktsk = 0;
   static int firsttime = 1;
   char *rectmove, *dm;
 
   zbuf_alloc_span(&zspan, xsize, ysize, 1.0f);
-  zspan.zmulx = ((float)xsize) / 2.0f;
-  zspan.zmuly = ((float)ysize) / 2.0f;
+  zspan.zmulx = float(xsize) / 2.0f;
+  zspan.zmuly = float(ysize) / 2.0f;
   zspan.zofsx = 0.0f;
   zspan.zofsy = 0.0f;
 
@@ -627,7 +631,7 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
 
   /* Min speed? then copy speed-buffer to recalculate speed vectors. */
   if (nbd->minspeed) {
-    float minspeed = (float)nbd->minspeed;
+    float minspeed = float(nbd->minspeed);
     float minspeedsq = minspeed * minspeed;
 
     minvecbufrect = (float *)MEM_callocN(sizeof(float[4]) * xsize * ysize, "minspeed buf");
@@ -652,7 +656,7 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
         }
       }
     }
-    SWAP(float *, minvecbufrect, vecbufrect);
+    std::swap(minvecbufrect, vecbufrect);
   }
 
   /* Make vertex buffer with averaged speed and Z-values. */
@@ -726,7 +730,7 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
         if (maxspeed) {
           float speedsq = dvz[0] * dvz[0] + dvz[1] * dvz[1];
           if (speedsq > maxspeedsq) {
-            speedsq = (float)maxspeed / sqrtf(speedsq);
+            speedsq = float(maxspeed) / sqrtf(speedsq);
             dvz[0] *= speedsq;
             dvz[1] *= speedsq;
           }
@@ -757,7 +761,7 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
   dm = rectmove;
   dvec1 = vecbufrect;
   for (x = xsize * ysize; x > 0; x--, dm++, dvec1 += 4) {
-    if ((dvec1[0] != 0.0f || dvec1[1] != 0.0f || dvec1[2] != 0.0f || dvec1[3] != 0.0f)) {
+    if (dvec1[0] != 0.0f || dvec1[1] != 0.0f || dvec1[2] != 0.0f || dvec1[3] != 0.0f) {
       *dm = 255;
     }
   }
@@ -776,7 +780,7 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
   /* accumulate */
   samples /= 2;
   for (step = 1; step <= samples; step++) {
-    float speedfac = 0.5f * nbd->fac * (float)step / (float)(samples + 1);
+    float speedfac = 0.5f * nbd->fac * float(step) / float(samples + 1);
     int side;
 
     for (side = 0; side < 2; side++) {
@@ -822,7 +826,8 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
 
       for (fy = -0.5f + jit[step & 255][0], y = 0; y < ysize; y++, fy += 1.0f) {
         for (fx = -0.5f + jit[step & 255][1], x = 0; x < xsize;
-             x++, fx += 1.0f, dimg += 4, dz1 += 4, dz2 += 4, dm++, dz++) {
+             x++, fx += 1.0f, dimg += 4, dz1 += 4, dz2 += 4, dm++, dz++)
+        {
           if (*dm > 1) {
             float jfx = fx + 0.5f;
             float jfy = fy + 0.5f;
@@ -864,7 +869,7 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
               col.alpha = 0.0f;
             }
             else {
-              col.alpha = ((float)*dm) / 255.0f;
+              col.alpha = float(*dm) / 255.0f;
             }
             col.colpoin = dimg;
 
@@ -882,7 +887,7 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
        * we don't know what is behind it so we don't do that. this hack
        * overestimates the contribution of foreground pixels but looks a
        * bit better without a sudden cutoff. */
-      blendfac = ((samples - step) / (float)samples);
+      blendfac = ((samples - step) / float(samples));
       /* Smooth-step to make it look a bit nicer as well. */
       blendfac = 3.0f * pow(blendfac, 2.0f) - 2.0f * pow(blendfac, 3.0f);
 

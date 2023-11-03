@@ -1,28 +1,32 @@
+# SPDX-FileCopyrightText: 2006 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
 
 set(INC
   .
   ../common
   ../../blenkernel
-  ../../blenlib
   ../../blenloader
+  ../../blentranslation
   ../../bmesh
   ../../depsgraph
   ../../editors/include
-  ../../makesdna
   ../../makesrna
   ../../windowmanager
   ../../../../intern/clog
-  ../../../../intern/guardedalloc
   ../../../../intern/utfconv
 )
 
 set(INC_SYS
   ${ALEMBIC_INCLUDE_DIRS}
-  ${BOOST_INCLUDE_DIR}
   ${OPENEXR_INCLUDE_DIRS}
 )
+
+if(WITH_BOOST)
+  list(APPEND INC_SYS
+    ${BOOST_INCLUDE_DIR}
+  )
+endif()
 
 set(SRC
   intern/abc_axis_conversion.cc
@@ -85,18 +89,22 @@ set(SRC
 
 set(LIB
   bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   bf_io_common
 
   ${ALEMBIC_LIBRARIES}
   ${OPENEXR_LIBRARIES}
 )
 
-list(APPEND LIB
-  ${BOOST_LIBRARIES}
-)
+if(WITH_BOOST)
+  list(APPEND LIB
+    ${BOOST_LIBRARIES}
+  )
+endif()
 
-blender_add_lib(bf_alembic "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+blender_add_lib(bf_io_alembic "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
 if(WITH_GTESTS)
   set(TEST_SRC
@@ -106,7 +114,7 @@ if(WITH_GTESTS)
   set(TEST_INC
   )
   set(TEST_LIB
-    bf_alembic
+    bf_io_alembic
   )
   include(GTestTesting)
   blender_add_test_lib(bf_io_alembic_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2018-2023 Blender Authors
+#
 # SPDX-License-Identifier: Apache-2.0
 
 """
@@ -72,7 +74,7 @@ class TriMesh:
     @staticmethod
     def _tri_copy_from_object(ob):
         import bmesh
-        assert(ob.type in OBJECTS_TYPES_MESH_COMPATIBLE)
+        assert ob.type in OBJECTS_TYPES_MESH_COMPATIBLE
         bm = bmesh.new()
         bm.from_mesh(ob.to_mesh())
         bmesh.ops.triangulate(bm, faces=bm.faces)
@@ -121,9 +123,13 @@ def object_child_map(objects):
 
 def mesh_data_lists_from_mesh(me, material_colors):
     me_loops = me.loops[:]
-    me_loops_color = me.attributes.active_color.data[:]
     me_verts = me.vertices[:]
     me_polys = me.polygons[:]
+
+    if me.attributes.active_color:
+        me_loops_color = me_loops_color_active.data[:]
+    else:
+        me_loops_color = None
 
     tris_data = []
 
@@ -138,21 +144,25 @@ def mesh_data_lists_from_mesh(me, material_colors):
         l_sta = p.loop_start
         l_len = p.loop_total
         loops_poly = me_loops[l_sta:l_sta + l_len]
-        color_poly = me_loops_color[l_sta:l_sta + l_len]
+        if me_loops_color is not None:
+            color_poly = me_loops_color[l_sta:l_sta + l_len]
         i0 = 0
         i1 = 1
 
         # we only write tris now
-        assert(len(loops_poly) == 3)
+        assert len(loops_poly) == 3
 
         for i2 in range(2, l_len):
             l0 = loops_poly[i0]
             l1 = loops_poly[i1]
             l2 = loops_poly[i2]
 
-            c0 = color_poly[i0]
-            c1 = color_poly[i1]
-            c2 = color_poly[i2]
+            if me_loops_color is not None:
+                c0 = color_poly[i0].color
+                c1 = color_poly[i1].color
+                c2 = color_poly[i2].color
+            else:
+                c0 = c1 = c2 = (1.0, 1.0, 1.0, 1.0)
 
             v0 = me_verts[l0.vertex_index]
             v1 = me_verts[l1.vertex_index]
@@ -186,7 +196,7 @@ def color_multiply_and_from_linear_to_srgb(base_color, vertex_color):
     The final color is the product between the base color and the vertex color.
     """
     import mathutils
-    color_linear = [c * b for c, b in zip(vertex_color.color, base_color)]
+    color_linear = [c * b for c, b in zip(vertex_color, base_color)]
     color_srgb = mathutils.Color(color_linear[:3]).from_scene_linear_to_srgb()
     return tuple(round(c * 255) for c in (*color_srgb, color_linear[3]))
 
@@ -217,7 +227,7 @@ def mesh_data_lists_from_objects(ob_parent, ob_children):
 def write_mesh_to_py(fh, ob, ob_children):
 
     def float_as_byte(f, axis_range):
-        assert(axis_range <= 255)
+        assert axis_range <= 255
         # -1..1 -> 0..255
         f = (f + 1.0) * 0.5
         f = round(f * axis_range)
@@ -238,7 +248,7 @@ def write_mesh_to_py(fh, ob, ob_children):
     if 0:
         # make as large as we can, keeping alignment
         def size_scale_up(size):
-            assert(size != 0)
+            assert size != 0
             while size * 2 <= 255:
                 size *= 2
             return size
@@ -342,7 +352,7 @@ def main():
         if name.rpartition(".")[2].isdigit():
             continue
 
-        if not ob_eval.data.attributes.active_color:
+        if (not hasattr(ob_eval.data, 'attributes')) or not ob_eval.data.attributes.active_color:
             print("Skipping:", name, "(no vertex colors)")
             continue
 

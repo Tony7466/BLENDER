@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -72,7 +74,7 @@ template<
      * The equality operator used to compare keys. By default it will simply compare keys using the
      * `==` operator.
      */
-    typename IsEqual = DefaultEquality,
+    typename IsEqual = DefaultEquality<Key>,
     /**
      * This is what will actually be stored in the hash table array. At a minimum a slot has to be
      * able to hold an array index and information about whether the slot is empty, occupied or
@@ -163,9 +165,7 @@ class VectorSet {
   {
   }
 
-  VectorSet(NoExceptConstructor, Allocator allocator = {}) : VectorSet(allocator)
-  {
-  }
+  VectorSet(NoExceptConstructor, Allocator allocator = {}) : VectorSet(allocator) {}
 
   VectorSet(Span<Key> keys, Allocator allocator = {}) : VectorSet(NoExceptConstructor(), allocator)
   {
@@ -349,6 +349,27 @@ class VectorSet {
   }
 
   /**
+   * Remove all values for which the given predicate is true and return the number or values
+   * removed. This may change the order of elements in the vector.
+   *
+   * This is similar to std::erase_if.
+   */
+  template<typename Predicate> int64_t remove_if(Predicate &&predicate)
+  {
+    const int64_t prev_size = this->size();
+    for (Slot &slot : slots_) {
+      if (slot.is_occupied()) {
+        const int64_t index = slot.index();
+        const Key &key = keys_[index];
+        if (predicate(key)) {
+          this->remove_key_internal(slot);
+        }
+      }
+    }
+    return prev_size - this->size();
+  }
+
+  /**
    * Delete and return a key from the set. This will remove the last element in the vector. The
    * order of the remaining elements in the set is not changed.
    */
@@ -358,7 +379,7 @@ class VectorSet {
   }
 
   /**
-   * Return the location of the key in the vector. It is assumed, that the key is in the vector
+   * Return the location of the key in the vector. It is assumed that the key is in the vector
    * set. If this is not necessarily the case, use `index_of_try`.
    */
   int64_t index_of(const Key &key) const
@@ -461,7 +482,7 @@ class VectorSet {
   /**
    * Print common statistics like size and collision count. This is useful for debugging purposes.
    */
-  void print_stats(StringRef name = "") const
+  void print_stats(const char *name) const
   {
     HashTableStats stats(*this, this->as_span());
     stats.print(name);
@@ -513,7 +534,7 @@ class VectorSet {
    */
   int64_t size_in_bytes() const
   {
-    return static_cast<int64_t>(sizeof(Slot) * slots_.size() + sizeof(Key) * usable_slots_);
+    return int64_t(sizeof(Slot) * slots_.size() + sizeof(Key) * usable_slots_);
   }
 
   /**
@@ -542,6 +563,15 @@ class VectorSet {
   }
 
   /**
+   * Removes all keys from the set and frees any allocated memory.
+   */
+  void clear_and_shrink()
+  {
+    std::destroy_at(this);
+    new (this) VectorSet(NoExceptConstructor{});
+  }
+
+  /**
    * Get the number of collisions that the probing strategy has to go through to find the key or
    * determine that it is not in the set.
    */
@@ -557,7 +587,7 @@ class VectorSet {
     max_load_factor_.compute_total_and_usable_slots(
         SlotArray::inline_buffer_capacity(), min_usable_slots, &total_slots, &usable_slots);
     BLI_assert(total_slots >= 1);
-    const uint64_t new_slot_mask = static_cast<uint64_t>(total_slots) - 1;
+    const uint64_t new_slot_mask = uint64_t(total_slots) - 1;
 
     /* Optimize the case when the set was empty beforehand. We can avoid some copies here. */
     if (this->size() == 0) {
@@ -659,7 +689,9 @@ class VectorSet {
     VECTOR_SET_SLOT_PROBING_BEGIN (hash, slot) {
       if (slot.is_empty()) {
         int64_t index = this->size();
-        new (keys_ + index) Key(std::forward<ForwardKey>(key));
+        Key *dst = keys_ + index;
+        new (dst) Key(std::forward<ForwardKey>(key));
+        BLI_assert(hash_(*dst) == hash);
         slot.occupy(index, hash);
         occupied_and_removed_slots_++;
         return;
@@ -675,7 +707,9 @@ class VectorSet {
     VECTOR_SET_SLOT_PROBING_BEGIN (hash, slot) {
       if (slot.is_empty()) {
         int64_t index = this->size();
-        new (keys_ + index) Key(std::forward<ForwardKey>(key));
+        Key *dst = keys_ + index;
+        new (dst) Key(std::forward<ForwardKey>(key));
+        BLI_assert(hash_(*dst) == hash);
         slot.occupy(index, hash);
         occupied_and_removed_slots_++;
         return true;
@@ -725,7 +759,9 @@ class VectorSet {
       }
       if (slot.is_empty()) {
         const int64_t index = this->size();
-        new (keys_ + index) Key(std::forward<ForwardKey>(key));
+        Key *dst = keys_ + index;
+        new (dst) Key(std::forward<ForwardKey>(key));
+        BLI_assert(hash_(*dst) == hash);
         slot.occupy(index, hash);
         occupied_and_removed_slots_++;
         return index;
@@ -839,7 +875,7 @@ class VectorSet {
   Key *allocate_keys_array(const int64_t size)
   {
     return static_cast<Key *>(
-        slots_.allocator().allocate(sizeof(Key) * static_cast<size_t>(size), alignof(Key), AT));
+        slots_.allocator().allocate(sizeof(Key) * size_t(size), alignof(Key), AT));
   }
 
   void deallocate_keys_array(Key *keys)
@@ -855,7 +891,7 @@ class VectorSet {
 template<typename Key,
          typename ProbingStrategy = DefaultProbingStrategy,
          typename Hash = DefaultHash<Key>,
-         typename IsEqual = DefaultEquality,
+         typename IsEqual = DefaultEquality<Key>,
          typename Slot = typename DefaultVectorSetSlot<Key>::type>
 using RawVectorSet = VectorSet<Key, ProbingStrategy, Hash, IsEqual, Slot, RawAllocator>;
 

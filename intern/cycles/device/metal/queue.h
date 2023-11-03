@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -23,8 +24,9 @@ class MetalDeviceQueue : public DeviceQueue {
   ~MetalDeviceQueue();
 
   virtual int num_concurrent_states(const size_t) const override;
-  virtual int num_concurrent_busy_states() const override;
+  virtual int num_concurrent_busy_states(const size_t) const override;
   virtual int num_sort_partition_elements() const override;
+  virtual bool supports_local_atomic_sort() const override;
 
   virtual void init_execution() override;
 

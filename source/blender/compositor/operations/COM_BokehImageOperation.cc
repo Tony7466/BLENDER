@@ -1,7 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_BokehImageOperation.h"
+
+#include "BLI_math_geom.h"
 
 namespace blender::compositor {
 
@@ -16,13 +19,13 @@ void BokehImageOperation::init_execution()
   center_[1] = get_height() / 2;
   inverse_rounding_ = 1.0f - data_->rounding;
   circular_distance_ = get_width() / 2;
-  flap_rad_ = (float)(M_PI * 2) / data_->flaps;
+  flap_rad_ = float(M_PI * 2) / data_->flaps;
   flap_rad_add_ = data_->angle;
   while (flap_rad_add_ < 0.0f) {
-    flap_rad_add_ += (float)(M_PI * 2.0);
+    flap_rad_add_ += float(M_PI * 2.0);
   }
-  while (flap_rad_add_ > (float)M_PI) {
-    flap_rad_add_ -= (float)(M_PI * 2.0);
+  while (flap_rad_add_ > float(M_PI)) {
+    flap_rad_add_ -= float(M_PI * 2.0);
   }
 }
 void BokehImageOperation::detemine_start_point_of_flap(float r[2], int flap_number, float distance)
@@ -43,8 +46,8 @@ float BokehImageOperation::is_inside_bokeh(float distance, float x, float y)
   point[1] = y;
 
   const float distance_to_center = len_v2v2(point, center_);
-  const float bearing = (atan2f(deltaX, deltaY) + (float)(M_PI * 2.0));
-  int flap_number = (int)((bearing - flap_rad_add_) / flap_rad_);
+  const float bearing = (atan2f(deltaX, deltaY) + float(M_PI * 2.0));
+  int flap_number = int((bearing - flap_rad_add_) / flap_rad_);
 
   detemine_start_point_of_flap(line_p1, flap_number, distance);
   detemine_start_point_of_flap(line_p2, flap_number + 1, distance);
@@ -56,12 +59,14 @@ float BokehImageOperation::is_inside_bokeh(float distance, float x, float y)
 
   const float catadioptric_distance_to_center = distance_rounding_to_center * data_->catadioptric;
   if (distance_rounding_to_center >= distance_to_center &&
-      catadioptric_distance_to_center <= distance_to_center) {
+      catadioptric_distance_to_center <= distance_to_center)
+  {
     if (distance_rounding_to_center - distance_to_center < 1.0f) {
       inside_bokeh = (distance_rounding_to_center - distance_to_center);
     }
     else if (data_->catadioptric != 0.0f &&
-             distance_to_center - catadioptric_distance_to_center < 1.0f) {
+             distance_to_center - catadioptric_distance_to_center < 1.0f)
+    {
       inside_bokeh = (distance_to_center - catadioptric_distance_to_center);
     }
     else {
@@ -96,7 +101,7 @@ void BokehImageOperation::execute_pixel_sampled(float output[4],
 
 void BokehImageOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                        const rcti &area,
-                                                       Span<MemoryBuffer *> UNUSED(inputs))
+                                                       Span<MemoryBuffer *> /*inputs*/)
 {
   const float shift = data_->lensshift;
   const float shift2 = shift / 2.0f;

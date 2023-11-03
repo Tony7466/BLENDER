@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -11,7 +13,9 @@
 #include "DNA_camera_types.h"
 #include "DNA_object_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_uvproject.h"
 
 typedef struct ProjCameraInfo {
@@ -129,7 +133,7 @@ ProjCameraInfo *BLI_uvproject_camera_info(Object *ob, float rotmat[4][4], float 
   uci.camsize = uci.do_persp ? tanf(uci.camangle) : camera->ortho_scale;
 
   /* account for scaled cameras */
-  copy_m4_m4(uci.caminv, ob->obmat);
+  copy_m4_m4(uci.caminv, ob->object_to_world);
   normalize_m4(uci.caminv);
 
   if (invert_m4(uci.caminv)) {

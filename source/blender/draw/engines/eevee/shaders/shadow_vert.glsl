@@ -1,11 +1,11 @@
+/* SPDX-FileCopyrightText: 2017-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_hair_lib.glsl)
 #pragma BLENDER_REQUIRE(surface_lib.glsl)
-
-in vec3 pos;
-in vec3 nor;
 
 void main()
 {
@@ -30,7 +30,7 @@ void main()
   vec3 world_pos = pos;
 #elif defined(POINTCLOUD_SHADER)
   pointcloud_get_pos_and_radius(pointPosition, pointRadius);
-  pointID = gl_VertexID;
+  pointID = pointcloud_get_point_id();
 #else
   vec3 world_pos = point_object_to_world(pos);
 #endif
@@ -73,7 +73,7 @@ int g_curves_attr_id = 0;
 int curves_attribute_element_id()
 {
   int id = hairStrandID;
-  if (drw_curves.is_point_attribute[g_curves_attr_id][0] != 0) {
+  if (drw_curves.is_point_attribute[g_curves_attr_id][0] != 0u) {
     id = hair_get_base_id();
   }
 
@@ -149,6 +149,10 @@ float attr_load_temperature_post(float attr)
   return attr;
 }
 vec4 attr_load_color_post(vec4 attr)
+{
+  return attr;
+}
+vec4 attr_load_uniform(vec4 attr, const uint attr_hash)
 {
   return attr;
 }

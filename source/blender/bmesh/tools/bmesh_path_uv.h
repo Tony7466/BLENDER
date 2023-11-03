@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -6,10 +8,14 @@
  * \ingroup bmesh
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct BMCalcPathUVParams {
   uint use_topology_distance : 1;
   uint use_step_face : 1;
-  uint cd_loop_uv_offset;
+  int cd_loop_uv_offset;
   float aspect_y;
 };
 
@@ -36,3 +42,7 @@ struct LinkNode *BM_mesh_calc_path_uv_face(BMesh *bm,
                                            bool (*filter_fn)(BMFace *, void *),
                                            void *user_data) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL(1, 2, 3, 5);
+
+#ifdef __cplusplus
+}
+#endif

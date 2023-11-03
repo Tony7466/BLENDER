@@ -1,30 +1,37 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
+  ../../asset_system
   ../../blenfont
   ../../blenkernel
-  ../../blenlib
+  ../../blenloader
   ../../blentranslation
   ../../compositor
   ../../depsgraph
   ../../draw
   ../../functions
+  ../../geometry
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../nodes
   ../../render
   ../../windowmanager
-  ../../../../intern/glew-mx
-  ../../../../intern/guardedalloc
+  ../../../../extern/fmtlib/include
+
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
+set(INC_SYS
+)
 
 set(SRC
+  add_menu_assets.cc
+  clipboard.cc
   drawnode.cc
   link_drag_search.cc
   node_add.cc
@@ -37,6 +44,7 @@ set(SRC
   node_ops.cc
   node_relationships.cc
   node_select.cc
+  node_shader_preview.cc
   node_templates.cc
   node_view.cc
   space_node.cc
@@ -46,12 +54,15 @@ set(SRC
 
 set(LIB
   bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
   bf_editor_screen
+  PRIVATE bf::intern::guardedalloc
+  extern_fmtlib
 )
 
-if(WITH_COMPOSITOR)
-  add_definitions(-DWITH_COMPOSITOR)
+if(WITH_COMPOSITOR_CPU)
+  add_definitions(-DWITH_COMPOSITOR_CPU)
 endif()
 
 if(WITH_OPENIMAGEDENOISE)
@@ -80,5 +91,5 @@ endif()
 
 blender_add_lib(bf_editor_space_node "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.h dna_type_offsets.h
 add_dependencies(bf_editor_space_node bf_rna)

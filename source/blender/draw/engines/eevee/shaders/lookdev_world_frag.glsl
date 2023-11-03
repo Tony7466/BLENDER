@@ -1,17 +1,11 @@
+/* SPDX-FileCopyrightText: 2017-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(lightprobe_lib.glsl)
 #pragma BLENDER_REQUIRE(surface_lib.glsl)
-
-uniform sampler2D studioLight;
-
-uniform float backgroundAlpha;
-uniform mat3 StudioLightMatrix;
-uniform float studioLightIntensity; /* Default 1.0; */
-uniform float studioLightBlur;      /* Default 0.0; */
-
-out vec4 FragColor;
 
 vec3 background_transform_to_world(vec3 viewvec)
 {

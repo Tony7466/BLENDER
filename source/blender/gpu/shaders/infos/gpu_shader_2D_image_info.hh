@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -16,8 +17,3 @@ GPU_SHADER_CREATE_INFO(gpu_shader_2D_image_common)
     .push_constant(Type::MAT4, "ModelViewProjectionMatrix")
     .sampler(0, ImageType::FLOAT_2D, "image")
     .vertex_source("gpu_shader_2D_image_vert.glsl");
-
-GPU_SHADER_CREATE_INFO(gpu_shader_2D_image)
-    .additional_info("gpu_shader_2D_image_common")
-    .fragment_source("gpu_shader_image_frag.glsl")
-    .do_static_compilation(true);

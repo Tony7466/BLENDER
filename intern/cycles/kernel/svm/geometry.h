@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -28,7 +29,7 @@ ccl_device_noinline void svm_node_geometry(KernelGlobals kg,
       break;
 #endif
     case NODE_GEOM_I:
-      data = sd->I;
+      data = sd->wi;
       break;
     case NODE_GEOM_Ng:
       data = sd->Ng;
@@ -54,7 +55,7 @@ ccl_device_noinline void svm_node_geometry_bump_dx(KernelGlobals kg,
 
   switch (type) {
     case NODE_GEOM_P:
-      data = sd->P + sd->dP.dx;
+      data = svm_node_bump_P_dx(sd);
       break;
     case NODE_GEOM_uv:
       data = make_float3(1.0f - sd->u - sd->du.dx - sd->v - sd->dv.dx, sd->u + sd->du.dx, 0.0f);
@@ -81,7 +82,7 @@ ccl_device_noinline void svm_node_geometry_bump_dy(KernelGlobals kg,
 
   switch (type) {
     case NODE_GEOM_P:
-      data = sd->P + sd->dP.dy;
+      data = svm_node_bump_P_dy(sd);
       break;
     case NODE_GEOM_uv:
       data = make_float3(1.0f - sd->u - sd->du.dy - sd->v - sd->dv.dy, sd->u + sd->du.dy, 0.0f);

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edarmature
@@ -6,6 +8,10 @@
  */
 
 #pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 //#define RIGID_DEFORM
 
@@ -51,6 +57,10 @@ void rigid_deform_iteration(void);
 void rigid_deform_end(int cancel);
 #endif
 
+#ifdef __cplusplus
+}
+#endif
+
 /* Harmonic Coordinates */
 
-/* ED_mesh_deform_bind_callback(...) defined in ED_armature.h */
+/* ED_mesh_deform_bind_callback(...) defined in ED_armature.hh */

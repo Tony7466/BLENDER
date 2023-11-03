@@ -1,9 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 
 #include "node_geometry_util.hh"
 
@@ -11,146 +13,139 @@ namespace blender::nodes::node_geo_input_mesh_edge_vertices_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Int>(N_("Vertex Index 1"))
+  b.add_output<decl::Int>("Vertex Index 1")
       .field_source()
-      .description(N_("The index of the first vertex in the edge"));
-  b.add_output<decl::Int>(N_("Vertex Index 2"))
+      .description("The index of the first vertex in the edge");
+  b.add_output<decl::Int>("Vertex Index 2")
       .field_source()
-      .description(N_("The index of the second vertex in the edge"));
-  b.add_output<decl::Vector>(N_("Position 1"))
+      .description("The index of the second vertex in the edge");
+  b.add_output<decl::Vector>("Position 1")
       .field_source()
-      .description(N_("The position of the first vertex in the edge"));
-  b.add_output<decl::Vector>(N_("Position 2"))
+      .description("The position of the first vertex in the edge");
+  b.add_output<decl::Vector>("Position 2")
       .field_source()
-      .description(N_("The position of the second vertex in the edge"));
+      .description("The position of the second vertex in the edge");
 }
 
-enum VertexNumber { VERTEX_ONE, VERTEX_TWO };
+enum class VertNumber { V1, V2 };
 
-static VArray<int> construct_edge_vertices_gvarray(const MeshComponent &component,
-                                                   const VertexNumber vertex,
-                                                   const eAttrDomain domain)
+static VArray<int> construct_edge_verts_gvarray(const Mesh &mesh,
+                                                const VertNumber vertex,
+                                                const eAttrDomain domain)
 {
-  const Mesh *mesh = component.get_for_read();
-  if (mesh == nullptr) {
-    return {};
-  }
+  const Span<int2> edges = mesh.edges();
   if (domain == ATTR_DOMAIN_EDGE) {
-    if (vertex == VERTEX_ONE) {
-      return VArray<int>::ForFunc(mesh->totedge,
-                                  [mesh](const int i) -> int { return mesh->medge[i].v1; });
+    if (vertex == VertNumber::V1) {
+      return VArray<int>::ForFunc(edges.size(), [edges](const int i) { return edges[i][0]; });
     }
-    return VArray<int>::ForFunc(mesh->totedge,
-                                [mesh](const int i) -> int { return mesh->medge[i].v2; });
+    return VArray<int>::ForFunc(edges.size(), [edges](const int i) { return edges[i][1]; });
   }
   return {};
 }
 
-class EdgeVerticesFieldInput final : public GeometryFieldInput {
+class EdgeVertsInput final : public bke::MeshFieldInput {
  private:
-  VertexNumber vertex_;
+  VertNumber vertex_;
 
  public:
-  EdgeVerticesFieldInput(VertexNumber vertex)
-      : GeometryFieldInput(CPPType::get<int>(), "Edge Vertices Field"), vertex_(vertex)
+  EdgeVertsInput(VertNumber vertex)
+      : bke::MeshFieldInput(CPPType::get<int>(), "Edge Vertices Field"), vertex_(vertex)
   {
     category_ = Category::Generated;
   }
 
-  GVArray get_varray_for_context(const GeometryComponent &component,
+  GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 IndexMask UNUSED(mask)) const final
+                                 const IndexMask & /*mask*/) const final
   {
-    if (component.type() == GEO_COMPONENT_TYPE_MESH) {
-      const MeshComponent &mesh_component = static_cast<const MeshComponent &>(component);
-      return construct_edge_vertices_gvarray(mesh_component, vertex_, domain);
-    }
-    return {};
+    return construct_edge_verts_gvarray(mesh, vertex_, domain);
   }
 
   uint64_t hash() const override
   {
-    return vertex_ == VERTEX_ONE ? 23847562893465 : 92384598734567;
+    return vertex_ == VertNumber::V1 ? 23847562893465 : 92384598734567;
   }
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
-    if (const EdgeVerticesFieldInput *other_field = dynamic_cast<const EdgeVerticesFieldInput *>(
-            &other)) {
+    if (const EdgeVertsInput *other_field = dynamic_cast<const EdgeVertsInput *>(&other)) {
       return vertex_ == other_field->vertex_;
     }
     return false;
   }
+
+  std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const override
+  {
+    return ATTR_DOMAIN_EDGE;
+  }
 };
 
-static VArray<float3> construct_edge_positions_gvarray(const MeshComponent &component,
-                                                       const VertexNumber vertex,
+static VArray<float3> construct_edge_positions_gvarray(const Mesh &mesh,
+                                                       const VertNumber vertex,
                                                        const eAttrDomain domain)
 {
-  const Mesh *mesh = component.get_for_read();
-  if (mesh == nullptr) {
-    return {};
-  }
+  const Span<float3> positions = mesh.vert_positions();
+  const Span<int2> edges = mesh.edges();
 
-  if (vertex == VERTEX_ONE) {
-    return component.attributes()->adapt_domain<float3>(
+  if (vertex == VertNumber::V1) {
+    return mesh.attributes().adapt_domain<float3>(
         VArray<float3>::ForFunc(
-            mesh->totedge,
-            [mesh](const int i) { return float3(mesh->mvert[mesh->medge[i].v1].co); }),
+            edges.size(), [positions, edges](const int i) { return positions[edges[i][0]]; }),
         ATTR_DOMAIN_EDGE,
         domain);
   }
-  return component.attributes()->adapt_domain<float3>(
-      VArray<float3>::ForFunc(
-          mesh->totedge,
-          [mesh](const int i) { return float3(mesh->mvert[mesh->medge[i].v2].co); }),
+  return mesh.attributes().adapt_domain<float3>(
+      VArray<float3>::ForFunc(edges.size(),
+                              [positions, edges](const int i) { return positions[edges[i][1]]; }),
       ATTR_DOMAIN_EDGE,
       domain);
 }
 
-class EdgePositionFieldInput final : public GeometryFieldInput {
+class EdgePositionFieldInput final : public bke::MeshFieldInput {
  private:
-  VertexNumber vertex_;
+  VertNumber vertex_;
 
  public:
-  EdgePositionFieldInput(VertexNumber vertex)
-      : GeometryFieldInput(CPPType::get<float3>(), "Edge Position Field"), vertex_(vertex)
+  EdgePositionFieldInput(VertNumber vertex)
+      : bke::MeshFieldInput(CPPType::get<float3>(), "Edge Position Field"), vertex_(vertex)
   {
     category_ = Category::Generated;
   }
 
-  GVArray get_varray_for_context(const GeometryComponent &component,
+  GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 IndexMask UNUSED(mask)) const final
+                                 const IndexMask & /*mask*/) const final
   {
-    if (component.type() == GEO_COMPONENT_TYPE_MESH) {
-      const MeshComponent &mesh_component = static_cast<const MeshComponent &>(component);
-      return construct_edge_positions_gvarray(mesh_component, vertex_, domain);
-    }
-    return {};
+    return construct_edge_positions_gvarray(mesh, vertex_, domain);
   }
 
   uint64_t hash() const override
   {
-    return vertex_ == VERTEX_ONE ? 987456978362 : 374587679866;
+    return vertex_ == VertNumber::V1 ? 987456978362 : 374587679866;
   }
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
     if (const EdgePositionFieldInput *other_field = dynamic_cast<const EdgePositionFieldInput *>(
-            &other)) {
+            &other))
+    {
       return vertex_ == other_field->vertex_;
     }
     return false;
+  }
+
+  std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const override
+  {
+    return ATTR_DOMAIN_EDGE;
   }
 };
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  Field<int> vertex_field_1{std::make_shared<EdgeVerticesFieldInput>(VERTEX_ONE)};
-  Field<int> vertex_field_2{std::make_shared<EdgeVerticesFieldInput>(VERTEX_TWO)};
-  Field<float3> position_field_1{std::make_shared<EdgePositionFieldInput>(VERTEX_ONE)};
-  Field<float3> position_field_2{std::make_shared<EdgePositionFieldInput>(VERTEX_TWO)};
+  Field<int> vertex_field_1{std::make_shared<EdgeVertsInput>(VertNumber::V1)};
+  Field<int> vertex_field_2{std::make_shared<EdgeVertsInput>(VertNumber::V2)};
+  Field<float3> position_field_1{std::make_shared<EdgePositionFieldInput>(VertNumber::V1)};
+  Field<float3> position_field_2{std::make_shared<EdgePositionFieldInput>(VertNumber::V2)};
 
   params.set_output("Vertex Index 1", std::move(vertex_field_1));
   params.set_output("Vertex Index 2", std::move(vertex_field_2));
@@ -158,15 +153,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Position 2", std::move(position_field_2));
 }
 
-}  // namespace blender::nodes::node_geo_input_mesh_edge_vertices_cc
-
-void register_node_type_geo_input_mesh_edge_vertices()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_input_mesh_edge_vertices_cc;
-
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_INPUT_MESH_EDGE_VERTICES, "Edge Vertices", NODE_CLASS_INPUT);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_input_mesh_edge_vertices_cc

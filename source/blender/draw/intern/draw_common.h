@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -88,6 +89,14 @@ void DRW_curves_ubos_pool_free(struct CurvesUniformBufPool *pool);
 void DRW_curves_update(void);
 void DRW_curves_free(void);
 
+/* draw_pointcloud.cc */
+
+struct DRWShadingGroup *DRW_shgroup_pointcloud_create_sub(struct Object *object,
+                                                          struct DRWShadingGroup *shgrp_parent,
+                                                          struct GPUMaterial *gpu_material);
+void DRW_pointcloud_init(void);
+void DRW_pointcloud_free(void);
+
 /* draw_volume.cc */
 
 /**
@@ -104,7 +113,7 @@ void DRW_volume_init(struct DRWData *drw_data);
 void DRW_volume_ubos_pool_free(void *pool);
 void DRW_volume_free(void);
 
-/* draw_fluid.c */
+/* `draw_fluid.cc` */
 
 /* Fluid simulation. */
 void DRW_smoke_ensure(struct FluidModifierData *fmd, int highres);
@@ -118,7 +127,7 @@ void DRW_smoke_free(struct FluidModifierData *fmd);
 void DRW_smoke_init(struct DRWData *drw_data);
 void DRW_smoke_exit(struct DRWData *drw_data);
 
-/* draw_common.c */
+/* `draw_common.cc` */
 
 struct DRW_Global {
   /** If needed, contains all global/Theme colors
@@ -132,6 +141,7 @@ struct DRW_Global {
   struct GPUTexture *weight_ramp;
 
   struct GPUUniformBuf *view_ubo;
+  struct GPUUniformBuf *clipping_ubo;
 };
 extern struct DRW_Global G_draw;
 

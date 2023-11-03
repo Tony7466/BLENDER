@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,8 +12,8 @@
 #include "util/time.h"
 #include "util/version.h"
 
-#include <GL/glew.h>
 #include <SDL.h>
+#include <epoxy/gl.h>
 
 CCL_NAMESPACE_BEGIN
 
@@ -173,8 +174,9 @@ static void window_display()
 
   glRasterPos3f(0, 0, 0);
 
-  if (V.display)
+  if (V.display) {
     V.display();
+  }
 
   SDL_GL_SwapWindow(V.window);
   window_opengl_context_disable();
@@ -194,12 +196,14 @@ static void window_reshape(int width, int height)
 
 static bool window_keyboard(unsigned char key)
 {
-  if (V.keyboard)
+  if (V.keyboard) {
     V.keyboard(key);
+  }
 
   if (key == 'q') {
-    if (V.exitf)
+    if (V.exitf) {
       V.exitf();
+    }
     return true;
   }
 
@@ -236,8 +240,9 @@ static void window_motion(int x, int y)
   const int distX = x - V.mouseX;
   const int distY = y - V.mouseY;
 
-  if (V.motion)
+  if (V.motion) {
     V.motion(distX, distY, but);
+  }
 
   V.mouseX = x;
   V.mouseY = y;
@@ -294,7 +299,6 @@ void window_main_loop(const char *title,
   SDL_RaiseWindow(V.window);
 
   V.gl_context = SDL_GL_CreateContext(V.window);
-  glewInit();
   SDL_GL_MakeCurrent(V.window, nullptr);
 
   window_reshape(width, height);
@@ -315,7 +319,8 @@ void window_main_loop(const char *title,
       }
       else if (event.type == SDL_WINDOWEVENT) {
         if (event.window.event == SDL_WINDOWEVENT_RESIZED ||
-            event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+            event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+        {
           window_reshape(event.window.data1, event.window.data2);
         }
       }

@@ -1,5 +1,6 @@
-
-#pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
+/* SPDX-FileCopyrightText: 2017-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /*
  * Based on:
@@ -10,27 +11,14 @@
  * Next Generation Post Processing in Call of Duty Advanced Warfare
  * by Jorge Jimenez
  */
-uniform sampler2D colorBuffer;
-uniform depth2D depthBuffer;
-uniform sampler2D velocityBuffer;
-uniform sampler2D tileMaxBuffer;
+
+#pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
 
 #define KERNEL 8
-
-uniform float depthScale;
-uniform ivec2 tileBufferSize;
-uniform vec2 viewportSize;
-uniform vec2 viewportSizeInv;
-uniform bool isPerspective;
-uniform vec2 nearFar; /* Near & far view depths values */
 
 #define linear_depth(z) \
   ((isPerspective) ? (nearFar.x * nearFar.y) / (z * (nearFar.x - nearFar.y) + nearFar.y) : \
                      z * (nearFar.y - nearFar.x) + nearFar.x) /* Only true for camera view! */
-
-in vec4 uvcoordsvar;
-
-out vec4 fragColor;
 
 #define saturate(a) clamp(a, 0.0, 1.0)
 
@@ -70,9 +58,9 @@ vec2 sample_weights(float center_depth,
 vec4 decode_velocity(vec4 velocity)
 {
   velocity = velocity * 2.0 - 1.0;
-  /* Needed to match cycles. Can't find why... (fclem) */
+  /* NOTE(@fclem): Needed to match cycles. Can't find why. */
   velocity *= 0.5;
-  /* Transpose to pixelspace. */
+  /* Transpose to pixel-space. */
   velocity *= viewportSize.xyxy;
   return velocity;
 }

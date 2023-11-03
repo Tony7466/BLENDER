@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnode
@@ -15,21 +16,22 @@
 #include "BKE_context.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
-#include "BKE_screen.h"
+#include "BKE_node.hh"
+#include "BKE_node_runtime.hh"
+#include "BKE_screen.hh"
 
-#include "ED_image.h"
-#include "ED_node.h" /* own include */
-#include "ED_screen.h"
-#include "ED_space_api.h"
+#include "ED_image.hh"
+#include "ED_node.hh" /* own include */
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -59,9 +61,9 @@ bool space_node_view_flag(
   int tot = 0;
   bool has_frame = false;
   if (snode.edittree) {
-    LISTBASE_FOREACH (const bNode *, node, &snode.edittree->nodes) {
+    for (const bNode *node : snode.edittree->all_nodes()) {
       if ((node->flag & node_flag) == node_flag) {
-        BLI_rctf_union(&cur_new, &node->totr);
+        BLI_rctf_union(&cur_new, &node->runtime->totr);
         tot++;
 
         if (node->type == NODE_FRAME) {
@@ -177,7 +179,7 @@ void NODE_OT_view_selected(wmOperatorType *ot)
  * \{ */
 
 struct NodeViewMove {
-  int mvalo[2];
+  int2 mvalo;
   int xmin, ymin, xmax, ymax;
   /** Original Offset for cancel. */
   float xof_orig, yof_orig;
@@ -192,10 +194,10 @@ static int snode_bg_viewmove_modal(bContext *C, wmOperator *op, const wmEvent *e
   switch (event->type) {
     case MOUSEMOVE:
 
-      snode->xof -= (nvm->mvalo[0] - event->mval[0]);
-      snode->yof -= (nvm->mvalo[1] - event->mval[1]);
-      nvm->mvalo[0] = event->mval[0];
-      nvm->mvalo[1] = event->mval[1];
+      snode->xof -= (nvm->mvalo.x - event->mval[0]);
+      snode->yof -= (nvm->mvalo.y - event->mval[1]);
+      nvm->mvalo.x = event->mval[0];
+      nvm->mvalo.y = event->mval[1];
 
       /* prevent dragging image outside of the window and losing it! */
       CLAMP(snode->xof, nvm->xmin, nvm->xmax);
@@ -240,7 +242,7 @@ static int snode_bg_viewmove_invoke(bContext *C, wmOperator *op, const wmEvent *
   NodeViewMove *nvm;
   Image *ima;
   ImBuf *ibuf;
-  const float pad = 32.0f; /* better be bigger than scrollbars */
+  const float pad = 32.0f; /* Better be bigger than scroll-bars. */
 
   void *lock;
 
@@ -252,10 +254,10 @@ static int snode_bg_viewmove_invoke(bContext *C, wmOperator *op, const wmEvent *
     return OPERATOR_CANCELLED;
   }
 
-  nvm = MEM_cnew<NodeViewMove>("NodeViewMove struct");
+  nvm = MEM_cnew<NodeViewMove>(__func__);
   op->customdata = nvm;
-  nvm->mvalo[0] = event->mval[0];
-  nvm->mvalo[1] = event->mval[1];
+  nvm->mvalo.x = event->mval[0];
+  nvm->mvalo.y = event->mval[1];
 
   nvm->xmin = -(region->winx / 2) - (ibuf->x * (0.5f * snode->zoom)) + pad;
   nvm->xmax = (region->winx / 2) + (ibuf->x * (0.5f * snode->zoom)) - pad;
@@ -273,7 +275,7 @@ static int snode_bg_viewmove_invoke(bContext *C, wmOperator *op, const wmEvent *
   return OPERATOR_RUNNING_MODAL;
 }
 
-static void snode_bg_viewmove_cancel(bContext *UNUSED(C), wmOperator *op)
+static void snode_bg_viewmove_cancel(bContext * /*C*/, wmOperator *op)
 {
   MEM_freeN(op->customdata);
   op->customdata = nullptr;
@@ -341,7 +343,7 @@ void NODE_OT_backimage_zoom(wmOperatorType *ot)
 /** \name Background Image Fit
  * \{ */
 
-static int backimage_fit_exec(bContext *C, wmOperator *UNUSED(op))
+static int backimage_fit_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
   SpaceNode *snode = CTX_wm_space_node(C);
@@ -369,7 +371,7 @@ static int backimage_fit_exec(bContext *C, wmOperator *UNUSED(op))
 
   BKE_image_release_ibuf(ima, ibuf, lock);
 
-  snode->zoom *= min_ff(facx, facy) * U.dpi_fac;
+  snode->zoom *= min_ff(facx, facy) * UI_SCALE_FAC;
 
   snode->xof = 0;
   snode->yof = 0;
@@ -413,12 +415,6 @@ struct ImageSampleInfo {
   float colf[4];
   float linearcol[4];
 
-  int z;
-  float zf;
-
-  int *zp;
-  float *zfp;
-
   int draw;
   int color_manage;
 };
@@ -438,16 +434,14 @@ static void sample_draw(const bContext *C, ARegion *region, void *arg_info)
                        info->y,
                        info->col,
                        info->colf,
-                       info->linearcol,
-                       info->zp,
-                       info->zfp);
+                       info->linearcol);
   }
 }
 
 }  // namespace blender::ed::space_node
 
 bool ED_space_node_get_position(
-    Main *bmain, SpaceNode *snode, struct ARegion *region, const int mval[2], float fpos[2])
+    Main *bmain, SpaceNode *snode, ARegion *region, const int mval[2], float fpos[2])
 {
   if (!ED_node_is_compositor(snode) || (snode->flag & SNODE_BACKDRAW) == 0) {
     return false;
@@ -464,9 +458,9 @@ bool ED_space_node_get_position(
   /* map the mouse coords to the backdrop image space */
   float bufx = ibuf->x * snode->zoom;
   float bufy = ibuf->y * snode->zoom;
-  fpos[0] = (bufx > 0.0f ? ((float)mval[0] - 0.5f * region->winx - snode->xof) / bufx + 0.5f :
+  fpos[0] = (bufx > 0.0f ? (float(mval[0]) - 0.5f * region->winx - snode->xof) / bufx + 0.5f :
                            0.0f);
-  fpos[1] = (bufy > 0.0f ? ((float)mval[1] - 0.5f * region->winy - snode->yof) / bufy + 0.5f :
+  fpos[1] = (bufy > 0.0f ? (float(mval[1]) - 0.5f * region->winy - snode->yof) / bufy + 0.5f :
                            0.0f);
 
   BKE_image_release_ibuf(ima, ibuf, lock);
@@ -498,27 +492,27 @@ bool ED_space_node_color_sample(
   /* map the mouse coords to the backdrop image space */
   bufx = ibuf->x * snode->zoom;
   bufy = ibuf->y * snode->zoom;
-  fx = (bufx > 0.0f ? ((float)mval[0] - 0.5f * region->winx - snode->xof) / bufx + 0.5f : 0.0f);
-  fy = (bufy > 0.0f ? ((float)mval[1] - 0.5f * region->winy - snode->yof) / bufy + 0.5f : 0.0f);
+  fx = (bufx > 0.0f ? (float(mval[0]) - 0.5f * region->winx - snode->xof) / bufx + 0.5f : 0.0f);
+  fy = (bufy > 0.0f ? (float(mval[1]) - 0.5f * region->winy - snode->yof) / bufy + 0.5f : 0.0f);
 
   if (fx >= 0.0f && fy >= 0.0f && fx < 1.0f && fy < 1.0f) {
     const float *fp;
     uchar *cp;
-    int x = (int)(fx * ibuf->x), y = (int)(fy * ibuf->y);
+    int x = int(fx * ibuf->x), y = int(fy * ibuf->y);
 
     CLAMP(x, 0, ibuf->x - 1);
     CLAMP(y, 0, ibuf->y - 1);
 
-    if (ibuf->rect_float) {
-      fp = (ibuf->rect_float + (ibuf->channels) * (y * ibuf->x + x));
+    if (ibuf->float_buffer.data) {
+      fp = (ibuf->float_buffer.data + (ibuf->channels) * (y * ibuf->x + x));
       /* #IB_PROFILE_NONE is default but in fact its linear. */
       copy_v3_v3(r_col, fp);
       ret = true;
     }
-    else if (ibuf->rect) {
-      cp = (uchar *)(ibuf->rect + y * ibuf->x + x);
+    else if (ibuf->byte_buffer.data) {
+      cp = ibuf->byte_buffer.data + 4 * (y * ibuf->x + x);
       rgb_uchar_to_float(r_col, cp);
-      IMB_colormanagement_colorspace_to_scene_linear_v3(r_col, ibuf->rect_colorspace);
+      IMB_colormanagement_colorspace_to_scene_linear_v3(r_col, ibuf->byte_buffer.colorspace);
       ret = true;
     }
   }
@@ -548,22 +542,22 @@ static void sample_apply(bContext *C, wmOperator *op, const wmEvent *event)
     return;
   }
 
-  if (!ibuf->rect) {
+  if (!ibuf->byte_buffer.data) {
     IMB_rect_from_float(ibuf);
   }
 
   /* map the mouse coords to the backdrop image space */
   bufx = ibuf->x * snode->zoom;
   bufy = ibuf->y * snode->zoom;
-  fx = (bufx > 0.0f ? ((float)event->mval[0] - 0.5f * region->winx - snode->xof) / bufx + 0.5f :
+  fx = (bufx > 0.0f ? (float(event->mval[0]) - 0.5f * region->winx - snode->xof) / bufx + 0.5f :
                       0.0f);
-  fy = (bufy > 0.0f ? ((float)event->mval[1] - 0.5f * region->winy - snode->yof) / bufy + 0.5f :
+  fy = (bufy > 0.0f ? (float(event->mval[1]) - 0.5f * region->winy - snode->yof) / bufy + 0.5f :
                       0.0f);
 
   if (fx >= 0.0f && fy >= 0.0f && fx < 1.0f && fy < 1.0f) {
     const float *fp;
     uchar *cp;
-    int x = (int)(fx * ibuf->x), y = (int)(fy * ibuf->y);
+    int x = int(fx * ibuf->x), y = int(fy * ibuf->y);
 
     CLAMP(x, 0, ibuf->x - 1);
     CLAMP(y, 0, ibuf->y - 1);
@@ -573,30 +567,27 @@ static void sample_apply(bContext *C, wmOperator *op, const wmEvent *event)
     info->draw = 1;
     info->channels = ibuf->channels;
 
-    info->zp = nullptr;
-    info->zfp = nullptr;
-
-    if (ibuf->rect) {
-      cp = (uchar *)(ibuf->rect + y * ibuf->x + x);
+    if (ibuf->byte_buffer.data) {
+      cp = ibuf->byte_buffer.data + 4 * (y * ibuf->x + x);
 
       info->col[0] = cp[0];
       info->col[1] = cp[1];
       info->col[2] = cp[2];
       info->col[3] = cp[3];
 
-      info->colf[0] = (float)cp[0] / 255.0f;
-      info->colf[1] = (float)cp[1] / 255.0f;
-      info->colf[2] = (float)cp[2] / 255.0f;
-      info->colf[3] = (float)cp[3] / 255.0f;
+      info->colf[0] = float(cp[0]) / 255.0f;
+      info->colf[1] = float(cp[1]) / 255.0f;
+      info->colf[2] = float(cp[2]) / 255.0f;
+      info->colf[3] = float(cp[3]) / 255.0f;
 
       copy_v4_v4(info->linearcol, info->colf);
       IMB_colormanagement_colorspace_to_scene_linear_v4(
-          info->linearcol, false, ibuf->rect_colorspace);
+          info->linearcol, false, ibuf->byte_buffer.colorspace);
 
       info->color_manage = true;
     }
-    if (ibuf->rect_float) {
-      fp = (ibuf->rect_float + (ibuf->channels) * (y * ibuf->x + x));
+    if (ibuf->float_buffer.data) {
+      fp = (ibuf->float_buffer.data + (ibuf->channels) * (y * ibuf->x + x));
 
       info->colf[0] = fp[0];
       info->colf[1] = fp[1];
@@ -604,15 +595,6 @@ static void sample_apply(bContext *C, wmOperator *op, const wmEvent *event)
       info->colf[3] = fp[3];
 
       info->color_manage = true;
-    }
-
-    if (ibuf->zbuf) {
-      info->z = ibuf->zbuf[y * ibuf->x + x];
-      info->zp = &info->z;
-    }
-    if (ibuf->zbuf_float) {
-      info->zf = ibuf->zbuf_float[y * ibuf->x + x];
-      info->zfp = &info->zf;
     }
 
     ED_node_sample_set(info->colf);
@@ -644,8 +626,8 @@ static int sample_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   ImageSampleInfo *info;
 
   /* Don't handle events intended for nodes (which rely on click/drag distinction).
-   * which this operator would use since sampling is normally activated on press, see: T98191. */
-  if (node_or_socket_isect_event(C, event)) {
+   * which this operator would use since sampling is normally activated on press, see: #98191. */
+  if (node_or_socket_isect_event(*C, *event)) {
     return OPERATOR_PASS_THROUGH;
   }
 

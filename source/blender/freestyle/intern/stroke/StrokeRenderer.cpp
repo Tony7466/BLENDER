@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -8,6 +10,8 @@
 #include "StrokeRenderer.h"
 
 #include "../geometry/GeomUtils.h"
+
+#include "BLI_sys_types.h"
 
 using namespace std;
 
@@ -69,12 +73,12 @@ void TextureManager::load()
   _hasLoadedTextures = true;
 }
 
-unsigned TextureManager::getBrushTextureIndex(string name, Stroke::MediumType iType)
+uint TextureManager::getBrushTextureIndex(string name, Stroke::MediumType iType)
 {
   BrushTexture bt(name, iType);
   brushesMap::iterator b = _brushesMap.find(bt);
   if (b == _brushesMap.end()) {
-    unsigned texId = loadBrush(name, iType);
+    uint texId = loadBrush(name, iType);
     _brushesMap[bt] = texId;
     return texId;
     // XXX!

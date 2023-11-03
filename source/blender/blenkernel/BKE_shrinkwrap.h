@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -62,7 +63,7 @@ typedef struct ShrinkwrapBoundaryData {
 /**
  * Free boundary data for target project.
  */
-void BKE_shrinkwrap_discard_boundary_data(struct Mesh *mesh);
+void BKE_shrinkwrap_boundary_data_free(ShrinkwrapBoundaryData *data);
 void BKE_shrinkwrap_compute_boundary_data(struct Mesh *mesh);
 
 /* Information about a mesh and BVH tree. */
@@ -72,7 +73,11 @@ typedef struct ShrinkwrapTreeData {
   BVHTree *bvh;
   BVHTreeFromMesh treeData;
 
-  const float (*pnors)[3];
+  const int *face_offsets;
+  const float (*vert_normals)[3];
+  const int *corner_edges;
+  const float (*face_normals)[3];
+  const bool *sharp_faces;
   const float (*clnors)[3];
   ShrinkwrapBoundaryData *boundary;
 } ShrinkwrapTreeData;
@@ -104,7 +109,7 @@ void shrinkwrapModifier_deform(struct ShrinkwrapModifierData *smd,
                                struct Scene *scene,
                                struct Object *ob,
                                struct Mesh *mesh,
-                               struct MDeformVert *dvert,
+                               const struct MDeformVert *dvert,
                                int defgrp_index,
                                float (*vertexCos)[3],
                                int numVerts);
@@ -117,7 +122,7 @@ void shrinkwrapGpencilModifier_deform(struct ShrinkwrapGpencilModifierData *mmd,
                                       int numVerts);
 
 /**
- * Used in `editmesh_mask_extract.c` to shrink-wrap the extracted mesh to the sculpt.
+ * Used in `editmesh_mask_extract.cc` to shrink-wrap the extracted mesh to the sculpt.
  */
 void BKE_shrinkwrap_mesh_nearest_surface_deform(struct bContext *C,
                                                 struct Object *ob_source,

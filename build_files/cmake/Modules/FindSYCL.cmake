@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2021-2022 Intel Corporation
+#
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright 2021-2022 Intel Corporation
 
 # - Find SYCL library
 # Find the native SYCL header and libraries needed by oneAPI implementation
@@ -11,11 +12,15 @@
 #                 This can also be an environment variable.
 #  SYCL_FOUND, If false, then don't try to use SYCL.
 
-IF(NOT SYCL_ROOT_DIR AND NOT $ENV{SYCL_ROOT_DIR} STREQUAL "")
-  SET(SYCL_ROOT_DIR $ENV{SYCL_ROOT_DIR})
-ENDIF()
+if(DEFINED SYCL_ROOT_DIR AND SYCL_ROOT_DIR)
+  # Pass.
+elseif(DEFINED ENV{SYCL_ROOT_DIR} AND NOT $ENV{SYCL_ROOT_DIR} STREQUAL "")
+  set(SYCL_ROOT_DIR $ENV{SYCL_ROOT_DIR})
+else()
+  set(SYCL_ROOT_DIR "")
+endif()
 
-SET(_sycl_search_dirs
+set(_sycl_search_dirs
   ${SYCL_ROOT_DIR}
   /usr/lib
   /usr/local/lib
@@ -28,8 +33,9 @@ SET(_sycl_search_dirs
 # CLang start with looking for either dpcpp or clang binary in the given
 # list of search paths only. If that fails, try to look for a system-wide
 # dpcpp binary.
-FIND_PROGRAM(SYCL_COMPILER
+find_program(SYCL_COMPILER
   NAMES
+    icpx
     dpcpp
     clang++
   HINTS
@@ -43,8 +49,9 @@ FIND_PROGRAM(SYCL_COMPILER
 # NOTE: No clang++ here so that we do not pick up a system-wide CLang
 # compiler.
 if(NOT SYCL_COMPILER)
-  FIND_PROGRAM(SYCL_COMPILER
-   NAMES
+  find_program(SYCL_COMPILER
+    NAMES
+      icpx
       dpcpp
     HINTS
       ${_sycl_search_dirs}
@@ -53,8 +60,10 @@ if(NOT SYCL_COMPILER)
   )
 endif()
 
-FIND_LIBRARY(SYCL_LIBRARY
+find_library(SYCL_LIBRARY
   NAMES
+    sycl7
+    sycl6
     sycl
   HINTS
     ${_sycl_search_dirs}
@@ -62,27 +71,59 @@ FIND_LIBRARY(SYCL_LIBRARY
     lib64 lib
 )
 
-FIND_PATH(SYCL_INCLUDE_DIR
+if(WIN32)
+  find_library(SYCL_LIBRARY_DEBUG
+    NAMES
+      sycl7d
+      sycl6d
+      sycld
+    HINTS
+      ${_sycl_search_dirs}
+    PATH_SUFFIXES
+      lib64 lib
+  )
+endif()
+
+find_path(SYCL_INCLUDE_DIR
   NAMES
-    CL/sycl.hpp
+    sycl/sycl.hpp
   HINTS
     ${_sycl_search_dirs}
   PATH_SUFFIXES
     include
-    include/sycl
 )
 
-INCLUDE(FindPackageHandleStandardArgs)
+if(EXISTS "${SYCL_INCLUDE_DIR}/sycl/version.hpp")
+  file(STRINGS "${SYCL_INCLUDE_DIR}/sycl/version.hpp" _libsycl_major_version REGEX "^#define __LIBSYCL_MAJOR_VERSION[ \t].*$")
+  string(REGEX MATCHALL "[0-9]+" _libsycl_major_version ${_libsycl_major_version})
+  file(STRINGS "${SYCL_INCLUDE_DIR}/sycl/version.hpp" _libsycl_minor_version REGEX "^#define __LIBSYCL_MINOR_VERSION[ \t].*$")
+  string(REGEX MATCHALL "[0-9]+" _libsycl_minor_version ${_libsycl_minor_version})
+  file(STRINGS "${SYCL_INCLUDE_DIR}/sycl/version.hpp" _libsycl_patch_version REGEX "^#define __LIBSYCL_PATCH_VERSION[ \t].*$")
+  string(REGEX MATCHALL "[0-9]+" _libsycl_patch_version ${_libsycl_patch_version})
 
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(SYCL DEFAULT_MSG SYCL_LIBRARY SYCL_INCLUDE_DIR)
+  set(SYCL_VERSION "${_libsycl_major_version}.${_libsycl_minor_version}.${_libsycl_patch_version}")
+endif()
 
-IF(SYCL_FOUND)
-  get_filename_component(_SYCL_INCLUDE_PARENT_DIR ${SYCL_INCLUDE_DIR} DIRECTORY)
-  SET(SYCL_INCLUDE_DIR ${SYCL_INCLUDE_DIR} ${_SYCL_INCLUDE_PARENT_DIR})
-ELSE()
-  SET(SYCL_SYCL_FOUND FALSE)
-ENDIF()
+include(FindPackageHandleStandardArgs)
 
-MARK_AS_ADVANCED(
-  _SYCL_INCLUDE_PARENT_DIR
+find_package_handle_standard_args(SYCL
+  REQUIRED_VARS SYCL_LIBRARY SYCL_INCLUDE_DIR
+  VERSION_VAR SYCL_VERSION
+)
+
+if(SYCL_FOUND)
+  set(SYCL_INCLUDE_DIR ${SYCL_INCLUDE_DIR} ${SYCL_INCLUDE_DIR}/sycl)
+  if(WIN32 AND SYCL_LIBRARY_DEBUG)
+    set(SYCL_LIBRARIES optimized ${SYCL_LIBRARY} debug ${SYCL_LIBRARY_DEBUG})
+  else()
+    set(SYCL_LIBRARIES ${SYCL_LIBRARY})
+  endif()
+else()
+  set(SYCL_SYCL_FOUND FALSE)
+endif()
+
+mark_as_advanced(
+  SYCL_COMPILER
+  SYCL_INCLUDE_DIR
+  SYCL_LIBRARY
 )

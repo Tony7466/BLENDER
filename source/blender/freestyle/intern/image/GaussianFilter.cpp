@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -8,6 +10,8 @@
 #include <cstdlib>
 
 #include "GaussianFilter.h"
+
+#include "BLI_math_base.h"
 
 namespace Freestyle {
 
@@ -46,7 +50,7 @@ GaussianFilter::~GaussianFilter()
 
 int GaussianFilter::computeMaskSize(float sigma)
 {
-  int maskSize = (int)floor(4 * sigma) + 1;
+  int maskSize = int(floor(4 * sigma)) + 1;
   if (0 == (maskSize % 2)) {
     ++maskSize;
   }

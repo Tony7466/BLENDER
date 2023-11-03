@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -21,6 +23,8 @@
 #include "../system/TimeStamp.h"
 
 #include "../view_map/SteerableViewMap.h"
+
+#include "BLI_sys_types.h"
 
 #include "BKE_global.h"
 
@@ -79,9 +83,7 @@ Canvas::~Canvas()
   delete _steerableViewMap;
 }
 
-void Canvas::preDraw()
-{
-}
+void Canvas::preDraw() {}
 
 void Canvas::Draw()
 {
@@ -91,7 +93,7 @@ void Canvas::Draw()
   preDraw();
   TimeStamp *timestamp = TimeStamp::instance();
 
-  for (unsigned int i = 0; i < _StyleModules.size(); ++i) {
+  for (uint i = 0; i < _StyleModules.size(); ++i) {
     _current_sm = _StyleModules[i];
 
     if (i < _Layers.size() && _Layers[i]) {
@@ -130,7 +132,8 @@ void Canvas::Clear()
   if (!_StyleModules.empty()) {
     for (deque<StyleModule *>::iterator s = _StyleModules.begin(), send = _StyleModules.end();
          s != send;
-         ++s) {
+         ++s)
+    {
       if (*s) {
         delete (*s);
       }
@@ -169,11 +172,11 @@ void Canvas::PushBackStyleModule(StyleModule *iStyleModule)
   _Layers.push_back(layer);
 }
 
-void Canvas::InsertStyleModule(unsigned index, StyleModule *iStyleModule)
+void Canvas::InsertStyleModule(uint index, StyleModule *iStyleModule)
 {
-  unsigned size = _StyleModules.size();
+  uint size = _StyleModules.size();
   StrokeLayer *layer = new StrokeLayer();
-  if ((_StyleModules.empty()) || (index == size)) {
+  if (_StyleModules.empty() || (index == size)) {
     _StyleModules.push_back(iStyleModule);
     _Layers.push_back(layer);
     return;
@@ -182,13 +185,14 @@ void Canvas::InsertStyleModule(unsigned index, StyleModule *iStyleModule)
   _Layers.insert(_Layers.begin() + index, layer);
 }
 
-void Canvas::RemoveStyleModule(unsigned index)
+void Canvas::RemoveStyleModule(uint index)
 {
-  unsigned int i = 0;
+  uint i = 0;
   if (!_StyleModules.empty()) {
     for (deque<StyleModule *>::iterator s = _StyleModules.begin(), send = _StyleModules.end();
          s != send;
-         ++s, ++i) {
+         ++s, ++i)
+    {
       if (i == index) {
         // remove shader
         if (*s) {
@@ -203,7 +207,8 @@ void Canvas::RemoveStyleModule(unsigned index)
   if (!_Layers.empty()) {
     i = 0;
     for (deque<StrokeLayer *>::iterator sl = _Layers.begin(), slend = _Layers.end(); sl != slend;
-         ++sl, ++i) {
+         ++sl, ++i)
+    {
       if (i == index) {
         // remove layer
         if (*sl) {
@@ -216,7 +221,7 @@ void Canvas::RemoveStyleModule(unsigned index)
   }
 }
 
-void Canvas::SwapStyleModules(unsigned i1, unsigned i2)
+void Canvas::SwapStyleModules(uint i1, uint i2)
 {
   StyleModule *tmp;
   tmp = _StyleModules[i1];
@@ -229,12 +234,13 @@ void Canvas::SwapStyleModules(unsigned i1, unsigned i2)
   _Layers[i2] = tmp2;
 }
 
-void Canvas::ReplaceStyleModule(unsigned index, StyleModule *iStyleModule)
+void Canvas::ReplaceStyleModule(uint index, StyleModule *iStyleModule)
 {
-  unsigned i = 0;
+  uint i = 0;
   for (deque<StyleModule *>::iterator s = _StyleModules.begin(), send = _StyleModules.end();
        s != send;
-       ++s, ++i) {
+       ++s, ++i)
+  {
     if (i == index) {
       if (*s) {
         delete *s;
@@ -245,29 +251,29 @@ void Canvas::ReplaceStyleModule(unsigned index, StyleModule *iStyleModule)
   }
 }
 
-void Canvas::setVisible(unsigned index, bool iVisible)
+void Canvas::setVisible(uint index, bool iVisible)
 {
   _StyleModules[index]->setDisplayed(iVisible);
 }
 
-void Canvas::setModified(unsigned index, bool iMod)
+void Canvas::setModified(uint index, bool iMod)
 {
   _StyleModules[index]->setModified(iMod);
 }
 
 void Canvas::resetModified(bool iMod /* = false */)
 {
-  unsigned int size = _StyleModules.size();
-  for (unsigned int i = 0; i < size; ++i) {
+  uint size = _StyleModules.size();
+  for (uint i = 0; i < size; ++i) {
     setModified(i, iMod);
   }
 }
 
-void Canvas::causalStyleModules(vector<unsigned> &vec, unsigned index)
+void Canvas::causalStyleModules(vector<uint> &vec, uint index)
 {
-  unsigned int size = _StyleModules.size();
+  uint size = _StyleModules.size();
 
-  for (unsigned int i = index; i < size; ++i) {
+  for (uint i = index; i < size; ++i) {
     if (_StyleModules[i]->getCausal()) {
       vec.push_back(i);
     }
@@ -276,7 +282,7 @@ void Canvas::causalStyleModules(vector<unsigned> &vec, unsigned index)
 
 void Canvas::Render(const StrokeRenderer *iRenderer)
 {
-  for (unsigned int i = 0; i < _StyleModules.size(); ++i) {
+  for (uint i = 0; i < _StyleModules.size(); ++i) {
     if (!_StyleModules[i]->getDisplayed() || !_Layers[i]) {
       continue;
     }
@@ -286,7 +292,7 @@ void Canvas::Render(const StrokeRenderer *iRenderer)
 
 void Canvas::RenderBasic(const StrokeRenderer *iRenderer)
 {
-  for (unsigned int i = 0; i < _StyleModules.size(); ++i) {
+  for (uint i = 0; i < _StyleModules.size(); ++i) {
     if (!_StyleModules[i]->getDisplayed() || !_Layers[i]) {
       continue;
     }
@@ -294,10 +300,7 @@ void Canvas::RenderBasic(const StrokeRenderer *iRenderer)
   }
 }
 
-void Canvas::loadMap(const char *iFileName,
-                     const char *iMapName,
-                     unsigned int iNbLevels,
-                     float iSigma)
+void Canvas::loadMap(const char *iFileName, const char *iMapName, uint iNbLevels, float iSigma)
 {
   // check whether this map was already loaded:
   if (!_maps.empty()) {
@@ -359,8 +362,8 @@ void Canvas::loadMap(const char *iFileName,
     int w = newMap->width();
     int h = newMap->height();
     QImage *tmp = new QImage(w, h, 8);
-    for (unsigned int y = 0; y < h; ++y) {
-      for (unsigned int x = 0; x < w; ++x) {
+    for (uint y = 0; y < h; ++y) {
+      for (uint x = 0; x < w; ++x) {
         int c = qGray(newMap->pixel(x, y));
         tmp->setPixel(x, y, c);
       }
@@ -375,11 +378,11 @@ void Canvas::loadMap(const char *iFileName,
   int h = qimg->y;
   int rowbytes = w * 4;
   GrayImage tmp(w, h);
-  char *pix;
+  uchar *pix;
 
   for (y = 0; y < h; ++y) {
     for (x = 0; x < w; ++x) {
-      pix = (char *)qimg->rect + y * rowbytes + x * 4;
+      pix = qimg->byte_buffer.data + y * rowbytes + x * 4;
       float c = (pix[0] * 11 + pix[1] * 16 + pix[2] * 5) / 32;
       tmp.setPixel(x, y, c);
     }
@@ -388,7 +391,7 @@ void Canvas::loadMap(const char *iFileName,
 #if 0
   GrayImage blur(w, h);
   GaussianFilter gf(4.0f);
-  //int bound = gf.getBound();
+  // int bound = gf.getBound();
   for (y = 0; y < h; ++y) {
     for (x = 0; x < w; ++x) {
       int c = gf.getSmoothedPixel<GrayImage>(&tmp, x, y);
@@ -416,23 +419,23 @@ void Canvas::loadMap(const char *iFileName,
       for (x = 0; x < ow; ++x) {
         int c = pyramid->pixel(x, y, i);  // 255 * pyramid->pixel(x, y, i);
         // soc qtmp.setPixel(x, y, qRgb(c, c, c));
-        pix = (char *)qtmp->rect + y * rowbytes + x * 4;
+        pix = qtmp->byte_buffer.data + y * rowbytes + x * 4;
         pix[0] = pix[1] = pix[2] = c;
       }
     }
     // soc qtmp.save(base + QString::number(i) + ".bmp", "BMP");
-    stringstream filename;
-    filename << base;
-    filename << i << ".bmp";
+    stringstream filepath;
+    filepath << base;
+    filepath << i << ".bmp";
     qtmp->ftype = IMB_FTYPE_BMP;
-    IMB_saveiff(qtmp, const_cast<char *>(filename.str().c_str()), 0);
+    IMB_saveiff(qtmp, const_cast<char *>(filepath.str().c_str()), 0);
   }
 
 #if 0
   QImage *qtmp = new QImage(w, h, 32);
   for (y = 0; y < h; ++y) {
     for (x = 0; x < w; ++x) {
-      int c = (int)blur.pixel(x, y);
+      int c = int(blur.pixel(x, y));
       qtmp->setPixel(x, y, qRgb(c, c, c));
     }
   }

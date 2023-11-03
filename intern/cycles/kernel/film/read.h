@@ -1,5 +1,10 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+/* Functions to retrieving render passes for display or output. Reading from
+ * the raw render buffer and normalizing based on the number of samples,
+ * computing alpha, compositing shadow catchers, etc. */
 
 #pragma once
 
@@ -235,6 +240,21 @@ ccl_device_inline void film_get_pass_pixel_float3(ccl_global const KernelFilmCon
   pixel[0] = f.x;
   pixel[1] = f.y;
   pixel[2] = f.z;
+
+  /* Optional alpha channel. */
+  if (kfilm_convert->num_components >= 4) {
+    if (kfilm_convert->pass_combined != PASS_UNUSED) {
+      float scale, scale_exposure;
+      film_get_scale_and_scale_exposure(kfilm_convert, buffer, &scale, &scale_exposure);
+
+      ccl_global const float *in_combined = buffer + kfilm_convert->pass_combined;
+      const float alpha = in_combined[3] * scale;
+      pixel[3] = film_transparency_to_alpha(alpha);
+    }
+    else {
+      pixel[3] = 1.0f;
+    }
+  }
 }
 
 /* --------------------------------------------------------------------
@@ -519,8 +539,8 @@ ccl_device_inline void film_apply_pass_pixel_overlays_rgba(
     ccl_global const float *ccl_restrict buffer,
     ccl_private float *ccl_restrict pixel)
 {
-  if (kfilm_convert->show_active_pixels &&
-      kfilm_convert->pass_adaptive_aux_buffer != PASS_UNUSED) {
+  if (kfilm_convert->show_active_pixels && kfilm_convert->pass_adaptive_aux_buffer != PASS_UNUSED)
+  {
     if (buffer[kfilm_convert->pass_adaptive_aux_buffer + 3] == 0.0f) {
       const float3 active_rgb = make_float3(1.0f, 0.0f, 0.0f);
       const float3 mix_rgb = interp(make_float3(pixel[0], pixel[1], pixel[2]), active_rgb, 0.5f);

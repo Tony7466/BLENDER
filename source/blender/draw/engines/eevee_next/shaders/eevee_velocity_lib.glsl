@@ -1,5 +1,9 @@
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_camera_lib.glsl)
 
 vec4 velocity_pack(vec4 data)
@@ -32,7 +36,7 @@ vec4 velocity_surface(vec3 P_prv, vec3 P, vec3 P_nxt)
     next_uv = curr_uv;
   }
   /* NOTE: We output both vectors in the same direction so we can reuse the same vector
-   * with rgrg swizzle in viewport. */
+   * with RGRG swizzle in viewport. */
   vec4 motion = vec4(prev_uv - curr_uv, curr_uv - next_uv);
   /* Convert NDC velocity to UV velocity */
   motion *= 0.5;
@@ -54,7 +58,7 @@ vec4 velocity_background(vec3 vV)
   vec2 curr_uv = project_point(camera_curr.winmat, V).xy;
   vec2 next_uv = project_point(camera_next.winmat, V).xy;
   /* NOTE: We output both vectors in the same direction so we can reuse the same vector
-   * with rgrg swizzle in viewport. */
+   * with RGRG swizzle in viewport. */
   vec4 motion = vec4(prev_uv - curr_uv, curr_uv - next_uv);
   /* Convert NDC velocity to UV velocity */
   motion *= 0.5;
@@ -68,12 +72,12 @@ vec4 velocity_resolve(vec4 vector, vec2 uv, float depth)
     bool is_background = (depth == 1.0);
     if (is_background) {
       /* NOTE: Use viewCameraVec to avoid imprecision if camera is far from origin. */
-      vec3 vV = viewCameraVec(get_view_space_from_depth(uv, 1.0));
+      vec3 vV = drw_view_incident_vector(drw_point_screen_to_view(vec3(uv, 1.0)));
       return velocity_background(vV);
     }
     else {
       /* Static geometry. No translation in world space. */
-      vec3 P = get_world_space_from_depth(uv, depth);
+      vec3 P = drw_point_screen_to_world(vec3(uv, depth));
       return velocity_surface(P, P, P);
     }
   }

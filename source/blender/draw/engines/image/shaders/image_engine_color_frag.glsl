@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 #pragma BLENDER_REQUIRE(common_colormanagement_lib.glsl)
 
 /* Keep in sync with image_engine.c */
@@ -15,9 +19,10 @@ void main()
   float depth = texelFetch(depth_texture, uvs_clamped, 0).r;
   if (depth == 1.0) {
     discard;
+    return;
   }
 
-  vec4 tex_color = texelFetch(imageTexture, uvs_clamped, 0);
+  vec4 tex_color = texelFetch(imageTexture, uvs_clamped - offset, 0);
 
   if ((drawFlags & IMAGE_DRAW_FLAG_APPLY_ALPHA) != 0) {
     if (!imgPremultiplied) {

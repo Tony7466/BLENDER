@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -22,7 +24,7 @@ using namespace Freestyle;
 PyDoc_STRVAR(Interface0DIterator_doc,
              "Class hierarchy: :class:`Iterator` > :class:`Interface0DIterator`\n"
              "\n"
-             "Class defining an iterator over Interface0D elements.  An instance of\n"
+             "Class defining an iterator over Interface0D elements. An instance of\n"
              "this iterator is always obtained from a 1D element.\n"
              "\n"
              ".. method:: __init__(brother)\n"
@@ -60,21 +62,24 @@ static int Interface0DIterator_init(BPy_Interface0DIterator *self, PyObject *arg
   PyObject *brother, *inter;
 
   if (PyArg_ParseTupleAndKeywords(
-          args, kwds, "O&", (char **)kwlist_1, convert_nested_it, &nested_it)) {
+          args, kwds, "O&", (char **)kwlist_1, convert_nested_it, &nested_it))
+  {
     self->if0D_it = new Interface0DIterator(nested_it->copy());
     self->at_start = true;
     self->reversed = false;
   }
   else if ((void)PyErr_Clear(),
            PyArg_ParseTupleAndKeywords(
-               args, kwds, "O!", (char **)kwlist_2, &Interface1D_Type, &inter)) {
+               args, kwds, "O!", (char **)kwlist_2, &Interface1D_Type, &inter))
+  {
     self->if0D_it = new Interface0DIterator(((BPy_Interface1D *)inter)->if1D->verticesBegin());
     self->at_start = true;
     self->reversed = false;
   }
   else if ((void)PyErr_Clear(),
            PyArg_ParseTupleAndKeywords(
-               args, kwds, "O!", (char **)kwlist_3, &Interface0DIterator_Type, &brother)) {
+               args, kwds, "O!", (char **)kwlist_3, &Interface0DIterator_Type, &brother))
+  {
     self->if0D_it = new Interface0DIterator(*(((BPy_Interface0DIterator *)brother)->if0D_it));
     self->at_start = ((BPy_Interface0DIterator *)brother)->at_start;
     self->reversed = ((BPy_Interface0DIterator *)brother)->reversed;
@@ -126,15 +131,14 @@ static PyObject *Interface0DIterator_iternext(BPy_Interface0DIterator *self)
 /*----------------------Interface0DIterator get/setters ----------------------------*/
 
 PyDoc_STRVAR(Interface0DIterator_object_doc,
-             "The 0D object currently pointed to by this iterator.  Note that the object\n"
+             "The 0D object currently pointed to by this iterator. Note that the object\n"
              "may be an instance of an Interface0D subclass. For example if the iterator\n"
              "has been created from the `vertices_begin()` method of the :class:`Stroke`\n"
              "class, the .object property refers to a :class:`StrokeVertex` object.\n"
              "\n"
              ":type: :class:`Interface0D` or one of its subclasses.");
 
-static PyObject *Interface0DIterator_object_get(BPy_Interface0DIterator *self,
-                                                void *UNUSED(closure))
+static PyObject *Interface0DIterator_object_get(BPy_Interface0DIterator *self, void * /*closure*/)
 {
   if (self->if0D_it->isEnd()) {
     PyErr_SetString(PyExc_RuntimeError, "iteration has stopped");
@@ -148,7 +152,7 @@ PyDoc_STRVAR(Interface0DIterator_t_doc,
              "\n"
              ":type: float");
 
-static PyObject *Interface0DIterator_t_get(BPy_Interface0DIterator *self, void *UNUSED(closure))
+static PyObject *Interface0DIterator_t_get(BPy_Interface0DIterator *self, void * /*closure*/)
 {
   return PyFloat_FromDouble(self->if0D_it->t());
 }
@@ -158,7 +162,7 @@ PyDoc_STRVAR(Interface0DIterator_u_doc,
              "\n"
              ":type: float");
 
-static PyObject *Interface0DIterator_u_get(BPy_Interface0DIterator *self, void *UNUSED(closure))
+static PyObject *Interface0DIterator_u_get(BPy_Interface0DIterator *self, void * /*closure*/)
 {
   return PyFloat_FromDouble(self->if0D_it->u());
 }
@@ -169,8 +173,7 @@ PyDoc_STRVAR(Interface0DIterator_at_last_doc,
              "\n"
              ":type: bool");
 
-static PyObject *Interface0DIterator_at_last_get(BPy_Interface0DIterator *self,
-                                                 void *UNUSED(closure))
+static PyObject *Interface0DIterator_at_last_get(BPy_Interface0DIterator *self, void * /*closure*/)
 {
   return PyBool_from_bool(self->if0D_it->atLast());
 }
@@ -194,43 +197,44 @@ static PyGetSetDef BPy_Interface0DIterator_getseters[] = {
 /*-----------------------BPy_Interface0DIterator type definition ------------------------------*/
 
 PyTypeObject Interface0DIterator_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0) "Interface0DIterator", /* tp_name */
-    sizeof(BPy_Interface0DIterator),                         /* tp_basicsize */
-    0,                                                       /* tp_itemsize */
-    nullptr,                                                 /* tp_dealloc */
-    0,                                                       /* tp_vectorcall_offset */
-    nullptr,                                                 /* tp_getattr */
-    nullptr,                                                 /* tp_setattr */
-    nullptr,                                                 /* tp_reserved */
-    nullptr,                                                 /* tp_repr */
-    nullptr,                                                 /* tp_as_number */
-    nullptr,                                                 /* tp_as_sequence */
-    nullptr,                                                 /* tp_as_mapping */
-    nullptr,                                                 /* tp_hash */
-    nullptr,                                                 /* tp_call */
-    nullptr,                                                 /* tp_str */
-    nullptr,                                                 /* tp_getattro */
-    nullptr,                                                 /* tp_setattro */
-    nullptr,                                                 /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,                /* tp_flags */
-    Interface0DIterator_doc,                                 /* tp_doc */
-    nullptr,                                                 /* tp_traverse */
-    nullptr,                                                 /* tp_clear */
-    nullptr,                                                 /* tp_richcompare */
-    0,                                                       /* tp_weaklistoffset */
-    (getiterfunc)Interface0DIterator_iter,                   /* tp_iter */
-    (iternextfunc)Interface0DIterator_iternext,              /* tp_iternext */
-    nullptr,                                                 /* tp_methods */
-    nullptr,                                                 /* tp_members */
-    BPy_Interface0DIterator_getseters,                       /* tp_getset */
-    &Iterator_Type,                                          /* tp_base */
-    nullptr,                                                 /* tp_dict */
-    nullptr,                                                 /* tp_descr_get */
-    nullptr,                                                 /* tp_descr_set */
-    0,                                                       /* tp_dictoffset */
-    (initproc)Interface0DIterator_init,                      /* tp_init */
-    nullptr,                                                 /* tp_alloc */
-    nullptr,                                                 /* tp_new */
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "Interface0DIterator",
+    /*tp_basicsize*/ sizeof(BPy_Interface0DIterator),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ nullptr,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    /*tp_doc*/ Interface0DIterator_doc,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ (getiterfunc)Interface0DIterator_iter,
+    /*tp_iternext*/ (iternextfunc)Interface0DIterator_iternext,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ BPy_Interface0DIterator_getseters,
+    /*tp_base*/ &Iterator_Type,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ (initproc)Interface0DIterator_init,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

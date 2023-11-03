@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2012 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_KeyingClipOperation.h"
 
@@ -47,7 +48,7 @@ void KeyingClipOperation::execute_pixel(float output[4], int x, int y, void *dat
       end_y = min_ff(y + delta - 1, buffer_height - 1);
 
   int count = 0, total_count = (end_x - start_x + 1) * (end_y - start_y + 1) - 1;
-  int threshold_count = ceil((float)total_count * 0.9f);
+  int threshold_count = ceil(float(total_count) * 0.9f);
 
   if (delta == 0) {
     ok = true;
@@ -147,7 +148,7 @@ void KeyingClipOperation::update_memory_buffer_partial(MemoryBuffer *output,
     const int y_len = end_y - start_y;
 
     const int total_count = x_len * y_len - 1;
-    const int threshold_count = ceil((float)total_count * 0.9f);
+    const int threshold_count = ceil(float(total_count) * 0.9f);
     bool ok = false;
     if (delta == 0) {
       ok = true;

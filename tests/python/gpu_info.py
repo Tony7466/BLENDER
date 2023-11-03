@@ -1,7 +1,11 @@
-"""
-    Prints GPU backend information to the console and exits.
+# SPDX-FileCopyrightText: 2022 Blender Authors
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
 
-    Use this script as `blender --background --python gpu_info.py`.
+"""
+Prints GPU back-end information to the console and exits.
+
+Use this script as `blender --background --python gpu_info.py`.
 """
 import bpy
 import gpu

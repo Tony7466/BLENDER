@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -23,7 +24,7 @@ class HIPDeviceQueue : public DeviceQueue {
   ~HIPDeviceQueue();
 
   virtual int num_concurrent_states(const size_t state_size) const override;
-  virtual int num_concurrent_busy_states() const override;
+  virtual int num_concurrent_busy_states(const size_t state_size) const override;
 
   virtual void init_execution() override;
 

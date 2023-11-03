@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <cfloat>
 
@@ -7,7 +8,7 @@
 
 namespace blender::compositor {
 
-void ChunkOrder::update_distance(ChunkOrderHotspot *hotspots, unsigned int len_hotspots)
+void ChunkOrder::update_distance(ChunkOrderHotspot *hotspots, uint len_hotspots)
 {
   double new_distance = DBL_MAX;
   for (int index = 0; index < len_hotspots; index++) {

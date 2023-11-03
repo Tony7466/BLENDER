@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2019-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 
@@ -8,6 +11,7 @@ void main()
 
   if (dist > 0.5) {
     discard;
+    return;
   }
   /* Nice sphere falloff. */
   float intensity = sqrt(1.0 - dist * 2.0) * 0.5 + 0.5;
