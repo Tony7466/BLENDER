@@ -80,11 +80,11 @@ pxr::VtValue CurvesData::get_data(pxr::TfToken const &key) const
   if (key == pxr::HdTokens->points) {
     return pxr::VtValue(vertices_);
   }
-  else if (key == pxr::HdPrimvarRoleTokens->textureCoordinate) {
-    return pxr::VtValue(uvs_);
-  }
   else if (key == pxr::HdTokens->widths) {
     return pxr::VtValue(widths_);
+  }
+  else if (key == pxr::tokens_->st) {
+    return pxr::VtValue(uvs_);
   }
   return pxr::VtValue();
 }
@@ -125,11 +125,10 @@ pxr::HdPrimvarDescriptorVector CurvesData::primvar_descriptors(
       primvars.emplace_back(pxr::HdTokens->widths, interpolation, pxr::HdPrimvarRoleTokens->none);
     }
   }
-  else if (interpolation == pxr::HdInterpolationConstant) {
+  else if (interpolation == pxr::HdInterpolationUniform) {
     if (!uvs_.empty()) {
-      primvars.emplace_back(pxr::HdPrimvarRoleTokens->textureCoordinate,
-                            interpolation,
-                            pxr::HdPrimvarRoleTokens->textureCoordinate);
+      primvars.emplace_back(
+          pxr::tokens_->st, interpolation, pxr::HdPrimvarRoleTokens->textureCoordinate);
     }
   }
   return primvars;

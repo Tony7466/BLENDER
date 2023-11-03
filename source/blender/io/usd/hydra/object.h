@@ -18,6 +18,10 @@
 #include "id.h"
 #include "material.h"
 
+PXR_NAMESPACE_OPEN_SCOPE
+TF_DEFINE_PRIVATE_TOKENS(tokens_, (st));
+PXR_NAMESPACE_CLOSE_SCOPE
+
 namespace blender::io::hydra {
 
 class ObjectData : public IdData {
