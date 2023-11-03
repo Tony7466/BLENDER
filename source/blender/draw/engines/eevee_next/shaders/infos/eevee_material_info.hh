@@ -212,10 +212,13 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
                      //  "eevee_cryptomatte_out",
                      "eevee_utility_texture");
 
+GPU_SHADER_INTERFACE_INFO(eevee_shadow_iface_info, "shadow_iface")
+    .flat(Type::INT, "shadow_view_id");
+
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .define("DRW_VIEW_LEN", STRINGIFY(SHADOW_VIEW_MAX))
     .define("MAT_SHADOW")
-    .builtins(BuiltinBits::VIEWPORT_INDEX | BuiltinBits::LAYER)
+    .builtins(BuiltinBits::VIEWPORT_INDEX)
     .storage_buf(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
                  Qualifier::READ,
                  "uint",
@@ -223,25 +226,40 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .fragment_source("eevee_surf_shadow_frag.glsl")
     .additional_info("eevee_global_ubo", "eevee_utility_texture", "eevee_sampling_data");
 
-GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic)
+GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic_common)
     .additional_info("eevee_surf_shadow")
     .define("SHADOW_UPDATE_ATOMIC_RASTER")
     .builtins(BuiltinBits::TEXTURE_ATOMIC)
+    .vertex_out(eevee_shadow_iface_info)
     /* Early fragment test for speeding up platforms that requires a depth buffer. */
     /* NOTE: This removes the possibility of using gl_FragDepth. */
     .early_fragment_test(true)
     .storage_buf(SHADOW_RENDER_MAP_BUF_SLOT,
                  Qualifier::READ,
                  "uint",
-                 "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
+                 "render_map_buf[SHADOW_RENDER_MAP_SIZE]");
+
+GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic)
+    .additional_info("eevee_surf_shadow_atomic_common")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32UI,
            Qualifier::READ_WRITE,
            ImageType::UINT_2D_ARRAY,
            "shadow_atlas_img");
 
+GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic_buffer_fallback)
+    .additional_info("eevee_surf_shadow_atomic_common")
+    .define("SHADOW_ATOMIC_FALLBACK_BUFFER")
+    .storage_buf(SHADOW_ATLAS_BUF_SLOT, Qualifier::READ_WRITE, "uint", "shadow_atlas_buf[]")
+    .image(SHADOW_ATLAS_IMG_SLOT,
+           GPU_R32UI,
+           Qualifier::READ_WRITE,
+           ImageType::UINT_2D,
+           "shadow_atlas_img");
+
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow_tbdr)
     .additional_info("eevee_surf_shadow")
+    .builtins(BuiltinBits::LAYER)
     .define("SHADOW_UPDATE_TBDR")
     /* F32 color attachment for on-tile depth accumulation without atomics. */
     .fragment_out(0, Type::FLOAT, "out_depth", DualBlend::NONE, SHADOW_ROG_ID);

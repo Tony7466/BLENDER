@@ -14,6 +14,8 @@
 
 #include "eevee_instance.hh"
 
+#include "GPU_capabilities.h"
+
 #include "draw_debug.hh"
 #include <iostream>
 
@@ -764,14 +766,40 @@ void ShadowModule::init()
 
   eGPUTextureUsage tex_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
                                GPU_TEXTURE_USAGE_ATOMIC;
-  if (atlas_tx_.ensure_2d_array(atlas_type, atlas_extent, atlas_layers, tex_usage)) {
-    /* Global update. */
-    do_full_update = true;
+
+  /* For the default path, shadow atlas is created as a 2D array texture. If the atomic raster
+   * technique is used but the device does not support texture atomics, instead create a
+   * buffer-backed 2D texture. */
+  bool use_2d_array_atlas = GPU_texture_atomic_support() ||
+                            (ShadowModule::shadow_technique == ShadowTechnique::TILE_COPY);
+  if (use_2d_array_atlas) {
+    if (atlas_tx_.ensure_2d_array(atlas_type, atlas_extent, atlas_layers, tex_usage)) {
+      /* Global update. */
+      do_full_update = true;
+    }
+  }
+  else {
+    /* Create buffer-backed texture for shadow atlas.
+     * Note: Align buffer into groups of "layers" running horizontally. */
+    const int max_layers_per_row = SHADOW_ATLAS_BUFFER_MAX_WIDTH / atlas_extent.x;
+    const int2 num_layers = int2(min_ii(atlas_layers, max_layers_per_row),
+                                 atlas_layers / max_layers_per_row);
+    const int2 atlas_extent_buffer = num_layers * atlas_extent;
+
+    if (atlas_tx_.ensure_2d_buffer(atlas_type, atlas_extent_buffer, tex_usage)) {
+      /* Global update. */
+      do_full_update = true;
+    }
   }
 
   /* Make allocation safe. Avoids crash later on. */
   if (!atlas_tx_.is_valid()) {
-    atlas_tx_.ensure_2d_array(ShadowModule::atlas_type, int2(1), 1);
+    if (use_2d_array_atlas) {
+      atlas_tx_.ensure_2d_array(ShadowModule::atlas_type, int2(1), 1);
+    }
+    else {
+      atlas_tx_.ensure_2d_buffer(ShadowModule::atlas_type, int2(1));
+    }
     inst_.info = "Error: Could not allocate shadow atlas. Most likely out of GPU memory.";
   }
 
@@ -1289,19 +1317,11 @@ void ShadowModule::set_view(View &view)
   int fb_layers = SHADOW_VIEW_MAX;
 
   if (shadow_technique == ShadowTechnique::ATOMIC_RASTER) {
-    if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
-      /* Metal requires a memoryless attachment to create an empty framebuffer.
-       * Might as well make use of it. */
-      shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F, fb_size, fb_layers, usage);
-      shadow_depth_accum_tx_.free();
-      render_fb_.ensure(GPU_ATTACHMENT_TEXTURE(shadow_depth_fb_tx_));
-    }
-    else {
-      /* Create attachment-less framebuffer. */
-      shadow_depth_fb_tx_.free();
-      shadow_depth_accum_tx_.free();
-      render_fb_.ensure(fb_size);
-    }
+
+    /* Create attachment-less framebuffer. */
+    shadow_depth_fb_tx_.free();
+    shadow_depth_accum_tx_.free();
+    render_fb_.ensure(fb_size);
   }
   else if (shadow_technique == ShadowTechnique::TILE_COPY) {
     /* Create memoryless depth attachment for on-tile surface depth accumulation.*/

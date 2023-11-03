@@ -503,6 +503,20 @@ void gpu_shader_create_info_init()
 
     /* GPencil stroke. */
     gpu_shader_gpencil_stroke = gpu_shader_gpencil_stroke_no_geom;
+
+    /* If texture atomic support is not available, use fallback shader utilising buffer-backed
+     * texture atlas. */
+    if (GPU_texture_atomic_support() == false) {
+      eevee_shadow_page_clear = eevee_shadow_page_clear_buffer_atomic;
+      eevee_surf_shadow_atomic = eevee_surf_shadow_atomic_buffer_fallback;
+
+      /* Only use buffer atomic fallback sampling if non-TBDR arch.
+       * TODO: Need a dynamic solution for this, but requires changes
+       * to generated shaders. */
+      if ((GPU_platform_architecture() != GPU_ARCHITECTURE_TBDR)) {
+        eevee_shadow_data = eevee_shadow_data_buffer_atomic;
+      }
+    }
   }
 #endif
 

@@ -98,6 +98,10 @@
 #define SHADOW_MAX_RAY 4
 #define SHADOW_ROG_ID 0
 
+/* Shadow atlas falback linear buffer requires single 2D texture.
+ * Layers are packed into horizontal rows. */
+#define SHADOW_ATLAS_BUFFER_MAX_WIDTH 16384
+
 /* Ray-tracing. */
 #define RAYTRACE_GROUP_SIZE 8
 /* Keep this as a define to avoid shader variations. */
@@ -221,6 +225,8 @@
 #define SHADOW_RENDER_MAP_BUF_SLOT 3
 #define SHADOW_PAGE_INFO_SLOT 4
 #define SHADOW_VIEWPORT_INDEX_BUF_SLOT 5
+/* Only required by Metal for shadow writing so can exceed limit of 12 SSBOs.*/
+#define SHADOW_ATLAS_BUF_SLOT 8
 
 /* Only during pre-pass. */
 #define VELOCITY_OBJ_PREV_BUF_SLOT 0

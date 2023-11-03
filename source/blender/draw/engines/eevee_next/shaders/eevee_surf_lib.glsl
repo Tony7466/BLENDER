@@ -144,7 +144,11 @@ void shadow_viewport_layer_set(int view_id, int lod)
   /* We still render to a layered frame-buffer in the case of Metal + Tile Based Renderer.
    * Since it needs correct depth buffering, each view needs to not overlap each others.
    * It doesn't matter much for other platform, so we use that as a way to pass the view id. */
+#  ifdef SHADOW_UPDATE_TBDR
   gpu_Layer = view_id;
+#  else
+  shadow_iface.shadow_view_id = view_id;
+#  endif
   gpu_ViewportIndex = lod;
 }
 #endif
@@ -152,6 +156,10 @@ void shadow_viewport_layer_set(int view_id, int lod)
 #if defined(GPU_FRAGMENT_SHADER) && defined(MAT_SHADOW)
 int shadow_view_id_get()
 {
+#  ifdef SHADOW_UPDATE_TBDR
   return gpu_Layer;
+#  else
+  return shadow_iface.shadow_view_id;
+#  endif
 }
 #endif

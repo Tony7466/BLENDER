@@ -33,7 +33,11 @@ float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
   ivec2 texel_page = (texel_coord & page_mask) >> int(tile.lod);
   ivec3 texel = ivec3((ivec2(tile.page.xy) << page_shift) | texel_page, tile.page.z);
 
+#ifdef SHADOW_ATOMIC_FALLBACK_BUFFER
+  return uintBitsToFloat(texelFetch(shadow_atlas_tx, shadow_atlas_3d_to_2d(texel), 0).r);
+#else
   return uintBitsToFloat(texelFetch(shadow_atlas_tx, texel, 0).r);
+#endif
 }
 
 /* ---------------------------------------------------------------------- */

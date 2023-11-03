@@ -212,6 +212,11 @@ size_t GPU_max_storage_buffer_size()
   return GCaps.max_storage_buffer_size;
 }
 
+bool GPU_texture_atomic_support()
+{
+  return GCaps.texture_atomic_support;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

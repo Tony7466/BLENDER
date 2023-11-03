@@ -182,6 +182,10 @@ void Texture::usage_set(eGPUTextureUsage usage_flags)
   gpu_image_usage_flags_ = usage_flags;
 }
 
+void Texture::set_buffer_backed(bool is_buffer_backed)
+{
+  buffer_backed_ = is_buffer_backed;
+}
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -262,11 +266,13 @@ static inline GPUTexture *gpu_texture_create(const char *name,
                                              eGPUTextureFormat tex_format,
                                              eGPUDataFormat data_format,
                                              eGPUTextureUsage usage,
-                                             const void *pixels)
+                                             const void *pixels,
+                                             bool buffer_backed = false)
 {
   BLI_assert(mip_len > 0);
   Texture *tex = GPUBackend::get()->texture_alloc(name);
   tex->usage_set(usage);
+  tex->set_buffer_backed(buffer_backed);
 
   bool success = false;
   switch (type) {
@@ -332,6 +338,17 @@ GPUTexture *GPU_texture_create_2d(const char *name,
 {
   return gpu_texture_create(
       name, w, h, 0, GPU_TEXTURE_2D, mip_len, format, GPU_DATA_FLOAT, usage, data);
+}
+GPUTexture *GPU_texture_create_2d_buffer(const char *name,
+                                         int w,
+                                         int h,
+                                         int mip_len,
+                                         eGPUTextureFormat format,
+                                         eGPUTextureUsage usage,
+                                         const float *data)
+{
+  return gpu_texture_create(
+      name, w, h, 0, GPU_TEXTURE_2D, mip_len, format, GPU_DATA_FLOAT, usage, data, true);
 }
 
 GPUTexture *GPU_texture_create_2d_array(const char *name,
@@ -973,6 +990,24 @@ void GPU_texture_get_mipmap_size(GPUTexture *tex, int lvl, int *r_size)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Buffer-backed textures
+ *
+ * When a texture resource requires usage as a storage buffer simultaneously, we
+ * can utilise functionality to fetch a storage buffer sharing the same backing
+ * resource.
+ * \{ */
+
+void GPU_texture_bind_as_ssbo(GPUTexture *tex_, uint slot)
+{
+  Texture *tex = reinterpret_cast<Texture *>(tex_);
+  BLI_assert_msg(tex->get_buffer_backed(), "Only buffer backed textures can be bound as SSBOs.");
+  tex->bind_as_ssbo(slot);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+
 /** \name GPU Pixel Buffer
  *
  * Pixel buffer utility functions.

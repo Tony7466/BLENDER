@@ -18,6 +18,8 @@
 
 #include "draw_common.hh"
 
+#include "GPU_capabilities.h"
+
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
@@ -188,6 +190,9 @@ void ShadowPipeline::sync()
       pass.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
       pass.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
       pass.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
+      if (GPU_texture_atomic_support() == false) {
+        pass.bind_ssbo(SHADOW_ATLAS_BUF_SLOT, &inst_.shadows.atlas_tx_);
+      }
     }
     inst_.bind_uniform_data(&pass);
     inst_.sampling.bind_resources(pass);

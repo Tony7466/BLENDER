@@ -17,6 +17,11 @@ void main()
   uvec3 page_co = shadow_page_unpack(page_packed);
   page_co.xy = page_co.xy * SHADOW_PAGE_RES + gl_GlobalInvocationID.xy;
 
+#ifdef SHADOW_ATOMIC_FALLBACK_BUFFER
+  imageStoreFast(
+      shadow_atlas_img, shadow_atlas_3d_to_2d(ivec3(page_co)), uvec4(floatBitsToUint(FLT_MAX)));
+#else
   /* Clear to FLT_MAX instead of 1 so the far plane doesn't cast shadows onto farther objects. */
   imageStoreFast(shadow_atlas_img, ivec3(page_co), uvec4(floatBitsToUint(FLT_MAX)));
+#endif
 }

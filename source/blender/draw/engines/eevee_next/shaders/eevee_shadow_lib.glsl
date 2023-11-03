@@ -8,7 +8,7 @@
 
 #define EEVEE_SHADOW_LIB
 
-float shadow_read_depth_at_tilemap_uv(usampler2DArray atlas_tx,
+float shadow_read_depth_at_tilemap_uv(SHADOW_ATLAS_TX_TYPE atlas_tx,
                                       usampler2D tilemaps_tx,
                                       int tilemap_index,
                                       vec2 tilemap_uv)
@@ -31,7 +31,12 @@ float shadow_read_depth_at_tilemap_uv(usampler2DArray atlas_tx,
   ivec2 texel_page = (texel_coord & page_mask) >> int(tile.lod);
   ivec3 texel = ivec3((ivec2(tile.page.xy) << page_shift) | texel_page, tile.page.z);
 
+#ifdef SHADOW_ATOMIC_FALLBACK_BUFFER
+  /* Shadow atlas is a 2D buffer backed texture in fallback mode. */
+  return uintBitsToFloat(texelFetch(atlas_tx, shadow_atlas_3d_to_2d(texel), 0).r);
+#else
   return uintBitsToFloat(texelFetch(atlas_tx, texel, 0).r);
+#endif
 }
 
 struct ShadowEvalResult {
@@ -86,7 +91,7 @@ float shadow_linear_occluder_distance(LightData light,
   return receiver_z - occluder_z;
 }
 
-ShadowEvalResult shadow_punctual_sample_get(usampler2DArray atlas_tx,
+ShadowEvalResult shadow_punctual_sample_get(SHADOW_ATLAS_TX_TYPE atlas_tx,
                                             usampler2D tilemaps_tx,
                                             LightData light,
                                             vec3 P)
@@ -116,7 +121,7 @@ ShadowEvalResult shadow_punctual_sample_get(usampler2DArray atlas_tx,
   return result;
 }
 
-ShadowEvalResult shadow_directional_sample_get(usampler2DArray atlas_tx,
+ShadowEvalResult shadow_directional_sample_get(SHADOW_ATLAS_TX_TYPE atlas_tx,
                                                usampler2D tilemaps_tx,
                                                LightData light,
                                                vec3 P)
@@ -159,7 +164,7 @@ ShadowEvalResult shadow_directional_sample_get(usampler2DArray atlas_tx,
 }
 
 ShadowEvalResult shadow_sample(const bool is_directional,
-                               usampler2DArray atlas_tx,
+                               SHADOW_ATLAS_TX_TYPE atlas_tx,
                                usampler2D tilemaps_tx,
                                LightData light,
                                vec3 P)

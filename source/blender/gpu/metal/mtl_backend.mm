@@ -455,6 +455,12 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
 
   GCaps.transform_feedback_support = true;
 
+  /* Texture atomic support in Metal 3.1. */
+  GCaps.texture_atomic_support = false;
+  if (@available(macOS 14.00, *)) {
+    GCaps.texture_atomic_support = true;
+  }
+
   /* OPENGL Related workarounds -- none needed for Metal. */
   GCaps.extensions_len = 0;
   GCaps.extension_get = mtl_extensions_get_null;

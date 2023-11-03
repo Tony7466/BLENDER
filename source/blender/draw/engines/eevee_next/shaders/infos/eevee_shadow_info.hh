@@ -195,17 +195,31 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tilemap_finalize)
     .compute_source("eevee_shadow_tilemap_finalize_comp.glsl");
 
 /* AtomicMin clear implementation. */
-GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear)
-    .do_static_compilation(true)
-    .local_group_size(SHADOW_PAGE_CLEAR_GROUP_SIZE, SHADOW_PAGE_CLEAR_GROUP_SIZE)
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_common)
     .storage_buf(2, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf")
     .storage_buf(6, Qualifier::READ, SHADOW_PAGE_PACKED, "dst_coord_buf[SHADOW_RENDER_MAP_SIZE]")
     .additional_info("eevee_shared")
-    .compute_source("eevee_shadow_page_clear_comp.glsl")
+    .compute_source("eevee_shadow_page_clear_comp.glsl");
+
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear)
+    .do_static_compilation(true)
+    .local_group_size(SHADOW_PAGE_CLEAR_GROUP_SIZE, SHADOW_PAGE_CLEAR_GROUP_SIZE)
+    .additional_info("eevee_shadow_page_clear_common")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32UI,
            Qualifier::READ_WRITE,
            ImageType::UINT_2D_ARRAY,
+           "shadow_atlas_img");
+
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_buffer_atomic)
+    .do_static_compilation(true)
+    .local_group_size(SHADOW_PAGE_CLEAR_GROUP_SIZE, SHADOW_PAGE_CLEAR_GROUP_SIZE)
+    .additional_info("eevee_shadow_page_clear_common")
+    .define("SHADOW_ATOMIC_FALLBACK_BUFFER")
+    .image(SHADOW_ATLAS_IMG_SLOT,
+           GPU_R32UI,
+           Qualifier::READ_WRITE,
+           ImageType::UINT_2D,
            "shadow_atlas_img");
 
 /* TBDR clear implementation. */
@@ -261,6 +275,11 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_tile_store)
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_data)
     .sampler(SHADOW_ATLAS_TEX_SLOT, ImageType::UINT_2D_ARRAY, "shadow_atlas_tx")
+    .sampler(SHADOW_TILEMAPS_TEX_SLOT, ImageType::UINT_2D, "shadow_tilemaps_tx");
+
+GPU_SHADER_CREATE_INFO(eevee_shadow_data_buffer_atomic)
+    .define("SHADOW_ATOMIC_FALLBACK_BUFFER")
+    .sampler(SHADOW_ATLAS_TEX_SLOT, ImageType::UINT_2D, "shadow_atlas_tx")
     .sampler(SHADOW_TILEMAPS_TEX_SLOT, ImageType::UINT_2D, "shadow_tilemaps_tx");
 
 /** \} */

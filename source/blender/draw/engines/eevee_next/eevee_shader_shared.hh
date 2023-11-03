@@ -826,6 +826,26 @@ static inline int2 shadow_cascade_grid_offset(int2 base_offset, int level_relati
   return (base_offset * level_relative) / (1 << 16);
 }
 
+/* Shadow atlas is a 2D buffer backed texture in fallback mode. */
+#ifdef SHADOW_ATOMIC_FALLBACK_BUFFER
+/* Map generated 3D atlas coordinate to 2D.*/
+static inline int2 shadow_atlas_3d_to_2d(int3 texel_3d)
+{
+  const int size_per_layer = SHADOW_PAGE_RES * SHADOW_PAGE_PER_ROW;
+  const int layers_per_row = SHADOW_ATLAS_BUFFER_MAX_WIDTH / size_per_layer;
+
+  const int2 atlas_layer_offset = int2(texel_3d.z % layers_per_row, texel_3d.z / layers_per_row);
+
+  return texel_3d.xy + atlas_layer_offset * int2(size_per_layer);
+}
+#endif
+
+#ifdef SHADOW_ATOMIC_FALLBACK_BUFFER
+#  define SHADOW_ATLAS_TX_TYPE usampler2D
+#else
+#  define SHADOW_ATLAS_TX_TYPE usampler2DArray
+#endif
+
 /**
  * Small descriptor used for the tile update phase. Updated by CPU & uploaded to GPU each redraw.
  */

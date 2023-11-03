@@ -64,7 +64,18 @@ void main()
   uint u_depth = floatBitsToUint(f_depth);
   /* Quantization bias. Equivalent to `nextafter()` in C without all the safety. */
   u_depth += 2;
+#  ifdef SHADOW_ATOMIC_FALLBACK_BUFFER
+  /* Use fallback storage buffer for shadow writing. */
+  ivec2 out_texel_buf = shadow_atlas_3d_to_2d(out_texel);
+  uint out_texel_linear_id = (out_texel_buf.y * SHADOW_ATLAS_BUFFER_MAX_WIDTH) + out_texel_buf.x;
+
+  /* Note: Indices can be out of bounds. */
+  if (out_texel_linear_id < (16384 * 8192)) {
+    atomicMin(shadow_atlas_buf[out_texel_linear_id], u_depth);
+  }
+#  else
   imageAtomicMin(shadow_atlas_img, out_texel, u_depth);
+#  endif
 #endif
 
 #ifdef SHADOW_UPDATE_TBDR

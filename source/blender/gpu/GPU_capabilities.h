@@ -55,7 +55,8 @@ bool GPU_compute_shader_support(void);
 bool GPU_shader_image_load_store_support(void);
 bool GPU_shader_draw_parameters_support(void);
 bool GPU_hdr_support(void);
-bool GPU_texture_view_support();
+bool GPU_texture_view_support(void);
+bool GPU_texture_atomic_support(void);
 
 bool GPU_mem_stats_supported(void);
 void GPU_mem_stats_get(int *totalmem, int *freemem);

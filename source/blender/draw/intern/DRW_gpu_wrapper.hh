@@ -624,7 +624,7 @@ class Texture : NonCopyable {
                  float *data = nullptr,
                  int mip_len = 1)
   {
-    return ensure_impl(extent, 0, 0, mip_len, format, usage, data, false, false);
+    return ensure_impl(extent, 0, 0, mip_len, format, usage, data, false, false, false);
   }
 
   /**
@@ -638,8 +638,7 @@ class Texture : NonCopyable {
                        float *data = nullptr,
                        int mip_len = 1)
   {
-    BLI_assert(layers > 0);
-    return ensure_impl(extent, layers, 0, mip_len, format, usage, data, true, false);
+    return ensure_impl(extent, layers, 0, mip_len, format, usage, data, true, false, false);
   }
 
   /**
@@ -652,7 +651,19 @@ class Texture : NonCopyable {
                  float *data = nullptr,
                  int mip_len = 1)
   {
-    return ensure_impl(UNPACK2(extent), 0, mip_len, format, usage, data, false, false);
+    return ensure_impl(UNPACK2(extent), 0, mip_len, format, usage, data, false, false, true);
+  }
+  /**
+   * Ensure the texture has the correct properties. Recreating it if needed.
+   * Return true if a texture has been created.
+   */
+  bool ensure_2d_buffer(eGPUTextureFormat format,
+                        int2 extent,
+                        eGPUTextureUsage usage = GPU_TEXTURE_USAGE_GENERAL,
+                        float *data = nullptr,
+                        int mip_len = 1)
+  {
+    return ensure_impl(UNPACK2(extent), 0, mip_len, format, usage, data, false, false, false);
   }
 
   /**
@@ -667,7 +678,7 @@ class Texture : NonCopyable {
                        int mip_len = 1)
   {
     BLI_assert(layers > 0);
-    return ensure_impl(UNPACK2(extent), layers, mip_len, format, usage, data, true, false);
+    return ensure_impl(UNPACK2(extent), layers, mip_len, format, usage, data, true, false, false);
   }
 
   /**
@@ -680,7 +691,7 @@ class Texture : NonCopyable {
                  float *data = nullptr,
                  int mip_len = 1)
   {
-    return ensure_impl(UNPACK3(extent), mip_len, format, usage, data, false, false);
+    return ensure_impl(UNPACK3(extent), mip_len, format, usage, data, false, false, false);
   }
 
   /**
@@ -693,7 +704,7 @@ class Texture : NonCopyable {
                    float *data = nullptr,
                    int mip_len = 1)
   {
-    return ensure_impl(extent, extent, 0, mip_len, format, usage, data, false, true);
+    return ensure_impl(extent, extent, 0, mip_len, format, usage, data, false, true, false);
   }
 
   /**
@@ -707,7 +718,7 @@ class Texture : NonCopyable {
                          float *data = nullptr,
                          int mip_len = 1)
   {
-    return ensure_impl(extent, extent, layers, mip_len, format, usage, data, true, true);
+    return ensure_impl(extent, extent, layers, mip_len, format, usage, data, true, true, false);
   }
 
   /**
@@ -933,7 +944,8 @@ class Texture : NonCopyable {
                    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_GENERAL,
                    float *data = nullptr,
                    bool layered = false,
-                   bool cubemap = false)
+                   bool cubemap = false,
+                   bool buffer_backed = false)
 
   {
     /* TODO(@fclem): In the future, we need to check if mip_count did not change.
@@ -948,7 +960,7 @@ class Texture : NonCopyable {
       }
     }
     if (tx_ == nullptr) {
-      tx_ = create(w, h, d, mip_len, format, usage, data, layered, cubemap);
+      tx_ = create(w, h, d, mip_len, format, usage, data, layered, cubemap, buffer_backed);
       if (data == nullptr && (G.debug & G_DEBUG_GPU)) {
         debug_clear();
       }
@@ -965,7 +977,8 @@ class Texture : NonCopyable {
                      eGPUTextureUsage usage,
                      float *data,
                      bool layered,
-                     bool cubemap)
+                     bool cubemap,
+                     bool buffer_backed = false)
   {
     if (h == 0) {
       return GPU_texture_create_1d(name_, w, mip_len, format, usage, data);
@@ -983,7 +996,12 @@ class Texture : NonCopyable {
         return GPU_texture_create_1d_array(name_, w, h, mip_len, format, usage, data);
       }
       else {
-        return GPU_texture_create_2d(name_, w, h, mip_len, format, usage, data);
+        if (buffer_backed) {
+          return GPU_texture_create_2d(name_, w, h, mip_len, format, usage, data);
+        }
+        else {
+          return GPU_texture_create_2d_buffer(name_, w, h, mip_len, format, usage, data);
+        }
       }
     }
     else {
