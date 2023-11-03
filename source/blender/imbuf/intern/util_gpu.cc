@@ -25,7 +25,7 @@
 
 static bool imb_is_grayscale_texture_format_compatible(const ImBuf *ibuf)
 {
-  if (ibuf->planes > 8) {
+  if (ibuf->planes > 8 || ibuf->channels > 1) {
     return false;
   }
   /* Only imbufs with colorspace that do not modify the chrominance of the texture data relative
