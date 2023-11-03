@@ -817,7 +817,7 @@ class NodeTreeMainUpdater {
   void clear_enum_definitions(const Span<bNodeTreeInterfaceSocket *> sockets)
   {
     for (bNodeTreeInterfaceSocket *socket : sockets) {
-      if (!STREQ(socket->socket_type, "NodeSocketEnum")) {
+      if (!STREQ(socket->socket_type, "NodeSocketMenu")) {
         continue;
       }
       bNodeSocketValueMenu &default_value = *static_cast<bNodeSocketValueMenu *>(
