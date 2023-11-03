@@ -169,49 +169,9 @@ static Vector<meshintersect::CDT_result<double>> do_group_aware_cdt(
   return cdt_results;
 }
 
-/* Converts the CDT result into a Mesh. */
-static Mesh *cdt_to_mesh(const meshintersect::CDT_result<double> &result)
-{
-  const int vert_len = result.vert.size();
-  const int edge_len = result.edge.size();
-  const int face_len = result.face.size();
-  int loop_len = 0;
-  for (const Vector<int> &face : result.face) {
-    loop_len += face.size();
-  }
-
-  Mesh *mesh = BKE_mesh_new_nomain(vert_len, edge_len, face_len, loop_len);
-  MutableSpan<float3> positions = mesh->vert_positions_for_write();
-  mesh->edges_for_write().copy_from(result.edge.as_span().cast<int2>());
-  MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
-  MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
-
-  for (const int i : IndexRange(result.vert.size())) {
-    positions[i] = float3(float(result.vert[i].x), float(result.vert[i].y), 0.0f);
-  }
-  int i_loop = 0;
-  for (const int i : IndexRange(result.face.size())) {
-    face_offsets[i] = i_loop;
-    for (const int j : result.face[i].index_range()) {
-      corner_verts[i_loop] = result.face[i][j];
-      i_loop++;
-    }
-  }
-
-  /* The delaunay triangulation doesn't seem to return all of the necessary edges, even in
-   * triangulation mode. */
-  BKE_mesh_calc_edges(mesh, true, false);
-  BKE_mesh_smooth_flag_set(mesh, false);
-  return mesh;
-}
-
 /* Converts multiple CDT results into a single Mesh. */
 static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
 {
-  if (results.size() == 1) {
-    return cdt_to_mesh(results.first());
-  }
-
   int vert_len = 0;
   int edge_len = 0;
   int face_len = 0;
@@ -283,7 +243,7 @@ static void curve_fill_calculate(GeometrySet &geometry_set,
       }
       else {
         const meshintersect::CDT_result<double> result = do_cdt(curves, output_type);
-        Mesh *mesh = cdt_to_mesh(result);
+        Mesh *mesh = cdts_to_mesh(Span(&result, 1));
         geometry_set.replace_mesh(mesh);
       }
     }
@@ -310,7 +270,7 @@ static void curve_fill_calculate(GeometrySet &geometry_set,
       }
       else {
         const meshintersect::CDT_result<double> result = do_cdt(src_curves, output_type);
-        mesh_by_layer[layer_index] = cdt_to_mesh(result);
+        mesh_by_layer[layer_index] = cdts_to_mesh(Span(&result, 1));
       }
     }
     if (!mesh_by_layer.is_empty()) {
