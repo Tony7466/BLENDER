@@ -196,8 +196,14 @@ class LazyFunctionForSwitchNode : public LazyFunction {
   {
     const NodeSwitch &storage = node_storage(node);
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.input_type);
-    can_be_field_ = ELEM(
-        data_type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA, SOCK_ROTATION);
+    can_be_field_ = ELEM(data_type,
+                         SOCK_FLOAT,
+                         SOCK_INT,
+                         SOCK_BOOLEAN,
+                         SOCK_VECTOR,
+                         SOCK_RGBA,
+                         SOCK_ROTATION,
+                         SOCK_MENU);
 
     const bNodeSocketType *socket_type = nullptr;
     for (const bNodeSocket *socket : node.output_sockets()) {
