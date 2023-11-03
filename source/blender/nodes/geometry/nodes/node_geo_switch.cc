@@ -18,6 +18,32 @@ namespace blender::nodes::node_geo_switch_cc {
 
 NODE_STORAGE_FUNCS(NodeSwitch)
 
+static bool is_supported_socket_type(const eNodeSocketDatatype type)
+{
+  switch (type) {
+    case SOCK_FLOAT:
+    case SOCK_VECTOR:
+    case SOCK_RGBA:
+    case SOCK_SHADER:
+    case SOCK_BOOLEAN:
+    case SOCK_INT:
+    case SOCK_STRING:
+    case SOCK_OBJECT:
+    case SOCK_IMAGE:
+    case SOCK_GEOMETRY:
+    case SOCK_COLLECTION:
+    case SOCK_TEXTURE:
+    case SOCK_MATERIAL:
+    case SOCK_ROTATION:
+    case SOCK_MENU:
+      return true;
+
+    case SOCK_CUSTOM:
+      return false;
+  }
+  return false;
+}
+
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Bool>("Switch").default_value(false).supports_field();
@@ -31,6 +57,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bool>("True", "True_002").default_value(true).hide_value().supports_field();
   b.add_input<decl::Vector>("False", "False_003").supports_field();
   b.add_input<decl::Vector>("True", "True_003").supports_field();
+  b.add_input<decl::Menu>("False", "False_004").supports_field();
+  b.add_input<decl::Menu>("True", "True_004").supports_field();
 
   b.add_input<decl::Color>("False", "False_004")
       .default_value({0.8f, 0.8f, 0.8f, 1.0f})
@@ -69,6 +97,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Material>("Output", "Output_010");
   b.add_output<decl::Image>("Output", "Output_011");
   b.add_output<decl::Rotation>("Output", "Output_012").propagate_all().reference_pass_all();
+  b.add_output<decl::Menu>("Output", "Output_013").propagate_all().reference_pass_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -97,7 +126,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
                                 SOCK_VECTOR,
                                 SOCK_RGBA,
                                 SOCK_STRING,
-                                SOCK_ROTATION);
+                                SOCK_ROTATION,
+                                SOCK_MENU);
 
   bke::nodeSetSocketAvailability(ntree, field_switch, fields_type);
   bke::nodeSetSocketAvailability(ntree, non_field_switch, !fields_type);
@@ -117,11 +147,13 @@ static void node_update(bNodeTree *ntree, bNode *node)
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
   if (params.in_out() == SOCK_OUT) {
-    params.add_item(IFACE_("Output"), [](LinkSearchOpParams &params) {
-      bNode &node = params.add_node("GeometryNodeSwitch");
-      node_storage(node).input_type = params.socket.type;
-      params.update_and_connect_available_socket(node, "Output");
-    });
+    if (is_supported_socket_type(eNodeSocketDatatype(params.other_socket().type))) {
+      params.add_item(IFACE_("Output"), [](LinkSearchOpParams &params) {
+        bNode &node = params.add_node("GeometryNodeSwitch");
+        node_storage(node).input_type = params.socket.type;
+        params.update_and_connect_available_socket(node, "Output");
+      });
+    }
   }
   else {
     /* Make sure the switch input comes first in the search for boolean sockets. */
@@ -134,22 +166,24 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       true_false_weights--;
     }
 
-    params.add_item(
-        IFACE_("False"),
-        [](LinkSearchOpParams &params) {
-          bNode &node = params.add_node("GeometryNodeSwitch");
-          node_storage(node).input_type = params.socket.type;
-          params.update_and_connect_available_socket(node, "False");
-        },
-        true_false_weights);
-    params.add_item(
-        IFACE_("True"),
-        [](LinkSearchOpParams &params) {
-          bNode &node = params.add_node("GeometryNodeSwitch");
-          node_storage(node).input_type = params.socket.type;
-          params.update_and_connect_available_socket(node, "True");
-        },
-        true_false_weights);
+    if (is_supported_socket_type(eNodeSocketDatatype(params.other_socket().type))) {
+      params.add_item(
+          IFACE_("False"),
+          [](LinkSearchOpParams &params) {
+            bNode &node = params.add_node("GeometryNodeSwitch");
+            node_storage(node).input_type = params.socket.type;
+            params.update_and_connect_available_socket(node, "False");
+          },
+          true_false_weights);
+      params.add_item(
+          IFACE_("True"),
+          [](LinkSearchOpParams &params) {
+            bNode &node = params.add_node("GeometryNodeSwitch");
+            node_storage(node).input_type = params.socket.type;
+            params.update_and_connect_available_socket(node, "True");
+          },
+          true_false_weights);
+    }
   }
 }
 
