@@ -10,7 +10,7 @@
 #include <cstring>
 
 #include "BLI_blenlib.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
@@ -45,17 +45,17 @@
 
 #include "RNA_prototypes.h"
 
-#include "SEQ_channels.h"
-#include "SEQ_effects.h"
+#include "SEQ_channels.hh"
+#include "SEQ_effects.hh"
 #include "SEQ_iterator.hh"
-#include "SEQ_prefetch.h"
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
-#include "SEQ_select.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_prefetch.hh"
+#include "SEQ_relations.hh"
+#include "SEQ_render.hh"
+#include "SEQ_select.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 #include "SEQ_transform.hh"
-#include "SEQ_utils.h"
+#include "SEQ_utils.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -194,10 +194,10 @@ static StripDrawContext strip_draw_context_get(TimelineDrawContext *ctx, Sequenc
   strip_ctx.content_start = SEQ_time_left_handle_frame_get(scene, seq);
   strip_ctx.content_end = SEQ_time_right_handle_frame_get(scene, seq);
   if (SEQ_time_has_left_still_frames(scene, seq)) {
-    SEQ_time_start_frame_get(seq);
+    strip_ctx.content_start = SEQ_time_start_frame_get(seq);
   }
   if (SEQ_time_has_right_still_frames(scene, seq)) {
-    SEQ_time_content_end_frame_get(scene, seq);
+    strip_ctx.content_end = SEQ_time_content_end_frame_get(scene, seq);
   }
   /* Limit body to strip bounds. Meta strip can end up with content outside of strip range. */
   strip_ctx.content_start = min_ff(strip_ctx.content_start,
@@ -2086,6 +2086,7 @@ void draw_timeline_seq(const bContext *C, ARegion *region)
   draw_seq_strips(&ctx);
   sequencer_draw_retiming(C);
   draw_timeline_markers(&ctx);
+  UI_view2d_view_ortho(ctx.v2d);
   ANIM_draw_previewrange(C, ctx.v2d, 1);
   draw_timeline_gizmos(&ctx);
   draw_timeline_post_view_callbacks(&ctx);

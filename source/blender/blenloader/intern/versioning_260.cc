@@ -47,7 +47,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "BLT_translation.h"
 
@@ -68,8 +68,8 @@
 #include "BKE_tracking.h"
 
 #include "SEQ_iterator.hh"
-#include "SEQ_modifier.h"
-#include "SEQ_utils.h"
+#include "SEQ_modifier.hh"
+#include "SEQ_utils.hh"
 
 #ifdef WITH_FFMPEG
 #  include "BKE_writeffmpeg.h"
@@ -78,7 +78,7 @@
 #include "IMB_imbuf.h" /* for proxy / time-code versioning stuff. */
 
 #include "NOD_common.h"
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 #include "NOD_texture.h"
 
 #include "BLO_readfile.h"

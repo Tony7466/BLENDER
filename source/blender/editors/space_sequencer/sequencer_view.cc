@@ -22,9 +22,9 @@
 #include "UI_view2d.hh"
 
 #include "SEQ_iterator.hh"
-#include "SEQ_select.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_select.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 #include "SEQ_transform.hh"
 
 /* For menu, popup, icons, etc. */

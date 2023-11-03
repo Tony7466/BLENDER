@@ -6,7 +6,7 @@
  * \ingroup sequencer
  */
 
-#include "SEQ_sequencer.h"
+#include "SEQ_sequencer.hh"
 #include "sequencer.hh"
 
 #include "DNA_listBase.h"

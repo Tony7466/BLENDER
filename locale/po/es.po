@@ -1,10 +1,10 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'3d6713e0867a')\n"
+"Project-Id-Version: Blender 4.0.0 Beta (b'8474716abb0d')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-03 09:29:22\n"
-"PO-Revision-Date: 2023-09-28 03:54+0000\n"
+"POT-Creation-Date: 2023-10-30 16:01:56\n"
+"PO-Revision-Date: 2023-10-29 23:16+0000\n"
 "Last-Translator: Gabriel Gazzán <gabcorreo@gmail.com>\n"
 "Language-Team: Spanish <https://translate.blender.org/projects/blender-ui/ui/es/>\n"
 "Language: es\n"
@@ -343,6 +343,14 @@ msgid "Optimize all kernels. Fastest rendering, may result in extra background C
 msgstr "Optimiza todos los núcleos. Procesamiento mucho más rápido, puede resultar en un uso extra de CPU en segundo plano"
 
 
+msgid "On"
+msgstr "Activado"
+
+
+msgid "Auto"
+msgstr "Auto"
+
+
 msgid "Distribute memory across devices"
 msgstr "Distribuir en la memoria de dispositivos"
 
@@ -357,14 +365,6 @@ msgstr "HIP RT (experimental)"
 
 msgid "HIP RT enables AMD hardware ray tracing on RDNA2 and above, with shader fallback on older cards. This feature is experimental and some scenes may render incorrectly"
 msgstr "HIP RT habilita el trazado de rayos por hardware en RDNA2 y superior de AMD, con un sombreador alternativo para placas más antiguas. Esta característica es experimental y es posible que algunas escenas sean procesadas de forma incorrecta"
-
-
-msgid "MetalRT (Experimental)"
-msgstr "MetalRT (experimental)"
-
-
-msgid "MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better performance in specific cases. However this support is experimental and some scenes may render incorrectly"
-msgstr "MetalRT para trazado de rayos usa menos memoria en escenas que hagan un uso extensivo de curvas, y puede brindar un mejor rendimiento en algunos casos específicos. Sin embargo este soporte es experimental y es posible que algunas escenas sean procesadas de forma incorrecta"
 
 
 msgid "Embree on GPU"
@@ -1167,6 +1167,22 @@ msgid "Information about an entity that makes it possible for the asset system t
 msgstr "Información acerca de una entidad, que hace posible que el sistema de recursos trate a la misma como un recurso"
 
 
+msgid "Full Library Path"
+msgstr "Ruta de la Biblioteca Completa"
+
+
+msgid "Absolute path to the .blend file containing this asset"
+msgstr "Ruta absoluta al archivo .blend que contiene a este recurso"
+
+
+msgid "Full Path"
+msgstr "Ruta completa"
+
+
+msgid "Absolute path to the .blend file containing this asset extended with the path of the asset inside the file"
+msgstr "Ruta absoluta al archivo .blend que contiene a este recurso, extendida con la ruta al recurso dentro de dicho archivo"
+
+
 msgctxt "ID"
 msgid "Data-block Type"
 msgstr "Tipo de bloque de datos"
@@ -1374,6 +1390,10 @@ msgid "Asset Metadata"
 msgstr "Metadatos de recurso"
 
 
+msgid "Additional information about the asset"
+msgstr "Información adicional acerca del recurso"
+
+
 msgid "Asset Shelf"
 msgstr "Banco de recursos"
 
@@ -1384,6 +1404,10 @@ msgstr "Regiones para un rápido acceso a los recursos"
 
 msgid "Asset Library"
 msgstr "Biblioteca de recursos"
+
+
+msgid "Choose the asset library to display assets from"
+msgstr "Escoger la biblioteca de la cual mostrar recursos"
 
 
 msgid "ID Name"
@@ -2140,10 +2164,6 @@ msgstr "Libre"
 
 msgid "Aligned"
 msgstr "Alineada"
-
-
-msgid "Auto"
-msgstr "Auto"
 
 
 msgid "Handle 2"
@@ -3488,12 +3508,28 @@ msgid "Multiply B-Bone Scale In channels by the local scale values of the start 
 msgstr "Multiplica los canales de Escala inicial del hueso flexible por los valores de escala local del asa inicial. Es calculado luego de la opción Escalar suavizado y no se encuentra afectado por ella"
 
 
+msgid "B-Bone Vertex Mapping Mode"
+msgstr "Modo de mapeo de vértices de hueso flexible"
+
+
+msgid "Selects how the vertices are mapped to B-Bone segments based on their position"
+msgstr "Permite seleccionar cómo serán mapeados los vértices a los segmentos de huesos flexibles, basándose en su posición"
+
+
 msgid "Straight"
 msgstr "Directo"
 
 
+msgid "Fast mapping that is good for most situations, but ignores the rest pose curvature of the B-Bone"
+msgstr "Mapeo rápido, bueno para la mayoría de los casos, pero que ignora la curvatura del hueso flexible en la pose de reposo"
+
+
 msgid "Curved"
 msgstr "Curvo"
+
+
+msgid "Slower mapping that gives better deformation for B-Bones that are sharply curved in rest pose"
+msgstr "Mapeo más lento que produce mejores resultados en huesos flexibles que se encuentren muy curvados en su pose de reposo"
 
 
 msgid "Roll In"
@@ -3810,6 +3846,14 @@ msgstr "Huesos"
 
 msgid "Bones assigned to this bone collection. In armature edit mode this will always return an empty list of bones, as the bone collection memberships are only synchronised when exiting edit mode"
 msgstr "Huesos asignados a esta colección de huesos. En el modo de Edición del esqueleto esto siempre producirá una lista vacía de huesos, dado que la membresía a las colecciones de huesos es actualizada al salir del modo Edición"
+
+
+msgid "Is Editable"
+msgstr "Es editable"
+
+
+msgid "This collection is owned by a local Armature, or was added via a library override in the current blend file"
+msgstr "Indica si esta colección pertenece a un esqueleto local o fue agregada mediante una redefinición de biblioteca en el archivo blend actual"
 
 
 msgid "Is Local Override"
@@ -4624,6 +4668,11 @@ msgstr "Alteración"
 
 msgid "Jitter factor for new strokes"
 msgstr "Factor de alteración para los nuevos trazos"
+
+
+msgctxt "Amount"
+msgid "Smooth"
+msgstr "Suavizado"
 
 
 msgid "Amount of smoothing to apply after finish newly created strokes, to reduce jitter/noise"
@@ -11067,10 +11116,6 @@ msgid "Active Point Cache Index"
 msgstr "Identificador del caché de puntos activo"
 
 
-msgid "Curve Mapping"
-msgstr "Curva de mapeo"
-
-
 msgid "Edit Bone"
 msgstr "Hueso (Edición)"
 
@@ -13117,8 +13162,32 @@ msgid "Display Size"
 msgstr "Tamaño de visualización"
 
 
+msgid "Change the size of thumbnails"
+msgstr "Permite cambiar el tamaño de las miniaturas"
+
+
+msgid "Change the size of thumbnails in discrete steps"
+msgstr "Permite cambiar el tamaño de las miniaturas de a saltos"
+
+
+msgid "Tiny"
+msgstr "Diminuto"
+
+
+msgid "Small"
+msgstr "Pequeño"
+
+
 msgid "Medium"
 msgstr "Media"
+
+
+msgid "Big"
+msgstr "Grande"
+
+
+msgid "Large"
+msgstr "Muy grande"
 
 
 msgid "Display Mode"
@@ -13171,6 +13240,14 @@ msgstr "Coincidencia de nombre de archivos de tipo línea de comandos de UNIX, s
 
 msgid "Filter ID Types"
 msgstr "Filtrar por tipo"
+
+
+msgid "Name or Tag Filter"
+msgstr "Filtrar por nombre o etiqueta"
+
+
+msgid "Filter by name or tag, supports '*' wildcard"
+msgstr "El filtrado por nombre o etiqueta, soporta el comodín '*'"
 
 
 msgid "Recursion"
@@ -14942,6 +15019,10 @@ msgid "Controls fluid emission from the mesh surface (higher value results in em
 msgstr "Controla la emisión del fluido a partir de la superficie de la malla (valores más altos producen una emisión más apartada de la superficie de la misma)"
 
 
+msgid "Temperature Difference"
+msgstr "Diferencia de temperatura"
+
+
 msgid "Temperature difference to ambient temperature"
 msgstr "Diferencia de temperatura con la temperatura ambiente"
 
@@ -16290,8 +16371,18 @@ msgid "Temporary data for Edit Curve"
 msgstr "Datos temporales para la edición como curva"
 
 
+msgctxt "GPencil"
+msgid "End Cap"
+msgstr "Extremo final"
+
+
 msgid "Stroke end extreme cap style"
 msgstr "Estilo de extremo al final del trazo"
+
+
+msgctxt "GPencil"
+msgid "Rounded"
+msgstr "Redondeado"
 
 
 msgid "Amount of gradient along section of stroke"
@@ -16340,6 +16431,11 @@ msgstr "Identificador de selección"
 
 msgid "Index of selection used for interpolation"
 msgstr "Identificador de selección usado para la interpolación"
+
+
+msgctxt "GPencil"
+msgid "Start Cap"
+msgstr "Extremo inicial"
 
 
 msgid "Stroke start extreme cap style"
@@ -16702,6 +16798,10 @@ msgstr "Herramientas"
 
 msgid "Tool Properties"
 msgstr "Propiedades de herramientas"
+
+
+msgid "Asset Shelf Header"
+msgstr "Encabezado del banco de recursos"
 
 
 msgid "Floating Region"
@@ -19387,6 +19487,10 @@ msgid "The position for the axes on the bone. Increasing the value moves it clos
 msgstr "La posición de los ejes del hueso. Al aumentar el valor éstos se desplazarán hacia la cola; al disminuirlo lo harán hacia la cabeza"
 
 
+msgid "Bone Collections"
+msgstr "Colecciones de huesos"
+
+
 msgid "Octahedral"
 msgstr "Octaedros"
 
@@ -19477,6 +19581,14 @@ msgstr "Mostrar ejes"
 
 msgid "Display bone axes"
 msgstr "Muestra los ejes de los huesos"
+
+
+msgid "Display Bone Colors"
+msgstr "Mostrar colores de huesos"
+
+
+msgid "Display bone colors"
+msgstr "Muestra los colores de los huesos"
 
 
 msgid "Display Custom Bone Shapes"
@@ -20028,6 +20140,61 @@ msgid "Curves Sculpt Settings"
 msgstr "Opciones de esculpido de curvas"
 
 
+msgctxt "Curves"
+msgid "Curves Sculpt Tool"
+msgstr "Esculpir curvas"
+
+
+msgctxt "Curves"
+msgid "Paint Selection"
+msgstr "Pintar selección"
+
+
+msgctxt "Curves"
+msgid "Add"
+msgstr "Agregar"
+
+
+msgctxt "Curves"
+msgid "Delete"
+msgstr "Borrar"
+
+
+msgctxt "Curves"
+msgid "Density"
+msgstr "Densidad"
+
+
+msgctxt "Curves"
+msgid "Comb"
+msgstr "Peinar"
+
+
+msgctxt "Curves"
+msgid "Snake Hook"
+msgstr "Gancho de serpiente"
+
+
+msgctxt "Curves"
+msgid "Grow / Shrink"
+msgstr "Expandir / Contraer"
+
+
+msgctxt "Curves"
+msgid "Pinch"
+msgstr "Pellizcar"
+
+
+msgctxt "Curves"
+msgid "Puff"
+msgstr "Soplar"
+
+
+msgctxt "Curves"
+msgid "Slide"
+msgstr "Deslizar"
+
+
 msgid "Dash Ratio"
 msgstr "Tasa punteado"
 
@@ -20432,6 +20599,21 @@ msgstr "Textura de máscara"
 
 msgid "Mask Texture Slot"
 msgstr "Contenedor de texturas de máscara"
+
+
+msgctxt "Mask"
+msgid "Mask Tool"
+msgstr "Enmascarar"
+
+
+msgctxt "Mask"
+msgid "Draw"
+msgstr "Dibujar"
+
+
+msgctxt "Mask"
+msgid "Smooth"
+msgstr "Suavizar"
 
 
 msgid "Plane Angle"
@@ -24343,6 +24525,14 @@ msgid "Path to the library .blend file"
 msgstr "Ruta al archivo de biblioteca .blend"
 
 
+msgid "Library Overrides Need resync"
+msgstr "Redefiniciones de biblioteca necesitan resincronización"
+
+
+msgid "True if this library contains library overrides that are linked in current blendfile, and that had to be recursively resynced on load (it is recommended to open and re-save that library blendfile then)"
+msgstr "Verdadero cuando esta biblioteca contenga redefiniciones vinculadas en el archivo blend actual, que tenían que haber sido resincronizadas recursivamente en el momento de su carga (se recomienda por lo tanto abrir y volver a guardar el archivo .blend de dicha biblioteca)"
+
+
 msgid "Version of Blender the library .blend was saved with"
 msgstr "Versión de Blender con que fue grabada la biblioteca .blend"
 
@@ -24698,8 +24888,40 @@ msgid "Clamp Indirect"
 msgstr "Limitar indirecta"
 
 
+msgid "Radius in grid sample to search valid grid samples to copy into invalid grid samples"
+msgstr "Radio en la cuadrícula de muestras donde buscar muestras válidas para copiar sobre las muestras inválidas de la cuadrícula"
+
+
+msgid "Dilation Threshold"
+msgstr "Umbral de dilatación"
+
+
+msgid "Ratio of front-facing surface hits under which a grid sample will reuse neighbors grid sample lighting"
+msgstr "Tasa de impactos del lado frontal de la superficie por debajo de la cual una muestra de la cuadrícula reutilizará la iluminación de las muestras vecinas de la cuadrícula"
+
+
+msgid "Capture Escape Bias"
+msgstr "Desviación escape captura"
+
+
+msgid "Moves capture points outside objects"
+msgstr "Mueve los puntos de captura hacia afuera de los objetos"
+
+
+msgid "Facing Bias"
+msgstr "Desviación de incidencia"
+
+
 msgid "Smoother irradiance interpolation but introduce light bleeding"
 msgstr "Permite obtener una interpolación más suave de la irradiación, pero introduce sangrado de luz"
+
+
+msgid "Normal Bias"
+msgstr "Desviación de normales"
+
+
+msgid "Offset sampling of the irradiance grid in the surface normal direction to reduce light bleeding"
+msgstr "Desplaza el muestreo de la cuadrícula de irradiación en dirección a las normales de la superficie, para reducir el sangrado de luz"
 
 
 msgid "Resolution X"
@@ -24724,6 +24946,22 @@ msgstr "Resolución Z"
 
 msgid "Number of samples along the z axis of the volume"
 msgstr "Cantidad de muestras a lo largo del eje Z del volumen"
+
+
+msgid "Capture Surface Bias"
+msgstr "Desviación captura superficies"
+
+
+msgid "Moves capture points position away from surfaces to avoid artifacts"
+msgstr "Mueve la posición de los puntos de captura hacia afuera de las superficies, para evitar defectos visuales"
+
+
+msgid "Validity Threshold"
+msgstr "Umbral de validez"
+
+
+msgid "Ratio of front-facing surface hits under which a grid sample will not be considered for lighting"
+msgstr "Tasa de impactos en las caras frontales de la superficie por debajo del cual una muestra de la cuadrícula no será considerada para la iluminación"
 
 
 msgid "Influence Distance"
@@ -33140,6 +33378,14 @@ msgid "Base type to define alpha transparency modifiers"
 msgstr "Tipo base para definir modificadores de transparencia alfa"
 
 
+msgid "Modifier Name"
+msgstr "Nombre del modificador"
+
+
+msgid "Name of the modifier"
+msgstr "Nombre del modificador"
+
+
 msgid "Along Stroke"
 msgstr "A lo largo del trazo"
 
@@ -33178,14 +33424,6 @@ msgstr "Usar un mapeo lineal"
 
 msgid "Use curve mapping"
 msgstr "Usar una curva de mapeo"
-
-
-msgid "Modifier Name"
-msgstr "Nombre del modificador"
-
-
-msgid "Name of the modifier"
-msgstr "Nombre del modificador"
 
 
 msgid "Modifier Type"
@@ -50205,6 +50443,10 @@ msgid "Show All"
 msgstr "Mostrar todo"
 
 
+msgid "Pose Bone"
+msgstr "Hueso pose"
+
+
 msgctxt "Operator"
 msgid "Delete Selected Bone(s)"
 msgstr "Borrar huesos seleccionados"
@@ -50563,10 +50805,6 @@ msgstr "de -X a +X"
 
 msgid "+X to -X"
 msgstr "de +X a -X"
-
-
-msgid "Pose Bone"
-msgstr "Hueso pose"
 
 
 msgctxt "Operator"
@@ -54007,8 +54245,20 @@ msgstr "Convetir rotaciones a Euler ZYX"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Exportar PLY"
+msgid "Export STL"
+msgstr "Exportar STL"
+
+
+msgid "Save STL triangle mesh data"
+msgstr "Guardar datos de malla triangulada STL"
+
+
+msgid "Ascii"
+msgstr "ASCII"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Guarda el archivo en formato ASCII"
 
 
 msgid "X Forward"
@@ -54055,39 +54305,6 @@ msgid "-Z Up"
 msgstr "-Z hacia arriba"
 
 
-msgid "ASCII"
-msgstr "ASCII"
-
-
-msgid "Apply Modifiers"
-msgstr "Aplicar modificadores"
-
-
-msgid "Selection Only"
-msgstr "Sólo lo seleccionado"
-
-
-msgid "Export selected objects only"
-msgstr "Exportar sólo objetos seleccionados"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Exportar STL"
-
-
-msgid "Save STL triangle mesh data"
-msgstr "Guardar datos de malla triangulada STL"
-
-
-msgid "Ascii"
-msgstr "ASCII"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Guarda el archivo en formato ASCII"
-
-
 msgid "Batch Mode"
 msgstr "Proceso por lotes"
 
@@ -54108,6 +54325,10 @@ msgid "Export in this reference space"
 msgstr "Exporta en este espacio de referencia"
 
 
+msgid "Apply Modifiers"
+msgstr "Aplicar modificadores"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "Aplicar los modificadores antes de guardar"
 
@@ -54118,6 +54339,14 @@ msgstr "Unidades de la escena"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "Aplicar las unidades de la escena actual a los datos exportados"
+
+
+msgid "Selection Only"
+msgstr "Sólo lo seleccionado"
+
+
+msgid "Export selected objects only"
+msgstr "Exportar sólo objetos seleccionados"
 
 
 msgctxt "Operator"
@@ -54718,10 +54947,6 @@ msgid "Apply sampling to all animations"
 msgstr "Aplicar muestreo a todas las animaciones"
 
 
-msgid "Output format and embedding options. Binary is most efficient, but JSON (embedded or separate) may be easier to edit later"
-msgstr "Formato de salida y opciones de inserción. El formato binario es más eficiente, sin embargo el JSON (incorporado o separado) puede ser más sencillo de editar posteriormente"
-
-
 msgid "glTF Binary (.glb)"
 msgstr "glTF binario (.glb)"
 
@@ -54736,14 +54961,6 @@ msgstr "glTF separado (.gltf + .bin + textures)"
 
 msgid "Exports multiple files, with separate JSON, binary and texture data. Easiest to edit later"
 msgstr "Exporta varios archivos, con datos JSON, binarios y de texturas. Más sencillo de editar luego"
-
-
-msgid "glTF Embedded (.gltf)"
-msgstr "glTF incorporado (.gltf)"
-
-
-msgid "Exports a single file, with all data packed in JSON. Less efficient than binary, but easier to edit later"
-msgstr "Exporta un único archivo conteniendo todos los datos empacados en formato JSON. Es menos eficiente que el binario, pero más sencillo de editar luego"
 
 
 msgid "Limit to Playback Range"
@@ -55076,18 +55293,6 @@ msgstr "Recordar opciones de exportación"
 
 msgid "Store glTF export settings in the Blender project"
 msgstr "Almacenar opciones de exportación de glTF en el proyecto de Blender"
-
-
-msgid "Material Groups"
-msgstr "Grupos de material"
-
-
-msgid "Generate an OBJ group for each part of a geometry using a different material"
-msgstr "Genera un grupo dentro del OBJ para cada parte de una geometría que use un material distinto"
-
-
-msgid "Smooth Groups"
-msgstr "Grupos de suavizado"
 
 
 msgctxt "Operator"
@@ -60054,10 +60259,6 @@ msgid "Always face the camera"
 msgstr "Siempre apuntar a la cámara"
 
 
-msgid "Hashed"
-msgstr "Difuminar"
-
-
 msgid "Setup Corner Pin"
 msgstr "Usar Fijar esquinas"
 
@@ -60228,11 +60429,6 @@ msgstr "Definir la imagen en base a sus puntos por unidades de Blender"
 
 msgid "Use alpha channel for transparency"
 msgstr "Usar el canal alfa para definir la transparencia"
-
-
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importar PLY"
 
 
 msgctxt "Operator"
@@ -60468,10 +60664,6 @@ msgstr "Nivel de registro"
 
 msgid "The glTF format requires discontinuous normals, UVs, and other vertex attributes to be stored as separate vertices, as required for rendering on typical graphics hardware. This option attempts to combine co-located vertices where possible. Currently cannot combine verts with different normals"
 msgstr "El formato glTF requiere que las normales discontinuas, UV y otros atributos de vértices sean almacenados como vértices separados, tal como se requiere para ser procesado por el hardware gráfico usual. Esta opción intentará combinar, cuando sea posible, vértices que compartan la misma ubicación. Actualmente no es posible combinar vértices con distintas normales"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "Importa grupos OBJ como grupos de vértices"
 
 
 msgctxt "Operator"
@@ -75753,24 +75945,6 @@ msgid "Line number to jump to"
 msgstr "Número de línea a donde saltar"
 
 
-msgctxt "Operator"
-msgid "Open Text File at point"
-msgstr "Abrir archivo de texto en un punto"
-
-
-msgid "Edit text file in external text editor"
-msgstr "Edita un archivo de texto en un editor de texto externo"
-
-
-msgctxt "Operator"
-msgid "Jump to File at Point (Internal)"
-msgstr "Saltar a archivo en un punto (interno)"
-
-
-msgid "Jump to a file for the internal text editor"
-msgstr "Saltar a un archivo en el editor de texto interno"
-
-
 msgid "Column"
 msgstr "Columna"
 
@@ -77383,10 +77557,6 @@ msgid "Export the UV layout to a bitmap image"
 msgstr "Exporta la organización de las UV a un archivo de imagen"
 
 
-msgid "Modified"
-msgstr "Modificado"
-
-
 msgid "Exports UVs from the modified mesh"
 msgstr "Exportar las UV de la malla modificada"
 
@@ -77897,26 +78067,6 @@ msgstr "Selecciona todos los vértices UV fijos"
 
 msgid "Select similar UVs by property types"
 msgstr "Selecciona UV similares por tipo de propiedad"
-
-
-msgid "Length 3D"
-msgstr "Longitud 3D"
-
-
-msgid "Area 3D"
-msgstr "Área 3D"
-
-
-msgid "Polygon Sides"
-msgstr "Lados del polígono"
-
-
-msgid "Winding"
-msgstr "Devanado"
-
-
-msgid "Amount of Faces in Island"
-msgstr "Cantidad de caras en la isla"
 
 
 msgctxt "Operator"
@@ -80384,6 +80534,10 @@ msgid "Export Material Groups"
 msgstr "Exportar grupos de materiales"
 
 
+msgid "Generate an OBJ group for each part of a geometry using a different material"
+msgstr "Genera un grupo dentro del OBJ para cada parte de una geometría que use un material distinto"
+
+
 msgid "Export Materials"
 msgstr "Exportar materiales"
 
@@ -80505,6 +80659,10 @@ msgid "Resize the objects to keep bounding box under this value. Value 0 disable
 msgstr "Redimensiona los objetos para mantener el volumen delimitador por debajo de este valor. Un valor de 0 deshabilita la limitación"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "Importa grupos OBJ como grupos de vértices"
+
+
 msgid "Split By Group"
 msgstr "Dividir por grupo"
 
@@ -80610,6 +80768,11 @@ msgid "Open a path in a file browser"
 msgstr "Abre una ruta en el explorador de archivos"
 
 
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Exportar PLY"
+
+
 msgid "Save the scene to a PLY file"
 msgstr "Guarda la escena a un archivo PLY"
 
@@ -80644,6 +80807,11 @@ msgstr "Exportar normales de vértices"
 
 msgid "Export specific vertex normals if available, export calculated normals otherwise"
 msgstr "Exporta normales de vértices específicas, si estuvieran disponibles, de otro modo se exportarán normales calculadas"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importar PLY"
 
 
 msgid "Import an PLY file as an object"
@@ -100051,10 +100219,6 @@ msgid "Shade for bones corresponding to a locked weight group during painting"
 msgstr "Sombreado de los huesos correspondientes a un grupo de influencias bloqueadas, durante el proceso de pintado de influencias"
 
 
-msgid "Bone Pose"
-msgstr "Hueso - Pose"
-
-
 msgid "Bone Pose Active"
 msgstr "Hueso - Pose activo"
 
@@ -106395,10 +106559,6 @@ msgid "Add a new Variant Slot"
 msgstr "Agrega un nuevo contenedor de variante"
 
 
-msgid "Curves as NURBS"
-msgstr "Curvas como NURBS"
-
-
 msgctxt "Operator"
 msgid "Lightwave Point Cache (.mdd)"
 msgstr "Caché de puntos de LightWave 3D (.mdd)"
@@ -106804,10 +106964,6 @@ msgstr "¡Complemento '{}' no encontrado!"
 
 msgid "Message extraction process failed!"
 msgstr "Falló el proceso de extracción de mensajes!"
-
-
-msgid "Info written to {} text datablock!"
-msgstr "Info escrita al bloque de datos de texto {}!"
 
 
 msgid "Could not init languages data!"
@@ -110175,13 +110331,13 @@ msgstr "Entre marcadores seleccionados"
 
 
 msgctxt "Operator"
-msgid "Paste Flipped"
-msgstr "Pegar invertido"
+msgid "Clean Channels"
+msgstr "Limpiar canales"
 
 
 msgctxt "Operator"
-msgid "Clean Channels"
-msgstr "Limpiar canales"
+msgid "Paste Flipped"
+msgstr "Pegar invertido"
 
 
 msgctxt "Operator"
@@ -116520,6 +116676,10 @@ msgid "Cannot evaluate node group"
 msgstr "No es posible evaluar el grupo de nodos"
 
 
+msgid "Node group must have a group output node"
+msgstr "El grupo de nodos debe contener un nodo de salida"
+
+
 msgid "Annotation Create Poly: LMB click to place next stroke vertex | ESC/Enter to end  (or click outside this area)"
 msgstr "Anotación - Línea poligonal: Clic Izq. para ubicar los puntos del trazo | Esc/Intro para finalizar  (o clic fuera de este área)"
 
@@ -118000,6 +118160,10 @@ msgid "Triangulated Mesh"
 msgstr "Malla triangulada"
 
 
+msgid "Curves as NURBS"
+msgstr "Curvas como NURBS"
+
+
 msgid "PBR Extensions"
 msgstr "Extensiones PBR"
 
@@ -118012,8 +118176,20 @@ msgid "Object Groups"
 msgstr "Grupos de objetos"
 
 
+msgid "Material Groups"
+msgstr "Grupos de material"
+
+
+msgid "Smooth Groups"
+msgstr "Grupos de suavizado"
+
+
 msgid "Smooth Group Bitflags"
 msgstr "Indicadores grupos suavizado"
+
+
+msgid "ASCII"
+msgstr "ASCII"
 
 
 msgid "File References"
@@ -120720,6 +120896,14 @@ msgid "Move asset out of any catalog"
 msgstr "Mover recurso fuera de cualquier catálogo"
 
 
+msgid "Today"
+msgstr "Hoy"
+
+
+msgid "Yesterday"
+msgstr "Ayer"
+
+
 msgid "File path"
 msgstr "Ruta del archivo"
 
@@ -120734,14 +120918,6 @@ msgid ""
 msgstr ""
 "Las bibliotecas de recursos son directorios locales que contienen archivos .blend con recursos dentro.\n"
 "Administrar las bibliotecas de recursos desde la sección Rutas de archivo en las Preferencias"
-
-
-msgid "Today"
-msgstr "Hoy"
-
-
-msgid "Yesterday"
-msgstr "Ayer"
 
 
 msgid "Could not rename: %s"
@@ -125491,7 +125667,7 @@ msgstr "Invertir UDIM"
 
 msgctxt "Mesh"
 msgid "Clipping"
-msgstr "Recortar"
+msgstr "Limitar"
 
 
 msgid "Level Viewport"
@@ -125560,10 +125736,6 @@ msgstr "El tipo de propiedad no coincide con el conector de entrada \"(%s)\""
 
 msgid "Node group's geometry input must be the first"
 msgstr "La entrada de geometría del grupo de nodos debe encontrarse en primer lugar"
-
-
-msgid "Node group must have a group output node"
-msgstr "El grupo de nodos debe contener un nodo de salida"
 
 
 msgid "Node group must have an output socket"
@@ -126057,10 +126229,6 @@ msgstr "Cb"
 
 msgid "Cr"
 msgstr "Cr"
-
-
-msgid "On"
-msgstr "Activado"
 
 
 msgid "Val"
@@ -127820,16 +127988,8 @@ msgid "Subsurface Anisotropy"
 msgstr "Anisotropía de transluminiscencia"
 
 
-msgid "Specular Tint"
-msgstr "Tinte de especularidad"
-
-
 msgid "Anisotropic Rotation"
 msgstr "Rotación de anisotropía"
-
-
-msgid "Sheen Tint"
-msgstr "Tinte del brillo"
 
 
 msgid "Emission Color"
@@ -128352,6 +128512,10 @@ msgstr "no fue posible abrir el archivo"
 
 msgid "File Not Found"
 msgstr "Archivo no encontrado"
+
+
+msgid "Modified"
+msgstr "Modificado"
 
 
 msgid "Save the current file in the desired location but do not make the saved file active"

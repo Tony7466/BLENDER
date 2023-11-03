@@ -26,8 +26,8 @@
 #include "BKE_scene.h"
 #include "BKE_sound.h"
 
-#include "SEQ_clipboard.h"
-#include "SEQ_select.h"
+#include "SEQ_clipboard.hh"
+#include "SEQ_select.hh"
 
 #include "sequencer.hh"
 

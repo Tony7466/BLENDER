@@ -37,8 +37,8 @@
 #include "DEG_depsgraph.hh"
 
 #include "SEQ_iterator.hh"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
 #include "anim_intern.h"
 

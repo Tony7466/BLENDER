@@ -38,16 +38,16 @@
 #include "DEG_depsgraph_debug.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "SEQ_channels.h"
+#include "SEQ_channels.hh"
 #include "SEQ_iterator.hh"
-#include "SEQ_prefetch.h"
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
-#include "SEQ_sequencer.h"
+#include "SEQ_prefetch.hh"
+#include "SEQ_relations.hh"
+#include "SEQ_render.hh"
+#include "SEQ_sequencer.hh"
 
-#include "image_cache.h"
-#include "prefetch.h"
-#include "render.h"
+#include "image_cache.hh"
+#include "prefetch.hh"
+#include "render.hh"
 
 struct PrefetchJob {
   PrefetchJob *next, *prev;
@@ -577,10 +577,9 @@ void seq_prefetch_start(const SeqRenderData *context, float timeline_frame)
     bool running = seq_prefetch_job_is_running(scene);
     seq_prefetch_resume(scene);
     /* conditions to start:
-     * prefetch enabled, prefetch not running, not scrubbing,  not playing,
+     * prefetch enabled, prefetch not running, not scrubbing, not playing,
      * cache storage enabled, has strips to render, not rendering, not doing modal transform -
-     * important, see D7820.
-     */
+     * important, see D7820. */
     if ((ed->cache_flag & SEQ_CACHE_PREFETCH_ENABLE) && !running && !scrubbing && !playing &&
         ed->cache_flag & SEQ_CACHE_ALL_TYPES && has_strips && !G.is_rendering && !G.moving)
     {

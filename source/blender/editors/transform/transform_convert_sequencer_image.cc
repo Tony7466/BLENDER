@@ -18,15 +18,17 @@
 #include "BKE_context.h"
 #include "BKE_report.h"
 
-#include "SEQ_channels.h"
+#include "SEQ_channels.hh"
 #include "SEQ_iterator.hh"
-#include "SEQ_relations.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_relations.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 #include "SEQ_transform.hh"
-#include "SEQ_utils.h"
+#include "SEQ_utils.hh"
 
 #include "ED_keyframing.hh"
+
+#include "ANIM_keyframing.hh"
 
 #include "UI_view2d.hh"
 
@@ -172,19 +174,24 @@ static bool autokeyframe_sequencer_image(bContext *C,
   bool changed = false;
   if (do_rot) {
     prop = RNA_struct_find_property(&ptr, "rotation");
-    changed |= ED_autokeyframe_property(C, scene, &ptr, prop, -1, scene->r.cfra, false);
+    changed |= blender::animrig::autokeyframe_property(
+        C, scene, &ptr, prop, -1, scene->r.cfra, false);
   }
   if (do_loc) {
     prop = RNA_struct_find_property(&ptr, "offset_x");
-    changed |= ED_autokeyframe_property(C, scene, &ptr, prop, -1, scene->r.cfra, false);
+    changed |= blender::animrig::autokeyframe_property(
+        C, scene, &ptr, prop, -1, scene->r.cfra, false);
     prop = RNA_struct_find_property(&ptr, "offset_y");
-    changed |= ED_autokeyframe_property(C, scene, &ptr, prop, -1, scene->r.cfra, false);
+    changed |= blender::animrig::autokeyframe_property(
+        C, scene, &ptr, prop, -1, scene->r.cfra, false);
   }
   if (do_scale) {
     prop = RNA_struct_find_property(&ptr, "scale_x");
-    changed |= ED_autokeyframe_property(C, scene, &ptr, prop, -1, scene->r.cfra, false);
+    changed |= blender::animrig::autokeyframe_property(
+        C, scene, &ptr, prop, -1, scene->r.cfra, false);
     prop = RNA_struct_find_property(&ptr, "scale_y");
-    changed |= ED_autokeyframe_property(C, scene, &ptr, prop, -1, scene->r.cfra, false);
+    changed |= blender::animrig::autokeyframe_property(
+        C, scene, &ptr, prop, -1, scene->r.cfra, false);
   }
 
   return changed;
@@ -242,7 +249,7 @@ static void recalcData_sequencer_image(TransInfo *t)
       transform->rotation = tdseq->orig_rotation - t->values_final[0];
     }
 
-    if ((t->animtimer) && IS_AUTOKEY_ON(t->scene)) {
+    if ((t->animtimer) && blender::animrig::is_autokey_on(t->scene)) {
       animrecord_check_state(t, &t->scene->id);
       autokeyframe_sequencer_image(t->context, t->scene, transform, t->mode);
     }
@@ -270,7 +277,7 @@ static void special_aftertrans_update__sequencer_image(bContext * /*C*/, TransIn
       continue;
     }
 
-    if (IS_AUTOKEY_ON(t->scene)) {
+    if (blender::animrig::is_autokey_on(t->scene)) {
       autokeyframe_sequencer_image(t->context, t->scene, transform, t->mode);
     }
   }

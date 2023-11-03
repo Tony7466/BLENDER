@@ -63,7 +63,7 @@ const EnumPropertyItem rna_enum_color_space_convert_default_items[] = {
 #  include "IMB_imbuf.h"
 
 #  include "SEQ_iterator.hh"
-#  include "SEQ_relations.h"
+#  include "SEQ_relations.hh"
 
 static int rna_CurveMapping_curves_length(PointerRNA *ptr)
 {

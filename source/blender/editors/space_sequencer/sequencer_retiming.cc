@@ -24,11 +24,11 @@
 #include "ED_sequencer.hh"
 
 #include "SEQ_iterator.hh"
-#include "SEQ_relations.h"
+#include "SEQ_relations.hh"
 #include "SEQ_retiming.hh"
-#include "SEQ_select.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_select.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 #include "SEQ_transform.hh"
 
 #include "WM_api.hh"
@@ -201,11 +201,10 @@ static bool retiming_key_add_new_for_seq(bContext *C,
                                          const int timeline_frame)
 {
   Scene *scene = CTX_data_scene(C);
-  SEQ_retiming_data_ensure(seq);
   const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
   const SeqRetimingKey *key = SEQ_retiming_find_segment_start_key(seq, frame_index);
 
-  if (SEQ_retiming_key_is_transition_start(key)) {
+  if (key != nullptr && SEQ_retiming_key_is_transition_start(key)) {
     BKE_report(op->reports, RPT_WARNING, "Can not create key inside of speed transition");
     return false;
   }
@@ -215,6 +214,7 @@ static bool retiming_key_add_new_for_seq(bContext *C,
     return false;
   }
 
+  SEQ_retiming_data_ensure(seq);
   SEQ_retiming_add_key(scene, seq, timeline_frame);
   return true;
 }

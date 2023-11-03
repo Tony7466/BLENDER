@@ -63,12 +63,12 @@
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_modifier.h"
 #include "BKE_node.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 
 #include "SEQ_iterator.hh"
-#include "SEQ_sequencer.h"
+#include "SEQ_sequencer.hh"
 
 #include "BLO_readfile.h"
 
@@ -635,7 +635,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   if (bmain->versionfile <= 164) {
     Mesh *me = static_cast<Mesh *>(bmain->meshes.first);
     while (me) {
-      me->smoothresh = 30;
+      me->smoothresh_legacy = 30;
       me = static_cast<Mesh *>(me->id.next);
     }
   }
