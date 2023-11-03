@@ -35,6 +35,8 @@ static bool imb_is_grayscale_texture_format_compatible(const ImBuf *ibuf)
     return false;
   }
 
+  /* Only imbufs with colorspace that do not modify the chrominance of the texture data relative
+   * to the scene color space can be uploaded as single channel textures. */
   if (IMB_colormanagement_space_is_data(ibuf->float_buffer.colorspace) ||
       IMB_colormanagement_space_is_srgb(ibuf->float_buffer.colorspace) ||
       IMB_colormanagement_space_is_scene_linear(ibuf->float_buffer.colorspace))
