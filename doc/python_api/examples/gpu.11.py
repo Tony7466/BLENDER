@@ -2,7 +2,8 @@
 Custom compute shader (using image store) and vertex/fragment shader
 --------------------------------
 
-This is a simple example of how to use a custom compute shader to write to a texture and then use that texture in a vertex/fragment shader.
+This is an example of how to use a custom compute shader to write to a texture and then use that texture in a vertex/fragment shader.
+The expected result is a plane in the viewport, with a gradient from black in one corner to yellow in the opposite corner.
 """
 import bpy
 import gpu
@@ -14,9 +15,7 @@ import time
 start_time = time.time() 
 
 size = 128
-pixels = size * size * array.array('f', [0.0, 0.0, 0.0, 1.0])
-pixels = gpu.types.Buffer('FLOAT', size * size * 4, pixels)
-texture = gpu.types.GPUTexture((size, size), format='RGBA32F', data=pixels)
+texture = gpu.types.GPUTexture((size, size), format='RGBA32F')
 compute_shader_info = gpu.types.GPUShaderCreateInfo()
 compute_shader_info.image(1, 'RGBA32F', "FLOAT_2D", "img_output", qualifiers={"WRITE"})
 compute_shader_info.compute_source('''
