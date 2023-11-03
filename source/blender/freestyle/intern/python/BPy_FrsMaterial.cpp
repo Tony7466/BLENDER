@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -220,23 +220,28 @@ static int FrsMaterial_mathutils_get_index(BaseMathObject *bmo, int subtype, int
     case MATHUTILS_SUBTYPE_LINE: {
       const float *color = self->m->line();
       bmo->data[index] = color[index];
-    } break;
+      break;
+    }
     case MATHUTILS_SUBTYPE_DIFFUSE: {
       const float *color = self->m->diffuse();
       bmo->data[index] = color[index];
-    } break;
+      break;
+    }
     case MATHUTILS_SUBTYPE_SPECULAR: {
       const float *color = self->m->specular();
       bmo->data[index] = color[index];
-    } break;
+      break;
+    }
     case MATHUTILS_SUBTYPE_AMBIENT: {
       const float *color = self->m->ambient();
       bmo->data[index] = color[index];
-    } break;
+      break;
+    }
     case MATHUTILS_SUBTYPE_EMISSION: {
       const float *color = self->m->emission();
       bmo->data[index] = color[index];
-    } break;
+      break;
+    }
     default:
       return -1;
   }

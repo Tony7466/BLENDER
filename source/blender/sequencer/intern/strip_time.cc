@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -28,18 +28,18 @@
 
 #include "RNA_prototypes.h"
 
-#include "SEQ_channels.h"
-#include "SEQ_iterator.h"
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
-#include "SEQ_retiming.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_channels.hh"
+#include "SEQ_iterator.hh"
+#include "SEQ_relations.hh"
+#include "SEQ_render.hh"
+#include "SEQ_retiming.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
+#include "SEQ_transform.hh"
 
-#include "sequencer.h"
-#include "strip_time.h"
-#include "utils.h"
+#include "sequencer.hh"
+#include "strip_time.hh"
+#include "utils.hh"
 
 float seq_time_media_playback_rate_factor_get(const Scene *scene, const Sequence *seq)
 {
@@ -68,7 +68,7 @@ float SEQ_give_frame_index(const Scene *scene, Sequence *seq, float timeline_fra
   float frame_index;
   float sta = SEQ_time_start_frame_get(seq);
   float end = SEQ_time_content_end_frame_get(scene, seq) - 1;
-  const float length = seq->len;
+  const float frame_index_max = seq->len - 1;
 
   if (seq->type & SEQ_TYPE_EFFECT) {
     end = SEQ_time_right_handle_frame_get(scene, seq);
@@ -95,10 +95,10 @@ float SEQ_give_frame_index(const Scene *scene, Sequence *seq, float timeline_fra
 
   if (SEQ_retiming_is_active(seq)) {
     const float retiming_factor = seq_retiming_evaluate(seq, frame_index);
-    frame_index = retiming_factor * (length);
+    frame_index = retiming_factor * frame_index_max;
   }
   /* Clamp frame index to strip content frame range. */
-  frame_index = clamp_f(frame_index, 0, length);
+  frame_index = clamp_f(frame_index, 0, frame_index_max);
 
   if (seq->strobe < 1.0f) {
     seq->strobe = 1.0f;
@@ -463,27 +463,6 @@ bool SEQ_time_strip_intersects_frame(const Scene *scene,
          (SEQ_time_right_handle_frame_get(scene, seq) > timeline_frame);
 }
 
-void SEQ_time_speed_factor_set(const Scene *scene, Sequence *seq, const float speed_factor)
-{
-
-  if (seq->type == SEQ_TYPE_SOUND_RAM) {
-    seq->speed_factor = speed_factor;
-  }
-  else {
-    const float left_handle_frame = SEQ_time_left_handle_frame_get(scene, seq);
-    const float unity_start_offset = seq->startofs * seq->speed_factor;
-    const float unity_end_offset = seq->endofs * seq->speed_factor;
-    /* Left handle is pivot point for content scaling - it must always show same frame. */
-    seq->speed_factor = speed_factor;
-    seq->startofs = unity_start_offset / speed_factor;
-    seq->start = left_handle_frame - seq->startofs;
-    seq->endofs = unity_end_offset / speed_factor;
-  }
-
-  SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
-  seq_time_update_effects_strip_range(scene, seq_sequence_lookup_effects_by_seq(scene, seq));
-}
-
 bool SEQ_time_has_left_still_frames(const Scene *scene, const Sequence *seq)
 {
   return SEQ_time_left_handle_frame_get(scene, seq) < SEQ_time_start_frame_get(seq);
@@ -502,10 +481,10 @@ bool SEQ_time_has_still_frames(const Scene *scene, const Sequence *seq)
 int SEQ_time_strip_length_get(const Scene *scene, const Sequence *seq)
 {
   if (SEQ_retiming_is_active(seq)) {
-    SeqRetimingHandle *handle_start = seq->retiming_handles;
-    SeqRetimingHandle *handle_end = seq->retiming_handles + (SEQ_retiming_handles_count(seq) - 1);
-    return handle_end->strip_frame_index / seq_time_media_playback_rate_factor_get(scene, seq) -
-           (handle_start->strip_frame_index) / seq_time_media_playback_rate_factor_get(scene, seq);
+    const SeqRetimingKey *key_start = seq->retiming_keys;
+    const SeqRetimingKey *key_end = seq->retiming_keys + (SEQ_retiming_keys_count(seq) - 1);
+    return (key_end->strip_frame_index + 1) / seq_time_media_playback_rate_factor_get(scene, seq) -
+           key_start->strip_frame_index / seq_time_media_playback_rate_factor_get(scene, seq);
   }
 
   return seq->len / seq_time_media_playback_rate_factor_get(scene, seq);

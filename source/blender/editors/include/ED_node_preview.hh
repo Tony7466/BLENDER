@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,6 +7,8 @@
 #include "RE_pipeline.h"
 
 #include "IMB_imbuf.h"
+
+#include "DNA_material_types.h"
 
 struct bContext;
 struct bNodeTree;
@@ -22,6 +24,8 @@ struct NestedTreePreviews {
   int preview_size;
   bool rendering = false;
   bool restart_needed = false;
+  ePreviewType cached_preview_type = MA_FLAT;
+  ePreviewType rendering_preview_type = MA_FLAT;
   uint32_t cached_previews_refresh_state = -1;
   uint32_t rendering_previews_refresh_state = -1;
   NestedTreePreviews(const int size) : preview_size(size) {}

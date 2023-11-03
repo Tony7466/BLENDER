@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,6 +10,7 @@
 #ifndef __PY_CAPI_UTILS_H__
 #define __PY_CAPI_UTILS_H__
 
+#include "BLI_compiler_attrs.h"
 #include "BLI_sys_types.h"
 #include "BLI_utildefines_variadic.h"
 
@@ -26,8 +27,25 @@ void PyC_ObSpit(const char *name, PyObject *var);
 void PyC_ObSpitStr(char *result, size_t result_maxncpy, PyObject *var);
 void PyC_LineSpit(void);
 void PyC_StackSpit(void);
-PyObject *PyC_ExceptionBuffer(void);
-PyObject *PyC_ExceptionBuffer_Simple(void);
+
+/**
+ * Return a string containing the full stack trace.
+ *
+ * - Only call when `PyErr_Occurred() != 0` .
+ * - The exception is left in place without being manipulated,
+ *   although they will be normalized in order to display them (`PyErr_Print` also does this).
+ * - `SystemExit` exceptions will exit (so `sys.exit(..)` works, matching `PyErr_Print` behavior).
+ * - The always returns a Python string (unless exiting where the function doesn't return).
+ */
+PyObject *PyC_ExceptionBuffer(void) ATTR_WARN_UNUSED_RESULT ATTR_RETURNS_NONNULL;
+/**
+ * A version of #PyC_ExceptionBuffer that returns the last exception only.
+ *
+ * Useful for error messages from evaluating numeric expressions for e.g.
+ * where a full multi-line stack-trace isn't needed and doesn't format well in the status-bar.
+ */
+PyObject *PyC_ExceptionBuffer_Simple(void) ATTR_WARN_UNUSED_RESULT ATTR_RETURNS_NONNULL;
+
 PyObject *PyC_Object_GetAttrStringArgs(PyObject *o, Py_ssize_t n, ...);
 PyObject *PyC_FrozenSetFromStrings(const char **strings);
 
@@ -96,7 +114,11 @@ PyObject *PyC_Tuple_PackArray_Multi_Bool(const bool *array, const int dims[], in
 void PyC_Tuple_Fill(PyObject *tuple, PyObject *value);
 void PyC_List_Fill(PyObject *list, PyObject *value);
 
-/* follow http://www.python.org/dev/peps/pep-0383/ */
+/**
+ * Create a `str` from bytes in a way which is compatible with non UTF8 encoded file-system paths,
+ * see: #111033.
+ * Follow http://www.python.org/dev/peps/pep-0383/
+ */
 PyObject *PyC_UnicodeFromBytes(const char *str);
 /**
  * \param size: The length of the string: `strlen(str)`.
@@ -111,6 +133,32 @@ const char *PyC_UnicodeAsBytes(PyObject *py_str, PyObject **r_coerce); /* coerce
  * \param r_coerce: must reference a pointer set to NULL.
  */
 const char *PyC_UnicodeAsBytesAndSize(PyObject *py_str, Py_ssize_t *r_size, PyObject **r_coerce);
+
+/**
+ * Notes on using this structure:
+ * - Always initialize to `{nullptr}`.
+ * - Always `Py_XDECREF(value_coerce)` before returning,
+ *   after this `value` must not be accessed.
+ */
+typedef struct PyC_UnicodeAsBytesAndSize_Data {
+  PyObject *value_coerce;
+  const char *value;
+  Py_ssize_t value_len;
+} PyC_UnicodeAsBytesAndSize_Data;
+
+/**
+ * Use with PyArg_ParseTuple's "O&" formatting.
+ *
+ * Expose #PyC_UnicodeAsBytes in a way which is useful to the argument parser.
+ * \param o: An argument parsed to #PyC_UnicodeAsBytes.
+ * \param p: Pointer to #PyC_UnicodeAsBytes_Data.
+ *
+ * \note The Python API docs reference `PyUnicode_FSConverter` however this does not support
+ * paths which non utf-8 encoding, see: #111033.
+ */
+int PyC_ParseUnicodeAsBytesAndSize(PyObject *o, void *p);
+/** A version of #PyC_ParseUnicodeAsBytesAndSize that accepts None. */
+int PyC_ParseUnicodeAsBytesAndSize_OrNone(PyObject *o, void *p);
 
 /**
  * Description: This function creates a new Python dictionary object.

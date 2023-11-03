@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -31,7 +31,7 @@
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* ***************************************** */
 /* NOTE ABOUT THIS FILE:
@@ -109,7 +109,7 @@ bool ED_gpencil_layer_frame_select_check(const bGPDlayer *gpl)
   return false;
 }
 
-/* helper function - select gp-frame based on SELECT_* mode */
+/* Helper function: select GP-frame based on SELECT_* mode. */
 static void gpencil_frame_select(bGPDframe *gpf, short select_mode)
 {
   if (gpf == nullptr) {

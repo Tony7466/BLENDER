@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,7 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
@@ -96,8 +96,8 @@ void RNA_api_fcurves(StructRNA *srna)
 
 void RNA_api_drivers(StructRNA * /*srna*/)
 {
-  /*  FunctionRNA *func; */
-  /*  PropertyRNA *parm; */
+  // FunctionRNA *func;
+  // PropertyRNA *parm;
 }
 
 #endif

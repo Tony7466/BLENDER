@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,8 +26,8 @@
 #include "BKE_report.h"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -102,7 +102,7 @@ void wm_gizmogroup_free(bContext *C, wmGizmoGroup *gzgroup)
 #endif
 
   if (gzgroup->reports && (gzgroup->reports->flag & RPT_FREE)) {
-    BKE_reports_clear(gzgroup->reports);
+    BKE_reports_free(gzgroup->reports);
     MEM_freeN(gzgroup->reports);
   }
 

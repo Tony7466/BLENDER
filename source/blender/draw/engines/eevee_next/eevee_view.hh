@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -156,6 +156,24 @@ class CaptureView {
  public:
   CaptureView(Instance &inst) : inst_(inst) {}
   void render_world();
+  void render_probes();
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Capture Planar View
+ *
+ * View for capturing planar probes outside a ShadingView.
+ * \{ */
+
+class CapturePlanarView {
+ private:
+  Instance &inst_;
+  Framebuffer capture_fb_ = {"Planar.Capture"};
+
+ public:
+  CapturePlanarView(Instance &inst) : inst_(inst) {}
   void render_probes();
 };
 

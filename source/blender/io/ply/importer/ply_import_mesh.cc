@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,6 +15,7 @@
 
 #include "GEO_mesh_merge_by_distance.hh"
 
+#include "BLI_math_color.hh"
 #include "BLI_math_vector.h"
 
 #include "ply_import_mesh.hh"
@@ -97,6 +98,15 @@ Mesh *convert_ply_to_mesh(PlyData &data, const PLYImportParams &params)
       uv_map.span[i] = data.uv_coordinates[data.face_vertices[i]];
     }
     uv_map.finish();
+  }
+
+  /* Custom attributes */
+  if (params.import_attributes && !data.vertex_custom_attr.is_empty()) {
+    for (const PlyCustomAttribute &attr : data.vertex_custom_attr) {
+      attributes.add<float>(attr.name,
+                            ATTR_DOMAIN_POINT,
+                            bke::AttributeInitVArray(VArray<float>::ForSpan(attr.data)));
+    }
   }
 
   /* Calculate edges from the rest of the mesh. */

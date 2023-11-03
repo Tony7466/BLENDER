@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,9 +10,9 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -110,11 +110,11 @@ const EnumPropertyItem rna_enum_symmetrize_direction_items[] = {
 #  include "BKE_collection.h"
 #  include "BKE_context.h"
 #  include "BKE_gpencil_legacy.h"
-#  include "BKE_object.h"
+#  include "BKE_object.hh"
 #  include "BKE_particle.h"
 #  include "BKE_pointcache.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "ED_gpencil_legacy.hh"
 #  include "ED_paint.hh"

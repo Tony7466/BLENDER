@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,14 +6,14 @@
  * \ingroup sequencer
  */
 
-#include "SEQ_sequencer.h"
-#include "sequencer.h"
+#include "SEQ_sequencer.hh"
+#include "sequencer.hh"
 
 #include "DNA_listBase.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"

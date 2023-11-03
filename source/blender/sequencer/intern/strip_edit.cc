@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -23,22 +23,23 @@
 #include "BKE_scene.h"
 #include "BKE_sound.h"
 
-#include "strip_time.h"
-#include "utils.h"
+#include "strip_time.hh"
+#include "utils.hh"
 
-#include "SEQ_add.h"
-#include "SEQ_animation.h"
-#include "SEQ_edit.h"
-#include "SEQ_effects.h"
-#include "SEQ_iterator.h"
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
-#include "SEQ_transform.h"
-#include "SEQ_utils.h"
+#include "SEQ_add.hh"
+#include "SEQ_animation.hh"
+#include "SEQ_channels.hh"
+#include "SEQ_edit.hh"
+#include "SEQ_effects.hh"
+#include "SEQ_iterator.hh"
+#include "SEQ_relations.hh"
+#include "SEQ_render.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
+#include "SEQ_transform.hh"
+#include "SEQ_utils.hh"
 
-#include <string.h>
+#include <cstring>
 
 bool SEQ_edit_sequence_swap(Scene *scene, Sequence *seq_a, Sequence *seq_b, const char **error_str)
 {
@@ -388,6 +389,11 @@ static bool seq_edit_split_operation_permitted_check(const Scene *scene,
 {
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, strips) {
+    ListBase *channels = SEQ_channels_displayed_get(SEQ_editing_get(scene));
+    if (SEQ_transform_is_locked(channels, seq)) {
+      *r_error = "Strip is locked.";
+      return false;
+    }
     if ((seq->type & SEQ_TYPE_EFFECT) == 0) {
       continue;
     }

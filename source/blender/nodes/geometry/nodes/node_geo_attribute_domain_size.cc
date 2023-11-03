@@ -1,9 +1,13 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "NOD_rna_define.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "RNA_enum_types.hh"
 
 #include "node_geometry_util.hh"
 
@@ -30,6 +34,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Int>("Instance Count").make_available([](bNode &node) {
     node.custom1 = int16_t(GeometryComponent::Type::Instance);
   });
+  b.add_output<decl::Int>("Layer Count").make_available([](bNode &node) {
+    node.custom1 = int16_t(GeometryComponent::Type::GreasePencil);
+  });
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -50,6 +57,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *face_corner_socket = face_socket->next;
   bNodeSocket *spline_socket = face_corner_socket->next;
   bNodeSocket *instances_socket = spline_socket->next;
+  bNodeSocket *layers_socket = instances_socket->next;
 
   bke::nodeSetSocketAvailability(ntree,
                                  point_socket,
@@ -67,6 +75,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
       ntree, spline_socket, node->custom1 == int16_t(GeometryComponent::Type::Curve));
   bke::nodeSetSocketAvailability(
       ntree, instances_socket, node->custom1 == int16_t(GeometryComponent::Type::Instance));
+  bke::nodeSetSocketAvailability(
+      ntree, layers_socket, node->custom1 == int16_t(GeometryComponent::Type::GreasePencil));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -120,9 +130,31 @@ static void node_geo_exec(GeoNodeExecParams params)
       }
       break;
     }
+    case GeometryComponent::Type::GreasePencil: {
+      if (const GreasePencilComponent *component =
+              geometry_set.get_component<GreasePencilComponent>()) {
+        const AttributeAccessor attributes = *component->attributes();
+        params.set_output("Layer Count", attributes.domain_size(ATTR_DOMAIN_LAYER));
+      }
+      else {
+        params.set_default_remaining_outputs();
+      }
+      break;
+    }
     default:
       BLI_assert_unreachable();
   }
+}
+
+static void node_rna(StructRNA *srna)
+{
+  RNA_def_node_enum(srna,
+                    "component",
+                    "Component",
+                    "",
+                    rna_enum_geometry_component_type_items,
+                    NOD_inline_enum_accessors(custom1),
+                    int(blender::bke::GeometryComponent::Type::Mesh));
 }
 
 static void node_register()
@@ -136,6 +168,8 @@ static void node_register()
   ntype.updatefunc = node_update;
 
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 
