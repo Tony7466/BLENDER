@@ -64,7 +64,7 @@ class NodeGroupComputeContext : public ComputeContext {
   void print_current_in_line(std::ostream &stream) const override;
 };
 
-class NodeViewerGroupComputeContext : public NodeGroupComputeContext {
+class NodeViewerGroupComputeContext : public ComputeContext {
  private:
   static constexpr const char *s_static_type = "NODE_GROUP";
 

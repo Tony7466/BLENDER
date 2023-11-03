@@ -14,6 +14,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.hh"
+#include "BLI_linear_allocator.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_multi_value_map.hh"
@@ -470,7 +471,7 @@ static const bNodeTree *try_add_side_effect_node_for_path(
     if (const auto *compute_context = dynamic_cast<const bke::NodeGroupComputeContext *>(
             compute_context_generic))
     {
-      const bNode *group_node = current_tree->node_by_id(compute_context->node_id());
+      const bNode *group_node = start_tree->node_by_id(compute_context->node_id());
       if (group_node == nullptr) {
         return nullptr;
       }
@@ -537,6 +538,10 @@ static void try_add_side_effect_node(const ComputeContext &final_compute_context
     return;
   }
 
+  int final_node_id_ = final_node_id;
+
+  LinearAllocator scope;
+
   if (const auto *compute_context = dynamic_cast<const bke::NodeViewerGroupComputeContext *>(
           compute_context_vec.last()))
   {
@@ -545,7 +550,7 @@ static void try_add_side_effect_node(const ComputeContext &final_compute_context
     while (true) {
       result_tree->ensure_topology_cache();
       result_tree->node_by_id(compute_context->node_id());
-      const Span<bNode *> viewers = ntree.nodes_by_type("GeometryNodeViewer");
+      const Span<const bNode *> viewers = result_tree->nodes_by_type("GeometryNodeViewer");
 
       const bNode *viewer_node = viewers.size() != 1 ? nullptr : viewers.first();
       const bNode *viewer_group = [&]() -> const bNode * {
@@ -558,21 +563,27 @@ static void try_add_side_effect_node(const ComputeContext &final_compute_context
       }();
 
       if (viewer_node != nullptr) {
+        final_node_id_ = viewer_node->identifier;
         break;
       }
-      if (viewer_group == nullptr) {
+      if (viewer_group == nullptr || viewer_group->id == nullptr) {
         return;
       }
 
-      for (const bNodeTreeZone *zone :
-           viewer_group->zones()->get_zone_stack_for_node(viewer_group->identifier))
+      const bNodeTree *tree_f = reinterpret_cast<const bNodeTree *>(viewer_group->id);
+
+      for (const bke::bNodeTreeZone *zone :
+           tree_f->zones()->get_zone_stack_for_node(viewer_group->identifier))
       {
-        viewer_group_context_list.append_as<SimulationZoneComputeContext>(
-            /*parent_context*/, zone->output_node->identifier);
+        auto *simulation_context = scope.allocate<bke::SimulationZoneComputeContext>();
+        new (simulation_context)
+            bke::SimulationZoneComputeContext(parent_context, zone->output_node->identifier);
+        viewer_group_context_list.append(simulation_context);
       }
 
-      viewer_group_context_list.append_as<NodeGroupComputeContext>(/*parent_context*/,
-                                                                   viewer_group->identifier);
+      auto *group_context = scope.allocate<bke::NodeGroupComputeContext>();
+      new (group_context) bke::NodeGroupComputeContext(parent_context, viewer_group->identifier);
+      viewer_group_context_list.append(group_context);
 
       result_tree = reinterpret_cast<const bNodeTree *>(viewer_group->id);
       if (result_tree == nullptr) {
