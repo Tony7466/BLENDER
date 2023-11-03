@@ -269,7 +269,7 @@ bool SyncModule::sync_sculpt(Object *ob,
   BKE_pbvh_bounding_box(ob_ref.object->sculpt->pbvh, min, max);
   float3 center = (min + max) * 0.5;
   float3 half_extent = max - center;
-  half_extent += float3(inflate_bounds);
+  half_extent += inflate_bounds;
   inst_.manager->update_handle_bounds(res_handle, center, half_extent);
 
   inst_.manager->extract_object_attributes(res_handle, ob_ref, material_array.gpu_materials);
