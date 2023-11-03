@@ -215,40 +215,40 @@ def bake_action_iter(
                 bbones[name] = {bb_prop: getattr(pbone, bb_prop) for bb_prop in BBONE_PROPS}
 
             # Custom Properties
-            custom_props[name] = pbone.id_properties_ensure().to_dict()
+            custom_props[name] = dict(pbone.items())
 
         return matrix, bbones, custom_props
 
     def armature_frame_info(obj):
         custom_props = {}
         if obj.type == 'ARMATURE':
-            custom_props.update(obj.id_properties_ensure().to_dict())
+            custom_props.update(dict(obj.items()))
         return custom_props
 
     if bake_options.do_parents_clear:
         if bake_options.do_visual_keying:
             def obj_frame_info(obj):
-                return obj.matrix_world.copy(), obj.id_properties_ensure().to_dict()
+                return obj.matrix_world.copy(), dict(obj.items())
         else:
             def obj_frame_info(obj):
                 parent = obj.parent
                 matrix = obj.matrix_basis
                 if parent:
-                    return parent.matrix_world @ matrix, obj.id_properties_ensure().to_dict()
+                    return parent.matrix_world @ matrix, dict(obj.items())
                 else:
-                    return matrix.copy(), obj.id_properties_ensure().to_dict()
+                    return matrix.copy(), dict(obj.items())
     else:
         if bake_options.do_visual_keying:
             def obj_frame_info(obj):
                 parent = obj.parent
                 matrix = obj.matrix_world
                 if parent:
-                    return parent.matrix_world.inverted_safe() @ matrix, obj.id_properties_ensure().to_dict()
+                    return parent.matrix_world.inverted_safe() @ matrix, dict(obj.items())
                 else:
-                    return matrix.copy(), obj.id_properties_ensure().to_dict()
+                    return matrix.copy(), dict(obj.items())
         else:
             def obj_frame_info(obj):
-                return obj.matrix_basis.copy(), obj.id_properties_ensure().to_dict()
+                return obj.matrix_basis.copy(), dict(obj.items())
 
     # -------------------------------------------------------------------------
     # Setup the Context
