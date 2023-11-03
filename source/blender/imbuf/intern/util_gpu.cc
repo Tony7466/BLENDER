@@ -25,17 +25,16 @@
 
 static bool imb_is_grayscale_texture_format_compatible(const ImBuf *ibuf)
 {
-  if (ibuf->planes > 8 || ibuf->channels > 1) {
+  if (ibuf->byte_buffer.data && !ibuf->float_buffer.data) {
+    /* TODO: Support grayscale byte buffers.
+     * The challenge is that Blender always stores byte images ar RGBA. */
     return false;
   }
-  /* Only imbufs with colorspace that do not modify the chrominance of the texture data relative
-   * to the scene color space can be uploaded as single channel textures. */
-  if (IMB_colormanagement_space_is_data(ibuf->byte_buffer.colorspace) ||
-      IMB_colormanagement_space_is_srgb(ibuf->byte_buffer.colorspace) ||
-      IMB_colormanagement_space_is_scene_linear(ibuf->byte_buffer.colorspace))
-  {
-    return true;
-  };
+
+  /* The float buffer could in theory be non-linear, but it only happens internally in sequencer.
+   * Can consider adding is linear check for float_buffer.color_space. */
+  return ibuf->channels == 1;
+
   return false;
 }
 
