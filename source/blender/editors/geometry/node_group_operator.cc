@@ -6,6 +6,7 @@
  * \ingroup edcurves
  */
 
+#include "BLI_path_util.h"
 #include "BLI_string.h"
 
 #include "ED_curves.hh"
@@ -52,6 +53,7 @@
 #include "ED_asset_menu_utils.hh"
 #include "ED_geometry.hh"
 #include "ED_mesh.hh"
+#include "ED_sculpt.hh"
 
 #include "BLT_translation.h"
 
@@ -163,10 +165,8 @@ static bke::GeometrySet get_original_geometry_eval_copy(Object &object)
   }
 }
 
-static void store_result_geometry(Main &bmain,
-                                  Scene &scene,
-                                  Object &object,
-                                  bke::GeometrySet geometry)
+static void store_result_geometry(
+    const wmOperator &op, Main &bmain, Scene &scene, Object &object, bke::GeometrySet geometry)
 {
   geometry.ensure_owns_direct_data();
   switch (object.type) {
@@ -204,23 +204,29 @@ static void store_result_geometry(Main &bmain,
     }
     case OB_MESH: {
       Mesh &mesh = *static_cast<Mesh *>(object.data);
+
+      if (object.mode == OB_MODE_SCULPT) {
+        ED_sculpt_undo_geometry_begin(&object, &op);
+      }
+
       Mesh *new_mesh = geometry.get_component_for_write<bke::MeshComponent>().release();
       if (!new_mesh) {
         BKE_mesh_clear_geometry(&mesh);
-        if (object.mode == OB_MODE_EDIT) {
-          EDBM_mesh_make(&object, scene.toolsettings->selectmode, true);
-        }
-        break;
+      }
+      else {
+        /* Anonymous attributes shouldn't be available on the applied geometry. */
+        new_mesh->attributes_for_write().remove_anonymous();
+
+        BKE_object_material_from_eval_data(&bmain, &object, &new_mesh->id);
+        BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
       }
 
-      /* Anonymous attributes shouldn't be available on the applied geometry. */
-      new_mesh->attributes_for_write().remove_anonymous();
-
-      BKE_object_material_from_eval_data(&bmain, &object, &new_mesh->id);
-      BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
       if (object.mode == OB_MODE_EDIT) {
         EDBM_mesh_make(&object, scene.toolsettings->selectmode, true);
         BKE_editmesh_looptri_and_normals_calc(mesh.edit_mesh);
+      }
+      else if (object.mode == OB_MODE_SCULPT) {
+        ED_sculpt_undo_geometry_end(&object);
       }
       break;
     }
@@ -351,7 +357,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
           user_data.log_socket_values = false;
         });
 
-    store_result_geometry(*bmain, *scene, *object, std::move(new_geometry));
+    store_result_geometry(*op, *bmain, *scene, *object, std::move(new_geometry));
 
     DEG_id_tag_update(static_cast<ID *>(object->data), ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, object->data);
@@ -548,7 +554,7 @@ static std::string run_node_group_get_name(wmOperatorType * /*ot*/, PointerRNA *
       ptr, "relative_asset_identifier", nullptr, 0, &len);
   BLI_SCOPED_DEFER([&]() { MEM_SAFE_FREE(library_asset_identifier); })
   StringRef ref(library_asset_identifier, len);
-  return ref.drop_prefix(ref.find_last_of('/') + 1);
+  return ref.drop_prefix(ref.find_last_of(SEP_STR) + 1);
 }
 
 void GEOMETRY_OT_execute_node_group(wmOperatorType *ot)
