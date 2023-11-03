@@ -179,15 +179,15 @@ class StringBuilder : public SocketDeclarationBuilder<String> {
   StringBuilder &default_value(const std::string value);
 };
 
-class EnumBuilder;
+class MenuBuilder;
 
-class Enum : public SocketDeclaration {
+class Menu : public SocketDeclaration {
  public:
   int32_t default_value;
 
-  friend EnumBuilder;
+  friend MenuBuilder;
 
-  using Builder = EnumBuilder;
+  using Builder = MenuBuilder;
 
   bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
   bool matches(const bNodeSocket &socket) const override;
@@ -195,9 +195,9 @@ class Enum : public SocketDeclaration {
   bool can_connect(const bNodeSocket &socket) const override;
 };
 
-class EnumBuilder : public SocketDeclarationBuilder<Enum> {
+class MenuBuilder : public SocketDeclarationBuilder<Menu> {
  public:
-  EnumBuilder &default_value(int32_t value);
+  MenuBuilder &default_value(int32_t value);
 };
 
 class IDSocketDeclaration : public SocketDeclaration {
@@ -512,10 +512,10 @@ inline StringBuilder &StringBuilder::default_value(std::string value)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name #EnumBuilder Inline Methods
+/** \name #MenuBuilder Inline Methods
  * \{ */
 
-inline EnumBuilder &EnumBuilder::default_value(const int32_t value)
+inline MenuBuilder &MenuBuilder::default_value(const int32_t value)
 {
   if (decl_in_) {
     decl_in_->default_value = value;

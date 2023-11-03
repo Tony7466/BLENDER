@@ -3624,7 +3624,7 @@ struct GeometryNodesLazyFunctionBuilder {
     }
     else {
       const int condition =
-          switch_input_bsocket->default_value_typed<bNodeSocketValueEnum>()->value;
+          switch_input_bsocket->default_value_typed<bNodeSocketValueMenu>()->value;
       for (const int i : IndexRange(enum_def.items_num)) {
         const NodeEnumItem &enum_item = enum_def.items()[i];
         if (enum_item.identifier == condition) {

@@ -257,7 +257,7 @@ typedef enum eNodeSocketDatatype {
   SOCK_TEXTURE = 12,
   SOCK_MATERIAL = 13,
   SOCK_ROTATION = 14,
-  SOCK_ENUM = 15,
+  SOCK_MENU = 15,
 } eNodeSocketDatatype;
 
 /** Socket shape. */
@@ -940,13 +940,13 @@ typedef struct bNodeSocketValueMaterial {
   struct Material *value;
 } bNodeSocketValueMaterial;
 
-typedef struct bNodeSocketValueEnum {
+typedef struct bNodeSocketValueMenu {
   /* Weak runtime reference to a node enum definition. */
   NodeEnumDefinitionRef enum_ref;
   /* Default input enum identifier. */
   int32_t value;
   char _pad[4];
-} bNodeSocketValueEnum;
+} bNodeSocketValueMenu;
 
 typedef struct GeometryNodeAssetTraits {
   int flag;

@@ -805,10 +805,10 @@ class NodeTreeMainUpdater {
   void clear_enum_definitions(const Span<bNodeSocket *> sockets)
   {
     for (bNodeSocket *socket : sockets) {
-      if (!socket->is_available() || socket->type != SOCK_ENUM) {
+      if (!socket->is_available() || socket->type != SOCK_MENU) {
         continue;
       }
-      bNodeSocketValueEnum &default_value = *socket->default_value_typed<bNodeSocketValueEnum>();
+      bNodeSocketValueMenu &default_value = *socket->default_value_typed<bNodeSocketValueMenu>();
       default_value.enum_ref.reset();
     }
   }
@@ -820,13 +820,13 @@ class NodeTreeMainUpdater {
       if (!STREQ(socket->socket_type, "NodeSocketEnum")) {
         continue;
       }
-      bNodeSocketValueEnum &default_value = *static_cast<bNodeSocketValueEnum *>(
+      bNodeSocketValueMenu &default_value = *static_cast<bNodeSocketValueMenu *>(
           socket->socket_data);
       default_value.enum_ref.reset();
     }
   }
 
-  void update_socket_enum_definition(bNodeSocketValueEnum &dst, const bNodeSocketValueEnum &src)
+  void update_socket_enum_definition(bNodeSocketValueMenu &dst, const bNodeSocketValueMenu &src)
   {
     if (!dst.enum_ref.is_valid()) {
       /* Enum ref already has a conflict. */
@@ -850,19 +850,19 @@ class NodeTreeMainUpdater {
   void propagate_enum_definitions_from_sockets(bNodeSocket &dst,
                                                const Span<const bNodeSocket *> src_span)
   {
-    if (!dst.is_available() || dst.type != SOCK_ENUM) {
+    if (!dst.is_available() || dst.type != SOCK_MENU) {
       return;
     }
     /* Skip destination if it's already undefined (conflicting references). */
-    bNodeSocketValueEnum &dst_default_value = *dst.default_value_typed<bNodeSocketValueEnum>();
+    bNodeSocketValueMenu &dst_default_value = *dst.default_value_typed<bNodeSocketValueMenu>();
     if (!dst_default_value.enum_ref.is_valid()) {
       return;
     }
 
     for (const bNodeSocket *src : src_span) {
-      if (src->is_available() && src->type == SOCK_ENUM) {
-        update_socket_enum_definition(*dst.default_value_typed<bNodeSocketValueEnum>(),
-                                      *src->default_value_typed<bNodeSocketValueEnum>());
+      if (src->is_available() && src->type == SOCK_MENU) {
+        update_socket_enum_definition(*dst.default_value_typed<bNodeSocketValueMenu>(),
+                                      *src->default_value_typed<bNodeSocketValueMenu>());
       }
     }
   }
@@ -880,9 +880,9 @@ class NodeTreeMainUpdater {
       /* Enum definition source nodes. */
       if (node->typeinfo->type == GEO_NODE_MENU_SWITCH) {
         bNodeSocket *input = node->input_sockets()[0];
-        BLI_assert(input->type == SOCK_ENUM);
+        BLI_assert(input->type == SOCK_MENU);
         if (input->is_available()) {
-          input->default_value_typed<bNodeSocketValueEnum>()->enum_ref.set(ntree, *node);
+          input->default_value_typed<bNodeSocketValueMenu>()->enum_ref.set(ntree, *node);
         }
       }
       else {
@@ -902,11 +902,11 @@ class NodeTreeMainUpdater {
           bNodeTreeInterfaceSocket &iosocket = *ntree.interface_inputs()[socket_i];
           const bNodeSocket &output = *node->output_sockets()[socket_i];
           BLI_assert(STREQ(iosocket.identifier, output.identifier));
-          if (!output.is_available() || output.type != SOCK_ENUM) {
+          if (!output.is_available() || output.type != SOCK_MENU) {
             continue;
           }
-          update_socket_enum_definition(*static_cast<bNodeSocketValueEnum *>(iosocket.socket_data),
-                                        *output.default_value_typed<bNodeSocketValueEnum>());
+          update_socket_enum_definition(*static_cast<bNodeSocketValueMenu *>(iosocket.socket_data),
+                                        *output.default_value_typed<bNodeSocketValueMenu>());
         }
       }
       else if (node->is_group()) {
@@ -918,12 +918,12 @@ class NodeTreeMainUpdater {
             bNodeSocket &input = *node->input_sockets()[socket_i];
             const bNodeTreeInterfaceSocket &iosocket = *group_tree->interface_inputs()[socket_i];
             BLI_assert(STREQ(input.identifier, iosocket.identifier));
-            if (!input.is_available() || input.type != SOCK_ENUM) {
+            if (!input.is_available() || input.type != SOCK_MENU) {
               continue;
             }
             update_socket_enum_definition(
-                *input.default_value_typed<bNodeSocketValueEnum>(),
-                *static_cast<bNodeSocketValueEnum *>(iosocket.socket_data));
+                *input.default_value_typed<bNodeSocketValueMenu>(),
+                *static_cast<bNodeSocketValueMenu *>(iosocket.socket_data));
           }
         }
       }
@@ -952,8 +952,8 @@ class NodeTreeMainUpdater {
 
     /* Tests if enum references are undefined. */
     const auto is_invalid_enum_ref = [](const bNodeSocket &socket) -> bool {
-      return socket.type == SOCK_ENUM &&
-             !socket.default_value_typed<bNodeSocketValueEnum>()->enum_ref.is_valid();
+      return socket.type == SOCK_MENU &&
+             !socket.default_value_typed<bNodeSocketValueMenu>()->enum_ref.is_valid();
     };
 
     LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {

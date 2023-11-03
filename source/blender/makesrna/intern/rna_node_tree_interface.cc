@@ -886,7 +886,7 @@ static int rna_NodeTreeInterface_items_lookup_string(PointerRNA *ptr,
   return false;
 }
 
-const EnumPropertyItem *RNA_node_tree_interface_socket_enum_itemf(bContext * /*C*/,
+const EnumPropertyItem *RNA_node_tree_interface_socket_menu_itemf(bContext * /*C*/,
                                                                   PointerRNA *ptr,
                                                                   PropertyRNA * /*prop*/,
                                                                   bool *r_free)
@@ -897,7 +897,7 @@ const EnumPropertyItem *RNA_node_tree_interface_socket_enum_itemf(bContext * /*C
     return rna_enum_dummy_NULL_items;
   }
   const NodeEnumDefinition *enum_def =
-      static_cast<bNodeSocketValueEnum *>(socket->socket_data)->enum_ref.get_definition();
+      static_cast<bNodeSocketValueMenu *>(socket->socket_data)->enum_ref.get_definition();
   if (!enum_def) {
     *r_free = false;
     return rna_enum_dummy_NULL_items;

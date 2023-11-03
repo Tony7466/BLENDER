@@ -473,43 +473,43 @@ bNodeSocket &String::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket 
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name #Enum
+/** \name #Menu
  * \{ */
 
-bNodeSocket &Enum::build(bNodeTree &ntree, bNode &node) const
+bNodeSocket &Menu::build(bNodeTree &ntree, bNode &node) const
 {
   bNodeSocket &socket = *nodeAddStaticSocket(&ntree,
                                              &node,
                                              this->in_out,
-                                             SOCK_ENUM,
+                                             SOCK_MENU,
                                              PROP_NONE,
                                              this->identifier.c_str(),
                                              this->name.c_str());
 
-  ((bNodeSocketValueEnum *)socket.default_value)->value = this->default_value;
+  ((bNodeSocketValueMenu *)socket.default_value)->value = this->default_value;
   this->set_common_flags(socket);
   return socket;
 }
 
-bool Enum::matches(const bNodeSocket &socket) const
+bool Menu::matches(const bNodeSocket &socket) const
 {
   if (!this->matches_common_data(socket)) {
     return false;
   }
-  if (socket.type != SOCK_ENUM) {
+  if (socket.type != SOCK_MENU) {
     return false;
   }
   return true;
 }
 
-bool Enum::can_connect(const bNodeSocket &socket) const
+bool Menu::can_connect(const bNodeSocket &socket) const
 {
-  return sockets_can_connect(*this, socket) && socket.type == SOCK_ENUM;
+  return sockets_can_connect(*this, socket) && socket.type == SOCK_MENU;
 }
 
-bNodeSocket &Enum::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const
+bNodeSocket &Menu::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const
 {
-  if (socket.type != SOCK_ENUM) {
+  if (socket.type != SOCK_MENU) {
     BLI_assert(socket.in_out == this->in_out);
     return this->build(ntree, node);
   }

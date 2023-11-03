@@ -78,7 +78,7 @@ template<> void socket_data_id_user_increment(bNodeSocketValueMaterial &data)
 {
   id_us_plus(reinterpret_cast<ID *>(data.value));
 }
-/* Note: bNodeSocketValueEnum does not do user counting on the node tree reference. */
+/* Note: bNodeSocketValueMenu does not do user counting on the node tree reference. */
 
 /** \} */
 
@@ -107,7 +107,7 @@ template<> void socket_data_id_user_decrement(bNodeSocketValueMaterial &data)
 {
   id_us_min(reinterpret_cast<ID *>(data.value));
 }
-/* Note: bNodeSocketValueEnum does not do user counting on the node tree reference. */
+/* Note: bNodeSocketValueMenu does not do user counting on the node tree reference. */
 
 /** \} */
 
@@ -173,7 +173,7 @@ template<> void socket_data_init_impl(bNodeSocketValueMaterial &data)
 {
   data.value = nullptr;
 }
-template<> void socket_data_init_impl(bNodeSocketValueEnum &data)
+template<> void socket_data_init_impl(bNodeSocketValueMenu &data)
 {
   data.value = -1;
   data.enum_ref.reset();
@@ -311,9 +311,9 @@ inline void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueMaterial
 {
   BLO_write_struct(writer, bNodeSocketValueMaterial, &data);
 }
-inline void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueEnum &data)
+inline void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueMenu &data)
 {
-  BLO_write_struct(writer, bNodeSocketValueEnum, &data);
+  BLO_write_struct(writer, bNodeSocketValueMenu, &data);
 }
 
 static void socket_data_write(BlendWriter *writer, bNodeTreeInterfaceSocket &socket)
@@ -376,7 +376,7 @@ void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueMater
 {
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.value, IDWALK_CB_USER);
 }
-template<> void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueEnum &data)
+template<> void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueMenu &data)
 {
   /* This is a weak reference that gets updated at runtime and should be ignored when loading. */
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.enum_ref.node_tree, IDWALK_CB_READFILE_IGNORE);

@@ -1234,7 +1234,7 @@ static const SocketColorFn std_node_socket_color_funcs[] = {
     std_node_socket_color_fn<SOCK_TEXTURE>,
     std_node_socket_color_fn<SOCK_MATERIAL>,
     std_node_socket_color_fn<SOCK_ROTATION>,
-    std_node_socket_color_fn<SOCK_ENUM>,
+    std_node_socket_color_fn<SOCK_MENU>,
 };
 
 /* draw function for file output node sockets,
@@ -1373,9 +1373,9 @@ static void std_node_socket_draw(
 
       break;
     }
-    case SOCK_ENUM: {
-      const bNodeSocketValueEnum *default_value =
-          sock->default_value_typed<bNodeSocketValueEnum>();
+    case SOCK_MENU: {
+      const bNodeSocketValueMenu *default_value =
+          sock->default_value_typed<bNodeSocketValueMenu>();
       if (!default_value->enum_ref.is_valid()) {
         uiItemL(layout, IFACE_("Menu Error"), ICON_ERROR);
       }
@@ -1514,7 +1514,7 @@ static void std_node_socket_interface_draw(ID *id,
       uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       break;
     }
-    case SOCK_ENUM: {
+    case SOCK_MENU: {
       uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       break;
     }

@@ -2820,8 +2820,8 @@ void DepsgraphRelationBuilder::build_nodetree_socket(bNodeSocket *socket)
       build_material(material);
     }
   }
-  else if (socket->type == SOCK_ENUM) {
-    bNodeTree *ntree = ((bNodeSocketValueEnum *)socket->default_value)->enum_ref.node_tree;
+  else if (socket->type == SOCK_MENU) {
+    bNodeTree *ntree = ((bNodeSocketValueMenu *)socket->default_value)->enum_ref.node_tree;
     if (ntree != nullptr) {
       build_nodetree(ntree);
     }

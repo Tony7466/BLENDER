@@ -82,7 +82,7 @@ static void add_input_for_enum_item(NodeDeclarationBuilder &b,
       b.add_input<decl::Rotation>(name, identifier);
       break;
 
-    case SOCK_ENUM:
+    case SOCK_MENU:
       /* Technically possible perhaps to select an enum based on
        * another enum, but not supported for now. */
       BLI_assert_unreachable();
@@ -140,7 +140,7 @@ static void add_output(NodeDeclarationBuilder &b, const eNodeSocketDatatype type
       b.add_output<decl::Rotation>(name).dependent_field().reference_pass_all();
       break;
 
-    case SOCK_ENUM:
+    case SOCK_MENU:
       /* Technically possible perhaps to select an enum based on
        * another enum, but not supported for now. */
       BLI_assert_unreachable();
@@ -173,7 +173,7 @@ static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
 
   add_output(b, data_type);
   {
-    auto sb = b.add_input<decl::Enum>("Switch").default_value(false);
+    auto sb = b.add_input<decl::Menu>("Switch").default_value(false);
     if (fields_type) {
       sb.supports_field();
     }
