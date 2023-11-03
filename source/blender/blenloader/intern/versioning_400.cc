@@ -246,23 +246,9 @@ static void version_bonegroups_to_bonecollections(Main *bmain)
 
 static void versioning_eevee_shadow_settings(Object *object)
 {
-  /** EEVEE no longer uses the Material::blend_flag property.
+  /** EEVEE no longer uses the Material::blend_shadow property.
    * Instead, it uses Object::visibility_flag for disabling shadow casting
-   * and the Material::blend_flag for transparent shadows.
    */
-
-  if (!ELEM(object->type,
-            OB_CURVES,
-            OB_CURVES_LEGACY,
-            OB_FONT,
-            OB_MBALL,
-            OB_MESH,
-            OB_POINTCLOUD,
-            OB_SURF,
-            OB_VOLUME))
-  {
-    return;
-  }
 
   short *material_len = BKE_object_material_len_p(object);
   if (!material_len) {
@@ -275,10 +261,6 @@ static void versioning_eevee_shadow_settings(Object *object)
     Material *material = BKE_object_material_get(object, i + 1);
     if (!material || material->blend_shadow != MA_BS_NONE) {
       hide_shadows = false;
-    }
-    if (material) {
-      bool transparent_shadow = material->blend_shadow != MA_BS_SOLID;
-      SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadow, MA_BL_TRANSPARENT_SHADOW);
     }
   }
 
@@ -361,25 +343,12 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 3)) {
-    /* Update Cycles settings first. */
-    const Material &default_mat = *DNA_struct_default_get(Material);
-    const bool default_transparent_shadows = default_mat.blend_flag & MA_BL_TRANSPARENT_SHADOW;
-    LISTBASE_FOREACH (Material *, material, &bmain->materials) {
-      if (IDProperty *cmat = version_cycles_properties_from_ID(&material->id)) {
-        bool transparent_shadows = version_cycles_property_boolean(
-            cmat, "use_transparent_shadow", default_transparent_shadows);
-        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
-      }
-    }
-    /* Now override EEVEE scenes. */
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      if (!STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE)) {
-        continue;
-      }
-      FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (scene->master_collection, object) {
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
+    if (!is_cycles) {
+      LISTBASE_FOREACH (Object *, object, &bmain->objects) {
         versioning_eevee_shadow_settings(object);
       }
-      FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
     }
   }
 
@@ -1781,6 +1750,30 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
     LISTBASE_FOREACH (GreasePencil *, grease_pencil, &bmain->grease_pencils) {
       versioning_grease_pencil_stroke_radii_scaling(grease_pencil);
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 3)) {
+    /* Unify Material::blend_shadow and Cycles.use_transparent_shadows into the
+     * Material::blend_flag. */
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
+    if (is_cycles) {
+      const Material &default_mat = *DNA_struct_default_get(Material);
+      const bool default_transparent_shadows = default_mat.blend_flag & MA_BL_TRANSPARENT_SHADOW;
+      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        if (IDProperty *cmat = version_cycles_properties_from_ID(&material->id)) {
+          bool transparent_shadows = version_cycles_property_boolean(
+              cmat, "use_transparent_shadow", default_transparent_shadows);
+          SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
+        }
+      }
+    }
+    else {
+      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        bool transparent_shadow = material->blend_shadow != MA_BS_SOLID;
+        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadow, MA_BL_TRANSPARENT_SHADOW);
+      }
     }
   }
 
