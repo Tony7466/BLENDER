@@ -21,11 +21,11 @@ namespace blender::animrig {
  * for the given Animation Data block. This assumes that all the destinations are valid.
  */
 FCurve *action_fcurve_ensure(Main *bmain,
-                                bAction *act,
-                                const char group[],
-                                PointerRNA *ptr,
-                                const char rna_path[],
-                                int array_index);
+                             bAction *act,
+                             const char group[],
+                             PointerRNA *ptr,
+                             const char rna_path[],
+                             int array_index);
 
 /**
  * Find the F-Curve from the given Action. This assumes that all the destinations are valid.

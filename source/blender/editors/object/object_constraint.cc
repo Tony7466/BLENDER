@@ -1073,8 +1073,7 @@ static int followpath_path_animate_exec(bContext *C, wmOperator *op)
     {
       /* create F-Curve for path animation */
       act = ED_id_action_ensure(bmain, &cu->id);
-      fcu = blender::animrig::action_fcurve_ensure(
-          bmain, act, nullptr, nullptr, "eval_time", 0);
+      fcu = blender::animrig::action_fcurve_ensure(bmain, act, nullptr, nullptr, "eval_time", 0);
 
       /* standard vertical range - 1:1 = 100 frames */
       standardRange = 100.0f;
