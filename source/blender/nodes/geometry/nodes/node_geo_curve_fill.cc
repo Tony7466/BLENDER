@@ -206,7 +206,7 @@ static Mesh *cdt_to_mesh(const meshintersect::CDT_result<double> &result)
 }
 
 /* Converts multiple CDT results into a single Mesh. */
-static Mesh *cdts_to_mesh(const Vector<meshintersect::CDT_result<double>> &results)
+static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
 {
   if (results.size() == 1) {
     return cdt_to_mesh(results.first());
