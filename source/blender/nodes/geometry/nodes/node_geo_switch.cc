@@ -96,8 +96,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Texture>("Output", "Output_009");
   b.add_output<decl::Material>("Output", "Output_010");
   b.add_output<decl::Image>("Output", "Output_011");
-  b.add_output<decl::Rotation>("Output", "Output_012").propagate_all().reference_pass_all();
-  b.add_output<decl::Menu>("Output", "Output_013").propagate_all().reference_pass_all();
+  b.add_output<decl::Rotation>("Output", "Output_012").dependent_field().reference_pass_all();
+  b.add_output<decl::Menu>("Output", "Output_013").dependent_field().reference_pass_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -335,7 +335,8 @@ static void node_rna(StructRNA *srna)
                                                SOCK_COLLECTION,
                                                SOCK_TEXTURE,
                                                SOCK_MATERIAL,
-                                               SOCK_IMAGE);
+                                               SOCK_IMAGE,
+                                               SOCK_MENU);
                                  });
       });
 }
