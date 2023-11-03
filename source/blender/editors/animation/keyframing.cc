@@ -47,6 +47,7 @@
 #include "ANIM_bone_collections.h"
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
+#include "ANIM_rna.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -73,22 +74,23 @@ static int delete_key_using_keying_set(bContext *C, wmOperator *op, KeyingSet *k
 
 eInsertKeyFlags ANIM_get_keyframing_flags(Scene *scene, const bool use_autokey_mode)
 {
+  using namespace blender::animrig;
   eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
 
   /* standard flags */
   {
     /* visual keying */
-    if (IS_AUTOKEY_FLAG(scene, AUTOMATKEY)) {
+    if (is_autokey_flag(scene, AUTOKEY_FLAG_AUTOMATKEY)) {
       flag |= INSERTKEY_MATRIX;
     }
 
     /* only needed */
-    if (IS_AUTOKEY_FLAG(scene, INSERTNEEDED)) {
+    if (is_autokey_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
       flag |= INSERTKEY_NEEDED;
     }
 
     /* default F-Curve color mode - RGB from XYZ indices */
-    if (IS_AUTOKEY_FLAG(scene, XYZ2RGB)) {
+    if (is_autokey_flag(scene, AUTOKEY_FLAG_XYZ2RGB)) {
       flag |= INSERTKEY_XYZ2RGB;
     }
   }
@@ -96,12 +98,12 @@ eInsertKeyFlags ANIM_get_keyframing_flags(Scene *scene, const bool use_autokey_m
   /* only if including settings from the autokeying mode... */
   if (use_autokey_mode) {
     /* keyframing mode - only replace existing keyframes */
-    if (IS_AUTOKEY_MODE(scene, EDITKEYS)) {
+    if (is_autokey_mode(scene, AUTOKEY_MODE_EDITKEYS)) {
       flag |= INSERTKEY_REPLACE;
     }
 
     /* cycle-aware keyframe insertion - preserve cycle period and flow */
-    if (IS_AUTOKEY_FLAG(scene, CYCLEAWARE)) {
+    if (is_autokey_flag(scene, AUTOKEY_FLAG_CYCLEAWARE)) {
       flag |= INSERTKEY_CYCLE_AWARE;
     }
   }
@@ -151,84 +153,6 @@ bAction *ED_id_action_ensure(Main *bmain, ID *id)
 
   /* return the action */
   return adt->action;
-}
-
-FCurve *ED_action_fcurve_find(bAction *act, const char rna_path[], const int array_index)
-{
-  /* Sanity checks. */
-  if (ELEM(nullptr, act, rna_path)) {
-    return nullptr;
-  }
-  return BKE_fcurve_find(&act->curves, rna_path, array_index);
-}
-
-FCurve *ED_action_fcurve_ensure(Main *bmain,
-                                bAction *act,
-                                const char group[],
-                                PointerRNA *ptr,
-                                const char rna_path[],
-                                const int array_index)
-{
-  bActionGroup *agrp;
-  FCurve *fcu;
-
-  /* Sanity checks. */
-  if (ELEM(nullptr, act, rna_path)) {
-    return nullptr;
-  }
-
-  /* try to find f-curve matching for this setting
-   * - add if not found and allowed to add one
-   *   TODO: add auto-grouping support? how this works will need to be resolved
-   */
-  fcu = BKE_fcurve_find(&act->curves, rna_path, array_index);
-
-  if (fcu == nullptr) {
-    /* use default settings to make a F-Curve */
-    fcu = BKE_fcurve_create();
-
-    fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
-    fcu->auto_smoothing = U.auto_smoothing_new;
-    if (BLI_listbase_is_empty(&act->curves)) {
-      fcu->flag |= FCURVE_ACTIVE; /* first one added active */
-    }
-
-    /* store path - make copy, and store that */
-    fcu->rna_path = BLI_strdup(rna_path);
-    fcu->array_index = array_index;
-
-    /* if a group name has been provided, try to add or find a group, then add F-Curve to it */
-    if (group) {
-      /* try to find group */
-      agrp = BKE_action_group_find_name(act, group);
-
-      /* no matching groups, so add one */
-      if (agrp == nullptr) {
-        agrp = action_groups_add_new(act, group);
-
-        /* sync bone group colors if applicable */
-        if (ptr && (ptr->type == &RNA_PoseBone)) {
-          bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr->data);
-          action_group_colors_set_from_posebone(agrp, pchan);
-        }
-      }
-
-      /* add F-Curve to group */
-      action_groups_add_channel(act, agrp, fcu);
-    }
-    else {
-      /* just add F-Curve to end of Action's list */
-      BLI_addtail(&act->curves, fcu);
-    }
-
-    /* New f-curve was added, meaning it's possible that it affects
-     * dependency graph component which wasn't previously animated.
-     */
-    DEG_relations_tag_update(bmain);
-  }
-
-  /* return the F-Curve */
-  return fcu;
 }
 
 /** Helper for #update_autoflags_fcurve(). */
@@ -551,73 +475,6 @@ int insert_vert_fcurve(
 
   /* return the index at which the keyframe was added */
   return a;
-}
-
-/* ------------------ RNA Data-Access Functions ------------------ */
-
-/** Try to read value using RNA-properties obtained already. */
-float *ANIM_setting_get_rna_values(
-    PointerRNA *ptr, PropertyRNA *prop, float *buffer, int buffer_size, int *r_count)
-{
-  BLI_assert(buffer_size >= 1);
-
-  float *values = buffer;
-
-  if (RNA_property_array_check(prop)) {
-    int length = *r_count = RNA_property_array_length(ptr, prop);
-    bool *tmp_bool;
-    int *tmp_int;
-
-    if (length > buffer_size) {
-      values = static_cast<float *>(MEM_malloc_arrayN(length, sizeof(float), __func__));
-    }
-
-    switch (RNA_property_type(prop)) {
-      case PROP_BOOLEAN:
-        tmp_bool = static_cast<bool *>(MEM_malloc_arrayN(length, sizeof(*tmp_bool), __func__));
-        RNA_property_boolean_get_array(ptr, prop, tmp_bool);
-        for (int i = 0; i < length; i++) {
-          values[i] = float(tmp_bool[i]);
-        }
-        MEM_freeN(tmp_bool);
-        break;
-      case PROP_INT:
-        tmp_int = static_cast<int *>(MEM_malloc_arrayN(length, sizeof(*tmp_int), __func__));
-        RNA_property_int_get_array(ptr, prop, tmp_int);
-        for (int i = 0; i < length; i++) {
-          values[i] = float(tmp_int[i]);
-        }
-        MEM_freeN(tmp_int);
-        break;
-      case PROP_FLOAT:
-        RNA_property_float_get_array(ptr, prop, values);
-        break;
-      default:
-        memset(values, 0, sizeof(float) * length);
-    }
-  }
-  else {
-    *r_count = 1;
-
-    switch (RNA_property_type(prop)) {
-      case PROP_BOOLEAN:
-        *values = float(RNA_property_boolean_get(ptr, prop));
-        break;
-      case PROP_INT:
-        *values = float(RNA_property_int_get(ptr, prop));
-        break;
-      case PROP_FLOAT:
-        *values = RNA_property_float_get(ptr, prop);
-        break;
-      case PROP_ENUM:
-        *values = float(RNA_property_enum_get(ptr, prop));
-        break;
-      default:
-        *values = 0.0f;
-    }
-  }
-
-  return values;
 }
 
 /* ------------------------- Insert Key API ------------------------- */
@@ -1335,7 +1192,6 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
                                                      index,
                                                      &anim_eval_context,
                                                      eBezTriple_KeyframeType(ts->keyframe_type),
-                                                     nullptr,
                                                      flag) != 0);
 
         MEM_freeN(path);
@@ -1619,16 +1475,11 @@ bool fcurve_is_changed(PointerRNA ptr,
   anim_rna.prop = prop;
   anim_rna.prop_index = fcu->array_index;
 
-  float buffer[RNA_MAX_ARRAY_LENGTH];
-  int count, index = fcu->array_index;
-  float *values = ANIM_setting_get_rna_values(&ptr, prop, buffer, RNA_MAX_ARRAY_LENGTH, &count);
+  int index = fcu->array_index;
+  blender::Vector<float> values = blender::animrig::get_rna_values(&ptr, prop);
 
   float fcurve_val = calculate_fcurve(&anim_rna, fcu, anim_eval_context);
-  float cur_val = (index >= 0 && index < count) ? values[index] : 0.0f;
-
-  if (values != buffer) {
-    MEM_freeN(values);
-  }
+  float cur_val = (index >= 0 && index < values.size()) ? values[index] : 0.0f;
 
   return !compare_ff_relative(fcurve_val, cur_val, FLT_EPSILON, 64);
 }

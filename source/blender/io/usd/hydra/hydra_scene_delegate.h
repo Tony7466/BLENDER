@@ -107,7 +107,6 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   HairData *hair_data(pxr::SdfPath const &id) const;
   InstancerData *instancer_data(pxr::SdfPath const &id, bool child_id = false) const;
 
-  void update_world();
   void check_updates();
   void update_collection();
   bool set_light_shading_settings();

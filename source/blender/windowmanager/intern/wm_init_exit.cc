@@ -68,7 +68,7 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h" /* RE_ free stuff */
 
-#include "SEQ_clipboard.h" /* free seq clipboard */
+#include "SEQ_clipboard.hh" /* free seq clipboard */
 
 #include "IMB_thumbs.h"
 
@@ -120,7 +120,7 @@
 #include "GPU_init_exit.h"
 #include "GPU_material.h"
 
-#include "COM_compositor.h"
+#include "COM_compositor.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -136,19 +136,6 @@ CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_MSGBUS_PUB, "wm.msgbus.pub");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_MSGBUS_SUB, "wm.msgbus.sub");
 
 static void wm_init_scripts_extensions_once(bContext *C);
-
-static void wm_init_reports(bContext *C)
-{
-  ReportList *reports = CTX_wm_reports(C);
-
-  BLI_assert(!reports || BLI_listbase_is_empty(&reports->list));
-
-  BKE_reports_init(reports, RPT_STORE);
-}
-static void wm_free_reports(wmWindowManager *wm)
-{
-  BKE_reports_clear(&wm->reports);
-}
 
 static bool wm_start_with_console = false;
 
@@ -265,10 +252,6 @@ void WM_init(bContext *C, int argc, const char **argv)
   BKE_icons_init(BIFICONID_LAST_STATIC);
   BKE_preview_images_init();
 
-  /* Reports can't be initialized before the window-manager,
-   * but keep before file reading, since that may report errors */
-  wm_init_reports(C);
-
   WM_msgbus_types_init();
 
   /* Studio-lights needs to be init before we read the home-file,
@@ -366,11 +349,19 @@ void WM_init(bContext *C, int argc, const char **argv)
   STRNCPY(G.filepath_last_library, BKE_main_blendfile_path_from_global());
 
   CTX_py_init_set(C, true);
+
+  /* Postpone updating the key-configuration until after add-ons have been registered,
+   * needed to properly load user-configured add-on key-maps, see: #113603. */
+  WM_keyconfig_update_postpone_begin();
+
   WM_keyconfig_init(C);
 
   /* Load add-ons after key-maps have been initialized (but before the blend file has been read),
    * important to guarantee default key-maps have been declared & before post-read handlers run. */
   wm_init_scripts_extensions_once(C);
+
+  WM_keyconfig_update_postpone_end();
+  WM_keyconfig_update(static_cast<wmWindowManager *>(G_MAIN->wm.first));
 
   wm_homefile_read_post(C, params_file_read_post);
 }
@@ -619,17 +610,13 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
   ED_preview_restart_queue_free();
   ED_assetlist_storage_exit();
 
-  if (wm) {
-    /* Before BKE_blender_free! - since the ListBases get freed there. */
-    wm_free_reports(wm);
-  }
-
   SEQ_clipboard_free(); /* `sequencer.cc` */
   BKE_tracking_clipboard_free();
   BKE_mask_clipboard_free();
   BKE_vfont_clipboard_free();
   ED_node_clipboard_free();
   UV_clipboard_free();
+  wm_clipboard_free();
 
 #ifdef WITH_COMPOSITOR_CPU
   COM_deinitialize();

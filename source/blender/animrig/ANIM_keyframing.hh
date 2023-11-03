@@ -11,7 +11,7 @@
 #pragma once
 
 #include "DNA_anim_types.h"
-#include "DNA_userdef_types.h"
+#include "ED_transform.hh"
 #include "RNA_types.hh"
 
 struct ID;
@@ -50,7 +50,6 @@ int insert_keyframe(Main *bmain,
                     int array_index,
                     const AnimationEvalContext *anim_eval_context,
                     eBezTriple_KeyframeType keytype,
-                    ListBase *nla_cache,
                     eInsertKeyFlags flag);
 
 /**
@@ -93,6 +92,16 @@ int delete_keyframe(Main *bmain,
                     int array_index,
                     float cfra);
 
+/**
+ * Main Keyframing API call:
+ * Use this when validation of necessary animation data isn't necessary as it
+ * already exists. It will clear the current buttons fcurve(s).
+ *
+ * The flag argument is used for special settings that alter the behavior of
+ * the keyframe deletion. These include the quick refresh options.
+ *
+ * \return The number of f-curves removed.
+ */
 int clear_keyframe(Main *bmain,
                    ReportList *reports,
                    ID *id,
@@ -113,31 +122,32 @@ int clear_keyframe(Main *bmain,
  * - "On/Off + Mode" are stored per Scene, but "settings" are currently stored as user-preferences.
  * \{ */
 
-/* Auto-Keying macros for use by various tools. */
-
 /** Check if auto-key-framing is enabled (per scene takes precedence). */
-#define IS_AUTOKEY_ON(scene) \
-  ((scene) ? ((scene)->toolsettings->autokey_mode & AUTOKEY_ON) : (U.autokey_mode & AUTOKEY_ON))
+bool is_autokey_on(const Scene *scene);
+
 /** Check the mode for auto-keyframing (per scene takes precedence). */
-#define IS_AUTOKEY_MODE(scene, mode) \
-  ((scene) ? ((scene)->toolsettings->autokey_mode == AUTOKEY_MODE_##mode) : \
-             (U.autokey_mode == AUTOKEY_MODE_##mode))
+bool is_autokey_mode(const Scene *scene, eAutokey_Mode mode);
+
 /** Check if a flag is set for auto-key-framing (per scene takes precedence). */
-#define IS_AUTOKEY_FLAG(scene, flag) \
-  ((scene) ? (((scene)->toolsettings->autokey_flag & AUTOKEY_FLAG_##flag) || \
-              (U.autokey_flag & AUTOKEY_FLAG_##flag)) : \
-             (U.autokey_flag & AUTOKEY_FLAG_##flag))
+bool is_autokey_flag(const Scene *scene, eAutokey_Flag flag);
 
 /**
  * Auto-keyframing feature - checks for whether anything should be done for the current frame.
  */
 bool autokeyframe_cfra_can_key(const Scene *scene, ID *id);
 
-void autokeyframe_object(bContext *C, Scene *scene, ViewLayer *view_layer, Object *ob, int tmode);
-
-bool ED_autokeyframe_object(bContext *C, Scene *scene, Object *ob, KeyingSet *ks);
-bool ED_autokeyframe_pchan(
-    bContext *C, Scene *scene, Object *ob, bPoseChannel *pchan, KeyingSet *ks);
+void autokeyframe_object(
+    bContext *C, Scene *scene, ViewLayer *view_layer, Object *ob, eTfmMode tmode);
+/**
+ * Auto-keyframing feature - for objects
+ *
+ * \param tmode: A transform mode.
+ *
+ * \note Context may not always be available,
+ * so must check before using it as it's a luxury for a few cases.
+ */
+bool autokeyframe_object(bContext *C, Scene *scene, Object *ob, KeyingSet *ks);
+bool autokeyframe_pchan(bContext *C, Scene *scene, Object *ob, bPoseChannel *pchan, KeyingSet *ks);
 
 /**
  * Use for auto-key-framing.
@@ -145,13 +155,13 @@ bool ED_autokeyframe_pchan(
  * properties. This is by design when using buttons. For other callers such as gizmos or sequencer
  * preview transform, creating new animation/keyframes also on non-keyed properties is desired.
  */
-bool ED_autokeyframe_property(bContext *C,
-                              Scene *scene,
-                              PointerRNA *ptr,
-                              PropertyRNA *prop,
-                              int rnaindex,
-                              float cfra,
-                              bool only_if_property_keyed);
+bool autokeyframe_property(bContext *C,
+                           Scene *scene,
+                           PointerRNA *ptr,
+                           PropertyRNA *prop,
+                           int rnaindex,
+                           float cfra,
+                           bool only_if_property_keyed);
 
 /** \} */
 

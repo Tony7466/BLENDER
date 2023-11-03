@@ -37,6 +37,7 @@ HydraSceneDelegate::HydraSceneDelegate(pxr::HdRenderIndex *parent_index,
     : HdSceneDelegate(parent_index, delegate_id)
 {
   instancer_data_ = std::make_unique<InstancerData>(this, instancer_prim_id());
+  world_data_ = std::make_unique<WorldData>(this, world_prim_id());
 }
 
 pxr::HdMeshTopology HydraSceneDelegate::GetMeshTopology(pxr::SdfPath const &id)
@@ -216,7 +217,7 @@ void HydraSceneDelegate::populate(Depsgraph *deps, View3D *v3d)
     set_light_shading_settings();
     set_world_shading_settings();
     update_collection();
-    update_world();
+    world_data_->update();
   }
 }
 
@@ -354,26 +355,6 @@ InstancerData *HydraSceneDelegate::instancer_data(pxr::SdfPath const &id, bool c
   return nullptr;
 }
 
-void HydraSceneDelegate::update_world()
-{
-  if (!world_data_) {
-    if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world)) {
-      world_data_ = std::make_unique<WorldData>(this, world_prim_id());
-      world_data_->init();
-      world_data_->insert();
-    }
-  }
-  else {
-    if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world)) {
-      world_data_->update();
-    }
-    else {
-      world_data_->remove();
-      world_data_ = nullptr;
-    }
-  }
-}
-
 void HydraSceneDelegate::check_updates()
 {
   bool do_update_collection = false;
@@ -422,9 +403,7 @@ void HydraSceneDelegate::check_updates()
         {
           do_update_collection = true;
         }
-        if (id->recalc & ID_RECALC_AUDIO_VOLUME &&
-            ((scene->world && !world_data_) || (!scene->world && world_data_)))
-        {
+        if (id->recalc & ID_RECALC_AUDIO_VOLUME) {
           do_update_world = true;
         }
         break;
@@ -437,7 +416,7 @@ void HydraSceneDelegate::check_updates()
   ITER_END;
 
   if (do_update_world) {
-    update_world();
+    world_data_->update();
   }
   if (do_update_collection) {
     update_collection();
