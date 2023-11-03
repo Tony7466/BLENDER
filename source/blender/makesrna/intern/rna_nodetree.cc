@@ -151,8 +151,13 @@ static const EnumPropertyItem rna_enum_execution_mode_items[] = {
 };
 
 static const EnumPropertyItem rna_enum_precision_items[] = {
-    {NODE_TREE_COMPOSITOR_PRECISION_HALF, "HALF", 0, "Half", "Half float precision"},
-    {NODE_TREE_COMPOSITOR_PRECISION_FULL, "FULL", 0, "Full", "Full float precision"},
+    {NODE_TREE_COMPOSITOR_PRECISION_AUTO,
+     "AUTO",
+     0,
+     "Auto",
+     "Full precision for final renders, half precision otherwise"},
+    {NODE_TREE_COMPOSITOR_PRECISION_HALF, "HALF", 0, "Half", "Half precision"},
+    {NODE_TREE_COMPOSITOR_PRECISION_FULL, "FULL", 0, "Full", "Full precision"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

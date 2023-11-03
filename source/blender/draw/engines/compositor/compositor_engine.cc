@@ -181,6 +181,17 @@ class Context : public realtime_compositor::Context {
 
   realtime_compositor::ResultPrecision get_precision() const override
   {
+    switch (get_node_tree().precision) {
+      case NODE_TREE_COMPOSITOR_PRECISION_AUTO:
+      case NODE_TREE_COMPOSITOR_PRECISION_HALF:
+        return realtime_compositor::ResultPrecision::Half;
+      case NODE_TREE_COMPOSITOR_PRECISION_FULL:
+        return realtime_compositor::ResultPrecision::Full;
+      default:
+        break;
+    }
+
+    BLI_assert_unreachable();
     return realtime_compositor::ResultPrecision::Half;
   }
 

@@ -308,6 +308,15 @@ class Context : public realtime_compositor::Context {
   realtime_compositor::ResultPrecision get_precision() const override
   {
     switch (input_data_.node_tree->precision) {
+      case NODE_TREE_COMPOSITOR_PRECISION_AUTO:
+        /* Auto uses full precision for final renders and half float otherwise. File outputs are
+         * only used in final renders, so use that as a condition. */
+        if (use_file_output()) {
+          return realtime_compositor::ResultPrecision::Full;
+        }
+        else {
+          return realtime_compositor::ResultPrecision::Half;
+        }
       case NODE_TREE_COMPOSITOR_PRECISION_HALF:
         return realtime_compositor::ResultPrecision::Half;
       case NODE_TREE_COMPOSITOR_PRECISION_FULL:
