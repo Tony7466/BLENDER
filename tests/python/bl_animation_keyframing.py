@@ -44,12 +44,6 @@ def _insert_by_name_test(insert_key: str, expected_paths: list):
     return match
 
 
-class AbstractKeyframingTest:
-    def setUp(self):
-        super().setUp()
-        bpy.ops.wm.read_homefile(use_factory_startup=True)
-
-
 def _get_keying_set(scene, name: str):
     return scene.keying_sets_all[scene.keying_sets_all.find(name)]
 
@@ -67,6 +61,12 @@ def _insert_with_keying_set_test(keying_set_name: str, expected_paths: list):
     match = _fcurve_paths_match(keyed_object.animation_data.action.fcurves, expected_paths)
     bpy.ops.object.delete(use_global=False)
     return match
+
+
+class AbstractKeyframingTest:
+    def setUp(self):
+        super().setUp()
+        bpy.ops.wm.read_homefile(use_factory_startup=True)
 
 
 class InsertKeyTest(AbstractKeyframingTest, unittest.TestCase):
