@@ -2,3 +2,4 @@ Referenced by commit b4e6ef42798e45775bdd39671b65e79283d24f0d, Fix: MeshPolygon.
 Referenced by issue #114028, Cycles: Displacement splits flat-shaded faces
 Referenced by issue #114029, EEVEE Next: Displacement splits flat-shaded faces
 Referenced by issue #114244, Regression: Smooth operators destroy manual sharp seams.
+Referenced by issue #114193, Blender adds Auto smooth to various objects and makes undo very slow
