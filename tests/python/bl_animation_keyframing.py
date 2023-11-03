@@ -6,6 +6,7 @@ import unittest
 import bpy
 import pathlib
 import sys
+from math import radians
 
 """
 blender -b -noaudio --factory-startup --python tests/python/bl_animation_keyframing.py -- --testdir /path/to/lib/tests/animation
@@ -54,7 +55,7 @@ def _insert_with_keying_set_test(keying_set_name: str, expected_paths: list):
     scene.keying_sets.active = keying_set
     bpy.ops.mesh.primitive_monkey_add()
     keyed_object = bpy.context.active_object
-    # Ensure that the rotation mode is correct so we can check against rotation_euler
+    # Ensure that the rotation mode is set so we can check against rotation_euler
     keyed_object.rotation_mode = "XYZ"
     with bpy.context.temp_override(**_get_view3d_context()):
         bpy.ops.anim.keyframe_insert()
@@ -82,6 +83,109 @@ class InsertKeyTest(AbstractKeyframingTest, unittest.TestCase):
         self.assertTrue(_insert_with_keying_set_test("Rotation", ["rotation_euler"]))
         self.assertTrue(_insert_with_keying_set_test("Scale", ["scale"]))
         self.assertTrue(_insert_with_keying_set_test("Location, Rotation & Scale", ["location", "rotation_euler", "scale"]))
+
+
+class VisualKeyingTest(AbstractKeyframingTest, unittest.TestCase):
+    
+    def test_visual_location_keying_set(self):
+        t_value = 1
+        bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD", location=(t_value, t_value, t_value))
+        target = bpy.context.active_object
+        bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD", location=(0, 0, 0))
+        bpy.ops.object.constraint_add(type="COPY_LOCATION")
+        constrained = bpy.context.active_object
+
+        constrained.constraints[0].target = target
+
+        with bpy.context.temp_override(**_get_view3d_context()):
+            bpy.ops.anim.keyframe_insert_by_name(type="BUILTIN_KSI_VisualLoc")
+
+        for fcurve in constrained.animation_data.action.fcurves:
+            self.assertEqual(fcurve.keyframe_points[0].co.y, t_value)
+
+        bpy.data.objects.remove(target, do_unlink=True)
+        bpy.data.objects.remove(constrained, do_unlink=True)
+
+    def test_visual_rotation_keying_set(self):
+        rot_value_deg = 45
+        rot_value_rads = radians(rot_value_deg)
+        bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD", rotation=(rot_value_rads, rot_value_rads, rot_value_rads))
+        target = bpy.context.active_object
+        bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD", rotation=(0, 0, 0))
+        bpy.ops.object.constraint_add(type="COPY_ROTATION")
+        constrained = bpy.context.active_object
+
+        constrained.constraints[0].target = target
+
+        with bpy.context.temp_override(**_get_view3d_context()):
+            bpy.ops.anim.keyframe_insert_by_name(type="BUILTIN_KSI_VisualRot")
+
+        for fcurve in constrained.animation_data.action.fcurves:
+            self.assertAlmostEqual(fcurve.keyframe_points[0].co.y, rot_value_rads, places=4)
+
+        bpy.data.objects.remove(target, do_unlink=True)
+        bpy.data.objects.remove(constrained, do_unlink=True)
+
+    def test_visual_location_user_pref(self):
+        # When enabling the user preference setting, 
+        # the normal keying sets behave like their visual keying set counterpart.
+        bpy.context.preferences.edit.use_visual_keying = True
+        t_value = 1
+        bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD", location=(t_value, t_value, t_value))
+        target = bpy.context.active_object
+        bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD", location=(0, 0, 0))
+        bpy.ops.object.constraint_add(type="COPY_LOCATION")
+        constrained = bpy.context.active_object
+
+        constrained.constraints[0].target = target
+
+        with bpy.context.temp_override(**_get_view3d_context()):
+            bpy.ops.anim.keyframe_insert_by_name(type="Location")
+
+        for fcurve in constrained.animation_data.action.fcurves:
+            self.assertEqual(fcurve.keyframe_points[0].co.y, t_value)
+
+        bpy.data.objects.remove(target, do_unlink=True)
+        bpy.data.objects.remove(constrained, do_unlink=True)
+        bpy.context.preferences.edit.use_visual_keying = False
+
+
+class CycleAwareKeyingTest(AbstractKeyframingTest, unittest.TestCase):
+
+    def test_insert_location_cycle_aware(self):
+        # In order to make cycle aware keying work, the action needs to be created and have the
+        # frame_range set plus the use_frame_range flag set to True.
+        bpy.ops.mesh.primitive_monkey_add()
+        keyed_object = bpy.context.active_object
+        bpy.context.scene.tool_settings.use_keyframe_cycle_aware = True
+
+        with bpy.context.temp_override(**_get_view3d_context()):
+            bpy.ops.anim.keyframe_insert_by_name(type="Location")
+
+        action = keyed_object.animation_data.action
+        action.use_cyclic = True
+        action.use_frame_range = True
+        cyclic_range_end = 20
+        action.frame_range = [1, cyclic_range_end]
+
+        with bpy.context.temp_override(**_get_view3d_context()):
+            bpy.context.scene.frame_set(5)
+            bpy.ops.anim.keyframe_insert_by_name(type="Location")
+
+            bpy.context.scene.frame_set(22)
+            bpy.ops.anim.keyframe_insert_by_name(type="Location")
+
+        # check that only location keys have been created.
+        self.assertTrue(_fcurve_paths_match(action.fcurves, ["location"]))
+
+        for fcurve in action.fcurves:
+            self.assertEqual(len(fcurve.keyframe_points), 4)
+            for key in fcurve.keyframe_points:
+                # No keyframe should be outside the cyclic range.
+                self.assertLessEqual(key.co.x, cyclic_range_end)
+            
+            # All fcurves should have a cycles modifier.
+            self.assertTrue(fcurve.modifiers[0].type == "CYCLES")
         
 
 def main():
