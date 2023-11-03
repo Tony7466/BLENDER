@@ -154,7 +154,7 @@ class Context : public realtime_compositor::Context {
     return DRW_viewport_texture_list_get()->color;
   }
 
-  GPUTexture *get_viewer_output_texture() override
+  GPUTexture *get_viewer_output_texture(int2 /* size */) override
   {
     return DRW_viewport_texture_list_get()->color;
   }
