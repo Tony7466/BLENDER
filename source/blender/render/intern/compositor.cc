@@ -309,24 +309,20 @@ class Context : public realtime_compositor::Context {
   {
     switch (input_data_.node_tree->precision) {
       case NODE_TREE_COMPOSITOR_PRECISION_AUTO:
-        /* Auto uses full precision for final renders and half float otherwise. File outputs are
-         * only used in final renders, so use that as a condition. */
+        /* Auto uses full precision for final renders and half procession otherwise. File outputs
+         * are only used in final renders, so use that as a condition. */
         if (use_file_output()) {
           return realtime_compositor::ResultPrecision::Full;
         }
         else {
           return realtime_compositor::ResultPrecision::Half;
         }
-      case NODE_TREE_COMPOSITOR_PRECISION_HALF:
-        return realtime_compositor::ResultPrecision::Half;
       case NODE_TREE_COMPOSITOR_PRECISION_FULL:
         return realtime_compositor::ResultPrecision::Full;
-      default:
-        break;
     }
 
     BLI_assert_unreachable();
-    return realtime_compositor::ResultPrecision::Half;
+    return realtime_compositor::ResultPrecision::Full;
   }
 
   void set_info_message(StringRef /*message*/) const override

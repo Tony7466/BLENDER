@@ -843,8 +843,7 @@ typedef enum eNodeTreeExecutionMode {
 /* tree->precision */
 typedef enum eNodeTreePrecision {
   NODE_TREE_COMPOSITOR_PRECISION_AUTO = 0,
-  NODE_TREE_COMPOSITOR_PRECISION_HALF = 1,
-  NODE_TREE_COMPOSITOR_PRECISION_FULL = 2,
+  NODE_TREE_COMPOSITOR_PRECISION_FULL = 1,
 } eNodeTreePrecision;
 
 typedef enum eNodeTreeRuntimeFlag {
