@@ -423,7 +423,7 @@ static int viewselected_exec(bContext *C, wmOperator *op)
     const Curves &curves_id = *static_cast<const Curves *>(ob_orig.data);
     IndexMaskMemory memory;
     const blender::bke::CurvesGeometry &curves = curves_id.geometry.wrap();
-    const IndexMask mask = retrieve_selected_points(curves, memory);
+    const IndexMask mask = ed::curves::retrieve_selected_points(curves, memory);
     const std::optional<Bounds<float3>> curves_bounds = bounds::min_max(mask,
                                                                         deformation.positions);
     if (curves_bounds.has_value()) {
