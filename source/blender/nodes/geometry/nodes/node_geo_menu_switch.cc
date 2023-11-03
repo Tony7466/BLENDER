@@ -173,7 +173,7 @@ static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
 
   add_output(b, data_type);
   {
-    auto sb = b.add_input<decl::Menu>("Switch").default_value(false);
+    auto sb = b.add_input<decl::Menu>("Menu").default_value(false);
     if (fields_type) {
       sb.supports_field();
     }
