@@ -24,14 +24,14 @@ void main()
   ivec2 closest_boundary_texel = texture_load(flooded_boundary_tx, texel).xy;
   float distance_to_boundary = distance(vec2(texel), vec2(closest_boundary_texel));
 
-  /* Further than the user supplied distance, write a transparent color. */
+  /* Further than the user supplied distance, write the original color. */
   if (distance_to_boundary > max_distance) {
-    imageStore(output_img, texel, vec4(0.0));
+    imageStore(output_img, texel, color);
     return;
   }
 
   /* We set the blur radius to be proportional to the distance to the boundary. */
-  int blur_radius = int(ceil(distance_to_boundary));
+  int blur_radius = max(1, int(ceil(distance_to_boundary) * (1.0 - color.a)));
 
   /* Laterally blur by accumulate the boundary pixels nearest to the pixels along the tangential
    * path in both directions starting from the current pixel, noting that the weights texture only
@@ -40,13 +40,15 @@ void main()
   vec2 left_texel = vec2(texel);
   vec2 right_texel = vec2(texel);
   float accumulated_weight = 0.0;
-  vec4 accumulated_color = vec4(0.0);
+  vec3 accumulated_color = vec3(0.0);
   for (int i = 0; i < blur_radius; i++) {
     float weight = texture(gaussian_weights_tx, float(i / (blur_radius - 1))).x;
 
     {
+      vec4 current_color = texture_load(input_tx, ivec2(left_texel));
       ivec2 boundary_texel = texture_load(flooded_boundary_tx, ivec2(left_texel)).xy;
-      accumulated_color += texture_load(input_tx, boundary_texel) * weight;
+      vec4 boundary_color = texture_load(input_tx, boundary_texel);
+      accumulated_color += mix(boundary_color.rgb, current_color.rgb, current_color.a) * weight;
       accumulated_weight += weight;
 
       /* Move the left texel one pixel in the clockwise tangent to the boundary. */
@@ -56,8 +58,10 @@ void main()
     /* When i is zero, we are accumulating the center pixel, which was already accumulated as the
      * left texel above, so no need to accumulate it again. */
     if (i != 0) {
+      vec4 current_color = texture_load(input_tx, ivec2(right_texel));
       ivec2 boundary_texel = texture_load(flooded_boundary_tx, ivec2(right_texel)).xy;
-      accumulated_color += texture_load(input_tx, boundary_texel) * weight;
+      vec4 boundary_color = texture_load(input_tx, boundary_texel);
+      accumulated_color += mix(boundary_color.rgb, current_color.rgb, current_color.a) * weight;
       accumulated_weight += weight;
 
       /* Move the left texel one pixel in the anti-clockwise tangent to the boundary. */
@@ -65,5 +69,5 @@ void main()
     }
   }
 
-  imageStore(output_img, texel, accumulated_color / accumulated_weight);
+  imageStore(output_img, texel, vec4(accumulated_color / accumulated_weight, 1.0));
 }
