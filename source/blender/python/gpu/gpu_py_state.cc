@@ -440,12 +440,23 @@ static PyObject *pygpu_state_framebuffer_active_get(PyObject * /*self*/)
 PyDoc_STRVAR(pygpu_state_memory_barrier_doc,
              ".. function:: memory_barrier(barrier)\n"
              "\n"
-             "   Memory barrier synchronization util.\n"
+             "   Insert a memory barrier into the GPU command stream, ensuring that certain types of "
+             "prior operations are complete before subsequent operations are started.\n"
              "\n"
-             "   :arg mode: Type of barrier.\n"
-             "     Possible values are `FRAMEBUFFER`, `SHADER_IMAGE_ACCESS`, `TEXTURE_FETCH`, "
-    "`TEXTURE_UPDATE`, `COMMAND`, `SHADER_STORAGE`, `VERTEX_ATTRIB_ARRAY`, "
-    "`ELEMENT_ARRAY`, `UNIFORM`, and `BUFFER_UPDATE`.\n"
+             "   :arg mode: Type of barrier to enforce. This determines which types of pending operations "
+             "to synchronize with the barrier. For example, using 'SHADER_IMAGE_ACCESS' ensures that all "
+             "shader image access operations are completed before any further image access can proceed.\n"
+             "     Possible values are:\n"
+             "       - `FRAMEBUFFER`: All written texture prior to this barrier can be bound as frame-buffer attachment.\n"
+             "       - `SHADER_IMAGE_ACCESS`: All written texture prior to this barrier can be bound as image.\n"
+             "       - `TEXTURE_FETCH`: All written texture prior to this barrier can be bound as sampler.\n"
+             "       - `TEXTURE_UPDATE`: All written texture prior to this barrier can be read or updated with CPU memory.\n"
+             "       - `COMMAND`: All written buffers prior to this barrier can be bound as indirect command buffer.\n"
+             "       - `SHADER_STORAGE`: All written buffer prior to this barrier can be bound as shader storage buffer objects (SSBOs).\n"
+             "       - `VERTEX_ATTRIB_ARRAY`: All written buffer prior to this barrier can be bound as VBO.\n"
+             "       - `ELEMENT_ARRAY`: All written buffer prior to this barrier can be bound as IBO.\n"
+             "       - `UNIFORM`: All written buffer prior to this barrier can be bound as UBO.\n"
+             "       - `BUFFER_UPDATE`: All written buffer prior to this barrier can be read or updated with CPU memory.\n"
              "   :type mode: str\n");
 static PyObject *pygpu_state_memory_barrier(PyObject * /*self*/, PyObject *value)
 {
