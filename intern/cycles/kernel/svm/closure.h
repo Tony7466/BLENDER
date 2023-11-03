@@ -460,7 +460,11 @@ ccl_device
         sd->object = OBJECT_NONE;
       }
       sd->P = new_P;
-      sd->wi = stack_load_float3(stack, data_node.w);
+      float3 direction = stack_load_float3(stack, data_node.w);
+      if (is_zero(direction)) {
+        direction = -sd->wi;
+      }
+      sd->wi = -direction;
       break;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_ID:

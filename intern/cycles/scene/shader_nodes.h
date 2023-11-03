@@ -579,7 +579,7 @@ class PortalBsdfNode : public BsdfNode {
   SHADER_NODE_CLASS(PortalBsdfNode)
 
   NODE_SOCKET_API(float3, position)
-  NODE_SOCKET_API(float3, incoming)
+  NODE_SOCKET_API(float3, direction)
 
   bool has_surface_transparent()
   {

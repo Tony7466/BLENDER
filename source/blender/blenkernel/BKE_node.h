@@ -893,7 +893,6 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define SH_NODE_BSDF_DIFFUSE 132
 #define SH_NODE_BSDF_GLOSSY_LEGACY 133
 #define SH_NODE_BSDF_GLASS 134
-#define SH_NODE_BSDF_PORTAL 136
 #define SH_NODE_BSDF_TRANSLUCENT 137
 #define SH_NODE_BSDF_TRANSPARENT 138
 #define SH_NODE_BSDF_SHEEN 139
@@ -967,6 +966,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define SH_NODE_COMBINE_COLOR 711
 #define SH_NODE_SEPARATE_COLOR 712
 #define SH_NODE_MIX 713
+#define SH_NODE_BSDF_PORTAL 714
 
 /** \} */
 

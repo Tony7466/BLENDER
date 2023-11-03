@@ -1,9 +1,6 @@
-/* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
- * SPDX-License-Identifier: BSD-3-Clause
- *
- * Adapted code from Open Shading Language. */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
