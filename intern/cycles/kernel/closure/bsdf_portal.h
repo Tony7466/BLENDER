@@ -45,18 +45,4 @@ ccl_device void bsdf_portal_setup(ccl_private ShaderData *sd,
   }
 }
 
-ccl_device int bsdf_portal_sample(ccl_private const ShaderClosure *sc,
-                                  float3 Ng,
-                                  float3 wi,
-                                  ccl_private Spectrum *eval,
-                                  ccl_private float3 *wo,
-                                  ccl_private float *pdf)
-{
-  // only one direction is possible
-  *wo = -wi;
-  *pdf = 1;
-  *eval = one_spectrum();
-  return LABEL_TRANSMIT | LABEL_PORTAL;
-}
-
 CCL_NAMESPACE_END

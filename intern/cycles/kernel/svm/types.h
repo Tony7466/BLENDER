@@ -508,6 +508,7 @@ typedef enum ClosureType {
   (type >= CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID && \
    type <= CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID)
 #define CLOSURE_IS_PRINCIPLED(type) (type == CLOSURE_BSDF_PRINCIPLED_ID)
+#define CLOSURE_IS_PORTAL(type) (type == CLOSURE_BSDF_PORTAL_ID)
 
 #define CLOSURE_WEIGHT_CUTOFF 1e-5f
 /* Treat closure as singular if the squared roughness is below this threshold. */

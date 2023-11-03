@@ -157,6 +157,34 @@ ccl_device_forceinline void integrate_surface_emission(KernelGlobals kg,
       kg, state, L, mis_weight, render_buffer, object_lightgroup(kg, sd->object));
 }
 
+ccl_device int integrate_surface_portal(KernelGlobals kg,
+                                        IntegratorState state,
+                                        ccl_private ShaderData *sd,
+                                        ccl_private const ShaderClosure *sc)
+{
+  const float3 D = -sd->wi;
+  if (sd->object == OBJECT_NONE) {
+    INTEGRATOR_STATE_WRITE(state, isect, object) = OBJECT_NONE;
+    INTEGRATOR_STATE_WRITE(state, ray, P) = sd->P;
+  }
+  else {
+    INTEGRATOR_STATE_WRITE(state, ray, P) = integrate_surface_ray_offset(kg, sd, sd->P, D);
+  }
+  INTEGRATOR_STATE_WRITE(state, ray, D) = D;
+  INTEGRATOR_STATE_WRITE(state, ray, tmin) = 0.0f;
+  INTEGRATOR_STATE_WRITE(state, ray, tmax) = FLT_MAX;
+#ifdef __RAY_DIFFERENTIALS__
+  INTEGRATOR_STATE_WRITE(state, ray, dP) = differential_make_compact(sd->dP);
+#endif
+
+  INTEGRATOR_STATE_WRITE(state, path, throughput) *= sc->weight;
+
+  int label = LABEL_TRANSMIT | LABEL_PORTAL;
+  path_state_next(kg, state, label, sd->flag);
+
+  return label;
+}
+
 /* Branch off a shadow path and initialize common part of it.
  * THe common is between the surface shading and configuration of a special shadow ray for the
  * shadow linking. */
@@ -406,6 +434,9 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
     return subsurface_bounce(kg, state, sd, sc);
   }
 #endif
+  if (CLOSURE_IS_PORTAL(sc->type)) {
+    return integrate_surface_portal(kg, state, sd, sc);
+  }
 
   /* BSDF closure, sample direction. */
   float bsdf_pdf = 0.0f, unguided_bsdf_pdf = 0.0f;
@@ -460,9 +491,6 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
     unguided_bsdf_pdf = bsdf_pdf;
   }
 
-  if (label & LABEL_PORTAL) {
-    INTEGRATOR_STATE_WRITE(state, isect, object) = sd->object;
-  }
   if (label & LABEL_TRANSPARENT) {
     /* Only need to modify start distance for transparent. */
     INTEGRATOR_STATE_WRITE(state, ray, tmin) = intersection_t_offset(sd->ray_length);
