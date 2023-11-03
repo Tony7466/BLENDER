@@ -13,6 +13,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <fmt/format.h>
+
 #include "BLI_endian_switch.h"
 #include "BLI_listbase.h"
 #include "BLI_math_base.h"
@@ -489,23 +491,23 @@ bool IDP_EnumItemsValidate(const IDPropertyUIDataEnumItem *items,
     const IDPropertyUIDataEnumItem &item = items[i];
     if (item.identifier == nullptr || item.identifier[0] == '\0') {
       if (error_fn) {
-        std::string msg = "Item identifier is empty";
+        const std::string msg = "Item identifier is empty";
         error_fn(msg.c_str());
       }
       is_valid = false;
     }
     if (!used_identifiers.add(item.identifier)) {
       if (error_fn) {
-        std::string msg = std::string("Item identifier '") + std::string(item.identifier) +
-                          "' already used";
+        const std::string msg = fmt::format("Item identifier '{}' is already used",
+                                            item.identifier);
         error_fn(msg.c_str());
       }
       is_valid = false;
     }
     if (!used_values.add(item.value)) {
       if (error_fn) {
-        std::string msg = std::string("Item value ") + std::to_string(item.value) + " for item '" +
-                          std::string(item.identifier) + "' already used";
+        const std::string msg = fmt::format(
+            "Item value {} for item '{}' is already used", item.value, item.identifier);
         error_fn(msg.c_str());
       }
       is_valid = false;
