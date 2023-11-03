@@ -713,7 +713,8 @@ static int edbm_dupli_extrude_cursor_invoke(bContext *C, wmOperator *op, const w
 
   const bool rot_src = RNA_boolean_get(op->ptr, "rotate_source");
   const bool use_proj = ((vc.scene->toolsettings->snap_flag & SCE_SNAP) &&
-                         (vc.scene->toolsettings->snap_mode == SCE_SNAP_TO_FACE));
+                         (vc.scene->toolsettings->snap_mode &
+                          (SCE_SNAP_TO_FACE | SCE_SNAP_INDIVIDUAL_PROJECT)));
 
   /* First calculate the center of transformation. */
   zero_v3(center);
@@ -913,7 +914,9 @@ static int edbm_dupli_extrude_cursor_invoke(bContext *C, wmOperator *op, const w
   }
   MEM_freeN(objects);
 
-  return OPERATOR_FINISHED;
+  /* Support dragging to move after extrude, see: #114282. */
+  const int retval = OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
+  return WM_operator_flag_only_pass_through_on_press(retval, event);
 }
 
 void MESH_OT_dupli_extrude_cursor(wmOperatorType *ot)

@@ -13,6 +13,8 @@
  * To update preference defaults see `userdef_default.c`.
  */
 
+#define DNA_DEPRECATED_ALLOW
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
@@ -186,8 +188,8 @@ static void blo_update_defaults_screen(bScreen *screen,
       v3d->overlay.texture_paint_mode_opacity = 1.0f;
       v3d->overlay.weight_paint_mode_opacity = 1.0f;
       v3d->overlay.vertex_paint_mode_opacity = 1.0f;
-      /* Use dimmed selected edges. */
-      v3d->overlay.edit_flag &= ~V3D_OVERLAY_EDIT_EDGES;
+      /* Clear this deprecated bit for later reuse. */
+      v3d->overlay.edit_flag &= ~V3D_OVERLAY_EDIT_EDGES_DEPRECATED;
       /* grease pencil settings */
       v3d->vertex_opacity = 1.0f;
       v3d->gp_flag |= V3D_GP_SHOW_EDIT_LINES;
@@ -591,7 +593,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 
   LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
     /* Match default for new meshes. */
-    mesh->smoothresh = DEG2RADF(30);
+    mesh->smoothresh_legacy = DEG2RADF(30);
     /* Match voxel remesher options for all existing meshes in templates. */
     mesh->flag |= ME_REMESH_REPROJECT_VOLUME | ME_REMESH_REPROJECT_PAINT_MASK |
                   ME_REMESH_REPROJECT_SCULPT_FACE_SETS | ME_REMESH_REPROJECT_VERTEX_COLORS;

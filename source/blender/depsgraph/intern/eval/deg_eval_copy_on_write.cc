@@ -79,7 +79,7 @@
 #include "BKE_pointcache.h"
 #include "BKE_sound.h"
 
-#include "SEQ_relations.h"
+#include "SEQ_relations.hh"
 
 #include "intern/builder/deg_builder.h"
 #include "intern/builder/deg_builder_nodes.h"
