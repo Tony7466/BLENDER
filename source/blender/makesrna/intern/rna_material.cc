@@ -955,11 +955,11 @@ void RNA_def_material(BlenderRNA *brna)
       "Determines which inner part of the mesh will produce volumetric effect");
   RNA_def_property_update(prop, 0, "rna_Material_draw_update");
 
-  prop = RNA_def_property(srna, "inflate_bounds", PROP_FLOAT, PROP_DISTANCE);
+  prop = RNA_def_property(srna, "max_vertex_displacement", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_float_sdna(prop, nullptr, "inflate_bounds");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_text(prop,
-                           "Inflate Bounds",
+                           "Max Vertex Displacement",
                            "Extends the bounds used for frustum culling. "
                            "This should be at least as large as the max displacement offset");
   RNA_def_property_update(prop, 0, "rna_Material_draw_update");

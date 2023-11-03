@@ -299,7 +299,7 @@ class EEVEE_NEXT_MATERIAL_PT_settings_surface(MaterialButtonsPanel, Panel):
         col.prop(mat, "use_backface_culling", text="Camera")
         col.prop(mat, "use_backface_culling_shadow", text="Shadow")
 
-        layout.prop(mat, "inflate_bounds")
+        layout.prop(mat, "max_vertex_displacement")
         # TODO(fclem): Transparent shadow option
 
         col = layout.column()
