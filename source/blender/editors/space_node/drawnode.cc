@@ -1379,11 +1379,19 @@ static void std_node_socket_draw(
       if (!default_value->enum_ref.is_valid()) {
         uiItemL(layout, IFACE_("Menu Error"), ICON_ERROR);
       }
-      else if (!default_value->enum_ref.is_set()) {
-        uiItemL(layout, IFACE_("Menu Undefined"), ICON_QUESTION);
-      }
       else {
-        uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
+        const NodeEnumDefinition *enum_def = default_value->enum_ref.get_definition();
+        if (enum_def == nullptr) {
+          uiItemL(layout, IFACE_("Menu Undefined"), ICON_QUESTION);
+        }
+        else if (enum_def->items_num == 0) {
+          uiLayout *row = uiLayoutSplit(layout, 0.4f, false);
+          uiItemL(row, text, ICON_NONE);
+          uiItemL(row, "No Items", ICON_NONE);
+        }
+        else {
+          uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
+        }
       }
       break;
     }
