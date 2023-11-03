@@ -566,7 +566,7 @@ static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
  * \{ */
 
 static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &curves,
-                                                   const VArray<bool> selection)
+                                                   const VArray<bool> &selection)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const VArray<bool> src_cyclic = curves.cyclic();
