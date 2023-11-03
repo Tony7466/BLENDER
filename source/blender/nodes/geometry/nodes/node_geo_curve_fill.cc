@@ -136,18 +136,35 @@ static Vector<meshintersect::CDT_result<double>> do_group_aware_cdt(
     return cdt_results;
   }
 
-  MultiValueMap<int, int64_t> curve_indices_by_group_id;
-  for (const int64_t curve_i : curve_group_ids.index_range()) {
-    const int group = curve_group_ids[curve_i];
-    curve_indices_by_group_id.add(group, curve_i);
-  }
+  const VArraySpan<int> group_ids_span(curve_group_ids);
+  const int domain_size = group_ids_span.size();
 
-  cdt_results.reserve(curve_indices_by_group_id.size());
-  for (const Vector<int64_t> &curve_indices : curve_indices_by_group_id.values()) {
-    IndexMaskMemory memory;
-    const IndexMask mask = IndexMask::from_indices<int64_t>(curve_indices, memory);
-    cdt_results.append(do_cdt_with_mask(curves, output_type, mask));
+  VectorSet<int> group_indexing;
+  for (const int index : IndexRange(domain_size)) {
+    const int group_id = group_ids_span[index];
+    group_indexing.add(group_id);
   }
+  const int groups_num = group_indexing.size();
+
+  IndexMaskMemory mask_memory;
+  Array<IndexMask> group_masks(groups_num);
+
+  const auto get_group_index = [&](const int i) {
+    const int group_id = group_ids_span[i];
+    return group_indexing.index_of(group_id);
+  };
+
+  IndexMask::from_groups<int>(IndexMask(domain_size), mask_memory, get_group_index, group_masks);
+
+  /* The grain size should be larger as each group gets smaller. */
+  const int avg_group_size = domain_size / groups_num;
+  const int grain_size = std::max(8192 / avg_group_size, 1);
+  threading::parallel_for(IndexRange(groups_num), grain_size, [&](const IndexRange range) {
+    for (const int group_index : range) {
+      const IndexMask &mask = group_masks[group_index];
+      cdt_results.append(do_cdt_with_mask(curves, output_type, mask));
+    }
+  });
 
   return cdt_results;
 }
