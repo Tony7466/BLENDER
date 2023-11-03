@@ -2197,7 +2197,8 @@ static bNodeSocket *rna_Node_inputs_new(ID *id,
                                         ReportList *reports,
                                         const char *type,
                                         const char *name,
-                                        const char *identifier)
+                                        const char *identifier,
+                                        const bool use_multi_input)
 {
   if (!allow_changing_sockets(node)) {
     BKE_report(reports, RPT_ERROR, "Cannot add socket to built-in node");
@@ -2211,6 +2212,9 @@ static bNodeSocket *rna_Node_inputs_new(ID *id,
     BKE_report(reports, RPT_ERROR, "Unable to create socket");
   }
   else {
+    if (use_multi_input) {
+      sock->flag |= SOCK_MULTI_INPUT;
+    }
     ED_node_tree_propagate_change(nullptr, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
   }
@@ -2224,10 +2228,16 @@ static bNodeSocket *rna_Node_outputs_new(ID *id,
                                          ReportList *reports,
                                          const char *type,
                                          const char *name,
-                                         const char *identifier)
+                                         const char *identifier,
+                                         const bool use_multi_input)
 {
   if (!allow_changing_sockets(node)) {
     BKE_report(reports, RPT_ERROR, "Cannot add socket to built-in node");
+    return nullptr;
+  }
+
+  if (use_multi_input) {
+    BKE_report(reports, RPT_ERROR, "Output sockets cannot be multi-input");
     return nullptr;
   }
 
@@ -9489,6 +9499,8 @@ static void rna_def_node_sockets_api(BlenderRNA *brna, PropertyRNA *cprop, int i
   parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_string(func, "identifier", nullptr, MAX_NAME, "Identifier", "Unique socket identifier");
+  RNA_def_boolean(
+      func, "use_multi_input", false, "", "Make the socket a multi-input. Only valid for inputs");
   /* return value */
   parm = RNA_def_pointer(func, "socket", "NodeSocket", "", "New socket");
   RNA_def_function_return(func, parm);
