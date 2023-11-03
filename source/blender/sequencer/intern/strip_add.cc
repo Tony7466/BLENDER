@@ -629,7 +629,7 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
         seq->len = 0;
       }
 
-      /* Prevent high memory usage when adding many files at once. */
+      /* Prevent high memory usage when reloading many files at once. */
       SEQ_relations_sequence_free_anim(seq);
       break;
     }
