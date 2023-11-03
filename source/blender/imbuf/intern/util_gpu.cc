@@ -36,6 +36,7 @@ static bool imb_is_grayscale_texture_format_compatible(const ImBuf *ibuf)
   }
 
   if (IMB_colormanagement_space_is_data(ibuf->float_buffer.colorspace) ||
+      IMB_colormanagement_space_is_srgb(ibuf->float_buffer.colorspace) ||
       IMB_colormanagement_space_is_scene_linear(ibuf->float_buffer.colorspace))
   {
     return true;
