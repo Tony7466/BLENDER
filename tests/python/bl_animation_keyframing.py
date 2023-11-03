@@ -71,6 +71,7 @@ class AbstractKeyframingTest:
 
 
 class InsertKeyTest(AbstractKeyframingTest, unittest.TestCase):
+    """ Ensure keying things by name or with a keying set adds the right keys. """
 
     def test_insert_by_name(self):
         self.assertTrue(_insert_by_name_test("Location", ["location"]))
@@ -86,6 +87,7 @@ class InsertKeyTest(AbstractKeyframingTest, unittest.TestCase):
 
 
 class VisualKeyingTest(AbstractKeyframingTest, unittest.TestCase):
+    """ Check if visual keying produces the correct keyframe values. """
     
     def test_visual_location_keying_set(self):
         t_value = 1
@@ -151,6 +153,7 @@ class VisualKeyingTest(AbstractKeyframingTest, unittest.TestCase):
 
 
 class CycleAwareKeyingTest(AbstractKeyframingTest, unittest.TestCase):
+    """ Check if cycle aware keying remaps the keyframes correctly and adds fcurve modifiers. """
 
     def test_insert_location_cycle_aware(self):
         # In order to make cycle aware keying work, the action needs to be created and have the
