@@ -598,13 +598,9 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
     const bool is_cyclic = ranges_to_keep.size() == 1 && is_last_segment_selected;
 
     IndexRange range_ids = ranges_to_keep.index_range();
-    for (const int range_id : range_ids) {
-      const IndexRange range = ranges_to_keep[range_id];
-
-      /* Skip the first range because it was joined to the end of the last range. */
-      if (is_curve_self_joined && range_id == range_ids.first()) {
-        continue;
-      }
+    /* Skip the first range because it is joined to the end of the last range. */
+    for (const int range_i : ranges_to_keep.index_range().drop_front(is_curve_self_joined)) {
+      const IndexRange range = ranges_to_keep[range_i];
 
       int count = range.size();
       for (const int src_point : range.shift(points.first())) {
@@ -612,7 +608,7 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
       }
 
       /* Join the first range to the end of the last range. */
-      if (is_curve_self_joined && range_id == range_ids.last()) {
+      if (is_curve_self_joined && range_i == range_ids.last()) {
         const IndexRange first_range = ranges_to_keep[range_ids.first()];
         for (const int src_point : first_range.shift(points.first())) {
           dst_to_src_point[curr_dst_point_id++] = src_point;
