@@ -573,6 +573,10 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
   const Span<bool> points_to_delete = selection.get_internal_span();
   const int total_points = points_to_delete.count(false);
 
+  if (total_points == 0) {
+    return {};
+  }
+
   int curr_dst_point_id = 0;
   Array<int> dst_to_src_point(total_points);
   Vector<int> dst_curve_counts;
