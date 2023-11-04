@@ -314,9 +314,6 @@ static int grease_pencil_layer_reveal_exec(bContext *C, wmOperator *op)
 
   for (Layer *layer : grease_pencil.layers_for_write()) {
     layer->set_visible(true);
-    if (select) {
-      layer->set_selected(true);
-    }
   }
 
 /* notifiers */
