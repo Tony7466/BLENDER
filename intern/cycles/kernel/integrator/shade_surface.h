@@ -162,22 +162,25 @@ ccl_device int integrate_surface_portal(KernelGlobals kg,
                                         ccl_private ShaderData *sd,
                                         ccl_private const ShaderClosure *sc)
 {
-  const float3 D = -sd->wi;
-  if (sd->object == OBJECT_NONE) {
+  const PortalClosure *pc = (const PortalClosure *)sc;
+
+  if (len_squared(sd->P - pc->P) > 1e-9f) {
+    /* if the ray origin is changed, unset the current object,
+     * so we can potentially hit the same polygon again */
     INTEGRATOR_STATE_WRITE(state, isect, object) = OBJECT_NONE;
-    INTEGRATOR_STATE_WRITE(state, ray, P) = sd->P;
+    INTEGRATOR_STATE_WRITE(state, ray, P) = pc->P;
   }
   else {
-    INTEGRATOR_STATE_WRITE(state, ray, P) = integrate_surface_ray_offset(kg, sd, sd->P, D);
+    INTEGRATOR_STATE_WRITE(state, ray, P) = integrate_surface_ray_offset(kg, sd, pc->P, pc->D);
   }
-  INTEGRATOR_STATE_WRITE(state, ray, D) = D;
+  INTEGRATOR_STATE_WRITE(state, ray, D) = pc->D;
   INTEGRATOR_STATE_WRITE(state, ray, tmin) = 0.0f;
   INTEGRATOR_STATE_WRITE(state, ray, tmax) = FLT_MAX;
 #ifdef __RAY_DIFFERENTIALS__
   INTEGRATOR_STATE_WRITE(state, ray, dP) = differential_make_compact(sd->dP);
 #endif
 
-  INTEGRATOR_STATE_WRITE(state, path, throughput) *= sc->weight;
+  INTEGRATOR_STATE_WRITE(state, path, throughput) *= pc->weight;
 
   int label = LABEL_TRANSMIT | LABEL_PORTAL;
   path_state_next(kg, state, label, sd->flag);

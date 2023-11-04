@@ -6,9 +6,20 @@
 
 CCL_NAMESPACE_BEGIN
 
+typedef struct PortalClosure {
+  SHADER_CLOSURE_BASE;
+
+  float3 P;
+  float3 D;
+} PortalClosure;
+
+static_assert(sizeof(ShaderClosure) >= sizeof(PortalClosure), "PortalClosure is too large!");
+
 ccl_device void bsdf_portal_setup(ccl_private ShaderData *sd,
                                   const Spectrum weight,
-                                  uint32_t path_flag)
+                                  uint32_t path_flag,
+                                  float3 position,
+                                  float3 direction)
 {
   /* Check cutoff weight. */
   float sample_weight = fabsf(average(weight));
@@ -31,13 +42,14 @@ ccl_device void bsdf_portal_setup(ccl_private ShaderData *sd,
     sd->num_closure_left = 1;
   }
 
-  /* Create new portal BSDF. */
-  ccl_private ShaderClosure *bsdf = closure_alloc(
-      sd, sizeof(ShaderClosure), CLOSURE_BSDF_PORTAL_ID, weight);
+  ccl_private PortalClosure *pc = (ccl_private PortalClosure *)closure_alloc(
+      sd, sizeof(PortalClosure), CLOSURE_BSDF_PORTAL_ID, weight);
 
-  if (bsdf) {
-    bsdf->sample_weight = sample_weight;
-    bsdf->N = sd->N;
+  if (pc) {
+    pc->sample_weight = sample_weight;
+    pc->N = sd->N;
+    pc->P = position;
+    pc->D = direction;
   }
   else if (path_flag & PATH_RAY_TERMINATE) {
     sd->num_closure_left = 0;

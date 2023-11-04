@@ -452,19 +452,13 @@ ccl_device
     }
     case CLOSURE_BSDF_PORTAL_ID: {
       Spectrum weight = closure_weight * mix_weight;
-      bsdf_portal_setup(sd, weight, path_flag);
-      float3 new_P = stack_load_float3(stack, data_node.z);
-      if (len_squared(sd->P - new_P) > 1e-9f) {
-        /* if the ray origin is changed, unset the current object,
-         * so we can potentially hit the same polygon again */
-        sd->object = OBJECT_NONE;
-      }
-      sd->P = new_P;
+      float3 position = stack_load_float3(stack, data_node.z);
       float3 direction = stack_load_float3(stack, data_node.w);
       if (is_zero(direction)) {
         direction = -sd->wi;
       }
-      sd->wi = -direction;
+
+      bsdf_portal_setup(sd, weight, path_flag, position, direction);
       break;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
