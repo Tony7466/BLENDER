@@ -5,6 +5,8 @@
 #include "BLI_task.hh"
 
 #include "BKE_attribute_math.hh"
+#include "BKE_curves.hh"
+#include "BKE_grease_pencil.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -14,6 +16,9 @@
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
+
+/* To make GreasePencil compatible with this node we arbritrarly take the first layer to sample. */
+#define SUPPORTED_GREASE_PENCIL_LAYER 0
 
 template<typename T>
 void copy_with_checked_indices(const VArray<T> &src,
@@ -58,6 +63,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .supported_type({GeometryComponent::Type::Mesh,
                        GeometryComponent::Type::PointCloud,
                        GeometryComponent::Type::Curve,
+                       GeometryComponent::Type::GreasePencil,
                        GeometryComponent::Type::Instance});
 
   b.add_input<decl::Float>("Value", "Value_Float").hide_value().field_on_all();
@@ -145,6 +151,44 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
+static int sample_domain_size(const GeometrySet &geometry_set,
+                              const GeometryComponent &component,
+                              const eAttrDomain domain)
+{
+  const GeometryComponent::Type type = component.type();
+  if (type != GeometryComponent::Type::GreasePencil) {
+    return component.attribute_domain_size(domain);
+  }
+
+  using namespace blender::bke::greasepencil;
+  const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
+  if (grease_pencil.layers().is_empty()) {
+    return 0;
+  }
+
+  if (domain == ATTR_DOMAIN_LAYER) {
+    return grease_pencil.layers().size();
+  }
+
+  const Drawing *drawing = get_eval_grease_pencil_layer_drawing(grease_pencil,
+                                                                SUPPORTED_GREASE_PENCIL_LAYER);
+  if (drawing == nullptr) {
+    return 0;
+  }
+
+  const bke::CurvesGeometry &curves = drawing->strokes();
+  switch (domain) {
+    case ATTR_DOMAIN_CURVE:
+      return curves.curves_num();
+    case ATTR_DOMAIN_POINT: {
+      return curves.points_num();
+    }
+    default:
+      return 0;
+  }
+  return 0;
+}
+
 static bool component_is_available(const GeometrySet &geometry,
                                    const GeometryComponent::Type type,
                                    const eAttrDomain domain)
@@ -153,7 +197,7 @@ static bool component_is_available(const GeometrySet &geometry,
     return false;
   }
   const GeometryComponent &component = *geometry.get_component(type);
-  return component.attribute_domain_size(domain) != 0;
+  return sample_domain_size(geometry, component, domain) != 0;
 }
 
 static const GeometryComponent *find_source_component(const GeometrySet &geometry,
@@ -165,6 +209,7 @@ static const GeometryComponent *find_source_component(const GeometrySet &geometr
       GeometryComponent::Type::Mesh,
       GeometryComponent::Type::PointCloud,
       GeometryComponent::Type::Curve,
+      GeometryComponent::Type::GreasePencil,
       GeometryComponent::Type::Instance};
   for (const GeometryComponent::Type src_type : supported_types) {
     if (component_is_available(geometry, src_type, domain)) {
@@ -203,7 +248,6 @@ class SampleIndexFunction : public mf::MultiFunction {
 
   mf::Signature signature_;
 
-  std::optional<bke::GeometryFieldContext> geometry_context_;
   std::unique_ptr<FieldEvaluator> evaluator_;
   const GVArray *src_data_ = nullptr;
 
@@ -233,9 +277,19 @@ class SampleIndexFunction : public mf::MultiFunction {
     if (component == nullptr) {
       return;
     }
-    const int domain_num = component->attribute_domain_size(domain_);
-    geometry_context_.emplace(bke::GeometryFieldContext(*component, domain_));
-    evaluator_ = std::make_unique<FieldEvaluator>(*geometry_context_, domain_num);
+
+    fn::FieldContext *field_context;
+    const int domain_num = sample_domain_size(src_geometry_, *component, domain_);
+    if (component->type() == GeometryComponent::Type::GreasePencil) {
+      const GreasePencil *grease_pencil = src_geometry_.get_grease_pencil();
+      field_context = new bke::GreasePencilLayerFieldContext(
+          *grease_pencil, domain_, SUPPORTED_GREASE_PENCIL_LAYER);
+    }
+    else {
+      field_context = new bke::GeometryFieldContext(*component, domain_);
+    }
+
+    evaluator_ = std::make_unique<FieldEvaluator>(*field_context, domain_num);
     evaluator_->add(src_field_);
     evaluator_->evaluate();
     src_data_ = &evaluator_->get_evaluated(0);
@@ -340,15 +394,24 @@ static void node_geo_exec(GeoNodeExecParams params)
   else if (const GeometryComponent *component = find_source_component(geometry, domain)) {
     /* Optimization for the case when the index is a single value. Here only that one index has to
      * be evaluated. */
-    const int domain_size = component->attribute_domain_size(domain);
+    const int domain_size = sample_domain_size(geometry, *component, domain);
     int index = index_value_or_field.as_value();
     if (use_clamp) {
       index = std::clamp(index, 0, domain_size - 1);
     }
     if (index >= 0 && index < domain_size) {
       const IndexMask mask = IndexRange(index, 1);
-      const bke::GeometryFieldContext geometry_context(*component, domain);
-      FieldEvaluator evaluator(geometry_context, &mask);
+
+      fn::FieldContext *context;
+      if (geometry.has_grease_pencil()) {
+        const GreasePencil *grease_pencil = geometry.get_grease_pencil();
+        context = new bke::GreasePencilLayerFieldContext(
+            *grease_pencil, domain, SUPPORTED_GREASE_PENCIL_LAYER);
+      }
+      else {
+        context = new bke::GeometryFieldContext(*component, domain);
+      }
+      FieldEvaluator evaluator(*context, &mask);
       evaluator.add(value_field);
       evaluator.evaluate();
       const GVArray &data = evaluator.get_evaluated(0);
@@ -385,5 +448,7 @@ static void node_register()
   nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
+
+#undef SUPPORTED_GREASE_PENCIL_LAYER
 
 }  // namespace blender::nodes::node_geo_sample_index_cc
