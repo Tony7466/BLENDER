@@ -702,7 +702,7 @@ static void GREASE_PENCIL_OT_delete(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Delete";
   ot->idname = "GREASE_PENCIL_OT_delete";
-  ot->description = "Delete selected Grease Pencil strokes or points";
+  ot->description = "Delete selected strokes or points";
 
   /* Callbacks. */
   ot->invoke = WM_menu_invoke;
