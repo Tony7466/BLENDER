@@ -676,19 +676,14 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator * /*op*/)
           return;
         }
 
-        /* When deleting strokes, ensure the entirety of each curve is selected. */
-        if (domain == ATTR_DOMAIN_CURVE) {
-          blender::ed::curves::select_linked(curves);
-        }
-
-        const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
-            ".selection", domain, true);
-
         if (domain == ATTR_DOMAIN_CURVE) {
           IndexMaskMemory memory;
-          curves.remove_curves(IndexMask::from_bools(selection, memory));
+          curves.remove_curves(ed::curves::retrieve_selected_curves(curves, memory));
         }
         else if (domain == ATTR_DOMAIN_POINT) {
+          const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+              ".selection", domain, true);
+
           curves = remove_points_and_split(curves, selection);
         }
         drawing.tag_topology_changed();
