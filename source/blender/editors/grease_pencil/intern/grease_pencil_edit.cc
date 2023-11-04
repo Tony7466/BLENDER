@@ -592,11 +592,8 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
       continue;
     }
 
-    IndexRange first_range = ranges_to_keep.first().shift(points.first());
-    IndexRange last_range = ranges_to_keep.last().shift(points.first());
-
-    const bool is_last_segment_selected = first_range.first() == points.first() &&
-                                          last_range.last() == points.last() && curve_cyclic;
+    const bool is_last_segment_selected = curve_cyclic && ranges_to_keep.first().first() == 0 &&
+                                          ranges_to_keep.last().last() == points.size() - 1;
     const bool is_curve_self_joined = is_last_segment_selected && ranges_to_keep.size() != 1;
     const bool is_cyclic = ranges_to_keep.size() == 1 && is_last_segment_selected;
 
