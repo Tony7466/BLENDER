@@ -578,8 +578,9 @@ static void find_side_effect_nodes_for_viewer_path(
     const ModifierEvalContext &ctx,
     nodes::GeoNodesSideEffectNodes &r_side_effect_nodes)
 {
+  ed::viewer_path::ViewerPathMemory memory;
   const std::optional<ed::viewer_path::ViewerPathForGeometryNodesViewer> parsed_path =
-      ed::viewer_path::parse_geometry_nodes_viewer(viewer_path);
+      ed::viewer_path::parse_geometry_nodes_viewer(viewer_path, memory);
   if (!parsed_path.has_value()) {
     return;
   }

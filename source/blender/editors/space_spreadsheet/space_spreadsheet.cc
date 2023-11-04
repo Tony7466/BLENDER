@@ -255,8 +255,10 @@ static void spreadsheet_update_context(const bContext *C)
     case SPREADSHEET_OBJECT_EVAL_STATE_VIEWER_NODE: {
       WorkSpace *workspace = CTX_wm_workspace(C);
       if (sspreadsheet->flag & SPREADSHEET_FLAG_PINNED) {
+        ed::viewer_path::ViewerPathMemory memory;
         const std::optional<ViewerPathForGeometryNodesViewer> parsed_path =
-            blender::ed::viewer_path::parse_geometry_nodes_viewer(sspreadsheet->viewer_path);
+            blender::ed::viewer_path::parse_geometry_nodes_viewer(sspreadsheet->viewer_path,
+                                                                  memory);
         if (parsed_path.has_value()) {
           if (blender::ed::viewer_path::exists_geometry_nodes_viewer(*parsed_path)) {
             /* The pinned path is still valid, do nothing. */
@@ -271,8 +273,9 @@ static void spreadsheet_update_context(const bContext *C)
         }
       }
       /* Now try to update the viewer path from the workspace. */
+      ed::viewer_path::ViewerPathMemory memory;
       const std::optional<ViewerPathForGeometryNodesViewer> workspace_parsed_path =
-          blender::ed::viewer_path::parse_geometry_nodes_viewer(workspace->viewer_path);
+          blender::ed::viewer_path::parse_geometry_nodes_viewer(workspace->viewer_path, memory);
       if (workspace_parsed_path.has_value()) {
         if (BKE_viewer_path_equal(&sspreadsheet->viewer_path, &workspace->viewer_path)) {
           /* Nothing changed. */

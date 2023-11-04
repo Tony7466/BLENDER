@@ -43,12 +43,19 @@ struct ViewerPathForGeometryNodesViewer {
   int32_t viewer_node_id;
 };
 
+struct ViewerPathMemory {
+  ViewerPath viewer_group_path;
+
+  ViewerPathMemory();
+  ~ViewerPathMemory();
+};
+
 /**
  * Parses a #ViewerPath into a #ViewerPathForGeometryNodesViewer or returns none if that does not
  * work.
  */
 std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
-    const ViewerPath &viewer_path);
+    const ViewerPath &viewer_path, ViewerPathMemory &memory);
 
 /**
  * Finds the node referenced by the #ViewerPath within the provided editor. If no node is

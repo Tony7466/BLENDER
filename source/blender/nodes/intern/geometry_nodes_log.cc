@@ -571,8 +571,9 @@ static const bNodeTree *top_tree_from_viewer_path(const Span<const ViewerPathEle
 
 const ViewerNodeLog *GeoModifierLog::find_viewer_node_log_for_path(const ViewerPath &viewer_path)
 {
+  ed::viewer_path::ViewerPathMemory memory;
   const std::optional<ed::viewer_path::ViewerPathForGeometryNodesViewer> parsed_path =
-      ed::viewer_path::parse_geometry_nodes_viewer(viewer_path);
+      ed::viewer_path::parse_geometry_nodes_viewer(viewer_path, memory);
   if (!parsed_path.has_value()) {
     return nullptr;
   }

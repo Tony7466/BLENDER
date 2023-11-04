@@ -10,6 +10,7 @@
 #include "BKE_compute_contexts.hh"
 #include "BKE_context.h"
 #include "BKE_main.h"
+#include "BKE_modifier.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_workspace.h"
@@ -226,7 +227,7 @@ Object *parse_object_only(const ViewerPath &viewer_path)
 }
 
 std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
-    const ViewerPath &viewer_path)
+    const ViewerPath &viewer_path, ViewerPathMemory &memory)
 {
   Vector<const ViewerPathElem *, 16> elems_vec;
   LISTBASE_FOREACH (const ViewerPathElem *, item, &viewer_path.path) {
@@ -262,7 +263,7 @@ std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
   }
   remaining_elems = remaining_elems.drop_front(1);
   Vector<const ViewerPathElem *> node_path;
-  for (const ViewerPathElem *elem : remaining_elems.drop_back(1)) {
+  for (const ViewerPathElem *elem : remaining_elems) {
     if (!ELEM(elem->type,
               VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP,
               VIEWER_PATH_ELEM_TYPE_GROUP_NODE,
@@ -280,8 +281,89 @@ std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
     return ViewerPathForGeometryNodesViewer{root_ob, modifier_name, node_path, viewer_node_id};
   }
   if (last_elem->type == VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP) {
+    const ModifierData *md = BKE_modifiers_findby_name(reinterpret_cast<const Object *>(root_id),
+                                                       modifier_name);
+    const NodesModifierData &nmd = *reinterpret_cast<const NodesModifierData *>(md);
+
+    const bNodeTree *tree = nmd.node_group;
+    for (const ViewerPathElem *elem : node_path) {
+      if (tree == nullptr) {
+        return std::nullopt;
+      }
+      switch (ViewerPathElemType(elem->type)) {
+        case VIEWER_PATH_ELEM_TYPE_GROUP_NODE: {
+          const auto &group_elem = *reinterpret_cast<const GroupNodeViewerPathElem *>(elem);
+          tree->ensure_topology_cache();
+          const bNode &node = *tree->node_by_id(group_elem.node_id);
+          BLI_assert(node.is_group());
+          tree = reinterpret_cast<const bNodeTree *>(node.id);
+          break;
+        }
+        case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP: {
+          const auto &group_elem = *reinterpret_cast<const ViewerNodeGroupViewerPathElem *>(elem);
+          tree->ensure_topology_cache();
+          const bNode &node = *tree->node_by_id(group_elem.node_id);
+          BLI_assert(node.is_group());
+          tree = reinterpret_cast<const bNodeTree *>(node.id);
+          break;
+        }
+        default:
+          break;
+      }
+    }
+
+    while (true) {
+      tree->ensure_topology_cache();
+      BLI_assert(tree->is_viewer());
+
+      const int32_t local_viewer = [&]() -> int32_t {
+        const Span<const bNode *> viewers = tree->nodes_by_type("GeometryNodeViewer");
+        if (viewers.size() == 1) {
+          return viewers.first()->identifier;
+        }
+        BLI_assert(viewers.is_empty());
+        const Span<const bNode *> groups = tree->group_nodes();
+        const bNode &viewer_group = **std::find_if(
+            groups.begin(), groups.end(), [](const bNode *node) -> bool {
+              return bke::node_is_viewer_group(*node);
+            });
+        return viewer_group.identifier;
+      }();
+
+      const bke::bNodeTreeZones *zones = tree->zones();
+
+      for (const bNodeTreeZone *zone : zones->get_zone_stack_for_node(local_viewer)) {
+        ViewerPathElem *zone_elem = viewer_path_elem_for_zone(*zone);
+        BLI_addtail(&memory.viewer_group_path.path, zone_elem);
+        node_path.append(zone_elem);
+      }
+
+      const bNode &viewer = *tree->node_by_id(local_viewer);
+      if (bke::node_is_viewer_group(viewer)) {
+        GroupNodeViewerPathElem *group_elem = BKE_viewer_path_elem_new_group_node();
+        group_elem->node_id = local_viewer;
+        ViewerPathElem *elem = reinterpret_cast<ViewerPathElem *>(group_elem);
+
+        tree = reinterpret_cast<const bNodeTree *>(viewer.id);
+        BLI_assert(tree != nullptr);
+
+        BLI_addtail(&memory.viewer_group_path.path, elem);
+        node_path.append(elem);
+      }
+      else {
+        /* Regualr Viewer node. */
+        ViewerNodeViewerPathElem *viewer_elem = BKE_viewer_path_elem_new_viewer_node();
+        viewer_elem->node_id = local_viewer;
+        ViewerPathElem *elem = reinterpret_cast<ViewerPathElem *>(viewer_elem);
+
+        BLI_addtail(&memory.viewer_group_path.path, elem);
+        node_path.append(elem);
+        break;
+      }
+    }
+
     const int32_t viewer_node_group_id =
-        reinterpret_cast<const ViewerNodeGroupViewerPathElem *>(last_elem)->node_id;
+        reinterpret_cast<const ViewerNodeGroupViewerPathElem *>(node_path.last())->node_id;
     return ViewerPathForGeometryNodesViewer{
         root_ob, modifier_name, node_path, viewer_node_group_id};
   }
@@ -458,8 +540,9 @@ bNode *find_geometry_nodes_viewer(const ViewerPath &viewer_path, SpaceNode &snod
     return nullptr;
   }
 
+  ViewerPathMemory memory;
   const std::optional<ViewerPathForGeometryNodesViewer> parsed_viewer_path =
-      parse_geometry_nodes_viewer(viewer_path);
+      parse_geometry_nodes_viewer(viewer_path, memory);
   if (!parsed_viewer_path.has_value()) {
     return nullptr;
   }
@@ -515,6 +598,16 @@ bNode *find_geometry_nodes_viewer(const ViewerPath &viewer_path, SpaceNode &snod
     }
   }
   return false;
+}
+
+ViewerPathMemory::ViewerPathMemory()
+{
+  BKE_viewer_path_init(&viewer_group_path);
+}
+
+ViewerPathMemory::~ViewerPathMemory()
+{
+  BKE_viewer_path_clear(&viewer_group_path);
 }
 
 }  // namespace blender::ed::viewer_path
