@@ -264,6 +264,7 @@ std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
   Vector<const ViewerPathElem *> node_path;
   for (const ViewerPathElem *elem : remaining_elems.drop_back(1)) {
     if (!ELEM(elem->type,
+              VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP,
               VIEWER_PATH_ELEM_TYPE_GROUP_NODE,
               VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE,
               VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE))
@@ -496,11 +497,6 @@ bNode *find_geometry_nodes_viewer(const ViewerPath &viewer_path, SpaceNode &snod
       compute_context_builder.push<bke::NodeGroupComputeContext>(elem.node_id);
       return true;
     }
-    case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP: {
-      const auto &elem = reinterpret_cast<const ViewerNodeGroupViewerPathElem &>(elem_generic);
-      compute_context_builder.push<bke::NodeGroupComputeContext>(elem.node_id);
-      return true;
-    }
     case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE: {
       const auto &elem = reinterpret_cast<const SimulationZoneViewerPathElem &>(elem_generic);
       compute_context_builder.push<bke::SimulationZoneComputeContext>(elem.sim_output_node_id);
@@ -510,6 +506,11 @@ bNode *find_geometry_nodes_viewer(const ViewerPath &viewer_path, SpaceNode &snod
       const auto &elem = reinterpret_cast<const RepeatZoneViewerPathElem &>(elem_generic);
       compute_context_builder.push<bke::RepeatZoneComputeContext>(elem.repeat_output_node_id,
                                                                   elem.iteration);
+      return true;
+    }
+    case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP: {
+      const auto &elem = reinterpret_cast<const ViewerNodeGroupViewerPathElem &>(elem_generic);
+      compute_context_builder.push<bke::NodeGroupComputeContext>(elem.node_id);
       return true;
     }
   }

@@ -14,7 +14,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.hh"
-#include "BLI_linear_allocator.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_multi_value_map.hh"
@@ -424,77 +423,6 @@ const NodesModifierBake *NodesModifierData::find_bake(const int id) const
 
 namespace blender {
 
-static const bNodeTree *try_add_side_effect_node_for_path(
-    const Span<const ComputeContext *> context_path,
-    const bNodeTree *start_tree,
-    nodes::GeoNodesSideEffectNodes &local_side_effect_nodes)
-{
-  for (const ComputeContext *compute_context_generic : context_path) {
-    BLI_assert(start_tree != nullptr);
-    const auto *lf_graph_info = nodes::ensure_geometry_nodes_lazy_function_graph(*start_tree);
-    if (lf_graph_info == nullptr) {
-      return nullptr;
-    }
-    const bke::bNodeTreeZones *current_zones = start_tree->zones();
-    const ComputeContextHash &parent_compute_context_hash =
-        compute_context_generic->parent()->hash();
-
-    if (const auto *compute_context = dynamic_cast<const bke::SimulationZoneComputeContext *>(
-            compute_context_generic))
-    {
-      const bke::bNodeTreeZone *simulation_zone = current_zones->get_zone_by_node(
-          compute_context->output_node_id());
-      const lf::FunctionNode *lf_zone_node = lf_graph_info->mapping.zone_node_map.lookup_default(
-          simulation_zone, nullptr);
-      if (lf_zone_node == nullptr) {
-        return nullptr;
-      }
-      local_side_effect_nodes.nodes_by_context.add(parent_compute_context_hash, lf_zone_node);
-      continue;
-    }
-    if (const auto *compute_context = dynamic_cast<const bke::RepeatZoneComputeContext *>(
-            compute_context_generic))
-    {
-      const bke::bNodeTreeZone *repeat_zone = current_zones->get_zone_by_node(
-          compute_context->output_node_id());
-      const lf::FunctionNode *lf_zone_node = lf_graph_info->mapping.zone_node_map.lookup_default(
-          repeat_zone, nullptr);
-      if (lf_zone_node == nullptr) {
-        return nullptr;
-      }
-      local_side_effect_nodes.nodes_by_context.add(parent_compute_context_hash, lf_zone_node);
-      local_side_effect_nodes.iterations_by_repeat_zone.add(
-          {parent_compute_context_hash, compute_context->output_node_id()},
-          compute_context->iteration());
-      continue;
-    }
-    if (const auto *compute_context = dynamic_cast<const bke::NodeGroupComputeContext *>(
-            compute_context_generic))
-    {
-      const bNode *group_node = start_tree->node_by_id(compute_context->node_id());
-      if (group_node == nullptr) {
-        return nullptr;
-      }
-      if (group_node->id == nullptr) {
-        return nullptr;
-      }
-      if (group_node->is_muted()) {
-        return nullptr;
-      }
-      const lf::FunctionNode *lf_group_node = lf_graph_info->mapping.group_node_map.lookup_default(
-          group_node, nullptr);
-      if (lf_group_node == nullptr) {
-        return nullptr;
-      }
-      local_side_effect_nodes.nodes_by_context.add(parent_compute_context_hash, lf_group_node);
-      start_tree = reinterpret_cast<const bNodeTree *>(group_node->id);
-      continue;
-    }
-    return nullptr;
-  }
-  return start_tree;
-}
-
 /**
  * Setup side effects nodes so that the given node in the given compute context will be executed.
  * To make sure that it is executed, all parent group nodes and zones have to be set to  have side
@@ -531,76 +459,101 @@ static void try_add_side_effect_node(const ComputeContext &final_compute_context
    * caller. This is easier than changing r_side_effect_nodes directly and then undoing changes in
    * case of errors. */
   nodes::GeoNodesSideEffectNodes local_side_effect_nodes;
-  const bNodeTree *result_tree = nullptr;
-  result_tree = try_add_side_effect_node_for_path(
-      compute_context_vec.as_span().drop_front(1), current_tree, local_side_effect_nodes);
-  if (result_tree == nullptr) {
-    return;
-  }
-
-  int final_node_id_ = final_node_id;
-
-  LinearAllocator scope;
-
-  if (const auto *compute_context = dynamic_cast<const bke::NodeViewerGroupComputeContext *>(
-          compute_context_vec.last()))
+  for (const ComputeContext *compute_context_generic : compute_context_vec.as_span().drop_front(1))
   {
-    Vector<const ComputeContext *> viewer_group_context_list;
-    const ComputeContext *parent_context = compute_context;
-    while (true) {
-      result_tree->ensure_topology_cache();
-      result_tree->node_by_id(compute_context->node_id());
-      const Span<const bNode *> viewers = result_tree->nodes_by_type("GeometryNodeViewer");
-
-      const bNode *viewer_node = viewers.size() != 1 ? nullptr : viewers.first();
-      const bNode *viewer_group = [&]() -> const bNode * {
-        for (const bNode *group_node : result_tree->group_nodes()) {
-          if (bke::node_is_viewer_group(*group_node)) {
-            return group_node;
-          }
-        }
-        return nullptr;
-      }();
-
-      if (viewer_node != nullptr) {
-        final_node_id_ = viewer_node->identifier;
-        break;
-      }
-      if (viewer_group == nullptr || viewer_group->id == nullptr) {
+    const bke::bNodeTreeZones *current_zones = current_tree->zones();
+    if (current_zones == nullptr) {
+      return;
+    }
+    const auto *lf_graph_info = nodes::ensure_geometry_nodes_lazy_function_graph(*current_tree);
+    if (lf_graph_info == nullptr) {
+      return;
+    }
+    const ComputeContextHash &parent_compute_context_hash =
+        compute_context_generic->parent()->hash();
+    if (const auto *compute_context = dynamic_cast<const bke::SimulationZoneComputeContext *>(
+            compute_context_generic))
+    {
+      const bke::bNodeTreeZone *simulation_zone = current_zones->get_zone_by_node(
+          compute_context->output_node_id());
+      if (simulation_zone == nullptr) {
         return;
       }
-
-      const bNodeTree *tree_f = reinterpret_cast<const bNodeTree *>(viewer_group->id);
-
-      for (const bke::bNodeTreeZone *zone :
-           tree_f->zones()->get_zone_stack_for_node(viewer_group->identifier))
-      {
-        auto *simulation_context = scope.allocate<bke::SimulationZoneComputeContext>();
-        new (simulation_context)
-            bke::SimulationZoneComputeContext(parent_context, zone->output_node->identifier);
-        viewer_group_context_list.append(simulation_context);
+      if (simulation_zone->parent_zone != current_zone) {
+        return;
       }
-
-      auto *group_context = scope.allocate<bke::NodeGroupComputeContext>();
-      new (group_context) bke::NodeGroupComputeContext(parent_context, viewer_group->identifier);
-      viewer_group_context_list.append(group_context);
-
-      result_tree = reinterpret_cast<const bNodeTree *>(viewer_group->id);
-      if (result_tree == nullptr) {
-        break;
+      const lf::FunctionNode *lf_zone_node = lf_graph_info->mapping.zone_node_map.lookup_default(
+          simulation_zone, nullptr);
+      if (lf_zone_node == nullptr) {
+        return;
       }
+      local_side_effect_nodes.nodes_by_context.add(parent_compute_context_hash, lf_zone_node);
+      current_zone = simulation_zone;
     }
-
-    result_tree = try_add_side_effect_node_for_path(
-        viewer_group_context_list, result_tree, local_side_effect_nodes);
-    if (result_tree == nullptr) {
+    else if (const auto *compute_context = dynamic_cast<const bke::RepeatZoneComputeContext *>(
+                 compute_context_generic))
+    {
+      const bke::bNodeTreeZone *repeat_zone = current_zones->get_zone_by_node(
+          compute_context->output_node_id());
+      if (repeat_zone == nullptr) {
+        return;
+      }
+      if (repeat_zone->parent_zone != current_zone) {
+        return;
+      }
+      const lf::FunctionNode *lf_zone_node = lf_graph_info->mapping.zone_node_map.lookup_default(
+          repeat_zone, nullptr);
+      if (lf_zone_node == nullptr) {
+        return;
+      }
+      local_side_effect_nodes.nodes_by_context.add(parent_compute_context_hash, lf_zone_node);
+      local_side_effect_nodes.iterations_by_repeat_zone.add(
+          {parent_compute_context_hash, compute_context->output_node_id()},
+          compute_context->iteration());
+      current_zone = repeat_zone;
+    }
+    else if (const auto *compute_context = dynamic_cast<const bke::NodeGroupComputeContext *>(
+                 compute_context_generic))
+    {
+      const bNode *group_node = current_tree->node_by_id(compute_context->node_id());
+      if (group_node == nullptr) {
+        return;
+      }
+      if (group_node->id == nullptr) {
+        return;
+      }
+      if (group_node->is_muted()) {
+        return;
+      }
+      if (current_zone != current_zones->get_zone_by_node(group_node->identifier)) {
+        return;
+      }
+      const lf::FunctionNode *lf_group_node = lf_graph_info->mapping.group_node_map.lookup_default(
+          group_node, nullptr);
+      if (lf_group_node == nullptr) {
+        return;
+      }
+      local_side_effect_nodes.nodes_by_context.add(parent_compute_context_hash, lf_group_node);
+      current_tree = reinterpret_cast<const bNodeTree *>(group_node->id);
+      current_zone = nullptr;
+    }
+    else {
       return;
     }
   }
-
   const bNode *final_node = current_tree->node_by_id(final_node_id);
+  if (final_node == nullptr) {
+    return;
+  }
   const auto *lf_graph_info = nodes::ensure_geometry_nodes_lazy_function_graph(*current_tree);
   if (lf_graph_info == nullptr) {
+    return;
+  }
+  const bke::bNodeTreeZones *tree_zones = current_tree->zones();
+  if (tree_zones == nullptr) {
+    return;
+  }
+  if (tree_zones->get_zone_by_node(final_node_id) != current_zone) {
     return;
   }
   const lf::FunctionNode *lf_node =
