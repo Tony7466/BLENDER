@@ -1759,26 +1759,40 @@ bool PyC_StructFmt_type_is_float_any(char format)
   }
 }
 
-bool PyC_StructFmt_type_is_int_any(char format)
+bool PyC_StructFmt_type_is_signed_int_any(char format)
 {
   switch (format) {
     case 'i':
-    case 'I':
     case 'l':
-    case 'L':
     case 'h':
-    case 'H':
     case 'b':
-    case 'B':
     case 'q':
-    case 'Q':
     case 'n':
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool PyC_StructFmt_type_is_unsigned_int_any(char format)
+{
+  switch (format) {
+    case 'I':
+    case 'L':
+    case 'H':
+    case 'B':
+    case 'Q':
     case 'N':
     case 'P':
       return true;
     default:
       return false;
   }
+}
+
+bool PyC_StructFmt_type_is_int_any(char format)
+{
+  return PyC_StructFmt_type_is_signed_int_any(format) || PyC_StructFmt_type_is_unsigned_int_any(format);
 }
 
 bool PyC_StructFmt_type_is_byte(char format)

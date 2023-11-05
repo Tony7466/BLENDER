@@ -326,6 +326,8 @@ Py_LOCAL_INLINE(uint64_t) PyC_Long_AsU64(PyObject *value)
 /* utils for format string in `struct` module style syntax */
 char PyC_StructFmt_type_from_str(const char *typestr);
 bool PyC_StructFmt_type_is_float_any(char format);
+bool PyC_StructFmt_type_is_signed_int_any(char format);
+bool PyC_StructFmt_type_is_unsigned_int_any(char format);
 bool PyC_StructFmt_type_is_int_any(char format);
 bool PyC_StructFmt_type_is_byte(char format);
 bool PyC_StructFmt_type_is_bool(char format);
