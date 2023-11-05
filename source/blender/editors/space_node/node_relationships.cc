@@ -50,6 +50,7 @@
 #include "BLT_translation.h"
 
 #include "NOD_node_declaration.hh"
+#include "NOD_socket.hh"
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
 
@@ -453,6 +454,7 @@ static bool socket_can_be_viewed(const bNode &node, const bNodeSocket &socket)
 /**
  * Find the socket to link to in a viewer node.
  */
+
 static bNodeSocket *node_link_viewer_get_socket(bNodeTree &ntree,
                                                 bNode &viewer_node,
                                                 bNodeSocket &src_socket)
@@ -630,30 +632,26 @@ static int link_view_sockets(const bContext &C,
                              bNodeSocket &bsocket_to_view,
                              bNodeSocket &bsocket_of_viewer)
 {
-  return {};
-  /*
-  bNodeSocket *viewer_bsocket = node_link_viewer_get_socket(btree, *viewer_node, bsocket_to_view);
-  if (viewer_bsocket == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
+  bNode &node = bsocket_to_view.owner_node();
+  bNode &viewer = bsocket_of_viewer.owner_node();
+
   bNodeLink *viewer_link = nullptr;
-  LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &btree.links) {
-    if (link->tosock == viewer_bsocket) {
+  for (bNodeLink *link : btree.all_links()) {
+    if (link->tosock == &bsocket_of_viewer) {
       viewer_link = link;
       break;
     }
   }
   if (viewer_link == nullptr) {
-    viewer_link = nodeAddLink(
-        &btree, &bnode_to_view, &bsocket_to_view, viewer_node, viewer_bsocket);
+    viewer_link = nodeAddLink(&btree, &node, &bsocket_to_view, &viewer, &bsocket_of_viewer);
   }
   else {
-    viewer_link->fromnode = &bnode_to_view;
+    viewer_link->fromnode = &node;
     viewer_link->fromsock = &bsocket_to_view;
     BKE_ntree_update_tag_link_changed(&btree);
   }
-  finalize_viewer_link(C, snode, *viewer_node, *viewer_link);
-  return OPERATOR_CANCELLED;*/
+  finalize_viewer_link(C, snode, viewer, *viewer_link);
+  return OPERATOR_CANCELLED;
 }
 
 static bNodeSocket *best_view_socket_find_or_new(const bNodeTree &btree,
@@ -701,30 +699,132 @@ static bNodeSocket *best_view_socket_find_or_new(const bNodeTree &btree,
   */
 }
 
-static int node_link_viewer(const bContext &C, bNode &bnode_to_view, bNodeSocket *bsocket_to_view)
+struct ViewerSocketTrait {
+  std::function<std::pair<bNode *, bNodeSocket *>(bNodeTree &)> finalize;
+
+  eCustomDataType type;
+  StringRef socket_name;
+  StringRef node_name;
+};
+
+static void traits_for_viewers(const Span<const bNode *> viewers,
+                               Vector<ViewerSocketTrait> &r_traits)
+{
+  static const Array<eCustomDataType> viewer_types = {CD_PROP_FLOAT,
+                                                      CD_PROP_BOOL,
+                                                      CD_PROP_INT32,
+                                                      CD_PROP_FLOAT3,
+                                                      CD_PROP_COLOR,
+                                                      CD_PROP_QUATERNION};
+  for (const bNode *viewer : viewers) {
+    for (const eCustomDataType data_type : viewer_types) {
+      ViewerSocketTrait trait;
+      trait.type = data_type;
+      trait.socket_name = "Value";
+      trait.node_name = viewer->name;
+
+      const int32_t identifiers = viewer->identifier;
+      trait.finalize = [=](bNodeTree &tree) -> std::pair<bNode *, bNodeSocket *> {
+        tree.ensure_topology_cache();
+        bNode &viewer = *tree.node_by_id(identifiers);
+        for (bNodeSocket *socket : viewer.input_sockets().drop_front(1)) {
+          const eNodeSocketDatatype socket_type = eNodeSocketDatatype(socket->type);
+          if (*bke::socket_type_to_custom_data_type(socket_type) == data_type) {
+            NodeGeometryViewer &storage = *static_cast<NodeGeometryViewer *>(viewer.storage);
+            storage.data_type = data_type;
+            viewer.typeinfo->updatefunc(&tree, &viewer);
+            return {&viewer, socket};
+          }
+        }
+        BLI_assert_unreachable();
+        return {};
+      };
+
+      r_traits.append(std::move(trait));
+    }
+  }
+}
+
+static void traits_for_groups(Main &bmain, Vector<ViewerSocketTrait> &r_traits)
+{
+  LISTBASE_FOREACH (bNodeTree *, group, &bmain.nodetrees) {
+    if (!group->is_viewer()) {
+      continue;
+    }
+
+    group->ensure_topology_cache();
+    group->ensure_interface_cache();
+
+    const Span<const bNodeTreeInterfaceSocket *> inputs = group->interface_inputs();
+    for (const int index : inputs.index_range()) {
+      const bNodeTreeInterfaceSocket &input = *inputs[index];
+
+      ViewerSocketTrait trait;
+      trait.type = CD_PROP_INT32;
+      trait.socket_name = input.name;
+      trait.node_name = group->id.name;
+
+      trait.finalize = [=](bNodeTree &tree) -> std::pair<bNode *, bNodeSocket *> {
+        tree.ensure_topology_cache();
+
+        bNode *node_group = nodeAddStaticNode(nullptr, &tree, NODE_GROUP);
+        node_group->id = &group->id;
+        id_us_plus(&group->id);
+        tree.ensure_topology_cache();
+        bke::node_field_inferencing::update_field_inferencing(*group);
+        nodes::update_node_declaration_and_sockets(tree, *node_group);
+        tree.ensure_topology_cache();
+
+        return {node_group, node_group->input_sockets()[index]};
+      };
+
+      r_traits.append(std::move(trait));
+    }
+  }
+}
+
+static void traits_for_exist_groups(const Span<const bNode *> groups,
+                                    Vector<ViewerSocketTrait> &r_traits)
+{
+}
+
+static int node_link_viewer(const bContext &C, bNode &bnode_to_view, bNodeSocket *node_socket)
 {
   SpaceNode &snode = *CTX_wm_space_node(&C);
   bNodeTree *btree = snode.edittree;
   btree->ensure_topology_cache();
 
-  const Array<const bNode *> viewers = all_view_nodes(*btree);
-  const Array<const bNode *> connected_viewers = all_connected_viewer(*btree, bnode_to_view);
+  const Span<const bNode *> viewers = btree->nodes_by_type("GeometryNodeViewer");
+  const Span<const bNode *> groups = btree->group_nodes();
+  // const Array<const bNode *> connected_viewers = all_connected_viewer(*btree, bnode_to_view);
   const bNode *active_viewer = active_viewer_in_tree(*btree);
 
-  if (bsocket_to_view == nullptr) {
-    bsocket_to_view = determine_socket_to_view(bnode_to_view);
+  if (node_socket == nullptr) {
+    node_socket = determine_socket_to_view(bnode_to_view);
   }
 
-  if (bsocket_to_view == nullptr) {
+  if (node_socket == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
-  bNodeSocket *target_viewer_socket = best_view_socket_find_or_new(
-      *btree, *bsocket_to_view, viewers, connected_viewers, active_viewer);
-  if (target_viewer_socket == nullptr) {
+  Vector<ViewerSocketTrait> traits;
+  traits_for_viewers(viewers, traits);
+  // traits_for_viewers({active_viewer}, traits);
+  traits_for_exist_groups(groups, traits);
+  traits_for_groups(*CTX_data_main(&C), traits);
+
+  if (traits.is_empty()) {
     return OPERATOR_CANCELLED;
   }
-  return link_view_sockets(C, snode, *btree, *bsocket_to_view, *target_viewer_socket);
+
+  const ViewerSocketTrait &viewer_trait = *std::max_element(
+      traits.begin(),
+      traits.end(),
+      [&](const ViewerSocketTrait &a, const ViewerSocketTrait &b) -> bool { return false; });
+
+  auto [viewer_node, viewer_socket] = viewer_trait.finalize(*btree);
+  btree->ensure_topology_cache();
+  return link_view_sockets(C, snode, *btree, *node_socket, *viewer_socket);
 }
 
 /** \} */
