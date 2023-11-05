@@ -676,29 +676,29 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator * /*op*/)
   const eAttrDomain domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
 
   bool changed = false;
-  grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*layer_index*/, bke::greasepencil::Drawing &drawing) {
-        bke::CurvesGeometry &curves = drawing.strokes_for_write();
-        if (curves.points_num() == 0) {
-          return;
-        }
-        if (!ed::curves::has_anything_selected(curves)) {
-          return;
-        }
+  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    if (curves.points_num() == 0) {
+      return;
+    }
+    if (!ed::curves::has_anything_selected(curves)) {
+      return;
+    }
 
-        if (domain == ATTR_DOMAIN_CURVE) {
-          IndexMaskMemory memory;
-          curves.remove_curves(ed::curves::retrieve_selected_curves(curves, memory));
-        }
-        else if (domain == ATTR_DOMAIN_POINT) {
-          const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
-              ".selection", domain, true);
+    if (domain == ATTR_DOMAIN_CURVE) {
+      IndexMaskMemory memory;
+      curves.remove_curves(ed::curves::retrieve_selected_curves(curves, memory));
+    }
+    else if (domain == ATTR_DOMAIN_POINT) {
+      const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+          ".selection", domain, true);
 
-          curves = remove_points_and_split(curves, selection);
-        }
-        drawing.tag_topology_changed();
-        changed = true;
-      });
+      curves = remove_points_and_split(curves, selection);
+    }
+    info.drawing.tag_topology_changed();
+    changed = true;
+  });
 
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
