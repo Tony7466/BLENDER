@@ -840,12 +840,15 @@ ccl_device
       ccl_private Bssrdf *bssrdf = bssrdf_alloc(sd, weight);
 
       if (bssrdf) {
-        bssrdf->radius = rgb_to_spectrum(stack_load_float3(stack, data_node.z) * param1);
+        uint radius_offest, roughness_offset, anisotropy_offset;
+        svm_unpack_node_uchar3(node.z, &radius_offest, &roughness_offset, &anisotropy_offset);
+
+        bssrdf->radius = rgb_to_spectrum(stack_load_float3(stack, radius_offest) * param1);
         bssrdf->albedo = closure_weight;
         bssrdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bssrdf->ior = param2;
-        bssrdf->alpha = 1.0f;
-        bssrdf->anisotropy = stack_load_float(stack, data_node.w);
+        bssrdf->alpha = saturatef(stack_load_float(stack, roughness_offset));
+        bssrdf->anisotropy = stack_load_float(stack, anisotropy_offset);
 
         sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, (ClosureType)type);
       }

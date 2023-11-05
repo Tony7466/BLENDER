@@ -382,6 +382,11 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     BKE_mesh_legacy_face_map_to_generic(bmain);
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
+    version_node_socket_index_animdata(
+        bmain, NTREE_SHADER, SH_NODE_SUBSURFACE_SCATTERING, 4, 1, 5);
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *

@@ -2963,6 +2963,7 @@ NODE_DEFINE(SubsurfaceScatteringNode)
   SOCKET_IN_VECTOR(radius, "Radius", make_float3(0.1f, 0.1f, 0.1f));
 
   SOCKET_IN_FLOAT(subsurface_ior, "IOR", 1.4f);
+  SOCKET_IN_FLOAT(subsurface_roughness, "Roughness", 1.0f);
   SOCKET_IN_FLOAT(subsurface_anisotropy, "Anisotropy", 0.0f);
 
   SOCKET_OUT_CLOSURE(BSSRDF, "BSSRDF");
@@ -2978,7 +2979,30 @@ SubsurfaceScatteringNode::SubsurfaceScatteringNode() : BsdfNode(get_node_type())
 void SubsurfaceScatteringNode::compile(SVMCompiler &compiler)
 {
   closure = method;
-  BsdfNode::compile(compiler, input("Scale"), input("IOR"), input("Radius"), input("Anisotropy"));
+
+  ShaderInput *color_in = input("Color");
+
+  if (color_in->link) {
+    compiler.add_node(NODE_CLOSURE_WEIGHT, compiler.stack_assign(color_in));
+  }
+  else {
+    compiler.add_node(NODE_CLOSURE_SET_WEIGHT, color);
+  }
+
+  ShaderInput *scale_in = input("Scale");
+  ShaderInput *radius_in = input("Radius");
+  ShaderInput *ior_in = input("IOR");
+  ShaderInput *roughness_in = input("Roughness");
+  ShaderInput *anisotropy_in = input("Anisotropy");
+
+  compiler.add_node(NODE_CLOSURE_BSDF,
+                    compiler.encode_uchar4(closure,
+                                           compiler.stack_assign(scale_in),
+                                           compiler.stack_assign(ior_in),
+                                           compiler.closure_mix_weight_offset()),
+                    compiler.encode_uchar4(compiler.stack_assign(radius_in),
+                                           compiler.stack_assign(roughness_in),
+                                           compiler.stack_assign(anisotropy_in)));
 }
 
 void SubsurfaceScatteringNode::compile(OSLCompiler &compiler)
