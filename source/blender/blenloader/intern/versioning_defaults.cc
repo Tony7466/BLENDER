@@ -203,6 +203,35 @@ static void blo_update_defaults_screen(bScreen *screen,
       /* Disable Curve Normals. */
       v3d->overlay.edit_flag &= ~V3D_OVERLAY_EDIT_CU_NORMALS;
       v3d->overlay.normals_constant_screen_size = 7.0f;
+      /* Level out the viewport camera rotation (see: #113751) */
+      LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+        if (region->regiontype == RGN_TYPE_WINDOW) {
+          RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+
+          const auto lookat_qt = [](float quat[4], const float dir[3], const float up[3]) {
+            float mat[3][3];
+
+            negate_v3_v3(mat[2], dir);
+            cross_v3_v3v3(mat[0], up, mat[2]);
+            cross_v3_v3v3(mat[1], mat[2], mat[0]);
+
+            mat3_to_quat(quat, mat);
+          };
+
+          const float up_vec[3] = {0, 0, 1};
+          float new_quat[4], cam_direction[3];
+
+          /* We're always targeting [0, 0, 0], our direction is thus the negation of our position */
+          copy_v3_v3(cam_direction, rv3d->viewinv[3]);
+          negate_v3(cam_direction);
+          normalize_v3(cam_direction);
+
+          lookat_qt(new_quat, cam_direction, up_vec);
+          invert_qt(new_quat);
+
+          copy_qt_qt(rv3d->viewquat, new_quat);
+        }
+      }
     }
     else if (area->spacetype == SPACE_CLIP) {
       SpaceClip *sclip = static_cast<SpaceClip *>(area->spacedata.first);
