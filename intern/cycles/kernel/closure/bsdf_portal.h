@@ -27,13 +27,13 @@ ccl_device void bsdf_portal_setup(ccl_private ShaderData *sd,
     return;
   }
 
-  sd->flag |= SD_BSDF | SD_PORTAL;
-  if (sd->flag & SD_TRANSPARENT) {
+  if (sd->flag & SD_TRANSPARENT || sd->flag & SD_PORTAL) {
     sd->closure_transparent_extinction += weight;
   }
   else {
     sd->closure_transparent_extinction = weight;
   }
+  sd->flag |= SD_BSDF | SD_PORTAL;
 
   if (path_flag & PATH_RAY_TERMINATE) {
     /* In this case the number of closures is set to zero to disable
