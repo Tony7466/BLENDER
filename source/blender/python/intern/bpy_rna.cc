@@ -5721,9 +5721,10 @@ static PyObject *pyprop_array_foreach_getset(BPy_PropertyArrayRNA *self,
     }
   }
   else {
-    const char f = buf.format ? buf.format[0] : 0;
-    if ((prop_type == PROP_INT && (buf.itemsize != sizeof(int) || !ELEM(f, 'l', 'i'))) ||
-        (prop_type == PROP_FLOAT && (buf.itemsize != sizeof(float) || f != 'f')))
+    const char f = buf.format ? PyC_StructFmt_type_from_str(buf.format) : 0;
+    if ((buf.format && !PyC_StructFmt_is_native_order(buf.format)) ||
+        (prop_type == PROP_INT && (buf.itemsize != sizeof(int) || !PyC_StructFmt_type_is_signed_int_any(f))) ||
+        (prop_type == PROP_FLOAT && (buf.itemsize != sizeof(float) || !PyC_StructFmt_type_is_float_any(f))))
     {
       PyBuffer_Release(&buf);
       PyErr_Format(PyExc_TypeError, "incorrect sequence item type: %s", buf.format);
