@@ -680,9 +680,6 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator * /*op*/)
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-    if (curves.points_num() == 0) {
-      return;
-    }
     if (!ed::curves::has_anything_selected(curves)) {
       return;
     }
