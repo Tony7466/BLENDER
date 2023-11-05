@@ -158,7 +158,7 @@ static float sculpt_automasking_normal_calc(SculptSession *ss,
     SCULPT_vertex_normal_get(ss, vertex, normal_v);
   }
 
-  float angle = saacos(dot_v3v3(normal, normal_v));
+  float angle = saacosf(dot_v3v3(normal, normal_v));
 
   /* note that limit is pre-divided by M_PI */
 

@@ -1087,7 +1087,7 @@ static void bm_mesh_calc_uvs_sphere_face(BMFace *f, const int cd_loop_uv_offset)
       theta = -M_PI;
     }
 
-    float phi = saacos(z / len);
+    float phi = saacosf(z / len);
     luv[0] = 0.5f + theta / (float(M_PI) * 2);
     luv[1] = 1.0f - phi / float(M_PI);
 

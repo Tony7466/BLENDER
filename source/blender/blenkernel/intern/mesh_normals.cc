@@ -243,7 +243,7 @@ static void accumulate_face_normal_to_vert(const Span<float3> positions,
       }
 
       /* Calculate angle between the two face edges incident on this vertex. */
-      const float fac = saacos(-dot_v3v3(edvec_prev, edvec_next));
+      const float fac = saacosf(-dot_v3v3(edvec_prev, edvec_next));
       const float vnor_add[3] = {face_normal[0] * fac, face_normal[1] * fac, face_normal[2] * fac};
 
       float *vnor = vert_normals[face_verts[i_curr]];
@@ -567,7 +567,7 @@ static CornerNormalSpace lnor_space_define(const float lnor[3],
   /* Beta is angle between ref_vec and other_vec, around lnor. */
   dtp = dot_v3v3(lnor_space.vec_ref, vec_other);
   if (LIKELY(dtp < LNOR_SPACE_TRIGO_THRESHOLD)) {
-    const float beta = saacos(dtp);
+    const float beta = saacosf(dtp);
     lnor_space.ref_beta = (dot_v3v3(lnor_space.vec_ortho, vec_other) < 0.0f) ? pi2 - beta : beta;
   }
   else {
@@ -1097,7 +1097,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
 
     /* Code similar to accumulate_vertex_normals_poly_v3. */
     /* Calculate angle between the two face edges incident on this vertex. */
-    lnor += face_normals[loop_to_face[mlfan_curr_index]] * saacos(math::dot(vec_curr, vec_prev));
+    lnor += face_normals[loop_to_face[mlfan_curr_index]] * saacosf(math::dot(vec_curr, vec_prev));
 
     processed_corners.append(mlfan_vert_index);
 

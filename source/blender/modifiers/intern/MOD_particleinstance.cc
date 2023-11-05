@@ -451,7 +451,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
           cross_v3_v3v3(cross, temp, state.vel);
 
           /* state.vel[axis] is the only component surviving from a dot product with the axis */
-          axis_angle_to_quat(state.rot, cross, saacos(state.vel[axis]));
+          axis_angle_to_quat(state.rot, cross, saacosf(state.vel[axis]));
         }
 #endif
       }
