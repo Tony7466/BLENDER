@@ -331,6 +331,7 @@ bool PyC_StructFmt_type_is_unsigned_int_any(char format);
 bool PyC_StructFmt_type_is_int_any(char format);
 bool PyC_StructFmt_type_is_byte(char format);
 bool PyC_StructFmt_type_is_bool(char format);
+bool PyC_StructFmt_is_native_order(const char *typestr);
 
 #ifdef __cplusplus
 }

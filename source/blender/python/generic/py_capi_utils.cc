@@ -19,6 +19,7 @@
 #include <Python.h>
 #include <frameobject.h>
 
+#include "BLI_endian_defines.h" /* for determining native order Py_buffer formats */
 #include "BLI_utildefines.h" /* for bool */
 
 #include "py_capi_utils.h"
@@ -1814,6 +1815,24 @@ bool PyC_StructFmt_type_is_bool(char format)
       return true;
     default:
       return false;
+  }
+}
+
+bool PyC_StructFmt_is_native_order(const char *typestr)
+{
+  switch (typestr[0]) {
+#if ENDIAN_ORDER == L_ENDIAN
+    case '>': /*           big-endian, standard size, no alignment */
+    case '!': /* network (big-endian), standard size, no alignment */
+#else
+    case '<': /*        little-endian, standard size, no alignment */
+#endif
+      return false;
+    default:
+      /* '@':       native byte order,   native size, native alignment */
+      /* '=':       native byte order, standard size, no alignment */
+      /* If no prefix is specified, the '@' prefix is implied. */
+      return true;
   }
 }
 
