@@ -43,7 +43,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_math_rotation.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_task.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -101,9 +101,9 @@
 
 #include "RNA_access.hh"
 
-#include "SEQ_edit.h"
-#include "SEQ_iterator.h"
-#include "SEQ_sequencer.h"
+#include "SEQ_edit.hh"
+#include "SEQ_iterator.hh"
+#include "SEQ_sequencer.hh"
 
 #include "BLO_read_write.hh"
 
