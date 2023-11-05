@@ -5385,38 +5385,27 @@ static int foreach_parse_args(BPy_PropertyRNA *self,
   return 0;
 }
 
-static bool foreach_compat_buffer(RawPropertyType raw_type, int attr_signed, const char *format)
+static bool foreach_compat_buffer(RawPropertyType raw_type, int attr_signed, const char *format, Py_ssize_t itemsize)
 {
-  const char f = format ? *format : 'B'; /* B is assumed when not set */
+  if (format && !PyC_StructFmt_is_native_order(format)) {
+    return false;
+  }
+
+  const char f = format ? PyC_StructFmt_type_from_str(format) : 'B'; /* B is assumed when not set */
 
   switch (raw_type) {
     case PROP_RAW_CHAR:
-      if (attr_signed) {
-        return (f == 'b') ? true : false;
-      }
-      else {
-        return (f == 'B') ? true : false;
-      }
+      return itemsize == sizeof(char) && (attr_signed ? PyC_StructFmt_type_is_signed_int_any(f) : PyC_StructFmt_type_is_unsigned_int_any(f));
     case PROP_RAW_SHORT:
-      if (attr_signed) {
-        return (f == 'h') ? true : false;
-      }
-      else {
-        return (f == 'H') ? true : false;
-      }
+      return itemsize == sizeof(short) && (attr_signed ? PyC_StructFmt_type_is_signed_int_any(f) : PyC_StructFmt_type_is_unsigned_int_any(f));
     case PROP_RAW_INT:
-      if (attr_signed) {
-        return (f == 'i') ? true : false;
-      }
-      else {
-        return (f == 'I') ? true : false;
-      }
+      return itemsize == sizeof(int) && (attr_signed ? PyC_StructFmt_type_is_signed_int_any(f) : PyC_StructFmt_type_is_unsigned_int_any(f));
     case PROP_RAW_BOOLEAN:
-      return (f == '?') ? true : false;
+      return itemsize == sizeof(bool) && PyC_StructFmt_type_is_bool(f);
     case PROP_RAW_FLOAT:
-      return (f == 'f') ? true : false;
+      return itemsize == sizeof(float) && PyC_StructFmt_type_is_float_any(f);
     case PROP_RAW_DOUBLE:
-      return (f == 'd') ? true : false;
+      return itemsize == sizeof(double) && PyC_StructFmt_type_is_float_any(f);
     case PROP_RAW_UNSET:
       return false;
   }
@@ -5468,7 +5457,7 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
       else {
         /* Check if the buffer matches. */
 
-        buffer_is_compat = foreach_compat_buffer(raw_type, attr_signed, buf.format);
+        buffer_is_compat = foreach_compat_buffer(raw_type, attr_signed, buf.format, buf.itemsize);
 
         if (buffer_is_compat) {
           ok = RNA_property_collection_raw_set(
@@ -5529,7 +5518,7 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
       else {
         /* Check if the buffer matches. */
 
-        buffer_is_compat = foreach_compat_buffer(raw_type, attr_signed, buf.format);
+        buffer_is_compat = foreach_compat_buffer(raw_type, attr_signed, buf.format, buf.itemsize);
 
         if (buffer_is_compat) {
           ok = RNA_property_collection_raw_get(
