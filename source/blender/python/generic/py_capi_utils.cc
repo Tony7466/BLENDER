@@ -1750,9 +1750,9 @@ char PyC_StructFmt_type_from_str(const char *typestr)
 bool PyC_StructFmt_type_is_float_any(char format)
 {
   switch (format) {
-    case 'f':
-    case 'd':
-    case 'e':
+    case 'f': /* float */
+    case 'd': /* double */
+    case 'e': /* IEEE 754 binary16 "half precision" */
       return true;
     default:
       return false;
@@ -1762,12 +1762,12 @@ bool PyC_StructFmt_type_is_float_any(char format)
 bool PyC_StructFmt_type_is_signed_int_any(char format)
 {
   switch (format) {
-    case 'i':
-    case 'l':
-    case 'h':
-    case 'b':
-    case 'q':
-    case 'n':
+    case 'i': /* int */
+    case 'l': /* long */
+    case 'h': /* short */
+    case 'b': /* signed char */
+    case 'q': /* long long */
+    case 'n': /* ssize_t */
       return true;
     default:
       return false;
@@ -1777,13 +1777,13 @@ bool PyC_StructFmt_type_is_signed_int_any(char format)
 bool PyC_StructFmt_type_is_unsigned_int_any(char format)
 {
   switch (format) {
-    case 'I':
-    case 'L':
-    case 'H':
-    case 'B':
-    case 'Q':
-    case 'N':
-    case 'P':
+    case 'I': /* unsigned int */
+    case 'L': /* unsigned long */
+    case 'H': /* unsigned short */
+    case 'B': /* unsigned char */
+    case 'Q': /* unsigned long long */
+    case 'N': /* size_t */
+    case 'P': /* void* */
       return true;
     default:
       return false;
@@ -1798,9 +1798,9 @@ bool PyC_StructFmt_type_is_int_any(char format)
 bool PyC_StructFmt_type_is_byte(char format)
 {
   switch (format) {
-    case 'c':
-    case 's':
-    case 'p':
+    case 'c': /* char */
+    case 's': /* char[]. Count prefix indicates the number of bytes of each item, e.g. "10s". */
+    case 'p': /* char[]. "Pascal string", like 's', but the first byte stores the string length. */
       return true;
     default:
       return false;
@@ -1810,7 +1810,7 @@ bool PyC_StructFmt_type_is_byte(char format)
 bool PyC_StructFmt_type_is_bool(char format)
 {
   switch (format) {
-    case '?':
+    case '?': /* bool */
       return true;
     default:
       return false;
