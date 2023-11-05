@@ -126,13 +126,8 @@ void SEQ_image_preview_unit_from_px(const Scene *scene, const float co_src[2], f
  * \param r_min: Minimum x and y values
  * \param r_max: Maximum x and y values
  */
-<<<<<<< HEAD
 void SEQ_image_transform_bounding_box_from_collection(struct Scene *scene,
                                                       blender::Span<Sequence *> strips,
                                                       bool apply_rotation,
                                                       float r_min[2],
                                                       float r_max[2]);
-=======
-void SEQ_image_transform_bounding_box_from_collection(
-    Scene *scene, SeqCollection *strips, bool apply_rotation, float r_min[2], float r_max[2]);
->>>>>>> main
