@@ -621,6 +621,7 @@ class GlassBsdfNode : public BsdfNode {
     return distribution;
   }
 
+  NODE_SOCKET_API(float3, specular_tint)
   NODE_SOCKET_API(float, roughness)
   NODE_SOCKET_API(float, IOR)
   NODE_SOCKET_API(ClosureType, distribution)

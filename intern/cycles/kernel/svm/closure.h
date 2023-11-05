@@ -570,14 +570,15 @@ ccl_device
 
         float ior = fmaxf(param2, 1e-5f);
         bsdf->ior = (sd->flag & SD_BACKFACING) ? 1.0f / ior : ior;
-        bsdf->alpha_x = bsdf->alpha_y = sqr(param1);
+        bsdf->alpha_x = bsdf->alpha_y = sqr(saturatef(param1));
 
-        fresnel->f0 = make_float3(F0_from_ior(ior));
+        const float3 specular_tint = stack_load_float3(stack, data_node.w);
+        fresnel->f0 = F0_from_ior(ior) * specular_tint;
         fresnel->f90 = one_spectrum();
         fresnel->exponent = -ior;
-        const float3 color = stack_load_float3(stack, data_node.z);
-        fresnel->reflection_tint = color;
-        fresnel->transmission_tint = color;
+        fresnel->reflection_tint = one_spectrum();
+        const float3 color = saturate(stack_load_float3(stack, data_node.z));
+        fresnel->transmission_tint = rgb_to_spectrum(color);
 
         /* setup bsdf */
         if (type == CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID) {

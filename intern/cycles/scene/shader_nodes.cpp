@@ -2486,6 +2486,7 @@ NODE_DEFINE(GlassBsdfNode)
   NodeType *type = NodeType::add("glass_bsdf", create, NodeType::SHADER);
 
   SOCKET_IN_COLOR(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_COLOR(specular_tint, "Specular Tint", make_float3(1.0f, 1.0f, 1.0f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
@@ -2511,7 +2512,8 @@ GlassBsdfNode::GlassBsdfNode() : BsdfNode(get_node_type())
 void GlassBsdfNode::compile(SVMCompiler &compiler)
 {
   closure = distribution;
-  BsdfNode::compile(compiler, input("Roughness"), input("IOR"), input("Color"));
+  BsdfNode::compile(
+      compiler, input("Roughness"), input("IOR"), input("Color"), input("Specular Tint"));
 }
 
 void GlassBsdfNode::compile(OSLCompiler &compiler)

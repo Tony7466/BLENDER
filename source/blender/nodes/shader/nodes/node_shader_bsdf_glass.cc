@@ -9,6 +9,7 @@ namespace blender::nodes::node_shader_bsdf_glass_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Color>("Color").default_value({1.0f, 1.0f, 1.0f, 1.0f});
+  b.add_input<decl::Color>("Specular Tint").default_value({1.0f, 1.0f, 1.0f, 1.0f});
   b.add_input<decl::Float>("Roughness")
       .default_value(0.0f)
       .min(0.0f)
@@ -31,8 +32,8 @@ static int node_shader_gpu_bsdf_glass(GPUMaterial *mat,
                                       GPUNodeStack *in,
                                       GPUNodeStack *out)
 {
-  if (!in[3].link) {
-    GPU_link(mat, "world_normals_get", &in[3].link);
+  if (!in[4].link) {
+    GPU_link(mat, "world_normals_get", &in[4].link);
   }
 
   GPU_material_flag_set(mat, GPU_MATFLAG_GLOSSY | GPU_MATFLAG_REFRACT);

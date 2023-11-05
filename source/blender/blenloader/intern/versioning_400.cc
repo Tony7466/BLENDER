@@ -298,6 +298,30 @@ static void version_principled_bsdf_update_animdata(ID *owner_id, bNodeTree *ntr
   }
 }
 
+/* Add specular tint to Glass BSDF. */
+static void version_glass_bsdf_specular_tint(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type != SH_NODE_BSDF_GLASS) {
+      continue;
+    }
+
+    bNodeSocket *color_socket = nodeFindSocket(node, SOCK_IN, "Color");
+    float *base_color = version_cycles_node_socket_rgba_value(color_socket);
+
+    bNodeSocket *spec_tint_socket = nodeFindSocket(node, SOCK_IN, "Specular Tint");
+    copy_v4_v4(version_cycles_node_socket_rgba_value(spec_tint_socket), base_color);
+
+    if (color_socket->link) {
+      nodeAddLink(ntree,
+                  color_socket->link->fromnode,
+                  color_socket->link->fromsock,
+                  node,
+                  spec_tint_socket);
+    }
+  }
+}
+
 void do_versions_after_linking_400(FileData *fd, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 9)) {
@@ -380,6 +404,17 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
     BKE_mesh_legacy_face_map_to_generic(bmain);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
+    version_node_socket_index_animdata(bmain, NTREE_SHADER, SH_NODE_BSDF_GLASS, 1, 1, 4);
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_SHADER) {
+        /* Add specular tint to Glass BSDF. */
+        version_glass_bsdf_specular_tint(ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 
   /**
