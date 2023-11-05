@@ -593,7 +593,6 @@ static void find_side_effect_nodes_for_viewer_path(
 
   ComputeContextBuilder compute_context_builder;
   compute_context_builder.push<bke::ModifierComputeContext>(parsed_path->modifier_name);
-
   for (const ViewerPathElem *elem : parsed_path->node_path) {
     if (!ed::viewer_path::add_compute_context_for_viewer_path_elem(*elem, compute_context_builder))
     {
@@ -602,7 +601,7 @@ static void find_side_effect_nodes_for_viewer_path(
   }
 
   try_add_side_effect_node(
-      *compute_context_builder.current(), parsed_path->viewer_node_id, nmd, r_side_effect_nodes);
+      *compute_context_builder.current(), parsed_path->node_ids.last(), nmd, r_side_effect_nodes);
 }
 
 static void find_side_effect_nodes(const NodesModifierData &nmd,

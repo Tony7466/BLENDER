@@ -565,6 +565,15 @@ static const bNodeTree *top_tree_from_viewer_path(const Span<const ViewerPathEle
       }
       return nullptr;
     }
+    if (elem->type == VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP) {
+      const auto &typed_elem = *reinterpret_cast<const ViewerNodeGroupViewerPathElem *>(elem);
+      const bNode *node_group = iter_node_tree->node_by_id(typed_elem.node_id);
+      if (node_group != nullptr && node_group->id != nullptr) {
+        iter_node_tree = reinterpret_cast<const bNodeTree *>(node_group->id);
+        continue;
+      }
+      return nullptr;
+    }
   }
   return iter_node_tree;
 }
@@ -606,10 +615,9 @@ const ViewerNodeLog *GeoModifierLog::find_viewer_node_log_for_path(const ViewerP
   {
     const bNodeTree *iter_node_tree = top_tree_from_viewer_path(parsed_path->node_path,
                                                                 *nmd->node_group);
-    std::cout << "Name: " << nmd->node_group->id.name << std::endl;
-    const bNode *viewer_node = iter_node_tree->node_by_id(parsed_path->viewer_node_id);
+    const bNode *viewer_node = iter_node_tree->node_by_id(parsed_path->node_ids.last());
     if (bke::node_is_viewer_group(*viewer_node)) {
-      compute_context_builder.push<bke::NodeGroupComputeContext>(parsed_path->viewer_node_id);
+      compute_context_builder.push<bke::NodeGroupComputeContext>(parsed_path->node_ids.last());
 
       const auto lookup_viewer = [&](const bNodeTree &tree) -> const bNode * {
         BLI_assert(tree.is_viewer());
@@ -678,7 +686,7 @@ const ViewerNodeLog *GeoModifierLog::find_viewer_node_log_for_path(const ViewerP
   tree_log.ensure_viewer_node_logs();
 
   const ViewerNodeLog *viewer_log = tree_log.viewer_node_logs.lookup_default(
-      parsed_path->viewer_node_id, nullptr);
+      parsed_path->node_ids.last(), nullptr);
   return viewer_log;
 }
 

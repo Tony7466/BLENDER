@@ -4112,7 +4112,7 @@ static void draw_nodetree(const bContext &C,
       log->ensure_node_run_time();
     }
     const WorkSpace *workspace = CTX_wm_workspace(&C);
-    tree_draw_ctx.active_geometry_nodes_viewer = viewer_path::find_geometry_nodes_viewer(
+    tree_draw_ctx.active_geometry_nodes_viewer = viewer_path::find_geometry_nodes_viewer_in_space(
         workspace->viewer_path, *snode);
   }
   else if (ntree.type == NTREE_COMPOSIT) {

@@ -1684,7 +1684,8 @@ static int node_deactivate_viewer_exec(bContext *C, wmOperator * /*op*/)
   SpaceNode &snode = *CTX_wm_space_node(C);
   WorkSpace &workspace = *CTX_wm_workspace(C);
 
-  bNode *active_viewer = viewer_path::find_geometry_nodes_viewer(workspace.viewer_path, snode);
+  bNode *active_viewer = viewer_path::find_geometry_nodes_viewer_in_space(workspace.viewer_path,
+                                                                          snode);
 
   if (active_viewer == nullptr) {
     return OPERATOR_FINISHED;

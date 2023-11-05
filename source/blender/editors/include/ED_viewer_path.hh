@@ -40,7 +40,7 @@ struct ViewerPathForGeometryNodesViewer {
   blender::StringRefNull modifier_name;
   /* Contains only group node and simulation zone elements. */
   blender::Vector<const ViewerPathElem *> node_path;
-  int32_t viewer_node_id;
+  Vector<int32_t> node_ids;
 };
 
 struct ViewerPathMemory {
@@ -62,7 +62,7 @@ std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
  * referenced, null is returned. When two different editors show the same node group but in a
  * different context, it's possible that the same node is active in one editor but not the other.
  */
-bNode *find_geometry_nodes_viewer(const ViewerPath &viewer_path, SpaceNode &snode);
+bNode *find_geometry_nodes_viewer_in_space(const ViewerPath &viewer_path, SpaceNode &snode);
 
 /**
  * Checks if the node referenced by the viewer path and its entire context still exists. The node

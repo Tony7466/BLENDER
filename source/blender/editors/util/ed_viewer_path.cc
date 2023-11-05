@@ -264,6 +264,9 @@ std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
   remaining_elems = remaining_elems.drop_front(1);
   Vector<const ViewerPathElem *> node_path;
   for (const ViewerPathElem *elem : remaining_elems) {
+    if (ELEM(elem->type, VIEWER_PATH_ELEM_TYPE_VIEWER_NODE)) {
+      continue;
+    }
     if (!ELEM(elem->type,
               VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP,
               VIEWER_PATH_ELEM_TYPE_GROUP_NODE,
@@ -278,9 +281,11 @@ std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
   if (last_elem->type == VIEWER_PATH_ELEM_TYPE_VIEWER_NODE) {
     const int32_t viewer_node_id =
         reinterpret_cast<const ViewerNodeViewerPathElem *>(last_elem)->node_id;
-    return ViewerPathForGeometryNodesViewer{root_ob, modifier_name, node_path, viewer_node_id};
+    return ViewerPathForGeometryNodesViewer{root_ob, modifier_name, node_path, {viewer_node_id}};
   }
   if (last_elem->type == VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP) {
+    Vector<int32_t> viewer_groups;
+
     const ModifierData *md = BKE_modifiers_findby_name(reinterpret_cast<const Object *>(root_id),
                                                        modifier_name);
     const NodesModifierData &nmd = *reinterpret_cast<const NodesModifierData *>(md);
@@ -294,17 +299,24 @@ std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
         case VIEWER_PATH_ELEM_TYPE_GROUP_NODE: {
           const auto &group_elem = *reinterpret_cast<const GroupNodeViewerPathElem *>(elem);
           tree->ensure_topology_cache();
-          const bNode &node = *tree->node_by_id(group_elem.node_id);
-          BLI_assert(node.is_group());
-          tree = reinterpret_cast<const bNodeTree *>(node.id);
+          const bNode *node = tree->node_by_id(group_elem.node_id);
+          if (node == nullptr) {
+            return std::nullopt;
+          }
+          BLI_assert(node->is_group());
+          tree = reinterpret_cast<const bNodeTree *>(node->id);
           break;
         }
         case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP: {
           const auto &group_elem = *reinterpret_cast<const ViewerNodeGroupViewerPathElem *>(elem);
           tree->ensure_topology_cache();
-          const bNode &node = *tree->node_by_id(group_elem.node_id);
-          BLI_assert(node.is_group());
-          tree = reinterpret_cast<const bNodeTree *>(node.id);
+          const bNode *node = tree->node_by_id(group_elem.node_id);
+          if (node == nullptr) {
+            return std::nullopt;
+          }
+          viewer_groups.append(group_elem.node_id);
+          BLI_assert(node->is_group());
+          tree = reinterpret_cast<const bNodeTree *>(node->id);
           break;
         }
         default:
@@ -338,34 +350,27 @@ std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
         node_path.append(zone_elem);
       }
 
-      const bNode &viewer = *tree->node_by_id(local_viewer);
-      if (bke::node_is_viewer_group(viewer)) {
-        GroupNodeViewerPathElem *group_elem = BKE_viewer_path_elem_new_group_node();
-        group_elem->node_id = local_viewer;
-        ViewerPathElem *elem = reinterpret_cast<ViewerPathElem *>(group_elem);
-
-        tree = reinterpret_cast<const bNodeTree *>(viewer.id);
-        BLI_assert(tree != nullptr);
-
-        BLI_addtail(&memory.viewer_group_path.path, elem);
-        node_path.append(elem);
+      const bNode *viewer = tree->node_by_id(local_viewer);
+      if (viewer == nullptr) {
+        return std::nullopt;
       }
-      else {
-        /* Regualr Viewer node. */
-        ViewerNodeViewerPathElem *viewer_elem = BKE_viewer_path_elem_new_viewer_node();
-        viewer_elem->node_id = local_viewer;
-        ViewerPathElem *elem = reinterpret_cast<ViewerPathElem *>(viewer_elem);
-
-        BLI_addtail(&memory.viewer_group_path.path, elem);
-        node_path.append(elem);
+      viewer_groups.append(viewer->identifier);
+      if (!bke::node_is_viewer_group(*viewer)) {
         break;
       }
+      GroupNodeViewerPathElem *group_elem = BKE_viewer_path_elem_new_group_node();
+      group_elem->node_id = local_viewer;
+      ViewerPathElem *elem = reinterpret_cast<ViewerPathElem *>(group_elem);
+
+      tree = reinterpret_cast<const bNodeTree *>(viewer->id);
+      BLI_assert(tree != nullptr);
+
+      BLI_addtail(&memory.viewer_group_path.path, elem);
+      node_path.append(elem);
     }
 
-    const int32_t viewer_node_group_id =
-        reinterpret_cast<const ViewerNodeGroupViewerPathElem *>(node_path.last())->node_id;
     return ViewerPathForGeometryNodesViewer{
-        root_ob, modifier_name, node_path, viewer_node_group_id};
+        root_ob, modifier_name, node_path, std::move(viewer_groups)};
   }
   return std::nullopt;
 }
@@ -446,7 +451,7 @@ bool exists_geometry_nodes_viewer(const ViewerPathForGeometryNodesViewer &parsed
     }
   }
 
-  const bNode *viewer_node = ngroup->node_by_id(parsed_viewer_path.viewer_node_id);
+  const bNode *viewer_node = ngroup->node_by_id(parsed_viewer_path.node_ids.last());
   if (viewer_node == nullptr) {
     return false;
   }
@@ -533,7 +538,7 @@ UpdateActiveGeometryNodesViewerResult update_active_geometry_nodes_viewer(const 
   return UpdateActiveGeometryNodesViewerResult::NotActive;
 }
 
-bNode *find_geometry_nodes_viewer(const ViewerPath &viewer_path, SpaceNode &snode)
+bNode *find_geometry_nodes_viewer_in_space(const ViewerPath &viewer_path, SpaceNode &snode)
 {
   /* Viewer path is only valid if the context object is set. */
   if (snode.id == nullptr || GS(snode.id->name) != ID_OB) {
@@ -548,7 +553,15 @@ bNode *find_geometry_nodes_viewer(const ViewerPath &viewer_path, SpaceNode &snod
   }
 
   snode.edittree->ensure_topology_cache();
-  bNode *possible_viewer = snode.edittree->node_by_id(parsed_viewer_path->viewer_node_id);
+  bNode *possible_viewer = [&]() -> bNode * {
+    for (const int32_t identifier : parsed_viewer_path->node_ids) {
+      if (bNode *viewer = snode.edittree->node_by_id(identifier)) {
+        return viewer;
+      }
+    }
+    return nullptr;
+  }();
+
   if (possible_viewer == nullptr) {
     return nullptr;
   }
