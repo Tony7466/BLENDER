@@ -20,7 +20,7 @@
 #include <frameobject.h>
 
 #include "BLI_endian_defines.h" /* for determining native order Py_buffer formats */
-#include "BLI_utildefines.h" /* for bool */
+#include "BLI_utildefines.h"    /* for bool */
 
 #include "py_capi_utils.h"
 
@@ -1793,7 +1793,8 @@ bool PyC_StructFmt_type_is_unsigned_int_any(char format)
 
 bool PyC_StructFmt_type_is_int_any(char format)
 {
-  return PyC_StructFmt_type_is_signed_int_any(format) || PyC_StructFmt_type_is_unsigned_int_any(format);
+  return PyC_StructFmt_type_is_signed_int_any(format) ||
+         PyC_StructFmt_type_is_unsigned_int_any(format);
 }
 
 bool PyC_StructFmt_type_is_byte(char format)

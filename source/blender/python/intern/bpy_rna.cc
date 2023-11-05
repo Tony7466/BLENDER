@@ -5385,21 +5385,29 @@ static int foreach_parse_args(BPy_PropertyRNA *self,
   return 0;
 }
 
-static bool foreach_compat_buffer(RawPropertyType raw_type, int attr_signed, const char *format, Py_ssize_t itemsize)
+static bool foreach_compat_buffer(RawPropertyType raw_type,
+                                  int attr_signed,
+                                  const char *format,
+                                  Py_ssize_t itemsize)
 {
   if (format && !PyC_StructFmt_is_native_order(format)) {
     return false;
   }
 
-  const char f = format ? PyC_StructFmt_type_from_str(format) : 'B'; /* B is assumed when not set */
+  const char f = format ? PyC_StructFmt_type_from_str(format) :
+                          'B'; /* B is assumed when not set */
 
   switch (raw_type) {
     case PROP_RAW_CHAR:
-      return itemsize == sizeof(char) && (attr_signed ? PyC_StructFmt_type_is_signed_int_any(f) : PyC_StructFmt_type_is_unsigned_int_any(f));
+      return itemsize == sizeof(char) && (attr_signed ? PyC_StructFmt_type_is_signed_int_any(f) :
+                                                        PyC_StructFmt_type_is_unsigned_int_any(f));
     case PROP_RAW_SHORT:
-      return itemsize == sizeof(short) && (attr_signed ? PyC_StructFmt_type_is_signed_int_any(f) : PyC_StructFmt_type_is_unsigned_int_any(f));
+      return itemsize == sizeof(short) &&
+             (attr_signed ? PyC_StructFmt_type_is_signed_int_any(f) :
+                            PyC_StructFmt_type_is_unsigned_int_any(f));
     case PROP_RAW_INT:
-      return itemsize == sizeof(int) && (attr_signed ? PyC_StructFmt_type_is_signed_int_any(f) : PyC_StructFmt_type_is_unsigned_int_any(f));
+      return itemsize == sizeof(int) && (attr_signed ? PyC_StructFmt_type_is_signed_int_any(f) :
+                                                       PyC_StructFmt_type_is_unsigned_int_any(f));
     case PROP_RAW_BOOLEAN:
       return itemsize == sizeof(bool) && PyC_StructFmt_type_is_bool(f);
     case PROP_RAW_FLOAT:
@@ -5723,8 +5731,10 @@ static PyObject *pyprop_array_foreach_getset(BPy_PropertyArrayRNA *self,
   else {
     const char f = buf.format ? PyC_StructFmt_type_from_str(buf.format) : 0;
     if ((buf.format && !PyC_StructFmt_is_native_order(buf.format)) ||
-        (prop_type == PROP_INT && (buf.itemsize != sizeof(int) || !PyC_StructFmt_type_is_signed_int_any(f))) ||
-        (prop_type == PROP_FLOAT && (buf.itemsize != sizeof(float) || !PyC_StructFmt_type_is_float_any(f))))
+        (prop_type == PROP_INT &&
+         (buf.itemsize != sizeof(int) || !PyC_StructFmt_type_is_signed_int_any(f))) ||
+        (prop_type == PROP_FLOAT &&
+         (buf.itemsize != sizeof(float) || !PyC_StructFmt_type_is_float_any(f))))
     {
       PyBuffer_Release(&buf);
       PyErr_Format(PyExc_TypeError, "incorrect sequence item type: %s", buf.format);
