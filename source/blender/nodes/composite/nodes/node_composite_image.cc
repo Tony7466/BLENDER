@@ -753,7 +753,6 @@ static void node_rlayer_declare_dynamic(const bNodeTree &bntree, const bNode &no
     return ; 
   }
   Scene* scene = reinterpret_cast<Scene*>(node.id);
-  r_decl.push_back(&r_declaration);  
   NodeDeclarationBuilder builder(r_declaration); 
   if(scene){
     RenderEngineType *engine_type = RE_engines_find(scene->r.engine);
@@ -993,6 +992,7 @@ void register_node_type_cmp_rlayers()
   static bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_R_LAYERS, "Render Layers", NODE_CLASS_INPUT);
+  blender::bke::node_type_socket_templates(&ntype, nullptr, cmp_node_rlayers_out);
   ntype.draw_buttons = file_ns::node_composit_buts_viewlayers;
   ntype.initfunc_api = file_ns::node_composit_init_rlayers;
   ntype.poll = file_ns::node_composit_poll_rlayers;
