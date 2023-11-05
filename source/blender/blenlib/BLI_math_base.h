@@ -133,6 +133,11 @@ MINLINE float saacosf(float f);
 MINLINE float saasinf(float f);
 MINLINE float sasqrtf(float f);
 
+/* Faster/approximate version of acosf. Clamps input, max error 4.51803e-5 (0.00258 degrees).*/
+MINLINE float saacosf_approx(float x);
+/* Faster/approximate version of asinf. Clamps input, max error 4.51133e-5 (0.00258 degrees).*/
+MINLINE float saasinf_approx(float x);
+
 /* Compute linear interpolation (lerp) between origin and target. */
 MINLINE float interpf(float target, float origin, float t);
 MINLINE double interpd(double target, double origin, double t);
