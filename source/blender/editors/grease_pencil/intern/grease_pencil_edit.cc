@@ -576,9 +576,10 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const VArray<bool> src_cyclic = curves.cyclic();
-  const Span<bool> points_to_delete = selection.get_internal_span();
+  const VArraySpan<bool> points_to_delete = VArraySpan(selection);
   const int total_points = points_to_delete.count(false);
 
+  /* Return if deleting everything. */
   if (total_points == 0) {
     return {};
   }
@@ -692,8 +693,7 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator * /*op*/)
     }
     else if (domain == ATTR_DOMAIN_POINT) {
       const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
-          ".selection", domain, true);
-
+          ".selection", ATTR_DOMAIN_POINT, true);
       curves = remove_points_and_split(curves, selection);
     }
     info.drawing.tag_topology_changed();
