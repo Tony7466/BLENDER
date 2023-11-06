@@ -20,7 +20,11 @@ VKImmediate::~VKImmediate() {}
 uchar *VKImmediate::begin()
 {
   VKContext &context = *VKContext::get();
-  const size_t bytes_needed = vertex_buffer_size(&vertex_format, vertex_len);
+  vertex_format_converter.init(&vertex_format);
+  /* TODO: we should adapt the vertex_format so the offsets of the device format is already being
+   * used. This saves reallocation when uploading, or improves the CPU cache pre-fetching. */
+  const size_t bytes_needed = vertex_buffer_size(vertex_format_converter.device_format,
+                                                 vertex_len);
   const bool new_buffer_needed = !has_active_resource() || buffer_bytes_free() < bytes_needed;
 
   std::unique_ptr<VKBuffer> &buffer = tracked_resource_for(context, new_buffer_needed);
@@ -37,14 +41,13 @@ void VKImmediate::end()
     return;
   }
 
-  if (conversion_needed(vertex_format)) {
-    // Slow path
+  if (vertex_format_converter.needs_conversion) {
     /* Determine the start of the subbuffer. The `vertex_data` attribute changes when new vertices
      * are loaded.
      */
     uchar *data = static_cast<uchar *>(active_resource()->mapped_memory_get()) +
                   subbuffer_offset_get();
-    convert_in_place(data, vertex_format, vertex_idx);
+    vertex_format_converter.convert_in_place(data, vertex_idx);
   }
 
   VKContext &context = *VKContext::get();

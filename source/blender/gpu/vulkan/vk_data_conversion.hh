@@ -77,6 +77,48 @@ bool conversion_needed(const GPUVertFormat &vertex_format);
 void convert_in_place(void *data, const GPUVertFormat &vertex_format, const uint vertex_len);
 
 /* -------------------------------------------------------------------- */
+/** \name Vertex Buffers
+ * \{ */
+
+/**
+ * Utility to make vertex buffers device compatible.
+ *
+ * Some vertex formats used by vertex buffers cannot be handled by vulkan.
+ * This could be that vulkan doesn't support it, or that the device itself doesn't support it.
+ *
+ * In this case the vertex buffer needs to be converted before it can be uploaded.
+ * The approach is to do this during upload so we reduce the read/write actions during
+ * transform/upload.
+ */
+struct VertexFormatConverter {
+  /** The original format of the vertex buffer constructed by Blender. */
+  const GPUVertFormat *source_format = nullptr;
+
+  /**
+   * The format of the vertex buffer that is compatible by the device.
+   *
+   * This can be #source_format when no conversion is needed, or points to #conversion_format when
+   * conversion is needed.
+   */
+  const GPUVertFormat *device_format = nullptr;
+
+  bool needs_reallocation = false;
+  bool needs_conversion = false;
+  GPUVertFormat converted_format;
+
+  void init(const GPUVertFormat *vertex_format);
+  void convert_in_place(void *data, const uint vertex_len);
+
+ private:
+  void update_conversion_flags(const GPUVertFormat &vertex_format);
+  void update_conversion_flags(const GPUVertAttr &vertex_attribute);
+  void init_device_format();
+  void make_device_compatible(GPUVertAttr &vertex_attribute);
+};
+
+/* \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Floating point conversions
  * \{ */
 
@@ -243,4 +285,5 @@ uint32_t convert_float_formats(uint32_t value)
 }
 
 /* \} */
+
 };  // namespace blender::gpu
