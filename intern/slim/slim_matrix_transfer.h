@@ -3,6 +3,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 /* Struct that holds all the information and data matrices to be transfered from the native
  * Blender part to SLIM, named as follows:

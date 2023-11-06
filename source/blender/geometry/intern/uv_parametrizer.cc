@@ -3917,7 +3917,7 @@ void uv_parametrizer_face_add(ParamHandle *phandle,
        * NOTE: Should probably call `uv_parametrizer_face_add`
        * instead of `p_face_add_construct`. */
       int iprev = permute[(i + pm - 1) % pm];
-      p_face_add_construct(phandle, key, vkeys, co, uv, iprev, i0, i1, pin, select);
+      p_face_add_construct(phandle, key, vkeys, co, uv, weight, iprev, i0, i1, pin, select);
 
       permute.remove(i);
       if (permute.size() == 3) {
@@ -3930,6 +3930,7 @@ void uv_parametrizer_face_add(ParamHandle *phandle,
       Array<ParamKey> vkeys_sub(pm);
       Array<const float *> co_sub(pm);
       Array<float *> uv_sub(pm);
+      Array<float> weight_sub(pm);
       Array<bool> pin_sub(pm);
       Array<bool> select_sub(pm);
       for (int i = 0; i < pm; i++) {
@@ -3937,6 +3938,7 @@ void uv_parametrizer_face_add(ParamHandle *phandle,
         vkeys_sub[i] = vkeys[j];
         co_sub[i] = co[j];
         uv_sub[i] = uv[j];
+        weight_sub[i] = weight[j];
         pin_sub[i] = pin && pin[j];
         select_sub[i] = select && select[j];
       }
@@ -3946,6 +3948,7 @@ void uv_parametrizer_face_add(ParamHandle *phandle,
                  &vkeys_sub.first(),
                  &co_sub.first(),
                  &uv_sub.first(),
+                 &weight_sub.first(),
                  &pin_sub.first(),
                  &select_sub.first());
       return; /* Nothing more to do. */

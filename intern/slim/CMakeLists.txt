@@ -4,6 +4,7 @@ set(INC
   ./
   extern/libigl_extract
   ../../source/blender/blenlib
+  ../../intern/guardedalloc
 )
 
 set(INC_SYS

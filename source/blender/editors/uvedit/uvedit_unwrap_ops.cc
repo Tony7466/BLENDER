@@ -83,30 +83,11 @@
 
 using blender::geometry::ParamHandle;
 using blender::geometry::ParamKey;
+using blender::geometry::MatrixTransferOptions;
 
 /* -------------------------------------------------------------------- */
 /** \name Utility Functions
  * \{ */
-
-// static void modifier_unwrap_state(Object *obedit, const Scene *scene, bool *r_use_subsurf)
-// {
-//   ModifierData *md;
-//   bool subsurf = (scene->toolsettings->uvcalc_flag & UVCALC_USESUBSURF) != 0;
-
-//   md = static_cast<ModifierData *>(obedit->modifiers.first);
-
-//   /* subsurf will take the modifier settings only if modifier is first or right after mirror */
-//   if (subsurf) {
-//     if (md && md->type == eModifierType_Subsurf) {
-//       subsurf = true;
-//     }
-//     else {
-//       subsurf = false;
-//     }
-//   }
-
-//   *r_use_subsurf = subsurf;
-// }
 
 static bool ED_uvedit_ensure_uvs(Object *obedit)
 {
@@ -229,16 +210,38 @@ void blender::geometry::UVPackIsland_Params::setFromUnwrapOptions(const UnwrapOp
   pin_unselected = options.pin_unselected;
 }
 
-static void modifier_unwrap_state(Object *obedit,
+//static void modifier_unwrap_state(Object *obedit,
+//                                  const UnwrapOptions *options,
+//                                  bool *r_use_subsurf)
+//{
+//  ModifierData *md;
+//  bool subsurf = options->use_subsurf;
+//
+//  md = obedit->modifiers.first;
+//
+//  /* Subsurf will take the modifier settings only if modifier is first or right after mirror */
+//  if (subsurf) {
+//    if (md && md->type == eModifierType_Subsurf) {
+//      subsurf = true;
+//    }
+//    else {
+//      subsurf = false;
+//    }
+//  }
+//
+//  *r_use_subsurf = subsurf;
+//}
+
+ static void modifier_unwrap_state(Object *obedit,
                                   const UnwrapOptions *options,
                                   bool *r_use_subsurf)
 {
   ModifierData *md;
   bool subsurf = options->use_subsurf;
 
-  md = obedit->modifiers.first;
+  md = static_cast<ModifierData *>(obedit->modifiers.first);
 
-  /* Subsurf will take the modifier settings only if modifier is first or right after mirror */
+  /* subsurf will take the modifier settings only if modifier is first or right after mirror */
   if (subsurf) {
     if (md && md->type == eModifierType_Subsurf) {
       subsurf = true;
@@ -541,7 +544,9 @@ static void construct_param_handle_face_add(ParamHandle *handle,
                                             BMFace *efa,
                                             blender::geometry::ParamKey face_index,
                                             const UnwrapOptions *options,
-                                            const BMUVOffsets offsets)
+                                            const BMUVOffsets offsets,
+                                            const int cd_weight_offset,
+                                            const int cd_weight_index)
 {
   blender::Array<ParamKey, BM_DEFAULT_NGON_STACK_SIZE> vkeys(efa->len);
   blender::Array<bool, BM_DEFAULT_NGON_STACK_SIZE> pin(efa->len);
@@ -571,7 +576,7 @@ static void construct_param_handle_face_add(ParamHandle *handle,
 
     /* optional vertex group weighting */
     if (cd_weight_offset >= 0 && cd_weight_index >= 0) {
-      MDeformVert *dv = BM_ELEM_CD_GET_VOID_P(l->v, cd_weight_offset);
+      MDeformVert *dv = (MDeformVert*)BM_ELEM_CD_GET_VOID_P(l->v, cd_weight_offset);
       weight[i] = BKE_defvert_find_weight(dv, cd_weight_index);
     }
     else {
@@ -646,6 +651,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
   BM_mesh_elem_index_ensure(bm, BM_VERT);
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
+  const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
   const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->mt_options.vertex_group);
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
@@ -656,7 +662,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
     if (uvedit_is_face_affected(scene, efa, options, offsets)) {
-      construct_param_handle_face_add(handle, scene, efa, i, options, offsets, cd_weight_index);
+      construct_param_handle_face_add(handle, scene, efa, i, options, offsets, cd_weight_offset, cd_weight_index);
     }
   }
 
@@ -703,6 +709,7 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
       continue;
     }
 
+    const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
     const int cd_weight_index = BKE_object_defgroup_name_index(obedit,
                                                                options->mt_options.vertex_group);
 
@@ -714,7 +721,8 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
 
     BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
       if (uvedit_is_face_affected(scene, efa, options, offsets)) {
-        construct_param_handle_face_add(handle, scene, efa, i + offset, options, offsets, cd_weight_index);
+        construct_param_handle_face_add(
+            handle, scene, efa, i + offset, options, offsets, cd_weight_offset, cd_weight_index);
       }
     }
 
@@ -829,6 +837,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   const blender::Span<blender::int2> subsurf_edges = subdiv_mesh->edges();
   const blender::OffsetIndices subsurf_facess = subdiv_mesh->faces();
   const blender::Span<int> subsurf_corner_verts = subdiv_mesh->corner_verts();
+  const blender::Span<MDeformVert> subsurf_deform_verts = subdiv_mesh->deform_verts();
 
   const int *origVertIndices = static_cast<const int *>(
       CustomData_get_layer(&subdiv_mesh->vert_data, CD_ORIGINDEX));
@@ -897,11 +906,15 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
     co[3] = subsurf_positions[poly_corner_verts[3]];
 
     /* Optional vertex group weights. */
-    if (subsurfedDVerts) {
-      weight[0] = BKE_defvert_find_weight(subsurfedDVerts + mloop[0].v, cd_weight_index);
-      weight[1] = BKE_defvert_find_weight(subsurfedDVerts + mloop[1].v, cd_weight_index);
-      weight[2] = BKE_defvert_find_weight(subsurfedDVerts + mloop[2].v, cd_weight_index);
-      weight[3] = BKE_defvert_find_weight(subsurfedDVerts + mloop[3].v, cd_weight_index);
+    if (cd_weight_index >= 0) {
+      weight[0] = BKE_defvert_find_weight(&subsurf_deform_verts[poly_corner_verts[0]],
+                                          cd_weight_index);
+      weight[1] = BKE_defvert_find_weight(&subsurf_deform_verts[poly_corner_verts[1]],
+                                          cd_weight_index);
+      weight[2] = BKE_defvert_find_weight(&subsurf_deform_verts[poly_corner_verts[2]],
+                                          cd_weight_index);
+      weight[3] = BKE_defvert_find_weight(&subsurf_deform_verts[poly_corner_verts[3]],
+                                          cd_weight_index);
     }
     else {
       weight[0] = 1.0f;
@@ -2024,7 +2037,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
   options.fill_holes = (scene->toolsettings->uvcalc_flag & UVCALC_FILLHOLES) != 0;
   options.correct_aspect = (scene->toolsettings->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0;
 
-  if (use_subsurf) {
+  if (options.use_subsurf) {
     handle = construct_param_handle_subsurfed(scene, obedit, em, &options, nullptr);
   }
   else {
@@ -2618,8 +2631,7 @@ static void uvedit_unwrap(const Scene *scene,
   if (options->use_slim) {
     GEO_uv_parametrizer_slim_solve(handle,
                                    &options->mt_options,
-                                   result_info ? &result_info->count_changed : NULL,
-                                   result_info ? &result_info->count_failed : NULL);
+                                   r_count_changed, r_count_failed);
   }
   else {
     blender::geometry::uv_parametrizer_lscm_begin(
@@ -2698,6 +2710,10 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   options.only_selected_uvs = false;
   options.fill_holes = RNA_boolean_get(op->ptr, "fill_holes");
   options.correct_aspect = RNA_boolean_get(op->ptr, "correct_aspect");
+
+  /* We will report an error unless at least one object
+   * has the subsurf modifier in the right place. */
+  bool subsurf_error = options.use_subsurf;
 
   if (CTX_wm_space_image(C)) {
     /* Inside the UV Editor, only unwrap selected UVs. */
@@ -2794,14 +2810,16 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool unwrap_draw_check_prop_slim(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
+static bool unwrap_draw_check_prop_slim(PointerRNA *ptr,
+                                        PropertyRNA *prop,
+                                        void *user_data)
 {
   const char *prop_id = RNA_property_identifier(prop);
 
   return !(STREQ(prop_id, "fill_holes"));
 }
 
-static bool unwrap_draw_check_prop_abf(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
+static bool unwrap_draw_check_prop_abf(PointerRNA *ptr, PropertyRNA *prop, void *user_data)
 {
   const char *prop_id = RNA_property_identifier(prop);
 
@@ -2810,22 +2828,23 @@ static bool unwrap_draw_check_prop_abf(PointerRNA *UNUSED(ptr), PropertyRNA *pro
            STREQ(prop_id, "vertex_group_factor"));
 }
 
-static void unwrap_draw(bContext *UNUSED(C), wmOperator *op)
+static void unwrap_draw(bContext *C, wmOperator *op)
 {
   uiLayout *layout = op->layout;
-  PointerRNA ptr;
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
   /* Main draw call */
-  RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
+  PointerRNA ptr = RNA_pointer_create(NULL, op->type->srna, op->properties);
 
   if (RNA_enum_get(op->ptr, "method") == 2) {
-    uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_slim, NULL, NULL, '\0', false);
+    uiDefAutoButsRNA(
+        layout, &ptr, unwrap_draw_check_prop_slim, NULL, NULL, UI_BUT_LABEL_ALIGN_NONE, false);
   }
   else {
-    uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_abf, NULL, NULL, '\0', false);
+    uiDefAutoButsRNA(
+        layout, &ptr, unwrap_draw_check_prop_abf, NULL, NULL, UI_BUT_LABEL_ALIGN_NONE, false);
   }
 }
 

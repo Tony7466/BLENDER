@@ -920,16 +920,17 @@ bool WM_operator_last_properties_store(wmOperator * /*op*/)
 
 #endif
 
-void WM_operator_current_or_default_properties_alloc(struct wmOperator *op,
+void WM_operator_current_or_default_properties_alloc(wmOperator *op,
                                                      const char *idname,
-                                                     struct PointerRNA *ptr)
+                                                     PointerRNA *ptr)
 {
   /* returns a copy of the current or default properties depending
    * which ones are available. */
   if (op) {
     BLI_assert(op->type == WM_operatortype_find(idname, false));
     *ptr = *(op->ptr);
-    ptr->data = IDP_CopyProperty(ptr->data);
+    // MUSTDO: check this line
+    ptr->data = IDP_CopyProperty((IDProperty *)ptr->data);
   }
   else {
     wmOperatorType *ot = WM_operatortype_find(idname, false);
@@ -938,7 +939,7 @@ void WM_operator_current_or_default_properties_alloc(struct wmOperator *op,
     IDPropertyTemplate val = {0};
     properties = IDP_New(IDP_GROUP, &val, "wmOperatorProperties");
 
-    RNA_pointer_create(NULL, ot->srna, properties, ptr);
+    *ptr = RNA_pointer_create(NULL, ot->srna, properties);
   }
 }
 
