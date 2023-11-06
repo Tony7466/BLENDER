@@ -6,10 +6,10 @@
  * \ingroup eduv
  */
 
+#include <cassert>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
-#include <cassert>
 
 #include "MEM_guardedalloc.h"
 
@@ -81,9 +81,9 @@
 
 #include "uvedit_intern.h"
 
+using blender::geometry::MatrixTransferOptions;
 using blender::geometry::ParamHandle;
 using blender::geometry::ParamKey;
-using blender::geometry::MatrixTransferOptions;
 
 /* -------------------------------------------------------------------- */
 /** \name Utility Functions
@@ -210,7 +210,7 @@ void blender::geometry::UVPackIsland_Params::setFromUnwrapOptions(const UnwrapOp
   pin_unselected = options.pin_unselected;
 }
 
- static void modifier_unwrap_state(Object *obedit,
+static void modifier_unwrap_state(Object *obedit,
                                   const UnwrapOptions *options,
                                   bool *r_use_subsurf)
 {
@@ -561,8 +561,15 @@ static void construct_param_handle_face_add(ParamHandle *handle,
     }
   }
 
-  blender::geometry::uv_parametrizer_face_add(
-      handle, face_index, i, vkeys.data(), co.data(), uv.data(), weight.data(), pin.data(), select.data());
+  blender::geometry::uv_parametrizer_face_add(handle,
+                                              face_index,
+                                              i,
+                                              vkeys.data(),
+                                              co.data(),
+                                              uv.data(),
+                                              weight.data(),
+                                              pin.data(),
+                                              select.data());
 }
 
 /* Set seams on UV Parametrizer based on options. */
@@ -790,7 +797,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
   const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->mt_options.vertex_group);
-  
+
   ParamHandle *handle = new blender::geometry::ParamHandle();
 
   if (options->correct_aspect) {
@@ -930,7 +937,8 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
                                 &pin[3],
                                 &select[3]);
 
-    blender::geometry::uv_parametrizer_face_add(handle, key, 4, vkeys, co, uv, weight, pin, select);
+    blender::geometry::uv_parametrizer_face_add(
+        handle, key, 4, vkeys, co, uv, weight, pin, select);
   }
 
   /* These are calculated from original mesh too. */
@@ -1994,7 +2002,7 @@ void UV_OT_average_islands_scale(wmOperatorType *ot)
 static struct {
   ParamHandle **handles;
   uint len, len_alloc;
-  wmTimer* timer;
+  wmTimer *timer;
 } g_live_unwrap = {nullptr};
 
 void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit)
@@ -2067,7 +2075,7 @@ void ED_uvedit_live_unwrap_re_solve()
   }
 }
 
-void ED_uvedit_live_unwrap_end(bContext* C, short cancel)
+void ED_uvedit_live_unwrap_end(bContext *C, short cancel)
 {
   if (C && g_live_unwrap.timer) {
     WM_event_timer_remove(CTX_wm_manager(C), CTX_wm_window(C), g_live_unwrap.timer);
@@ -2615,16 +2623,13 @@ static void uvedit_unwrap(const Scene *scene,
   }
 
   if (options->use_slim) {
-    uv_parametrizer_slim_solve(handle,
-                                   &options->mt_options,
-                                   r_count_changed, r_count_failed);
+    uv_parametrizer_slim_solve(handle, &options->mt_options, r_count_changed, r_count_failed);
   }
   else {
     blender::geometry::uv_parametrizer_lscm_begin(handle, false, options->use_abf);
     blender::geometry::uv_parametrizer_lscm_solve(handle, r_count_changed, r_count_failed);
     blender::geometry::uv_parametrizer_lscm_end(handle);
   }
-
 
   blender::geometry::uv_parametrizer_average(handle, true, false, false);
 
@@ -2794,9 +2799,7 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool unwrap_draw_check_prop_slim(PointerRNA *ptr,
-                                        PropertyRNA *prop,
-                                        void *user_data)
+static bool unwrap_draw_check_prop_slim(PointerRNA *ptr, PropertyRNA *prop, void *user_data)
 {
   const char *prop_id = RNA_property_identifier(prop);
 
@@ -2874,7 +2877,7 @@ void UV_OT_unwrap(wmOperatorType *ot)
                   "preserve symmetry");
   RNA_def_boolean(ot->srna,
                   "correct_aspect",
-                   !(_DNA_DEFAULT_ToolSettings_UVCalc_Flag & UVCALC_NO_ASPECT_CORRECT),
+                  !(_DNA_DEFAULT_ToolSettings_UVCalc_Flag & UVCALC_NO_ASPECT_CORRECT),
                   "Correct Aspect",
                   "Map UVs taking image aspect ratio into account");
   RNA_def_boolean(
