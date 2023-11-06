@@ -11,6 +11,7 @@
 #include "BLI_math_quaternion.hh"
 #include "BLI_string.h"
 
+#include "NOD_geometry.hh"
 #include "NOD_geometry_nodes_execute.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
@@ -30,6 +31,106 @@ namespace lf = blender::fn::lazy_function;
 namespace geo_log = blender::nodes::geo_eval_log;
 
 namespace blender::nodes {
+
+static void add_used_ids_from_sockets(const ListBase &sockets, Set<ID *> &ids)
+{
+  LISTBASE_FOREACH (const bNodeSocket *, socket, &sockets) {
+    switch (socket->type) {
+      case SOCK_OBJECT: {
+        if (Object *object = ((bNodeSocketValueObject *)socket->default_value)->value) {
+          ids.add(reinterpret_cast<ID *>(object));
+        }
+        break;
+      }
+      case SOCK_COLLECTION: {
+        if (Collection *collection = ((bNodeSocketValueCollection *)socket->default_value)->value)
+        {
+          ids.add(reinterpret_cast<ID *>(collection));
+        }
+        break;
+      }
+      case SOCK_MATERIAL: {
+        if (Material *material = ((bNodeSocketValueMaterial *)socket->default_value)->value) {
+          ids.add(reinterpret_cast<ID *>(material));
+        }
+        break;
+      }
+      case SOCK_TEXTURE: {
+        if (Tex *texture = ((bNodeSocketValueTexture *)socket->default_value)->value) {
+          ids.add(reinterpret_cast<ID *>(texture));
+        }
+        break;
+      }
+      case SOCK_IMAGE: {
+        if (Image *image = ((bNodeSocketValueImage *)socket->default_value)->value) {
+          ids.add(reinterpret_cast<ID *>(image));
+        }
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * \note We can only check properties here that cause the dependency graph to update relations when
+ * they are changed, otherwise there may be a missing relation after editing. So this could check
+ * more properties like whether the node is muted, but we would have to accept the cost of updating
+ * relations when those properties are changed.
+ */
+static bool node_needs_own_transform_relation(const bNode &node)
+{
+  if (node.type == GEO_NODE_COLLECTION_INFO) {
+    const NodeGeometryCollectionInfo &storage = *static_cast<const NodeGeometryCollectionInfo *>(
+        node.storage);
+    return storage.transform_space == GEO_NODE_TRANSFORM_SPACE_RELATIVE;
+  }
+
+  if (node.type == GEO_NODE_OBJECT_INFO) {
+    const NodeGeometryObjectInfo &storage = *static_cast<const NodeGeometryObjectInfo *>(
+        node.storage);
+    return storage.transform_space == GEO_NODE_TRANSFORM_SPACE_RELATIVE;
+  }
+
+  if (node.type == GEO_NODE_SELF_OBJECT) {
+    return true;
+  }
+  if (node.type == GEO_NODE_DEFORM_CURVES_ON_SURFACE) {
+    return true;
+  }
+
+  return false;
+}
+
+static void process_nodes_for_depsgraph(const bNodeTree &tree,
+                                        Set<ID *> &ids,
+                                        bool &r_needs_own_transform_relation,
+                                        Set<const bNodeTree *> &checked_groups)
+{
+  if (!checked_groups.add(&tree)) {
+    return;
+  }
+
+  tree.ensure_topology_cache();
+  for (const bNode *node : tree.all_nodes()) {
+    add_used_ids_from_sockets(node->inputs, ids);
+    add_used_ids_from_sockets(node->outputs, ids);
+    r_needs_own_transform_relation |= node_needs_own_transform_relation(*node);
+  }
+
+  for (const bNode *node : tree.group_nodes()) {
+    if (const bNodeTree *sub_tree = reinterpret_cast<const bNodeTree *>(node->id)) {
+      process_nodes_for_depsgraph(*sub_tree, ids, r_needs_own_transform_relation, checked_groups);
+    }
+  }
+}
+
+void find_node_tree_dependencies(const bNodeTree &tree,
+                                 Set<ID *> &r_ids,
+                                 bool &r_needs_own_transform_relation)
+{
+  Set<const bNodeTree *> checked_groups;
+  process_nodes_for_depsgraph(tree, r_ids, r_needs_own_transform_relation, checked_groups);
+}
 
 StringRef input_use_attribute_suffix()
 {
@@ -119,6 +220,10 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
       return property;
     }
     case SOCK_BOOLEAN: {
+      if (is_layer_selection_field(socket)) {
+        /* We can't use the value from the socket here since it doesn't storing a string. */
+        return bke::idprop::create(identifier, "");
+      }
       const bNodeSocketValueBoolean *value = static_cast<const bNodeSocketValueBoolean *>(
           socket.socket_data);
       auto property = bke::idprop::create_bool(identifier, value->value);
@@ -200,6 +305,9 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
       return property.type == IDP_ARRAY &&
              ELEM(property.subtype, IDP_INT, IDP_FLOAT, IDP_DOUBLE) && property.len == 4;
     case SOCK_BOOLEAN:
+      if (is_layer_selection_field(socket)) {
+        return property.type == IDP_STRING;
+      }
       return property.type == IDP_BOOLEAN;
     case SOCK_STRING:
       return property.type == IDP_STRING;
@@ -397,6 +505,17 @@ static void initialize_group_input(const bNodeTree &tree,
         *typeinfo->geometry_nodes_cpp_type);
     BLI_assert(value_or_field_cpp_type != nullptr);
     value_or_field_cpp_type->construct_from_field(r_value, std::move(attribute_field));
+  }
+  else if (is_layer_selection_field(io_input)) {
+    const IDProperty *property_layer_name = IDP_GetPropertyFromGroup(properties,
+                                                                     io_input.identifier);
+    StringRef layer_name = IDP_String(property_layer_name);
+    const fn::GField selection_field(
+        std::make_shared<bke::NamedLayerSelectionFieldInput>(layer_name), 0);
+    const auto *value_or_field_cpp_type = fn::ValueOrFieldCPPType::get_from_self(
+        *typeinfo->geometry_nodes_cpp_type);
+    BLI_assert(value_or_field_cpp_type != nullptr);
+    value_or_field_cpp_type->construct_from_field(r_value, std::move(selection_field));
   }
   else {
     init_socket_cpp_value_from_property(*property, socket_data_type, r_value);

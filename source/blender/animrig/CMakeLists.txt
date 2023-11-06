@@ -20,19 +20,22 @@ set(INC_SYS
 )
 
 set(SRC
+  intern/anim_rna.cc
   intern/bone_collections.cc
   intern/bonecolor.cc
+  intern/fcurve.cc
   intern/keyframing.cc
   intern/keyframing_auto.cc
   intern/visualkey.cc
-  intern/fcurve.cc
 
+  ANIM_armature_iter.hh
   ANIM_bone_collections.h
   ANIM_bone_collections.hh
   ANIM_bonecolor.hh
-  ANIM_keyframing.hh
-  ANIM_visualkey.hh
   ANIM_fcurve.hh
+  ANIM_keyframing.hh
+  ANIM_rna.hh
+  ANIM_visualkey.hh
 )
 
 set(LIB
