@@ -210,28 +210,6 @@ void blender::geometry::UVPackIsland_Params::setFromUnwrapOptions(const UnwrapOp
   pin_unselected = options.pin_unselected;
 }
 
-//static void modifier_unwrap_state(Object *obedit,
-//                                  const UnwrapOptions *options,
-//                                  bool *r_use_subsurf)
-//{
-//  ModifierData *md;
-//  bool subsurf = options->use_subsurf;
-//
-//  md = obedit->modifiers.first;
-//
-//  /* Subsurf will take the modifier settings only if modifier is first or right after mirror */
-//  if (subsurf) {
-//    if (md && md->type == eModifierType_Subsurf) {
-//      subsurf = true;
-//    }
-//    else {
-//      subsurf = false;
-//    }
-//  }
-//
-//  *r_use_subsurf = subsurf;
-//}
-
  static void modifier_unwrap_state(Object *obedit,
                                   const UnwrapOptions *options,
                                   bool *r_use_subsurf)
@@ -1674,7 +1652,7 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
   const Scene *scene = CTX_data_scene(C);
   const SpaceImage *sima = CTX_wm_space_image(C);
 
-  UnwrapOptions options = unwrap_options_get(op, NULL, NULL);
+  UnwrapOptions options = unwrap_options_get(op, nullptr, nullptr);
   options.topology_from_uvs = true;
   options.only_selected_faces = true;
   options.only_selected_uvs = true;
@@ -1952,7 +1930,7 @@ static int average_islands_scale_exec(bContext *C, wmOperator *op)
   ToolSettings *ts = scene->toolsettings;
   const bool synced_selection = (ts->uv_flag & UV_SYNC_SELECTION) != 0;
 
-  UnwrapOptions options = unwrap_options_get(NULL, NULL, NULL);
+  UnwrapOptions options = unwrap_options_get(nullptr, nullptr, nullptr);
   options.topology_from_uvs = true;
   options.only_selected_faces = true;
   options.only_selected_uvs = true;
@@ -2030,7 +2008,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
     return;
   }
 
-  UnwrapOptions options = unwrap_options_get(NULL, obedit, scene->toolsettings);
+  UnwrapOptions options = unwrap_options_get(nullptr, obedit, scene->toolsettings);
   options.topology_from_uvs = false;
   options.only_selected_faces = false;
   options.only_selected_uvs = false;
@@ -2666,7 +2644,7 @@ static void uvedit_unwrap_multi(const Scene *scene,
 void ED_uvedit_live_unwrap(const Scene *scene, Object **objects, int objects_len)
 {
   if (scene->toolsettings->edge_mode_live_unwrap) {
-    UnwrapOptions options = unwrap_options_get(NULL, NULL, scene->toolsettings);
+    UnwrapOptions options = unwrap_options_get(nullptr, nullptr, scene->toolsettings);
     options.topology_from_uvs = false;
     options.only_selected_faces = false;
     options.only_selected_uvs = false;
@@ -2695,7 +2673,6 @@ static int unwrap_exec(bContext *C, wmOperator *op)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const Scene *scene = CTX_data_scene(C);
-
   int reported_errors = 0;
 
   uint objects_len = 0;
@@ -2704,7 +2681,7 @@ static int unwrap_exec(bContext *C, wmOperator *op)
 
   unwrap_options_sync_toolsettings(op, scene->toolsettings);
 
-  UnwrapOptions options = unwrap_options_get(op, NULL, NULL);
+  UnwrapOptions options = unwrap_options_get(op, nullptr, nullptr);
   options.topology_from_uvs = false;
   options.only_selected_faces = true;
   options.only_selected_uvs = false;
