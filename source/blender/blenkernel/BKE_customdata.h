@@ -53,6 +53,7 @@ typedef struct BMUVOffsets {
   int select_vert;
   int select_edge;
   int pin;
+  int weight;
 } BMUVOffsets;
 
 /* A data type large enough to hold 1 element from any custom-data layer type. */

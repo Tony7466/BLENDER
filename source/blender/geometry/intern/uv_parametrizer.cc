@@ -21,7 +21,6 @@
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_rand.h"
 
-
 #include "slim_matrix_transfer.h"
 
 #include "GEO_uv_pack.hh"
@@ -159,33 +158,6 @@ struct PChart {
   bool has_pins;
   bool skip_flush;
 };
-
-//typedef struct ParamHandle {
-//  enum PHandleState state;
-//  MemArena *arena;
-//  MemArena *polyfill_arena;
-//  Heap *polyfill_heap;
-//
-//  PChart *construction_chart;
-//  PHash *hash_verts;
-//  PHash *hash_edges;
-//  PHash *hash_faces;
-//
-//  struct GHash *pin_hash;
-//  int unique_pin_count;
-//
-//  PChart **charts;
-//  int ncharts;
-//
-//  float aspx, aspy;
-//
-//  RNG *rng;
-//  float blend;
-//
-//  /* SLIM uv unwrapping */
-//  slim::SLIMMatrixTransfer *slim_mt;
-//} ParamHandle;
-
 
 /* PHash
  * - special purpose hash that keeps all its elements in a single linked list.
@@ -3867,7 +3839,8 @@ static void p_add_ngon(ParamHandle *handle,
     bool tri_pin[3] = {pin[v0], pin[v1], pin[v2]};
     bool tri_select[3] = {select[v0], select[v1], select[v2]};
 
-    uv_parametrizer_face_add(handle, key, 3, tri_vkeys, tri_co, tri_uv, tri_weight, tri_pin, tri_select);
+    uv_parametrizer_face_add(
+        handle, key, 3, tri_vkeys, tri_co, tri_uv, tri_weight, tri_pin, tri_select);
   }
 
   BLI_memarena_clear(arena);
@@ -3959,17 +3932,6 @@ void uv_parametrizer_face_add(ParamHandle *phandle,
     /* ngon */
     p_add_ngon(phandle, key, nverts, vkeys, co, uv, weight, pin, select);
   }
-  //else if (nverts == 4) {
-  //  /* quad */
-  //  if (p_quad_split_direction(phandle, co, vkeys)) {
-  //    p_face_add_construct(phandle, key, vkeys, co, uv, weight, 0, 1, 2, pin, select);
-  //    p_face_add_construct(phandle, key, vkeys, co, uv, weight, 0, 2, 3, pin, select);
-  //  }
-  //  else {
-  //    p_face_add_construct(phandle, key, vkeys, co, uv, weight, 0, 1, 3, pin, select);
-  //    p_face_add_construct(phandle, key, vkeys, co, uv, weight, 1, 2, 3, pin, select);
-  //  }
-  //}
   else if (!p_face_exists(phandle, vkeys, 0, 1, 2)) {
     /* triangle */
     p_face_add_construct(phandle, key, vkeys, co, uv, weight, 0, 1, 2, pin, select);
@@ -4362,7 +4324,6 @@ void uv_parametrizer_flush_restore(ParamHandle *phandle)
   }
 }
 
-
 /***************************** SLIM Integration *******************************/
 
 using namespace slim;
@@ -4713,9 +4674,9 @@ void uv_parametrizer_slim_reload_all_uvs(ParamHandle *phandle)
 }
 
 void uv_parametrizer_slim_solve(ParamHandle *phandle,
-                                    const MatrixTransferOptions *mt_options,
-                                    int *count_changed,
-                                    int *count_failed)
+                                const MatrixTransferOptions *mt_options,
+                                int *count_changed,
+                                int *count_failed)
 {
   slim_transfer_data_to_slim(phandle, mt_options);
   SLIMMatrixTransfer *mt = phandle->slim_mt;
