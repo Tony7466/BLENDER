@@ -711,58 +711,126 @@ struct ViewerSocketTrait {
   float prioriti = 1.0f;
 };
 
+static void traits_for_viewer(Vector<ViewerSocketTrait> &r_traits)
+{
+  static const Array<eNodeSocketDatatype> viewer_types = {
+      SOCK_BOOLEAN, SOCK_FLOAT, SOCK_RGBA, SOCK_INT, SOCK_ROTATION, SOCK_VECTOR};
+
+  static const auto new_viewer = [](bNodeTree &tree) -> bNode & {
+    return *nodeAddStaticNode(nullptr, &tree, GEO_NODE_VIEWER);
+  };
+
+  ViewerSocketTrait trait;
+  trait.type = SOCK_GEOMETRY;
+  trait.socket_name = "Geometry";
+  trait.node_name = "Viewer";
+  trait.prioriti = 1.0f;
+
+  trait.finalize = [=](bNodeTree &tree) -> std::pair<bNode *, bNodeSocket *> {
+    bNode &viewer = new_viewer(tree);
+    tree.ensure_topology_cache();
+    return {&viewer, viewer.input_sockets().first()};
+  };
+
+  r_traits.append(std::move(trait));
+
+  for (const eNodeSocketDatatype socket_type : viewer_types) {
+    ViewerSocketTrait trait;
+    trait.type = socket_type;
+    trait.socket_name = "Value";
+    trait.node_name = "Viewer";
+    trait.prioriti = 0.5f;
+
+    trait.finalize = [=](bNodeTree &tree) -> std::pair<bNode *, bNodeSocket *> {
+      bNode &viewer = new_viewer(tree);
+      tree.ensure_topology_cache();
+
+      for (bNodeSocket *socket : viewer.input_sockets().drop_front(1)) {
+        const eNodeSocketDatatype other_socket_type = eNodeSocketDatatype(socket->type);
+        if (socket_type == other_socket_type) {
+          NodeGeometryViewer &storage = *static_cast<NodeGeometryViewer *>(viewer.storage);
+          storage.data_type = *bke::socket_type_to_custom_data_type(other_socket_type);
+          viewer.typeinfo->updatefunc(&tree, &viewer);
+          return {&viewer, socket};
+        }
+      }
+
+      BLI_assert_unreachable();
+      return {};
+    };
+
+    r_traits.append(std::move(trait));
+  }
+}
+
 static void traits_for_viewers(const Span<const bNode *> viewers,
+                               const Span<bool> depend_on_node,
                                Vector<ViewerSocketTrait> &r_traits)
 {
   static const Array<eNodeSocketDatatype> viewer_types = {
       SOCK_BOOLEAN, SOCK_FLOAT, SOCK_RGBA, SOCK_INT, SOCK_ROTATION, SOCK_VECTOR};
   for (const bNode *viewer : viewers) {
-    ViewerSocketTrait trait;
-    trait.type = SOCK_GEOMETRY;
-    trait.socket_name = "Geometry";
-    trait.node_name = viewer->name;
-    trait.prioriti = 1.0f;
 
-    const int32_t identifiers = viewer->identifier;
-    trait.finalize = [=](bNodeTree &tree) -> std::pair<bNode *, bNodeSocket *> {
-      tree.ensure_topology_cache();
-      bNode &viewer = *tree.node_by_id(identifiers);
-      return {&viewer, viewer.input_sockets().first()};
-    };
-
-    r_traits.append(std::move(trait));
-
-    for (const eNodeSocketDatatype socket_type : viewer_types) {
+    if (!viewer->input_sockets().first()->is_directly_linked()) {
       ViewerSocketTrait trait;
-      trait.type = socket_type;
-      trait.socket_name = "Value";
+      trait.type = SOCK_GEOMETRY;
+      trait.socket_name = "Geometry";
       trait.node_name = viewer->name;
       trait.prioriti = 1.0f;
 
+      trait.node_is_connected = depend_on_node[viewer->index()];
+
       const int32_t identifiers = viewer->identifier;
-      NodeGeometryViewer &storage = *static_cast<NodeGeometryViewer *>(viewer->storage);
-
-      if (storage.data_type == *bke::socket_type_to_custom_data_type(socket_type)) {
-        trait.prioriti = 2.0f;
-      }
-
       trait.finalize = [=](bNodeTree &tree) -> std::pair<bNode *, bNodeSocket *> {
         tree.ensure_topology_cache();
         bNode &viewer = *tree.node_by_id(identifiers);
-        for (bNodeSocket *socket : viewer.input_sockets().drop_front(1)) {
-          const eNodeSocketDatatype other_socket_type = eNodeSocketDatatype(socket->type);
-          if (socket_type == other_socket_type) {
-            NodeGeometryViewer &storage = *static_cast<NodeGeometryViewer *>(viewer.storage);
-            storage.data_type = *bke::socket_type_to_custom_data_type(other_socket_type);
-            viewer.typeinfo->updatefunc(&tree, &viewer);
-            return {&viewer, socket};
-          }
-        }
-        BLI_assert_unreachable();
-        return {};
+        return {&viewer, viewer.input_sockets().first()};
       };
 
       r_traits.append(std::move(trait));
+    }
+
+    bool value_is_linked = false;
+
+    for (const bNodeSocket *socket : viewer->input_sockets().drop_front(1)) {
+      value_is_linked |= socket->is_directly_linked();
+    }
+
+    if (!value_is_linked) {
+      for (const eNodeSocketDatatype socket_type : viewer_types) {
+        ViewerSocketTrait trait;
+        trait.type = socket_type;
+        trait.socket_name = "Value";
+        trait.node_name = viewer->name;
+        trait.prioriti = 1.0f;
+
+        trait.node_is_connected = depend_on_node[viewer->index()];
+
+        const int32_t identifiers = viewer->identifier;
+        NodeGeometryViewer &storage = *static_cast<NodeGeometryViewer *>(viewer->storage);
+
+        if (storage.data_type == *bke::socket_type_to_custom_data_type(socket_type)) {
+          trait.prioriti = 2.0f;
+        }
+
+        trait.finalize = [=](bNodeTree &tree) -> std::pair<bNode *, bNodeSocket *> {
+          tree.ensure_topology_cache();
+          bNode &viewer = *tree.node_by_id(identifiers);
+          for (bNodeSocket *socket : viewer.input_sockets().drop_front(1)) {
+            const eNodeSocketDatatype other_socket_type = eNodeSocketDatatype(socket->type);
+            if (socket_type == other_socket_type) {
+              NodeGeometryViewer &storage = *static_cast<NodeGeometryViewer *>(viewer.storage);
+              storage.data_type = *bke::socket_type_to_custom_data_type(other_socket_type);
+              viewer.typeinfo->updatefunc(&tree, &viewer);
+              return {&viewer, socket};
+            }
+          }
+          BLI_assert_unreachable();
+          return {};
+        };
+
+        r_traits.append(std::move(trait));
+      }
     }
   }
 }
@@ -782,9 +850,10 @@ static void traits_for_groups(Main &bmain, Vector<ViewerSocketTrait> &r_traits)
       const bNodeTreeInterfaceSocket &input = *inputs[index];
 
       ViewerSocketTrait trait;
-      trait.type = SOCK_INT;
+      trait.type = eNodeSocketDatatype(input.socket_typeinfo()->type);
       trait.socket_name = input.name;
       trait.node_name = group->id.name;
+      trait.prioriti = 3.0f;
 
       trait.finalize = [=](bNodeTree &tree) -> std::pair<bNode *, bNodeSocket *> {
         tree.ensure_topology_cache();
@@ -919,8 +988,23 @@ static int node_link_viewer(const bContext &C, bNode &bnode_to_view, bNodeSocket
     return OPERATOR_CANCELLED;
   }
 
+  const Span<const bNode *> left_to_right = btree->toposort_left_to_right();
+  Array<bool> depend_on_node(left_to_right.size(), false);
+  for (const bNode *node : left_to_right) {
+    for (const bNodeSocket *input : node->input_sockets()) {
+      for (const bNodeSocket *output_socket : input->directly_linked_sockets()) {
+        const bNode &other = output_socket->owner_node();
+        if (&other == &bnode_to_view) {
+          depend_on_node[node->index()] = true;
+        }
+        depend_on_node[node->index()] |= depend_on_node[other.index()];
+      }
+    }
+  }
+
   Vector<ViewerSocketTrait> traits;
-  traits_for_viewers(viewers, traits);
+  traits_for_viewer(traits);
+  traits_for_viewers(viewers, depend_on_node, traits);
   // traits_for_viewers({active_viewer}, traits);
   traits_for_exist_groups(groups, traits);
   traits_for_groups(*CTX_data_main(&C), traits);
@@ -948,8 +1032,17 @@ static int node_link_viewer(const bContext &C, bNode &bnode_to_view, bNodeSocket
           return a_type_priority < b_type_priority;
         }
 
+        if (to_connected) {
+          const float connection_factor = connected_node ? 5.0f : 0.2f;
+          return a.prioriti < b.prioriti * connection_factor;
+        }
+
         return a.prioriti < b.prioriti;
       });
+
+  if (-1 == get_link_type_priority(viewer_trait.type, eNodeSocketDatatype(node_socket->type))) {
+    return OPERATOR_CANCELLED;
+  }
 
   auto [viewer_node, viewer_socket] = viewer_trait.finalize(*btree);
   btree->ensure_topology_cache();
