@@ -523,7 +523,6 @@ static void construct_param_handle_face_add(ParamHandle *handle,
                                             blender::geometry::ParamKey face_index,
                                             const UnwrapOptions *options,
                                             const BMUVOffsets offsets,
-                                            const int cd_weight_offset,
                                             const int cd_weight_index)
 {
   blender::Array<ParamKey, BM_DEFAULT_NGON_STACK_SIZE> vkeys(efa->len);
@@ -553,8 +552,8 @@ static void construct_param_handle_face_add(ParamHandle *handle,
     }
 
     /* optional vertex group weighting */
-    if (cd_weight_offset >= 0 && cd_weight_index >= 0) {
-      MDeformVert *dv = (MDeformVert*)BM_ELEM_CD_GET_VOID_P(l->v, cd_weight_offset);
+    if (offsets.weight >= 0 && cd_weight_index >= 0) {
+      MDeformVert *dv = (MDeformVert *)BM_ELEM_CD_GET_VOID_P(l->v, offsets.weight);
       weight[i] = BKE_defvert_find_weight(dv, cd_weight_index);
     }
     else {
@@ -629,7 +628,6 @@ static ParamHandle *construct_param_handle(const Scene *scene,
   BM_mesh_elem_index_ensure(bm, BM_VERT);
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
-  const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
   const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->mt_options.vertex_group);
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
@@ -640,7 +638,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
     if (uvedit_is_face_affected(scene, efa, options, offsets)) {
-      construct_param_handle_face_add(handle, scene, efa, i, options, offsets, cd_weight_offset, cd_weight_index);
+      construct_param_handle_face_add(handle, scene, efa, i, options, offsets, cd_weight_index);
     }
   }
 
@@ -687,7 +685,6 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
       continue;
     }
 
-    const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
     const int cd_weight_index = BKE_object_defgroup_name_index(obedit,
                                                                options->mt_options.vertex_group);
 
@@ -700,7 +697,7 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
     BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
       if (uvedit_is_face_affected(scene, efa, options, offsets)) {
         construct_param_handle_face_add(
-            handle, scene, efa, i + offset, options, offsets, cd_weight_offset, cd_weight_index);
+            handle, scene, efa, i + offset, options, offsets, cd_weight_index);
       }
     }
 
