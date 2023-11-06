@@ -210,28 +210,6 @@ void blender::geometry::UVPackIsland_Params::setFromUnwrapOptions(const UnwrapOp
   pin_unselected = options.pin_unselected;
 }
 
-//static void modifier_unwrap_state(Object *obedit,
-//                                  const UnwrapOptions *options,
-//                                  bool *r_use_subsurf)
-//{
-//  ModifierData *md;
-//  bool subsurf = options->use_subsurf;
-//
-//  md = obedit->modifiers.first;
-//
-//  /* Subsurf will take the modifier settings only if modifier is first or right after mirror */
-//  if (subsurf) {
-//    if (md && md->type == eModifierType_Subsurf) {
-//      subsurf = true;
-//    }
-//    else {
-//      subsurf = false;
-//    }
-//  }
-//
-//  *r_use_subsurf = subsurf;
-//}
-
  static void modifier_unwrap_state(Object *obedit,
                                   const UnwrapOptions *options,
                                   bool *r_use_subsurf)
@@ -545,7 +523,6 @@ static void construct_param_handle_face_add(ParamHandle *handle,
                                             blender::geometry::ParamKey face_index,
                                             const UnwrapOptions *options,
                                             const BMUVOffsets offsets,
-                                            const int cd_weight_offset,
                                             const int cd_weight_index)
 {
   blender::Array<ParamKey, BM_DEFAULT_NGON_STACK_SIZE> vkeys(efa->len);
@@ -575,8 +552,8 @@ static void construct_param_handle_face_add(ParamHandle *handle,
     }
 
     /* optional vertex group weighting */
-    if (cd_weight_offset >= 0 && cd_weight_index >= 0) {
-      MDeformVert *dv = (MDeformVert*)BM_ELEM_CD_GET_VOID_P(l->v, cd_weight_offset);
+    if (offsets.weight >= 0 && cd_weight_index >= 0) {
+      MDeformVert *dv = (MDeformVert *)BM_ELEM_CD_GET_VOID_P(l->v, offsets.weight);
       weight[i] = BKE_defvert_find_weight(dv, cd_weight_index);
     }
     else {
@@ -651,7 +628,6 @@ static ParamHandle *construct_param_handle(const Scene *scene,
   BM_mesh_elem_index_ensure(bm, BM_VERT);
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
-  const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
   const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->mt_options.vertex_group);
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
@@ -662,7 +638,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
     if (uvedit_is_face_affected(scene, efa, options, offsets)) {
-      construct_param_handle_face_add(handle, scene, efa, i, options, offsets, cd_weight_offset, cd_weight_index);
+      construct_param_handle_face_add(handle, scene, efa, i, options, offsets, cd_weight_index);
     }
   }
 
@@ -709,7 +685,6 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
       continue;
     }
 
-    const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
     const int cd_weight_index = BKE_object_defgroup_name_index(obedit,
                                                                options->mt_options.vertex_group);
 
@@ -722,7 +697,7 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
     BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
       if (uvedit_is_face_affected(scene, efa, options, offsets)) {
         construct_param_handle_face_add(
-            handle, scene, efa, i + offset, options, offsets, cd_weight_offset, cd_weight_index);
+            handle, scene, efa, i + offset, options, offsets, cd_weight_index);
       }
     }
 
@@ -1674,7 +1649,7 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
   const Scene *scene = CTX_data_scene(C);
   const SpaceImage *sima = CTX_wm_space_image(C);
 
-  UnwrapOptions options = unwrap_options_get(op, NULL, NULL);
+  UnwrapOptions options = unwrap_options_get(op, nullptr, nullptr);
   options.topology_from_uvs = true;
   options.only_selected_faces = true;
   options.only_selected_uvs = true;
@@ -1952,7 +1927,7 @@ static int average_islands_scale_exec(bContext *C, wmOperator *op)
   ToolSettings *ts = scene->toolsettings;
   const bool synced_selection = (ts->uv_flag & UV_SYNC_SELECTION) != 0;
 
-  UnwrapOptions options = unwrap_options_get(NULL, NULL, NULL);
+  UnwrapOptions options = unwrap_options_get(nullptr, nullptr, nullptr);
   options.topology_from_uvs = true;
   options.only_selected_faces = true;
   options.only_selected_uvs = true;
@@ -2031,7 +2006,7 @@ void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit)
     return;
   }
 
-  UnwrapOptions options = unwrap_options_get(NULL, obedit, scene->toolsettings);
+  UnwrapOptions options = unwrap_options_get(nullptr, obedit, scene->toolsettings);
   options.topology_from_uvs = false;
   options.only_selected_faces = false;
   options.only_selected_uvs = false;
@@ -2645,8 +2620,7 @@ static void uvedit_unwrap(const Scene *scene,
                                    r_count_changed, r_count_failed);
   }
   else {
-    blender::geometry::uv_parametrizer_lscm_begin(
-        handle, false, scene->toolsettings->unwrapper == 0);
+    blender::geometry::uv_parametrizer_lscm_begin(handle, false, options->use_abf);
     blender::geometry::uv_parametrizer_lscm_solve(handle, r_count_changed, r_count_failed);
     blender::geometry::uv_parametrizer_lscm_end(handle);
   }
@@ -2677,7 +2651,7 @@ static void uvedit_unwrap_multi(const Scene *scene,
 void ED_uvedit_live_unwrap(const Scene *scene, Object **objects, int objects_len)
 {
   if (scene->toolsettings->edge_mode_live_unwrap) {
-    UnwrapOptions options = unwrap_options_get(NULL, NULL, scene->toolsettings);
+    UnwrapOptions options = unwrap_options_get(nullptr, nullptr, scene->toolsettings);
     options.topology_from_uvs = false;
     options.only_selected_faces = false;
     options.only_selected_uvs = false;
@@ -2706,7 +2680,6 @@ static int unwrap_exec(bContext *C, wmOperator *op)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const Scene *scene = CTX_data_scene(C);
-
   int reported_errors = 0;
 
   uint objects_len = 0;
@@ -2715,7 +2688,7 @@ static int unwrap_exec(bContext *C, wmOperator *op)
 
   unwrap_options_sync_toolsettings(op, scene->toolsettings);
 
-  UnwrapOptions options = unwrap_options_get(op, NULL, NULL);
+  UnwrapOptions options = unwrap_options_get(op, nullptr, nullptr);
   options.topology_from_uvs = false;
   options.only_selected_faces = true;
   options.only_selected_uvs = false;
