@@ -576,6 +576,10 @@ static bool sculpt_undo_restore_mask(bContext *C, SculptUndoNode *unode, bool *m
     /* Regular mesh restore. */
     float *vmask = static_cast<float *>(
         CustomData_get_layer_for_write(&mesh->vert_data, CD_PAINT_MASK, mesh->totvert));
+    if (!vmask) {
+      vmask = static_cast<float *>(
+          CustomData_add_layer(&mesh->vert_data, CD_PAINT_MASK, CD_SET_DEFAULT, mesh->totvert));
+    }
     ss->vmask = vmask;
 
     index = unode->index;
@@ -1835,7 +1839,8 @@ static void sculpt_undo_set_active_layer(bContext *C, SculptAttrRef *attr)
    * domain and just unconvert it.
    */
   if (!layer) {
-    layer = BKE_id_attribute_search(&me->id, attr->name, CD_MASK_PROP_ALL, ATTR_DOMAIN_MASK_ALL);
+    layer = BKE_id_attribute_search_for_write(
+        &me->id, attr->name, CD_MASK_PROP_ALL, ATTR_DOMAIN_MASK_ALL);
     if (layer) {
       if (ED_geometry_attribute_convert(
               me, attr->name, eCustomDataType(attr->type), attr->domain, nullptr))
