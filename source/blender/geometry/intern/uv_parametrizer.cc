@@ -4700,7 +4700,7 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
   mt_chart->n_pinned_vertices = i;
 }
 
-void GEO_uv_parametrizer_slim_reload_all_uvs(ParamHandle *phandle)
+void uv_parametrizer_slim_reload_all_uvs(ParamHandle *phandle)
 {
   PVert *v;
   for (int i = 0; i < phandle->ncharts; i++) {
@@ -4712,7 +4712,7 @@ void GEO_uv_parametrizer_slim_reload_all_uvs(ParamHandle *phandle)
   }
 }
 
-void GEO_uv_parametrizer_slim_solve(ParamHandle *phandle,
+void uv_parametrizer_slim_solve(ParamHandle *phandle,
                                     const MatrixTransferOptions *mt_options,
                                     int *count_changed,
                                     int *count_failed)
@@ -4726,7 +4726,7 @@ void GEO_uv_parametrizer_slim_solve(ParamHandle *phandle,
   slim_free_matrix_transfer(phandle);
 }
 
-void GEO_uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOptions *mt_options)
+void uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOptions *mt_options)
 {
   slim_transfer_data_to_slim(phandle, mt_options);
   SLIMMatrixTransfer *mt = phandle->slim_mt;
@@ -4760,7 +4760,7 @@ void GEO_uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOp
   }
 }
 
-void GEO_uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blend)
+void uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blend)
 {
   SLIMMatrixTransfer *mt = phandle->slim_mt;
 
@@ -4774,7 +4774,7 @@ void GEO_uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blen
   slim_flush_uvs(phandle, mt, NULL, NULL);
 }
 
-void GEO_uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
+void uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
 {
   SLIMMatrixTransfer *mt = phandle->slim_mt;
 
@@ -4815,7 +4815,7 @@ void GEO_uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
   slim_flush_uvs(phandle, mt, NULL, NULL);
 }
 
-void GEO_uv_parametrizer_slim_end(ParamHandle *phandle)
+void uv_parametrizer_slim_end(ParamHandle *phandle)
 {
   SLIMMatrixTransfer *mt = phandle->slim_mt;
 
@@ -4829,7 +4829,7 @@ void GEO_uv_parametrizer_slim_end(ParamHandle *phandle)
   slim_free_matrix_transfer(phandle);
 }
 
-bool GEO_uv_parametrizer_is_slim(ParamHandle *phandle)
+bool uv_parametrizer_is_slim(ParamHandle *phandle)
 {
   return phandle->slim_mt != NULL;
 }

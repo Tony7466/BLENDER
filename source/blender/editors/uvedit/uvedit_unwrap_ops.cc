@@ -256,7 +256,7 @@ void blender::geometry::UVPackIsland_Params::setFromUnwrapOptions(const UnwrapOp
 
 static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSettings *ts)
 {
-  UnwrapOptions options;
+  UnwrapOptions options{};
 
   /* To be set by the upper layer */
   options.topology_from_uvs = false;
@@ -2047,7 +2047,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
   if (options.use_slim) {
     options.mt_options.reflection_mode = 0;
     options.mt_options.skip_initialization = true;
-    GEO_uv_parametrizer_slim_begin(handle, &options.mt_options);
+    uv_parametrizer_slim_begin(handle, &options.mt_options);
   }
   else {
     blender::geometry::uv_parametrizer_lscm_begin(handle, true, options.use_abf);
@@ -2073,9 +2073,9 @@ void ED_uvedit_live_unwrap_re_solve()
 {
   if (g_live_unwrap.handles) {
     for (int i = 0; i < g_live_unwrap.len; i++) {
-      if (GEO_uv_parametrizer_is_slim(g_live_unwrap.handles[i])) {
-        GEO_uv_parametrizer_slim_reload_all_uvs(g_live_unwrap.handles[i]);
-        GEO_uv_parametrizer_slim_solve_iteration(g_live_unwrap.handles[i]);
+      if (uv_parametrizer_is_slim(g_live_unwrap.handles[i])) {
+        uv_parametrizer_slim_reload_all_uvs(g_live_unwrap.handles[i]);
+        uv_parametrizer_slim_solve_iteration(g_live_unwrap.handles[i]);
       }
       else {
         blender::geometry::uv_parametrizer_lscm_solve(g_live_unwrap.handles[i], nullptr, nullptr);
@@ -2090,8 +2090,8 @@ void ED_uvedit_live_unwrap_end(short cancel)
 {
   if (g_live_unwrap.handles) {
     for (int i = 0; i < g_live_unwrap.len; i++) {
-      if (GEO_uv_parametrizer_is_slim(g_live_unwrap.handles[i])) {
-        GEO_uv_parametrizer_slim_end(g_live_unwrap.handles[i]);
+      if (uv_parametrizer_is_slim(g_live_unwrap.handles[i])) {
+        uv_parametrizer_slim_end(g_live_unwrap.handles[i]);
       }
       else {
         blender::geometry::uv_parametrizer_lscm_end(g_live_unwrap.handles[i]);
@@ -2629,7 +2629,7 @@ static void uvedit_unwrap(const Scene *scene,
   }
 
   if (options->use_slim) {
-    GEO_uv_parametrizer_slim_solve(handle,
+    uv_parametrizer_slim_solve(handle,
                                    &options->mt_options,
                                    r_count_changed, r_count_failed);
   }

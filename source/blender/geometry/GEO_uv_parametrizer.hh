@@ -122,17 +122,17 @@ class MatrixTransferOptions
   bool skip_initialization;
 };
 
-void GEO_uv_parametrizer_slim_reload_all_uvs(ParamHandle *handle);
-void GEO_uv_parametrizer_slim_solve(ParamHandle *handle,
+void uv_parametrizer_slim_reload_all_uvs(ParamHandle *handle);
+void uv_parametrizer_slim_solve(ParamHandle *handle,
                                     const MatrixTransferOptions *mt_options,
                                     int *count_changed,
                                     int *count_failed);
 
-void GEO_uv_parametrizer_slim_begin(ParamHandle *handle, const MatrixTransferOptions *mt_options);
-void GEO_uv_parametrizer_slim_solve_iteration(ParamHandle *handle);
-void GEO_uv_parametrizer_slim_stretch_iteration(ParamHandle *handle, float blend);
-void GEO_uv_parametrizer_slim_end(ParamHandle *handle);
-bool GEO_uv_parametrizer_is_slim(ParamHandle *handle);
+void uv_parametrizer_slim_begin(ParamHandle *handle, const MatrixTransferOptions *mt_options);
+void uv_parametrizer_slim_solve_iteration(ParamHandle *handle);
+void uv_parametrizer_slim_stretch_iteration(ParamHandle *handle, float blend);
+void uv_parametrizer_slim_end(ParamHandle *handle);
+bool uv_parametrizer_is_slim(ParamHandle *handle);
 
 /** \} */
 
