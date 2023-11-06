@@ -3003,6 +3003,7 @@ void SubsurfaceScatteringNode::compile(SVMCompiler &compiler)
                     compiler.encode_uchar4(compiler.stack_assign(radius_in),
                                            compiler.stack_assign(roughness_in),
                                            compiler.stack_assign(anisotropy_in)));
+  compiler.add_node(compiler.stack_assign_if_linked(input("Normal")));
 }
 
 void SubsurfaceScatteringNode::compile(OSLCompiler &compiler)
