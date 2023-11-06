@@ -192,7 +192,8 @@ ccl_device int integrate_surface_portal(KernelGlobals kg,
   INTEGRATOR_STATE_WRITE(state, ray, dP) = differential_make_compact(sd->dP);
 #endif
 
-  INTEGRATOR_STATE_WRITE(state, path, throughput) *= pc->weight / sc->sample_weight * sum_sample_weight;
+  INTEGRATOR_STATE_WRITE(state, path, throughput) *= pc->weight / sc->sample_weight *
+                                                     sum_sample_weight;
 
   int label = LABEL_TRANSMIT | LABEL_PORTAL;
   path_state_next(kg, state, label, sd->flag);
