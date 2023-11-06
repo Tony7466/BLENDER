@@ -5394,8 +5394,8 @@ static bool foreach_compat_buffer(RawPropertyType raw_type,
     return false;
   }
 
-  const char f = format ? PyC_StructFmt_type_from_str(format) :
-                          'B'; /* B is assumed when not set */
+  /* B is assumed when not set */
+  const char f = format ? PyC_StructFmt_type_from_str(format) : 'B';
 
   switch (raw_type) {
     case PROP_RAW_CHAR:
