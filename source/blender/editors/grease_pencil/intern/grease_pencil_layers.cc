@@ -305,8 +305,7 @@ static int grease_pencil_layer_reveal_exec(bContext *C, wmOperator *op)
 {
   using namespace blender::bke::greasepencil;
   Object *object = CTX_data_active_object(C);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  const bool select = RNA_boolean_get(op->ptr, "select");
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);  
 
   if (!grease_pencil.has_active_layer()) {
     return OPERATOR_CANCELLED;
@@ -336,12 +335,6 @@ static void GREASE_PENCIL_OT_layer_reveal(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-  /* props */
-  PropertyRNA *prop = RNA_def_boolean(
-    ot->srna, "select", true, "Select", "");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-  ot->prop = prop;
 }
 
 }  // namespace blender::ed::greasepencil
