@@ -964,7 +964,7 @@ void VertexFormatConverter::init(const GPUVertFormat *vertex_format)
 
 void VertexFormatConverter::update_conversion_flags(const GPUVertFormat &vertex_format)
 {
-  needs_reallocation = false;
+  needs_relocation = false;
   needs_conversion = false;
 
   for (int attr_index : IndexRange(vertex_format.attr_len)) {
@@ -1012,43 +1012,77 @@ static bool attribute_check(const GPUVertAttr attribute,
   return attribute.comp_type == comp_type && attribute.fetch_mode == fetch_mode;
 }
 
-void VertexFormatConverter::convert_in_place(void *data, const uint vertex_len)
+void VertexFormatConverter::convert(void *device_data,
+                                    const void *source_data,
+                                    const uint vertex_len)
 {
-  BLI_assert(needs_conversion && !needs_reallocation);
+  BLI_assert(needs_conversion);
+  if (!needs_relocation) {
+    memcpy(device_data, source_data, source_format->stride * vertex_len);
+    convert_no_relocation(device_data, source_data, vertex_len);
+    return;
+  }
+  NOT_YET_IMPLEMENTED;
+}
+
+void VertexFormatConverter::convert_no_relocation(void *device_data,
+                                                  const void *source_data,
+                                                  const uint vertex_len)
+{
+  BLI_assert(needs_conversion && !needs_relocation);
   BLI_assert(source_format->deinterleaved == false);
-  void *row_data = static_cast<uint8_t *>(data);
+  const void *source_row_data = static_cast<const uint8_t *>(source_data);
+  void *device_row_data = static_cast<uint8_t *>(device_data);
   for (int vertex_index : IndexRange(vertex_len)) {
-    for (int attr_index : IndexRange(source_format->attr_len)) {
-      UNUSED_VARS(vertex_index);
-      const GPUVertAttr &source_attribute = source_format->attrs[attr_index];
-      const GPUVertAttr &device_attribute = device_format->attrs[attr_index];
-      void *source_attr_data = static_cast<uint8_t *>(row_data) + source_attribute.offset;
-      void *device_attr_data = static_cast<uint8_t *>(row_data) + device_attribute.offset;
+    UNUSED_VARS(vertex_index);
+    convert_row(device_row_data, source_row_data);
+    source_row_data = static_cast<const uint8_t *>(source_row_data) + source_format->stride;
+    device_row_data = static_cast<uint8_t *>(device_row_data) + device_format->stride;
+  }
+}
 
-      if (attribute_check(source_attribute, GPU_COMP_I32, GPU_FETCH_INT_TO_FLOAT) &&
-          attribute_check(device_attribute, GPU_COMP_F32, GPU_FETCH_FLOAT))
-      {
-        for (int component : IndexRange(source_attribute.comp_len)) {
-          int32_t *component_in = static_cast<int32_t *>(source_attr_data) + component;
-          float *component_out = static_cast<float *>(device_attr_data) + component;
-          *component_out = float(*component_in);
-        }
-      }
+void VertexFormatConverter::convert_row(void *device_row_data, const void *source_row_data)
+{
+  for (int attr_index : IndexRange(source_format->attr_len)) {
+    const GPUVertAttr &source_attribute = source_format->attrs[attr_index];
+    const GPUVertAttr &device_attribute = device_format->attrs[attr_index];
+    const void *source_attr_data = static_cast<const uint8_t *>(source_row_data) +
+                                   source_attribute.offset;
+    void *device_attr_data = static_cast<uint8_t *>(device_row_data) + device_attribute.offset;
 
-      if (attribute_check(source_attribute, GPU_COMP_U32, GPU_FETCH_INT_TO_FLOAT) &&
-          attribute_check(device_attribute, GPU_COMP_F32, GPU_FETCH_FLOAT))
-      {
-        for (int component : IndexRange(source_attribute.comp_len)) {
-          uint32_t *component_in = static_cast<uint32_t *>(source_attr_data) + component;
-          float *component_out = static_cast<float *>(device_attr_data) + component;
-          *component_out = float(*component_in);
-        }
+    if (attribute_check(source_attribute, GPU_COMP_I32, GPU_FETCH_INT_TO_FLOAT) &&
+        attribute_check(device_attribute, GPU_COMP_F32, GPU_FETCH_FLOAT))
+    {
+      for (int component : IndexRange(source_attribute.comp_len)) {
+        const int32_t *component_in = static_cast<const int32_t *>(source_attr_data) + component;
+        float *component_out = static_cast<float *>(device_attr_data) + component;
+        *component_out = float(*component_in);
       }
     }
-    row_data = static_cast<uint8_t *>(row_data) + source_format->stride;
+
+    else if (attribute_check(source_attribute, GPU_COMP_U32, GPU_FETCH_INT_TO_FLOAT) &&
+             attribute_check(device_attribute, GPU_COMP_F32, GPU_FETCH_FLOAT))
+    {
+      for (int component : IndexRange(source_attribute.comp_len)) {
+        const uint32_t *component_in = static_cast<const uint32_t *>(source_attr_data) + component;
+        float *component_out = static_cast<float *>(device_attr_data) + component;
+        *component_out = float(*component_in);
+      }
+    }
+    else if (device_row_data != source_row_data &&
+             source_attribute.comp_len == device_attribute.comp_len &&
+             source_attribute.comp_type == device_attribute.comp_type &&
+             source_attribute.fetch_mode == device_attribute.fetch_mode)
+    {
+      memcpy(device_attr_data, source_attr_data, device_attribute.size);
+    }
+    else {
+      NOT_YET_IMPLEMENTED;
+    }
   }
 }
 
 /* \} */
 
 }  // namespace blender::gpu
+

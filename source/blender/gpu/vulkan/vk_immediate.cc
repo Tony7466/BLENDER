@@ -21,8 +21,6 @@ uchar *VKImmediate::begin()
 {
   VKContext &context = *VKContext::get();
   vertex_format_converter.init(&vertex_format);
-  /* TODO: we should adapt the vertex_format so the offsets of the device format is already being
-   * used. This saves reallocation when uploading, or improves the CPU cache pre-fetching. */
   const size_t bytes_needed = vertex_buffer_size(vertex_format_converter.device_format,
                                                  vertex_len);
   const bool new_buffer_needed = !has_active_resource() || buffer_bytes_free() < bytes_needed;
@@ -47,7 +45,7 @@ void VKImmediate::end()
      */
     uchar *data = static_cast<uchar *>(active_resource()->mapped_memory_get()) +
                   subbuffer_offset_get();
-    vertex_format_converter.convert_in_place(data, vertex_idx);
+    vertex_format_converter.convert(data, data, vertex_idx);
   }
 
   VKContext &context = *VKContext::get();

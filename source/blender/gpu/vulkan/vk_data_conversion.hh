@@ -12,6 +12,8 @@
 
 #include "gpu_texture_private.hh"
 
+#include "vk_common.hh"
+
 namespace blender::gpu {
 
 /**
@@ -102,12 +104,14 @@ struct VertexFormatConverter {
    */
   const GPUVertFormat *device_format = nullptr;
 
-  bool needs_reallocation = false;
+  bool needs_relocation = false;
   bool needs_conversion = false;
   GPUVertFormat converted_format;
 
   void init(const GPUVertFormat *vertex_format);
-  void convert_in_place(void *data, const uint vertex_len);
+  void convert(void *device_data, const void *src_data, const uint vertex_len);
+  void convert_no_relocation(void *device_data, const void *source_data, const uint vertex_len);
+  void convert_row(void *device_row_data, const void *source_row_data);
 
  private:
   void update_conversion_flags(const GPUVertFormat &vertex_format);

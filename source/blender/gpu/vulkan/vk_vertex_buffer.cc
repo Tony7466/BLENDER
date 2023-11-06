@@ -140,9 +140,10 @@ void VKVertexBuffer::upload_data()
     void *data_to_upload = data;
     if (vertex_format_converter.needs_conversion) {
       if (!ELEM(usage_, GPU_USAGE_STATIC, GPU_USAGE_STREAM)) {
-        data_to_upload = MEM_dupallocN(data);
+        data_to_upload = MEM_mallocN(vertex_format_converter.device_format->stride * vertex_len,
+                                     __func__);
       }
-      vertex_format_converter.convert_in_place(data_to_upload, vertex_len);
+      vertex_format_converter.convert(data_to_upload, data, vertex_len);
     }
     buffer_.update(data_to_upload);
     if (data_to_upload != data) {

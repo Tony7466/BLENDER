@@ -241,7 +241,7 @@ void VKVertexAttributeObject::update_bindings(VKImmediate &immediate)
   VKBufferWithOffset immediate_buffer = {*immediate.active_resource(),
                                          immediate.subbuffer_offset_get()};
 
-  update_bindings(immediate.vertex_format,
+  update_bindings(*immediate.vertex_format_converter.device_format,
                   nullptr,
                   &immediate_buffer,
                   immediate.vertex_len,
