@@ -79,6 +79,42 @@ MINLINE float sqrtf_signed(float f)
   return (f >= 0.0f) ? sqrtf(f) : -sqrtf(-f);
 }
 
+MINLINE float saacos(float fac)
+{
+  if (UNLIKELY(fac <= -1.0f)) {
+    return (float)M_PI;
+  }
+  else if (UNLIKELY(fac >= 1.0f)) {
+    return 0.0f;
+  }
+  else {
+    return acosf(fac);
+  }
+}
+
+MINLINE float saasin(float fac)
+{
+  if (UNLIKELY(fac <= -1.0f)) {
+    return (float)-M_PI_2;
+  }
+  else if (UNLIKELY(fac >= 1.0f)) {
+    return (float)M_PI_2;
+  }
+  else {
+    return asinf(fac);
+  }
+}
+
+MINLINE float sasqrt(float fac)
+{
+  if (UNLIKELY(fac <= 0.0f)) {
+    return 0.0f;
+  }
+  else {
+    return sqrtf(fac);
+  }
+}
+
 MINLINE float saacosf(float fac)
 {
   if (UNLIKELY(fac <= -1.0f)) {
@@ -113,37 +149,6 @@ MINLINE float sasqrtf(float fac)
   else {
     return sqrtf(fac);
   }
-}
-
-MINLINE float saacosf_approx(float x)
-{
-  const float f = fabsf(x);
-  /* clamp and crush denormals. */
-  const float m = (f < 1.0f) ? 1.0f - (1.0f - f) : 1.0f;
-  /* Based on http://www.pouet.net/topic.php?which=9132&page=2
-   * 85% accurate (ULP 0)
-   * Examined 2130706434 values of acos:
-   *   15.2000597 avg ULP diff, 4492 max ULP, 4.51803e-05 max error // without "denormal crush"
-   * Examined 2130706434 values of acos:
-   *   15.2007108 avg ULP diff, 4492 max ULP, 4.51803e-05 max error // with "denormal crush"
-   */
-  const float a = sqrtf(1.0f - m) *
-                  (1.5707963267f + m * (-0.213300989f + m * (0.077980478f + m * -0.02164095f)));
-  return x < 0 ? (float)M_PI - a : a;
-}
-
-MINLINE float saasinf_approx(float x)
-{
-  /* Based on acosf approximation above.
-   * Max error is 4.51133e-05 (ULPS are higher because we are consistently off
-   * by a little amount). */
-  const float f = fabsf(x);
-  /* Clamp and crush denormals. */
-  const float m = (f < 1.0f) ? 1.0f - (1.0f - f) : 1.0f;
-  const float a = (float)M_PI_2 -
-                  sqrtf(1.0f - m) * (1.5707963267f +
-                                     m * (-0.213300989f + m * (0.077980478f + m * -0.02164095f)));
-  return copysignf(a, x);
 }
 
 MINLINE float interpf(float target, float origin, float fac)

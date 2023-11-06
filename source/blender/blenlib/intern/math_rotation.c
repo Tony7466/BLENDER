@@ -151,8 +151,8 @@ void sub_qt_qtqt(float q[4], const float a[4], const float b[4])
 void pow_qt_fl_normalized(float q[4], const float fac)
 {
   BLI_ASSERT_UNIT_QUAT(q);
-  const float angle = fac * saacosf(q[0]); /* quat[0] = cos(0.5 * angle),
-                                            * but now the 0.5 and 2.0 rule out */
+  const float angle = fac * saacos(q[0]); /* quat[0] = cos(0.5 * angle),
+                                           * but now the 0.5 and 2.0 rule out */
   const float co = cosf(angle);
   const float si = sinf(angle);
   q[0] = co;
@@ -428,7 +428,7 @@ void mat3_to_quat_legacy(float q[4], const float wmat[3][3])
   normalize_v3(nor);
 
   co = mat[2][2];
-  angle = 0.5f * saacosf(co);
+  angle = 0.5f * saacos(co);
 
   co = cosf(angle);
   si = sinf(angle);
@@ -610,7 +610,7 @@ float quat_split_swing_and_twist(const float q_in[4],
 float angle_normalized_qt(const float q[4])
 {
   BLI_ASSERT_UNIT_QUAT(q);
-  return 2.0f * saacosf(q[0]);
+  return 2.0f * saacos(q[0]);
 }
 
 float angle_qt(const float q[4])
@@ -660,10 +660,10 @@ float angle_signed_normalized_qt(const float q[4])
 {
   BLI_ASSERT_UNIT_QUAT(q);
   if (q[0] >= 0.0f) {
-    return 2.0f * saacosf(q[0]);
+    return 2.0f * saacos(q[0]);
   }
 
-  return -2.0f * saacosf(-q[0]);
+  return -2.0f * saacos(-q[0]);
 }
 
 float angle_signed_normalized_qtqt(const float q1[4], const float q2[4])
@@ -767,7 +767,7 @@ void vec_to_quat(float q[4], const float vec[3], short axis, const short upflag)
 
   normalize_v3(nor);
 
-  axis_angle_normalized_to_quat(q, nor, saacosf(co));
+  axis_angle_normalized_to_quat(q, nor, saacos(co));
 
   if (axis != upflag) {
     float mat[3][3];
@@ -934,7 +934,7 @@ void tri_to_quat_ex(
     n[0] = 1.0f;
   }
 
-  angle = -0.5f * saacosf(vec[2]);
+  angle = -0.5f * saacos(vec[2]);
   co = cosf(angle);
   si = sinf(angle);
   q1[0] = co;

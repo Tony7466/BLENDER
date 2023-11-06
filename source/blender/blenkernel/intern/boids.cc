@@ -1169,12 +1169,12 @@ void boid_brain(BoidBrainData *bbd, int p, ParticleData *pa)
         if (dot_v2v2(cvel, dir) > 0.95f / mul || len <= state->rule_fuzziness) {
           /* try to reach goal at highest point of the parabolic path */
           cur_v = len_v2(pa->prev_state.vel);
-          z_v = sasqrtf(-2.0f * bbd->sim->scene->physics_settings.gravity[2] * bbd->wanted_co[2]);
+          z_v = sasqrt(-2.0f * bbd->sim->scene->physics_settings.gravity[2] * bbd->wanted_co[2]);
           ground_v = len_v2(bbd->wanted_co) *
-                     sasqrtf(-0.5f * bbd->sim->scene->physics_settings.gravity[2] /
-                             bbd->wanted_co[2]);
+                     sasqrt(-0.5f * bbd->sim->scene->physics_settings.gravity[2] /
+                            bbd->wanted_co[2]);
 
-          len = sasqrtf((ground_v - cur_v) * (ground_v - cur_v) + z_v * z_v);
+          len = sasqrt((ground_v - cur_v) * (ground_v - cur_v) + z_v * z_v);
 
           if (len < val.jump_speed * mul || bbd->part->boids->options & BOID_ALLOW_FLIGHT) {
             jump = 1;
@@ -1298,7 +1298,7 @@ void boid_body(BoidBrainData *bbd, ParticleData *pa)
       }
 
       /* constrain direction with maximum angular velocity */
-      angle = saacosf(dot_v3v3(old_dir, wanted_dir));
+      angle = saacos(dot_v3v3(old_dir, wanted_dir));
       angle = min_ff(angle, val.max_ave);
 
       cross_v3_v3v3(nor, old_dir, wanted_dir);
@@ -1334,12 +1334,12 @@ void boid_body(BoidBrainData *bbd, ParticleData *pa)
       float root;
 
       len2 = MAX2(len2, val.min_speed * val.min_speed);
-      root = sasqrtf(new_speed * new_speed - len2);
+      root = sasqrt(new_speed * new_speed - len2);
 
       new_vel[2] = new_vel[2] < 0.0f ? -root : root;
 
       normalize_v2(new_vel);
-      mul_v2_fl(new_vel, sasqrtf(len2));
+      mul_v2_fl(new_vel, sasqrt(len2));
     }
 
     /* finally constrain speed to max speed */

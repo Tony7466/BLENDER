@@ -3867,7 +3867,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 302, 14)) {
     /* Compensate for previously wrong squared distance. */
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      scene->r.bake.max_ray_distance = sasqrtf(scene->r.bake.max_ray_distance);
+      scene->r.bake.max_ray_distance = sasqrt(scene->r.bake.max_ray_distance);
     }
   }
 
