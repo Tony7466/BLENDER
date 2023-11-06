@@ -2002,7 +2002,7 @@ void UV_OT_average_islands_scale(wmOperatorType *ot)
 static struct {
   ParamHandle **handles;
   uint len, len_alloc;
-  wmTimer* timer;
+  wmTimer *timer;
 } g_live_unwrap = {nullptr};
 
 void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit)
@@ -2075,7 +2075,7 @@ void ED_uvedit_live_unwrap_re_solve()
   }
 }
 
-void ED_uvedit_live_unwrap_end(bContext* C, short cancel)
+void ED_uvedit_live_unwrap_end(bContext *C, short cancel)
 {
   if (C && g_live_unwrap.timer) {
     WM_event_timer_remove(CTX_wm_manager(C), CTX_wm_window(C), g_live_unwrap.timer);
