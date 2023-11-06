@@ -21,7 +21,6 @@
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_rand.h"
 
-
 #include "slim_matrix_transfer.h"
 
 #include "GEO_uv_pack.hh"
@@ -3840,7 +3839,8 @@ static void p_add_ngon(ParamHandle *handle,
     bool tri_pin[3] = {pin[v0], pin[v1], pin[v2]};
     bool tri_select[3] = {select[v0], select[v1], select[v2]};
 
-    uv_parametrizer_face_add(handle, key, 3, tri_vkeys, tri_co, tri_uv, tri_weight, tri_pin, tri_select);
+    uv_parametrizer_face_add(
+        handle, key, 3, tri_vkeys, tri_co, tri_uv, tri_weight, tri_pin, tri_select);
   }
 
   BLI_memarena_clear(arena);
@@ -4324,7 +4324,6 @@ void uv_parametrizer_flush_restore(ParamHandle *phandle)
   }
 }
 
-
 /***************************** SLIM Integration *******************************/
 
 using namespace slim;
@@ -4675,9 +4674,9 @@ void uv_parametrizer_slim_reload_all_uvs(ParamHandle *phandle)
 }
 
 void uv_parametrizer_slim_solve(ParamHandle *phandle,
-                                    const MatrixTransferOptions *mt_options,
-                                    int *count_changed,
-                                    int *count_failed)
+                                const MatrixTransferOptions *mt_options,
+                                int *count_changed,
+                                int *count_failed)
 {
   slim_transfer_data_to_slim(phandle, mt_options);
   SLIMMatrixTransfer *mt = phandle->slim_mt;

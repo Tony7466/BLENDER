@@ -110,8 +110,7 @@ void uv_parametrizer_construct_end(ParamHandle *handle,
  * - end: clean up
  */
 
-class MatrixTransferOptions
-{
+class MatrixTransferOptions {
  public:
   char vertex_group[MAX_ID_NAME];
   float vertex_group_factor;
@@ -124,9 +123,9 @@ class MatrixTransferOptions
 
 void uv_parametrizer_slim_reload_all_uvs(ParamHandle *handle);
 void uv_parametrizer_slim_solve(ParamHandle *handle,
-                                    const MatrixTransferOptions *mt_options,
-                                    int *count_changed,
-                                    int *count_failed);
+                                const MatrixTransferOptions *mt_options,
+                                int *count_changed,
+                                int *count_failed);
 
 void uv_parametrizer_slim_begin(ParamHandle *handle, const MatrixTransferOptions *mt_options);
 void uv_parametrizer_slim_solve_iteration(ParamHandle *handle);

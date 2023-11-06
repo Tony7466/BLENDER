@@ -43,8 +43,8 @@
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
-#include "DNA_scene_defaults.h"
 #include "DNA_movieclip_types.h"
+#include "DNA_scene_defaults.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
@@ -4569,7 +4569,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
-    
+
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->toolsettings->uvcalc_iterations = _DNA_DEFAULT_ToolSettings_UVCalc_Iterations;
       scene->toolsettings->uvcalc_vertex_group_factor =
