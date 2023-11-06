@@ -1825,14 +1825,13 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     Scene *scene = static_cast<Scene *>(bmain->scenes.first);
     bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
     if (is_cycles) {
-      const Material &default_mat = *DNA_struct_default_get(Material);
-      const bool default_transparent_shadows = default_mat.blend_flag & MA_BL_TRANSPARENT_SHADOW;
       LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        bool transparent_shadows = true;
         if (IDProperty *cmat = version_cycles_properties_from_ID(&material->id)) {
-          bool transparent_shadows = version_cycles_property_boolean(
-              cmat, "use_transparent_shadow", default_transparent_shadows);
-          SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
+          transparent_shadows = version_cycles_property_boolean(
+              cmat, "use_transparent_shadow", true);
         }
+        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
       }
     }
     else {
