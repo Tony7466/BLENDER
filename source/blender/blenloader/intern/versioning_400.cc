@@ -408,7 +408,7 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     BKE_mesh_legacy_face_map_to_generic(bmain);
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 3)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
     Scene *scene = static_cast<Scene *>(bmain->scenes.first);
     bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
     if (!is_cycles) {
@@ -1819,7 +1819,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 3)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
     /* Unify Material::blend_shadow and Cycles.use_transparent_shadows into the
      * Material::blend_flag. */
     Scene *scene = static_cast<Scene *>(bmain->scenes.first);
