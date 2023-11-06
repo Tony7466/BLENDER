@@ -929,7 +929,6 @@ void WM_operator_current_or_default_properties_alloc(wmOperator *op,
   if (op) {
     BLI_assert(op->type == WM_operatortype_find(idname, false));
     *ptr = *(op->ptr);
-    // MUSTDO: check this line
     ptr->data = IDP_CopyProperty((IDProperty *)ptr->data);
   }
   else {

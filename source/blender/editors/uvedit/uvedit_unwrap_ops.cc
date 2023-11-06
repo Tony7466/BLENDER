@@ -2612,8 +2612,7 @@ static void uvedit_unwrap(const Scene *scene,
                                    r_count_changed, r_count_failed);
   }
   else {
-    blender::geometry::uv_parametrizer_lscm_begin(
-        handle, false, scene->toolsettings->unwrapper == 0);
+    blender::geometry::uv_parametrizer_lscm_begin(handle, false, options->use_abf);
     blender::geometry::uv_parametrizer_lscm_solve(handle, r_count_changed, r_count_failed);
     blender::geometry::uv_parametrizer_lscm_end(handle);
   }
