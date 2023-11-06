@@ -191,7 +191,7 @@ static void object_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const in
   Object *ob_dst = (Object *)id_dst;
   const Object *ob_src = (const Object *)id_src;
 
-  /* TODO: Explicitly copy certain runtime fields. */
+  /* TODO: Explicitly copy certain runtime fields instead of everything. */
   *ob_dst->runtime = *ob_src->runtime;
   BKE_object_runtime_reset_on_copy(ob_dst, flag);
 
