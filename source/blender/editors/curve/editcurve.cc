@@ -5721,7 +5721,7 @@ void CURVE_OT_vertex_add(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = add_vertex_exec;
   ot->invoke = add_vertex_invoke;
-  ot->poll = ED_operator_editcurve;
+  ot->poll = ED_operator_editsurfcurve;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
