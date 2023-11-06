@@ -975,6 +975,9 @@ int transformEvent(TransInfo *t, const wmEvent *event)
     t->redraw |= TREDRAW_HARD;
     handled = true;
   }
+  else if (event->type == TIMER) {
+    t->redraw |= TREDRAW_HARD;
+  }
   else if (!is_navigating && event->type == MOUSEMOVE) {
     t->mval = float2(event->mval);
 
