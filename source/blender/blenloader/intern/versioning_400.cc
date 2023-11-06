@@ -822,25 +822,37 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
     float *detail = version_cycles_node_socket_float_value(detail_socket);
 
     if (detail_link != nullptr) {
-      locy_offset -= 40.0f;
+      locy_offset -= 80.0f;
 
-      /* Add Subtract Math node before Detail input. */
+      /* Add Minimum Math node and Subtract Math node before Detail input. */
+
+      bNode *min_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+      min_node->parent = node->parent;
+      min_node->custom1 = NODE_MATH_MINIMUM;
+      min_node->locx = node->locx;
+      min_node->locy = node->locy - 320.0f;
+      min_node->flag |= NODE_HIDDEN;
+      bNodeSocket *min_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&min_node->inputs, 0));
+      bNodeSocket *min_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&min_node->inputs, 1));
+      bNodeSocket *min_socket_out = nodeFindSocket(min_node, SOCK_OUT, "Value");
 
       bNode *sub1_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
       sub1_node->parent = node->parent;
       sub1_node->custom1 = NODE_MATH_SUBTRACT;
       sub1_node->locx = node->locx;
-      sub1_node->locy = node->locy - 320.0f;
+      sub1_node->locy = node->locy - 360.0f;
       sub1_node->flag |= NODE_HIDDEN;
       bNodeSocket *sub1_socket_A = static_cast<bNodeSocket *>(BLI_findlink(&sub1_node->inputs, 0));
       bNodeSocket *sub1_socket_B = static_cast<bNodeSocket *>(BLI_findlink(&sub1_node->inputs, 1));
       bNodeSocket *sub1_socket_out = nodeFindSocket(sub1_node, SOCK_OUT, "Value");
 
+      *version_cycles_node_socket_float_value(min_socket_B) = 14.0f;
       *version_cycles_node_socket_float_value(sub1_socket_B) = 1.0f;
 
       nodeRemLink(ntree, detail_link);
       nodeAddLink(ntree, detail_from_node, detail_from_socket, sub1_node, sub1_socket_A);
-      nodeAddLink(ntree, sub1_node, sub1_socket_out, node, detail_socket);
+      nodeAddLink(ntree, sub1_node, sub1_socket_out, min_node, min_socket_A);
+      nodeAddLink(ntree, min_node, min_socket_out, node, detail_socket);
 
       if ((noise_type == SHD_NOISE_RIDGED_MULTIFRACTAL) ||
           (noise_type == SHD_NOISE_HETERO_TERRAIN)) {
@@ -852,7 +864,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
         greater_node->parent = node->parent;
         greater_node->custom1 = NODE_MATH_GREATER_THAN;
         greater_node->locx = node->locx;
-        greater_node->locy = node->locy - 360.0f;
+        greater_node->locy = node->locy - 400.0f;
         greater_node->flag |= NODE_HIDDEN;
         bNodeSocket *greater_socket_A = static_cast<bNodeSocket *>(
             BLI_findlink(&greater_node->inputs, 0));
@@ -1021,7 +1033,8 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
     *lacunarity = std::fmaxf(*lacunarity, 1e-5f);
 
     if (roughness_link != nullptr) {
-      /* Add Max Math node, Multiply Math node and Power Math node before Roughness input. */
+      /* Add Maximum Math node after output of roughness_from_node. Add Multiply Math node and
+       * Power Math node before Roughness input. */
 
       bNode *max1_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
       max1_node->parent = node->parent;
@@ -1064,6 +1077,8 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       nodeAddLink(ntree, pow_node, pow_socket_out, node, roughness_socket);
 
       if (lacunarity_link != nullptr) {
+        /* Add Maximum Math node after output of lacunarity_from_node. */
+
         bNode *max2_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
         max2_node->parent = node->parent;
         max2_node->custom1 = NODE_MATH_MAXIMUM;
@@ -1085,7 +1100,8 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       }
     }
     else if ((lacunarity_link != nullptr) && (roughness_link == nullptr)) {
-      /* Add Max Math node and Power Math node before Roughness input. */
+      /* Add Maximum Math node after output of lacunarity_from_node. Add Power Math node before
+       * Roughness input. */
 
       bNode *max2_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
       max2_node->parent = node->parent;
