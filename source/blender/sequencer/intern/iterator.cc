@@ -251,8 +251,3 @@ void SEQ_query_strip_effect_chain(const Scene *scene,
     }
   }
 }
-
-void SEQ_filter_selected_strips(VectorSet<Sequence *> &strips)
-{
-  strips.remove_if([&](Sequence *strip) { return (strip->flag & SELECT) == 0; });
-}
