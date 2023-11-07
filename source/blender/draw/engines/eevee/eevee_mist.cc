@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,7 +14,7 @@
 
 #include "DNA_world_types.h"
 
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "eevee_private.h"
 

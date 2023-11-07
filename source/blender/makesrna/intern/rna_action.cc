@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,9 +20,9 @@
 
 #include "BKE_action.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -34,9 +34,9 @@
 
 #  include "BKE_fcurve.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
-#  include "ED_keyframing.hh"
+#  include "ANIM_fcurve.hh"
 
 #  include "WM_api.hh"
 
@@ -112,7 +112,7 @@ static FCurve *rna_Action_fcurve_new(bAction *act,
   }
 
   /* Annoying, check if this exists. */
-  if (ED_action_fcurve_find(act, data_path, index)) {
+  if (blender::animrig::action_fcurve_find(act, data_path, index)) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "F-Curve '%s[%d]' already exists in action '%s'",
@@ -121,7 +121,7 @@ static FCurve *rna_Action_fcurve_new(bAction *act,
                 act->id.name + 2);
     return nullptr;
   }
-  return ED_action_fcurve_ensure(bmain, act, group, nullptr, data_path, index);
+  return blender::animrig::action_fcurve_ensure(bmain, act, group, nullptr, data_path, index);
 }
 
 static FCurve *rna_Action_fcurve_find(bAction *act,

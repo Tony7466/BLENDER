@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -18,37 +18,39 @@
 #include "DNA_sound_types.h"
 
 #include "BLI_listbase.h"
+#include "BLI_path_util.h"
 
 #include "BKE_fcurve.h"
 #include "BKE_idprop.h"
 #include "BKE_lib_id.h"
+#include "BKE_main.h"
 #include "BKE_sound.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
 
-#include "SEQ_channels.h"
-#include "SEQ_edit.h"
-#include "SEQ_effects.h"
-#include "SEQ_iterator.h"
-#include "SEQ_modifier.h"
-#include "SEQ_proxy.h"
-#include "SEQ_relations.h"
-#include "SEQ_retiming.h"
-#include "SEQ_select.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_sound.h"
-#include "SEQ_time.h"
-#include "SEQ_utils.h"
+#include "SEQ_channels.hh"
+#include "SEQ_edit.hh"
+#include "SEQ_effects.hh"
+#include "SEQ_iterator.hh"
+#include "SEQ_modifier.hh"
+#include "SEQ_proxy.hh"
+#include "SEQ_relations.hh"
+#include "SEQ_retiming.hh"
+#include "SEQ_select.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_sound.hh"
+#include "SEQ_time.hh"
+#include "SEQ_utils.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
-#include "image_cache.h"
-#include "prefetch.h"
-#include "sequencer.h"
-#include "utils.h"
+#include "image_cache.hh"
+#include "prefetch.hh"
+#include "sequencer.hh"
+#include "utils.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Allocate / Free Functions
@@ -68,7 +70,7 @@ static Strip *seq_strip_alloc(int type)
 {
   Strip *strip = static_cast<Strip *>(MEM_callocN(sizeof(Strip), "strip"));
 
-  if (ELEM(type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD) == 0) {
+  if (type != SEQ_TYPE_SOUND_RAM) {
     strip->transform = static_cast<StripTransform *>(
         MEM_callocN(sizeof(StripTransform), "StripTransform"));
     strip->transform->scale_x = 1;
@@ -224,10 +226,10 @@ static void seq_sequence_free_ex(Scene *scene,
     SEQ_channels_free(&seq->channels);
   }
 
-  if (seq->retiming_handles != nullptr) {
-    MEM_freeN(seq->retiming_handles);
-    seq->retiming_handles = nullptr;
-    seq->retiming_handle_num = 0;
+  if (seq->retiming_keys != nullptr) {
+    MEM_freeN(seq->retiming_keys);
+    seq->retiming_keys = nullptr;
+    seq->retiming_keys_num = 0;
   }
 
   MEM_freeN(seq);
@@ -291,6 +293,7 @@ void SEQ_editing_free(Scene *scene, const bool do_id_user)
   BLI_freelistN(&ed->metastack);
   SEQ_sequence_lookup_free(scene);
   SEQ_channels_free(&ed->channels);
+
   MEM_freeN(ed);
 
   scene->ed = nullptr;
@@ -585,10 +588,9 @@ static Sequence *seq_dupli(const Scene *scene_src,
     }
   }
 
-  if (seq->retiming_handles != nullptr) {
-    seqn->retiming_handles = static_cast<SeqRetimingHandle *>(
-        MEM_dupallocN(seq->retiming_handles));
-    seqn->retiming_handle_num = seq->retiming_handle_num;
+  if (seq->retiming_keys != nullptr) {
+    seqn->retiming_keys = static_cast<SeqRetimingKey *>(MEM_dupallocN(seq->retiming_keys));
+    seqn->retiming_keys_num = seq->retiming_keys_num;
   }
 
   return seqn;
@@ -745,7 +747,7 @@ static bool seq_write_data_cb(Sequence *seq, void *userdata)
                              MEM_allocN_len(strip->stripdata) / sizeof(StripElem),
                              strip->stripdata);
     }
-    else if (ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
+    else if (ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_SOUND_RAM)) {
       BLO_write_struct(writer, StripElem, strip->stripdata);
     }
 
@@ -762,9 +764,9 @@ static bool seq_write_data_cb(Sequence *seq, void *userdata)
     BLO_write_struct(writer, SeqTimelineChannel, channel);
   }
 
-  if (seq->retiming_handles != nullptr) {
-    int size = SEQ_retiming_handles_count(seq);
-    BLO_write_struct_array(writer, SeqRetimingHandle, size, seq->retiming_handles);
+  if (seq->retiming_keys != nullptr) {
+    int size = SEQ_retiming_keys_count(seq);
+    BLO_write_struct_array(writer, SeqRetimingKey, size, seq->retiming_keys);
   }
 
   return true;
@@ -781,6 +783,11 @@ void SEQ_blend_write(BlendWriter *writer, ListBase *seqbase)
 static bool seq_read_data_cb(Sequence *seq, void *user_data)
 {
   BlendDataReader *reader = (BlendDataReader *)user_data;
+
+  /* Runtime data cleanup. */
+  seq->scene_sound = nullptr;
+  BLI_listbase_clear(&seq->anims);
+  seq->flag &= ~SEQ_FLAG_SKIP_THUMBNAILS;
 
   /* Do as early as possible, so that other parts of reading can rely on valid session UUID. */
   SEQ_relations_session_uuid_generate(seq);
@@ -813,6 +820,7 @@ static bool seq_read_data_cb(Sequence *seq, void *user_data)
   if (seq->strip && seq->strip->done == 0) {
     seq->strip->done = true;
 
+    /* `SEQ_TYPE_SOUND_HD` case needs to be kept here, for backward compatibility. */
     if (ELEM(seq->type, SEQ_TYPE_IMAGE, SEQ_TYPE_MOVIE, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
       BLO_read_data_address(reader, &seq->strip->stripdata);
     }
@@ -837,8 +845,8 @@ static bool seq_read_data_cb(Sequence *seq, void *user_data)
 
   BLO_read_list(reader, &seq->channels);
 
-  if (seq->retiming_handles != nullptr) {
-    BLO_read_data_address(reader, &seq->retiming_handles);
+  if (seq->retiming_keys != nullptr) {
+    BLO_read_data_address(reader, &seq->retiming_keys);
   }
 
   return true;
@@ -848,100 +856,23 @@ void SEQ_blend_read(BlendDataReader *reader, ListBase *seqbase)
   SEQ_for_each_callback(seqbase, seq_read_data_cb, reader);
 }
 
-struct Read_lib_data {
-  BlendLibReader *reader;
-  Scene *scene;
-};
-
-static bool seq_read_lib_cb(Sequence *seq, void *user_data)
+static bool seq_doversion_250_sound_proxy_update_cb(Sequence *seq, void *user_data)
 {
-  Read_lib_data *data = (Read_lib_data *)user_data;
-  BlendLibReader *reader = data->reader;
-  Scene *sce = data->scene;
-
-  IDP_BlendReadLib(reader, &sce->id, seq->prop);
-
-  if (seq->ipo) {
-    /* XXX: deprecated - old animation system. */
-    BLO_read_id_address(reader, &sce->id, &seq->ipo);
-  }
-  seq->scene_sound = nullptr;
-  if (seq->scene) {
-    BLO_read_id_address(reader, &sce->id, &seq->scene);
-    seq->scene_sound = nullptr;
-  }
-  if (seq->clip) {
-    BLO_read_id_address(reader, &sce->id, &seq->clip);
-  }
-  if (seq->mask) {
-    BLO_read_id_address(reader, &sce->id, &seq->mask);
-  }
-  if (seq->scene_camera) {
-    BLO_read_id_address(reader, &sce->id, &seq->scene_camera);
-  }
-  if (seq->sound) {
-    seq->scene_sound = nullptr;
-    if (seq->type == SEQ_TYPE_SOUND_HD) {
-      seq->type = SEQ_TYPE_SOUND_RAM;
-    }
-    else {
-      BLO_read_id_address(reader, &sce->id, &seq->sound);
-    }
-    if (seq->sound) {
-      id_us_plus_no_lib((ID *)seq->sound);
-      seq->scene_sound = nullptr;
-    }
-  }
-  if (seq->type == SEQ_TYPE_TEXT) {
-    TextVars *t = static_cast<TextVars *>(seq->effectdata);
-    BLO_read_id_address(reader, &sce->id, &t->text_font);
-  }
-  BLI_listbase_clear(&seq->anims);
-
-  SEQ_modifier_blend_read_lib(reader, sce, &seq->modifiers);
-
-  seq->flag &= ~SEQ_FLAG_SKIP_THUMBNAILS;
-  return true;
-}
-
-void SEQ_blend_read_lib(BlendLibReader *reader, Scene *scene, ListBase *seqbase)
-{
-  Read_lib_data data = {reader, scene};
-  SEQ_for_each_callback(seqbase, seq_read_lib_cb, &data);
-}
-
-static bool seq_blend_read_expand(Sequence *seq, void *user_data)
-{
-  BlendExpander *expander = (BlendExpander *)user_data;
-
-  IDP_BlendReadExpand(expander, seq->prop);
-
-  if (seq->scene) {
-    BLO_expand(expander, seq->scene);
-  }
-  if (seq->scene_camera) {
-    BLO_expand(expander, seq->scene_camera);
-  }
-  if (seq->clip) {
-    BLO_expand(expander, seq->clip);
-  }
-  if (seq->mask) {
-    BLO_expand(expander, seq->mask);
-  }
-  if (seq->sound) {
-    BLO_expand(expander, seq->sound);
-  }
-
-  if (seq->type == SEQ_TYPE_TEXT && seq->effectdata) {
-    TextVars *data = static_cast<TextVars *>(seq->effectdata);
-    BLO_expand(expander, data->text_font);
+  Main *bmain = static_cast<Main *>(user_data);
+  if (seq->type == SEQ_TYPE_SOUND_HD) {
+    char filepath_abs[FILE_MAX];
+    BLI_path_join(
+        filepath_abs, sizeof(filepath_abs), seq->strip->dirpath, seq->strip->stripdata->filename);
+    BLI_path_abs(filepath_abs, BKE_main_blendfile_path(bmain));
+    seq->sound = BKE_sound_new_file(bmain, filepath_abs);
+    seq->type = SEQ_TYPE_SOUND_RAM;
   }
   return true;
 }
 
-void SEQ_blend_read_expand(BlendExpander *expander, ListBase *seqbase)
+void SEQ_doversion_250_sound_proxy_update(Main *bmain, Editing *ed)
 {
-  SEQ_for_each_callback(seqbase, seq_blend_read_expand, expander);
+  SEQ_for_each_callback(&ed->seqbase, seq_doversion_250_sound_proxy_update_cb, bmain);
 }
 
 /* Depsgraph update functions. */
@@ -986,6 +917,14 @@ static bool seq_update_seq_cb(Sequence *seq, void *user_data)
     if (seq->sound != nullptr) {
       if (scene->id.recalc & ID_RECALC_AUDIO || seq->sound->id.recalc & ID_RECALC_AUDIO) {
         BKE_sound_update_scene_sound(seq->scene_sound, seq->sound);
+        void *sound = seq->sound->playback_handle;
+
+        if (!BLI_listbase_is_empty(&seq->modifiers)) {
+          LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
+            sound = SEQ_sound_modifier_recreator(seq, smd, sound);
+          }
+        }
+        BKE_sound_update_sequence_handle(seq->scene_sound, sound);
       }
     }
     BKE_sound_set_scene_sound_volume(

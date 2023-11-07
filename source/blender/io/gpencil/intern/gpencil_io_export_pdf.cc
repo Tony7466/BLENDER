@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,20 +23,22 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_view3d.hh"
 
 #ifdef WIN32
-#  include "utfconv.h"
+#  include "utfconv.hh"
 #endif
 
 #include "UI_view2d.hh"
 
 #include "gpencil_io.h"
 #include "gpencil_io_export_pdf.hh"
+
+#include <iostream>
 
 namespace blender ::io ::gpencil {
 

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2011 Blender Foundation
+# SPDX-FileCopyrightText: 2011 Blender Authors
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
@@ -85,7 +85,6 @@ set(_CLANG_FIND_COMPONENTS
   clangAST
   clangLex
   clangBasic
-  clangSupport
 )
 
 set(_CLANG_LIBRARIES)

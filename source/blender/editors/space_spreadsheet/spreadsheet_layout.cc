@@ -1,12 +1,14 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <iomanip>
 #include <sstream>
 
+#include "BLI_math_color.hh"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_string.h"
 
 #include "BKE_geometry_set.hh"
 #include "BKE_instances.hh"

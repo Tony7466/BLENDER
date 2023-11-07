@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -40,25 +40,25 @@
 
 #include "BLI_math_color_blend.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "RE_pipeline.h"
 
-#include "SEQ_channels.h"
-#include "SEQ_effects.h"
-#include "SEQ_proxy.h"
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
-#include "SEQ_time.h"
-#include "SEQ_utils.h"
+#include "SEQ_channels.hh"
+#include "SEQ_effects.hh"
+#include "SEQ_proxy.hh"
+#include "SEQ_relations.hh"
+#include "SEQ_render.hh"
+#include "SEQ_time.hh"
+#include "SEQ_utils.hh"
 
 #include "BLF_api.h"
 
-#include "effects.h"
-#include "render.h"
-#include "strip_time.h"
-#include "utils.h"
+#include "effects.hh"
+#include "render.hh"
+#include "strip_time.hh"
+#include "utils.hh"
 
 static SeqEffectHandle get_sequence_effect_impl(int seq_type);
 
@@ -1980,6 +1980,12 @@ static void RVBlurBitmap2_float(float *map, int width, int height, float blur, i
     return;
   }
 
+  /* If result would be no blurring, early out. */
+  halfWidth = ((quality + 1) * blur);
+  if (halfWidth == 0) {
+    return;
+  }
+
   /* Allocate memory for the temp-map and the blur filter matrix. */
   temp = static_cast<float *>(MEM_mallocN(sizeof(float[4]) * width * height, "blurbitmaptemp"));
   if (!temp) {
@@ -1987,7 +1993,6 @@ static void RVBlurBitmap2_float(float *map, int width, int height, float blur, i
   }
 
   /* Allocate memory for the filter elements */
-  halfWidth = ((quality + 1) * blur);
   filter = (float *)MEM_mallocN(sizeof(float) * halfWidth * 2, "blurbitmapfilter");
   if (!filter) {
     MEM_freeN(temp);
@@ -2104,7 +2109,8 @@ static void RVBlurBitmap2_float(float *map, int width, int height, float blur, i
 
   /* Swap buffers */
   swap = temp;
-  temp = map; /* map = swap; */ /* UNUSED */
+  temp = map;
+  // map = swap; /* UNUSED. */
 
   /* Tidy up. */
   MEM_freeN(filter);
@@ -2615,7 +2621,7 @@ float seq_speed_effect_target_frame_get(Scene *scene,
   }
 
   SEQ_effect_handle_get(seq_speed); /* Ensure, that data are initialized. */
-  int frame_index = SEQ_give_frame_index(scene, seq_speed, timeline_frame);
+  int frame_index = round_fl_to_int(SEQ_give_frame_index(scene, seq_speed, timeline_frame));
   SpeedControlVars *s = (SpeedControlVars *)seq_speed->effectdata;
   const Sequence *source = seq_speed->seq1;
 

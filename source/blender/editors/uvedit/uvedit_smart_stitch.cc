@@ -33,7 +33,7 @@
 #include "BKE_mesh_mapping.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "UI_interface.hh"
 
@@ -45,8 +45,8 @@
 #include "GPU_batch.h"
 #include "GPU_state.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"

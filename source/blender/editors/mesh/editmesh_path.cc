@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -34,8 +34,8 @@
 #include "ED_uvedit.hh"
 #include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -43,7 +43,7 @@
 #include "bmesh.h"
 #include "bmesh_tools.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "mesh_intern.h" /* own include */
 
@@ -713,10 +713,9 @@ static int edbm_shortest_path_pick_invoke(bContext *C, wmOperator *op, const wmE
   BMEdge *eed = nullptr;
   BMFace *efa = nullptr;
 
-  ViewContext vc;
   bool track_active = true;
 
-  em_setup_viewcontext(C, &vc);
+  ViewContext vc = em_setup_viewcontext(C);
   copy_v2_v2_int(vc.mval, event->mval);
   BKE_view_layer_synced_ensure(vc.scene, vc.view_layer);
   Base *basact = BKE_view_layer_active_base_get(vc.view_layer);

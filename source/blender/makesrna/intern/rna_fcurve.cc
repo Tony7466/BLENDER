@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,9 +19,9 @@
 
 #include "BKE_action.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -217,8 +217,8 @@ static StructRNA *rna_FModifierType_refine(PointerRNA *ptr)
 #  include "BKE_fcurve.h"
 #  include "BKE_fcurve_driver.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 /**
  * \warning this isn't efficient but it's unavoidable
@@ -2050,7 +2050,7 @@ static void rna_def_drivervar(BlenderRNA *brna)
 static void rna_def_channeldriver_variables(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
-  /* PropertyRNA *prop; */
+  // PropertyRNA *prop;
 
   FunctionRNA *func;
   PropertyRNA *parm;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,9 +22,12 @@
  * over other previous ones.
  */
 
-#include "NOD_add_node_search.hh"
+#include "BKE_node_runtime.hh"
+
+#include "NOD_texture.h"
 
 #include "node_texture_util.hh"
+#include "node_util.hh"
 
 bool tex_node_poll_default(const bNodeType * /*ntype*/,
                            const bNodeTree *ntree,
@@ -43,7 +46,6 @@ void tex_node_type_base(bNodeType *ntype, int type, const char *name, short ncla
 
   ntype->poll = tex_node_poll_default;
   ntype->insert_link = node_insert_link_default;
-  ntype->gather_add_node_search_ops = blender::nodes::search_node_add_ops_for_basic_node;
 }
 
 static void tex_call_delegate(TexDelegate *dg, float *out, TexParams *params, short thread)

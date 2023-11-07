@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,7 @@
 #include "BLI_listbase.h"
 
 #include "BKE_action.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 namespace blender::deg {
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,6 +14,8 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -66,6 +68,10 @@ static Mesh *triangulate_mesh_selection(const Mesh &mesh,
 
   /* Positions are not changed by the triangulation operation, so the bounds are the same. */
   result->runtime->bounds_cache = mesh.runtime->bounds_cache;
+
+  /* Vertex order is not affected. */
+  geometry::debug_randomize_edge_order(result);
+  geometry::debug_randomize_face_order(result);
 
   return result;
 }

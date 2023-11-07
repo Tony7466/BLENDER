@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,7 @@
 #include "BKE_report.h"
 #include "BKE_tracking.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -31,8 +31,8 @@
 #include "ED_clip.hh"
 #include "ED_screen.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "BLT_translation.h"
 
@@ -1297,7 +1297,7 @@ static int average_tracks_exec(bContext *C, wmOperator *op)
   }
 
   /* Create new empty track, which will be the averaged result.
-   * Makes it simple to average all selection  to it. */
+   * Makes it simple to average all selection to it. */
   MovieTrackingTrack *result_track = BKE_tracking_track_add_empty(tracking,
                                                                   &tracking_object->tracks);
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,7 +14,7 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -39,17 +39,17 @@
 #include "BKE_lib_query.h"
 #include "BKE_material.h"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
-#include "BKE_screen.h"
+#include "BKE_object.hh"
+#include "BKE_screen.hh"
 #include "BKE_shrinkwrap.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "MOD_gpencil_legacy_lineart.h"
 #include "MOD_gpencil_legacy_modifiertypes.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "CLG_log.h"
 
@@ -421,19 +421,18 @@ void BKE_gpencil_modifier_free(GpencilModifierData *md)
   BKE_gpencil_modifier_free_ex(md, 0);
 }
 
-bool BKE_gpencil_modifier_unique_name(ListBase *modifiers, GpencilModifierData *gmd)
+void BKE_gpencil_modifier_unique_name(ListBase *modifiers, GpencilModifierData *gmd)
 {
   if (modifiers && gmd) {
     const GpencilModifierTypeInfo *gmti = BKE_gpencil_modifier_get_info(
         GpencilModifierType(gmd->type));
-    return BLI_uniquename(modifiers,
-                          gmd,
-                          DATA_(gmti->name),
-                          '.',
-                          offsetof(GpencilModifierData, name),
-                          sizeof(gmd->name));
+    BLI_uniquename(modifiers,
+                   gmd,
+                   DATA_(gmti->name),
+                   '.',
+                   offsetof(GpencilModifierData, name),
+                   sizeof(gmd->name));
   }
-  return false;
 }
 
 bool BKE_gpencil_modifier_depends_ontime(GpencilModifierData *md)
@@ -933,7 +932,7 @@ void BKE_gpencil_modifier_blend_write(BlendWriter *writer, ListBase *modbase)
   }
 }
 
-void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
+void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb, Object *ob)
 {
   BLO_read_list(reader, lb);
 
@@ -943,6 +942,11 @@ void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
     /* if modifiers disappear, or for upward compatibility */
     if (nullptr == BKE_gpencil_modifier_get_info(GpencilModifierType(md->type))) {
       md->type = eModifierType_None;
+    }
+
+    /* If linking from a library, clear 'local' library override flag. */
+    if (ID_IS_LINKED(ob)) {
+      md->flag &= ~eGpencilModifierFlag_OverrideLibrary_Local;
     }
 
     if (md->type == eGpencilModifierType_Lattice) {
@@ -1026,18 +1030,6 @@ void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
     if (md->type == eGpencilModifierType_Shrinkwrap) {
       ShrinkwrapGpencilModifierData *gpmd = (ShrinkwrapGpencilModifierData *)md;
       gpmd->cache_data = nullptr;
-    }
-  }
-}
-
-void BKE_gpencil_modifier_blend_read_lib(BlendLibReader *reader, Object *ob)
-{
-  BKE_gpencil_modifiers_foreach_ID_link(ob, BKE_object_modifiers_lib_link_common, reader);
-
-  /* If linking from a library, clear 'local' library override flag. */
-  if (ID_IS_LINKED(ob)) {
-    LISTBASE_FOREACH (GpencilModifierData *, mod, &ob->greasepencil_modifiers) {
-      mod->flag &= ~eGpencilModifierFlag_OverrideLibrary_Local;
     }
   }
 }

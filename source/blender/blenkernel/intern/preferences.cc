@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,7 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "BKE_appdir.h"
 #include "BKE_preferences.h"
@@ -158,6 +158,7 @@ static size_t strncpy_py_module(char *dst, const char *src, const size_t dst_max
 
 bUserExtensionRepo *BKE_preferences_extension_repo_add(UserDef *userdef,
                                                        const char *name,
+                                                       const char *module,
                                                        const char *dirpath)
 {
   bUserExtensionRepo *repo = DNA_struct_default_alloc(bUserExtensionRepo);
@@ -167,7 +168,7 @@ bUserExtensionRepo *BKE_preferences_extension_repo_add(UserDef *userdef,
   BKE_preferences_extension_repo_name_set(userdef, repo, name);
 
   /* Set the unique module-name. */
-  BKE_preferences_extension_repo_module_set(userdef, repo, name);
+  BKE_preferences_extension_repo_module_set(userdef, repo, module);
 
   /* Set the directory. */
   STRNCPY(repo->dirpath, dirpath);

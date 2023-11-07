@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,8 +7,8 @@
 struct NodesModifierData;
 struct Object;
 
-namespace blender::bke::sim {
-class ModifierSimulationCache;
+namespace blender::bke::bake {
+struct ModifierCache;
 }
 namespace blender::nodes::geo_eval_log {
 class GeoModifierLog;
@@ -34,7 +34,7 @@ struct NodesModifierRuntime {
    * original modifier to be removed, without also removing the simulation state which may still be
    * used by the evaluated modifier.
    */
-  std::shared_ptr<bke::sim::ModifierSimulationCache> simulation_cache;
+  std::shared_ptr<bke::bake::ModifierCache> cache;
 };
 
 }  // namespace blender

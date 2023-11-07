@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_string.h"
 
 #include "draw_subdivision.h"
 #include "extract_mesh.hh"

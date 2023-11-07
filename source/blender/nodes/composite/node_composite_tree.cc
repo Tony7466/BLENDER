@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,6 +7,8 @@
  */
 
 #include <cstdio>
+
+#include "BLI_string.h"
 
 #include "DNA_color_types.h"
 #include "DNA_node_types.h"
@@ -26,14 +28,14 @@
 #include "node_common.h"
 #include "node_util.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 #include "node_composite_util.hh"
 
 #ifdef WITH_COMPOSITOR_CPU
-#  include "COM_compositor.h"
+#  include "COM_compositor.hh"
 #endif
 
 static void composite_get_from_context(

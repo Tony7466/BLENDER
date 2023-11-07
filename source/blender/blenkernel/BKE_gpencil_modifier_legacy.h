@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
@@ -274,7 +274,7 @@ void BKE_gpencil_modifier_free_ex(struct GpencilModifierData *md, int flag);
  */
 void BKE_gpencil_modifier_free(struct GpencilModifierData *md);
 /* check unique name */
-bool BKE_gpencil_modifier_unique_name(struct ListBase *modifiers, struct GpencilModifierData *gmd);
+void BKE_gpencil_modifier_unique_name(struct ListBase *modifiers, struct GpencilModifierData *gmd);
 /**
  * Check if grease pencil modifier depends on time.
  * \param md: Modifier data.
@@ -451,8 +451,9 @@ int BKE_gpencil_time_modifier_cfra(struct Depsgraph *depsgraph,
                                    bool is_render);
 
 void BKE_gpencil_modifier_blend_write(struct BlendWriter *writer, struct ListBase *modbase);
-void BKE_gpencil_modifier_blend_read_data(struct BlendDataReader *reader, struct ListBase *lb);
-void BKE_gpencil_modifier_blend_read_lib(struct BlendLibReader *reader, struct Object *ob);
+void BKE_gpencil_modifier_blend_read_data(struct BlendDataReader *reader,
+                                          struct ListBase *lb,
+                                          struct Object *ob);
 
 #ifdef __cplusplus
 }
