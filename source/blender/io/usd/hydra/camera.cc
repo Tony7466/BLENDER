@@ -199,7 +199,7 @@ pxr::GfCamera get_gf_camera(const Depsgraph *depsgraph,
 
   float t_pos[2] = {tile[0], tile[1]}, t_size[2] = {tile[2], tile[3]};
 
-  float l_shift[2] = {(lens_shift[0] + t_pos[0] + t_size[0] * 0.5f - 0.5f) / t_size[0],
+  lens_shift = {(lens_shift[0] + t_pos[0] + t_size[0] * 0.5f - 0.5f) / t_size[0],
                       (lens_shift[1] + t_pos[1] + t_size[1] * 0.5f - 0.5f) / t_size[1]};
 
   pxr::GfVec2f aperture;
