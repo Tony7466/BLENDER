@@ -94,8 +94,9 @@ void convert_in_place(void *data, const GPUVertFormat &vertex_format, const uint
  * transform/upload.
  */
 struct VertexFormatConverter {
+ private:
   /** The original format of the vertex buffer constructed by Blender. */
-  const GPUVertFormat *source_format = nullptr;
+  const GPUVertFormat *source_format_ = nullptr;
 
   /**
    * The format of the vertex buffer that is compatible by the device.
@@ -103,23 +104,80 @@ struct VertexFormatConverter {
    * This can be #source_format when no conversion is needed, or points to #conversion_format when
    * conversion is needed.
    */
-  const GPUVertFormat *device_format = nullptr;
+  const GPUVertFormat *device_format_ = nullptr;
 
-  bool needs_relocation = false;
-  bool needs_conversion = false;
-  GPUVertFormat converted_format;
+  bool needs_conversion_ = false;
 
+  /**
+   * When conversion is needed, this is filled with a variant of source_format_ that is compatible
+   * with Vulkan and the active workarounds passed by the #init method.
+   */
+  GPUVertFormat converted_format_;
+
+ public:
+  /**
+   * Has this instance already been initialized?
+   *
+   * Call #init to initialize the instance.
+   */
   bool is_initialized() const;
+
+  /**
+   * Initialize the vertex format converter instance.
+   *
+   * Can be run on both initialized and uninitialized instances.
+   * After calling this method:
+   * - #is_initialized will return true.
+   * - #device_format_get will return the GPUVertFormat that needs to be used to
+   *   setup the vertex attribute bindings.
+   * - #convert can be called to convert source data to device data.
+   */
   void init(const GPUVertFormat *vertex_format, const VKWorkarounds &workarounds);
+
+  /**
+   * Get the #GPUVertFormat that is compatible with the Vulkan and the active workarounds passed by
+   * the #init function.
+   *
+   * Will assert when this isn't initialized.
+   */
+  const GPUVertFormat &device_format_get() const;
+
+  /**
+   * Can be called after init to check if conversion is needed.
+   */
+  bool needs_conversion() const;
+
+  /**
+   * Convert src_data to device data.
+   *
+   * Only call this after init and when needs_conversion returns true. Will assert if this isn't
+   * the case. src_data and device_data can point to the same memory address and perform an inline
+   * conversion.
+   *
+   * After this method completes the src_data is converted to device compatible data.
+   */
   void convert(void *device_data, const void *src_data, const uint vertex_len) const;
+
+  /**
+   * Reset this instance by clearing internal data.
+   *
+   * After calling this #is_initialized() will be false.
+   */
   void reset();
 
  private:
+  /**
+   * Update conversion flags happens at the start of initialization and updated the
+   * #needs_conversion flag.
+   */
   void update_conversion_flags(const GPUVertFormat &vertex_format,
                                const VKWorkarounds &workarounds);
   void update_conversion_flags(const GPUVertAttr &vertex_attribute,
                                const VKWorkarounds &workarounds);
 
+  /**
+   * Update the conversion_format to contain a device compatible version of the #source_format_.
+   */
   void init_device_format(const VKWorkarounds &workarounds);
   void make_device_compatible(GPUVertAttr &vertex_attribute,
                               const VKWorkarounds &workarounds,

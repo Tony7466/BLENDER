@@ -23,7 +23,7 @@ uchar *VKImmediate::begin()
   VKContext &context = *VKContext::get();
   const VKWorkarounds &workarounds = VKBackend::get().device_get().workarounds_get();
   vertex_format_converter.init(&vertex_format, workarounds);
-  const size_t bytes_needed = vertex_buffer_size(vertex_format_converter.device_format,
+  const size_t bytes_needed = vertex_buffer_size(&vertex_format_converter.device_format_get(),
                                                  vertex_len);
   const bool new_buffer_needed = !has_active_resource() || buffer_bytes_free() < bytes_needed;
 
@@ -41,7 +41,7 @@ void VKImmediate::end()
     return;
   }
 
-  if (vertex_format_converter.needs_conversion) {
+  if (vertex_format_converter.needs_conversion()) {
     /* Determine the start of the subbuffer. The `vertex_data` attribute changes when new vertices
      * are loaded.
      */

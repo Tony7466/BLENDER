@@ -968,36 +968,46 @@ static bool attribute_check(const GPUVertAttr attribute, GPUVertCompType comp_ty
 
 void VertexFormatConverter::reset()
 {
-  source_format = nullptr;
-  device_format = nullptr;
-  GPU_vertformat_clear(&converted_format);
+  source_format_ = nullptr;
+  device_format_ = nullptr;
+  GPU_vertformat_clear(&converted_format_);
 
-  needs_conversion = false;
-  needs_relocation = false;
+  needs_conversion_ = false;
 }
 
 bool VertexFormatConverter::is_initialized() const
 {
-  return device_format != nullptr;
+  return device_format_ != nullptr;
 }
 
 void VertexFormatConverter::init(const GPUVertFormat *vertex_format,
                                  const VKWorkarounds &workarounds)
 {
-  source_format = vertex_format;
-  device_format = vertex_format;
+  source_format_ = vertex_format;
+  device_format_ = vertex_format;
 
-  update_conversion_flags(*source_format, workarounds);
-  if (needs_conversion) {
+  update_conversion_flags(*source_format_, workarounds);
+  if (needs_conversion_) {
     init_device_format(workarounds);
   }
+}
+
+const GPUVertFormat &VertexFormatConverter::device_format_get() const
+{
+  BLI_assert(is_initialized());
+  return *device_format_;
+}
+
+bool VertexFormatConverter::needs_conversion() const
+{
+  BLI_assert(is_initialized());
+  return needs_conversion_;
 }
 
 void VertexFormatConverter::update_conversion_flags(const GPUVertFormat &vertex_format,
                                                     const VKWorkarounds &workarounds)
 {
-  needs_relocation = false;
-  needs_conversion = false;
+  needs_conversion_ = false;
 
   for (int attr_index : IndexRange(vertex_format.attr_len)) {
     const GPUVertAttr &vert_attr = vertex_format.attrs[attr_index];
@@ -1012,31 +1022,30 @@ void VertexFormatConverter::update_conversion_flags(const GPUVertAttr &vertex_at
   if (vertex_attribute.fetch_mode == GPU_FETCH_INT_TO_FLOAT &&
       ELEM(vertex_attribute.comp_type, GPU_COMP_I32, GPU_COMP_U32))
   {
-    needs_conversion = true;
+    needs_conversion_ = true;
   }
   /* r8g8b8 formats will be stored as r8g8b8a8. */
   else if (workarounds.vertex_formats.r8g8b8 && attribute_check(vertex_attribute, GPU_COMP_U8, 3))
   {
-    needs_conversion = true;
-    needs_relocation = true;
+    needs_conversion_ = true;
   }
 }
 
 void VertexFormatConverter::init_device_format(const VKWorkarounds &workarounds)
 {
-  BLI_assert(needs_conversion);
-  device_format = &converted_format;
-  GPU_vertformat_copy(&converted_format, source_format);
+  BLI_assert(needs_conversion_);
+  GPU_vertformat_copy(&converted_format_, source_format_);
   bool needs_repack = false;
 
-  for (int attr_index : IndexRange(converted_format.attr_len)) {
-    GPUVertAttr &vert_attr = converted_format.attrs[attr_index];
+  for (int attr_index : IndexRange(converted_format_.attr_len)) {
+    GPUVertAttr &vert_attr = converted_format_.attrs[attr_index];
     make_device_compatible(vert_attr, workarounds, needs_repack);
   }
 
   if (needs_repack) {
-    VertexFormat_pack(&converted_format);
+    VertexFormat_pack(&converted_format_);
   }
+  device_format_ = &converted_format_;
 }
 
 void VertexFormatConverter::make_device_compatible(GPUVertAttr &vertex_attribute,
@@ -1061,12 +1070,12 @@ void VertexFormatConverter::convert(void *device_data,
                                     const void *source_data,
                                     const uint vertex_len) const
 {
-  BLI_assert(needs_conversion);
+  BLI_assert(needs_conversion_);
   /* When no relocation is needed we won't be copying data that doesn't need to be converted. */
-  if (!needs_relocation && source_data != device_data) {
-    memcpy(device_data, source_data, device_format->stride * vertex_len);
+  if (source_data != device_data) {
+    memcpy(device_data, source_data, device_format_->stride * vertex_len);
   }
-  convert(device_data, source_data, vertex_len, !needs_relocation);
+  convert(device_data, source_data, vertex_len, true);
 }
 
 void VertexFormatConverter::convert(void *device_data,
@@ -1074,15 +1083,15 @@ void VertexFormatConverter::convert(void *device_data,
                                     const uint vertex_len,
                                     const bool forward_direction) const
 {
-  BLI_assert(needs_conversion);
-  BLI_assert(source_format->deinterleaved == false);
+  BLI_assert(needs_conversion_);
+  BLI_assert(source_format_->deinterleaved == false);
   const void *source_row_data = static_cast<const uint8_t *>(source_data);
   void *device_row_data = static_cast<uint8_t *>(device_data);
   for (int vertex_index : IndexRange(vertex_len)) {
     UNUSED_VARS(vertex_index);
     convert_row(device_row_data, source_row_data, forward_direction);
-    source_row_data = static_cast<const uint8_t *>(source_row_data) + source_format->stride;
-    device_row_data = static_cast<uint8_t *>(device_row_data) + device_format->stride;
+    source_row_data = static_cast<const uint8_t *>(source_row_data) + source_format_->stride;
+    device_row_data = static_cast<uint8_t *>(device_row_data) + device_format_->stride;
   }
 }
 
@@ -1090,10 +1099,10 @@ void VertexFormatConverter::convert_row(void *device_row_data,
                                         const void *source_row_data,
                                         const bool forward_direction) const
 {
-  for (int index : IndexRange(source_format->attr_len)) {
-    int attr_index = forward_direction ? index : source_format->attr_len - index - 1;
-    const GPUVertAttr &device_attribute = device_format->attrs[attr_index];
-    const GPUVertAttr &source_attribute = source_format->attrs[attr_index];
+  for (int index : IndexRange(source_format_->attr_len)) {
+    int attr_index = forward_direction ? index : source_format_->attr_len - index - 1;
+    const GPUVertAttr &device_attribute = device_format_->attrs[attr_index];
+    const GPUVertAttr &source_attribute = source_format_->attrs[attr_index];
     convert_attribute(device_row_data, source_row_data, device_attribute, source_attribute);
   }
 }
@@ -1116,7 +1125,6 @@ void VertexFormatConverter::convert_attribute(void *device_row_data,
       *component_out = float(*component_in);
     }
   }
-
   else if (attribute_check(source_attribute, GPU_COMP_U32, GPU_FETCH_INT_TO_FLOAT) &&
            attribute_check(device_attribute, GPU_COMP_F32, GPU_FETCH_FLOAT))
   {
@@ -1133,13 +1141,11 @@ void VertexFormatConverter::convert_attribute(void *device_row_data,
     uchar4 *attr_out = static_cast<uchar4 *>(device_attr_data);
     *attr_out = uchar4(attr_in->x, attr_in->y, attr_in->z, 255);
   }
-  else if (device_row_data != source_row_data &&
-           source_attribute.comp_len == device_attribute.comp_len &&
+  else if (source_attribute.comp_len == device_attribute.comp_len &&
            source_attribute.comp_type == device_attribute.comp_type &&
            source_attribute.fetch_mode == device_attribute.fetch_mode)
   {
-    /* This is skipped when not relocating (needs_relocation == false). */
-    memcpy(device_attr_data, source_attr_data, device_attribute.size);
+    /* No conversion needs to happen for this attribute. */
   }
   else {
     BLI_assert_unreachable();
