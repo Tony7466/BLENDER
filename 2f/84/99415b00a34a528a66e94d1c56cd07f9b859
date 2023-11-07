@@ -1,0 +1,1 @@
+Referenced by issue #114592, VSE text strips can attempt to load fonts from threaded context, which is not allowed.
