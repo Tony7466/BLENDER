@@ -4454,7 +4454,7 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
   bounds.xmax = -INFINITY;
   bounds.ymin = INFINITY;
   bounds.ymax = -INFINITY;
-  const bool include_handles = RNA_boolean_get(op->ptr, "include_handles");
+  const bool include_handles = false;
 
   Scene *scene = CTX_data_scene(C);
   float frame_range[2];
@@ -4540,14 +4540,6 @@ static void ANIM_OT_view_curve_in_graph_editor(wmOperatorType *ot)
 
   /* API callbacks */
   ot->exec = view_curve_in_graph_editor_exec;
-
-  ot->flag = 0;
-
-  RNA_def_boolean(ot->srna,
-                  "include_handles",
-                  true,
-                  "Include Handles",
-                  "Include handles of keyframes when calculating extents");
 
   RNA_def_boolean(ot->srna,
                   "all",
