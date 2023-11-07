@@ -9,7 +9,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_volume.h"
 
 #include "GEO_mesh_to_volume.hh"
@@ -182,7 +182,7 @@ static void node_register()
 
   geo_node_type_base(&ntype, GEO_NODE_MESH_TO_VOLUME, "Mesh to Volume", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
-  blender::bke::node_type_size(&ntype, 200, 120, 700);
+  bke::node_type_size(&ntype, 200, 120, 700);
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
   ntype.geometry_node_execute = node_geo_exec;

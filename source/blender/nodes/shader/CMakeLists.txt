@@ -139,16 +139,20 @@ set(LIB
 
 if(WITH_MATERIALX)
   add_definitions(-DWITH_MATERIALX)
+  list(APPEND INC
+    ${USD_INCLUDE_DIRS}
+    ${BOOST_INCLUDE_DIR}
+  )
   list(APPEND SRC
+    materialx/group_nodes.cc
     materialx/material.cc
     materialx/node_item.cc
     materialx/node_parser.cc
-    materialx/group_nodes.cc
 
+    materialx/group_nodes.h
     materialx/material.h
     materialx/node_item.h
     materialx/node_parser.h
-    materialx/group_nodes.h
   )
   list(APPEND LIB
     MaterialXCore

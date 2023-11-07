@@ -668,16 +668,16 @@ if(UNIX AND NOT APPLE)
       # OpenGL now that the lib/ folder is used for other libraries.
       install(
         CODE "\
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGL.so)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGL.so.1)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGL.so.1.5.0)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGLU.so)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGLU.so.1)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGLU.so.1.3.1)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
-        "
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGL.so)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGL.so.1)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGL.so.1.5.0)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGLU.so)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGLU.so.1)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGLU.so.1.3.1)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
+"
       )
     endif()
   else()
@@ -692,6 +692,10 @@ if(UNIX AND NOT APPLE)
     install(
       FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/blender.desktop
       DESTINATION "./share/applications"
+    )
+    install(
+      FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/org.blender.Blender.metainfo.xml
+      DESTINATION "./share/metainfo"
     )
     install(
       FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/scalable/apps/blender.svg
@@ -896,6 +900,13 @@ elseif(WIN32)
     FILES ${LIBDIR}/epoxy/bin/epoxy-0.dll
     ALL
   )
+
+ if(WITH_VULKAN_BACKEND)
+    windows_install_shared_manifest(
+      FILES ${LIBDIR}/vulkan/bin/vulkan-1.dll
+      ALL
+    )
+  endif()
 
   if(WITH_OPENMP AND MSVC_CLANG)
     windows_install_shared_manifest(

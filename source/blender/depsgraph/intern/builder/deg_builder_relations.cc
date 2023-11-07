@@ -74,7 +74,7 @@
 #include "BKE_modifier.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_rigidbody.h"
@@ -88,7 +88,7 @@
 #include "RNA_prototypes.h"
 #include "RNA_types.hh"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"

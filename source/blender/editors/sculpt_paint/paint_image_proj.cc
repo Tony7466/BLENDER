@@ -22,6 +22,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_linklist.h"
+#include "BLI_math_base_safe.h"
 #include "BLI_math_bits.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_math_geom.h"
@@ -67,7 +68,7 @@
 #include "BKE_mesh_runtime.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -829,10 +830,10 @@ static bool project_paint_PickColor(
 /**
  * Check if 'pt' is in front of the 3 verts on the Z axis (used for screen-space occlusion test)
  * \return
- * -  `0`:   no occlusion
- * - `-1`: no occlusion but 2D intersection is true
- * -  `1`: occluded
- * -  `2`: occluded with `w[3]` weights set (need to know in some cases)
+ * -  `0`: no occlusion.
+ * - `-1`: no occlusion but 2D intersection is true.
+ * -  `1`: occluded.
+ * -  `2`: occluded with `w[3]` weights set (need to know in some cases).
  */
 static int project_paint_occlude_ptv(const float pt[3],
                                      const float v1[4],
@@ -3933,7 +3934,7 @@ static void proj_paint_state_cavity_init(ProjPaintState *ps)
       if (counter[a] > 0) {
         mul_v3_fl(edges[a], 1.0f / counter[a]);
         /* Augment the difference. */
-        cavities[a] = saacos(10.0f * dot_v3v3(ps->vert_normals[a], edges[a])) * float(M_1_PI);
+        cavities[a] = safe_acosf(10.0f * dot_v3v3(ps->vert_normals[a], edges[a])) * float(M_1_PI);
       }
       else {
         cavities[a] = 0.0;
