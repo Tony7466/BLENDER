@@ -1,1 +1,2 @@
 Referenced by issue #41818, Missing refresh on Undo for nodes (mask example)
+Referenced by issue #113653, Compositor: In solid mode in heavy files the compositor freezes blender too often once it's enabled.
