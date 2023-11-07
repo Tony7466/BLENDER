@@ -4,6 +4,7 @@
 
 #pragma BLENDER_REQUIRE(draw_model_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 
 #define EEVEE_ATTRIBUTE_LIB
@@ -163,7 +164,7 @@ float attr_load_float(float attr)
 
 /** \} */
 
-#elif defined(MAT_GEOM_CURVES)
+#elif defined(MAT_GEOM_CURVES) && defined(GPU_VERTEX_SHADER)
 
 /* -------------------------------------------------------------------- */
 /** \name Curve
@@ -171,6 +172,8 @@ float attr_load_float(float attr)
  * Curve objects loads attributes from buffers through sampler buffers.
  * Per attribute scope follows loading order.
  * \{ */
+
+#  pragma BLENDER_REQUIRE(common_hair_lib.glsl) /* TODO rename to curve. */
 
 #  ifdef OBINFO_LIB
 vec3 attr_load_orco(vec4 orco)
