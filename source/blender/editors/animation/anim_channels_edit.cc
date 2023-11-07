@@ -4391,7 +4391,7 @@ static bool get_normalized_fcurve_bounds_foo(FCurve *fcu,
   return true;
 }
 
-static int prop_view_exec(bContext *C, wmOperator *op)
+static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 {
   PointerRNA ptr = {nullptr};
   PropertyRNA *prop = nullptr;
@@ -4531,15 +4531,15 @@ static int prop_view_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void ANIM_OT_prop_view(wmOperatorType *ot)
+static void ANIM_OT_view_curve_in_graph_editor(wmOperatorType *ot)
 {
   /* Identifiers */
-  ot->name = "Frame In Graph Editor";
-  ot->idname = "ANIM_OT_prop_view";
+  ot->name = "View In Graph Editor";
+  ot->idname = "ANIM_OT_view_curve_in_graph_editor";
   ot->description = "Frame the property under the cursor in the Graph Editor";
 
   /* API callbacks */
-  ot->exec = prop_view_exec;
+  ot->exec = view_curve_in_graph_editor_exec;
 
   ot->flag = 0;
 
@@ -4579,7 +4579,7 @@ void ED_operatortypes_animchannels()
 
   WM_operatortype_append(ANIM_OT_channel_view_pick);
   WM_operatortype_append(ANIM_OT_channels_view_selected);
-  WM_operatortype_append(ANIM_OT_prop_view);
+  WM_operatortype_append(ANIM_OT_view_curve_in_graph_editor);
 
   WM_operatortype_append(ANIM_OT_channels_delete);
 
