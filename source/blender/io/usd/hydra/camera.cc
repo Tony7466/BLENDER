@@ -93,9 +93,6 @@ pxr::GfCamera get_gf_camera(const Depsgraph *depsgraph,
     }
     case RV3D_CAMOB: {
       BKE_camera_params_from_object(&camera_params, v3d->camera);
-
-      float t_pos[2] = {tile[0], tile[1]};
-      float t_size[2] = {tile[2], tile[3]};
       int sensor_fit = BKE_camera_sensor_fit(
           camera_params.sensor_fit, rd->xasp * rd->xsch, rd->yasp * rd->ysch);
 
@@ -117,10 +114,6 @@ pxr::GfCamera get_gf_camera(const Depsgraph *depsgraph,
         default:
           BLI_assert_unreachable();
       }
-
-      lens_shift = pxr::GfVec2f(
-          lens_shift[0] / t_size[0] + (t_pos[0] + t_size[0] * 0.5 - 0.5) / t_size[0],
-          lens_shift[1] / t_size[1] + (t_pos[1] + t_size[1] * 0.5 - 0.5) / t_size[1]);
 
       const Camera *camera = (const Camera *)v3d->camera->data;
 
@@ -150,7 +143,6 @@ pxr::GfCamera get_gf_camera(const Depsgraph *depsgraph,
             default:
               BLI_assert_unreachable();
           }
-          sensor_size = pxr::GfVec2f(sensor_size[0] * t_size[0], sensor_size[1] * t_size[1]);
           break;
         case CAM_ORTHO:
           mode = CAM_ORTHO;
@@ -176,7 +168,6 @@ pxr::GfCamera get_gf_camera(const Depsgraph *depsgraph,
             default:
               BLI_assert_unreachable();
           }
-          ortho_size = pxr::GfVec2f(ortho_size[0] * t_size[0], ortho_size[1] * t_size[1]);
           break;
         default:
           BLI_assert_unreachable();
