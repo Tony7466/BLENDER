@@ -14,6 +14,8 @@
 #include "DNA_anim_types.h"
 #include "ED_anim_api.hh"
 
+namespace blender::animrig {
+
 /* -------------------------------------------------------------------- */
 /** \name Public F-Curves API
  * \{ */
@@ -89,3 +91,5 @@ bool ANIM_remove_empty_action_from_animdata(AnimData *adt)
 }
 
 /** \} */
+
+}  // namespace blender::animrig
