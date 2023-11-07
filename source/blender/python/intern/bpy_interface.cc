@@ -462,6 +462,23 @@ void BPY_python_start(bContext *C, int argc, const char **argv)
           BLI_setenv(ssl_cert_file_env, ssl_cert_file);
         }
 #  endif /* PYTHON_SSL_CERT_FILE */
+
+#  if !defined(_WIN32)
+        /* Unfortunately `/etc/ssl/openssl.cnf` may be from a newer version of OPENSSL.
+         * Failure to load this file causes all SSL interactions to fail,
+         * preventing files to be downloaded over HTTPS. Unless this is set to a value by the user,
+         * disable the configuration entirely. See: #114452. */
+        const char *ssl_env_ignore_array[] = {
+            "CTLOG_FILE",   /* `/etc/ssl/ct_log_list.cnf`. */
+            "OPENSSL_CONF", /* `/etc/ssl/openssl.cnf`. */
+        };
+        for (int i = 0; i < ARRAY_SIZE(ssl_env_ignore_array); i++) {
+          const char *ssl_env_ignore = ssl_env_ignore_array[i];
+          if (BLI_getenv(ssl_env_ignore) == nullptr) {
+            BLI_setenv(ssl_env_ignore, "/dev/null");
+          }
+        }
+#  endif
       }
       else {
 /* Common enough to use the system Python on Linux/Unix, warn on other systems. */
