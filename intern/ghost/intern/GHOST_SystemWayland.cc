@@ -4126,6 +4126,8 @@ static bool xkb_compose_state_feed_and_get_utf8(
         break;
       }
       case XKB_COMPOSE_COMPOSING: {
+        r_utf8_buf[0] = 0;
+        handled = true;
         break;
       }
       case XKB_COMPOSE_COMPOSED: {
