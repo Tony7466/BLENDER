@@ -33,7 +33,6 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 #include "DNA_anim_types.h"
-#include "ED_anim_api.hh"
 #include "ED_keyframing.hh"
 #include "MEM_guardedalloc.h"
 #include "RNA_access.hh"
