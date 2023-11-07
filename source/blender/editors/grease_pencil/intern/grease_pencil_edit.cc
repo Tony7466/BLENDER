@@ -475,7 +475,11 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
     if (curves.points_num() == 0) {
       return;
     }
-    if (!ed::curves::has_anything_selected(curves)) {
+
+    IndexMaskMemory memory;
+    const IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
+        *object, info.drawing, memory);
+    if (editable_strokes.is_empty()) {
       return;
     }
 
@@ -511,32 +515,32 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
     const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
         ".selection", ATTR_DOMAIN_POINT, true);
 
-    Array<bool> points_to_delete(curves.points_num());
-    selection.materialize(points_to_delete);
+    /* Mark all points in the editable curves to be deleted. */
+    Array<bool> points_to_delete(curves.points_num(), false);
+    editable_strokes.foreach_index([&](const int64_t curve_i) {
+      const IndexRange points = points_by_curve[curve_i];
+      points_to_delete.as_mutable_span().slice(points).fill(true);
+    });
 
     std::atomic<int64_t> total_points_to_delete = 0;
     if (radii.is_single()) {
-      threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
-        for (const int curve_i : range) {
-          const IndexRange points = points_by_curve[curve_i];
-          total_points_to_delete += stroke_simplify(points,
-                                                    cyclic[curve_i],
-                                                    epsilon,
-                                                    dist_function_positions,
-                                                    points_to_delete.as_mutable_span());
-        }
+      editable_strokes.foreach_index([&](const int64_t curve_i) {
+        const IndexRange points = points_by_curve[curve_i];
+        total_points_to_delete += stroke_simplify(points,
+                                                  cyclic[curve_i],
+                                                  epsilon,
+                                                  dist_function_positions,
+                                                  points_to_delete.as_mutable_span());
       });
     }
     else if (radii.is_span()) {
-      threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
-        for (const int curve_i : range) {
-          const IndexRange points = points_by_curve[curve_i];
-          total_points_to_delete += stroke_simplify(points,
-                                                    cyclic[curve_i],
-                                                    epsilon,
-                                                    dist_function_positions_and_radii,
-                                                    points_to_delete.as_mutable_span());
-        }
+      editable_strokes.foreach_index([&](const int64_t curve_i) {
+        const IndexRange points = points_by_curve[curve_i];
+        total_points_to_delete += stroke_simplify(points,
+                                                  cyclic[curve_i],
+                                                  epsilon,
+                                                  dist_function_positions_and_radii,
+                                                  points_to_delete.as_mutable_span());
       });
     }
 
