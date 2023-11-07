@@ -68,7 +68,8 @@ class WORKSPACE_PT_addons(WorkSpaceButtonsPanel, Panel):
             "addons",
             context.workspace,
             "active_addon",
-            rows=8)
+            rows=8,
+        )
         # Detect unused
         if unknown_addons:
             layout.label(text="Unknown add-ons", icon='ERROR')
@@ -92,37 +93,38 @@ def addon_category_name(addon):
 
 
 class WORKSPACE_UL_addons_items(bpy.types.UIList):
-    @classmethod
-    def filter_addons_by_category_name(cls, pattern, bitflag, addons, reverse=False):
+    @staticmethod
+    def _filter_addons_by_category_name(pattern, bitflag, addons, reverse=False):
         """
         Set FILTER_ITEM for addons which category and name matches filter_name one (case-insensitive).
         pattern is the filtering pattern.
         return a list of flags based on given bit flag, or an empty list if no pattern is given
         or list addons is empty.
         """
-        import fnmatch
 
         if not pattern or not addons:  # Empty pattern or list = no filtering!
             return []
 
+        import fnmatch
+        import re
+
         # Implicitly add heading/trailing wildcards.
-        pattern = "*" + pattern + "*"
+        pattern_regex = re.compile(fnmatch.translate("*" + pattern + "*"), re.IGNORECASE)
 
         flags = [0] * len(addons)
 
         for i, addon in enumerate(addons):
             name = addon_category_name(addon)
-            # This is similar to a logical xor
-            if bool(name and fnmatch.fnmatch(name, pattern)) is not bool(reverse):
+            # This is similar to a logical XOR.
+            if bool(name and pattern_regex.match(name)) is not reverse:
                 flags[i] |= bitflag
         return flags
 
-    @classmethod
-    def sort_addons_by_category_name(cls, addons):
+    @staticmethod
+    def _sort_addons_by_category_name(addons):
         """
         Re-order addons using their categories and names (case-insensitive).
-        return a list mapping org_idx -> new_idx,
-               or an empty list if no sorting has been done.
+        return a list mapping org_idx -> new_idx, or an empty list if no sorting has been done.
         """
         _sort = [(idx, addon_category_name(addon)) for idx, addon in enumerate(addons)]
         return bpy.types.UI_UL_list.sort_items_helper(_sort, lambda e: e[1].lower())
@@ -134,7 +136,7 @@ class WORKSPACE_UL_addons_items(bpy.types.UIList):
 
         # Filtering by category and name
         if self.filter_name:
-            flags = self.filter_addons_by_category_name(
+            flags = self._filter_addons_by_category_name(
                 self.filter_name, self.bitflag_filter_item, addons, reverse=self.use_filter_invert)
         if not flags:
             flags = [self.bitflag_filter_item] * len(addons)
@@ -143,7 +145,7 @@ class WORKSPACE_UL_addons_items(bpy.types.UIList):
             if not WORKSPACE_PT_addons.addon_map.get(addon.module):
                 flags[idx] = 0
         if self.use_filter_sort_alpha:
-            indices = self.sort_addons_by_category_name(addons)
+            indices = self._sort_addons_by_category_name(addons)
         return flags, indices
 
     def draw_item(self, context, layout, _data, addon, icon, _active_data, _active_propname, _index):
