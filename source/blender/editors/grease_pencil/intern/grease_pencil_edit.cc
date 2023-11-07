@@ -609,13 +609,15 @@ static const EnumPropertyItem prop_dissolve_types[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static Array<bool> get_points_to_dissolve(bke::CurvesGeometry &curves, const DissolveMode mode)
+static Array<bool> get_points_to_dissolve(bke::CurvesGeometry &curves,
+                                          const IndexMask &editable_points,
+                                          const DissolveMode mode)
 {
   const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
       ".selection", ATTR_DOMAIN_POINT, true);
 
-  Array<bool> points_to_dissolve(curves.points_num());
-  selection.materialize(points_to_dissolve);
+  Array<bool> points_to_dissolve(curves.points_num(), false);
+  selection.materialize(editable_points, points_to_dissolve);
 
   if (mode == DissolveMode::POINTS) {
     return points_to_dissolve;
@@ -685,14 +687,16 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
     if (curves.points_num() == 0) {
       return;
     }
-    if (!ed::curves::has_anything_selected(curves)) {
+
+    IndexMaskMemory memory;
+    const IndexMask editable_points = ed::greasepencil::retrieve_editable_points(
+        *object, info.drawing, memory);
+    if (editable_points.is_empty()) {
       return;
     }
 
-    const Array<bool> points_to_dissolve = get_points_to_dissolve(curves, mode);
-
+    const Array<bool> points_to_dissolve = get_points_to_dissolve(curves, editable_points, mode);
     if (points_to_dissolve.as_span().contains(true)) {
-      IndexMaskMemory memory;
       curves.remove_points(IndexMask::from_bools(points_to_dissolve, memory));
       info.drawing.tag_topology_changed();
       changed = true;
