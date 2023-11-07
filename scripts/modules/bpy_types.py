@@ -644,7 +644,10 @@ class Mesh(bpy_types.ID):
         import numpy as np
         from struct import iter_unpack
         # Get the vertex indices of each edge from the ".edge_verts" attribute.
-        edge_verts_data = _name_convention_attribute_ensure(self.attributes, ".edge_verts", 'EDGE', 'INT32_2D').data
+        edge_verts_attr = _name_convention_attribute_get(self.attributes, ".edge_verts", 'EDGE', 'INT32_2D')
+        if not edge_verts_attr:
+            return []
+        edge_verts_data = edge_verts_attr.data
         # Matching the property's C type makes `foreach_get` faster because it can copy memory directly into the buffer.
         edge_verts_value_dtype = np.intc
         # `foreach_get` flattens the data and each INT32_2D value has two elements, so the needed array will be twice as
