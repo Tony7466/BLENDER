@@ -59,7 +59,6 @@
 
 #include "BKE_addon.h"
 #include "BKE_appdir.h"
-#include "BKE_file_handler.hh"
 #include "BKE_mask.h"     /* free mask clipboard */
 #include "BKE_material.h" /* BKE_material_copybuf_clear */
 #include "BKE_studiolight.h"
@@ -216,8 +215,6 @@ void WM_init(bContext *C, int argc, const char **argv)
   GHOST_CreateSystemPaths();
 
   BKE_addon_pref_type_init();
-
-  BKE_file_handlers_init();
 
   BKE_keyconfig_pref_type_init();
 

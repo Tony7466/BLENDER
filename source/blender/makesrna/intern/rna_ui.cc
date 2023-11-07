@@ -18,7 +18,6 @@
 #include "BKE_screen.hh"
 
 #include "BLI_listbase.h"
-#include "BLI_string.h"
 
 #include "RNA_define.hh"
 
@@ -1531,13 +1530,9 @@ static StructRNA *rna_FileHandler_register(Main *bmain,
   }
 
   /* Check if we have registered this file handler type before, and remove it. */
-  for (auto *iter_file_handler_type : BKE_file_handlers()) {
-    if (STREQ(iter_file_handler_type->idname, dummy_file_handler_type.idname)) {
-      if (iter_file_handler_type->rna_ext.srna) {
-        rna_FileHandler_unregister(bmain, iter_file_handler_type->rna_ext.srna);
-      }
-      break;
-    }
+  auto registered_file_handler = BKE_file_handler_find(dummy_file_handler_type.idname);
+  if (registered_file_handler) {
+    rna_FileHandler_unregister(bmain, registered_file_handler->rna_ext.srna);
   }
 
   if (!RNA_struct_available_or_report(reports, dummy_file_handler_type.idname)) {
@@ -1548,42 +1543,30 @@ static StructRNA *rna_FileHandler_register(Main *bmain,
   }
 
   /* Create the new file handler type. */
-  FileHandlerType *file_handler_type = MEM_new<FileHandlerType>(__func__);
+  std::unique_ptr<FileHandlerType> file_handler_type = std::make_unique<FileHandlerType>();
   *file_handler_type = dummy_file_handler_type;
-
-  /* Gather all extensions from a string into a list. */
-  const char char_separator = ';';
-  const char *char_begin = file_handler_type->file_extensions_str;
-  const char *char_end = BLI_strchr_or_end(char_begin, char_separator);
-  while (char_begin[0]) {
-    if (char_end - char_begin > 1) {
-      bFileExtension extension;
-      BLI_strncpy(extension.extension, char_begin, char_end - char_begin + 1);
-      file_handler_type->file_extensions.append(extension);
-    }
-    char_begin = char_end[0] ? char_end + 1 : char_end;
-    char_end = BLI_strchr_or_end(char_begin, char_separator);
-  }
 
   file_handler_type->rna_ext.srna = RNA_def_struct_ptr(
       &BLENDER_RNA, file_handler_type->idname, &RNA_FileHandler);
   file_handler_type->rna_ext.data = data;
   file_handler_type->rna_ext.call = call;
   file_handler_type->rna_ext.free = free;
-  RNA_struct_blender_type_set(file_handler_type->rna_ext.srna, file_handler_type);
+  RNA_struct_blender_type_set(file_handler_type->rna_ext.srna, file_handler_type.get());
 
   file_handler_type->poll_drop = have_function[0] ? file_handler_poll_drop : nullptr;
 
-  BKE_file_handler_add(file_handler_type);
+  auto srna = file_handler_type->rna_ext.srna;
+  BKE_file_handler_add(std::move(file_handler_type));
 
-  return file_handler_type->rna_ext.srna;
+  return srna;
 }
 
 static StructRNA *rna_FileHandler_refine(PointerRNA *file_handler_ptr)
 {
   FileHandler *file_handler = (FileHandler *)file_handler_ptr->data;
-  return (file_handler && file_handler->type->rna_ext.srna) ? file_handler->type->rna_ext.srna :
-                                                              &RNA_FileHandler;
+  return (file_handler->type && file_handler->type->rna_ext.srna) ?
+             file_handler->type->rna_ext.srna :
+             &RNA_FileHandler;
 }
 
 #else /* RNA_RUNTIME */
@@ -2339,13 +2322,13 @@ static void rna_def_file_handler(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "FileHandler", nullptr);
   RNA_def_struct_ui_text(srna, "File Handler Type", "I/O File handler");
-  RNA_def_struct_sdna(srna, "FileHandler");
   RNA_def_struct_refine_func(srna, "rna_FileHandler_refine");
   RNA_def_struct_register_funcs(
       srna, "rna_FileHandler_register", "rna_FileHandler_unregister", nullptr);
 
   RNA_def_struct_translation_context(srna, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
   RNA_def_struct_flag(srna, STRUCT_PUBLIC_NAMESPACE_INHERIT);
+
   /* registration */
 
   prop = RNA_def_property(srna, "bl_idname", PROP_STRING, PROP_NONE);
