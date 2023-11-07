@@ -969,8 +969,8 @@ void RNA_def_material(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_text(prop,
                            "Max Vertex Displacement",
-                           "Extends the bounds used for frustum culling. "
-                           "This should be at least as large as the max displacement offset");
+                           "The max distance a vertex can be displaced."
+                           "Displacements over this threshold may cause visibility issues");
   RNA_def_property_update(prop, 0, "rna_Material_draw_update");
 
   /* For Preview Render */
