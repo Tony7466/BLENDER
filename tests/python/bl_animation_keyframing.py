@@ -178,17 +178,25 @@ class CycleAwareKeyingTest(AbstractKeyframingTest, unittest.TestCase):
             bpy.context.scene.frame_set(5)
             bpy.ops.anim.keyframe_insert_by_name(type="Location")
 
+            # Will be mapped to frame 3
             bpy.context.scene.frame_set(22)
             bpy.ops.anim.keyframe_insert_by_name(type="Location")
 
-        # check that only location keys have been created.
+            # Will be mapped to frame 9
+            bpy.context.scene.frame_set(-10)
+            bpy.ops.anim.keyframe_insert_by_name(type="Location")
+
+        # Check that only location keys have been created.
         self.assertTrue(_fcurve_paths_match(action.fcurves, ["location"]))
 
+        expected_keys = [1, 3, 5, 9, 20]
+        
         for fcurve in action.fcurves:
-            self.assertEqual(len(fcurve.keyframe_points), 4)
+            self.assertEqual(len(fcurve.keyframe_points), len(expected_keys))
+            key_index = 0
             for key in fcurve.keyframe_points:
-                # No keyframe should be outside the cyclic range.
-                self.assertLessEqual(key.co.x, cyclic_range_end)
+                self.assertEqual(key.co.x, expected_keys[key_index])
+                key_index += 1
             
             # All fcurves should have a cycles modifier.
             self.assertTrue(fcurve.modifiers[0].type == "CYCLES")
