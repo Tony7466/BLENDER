@@ -19,6 +19,8 @@ namespace blender::io::hydra {
 class MeshData : public ObjectData {
   struct SubMesh {
     pxr::VtVec3fArray vertices;
+    pxr::VtVec3fArray vertex_color;
+    pxr::VtFloatArray vertex_opacity;
     pxr::VtIntArray face_vertex_counts;
     pxr::VtIntArray face_vertex_indices;
     pxr::VtVec3fArray normals;
