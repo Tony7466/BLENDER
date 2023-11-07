@@ -777,7 +777,6 @@ wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths)
     path_data->tooltip = fmt::format(TIP_("Dragging {} files."), path_count);
   }
 
-
   return path_data;
 }
 
@@ -1062,7 +1061,7 @@ void wm_drags_draw(bContext *C, wmWindow *win)
       }
 
       /* Drawing should be allowed to assume the context from handling and polling (that's why we
-       restore it above). */
+       * restore it above). */
       if (drag->drop_state.active_dropbox->draw_droptip) {
         drag->drop_state.active_dropbox->draw_droptip(C, win, drag, xy);
         continue;
