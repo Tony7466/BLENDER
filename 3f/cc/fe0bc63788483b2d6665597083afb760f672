@@ -1,1 +1,2 @@
 Referenced by issue #114542, VSE snaps strips incorrectly which leads to a fatal error
+Referenced by commit 9ecd1063070fcfaed387c71e2df11dbe10ab703d, Fix (unreported) VSE crash when duplicating 4 or more strips.
