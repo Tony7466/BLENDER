@@ -131,9 +131,6 @@ MINLINE float sqrtf_signed(float f);
 MINLINE float saacosf(float f);
 MINLINE float saasinf(float f);
 MINLINE float sasqrtf(float f);
-MINLINE float saacos(float fac);
-MINLINE float saasin(float fac);
-MINLINE float sasqrt(float fac);
 
 /* Compute linear interpolation (lerp) between origin and target. */
 MINLINE float interpf(float target, float origin, float t);

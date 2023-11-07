@@ -1448,7 +1448,7 @@ static PyObject *Quaternion_angle_get(QuaternionObject *self, void * /*closure*/
 
   normalize_qt_qt(tquat, self->quat);
 
-  angle = 2.0f * saacos(tquat[0]);
+  angle = 2.0f * saacosf(tquat[0]);
 
   quat__axis_angle_sanitize(nullptr, &angle);
 

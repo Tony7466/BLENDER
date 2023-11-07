@@ -1908,7 +1908,7 @@ static void calc_bevel_sin_cos(
     t02 = M_PI_2;
   }
   else {
-    t02 = saacos(t02) / 2.0f;
+    t02 = saacosf(t02) / 2.0f;
   }
 
   t02 = sinf(t02);

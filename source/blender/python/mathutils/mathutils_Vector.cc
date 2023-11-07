@@ -1130,7 +1130,7 @@ static PyObject *Vector_angle(VectorObject *self, PyObject *args)
     return nullptr;
   }
 
-  return PyFloat_FromDouble(saacos(dot / (sqrt(dot_self) * sqrt(dot_other))));
+  return PyFloat_FromDouble(saacosf(dot / (sqrt(dot_self) * sqrt(dot_other))));
 }
 
 /** \} */
