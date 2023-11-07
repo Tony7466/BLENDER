@@ -40,18 +40,14 @@ struct ViewSettings {
 
   pxr::GfCamera gf_camera();
 
-  io::hydra::CameraData camera_data;
-
   int screen_width;
   int screen_height;
   pxr::GfVec4i border;
+  bContext *ctx;
 };
 
 ViewSettings::ViewSettings(bContext *context)
-    : camera_data(CTX_data_ensure_evaluated_depsgraph(context),
-                  CTX_wm_view3d(context),
-                  CTX_wm_region(context),
-                  &CTX_data_scene(context)->r)
+    : ctx(context)
 {
   View3D *view3d = CTX_wm_view3d(context);
   RegionView3D *region_data = static_cast<RegionView3D *>(CTX_wm_region_data(context));
@@ -138,10 +134,16 @@ int ViewSettings::height()
 
 pxr::GfCamera ViewSettings::gf_camera()
 {
-  return camera_data.gf_camera(pxr::GfVec4f(float(border[0]) / screen_width,
-                                            float(border[1]) / screen_height,
-                                            float(width()) / screen_width,
-                                            float(height()) / screen_height));
+  pxr::GfVec4f tile = pxr::GfVec4f(float(border[0]) / screen_width,
+                      float(border[1]) / screen_height,
+                      float(width()) / screen_width,
+                      float(height()) / screen_height);
+
+  return io::hydra::get_gf_camera(CTX_data_ensure_evaluated_depsgraph(ctx),
+                                  CTX_wm_view3d(ctx),
+                                  CTX_wm_region(ctx),
+                                  &CTX_data_scene(ctx)->r,
+                           tile);
 }
 
 DrawTexture::DrawTexture()

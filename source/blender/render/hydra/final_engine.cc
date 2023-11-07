@@ -40,14 +40,11 @@ void FinalEngine::render()
                r->border.ymax - r->border.ymin);
   }
 
-  float aspect = r->xasp /r->yasp;
-
   pxr::GfVec2i image_res(r->xsch * r->size / 100, r->ysch * r->size / 100);
   int width = image_res[0] * border[2];
   int height = image_res[1] * border[3];
 
-  pxr::GfCamera camera =
-      io::hydra::CameraData(scene_->camera, image_res, pxr::GfVec4f(0, 0, 1, 1), r).gf_camera(border);
+  pxr::GfCamera camera = io::hydra::get_gf_camera(scene_->camera, image_res, border, r);
 
   free_camera_delegate_->SetCamera(camera);
   render_task_delegate_->set_viewport(pxr::GfVec4d(0, 0, width, height));
