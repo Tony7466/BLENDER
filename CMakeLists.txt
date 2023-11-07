@@ -773,6 +773,9 @@ else()
   set(WITH_UI_TESTS OFF)
 endif()
 
+option(WITH_TESTS_BATCHED "Run multiple tests in a single Blender invocation, for faster test execution" ON)
+mark_as_advanced(WITH_TESTS_BATCHED)
+
 # NOTE: All callers of this must add `TEST_PYTHON_EXE_EXTRA_ARGS` before any other arguments.
 set(TEST_PYTHON_EXE "" CACHE PATH "Python executable to run unit tests")
 mark_as_advanced(TEST_PYTHON_EXE)
