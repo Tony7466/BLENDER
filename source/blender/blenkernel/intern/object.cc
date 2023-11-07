@@ -192,7 +192,7 @@ static void object_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const in
   const Object *ob_src = (const Object *)id_src;
 
   /* TODO: Explicitly copy certain runtime fields instead of everything. */
-  *ob_dst->runtime = *ob_src->runtime;
+  ob_dst->runtime = MEM_new<blender::bke::ObjectRuntime>(__func__, *ob_src->runtime);
   BKE_object_runtime_reset_on_copy(ob_dst, flag);
 
   /* We never handle user-count here for own data. */
