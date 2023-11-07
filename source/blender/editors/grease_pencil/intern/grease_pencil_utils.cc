@@ -9,13 +9,17 @@
 #include "BKE_brush.hh"
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
+#include "BKE_material.h"
 
 #include "BLI_math_vector.hh"
+#include "BLI_vector_set.hh"
 
 #include "DNA_brush_types.h"
+#include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
@@ -144,6 +148,45 @@ Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene, const GreasePen
   }
 
   return visible_drawings.as_span();
+}
+
+IndexMask retrieve_editable_strokes(Object &object,
+                                    const bke::greasepencil::Drawing &drawing,
+                                    IndexMaskMemory &memory)
+{
+  using namespace blender;
+  BLI_assert(object.type == OB_GREASE_PENCIL);
+
+  /* Get all the locked material indices */
+  VectorSet<int> locked_material_indices;
+  for (const int mat_i : IndexRange(object.totcol)) {
+    Material *material = BKE_object_material_get(&object, mat_i + 1);
+    if (material != nullptr && material->gp_style != nullptr &&
+        (material->gp_style->flag & GP_MATERIAL_LOCKED) != 0)
+    {
+      locked_material_indices.add(mat_i);
+    }
+  }
+
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const IndexRange curves_range = drawing.strokes().curves_range();
+  const bke::AttributeAccessor attributes = curves.attributes();
+
+  /* Get all the strokes that have their material unlocked. */
+  const VArray<int> materials = *attributes.lookup_or_default<int>(
+      "material_index", ATTR_DOMAIN_CURVE, -1);
+  const IndexMask unlocked_strokes = IndexMask::from_predicate(
+      curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
+        const int material_index = materials[curve_i];
+        return !locked_material_indices.contains(material_index);
+      });
+  /* Get all the selected strokes. */
+  const IndexMask selected_strokes = ed::curves::retrieve_selected_curves(curves, memory);
+  /* The editable strokes are all strokes that have an unlocked material and are selected. */
+  return IndexMask::from_predicate(
+      curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
+        return unlocked_strokes.contains(curve_i) && selected_strokes.contains(curve_i);
+      });
 }
 
 }  // namespace blender::ed::greasepencil
