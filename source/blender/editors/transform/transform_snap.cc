@@ -129,8 +129,18 @@ bool validSnap(const TransInfo *t)
 
 void transform_snap_flag_from_modifiers_set(TransInfo *t)
 {
-  if (ELEM(t->spacetype, SPACE_GRAPH, SPACE_ACTION, SPACE_NLA)) {
+  if (ELEM(t->spacetype, SPACE_ACTION, SPACE_NLA)) {
     /* Those space-types define their own invert behavior instead of toggling it on/off. */
+    return;
+  }
+  if (t->spacetype == SPACE_GRAPH) {
+    /* This is to stay consistent with the behavior from 3.6. */
+    if (t->modifiers & MOD_SNAP_INVERT) {
+      t->tsnap.mode |= SCE_SNAP_TO_INCREMENT;
+    }
+    else {
+      t->tsnap.mode &= ~SCE_SNAP_TO_INCREMENT;
+    }
     return;
   }
   SET_FLAG_FROM_TEST(t->tsnap.flag,
