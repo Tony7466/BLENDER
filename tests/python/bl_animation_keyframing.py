@@ -15,7 +15,6 @@ blender -b -noaudio --factory-startup --python tests/python/bl_animation_keyfram
 
 def _fcurve_paths_match(fcurves: list, expected_paths: list) -> bool:
     data_paths = list(set([fcurve.data_path for fcurve in fcurves]))
-    # print(sorted(data_paths), sorted(expected_paths))
     return sorted(data_paths) == sorted(expected_paths)
 
 
@@ -33,15 +32,22 @@ def _get_view3d_context():
     return ctx
 
 
-def _insert_by_name_test(insert_key: str, expected_paths: list):
-    bpy.ops.mesh.primitive_monkey_add()
-    keyed_object = bpy.context.active_object
+def _create_animation_object():
+    anim_object = bpy.data.objects.new("anim_object", None)
     # Ensure that the rotation mode is correct so we can check against rotation_euler
-    keyed_object.rotation_mode = "XYZ"
+    anim_object.rotation_mode = "XYZ"
+    bpy.context.scene.collection.objects.link(anim_object)
+    bpy.context.view_layer.objects.active = anim_object
+    anim_object.select_set(True)
+    return anim_object
+
+
+def _insert_by_name_test(insert_key: str, expected_paths: list):
+    keyed_object = _create_animation_object()
     with bpy.context.temp_override(**_get_view3d_context()):
         bpy.ops.anim.keyframe_insert_by_name(type=insert_key)
     match = _fcurve_paths_match(keyed_object.animation_data.action.fcurves, expected_paths)
-    bpy.ops.object.delete(use_global=False)
+    bpy.data.objects.remove(keyed_object, do_unlink=True)
     return match
 
 
@@ -53,14 +59,11 @@ def _insert_with_keying_set_test(keying_set_name: str, expected_paths: list):
     scene = bpy.context.scene
     keying_set = _get_keying_set(scene, keying_set_name)
     scene.keying_sets.active = keying_set
-    bpy.ops.mesh.primitive_monkey_add()
-    keyed_object = bpy.context.active_object
-    # Ensure that the rotation mode is set so we can check against rotation_euler
-    keyed_object.rotation_mode = "XYZ"
+    keyed_object = _create_animation_object()
     with bpy.context.temp_override(**_get_view3d_context()):
         bpy.ops.anim.keyframe_insert()
     match = _fcurve_paths_match(keyed_object.animation_data.action.fcurves, expected_paths)
-    bpy.ops.object.delete(use_global=False)
+    bpy.data.objects.remove(keyed_object, do_unlink=True)
     return match
 
 
