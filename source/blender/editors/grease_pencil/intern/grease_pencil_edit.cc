@@ -250,8 +250,9 @@ void gaussian_blur_1D(const GSpan src,
   });
 }
 
-static void smooth_curve_attribute(const OffsetIndices<int> points_by_curve,
-                                   const VArray<bool> &selection,
+static void smooth_curve_attribute(const IndexMask &curves_to_smooth,
+                                   const OffsetIndices<int> points_by_curve,
+                                   const VArray<bool> &point_selection,
                                    const VArray<bool> &cyclic,
                                    const int64_t iterations,
                                    const float influence,
@@ -259,27 +260,26 @@ static void smooth_curve_attribute(const OffsetIndices<int> points_by_curve,
                                    const bool keep_shape,
                                    GMutableSpan data)
 {
-  threading::parallel_for(points_by_curve.index_range(), 512, [&](const IndexRange range) {
+  curves_to_smooth.foreach_index([&](const int64_t curve_i) {
     Vector<std::byte> orig_data;
-    for (const int curve_i : range) {
-      const IndexRange points = points_by_curve[curve_i];
-      IndexMaskMemory memory;
-      const IndexMask selection_mask = IndexMask::from_bools(points, selection, memory);
-      if (selection_mask.is_empty()) {
-        continue;
-      }
+    const IndexRange points = points_by_curve[curve_i];
 
-      Vector<IndexRange> selection_ranges = selection_mask.to_ranges();
-      for (const IndexRange range : selection_ranges) {
-        GMutableSpan dst_data = data.slice(range);
+    IndexMaskMemory memory;
+    const IndexMask selection_mask = IndexMask::from_bools(points, point_selection, memory);
+    if (selection_mask.is_empty()) {
+      return;
+    }
 
-        orig_data.resize(dst_data.size_in_bytes());
-        dst_data.type().copy_assign_n(dst_data.data(), orig_data.data(), range.size());
-        const GSpan src_data(dst_data.type(), orig_data.data(), range.size());
+    Vector<IndexRange> selection_ranges = selection_mask.to_ranges();
+    for (const IndexRange range : selection_ranges) {
+      GMutableSpan dst_data = data.slice(range);
 
-        gaussian_blur_1D(
-            src_data, iterations, influence, smooth_ends, keep_shape, cyclic[curve_i], dst_data);
-      }
+      orig_data.resize(dst_data.size_in_bytes());
+      dst_data.type().copy_assign_n(dst_data.data(), orig_data.data(), range.size());
+      const GSpan src_data(dst_data.type(), orig_data.data(), range.size());
+
+      gaussian_blur_1D(
+          src_data, iterations, influence, smooth_ends, keep_shape, cyclic[curve_i], dst_data);
     }
   });
 }
@@ -313,16 +313,24 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
       return;
     }
 
+    IndexMaskMemory memory;
+    const IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
+        *object, info.drawing, memory);
+    if (editable_strokes.is_empty()) {
+      return;
+    }
+
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
     const OffsetIndices points_by_curve = curves.points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
-    const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+    const VArray<bool> point_selection = *curves.attributes().lookup_or_default<bool>(
         ".selection", ATTR_DOMAIN_POINT, true);
 
     if (smooth_position) {
       bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
-      smooth_curve_attribute(points_by_curve,
-                             selection,
+      smooth_curve_attribute(editable_strokes,
+                             points_by_curve,
+                             point_selection,
                              cyclic,
                              iterations,
                              influence,
@@ -334,8 +342,9 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
     }
     if (smooth_opacity && info.drawing.opacities().is_span()) {
       bke::GSpanAttributeWriter opacities = attributes.lookup_for_write_span("opacity");
-      smooth_curve_attribute(points_by_curve,
-                             selection,
+      smooth_curve_attribute(editable_strokes,
+                             points_by_curve,
+                             point_selection,
                              cyclic,
                              iterations,
                              influence,
@@ -347,8 +356,9 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
     }
     if (smooth_radius && info.drawing.radii().is_span()) {
       bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
-      smooth_curve_attribute(points_by_curve,
-                             selection,
+      smooth_curve_attribute(editable_strokes,
+                             points_by_curve,
+                             point_selection,
                              cyclic,
                              iterations,
                              influence,
@@ -891,29 +901,28 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-
     if (mode == CyclicalMode::OPEN && !curves.attributes().contains("cyclic")) {
       /* Avoid creating unneeded attribute. */
       return;
     }
 
     IndexMaskMemory memory;
-    const IndexMask curve_selection = ed::curves::retrieve_selected_curves(curves, memory);
-    if (curve_selection.is_empty()) {
+    const IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
+        *object, info.drawing, memory);
+    if (editable_strokes.is_empty()) {
       return;
     }
 
     MutableSpan<bool> cyclic = curves.cyclic_for_write();
-
     switch (mode) {
       case CyclicalMode::CLOSE:
-        index_mask::masked_fill(cyclic, true, curve_selection);
+        index_mask::masked_fill(cyclic, true, editable_strokes);
         break;
       case CyclicalMode::OPEN:
-        index_mask::masked_fill(cyclic, false, curve_selection);
+        index_mask::masked_fill(cyclic, false, editable_strokes);
         break;
       case CyclicalMode::TOGGLE:
-        array_utils::invert_booleans(cyclic, curve_selection);
+        array_utils::invert_booleans(cyclic, editable_strokes);
         break;
     }
 
