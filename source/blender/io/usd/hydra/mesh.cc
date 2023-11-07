@@ -6,13 +6,13 @@
 #include <pxr/base/tf/staticTokens.h>
 #include <pxr/imaging/hd/tokens.h>
 
-#include "BLI_string.h"
-#include "BLI_color.hh"
-#include "BKE_attribute.hh"
 #include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
+#include "BLI_color.hh"
+#include "BLI_string.h"
 
 #include "hydra_scene_delegate.h"
 #include "mesh.h"
@@ -295,7 +295,8 @@ void MeshData::write_submeshes(const Mesh *mesh)
 
     if (!vertex_color.is_empty()) {
       for (const int64_t i : vertex_color.index_range()) {
-        submeshes_[0].vertex_color.push_back(pxr::GfVec3f(vertex_color[i].r, vertex_color[i].g, vertex_color[i].b));
+        submeshes_[0].vertex_color.push_back(
+            pxr::GfVec3f(vertex_color[i].r, vertex_color[i].g, vertex_color[i].b));
         submeshes_[0].vertex_opacity.push_back(vertex_color[i].a);
       };
     }
