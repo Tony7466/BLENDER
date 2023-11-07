@@ -86,8 +86,8 @@ static bool pbvh_attr_supported(int type, const eAttrDomain domain)
   bke::attribute_math::convert_to_static_type(eCustomDataType(type), [&](auto dummy) {
     using T = decltype(dummy);
     using Converter = draw::AttributeConverter<T>;
-    using VBOT = typename Converter::VBOT;
-    if constexpr (!std::is_void_v<VBOT>) {
+    using VBOType = typename Converter::VBOType;
+    if constexpr (!std::is_void_v<VBOType>) {
       type_supported = true;
     }
   });
@@ -132,13 +132,13 @@ template<typename T>
 void extract_data_vert_faces(const PBVH_GPU_Args &args, const Span<T> attribute, GPUVertBuf &vbo)
 {
   using Converter = blender::draw::AttributeConverter<T>;
-  using VBOT = typename Converter::VBOT;
+  using VBOType = typename Converter::VBOType;
   const Span<int> corner_verts = args.corner_verts;
   const Span<MLoopTri> looptris = args.mlooptri;
   const Span<int> looptri_faces = args.looptri_faces;
   const bool *hide_poly = args.hide_poly;
 
-  VBOT *data = static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo));
+  VBOType *data = static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo));
   for (const int looptri_i : args.prim_indices) {
     if (hide_poly && hide_poly[looptri_faces[looptri_i]]) {
       continue;
@@ -155,12 +155,12 @@ template<typename T>
 void extract_data_face_faces(const PBVH_GPU_Args &args, const Span<T> attribute, GPUVertBuf &vbo)
 {
   using Converter = blender::draw::AttributeConverter<T>;
-  using VBOT = typename Converter::VBOT;
+  using VBOType = typename Converter::VBOType;
 
   const Span<int> looptri_faces = args.looptri_faces;
   const bool *hide_poly = args.hide_poly;
 
-  VBOT *data = static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo));
+  VBOType *data = static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo));
   for (const int looptri_i : args.prim_indices) {
     const int face = looptri_faces[looptri_i];
     if (hide_poly && hide_poly[face]) {
@@ -175,13 +175,13 @@ template<typename T>
 void extract_data_corner_faces(const PBVH_GPU_Args &args, const Span<T> attribute, GPUVertBuf &vbo)
 {
   using Converter = blender::draw::AttributeConverter<T>;
-  using VBOT = typename Converter::VBOT;
+  using VBOType = typename Converter::VBOType;
 
   const Span<MLoopTri> looptris = args.mlooptri;
   const Span<int> looptri_faces = args.looptri_faces;
   const bool *hide_poly = args.hide_poly;
 
-  VBOT *data = static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo));
+  VBOType *data = static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo));
   for (const int looptri_i : args.prim_indices) {
     if (hide_poly && hide_poly[looptri_faces[looptri_i]]) {
       continue;
@@ -213,8 +213,8 @@ template<typename T>
 void extract_data_vert_bmesh(const PBVH_GPU_Args &args, const int cd_offset, GPUVertBuf &vbo)
 {
   using Converter = blender::draw::AttributeConverter<T>;
-  using VBOT = typename Converter::VBOT;
-  VBOT *data = static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo));
+  using VBOType = typename Converter::VBOType;
+  VBOType *data = static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo));
 
   for (const BMFace *f : *args.bm_faces) {
     if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
@@ -234,8 +234,8 @@ template<typename T>
 void extract_data_face_bmesh(const PBVH_GPU_Args &args, const int cd_offset, GPUVertBuf &vbo)
 {
   using Converter = blender::draw::AttributeConverter<T>;
-  using VBOT = typename Converter::VBOT;
-  VBOT *data = static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo));
+  using VBOType = typename Converter::VBOType;
+  VBOType *data = static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo));
 
   for (const BMFace *f : *args.bm_faces) {
     if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
@@ -250,8 +250,8 @@ template<typename T>
 void extract_data_corner_bmesh(const PBVH_GPU_Args &args, const int cd_offset, GPUVertBuf &vbo)
 {
   using Converter = blender::draw::AttributeConverter<T>;
-  using VBOT = typename Converter::VBOT;
-  VBOT *data = static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo));
+  using VBOType = typename Converter::VBOType;
+  VBOType *data = static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo));
 
   for (const BMFace *f : *args.bm_faces) {
     if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
@@ -611,10 +611,10 @@ struct PBVHBatches {
       bke::attribute_math::convert_to_static_type(eCustomDataType(vbo.type), [&](auto dummy) {
         using T = decltype(dummy);
         using Converter = draw::AttributeConverter<T>;
-        using VBOT = typename Converter::VBOT;
-        std::fill_n(static_cast<VBOT *>(GPU_vertbuf_get_data(vbo.vert_buf)),
+        using VBOType = typename Converter::VBOType;
+        std::fill_n(static_cast<VBOType *>(GPU_vertbuf_get_data(vbo.vert_buf)),
                     GPU_vertbuf_get_vertex_len(vbo.vert_buf),
-                    VBOT());
+                    VBOType());
       });
     }
   }

@@ -37,10 +37,10 @@ void vertbuf_data_extract_direct(const GSpan attribute, GPUVertBuf &vbo)
   bke::attribute_math::convert_to_static_type(attribute.type(), [&](auto dummy) {
     using T = decltype(dummy);
     using Converter = AttributeConverter<T>;
-    using VBOT = typename Converter::VBOT;
+    using VBOType = typename Converter::VBOType;
     const Span<T> src = attribute.typed<T>();
-    MutableSpan data(static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo)), attribute.size());
-    if constexpr (std::is_same_v<T, VBOT>) {
+    MutableSpan data(static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo)), attribute.size());
+    if constexpr (std::is_same_v<T, VBOType>) {
       array_utils::copy(src, data);
     }
     else {

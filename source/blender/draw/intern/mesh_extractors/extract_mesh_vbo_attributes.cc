@@ -63,10 +63,10 @@ static void extract_data_mesh_mapped_corner(const Span<T> attribute,
                                             GPUVertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
-  using VBOT = typename Converter::VBOT;
-  MutableSpan data(static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo)), indices.size());
+  using VBOType = typename Converter::VBOType;
+  MutableSpan data(static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo)), indices.size());
 
-  if constexpr (std::is_same_v<T, VBOT>) {
+  if constexpr (std::is_same_v<T, VBOType>) {
     array_utils::gather(attribute, indices, data);
   }
   else {
@@ -99,8 +99,8 @@ static void extract_data_mesh_face(const OffsetIndices<int> faces,
                                    GPUVertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
-  using VBOT = typename Converter::VBOT;
-  MutableSpan data(static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo)), faces.total_size());
+  using VBOType = typename Converter::VBOType;
+  MutableSpan data(static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo)), faces.total_size());
 
   threading::parallel_for(faces.index_range(), 2048, [&](const IndexRange range) {
     for (const int i : range) {
@@ -113,8 +113,8 @@ template<typename T>
 static void extract_data_bmesh_vert(const BMesh &bm, const int cd_offset, GPUVertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
-  using VBOT = typename Converter::VBOT;
-  VBOT *data = static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo));
+  using VBOType = typename Converter::VBOType;
+  VBOType *data = static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo));
 
   const BMFace *face;
   BMIter f_iter;
@@ -133,8 +133,8 @@ template<typename T>
 static void extract_data_bmesh_edge(const BMesh &bm, const int cd_offset, GPUVertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
-  using VBOT = typename Converter::VBOT;
-  VBOT *data = static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo));
+  using VBOType = typename Converter::VBOType;
+  VBOType *data = static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo));
 
   const BMFace *face;
   BMIter f_iter;
@@ -153,8 +153,8 @@ template<typename T>
 static void extract_data_bmesh_face(const BMesh &bm, const int cd_offset, GPUVertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
-  using VBOT = typename Converter::VBOT;
-  VBOT *data = static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo));
+  using VBOType = typename Converter::VBOType;
+  VBOType *data = static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo));
 
   const BMFace *face;
   BMIter f_iter;
@@ -169,8 +169,8 @@ template<typename T>
 static void extract_data_bmesh_loop(const BMesh &bm, const int cd_offset, GPUVertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
-  using VBOT = typename Converter::VBOT;
-  VBOT *data = static_cast<VBOT *>(GPU_vertbuf_get_data(&vbo));
+  using VBOType = typename Converter::VBOType;
+  VBOType *data = static_cast<VBOType *>(GPU_vertbuf_get_data(&vbo));
 
   const BMFace *face;
   BMIter f_iter;
