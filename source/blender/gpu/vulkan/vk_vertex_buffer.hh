@@ -46,6 +46,9 @@ class VKVertexBuffer : public VertBuf, public VKBindableResource {
     return vk_buffer_view_;
   }
 
+  void device_format_ensure();
+  const GPUVertFormat &device_format_get() const;
+
  protected:
   void acquire_data() override;
   void resize_data() override;

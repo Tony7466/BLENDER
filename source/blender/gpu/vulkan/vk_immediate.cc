@@ -9,6 +9,7 @@
  */
 
 #include "vk_immediate.hh"
+#include "vk_backend.hh"
 #include "vk_data_conversion.hh"
 #include "vk_state_manager.hh"
 
@@ -20,7 +21,8 @@ VKImmediate::~VKImmediate() {}
 uchar *VKImmediate::begin()
 {
   VKContext &context = *VKContext::get();
-  vertex_format_converter.init(&vertex_format);
+  const VKWorkarounds &workarounds = VKBackend::get().device_get().workarounds_get();
+  vertex_format_converter.init(&vertex_format, workarounds);
   const size_t bytes_needed = vertex_buffer_size(vertex_format_converter.device_format,
                                                  vertex_len);
   const bool new_buffer_needed = !has_active_resource() || buffer_bytes_free() < bytes_needed;
@@ -61,6 +63,7 @@ void VKImmediate::end()
 
   buffer_offset_ += current_subbuffer_len_;
   current_subbuffer_len_ = 0;
+  vertex_format_converter.reset();
 }
 
 VkDeviceSize VKImmediate::subbuffer_offset_get()

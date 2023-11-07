@@ -15,6 +15,7 @@
 #include "vk_common.hh"
 
 namespace blender::gpu {
+struct VKWorkarounds;
 
 /**
  * Convert host buffer to device buffer.
@@ -108,16 +109,33 @@ struct VertexFormatConverter {
   bool needs_conversion = false;
   GPUVertFormat converted_format;
 
-  void init(const GPUVertFormat *vertex_format);
-  void convert(void *device_data, const void *src_data, const uint vertex_len);
-  void convert_no_relocation(void *device_data, const void *source_data, const uint vertex_len);
-  void convert_row(void *device_row_data, const void *source_row_data);
+  bool is_initialized() const;
+  void init(const GPUVertFormat *vertex_format, const VKWorkarounds &workarounds);
+  void convert(void *device_data, const void *src_data, const uint vertex_len) const;
+  void reset();
 
  private:
-  void update_conversion_flags(const GPUVertFormat &vertex_format);
-  void update_conversion_flags(const GPUVertAttr &vertex_attribute);
-  void init_device_format();
-  void make_device_compatible(GPUVertAttr &vertex_attribute);
+  void update_conversion_flags(const GPUVertFormat &vertex_format,
+                               const VKWorkarounds &workarounds);
+  void update_conversion_flags(const GPUVertAttr &vertex_attribute,
+                               const VKWorkarounds &workarounds);
+
+  void init_device_format(const VKWorkarounds &workarounds);
+  void make_device_compatible(GPUVertAttr &vertex_attribute,
+                              const VKWorkarounds &workarounds,
+                              bool &needs_repack) const;
+
+  void convert(void *device_data,
+               const void *source_data,
+               const uint vertex_len,
+               bool forward_direction) const;
+  void convert_row(void *device_row_data,
+                   const void *source_row_data,
+                   bool forward_direction) const;
+  void convert_attribute(void *device_row_data,
+                         const void *source_row_data,
+                         const GPUVertAttr &device_attribute,
+                         const GPUVertAttr &source_attribute) const;
 };
 
 /* \} */

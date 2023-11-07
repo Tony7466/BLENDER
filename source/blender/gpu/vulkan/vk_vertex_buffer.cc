@@ -136,10 +136,11 @@ void VKVertexBuffer::upload_data()
   }
 
   if (flag & GPU_VERTBUF_DATA_DIRTY) {
-    vertex_format_converter.init(&format);
+    device_format_ensure();
     void *data_to_upload = data;
     if (vertex_format_converter.needs_conversion) {
-      if (!ELEM(usage_, GPU_USAGE_STATIC, GPU_USAGE_STREAM)) {
+      if (!ELEM(usage_, GPU_USAGE_STATIC, GPU_USAGE_STREAM) ||
+          vertex_format_converter.needs_relocation) {
         data_to_upload = MEM_mallocN(vertex_format_converter.device_format->stride * vertex_len,
                                      __func__);
       }
@@ -161,6 +162,20 @@ void VKVertexBuffer::upload_data()
 void VKVertexBuffer::duplicate_data(VertBuf * /*dst*/)
 {
   NOT_YET_IMPLEMENTED
+}
+
+void VKVertexBuffer::device_format_ensure()
+{
+  if (!vertex_format_converter.is_initialized()) {
+    const VKWorkarounds &workarounds = VKBackend::get().device_get().workarounds_get();
+    vertex_format_converter.init(&format, workarounds);
+  }
+}
+
+const GPUVertFormat &VKVertexBuffer::device_format_get() const
+{
+  BLI_assert(vertex_format_converter.is_initialized());
+  return *vertex_format_converter.device_format;
 }
 
 void VKVertexBuffer::allocate()
