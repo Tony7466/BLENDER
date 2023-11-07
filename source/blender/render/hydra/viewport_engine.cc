@@ -46,8 +46,7 @@ struct ViewSettings {
   bContext *ctx;
 };
 
-ViewSettings::ViewSettings(bContext *context)
-    : ctx(context)
+ViewSettings::ViewSettings(bContext *context) : ctx(context)
 {
   View3D *view3d = CTX_wm_view3d(context);
   RegionView3D *region_data = static_cast<RegionView3D *>(CTX_wm_region_data(context));
@@ -135,15 +134,15 @@ int ViewSettings::height()
 pxr::GfCamera ViewSettings::gf_camera()
 {
   pxr::GfVec4f tile = pxr::GfVec4f(float(border[0]) / screen_width,
-                      float(border[1]) / screen_height,
-                      float(width()) / screen_width,
-                      float(height()) / screen_height);
+                                   float(border[1]) / screen_height,
+                                   float(width()) / screen_width,
+                                   float(height()) / screen_height);
 
   return io::hydra::get_gf_camera(CTX_data_ensure_evaluated_depsgraph(ctx),
                                   CTX_wm_view3d(ctx),
                                   CTX_wm_region(ctx),
                                   &CTX_data_scene(ctx)->r,
-                           tile);
+                                  tile);
 }
 
 DrawTexture::DrawTexture()
