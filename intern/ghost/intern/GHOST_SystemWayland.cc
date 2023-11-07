@@ -4132,8 +4132,9 @@ static bool xkb_compose_state_feed_and_get_utf8(
         char utf8_buf_compose[sizeof(GHOST_TEventKeyData::utf8_buf) + 1] = {'\0'};
         const int utf8_buf_compose_len = xkb_compose_state_get_utf8(
             compose_state, utf8_buf_compose, sizeof(utf8_buf_compose));
-        if (utf8_buf_compose_len > 0) {
-          memcpy(r_utf8_buf, utf8_buf_compose, utf8_buf_compose_len);
+        if (utf8_buf_compose_len > 0 &&
+            utf8_buf_compose_len <= sizeof(GHOST_TEventKeyData::utf8_buf)) {
+          memcpy(r_utf8_buf, utf8_buf_compose, sizeof(GHOST_TEventKeyData::utf8_buf));
           handled = true;
         }
         break;
