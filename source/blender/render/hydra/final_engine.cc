@@ -31,7 +31,7 @@ void FinalEngine::render()
   char scene_name[MAX_ID_FULL_NAME];
   BKE_id_full_name_get(scene_name, &scene_->id, 0);
 
-  RenderData &r = scene_->r;
+  const RenderData &r = scene_->r;
   pxr::GfVec4f border(0, 0, 1, 1);
   if (r.mode & R_BORDER) {
     border.Set(r.border.xmin,
@@ -39,7 +39,6 @@ void FinalEngine::render()
                r.border.xmax - r.border.xmin,
                r.border.ymax - r.border.ymin);
   }
-
   pxr::GfVec2i image_res(r.xsch * r.size / 100, r.ysch * r.size / 100);
   int width = image_res[0] * border[2];
   int height = image_res[1] * border[3];
