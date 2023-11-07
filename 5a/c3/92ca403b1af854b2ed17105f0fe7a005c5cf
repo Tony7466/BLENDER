@@ -1,1 +1,2 @@
 Referenced by issue #111132, Module ssl points to non-existing openssl_cafile and and openssl_capath
+Referenced by commit fb2f77d088aa86658be5f0ee0b3e85974fa92f7d, Fix macOS Python SSL still not using bundled certificate
