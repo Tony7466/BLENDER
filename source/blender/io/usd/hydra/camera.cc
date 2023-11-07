@@ -35,11 +35,11 @@ static pxr::GfCamera set_gf_camera(bool is_ortho,
   return gf_camera;
 };
 
-pxr::GfCamera get_gf_camera(const Depsgraph *depsgraph,
-                            const View3D *v3d,
-                            const ARegion *region,
-                            RenderData *rd,
-                            pxr::GfVec4f tile)
+pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
+                        const View3D *v3d,
+                        const ARegion *region,
+                        const RenderData *rd,
+                        pxr::GfVec4f tile)
 {
   CameraParams camera_params;
   const RegionView3D *region_data = (const RegionView3D *)region->regiondata;
@@ -204,10 +204,10 @@ pxr::GfCamera get_gf_camera(const Depsgraph *depsgraph,
   return set_gf_camera(camera_params.is_ortho, transform, aperture, lens_shift, clip_range);
 }
 
-pxr::GfCamera get_gf_camera(const Object *camera_obj,
-                            pxr::GfVec2i res,
-                            pxr::GfVec4f tile,
-                            RenderData *rd)
+pxr::GfCamera gf_camera(const Object *camera_obj,
+                        const RenderData *rd,
+                        pxr::GfVec2i res,
+                        pxr::GfVec4f tile)
 {
   const Camera *camera = (const Camera *)camera_obj->data;
 

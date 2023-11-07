@@ -19,14 +19,14 @@ struct RenderData;
 
 namespace blender::io::hydra {
 
-pxr::GfCamera get_gf_camera(const Depsgraph *depsgraph,
-                            const View3D *v3d,
-                            const ARegion *region,
-                            RenderData *rd,
-                            pxr::GfVec4f tile);
+pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
+                        const View3D *v3d,
+                        const ARegion *region,
+                        const RenderData *rd,
+                        pxr::GfVec4f tile);
 
-pxr::GfCamera get_gf_camera(const Object *camera_obj,
-                            pxr::GfVec2i res,
-                            pxr::GfVec4f tile,
-                            RenderData *rd);
+pxr::GfCamera gf_camera(const Object *camera_obj,
+                        const RenderData *rd,
+                        pxr::GfVec2i res,
+                        pxr::GfVec4f tile);
 }  // namespace blender::io::hydra

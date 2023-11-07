@@ -138,11 +138,11 @@ pxr::GfCamera ViewSettings::gf_camera()
                                    float(width()) / screen_width,
                                    float(height()) / screen_height);
 
-  return io::hydra::get_gf_camera(CTX_data_ensure_evaluated_depsgraph(ctx),
-                                  CTX_wm_view3d(ctx),
-                                  CTX_wm_region(ctx),
-                                  &CTX_data_scene(ctx)->r,
-                                  tile);
+  return io::hydra::gf_camera(CTX_data_ensure_evaluated_depsgraph(ctx),
+                              CTX_wm_view3d(ctx),
+                              CTX_wm_region(ctx),
+                              &CTX_data_scene(ctx)->r,
+                              tile);
 }
 
 DrawTexture::DrawTexture()
