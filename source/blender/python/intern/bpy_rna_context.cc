@@ -14,6 +14,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_workspace.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -38,6 +39,8 @@ struct ContextStore {
   bool area_is_set;
   ARegion *region;
   bool region_is_set;
+  bScreen *screen;
+  bool screen_is_set;
 };
 
 struct BPyContextTempOverride {
@@ -82,7 +85,11 @@ static PyObject *bpy_rna_context_temp_override_enter(BPyContextTempOverride *sel
   self->ctx_init.area_is_set = (self->ctx_init.area != area);
   self->ctx_init.region_is_set = (self->ctx_init.region != region);
 
-  bScreen *screen = win ? WM_window_get_active_screen(win) : nullptr;
+  // overridding screen is a bit different since
+  // window can also may be overridden and then we might not need to override the screen
+  self->ctx_init.screen = WM_window_get_active_screen(win);
+  bScreen *screen = self->ctx_temp.screen_is_set ? self->ctx_temp.screen : self->ctx_init.screen;
+  self->ctx_init.screen_is_set = (self->ctx_init.screen != screen);
 
   /* Sanity check, the region is in the screen/area. */
   if (self->ctx_temp.region_is_set && (region != nullptr)) {
@@ -122,6 +129,14 @@ static PyObject *bpy_rna_context_temp_override_enter(BPyContextTempOverride *sel
   if (self->ctx_temp.win_is_set) {
     CTX_wm_window_set(C, self->ctx_temp.win);
   }
+  if (self->ctx_temp.screen_is_set) {
+    WorkSpace *workspace;
+    BKE_workspace_layout_find_global(CTX_data_main(C), screen, &workspace);
+    // changing workspace instead of just screen as they are tied
+    WM_window_set_active_workspace(C, win, workspace);
+    WM_window_set_active_screen(win, workspace, self->ctx_temp.screen);
+    CTX_wm_screen_set(C, self->ctx_temp.screen);
+  }
   if (self->ctx_temp.area_is_set) {
     CTX_wm_area_set(C, self->ctx_temp.area);
   }
@@ -160,7 +175,8 @@ static PyObject *bpy_rna_context_temp_override_exit(BPyContextTempOverride *self
      *   which must now be restored.
      *
      * `is_container_set` is used to detect if nested context members need to be restored.
-     * The comments above refer to the window, it also applies to the area which contains a region.
+     * The comments above refer to the window, it also applies to the screen containing an area
+     * and area which contains a region.
      */
     bool is_container_set = false;
 
@@ -171,7 +187,19 @@ static PyObject *bpy_rna_context_temp_override_exit(BPyContextTempOverride *self
     else if (self->ctx_temp.win_is_set) {
       is_container_set = true;
     }
-
+    if (self->ctx_init.screen_is_set) {
+      wmWindow *win = self->ctx_init.win_is_set ? self->ctx_temp.win : self->ctx_init.win;
+      bScreen *previous_screen = self->ctx_init.screen;
+      WorkSpace *workspace;
+      BKE_workspace_layout_find_global(CTX_data_main(C), previous_screen, &workspace);
+      WM_window_set_active_workspace(C, win, workspace);
+      WM_window_set_active_screen(win, workspace, previous_screen);
+      CTX_wm_screen_set(C, previous_screen);
+      is_container_set = true;
+    }
+    else if (self->ctx_temp.screen_is_set) {
+      is_container_set = true;
+    }
     if (self->ctx_init.area_is_set || is_container_set) {
       CTX_wm_area_set(C, self->ctx_init.area);
       is_container_set = true;
@@ -330,18 +358,21 @@ static PyObject *bpy_context_temp_override(PyObject *self, PyObject *args, PyObj
     BPy_StructRNA_Parse window;
     BPy_StructRNA_Parse area;
     BPy_StructRNA_Parse region;
+    BPy_StructRNA_Parse screen;
   } params{};
   params.window.type = &RNA_Window;
   params.area.type = &RNA_Area;
   params.region.type = &RNA_Region;
+  params.screen.type = &RNA_Screen;
 
-  static const char *const _keywords[] = {"window", "area", "region", nullptr};
+  static const char *const _keywords[] = {"window", "area", "region", "screen", nullptr};
   static _PyArg_Parser _parser = {
       PY_ARG_PARSER_HEAD_COMPAT()
       "|$" /* Optional, keyword only arguments. */
       "O&" /* `window` */
       "O&" /* `area` */
       "O&" /* `region` */
+      "O&" /* `screen` */
       ":temp_override",
       _keywords,
       nullptr,
@@ -358,7 +389,9 @@ static PyObject *bpy_context_temp_override(PyObject *self, PyObject *args, PyObj
                                                               pyrna_struct_as_ptr_or_null_parse,
                                                               &params.area,
                                                               pyrna_struct_as_ptr_or_null_parse,
-                                                              &params.region);
+                                                              &params.region,
+                                                              pyrna_struct_as_ptr_or_null_parse,
+                                                              &params.screen);
     Py_DECREF(kwds_parse);
     if (parse_result == -1) {
       Py_DECREF(kwds);
@@ -385,10 +418,13 @@ static PyObject *bpy_context_temp_override(PyObject *self, PyObject *args, PyObj
     ctx_temp.area = static_cast<ScrArea *>(params.area.ptr->data);
     ctx_temp.area_is_set = true;
   }
-
   if (params.region.ptr != nullptr) {
     ctx_temp.region = static_cast<ARegion *>(params.region.ptr->data);
     ctx_temp.region_is_set = true;
+  }
+  if (params.screen.ptr != nullptr) {
+    ctx_temp.screen = static_cast<bScreen *>(params.screen.ptr->data);
+    ctx_temp.screen_is_set = true;
   }
 
   BPyContextTempOverride *ret = PyObject_New(BPyContextTempOverride, &BPyContextTempOverride_Type);
