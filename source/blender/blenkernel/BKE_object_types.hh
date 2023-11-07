@@ -48,19 +48,19 @@ struct ObjectRuntime {
 
   /** Axis aligned bound-box (in local-space). */
   // TODO: Move runtime struct to C++. Convert to Bounds<float3>
-  struct BoundBox *bb;
+  BoundBox *bb;
 
   /**
    * Original data pointer, before object->data was changed to point
    * to data_eval.
    * Is assigned by dependency graph's copy-on-write evaluation.
    */
-  struct ID *data_orig;
+  ID *data_orig;
   /**
    * Object data structure created during object evaluation. It has all modifiers applied.
    * The type is determined by the type of the original object.
    */
-  struct ID *data_eval;
+  ID *data_eval;
 
   /**
    * Objects can evaluate to a geometry set instead of a single ID. In those cases, the evaluated
@@ -74,31 +74,31 @@ struct ObjectRuntime {
    * Mesh structure created during object evaluation.
    * It has deformation only modifiers applied on it.
    */
-  struct Mesh *mesh_deform_eval;
+  Mesh *mesh_deform_eval;
 
   /* Evaluated mesh cage in edit mode. */
-  struct Mesh *editmesh_eval_cage;
+  Mesh *editmesh_eval_cage;
 
   /** Cached cage bounding box of `editmesh_eval_cage` for selection. */
-  struct BoundBox *editmesh_bb_cage;
+  BoundBox *editmesh_bb_cage;
 
   /**
    * Original grease pencil bGPdata pointer, before object->data was changed to point
    * to gpd_eval.
    * Is assigned by dependency graph's copy-on-write evaluation.
    */
-  struct bGPdata *gpd_orig;
+  bGPdata *gpd_orig;
   /**
    * bGPdata structure created during object evaluation.
    * It has all modifiers applied.
    */
-  struct bGPdata *gpd_eval;
+  bGPdata *gpd_eval;
 
   /**
    * This is a mesh representation of corresponding object.
    * It created when Python calls `object.to_mesh()`.
    */
-  struct Mesh *object_as_temp_mesh;
+  Mesh *object_as_temp_mesh;
 
   /**
    * Backup of the object's pose (might be a subset, i.e. not contain all bones).
@@ -106,16 +106,16 @@ struct ObjectRuntime {
    * Created by `BKE_pose_backup_create_on_object()`. This memory is owned by the Object.
    * It is freed along with the object, or when `BKE_pose_backup_clear()` is called.
    */
-  struct PoseBackup *pose_backup;
+  PoseBackup *pose_backup;
 
   /**
    * This is a curve representation of corresponding object.
    * It created when Python calls `object.to_curve()`.
    */
-  struct Curve *object_as_temp_curve;
+  Curve *object_as_temp_curve;
 
   /** Runtime evaluated curve-specific data, not stored in the file. */
-  struct CurveCache *curve_cache;
+  CurveCache *curve_cache;
 
   unsigned short local_collections_bits;
 
