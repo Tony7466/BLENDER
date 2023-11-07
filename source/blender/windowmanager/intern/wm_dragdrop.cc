@@ -60,6 +60,7 @@
 #include "wm_event_system.h"
 #include "wm_window.hh"
 
+#include <fmt/format.h>
 /* ****************************************************** */
 
 static ListBase dropboxes = {nullptr, nullptr};
@@ -765,28 +766,17 @@ wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths)
 
   path_data->file_type = ED_path_extension_type(paths[0]);
 
-  const char *extension = BLI_path_extension(paths[0]);
-
   for (auto path : paths) {
-    const char *test_ext = BLI_path_extension(path);
-    if (extension == test_ext || (extension && test_ext && STREQ(extension, test_ext))) {
-      path_data->paths.append(path);
-    }
+    path_data->paths.append(path);
   }
 
-  const char *tooltip = path_data->paths[0].c_str();
-  char tooltip_buffer[256];
+  path_data->tooltip = path_data->paths[0];
 
   if (path_data->paths.size() > 1) {
-    BLI_snprintf(tooltip_buffer,
-                 ARRAY_SIZE(tooltip_buffer),
-                 TIP_("Dragging %d %s files."),
-                 path_data->paths.size(),
-                 extension ? extension : TIP_("Folder"));
-    tooltip = tooltip_buffer;
+    std::string path_count = std::to_string(path_data->paths.size());
+    path_data->tooltip = fmt::format(TIP_("Dragging {} files."), path_count);
   }
 
-  path_data->tooltip = tooltip;
 
   return path_data;
 }
@@ -800,7 +790,7 @@ static void wm_drag_free_path_data(wmDragPath **path_data)
 const char *WM_drag_get_single_path(const wmDrag *drag)
 {
   if (drag->type != WM_DRAG_PATH) {
-    nullptr;
+    return nullptr;
   }
 
   const wmDragPath *path_data = static_cast<const wmDragPath *>(drag->poin);
@@ -1071,9 +1061,8 @@ void wm_drags_draw(bContext *C, wmWindow *win)
         wmWindowViewport(win);
       }
 
-      /* Drawing should be allowed to assume the context from
-       * handling and polling (that's why we restore it
-       * above). */
+      /* Drawing should be allowed to assume the context from handling and polling (that's why we
+       restore it above). */
       if (drag->drop_state.active_dropbox->draw_droptip) {
         drag->drop_state.active_dropbox->draw_droptip(C, win, drag, xy);
         continue;

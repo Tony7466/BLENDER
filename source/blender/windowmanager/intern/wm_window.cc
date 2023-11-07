@@ -1569,7 +1569,6 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
         const GHOST_TStringArray *stra = static_cast<const GHOST_TStringArray *>(ddd->data);
 
         if (stra->count) {
-          printf("drop file %s\n", stra->strings[0]);
           /* try to get icon type from extension */
           int icon = ED_file_extension_icon((char *)stra->strings[0]);
           wmDragPath *path_data = WM_drag_create_path_data(

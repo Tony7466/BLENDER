@@ -1423,14 +1423,15 @@ const char *WM_drag_get_item_name(wmDrag *drag);
 /* Paths drag and drop. */
 /**
  * \param paths: The paths to drag. Values will be copied into the drag data so the passed strings
- * may be destructed. Only paths that share the same extension of the first file will be copied.
+ * may be destructed.
  */
 wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths);
 const char *WM_drag_get_single_path(const wmDrag *drag);
 const blender::Span<std::string> WM_drag_get_paths(const wmDrag *drag);
 /**
  * Note that even though the enum return type uses bit-flags, this should never have multiple
- * type-bits set, so `ELEM()` like comparison is possible.
+ * type-bits set, so `ELEM()` like comparison is possible. For internal use only, and only
+ * indicates the file type of first path in `wmDragPath.paths`.
  */
 int /* eFileSel_File_Types */ WM_drag_get_path_file_type(const wmDrag *drag);
 
