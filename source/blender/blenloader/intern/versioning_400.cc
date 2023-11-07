@@ -441,6 +441,17 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 6)) {
+    version_node_socket_index_animdata(bmain, NTREE_SHADER, SH_NODE_BSDF_GLASS, 1, 1, 4);
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_SHADER) {
+        /* Add specular tint to Glass BSDF. */
+        version_glass_bsdf_specular_tint(ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -1863,17 +1874,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadow, MA_BL_TRANSPARENT_SHADOW);
       }
     }
-  }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 6)) {
-    version_node_socket_index_animdata(bmain, NTREE_SHADER, SH_NODE_BSDF_GLASS, 1, 1, 4);
-    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      if (ntree->type == NTREE_SHADER) {
-        /* Add specular tint to Glass BSDF. */
-        version_glass_bsdf_specular_tint(ntree);
-      }
-    }
-    FOREACH_NODETREE_END;
   }
 
   /**
