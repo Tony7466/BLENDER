@@ -971,7 +971,8 @@ static int grease_pencil_set_uniform_thickness_exec(bContext *C, wmOperator *op)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  const float radius = RNA_float_get(op->ptr, "radius");
+  /* Radius is half of the thickness. */
+  const float radius = RNA_float_get(op->ptr, "thickness") * 0.5f;
 
   bool changed = false;
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
@@ -1015,7 +1016,7 @@ static void GREASE_PENCIL_OT_set_uniform_thickness(wmOperatorType *ot)
 
   /* props */
   ot->prop = RNA_def_float(
-      ot->srna, "radius", 0.05f, 0.0f, 1000.0f, "Radius", "Radius", 0.0f, 1000.0f);
+      ot->srna, "thickness", 0.1f, 0.0f, 1000.0f, "Thickness", "Thickness", 0.0f, 1000.0f);
 }
 
 /** \} */
