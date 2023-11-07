@@ -766,7 +766,7 @@ if(UNIX AND NOT (APPLE OR HAIKU))
 Enable user-interface tests using a headless display server. \
 Currently this depends on WITH_GHOST_WAYLAND and the weston compositor \
 (Experimental)"
-    OFF
+    ON
   )
 else()
   # TODO: support running GUI tests on other platforms.
