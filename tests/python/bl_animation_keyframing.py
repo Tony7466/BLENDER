@@ -94,13 +94,11 @@ class VisualKeyingTest(AbstractKeyframingTest, unittest.TestCase):
     
     def test_visual_location_keying_set(self):
         t_value = 1
-        bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD", location=(t_value, t_value, t_value))
-        target = bpy.context.active_object
-        bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD", location=(0, 0, 0))
-        bpy.ops.object.constraint_add(type="COPY_LOCATION")
-        constrained = bpy.context.active_object
-
-        constrained.constraints[0].target = target
+        target = _create_animation_object()
+        target.location = (t_value, t_value, t_value)
+        constrained = _create_animation_object()
+        constraint = constrained.constraints.new("COPY_LOCATION")
+        constraint.target = target
 
         with bpy.context.temp_override(**_get_view3d_context()):
             bpy.ops.anim.keyframe_insert_by_name(type="BUILTIN_KSI_VisualLoc")
@@ -114,13 +112,12 @@ class VisualKeyingTest(AbstractKeyframingTest, unittest.TestCase):
     def test_visual_rotation_keying_set(self):
         rot_value_deg = 45
         rot_value_rads = radians(rot_value_deg)
-        bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD", rotation=(rot_value_rads, rot_value_rads, rot_value_rads))
-        target = bpy.context.active_object
-        bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD", rotation=(0, 0, 0))
-        bpy.ops.object.constraint_add(type="COPY_ROTATION")
-        constrained = bpy.context.active_object
 
-        constrained.constraints[0].target = target
+        target = _create_animation_object()
+        target.rotation_euler = (rot_value_rads, rot_value_rads, rot_value_rads)
+        constrained = _create_animation_object()
+        constraint = constrained.constraints.new("COPY_ROTATION")
+        constraint.target = target
 
         with bpy.context.temp_override(**_get_view3d_context()):
             bpy.ops.anim.keyframe_insert_by_name(type="BUILTIN_KSI_VisualRot")
@@ -136,13 +133,11 @@ class VisualKeyingTest(AbstractKeyframingTest, unittest.TestCase):
         # the normal keying sets behave like their visual keying set counterpart.
         bpy.context.preferences.edit.use_visual_keying = True
         t_value = 1
-        bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD", location=(t_value, t_value, t_value))
-        target = bpy.context.active_object
-        bpy.ops.object.empty_add(type="PLAIN_AXES", align="WORLD", location=(0, 0, 0))
-        bpy.ops.object.constraint_add(type="COPY_LOCATION")
-        constrained = bpy.context.active_object
-
-        constrained.constraints[0].target = target
+        target = _create_animation_object()
+        target.location = (t_value, t_value, t_value)
+        constrained = _create_animation_object()
+        constraint = constrained.constraints.new("COPY_LOCATION")
+        constraint.target = target
 
         with bpy.context.temp_override(**_get_view3d_context()):
             bpy.ops.anim.keyframe_insert_by_name(type="Location")
@@ -161,8 +156,7 @@ class CycleAwareKeyingTest(AbstractKeyframingTest, unittest.TestCase):
     def test_insert_location_cycle_aware(self):
         # In order to make cycle aware keying work, the action needs to be created and have the
         # frame_range set plus the use_frame_range flag set to True.
-        bpy.ops.mesh.primitive_monkey_add()
-        keyed_object = bpy.context.active_object
+        keyed_object = _create_animation_object()
         bpy.context.scene.tool_settings.use_keyframe_cycle_aware = True
 
         with bpy.context.temp_override(**_get_view3d_context()):
@@ -178,11 +172,11 @@ class CycleAwareKeyingTest(AbstractKeyframingTest, unittest.TestCase):
             bpy.context.scene.frame_set(5)
             bpy.ops.anim.keyframe_insert_by_name(type="Location")
 
-            # Will be mapped to frame 3
+            # Will be mapped to frame 3.
             bpy.context.scene.frame_set(22)
             bpy.ops.anim.keyframe_insert_by_name(type="Location")
 
-            # Will be mapped to frame 9
+            # Will be mapped to frame 9.
             bpy.context.scene.frame_set(-10)
             bpy.ops.anim.keyframe_insert_by_name(type="Location")
 
@@ -200,6 +194,8 @@ class CycleAwareKeyingTest(AbstractKeyframingTest, unittest.TestCase):
             
             # All fcurves should have a cycles modifier.
             self.assertTrue(fcurve.modifiers[0].type == "CYCLES")
+
+        bpy.data.objects.remove(keyed_object, do_unlink=True)
         
 
 def main():
