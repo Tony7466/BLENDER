@@ -128,6 +128,9 @@ Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
 IndexMask retrieve_editable_strokes(Object &grease_pencil_object,
                                     const bke::greasepencil::Drawing &drawing,
                                     IndexMaskMemory &memory);
+IndexMask retrieve_editable_points(Object &object,
+                                   const bke::greasepencil::Drawing &drawing,
+                                   IndexMaskMemory &memory);
 
 void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);
