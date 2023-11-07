@@ -45,20 +45,20 @@
 
 #include "RE_pipeline.h"
 
-#include "SEQ_channels.h"
-#include "SEQ_effects.h"
-#include "SEQ_proxy.h"
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
-#include "SEQ_time.h"
-#include "SEQ_utils.h"
+#include "SEQ_channels.hh"
+#include "SEQ_effects.hh"
+#include "SEQ_proxy.hh"
+#include "SEQ_relations.hh"
+#include "SEQ_render.hh"
+#include "SEQ_time.hh"
+#include "SEQ_utils.hh"
 
 #include "BLF_api.h"
 
-#include "effects.h"
-#include "render.h"
-#include "strip_time.h"
-#include "utils.h"
+#include "effects.hh"
+#include "render.hh"
+#include "strip_time.hh"
+#include "utils.hh"
 
 static SeqEffectHandle get_sequence_effect_impl(int seq_type);
 
@@ -938,13 +938,13 @@ static void do_drop_effect_byte(float fac, int x, int y, uchar *rect2i, uchar *r
     for (int j = xoff; j < x; j++) {
       int temp_fac2 = ((temp_fac * rt2[3]) >> 8);
 
-      *(out++) = MAX2(0, *rt1 - temp_fac2);
+      *(out++) = std::max(0, *rt1 - temp_fac2);
       rt1++;
-      *(out++) = MAX2(0, *rt1 - temp_fac2);
+      *(out++) = std::max(0, *rt1 - temp_fac2);
       rt1++;
-      *(out++) = MAX2(0, *rt1 - temp_fac2);
+      *(out++) = std::max(0, *rt1 - temp_fac2);
       rt1++;
-      *(out++) = MAX2(0, *rt1 - temp_fac2);
+      *(out++) = std::max(0, *rt1 - temp_fac2);
       rt1++;
       rt2 += 4;
     }
@@ -972,13 +972,13 @@ static void do_drop_effect_float(
     for (int j = xoff; j < x; j++) {
       float temp_fac2 = temp_fac * rt2[3];
 
-      *(out++) = MAX2(0.0f, *rt1 - temp_fac2);
+      *(out++) = std::max(0.0f, *rt1 - temp_fac2);
       rt1++;
-      *(out++) = MAX2(0.0f, *rt1 - temp_fac2);
+      *(out++) = std::max(0.0f, *rt1 - temp_fac2);
       rt1++;
-      *(out++) = MAX2(0.0f, *rt1 - temp_fac2);
+      *(out++) = std::max(0.0f, *rt1 - temp_fac2);
       rt1++;
-      *(out++) = MAX2(0.0f, *rt1 - temp_fac2);
+      *(out++) = std::max(0.0f, *rt1 - temp_fac2);
       rt1++;
       rt2 += 4;
     }
