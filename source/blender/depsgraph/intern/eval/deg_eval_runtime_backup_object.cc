@@ -24,7 +24,7 @@ ObjectRuntimeBackup::ObjectRuntimeBackup(const Depsgraph * /*depsgraph*/)
     : base_flag(0), base_local_view_bits(0)
 {
   /* TODO(sergey): Use something like BKE_object_runtime_reset(). */
-  memset(&runtime, 0, sizeof(runtime));
+  runtime = {};
 }
 
 void ObjectRuntimeBackup::init_from_object(Object *object)
