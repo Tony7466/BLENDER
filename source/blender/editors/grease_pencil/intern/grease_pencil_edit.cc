@@ -823,19 +823,18 @@ static int grease_pencil_stroke_material_set_exec(bContext *C, wmOperator * /*op
 
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-
     IndexMaskMemory memory;
-    IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
-
-    if (selected_curves.is_empty()) {
+    IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
+        *object, info.drawing, memory);
+    if (editable_strokes.is_empty()) {
       return;
     }
 
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
     bke::SpanAttributeWriter<int> materials =
         curves.attributes_for_write().lookup_or_add_for_write_span<int>("material_index",
                                                                         ATTR_DOMAIN_CURVE);
-    selected_curves.foreach_index(
+    editable_strokes.foreach_index(
         [&](const int curve_index) { materials.span[curve_index] = material_index; });
 
     materials.finish();
