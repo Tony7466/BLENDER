@@ -489,7 +489,7 @@ NODE_SHADER_MATERIALX_BEGIN
                                 {"doclamp", val(bool(map_range->clamp))}});
 
   if (map_range->interpolation_type == NODE_MAP_RANGE_STEPPED) {
-    auto factor = (range - from_min) / (from_max - from_min);
+    NodeItem factor = (range - from_min) / (from_max - from_min);
     factor = (factor * (steps + val(1.0f))).floor() / steps;
     return to_min + factor * (to_max - to_min);
   }
