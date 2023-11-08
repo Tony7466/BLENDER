@@ -1020,7 +1020,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
         }
       }
       else {
-        *detail -= 1.0f;
+        *detail = std::fminf(*detail - 1.0f, 14.0f);
       }
     }
 
