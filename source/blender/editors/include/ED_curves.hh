@@ -231,14 +231,15 @@ struct FindClosestData {
  *
  * \return A new point or curve closer than the \a initial input, if one exists.
  */
-std::optional<FindClosestData> closest_elem_find_screen_space(const ViewContext &vc,
-                                                              const Object &object,
-                                                              const OffsetIndices<int> points_by_curve,
-                                                              Span<float3> deformed_positions,
-                                                              const IndexMask &mask,
-                                                              eAttrDomain domain,
-                                                              int2 coord,
-                                                              const FindClosestData &initial);
+std::optional<FindClosestData> closest_elem_find_screen_space(
+    const ViewContext &vc,
+    const Object &object,
+    const OffsetIndices<int> points_by_curve,
+    Span<float3> deformed_positions,
+    const IndexMask &mask,
+    eAttrDomain domain,
+    int2 coord,
+    const FindClosestData &initial);
 
 /**
  * Select points or curves in a (screen-space) rectangle.
@@ -246,6 +247,7 @@ std::optional<FindClosestData> closest_elem_find_screen_space(const ViewContext 
 bool select_box(const ViewContext &vc,
                 bke::CurvesGeometry &curves,
                 Span<float3> deformed_positions,
+                const IndexMask &mask,
                 eAttrDomain selection_domain,
                 const rcti &rect,
                 eSelectOp sel_op);
@@ -256,6 +258,7 @@ bool select_box(const ViewContext &vc,
 bool select_lasso(const ViewContext &vc,
                   bke::CurvesGeometry &curves,
                   Span<float3> deformed_positions,
+                  const IndexMask &mask,
                   eAttrDomain selection_domain,
                   Span<int2> coords,
                   eSelectOp sel_op);
@@ -266,6 +269,7 @@ bool select_lasso(const ViewContext &vc,
 bool select_circle(const ViewContext &vc,
                    bke::CurvesGeometry &curves,
                    Span<float3> deformed_positions,
+                   const IndexMask &mask,
                    eAttrDomain selection_domain,
                    int2 coord,
                    float radius,

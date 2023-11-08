@@ -1199,10 +1199,17 @@ static bool do_lasso_select_grease_pencil(ViewContext *vc,
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
 
+    IndexMaskMemory memory;
+    const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+        *vc->obedit, info.drawing, selection_domain, memory);
+    if (elements.is_empty()) {
+      continue;
+    }
     changed = ed::curves::select_lasso(
         *vc,
         info.drawing.strokes_for_write(),
         deformation.positions,
+        elements,
         selection_domain,
         Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
         sel_op);
@@ -1420,11 +1427,14 @@ static bool view3d_lasso_select(bContext *C,
           bke::CurvesGeometry &curves = curves_id.geometry.wrap();
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_curves_deformation(*vc->depsgraph, *vc->obedit);
+          const eAttrDomain selection_domain = eAttrDomain(curves_id.selection_domain);
+          const IndexRange elements(curves.attributes().domain_size(selection_domain));
           changed = ed::curves::select_lasso(
               *vc,
               curves,
               deformation.positions,
-              eAttrDomain(curves_id.selection_domain),
+              elements,
+              selection_domain,
               Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
               sel_op);
           if (changed) {
@@ -4212,9 +4222,16 @@ static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const
     bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
+    IndexMaskMemory memory;
+    const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+        *vc->obedit, info.drawing, selection_domain, memory);
+    if (elements.is_empty()) {
+      continue;
+    }
     changed |= ed::curves::select_box(*vc,
                                       info.drawing.strokes_for_write(),
                                       deformation.positions,
+                                      elements,
                                       selection_domain,
                                       *rect,
                                       sel_op);
@@ -4298,12 +4315,10 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
           bke::CurvesGeometry &curves = curves_id.geometry.wrap();
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obedit);
-          changed = ed::curves::select_box(vc,
-                                           curves,
-                                           deformation.positions,
-                                           eAttrDomain(curves_id.selection_domain),
-                                           rect,
-                                           sel_op);
+          const eAttrDomain selection_domain = eAttrDomain(curves_id.selection_domain);
+          const IndexRange elements(curves.attributes().domain_size(selection_domain));
+          changed = ed::curves::select_box(
+              vc, curves, deformation.positions, elements, selection_domain, rect, sel_op);
           if (changed) {
             /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
              * generic attribute for now. */
@@ -5061,10 +5076,16 @@ static bool grease_pencil_circle_select(ViewContext *vc,
     bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
-
+    IndexMaskMemory memory;
+    const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+        *vc->obedit, info.drawing, selection_domain, memory);
+    if (elements.is_empty()) {
+      continue;
+    }
     changed = ed::curves::select_circle(*vc,
                                         info.drawing.strokes_for_write(),
                                         deformation.positions,
+                                        elements,
                                         selection_domain,
                                         int2(mval),
                                         rad,
@@ -5119,13 +5140,10 @@ static bool obedit_circle_select(bContext *C,
       bke::CurvesGeometry &curves = curves_id.geometry.wrap();
       bke::crazyspace::GeometryDeformation deformation =
           bke::crazyspace::get_evaluated_curves_deformation(*vc->depsgraph, *vc->obedit);
-      changed = ed::curves::select_circle(*vc,
-                                          curves,
-                                          deformation.positions,
-                                          eAttrDomain(curves_id.selection_domain),
-                                          mval,
-                                          rad,
-                                          sel_op);
+      const eAttrDomain selection_domain = eAttrDomain(curves_id.selection_domain);
+      const IndexRange elements(curves.attributes().domain_size(selection_domain));
+      changed = ed::curves::select_circle(
+          *vc, curves, deformation.positions, elements, selection_domain, mval, rad, sel_op);
       if (changed) {
         /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
          * generic attribute for now. */
