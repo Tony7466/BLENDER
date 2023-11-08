@@ -17,6 +17,7 @@
 #include "BKE_context.h"
 #include "BKE_curves_utils.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_lib_id.h"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -810,13 +811,28 @@ static void GREASE_PENCIL_OT_delete_frame(wmOperatorType *ot)
 /** \name Stroke Material Set Operator
  * \{ */
 
-static int grease_pencil_stroke_material_set_exec(bContext *C, wmOperator * /*op*/)
+static int grease_pencil_stroke_material_set_exec(bContext *C, wmOperator *op)
 {
   using namespace blender;
+  Main *bmain = CTX_data_main(C);
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  const int material_index = object->actcol - 1;
+  Material *ma = nullptr;
+  char name[MAX_ID_NAME - 2];
+  RNA_string_get(op->ptr, "material", name);
+
+  int material_index = object->actcol - 1;
+
+  if (name[0] != '\0') {
+    ma = (Material *)BKE_libblock_find_name(bmain, ID_MA, name);
+    if (ma == nullptr) {
+      return OPERATOR_CANCELLED;
+    }
+
+    /* Find slot index. */
+    material_index = BKE_grease_pencil_object_material_index_get(object, ma);
+  }
 
   if (material_index == -1) {
     return OPERATOR_CANCELLED;
@@ -858,6 +874,10 @@ static void GREASE_PENCIL_OT_stroke_material_set(wmOperatorType *ot)
   ot->poll = editable_grease_pencil_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  ot->prop = RNA_def_string(
+      ot->srna, "material", nullptr, MAX_ID_NAME - 2, "Material", "Name of the material");
+  RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
 }
 /** \} */
 
