@@ -15,6 +15,7 @@
 #include "BLI_stack.hh"
 
 #include "BKE_context.h"
+#include "BKE_curves_utils.hh"
 #include "BKE_grease_pencil.hh"
 
 #include "RNA_access.hh"
@@ -517,10 +518,7 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
 
     /* Mark all points in the editable curves to be deleted. */
     Array<bool> points_to_delete(curves.points_num(), false);
-    strokes.foreach_index([&](const int64_t curve_i) {
-      const IndexRange points = points_by_curve[curve_i];
-      points_to_delete.as_mutable_span().slice(points).fill(true);
-    });
+    bke::curves::fill_points(points_by_curve, strokes, true, points_to_delete.as_mutable_span());
 
     std::atomic<int64_t> total_points_to_delete = 0;
     if (radii.is_single()) {
