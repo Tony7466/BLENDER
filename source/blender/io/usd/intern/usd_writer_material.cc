@@ -74,11 +74,30 @@ static const pxr::TfToken bias("bias", pxr::TfToken::Immortal);
 static const pxr::TfToken sRGB("sRGB", pxr::TfToken::Immortal);
 static const pxr::TfToken sourceColorSpace("sourceColorSpace", pxr::TfToken::Immortal);
 static const pxr::TfToken Shader("Shader", pxr::TfToken::Immortal);
+static const pxr::TfToken black("black", pxr::TfToken::Immortal);
+static const pxr::TfToken clamp("clamp", pxr::TfToken::Immortal);
+static const pxr::TfToken repeat("repeat", pxr::TfToken::Immortal);
+static const pxr::TfToken wrapS("wrapS", pxr::TfToken::Immortal);
+static const pxr::TfToken wrapT("wrapT", pxr::TfToken::Immortal);
+static const pxr::TfToken emissiveColor("emissiveColor", pxr::TfToken::Immortal);
+static const pxr::TfToken in("in", pxr::TfToken::Immortal);
+static const pxr::TfToken translation("translation", pxr::TfToken::Immortal);
+static const pxr::TfToken rotation("rotation", pxr::TfToken::Immortal);
 }  // namespace usdtokens
 
 /* Cycles specific tokens. */
 namespace cyclestokens {
+static const pxr::TfToken cycles("cycles", pxr::TfToken::Immortal);
 static const pxr::TfToken UVMap("UVMap", pxr::TfToken::Immortal);
+static const pxr::TfToken filename("filename", pxr::TfToken::Immortal);
+static const pxr::TfToken interpolation("interpolation", pxr::TfToken::Immortal);
+static const pxr::TfToken projection("projection", pxr::TfToken::Immortal);
+static const pxr::TfToken extension("extension", pxr::TfToken::Immortal);
+static const pxr::TfToken colorspace("colorspace", pxr::TfToken::Immortal);
+static const pxr::TfToken attribute("attribute", pxr::TfToken::Immortal);
+static const pxr::TfToken bsdf("bsdf", pxr::TfToken::Immortal);
+static const pxr::TfToken closure("closure", pxr::TfToken::Immortal);
+static const pxr::TfToken vector("vector", pxr::TfToken::Immortal);
 }  // namespace cyclestokens
 
 namespace blender::io::usd {
@@ -104,6 +123,11 @@ static pxr::UsdShadeShader create_usd_preview_shader(const USDExporterContext &u
 static pxr::UsdShadeShader create_usd_preview_shader(const USDExporterContext &usd_export_context,
                                                      pxr::UsdShadeMaterial &material,
                                                      bNode *node);
+static void create_uv_input(const USDExporterContext &usd_export_context,
+                            bNodeSocket *input_socket,
+                            pxr::UsdShadeMaterial &usd_material,
+                            pxr::UsdShadeInput &usd_input,
+                            const pxr::TfToken &default_uv);
 static void create_uvmap_shader(const USDExporterContext &usd_export_context,
                                 bNode *tex_node,
                                 pxr::UsdShadeMaterial &usd_material,
@@ -117,10 +141,22 @@ static std::string get_tex_image_asset_filepath(const USDExporterContext &usd_ex
 static InputSpecMap &preview_surface_input_map();
 static bNodeLink *traverse_channel(bNodeSocket *input, short target_type);
 
-template<typename T1, typename T2>
-void create_input(pxr::UsdShadeShader &shader, const InputSpec &spec, const void *value);
-
 void set_normal_texture_range(pxr::UsdShadeShader &usd_shader, const InputSpec &input_spec);
+
+/* Create an input on the given shader with name and type
+ * provided by the InputSpec and assign the given value to the
+ * input.  Parameters T1 and T2 indicate the Blender and USD
+ * value types, respectively. */
+template<typename T1, typename T2>
+void create_input(pxr::UsdShadeShader &shader,
+                  const InputSpec &spec,
+                  const void *value,
+                  float scale)
+{
+  const T1 *cast_value = static_cast<const T1 *>(value);
+  shader.CreateInput(spec.input_name, spec.input_type).Set(scale * T2(cast_value->value));
+}
+
 static void create_usd_preview_surface_material(const USDExporterContext &usd_export_context,
                                                 Material *material,
                                                 pxr::UsdShadeMaterial &usd_material,
@@ -157,14 +193,23 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
       continue;
     }
 
+    /* Allow scaling inputs. */
+    float scale = 1.0;
+
     const InputSpec &input_spec = it->second;
     bNodeLink *input_link = traverse_channel(sock, SH_NODE_TEX_IMAGE);
 
     if (input_spec.input_name == usdtokens::emissive_color) {
       /* Don't export emission color if strength is zero. */
       bNodeSocket *emission_strength_sock = nodeFindSocket(node, SOCK_IN, "Emission Strength");
-      if (!input_link &&
-          ((bNodeSocketValueFloat *)emission_strength_sock->default_value)->value == 0.0f) {
+
+      if (!emission_strength_sock) {
+        continue;
+      }
+
+      scale = ((bNodeSocketValueFloat *)emission_strength_sock->default_value)->value;
+
+      if (scale == 0.0f) {
         continue;
       }
     }
@@ -200,9 +245,14 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
         export_texture(usd_export_context, input_node);
       }
 
-      /* Look for a connected uv node. */
-      create_uvmap_shader(
-          usd_export_context, input_node, usd_material, usd_shader, default_uv_sampler);
+      /* Look for a connected uvmap node. */
+      if (bNodeSocket *socket = nodeFindSocket(input_node, SOCK_IN, "Vector")) {
+        if (pxr::UsdShadeInput st_input = usd_shader.CreateInput(usdtokens::st,
+                                                                 pxr::SdfValueTypeNames->Float2))
+        {
+          create_uv_input(usd_export_context, socket, usd_material, st_input, default_uv_sampler);
+        }
+      }
 
       set_normal_texture_range(usd_shader, input_spec);
 
@@ -217,22 +267,20 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
     }
     else if (input_spec.set_default_value) {
       /* Set hardcoded value. */
+
       switch (sock->type) {
         case SOCK_FLOAT: {
           create_input<bNodeSocketValueFloat, float>(
-              preview_surface, input_spec, sock->default_value);
-          break;
-        }
+              preview_surface, input_spec, sock->default_value, scale);
+        } break;
         case SOCK_VECTOR: {
           create_input<bNodeSocketValueVector, pxr::GfVec3f>(
-              preview_surface, input_spec, sock->default_value);
-          break;
-        }
+              preview_surface, input_spec, sock->default_value, scale);
+        } break;
         case SOCK_RGBA: {
           create_input<bNodeSocketValueRGBA, pxr::GfVec3f>(
-              preview_surface, input_spec, sock->default_value);
-          break;
-        }
+              preview_surface, input_spec, sock->default_value, scale);
+        } break;
         default:
           break;
       }
@@ -304,7 +352,7 @@ static InputSpecMap &preview_surface_input_map()
   static InputSpecMap input_map = {
       {"Base Color", {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Color3f, true}},
       {"Emission Color", {usdtokens::emissive_color, pxr::SdfValueTypeNames->Color3f, true}},
-      {"Color", {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Color3f, true}},
+      {"Color", {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Float3, true}},
       {"Roughness", {usdtokens::roughness, pxr::SdfValueTypeNames->Float, true}},
       {"Metallic", {usdtokens::metallic, pxr::SdfValueTypeNames->Float, true}},
       {"Specular IOR Level", {usdtokens::specular, pxr::SdfValueTypeNames->Float, true}},
@@ -319,82 +367,164 @@ static InputSpecMap &preview_surface_input_map()
   return input_map;
 }
 
-/* Create an input on the given shader with name and type
- * provided by the InputSpec and assign the given value to the
- * input.  Parameters T1 and T2 indicate the Blender and USD
- * value types, respectively. */
-template<typename T1, typename T2>
-void create_input(pxr::UsdShadeShader &shader, const InputSpec &spec, const void *value)
-{
-  const T1 *cast_value = static_cast<const T1 *>(value);
-  shader.CreateInput(spec.input_name, spec.input_type).Set(T2(cast_value->value));
-}
-
 /* Find the UVMAP node input to the given texture image node and convert it
  * to a USD primvar reader shader. If no UVMAP node is found, create a primvar
  * reader for the given default uv set. The primvar reader will be attached to
  * the 'st' input of the given USD texture shader. */
 static void create_uvmap_shader(const USDExporterContext &usd_export_context,
-                                bNode *tex_node,
+                                bNodeLink *uvmap_link,
                                 pxr::UsdShadeMaterial &usd_material,
-                                pxr::UsdShadeShader &usd_tex_shader,
+                                pxr::UsdShadeInput &usd_input,
                                 const pxr::TfToken &default_uv)
+
 {
-  bool found_uv_node = false;
+  bNode *uv_node = (uvmap_link && uvmap_link->fromnode ? uvmap_link->fromnode : nullptr);
 
-  /* Find UV input to the texture node. */
-  LISTBASE_FOREACH (bNodeSocket *, tex_node_sock, &tex_node->inputs) {
+  BLI_assert(!uv_node || uv_node->type == SH_NODE_UVMAP);
 
-    if (!tex_node_sock->link || !STREQ(tex_node_sock->name, "Vector")) {
-      continue;
+  const char *shader_name = uv_node ? uv_node->name : "uvmap";
+
+  pxr::UsdShadeShader uv_shader = create_usd_preview_shader(
+      usd_export_context, usd_material, shader_name, SH_NODE_UVMAP);
+
+  if (!uv_shader) {
+    WM_reportf(RPT_WARNING, "%s: Couldn't create USD shader for UV map", __func__);
+    return;
+  }
+
+  pxr::TfToken uv_name = default_uv;
+  if (uv_node && uv_node->storage) {
+    NodeShaderUVMap *shader_uv_map = static_cast<NodeShaderUVMap *>(uv_node->storage);
+    /* We need to make valid here because actual uv primvar has been. */
+    uv_name = pxr::TfToken(pxr::TfMakeValidIdentifier(shader_uv_map->uv_map));
+  }
+
+  uv_shader.CreateInput(usdtokens::varname, pxr::SdfValueTypeNames->Token).Set(uv_name);
+  usd_input.ConnectToSource(uv_shader.ConnectableAPI(), usdtokens::result);
+}
+
+static void create_transform2d_shader(const USDExporterContext &usd_export_context,
+                                      bNodeLink *mapping_link,
+                                      pxr::UsdShadeMaterial &usd_material,
+                                      pxr::UsdShadeInput &usd_input,
+                                      const pxr::TfToken &default_uv)
+
+{
+  bNode *mapping_node = (mapping_link && mapping_link->fromnode ? mapping_link->fromnode :
+                                                                  nullptr);
+
+  BLI_assert(mapping_node && mapping_node->type == SH_NODE_MAPPING);
+
+  if (!mapping_node) {
+    return;
+  }
+
+  if (mapping_node->custom1 != TEXMAP_TYPE_POINT) {
+    if (bNodeSocket *socket = nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
+      create_uv_input(usd_export_context, socket, usd_material, usd_input, default_uv);
     }
+    return;
+  }
 
-    bNodeLink *uv_node_link = traverse_channel(tex_node_sock, SH_NODE_UVMAP);
-    if (uv_node_link == nullptr) {
-      continue;
+  pxr::UsdShadeShader transform2d_shader = create_usd_preview_shader(
+      usd_export_context, usd_material, mapping_node);
+
+  if (!transform2d_shader) {
+    WM_reportf(RPT_WARNING, "%s: Couldn't create USD shader for mapping node", __func__);
+    return;
+  }
+
+  usd_input.ConnectToSource(transform2d_shader.ConnectableAPI(), usdtokens::result);
+
+  float scale[3] = {1.0f, 1.0f, 1.0f};
+  float loc[3] = {0.0f, 0.0f, 0.0f};
+  float rot[3] = {0.0f, 0.0f, 0.0f};
+
+  if (bNodeSocket *scale_socket = nodeFindSocket(mapping_node, SOCK_IN, "Scale")) {
+    copy_v3_v3(scale, ((bNodeSocketValueVector *)scale_socket->default_value)->value);
+    /* Ignore the Z scale. */
+    scale[2] = 1.0f;
+  }
+
+  if (bNodeSocket *loc_socket = nodeFindSocket(mapping_node, SOCK_IN, "Location")) {
+    copy_v3_v3(loc, ((bNodeSocketValueVector *)loc_socket->default_value)->value);
+    /* Ignore the Z translation. */
+    loc[2] = 0.0f;
+  }
+
+  if (bNodeSocket *rot_socket = nodeFindSocket(mapping_node, SOCK_IN, "Rotation")) {
+    copy_v3_v3(rot, ((bNodeSocketValueVector *)rot_socket->default_value)->value);
+    /* Ignore the X and Y rotations. */
+    rot[0] = 0.0f;
+    rot[1] = 0.0f;
+  }
+
+  if (pxr::UsdShadeInput scale_input = transform2d_shader.CreateInput(
+          usdtokens::scale, pxr::SdfValueTypeNames->Float2))
+  {
+    pxr::GfVec2f scale_val(scale[0], scale[1]);
+    if (!scale_input.Set(scale_val)) {
+      WM_reportf(RPT_WARNING,
+                 "%s: Couldn't set scale input for UVTransform2d prim %s",
+                 __func__,
+                 transform2d_shader.GetPath().GetAsString().c_str());
     }
+  }
 
-    pxr::UsdShadeShader uv_shader = create_usd_preview_shader(
-        usd_export_context, usd_material, uv_node_link->fromnode);
-
-    if (!uv_shader.GetPrim().IsValid()) {
-      continue;
+  if (pxr::UsdShadeInput trans_input = transform2d_shader.CreateInput(
+          usdtokens::translation, pxr::SdfValueTypeNames->Float2))
+  {
+    pxr::GfVec2f trans_val(loc[0], loc[1]);
+    if (!trans_input.Set(trans_val)) {
+      WM_reportf(RPT_WARNING,
+                 "%s: Couldn't set translation input for UVTransform2d prim %s",
+                 __func__,
+                 transform2d_shader.GetPath().GetAsString().c_str());
     }
+  }
 
-    found_uv_node = true;
+  if (pxr::UsdShadeInput rot_input = transform2d_shader.CreateInput(usdtokens::rotation,
+                                                                    pxr::SdfValueTypeNames->Float))
+  {
+    /* Convert to degrees. */
+    float rot_val = rot[2] * 180.0f / M_PI;
+    if (!rot_input.Set(rot_val)) {
+      WM_reportf(RPT_WARNING,
+                 "%s: Couldn't set rotation input for UVTransform2d prim %s",
+                 __func__,
+                 transform2d_shader.GetPath().GetAsString().c_str());
+    }
+  }
 
-    if (NodeShaderUVMap *shader_uv_map = static_cast<NodeShaderUVMap *>(
-            uv_node_link->fromnode->storage))
+  if (bNodeSocket *socket = nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
+    if (pxr::UsdShadeInput in_input = transform2d_shader.CreateInput(
+            usdtokens::in, pxr::SdfValueTypeNames->Float2))
     {
-      /* We need to make valid here because actual uv primvar has been. */
-      std::string uv_set = pxr::TfMakeValidIdentifier(shader_uv_map->uv_map);
-
-      uv_shader.CreateInput(usdtokens::varname, pxr::SdfValueTypeNames->Token)
-          .Set(pxr::TfToken(uv_set));
-      usd_tex_shader.CreateInput(usdtokens::st, pxr::SdfValueTypeNames->Float2)
-          .ConnectToSource(uv_shader.ConnectableAPI(), usdtokens::result);
-    }
-    else {
-      uv_shader.CreateInput(usdtokens::varname, pxr::SdfValueTypeNames->Token).Set(default_uv);
-      usd_tex_shader.CreateInput(usdtokens::st, pxr::SdfValueTypeNames->Float2)
-          .ConnectToSource(uv_shader.ConnectableAPI(), usdtokens::result);
+      create_uv_input(usd_export_context, socket, usd_material, in_input, default_uv);
     }
   }
+}
 
-  if (!found_uv_node) {
-    /* No UVMAP node was linked to the texture node. However, we generate
-     * a primvar reader node that specifies the UV set to sample, as some
-     * DCCs require this. */
-
-    pxr::UsdShadeShader uv_shader = create_usd_preview_shader(
-        usd_export_context, usd_material, "uvmap", SH_NODE_TEX_COORD);
-
-    if (uv_shader.GetPrim().IsValid()) {
-      uv_shader.CreateInput(usdtokens::varname, pxr::SdfValueTypeNames->Token).Set(default_uv);
-      usd_tex_shader.CreateInput(usdtokens::st, pxr::SdfValueTypeNames->Float2)
-          .ConnectToSource(uv_shader.ConnectableAPI(), usdtokens::result);
-    }
+static void create_uv_input(const USDExporterContext &usd_export_context,
+                            bNodeSocket *input_socket,
+                            pxr::UsdShadeMaterial &usd_material,
+                            pxr::UsdShadeInput &usd_input,
+                            const pxr::TfToken &default_uv)
+{
+  if (!(usd_material && usd_input)) {
+    return;
   }
+
+  if (bNodeLink *mapping_link = traverse_channel(input_socket, SH_NODE_MAPPING)) {
+    create_transform2d_shader(
+        usd_export_context, mapping_link, usd_material, usd_input, default_uv);
+    return;
+  }
+
+  bNodeLink *uvmap_link = traverse_channel(input_socket, SH_NODE_UVMAP);
+
+  /* Note that uvmap_link might be null, but create_uv_shader() can handle this case. */
+  create_uvmap_shader(usd_export_context, uvmap_link, usd_material, usd_input, default_uv);
 }
 
 /* Generate a file name for an in-memory image that doesn't have a
