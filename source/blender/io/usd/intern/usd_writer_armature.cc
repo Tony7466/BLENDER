@@ -28,22 +28,65 @@ namespace usdtokens {
 static const pxr::TfToken Anim("Anim", pxr::TfToken::Immortal);
 }  // namespace usdtokens
 
+
+static inline bool is_deform_bone(const Bone* bone) {
+  return !(bone->flag & BONE_NO_DEFORM);
+}
+
+/*
+ * We need a second version here because parents of deforming bones will be set on the first pass.
+ */
+static inline bool is_deform_bone(const Bone* bone, std::unordered_map<const char *, bool>& should_export) {
+  const auto result = should_export.find(&bone->name[2]);
+  if (result == should_export.end()) {
+    //!TODO: Better error?
+    return false;
+  }
+
+  return result->second;
+}
+
+
 /* Initialize the given skeleton and animation from
  * the given armature object. */
-static void initialize(const Object *obj,
-                       pxr::UsdSkelSkeleton &skel,
-                       pxr::UsdSkelAnimation &skel_anim)
-{
+static void
+initialize(const Object *obj, pxr::UsdSkelSkeleton &skel, pxr::UsdSkelAnimation &skel_anim, const bool use_deform=false) {
   using namespace blender::io::usd;
 
   pxr::VtTokenArray joints;
-  pxr::VtArray<pxr::GfMatrix4d> bind_xforms;
-  pxr::VtArray<pxr::GfMatrix4d> rest_xforms;
+  pxr::VtArray < pxr::GfMatrix4d > bind_xforms;
+  pxr::VtArray < pxr::GfMatrix4d > rest_xforms;
+
+  std::unordered_map<const char *, bool> should_export;
+
+  size_t num_bones = 0;
+  size_t deform_bones = 0;
+
+  auto deform_visitor = [&](const Bone *bone) {
+      if (!bone) {
+        return;
+      }
+
+      const bool deform = is_deform_bone(bone);
+      should_export.insert_or_assign(&bone->name[2], deform);
+      deform_bones += static_cast<int>(deform) * 1;
+      num_bones += 1;
+  };
+
+  visit_bones(obj, deform_visitor);
+
+  std::cerr << "Deform bones: " << deform_bones << "\n"
+            << "Total bones:  " << num_bones << std::endl;
 
   auto visitor = [&](const Bone *bone) {
     if (!bone) {
       return;
     }
+
+    if (use_deform && (!is_deform_bone(bone))) {
+      return;
+    }
+
     joints.push_back(build_usd_joint_path(bone));
     const pxr::GfMatrix4f arm_mat(bone->arm_mat);
     bind_xforms.push_back(pxr::GfMatrix4d(arm_mat));
@@ -158,7 +201,7 @@ void USDArmatureWriter::do_write(HierarchyContext &context)
   }
 
   if (!this->frame_has_been_written_) {
-    initialize(context.object, skel, skel_anim);
+    initialize(context.object, skel, skel_anim, 0);
   }
 
   add_anim_sample(skel_anim, context.object, get_export_time_code());
