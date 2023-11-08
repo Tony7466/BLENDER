@@ -10,14 +10,9 @@ static blender::RawVector<std::unique_ptr<FileHandlerType>> &file_handlers()
   return file_handlers;
 }
 
-const blender::Vector<FileHandlerType *> BKE_file_handlers()
+const blender::RawVector<std::unique_ptr<FileHandlerType>> &BKE_file_handlers()
 {
-  blender::Vector<FileHandlerType *> result;
-  result.reserve(file_handlers().size());
-  for (const std::unique_ptr<FileHandlerType> &file_handle : file_handlers()) {
-    result.append(file_handle.get());
-  }
-  return result;
+  return file_handlers();
 }
 
 FileHandlerType *BKE_file_handler_find(const char *name)

@@ -33,4 +33,4 @@ FileHandlerType *BKE_file_handler_find(const char *idname);
 
 void BKE_file_handler_remove(FileHandlerType *file_handler);
 
-const blender::Vector<FileHandlerType *> BKE_file_handlers();
+const blender::RawVector<std::unique_ptr<FileHandlerType>> &BKE_file_handlers();
