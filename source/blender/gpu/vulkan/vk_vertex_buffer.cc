@@ -137,17 +137,12 @@ void VKVertexBuffer::upload_data()
 
   if (flag & GPU_VERTBUF_DATA_DIRTY) {
     device_format_ensure();
-    void *data_to_upload = data;
     if (vertex_format_converter.needs_conversion()) {
-      if (!ELEM(usage_, GPU_USAGE_STATIC, GPU_USAGE_STREAM)) {
-        data_to_upload = MEM_mallocN(
-            vertex_format_converter.device_format_get().stride * vertex_len, __func__);
-      }
-      vertex_format_converter.convert(data_to_upload, data, vertex_len);
+      vertex_format_converter.convert(buffer_.mapped_memory_get(), data, vertex_len);
+      buffer_.flush();
     }
-    buffer_.update(data_to_upload);
-    if (data_to_upload != data) {
-      MEM_SAFE_FREE(data_to_upload);
+    else {
+      buffer_.update(data);
     }
     if (usage_ == GPU_USAGE_STATIC) {
       MEM_SAFE_FREE(data);
