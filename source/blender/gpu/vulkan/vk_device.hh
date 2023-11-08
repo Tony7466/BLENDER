@@ -28,6 +28,26 @@ struct VKWorkarounds {
    * If set to true we should work around this issue by using a different texture format.
    */
   bool not_aligned_pixel_formats = false;
+
+  /**
+   * Is the workaround for devices that don't support
+   * #VkPhysicalDeviceVulkan12Features::shaderOutputViewportIndex enabled.
+   */
+  bool shader_output_viewport_index = false;
+
+  /**
+   * Is the workaround for devices that don't support
+   * #VkPhysicalDeviceVulkan12Features::shaderOutputLayer enabled.
+   */
+  bool shader_output_layer = false;
+
+  struct {
+    /**
+     * Is the workaround enabled for devices that don't support using VK_FORMAT_R8G8B8_* as vertex
+     * buffer.
+     */
+    bool r8g8b8 = false;
+  } vertex_formats;
 };
 
 class VKDevice : public NonCopyable {
@@ -63,6 +83,7 @@ class VKDevice : public NonCopyable {
   /** Features support. */
   VkPhysicalDeviceFeatures vk_physical_device_features_ = {};
   VkPhysicalDeviceVulkan11Features vk_physical_device_vulkan_11_features_ = {};
+  VkPhysicalDeviceVulkan12Features vk_physical_device_vulkan_12_features_ = {};
 
   /** Functions of vk_ext_debugutils for this device/instance. */
   debug::VKDebuggingTools debugging_tools_;
@@ -99,6 +120,11 @@ class VKDevice : public NonCopyable {
   const VkPhysicalDeviceVulkan11Features &physical_device_vulkan_11_features_get() const
   {
     return vk_physical_device_vulkan_11_features_;
+  }
+
+  const VkPhysicalDeviceVulkan12Features &physical_device_vulkan_12_features_get() const
+  {
+    return vk_physical_device_vulkan_12_features_;
   }
 
   VkInstance instance_get() const

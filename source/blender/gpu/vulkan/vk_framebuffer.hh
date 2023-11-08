@@ -34,6 +34,10 @@ class VKFrameBuffer : public FrameBuffer {
 
   Vector<VKImageView, GPU_FB_MAX_ATTACHMENT> image_views_;
 
+  /** Is the first attachment an SRGB texture. */
+  bool srgb_;
+  bool enabled_srgb_;
+
  public:
   /**
    * Create a conventional framebuffer to attach texture to.
@@ -109,12 +113,14 @@ class VKFrameBuffer : public FrameBuffer {
    */
   void update_size();
 
+  void update_srgb();
+
   /**
    * Return the number of color attachments of this frame buffer, including unused color
    * attachments.
    *
-   * Framebuffers can have unused attachments. When higher attachment slots are being used, unused
-   * lower attachment slots will be counted as they are required resources in renderpasses.
+   * Frame-buffers can have unused attachments. When higher attachment slots are being used, unused
+   * lower attachment slots will be counted as they are required resources in render-passes.
    */
   int color_attachments_resource_size() const;
 

@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'26346464e0c0')\n"
+"Project-Id-Version: Blender 4.0.0 Beta (b'551927bbe355')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-09 09:45:23\n"
+"POT-Creation-Date: 2023-11-06 12:01:38\n"
 "PO-Revision-Date: 2008-03-23 12:20+0200\n"
 "Last-Translator: Kostas Karvouniaris <neogen556@yahoo.gr>\n"
 "Language-Team: \n"
@@ -35,6 +35,10 @@ msgstr "Επιλογή"
 
 msgid "Message"
 msgstr "Μήνυμα"
+
+
+msgid "On"
+msgstr "Ενεργό"
 
 
 msgid "Action"
@@ -1058,10 +1062,6 @@ msgstr "Ακύρωση"
 
 msgid "Life"
 msgstr "Ζωή"
-
-
-msgid "On"
-msgstr "Ενεργό"
 
 
 msgid "Esc"

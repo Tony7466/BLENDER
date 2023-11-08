@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'26346464e0c0')\n"
+"Project-Id-Version: Blender 4.0.0 Beta (b'551927bbe355')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-09 09:45:23\n"
+"POT-Creation-Date: 2023-11-06 12:01:38\n"
 "PO-Revision-Date: 2020-01-04 05:04+0900\n"
 "Last-Translator: Geuntak Jeong <beroberos@gmail.com>\n"
 "Language-Team: Korean (http://www.transifex.com/lxlalexlxl/blender/language/ko/)\n"
@@ -289,6 +289,10 @@ msgstr "Off"
 
 msgid "Full"
 msgstr "Full"
+
+
+msgid "Auto"
+msgstr "Auto"
 
 
 msgid "Fribidi Library"
@@ -1439,10 +1443,6 @@ msgstr "자유"
 
 msgid "Aligned"
 msgstr "정렬됨"
-
-
-msgid "Auto"
-msgstr "Auto"
 
 
 msgid "Handle 2"
@@ -24612,6 +24612,14 @@ msgid "Base type to define alpha transparency modifiers"
 msgstr "알파 투명도 모디파이어를 정의하는 베이스 유형"
 
 
+msgid "Modifier Name"
+msgstr "모디파이어 이름"
+
+
+msgid "Name of the modifier"
+msgstr "이 모디파이어의 이름"
+
+
 msgid "Along Stroke"
 msgstr "스트로크를 따라"
 
@@ -24650,14 +24658,6 @@ msgstr "선형 맵핑을 사용"
 
 msgid "Use curve mapping"
 msgstr "커브 맵핑을 사용"
-
-
-msgid "Modifier Name"
-msgstr "모디파이어 이름"
-
-
-msgid "Name of the modifier"
-msgstr "이 모디파이어의 이름"
 
 
 msgid "Modifier Type"
@@ -39712,10 +39712,6 @@ msgid "Apply sampling to all animations"
 msgstr "모든 애니메이션에 샘플링을 적용"
 
 
-msgid "Output format and embedding options. Binary is most efficient, but JSON (embedded or separate) may be easier to edit later"
-msgstr "출력 형식 및 포함 옵션. 바이너리가 가장 효율적이지만 JSON (임베디드 또는 별도)을 나중에 편집하는 것이 더 쉽습니다"
-
-
 msgid "glTF Binary (.glb)"
 msgstr "glTF Binary (.glb)"
 
@@ -39730,14 +39726,6 @@ msgstr "glTF 분리 (.gltf + .bin + textures)"
 
 msgid "Exports multiple files, with separate JSON, binary and texture data. Easiest to edit later"
 msgstr "별도의 JSON, 바이너리 및 텍스처 데이터로 여러 파일을 내보냅니다. 나중에 쉽게 편집 할 수 있습니다"
-
-
-msgid "glTF Embedded (.gltf)"
-msgstr "glTF 포함 (.gltf)"
-
-
-msgid "Exports a single file, with all data packed in JSON. Less efficient than binary, but easier to edit later"
-msgstr "모든 데이터가 JSON으로 포장된 단일 파일을 내보냅니다. 바이너리보다 효율적이지는 않지만 나중에 편집하는 것이 더 쉽습니다"
 
 
 msgid "Limit to Playback Range"
@@ -55644,10 +55632,6 @@ msgstr "PNG 이미지(.png)"
 
 msgid "Export the UV layout to a bitmap image"
 msgstr "비트 맵 이미지의 UV 레이아웃을 내보내기"
-
-
-msgid "Modified"
-msgstr "수정됨"
 
 
 msgid "Exports UVs from the modified mesh"
@@ -83406,16 +83390,16 @@ msgid "Some data failed to reconstruct (see console for details)"
 msgstr "일부 데이터를 재구성하지 못했습니다 (자세한 내용은 콘솔 참조)"
 
 
-msgid "File path"
-msgstr "파일 경로"
-
-
 msgid "Today"
 msgstr "오늘"
 
 
 msgid "Yesterday"
 msgstr "어제"
+
+
+msgid "File path"
+msgstr "파일 경로"
 
 
 msgid "File does not exist"
@@ -85830,16 +85814,8 @@ msgid "Subsurface Radius"
 msgstr "서브 표면 샘플 반경"
 
 
-msgid "Specular Tint"
-msgstr "반사 틴트"
-
-
 msgid "Anisotropic Rotation"
 msgstr "비등방성 회전"
-
-
-msgid "Sheen Tint"
-msgstr "윤기 틴트"
 
 
 msgid "Emission Color"
@@ -86205,6 +86181,10 @@ msgstr "저장하지 않음"
 
 msgid "unable to open the file"
 msgstr "파일을 열 수 없음"
+
+
+msgid "Modified"
+msgstr "수정됨"
 
 
 msgid "For security reasons, automatic execution of Python scripts in this file was disabled:"
