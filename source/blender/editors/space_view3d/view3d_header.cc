@@ -87,9 +87,6 @@ void uiTemplateEditModeSelection(uiLayout *layout, bContext *C)
   }
 
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
-  if (!em) {
-    return;
-  }
   uiLayout *row = uiLayoutRow(layout, true);
 
   PointerRNA op_ptr;
