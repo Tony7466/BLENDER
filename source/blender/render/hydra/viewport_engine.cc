@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "viewport_engine.h"
+#include "camera.h"
 
 #include <pxr/base/gf/camera.h>
 #include <pxr/imaging/glf/drawTarget.h>
@@ -28,15 +29,13 @@
 
 #include "RE_engine.h"
 
-#include "hydra/camera.h"
-
 namespace blender::render::hydra {
 
 struct ViewSettings {
   int screen_width;
   int screen_height;
   pxr::GfVec4i border;
-  pxr::GfCamera gf_camera;
+  pxr::GfCamera camera;
 
   ViewSettings(bContext *context);
 
@@ -118,14 +117,14 @@ ViewSettings::ViewSettings(bContext *context)
 
   border = pxr::GfVec4i(x1, y1, x2, y2);
 
-  gf_camera = io::hydra::gf_camera(CTX_data_ensure_evaluated_depsgraph(context),
-                                   view3d,
-                                   region,
-                                   &scene->r,
-                                   pxr::GfVec4f(float(border[0]) / screen_width,
-                                                float(border[1]) / screen_height,
-                                                float(width()) / screen_width,
-                                                float(height()) / screen_height));
+  camera = gf_camera(CTX_data_ensure_evaluated_depsgraph(context),
+                     view3d,
+                     region,
+                     &scene->r,
+                     pxr::GfVec4f(float(border[0]) / screen_width,
+                                  float(border[1]) / screen_height,
+                                  float(width()) / screen_width,
+                                  float(height()) / screen_height));
 }
 
 int ViewSettings::width()
@@ -212,7 +211,7 @@ void ViewportEngine::render()
     return;
   };
 
-  free_camera_delegate_->SetCamera(view_settings.gf_camera);
+  free_camera_delegate_->SetCamera(view_settings.camera);
 
   pxr::GfVec4d viewport(0.0, 0.0, view_settings.width(), view_settings.height());
   render_task_delegate_->set_viewport(viewport);

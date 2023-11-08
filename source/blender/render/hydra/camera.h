@@ -13,7 +13,7 @@ struct View3D;
 struct Depsgraph;
 struct RenderData;
 
-namespace blender::io::hydra {
+namespace blender::render::hydra {
 
 pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
                         const View3D *v3d,
@@ -26,4 +26,4 @@ pxr::GfCamera gf_camera(const Object *camera_obj,
                         const pxr::GfVec2i &res,
                         const pxr::GfVec4f &border);
 
-}  // namespace blender::io::hydra
+}  // namespace blender::render::hydra

@@ -12,9 +12,9 @@
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 
-#include "hydra_scene_delegate.h"
+#include "hydra/object.h"
 
-namespace blender::io::hydra {
+namespace blender::render::hydra {
 
 static pxr::GfCamera set_gf_camera(bool is_ortho,
                                    pxr::GfMatrix4d transform,
@@ -57,7 +57,8 @@ pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
   pxr::GfVec2f lens_shift;
   pxr::GfVec2f sensor_size;
   pxr::GfVec2f ortho_size;
-  pxr::GfMatrix4d transform = gf_matrix_from_transform(region_data->viewmat).GetInverse();
+  pxr::GfMatrix4d transform =
+      io::hydra::gf_matrix_from_transform(region_data->viewmat).GetInverse();
   clip_range = pxr::GfRange1f(camera_params.clip_start, camera_params.clip_end);
 
   switch (region_data->persp) {
@@ -157,8 +158,9 @@ pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
         default:
           BLI_assert_unreachable();
       }
-      /* This formula was taken from blender/intern/cycles/blender/camera.cpp:blender_camera_from_view
-       * as magic zoom formula. */
+      /* This formula was taken from
+       * blender/intern/cycles/blender/camera.cpp:blender_camera_from_view
+       * as "magic zoom formula". */
       float zoom = 2.0f / (float(M_SQRT2) + region_data->camzoom / 50.0f);
       zoom *= zoom;
 
@@ -205,7 +207,7 @@ pxr::GfCamera gf_camera(const Object *camera_obj,
   BKE_camera_params_init(&camera_params);
   BKE_camera_params_from_object(&camera_params, camera_obj);
 
-  pxr::GfMatrix4d transform = gf_matrix_from_transform(camera_obj->object_to_world);
+  pxr::GfMatrix4d transform = io::hydra::gf_matrix_from_transform(camera_obj->object_to_world);
   pxr::GfRange1f clip_range = pxr::GfRange1f(camera_params.clip_start, camera_params.clip_end);
 
   float ratio = float(res[0]) / res[1];
@@ -290,4 +292,4 @@ pxr::GfCamera gf_camera(const Object *camera_obj,
   return set_gf_camera(camera_params.is_ortho, transform, aperture, lens_shift, clip_range);
 }
 
-}  // namespace blender::io::hydra
+}  // namespace blender::render::hydra
