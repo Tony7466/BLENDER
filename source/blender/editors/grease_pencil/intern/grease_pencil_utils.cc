@@ -241,11 +241,11 @@ IndexMask retrieve_editable_and_selected_strokes(Object &object,
   const IndexMask editable_strokes = retrieve_editable_strokes(object, drawing, memory);
   const IndexMask selected_strokes = ed::curves::retrieve_selected_curves(curves, memory);
 
-  BitVector<> editable_strokes_bits(editable_strokes.size(), false);
+  BitVector<> editable_strokes_bits(curves.curves_num(), false);
   editable_strokes.to_bits(editable_strokes_bits);
-  BitVector<> selected_strokes_bits(selected_strokes.size(), false);
+  BitVector<> selected_strokes_bits(curves.curves_num(), false);
   selected_strokes.to_bits(selected_strokes_bits);
-  /* The editable strokes are all strokes that have an unlocked material and are selected. */
+
   editable_strokes_bits &= selected_strokes_bits;
   return IndexMask::from_bits(curves_range, editable_strokes_bits, memory);
 }
@@ -263,12 +263,11 @@ IndexMask retrieve_editable_and_selected_points(Object &object,
   const IndexMask editable_points = retrieve_editable_points(object, drawing, memory);
   const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, memory);
 
-  BitVector<> editable_points_bits(editable_points.size(), false);
+  BitVector<> editable_points_bits(curves.points_num(), false);
   editable_points.to_bits(editable_points_bits);
-  BitVector<> selected_points_bits(selected_points.size(), false);
+  BitVector<> selected_points_bits(curves.points_num(), false);
   selected_points.to_bits(selected_points_bits);
-  /* The editable points are all points that are part of a stroke with an unlocked material and are
-   * selected. */
+
   editable_points_bits &= selected_points_bits;
   return IndexMask::from_bits(points_range, editable_points_bits, memory);
 }
