@@ -47,11 +47,13 @@
 #include "BKE_animsys.h"
 #include "BKE_armature.h"
 #include "BKE_attribute.h"
+#include "BKE_collection.h"
 #include "BKE_curve.h"
 #include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
 #include "BKE_main.h"
+#include "BKE_material.h"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
@@ -59,7 +61,7 @@
 #include "BKE_tracking.h"
 
 #include "SEQ_retiming.hh"
-#include "SEQ_sequencer.h"
+#include "SEQ_sequencer.hh"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.h"
@@ -298,6 +300,30 @@ static void version_principled_bsdf_update_animdata(ID *owner_id, bNodeTree *ntr
   }
 }
 
+static void versioning_eevee_shadow_settings(Object *object)
+{
+  /** EEVEE no longer uses the Material::blend_shadow property.
+   * Instead, it uses Object::visibility_flag for disabling shadow casting
+   */
+
+  short *material_len = BKE_object_material_len_p(object);
+  if (!material_len) {
+    return;
+  }
+
+  using namespace blender;
+  bool hide_shadows = *material_len > 0;
+  for (int i : IndexRange(*material_len)) {
+    Material *material = BKE_object_material_get(object, i + 1);
+    if (!material || material->blend_shadow != MA_BS_NONE) {
+      hide_shadows = false;
+    }
+  }
+
+  /* Enable the hide_shadow flag only if there's not any shadow casting material. */
+  SET_FLAG_FROM_TEST(object->visibility_flag, hide_shadows, OB_HIDE_SHADOW);
+}
+
 void do_versions_after_linking_400(FileData *fd, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 9)) {
@@ -380,6 +406,16 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
     BKE_mesh_legacy_face_map_to_generic(bmain);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
+    if (!is_cycles) {
+      LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+        versioning_eevee_shadow_settings(object);
+      }
+    }
   }
 
   /**
@@ -493,8 +529,7 @@ static void version_mesh_crease_generic(Main &bmain)
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (STR_ELEM(node->idname,
                      "GeometryNodeStoreNamedAttribute",
-                     "GeometryNodeInputNamedAttribute"))
-        {
+                     "GeometryNodeInputNamedAttribute")) {
           bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
           if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
             STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
@@ -1334,8 +1369,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 14)) {
     if (!DNA_struct_member_exists(
-            fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "reflection_options"))
-    {
+            fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "reflection_options")) {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         scene->eevee.reflection_options.flag = RAYTRACE_EEVEE_USE_DENOISE;
         scene->eevee.reflection_options.denoise_stages = RAYTRACE_EEVEE_DENOISE_SPATIAL |
@@ -1565,8 +1599,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
               RegionAssetShelf *shelf_data = static_cast<RegionAssetShelf *>(region->regiondata);
               if (shelf_data && shelf_data->active_shelf &&
-                  (shelf_data->active_shelf->preferred_row_count == 0))
-              {
+                  (shelf_data->active_shelf->preferred_row_count == 0)) {
                 shelf_data->active_shelf->preferred_row_count = 1;
               }
             }
@@ -1582,8 +1615,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         if (item.item_type == NODE_INTERFACE_SOCKET) {
           bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
           if ((socket.flag & NODE_INTERFACE_SOCKET_INPUT) &&
-              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT))
-          {
+              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT)) {
             sockets_to_split.append(&socket);
           }
         }
@@ -1787,6 +1819,29 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
+    /* Unify Material::blend_shadow and Cycles.use_transparent_shadows into the
+     * Material::blend_flag. */
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
+    if (is_cycles) {
+      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        bool transparent_shadows = true;
+        if (IDProperty *cmat = version_cycles_properties_from_ID(&material->id)) {
+          transparent_shadows = version_cycles_property_boolean(
+              cmat, "use_transparent_shadow", true);
+        }
+        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
+      }
+    }
+    else {
+      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        bool transparent_shadow = material->blend_shadow != MA_BS_SOLID;
+        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadow, MA_BL_TRANSPARENT_SHADOW);
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -1828,6 +1883,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
             region->alignment |= RGN_ALIGN_HIDE_WITH_PREV;
           }
         }
+      }
+    }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "float", "gtao_thickness")) {
+      SceneEEVEE default_eevee = *DNA_struct_default_get(SceneEEVEE);
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.gtao_thickness = default_eevee.gtao_thickness;
+        scene->eevee.gtao_focus = default_eevee.gtao_focus;
       }
     }
 
