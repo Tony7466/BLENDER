@@ -17,7 +17,7 @@ typedef struct OIDNBufferImpl *OIDNBuffer;
 CCL_NAMESPACE_BEGIN
 
 /* Implementation of a GPU denoiser which uses OpenImageDenoise library. */
-class OIDN2Denoiser : public DenoiserGPU {
+class OIDNDenoiserGPU : public DenoiserGPU {
   friend class OIDNDenoiseContext;
 
  public:
@@ -25,8 +25,8 @@ class OIDN2Denoiser : public DenoiserGPU {
    * OpenImageDenoise device and filter handles. */
   class State;
 
-  OIDN2Denoiser(Device *path_trace_device, const DenoiseParams &params);
-  ~OIDN2Denoiser();
+  OIDNDenoiserGPU(Device *path_trace_device, const DenoiseParams &params);
+  ~OIDNDenoiserGPU();
 
   virtual bool denoise_buffer(const BufferParams &buffer_params,
                               RenderBuffers *render_buffers,

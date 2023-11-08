@@ -4,7 +4,7 @@
 
 #if defined(WITH_OPENIMAGEDENOISE)
 
-#  include "integrator/denoiser_oidn2.h"
+#  include "integrator/denoiser_oidn_gpu.h"
 
 #  include <array>
 
@@ -30,8 +30,8 @@ CCL_NAMESPACE_BEGIN
 /* Ideally, this would be dynamic and adaptively change when the runtime runs out of memory.  */
 constexpr int prefilter_max_mem = 1024;
 
-thread_mutex OIDN2Denoiser::mutex_;
-bool OIDN2Denoiser::is_device_type_supported(const DeviceType &type)
+thread_mutex OIDNDenoiserGPU::mutex_;
+bool OIDNDenoiserGPU::is_device_type_supported(const DeviceType &type)
 {
   switch (type) {
 #  ifdef OIDN_DEVICE_SYCL
@@ -44,19 +44,19 @@ bool OIDN2Denoiser::is_device_type_supported(const DeviceType &type)
   }
 }
 
-bool OIDN2Denoiser::is_device_supported(const DeviceInfo &device)
+bool OIDNDenoiserGPU::is_device_supported(const DeviceInfo &device)
 {
   /* Currently falls back to checking just the device type, can be improved. */
   return is_device_type_supported(device.type);
 }
 
-OIDN2Denoiser::OIDN2Denoiser(Device *path_trace_device, const DenoiseParams &params)
+OIDNDenoiserGPU::OIDNDenoiserGPU(Device *path_trace_device, const DenoiseParams &params)
     : DenoiserGPU(path_trace_device, params)
 {
   DCHECK_EQ(params.type, DENOISER_OPENIMAGEDENOISE_GPU);
 }
 
-OIDN2Denoiser::~OIDN2Denoiser()
+OIDNDenoiserGPU::~OIDNDenoiserGPU()
 {
   if (albedo_memory_) {
     delete albedo_memory_;
@@ -78,7 +78,7 @@ OIDN2Denoiser::~OIDN2Denoiser()
   }
 }
 
-bool OIDN2Denoiser::denoise_buffer(const BufferParams &buffer_params,
+bool OIDNDenoiserGPU::denoise_buffer(const BufferParams &buffer_params,
                                    RenderBuffers *render_buffers,
                                    const int num_samples,
                                    bool allow_inplace_modification)
@@ -87,7 +87,7 @@ bool OIDN2Denoiser::denoise_buffer(const BufferParams &buffer_params,
       buffer_params, render_buffers, num_samples, allow_inplace_modification);
 }
 
-uint OIDN2Denoiser::get_device_type_mask() const
+uint OIDNDenoiserGPU::get_device_type_mask() const
 {
   uint device_mask = 0;
 #  ifdef OIDN_DEVICE_SYCL
@@ -96,7 +96,7 @@ uint OIDN2Denoiser::get_device_type_mask() const
   return device_mask;
 }
 
-OIDNFilter OIDN2Denoiser::create_filter()
+OIDNFilter OIDNDenoiserGPU::create_filter()
 {
   const char *error_message = nullptr;
   OIDNFilter filter = oidnNewFilter(oidn_device_, "RT");
@@ -110,7 +110,7 @@ OIDNFilter OIDN2Denoiser::create_filter()
   return filter;
 }
 
-bool OIDN2Denoiser::denoise_create_if_needed(DenoiseContext &context)
+bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
 {
   const bool recreate_denoiser = (oidn_device_ == nullptr) || (oidn_filter_ == nullptr) ||
                                  (use_pass_albedo_ != context.use_pass_albedo) ||
@@ -184,7 +184,7 @@ bool OIDN2Denoiser::denoise_create_if_needed(DenoiseContext &context)
   return true;
 }
 
-bool OIDN2Denoiser::denoise_configure_if_needed(DenoiseContext &context)
+bool OIDNDenoiserGPU::denoise_configure_if_needed(DenoiseContext &context)
 {
   /* Limit maximum tile size denoiser can be invoked with. */
   const int2 size = make_int2(context.buffer_params.width, context.buffer_params.height);
@@ -215,7 +215,7 @@ bool OIDN2Denoiser::denoise_configure_if_needed(DenoiseContext &context)
   return true;
 }
 
-bool OIDN2Denoiser::denoise_run(const DenoiseContext &context, const DenoisePass &pass)
+bool OIDNDenoiserGPU::denoise_run(const DenoiseContext &context, const DenoisePass &pass)
 {
   /* Color pass. */
   const int64_t pass_stride_in_bytes = context.buffer_params.pass_stride * sizeof(float);

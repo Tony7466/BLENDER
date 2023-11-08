@@ -9,7 +9,7 @@
 #ifdef WITH_ONEAPI
 #  include "device/device.h"
 #  include "device/oneapi/device_impl.h"
-#  include "integrator/denoiser_oidn2.h"
+#  include "integrator/denoiser_oidn_gpu.h"
 
 #  include "util/path.h"
 #  include "util/string.h"
@@ -109,7 +109,7 @@ static void device_iterator_cb(
 
   info.has_nanovdb = true;
 #  if defined(WITH_OPENIMAGEDENOISE)
-  if (OIDN2Denoiser::is_device_supported(info)) {
+  if (OIDNDenoiserGPU::is_device_supported(info)) {
     info.denoisers |= DENOISER_OPENIMAGEDENOISE_GPU;
   }
 #  endif
