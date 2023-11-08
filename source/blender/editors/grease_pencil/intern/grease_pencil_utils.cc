@@ -190,6 +190,42 @@ IndexMask retrieve_editable_strokes(Object &object,
       });
 }
 
+IndexMask retrieve_editable_points(Object &object,
+                                   const bke::greasepencil::Drawing &drawing,
+                                   IndexMaskMemory &memory)
+{
+  /* Get all the locked material indices */
+  VectorSet<int> locked_material_indices = get_locked_material_indices(object);
+
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const IndexRange points_range = drawing.strokes().points_range();
+  const bke::AttributeAccessor attributes = curves.attributes();
+
+  /* Propagate the material index to the points. */
+  const VArray<int> materials = *attributes.lookup_or_default<int>(
+      "material_index", ATTR_DOMAIN_POINT, -1);
+  /* Get all the points that are part of a stroke with an unlocked material. */
+  return IndexMask::from_predicate(
+      points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
+        const int material_index = materials[point_i];
+        return !locked_material_indices.contains(material_index);
+      });
+}
+
+IndexMask retrieve_editable_elements(Object &object,
+                                     const bke::greasepencil::Drawing &drawing,
+                                     const eAttrDomain selection_domain,
+                                     IndexMaskMemory &memory)
+{
+  if (selection_domain == ATTR_DOMAIN_CURVE) {
+    return ed::greasepencil::retrieve_editable_strokes(object, drawing, memory);
+  }
+  else if (selection_domain == ATTR_DOMAIN_POINT) {
+    return ed::greasepencil::retrieve_editable_points(object, drawing, memory);
+  }
+  return {};
+}
+
 IndexMask retrieve_editable_and_selected_strokes(Object &object,
                                                  const bke::greasepencil::Drawing &drawing,
                                                  IndexMaskMemory &memory)
@@ -212,28 +248,6 @@ IndexMask retrieve_editable_and_selected_strokes(Object &object,
   /* The editable strokes are all strokes that have an unlocked material and are selected. */
   editable_strokes_bits &= selected_strokes_bits;
   return IndexMask::from_bits(curves_range, editable_strokes_bits, memory);
-}
-
-IndexMask retrieve_editable_points(Object &object,
-                                   const bke::greasepencil::Drawing &drawing,
-                                   IndexMaskMemory &memory)
-{
-  /* Get all the locked material indices */
-  VectorSet<int> locked_material_indices = get_locked_material_indices(object);
-
-  const bke::CurvesGeometry &curves = drawing.strokes();
-  const IndexRange points_range = drawing.strokes().points_range();
-  const bke::AttributeAccessor attributes = curves.attributes();
-
-  /* Propagate the material index to the points. */
-  const VArray<int> materials = *attributes.lookup_or_default<int>(
-      "material_index", ATTR_DOMAIN_POINT, -1);
-  /* Get all the points that are part of a stroke with an unlocked material. */
-  return IndexMask::from_predicate(
-      points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
-        const int material_index = materials[point_i];
-        return !locked_material_indices.contains(material_index);
-      });
 }
 
 IndexMask retrieve_editable_and_selected_points(Object &object,

@@ -28,20 +28,6 @@
 
 namespace blender::ed::greasepencil {
 
-static IndexMask retrieve_editable_elements(Object &object,
-                                            const bke::greasepencil::Drawing &drawing,
-                                            const eAttrDomain selection_domain,
-                                            IndexMaskMemory &memory)
-{
-  if (selection_domain == ATTR_DOMAIN_CURVE) {
-    return ed::greasepencil::retrieve_editable_strokes(object, drawing, memory);
-  }
-  else if (selection_domain == ATTR_DOMAIN_POINT) {
-    return ed::greasepencil::retrieve_editable_points(object, drawing, memory);
-  }
-  return {};
-}
-
 static int select_all_exec(bContext *C, wmOperator *op)
 {
   int action = RNA_enum_get(op->ptr, "action");
