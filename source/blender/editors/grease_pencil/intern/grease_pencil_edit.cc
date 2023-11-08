@@ -967,20 +967,24 @@ static int grease_pencil_set_active_material_exec(bContext *C, wmOperator * /*op
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
+  if (object->totcol == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   for (const MutableDrawingInfo &info : drawings) {
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
 
     IndexMaskMemory memory;
     IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
-    if (!selected_curves.is_empty()) {
-      const blender::VArray<int> materials = *curves.attributes().lookup_or_default<int>(
-          "material_index", ATTR_DOMAIN_CURVE, 0);
-      if (object->totcol > 0) {
-        object->actcol = materials[selected_curves.first()] + 1;
-        break;
-      }
+    if (selected_curves.is_empty()) {
+      continue;
     }
+
+    const blender::VArray<int> materials = *curves.attributes().lookup_or_default<int>(
+        "material_index", ATTR_DOMAIN_CURVE, 0);
+    object->actcol = materials[selected_curves.first()] + 1;
+    break;
   };
 
   WM_event_add_notifier(C, NC_GEOM | ND_DATA | NA_EDITED, &grease_pencil);
