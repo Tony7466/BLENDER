@@ -112,5 +112,5 @@ if(WITH_GTESTS)
     bf_blenloader
   )
   include(GTestTesting)
-  blender_add_test_lib(bf_blenloader_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+  blender_add_test_lib(blenloader "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
 endif()

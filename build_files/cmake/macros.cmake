@@ -504,7 +504,7 @@ function(blender_add_test_lib
   library_deps
   )
 
-  add_cc_flags_custom_test(${name} PARENT_SCOPE)
+  add_cc_flags_custom_test(${name}_tests PARENT_SCOPE)
 
   # Otherwise external projects will produce warnings that we cannot fix.
   remove_strict_flags()
@@ -521,12 +521,12 @@ function(blender_add_test_lib
     ${CMAKE_SOURCE_DIR}/extern/gmock/include
   )
 
-  blender_add_lib__impl(${name} "${sources}" "${includes}" "${includes_sys}" "${library_deps}")
+  blender_add_lib__impl(${name}_tests "${sources}" "${includes}" "${includes_sys}" "${library_deps}")
 
-  target_compile_definitions(${name} PRIVATE ${GFLAGS_DEFINES})
-  target_compile_definitions(${name} PRIVATE ${GLOG_DEFINES})
+  target_compile_definitions(${name}_tests PRIVATE ${GFLAGS_DEFINES})
+  target_compile_definitions(${name}_tests PRIVATE ${GLOG_DEFINES})
 
-  set_property(GLOBAL APPEND PROPERTY BLENDER_TEST_LIBS ${name})
+  set_property(GLOBAL APPEND PROPERTY BLENDER_TEST_LIBS ${name}_tests)
 
   blender_add_test_suite(
     TARGET blender_test

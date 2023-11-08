@@ -855,7 +855,7 @@ if(WITH_GTESTS)
     ../editors/include
   )
   include(GTestTesting)
-  blender_add_test_lib(bf_blenkernel_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
+  blender_add_test_lib(blenkernel "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
 
   # RNA_prototypes.h
   add_dependencies(bf_blenkernel_tests bf_rna)

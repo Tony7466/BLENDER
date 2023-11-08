@@ -740,7 +740,7 @@ if(WITH_CYCLES OR WITH_OPENGL_RENDER_TESTS)
       # Eevee
       foreach(render_test ${render_tests})
         add_python_test(
-          eevee_${render_test}_test
+          eevee_${render_test}
           ${CMAKE_CURRENT_LIST_DIR}/eevee_render_tests.py
           -blender "${TEST_BLENDER_EXE}"
           -testdir "${TEST_SRC_DIR}/render/${render_test}"
@@ -752,7 +752,7 @@ if(WITH_CYCLES OR WITH_OPENGL_RENDER_TESTS)
       # Eevee Next
       foreach(render_test ${render_tests})
         add_python_test(
-          eevee_next_${render_test}_test
+          eevee_next_${render_test}
           ${CMAKE_CURRENT_LIST_DIR}/eevee_next_render_tests.py
           -blender "${TEST_BLENDER_EXE}"
           -testdir "${TEST_SRC_DIR}/render/${render_test}"
@@ -764,7 +764,7 @@ if(WITH_CYCLES OR WITH_OPENGL_RENDER_TESTS)
       foreach(render_test ${render_tests})
         # Workbench
         add_python_test(
-          workbench_${render_test}_test
+          workbench_${render_test}
           ${CMAKE_CURRENT_LIST_DIR}/workbench_render_tests.py
           -blender "${TEST_BLENDER_EXE}"
           -testdir "${TEST_SRC_DIR}/render/${render_test}"
@@ -777,7 +777,7 @@ if(WITH_CYCLES OR WITH_OPENGL_RENDER_TESTS)
         # Hydra Storm
         foreach(render_test ${render_tests})
           add_python_test(
-            storm_hydra_${render_test}_test
+            storm_hydra_${render_test}
             ${CMAKE_CURRENT_LIST_DIR}/storm_render_tests.py
             -blender "${TEST_BLENDER_EXE}"
             -testdir "${TEST_SRC_DIR}/render/${render_test}"
@@ -789,7 +789,7 @@ if(WITH_CYCLES OR WITH_OPENGL_RENDER_TESTS)
 
         foreach(render_test ${render_tests})
           add_python_test(
-            storm_usd_${render_test}_test
+            storm_usd_${render_test}
             ${CMAKE_CURRENT_LIST_DIR}/storm_render_tests.py
             -blender "${TEST_BLENDER_EXE}"
             -testdir "${TEST_SRC_DIR}/render/${render_test}"
@@ -905,7 +905,7 @@ foreach(geo_node_test ${geo_node_tests})
     foreach(file ${files})
       get_filename_component(filename ${file} NAME_WE)
       add_blender_test(
-        geo_node_${geo_node_test}_test_${filename}
+        geo_node_${geo_node_test}_${filename}
         ${file}
         --python ${TEST_PYTHON_DIR}/geo_node_test.py
       )
