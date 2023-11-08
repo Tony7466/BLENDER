@@ -37,7 +37,7 @@
 
 #include "ANIM_keyframing.hh"
 
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -426,11 +426,16 @@ void removeAspectRatio(TransInfo *t, float vec[2])
 static void viewRedrawForce(const bContext *C, TransInfo *t)
 {
   if (t->options & CTX_GPENCIL_STROKES) {
-    bGPdata *gpd = ED_gpencil_data_get_active(C);
-    if (gpd) {
-      DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
+    if (t->obedit_type == OB_GREASE_PENCIL) {
+      WM_event_add_notifier(C, NC_GEOM | ND_DATA, nullptr);
     }
-    WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+    else if (t->obedit_type == OB_GPENCIL_LEGACY) {
+      bGPdata *gpd = ED_gpencil_data_get_active(C);
+      if (gpd) {
+        DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
+      }
+      WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+    }
   }
   else if (t->spacetype == SPACE_VIEW3D) {
     if (t->options & CTX_PAINT_CURVE) {
@@ -1528,7 +1533,7 @@ static void drawAutoKeyWarning(TransInfo *t, ARegion *region)
         offset = U.gizmo_size_navigate_v3d;
         break;
       case USER_MINI_AXIS_TYPE_MINIMAL:
-        offset = U.rvisize * MIN2((U.pixelsize / U.scale_factor), 1.0f) * 2.5f;
+        offset = U.rvisize * std::min((U.pixelsize / U.scale_factor), 1.0f) * 2.5f;
         break;
       case USER_MINI_AXIS_TYPE_NONE:
         offset = U.rvisize;

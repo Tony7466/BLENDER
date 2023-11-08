@@ -54,26 +54,26 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "SEQ_channels.h"
-#include "SEQ_effects.h"
-#include "SEQ_iterator.h"
-#include "SEQ_modifier.h"
-#include "SEQ_proxy.h"
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
-#include "SEQ_transform.h"
-#include "SEQ_utils.h"
+#include "SEQ_channels.hh"
+#include "SEQ_effects.hh"
+#include "SEQ_iterator.hh"
+#include "SEQ_modifier.hh"
+#include "SEQ_proxy.hh"
+#include "SEQ_relations.hh"
+#include "SEQ_render.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
+#include "SEQ_transform.hh"
+#include "SEQ_utils.hh"
 
-#include "effects.h"
-#include "image_cache.h"
-#include "multiview.h"
-#include "prefetch.h"
-#include "proxy.h"
-#include "render.h"
-#include "strip_time.h"
-#include "utils.h"
+#include "effects.hh"
+#include "image_cache.hh"
+#include "multiview.hh"
+#include "prefetch.hh"
+#include "proxy.hh"
+#include "render.hh"
+#include "strip_time.hh"
+#include "utils.hh"
 
 static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
                                      SeqRenderState *state,
@@ -279,25 +279,22 @@ int seq_get_shown_sequences(const Scene *scene,
                             const int chanshown,
                             Sequence **r_seq_arr)
 {
-  SeqCollection *collection = SEQ_query_rendered_strips(
+  blender::VectorSet strips = SEQ_query_rendered_strips(
       scene, channels, seqbase, timeline_frame, chanshown);
-  const int strip_count = BLI_gset_len(collection->set);
+  const int strip_count = strips.size();
 
   if (UNLIKELY(strip_count > MAXSEQ)) {
-    SEQ_collection_free(collection);
     BLI_assert_msg(0, "Too many strips, this shouldn't happen");
     return 0;
   }
 
   /* Copy collection elements into array. */
   memset(r_seq_arr, 0, sizeof(Sequence *) * (MAXSEQ + 1));
-  Sequence *seq;
   int index = 0;
-  SEQ_ITERATOR_FOREACH (seq, collection) {
+  for (Sequence *seq : strips) {
     r_seq_arr[index] = seq;
     index++;
   }
-  SEQ_collection_free(collection);
 
   /* Sort array by channel. */
   qsort(r_seq_arr, strip_count, sizeof(Sequence *), seq_channel_cmp_fn);
@@ -571,7 +568,7 @@ static void sequencer_preprocess_transform_crop(
   }
 }
 
-static void multibuf(ImBuf *ibuf, const float fmul)
+static void multibuf(ImBuf *ibuf, const float fmul, const bool multiply_alpha)
 {
   uchar *rt;
   float *rt_float;
@@ -588,6 +585,9 @@ static void multibuf(ImBuf *ibuf, const float fmul)
       rt[0] = min_ii((imul * rt[0]) >> 8, 255);
       rt[1] = min_ii((imul * rt[1]) >> 8, 255);
       rt[2] = min_ii((imul * rt[2]) >> 8, 255);
+      if (multiply_alpha) {
+        rt[3] = min_ii((imul * rt[3]) >> 8, 255);
+      }
 
       rt += 4;
     }
@@ -598,6 +598,9 @@ static void multibuf(ImBuf *ibuf, const float fmul)
       rt_float[0] *= fmul;
       rt_float[1] *= fmul;
       rt_float[2] *= fmul;
+      if (multiply_alpha) {
+        rt_float[3] *= fmul;
+      }
 
       rt_float += 4;
     }
@@ -669,7 +672,8 @@ static ImBuf *input_preprocess(const SeqRenderData *context,
   }
 
   if (mul != 1.0f) {
-    multibuf(preprocessed_ibuf, mul);
+    const bool multiply_alpha = (seq->flag & SEQ_MULTIPLY_ALPHA);
+    multibuf(preprocessed_ibuf, mul, multiply_alpha);
   }
 
   if (seq->modifiers.first) {
