@@ -30,18 +30,18 @@
 
 #include "RNA_prototypes.h"
 
-#include "SEQ_channels.h"
-#include "SEQ_iterator.h"
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
+#include "SEQ_channels.hh"
+#include "SEQ_iterator.hh"
+#include "SEQ_relations.hh"
+#include "SEQ_render.hh"
 #include "SEQ_retiming.hh"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
-#include "SEQ_transform.h"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
+#include "SEQ_transform.hh"
 
-#include "sequencer.h"
-#include "strip_time.h"
-#include "utils.h"
+#include "sequencer.hh"
+#include "strip_time.hh"
+#include "utils.hh"
 
 using blender::MutableSpan;
 
@@ -113,7 +113,7 @@ void SEQ_retiming_data_ensure(Sequence *seq)
 
   seq->retiming_keys = (SeqRetimingKey *)MEM_calloc_arrayN(2, sizeof(SeqRetimingKey), __func__);
   SeqRetimingKey *key = seq->retiming_keys + 1;
-  key->strip_frame_index = seq->len;
+  key->strip_frame_index = seq->len - 1;
   key->retiming_factor = 1.0f;
   seq->retiming_keys_num = 2;
 }
@@ -215,7 +215,7 @@ bool SEQ_retiming_key_is_transition_start(const SeqRetimingKey *key)
 
 SeqRetimingKey *SEQ_retiming_transition_start_get(SeqRetimingKey *key)
 {
-  if ((key->flag & SEQ_SPEED_TRANSITION_OUT)) {
+  if (key->flag & SEQ_SPEED_TRANSITION_OUT) {
     return key - 1;
   }
   if (key->flag & SEQ_SPEED_TRANSITION_IN) {
@@ -849,11 +849,17 @@ static void seq_retiming_transition_offset(const Scene *scene,
 {
   int clamped_offset = seq_retiming_clamp_transition_offset(key, offset);
   const int duration = key->original_strip_frame_index - key->strip_frame_index;
+  const bool was_selected = SEQ_retiming_selection_contains(SEQ_editing_get(scene), key);
 
   SeqRetimingKey *original_key = seq_retiming_remove_transition(scene, seq, key);
   original_key->strip_frame_index += clamped_offset;
 
-  SEQ_retiming_add_transition(scene, seq, original_key, duration);
+  SeqRetimingKey *transition_in = SEQ_retiming_add_transition(scene, seq, original_key, duration);
+
+  if (was_selected) {
+    SEQ_retiming_selection_append(transition_in);
+    SEQ_retiming_selection_append(transition_in + 1);
+  }
 }
 
 static int seq_retiming_clamp_timeline_frame(const Scene *scene,
@@ -972,7 +978,8 @@ void SEQ_retiming_key_timeline_frame_set(const Scene *scene,
   }
 
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
-  seq_time_update_effects_strip_range(scene, seq_sequence_lookup_effects_by_seq(scene, seq));
+  blender::Span effects = seq_sequence_lookup_effects_by_seq(scene, seq);
+  seq_time_update_effects_strip_range(scene, effects);
 }
 
 void SEQ_retiming_key_speed_set(const Scene *scene,
