@@ -311,7 +311,12 @@ class DATA_PT_active_spline(CurveButtonsPanelActive, Panel):
                     sub.prop(act_spline, "order_v", text="V")
 
             sub = col.column(align=True)
-            sub.prop(act_spline, "resolution_u", text="Resolution U")
+            if (act_spline.type == 'BEZIER'):
+                sub.prop(act_spline, "tess_mode")
+
+            res_text = "Angle" if (act_spline.type == 'BEZIER') and (
+                act_spline.tess_mode == "TESS_MODE_ADAPTIVE") else "Resolution U"
+            sub.prop(act_spline, "resolution_u", text=res_text)
             if is_surf:
                 sub.prop(act_spline, "resolution_v", text="V")
 

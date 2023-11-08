@@ -137,7 +137,8 @@ typedef struct Nurb {
   short hide, flag;
   /** Number of points in the U or V directions. */
   int pntsu, pntsv;
-  char _pad[4];
+  char _pad[2];
+  short tess_mode;
   /** Tessellation resolution in the U or V directions. */
   short resolu, resolv;
   short orderu, orderv;
@@ -401,6 +402,12 @@ enum {
 /** #Nurb.flag */
 enum {
   CU_SMOOTH = 1 << 0,
+};
+
+/** #Nurb.tess_mode*/
+enum {
+  CU_TESS_MODE_FORWARD = 0,
+  CU_TESS_MODE_ADAPTIVE = 1,
 };
 
 /** #Nurb.type */

@@ -57,9 +57,13 @@
 #include "CLG_log.h"
 
 #include "BLO_read_write.hh"
+#include "curve_bezier_tess.hh"
 
 using blender::float3;
 using blender::IndexRange;
+using blender::bke::curves::bezier::LegacyBezierTess;
+using blender::bke::curves::bezier::LegacyDeCasteljauTess;
+using blender::bke::curves::bezier::LegacyForwardTess;
 
 /* globals */
 
@@ -2599,6 +2603,10 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
     if (nu->hide && is_editmode) {
       continue;
     }
+    LegacyBezierTess *tess = (nu->tess_mode == CU_TESS_MODE_ADAPTIVE) ?
+                                 static_cast<LegacyBezierTess *>(
+                                     MEM_new<LegacyDeCasteljauTess>(__func__)) :
+                                 MEM_new<LegacyForwardTess>(__func__);
 
     /* check we are a single point? also check we are not a surface and that the orderu is sane,
      * enforced in the UI but can go wrong possibly */
@@ -2680,8 +2688,8 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
       }
     }
     else if (nu->type == CU_BEZIER) {
-      /* in case last point is not cyclic */
-      len = segcount * resolu + 1;
+      tess->init(nu);
+      len = tess->position_count();
 
       BevList *bl = MEM_cnew<BevList>(__func__);
       bl->bevpoints = (BevPoint *)MEM_calloc_arrayN(len, sizeof(BevPoint), __func__);
@@ -2743,19 +2751,8 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
           }
         }
         else {
-          /* Always do all three, to prevent data hanging around. */
-          int j;
-
-          /* #BevPoint must stay aligned to 4 so `sizeof(BevPoint) / sizeof(float)` works. */
-          for (j = 0; j < 3; j++) {
-            BKE_curve_forward_diff_bezier(prevbezt->vec[1][j],
-                                          prevbezt->vec[2][j],
-                                          bezt->vec[0][j],
-                                          bezt->vec[1][j],
-                                          &(bevp->vec[j]),
-                                          resolu,
-                                          sizeof(BevPoint));
-          }
+          tess->get_positions(
+              bezt, prevbezt, segcount - a - 1, sizeof(BevPoint), &(bevp->vec[0]), resolu);
 
           /* If both arrays are `nullptr` do nothing. */
           tilt_bezpart(prevbezt,
@@ -2767,7 +2764,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
                        resolu,
                        sizeof(BevPoint));
 
-          if (cu->twist_mode == CU_TWIST_TANGENT) {
+          if (cu->twist_mode == CU_TWIST_TANGENT && nu->tess_mode == CU_TESS_MODE_FORWARD) {
             forward_diff_bezier_cotangent(prevbezt->vec[1],
                                           prevbezt->vec[2],
                                           bezt->vec[0],
@@ -2781,7 +2778,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
           if (seglen != nullptr) {
             *seglen = 0;
             *segbevcount = 0;
-            for (j = 0; j < resolu; j++) {
+            for (int j = 0; j < resolu; j++) {
               bevp0 = bevp;
               bevp++;
               bevp->offset = len_v3v3(bevp0->vec, bevp->vec);
@@ -2873,6 +2870,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
         }
       }
     }
+    MEM_delete(tess);
   }
 
   /* STEP 2: DOUBLE POINTS AND AUTOMATIC RESOLUTION, REDUCE DATABLOCKS */

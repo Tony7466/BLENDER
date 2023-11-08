@@ -1947,6 +1947,12 @@ static void rna_def_curve(BlenderRNA *brna)
 
 static void rna_def_curve_nurb(BlenderRNA *brna)
 {
+  static const EnumPropertyItem spline_tess_mode_items[] = {
+      {CU_TESS_MODE_FORWARD, "TESS_MODE_FORWARD", 0, "Forward Diff", "Evenly spaced"},
+      {CU_TESS_MODE_ADAPTIVE, "TESS_MODE_ADAPTIVE", 0, "De Casteljau", "Adaptive"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static const EnumPropertyItem spline_interpolation_items[] = {
       {KEY_LINEAR, "LINEAR", 0, "Linear", ""},
       {KEY_CARDINAL, "CARDINAL", 0, "Cardinal", ""},
@@ -2043,6 +2049,12 @@ static void rna_def_curve_nurb(BlenderRNA *brna)
                            "NURBS order in the V direction. Higher values make each point "
                            "influence a greater area, but have worse performance");
   RNA_def_property_update(prop, 0, "rna_Nurb_update_knot_v");
+
+  prop = RNA_def_property(srna, "tess_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "tess_mode");
+  RNA_def_property_enum_items(prop, spline_tess_mode_items);
+  RNA_def_property_ui_text(prop, "Tessellation", "Tessellation algorithm for Bezier Curves");
+  RNA_def_property_update(prop, 0, "rna_Curve_update_data");
 
   prop = RNA_def_property(srna, "resolution_u", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "resolu");

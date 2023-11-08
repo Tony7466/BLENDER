@@ -105,6 +105,7 @@ set(SRC
   intern/curve.cc
   intern/curve_bevel.cc
   intern/curve_bezier.cc
+  intern/curve_bezier_tess.cc
   intern/curve_catmull_rom.cc
   intern/curve_convert.cc
   intern/curve_decimate.cc
@@ -522,6 +523,7 @@ set(SRC
   intern/CCGSubSurf_inline.h
   intern/CCGSubSurf_intern.h
   intern/attribute_access_intern.hh
+  intern/curve_bezier_tess.hh
   intern/data_transfer_intern.h
   intern/lib_intern.h
   intern/multires_inline.hh
