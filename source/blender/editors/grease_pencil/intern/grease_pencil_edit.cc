@@ -27,9 +27,6 @@
 #include "ED_grease_pencil.hh"
 #include "ED_screen.hh"
 
-#include "UI_interface.hh"
-#include "UI_resources.hh"
-
 #include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
