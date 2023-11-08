@@ -183,13 +183,7 @@ struct VertexFormatConverter {
                               const VKWorkarounds &workarounds,
                               bool &needs_repack) const;
 
-  void convert(void *device_data,
-               const void *source_data,
-               const uint vertex_len,
-               bool forward_direction) const;
-  void convert_row(void *device_row_data,
-                   const void *source_row_data,
-                   bool forward_direction) const;
+  void convert_row(void *device_row_data, const void *source_row_data) const;
   void convert_attribute(void *device_row_data,
                          const void *source_row_data,
                          const GPUVertAttr &device_attribute,
