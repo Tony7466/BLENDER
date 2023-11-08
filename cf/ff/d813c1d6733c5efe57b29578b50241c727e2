@@ -1,1 +1,2 @@
 Referenced by issue #114583, Regression: OBJ Exporter: Lack of choice of forward orientation
+Referenced by pull request #114615, Fix #114583: Missing forward axis option in obj export
