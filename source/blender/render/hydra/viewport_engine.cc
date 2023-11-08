@@ -33,20 +33,18 @@
 namespace blender::render::hydra {
 
 struct ViewSettings {
+  int screen_width;
+  int screen_height;
+  pxr::GfVec4i border;
+  pxr::GfCamera gf_camera;
+
   ViewSettings(bContext *context);
 
   int width();
   int height();
-
-  pxr::GfCamera gf_camera();
-
-  int screen_width;
-  int screen_height;
-  pxr::GfVec4i border;
-  bContext *ctx;
 };
 
-ViewSettings::ViewSettings(bContext *context) : ctx(context)
+ViewSettings::ViewSettings(bContext *context)
 {
   View3D *view3d = CTX_wm_view3d(context);
   RegionView3D *region_data = static_cast<RegionView3D *>(CTX_wm_region_data(context));
@@ -119,6 +117,15 @@ ViewSettings::ViewSettings(bContext *context) : ctx(context)
   }
 
   border = pxr::GfVec4i(x1, y1, x2, y2);
+
+  gf_camera = io::hydra::gf_camera(CTX_data_ensure_evaluated_depsgraph(context),
+                                   view3d,
+                                   region,
+                                   &scene->r,
+                                   pxr::GfVec4f(float(border[0]) / screen_width,
+                                                float(border[1]) / screen_height,
+                                                float(width()) / screen_width,
+                                                float(height()) / screen_height));
 }
 
 int ViewSettings::width()
@@ -129,20 +136,6 @@ int ViewSettings::width()
 int ViewSettings::height()
 {
   return border[3] - border[1];
-}
-
-pxr::GfCamera ViewSettings::gf_camera()
-{
-  pxr::GfVec4f tile = pxr::GfVec4f(float(border[0]) / screen_width,
-                                   float(border[1]) / screen_height,
-                                   float(width()) / screen_width,
-                                   float(height()) / screen_height);
-
-  return io::hydra::gf_camera(CTX_data_ensure_evaluated_depsgraph(ctx),
-                              CTX_wm_view3d(ctx),
-                              CTX_wm_region(ctx),
-                              &CTX_data_scene(ctx)->r,
-                              tile);
 }
 
 DrawTexture::DrawTexture()
@@ -219,8 +212,7 @@ void ViewportEngine::render()
     return;
   };
 
-  pxr::GfCamera gf_camera = view_settings.gf_camera();
-  free_camera_delegate_->SetCamera(gf_camera);
+  free_camera_delegate_->SetCamera(view_settings.gf_camera);
 
   pxr::GfVec4d viewport(0.0, 0.0, view_settings.width(), view_settings.height());
   render_task_delegate_->set_viewport(viewport);

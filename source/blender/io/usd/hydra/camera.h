@@ -4,12 +4,8 @@
 
 #pragma once
 
-#include <tuple>
-
 #include <pxr/base/gf/camera.h>
 #include <pxr/base/gf/vec2f.h>
-
-#include "BKE_camera.h"
 
 struct ARegion;
 struct Object;
@@ -23,10 +19,11 @@ pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
                         const View3D *v3d,
                         const ARegion *region,
                         const RenderData *rd,
-                        pxr::GfVec4f tile);
+                        const pxr::GfVec4f &border);
 
 pxr::GfCamera gf_camera(const Object *camera_obj,
                         const RenderData *rd,
-                        pxr::GfVec2i res,
-                        pxr::GfVec4f tile);
+                        const pxr::GfVec2i &res,
+                        const pxr::GfVec4f &border);
+
 }  // namespace blender::io::hydra
