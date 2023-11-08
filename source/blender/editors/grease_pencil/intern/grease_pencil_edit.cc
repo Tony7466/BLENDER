@@ -287,7 +287,6 @@ static void smooth_curve_attribute(const OffsetIndices<int> points_by_curve,
 
 static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
 {
-  using namespace blender;
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
@@ -462,7 +461,6 @@ static int64_t stroke_simplify(const IndexRange points,
 
 static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
 {
-  using namespace blender;
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
@@ -671,7 +669,6 @@ static Array<bool> get_points_to_dissolve(bke::CurvesGeometry &curves,
 
 static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
 {
-  using namespace blender;
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
@@ -763,7 +760,6 @@ static const EnumPropertyItem prop_greasepencil_deleteframe_types[] = {
 
 static int grease_pencil_delete_frame_exec(bContext *C, wmOperator *op)
 {
-  using namespace blender;
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
@@ -827,7 +823,6 @@ static void GREASE_PENCIL_OT_delete_frame(wmOperatorType *ot)
 
 static int grease_pencil_stroke_material_set_exec(bContext *C, wmOperator * /*op*/)
 {
-  using namespace blender;
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
