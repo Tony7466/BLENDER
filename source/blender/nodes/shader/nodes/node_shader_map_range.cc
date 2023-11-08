@@ -445,8 +445,6 @@ static void sh_node_map_range_build_multi_function(NodeMultiFunctionBuilder &bui
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  /* TODO: Implement steps */
-
   const NodeMapRange *map_range = static_cast<NodeMapRange *>(node_->storage);
   NodeItem::Type type;
   NodeItem value = empty();
