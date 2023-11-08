@@ -260,7 +260,7 @@ static void smooth_curve_attribute(const OffsetIndices<int> points_by_curve,
                                    const bool keep_shape,
                                    GMutableSpan data)
 {
-  curves_to_smooth.foreach_index([&](const int64_t curve_i) {
+  curves_to_smooth.foreach_index_optimized<int64_t>(GrainSize(512), [&](const int64_t curve_i) {
     Vector<std::byte> orig_data;
     const IndexRange points = points_by_curve[curve_i];
 
