@@ -3083,11 +3083,14 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
           Curves &curves_id = *static_cast<Curves *>(curves_ob.data);
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obedit);
+          const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+          const IndexRange elements(curves.attributes().domain_size(selection_domain));
           std::optional<ed::curves::FindClosestData> new_closest_elem =
               ed::curves::closest_elem_find_screen_space(vc,
                                                          curves_ob,
-                                                         curves_id.geometry.wrap(),
+                                                         curves.points_by_curve(),
                                                          deformation.positions,
+                                                         elements,
                                                          selection_domain,
                                                          mval,
                                                          new_closest.elem);
@@ -3187,11 +3190,19 @@ static bool ed_grease_pencil_select_pick(bContext *C,
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                   ob_eval, *vc.obedit, info.layer_index, info.frame_number);
+
+          IndexMaskMemory memory;
+          const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+              *vc.obedit, info.drawing, selection_domain, memory);
+          if (elements.is_empty()) {
+            continue;
+          }
           std::optional<ed::curves::FindClosestData> new_closest_elem =
               ed::curves::closest_elem_find_screen_space(vc,
                                                          *vc.obedit,
-                                                         info.drawing.strokes_for_write(),
+                                                         info.drawing.strokes().points_by_curve(),
                                                          deformation.positions,
+                                                         elements,
                                                          selection_domain,
                                                          mval,
                                                          new_closest.elem);
@@ -3211,13 +3222,19 @@ static bool ed_grease_pencil_select_pick(bContext *C,
     threading::parallel_for(drawings.index_range(), 1L, [&](const IndexRange range) {
       for (const int i : range) {
         ed::greasepencil::MutableDrawingInfo info = drawings[i];
+        IndexMaskMemory memory;
+        const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+            *vc.obedit, info.drawing, selection_domain, memory);
+        if (elements.is_empty()) {
+          continue;
+        }
         bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-        if (!ed::curves::has_anything_selected(curves)) {
+        if (!ed::curves::has_anything_selected(curves, elements)) {
           continue;
         }
         bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
             curves, selection_domain, CD_PROP_BOOL);
-        ed::curves::fill_selection_false(selection.span);
+        ed::curves::fill_selection_false(selection.span, elements);
         selection.finish();
 
         deselected = true;

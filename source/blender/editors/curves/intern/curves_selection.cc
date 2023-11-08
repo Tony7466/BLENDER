@@ -502,8 +502,8 @@ static std::optional<FindClosestData> find_closest_point_to_screen_co(
     const ARegion *region,
     const RegionView3D *rv3d,
     const Object &object,
-    const bke::CurvesGeometry &curves,
     Span<float3> deformed_positions,
+    const IndexMask &points_mask,
     float2 mouse_pos,
     float radius,
     const FindClosestData &initial_closest)
@@ -513,12 +513,13 @@ static std::optional<FindClosestData> find_closest_point_to_screen_co(
 
   const float radius_sq = pow2f(radius);
   const FindClosestData new_closest_data = threading::parallel_reduce(
-      curves.points_range(),
+      points_mask.index_range(),
       1024,
       initial_closest,
-      [&](const IndexRange point_range, const FindClosestData &init) {
+      [&](const IndexRange point_indicies_range, const FindClosestData &init) {
         FindClosestData best_match = init;
-        for (const int point_i : point_range) {
+        for (const int index : point_indicies_range) {
+          const int point_i = points_mask[index];
           const float3 pos = deformed_positions[point_i];
 
           /* Find the position of the point in screen space. */
@@ -558,8 +559,9 @@ static std::optional<FindClosestData> find_closest_curve_to_screen_co(
     const ARegion *region,
     const RegionView3D *rv3d,
     const Object &object,
-    const bke::CurvesGeometry &curves,
+    const OffsetIndices<int> points_by_curve,
     Span<float3> deformed_positions,
+    const IndexMask &curves_mask,
     float2 mouse_pos,
     float radius,
     const FindClosestData &initial_closest)
@@ -569,14 +571,14 @@ static std::optional<FindClosestData> find_closest_curve_to_screen_co(
 
   const float radius_sq = pow2f(radius);
 
-  const OffsetIndices points_by_curve = curves.points_by_curve();
   const FindClosestData new_closest_data = threading::parallel_reduce(
-      curves.curves_range(),
+      curves_mask.index_range(),
       256,
       initial_closest,
-      [&](const IndexRange curves_range, const FindClosestData &init) {
+      [&](const IndexRange curves_indices_range, const FindClosestData &init) {
         FindClosestData best_match = init;
-        for (const int curve_i : curves_range) {
+        for (const int index : curves_indices_range) {
+          const int curve_i = curves_mask[index];
           const IndexRange points = points_by_curve[curve_i];
           if (points.size() == 1) {
             const float3 pos = deformed_positions[points.first()];
@@ -644,8 +646,9 @@ static std::optional<FindClosestData> find_closest_curve_to_screen_co(
 std::optional<FindClosestData> closest_elem_find_screen_space(
     const ViewContext &vc,
     const Object &object,
-    bke::CurvesGeometry &curves,
+    const OffsetIndices<int> points_by_curve,
     const Span<float3> deformed_positions,
+    const IndexMask &mask,
     const eAttrDomain domain,
     const int2 coord,
     const FindClosestData &initial_closest)
@@ -655,8 +658,8 @@ std::optional<FindClosestData> closest_elem_find_screen_space(
       return find_closest_point_to_screen_co(vc.region,
                                              vc.rv3d,
                                              object,
-                                             curves,
                                              deformed_positions,
+                                             mask,
                                              float2(coord),
                                              ED_view3d_select_dist_px(),
                                              initial_closest);
@@ -664,8 +667,9 @@ std::optional<FindClosestData> closest_elem_find_screen_space(
       return find_closest_curve_to_screen_co(vc.region,
                                              vc.rv3d,
                                              object,
-                                             curves,
+                                             points_by_curve,
                                              deformed_positions,
+                                             mask,
                                              float2(coord),
                                              ED_view3d_select_dist_px(),
                                              initial_closest);

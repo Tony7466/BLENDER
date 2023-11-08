@@ -233,8 +233,9 @@ struct FindClosestData {
  */
 std::optional<FindClosestData> closest_elem_find_screen_space(const ViewContext &vc,
                                                               const Object &object,
-                                                              bke::CurvesGeometry &curves,
+                                                              const OffsetIndices<int> points_by_curve,
                                                               Span<float3> deformed_positions,
+                                                              const IndexMask &mask,
                                                               eAttrDomain domain,
                                                               int2 coord,
                                                               const FindClosestData &initial);
