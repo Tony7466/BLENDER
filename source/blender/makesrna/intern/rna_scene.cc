@@ -7079,8 +7079,8 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
       prop,
       "Mesh Normals",
       "Skip computing custom normals and face corner normals for the viewport");
-  /* Note: Unlike other simplify properties, this doesn't recalculate objects, since it just
-   * affects viewport drawing. */
+  /* Note: Unlike other simplify properties, this doesn't recalculate objects,
+   * since it just affects viewport drawing and data extraction. */
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   /* EEVEE - Simplify Options */

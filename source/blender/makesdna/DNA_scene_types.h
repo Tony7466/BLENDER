@@ -2085,7 +2085,7 @@ enum {
 /** #RenderData::mode. */
 enum {
   R_MODE_UNUSED_0 = 1 << 0, /* dirty */
-  R_MODE_UNUSED_1 = 1 << 1, /* cleared */
+  R_SIMPLIFY_NORMALS = 1 << 1,
   R_MODE_UNUSED_2 = 1 << 2, /* cleared */
   R_MODE_UNUSED_3 = 1 << 3, /* cleared */
   R_MODE_UNUSED_4 = 1 << 4, /* cleared */
@@ -2112,9 +2112,9 @@ enum {
   R_NO_OVERWRITE = 1 << 22,   /* Skip existing files. */
   R_TOUCH = 1 << 23,          /* Touch files before rendering. */
   R_SIMPLIFY = 1 << 24,
-  R_EDGE_FRS = 1 << 25,         /* R_EDGE reserved for Freestyle */
-  R_PERSISTENT_DATA = 1 << 26,  /* Keep data around for re-render. */
-  R_SIMPLIFY_NORMALS = 1 << 27, /* cleared */
+  R_EDGE_FRS = 1 << 25,        /* R_EDGE reserved for Freestyle */
+  R_PERSISTENT_DATA = 1 << 26, /* Keep data around for re-render. */
+  R_MODE_UNUSED_27 = 1 << 27,  /* cleared */
 };
 
 /** #RenderData::seq_flag */
