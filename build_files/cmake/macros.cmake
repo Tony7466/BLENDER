@@ -494,7 +494,8 @@ function(blender_add_test_suite)
 endfunction()
 
 # Add tests for a Blender library, to be called in tandem with blender_add_lib().
-# The tests will be part of the blender_test executable (see tests/gtests/runner).
+# Tests will be put into the blender_test executable, and a separate ctest will be
+# generated for every gtest contained in it.
 function(blender_add_test_lib
   name
   sources
@@ -535,12 +536,6 @@ function(blender_add_test_lib
 endfunction()
 
 
-# Add tests for a Blender library, to be called in tandem with blender_add_lib().
-# Test will be compiled into a ${name}_test executable.
-#
-# To be used for smaller isolated libraries, that do not have many dependencies.
-# For libraries that do drag in many other Blender libraries and would create a
-# very large executable, blender_add_test_lib() should be used instead.
 function(blender_add_test_executable_impl
   name
   add_test_suite
@@ -559,7 +554,6 @@ function(blender_add_test_executable_impl
     NAME ${name}
     SRC "${sources}"
     EXTRA_LIBS "${library_deps}"
-    SKIP_ADD_TEST
   )
   if(add_test_suite)
     blender_add_test_suite(
@@ -572,6 +566,14 @@ function(blender_add_test_executable_impl
   blender_target_include_dirs_sys(${name}_test ${includes_sys})
 endfunction()
 
+# Add test for a Blender library, to be called in tandem with blender_add_lib().
+
+# This will generate a single executable named ${name}_test, and generate a
+# separate ctest for every gtest contained in it.
+#
+# To be used for smaller isolated libraries, that do not have many dependencies.
+# For libraries that do drag in many other Blender libraries and would create a
+# very large executable, blender_add_test_lib() should be used instead.
 function(blender_add_test_executable
   name
   sources
@@ -586,10 +588,12 @@ function(blender_add_test_executable
     "${includes}"
     "${includes_sys}"
     "${library_deps}"
-   )
+  )
 endfunction()
 
-function(blender_add_performancetest_executable
+# Add performance test. This is like blender_add_test_executable, but no ctest
+# is generated and the binary should be run manually.
+function(blender_add_test_performance_executable
   name
   sources
   includes

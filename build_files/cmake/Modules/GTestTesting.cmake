@@ -17,7 +17,7 @@ endfunction()
 
 macro(BLENDER_SRC_GTEST_EX)
   if(WITH_GTESTS)
-    set(options SKIP_ADD_TEST)
+    set(options)
     set(oneValueArgs NAME)
     set(multiValueArgs SRC EXTRA_LIBS COMMAND_ARGS)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
@@ -90,21 +90,6 @@ macro(BLENDER_SRC_GTEST_EX)
                           RUNTIME_OUTPUT_DIRECTORY         "${TESTS_OUTPUT_DIR}"
                           RUNTIME_OUTPUT_DIRECTORY_RELEASE "${TESTS_OUTPUT_DIR}"
                           RUNTIME_OUTPUT_DIRECTORY_DEBUG   "${TESTS_OUTPUT_DIR}")
-    if(NOT ARG_SKIP_ADD_TEST)
-      add_test(
-        NAME ${TARGET_NAME}
-        COMMAND ${TESTS_OUTPUT_DIR}/${TARGET_NAME} ${ARG_COMMAND_ARGS}
-        WORKING_DIRECTORY ${TEST_INSTALL_DIR})
-
-      # Don't fail tests on leaks since these often happen in external libraries
-      # that we can't fix.
-      set_tests_properties(${TARGET_NAME} PROPERTIES
-        ENVIRONMENT LSAN_OPTIONS=exitcode=0:$ENV{LSAN_OPTIONS}
-      )
-      if(WIN32)
-        set_tests_properties(${TARGET_NAME} PROPERTIES ENVIRONMENT "PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/blender.shared/;$ENV{PATH}")
-      endif()
-    endif()
     if(WIN32)
       set_target_properties(${TARGET_NAME} PROPERTIES VS_GLOBAL_VcpkgEnabled "false")
     endif()
