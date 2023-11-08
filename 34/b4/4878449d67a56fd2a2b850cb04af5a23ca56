@@ -1,2 +1,3 @@
 Referenced by issue #113621, Regression: Can no longer set evaluated data in python for attributes
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
+Referenced by issue #114173, Cannot undo python opeartor that writes to curve attribute - if
