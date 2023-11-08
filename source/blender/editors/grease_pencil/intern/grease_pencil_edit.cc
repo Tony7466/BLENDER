@@ -1266,6 +1266,7 @@ static void GREASE_PENCIL_OT_caps_set(wmOperatorType *ot)
   static const EnumPropertyItem prop_caps_types[] = {
       {int(CapsMode::ROUND), "ROUND", 0, "Rounded", "Set as default rounded"},
       {int(CapsMode::FLAT), "FLAT", 0, "Flat", ""},
+      RNA_ENUM_ITEM_SEPR,
       {int(CapsMode::START), "START", 0, "Toggle Start", ""},
       {int(CapsMode::END), "END", 0, "Toggle End", ""},
       {0, nullptr, 0, nullptr, nullptr},
