@@ -50,7 +50,7 @@ if(WITH_GTESTS)
     ../../blenloader
   )
   set(TEST_LIB
-    bf_blenloader_tests
+    bf_blenloader_test_util
     bf_io_common
   )
   include(GTestTesting)
