@@ -250,10 +250,10 @@ void gaussian_blur_1D(const GSpan src,
   });
 }
 
-static void smooth_curve_attribute(const IndexMask &curves_to_smooth,
-                                   const OffsetIndices<int> points_by_curve,
+static void smooth_curve_attribute(const OffsetIndices<int> points_by_curve,
                                    const VArray<bool> &point_selection,
                                    const VArray<bool> &cyclic,
+                                   const IndexMask &curves_to_smooth,
                                    const int64_t iterations,
                                    const float influence,
                                    const bool smooth_ends,
@@ -328,10 +328,10 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
 
     if (smooth_position) {
       bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
-      smooth_curve_attribute(strokes,
-                             points_by_curve,
+      smooth_curve_attribute(points_by_curve,
                              point_selection,
                              cyclic,
+                             strokes,
                              iterations,
                              influence,
                              smooth_ends,
@@ -342,10 +342,10 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
     }
     if (smooth_opacity && info.drawing.opacities().is_span()) {
       bke::GSpanAttributeWriter opacities = attributes.lookup_for_write_span("opacity");
-      smooth_curve_attribute(strokes,
-                             points_by_curve,
+      smooth_curve_attribute(points_by_curve,
                              point_selection,
                              cyclic,
+                             strokes,
                              iterations,
                              influence,
                              smooth_ends,
@@ -356,10 +356,10 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
     }
     if (smooth_radius && info.drawing.radii().is_span()) {
       bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
-      smooth_curve_attribute(strokes,
-                             points_by_curve,
+      smooth_curve_attribute(points_by_curve,
                              point_selection,
                              cyclic,
+                             strokes,
                              iterations,
                              influence,
                              smooth_ends,
