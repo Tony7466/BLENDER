@@ -608,14 +608,14 @@ static const EnumPropertyItem prop_dissolve_types[] = {
 };
 
 static Array<bool> get_points_to_dissolve(bke::CurvesGeometry &curves,
-                                          const IndexMask &editable_points,
+                                          const IndexMask &mask,
                                           const DissolveMode mode)
 {
   const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
       ".selection", ATTR_DOMAIN_POINT, true);
 
   Array<bool> points_to_dissolve(curves.points_num(), false);
-  selection.materialize(editable_points, points_to_dissolve);
+  selection.materialize(mask, points_to_dissolve);
 
   if (mode == DissolveMode::POINTS) {
     return points_to_dissolve;
