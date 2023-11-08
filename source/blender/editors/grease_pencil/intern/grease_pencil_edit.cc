@@ -314,9 +314,9 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
     }
 
     IndexMaskMemory memory;
-    const IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
         *object, info.drawing, memory);
-    if (editable_strokes.is_empty()) {
+    if (strokes.is_empty()) {
       return;
     }
 
@@ -328,7 +328,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
 
     if (smooth_position) {
       bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
-      smooth_curve_attribute(editable_strokes,
+      smooth_curve_attribute(strokes,
                              points_by_curve,
                              point_selection,
                              cyclic,
@@ -342,7 +342,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
     }
     if (smooth_opacity && info.drawing.opacities().is_span()) {
       bke::GSpanAttributeWriter opacities = attributes.lookup_for_write_span("opacity");
-      smooth_curve_attribute(editable_strokes,
+      smooth_curve_attribute(strokes,
                              points_by_curve,
                              point_selection,
                              cyclic,
@@ -356,7 +356,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
     }
     if (smooth_radius && info.drawing.radii().is_span()) {
       bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
-      smooth_curve_attribute(editable_strokes,
+      smooth_curve_attribute(strokes,
                              points_by_curve,
                              point_selection,
                              cyclic,
@@ -477,9 +477,9 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
     }
 
     IndexMaskMemory memory;
-    const IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
         *object, info.drawing, memory);
-    if (editable_strokes.is_empty()) {
+    if (strokes.is_empty()) {
       return;
     }
 
@@ -517,14 +517,14 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
 
     /* Mark all points in the editable curves to be deleted. */
     Array<bool> points_to_delete(curves.points_num(), false);
-    editable_strokes.foreach_index([&](const int64_t curve_i) {
+    strokes.foreach_index([&](const int64_t curve_i) {
       const IndexRange points = points_by_curve[curve_i];
       points_to_delete.as_mutable_span().slice(points).fill(true);
     });
 
     std::atomic<int64_t> total_points_to_delete = 0;
     if (radii.is_single()) {
-      editable_strokes.foreach_index([&](const int64_t curve_i) {
+      strokes.foreach_index([&](const int64_t curve_i) {
         const IndexRange points = points_by_curve[curve_i];
         total_points_to_delete += stroke_simplify(points,
                                                   cyclic[curve_i],
@@ -534,7 +534,7 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
       });
     }
     else if (radii.is_span()) {
-      editable_strokes.foreach_index([&](const int64_t curve_i) {
+      strokes.foreach_index([&](const int64_t curve_i) {
         const IndexRange points = points_by_curve[curve_i];
         total_points_to_delete += stroke_simplify(points,
                                                   cyclic[curve_i],
@@ -689,13 +689,13 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
     }
 
     IndexMaskMemory memory;
-    const IndexMask editable_points = ed::greasepencil::retrieve_editable_points(
+    const IndexMask points = ed::greasepencil::retrieve_editable_and_selected_points(
         *object, info.drawing, memory);
-    if (editable_points.is_empty()) {
+    if (points.is_empty()) {
       return;
     }
 
-    const Array<bool> points_to_dissolve = get_points_to_dissolve(curves, editable_points, mode);
+    const Array<bool> points_to_dissolve = get_points_to_dissolve(curves, points, mode);
     if (points_to_dissolve.as_span().contains(true)) {
       curves.remove_points(IndexMask::from_bools(points_to_dissolve, memory));
       info.drawing.tag_topology_changed();
@@ -842,9 +842,9 @@ static int grease_pencil_stroke_material_set_exec(bContext *C, wmOperator * /*op
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
-    IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
+    IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
         *object, info.drawing, memory);
-    if (editable_strokes.is_empty()) {
+    if (strokes.is_empty()) {
       return;
     }
 
@@ -852,7 +852,7 @@ static int grease_pencil_stroke_material_set_exec(bContext *C, wmOperator * /*op
     bke::SpanAttributeWriter<int> materials =
         curves.attributes_for_write().lookup_or_add_for_write_span<int>("material_index",
                                                                         ATTR_DOMAIN_CURVE);
-    editable_strokes.foreach_index(
+    strokes.foreach_index(
         [&](const int curve_index) { materials.span[curve_index] = material_index; });
 
     materials.finish();
@@ -915,22 +915,22 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
     }
 
     IndexMaskMemory memory;
-    const IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
         *object, info.drawing, memory);
-    if (editable_strokes.is_empty()) {
+    if (strokes.is_empty()) {
       return;
     }
 
     MutableSpan<bool> cyclic = curves.cyclic_for_write();
     switch (mode) {
       case CyclicalMode::CLOSE:
-        index_mask::masked_fill(cyclic, true, editable_strokes);
+        index_mask::masked_fill(cyclic, true, strokes);
         break;
       case CyclicalMode::OPEN:
-        index_mask::masked_fill(cyclic, false, editable_strokes);
+        index_mask::masked_fill(cyclic, false, strokes);
         break;
       case CyclicalMode::TOGGLE:
-        array_utils::invert_booleans(cyclic, editable_strokes);
+        array_utils::invert_booleans(cyclic, strokes);
         break;
     }
 

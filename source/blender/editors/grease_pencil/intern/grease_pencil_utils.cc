@@ -11,6 +11,8 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 
+#include "BLI_bit_span_ops.hh"
+#include "BLI_bit_vector.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_vector_set.hh"
 
@@ -181,18 +183,35 @@ IndexMask retrieve_editable_strokes(Object &object,
   /* Get all the strokes that have their material unlocked. */
   const VArray<int> materials = *attributes.lookup_or_default<int>(
       "material_index", ATTR_DOMAIN_CURVE, -1);
-  const IndexMask unlocked_strokes = IndexMask::from_predicate(
+  return IndexMask::from_predicate(
       curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
         const int material_index = materials[curve_i];
         return !locked_material_indices.contains(material_index);
       });
-  /* Get all the selected strokes. */
+}
+
+IndexMask retrieve_editable_and_selected_strokes(Object &object,
+                                                 const bke::greasepencil::Drawing &drawing,
+                                                 IndexMaskMemory &memory)
+{
+  using namespace blender;
+
+  /* Get all the locked material indices */
+  VectorSet<int> locked_material_indices = get_locked_material_indices(object);
+
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const IndexRange curves_range = drawing.strokes().curves_range();
+
+  const IndexMask editable_strokes = retrieve_editable_strokes(object, drawing, memory);
   const IndexMask selected_strokes = ed::curves::retrieve_selected_curves(curves, memory);
+
+  BitVector<> editable_strokes_bits(editable_strokes.size(), false);
+  editable_strokes.to_bits(editable_strokes_bits);
+  BitVector<> selected_strokes_bits(selected_strokes.size(), false);
+  selected_strokes.to_bits(selected_strokes_bits);
   /* The editable strokes are all strokes that have an unlocked material and are selected. */
-  return IndexMask::from_predicate(
-      curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
-        return unlocked_strokes.contains(curve_i) && selected_strokes.contains(curve_i);
-      });
+  editable_strokes_bits &= selected_strokes_bits;
+  return IndexMask::from_bits(curves_range, editable_strokes_bits, memory);
 }
 
 IndexMask retrieve_editable_points(Object &object,
@@ -210,19 +229,34 @@ IndexMask retrieve_editable_points(Object &object,
   const VArray<int> materials = *attributes.lookup_or_default<int>(
       "material_index", ATTR_DOMAIN_POINT, -1);
   /* Get all the points that are part of a stroke with an unlocked material. */
-  const IndexMask unlocked_points = IndexMask::from_predicate(
+  return IndexMask::from_predicate(
       points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
         const int material_index = materials[point_i];
         return !locked_material_indices.contains(material_index);
       });
-  /* Get all the selected points. */
+}
+
+IndexMask retrieve_editable_and_selected_points(Object &object,
+                                                const bke::greasepencil::Drawing &drawing,
+                                                IndexMaskMemory &memory)
+{
+  /* Get all the locked material indices */
+  VectorSet<int> locked_material_indices = get_locked_material_indices(object);
+
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const IndexRange points_range = drawing.strokes().points_range();
+
+  const IndexMask editable_points = retrieve_editable_points(object, drawing, memory);
   const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, memory);
+
+  BitVector<> editable_points_bits(editable_points.size(), false);
+  editable_points.to_bits(editable_points_bits);
+  BitVector<> selected_points_bits(selected_points.size(), false);
+  selected_points.to_bits(selected_points_bits);
   /* The editable points are all points that are part of a stroke with an unlocked material and are
    * selected. */
-  return IndexMask::from_predicate(
-      points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
-        return unlocked_points.contains(point_i) && selected_points.contains(point_i);
-      });
+  editable_points_bits &= selected_points_bits;
+  return IndexMask::from_bits(points_range, editable_points_bits, memory);
 }
 
 }  // namespace blender::ed::greasepencil
