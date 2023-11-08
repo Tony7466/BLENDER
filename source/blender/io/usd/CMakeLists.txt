@@ -244,7 +244,7 @@ if(WITH_GTESTS)
     bf_blenloader_test_util
   )
   include(GTestTesting)
-  blender_add_test_lib(io_usd "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+  blender_add_test_suite_lib(io_usd "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
 endif()
 
 # In CMAKE version 3.21 and up, we can instead use the `NO_CACHE` option for

@@ -859,5 +859,5 @@ if(WITH_GTESTS)
     bf_rna  # RNA_prototypes.h
   )
   include(GTestTesting)
-  blender_add_test_lib(blenkernel "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${TEST_LIB}")
+  blender_add_test_suite_lib(blenkernel "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${TEST_LIB}")
 endif()

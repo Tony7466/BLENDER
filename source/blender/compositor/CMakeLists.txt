@@ -675,7 +675,7 @@ if(WITH_COMPOSITOR_CPU)
       bf_compositor
     )
     include(GTestTesting)
-    blender_add_test_lib(compositor "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+    blender_add_test_suite_lib(compositor "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
   endif()
 
   # RNA_prototypes.h

@@ -451,9 +451,9 @@ function(blender_add_lib
   set_property(GLOBAL APPEND PROPERTY BLENDER_LINK_LIBS ${name})
 endfunction()
 
-function(blender_add_test_suite)
+function(blender_add_ctests)
   if(ARGC LESS 1)
-    message(FATAL_ERROR "No arguments supplied to blender_add_test_suite()")
+    message(FATAL_ERROR "No arguments supplied to blender_add_ctests()")
   endif()
 
   # Parse the arguments
@@ -474,16 +474,27 @@ function(blender_add_test_suite)
   endif()
 
   # Define a test case with our custom gtest_add_tests() command.
-  include(GTest)
-  gtest_add_tests(
-    TARGET ${ARGS_TARGET}
-    SOURCES "${ARGS_SOURCES}"
-    TEST_PREFIX ${ARGS_SUITE_NAME}
-    WORKING_DIRECTORY "${TEST_INSTALL_DIR}"
-    EXTRA_ARGS
-      --test-assets-dir "${CMAKE_SOURCE_DIR}/../lib/tests"
-      --test-release-dir "${_test_release_dir}"
-  )
+  if(${ARGS_DISCOVER_TESTS})
+    include(GTest)
+    gtest_add_tests(
+      TARGET ${ARGS_TARGET}
+      SOURCES "${ARGS_SOURCES}"
+      TEST_PREFIX ${ARGS_SUITE_NAME}
+      WORKING_DIRECTORY "${TEST_INSTALL_DIR}"
+      EXTRA_ARGS
+        --test-assets-dir "${CMAKE_SOURCE_DIR}/../lib/tests"
+        --test-release-dir "${_test_release_dir}"
+    )
+  else()
+    add_test(
+      NAME ${ARGS_SUITE_NAME}
+      COMMAND ${ARGS_TARGET}
+        --test-assets-dir "${CMAKE_SOURCE_DIR}/../lib/tests"
+        --test-release-dir "${_test_release_dir}"
+      WORKING_DIRECTORY ${TEST_INSTALL_DIR}
+    )
+  endif()
+
   if(WIN32)
     set_tests_properties(
       ${ARGS_SUITE_NAME} PROPERTIES
@@ -494,9 +505,13 @@ function(blender_add_test_suite)
 endfunction()
 
 # Add tests for a Blender library, to be called in tandem with blender_add_lib().
-# Tests will be put into the blender_test executable, and a separate ctest will be
-# generated for every gtest contained in it.
-function(blender_add_test_lib
+#
+# If WITH_TESTS_SINGLE_BINARY is enabled, tests will be put into the blender_test
+# executable, and a separate ctest will be generated for every gtest contained in it.
+#
+# If WITH_TESTS_SINGLE_BINARY is disabled, this works identically to
+# blender_add_test_suite_executable.
+function(blender_add_test_suite_lib
   name
   sources
   includes
@@ -504,41 +519,53 @@ function(blender_add_test_lib
   library_deps
   )
 
-  add_cc_flags_custom_test(${name}_tests PARENT_SCOPE)
+  if(WITH_TESTS_SINGLE_BINARY)
+    add_cc_flags_custom_test(${name}_tests PARENT_SCOPE)
 
-  # Otherwise external projects will produce warnings that we cannot fix.
-  remove_strict_flags()
+    # Otherwise external projects will produce warnings that we cannot fix.
+    remove_strict_flags()
 
-  # This duplicates logic that's also in GTestTesting.cmake, macro BLENDER_SRC_GTEST_EX.
-  # TODO(Sybren): deduplicate after the general approach in D7649 has been approved.
-  list(APPEND includes
-    ${CMAKE_SOURCE_DIR}/tests/gtests
-  )
-  list(APPEND includes_sys
-    ${GLOG_INCLUDE_DIRS}
-    ${GFLAGS_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/extern/gtest/include
-    ${CMAKE_SOURCE_DIR}/extern/gmock/include
-  )
+    # This duplicates logic that's also in GTestTesting.cmake, macro BLENDER_SRC_GTEST_EX.
+    # TODO(Sybren): deduplicate after the general approach in D7649 has been approved.
+    list(APPEND includes
+      ${CMAKE_SOURCE_DIR}/tests/gtests
+    )
+    list(APPEND includes_sys
+      ${GLOG_INCLUDE_DIRS}
+      ${GFLAGS_INCLUDE_DIRS}
+      ${CMAKE_SOURCE_DIR}/extern/gtest/include
+      ${CMAKE_SOURCE_DIR}/extern/gmock/include
+    )
 
-  blender_add_lib__impl(${name}_tests "${sources}" "${includes}" "${includes_sys}" "${library_deps}")
+    blender_add_lib__impl(${name}_tests "${sources}" "${includes}" "${includes_sys}" "${library_deps}")
 
-  target_compile_definitions(${name}_tests PRIVATE ${GFLAGS_DEFINES})
-  target_compile_definitions(${name}_tests PRIVATE ${GLOG_DEFINES})
+    target_compile_definitions(${name}_tests PRIVATE ${GFLAGS_DEFINES})
+    target_compile_definitions(${name}_tests PRIVATE ${GLOG_DEFINES})
 
-  set_property(GLOBAL APPEND PROPERTY BLENDER_TEST_LIBS ${name}_tests)
+    set_property(GLOBAL APPEND PROPERTY BLENDER_TEST_LIBS ${name}_tests)
 
-  blender_add_test_suite(
-    TARGET blender_test
-    SUITE_NAME ${name}
-    SOURCES "${sources}"
-  )
+    blender_add_ctests(
+      TARGET blender_test
+      SUITE_NAME ${name}
+      SOURCES "${sources}"
+      DISCOVER_TESTS TRUE
+    )
+  else()
+    blender_add_test_suite_executable(
+      "${name}"
+      "${sources}"
+      "${includes}"
+      "${includes_sys}"
+      "${library_deps}"
+    )
+  endif()
 endfunction()
 
 
 function(blender_add_test_executable_impl
   name
-  add_test_suite
+  add_ctests
+  discover_tests
   sources
   includes
   includes_sys
@@ -555,21 +582,78 @@ function(blender_add_test_executable_impl
     SRC "${sources}"
     EXTRA_LIBS "${library_deps}"
   )
-  if(add_test_suite)
-    blender_add_test_suite(
+
+  if(add_ctests)
+    blender_add_ctests(
       TARGET ${name}_test
       SUITE_NAME ${name}
       SOURCES "${sources}"
+      DISCOVER_TESTS ${discover_tests}
     )
   endif()
+
   blender_target_include_dirs(${name}_test ${includes})
   blender_target_include_dirs_sys(${name}_test ${includes_sys})
 endfunction()
 
-# Add test for a Blender library, to be called in tandem with blender_add_lib().
+# Add tests for a Blender library, to be called in tandem with blender_add_lib().
+#
+# If WITH_TESTS_SINGLE_BINARY is enabled, this will generate a single executable
+# named ${name}_test, and generate a separate ctest for every gtest contained in it.
+#
+# If WITH_TESTS_SINGLE_BINARY is disabled, this will generate an executable
+# named ${name}_${source}_test for every source file (with redundant prefixes and
+# postfixes stripped).
+#
+# To be used for smaller isolated libraries, that do not have many dependencies.
+# For libraries that do drag in many other Blender libraries and would create a
+# very large executable, blender_add_test_suite_lib() should be used instead.
+function(blender_add_test_suite_executable
+  name
+  sources
+  includes
+  includes_sys
+  library_deps
+  )
 
-# This will generate a single executable named ${name}_test, and generate a
-# separate ctest for every gtest contained in it.
+  if(WITH_TESTS_SINGLE_BINARY)
+    blender_add_test_executable_impl(
+      "${name}"
+      TRUE
+      TRUE
+      "${sources}"
+      "${includes}"
+      "${includes_sys}"
+      "${library_deps}"
+     )
+  else()
+    foreach(source ${sources})
+      get_filename_component(_source_ext ${source} LAST_EXT)
+      if(NOT ${_source_ext} MATCHES "^\.h")
+        # Generate test name without redundant prefixes and postfixes.
+        get_filename_component(_test_name ${source} NAME_WE)
+        if(NOT ${_test_name} MATCHES "^${name}_")
+          set(_test_name "${name}_${_test_name}")
+        endif()
+        string(REGEX REPLACE "_test$" "" _test_name ${_test_name})
+        string(REGEX REPLACE "_tests$" "" _test_name ${_test_name})
+
+        blender_add_test_executable_impl(
+          "${_test_name}"
+          TRUE
+          FALSE
+          "${source}"
+          "${includes}"
+          "${includes_sys}"
+          "${library_deps}"
+         )
+      endif()
+    endforeach()
+  endif()
+endfunction()
+
+# Add test for a Blender library, to be called in tandem with blender_add_lib().
+# Source files will be compiled into a single ${name}_test executable.
 #
 # To be used for smaller isolated libraries, that do not have many dependencies.
 # For libraries that do drag in many other Blender libraries and would create a
@@ -584,6 +668,7 @@ function(blender_add_test_executable
   blender_add_test_executable_impl(
     "${name}"
     TRUE
+    FALSE
     "${sources}"
     "${includes}"
     "${includes_sys}"
@@ -602,6 +687,7 @@ function(blender_add_test_performance_executable
   )
   blender_add_test_executable_impl(
     "${name}"
+    FALSE
     FALSE
     "${sources}"
     "${includes}"
