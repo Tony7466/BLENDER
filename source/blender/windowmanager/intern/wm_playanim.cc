@@ -653,7 +653,7 @@ static void draw_display_buffer(const PlayDisplayContext *display_ctx,
  * \param draw_flip: X/Y flipping (ignored when null).
  * \param frame_indicator_factor: Display a vertical frame-indicator (ignored when -1).
  */
-static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
+static void playanim_toscreen_ex(GhostData *data,
                                  const PlayDisplayContext *display_ctx,
                                  const PlayAnimPict *picture,
                                  ImBuf *ibuf,
@@ -664,7 +664,11 @@ static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
                                  const bool draw_flip[2],
                                  const float frame_indicator_factor)
 {
-  GHOST_ActivateWindowDrawingContext(ghost_window);
+  GHOST_ActivateWindowDrawingContext(data->window);
+  GPU_render_begin();
+
+  GPUContext *restore_context = GPU_context_active_get();
+  GPU_context_active_set(data->gpu_context);
 
   GPU_clear_color(0.1f, 0.1f, 0.1f, 0.0f);
 
@@ -719,7 +723,7 @@ static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
                picture->error_message ? picture->error_message : "<unknown error>");
     }
 
-    playanim_window_get_size(ghost_window, &sizex, &sizey);
+    playanim_window_get_size(data->window, &sizex, &sizey);
     fsizex_inv = 1.0f / sizex;
     fsizey_inv = 1.0f / sizey;
 
@@ -767,10 +771,17 @@ static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
     GPU_matrix_pop_projection();
   }
 
-  GHOST_SwapWindowBuffers(ghost_window);
+  GPU_render_step();
+  if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+    GPU_flush();
+  }
+
+  GHOST_SwapWindowBuffers(data->window);
+  GPU_context_active_set(restore_context);
+  GPU_render_end();
 }
 
-static void playanim_toscreen_on_load(GHOST_WindowHandle ghost_window,
+static void playanim_toscreen_on_load(GhostData *ghost_data,
                                       const PlayDisplayContext *display_ctx,
                                       const PlayAnimPict *picture,
                                       ImBuf *ibuf)
@@ -781,7 +792,7 @@ static void playanim_toscreen_on_load(GHOST_WindowHandle ghost_window,
   const float frame_indicator_factor = -1.0f;
   const bool *draw_flip = nullptr;
 
-  playanim_toscreen_ex(ghost_window,
+  playanim_toscreen_ex(ghost_data,
                        display_ctx,
                        picture,
                        ibuf,
@@ -816,7 +827,7 @@ static void playanim_toscreen(PlayState *ps, const PlayAnimPict *picture, ImBuf 
   }
 
   BLI_assert(ps->loading == false);
-  playanim_toscreen_ex(ps->ghost_data.window,
+  playanim_toscreen_ex(&ps->ghost_data,
                        &ps->display_ctx,
                        picture,
                        ibuf,
@@ -842,7 +853,7 @@ static void build_pict_list_from_anim(ListBase *picsbase,
 
   ImBuf *ibuf = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);
   if (ibuf) {
-    playanim_toscreen_on_load(ghost_data->window, display_ctx, nullptr, ibuf);
+    playanim_toscreen_on_load(ghost_data, display_ctx, nullptr, ibuf);
     IMB_freeImBuf(ibuf);
   }
 
@@ -940,7 +951,7 @@ static void build_pict_list_from_image_sequence(ListBase *picsbase,
 
       if (ibuf) {
         if (display_imbuf) {
-          playanim_toscreen_on_load(ghost_data->window, display_ctx, picture, ibuf);
+          playanim_toscreen_on_load(ghost_data, display_ctx, picture, ibuf);
         }
 #ifdef USE_FRAME_CACHE_LIMIT
         if (fill_cache) {
@@ -1518,7 +1529,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
       zoomy = float(ps->display_ctx.size[1]) / ps->ibuf_size[1];
 
       /* Zoom always show entire image. */
-      ps->zoom = MIN2(zoomx, zoomy);
+      ps->zoom = std::min(zoomx, zoomy);
 
       GPU_viewport(0, 0, ps->display_ctx.size[0], ps->display_ctx.size[1]);
       GPU_scissor(0, 0, ps->display_ctx.size[0], ps->display_ctx.size[1]);
@@ -1861,6 +1872,8 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
   ps.display_ctx.size[0] = ps.ibuf_size[0];
   ps.display_ctx.size[1] = ps.ibuf_size[1];
 
+  GPU_render_begin();
+  GPU_render_step();
   GPU_clear_color(0.1f, 0.1f, 0.1f, 0.0f);
 
   {
@@ -1872,6 +1885,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
   }
 
   GHOST_SwapWindowBuffers(ps.ghost_data.window);
+  GPU_render_end();
 
   /* One of the frames was invalid or not passed in. */
   if (frame_start == -1 || frame_end == -1) {
@@ -2020,9 +2034,15 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
 
       ps.next_frame = ps.direction;
 
+      GPU_render_begin();
+      GPUContext *restore_context = GPU_context_active_get();
+      GPU_context_active_set(ps.ghost_data.gpu_context);
       while ((has_event = GHOST_ProcessEvents(ps.ghost_data.system, false))) {
         GHOST_DispatchEvents(ps.ghost_data.system);
       }
+      GPU_render_end();
+      GPU_context_active_set(restore_context);
+
       if (ps.go == false) {
         break;
       }
@@ -2124,6 +2144,10 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
 
   BLF_exit();
 
+  /* NOTE: Must happen before GPU Context destruction as GPU resources are released via
+   * Colour Management module. */
+  IMB_exit();
+
   if (ps.ghost_data.gpu_context) {
     GPU_context_active_set(ps.ghost_data.gpu_context);
     GPU_exit();
@@ -2143,8 +2167,6 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
   }
 
   GHOST_DisposeSystem(ps.ghost_data.system);
-
-  IMB_exit();
 
 #if 0
   const int totblock = MEM_get_memory_blocks_in_use();
