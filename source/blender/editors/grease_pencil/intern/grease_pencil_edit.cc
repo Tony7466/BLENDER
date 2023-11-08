@@ -850,9 +850,7 @@ static int grease_pencil_stroke_material_set_exec(bContext *C, wmOperator * /*op
     bke::SpanAttributeWriter<int> materials =
         curves.attributes_for_write().lookup_or_add_for_write_span<int>("material_index",
                                                                         ATTR_DOMAIN_CURVE);
-    strokes.foreach_index(
-        [&](const int curve_index) { materials.span[curve_index] = material_index; });
-
+    index_mask::masked_fill(materials.span, material_index, strokes);
     materials.finish();
   });
 
