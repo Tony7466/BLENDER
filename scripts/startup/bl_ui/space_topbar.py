@@ -159,7 +159,7 @@ class TOPBAR_PT_gpencil_layers(Panel):
                       icon='MOD_MASK' if gpl.use_mask_layer else 'LAYER_ACTIVE')
 
             srow = col.row(align=True)
-            srow.prop(gpl, "use_lights")
+            srow.prop(gpl, "use_lights", text="Lights")
 
         col = row.column()
 
@@ -718,7 +718,7 @@ class TOPBAR_MT_help(Menu):
 
 
 class TOPBAR_MT_file_context_menu(Menu):
-    bl_label = "File Context Menu"
+    bl_label = "File"
 
     def draw(self, _context):
         layout = self.layout

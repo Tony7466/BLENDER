@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'6221ff436fc2')\n"
+"Project-Id-Version: Blender 4.0.0 Beta (b'551927bbe355')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-09-11 10:35:14\n"
+"POT-Creation-Date: 2023-11-06 12:01:38\n"
 "PO-Revision-Date: 2012-10-31 17:00-0800\n"
 "Last-Translator: Amin Babaeipanah <translate@leomoon.com>\n"
 "Language-Team: LeoMoon Studios <blender@leomoon.com>\n"
@@ -162,6 +162,14 @@ msgstr "ﻡﺎﯿﭘ"
 
 msgid "Off"
 msgstr "ﺵﻮﻣﺎﺧ"
+
+
+msgid "On"
+msgstr "ﻦﺷﻭﺭ"
+
+
+msgid "Auto"
+msgstr "ﺭﺎﮐﺩﻮﺧ"
 
 
 msgid "Animation Data"
@@ -408,10 +416,6 @@ msgid "Aligned"
 msgstr "ﻩﺪﺷﺯﺍﺮﺗ"
 
 
-msgid "Auto"
-msgstr "ﺭﺎﮐﺩﻮﺧ"
-
-
 msgid "Handle 2"
 msgstr "2 ﻪﺘﺳﺩ"
 
@@ -562,6 +566,10 @@ msgstr "ﯽﻓﺩﺎﺼﺗ"
 
 msgid "Average"
 msgstr "ﻦﯿﮕﻧﺎﯿﻣ"
+
+
+msgid "Curved"
+msgstr "ﯽﻨﺤﻨﻣ"
 
 
 msgid "Children"
@@ -2388,10 +2396,6 @@ msgid "Min Speed"
 msgstr "ﻪﻨﯿﻤﮐ ﺖﻋﺮﺳ"
 
 
-msgid "Curved"
-msgstr "ﯽﻨﺤﻨﻣ"
-
-
 msgid "And"
 msgstr "And"
 
@@ -2486,10 +2490,6 @@ msgstr "ﯼﺩﺎﻋ ﺖﻟﺎﺣ ﻪﺑ ﺭﺍﺪﻘﻣ"
 
 msgid "Linked"
 msgstr "ﻂﺒﺗﺮﻣ"
-
-
-msgid "Both"
-msgstr "ﻭﺩ ﺮﻫ"
 
 
 msgid "Object Constraints"
@@ -2808,6 +2808,10 @@ msgstr "ﻥﺩﺮﮐ ﺩﻭﺪﺤﻣ"
 
 msgid "Mouse location"
 msgstr "ﺱﻭﺎﻣ ﻥﺎﮑﻣ"
+
+
+msgid "Both"
+msgstr "ﻭﺩ ﺮﻫ"
 
 
 msgid "Join"
@@ -3879,10 +3883,6 @@ msgid "Hex"
 msgstr "Hex"
 
 
-msgid "(Gamma Corrected)"
-msgstr "(ﻩﺪﺷ ﺡﻼ﻿ﺻﺍ ﺎﻣﺎﮔ)"
-
-
 msgid "Hex triplet for color (#RRGGBB)"
 msgstr "(#RRGGBB) ﮓﻧﺭ ﯼﺍﺮﺑ ﻪﻧﺎﮔ ﻪﺳ ﺰﮕﻫ"
 
@@ -4161,10 +4161,6 @@ msgstr "ﻩﺯﺍﺪﻧﺍ:"
 
 msgid "Motion"
 msgstr "ﺖﮐﺮﺣ"
-
-
-msgid "On"
-msgstr "ﻦﺷﻭﺭ"
 
 
 msgid "Old"

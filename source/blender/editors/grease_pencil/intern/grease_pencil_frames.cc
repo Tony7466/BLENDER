@@ -13,7 +13,7 @@
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "DNA_scene_types.h"
 
@@ -36,6 +36,52 @@ void set_selected_frames_type(bke::greasepencil::Layer &layer,
       frame.type = key_type;
     }
   }
+}
+
+static float get_snapped_frame_number(const float frame_number,
+                                      Scene &scene,
+                                      const eEditKeyframes_Snap mode)
+{
+  switch (mode) {
+    case SNAP_KEYS_CURFRAME: /* Snap to current frame. */
+      return scene.r.cfra;
+    case SNAP_KEYS_NEARSEC: /* Snap to nearest second. */
+    {
+      float secf = (scene.r.frs_sec / scene.r.frs_sec_base);
+      return floorf(frame_number / secf + 0.5f) * secf;
+    }
+    case SNAP_KEYS_NEARMARKER: /* Snap to nearest marker. */
+      return ED_markers_find_nearest_marker_time(&scene.markers, frame_number);
+    default:
+      break;
+  }
+  return frame_number;
+}
+
+bool snap_selected_frames(GreasePencil &grease_pencil,
+                          bke::greasepencil::Layer &layer,
+                          Scene &scene,
+                          const eEditKeyframes_Snap mode)
+{
+  bool changed = false;
+  blender::Map<int, int> frame_number_destinations;
+  for (auto [frame_number, frame] : layer.frames().items()) {
+    if (!frame.is_selected()) {
+      continue;
+    }
+    const int snapped = round_fl_to_int(
+        get_snapped_frame_number(float(frame_number), scene, mode));
+    if (snapped != frame_number) {
+      frame_number_destinations.add(frame_number, snapped);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    grease_pencil.move_frames(layer, frame_number_destinations);
+  }
+
+  return changed;
 }
 
 static int get_mirrored_frame_number(const int frame_number,
@@ -89,6 +135,39 @@ bool mirror_selected_frames(GreasePencil &grease_pencil,
 
   if (changed) {
     grease_pencil.move_frames(layer, frame_number_destinations);
+  }
+
+  return changed;
+}
+
+bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::Layer &layer)
+{
+  using namespace bke::greasepencil;
+  bool changed = false;
+  LayerTransformData &trans_data = layer.runtime->trans_data_;
+
+  for (auto [frame_number, frame] : layer.frames_for_write().items()) {
+    if (!frame.is_selected()) {
+      continue;
+    }
+
+    /* Create the duplicate drawing. */
+    const Drawing *drawing = grease_pencil.get_editable_drawing_at(&layer, frame_number);
+    if (drawing == nullptr) {
+      continue;
+    }
+    const int duplicated_drawing_index = grease_pencil.drawings().size();
+    grease_pencil.add_duplicate_drawings(1, *drawing);
+
+    /* Make a copy of the frame in the duplicates. */
+    GreasePencilFrame frame_duplicate = frame;
+    frame_duplicate.drawing_index = duplicated_drawing_index;
+    trans_data.temp_frames_buffer.add_overwrite(frame_number, frame_duplicate);
+
+    /* Deselect the current frame, so that only the copy is selected. */
+    frame.flag ^= GP_FRAME_SELECTED;
+
+    changed = true;
   }
 
   return changed;
@@ -273,6 +352,7 @@ static int insert_blank_frame_exec(bContext *C, wmOperator *op)
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+    WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
   }
 
   return OPERATOR_FINISHED;
@@ -297,7 +377,7 @@ static void GREASE_PENCIL_OT_insert_blank_frame(wmOperatorType *ot)
   prop = RNA_def_boolean(
       ot->srna, "all_layers", false, "All Layers", "Insert a blank frame in all editable layers");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-  RNA_def_int(ot->srna, "duration", 1, 1, MAXFRAME, "Duration", "", 1, 100);
+  RNA_def_int(ot->srna, "duration", 0, 0, MAXFRAME, "Duration", "", 0, 100);
 }
 
 }  // namespace blender::ed::greasepencil

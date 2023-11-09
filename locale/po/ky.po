@@ -1,10 +1,10 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'6221ff436fc2')\n"
+"Project-Id-Version: Blender 4.0.0 Beta (b'551927bbe355')\n"
 "(b'0000000000000000000000000000000000000000')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-09-11 10:35:14\n"
+"POT-Creation-Date: 2023-11-06 12:01:38\n"
 "PO-Revision-Date: 2013-11-05 13:47+0600\n"
 "Last-Translator: Chyngyz Dzhumaliev <kyrgyzl10n@gmail.com>\n"
 "Language-Team: Kirghiz <kyrgyzl10n@gmail.com>\n"
@@ -59,6 +59,10 @@ msgstr "Билдирүү"
 
 msgid "Full"
 msgstr "Толук"
+
+
+msgid "Auto"
+msgstr "Авто"
 
 
 msgid "Animation Data"
@@ -199,10 +203,6 @@ msgstr "Тазалоо"
 
 msgid "Free"
 msgstr "Бош"
-
-
-msgid "Auto"
-msgstr "Авто"
 
 
 msgid "Hide"
@@ -1402,6 +1402,10 @@ msgid "Key"
 msgstr "Ачкыч"
 
 
+msgid "Files"
+msgstr "Файлдар"
+
+
 msgid "Align"
 msgstr "Түздөө"
 
@@ -1429,6 +1433,10 @@ msgstr "Модификаторду кошуу"
 
 msgid "Physics"
 msgstr "Физика"
+
+
+msgid "Sequencer"
+msgstr "Секвенсор"
 
 
 msgid "Apply"
@@ -1702,10 +1710,6 @@ msgstr "Тандоо"
 msgctxt "Operator"
 msgid "Open Clip"
 msgstr "Видеофрагментти ачуу"
-
-
-msgid "Files"
-msgstr "Файлдар"
 
 
 msgid "Wall"
@@ -2281,10 +2285,6 @@ msgid "Bake"
 msgstr "Бышыруу"
 
 
-msgid "Sequencer"
-msgstr "Секвенсор"
-
-
 msgctxt "Operator"
 msgid "Render"
 msgstr "Визуалдаштыруу"
@@ -2714,10 +2714,6 @@ msgstr "Өндүргүчтүк"
 
 msgid "Paragraph"
 msgstr "Абзац"
-
-
-msgid "Skeleton"
-msgstr "Скелет"
 
 
 msgid "Filters"
@@ -3210,11 +3206,6 @@ msgid "Add Image"
 msgstr "Сүрөттү кошуу"
 
 
-msgctxt "Operator"
-msgid "Lattice"
-msgstr "Решётка"
-
-
 msgid "Draw:"
 msgstr "Тартуу:"
 
@@ -3525,6 +3516,11 @@ msgstr "Эсептөө"
 
 
 msgctxt "Operator"
+msgid "Lattice"
+msgstr "Решётка"
+
+
+msgctxt "Operator"
 msgid "Quick Edit"
 msgstr "Тез оңдоо"
 
@@ -3799,11 +3795,6 @@ msgid "(Key) "
 msgstr "(Ачкыч) "
 
 
-msgctxt "Action"
-msgid "Group"
-msgstr "Топ"
-
-
 msgid "(empty)"
 msgstr "(бош)"
 
@@ -3846,6 +3837,11 @@ msgstr "FPS: %i"
 
 msgid "(Smooth)"
 msgstr "(тегиз)"
+
+
+msgctxt "Action"
+msgid "Group"
+msgstr "Топ"
 
 
 msgid "Modify"

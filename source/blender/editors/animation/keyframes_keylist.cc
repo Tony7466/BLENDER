@@ -493,7 +493,7 @@ static void nupdate_ak_bezt(ActKeyColumn *ak, void *data)
   }
 
   /* For interpolation type, select the highest value (enum is sorted). */
-  ak->handle_type = MAX2((eKeyframeHandleDrawOpts)ak->handle_type, bezt_handle_type(bezt));
+  ak->handle_type = std::max((eKeyframeHandleDrawOpts)ak->handle_type, bezt_handle_type(bezt));
 
   /* For extremes, detect when combining different states. */
   const char new_extreme = bezt_extreme_type(chain);
@@ -1123,10 +1123,10 @@ void fcurve_to_keylist(AnimData *adt, FCurve *fcu, AnimKeylist *keylist, const i
   }
 }
 
-void agroup_to_keylist(AnimData *adt,
-                       bActionGroup *agrp,
-                       AnimKeylist *keylist,
-                       const int saction_flag)
+void action_group_to_keylist(AnimData *adt,
+                             bActionGroup *agrp,
+                             AnimKeylist *keylist,
+                             const int saction_flag)
 {
   if (agrp) {
     /* loop through F-Curves */
