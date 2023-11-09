@@ -132,7 +132,10 @@ class FrameBuffer {
 
   void load_store_config_array(const GPULoadStore *load_store_actions, uint actions_len);
 
-  void attachment_set(GPUAttachmentType type, const GPUAttachment &new_attachment);
+  virtual void attachment_set(GPUAttachmentType type,
+                              const GPUAttachment &new_attachment,
+                              bool config = true);
+  virtual void flush(){};
   void attachment_remove(GPUAttachmentType type);
 
   void recursive_downsample(int max_lvl,

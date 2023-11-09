@@ -68,8 +68,9 @@ FrameBuffer::~FrameBuffer()
 /* -------------------------------------------------------------------- */
 /** \name Attachments Management
  * \{ */
-
-void FrameBuffer::attachment_set(GPUAttachmentType type, const GPUAttachment &new_attachment)
+void FrameBuffer::attachment_set(GPUAttachmentType type,
+                                 const GPUAttachment &new_attachment,
+                                 bool /*config*/)
 {
   if (new_attachment.mip == -1) {
     return; /* GPU_ATTACHMENT_LEAVE */
@@ -326,7 +327,7 @@ static void gpu_framebuffer_texture_attach_ex(GPUFrameBuffer *gpu_fb,
 {
   Texture *tex = reinterpret_cast<Texture *>(attachment.tex);
   GPUAttachmentType type = tex->attachment_type(slot);
-  unwrap(gpu_fb)->attachment_set(type, attachment);
+  unwrap(gpu_fb)->attachment_set(type, attachment, false);
 }
 
 void GPU_framebuffer_texture_attach(GPUFrameBuffer *fb, GPUTexture *tex, int slot, int mip)
@@ -359,29 +360,36 @@ void GPU_framebuffer_config_array(GPUFrameBuffer *gpu_fb,
                                   int config_len)
 {
   FrameBuffer *fb = unwrap(gpu_fb);
-
+#ifdef WITH_VULKAN_BACKEND
+  fb->flush();
+#endif
   const GPUAttachment &depth_attachment = config[0];
   Span<GPUAttachment> color_attachments(config + 1, config_len - 1);
 
+  GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0;
+  for (const GPUAttachment &attachment : color_attachments) {
+    fb->attachment_set(type, attachment);
+    ++type;
+  }
+
   if (depth_attachment.mip == -1) {
     /* GPU_ATTACHMENT_LEAVE */
+#ifdef WITH_VULKAN_BACKEND
+    fb->attachment_set(GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_attachment);
+#endif
   }
   else if (depth_attachment.tex == nullptr) {
     /* GPU_ATTACHMENT_NONE: Need to clear both targets. */
     fb->attachment_set(GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_attachment);
+#ifndef WITH_VULKAN_BACKEND
     fb->attachment_set(GPU_FB_DEPTH_ATTACHMENT, depth_attachment);
+#endif
   }
   else {
     GPUAttachmentType type = GPU_texture_has_stencil_format(depth_attachment.tex) ?
                                  GPU_FB_DEPTH_STENCIL_ATTACHMENT :
                                  GPU_FB_DEPTH_ATTACHMENT;
     fb->attachment_set(type, depth_attachment);
-  }
-
-  GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0;
-  for (const GPUAttachment &attachment : color_attachments) {
-    fb->attachment_set(type, attachment);
-    ++type;
   }
 }
 
