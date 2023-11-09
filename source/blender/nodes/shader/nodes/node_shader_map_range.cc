@@ -453,6 +453,7 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem to_min = empty();
   NodeItem to_max = empty();
   NodeItem steps = empty();
+  bool stepped = map_range->interpolation_type == NODE_MAP_RANGE_STEPPED;
   switch (map_range->data_type) {
     case CD_PROP_FLOAT:
       type = NodeItem::Type::Float;
@@ -461,7 +462,9 @@ NODE_SHADER_MATERIALX_BEGIN
       from_max = get_input_value(2, type);
       to_min = get_input_value(3, type);
       to_max = get_input_value(4, type);
-      steps = get_input_value(5, type);
+      if (stepped) {
+        steps = get_input_value(5, type);
+      }
       break;
     case CD_PROP_FLOAT3:
       type = NodeItem::Type::Vector3;
@@ -470,28 +473,36 @@ NODE_SHADER_MATERIALX_BEGIN
       from_max = get_input_value(8, type);
       to_min = get_input_value(9, type);
       to_max = get_input_value(10, type);
-      steps = get_input_value(11, type);
+      if (stepped) {
+        steps = get_input_value(11, type);
+      }
       break;
     default:
       BLI_assert_unreachable();
       return empty();
   }
 
-  NodeItem range = create_node("range",
-                               type,
-                               {{"in", value},
-                                {"inlow", from_min},
-                                {"inhigh", from_max},
-                                {"outlow", to_min},
-                                {"outhigh", to_max},
-                                {"doclamp", val(bool(map_range->clamp))}});
-
-  if (map_range->interpolation_type == NODE_MAP_RANGE_STEPPED) {
-    NodeItem factor = (range - from_min) / (from_max - from_min);
-    factor = (factor * (steps + val(1.0f))).floor() / steps;
-    return to_min + factor * (to_max - to_min);
+  if (stepped) {
+    NodeItem factor = create_node(
+        "range", type, {{"in", value}, {"inlow", from_min}, {"inhigh", from_max}});
+    value = (factor * (steps + val(1.0f))).floor() / steps;
+    if (type == NodeItem::Type::Float) {
+      from_min = val(0.0f);
+      from_max = val(1.0f);
+    }
+    else {
+      from_min = val(MaterialX::Vector3(0.0f, 0.0f, 0.0f));
+      from_max = val(MaterialX::Vector3(1.0f, 1.0f, 1.0f));
+    }
   }
-  return range;
+  return create_node("range",
+                     type,
+                     {{"in", value},
+                      {"inlow", from_min},
+                      {"inhigh", from_max},
+                      {"outlow", to_min},
+                      {"outhigh", to_max},
+                      {"doclamp", val(bool(map_range->clamp))}});
 }
 #endif
 NODE_SHADER_MATERIALX_END
