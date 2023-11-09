@@ -411,7 +411,7 @@ static void insert_key_id(PointerRNA *rna_pointer,
       continue;
     }
     std::string rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
-    Vector<float> rna_values = ANIM_setting_get_rna_values(&ptr, prop);
+    Vector<float> rna_values = animrig::get_rna_values(&ptr, prop);
 
     const int inserted_keys = animrig::insert_key_action(
         action, rna_pointer, rna_path_id_to_prop, nla_frame, rna_values.as_span());
