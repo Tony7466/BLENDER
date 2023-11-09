@@ -4387,20 +4387,20 @@ static void calculate_selection_fcurve_bounds(bContext *C,
     if (!BKE_animdata_id_is_animated(selected_id)) {
       continue;
     }
-    PointerRNA foo_ptr;
-    PropertyRNA *foo_prop;
+    PointerRNA resolved_ptr;
+    PropertyRNA *resolved_prop;
     if (id_to_prop_path != nullptr) {
       const bool resolved = RNA_path_resolve_property(
-          &selected->ptr, id_to_prop_path, &foo_ptr, &foo_prop);
+          &selected->ptr, id_to_prop_path, &resolved_ptr, &resolved_prop);
       if (!resolved) {
         continue;
       }
     }
     else {
-      foo_ptr = selected->ptr;
-      foo_prop = prop;
+      resolved_ptr = selected->ptr;
+      resolved_prop = prop;
     }
-    char *path = RNA_path_from_ID_to_property(&foo_ptr, foo_prop);
+    char *path = RNA_path_from_ID_to_property(&resolved_ptr, resolved_prop);
 
     AnimData *anim_data = BKE_animdata_from_id(selected_id);
     blender::Vector<FCurve *> fcurves;
@@ -4444,7 +4444,7 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
   int index;
 
   if (!(but = UI_context_active_but_prop_get(C, &ptr, &prop, &index))) {
-    /* pass event on if no active button found */
+    /* Pass event on if no active button found. */
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
   }
 
@@ -4454,6 +4454,15 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
     WM_report(RPT_WARNING, "No open Graph Editor window found");
     return OPERATOR_CANCELLED;
   }
+
+  bAnimContext ac;
+  if (!ANIM_animdata_get_context(C, &ac)) {
+    /* This might never be called since we are manually setting the Graph Editor just before. */
+    WM_report(RPT_ERROR, "Cannot create the Animation Context");
+    return OPERATOR_CANCELLED;
+  }
+
+  deselect_all_fcurves(&ac);
 
   ListBase selection = {nullptr, nullptr};
   bool path_from_id;
@@ -4466,16 +4475,6 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
     BLI_freelistN(&selection);
     return OPERATOR_CANCELLED;
   }
-
-  bAnimContext ac;
-  if (!ANIM_animdata_get_context(C, &ac)) {
-    /* This might never be called since we are manually setting the Graph Editor just before. */
-    WM_report(RPT_ERROR, "Cannot create the Animation Context");
-    BLI_freelistN(&selection);
-    return OPERATOR_CANCELLED;
-  }
-
-  deselect_all_fcurves(&ac);
 
   rctf bounds{};
   bounds.xmin = INFINITY;
@@ -4495,6 +4494,7 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
   }
 
   if (!BLI_rctf_is_valid(&bounds)) {
+    WM_report(RPT_ERROR, "F-Curves have no valid size");
     return OPERATOR_CANCELLED;
   }
 
