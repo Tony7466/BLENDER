@@ -1092,8 +1092,8 @@ std::string VKShader::vertex_interface_declare(const shader::ShaderCreateInfo &i
   }
   ss << "\n";
 
-  /* Retarget depth from -1..1 to 0..1. When geometry shader is used, this is done in the geometry
-   * shaders. */
+  /* Retarget depth from -1..1 to 0..1. This will be done by geometry stage, when geometry shaders
+   * are used. */
   const bool has_geometry_stage = bool(info.builtins_ & BuiltinBits::BARYCENTRIC_COORD) ||
                                   !info.geometry_source_.is_empty();
   const bool retarget_depth = !has_geometry_stage;
