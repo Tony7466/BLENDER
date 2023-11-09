@@ -4397,6 +4397,7 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
   bAnimContext ac;
   if (!ANIM_animdata_get_context(C, &ac)) {
     WM_report(RPT_ERROR, "Cannot create animcontext");
+    BLI_freelistN(&selection);
     return OPERATOR_CANCELLED;
   }
 
