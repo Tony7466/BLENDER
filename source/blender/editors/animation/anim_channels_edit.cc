@@ -4316,6 +4316,37 @@ static bool get_normalized_fcurve_bounds_foo(FCurve *fcu,
   return true;
 }
 
+static bool move_context_to_graph_editor(bContext *C)
+{
+  bool found_graph_editor = false;
+  LISTBASE_FOREACH (wmWindow *, win, &CTX_wm_manager(C)->windows) {
+    bScreen *screen = BKE_workspace_active_screen_get(win->workspace_hook);
+
+    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+      if (area->spacetype != SPACE_GRAPH) {
+        continue;
+      }
+      ARegion *window_region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+
+      if (!window_region) {
+        continue;
+      }
+
+      CTX_wm_window_set(C, win);
+      CTX_wm_screen_set(C, screen);
+      CTX_wm_area_set(C, area);
+      CTX_wm_region_set(C, window_region);
+      found_graph_editor = true;
+      break;
+    }
+
+    if (found_graph_editor) {
+      break;
+    }
+  }
+  return found_graph_editor;
+}
+
 static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 {
   PointerRNA ptr = {nullptr};
@@ -4328,35 +4359,7 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
   }
 
-  bool found_graph_editor = false;
-
-  ScrArea *graph_editor_area;
-  ARegion *ge_window_region;
-  SpaceLink *ge_space_link;
-
-  LISTBASE_FOREACH (wmWindow *, win, &CTX_wm_manager(C)->windows) {
-    bScreen *screen = BKE_workspace_active_screen_get(win->workspace_hook);
-
-    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-      if (area->spacetype != SPACE_GRAPH) {
-        continue;
-      }
-      ge_window_region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
-
-      if (!ge_window_region) {
-        continue;
-      }
-
-      graph_editor_area = area;
-      ge_space_link = (SpaceLink *)area->spacedata.first;
-      found_graph_editor = true;
-      break;
-    }
-
-    if (found_graph_editor) {
-      break;
-    }
-  }
+  const bool found_graph_editor = move_context_to_graph_editor(C);
 
   if (!found_graph_editor) {
     WM_report(RPT_WARNING, "No open Graph Editor window found");
@@ -4429,6 +4432,8 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 
     MEM_freeN(path);
 
+    SpaceLink *ge_space_link = CTX_wm_space_data(C);
+
     for (FCurve *fcurve : fcurves) {
       fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
       rctf fcu_bounds;
@@ -4448,10 +4453,11 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  add_region_padding(C, ge_window_region, &bounds);
+  ARegion *region = CTX_wm_region(C);
+  add_region_padding(C, region, &bounds);
   /* Not using smooth view since that creates issues because the context isn't right. */
-  ge_window_region->v2d.cur = bounds;
-  ED_area_tag_redraw(graph_editor_area);
+  region->v2d.cur = bounds;
+  ED_area_tag_redraw(CTX_wm_area(C));
 
   return OPERATOR_FINISHED;
 }
