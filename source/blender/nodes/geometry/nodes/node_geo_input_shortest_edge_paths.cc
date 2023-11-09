@@ -68,7 +68,7 @@ static void shortest_paths(const Mesh &mesh,
     const Span<int> incident_edge_indices = maps.edges_by_vertex_map[vert_i];
     for (const int edge_i : incident_edge_indices) {
       const int2 &edge = edges[edge_i];
-      const int neighbor_vert_i = edge[0] + edge[1] - vert_i;
+      const int neighbor_vert_i = bke::mesh::edge_other_vert(edge, vert_i);
       if (visited[neighbor_vert_i]) {
         continue;
       }
