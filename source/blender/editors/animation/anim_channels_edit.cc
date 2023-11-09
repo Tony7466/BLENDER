@@ -68,7 +68,7 @@ static bool get_normalized_fcurve_bounds(FCurve *fcu,
                                          AnimData *anim_data,
                                          SpaceLink *space_link,
                                          Scene *scene,
-                                         bAnimListElem *ale,
+                                         ID *id,
                                          const bool include_handles,
                                          const float range[2],
                                          rctf *r_bounds)
@@ -84,7 +84,7 @@ static bool get_normalized_fcurve_bounds(FCurve *fcu,
   const short mapping_flag = ANIM_get_normalization_flags(space_link);
 
   float offset;
-  const float unit_fac = ANIM_unit_mapping_get_factor(scene, ale->id, fcu, mapping_flag, &offset);
+  const float unit_fac = ANIM_unit_mapping_get_factor(scene, id, fcu, mapping_flag, &offset);
 
   r_bounds->ymin = (r_bounds->ymin + offset) * unit_fac;
   r_bounds->ymax = (r_bounds->ymax + offset) * unit_fac;
@@ -144,7 +144,7 @@ static bool get_channel_bounds(bAnimContext *ac,
       FCurve *fcu = (FCurve *)ale->key_data;
       AnimData *anim_data = ANIM_nla_mapping_get(ac, ale);
       found_bounds = get_normalized_fcurve_bounds(
-          fcu, anim_data, ac->sl, ac->scene, ale, include_handles, range, r_bounds);
+          fcu, anim_data, ac->sl, ac->scene, ale->id, include_handles, range, r_bounds);
       break;
     }
   }
@@ -4271,53 +4271,6 @@ static void ANIM_OT_channel_view_pick(wmOperatorType *ot)
                              "Ignore frames outside of the preview range");
 }
 
-static short get_normalization_flags(SpaceLink *sl)
-{
-  if (sl->spacetype == SPACE_GRAPH) {
-    SpaceGraph *sipo = (SpaceGraph *)sl;
-    bool use_normalization = (sipo->flag & SIPO_NORMALIZE) != 0;
-    bool freeze_normalization = (sipo->flag & SIPO_NORMALIZE_FREEZE) != 0;
-    return use_normalization ? (ANIM_UNITCONV_NORMALIZE |
-                                (freeze_normalization ? ANIM_UNITCONV_NORMALIZE_FREEZE : 0)) :
-                               0;
-  }
-
-  return 0;
-}
-
-static bool get_normalized_fcurve_bounds_foo(FCurve *fcu,
-                                             SpaceLink *sl,
-                                             Scene *scene,
-                                             ID *id,
-                                             const bool include_handles,
-                                             const float range[2],
-                                             rctf *r_bounds)
-{
-  const bool fcu_selection_only = false;
-  const bool found_bounds = BKE_fcurve_calc_bounds(
-      fcu, fcu_selection_only, include_handles, range, r_bounds);
-
-  if (!found_bounds) {
-    return false;
-  }
-
-  const short mapping_flag = get_normalization_flags(sl);
-
-  float offset;
-  const float unit_fac = ANIM_unit_mapping_get_factor(scene, id, fcu, mapping_flag, &offset);
-
-  r_bounds->ymin = (r_bounds->ymin + offset) * unit_fac;
-  r_bounds->ymax = (r_bounds->ymax + offset) * unit_fac;
-
-  const float min_height = 0.01f;
-  const float height = BLI_rctf_size_y(r_bounds);
-  if (height < min_height) {
-    r_bounds->ymin -= (min_height - height) / 2;
-    r_bounds->ymax += (min_height - height) / 2;
-  }
-  return true;
-}
-
 /* Find a Graph Editor area and modify the given context to be the window region of it. */
 static bool move_context_to_graph_editor(bContext *C)
 {
@@ -4432,10 +4385,14 @@ static void calculate_selection_fcurve_bounds(bContext *C,
     for (FCurve *fcurve : fcurves) {
       fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
       rctf fcu_bounds;
-      get_normalized_fcurve_bounds_foo(
-          fcurve, ge_space_link, scene, selected_id, include_handles, frame_range, &fcu_bounds);
-      fcu_bounds.xmin = BKE_nla_tweakedit_remap(anim_data, fcu_bounds.xmin, NLATIME_CONVERT_MAP);
-      fcu_bounds.xmax = BKE_nla_tweakedit_remap(anim_data, fcu_bounds.xmax, NLATIME_CONVERT_MAP);
+      get_normalized_fcurve_bounds(fcurve,
+                                   anim_data,
+                                   ge_space_link,
+                                   scene,
+                                   selected_id,
+                                   include_handles,
+                                   frame_range,
+                                   &fcu_bounds);
       BLI_rctf_union(r_bounds, &fcu_bounds);
     }
   }
