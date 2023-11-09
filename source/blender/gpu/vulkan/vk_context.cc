@@ -81,9 +81,10 @@ void VKContext::sync_backbuffer()
                                                to_gpu_format(swap_chain_data.format),
                                                GPU_TEXTURE_USAGE_ATTACHMENT,
                                                nullptr);
-
+      back_left->flush();
       back_left->attachment_set(GPU_FB_COLOR_ATTACHMENT0,
                                 GPU_ATTACHMENT_TEXTURE(surface_texture_));
+      back_left->attachment_set(GPU_FB_DEPTH_STENCIL_ATTACHMENT, GPU_ATTACHMENT_LEAVE);
 
       back_left->bind(false);
 
