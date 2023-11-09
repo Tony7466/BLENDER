@@ -200,9 +200,9 @@ void SEQ_time_update_meta_strip_range(const Scene *scene, Sequence *seq_meta)
   seq_meta->enddisp = strip_end; /* Only to make files usable in older versions. */
 
   seq_update_sound_bounds_recursive(scene, seq_meta);
-  SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq_meta));
   blender::Span effects = seq_sequence_lookup_effects_by_seq(scene, seq_meta);
   seq_time_update_effects_strip_range(scene, effects);
+  SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq_meta));
 }
 
 void seq_time_effect_range_set(const Scene *scene, Sequence *seq)
