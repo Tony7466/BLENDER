@@ -4365,7 +4365,7 @@ static void deselect_all_fcurves(bAnimContext *ac)
 }
 
 static void calculate_selection_fcurve_bounds(bContext *C,
-                                              ListBase *selection,
+                                              ListBase /* CollectionPointerLink */ *selection,
                                               PropertyRNA *prop,
                                               char *id_to_prop_path,
                                               const int index,
@@ -4503,6 +4503,9 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
   UI_view2d_smooth_view(C, region, &bounds, smooth_viewtx);
+
+  /* This ensures the channel list updates. */
+  ED_area_tag_redraw(CTX_wm_area(C));
 
   return OPERATOR_FINISHED;
 }
