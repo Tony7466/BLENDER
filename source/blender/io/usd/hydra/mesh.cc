@@ -288,23 +288,22 @@ void MeshData::write_submeshes(const Mesh *mesh)
 
   VArraySpan<ColorGeometry4f> vertex_color;
   if (mat_count == 0) {
-    const bke::AttributeAccessor attributes = mesh->attributes();
-    vertex_color = *attributes.lookup<ColorGeometry4f>(mesh->default_color_attribute,
-                                                       ATTR_DOMAIN_POINT);
+    vertex_color = *mesh->attributes().lookup<ColorGeometry4f>(mesh->default_color_attribute,
+                                                               ATTR_DOMAIN_POINT);
   }
 
   if (submeshes_.size() == 1) {
     submeshes_[0].vertices = std::move(vertices);
-    if (mat_count == 0 && !vertex_color.is_empty()) {
-      for (const int64_t i : vertex_color.index_range()) {
-        submeshes_[0].vertex_color.push_back(
-            pxr::GfVec3f(vertex_color[i].r, vertex_color[i].g, vertex_color[i].b));
-        submeshes_[0].vertex_opacity.push_back(vertex_color[i].a);
-      };
+    if (!vertex_color.is_empty()) {
+      for (auto &color : vertex_color) {
+        submeshes_[0].vertex_color.push_back(pxr::GfVec3f(color.r, color.g, color.b));
+        submeshes_[0].vertex_opacity.push_back(color.a);
+      }
     }
   }
   else {
-    /* Optimizing submeshes: getting only used vertices, rearranged indices */
+    /* Optimizing submeshes: getting only used vertices, rearranged indices.
+     * NOTE: vertex_color and vertex_opacity are empty, because mat_count > 0 */
     for (SubMesh &sm : submeshes_) {
       Vector<int> index_map(vertices.size(), 0);
       for (int &face_vertex_index : sm.face_vertex_indices) {
@@ -312,11 +311,6 @@ void MeshData::write_submeshes(const Mesh *mesh)
         if (index_map[v] == 0) {
           sm.vertices.push_back(vertices[v]);
           index_map[v] = sm.vertices.size();
-          if (mat_count == 0 && !vertex_color.is_empty()) {
-            sm.vertex_color.push_back(
-                pxr::GfVec3f(vertex_color[v].r, vertex_color[v].g, vertex_color[v].b));
-            sm.vertex_opacity.push_back(vertex_color[v].a);
-          }
         }
         face_vertex_index = index_map[v] - 1;
       }
