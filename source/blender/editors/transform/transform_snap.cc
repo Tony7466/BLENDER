@@ -141,6 +141,14 @@ void transform_snap_flag_from_modifiers_set(TransInfo *t)
     else {
       t->tsnap.mode &= ~SCE_SNAP_TO_INCREMENT;
     }
+    /* In 3.6 when snapping was disabled, pressing the invert button would turn on snapping.
+     * But it wouldn't turn it off when it was enabled. */
+    if ((t->modifiers & MOD_SNAP) || (t->modifiers & MOD_SNAP_INVERT)) {
+      t->tsnap.flag |= SCE_SNAP;
+    }
+    else {
+      t->tsnap.flag &= ~SCE_SNAP;
+    }
     return;
   }
   SET_FLAG_FROM_TEST(t->tsnap.flag,
