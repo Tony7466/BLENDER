@@ -60,28 +60,21 @@ class SplitOperation : public NodeOperation {
     GPUShader *shader = get_split_shader();
     GPU_shader_bind(shader);
 
-    /* The compositing space might be limited to a subset of the output texture, so only write into
-     * that compositing region. */
-    const rcti compositing_region = context().get_compositing_region();
-    const int2 lower_bound = int2(compositing_region.xmin, compositing_region.ymin);
-    GPU_shader_uniform_2iv(shader, "lower_bound", lower_bound);
-
     GPU_shader_uniform_1f(shader, "split_ratio", get_split_ratio());
 
-    const int2 compositing_region_size = context().get_compositing_region_size();
-    GPU_shader_uniform_2iv(shader, "view_size", compositing_region_size);
+    const Domain domain = compute_domain();
+    GPU_shader_uniform_2iv(shader, "output_size", domain.size);
 
     const Result &first_image = get_input("Image");
     first_image.bind_as_texture(shader, "first_image_tx");
     const Result &second_image = get_input("Image_001");
     second_image.bind_as_texture(shader, "second_image_tx");
 
-    const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
     output_image.bind_as_image(shader, "output_img");
 
-    compute_dispatch_threads_at_least(shader, compositing_region_size);
+    compute_dispatch_threads_at_least(shader, domain.size);
 
     first_image.unbind_as_texture();
     second_image.unbind_as_texture();
@@ -89,13 +82,30 @@ class SplitOperation : public NodeOperation {
     GPU_shader_unbind();
   }
 
+  Domain compute_domain() override
+  {
+    /* Choose the domain of the larger image. */
+    Domain first_domain = get_input("Image").domain();
+    Domain second_domain = get_input("Image_001").domain();
+
+    int first_area = first_domain.size.x * first_domain.size.y;
+    int second_area = second_domain.size.x * second_domain.size.y;
+
+    if (first_area > second_area) {
+      return first_domain;
+    }
+    else {
+      return second_domain;
+    }
+  }
+
   GPUShader *get_split_shader()
   {
     if (get_split_axis() == CMP_NODE_SPLIT_HORIZONTAL) {
-      return shader_manager().get("compositor_split_horizontal");
+      return context().get_shader("compositor_split_horizontal");
     }
 
-    return shader_manager().get("compositor_split_vertical");
+    return context().get_shader("compositor_split_vertical");
   }
 
   CMPNodeSplitAxis get_split_axis()
