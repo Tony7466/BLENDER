@@ -184,6 +184,7 @@ set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::animrig
   bf_imbuf
   PRIVATE bf::intern::guardedalloc
   bf_io_common
