@@ -162,19 +162,6 @@ void normals_calc_faces(const Span<float3> positions,
   });
 }
 
-static void normalize_and_validate(MutableSpan<float3> normals, const Span<float3> positions)
-{
-  threading::parallel_for(normals.index_range(), 1024, [&](const IndexRange range) {
-    for (const int vert_i : range) {
-      float *no = normals[vert_i];
-      if (UNLIKELY(normalize_v3(no) == 0.0f)) {
-        /* Following Mesh convention; we use vertex coordinate itself for normal in this case. */
-        normalize_v3_v3(no, positions[vert_i]);
-      }
-    }
-  });
-}
-
 void normals_calc_verts(const Span<float3> vert_positions,
                         const OffsetIndices<int> faces,
                         const Span<int> corner_verts,
@@ -200,7 +187,8 @@ void normals_calc_verts(const Span<float3> vert_positions,
 
         vert_normal += face_normals[face] * factor;
       }
-      vert_normals[vert] = vert_normal / vert_faces.size();
+
+      vert_normals[vert] = math::normalize(vert_normal);
     }
   });
 }
@@ -255,13 +243,13 @@ blender::Span<blender::float3> Mesh::vert_normals() const
   if (this->runtime->vert_normals_cache.is_cached()) {
     return this->runtime->vert_normals_cache.data();
   }
+  const OffsetIndices faces = this->faces();
+  const Span<int> corner_verts = this->corner_verts();
   const Span<float3> positions = this->vert_positions();
   const Span<float3> face_normals = this->face_normals();
   const GroupedSpan<int> vert_to_face_map = this->vert_to_face_map();
   this->runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) {
     r_data.reinitialize(positions.size());
-    const OffsetIndices faces = this->faces();
-    const Span<int> corner_verts = this->corner_verts();
     bke::mesh::normals_calc_verts(
         positions, faces, corner_verts, vert_to_face_map, face_normals, r_data);
   });
