@@ -7,6 +7,7 @@
 void main()
 {
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 output_size = imageSize(output_img);
 #if defined(SPLIT_HORIZONTAL)
   bool condition = (output_size.x * split_ratio) < texel.x;
 #elif defined(SPLIT_VERTICAL)
