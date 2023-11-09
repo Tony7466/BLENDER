@@ -117,7 +117,7 @@ static void actkeys_list_element_to_keylist(bAnimContext *ac,
       }
       case ALE_FCURVE: {
         FCurve *fcu = (FCurve *)ale->key_data;
-        fcurve_to_keylist(adt, fcu, keylist, 0);
+        /* fcurve_to_keylist(adt, fcu, keylist, 0); */
         break;
       }
     }

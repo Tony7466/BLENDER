@@ -416,6 +416,16 @@ struct ChannelListElement {
   MaskLayer *masklay;
 };
 
+static blender::Array<blender::float2> bezt_to_array(FCurve *fcu)
+{
+  using namespace blender;
+  Array<float2> keys = Array<float2>(fcu->totvert);
+  for (int i = 0; i < fcu->totvert; i++) {
+    keys[i] = {fcu->bezt[i].vec[1][0], fcu->bezt[i].vec[1][1]};
+  }
+  return keys;
+}
+
 static void build_channel_keylist(ChannelListElement *elem)
 {
   switch (elem->type) {
@@ -432,7 +442,8 @@ static void build_channel_keylist(ChannelListElement *elem)
       break;
     }
     case ChannelType::FCURVE: {
-      fcurve_to_keylist(elem->adt, elem->fcu, elem->keylist, elem->saction_flag);
+      blender::Array<blender::float2> keys = bezt_to_array(elem->fcu);
+      fcurve_to_keylist(elem->adt, keys, elem->keylist, elem->saction_flag);
       break;
     }
     case ChannelType::ACTION: {

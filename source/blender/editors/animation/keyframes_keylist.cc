@@ -397,24 +397,29 @@ static eKeyframeHandleDrawOpts bezt_handle_type(const BezTriple *bezt)
   return KEYFRAME_HANDLE_ALIGNED;
 }
 
+struct foo {
+  int index;
+  blender::Array<blender::float2> &keys;
+};
+
 /* Determine if the keyframe is an extreme by comparing with neighbors.
  * Ends of fixed-value sections and of the whole curve are also marked.
  */
-static eKeyframeExtremeDrawOpts bezt_extreme_type(const BezTripleChain *chain)
+static eKeyframeExtremeDrawOpts bezt_extreme_type(const foo &foo)
 {
-  if (chain->prev == nullptr && chain->next == nullptr) {
+  if (foo.index == 0 || foo.index > foo.keys.size()) {
     return KEYFRAME_EXTREME_NONE;
   }
 
   /* Keyframe values for the current one and neighbors. */
-  const float cur_y = chain->cur->vec[1][1];
+  const float cur_y = foo.keys[foo.index].y;
   float prev_y = cur_y, next_y = cur_y;
 
-  if (chain->prev && !IS_EQF(cur_y, chain->prev->vec[1][1])) {
-    prev_y = chain->prev->vec[1][1];
+  if (cur_y == foo.keys[foo.index - 1].y) {
+    prev_y = foo.keys[foo.index - 1].y;
   }
-  if (chain->next && !IS_EQF(cur_y, chain->next->vec[1][1])) {
-    next_y = chain->next->vec[1][1];
+  if (cur_y == foo.keys[foo.index + 1].y) {
+    next_y = foo.keys[foo.index + 1].y;
   }
 
   /* Static hold. */
@@ -428,10 +433,10 @@ static eKeyframeExtremeDrawOpts bezt_extreme_type(const BezTripleChain *chain)
   }
 
   /* Bezier handle values for the overshoot check. */
-  const bool l_bezier = chain->prev && chain->prev->ipo == BEZT_IPO_BEZ;
-  const bool r_bezier = chain->next && chain->cur->ipo == BEZT_IPO_BEZ;
-  const float handle_l = l_bezier ? chain->cur->vec[0][1] : cur_y;
-  const float handle_r = r_bezier ? chain->cur->vec[2][1] : cur_y;
+  const bool l_bezier = true;
+  const bool r_bezier = true;
+  const float handle_l = cur_y;
+  const float handle_r = cur_y;
 
   /* Detect extremes. One of the neighbors is allowed to be equal to current. */
   if (prev_y < cur_y || next_y < cur_y) {
@@ -454,17 +459,17 @@ static eKeyframeExtremeDrawOpts bezt_extreme_type(const BezTripleChain *chain)
 /* New node callback used for building ActKeyColumns from BezTripleChain */
 static ActKeyColumn *nalloc_ak_bezt(void *data)
 {
+  using namespace blender;
   ActKeyColumn *ak = static_cast<ActKeyColumn *>(
       MEM_callocN(sizeof(ActKeyColumn), "ActKeyColumn"));
-  const BezTripleChain *chain = static_cast<const BezTripleChain *>(data);
-  const BezTriple *bezt = chain->cur;
+  const foo *chain = static_cast<const foo *>(data);
 
   /* store settings based on state of BezTriple */
-  ak->cfra = bezt->vec[1][0];
-  ak->sel = BEZT_ISSEL_ANY(bezt) ? SELECT : 0;
-  ak->key_type = BEZKEYTYPE(bezt);
-  ak->handle_type = bezt_handle_type(bezt);
-  ak->extreme_type = bezt_extreme_type(chain);
+  ak->cfra = chain->keys[chain->index].x;
+  /* ak->sel = BEZT_ISSEL_ANY(bezt) ? SELECT : 0;
+  ak->key_type = BEZKEYTYPE(bezt); */
+  /* ak->handle_type = bezt_handle_type(bezt); */
+  ak->extreme_type = bezt_extreme_type(*chain);
 
   /* count keyframes in this column */
   ak->totkey = 1;
@@ -475,28 +480,26 @@ static ActKeyColumn *nalloc_ak_bezt(void *data)
 /* Node updater callback used for building ActKeyColumns from BezTripleChain */
 static void nupdate_ak_bezt(ActKeyColumn *ak, void *data)
 {
-  const BezTripleChain *chain = static_cast<const BezTripleChain *>(data);
-  const BezTriple *bezt = chain->cur;
+  const foo *chain = static_cast<const foo *>(data);
 
   /* set selection status and 'touched' status */
-  if (BEZT_ISSEL_ANY(bezt)) {
+  /* if (BEZT_ISSEL_ANY(bezt)) {
     ak->sel = SELECT;
-  }
+  } */
 
   /* count keyframes in this column */
   ak->totkey++;
 
   /* For keyframe type, 'proper' keyframes have priority over breakdowns
    * (and other types for now). */
-  if (BEZKEYTYPE(bezt) == BEZT_KEYTYPE_KEYFRAME) {
-    ak->key_type = BEZT_KEYTYPE_KEYFRAME;
-  }
+  ak->key_type = BEZT_KEYTYPE_KEYFRAME;
 
   /* For interpolation type, select the highest value (enum is sorted). */
-  ak->handle_type = std::max((eKeyframeHandleDrawOpts)ak->handle_type, bezt_handle_type(bezt));
+  /* ak->handle_type = std::max((eKeyframeHandleDrawOpts)ak->handle_type, bezt_handle_type(bezt));
+   */
 
   /* For extremes, detect when combining different states. */
-  const char new_extreme = bezt_extreme_type(chain);
+  const char new_extreme = bezt_extreme_type(*chain);
 
   if (new_extreme != ak->extreme_type) {
     /* Replace the flat status without adding mixed. */
@@ -719,14 +722,20 @@ static void ED_keylist_add_or_update_column(AnimKeylist *keylist,
 }
 
 /* Add the given BezTriple to the given 'list' of Keyframes */
-static void add_bezt_to_keycolumns_list(AnimKeylist *keylist, BezTripleChain *bezt)
+static void add_bezt_to_keycolumns_list(AnimKeylist *keylist,
+                                        blender::Array<blender::float2> &keys,
+                                        const int index)
 {
-  if (ELEM(nullptr, keylist, bezt)) {
+  if (ELEM(nullptr, keylist)) {
     return;
   }
 
-  float cfra = bezt->cur->vec[1][0];
-  ED_keylist_add_or_update_column(keylist, cfra, nalloc_ak_bezt, nupdate_ak_bezt, bezt);
+  const float cfra = keys[index].x;
+  foo foo = {
+      index,
+      keys,
+  };
+  ED_keylist_add_or_update_column(keylist, cfra, nalloc_ak_bezt, nupdate_ak_bezt, &foo);
 }
 
 /* Add the given GPencil Frame to the given 'list' of Keyframes */
@@ -933,6 +942,16 @@ int actkeyblock_get_valid_hold(const ActKeyColumn *ac)
 
 /* *************************** Keyframe List Conversions *************************** */
 
+static blender::Array<blender::float2> bezt_to_array(FCurve *fcu)
+{
+  using namespace blender;
+  Array<float2> keys = Array<float2>(fcu->totvert);
+  for (int i = 0; i < fcu->totvert; i++) {
+    keys[i] = {fcu->bezt[i].vec[1][0], fcu->bezt[i].vec[1][1]};
+  }
+  return keys;
+}
+
 void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, const int saction_flag)
 {
   if (ac) {
@@ -951,9 +970,11 @@ void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, const int sactio
        * standard filtering of just F-Curves. Given the way that these work,
        * there isn't really any benefit at all from including them. - Aligorith */
       switch (ale->datatype) {
-        case ALE_FCURVE:
-          fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag);
+        case ALE_FCURVE: {
+          blender::Array<blender::float2> keys = bezt_to_array(static_cast<FCurve *>(ale->data));
+          fcurve_to_keylist(ale->adt, keys, keylist, saction_flag);
           break;
+        }
         case ALE_MASKLAY:
           mask_to_keylist(ac->ads, static_cast<MaskLayer *>(ale->data), keylist);
           break;
@@ -1002,10 +1023,10 @@ void scene_to_keylist(bDopeSheet *ads, Scene *sce, AnimKeylist *keylist, const i
       &ac, &anim_data, filter, ac.data, static_cast<eAnimCont_Types>(ac.datatype));
 
   /* loop through each F-Curve, grabbing the keyframes */
-  LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
+  /* LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
     fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag);
   }
-
+ */
   ANIM_animdata_freelist(&anim_data);
 }
 
@@ -1039,9 +1060,9 @@ void ob_to_keylist(bDopeSheet *ads, Object *ob, AnimKeylist *keylist, const int 
       &ac, &anim_data, filter, ac.data, static_cast<eAnimCont_Types>(ac.datatype));
 
   /* loop through each F-Curve, grabbing the keyframes */
-  LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
+  /* LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
     fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag);
-  }
+  } */
 
   ANIM_animdata_freelist(&anim_data);
 }
@@ -1074,53 +1095,46 @@ void cachefile_to_keylist(bDopeSheet *ads,
       &ac, &anim_data, filter, ac.data, static_cast<eAnimCont_Types>(ac.datatype));
 
   /* loop through each F-Curve, grabbing the keyframes */
-  LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
+  /* LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
     fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag);
-  }
+  } */
 
   ANIM_animdata_freelist(&anim_data);
 }
 
-void fcurve_to_keylist(AnimData *adt, FCurve *fcu, AnimKeylist *keylist, const int saction_flag)
+void fcurve_to_keylist(AnimData *adt,
+                       blender::Array<blender::float2> &keys,
+                       AnimKeylist *keylist,
+                       const int saction_flag)
 {
-  if (fcu && fcu->totvert && fcu->bezt) {
-    ED_keylist_reset_last_accessed(keylist);
-    /* apply NLA-mapping (if applicable) */
-    if (adt) {
-      ANIM_nla_mapping_apply_fcurve(adt, fcu, false, false);
-    }
-
-    /* Check if the curve is cyclic. */
-    bool is_cyclic = BKE_fcurve_is_cyclic(fcu) && (fcu->totvert >= 2);
-    bool do_extremes = (saction_flag & SACTION_SHOW_EXTREMES) != 0;
-
-    /* loop through beztriples, making ActKeysColumns */
-    BezTripleChain chain = {nullptr};
-
-    for (int v = 0; v < fcu->totvert; v++) {
-      chain.cur = &fcu->bezt[v];
-
-      /* Neighbor columns, accounting for being cyclic. */
-      if (do_extremes) {
-        chain.prev = (v > 0)   ? &fcu->bezt[v - 1] :
-                     is_cyclic ? &fcu->bezt[fcu->totvert - 2] :
-                                 nullptr;
-        chain.next = (v + 1 < fcu->totvert) ? &fcu->bezt[v + 1] :
-                     is_cyclic              ? &fcu->bezt[1] :
-                                              nullptr;
-      }
-
-      add_bezt_to_keycolumns_list(keylist, &chain);
-    }
-
-    /* Update keyblocks. */
-    update_keyblocks(keylist, fcu->bezt, fcu->totvert);
-
-    /* unapply NLA-mapping if applicable */
-    if (adt) {
-      ANIM_nla_mapping_apply_fcurve(adt, fcu, true, false);
-    }
+  SCOPED_TIMER_AVERAGED("fcurve_to_keylist");
+  if (keys.size() == 0) {
+    return;
   }
+  ED_keylist_reset_last_accessed(keylist);
+  /* apply NLA-mapping (if applicable) */
+  /* if (adt) {
+    ANIM_nla_mapping_apply_fcurve(adt, fcu, false, false);
+  } */
+
+  /* Check if the curve is cyclic. */
+  const bool is_cyclic = false;
+  const bool do_extremes = (saction_flag & SACTION_SHOW_EXTREMES) != 0;
+
+  /* loop through beztriples, making ActKeysColumns */
+  BezTripleChain chain = {nullptr};
+
+  for (int i = 0; i < keys.size(); i++) {
+    add_bezt_to_keycolumns_list(keylist, keys, i);
+  }
+
+  /* Update keyblocks. */
+  /* update_keyblocks(keylist, fcu->bezt, fcu->totvert); */
+
+  /* unapply NLA-mapping if applicable */
+  /* if (adt) {
+    ANIM_nla_mapping_apply_fcurve(adt, fcu, true, false);
+  } */
 }
 
 void action_group_to_keylist(AnimData *adt,
@@ -1130,12 +1144,12 @@ void action_group_to_keylist(AnimData *adt,
 {
   if (agrp) {
     /* loop through F-Curves */
-    LISTBASE_FOREACH (FCurve *, fcu, &agrp->channels) {
+    /* LISTBASE_FOREACH (FCurve *, fcu, &agrp->channels) {
       if (fcu->grp != agrp) {
         break;
       }
       fcurve_to_keylist(adt, fcu, keylist, saction_flag);
-    }
+    } */
   }
 }
 
@@ -1143,9 +1157,9 @@ void action_to_keylist(AnimData *adt, bAction *act, AnimKeylist *keylist, const 
 {
   if (act) {
     /* loop through F-Curves */
-    LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
+    /* LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
       fcurve_to_keylist(adt, fcu, keylist, saction_flag);
-    }
+    } */
   }
 }
 

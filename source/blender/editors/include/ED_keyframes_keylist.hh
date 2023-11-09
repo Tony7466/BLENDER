@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BLI_array.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_range.h"
 
 struct AnimData;
@@ -146,7 +148,10 @@ int64_t ED_keylist_array_len(const AnimKeylist *keylist);
 /* Key-data Generation --------------- */
 
 /* F-Curve */
-void fcurve_to_keylist(AnimData *adt, FCurve *fcu, AnimKeylist *keylist, int saction_flag);
+void fcurve_to_keylist(AnimData *adt,
+                       blender::Array<blender::float2> &keys,
+                       AnimKeylist *keylist,
+                       int saction_flag);
 /* Action Group */
 void action_group_to_keylist(AnimData *adt,
                              bActionGroup *agrp,

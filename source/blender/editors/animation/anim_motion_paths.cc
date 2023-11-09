@@ -310,7 +310,7 @@ static void motionpath_calculate_update_range(MPathTarget *mpt,
    * we ignore all others (which can potentially make an update range unnecessary wide). */
   for (FCurve *fcu = static_cast<FCurve *>(fcurve_list->first); fcu != nullptr; fcu = fcu->next) {
     AnimKeylist *keylist = ED_keylist_create();
-    fcurve_to_keylist(adt, fcu, keylist, 0);
+    /* fcurve_to_keylist(adt, fcu, keylist, 0); */
     ED_keylist_prepare_for_direct_access(keylist);
 
     int fcu_sfra = motionpath_get_prev_prev_keyframe(mpt, keylist, current_frame);
@@ -359,9 +359,9 @@ void animviz_motionpath_compute_range(Object *ob, Scene *scene)
   }
 
   AnimKeylist *keylist = ED_keylist_create();
-  LISTBASE_FOREACH (FCurve *, fcu, &ob->adt->action->curves) {
+  /* LISTBASE_FOREACH (FCurve *, fcu, &ob->adt->action->curves) {
     fcurve_to_keylist(ob->adt, fcu, keylist, 0);
-  }
+  } */
 
   Range2f frame_range;
   switch (avs->path_range) {
