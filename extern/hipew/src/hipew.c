@@ -237,7 +237,7 @@ static int hipewHipInit(void) {
 #elif defined(__APPLE__)
   /* Default installation path. */
   const char *hip_paths[] = {"", NULL};
-#elif #if HIP_VERSION_MAJOR >= 6
+#elif HIP_VERSION_MAJOR >= 6
   const char *hip_paths[] = {"libamdhip64.so.6",
                              "/opt/rocm/lib/libamdhip64.so.6", NULL};
 #else 
