@@ -57,10 +57,12 @@ initialize(const Object *obj, pxr::UsdSkelSkeleton &skel, pxr::UsdSkelAnimation 
   pxr::VtArray < pxr::GfMatrix4d > bind_xforms;
   pxr::VtArray < pxr::GfMatrix4d > rest_xforms;
 
-  std::unordered_map<const char *, bool> should_export;
+  std::unordered_map<const char *, const Bone*> deform_bones;
+  std::unordered_map<const char *, const Bone*> deform_parent_bones;
 
   size_t num_bones = 0;
-  size_t deform_bones = 0;
+  size_t num_deform_bones = 0;
+  size_t num_deform_parent_bones = 0;
 
   auto deform_visitor = [&](const Bone *bone) {
       if (!bone) {
@@ -68,15 +70,32 @@ initialize(const Object *obj, pxr::UsdSkelSkeleton &skel, pxr::UsdSkelAnimation 
       }
 
       const bool deform = is_deform_bone(bone);
-      should_export.insert_or_assign(&bone->name[2], deform);
-      deform_bones += static_cast<int>(deform) * 1;
+      deform_bones.insert_or_assign(bone->name, bone);
+      num_deform_bones += int(deform);
       num_bones += 1;
   };
 
   visit_bones(obj, deform_visitor);
 
-  std::cerr << "Deform bones: " << deform_bones << "\n"
-            << "Total bones:  " << num_bones << std::endl;
+  /* Get deform parents */
+  for (auto pair : deform_bones) {
+    if (pair.second) {
+      Bone* parent = const_cast<Bone*>(pair.second)->parent;
+      while (parent) {
+        if (deform_parent_bones.find(parent->name) == deform_parent_bones.end()) {
+          deform_parent_bones.insert_or_assign(parent->name, parent);
+          num_deform_parent_bones += 1;
+        }
+        parent = parent->parent;
+      }
+    }
+  }
+
+  WM_reportf(RPT_WARNING, ">> [ %s ]", &obj->id.name[2]);
+  WM_reportf(RPT_WARNING, "Deform bones: %d", num_deform_bones);
+  WM_reportf(RPT_WARNING, "Deform parents: %d", num_deform_parent_bones);
+  WM_reportf(RPT_WARNING, "Total deform:  %d", num_deform_bones + num_deform_parent_bones);
+  WM_reportf(RPT_WARNING, "Total bones:  %d", num_bones);
 
   auto visitor = [&](const Bone *bone) {
     if (!bone) {
