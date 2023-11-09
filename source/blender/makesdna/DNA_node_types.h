@@ -157,6 +157,7 @@ typedef struct bNodeSocket {
 
   /** Custom dynamic defined label, MAX_NAME. */
   char label[64];
+  char short_label[64];
   char description[64];
 
   /**
@@ -369,7 +370,11 @@ typedef struct bNode {
    */
   int16_t type;
 
-  char _pad1[2];
+  /**
+   * Depth of the node in the node editor, used to keep recently selected nodes at the front, and
+   * to order frame nodes properly.
+   */
+  int16_t ui_order;
 
   /** Used for some builtin nodes that store properties but don't have a storage struct. */
   int16_t custom1, custom2;
@@ -664,6 +669,10 @@ typedef struct bNodeTree {
   int chunksize;
   /** Execution mode to use for compositor engine. */
   int execution_mode;
+  /** Execution mode to use for compositor engine. */
+  int precision;
+
+  char _pad[4];
 
   rctf viewer_border;
 
@@ -783,9 +792,12 @@ typedef struct bNodeTree {
   void ensure_interface_cache() const;
 
   /* Cached interface item lists. */
-  blender::Span<bNodeTreeInterfaceSocket *> interface_inputs() const;
-  blender::Span<bNodeTreeInterfaceSocket *> interface_outputs() const;
-  blender::Span<bNodeTreeInterfaceItem *> interface_items() const;
+  blender::Span<bNodeTreeInterfaceSocket *> interface_inputs();
+  blender::Span<const bNodeTreeInterfaceSocket *> interface_inputs() const;
+  blender::Span<bNodeTreeInterfaceSocket *> interface_outputs();
+  blender::Span<const bNodeTreeInterfaceSocket *> interface_outputs() const;
+  blender::Span<bNodeTreeInterfaceItem *> interface_items();
+  blender::Span<const bNodeTreeInterfaceItem *> interface_items() const;
 #endif
 } bNodeTree;
 
@@ -827,6 +839,12 @@ typedef enum eNodeTreeExecutionMode {
   NTREE_EXECUTION_MODE_FULL_FRAME = 1,
   NTREE_EXECUTION_MODE_REALTIME = 2,
 } eNodeTreeExecutionMode;
+
+/* tree->precision */
+typedef enum eNodeTreePrecision {
+  NODE_TREE_COMPOSITOR_PRECISION_AUTO = 0,
+  NODE_TREE_COMPOSITOR_PRECISION_FULL = 1,
+} eNodeTreePrecision;
 
 typedef enum eNodeTreeRuntimeFlag {
   /** There is a node that references an image with animation. */
@@ -914,7 +932,7 @@ typedef enum GeometryNodeAssetTraitFlag {
   GEO_NODE_ASSET_POINT_CLOUD = (1 << 5),
   GEO_NODE_ASSET_MODIFIER = (1 << 6),
 } GeometryNodeAssetTraitFlag;
-ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_POINT_CLOUD);
+ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_MODIFIER);
 
 /* Data structs, for `node->storage`. */
 
@@ -1043,7 +1061,7 @@ typedef struct NodeBilateralBlurData {
 } NodeBilateralBlurData;
 
 typedef struct NodeKuwaharaData {
-  short size;
+  short size DNA_DEPRECATED;
   short variation;
   int uniformity;
   float sharpness;

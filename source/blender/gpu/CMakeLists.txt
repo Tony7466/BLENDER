@@ -200,6 +200,7 @@ set(VULKAN_SRC
   vulkan/vk_bindable_resource.cc
   vulkan/vk_buffer.cc
   vulkan/vk_command_buffer.cc
+  vulkan/vk_command_buffers.cc
   vulkan/vk_common.cc
   vulkan/vk_context.cc
   vulkan/vk_data_conversion.cc
@@ -237,6 +238,7 @@ set(VULKAN_SRC
   vulkan/vk_bindable_resource.hh
   vulkan/vk_buffer.hh
   vulkan/vk_command_buffer.hh
+  vulkan/vk_command_buffers.hh
   vulkan/vk_common.hh
   vulkan/vk_context.hh
   vulkan/vk_data_conversion.hh
@@ -473,6 +475,7 @@ set(GLSL_SRC
   shaders/common/gpu_shader_common_math.glsl
   shaders/common/gpu_shader_common_math_utils.glsl
   shaders/common/gpu_shader_common_mix_rgb.glsl
+  shaders/common/gpu_shader_debug_gradients_lib.glsl
   shaders/common/gpu_shader_math_base_lib.glsl
   shaders/common/gpu_shader_math_fast_lib.glsl
   shaders/common/gpu_shader_math_matrix_lib.glsl
