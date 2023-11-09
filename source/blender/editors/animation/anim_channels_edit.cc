@@ -4316,6 +4316,7 @@ static bool get_normalized_fcurve_bounds_foo(FCurve *fcu,
   return true;
 }
 
+/* Find a Graph Editor area and modify the given context to be the window region of it. */
 static bool move_context_to_graph_editor(bContext *C)
 {
   bool found_graph_editor = false;
