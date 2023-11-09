@@ -4359,6 +4359,9 @@ static void deselect_all_fcurves(bAnimContext *ac)
     FCurve *fcu = (FCurve *)ale->key_data;
     fcu->flag &= ~FCURVE_SELECTED;
     fcu->flag &= ~FCURVE_ACTIVE;
+    if (U.animation_flag & USER_ANIM_VIEW_ISOLATE_FCURVE) {
+      fcu->flag &= ~FCURVE_VISIBLE;
+    }
   }
 
   ANIM_animdata_freelist(&anim_data);

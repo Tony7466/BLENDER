@@ -5509,6 +5509,14 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
                            "Draw F-Curves using Anti-Aliasing (disable for better performance)");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, nullptr);
 
+  /* Graph Editor view FCurve behavior. */
+  prop = RNA_def_property(srna, "view_isolates_curves", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "animation_flag", USER_ANIM_VIEW_ISOLATE_FCURVE);
+  RNA_def_property_ui_text(prop,
+                           "Isolate F-Curves when framed",
+                           "Hides all other F-Curves when framing a selection of them");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, nullptr);
+
   /* grease pencil */
   prop = RNA_def_property(srna, "grease_pencil_manhattan_distance", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, nullptr, "gp_manhattandist");
