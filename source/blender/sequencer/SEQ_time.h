@@ -134,6 +134,13 @@ void SEQ_time_start_frame_set(const struct Scene *scene, struct Sequence *seq, i
  * \note this function is currently only used internally and in versioning code.
  */
 void SEQ_time_update_meta_strip_range(const struct Scene *scene, struct Sequence *seq_meta);
+
+/**
+ * Get difference between scene and movie strip framerate.
+ */
+float SEQ_time_media_playback_rate_factor_get(const struct Scene *scene,
+                                              const struct Sequence *seq);
+
 #ifdef __cplusplus
 }
 #endif

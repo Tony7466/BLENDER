@@ -56,9 +56,9 @@ SeqRetimingKey *SEQ_retiming_key_get_by_timeline_frame(const struct Scene *scene
                                                        const struct Sequence *seq,
                                                        const int timeline_frame);
 void SEQ_retiming_sound_animation_data_set(const struct Scene *scene, const struct Sequence *seq);
-float SEQ_retiming_key_timeline_frame_get(const struct Scene *scene,
-                                          const struct Sequence *seq,
-                                          const struct SeqRetimingKey *key);
+int SEQ_retiming_key_timeline_frame_get(const struct Scene *scene,
+                                        const struct Sequence *seq,
+                                        const struct SeqRetimingKey *key);
 void SEQ_retiming_key_timeline_frame_set(const struct Scene *scene,
                                          struct Sequence *seq,
                                          struct SeqRetimingKey *key,
