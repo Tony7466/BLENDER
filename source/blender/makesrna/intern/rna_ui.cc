@@ -1469,13 +1469,13 @@ static bool file_handler_poll_drop(const bContext *C, FileHandlerType *file_hand
   file_handler_type->rna_ext.call((bContext *)C, &ptr, func, &list);
 
   void *ret;
-  RNA_parameter_get_lookup(&list, "visible", &ret);
+  RNA_parameter_get_lookup(&list, "is_usable", &ret);
   /* Get the value before freeing. */
-  const bool is_visible = *(bool *)ret;
+  const bool is_usable = *(bool *)ret;
 
   RNA_parameter_list_free(&list);
 
-  return is_visible;
+  return is_usable;
 }
 
 static bool rna_FileHandler_unregister(Main * /*bmain*/, StructRNA *type)
@@ -1509,13 +1509,13 @@ static StructRNA *rna_FileHandler_register(Main *bmain,
 
   dummy_file_handler.type = &dummy_file_handler_type;
 
-  /* setup dummy file handler type to store static properties in */
+  /* Setup dummy file handler type to store static properties in. */
   PointerRNA dummy_file_handler_ptr = RNA_pointer_create(
       nullptr, &RNA_FileHandler, &dummy_file_handler);
 
   bool have_function[1];
 
-  /* validate the python class */
+  /* Validate the python class. */
   if (validate(&dummy_file_handler_ptr, data, have_function) != 0) {
     return nullptr;
   }
@@ -1529,7 +1529,7 @@ static StructRNA *rna_FileHandler_register(Main *bmain,
     return nullptr;
   }
 
-  /* Check if we have registered this file handler type before, and remove it. */
+  /* Check if there is a file handler registered with the same `idname`, and remove it. */
   auto registered_file_handler = BKE_file_handler_find(dummy_file_handler_type.idname);
   if (registered_file_handler) {
     rna_FileHandler_unregister(bmain, registered_file_handler->rna_ext.srna);
@@ -2321,7 +2321,10 @@ static void rna_def_file_handler(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "FileHandler", nullptr);
-  RNA_def_struct_ui_text(srna, "File Handler Type", "I/O File handler");
+  RNA_def_struct_ui_text(srna,
+                         "File Handler Type",
+                         "Extends functionality to operators that manages files, such as adding "
+                         "drag and drop support.");
   RNA_def_struct_refine_func(srna, "rna_FileHandler_refine");
   RNA_def_struct_register_funcs(
       srna, "rna_FileHandler_register", "rna_FileHandler_unregister", nullptr);
@@ -2358,19 +2361,22 @@ static void rna_def_file_handler(BlenderRNA *brna)
   prop = RNA_def_property(srna, "bl_file_extensions", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "type->file_extensions_str");
   RNA_def_property_flag(prop, PROP_REGISTER);
-  RNA_def_property_ui_text(prop,
-                           "File Extensions",
-                           "List of file extensions supported separated by semicolon.\n"
-                           "Example \".blend;.ble\"");
+  RNA_def_property_ui_text(
+      prop,
+      "File Extensions",
+      "Formatted string of file extensions supported by the file handler, each extension should "
+      "start with a \".\" and separated by a \";\"."
+      "\nFor Example: `\".blend;.ble\"`.");
 
   PropertyRNA *parm;
   FunctionRNA *func;
 
   func = RNA_def_function(srna, "poll_drop", nullptr);
   RNA_def_function_ui_description(
-      func, "If this method returns a non-null output, then the file hanlder can be used");
+      func,
+      "If this method returns True, can be used to handle the drop of a drag-and-drop action.");
   RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_REGISTER_OPTIONAL);
-  RNA_def_function_return(func, RNA_def_boolean(func, "visible", true, "", ""));
+  RNA_def_function_return(func, RNA_def_boolean(func, "is_usable", true, "", ""));
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }

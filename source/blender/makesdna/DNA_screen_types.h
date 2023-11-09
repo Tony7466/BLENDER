@@ -825,5 +825,6 @@ ENUM_OPERATORS(AssetShelfSettings_DisplayFlag, ASSETSHELF_SHOW_NAMES);
 
 typedef struct FileHandler {
   DNA_DEFINE_CXX_METHODS(FileHandler)
-  struct FileHandlerType *type; /* runtime */
+  /** Runtime. */
+  struct FileHandlerType *type;
 } FileHandler;

@@ -852,6 +852,7 @@ if(WITH_GTESTS)
     intern/lib_remap_test.cc
     intern/nla_test.cc
     intern/tracking_test.cc
+    intern/file_handler_test.cc
   )
   set(TEST_INC
     ../editors/include

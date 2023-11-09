@@ -30,8 +30,9 @@ FileHandlerType *BKE_file_handler_find(const char *name)
 
 void BKE_file_handler_add(std::unique_ptr<FileHandlerType> file_handler)
 {
+  BLI_assert(BKE_file_handler_find(file_handler->idname) != nullptr);
 
-  /* Load all extensions from the string list into the list. */
+  /** Load all extensions from the string list into the list. */
   const char char_separator = ';';
   const char *char_begin = file_handler->file_extensions_str;
   const char *char_end = BLI_strchr_or_end(char_begin, char_separator);
