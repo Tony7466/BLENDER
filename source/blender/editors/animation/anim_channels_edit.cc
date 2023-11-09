@@ -4363,60 +4363,25 @@ static void deselect_all_fcurves(bAnimContext *ac)
   ANIM_animdata_freelist(&anim_data);
 }
 
-static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
+static void calculate_selection_fcurve_bounds(bContext *C,
+                                              ListBase *selection,
+                                              PropertyRNA *prop,
+                                              char *id_to_prop_path,
+                                              const int index,
+                                              const bool whole_array,
+                                              rctf *r_bounds)
 {
-  PointerRNA ptr = {nullptr};
-  PropertyRNA *prop = nullptr;
-  uiBut *but;
-  int index;
-
-  if (!(but = UI_context_active_but_prop_get(C, &ptr, &prop, &index))) {
-    /* pass event on if no active button found */
-    return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
+  SpaceLink *ge_space_link = CTX_wm_space_data(C);
+  if (ge_space_link->spacetype != SPACE_GRAPH) {
+    return;
   }
-
-  const bool found_graph_editor = move_context_to_graph_editor(C);
-
-  if (!found_graph_editor) {
-    WM_report(RPT_WARNING, "No open Graph Editor window found");
-    return OPERATOR_CANCELLED;
-  }
-
-  ListBase selection = {nullptr, nullptr};
-  bool path_from_id;
-  char *id_to_prop_path;
-  const bool selected_list_success = UI_context_copy_to_selected_list(
-      C, &ptr, prop, &selection, &path_from_id, &id_to_prop_path);
-
-  if (!selected_list_success) {
-    WM_report(RPT_ERROR, "No selection found");
-    BLI_freelistN(&selection);
-    return OPERATOR_CANCELLED;
-  }
-
-  bAnimContext ac;
-  if (!ANIM_animdata_get_context(C, &ac)) {
-    WM_report(RPT_ERROR, "Cannot create animcontext");
-    BLI_freelistN(&selection);
-    return OPERATOR_CANCELLED;
-  }
-
-  deselect_all_fcurves(&ac);
-
-  rctf bounds{};
-  bounds.xmin = INFINITY;
-  bounds.xmax = -INFINITY;
-  bounds.ymin = INFINITY;
-  bounds.ymax = -INFINITY;
-  const bool include_handles = false;
 
   Scene *scene = CTX_data_scene(C);
   float frame_range[2];
   get_view_range(scene, true, frame_range);
+  const bool include_handles = false;
 
-  const bool whole_array = RNA_boolean_get(op->ptr, "all");
-
-  LISTBASE_FOREACH (CollectionPointerLink *, selected, &selection) {
+  LISTBASE_FOREACH (CollectionPointerLink *, selected, selection) {
     ID *selected_id = selected->ptr.owner_id;
     if (!BKE_animdata_id_is_animated(selected_id)) {
       continue;
@@ -4458,8 +4423,6 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 
     MEM_freeN(path);
 
-    SpaceLink *ge_space_link = CTX_wm_space_data(C);
-
     for (FCurve *fcurve : fcurves) {
       fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
       rctf fcu_bounds;
@@ -4467,10 +4430,65 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
           fcurve, ge_space_link, scene, selected_id, include_handles, frame_range, &fcu_bounds);
       fcu_bounds.xmin = BKE_nla_tweakedit_remap(anim_data, fcu_bounds.xmin, NLATIME_CONVERT_MAP);
       fcu_bounds.xmax = BKE_nla_tweakedit_remap(anim_data, fcu_bounds.xmax, NLATIME_CONVERT_MAP);
-      BLI_rctf_union(&bounds, &fcu_bounds);
+      BLI_rctf_union(r_bounds, &fcu_bounds);
     }
   }
+}
+
+static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
+{
+  PointerRNA ptr = {nullptr};
+  PropertyRNA *prop = nullptr;
+  uiBut *but;
+  int index;
+
+  if (!(but = UI_context_active_but_prop_get(C, &ptr, &prop, &index))) {
+    /* pass event on if no active button found */
+    return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
+  }
+
+  const bool found_graph_editor = move_context_to_graph_editor(C);
+
+  if (!found_graph_editor) {
+    WM_report(RPT_WARNING, "No open Graph Editor window found");
+    return OPERATOR_CANCELLED;
+  }
+
+  ListBase selection = {nullptr, nullptr};
+  bool path_from_id;
+  char *id_to_prop_path;
+  const bool selected_list_success = UI_context_copy_to_selected_list(
+      C, &ptr, prop, &selection, &path_from_id, &id_to_prop_path);
+
+  if (!selected_list_success) {
+    WM_report(RPT_ERROR, "No selection found");
+    BLI_freelistN(&selection);
+    return OPERATOR_CANCELLED;
+  }
+
+  bAnimContext ac;
+  if (!ANIM_animdata_get_context(C, &ac)) {
+    /* This might never be called since we are manually setting the Graph Editor just before. */
+    WM_report(RPT_ERROR, "Cannot create the Animation Context");
+    BLI_freelistN(&selection);
+    return OPERATOR_CANCELLED;
+  }
+
+  deselect_all_fcurves(&ac);
+
+  rctf bounds{};
+  bounds.xmin = INFINITY;
+  bounds.xmax = -INFINITY;
+  bounds.ymin = INFINITY;
+  bounds.ymax = -INFINITY;
+
+  const bool whole_array = RNA_boolean_get(op->ptr, "all");
+
+  calculate_selection_fcurve_bounds(
+      C, &selection, prop, id_to_prop_path, index, whole_array, &bounds);
+
   BLI_freelistN(&selection);
+
   if (id_to_prop_path != nullptr) {
     MEM_freeN(id_to_prop_path);
   }
@@ -4481,9 +4499,9 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 
   ARegion *region = CTX_wm_region(C);
   add_region_padding(C, region, &bounds);
-  /* Not using smooth view since that creates issues because the context isn't right. */
-  region->v2d.cur = bounds;
-  ED_area_tag_redraw(CTX_wm_area(C));
+
+  const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
+  UI_view2d_smooth_view(C, region, &bounds, smooth_viewtx);
 
   return OPERATOR_FINISHED;
 }
