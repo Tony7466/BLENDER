@@ -10,26 +10,26 @@
 
 #include "vk_common.hh"
 
-
 namespace blender::gpu {
 class VKTexture;
 class VKImageView;
 /**
-  * The reason why it is necessary to generate multiple ImageViews is
-  *  to improve the efficiency of the view level by the following items.
-  *
-  *  Required Variations
-  *  -Layout (Whether to use it as an attachment or in a shader.)
-  *  -Format (It is closely related to the format of the `VkImage`. It is used in variations such as sRGB.)
-  *
-  *  Special Variations
-  *  -Layer (Multi-layer permutations.)
-  *  -Mipmap (Mipmap range.)
-  *  -Viewtype (It has a close relationship with the type of the `VkImage`. CubeMap, 3D, and 2D-Array are compatible.)
-  *
-  */
-class VKImageViews : NonCopyable
-{
+ * The reason why it is necessary to generate multiple ImageViews is
+ *  to improve the efficiency of the view level by the following items.
+ *
+ *  Required Variations
+ *  -Layout (Whether to use it as an attachment or in a shader.)
+ *  -Format (It is closely related to the format of the `VkImage`. It is used in variations such as
+ * sRGB.)
+ *
+ *  Special Variations
+ *  -Layer (Multi-layer permutations.)
+ *  -Mipmap (Mipmap range.)
+ *  -Viewtype (It has a close relationship with the type of the `VkImage`. CubeMap, 3D, and
+ * 2D-Array are compatible.)
+ *
+ */
+class VKImageViews : NonCopyable {
  private:
   enum class Location : uint8_t {
     SHADER_BINDING,
@@ -40,9 +40,9 @@ class VKImageViews : NonCopyable
   };
   /**
    * Types for restriction
-   * 
+   *
    * BASIC: required variations
-   * 
+   *
    * MULTI_LAYERS : layer > 1
    * MIPMAPS : mipmaps generated
    * ARRAY : there is a variation of the Viewtype
@@ -61,13 +61,15 @@ class VKImageViews : NonCopyable
                                               VK_COMPONENT_SWIZZLE_IDENTITY,
                                               VK_COMPONENT_SWIZZLE_IDENTITY,
                                               VK_COMPONENT_SWIZZLE_IDENTITY};
+
  public:
-  VKImageViews() : vk_image_ref_(VK_NULL_HANDLE), image_type_(ImageType::IMAGE_TYPE_BASIC) {};
+  VKImageViews() : vk_image_ref_(VK_NULL_HANDLE), image_type_(ImageType::IMAGE_TYPE_BASIC){};
   /**
-   * Since there are multiple Views for one VkImage, select the type for the efficiency of the cache.
+   * Since there are multiple Views for one VkImage, select the type for the efficiency of the
+   *cache.
    **/
   VKImageViews(VkImage vk_image, const VkImageCreateInfo &image_info);
-  ~VKImageViews() {};
+  ~VKImageViews(){};
 
   std::weak_ptr<VKImageView> lookup_vk_handle(VKTexture &texture,
                                               eImageViewUsage usage,
