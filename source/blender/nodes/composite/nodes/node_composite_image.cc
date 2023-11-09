@@ -514,7 +514,7 @@ class ImageOperation : public NodeOperation {
     Result &result = get_result(identifier);
     result.allocate_texture(Domain(size));
 
-    GPUShader *shader = shader_manager().get(get_shader_name(identifier));
+    GPUShader *shader = context().get_shader(get_shader_name(identifier));
     GPU_shader_bind(shader);
 
     const int2 lower_bound = int2(0);
@@ -575,10 +575,10 @@ class ImageOperation : public NodeOperation {
     }
   }
 
-  /* Compositor image inputs are expected to be always premultiplied, so identify if the GPU
-   * texture returned by the image module is straight and needs to be premultiplied. An exception
+  /* Compositor image inputs are expected to be always pre-multiplied, so identify if the GPU
+   * texture returned by the image module is straight and needs to be pre-multiplied. An exception
    * is when the image has an alpha mode of channel packed or alpha ignore, in which case, we
-   * always ignore premultiplication. */
+   * always ignore pre-multiplication. */
   bool should_premultiply_alpha(ImageUser &image_user)
   {
     Image *image = get_image();
@@ -905,7 +905,7 @@ class RenderLayerOperation : public NodeOperation {
       return;
     }
 
-    GPUShader *shader = shader_manager().get(shader_name);
+    GPUShader *shader = context().get_shader(shader_name);
     GPU_shader_bind(shader);
 
     /* The compositing space might be limited to a subset of the pass texture, so only read that
