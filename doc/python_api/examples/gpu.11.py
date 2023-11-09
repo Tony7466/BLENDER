@@ -3,7 +3,8 @@ Custom compute shader (using image store) and vertex/fragment shader
 --------------------------------
 
 This is an example of how to use a custom compute shader to write to a texture and then use that texture in a vertex/fragment shader.
-The expected result is a plane in the viewport, with a gradient from black in one corner to yellow in the opposite corner.
+The expected result is a 2x2 plane (size of the default cube), which changes color from a green-black gradient to a green-red gradient,
+based on current time.
 """
 import bpy
 import gpu
@@ -17,12 +18,12 @@ start_time = time.time()
 size = 128
 texture = gpu.types.GPUTexture((size, size), format='RGBA32F')
 compute_shader_info = gpu.types.GPUShaderCreateInfo()
-compute_shader_info.image(1, 'RGBA32F', "FLOAT_2D", "img_output", qualifiers={"WRITE"})
+compute_shader_info.image(0, 'RGBA32F', "FLOAT_2D", "img_output", qualifiers={"WRITE"})
 compute_shader_info.compute_source('''
 void main()
 {
   vec4 pixel = vec4(
-    gl_GlobalInvocationID.x/128.0, 
+    sin(time / 1.0), 
     gl_GlobalInvocationID.y/128.0, 
     0.0, 
     1.0
@@ -30,8 +31,9 @@ void main()
   imageStore(img_output, ivec2(gl_GlobalInvocationID.xy), pixel);
 }''')
 
+compute_shader_info.push_constant('FLOAT', "time")
 compute_shader = gpu.shader.create_from_info(compute_shader_info)
-compute_shader.image('img_output', texture);
+compute_shader.image('img_output', texture)
 
 gpu.compute.dispatch(compute_shader, 128, 128, 1)
 gpu.state.memory_barrier('TEXTURE_FETCH')
@@ -42,7 +44,7 @@ vert_out.smooth('VEC2', "uvInterp")
 shader_info = gpu.types.GPUShaderCreateInfo()
 shader_info.push_constant('MAT4', "viewProjectionMatrix")
 shader_info.push_constant('MAT4', "modelMatrix")
-shader_info.sampler(1, 'FLOAT_2D', "img_output")
+shader_info.sampler(0, 'FLOAT_2D', "img_output")
 shader_info.vertex_in(0, 'VEC2', "position")
 shader_info.vertex_in(1, 'VEC2', "uv")
 shader_info.vertex_out(vert_out)
@@ -74,9 +76,20 @@ batch = batch_for_shader(
 )
 
 def draw(): 
-    shader.uniform_float("modelMatrix", Matrix.Translation((0, 0, 0)) @ Matrix.Scale(3, 4))
+    shader.uniform_float("modelMatrix", Matrix.Translation((0, 0, 0)) @ Matrix.Scale(1, 4))
     shader.uniform_float("viewProjectionMatrix", bpy.context.region_data.perspective_matrix)
     shader.uniform_sampler("img_output", texture) 
     batch.draw(shader)
+    compute_shader.image('img_output', texture)
+    compute_shader.uniform_float("time", time.time() - start_time)
+    gpu.compute.dispatch(compute_shader, 128, 128, 1)
+    gpu.state.memory_barrier('TEXTURE_FETCH')
+  
+def drawTimer(): 
+  for area in bpy.context.screen.areas:
+    if area.type == 'VIEW_3D':
+      area.tag_redraw()
+  return 1.0 / 60.0
 
+bpy.app.timers.register(drawTimer)
 bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
