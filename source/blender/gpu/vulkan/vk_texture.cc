@@ -11,6 +11,8 @@
 #include "vk_buffer.hh"
 #include "vk_context.hh"
 #include "vk_data_conversion.hh"
+#include "vk_framebuffer.hh"
+#include "vk_image_views.hh"
 #include "vk_memory.hh"
 #include "vk_shader.hh"
 #include "vk_shader_interface.hh"
@@ -23,8 +25,25 @@
 
 namespace blender::gpu {
 
+static VkFormat to_non_srgb_format(const VkFormat format)
+{
+  switch (format) {
+    case VK_FORMAT_R8G8B8_SRGB:
+      return VK_FORMAT_R8G8B8_UNORM;
+    case VK_FORMAT_R8G8B8A8_SRGB:
+      return VK_FORMAT_R8G8B8A8_UNORM;
+
+    default:
+      break;
+  }
+  return format;
+}
+
 VKTexture::~VKTexture()
 {
+  if (image_views_) {
+    delete image_views_;
+  }
   if (vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE) {
     VKDevice &device = VKBackend::get().device_get();
     device.discard_image(vk_image_, allocation_);
@@ -54,9 +73,7 @@ void VKTexture::generate_mipmap()
 
   layout_ensure(context,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                 VK_ACCESS_MEMORY_WRITE_BIT,
-                VK_PIPELINE_STAGE_TRANSFER_BIT,
                 VK_ACCESS_TRANSFER_READ_BIT);
 
   for (int src_mipmap : IndexRange(mipmaps_ - 1)) {
@@ -139,6 +156,8 @@ void VKTexture::copy_to(VKTexture &dst_texture, VkImageAspectFlags vk_image_aspe
 
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.copy(dst_texture, *this, Span<VkImageCopy>(&region, 1));
+  layout_ensure(context, best_layout_get());
+  dst_texture.layout_ensure(context, dst_texture.best_layout_get());
   context.flush();
 }
 
@@ -166,10 +185,11 @@ void VKTexture::clear(eGPUDataFormat format, const void *data)
   range.aspectMask = to_vk_image_aspect_flag_bits(format_);
   range.levelCount = VK_REMAINING_MIP_LEVELS;
   range.layerCount = VK_REMAINING_ARRAY_LAYERS;
-  layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
 
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   command_buffers.clear(
       vk_image_, current_layout_get(), clear_color, Span<VkImageSubresourceRange>(&range, 1));
+  layout_ensure(context, best_layout_get());
 }
 
 void VKTexture::clear_depth_stencil(const eGPUFrameBufferBits buffers,
@@ -188,29 +208,28 @@ void VKTexture::clear_depth_stencil(const eGPUFrameBufferBits buffers,
   range.levelCount = VK_REMAINING_MIP_LEVELS;
   range.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-  layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   command_buffers.clear(vk_image_,
                         current_layout_get(),
                         clear_depth_stencil,
                         Span<VkImageSubresourceRange>(&range, 1));
+  layout_ensure(context, best_layout_get());
 }
 
 void VKTexture::swizzle_set(const char swizzle_mask[4])
 {
-  vk_component_mapping_.r = to_vk_component_swizzle(swizzle_mask[0]);
-  vk_component_mapping_.g = to_vk_component_swizzle(swizzle_mask[1]);
-  vk_component_mapping_.b = to_vk_component_swizzle(swizzle_mask[2]);
-  vk_component_mapping_.a = to_vk_component_swizzle(swizzle_mask[3]);
-
-  flags_ |= IMAGE_VIEW_DIRTY;
+  image_views_->swizzle_set(swizzle_mask);
+  // flags_ |= IMAGE_VIEW_DIRTY;
 }
 
 void VKTexture::mip_range_set(int min, int max)
 {
-  mip_min_ = min;
-  mip_max_ = max;
-
-  flags_ |= IMAGE_VIEW_DIRTY;
+  max = (mipmaps_ == 1) ? 0 : min_ii(mipmaps_, max);
+  min = (mipmaps_ == 1) ? 0 : min_ii(min, max);
+  if (min != mip_min_ || max != mip_max_) {
+    mip_min_ = min;
+    mip_max_ = max;
+  }
 }
 
 void VKTexture::read_sub(
@@ -240,6 +259,7 @@ void VKTexture::read_sub(
 
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.copy(staging_buffer, *this, Span<VkBufferImageCopy>(&buffer_image_copy, 1));
+  layout_ensure(context, best_layout_get());
   context.flush();
 
   convert_device_to_host(r_data, staging_buffer.mapped_memory_get(), sample_len, format, format_);
@@ -298,6 +318,7 @@ void VKTexture::update_sub(
   layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.copy(*this, staging_buffer, Span<VkBufferImageCopy>(&region, 1));
+  layout_ensure(context, best_layout_get());
   context.flush();
 }
 
@@ -354,6 +375,7 @@ bool VKTexture::init_internal(GPUVertBuf *vbo)
   layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.copy(*this, vertex_buffer->buffer_, Span<VkBufferImageCopy>(&region, 1));
+  layout_ensure(context, best_layout_get());
   context.flush();
 
   return true;
@@ -361,6 +383,7 @@ bool VKTexture::init_internal(GPUVertBuf *vbo)
 
 bool VKTexture::init_internal(GPUTexture *src, int mip_offset, int layer_offset, bool use_stencil)
 {
+  BLI_assert(false);
   BLI_assert(source_texture_ == nullptr);
   BLI_assert(src);
 
@@ -370,7 +393,6 @@ bool VKTexture::init_internal(GPUTexture *src, int mip_offset, int layer_offset,
   mip_max_ = mip_offset;
   layer_offset_ = layer_offset;
   use_stencil_ = use_stencil;
-  flags_ |= IMAGE_VIEW_DIRTY;
 
   return true;
 }
@@ -380,17 +402,18 @@ bool VKTexture::is_texture_view() const
   return source_texture_ != nullptr;
 }
 
-static VkImageUsageFlags to_vk_image_usage(const eGPUTextureUsage usage,
-                                           const eGPUTextureFormatFlag format_flag)
+/*
+ * From the Usage and Format of the Texture,
+ * we prioritize the type of transition that would be appropriate if the VkImage will be used in a
+ * render pass.
+ */
+static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
+                                              const eGPUTextureFormatFlag format_flag,
+                                              eRenderpassType &render_pass_type)
 {
-  VkImageUsageFlags result = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                             VK_IMAGE_USAGE_SAMPLED_BIT;
-  if (usage & GPU_TEXTURE_USAGE_SHADER_READ) {
-    result |= VK_IMAGE_USAGE_STORAGE_BIT;
-  }
-  if (usage & GPU_TEXTURE_USAGE_SHADER_WRITE) {
-    result |= VK_IMAGE_USAGE_STORAGE_BIT;
-  }
+  VkImageUsageFlagBits result = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                                                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+  render_pass_type = eRenderpassType::Any;
   if (usage & GPU_TEXTURE_USAGE_ATTACHMENT) {
     if (format_flag & GPU_FORMAT_COMPRESSED) {
       /* These formats aren't supported as an attachment. When using GPU_TEXTURE_USAGE_DEFAULT they
@@ -398,43 +421,44 @@ static VkImageUsageFlags to_vk_image_usage(const eGPUTextureUsage usage,
     }
     else {
       if (format_flag & (GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL)) {
-        result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        result = static_cast<VkImageUsageFlagBits>(result |
+                                                   VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        render_pass_type = eRenderpassType::Attachment;
       }
       else {
-        result |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+        render_pass_type = eRenderpassType::Attachment;
       }
     }
   }
-  if (usage & GPU_TEXTURE_USAGE_HOST_READ) {
-    result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  if (usage & GPU_TEXTURE_USAGE_SHADER_READ) {
+    result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_SAMPLED_BIT);
+    render_pass_type = eRenderpassType::ShaderBinding;
   }
-
-  /* Disable some usages based on the given format flag to support more devices. */
-  if (format_flag & GPU_FORMAT_SRGB) {
-    /* NVIDIA devices don't create SRGB textures when it storage bit is set. */
-    result &= ~VK_IMAGE_USAGE_STORAGE_BIT;
+  if (usage & GPU_TEXTURE_USAGE_SHADER_WRITE) {
+    if ((GPU_TEXTURE_USAGE_GENERAL != usage) && (!(format_flag & GPU_FORMAT_SRGB)) &&
+        (!(format_flag & (GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL))))
+    {
+      result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_STORAGE_BIT);
+      // render_pass_type = eRenderpassType::Storage;
+    }
   }
-  if (format_flag & (GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL)) {
-    /* NVIDIA devices don't create depth textures when it storage bit is set. */
-    result &= ~VK_IMAGE_USAGE_STORAGE_BIT;
-  }
-
   return result;
 }
 
-static VkImageCreateFlags to_vk_image_create(const eGPUTextureType texture_type,
-                                             const eGPUTextureFormatFlag format_flag,
-                                             const eGPUTextureUsage usage)
+static VkImageCreateFlagBits to_vk_image_create(const eGPUTextureType texture_type,
+                                                const eGPUTextureFormatFlag format_flag,
+                                                const eGPUTextureUsage usage)
 {
-  VkImageCreateFlags result = 0;
+  VkImageCreateFlagBits result = static_cast<VkImageCreateFlagBits>(0);
 
   if (ELEM(texture_type, GPU_TEXTURE_CUBE, GPU_TEXTURE_CUBE_ARRAY)) {
-    result |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    result = static_cast<VkImageCreateFlagBits>(result | VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
   }
 
   /* sRGB textures needs to be mutable as they can be used as non-sRGB frame-buffer attachments. */
   if (usage & GPU_TEXTURE_USAGE_ATTACHMENT && format_flag & GPU_FORMAT_SRGB) {
-    result |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+    result = static_cast<VkImageCreateFlagBits>(result | VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT);
   }
 
   return result;
@@ -462,7 +486,7 @@ bool VKTexture::allocate()
    */
   image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
   image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  image_info.usage = to_vk_image_usage(gpu_image_usage_flags_, format_flag_);
+  image_info.usage = to_vk_image_usage(gpu_image_usage_flags_, format_flag_, render_pass_type_);
   image_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
   VkResult result;
@@ -496,8 +520,14 @@ bool VKTexture::allocate()
   debug::object_label(vk_image_, name_);
 
   /* Promote image to the correct layout. */
-  layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
-
+  /* The only transitions here are to keep the layout static. Immediately, isolate the case of
+   * transferring data. */
+  layout_ensure(context, best_layout_get());
+  /** VKTexture and VKImageviews share a life cycle via VkImage. **/
+  if (image_views_) {
+    delete image_views_;
+  }
+  image_views_ = new VKImageViews(vk_image_, image_info);
   return result == VK_SUCCESS;
 }
 
@@ -589,31 +619,11 @@ void VKTexture::layout_ensure(VKContext &context,
   context.command_buffers_get().pipeline_barrier(
       src_stages, dst_stages, Span<VkImageMemoryBarrier>(&barrier, 1));
 }
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Image Views
  * \{ */
-
-void VKTexture::image_view_ensure()
-{
-  if (flags_ & IMAGE_VIEW_DIRTY) {
-    image_view_update();
-    flags_ &= ~IMAGE_VIEW_DIRTY;
-  }
-}
-
-void VKTexture::image_view_update()
-{
-  image_view_.emplace(VKImageView(*this,
-                                  eImageViewUsage::ShaderBinding,
-                                  layer_range(),
-                                  mip_map_range(),
-                                  use_stencil_,
-                                  true,
-                                  name_));
-}
 
 IndexRange VKTexture::mip_map_range() const
 {
@@ -633,9 +643,6 @@ IndexRange VKTexture::layer_range() const
 
 int VKTexture::vk_layer_count(int non_layered_value) const
 {
-  if (is_texture_view()) {
-    return 1;
-  }
   return type_ == GPU_TEXTURE_CUBE   ? d_ :
          (type_ & GPU_TEXTURE_ARRAY) ? layer_count() :
                                        non_layered_value;
@@ -659,6 +666,56 @@ VkExtent3D VKTexture::vk_extent_3d(int mip_level) const
   return result;
 }
 
+std::weak_ptr<VKImageView> VKTexture::image_view_get(bool use_srgb,
+                                                     int mip,
+                                                     IndexRange layers_range)
+{
+  BLI_assert(mip > -1);
+  return image_views_->lookup_vk_handle(*this,
+                                        eImageViewUsage::Attachment,
+                                        layers_range,
+                                        IndexRange(mip, 1),
+                                        use_stencil_,
+                                        use_srgb,
+                                        name_);
+};
+
+std::weak_ptr<VKImageView> VKTexture::image_view_get()
+{
+  return image_views_->lookup_vk_handle(*this,
+                                        eImageViewUsage::ShaderBinding,
+                                        layer_range(),
+                                        mip_map_range(),
+                                        use_stencil_,
+                                        true,
+                                        name_);
+};
+
+VkImageLayout VKTexture::best_layout_get()
+{
+  bool is_color = bool((to_vk_image_aspect_flag_bits(format_) & VK_IMAGE_ASPECT_COLOR_BIT));
+  switch (render_pass_type_) {
+    case eRenderpassType::ShaderBinding:
+      return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    case eRenderpassType::Storage:
+      return VK_IMAGE_LAYOUT_GENERAL;
+    case eRenderpassType::Attachment:
+      if (is_color) {
+        return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      }
+      else {
+        return (format_flag_ == GPU_FORMAT_DEPTH) ?
+                   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL :
+                   ((format_flag_ == GPU_FORMAT_STENCIL) ?
+                        VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL :
+                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+      }
+      break;
+    default:
+      BLI_assert_unreachable();
+  }
+  return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+}
 /** \} */
 
 }  // namespace blender::gpu
