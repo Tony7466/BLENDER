@@ -1222,7 +1222,7 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
 
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
-    if ((mode == CapsMode::ROUND) || (mode == CapsMode::FLAT)) {
+    if (mode == CapsMode::ROUND || mode == CapsMode::FLAT) {
       bke::SpanAttributeWriter<int8_t> start_caps =
           attributes.lookup_or_add_for_write_span<int8_t>("start_cap", ATTR_DOMAIN_CURVE);
       bke::SpanAttributeWriter<int8_t> end_caps = attributes.lookup_or_add_for_write_span<int8_t>(
@@ -1252,7 +1252,8 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
           caps.finish();
           break;
         }
-        default:
+        case CapsMode::ROUND:
+        case CapsMode::FLAT:
           break;
       }
     }
