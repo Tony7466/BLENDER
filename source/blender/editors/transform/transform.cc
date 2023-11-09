@@ -37,7 +37,7 @@
 
 #include "ANIM_keyframing.hh"
 
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -426,11 +426,16 @@ void removeAspectRatio(TransInfo *t, float vec[2])
 static void viewRedrawForce(const bContext *C, TransInfo *t)
 {
   if (t->options & CTX_GPENCIL_STROKES) {
-    bGPdata *gpd = ED_gpencil_data_get_active(C);
-    if (gpd) {
-      DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
+    if (t->obedit_type == OB_GREASE_PENCIL) {
+      WM_event_add_notifier(C, NC_GEOM | ND_DATA, nullptr);
     }
-    WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+    else if (t->obedit_type == OB_GPENCIL_LEGACY) {
+      bGPdata *gpd = ED_gpencil_data_get_active(C);
+      if (gpd) {
+        DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
+      }
+      WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+    }
   }
   else if (t->spacetype == SPACE_VIEW3D) {
     if (t->options & CTX_PAINT_CURVE) {
@@ -1528,7 +1533,7 @@ static void drawAutoKeyWarning(TransInfo *t, ARegion *region)
         offset = U.gizmo_size_navigate_v3d;
         break;
       case USER_MINI_AXIS_TYPE_MINIMAL:
-        offset = U.rvisize * MIN2((U.pixelsize / U.scale_factor), 1.0f) * 2.5f;
+        offset = U.rvisize * std::min((U.pixelsize / U.scale_factor), 1.0f) * 2.5f;
         break;
       case USER_MINI_AXIS_TYPE_NONE:
         offset = U.rvisize;
@@ -2094,32 +2099,30 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     if ((t->flag & T_EDIT) && t->obedit_type == OB_MESH) {
 
       FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-        if (((Mesh *)(tc->obedit->data))->flag & ME_AUTOSMOOTH) {
-          BMEditMesh *em = nullptr; /* BKE_editmesh_from_object(t->obedit); */
-          bool do_skip = false;
+        BMEditMesh *em = nullptr; /* BKE_editmesh_from_object(t->obedit); */
+        bool do_skip = false;
 
-          /* Currently only used for two of three most frequent transform ops,
-           * can include more ops.
-           * Note that scaling cannot be included here,
-           * non-uniform scaling will affect normals. */
-          if (ELEM(t->mode, TFM_TRANSLATION, TFM_ROTATION)) {
-            if (em->bm->totvertsel == em->bm->totvert) {
-              /* No need to invalidate if whole mesh is selected. */
-              do_skip = true;
-            }
+        /* Currently only used for two of three most frequent transform ops,
+         * can include more ops.
+         * Note that scaling cannot be included here,
+         * non-uniform scaling will affect normals. */
+        if (ELEM(t->mode, TFM_TRANSLATION, TFM_ROTATION)) {
+          if (em->bm->totvertsel == em->bm->totvert) {
+            /* No need to invalidate if whole mesh is selected. */
+            do_skip = true;
           }
+        }
 
-          if (t->flag & T_MODAL) {
-            RNA_property_boolean_set(op->ptr, prop, false);
+        if (t->flag & T_MODAL) {
+          RNA_property_boolean_set(op->ptr, prop, false);
+        }
+        else if (!do_skip) {
+          const bool preserve_clnor = RNA_property_boolean_get(op->ptr, prop);
+          if (preserve_clnor) {
+            BKE_editmesh_lnorspace_update(em);
+            t->flag |= T_CLNOR_REBUILD;
           }
-          else if (!do_skip) {
-            const bool preserve_clnor = RNA_property_boolean_get(op->ptr, prop);
-            if (preserve_clnor) {
-              BKE_editmesh_lnorspace_update(em, static_cast<Mesh *>(tc->obedit->data));
-              t->flag |= T_CLNOR_REBUILD;
-            }
-            BM_lnorspace_invalidate(em->bm, true);
-          }
+          BM_lnorspace_invalidate(em->bm, true);
         }
       }
     }
