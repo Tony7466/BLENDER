@@ -826,6 +826,9 @@ class VIEW3D_HT_header(Header):
                     depress=(tool_settings.gpencil_selectmode_edit == 'STROKE'),
                 ).mode = 'STROKE'
 
+                row = layout.row(align=True)
+                row.prop(tool_settings, "use_grease_pencil_multi_frame_editing", text="")
+
             if object_mode == 'PAINT_GREASE_PENCIL':
                 row = layout.row()
                 sub = row.row(align=True)
@@ -5833,7 +5836,12 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
 
         layout.separator()
 
+        layout.operator("grease_pencil.set_active_material")
+
+        layout.separator()
+
         layout.operator("grease_pencil.cyclical_set", text="Toggle Cyclic").type = 'TOGGLE'
+        layout.operator("grease_pencil.stroke_switch_direction")
 
 
 class VIEW3D_MT_edit_greasepencil_point(Menu):
@@ -5842,6 +5850,10 @@ class VIEW3D_MT_edit_greasepencil_point(Menu):
     def draw(self, _context):
         layout = self.layout
         layout.operator("grease_pencil.stroke_smooth", text="Smooth Points")
+
+        layout.separator()
+        layout.operator("grease_pencil.set_uniform_thickness")
+        layout.operator("grease_pencil.set_uniform_opacity")
 
 
 class VIEW3D_MT_edit_curves(Menu):
