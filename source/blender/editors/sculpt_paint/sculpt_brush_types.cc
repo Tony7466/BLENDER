@@ -2265,7 +2265,9 @@ static void do_topology_relax_task(Object *ob, const Brush *brush, PBVHNode *nod
 
   SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
 
-  /* TODO(@sergey): This looks very suspicious. */
+  /* TODO(@sergey): This looks very suspicious: proxy is added but is never written.
+   * Either this needs to be documented better why it is needed, or removed. The removal is likely
+   * to lead to performance improvements as well. */
   BKE_pbvh_node_add_proxy(*ss->pbvh, *node);
 
   SculptBrushTest test;

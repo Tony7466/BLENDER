@@ -3071,7 +3071,7 @@ PBVHProxyNode &BKE_pbvh_node_add_proxy(PBVH &pbvh, PBVHNode &node)
   /* It is fine to access pointer of the back element, since node is never handled from multiple
    * threads, and the brush handler only requests a single proxy from the node, and never holds
    * pointers to multiple proxies. */
-  PBVHProxyNode &proxy_node = *(node.proxies.data() + node.proxies.size() - 1);
+  PBVHProxyNode &proxy_node = node.proxies.last();
 
   const int num_unique_verts = BKE_pbvh_node_num_unique_verts(pbvh, node);
 
