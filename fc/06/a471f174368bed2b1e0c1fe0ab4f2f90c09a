@@ -1,3 +1,4 @@
 Referenced by commit ba880db09a431d6e9fc7565bd243cb088fada555, Fix #108175: Missing subversion bump for recent geometry nodes change
 Referenced by issue #112009, Regression: Mesh boolean node with difference not working like it did in Blender 3.5
 Referenced by pull request #114632, Geometry Nodes: Support top-level instance meshes in boolean node
+Referenced by commit 16553c2a44e3117c4e6e966a8b65697e6a6c65da, Geometry Nodes: Support top-level instance meshes in boolean node
