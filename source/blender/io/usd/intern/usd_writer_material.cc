@@ -47,6 +47,7 @@ static const pxr::TfToken emissive_color("emissiveColor", pxr::TfToken::Immortal
 static const pxr::TfToken metallic("metallic", pxr::TfToken::Immortal);
 static const pxr::TfToken preview_shader("previewShader", pxr::TfToken::Immortal);
 static const pxr::TfToken preview_surface("UsdPreviewSurface", pxr::TfToken::Immortal);
+static const pxr::TfToken UsdTransform2d("UsdTransform2d", pxr::TfToken::Immortal);
 static const pxr::TfToken uv_texture("UsdUVTexture", pxr::TfToken::Immortal);
 static const pxr::TfToken primvar_float2("UsdPrimvarReader_float2", pxr::TfToken::Immortal);
 static const pxr::TfToken roughness("roughness", pxr::TfToken::Immortal);
@@ -352,7 +353,7 @@ static InputSpecMap &preview_surface_input_map()
   static InputSpecMap input_map = {
       {"Base Color", {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Color3f, true}},
       {"Emission Color", {usdtokens::emissive_color, pxr::SdfValueTypeNames->Color3f, true}},
-      {"Color", {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Float3, true}},
+      {"Color", {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Color3f, true}},
       {"Roughness", {usdtokens::roughness, pxr::SdfValueTypeNames->Float, true}},
       {"Metallic", {usdtokens::metallic, pxr::SdfValueTypeNames->Float, true}},
       {"Specular IOR Level", {usdtokens::specular, pxr::SdfValueTypeNames->Float, true}},
@@ -637,6 +638,36 @@ static pxr::TfToken get_node_tex_image_color_space(bNode *node)
   return pxr::TfToken();
 }
 
+static pxr::TfToken get_node_tex_image_wrap(bNode *node)
+{
+  if (node->type != SH_NODE_TEX_IMAGE) {
+    std::cout << "get_node_tex_image_wrap() called with unexpected type.\n";
+    return pxr::TfToken();
+  }
+
+  if (node->storage == nullptr) {
+    return pxr::TfToken();
+  }
+
+  NodeTexImage *tex_image = static_cast<NodeTexImage *>(node->storage);
+
+  pxr::TfToken wrap;
+
+  switch (tex_image->extension) {
+    case SHD_IMAGE_EXTENSION_REPEAT:
+      wrap = usdtokens::repeat;
+      break;
+    case SHD_IMAGE_EXTENSION_EXTEND:
+      wrap = usdtokens::clamp;
+      break;
+    case SHD_IMAGE_EXTENSION_CLIP:
+      wrap = usdtokens::black;
+      break;
+  }
+
+  return wrap;
+}
+
 /* Search the upstream node links connected to the given socket and return the first occurrence
  * of the link connected to the node of the given type. Return null if no such link was found.
  * The 'fromnode' and 'fromsock' members of the returned link are guaranteed to be not null. */
@@ -690,6 +721,10 @@ static pxr::UsdShadeShader create_usd_preview_shader(const USDExporterContext &u
       shader.CreateIdAttr(pxr::VtValue(usdtokens::uv_texture));
       break;
     }
+    case SH_NODE_MAPPING: {
+      shader.CreateIdAttr(pxr::VtValue(usdtokens::UsdTransform2d));
+      break;
+    }
     case SH_NODE_TEX_COORD:
     case SH_NODE_UVMAP: {
       shader.CreateIdAttr(pxr::VtValue(usdtokens::primvar_float2));
@@ -739,6 +774,12 @@ static pxr::UsdShadeShader create_usd_preview_shader(const USDExporterContext &u
   pxr::TfToken colorSpace = get_node_tex_image_color_space(node);
   if (!colorSpace.IsEmpty()) {
     shader.CreateInput(usdtokens::sourceColorSpace, pxr::SdfValueTypeNames->Token).Set(colorSpace);
+  }
+
+  pxr::TfToken wrap = get_node_tex_image_wrap(node);
+  if (!wrap.IsEmpty()) {
+    shader.CreateInput(usdtokens::wrapS, pxr::SdfValueTypeNames->Token).Set(wrap);
+    shader.CreateInput(usdtokens::wrapT, pxr::SdfValueTypeNames->Token).Set(wrap);
   }
 
   return shader;
