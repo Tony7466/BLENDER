@@ -20,7 +20,8 @@ static pxr::GfCamera create_gf_camera(bool is_ortho,
                                       const pxr::GfMatrix4d &transform,
                                       const pxr::GfVec2f &aperture,
                                       const pxr::GfVec2f &lens_shift,
-                                      const pxr::GfRange1f &clip_range)
+                                      const pxr::GfRange1f &clip_range,
+                                      const float &focal_length)
 {
   pxr::GfCamera gf_camera = pxr::GfCamera();
 
@@ -32,6 +33,7 @@ static pxr::GfCamera create_gf_camera(bool is_ortho,
   gf_camera.SetVerticalApertureOffset(lens_shift[1] * aperture[1]);
   gf_camera.SetClippingRange(clip_range);
   gf_camera.SetTransform(transform);
+  gf_camera.SetFocalLength(focal_length);
 
   return gf_camera;
 }
@@ -193,7 +195,8 @@ pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
   else {
     aperture = pxr::GfCompMult(sensor_size, b_size);
   }
-  return create_gf_camera(camera_params.is_ortho, transform, aperture, lens_shift, clip_range);
+  return create_gf_camera(
+      camera_params.is_ortho, transform, aperture, lens_shift, clip_range, camera_params.lens);
 }
 
 pxr::GfCamera gf_camera(const Object *camera_obj,
@@ -289,7 +292,8 @@ pxr::GfCamera gf_camera(const Object *camera_obj,
     default:
       BLI_assert_unreachable();
   }
-  return create_gf_camera(camera_params.is_ortho, transform, aperture, lens_shift, clip_range);
+  return create_gf_camera(
+      camera_params.is_ortho, transform, aperture, lens_shift, clip_range, camera_params.lens);
 }
 
 }  // namespace blender::render::hydra
