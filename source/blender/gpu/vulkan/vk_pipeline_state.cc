@@ -341,8 +341,8 @@ void VKPipelineStateManager::set_logic_op(const bool enable)
 
 void VKPipelineStateManager::set_facing(const bool invert)
 {
-  rasterization_state.frontFace = invert ? VK_FRONT_FACE_COUNTER_CLOCKWISE :
-                                           VK_FRONT_FACE_CLOCKWISE;
+  rasterization_state.frontFace = invert ? VK_FRONT_FACE_CLOCKWISE :
+                                           VK_FRONT_FACE_COUNTER_CLOCKWISE;
 }
 
 void VKPipelineStateManager::set_backface_culling(const eGPUFaceCullTest cull_test)
