@@ -21,6 +21,10 @@ from typing import (
     Tuple,
 )
 
+from rna_prop_ui import (
+    rna_idprop_value_to_python,
+)
+
 FCurveKey = Tuple[
     # `fcurve.data_path`.
     str,
@@ -198,6 +202,24 @@ def bake_action_iter(
         "bbone_easeout": 1,
     }
 
+    # Convert rna_prop types (IDPropertyArray, etc) to python types.
+    def clean_custom_properties(obj):
+        clean_props = {}
+        for key, value in obj.items():
+            clean_props.update({key: rna_idprop_value_to_python(value)})
+        return clean_props
+
+    def bake_custom_properties(obj, custom_props={}, frame=None, name=""):
+        if (f is None or custom_props is None):
+            return
+        for key, value in custom_props.items():
+            obj[key] = value
+            try:
+                obj.keyframe_insert(f'["{bpy.utils.escape_identifier(key)}"]', frame=frame, group=name)
+            except TypeError:
+                # Non animatable properties (datablocks, etc) cannot be keyed.
+                continue
+
     def pose_frame_info(obj):
         matrix = {}
         bbones = {}
@@ -215,40 +237,40 @@ def bake_action_iter(
                 bbones[name] = {bb_prop: getattr(pbone, bb_prop) for bb_prop in BBONE_PROPS}
 
             # Custom Properties
-            custom_props[name] = dict(pbone.items())
+            custom_props[name] = clean_custom_properties(pbone)
 
         return matrix, bbones, custom_props
 
     def armature_frame_info(obj):
         custom_props = {}
         if obj.type == 'ARMATURE':
-            custom_props.update(dict(obj.items()))
+            custom_props.update(clean_custom_properties(obj))
         return custom_props
 
     if bake_options.do_parents_clear:
         if bake_options.do_visual_keying:
             def obj_frame_info(obj):
-                return obj.matrix_world.copy(), dict(obj.items())
+                return obj.matrix_world.copy(), clean_custom_properties(obj)
         else:
             def obj_frame_info(obj):
                 parent = obj.parent
                 matrix = obj.matrix_basis
                 if parent:
-                    return parent.matrix_world @ matrix, dict(obj.items())
+                    return parent.matrix_world @ matrix, clean_custom_properties(obj)
                 else:
-                    return matrix.copy(), dict(obj.items())
+                    return matrix.copy(), clean_custom_properties(obj)
     else:
         if bake_options.do_visual_keying:
             def obj_frame_info(obj):
                 parent = obj.parent
                 matrix = obj.matrix_world
                 if parent:
-                    return parent.matrix_world.inverted_safe() @ matrix, dict(obj.items())
+                    return parent.matrix_world.inverted_safe() @ matrix, clean_custom_properties(obj)
                 else:
-                    return matrix.copy(), dict(obj.items())
+                    return matrix.copy(), clean_custom_properties(obj)
         else:
             def obj_frame_info(obj):
-                return obj.matrix_basis.copy(), dict(obj.items())
+                return obj.matrix_basis.copy(), clean_custom_properties(obj)
 
     # -------------------------------------------------------------------------
     # Setup the Context
@@ -314,13 +336,7 @@ def bake_action_iter(
     lookup_fcurves = {(fcurve.data_path, fcurve.array_index): fcurve for fcurve in action.fcurves}
     if bake_options.do_pose:
         for f, armature_custom_properties in armature_info:
-            for key, value in armature_custom_properties.items():
-                try:
-                    obj[key] = value
-                    obj.keyframe_insert(f'[\"{key}\"]', frame=f)
-                except TypeError:
-                    # Non animatable properties (datablocks, etc) cannot be keyed.
-                    continue
+            bake_custom_properties(obj, armature_custom_properties, f)
 
         for name, pbone in obj.pose.bones.items():
             if bake_options.only_selected and not pbone.bone.select:
@@ -404,13 +420,7 @@ def bake_action_iter(
                             )
                 # Custom Properties
                 if bake_options.do_custom_props:
-                    for key, value in custom_props[name].items():
-                        try:
-                            pbone[key] = value
-                            pbone.keyframe_insert(f'[\"{key}\"]', index=-1, frame=f, group=name)
-                        except TypeError:
-                            # Non animatable properties (datablocks, etc) cannot be keyed.
-                            continue
+                    bake_custom_properties(pbone, custom_props[name], f, name)
 
             if is_new_action:
                 keyframes.insert_keyframes_into_new_action(total_new_keys, action, name)
@@ -476,13 +486,7 @@ def bake_action_iter(
                 keyframes.extend_co_values(path_scale, 3, f, obj.scale)
 
             if bake_options.do_custom_props:
-                for key, value in custom_props.items():
-                    try:
-                        obj[key] = value
-                        obj.keyframe_insert(f'[\"{key}\"]', index=-1, frame=f, group=name)
-                    except TypeError:
-                        # Non animatable properties (datablocks, etc) cannot be keyed.
-                        continue
+                bake_custom_properties(obj, custom_props, f, name)
 
         if is_new_action:
             keyframes.insert_keyframes_into_new_action(total_new_keys, action, name)
