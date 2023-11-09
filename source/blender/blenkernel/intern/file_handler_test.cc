@@ -73,6 +73,7 @@ TEST(file_handler, remove)
   EXPECT_EQ(BKE_file_handlers().size(), 7);
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender2"), nullptr);
 
+  /** `FileHandlerType` pointer in `file_handlers[1]` is not longer valid. */
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender1"), file_handlers[0]);
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender3"), file_handlers[2]);
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender4"), file_handlers[3]);
@@ -94,6 +95,7 @@ TEST(file_handler, remove)
   EXPECT_EQ(BKE_file_handlers().size(), 6);
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender8"), nullptr);
 
+  /** `FileHandlerType` pointer  in `file_handlers[7]` is not longer valid. */
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender1"), file_handlers[0]);
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender3"), file_handlers[2]);
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender4"), file_handlers[3]);

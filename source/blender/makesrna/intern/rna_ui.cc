@@ -2324,7 +2324,7 @@ static void rna_def_file_handler(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna,
                          "File Handler Type",
                          "Extends functionality to operators that manages files, such as adding "
-                         "drag and drop support.");
+                         "drag and drop support");
   RNA_def_struct_refine_func(srna, "rna_FileHandler_refine");
   RNA_def_struct_register_funcs(
       srna, "rna_FileHandler_register", "rna_FileHandler_unregister", nullptr);
@@ -2351,7 +2351,7 @@ static void rna_def_file_handler(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Operator",
-      "Operator that can handle import files with extension in bl_file_extensions");
+      "Operator that can handle import files with the extensions given in bl_file_extensions");
 
   prop = RNA_def_property(srna, "bl_label", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "type->label");
@@ -2366,7 +2366,7 @@ static void rna_def_file_handler(BlenderRNA *brna)
       "File Extensions",
       "Formatted string of file extensions supported by the file handler, each extension should "
       "start with a \".\" and separated by a \";\"."
-      "\nFor Example: `\".blend;.ble\"`.");
+      "\nFor Example: `\".blend;.ble\"`");
 
   PropertyRNA *parm;
   FunctionRNA *func;
@@ -2374,7 +2374,7 @@ static void rna_def_file_handler(BlenderRNA *brna)
   func = RNA_def_function(srna, "poll_drop", nullptr);
   RNA_def_function_ui_description(
       func,
-      "If this method returns True, can be used to handle the drop of a drag-and-drop action.");
+      "If this method returns True, can be used to handle the drop of a drag-and-drop action");
   RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_REGISTER_OPTIONAL);
   RNA_def_function_return(func, RNA_def_boolean(func, "is_usable", true, "", ""));
   parm = RNA_def_pointer(func, "context", "Context", "", "");
