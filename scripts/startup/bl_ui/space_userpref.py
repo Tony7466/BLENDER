@@ -1849,32 +1849,7 @@ class USERPREF_PT_navigation_fly_walk_navigation(NavigationPanel, CenterAlignMix
         col.prop(walk, "walk_speed")
         col.prop(walk, "walk_speed_factor")
 
-
-class USERPREF_PT_navigation_fly_walk_gravity(NavigationPanel, CenterAlignMixIn, Panel):
-    bl_label = "Gravity"
-    bl_parent_id = "USERPREF_PT_navigation_fly_walk"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        prefs = context.preferences
-        return prefs.inputs.navigation_mode == 'WALK'
-
-    def draw_header(self, context):
-        prefs = context.preferences
-        inputs = prefs.inputs
-        walk = inputs.walk_navigation
-
-        self.layout.prop(walk, "use_gravity", text="")
-
-    def draw_centered(self, context, layout):
-        prefs = context.preferences
-        inputs = prefs.inputs
-        walk = inputs.walk_navigation
-
-        layout.active = walk.use_gravity
-
-        col = layout.column()
+        col.prop(walk, "use_gravity", text="Start with Gravity Enabled")
         col.prop(walk, "view_height")
         col.prop(walk, "jump_height")
 
@@ -2690,7 +2665,6 @@ classes = (
     USERPREF_PT_navigation_zoom,
     USERPREF_PT_navigation_fly_walk,
     USERPREF_PT_navigation_fly_walk_navigation,
-    USERPREF_PT_navigation_fly_walk_gravity,
 
     USERPREF_PT_keymap,
 
