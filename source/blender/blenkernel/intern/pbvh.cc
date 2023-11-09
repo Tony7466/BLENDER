@@ -2055,6 +2055,7 @@ int BKE_pbvh_node_num_unique_verts(const PBVH &pbvh, const PBVHNode &node)
       return node.bm_unique_verts.size();
   }
   BLI_assert_unreachable();
+  return 0;
 }
 
 void BKE_pbvh_node_get_grids(PBVH *pbvh,
