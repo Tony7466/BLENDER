@@ -330,7 +330,33 @@ void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/, GPUL
 }
 
 /** \} */
+void VKFrameBuffer::config(const GPUAttachment *config, int config_len)
+{
+  flush();
+  const GPUAttachment &depth_attachment = config[0];
+  Span<GPUAttachment> color_attachments(config + 1, config_len - 1);
 
+  GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0;
+  for (const GPUAttachment &attachment : color_attachments) {
+    attachment_set(type, attachment);
+    ++type;
+  }
+
+  if (depth_attachment.mip == -1) {
+    /* GPU_ATTACHMENT_LEAVE */
+    attachment_set(GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_attachment);
+  }
+  else if (depth_attachment.tex == nullptr) {
+    /* GPU_ATTACHMENT_NONE: Need to clear both targets. */
+    attachment_set(GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_attachment);
+  }
+  else {
+    GPUAttachmentType type = GPU_texture_has_stencil_format(depth_attachment.tex) ?
+                                 GPU_FB_DEPTH_STENCIL_ATTACHMENT :
+                                 GPU_FB_DEPTH_ATTACHMENT;
+    attachment_set(type, depth_attachment);
+  }
+}
 /* -------------------------------------------------------------------- */
 /** \name Sub-pass transition
  * \{ */

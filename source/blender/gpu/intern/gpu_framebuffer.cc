@@ -66,61 +66,6 @@ FrameBuffer::~FrameBuffer()
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Attachments Management
- * \{ */
-void FrameBuffer::attachment_set(GPUAttachmentType type,
-                                 const GPUAttachment &new_attachment,
-                                 bool /*config*/)
-{
-  if (new_attachment.mip == -1) {
-    return; /* GPU_ATTACHMENT_LEAVE */
-  }
-
-  if (type >= GPU_FB_MAX_ATTACHMENT) {
-    fprintf(stderr,
-            "GPUFramebuffer: Error: Trying to attach texture to type %d but maximum slot is %d.\n",
-            type - GPU_FB_COLOR_ATTACHMENT0,
-            GPU_FB_MAX_COLOR_ATTACHMENT);
-    return;
-  }
-
-  if (new_attachment.tex) {
-    if (new_attachment.layer > 0) {
-      BLI_assert(GPU_texture_is_cube(new_attachment.tex) ||
-                 GPU_texture_is_array(new_attachment.tex));
-    }
-    if (GPU_texture_has_stencil_format(new_attachment.tex)) {
-      BLI_assert(ELEM(type, GPU_FB_DEPTH_STENCIL_ATTACHMENT));
-    }
-    else if (GPU_texture_has_depth_format(new_attachment.tex)) {
-      BLI_assert(ELEM(type, GPU_FB_DEPTH_ATTACHMENT));
-    }
-  }
-
-  GPUAttachment &attachment = attachments_[type];
-
-  if (attachment.tex == new_attachment.tex && attachment.layer == new_attachment.layer &&
-      attachment.mip == new_attachment.mip)
-  {
-    return; /* Exact same texture already bound here. */
-  }
-  /* Unbind previous and bind new. */
-  /* TODO(fclem): cleanup the casts. */
-  if (attachment.tex) {
-    reinterpret_cast<Texture *>(attachment.tex)->detach_from(this);
-  }
-
-  /* Might be null if this is for unbinding. */
-  if (new_attachment.tex) {
-    reinterpret_cast<Texture *>(new_attachment.tex)->attach_to(this, type);
-  }
-  else {
-    /* GPU_ATTACHMENT_NONE */
-  }
-
-  attachment = new_attachment;
-  dirty_attachments_ = true;
-}
 
 void FrameBuffer::attachment_remove(GPUAttachmentType type)
 {
@@ -359,38 +304,7 @@ void GPU_framebuffer_config_array(GPUFrameBuffer *gpu_fb,
                                   const GPUAttachment *config,
                                   int config_len)
 {
-  FrameBuffer *fb = unwrap(gpu_fb);
-#ifdef WITH_VULKAN_BACKEND
-  fb->flush();
-#endif
-  const GPUAttachment &depth_attachment = config[0];
-  Span<GPUAttachment> color_attachments(config + 1, config_len - 1);
-
-  GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0;
-  for (const GPUAttachment &attachment : color_attachments) {
-    fb->attachment_set(type, attachment);
-    ++type;
-  }
-
-  if (depth_attachment.mip == -1) {
-    /* GPU_ATTACHMENT_LEAVE */
-#ifdef WITH_VULKAN_BACKEND
-    fb->attachment_set(GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_attachment);
-#endif
-  }
-  else if (depth_attachment.tex == nullptr) {
-    /* GPU_ATTACHMENT_NONE: Need to clear both targets. */
-    fb->attachment_set(GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_attachment);
-#ifndef WITH_VULKAN_BACKEND
-    fb->attachment_set(GPU_FB_DEPTH_ATTACHMENT, depth_attachment);
-#endif
-  }
-  else {
-    GPUAttachmentType type = GPU_texture_has_stencil_format(depth_attachment.tex) ?
-                                 GPU_FB_DEPTH_STENCIL_ATTACHMENT :
-                                 GPU_FB_DEPTH_ATTACHMENT;
-    fb->attachment_set(type, depth_attachment);
-  }
+  unwrap(gpu_fb)->config(config, config_len);
 }
 
 void GPU_framebuffer_default_size(GPUFrameBuffer *gpu_fb, int width, int height)

@@ -6,16 +6,15 @@
  * \ingroup gpu
  */
 
-
+#include "vk_image_views.hh"
 #include "vk_image_view.hh"
 #include "vk_texture.hh"
-#include "vk_image_views.hh"
 
 #include "BLI_assert.h"
 
 namespace blender::gpu {
 
-  static VkFormat to_non_srgb_format(const VkFormat format)
+static VkFormat to_non_srgb_format(const VkFormat format)
 {
   switch (format) {
     case VK_FORMAT_R8G8B8_SRGB:

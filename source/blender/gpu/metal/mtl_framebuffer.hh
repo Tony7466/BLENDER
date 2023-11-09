@@ -136,7 +136,9 @@ class MTLFrameBuffer : public FrameBuffer {
   void clear_attachment(GPUAttachmentType type,
                         eGPUDataFormat data_format,
                         const void *clear_value) override;
-
+  void attachment_set(GPUAttachmentType type,
+                      const GPUAttachment &new_attachment,
+                      bool config = true) override;
   void attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore ls) override;
 
   void read(eGPUFrameBufferBits planes,
@@ -152,7 +154,7 @@ class MTLFrameBuffer : public FrameBuffer {
                int dst_slot,
                int dst_offset_x,
                int dst_offset_y) override;
-
+  void config(const GPUAttachment *config, int config_len) override;
   void subpass_transition(const GPUAttachmentState /*depth_attachment_state*/,
                           Span<GPUAttachmentState> /*color_attachment_states*/) override{};
 

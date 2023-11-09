@@ -127,6 +127,8 @@ class FrameBuffer {
                        int dst_offset_x,
                        int dst_offset_y) = 0;
 
+  virtual void config(const GPUAttachment *config, int config_len) = 0;
+
   virtual void subpass_transition(const GPUAttachmentState depth_attachment_state,
                                   Span<GPUAttachmentState> color_attachment_states) = 0;
 
@@ -134,8 +136,8 @@ class FrameBuffer {
 
   virtual void attachment_set(GPUAttachmentType type,
                               const GPUAttachment &new_attachment,
-                              bool config = true);
-  virtual void flush(){};
+                              bool config = true) = 0;
+
   void attachment_remove(GPUAttachmentType type);
 
   void recursive_downsample(int max_lvl,
