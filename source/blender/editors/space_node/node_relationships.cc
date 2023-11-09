@@ -1913,7 +1913,7 @@ static bNode *node_find_frame_to_attach(bNodeTree &node_tree, const float2 locat
    * `totr`we have to transform it into view space. */
   blender::float2 query_point = location * UI_SCALE_FAC;
 
-  LISTBASE_FOREACH_BACKWARD (bNode *, frame, &node_tree.nodes) {
+  for (bNode *frame : tree_draw_order_calc_nodes_reversed(node_tree)) {
     if (frame->type != NODE_FRAME) {
       continue;
     }
