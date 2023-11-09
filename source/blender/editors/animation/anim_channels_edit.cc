@@ -4347,6 +4347,22 @@ static bool move_context_to_graph_editor(bContext *C)
   return found_graph_editor;
 }
 
+static void deselect_all_fcurves(bAnimContext *ac)
+{
+  ListBase anim_data = {nullptr, nullptr};
+  const eAnimFilter_Flags filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE |
+                                    ANIMFILTER_FCURVESONLY | ANIMFILTER_NODUPLIS);
+  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
+
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+    fcu->flag &= ~FCURVE_SELECTED;
+    fcu->flag &= ~FCURVE_ACTIVE;
+  }
+
+  ANIM_animdata_freelist(&anim_data);
+}
+
 static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 {
   PointerRNA ptr = {nullptr};
@@ -4374,8 +4390,17 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 
   if (!selected_list_success) {
     WM_report(RPT_ERROR, "No selection found");
+    BLI_freelistN(&selection);
     return OPERATOR_CANCELLED;
   }
+
+  bAnimContext ac;
+  if (!ANIM_animdata_get_context(C, &ac)) {
+    WM_report(RPT_ERROR, "Cannot create animcontext");
+    return OPERATOR_CANCELLED;
+  }
+
+  deselect_all_fcurves(&ac);
 
   rctf bounds{};
   bounds.xmin = INFINITY;
