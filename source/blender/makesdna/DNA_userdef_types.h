@@ -1304,8 +1304,6 @@ typedef enum eUserpref_Anim_Flags {
   USER_ANIM_SHOW_CHANNEL_GROUP_COLORS = (1 << 0),
   USER_ANIM_ONLY_SHOW_SELECTED_CURVE_KEYS = (1 << 1),
   USER_ANIM_HIGH_QUALITY_DRAWING = (1 << 2),
-  /* If set, viewing a set of FCurves will hide all other FCurves in the Graph Editor. */
-  USER_ANIM_VIEW_ISOLATE_FCURVE = (1 << 3),
 } eUserpref_Anim_Flags;
 
 /** #UserDef.transopts */

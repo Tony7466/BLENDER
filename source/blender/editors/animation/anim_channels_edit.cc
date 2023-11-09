@@ -4303,7 +4303,7 @@ static bool move_context_to_graph_editor(bContext *C)
   return found_graph_editor;
 }
 
-static void deselect_all_fcurves(bAnimContext *ac)
+static void deselect_all_fcurves(bAnimContext *ac, const bool isolate)
 {
   ListBase anim_data = {nullptr, nullptr};
   const eAnimFilter_Flags filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE |
@@ -4314,7 +4314,7 @@ static void deselect_all_fcurves(bAnimContext *ac)
     FCurve *fcu = (FCurve *)ale->key_data;
     fcu->flag &= ~FCURVE_SELECTED;
     fcu->flag &= ~FCURVE_ACTIVE;
-    if (U.animation_flag & USER_ANIM_VIEW_ISOLATE_FCURVE) {
+    if (isolate) {
       fcu->flag &= ~FCURVE_VISIBLE;
     }
   }
@@ -4424,7 +4424,8 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  deselect_all_fcurves(&ac);
+  const bool isolate = RNA_boolean_get(op->ptr, "isolate");
+  deselect_all_fcurves(&ac, isolate);
 
   ListBase selection = {nullptr, nullptr};
   bool path_from_id;
@@ -4472,14 +4473,23 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int view_curve_in_graph_editor_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  RNA_boolean_set(op->ptr, "isolate", event->modifier == KM_ALT);
+  return view_curve_in_graph_editor_exec(C, op);
+}
+
 static void ANIM_OT_view_curve_in_graph_editor(wmOperatorType *ot)
 {
   /* Identifiers */
   ot->name = "View In Graph Editor";
   ot->idname = "ANIM_OT_view_curve_in_graph_editor";
-  ot->description = "Frame the property under the cursor in the Graph Editor";
+  ot->description =
+      "Frame the property under the cursor in the Graph Editor. Use Alt+Click to isolate the "
+      "curves";
 
   /* API callbacks */
+  ot->invoke = view_curve_in_graph_editor_invoke;
   ot->exec = view_curve_in_graph_editor_exec;
 
   RNA_def_boolean(ot->srna,
@@ -4487,6 +4497,12 @@ static void ANIM_OT_view_curve_in_graph_editor(wmOperatorType *ot)
                   false,
                   "Show All",
                   "Frame the whole array property instead of only the index under the cursor");
+
+  RNA_def_boolean(ot->srna,
+                  "isolate",
+                  false,
+                  "Isolate",
+                  "Hides all other F-Curves other than the ones being framed");
 }
 
 /** \} */

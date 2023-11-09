@@ -603,7 +603,6 @@ class USERPREF_PT_animation_fcurves(AnimationPanel, CenterAlignMixIn, Panel):
         flow.prop(edit, "use_anim_channel_group_colors")
         flow.prop(edit, "show_only_selected_curve_keyframes")
         flow.prop(edit, "use_fcurve_high_quality_drawing")
-        flow.prop(edit, "view_isolates_curves")
 
 
 # -----------------------------------------------------------------------------
