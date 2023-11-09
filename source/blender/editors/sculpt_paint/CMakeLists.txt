@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
+  ../..
+
   ../include
   ../uvedit
   ../../blenkernel
@@ -93,6 +95,9 @@ set(SRC
   grease_pencil_intern.hh
   paint_intern.hh
   sculpt_intern.hh
+
+  brushes/draw.cc
+  brushes/draw.hh
 )
 
 set(LIB

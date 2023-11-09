@@ -1716,8 +1716,6 @@ void SCULPT_do_smear_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes);
 
 float SCULPT_clay_thumb_get_stabilized_pressure(StrokeCache *cache);
 
-void SCULPT_do_draw_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes);
-
 void SCULPT_do_fill_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes);
 void SCULPT_do_scrape_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes);
 void SCULPT_do_clay_thumb_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes);
@@ -1800,3 +1798,33 @@ int SCULPT_vertex_island_get(const SculptSession *ss, PBVHVertRef vertex);
 
 #define SCULPT_vertex_attr_get BKE_sculpt_vertex_attr_get
 #define SCULPT_face_attr_get BKE_sculpt_face_attr_get
+
+namespace blender::ed::sculpt_paint {
+
+void calc_brush_falloff_and_distance(SculptSession &ss,
+                                     const Span<float3> vert_positions,
+                                     const Span<int> vert_indices,
+                                     const char falloff_shape,
+                                     MutableSpan<float> fade,
+                                     MutableSpan<float> brush_distance);
+
+void calc_brush_strength_factor(SculptSession &ss,
+                                const Brush &brush,
+                                const Span<float3> vert_positions,
+                                const Span<int> vert_indices,
+                                const Span<float> brush_distance,
+                                const MutableSpan<float> fade);
+
+void calc_brush_front_face(SculptSession &ss,
+                           const Brush &brush,
+                           const Span<float3> vert_normals,
+                           const Span<int> vert_indices,
+                           const MutableSpan<float> fade);
+
+void calc_mesh_automask(Object &object,
+                        AutomaskingCache &automasking,
+                        bke::pbvh::FaceNode &node,
+                        const Span<int> vert_indices,
+                        const MutableSpan<float> fade);
+
+}

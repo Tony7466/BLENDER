@@ -81,6 +81,8 @@
 
 #include "bmesh.h"
 
+#include "editors/sculpt_paint/brushes/draw.hh"
+
 using blender::float3;
 using blender::MutableSpan;
 using blender::Set;
@@ -1409,27 +1411,35 @@ void SCULPT_orig_vert_data_init(SculptOrigVertData *data,
   SCULPT_orig_vert_data_unode_init(data, ob, unode);
 }
 
+static void sculpt_orig_mesh_vert_data_update(SculptOrigVertData &orig_data,
+                                              const int vertex_index)
+{
+  if (orig_data.unode->type == SCULPT_UNDO_COORDS) {
+    orig_data.co = orig_data.coords[vertex_index];
+    orig_data.no = orig_data.normals[vertex_index];
+  }
+  else if (orig_data.unode->type == SCULPT_UNDO_COLOR) {
+    orig_data.col = orig_data.colors[vertex_index];
+  }
+  else if (orig_data.unode->type == SCULPT_UNDO_MASK) {
+    orig_data.mask = orig_data.vmasks[vertex_index];
+  }
+}
+
 void SCULPT_orig_vert_data_update(SculptOrigVertData *orig_data, PBVHVertexIter *iter)
 {
+  if (!orig_data->bm_log) {
+    sculpt_orig_mesh_vert_data_update(*orig_data, iter->i);
+    return;
+  }
+
   if (orig_data->unode->type == SCULPT_UNDO_COORDS) {
-    if (orig_data->bm_log) {
-      BM_log_original_vert_data(orig_data->bm_log, iter->bm_vert, &orig_data->co, &orig_data->no);
-    }
-    else {
-      orig_data->co = orig_data->coords[iter->i];
-      orig_data->no = orig_data->normals[iter->i];
-    }
+    BM_log_original_vert_data(orig_data->bm_log, iter->bm_vert, &orig_data->co, &orig_data->no);
   }
   else if (orig_data->unode->type == SCULPT_UNDO_COLOR) {
-    orig_data->col = orig_data->colors[iter->i];
   }
   else if (orig_data->unode->type == SCULPT_UNDO_MASK) {
-    if (orig_data->bm_log) {
-      orig_data->mask = BM_log_original_mask(orig_data->bm_log, iter->bm_vert);
-    }
-    else {
-      orig_data->mask = orig_data->vmasks[iter->i];
-    }
+    orig_data->mask = orig_data->vmasks[iter->i];
   }
 }
 
@@ -3628,7 +3638,7 @@ static void do_brush_action(Sculpt *sd,
   /* Apply one type of brush action. */
   switch (brush->sculpt_tool) {
     case SCULPT_TOOL_DRAW:
-      SCULPT_do_draw_brush(sd, ob, nodes);
+      blender::ed::sculpt_paint::do_draw_brush(*sd, *ob, nodes);
       break;
     case SCULPT_TOOL_SMOOTH:
       if (brush->smooth_deform_type == BRUSH_SMOOTH_DEFORM_LAPLACIAN) {
@@ -6350,3 +6360,111 @@ void SCULPT_cube_tip_init(Sculpt * /*sd*/, Object *ob, Brush *brush, float mat[4
   invert_m4_m4(mat, tmat);
 }
 /** \} */
+
+namespace blender::ed::sculpt_paint {
+
+namespace pbvh = bke::pbvh;
+
+void calc_brush_falloff_and_distance(SculptSession &ss,
+                                     const Span<float3> positions,
+                                     const Span<int> vert_indices,
+                                     const char falloff_shape,
+                                     const MutableSpan<float> fade,
+                                     const MutableSpan<float> brush_distance)
+{
+  BLI_assert(vert_indices.size() == fade.size());
+  BLI_assert(vert_indices.size() == brush_distance.size());
+
+  SculptBrushTest test;
+  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
+      &ss, &test, falloff_shape);
+
+  threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      if (fade[i] == 0.0f) {
+        brush_distance[i] = FLT_MAX;
+        continue;
+      }
+      if (!sculpt_brush_test_sq_fn(&test, positions[vert_indices[i]])) {
+        fade[i] = 0.0f;
+        brush_distance[i] = FLT_MAX;
+        continue;
+      }
+      brush_distance[i] = math::sqrt(test.dist);
+    }
+  });
+}
+
+void calc_brush_strength_factor(SculptSession &ss,
+                                const Brush &brush,
+                                const Span<float3> vert_positions,
+                                const Span<int> vert_indices,
+                                const Span<float> brush_distance,
+                                const MutableSpan<float> fade)
+{
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
+  StrokeCache &cache = *ss.cache;
+  threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      if (fade[i] == 0.0f) {
+        continue;
+      }
+
+      float texture_value;
+      float4 texture_rgba;
+      sculpt_apply_texture(
+          &ss, &brush, vert_positions[vert_indices[i]], thread_id, &texture_value, texture_rgba);
+
+      const float hardness = sculpt_apply_hardness(&ss, brush_distance[i]);
+      const float strength = BKE_brush_curve_strength(&brush, hardness, cache.radius);
+
+      fade[i] *= hardness * strength;
+    }
+  });
+}
+
+void calc_brush_front_face(SculptSession &ss,
+                           const Brush &brush,
+                           const Span<float3> vert_normals,
+                           const Span<int> vert_indices,
+                           const MutableSpan<float> fade)
+{
+  StrokeCache &cache = *ss.cache;
+  threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      if (fade[i] == 0.0f) {
+        continue;
+      }
+      fade[i] *= frontface(&brush, cache.view_normal, vert_normals[vert_indices[i]], nullptr);
+    }
+  });
+}
+
+void calc_mesh_automask(Object &object,
+                        AutomaskingCache &automasking,
+                        pbvh::FaceNode &node,
+                        const Span<int> vert_indices,
+                        const MutableSpan<float> fade)
+{
+  SculptSession &ss = *object.sculpt;
+
+  AutomaskingNodeData automask_data;
+  SCULPT_automasking_node_begin(&object, &automasking, &automask_data, &node.get_pbvh_node());
+
+  threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      if (fade[i] == 0.0f) {
+        continue;
+      }
+
+      if (automask_data.have_orig_data) {
+        sculpt_orig_mesh_vert_data_update(automask_data.orig_data, i);
+      }
+
+      fade[i] *= SCULPT_automasking_factor_get(
+          &automasking, &ss, BKE_pbvh_make_vref(vert_indices[i]), &automask_data);
+    }
+  });
+}
+
+}  // namespace blender::ed::sculpt_paint

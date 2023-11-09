@@ -13,6 +13,9 @@
 #include "BLI_compiler_compat.h"
 #include "BLI_utildefines.h"
 
+#include "BLI_math_vector_types.hh"
+#include "BLI_span.hh"
+
 struct PBVHNode;
 struct PBVHBatches;
 struct BMesh;
@@ -109,3 +112,39 @@ void BKE_pbvh_draw_debug_cb(PBVH *pbvh,
                                             const float bmax[3],
                                             PBVHNodeFlags flag),
                             void *user_data);
+
+namespace blender::bke::pbvh {
+
+class FaceNode;
+
+class Tree {
+  friend class FaceNode;
+  PBVH &pbvh_;
+
+ public:
+  explicit Tree(PBVH &pbvh) : pbvh_(pbvh) {}
+
+  // XXX: Accessor vs. property.
+  Span<float3> get_vert_positions() const;
+  Span<float3> get_vert_normals() const;
+};
+
+class FaceNode {
+  PBVHNode &node_;
+
+ public:
+  explicit FaceNode(PBVHNode &node) : node_(node) {}
+
+  // XXX: Accessor vs. property.
+  Span<int> get_unique_vert_indices() const;
+
+  MutableSpan<float3> add_proxy(Tree &pbvh_tree);
+
+  /* For interfacing with legacy API. */
+  PBVHNode &get_pbvh_node()
+  {
+    return node_;
+  }
+};
+
+}  // namespace blender::bke::pbvh
