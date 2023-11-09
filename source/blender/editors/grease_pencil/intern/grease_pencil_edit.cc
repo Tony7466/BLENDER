@@ -1190,6 +1190,18 @@ enum class CapsMode : int8_t {
   ROUND,
 };
 
+static void toggle_caps(MutableSpan<int8_t> caps, const IndexMask &selection)
+{
+  selection.foreach_index([&](const int i) {
+    if (caps[i] == GP_STROKE_CAP_FLAT) {
+      caps[i] = GP_STROKE_CAP_ROUND;
+    }
+    else {
+      caps[i] = GP_STROKE_CAP_FLAT;
+    }
+  });
+}
+
 static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
@@ -1209,46 +1221,41 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
     }
 
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-    bke::SpanAttributeWriter<int8_t> start_caps = attributes.lookup_or_add_for_write_span<int8_t>(
-        "start_cap", ATTR_DOMAIN_CURVE);
-    bke::SpanAttributeWriter<int8_t> end_caps = attributes.lookup_or_add_for_write_span<int8_t>(
-        "end_cap", ATTR_DOMAIN_CURVE);
 
-    if (mode == CapsMode::ROUND) {
-      index_mask::masked_fill(start_caps.span, int8_t(GP_STROKE_CAP_TYPE_ROUND), selected_curves);
-      index_mask::masked_fill(end_caps.span, int8_t(GP_STROKE_CAP_TYPE_ROUND), selected_curves);
-    }
-    else if (mode == CapsMode::FLAT) {
-      index_mask::masked_fill(start_caps.span, int8_t(GP_STROKE_CAP_TYPE_FLAT), selected_curves);
-      index_mask::masked_fill(end_caps.span, int8_t(GP_STROKE_CAP_TYPE_FLAT), selected_curves);
+    if ((mode == CapsMode::ROUND) || (mode == CapsMode::FLAT)) {
+      bke::SpanAttributeWriter<int8_t> start_caps =
+          attributes.lookup_or_add_for_write_span<int8_t>("start_cap", ATTR_DOMAIN_CURVE);
+      bke::SpanAttributeWriter<int8_t> end_caps = attributes.lookup_or_add_for_write_span<int8_t>(
+          "end_cap", ATTR_DOMAIN_CURVE);
+
+      const int8_t flag_set = (mode == CapsMode::ROUND) ? int8_t(GP_STROKE_CAP_TYPE_ROUND) :
+                                                          int8_t(GP_STROKE_CAP_TYPE_FLAT);
+
+      index_mask::masked_fill(start_caps.span, flag_set, selected_curves);
+      index_mask::masked_fill(end_caps.span, flag_set, selected_curves);
+      start_caps.finish();
+      end_caps.finish();
     }
     else {
-      selected_curves.foreach_index([&](const int curve_index) {
-        switch (mode) {
-          case CapsMode::START:
-            if (start_caps.span[curve_index] == GP_STROKE_CAP_FLAT) {
-              start_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
-            }
-            else {
-              start_caps.span[curve_index] = GP_STROKE_CAP_FLAT;
-            }
-            break;
-          case CapsMode::END:
-            if (end_caps.span[curve_index] == GP_STROKE_CAP_FLAT) {
-              end_caps.span[curve_index] = GP_STROKE_CAP_ROUND;
-            }
-            else {
-              end_caps.span[curve_index] = GP_STROKE_CAP_FLAT;
-            }
-            break;
-          default:
-            break;
+      switch (mode) {
+        case CapsMode::START: {
+          bke::SpanAttributeWriter<int8_t> caps = attributes.lookup_or_add_for_write_span<int8_t>(
+              "start_cap", ATTR_DOMAIN_CURVE);
+          toggle_caps(caps.span, selected_curves);
+          caps.finish();
+          break;
         }
-      });
+        case CapsMode::END: {
+          bke::SpanAttributeWriter<int8_t> caps = attributes.lookup_or_add_for_write_span<int8_t>(
+              "end_cap", ATTR_DOMAIN_CURVE);
+          toggle_caps(caps.span, selected_curves);
+          caps.finish();
+          break;
+        }
+        default:
+          break;
+      }
     }
-
-    start_caps.finish();
-    end_caps.finish();
 
     changed = true;
   });
