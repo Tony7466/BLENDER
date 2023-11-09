@@ -286,14 +286,16 @@ void MeshData::write_submeshes(const Mesh *mesh)
   const Span<float3> positions = mesh->vert_positions();
   MutableSpan(vertices.data(), vertices.size()).copy_from(positions.cast<pxr::GfVec3f>());
 
-  const bke::AttributeAccessor attributes = mesh->attributes();
-  VArraySpan<ColorGeometry4f> vertex_color = *attributes.lookup<ColorGeometry4f>(
-      mesh->default_color_attribute, ATTR_DOMAIN_POINT);
+  VArraySpan<ColorGeometry4f> vertex_color;
+  if (mat_count == 0) {
+    const bke::AttributeAccessor attributes = mesh->attributes();
+    vertex_color = *attributes.lookup<ColorGeometry4f>(mesh->default_color_attribute,
+                                                       ATTR_DOMAIN_POINT);
+  }
 
   if (submeshes_.size() == 1) {
     submeshes_[0].vertices = std::move(vertices);
-
-    if (!vertex_color.is_empty()) {
+    if (mat_count == 0 && !vertex_color.is_empty()) {
       for (const int64_t i : vertex_color.index_range()) {
         submeshes_[0].vertex_color.push_back(
             pxr::GfVec3f(vertex_color[i].r, vertex_color[i].g, vertex_color[i].b));
@@ -310,8 +312,7 @@ void MeshData::write_submeshes(const Mesh *mesh)
         if (index_map[v] == 0) {
           sm.vertices.push_back(vertices[v]);
           index_map[v] = sm.vertices.size();
-
-          if (!vertex_color.is_empty()) {
+          if (mat_count == 0 && !vertex_color.is_empty()) {
             sm.vertex_color.push_back(
                 pxr::GfVec3f(vertex_color[v].r, vertex_color[v].g, vertex_color[v].b));
             sm.vertex_opacity.push_back(vertex_color[v].a);
