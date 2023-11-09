@@ -211,7 +211,6 @@ ccl_device_inline bool motion_triangle_custom_intersect(const hiprtRay &ray,
     local_payload->prim_type = isect.type;
   }
   return b_hit;
-
 }
 
 ccl_device_inline bool motion_triangle_custom_local_intersect(const hiprtRay &ray,

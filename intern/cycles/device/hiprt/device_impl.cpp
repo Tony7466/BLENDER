@@ -414,12 +414,10 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *
           bvh->custom_prim_info[num_bounds].x = j;
           bvh->custom_prim_info[num_bounds].y = mesh->primitive_type();
           num_bounds++;
-
         }
       }
     }
     else {
-
       const int num_bvh_steps = bvh->params.num_motion_triangle_steps * 2 + 1;
       const float num_bvh_steps_inv_1 = 1.0f / (num_bvh_steps - 1);
 
@@ -459,18 +457,16 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *
       }
     }
 
-      bvh->custom_prim_aabb.aabbCount = bvh->custom_primitive_bound.size();
-      bvh->custom_prim_aabb.aabbStride = sizeof(BoundBox);
-      bvh->custom_primitive_bound.copy_to_device();
-      bvh->custom_prim_aabb.aabbs = (void *)bvh->custom_primitive_bound.device_pointer;
+    bvh->custom_prim_aabb.aabbCount = bvh->custom_primitive_bound.size();
+    bvh->custom_prim_aabb.aabbStride = sizeof(BoundBox);
+    bvh->custom_primitive_bound.copy_to_device();
+    bvh->custom_prim_aabb.aabbs = (void *)bvh->custom_primitive_bound.device_pointer;
 
-      geom_input.type = hiprtPrimitiveTypeAABBList;
-      geom_input.aabbList.primitive = &bvh->custom_prim_aabb;
-      geom_input.geomType = Motion_Triangle;
-    }
-
+    geom_input.type = hiprtPrimitiveTypeAABBList;
+    geom_input.aabbList.primitive = &bvh->custom_prim_aabb;
+    geom_input.geomType = Motion_Triangle;
+  }
   else {
-
     size_t triangle_size = mesh->get_triangles().size();
     void *triangle_data = mesh->get_triangles().data();
 
@@ -501,6 +497,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *
     geom_input.type = hiprtPrimitiveTypeTriangleMesh;
     geom_input.triangleMesh.primitive = &(bvh->triangle_mesh);
   }
+
   return geom_input;
 }
 
@@ -862,7 +859,6 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
           if (has_motion_blur) {
 
             prim_time_offset[blender_instance_id] = prim_time_map[geom];
-
           }
         }
         else {
