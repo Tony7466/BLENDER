@@ -412,13 +412,13 @@ static blender::Vector<float> get_keyframe_values(PointerRNA *ptr,
   return values;
 }
 
-static void insert_key_id(PointerRNA *rna_pointer,
-                          const blender::Span<std::string> rna_paths,
-                          const float scene_frame,
-                          const eInsertKeyFlags insert_key_flags,
-                          const eBezTriple_KeyframeType key_type,
-                          Main *bmain,
-                          ReportList *reports)
+static void insert_key_rna(PointerRNA *rna_pointer,
+                           const blender::Span<std::string> rna_paths,
+                           const float scene_frame,
+                           const eInsertKeyFlags insert_key_flags,
+                           const eBezTriple_KeyframeType key_type,
+                           Main *bmain,
+                           ReportList *reports)
 {
   using namespace blender;
 
@@ -520,7 +520,7 @@ static int insert_key(bContext *C, wmOperator *op)
     PointerRNA id_ptr = collection_ptr_link->ptr;
     Vector<std::string> rna_paths = construct_rna_paths(&collection_ptr_link->ptr);
 
-    insert_key_id(
+    insert_key_rna(
         &id_ptr, rna_paths.as_span(), scene_frame, insert_key_flags, key_type, bmain, op->reports);
   }
 
