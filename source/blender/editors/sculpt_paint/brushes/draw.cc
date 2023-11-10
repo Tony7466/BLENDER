@@ -228,10 +228,6 @@ static void calc_grids(Object &object, const Brush &brush, const float3 &offset,
                                                 &automask_data);
       proxy[vd.i] = offset * fade;
     }
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss.pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -287,10 +283,6 @@ static void calc_bmesh(Object &object, const Brush &brush, const float3 &offset,
                                                 thread_id,
                                                 &automask_data);
       proxy[vd.i] = offset * fade;
-    }
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss.pbvh, vd.vertex);
     }
   }
   BKE_pbvh_vertex_iter_end;
