@@ -980,17 +980,17 @@ static int grease_pencil_set_active_material_exec(bContext *C, wmOperator * /*op
 
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   for (const MutableDrawingInfo &info : drawings) {
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-
     IndexMaskMemory memory;
-    IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
-    if (selected_curves.is_empty()) {
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
+        *object, info.drawing, memory);
+    if (strokes.is_empty()) {
       continue;
     }
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
 
     const blender::VArray<int> materials = *curves.attributes().lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_CURVE, 0);
-    object->actcol = materials[selected_curves.first()] + 1;
+    object->actcol = materials[strokes.first()] + 1;
     break;
   };
 
@@ -1028,18 +1028,17 @@ static int grease_pencil_set_uniform_thickness_exec(bContext *C, wmOperator *op)
   bool changed = false;
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-
     IndexMaskMemory memory;
-    const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
-
-    if (selected_curves.is_empty()) {
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
+        *object, info.drawing, memory);
+    if (strokes.is_empty()) {
       return;
     }
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
 
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     MutableSpan<float> radii = info.drawing.radii_for_write();
-    bke::curves::fill_points<float>(points_by_curve, selected_curves, radius, radii);
+    bke::curves::fill_points<float>(points_by_curve, strokes, radius, radii);
     changed = true;
   });
 
@@ -1086,18 +1085,17 @@ static int grease_pencil_set_uniform_opacity_exec(bContext *C, wmOperator *op)
   bool changed = false;
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-
     IndexMaskMemory memory;
-    const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
-
-    if (selected_curves.is_empty()) {
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
+        *object, info.drawing, memory);
+    if (strokes.is_empty()) {
       return;
     }
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
 
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     MutableSpan<float> opacities = info.drawing.opacities_for_write();
-    bke::curves::fill_points<float>(points_by_curve, selected_curves, opacity, opacities);
+    bke::curves::fill_points<float>(points_by_curve, strokes, opacity, opacities);
     changed = true;
   });
 
@@ -1142,17 +1140,16 @@ static int grease_pencil_stroke_switch_direction_exec(bContext *C, wmOperator * 
   bool changed = false;
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-
     IndexMaskMemory memory;
-    const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
-
-    if (selected_curves.is_empty()) {
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
+        *object, info.drawing, memory);
+    if (strokes.is_empty()) {
       return;
     }
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
 
     /* Switch stroke direction. */
-    curves.reverse_curves(selected_curves);
+    curves.reverse_curves(strokes);
 
     changed = true;
   });
