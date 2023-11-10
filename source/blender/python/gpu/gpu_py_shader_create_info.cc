@@ -157,6 +157,53 @@ static const PyC_StringEnumItems pygpu_dualblend_items[] = {
     {0, nullptr},
 };
 
+#define PYDOC_TEX_FORMAT_ITEMS \
+  "      - ``RGBA8UI``\n" \
+  "      - ``RGBA8I``\n" \
+  "      - ``RGBA8``\n" \
+  "      - ``RGBA32UI``\n" \
+  "      - ``RGBA32I``\n" \
+  "      - ``RGBA32F``\n" \
+  "      - ``RGBA16UI``\n" \
+  "      - ``RGBA16I``\n" \
+  "      - ``RGBA16F``\n" \
+  "      - ``RGBA16``\n" \
+  "      - ``RG8UI``\n" \
+  "      - ``RG8I``\n" \
+  "      - ``RG8``\n" \
+  "      - ``RG32UI``\n" \
+  "      - ``RG32I``\n" \
+  "      - ``RG32F``\n" \
+  "      - ``RG16UI``\n" \
+  "      - ``RG16I``\n" \
+  "      - ``RG16F``\n" \
+  "      - ``RG16``\n" \
+  "      - ``R8UI``\n" \
+  "      - ``R8I``\n" \
+  "      - ``R8``\n" \
+  "      - ``R32UI``\n" \
+  "      - ``R32I``\n" \
+  "      - ``R32F``\n" \
+  "      - ``R16UI``\n" \
+  "      - ``R16I``\n" \
+  "      - ``R16F``\n" \
+  "      - ``R16``\n" \
+  "      - ``R11F_G11F_B10F``\n" \
+  "      - ``DEPTH32F_STENCIL8``\n" \
+  "      - ``DEPTH24_STENCIL8``\n" \
+  "      - ``SRGB8_A8``\n" \
+  "      - ``RGB16F``\n" \
+  "      - ``SRGB8_A8_DXT1``\n" \
+  "      - ``SRGB8_A8_DXT3``\n" \
+  "      - ``SRGB8_A8_DXT5``\n" \
+  "      - ``RGBA8_DXT1``\n" \
+  "      - ``RGBA8_DXT3``\n" \
+  "      - ``RGBA8_DXT5``\n" \
+  "      - ``DEPTH_COMPONENT32F``\n" \
+  "      - ``DEPTH_COMPONENT24``\n" \
+  "      - ``DEPTH_COMPONENT16``\n"
+extern const PyC_StringEnumItems pygpu_tex_format_items[];
+
 /* -------------------------------------------------------------------- */
 /** \name GPUStageInterfaceInfo Methods
  * \{ */
@@ -608,7 +655,7 @@ PyDoc_STRVAR(
     "   :arg slot: The image resource index.\n"
     "   :type slot: int\n"
     "   :arg format: The GPUTexture format that is passed to the shader. Possible values are:\n"
-    "\n" // PYDOC_TEX_FORMAT_ITEMS
+    "\n" PYDOC_TEX_FORMAT_ITEMS
     "   :type format: str\n"
     "   :arg type: The data type describing how the image is to be read in the shader. "
     "Possible values are:\n"
