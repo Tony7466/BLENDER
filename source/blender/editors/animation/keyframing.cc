@@ -378,7 +378,7 @@ static void insert_key_id(PointerRNA *rna_pointer,
                           const blender::Span<std::string> rna_paths,
                           const float scene_frame,
                           const eInsertKeyFlags insert_key_flags,
-                          const eBezTriple_KeyframeType,
+                          const eBezTriple_KeyframeType key_type,
                           Main *bmain,
                           ReportList *reports)
 {
@@ -416,8 +416,14 @@ static void insert_key_id(PointerRNA *rna_pointer,
     std::string rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
     Vector<float> rna_values = animrig::get_rna_values(&ptr, prop);
 
-    insert_key_count += animrig::insert_key_action(
-        bmain, action, rna_pointer, rna_path_id_to_prop, nla_frame, rna_values.as_span());
+    insert_key_count += animrig::insert_key_action(bmain,
+                                                   action,
+                                                   rna_pointer,
+                                                   rna_path_id_to_prop,
+                                                   nla_frame,
+                                                   rna_values.as_span(),
+                                                   insert_key_flags,
+                                                   key_type);
   }
 
   if (insert_key_count == 0) {
@@ -429,18 +435,16 @@ static void insert_key_id(PointerRNA *rna_pointer,
 static bool get_selection(bContext *C, ListBase *r_selection)
 {
   const eContextObjectMode context_mode = CTX_data_mode_enum(C);
-  switch (context_mode) {
 
+  switch (context_mode) {
     case CTX_MODE_OBJECT: {
       CTX_data_selected_objects(C, r_selection);
       break;
     }
-
     case CTX_MODE_POSE: {
       CTX_data_selected_pose_bones(C, r_selection);
       break;
     }
-
     default:
       return false;
   }
@@ -470,7 +474,7 @@ static int insert_key(bContext *C, wmOperator *op)
     ID *selected_id = collection_ptr_link->ptr.owner_id;
     if (!BKE_id_is_editable(bmain, selected_id)) {
       BKE_reportf(op->reports, RPT_ERROR, "'%s' is not editable", selected_id->name + 2);
-      return;
+      continue;
     }
     PointerRNA id_ptr = collection_ptr_link->ptr;
     bPoseChannel *pchan = static_cast<bPoseChannel *>(collection_ptr_link->ptr.data);

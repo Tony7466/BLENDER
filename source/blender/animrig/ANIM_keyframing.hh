@@ -178,6 +178,8 @@ int insert_key_action(Main *bmain,
                       PointerRNA *ptr,
                       const std::string &rna_path,
                       float frame,
-                      const Span<float> values);
+                      const Span<float> values,
+                      eInsertKeyFlags insert_key_flag,
+                      eBezTriple_KeyframeType key_type);
 
 }  // namespace blender::animrig
