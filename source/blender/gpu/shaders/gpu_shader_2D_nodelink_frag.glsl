@@ -30,12 +30,13 @@ void main()
 
     float current_scale_level = floor(dashLevel);
     float next_scale_level = ceil(dashLevel);
-    float mix_factor = smoothstep(0.4, 0.6, fract(dashLevel));
+    /* Smoothly blend between two levels of dash sizes. The interval was chosen by feel. */
+    float mix_factor = smoothstep(0.6, 0.9, fract(dashLevel));
 
     float current_dash_length = dashLength * pow(2.0, current_scale_level);
 
     /* Widen the gap to approach the width of the next level.
-     * XXX (Leon): This assumes the dashFactor is at least 0.5. */
+     * This assumes the dashFactor is at least 0.5. */
     float current_dash_factor = 1.0 - ((1.0 - dashFactor) * (1.0 + mix_factor));
     float current_level_dash_mask = dash_mask(
         distance_along_line, current_dash_length, current_dash_factor);
