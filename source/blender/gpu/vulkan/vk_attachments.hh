@@ -55,7 +55,7 @@ const references_ty references = {references_default,
                                           references_default};
 }  // namespace attachment
 
-struct VKAttachments {
+class VKAttachments {
  private:
   std::array<vk_attachment::descriptions_ty, 2> descriptions_ = {vk_attachment::descriptions, vk_attachment::descriptions};
   std::array<vk_attachment::references_ty, 2> references_ = { vk_attachment::references, vk_attachment::references};
@@ -63,13 +63,13 @@ struct VKAttachments {
                                                                         vk_attachment::references_default};
   std::array<vk_attachment::idx_ty, 2> idx_;
  public:
-  void set_description(GPUTexture *texture,
+  void description_set(GPUTexture *texture,
                                   const VkAttachmentReference2 &attachment_reference,
                                   VkAttachmentDescription2 &attachment_description,
                                   VKRenderPassTransition& render_pass_enum_);
 
   int type_get(int view_index, int info_id) const;
-  void set_dirty_attchments(VKTexture *texture);
+
   bool is_valid() const;
 
 

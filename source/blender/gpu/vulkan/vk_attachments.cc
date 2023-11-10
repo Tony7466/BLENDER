@@ -3,7 +3,7 @@
 
 namespace blender::gpu {
 
-void VKAttachments::set_description(GPUTexture *tex,
+void VKAttachments::description_set(GPUTexture *tex,
                                     const VkAttachmentReference2 &attachment_reference,
                                     VkAttachmentDescription2 &attachment_description,
                                     VKRenderPassTransition &render_pass_enum_)
