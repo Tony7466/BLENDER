@@ -950,53 +950,6 @@ int clear_keyframe(Main *bmain,
   return key_count;
 }
 
-/** Try to find an FCurve in the given bAction that matches the given rna_path. Create one if not
- * found.*/
-static FCurve *action_fcurve_ensure(bAction *action,
-                                    const std::string &rna_path,
-                                    const int array_index,
-                                    const char *group = nullptr,
-                                    PointerRNA *ptr = nullptr)
-{
-  FCurve *fcurve = BKE_fcurve_find(&action->curves, rna_path.c_str(), array_index);
-  if (fcurve) {
-    return fcurve;
-  }
-
-  fcurve = BKE_fcurve_create();
-
-  fcurve->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
-  fcurve->auto_smoothing = U.auto_smoothing_new;
-  if (BLI_listbase_is_empty(&action->curves)) {
-    fcurve->flag |= FCURVE_ACTIVE;
-  }
-
-  char *fcu_rna_path = static_cast<char *>(MEM_mallocN(rna_path.length() + 1, "fcu_rna_path"));
-  std::strcpy(fcu_rna_path, rna_path.c_str());
-  fcurve->rna_path = fcu_rna_path;
-  fcurve->array_index = array_index;
-
-  if (group) {
-    bActionGroup *action_group = BKE_action_group_find_name(action, group);
-
-    if (action_group == nullptr) {
-      action_group = action_groups_add_new(action, group);
-
-      if (ptr && (ptr->type == &RNA_PoseBone)) {
-        bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr->data);
-        action_group_colors_set_from_posebone(action_group, pchan);
-      }
-    }
-
-    action_groups_add_channel(action, action_group, fcurve);
-  }
-  else {
-    BLI_addtail(&action->curves, fcurve);
-  }
-
-  return fcurve;
-}
-
 static bool insert_key_fcurve(FCurve *fcu, const float frame, const float value)
 {
   if (!BKE_fcurve_is_keyframable(fcu)) {
@@ -1007,7 +960,8 @@ static bool insert_key_fcurve(FCurve *fcu, const float frame, const float value)
   return inserted_index >= 0;
 }
 
-int insert_key_action(bAction *action,
+int insert_key_action(Main *bmain,
+                      bAction *action,
                       PointerRNA *ptr,
                       const std::string &rna_path,
                       const float frame,
@@ -1028,7 +982,7 @@ int insert_key_action(bAction *action,
   int inserted_keys = 0;
   for (const float value : values) {
     FCurve *fcurve = action_fcurve_ensure(
-        action, rna_path, property_array_index, group.c_str(), ptr);
+        bmain, action, group.c_str(), ptr, rna_path.c_str(), property_array_index);
     const bool inserted_key = insert_key_fcurve(fcurve, frame, value);
     if (inserted_key) {
       inserted_keys++;

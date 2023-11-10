@@ -172,7 +172,8 @@ bool autokeyframe_property(bContext *C,
  * Insert a key in the given action.
  * \param frame is expected to be in NLA space.
  */
-int insert_key_action(bAction *action,
+int insert_key_action(Main *bmain,
+                      bAction *action,
                       PointerRNA *ptr,
                       const std::string &rna_path,
                       float frame,
