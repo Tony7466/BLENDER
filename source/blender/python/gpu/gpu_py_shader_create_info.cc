@@ -942,7 +942,7 @@ static PyObject *pygpu_shader_info_compute_source(BPyGPUShaderCreateInfo *self, 
 #endif
 
   ShaderCreateInfo *info = reinterpret_cast<ShaderCreateInfo *>(self->info);
-  info->compute_source("common_colormanagement_lib.glsl");
+  info->compute_source("common_compute_lib.glsl");
   info->compute_source_generated = compute_source;
 
   Py_RETURN_NONE;
@@ -1148,6 +1148,7 @@ static int pygpu_shader_info__tp_traverse(PyObject *self, visitproc visit, void 
   BPyGPUShaderCreateInfo *py_info = reinterpret_cast<BPyGPUShaderCreateInfo *>(self);
   Py_VISIT(py_info->vertex_source);
   Py_VISIT(py_info->fragment_source);
+  Py_VISIT(py_info->compute_source);
   Py_VISIT(py_info->references);
   return 0;
 }
@@ -1157,6 +1158,7 @@ static int pygpu_shader_info__tp_clear(PyObject *self)
   BPyGPUShaderCreateInfo *py_info = reinterpret_cast<BPyGPUShaderCreateInfo *>(self);
   Py_CLEAR(py_info->vertex_source);
   Py_CLEAR(py_info->fragment_source);
+  Py_CLEAR(py_info->compute_source);
   Py_CLEAR(py_info->references);
   return 0;
 }
@@ -1175,8 +1177,10 @@ static void pygpu_shader_info__tp_dealloc(PyObject *self)
     pygpu_shader_info__tp_clear(self);
     Py_XDECREF(py_info->vertex_source);
     Py_XDECREF(py_info->fragment_source);
+    Py_XDECREF(py_info->compute_source);
     Py_XDECREF(py_info->references);
   }
+
 #endif
 
   Py_TYPE(self)->tp_free((PyObject *)self);
