@@ -158,7 +158,7 @@ bool IESFile::parse(const string &ies)
    * In theory the only difference should be orientation which we ignore anyways, but with IES you
    * never know...
    */
-  if (type != TYPE_B && type != TYPE_C) {
+  if (type != TYPE_A && type != TYPE_B && type != TYPE_C) {
     return false;
   }
 
@@ -293,6 +293,44 @@ bool IESFile::process_type_b()
   return true;
 }
 
+bool IESFile::process_type_a()
+{
+  /* Convert vertical angles - just a simple offset. */
+  for (int i = 0; i < v_angles.size(); i++) {
+    v_angles[i] += 90.0f;
+  }
+
+  vector<float> new_h_angles;
+  new_h_angles.reserve(h_angles.size());
+  vector<vector<float>> new_intensity;
+  new_intensity.reserve(h_angles.size());
+
+  /* Type A goes from -90° to 90°, which is mapped to 270° to 90° respectively in Type C. */
+  bool has_negative_h = false;
+  for (int i = h_angles.size() - 1; i >= 0; i--) {
+    has_negative_h = has_negative_h || (h_angles[i] < 0.0f);
+    new_h_angles.push_back(180.0f - h_angles[i]);
+    new_intensity.push_back(intensity[i]);
+  }
+
+  /* If there were no negative horizontal angles, we need to mirror around 0°.
+   * Since the negative input range (which we generate here) maps to 180° to 270°,
+   * it comes after the original entries in the output. */
+  if (!has_negative_h && h_angles[0] == 0.0f) {
+    new_h_angles.reserve(2 * h_angles.size() - 1);
+    new_intensity.reserve(2 * h_angles.size() - 1);
+    for (int i = 1; i < h_angles.size(); i++) {
+      new_h_angles.push_back(180.0f + h_angles[i]);
+      new_intensity.push_back(intensity[i]);
+    }
+  }
+
+  h_angles.swap(new_h_angles);
+  intensity.swap(new_intensity);
+
+  return true;
+}
+
 bool IESFile::process_type_c()
 {
   if (h_angles[0] == 90.0f) {
@@ -368,7 +406,12 @@ bool IESFile::process()
     return false;
   }
 
-  if (type == TYPE_B) {
+  if (type == TYPE_A) {
+    if (!process_type_a()) {
+      return false;
+    }
+  }
+  else if (type == TYPE_B) {
     if (!process_type_b()) {
       return false;
     }
@@ -379,10 +422,6 @@ bool IESFile::process()
       return false;
     }
   }
-
-  assert(v_angles[0] == 0.0f || v_angles[0] == 90.0f);
-  assert(h_angles[0] == 0.0f);
-  assert(h_angles[h_angles.size() - 1] == 360.0f);
 
   /* Convert from deg to rad. */
   for (int i = 0; i < v_angles.size(); i++) {

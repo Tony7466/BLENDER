@@ -47,9 +47,9 @@ ccl_device_inline float kernel_ies_interp(KernelGlobals kg, int slot, float h_an
   if (v_angle < IES_LOOKUP_ANGLE_V(0) || v_angle >= IES_LOOKUP_ANGLE_V(v_num - 1)) {
     return 0.0f;
   }
-
-  kernel_assert(h_angle >= IES_LOOKUP_ANGLE_H(0));
-  kernel_assert(h_angle <= IES_LOOKUP_ANGLE_H(h_num - 1));
+  if (h_angle < IES_LOOKUP_ANGLE_H(0) || h_angle >= IES_LOOKUP_ANGLE_H(h_num - 1)) {
+    return 0.0f;
+  }
 
   /* Lookup the angles to find the table position. */
   int h_i, v_i;
