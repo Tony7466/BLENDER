@@ -155,7 +155,6 @@ static const EnumPropertyItem rna_enum_key_insert_channels[] = {
     {USER_ANIM_KEY_CHANNEL_SCALE, "SCALE", 0, "Scale", ""},
     {USER_ANIM_KEY_CHANNEL_ROTATION_MODE, "ROTATE_MODE", 0, "Rotation Mode", ""},
     {USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES, "CUSTOM_PROPS", 0, "Custom Properties", ""},
-    {USER_ANIM_KEY_CHANNEL_BBONE_SHAPE, "BBONE_SHAPE", 0, "BBone Shape", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

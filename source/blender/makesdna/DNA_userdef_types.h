@@ -1304,7 +1304,6 @@ typedef enum eKeyInsertChannels {
   USER_ANIM_KEY_CHANNEL_SCALE = (1 << 2),
   USER_ANIM_KEY_CHANNEL_ROTATION_MODE = (1 << 3),
   USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES = (1 << 4),
-  USER_ANIM_KEY_CHANNEL_BBONE_SHAPE = (1 << 5),
 } eKeyInsertChannels;
 
 /**
