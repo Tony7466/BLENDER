@@ -15,7 +15,6 @@ blender -b -noaudio --factory-startup --python tests/python/bl_animation_keyfram
 
 def _fcurve_paths_match(fcurves: list, expected_paths: list) -> bool:
     data_paths = list(set([fcurve.data_path for fcurve in fcurves]))
-    print(sorted(data_paths), sorted(expected_paths))
     return sorted(data_paths) == sorted(expected_paths)
 
 
@@ -232,7 +231,6 @@ class CycleAwareKeyingTest(AbstractKeyframingTest, unittest.TestCase):
             self.assertEqual(len(fcurve.keyframe_points), len(expected_keys))
             key_index = 0
             for key in fcurve.keyframe_points:
-                print(key.co.x)
                 self.assertEqual(key.co.x, expected_keys[key_index])
                 key_index += 1
 

@@ -483,7 +483,9 @@ static int insert_key(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   const float scene_frame = BKE_scene_frame_get(scene);
 
-  const eInsertKeyFlags insert_key_flags = ANIM_get_keyframing_flags(scene, false);
+  /* Passing autokey mode as true because that is needed to get the cycle aware keying flag. */
+  const bool use_autokey_mode = true;
+  const eInsertKeyFlags insert_key_flags = ANIM_get_keyframing_flags(scene, use_autokey_mode);
   const eBezTriple_KeyframeType key_type = eBezTriple_KeyframeType(
       scene->toolsettings->keyframe_type);
 
