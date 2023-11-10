@@ -862,10 +862,10 @@ KeyingSet *ANIM_keyingset_get_from_idname(Scene *scene, const char *idname)
 {
   KeyingSet *ks = static_cast<KeyingSet *>(
       BLI_findstring(&scene->keyingsets, idname, offsetof(KeyingSet, idname)));
-  /* if (ks == nullptr) {
+  if (ks == nullptr) {
     ks = static_cast<KeyingSet *>(
         BLI_findstring(&builtin_keyingsets, idname, offsetof(KeyingSet, idname)));
-  } */
+  }
   return ks;
 }
 
