@@ -377,6 +377,8 @@ static blender::Vector<std::string> construct_rna_paths(const eRotationModes rot
 static void insert_key_id(PointerRNA *rna_pointer,
                           const blender::Span<std::string> rna_paths,
                           const float scene_frame,
+                          const eInsertKeyFlags insert_key_flags,
+                          const eBezTriple_KeyframeType,
                           Main *bmain,
                           ReportList *reports)
 {
@@ -396,6 +398,7 @@ static void insert_key_id(PointerRNA *rna_pointer,
   AnimData *adt = BKE_animdata_from_id(id);
   const float nla_frame = BKE_nla_tweakedit_remap(adt, scene_frame, NLATIME_CONVERT_UNMAP);
 
+  int insert_key_count = 0;
   for (const std::string &rna_path : rna_paths) {
     PointerRNA ptr;
     PropertyRNA *prop = nullptr;
@@ -413,49 +416,57 @@ static void insert_key_id(PointerRNA *rna_pointer,
     std::string rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
     Vector<float> rna_values = animrig::get_rna_values(&ptr, prop);
 
-    const int inserted_keys = animrig::insert_key_action(
+    insert_key_count += animrig::insert_key_action(
         bmain, action, rna_pointer, rna_path_id_to_prop, nla_frame, rna_values.as_span());
   }
-}
 
-static void insert_key_object_mode(bContext *C, wmOperator *op)
-{
-  using namespace blender;
-  Main *bmain = CTX_data_main(C);
-  bool depsgraph_needs_update = false;
-
-  Scene *scene = CTX_data_scene(C);
-  const float scene_frame = BKE_scene_frame_get(scene);
-
-  ListBase selected_objects = {nullptr, nullptr};
-  CTX_data_selected_objects(C, &selected_objects);
-  LISTBASE_FOREACH (CollectionPointerLink *, collection_ptr_link, &selected_objects) {
-    ID *selected_id = collection_ptr_link->ptr.owner_id;
-    if (!BKE_id_is_editable(bmain, selected_id)) {
-      BKE_reportf(op->reports, RPT_ERROR, "'%s' is not editable", selected_id->name + 2);
-      return;
-    }
-    PointerRNA id_ptr = collection_ptr_link->ptr;
-    Object *ob = static_cast<Object *>(collection_ptr_link->ptr.data);
-    Vector<std::string> rna_paths = construct_rna_paths(eRotationModes(ob->rotmode),
-                                                        ob->id.properties);
-    insert_key_id(&id_ptr, rna_paths.as_span(), scene_frame, bmain, op->reports);
+  if (insert_key_count == 0) {
+    BKE_reportf(reports, RPT_ERROR, "Failed to insert any keys");
   }
-  BLI_freelistN(&selected_objects);
 }
 
-static void insert_key_pose_mode(bContext *C, wmOperator *op)
+/* Fill the list with CollectionPointerLink depending on the mode of the context. */
+static bool get_selection(bContext *C, ListBase *r_selection)
+{
+  const eContextObjectMode context_mode = CTX_data_mode_enum(C);
+  switch (context_mode) {
+
+    case CTX_MODE_OBJECT: {
+      CTX_data_selected_objects(C, r_selection);
+      break;
+    }
+
+    case CTX_MODE_POSE: {
+      CTX_data_selected_pose_bones(C, r_selection);
+      break;
+    }
+
+    default:
+      return false;
+  }
+
+  return true;
+}
+
+static int insert_key(bContext *C, wmOperator *op)
 {
   using namespace blender;
-  Main *bmain = CTX_data_main(C);
-  bool depsgraph_needs_update = false;
 
+  ListBase selection = {nullptr, nullptr};
+  const bool found_selection = get_selection(C, &selection);
+  if (!found_selection) {
+    BKE_reportf(op->reports, RPT_ERROR, "Unsupported context mode");
+  }
+
+  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   const float scene_frame = BKE_scene_frame_get(scene);
 
-  ListBase selected_pose_bones = {nullptr, nullptr};
-  CTX_data_selected_pose_bones(C, &selected_pose_bones);
-  LISTBASE_FOREACH (CollectionPointerLink *, collection_ptr_link, &selected_pose_bones) {
+  const eInsertKeyFlags insert_key_flags = ANIM_get_keyframing_flags(scene, false);
+  const eBezTriple_KeyframeType key_type = eBezTriple_KeyframeType(
+      scene->toolsettings->keyframe_type);
+
+  LISTBASE_FOREACH (CollectionPointerLink *, collection_ptr_link, &selection) {
     ID *selected_id = collection_ptr_link->ptr.owner_id;
     if (!BKE_id_is_editable(bmain, selected_id)) {
       BKE_reportf(op->reports, RPT_ERROR, "'%s' is not editable", selected_id->name + 2);
@@ -466,38 +477,12 @@ static void insert_key_pose_mode(bContext *C, wmOperator *op)
     Vector<std::string> rna_paths = construct_rna_paths(eRotationModes(pchan->rotmode),
                                                         pchan->prop);
 
-    insert_key_id(&id_ptr, rna_paths.as_span(), scene_frame, bmain, op->reports);
-  }
-  BLI_freelistN(&selected_pose_bones);
-}
-
-static int insert_key(bContext *C, wmOperator *op)
-{
-  using namespace blender;
-
-  bool depsgraph_needs_update = false;
-
-  eContextObjectMode context_mode = CTX_data_mode_enum(C);
-  switch (context_mode) {
-
-    case CTX_MODE_OBJECT:
-      insert_key_object_mode(C, op);
-      break;
-
-    case CTX_MODE_POSE:
-      insert_key_pose_mode(C, op);
-      break;
-
-    default:
-      BKE_reportf(op->reports, RPT_ERROR, "Unsupported context mode");
-      break;
+    insert_key_id(
+        &id_ptr, rna_paths.as_span(), scene_frame, insert_key_flags, key_type, bmain, op->reports);
   }
 
-  Main *bmain = CTX_data_main(C);
-  if (depsgraph_needs_update) {
-    DEG_relations_tag_update(bmain);
-  }
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
+  BLI_freelistN(&selection);
 
   return OPERATOR_FINISHED;
 }
