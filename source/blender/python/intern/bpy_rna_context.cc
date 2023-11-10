@@ -424,6 +424,10 @@ static PyObject *bpy_context_temp_override(PyObject *self, PyObject *args, PyObj
   }
   if (params.screen.ptr != nullptr) {
     ctx_temp.screen = static_cast<bScreen *>(params.screen.ptr->data);
+    if (ctx_temp.screen->temp != 0) {
+      PyErr_SetString(PyExc_TypeError, "Overriding context with temporary screen is not supported");
+      return nullptr;
+    }
     ctx_temp.screen_is_set = true;
   }
 
