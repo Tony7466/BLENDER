@@ -50,6 +50,7 @@
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
 #include "ANIM_rna.hh"
+#include "ANIM_visualkey.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -391,6 +392,26 @@ static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
   return paths;
 }
 
+static blender::Vector<float> get_keyframe_values(PointerRNA *ptr,
+                                                  PropertyRNA *prop,
+                                                  const bool visual_key)
+{
+  using namespace blender;
+  Vector<float> values;
+
+  if (visual_key && animrig::visualkey_can_use(ptr, prop)) {
+    /* Visual-keying is only available for object and pchan datablocks, as
+     * it works by keyframing using a value extracted from the final matrix
+     * instead of using the kt system to extract a value.
+     */
+    values = animrig::visualkey_get_values(ptr, prop);
+  }
+  else {
+    values = animrig::get_rna_values(ptr, prop);
+  }
+  return values;
+}
+
 static void insert_key_id(PointerRNA *rna_pointer,
                           const blender::Span<std::string> rna_paths,
                           const float scene_frame,
@@ -414,6 +435,7 @@ static void insert_key_id(PointerRNA *rna_pointer,
 
   AnimData *adt = BKE_animdata_from_id(id);
   const float nla_frame = BKE_nla_tweakedit_remap(adt, scene_frame, NLATIME_CONVERT_UNMAP);
+  const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
 
   int insert_key_count = 0;
   for (const std::string &rna_path : rna_paths) {
@@ -431,7 +453,7 @@ static void insert_key_id(PointerRNA *rna_pointer,
       continue;
     }
     std::string rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
-    Vector<float> rna_values = animrig::get_rna_values(&ptr, prop);
+    Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
 
     insert_key_count += animrig::insert_key_action(bmain,
                                                    action,
