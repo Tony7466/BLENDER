@@ -17,6 +17,8 @@ start_time = time.time()
 
 size = 128
 texture = gpu.types.GPUTexture((size, size), format='RGBA32F')
+
+# Create the compute shader to write to the texture
 compute_shader_info = gpu.types.GPUShaderCreateInfo()
 compute_shader_info.image(0, 'RGBA32F', "FLOAT_2D", "img_output", qualifiers={"WRITE"})
 compute_shader_info.compute_source('''
@@ -30,15 +32,10 @@ void main()
   );
   imageStore(img_output, ivec2(gl_GlobalInvocationID.xy), pixel);
 }''')
-
 compute_shader_info.push_constant('FLOAT', "time")
 compute_shader = gpu.shader.create_from_info(compute_shader_info)
-compute_shader.image('img_output', texture)
 
-gpu.compute.dispatch(compute_shader, 128, 128, 1)
-gpu.state.memory_barrier('TEXTURE_FETCH')
-
-# Drawing the compute output in viewport
+# Create the shader to draw the texture
 vert_out = gpu.types.GPUStageInterfaceInfo("my_interface")
 vert_out.smooth('VEC2', "uvInterp")
 shader_info = gpu.types.GPUShaderCreateInfo()
@@ -83,7 +80,6 @@ def draw():
     compute_shader.image('img_output', texture)
     compute_shader.uniform_float("time", time.time() - start_time)
     gpu.compute.dispatch(compute_shader, 128, 128, 1)
-    gpu.state.memory_barrier('TEXTURE_FETCH')
   
 def drawTimer(): 
   for area in bpy.context.screen.areas:
