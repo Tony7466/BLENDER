@@ -15,6 +15,8 @@
 #include <cstring>
 #include <thread>
 
+#include "CLG_log.h"
+
 #include "DNA_listBase.h"
 #include "DNA_screen_types.h"
 #include "DNA_windowmanager_types.h"
@@ -62,6 +64,8 @@
 #include "ED_render.hh"
 #include "ED_scene.hh"
 #include "ED_screen.hh"
+
+#include <fmt/format.h>
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -1569,13 +1573,17 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
         const GHOST_TStringArray *stra = static_cast<const GHOST_TStringArray *>(ddd->data);
 
         if (stra->count) {
-          /* try to get icon type from extension */
+          CLOG_INFO(WM_LOG_EVENTS, 1, "Drop %d files:", stra->count);
+          for (const char *path : blender::Span((char **)stra->strings, stra->count)) {
+            CLOG_INFO(WM_LOG_EVENTS, 1, "%s", path);
+          }
+          /* Try to get icon type from extension of the first path. */
           int icon = ED_file_extension_icon((char *)stra->strings[0]);
           wmDragPath *path_data = WM_drag_create_path_data(
               blender::Span((char **)stra->strings, stra->count));
           WM_event_start_drag(C, icon, WM_DRAG_PATH, path_data, 0.0, WM_DRAG_NOP);
           /* Void pointer should point to string, it makes a copy. */
-          break; /* only one drop element supported now */
+          break;
         }
       }
 

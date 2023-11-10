@@ -762,6 +762,7 @@ const ListBase *WM_drag_asset_list_get(const wmDrag *drag)
 
 wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths)
 {
+  BLI_assert(!paths.is_empty());
   wmDragPath *path_data = MEM_new<wmDragPath>("wmDragPath");
 
   path_data->file_type = ED_path_extension_type(paths[0]);
@@ -774,7 +775,7 @@ wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths)
 
   if (path_data->paths.size() > 1) {
     std::string path_count = std::to_string(path_data->paths.size());
-    path_data->tooltip = fmt::format(TIP_("Dragging {} files."), path_count);
+    path_data->tooltip = fmt::format(TIP_("Dragging {} files"), path_count);
   }
 
   return path_data;
