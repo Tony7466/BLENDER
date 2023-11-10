@@ -430,8 +430,8 @@ CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
   const ResampleCurvesOutputAttributeIDs& output_ids)
 {
   // TODO: make sure the length can't be negative.
-  const float target_chord_length = 2.0f;
-  const float target_chord_length_squared = target_chord_length * target_chord_length;
+  const float chord_length = 2.0f;
+  const float chord_length_squared = chord_length * chord_length;
 
   // we'll also need the attribute data for the evaluated positions, since we'll be
   // interpolating between them as we iterate over the curve segments.
@@ -446,15 +446,17 @@ CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
   IndexMaskMemory memory;
   const IndexMask unselected = selection.complement(src_curves.curves_range(), memory);
 
+  // Keeps track of the t-value of the sample points for attribute interpolation.
   struct PointSegmentInfo {
     int segment_index;
-    float segment_t;
+    float t;
   };
 
   // TODO: this can be threaded, per curve segment.
   Vector<Vector<float3>> all_curve_sample_points = {};
   Vector<Vector<PointSegmentInfo>> all_curve_segment_infos = {};
   all_curve_sample_points.resize(src_curves.curves_num());
+  all_curve_segment_infos.resize(src_curves.curves_num());
   for (int curve_index = 0; curve_index < src_curves.curves_num(); ++curve_index) {
     auto &curve_sample_points = all_curve_sample_points[curve_index];
     auto &curve_segment_infos = all_curve_segment_infos[curve_index];
@@ -467,8 +469,6 @@ CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
     curve_sample_points.append(evaluated_curve_positions[0]);
     curve_segment_infos.append({0, 0.0f});
 
-    float t = 0.0f;
-
     const int segment_count = evaluated_curve_positions.size() - 1;
 
     while (segment_index < segment_count) {
@@ -477,16 +477,20 @@ CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
 
       if (last_segment_index == segment_index) {
         float segment_length = 0.0f;
-        const float3 segment_direction = math::normalize_and_get_length(b - a, segment_length);
+        const float3 segment_vector = b - a;
+        const float3 segment_direction = math::normalize_and_get_length(segment_vector, segment_length);
 
         // Figure out how many samples we can place along the current segment.
-        const float Jd = math::distance_squared(b, last_sample_position);
-        int colinear_samples = math::sqrt(static_cast<int>(Jd / target_chord_length_squared));
-        float t_step = 0.0f;
+        const float a_distance = math::distance(a, last_sample_position);
+        const float b_distance = segment_length - a_distance;
+        const int colinear_samples = static_cast<int>(b_distance / chord_length);
 
         if (colinear_samples > 0) {
+          float t = a_distance / segment_length;
+          const float t_step = chord_length / segment_length;
           for (int i = 0; i < colinear_samples; ++i) {
-            const float3 sample_point = last_sample_position + segment_direction * (target_chord_length * (i + 1));
+            t += t_step;
+            const float3 sample_point = a + (segment_vector * t);
             curve_sample_points.append(sample_point);
             curve_segment_infos.append({ segment_index, t });
           }
@@ -497,25 +501,35 @@ CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
       }
 
       // Use sphere-line intersection on each segment.
-      float3 p1, p2;
-      const int intersection_count = isect_line_sphere_v3(a, b, last_sample_position, target_chord_length, p1, p2, true);
+      float t = 0.0f;
+      const float segment_length = math::distance(a, b);
+      float3 p1, p2, intersection_point;
+      const int intersection_count = isect_line_sphere_v3(a, b, last_sample_position, chord_length, p1, p2, true);
       switch (intersection_count) {
       case 0:
         ++segment_index;
         continue;
       case 1:
-        curve_sample_points.append(p1);
+        intersection_point = p1;
         break;
       case 2:
-        // Pick the intersection that is closest to the last sample position.
-        if (math::distance_squared(p1, last_sample_position) < math::distance_squared(p2, last_sample_position)) {
-          curve_sample_points.append(p1);
+        float p1_t, p2_t;
+        // Pick the closest point to the beginning of the segment.
+        p1_t = math::distance(a, p1) / segment_length;
+        p2_t = math::distance(a, p2) / segment_length;
+        if (p1_t < p2_t) {
+          intersection_point = p1;
+          t = p1_t;
         }
         else {
-          curve_sample_points.append(p2);
+          intersection_point = p2;
+          t = p2_t;
         }
         break;
       }
+
+      curve_sample_points.append(intersection_point);
+      curve_segment_infos.append({ segment_index, t });
 
       last_segment_index = segment_index;
       last_sample_position = curve_sample_points.last();
@@ -553,8 +567,10 @@ CurvesGeometry resample_to_equidistant(const CurvesGeometry& src_curves,
   offset_indices::accumulate_counts_to_offsets(dst_offsets);
 
   AttributesForInterpolation attributes;
-  //gather_point_attributes_to_interpolate(src_curves, dst_curves, attributes, output_ids);
+  gather_point_attributes_to_interpolate(src_curves, dst_curves, attributes, output_ids);
   copy_or_defaults_for_unselected_curves(src_curves, unselected, attributes, dst_curves);
+
+  // TODO: interpolate the values based on the t-values we calculated earlier.
 
   for (bke::GSpanAttributeWriter& attribute : attributes.dst_attributes) {
     attribute.finish();
