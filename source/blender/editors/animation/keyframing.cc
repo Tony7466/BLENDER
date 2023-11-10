@@ -334,10 +334,10 @@ static blender::Vector<std::string> construct_rna_paths(const eRotationModes rot
 {
   blender::Vector<std::string> paths;
   eKeyInsertChannels insert_channel_flags = eKeyInsertChannels(U.key_insert_channels);
-  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_TRANSLATE) {
+  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_LOCATION) {
     paths.append("location");
   }
-  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_ROTATE) {
+  if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_ROTATION) {
     switch (rotation_mode) {
       case ROT_MODE_QUAT:
         paths.append("rotation_quaternion");
