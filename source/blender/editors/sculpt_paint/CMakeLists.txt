@@ -98,6 +98,8 @@ set(SRC
 
   brushes/draw.cc
   brushes/draw.hh
+  brushes/draw_vector_displacement.cc
+  brushes/draw_vector_displacement.hh
 )
 
 set(LIB

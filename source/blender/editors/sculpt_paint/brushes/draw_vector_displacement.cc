@@ -33,10 +33,10 @@ namespace pbvh = bke::pbvh;
 struct TLS {
   Vector<float> factors;
   Vector<float> distances;
+  Vector<float4> colors;
 };
 
-static void calc_faces(
-    Object &object, const Brush &brush, const float3 &offset, pbvh::mesh::Node &node, TLS &tls)
+static void calc_faces(Object &object, const Brush &brush, pbvh::mesh::Node &node, TLS &tls)
 {
   SculptSession &ss = *object.sculpt;
   StrokeCache &cache = *ss.cache;
@@ -76,16 +76,18 @@ static void calc_faces(
     calc_mesh_automask(object, *ss.cache->automasking, node, vert_indices, factors);
   }
 
-  calc_brush_texture_factors(ss, brush, vert_positions, vert_indices, factors);
+  tls.colors.reinitialize(vert_indices.size());
+  const MutableSpan<float4> colors = tls.colors;
+  calc_brush_texture_colors(ss, brush, vert_positions, vert_indices, factors, colors);
 
   const MutableSpan<float3> proxy = node.add_proxy(pbvh_tree);
   for (const int i : vert_indices.index_range()) {
-    proxy[i] = offset * factors[i];
+    SCULPT_calc_vertex_displacement(&ss, &brush, colors[i], proxy[i]);
     BKE_pbvh_vert_tag_update_normal(*ss.pbvh, vert_indices[i]);
   }
 }
 
-static void calc_grids(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)
+static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
   PBVHVertexIter vd;
@@ -106,22 +108,24 @@ static void calc_grids(Object &object, const Brush &brush, const float3 &offset,
 
     SCULPT_automasking_node_update(&automask_data, &vd);
 
-    const float fade = SCULPT_brush_strength_factor(&ss,
-                                                    &brush,
-                                                    vd.co,
-                                                    sqrtf(test.dist),
-                                                    vd.no,
-                                                    vd.fno,
-                                                    vd.mask,
-                                                    vd.vertex,
-                                                    thread_id,
-                                                    &automask_data);
-    proxy[vd.i] = offset * fade;
+    float r_rgba[4];
+    SCULPT_brush_strength_color(&ss,
+                                &brush,
+                                vd.co,
+                                sqrtf(test.dist),
+                                vd.no,
+                                vd.fno,
+                                vd.mask,
+                                vd.vertex,
+                                thread_id,
+                                &automask_data,
+                                r_rgba);
+    SCULPT_calc_vertex_displacement(&ss, &brush, r_rgba, proxy[vd.i]);
   }
   BKE_pbvh_vertex_iter_end;
 }
 
-static void calc_bmesh(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)
+static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
   PBVHVertexIter vd;
@@ -142,35 +146,28 @@ static void calc_bmesh(Object &object, const Brush &brush, const float3 &offset,
 
     SCULPT_automasking_node_update(&automask_data, &vd);
 
-    /* Offset vertex. */
-    const float fade = SCULPT_brush_strength_factor(&ss,
-                                                    &brush,
-                                                    vd.co,
-                                                    sqrtf(test.dist),
-                                                    vd.no,
-                                                    vd.fno,
-                                                    vd.mask,
-                                                    vd.vertex,
-                                                    thread_id,
-                                                    &automask_data);
-    proxy[vd.i] = offset * fade;
+    float r_rgba[4];
+    SCULPT_brush_strength_color(&ss,
+                                &brush,
+                                vd.co,
+                                sqrtf(test.dist),
+                                vd.no,
+                                vd.fno,
+                                vd.mask,
+                                vd.vertex,
+                                thread_id,
+                                &automask_data,
+                                r_rgba);
+    SCULPT_calc_vertex_displacement(&ss, &brush, r_rgba, proxy[vd.i]);
   }
   BKE_pbvh_vertex_iter_end;
 }
 
 }  // namespace
 
-void do_draw_brush(Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
+void do_draw_vector_displacement_brush(Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 {
-  SculptSession &ss = *object.sculpt;
   Brush &brush = *BKE_paint_brush(&sd.paint);
-  const float bstrength = ss.cache->bstrength;
-
-  /* Offset with as much as possible factored in already. */
-  float3 effective_normal;
-  SCULPT_tilt_effective_normal_get(&ss, &brush, effective_normal);
-
-  const float3 offset = effective_normal * ss.cache->radius * ss.cache->scale * bstrength;
 
   /* XXX: this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
    * initialize before threads so they can do curve mapping. */
@@ -183,14 +180,14 @@ void do_draw_brush(Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
       switch (BKE_pbvh_type(object.sculpt->pbvh)) {
         case PBVH_FACES: {
           pbvh::mesh::Node face_node(*nodes[i]);
-          calc_faces(object, brush, offset, face_node, tls);
+          calc_faces(object, brush, face_node, tls);
           break;
         }
         case PBVH_GRIDS:
-          calc_grids(object, brush, offset, *nodes[i]);
+          calc_grids(object, brush, *nodes[i]);
           break;
         case PBVH_BMESH:
-          calc_bmesh(object, brush, offset, *nodes[i]);
+          calc_bmesh(object, brush, *nodes[i]);
           break;
       };
     }

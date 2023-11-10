@@ -82,6 +82,7 @@
 #include "bmesh.h"
 
 #include "editors/sculpt_paint/brushes/draw.hh"
+#include "editors/sculpt_paint/brushes/draw_vector_displacement.hh"
 
 using blender::float3;
 using blender::MutableSpan;
@@ -3635,10 +3636,19 @@ static void do_brush_action(Sculpt *sd,
     invert = !invert;
   }
 
+  const bool use_vector_displacement = (ss->cache->brush->flag2 &
+                                            BRUSH_USE_COLOR_AS_DISPLACEMENT &&
+                                        (brush->mtex.brush_map_mode == MTEX_MAP_MODE_AREA));
+
   /* Apply one type of brush action. */
   switch (brush->sculpt_tool) {
     case SCULPT_TOOL_DRAW:
-      ed::sculpt_paint::do_draw_brush(*sd, *ob, nodes);
+      if (use_vector_displacement) {
+        ed::sculpt_paint::do_draw_vector_displacement_brush(*sd, *ob, nodes);
+      }
+      else {
+        ed::sculpt_paint::do_draw_brush(*sd, *ob, nodes);
+      }
       break;
     case SCULPT_TOOL_SMOOTH:
       if (brush->smooth_deform_type == BRUSH_SMOOTH_DEFORM_LAPLACIAN) {
@@ -6365,6 +6375,28 @@ namespace blender::ed::sculpt_paint {
 
 namespace pbvh = bke::pbvh;
 
+void calc_mesh_hide_and_mask(const Mesh &mesh,
+                             const Span<int> vert_indices,
+                             const MutableSpan<float> r_factors)
+{
+  BLI_assert(vert_indices.size() == r_factors.size());
+
+  const float *mask = static_cast<const float *>(
+      CustomData_get_layer(&mesh.vert_data, CD_PAINT_MASK));
+
+  bke::AttributeAccessor attributes = mesh.attributes();
+  const VArray<bool> hide_vert = *attributes.lookup_or_default<bool>(
+      ".hide_vert", ATTR_DOMAIN_POINT, false);
+
+  for (const int i : vert_indices.index_range()) {
+    const int vert_index = vert_indices[i];
+    r_factors[i] = hide_vert[vert_index] ? 0.0f : 1.0f;
+    if (mask) {
+      r_factors[i] *= (1.0f - mask[vert_index]);
+    }
+  }
+}
+
 void calc_distance_falloff(SculptSession &ss,
                            const Span<float3> positions,
                            const Span<int> vert_indices,
@@ -6393,14 +6425,15 @@ void calc_distance_falloff(SculptSession &ss,
   }
 }
 
-void calc_brush_strength(SculptSession &ss,
-                         const Brush &brush,
-                         const Span<float3> vert_positions,
-                         const Span<int> vert_indices,
-                         const Span<float> distances,
-                         const MutableSpan<float> factors)
+void calc_brush_strength_factors(SculptSession &ss,
+                                 const Brush &brush,
+                                 const Span<int> vert_indices,
+                                 const Span<float> distances,
+                                 const MutableSpan<float> factors)
 {
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
+  BLI_assert(vert_indices.size() == distances.size());
+  BLI_assert(vert_indices.size() == factors.size());
+
   StrokeCache &cache = *ss.cache;
 
   for (const int i : vert_indices.index_range()) {
@@ -6411,16 +6444,55 @@ void calc_brush_strength(SculptSession &ss,
       continue;
     }
 
+    const float hardness = sculpt_apply_hardness(&ss, distances[i]);
+    const float strength = BKE_brush_curve_strength(&brush, hardness, cache.radius);
+
+    factors[i] *= strength;
+  }
+}
+
+void calc_brush_texture_factors(SculptSession &ss,
+                                const Brush &brush,
+                                const Span<float3> vert_positions,
+                                const Span<int> vert_indices,
+                                const MutableSpan<float> factors)
+{
+  BLI_assert(vert_indices.size() == distances.size());
+  BLI_assert(vert_indices.size() == factors.size());
+
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
+
+  for (const int i : vert_indices.index_range()) {
     float texture_value;
     float4 texture_rgba;
     /* NOTE: This is not thread-safe call. */
     sculpt_apply_texture(
         &ss, &brush, vert_positions[vert_indices[i]], thread_id, &texture_value, texture_rgba);
 
-    const float hardness = sculpt_apply_hardness(&ss, distances[i]);
-    const float strength = BKE_brush_curve_strength(&brush, hardness, cache.radius);
+    factors[i] *= texture_value;
+  }
+}
 
-    factors[i] *= texture_value * strength;
+void calc_brush_texture_colors(SculptSession &ss,
+                               const Brush &brush,
+                               const Span<float3> vert_positions,
+                               const Span<int> vert_indices,
+                               const Span<float> factors,
+                               const MutableSpan<float4> r_colors)
+{
+  BLI_assert(vert_indices.size() == distances.size());
+  BLI_assert(vert_indices.size() == r_colors.size());
+
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
+
+  for (const int i : vert_indices.index_range()) {
+    float texture_value;
+    float4 texture_rgba;
+    /* NOTE: This is not thread-safe call. */
+    sculpt_apply_texture(
+        &ss, &brush, vert_positions[vert_indices[i]], thread_id, &texture_value, texture_rgba);
+
+    r_colors[i] = texture_rgba * factors[i];
   }
 }
 

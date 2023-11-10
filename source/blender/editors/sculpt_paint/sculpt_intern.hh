@@ -1802,6 +1802,10 @@ int SCULPT_vertex_island_get(const SculptSession *ss, PBVHVertRef vertex);
 
 namespace blender::ed::sculpt_paint {
 
+void calc_mesh_hide_and_mask(const Mesh &mesh,
+                             const Span<int> vert_indices,
+                             const MutableSpan<float> r_factors);
+
 void calc_distance_falloff(SculptSession &ss,
                            Span<float3> vert_positions,
                            Span<int> vert_indices,
@@ -1809,12 +1813,24 @@ void calc_distance_falloff(SculptSession &ss,
                            MutableSpan<float> r_distances,
                            MutableSpan<float> factors);
 
-void calc_brush_strength(SculptSession &ss,
-                         const Brush &brush,
-                         Span<float3> vert_positions,
-                         Span<int> vert_indices,
-                         Span<float> distances,
-                         MutableSpan<float> factors);
+void calc_brush_strength_factors(SculptSession &ss,
+                                 const Brush &brush,
+                                 Span<int> vert_indices,
+                                 Span<float> distances,
+                                 MutableSpan<float> factors);
+
+void calc_brush_texture_factors(SculptSession &ss,
+                                const Brush &brush,
+                                Span<float3> vert_positions,
+                                Span<int> vert_indices,
+                                MutableSpan<float> factors);
+
+void calc_brush_texture_colors(SculptSession &ss,
+                               const Brush &brush,
+                               Span<float3> vert_positions,
+                               Span<int> vert_indices,
+                               Span<float> factors,
+                               MutableSpan<float4> r_colors);
 
 void calc_front_face(const float3 &view_normal,
                      Span<float3> vert_normals,
