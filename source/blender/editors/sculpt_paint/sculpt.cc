@@ -6365,80 +6365,78 @@ namespace blender::ed::sculpt_paint {
 
 namespace pbvh = bke::pbvh;
 
-void calc_brush_falloff_and_distance(SculptSession &ss,
-                                     const Span<float3> positions,
-                                     const Span<int> vert_indices,
-                                     const char falloff_shape,
-                                     const MutableSpan<float> fade,
-                                     const MutableSpan<float> brush_distance)
+void calc_distance_falloff(SculptSession &ss,
+                           const Span<float3> positions,
+                           const Span<int> vert_indices,
+                           const eBrushFalloffShape falloff_shape,
+                           const MutableSpan<float> r_distances,
+                           const MutableSpan<float> factors)
 {
-  BLI_assert(vert_indices.size() == fade.size());
-  BLI_assert(vert_indices.size() == brush_distance.size());
+  BLI_assert(vert_indices.size() == factors.size());
+  BLI_assert(vert_indices.size() == r_distances.size());
 
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      &ss, &test, falloff_shape);
-
-  /* XXX: Threading within a node maybe not necessary? */
   threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
+    /* NOTE: The `test` is being written to by the test callback, hence can not be re-used by
+     * multiple threads. */
+    SculptBrushTest test;
+    const SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
+        &ss, &test, falloff_shape);
     for (const int i : range) {
-      if (fade[i] == 0.0f) {
-        brush_distance[i] = FLT_MAX;
+      if (factors[i] == 0.0f) {
+        r_distances[i] = FLT_MAX;
         continue;
       }
       if (!sculpt_brush_test_sq_fn(&test, positions[vert_indices[i]])) {
-        fade[i] = 0.0f;
-        brush_distance[i] = FLT_MAX;
+        factors[i] = 0.0f;
+        r_distances[i] = FLT_MAX;
         continue;
       }
-      brush_distance[i] = math::sqrt(test.dist);
+      r_distances[i] = math::sqrt(test.dist);
     }
   });
 }
 
-void calc_brush_strength_factor(SculptSession &ss,
-                                const Brush &brush,
-                                const Span<float3> vert_positions,
-                                const Span<int> vert_indices,
-                                const Span<float> brush_distance,
-                                const MutableSpan<float> fade)
+void calc_brush_strength(SculptSession &ss,
+                         const Brush &brush,
+                         const Span<float3> vert_positions,
+                         const Span<int> vert_indices,
+                         const Span<float> distances,
+                         const MutableSpan<float> factors)
 {
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
   StrokeCache &cache = *ss.cache;
 
-  /* XXX: Threading within a node maybe not necessary? */
-  threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      if (fade[i] == 0.0f) {
-        continue;
-      }
-
-      float texture_value;
-      float4 texture_rgba;
-      sculpt_apply_texture(
-          &ss, &brush, vert_positions[vert_indices[i]], thread_id, &texture_value, texture_rgba);
-
-      const float hardness = sculpt_apply_hardness(&ss, brush_distance[i]);
-      const float strength = BKE_brush_curve_strength(&brush, hardness, cache.radius);
-
-      fade[i] *= hardness * strength;
+  /* NOTE: sculpt_apply_texture() is to happen from a single thread, as it might use local storage
+   * identified by the thread_id. */
+  for (const int i : vert_indices.index_range()) {
+    if (factors[i] == 0.0f) {
+      /* Skip already masked-out points, as they might be outside of the brush radius and have
+       * distance of FLT_MAX. Having such large values in the calculations below might lead to
+       * non-finite values, leading to undesired results. */
+      continue;
     }
-  });
+
+    float texture_value;
+    float4 texture_rgba;
+    sculpt_apply_texture(
+        &ss, &brush, vert_positions[vert_indices[i]], thread_id, &texture_value, texture_rgba);
+
+    const float hardness = sculpt_apply_hardness(&ss, distances[i]);
+    const float strength = BKE_brush_curve_strength(&brush, hardness, cache.radius);
+
+    factors[i] *= texture_value * strength;
+  }
 }
 
-void calc_brush_front_face(SculptSession &ss,
-                           const Brush &brush,
-                           const Span<float3> vert_normals,
-                           const Span<int> vert_indices,
-                           const MutableSpan<float> fade)
+void calc_front_face(const float3 &view_normal,
+                     const Span<float3> vert_normals,
+                     const Span<int> vert_indices,
+                     const MutableSpan<float> factors)
 {
-  StrokeCache &cache = *ss.cache;
   threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
-      if (fade[i] == 0.0f) {
-        continue;
-      }
-      fade[i] *= frontface(&brush, cache.view_normal, vert_normals[vert_indices[i]], nullptr);
+      const float dot = math::dot(view_normal, vert_normals[vert_indices[i]]);
+      factors[i] *= dot > 0.0f ? dot : 0.0f;
     }
   });
 }
@@ -6447,7 +6445,7 @@ void calc_mesh_automask(Object &object,
                         AutomaskingCache &automasking,
                         pbvh::mesh::Node &node,
                         const Span<int> vert_indices,
-                        const MutableSpan<float> fade)
+                        const MutableSpan<float> factors)
 {
   SculptSession &ss = *object.sculpt;
 
@@ -6456,15 +6454,11 @@ void calc_mesh_automask(Object &object,
 
   threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
-      if (fade[i] == 0.0f) {
-        continue;
-      }
-
       if (automask_data.have_orig_data) {
         sculpt_orig_mesh_vert_data_update(automask_data.orig_data, i);
       }
 
-      fade[i] *= SCULPT_automasking_factor_get(
+      factors[i] *= SCULPT_automasking_factor_get(
           &automasking, &ss, BKE_pbvh_make_vref(vert_indices[i]), &automask_data);
     }
   });

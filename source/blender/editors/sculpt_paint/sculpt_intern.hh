@@ -10,6 +10,7 @@
 
 #include <memory>
 
+#include "DNA_brush_enums.h"
 #include "DNA_brush_types.h"
 #include "DNA_key_types.h"
 #include "DNA_listBase.h"
@@ -1801,30 +1802,29 @@ int SCULPT_vertex_island_get(const SculptSession *ss, PBVHVertRef vertex);
 
 namespace blender::ed::sculpt_paint {
 
-void calc_brush_falloff_and_distance(SculptSession &ss,
-                                     const Span<float3> vert_positions,
-                                     const Span<int> vert_indices,
-                                     const char falloff_shape,
-                                     MutableSpan<float> fade,
-                                     MutableSpan<float> brush_distance);
+void calc_distance_falloff(SculptSession &ss,
+                           Span<float3> vert_positions,
+                           Span<int> vert_indices,
+                           eBrushFalloffShape falloff_shape,
+                           MutableSpan<float> r_distances,
+                           MutableSpan<float> factors);
 
-void calc_brush_strength_factor(SculptSession &ss,
-                                const Brush &brush,
-                                const Span<float3> vert_positions,
-                                const Span<int> vert_indices,
-                                const Span<float> brush_distance,
-                                const MutableSpan<float> fade);
+void calc_brush_strength(SculptSession &ss,
+                         const Brush &brush,
+                         Span<float3> vert_positions,
+                         Span<int> vert_indices,
+                         Span<float> distances,
+                         MutableSpan<float> factors);
 
-void calc_brush_front_face(SculptSession &ss,
-                           const Brush &brush,
-                           const Span<float3> vert_normals,
-                           const Span<int> vert_indices,
-                           const MutableSpan<float> fade);
+void calc_front_face(const float3 &view_normal,
+                     Span<float3> vert_normals,
+                     Span<int> vert_indices,
+                     MutableSpan<float> factors);
 
 void calc_mesh_automask(Object &object,
                         AutomaskingCache &automasking,
                         bke::pbvh::mesh::Node &node,
-                        const Span<int> vert_indices,
-                        const MutableSpan<float> fade);
+                        Span<int> vert_indices,
+                        MutableSpan<float> factors);
 
 }

@@ -466,7 +466,7 @@ static void reassign_loose_edge_verts(const int orig_verts_num,
                                       const BitSpan split_edges,
                                       const Span<Vector<CornerGroup>> corner_groups,
                                       const OffsetIndices<int> new_verts_by_affected_vert,
-                                      MutableSpan<int2> edges)
+                                      const MutableSpan<int2> edges)
 {
   affected_verts.foreach_index(GrainSize(1024), [&](const int vert, const int mask) {
     const IndexRange new_verts = new_verts_by_affected_vert[mask];

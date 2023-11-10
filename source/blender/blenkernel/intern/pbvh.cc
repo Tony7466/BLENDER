@@ -3492,7 +3492,7 @@ namespace mesh {
 
 Span<int> Node::unique_vert_indices() const
 {
-  return node_.vert_indices.as_span().slice(0, node_.uniq_verts);
+  return node_.vert_indices.as_span().take_front(node_.uniq_verts);
 }
 
 MutableSpan<float3> Node::add_proxy(Tree &pbvh_tree)
