@@ -20,6 +20,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -1175,6 +1176,49 @@ static void GREASE_PENCIL_OT_stroke_switch_direction(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Set Active Material Operator
+ * \{ */
+
+static int grease_pencil_set_material_exec(bContext *C, wmOperator *op)
+{
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  int slot = RNA_enum_get(op->ptr, "slot");
+
+  /* Try to get material slot. */
+  if ((slot < 1) || (slot > object->totcol)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Set active material. */
+  object->actcol = slot;
+
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA | NA_EDITED, &grease_pencil);
+
+  return OPERATOR_FINISHED;
+}
+
+void GREASE_PENCIL_OT_set_material(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Set Active Material";
+  ot->idname = "GREASE_PENCIL_OT_set_material";
+  ot->description = "Set active material";
+
+  /* callbacks */
+  ot->exec = grease_pencil_set_material_exec;
+  ot->poll = active_grease_pencil_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Material to use (dynamic enum) */
+  ot->prop = RNA_def_enum(ot->srna, "slot", rna_enum_dummy_DEFAULT_items, 0, "Material Slot", "");
+  RNA_def_enum_funcs(ot->prop, material_enum_itemf);
+}
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -1190,6 +1234,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_switch_direction);
   WM_operatortype_append(GREASE_PENCIL_OT_set_uniform_thickness);
   WM_operatortype_append(GREASE_PENCIL_OT_set_uniform_opacity);
+  WM_operatortype_append(GREASE_PENCIL_OT_set_material);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)

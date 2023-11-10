@@ -23,6 +23,9 @@ struct Object;
 struct KeyframeEditData;
 struct wmKeyConfig;
 struct ToolSettings;
+struct EnumPropertyItem;
+struct PointerRNA;
+struct PropertyRNA;
 
 enum {
   LAYER_REORDER_ABOVE,
@@ -152,5 +155,10 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   int samples_max,
                                   float angle_threshold,
                                   IndexMaskMemory &memory);
+
+const struct EnumPropertyItem *material_enum_itemf(struct bContext *C,
+                                                   struct PointerRNA *ptr,
+                                                   struct PropertyRNA *prop,
+                                                   bool *r_free);
 
 }  // namespace blender::ed::greasepencil

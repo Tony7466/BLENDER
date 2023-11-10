@@ -9,15 +9,24 @@
 #include "BKE_brush.hh"
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
+#include "BKE_material.h"
 
 #include "BLI_math_vector.hh"
 
 #include "DNA_brush_types.h"
+#include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_prototypes.h"
+
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
+
+#include "UI_resources.hh"
 
 namespace blender::ed::greasepencil {
 
@@ -144,6 +153,40 @@ Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene, const GreasePen
   }
 
   return visible_drawings.as_span();
+}
+
+/* Retry enum items with object materials. */
+const EnumPropertyItem *material_enum_itemf(bContext *C,
+                                            PointerRNA * /*ptr*/,
+                                            PropertyRNA * /*prop*/,
+                                            bool *r_free)
+{
+  Object *ob = CTX_data_active_object(C);
+  EnumPropertyItem *item = nullptr, item_tmp = {0};
+  int totitem = 0;
+  int i = 0;
+
+  if (ELEM(nullptr, C, ob)) {
+    return rna_enum_dummy_DEFAULT_items;
+  }
+
+  /* Existing materials */
+  for (i = 1; i <= ob->totcol; i++) {
+    Material *ma = BKE_object_material_get(ob, i);
+    if (ma) {
+      item_tmp.identifier = ma->id.name + 2;
+      item_tmp.name = ma->id.name + 2;
+      item_tmp.value = i;
+      item_tmp.icon = ma->preview ? ma->preview->icon_id : ICON_NONE;
+
+      RNA_enum_item_add(&item, &totitem, &item_tmp);
+    }
+  }
+
+  RNA_enum_item_end(&item, &totitem);
+  *r_free = true;
+
+  return item;
 }
 
 }  // namespace blender::ed::greasepencil
