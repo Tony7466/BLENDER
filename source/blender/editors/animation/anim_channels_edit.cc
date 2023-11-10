@@ -4385,13 +4385,18 @@ static void calculate_selection_fcurve_bounds(bContext *C,
     for (FCurve *fcurve : fcurves) {
       fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
       rctf fcu_bounds;
+      float mapped_frame_range[2];
+      mapped_frame_range[0] = BKE_nla_tweakedit_remap(
+          anim_data, frame_range[0], NLATIME_CONVERT_UNMAP);
+      mapped_frame_range[1] = BKE_nla_tweakedit_remap(
+          anim_data, frame_range[1], NLATIME_CONVERT_UNMAP);
       get_normalized_fcurve_bounds(fcurve,
                                    anim_data,
                                    ge_space_link,
                                    scene,
                                    selected_id,
                                    include_handles,
-                                   frame_range,
+                                   mapped_frame_range,
                                    &fcu_bounds);
       BLI_rctf_union(r_bounds, &fcu_bounds);
     }
