@@ -484,7 +484,7 @@ NODE_SHADER_MATERIALX_BEGIN
 
   if (stepped) {
     NodeItem factor = create_node(
-        "range", type, {{"in", value}, {"inlow", from_min}, {"inhigh", from_max}});
+        "remap", type, {{"in", value}, {"inlow", from_min}, {"inhigh", from_max}});
     value = (factor * (steps + val(1.0f))).floor() / steps;
     if (type == NodeItem::Type::Float) {
       from_min = val(0.0f);
@@ -495,14 +495,18 @@ NODE_SHADER_MATERIALX_BEGIN
       from_max = val(MaterialX::Vector3(1.0f, 1.0f, 1.0f));
     }
   }
-  return create_node("range",
-                     type,
-                     {{"in", value},
-                      {"inlow", from_min},
-                      {"inhigh", from_max},
-                      {"outlow", to_min},
-                      {"outhigh", to_max},
-                      {"doclamp", val(bool(map_range->clamp))}});
+
+  NodeItem res = create_node("remap",
+                             type,
+                             {{"in", value},
+                              {"inlow", from_min},
+                              {"inhigh", from_max},
+                              {"outlow", to_min},
+                              {"outhigh", to_max}});
+  if (map_range->clamp != 0) {
+    res = res.clamp(to_min, to_max);
+  }
+  return res;
 }
 #endif
 NODE_SHADER_MATERIALX_END
