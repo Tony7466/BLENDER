@@ -41,8 +41,7 @@ VKImageView::VKImageView(VKTexture &texture,
                                           (use_stencil ? VK_IMAGE_ASPECT_STENCIL_BIT :
                                                          VK_IMAGE_ASPECT_DEPTH_BIT);
   eGPUTextureFormat device_format = texture.device_format_get();
-  VkImageAspectFlags image_aspect = to_vk_image_aspect_flag_bits(device_format) &
-                                    allowed_bits;
+  VkImageAspectFlags image_aspect = to_vk_image_aspect_flag_bits(device_format) & allowed_bits;
 
   vk_format_ = to_vk_format(device_format);
   if (texture.format_flag_get() & GPU_FORMAT_SRGB && !use_srgb) {
