@@ -997,6 +997,17 @@ static bool modifier_apply_obdata(
       /* Remove strings referring to attributes if they no longer exist. */
       remove_invalid_attribute_strings(*me);
 
+      /* In case a geometry nodes modifier stored color attribute(s) [and none existed before],
+       * make the first one found active/default. */
+      CustomDataLayer *first_color_layer = BKE_id_attribute_from_index(
+          &me->id, 0, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+      if (!me->active_color_attribute && first_color_layer != nullptr) {
+        me->active_color_attribute = BLI_strdup(first_color_layer->name);
+      }
+      if (!me->default_color_attribute && first_color_layer != nullptr) {
+        me->default_color_attribute = BLI_strdup(first_color_layer->name);
+      }
+
       if (md_eval->type == eModifierType_Multires) {
         multires_customdata_delete(me);
       }
