@@ -13,3 +13,4 @@ Referenced by commit b8359ede7dfe038d0c246bc080cf57e2f7de4f26, Fix #105168: Ente
 Referenced by issue #107067, Active Color Attribute switches after save and reverting file
 Referenced by issue #109443, Cannot set the Color attribute to display an object through Geometry Nodes
 Referenced by issue #114657, Color attribute from applied Geometry Nodes modifier gets disabled render icon
+Referenced by pull request #114699, Fix #114657: Color attribute from applied GN modifier not active
