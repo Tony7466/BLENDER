@@ -165,6 +165,10 @@ static bool contains(const VArray<bool> &varray,
           if (init) {
             return init;
           }
+          const IndexMask indices = indices_to_check.slice(indices_range);
+          if (std::optional<IndexRange> range = indices.to_range()) {
+            return span.slice(*range).contains(value);
+          }
           for (const int i : indices_range) {
             if (span[indices_to_check[i]] == value) {
               return true;
