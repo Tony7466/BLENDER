@@ -1823,7 +1823,7 @@ void calc_brush_front_face(SculptSession &ss,
 
 void calc_mesh_automask(Object &object,
                         AutomaskingCache &automasking,
-                        bke::pbvh::FaceNode &node,
+                        bke::pbvh::mesh::Node &node,
                         const Span<int> vert_indices,
                         const MutableSpan<float> fade);
 

@@ -115,36 +115,42 @@ void BKE_pbvh_draw_debug_cb(PBVH *pbvh,
 
 namespace blender::bke::pbvh {
 
-class FaceNode;
+namespace mesh {
+class Node;
+}
 
 class Tree {
-  friend class FaceNode;
+  friend class mesh::Node;
   PBVH &pbvh_;
 
  public:
   explicit Tree(PBVH &pbvh) : pbvh_(pbvh) {}
 
   // XXX: Accessor vs. property.
-  Span<float3> get_vert_positions() const;
-  Span<float3> get_vert_normals() const;
+  Span<float3> vert_positions() const;
+  Span<float3> vert_normals() const;
 };
 
-class FaceNode {
+namespace mesh {
+
+class Node {
   PBVHNode &node_;
 
  public:
-  explicit FaceNode(PBVHNode &node) : node_(node) {}
+  explicit Node(PBVHNode &node) : node_(node) {}
 
   // XXX: Accessor vs. property.
-  Span<int> get_unique_vert_indices() const;
+  Span<int> unique_vert_indices() const;
 
   MutableSpan<float3> add_proxy(Tree &pbvh_tree);
 
   /* For interfacing with legacy API. */
-  PBVHNode &get_pbvh_node()
+  PBVHNode &pbvh_node()
   {
     return node_;
   }
 };
+
+}  // namespace mesh
 
 }  // namespace blender::bke::pbvh

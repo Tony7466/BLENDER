@@ -112,16 +112,22 @@ static void init_fade_from_hide_and_mask(const Mesh &mesh,
 static void calc_faces_new(Object &object,
                            const Brush &brush,
                            const float3 &offset,
-                           pbvh::FaceNode &node)
+                           pbvh::mesh::Node &node)
 {
   SculptSession &ss = *object.sculpt;
   const Mesh &mesh = *static_cast<const Mesh *>(object.data);
 
   pbvh::Tree pbvh_tree(*ss.pbvh);
 
-  const Span<float3> vert_positions = pbvh_tree.get_vert_positions();
-  const Span<float3> vert_normals = pbvh_tree.get_vert_normals();
-  const Span<int> vert_indices = node.get_unique_vert_indices();
+  const Span<float3> vert_positions = pbvh_tree.vert_positions();
+  const Span<float3> vert_normals = pbvh_tree.vert_normals();
+  const Span<int> vert_indices = node.unique_vert_indices();
+
+  /* XXX: Possibly use full-masking and hide status and distance to build a smaller array of vert
+   * indices for later steps in the algorithm, to avoid the need to check for face[i] == 0.0f
+   * later. But this might not be worth it if the nodes are small enough. In that case calculating
+   * a value for every vertex in a node would be fine, as long as we can filter out unnecessary
+   * nodes at a higher level. */
 
   Array<float> fade(vert_indices.size());
   init_fade_from_hide_and_mask(mesh, vert_indices, fade);
@@ -148,7 +154,7 @@ static void calc_faces_new(Object &object,
 static void calc_faces(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)
 {
   if (true) {
-    pbvh::FaceNode face_node(node);
+    pbvh::mesh::Node face_node(node);
     calc_faces_new(object, brush, offset, face_node);
   }
   calc_faces_old(object, brush, offset, node);

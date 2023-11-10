@@ -3638,7 +3638,7 @@ static void do_brush_action(Sculpt *sd,
   /* Apply one type of brush action. */
   switch (brush->sculpt_tool) {
     case SCULPT_TOOL_DRAW:
-      blender::ed::sculpt_paint::do_draw_brush(*sd, *ob, nodes);
+      ed::sculpt_paint::do_draw_brush(*sd, *ob, nodes);
       break;
     case SCULPT_TOOL_SMOOTH:
       if (brush->smooth_deform_type == BRUSH_SMOOTH_DEFORM_LAPLACIAN) {
@@ -6379,6 +6379,7 @@ void calc_brush_falloff_and_distance(SculptSession &ss,
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       &ss, &test, falloff_shape);
 
+  /* XXX: Threading within a node maybe not necessary? */
   threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
       if (fade[i] == 0.0f) {
@@ -6404,6 +6405,8 @@ void calc_brush_strength_factor(SculptSession &ss,
 {
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
   StrokeCache &cache = *ss.cache;
+
+  /* XXX: Threading within a node maybe not necessary? */
   threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
       if (fade[i] == 0.0f) {
@@ -6442,14 +6445,14 @@ void calc_brush_front_face(SculptSession &ss,
 
 void calc_mesh_automask(Object &object,
                         AutomaskingCache &automasking,
-                        pbvh::FaceNode &node,
+                        pbvh::mesh::Node &node,
                         const Span<int> vert_indices,
                         const MutableSpan<float> fade)
 {
   SculptSession &ss = *object.sculpt;
 
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(&object, &automasking, &automask_data, &node.get_pbvh_node());
+  SCULPT_automasking_node_begin(&object, &automasking, &automask_data, &node.pbvh_node());
 
   threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {

@@ -1929,10 +1929,11 @@ void BKE_pbvh_vert_tag_update_normal(PBVH *pbvh, PBVHVertRef vertex)
 {
   BKE_pbvh_vert_tag_update_normal(*pbvh, vertex.i);
 }
-void BKE_pbvh_vert_tag_update_normal(PBVH &pbvh, const int vertex_index)
+
+void BKE_pbvh_vert_tag_update_normal(PBVH &pbvh, const int vert)
 {
   BLI_assert(pbvh.header.type == PBVH_FACES);
-  pbvh.vert_bitmap[vertex_index] = true;
+  pbvh.vert_bitmap[vert] = true;
 }
 
 void BKE_pbvh_node_get_loops(PBVH *pbvh,
@@ -3478,23 +3479,27 @@ Vector<PBVHNode *> gather_proxies(PBVH *pbvh)
   return array;
 }
 
-Span<float3> Tree::get_vert_positions() const
+Span<float3> Tree::vert_positions() const
 {
   return pbvh_.vert_positions;
 }
-Span<float3> Tree::get_vert_normals() const
+Span<float3> Tree::vert_normals() const
 {
   return pbvh_.vert_normals;
 }
 
-Span<int> FaceNode::get_unique_vert_indices() const
+namespace mesh {
+
+Span<int> Node::unique_vert_indices() const
 {
   return node_.vert_indices.as_span().slice(0, node_.uniq_verts);
 }
 
-MutableSpan<float3> FaceNode::add_proxy(Tree &pbvh_tree)
+MutableSpan<float3> Node::add_proxy(Tree &pbvh_tree)
 {
   return BKE_pbvh_node_add_proxy(pbvh_tree.pbvh_, node_).co;
 }
+
+}  // namespace mesh
 
 }  // namespace blender::bke::pbvh
