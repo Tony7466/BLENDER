@@ -17,6 +17,7 @@
 #include "GPU_texture.h"
 #include "GPU_uniform_buffer.h"
 #include "GPU_compute.h"
+#include "GPU_state.h"
 
 #include "../generic/py_capi_utils.h"
 #include "../generic/python_compat.h"
@@ -47,47 +48,43 @@ PyDoc_STRVAR(
     "   :type groups_z_len: int\n"
     "   :return: Shader object.\n"
     "   :rtype: :class:`bpy.types.GPUShader`\n");
-static void pygpu_compute_dispatch(PyObject * /*self*/, PyObject *args, PyObject *kwds)
+static PyObject *pygpu_compute_dispatch(PyObject * /*self*/, PyObject *args, PyObject *kwds)
 {
-  BPyGPUShader *py_shader;
-  int groups_x_len;
-  int groups_y_len;
-  int groups_z_len;
-
-  static const char *_keywords[] = {"shader", "groups_x_len", "groups_y_len", "groups_z_len", nullptr};
-  static _PyArg_Parser _parser = {
-      PY_ARG_PARSER_HEAD_COMPAT()
-      "O" /* `shader` */
-      "i" /* `groups_x_len` */
-      "i" /* `groups_y_len` */
-      "i" /* `groups_z_len` */
-      ":from_builtin",
-      _keywords,
-      nullptr,
-  };
-  if (_PyArg_ParseTupleAndKeywordsFast(args,
-                                        kwds,
-                                        &_parser,
-                                        &py_shader,
-                                        &groups_x_len,
-                                        &groups_y_len,
-                                        &groups_z_len))
-  {
- 
-   if (!BPyGPUShader_Check(py_shader)) {
-    PyErr_Format(PyExc_TypeError, "Expected a GPUShader, got %s", Py_TYPE(py_shader)->tp_name);
-   }  else {
-    // printf("py_shader: %p\n", py_shader);
-    GPUShader *shader = py_shader->shader;
-    // printf("shader: %p\n", shader);
-    // printf("groups_x_len: %d\n", groups_x_len);
-    // printf("groups_y_len: %d\n", groups_y_len);
-    // printf("groups_z_len: %d\n", groups_z_len);
-    return GPU_compute_dispatch(shader, groups_x_len, groups_y_len, groups_z_len);
-
-   }
-
-  }
+    BPyGPUShader *py_shader;
+    int groups_x_len;
+    int groups_y_len;
+    int groups_z_len;
+    
+    static const char *_keywords[] = {"shader", "groups_x_len", "groups_y_len", "groups_z_len", nullptr};
+    static _PyArg_Parser _parser = {
+        PY_ARG_PARSER_HEAD_COMPAT()
+        "O" /* `shader` */
+        "i" /* `groups_x_len` */
+        "i" /* `groups_y_len` */
+        "i" /* `groups_z_len` */
+        ":dispatch",
+        _keywords,
+        nullptr,
+    };
+    if (_PyArg_ParseTupleAndKeywordsFast(args,
+                                         kwds,
+                                         &_parser,
+                                         &py_shader,
+                                         &groups_x_len,
+                                         &groups_y_len,
+                                         &groups_z_len))
+    {
+        
+        if (!BPyGPUShader_Check(py_shader)) {
+            PyErr_Format(PyExc_TypeError, "Expected a GPUShader, got %s", Py_TYPE(py_shader)->tp_name);
+        }  else {
+            GPUShader *shader = py_shader->shader;
+            GPU_compute_dispatch(shader, groups_x_len, groups_y_len, groups_z_len);
+            GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
+        }
+        
+    }
+    Py_RETURN_NONE;
 }
 
 /* -------------------------------------------------------------------- */
