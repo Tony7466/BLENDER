@@ -2365,7 +2365,7 @@ static void rna_def_file_handler(BlenderRNA *brna)
       prop,
       "File Extensions",
       "Formatted string of file extensions supported by the file handler, each extension should "
-      "start with a \".\" and separated by a \";\"."
+      "start with a \".\" and be separated by \";\"."
       "\nFor Example: `\".blend;.ble\"`");
 
   PropertyRNA *parm;

@@ -6,8 +6,8 @@
 #include "testing/testing.h"
 
 namespace blender::tests {
-
-static FileHandlerType *file_handlers[8];
+#define MAX_FILE_HANDLERS_TEST_SIZE 8
+static FileHandlerType *file_handlers[MAX_FILE_HANDLERS_TEST_SIZE];
 
 static void file_handler_add_test(const int test_number,
                                   const char *idname,
@@ -15,6 +15,8 @@ static void file_handler_add_test(const int test_number,
                                   const char *file_extensions_str,
                                   blender::Vector<std::string> expected_file_extensions)
 {
+  EXPECT_LE(test_number, MAX_FILE_HANDLERS_TEST_SIZE);
+  EXPECT_GE(test_number, 1);
   EXPECT_EQ(BKE_file_handlers().size(), test_number - 1);
 
   std::unique_ptr<FileHandlerType> file_handler = std::make_unique<FileHandlerType>();
@@ -38,9 +40,9 @@ TEST(file_handler, add)
                         "File Handler Test 1",
                         ".blender;.blend;.ble",
                         {".blender", ".blend", ".ble"});
-  file_handler_add_test(2, "Test_FH_blender2", "File Handler Test 1", ".ble", {".ble"});
-  file_handler_add_test(3, "Test_FH_blender3", "File Handler Test 2", ";;.ble", {".ble"});
-  file_handler_add_test(4, "Test_FH_blender4", "File Handler Test 3", ";.ble;", {".ble"});
+  file_handler_add_test(2, "Test_FH_blender2", "File Handler Test 2", ".ble", {".ble"});
+  file_handler_add_test(3, "Test_FH_blender3", "File Handler Test 3", ";;.ble", {".ble"});
+  file_handler_add_test(4, "Test_FH_blender4", "File Handler Test 4", ";.ble;", {".ble"});
   file_handler_add_test(5, "Test_FH_blender5", "File Handler Test 5", "d", {});
   file_handler_add_test(6, "Test_FH_blender6", "File Handler Test 6", ";;", {});
   file_handler_add_test(7, "Test_FH_blender7", "File Handler Test 7", ".", {});
@@ -49,8 +51,7 @@ TEST(file_handler, add)
 
 TEST(file_handler, find)
 {
-
-  EXPECT_EQ(BKE_file_handlers().size(), 8);
+  EXPECT_EQ(BKE_file_handlers().size(), MAX_FILE_HANDLERS_TEST_SIZE);
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender1"), file_handlers[0]);
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender2"), file_handlers[1]);
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender3"), file_handlers[2]);
@@ -65,12 +66,11 @@ TEST(file_handler, find)
 
 TEST(file_handler, remove)
 {
-
-  EXPECT_EQ(BKE_file_handlers().size(), 8);
+  EXPECT_EQ(BKE_file_handlers().size(), MAX_FILE_HANDLERS_TEST_SIZE);
 
   BKE_file_handler_remove(BKE_file_handler_find("Test_FH_blender2"));
 
-  EXPECT_EQ(BKE_file_handlers().size(), 7);
+  EXPECT_EQ(BKE_file_handlers().size(), MAX_FILE_HANDLERS_TEST_SIZE - 1);
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender2"), nullptr);
 
   /** `FileHandlerType` pointer in `file_handlers[1]` is not longer valid. */
@@ -92,7 +92,7 @@ TEST(file_handler, remove)
 
   BKE_file_handler_remove(BKE_file_handler_find("Test_FH_blender8"));
 
-  EXPECT_EQ(BKE_file_handlers().size(), 6);
+  EXPECT_EQ(BKE_file_handlers().size(), MAX_FILE_HANDLERS_TEST_SIZE - 2);
   EXPECT_EQ(BKE_file_handler_find("Test_FH_blender8"), nullptr);
 
   /** `FileHandlerType` pointer  in `file_handlers[7]` is not longer valid. */

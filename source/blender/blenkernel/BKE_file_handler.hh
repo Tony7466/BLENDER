@@ -16,7 +16,7 @@ struct FileHandlerType {
   /** Import operator name. */
   char import_operator[OP_MAX_TYPENAME];
   /** Formatted string of file extensions supported by the file handler, each extension should
-   * start with a `.` and separated by a `;`. For Example: `".blend;.ble"`. */
+   * start with a `.` and be separated by `;`. For Example: `".blend;.ble"`. */
   char file_extensions_str[FH_MAX_FILE_EXTENSIONS_STR];
 
   /** Check if file handler can be used on file drop. */
