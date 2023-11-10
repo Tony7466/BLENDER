@@ -57,7 +57,7 @@ BLACKLIST_GPU = [
     "T41143.blend",
     "visibility_particles.blend",
     # No path guiding on GPU.
-    "guiding*.blend",
+    "guiding_.*.blend",
 ]
 
 
