@@ -48,7 +48,6 @@ VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
   enabled_srgb_ = true;
   renderpass_.emplace(VKRenderPass());
   cache_init();
-
 }
 
 VKFrameBuffer::~VKFrameBuffer()
@@ -456,7 +455,6 @@ void VKFrameBuffer::cache_init()
   width_ = 0;
   height_ = 0;
 
-
   default_attachments_ = dirty_attachments_8_ = 0;
   renderpass_->cache_init();
 };
@@ -517,8 +515,9 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       /* Specify the order of reference as an index, starting with the description of each subpass.
        */
       attachment_reference =
-          &renderpass_->attachments_.references_[renderpass_->info_id_]
-                                 [renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount];
+          &renderpass_->attachments_
+               .references_[renderpass_->info_id_]
+                           [renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount];
       attachment_reference->aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       attachment_reference->layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       /* The number of color attachments described in shaders is incremented here. */
@@ -534,8 +533,11 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       }
       /* Take a cache to look up the order in the render pass information from the number of
           GPUAttachmentTypes. */
-      renderpass_->attachments_.idx_[renderpass_->info_id_][type] = attachment_reference->attachment;
-      if (renderpass_->attachments_.idx_[renderpass_->info_id_counter()][type] != attachment_reference->attachment) {
+      renderpass_->attachments_.idx_[renderpass_->info_id_][type] =
+          attachment_reference->attachment;
+      if (renderpass_->attachments_.idx_[renderpass_->info_id_counter()][type] !=
+          attachment_reference->attachment)
+      {
         /* we have been asked to change the number of attachments for this frame buffer.  */
         dirty_flag = true;
       }
@@ -561,8 +563,10 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
 
         attachment_reference->aspectMask = to_vk_image_aspect_flag_bits(texture.format_get());
         attachment_reference->layout = vk_aspect_to_layout(attachment_reference->aspectMask);
-        attachment_reference->attachment = renderpass_->attachments_.idx_[renderpass_->info_id_][type];
-        renderpass_->subpass_[renderpass_->info_id_].pDepthStencilAttachment = attachment_reference;
+        attachment_reference->attachment =
+            renderpass_->attachments_.idx_[renderpass_->info_id_][type];
+        renderpass_->subpass_[renderpass_->info_id_].pDepthStencilAttachment =
+            attachment_reference;
         if (renderpass_->attachments_.idx_[renderpass_->info_id_counter()][type] !=
             attachment_reference->attachment)
         {
@@ -589,7 +593,9 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
     /* If configuration is not required, there are countless situations in which regeneration is
      * not necessary. */
     if (type >= GPU_FB_COLOR_ATTACHMENT0) {
-      attachment_reference = &renderpass_->attachments_.references_[renderpass_->info_id_]
+      attachment_reference =
+          &renderpass_->attachments_
+               .references_[renderpass_->info_id_]
                            [renderpass_->attachments_.idx_[renderpass_->info_id_][type]];
     }
     else {
@@ -609,14 +615,14 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
     dirty_view |= image_view_ensure(tex, atta_mip, layer_range, attachment_reference->attachment);
 
     VkAttachmentDescription2 &attachment_description =
-        renderpass_->attachments_.descriptions_[renderpass_->info_id_]
-                                          [attachment_reference->attachment];
+        renderpass_->attachments_
+            .descriptions_[renderpass_->info_id_][attachment_reference->attachment];
     if (config) {
       renderpass_->attachments_.set_description(
-          tex, *attachment_reference, attachment_description,renderpass_->render_pass_enum_);
+          tex, *attachment_reference, attachment_description, renderpass_->render_pass_enum_);
       VkAttachmentDescription2 &attachment_description_cache =
-          renderpass_->attachments_.descriptions_[renderpass_->info_id_counter()]
-                                  [attachment_reference->attachment];
+          renderpass_->attachments_
+              .descriptions_[renderpass_->info_id_counter()][attachment_reference->attachment];
       if ((attachment_description.finalLayout != attachment_description_cache.finalLayout) ||
           (attachment_description.format != attachment_description_cache.format))
       {
@@ -629,9 +635,9 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
           renderpass_->attachments_
               .descriptions_[renderpass_->info_id_counter()][attachment_reference->attachment];
       renderpass_->attachments_.set_description(tex,
-                      *attachment_reference,
-                      attachment_description_cache,
-                      renderpass_->render_pass_enum_);
+                                                *attachment_reference,
+                                                attachment_description_cache,
+                                                renderpass_->render_pass_enum_);
       if ((attachment_description.finalLayout != attachment_description_cache.finalLayout) ||
           (attachment_description.format != attachment_description_cache.format))
       {
@@ -722,7 +728,8 @@ void VKFrameBuffer::create()
       if (renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount > 0) {
         for (int j = 0; j < 8; j++) {
           if (renderpass_->subpass_[renderpass_->info_id_].pColorAttachments[j].attachment ==
-              VK_ATTACHMENT_UNUSED) {
+              VK_ATTACHMENT_UNUSED)
+          {
             continue;
           }
           type = renderpass_->attachments_.type_get(
@@ -899,6 +906,6 @@ VkRenderPass VKFrameBuffer::vk_render_pass_get()
   renderpass_->ensure();
   return renderpass_->vk_render_pass_;
 }
-  /** \} */
+/** \} */
 
 }  // namespace blender::gpu

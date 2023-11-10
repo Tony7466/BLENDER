@@ -16,8 +16,8 @@
 #include "gpu_framebuffer_private.hh"
 
 #include "vk_common.hh"
-#include "vk_renderpass.hh"
 #include "vk_image_view.hh"
+#include "vk_renderpass.hh"
 
 #include <optional>
 
@@ -35,7 +35,6 @@ const VkFramebufferCreateInfo create_info_default = {
     /*uint32_t layers;*/ 0};
 }
 
-
 class VKFrameBuffer : public FrameBuffer {
  private:
   /* Vulkan object handle. */
@@ -44,10 +43,10 @@ class VKFrameBuffer : public FrameBuffer {
   /* Vulkan device who created the handle. */
   VkDevice vk_device_ = VK_NULL_HANDLE;
   /**
-    * One VkRenderPass corresponds to one VKFramebuffer.
-    * In the current design, clear_pass is not done. 
-    */
-  std::optional<VKRenderPass> renderpass_ ;
+   * One VkRenderPass corresponds to one VKFramebuffer.
+   * In the current design, clear_pass is not done.
+   */
+  std::optional<VKRenderPass> renderpass_;
   /* Number of layers if the attachments are layered textures. */
   int depth_ = 1;
 
@@ -103,7 +102,6 @@ class VKFrameBuffer : public FrameBuffer {
                       const GPUAttachment &new_attachment,
                       bool config = true) override;
 
-
   void cache_init();
 
   bool is_valid() const
@@ -111,8 +109,8 @@ class VKFrameBuffer : public FrameBuffer {
     return vk_framebuffer_ != VK_NULL_HANDLE;
   }
 
-  VkRenderPass vk_render_pass_get() ;
-  VkFramebuffer vk_framebuffer_get() 
+  VkRenderPass vk_render_pass_get();
+  VkFramebuffer vk_framebuffer_get()
   {
     if (vk_framebuffer_ == VK_NULL_HANDLE) {
       ensure();
@@ -149,6 +147,7 @@ class VKFrameBuffer : public FrameBuffer {
   int color_attachments_resource_size() const;
 
   void renderpass_ensure();
+
  private:
   void update_attachments();
   void create();
