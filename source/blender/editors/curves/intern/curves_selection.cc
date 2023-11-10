@@ -311,7 +311,7 @@ void select_linked(bke::CurvesGeometry &curves, const IndexMask &curves_mask)
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
 
-  curves_mask.foreach_index_optimized<int64_t>([&](const int64_t curve_i) {
+  curves_mask.foreach_index(GrainSize(256), [&](const int64_t curve_i) {
     GMutableSpan selection_curve = selection.span.slice(points_by_curve[curve_i]);
     if (has_anything_selected(selection_curve)) {
       fill_selection_true(selection_curve);
