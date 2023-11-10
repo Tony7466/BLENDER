@@ -1118,6 +1118,31 @@ static PyObject *pygpu_shader_info_define(BPyGPUShaderCreateInfo *self, PyObject
   Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(pygpu_shader_info_local_group_size_doc,
+             ".. method:: local_group_size(x, y, z)\n"
+             "\n"
+             "   Specify the local group size for compute shaders.\n"
+             "\n"
+             "   :arg x: The local group size in the x dimension.\n"
+             "   :type x: int\n"
+             "   :arg y: The local group size in the y dimension.\n"
+             "   :type y: int\n"
+             "   :arg z: The local group size in the z dimension.\n"
+             "   :type z: int\n");
+static PyObject *pygpu_shader_info_local_group_size(BPyGPUShaderCreateInfo *self, PyObject *args)
+{
+  int x, y, z;
+
+  if (!PyArg_ParseTuple(args, "iii:local_group_size", &x, &y, &z)) {
+    return nullptr;
+  }
+
+  ShaderCreateInfo *info = reinterpret_cast<ShaderCreateInfo *>(self->info);
+  info->local_group_size(x, y, z);
+
+  Py_RETURN_NONE;
+}
+
 static PyMethodDef pygpu_shader_info__tp_methods[] = {
     {"vertex_in",
      (PyCFunction)pygpu_shader_info_vertex_in,
@@ -1166,6 +1191,10 @@ static PyMethodDef pygpu_shader_info__tp_methods[] = {
      METH_O,
      pygpu_shader_info_typedef_source_doc},
     {"define", (PyCFunction)pygpu_shader_info_define, METH_VARARGS, pygpu_shader_info_define_doc},
+    {"local_group_size",
+     (PyCFunction)pygpu_shader_info_local_group_size,
+     METH_VARARGS,
+     pygpu_shader_info_local_group_size_doc},
     {nullptr, nullptr, 0, nullptr},
 };
 
