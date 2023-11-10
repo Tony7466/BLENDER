@@ -6375,25 +6375,22 @@ void calc_distance_falloff(SculptSession &ss,
   BLI_assert(vert_indices.size() == factors.size());
   BLI_assert(vert_indices.size() == r_distances.size());
 
-  threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
-    /* NOTE: The `test` is being written to by the test callback, hence can not be re-used by
-     * multiple threads. */
-    SculptBrushTest test;
-    const SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-        &ss, &test, falloff_shape);
-    for (const int i : range) {
-      if (factors[i] == 0.0f) {
-        r_distances[i] = FLT_MAX;
-        continue;
-      }
-      if (!sculpt_brush_test_sq_fn(&test, positions[vert_indices[i]])) {
-        factors[i] = 0.0f;
-        r_distances[i] = FLT_MAX;
-        continue;
-      }
-      r_distances[i] = math::sqrt(test.dist);
+  SculptBrushTest test;
+  const SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
+      &ss, &test, falloff_shape);
+
+  for (const int i : vert_indices.index_range()) {
+    if (factors[i] == 0.0f) {
+      r_distances[i] = FLT_MAX;
+      continue;
     }
-  });
+    if (!sculpt_brush_test_sq_fn(&test, positions[vert_indices[i]])) {
+      factors[i] = 0.0f;
+      r_distances[i] = FLT_MAX;
+      continue;
+    }
+    r_distances[i] = math::sqrt(test.dist);
+  }
 }
 
 void calc_brush_strength(SculptSession &ss,
@@ -6406,8 +6403,6 @@ void calc_brush_strength(SculptSession &ss,
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
   StrokeCache &cache = *ss.cache;
 
-  /* NOTE: sculpt_apply_texture() is to happen from a single thread, as it might use local storage
-   * identified by the thread_id. */
   for (const int i : vert_indices.index_range()) {
     if (factors[i] == 0.0f) {
       /* Skip already masked-out points, as they might be outside of the brush radius and have
@@ -6418,6 +6413,7 @@ void calc_brush_strength(SculptSession &ss,
 
     float texture_value;
     float4 texture_rgba;
+    /* NOTE: This is not thread-safe call. */
     sculpt_apply_texture(
         &ss, &brush, vert_positions[vert_indices[i]], thread_id, &texture_value, texture_rgba);
 
@@ -6433,12 +6429,10 @@ void calc_front_face(const float3 &view_normal,
                      const Span<int> vert_indices,
                      const MutableSpan<float> factors)
 {
-  threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      const float dot = math::dot(view_normal, vert_normals[vert_indices[i]]);
-      factors[i] *= dot > 0.0f ? dot : 0.0f;
-    }
-  });
+  for (const int i : vert_indices.index_range()) {
+    const float dot = math::dot(view_normal, vert_normals[vert_indices[i]]);
+    factors[i] *= dot > 0.0f ? dot : 0.0f;
+  }
 }
 
 void calc_mesh_automask(Object &object,
@@ -6452,16 +6446,13 @@ void calc_mesh_automask(Object &object,
   AutomaskingNodeData automask_data;
   SCULPT_automasking_node_begin(&object, &automasking, &automask_data, &node.pbvh_node());
 
-  threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      if (automask_data.have_orig_data) {
-        sculpt_orig_mesh_vert_data_update(automask_data.orig_data, i);
-      }
-
-      factors[i] *= SCULPT_automasking_factor_get(
-          &automasking, &ss, BKE_pbvh_make_vref(vert_indices[i]), &automask_data);
+  for (const int i : vert_indices.index_range()) {
+    if (automask_data.have_orig_data) {
+      sculpt_orig_mesh_vert_data_update(automask_data.orig_data, i);
     }
-  });
+    factors[i] *= SCULPT_automasking_factor_get(
+        &automasking, &ss, BKE_pbvh_make_vref(vert_indices[i]), &automask_data);
+  }
 }
 
 }  // namespace blender::ed::sculpt_paint

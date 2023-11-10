@@ -159,12 +159,10 @@ static void calc_faces_new(
   }
 
   const MutableSpan<float3> proxy = node.add_proxy(pbvh_tree);
-  threading::parallel_for(vert_indices.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      proxy[i] = offset * factors[i];
-      BKE_pbvh_vert_tag_update_normal(*ss.pbvh, vert_indices[i]);
-    }
-  });
+  for (const int i : vert_indices.index_range()) {
+    proxy[i] = offset * factors[i];
+    BKE_pbvh_vert_tag_update_normal(*ss.pbvh, vert_indices[i]);
+  }
 }
 
 static void calc_faces(
