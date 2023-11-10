@@ -581,7 +581,6 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
   ED_preview_restart_queue_free();
   ED_assetlist_storage_exit();
 
-  SEQ_clipboard_free(); /* `sequencer.cc` */
   BKE_tracking_clipboard_free();
   BKE_mask_clipboard_free();
   BKE_vfont_clipboard_free();
