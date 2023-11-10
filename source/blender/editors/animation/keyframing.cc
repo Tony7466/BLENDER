@@ -329,10 +329,27 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
   return OPERATOR_FINISHED;
 }
 
-static blender::Vector<std::string> construct_rna_paths(const eRotationModes rotation_mode,
-                                                        IDProperty *properties = nullptr)
+static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
 {
+  eRotationModes rotation_mode;
+  IDProperty *properties;
   blender::Vector<std::string> paths;
+
+  if (ptr->type == &RNA_PoseBone) {
+    bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr->data);
+    rotation_mode = eRotationModes(pchan->rotmode);
+    properties = pchan->prop;
+  }
+  else if (ptr->type == &RNA_Object) {
+    Object *ob = static_cast<Object *>(ptr->data);
+    rotation_mode = eRotationModes(ob->rotmode);
+    properties = ob->id.properties;
+  }
+  else {
+    /* Pointer type not supported. */
+    return paths;
+  }
+
   eKeyInsertChannels insert_channel_flags = eKeyInsertChannels(U.key_insert_channels);
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_LOCATION) {
     paths.append("location");
@@ -477,9 +494,7 @@ static int insert_key(bContext *C, wmOperator *op)
       continue;
     }
     PointerRNA id_ptr = collection_ptr_link->ptr;
-    bPoseChannel *pchan = static_cast<bPoseChannel *>(collection_ptr_link->ptr.data);
-    Vector<std::string> rna_paths = construct_rna_paths(eRotationModes(pchan->rotmode),
-                                                        pchan->prop);
+    Vector<std::string> rna_paths = construct_rna_paths(&collection_ptr_link->ptr);
 
     insert_key_id(
         &id_ptr, rna_paths.as_span(), scene_frame, insert_key_flags, key_type, bmain, op->reports);
@@ -494,6 +509,7 @@ static int insert_key(bContext *C, wmOperator *op)
 static int insert_key_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
+  /* Use the active keying set if there is one. */
   KeyingSet *ks = ANIM_keyingset_get_from_enum_type(scene, scene->active_keyingset);
   if (ks) {
     return insert_key_with_keyingset(C, op, ks);

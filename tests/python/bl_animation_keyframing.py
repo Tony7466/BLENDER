@@ -106,7 +106,7 @@ class InsertKeyTest(AbstractKeyframingTest, unittest.TestCase):
         self.assertTrue(_insert_from_user_preference_test({"ROTATION"}, ["rotation_euler"]))
         self.assertTrue(_insert_from_user_preference_test({"SCALE"}, ["scale"]))
         self.assertTrue(_insert_from_user_preference_test(
-            {"LOCATION", "ROTATION", "SCALE"}, ["location", "rotation", "scale"]))
+            {"LOCATION", "ROTATION", "SCALE"}, ["location", "rotation_euler", "scale"]))
 
 
 class VisualKeyingTest(AbstractKeyframingTest, unittest.TestCase):
@@ -232,6 +232,7 @@ class CycleAwareKeyingTest(AbstractKeyframingTest, unittest.TestCase):
             self.assertEqual(len(fcurve.keyframe_points), len(expected_keys))
             key_index = 0
             for key in fcurve.keyframe_points:
+                print(key.co.x)
                 self.assertEqual(key.co.x, expected_keys[key_index])
                 key_index += 1
 
