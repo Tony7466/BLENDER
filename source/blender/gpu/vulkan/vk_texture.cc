@@ -149,7 +149,6 @@ void VKTexture::copy_to(Texture *tex)
   VKTexture *src = this;
   BLI_assert(dst);
   BLI_assert(src->w_ == dst->w_ && src->h_ == dst->h_ && src->d_ == dst->d_);
-  BLI_assert(src->format_ == dst->format_);
   BLI_assert(src->device_format_ == dst->device_format_);
   BLI_assert(!is_texture_view());
   UNUSED_VARS_NDEBUG(src);
