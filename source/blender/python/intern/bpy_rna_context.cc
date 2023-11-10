@@ -78,17 +78,16 @@ static PyObject *bpy_rna_context_temp_override_enter(BPyContextTempOverride *sel
   self->ctx_init.region = CTX_wm_region(C);
 
   wmWindow *win = self->ctx_temp.win_is_set ? self->ctx_temp.win : self->ctx_init.win;
+  /* Overridding screen is a bit different since
+  * window may also be overridden and then we might not need to override the screen. */
+  self->ctx_init.screen = WM_window_get_active_screen(win);
+  bScreen *screen = self->ctx_temp.screen_is_set ? self->ctx_temp.screen : self->ctx_init.screen;
   ScrArea *area = self->ctx_temp.area_is_set ? self->ctx_temp.area : self->ctx_init.area;
   ARegion *region = self->ctx_temp.region_is_set ? self->ctx_temp.region : self->ctx_init.region;
 
   self->ctx_init.win_is_set = (self->ctx_init.win != win);
   self->ctx_init.area_is_set = (self->ctx_init.area != area);
   self->ctx_init.region_is_set = (self->ctx_init.region != region);
-
-  // overridding screen is a bit different since
-  // window can also may be overridden and then we might not need to override the screen
-  self->ctx_init.screen = WM_window_get_active_screen(win);
-  bScreen *screen = self->ctx_temp.screen_is_set ? self->ctx_temp.screen : self->ctx_init.screen;
   self->ctx_init.screen_is_set = (self->ctx_init.screen != screen);
 
   /* Sanity check, the region is in the screen/area. */
@@ -132,7 +131,7 @@ static PyObject *bpy_rna_context_temp_override_enter(BPyContextTempOverride *sel
   if (self->ctx_temp.screen_is_set) {
     WorkSpace *workspace;
     BKE_workspace_layout_find_global(CTX_data_main(C), screen, &workspace);
-    // changing workspace instead of just screen as they are tied
+    /* Changing workspace instead of just screen as they are tied. */
     WM_window_set_active_workspace(C, win, workspace);
     WM_window_set_active_screen(win, workspace, self->ctx_temp.screen);
     CTX_wm_screen_set(C, self->ctx_temp.screen);
