@@ -181,17 +181,17 @@ static void fill_target_map_recursive(const PolyFill *__restrict pf_list,
                                       const uint pf_test,
                                       uint *__restrict target_map)
 {
-  const PolyFill *pf = pf_list + pf_test;
-  for (uint pf_index = pf_target + 1; pf_index < pf_len; pf_index++) {
-    if (target_map[pf_index] != pf_index) {
+  const PolyFill *pf_a = pf_list + pf_test;
+  for (uint pf_b_index = pf_target + 1; pf_b_index < pf_len; pf_b_index++) {
+    if (target_map[pf_b_index] != pf_b_index) {
       /* All intersections have already been identified for this polygon. */
       continue;
     }
-    BLI_assert(pf_index != pf_test);
-    const PolyFill *pf_src = pf_list + pf_index;
-    if (boundisect(pf, pf_src)) {
-      target_map[pf_index] = pf_target;
-      fill_target_map_recursive(pf_list, pf_len, pf_target, pf_index, target_map);
+    BLI_assert(pf_b_index != pf_test);
+    const PolyFill *pf_b = pf_list + pf_b_index;
+    if (boundisect(pf_a, pf_b)) {
+      target_map[pf_b_index] = pf_target;
+      fill_target_map_recursive(pf_list, pf_len, pf_target, pf_b_index, target_map);
     }
   }
 }
