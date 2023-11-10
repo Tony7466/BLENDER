@@ -967,6 +967,7 @@ int insert_key_action(Main *bmain,
                       const float frame,
                       const Span<float> values)
 {
+  BLI_assert(bmain != nullptr);
   BLI_assert(action != nullptr);
 
   std::string group;

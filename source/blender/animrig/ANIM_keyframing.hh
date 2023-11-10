@@ -169,7 +169,8 @@ bool autokeyframe_property(bContext *C,
 /** \} */
 
 /**
- * Insert a key in the given action.
+ * Insert keys for the given rna_path in the given action. The length of the values Span is
+ * expected to be the size of the property array.
  * \param frame is expected to be in NLA space.
  */
 int insert_key_action(Main *bmain,
