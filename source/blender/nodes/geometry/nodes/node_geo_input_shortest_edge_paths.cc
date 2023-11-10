@@ -52,7 +52,6 @@ static void shortest_paths(const Mesh &mesh,
       }
     }
   });
-  const GroupedSpan<int> other_vert(vert_to_edge.offsets, other_vertex);
 
   while (!queue.empty()) {
     const float cost_i = queue.top().first;
@@ -62,9 +61,9 @@ static void shortest_paths(const Mesh &mesh,
       continue;
     }
     visited[vert_i] = true;
-    for (const int index : vert_to_edge[vert_i].index_range()) {
-      const int edge_i = vert_to_edge[vert_i][index];
-      const int neighbor_vert_i = other_vert[vert_i][index];
+    for (const int index : vert_to_edge.offsets[vert_i]) {
+      const int edge_i = vert_to_edge.data[index];
+      const int neighbor_vert_i = other_vertex[index];
       if (visited[neighbor_vert_i]) {
         continue;
       }
