@@ -967,22 +967,14 @@ int clear_keyframe(Main *bmain,
   return key_count;
 }
 
-static bool insert_key_fcurve(FCurve *fcu, const float frame, const float value)
-{
-  if (!BKE_fcurve_is_keyframable(fcu)) {
-    return false;
-  }
-  const int inserted_index = insert_vert_fcurve(
-      fcu, frame, value, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NOFLAGS);
-  return inserted_index >= 0;
-}
-
 int insert_key_action(Main *bmain,
                       bAction *action,
                       PointerRNA *ptr,
                       const std::string &rna_path,
                       const float frame,
-                      const Span<float> values)
+                      const Span<float> values,
+                      eInsertKeyFlags insert_key_flag,
+                      eBezTriple_KeyframeType key_type)
 {
   BLI_assert(bmain != nullptr);
   BLI_assert(action != nullptr);
@@ -998,10 +990,11 @@ int insert_key_action(Main *bmain,
 
   int property_array_index = 0;
   int inserted_keys = 0;
-  for (const float value : values) {
+  for (float value : values) {
     FCurve *fcurve = action_fcurve_ensure(
         bmain, action, group.c_str(), ptr, rna_path.c_str(), property_array_index);
-    const bool inserted_key = insert_key_fcurve(fcurve, frame, value);
+    const bool inserted_key = insert_keyframe_value(
+        fcurve, frame, value, key_type, insert_key_flag);
     if (inserted_key) {
       inserted_keys++;
     }
