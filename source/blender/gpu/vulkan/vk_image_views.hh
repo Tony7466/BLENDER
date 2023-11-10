@@ -29,7 +29,7 @@ class VKImageView;
  * 2D-Array are compatible.)
  *
  */
-class VKImageViews : NonCopyable {
+class VKImageViews {
  private:
   enum class Location : uint8_t {
     SHADER_BINDING,

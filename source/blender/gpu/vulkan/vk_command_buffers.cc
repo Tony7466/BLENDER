@@ -203,7 +203,7 @@ void VKCommandBuffers::ensure_active_framebuffer()
   if (framebuffer_ && !framebuffer_bound_) {
     VkRenderPassBeginInfo render_pass_begin_info = {};
     render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    framebuffer_->vk_render_pass_ensure();
+    framebuffer_->renderpass_ensure();
     render_pass_begin_info.renderPass = framebuffer_->vk_render_pass_get();
     render_pass_begin_info.framebuffer = framebuffer_->vk_framebuffer_get();
     render_pass_begin_info.renderArea = framebuffer_->vk_render_areas_get()[0];

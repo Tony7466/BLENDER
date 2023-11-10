@@ -16,42 +16,14 @@
 #include "gpu_framebuffer_private.hh"
 
 #include "vk_common.hh"
+#include "vk_renderpass.hh"
 #include "vk_image_view.hh"
 
+#include <optional>
+
 namespace blender::gpu {
-class VKContext;
-
-/*
- * Implementing Image Transitions in the `VkRenderPass`.
- * Of course, there are various transitions that can be considered, but with the following two
- * transition types, the images used for most renders can be used without being barrierd in the
- * middle.
- *
- * type0:  `VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL` to `VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL`
- * type1:  `VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL` to `VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL`
- *
- */
-typedef std::array<VkAttachmentDescription2, GPU_FB_MAX_ATTACHMENT> attachment_descriptions_ty;
-typedef std::array<VkAttachmentReference2, GPU_FB_MAX_ATTACHMENT - 2> attachment_references_ty;
-typedef std::array<int, GPU_FB_MAX_ATTACHMENT> attachment_idx_ty;
-
-const VkAttachmentDescription2 vk_attachment_desc_default = {
-    /*.sType*/ VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
-    /*.pNext*/ VK_NULL_HANDLE,
-    /*.flags*/ 0,
-    /*.format*/ VK_FORMAT_UNDEFINED,
-    /*.samples*/ VK_SAMPLE_COUNT_1_BIT,
-    /*.loadOp*/ VK_ATTACHMENT_LOAD_OP_LOAD,
-    /*.storeOp*/ VK_ATTACHMENT_STORE_OP_STORE,
-    /*.stencilLoadOp*/ VK_ATTACHMENT_LOAD_OP_LOAD,
-    /*.stencilStoreOp*/ VK_ATTACHMENT_STORE_OP_STORE};
-const VkAttachmentReference2 vk_attachment_ref_default = {
-    /*VkStructureType sType*/ VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-    /*const void *pNext*/ VK_NULL_HANDLE,
-    /*uint32_t attachment*/ VK_ATTACHMENT_UNUSED,
-    /*VkImageLayout layout*/ VK_IMAGE_LAYOUT_UNDEFINED,
-    /*VkImageAspectFlags aspectMask*/ 0};
-const VkFramebufferCreateInfo vk_framebuffer_create_info_default = {
+namespace vk_framebuffer {
+const VkFramebufferCreateInfo create_info_default = {
     /*VkStructureType sType;*/ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
     /*const void *pNext;*/ VK_NULL_HANDLE,
     /*VkFramebufferCreateFlags flags;*/ 0,
@@ -61,76 +33,33 @@ const VkFramebufferCreateInfo vk_framebuffer_create_info_default = {
     /*uint32_t width;*/ 0,
     /*uint32_t height;*/ 0,
     /*uint32_t layers;*/ 0};
-const VkRenderPassCreateInfo2 render_pass_info_default = {
-    VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
-    VK_NULL_HANDLE,
-    0,
-    0,
-    nullptr,
-    0,
-    nullptr,
-    0,
-    nullptr,
-    0,
-    nullptr};
-const attachment_descriptions_ty attachment_descriptions_default = {vk_attachment_desc_default,
-                                                                    vk_attachment_desc_default,
-                                                                    vk_attachment_desc_default,
-                                                                    vk_attachment_desc_default,
-                                                                    vk_attachment_desc_default,
-                                                                    vk_attachment_desc_default,
-                                                                    vk_attachment_desc_default,
-                                                                    vk_attachment_desc_default,
-                                                                    vk_attachment_desc_default,
-                                                                    vk_attachment_desc_default};
-const attachment_references_ty attachment_references_default = {vk_attachment_ref_default,
-                                                                vk_attachment_ref_default,
-                                                                vk_attachment_ref_default,
-                                                                vk_attachment_ref_default,
-                                                                vk_attachment_ref_default,
-                                                                vk_attachment_ref_default,
-                                                                vk_attachment_ref_default,
-                                                                vk_attachment_ref_default};
-const VkSubpassDescription2 subpass_default = {
-    VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2, VK_NULL_HANDLE, 0, VK_PIPELINE_BIND_POINT_GRAPHICS};
+}
+
 
 class VKFrameBuffer : public FrameBuffer {
  private:
   /* Vulkan object handle. */
   VkFramebuffer vk_framebuffer_ = VK_NULL_HANDLE;
+
   /* Vulkan device who created the handle. */
   VkDevice vk_device_ = VK_NULL_HANDLE;
-  /* Base render pass used for framebuffer creation. */
-  VkRenderPass vk_render_pass_ = VK_NULL_HANDLE;
-  VKRenderPassTransition render_pass_enum_ = VKRenderPassTransition::A2A;
-  bool dirty_render_pass_ = false;
-  int render_pass_info_id_ = 0;
-  int render_pass_info_id_cache_ = 1;
-  VkRenderPassCreateInfo2 vk_render_pass_info_[2] = {render_pass_info_default,
-                                                     render_pass_info_default};
-  std::array<attachment_descriptions_ty, 2> attachment_descriptions_ = {
-      attachment_descriptions_default, attachment_descriptions_default};
-  std::array<attachment_references_ty, 2> attachment_references_ = {attachment_references_default,
-                                                                    attachment_references_default};
-  std::array<VkAttachmentReference2, 2> depth_attachment_references_ = {vk_attachment_ref_default,
-                                                                        vk_attachment_ref_default};
-  std::array<VkSubpassDescription2, 2> subpass_ = {subpass_default, subpass_default};
+  /**
+    * One VkRenderPass corresponds to one VKFramebuffer.
+    * In the current design, clear_pass is not done. 
+    */
+  std::optional<VKRenderPass> renderpass_ ;
   /* Number of layers if the attachments are layered textures. */
   int depth_ = 1;
 
   std::array<std::weak_ptr<VKImageView>, GPU_FB_MAX_ATTACHMENT> image_views_;
 
-  VkFramebufferCreateInfo vk_framebuffer_create_info_ = vk_framebuffer_create_info_default;
-  std::array<attachment_idx_ty, 2> attachment_idx;
+  VkFramebufferCreateInfo vk_framebuffer_create_info_ = vk_framebuffer::create_info_default;
+
   uint8_t dirty_attachments_8_ = 0;
   uint8_t default_attachments_ = 0;
   /** Is the first attachment an SRGB texture. */
   bool srgb_;
   bool enabled_srgb_;
-
-  /** There is a separate classification issue with regard to multi-layered rendering. **/
-  int layers = 1;
-  int sep_layer = 0;
 
  public:
   /**
@@ -174,22 +103,22 @@ class VKFrameBuffer : public FrameBuffer {
                       const GPUAttachment &new_attachment,
                       bool config = true) override;
 
-  void flush();
+
+  void cache_init();
 
   bool is_valid() const
   {
     return vk_framebuffer_ != VK_NULL_HANDLE;
   }
 
-  VkFramebuffer vk_framebuffer_get() const
+  VkRenderPass vk_render_pass_get() ;
+  VkFramebuffer vk_framebuffer_get() 
   {
-    BLI_assert(vk_framebuffer_ != VK_NULL_HANDLE);
+    if (vk_framebuffer_ == VK_NULL_HANDLE) {
+      ensure();
+    };
     return vk_framebuffer_;
   }
-
-  void vk_render_pass_ensure();
-  VkRenderPass vk_render_pass_get();
-
   Array<VkViewport, 16> vk_viewports_get() const;
   Array<VkRect2D, 16> vk_render_areas_get() const;
 
@@ -218,21 +147,13 @@ class VKFrameBuffer : public FrameBuffer {
    * lower attachment slots will be counted as they are required resources in render-passes.
    */
   int color_attachments_resource_size() const;
-  void set_dirty_attchments(VKTexture *texture);
 
+  void renderpass_ensure();
  private:
   void update_attachments();
-  void render_pass_free();
-  void render_pass_create();
-  void set_attachment_description(GPUTexture *texture,
-                                  const VkAttachmentReference2 &attachment_reference,
-                                  VkAttachmentDescription2 &attachment_description);
-  void dependency_set(bool use_depth);
-  void multiview_set();
-  int attchment_type_get(int view_index) const;
-  void framebuffer_create();
-  void frame_buffer_free();
-  void framebuffer_ensure();
+  void create();
+  void free();
+  void ensure();
   bool image_view_ensure(GPUTexture *tex, int mip, IndexRange &layer_range, int attachment_index);
   /* Clearing attachments */
   void build_clear_attachments_depth_stencil(eGPUFrameBufferBits buffers,

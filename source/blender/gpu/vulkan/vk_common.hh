@@ -56,7 +56,6 @@ VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type);
 VkCullModeFlags to_vk_cull_mode_flags(const eGPUFaceCullTest cull_test);
 const char *to_string(VkObjectType type);
 const char *to_string(VkImageLayout layout);
-VkImageAspectFlags vk_format_to_aspect(VkFormat format);
 VkImageLayout vk_aspect_to_layout(VkImageAspectFlags aspect);
 
 /* Types per VKTexture */
