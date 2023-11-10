@@ -503,13 +503,12 @@ static int insert_key_exec(bContext *C, wmOperator *op)
 
 void ANIM_OT_keyframe_insert(wmOperatorType *ot)
 {
-  PropertyRNA *prop;
-
   /* identifiers */
   ot->name = "Insert Keyframe";
   ot->idname = "ANIM_OT_keyframe_insert";
   ot->description =
-      "Insert keyframes on the current frame for all properties in the specified Keying Set";
+      "Insert keyframes on the current frame using the either the active keying set, or the user "
+      "preferences if no keying set is active";
 
   /* callbacks */
   ot->exec = insert_key_exec;
@@ -517,13 +516,16 @@ void ANIM_OT_keyframe_insert(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
 
-  /* keyingset to use (dynamic enum) */
-  prop = RNA_def_enum(
-      ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
-  RNA_def_enum_funcs(prop, ANIM_keying_sets_enum_itemf);
-  RNA_def_property_flag(prop, PROP_HIDDEN);
-  ot->prop = prop;
+static int keyframe_insert_with_keyingset_exec(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  KeyingSet *ks = keyingset_get_from_op_with_error(op, op->type->prop, scene);
+  if (ks == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  return insert_key_with_keyingset(C, op, ks);
 }
 
 void ANIM_OT_keyframe_insert_by_name(wmOperatorType *ot)
@@ -536,7 +538,7 @@ void ANIM_OT_keyframe_insert_by_name(wmOperatorType *ot)
   ot->description = "Alternate access to 'Insert Keyframe' for keymaps to use";
 
   /* callbacks */
-  ot->exec = insert_key_exec;
+  ot->exec = keyframe_insert_with_keyingset_exec;
   ot->poll = modify_key_op_poll;
 
   /* flags */
@@ -626,7 +628,7 @@ void ANIM_OT_keyframe_insert_menu(wmOperatorType *ot)
 
   /* callbacks */
   ot->invoke = insert_key_menu_invoke;
-  ot->exec = insert_key_exec;
+  ot->exec = keyframe_insert_with_keyingset_exec;
   ot->poll = ED_operator_areaactive;
 
   /* flags */
