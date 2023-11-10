@@ -63,19 +63,6 @@ static const PyC_StringEnumItems pygpu_state_faceculling_items[] = {
     {0, nullptr},
 };
 
-static const PyC_StringEnumItems pygpu_state_memory_barrier_items[] = {
-    {GPU_BARRIER_FRAMEBUFFER, "FRAMEBUFFER"},
-    {GPU_BARRIER_SHADER_IMAGE_ACCESS, "SHADER_IMAGE_ACCESS"},
-    {GPU_BARRIER_TEXTURE_FETCH, "TEXTURE_FETCH"},
-    {GPU_BARRIER_TEXTURE_UPDATE, "TEXTURE_UPDATE"},
-    {GPU_BARRIER_COMMAND, "COMMAND"},
-    {GPU_BARRIER_SHADER_STORAGE, "SHADER_STORAGE"},
-    {GPU_BARRIER_VERTEX_ATTRIB_ARRAY, "VERTEX_ATTRIB_ARRAY"},
-    {GPU_BARRIER_ELEMENT_ARRAY, "ELEMENT_ARRAY"},
-    {GPU_BARRIER_UNIFORM, "UNIFORM"},
-    {GPU_BARRIER_BUFFER_UPDATE, "BUFFER_UPDATE"},
-    {0, nullptr},
-};
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -437,38 +424,6 @@ static PyObject *pygpu_state_framebuffer_active_get(PyObject * /*self*/)
   return BPyGPUFrameBuffer_CreatePyObject(fb, true);
 }
 
-PyDoc_STRVAR(pygpu_state_memory_barrier_doc,
-             ".. function:: memory_barrier(barrier)\n"
-             "\n"
-             "   Insert a memory barrier into the GPU command stream, ensuring that certain types of "
-             "prior operations are complete before subsequent operations are started.\n"
-             "\n"
-             "   :arg mode: Type of barrier to enforce. This determines which types of pending operations "
-             "to synchronize with the barrier. For example, using 'SHADER_IMAGE_ACCESS' ensures that all "
-             "shader image access operations are completed before any further image access can proceed.\n"
-             "     Possible values are:\n"
-             "       - `FRAMEBUFFER`: All written texture prior to this barrier can be bound as frame-buffer attachment.\n"
-             "       - `SHADER_IMAGE_ACCESS`: All written texture prior to this barrier can be bound as image.\n"
-             "       - `TEXTURE_FETCH`: All written texture prior to this barrier can be bound as sampler.\n"
-             "       - `TEXTURE_UPDATE`: All written texture prior to this barrier can be read or updated with CPU memory.\n"
-             "       - `COMMAND`: All written buffers prior to this barrier can be bound as indirect command buffer.\n"
-             "       - `SHADER_STORAGE`: All written buffer prior to this barrier can be bound as shader storage buffer objects (SSBOs).\n"
-             "       - `VERTEX_ATTRIB_ARRAY`: All written buffer prior to this barrier can be bound as VBO.\n"
-             "       - `ELEMENT_ARRAY`: All written buffer prior to this barrier can be bound as IBO.\n"
-             "       - `UNIFORM`: All written buffer prior to this barrier can be bound as UBO.\n"
-             "       - `BUFFER_UPDATE`: All written buffer prior to this barrier can be read or updated with CPU memory.\n"
-             "   :type mode: str\n");
-static PyObject *pygpu_state_memory_barrier(PyObject * /*self*/, PyObject *value)
-{
-  PyC_StringEnum pygpu_memory_barrier = {pygpu_state_memory_barrier_items};
-  if (!PyC_ParseStringEnum(value, &pygpu_memory_barrier)) {
-    return nullptr;
-  }
-  GPU_memory_barrier(eGPUBarrier(pygpu_memory_barrier.value_found));
-  Py_RETURN_NONE;
-}
-
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -556,10 +511,6 @@ static PyMethodDef pygpu_state__tp_methods[] = {
      (PyCFunction)pygpu_state_framebuffer_active_get,
      METH_NOARGS,
      pygpu_state_framebuffer_active_get_doc},
-    {"memory_barrier",
-     (PyCFunction)pygpu_state_memory_barrier,
-     METH_O,
-     pygpu_state_memory_barrier_doc},
     {nullptr, nullptr, 0, nullptr},
 };
 
