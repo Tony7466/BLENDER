@@ -2137,7 +2137,7 @@ static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
 
   const float scale = UI_view2d_scale_get_x(&v2d);
   /* Clamp the thickness to make the links more readable when zooming out. */
-  draw_config.thickness = LINK_WIDTH * max_ff(UI_SCALE_FAC * scale, 1.5f) *
+  draw_config.thickness = LINK_WIDTH * max_ff(UI_SCALE_FAC * scale, 1.25f) *
                           (field_link ? 0.7f : 1.0f);
   draw_config.highlighted = link.flag & NODE_LINK_TEMP_HIGHLIGHT;
   draw_config.drawarrow = ((link.tonode && (link.tonode->type == NODE_REROUTE)) &&
