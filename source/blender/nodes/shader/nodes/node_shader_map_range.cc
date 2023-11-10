@@ -482,18 +482,30 @@ NODE_SHADER_MATERIALX_BEGIN
       return empty();
   }
 
-  if (stepped) {
-    NodeItem factor = create_node(
-        "remap", type, {{"in", value}, {"inlow", from_min}, {"inhigh", from_max}});
-    value = (factor * (steps + val(1.0f))).floor() / steps;
-    if (type == NodeItem::Type::Float) {
-      from_min = val(0.0f);
-      from_max = val(1.0f);
+  switch (map_range->interpolation_type) {
+    case NODE_MAP_RANGE_LINEAR:
+      break;
+    case NODE_MAP_RANGE_STEPPED: {
+      NodeItem factor = create_node(
+          "remap", type, {{"in", value}, {"inlow", from_min}, {"inhigh", from_max}});
+      value = (factor * (steps + val(1.0f))).floor() / steps;
+      if (type == NodeItem::Type::Float) {
+        from_min = val(0.0f);
+        from_max = val(1.0f);
+      }
+      else {
+        from_min = val(MaterialX::Vector3(0.0f, 0.0f, 0.0f));
+        from_max = val(MaterialX::Vector3(1.0f, 1.0f, 1.0f));
+      }
+      break;
     }
-    else {
-      from_min = val(MaterialX::Vector3(0.0f, 0.0f, 0.0f));
-      from_max = val(MaterialX::Vector3(1.0f, 1.0f, 1.0f));
-    }
+    case NODE_MAP_RANGE_SMOOTHSTEP:
+    case NODE_MAP_RANGE_SMOOTHERSTEP:
+      value = create_node(
+          "smoothstep", type, {{"in", value}, {"low", from_min}, {"high", from_max}});
+      break;
+    default:
+      BLI_assert_unreachable();
   }
 
   NodeItem res = create_node("remap",
