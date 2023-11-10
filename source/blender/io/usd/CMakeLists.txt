@@ -186,6 +186,7 @@ set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::animrig
   bf_imbuf
   PRIVATE bf::intern::guardedalloc
   bf_io_common
@@ -207,6 +208,11 @@ if(WITH_OPENVDB)
   list(APPEND LIB
     ${OPENVDB_LIBRARIES}
   )
+endif()
+
+if(WITH_MATERIALX)
+  add_definitions(-DWITH_MATERIALX)
+  list(APPEND LIB MaterialXCore)
 endif()
 
 blender_add_lib(bf_io_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

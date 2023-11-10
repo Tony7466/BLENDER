@@ -932,6 +932,7 @@ static void rna_def_bonecolor(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_color_palettes_items);
   RNA_def_property_enum_funcs(prop, nullptr, "rna_BoneColor_palette_index_set", nullptr);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Color Set", "Color palette to use");
   RNA_def_property_update(prop, 0, "rna_BoneColor_update");
 
@@ -947,6 +948,7 @@ static void rna_def_bonecolor(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
   RNA_def_property_struct_type(prop, "ThemeBoneColorSet");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(
       prop, "Custom", "The custom bone colors, used when palette is 'CUSTOM'");
   RNA_def_property_update(prop, 0, "rna_BoneColor_update");
@@ -1101,6 +1103,22 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
        0,
        "Tangent",
        "Use the orientation of the specified bone to compute the handle, ignoring the location"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem prop_bbone_mapping_mode[] = {
+      {BBONE_MAPPING_STRAIGHT,
+       "STRAIGHT",
+       0,
+       "Straight",
+       "Fast mapping that is good for most situations, but ignores the rest pose "
+       "curvature of the B-Bone"},
+      {BBONE_MAPPING_CURVED,
+       "CURVED",
+       0,
+       "Curved",
+       "Slower mapping that gives better deformation for B-Bones that are sharply "
+       "curved in rest pose"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -1291,6 +1309,16 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
   RNA_def_property_range(prop, 1, 32);
   RNA_def_property_ui_text(
       prop, "B-Bone Segments", "Number of subdivisions of bone (for B-Bones only)");
+
+  prop = RNA_def_property(srna, "bbone_mapping_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "bbone_mapping_mode");
+  RNA_def_property_enum_items(prop, prop_bbone_mapping_mode);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "B-Bone Vertex Mapping Mode",
+      "Selects how the vertices are mapped to B-Bone segments based on their position");
+  RNA_def_property_update(prop, 0, "rna_Armature_update_data");
 
   prop = RNA_def_property(srna, "bbone_x", PROP_FLOAT, PROP_NONE);
   if (editbone) {

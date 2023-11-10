@@ -21,9 +21,9 @@ uniform sampler2DArray utilTex;
 
 #define LTC_MAT_LAYER 0
 #define LTC_BRDF_LAYER 3
+#define LTC_DISK_LAYER 3
 #define BRDF_LUT_LAYER 1
 #define NOISE_LAYER 2
-#define LTC_DISK_LAYER 3 /* UNUSED */
 
 /* Layers 4 to 20 are for BTDF LUT. */
 #define lut_btdf_layer_first 4.0
@@ -69,8 +69,8 @@ void brdf_f82_tint_lut(vec3 F0,
    * model at ~82°, similar to F0 and F90.
    * With F82-Tint, on the other hand, the value at 82° is the value of the classic Schlick
    * model multiplied by the tint input.
-   * Therefore, the factor follows by setting F82Tint(cosI) = FSchlick(cosI) - b*cosI*(1-cosI)^6
-   * and F82Tint(acos(1/7)) = FSchlick(acos(1/7)) * f82_tint and solving for b. */
+   * Therefore, the factor follows by setting `F82Tint(cosI) = FSchlick(cosI) - b*cosI*(1-cosI)^6`
+   * and `F82Tint(acos(1/7)) = FSchlick(acos(1/7)) * f82_tint` and solving for `b`. */
   const float f = 6.0 / 7.0;
   const float f5 = (f * f) * (f * f) * f;
   const float f6 = (f * f) * (f * f) * (f * f);
@@ -137,7 +137,7 @@ void bsdf_lut(vec3 F0,
               float cos_theta,
               float roughness,
               float ior,
-              float do_multiscatter,
+              bool do_multiscatter,
               out vec3 reflectance,
               out vec3 transmittance)
 {
@@ -168,7 +168,7 @@ void bsdf_lut(vec3 F0,
   reflectance = F_brdf_single_scatter(F0, F90, split_sum);
   transmittance = (vec3(1.0) - F0) * transmission_factor * transmission_tint;
 
-  if (do_multiscatter != 0.0) {
+  if (do_multiscatter) {
     float real_F0 = F0_from_ior(ior);
     float Ess = real_F0 * split_sum.x + split_sum.y + (1.0 - real_F0) * transmission_factor;
     float Ems = 1.0 - Ess;
@@ -185,7 +185,7 @@ void bsdf_lut(vec3 F0,
 }
 
 /* Computes the reflectance and transmittance based on the BSDF LUT. */
-vec2 bsdf_lut(float cos_theta, float roughness, float ior, float do_multiscatter)
+vec2 bsdf_lut(float cos_theta, float roughness, float ior, bool do_multiscatter)
 {
   float F0 = F0_from_ior(ior);
   vec3 color = vec3(1.0);

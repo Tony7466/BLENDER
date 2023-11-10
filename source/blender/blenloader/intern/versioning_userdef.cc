@@ -15,7 +15,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "DNA_anim_types.h"
@@ -113,8 +113,31 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
   }
 
   if (!USER_VERSION_ATLEAST(400, 24)) {
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
     FROM_DEFAULT_V4_UCHAR(tui.wcol_list_item.inner_sel);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 27)) {
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_keyframe);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_breakdown);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_movehold);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_keyframe_select);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_breakdown_select);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_movehold_select);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder_select);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 35)) {
+    memcpy(btheme, &U_theme_default, sizeof(*btheme));
+  }
+
+  if (!USER_VERSION_ATLEAST(401, 4)) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.edge_select);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.edge_mode_select);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.face_select);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.face_mode_select);
   }
 
   /**
@@ -863,6 +886,23 @@ void blo_do_versions_userdef(UserDef *userdef)
   if (!USER_VERSION_ATLEAST(400, 24)) {
     /* Clear deprecated USER_MENUFIXEDORDER user flag for reuse. */
     userdef->uiflag &= ~USER_UIFLAG_UNUSED_4;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 26)) {
+    userdef->animation_flag |= USER_ANIM_SHOW_CHANNEL_GROUP_COLORS;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 32)) {
+    userdef->text_render |= USER_TEXT_RENDER_SUBPIXELAA;
+  }
+
+  if (!USER_VERSION_ATLEAST(401, 3)) {
+    LISTBASE_FOREACH (uiStyle *, style, &userdef->uistyles) {
+      style->paneltitle.character_weight = 400;
+      style->grouplabel.character_weight = 400;
+      style->widgetlabel.character_weight = 400;
+      style->widget.character_weight = 400;
+    }
   }
 
   /**

@@ -49,7 +49,7 @@ struct BVHMetalBuildThrottler {
     bvh_throttle_printf("safe_wired_limit = %zu\n", safe_wired_limit);
   }
 
-  /* Block until we're safely able to wire the requsted resources. */
+  /* Block until we're safely able to wire the requested resources. */
   void acquire(size_t bytes_to_be_wired)
   {
     bool throttled = false;
@@ -123,6 +123,10 @@ BVHMetal::~BVHMetal()
     if (accel_struct) {
       stats.mem_free(accel_struct.allocatedSize);
       [accel_struct release];
+    }
+
+    if (null_BLAS) {
+      [null_BLAS release];
     }
   }
 }
@@ -291,8 +295,8 @@ bool BVHMetal::build_BLAS_mesh(Progress &progress,
     }
     [accelEnc endEncoding];
 
-    /* Estimated size of resources that will be wired for the GPU accelerated build. Accel-struct
-     * size is doubled to account for possible compaction step. */
+    /* Estimated size of resources that will be wired for the GPU accelerated build.
+     * Acceleration-struct size is doubled to account for possible compaction step. */
     size_t wired_size = posBuf.allocatedSize + indexBuf.allocatedSize + scratchBuf.allocatedSize +
                         accel_uncompressed.allocatedSize * 2;
 
@@ -627,8 +631,8 @@ bool BVHMetal::build_BLAS_hair(Progress &progress,
     }
     [accelEnc endEncoding];
 
-    /* Estimated size of resources that will be wired for the GPU accelerated build. Accel-struct
-     * size is doubled to account for possible compaction step. */
+    /* Estimated size of resources that will be wired for the GPU accelerated build.
+     * Acceleration-struct size is doubled to account for possible compaction step. */
     size_t wired_size = cpBuffer.allocatedSize + radiusBuffer.allocatedSize +
                         idxBuffer.allocatedSize + scratchBuf.allocatedSize +
                         accel_uncompressed.allocatedSize * 2;
@@ -875,8 +879,8 @@ bool BVHMetal::build_BLAS_pointcloud(Progress &progress,
     }
     [accelEnc endEncoding];
 
-    /* Estimated size of resources that will be wired for the GPU accelerated build. Accel-struct
-     * size is doubled to account for possible compaction step. */
+    /* Estimated size of resources that will be wired for the GPU accelerated build.
+     * Acceleration-struct size is doubled to account for possible compaction step. */
     size_t wired_size = aabbBuf.allocatedSize + scratchBuf.allocatedSize +
                         accel_uncompressed.allocatedSize * 2;
 
@@ -964,6 +968,60 @@ bool BVHMetal::build_TLAS(Progress &progress,
   g_bvh_build_throttler.wait_for_all();
 
   if (@available(macos 12.0, *)) {
+    /* Defined inside available check, for return type to be available. */
+    auto make_null_BLAS = [](id<MTLDevice> device,
+                             id<MTLCommandQueue> queue) -> id<MTLAccelerationStructure> {
+      MTLResourceOptions storage_mode = MTLResourceStorageModeManaged;
+      if (device.hasUnifiedMemory) {
+        storage_mode = MTLResourceStorageModeShared;
+      }
+
+      id<MTLBuffer> nullBuf = [device newBufferWithLength:sizeof(float3) options:storage_mode];
+
+      /* Create an acceleration structure. */
+      MTLAccelerationStructureTriangleGeometryDescriptor *geomDesc =
+          [MTLAccelerationStructureTriangleGeometryDescriptor descriptor];
+      geomDesc.vertexBuffer = nullBuf;
+      geomDesc.vertexBufferOffset = 0;
+      geomDesc.vertexStride = sizeof(float3);
+      geomDesc.indexBuffer = nullBuf;
+      geomDesc.indexBufferOffset = 0;
+      geomDesc.indexType = MTLIndexTypeUInt32;
+      geomDesc.triangleCount = 0;
+      geomDesc.intersectionFunctionTableOffset = 0;
+      geomDesc.opaque = true;
+      geomDesc.allowDuplicateIntersectionFunctionInvocation = false;
+
+      MTLPrimitiveAccelerationStructureDescriptor *accelDesc =
+          [MTLPrimitiveAccelerationStructureDescriptor descriptor];
+      accelDesc.geometryDescriptors = @[ geomDesc ];
+      accelDesc.usage |= MTLAccelerationStructureUsageExtendedLimits;
+
+      MTLAccelerationStructureSizes accelSizes = [device
+          accelerationStructureSizesWithDescriptor:accelDesc];
+      id<MTLAccelerationStructure> accel_struct = [device
+          newAccelerationStructureWithSize:accelSizes.accelerationStructureSize];
+      id<MTLBuffer> scratchBuf = [device newBufferWithLength:accelSizes.buildScratchBufferSize
+                                                     options:MTLResourceStorageModePrivate];
+      id<MTLBuffer> sizeBuf = [device newBufferWithLength:8 options:MTLResourceStorageModeShared];
+      id<MTLCommandBuffer> accelCommands = [queue commandBuffer];
+      id<MTLAccelerationStructureCommandEncoder> accelEnc =
+          [accelCommands accelerationStructureCommandEncoder];
+      [accelEnc buildAccelerationStructure:accel_struct
+                                descriptor:accelDesc
+                             scratchBuffer:scratchBuf
+                       scratchBufferOffset:0];
+      [accelEnc endEncoding];
+      [accelCommands commit];
+      [accelCommands waitUntilCompleted];
+
+      /* free temp resources */
+      [scratchBuf release];
+      [nullBuf release];
+      [sizeBuf release];
+
+      return accel_struct;
+    };
 
     uint32_t num_instances = 0;
     uint32_t num_motion_transforms = 0;
@@ -1005,7 +1063,7 @@ bool BVHMetal::build_TLAS(Progress &progress,
         int blas_index = (int)[all_blas count];
         instance_mapping[blas] = blas_index;
         if (@available(macos 12.0, *)) {
-          [all_blas addObject:blas->accel_struct];
+          [all_blas addObject:(blas ? blas->accel_struct : null_BLAS)];
         }
         return blas_index;
       }
@@ -1052,22 +1110,18 @@ bool BVHMetal::build_TLAS(Progress &progress,
       if (!blas || !blas->accel_struct) {
         /* Place a degenerate instance, to ensure [[instance_id]] equals ob->get_device_index()
          * in our intersection functions */
-        if (motion_blur) {
-          MTLAccelerationStructureMotionInstanceDescriptor *instances =
-              (MTLAccelerationStructureMotionInstanceDescriptor *)[instanceBuf contents];
-          MTLAccelerationStructureMotionInstanceDescriptor &desc = instances[instance_index++];
-          memset(&desc, 0x00, sizeof(desc));
+        blas = nullptr;
+
+        /* Workaround for issue in macOS <= 14.1: Insert degenerate BLAS instead of zero-filling
+         * the descriptor. */
+        if (!null_BLAS) {
+          null_BLAS = make_null_BLAS(device, queue);
         }
-        else {
-          MTLAccelerationStructureUserIDInstanceDescriptor *instances =
-              (MTLAccelerationStructureUserIDInstanceDescriptor *)[instanceBuf contents];
-          MTLAccelerationStructureUserIDInstanceDescriptor &desc = instances[instance_index++];
-          memset(&desc, 0x00, sizeof(desc));
-        }
-        blas_array.push_back(nil);
-        continue;
+        blas_array.push_back(null_BLAS);
       }
-      blas_array.push_back(blas->accel_struct);
+      else {
+        blas_array.push_back(blas->accel_struct);
+      }
 
       uint32_t accel_struct_index = get_blas_index(blas);
 

@@ -39,6 +39,7 @@ struct View3DShading;
 struct WorkSpace;
 struct bContext;
 struct bScreen;
+struct uiBlock;
 struct uiLayout;
 struct uiList;
 struct wmGizmoMap;
@@ -293,6 +294,11 @@ struct PanelType {
   void (*draw_header_preset)(const bContext *C, Panel *panel);
   /* draw entirely, view changes should be handled here */
   void (*draw)(const bContext *C, Panel *panel);
+  /**
+   * Listener to redraw the region this is contained in on changes. Only used for panels displayed
+   * in popover regions.
+   */
+  void (*listener)(const wmRegionListenerParams *params);
 
   /* For instanced panels corresponding to a list: */
 
@@ -334,9 +340,30 @@ enum {
   PANEL_TYPE_NO_SEARCH = (1 << 7),
 };
 
-/* uilist types */
+typedef struct Panel_Runtime {
+  /* Applied to Panel.ofsx, but saved separately so we can track changes between redraws. */
+  int region_ofsx = 0;
 
-/* Draw an item in the uiList */
+  /**
+   * Pointer for storing which data the panel corresponds to.
+   * Useful when there can be multiple instances of the same panel type.
+   *
+   * \note A panel and its sub-panels share the same custom data pointer.
+   * This avoids freeing the same pointer twice when panels are removed.
+   */
+  PointerRNA *custom_data_ptr = nullptr;
+
+  /* Pointer to the panel's block. Useful when changes to panel #uiBlocks
+   * need some context from traversal of the panel "tree". */
+  uiBlock *block = nullptr;
+
+  /* Non-owning pointer. The context is stored in the block. */
+  bContextStore *context = nullptr;
+} Panel_Runtime;
+
+/* #uiList types. */
+
+/** Draw an item in the `ui_list`. */
 using uiListDrawItemFunc = void (*)(uiList *ui_list,
                                     const bContext *C,
                                     uiLayout *layout,
@@ -526,6 +553,11 @@ ARegion *BKE_area_region_copy(const SpaceType *st, const ARegion *region);
  */
 void BKE_area_region_free(SpaceType *st, ARegion *region);
 void BKE_area_region_panels_free(ListBase *panels);
+/**
+ * Create and free panels.
+ */
+Panel *BKE_panel_new(PanelType *panel_type);
+void BKE_panel_free(Panel *panel);
 /**
  * Doesn't free the area itself.
  */

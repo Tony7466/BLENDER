@@ -41,7 +41,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mask.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
@@ -482,15 +482,6 @@ bool ED_operator_editmesh_region_view3d(bContext *C)
   return false;
 }
 
-bool ED_operator_editmesh_auto_smooth(bContext *C)
-{
-  Object *obedit = CTX_data_edit_object(C);
-  if (obedit && obedit->type == OB_MESH && (((Mesh *)(obedit->data))->flag & ME_AUTOSMOOTH)) {
-    return nullptr != BKE_editmesh_from_object(obedit);
-  }
-  return false;
-}
-
 bool ED_operator_editarmature(bContext *C)
 {
   Object *obedit = CTX_data_edit_object(C);
@@ -782,7 +773,7 @@ static bool azone_clipped_rect_calc(const AZone *az, rcti *r_rect_clip)
   if (az->type == AZONE_REGION) {
     if (region->overlap && (region->v2d.keeptot != V2D_KEEPTOT_STRICT) &&
         /* Only when this isn't hidden (where it's displayed as an button that expands). */
-        ((az->region->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_TOO_SMALL)) == 0))
+        region->visible)
     {
       /* A floating region to be resized, clip by the visible region. */
       switch (az->edge) {
@@ -856,6 +847,20 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
         break;
       }
       if (az->type == AZONE_REGION) {
+        const ARegion *region = az->region;
+        const int local_xy[2] = {xy[0] - region->winrct.xmin, xy[1] - region->winrct.ymin};
+
+        /* Respect button sections: Clusters of buttons (separated using separator-spacers) are
+         * drawn with a background, in-between them the region is fully transparent (if "Region
+         * Overlap" is enabled). Only allow dragging visible edges, so at the button sections. */
+        if (region->visible && region->overlap &&
+            (region->flag & RGN_FLAG_RESIZE_RESPECT_BUTTON_SECTIONS) &&
+            !UI_region_button_sections_is_inside_x(az->region, local_xy[0]))
+        {
+          az = nullptr;
+          break;
+        }
+
         break;
       }
       if (az->type == AZONE_FULLSCREEN) {
@@ -2848,8 +2853,10 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
   /* execute the events */
   switch (event->type) {
     case MOUSEMOVE: {
-      const float aspect = BLI_rctf_size_x(&rmd->region->v2d.cur) /
-                           (BLI_rcti_size_x(&rmd->region->v2d.mask) + 1);
+      const float aspect = (rmd->region->v2d.flag & V2D_IS_INIT) ?
+                               (BLI_rctf_size_x(&rmd->region->v2d.cur) /
+                                (BLI_rcti_size_x(&rmd->region->v2d.mask) + 1)) :
+                               1.0f;
       const int snap_size_threshold = (U.widget_unit * 2) / aspect;
       bool size_changed = false;
 
@@ -5491,7 +5498,9 @@ struct RegionAlphaInfo {
 float ED_region_blend_alpha(ARegion *region)
 {
   /* check parent too */
-  if (region->regiontimer == nullptr && (region->alignment & RGN_SPLIT_PREV) && region->prev) {
+  if (region->regiontimer == nullptr &&
+      (region->alignment & (RGN_SPLIT_PREV | RGN_ALIGN_HIDE_WITH_PREV)) && region->prev)
+  {
     region = region->prev;
   }
 
@@ -5566,7 +5575,7 @@ void ED_region_visibility_change_update_animated(bContext *C, ScrArea *area, ARe
   }
 
   if (region->next) {
-    if (region->next->alignment & RGN_SPLIT_PREV) {
+    if (region->next->alignment & (RGN_SPLIT_PREV | RGN_ALIGN_HIDE_WITH_PREV)) {
       rgi->child_region = region->next;
     }
   }
