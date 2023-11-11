@@ -196,7 +196,14 @@ class ShortestEdgePathsNextVertFieldInput final : public bke::MeshFieldInput {
       shortest_paths(mesh, vert_to_edge, end_selection, input_cost, next_index, cost);
     }
 
-    replace<int>(next_index, -1, 0);
+    threading::parallel_for(next_index.index_range(), 1024, [&](const IndexRange range) {
+      for (const int i : range) {
+        if (next_index[i] == -1) {
+          next_index[i] = i;
+        }
+      }
+    });
+
     return mesh.attributes().adapt_domain<int>(
         VArray<int>::ForContainer(std::move(next_index)), ATTR_DOMAIN_POINT, domain);
   }
