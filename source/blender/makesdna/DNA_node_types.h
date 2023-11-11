@@ -1892,6 +1892,10 @@ typedef struct NodeShaderMix {
   char _pad[3];
 } NodeShaderMix;
 
+typedef struct NodeGeometryMathExpression {
+  char expression[1024]; // TODO: maybe change this to work like NodeInputString
+} NodeGeometryMathExpression;
+
 /* script node mode */
 enum {
   NODE_SCRIPT_INTERNAL = 0,

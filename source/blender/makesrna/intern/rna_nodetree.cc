@@ -9327,6 +9327,17 @@ static void def_geo_string_to_curves(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_geo_math_expression(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometryMathExpression", "storage");
+
+  prop = RNA_def_property(srna, "expression", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Expression", "The math Expression");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void rna_def_shader_node(BlenderRNA *brna)
 {
   StructRNA *srna;

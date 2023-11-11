@@ -370,6 +370,7 @@ DefNode(GeometryNode, GEO_NODE_INSTANCES_TO_POINTS, 0, "INSTANCES_TO_POINTS",Ins
 DefNode(GeometryNode, GEO_NODE_IS_VIEWPORT, 0, "IS_VIEWPORT", IsViewport, "Is Viewport", "Retrieve whether the nodes are being evaluated for the viewport rather than the final render")
 DefNode(GeometryNode, GEO_NODE_JOIN_GEOMETRY, 0, "JOIN_GEOMETRY", JoinGeometry, "Join Geometry", "Merge separately generated geometries into a single one")
 DefNode(GeometryNode, GEO_NODE_MATERIAL_SELECTION, 0, "MATERIAL_SELECTION", MaterialSelection, "Material Selection", "Provide a selection of faces that use the specified material")
+DefNode(GeometryNode, GEO_NODE_MATH_EXPRESSION, def_geo_math_expression, "MATH_EXPRESSION", MathExpression, "Math Expression", "Evaluate a math expression")
 DefNode(GeometryNode, GEO_NODE_MEAN_FILTER_SDF_VOLUME, 0, "MEAN_FILTER_SDF_VOLUME", MeanFilterSDFVolume, "Mean Filter SDF Volume", "Smooth the surface of an SDF volume by applying a mean filter")
 DefNode(GeometryNode, GEO_NODE_MERGE_BY_DISTANCE, 0, "MERGE_BY_DISTANCE", MergeByDistance, "Merge by Distance", "Merge vertices or points within a given distance")
 DefNode(GeometryNode, GEO_NODE_MESH_BOOLEAN, 0, "MESH_BOOLEAN", MeshBoolean, "Mesh Boolean", "Cut, subtract, or join multiple mesh inputs")
