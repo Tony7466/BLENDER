@@ -11,8 +11,6 @@
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 
-#include "BLI_timeit.hh"
-
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_type_conversions.hh"
