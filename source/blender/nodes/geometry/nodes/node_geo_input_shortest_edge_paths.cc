@@ -9,7 +9,6 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_set.hh"
 #include "BLI_task.hh"
-#include "BLI_vector.hh"
 
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
