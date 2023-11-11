@@ -36,6 +36,7 @@ set(SRC
   nodes/node_shader_bsdf_diffuse.cc
   nodes/node_shader_bsdf_glass.cc
   nodes/node_shader_bsdf_glossy.cc
+  nodes/node_shader_bsdf_conductor.cc
   nodes/node_shader_bsdf_hair.cc
   nodes/node_shader_bsdf_hair_principled.cc
   nodes/node_shader_bsdf_principled.cc
