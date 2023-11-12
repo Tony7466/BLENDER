@@ -4,12 +4,6 @@
 
 from __future__ import annotations
 
-if "bpy" in locals():
-    from importlib import reload
-    if "anim_utils" in locals():
-        reload(anim_utils)
-    del reload
-
 
 import bpy
 from bpy.types import Operator
@@ -252,19 +246,43 @@ class NLA_OT_bake(Operator):
         ),
         default={'POSE'},
     )
+    channel_types: EnumProperty(
+        name="Channels",
+        description="Which channels to bake",
+        options={'ENUM_FLAG'},
+        items=(
+            ('LOCATION', "Location", "Bake location channels"),
+            ('ROTATION', "Rotation", "Bake rotation channels"),
+            ('SCALE', "Scale", "Bake scale channels"),
+            ('BBONE', "B-Bone", "Bake b-bone channels"),
+        ),
+        default={'LOCATION', 'ROTATION', 'SCALE', 'BBONE'},
+    )
 
     def execute(self, context):
         from bpy_extras import anim_utils
-        do_pose = 'POSE' in self.bake_types
-        do_object = 'OBJECT' in self.bake_types
 
-        if do_pose and self.only_selected:
+        bake_options = anim_utils.BakeOptions(
+            only_selected=self.only_selected,
+            do_pose='POSE' in self.bake_types,
+            do_object='OBJECT' in self.bake_types,
+            do_visual_keying=self.visual_keying,
+            do_constraint_clear=self.clear_constraints,
+            do_parents_clear=self.clear_parents,
+            do_clean=self.clean_curves,
+            do_location='LOCATION' in self.channel_types,
+            do_rotation='ROTATION' in self.channel_types,
+            do_scale='SCALE' in self.channel_types,
+            do_bbone='BBONE' in self.channel_types,
+        )
+
+        if bake_options.do_pose and self.only_selected:
             pose_bones = context.selected_pose_bones or []
             armatures = {pose_bone.id_data for pose_bone in pose_bones}
             objects = list(armatures)
         else:
             objects = context.selected_editable_objects
-            if do_pose and not do_object:
+            if bake_options.do_pose and not bake_options.do_object:
                 objects = [obj for obj in objects if obj.pose is not None]
 
         object_action_pairs = (
@@ -276,13 +294,7 @@ class NLA_OT_bake(Operator):
         actions = anim_utils.bake_action_objects(
             object_action_pairs,
             frames=range(self.frame_start, self.frame_end + 1, self.step),
-            only_selected=self.only_selected,
-            do_pose=do_pose,
-            do_object=do_object,
-            do_visual_keying=self.visual_keying,
-            do_constraint_clear=self.clear_constraints,
-            do_parents_clear=self.clear_parents,
-            do_clean=self.clean_curves,
+            bake_options=bake_options
         )
 
         if not any(actions):
@@ -429,15 +441,15 @@ class UpdateAnimatedTransformConstraint(Operator):
         return {'FINISHED'}
 
 
-class ARMATURE_OT_sync_bone_color_to_selected(Operator):
+class ARMATURE_OT_copy_bone_color_to_selected(Operator):
     """Copy the bone color of the active bone to all selected bones"""
-    bl_idname = "armature.sync_bone_color_to_selected"
-    bl_label = "Sync to Selected"
+    bl_idname = "armature.copy_bone_color_to_selected"
+    bl_label = "Copy Colors to Selected"
     bl_options = {'REGISTER', 'UNDO'}
 
     _bone_type_enum = [
-        ('EDIT', 'Edit Bone', 'Copy Edit Bone colors from the active bone to all selected bones'),
-        ('POSE', 'Pose Bone', 'Copy Pose Bone colors from the active bone to all selected bones'),
+        ('EDIT', 'Bone', 'Copy Bone colors from the active bone to all selected bones'),
+        ('POSE', 'Pose Bone', 'Copy Pose Bone colors from the active pose bone to all selected pose bones'),
     ]
 
     bone_type: EnumProperty(
@@ -449,22 +461,22 @@ class ARMATURE_OT_sync_bone_color_to_selected(Operator):
         return context.mode in {'EDIT_ARMATURE', 'POSE'}
 
     def execute(self, context):
-        match (self.bone_type, context.mode):
+        match(self.bone_type, context.mode):
             # Armature in edit mode:
-            case ('POSE', 'EDIT_ARMATURE'):
+            case('POSE', 'EDIT_ARMATURE'):
                 self.report({'ERROR'}, "Go to pose mode to copy pose bone colors")
                 return {'OPERATOR_CANCELLED'}
-            case ('EDIT', 'EDIT_ARMATURE'):
+            case('EDIT', 'EDIT_ARMATURE'):
                 bone_source = context.active_bone
                 bones_dest = context.selected_bones
                 pose_bones_to_check = []
 
             # Armature in pose mode:
-            case ('POSE', 'POSE'):
+            case('POSE', 'POSE'):
                 bone_source = context.active_pose_bone
                 bones_dest = context.selected_pose_bones
                 pose_bones_to_check = []
-            case ('EDIT', 'POSE'):
+            case('EDIT', 'POSE'):
                 bone_source = context.active_bone
                 pose_bones_to_check = context.selected_pose_bones
                 bones_dest = [posebone.bone for posebone in pose_bones_to_check]
@@ -547,7 +559,7 @@ classes = (
     NLA_OT_bake,
     ClearUselessActions,
     UpdateAnimatedTransformConstraint,
-    ARMATURE_OT_sync_bone_color_to_selected,
+    ARMATURE_OT_copy_bone_color_to_selected,
     ARMATURE_OT_collection_solo_visibility,
     ARMATURE_OT_collection_show_all,
 )

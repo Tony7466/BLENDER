@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'3d6713e0867a')\n"
+"Project-Id-Version: Blender 4.0.0 Beta (b'551927bbe355')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-03 09:29:22\n"
+"POT-Creation-Date: 2023-11-06 12:01:38\n"
 "PO-Revision-Date: 2022-08-19 12:33+0700\n"
 "Last-Translator: HỒ NHỰT CHÂU <su_huynh@yahoo.com>\n"
 "Language-Team: Tỉnh An Giang, Đình Bình Phú\n"
@@ -318,20 +318,20 @@ msgid "Full"
 msgstr "Đầy"
 
 
+msgid "On"
+msgstr "Mở"
+
+
+msgid "Auto"
+msgstr "Tự Động"
+
+
 msgid "Distribute memory across devices"
 msgstr "Phân phối bộ nhớ giữa các thiết bị"
 
 
 msgid "Make more room for large scenes to fit by distributing memory across interconnected devices (e.g. via NVLink) rather than duplicating it"
 msgstr "Cho chỗ chứa vừa đủ cho cảnh lớn bằng phân phối bộ nhớ giữa các thiết bị được liên kết với nhau (ví dụ bằng NVLink) thay thế sao chép nó"
-
-
-msgid "MetalRT (Experimental)"
-msgstr "MetalRT (Đồ Thí Nghiệm)"
-
-
-msgid "MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better performance in specific cases. However this support is experimental and some scenes may render incorrectly"
-msgstr "Dùng MetalRT cho dò tia để giảm sử dụng bộ nhớ cho cảnh có đường cong nhiều,Nhưng nó là đồ thí nghiệm và có lẽ kết xuất một số cảnh không đúng"
 
 
 msgid "KHR_materials_variants_ui"
@@ -1925,10 +1925,6 @@ msgstr "Tự Do"
 
 msgid "Aligned"
 msgstr "Sắp Xếp"
-
-
-msgid "Auto"
-msgstr "Tự Động"
 
 
 msgid "Handle 2"
@@ -31090,6 +31086,14 @@ msgid "Base type to define alpha transparency modifiers"
 msgstr "Loại cơ sở cho chỉ định bộ điều chỉnh độ đục"
 
 
+msgid "Modifier Name"
+msgstr "Tên Bộ Điều Chỉnh"
+
+
+msgid "Name of the modifier"
+msgstr "Tên của bộ điều chỉnh"
+
+
 msgid "Along Stroke"
 msgstr "Theo Nét"
 
@@ -31128,14 +31132,6 @@ msgstr "Dùng ánh xạ bậc một"
 
 msgid "Use curve mapping"
 msgstr "Dùng ánh xạ đường cong"
-
-
-msgid "Modifier Name"
-msgstr "Tên Bộ Điều Chỉnh"
-
-
-msgid "Name of the modifier"
-msgstr "Tên của bộ điều chỉnh"
 
 
 msgid "Modifier Type"
@@ -47121,6 +47117,10 @@ msgid "Show All"
 msgstr "Hiện Hết"
 
 
+msgid "Pose Bone"
+msgstr "Xương Dạng Đứng"
+
+
 msgctxt "Operator"
 msgid "Delete Selected Bone(s)"
 msgstr "Xóa Xương Được Chọn"
@@ -47479,10 +47479,6 @@ msgstr "-X đến +X"
 
 msgid "+X to -X"
 msgstr "+X đến -X"
-
-
-msgid "Pose Bone"
-msgstr "Xương Dạng Đứng"
 
 
 msgctxt "Operator"
@@ -50830,8 +50826,20 @@ msgstr "Biến đổi xoay thành Euler ZYX"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Xuất PLY"
+msgid "Export STL"
+msgstr "Xuất STL"
+
+
+msgid "Save STL triangle mesh data"
+msgstr "Lưu dữ liệu mạng lưới tam giác STL"
+
+
+msgid "Ascii"
+msgstr "Ascii"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Lưu tập tin bằng định dạng tập tin ASCII"
 
 
 msgid "X Forward"
@@ -50878,39 +50886,6 @@ msgid "-Z Up"
 msgstr "-Z Trên"
 
 
-msgid "ASCII"
-msgstr "ASCII"
-
-
-msgid "Apply Modifiers"
-msgstr "Áp Dụng Bộ Điều Chỉnh"
-
-
-msgid "Selection Only"
-msgstr "Chỉ Vật Chọn"
-
-
-msgid "Export selected objects only"
-msgstr "Chỉ xuất vật thể được chọn"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Xuất STL"
-
-
-msgid "Save STL triangle mesh data"
-msgstr "Lưu dữ liệu mạng lưới tam giác STL"
-
-
-msgid "Ascii"
-msgstr "Ascii"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Lưu tập tin bằng định dạng tập tin ASCII"
-
-
 msgid "Batch Mode"
 msgstr "Chế Độ Xấp"
 
@@ -50931,6 +50906,10 @@ msgid "Export in this reference space"
 msgstr "Xuất bằng không gian tham chiếu"
 
 
+msgid "Apply Modifiers"
+msgstr "Áp Dụng Bộ Điều Chỉnh"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "Áp dụng bộ điều chỉnh trước lưu"
 
@@ -50941,6 +50920,14 @@ msgstr "Đơn Vị Cảnh"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "Áp dụng đơn vị của cảnh (tùy chỉ định bằng phóng to đơn vị) với dữ liệu xuất"
+
+
+msgid "Selection Only"
+msgstr "Chỉ Vật Chọn"
+
+
+msgid "Export selected objects only"
+msgstr "Chỉ xuất vật thể được chọn"
 
 
 msgctxt "Operator"
@@ -51429,10 +51416,6 @@ msgid "Apply sampling to all animations"
 msgstr "Áp dụng lấy mẫu vật cho tất cả hoạt hình"
 
 
-msgid "Output format and embedding options. Binary is most efficient, but JSON (embedded or separate) may be easier to edit later"
-msgstr "Định dạng ngõ ra và tùy chọn nhét đồ. Nhị phận có hiệu qủa cao nhất, nhưng JSON (được nhét vào hay để riêng) có lẽ dễ biên tập hơn trong tương lai"
-
-
 msgid "glTF Binary (.glb)"
 msgstr "Nhị Phận glTF (.glb)"
 
@@ -51447,14 +51430,6 @@ msgstr "Riêng glTF (.glb + .bin + chất liệu)"
 
 msgid "Exports multiple files, with separate JSON, binary and texture data. Easiest to edit later"
 msgstr "Xuất nhiều tập tin, với dữ liệu JSON, nhị phận và chất liệu riêng. Dễ nhất để biên tập thời sau"
-
-
-msgid "glTF Embedded (.gltf)"
-msgstr "Nhét glTF (.gltf)"
-
-
-msgid "Exports a single file, with all data packed in JSON. Less efficient than binary, but easier to edit later"
-msgstr "Xuất một tập tin, với tất cả dữ liệu được gói bằng JSON. Hiệu qủa thấp hơn so với nhị phận, nhưng biên tập dễ hơn thời sau"
 
 
 msgid "Limit to Playback Range"
@@ -51647,18 +51622,6 @@ msgstr "Ghi Nhớ Cài Đặt Xuất"
 
 msgid "Store glTF export settings in the Blender project"
 msgstr "Chứa cài đặt xuất glTF trong dự án Blender"
-
-
-msgid "Material Groups"
-msgstr "Nhóm Vật Liệu"
-
-
-msgid "Generate an OBJ group for each part of a geometry using a different material"
-msgstr "Chế tạo một nhóm OBJ cho mỗi bộ phận của một hình dạng bằng dùng một vật liệu khác"
-
-
-msgid "Smooth Groups"
-msgstr "Nhóm Mịn"
 
 
 msgctxt "Operator"
@@ -56285,11 +56248,6 @@ msgstr "Sử dụng kênh độ đục cho trong suốt"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Nhập PLY"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "Nhập STL"
 
@@ -56506,10 +56464,6 @@ msgstr "Mức Log"
 
 msgid "The glTF format requires discontinuous normals, UVs, and other vertex attributes to be stored as separate vertices, as required for rendering on typical graphics hardware. This option attempts to combine co-located vertices where possible. Currently cannot combine verts with different normals"
 msgstr "Định dạng glTF yêu cầu những pháp tuyến không liên tiếp, tọa độ UV, và đặc trưng điểm khác được chứa bởi đỉnh riêng biệt, theo như cầu của phần cứng đồ họa bình thường. Tùy chọn này thử gồm lại đỉnh ở cùng chỗ. Hiện tại chưa được gồm đỉnh có pháp tuyến khác nhau"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "Nhập nhóm OBJ thành nhóm đỉnh"
 
 
 msgctxt "Operator"
@@ -72358,10 +72312,6 @@ msgid "Export the UV layout to a bitmap image"
 msgstr "Xuất cài đặt UV vào một mảng ảnh"
 
 
-msgid "Modified"
-msgstr "Đã Sửa Đổi"
-
-
 msgid "Exports UVs from the modified mesh"
 msgstr "Xuất UV từ mạng lưới được sửa đổi"
 
@@ -75146,6 +75096,10 @@ msgid "Export Material Groups"
 msgstr "Xuất Nhóm Vật Liệu"
 
 
+msgid "Generate an OBJ group for each part of a geometry using a different material"
+msgstr "Chế tạo một nhóm OBJ cho mỗi bộ phận của một hình dạng bằng dùng một vật liệu khác"
+
+
 msgid "Export Materials"
 msgstr "Xuất vật liệu"
 
@@ -75263,6 +75217,10 @@ msgid "Resize the objects to keep bounding box under this value. Value 0 disable
 msgstr "Đổi cỡ thước vật thể cho giữ hộp bao Quang nhỏ hơn giá trị này. Đặc = 0 để tắt kẹp lại"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "Nhập nhóm OBJ thành nhóm đỉnh"
+
+
 msgctxt "Operator"
 msgid "Open"
 msgstr "Mở"
@@ -75338,6 +75296,16 @@ msgstr "Nhãn Giao Diện"
 
 msgid "Open a path in a file browser"
 msgstr "Mở một đường dẫn trong một trình duyệt tập tin"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Xuất PLY"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Nhập PLY"
 
 
 msgctxt "Operator"
@@ -87425,10 +87393,6 @@ msgid "Sound data-block used by this sequence"
 msgstr "Cục dữ liệu âm thanh được trình tự này dùng"
 
 
-msgid "Multiply playback speed"
-msgstr "Nhân tốc độ hát lại"
-
-
 msgid "Playback volume of the sound"
 msgstr "Âm lượng hát lại âm thanh"
 
@@ -93323,10 +93287,6 @@ msgid "Shade for bones corresponding to a locked weight group during painting"
 msgstr "Khi đang sơn, màu cho các xương của một nhóm quyền lượng được khóa"
 
 
-msgid "Bone Pose"
-msgstr "Dạng Đứng Xương"
-
-
 msgid "Bone Pose Active"
 msgstr "Dạng Đứng Xương Hoạt Động"
 
@@ -98794,10 +98754,6 @@ msgid "Add a new Variant Slot"
 msgstr "Thêm một Lhe Biến Thể mới"
 
 
-msgid "Curves as NURBS"
-msgstr "Đường Cong sang NURBS"
-
-
 msgid "Multiple selected objects. Only the active one will be evaluated"
 msgstr "Được chọn nhiều vật thể. Chỉ sẽ đánh giá vật thể hoạt động"
 
@@ -99056,10 +99012,6 @@ msgstr "Không kiếm được đồ kèm '{}'!"
 
 msgid "Message extraction process failed!"
 msgstr "Qúa trịnh rút tin nhắn bị thất bại!"
-
-
-msgid "Info written to {} text datablock!"
-msgstr "Thông tin được lưu vào cục dữ liệu văn bản {}"
 
 
 msgid "Could not init languages data!"
@@ -102181,13 +102133,13 @@ msgstr "Giữa Ký Hiệu Được Chọn"
 
 
 msgctxt "Operator"
-msgid "Paste Flipped"
-msgstr "Dán Kiểu Lật"
+msgid "Clean Channels"
+msgstr "Làm Sạch Kênh"
 
 
 msgctxt "Operator"
-msgid "Clean Channels"
-msgstr "Làm Sạch Kênh"
+msgid "Paste Flipped"
+msgstr "Dán Kiểu Lật"
 
 
 msgctxt "Operator"
@@ -109221,6 +109173,10 @@ msgid "Triangulated Mesh"
 msgstr "Mạng Lưới Tam Giác Hóa"
 
 
+msgid "Curves as NURBS"
+msgstr "Đường Cong sang NURBS"
+
+
 msgid "PBR Extensions"
 msgstr "Đồ Mở Rộng PBR"
 
@@ -109233,8 +109189,20 @@ msgid "Object Groups"
 msgstr "Nhóm Vật Thể"
 
 
+msgid "Material Groups"
+msgstr "Nhóm Vật Liệu"
+
+
+msgid "Smooth Groups"
+msgstr "Nhóm Mịn"
+
+
 msgid "Smooth Group Bitflags"
 msgstr "Cờ Bit Nhóm Mịn"
+
+
+msgid "ASCII"
+msgstr "ASCII"
 
 
 msgid "File References"
@@ -111593,6 +111561,14 @@ msgid "Move asset out of any catalog"
 msgstr "Di chuyển tích sản ra khỏi bất cứ danh mục nào"
 
 
+msgid "Today"
+msgstr "Ngày nay"
+
+
+msgid "Yesterday"
+msgstr "Hôm qua"
+
+
 msgid "File path"
 msgstr "Đường dẫn tập tin"
 
@@ -111607,14 +111583,6 @@ msgid ""
 msgstr ""
 "Thư Viện Tích Sản là thư mục địa phương có thể chứa tập tin .blend có tích sản ở trong.\n"
 "Quản lý những Thư Viện Tích Sản từ phần Đường Dẫn trong Tùy Chọn"
-
-
-msgid "Today"
-msgstr "Ngày nay"
-
-
-msgid "Yesterday"
-msgstr "Hôm qua"
 
 
 msgid "File does not exist"
@@ -115900,10 +115868,6 @@ msgid "Cr"
 msgstr "Cr"
 
 
-msgid "On"
-msgstr "Mở"
-
-
 msgid "Val"
 msgstr "Giá Trị"
 
@@ -116984,16 +116948,8 @@ msgid "Subsurface Anisotropy"
 msgstr "Dị Hướng Hạ Mặt"
 
 
-msgid "Specular Tint"
-msgstr "Màu Nhiễm Cao Quang"
-
-
 msgid "Anisotropic Rotation"
 msgstr "Xoay Dị Hướng"
-
-
-msgid "Sheen Tint"
-msgstr "Nhiễm Xán Lạn"
 
 
 msgid "Emission Color"
@@ -117463,6 +117419,10 @@ msgstr "không thể mở tập tin"
 
 msgid "File Not Found"
 msgstr "Không Tìm Được Tập Tin"
+
+
+msgid "Modified"
+msgstr "Đã Sửa Đổi"
 
 
 msgid "Save the current file in the desired location but do not make the saved file active"

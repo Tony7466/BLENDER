@@ -36,7 +36,7 @@
 #include "BKE_mesh_mirror.hh"
 #include "BKE_modifier.h"
 #include "BKE_multires.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_report.h"
@@ -744,11 +744,11 @@ static void do_mask_by_color_contiguous_update_node(Object *ob,
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    const float current_mask = *vd.mask;
+    const float current_mask = vd.mask;
     const float new_mask = mask_by_color_floodfill[vd.index];
     const float mask = sculpt_mask_by_color_final_mask_get(
         current_mask, new_mask, invert, preserve_mask);
-    if (current_mask == current_mask) {
+    if (current_mask == mask) {
       continue;
     }
 
@@ -857,11 +857,11 @@ static void do_mask_by_color_task(Object *ob,
     float col[4];
     SCULPT_vertex_color_get(ss, vd.vertex, col);
 
-    const float current_mask = *vd.mask;
+    const float current_mask = vd.mask;
     const float new_mask = sculpt_mask_by_color_delta_get(active_color, col, threshold, invert);
     const float mask = sculpt_mask_by_color_final_mask_get(
         current_mask, new_mask, invert, preserve_mask);
-    if (current_mask == *vd.mask) {
+    if (current_mask == mask) {
       continue;
     }
 
@@ -1014,10 +1014,10 @@ static void sculpt_bake_cavity_exec_task(Object *ob,
   SCULPT_undo_push_node(ob, node, SCULPT_UNDO_MASK);
 
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, automasking, &automask_data, node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     float automask = SCULPT_automasking_factor_get(automasking, ss, vd.vertex, &automask_data);
     float mask;
@@ -1027,22 +1027,22 @@ static void sculpt_bake_cavity_exec_task(Object *ob,
         mask = automask;
         break;
       case AUTOMASK_BAKE_MULTIPLY:
-        mask = *vd.mask * automask;
+        mask = vd.mask * automask;
         break;
         break;
       case AUTOMASK_BAKE_DIVIDE:
-        mask = automask > 0.00001f ? *vd.mask / automask : 0.0f;
+        mask = automask > 0.00001f ? vd.mask / automask : 0.0f;
         break;
         break;
       case AUTOMASK_BAKE_ADD:
-        mask = *vd.mask + automask;
+        mask = vd.mask + automask;
         break;
       case AUTOMASK_BAKE_SUBTRACT:
-        mask = *vd.mask - automask;
+        mask = vd.mask - automask;
         break;
     }
 
-    mask = *vd.mask + (mask - *vd.mask) * factor;
+    mask = vd.mask + (mask - vd.mask) * factor;
     CLAMP(mask, 0.0f, 1.0f);
 
     SCULPT_mask_vert_set(BKE_pbvh_type(ss->pbvh), mask_write, mask, vd);

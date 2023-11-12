@@ -1327,7 +1327,7 @@ static void widget_draw_preview(BIFIconID icon, float alpha, const rcti *rect)
 
   const int w = BLI_rcti_size_x(rect);
   const int h = BLI_rcti_size_y(rect);
-  const int size = MIN2(w, h) - PREVIEW_PAD * 2;
+  const int size = std::min(w, h) - PREVIEW_PAD * 2;
 
   if (size > 0) {
     const int x = rect->xmin + w / 2 - size / 2;
@@ -1393,7 +1393,7 @@ static void widget_draw_icon(
     if (but->flag & UI_SELECT) {
       /* pass */
     }
-    else if (but->flag & UI_ACTIVE) {
+    else if (but->flag & UI_HOVER) {
       /* pass */
     }
     else {
@@ -1449,11 +1449,11 @@ static void widget_draw_icon(
     const bool has_theme = UI_icon_get_theme_color(icon, color);
 
     /* to indicate draggable */
-    if (ui_but_drag_is_draggable(but) && (but->flag & UI_ACTIVE)) {
+    if (ui_but_drag_is_draggable(but) && (but->flag & UI_HOVER)) {
       UI_icon_draw_ex(
           xs, ys, icon, aspect, 1.25f, 0.0f, color, has_theme, &but->icon_overlay_text);
     }
-    else if (but->flag & (UI_ACTIVE | UI_SELECT | UI_SELECT_DRAW)) {
+    else if (but->flag & (UI_HOVER | UI_SELECT | UI_SELECT_DRAW)) {
       UI_icon_draw_ex(
           xs, ys, icon, aspect, alpha, 0.0f, color, has_theme, &but->icon_overlay_text);
     }
@@ -1656,7 +1656,14 @@ float UI_text_clip_middle_ex(const uiFontStyle *fstyle,
     strwidth = BLF_width(fstyle->uifont_id, str, max_len);
   }
 
-  BLI_assert((strwidth <= (okwidth + 1)) || (okwidth <= 0.0f));
+  /* The following assert is meant to catch code changes that break this function's result, but
+   * some wriggle room is fine and needed. Just a couple pixels for large sizes and with some
+   * settings like "Full" hinting which can move features both left and right a pixel. We could
+   * probably reduce this to one pixel if we consolidate text output with length measuring. But
+   * our text string lengths include the last character's right-side bearing anyway, so a string
+   * can be longer by that amount and still fit visibly in the required space. */
+
+  BLI_assert((strwidth <= (okwidth + 2)) || (okwidth <= 0.0f));
 
   return strwidth;
 }
@@ -2024,7 +2031,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
       }
     }
 
-    /* text cursor */
+    /* Text cursor position. */
     but_pos_ofs = but->pos;
 
 #ifdef WITH_INPUT_IME
@@ -2034,14 +2041,56 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     }
 #endif
 
+    /* Draw text cursor (caret). */
     if (but->pos >= but->ofs) {
-      int t;
+      int t = 0;
+
       if (drawstr[0] != 0) {
-        t = BLF_width(fstyle->uifont_id, drawstr + but->ofs, but_pos_ofs - but->ofs);
+        const int pos = but_pos_ofs - but->ofs;
+        rcti bounds;
+
+        /* Find right edge of previous character if available. */
+        int prev_right_edge = 0;
+        bool has_prev = false;
+        if (pos > 0) {
+          if (BLF_str_offset_to_glyph_bounds(
+                  fstyle->uifont_id, drawstr + but->ofs, pos - 1, &bounds)) {
+            if (bounds.xmax > bounds.xmin) {
+              prev_right_edge = bounds.xmax;
+            }
+            else {
+              /* Some characters, like space, have empty bounds. */
+              prev_right_edge = BLF_width(fstyle->uifont_id, drawstr + but->ofs, pos);
+            }
+            has_prev = true;
+          }
+        }
+
+        /* Find left edge of next character if available. */
+        int next_left_edge = 0;
+        bool has_next = false;
+        if (pos < strlen(drawstr + but->ofs)) {
+          if (BLF_str_offset_to_glyph_bounds(fstyle->uifont_id, drawstr + but->ofs, pos, &bounds))
+          {
+            next_left_edge = bounds.xmin;
+            has_next = true;
+          }
+        }
+
+        if (has_next && !has_prev) {
+          /* Left of the first character. */
+          t = next_left_edge - U.pixelsize;
+        }
+        else if (has_prev && !has_next) {
+          /* Right of the last character. */
+          t = prev_right_edge + U.pixelsize;
+        }
+        else if (has_prev && has_next) {
+          /* Middle of the string, so in between. */
+          t = (prev_right_edge + next_left_edge) / 2;
+        }
       }
-      else {
-        t = 0;
-      }
+
       /* We are drawing on top of widget bases. Flush cache. */
       GPU_blend(GPU_BLEND_ALPHA);
       UI_widgetbase_draw_cache_flush();
@@ -2184,6 +2233,22 @@ static void widget_draw_text(const uiFontStyle *fstyle,
           }
         }
       }
+    }
+  }
+
+  /* Show placeholder text if the input is empty and not being edited. */
+  if (!drawstr[0] && !but->editstr && ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_SEARCH_MENU)) {
+    const char *placeholder = ui_but_placeholder_get(but);
+    if (placeholder && placeholder[0]) {
+      uiFontStyleDraw_Params params{};
+      params.align = align;
+      uiFontStyle style = *fstyle;
+      style.shadow = 0;
+      uchar col[4];
+      copy_v4_v4_uchar(col, wcol->text);
+      col[3] *= 0.33f;
+      UI_fontstyle_draw_ex(
+          &style, rect, placeholder, strlen(placeholder), col, &params, nullptr, nullptr, nullptr);
     }
   }
 
@@ -2559,8 +2624,8 @@ static void widget_state(uiWidgetType *wt, const uiWidgetStateInfo *state, eUIEm
     /* Add "hover" highlight. Ideally this could apply in all cases,
      * even if UI_SELECT. But currently this causes some flickering
      * as buttons can be created and updated without respect to mouse
-     * position and so can draw without UI_ACTIVE set.  See D6503. */
-    if (state->but_flag & UI_ACTIVE) {
+     * position and so can draw without UI_HOVER set.  See D6503. */
+    if (state->but_flag & UI_HOVER) {
       widget_active_color(&wt->wcol);
     }
   }
@@ -2682,8 +2747,7 @@ static void widget_state_pie_menu_item(uiWidgetType *wt,
 {
   wt->wcol = *(wt->wcol_theme);
 
-  /* active and disabled (not so common) */
-  if ((state->but_flag & UI_BUT_DISABLED) && (state->but_flag & UI_ACTIVE)) {
+  if ((state->but_flag & UI_BUT_DISABLED) && (state->but_flag & UI_HOVER)) {
     color_blend_v3_v3(wt->wcol.text, wt->wcol.text_sel, 0.5f);
     /* draw the backdrop at low alpha, helps navigating with keys
      * when disabled items are active */
@@ -2692,7 +2756,7 @@ static void widget_state_pie_menu_item(uiWidgetType *wt,
   }
   else {
     /* regular active */
-    if (state->but_flag & (UI_SELECT | UI_ACTIVE)) {
+    if (state->but_flag & (UI_SELECT | UI_HOVER)) {
       copy_v3_v3_uchar(wt->wcol.text, wt->wcol.text_sel);
     }
     else if (state->but_flag & (UI_BUT_DISABLED | UI_BUT_INACTIVE)) {
@@ -2703,7 +2767,7 @@ static void widget_state_pie_menu_item(uiWidgetType *wt,
     if (state->but_flag & UI_SELECT) {
       copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.inner_sel);
     }
-    else if (state->but_flag & UI_ACTIVE) {
+    else if (state->but_flag & UI_HOVER) {
       copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.item);
     }
   }
@@ -2716,7 +2780,7 @@ static void widget_state_menu_item(uiWidgetType *wt,
 {
   wt->wcol = *(wt->wcol_theme);
 
-  if ((state->but_flag & UI_BUT_DISABLED) && (state->but_flag & UI_ACTIVE)) {
+  if ((state->but_flag & UI_BUT_DISABLED) && (state->but_flag & UI_HOVER)) {
     /* Hovering over disabled item. */
     wt->wcol.text[3] = 128;
     color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.5f);
@@ -2724,11 +2788,11 @@ static void widget_state_menu_item(uiWidgetType *wt,
   }
   else if (state->but_flag & UI_BUT_DISABLED) {
     /* Regular disabled. */
-    color_blend_v3_v3(wt->wcol.text, wt->wcol.inner, 0.5f);
+    wt->wcol.text[3] = 128;
   }
   else if (state->but_flag & UI_BUT_INACTIVE) {
     /* Inactive. */
-    if (state->but_flag & UI_ACTIVE) {
+    if (state->but_flag & UI_HOVER) {
       color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.2f);
       wt->wcol.inner[3] = 255;
     }
@@ -2746,7 +2810,7 @@ static void widget_state_menu_item(uiWidgetType *wt,
     copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.inner_sel);
     copy_v4_v4_uchar(wt->wcol.text, wt->wcol.text_sel);
   }
-  else if (state->but_flag & UI_ACTIVE) {
+  else if (state->but_flag & UI_HOVER) {
     /* Regular hover. */
     color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.2f);
     copy_v3_v3_uchar(wt->wcol.text, wt->wcol.text_sel);
@@ -3380,7 +3444,7 @@ static void widget_numbut_draw(uiWidgetColors *wcol,
   }
 
   /* decoration */
-  if ((state->but_flag & UI_ACTIVE) && !state->is_text_input) {
+  if ((state->but_flag & UI_HOVER) && !state->is_text_input) {
     uiWidgetColors wcol_zone;
     uiWidgetBase wtb_zone;
     rcti rect_zone;
@@ -3393,7 +3457,7 @@ static void widget_numbut_draw(uiWidgetColors *wcol,
 
     wcol_zone = *wcol;
     copy_v3_v3_uchar(wcol_zone.item, wcol->text);
-    if (state->but_drawflag & UI_BUT_ACTIVE_LEFT) {
+    if (state->but_drawflag & UI_BUT_HOVER_LEFT) {
       widget_active_color(&wcol_zone);
     }
 
@@ -3413,7 +3477,7 @@ static void widget_numbut_draw(uiWidgetColors *wcol,
 
     wcol_zone = *wcol;
     copy_v3_v3_uchar(wcol_zone.item, wcol->text);
-    if (state->but_drawflag & UI_BUT_ACTIVE_RIGHT) {
+    if (state->but_drawflag & UI_BUT_HOVER_RIGHT) {
       widget_active_color(&wcol_zone);
     }
 
@@ -3432,7 +3496,7 @@ static void widget_numbut_draw(uiWidgetColors *wcol,
 
     wcol_zone = *wcol;
     copy_v3_v3_uchar(wcol_zone.item, wcol->text);
-    if (!(state->but_drawflag & (UI_BUT_ACTIVE_LEFT | UI_BUT_ACTIVE_RIGHT))) {
+    if (!(state->but_drawflag & (UI_BUT_HOVER_LEFT | UI_BUT_HOVER_RIGHT))) {
       widget_active_color(&wcol_zone);
     }
 
@@ -3677,7 +3741,7 @@ static void widget_progress_type_bar(uiButProgress *but_progress,
   float w = factor * BLI_rcti_size_x(&rect_prog);
 
   /* Ensure minimum size. */
-  w = MAX2(w, ofs);
+  w = std::max(w, ofs);
 
   rect_bar.xmax = rect_bar.xmin + w;
 
@@ -4085,11 +4149,11 @@ static void widget_pulldownbut(uiWidgetColors *wcol,
   float back[4];
   UI_GetThemeColor4fv(TH_BACK, back);
 
-  if ((state->but_flag & UI_ACTIVE) || (back[3] < 1.0f)) {
+  if ((state->but_flag & UI_HOVER) || (back[3] < 1.0f)) {
     uiWidgetBase wtb;
     const float rad = widget_radius_from_zoom(zoom, wcol);
 
-    if (state->but_flag & UI_ACTIVE) {
+    if (state->but_flag & UI_HOVER) {
       copy_v4_v4_uchar(wcol->inner, wcol->inner_sel);
       copy_v3_v3_uchar(wcol->text, wcol->text_sel);
       copy_v3_v3_uchar(wcol->outline, wcol->inner);
@@ -4192,10 +4256,10 @@ static void widget_list_itembut(uiBut *but,
   if (but->type == UI_BTYPE_VIEW_ITEM) {
     uiButViewItem *item_but = static_cast<uiButViewItem *>(but);
     if (item_but->draw_width > 0) {
-      BLI_rcti_resize_x(&draw_rect, item_but->draw_width);
+      BLI_rcti_resize_x(&draw_rect, zoom * item_but->draw_width);
     }
     if (item_but->draw_height > 0) {
-      BLI_rcti_resize_y(&draw_rect, item_but->draw_height);
+      BLI_rcti_resize_y(&draw_rect, zoom * item_but->draw_height);
     }
   }
 
@@ -4207,7 +4271,7 @@ static void widget_list_itembut(uiBut *but,
   const float rad = widget_radius_from_zoom(zoom, wcol);
   round_box_edges(&wtb, UI_CNR_ALL, &draw_rect, rad);
 
-  if (state->but_flag & UI_ACTIVE && !(state->but_flag & UI_SELECT)) {
+  if (state->but_flag & UI_HOVER && !(state->but_flag & UI_SELECT)) {
     copy_v3_v3_uchar(wcol->inner, wcol->text);
     wcol->inner[3] = 20;
   }
@@ -5091,7 +5155,7 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
 
 #ifdef USE_UI_POPOVER_ONCE
   if (but->block->flag & UI_BLOCK_POPOVER_ONCE) {
-    if ((but->flag & UI_ACTIVE) && ui_but_is_popover_once_compat(but)) {
+    if ((but->flag & UI_HOVER) && ui_but_is_popover_once_compat(but)) {
       state.but_flag |= UI_BUT_ACTIVE_DEFAULT;
     }
   }

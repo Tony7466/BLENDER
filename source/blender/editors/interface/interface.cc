@@ -61,6 +61,7 @@
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern_run.h"
@@ -539,8 +540,8 @@ static void ui_block_bounds_calc_popup(
   const int height = BLI_rctf_size_y(&block->rect);
 
   /* avoid divide by zero below, caused by calling with no UI, but better not crash */
-  oldwidth = oldwidth > 0 ? oldwidth : MAX2(1, width);
-  oldheight = oldheight > 0 ? oldheight : MAX2(1, height);
+  oldwidth = oldwidth > 0 ? oldwidth : std::max(1, width);
+  oldheight = oldheight > 0 ? oldheight : std::max(1, height);
 
   /* offset block based on mouse position, user offset is scaled
    * along in case we resized the block in ui_block_bounds_calc_text */
@@ -1006,7 +1007,7 @@ static bool ui_but_update_from_old_block(const bContext *C,
     /* Stupid special case: The active button may be inside (as in, overlapped on top) a row
      * button which we also want to keep highlighted then. */
     if (ELEM(but->type, UI_BTYPE_VIEW_ITEM, UI_BTYPE_LISTROW)) {
-      flag_copy |= UI_ACTIVE;
+      flag_copy |= UI_HOVER;
     }
 
     but->flag = (but->flag & ~flag_copy) | (oldbut->flag & flag_copy);
@@ -2451,6 +2452,9 @@ bool ui_but_is_bool(const uiBut *but)
            UI_BTYPE_TOGGLE_N,
            UI_BTYPE_ICON_TOGGLE,
            UI_BTYPE_ICON_TOGGLE_N,
+           UI_BTYPE_CHECKBOX,
+           UI_BTYPE_CHECKBOX_N,
+           UI_BTYPE_BUT_TOGGLE,
            UI_BTYPE_TAB))
   {
     return true;
@@ -2489,7 +2493,8 @@ bool ui_but_is_unit(const uiBut *but)
   }
 
   if (unit->system == USER_UNIT_NONE) {
-    if (unit_type != PROP_UNIT_ROTATION) {
+    /* These types have units irrespective of scene units. */
+    if (!ELEM(unit_type, PROP_UNIT_ROTATION, PROP_UNIT_TIME_ABSOLUTE)) {
       return false;
     }
   }
@@ -2930,7 +2935,7 @@ void ui_but_string_get_ex(uiBut *but,
           BLI_snprintf(str, str_maxncpy, "%.*f", prec, value);
         }
         else {
-          BLI_snprintf(str, str_maxncpy, "%.*f", MAX2(0, prec - 2), value * 100);
+          BLI_snprintf(str, str_maxncpy, "%.*f", std::max(0, prec - 2), value * 100);
         }
       }
       else {
@@ -3477,6 +3482,10 @@ static void ui_but_free(const bContext *C, uiBut *but)
     MEM_freeN(but->hold_argN);
   }
 
+  if (but->placeholder) {
+    MEM_freeN(but->placeholder);
+  }
+
   ui_but_free_type_specific(but);
 
   if (but->active) {
@@ -3750,7 +3759,7 @@ static void ui_but_build_drawstr_float(uiBut *but, double value)
       STR_CONCATF(but->drawstr, slen, "%.*f", precision, value);
     }
     else {
-      STR_CONCATF(but->drawstr, slen, "%.*f%%", MAX2(0, precision - 2), value * 100);
+      STR_CONCATF(but->drawstr, slen, "%.*f%%", std::max(0, precision - 2), value * 100);
     }
   }
   else if (ui_but_is_unit(but)) {
@@ -5904,6 +5913,36 @@ void UI_but_disable(uiBut *but, const char *disabled_hint)
   }
 
   but->disabled_info = disabled_hint;
+}
+
+void UI_but_placeholder_set(uiBut *but, const char *placeholder_text)
+{
+  MEM_SAFE_FREE(but->placeholder);
+  but->placeholder = BLI_strdup_null(placeholder_text);
+}
+
+const char *ui_but_placeholder_get(uiBut *but)
+{
+  const char *placeholder = (but->placeholder) ? but->placeholder : nullptr;
+
+  if (!placeholder && but->rnaprop) {
+    if (but->type == UI_BTYPE_SEARCH_MENU) {
+      StructRNA *type = RNA_property_pointer_type(&but->rnapoin, but->rnaprop);
+      const short idcode = RNA_type_to_ID_code(type);
+      if (idcode != 0) {
+        RNA_enum_name(rna_enum_id_type_items, idcode, &placeholder);
+        placeholder = CTX_IFACE_(BLT_I18NCONTEXT_ID_ID, placeholder);
+      }
+      else if (type && !STREQ(RNA_struct_identifier(type), "UnknownType")) {
+        placeholder = RNA_struct_ui_name(type);
+      }
+    }
+    else if (but->type == UI_BTYPE_TEXT && but->icon == ICON_VIEWZOOM) {
+      placeholder = CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, "Search");
+    }
+  }
+
+  return placeholder;
 }
 
 void UI_but_type_set_menu_from_pulldown(uiBut *but)
