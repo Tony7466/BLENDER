@@ -118,6 +118,8 @@ public:
       def = { CallExpression::FunctionName::POW, 2 };
     } else if(token.value == "lerp") {
       def = { CallExpression::FunctionName::LERP, 3 };
+    } else if(token.value == "vec") {
+      def = { CallExpression::FunctionName::VEC, 3 };
     } else {
       throw new ParserError { token, "invalid function" };
     }

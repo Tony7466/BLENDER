@@ -3,9 +3,23 @@
 #include <memory>
 #include <cmath>
 
+class ScalarValue;
+class VectorValue;
+
 class Value {
 public:
-  virtual double get_double() const = 0;
+  virtual double get_scalar() const = 0;
+  virtual blender::double3 get_vector() const = 0;
+
+  virtual bool is_scalar() const
+  {
+    return false;
+  }
+
+  virtual bool is_vector() const
+  {
+    return false;
+  }
 
   virtual std::unique_ptr<Value> add(const Value *right) const = 0;
   virtual std::unique_ptr<Value> sub(const Value *right) const = 0;
@@ -19,20 +33,121 @@ public:
     return b->sub(a)->mul(t)->add(a);
   }
 
-  virtual std::unique_ptr<Value> add(const class DoubleValue *left) const = 0;
-  virtual std::unique_ptr<Value> sub(const class DoubleValue *left) const = 0;
-  virtual std::unique_ptr<Value> mul(const class DoubleValue *left) const = 0;
-  virtual std::unique_ptr<Value> div(const class DoubleValue *left) const = 0;
-  virtual std::unique_ptr<Value> pow(const class DoubleValue *left) const = 0;
+  static std::unique_ptr<Value> vec(const Value *x, const Value *y, const Value *z);
+
+  virtual std::unique_ptr<Value> add(const ScalarValue *left) const = 0;
+  virtual std::unique_ptr<Value> sub(const ScalarValue *left) const = 0;
+  virtual std::unique_ptr<Value> mul(const ScalarValue *left) const = 0;
+  virtual std::unique_ptr<Value> div(const ScalarValue *left) const = 0;
+  virtual std::unique_ptr<Value> pow(const ScalarValue *left) const = 0;
+
+  virtual std::unique_ptr<Value> add(const VectorValue *left) const = 0;
+  virtual std::unique_ptr<Value> sub(const VectorValue *left) const = 0;
+  virtual std::unique_ptr<Value> mul(const VectorValue *left) const = 0;
+  virtual std::unique_ptr<Value> div(const VectorValue *left) const = 0;
+  virtual std::unique_ptr<Value> pow(const VectorValue *left) const = 0;
 };
 
-class DoubleValue : public Value {
+class ScalarValue : public Value {
   const double value;
 
 public:
-  DoubleValue(double value) : value(value) {}
+  ScalarValue(double value) : value(value) {}
 
-  double get_double() const override {
+  bool is_scalar() const override
+  {
+    return true;
+  }
+
+  double get_scalar() const override {
+    return value;
+  }
+
+  blender::double3 get_vector() const override {
+    //TODO: create error type for this class
+    throw "get_vector() called for ScalarValue";
+  }
+
+  std::unique_ptr<Value> add(const Value *right) const override {
+    return right->add(this);
+  }
+
+  std::unique_ptr<Value> sub(const Value *right) const override {
+    return right->sub(this);
+  }
+
+  std::unique_ptr<Value> mul(const Value *right) const override {
+    return right->mul(this);
+  }
+
+  std::unique_ptr<Value> div(const Value *right) const override {
+    return right->div(this);
+  }
+
+  std::unique_ptr<Value> pow(const Value *right) const override {
+    return right->pow(this);
+  }
+
+  std::unique_ptr<Value> neg() const override {
+    return std::make_unique<ScalarValue>(-value);
+  }
+
+  // scalar op scalar
+  std::unique_ptr<Value> add(const ScalarValue *left) const override {
+    return std::make_unique<ScalarValue>(left->get_scalar() + value);
+  }
+
+  std::unique_ptr<Value> sub(const ScalarValue *left) const override {
+    return std::make_unique<ScalarValue>(left->get_scalar() - value);
+  }
+
+  std::unique_ptr<Value> mul(const ScalarValue *left) const override {
+    return std::make_unique<ScalarValue>(left->get_scalar() * value);
+  }
+
+  std::unique_ptr<Value> div(const ScalarValue *left) const override {
+    return std::make_unique<ScalarValue>(left->get_scalar() / value);
+  }
+
+  std::unique_ptr<Value> pow(const ScalarValue *left) const override {
+    return std::make_unique<ScalarValue>(std::pow(left->get_scalar(), value));
+  }
+
+  // vector op scalar
+  std::unique_ptr<Value> add(const VectorValue *left) const override {
+    throw "invalid operation: VectorValue + ScalarValue";
+  }
+
+  std::unique_ptr<Value> sub(const VectorValue *left) const override {
+    throw "invalid operation: VectorValue - ScalarValue";
+  }
+
+  std::unique_ptr<Value> mul(const VectorValue *left) const override;
+
+  std::unique_ptr<Value> div(const VectorValue *left) const override;
+
+  std::unique_ptr<Value> pow(const VectorValue *left) const override {
+    throw "invalid operation: pow(VectorValue, ScalarValue)";
+  }
+};
+
+class VectorValue : public Value {
+  const blender::double3 value;
+
+public:
+  VectorValue(blender::double3 value) : value(value) {}
+
+  bool is_vector() const override
+  {
+    return true;
+  }
+
+  double get_scalar() const override {
+    //TODO: create error type for this class
+    throw "get_scalar() called for VectorValue";
+  }
+
+  blender::double3 get_vector() const override {
     return value;
   }
 
@@ -56,27 +171,64 @@ public:
     return right->pow(this);
   }
 
-  std::unique_ptr<Value> add(const DoubleValue *left) const override {
-    return std::make_unique<DoubleValue>(left->get_double() + value);
-  }
-
-  std::unique_ptr<Value> sub(const DoubleValue *left) const override {
-    return std::make_unique<DoubleValue>(left->get_double() - value);
-  }
-
-  std::unique_ptr<Value> mul(const DoubleValue *left) const override {
-    return std::make_unique<DoubleValue>(left->get_double() * value);
-  }
-
-  std::unique_ptr<Value> div(const DoubleValue *left) const override {
-    return std::make_unique<DoubleValue>(left->get_double() / value);
-  }
-
-  std::unique_ptr<Value> pow(const DoubleValue *left) const override {
-    return std::make_unique<DoubleValue>(std::pow(left->get_double(), value));
-  }
-
   std::unique_ptr<Value> neg() const override {
-    return std::make_unique<DoubleValue>(-value);
+    return std::make_unique<VectorValue>(-value);
+  }
+
+  // vector op vector
+  std::unique_ptr<Value> add(const VectorValue *left) const override {
+    return std::make_unique<VectorValue>(left->get_vector() + value);
+  }
+
+  std::unique_ptr<Value> sub(const VectorValue *left) const override {
+    return std::make_unique<VectorValue>(left->get_vector() - value);
+  }
+
+  std::unique_ptr<Value> mul(const VectorValue *left) const override {
+    throw "invalid operation: VectorValue * VectorValue";
+  }
+
+  std::unique_ptr<Value> div(const VectorValue *left) const override {
+    throw "invalid operation: VectorValue / VectorValue";
+  }
+
+  std::unique_ptr<Value> pow(const VectorValue *left) const override {
+    throw "invalid operation: pow(VectorValue, VectorValue)";
+  }
+
+  // vector op scalar
+  std::unique_ptr<Value> add(const ScalarValue *left) const override {
+    throw "invalid operation: ScalarValue + VectorValue";
+  }
+
+  std::unique_ptr<Value> sub(const ScalarValue *left) const override {
+    throw "invalid operation: ScalarValue - VectorValue";
+  }
+
+  std::unique_ptr<Value> mul(const ScalarValue *left) const override {
+    return std::make_unique<VectorValue>(left->get_scalar() * value);
+  }
+
+  std::unique_ptr<Value> div(const ScalarValue *left) const override {
+    return std::make_unique<VectorValue>(left->get_scalar() / value);
+  }
+
+  std::unique_ptr<Value> pow(const ScalarValue *left) const override {
+    throw "invalid operation: pow(ScalarValue, VectorValue)";
   }
 };
+
+std::unique_ptr<Value> Value::vec(const Value *x, const Value *y, const Value *z)
+{
+  return std::make_unique<VectorValue>(blender::double3(x->get_scalar(), y->get_scalar(), z->get_scalar()));
+}
+
+std::unique_ptr<Value> ScalarValue::mul(const VectorValue *left) const
+{
+  return std::make_unique<VectorValue>(left->get_vector() * value);
+}
+
+std::unique_ptr<Value> ScalarValue::div(const VectorValue *left) const
+{
+  return std::make_unique<VectorValue>(left->get_vector() / value);
+}

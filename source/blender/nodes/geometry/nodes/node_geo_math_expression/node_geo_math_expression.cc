@@ -12,6 +12,7 @@
 #include "BKE_material.h"
 
 #include "BLI_cpp_type.hh"
+//#include "BLI_math_vector_types.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -37,22 +38,43 @@ namespace blender::nodes::node_geo_math_expression_cc {
 
     Parser parser;
     std::set<std::string_view> variables;
+    std::unique_ptr<Expression> expr;
 
     printf("parsing: \"%s\"\n", storage.expression);
 
     try {
-      auto expr = parser.parse(storage.expression, &variables);
-
-      for(auto name : variables) {
-        b.add_input<decl::Float>(name);
-      }
+      expr = parser.parse(storage.expression, &variables);
     } catch(LexerError err) {
       printf("LexerError: column: %d, message: %s\n", (int)err.index+1, err.message);
+      return;
     } catch(ParserError err) {
       printf("ParserError: column: %d, message: %s\n", (int)err.token.index+1, err.message);
+      return;
     }
 
-    b.add_output<decl::Float>("Value");
+    for (auto name : variables) {
+      if (name[0] == 'v') {
+        b.add_input<decl::Vector>(name);
+      } else {
+        b.add_input<decl::Float>(name);
+      }
+    }
+
+    EvaluationContext ctx(nullptr);
+    std::unique_ptr<Value> value;
+
+    try {
+      value = expr->evaluate(ctx);
+
+      if (value->is_scalar()) {
+        b.add_output<decl::Float>("Value");
+      } else {
+        b.add_output<decl::Vector>("Value");
+      }
+    } catch (EvaluationError err) {
+      printf("EvaluationError: token: %.*s, message: %s\n", (int)err.expression->get_token().value.size(), err.expression->get_token().value.data(), err.message);
+      return;
+    }
   }
 
   static void node_geo_exec(GeoNodeExecParams params)
@@ -61,22 +83,34 @@ namespace blender::nodes::node_geo_math_expression_cc {
 
     // TODO: store the Expression generated in node_declare somewhere so re-parsing isn't needed
     Parser parser;
-    EvaluationContext ctx(params);
-    double value = 0.0;
+    std::unique_ptr<Expression> expr;
 
     try {
-      auto expr = parser.parse(storage.expression, nullptr);
-      EvaluationContext ctx(params);
-      value = expr->evaluate(ctx)->get_double();
+      expr = parser.parse(storage.expression, nullptr);
     } catch(LexerError err) {
       printf("LexerError: column: %d, message: %s\n", (int)err.index+1, err.message);
+      return;
     } catch(ParserError err) {
       printf("ParserError: column: %d, message: %s\n", (int)err.token.index+1, err.message);
-    } catch (EvaluationError err) {
-      printf("EvaluationError: token: %.*s, message: %s\n", (int)err.expression->get_token().value.size(), err.expression->get_token().value.data(), err.message);
+      return;
     }
 
-    params.set_output("Value", static_cast<float>(value));
+    EvaluationContext ctx(&params);
+    std::unique_ptr<Value> value;
+
+    try {
+      value = expr->evaluate(ctx);
+
+      if (value->is_scalar()) {
+        params.set_output("Value", static_cast<float>(value->get_scalar()));
+      } else {
+        auto d3 = value->get_vector();
+        params.set_output("Value", blender::float3(d3.x, d3.y, d3.z));
+      }
+    } catch (EvaluationError err) {
+      printf("EvaluationError: token: %.*s, message: %s\n", (int)err.expression->get_token().value.size(), err.expression->get_token().value.data(), err.message);
+      return;
+    }
   }
 
   static void node_layout(uiLayout *layout, bContext *c, PointerRNA *ptr)

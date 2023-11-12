@@ -59,7 +59,8 @@ class CallExpression : public Expression {
 public:
   enum class FunctionName {
     POW,
-    LERP
+    LERP,
+    VEC
   };
 
   struct FunctionDef {
@@ -81,11 +82,17 @@ public:
       evaluated_args.emplace_back(arg->evaluate(ctx));
     }
 
-    switch(def.name) {
-      case FunctionName::POW:
-        return evaluated_args[0]->pow(evaluated_args[1].get());
-      case FunctionName::LERP:
-        return Value::lerp(evaluated_args[0].get(), evaluated_args[1].get(), evaluated_args[2].get());
+    try {
+      switch (def.name) {
+        case FunctionName::POW:
+          return evaluated_args[0]->pow(evaluated_args[1].get());
+        case FunctionName::LERP:
+          return Value::lerp(evaluated_args[0].get(), evaluated_args[1].get(), evaluated_args[2].get());
+        case FunctionName::VEC:
+          return Value::vec(evaluated_args[0].get(), evaluated_args[1].get(), evaluated_args[2].get());
+      }
+    } catch (const char *err) {
+      throw EvaluationError{ this, err };
     }
 
     throw EvaluationError { this, "invalid function" };
@@ -101,9 +108,13 @@ public:
   std::unique_ptr<Value> evaluate(EvaluationContext &ctx) override {
     auto value = expr->evaluate(ctx);
 
-    switch(token.kind) {
-      case TokenKind::MINUS:
-        return value->neg();
+    try {
+      switch (token.kind) {
+        case TokenKind::MINUS:
+          return value->neg();
+      }
+    } catch (const char *err) {
+      throw EvaluationError{ this, err };
     }
 
     throw EvaluationError { this, "invalid unary operator" };
@@ -120,15 +131,19 @@ public:
     auto vleft = left->evaluate(ctx);
     auto vright = right->evaluate(ctx);
 
-    switch(token.kind) {
-      case TokenKind::PLUS:
-        return vleft->add(vright.get());
-      case TokenKind::MINUS:
-        return vleft->sub(vright.get());
-      case TokenKind::MUL:
-        return vleft->mul(vright.get());
-      case TokenKind::DIV:
-        return vleft->div(vright.get());
+    try {
+      switch (token.kind) {
+        case TokenKind::PLUS:
+          return vleft->add(vright.get());
+        case TokenKind::MINUS:
+          return vleft->sub(vright.get());
+        case TokenKind::MUL:
+          return vleft->mul(vright.get());
+        case TokenKind::DIV:
+          return vleft->div(vright.get());
+      }
+    } catch (const char *err) {
+      throw EvaluationError{ this, err };
     }
 
     throw EvaluationError { this, "invalid binary operator" };
