@@ -22,6 +22,7 @@
 #include "DNA_defaults.h"
 #include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
+#include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_scene_types.h"
@@ -42,13 +43,17 @@
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
 
+#include "BKE_anim_data.h"
+#include "BKE_animsys.h"
 #include "BKE_armature.h"
 #include "BKE_attribute.h"
+#include "BKE_collection.h"
 #include "BKE_curve.h"
 #include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
 #include "BKE_main.h"
+#include "BKE_material.h"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
@@ -56,7 +61,7 @@
 #include "BKE_tracking.h"
 
 #include "SEQ_retiming.hh"
-#include "SEQ_sequencer.h"
+#include "SEQ_sequencer.hh"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.h"
@@ -241,6 +246,84 @@ static void version_bonegroups_to_bonecollections(Main *bmain)
   }
 }
 
+static void version_principled_bsdf_update_animdata(ID *owner_id, bNodeTree *ntree)
+{
+  ID *id = &ntree->id;
+  AnimData *adt = BKE_animdata_from_id(id);
+
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type != SH_NODE_BSDF_PRINCIPLED) {
+      continue;
+    }
+
+    char node_name_escaped[MAX_NAME * 2];
+    BLI_str_escape(node_name_escaped, node->name, sizeof(node_name_escaped));
+    std::string prefix = "nodes[\"" + std::string(node_name_escaped) + "\"].inputs";
+
+    /* Remove animdata for inputs 18 (Transmission Roughness) and 3 (Subsurface Color). */
+    BKE_animdata_fix_paths_remove(id, (prefix + "[18]").c_str());
+    BKE_animdata_fix_paths_remove(id, (prefix + "[3]").c_str());
+
+    /* Order is important here: If we e.g. want to change A->B and B->C, but perform A->B first,
+     * then later we don't know whether a B entry is an original B (and therefore should be
+     * changed to C) or used to be A and was already handled.
+     * In practice, going reverse mostly works, the two notable dependency chains are:
+     * - 8->13, then 2->8, then 9->2 (13 was changed before)
+     * - 1->9, then 6->1 (9 was changed before)
+     * - 4->10, then 21->4 (10 was changed before)
+     *
+     * 0 (Base Color) and 17 (Transmission) are fine as-is. */
+    std::pair<int, int> remap_table[] = {
+        {20, 27}, /* Emission Strength */
+        {19, 26}, /* Emission */
+        {16, 3},  /* IOR */
+        {15, 19}, /* Clearcoat Roughness */
+        {14, 18}, /* Clearcoat */
+        {13, 25}, /* Sheen Tint */
+        {12, 23}, /* Sheen */
+        {11, 15}, /* Anisotropic Rotation */
+        {10, 14}, /* Anisotropic */
+        {8, 13},  /* Specular Tint */
+        {2, 8},   /* Subsurface Radius */
+        {9, 2},   /* Roughness */
+        {7, 12},  /* Specular */
+        {1, 9},   /* Subsurface Scale */
+        {6, 1},   /* Metallic */
+        {5, 11},  /* Subsurface Anisotropy */
+        {4, 10},  /* Subsurface IOR */
+        {21, 4}   /* Alpha */
+    };
+    for (const auto &entry : remap_table) {
+      BKE_animdata_fix_paths_rename(
+          id, adt, owner_id, prefix.c_str(), nullptr, nullptr, entry.first, entry.second, false);
+    }
+  }
+}
+
+static void versioning_eevee_shadow_settings(Object *object)
+{
+  /** EEVEE no longer uses the Material::blend_shadow property.
+   * Instead, it uses Object::visibility_flag for disabling shadow casting
+   */
+
+  short *material_len = BKE_object_material_len_p(object);
+  if (!material_len) {
+    return;
+  }
+
+  using namespace blender;
+  bool hide_shadows = *material_len > 0;
+  for (int i : IndexRange(*material_len)) {
+    Material *material = BKE_object_material_get(object, i + 1);
+    if (!material || material->blend_shadow != MA_BS_NONE) {
+      hide_shadows = false;
+    }
+  }
+
+  /* Enable the hide_shadow flag only if there's not any shadow casting material. */
+  SET_FLAG_FROM_TEST(object->visibility_flag, hide_shadows, OB_HIDE_SHADOW);
+}
+
 void do_versions_after_linking_400(FileData *fd, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 9)) {
@@ -311,8 +394,28 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 24)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_SHADER) {
+        /* Convert animdata on the Principled BSDF sockets. */
+        version_principled_bsdf_update_animdata(id, ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
     BKE_mesh_legacy_face_map_to_generic(bmain);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
+    if (!is_cycles) {
+      LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+        versioning_eevee_shadow_settings(object);
+      }
+    }
   }
 
   /**
@@ -385,15 +488,6 @@ static void version_movieclips_legacy_camera_object(Main *bmain)
 {
   LISTBASE_FOREACH (MovieClip *, movieclip, &bmain->movieclips) {
     version_motion_tracking_legacy_camera_object(*movieclip);
-  }
-}
-
-static void version_geometry_nodes_add_realize_instance_nodes(bNodeTree *ntree)
-{
-  LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
-    if (STREQ(node->idname, "GeometryNodeMeshBoolean")) {
-      add_realize_instances_before_socket(ntree, node, nodeFindSocket(node, SOCK_IN, "Mesh 2"));
-    }
   }
 }
 
@@ -849,8 +943,8 @@ static void version_principled_bsdf_specular_tint(bNodeTree *ntree)
 
     static float one[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-    /* If any of the two inputs is dynamic, we add a Mix node. */
-    if (base_color_sock->link || specular_tint_sock->link) {
+    /* Add a mix node when working with dynamic inputs. */
+    if (specular_tint_sock->link || (base_color_sock->link && specular_tint_old != 0)) {
       bNode *mix = nodeAddStaticNode(nullptr, ntree, SH_NODE_MIX);
       static_cast<NodeShaderMix *>(mix->storage)->data_type = SOCK_RGBA;
       mix->locx = node->locx - 170;
@@ -891,7 +985,7 @@ static void version_copy_socket(bNodeTreeInterfaceSocket &dst,
                                 char *identifier)
 {
   /* Node socket copy function based on bNodeTreeInterface::item_copy to avoid using blenkernel. */
-  dst.name = BLI_strdup(src.name);
+  dst.name = BLI_strdup_null(src.name);
   dst.description = BLI_strdup_null(src.description);
   dst.socket_type = BLI_strdup(src.socket_type);
   dst.default_attribute_name = BLI_strdup_null(src.default_attribute_name);
@@ -1062,7 +1156,7 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
 static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_pencil)
 {
   using namespace blender;
-  /* Previously, Grease Pencil used a radius convention where 1 "px" = 0.001 units. This "px" was
+  /* Previously, Grease Pencil used a radius convention where 1 `px` = 0.001 units. This `px` was
    * the brush size which would be stored in the stroke thickness and then scaled by the point
    * pressure factor. Finally, the render engine would divide this thickness value by 2000 (we're
    * going from a thickness to a radius, hence the factor of two) to convert back into blender
@@ -1095,14 +1189,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 2)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
       BKE_mesh_legacy_bevel_weight_to_generic(mesh);
-    }
-  }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 3)) {
-    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-      if (ntree->type == NTREE_GEOMETRY) {
-        version_geometry_nodes_add_realize_instance_nodes(ntree);
-      }
     }
   }
 
@@ -1716,6 +1802,31 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
+    /* Unify Material::blend_shadow and Cycles.use_transparent_shadows into the
+     * Material::blend_flag. */
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
+    if (is_cycles) {
+      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        bool transparent_shadows = true;
+        if (IDProperty *cmat = version_cycles_properties_from_ID(&material->id)) {
+          transparent_shadows = version_cycles_property_boolean(
+              cmat, "use_transparent_shadow", true);
+        }
+        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
+      }
+    }
+    else {
+      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        bool transparent_shadow = material->blend_shadow != MA_BS_SOLID;
+        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadow, MA_BL_TRANSPARENT_SHADOW);
+      }
+    }
+  }
+
+  /* 401 6 did not require any do_version here. */
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -1728,5 +1839,51 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "int", "volumetric_ray_depth")) {
+      SceneEEVEE default_eevee = *DNA_struct_default_get(SceneEEVEE);
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.volumetric_ray_depth = default_eevee.volumetric_ray_depth;
+      }
+    }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "Material", "char", "surface_render_method")) {
+      LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
+        mat->surface_render_method = (mat->blend_method == MA_BM_BLEND) ?
+                                         MA_SURFACE_METHOD_FORWARD :
+                                         MA_SURFACE_METHOD_DEFERRED;
+      }
+    }
+
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          const ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                       &sl->regionbase;
+          LISTBASE_FOREACH (ARegion *, region, regionbase) {
+            if (region->regiontype != RGN_TYPE_ASSET_SHELF_HEADER) {
+              continue;
+            }
+            region->alignment &= ~RGN_SPLIT_PREV;
+            region->alignment |= RGN_ALIGN_HIDE_WITH_PREV;
+          }
+        }
+      }
+    }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "float", "gtao_thickness")) {
+      SceneEEVEE default_eevee = *DNA_struct_default_get(SceneEEVEE);
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.gtao_thickness = default_eevee.gtao_thickness;
+        scene->eevee.gtao_focus = default_eevee.gtao_focus;
+      }
+    }
+
+    if (!DNA_struct_member_exists(fd->filesdna, "LightProbe", "float", "data_display_size")) {
+      LightProbe default_probe = *DNA_struct_default_get(LightProbe);
+      LISTBASE_FOREACH (LightProbe *, probe, &bmain->lightprobes) {
+        probe->data_display_size = default_probe.data_display_size;
+      }
+    }
   }
 }

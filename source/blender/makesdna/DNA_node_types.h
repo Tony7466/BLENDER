@@ -669,6 +669,10 @@ typedef struct bNodeTree {
   int chunksize;
   /** Execution mode to use for compositor engine. */
   int execution_mode;
+  /** Execution mode to use for compositor engine. */
+  int precision;
+
+  char _pad[4];
 
   rctf viewer_border;
 
@@ -788,9 +792,12 @@ typedef struct bNodeTree {
   void ensure_interface_cache() const;
 
   /* Cached interface item lists. */
-  blender::Span<bNodeTreeInterfaceSocket *> interface_inputs() const;
-  blender::Span<bNodeTreeInterfaceSocket *> interface_outputs() const;
-  blender::Span<bNodeTreeInterfaceItem *> interface_items() const;
+  blender::Span<bNodeTreeInterfaceSocket *> interface_inputs();
+  blender::Span<const bNodeTreeInterfaceSocket *> interface_inputs() const;
+  blender::Span<bNodeTreeInterfaceSocket *> interface_outputs();
+  blender::Span<const bNodeTreeInterfaceSocket *> interface_outputs() const;
+  blender::Span<bNodeTreeInterfaceItem *> interface_items();
+  blender::Span<const bNodeTreeInterfaceItem *> interface_items() const;
 #endif
 } bNodeTree;
 
@@ -832,6 +839,12 @@ typedef enum eNodeTreeExecutionMode {
   NTREE_EXECUTION_MODE_FULL_FRAME = 1,
   NTREE_EXECUTION_MODE_REALTIME = 2,
 } eNodeTreeExecutionMode;
+
+/* tree->precision */
+typedef enum eNodeTreePrecision {
+  NODE_TREE_COMPOSITOR_PRECISION_AUTO = 0,
+  NODE_TREE_COMPOSITOR_PRECISION_FULL = 1,
+} eNodeTreePrecision;
 
 typedef enum eNodeTreeRuntimeFlag {
   /** There is a node that references an image with animation. */
@@ -919,7 +932,7 @@ typedef enum GeometryNodeAssetTraitFlag {
   GEO_NODE_ASSET_POINT_CLOUD = (1 << 5),
   GEO_NODE_ASSET_MODIFIER = (1 << 6),
 } GeometryNodeAssetTraitFlag;
-ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_POINT_CLOUD);
+ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_MODIFIER);
 
 /* Data structs, for `node->storage`. */
 
