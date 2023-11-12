@@ -15,6 +15,8 @@
 
 #include "node_geometry_util.hh"
 
+#include "/home/jacques/Documents/solvespace/include/slvs.h"
+
 namespace blender::nodes::node_geo_set_position_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
@@ -200,6 +202,62 @@ static void node_geo_exec(GeoNodeExecParams params)
   {
     if (geometry.has(type)) {
       set_position_in_component(geometry, type, selection_field, position_field, offset_field);
+    }
+  }
+
+  if (geometry.has_mesh()) {
+    Mesh *mesh = geometry.get_mesh_for_write();
+    if (mesh->totvert == 2) {
+      MutableSpan<float3> vert_positions = mesh->vert_positions_for_write();
+
+      Slvs_System sys{};
+      sys.params = 6;
+      sys.entities = 2;
+      sys.constraints = 1;
+      sys.faileds = 0;
+      sys.param = MEM_cnew_array<Slvs_Param>(sys.params, __func__);
+      sys.entity = MEM_cnew_array<Slvs_Entity>(sys.entities, __func__);
+      sys.constraint = MEM_cnew_array<Slvs_Constraint>(sys.constraints, __func__);
+      sys.failed = MEM_cnew_array<Slvs_hConstraint>(sys.constraints, __func__);
+
+      const int group = 1;
+
+      for (const int vert_i : vert_positions.index_range()) {
+
+        const int first_handle = 1 + 3 * vert_i;
+        for (const int j : IndexRange(3)) {
+          const int handle = first_handle + j;
+          sys.param[3 * vert_i + j] = Slvs_MakeParam(handle, group, vert_positions[vert_i][j]);
+        }
+        sys.entity[vert_i] = Slvs_MakePoint3d(
+            1 + vert_i, group, first_handle, first_handle + 1, first_handle + 2);
+      }
+
+      sys.constraint[0] = Slvs_MakeConstraint(1,
+                                              group,
+                                              SLVS_C_PT_PT_DISTANCE,
+                                              SLVS_FREE_IN_3D,
+                                              1.0,
+                                              sys.entity[0].h,
+                                              sys.entity[1].h,
+                                              0,
+                                              0);
+
+      Slvs_Solve(&sys, group);
+
+      std::cout << "Degrees of Freedom: " << sys.dof << "\n";
+      std::cout << "Fails: " << sys.faileds << "\n";
+
+      for (const int i : IndexRange(6)) {
+        vert_positions.cast<float>()[i] = sys.param[i].val;
+      }
+
+      MEM_SAFE_FREE(sys.param);
+      MEM_SAFE_FREE(sys.entity);
+      MEM_SAFE_FREE(sys.constraint);
+      MEM_SAFE_FREE(sys.failed);
+
+      BKE_mesh_tag_positions_changed(mesh);
     }
   }
 

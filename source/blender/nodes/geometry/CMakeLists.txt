@@ -209,6 +209,9 @@ set(SRC
   node_geometry_util.hh
 )
 
+add_library(slvs STATIC IMPORTED)
+set_target_properties(slvs PROPERTIES IMPORTED_LOCATION /home/jacques/Documents/solvespace/build/bin/libslvs.a)
+
 set(LIB
   PRIVATE bf::blenlib
   bf_bmesh
@@ -218,6 +221,7 @@ set(LIB
   PRIVATE bf::intern::guardedalloc
   bf_nodes
   extern_fmtlib
+  slvs
 )
 
 if(WITH_BULLET)
