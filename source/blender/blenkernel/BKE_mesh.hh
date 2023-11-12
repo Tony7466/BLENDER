@@ -84,6 +84,7 @@ void normals_calc_faces(Span<float3> vert_positions,
 void normals_calc_verts(Span<float3> vert_positions,
                         OffsetIndices<int> faces,
                         Span<int> corner_verts,
+                        GroupedSpan<int> vert_to_face_map,
                         Span<float3> face_normals,
                         MutableSpan<float3> vert_normals);
 
@@ -162,8 +163,6 @@ void normals_calc_loop(Span<float3> vert_positions,
                        const bool *sharp_edges,
                        const bool *sharp_faces,
                        const short2 *clnors_data,
-                       bool use_split_normals,
-                       float split_angle,
                        CornerNormalSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals);
 
