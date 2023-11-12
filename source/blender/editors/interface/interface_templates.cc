@@ -7191,9 +7191,9 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
   eFileAttributes attributes = BLI_file_attributes(path);
 
   /* Filename. */
-  UI_tooltip_text_field_add(
-      tip, BLI_strdup(path), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
-  UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+  //UI_tooltip_text_field_add(
+  //    tip, BLI_strdup(path), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
+  //UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
 
   /* Blender version. */
   char version_st[128] = {0};
@@ -7261,7 +7261,7 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
   }
 
   if (thumb) {
-    float scale = (64.0f * UI_SCALE_FAC) / float(MAX2(thumb->x, thumb->y));
+    float scale = (72.0f * UI_SCALE_FAC) / float(MAX2(thumb->x, thumb->y));
     short size[2] = {short(float(thumb->x) * scale), short(float(thumb->y) * scale)};
     UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
     UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
