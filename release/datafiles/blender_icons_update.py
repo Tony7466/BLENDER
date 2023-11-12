@@ -51,7 +51,3 @@ cmd = (
     "--export-filename=" + os.path.join(BASEDIR, "blender_icons64.png"),
 )
 run(cmd, env=env)
-
-This PR adds a third MIP level to our icons, in 64x64, allowing sizes
-that are not blurry above 2X scale (1X scale with Retina). Also allows
-users customization.
