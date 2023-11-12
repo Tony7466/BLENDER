@@ -19,6 +19,7 @@
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
+#include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 
 #include "GPU_batch.h"
@@ -240,11 +241,14 @@ static void grease_pencil_edit_batch_ensure(const GreasePencil &grease_pencil, c
       static_cast<float *>(GPU_vertbuf_get_data(cache->edit_points_selection)),
       GPU_vertbuf_get_vertex_len(cache->edit_points_selection)};
 
+  int visible_points_num = 0;
+  int total_line_ids_num = 0;
   int drawing_start_offset = 0;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const Layer *layer = layers[info.layer_index];
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const bke::AttributeAccessor attributes = curves.attributes();
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     const Span<float3> positions = curves.positions();
 
     /* Assumes that if the ".selection" attribute does not exist, all points are selected. */
@@ -256,19 +260,12 @@ static void grease_pencil_edit_batch_ensure(const GreasePencil &grease_pencil, c
                                                                      curves.points_num());
     /* Do not show selection for locked layers. */
     if (layer->is_locked()) {
-      selection_slice.fill(false);
+      selection_slice.fill(0.0);
     }
     else {
       selection_float.materialize(selection_slice);
     }
     drawing_start_offset += curves.points_num();
-  }
-
-  int visible_points_num = 0;
-  int total_line_ids_num = 0;
-  for (const ed::greasepencil::DrawingInfo &info : drawings) {
-    const Layer *layer = layers[info.layer_index];
-    const bke::CurvesGeometry &curves = info.drawing.strokes();
 
     /* Add one id for the restart after every curve. */
     total_line_ids_num += curves.curves_num();
@@ -278,8 +275,18 @@ static void grease_pencil_edit_batch_ensure(const GreasePencil &grease_pencil, c
     total_line_ids_num += array_utils::count_booleans(curves.cyclic());
 
     /* Do not show points for locked layers. */
-    if (!layer->is_locked()) {
-      visible_points_num += curves.points_num();
+    if (layer->is_locked()) {
+      continue;
+    }
+
+    const VArray<bool> selection_bool = *attributes.lookup_or_default<bool>(
+        ".selection", ATTR_DOMAIN_POINT, true);
+
+    for (const int curve_i : curves.curves_range()) {
+      const IndexRange points = points_by_curve[curve_i];
+      if (ed::curves::has_anything_selected(selection_bool, points)) {
+        visible_points_num += points.size();
+      }
     }
   }
 
@@ -321,11 +328,19 @@ static void grease_pencil_edit_batch_ensure(const GreasePencil &grease_pencil, c
       }
     });
 
+    /* Assumes that if the ".selection" attribute does not exist, all points are selected. */
+    const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+        ".selection", ATTR_DOMAIN_POINT, true);
+
     /* Fill point indices. */
     if (!layer->is_locked()) {
       threading::parallel_for(curves.curves_range(), 512, [&](IndexRange range) {
         for (const int curve_i : range) {
           const IndexRange points = points_by_curve[curve_i];
+          if (!ed::curves::has_anything_selected(selection, points)) {
+            continue;
+          }
+
           for (const int point : points) {
             GPU_indexbuf_add_generic_vert(&epb, point + drawing_start_offset);
           }
