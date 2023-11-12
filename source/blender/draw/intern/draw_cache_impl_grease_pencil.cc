@@ -260,7 +260,7 @@ static void grease_pencil_edit_batch_ensure(const GreasePencil &grease_pencil, c
                                                                      curves.points_num());
     /* Do not show selection for locked layers. */
     if (layer->is_locked()) {
-      selection_slice.fill(0.0);
+      selection_slice.fill(0.0f);
     }
     else {
       selection_float.materialize(selection_slice);
