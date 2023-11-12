@@ -72,7 +72,7 @@
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_interface.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -102,6 +102,8 @@
 #include "ED_object.hh"
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
+
+#include "ANIM_action.hh"
 
 #include "MOD_nodes.hh"
 
@@ -560,7 +562,8 @@ bool ED_object_parent_set(ReportList *reports,
       if (partype == PAR_FOLLOW) {
         /* get or create F-Curve */
         bAction *act = ED_id_action_ensure(bmain, &cu->id);
-        FCurve *fcu = ED_action_fcurve_ensure(bmain, act, nullptr, nullptr, "eval_time", 0);
+        FCurve *fcu = blender::animrig::action_fcurve_ensure(
+            bmain, act, nullptr, nullptr, "eval_time", 0);
 
         /* setup dummy 'generator' modifier here to get 1-1 correspondence still working */
         if (!fcu->bezt && !fcu->fpt && !fcu->modifiers.first) {
@@ -627,8 +630,8 @@ bool ED_object_parent_set(ReportList *reports,
        * NOTE: the old (2.4x) method was to set ob->partype = PARSKEL,        * creating the
        * virtual modifiers.
        */
-      ob->partype = PAROBJECT;     /* NOTE: DNA define, not operator property. */
-      /* ob->partype = PARSKEL; */ /* NOTE: DNA define, not operator property. */
+      ob->partype = PAROBJECT; /* NOTE: DNA define, not operator property. */
+      // ob->partype = PARSKEL; /* NOTE: DNA define, not operator property. */
 
       /* BUT, to keep the deforms, we need a modifier,        * and then we need to set the object
        * that it uses

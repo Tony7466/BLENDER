@@ -148,8 +148,7 @@ void SCULPT_filter_cache_init(bContext *C,
   invert_m4_m4(ss->filter_cache->obmat_inv, ob->object_to_world);
 
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
   ss->filter_cache->vc = vc;
   if (vc.rv3d) {
@@ -364,15 +363,15 @@ static void mesh_filter_task(Object *ob,
    * boundaries. */
   const bool relax_face_sets = !(ss->filter_cache->iteration_count % 3 == 0);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->filter_cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->filter_cache->automasking, &automask_data, node);
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     float orig_co[3], val[3], avg[3], disp[3], disp2[3], transform[3][3], final_pos[3];
-    float fade = vd.mask ? *vd.mask : 0.0f;
+    float fade = vd.mask;
     fade = 1.0f - fade;
     fade *= filter_strength;
     fade *= SCULPT_automasking_factor_get(
@@ -514,7 +513,8 @@ static void mesh_filter_task(Object *ob,
 
       case MESH_FILTER_ENHANCE_DETAILS: {
         mul_v3_v3fl(disp, ss->filter_cache->detail_directions[vd.index], -fabsf(fade));
-      } break;
+        break;
+      }
       case MESH_FILTER_ERASE_DISPLACEMENT: {
         fade = clamp_f(fade, -1.0f, 1.0f);
         sub_v3_v3v3(disp, ss->filter_cache->limit_surface_co[vd.index], orig_co);
@@ -664,12 +664,12 @@ static void mesh_filter_surface_smooth_displace_task(Object *ob,
   PBVHVertexIter vd;
 
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->filter_cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->filter_cache->automasking, &automask_data, node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
-    float fade = vd.mask ? *vd.mask : 0.0f;
+    float fade = vd.mask;
     fade = 1.0f - fade;
     fade *= filter_strength;
     fade *= SCULPT_automasking_factor_get(
