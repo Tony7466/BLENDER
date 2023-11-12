@@ -38,7 +38,7 @@
 #include "BKE_mesh_mapping.hh"
 #include "BKE_modifier.h"
 #include "BKE_node.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
@@ -712,9 +712,8 @@ static Mesh *bake_mesh_new_from_object(Depsgraph *depsgraph,
 {
   Mesh *me = BKE_mesh_new_from_object(depsgraph, object, false, preserve_origindex);
 
-  if (me->flag & ME_AUTOSMOOTH) {
+  if (me->normals_domain() == blender::bke::MeshNormalDomain::Corner) {
     ED_mesh_split_faces(me);
-    CustomData_free_layers(&me->loop_data, CD_NORMAL, me->totloop);
   }
 
   return me;

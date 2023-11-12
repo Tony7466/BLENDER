@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'26346464e0c0')\n"
+"Project-Id-Version: Blender 4.0.0 Beta (b'551927bbe355')\n"
 "Report-Msgid-Bugs-To: Leandro Paganelli <leandrobp@fastmail.com>\n"
-"POT-Creation-Date: 2023-10-09 09:45:23\n"
+"POT-Creation-Date: 2023-11-06 12:01:38\n"
 "PO-Revision-Date: 2023-09-28 03:54+0000\n"
 "Last-Translator: Gilberto Rodrigues <gilbertorodrigues@outlook.com>\n"
 "Language-Team: Portuguese (Brazil) <https://translate.blender.org/projects/blender-ui/ui/pt_BR/>\n"
@@ -344,16 +344,20 @@ msgid "Optimize all kernels. Fastest rendering, may result in extra background C
 msgstr "Otimizar todos os núcleos. Renderização mais rápida, deve resultar em utilização extra de CPU no fundo"
 
 
+msgid "On"
+msgstr "Ligado"
+
+
+msgid "Auto"
+msgstr "Automático"
+
+
 msgid "Distribute memory across devices"
 msgstr "Distribuir memória pelos dispositivos"
 
 
 msgid "HIP RT (Experimental)"
 msgstr "HIP RT (experimental)"
-
-
-msgid "MetalRT (Experimental)"
-msgstr "MetalRT (experimental)"
 
 
 msgid "Fribidi Library"
@@ -1506,10 +1510,6 @@ msgstr "Livre"
 
 msgid "Aligned"
 msgstr "Alinhado"
-
-
-msgid "Auto"
-msgstr "Automático"
 
 
 msgid "Handle 2"
@@ -20742,6 +20742,14 @@ msgid "Base type to define alpha transparency modifiers"
 msgstr "Tipo base para definir a os modificadores de transparência alfa."
 
 
+msgid "Modifier Name"
+msgstr "Nome do modificador"
+
+
+msgid "Name of the modifier"
+msgstr "O nome do modificador"
+
+
 msgid "Along Stroke"
 msgstr "Ao longo do traço"
 
@@ -20780,14 +20788,6 @@ msgstr "Usa um mapeamento linear."
 
 msgid "Use curve mapping"
 msgstr "Usa um mapeamento em curva."
-
-
-msgid "Modifier Name"
-msgstr "Nome do modificador"
-
-
-msgid "Name of the modifier"
-msgstr "O nome do modificador"
 
 
 msgid "Modifier Type"
@@ -48966,10 +48966,6 @@ msgid "Export the UV layout to a bitmap image"
 msgstr "Exporta o esquema UV para uma imagem de bitmap."
 
 
-msgid "Modified"
-msgstr "Modificado"
-
-
 msgid "Exports UVs from the modified mesh"
 msgstr "Exporta as UVs a partir da malha modificada."
 
@@ -71438,12 +71434,12 @@ msgid "Some data failed to reconstruct (see console for details)"
 msgstr "Alguns dados falharam na reconstrução (veja o console para detalhes)."
 
 
-msgid "File path"
-msgstr "Caminho de arquivo"
-
-
 msgid "Yesterday"
 msgstr "Ontem"
+
+
+msgid "File path"
+msgstr "Caminho de arquivo"
 
 
 msgid "File does not exist"
@@ -73435,10 +73431,6 @@ msgid "Add Input"
 msgstr "Adicionar Entrada"
 
 
-msgid "On"
-msgstr "Ligado"
-
-
 msgid "Val"
 msgstr "Valor"
 
@@ -73559,16 +73551,8 @@ msgid "Subsurface IOR"
 msgstr "Índice de Refração da Sub-superfície"
 
 
-msgid "Specular Tint"
-msgstr "Tingimento especular"
-
-
 msgid "Anisotropic Rotation"
 msgstr "Rotação anisotrópica"
-
-
-msgid "Sheen Tint"
-msgstr "Tingimento de lustro"
 
 
 msgid "Emission Color"
@@ -73898,6 +73882,10 @@ msgstr "não foi possível abrir o arquivo"
 
 msgid "File Not Found"
 msgstr "Arquivo Não Encontrado"
+
+
+msgid "Modified"
+msgstr "Modificado"
 
 
 msgid "Save changes before closing?"

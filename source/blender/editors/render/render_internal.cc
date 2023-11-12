@@ -15,7 +15,7 @@
 #include "BLI_listbase.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
@@ -39,12 +39,12 @@
 #include "BKE_main.h"
 #include "BKE_node.hh"
 #include "BKE_node_tree_update.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -66,7 +66,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "SEQ_relations.h"
+#include "SEQ_relations.hh"
 
 #include "render_intern.hh"
 
