@@ -288,6 +288,7 @@ static void ui_tooltip_region_draw_cb(const bContext * /*C*/, ARegion *region)
                                      nullptr);
       GPU_blend(GPU_BLEND_ALPHA);
 
+      /* Draw border around it. */
       GPUVertFormat *format = immVertexFormat();
       uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
       immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);

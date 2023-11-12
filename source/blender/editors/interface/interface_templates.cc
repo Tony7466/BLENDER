@@ -7188,12 +7188,17 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
                                                void *argN)
 {
   char *path = (char *)argN;
-  eFileAttributes attributes = BLI_file_attributes(path);
 
   /* Filename. */
   //UI_tooltip_text_field_add(
   //    tip, BLI_strdup(path), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
   //UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+
+  /* File path. */
+  char root[FILE_MAX];
+  BLI_path_split_dir_part(path, root, FILE_MAX);
+  UI_tooltip_text_field_add(tip, BLI_strdup(root), nullptr, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
+   UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
 
   /* Blender version. */
   char version_st[128] = {0};
@@ -7204,6 +7209,7 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
         thumb->metadata, "Thumb::Blender::Version", version_st, sizeof(version_st));
   }
 
+  eFileAttributes attributes = BLI_file_attributes(path);
   if (!version_st[0] && !(attributes & FILE_ATTR_OFFLINE)) {
     /* Load Blender version directly from the file. */
     short version = BLO_version_from_file(path);
