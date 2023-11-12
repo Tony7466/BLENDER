@@ -54,7 +54,7 @@ void SplitOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
   const bool determined_1 = this->get_input_socket(0)->determine_canvas(COM_AREA_NONE, area_1);
   const bool determined_2 = this->get_input_socket(1)->determine_canvas(COM_AREA_NONE, area_2);
 
-  if(determined_1 && determined_2) {
+  if (determined_1 && determined_2) {
     const int size_1 = BLI_rcti_size_x(&area_1) * BLI_rcti_size_y(&area_1);
     const int size_2 = BLI_rcti_size_x(&area_2) * BLI_rcti_size_y(&area_2);
     this->set_canvas_input_index(size_1 > size_2 ? 0 : 1);
