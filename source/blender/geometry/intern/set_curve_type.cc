@@ -446,6 +446,10 @@ static bke::CurvesGeometry convert_curves_to_bezier(
     }
   };
 
+  for (bke::AttributeTransferData &attribute : generic_attributes) {
+    attribute.dst.finish();
+  }
+
   bke::curves::foreach_curve_by_type(src_curves.curve_types(),
                                      src_curves.curve_type_counts(),
                                      selection,
@@ -473,10 +477,6 @@ static bke::CurvesGeometry convert_curves_to_bezier(
 
         return true;
       });
-
-  for (bke::AttributeTransferData &attribute : generic_attributes) {
-    attribute.dst.finish();
-  }
 
   return dst_curves;
 }
@@ -635,6 +635,10 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
     }
   };
 
+  for (bke::AttributeTransferData &attribute : generic_attributes) {
+    attribute.dst.finish();
+  }
+
   bke::curves::foreach_curve_by_type(src_curves.curve_types(),
                                      src_curves.curve_type_counts(),
                                      selection,
@@ -662,10 +666,6 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
 
         return true;
       });
-
-  for (bke::AttributeTransferData &attribute : generic_attributes) {
-    attribute.dst.finish();
-  }
 
   return dst_curves;
 }
