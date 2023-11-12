@@ -5,78 +5,78 @@
 
 class Value {
 public:
-  virtual double get_double() = 0;
+  virtual double get_double() const = 0;
 
-  virtual std::unique_ptr<Value> add(Value *right) = 0;
-  virtual std::unique_ptr<Value> sub(Value *right) = 0;
-  virtual std::unique_ptr<Value> mul(Value *right) = 0;
-  virtual std::unique_ptr<Value> div(Value *right) = 0;
-  virtual std::unique_ptr<Value> pow(Value *right) = 0;
-  virtual std::unique_ptr<Value> neg() = 0;
+  virtual std::unique_ptr<Value> add(const Value *right) const = 0;
+  virtual std::unique_ptr<Value> sub(const Value *right) const = 0;
+  virtual std::unique_ptr<Value> mul(const Value *right) const = 0;
+  virtual std::unique_ptr<Value> div(const Value *right) const = 0;
+  virtual std::unique_ptr<Value> pow(const Value *right) const = 0;
+  virtual std::unique_ptr<Value> neg() const = 0;
 
-  virtual std::unique_ptr<Value> add_impl(class DoubleValue *left) = 0;
-  virtual std::unique_ptr<Value> sub_impl(class DoubleValue *left) = 0;
-  virtual std::unique_ptr<Value> mul_impl(class DoubleValue *left) = 0;
-  virtual std::unique_ptr<Value> div_impl(class DoubleValue *left) = 0;
-  virtual std::unique_ptr<Value> pow_impl(class DoubleValue *left) = 0;
-
-  static std::unique_ptr<Value> lerp(Value *a, Value *b, Value *t) {
+  static std::unique_ptr<Value> lerp(const Value *a, const Value *b, const Value *t) {
     // a + (b - a) * t
     return b->sub(a)->mul(t)->add(a);
   }
+
+  virtual std::unique_ptr<Value> add(const class DoubleValue *left) const = 0;
+  virtual std::unique_ptr<Value> sub(const class DoubleValue *left) const = 0;
+  virtual std::unique_ptr<Value> mul(const class DoubleValue *left) const = 0;
+  virtual std::unique_ptr<Value> div(const class DoubleValue *left) const = 0;
+  virtual std::unique_ptr<Value> pow(const class DoubleValue *left) const = 0;
 };
 
 class DoubleValue : public Value {
-  double value;
+  const double value;
 
 public:
   DoubleValue(double value) : value(value) {}
 
-  double get_double() override {
+  double get_double() const override {
     return value;
   }
 
-  std::unique_ptr<Value> add(Value *right) override {
-    return right->add_impl(this);
+  std::unique_ptr<Value> add(const Value *right) const override {
+    return right->add(this);
   }
 
-  std::unique_ptr<Value> sub(Value *right) override {
-    return right->sub_impl(this);
+  std::unique_ptr<Value> sub(const Value *right) const override {
+    return right->sub(this);
   }
 
-  std::unique_ptr<Value> mul(Value *right) override {
-    return right->mul_impl(this);
+  std::unique_ptr<Value> mul(const Value *right) const override {
+    return right->mul(this);
   }
 
-  std::unique_ptr<Value> div(Value *right) override {
-    return right->div_impl(this);
+  std::unique_ptr<Value> div(const Value *right) const override {
+    return right->div(this);
   }
 
-  std::unique_ptr<Value> pow(Value *right) override {
-    return right->pow_impl(this);
+  std::unique_ptr<Value> pow(const Value *right) const override {
+    return right->pow(this);
   }
 
-  std::unique_ptr<Value> add_impl(DoubleValue *left) override {
+  std::unique_ptr<Value> add(const DoubleValue *left) const override {
     return std::make_unique<DoubleValue>(left->get_double() + value);
   }
 
-  std::unique_ptr<Value> sub_impl(DoubleValue *left) override {
+  std::unique_ptr<Value> sub(const DoubleValue *left) const override {
     return std::make_unique<DoubleValue>(left->get_double() - value);
   }
 
-  std::unique_ptr<Value> mul_impl(DoubleValue *left) override {
+  std::unique_ptr<Value> mul(const DoubleValue *left) const override {
     return std::make_unique<DoubleValue>(left->get_double() * value);
   }
 
-  std::unique_ptr<Value> div_impl(DoubleValue *left) override {
+  std::unique_ptr<Value> div(const DoubleValue *left) const override {
     return std::make_unique<DoubleValue>(left->get_double() / value);
   }
 
-  std::unique_ptr<Value> pow_impl(DoubleValue *left) override {
+  std::unique_ptr<Value> pow(const DoubleValue *left) const override {
     return std::make_unique<DoubleValue>(std::pow(left->get_double(), value));
   }
 
-  std::unique_ptr<Value> neg() override {
+  std::unique_ptr<Value> neg() const override {
     return std::make_unique<DoubleValue>(-value);
   }
 };

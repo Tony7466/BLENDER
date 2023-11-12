@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
+#include <set>
 
 #include "DNA_node_types.h"
 #include "node_geometry_util.hh"
@@ -35,12 +36,12 @@ namespace blender::nodes::node_geo_math_expression_cc {
     const NodeGeometryMathExpression &storage = node_storage(*node);
 
     Parser parser;
-    std::vector<std::string_view> variables;
+    std::set<std::string_view> variables;
 
     printf("parsing: \"%s\"\n", storage.expression);
 
     try {
-      auto expr = parser.parse(storage.expression, variables);
+      auto expr = parser.parse(storage.expression, &variables);
 
       for(auto name : variables) {
         b.add_input<decl::Float>(name);
@@ -58,13 +59,13 @@ namespace blender::nodes::node_geo_math_expression_cc {
   {
     const NodeGeometryMathExpression &storage = node_storage(params.node());
 
+    // TODO: store the Expression generated in node_declare somewhere so re-parsing isn't needed
     Parser parser;
-    std::vector<std::string_view> variables;
     EvaluationContext ctx(params);
     double value = 0.0;
 
     try {
-      auto expr = parser.parse(storage.expression, variables);
+      auto expr = parser.parse(storage.expression, nullptr);
       EvaluationContext ctx(params);
       value = expr->evaluate(ctx)->get_double();
     } catch(LexerError err) {

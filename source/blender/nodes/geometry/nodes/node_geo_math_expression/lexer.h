@@ -4,8 +4,6 @@
 #include <cctype>
 #include <cstdint>
 
-using size_t = std::size_t;
-
 enum class TokenKind { IDENT, NUMBER, LPAREN, RPAREN, COMMA, PLUS, MINUS, MUL, DIV, EXP, END };
 
 struct Token {
@@ -30,79 +28,68 @@ class Lexer {
   size_t start;
 
 public:
-  void parse(const char* text) {
+  void init(const char* text) {
       this->text = text;
       index = 0;
   }
 
-  bool next_token(Token &r_token, LexerError &r_error)
+  Token next_token()
   {
     if (end()) {
-      r_token = make_token(TokenKind::END);
-      return true;
+      return make_token(TokenKind::END);
     }
 
     start = index;
-    r_error = make_error("unexpected character");
     char c = next();
-    bool handled = true;
 
     if (isspace(c)) {
-      return next_token(r_token, r_error);
+      return next_token();
     }
 
     switch (c) {
     case '(':
-      r_token = make_token(TokenKind::LPAREN);
+      return make_token(TokenKind::LPAREN);
       break;
     case ')':
-      r_token = make_token(TokenKind::RPAREN);
+      return make_token(TokenKind::RPAREN);
       break;
     case ',':
-      r_token = make_token(TokenKind::COMMA);
+      return make_token(TokenKind::COMMA);
       break;
     case '+':
-      r_token = make_token(TokenKind::PLUS);
+      return make_token(TokenKind::PLUS);
       break;
     case '-':
-      r_token = make_token(TokenKind::MINUS);
+      return make_token(TokenKind::MINUS);
       break;
     case '*':
-      r_token = make_token(TokenKind::MUL);
+      return make_token(TokenKind::MUL);
       break;
     case '/':
-      r_token = make_token(TokenKind::DIV);
+      return make_token(TokenKind::DIV);
       break;
     case '^':
-      r_token = make_token(TokenKind::EXP);
+      return make_token(TokenKind::EXP);
       break;
-    default:
-      handled = false;
-      break;
-    }
-
-    if (handled) {
-      return true;
     }
 
     if (c == '_' || isalpha(c)) {
-      return parse_identifier(r_token, r_error);
+      return parse_identifier();
     }
 
     if (c == '.' || isdigit(c)) {
-      return parse_number(r_token, r_error, c);
+      return parse_number(c);
     }
 
-    return false;
+    throw LexerError { start, "unexpected character" };
   }
 
 private:
-  bool parse_number(Token &r_token, LexerError &r_error, char c)
+  Token parse_number(char c)
   {
     if (c == '.') {
       if (end() || !isdigit(peek())) {
-          r_error = make_error("expected digit");
-          return false;
+          throw make_error("expected digit");
       }
 
       consume_number();
@@ -115,8 +102,7 @@ private:
       }
     }
 
-    r_token = make_token(TokenKind::NUMBER);
-    return true;
+    return make_token(TokenKind::NUMBER);
   }
 
   void consume_number()
@@ -132,7 +118,7 @@ private:
     }
   }
 
-  bool parse_identifier(Token &r_token, LexerError r_error)
+  Token parse_identifier()
   {
     while (!end()) {
       char c = peek();
@@ -144,8 +130,7 @@ private:
       }
     }
 
-    r_token = make_token(TokenKind::IDENT);
-    return true;
+    return make_token(TokenKind::IDENT);
   }
 
   LexerError make_error(const char* message) {

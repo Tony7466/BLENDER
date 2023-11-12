@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <set>
 
 #include "lexer.h"
 #include "expression.h"
@@ -15,19 +16,22 @@ struct ParserError {
 };
 
 class Parser {;
-  const char *text;
   Lexer lexer;
   Token peeked_token;
   bool peeked;
-  std::vector<std::string_view> *variables;
+  std::set<std::string_view> *variables;
 
 public:
-  std::unique_ptr<Expression> parse(const char *text, std::vector<std::string_view> &r_variables) {
-    variables = &r_variables;
-    variables->clear();
+  std::unique_ptr<Expression> parse(const char *text, std::set<std::string_view> *variables)
+  {
+    this->variables = variables;
+
+    if (variables) {
+      variables->clear();
+    }
+
     peeked = false;
-    this->text = text;
-    lexer.parse(text);
+    lexer.init(text);
     auto expr = parse_expression();
 
     expect(TokenKind::END, "expected end of input");
@@ -79,7 +83,10 @@ public:
         return parse_call(token);
       }
 
-      variables->emplace_back(token.value);
+      if(variables) {
+        variables->insert(token.value);
+      }
+
       return std::make_unique<VariableExpression>(token);
     }
 
@@ -105,7 +112,21 @@ public:
 
     expect(TokenKind::RPAREN, "expected closing paren");
 
-    return std::make_unique<CallExpression>(std::move(args), token);
+    CallExpression::FunctionDef def;
+
+    if(token.value == "pow") {
+      def = { CallExpression::FunctionName::POW, 2 };
+    } else if(token.value == "lerp") {
+      def = { CallExpression::FunctionName::LERP, 3 };
+    } else {
+      throw new ParserError { token, "invalid function" };
+    }
+
+    if(args.size() != def.args_size) {
+      throw new ParserError { token, "incorrect number of function arguments" };
+    }
+
+    return std::make_unique<CallExpression>(std::move(args), def, token);
   }
 
   void expect(TokenKind kind, const char *message) {
@@ -148,12 +169,7 @@ public:
       return peeked_token;
     }
 
-    LexerError error;
-
-    if (!lexer.next_token(peeked_token, error)) {
-      throw error;
-    }
-
+    peeked_token = lexer.next_token();
     peeked = true;
     return peeked_token;
   }

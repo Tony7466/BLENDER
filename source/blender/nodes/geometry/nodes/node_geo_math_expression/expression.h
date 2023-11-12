@@ -16,6 +16,7 @@ struct EvaluationError {
 class Expression {
 protected:
   Token token;
+
 public:
   Expression(Token token) : token(token) {}
 
@@ -55,10 +56,23 @@ public:
 };
 
 class CallExpression : public Expression {
-  std::vector<std::unique_ptr<Expression>> args;
+public:
+  enum class FunctionName {
+    POW,
+    LERP
+  };
+
+  struct FunctionDef {
+    FunctionName name;
+    size_t args_size;
+  };
+
+private:
+  const std::vector<std::unique_ptr<Expression>> args;
+  struct FunctionDef def;
 
 public:
-  CallExpression(std::vector<std::unique_ptr<Expression>> args, Token token) : args(std::move(args)), Expression(token) {}
+  CallExpression(std::vector<std::unique_ptr<Expression>> args, FunctionDef def, Token token) : args(std::move(args)), def(def), Expression(token) {}
 
   std::unique_ptr<Value> evaluate(EvaluationContext &ctx) override {
     std::vector<std::unique_ptr<Value>> evaluated_args;
@@ -67,10 +81,11 @@ public:
       evaluated_args.emplace_back(arg->evaluate(ctx));
     }
 
-    if(token.value == "pow") {
-      return evaluated_args[0]->pow(evaluated_args[1].get());
-    } else if(token.value == "lerp") {
-      return Value::lerp(evaluated_args[0].get(), evaluated_args[1].get(), evaluated_args[2].get());
+    switch(def.name) {
+      case FunctionName::POW:
+        return evaluated_args[0]->pow(evaluated_args[1].get());
+      case FunctionName::LERP:
+        return Value::lerp(evaluated_args[0].get(), evaluated_args[1].get(), evaluated_args[2].get());
     }
 
     throw EvaluationError { this, "invalid function" };

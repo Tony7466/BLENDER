@@ -7,11 +7,10 @@
 #include "value.h"
 
 class EvaluationContext {
-  const char *text;
-  blender::nodes::GeoNodeExecParams params;
+  blender::nodes::GeoNodeExecParams &params;
 
 public:
-  EvaluationContext(blender::nodes::GeoNodeExecParams params) : params(params) {}
+  EvaluationContext(blender::nodes::GeoNodeExecParams &params) : params(params) {}
 
   std::unique_ptr<Value> get_number(Token token) {
     double d;
