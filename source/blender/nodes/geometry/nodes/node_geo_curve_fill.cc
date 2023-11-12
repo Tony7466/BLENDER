@@ -138,11 +138,7 @@ static Vector<meshintersect::CDT_result<double>> do_group_aware_cdt(
   const VArraySpan<int> group_ids_span(curve_group_ids);
   const int domain_size = group_ids_span.size();
 
-  VectorSet<int> group_indexing;
-  for (const int index : IndexRange(domain_size)) {
-    const int group_id = group_ids_span[index];
-    group_indexing.add(group_id);
-  }
+  VectorSet<int> group_indexing(group_ids_span);
   const int groups_num = group_indexing.size();
 
   IndexMaskMemory mask_memory;
