@@ -2285,11 +2285,11 @@ static void wm_block_orphans_purge(bContext *C, void *arg_block, void *arg_data)
                                num_tagged);
 
   if (num_tagged[INDEX_ID_NULL] == 0) {
-    BKE_report(op->reports, RPT_INFO, "No orphaned data-blocks to purge");
+    BKE_report(op->reports, RPT_INFO, "No unused data to purge");
   }
   else {
     BKE_id_multi_tagged_delete(bmain);
-    BKE_reportf(op->reports, RPT_INFO, "Deleted %d data-block(s)", num_tagged[INDEX_ID_NULL]);
+    BKE_reportf(op->reports, RPT_INFO, "Deleted %d data block(s)", num_tagged[INDEX_ID_NULL]);
     DEG_relations_tag_update(bmain);
     WM_event_add_notifier(C, NC_ID | NA_REMOVED, nullptr);
     /* Force full redraw of the UI. */
@@ -2348,7 +2348,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
   uiLayout *layout = uiItemsAlertBox(block, 40, ALERT_ICON_WARNING);
 
   /* Title. */
-  uiItemL_ex(layout, TIP_("Clean Up Unused Data in this File"), 0, true, false);
+  uiItemL_ex(layout, TIP_("Clean Up Unused Data in This File"), 0, true, false);
 
   uiItemS(layout);
 
@@ -2371,7 +2371,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
                0,
                0,
                0,
-               "Delete unused local data-blocks");
+               "Delete unused local data");
 
   BLI_dynstr_clear(dyn_str);
   orphan_desc(C, dyn_str, false, true, false);
@@ -2391,7 +2391,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
                0,
                0,
                0,
-               "Delete unused linked data-blocks");
+               "Delete unused linked data");
 
   BLI_dynstr_clear(dyn_str);
   orphan_desc(C, dyn_str, false, false, true);
@@ -2411,8 +2411,8 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
                0,
                0,
                0,
-               "Recursively check for indirectly unused data-blocks, ensuring that no orphaned "
-               "data-blocks remain after execution");
+               "Recursively check for indirectly unused data, ensuring that no orphaned data "
+               "remains after execution");
 
   BLI_dynstr_free(dyn_str);
 
@@ -2457,8 +2457,8 @@ void OUTLINER_OT_orphans_cleanup(wmOperatorType *ot)
 {
   /* identifiers */
   ot->idname = "OUTLINER_OT_orphans_cleanup";
-  ot->name = "Clean Up Unused Data...";
-  ot->description = "Clean Up Unused data-blocks in the file";
+  ot->name = "Purge Unused Data...";
+  ot->description = "Purge Unused data in the file";
 
   /* callbacks */
   ot->exec = outliner_orphans_cleanup_exec;
@@ -2498,7 +2498,7 @@ void OUTLINER_OT_orphans_manage(wmOperatorType *ot)
   /* identifiers */
   ot->idname = "OUTLINER_OT_orphans_manage";
   ot->name = "Manage Unused Data...";
-  ot->description = "Open a window to manage unused data-blocks";
+  ot->description = "Open a window to manage unused data";
 
   /* callbacks */
   ot->exec = outliner_orphans_manage_exec;

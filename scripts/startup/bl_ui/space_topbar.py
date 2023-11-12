@@ -237,8 +237,8 @@ class TOPBAR_MT_file_cleanup(Menu):
     def draw(self, _context):
         layout = self.layout
         layout.separator()
-        layout.operator("outliner.orphans_cleanup", text="Purge Unused Data-Blocks...")
-        layout.operator("outliner.orphans_manage", text="Manage Unused Data-Blocks...")
+        layout.operator("outliner.orphans_cleanup")
+        layout.operator("outliner.orphans_manage")
 
 
 class TOPBAR_MT_file(Menu):
