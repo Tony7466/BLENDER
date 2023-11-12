@@ -5,8 +5,8 @@
 /**
  * Process in screen space the diffuse radiance input to mimic subsurface transmission.
  *
- * This implementation follows the technique described in the siggraph presentation:
- * "Efficient screen space subsurface scattering Siggraph 2018"
+ * This implementation follows the technique described in the SIGGRAPH presentation:
+ * "Efficient screen space subsurface scattering SIGGRAPH 2018"
  * by Evgenii Golubev
  *
  * But, instead of having all the precomputed weights for all three color primaries,
@@ -127,5 +127,6 @@ void main(void)
 
   /* Put result in direct diffuse. */
   imageStore(out_direct_light_img, texel, vec4(accum_radiance, 0.0));
+  /* Clear the indirect pass since its content has been merged and convolved with direct light. */
   imageStore(out_indirect_light_img, texel, vec4(0.0, 0.0, 0.0, 0.0));
 }

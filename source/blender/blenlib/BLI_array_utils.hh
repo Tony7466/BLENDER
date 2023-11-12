@@ -67,6 +67,23 @@ inline void copy(const Span<T> src,
 }
 
 /**
+ * Fill the specified indices of the destination with the values in the source span.
+ */
+template<typename T, typename IndexT>
+inline void scatter(const Span<T> src,
+                    const Span<IndexT> indices,
+                    MutableSpan<T> dst,
+                    const int64_t grain_size = 4096)
+{
+  BLI_assert(indices.size() == src.size());
+  threading::parallel_for(indices.index_range(), grain_size, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      dst[indices[i]] = src[i];
+    }
+  });
+}
+
+/**
  * Fill the destination span by gathering indexed values from the `src` array.
  */
 void gather(const GVArray &src,
@@ -179,6 +196,9 @@ void copy_group_to_group(OffsetIndices<int> src_offsets,
 void count_indices(Span<int> indices, MutableSpan<int> counts);
 
 void invert_booleans(MutableSpan<bool> span);
+void invert_booleans(MutableSpan<bool> span, const IndexMask &mask);
+
+int64_t count_booleans(const VArray<bool> &varray);
 
 enum class BooleanMix {
   None,
