@@ -34,6 +34,10 @@ public:
   }
 
   static std::unique_ptr<Value> vec(const Value *x, const Value *y, const Value *z);
+  static std::unique_ptr<Value> x(const Value *v);
+  static std::unique_ptr<Value> y(const Value *v);
+  static std::unique_ptr<Value> z(const Value *v);
+  static std::unique_ptr<Value> len(const Value *v);
 
   virtual std::unique_ptr<Value> add(const ScalarValue *left) const = 0;
   virtual std::unique_ptr<Value> sub(const ScalarValue *left) const = 0;
@@ -221,6 +225,26 @@ public:
 std::unique_ptr<Value> Value::vec(const Value *x, const Value *y, const Value *z)
 {
   return std::make_unique<VectorValue>(blender::double3(x->get_scalar(), y->get_scalar(), z->get_scalar()));
+}
+
+std::unique_ptr<Value> Value::x(const Value *v)
+{
+  return std::make_unique<ScalarValue>(v->get_vector().x);
+}
+
+std::unique_ptr<Value> Value::y(const Value *v)
+{
+  return std::make_unique<ScalarValue>(v->get_vector().y);
+}
+
+std::unique_ptr<Value> Value::z(const Value *v)
+{
+  return std::make_unique<ScalarValue>(v->get_vector().z);
+}
+
+std::unique_ptr<Value> Value::len(const Value *v)
+{
+  return std::make_unique<ScalarValue>(blender::math::length(v->get_vector()));
 }
 
 std::unique_ptr<Value> ScalarValue::mul(const VectorValue *left) const

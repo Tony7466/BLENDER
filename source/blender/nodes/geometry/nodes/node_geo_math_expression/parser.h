@@ -120,6 +120,14 @@ public:
       def = { CallExpression::FunctionName::LERP, 3 };
     } else if(token.value == "vec") {
       def = { CallExpression::FunctionName::VEC, 3 };
+    } else if(token.value == "x") {
+      def = { CallExpression::FunctionName::X, 1 };
+    } else if(token.value == "y") {
+      def = { CallExpression::FunctionName::Y, 1 };
+    } else if(token.value == "z") {
+      def = { CallExpression::FunctionName::Z, 1 };
+    } else if(token.value == "len") {
+      def = { CallExpression::FunctionName::LEN, 1 };
     } else {
       throw new ParserError { token, "invalid function" };
     }

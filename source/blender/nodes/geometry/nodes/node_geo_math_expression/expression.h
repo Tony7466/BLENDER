@@ -60,7 +60,9 @@ public:
   enum class FunctionName {
     POW,
     LERP,
-    VEC
+    VEC,
+    X, Y, Z,
+    LEN
   };
 
   struct FunctionDef {
@@ -90,6 +92,14 @@ public:
           return Value::lerp(evaluated_args[0].get(), evaluated_args[1].get(), evaluated_args[2].get());
         case FunctionName::VEC:
           return Value::vec(evaluated_args[0].get(), evaluated_args[1].get(), evaluated_args[2].get());
+        case FunctionName::X:
+          return Value::x(evaluated_args[0].get());
+        case FunctionName::Y:
+          return Value::y(evaluated_args[0].get());
+        case FunctionName::Z:
+          return Value::z(evaluated_args[0].get());
+        case FunctionName::LEN:
+          return Value::len(evaluated_args[0].get());
       }
     } catch (const char *err) {
       throw EvaluationError{ this, err };
