@@ -127,8 +127,8 @@ static Mesh *remesh_quadriflow(const Mesh *input_mesh,
 
   blender::offset_indices::fill_constant_group_size(4, 0, face_offsets);
 
-  mesh->vert_positions_for_write().copy_from(
-      Span(reinterpret_cast<float3 *>(qrd.out_verts), qrd.out_totverts));
+  array_utils::copy(Span<float3>(reinterpret_cast<float3 *>(qrd.out_verts), qrd.out_totverts),
+                    mesh->vert_positions_for_write());
 
   for (const int i : IndexRange(qrd.out_totfaces)) {
     const int loopstart = i * 4;

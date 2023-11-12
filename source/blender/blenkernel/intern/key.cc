@@ -12,6 +12,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_blenlib.h"
 #include "BLI_endian_switch.h"
 #include "BLI_math_matrix.h"
@@ -1603,8 +1604,9 @@ float *BKE_key_evaluate_object_ex(
       case ID_ME: {
         Mesh *mesh = (Mesh *)obdata;
         const int totvert = min_ii(tot, mesh->totvert);
-        mesh->vert_positions_for_write().take_front(totvert).copy_from(
-            {reinterpret_cast<const blender::float3 *>(out), totvert});
+        blender::array_utils::copy(blender::Span<blender::float3>(
+                                       reinterpret_cast<const blender::float3 *>(out), totvert),
+                                   mesh->vert_positions_for_write().take_front(totvert));
         break;
       }
       case ID_LT: {

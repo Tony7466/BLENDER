@@ -18,6 +18,16 @@ void copy(const GVArray &src, GMutableSpan dst, const int64_t grain_size)
   });
 }
 
+void copy(const GSpan src, GMutableSpan dst, int64_t grain_size)
+{
+  BLI_assert(src.type() == dst.type());
+  BLI_assert(src.size() == dst.size());
+  const CPPType &type = src.type();
+  threading::parallel_for(IndexRange(src.size()), grain_size, [&](const IndexRange range) {
+    type.copy_construct_n(src.slice(range).data(), dst.slice(range).data(), range.size());
+  });
+}
+
 void copy(const GVArray &src,
           const IndexMask &selection,
           GMutableSpan dst,

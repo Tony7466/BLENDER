@@ -9,6 +9,7 @@
 #include "GPU_capabilities.h"
 #include "GPU_debug.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_math_rotation.hh"
 
 #include "eevee_instance.hh"
@@ -94,7 +95,7 @@ Vector<IrradianceBrickPacked> IrradianceCache::bricks_alloc(int brick_len)
   }
   Vector<IrradianceBrickPacked> allocated(brick_len);
   /* Copy bricks to return vector. */
-  allocated.as_mutable_span().copy_from(brick_pool_.as_span().take_back(brick_len));
+  array_utils::copy(brick_pool_.as_span().take_back(brick_len), allocated.as_mutable_span());
   /* Remove bricks from the pool. */
   brick_pool_.resize(brick_pool_.size() - brick_len);
 
@@ -456,7 +457,8 @@ void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
         /* TODO(fclem): Cleanup: Could have a function in draw::StorageArrayBuffer that takes an
          * input data. */
         Span<Surfel> grid_surfels(static_cast<Surfel *>(cache->surfels), cache->surfels_len);
-        MutableSpan<Surfel>(debug_surfels_buf_.data(), cache->surfels_len).copy_from(grid_surfels);
+        array_utils::copy(grid_surfels,
+                          MutableSpan<Surfel>(debug_surfels_buf_.data(), cache->surfels_len));
         debug_surfels_buf_.push_update();
 
         debug_ps_.bind_ssbo("surfels_buf", debug_surfels_buf_);
@@ -1150,7 +1152,7 @@ void IrradianceBake::read_surfels(LightProbeGridCacheFrame *cache_frame)
 
   MutableSpan<Surfel> surfels_dst((Surfel *)cache_frame->surfels, cache_frame->surfels_len);
   Span<Surfel> surfels_src(surfels_buf_.data(), cache_frame->surfels_len);
-  surfels_dst.copy_from(surfels_src);
+  array_utils::copy(surfels_src, surfels_dst);
 }
 
 void IrradianceBake::read_virtual_offset(LightProbeGridCacheFrame *cache_frame)

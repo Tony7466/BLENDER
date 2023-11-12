@@ -6,6 +6,7 @@
 
 #include "BLI_math_vector.hh"
 
+#include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_length_parameterize.hh"
 #include "BLI_math_geom.h"
@@ -114,7 +115,7 @@ class ShrinkCurvesEffect : public CurvesEffect {
     data.reinitialize(positions.size());
 
     /* Copy the old positions to facilitate mixing from neighbors for the resulting curve. */
-    data.old_positions.as_mutable_span().copy_from(positions);
+    array_utils::copy(positions.as_span(), data.old_positions.as_mutable_span());
 
     lp::accumulate_lengths<float3>(data.old_positions, false, data.old_lengths);
 
@@ -191,7 +192,7 @@ class ScaleCurvesEffect : public CurvesEffect {
       const float length_diff = scale_up_ ? move_distance_cu : -move_distance_cu;
       const float min_length = brush_.curves_sculpt_settings->minimum_length;
       const float new_length = std::max(min_length, old_length + length_diff);
-      const float scale_factor = math::safe_divide(new_length, old_length);
+      const float scale_factor = safe_divide(new_length, old_length);
 
       const float3 &root_pos_cu = positions_cu[points[0]];
       for (float3 &pos_cu : positions_cu.slice(points.drop_front(1))) {

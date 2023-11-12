@@ -17,6 +17,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_bitmap.h"
 #include "BLI_map.hh"
 #include "BLI_math_base.h"
@@ -1357,7 +1358,7 @@ void BKE_mesh_calc_edges_tessface(Mesh *mesh)
   int *index = (int *)CustomData_get_layer_for_write(&edgeData, CD_ORIGINDEX, mesh->totedge);
 
   memset(index, ORIGINDEX_NONE, sizeof(int) * numEdges);
-  MutableSpan(ege, numEdges).copy_from(eh.as_span().cast<blender::int2>());
+  blender::array_utils::copy(eh.as_span().cast<blender::int2>(), MutableSpan(ege, numEdges));
 
   /* free old CustomData and assign new one */
   CustomData_free(&mesh->edge_data, mesh->totedge);

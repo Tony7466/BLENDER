@@ -94,12 +94,10 @@ class EdgesOfVertInput final : public bke::MeshFieldInput {
         if (use_sorting) {
           /* Retrieve a compressed array of weights for each edge. */
           sort_weights.reinitialize(edges.size());
-          IndexMaskMemory memory;
-          all_sort_weights.materialize_compressed(IndexMask::from_indices<int>(edges, memory),
-                                                  sort_weights.as_mutable_span());
+          array_utils::gather(all_sort_weights, edges, sort_weights.as_mutable_span());
 
           /* Sort a separate array of compressed indices corresponding to the compressed weights.
-           * This allows using `materialize_compressed` to avoid virtual function call overhead
+           * This allows using `array_utils::gather` to avoid virtual function call overhead
            * when accessing values in the sort weights. However, it means a separate array of
            * indices within the compressed array is necessary for sorting. */
           sort_indices.reinitialize(edges.size());

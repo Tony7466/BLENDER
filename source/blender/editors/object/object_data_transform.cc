@@ -25,6 +25,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -346,8 +347,10 @@ XFormObjectData *ED_object_data_xform_create_ex(ID *id, bool is_edit_mode)
         XFormObjectData_Mesh *xod = static_cast<XFormObjectData_Mesh *>(
             MEM_mallocN(sizeof(*xod) + (sizeof(*xod->elem_array) * elem_array_len), __func__));
         memset(xod, 0x0, sizeof(*xod));
-        blender::MutableSpan(reinterpret_cast<blender::float3 *>(xod->elem_array), me->totvert)
-            .copy_from(me->vert_positions());
+        blender::array_utils::copy(
+            me->vert_positions(),
+            blender::MutableSpan(reinterpret_cast<blender::float3 *>(xod->elem_array),
+                                 me->totvert));
 
         xod_base = &xod->base;
 

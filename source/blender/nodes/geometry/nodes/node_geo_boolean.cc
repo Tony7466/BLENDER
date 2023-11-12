@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
+
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh_boolean_convert.hh"
@@ -175,7 +177,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   result->mat = static_cast<Material **>(
       MEM_malloc_arrayN(materials.size(), sizeof(Material *), __func__));
   result->totcol = materials.size();
-  MutableSpan(result->mat, result->totcol).copy_from(materials);
+  array_utils::copy(materials, MutableSpan(result->mat, result->totcol));
 
   /* Store intersecting edges in attribute. */
   if (attribute_outputs.intersecting_edges_id) {

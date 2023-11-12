@@ -5,6 +5,7 @@
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
+#include "BLI_array_utils.hh"
 
 namespace blender::bke {
 
@@ -58,7 +59,8 @@ static void remember_deformed_curve_positions_if_necessary(
     return;
   }
   edit_component.curves_edit_hints_->positions.emplace(points_num);
-  edit_component.curves_edit_hints_->positions->as_mutable_span().copy_from(curves.positions());
+  array_utils::copy(curves.positions(),
+                    edit_component.curves_edit_hints_->positions->as_mutable_span());
 }
 
 static void remember_deformed_grease_pencil_if_necessary(const GreasePencil *grease_pencil,

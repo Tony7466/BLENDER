@@ -7,6 +7,7 @@
  */
 
 #include "BLI_array_utils.hh"
+#include "BLI_generic_span.hh"
 #include "BLI_lasso_2d.h"
 #include "BLI_math_geom.h"
 #include "BLI_rand.hh"
@@ -46,7 +47,7 @@ IndexMask retrieve_selected_curves(const bke::CurvesGeometry &curves, IndexMaskM
           const IndexRange points = points_by_curve[curve_i];
           /* The curve is selected if any of its points are selected. */
           Array<bool, 32> point_selection(points.size());
-          selection.materialize_compressed(points, point_selection);
+          array_utils::gather(selection, IndexMask(points), point_selection.as_mutable_span());
           return point_selection.as_span().contains(true);
         });
   }

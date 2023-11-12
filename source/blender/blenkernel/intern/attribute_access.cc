@@ -210,7 +210,7 @@ static bool add_builtin_type_custom_data_layer_from_init(CustomData &custom_data
         return false;
       }
       const GVArray &varray = static_cast<const AttributeInitVArray &>(initializer).varray;
-      varray.materialize_to_uninitialized(varray.index_range(), data);
+      array_utils::copy(varray, GMutableSpan(varray.type(), data, varray.size()));
       return true;
     }
     case AttributeInit::Type::MoveArray: {
@@ -297,7 +297,7 @@ static bool add_custom_data_layer_from_attribute_init(const AttributeIDRef &attr
           custom_data, data_type, CD_CONSTRUCT, domain_num, attribute_id);
       if (data != nullptr) {
         const GVArray &varray = static_cast<const AttributeInitVArray &>(initializer).varray;
-        varray.materialize_to_uninitialized(varray.index_range(), data);
+        array_utils::copy(varray, GMutableSpan(varray.type(), data, varray.size()));
       }
       break;
     }
@@ -949,9 +949,7 @@ static void gather_group_to_group(const OffsetIndices<int> src_offsets,
                                   const Span<T> src,
                                   MutableSpan<T> dst)
 {
-  selection.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
-    dst.slice(dst_offsets[dst_i]).copy_from(src.slice(src_offsets[src_i]));
-  });
+  array_utils::copy_group_to_group(src_offsets, dst_offsets, selection, src, dst);
 }
 
 static void gather_group_to_group(const OffsetIndices<int> src_offsets,
@@ -960,10 +958,7 @@ static void gather_group_to_group(const OffsetIndices<int> src_offsets,
                                   const GSpan src,
                                   GMutableSpan dst)
 {
-  attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
-    using T = decltype(dummy);
-    gather_group_to_group(src_offsets, dst_offsets, selection, src.typed<T>(), dst.typed<T>());
-  });
+  array_utils::copy_group_to_group(src_offsets, dst_offsets, selection, src, dst);
 }
 
 void gather_attributes_group_to_group(const AttributeAccessor src_attributes,

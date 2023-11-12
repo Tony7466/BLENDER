@@ -7,6 +7,7 @@
 #include "BKE_curves_utils.hh"
 #include "BKE_geometry_set.hh"
 
+#include "BLI_array_utils.hh"
 #include "BLI_task.hh"
 
 #include "GEO_subdivide_curves.hh"
@@ -36,7 +37,7 @@ static void calculate_result_offsets(const bke::CurvesGeometry &src_curves,
       point_counts.first() = 1;
     }
     else {
-      cuts.materialize_compressed(src_points, point_counts);
+      array_utils::gather(cuts, IndexMask(src_points), point_counts);
       for (int &count : point_counts) {
         /* Make sure there at least one cut, and add one for the existing point. */
         count = std::max(count, 0) + 1;

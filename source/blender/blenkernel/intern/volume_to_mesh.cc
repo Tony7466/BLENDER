@@ -4,6 +4,7 @@
 
 #include <vector>
 
+#include "BLI_array_utils.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_utildefines.h"
@@ -121,7 +122,7 @@ void fill_mesh_from_openvdb_data(const Span<openvdb::Vec3s> vdb_verts,
                                  MutableSpan<int> corner_verts)
 {
   /* Write vertices. */
-  vert_positions.slice(vert_offset, vdb_verts.size()).copy_from(vdb_verts.cast<float3>());
+  array_utils::copy(vdb_verts.cast<float3>(), vert_positions.slice(vert_offset, vdb_verts.size()));
 
   /* Write triangles. */
   for (const int i : vdb_tris.index_range()) {

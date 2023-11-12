@@ -20,6 +20,7 @@ namespace blender::array_utils {
  * grain-size.
  */
 void copy(const GVArray &src, GMutableSpan dst, int64_t grain_size = 4096);
+void copy(const GSpan src, GMutableSpan dst, int64_t grain_size = 4096);
 template<typename T>
 inline void copy(const VArray<T> &src, MutableSpan<T> dst, const int64_t grain_size = 4096)
 {

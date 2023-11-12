@@ -12,6 +12,7 @@
 #include "BKE_grease_pencil.h"
 #include "BKE_grease_pencil.hh"
 
+#include "BLI_array_utils.hh"
 #include "BLI_task.hh"
 
 #include "DNA_grease_pencil_types.h"
@@ -388,10 +389,11 @@ static void grease_pencil_geom_batch_ensure(const GreasePencil &grease_pencil,
     const Span<int> verts_start_offsets = verts_start_offsets_per_visible_drawing[drawing_i];
     const Span<int> tris_start_offsets = tris_start_offsets_per_visible_drawing[drawing_i];
 
-    edit_points.slice(drawing_start_offset, curves.points_num()).copy_from(curves.positions());
+    array_utils::copy(curves.positions(),
+                      edit_points.slice(drawing_start_offset, curves.points_num()));
     MutableSpan<float> selection_slice = edit_points_selection.slice(drawing_start_offset,
                                                                      curves.points_num());
-    selection_float.materialize(selection_slice);
+    array_utils::copy(selection_float, selection_slice);
     drawing_start_offset += curves.points_num();
 
     auto populate_point = [&](IndexRange verts_range,

@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
 #include "BLI_kdtree.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_rotation.h"
@@ -558,7 +559,7 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
   bke::MutableAttributeAccessor point_attributes = pointcloud->attributes_for_write();
   bke::SpanAttributeWriter<float> point_radii =
       point_attributes.lookup_or_add_for_write_only_span<float>("radius", ATTR_DOMAIN_POINT);
-  pointcloud->positions_for_write().copy_from(positions);
+  array_utils::copy(positions.as_span(), pointcloud->positions_for_write());
   point_radii.span.fill(0.05f);
   point_radii.finish();
 

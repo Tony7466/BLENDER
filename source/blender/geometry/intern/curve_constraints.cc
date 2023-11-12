@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_task.hh"
 
@@ -171,7 +172,7 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
         }
       }
       if (revert_curve) {
-        positions_cu.slice(points).copy_from(start_positions_cu.slice(points));
+        array_utils::copy(start_positions_cu.slice(points), positions_cu.slice(points));
       }
     }
   });

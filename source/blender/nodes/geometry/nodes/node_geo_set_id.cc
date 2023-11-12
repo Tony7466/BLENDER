@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_set_id_cc {
@@ -47,7 +49,7 @@ static void set_id_in_component(GeometryComponent &component,
     const VArray<int> result_ids = evaluator.get_evaluated<int>(0);
     SpanAttributeWriter<int> id_attribute = attributes.lookup_or_add_for_write_span<int>("id",
                                                                                          domain);
-    result_ids.materialize(selection, id_attribute.span);
+    array_utils::copy(result_ids, selection, id_attribute.span);
     id_attribute.finish();
   }
 }

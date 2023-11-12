@@ -8,6 +8,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_atomic_disjoint_set.hh"
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
@@ -89,7 +90,7 @@ void paintface_flush_flags(bContext *C,
           ".hide_poly", ATTR_DOMAIN_FACE, false);
       bke::SpanAttributeWriter<bool> hide_poly_orig =
           attributes_orig.lookup_or_add_for_write_only_span<bool>(".hide_poly", ATTR_DOMAIN_FACE);
-      hide_poly_me.materialize(hide_poly_orig.span);
+      array_utils::copy(hide_poly_me, hide_poly_orig.span);
       hide_poly_orig.finish();
     }
     if (flush_selection) {
@@ -98,7 +99,7 @@ void paintface_flush_flags(bContext *C,
       bke::SpanAttributeWriter<bool> select_poly_orig =
           attributes_orig.lookup_or_add_for_write_only_span<bool>(".select_poly",
                                                                   ATTR_DOMAIN_FACE);
-      select_poly_me.materialize(select_poly_orig.span);
+      array_utils::copy(select_poly_me, select_poly_orig.span);
       select_poly_orig.finish();
     }
 
@@ -851,7 +852,7 @@ void paintvert_flush_flags(Object *ob)
     }
   }
   else {
-    hide_vert_orig.materialize(hide_vert_eval.span);
+    array_utils::copy(hide_vert_orig, hide_vert_eval.span);
   }
   hide_vert_eval.finish();
 
@@ -867,7 +868,7 @@ void paintvert_flush_flags(Object *ob)
     }
   }
   else {
-    select_vert_orig.materialize(select_vert_eval.span);
+    array_utils::copy(select_vert_orig, select_vert_eval.span);
   }
   select_vert_eval.finish();
 

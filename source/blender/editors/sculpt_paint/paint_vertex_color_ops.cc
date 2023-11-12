@@ -14,7 +14,9 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_function_ref.hh"
+#include "BLI_generic_span.hh"
 #include "BLI_math_base.h"
 #include "BLI_math_color.h"
 #include "BLI_vector.hh"
@@ -195,7 +197,7 @@ static void face_corner_color_equalize_verts(Mesh &mesh, const IndexMask selecti
   GVArray color_attribute_point = *attributes.lookup(name, ATTR_DOMAIN_POINT);
   GVArray color_attribute_corner = attributes.adapt_domain(
       color_attribute_point, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CORNER);
-  color_attribute_corner.materialize(selection, attribute.span.data());
+  array_utils::copy(color_attribute_corner, selection, attribute.span);
   attribute.finish();
 }
 

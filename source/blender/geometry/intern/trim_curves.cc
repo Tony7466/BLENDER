@@ -222,17 +222,19 @@ static int64_t copy_point_data_between_endpoints(const Span<T> src_data,
   int64_t increment;
   if (src_range.cycles()) {
     increment = src_range.size_before_loop();
-    dst_data.slice(dst_index, increment).copy_from(src_data.slice(src_range.first(), increment));
+    array_utils::copy(src_data.slice(src_range.first(), increment),
+                      dst_data.slice(dst_index, increment));
     dst_index += increment;
 
     increment = src_range.size_after_loop();
-    dst_data.slice(dst_index, increment)
-        .copy_from(src_data.slice(src_range.curve_range().first(), increment));
+    array_utils::copy(src_data.slice(src_range.curve_range().first(), increment),
+                      dst_data.slice(dst_index, increment));
     dst_index += increment;
   }
   else {
     increment = src_range.one_after_last() - int64_t(src_range.first());
-    dst_data.slice(dst_index, increment).copy_from(src_data.slice(src_range.first(), increment));
+    array_utils::copy(src_data.slice(src_range.first(), increment),
+                      dst_data.slice(dst_index, increment));
     dst_index += increment;
   }
   return dst_index;
@@ -437,11 +439,11 @@ static void sample_interval_bezier(const Span<float3> src_positions,
 
   const IndexRange dst_range_to_end(dst_index, increment);
   const IndexRange src_range_to_end(src_range.first(), increment);
-  dst_positions.slice(dst_range_to_end).copy_from(src_positions.slice(src_range_to_end));
-  dst_handles_l.slice(dst_range_to_end).copy_from(src_handles_l.slice(src_range_to_end));
-  dst_handles_r.slice(dst_range_to_end).copy_from(src_handles_r.slice(src_range_to_end));
-  dst_types_l.slice(dst_range_to_end).copy_from(src_types_l.slice(src_range_to_end));
-  dst_types_r.slice(dst_range_to_end).copy_from(src_types_r.slice(src_range_to_end));
+  array_utils::copy(src_positions.slice(src_range_to_end), dst_positions.slice(dst_range_to_end));
+  array_utils::copy(src_handles_l.slice(src_range_to_end), dst_handles_l.slice(dst_range_to_end));
+  array_utils::copy(src_handles_r.slice(src_range_to_end), dst_handles_r.slice(dst_range_to_end));
+  array_utils::copy(src_types_l.slice(src_range_to_end), dst_types_l.slice(dst_range_to_end));
+  array_utils::copy(src_types_r.slice(src_range_to_end), dst_types_r.slice(dst_range_to_end));
   dst_index += increment;
 
   if (dst_range.size() == 1) {
@@ -453,11 +455,14 @@ static void sample_interval_bezier(const Span<float3> src_positions,
   if (src_range.cycles() && increment > 0) {
     const IndexRange dst_range_looped(dst_index, increment);
     const IndexRange src_range_looped(src_range.curve_range().first(), increment);
-    dst_positions.slice(dst_range_looped).copy_from(src_positions.slice(src_range_looped));
-    dst_handles_l.slice(dst_range_looped).copy_from(src_handles_l.slice(src_range_looped));
-    dst_handles_r.slice(dst_range_looped).copy_from(src_handles_r.slice(src_range_looped));
-    dst_types_l.slice(dst_range_looped).copy_from(src_types_l.slice(src_range_looped));
-    dst_types_r.slice(dst_range_looped).copy_from(src_types_r.slice(src_range_looped));
+    array_utils::copy(src_positions.slice(src_range_looped),
+                      dst_positions.slice(dst_range_looped));
+    array_utils::copy(src_handles_l.slice(src_range_looped),
+                      dst_handles_l.slice(dst_range_looped));
+    array_utils::copy(src_handles_r.slice(src_range_looped),
+                      dst_handles_r.slice(dst_range_looped));
+    array_utils::copy(src_types_l.slice(src_range_looped), dst_types_l.slice(dst_range_looped));
+    array_utils::copy(src_types_r.slice(src_range_looped), dst_types_r.slice(dst_range_looped));
     dst_index += increment;
   }
 

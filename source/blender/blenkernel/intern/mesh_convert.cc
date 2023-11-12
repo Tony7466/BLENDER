@@ -20,6 +20,7 @@
 #include "DNA_pointcloud_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_index_range.hh"
 #include "BLI_listbase.h"
 #include "BLI_span.hh"
@@ -996,10 +997,11 @@ static void move_shapekey_layers_to_keyblocks(const Mesh &mesh,
     kb->data = MEM_malloc_arrayN(kb->totelem, sizeof(float3), __func__);
     MutableSpan<float3> kb_coords(static_cast<float3 *>(kb->data), kb->totelem);
     if (kb->uid == actshape_uid) {
-      mesh.attributes().lookup<float3>("position").varray.materialize(kb_coords);
+      blender::array_utils::copy(mesh.attributes().lookup<float3>("position").varray, kb_coords);
     }
     else {
-      kb_coords.copy_from({static_cast<const float3 *>(layer.data), mesh.totvert});
+      blender::array_utils::copy(
+          Span<float3>(static_cast<const float3 *>(layer.data), mesh.totvert), kb_coords);
     }
   }
 
@@ -1079,5 +1081,6 @@ void BKE_mesh_nomain_to_meshkey(Mesh *mesh_src, Mesh *mesh_dst, KeyBlock *kb)
   }
   kb->data = MEM_malloc_arrayN(mesh_dst->key->elemsize, mesh_dst->totvert, "kb->data");
   kb->totelem = totvert;
-  MutableSpan(static_cast<float3 *>(kb->data), kb->totelem).copy_from(mesh_src->vert_positions());
+  blender::array_utils::copy(mesh_src->vert_positions(),
+                             MutableSpan(static_cast<float3 *>(kb->data), kb->totelem));
 }

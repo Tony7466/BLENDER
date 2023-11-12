@@ -3351,7 +3351,7 @@ void BKE_pbvh_ensure_node_loops(PBVH *pbvh)
     }
 
     node.loop_indices.reinitialize(loop_indices.size());
-    node.loop_indices.as_mutable_span().copy_from(loop_indices);
+    blender::array_utils::copy(loop_indices.as_span(), node.loop_indices.as_mutable_span());
   }
 
   MEM_SAFE_FREE(visit);

@@ -18,6 +18,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_bounds.hh"
 #include "BLI_endian_switch.h"
 #include "BLI_ghash.h"
@@ -1706,8 +1707,9 @@ void BKE_mesh_count_selected_items(const Mesh *mesh, int r_count[3])
 float (*BKE_mesh_vert_coords_alloc(const Mesh *mesh, int *r_vert_len))[3]
 {
   float(*vert_coords)[3] = (float(*)[3])MEM_mallocN(sizeof(float[3]) * mesh->totvert, __func__);
-  MutableSpan(reinterpret_cast<float3 *>(vert_coords), mesh->totvert)
-      .copy_from(mesh->vert_positions());
+  blender::array_utils::copy(
+      mesh->vert_positions(),
+      MutableSpan<float3>(reinterpret_cast<float3 *>(vert_coords), mesh->totvert));
   if (r_vert_len) {
     *r_vert_len = mesh->totvert;
   }

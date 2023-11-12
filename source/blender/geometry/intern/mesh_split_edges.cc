@@ -388,9 +388,8 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
     const int new_edges_num = deduplication.size() - 1;
 
     edges[edge] = int2(deduplication.first().v_low, deduplication.first().v_high);
-    new_edges.as_mutable_span()
-        .slice(new_edges_start, new_edges_num)
-        .copy_from(deduplication.as_span().drop_front(1).cast<int2>());
+    array_utils::copy(deduplication.as_span().drop_front(1).cast<int2>(),
+                      new_edges.as_mutable_span().slice(new_edges_start, new_edges_num));
 
     num_edges_per_edge_merged[mask] = new_edges_num;
   });
@@ -416,13 +415,12 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
   Array<int2> new_edges_merged(offsets_merged.total_size());
   threading::parallel_for(offsets_merged.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
-      new_edges_merged.as_mutable_span()
-          .slice(offsets_merged[i])
-          .copy_from(new_edges.as_span().slice(offsets[i].start(), offsets_merged[i].size()));
+      array_utils::copy(new_edges.as_span().slice(offsets[i].start(), offsets_merged[i].size()),
+                        new_edges_merged.as_mutable_span().slice(offsets_merged[i]));
     }
   });
 
-  r_new_edge_offsets.copy_from(num_edges_per_edge_merged);
+  array_utils::copy(num_edges_per_edge_merged.as_span(), r_new_edge_offsets);
   return new_edges_merged;
 }
 
@@ -590,7 +588,7 @@ void split_edges(Mesh &mesh,
 
   const Array<int> edge_map = offsets_to_map(selected_edges, new_edge_offsets.as_span());
   propagate_edge_attributes(mesh, edge_map);
-  mesh.edges_for_write().take_back(new_edges.size()).copy_from(new_edges);
+  array_utils::copy(new_edges.as_span(), mesh.edges_for_write().take_back(new_edges.size()));
 
   const Array<int> vert_map = offsets_to_map(affected_verts, new_verts_by_affected_vert);
   propagate_vert_attributes(mesh, vert_map);

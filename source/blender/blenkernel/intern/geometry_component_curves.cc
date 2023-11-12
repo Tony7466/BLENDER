@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
 #include "BLI_task.hh"
 
 #include "DNA_ID_enums.h"
@@ -174,7 +175,7 @@ static Array<float3> curve_normal_point_domain(const bke::CurvesGeometry &curves
           break;
         }
         case CURVE_TYPE_POLY:
-          curve_normals.copy_from(evaluated_normals.slice(evaluated_points));
+          array_utils::copy(evaluated_normals.slice(evaluated_points), curve_normals);
           break;
         case CURVE_TYPE_BEZIER: {
           const Span<float3> normals = evaluated_normals.slice(evaluated_points);

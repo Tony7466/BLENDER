@@ -111,7 +111,8 @@ static Array<float> calculate_point_lengths(
           break;
         }
         case CURVE_TYPE_POLY:
-          lengths.drop_front(1).copy_from(evaluated_lengths.take_front(lengths.size() - 1));
+          array_utils::copy(evaluated_lengths.take_front(lengths.size() - 1),
+                            lengths.drop_front(1));
           total = last_evaluated_length;
           break;
         case CURVE_TYPE_BEZIER: {

@@ -2,12 +2,12 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_math_vector.hh"
-
+#include "BLI_array_utils.hh"
 #include "BLI_length_parameterize.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.h"
+#include "BLI_math_vector.hh"
 #include "BLI_task.hh"
 
 #include "BKE_attribute_math.hh"
@@ -321,7 +321,7 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
 
   /* Initialize attachment information. */
   MutableSpan<float2> surface_uv_coords = curves.surface_uv_coords_for_write();
-  surface_uv_coords.take_back(added_curves_num).copy_from(used_uvs);
+  array_utils::copy(used_uvs.as_span(), surface_uv_coords.take_back(added_curves_num));
 
   /* Determine length of new curves. */
   Array<float> new_lengths_cu(added_curves_num);

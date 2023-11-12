@@ -16,6 +16,7 @@
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_index_range.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_base.h"
@@ -321,7 +322,7 @@ void curves_copy_parameters(const Curves &src, Curves &dst)
   MEM_SAFE_FREE(dst.mat);
   dst.mat = static_cast<Material **>(MEM_malloc_arrayN(src.totcol, sizeof(Material *), __func__));
   dst.totcol = src.totcol;
-  MutableSpan(dst.mat, dst.totcol).copy_from(Span(src.mat, src.totcol));
+  array_utils::copy(Span(src.mat, src.totcol), MutableSpan(dst.mat, dst.totcol));
   dst.symmetry = src.symmetry;
   dst.selection_domain = src.selection_domain;
   dst.surface = src.surface;

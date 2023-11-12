@@ -6,6 +6,8 @@
  * \ingroup edgreasepencil
  */
 
+#include "BLI_array_utils.hh"
+#include "BLI_generic_span.hh"
 #include "BLI_vector_set.hh"
 
 #include "BKE_context.h"
@@ -369,7 +371,7 @@ static int select_set_mode_exec(bContext *C, wmOperator *op)
     if (src) {
       const CPPType &type = src.type();
       void *dst = MEM_malloc_arrayN(attributes.domain_size(domain), type.size(), __func__);
-      src.materialize(dst);
+      array_utils::copy(src, GMutableSpan(src.type(), dst, src.size()));
 
       attributes.remove(".selection");
       if (!attributes.add(".selection",

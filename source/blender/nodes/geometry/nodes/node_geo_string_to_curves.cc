@@ -11,6 +11,7 @@
 #include "BKE_instances.hh"
 #include "BKE_vfont.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_bounds.hh"
 #include "BLI_hash.h"
 #include "BLI_math_matrix.hh"
@@ -341,7 +342,7 @@ static void create_attributes(GeoNodeExecParams &params,
   {
     SpanAttributeWriter<int> line_attribute = attributes.lookup_or_add_for_write_only_span<int>(
         *line_id, ATTR_DOMAIN_INSTANCE);
-    line_attribute.span.copy_from(layout.line_numbers);
+    array_utils::copy(layout.line_numbers.as_span(), line_attribute.span);
     line_attribute.finish();
   }
 

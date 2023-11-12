@@ -357,7 +357,7 @@ static void extract_mesh_attr_viewer_init(const MeshRenderData &mr,
   const bke::AttributeAccessor attributes = mr.me->attributes();
   const bke::AttributeReader attribute = attributes.lookup_or_default<ColorGeometry4f>(
       attr_name, ATTR_DOMAIN_CORNER, {1.0f, 0.0f, 1.0f, 1.0f});
-  attribute.varray.materialize(attr);
+  array_utils::copy(attribute.varray, attr);
 }
 
 constexpr MeshExtract create_extractor_attr_viewer()

@@ -226,7 +226,7 @@ static void copy_curve_attributes_without_id(
               GrainSize(512), [&](const int64_t index, const int64_t i_selection) {
                 const Span<T> curve_src = src.slice(src_points_by_curve[index]);
                 for (const int dst_curve_index : curve_offsets[i_selection]) {
-                  dst.slice(dst_points_by_curve[dst_curve_index]).copy_from(curve_src);
+                  array_utils::copy(curve_src, dst.slice(dst_points_by_curve[dst_curve_index]));
                 }
               });
         });

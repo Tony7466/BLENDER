@@ -16,8 +16,10 @@
 #include "CLG_log.h"
 
 #include "BLI_array_utils.h"
+#include "BLI_array_utils.hh"
 #include "BLI_color.hh"
 #include "BLI_color_mix.hh"
+#include "BLI_generic_span.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
 #include "BLI_rect.h"
@@ -972,7 +974,7 @@ static VPaintData *vpaint_init_vpaint(bContext *C,
   if (brush->vertexpaint_tool == VPAINT_TOOL_SMEAR) {
     const GVArray attribute = *me->attributes().lookup(me->active_color_attribute, domain);
     vpd->smear.color_prev = GArray(attribute.type(), attribute.size());
-    attribute.materialize(vpd->smear.color_prev.data());
+    array_utils::copy(attribute, vpd->smear.color_prev);
 
     vpd->smear.color_curr = vpd->smear.color_prev;
   }

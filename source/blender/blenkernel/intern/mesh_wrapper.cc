@@ -27,6 +27,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_ghash.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
@@ -127,7 +128,8 @@ void BKE_mesh_wrapper_ensure_mdata(Mesh *me)
 
         blender::bke::EditMeshData *edit_data = me->runtime->edit_data;
         if (!edit_data->vertexCos.is_empty()) {
-          me->vert_positions_for_write().copy_from(edit_data->vertexCos);
+          blender::array_utils::copy(edit_data->vertexCos.as_span(),
+                                     me->vert_positions_for_write());
           me->runtime->is_original_bmesh = false;
         }
 

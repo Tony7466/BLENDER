@@ -7,6 +7,7 @@
  */
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
@@ -301,7 +302,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
     result_edges[i] += src_verts_num;
   }
 
-  result_face_offsets.take_front(src_faces.size()).copy_from(mesh->face_offsets().drop_back(1));
+  blender::array_utils::copy(mesh->face_offsets().drop_back(1),
+                             result_face_offsets.take_front(src_faces.size()));
   for (const int i : src_faces.index_range()) {
     result_face_offsets[src_faces.size() + i] = src_faces[i].start() + src_loops_num;
   }

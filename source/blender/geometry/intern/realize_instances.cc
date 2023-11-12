@@ -11,6 +11,7 @@
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_noise.hh"
@@ -347,7 +348,7 @@ static void create_result_ids(const RealizeInstancesOptions &options,
       dst_ids.fill(0);
     }
     else {
-      dst_ids.copy_from(stored_ids);
+      array_utils::copy(stored_ids, dst_ids);
     }
   }
   else {
@@ -749,7 +750,7 @@ static void execute_realize_pointcloud_task(
         options, pointcloud_info.stored_ids, task.id, all_dst_ids.slice(point_slice));
   }
   if (!all_dst_radii.is_empty()) {
-    pointcloud_info.radii.materialize(all_dst_radii.slice(point_slice));
+    array_utils::copy(pointcloud_info.radii, all_dst_radii.slice(point_slice));
   }
 
   copy_generic_attributes_to_result(
@@ -1333,7 +1334,7 @@ static void execute_realize_curve_task(const RealizeInstancesOptions &options,
           all_dst.slice(dst_point_range).fill(value);
         }
         else {
-          all_dst.slice(dst_point_range).copy_from(src);
+          array_utils::copy(src, all_dst.slice(dst_point_range));
         }
       };
   if (all_curves_info.create_radius_attribute) {
@@ -1344,7 +1345,7 @@ static void execute_realize_curve_task(const RealizeInstancesOptions &options,
   }
 
   if (all_curves_info.create_resolution_attribute) {
-    curves_info.resolution.materialize(all_resolutions.slice(dst_curve_range));
+    array_utils::copy(curves_info.resolution, all_resolutions.slice(dst_curve_range));
   }
 
   /* Copy curve offsets. */

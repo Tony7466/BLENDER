@@ -1558,10 +1558,11 @@ SculptUndoNode *SCULPT_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
     int totgrid;
     const int *grids;
     BKE_pbvh_node_get_grids(ss->pbvh, node, &grids, &totgrid, nullptr, nullptr, nullptr);
-    unode->grids.as_mutable_span().copy_from({grids, totgrid});
+    blender::array_utils::copy({grids, totgrid}, unode->grids.as_mutable_span());
   }
   else {
-    unode->index.as_mutable_span().copy_from(BKE_pbvh_node_get_vert_indices(node));
+    blender::array_utils::copy(BKE_pbvh_node_get_vert_indices(node),
+                               unode->index.as_mutable_span());
 
     if (!unode->loop_index.is_empty()) {
       const int *loop_indices;
@@ -1571,7 +1572,7 @@ SculptUndoNode *SCULPT_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
           ss->pbvh, static_cast<PBVHNode *>(unode->node), &loop_indices, nullptr);
 
       if (allloop) {
-        unode->loop_index.as_mutable_span().copy_from({loop_indices, allloop});
+        blender::array_utils::copy({loop_indices, allloop}, unode->loop_index.as_mutable_span());
 
         unode->maxloop = BKE_object_get_original_mesh(ob)->totloop;
       }

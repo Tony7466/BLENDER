@@ -12,6 +12,7 @@
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 
+#include "BLI_array_utils.hh"
 #include "BLI_math_matrix.hh"
 
 #include "BLT_translation.h"
@@ -1137,23 +1138,23 @@ static bke::CurvesGeometry create_drawing_data(const Span<float3> positions,
 {
   using namespace blender::bke;
   CurvesGeometry curves(offsets.last(), offsets.size() - 1);
-  curves.offsets_for_write().copy_from(offsets);
+  array_utils::copy(offsets, curves.offsets_for_write());
 
   curves.fill_curve_types(CURVE_TYPE_POLY);
 
   MutableAttributeAccessor attributes = curves.attributes_for_write();
   MutableSpan<float3> point_positions = curves.positions_for_write();
-  point_positions.copy_from(positions);
+  array_utils::copy(positions, point_positions);
 
   curves.transform(matrix);
 
   SpanAttributeWriter<float> point_radii = attributes.lookup_or_add_for_write_only_span<float>(
       "radius", ATTR_DOMAIN_POINT);
-  point_radii.span.copy_from(radii);
+  array_utils::copy(radii, point_radii.span);
 
   SpanAttributeWriter<float> point_opacities = attributes.lookup_or_add_for_write_span<float>(
       "opacity", ATTR_DOMAIN_POINT);
-  point_opacities.span.copy_from(opacities);
+  array_utils::copy(opacities, point_opacities.span);
 
   SpanAttributeWriter<bool> stroke_cyclic = attributes.lookup_or_add_for_write_span<bool>(
       "cyclic", ATTR_DOMAIN_CURVE);
@@ -1161,7 +1162,7 @@ static bke::CurvesGeometry create_drawing_data(const Span<float3> positions,
 
   SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", ATTR_DOMAIN_CURVE);
-  stroke_materials.span.copy_from(materials);
+  array_utils::copy(materials, stroke_materials.span);
 
   point_radii.finish();
   point_opacities.finish();

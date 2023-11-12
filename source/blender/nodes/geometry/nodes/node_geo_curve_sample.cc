@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
 #include "BLI_math_color.hh"
 #include "BLI_math_quaternion.hh"
 #include "BLI_math_vector.hh"
@@ -384,7 +385,8 @@ class SampleCurveFunction : public mf::MultiFunction {
       if (!sampled_values.is_empty()) {
         const IndexRange points = points_by_curve[curve_i];
         src_original_values.reinitialize(points.size());
-        source_data_->materialize_compressed_to_uninitialized(points, src_original_values.data());
+        array_utils::gather(
+            *source_data_, IndexMask(points), src_original_values.as_mutable_span());
         src_evaluated_values.reinitialize(evaluated_points.size());
         curves.interpolate_to_evaluated(curve_i, src_original_values, src_evaluated_values);
         bke::attribute_math::convert_to_static_type(source_data_->type(), [&](auto dummy) {

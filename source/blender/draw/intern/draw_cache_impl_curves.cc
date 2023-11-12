@@ -12,6 +12,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_base.h"
 #include "BLI_math_vector.hh"
@@ -272,7 +273,7 @@ static void curves_batch_cache_ensure_edit_points_selection(const bke::CurvesGeo
 
   const VArray<float> attribute = *curves.attributes().lookup_or_default<float>(
       ".selection", ATTR_DOMAIN_POINT, true);
-  attribute.materialize(data);
+  array_utils::copy(attribute, data);
 }
 
 static void curves_batch_cache_ensure_edit_lines(const bke::CurvesGeometry &curves,
@@ -352,7 +353,7 @@ static void curves_batch_ensure_attribute(const Curves &curves,
       static_cast<ColorGeometry4f *>(GPU_vertbuf_get_data(attr_vbo)),
       attributes.domain_size(request.domain)};
 
-  attribute.varray.materialize(vbo_span);
+  array_utils::copy(attribute.varray, vbo_span);
 
   /* Existing final data may have been for a different attribute (with a different name or domain),
    * free the data. */

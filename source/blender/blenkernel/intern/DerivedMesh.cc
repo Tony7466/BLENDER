@@ -20,6 +20,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
 #include "BLI_linklist.h"
@@ -418,10 +419,10 @@ static void add_orco_mesh(
     layer_orco = orco_coord_layer_ensure(mesh, layer);
 
     if (mesh_orco->totvert == totvert) {
-      layer_orco.copy_from(mesh_orco->vert_positions());
+      blender::array_utils::copy(mesh_orco->vert_positions(), layer_orco);
     }
     else {
-      layer_orco.copy_from(mesh->vert_positions());
+      blender::array_utils::copy(mesh->vert_positions(), layer_orco);
     }
   }
   else {
@@ -431,7 +432,8 @@ static void add_orco_mesh(
     float(*orco)[3] = get_orco_coords(ob, em, layer, &free);
     if (orco) {
       layer_orco = orco_coord_layer_ensure(mesh, layer);
-      layer_orco.copy_from(Span<float3>(reinterpret_cast<float3 *>(orco), totvert));
+      blender::array_utils::copy(Span<float3>(reinterpret_cast<float3 *>(orco), totvert),
+                                 layer_orco);
     }
     if (free) {
       MEM_freeN(orco);

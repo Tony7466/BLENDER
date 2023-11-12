@@ -7,6 +7,7 @@
  */
 
 #include "BLI_array_utils.hh"
+#include "BLI_generic_span.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_index_range.hh"
 #include "BLI_math_geom.h"
@@ -503,7 +504,7 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
         ".selection", ATTR_DOMAIN_POINT, true);
 
     Array<bool> points_to_delete(curves.points_num());
-    selection.materialize(points_to_delete);
+    array_utils::copy(selection, points_to_delete.as_mutable_span());
 
     std::atomic<int64_t> total_points_to_delete = 0;
     if (radii.is_single()) {
@@ -602,7 +603,7 @@ static Array<bool> get_points_to_dissolve(bke::CurvesGeometry &curves, const Dis
       ".selection", ATTR_DOMAIN_POINT, true);
 
   Array<bool> points_to_dissolve(curves.points_num());
-  selection.materialize(points_to_dissolve);
+  array_utils::copy(selection, points_to_dissolve.as_mutable_span());
 
   if (mode == DissolveMode::POINTS) {
     return points_to_dissolve;

@@ -4,6 +4,8 @@
 
 #include "DNA_mesh_types.h"
 
+#include "BLI_array_utils.hh"
+
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -106,7 +108,7 @@ static Mesh *create_ico_sphere_mesh(const int subdivisions,
     const VArraySpan orig_uv_map = *attributes.lookup<float2>("UVMap");
     SpanAttributeWriter<float2> uv_map = attributes.lookup_or_add_for_write_only_span<float2>(
         uv_map_id, ATTR_DOMAIN_CORNER);
-    uv_map.span.copy_from(orig_uv_map);
+    array_utils::copy(orig_uv_map, uv_map.span);
     uv_map.finish();
   }
   attributes.remove("UVMap");

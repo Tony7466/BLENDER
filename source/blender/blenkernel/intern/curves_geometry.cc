@@ -810,7 +810,7 @@ static void evaluate_generic_data_for_curve(
           src, cyclic[curve_index], resolution[curve_index], dst);
       break;
     case CURVE_TYPE_POLY:
-      dst.copy_from(src);
+      array_utils::copy(src, dst);
       break;
     case CURVE_TYPE_BEZIER: {
       const IndexRange offsets = curves::per_curve_point_offsets_range(points, curve_index);

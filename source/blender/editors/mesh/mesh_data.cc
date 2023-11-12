@@ -15,6 +15,7 @@
 #include "DNA_view3d_types.h"
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_attribute.h"
@@ -1137,7 +1138,7 @@ void ED_mesh_split_faces(Mesh *mesh)
       CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
 
   Array<bool> sharp_edges(mesh->totedge);
-  mesh_sharp_edges.materialize(sharp_edges);
+  array_utils::copy(mesh_sharp_edges, sharp_edges.as_mutable_span());
 
   threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int face_i : range) {

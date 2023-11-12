@@ -10,6 +10,7 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_devirtualize_parameters.hh"
+#include "BLI_generic_span.hh"
 #include "BLI_kdtree.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.hh"
@@ -476,7 +477,7 @@ static bke::CurvesGeometry particles_to_curves(Object &object, ParticleSystem &p
   curve_offsets.append(points_num);
   BLI_assert(curve_offsets.size() == curves_num + 1);
   bke::CurvesGeometry curves(points_num, curves_num);
-  curves.offsets_for_write().copy_from(curve_offsets);
+  array_utils::copy(curve_offsets.as_span(), curves.offsets_for_write());
 
   const float4x4 object_to_world_mat(object.object_to_world);
   const float4x4 world_to_object_mat = math::invert(object_to_world_mat);
@@ -806,7 +807,7 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
     if (const GVArray src = *attributes.lookup(".selection", domain)) {
       const CPPType &type = src.type();
       void *dst = MEM_malloc_arrayN(attributes.domain_size(domain), type.size(), __func__);
-      src.materialize(dst);
+      array_utils::copy(src, GMutableSpan(src.type(), dst, src.size()));
 
       attributes.remove(".selection");
       if (!attributes.add(".selection",

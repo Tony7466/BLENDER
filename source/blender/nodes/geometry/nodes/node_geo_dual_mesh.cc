@@ -102,7 +102,7 @@ static void copy_data_based_on_vertex_types(Span<T> data,
 }
 
 template<typename T>
-static void copy_data_based_on_pairs(Span<T> data,
+static void copy_data_based_on_pairs(VArray<T> data,
                                      MutableSpan<T> r_data,
                                      const Span<std::pair<int, int>> new_to_old_map)
 {
@@ -187,13 +187,12 @@ static void transfer_attributes(
         bke::attribute_math::gather(*src, new_to_old_edges_map, dst.span);
         break;
       case ATTR_DOMAIN_FACE: {
-        const GVArraySpan src_span(*src);
-        dst.span.take_front(src_span.size()).copy_from(src_span);
+        array_utils::copy(*src, dst.span.take_front(src.varray.size()));
         bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
           using T = decltype(dummy);
           if (keep_boundaries) {
             copy_data_based_on_pairs(
-                src_span.typed<T>(), dst.span.typed<T>(), boundary_vertex_to_relevant_face_map);
+                src.varray.typed<T>(), dst.span.typed<T>(), boundary_vertex_to_relevant_face_map);
           }
         });
         break;
@@ -901,16 +900,16 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
                       src_mesh.attributes(),
                       mesh_out->attributes_for_write());
 
-  mesh_out->vert_positions_for_write().copy_from(vert_positions);
-  mesh_out->edges_for_write().copy_from(new_edges);
+  array_utils::copy(vert_positions.as_span(), mesh_out->vert_positions_for_write());
+  array_utils::copy(new_edges.as_span(), mesh_out->edges_for_write());
 
   if (mesh_out->faces_num > 0) {
     MutableSpan<int> dst_face_offsets = mesh_out->face_offsets_for_write();
-    dst_face_offsets.drop_back(1).copy_from(loop_lengths);
+    array_utils::copy(loop_lengths.as_span(), dst_face_offsets.drop_back(1));
     offset_indices::accumulate_counts_to_offsets(dst_face_offsets);
   }
-  mesh_out->corner_verts_for_write().copy_from(loops);
-  mesh_out->corner_edges_for_write().copy_from(loop_edges);
+  array_utils::copy(loops.as_span(), mesh_out->corner_verts_for_write());
+  array_utils::copy(loop_edges.as_span(), mesh_out->corner_edges_for_write());
 
   return mesh_out;
 }

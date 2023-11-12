@@ -10,6 +10,7 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_color.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
@@ -45,7 +46,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
   CurvesGeometry &curves = drawing.strokes_for_write();
   curves.resize(num_points, num_strokes);
   if (num_strokes > 0) {
-    curves.offsets_for_write().copy_from(offsets);
+    array_utils::copy(offsets.as_span(), curves.offsets_for_write());
   }
   OffsetIndices<int> points_by_curve = curves.points_by_curve();
   MutableAttributeAccessor attributes = curves.attributes_for_write();

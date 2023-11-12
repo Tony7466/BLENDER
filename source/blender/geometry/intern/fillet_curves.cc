@@ -7,6 +7,7 @@
 #include "BKE_curves_utils.hh"
 #include "BKE_geometry_set.hh"
 
+#include "BLI_array_utils.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_rotation_legacy.hh"
 #include "BLI_task.hh"
@@ -82,7 +83,7 @@ static void calculate_result_offsets(const OffsetIndices<int> src_points_by_curv
     MutableSpan<int> point_offsets = dst_point_offsets.slice(offsets_range);
     MutableSpan<int> point_counts = point_offsets.drop_back(1);
 
-    counts.materialize_compressed(src_points, point_counts);
+    array_utils::gather(counts, IndexMask(src_points), point_counts);
     for (int &count : point_counts) {
       /* Make sure the number of cuts is greater than zero and add one for the existing point. */
       count = std::max(count, 0) + 1;
@@ -145,13 +146,13 @@ static float limit_radius(const float3 &position_prev,
   const float segment_length_prev = math::distance(position, position_prev);
   const float total_displacement_prev = displacement_prev + displacement;
   const float factor_prev = std::clamp(
-      math::safe_divide(segment_length_prev, total_displacement_prev), 0.0f, 1.0f);
+      safe_divide(segment_length_prev, total_displacement_prev), 0.0f, 1.0f);
 
   const float displacement_next = radius_next * std::tan(angle_next / 2.0f);
   const float segment_length_next = math::distance(position, position_next);
   const float total_displacement_next = displacement_next + displacement;
   const float factor_next = std::clamp(
-      math::safe_divide(segment_length_next, total_displacement_next), 0.0f, 1.0f);
+      safe_divide(segment_length_next, total_displacement_next), 0.0f, 1.0f);
 
   return radius * std::min(factor_prev, factor_next);
 }
@@ -471,11 +472,12 @@ static bke::CurvesGeometry fillet_curves(
       radii.reinitialize(src_points.size());
       if (limit_radius) {
         input_radii_buffer.reinitialize(src_points.size());
-        radius_input.materialize_compressed(src_points, input_radii_buffer);
+        array_utils::gather(
+            radius_input, IndexMask(src_points), input_radii_buffer.as_mutable_span());
         limit_radii(src_positions, angles, input_radii_buffer, cyclic[curve_i], radii);
       }
       else {
-        radius_input.materialize_compressed(src_points, radii);
+        array_utils::gather(radius_input, IndexMask(src_points), radii.as_mutable_span());
       }
 
       calculate_fillet_positions(positions.slice(src_points),

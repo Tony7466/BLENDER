@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
 #include "BLI_kdtree.h"
 #include "BLI_rand.hh"
 #include "BLI_task.hh"
@@ -631,7 +632,7 @@ static void select_grow_invoke_per_curve(const Curves &curves_id,
   if (const bke::GAttributeReader original_selection = curves.attributes().lookup(".selection")) {
     curve_op_data.original_selection = GArray<>(original_selection.varray.type(),
                                                 original_selection.varray.size());
-    original_selection.varray.materialize(curve_op_data.original_selection.data());
+    array_utils::copy(original_selection.varray, curve_op_data.original_selection);
   }
 
   /* Find indices of selected and unselected points. */

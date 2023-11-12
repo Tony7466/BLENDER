@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_delaunay_2d.h"
 #include "BLI_math_vector_types.hh"
 
@@ -88,7 +89,7 @@ static Mesh *cdt_to_mesh(const meshintersect::CDT_result<double> &result)
 
   Mesh *mesh = BKE_mesh_new_nomain(vert_len, edge_len, face_len, loop_len);
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
-  mesh->edges_for_write().copy_from(result.edge.as_span().cast<int2>());
+  array_utils::copy(result.edge.as_span().cast<int2>(), mesh->edges_for_write());
   MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
 

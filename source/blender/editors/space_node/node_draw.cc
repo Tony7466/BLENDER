@@ -23,6 +23,7 @@
 #include "DNA_world_types.h"
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_bounds.hh"
 #include "BLI_convexhull_2d.h"
 #include "BLI_map.hh"
@@ -3870,7 +3871,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     boundary_curve.cyclic_for_write().first() = true;
     boundary_curve.fill_curve_types(CURVE_TYPE_POLY);
     MutableSpan<float3> boundary_curve_positions = boundary_curve.positions_for_write();
-    boundary_curve.offsets_for_write().copy_from({0, boundary_positions_num});
+    boundary_curve.offsets_for_write().copy_from({0, boundary_positions_num});  // wtf??
     for (const int i : boundary_positions.index_range()) {
       boundary_curve_positions[i] = float3(boundary_positions[i], 0.0f);
     }

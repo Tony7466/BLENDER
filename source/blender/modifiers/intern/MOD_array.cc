@@ -10,6 +10,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLI_math_matrix.h"
@@ -344,8 +345,8 @@ static void mesh_merge_transform(Mesh *result,
     bke::MutableAttributeAccessor result_attributes = result->attributes_for_write();
     bke::SpanAttributeWriter<int> result_material_indices =
         result_attributes.lookup_or_add_for_write_span<int>("material_index", ATTR_DOMAIN_FACE);
-    cap_material_indices.materialize(
-        result_material_indices.span.slice(cap_faces_index, cap_nfaces));
+    array_utils::copy(cap_material_indices,
+                      result_material_indices.span.slice(cap_faces_index, cap_nfaces));
     result_material_indices.finish();
   }
 
@@ -587,7 +588,8 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   CustomData_copy_data(&mesh->loop_data, &result->loop_data, 0, 0, chunk_nloops);
   CustomData_copy_data(&mesh->face_data, &result->face_data, 0, 0, chunk_nfaces);
 
-  result_face_offsets.take_front(mesh->faces_num).copy_from(mesh->face_offsets().drop_back(1));
+  array_utils::copy(mesh->face_offsets().drop_back(1),
+                    result_face_offsets.take_front(mesh->faces_num));
 
   /* Remember first chunk, in case of cap merge */
   first_chunk_start = 0;

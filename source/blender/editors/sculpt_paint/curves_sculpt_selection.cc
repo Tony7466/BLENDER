@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
+
 #include "BKE_curves.hh"
 
 #include "curves_sculpt_intern.hh"
@@ -21,7 +23,7 @@ bke::SpanAttributeWriter<float> float_selection_ensure(Curves &curves_id)
       const VArray<float> selection = *attributes.lookup<float>(".selection");
       float *dst = static_cast<float *>(
           MEM_malloc_arrayN(selection.size(), sizeof(float), __func__));
-      selection.materialize({dst, selection.size()});
+      array_utils::copy(selection, MutableSpan<float>(dst, selection.size()));
 
       attributes.remove(".selection");
       attributes.add(

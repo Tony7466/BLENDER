@@ -6,6 +6,8 @@
  * \ingroup overlay
  */
 
+#include "BLI_array_utils.hh"
+
 #include "overlay_next_private.hh"
 
 namespace blender::draw::overlay {
@@ -30,7 +32,7 @@ static GPUVertBuf *vbo_from_vector(Vector<Vertex> &vector)
   Vertex *vbo_data = (Vertex *)GPU_vertbuf_get_data(vbo);
   /* Copy data to VBO using a wrapper span. Could use memcpy if that's too slow. */
   MutableSpan<Vertex> span(vbo_data, vector.size());
-  span.copy_from(vector);
+  array_utils::copy(vector.as_span(), span);
   return vbo;
 }
 

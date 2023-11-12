@@ -6,6 +6,7 @@
  * \ingroup bke
  */
 
+#include "BLI_array_utils.hh"
 #include "BLI_task.hh"
 
 #include "BKE_attribute_math.hh"
@@ -145,7 +146,7 @@ static void calculate_basis_for_point(const float parameter,
   }
 
   buffer.as_mutable_span().drop_front(end - start + 1).fill(0.0f);
-  r_weights.copy_from(buffer.as_span().take_front(order));
+  array_utils::copy(buffer.as_span().take_front(order), r_weights);
   r_start_index = start;
 }
 
@@ -237,7 +238,7 @@ void interpolate_to_evaluated(const BasisCache &basis_cache,
                               GMutableSpan dst)
 {
   if (basis_cache.invalid) {
-    dst.copy_from(src);
+    array_utils::copy(src, dst);
     return;
   }
 

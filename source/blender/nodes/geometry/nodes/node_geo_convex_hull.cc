@@ -6,6 +6,8 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include "BLI_array_utils.hh"
+
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
@@ -187,14 +189,14 @@ static Mesh *compute_hull(const GeometrySet &geometry_set)
 
   if (const Mesh *mesh = geometry_set.get_mesh()) {
     if (const VArray varray = *mesh->attributes().lookup<float3>("position")) {
-      varray.materialize(positions.as_mutable_span().slice(offset, varray.size()));
+      array_utils::copy(varray, positions.as_mutable_span().slice(offset, varray.size()));
       offset += varray.size();
     }
   }
 
   if (const PointCloud *points = geometry_set.get_pointcloud()) {
     if (const VArray varray = *points->attributes().lookup<float3>("position")) {
-      varray.materialize(positions.as_mutable_span().slice(offset, varray.size()));
+      array_utils::copy(varray, positions.as_mutable_span().slice(offset, varray.size()));
       offset += varray.size();
     }
   }
@@ -202,7 +204,7 @@ static Mesh *compute_hull(const GeometrySet &geometry_set)
   if (const Curves *curves_id = geometry_set.get_curves()) {
     const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
     Span<float3> array = curves.evaluated_positions();
-    positions.as_mutable_span().slice(offset, array.size()).copy_from(array);
+    array_utils::copy(array, positions.as_mutable_span().slice(offset, array.size()));
     offset += array.size();
   }
 

@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
 #include "BLI_task.hh"
 
 #include "BKE_curves.hh"
@@ -45,7 +46,7 @@ static Array<float3> curve_tangent_point_domain(const bke::CurvesGeometry &curve
           break;
         }
         case CURVE_TYPE_POLY:
-          curve_tangents.copy_from(evaluated_tangents.slice(evaluated_points));
+          array_utils::copy(evaluated_tangents.slice(evaluated_points), curve_tangents);
           break;
         case CURVE_TYPE_BEZIER: {
           Span<float3> tangents = evaluated_tangents.slice(evaluated_points);

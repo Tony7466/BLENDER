@@ -12,6 +12,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_base.h"
 #include "BLI_math_color.hh"
@@ -317,7 +318,7 @@ static void pointcloud_extract_attribute(const PointCloud &pointcloud,
 
   MutableSpan<ColorGeometry4f> vbo_data{
       static_cast<ColorGeometry4f *>(GPU_vertbuf_get_data(attr_buf)), pointcloud.totpoint};
-  attribute.varray.materialize(vbo_data);
+  array_utils::copy(attribute.varray, vbo_data);
 }
 
 /** \} */

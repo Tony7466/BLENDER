@@ -12,8 +12,6 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_color.hh"
-
 #include "BKE_attribute.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -24,6 +22,9 @@
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 
+#include "BLI_array_utils.hh"
+#include "BLI_color.hh"
+#include "BLI_generic_span.hh"
 #include "BLI_string.h"
 
 #include "BLT_translation.h"
@@ -434,7 +435,7 @@ static int geometry_attribute_convert_exec(bContext *C, wmOperator *op)
       Array<float> src_weights(mesh->totvert);
       VArray<float> src_varray = *attributes.lookup_or_default<float>(
           name, ATTR_DOMAIN_POINT, 0.0f);
-      src_varray.materialize(src_weights);
+      array_utils::copy(src_varray, src_weights.as_mutable_span());
       attributes.remove(name);
 
       bDeformGroup *defgroup = BKE_object_defgroup_new(ob, name.c_str());
@@ -873,7 +874,7 @@ bool ED_geometry_attribute_convert(Mesh *mesh,
 
   const CPPType &cpp_type = varray.type();
   void *new_data = MEM_malloc_arrayN(varray.size(), cpp_type.size(), __func__);
-  varray.materialize_to_uninitialized(new_data);
+  array_utils::copy(varray, GMutableSpan(varray.type(), new_data, varray.size()));
   attributes.remove(name_copy);
   if (!attributes.add(name_copy, dst_domain, dst_type, bke::AttributeInitMoveArray(new_data))) {
     MEM_freeN(new_data);

@@ -6,11 +6,11 @@
  * \ingroup modifiers
  */
 
-#include "BLI_math_vector.h"
-#include "BLI_utildefines.h"
-
+#include "BLI_array_utils.hh"
 #include "BLI_bitmap.h"
 #include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
+#include "BLI_utildefines.h"
 #include "BLI_utildefines_stack.h"
 
 #include "DNA_mesh_types.h"
@@ -350,7 +350,8 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
 
     CustomData_copy_data(&mesh->face_data, &result->face_data, 0, 0, int(faces_num));
     CustomData_copy_data(&mesh->face_data, &result->face_data, 0, int(faces_num), int(faces_num));
-    face_offsets.take_front(faces_num).copy_from(mesh->face_offsets().drop_back(1));
+    blender::array_utils::copy(mesh->face_offsets().drop_back(1),
+                               face_offsets.take_front(faces_num));
     for (const int i : orig_faces.index_range()) {
       face_offsets[faces_num + i] = orig_faces[i].start() + mesh->totloop;
     }
@@ -383,7 +384,8 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
     /* will be created later */
     CustomData_copy_data(&mesh->loop_data, &result->loop_data, 0, 0, int(loops_num));
     CustomData_copy_data(&mesh->face_data, &result->face_data, 0, 0, int(faces_num));
-    face_offsets.take_front(faces_num).copy_from(mesh->face_offsets().drop_back(1));
+    blender::array_utils::copy(mesh->face_offsets().drop_back(1),
+                               face_offsets.take_front(faces_num));
   }
 
   float *result_edge_bweight = nullptr;

@@ -477,7 +477,7 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
       for (const int i_curve : selection_segment) {
         const IndexRange src_points = src_evaluated_points_by_curve[i_curve];
         const IndexRange dst_points = dst_points_by_curve[i_curve];
-        dst.slice(dst_points).copy_from(src.slice(src_points));
+        array_utils::copy(src.slice(src_points), dst.slice(dst_points));
       }
     };
 

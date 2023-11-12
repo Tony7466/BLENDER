@@ -23,6 +23,7 @@
 #include "BKE_mesh.hh"
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 
 namespace blender::geometry {
 
@@ -175,7 +176,7 @@ void debug_randomize_face_order(Mesh *mesh)
 
   reorder_customdata_groups(mesh->loop_data, old_faces, new_faces, new_by_old_map);
 
-  mesh->face_offsets_for_write().copy_from(new_face_offsets);
+  array_utils::copy(new_face_offsets.as_span(), mesh->face_offsets_for_write());
 
   BKE_mesh_tag_topology_changed(mesh);
 }
@@ -214,7 +215,7 @@ void debug_randomize_curve_order(bke::CurvesGeometry *curves)
   reorder_customdata_groups(
       curves->point_data, old_points_by_curve, new_points_by_curve, new_by_old_map);
 
-  curves->offsets_for_write().copy_from(new_curve_offsets);
+  array_utils::copy(new_curve_offsets.as_span(), curves->offsets_for_write());
 
   curves->tag_topology_changed();
 }
@@ -254,8 +255,8 @@ void debug_randomize_instance_order(bke::Instances *instances)
     new_transforms[new_i] = old_transforms[old_i];
   }
 
-  instances->reference_handles().copy_from(new_reference_handles);
-  instances->transforms().copy_from(new_transforms);
+  array_utils::copy(new_reference_handles.as_span(), instances->reference_handles());
+  array_utils::copy(new_transforms.as_span(), instances->transforms());
 }
 
 bool use_debug_randomization()

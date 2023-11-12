@@ -29,7 +29,7 @@ BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   bke::CurvesGeometry curves(vert_indices.size(), curve_offsets.size());
-  curves.offsets_for_write().drop_back(1).copy_from(curve_offsets);
+  array_utils::copy(curve_offsets, curves.offsets_for_write().drop_back(1));
   curves.offsets_for_write().last() = vert_indices.size();
   curves.fill_curve_types(CURVE_TYPE_POLY);
 

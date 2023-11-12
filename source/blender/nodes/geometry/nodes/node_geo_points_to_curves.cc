@@ -128,7 +128,7 @@ static Curves *curves_from_points(const PointCloud &points,
   }
 
   Array<int> group_ids(domain_size);
-  group_ids_varray.materialize(group_ids.as_mutable_span());
+  array_utils::copy(group_ids_varray, group_ids.as_mutable_span());
   const int total_curves = identifiers_to_indices(group_ids);
   if (total_curves == 1) {
     return curve_from_points(points.attributes(), weights_varray, propagation_info);
