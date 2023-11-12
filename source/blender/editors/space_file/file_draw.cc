@@ -1031,7 +1031,7 @@ static const char *filelist_get_details_column_string(
               nullptr, file->time, false, time, date, &is_today, &is_yesterday);
 
           if (is_today || is_yesterday) {
-            STRNCPY(date, is_today ? N_("Today") : N_("Yesterday"));
+            STRNCPY(date, is_today ? IFACE_("Today") : IFACE_("Yesterday"));
           }
           SNPRINTF(file->draw_data.datetime_str, "%s %s", date, time);
         }
@@ -1137,7 +1137,7 @@ void file_draw_list(const bContext *C, ARegion *region)
   bool do_drag;
   uchar text_col[4];
   const bool draw_columnheader = (params->display == FILE_VERTICALDISPLAY);
-  const float thumb_icon_aspect = MIN2(64.0f / float(params->thumbnail_size), 1.0f);
+  const float thumb_icon_aspect = std::min(64.0f / float(params->thumbnail_size), 1.0f);
 
   numfiles = filelist_files_ensure(files);
 

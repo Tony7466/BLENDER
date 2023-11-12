@@ -83,8 +83,8 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "SEQ_relations.h"
-#include "SEQ_sequencer.h"
+#include "SEQ_relations.hh"
+#include "SEQ_sequencer.hh"
 
 #include "outliner_intern.hh"
 #include "tree/tree_element_grease_pencil_node.hh"
@@ -390,6 +390,15 @@ static void unlink_collection_fn(bContext *C,
                 "instance empties it should be unlinked from, there's no scene, collection or "
                 "instance empties as parent in the Outliner tree",
                 tselem->id->name + 2);
+    return;
+  }
+
+  if (tsep && (ID_IS_LINKED(tsep->id) || ID_IS_OVERRIDE_LIBRARY(tsep->id))) {
+    BKE_reportf(reports,
+                RPT_WARNING,
+                "Cannot unlink collection '%s' parented to another linked collection '%s'",
+                collection->id.name + 2,
+                tsep->id->name + 2);
     return;
   }
 
