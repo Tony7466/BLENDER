@@ -324,6 +324,12 @@ Py_LOCAL_INLINE(uint64_t) PyC_Long_AsU64(PyObject *value)
 }
 
 /* utils for format string in `struct` module style syntax */
+/**
+ * Only supports single character formats with an optional byte-order/size/alignment prefix.
+ *
+ * Format strings with multiple types per item, such as "fi" and "BBB", and format strings
+ * containing a count prefix, such as "1f" and "10s", are not supported.
+ */
 char PyC_StructFmt_type_from_str(const char *typestr);
 bool PyC_StructFmt_type_is_float_any(char format);
 bool PyC_StructFmt_type_is_signed_int_any(char format);
