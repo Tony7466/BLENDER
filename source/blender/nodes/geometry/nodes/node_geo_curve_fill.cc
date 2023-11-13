@@ -167,52 +167,87 @@ static Vector<meshintersect::CDT_result<double>> do_group_aware_cdt(
 /* Converts multiple CDT results into a single Mesh. */
 static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
 {
-  int vert_len = 0;
-  int edge_len = 0;
-  int face_len = 0;
-  int loop_len = 0;
-  for (const meshintersect::CDT_result<double> &result : results) {
-    vert_len += result.vert.size();
-    edge_len += result.edge.size();
-    face_len += result.face.size();
-    for (const Vector<int> &face : result.face) {
-      loop_len += face.size();
-    }
-  }
+  /* Converting a single CDT result to a Mesh would be simple because the indices could be re-used.
+   * However, in the general case here we need to combine several CDT results into a single Mesh,
+   * which requires us to map the original indices to a new set of indices.
+   * In order to allow for parallelization when appropriate, this implementation starts by
+   * determining (for each domain) what range of indices in the final mesh data will be used for
+   * each CDT result. The index ranges are represented as offsets, which are referred to as "group
+   * offsets" to distinguish them from the other types of offsets we need to work with here.
+   * Since it's likely that most invocations will only have a single CDT result, it's important
+   * that case is made as optimal as feasible. */
 
-  Mesh *mesh = BKE_mesh_new_nomain(vert_len, edge_len, face_len, loop_len);
-  MutableSpan<float3> positions = mesh->vert_positions_for_write();
-  MutableSpan<int2> edges = mesh->edges_for_write();
-  MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
-  MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
+  Array<int> vert_group_offsets_data(results.size() + 1);
+  Array<int> edge_group_offsets_data(results.size() + 1);
+  Array<int> face_group_offsets_data(results.size() + 1);
+  Array<int> loop_group_offsets_data(results.size() + 1);
+  threading::parallel_for(results.index_range(), 1024, [&](const IndexRange results_range) {
+    for (const int i_result : results_range) {
+      const meshintersect::CDT_result<double> &result = results[i_result];
+      vert_group_offsets_data[i_result] = result.vert.size();
+      edge_group_offsets_data[i_result] = result.edge.size();
+      face_group_offsets_data[i_result] = result.face.size();
+      int loop_len = 0;
+      for (const Vector<int> &face : result.face) {
+        loop_len += face.size();
+      }
+      loop_group_offsets_data[i_result] = loop_len;
+    }
+  });
 
-  int base_vert_index = 0;
-  int base_edge_index = 0;
-  int base_face_index = 0;
-  int i_face_corner = 0;
-  for (const meshintersect::CDT_result<double> &result : results) {
-    for (const int i : IndexRange(result.vert.size())) {
-      positions[i + base_vert_index] = float3(
-          float(result.vert[i].x), float(result.vert[i].y), 0.0f);
-    }
-    for (const int i : IndexRange(result.edge.size())) {
-      edges[i + base_edge_index] = int2(result.edge[i].first + base_vert_index,
-                                        result.edge[i].second + base_vert_index);
-    }
-    for (const int i : IndexRange(result.face.size())) {
-      face_offsets[i + base_face_index] = i_face_corner;
-      for (const int j : result.face[i].index_range()) {
-        corner_verts[i_face_corner] = result.face[i][j] + base_vert_index;
-        i_face_corner++;
+  const OffsetIndices vert_group_offsets = offset_indices::accumulate_counts_to_offsets(
+      vert_group_offsets_data);
+  const OffsetIndices edge_group_offsets = offset_indices::accumulate_counts_to_offsets(
+      edge_group_offsets_data);
+  const OffsetIndices face_group_offsets = offset_indices::accumulate_counts_to_offsets(
+      face_group_offsets_data);
+  const OffsetIndices loop_group_offsets = offset_indices::accumulate_counts_to_offsets(
+      loop_group_offsets_data);
+
+  Mesh *mesh = BKE_mesh_new_nomain(vert_group_offsets.total_size(),
+                                   edge_group_offsets.total_size(),
+                                   face_group_offsets.total_size(),
+                                   loop_group_offsets.total_size());
+
+  MutableSpan<float3> all_positions = mesh->vert_positions_for_write();
+  MutableSpan<int2> all_edges = mesh->edges_for_write();
+  MutableSpan<int> all_face_offsets = mesh->face_offsets_for_write();
+  MutableSpan<int> all_corner_verts = mesh->corner_verts_for_write();
+
+  threading::parallel_for(results.index_range(), 1024, [&](const IndexRange results_range) {
+    for (const int i_result : results_range) {
+      const meshintersect::CDT_result<double> &result = results[i_result];
+      const IndexRange verts_index_range = vert_group_offsets[i_result];
+      const IndexRange edges_index_range = edge_group_offsets[i_result];
+      const IndexRange faces_index_range = face_group_offsets[i_result];
+      const IndexRange loops_index_range = loop_group_offsets[i_result];
+
+      MutableSpan<float3> positions = all_positions.slice(verts_index_range);
+      MutableSpan<int2> edges = all_edges.slice(edges_index_range);
+      MutableSpan<int> face_offsets = all_face_offsets.slice(faces_index_range);
+      MutableSpan<int> corner_verts = all_corner_verts.slice(loops_index_range);
+
+      for (const int i : result.vert.index_range()) {
+        positions[i] = float3(float(result.vert[i].x), float(result.vert[i].y), 0.0f);
+      }
+
+      for (const int i : result.edge.index_range()) {
+        edges[i] = int2(result.edge[i].first + verts_index_range.start(),
+                        result.edge[i].second + verts_index_range.start());
+      }
+
+      int i_face_corner = 0;
+      for (const int i_face : result.face.index_range()) {
+        face_offsets[i_face] = i_face_corner + loops_index_range.start();
+        for (const int i_corner : result.face[i_face].index_range()) {
+          corner_verts[i_face_corner] = result.face[i_face][i_corner] + verts_index_range.start();
+          i_face_corner++;
+        }
       }
     }
+  });
 
-    base_vert_index += result.vert.size();
-    base_edge_index += result.edge.size();
-    base_face_index += result.face.size();
-  }
-
-  /* The delaunay triangulation doesn't seem to return all of the necessary edges, even in
+  /* The delaunay triangulation doesn't seem to return all of the necessary all_edges, even in
    * triangulation mode. */
   BKE_mesh_calc_edges(mesh, true, false);
   BKE_mesh_smooth_flag_set(mesh, false);
