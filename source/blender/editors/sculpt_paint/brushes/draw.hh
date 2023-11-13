@@ -12,6 +12,6 @@ struct PBVHNode;
 
 namespace blender::ed::sculpt_paint {
 
-void do_draw_brush(Sculpt &sd, Object &object, Span<PBVHNode *> nodes);
+void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes);
 
 }

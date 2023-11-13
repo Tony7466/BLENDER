@@ -10,6 +10,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_colortools.h"
+#include "BKE_mesh.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh.h"
 
@@ -23,10 +24,7 @@
 
 namespace blender::ed::sculpt_paint {
 
-/* The important part is to place the TLS into its own namespace. Otherwise its definition
- * silently conflicts with defintions from other brushes. Without this TLS from other modules might
- * actually be the wrong type. */
-namespace {
+inline namespace draw_vector_displacement_cc {
 
 namespace pbvh = bke::pbvh;
 
@@ -34,13 +32,15 @@ struct TLS {
   Vector<float> factors;
   Vector<float> distances;
   Vector<float4> colors;
+  Vector<float3> translations;
 };
 
-static void calc_faces(Object &object, const Brush &brush, pbvh::mesh::Node &node, TLS &tls)
+static void calc_faces(
+    const Sculpt &sd, const Brush &brush, Object &object, pbvh::mesh::Node &node, TLS &tls)
 {
   SculptSession &ss = *object.sculpt;
   StrokeCache &cache = *ss.cache;
-  const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   pbvh::Tree pbvh_tree(*ss.pbvh);
 
@@ -74,11 +74,31 @@ static void calc_faces(Object &object, const Brush &brush, pbvh::mesh::Node &nod
   const MutableSpan<float4> colors = tls.colors;
   calc_brush_texture_colors(ss, brush, vert_positions, vert_indices, factors, colors);
 
-  const MutableSpan<float3> proxy = node.add_proxy(pbvh_tree);
+  tls.translations.reinitialize(vert_indices.size());
+  const MutableSpan<float3> translations = tls.translations;
   for (const int i : vert_indices.index_range()) {
-    SCULPT_calc_vertex_displacement(&ss, &brush, colors[i], proxy[i]);
-    BKE_pbvh_vert_tag_update_normal(*ss.pbvh, vert_indices[i]);
+    SCULPT_calc_vertex_displacement(&ss, &brush, colors[i], translations[i]);
   }
+
+  clip_and_lock_translations(sd, ss, vert_positions, vert_indices, translations);
+
+  MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
+  if (ss.deform_modifiers_active) {
+    apply_crazyspace_translations(
+        translations,
+        {reinterpret_cast<const float3x3 *>(ss.deform_imats), vert_positions.size()},
+        vert_indices,
+        positions_orig);
+  }
+  else {
+    for (const int i : vert_indices.index_range()) {
+      const int vert = vert_indices[i];
+      positions_orig[vert] += translations[i];
+    }
+  }
+
+  // XXX: Maybe try not to tag verts with factor == 0.0f
+  BKE_pbvh_vert_tag_update_normals(*ss.pbvh, vert_indices);
 }
 
 static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
@@ -157,11 +177,11 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
   BKE_pbvh_vertex_iter_end;
 }
 
-}  // namespace
+}  // namespace draw_vector_displacement_cc
 
-void do_draw_vector_displacement_brush(Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
+void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 {
-  Brush &brush = *BKE_paint_brush(&sd.paint);
+  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
   /* XXX: this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
    * initialize before threads so they can do curve mapping. */
@@ -174,7 +194,7 @@ void do_draw_vector_displacement_brush(Sculpt &sd, Object &object, Span<PBVHNode
       switch (BKE_pbvh_type(object.sculpt->pbvh)) {
         case PBVH_FACES: {
           pbvh::mesh::Node face_node(*nodes[i]);
-          calc_faces(object, brush, face_node, tls);
+          calc_faces(sd, brush, object, face_node, tls);
           break;
         }
         case PBVH_GRIDS:

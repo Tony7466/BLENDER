@@ -22,6 +22,7 @@
 #include "BLI_gsqueue.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_task.h"
@@ -6528,6 +6529,56 @@ void calc_mesh_automask(Object &object,
     }
     factors[i] *= SCULPT_automasking_factor_get(
         &automasking, &ss, BKE_pbvh_make_vref(vert_indices[i]), &automask_data);
+  }
+}
+
+void apply_crazyspace_translations(const Span<float3> translations,
+                                   const Span<float3x3> deform_imats,
+                                   const Span<int> verts,
+                                   const MutableSpan<float3> positions)
+{
+  for (const int i : verts.index_range()) {
+    const int vert = verts[i];
+    positions[vert] += math::transform_point(deform_imats[vert], translations[i]);
+  }
+}
+
+void clip_and_lock_translations(const Sculpt &sd,
+                                const SculptSession &ss,
+                                const Span<float3> positions,
+                                const Span<int> verts,
+                                const MutableSpan<float3> translations)
+{
+  const StrokeCache *cache = ss.cache;
+  if (!cache) {
+    return;
+  }
+  for (const int axis : IndexRange(3)) {
+    if (sd.flags & (SCULPT_LOCK_X << axis)) {
+      for (float3 &translation : translations) {
+        translation[axis] = 0.0f;
+      }
+      continue;
+    }
+
+    if (!(cache->flag & (CLIP_X << axis))) {
+      continue;
+    }
+
+    const float4x4 mirror(cache->clip_mirror_mtx);
+    const float4x4 mirror_inverse = math::invert(mirror);
+    for (const int i : verts.index_range()) {
+      const int vert = verts[i];
+
+      float3 co_mirror = math::transform_point(mirror, positions[vert]);
+      if (math::abs(co_mirror[axis]) > cache->clip_tolerance[axis]) {
+        continue;
+      }
+      /* Clear the translation in the local space of the mirror object. */
+      co_mirror[axis] = 0.0f;
+      const float3 co_local = math::transform_point(mirror_inverse, co_mirror);
+      translations[i][axis] = co_local[axis] - positions[vert][axis];
+    }
   }
 }
 

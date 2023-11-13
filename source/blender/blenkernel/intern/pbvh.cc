@@ -1927,13 +1927,14 @@ bool BKE_pbvh_node_fully_unmasked_get(PBVHNode *node)
 
 void BKE_pbvh_vert_tag_update_normal(PBVH *pbvh, PBVHVertRef vertex)
 {
-  BKE_pbvh_vert_tag_update_normal(*pbvh, vertex.i);
+  BLI_assert(pbvh.header.type == PBVH_FACES);
+  pbvh->vert_bitmap[vertex.i] = true;
 }
 
-void BKE_pbvh_vert_tag_update_normal(PBVH &pbvh, const int vert)
+void BKE_pbvh_vert_tag_update_normals(PBVH &pbvh, const Span<int> verts)
 {
   BLI_assert(pbvh.header.type == PBVH_FACES);
-  pbvh.vert_bitmap[vert] = true;
+  pbvh.vert_bitmap.as_mutable_span().fill_indices<int>(verts, true);
 }
 
 void BKE_pbvh_node_get_loops(PBVH *pbvh,
@@ -3493,11 +3494,6 @@ namespace mesh {
 Span<int> Node::unique_vert_indices() const
 {
   return node_.vert_indices.as_span().take_front(node_.uniq_verts);
-}
-
-MutableSpan<float3> Node::add_proxy(Tree &pbvh_tree)
-{
-  return BKE_pbvh_node_add_proxy(pbvh_tree.pbvh_, node_).co;
 }
 
 }  // namespace mesh

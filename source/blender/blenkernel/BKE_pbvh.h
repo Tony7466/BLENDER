@@ -126,7 +126,6 @@ class Tree {
  public:
   explicit Tree(PBVH &pbvh) : pbvh_(pbvh) {}
 
-  // XXX: Accessor vs. property.
   Span<float3> vert_positions() const;
   Span<float3> vert_normals() const;
 };
@@ -139,10 +138,7 @@ class Node {
  public:
   explicit Node(PBVHNode &node) : node_(node) {}
 
-  // XXX: Accessor vs. property.
   Span<int> unique_vert_indices() const;
-
-  MutableSpan<float3> add_proxy(Tree &pbvh_tree);
 
   /* For interfacing with legacy API. */
   PBVHNode &pbvh_node()

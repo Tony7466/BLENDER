@@ -29,6 +29,7 @@
 #include "BLI_generic_array.hh"
 #include "BLI_gsqueue.h"
 #include "BLI_implicit_sharing.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
@@ -1842,5 +1843,16 @@ void calc_mesh_automask(Object &object,
                         bke::pbvh::mesh::Node &node,
                         Span<int> vert_indices,
                         MutableSpan<float> factors);
+
+void apply_crazyspace_translations(Span<float3> translations,
+                                   Span<float3x3> deform_imats,
+                                   Span<int> verts,
+                                   MutableSpan<float3> positions);
+
+void clip_and_lock_translations(const Sculpt &sd,
+                                const SculptSession &ss,
+                                const Span<float3> positions,
+                                const Span<int> verts,
+                                const MutableSpan<float3> translations);
 
 }
