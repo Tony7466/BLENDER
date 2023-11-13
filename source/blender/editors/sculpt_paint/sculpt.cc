@@ -6381,18 +6381,24 @@ void calc_mesh_hide_and_mask(const Mesh &mesh,
 {
   BLI_assert(vert_indices.size() == r_factors.size());
 
-  const float *mask = static_cast<const float *>(
-      CustomData_get_layer(&mesh.vert_data, CD_PAINT_MASK));
+  const bke::AttributeAccessor attributes = mesh.attributes();
+  if (const VArray<bool> hide_vert = *attributes.lookup_or_default<bool>(".hide_vert",
+                                                                         ATTR_DOMAIN_POINT))
+  {
+    const VArraySpan span(hide_vert);
+    for (const int i : vert_indices.index_range()) {
+      r_factors[i] = span[vert_indices[i]] ? 0.0f : 1.0f;
+    }
+  }
+  else {
+    r_factors.fill(1.0f);
+  }
 
-  bke::AttributeAccessor attributes = mesh.attributes();
-  const VArray<bool> hide_vert = *attributes.lookup_or_default<bool>(
-      ".hide_vert", ATTR_DOMAIN_POINT, false);
-
-  for (const int i : vert_indices.index_range()) {
-    const int vert_index = vert_indices[i];
-    r_factors[i] = hide_vert[vert_index] ? 0.0f : 1.0f;
-    if (mask) {
-      r_factors[i] *= (1.0f - mask[vert_index]);
+  if (const float *mask = static_cast<const float *>(
+          CustomData_get_layer(&mesh.vert_data, CD_PAINT_MASK)))
+  {
+    for (const int i : vert_indices.index_range()) {
+      r_factors[i] *= (1.0f - mask[vert_indices[i]]);
     }
   }
 }
@@ -6465,7 +6471,7 @@ void calc_brush_texture_factors(SculptSession &ss,
   for (const int i : vert_indices.index_range()) {
     float texture_value;
     float4 texture_rgba;
-    /* NOTE: This is not thread-safe call. */
+    /* NOTE: This is not a thread-safe call. */
     sculpt_apply_texture(
         &ss, &brush, vert_positions[vert_indices[i]], thread_id, &texture_value, texture_rgba);
 
@@ -6488,7 +6494,7 @@ void calc_brush_texture_colors(SculptSession &ss,
   for (const int i : vert_indices.index_range()) {
     float texture_value;
     float4 texture_rgba;
-    /* NOTE: This is not thread-safe call. */
+    /* NOTE: This is not a thread-safe call. */
     sculpt_apply_texture(
         &ss, &brush, vert_positions[vert_indices[i]], thread_id, &texture_value, texture_rgba);
 
