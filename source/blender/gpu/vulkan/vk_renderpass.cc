@@ -6,8 +6,6 @@
  * \ingroup gpu
  */
 
-#pragma once
-
 #include "vk_backend.hh"
 #include "vk_memory.hh"
 #include "vk_renderpass.hh"
