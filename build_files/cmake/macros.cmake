@@ -457,7 +457,7 @@ function(blender_add_ctests)
   endif()
 
   # Parse the arguments
-  set(oneValueArgs TARGET SUITE_NAME)
+  set(oneValueArgs DISCOVER_TESTS TARGET SUITE_NAME)
   set(multiValueArgs SOURCES)
   cmake_parse_arguments(ARGS "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -564,13 +564,14 @@ endfunction()
 
 function(blender_add_test_executable_impl
   name
-  add_ctests
-  discover_tests
   sources
   includes
   includes_sys
   library_deps
   )
+
+  set(oneValueArgs ADD_CTESTS DISCOVER_TESTS)
+  cmake_parse_arguments(ARGS "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   add_cc_flags_custom_test(${name} PARENT_SCOPE)
 
@@ -583,12 +584,12 @@ function(blender_add_test_executable_impl
     EXTRA_LIBS "${library_deps}"
   )
 
-  if(add_ctests)
+  if(ARGS_ADD_CTESTS)
     blender_add_ctests(
       TARGET ${name}_test
       SUITE_NAME ${name}
       SOURCES "${sources}"
-      DISCOVER_TESTS ${discover_tests}
+      DISCOVER_TESTS ${ARGS_DISCOVER_TESTS}
     )
   endif()
 
@@ -619,12 +620,12 @@ function(blender_add_test_suite_executable
   if(WITH_TESTS_SINGLE_BINARY)
     blender_add_test_executable_impl(
       "${name}"
-      TRUE
-      TRUE
       "${sources}"
       "${includes}"
       "${includes_sys}"
       "${library_deps}"
+      ADD_CTESTS TRUE
+      DISCOVER_TESTS TRUE
      )
   else()
     foreach(source ${sources})
@@ -640,12 +641,12 @@ function(blender_add_test_suite_executable
 
         blender_add_test_executable_impl(
           "${_test_name}"
-          TRUE
-          FALSE
           "${source}"
           "${includes}"
           "${includes_sys}"
           "${library_deps}"
+          ADD_CTESTS TRUE
+          DISCOVER_TESTS FALSE
          )
       endif()
     endforeach()
@@ -667,12 +668,12 @@ function(blender_add_test_executable
   )
   blender_add_test_executable_impl(
     "${name}"
-    TRUE
-    FALSE
     "${sources}"
     "${includes}"
     "${includes_sys}"
     "${library_deps}"
+    ADD_CTESTS TRUE
+    DISCOVER_TESTS FALSE
   )
 endfunction()
 
@@ -687,12 +688,12 @@ function(blender_add_test_performance_executable
   )
   blender_add_test_executable_impl(
     "${name}"
-    FALSE
-    FALSE
     "${sources}"
     "${includes}"
     "${includes_sys}"
     "${library_deps}"
+    ADD_CTESTS FALSE
+    DISCOVER_TESTS FALSE
   )
 endfunction()
 
