@@ -8,6 +8,9 @@ set(INC
   ../blenkernel
   ../blenloader
   ../blentranslation
+  ../depsgraph
+  ../editors/include
+  ../imbuf
   ../makesrna
   ../render
   ../windowmanager
