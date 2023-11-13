@@ -4,6 +4,7 @@
 
 #include <queue>
 
+#include "BLI_array_utils.hh"
 #include "BLI_generic_array.hh"
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
@@ -26,6 +27,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Float>("Total Cost").reference_pass_all();
 }
 
+template<typename T>
+using priority_queue = std::priority_queue<T, std::vector<T>, std::greater<T>>;
+
 using VertPriorityUniform = std::pair<int, int>;
 
 static void shortest_paths_uniform(const Mesh &mesh,
@@ -37,10 +41,7 @@ static void shortest_paths_uniform(const Mesh &mesh,
   const Span<int2> edges = mesh.edges();
   Array<bool> visited(mesh.totvert, false);
 
-  std::priority_queue<VertPriorityUniform,
-                      std::vector<VertPriorityUniform>,
-                      std::greater<VertPriorityUniform>>
-      queue;
+  priority_queue<VertPriorityUniform> queue;
 
   end_selection.foreach_index([&](const int start_vert_i) {
     r_cost[start_vert_i] = 0;
@@ -92,7 +93,7 @@ static void shortest_paths(const Mesh &mesh,
   const Span<int2> edges = mesh.edges();
   Array<bool> visited(mesh.totvert, false);
 
-  std::priority_queue<VertPriority, std::vector<VertPriority>, std::greater<VertPriority>> queue;
+  priority_queue<VertPriority> queue;
 
   end_selection.foreach_index([&](const int start_vert_i) {
     r_cost[start_vert_i] = 0.0f;
@@ -272,7 +273,6 @@ class ShortestEdgePathsCostFieldInput final : public bke::MeshFieldInput {
     }
 
     Array<int> next_index(mesh.totvert, -1);
-    GArray<> cost;
 
     const Span<int2> edges = mesh.edges();
     Array<int> vert_to_edge_offset_data;
@@ -280,20 +280,22 @@ class ShortestEdgePathsCostFieldInput final : public bke::MeshFieldInput {
     const GroupedSpan<int> vert_to_edge = bke::mesh::build_vert_to_edge_map(
         edges, mesh.totvert, vert_to_edge_offset_data, vert_to_edge_indices);
 
-    if (input_cost.is_single()) {
-      cost = GArray<>(CPPType::get<int>(), mesh.totvert);
-      MutableSpan<int> typed_cost = cost.as_mutable_span().typed<int>();
-      typed_cost.fill(std::numeric_limits<int>::max());
-      shortest_paths_uniform(mesh, vert_to_edge, end_selection, next_index, typed_cost);
-      replace(typed_cost, std::numeric_limits<int>::max(), 0);
-    }
-    else {
-      cost = GArray<>(CPPType::get<float>(), mesh.totvert);
+    GArray<> cost = [&]() {
+      if (input_cost.is_single()) {
+        GArray<> cost(CPPType::get<int>(), mesh.totvert);
+        MutableSpan<int> typed_cost = cost.as_mutable_span().typed<int>();
+        typed_cost.fill(std::numeric_limits<int>::max());
+        shortest_paths_uniform(mesh, vert_to_edge, end_selection, next_index, typed_cost);
+        replace(typed_cost, std::numeric_limits<int>::max(), 0);
+        return cost;
+      }
+      GArray<> cost(CPPType::get<float>(), mesh.totvert);
       MutableSpan<float> typed_cost = cost.as_mutable_span().typed<float>();
       typed_cost.fill(std::numeric_limits<float>::max());
       shortest_paths(mesh, vert_to_edge, end_selection, input_cost, next_index, typed_cost);
       replace(typed_cost, std::numeric_limits<float>::max(), 0.0f);
-    }
+      return cost;
+    }();
 
     const bke::DataTypeConversions &conversion = bke::get_implicit_type_conversions();
     GVArray result_cost = conversion.try_convert(GVArray::ForGArray(std::move(cost)),
