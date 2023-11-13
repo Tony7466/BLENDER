@@ -51,9 +51,8 @@ class TestPropArray(unittest.TestCase):
     def setUp(self):
         id_type.test_array_f = FloatVectorProperty(size=10)
         id_type.test_array_i = IntVectorProperty(size=10)
-        scene = bpy.context.scene
-        self.array_f = scene.test_array_f
-        self.array_i = scene.test_array_i
+        self.array_f = id_inst.test_array_f
+        self.array_i = id_inst.test_array_i
 
     def tearDown(self):
         del id_type.test_array_f
