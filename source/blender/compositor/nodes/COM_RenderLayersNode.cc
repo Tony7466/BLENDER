@@ -58,9 +58,12 @@ void RenderLayersNode::test_render_link(NodeConverter &converter,
   }
 
   for (NodeOutput *output : get_output_sockets()) {
-    NodeImageLayer *storage = (NodeImageLayer *)output->get_bnode_socket()->storage;
+    const char *socket_identifier = output->get_bnode_socket()->identifier;
+    if (strstr(socket_identifier, "Combined")) {
+      socket_identifier = "Combined";
+    }
     RenderPass *rpass = (RenderPass *)BLI_findstring(
-        &rl->passes, storage->pass_name, offsetof(RenderPass, name));
+        &rl->passes, socket_identifier, offsetof(RenderPass, name));
     if (rpass == nullptr) {
       missing_socket_link(converter, output);
       continue;
@@ -68,7 +71,8 @@ void RenderLayersNode::test_render_link(NodeConverter &converter,
     RenderLayersProg *operation;
     bool is_preview;
     if (STREQ(rpass->name, RE_PASSNAME_COMBINED) &&
-        STREQ(output->get_bnode_socket()->name, "Alpha")) {
+        STREQ(output->get_bnode_socket()->name, "Alpha"))
+    {
       operation = new RenderLayersAlphaProg(rpass->name, DataType::Value, rpass->channels);
       is_preview = false;
     }
