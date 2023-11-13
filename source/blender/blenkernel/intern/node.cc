@@ -692,10 +692,7 @@ static bool can_read_node_type(const int type)
 
   /* Check known built-in types. */
   static blender::Set<int> known_types = get_known_node_types_set();
-  if (known_types.contains(type)) {
-    return true;
-  }
-  return false;
+  return known_types.contains(type);
 }
 
 void ntreeBlendReadData(BlendDataReader *reader, bNodeTree *ntree)
