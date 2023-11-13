@@ -71,7 +71,9 @@ SeqRetimingKey *SEQ_retiming_key_get_by_timeline_frame(const Scene *scene,
                                                        const int timeline_frame)
 {
   for (auto &key : SEQ_retiming_keys_get(seq)) {
-    if (SEQ_retiming_key_timeline_frame_get(scene, seq, &key) == timeline_frame) {
+    const float key_timeline_frame_raw = SEQ_retiming_key_timeline_frame_get(scene, seq, &key);
+    const int key_timeline_frame = round_fl_to_int(key_timeline_frame_raw);
+    if (key_timeline_frame == timeline_frame) {
       return &key;
     }
   }
@@ -278,8 +280,8 @@ float seq_retiming_evaluate(const Sequence *seq, const float frame_index)
 
 SeqRetimingKey *SEQ_retiming_add_key(const Scene *scene, Sequence *seq, const int timeline_frame)
 {
-  float frame_index = (timeline_frame - SEQ_time_start_frame_get(seq)) *
-                      seq_time_media_playback_rate_factor_get(scene, seq);
+  const int frame_index = round_fl_to_int((timeline_frame - SEQ_time_start_frame_get(seq)) *
+                                          SEQ_time_media_playback_rate_factor_get(scene, seq));
 
   SeqRetimingKey *last_key = SEQ_retiming_last_key_get(seq);
 
@@ -436,7 +438,9 @@ static SeqRetimingKey *seq_retiming_remove_transition(const Scene *scene,
                                                       Sequence *seq,
                                                       SeqRetimingKey *key)
 {
-  const int orig_frame_index = key->original_strip_frame_index;
+
+  const int orig_frame = round_fl_to_int(key->original_strip_frame_index /
+                                         SEQ_time_media_playback_rate_factor_get(scene, seq));
   const float orig_retiming_factor = key->original_retiming_factor;
 
   /* Remove both keys defining transition. */
@@ -446,7 +450,7 @@ static SeqRetimingKey *seq_retiming_remove_transition(const Scene *scene,
 
   /* Create original linear key. */
   SeqRetimingKey *orig_key = SEQ_retiming_add_key(
-      scene, seq, SEQ_time_start_frame_get(seq) + orig_frame_index);
+      scene, seq, SEQ_time_start_frame_get(seq) + orig_frame);
   orig_key->retiming_factor = orig_retiming_factor;
   return orig_key;
 }
@@ -478,12 +482,17 @@ void SEQ_retiming_remove_key(const Scene *scene, Sequence *seq, SeqRetimingKey *
   seq_retiming_remove_key_ex(seq, key);
 }
 
-static int seq_retiming_clamp_create_offset(SeqRetimingKey *key, int offset)
+/* Return maximum offset in timeline space. */
+static int seq_retiming_clamp_create_offset(const Scene *scene,
+                                            const Sequence *seq,
+                                            SeqRetimingKey *key,
+                                            int offset)
 {
-  SeqRetimingKey *prev_key = key - 1;
-  SeqRetimingKey *next_key = key + 1;
-  const int prev_dist = key->strip_frame_index - prev_key->strip_frame_index;
-  const int next_dist = next_key->strip_frame_index - key->strip_frame_index;
+  const int prev_key_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, key - 1);
+  const int key_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, key);
+  const int next_key_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, key + 1);
+  const int prev_dist = key_frame - prev_key_frame;
+  const int next_dist = next_key_frame - key_frame;
   return min_iii(offset, prev_dist - 1, next_dist - 1);
 }
 
@@ -498,7 +507,7 @@ SeqRetimingKey *SEQ_retiming_add_freeze_frame(const Scene *scene,
     return nullptr;
   }
 
-  int clamped_offset = seq_retiming_clamp_create_offset(key, offset);
+  int clamped_offset = seq_retiming_clamp_create_offset(scene, seq, key, offset);
 
   const int orig_timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, key);
   const float orig_retiming_factor = key->retiming_factor;
@@ -521,6 +530,19 @@ SeqRetimingKey *SEQ_retiming_add_freeze_frame(const Scene *scene,
   return new_key;
 }
 
+/* When playback factor is not 1, rounding error must be elliminated, otherwise key may not
+ * move to actual timeline frame. */
+static int seq_retiming_key_offset_compensate_rounding(const Scene *scene,
+                                                       Sequence *seq,
+                                                       const SeqRetimingKey *key,
+                                                       const int offset)
+{
+  const float playback_fac = SEQ_time_media_playback_rate_factor_get(scene, seq);
+  const int ui_frame_index = round_fl_to_int(key->strip_frame_index / playback_fac);
+  const int new_frame_index = round_fl_to_int((ui_frame_index + offset) * playback_fac);
+  return new_frame_index - key->strip_frame_index;
+}
+
 SeqRetimingKey *SEQ_retiming_add_transition(const Scene *scene,
                                             Sequence *seq,
                                             SeqRetimingKey *key,
@@ -528,7 +550,8 @@ SeqRetimingKey *SEQ_retiming_add_transition(const Scene *scene,
 {
   SeqRetimingKey *prev_key = key - 1;
   if ((key->flag & SEQ_SPEED_TRANSITION_IN) != 0 ||
-      (prev_key->flag & SEQ_SPEED_TRANSITION_IN) != 0) {
+      (prev_key->flag & SEQ_SPEED_TRANSITION_IN) != 0)
+  {
     return nullptr;
   }
 
@@ -536,7 +559,7 @@ SeqRetimingKey *SEQ_retiming_add_transition(const Scene *scene,
     return nullptr;
   }
 
-  int clamped_offset = seq_retiming_clamp_create_offset(key, offset);
+  const int clamped_offset = seq_retiming_clamp_create_offset(scene, seq, key, offset);
 
   const int orig_key_index = SEQ_retiming_key_index_get(seq, key);
   const int orig_timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, key);
@@ -818,12 +841,13 @@ void SEQ_retiming_sound_animation_data_set(const Scene *scene, const Sequence *s
   }
 }
 
-float SEQ_retiming_key_timeline_frame_get(const Scene *scene,
-                                          const Sequence *seq,
-                                          const SeqRetimingKey *key)
+int SEQ_retiming_key_timeline_frame_get(const Scene *scene,
+                                        const Sequence *seq,
+                                        const SeqRetimingKey *key)
 {
   return SEQ_time_start_frame_get(seq) +
-         key->strip_frame_index / seq_time_media_playback_rate_factor_get(scene, seq);
+         round_fl_to_int(key->strip_frame_index /
+                         SEQ_time_media_playback_rate_factor_get(scene, seq));
 }
 
 static int seq_retiming_clamp_transition_offset(SeqRetimingKey *start_key, int offset)
@@ -847,14 +871,21 @@ static void seq_retiming_transition_offset(const Scene *scene,
                                            SeqRetimingKey *key,
                                            const int offset)
 {
-  int clamped_offset = seq_retiming_clamp_transition_offset(key, offset);
-  const int duration = key->original_strip_frame_index - key->strip_frame_index;
+  int clamped_offset = round_fl_to_int(seq_retiming_clamp_transition_offset(key, offset));
+  const float playback_fac = SEQ_time_media_playback_rate_factor_get(scene, seq);
+
   const bool was_selected = SEQ_retiming_selection_contains(SEQ_editing_get(scene), key);
+  const int orig_transition_offset = round_fl_to_int(
+      (key->original_strip_frame_index - key->strip_frame_index) / playback_fac);
 
   SeqRetimingKey *original_key = seq_retiming_remove_transition(scene, seq, key);
-  original_key->strip_frame_index += clamped_offset;
 
-  SeqRetimingKey *transition_in = SEQ_retiming_add_transition(scene, seq, original_key, duration);
+  original_key->strip_frame_index += seq_retiming_key_offset_compensate_rounding(
+      scene, seq, key, clamped_offset);
+  original_key->original_strip_frame_index = original_key->strip_frame_index;
+
+  SeqRetimingKey *transition_in = SEQ_retiming_add_transition(
+      scene, seq, original_key, orig_transition_offset);
 
   if (was_selected) {
     SEQ_retiming_selection_append(transition_in);
@@ -898,7 +929,9 @@ static int seq_retiming_clamp_timeline_frame(const Scene *scene,
 
 static void seq_retiming_fix_transition(const Scene *scene, Sequence *seq, SeqRetimingKey *key)
 {
-  const int transition_duration = key->original_strip_frame_index - key->strip_frame_index;
+  const int transition_duration = round_fl_to_int(
+      (key->original_strip_frame_index - key->strip_frame_index) /
+      SEQ_time_media_playback_rate_factor_get(scene, seq));
 
   SeqRetimingKey *orig_key = seq_retiming_remove_transition(scene, seq, key);
   SEQ_retiming_add_transition(scene, seq, orig_key, transition_duration);
@@ -939,7 +972,8 @@ static void seq_retiming_key_offset(const Scene *scene,
     seq_retiming_transition_offset(scene, seq, key, offset);
   }
   else {
-    key->strip_frame_index += offset;
+
+    key->strip_frame_index += seq_retiming_key_offset_compensate_rounding(scene, seq, key, offset);
     seq_retiming_fix_transitions(scene, seq, key);
   }
 }
@@ -958,7 +992,12 @@ void SEQ_retiming_key_timeline_frame_set(const Scene *scene,
       scene, seq, key, timeline_frame);
   const int offset = clamped_timeline_frame - orig_timeline_frame;
 
+  if (offset == 0) {
+    return;
+  }
+
   MutableSpan keys = SEQ_retiming_keys_get(seq);
+
   if (orig_timeline_frame == SEQ_time_right_handle_frame_get(scene, seq)) {
     for (; key < keys.end(); key++) {
       seq_retiming_key_offset(scene, seq, key, offset);
