@@ -1927,7 +1927,7 @@ bool BKE_pbvh_node_fully_unmasked_get(PBVHNode *node)
 
 void BKE_pbvh_vert_tag_update_normal(PBVH *pbvh, PBVHVertRef vertex)
 {
-  BLI_assert(pbvh.header.type == PBVH_FACES);
+  BLI_assert(pbvh->header.type == PBVH_FACES);
   pbvh->vert_bitmap[vertex.i] = true;
 }
 
@@ -3442,7 +3442,6 @@ void BKE_pbvh_sync_visibility_from_verts(PBVH *pbvh, Mesh *mesh)
 }
 
 namespace blender::bke::pbvh {
-
 Vector<PBVHNode *> search_gather(PBVH *pbvh,
                                  const FunctionRef<bool(PBVHNode &)> scb,
                                  PBVHNodeFlags leaf_flag)
