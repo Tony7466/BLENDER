@@ -82,8 +82,7 @@
 
 #include "bmesh.h"
 
-#include "editors/sculpt_paint/brushes/draw.hh"
-#include "editors/sculpt_paint/brushes/draw_vector_displacement.hh"
+#include "editors/sculpt_paint/brushes/types.hh"
 
 using blender::float3;
 using blender::MutableSpan;

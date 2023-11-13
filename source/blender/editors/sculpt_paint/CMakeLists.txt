@@ -97,9 +97,9 @@ set(SRC
   sculpt_intern.hh
 
   brushes/draw.cc
-  brushes/draw.hh
   brushes/draw_vector_displacement.cc
-  brushes/draw_vector_displacement.hh
+
+  brushes/types.hh
 )
 
 set(LIB
