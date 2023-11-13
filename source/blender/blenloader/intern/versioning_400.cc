@@ -1884,6 +1884,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  /* 401 6 did not require any do_version here. */
+
   /**
    * Versioning code until next subversion bump goes here.
    *
