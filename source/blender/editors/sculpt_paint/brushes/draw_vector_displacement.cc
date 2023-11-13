@@ -48,12 +48,6 @@ static void calc_faces(Object &object, const Brush &brush, pbvh::mesh::Node &nod
   const Span<float3> vert_normals = pbvh_tree.vert_normals();
   const Span<int> vert_indices = node.unique_vert_indices();
 
-  /* XXX: Possibly use full-masking and hide status and distance to build a smaller array of vert
-   * indices for later steps in the algorithm, to avoid the need to check for fade[i] == 0.0f
-   * later. But this might not be worth it if the nodes are small enough. In that case calculating
-   * a value for every vertex in a node would be fine, as long as we can filter out unnecessary
-   * nodes at a higher level. */
-
   tls.factors.reinitialize(vert_indices.size());
   const MutableSpan<float> factors = tls.factors;
   calc_mesh_hide_and_mask(mesh, vert_indices, factors);
