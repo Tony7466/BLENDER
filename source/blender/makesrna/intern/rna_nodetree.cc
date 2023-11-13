@@ -58,14 +58,14 @@
 
 #include "RE_texture.h"
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 #include "NOD_geometry.hh"
 #include "NOD_socket.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 const EnumPropertyItem rna_enum_node_socket_in_out_items[] = {{SOCK_IN, "IN", 0, "Input", ""},
                                                               {SOCK_OUT, "OUT", 0, "Output", ""},
@@ -147,6 +147,16 @@ static const EnumPropertyItem rna_enum_execution_mode_items[] = {
      0,
      "GPU",
      "Use GPU accelerated compositing with more limited functionality"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static const EnumPropertyItem rna_enum_precision_items[] = {
+    {NODE_TREE_COMPOSITOR_PRECISION_AUTO,
+     "AUTO",
+     0,
+     "Auto",
+     "Full precision for final renders, half precision otherwise"},
+    {NODE_TREE_COMPOSITOR_PRECISION_FULL, "FULL", 0, "Full", "Full precision"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -594,7 +604,7 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 #  include "GPU_material.h"
 
 #  include "NOD_common.h"
-#  include "NOD_composite.h"
+#  include "NOD_composite.hh"
 #  include "NOD_geometry.hh"
 #  include "NOD_shader.h"
 #  include "NOD_socket.hh"
@@ -1877,6 +1887,26 @@ static const EnumPropertyItem *rna_GeometryNodeAttributeType_type_with_socket_it
                               generic_attribute_type_supported_with_socket);
 }
 
+static const EnumPropertyItem *rna_GeometryNodeAttributeDomain_attribute_domain_itemf(
+    bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
+{
+  EnumPropertyItem *item_array = nullptr;
+  int items_len = 0;
+
+  for (const EnumPropertyItem *item = rna_enum_attribute_domain_items; item->identifier != nullptr;
+       item++)
+  {
+    if (!U.experimental.use_grease_pencil_version3 && item->value == ATTR_DOMAIN_LAYER) {
+      continue;
+    }
+    RNA_enum_item_add(&item_array, &items_len, item);
+  }
+  RNA_enum_item_end(&item_array, &items_len);
+
+  *r_free = true;
+  return item_array;
+}
+
 static StructRNA *rna_ShaderNode_register(Main *bmain,
                                           ReportList *reports,
                                           void *data,
@@ -2026,6 +2056,82 @@ static void rna_Node_internal_links_begin(CollectionPropertyIterator *iter, Poin
   int len;
   nodeInternalLinks(node, &begin, &len);
   rna_iterator_array_begin(iter, begin, sizeof(bNodeLink), len, false, nullptr);
+}
+
+/**
+ * Forbid identifier lookup in nodes whose identifiers are likely to change soon because
+ * dynamically typed sockets are joined into one.
+ */
+static bool allow_identifier_lookup(const bNode &node)
+{
+  switch (node.type) {
+    case GEO_NODE_SWITCH:
+    case GEO_NODE_ACCUMULATE_FIELD:
+    case GEO_NODE_CAPTURE_ATTRIBUTE:
+    case GEO_NODE_ATTRIBUTE_STATISTIC:
+    case GEO_NODE_BLUR_ATTRIBUTE:
+    case GEO_NODE_SAMPLE_CURVE:
+    case GEO_NODE_EVALUATE_AT_INDEX:
+    case GEO_NODE_EVALUATE_ON_DOMAIN:
+    case GEO_NODE_INPUT_NAMED_ATTRIBUTE:
+    case GEO_NODE_RAYCAST:
+    case GEO_NODE_SAMPLE_INDEX:
+    case GEO_NODE_SAMPLE_NEAREST_SURFACE:
+    case FN_NODE_RANDOM_VALUE:
+    case GEO_NODE_SAMPLE_UV_SURFACE:
+    case GEO_NODE_STORE_NAMED_ATTRIBUTE:
+    case GEO_NODE_VIEWER:
+    case SH_NODE_MIX:
+    case FN_NODE_COMPARE:
+    case SH_NODE_MAP_RANGE:
+      return false;
+    default:
+      return true;
+  }
+}
+
+static bNodeSocket *find_socket_by_key(bNode &node,
+                                       const eNodeSocketInOut in_out,
+                                       const blender::StringRef key)
+{
+  ListBase *sockets = in_out == SOCK_IN ? &node.inputs : &node.outputs;
+  if (allow_identifier_lookup(node)) {
+    LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
+      if (socket->is_available()) {
+        if (socket->identifier == key) {
+          return socket;
+        }
+      }
+    }
+  }
+  LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
+    if (socket->is_available()) {
+      if (socket->name == key) {
+        return socket;
+      }
+    }
+  }
+  return nullptr;
+}
+
+static int rna_NodeInputs_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)
+{
+  bNode *node = static_cast<bNode *>(ptr->data);
+  if (bNodeSocket *socket = find_socket_by_key(*node, SOCK_IN, key)) {
+    *r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, socket);
+    return true;
+  }
+  return false;
+}
+
+static int rna_NodeOutputs_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)
+{
+  bNode *node = static_cast<bNode *>(ptr->data);
+  if (bNodeSocket *socket = find_socket_by_key(*node, SOCK_OUT, key)) {
+    *r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, socket);
+    return true;
+  }
+  return false;
 }
 
 static bool rna_Node_parent_poll(PointerRNA *ptr, PointerRNA value)
@@ -8432,14 +8538,6 @@ static void def_cmp_kuwahara(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  prop = RNA_def_property(srna, "size", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "size");
-  RNA_def_property_range(prop, 1.0, 100.0);
-  RNA_def_property_ui_range(prop, 1, 100, 1, -1);
-  RNA_def_property_ui_text(
-      prop, "Size", "Size of filter. Larger values give stronger stylized effect");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-
   prop = RNA_def_property(srna, "variation", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "variation");
   RNA_def_property_enum_items(prop, variation_items);
@@ -8676,6 +8774,7 @@ static void def_geo_curve_set_handle_type(StructRNA *srna)
 
   prop = RNA_def_property(srna, "handle_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "handle_type");
+  RNA_def_property_ui_text(prop, "Handle Type", "");
   RNA_def_property_enum_items(prop, rna_node_geometry_curve_handle_type_items);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 
@@ -8843,6 +8942,8 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "attribute_domain", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
+  RNA_def_property_enum_funcs(
+      prop, nullptr, nullptr, "rna_GeometryNodeAttributeDomain_attribute_domain_itemf");
   RNA_def_property_ui_text(
       prop,
       "Attribute Domain",
@@ -8964,6 +9065,7 @@ static void def_geo_curve_handle_type_selection(StructRNA *srna)
 
   prop = RNA_def_property(srna, "handle_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "handle_type");
+  RNA_def_property_ui_text(prop, "Handle Type", "");
   RNA_def_property_enum_items(prop, rna_node_geometry_curve_handle_type_items);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 
@@ -9035,6 +9137,8 @@ static void def_geo_sample_index(StructRNA *srna)
 
   prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
+  RNA_def_property_enum_funcs(
+      prop, nullptr, nullptr, "rna_GeometryNodeAttributeDomain_attribute_domain_itemf");
   RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
   RNA_def_property_ui_text(prop, "Domain", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
@@ -9490,6 +9594,15 @@ static void rna_def_node(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "inputs", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "inputs", nullptr);
+  RNA_def_property_collection_funcs(prop,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    "rna_NodeInputs_lookup_string",
+                                    nullptr);
   RNA_def_property_struct_type(prop, "NodeSocket");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Inputs", "");
@@ -9497,6 +9610,15 @@ static void rna_def_node(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "outputs", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "outputs", nullptr);
+  RNA_def_property_collection_funcs(prop,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    "rna_NodeOutputs_lookup_string",
+                                    nullptr);
   RNA_def_property_struct_type(prop, "NodeSocket");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Outputs", "");
@@ -10035,6 +10157,12 @@ static void rna_def_composite_nodetree(BlenderRNA *brna)
       srna, "Compositor Node Tree", "Node tree consisting of linked nodes used for compositing");
   RNA_def_struct_sdna(srna, "bNodeTree");
   RNA_def_struct_ui_icon(srna, ICON_RENDERLAYERS);
+
+  prop = RNA_def_property(srna, "precision", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "precision");
+  RNA_def_property_enum_items(prop, rna_enum_precision_items);
+  RNA_def_property_ui_text(prop, "Precision", "The precision of compositor intermediate result");
+  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_NodeTree_update");
 
   prop = RNA_def_property(srna, "execution_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "execution_mode");
