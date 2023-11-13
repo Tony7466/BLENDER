@@ -672,10 +672,10 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
 }
 
+/* Build a static set of built-in node types to check for known types. */
 static blender::Set<int> get_known_node_types_set()
 {
   blender::Set<int> result;
-  /* Check known built-in types. */
   NODE_TYPES_BEGIN (ntype) {
     result.add(ntype->type);
   }
