@@ -6,7 +6,7 @@ namespace blender::gpu {
 void VKAttachments::description_set(GPUTexture *tex,
                                     const VkAttachmentReference2 &attachment_reference,
                                     VkAttachmentDescription2 &attachment_description,
-                                    VKRenderPassTransition &render_pass_enum_)
+                                    eRenderpassType &render_pass_enum_)
 {
   /*
    * From the best layout for each Texture, we get the type of transition
@@ -14,33 +14,30 @@ void VKAttachments::description_set(GPUTexture *tex,
    * So far, it can be expressed in a simple transition structure.
    */
   VKTexture &texture = *reinterpret_cast<VKTexture *>(tex);
-  VKRenderPassTransition trans_ty = VKRenderPassTransition::ALL;
-  switch (texture.render_pass_type_get()) {
+  eRenderpassType trans_ty = texture.render_pass_type_get();
+  switch (trans_ty) {
     case eRenderpassType::ShaderBinding:
-      trans_ty = VKRenderPassTransition::S2S;
       attachment_description.finalLayout = attachment_description.initialLayout =
           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
       break;
     case eRenderpassType::Attachment:
-      trans_ty = VKRenderPassTransition::A2A;
       BLI_assert(attachment_reference.layout != VK_IMAGE_LAYOUT_UNDEFINED);
       attachment_description.finalLayout = attachment_description.initialLayout =
           attachment_reference.layout;
       break;
     case eRenderpassType::Storage:
-      trans_ty = VKRenderPassTransition::G2G;
       attachment_description.finalLayout = attachment_description.initialLayout =
           VK_IMAGE_LAYOUT_GENERAL;
       break;
     case eRenderpassType::Any:
       BLI_assert_unreachable();
   };
-  if (render_pass_enum_ == VKRenderPassTransition::ALL) {
+  if (render_pass_enum_ == eRenderpassType::Any) {
     render_pass_enum_ = trans_ty;
   }
   else {
     /* Is the transition structure unified by several attachments? */
-    render_pass_enum_ = (trans_ty != render_pass_enum_) ? VKRenderPassTransition::MIX : trans_ty;
+    BLI_assert((trans_ty == render_pass_enum_));
   }
   attachment_description.format = to_vk_format(texture.format_get());
 }

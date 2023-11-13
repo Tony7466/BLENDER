@@ -60,8 +60,6 @@ VkImageLayout vk_aspect_to_layout(VkImageAspectFlags aspect);
 
 /* Types per VKTexture */
 enum class eRenderpassType { ShaderBinding, Attachment, Storage, Any };
-/* Types per VkRenderPass */
-enum class VKRenderPassTransition : uint8_t { A2A, S2S, G2G, MIX, ALL };
 
 template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
 {

@@ -7,8 +7,8 @@
  */
 
 #pragma once
-#include "vk_common.hh"
 #include "vk_attachments.hh"
+#include "vk_common.hh"
 
 #include <memory>
 
@@ -51,28 +51,31 @@ const VkSubpassDescription2 descriptions_default = {
  *   use late construction for compute pipelines.
  */
 
-class VKRenderPass  {
+class VKRenderPass {
  private:
-   bool dirty_ = false;
-   VkRenderPass vk_render_pass_ = VK_NULL_HANDLE;
-   VKRenderPassTransition render_pass_enum_ = VKRenderPassTransition::A2A;
-   VkRenderPassCreateInfo2 vk_create_info_[2] = {vk_renderpass::create_info_default,vk_renderpass::create_info_default};
-   uint8_t info_id_ = 0b00;
-   const uint8_t info_id_counter() const {
-      return (info_id_ + 1)%2;
-    }
+  bool dirty_ = false;
+  VkRenderPass vk_render_pass_ = VK_NULL_HANDLE;
+  eRenderpassType render_pass_enum_ = eRenderpassType::Any;
+  VkRenderPassCreateInfo2 vk_create_info_[2] = {vk_renderpass::create_info_default,
+                                                vk_renderpass::create_info_default};
+  uint8_t info_id_ = 0b00;
+  const uint8_t info_id_counter() const
+  {
+    return (info_id_ + 1) % 2;
+  }
 
-   /** There is a separate classification issue with regard to multi-layered rendering. **/
-   int multiview_layers_ = 1;
-   std::array<VkSubpassDescription2, 2> subpass_ = {vk_subpass::descriptions_default, vk_subpass::descriptions_default};
+  /** There is a separate classification issue with regard to multi-layered rendering. **/
+  int multiview_layers_ = 1;
+  std::array<VkSubpassDescription2, 2> subpass_ = {vk_subpass::descriptions_default,
+                                                   vk_subpass::descriptions_default};
 
-   VKAttachments attachments_;
+  VKAttachments attachments_;
 
  public:
-   VKRenderPass(){};
-   ~VKRenderPass()
-   {
-      free();
+  VKRenderPass(){};
+  ~VKRenderPass()
+  {
+    free();
   };
   void create();
   void free();

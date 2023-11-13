@@ -36,42 +36,44 @@ typedef std::array<VkAttachmentDescription2, GPU_FB_MAX_ATTACHMENT> descriptions
 typedef std::array<VkAttachmentReference2, GPU_FB_MAX_ATTACHMENT - 2> references_ty;
 typedef std::array<int, GPU_FB_MAX_ATTACHMENT> idx_ty;
 const descriptions_ty descriptions = {descriptions_default,
-                                              descriptions_default,
-                                              descriptions_default,
-                                              descriptions_default,
-                                              descriptions_default,
-                                              descriptions_default,
-                                              descriptions_default,
-                                              descriptions_default,
-                                              descriptions_default,
-                                              descriptions_default};
+                                      descriptions_default,
+                                      descriptions_default,
+                                      descriptions_default,
+                                      descriptions_default,
+                                      descriptions_default,
+                                      descriptions_default,
+                                      descriptions_default,
+                                      descriptions_default,
+                                      descriptions_default};
 const references_ty references = {references_default,
-                                          references_default,
-                                          references_default,
-                                          references_default,
-                                          references_default,
-                                          references_default,
-                                          references_default,
-                                          references_default};
-}  // namespace attachment
+                                  references_default,
+                                  references_default,
+                                  references_default,
+                                  references_default,
+                                  references_default,
+                                  references_default,
+                                  references_default};
+}  // namespace vk_attachment
 
 class VKAttachments {
  private:
-  std::array<vk_attachment::descriptions_ty, 2> descriptions_ = {vk_attachment::descriptions, vk_attachment::descriptions};
-  std::array<vk_attachment::references_ty, 2> references_ = { vk_attachment::references, vk_attachment::references};
+  std::array<vk_attachment::descriptions_ty, 2> descriptions_ = {vk_attachment::descriptions,
+                                                                 vk_attachment::descriptions};
+  std::array<vk_attachment::references_ty, 2> references_ = {vk_attachment::references,
+                                                             vk_attachment::references};
   std::array<VkAttachmentReference2, 2> depth_references_ = {vk_attachment::references_default,
-                                                                        vk_attachment::references_default};
+                                                             vk_attachment::references_default};
   std::array<vk_attachment::idx_ty, 2> idx_;
+
  public:
   void description_set(GPUTexture *texture,
-                                  const VkAttachmentReference2 &attachment_reference,
-                                  VkAttachmentDescription2 &attachment_description,
-                                  VKRenderPassTransition& render_pass_enum_);
+                       const VkAttachmentReference2 &attachment_reference,
+                       VkAttachmentDescription2 &attachment_description,
+                       eRenderpassType &render_pass_enum_);
 
   int type_get(int view_index, int info_id) const;
 
   bool is_valid() const;
-
 
   friend class VKRenderPass;
   friend class VKFrameBuffer;
