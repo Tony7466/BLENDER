@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "editors/sculpt_paint/brushes/draw.hh"
+#include "editors/sculpt_paint/brushes/draw_vector_displacement.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_mesh_types.h"
@@ -189,7 +189,7 @@ void do_draw_vector_displacement_brush(Sculpt &sd, Object &object, Span<PBVHNode
         case PBVH_BMESH:
           calc_bmesh(object, brush, *nodes[i]);
           break;
-      };
+      }
     }
   });
 }
