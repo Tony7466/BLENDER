@@ -55,6 +55,7 @@ struct HorizonScanContextCommon {
   float N_angle;
   float N_length;
   uint bitmask;
+  float weight_slice;
   float weight_accum;
   vec3 light_slice;
   vec4 light_accum;
@@ -107,6 +108,7 @@ void horizon_scan_context_slice_start(
     inout HorizonScanContextCommon context, vec3 vN, vec3 vV, vec3 vT, vec3 vB)
 {
   context.bitmask = 0u;
+  context.weight_slice = 0.0;
   context.light_slice = vec3(0.0);
   horizon_scan_projected_normal_to_plane_angle_and_length(
       vN, vV, vT, vB, context.N_length, context.N_angle);
@@ -130,15 +132,17 @@ void horizon_scan_context_slice_start(inout HorizonScanContext context, vec3 vV,
 
 void horizon_scan_context_sample_finish(inout HorizonScanContextCommon context,
                                         vec3 sample_radiance,
+                                        float sample_weight,
                                         vec2 sample_theta,
                                         float angle_bias)
 {
   /* Angular bias shrinks the visibility bitmask around the projected normal. */
   sample_theta = (sample_theta - context.N_angle) * angle_bias;
   uint sample_bitmask = horizon_scan_angles_to_bitmask(sample_theta);
-  float sample_visibility = horizon_scan_bitmask_to_visibility_uniform(sample_bitmask &
-                                                                       ~context.bitmask);
-  context.light_slice += sample_radiance * sample_visibility;
+  sample_weight *= horizon_scan_bitmask_to_visibility_uniform(sample_bitmask & ~context.bitmask);
+
+  context.weight_slice += sample_weight;
+  context.light_slice += sample_radiance * sample_weight;
   context.bitmask |= sample_bitmask;
 }
 
@@ -150,8 +154,8 @@ float bxdf_eval(ClosureDiffuse closure, vec3 L, vec3 V)
 float bxdf_eval(ClosureReflection closure, vec3 L, vec3 V)
 {
   /* TODO(fclem): Figure out how to make it work properly. Currently losses too much energy. */
-  // return bsdf_ggx(closure.N, L, V, closure.roughness);
-  return bsdf_lambert(closure.N, L);
+  return bsdf_ggx(closure.N, L, V, closure.roughness);
+  // return bsdf_lambert(closure.N, L);
 }
 
 float bxdf_eval(ClosureRefraction closure, vec3 L, vec3 V)
@@ -160,28 +164,32 @@ float bxdf_eval(ClosureRefraction closure, vec3 L, vec3 V)
 }
 
 void horizon_scan_context_sample_finish(
-    inout HorizonScanContext context, vec3 L, vec3 V, vec2 sample_uv, vec2 theta, float bias)
+    inout HorizonScanContext ctx, vec3 L, vec3 V, vec2 sample_uv, vec2 theta, float bias)
 {
   vec3 sample_radiance = horizon_scan_sample_radiance(sample_uv);
   /* Take emitter surface normal into consideration. */
   vec3 sample_normal = horizon_scan_sample_normal(sample_uv);
-  sample_radiance *= dot(sample_normal, -L);
+  /* Discard backfacing samples.
+   * The paper suggests a smooth test which is not physically correct since we
+   * already consider the sample reflected radiance. */
+  // sample_radiance *= step(dot(sample_normal, -L), 0.0);
+  float bxdf = 1.0;
 
 #ifdef HORIZON_OCCLUSION
-  horizon_scan_context_sample_finish(context.occlusion_common, vec3(0.0), theta, bias);
+  horizon_scan_context_sample_finish(ctx.occlusion_common, sample_radiance, bxdf, theta, bias);
 #endif
 #ifdef HORIZON_DIFFUSE
-  sample_radiance *= bxdf_eval(context.diffuse, L, V);
-  horizon_scan_context_sample_finish(context.diffuse_common, sample_radiance, theta, bias);
+  bxdf = bxdf_eval(ctx.diffuse, L, V);
+  horizon_scan_context_sample_finish(ctx.diffuse_common, sample_radiance, bxdf, theta, bias);
 #endif
 #ifdef HORIZON_REFLECT
-  sample_radiance *= bxdf_eval(context.reflection, L, V);
-  horizon_scan_context_sample_finish(context.reflection_common, sample_radiance, theta, bias);
+  bxdf = bxdf_eval(ctx.reflection, L, V);
+  horizon_scan_context_sample_finish(ctx.reflection_common, sample_radiance, bxdf, theta, bias);
 #endif
 #ifdef HORIZON_REFRACT
   /* TODO(fclem): Broken: Black. */
-  sample_radiance *= bxdf_eval(context.refraction, L, V);
-  horizon_scan_context_sample_finish(context.refraction_common, sample_radiance, theta, bias);
+  bxdf = bxdf_eval(ctx.refraction, L, V);
+  horizon_scan_context_sample_finish(ctx.refraction_common, sample_radiance, bxdf, theta, bias);
 #endif
 }
 
@@ -190,6 +198,8 @@ void horizon_scan_context_slice_finish(inout HorizonScanContextCommon context)
   /* Use uniform visibility since this is what we use for near field lighting.
    * Also the lighting we are going to mask is already containing the cosine lobe. */
   float slice_occlusion = horizon_scan_bitmask_to_visibility_uniform(~context.bitmask);
+  /* Normalize radiance since BxDF is applied when merging direct and indirect light. */
+  context.light_slice *= safe_rcp(context.weight_slice) * (1.0 - slice_occlusion);
   /* Correct normal not on plane (Eq. 8 of GTAO paper). */
   context.light_accum += vec4(context.light_slice, slice_occlusion) * context.N_length;
   context.weight_accum += context.N_length;
@@ -217,11 +227,6 @@ void horizon_scan_context_slice_finish(inout HorizonScanContext context)
 void horizon_scan_context_accumulation_finish(HorizonScanContextCommon context, out vec4 result)
 {
   result = context.light_accum * safe_rcp(context.weight_accum);
-#ifndef HORIZON_OCCLUSION
-  /* We integrate over the whole hemisphere. Multiply to hemisphere area.
-   * We only consider visbility for occlusion, so we skip it in this case. */
-  result.rgb *= 2.0 * M_PI;
-#endif
 }
 
 void horizon_scan_context_accumulation_finish(inout HorizonScanContext context)
@@ -285,13 +290,16 @@ void horizon_scan_eval(vec3 vP,
 {
   vec3 vV = drw_view_incident_vector(vP);
 
-  const int slice_len = 2;
+  const int slice_len = 8;
+  // const int slice_len = 2;
 
-  vec2 v_dir = sample_circle(noise.x * (0.5 / float(slice_len)));
+  // vec2 v_dir = sample_circle(noise.x * (0.5 / float(slice_len)));
 
   horizon_scan_context_accumulation_reset(context);
 
   for (int slice = 0; slice < slice_len; slice++) {
+    vec2 v_dir = sample_circle(((float(slice) + noise.x) / float(slice_len)));
+
     /* Setup integration domain around V. */
     vec3 vB = normalize(cross(vV, vec3(v_dir, 0.0)));
     vec3 vT = cross(vB, vV);
