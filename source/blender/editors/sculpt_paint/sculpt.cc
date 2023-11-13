@@ -6382,9 +6382,7 @@ void calc_mesh_hide_and_mask(const Mesh &mesh,
   BLI_assert(vert_indices.size() == r_factors.size());
 
   const bke::AttributeAccessor attributes = mesh.attributes();
-  if (const VArray<bool> hide_vert = *attributes.lookup_or_default<bool>(".hide_vert",
-                                                                         ATTR_DOMAIN_POINT))
-  {
+  if (const VArray<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT)) {
     const VArraySpan span(hide_vert);
     for (const int i : vert_indices.index_range()) {
       r_factors[i] = span[vert_indices[i]] ? 0.0f : 1.0f;
