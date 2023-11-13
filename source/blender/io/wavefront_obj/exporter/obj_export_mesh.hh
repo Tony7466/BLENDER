@@ -30,10 +30,6 @@ const int NEGATIVE_INIT = -10;
 
 class OBJMesh : NonCopyable {
  private:
-  /**
-   * We need to copy the entire Object structure here because the dependency graph iterator
-   * sometimes builds an Object in a temporary space that doesn't persist.
-   */
   std::string object_name_;
   /** A pointer to #owned_export_mesh_ or the object'ed evaluated/original mesh. */
   const Mesh *export_mesh_;
