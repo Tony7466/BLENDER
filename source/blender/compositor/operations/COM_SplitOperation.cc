@@ -48,20 +48,10 @@ void SplitOperation::execute_pixel_sampled(float output[4],
 
 void SplitOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
-  /* The larger image decides the canvas size.
-   * This makes the result more predictable and more consistent with the viewport compositor. */
-  rcti area_1, area_2;
-  const bool determined_1 = this->get_input_socket(0)->determine_canvas(COM_AREA_NONE, area_1);
-  const bool determined_2 = this->get_input_socket(1)->determine_canvas(COM_AREA_NONE, area_2);
+  rcti unused_area = COM_AREA_NONE;
 
-  if (determined_1 && determined_2) {
-    const int size_1 = BLI_rcti_size_x(&area_1) * BLI_rcti_size_y(&area_1);
-    const int size_2 = BLI_rcti_size_x(&area_2) * BLI_rcti_size_y(&area_2);
-    this->set_canvas_input_index(size_1 > size_2 ? 0 : 1);
-  }
-  else {
-    this->set_canvas_input_index(determined_1 ? 0 : 1);
-  }
+  const bool determined = this->get_input_socket(0)->determine_canvas(COM_AREA_NONE, unused_area);
+  this->set_canvas_input_index(determined ? 0 : 1);
 
   NodeOperation::determine_canvas(preferred_area, r_area);
 }

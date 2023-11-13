@@ -80,23 +80,6 @@ class SplitOperation : public NodeOperation {
     GPU_shader_unbind();
   }
 
-  Domain compute_domain() override
-  {
-    /* Choose the domain of the larger image. */
-    Domain first_domain = get_input("Image").domain();
-    Domain second_domain = get_input("Image_001").domain();
-
-    int first_area = first_domain.size.x * first_domain.size.y;
-    int second_area = second_domain.size.x * second_domain.size.y;
-
-    if (first_area > second_area) {
-      return first_domain;
-    }
-    else {
-      return second_domain;
-    }
-  }
-
   GPUShader *get_split_shader()
   {
     if (get_split_axis() == CMP_NODE_SPLIT_HORIZONTAL) {
