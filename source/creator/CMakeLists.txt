@@ -547,6 +547,15 @@ if(WIN32)
       CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
     )
   endif()
+  if(EXISTS ${LIBDIR}/OpenImageDenoise/bin/openimagedenoise.dll) # 4.0
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise.dll
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_core.dll
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_cpu.dll
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_sycl.dll
+    )
+  endif()
 endif()
 
 # Show helpful tip.
@@ -692,6 +701,10 @@ file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
     install(
       FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/blender.desktop
       DESTINATION "./share/applications"
+    )
+    install(
+      FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/org.blender.Blender.metainfo.xml
+      DESTINATION "./share/metainfo"
     )
     install(
       FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/scalable/apps/blender.svg
