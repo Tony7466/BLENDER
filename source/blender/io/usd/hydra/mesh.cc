@@ -8,6 +8,7 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_string.h"
+#include "BLI_vector_set.hh"
 
 #include "BKE_attribute.h"
 #include "BKE_material.h"
@@ -218,62 +219,124 @@ const MeshData::SubMesh &MeshData::submesh(pxr::SdfPath const &id) const
   return submeshes_[index];
 }
 
+static std::pair<bke::MeshNormalDomain, Span<float3>> get_mesh_normals(const Mesh &mesh)
+{
+  switch (mesh.normals_domain()) {
+    case bke::MeshNormalDomain::Face:
+      return {bke::MeshNormalDomain::Face, mesh.face_normals()};
+    case bke::MeshNormalDomain::Point:
+      return {bke::MeshNormalDomain::Point, mesh.vert_normals()};
+    case bke::MeshNormalDomain::Corner:
+      return {bke::MeshNormalDomain::Corner, mesh.corner_normals()};
+  }
+  BLI_assert_unreachable();
+  return {};
+}
+
+template<typename T>
+void gather_vert_data(const Span<int> verts,
+                      const bool is_full_copy,
+                      const Span<T> src_data,
+                      MutableSpan<T> dst_data)
+{
+  if (is_full_copy) {
+    array_utils::copy(src_data, dst_data);
+  }
+  else {
+    array_utils::gather(src_data, verts, dst_data);
+  }
+}
+
+template<typename T>
+void gather_face_data(const Span<int> looptri_faces,
+                      const IndexMask &triangles,
+                      const Span<T> src_data,
+                      MutableSpan<T> dst_data)
+{
+  triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
+    dst_data[dst] = src_data[looptri_faces[src]];
+  });
+}
+
+template<typename T>
+void gather_corner_data(const Span<MLoopTri> looptris,
+                        const IndexMask &triangles,
+                        const Span<T> src_data,
+                        MutableSpan<T> dst_data)
+{
+  triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
+    const MLoopTri &tri = looptris[src];
+    dst_data[dst * 3 + 0] = src_data[tri.tri[0]];
+    dst_data[dst * 3 + 1] = src_data[tri.tri[1]];
+    dst_data[dst * 3 + 2] = src_data[tri.tri[2]];
+  });
+}
+
 static void copy_submesh(const Span<float3> vert_positions,
                          const Span<int> corner_verts,
                          const Span<MLoopTri> looptris,
-                         const Span<float3> corner_normals,
+                         const Span<int> looptri_faces,
+                         const std::pair<bke::MeshNormalDomain, Span<float3>> normals,
                          const Span<float2> uv_map,
                          const IndexMask &triangles,
                          MeshData::SubMesh &sm)
 {
-
   sm.face_vertex_indices.resize(triangles.size() * 3);
-  triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
-    const MLoopTri &tri = looptris[src];
-    sm.face_vertex_indices[dst * 3 + 0] = corner_verts[tri.tri[0]];
-    sm.face_vertex_indices[dst * 3 + 1] = corner_verts[tri.tri[1]];
-    sm.face_vertex_indices[dst * 3 + 2] = corner_verts[tri.tri[2]];
-  });
+  const bool is_full_copy = triangles.size() == looptris.size();
 
-  sm.vertices.resize(vert_count);
-  array_utils::gather(vert_positions,
-                      {sm.face_vertex_indices.data(), sm.face_vertex_indices.size()},
-                      Span<pxr::GfVec3f>(sm.vertices.data(), sm.vertices.size()).cast<float3>());
-
-  {
-    /* Compress vertex indices to be contiguous so it's only necessary to copy used vertices. */
-    Array<int> index_map(vert_positions.size(), 0);
-    int vert_count = 0;
-    const auto remap_vert = [&](const int vert) {
-      if (index_map[vert] != 0) {
-        index_map[vert] = vert_count;
-      }
-      return index_map[vert];
-    };
-    for (int &index : sm.face_vertex_indices) {
-      index = remap_vert(index);
-    }
+  int dst_verts_num;
+  VectorSet<int> verts;
+  if (is_full_copy) {
+    /* All triangles are in the same submesh, so we can copy values directly without wasting space
+     * for unused vertices. There may still be loose vertices that could be skipped, but it most
+     * likely isn't worth checking that here. */
+    triangles.foreach_index(GrainSize(4096), [&](const int src, const int dst) {
+      const MLoopTri &tri = looptris[src];
+      sm.face_vertex_indices[dst * 3 + 0] = corner_verts[tri.tri[0]];
+      sm.face_vertex_indices[dst * 3 + 1] = corner_verts[tri.tri[1]];
+      sm.face_vertex_indices[dst * 3 + 2] = corner_verts[tri.tri[2]];
+    });
+    dst_verts_num = vert_positions.size();
   }
+  else {
+    /* Compress vertex indices to be contiguous so it's only necessary to copy values
+     * for vertices actually used by the subset of triangles. */
+    verts.reserve(triangles.size());
+    triangles.foreach_index([&](const int src, const int dst) {
+      const MLoopTri &tri = looptris[src];
+      sm.face_vertex_indices[dst * 3 + 0] = verts.index_of_or_add(corner_verts[tri.tri[0]]);
+      sm.face_vertex_indices[dst * 3 + 1] = verts.index_of_or_add(corner_verts[tri.tri[1]]);
+      sm.face_vertex_indices[dst * 3 + 2] = verts.index_of_or_add(corner_verts[tri.tri[2]]);
+    });
+    dst_verts_num = verts.size();
+  }
+
+  sm.vertices.resize(dst_verts_num);
+  gather_vert_data(verts,
+                   is_full_copy,
+                   vert_positions,
+                   MutableSpan(sm.vertices.data(), sm.vertices.size()).cast<float3>());
 
   sm.face_vertex_counts.resize(triangles.size());
   std::fill(sm.face_vertex_counts.begin(), sm.face_vertex_counts.end(), 3);
 
   sm.normals.resize(triangles.size() * 3);
-  triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
-    const MLoopTri &tri = looptris[src];
-    sm.normals[dst * 3 + 0] = pxr::GfVec3f(&corner_normals[tri.tri[0]].x);
-    sm.normals[dst * 3 + 1] = pxr::GfVec3f(&corner_normals[tri.tri[1]].x);
-    sm.normals[dst * 3 + 2] = pxr::GfVec3f(&corner_normals[tri.tri[2]].x);
-  });
+  MutableSpan dst_normals = MutableSpan(sm.normals.data(), sm.normals.size()).cast<float3>();
+  switch (normals.first) {
+    case bke::MeshNormalDomain::Face:
+      gather_face_data(looptri_faces, triangles, normals.second, dst_normals);
+      break;
+    case bke::MeshNormalDomain::Point:
+      break;
+    case bke::MeshNormalDomain::Corner:
+      gather_corner_data(looptris, triangles, normals.second, dst_normals);
+      break;
+  }
 
   if (!uv_map.is_empty()) {
     sm.uvs.resize(triangles.size() * 3);
-    triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
-      const MLoopTri &tri = looptris[src];
-      sm.uvs[dst * 3 + 0] = pxr::GfVec2f(&uv_map[tri.tri[0]].x);
-      sm.uvs[dst * 3 + 1] = pxr::GfVec2f(&uv_map[tri.tri[1]].x);
-      sm.uvs[dst * 3 + 2] = pxr::GfVec2f(&uv_map[tri.tri[2]].x);
-    });
+    gather_corner_data(
+        looptris, triangles, uv_map, MutableSpan(sm.uvs.data(), sm.uvs.size()).cast<float2>());
   }
 }
 
@@ -288,11 +351,9 @@ void MeshData::write_submeshes(const Mesh *mesh)
   const Span<float3> vert_positions = mesh->vert_positions();
   const Span<int> corner_verts = mesh->corner_verts();
   const Span<MLoopTri> looptris = mesh->looptris();
+  const Span<int> looptri_faces = mesh->looptri_faces();
 
-  Span<float3> corner_normals;
-  if (mesh->normals_domain() == blender::bke::MeshNormalDomain::Corner) {
-    corner_normals = mesh->corner_normals();
-  }
+  const std::pair<bke::MeshNormalDomain, Span<float3>> normals = get_mesh_normals(*mesh);
 
   const float2 *uv_map = static_cast<const float2 *>(
       CustomData_get_layer(&mesh->loop_data, CD_PROP_FLOAT2));
@@ -302,17 +363,17 @@ void MeshData::write_submeshes(const Mesh *mesh)
     copy_submesh(vert_positions,
                  corner_verts,
                  looptris,
-                 corner_normals,
+                 looptri_faces,
+                 normals,
                  uv_map ? Span<float2>(uv_map, mesh->totloop) : Span<float2>(),
                  looptris.index_range(),
-                 submeshes_.first()) return;
+                 submeshes_.first());
+    return;
   }
-
-  const Span<int> looptri_faces = mesh->looptri_faces();
 
   IndexMaskMemory memory;
   Array<IndexMask> triangles_by_material(submeshes_.size());
-  IndexMask::from_groups(
+  IndexMask::from_groups<int>(
       looptris.index_range(),
       memory,
       [&](const int i) { return material_indices[looptri_faces[i]]; },
@@ -320,9 +381,11 @@ void MeshData::write_submeshes(const Mesh *mesh)
 
   threading::parallel_for(submeshes_.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
-      copy_submesh(mesh,
+      copy_submesh(vert_positions,
                    corner_verts,
-                   corner_normals,
+                   looptris,
+                   looptri_faces,
+                   normals,
                    uv_map ? Span<float2>(uv_map, mesh->totloop) : Span<float2>(),
                    triangles_by_material[i],
                    submeshes_[i]);
