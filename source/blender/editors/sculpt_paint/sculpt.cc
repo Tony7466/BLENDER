@@ -1412,18 +1412,17 @@ void SCULPT_orig_vert_data_init(SculptOrigVertData *data,
   SCULPT_orig_vert_data_unode_init(data, ob, unode);
 }
 
-static void sculpt_orig_mesh_vert_data_update(SculptOrigVertData &orig_data,
-                                              const int vertex_index)
+static void sculpt_orig_mesh_vert_data_update(SculptOrigVertData &orig_data, const int vert)
 {
   if (orig_data.unode->type == SCULPT_UNDO_COORDS) {
-    orig_data.co = orig_data.coords[vertex_index];
-    orig_data.no = orig_data.normals[vertex_index];
+    orig_data.co = orig_data.coords[vert];
+    orig_data.no = orig_data.normals[vert];
   }
   else if (orig_data.unode->type == SCULPT_UNDO_COLOR) {
-    orig_data.col = orig_data.colors[vertex_index];
+    orig_data.col = orig_data.colors[vert];
   }
   else if (orig_data.unode->type == SCULPT_UNDO_MASK) {
-    orig_data.mask = orig_data.vmasks[vertex_index];
+    orig_data.mask = orig_data.vmasks[vert];
   }
 }
 
@@ -6376,16 +6375,16 @@ namespace blender::ed::sculpt_paint {
 namespace pbvh = bke::pbvh;
 
 void calc_mesh_hide_and_mask(const Mesh &mesh,
-                             const Span<int> vert_indices,
+                             const Span<int> verts,
                              const MutableSpan<float> r_factors)
 {
-  BLI_assert(vert_indices.size() == r_factors.size());
+  BLI_assert(verts.size() == r_factors.size());
 
   const bke::AttributeAccessor attributes = mesh.attributes();
   if (const VArray<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT)) {
     const VArraySpan span(hide_vert);
-    for (const int i : vert_indices.index_range()) {
-      r_factors[i] = span[vert_indices[i]] ? 0.0f : 1.0f;
+    for (const int i : verts.index_range()) {
+      r_factors[i] = span[verts[i]] ? 0.0f : 1.0f;
     }
   }
   else {
@@ -6395,32 +6394,32 @@ void calc_mesh_hide_and_mask(const Mesh &mesh,
   if (const float *mask = static_cast<const float *>(
           CustomData_get_layer(&mesh.vert_data, CD_PAINT_MASK)))
   {
-    for (const int i : vert_indices.index_range()) {
-      r_factors[i] *= (1.0f - mask[vert_indices[i]]);
+    for (const int i : verts.index_range()) {
+      r_factors[i] *= (1.0f - mask[verts[i]]);
     }
   }
 }
 
 void calc_distance_falloff(SculptSession &ss,
                            const Span<float3> positions,
-                           const Span<int> vert_indices,
+                           const Span<int> verts,
                            const eBrushFalloffShape falloff_shape,
                            const MutableSpan<float> r_distances,
                            const MutableSpan<float> factors)
 {
-  BLI_assert(vert_indices.size() == factors.size());
-  BLI_assert(vert_indices.size() == r_distances.size());
+  BLI_assert(verts.size() == factors.size());
+  BLI_assert(verts.size() == r_distances.size());
 
   SculptBrushTest test;
   const SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       &ss, &test, falloff_shape);
 
-  for (const int i : vert_indices.index_range()) {
+  for (const int i : verts.index_range()) {
     if (factors[i] == 0.0f) {
       r_distances[i] = FLT_MAX;
       continue;
     }
-    if (!sculpt_brush_test_sq_fn(&test, positions[vert_indices[i]])) {
+    if (!sculpt_brush_test_sq_fn(&test, positions[verts[i]])) {
       factors[i] = 0.0f;
       r_distances[i] = FLT_MAX;
       continue;
@@ -6431,16 +6430,16 @@ void calc_distance_falloff(SculptSession &ss,
 
 void calc_brush_strength_factors(SculptSession &ss,
                                  const Brush &brush,
-                                 const Span<int> vert_indices,
+                                 const Span<int> verts,
                                  const Span<float> distances,
                                  const MutableSpan<float> factors)
 {
-  BLI_assert(vert_indices.size() == distances.size());
-  BLI_assert(vert_indices.size() == factors.size());
+  BLI_assert(verts.size() == distances.size());
+  BLI_assert(verts.size() == factors.size());
 
   StrokeCache &cache = *ss.cache;
 
-  for (const int i : vert_indices.index_range()) {
+  for (const int i : verts.index_range()) {
     if (factors[i] == 0.0f) {
       /* Skip already masked-out points, as they might be outside of the brush radius and have
        * distance of FLT_MAX. Having such large values in the calculations below might lead to
@@ -6458,20 +6457,20 @@ void calc_brush_strength_factors(SculptSession &ss,
 void calc_brush_texture_factors(SculptSession &ss,
                                 const Brush &brush,
                                 const Span<float3> vert_positions,
-                                const Span<int> vert_indices,
+                                const Span<int> verts,
                                 const MutableSpan<float> factors)
 {
-  BLI_assert(vert_indices.size() == distances.size());
-  BLI_assert(vert_indices.size() == factors.size());
+  BLI_assert(verts.size() == distances.size());
+  BLI_assert(verts.size() == factors.size());
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  for (const int i : vert_indices.index_range()) {
+  for (const int i : verts.index_range()) {
     float texture_value;
     float4 texture_rgba;
     /* NOTE: This is not a thread-safe call. */
     sculpt_apply_texture(
-        &ss, &brush, vert_positions[vert_indices[i]], thread_id, &texture_value, texture_rgba);
+        &ss, &brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
 
     factors[i] *= texture_value;
   }
@@ -6480,21 +6479,21 @@ void calc_brush_texture_factors(SculptSession &ss,
 void calc_brush_texture_colors(SculptSession &ss,
                                const Brush &brush,
                                const Span<float3> vert_positions,
-                               const Span<int> vert_indices,
+                               const Span<int> verts,
                                const Span<float> factors,
                                const MutableSpan<float4> r_colors)
 {
-  BLI_assert(vert_indices.size() == distances.size());
-  BLI_assert(vert_indices.size() == r_colors.size());
+  BLI_assert(verts.size() == distances.size());
+  BLI_assert(verts.size() == r_colors.size());
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  for (const int i : vert_indices.index_range()) {
+  for (const int i : verts.index_range()) {
     float texture_value;
     float4 texture_rgba;
     /* NOTE: This is not a thread-safe call. */
     sculpt_apply_texture(
-        &ss, &brush, vert_positions[vert_indices[i]], thread_id, &texture_value, texture_rgba);
+        &ss, &brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
 
     r_colors[i] = texture_rgba * factors[i];
   }
@@ -6502,11 +6501,11 @@ void calc_brush_texture_colors(SculptSession &ss,
 
 void calc_front_face(const float3 &view_normal,
                      const Span<float3> vert_normals,
-                     const Span<int> vert_indices,
+                     const Span<int> verts,
                      const MutableSpan<float> factors)
 {
-  for (const int i : vert_indices.index_range()) {
-    const float dot = math::dot(view_normal, vert_normals[vert_indices[i]]);
+  for (const int i : verts.index_range()) {
+    const float dot = math::dot(view_normal, vert_normals[verts[i]]);
     factors[i] *= dot > 0.0f ? dot : 0.0f;
   }
 }
@@ -6514,7 +6513,7 @@ void calc_front_face(const float3 &view_normal,
 void calc_mesh_automask(Object &object,
                         AutomaskingCache &automasking,
                         pbvh::mesh::Node &node,
-                        const Span<int> vert_indices,
+                        const Span<int> verts,
                         const MutableSpan<float> factors)
 {
   SculptSession &ss = *object.sculpt;
@@ -6522,12 +6521,22 @@ void calc_mesh_automask(Object &object,
   AutomaskingNodeData automask_data;
   SCULPT_automasking_node_begin(&object, &automasking, &automask_data, &node.pbvh_node());
 
-  for (const int i : vert_indices.index_range()) {
+  for (const int i : verts.index_range()) {
     if (automask_data.have_orig_data) {
       sculpt_orig_mesh_vert_data_update(automask_data.orig_data, i);
     }
     factors[i] *= SCULPT_automasking_factor_get(
-        &automasking, &ss, BKE_pbvh_make_vref(vert_indices[i]), &automask_data);
+        &automasking, &ss, BKE_pbvh_make_vref(verts[i]), &automask_data);
+  }
+}
+
+void apply_translations(const Span<float3> translations,
+                        const Span<int> verts,
+                        const MutableSpan<float3> positions)
+{
+  for (const int i : verts.index_range()) {
+    const int vert = verts[i];
+    positions[vert] += translations[i];
   }
 }
 

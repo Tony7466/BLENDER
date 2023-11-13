@@ -48,59 +48,52 @@ static void calc_faces(const Sculpt &sd,
 
   pbvh::Tree pbvh_tree(*ss.pbvh);
 
-  const Span<float3> vert_positions = pbvh_tree.vert_positions();
+  const Span<float3> positions = pbvh_tree.vert_positions();
   const Span<float3> vert_normals = pbvh_tree.vert_normals();
-  const Span<int> vert_indices = node.unique_vert_indices();
+  const Span<int> verts = node.unique_vert_indices();
 
-  tls.factors.reinitialize(vert_indices.size());
+  tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
-  calc_mesh_hide_and_mask(mesh, vert_indices, factors);
+  calc_mesh_hide_and_mask(mesh, verts, factors);
 
-  tls.distances.reinitialize(vert_indices.size());
+  tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
-  calc_distance_falloff(ss,
-                        vert_positions,
-                        vert_indices,
-                        eBrushFalloffShape(brush.falloff_shape),
-                        distances,
-                        factors);
-  calc_brush_strength_factors(ss, brush, vert_indices, distances, factors);
+  calc_distance_falloff(
+      ss, positions, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+  calc_brush_strength_factors(ss, brush, verts, distances, factors);
 
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, vert_normals, vert_indices, factors);
+    calc_front_face(cache.view_normal, vert_normals, verts, factors);
   }
 
   if (ss.cache->automasking) {
-    calc_mesh_automask(object, *ss.cache->automasking, node, vert_indices, factors);
+    calc_mesh_automask(object, *ss.cache->automasking, node, verts, factors);
   }
 
-  calc_brush_texture_factors(ss, brush, vert_positions, vert_indices, factors);
+  calc_brush_texture_factors(ss, brush, positions, verts, factors);
 
-  tls.translations.reinitialize(vert_indices.size());
+  tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
-  for (const int i : vert_indices.index_range()) {
+  for (const int i : verts.index_range()) {
     translations[i] = offset * factors[i];
   }
 
-  clip_and_lock_translations(sd, ss, vert_positions, vert_indices, translations);
+  clip_and_lock_translations(sd, ss, positions, verts, translations);
 
   MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
   if (ss.deform_modifiers_active) {
     apply_crazyspace_translations(
         translations,
-        {reinterpret_cast<const float3x3 *>(ss.deform_imats), vert_positions.size()},
-        vert_indices,
+        {reinterpret_cast<const float3x3 *>(ss.deform_imats), positions.size()},
+        verts,
         positions_orig);
   }
   else {
-    for (const int i : vert_indices.index_range()) {
-      const int vert = vert_indices[i];
-      positions_orig[vert] += translations[i];
-    }
+    apply_translations(translations, verts, positions_orig);
   }
 
   // XXX: Maybe try not to tag verts with factor == 0.0f
-  BKE_pbvh_vert_tag_update_normals(*ss.pbvh, vert_indices);
+  BKE_pbvh_vert_tag_update_normals(*ss.pbvh, verts);
 }
 
 static void calc_grids(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)
@@ -127,7 +120,7 @@ static void calc_grids(Object &object, const Brush &brush, const float3 &offset,
     const float fade = SCULPT_brush_strength_factor(&ss,
                                                     &brush,
                                                     vd.co,
-                                                    sqrtf(test.dist),
+                                                    math::sqrt(test.dist),
                                                     vd.no,
                                                     vd.fno,
                                                     vd.mask,
@@ -164,7 +157,7 @@ static void calc_bmesh(Object &object, const Brush &brush, const float3 &offset,
     const float fade = SCULPT_brush_strength_factor(&ss,
                                                     &brush,
                                                     vd.co,
-                                                    sqrtf(test.dist),
+                                                    math::sqrt(test.dist),
                                                     vd.no,
                                                     vd.fno,
                                                     vd.mask,
