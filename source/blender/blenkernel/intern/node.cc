@@ -672,6 +672,24 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
 }
 
+static bool can_read_node_type(const int type)
+{
+  /* Can always read custom node types. */
+  if (type == NODE_CUSTOM) {
+    return true;
+  }
+
+  /* Check known built-in types. */
+  NODE_TYPES_BEGIN (ntype) {
+    if (ntype->type == type) {
+      return true;
+    }
+  }
+  NODE_TYPES_END;
+
+  return false;
+}
+
 void ntreeBlendReadData(BlendDataReader *reader, bNodeTree *ntree)
 {
   /* NOTE: writing and reading goes in sync, for speed. */
@@ -704,6 +722,18 @@ void ntreeBlendReadData(BlendDataReader *reader, bNodeTree *ntree)
       BLO_read_data_address(reader, &link->fromsock);
       BLO_read_data_address(reader, &link->tonode);
       BLO_read_data_address(reader, &link->tosock);
+    }
+
+    /* Unknown built-in node types cannot be read reliably, so replace them with 'undefined' type
+     * nodes. This keeps links and socket names but discards storage an other type-specific data.
+     */
+    if (!can_read_node_type(node->type)) {
+      node->type = NODE_CUSTOM;
+      /* This type name is arbitrary, it just has to be unique enough to not match a future node
+       * idname. Includes the old type identifier for debugging purposes. */
+      const std::string old_idname = node->idname;
+      BLI_snprintf(node->idname, sizeof(node->idname), "Undefined[%s]", old_idname.c_str());
+      continue;
     }
 
     if (node->type == CMP_NODE_MOVIEDISTORTION) {
