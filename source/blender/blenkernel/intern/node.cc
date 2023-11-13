@@ -672,6 +672,17 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
 }
 
+static blender::Set<int> get_known_node_types_set()
+{
+  blender::Set<int> result;
+  /* Check known built-in types. */
+  NODE_TYPES_BEGIN (ntype) {
+    result.add(ntype->type);
+  }
+  NODE_TYPES_END;
+  return result;
+}
+
 static bool can_read_node_type(const int type)
 {
   /* Can always read custom node types. */
@@ -680,13 +691,10 @@ static bool can_read_node_type(const int type)
   }
 
   /* Check known built-in types. */
-  NODE_TYPES_BEGIN (ntype) {
-    if (ntype->type == type) {
-      return true;
-    }
+  static blender::Set<int> known_types = get_known_node_types_set();
+  if (known_types.contains(type)) {
+    return true;
   }
-  NODE_TYPES_END;
-
   return false;
 }
 
