@@ -528,7 +528,8 @@ void VKTexture::bind(int binding, shader::ShaderCreateInfo::Resource::BindType b
     }
     else {
       VKDevice &device = VKBackend::get().device_get();
-      descriptor_set.bind(*this, *location, device.sampler_get());
+      GPUSamplerState key = {};
+      descriptor_set.bind(*this, *location, device.samplers().get(key));
     }
   }
 }

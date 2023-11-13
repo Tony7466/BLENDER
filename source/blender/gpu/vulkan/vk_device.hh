@@ -166,10 +166,9 @@ class VKDevice : public NonCopyable {
     return debugging_tools_;
   }
 
-  const VKSampler &sampler_get()
+  VKSamplers &samplers()
   {
-    VKSamplerKey key = {};
-    return samplers_.get(key);
+    return samplers_;
   }
 
   const VkCommandPool vk_command_pool_get() const
