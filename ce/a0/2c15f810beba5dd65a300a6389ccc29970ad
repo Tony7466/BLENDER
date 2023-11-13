@@ -1,1 +1,2 @@
 Referenced by issue #114758, Recently-searched option appears in global search even when incompatible with current mode/context
+Referenced by pull request #114774, Fix #114758: keep text field empty for global search
