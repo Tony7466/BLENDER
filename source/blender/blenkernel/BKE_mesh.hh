@@ -273,10 +273,10 @@ inline int face_triangles_num(const int face_size)
 inline int edge_other_vert(const int2 edge, const int vert)
 {
   BLI_assert(ELEM(vert, edge[0], edge[1]));
-  BLI_assert(vert >= 0);
   BLI_assert(edge[0] >= 0);
   BLI_assert(edge[1] >= 0);
-  return edge[0] + edge[1] - vert;
+  /* Order is important. */
+  return (edge[0] - vert) + edge[1];
 }
 
 /** \} */
