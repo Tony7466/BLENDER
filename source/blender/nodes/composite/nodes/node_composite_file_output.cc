@@ -476,7 +476,7 @@ class FileOutputOperation : public NodeOperation {
 
   /* --------------------
    * Single Layer Images.
-   * -------------------- */
+   */
 
   void execute_single_layer()
   {
@@ -517,7 +517,7 @@ class FileOutputOperation : public NodeOperation {
 
   /* -----------------------------------
    * Single Layer Multi-View EXR Images.
-   * ----------------------------------- */
+   */
 
   void execute_single_layer_multi_view_exr(const Result &result,
                                            const ImageFormatData &format,
@@ -544,7 +544,7 @@ class FileOutputOperation : public NodeOperation {
 
   /* -----------------------
    * Multi-Layer EXR Images.
-   * ----------------------- */
+   */
 
   void execute_multi_layer()
   {

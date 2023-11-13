@@ -785,7 +785,7 @@ bool BKE_image_render_write_exr(ReportList *reports,
 
   /* Other render layers. */
   int nr = (rr->have_combined) ? 1 : 0;
-  const int layers_count = BLI_listbase_count(&rr->layers);
+  const bool has_multiple_layers = BLI_listbase_count_at_most(&rr->layers, 2) > 1;
   LISTBASE_FOREACH (RenderLayer *, rl, &rr->layers) {
     /* Skip other render layers if requested. */
     if (!multi_layer && nr != layer) {
@@ -833,7 +833,7 @@ bool BKE_image_render_write_exr(ReportList *reports,
         if (multi_layer) {
           /* A single unnamed layer indicates that the pass name should be used as the layer name,
            * while the pass name should be the channel ID. */
-          if (layers_count == 1 && rl->name[0] == '\0') {
+          if (!has_multiple_layers && rl->name[0] == '\0') {
             passname[0] = rp->chan_id[a];
             passname[1] = '\0';
             STRNCPY(layname, rp->name);

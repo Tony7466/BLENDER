@@ -74,6 +74,8 @@ bool BKE_image_render_write_exr(struct ReportList *reports,
 
 /**
  * \param filepath_basis: May be used as-is, or used as a basis for multi-view images.
+ * \param source_format: The image format to use for saving, if null, the scene format will be
+ * used.
  */
 bool BKE_image_render_write(struct ReportList *reports,
                             struct RenderResult *rr,

@@ -45,7 +45,7 @@ static float *initialize_buffer(uint width, uint height, DataType datatype)
 {
   int size = get_channels_count(datatype);
   return static_cast<float *>(
-      MEM_callocN(width * height * size * sizeof(float), "File Output Buffer."));
+      MEM_malloc_arrayN(size_t(width) * height, sizeof(float) * size, "File Output Buffer."));
 }
 
 static void write_buffer_rect(
@@ -162,7 +162,7 @@ void FileOutputOperation::deinit_execution()
 
 /* --------------------
  * Single Layer Images.
- * -------------------- */
+ */
 
 void FileOutputOperation::execute_single_layer()
 {
@@ -201,7 +201,7 @@ void FileOutputOperation::execute_single_layer()
 
 /* -----------------------------------
  * Single Layer Multi-View EXR Images.
- * ----------------------------------- */
+ */
 
 void FileOutputOperation::execute_single_layer_multi_view_exr(const FileOutputInput &input,
                                                               const ImageFormatData &format,
@@ -228,7 +228,7 @@ void FileOutputOperation::execute_single_layer_multi_view_exr(const FileOutputIn
 
 /* -----------------------
  * Multi-Layer EXR Images.
- * ----------------------- */
+ */
 
 void FileOutputOperation::execute_multi_layer()
 {
