@@ -527,7 +527,7 @@ void VKTexture::bind(int binding, shader::ShaderCreateInfo::Resource::BindType b
       descriptor_set.image_bind(*this, *location);
     }
     else {
-      const VKDevice &device = VKBackend::get().device_get();
+      VKDevice &device = VKBackend::get().device_get();
       descriptor_set.bind(*this, *location, device.sampler_get());
     }
   }
