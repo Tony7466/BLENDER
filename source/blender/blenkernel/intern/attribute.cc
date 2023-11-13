@@ -724,7 +724,8 @@ void BKE_id_attributes_active_set(ID *id, const char *name)
       id, name, CD_MASK_PROP_ALL, ATTR_DOMAIN_MASK_ALL);
   BLI_assert(layer != nullptr);
 
-  const int index = BKE_id_attribute_to_index(id, layer, ATTR_DOMAIN_MASK_ALL, CD_MASK_PROP_ALL);
+  const int index = BKE_id_attribute_to_index(
+      id, layer, ATTR_DOMAIN_MASK_ALL, CD_MASK_PROP_ALL, false);
   *BKE_id_attributes_active_index_p(id) = index;
 }
 
@@ -808,23 +809,26 @@ CustomDataLayer *BKE_id_attribute_from_index(ID *id,
 }
 
 /**
- * Get list of domain types but with ATTR_DOMAIN_FACE and
+ * Get list of domain types - optionally with ATTR_DOMAIN_FACE and
  * ATTR_DOMAIN_CORNER swapped.
  */
-static void get_domains_types(eAttrDomain domains[ATTR_DOMAIN_NUM])
+static void get_domains_types(eAttrDomain domains[ATTR_DOMAIN_NUM], const bool swap)
 {
   for (const int i : IndexRange(ATTR_DOMAIN_NUM)) {
     domains[i] = static_cast<eAttrDomain>(i);
   }
 
-  /* Swap corner and face. */
-  std::swap(domains[ATTR_DOMAIN_FACE], domains[ATTR_DOMAIN_CORNER]);
+  if (swap) {
+    /* Swap corner and face. */
+    std::swap(domains[ATTR_DOMAIN_FACE], domains[ATTR_DOMAIN_CORNER]);
+  }
 }
 
 int BKE_id_attribute_to_index(const ID *id,
                               const CustomDataLayer *layer,
                               eAttrDomainMask domain_mask,
-                              eCustomDataMask layer_mask)
+                              eCustomDataMask layer_mask,
+                              bool swap_domains)
 {
   if (!layer) {
     return -1;
@@ -832,7 +836,7 @@ int BKE_id_attribute_to_index(const ID *id,
 
   DomainInfo info[ATTR_DOMAIN_NUM];
   eAttrDomain domains[ATTR_DOMAIN_NUM];
-  get_domains_types(domains);
+  get_domains_types(domains, swap_domains);
   get_domains(id, info);
 
   int index = 0;
