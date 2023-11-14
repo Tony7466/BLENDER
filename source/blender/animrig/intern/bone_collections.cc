@@ -98,7 +98,7 @@ void ANIM_armature_runtime_refresh(bArmature *armature)
   ANIM_armature_bonecoll_active_set(armature, active);
 
   /* Construct the bone-to-collections mapping. */
-  LISTBASE_FOREACH (BoneCollection *, bcoll, &armature->collections) {
+  for (BoneCollection *bcoll : armature->collections_span()) {
     add_reverse_pointers(bcoll);
   }
 }
@@ -112,12 +112,122 @@ void ANIM_armature_runtime_free(bArmature *armature)
 
 static void bonecoll_ensure_name_unique(bArmature *armature, BoneCollection *bcoll)
 {
-  BLI_uniquename(&armature->collections,
-                 bcoll,
-                 DATA_(bonecoll_default_name),
-                 '.',
-                 offsetof(BoneCollection, name),
-                 sizeof(bcoll->name));
+  struct DupNameCheckData {
+    bArmature *arm;
+    BoneCollection *bcoll;
+  };
+
+  auto bonecoll_name_is_duplicate = [](void *arg, const char *name) -> bool {
+    DupNameCheckData *data = static_cast<DupNameCheckData *>(arg);
+    for (BoneCollection *bcoll : data->arm->collections_span()) {
+      if (bcoll != data->bcoll && STREQ(bcoll->name, name)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  DupNameCheckData check_data = {armature, bcoll};
+  BLI_uniquename_cb(bonecoll_name_is_duplicate,
+                    &check_data,
+                    DATA_(bonecoll_default_name),
+                    '.',
+                    bcoll->name,
+                    sizeof(bcoll->name));
+}
+
+/**
+ * Inserts bcoll into armature's array of bone collecions at index.
+ *
+ * Note: the specified index is where the given bone collection will end up.
+ * This means, for example, that for a collection array of length N, you can
+ * pass N as the index to append to the end.
+ */
+static void bonecoll_insert_at_index(bArmature *armature, BoneCollection *bcoll, int index)
+{
+  BLI_assert(index <= armature->collection_array_num);
+
+  armature->collection_array = (BoneCollection **)MEM_reallocN_id(
+      armature->collection_array,
+      sizeof(BoneCollection *) * (armature->collection_array_num + 1),
+      __func__);
+
+  /* Shift over the collections to make room at the given index. */
+  if (index < armature->collection_array_num) {
+    BoneCollection **start = armature->collection_array + index;
+    const size_t count = armature->collection_array_num - index;
+    memmove((void *)(start + 1), (void *)start, count * sizeof(BoneCollection *));
+  }
+
+  armature->collection_array[index] = bcoll;
+  armature->collection_array_num++;
+
+  if (armature->runtime.active_collection_index >= index) {
+    ANIM_armature_bonecoll_active_index_set(armature,
+                                            armature->runtime.active_collection_index + 1);
+  }
+}
+
+/**
+ * Appends bcoll to the end of armature's array of bone collections.
+ */
+static void bonecoll_append(bArmature *armature, BoneCollection *bcoll)
+{
+  bonecoll_insert_at_index(armature, bcoll, armature->collection_array_num);
+}
+
+/**
+ * Removes the bone collection at `index` and returns it.
+ *
+ * This automatically handles adjusting the active collection as needed.
+ * However, it does *not* free the removed collection itself, leaving
+ * that to the calling code.
+ */
+static BoneCollection *bonecoll_remove(bArmature *armature, int index)
+{
+  BLI_assert(index < armature->collection_array_num);
+
+  BoneCollection *bcoll = armature->collection_array[index];
+
+  /* Shift over the collections to fill the gap. */
+  if (index < (armature->collection_array_num - 1)) {
+    BoneCollection **start = armature->collection_array + index;
+    const size_t count = armature->collection_array_num - index - 1;
+    memmove((void *)start, (void *)(start + 1), count * sizeof(BoneCollection *));
+  }
+
+  /* Note: we don't bother to shrink the allocation.  It's okay if the
+   * capacity has extra space, because the number of valid items is tracked. */
+  armature->collection_array_num--;
+  armature->collection_array[armature->collection_array_num] = nullptr;
+
+  /* Update the active BoneCollection. */
+  int new_active_index = armature->runtime.active_collection_index;
+  if (new_active_index > index) {
+    new_active_index--;
+  }
+  ANIM_armature_bonecoll_active_index_set(
+      armature, min_ii(new_active_index, max_ii(armature->collection_array_num - 1, 0)));
+
+  return bcoll;
+}
+
+/**
+ * Returns the index of the given collection in the armature's collection array,
+ * or -1 if not found.
+ */
+static int bonecoll_find_index(const bArmature *armature, const BoneCollection *bcoll)
+{
+  int index = 0;
+  while (index < armature->collection_array_num && armature->collection_array[index] != bcoll) {
+    index++;
+  }
+
+  if (index >= armature->collection_array_num) {
+    return -1;
+  }
+
+  return index;
 }
 
 BoneCollection *ANIM_armature_bonecoll_new(bArmature *armature, const char *name)
@@ -130,7 +240,8 @@ BoneCollection *ANIM_armature_bonecoll_new(bArmature *armature, const char *name
   }
 
   bonecoll_ensure_name_unique(armature, bcoll);
-  BLI_addtail(&armature->collections, bcoll);
+  bonecoll_append(armature, bcoll);
+
   return bcoll;
 }
 
@@ -153,7 +264,10 @@ BoneCollection *ANIM_armature_bonecoll_insert_copy_after(bArmature *armature,
                                       0 /*do_id_user ? 0 : LIB_ID_CREATE_NO_USER_REFCOUNT*/);
   }
 
-  BLI_insertlinkafter(&armature->collections, anchor, bcoll);
+  const int anchor_index = bonecoll_find_index(armature, anchor);
+  BLI_assert(anchor_index >= 0);
+
+  bonecoll_insert_at_index(armature, bcoll, anchor_index + 1);
   bonecoll_ensure_name_unique(armature, bcoll);
   add_reverse_pointers(bcoll);
 
@@ -174,7 +288,7 @@ void ANIM_armature_bonecoll_active_set(bArmature *armature, BoneCollection *bcol
     return;
   }
 
-  const int index = BLI_findindex(&armature->collections, bcoll);
+  const int index = bonecoll_find_index(armature, bcoll);
   if (index == -1) {
     /* TODO: print warning? Or just ignore this case? */
     armature_bonecoll_active_clear(armature);
@@ -188,18 +302,12 @@ void ANIM_armature_bonecoll_active_set(bArmature *armature, BoneCollection *bcol
 
 void ANIM_armature_bonecoll_active_index_set(bArmature *armature, const int bone_collection_index)
 {
-  if (bone_collection_index < 0) {
+  if (bone_collection_index < 0 || bone_collection_index >= armature->collection_array_num) {
     armature_bonecoll_active_clear(armature);
     return;
   }
 
-  void *found_link = BLI_findlink(&armature->collections, bone_collection_index);
-  BoneCollection *bcoll = static_cast<BoneCollection *>(found_link);
-  if (bcoll == nullptr) {
-    /* TODO: print warning? Or just ignore this case? */
-    armature_bonecoll_active_clear(armature);
-    return;
-  }
+  BoneCollection *bcoll = armature->collection_array[bone_collection_index];
 
   STRNCPY(armature->active_collection_name, bcoll->name);
   armature->runtime.active_collection_index = bone_collection_index;
@@ -224,19 +332,63 @@ bool ANIM_armature_bonecoll_is_editable(const bArmature *armature, const BoneCol
   return true;
 }
 
+bool ANIM_armature_bonecoll_move_to_index(bArmature *armature, int from_index, int to_index)
+{
+  if (from_index >= armature->collection_array_num || to_index >= armature->collection_array_num ||
+      from_index == to_index)
+  {
+    return false;
+  }
+
+  BoneCollection *bcoll = armature->collection_array[from_index];
+
+  /* Shift collections over to fill the gap at from_index and make room at to_index. */
+  {
+    BoneCollection **start = armature->collection_array + std::min(from_index, to_index);
+    const size_t count = std::max(from_index, to_index) - std::min(from_index, to_index);
+    if (from_index < to_index) {
+      memmove((void *)start, (void *)(start + 1), count * sizeof(BoneCollection *));
+    }
+    else {
+      memmove((void *)(start + 1), (void *)start, count * sizeof(BoneCollection *));
+    }
+  }
+
+  armature->collection_array[to_index] = bcoll;
+
+  if (armature->runtime.active_collection_index == from_index) {
+    ANIM_armature_bonecoll_active_index_set(armature, to_index);
+  }
+  else if (from_index > to_index && armature->runtime.active_collection_index >= to_index &&
+           armature->runtime.active_collection_index < from_index)
+  {
+    ANIM_armature_bonecoll_active_index_set(armature,
+                                            armature->runtime.active_collection_index + 1);
+  }
+  else if (from_index < to_index && armature->runtime.active_collection_index <= to_index &&
+           armature->runtime.active_collection_index > from_index)
+  {
+    ANIM_armature_bonecoll_active_index_set(armature,
+                                            armature->runtime.active_collection_index - 1);
+  }
+
+  return true;
+}
+
 bool ANIM_armature_bonecoll_move(bArmature *armature, BoneCollection *bcoll, const int step)
 {
   if (bcoll == nullptr) {
     return false;
   }
 
-  if (!BLI_listbase_link_move(&armature->collections, bcoll, step)) {
+  const int bcoll_index = bonecoll_find_index(armature, bcoll);
+  const int to_index = bcoll_index + step;
+  if (bcoll_index < 0 || to_index < 0 || to_index >= armature->collection_array_num) {
     return false;
   }
 
-  if (bcoll == armature->runtime.active_collection) {
-    armature->runtime.active_collection_index = BLI_findindex(&armature->collections, bcoll);
-  }
+  ANIM_armature_bonecoll_move_to_index(armature, bcoll_index, to_index);
+
   return true;
 }
 
@@ -271,18 +423,13 @@ void ANIM_armature_bonecoll_remove(bArmature *armature, BoneCollection *bcoll)
     }
   }
 
-  BLI_remlink_safe(&armature->collections, bcoll);
+  bonecoll_remove(armature, bonecoll_find_index(armature, bcoll));
   ANIM_bonecoll_free(bcoll);
-
-  /* Make sure the active collection is correct. */
-  const int num_collections = BLI_listbase_count(&armature->collections);
-  const int active_index = min_ii(armature->runtime.active_collection_index, num_collections - 1);
-  ANIM_armature_bonecoll_active_index_set(armature, active_index);
 }
 
 BoneCollection *ANIM_armature_bonecoll_get_by_name(bArmature *armature, const char *name)
 {
-  LISTBASE_FOREACH (BoneCollection *, bcoll, &armature->collections) {
+  for (BoneCollection *bcoll : armature->collections_span()) {
     if (STREQ(bcoll->name, name)) {
       return bcoll;
     }
@@ -421,7 +568,7 @@ bool ANIM_armature_bonecoll_unassign_editbone(BoneCollection *bcoll, EditBone *e
 void ANIM_armature_bonecoll_reconstruct(bArmature *armature)
 {
   /* Remove all the old collection memberships. */
-  LISTBASE_FOREACH (BoneCollection *, bcoll, &armature->collections) {
+  for (BoneCollection *bcoll : armature->collections_span()) {
     BLI_freelistN(&bcoll->bones);
   }
 
@@ -463,14 +610,14 @@ bool ANIM_bonecoll_is_visible_editbone(const bArmature * /*armature*/, const Edi
 
 void ANIM_armature_bonecoll_show_all(bArmature *armature)
 {
-  LISTBASE_FOREACH (BoneCollection *, bcoll, &armature->collections) {
+  for (BoneCollection *bcoll : armature->collections_span()) {
     ANIM_bonecoll_show(bcoll);
   }
 }
 
 void ANIM_armature_bonecoll_hide_all(bArmature *armature)
 {
-  LISTBASE_FOREACH (BoneCollection *, bcoll, &armature->collections) {
+  for (BoneCollection *bcoll : armature->collections_span()) {
     ANIM_bonecoll_hide(bcoll);
   }
 }
@@ -532,13 +679,23 @@ namespace blender::animrig {
 
 /* Utility functions for Armature edit-mode undo. */
 
-blender::Map<BoneCollection *, BoneCollection *> ANIM_bonecoll_listbase_copy_no_membership(
-    ListBase *bone_colls_dst, ListBase *bone_colls_src, const bool do_id_user)
+blender::Map<BoneCollection *, BoneCollection *> ANIM_bonecoll_array_copy_no_membership(
+    BoneCollection ***bcoll_array_dst,
+    int *bcoll_array_dst_num,
+    BoneCollection **bcoll_array_src,
+    int bcoll_array_src_num,
+    const bool do_id_user)
 {
-  BLI_assert(BLI_listbase_is_empty(bone_colls_dst));
+  BLI_assert(*bcoll_array_dst == nullptr);
+  BLI_assert(*bcoll_array_dst_num == 0);
+
+  *bcoll_array_dst = static_cast<BoneCollection **>(
+      MEM_malloc_arrayN(bcoll_array_src_num, sizeof(BoneCollection *), __func__));
+  *bcoll_array_dst_num = bcoll_array_src_num;
 
   blender::Map<BoneCollection *, BoneCollection *> bcoll_map{};
-  LISTBASE_FOREACH (BoneCollection *, bcoll_src, bone_colls_src) {
+  for (int i = 0; i < *bcoll_array_dst_num; i++) {
+    BoneCollection *bcoll_src = bcoll_array_src[i];
     BoneCollection *bcoll_dst = static_cast<BoneCollection *>(MEM_dupallocN(bcoll_src));
 
     /* This will be rebuilt from the edit bones, so we don't need to copy it. */
@@ -548,16 +705,22 @@ blender::Map<BoneCollection *, BoneCollection *> ANIM_bonecoll_listbase_copy_no_
       bcoll_dst->prop = IDP_CopyProperty_ex(bcoll_src->prop,
                                             do_id_user ? 0 : LIB_ID_CREATE_NO_USER_REFCOUNT);
     }
-    BLI_addtail(bone_colls_dst, bcoll_dst);
+
+    (*bcoll_array_dst)[i] = bcoll_dst;
+
     bcoll_map.add(bcoll_src, bcoll_dst);
   }
 
   return bcoll_map;
 }
 
-void ANIM_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user)
+void ANIM_bonecoll_array_free(BoneCollection ***bcoll_array,
+                              int *bcoll_array_num,
+                              const bool do_id_user)
 {
-  LISTBASE_FOREACH_MUTABLE (BoneCollection *, bcoll, bcolls) {
+  for (int i = 0; i < *bcoll_array_num; i++) {
+    BoneCollection *bcoll = (*bcoll_array)[i];
+
     if (bcoll->prop) {
       IDP_FreeProperty_ex(bcoll->prop, do_id_user);
     }
@@ -568,8 +731,13 @@ void ANIM_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user)
      * list on the Armature itself before copying over the undo BoneCollection
      * list, in which case this of Bone pointers may not be empty. */
     BLI_freelistN(&bcoll->bones);
+
+    MEM_freeN(bcoll);
   }
-  BLI_freelistN(bcolls);
+  MEM_freeN(*bcoll_array);
+
+  *bcoll_array = nullptr;
+  *bcoll_array_num = 0;
 }
 
 }  // namespace blender::animrig

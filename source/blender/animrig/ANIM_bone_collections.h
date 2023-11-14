@@ -123,6 +123,15 @@ bool ANIM_armature_bonecoll_is_editable(const struct bArmature *armature,
                                         const struct BoneCollection *bcoll);
 
 /**
+ * Moves the bone collection at from_index to to_index.
+ *
+ * \return true if the collection was successfully moved, false otherwise.
+ * The latter happens if either index is out of bounds, or if the indices
+ * are equal.
+ */
+bool ANIM_armature_bonecoll_move_to_index(bArmature *armature, int from_index, int to_index);
+
+/**
  * Move the bone collection by \a step places up/down.
  *
  * \return whether the move actually happened.
