@@ -40,7 +40,8 @@ static void calc_faces(const Sculpt &sd,
                        const float3 &offset,
                        Object &object,
                        pbvh::mesh::Node &node,
-                       TLS &tls)
+                       TLS &tls,
+                       MutableSpan<float3> positions_orig)
 {
   SculptSession &ss = *object.sculpt;
   StrokeCache &cache = *ss.cache;
@@ -80,7 +81,6 @@ static void calc_faces(const Sculpt &sd,
 
   clip_and_lock_translations(sd, ss, positions, verts, translations);
 
-  MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
   if (ss.deform_modifiers_active) {
     apply_crazyspace_translations(
         translations,
@@ -187,25 +187,38 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
    * initialize before threads so they can do curve mapping. */
   BKE_curvemapping_init(brush.curve);
 
-  threading::EnumerableThreadSpecific<TLS> all_tls;
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    TLS &tls = all_tls.local();
-    for (const int i : range) {
-      switch (BKE_pbvh_type(object.sculpt->pbvh)) {
-        case PBVH_FACES: {
+  switch (BKE_pbvh_type(object.sculpt->pbvh)) {
+    case PBVH_FACES: {
+      threading::EnumerableThreadSpecific<TLS> all_tls;
+      Mesh &mesh = *static_cast<Mesh *>(object.data);
+      MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        TLS &tls = all_tls.local();
+        for (const int i : range) {
           pbvh::mesh::Node face_node(*nodes[i]);
-          calc_faces(sd, brush, offset, object, face_node, tls);
+          calc_faces(sd, brush, offset, object, face_node, tls, positions_orig);
           break;
         }
-        case PBVH_GRIDS:
+      });
+      break;
+    }
+    case PBVH_GRIDS:
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        for (const int i : range) {
           calc_grids(object, brush, offset, *nodes[i]);
           break;
-        case PBVH_BMESH:
+        }
+      });
+      break;
+    case PBVH_BMESH:
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        for (const int i : range) {
           calc_bmesh(object, brush, offset, *nodes[i]);
           break;
-      };
-    }
-  });
+        }
+      });
+      break;
+  }
 }
 
 }  // namespace blender::ed::sculpt_paint
