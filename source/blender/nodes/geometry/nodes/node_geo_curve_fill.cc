@@ -176,37 +176,33 @@ static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
    * Since it's likely that most invocations will only have a single CDT result, it's important
    * that case is made as optimal as feasible. */
 
-  Array<int> vert_group_offsets_data(results.size() + 1);
-  Array<int> edge_group_offsets_data(results.size() + 1);
-  Array<int> face_group_offsets_data(results.size() + 1);
-  Array<int> loop_group_offsets_data(results.size() + 1);
+  Array<int> vert_groups_data(results.size() + 1);
+  Array<int> edge_groups_data(results.size() + 1);
+  Array<int> face_groups_data(results.size() + 1);
+  Array<int> loop_groups_data(results.size() + 1);
   threading::parallel_for(results.index_range(), 1024, [&](const IndexRange results_range) {
     for (const int i_result : results_range) {
       const meshintersect::CDT_result<double> &result = results[i_result];
-      vert_group_offsets_data[i_result] = result.vert.size();
-      edge_group_offsets_data[i_result] = result.edge.size();
-      face_group_offsets_data[i_result] = result.face.size();
+      vert_groups_data[i_result] = result.vert.size();
+      edge_groups_data[i_result] = result.edge.size();
+      face_groups_data[i_result] = result.face.size();
       int loop_len = 0;
       for (const Vector<int> &face : result.face) {
         loop_len += face.size();
       }
-      loop_group_offsets_data[i_result] = loop_len;
+      loop_groups_data[i_result] = loop_len;
     }
   });
 
-  const OffsetIndices vert_group_offsets = offset_indices::accumulate_counts_to_offsets(
-      vert_group_offsets_data);
-  const OffsetIndices edge_group_offsets = offset_indices::accumulate_counts_to_offsets(
-      edge_group_offsets_data);
-  const OffsetIndices face_group_offsets = offset_indices::accumulate_counts_to_offsets(
-      face_group_offsets_data);
-  const OffsetIndices loop_group_offsets = offset_indices::accumulate_counts_to_offsets(
-      loop_group_offsets_data);
+  const OffsetIndices vert_groups = offset_indices::accumulate_counts_to_offsets(vert_groups_data);
+  const OffsetIndices edge_groups = offset_indices::accumulate_counts_to_offsets(edge_groups_data);
+  const OffsetIndices face_groups = offset_indices::accumulate_counts_to_offsets(face_groups_data);
+  const OffsetIndices loop_groups = offset_indices::accumulate_counts_to_offsets(loop_groups_data);
 
-  Mesh *mesh = BKE_mesh_new_nomain(vert_group_offsets.total_size(),
-                                   edge_group_offsets.total_size(),
-                                   face_group_offsets.total_size(),
-                                   loop_group_offsets.total_size());
+  Mesh *mesh = BKE_mesh_new_nomain(vert_groups.total_size(),
+                                   edge_groups.total_size(),
+                                   face_groups.total_size(),
+                                   loop_groups.total_size());
 
   MutableSpan<float3> all_positions = mesh->vert_positions_for_write();
   MutableSpan<int2> all_edges = mesh->edges_for_write();
@@ -216,10 +212,10 @@ static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
   threading::parallel_for(results.index_range(), 1024, [&](const IndexRange results_range) {
     for (const int i_result : results_range) {
       const meshintersect::CDT_result<double> &result = results[i_result];
-      const IndexRange verts_range = vert_group_offsets[i_result];
-      const IndexRange edges_range = edge_group_offsets[i_result];
-      const IndexRange faces_range = face_group_offsets[i_result];
-      const IndexRange loops_range = loop_group_offsets[i_result];
+      const IndexRange verts_range = vert_groups[i_result];
+      const IndexRange edges_range = edge_groups[i_result];
+      const IndexRange faces_range = face_groups[i_result];
+      const IndexRange loops_range = loop_groups[i_result];
 
       MutableSpan<float3> positions = all_positions.slice(verts_range);
       MutableSpan<int2> edges = all_edges.slice(edges_range);
