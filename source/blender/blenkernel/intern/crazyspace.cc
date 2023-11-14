@@ -21,7 +21,6 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_DerivedMesh.h"
-#include "BKE_crazyspace.h"
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
 #include "BKE_editmesh.h"
@@ -30,7 +29,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_report.h"
 
