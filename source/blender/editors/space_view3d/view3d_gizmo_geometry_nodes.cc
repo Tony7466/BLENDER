@@ -248,9 +248,23 @@ static void WIDGETGROUP_geometry_nodes_setup(const bContext * /*C*/, wmGizmoGrou
   };
 }
 
-static ThemeColorID get_gizmo_theme_color_id(const GeometryNodeGizmoColor color_id)
+static GeometryNodeGizmoColor get_gizmo_color_id(const bNode &gizmo_node)
 {
-  switch (color_id) {
+  switch (gizmo_node.type) {
+    case GEO_NODE_GIZMO_ARROW:
+      return GeometryNodeGizmoColor(
+          static_cast<const NodeGeometryArrowGizmo *>(gizmo_node.storage)->color_id);
+    case GEO_NODE_GIZMO_DIAL:
+      return GeometryNodeGizmoColor(
+          static_cast<const NodeGeometryDialGizmo *>(gizmo_node.storage)->color_id);
+    default:
+      return GEO_NODE_GIZMO_COLOR_PRIMARY;
+  }
+}
+
+static ThemeColorID get_gizmo_theme_color_id(const bNode &gizmo_node)
+{
+  switch (get_gizmo_color_id(gizmo_node)) {
     case GEO_NODE_GIZMO_COLOR_PRIMARY:
       return TH_GIZMO_PRIMARY;
     case GEO_NODE_GIZMO_COLOR_SECONDARY:
@@ -366,8 +380,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
         wmGizmo *gz = node_gizmo_data->gizmo;
 
-        const ThemeColorID color_id = get_gizmo_theme_color_id(
-            GeometryNodeGizmoColor(gizmo_node.custom1));
+        const ThemeColorID color_id = get_gizmo_theme_color_id(gizmo_node);
         UI_GetThemeColor3fv(color_id, gz->color);
         UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
 

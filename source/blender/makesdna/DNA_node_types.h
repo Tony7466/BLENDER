@@ -1892,6 +1892,16 @@ typedef struct NodeShaderMix {
   char _pad[3];
 } NodeShaderMix;
 
+typedef struct NodeGeometryArrowGizmo {
+  /** #GeometryNodeGizmoColor. */
+  int color_id;
+} NodeGeometryArrowGizmo;
+
+typedef struct NodeGeometryDialGizmo {
+  /** #GeometryNodeGizmoColor. */
+  int color_id;
+} NodeGeometryDialGizmo;
+
 /* script node mode */
 enum {
   NODE_SCRIPT_INTERNAL = 0,
