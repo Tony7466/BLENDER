@@ -248,6 +248,23 @@ static void WIDGETGROUP_geometry_nodes_setup(const bContext * /*C*/, wmGizmoGrou
   };
 }
 
+static ThemeColorID get_gizmo_theme_color_id(const GeometryNodeGizmoColor color_id)
+{
+  switch (color_id) {
+    case GEO_NODE_GIZMO_COLOR_PRIMARY:
+      return TH_GIZMO_PRIMARY;
+    case GEO_NODE_GIZMO_COLOR_SECONDARY:
+      return TH_GIZMO_SECONDARY;
+    case GEO_NODE_GIZMO_COLOR_X:
+      return TH_AXIS_X;
+    case GEO_NODE_GIZMO_COLOR_Y:
+      return TH_AXIS_Y;
+    case GEO_NODE_GIZMO_COLOR_Z:
+      return TH_AXIS_Z;
+  }
+  return TH_GIZMO_PRIMARY;
+}
+
 static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
   auto *gzgroup_data = static_cast<GeometryNodesGizmoGroup *>(gzgroup->customdata);
@@ -347,11 +364,15 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
             }
           }
           node_gizmo_data->gizmo = gz;
-          UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
-          UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
         }
 
         wmGizmo *gz = node_gizmo_data->gizmo;
+
+        const ThemeColorID color_id = get_gizmo_theme_color_id(
+            GeometryNodeGizmoColor(gizmo_node.custom1));
+        UI_GetThemeColor3fv(color_id, gz->color);
+        UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
+
         const bool is_interacting = gz->interaction_data != nullptr;
 
         struct UserData {

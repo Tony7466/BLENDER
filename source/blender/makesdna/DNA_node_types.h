@@ -2760,3 +2760,11 @@ typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_HSV = 1,
   NODE_COMBSEP_COLOR_HSL = 2,
 } NodeCombSepColorMode;
+
+typedef enum GeometryNodeGizmoColor {
+  GEO_NODE_GIZMO_COLOR_PRIMARY = 0,
+  GEO_NODE_GIZMO_COLOR_SECONDARY = 1,
+  GEO_NODE_GIZMO_COLOR_X = 2,
+  GEO_NODE_GIZMO_COLOR_Y = 3,
+  GEO_NODE_GIZMO_COLOR_Z = 4,
+} GeometryNodeGizmoColor;

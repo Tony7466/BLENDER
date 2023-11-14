@@ -550,6 +550,15 @@ const EnumPropertyItem rna_enum_node_geometry_mesh_circle_fill_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_geometry_nodes_gizmo_color_items[] = {
+    {GEO_NODE_GIZMO_COLOR_PRIMARY, "PRIMARY", 0, "Primary", ""},
+    {GEO_NODE_GIZMO_COLOR_SECONDARY, "SECONDARY", 0, "Secondary", ""},
+    {GEO_NODE_GIZMO_COLOR_X, "X", 0, "X", ""},
+    {GEO_NODE_GIZMO_COLOR_Y, "Y", 0, "Y", ""},
+    {GEO_NODE_GIZMO_COLOR_Z, "Z", 0, "Z", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifndef RNA_RUNTIME
 static const EnumPropertyItem node_sampler_type_items[] = {
     {0, "NEAREST", 0, "Nearest", ""},
