@@ -117,7 +117,7 @@ static meshintersect::CDT_result<double> do_cdt_with_mask(const bke::CurvesGeome
   return result;
 }
 
-static Vector<meshintersect::CDT_result<double>> do_group_aware_cdt(
+static Array<meshintersect::CDT_result<double>> do_group_aware_cdt(
     const bke::CurvesGeometry &curves,
     const CDT_output_type output_type,
     const Field<int> &group_index_field)
@@ -128,11 +128,8 @@ static Vector<meshintersect::CDT_result<double>> do_group_aware_cdt(
   data_evaluator.evaluate();
   const VArray<int> curve_group_ids = data_evaluator.get_evaluated<int>(0);
 
-  Vector<meshintersect::CDT_result<double>> cdt_results;
-
   if (curve_group_ids.is_single()) {
-    cdt_results.append(do_cdt(curves, output_type));
-    return cdt_results;
+    return {do_cdt(curves, output_type)};
   }
 
   const VArraySpan<int> group_ids_span(curve_group_ids);
@@ -151,13 +148,15 @@ static Vector<meshintersect::CDT_result<double>> do_group_aware_cdt(
 
   IndexMask::from_groups<int>(IndexMask(domain_size), mask_memory, get_group_index, group_masks);
 
+  Array<meshintersect::CDT_result<double>> cdt_results(groups_num);
+
   /* The grain size should be larger as each group gets smaller. */
   const int avg_group_size = domain_size / groups_num;
   const int grain_size = std::max(8192 / avg_group_size, 1);
   threading::parallel_for(IndexRange(groups_num), grain_size, [&](const IndexRange range) {
     for (const int group_index : range) {
       const IndexMask &mask = group_masks[group_index];
-      cdt_results.append(do_cdt_with_mask(curves, output_type, mask));
+      cdt_results[group_index] = do_cdt_with_mask(curves, output_type, mask);
     }
   });
 
@@ -265,7 +264,7 @@ static void curve_fill_calculate(GeometrySet &geometry_set,
     const Curves &curves_id = *geometry_set.get_curves();
     const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
     if (curves.curves_num() > 0) {
-      const Vector<meshintersect::CDT_result<double>> results = do_group_aware_cdt(
+      const Array<meshintersect::CDT_result<double>> results = do_group_aware_cdt(
           curves, output_type, group_index);
       Mesh *mesh = cdts_to_mesh(results);
       geometry_set.replace_mesh(mesh);
@@ -286,7 +285,7 @@ static void curve_fill_calculate(GeometrySet &geometry_set,
       if (src_curves.curves_num() == 0) {
         continue;
       }
-      const Vector<meshintersect::CDT_result<double>> results = do_group_aware_cdt(
+      const Array<meshintersect::CDT_result<double>> results = do_group_aware_cdt(
           src_curves, output_type, group_index);
       mesh_by_layer[layer_index] = cdts_to_mesh(results);
     }
