@@ -232,7 +232,6 @@ bool update_gizmo_inferencing(bNodeTree &tree)
   }
 
   GizmoInferencingResult result = compute_gizmo_inferencing_result(tree);
-  std::cout << result << "\n";
   tree.runtime->gizmo_inferencing = std::make_unique<GizmoInferencingResult>(std::move(result));
 
   /* TODO: Check if interface changed. */
