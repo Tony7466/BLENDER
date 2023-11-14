@@ -36,35 +36,15 @@ pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
   camera.SetTransform(io::hydra::gf_matrix_from_transform(region_data->viewmat).GetInverse());
   camera.SetFocalLength(params.lens);
 
-  const float fit_width = (region_data->persp == RV3D_CAMOB) ? rd->xasp * rd->xsch : region->winx;
-  const float fit_height = (region_data->persp == RV3D_CAMOB) ? rd->yasp * rd->ysch : region->winy;
-  const int sensor_fit = BKE_camera_sensor_fit(
-      params.sensor_fit, region->winx, region->winy);
-  float ratio = float(region->winx) / region->winy;
-  const pxr::GfVec2f sensor_fit_scale = (sensor_fit == CAMERA_SENSOR_FIT_HOR) ?
-                                            pxr::GfVec2f(1.0f, 1.0f / ratio) :
-                                            pxr::GfVec2f(1.0f * ratio, 1.0f);
-  pxr::GfVec2f lens_shift = pxr::GfVec2f(params.shiftx, params.shifty);
-  lens_shift = pxr::GfCompDiv(lens_shift, sensor_fit_scale);
-  lens_shift += pxr::GfVec2f(params.offsetx, params.offsety);
-
   pxr::GfVec2f b_pos(border[0], border[1]), b_size(border[2], border[3]);
-  lens_shift += b_pos + b_size * 0.5f - pxr::GfVec2f(0.5f);
-  lens_shift = pxr::GfCompDiv(lens_shift, b_size);
-
-  float sensor_size;
-  if (region_data->persp == RV3D_CAMOB) {
-    sensor_size = BKE_camera_sensor_size(
-        sensor_fit, params.sensor_x, params.sensor_y);
-  }
-  else {
-    sensor_size = BKE_camera_sensor_size(
-        params.sensor_fit, params.sensor_x, params.sensor_y);
-  }
-
-  pxr::GfVec2f aperture = pxr::GfVec2f((params.is_ortho) ? params.ortho_scale :
-                                                                  sensor_size);
-  aperture = pxr::GfCompMult(aperture, sensor_fit_scale);
+  float sensor_size = BKE_camera_sensor_size(params.sensor_fit, params.sensor_x, params.sensor_y);
+  pxr::GfVec2f sensor_scale = (BKE_camera_sensor_fit(params.sensor_fit,
+                                                     region->winx,
+                                                     region->winy) == CAMERA_SENSOR_FIT_HOR) ?
+                                  pxr::GfVec2f(1.0f, float(region->winy) / region->winx) :
+                                  pxr::GfVec2f(float(region->winx) / region->winy, 1.0f);
+  pxr::GfVec2f aperture = pxr::GfVec2f((params.is_ortho) ? params.ortho_scale : sensor_size);
+  aperture = pxr::GfCompMult(aperture, sensor_scale);
   aperture = pxr::GfCompMult(aperture, b_size);
   aperture *= params.zoom;
   if (params.is_ortho) {
@@ -72,9 +52,14 @@ pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
      * https://graphics.pixar.com/usd/docs/api/class_gf_camera.html */
     aperture *= 10.0f;
   }
-
   camera.SetHorizontalAperture(aperture[0]);
   camera.SetVerticalAperture(aperture[1]);
+
+  pxr::GfVec2f lens_shift = pxr::GfVec2f(params.shiftx, params.shifty);
+  lens_shift = pxr::GfCompDiv(lens_shift, sensor_scale);
+  lens_shift += pxr::GfVec2f(params.offsetx, params.offsety);
+  lens_shift += b_pos + b_size * 0.5f - pxr::GfVec2f(0.5f);
+  lens_shift = pxr::GfCompDiv(lens_shift, b_size);
   camera.SetHorizontalApertureOffset(lens_shift[0] * aperture[0]);
   camera.SetVerticalApertureOffset(lens_shift[1] * aperture[1]);
 
@@ -106,6 +91,7 @@ pxr::GfCamera gf_camera(const Object *camera_obj,
   pxr::GfVec2f aperture = pxr::GfVec2f((params.is_ortho) ? params.ortho_scale : sensor_size);
   aperture = pxr::GfCompMult(aperture, sensor_scale);
   aperture = pxr::GfCompMult(aperture, b_size);
+  aperture *= params.zoom;
   if (params.is_ortho) {
     /* Use tenths of a world unit according to USD docs
      * https://graphics.pixar.com/usd/docs/api/class_gf_camera.html */
@@ -116,6 +102,7 @@ pxr::GfCamera gf_camera(const Object *camera_obj,
 
   pxr::GfVec2f lens_shift = pxr::GfVec2f(params.shiftx, params.shifty);
   lens_shift = pxr::GfCompDiv(lens_shift, sensor_scale);
+  lens_shift += pxr::GfVec2f(params.offsetx, params.offsety);
   lens_shift += b_pos + b_size * 0.5f - pxr::GfVec2f(0.5f);
   lens_shift = pxr::GfCompDiv(lens_shift, b_size);
 
