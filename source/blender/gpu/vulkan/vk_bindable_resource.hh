@@ -37,7 +37,6 @@ class VKBindableResource {
 /**
  * Blender binds resources at context level (VKStateManager). The bindings are organized in
  * namespaces.
- * test
  */
 template<shader::ShaderCreateInfo::Resource::BindType BindType> class VKBindSpace {
   class ResourceBinding {
