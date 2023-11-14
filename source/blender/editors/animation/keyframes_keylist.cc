@@ -483,7 +483,6 @@ static void nupdate_ak_bezt(ActKeyColumn *ak, void *data)
     ak->sel = SELECT;
   }
 
-  /* count keyframes in this column */
   ak->totkey++;
 
   /* For keyframe type, 'proper' keyframes have priority over breakdowns
@@ -536,15 +535,14 @@ static void nupdate_ak_cel(ActKeyColumn *ak, void *data)
 {
   GreasePencilCel &cel = *static_cast<GreasePencilCel *>(data);
 
-  /* Update selection status */
+  /* Update selection status. */
   if (cel.frame.flag & GP_FRAME_SELECTED) {
     ak->sel = SELECT;
   }
 
-  /* Count keyframes in this column */
   ak->totkey++;
 
-  /* Update keytype status */
+  /* Update keytype status. */
   if (cel.frame.type == BEZT_KEYTYPE_KEYFRAME) {
     ak->key_type = BEZT_KEYTYPE_KEYFRAME;
   }
@@ -552,7 +550,7 @@ static void nupdate_ak_cel(ActKeyColumn *ak, void *data)
 
 /* ......... */
 
-/* New node callback used for building ActKeyColumns from GPencil frames */
+/* New node callback used for building ActKeyColumns from GPencil frames. */
 static ActKeyColumn *nalloc_ak_gpframe(void *data)
 {
   ActKeyColumn *ak = static_cast<ActKeyColumn *>(
@@ -564,7 +562,7 @@ static ActKeyColumn *nalloc_ak_gpframe(void *data)
   ak->sel = (gpf->flag & GP_FRAME_SELECT) ? SELECT : 0;
   ak->key_type = gpf->key_type;
 
-  /* count keyframes in this column */
+  /* Count keyframes in this column. */
   ak->totkey = 1;
   /* Set as visible block. */
   ak->totblock = 1;
@@ -574,20 +572,19 @@ static ActKeyColumn *nalloc_ak_gpframe(void *data)
   return ak;
 }
 
-/* Node updater callback used for building ActKeyColumns from GPencil frames */
+/* Node updater callback used for building ActKeyColumns from GPencil frames. */
 static void nupdate_ak_gpframe(ActKeyColumn *ak, void *data)
 {
   bGPDframe *gpf = (bGPDframe *)data;
 
-  /* set selection status and 'touched' status */
+  /* Set selection status and 'touched' status. */
   if (gpf->flag & GP_FRAME_SELECT) {
     ak->sel = SELECT;
   }
 
-  /* count keyframes in this column */
   ak->totkey++;
 
-  /* for keyframe type, 'proper' keyframes have priority over breakdowns
+  /* For keyframe type, 'proper' keyframes have priority over breakdowns
    * (and other types for now). */
   if (gpf->key_type == BEZT_KEYTYPE_KEYFRAME) {
     ak->key_type = BEZT_KEYTYPE_KEYFRAME;
@@ -603,11 +600,11 @@ static ActKeyColumn *nalloc_ak_masklayshape(void *data)
       MEM_callocN(sizeof(ActKeyColumn), "ActKeyColumnGPF"));
   const MaskLayerShape *masklay_shape = (const MaskLayerShape *)data;
 
-  /* store settings based on state of BezTriple */
+  /* Store settings based on state of BezTriple. */
   ak->cfra = masklay_shape->frame;
   ak->sel = (masklay_shape->flag & MASK_SHAPE_SELECT) ? SELECT : 0;
 
-  /* count keyframes in this column */
+  /* Count keyframes in this column. */
   ak->totkey = 1;
 
   return ak;
@@ -618,12 +615,11 @@ static void nupdate_ak_masklayshape(ActKeyColumn *ak, void *data)
 {
   MaskLayerShape *masklay_shape = (MaskLayerShape *)data;
 
-  /* set selection status and 'touched' status */
+  /* Set selection status and 'touched' status. */
   if (masklay_shape->flag & MASK_SHAPE_SELECT) {
     ak->sel = SELECT;
   }
 
-  /* count keyframes in this column */
   ak->totkey++;
 }
 
@@ -885,14 +881,14 @@ static void add_bezt_to_keyblocks_list(AnimKeylist *keylist, BezTriple *bezt, co
  */
 static void update_keyblocks(AnimKeylist *keylist, BezTriple *bezt, const int bezt_len)
 {
-  /* Find the curve count */
+  /* Find the curve count. */
   int max_curve = 0;
 
   LISTBASE_FOREACH (ActKeyColumn *, col, &keylist->key_columns) {
     max_curve = MAX2(max_curve, col->totcurve);
   }
 
-  /* Propagate blocks to inserted keys */
+  /* Propagate blocks to inserted keys. */
   ActKeyColumn *prev_ready = nullptr;
 
   LISTBASE_FOREACH (ActKeyColumn *, col, &keylist->key_columns) {
@@ -909,7 +905,7 @@ static void update_keyblocks(AnimKeylist *keylist, BezTriple *bezt, const int be
     col->totcurve = max_curve + 1;
   }
 
-  /* Add blocks on top */
+  /* Add blocks on top. */
   add_bezt_to_keyblocks_list(keylist, bezt, bezt_len);
 }
 
@@ -922,7 +918,6 @@ bool actkeyblock_is_valid(const ActKeyColumn *ac)
 
 int actkeyblock_get_valid_hold(const ActKeyColumn *ac)
 {
-  /* check that block is valid */
   if (!actkeyblock_is_valid(ac)) {
     return 0;
   }
@@ -986,7 +981,7 @@ void scene_to_keylist(bDopeSheet *ads, Scene *sce, AnimKeylist *keylist, const i
     return;
   }
 
-  /* create a dummy wrapper data to work with */
+  /* Create a dummy wrapper data to work with. */
   dummy_chan.type = ANIMTYPE_SCENE;
   dummy_chan.data = sce;
   dummy_chan.id = &sce->id;
@@ -996,13 +991,13 @@ void scene_to_keylist(bDopeSheet *ads, Scene *sce, AnimKeylist *keylist, const i
   ac.data = &dummy_chan;
   ac.datatype = ANIMCONT_CHANNEL;
 
-  /* get F-Curves to take keyframes from */
+  /* Get F-Curves to take keyframes from. */
   const eAnimFilter_Flags filter = ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FCURVESONLY;
 
   ANIM_animdata_filter(
       &ac, &anim_data, filter, ac.data, static_cast<eAnimCont_Types>(ac.datatype));
 
-  /* loop through each F-Curve, grabbing the keyframes */
+  /* Loop through each F-Curve, grabbing the keyframes. */
   LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
     fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag);
   }
@@ -1022,7 +1017,7 @@ void ob_to_keylist(bDopeSheet *ads, Object *ob, AnimKeylist *keylist, const int 
     return;
   }
 
-  /* create a dummy wrapper data to work with */
+  /* Create a dummy wrapper data to work with. */
   dummy_base.object = ob;
 
   dummy_chan.type = ANIMTYPE_OBJECT;
@@ -1034,12 +1029,12 @@ void ob_to_keylist(bDopeSheet *ads, Object *ob, AnimKeylist *keylist, const int 
   ac.data = &dummy_chan;
   ac.datatype = ANIMCONT_CHANNEL;
 
-  /* get F-Curves to take keyframes from */
+  /* Get F-Curves to take keyframes from. */
   const eAnimFilter_Flags filter = ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FCURVESONLY;
   ANIM_animdata_filter(
       &ac, &anim_data, filter, ac.data, static_cast<eAnimCont_Types>(ac.datatype));
 
-  /* loop through each F-Curve, grabbing the keyframes */
+  /* Loop through each F-Curve, grabbing the keyframes. */
   LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
     fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag);
   }
@@ -1056,7 +1051,7 @@ void cachefile_to_keylist(bDopeSheet *ads,
     return;
   }
 
-  /* create a dummy wrapper data to work with */
+  /* Create a dummy wrapper data to work with. */
   bAnimListElem dummy_chan = {nullptr};
   dummy_chan.type = ANIMTYPE_DSCACHEFILE;
   dummy_chan.data = cache_file;
@@ -1068,13 +1063,13 @@ void cachefile_to_keylist(bDopeSheet *ads,
   ac.data = &dummy_chan;
   ac.datatype = ANIMCONT_CHANNEL;
 
-  /* get F-Curves to take keyframes from */
+  /* Get F-Curves to take keyframes from. */
   ListBase anim_data = {nullptr, nullptr};
   const eAnimFilter_Flags filter = ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FCURVESONLY;
   ANIM_animdata_filter(
       &ac, &anim_data, filter, ac.data, static_cast<eAnimCont_Types>(ac.datatype));
 
-  /* loop through each F-Curve, grabbing the keyframes */
+  /* Loop through each F-Curve, grabbing the keyframes. */
   LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
     fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag);
   }
