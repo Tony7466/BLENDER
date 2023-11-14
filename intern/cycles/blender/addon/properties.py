@@ -1013,12 +1013,6 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
         default="AUTO",
     )
 
-    use_transparent_shadow: BoolProperty(
-        name="Transparent Shadows",
-        description="Use transparent shadows for this material if it contains a Transparent BSDF, "
-        "disabling will render faster but not give accurate shadows",
-        default=True,
-    )
     use_bump_map_correction: BoolProperty(
         name="Bump Map Correction",
         description="Apply corrections to solve shadow terminator artifacts caused by bump mapping",
@@ -1480,7 +1474,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
     metalrt: EnumProperty(
         name="MetalRT",
         description="MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better "
-                    "performance in specific cases.",
+                    "performance in specific cases",
         default='AUTO',
         items=(
             ('OFF', "Off", "Disable MetalRT (uses BVH2 layout for intersection queries)"),
