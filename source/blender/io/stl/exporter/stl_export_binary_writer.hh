@@ -12,6 +12,7 @@
 #include <stdexcept>
 
 #include "BLI_assert.h"
+#include "BLI_fileops.h"
 #include "BLI_utility_mixins.hh"
 
 #include "stl_export_writer.hh"
@@ -42,7 +43,7 @@ class BinaryFileWriter : public FileWriter, NonCopyable {
 
 BinaryFileWriter::BinaryFileWriter(const char *filepath)
 {
-  file_ = fopen(filepath, "wb");
+  file_ = BLI_fopen(filepath, "wb");
   if (file_ == nullptr) {
     throw std::runtime_error("Failed to open file");
   }

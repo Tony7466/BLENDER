@@ -8,11 +8,11 @@
 
 #include <fstream>
 
+#include "BLI_fileops.hh"
 #include "BLI_utility_mixins.hh"
 
 /* SEP macro from BLI path utils clashes with SEP symbol in fmt headers. */
 #undef SEP
-#define FMT_HEADER_ONLY
 #include <fmt/format.h>
 
 #include "stl_export_writer.hh"
@@ -21,7 +21,7 @@ namespace blender::io::stl {
 
 class ASCIIFileWriter : public FileWriter, NonCopyable {
  private:
-  std::ofstream file_;
+  blender::fstream file_;
 
  public:
   explicit ASCIIFileWriter(const char *filepath);
