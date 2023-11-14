@@ -4422,6 +4422,19 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
   }
 
+  ListBase selection = {nullptr, nullptr};
+
+  bool path_from_id;
+  char *id_to_prop_path;
+  const bool selected_list_success = UI_context_copy_to_selected_list(
+      C, &ptr, prop, &selection, &path_from_id, &id_to_prop_path);
+
+  if (BLI_listbase_is_empty(&selection) || !selected_list_success) {
+    WM_report(RPT_ERROR, "No selection found");
+    BLI_freelistN(&selection);
+    return OPERATOR_CANCELLED;
+  }
+
   const bool found_graph_editor = move_context_to_graph_editor(C);
 
   if (!found_graph_editor) {
@@ -4438,18 +4451,6 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 
   const bool isolate = RNA_boolean_get(op->ptr, "isolate");
   deselect_all_fcurves(&ac, isolate);
-
-  ListBase selection = {nullptr, nullptr};
-  bool path_from_id;
-  char *id_to_prop_path;
-  const bool selected_list_success = UI_context_copy_to_selected_list(
-      C, &ptr, prop, &selection, &path_from_id, &id_to_prop_path);
-
-  if (!selected_list_success) {
-    WM_report(RPT_ERROR, "No selection found");
-    BLI_freelistN(&selection);
-    return OPERATOR_CANCELLED;
-  }
 
   const bool whole_array = RNA_boolean_get(op->ptr, "all");
 
