@@ -324,9 +324,17 @@ static void copy_submesh(const Span<float3> vert_positions,
   MutableSpan dst_normals = MutableSpan(sm.normals.data(), sm.normals.size()).cast<float3>();
   switch (normals.first) {
     case bke::MeshNormalDomain::Face:
-      gather_face_data(looptri_faces, triangles, normals.second, dst_normals);
+      triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
+        std::fill_n(&dst_normals[dst * 3], 3, normals.second[looptri_faces[src]]);
+      });
       break;
     case bke::MeshNormalDomain::Point:
+      triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
+        const MLoopTri &tri = looptris[src];
+        dst_normals[dst * 3 + 0] = normals.second[corner_verts[tri.tri[0]]];
+        dst_normals[dst * 3 + 1] = normals.second[corner_verts[tri.tri[1]]];
+        dst_normals[dst * 3 + 2] = normals.second[corner_verts[tri.tri[2]]];
+      });
       break;
     case bke::MeshNormalDomain::Corner:
       gather_corner_data(looptris, triangles, normals.second, dst_normals);
