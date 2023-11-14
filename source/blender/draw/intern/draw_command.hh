@@ -558,6 +558,7 @@ class DrawMultiBuf {
   void clear()
   {
     group_buf_.optimize_size(group_count_);
+    /* Two commands per group (inverted and non-inverted scale). */
     command_buf_.optimize_size(group_count_ * 2);
     prototype_buf_.optimize_size(prototype_count_);
     resource_id_buf_.optimize_size(resource_id_count_);
