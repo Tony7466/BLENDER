@@ -58,9 +58,16 @@ struct GroupInputGizmoSource {
   SocketElem elem;
 };
 
+/**
+ * A #GizmoSource is a place where a value controlled by a gizmo lives.
+ */
 using GizmoSource =
     std::variant<InputSocketGizmoSource, ValueNodeGizmoSource, GroupInputGizmoSource>;
 
+/**
+ * A #GizmoInput is an input socket that has a gizmo attached. It can also be the value input of a
+ * gizmo node itself.
+ */
 struct GizmoInput {
   const bNodeSocket *input_socket;
   SocketElem elem;
