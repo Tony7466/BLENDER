@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'3d6713e0867a')\n"
+"Project-Id-Version: Blender 4.0.0 Release Candidate (b'f2d15d4fd19a')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-03 09:29:22\n"
+"POT-Creation-Date: 2023-11-13 11:45:13\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Martin Reininger <martinreininger@gmx.net>\n"
 "Language-Team: German translation team\n"
@@ -312,6 +312,10 @@ msgstr "Aus"
 
 msgid "Full"
 msgstr "Voll"
+
+
+msgid "Auto"
+msgstr "Auto"
 
 
 msgid "Distribute memory across devices"
@@ -1737,10 +1741,6 @@ msgstr "Frei"
 
 msgid "Aligned"
 msgstr "Ausgerichtet"
-
-
-msgid "Auto"
-msgstr "Auto"
 
 
 msgid "Handle 2"
@@ -27521,6 +27521,10 @@ msgid "Show All"
 msgstr "Alles zeigen"
 
 
+msgid "Pose Bone"
+msgstr "Posenknochen"
+
+
 msgctxt "Operator"
 msgid "Delete Selected Bone(s)"
 msgstr "Ausgewählte Knochen löschen"
@@ -27705,10 +27709,6 @@ msgstr "-X bis +X"
 
 msgid "+X to -X"
 msgstr "+X bis -X"
-
-
-msgid "Pose Bone"
-msgstr "Posenknochen"
 
 
 msgctxt "Operator"
@@ -29830,8 +29830,20 @@ msgstr "Rotationen zu Euler-ZYX konvertieren"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "PLY exportieren"
+msgid "Export STL"
+msgstr "STL exportieren"
+
+
+msgid "Save STL triangle mesh data"
+msgstr "Speichern von STL-Dreiecksmaschendaten"
+
+
+msgid "Ascii"
+msgstr "ASCII"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Speichern der Datei im ASCII-Dateiformat"
 
 
 msgid "X Forward"
@@ -29878,35 +29890,6 @@ msgid "-Z Up"
 msgstr "-Z Oben"
 
 
-msgid "ASCII"
-msgstr "ASCII"
-
-
-msgid "Selection Only"
-msgstr "Nur Auswahl"
-
-
-msgid "Export selected objects only"
-msgstr "Nur ausgewählte Objekte exportieren"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "STL exportieren"
-
-
-msgid "Save STL triangle mesh data"
-msgstr "Speichern von STL-Dreiecksmaschendaten"
-
-
-msgid "Ascii"
-msgstr "ASCII"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Speichern der Datei im ASCII-Dateiformat"
-
-
 msgid "Batch Mode"
 msgstr "Batch-Modus"
 
@@ -29933,6 +29916,14 @@ msgstr "Szeneneinheit"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "Anwenden der Aktuellen Szeneneinheit (wie durch Einheitenmaßstab definiert) auf exportierte Daten"
+
+
+msgid "Selection Only"
+msgstr "Nur Auswahl"
+
+
+msgid "Export selected objects only"
+msgstr "Nur ausgewählte Objekte exportieren"
 
 
 msgctxt "Operator"
@@ -30123,10 +30114,6 @@ msgstr "Renderfähige Objekte"
 
 msgid "Remember Export Settings"
 msgstr "Exporteinstellungen merken"
-
-
-msgid "Material Groups"
-msgstr "Materialgruppe"
 
 
 msgctxt "Operator"
@@ -32399,11 +32386,6 @@ msgstr "Alphakanal für Transparenz verwenden"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "PLY importieren"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "STL importieren"
 
@@ -32460,10 +32442,6 @@ msgstr "Normale Daten verwenden"
 
 msgid "Flat Shading"
 msgstr "Flaches Shading"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "OBJ-Gruppen als Punktgruppen importieren"
 
 
 msgctxt "Operator"
@@ -35162,6 +35140,15 @@ msgid "Toggle object's force field"
 msgstr "Kraftfeld des Objekts aktivieren/deaktivieren"
 
 
+msgctxt "Operator"
+msgid "Add Grease Pencil"
+msgstr "Wachsstift hinzufügen"
+
+
+msgid "Add a Grease Pencil object to the scene"
+msgstr "Hinzufügen eines Wachsstift-Objektes zur Szene"
+
+
 msgid "Monkey"
 msgstr "Affe"
 
@@ -35234,15 +35221,6 @@ msgstr "Modifikator in Stapel nach oben schieben"
 msgctxt "Operator"
 msgid "Remove Grease Pencil Modifier"
 msgstr "Wachsstiftmodifikator entfernen"
-
-
-msgctxt "Operator"
-msgid "Add Grease Pencil"
-msgstr "Wachsstift hinzufügen"
-
-
-msgid "Add a Grease Pencil object to the scene"
-msgstr "Hinzufügen eines Wachsstift-Objektes zur Szene"
 
 
 msgctxt "Operator"
@@ -40152,10 +40130,6 @@ msgid "Export the UV layout to a bitmap image"
 msgstr "Das UV-Layout in ein Bitmap-Bild exportieren"
 
 
-msgid "Modified"
-msgstr "Modifizieren"
-
-
 msgctxt "Operator"
 msgid "Follow Active Quads"
 msgstr "Aktiven Quads folgen"
@@ -41369,6 +41343,10 @@ msgid "Negative Z axis"
 msgstr "Negative Z Achse"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "OBJ-Gruppen als Punktgruppen importieren"
+
+
 msgctxt "Operator"
 msgid "Open"
 msgstr "Öffnen"
@@ -41431,6 +41409,16 @@ msgstr "UI Schild"
 
 msgid "Open a path in a file browser"
 msgstr "Einen Pfad in einem Dateibrowser öffnen"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "PLY exportieren"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "PLY importieren"
 
 
 msgctxt "Operator"
@@ -50903,10 +50891,6 @@ msgid "Theme 3D Viewport"
 msgstr "Theme 3D Ansicht"
 
 
-msgid "Bone Pose"
-msgstr "Knochen Pose"
-
-
 msgid "Bone Pose Active"
 msgstr "Kein Knochen aktiv"
 
@@ -53258,10 +53242,6 @@ msgid "Add-on '{}' not found!"
 msgstr "Add-On '{}' nicht gefunden!"
 
 
-msgid "Info written to {} text datablock!"
-msgstr "Info wurde nach {} Textdatenblock geschrieben!"
-
-
 msgid "Could not init languages data!"
 msgstr "Sprachdatei konnte nicht initialisiert werden!"
 
@@ -55550,13 +55530,13 @@ msgstr "Zwischen ausgewählten Markern"
 
 
 msgctxt "Operator"
-msgid "Paste Flipped"
-msgstr "Gekipptes einfügen"
+msgid "Clean Channels"
+msgstr "Kanäle löschen"
 
 
 msgctxt "Operator"
-msgid "Clean Channels"
-msgstr "Kanäle löschen"
+msgid "Paste Flipped"
+msgstr "Gekipptes einfügen"
 
 
 msgctxt "Operator"
@@ -59977,6 +59957,10 @@ msgid "Browse Particle Settings to be linked"
 msgstr "Durchsuche Partikel Einstellungen zum Verknüpfen"
 
 
+msgid "Browse Grease Pencil Data to be linked"
+msgstr "Durchsuche Wachsstift Daten zum Verknüpfen"
+
+
 msgid "Browse Movie Clip to be linked"
 msgstr "Durchsuche Filme zum Verknüpfen"
 
@@ -60011,10 +59995,6 @@ msgstr "Durchsuche Punkt Wolken Daten zum Verknüpfen"
 
 msgid "Browse Volume Data to be linked"
 msgstr "Durchsuche Volumendaten zum Verknüpfen"
-
-
-msgid "Browse Grease Pencil Data to be linked"
-msgstr "Durchsuche Wachsstift Daten zum Verknüpfen"
 
 
 msgid "Browse ID data to be linked"
@@ -60244,6 +60224,14 @@ msgstr "Gruppierung"
 
 msgid "Object Groups"
 msgstr "Objektgruppen"
+
+
+msgid "Material Groups"
+msgstr "Materialgruppe"
+
+
+msgid "ASCII"
+msgstr "ASCII"
 
 
 msgid "File References"
@@ -61289,16 +61277,16 @@ msgid "No object to apply orientation on"
 msgstr "Keine Objekte um die Orientierung zu übernehmen"
 
 
-msgid "File path"
-msgstr "Dateipfad"
-
-
 msgid "Today"
 msgstr "Heute"
 
 
 msgid "Yesterday"
 msgstr "Gestern"
+
+
+msgid "File path"
+msgstr "Dateipfad"
 
 
 msgid "File does not exist"
@@ -63221,16 +63209,8 @@ msgid "Subsurface IOR"
 msgstr "Oberfläche IOR"
 
 
-msgid "Specular Tint"
-msgstr "Glanzpunkt Färbung"
-
-
 msgid "Anisotropic Rotation"
 msgstr "Anisotropische Rotation"
-
-
-msgid "Sheen Tint"
-msgstr "Schimmer-Färbung"
 
 
 msgid "Emission Color"
@@ -63594,6 +63574,10 @@ msgstr "Datei kann nicht geöffnet werden"
 
 msgid "File Not Found"
 msgstr "Datei nicht gefunden"
+
+
+msgid "Modified"
+msgstr "Modifizieren"
 
 
 msgid "For security reasons, automatic execution of Python scripts in this file was disabled:"

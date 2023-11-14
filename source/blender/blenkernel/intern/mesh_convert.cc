@@ -44,11 +44,11 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 /* these 2 are only used by conversion functions */
 #include "BKE_curve.h"
 /* -- */
-#include "BKE_object.h"
+#include "BKE_object.hh"
 /* -- */
 #include "BKE_pointcloud.h"
 

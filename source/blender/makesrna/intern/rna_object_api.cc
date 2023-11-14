@@ -54,7 +54,7 @@ static const EnumPropertyItem space_items[] = {
 #  include "BKE_bvhutils.h"
 #  include "BKE_constraint.h"
 #  include "BKE_context.h"
-#  include "BKE_crazyspace.h"
+#  include "BKE_crazyspace.hh"
 #  include "BKE_customdata.h"
 #  include "BKE_global.h"
 #  include "BKE_layer.h"
@@ -62,8 +62,8 @@ static const EnumPropertyItem space_items[] = {
 #  include "BKE_mball.h"
 #  include "BKE_mesh.hh"
 #  include "BKE_mesh_runtime.hh"
-#  include "BKE_modifier.h"
-#  include "BKE_object.h"
+#  include "BKE_modifier.hh"
+#  include "BKE_object.hh"
 #  include "BKE_report.h"
 #  include "BKE_vfont.h"
 
@@ -608,7 +608,7 @@ static void rna_Object_ray_cast(Object *ob,
   }
 
   /* Test BoundBox first (efficiency) */
-  const BoundBox *bb = BKE_object_boundbox_get(ob);
+  const std::optional<BoundBox> bb = BKE_object_boundbox_get(ob);
   float distmin;
 
   /* Needed for valid distance check from #isect_ray_aabb_v3_simple() call. */

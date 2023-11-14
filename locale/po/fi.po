@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'3d6713e0867a')\n"
+"Project-Id-Version: Blender 4.0.0 Release Candidate (b'f2d15d4fd19a')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-03 09:29:22\n"
+"POT-Creation-Date: 2023-11-13 11:45:13\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -272,6 +272,10 @@ msgstr "Ilmoitus"
 
 msgid "Full"
 msgstr "Täysi"
+
+
+msgid "Auto"
+msgstr "Automaattinen"
 
 
 msgid "Fribidi Library"
@@ -1080,10 +1084,6 @@ msgstr "Vapaa"
 
 msgid "Aligned"
 msgstr "Linjattu"
-
-
-msgid "Auto"
-msgstr "Automaattinen"
 
 
 msgid "Handle 2"
@@ -6763,10 +6763,6 @@ msgid "Animation settings"
 msgstr "Animaatioasetukset"
 
 
-msgid "Material Groups"
-msgstr "Materiaaliryhmät"
-
-
 msgctxt "Operator"
 msgid "Delete Selected Files"
 msgstr "Poista valitut tiedostot"
@@ -9283,6 +9279,10 @@ msgid "Grouping"
 msgstr "Ryhmittäminen"
 
 
+msgid "Material Groups"
+msgstr "Materiaaliryhmät"
+
+
 msgid "Data Types"
 msgstr "Tietotyypit"
 
@@ -9751,16 +9751,16 @@ msgid "Height:"
 msgstr "Korkeus:"
 
 
-msgid "File path"
-msgstr "Tiedostopolku"
-
-
 msgid "Today"
 msgstr "Tänään"
 
 
 msgid "Yesterday"
 msgstr "Eilen"
+
+
+msgid "File path"
+msgstr "Tiedostopolku"
 
 
 msgid "Cancel"

@@ -232,6 +232,12 @@ class NODE_MT_add(bpy.types.Menu):
         import nodeitems_utils
 
         layout = self.layout
+
+        if layout.operator_context == 'EXEC_REGION_WIN':
+            layout.operator_context = 'INVOKE_REGION_WIN'
+            layout.operator("WM_OT_search_single_menu", text="Search...", icon='VIEWZOOM').menu_idname = "NODE_MT_add"
+            layout.separator()
+
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         snode = context.space_data
@@ -440,7 +446,7 @@ class NODE_PT_geometry_node_tool_object_types(Panel):
 
         types = [
             ("is_type_mesh", "Mesh", 'MESH_DATA'),
-            ("is_type_curve", "Curves", 'CURVES_DATA'),
+            ("is_type_curve", "Hair Curves", 'CURVES_DATA'),
         ]
         if context.preferences.experimental.use_new_point_cloud_type:
             types.append(("is_type_point_cloud", "Point Cloud", 'POINTCLOUD_DATA'))
@@ -448,12 +454,9 @@ class NODE_PT_geometry_node_tool_object_types(Panel):
         col = layout.column()
         col.active = group.is_tool
         for prop, name, icon in types:
-            row = col.row()
-            row_checkbox = row.row()
-            row_checkbox.prop(group, prop, text="")
-            row_label = row.row()
-            row_label.label(text=name, icon=icon)
-            row_label.active = getattr(group, prop)
+            row = col.row(align=True)
+            row.label(text=name, icon=icon)
+            row.prop(group, prop, text="")
 
 
 class NODE_PT_geometry_node_tool_mode(Panel):
@@ -476,12 +479,9 @@ class NODE_PT_geometry_node_tool_mode(Panel):
         col = layout.column()
         col.active = group.is_tool
         for prop, name, icon in modes:
-            row = col.row()
-            row_checkbox = row.row()
-            row_checkbox.prop(group, prop, text="")
-            row_label = row.row()
-            row_label.label(text=name, icon=icon)
-            row_label.active = getattr(group, prop)
+            row = col.row(align=True)
+            row.label(text=name, icon=icon)
+            row.prop(group, prop, text="")
 
 
 class NODE_PT_node_color_presets(PresetPanel, Panel):
@@ -830,6 +830,7 @@ class NODE_PT_quality(bpy.types.Panel):
         if prefs.experimental.use_experimental_compositors:
             col.prop(tree, "execution_mode")
             use_realtime = tree.execution_mode == 'REALTIME'
+        col.prop(tree, "precision")
 
         col = layout.column()
         col.active = not use_realtime
@@ -991,16 +992,19 @@ class NODE_PT_node_tree_properties(Panel):
         col.prop(group, "is_tool")
 
 
+def draw_socket_item_in_list(uilist, layout, item, icon):
+    if uilist.layout_type in {'DEFAULT', 'COMPACT'}:
+        row = layout.row(align=True)
+        row.template_node_socket(color=item.color)
+        row.prop(item, "name", text="", emboss=False, icon_value=icon)
+    elif uilist.layout_type == 'GRID':
+        layout.alignment = 'CENTER'
+        layout.template_node_socket(color=item.color)
+
+
 class NODE_UL_simulation_zone_items(bpy.types.UIList):
     def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            row = layout.row(align=True)
-
-            row.template_node_socket(color=item.color)
-            row.prop(item, "name", text="", emboss=False, icon_value=icon)
-        elif self.layout_type == 'GRID':
-            layout.alignment = 'CENTER'
-            layout.template_node_socket(color=item.color)
+        draw_socket_item_in_list(self, layout, item, icon)
 
 
 class NODE_PT_simulation_zone_items(Panel):
@@ -1072,13 +1076,7 @@ class NODE_PT_simulation_zone_items(Panel):
 
 class NODE_UL_repeat_zone_items(bpy.types.UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            row = layout.row(align=True)
-            row.template_node_socket(color=item.color)
-            row.prop(item, "name", text="", emboss=False, icon_value=icon)
-        elif self.layout_type == 'GRID':
-            layout.alignment = 'CENTER'
-            layout.template_node_socket(color=item.color)
+        draw_socket_item_in_list(self, layout, item, icon)
 
 
 class NODE_PT_repeat_zone_items(Panel):

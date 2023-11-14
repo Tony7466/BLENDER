@@ -197,7 +197,10 @@ bool CustomData_merge_layout(const struct CustomData *source,
  * the #CD_CONSTRUCT behavior, so trivial types must be initialized by the caller. After being
  * resized, the #CustomData does not contain any referenced layers.
  */
-void CustomData_realloc(struct CustomData *data, int old_size, int new_size);
+void CustomData_realloc(struct CustomData *data,
+                        int old_size,
+                        int new_size,
+                        eCDAllocType alloctype = CD_CONSTRUCT);
 
 /**
  * BMesh version of CustomData_merge_layout; merges the layouts of source and `dest`,
@@ -233,11 +236,6 @@ void CustomData_free(struct CustomData *data, int totelem);
  * Same as above, but only frees layers which matches the given mask.
  */
 void CustomData_free_typemask(struct CustomData *data, int totelem, eCustomDataMask mask);
-
-/**
- * Frees all layers with #CD_FLAG_TEMPORARY.
- */
-void CustomData_free_temporary(struct CustomData *data, int totelem);
 
 /**
  * Adds a layer of the given type to the #CustomData object. The new layer is initialized based on
@@ -379,7 +377,8 @@ void CustomData_copy_layer_type_data(const struct CustomData *source,
                                      int count);
 
 /**
- * Frees data in a #CustomData object.
+ * Frees data in a #CustomData object. This is only expected to be called if the data layers are
+ * not shared (#CustomData_ensure_layers_are_mutable).
  */
 void CustomData_free_elem(struct CustomData *data, int index, int count);
 
@@ -434,6 +433,7 @@ void CustomData_swap_corners(struct CustomData *data, int index, const int *corn
  * function makes sure that the layer is unshared if it was shared, which makes it mutable.
  */
 void CustomData_ensure_data_is_mutable(struct CustomDataLayer *layer, int totelem);
+void CustomData_ensure_layers_are_mutable(struct CustomData *data, int totelem);
 
 /**
  * Retrieve a pointer to an element of the active layer of the given \a type, chosen by the

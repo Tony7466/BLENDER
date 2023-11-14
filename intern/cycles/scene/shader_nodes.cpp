@@ -1336,7 +1336,7 @@ NODE_DEFINE(IESLightNode)
   SOCKET_STRING(filename, "File Name", ustring());
 
   SOCKET_IN_FLOAT(strength, "Strength", 1.0f);
-  SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_NORMAL);
+  SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_INCOMING);
 
   SOCKET_OUT_FLOAT(fac, "Fac");
 
@@ -2511,13 +2511,7 @@ GlassBsdfNode::GlassBsdfNode() : BsdfNode(get_node_type())
 void GlassBsdfNode::compile(SVMCompiler &compiler)
 {
   closure = distribution;
-
-  if (closure == CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID) {
-    BsdfNode::compile(compiler, input("Roughness"), input("IOR"), input("Color"));
-  }
-  else {
-    BsdfNode::compile(compiler, input("Roughness"), input("IOR"));
-  }
+  BsdfNode::compile(compiler, input("Roughness"), input("IOR"), input("Color"));
 }
 
 void GlassBsdfNode::compile(OSLCompiler &compiler)

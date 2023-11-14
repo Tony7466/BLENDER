@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'3d6713e0867a')\n"
+"Project-Id-Version: Blender 4.0.0 Release Candidate (b'f2d15d4fd19a')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-03 09:29:22\n"
+"POT-Creation-Date: 2023-11-13 11:45:13\n"
 "PO-Revision-Date: 2016-04-23 22:41+0300\n"
 "Last-Translator: Yousef Harfoush <bat3a@msn.com>\n"
 "Language-Team: Yousef Harfoush, Amine Moussaoui <bat3a@msn.com>\n"
@@ -205,6 +205,10 @@ msgstr "ﻞﻌﻔﻣ ﺮﻴﻏ"
 
 msgid "Full"
 msgstr "ﻼ﻿ﻣﺎﻛ"
+
+
+msgid "Auto"
+msgstr "ﻲﺗﺍﺫ"
 
 
 msgid "Fribidi Library"
@@ -981,10 +985,6 @@ msgstr "ﺮﺣ"
 
 msgid "Aligned"
 msgstr "ﻱﺫﺎﺤﻣ"
-
-
-msgid "Auto"
-msgstr "ﻲﺗﺍﺫ"
 
 
 msgid "Handle 2"
@@ -16193,20 +16193,20 @@ msgid "Active Object"
 msgstr "ﻝﺎﻌّﻔﻟﺍ ﻦﺋﺎﻜﻟﺍ"
 
 
-msgid "Curve used for the curve mapping"
-msgstr "ﻰﻨﺤﻨﻤﻟﺍ ءﺎﺴﻛﻹ﻿ ﻡﺪﺨﺘﺴﻤﻟﺍ ﻰﻨﺤﻨﻤﻟﺍ"
-
-
-msgid "Select the mapping type"
-msgstr "ءﺎﺴﻛﻻ﻿ﺍ ﻉﻮﻧ ﺮﺘﺧﺇ"
-
-
 msgid "Modifier Name"
 msgstr "ﺮﻴّﻐﻤﻟﺍ ﻢﺳﺇ"
 
 
 msgid "Name of the modifier"
 msgstr "ﺮﻴّﻐﻤﻟﺍ ﻢﺳﺇ"
+
+
+msgid "Curve used for the curve mapping"
+msgstr "ﻰﻨﺤﻨﻤﻟﺍ ءﺎﺴﻛﻹ﻿ ﻡﺪﺨﺘﺴﻤﻟﺍ ﻰﻨﺤﻨﻤﻟﺍ"
+
+
+msgid "Select the mapping type"
+msgstr "ءﺎﺴﻛﻻ﻿ﺍ ﻉﻮﻧ ﺮﺘﺧﺇ"
 
 
 msgid "Modifier Type"
@@ -21507,6 +21507,10 @@ msgid "Show All"
 msgstr "ﻞﻜﻟﺍ ﺮﻬﻇﺍ"
 
 
+msgid "Pose Bone"
+msgstr "ﺔﻔﻗﻮﻟﺍ ﻢﻈﻋ"
+
+
 msgctxt "Operator"
 msgid "Delete Selected Bone(s)"
 msgstr "ﺓﺭﺎﺘﺨﻤﻟﺍ ﻡﺎﻈﻌﻟﺍ ﻑﺬﺣﺍ"
@@ -21621,10 +21625,6 @@ msgstr "ﻩﺎﺠﺗﻹ﻿ﺍ ﺐﻠﻗﺍ"
 msgctxt "Operator"
 msgid "Symmetrize"
 msgstr "ﻞﺛﺎﻤﺘﻟﺍ"
-
-
-msgid "Pose Bone"
-msgstr "ﺔﻔﻗﻮﻟﺍ ﻢﻈﻋ"
 
 
 msgid "Automatically determine display type for files"
@@ -22961,8 +22961,8 @@ msgstr "(ZYX) ﺮﻟﻮﻳ"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "PLY ﺭﺪّﺻ"
+msgid "Export STL"
+msgstr "STL ﺭﺪّﺻ"
 
 
 msgid "Z Forward"
@@ -22979,11 +22979,6 @@ msgstr "-Y ﻕﻮﻔﻟ"
 
 msgid "Apply Modifiers"
 msgstr "ﺕﺍﺮﻴّﻐﻤﻟﺍ ﻖﺒّﻃ"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "STL ﺭﺪّﺻ"
 
 
 msgctxt "Operator"
@@ -23911,11 +23906,6 @@ msgid "Shadeless"
 msgstr "ﻞﻠﻈﻣ ﺮﻴﻏ"
 
 
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "PLY ﺩﺭﻮﺘﺳﺍ"
-
-
 msgid "Load STL triangle mesh data"
 msgstr "STL ـﻟ ﻲﺜﻠﺜﻣ ﻢﺴﺠﻣ ﺕﺎﻧﺎﻴﺑ ﻞﻤّﺣ"
 
@@ -23947,10 +23937,6 @@ msgstr "ﻚﻳﺮﺤﺘﻟﺍ ﺩﺭﻮﺘﺳﺇ"
 
 msgid "Manual Orientation"
 msgstr "ﻱﻭﺪﻳ ﻪﻴﺟﻮﺗ"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "ﻂﻘﻧ ﺕﺎﻋﻮﻤﺠﻤﻛ OBJ ﺕﺎﻋﻮﻤﺠﻣ ﺩﺭﻮﺘﺳﺇ"
 
 
 msgctxt "Operator"
@@ -28711,10 +28697,6 @@ msgid "All UVs"
 msgstr "UV's ـﻟﺍ ﻞﻛ"
 
 
-msgid "Modified"
-msgstr "ﻝﺪّﻌﻣ"
-
-
 msgid "Exports UVs from the modified mesh"
 msgstr "ﻝﺪّﻌﻤﻟﺍ ﻢﺴﺠﻤﻟﺍ ﻦﻣ UV's ـﻟﺍ ﺭﺪّﺼﻳ"
 
@@ -29441,6 +29423,10 @@ msgid "Memory Statistics"
 msgstr "ﺓﺮﻛﺍﺬﻟﺍ ﺕﺎﻴﺋﺎﺼﺣﺍ"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "ﻂﻘﻧ ﺕﺎﻋﻮﻤﺠﻤﻛ OBJ ﺕﺎﻋﻮﻤﺠﻣ ﺩﺭﻮﺘﺳﺇ"
+
+
 msgid "Load UI"
 msgstr "ﺔﻬﺟﺍﻮﻟﺍ ﻞﻤّﺣ"
 
@@ -29461,6 +29447,16 @@ msgstr "ﻞﻣﺎﻌﻠﻟ ﻖﺒﺴﻣ ﺩﺍﺪﻋﺇ"
 
 msgid "Add or remove an Operator Preset"
 msgstr "ﻞﻣﺎﻌﻟ ﻖﺒﺴﻣ ﺩﺍﺪﻋﺇ ﻎﻟﺍ ﻭﺃ ﻒﺿﺍ"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "PLY ﺭﺪّﺻ"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "PLY ﺩﺭﻮﺘﺳﺍ"
 
 
 msgctxt "Operator"
@@ -34942,10 +34938,6 @@ msgid "Tooltip Colors"
 msgstr "ﺕﺍﻭﺩﻻ﻿ﺍ ﺕﺎﻈﺣﻼ﻿ﻣ ﻥﺍﻮﻟﺍ"
 
 
-msgid "Bone Pose"
-msgstr "ﻢﻈﻋ ﺔﻔﻗﻭ"
-
-
 msgid "Bone Pose Active"
 msgstr "ﺔﻟﺎﻌﻔﻟﺍ ﺔﻔﻗﻮﻟﺍ ﺔﻤﻈﻋ"
 
@@ -38502,6 +38494,10 @@ msgid "Browse Particle Settings to be linked"
 msgstr "ﺔﻄﺒﺗﺮﻣ ﻥﻮﻜﺘﻟ ﺕﺎﺌﻳﺰﺠﻟﺍ ﺕﺍﺩﺍﺪﻋﺇ ﺢﻔﺼﺗ"
 
 
+msgid "Browse Grease Pencil Data to be linked"
+msgstr " ﺔﻄﺒﺗﺮﻣ ﻥﻮﻜﺘﻟ ﺕﺎﻈﺣﻼ﻿ﻤﻟﺍ ﻢﻠﻗ ﺕﺎﻧﺎﻴﺑ ﺢﻔﺼﺗ"
+
+
 msgid "Browse Movie Clip to be linked"
 msgstr "ﺔﻄﺒﺗﺮﻣ ﻥﻮﻜﺘﻟ ﻢﻠﻔﻟﺍ ﺔﺻﺎﺼﻗ ﻰﻟﺍ ﺢﻔﺼﺗ"
 
@@ -38516,10 +38512,6 @@ msgstr "ﻁﺎﺒﺗﺭﻺ﻿ﻟ ﺡﻮﻠّﻟﺍ ﺕﺎﻧﺎﻴﺑ ﺢﻔّ�
 
 msgid "Browse Paint Curve Data to be linked"
 msgstr "ﻁﺎﺒﺗﺭﻺ﻿ﻟ ﻢﺳﺮﻟﺍ ﻰﻨﺤﻨﻣ ﺕﺎﻧﺎﻴﺑ ﺢﻔّﺼﺗ"
-
-
-msgid "Browse Grease Pencil Data to be linked"
-msgstr " ﺔﻄﺒﺗﺮﻣ ﻥﻮﻜﺘﻟ ﺕﺎﻈﺣﻼ﻿ﻤﻟﺍ ﻢﻠﻗ ﺕﺎﻧﺎﻴﺑ ﺢﻔﺼﺗ"
 
 
 msgid "Browse ID data to be linked"
@@ -39930,6 +39922,10 @@ msgstr "ﺭﺪﻨﻠﺑ ﻒﻠﻣ ﺮﻬﻇﺃ"
 
 msgid "unable to open the file"
 msgstr "ﻒﻠﻤﻟﺍ ﺢﺘﻓ ﻰﻠﻋ ﺭﺩﺎﻗ ﺮﻴﻏ"
+
+
+msgid "Modified"
+msgstr "ﻝﺪّﻌﻣ"
 
 
 msgid "Context window not set"

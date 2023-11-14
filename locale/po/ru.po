@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'3d6713e0867a')\n"
+"Project-Id-Version: Blender 4.0.0 Release Candidate (b'f2d15d4fd19a')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-03 09:29:22\n"
+"POT-Creation-Date: 2023-11-13 11:45:13\n"
 "PO-Revision-Date: 2018-01-03 14:47+0000\n"
 "Last-Translator: Lockal <lockalsash@gmail.com>, 2023\n"
 "Language-Team: Russian (https://app.transifex.com/translateblender/teams/82039/ru/)\n"
@@ -342,20 +342,16 @@ msgid "Optimize all kernels. Fastest rendering, may result in extra background C
 msgstr "Оптимизировать все ядра. Самый быстрый рендеринг, может привести к дополнительной загрузке процессора в фоновом режиме."
 
 
+msgid "Auto"
+msgstr "Авто"
+
+
 msgid "Distribute memory across devices"
 msgstr "Распределить память между устройствами"
 
 
 msgid "Make more room for large scenes to fit by distributing memory across interconnected devices (e.g. via NVLink) rather than duplicating it"
 msgstr "Освободите место для больших сцен, распределяя память между взаимосвязанными устройствами (например, через NVLink), а не дублируя ее"
-
-
-msgid "MetalRT (Experimental)"
-msgstr "MetalRT (экспериментально)"
-
-
-msgid "MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better performance in specific cases. However this support is experimental and some scenes may render incorrectly"
-msgstr "MetalRT для трассировки лучей использует меньше памяти для сцен, в которых широко используются кривые, и может обеспечить более высокую производительность в определённых случаях. Однако эта поддержка является экспериментальной, и некоторые сцены могут отображаться неправильно"
 
 
 msgid "KHR_materials_variants_ui"
@@ -1869,10 +1865,6 @@ msgstr "Свободный"
 
 msgid "Aligned"
 msgstr "С выравниванием"
-
-
-msgid "Auto"
-msgstr "Авто"
 
 
 msgid "Handle 2"
@@ -27826,6 +27818,14 @@ msgid "Base type to define alpha transparency modifiers"
 msgstr "Основной тип для модификаторов прозрачности"
 
 
+msgid "Modifier Name"
+msgstr "Имя модификатора"
+
+
+msgid "Name of the modifier"
+msgstr "Имя модификатора"
+
+
 msgid "Along Stroke"
 msgstr "Вдоль штриха"
 
@@ -27864,14 +27864,6 @@ msgstr "Использовать линейное отображение"
 
 msgid "Use curve mapping"
 msgstr "Использовать отображение по кривой"
-
-
-msgid "Modifier Name"
-msgstr "Имя модификатора"
-
-
-msgid "Name of the modifier"
-msgstr "Имя модификатора"
 
 
 msgid "Modifier Type"
@@ -39487,6 +39479,10 @@ msgid "Show All"
 msgstr "Показать все"
 
 
+msgid "Pose Bone"
+msgstr "Кость позы"
+
+
 msgctxt "Operator"
 msgid "Delete Selected Bone(s)"
 msgstr "Удалить выделенные кости"
@@ -39805,10 +39801,6 @@ msgstr "−X на +X"
 
 msgid "+X to -X"
 msgstr "+X на −X"
-
-
-msgid "Pose Bone"
-msgstr "Кость позы"
 
 
 msgid "Check Existing"
@@ -42495,8 +42487,16 @@ msgstr "Преобразовать вращения по Эйлеру ZYX"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Экспортировать PLY"
+msgid "Export STL"
+msgstr "Экспортировать STL"
+
+
+msgid "Ascii"
+msgstr "ASCII"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Сохранить файл в формате ASCII"
 
 
 msgid "X Forward"
@@ -42543,31 +42543,6 @@ msgid "-Z Up"
 msgstr "Вверх по −Z"
 
 
-msgid "Apply Modifiers"
-msgstr "Применить модификаторы"
-
-
-msgid "Selection Only"
-msgstr "Только выделенное"
-
-
-msgid "Export selected objects only"
-msgstr "Экспортировать только выделенные объекты"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Экспортировать STL"
-
-
-msgid "Ascii"
-msgstr "ASCII"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Сохранить файл в формате ASCII"
-
-
 msgid "Batch Mode"
 msgstr "Пакетный режим"
 
@@ -42580,6 +42555,10 @@ msgid "Each object as a file"
 msgstr "Каждый объект в отдельном файле"
 
 
+msgid "Apply Modifiers"
+msgstr "Применить модификаторы"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "Применить модификаторы перед сохранением"
 
@@ -42590,6 +42569,14 @@ msgstr "Единицы сцены"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "Применить текущие единицы сцены (заданные масштабом единиц) к экспортируемым данным"
+
+
+msgid "Selection Only"
+msgstr "Только выделенное"
+
+
+msgid "Export selected objects only"
+msgstr "Экспортировать только выделенные объекты"
 
 
 msgctxt "Operator"
@@ -43026,10 +43013,6 @@ msgid "Apply sampling to all animations"
 msgstr "Всегда выполнять сэмплирование для всех анимаций"
 
 
-msgid "Output format and embedding options. Binary is most efficient, but JSON (embedded or separate) may be easier to edit later"
-msgstr "Формат вывода и параметры встраивания. Двоичный формат является самым эффективным, но JSON (встроенный или отделённый) более удобный для редактирования"
-
-
 msgid "glTF Binary (.glb)"
 msgstr "Бинарный glTF (.glb)"
 
@@ -43044,14 +43027,6 @@ msgstr "Разделённый glTF (.gltf + .bin + текстуры)"
 
 msgid "Exports multiple files, with separate JSON, binary and texture data. Easiest to edit later"
 msgstr "Экспортировать несколько файлов с разделёнными JSON, двоичными и текстурными данными. Самый простой вариант для последующего изменения"
-
-
-msgid "glTF Embedded (.gltf)"
-msgstr "glTF со встраиванием (.gltf)"
-
-
-msgid "Exports a single file, with all data packed in JSON. Less efficient than binary, but easier to edit later"
-msgstr "Экспортировать одиночный файл со всеми данными, упакованными в JSON. Менее эффективно, чем в бинарном виде, но проще для последующего изменения"
 
 
 msgid "Limit to Playback Range"
@@ -43160,14 +43135,6 @@ msgstr "Запомнить настройки экспорта"
 
 msgid "Store glTF export settings in the Blender project"
 msgstr "Сохранить настройки экспорта glTF в файле Blender"
-
-
-msgid "Material Groups"
-msgstr "Группы материалов"
-
-
-msgid "Smooth Groups"
-msgstr "Группы сглаживания"
 
 
 msgctxt "Operator"
@@ -46402,11 +46369,6 @@ msgstr "Использовать альфа-канал для прозрачно
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Импортировать PLY"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "Импортировать STL"
 
@@ -46587,10 +46549,6 @@ msgstr "Уровень логирования"
 
 msgid "The glTF format requires discontinuous normals, UVs, and other vertex attributes to be stored as separate vertices, as required for rendering on typical graphics hardware. This option attempts to combine co-located vertices where possible. Currently cannot combine verts with different normals"
 msgstr "Формат glTF требует, чтобы прерывистые нормали, UV и другие атрибуты вершин хранились как отдельные вершины, как это требуется для рендеринга на типичном графическом оборудовании. Эта опция пытается объединить совмещенные вершины, где это возможно. В настоящее время нельзя комбинировать вершины с разными нормалями"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "Импортировать группы OBJ как группы вершин"
 
 
 msgctxt "Operator"
@@ -51161,6 +51119,15 @@ msgid "Toggle object's force field"
 msgstr "Включить/выключить силовое поле объекта"
 
 
+msgctxt "Operator"
+msgid "Add Grease Pencil"
+msgstr "Добавить Grease Pencil"
+
+
+msgid "Add a Grease Pencil object to the scene"
+msgstr "Добавить объект Grease Pencil в сцену"
+
+
 msgid "Create an empty grease pencil object"
 msgstr "Создать пустой объект Grease Pencil"
 
@@ -51261,15 +51228,6 @@ msgstr "Удалить модификатор Grease Pencil"
 
 msgid "Remove a modifier from the active grease pencil object"
 msgstr "Удалить модификатор у активного объекта Grease Pencil"
-
-
-msgctxt "Operator"
-msgid "Add Grease Pencil"
-msgstr "Добавить Grease Pencil"
-
-
-msgid "Add a Grease Pencil object to the scene"
-msgstr "Добавить объект Grease Pencil в сцену"
 
 
 msgctxt "Operator"
@@ -59134,10 +59092,6 @@ msgid "Export the UV layout to a bitmap image"
 msgstr "Экспортировать UV-развёртку в растровое изображение"
 
 
-msgid "Modified"
-msgstr "С изменениями"
-
-
 msgid "Exports UVs from the modified mesh"
 msgstr "Экспортировать UV от изменённого меша"
 
@@ -61310,6 +61264,10 @@ msgid "Object Properties"
 msgstr "Настройки объекта"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "Импортировать группы OBJ как группы вершин"
+
+
 msgctxt "Operator"
 msgid "Open"
 msgstr "Открыть"
@@ -61376,6 +61334,16 @@ msgstr "Тег интерфейса"
 
 msgid "Open a path in a file browser"
 msgstr "Открыть путь в файловом менеджере"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Экспортировать PLY"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Импортировать PLY"
 
 
 msgctxt "Operator"
@@ -75633,10 +75601,6 @@ msgid "Color of the 1px shadow line underlying widgets"
 msgstr "Цвет однопиксельной линии тени под виджетами"
 
 
-msgid "Bone Pose"
-msgstr "Позовая кость"
-
-
 msgid "Bone Pose Active"
 msgstr "Активная позовая кость"
 
@@ -78803,10 +78767,6 @@ msgid "Message extraction process failed!"
 msgstr "Ошибка в процессе извлечения сообщений!"
 
 
-msgid "Info written to {} text datablock!"
-msgstr "Информация записана в текстовой датаблок {}!"
-
-
 msgid "Could not init languages data!"
 msgstr "Ошибка инициализации данных языков!"
 
@@ -80671,13 +80631,13 @@ msgstr "Между выделенными маркерами"
 
 
 msgctxt "Operator"
-msgid "Paste Flipped"
-msgstr "Вставить отражённым"
+msgid "Clean Channels"
+msgstr "Очистить каналы"
 
 
 msgctxt "Operator"
-msgid "Clean Channels"
-msgstr "Очистить каналы"
+msgid "Paste Flipped"
+msgstr "Вставить отражённым"
 
 
 msgctxt "Operator"
@@ -85722,6 +85682,10 @@ msgid "Browse Particle Settings to be linked"
 msgstr "Выбор связываемых настроек частиц"
 
 
+msgid "Browse Grease Pencil Data to be linked"
+msgstr "Выбор связываемых данных Grease Pencil"
+
+
 msgid "Browse Movie Clip to be linked"
 msgstr "Выбор связываемого видеофрагмента"
 
@@ -85748,10 +85712,6 @@ msgstr "Выбрать рабочее пространство для созда
 
 msgid "Browse LightProbe to be linked"
 msgstr "Выбор связываемого зонда освещения"
-
-
-msgid "Browse Grease Pencil Data to be linked"
-msgstr "Выбор связываемых данных Grease Pencil"
 
 
 msgid "Browse ID data to be linked"
@@ -85937,6 +85897,14 @@ msgstr "Ошибка во время экспорта (смотрите конс
 
 msgid "Parsing errors in Document (see Blender Console)"
 msgstr "Ошибки парсинга документа (см. консоль Blender)"
+
+
+msgid "Material Groups"
+msgstr "Группы материалов"
+
+
+msgid "Smooth Groups"
+msgstr "Группы сглаживания"
 
 
 msgid "Mesh Data"
@@ -87718,16 +87686,16 @@ msgid "Some data failed to reconstruct (see console for details)"
 msgstr "Невозможно восстановить некоторые данные (дополнительная информация приведена в консоли)"
 
 
-msgid "File path"
-msgstr "Путь к файлу"
-
-
 msgid "Today"
 msgstr "Сегодня"
 
 
 msgid "Yesterday"
 msgstr "Вчера"
+
+
+msgid "File path"
+msgstr "Путь к файлу"
 
 
 msgid "File does not exist"
@@ -90315,16 +90283,8 @@ msgid "Subsurface Radius"
 msgstr "Радиус подповерхностного рассеивания"
 
 
-msgid "Specular Tint"
-msgstr "Цветной блик"
-
-
 msgid "Anisotropic Rotation"
 msgstr "Поворот анизотропии"
-
-
-msgid "Sheen Tint"
-msgstr "Оттенок блеска ткани"
 
 
 msgid "Emission Color"
@@ -90706,6 +90666,10 @@ msgstr "Не сохранять"
 
 msgid "unable to open the file"
 msgstr "не удалось открыть файл"
+
+
+msgid "Modified"
+msgstr "С изменениями"
 
 
 msgid "For security reasons, automatic execution of Python scripts in this file was disabled:"

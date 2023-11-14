@@ -22,7 +22,6 @@
 #include "DNA_scene_types.h"
 #include "DNA_workspace_types.h"
 
-#include "BLI_array.h"
 #include "BLI_array.hh"
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
@@ -41,8 +40,8 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 
@@ -2992,7 +2991,7 @@ static int vertex_group_lock_exec(bContext *C, wmOperator *op)
 }
 
 static std::string vertex_group_lock_description(bContext * /*C*/,
-                                                 wmOperatorType * /*op*/,
+                                                 wmOperatorType * /*ot*/,
                                                  PointerRNA *params)
 {
   int action = RNA_enum_get(params, "action");

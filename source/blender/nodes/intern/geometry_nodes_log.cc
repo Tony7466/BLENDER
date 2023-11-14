@@ -64,6 +64,7 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
                                            bke::GeometryComponent::Type::Instance,
                                            bke::GeometryComponent::Type::Mesh,
                                            bke::GeometryComponent::Type::PointCloud,
+                                           bke::GeometryComponent::Type::GreasePencil,
                                            bke::GeometryComponent::Type::Volume};
 
   /* Keep track handled attribute names to make sure that we do not return the same name twice.
@@ -128,7 +129,10 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         break;
       }
       case bke::GeometryComponent::Type::GreasePencil: {
-        /* TODO. Do nothing for now. */
+        const auto &grease_pencil_component = *static_cast<const bke::GreasePencilComponent *>(
+            component);
+        GreasePencilInfo &info = this->grease_pencil_info.emplace();
+        info.layers_num = grease_pencil_component.attribute_domain_size(ATTR_DOMAIN_LAYER);
         break;
       }
     }
@@ -294,17 +298,13 @@ void GeoTreeLog::ensure_existing_attributes()
   }
   this->ensure_socket_values();
 
-  Set<StringRef> names;
-
   auto handle_value_log = [&](const ValueLog &value_log) {
     const GeometryInfoLog *geo_log = dynamic_cast<const GeometryInfoLog *>(&value_log);
     if (geo_log == nullptr) {
       return;
     }
     for (const GeometryAttributeInfo &attribute : geo_log->attributes) {
-      if (names.add(attribute.name)) {
-        this->existing_attributes.append(&attribute);
-      }
+      this->existing_attributes.append(&attribute);
     }
   };
 

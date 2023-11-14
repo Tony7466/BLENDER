@@ -673,8 +673,8 @@ const EnumPropertyItem rna_enum_subdivision_boundary_smooth_items[] = {
 #  include "BKE_context.h"
 #  include "BKE_deform.h"
 #  include "BKE_mesh_runtime.hh"
-#  include "BKE_modifier.h"
-#  include "BKE_object.h"
+#  include "BKE_modifier.hh"
+#  include "BKE_object.hh"
 #  include "BKE_particle.h"
 
 #  include "BLI_sort_utils.h"

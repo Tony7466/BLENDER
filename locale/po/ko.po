@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'3d6713e0867a')\n"
+"Project-Id-Version: Blender 4.0.0 Release Candidate (b'f2d15d4fd19a')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-03 09:29:22\n"
+"POT-Creation-Date: 2023-11-13 11:45:13\n"
 "PO-Revision-Date: 2020-01-04 05:04+0900\n"
 "Last-Translator: Geuntak Jeong <beroberos@gmail.com>\n"
 "Language-Team: Korean (http://www.transifex.com/lxlalexlxl/blender/language/ko/)\n"
@@ -289,6 +289,10 @@ msgstr "Off"
 
 msgid "Full"
 msgstr "Full"
+
+
+msgid "Auto"
+msgstr "Auto"
 
 
 msgid "Fribidi Library"
@@ -1439,10 +1443,6 @@ msgstr "자유"
 
 msgid "Aligned"
 msgstr "정렬됨"
-
-
-msgid "Auto"
-msgstr "Auto"
 
 
 msgid "Handle 2"
@@ -24612,6 +24612,14 @@ msgid "Base type to define alpha transparency modifiers"
 msgstr "알파 투명도 모디파이어를 정의하는 베이스 유형"
 
 
+msgid "Modifier Name"
+msgstr "모디파이어 이름"
+
+
+msgid "Name of the modifier"
+msgstr "이 모디파이어의 이름"
+
+
 msgid "Along Stroke"
 msgstr "스트로크를 따라"
 
@@ -24650,14 +24658,6 @@ msgstr "선형 맵핑을 사용"
 
 msgid "Use curve mapping"
 msgstr "커브 맵핑을 사용"
-
-
-msgid "Modifier Name"
-msgstr "모디파이어 이름"
-
-
-msgid "Name of the modifier"
-msgstr "이 모디파이어의 이름"
 
 
 msgid "Modifier Type"
@@ -36213,6 +36213,10 @@ msgid "Show All"
 msgstr "모두 표시"
 
 
+msgid "Pose Bone"
+msgstr "포즈 본"
+
+
 msgctxt "Operator"
 msgid "Delete Selected Bone(s)"
 msgstr "선택된 본(들)을 삭제"
@@ -36531,10 +36535,6 @@ msgstr "-X 에서 +X"
 
 msgid "+X to -X"
 msgstr "+X 에서 -X"
-
-
-msgid "Pose Bone"
-msgstr "포즈 본"
 
 
 msgid "Check Existing"
@@ -39178,8 +39178,20 @@ msgstr "오일러 ZYX에 회전을 변환"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "PLY를 내보내기"
+msgid "Export STL"
+msgstr "STL을 내보내기"
+
+
+msgid "Save STL triangle mesh data"
+msgstr "STL 삼각형 메쉬 데이터를 저장"
+
+
+msgid "Ascii"
+msgstr "아스키"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "ASCII 파일 형식으로 파일을 저장"
 
 
 msgid "X Forward"
@@ -39226,35 +39238,6 @@ msgid "-Z Up"
 msgstr "-Z 위쪽"
 
 
-msgid "Apply Modifiers"
-msgstr "모디파이어를 적용"
-
-
-msgid "Selection Only"
-msgstr "선택 만"
-
-
-msgid "Export selected objects only"
-msgstr "선택된 오브젝트 만 내보내기"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "STL을 내보내기"
-
-
-msgid "Save STL triangle mesh data"
-msgstr "STL 삼각형 메쉬 데이터를 저장"
-
-
-msgid "Ascii"
-msgstr "아스키"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "ASCII 파일 형식으로 파일을 저장"
-
-
 msgid "Batch Mode"
 msgstr "일괄 모드"
 
@@ -39267,6 +39250,10 @@ msgid "Each object as a file"
 msgstr "각 오브젝트를 파일로"
 
 
+msgid "Apply Modifiers"
+msgstr "모디파이어를 적용"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "저장하기 이전에 모디파이어를 적용"
 
@@ -39277,6 +39264,14 @@ msgstr "씬 단위"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "내보내기된 데이터로 현재 씬의 단위(단위 축적으로 한정된)를 적용"
+
+
+msgid "Selection Only"
+msgstr "선택 만"
+
+
+msgid "Export selected objects only"
+msgstr "선택된 오브젝트 만 내보내기"
 
 
 msgctxt "Operator"
@@ -39717,10 +39712,6 @@ msgid "Apply sampling to all animations"
 msgstr "모든 애니메이션에 샘플링을 적용"
 
 
-msgid "Output format and embedding options. Binary is most efficient, but JSON (embedded or separate) may be easier to edit later"
-msgstr "출력 형식 및 포함 옵션. 바이너리가 가장 효율적이지만 JSON (임베디드 또는 별도)을 나중에 편집하는 것이 더 쉽습니다"
-
-
 msgid "glTF Binary (.glb)"
 msgstr "glTF Binary (.glb)"
 
@@ -39735,14 +39726,6 @@ msgstr "glTF 분리 (.gltf + .bin + textures)"
 
 msgid "Exports multiple files, with separate JSON, binary and texture data. Easiest to edit later"
 msgstr "별도의 JSON, 바이너리 및 텍스처 데이터로 여러 파일을 내보냅니다. 나중에 쉽게 편집 할 수 있습니다"
-
-
-msgid "glTF Embedded (.gltf)"
-msgstr "glTF 포함 (.gltf)"
-
-
-msgid "Exports a single file, with all data packed in JSON. Less efficient than binary, but easier to edit later"
-msgstr "모든 데이터가 JSON으로 포장된 단일 파일을 내보냅니다. 바이너리보다 효율적이지는 않지만 나중에 편집하는 것이 더 쉽습니다"
 
 
 msgid "Limit to Playback Range"
@@ -39851,14 +39834,6 @@ msgstr "내보내기 설정 저장"
 
 msgid "Store glTF export settings in the Blender project"
 msgstr "블렌더 프로젝트에 glTF 내보내기 설정을 저장"
-
-
-msgid "Material Groups"
-msgstr "매테리얼 그룹"
-
-
-msgid "Smooth Groups"
-msgstr "스무스 그룹"
 
 
 msgctxt "Operator"
@@ -43085,11 +43060,6 @@ msgstr "투명도를 위해 알파 채널을 사용"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "PLY를 가져오기"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "STL을 가져오기"
 
@@ -43262,10 +43232,6 @@ msgstr "플랫 셰이딩"
 
 msgid "Log Level"
 msgstr "로그 레벨"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "버텍스 그룹으로 OBJ 그룹을 가져오기"
 
 
 msgctxt "Operator"
@@ -47786,6 +47752,15 @@ msgid "Toggle object's force field"
 msgstr "오브젝트의 포스 필드를 토글"
 
 
+msgctxt "Operator"
+msgid "Add Grease Pencil"
+msgstr "그리스 펜슬을 추가"
+
+
+msgid "Add a Grease Pencil object to the scene"
+msgstr "씬에 그리스 팬슬 오브젝트를 추가합니다"
+
+
 msgid "Create an empty grease pencil object"
 msgstr "엠프티 그리스 펜슬 오브젝트를 생성"
 
@@ -47869,15 +47844,6 @@ msgstr "그리스 펜슬 모디파이어를 제거"
 
 msgid "Remove a modifier from the active grease pencil object"
 msgstr "활성 그리스 펜슬 오브젝트에서 모디파이어를 제거"
-
-
-msgctxt "Operator"
-msgid "Add Grease Pencil"
-msgstr "그리스 펜슬을 추가"
-
-
-msgid "Add a Grease Pencil object to the scene"
-msgstr "씬에 그리스 팬슬 오브젝트를 추가합니다"
 
 
 msgctxt "Operator"
@@ -55668,10 +55634,6 @@ msgid "Export the UV layout to a bitmap image"
 msgstr "비트 맵 이미지의 UV 레이아웃을 내보내기"
 
 
-msgid "Modified"
-msgstr "수정됨"
-
-
 msgid "Exports UVs from the modified mesh"
 msgstr "수정된 메쉬에서 UV를 내보내기"
 
@@ -57816,6 +57778,10 @@ msgid "Object Properties"
 msgstr "오브젝트 프로퍼티스"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "버텍스 그룹으로 OBJ 그룹을 가져오기"
+
+
 msgctxt "Operator"
 msgid "Open"
 msgstr "열기"
@@ -57882,6 +57848,16 @@ msgstr "UI 테그"
 
 msgid "Open a path in a file browser"
 msgstr "파일 브라우저에서 경로를 열기"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "PLY를 내보내기"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "PLY를 가져오기"
 
 
 msgctxt "Operator"
@@ -72002,10 +71978,6 @@ msgid "Text Cursor"
 msgstr "텍스트 커서"
 
 
-msgid "Bone Pose"
-msgstr "본 포즈"
-
-
 msgid "Bone Pose Active"
 msgstr "본 포즈 활성"
 
@@ -74836,10 +74808,6 @@ msgid "Message extraction process failed!"
 msgstr "메시지 추출 처리 실패함!"
 
 
-msgid "Info written to {} text datablock!"
-msgstr "정보는 {} 텍스트 데이터 블록에 기록!"
-
-
 msgid "Could not init languages data!"
 msgstr "언어 데이터를 초기화 할 수 없음!"
 
@@ -76751,13 +76719,13 @@ msgstr "선택된 마커 사이에"
 
 
 msgctxt "Operator"
-msgid "Paste Flipped"
-msgstr "뒤집힌 붙여 넣기"
+msgid "Clean Channels"
+msgstr "채널을 정리"
 
 
 msgctxt "Operator"
-msgid "Clean Channels"
-msgstr "채널을 정리"
+msgid "Paste Flipped"
+msgstr "뒤집힌 붙여 넣기"
 
 
 msgctxt "Operator"
@@ -81492,6 +81460,10 @@ msgid "Browse Particle Settings to be linked"
 msgstr "연결할 파티클 설정을 찾아보기"
 
 
+msgid "Browse Grease Pencil Data to be linked"
+msgstr "연결할 그리스 펜슬 데이터를 찾아보기"
+
+
 msgid "Browse Movie Clip to be linked"
 msgstr "연결할 무비 클립을 찾아보기"
 
@@ -81518,10 +81490,6 @@ msgstr "연결된 작업 영역을 찾아보기"
 
 msgid "Browse LightProbe to be linked"
 msgstr "연결된 라이트 프로브를 찾아보기"
-
-
-msgid "Browse Grease Pencil Data to be linked"
-msgstr "연결할 그리스 펜슬 데이터를 찾아보기"
 
 
 msgid "Browse ID data to be linked"
@@ -81664,6 +81632,14 @@ msgstr "내보내기 중 오류 (콘솔 참조)"
 
 msgid "Parsing errors in Document (see Blender Console)"
 msgstr "문서의 구문 분석 오류 (Blender Console 참조)"
+
+
+msgid "Material Groups"
+msgstr "매테리얼 그룹"
+
+
+msgid "Smooth Groups"
+msgstr "스무스 그룹"
 
 
 msgctxt "Mesh"
@@ -83414,16 +83390,16 @@ msgid "Some data failed to reconstruct (see console for details)"
 msgstr "일부 데이터를 재구성하지 못했습니다 (자세한 내용은 콘솔 참조)"
 
 
-msgid "File path"
-msgstr "파일 경로"
-
-
 msgid "Today"
 msgstr "오늘"
 
 
 msgid "Yesterday"
 msgstr "어제"
+
+
+msgid "File path"
+msgstr "파일 경로"
 
 
 msgid "File does not exist"
@@ -85838,16 +85814,8 @@ msgid "Subsurface Radius"
 msgstr "서브 표면 샘플 반경"
 
 
-msgid "Specular Tint"
-msgstr "반사 틴트"
-
-
 msgid "Anisotropic Rotation"
 msgstr "비등방성 회전"
-
-
-msgid "Sheen Tint"
-msgstr "윤기 틴트"
 
 
 msgid "Emission Color"
@@ -86213,6 +86181,10 @@ msgstr "저장하지 않음"
 
 msgid "unable to open the file"
 msgstr "파일을 열 수 없음"
+
+
+msgid "Modified"
+msgstr "수정됨"
 
 
 msgid "For security reasons, automatic execution of Python scripts in this file was disabled:"
