@@ -67,7 +67,7 @@ void VKSampler::create(const GPUSamplerState &sampler_state)
   VK_ALLOCATION_CALLBACKS
   const VKDevice &device = VKBackend::get().device_get();
   vkCreateSampler(device.device_get(), &sampler_info, vk_allocation_callbacks, &vk_sampler_);
-  debug::object_label(vk_sampler_, "Sampler");
+  debug::object_label(vk_sampler_, sampler_state.to_string().c_str());
 }
 
 void VKSampler::free()

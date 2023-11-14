@@ -19,17 +19,8 @@ class VKContext;
 
 class VKSampler : public NonCopyable {
   VkSampler vk_sampler_ = VK_NULL_HANDLE;
-  bool used_ = true;
 
  public:
-  VKSampler() = default;
-  VKSampler(VKSampler &&other)
-  {
-    vk_sampler_ = other.vk_sampler_;
-    used_ = other.used_;
-
-    other.vk_sampler_ = VK_NULL_HANDLE;
-  }
   virtual ~VKSampler();
   void create(const GPUSamplerState &sampler_state);
   void free();
@@ -43,21 +34,6 @@ class VKSampler : public NonCopyable {
   bool is_initialized() const
   {
     return vk_sampler_ != VK_NULL_HANDLE;
-  }
-
-  void mark_unused()
-  {
-    used_ = false;
-  }
-
-  void mark_used()
-  {
-    used_ = true;
-  }
-
-  bool is_used() const
-  {
-    return used_;
   }
 };
 

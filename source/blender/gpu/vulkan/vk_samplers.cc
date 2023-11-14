@@ -10,47 +10,49 @@
 
 namespace blender::gpu {
 
-void VKSamplers::init() {}
+void VKSamplers::init()
+{
+  if (custom_sampler_cache_[0].is_initialized()) {
+    return;
+  }
+  custom_sampler_cache_[GPU_SAMPLER_CUSTOM_COMPARE].create(GPUSamplerState::compare_sampler());
+  custom_sampler_cache_[GPU_SAMPLER_CUSTOM_ICON].create(GPUSamplerState::icon_sampler());
+
+  GPUSamplerState state = {};
+  for (int extend_yz_i = 0; extend_yz_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_yz_i++) {
+    state.extend_yz = static_cast<GPUSamplerExtendMode>(extend_yz_i);
+    for (int extend_x_i = 0; extend_x_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_x_i++) {
+      state.extend_x = static_cast<GPUSamplerExtendMode>(extend_x_i);
+      for (int filtering_i = 0; filtering_i < GPU_SAMPLER_FILTERING_TYPES_COUNT; filtering_i++) {
+        state.filtering = GPUSamplerFiltering(filtering_i);
+        sampler_cache_[extend_yz_i][extend_x_i][filtering_i].create(state);
+      }
+    }
+  }
+}
 
 void VKSamplers::free()
 {
-  samplers_.clear();
-}
+  custom_sampler_cache_[GPU_SAMPLER_CUSTOM_COMPARE].free();
+  custom_sampler_cache_[GPU_SAMPLER_CUSTOM_ICON].free();
 
-const VKSampler &VKSamplers::get(const GPUSamplerState &key)
-{
-  VKSampler &result = samplers_.lookup_or_add_default(key);
-  if (!result.is_initialized()) {
-    result.create(key);
-    stats.created += 1;
-  }
-
-  result.mark_used();
-  return result;
-}
-
-void VKSamplers::discard_unused()
-{
-  int64_t size_before = samplers_.size();
-  samplers_.remove_if([](const Map<GPUSamplerState, VKSampler>::MutableItem &item) {
-    return !item.value.is_used();
-  });
-  int64_t size_after = samplers_.size();
-  stats.freed += size_before - size_after;
-}
-
-void VKSamplers::mark_all_unused()
-{
-  for (VKSampler &sampler : samplers_.values()) {
-    sampler.mark_unused();
+  for (int extend_yz_i = 0; extend_yz_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_yz_i++) {
+    for (int extend_x_i = 0; extend_x_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_x_i++) {
+      for (int filtering_i = 0; filtering_i < GPU_SAMPLER_FILTERING_TYPES_COUNT; filtering_i++) {
+        sampler_cache_[extend_yz_i][extend_x_i][filtering_i].free();
+      }
+    }
   }
 }
 
-void VKSamplers::debug_print() const
+const VKSampler &VKSamplers::get(const GPUSamplerState &sampler_state)
 {
-  std::cout << "VKSamplers(created=" << stats.created;
-  std::cout << ", active=" << samplers_.size();
-  std::cout << ", freed=" << stats.freed << ")\n";
+  BLI_assert(sampler_state.type != GPU_SAMPLER_STATE_TYPE_INTERNAL);
+
+  if (sampler_state.type == GPU_SAMPLER_STATE_TYPE_CUSTOM) {
+    return custom_sampler_cache_[sampler_state.custom_type];
+  }
+  return sampler_cache_[sampler_state.extend_yz][sampler_state.extend_x][sampler_state.filtering];
 }
 
 }  // namespace blender::gpu

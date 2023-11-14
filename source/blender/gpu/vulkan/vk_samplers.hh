@@ -15,47 +15,21 @@
 
 namespace blender::gpu {
 
-struct GPUSamplerStateHasher {
-  uint64_t operator()(const GPUSamplerState &value) const
-  {
-    uint64_t hash = 0;
-    hash = (hash << 0) | value.filtering;
-    hash = (hash << 8) | value.extend_x;
-    hash = (hash << 4) | value.extend_yz;
-    hash = (hash << 4) | value.custom_type;
-    hash = (hash << 8) | value.type;
-    return hash;
-  }
-};
-
 /**
- * Collection of samplers currently in use.
+ * Collection of samplers.
  *
- * In Vulkan samplers are device owned and can be shared between contexts.
+ * Samplers are device owned and can be shared between contexts.
  */
 class VKSamplers : NonCopyable {
-  Map<GPUSamplerState,
-      VKSampler,
-      default_inline_buffer_capacity(sizeof(GPUSamplerState) + sizeof(VKSampler)),
-      DefaultProbingStrategy,
-      GPUSamplerStateHasher>
-      samplers_;
-
-  struct {
-    uint64_t created = 0;
-    uint64_t freed = 0;
-  } stats;
+  VKSampler sampler_cache_[GPU_SAMPLER_EXTEND_MODES_COUNT][GPU_SAMPLER_EXTEND_MODES_COUNT]
+                          [GPU_SAMPLER_FILTERING_TYPES_COUNT];
+  VKSampler custom_sampler_cache_[GPU_SAMPLER_CUSTOM_TYPES_COUNT];
 
  public:
   void init();
   void free();
 
-  const VKSampler &get(const GPUSamplerState &key);
-
-  void discard_unused();
-  void mark_all_unused();
-
-  void debug_print() const;
+  const VKSampler &get(const GPUSamplerState &sampler_state);
 };
 
 }  // namespace blender::gpu

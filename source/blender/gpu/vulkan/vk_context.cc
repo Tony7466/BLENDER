@@ -117,9 +117,6 @@ void VKContext::end_frame()
 {
   VKDevice &device = VKBackend::get().device_get();
   device.destroy_discarded_resources();
-  device.samplers().discard_unused();
-  device.samplers().mark_all_unused();
-  device.samplers().debug_print();
 }
 
 void VKContext::flush()
