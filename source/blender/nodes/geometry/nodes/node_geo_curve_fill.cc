@@ -216,30 +216,30 @@ static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
   threading::parallel_for(results.index_range(), 1024, [&](const IndexRange results_range) {
     for (const int i_result : results_range) {
       const meshintersect::CDT_result<double> &result = results[i_result];
-      const IndexRange verts_index_range = vert_group_offsets[i_result];
-      const IndexRange edges_index_range = edge_group_offsets[i_result];
-      const IndexRange faces_index_range = face_group_offsets[i_result];
-      const IndexRange loops_index_range = loop_group_offsets[i_result];
+      const IndexRange verts_range = vert_group_offsets[i_result];
+      const IndexRange edges_range = edge_group_offsets[i_result];
+      const IndexRange faces_range = face_group_offsets[i_result];
+      const IndexRange loops_range = loop_group_offsets[i_result];
 
-      MutableSpan<float3> positions = all_positions.slice(verts_index_range);
-      MutableSpan<int2> edges = all_edges.slice(edges_index_range);
-      MutableSpan<int> face_offsets = all_face_offsets.slice(faces_index_range);
-      MutableSpan<int> corner_verts = all_corner_verts.slice(loops_index_range);
+      MutableSpan<float3> positions = all_positions.slice(verts_range);
+      MutableSpan<int2> edges = all_edges.slice(edges_range);
+      MutableSpan<int> face_offsets = all_face_offsets.slice(faces_range);
+      MutableSpan<int> corner_verts = all_corner_verts.slice(loops_range);
 
       for (const int i : result.vert.index_range()) {
         positions[i] = float3(float(result.vert[i].x), float(result.vert[i].y), 0.0f);
       }
 
       for (const int i : result.edge.index_range()) {
-        edges[i] = int2(result.edge[i].first + verts_index_range.start(),
-                        result.edge[i].second + verts_index_range.start());
+        edges[i] = int2(result.edge[i].first + verts_range.start(),
+                        result.edge[i].second + verts_range.start());
       }
 
       int i_face_corner = 0;
       for (const int i_face : result.face.index_range()) {
-        face_offsets[i_face] = i_face_corner + loops_index_range.start();
+        face_offsets[i_face] = i_face_corner + loops_range.start();
         for (const int i_corner : result.face[i_face].index_range()) {
-          corner_verts[i_face_corner] = result.face[i_face][i_corner] + verts_index_range.start();
+          corner_verts[i_face_corner] = result.face[i_face][i_corner] + verts_range.start();
           i_face_corner++;
         }
       }
