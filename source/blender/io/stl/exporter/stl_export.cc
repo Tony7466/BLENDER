@@ -98,15 +98,13 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
     const Span<float3> positions = mesh->vert_positions();
     const blender::Span<int> corner_verts = mesh->corner_verts();
     for (const MLoopTri &loop_tri : mesh->looptris()) {
-      Triangle t{};
+      Triangle t;
       for (int i = 0; i < 3; i++) {
         float3 co = positions[corner_verts[loop_tri.tri[i]]];
         mul_m4_v3(obmat4x4, co);
-        for (int j = 0; j < 3; j++) {
-          t.vertices[i][j] = co[j];
-        }
+        t.vertices[i] = co;
       }
-      writer->write_triangle(&t);
+      writer->write_triangle(t);
     }
   }
   DEG_OBJECT_ITER_END;

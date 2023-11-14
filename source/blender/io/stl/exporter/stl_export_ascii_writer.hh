@@ -26,7 +26,7 @@ class ASCIIFileWriter : public FileWriter, NonCopyable {
  public:
   explicit ASCIIFileWriter(const char *filepath);
   ~ASCIIFileWriter() override;
-  void write_triangle(const Triangle *t) override;
+  void write_triangle(const Triangle &t) override;
 };
 
 ASCIIFileWriter::ASCIIFileWriter(const char *filepath) : file_(filepath)
@@ -34,7 +34,7 @@ ASCIIFileWriter::ASCIIFileWriter(const char *filepath) : file_(filepath)
   file_ << "solid \n";
 }
 
-void ASCIIFileWriter::write_triangle(const Triangle *t)
+void ASCIIFileWriter::write_triangle(const Triangle &t)
 {
   file_ << fmt::format(
       "facet normal {} {} {}\n"
@@ -45,18 +45,18 @@ void ASCIIFileWriter::write_triangle(const Triangle *t)
       "\tendloop\n"
       "endfacet\n",
 
-      t->normal[0],
-      t->normal[1],
-      t->normal[2],
-      t->vertices[0][0],
-      t->vertices[0][1],
-      t->vertices[0][2],
-      t->vertices[1][0],
-      t->vertices[1][1],
-      t->vertices[1][2],
-      t->vertices[2][0],
-      t->vertices[2][1],
-      t->vertices[2][2]);
+      t.normal.x,
+      t.normal.y,
+      t.normal.z,
+      t.vertices[0].x,
+      t.vertices[0].y,
+      t.vertices[0].z,
+      t.vertices[1].x,
+      t.vertices[1].y,
+      t.vertices[1].z,
+      t.vertices[2].x,
+      t.vertices[2].y,
+      t.vertices[2].z);
 }
 
 ASCIIFileWriter::~ASCIIFileWriter()
