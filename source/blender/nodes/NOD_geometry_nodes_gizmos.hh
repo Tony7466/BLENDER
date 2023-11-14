@@ -118,14 +118,12 @@ struct GlobalGizmoSource {
 Vector<GlobalGizmoSource> find_global_gizmo_sources(const ComputeContext &compute_context,
                                                     const bNode &gizmo_node);
 
-bool is_valid_gizmo_link(const bNodeLink &link);
-
-bool update_gizmo_inferencing(bNodeTree &tree);
-
 void foreach_active_gizmo(
     const Object &object,
     const NodesModifierData &nmd,
     const wmWindowManager &wm,
     FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)> fn);
+
+bool update_gizmo_inferencing(bNodeTree &tree);
 
 }  // namespace blender::nodes::gizmos

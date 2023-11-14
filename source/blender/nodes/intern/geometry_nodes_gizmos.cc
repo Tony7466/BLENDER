@@ -26,7 +26,7 @@ static bool is_scalar_socket_type(const int socket_type)
   return ELEM(socket_type, SOCK_FLOAT, SOCK_INT);
 }
 
-bool is_valid_gizmo_link(const bNodeLink &link)
+static bool is_valid_gizmo_link(const bNodeLink &link)
 {
   const bNodeSocket &from_socket = *link.fromsock;
   const bNodeSocket &to_socket = *link.tosock;
