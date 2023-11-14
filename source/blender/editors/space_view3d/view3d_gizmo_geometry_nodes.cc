@@ -23,6 +23,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
 
+#include "BLI_math_base_safe.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.hh"
@@ -132,13 +133,50 @@ static std::optional<GizmoFloatVariable> find_float_value_paths_recursive(
   BLI_assert(gizmo_value_socket.is_input());
   const bNodeTree &ntree = *nmd.node_group;
 
+  Vector<nodes::gizmos::GizmoPathElem> gizmo_path;
   std::optional<nodes::gizmos::GizmoSource> gizmo_source_opt = nodes::gizmos::find_gizmo_source(
-      gizmo_value_socket, elem);
+      gizmo_value_socket, elem, gizmo_path);
   if (!gizmo_source_opt) {
     return std::nullopt;
   }
 
   float derivative = 1.0f;
+  if (!gizmo_path.is_empty()) {
+    geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
+        compute_context.hash());
+    tree_log.ensure_socket_values();
+
+    for (const nodes::gizmos::GizmoPathElem &path_elem : gizmo_path) {
+      switch (path_elem.node->type) {
+        case SH_NODE_MATH: {
+          const int mode = path_elem.node->custom1;
+          const bNodeSocket &second_input_socket = path_elem.node->input_socket(1);
+          const std::optional<float> second_value_opt =
+              tree_log.find_primitive_socket_value<float>(second_input_socket);
+          if (!second_value_opt) {
+            return std::nullopt;
+          }
+          const float second_value = *second_value_opt;
+          switch (mode) {
+            case NODE_MATH_MULTIPLY: {
+              derivative = safe_divide(derivative, second_value);
+              break;
+            }
+            case NODE_MATH_DIVIDE: {
+              derivative *= second_value;
+              break;
+            }
+            default:
+              return std::nullopt;
+          }
+          break;
+        }
+        default: {
+          return std::nullopt;
+        }
+      }
+    }
+  }
 
   ID *ntree_id = const_cast<ID *>(&ntree.id);
 

@@ -111,7 +111,13 @@ struct GizmoInferencingResult {
   friend std::ostream &operator<<(std::ostream &stream, const GizmoInferencingResult &data);
 };
 
-std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket, const SocketElem &elem);
+struct GizmoPathElem {
+  const bNode *node = nullptr;
+};
+
+std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket,
+                                             const SocketElem &elem,
+                                             Vector<GizmoPathElem> &right_to_left_path);
 
 bool is_valid_gizmo_link(const bNodeLink &link);
 
