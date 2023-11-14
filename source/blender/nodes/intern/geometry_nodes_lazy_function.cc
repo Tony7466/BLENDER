@@ -873,40 +873,47 @@ class LazyFunctionForGizmoNode : public LazyFunction {
   const bNode &bnode_;
 
  public:
+  const lf::FunctionNode *self_node = nullptr;
+
   LazyFunctionForGizmoNode(const bNode &bnode, MutableSpan<int> r_lf_index_by_bsocket)
       : bnode_(bnode)
   {
     debug_name_ = bnode.name;
     for (const bNodeSocket *socket : bnode.input_sockets().drop_front(1)) {
       r_lf_index_by_bsocket[socket->index_in_tree()] = inputs_.append_and_get_index_as(
-          socket->identifier, *socket->typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Used);
+          socket->identifier, *socket->typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Maybe);
     }
-    outputs_.append_as("Gizmo", CPPType::get<GeometrySet>());
+    outputs_.append_as("Transform", CPPType::get<GeometrySet>());
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
     const auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-    const auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
-    geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(user_data);
-    if (tree_logger == nullptr) {
+
+    if (!user_data.modifier_data) {
       params.set_default_remaining_outputs();
       return;
     }
-
-    for (const int i : inputs_.index_range()) {
-      const bNodeSocket &socket = bnode_.input_socket(i + 1);
-      const CPPType &type = *inputs_[i].type;
-      void *value = params.try_get_input_data_ptr(i);
-      tree_logger->log_value(bnode_, socket, GPointer{type, value});
+    const Span<const lf::FunctionNode *> nodes_with_side_effects =
+        user_data.modifier_data->side_effect_nodes->nodes_by_context.lookup(
+            user_data.compute_context->hash());
+    const bool is_used = nodes_with_side_effects.contains(this->self_node);
+    if (!is_used) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    if (!params.output_was_set(0)) {
+      GeometrySet geometry;
+      GeometryComponentEditData &edit_data =
+          geometry.get_component_for_write<GeometryComponentEditData>();
+      edit_data.gizmo_transforms_.add({user_data.compute_context->hash(), bnode_.identifier},
+                                      float4x4::identity());
+      params.set_output(0, std::move(geometry));
     }
 
-    GeometrySet geometry;
-    GeometryComponentEditData &edit_data =
-        geometry.get_component_for_write<GeometryComponentEditData>();
-    edit_data.gizmo_transforms_.add({user_data.compute_context->hash(), bnode_.identifier},
-                                    float4x4::identity());
-    params.set_output(0, std::move(geometry));
+    for (const int i : inputs_.index_range()) {
+      params.try_get_input_data_ptr_or_request(i);
+    }
   }
 };
 
@@ -3483,6 +3490,7 @@ struct GeometryNodesLazyFunctionBuilder {
     auto &lazy_function = scope_.construct<LazyFunctionForGizmoNode>(
         bnode, mapping_->lf_index_by_bsocket);
     lf::FunctionNode &lf_gizmo_node = graph_params.lf_graph.add_function(lazy_function);
+    lazy_function.self_node = &lf_gizmo_node;
 
     for (const int i : bnode.input_sockets().index_range().drop_front(1)) {
       lf::InputSocket &lf_socket = lf_gizmo_node.input(i - 1);
