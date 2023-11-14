@@ -55,7 +55,7 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
     const bNodeSocket &input_socket = current_socket;
     const Span<const bNodeLink *> links = input_socket.directly_linked_links();
     if ((input_socket.flag & SOCK_HIDE_VALUE) == 0 && links.is_empty()) {
-      return InputSocketGizmoSource{&current_socket, current_elem};
+      return InputSocketRef{&current_socket, current_elem};
     }
     if (links.size() != 1) {
       return std::nullopt;
@@ -84,7 +84,7 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
       case SH_NODE_VALUE:
       case FN_NODE_INPUT_VECTOR:
       case FN_NODE_INPUT_INT: {
-        return ValueNodeGizmoSource{&current_node, current_elem};
+        return ValueNodeRef{&current_node, current_elem};
       }
       case SH_NODE_SEPXYZ: {
         const int axis = output_socket.index();
@@ -100,8 +100,8 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
         return find_local_gizmo_source_recursive(input_socket, SocketElem{}, right_to_left_path);
       }
       case NODE_GROUP_INPUT: {
-        const int interface_input_index = output_socket.index();
-        return GroupInputGizmoSource{interface_input_index, current_elem};
+        const int input_index = output_socket.index();
+        return GroupInputRef{input_index, current_elem};
       }
       case SH_NODE_MATH: {
         const int mode = current_node.custom1;
@@ -138,18 +138,18 @@ static std::optional<GizmoSource> find_local_gizmo_source(
 }
 
 static void add_gizmo_input_source_pair(GizmoInferencingResult &inferencing_result,
-                                        const GizmoInput &gizmo_input,
-                                        const GizmoSource &gizmo_source_variant)
+                                        const InputSocketRef &gizmo_input,
+                                        const GizmoSource &gizmo_source)
 {
-  if (const auto *gizmo_source = std::get_if<ValueNodeGizmoSource>(&gizmo_source_variant)) {
-    inferencing_result.gizmo_inputs_for_value_node.add(gizmo_source->value_node, gizmo_input);
+  if (const auto *ref = std::get_if<ValueNodeRef>(&gizmo_source)) {
+    inferencing_result.gizmo_inputs_for_value_nodes.add(ref->value_node, gizmo_input);
   }
-  else if (const auto *gizmo_source = std::get_if<InputSocketGizmoSource>(&gizmo_source_variant)) {
-    inferencing_result.gizmo_inputs_for_node_inputs.add(gizmo_source->input_socket, gizmo_input);
+  else if (const auto *ref = std::get_if<InputSocketRef>(&gizmo_source)) {
+    inferencing_result.gizmo_inputs_for_node_inputs.add(ref->input_socket, gizmo_input);
   }
-  else if (const auto *gizmo_source = std::get_if<GroupInputGizmoSource>(&gizmo_source_variant)) {
-    inferencing_result.gizmo_inputs_for_interface_input.add(
-        {gizmo_source->interface_input_index, gizmo_source->elem}, gizmo_input);
+  else if (const auto *ref = std::get_if<GroupInputRef>(&gizmo_source)) {
+    inferencing_result.gizmo_inputs_for_interface_inputs.add({ref->input_index, ref->elem},
+                                                             gizmo_input);
   }
 }
 
@@ -165,21 +165,20 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
     if (!group->runtime->gizmo_inferencing) {
       continue;
     }
-    for (const InterfaceGizmoInput interface_gizmo_input :
-         group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_input.keys())
+    for (const GroupInputRef group_input_ref :
+         group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_inputs.keys())
     {
-      const bNodeSocket &input_socket = group_node->input_socket(
-          interface_gizmo_input.input_index);
-      const GizmoInput gizmo_input{&input_socket, interface_gizmo_input.elem};
+      const bNodeSocket &input_socket = group_node->input_socket(group_input_ref.input_index);
+      const InputSocketRef gizmo_input{&input_socket, group_input_ref.elem};
 
       Vector<LocalGizmoPathElem> gizmo_path;
       if (const std::optional<GizmoSource> gizmo_source_opt = find_local_gizmo_source(
-              input_socket, interface_gizmo_input.elem, gizmo_path))
+              input_socket, group_input_ref.elem, gizmo_path))
       {
         add_gizmo_input_source_pair(inferencing_result, gizmo_input, *gizmo_source_opt);
       }
     }
-    if (group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_input.size() > 0) {
+    if (group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_inputs.size() > 0) {
       inferencing_result.nodes_with_gizmos_inside.append(group_node);
     }
   }
@@ -196,7 +195,7 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
                 *link->fromsock, SocketElem{}, gizmo_path))
         {
           add_gizmo_input_source_pair(
-              inferencing_result, GizmoInput{&gizmo_value_input, SocketElem{}}, *gizmo_source);
+              inferencing_result, InputSocketRef{&gizmo_value_input, SocketElem{}}, *gizmo_source);
         }
       }
       inferencing_result.nodes_with_gizmos_inside.append(gizmo_node);
@@ -209,17 +208,17 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
 std::ostream &operator<<(std::ostream &stream, const GizmoInferencingResult &data)
 {
   stream << "Interface inputs with gizmo:\n";
-  for (const auto item : data.gizmo_inputs_for_interface_input.items()) {
+  for (const auto item : data.gizmo_inputs_for_interface_inputs.items()) {
     stream << "  Input Index: " << item.key.input_index;
     if (item.key.elem.index.has_value()) {
       stream << ", Elem Index: " << *item.key.elem.index;
     }
     stream << "\n";
-    for (const GizmoInput &gizmo_input : item.value) {
-      stream << "    " << gizmo_input.input_socket->owner_node().name << " -> "
-             << gizmo_input.input_socket->name;
-      if (gizmo_input.elem.index.has_value()) {
-        stream << ", Elem Index: " << *gizmo_input.elem.index;
+    for (const InputSocketRef &input_ref : item.value) {
+      stream << "    " << input_ref.input_socket->owner_node().name << " -> "
+             << input_ref.input_socket->name;
+      if (input_ref.elem.index.has_value()) {
+        stream << ", Elem Index: " << *input_ref.elem.index;
       }
       stream << "\n";
     }
@@ -244,13 +243,13 @@ bool update_gizmo_inferencing(bNodeTree &tree)
 }
 
 static void foreach_gizmo_for_source(
-    const GizmoSource &gizmo_source_variant,
+    const GizmoSource &gizmo_source,
     ComputeContextBuilder &compute_context_builder,
     const bNodeTree &tree,
     FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)> fn);
 
 static void foreach_gizmo_for_input(
-    const GizmoInput &gizmo_input,
+    const InputSocketRef &input_ref,
     ComputeContextBuilder &compute_context_builder,
     const bNodeTree &tree,
     FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)> fn)
@@ -259,7 +258,7 @@ static void foreach_gizmo_for_input(
   if (zones == nullptr) {
     return;
   }
-  const bNode &node = gizmo_input.input_socket->owner_node();
+  const bNode &node = input_ref.input_socket->owner_node();
   if (zones->get_zone_by_node(node.identifier) != nullptr) {
     /* Gizmos in zones are not supported yet. */
     return;
@@ -268,40 +267,39 @@ static void foreach_gizmo_for_input(
     fn(*compute_context_builder.current(), node);
   }
   else if (node.is_group()) {
-    const GroupInputGizmoSource group_input_source{gizmo_input.input_socket->index(),
-                                                   gizmo_input.elem};
+    const GroupInputRef group_input_ref{input_ref.input_socket->index(), input_ref.elem};
     const bNodeTree &group = *reinterpret_cast<const bNodeTree *>(node.id);
     compute_context_builder.push<bke::NodeGroupComputeContext>(node, tree);
-    foreach_gizmo_for_source(group_input_source, compute_context_builder, group, fn);
+    foreach_gizmo_for_source(group_input_ref, compute_context_builder, group, fn);
     compute_context_builder.pop();
   }
 }
 
 static void foreach_gizmo_for_source(
-    const GizmoSource &gizmo_source_variant,
+    const GizmoSource &gizmo_source,
     ComputeContextBuilder &compute_context_builder,
     const bNodeTree &tree,
     FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)> fn)
 {
   const GizmoInferencingResult &gizmo_inferencing = *tree.runtime->gizmo_inferencing;
 
-  if (const auto *gizmo_source = std::get_if<ValueNodeGizmoSource>(&gizmo_source_variant)) {
-    for (const GizmoInput &gizmo_input :
-         gizmo_inferencing.gizmo_inputs_for_value_node.lookup(gizmo_source->value_node))
+  if (const auto *ref = std::get_if<ValueNodeRef>(&gizmo_source)) {
+    for (const InputSocketRef &gizmo_input :
+         gizmo_inferencing.gizmo_inputs_for_value_nodes.lookup(ref->value_node))
     {
       foreach_gizmo_for_input(gizmo_input, compute_context_builder, tree, fn);
     }
   }
-  else if (const auto *gizmo_source = std::get_if<InputSocketGizmoSource>(&gizmo_source_variant)) {
-    for (const GizmoInput &gizmo_input :
-         gizmo_inferencing.gizmo_inputs_for_node_inputs.lookup(gizmo_source->input_socket))
+  else if (const auto *ref = std::get_if<InputSocketRef>(&gizmo_source)) {
+    for (const InputSocketRef &gizmo_input :
+         gizmo_inferencing.gizmo_inputs_for_node_inputs.lookup(ref->input_socket))
     {
       foreach_gizmo_for_input(gizmo_input, compute_context_builder, tree, fn);
     }
   }
-  else if (const auto *gizmo_source = std::get_if<GroupInputGizmoSource>(&gizmo_source_variant)) {
-    for (const GizmoInput &gizmo_input : gizmo_inferencing.gizmo_inputs_for_interface_input.lookup(
-             {gizmo_source->interface_input_index, gizmo_source->elem}))
+  else if (const auto *ref = std::get_if<GroupInputRef>(&gizmo_source)) {
+    for (const InputSocketRef &gizmo_input :
+         gizmo_inferencing.gizmo_inputs_for_interface_inputs.lookup({ref->input_index, ref->elem}))
     {
       foreach_gizmo_for_input(gizmo_input, compute_context_builder, tree, fn);
     }
@@ -358,8 +356,8 @@ void foreach_active_gizmo(
           }
           const GizmoInferencingResult &gizmo_inferencing =
               *snode.edittree->runtime->gizmo_inferencing;
-          Set<GizmoInput> used_gizmo_inputs;
-          for (auto item : gizmo_inferencing.gizmo_inputs_for_value_node.items()) {
+          Set<InputSocketRef> used_gizmo_inputs;
+          for (auto item : gizmo_inferencing.gizmo_inputs_for_value_nodes.items()) {
             const bNode &node = *item.key;
             if (!(node.flag & NODE_SELECT)) {
               continue;
@@ -383,14 +381,15 @@ void foreach_active_gizmo(
             else if (node->is_group()) {
               const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
               for (const auto item :
-                   group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_input.items()) {
-                const GizmoInput gizmo_input{&node->input_socket(item.key.input_index),
-                                             item.key.elem};
+                   group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_inputs.items())
+              {
+                const InputSocketRef gizmo_input{&node->input_socket(item.key.input_index),
+                                                 item.key.elem};
                 used_gizmo_inputs.add(gizmo_input);
               }
             }
           }
-          for (const GizmoInput &gizmo_input : used_gizmo_inputs) {
+          for (const InputSocketRef &gizmo_input : used_gizmo_inputs) {
             foreach_gizmo_for_input(gizmo_input, compute_context_builder, *snode.edittree, fn);
           }
         }
@@ -408,10 +407,10 @@ void foreach_active_gizmo(
     ComputeContextBuilder compute_context_builder;
     compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
 
-    for (const Span<GizmoInput> gizmo_inputs :
-         gizmo_inferencing.gizmo_inputs_for_interface_input.values())
+    for (const Span<InputSocketRef> gizmo_inputs :
+         gizmo_inferencing.gizmo_inputs_for_interface_inputs.values())
     {
-      for (const GizmoInput &gizmo_input : gizmo_inputs) {
+      for (const InputSocketRef &gizmo_input : gizmo_inputs) {
         foreach_gizmo_for_input(gizmo_input, compute_context_builder, tree, fn);
       }
     }
@@ -435,23 +434,23 @@ static std::optional<GizmoSource> find_global_gizmo_source_recursive(
     r_path.append({local_path_elem.node, &compute_context});
   }
 
-  if (const auto *gizmo_source = std::get_if<InputSocketGizmoSource>(&*gizmo_source_opt)) {
-    return *gizmo_source;
+  if (const auto *ref = std::get_if<InputSocketRef>(&*gizmo_source_opt)) {
+    return *ref;
   }
-  if (const auto *gizmo_source = std::get_if<ValueNodeGizmoSource>(&*gizmo_source_opt)) {
-    return *gizmo_source;
+  if (const auto *ref = std::get_if<ValueNodeRef>(&*gizmo_source_opt)) {
+    return *ref;
   }
-  if (const auto *gizmo_source = std::get_if<GroupInputGizmoSource>(&*gizmo_source_opt)) {
+  if (const auto *ref = std::get_if<GroupInputRef>(&*gizmo_source_opt)) {
     if (dynamic_cast<const bke::ModifierComputeContext *>(&compute_context)) {
-      return *gizmo_source;
+      return *ref;
     }
     if (const auto *group_node_compute_context =
             dynamic_cast<const bke::NodeGroupComputeContext *>(&compute_context))
     {
       const bNode *caller_node = group_node_compute_context->caller_group_node();
-      const bNodeSocket &socket = caller_node->input_socket(gizmo_source->interface_input_index);
+      const bNodeSocket &socket = caller_node->input_socket(ref->input_index);
       return find_global_gizmo_source_recursive(
-          socket, gizmo_source->elem, *compute_context.parent(), r_path);
+          socket, ref->elem, *compute_context.parent(), r_path);
     }
   }
 

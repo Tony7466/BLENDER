@@ -40,19 +40,29 @@ struct SocketElem {
 /**
  * An input socket that can be modified by a gizmo.
  */
-struct InputSocketGizmoSource {
+struct InputSocketRef {
   const bNodeSocket *input_socket;
   SocketElem elem;
+
+  friend bool operator==(const InputSocketRef &a, const InputSocketRef &b)
+  {
+    return a.input_socket == b.input_socket && a.elem == b.elem;
+  }
+
+  uint64_t hash() const
+  {
+    return get_default_hash_2(this->input_socket, this->elem);
+  }
 };
 
 /**
  * A value node that can be modified by a gizmo.
  */
-struct ValueNodeGizmoSource {
+struct ValueNodeRef {
   const bNode *value_node;
   SocketElem elem;
 
-  friend bool operator==(const ValueNodeGizmoSource &a, const ValueNodeGizmoSource &b)
+  friend bool operator==(const ValueNodeRef &a, const ValueNodeRef &b)
   {
     return a.value_node == b.value_node && a.elem == b.elem;
   }
@@ -66,41 +76,11 @@ struct ValueNodeGizmoSource {
 /**
  * A group input that can be modified by a gizmo.
  */
-struct GroupInputGizmoSource {
-  int interface_input_index;
-  SocketElem elem;
-};
-
-/**
- * Locates a value that can be modified by a gizmo.
- */
-using GizmoSource =
-    std::variant<InputSocketGizmoSource, ValueNodeGizmoSource, GroupInputGizmoSource>;
-
-/**
- * A #GizmoInput is an input socket that has a gizmo attached. It can also be the value input of a
- * gizmo node itself.
- */
-struct GizmoInput {
-  const bNodeSocket *input_socket;
-  SocketElem elem;
-
-  friend bool operator==(const GizmoInput &a, const GizmoInput &b)
-  {
-    return a.input_socket == b.input_socket && a.elem == b.elem;
-  }
-
-  uint64_t hash() const
-  {
-    return get_default_hash_2(this->input_socket, this->elem);
-  }
-};
-
-struct InterfaceGizmoInput {
+struct GroupInputRef {
   int input_index;
   SocketElem elem;
 
-  friend bool operator==(const InterfaceGizmoInput &a, const InterfaceGizmoInput &b)
+  friend bool operator==(const GroupInputRef &a, const GroupInputRef &b)
   {
     return a.input_index == b.input_index && a.elem == b.elem;
   }
@@ -111,15 +91,16 @@ struct InterfaceGizmoInput {
   }
 };
 
-struct GizmoNodeSource {
-  GizmoSource source;
-};
+/**
+ * Locates a value that can be modified by a gizmo.
+ */
+using GizmoSource = std::variant<InputSocketRef, ValueNodeRef, GroupInputRef>;
 
 struct GizmoInferencingResult {
   Vector<const bNode *> nodes_with_gizmos_inside;
-  MultiValueMap<const bNode *, GizmoInput> gizmo_inputs_for_value_node;
-  MultiValueMap<const bNodeSocket *, GizmoInput> gizmo_inputs_for_node_inputs;
-  MultiValueMap<InterfaceGizmoInput, GizmoInput> gizmo_inputs_for_interface_input;
+  MultiValueMap<const bNode *, InputSocketRef> gizmo_inputs_for_value_nodes;
+  MultiValueMap<const bNodeSocket *, InputSocketRef> gizmo_inputs_for_node_inputs;
+  MultiValueMap<GroupInputRef, InputSocketRef> gizmo_inputs_for_interface_inputs;
 
   friend std::ostream &operator<<(std::ostream &stream, const GizmoInferencingResult &data);
 };

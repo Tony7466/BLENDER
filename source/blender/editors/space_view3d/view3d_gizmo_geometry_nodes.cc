@@ -166,60 +166,49 @@ static std::optional<float> compute_derivative(
 }
 
 static std::optional<FloatValuePath> get_float_value_path(
-    const nodes::gizmos::GlobalGizmoSource &gizmo_source_generic,
+    const nodes::gizmos::GlobalGizmoSource &gizmo_source,
     const Object &object,
     const NodesModifierData &nmd)
 {
-  if (const auto *gizmo_source = std::get_if<nodes::gizmos::InputSocketGizmoSource>(
-          &gizmo_source_generic.source))
-  {
-    const bNodeTree &tree = gizmo_source->input_socket->owner_tree();
+  if (const auto *ref = std::get_if<nodes::gizmos::InputSocketRef>(&gizmo_source.source)) {
+    const bNodeTree &tree = ref->input_socket->owner_tree();
     ID *id = const_cast<ID *>(&tree.id);
     FloatValuePath value_path;
     value_path.owner = RNA_pointer_create(
-        id, &RNA_NodeSocket, const_cast<bNodeSocket *>(gizmo_source->input_socket));
+        id, &RNA_NodeSocket, const_cast<bNodeSocket *>(ref->input_socket));
     value_path.property = RNA_struct_find_property(&value_path.owner, "default_value");
-    value_path.index = gizmo_source->elem.index;
+    value_path.index = ref->elem.index;
     return value_path;
   }
-  if (const auto *gizmo_source = std::get_if<nodes::gizmos::ValueNodeGizmoSource>(
-          &gizmo_source_generic.source))
-  {
-    const bNodeTree &tree = gizmo_source->value_node->owner_tree();
+  if (const auto *ref = std::get_if<nodes::gizmos::ValueNodeRef>(&gizmo_source.source)) {
+    const bNodeTree &tree = ref->value_node->owner_tree();
     ID *id = const_cast<ID *>(&tree.id);
-    switch (gizmo_source->value_node->type) {
+    switch (ref->value_node->type) {
       case SH_NODE_VALUE: {
         FloatValuePath value_path;
         value_path.owner = RNA_pointer_create(
-            id,
-            &RNA_NodeSocket,
-            const_cast<bNodeSocket *>(&gizmo_source->value_node->output_socket(0)));
+            id, &RNA_NodeSocket, const_cast<bNodeSocket *>(&ref->value_node->output_socket(0)));
         value_path.property = RNA_struct_find_property(&value_path.owner, "default_value");
         return value_path;
       }
       case FN_NODE_INPUT_VECTOR: {
         FloatValuePath value_path;
-        value_path.owner = RNA_pointer_create(
-            id, &RNA_Node, const_cast<bNode *>(gizmo_source->value_node));
+        value_path.owner = RNA_pointer_create(id, &RNA_Node, const_cast<bNode *>(ref->value_node));
         value_path.property = RNA_struct_find_property(&value_path.owner, "vector");
-        value_path.index = *gizmo_source->elem.index;
+        value_path.index = *ref->elem.index;
         return value_path;
       }
       case FN_NODE_INPUT_INT: {
         FloatValuePath value_path;
-        value_path.owner = RNA_pointer_create(
-            id, &RNA_Node, const_cast<bNode *>(gizmo_source->value_node));
+        value_path.owner = RNA_pointer_create(id, &RNA_Node, const_cast<bNode *>(ref->value_node));
         value_path.property = RNA_struct_find_property(&value_path.owner, "integer");
         return value_path;
       }
     }
   }
-  if (const auto *gizmo_source = std::get_if<nodes::gizmos::GroupInputGizmoSource>(
-          &gizmo_source_generic.source))
-  {
+  if (const auto *ref = std::get_if<nodes::gizmos::GroupInputRef>(&gizmo_source.source)) {
     const bNodeTree &ntree = *nmd.node_group;
-    const StringRefNull input_identifier =
-        ntree.interface_inputs()[gizmo_source->interface_input_index]->identifier;
+    const StringRefNull input_identifier = ntree.interface_inputs()[ref->input_index]->identifier;
     IDProperty *id_property = IDP_GetPropertyFromGroup(nmd.settings.properties,
                                                        input_identifier.c_str());
     if (id_property == nullptr) {
@@ -229,7 +218,7 @@ static std::optional<FloatValuePath> get_float_value_path(
     value_path.owner = RNA_pointer_create(
         const_cast<ID *>(&object.id), &RNA_NodesModifier, const_cast<NodesModifierData *>(&nmd));
     value_path.property = reinterpret_cast<PropertyRNA *>(id_property);
-    value_path.index = gizmo_source->elem.index;
+    value_path.index = ref->elem.index;
     return value_path;
   }
   return std::nullopt;
