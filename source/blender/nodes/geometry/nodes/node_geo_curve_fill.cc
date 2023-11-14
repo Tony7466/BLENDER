@@ -35,7 +35,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .supports_field()
       .hide_value()
       .description(
-          "An index used to group curves together; filling is done separately for each group");
+          "An index used to group curves together. Filling is done separately for each group");
   b.add_output<decl::Geometry>("Mesh");
 }
 
