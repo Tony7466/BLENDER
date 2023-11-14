@@ -253,8 +253,6 @@ bool update_gizmo_inferencing(bNodeTree &tree)
                            *tree.runtime->gizmo_inferencing != result :
                            true;
   tree.runtime->gizmo_inferencing = std::make_unique<GizmoInferencingResult>(std::move(result));
-
-  std::cout << tree.id.name << ": " << changed << "\n";
   return changed;
 }
 
