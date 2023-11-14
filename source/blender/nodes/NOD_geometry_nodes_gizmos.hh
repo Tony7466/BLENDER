@@ -115,9 +115,13 @@ struct GizmoPathElem {
   const bNode *node = nullptr;
 };
 
-std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket,
-                                             const SocketElem &elem,
-                                             Vector<GizmoPathElem> &right_to_left_path);
+/**
+ * Find which value is controlled by a gizmo attached to the given socket. This function works
+ * locally in the current node tree.
+ */
+std::optional<GizmoSource> find_local_gizmo_source(const bNodeSocket &socket,
+                                                   const SocketElem &elem,
+                                                   Vector<GizmoPathElem> &right_to_left_path);
 
 bool is_valid_gizmo_link(const bNodeLink &link);
 

@@ -42,7 +42,7 @@ bool is_valid_gizmo_link(const bNodeLink &link)
   return from_socket.type == to_socket.type;
 }
 
-static std::optional<GizmoSource> find_gizmo_source_recursive(
+static std::optional<GizmoSource> find_local_gizmo_source_recursive(
     const bNodeSocket &current_socket,
     const SocketElem &current_elem,
     Vector<GizmoPathElem> &right_to_left_path)
@@ -65,7 +65,7 @@ static std::optional<GizmoSource> find_gizmo_source_recursive(
       return std::nullopt;
     }
     if (is_valid_gizmo_link(link)) {
-      return find_gizmo_source_recursive(origin_socket, current_elem, right_to_left_path);
+      return find_local_gizmo_source_recursive(origin_socket, current_elem, right_to_left_path);
     }
     return std::nullopt;
   }
@@ -75,7 +75,7 @@ static std::optional<GizmoSource> find_gizmo_source_recursive(
     switch (current_node.type) {
       case NODE_REROUTE: {
         const bNodeSocket &input_socket = current_node.input_socket(0);
-        return find_gizmo_source_recursive(input_socket, current_elem, right_to_left_path);
+        return find_local_gizmo_source_recursive(input_socket, current_elem, right_to_left_path);
       }
       case SH_NODE_VALUE:
       case FN_NODE_INPUT_VECTOR:
@@ -85,14 +85,15 @@ static std::optional<GizmoSource> find_gizmo_source_recursive(
       case SH_NODE_SEPXYZ: {
         const int axis = output_socket.index();
         const bNodeSocket &input_socket = current_node.input_socket(0);
-        return find_gizmo_source_recursive(input_socket, SocketElem{axis}, right_to_left_path);
+        return find_local_gizmo_source_recursive(
+            input_socket, SocketElem{axis}, right_to_left_path);
       }
       case SH_NODE_COMBXYZ: {
         BLI_assert(current_elem.index.has_value());
         const int axis = *current_elem.index;
         BLI_assert(axis >= 0 && axis < 3);
         const bNodeSocket &input_socket = current_node.input_socket(axis);
-        return find_gizmo_source_recursive(input_socket, SocketElem{}, right_to_left_path);
+        return find_local_gizmo_source_recursive(input_socket, SocketElem{}, right_to_left_path);
       }
       case NODE_GROUP_INPUT: {
         const int interface_input_index = output_socket.index();
@@ -115,7 +116,7 @@ static std::optional<GizmoSource> find_gizmo_source_recursive(
           default:
             return std::nullopt;
         }
-        return find_gizmo_source_recursive(input_socket, SocketElem{}, right_to_left_path);
+        return find_local_gizmo_source_recursive(input_socket, SocketElem{}, right_to_left_path);
       }
       default: {
         return std::nullopt;
@@ -124,11 +125,11 @@ static std::optional<GizmoSource> find_gizmo_source_recursive(
   }
 }
 
-std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket,
-                                             const SocketElem &elem,
-                                             Vector<GizmoPathElem> &right_to_left_path)
+std::optional<GizmoSource> find_local_gizmo_source(const bNodeSocket &socket,
+                                                   const SocketElem &elem,
+                                                   Vector<GizmoPathElem> &right_to_left_path)
 {
-  return find_gizmo_source_recursive(socket, elem, right_to_left_path);
+  return find_local_gizmo_source_recursive(socket, elem, right_to_left_path);
 }
 
 static void add_gizmo_input_source_pair(GizmoInferencingResult &inferencing_result,
@@ -167,7 +168,7 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
       const GizmoInput gizmo_input{&input_socket, interface_gizmo_input.elem};
 
       Vector<GizmoPathElem> gizmo_path;
-      if (const std::optional<GizmoSource> gizmo_source_opt = find_gizmo_source(
+      if (const std::optional<GizmoSource> gizmo_source_opt = find_local_gizmo_source(
               input_socket, interface_gizmo_input.elem, gizmo_path))
       {
         add_gizmo_input_source_pair(inferencing_result, gizmo_input, *gizmo_source_opt);
@@ -186,7 +187,7 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
           continue;
         }
         Vector<GizmoPathElem> gizmo_path;
-        if (const std::optional<GizmoSource> gizmo_source = find_gizmo_source(
+        if (const std::optional<GizmoSource> gizmo_source = find_local_gizmo_source(
                 *link->fromsock, SocketElem{}, gizmo_path))
         {
           add_gizmo_input_source_pair(

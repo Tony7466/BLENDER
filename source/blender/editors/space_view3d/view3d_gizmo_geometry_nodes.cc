@@ -134,8 +134,8 @@ static std::optional<GizmoFloatVariable> find_float_value_paths_recursive(
   const bNodeTree &ntree = *nmd.node_group;
 
   Vector<nodes::gizmos::GizmoPathElem> gizmo_path;
-  std::optional<nodes::gizmos::GizmoSource> gizmo_source_opt = nodes::gizmos::find_gizmo_source(
-      gizmo_value_socket, elem, gizmo_path);
+  std::optional<nodes::gizmos::GizmoSource> gizmo_source_opt =
+      nodes::gizmos::find_local_gizmo_source(gizmo_value_socket, elem, gizmo_path);
   if (!gizmo_source_opt) {
     return std::nullopt;
   }
