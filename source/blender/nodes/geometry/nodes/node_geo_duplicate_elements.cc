@@ -723,6 +723,8 @@ static void duplicate_edges(GeometrySet &geometry_set,
                                      duplicates);
   }
 
+  new_mesh->tag_overlapping_none();
+
   geometry_set.replace_mesh(new_mesh);
 }
 
@@ -851,6 +853,8 @@ static void duplicate_points_mesh(GeometrySet &geometry_set,
                                      attribute_outputs,
                                      duplicates);
   }
+
+  new_mesh->tag_overlapping_none();
 
   geometry_set.replace_mesh(new_mesh);
 }

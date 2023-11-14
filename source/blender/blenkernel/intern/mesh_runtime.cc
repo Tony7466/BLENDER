@@ -201,8 +201,7 @@ const blender::bke::LooseVertCache &Mesh::verts_no_face() const
 
 bool Mesh::no_overlapping_topology() const
 {
-  return this->runtime->has_overlapping_cache.is_cached() &&
-         !this->runtime->has_overlapping_cache.data();
+  return this->flag & ME_NO_OVERLAPPING_TOPOLOGY;
 }
 
 const blender::bke::LooseEdgeCache &Mesh::loose_edges() const
@@ -235,10 +234,10 @@ void Mesh::tag_loose_edges_none() const
   try_tag_verts_no_face_none(*this);
 }
 
-void Mesh::tag_overlapping_none() const
+void Mesh::tag_overlapping_none()
 {
   using namespace blender::bke;
-  this->runtime->has_overlapping_cache.ensure([&](bool &r_data) { r_data = false; });
+  this->flag |= ME_NO_OVERLAPPING_TOPOLOGY;
 }
 
 blender::Span<MLoopTri> Mesh::looptris() const
@@ -325,7 +324,6 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
   mesh->runtime->loose_edges_cache.tag_dirty();
   mesh->runtime->loose_verts_cache.tag_dirty();
   mesh->runtime->verts_no_face_cache.tag_dirty();
-  mesh->runtime->has_overlapping_cache.tag_dirty();
   mesh->runtime->looptris_cache.tag_dirty();
   mesh->runtime->looptri_faces_cache.tag_dirty();
   mesh->runtime->subsurf_face_dot_tags.clear_and_shrink();
@@ -334,6 +332,7 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
     BKE_shrinkwrap_boundary_data_free(mesh->runtime->shrinkwrap_data);
     mesh->runtime->shrinkwrap_data = nullptr;
   }
+  mesh->flag &= ~ME_NO_OVERLAPPING_TOPOLOGY;
 }
 
 void BKE_mesh_tag_edges_split(Mesh *mesh)

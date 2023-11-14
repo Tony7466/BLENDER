@@ -89,8 +89,6 @@ struct LooseEdgeCache : public LooseGeomCache {
 };
 struct LooseVertCache : public LooseGeomCache {
 };
-struct OverlapEdgeCache : public LooseGeomCache {
-};
 
 struct MeshRuntime {
   /* Evaluated mesh for objects which do not have effective modifiers.
@@ -185,8 +183,6 @@ struct MeshRuntime {
   SharedCache<LooseVertCache> loose_verts_cache;
   /** Cache of data about vertices not used by faces. See #Mesh::verts_no_face(). */
   SharedCache<LooseVertCache> verts_no_face_cache;
-  /** Cache of edges overlapping faces. */
-  SharedCache<bool> has_overlapping_cache;
 
   /**
    * A bit vector the size of the number of vertices, set to true for the center vertices of

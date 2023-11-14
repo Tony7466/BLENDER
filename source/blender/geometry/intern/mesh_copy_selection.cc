@@ -204,8 +204,7 @@ static void copy_loose_edge_hint(const Mesh &src, Mesh &dst)
 
 static void copy_overlapping_hint(const Mesh &src, Mesh &dst)
 {
-  const auto &src_cache = src.runtime->has_overlapping_cache;
-  if (src_cache.is_cached() && !src_cache.data()) {
+  if (src.no_overlapping_topology()) {
     dst.tag_overlapping_none();
   }
 }
@@ -389,6 +388,7 @@ std::optional<Mesh *> mesh_copy_selection(
     copy_loose_vert_hint(src_mesh, *dst_mesh);
     copy_loose_edge_hint(src_mesh, *dst_mesh);
   }
+  copy_overlapping_hint(src_mesh, *dst_mesh);
 
   return dst_mesh;
 }
@@ -495,6 +495,8 @@ std::optional<Mesh *> mesh_copy_selection_keep_verts(
   if (selection_domain == ATTR_DOMAIN_FACE) {
     copy_loose_edge_hint(src_mesh, *dst_mesh);
   }
+  copy_overlapping_hint(src_mesh, *dst_mesh);
+
   return dst_mesh;
 }
 
@@ -561,6 +563,7 @@ std::optional<Mesh *> mesh_copy_selection_keep_edges(
   /* Positions are not changed by the operation, so the bounds are the same. */
   dst_mesh->runtime->bounds_cache = src_mesh.runtime->bounds_cache;
   copy_loose_vert_hint(src_mesh, *dst_mesh);
+  copy_overlapping_hint(src_mesh, *dst_mesh);
   return dst_mesh;
 }
 

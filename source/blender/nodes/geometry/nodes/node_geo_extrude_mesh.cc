@@ -356,8 +356,7 @@ static void extrude_mesh_vertices(Mesh &mesh,
 
   const bool no_loose_vert_hint = mesh.runtime->loose_verts_cache.is_cached() &&
                                   mesh.runtime->loose_verts_cache.data().count == 0;
-  const bool no_overlapping_hint = mesh.runtime->has_overlapping_cache.is_cached() &&
-                                   !mesh.runtime->has_overlapping_cache.data();
+  const bool no_overlapping_hint = mesh.no_overlapping_topology();
   BKE_mesh_runtime_clear_cache(&mesh);
   if (no_loose_vert_hint) {
     mesh.tag_loose_verts_none();
@@ -432,8 +431,7 @@ static void tag_mesh_added_faces(Mesh &mesh)
                                   mesh.runtime->loose_verts_cache.data().count == 0;
   const bool no_loose_edge_hint = mesh.runtime->loose_edges_cache.is_cached() &&
                                   mesh.runtime->loose_edges_cache.data().count == 0;
-  const bool no_overlapping_hint = mesh.runtime->has_overlapping_cache.is_cached() &&
-                                   !mesh.runtime->has_overlapping_cache.data();
+  const bool no_overlapping_hint = mesh.no_overlapping_topology();
   BKE_mesh_runtime_clear_cache(&mesh);
   if (no_loose_vert_hint) {
     mesh.tag_loose_verts_none();

@@ -965,8 +965,7 @@ static AllMeshesInfo preprocess_meshes(const bke::GeometrySet &geometry_set,
       });
   info.no_overlapping_hint = std::all_of(
       info.order.begin(), info.order.end(), [](const Mesh *mesh) {
-        return mesh->runtime->has_overlapping_cache.is_cached() &&
-               !mesh->runtime->has_overlapping_cache.data();
+        return mesh->no_overlapping_topology();
       });
 
   return info;
