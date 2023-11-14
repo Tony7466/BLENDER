@@ -168,8 +168,7 @@ static void fsmenu_add_windows_quick_access(FSMenu *fsmenu,
 {
   Microsoft::WRL::ComPtr<IShellDispatch> shell;
   if (CoCreateInstance(CLSID_Shell, nullptr, CLSCTX_ALL, IID_PPV_ARGS(shell.GetAddressOf())) !=
-      S_OK)
-  {
+      S_OK) {
     return;
   }
 
