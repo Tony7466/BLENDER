@@ -140,13 +140,14 @@ static Array<meshintersect::CDT_result<double>> do_group_aware_cdt(
 
   IndexMaskMemory mask_memory;
   Array<IndexMask> group_masks(groups_num);
-
-  const auto get_group_index = [&](const int i) {
-    const int group_id = group_ids_span[i];
-    return group_indexing.index_of(group_id);
-  };
-
-  IndexMask::from_groups<int>(IndexMask(domain_size), mask_memory, get_group_index, group_masks);
+  IndexMask::from_groups<int>(
+      IndexMask(domain_size),
+      mask_memory,
+      [&](const int i) {
+        const int group_id = group_ids_span[i];
+        return group_indexing.index_of(group_id);
+      },
+      group_masks);
 
   Array<meshintersect::CDT_result<double>> cdt_results(groups_num);
 
