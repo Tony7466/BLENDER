@@ -4303,7 +4303,7 @@ static bool move_context_to_graph_editor(bContext *C)
   return found_graph_editor;
 }
 
-static void deselect_all_fcurves(bAnimContext *ac, const bool isolate)
+static void deselect_all_fcurves(bAnimContext *ac, const bool hide)
 {
   ListBase anim_data = {nullptr, nullptr};
   const eAnimFilter_Flags filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE |
@@ -4314,7 +4314,7 @@ static void deselect_all_fcurves(bAnimContext *ac, const bool isolate)
     FCurve *fcu = (FCurve *)ale->key_data;
     fcu->flag &= ~FCURVE_SELECTED;
     fcu->flag &= ~FCURVE_ACTIVE;
-    if (isolate) {
+    if (hide) {
       fcu->flag &= ~FCURVE_VISIBLE;
     }
   }
@@ -4322,17 +4322,22 @@ static void deselect_all_fcurves(bAnimContext *ac, const bool isolate)
   ANIM_animdata_freelist(&anim_data);
 }
 
-static void calculate_selection_fcurve_bounds(bContext *C,
+static rctf calculate_selection_fcurve_bounds(bContext *C,
                                               ListBase /* CollectionPointerLink */ *selection,
                                               PropertyRNA *prop,
                                               char *id_to_prop_path,
                                               const int index,
-                                              const bool whole_array,
-                                              rctf *r_bounds)
+                                              const bool whole_array)
 {
+  rctf bounds;
+  bounds.xmin = INFINITY;
+  bounds.xmax = -INFINITY;
+  bounds.ymin = INFINITY;
+  bounds.ymax = -INFINITY;
+
   SpaceLink *ge_space_link = CTX_wm_space_data(C);
   if (ge_space_link->spacetype != SPACE_GRAPH) {
-    return;
+    return bounds;
   }
 
   Scene *scene = CTX_data_scene(C);
@@ -4398,9 +4403,11 @@ static void calculate_selection_fcurve_bounds(bContext *C,
                                    include_handles,
                                    mapped_frame_range,
                                    &fcu_bounds);
-      BLI_rctf_union(r_bounds, &fcu_bounds);
+      BLI_rctf_union(&bounds, &fcu_bounds);
     }
   }
+
+  return bounds;
 }
 
 static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
@@ -4444,16 +4451,10 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  rctf bounds{};
-  bounds.xmin = INFINITY;
-  bounds.xmax = -INFINITY;
-  bounds.ymin = INFINITY;
-  bounds.ymax = -INFINITY;
-
   const bool whole_array = RNA_boolean_get(op->ptr, "all");
 
-  calculate_selection_fcurve_bounds(
-      C, &selection, prop, id_to_prop_path, index, whole_array, &bounds);
+  rctf bounds = calculate_selection_fcurve_bounds(
+      C, &selection, prop, id_to_prop_path, index, whole_array);
 
   BLI_freelistN(&selection);
 
