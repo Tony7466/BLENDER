@@ -482,7 +482,9 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
         Vector<GizmoFloatVariable> variables = find_gizmo_float_value_paths(
             gizmo_node, compute_context, *ob_orig, nmd);
-        if (variables.is_empty()) {
+        /* The gizmo should be drawn even if there is nothing linked to the value input, because
+         * that results in a better initial user experience. */
+        if (variables.is_empty() && gizmo_node.input_socket(0).is_directly_linked()) {
           return;
         }
 
@@ -589,7 +591,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
             for (const int i : user_data->variables.index_range()) {
               GizmoFloatVariable &variable = user_data->variables[i];
               const float initial_value = user_data->initial_values[i];
-              const float new_value = initial_value + new_gizmo_value_clamped * variable.derivative;
+              const float new_value = initial_value +
+                                      new_gizmo_value_clamped * variable.derivative;
               const float new_value_clamped = variable.path.clamp(new_value);
               new_gizmo_value_clamped = (new_value_clamped - initial_value) / variable.derivative;
             }
