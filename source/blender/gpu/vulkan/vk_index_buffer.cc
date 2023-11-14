@@ -89,7 +89,7 @@ void VKIndexBuffer::allocate()
 VKBufferWithOffset VKIndexBuffer::buffer_with_offset()
 {
   VKIndexBuffer *src = unwrap(src_);
-  VKBufferWithOffset result{is_subrange_ ? src->buffer_ : buffer_, index_start_};
+  VKBufferWithOffset result{is_subrange_ ? src->buffer_ : buffer_, 0};
 
   BLI_assert_msg(is_subrange_ || result.offset == 0,
                  "According to design index_start should always be zero when index buffer isn't "
