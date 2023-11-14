@@ -19,6 +19,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_idprop.hh"
+#include "BKE_instances.hh"
 #include "BKE_modifier.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
@@ -315,6 +316,94 @@ static ThemeColorID get_gizmo_theme_color_id(const bNode &gizmo_node)
   return TH_GIZMO_PRIMARY;
 }
 
+static const float4x4 *find_direct_gizmo_transform(const bke::GeometrySet &geometry,
+                                                   const ComputeContextHash &compute_context_hash,
+                                                   const int gizmo_node_identifier)
+{
+  if (const auto *edit_data_component = geometry.get_component<bke::GeometryComponentEditData>()) {
+    if (const float4x4 *m = edit_data_component->gizmo_transforms_.lookup_ptr(
+            {compute_context_hash, gizmo_node_identifier}))
+    {
+      return m;
+    }
+  }
+  return nullptr;
+}
+
+static bool has_nested_gizmo_transform(const bke::GeometrySet &geometry,
+                                       const ComputeContextHash &compute_context_hash,
+                                       const int gizmo_node_identifier)
+{
+  if (find_direct_gizmo_transform(geometry, compute_context_hash, gizmo_node_identifier)) {
+    return true;
+  }
+  if (!geometry.has_instances()) {
+    return false;
+  }
+  const bke::Instances *instances = geometry.get_instances();
+  for (const bke::InstanceReference &reference : instances->references()) {
+    if (reference.type() != bke::InstanceReference::Type::GeometrySet) {
+      continue;
+    }
+    const bke::GeometrySet &reference_geometry = reference.geometry_set();
+    if (has_nested_gizmo_transform(
+            reference_geometry, compute_context_hash, gizmo_node_identifier)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static std::optional<float4x4> find_gizmo_crazy_space_transform_recursive(
+    const bke::GeometrySet &geometry,
+    const ComputeContextHash &compute_context_hash,
+    const int gizmo_node_identifier,
+    const float4x4 &transform)
+{
+  if (const float4x4 *m = find_direct_gizmo_transform(
+          geometry, compute_context_hash, gizmo_node_identifier))
+  {
+    return transform * *m;
+  }
+  if (!geometry.has_instances()) {
+    return std::nullopt;
+  }
+  const bke::Instances *instances = geometry.get_instances();
+  const Span<bke::InstanceReference> references = instances->references();
+  const Span<int> handles = instances->reference_handles();
+  const Span<float4x4> transforms = instances->transforms();
+  for (const int reference_i : references.index_range()) {
+    const bke::InstanceReference &reference = references[reference_i];
+    if (reference.type() != bke::InstanceReference::Type::GeometrySet) {
+      continue;
+    }
+    const bke::GeometrySet &reference_geometry = reference.geometry_set();
+    if (has_nested_gizmo_transform(
+            reference_geometry, compute_context_hash, gizmo_node_identifier)) {
+      const int index = handles.first_index_try(reference_i);
+      if (index >= 0) {
+        const float4x4 sub_transform = transform * transforms[index];
+        if (const std::optional<float4x4> m = find_gizmo_crazy_space_transform_recursive(
+                reference_geometry, compute_context_hash, gizmo_node_identifier, sub_transform))
+        {
+          return *m;
+        }
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+static std::optional<float4x4> find_gizmo_crazy_space_transform(
+    const bke::GeometrySet &geometry,
+    const ComputeContextHash &compute_context_hash,
+    const int gizmo_node_identifier)
+{
+  const float4x4 identity = float4x4::identity();
+  return find_gizmo_crazy_space_transform_recursive(
+      geometry, compute_context_hash, gizmo_node_identifier, identity);
+}
+
 static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
   auto *gzgroup_data = static_cast<GeometryNodesGizmoGroup *>(gzgroup->customdata);
@@ -337,7 +426,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   }
 
   const bke::GeometrySet geometry = bke::object_get_evaluated_geometry_set(*ob_eval);
-  const auto *edit_data_component = geometry.get_component<bke::GeometryComponentEditData>();
 
   bNodeTree &ntree = *nmd.node_group;
   ntree.ensure_topology_cache();
@@ -451,13 +539,10 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         }
         else {
           float4x4 crazy_space_transform = float4x4::identity();
-          if (edit_data_component) {
-            /* TODO: Not only lookup in top level edit data component but also in instances. */
-            if (const float4x4 *m = edit_data_component->gizmo_transforms_.lookup_ptr(
-                    {compute_context.hash(), gizmo_node.identifier}))
-            {
-              crazy_space_transform = *m;
-            }
+          if (const std::optional<float4x4> m = find_gizmo_crazy_space_transform(
+                  geometry, compute_context.hash(), gizmo_node.identifier))
+          {
+            crazy_space_transform = *m;
           }
 
           const math::Quaternion rotation = math::from_vector(
