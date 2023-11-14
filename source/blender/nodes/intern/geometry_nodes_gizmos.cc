@@ -314,70 +314,81 @@ void foreach_active_gizmo(
     return;
   }
   LISTBASE_FOREACH (const wmWindow *, window, &wm.windows) {
-    const bScreen *screen = BKE_workspace_active_screen_get(window->workspace_hook);
-    LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
-      const SpaceLink *sl = static_cast<SpaceLink *>(area->spacedata.first);
-      if (sl->spacetype == SPACE_NODE) {
-        const SpaceNode &snode = *reinterpret_cast<const SpaceNode *>(sl);
-        if (snode.nodetree == nullptr) {
+    const bScreen *active_screen = BKE_workspace_active_screen_get(window->workspace_hook);
+    Vector<const bScreen *> screens = {active_screen};
+    if (ELEM(active_screen->state, SCREENMAXIMIZED, SCREENFULL)) {
+      const ScrArea *area = static_cast<const ScrArea *>(active_screen->areabase.first);
+      screens.append(area->full);
+    }
+    for (const bScreen *screen : screens) {
+      LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
+        const SpaceLink *sl = static_cast<SpaceLink *>(area->spacedata.first);
+        if (sl == nullptr) {
           continue;
         }
-        if (!snode.edittree->runtime->gizmo_inferencing) {
-          continue;
-        }
-        const std::optional<ed::space_node::ObjectAndModifier> object_and_modifier =
-            ed::space_node::get_modifier_for_node_editor(snode);
-        if (!object_and_modifier.has_value()) {
-          continue;
-        }
-        if (object_and_modifier->object != &object) {
-          continue;
-        }
-        if (object_and_modifier->nmd != &nmd) {
-          continue;
-        }
+        if (sl->spacetype == SPACE_NODE) {
+          const SpaceNode &snode = *reinterpret_cast<const SpaceNode *>(sl);
+          if (snode.nodetree == nullptr) {
+            continue;
+          }
+          if (!snode.edittree->runtime->gizmo_inferencing) {
+            continue;
+          }
+          const std::optional<ed::space_node::ObjectAndModifier> object_and_modifier =
+              ed::space_node::get_modifier_for_node_editor(snode);
+          if (!object_and_modifier.has_value()) {
+            continue;
+          }
+          if (object_and_modifier->object != &object) {
+            continue;
+          }
+          if (object_and_modifier->nmd != &nmd) {
+            continue;
+          }
 
-        ComputeContextBuilder compute_context_builder;
-        compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
-        if (!ed::space_node::push_compute_context_for_tree_path(snode, compute_context_builder)) {
-          continue;
-        }
-        const GizmoInferencingResult &gizmo_inferencing =
-            *snode.edittree->runtime->gizmo_inferencing;
-        Set<GizmoInput> used_gizmo_inputs;
-        for (auto item : gizmo_inferencing.gizmo_inputs_for_value_node.items()) {
-          const bNode &node = *item.key;
-          if (!(node.flag & NODE_SELECT)) {
+          ComputeContextBuilder compute_context_builder;
+          compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
+          if (!ed::space_node::push_compute_context_for_tree_path(snode, compute_context_builder))
+          {
             continue;
           }
-          used_gizmo_inputs.add_multiple(item.value);
-        }
-        for (auto item : gizmo_inferencing.gizmo_inputs_for_node_inputs.items()) {
-          const bNode &node = item.key->owner_node();
-          if (!(node.flag & NODE_SELECT)) {
-            continue;
+          const GizmoInferencingResult &gizmo_inferencing =
+              *snode.edittree->runtime->gizmo_inferencing;
+          Set<GizmoInput> used_gizmo_inputs;
+          for (auto item : gizmo_inferencing.gizmo_inputs_for_value_node.items()) {
+            const bNode &node = *item.key;
+            if (!(node.flag & NODE_SELECT)) {
+              continue;
+            }
+            used_gizmo_inputs.add_multiple(item.value);
           }
-          used_gizmo_inputs.add_multiple(item.value);
-        }
-        for (const bNode *node : gizmo_inferencing.nodes_with_gizmos_inside) {
-          if (!(node->flag & NODE_SELECT)) {
-            continue;
+          for (auto item : gizmo_inferencing.gizmo_inputs_for_node_inputs.items()) {
+            const bNode &node = item.key->owner_node();
+            if (!(node.flag & NODE_SELECT)) {
+              continue;
+            }
+            used_gizmo_inputs.add_multiple(item.value);
           }
-          if (ELEM(node->type, GEO_NODE_GIZMO_ARROW, GEO_NODE_GIZMO_DIAL)) {
-            fn(*compute_context_builder.current(), *node);
-          }
-          else if (node->is_group()) {
-            const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
-            for (const auto item :
-                 group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_input.items()) {
-              const GizmoInput gizmo_input{&node->input_socket(item.key.input_index),
-                                           item.key.elem_index};
-              used_gizmo_inputs.add(gizmo_input);
+          for (const bNode *node : gizmo_inferencing.nodes_with_gizmos_inside) {
+            if (!(node->flag & NODE_SELECT)) {
+              continue;
+            }
+            if (ELEM(node->type, GEO_NODE_GIZMO_ARROW, GEO_NODE_GIZMO_DIAL)) {
+              fn(*compute_context_builder.current(), *node);
+            }
+            else if (node->is_group()) {
+              const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
+              for (const auto item :
+                   group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_input.items()) {
+                const GizmoInput gizmo_input{&node->input_socket(item.key.input_index),
+                                             item.key.elem_index};
+                used_gizmo_inputs.add(gizmo_input);
+              }
             }
           }
-        }
-        for (const GizmoInput &gizmo_input : used_gizmo_inputs) {
-          foreach_gizmo_for_input(gizmo_input, compute_context_builder, *snode.edittree, fn);
+          for (const GizmoInput &gizmo_input : used_gizmo_inputs) {
+            foreach_gizmo_for_input(gizmo_input, compute_context_builder, *snode.edittree, fn);
+          }
         }
       }
     }
