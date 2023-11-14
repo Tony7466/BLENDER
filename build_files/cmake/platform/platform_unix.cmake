@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2016 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2016 Blender Foundation
 
 # Libraries configuration for any *nix system including Linux and Unix (excluding APPLE).
 
@@ -20,14 +21,14 @@ else()
     # Choose the best suitable libraries.
     if(EXISTS ${LIBDIR_NATIVE_ABI})
       set(LIBDIR ${LIBDIR_NATIVE_ABI})
-      set(WITH_LIBC_MALLOC_HOOK_WORKAROUND True)
+      set(WITH_LIBC_MALLOC_HOOK_WORKAROUND TRUE)
     elseif(EXISTS ${LIBDIR_GLIBC228_ABI})
       set(LIBDIR ${LIBDIR_GLIBC228_ABI})
       if(WITH_MEM_JEMALLOC)
         # jemalloc provides malloc hooks.
-        set(WITH_LIBC_MALLOC_HOOK_WORKAROUND False)
+        set(WITH_LIBC_MALLOC_HOOK_WORKAROUND FALSE)
       else()
-        set(WITH_LIBC_MALLOC_HOOK_WORKAROUND True)
+        set(WITH_LIBC_MALLOC_HOOK_WORKAROUND TRUE)
       endif()
     endif()
 
@@ -45,12 +46,13 @@ else()
   endif()
 endif()
 
-
 # Support restoring this value once pre-compiled libraries have been handled.
 set(WITH_STATIC_LIBS_INIT ${WITH_STATIC_LIBS})
 
 if(DEFINED LIBDIR)
-  message(STATUS "Using pre-compiled LIBDIR: ${LIBDIR}")
+  if(FIRST_RUN)
+    message(STATUS "Using pre-compiled LIBDIR: ${LIBDIR}")
+  endif()
 
   file(GLOB LIB_SUBDIRS ${LIBDIR}/*)
 
@@ -76,7 +78,7 @@ if(DEFINED LIBDIR)
     set(WITH_OPENMP_STATIC ON)
   endif()
   set(Boost_NO_BOOST_CMAKE ON)
-  set(BOOST_ROOT ${LIBDIR}/boost)
+  set(Boost_ROOT ${LIBDIR}/boost)
   set(BOOST_LIBRARYDIR ${LIBDIR}/boost/lib)
   set(Boost_NO_SYSTEM_PATHS ON)
   set(OPENEXR_ROOT_DIR ${LIBDIR}/openexr)
@@ -109,21 +111,46 @@ find_package_wrapper(ZLIB REQUIRED)
 find_package_wrapper(Zstd REQUIRED)
 find_package_wrapper(Epoxy REQUIRED)
 
+# XXX Linking errors with debian static tiff :/
+# find_package_wrapper(TIFF REQUIRED)
+find_package(TIFF)
+
 if(WITH_VULKAN_BACKEND)
-  find_package_wrapper(Vulkan REQUIRED)
-  find_package_wrapper(ShaderC REQUIRED)
+  if((DEFINED LIBDIR) AND (EXISTS "${LIBDIR}/vulkan") AND (EXISTS "${LIBDIR}/shaderc"))
+    if(NOT DEFINED VULKAN_ROOT_DIR)
+      set(VULKAN_ROOT_DIR ${LIBDIR}/vulkan)
+    endif()
+    if(NOT DEFINED SHADERC_ROOT_DIR)
+      set(SHADERC_ROOT_DIR ${LIBDIR}/shaderc)
+    endif()
+
+    find_package_wrapper(Vulkan REQUIRED)
+    find_package_wrapper(ShaderC REQUIRED)
+  else()
+    # Use system libs
+    find_package(PkgConfig)
+    pkg_check_modules(VULKAN REQUIRED vulkan)
+    pkg_check_modules(SHADERC REQUIRED shaderc)
+  endif()
 endif()
+add_bundled_libraries(vulkan/lib)
 
 function(check_freetype_for_brotli)
-  include(CheckSymbolExists)
-  set(CMAKE_REQUIRED_INCLUDES ${FREETYPE_INCLUDE_DIRS})
-  check_symbol_exists(FT_CONFIG_OPTION_USE_BROTLI "freetype/config/ftconfig.h" HAVE_BROTLI)
-  unset(CMAKE_REQUIRED_INCLUDES)
-  if(NOT HAVE_BROTLI)
+  if((DEFINED HAVE_BROTLI AND HAVE_BROTLI) AND
+     (DEFINED HAVE_BROTLI_INC AND ("${HAVE_BROTLI_INC}" STREQUAL "${FREETYPE_INCLUDE_DIRS}")))
+    # Pass, the includes didn't change, use the cached value.
+  else()
     unset(HAVE_BROTLI CACHE)
-    message(FATAL_ERROR "Freetype needs to be compiled with brotli support!")
+    include(CheckSymbolExists)
+    set(CMAKE_REQUIRED_INCLUDES ${FREETYPE_INCLUDE_DIRS})
+    check_symbol_exists(FT_CONFIG_OPTION_USE_BROTLI "freetype/config/ftconfig.h" HAVE_BROTLI)
+    unset(CMAKE_REQUIRED_INCLUDES)
+    if(NOT HAVE_BROTLI)
+      unset(HAVE_BROTLI CACHE)
+      message(FATAL_ERROR "Freetype needs to be compiled with brotli support!")
+    endif()
+    set(HAVE_BROTLI_INC "${FREETYPE_INCLUDE_DIRS}" CACHE INTERNAL "")
   endif()
-  unset(HAVE_BROTLI CACHE)
 endfunction()
 
 if(NOT WITH_SYSTEM_FREETYPE)
@@ -139,6 +166,9 @@ if(NOT WITH_SYSTEM_FREETYPE)
     # list(APPEND FREETYPE_LIBRARIES
     #   ${BROTLI_LIBRARIES}
     # )
+  else()
+    # Quiet warning as this variable will be used after `FREETYPE_LIBRARIES`.
+    set(BROTLI_LIBRARIES "")
   endif()
   check_freetype_for_brotli()
 endif()
@@ -176,6 +206,10 @@ Proceeding with PYTHON_SITE_PACKAGES install target, you have been warned!"
       unset(_is_prefix)
     endif()
   endif()
+else()
+  # Python executable is needed as part of the build-process,
+  # note that building without Python is quite unusual.
+  find_program(PYTHON_EXECUTABLE "python3")
 endif()
 
 if(WITH_IMAGE_OPENEXR)
@@ -188,13 +222,6 @@ add_bundled_libraries(imath/lib)
 if(WITH_IMAGE_OPENJPEG)
   find_package_wrapper(OpenJPEG)
   set_and_warn_library_found("OpenJPEG" OPENJPEG_FOUND WITH_IMAGE_OPENJPEG)
-endif()
-
-if(WITH_IMAGE_TIFF)
-  # XXX Linking errors with debian static tiff :/
-#       find_package_wrapper(TIFF)
-  find_package(TIFF)
-  set_and_warn_library_found("TIFF" TIFF_FOUND WITH_IMAGE_TIFF)
 endif()
 
 if(WITH_OPENAL)
@@ -245,10 +272,14 @@ if(WITH_CODEC_FFMPEG)
       theora theoradec theoraenc
       vorbis vorbisenc vorbisfile ogg
       vpx
-      x264
-      xvidcore)
-    if((DEFINED LIBDIR) AND (EXISTS ${LIBDIR}/ffmpeg/lib/libaom.a))
-      list(APPEND FFMPEG_FIND_COMPONENTS aom)
+      x264)
+    if(DEFINED LIBDIR)
+      if(EXISTS ${LIBDIR}/ffmpeg/lib/libaom.a)
+        list(APPEND FFMPEG_FIND_COMPONENTS aom)
+      endif()
+      if(EXISTS ${LIBDIR}/ffmpeg/lib/libxvidcore.a)
+        list(APPEND FFMPEG_FIND_COMPONENTS xvidcore)
+      endif()
     endif()
   elseif(FFMPEG)
     # Old cache variable used for root dir, convert to new standard.
@@ -317,15 +348,24 @@ if(WITH_CYCLES AND WITH_CYCLES_OSL)
   endif()
 endif()
 
-if(WITH_CYCLES AND (WITH_CYCLES_DEVICE_ONEAPI OR (WITH_CYCLES_EMBREE AND EMBREE_SYCL_SUPPORT)))
+if(WITH_CYCLES AND WITH_CYCLES_DEVICE_ONEAPI)
   set(CYCLES_LEVEL_ZERO ${LIBDIR}/level-zero CACHE PATH "Path to Level Zero installation")
+  mark_as_advanced(CYCLES_LEVEL_ZERO)
   if(EXISTS ${CYCLES_LEVEL_ZERO} AND NOT LEVEL_ZERO_ROOT_DIR)
     set(LEVEL_ZERO_ROOT_DIR ${CYCLES_LEVEL_ZERO})
   endif()
 
   set(CYCLES_SYCL ${LIBDIR}/dpcpp CACHE PATH "Path to oneAPI DPC++ compiler")
+  mark_as_advanced(CYCLES_SYCL)
   if(EXISTS ${CYCLES_SYCL} AND NOT SYCL_ROOT_DIR)
     set(SYCL_ROOT_DIR ${CYCLES_SYCL})
+  endif()
+endif()
+
+# add_bundled_libraries for SYCL, but custom since we need to filter the files.
+if(DEFINED LIBDIR)
+  if(NOT DEFINED SYCL_ROOT_DIR)
+    set(SYCL_ROOT_DIR ${LIBDIR}/dpcpp)
   endif()
   file(GLOB _sycl_runtime_libraries
     ${SYCL_ROOT_DIR}/lib/libsycl.so
@@ -361,6 +401,7 @@ endif()
 if(WITH_USD)
   find_package_wrapper(USD)
   set_and_warn_library_found("USD" USD_FOUND WITH_USD)
+  set_and_warn_library_found("Hydra" USD_FOUND WITH_HYDRA)
 endif()
 add_bundled_libraries(usd/lib)
 
@@ -458,6 +499,7 @@ add_bundled_libraries(embree/lib)
 if(WITH_OPENIMAGEDENOISE)
   find_package_wrapper(OpenImageDenoise)
   set_and_warn_library_found("OpenImageDenoise" OPENIMAGEDENOISE_FOUND WITH_OPENIMAGEDENOISE)
+  add_bundled_libraries(openimagedenoise/lib)
 endif()
 
 if(WITH_LLVM)
@@ -521,10 +563,13 @@ endif()
 
 if(WITH_CYCLES AND WITH_CYCLES_PATH_GUIDING)
   find_package_wrapper(openpgl)
+  mark_as_advanced(openpgl_DIR)
   if(openpgl_FOUND)
     get_target_property(OPENPGL_LIBRARIES openpgl::openpgl LOCATION)
     get_target_property(OPENPGL_INCLUDE_DIR openpgl::openpgl INTERFACE_INCLUDE_DIRECTORIES)
-    message(STATUS "Found OpenPGL: ${OPENPGL_LIBRARIES}")
+    if(FIRST_RUN)
+      message(STATUS "Found OpenPGL: ${OPENPGL_LIBRARIES}")
+    endif()
   else()
     set(WITH_CYCLES_PATH_GUIDING OFF)
     message(STATUS "OpenPGL not found, disabling WITH_CYCLES_PATH_GUIDING")
@@ -589,6 +634,8 @@ if(WITH_SYSTEM_FREETYPE)
     message(FATAL_ERROR "Failed finding system FreeType version!")
   endif()
   check_freetype_for_brotli()
+  # Quiet warning as this variable will be used after `FREETYPE_LIBRARIES`.
+  set(BROTLI_LIBRARIES "")
 endif()
 
 if(WITH_LZO AND WITH_SYSTEM_LZO)
@@ -689,20 +736,14 @@ if(WITH_GHOST_WAYLAND)
   set_and_warn_library_found("xkbcommon" xkbcommon_FOUND WITH_GHOST_WAYLAND)
 
   if(WITH_GHOST_WAYLAND)
-    if(WITH_GHOST_WAYLAND_DBUS)
-      pkg_check_modules(dbus REQUIRED dbus-1)
-    endif()
-
     if(WITH_GHOST_WAYLAND_LIBDECOR)
       if(_use_system_wayland)
-        pkg_check_modules(libdecor REQUIRED libdecor-0>=0.1)
+        pkg_check_modules(libdecor libdecor-0>=0.1)
       else()
         set(libdecor_INCLUDE_DIRS "${LIBDIR}/wayland_libdecor/include/libdecor-0")
+        set(libdecor_FOUND ON)
       endif()
-    endif()
-
-    if(WITH_GHOST_WAYLAND_DBUS)
-      add_definitions(-DWITH_GHOST_WAYLAND_DBUS)
+      set_and_warn_library_found("libdecor" libdecor_FOUND WITH_GHOST_WAYLAND_LIBDECOR)
     endif()
 
     if(WITH_GHOST_WAYLAND_LIBDECOR)
@@ -755,14 +796,19 @@ endif()
 
 if(WITH_GHOST_X11)
   find_package(X11 REQUIRED)
+  # For some reason the finder doesn't mark this.
+  mark_as_advanced(X11_xcb_xkb_INCLUDE_PATH)
 
   find_path(X11_XF86keysym_INCLUDE_PATH X11/XF86keysym.h ${X11_INC_SEARCH_PATH})
   mark_as_advanced(X11_XF86keysym_INCLUDE_PATH)
 
   if(WITH_X11_XINPUT)
     if(NOT X11_Xinput_LIB)
-      message(FATAL_ERROR "LibXi not found. Disable WITH_X11_XINPUT if you
-      want to build without tablet support")
+      message(
+        FATAL_ERROR
+        "LibXi not found. "
+        "Disable WITH_X11_XINPUT if you want to build without tablet support"
+      )
     endif()
   endif()
 
@@ -771,15 +817,21 @@ if(WITH_GHOST_X11)
     find_library(X11_Xxf86vmode_LIB Xxf86vm   ${X11_LIB_SEARCH_PATH})
     mark_as_advanced(X11_Xxf86vmode_LIB)
     if(NOT X11_Xxf86vmode_LIB)
-      message(FATAL_ERROR "libXxf86vm not found. Disable WITH_X11_XF86VMODE if you
-      want to build without")
+      message(
+        FATAL_ERROR
+        "libXxf86vm not found. "
+        "Disable WITH_X11_XF86VMODE if you want to build without"
+      )
     endif()
   endif()
 
   if(WITH_X11_XFIXES)
     if(NOT X11_Xfixes_LIB)
-      message(FATAL_ERROR "libXfixes not found. Disable WITH_X11_XFIXES if you
-      want to build without")
+      message(
+        FATAL_ERROR
+        "libXfixes not found. "
+        "Disable WITH_X11_XFIXES if you want to build without"
+      )
     endif()
   endif()
 
@@ -787,8 +839,11 @@ if(WITH_GHOST_X11)
     find_library(X11_Xrender_LIB Xrender ${X11_LIB_SEARCH_PATH})
     mark_as_advanced(X11_Xrender_LIB)
     if(NOT X11_Xrender_LIB)
-      message(FATAL_ERROR "libXrender not found. Disable WITH_X11_ALPHA if you
-      want to build without")
+      message(
+        FATAL_ERROR
+        "libXrender not found. "
+        "Disable WITH_X11_ALPHA if you want to build without"
+      )
     endif()
   endif()
 
@@ -806,8 +861,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
   # Automatically turned on when building with "-march=native". This is
   # explicitly turned off here as it will make floating point math give a bit
   # different results. This will lead to automated test failures. So disable
-  # this until we support it. Seems to default to off in clang and the intel
-  # compiler.
+  # this until we support it.
   set(PLATFORM_CFLAGS "-pipe -fPIC -funsigned-char -fno-strict-aliasing -ffp-contract=off")
 
   # `maybe-uninitialized` is unreliable in release builds, but fine in debug builds.
@@ -818,64 +872,49 @@ if(CMAKE_COMPILER_IS_GNUCC)
   string(PREPEND CMAKE_CXX_FLAGS_RELWITHDEBINFO "${GCC_EXTRA_FLAGS_RELEASE} ")
   unset(GCC_EXTRA_FLAGS_RELEASE)
 
-  # NOTE(@campbellbarton): Eventually mold will be able to use `-fuse-ld=mold`,
-  # however at the moment this only works for GCC 12.1+ (unreleased at time of writing).
-  # So a workaround is used here "-B" which points to another path to find system commands
-  # such as `ld`.
   if(WITH_LINKER_MOLD AND _IS_LINKER_DEFAULT)
     find_program(MOLD_BIN "mold")
     mark_as_advanced(MOLD_BIN)
+
     if(NOT MOLD_BIN)
       message(STATUS "The \"mold\" binary could not be found, using system linker.")
       set(WITH_LINKER_MOLD OFF)
+    elseif(CMAKE_C_COMPILER_VERSION VERSION_LESS 12.1)
+      message(STATUS "GCC 12.1 or newer is required for th MOLD linker.")
+      set(WITH_LINKER_MOLD OFF)
     else()
-      # By default mold installs the binary to:
-      # - `{PREFIX}/bin/mold` as well as a symbolic-link in...
-      # - `{PREFIX}/lib/mold/ld`.
-      # (where `PREFIX` is typically `/usr/`).
-      #
-      # This block of code finds `{PREFIX}/lib/mold` from the `mold` binary.
-      # Other methods of searching for the path could also be made to work,
-      # we could even make our own directory and symbolic-link, however it's more
-      # convenient to use the one provided by mold.
-      #
-      # Use the binary path to "mold", to find the common prefix which contains "lib/mold".
-      # The parent directory: e.g. `/usr/bin/mold` -> `/usr/bin/`.
-      get_filename_component(MOLD_PREFIX "${MOLD_BIN}" DIRECTORY)
-      # The common prefix path: e.g. `/usr/bin/` -> `/usr/` to use as a hint.
-      get_filename_component(MOLD_PREFIX "${MOLD_PREFIX}" DIRECTORY)
-      # Find `{PREFIX}/lib/mold/ld`, store the directory component (without the `ld`).
-      # Then pass `-B {PREFIX}/lib/mold` to GCC so the `ld` located there overrides the default.
-      find_path(
-        MOLD_BIN_DIR "ld"
-        HINTS "${MOLD_PREFIX}"
-        # The default path is `libexec`, Arch Linux for e.g.
-        # replaces this with `lib` so check both.
-        PATH_SUFFIXES "libexec/mold" "lib/mold" "lib64/mold"
-        NO_DEFAULT_PATH
-        NO_CACHE
+      get_filename_component(MOLD_BIN_DIR "${MOLD_BIN}" DIRECTORY)
+      # Check if the `-B` argument is required.
+      # This will happen when `MOLD_BIN` points to a non-standard location.
+      # Keep this option as mold is not yet a standard system component and
+      # users may have it installed in some unexpected place.
+      set(_mold_args "-fuse-ld=mold")
+      execute_process(
+        COMMAND ${CMAKE_C_COMPILER} -B ${MOLD_BIN_DIR} ${_mold_args} -Wl,--version
+        ERROR_QUIET OUTPUT_VARIABLE LD_VERSION_WITH_DIR
       )
-      if(NOT MOLD_BIN_DIR)
-        message(STATUS
-          "The mold linker could not find the directory containing the linker command "
-          "(typically "
-          "\"${MOLD_PREFIX}/libexec/mold/ld\") or "
-          "\"${MOLD_PREFIX}/lib/mold/ld\") using system linker."
-        )
-        set(WITH_LINKER_MOLD OFF)
+      execute_process(
+        COMMAND ${CMAKE_C_COMPILER} ${_mold_args} -Wl,--version
+        ERROR_QUIET OUTPUT_VARIABLE LD_VERSION
+      )
+      if(NOT (LD_VERSION STREQUAL LD_VERSION_WITH_DIR))
+        string(PREPEND _mold_args "-B \"${MOLD_BIN_DIR}\" ")
+        set(LD_VERSION "${LD_VERSION_WITH_DIR}")
       endif()
-      unset(MOLD_PREFIX)
-    endif()
 
-    if(WITH_LINKER_MOLD)
-      # GCC will search for `ld` in this directory first.
-      string(APPEND CMAKE_EXE_LINKER_FLAGS    " -B \"${MOLD_BIN_DIR}\"")
-      string(APPEND CMAKE_SHARED_LINKER_FLAGS " -B \"${MOLD_BIN_DIR}\"")
-      string(APPEND CMAKE_MODULE_LINKER_FLAGS " -B \"${MOLD_BIN_DIR}\"")
-      set(_IS_LINKER_DEFAULT OFF)
+      if("${LD_VERSION}" MATCHES "mold ")
+        string(APPEND CMAKE_EXE_LINKER_FLAGS    " ${_mold_args}")
+        string(APPEND CMAKE_SHARED_LINKER_FLAGS " ${_mold_args}")
+        string(APPEND CMAKE_MODULE_LINKER_FLAGS " ${_mold_args}")
+        set(_IS_LINKER_DEFAULT OFF)
+      else()
+        message(STATUS "GNU mold linker isn't available, using the default system linker.")
+      endif()
+      unset(_mold_args)
+      unset(MOLD_BIN_DIR)
+      unset(LD_VERSION)
     endif()
     unset(MOLD_BIN)
-    unset(MOLD_BIN_DIR)
   endif()
 
   if(WITH_LINKER_GOLD AND _IS_LINKER_DEFAULT)
@@ -910,7 +949,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
 
 # CLang is the same as GCC for now.
 elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
-  set(PLATFORM_CFLAGS "-pipe -fPIC -funsigned-char -fno-strict-aliasing")
+  set(PLATFORM_CFLAGS "-pipe -fPIC -funsigned-char -fno-strict-aliasing -ffp-contract=off")
 
   if(WITH_LINKER_MOLD AND _IS_LINKER_DEFAULT)
     find_program(MOLD_BIN "mold")
@@ -931,6 +970,27 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
       set(_IS_LINKER_DEFAULT OFF)
     endif()
     unset(MOLD_BIN)
+  endif()
+
+  if(WITH_LINKER_LLD AND _IS_LINKER_DEFAULT)
+    find_program(LLD_BIN "ld.lld")
+    mark_as_advanced(LLD_BIN)
+    if(NOT LLD_BIN)
+      message(STATUS "The \"ld.lld\" binary could not be found, using system linker.")
+      set(WITH_LINKER_LLD OFF)
+    else()
+      if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 12.0)
+        string(APPEND CMAKE_EXE_LINKER_FLAGS    " --ld-path=\"${LLD_BIN}\"")
+        string(APPEND CMAKE_SHARED_LINKER_FLAGS " --ld-path=\"${LLD_BIN}\"")
+        string(APPEND CMAKE_MODULE_LINKER_FLAGS " --ld-path=\"${LLD_BIN}\"")
+      else()
+        string(APPEND CMAKE_EXE_LINKER_FLAGS    " -fuse-ld=\"${LLD_BIN}\"")
+        string(APPEND CMAKE_SHARED_LINKER_FLAGS " -fuse-ld=\"${LLD_BIN}\"")
+        string(APPEND CMAKE_MODULE_LINKER_FLAGS " -fuse-ld=\"${LLD_BIN}\"")
+      endif()
+      set(_IS_LINKER_DEFAULT OFF)
+    endif()
+    unset(LLD_BIN)
   endif()
 
 # Intel C++ Compiler
@@ -974,10 +1034,15 @@ endif()
 
 if(WITH_COMPILER_CCACHE)
   find_program(CCACHE_PROGRAM ccache)
+  mark_as_advanced(CCACHE_PROGRAM)
   if(CCACHE_PROGRAM)
     # Makefiles and ninja
     set(CMAKE_C_COMPILER_LAUNCHER   "${CCACHE_PROGRAM}" CACHE STRING "" FORCE)
     set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "" FORCE)
+    mark_as_advanced(
+      CMAKE_C_COMPILER_LAUNCHER
+      CMAKE_CXX_COMPILER_LAUNCHER
+    )
   else()
     message(WARNING "Ccache NOT found, disabling WITH_COMPILER_CCACHE")
     set(WITH_COMPILER_CCACHE OFF)
@@ -1022,7 +1087,7 @@ if(PLATFORM_BUNDLED_LIBRARIES)
 
   # Environment variables to run precompiled executables that needed libraries.
   list(JOIN PLATFORM_BUNDLED_LIBRARY_DIRS ":" _library_paths)
-  set(PLATFORM_ENV_BUILD "LD_LIBRARY_PATH=\"${_library_paths};${LD_LIBRARY_PATH}\"")
+  set(PLATFORM_ENV_BUILD "LD_LIBRARY_PATH=\"${_library_paths}:$LD_LIBRARY_PATH\"")
   set(PLATFORM_ENV_INSTALL "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/lib/;$LD_LIBRARY_PATH")
   unset(_library_paths)
 endif()

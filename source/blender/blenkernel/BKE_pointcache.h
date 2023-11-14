@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -46,7 +47,6 @@ extern "C" {
 #define PTCACHE_TYPE_SMOKE_HIGHRES 4
 #define PTCACHE_TYPE_DYNAMICPAINT 5
 #define PTCACHE_TYPE_RIGIDBODY 6
-#define PTCACHE_TYPE_SIM_PARTICLES 7
 
 /* high bits reserved for flags that need to be stored in file */
 #define PTCACHE_TYPEFLAG_COMPRESS (1 << 16)
@@ -119,14 +119,14 @@ typedef struct PTCacheID {
   unsigned int default_step;
   unsigned int max_step;
 
-  /* flags defined in DNA_object_force_types.h */
+  /** flags defined in `DNA_object_force_types.h`. */
   unsigned int data_types, info_types;
 
-  /* Copies point data to cache data. */
+  /** Copies point data to cache data. */
   int (*write_point)(int index, void *calldata, void **data, int cfra);
-  /* Copies cache data to point data. */
+  /** Copies cache data to point data. */
   void (*read_point)(int index, void *calldata, void **data, float cfra, const float *old_data);
-  /* Interpolated between previously read point data and cache data. */
+  /** Interpolated between previously read point data and cache data. */
   void (*interpolate_point)(int index,
                             void *calldata,
                             void **data,
@@ -135,32 +135,34 @@ typedef struct PTCacheID {
                             float cfra2,
                             const float *old_data);
 
-  /* copies point data to cache data */
+  /** Copies point data to cache data. */
   int (*write_stream)(PTCacheFile *pf, void *calldata);
-  /* copies cache cata to point data */
+  /** Copies cache data to point data. */
   int (*read_stream)(PTCacheFile *pf, void *calldata);
 
-  /* copies custom extradata to cache data */
+  /** Copies custom #PTCacheMem::extradata to cache data. */
   void (*write_extra_data)(void *calldata, struct PTCacheMem *pm, int cfra);
-  /* copies custom extradata to cache data */
+  /** Copies custom #PTCacheMem::extradata to cache data. */
   void (*read_extra_data)(void *calldata, struct PTCacheMem *pm, float cfra);
-  /* copies custom extradata to cache data */
+  /** Copies custom #PTCacheMem::extradata to cache data */
   void (*interpolate_extra_data)(
       void *calldata, struct PTCacheMem *pm, float cfra, float cfra1, float cfra2);
 
-  /* Total number of simulated points
-   * (the cfra parameter is just for using same function pointer with totwrite). */
+  /**
+   * Total number of simulated points
+   * (the `cfra` parameter is just for using same function pointer with `totwrite`).
+   */
   int (*totpoint)(void *calldata, int cfra);
-  /* report error if number of points does not match */
+  /** Report error if number of points does not match */
   void (*error)(const struct ID *owner_id, void *calldata, const char *message);
-  /* number of points written for current cache frame */
+  /** Number of points written for current cache frame. */
   int (*totwrite)(void *calldata, int cfra);
 
   int (*write_header)(PTCacheFile *pf);
   int (*read_header)(PTCacheFile *pf);
 
   struct PointCache *cache;
-  /* used for setting the current cache from ptcaches list */
+  /** Used for setting the current cache from `ptcaches` list. */
   struct PointCache **cache_ptr;
   struct ListBase *ptcaches;
 } PTCacheID;
@@ -247,7 +249,7 @@ typedef struct PTCacheEdit {
   struct ParticleSystemModifierData *psmd;
   struct ParticleSystemModifierData *psmd_eval;
   struct KDTree_3d *emitter_field;
-  /* Localspace face centers and normals (average of its verts), from the derived mesh. */
+  /** Local-space face centers and normals (average of its verts), from the derived mesh. */
   float *emitter_cosnos;
   int *mirror_cache;
 

@@ -1,11 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
  */
 
 #pragma once
+
+#ifndef WITH_OPENGL_BACKEND
+#  error "ContextEGL requires WITH_OPENGL_BACKEND"
+#endif
 
 #include "GHOST_Context.hh"
 #include "GHOST_System.hh"
@@ -121,6 +126,11 @@ class GHOST_ContextEGL : public GHOST_Context {
 
   EGLContext &m_sharedContext;
   EGLint &m_sharedCount;
+
+  /**
+   * True when the surface is created from `m_nativeWindow`.
+   */
+  bool m_surface_from_native_window;
 
   static EGLContext s_gl_sharedContext;
   static EGLint s_gl_sharedCount;

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -98,12 +100,12 @@ struct Geometry {
   /* Mapping from global vertex index to geometry-local vertex index. */
   Map<int, int> global_to_local_vertices_;
   /* Loose edges in the file. */
-  Vector<MEdge> edges_;
+  Vector<int2> edges_;
 
   Vector<PolyCorner> face_corners_;
   Vector<PolyElem> face_elements_;
 
-  bool has_invalid_polys_ = false;
+  bool has_invalid_faces_ = false;
   bool has_vertex_groups_ = false;
   NurbsElement nurbs_element_;
   int total_loops_ = 0;

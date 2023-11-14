@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ScaleOperation.h"
 #include "COM_ConstantOperation.h"
@@ -222,8 +223,8 @@ void ScaleOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
     const float scale_x = get_constant_scale_x(input_width);
     const float scale_y = get_constant_scale_y(input_height);
     scale_area(r_area, scale_x, scale_y);
-    const Size2f max_scale_size = {MAX2(input_width, max_scale_canvas_size_.x),
-                                   MAX2(input_height, max_scale_canvas_size_.y)};
+    const Size2f max_scale_size = {std::max(input_width, max_scale_canvas_size_.x),
+                                   std::max(input_height, max_scale_canvas_size_.y)};
     clamp_area_size_max(r_area, max_scale_size);
 
     /* Re-determine canvases of x and y constant inputs with scaled canvas as preferred. */

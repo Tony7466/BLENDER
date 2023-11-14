@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2010 Blender Foundation */
+/* SPDX-FileCopyrightText: 2010 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -61,7 +62,7 @@ extern const char *GHOST_getBinaryDir(void);
 /**
  * Add the file to the operating system most recently used files
  */
-extern void GHOST_addToSystemRecentFiles(const char *filename);
+extern void GHOST_addToSystemRecentFiles(const char *filepath);
 
 #ifdef __cplusplus
 }

@@ -1,24 +1,28 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <algorithm>
 
 #include "curves_sculpt_intern.hh"
 
+#include "BLI_math_geom.h"
+
 #include "BKE_attribute_math.hh"
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
 #include "BKE_curves.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "BLI_length_parameterize.hh"
 #include "BLI_task.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLT_translation.h"
 
@@ -216,7 +220,8 @@ std::optional<CurvesBrush3D> sample_curves_3d_brush(const Depsgraph &depsgraph,
     if (center_ray_hit.index >= 0) {
       const float3 hit_position_su = center_ray_hit.co;
       if (math::distance(center_ray_start_su, center_ray_end_su) >
-          math::distance(center_ray_start_su, hit_position_su)) {
+          math::distance(center_ray_start_su, hit_position_su))
+      {
         center_ray_end_su = hit_position_su;
         center_ray_end_wo = math::transform_point(surface_to_world_mat, center_ray_end_su);
       }
@@ -371,7 +376,7 @@ void move_last_point_and_resample(MoveAndResampleBuffers &buffer,
   /* Find the factor by which the new curve is shorter or longer than the original. */
   const float new_last_segment_length = math::distance(positions.last(1), new_last_position);
   const float new_total_length = buffer.orig_lengths.last(1) + new_last_segment_length;
-  const float length_factor = safe_divide(new_total_length, orig_total_length);
+  const float length_factor = math::safe_divide(new_total_length, orig_total_length);
 
   /* Calculate the lengths to sample the original curve with by scaling the original lengths. */
   buffer.new_lengths.reinitialize(positions.size() - 1);
@@ -434,7 +439,7 @@ void report_invalid_uv_map(ReportList *reports)
 }
 
 void CurvesConstraintSolver::initialize(const bke::CurvesGeometry &curves,
-                                        const IndexMask curve_selection,
+                                        const IndexMask &curve_selection,
                                         const bool use_surface_collision)
 {
   use_surface_collision_ = use_surface_collision;
@@ -447,7 +452,7 @@ void CurvesConstraintSolver::initialize(const bke::CurvesGeometry &curves,
 }
 
 void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
-                                        const IndexMask curve_selection,
+                                        const IndexMask &curve_selection,
                                         const Mesh *surface,
                                         const CurvesSurfaceTransforms &transforms)
 {

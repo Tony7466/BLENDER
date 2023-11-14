@@ -1,8 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
  */
+
+#include <iostream>
 
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
@@ -14,13 +18,13 @@
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_node_tree_update.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_object_deform.h"
 
 #include "BLI_math_vector.h"
 #include "BLI_set.hh"
 
-#include "IO_wavefront_obj.h"
+#include "IO_wavefront_obj.hh"
 #include "importer_mesh_utils.hh"
 #include "obj_export_mtl.hh"
 #include "obj_import_mesh.hh"
@@ -48,19 +52,19 @@ Object *MeshFromGeometry::create_mesh(Main *bmain,
   const int64_t tot_face_elems{mesh_geometry_.face_elements_.size()};
   const int64_t tot_loops{mesh_geometry_.total_loops_};
 
-  Mesh *mesh = BKE_mesh_new_nomain(tot_verts_object, tot_edges, tot_loops, tot_face_elems);
+  Mesh *mesh = BKE_mesh_new_nomain(tot_verts_object, tot_edges, tot_face_elems, tot_loops);
   Object *obj = BKE_object_add_only_object(bmain, OB_MESH, ob_name.c_str());
   obj->data = BKE_object_obdata_add_from_type(bmain, OB_MESH, ob_name.c_str());
 
   create_vertices(mesh);
-  create_polys_loops(mesh, import_params.import_vertex_groups && !import_params.use_split_groups);
+  create_faces_loops(mesh, import_params.import_vertex_groups && !import_params.use_split_groups);
   create_edges(mesh);
   create_uv_verts(mesh);
   create_normals(mesh);
   create_colors(mesh);
   create_materials(bmain, materials, created_materials, obj, import_params.relative_paths);
 
-  if (import_params.validate_meshes || mesh_geometry_.has_invalid_polys_) {
+  if (import_params.validate_meshes || mesh_geometry_.has_invalid_faces_) {
     bool verbose_validate = false;
 #ifdef DEBUG
     verbose_validate = true;
@@ -175,7 +179,7 @@ void MeshFromGeometry::create_vertices(Mesh *mesh)
   }
 }
 
-void MeshFromGeometry::create_polys_loops(Mesh *mesh, bool use_vertex_groups)
+void MeshFromGeometry::create_faces_loops(Mesh *mesh, bool use_vertex_groups)
 {
   MutableSpan<MDeformVert> dverts;
   const int64_t total_verts = mesh_geometry_.get_vertex_count();
@@ -183,7 +187,7 @@ void MeshFromGeometry::create_polys_loops(Mesh *mesh, bool use_vertex_groups)
     dverts = mesh->deform_verts_for_write();
   }
 
-  MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
+  MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter<int> material_indices =
@@ -191,43 +195,43 @@ void MeshFromGeometry::create_polys_loops(Mesh *mesh, bool use_vertex_groups)
   bke::SpanAttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write_span<bool>(
       "sharp_face", ATTR_DOMAIN_FACE);
 
-  const int64_t tot_face_elems{mesh->totpoly};
+  const int64_t tot_face_elems{mesh->faces_num};
   int tot_loop_idx = 0;
 
-  for (int poly_idx = 0; poly_idx < tot_face_elems; ++poly_idx) {
-    const PolyElem &curr_face = mesh_geometry_.face_elements_[poly_idx];
+  for (int face_idx = 0; face_idx < tot_face_elems; ++face_idx) {
+    const PolyElem &curr_face = mesh_geometry_.face_elements_[face_idx];
     if (curr_face.corner_count_ < 3) {
       /* Don't add single vertex face, or edges. */
       std::cerr << "Face with less than 3 vertices found, skipping." << std::endl;
       continue;
     }
 
-    poly_offsets[poly_idx] = tot_loop_idx;
-    sharp_faces.span[poly_idx] = !curr_face.shaded_smooth;
-    material_indices.span[poly_idx] = curr_face.material_index;
+    face_offsets[face_idx] = tot_loop_idx;
+    sharp_faces.span[face_idx] = !curr_face.shaded_smooth;
+    material_indices.span[face_idx] = curr_face.material_index;
     /* Importing obj files without any materials would result in negative indices, which is not
      * supported. */
-    if (material_indices.span[poly_idx] < 0) {
-      material_indices.span[poly_idx] = 0;
+    if (material_indices.span[face_idx] < 0) {
+      material_indices.span[face_idx] = 0;
     }
 
     for (int idx = 0; idx < curr_face.corner_count_; ++idx) {
       const PolyCorner &curr_corner = mesh_geometry_.face_corners_[curr_face.start_index_ + idx];
       corner_verts[tot_loop_idx] = mesh_geometry_.global_to_local_vertices_.lookup_default(
           curr_corner.vert_index, 0);
-      tot_loop_idx++;
 
       /* Setup vertex group data, if needed. */
-      if (dverts.is_empty()) {
-        continue;
+      if (!dverts.is_empty()) {
+        const int group_index = curr_face.vertex_group_index;
+        /* NOTE: face might not belong to any group. */
+        if (group_index >= 0 || true) {
+          MDeformWeight *dw = BKE_defvert_ensure_index(&dverts[corner_verts[tot_loop_idx]],
+                                                       group_index);
+          dw->weight = 1.0f;
+        }
       }
-      const int group_index = curr_face.vertex_group_index;
-      /* Note: face might not belong to any group */
-      if (group_index >= 0 || 1) {
-        MDeformWeight *dw = BKE_defvert_ensure_index(&dverts[corner_verts[tot_loop_idx]],
-                                                     group_index);
-        dw->weight = 1.0f;
-      }
+
+      tot_loop_idx++;
     }
   }
 
@@ -248,17 +252,17 @@ void MeshFromGeometry::create_vertex_groups(Object *obj)
 
 void MeshFromGeometry::create_edges(Mesh *mesh)
 {
-  MutableSpan<MEdge> edges = mesh->edges_for_write();
+  MutableSpan<int2> edges = mesh->edges_for_write();
 
   const int64_t tot_edges{mesh_geometry_.edges_.size()};
   const int64_t total_verts{mesh_geometry_.get_vertex_count()};
   UNUSED_VARS_NDEBUG(total_verts);
   for (int i = 0; i < tot_edges; ++i) {
-    const MEdge &src_edge = mesh_geometry_.edges_[i];
-    MEdge &dst_edge = edges[i];
-    dst_edge.v1 = mesh_geometry_.global_to_local_vertices_.lookup_default(src_edge.v1, 0);
-    dst_edge.v2 = mesh_geometry_.global_to_local_vertices_.lookup_default(src_edge.v2, 0);
-    BLI_assert(dst_edge.v1 < total_verts && dst_edge.v2 < total_verts);
+    const int2 &src_edge = mesh_geometry_.edges_[i];
+    int2 &dst_edge = edges[i];
+    dst_edge[0] = mesh_geometry_.global_to_local_vertices_.lookup_default(src_edge[0], 0);
+    dst_edge[1] = mesh_geometry_.global_to_local_vertices_.lookup_default(src_edge[1], 0);
+    BLI_assert(dst_edge[0] < total_verts && dst_edge[0] < total_verts);
   }
 
   /* Set argument `update` to true so that existing, explicitly imported edges can be merged
@@ -283,7 +287,8 @@ void MeshFromGeometry::create_uv_verts(Mesh *mesh)
     for (int idx = 0; idx < curr_face.corner_count_; ++idx) {
       const PolyCorner &curr_corner = mesh_geometry_.face_corners_[curr_face.start_index_ + idx];
       if (curr_corner.uv_vert_index >= 0 &&
-          curr_corner.uv_vert_index < global_vertices_.uv_vertices.size()) {
+          curr_corner.uv_vert_index < global_vertices_.uv_vertices.size())
+      {
         uv_map.span[tot_loop_idx] = global_vertices_.uv_vertices[curr_corner.uv_vert_index];
         added_uv = true;
       }
@@ -374,14 +379,13 @@ void MeshFromGeometry::create_normals(Mesh *mesh)
       const PolyCorner &curr_corner = mesh_geometry_.face_corners_[curr_face.start_index_ + idx];
       int n_index = curr_corner.vertex_normal_index;
       float3 normal(0, 0, 0);
-      if (n_index >= 0) {
+      if (n_index >= 0 && n_index < global_vertices_.vert_normals.size()) {
         normal = global_vertices_.vert_normals[n_index];
       }
       copy_v3_v3(loop_normals[tot_loop_idx], normal);
       tot_loop_idx++;
     }
   }
-  mesh->flag |= ME_AUTOSMOOTH;
   BKE_mesh_set_custom_normals(mesh, loop_normals);
   MEM_freeN(loop_normals);
 }
@@ -396,7 +400,8 @@ void MeshFromGeometry::create_colors(Mesh *mesh)
   /* Find which vertex color block is for this mesh (if any). */
   for (const auto &block : global_vertices_.vertex_colors) {
     if (mesh_geometry_.vertex_index_min_ >= block.start_vertex_index &&
-        mesh_geometry_.vertex_index_max_ < block.start_vertex_index + block.colors.size()) {
+        mesh_geometry_.vertex_index_max_ < block.start_vertex_index + block.colors.size())
+    {
       /* This block is suitable, use colors from it. */
       CustomDataLayer *color_layer = BKE_id_attribute_new(
           &mesh->id, "Color", CD_PROP_COLOR, ATTR_DOMAIN_POINT, nullptr);

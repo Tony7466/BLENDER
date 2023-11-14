@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2021-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 ## Update and uncomment this in the release branch
@@ -106,7 +108,6 @@ download_source(FLAC)
 download_source(VPX)
 download_source(OPUS)
 download_source(X264)
-download_source(XVIDCORE)
 download_source(OPENJPEG)
 download_source(FFMPEG)
 download_source(FFTW)
@@ -136,6 +137,7 @@ download_source(XR_OPENXR_SDK)
 download_source(WL_PROTOCOLS)
 download_source(WAYLAND)
 download_source(WAYLAND_LIBDECOR)
+download_source(WAYLAND_WESTON)
 download_source(ISPC)
 download_source(GMP)
 download_source(POTRACE)
@@ -156,6 +158,7 @@ download_source(OPENCLHEADERS)
 download_source(ICDLOADER)
 download_source(MP11)
 download_source(SPIRV_HEADERS)
+download_source(UNIFIED_RUNTIME)
 download_source(IGC)
 download_source(IGC_LLVM)
 download_source(IGC_OPENCL_CLANG)

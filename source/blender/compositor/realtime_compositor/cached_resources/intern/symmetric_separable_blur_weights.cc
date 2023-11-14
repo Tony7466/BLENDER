@@ -1,6 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <cstdint>
+#include <memory>
 
 #include "BLI_array.hh"
 #include "BLI_hash.hh"
@@ -12,6 +15,8 @@
 #include "GPU_shader.h"
 #include "GPU_texture.h"
 
+#include "COM_context.hh"
+#include "COM_result.hh"
 #include "COM_symmetric_separable_blur_weights.hh"
 
 namespace blender::realtime_compositor {
@@ -40,7 +45,9 @@ bool operator==(const SymmetricSeparableBlurWeightsKey &a,
  * Symmetric Separable Blur Weights.
  */
 
-SymmetricSeparableBlurWeights::SymmetricSeparableBlurWeights(int type, float radius)
+SymmetricSeparableBlurWeights::SymmetricSeparableBlurWeights(Context &context,
+                                                             int type,
+                                                             float radius)
 {
   /* The size of filter is double the radius plus 1, but since the filter is symmetric, we only
    * compute half of it and no doubling happens. We add 1 to make sure the filter size is always
@@ -71,7 +78,12 @@ SymmetricSeparableBlurWeights::SymmetricSeparableBlurWeights(int type, float rad
   }
 
   texture_ = GPU_texture_create_1d(
-      "Weights", size, 1, GPU_R16F, GPU_TEXTURE_USAGE_GENERAL, weights.data());
+      "Weights",
+      size,
+      1,
+      Result::texture_format(ResultType::Float, context.get_precision()),
+      GPU_TEXTURE_USAGE_GENERAL,
+      weights.data());
 }
 
 SymmetricSeparableBlurWeights::~SymmetricSeparableBlurWeights()
@@ -89,6 +101,36 @@ void SymmetricSeparableBlurWeights::bind_as_texture(GPUShader *shader,
 void SymmetricSeparableBlurWeights::unbind_as_texture() const
 {
   GPU_texture_unbind(texture_);
+}
+
+/* --------------------------------------------------------------------
+ * Symmetric Separable Blur Weights Container.
+ */
+
+void SymmetricSeparableBlurWeightsContainer::reset()
+{
+  /* First, delete all resources that are no longer needed. */
+  map_.remove_if([](auto item) { return !item.value->needed; });
+
+  /* Second, reset the needed status of the remaining resources to false to ready them to track
+   * their needed status for the next evaluation. */
+  for (auto &value : map_.values()) {
+    value->needed = false;
+  }
+}
+
+SymmetricSeparableBlurWeights &SymmetricSeparableBlurWeightsContainer::get(Context &context,
+                                                                           int type,
+                                                                           float radius)
+{
+  const SymmetricSeparableBlurWeightsKey key(type, radius);
+
+  auto &weights = *map_.lookup_or_add_cb(key, [&]() {
+    return std::make_unique<SymmetricSeparableBlurWeights>(context, type, radius);
+  });
+
+  weights.needed = true;
+  return weights;
 }
 
 }  // namespace blender::realtime_compositor

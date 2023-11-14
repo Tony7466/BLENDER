@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -21,7 +22,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_memarena.h"
 #include "BLI_scanfill.h"
 #include "BLI_span.hh"
@@ -37,14 +38,14 @@
 #include "BKE_lib_id.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_vfont.h"
 
 #include "BLI_sys_types.h" /* For #intptr_t support. */
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 using blender::IndexRange;
 
@@ -66,9 +67,7 @@ static void displist_elem_free(DispList *dl)
 
 void BKE_displist_free(ListBase *lb)
 {
-  DispList *dl;
-
-  while ((dl = (DispList *)BLI_pophead(lb))) {
+  while (DispList *dl = (DispList *)BLI_pophead(lb)) {
     displist_elem_free(dl);
   }
 }
@@ -136,10 +135,10 @@ static void curve_to_displist(const Curve *cu,
 
     const int resolution = (for_render && cu->resolu_ren != 0) ? cu->resolu_ren : nu->resolu;
     const bool is_cyclic = nu->flagu & CU_NURB_CYCLIC;
-    const BezTriple *bezt_first = &nu->bezt[0];
-    const BezTriple *bezt_last = &nu->bezt[nu->pntsu - 1];
 
     if (nu->type == CU_BEZIER) {
+      const BezTriple *bezt_first = &nu->bezt[0];
+      const BezTriple *bezt_last = &nu->bezt[nu->pntsu - 1];
       int samples_len = 0;
       for (int i = 1; i < nu->pntsu; i++) {
         const BezTriple *prevbezt = &nu->bezt[i - 1];
@@ -513,8 +512,8 @@ static ModifierData *curve_get_tessellate_point(const Scene *scene,
                                                 const bool for_render,
                                                 const bool editmode)
 {
-  VirtualModifierData virtualModifierData;
-  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData);
+  VirtualModifierData virtual_modifier_data;
+  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data);
 
   ModifierMode required_mode = for_render ? eModifierMode_Render : eModifierMode_Realtime;
   if (editmode) {
@@ -528,7 +527,7 @@ static ModifierData *curve_get_tessellate_point(const Scene *scene,
     if (!BKE_modifier_is_enabled(scene, md, required_mode)) {
       continue;
     }
-    if (mti->type == eModifierTypeType_Constructive) {
+    if (mti->type == ModifierTypeType::Constructive) {
       return pretessellatePoint;
     }
 
@@ -571,7 +570,7 @@ void BKE_curve_calc_modifiers_pre(Depsgraph *depsgraph,
     required_mode = (ModifierMode)(int(required_mode) | eModifierMode_Editmode);
   }
 
-  ModifierApplyFlag apply_flag = (ModifierApplyFlag)0;
+  ModifierApplyFlag apply_flag = ModifierApplyFlag(0);
   if (editmode) {
     apply_flag = MOD_APPLY_USECACHE;
   }
@@ -601,15 +600,16 @@ void BKE_curve_calc_modifiers_pre(Depsgraph *depsgraph,
   ModifierData *pretessellatePoint = curve_get_tessellate_point(scene, ob, for_render, editmode);
 
   if (pretessellatePoint) {
-    VirtualModifierData virtualModifierData;
-    for (ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData); md;
-         md = md->next) {
+    VirtualModifierData virtual_modifier_data;
+    for (ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data); md;
+         md = md->next)
+    {
       const ModifierTypeInfo *mti = BKE_modifier_get_info((ModifierType)md->type);
 
       if (!BKE_modifier_is_enabled(scene, md, required_mode)) {
         continue;
       }
-      if (mti->type != eModifierTypeType_OnlyDeform) {
+      if (mti->type != ModifierTypeType::OnlyDeform) {
         continue;
       }
 
@@ -619,7 +619,8 @@ void BKE_curve_calc_modifiers_pre(Depsgraph *depsgraph,
         deformedVerts = BKE_curve_nurbs_vert_coords_alloc(source_nurb, &numVerts);
       }
 
-      mti->deformVerts(md, &mectx, nullptr, deformedVerts, numVerts);
+      mti->deform_verts(
+          md, &mectx, nullptr, {reinterpret_cast<blender::float3 *>(deformedVerts), numVerts});
 
       if (md == pretessellatePoint) {
         break;
@@ -684,37 +685,35 @@ static bool do_curve_implicit_mesh_conversion(const Curve *curve,
   return false;
 }
 
-static GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
-                                             const Scene *scene,
-                                             Object *ob,
-                                             const ListBase *dispbase,
-                                             const bool for_render)
+static blender::bke::GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
+                                                           const Scene *scene,
+                                                           Object *ob,
+                                                           const ListBase *dispbase,
+                                                           const bool for_render)
 {
   const Curve *cu = (const Curve *)ob->data;
   const bool editmode = (!for_render && (cu->editnurb || cu->editfont));
   const bool use_cache = !for_render;
 
-  ModifierApplyFlag apply_flag = for_render ? MOD_APPLY_RENDER : (ModifierApplyFlag)0;
+  ModifierApplyFlag apply_flag = for_render ? MOD_APPLY_RENDER : ModifierApplyFlag(0);
   ModifierMode required_mode = for_render ? eModifierMode_Render : eModifierMode_Realtime;
   if (editmode) {
-    required_mode = (ModifierMode)(int(required_mode) | eModifierMode_Editmode);
+    required_mode = ModifierMode(int(required_mode) | eModifierMode_Editmode);
   }
 
   const ModifierEvalContext mectx_deform = {
-      depsgraph, ob, editmode ? (ModifierApplyFlag)(apply_flag | MOD_APPLY_USECACHE) : apply_flag};
+      depsgraph, ob, editmode ? (apply_flag | MOD_APPLY_USECACHE) : apply_flag};
   const ModifierEvalContext mectx_apply = {
-      depsgraph,
-      ob,
-      use_cache ? (ModifierApplyFlag)(apply_flag | MOD_APPLY_USECACHE) : apply_flag};
+      depsgraph, ob, use_cache ? (apply_flag | MOD_APPLY_USECACHE) : apply_flag};
 
   ModifierData *pretessellatePoint = curve_get_tessellate_point(scene, ob, for_render, editmode);
 
-  VirtualModifierData virtualModifierData;
+  VirtualModifierData virtual_modifier_data;
   ModifierData *md = pretessellatePoint == nullptr ?
-                         BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData) :
+                         BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data) :
                          pretessellatePoint->next;
 
-  GeometrySet geometry_set;
+  blender::bke::GeometrySet geometry_set;
   if (ob->type == OB_SURF || do_curve_implicit_mesh_conversion(cu, md, scene, required_mode)) {
     Mesh *mesh = BKE_mesh_new_nomain_from_curve_displist(ob, dispbase);
     geometry_set.replace_mesh(mesh);
@@ -730,25 +729,24 @@ static GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
       continue;
     }
 
+    blender::bke::ScopedModifierTimer modifier_timer{*md};
+
     if (md->type == eModifierType_Nodes) {
-      mti->modifyGeometrySet(md, &mectx_apply, &geometry_set);
+      mti->modify_geometry_set(md, &mectx_apply, &geometry_set);
       continue;
     }
-
-    blender::bke::ScopedModifierTimer modifier_timer{*md};
 
     if (!geometry_set.has_mesh()) {
       geometry_set.replace_mesh(BKE_mesh_new_nomain(0, 0, 0, 0));
     }
     Mesh *mesh = geometry_set.get_mesh_for_write();
 
-    if (mti->type == eModifierTypeType_OnlyDeform) {
-      mti->deformVerts(
-          md, &mectx_deform, mesh, BKE_mesh_vert_positions_for_write(mesh), mesh->totvert);
+    if (mti->type == ModifierTypeType::OnlyDeform) {
+      mti->deform_verts(md, &mectx_deform, mesh, mesh->vert_positions_for_write());
       BKE_mesh_tag_positions_changed(mesh);
     }
     else {
-      Mesh *output_mesh = mti->modifyMesh(md, &mectx_apply, mesh);
+      Mesh *output_mesh = mti->modify_mesh(md, &mectx_apply, mesh);
       if (mesh != output_mesh) {
         geometry_set.replace_mesh(output_mesh);
       }
@@ -757,10 +755,7 @@ static GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
 
   if (geometry_set.has_mesh()) {
     Mesh *final_mesh = geometry_set.get_mesh_for_write();
-
-    BKE_mesh_ensure_normals_for_display(final_mesh);
-
-    BLI_strncpy(final_mesh->id.name, cu->id.name, sizeof(final_mesh->id.name));
+    STRNCPY(final_mesh->id.name, cu->id.name);
     *((short *)final_mesh->id.name) = ID_ME;
   }
 
@@ -798,11 +793,11 @@ static void displist_surf_indices(DispList *dl)
   }
 }
 
-static GeometrySet evaluate_surface_object(Depsgraph *depsgraph,
-                                           const Scene *scene,
-                                           Object *ob,
-                                           const bool for_render,
-                                           ListBase *r_dispbase)
+static blender::bke::GeometrySet evaluate_surface_object(Depsgraph *depsgraph,
+                                                         const Scene *scene,
+                                                         Object *ob,
+                                                         const bool for_render,
+                                                         ListBase *r_dispbase)
 {
   BLI_assert(ob->type == OB_SURF);
   const Curve *cu = (const Curve *)ob->data;
@@ -880,7 +875,7 @@ static GeometrySet evaluate_surface_object(Depsgraph *depsgraph,
   }
 
   curve_to_filledpoly(cu, r_dispbase);
-  GeometrySet geometry_set = curve_calc_modifiers_post(
+  blender::bke::GeometrySet geometry_set = curve_calc_modifiers_post(
       depsgraph, scene, ob, r_dispbase, for_render);
   if (!geometry_set.has_mesh()) {
     geometry_set.replace_mesh(BKE_mesh_new_nomain(0, 0, 0, 0));
@@ -1039,13 +1034,15 @@ static void calc_bevfac_mapping(const Curve *cu,
 
   if ((BKE_nurb_check_valid_u(nu) == false) ||
       /* not essential, but skips unnecessary calculation */
-      (min_ff(cu->bevfac1, cu->bevfac2) == 0.0f && max_ff(cu->bevfac1, cu->bevfac2) == 1.0f)) {
+      (min_ff(cu->bevfac1, cu->bevfac2) == 0.0f && max_ff(cu->bevfac1, cu->bevfac2) == 1.0f))
+  {
     calc_bevfac_mapping_default(bl, r_start, r_firstblend, r_steps, r_lastblend);
     return;
   }
 
   if (ELEM(cu->bevfac1_mapping, CU_BEVFAC_MAP_SEGMENT, CU_BEVFAC_MAP_SPLINE) ||
-      ELEM(cu->bevfac2_mapping, CU_BEVFAC_MAP_SEGMENT, CU_BEVFAC_MAP_SPLINE)) {
+      ELEM(cu->bevfac2_mapping, CU_BEVFAC_MAP_SEGMENT, CU_BEVFAC_MAP_SPLINE))
+  {
     for (i = 0; i < SEGMENTSU(nu); i++) {
       total_length += bl->seglen[i];
     }
@@ -1105,11 +1102,11 @@ static void calc_bevfac_mapping(const Curve *cu,
   }
 }
 
-static GeometrySet evaluate_curve_type_object(Depsgraph *depsgraph,
-                                              const Scene *scene,
-                                              Object *ob,
-                                              const bool for_render,
-                                              ListBase *r_dispbase)
+static blender::bke::GeometrySet evaluate_curve_type_object(Depsgraph *depsgraph,
+                                                            const Scene *scene,
+                                                            Object *ob,
+                                                            const bool for_render,
+                                                            ListBase *r_dispbase)
 {
   BLI_assert(ELEM(ob->type, OB_CURVES_LEGACY, OB_FONT));
   const Curve *cu = (const Curve *)ob->data;
@@ -1128,7 +1125,8 @@ static GeometrySet evaluate_curve_type_object(Depsgraph *depsgraph,
   BKE_curve_bevelList_make(ob, deformed_nurbs, for_render);
 
   if ((cu->flag & CU_PATH) ||
-      DEG_get_eval_flags_for_id(depsgraph, &ob->id) & DAG_EVAL_NEED_CURVE_PATH) {
+      DEG_get_eval_flags_for_id(depsgraph, &ob->id) & DAG_EVAL_NEED_CURVE_PATH)
+  {
     BKE_anim_path_calc_data(ob);
   }
 
@@ -1333,11 +1331,13 @@ void BKE_displist_make_curveTypes(Depsgraph *depsgraph,
   ListBase *dispbase = &ob->runtime.curve_cache->disp;
 
   if (ob->type == OB_SURF) {
-    GeometrySet geometry = evaluate_surface_object(depsgraph, scene, ob, for_render, dispbase);
-    ob->runtime.geometry_set_eval = new GeometrySet(std::move(geometry));
+    blender::bke::GeometrySet geometry = evaluate_surface_object(
+        depsgraph, scene, ob, for_render, dispbase);
+    ob->runtime.geometry_set_eval = new blender::bke::GeometrySet(std::move(geometry));
   }
   else {
-    GeometrySet geometry = evaluate_curve_type_object(depsgraph, scene, ob, for_render, dispbase);
+    blender::bke::GeometrySet geometry = evaluate_curve_type_object(
+        depsgraph, scene, ob, for_render, dispbase);
 
     if (geometry.has_curves()) {
       /* Create a copy of the original curve and add necessary pointers to evaluated and edit mode
@@ -1355,7 +1355,7 @@ void BKE_displist_make_curveTypes(Depsgraph *depsgraph,
        */
       Curve &cow_curve = *reinterpret_cast<Curve *>(
           BKE_id_copy_ex(nullptr, &original_curve.id, nullptr, LIB_ID_COPY_LOCALIZE));
-      cow_curve.curve_eval = geometry.get_curves_for_read();
+      cow_curve.curve_eval = geometry.get_curves();
       /* Copy edit mode pointers necessary for drawing to the duplicated curve. */
       cow_curve.editnurb = original_curve.editnurb;
       cow_curve.editfont = original_curve.editfont;
@@ -1363,7 +1363,7 @@ void BKE_displist_make_curveTypes(Depsgraph *depsgraph,
       BKE_object_eval_assign_data(ob, &cow_curve.id, true);
     }
 
-    ob->runtime.geometry_set_eval = new GeometrySet(std::move(geometry));
+    ob->runtime.geometry_set_eval = new blender::bke::GeometrySet(std::move(geometry));
   }
 
   BKE_object_boundbox_calc_from_evaluated_geometry(ob);

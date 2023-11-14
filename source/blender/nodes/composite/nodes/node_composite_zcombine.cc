@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup cmpnodes
@@ -9,10 +10,8 @@
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 
-#include "BLT_translation.h"
-
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "COM_algorithm_smaa.hh"
 #include "COM_node_operation.hh"
@@ -28,24 +27,24 @@ namespace blender::nodes::node_composite_zcombine_cc {
 
 static void cmp_node_zcombine_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>(N_("Image"))
+  b.add_input<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
-  b.add_input<decl::Float>(N_("Z"))
+  b.add_input<decl::Float>("Z")
       .default_value(1.0f)
       .min(0.0f)
       .max(10000.0f)
       .compositor_domain_priority(2);
-  b.add_input<decl::Color>(N_("Image"), "Image_001")
+  b.add_input<decl::Color>("Image", "Image_001")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(1);
-  b.add_input<decl::Float>(N_("Z"), "Z_001")
+  b.add_input<decl::Float>("Z", "Z_001")
       .default_value(1.0f)
       .min(0.0f)
       .max(10000.0f)
       .compositor_domain_priority(3);
-  b.add_output<decl::Color>(N_("Image"));
-  b.add_output<decl::Float>(N_("Z"));
+  b.add_output<decl::Color>("Image");
+  b.add_output<decl::Float>("Z");
 }
 
 static void node_composit_buts_zcombine(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -112,7 +111,7 @@ class ZCombineOperation : public NodeOperation {
 
   void execute_simple()
   {
-    GPUShader *shader = shader_manager().get("compositor_z_combine_simple");
+    GPUShader *shader = context().get_shader("compositor_z_combine_simple");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1b(shader, "use_alpha", use_alpha());
@@ -150,7 +149,7 @@ class ZCombineOperation : public NodeOperation {
   {
     Result mask = compute_mask();
 
-    GPUShader *shader = shader_manager().get("compositor_z_combine_from_mask");
+    GPUShader *shader = context().get_shader("compositor_z_combine_from_mask");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1b(shader, "use_alpha", use_alpha());
@@ -190,7 +189,7 @@ class ZCombineOperation : public NodeOperation {
 
   Result compute_mask()
   {
-    GPUShader *shader = shader_manager().get("compositor_z_combine_compute_mask");
+    GPUShader *shader = context().get_shader("compositor_z_combine_compute_mask");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1b(shader, "use_alpha", use_alpha());
@@ -203,7 +202,7 @@ class ZCombineOperation : public NodeOperation {
     second_z.bind_as_texture(shader, "second_z_tx");
 
     const Domain domain = compute_domain();
-    Result mask = Result::Temporary(ResultType::Float, texture_pool());
+    Result mask = context().create_temporary_result(ResultType::Float);
     mask.allocate_texture(domain);
     mask.bind_as_image(shader, "mask_img");
 
@@ -215,7 +214,7 @@ class ZCombineOperation : public NodeOperation {
     mask.unbind_as_image();
     GPU_shader_unbind();
 
-    Result anti_aliased_mask = Result::Temporary(ResultType::Float, texture_pool());
+    Result anti_aliased_mask = context().create_temporary_result(ResultType::Float);
     smaa(context(), mask, anti_aliased_mask);
     mask.release();
 

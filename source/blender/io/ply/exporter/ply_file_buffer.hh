@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup ply
@@ -16,7 +18,6 @@
 
 /* SEP macro from BLI path utils clashes with SEP symbol in fmt headers. */
 #undef SEP
-#define FMT_HEADER_ONLY
 #include <fmt/format.h>
 
 namespace blender::io::ply {
@@ -48,6 +49,8 @@ class FileBuffer : private NonMovable {
   virtual void write_vertex(float x, float y, float z) = 0;
 
   virtual void write_UV(float u, float v) = 0;
+
+  virtual void write_data(float v) = 0;
 
   virtual void write_vertex_normal(float nx, float ny, float nz) = 0;
 

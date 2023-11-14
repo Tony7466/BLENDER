@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -16,19 +17,19 @@
 #include "DNA_userdef_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "interface_intern.hh"
 #include "interface_regions_intern.hh"
@@ -116,17 +117,17 @@ static void ui_popup_block_position(wmWindow *window,
   const int center_x = (block->direction & UI_DIR_CENTER_X) ? size_x / 2 : 0;
   const int center_y = (block->direction & UI_DIR_CENTER_Y) ? size_y / 2 : 0;
 
+  const int win_x = WM_window_pixels_x(window);
+  const int win_y = WM_window_pixels_y(window);
+
+  /* Take into account maximum size so we don't have to flip on refresh. */
+  const float max_size_x = max_ff(size_x, handle->max_size_x);
+  const float max_size_y = max_ff(size_y, handle->max_size_y);
+
   short dir1 = 0, dir2 = 0;
 
   if (!handle->refresh) {
     bool left = false, right = false, top = false, down = false;
-
-    const int win_x = WM_window_pixels_x(window);
-    const int win_y = WM_window_pixels_y(window);
-
-    /* Take into account maximum size so we don't have to flip on refresh. */
-    const float max_size_x = max_ff(size_x, handle->max_size_x);
-    const float max_size_y = max_ff(size_y, handle->max_size_y);
 
     /* check if there's space at all */
     if (butrct.xmin - max_size_x + center_x > 0.0f) {
@@ -237,30 +238,38 @@ static void ui_popup_block_position(wmWindow *window,
   }
   else if (dir1 == UI_DIR_UP) {
     offset_y = (butrct.ymax - block->rect.ymin) - offset_overlap;
+
+    if (but->type == UI_BTYPE_COLOR && block->rect.ymax + offset_y > win_y - UI_POPUP_MENU_TOP) {
+      /* Shift this down, aligning the top edge close to the window top. */
+      offset_y = win_y - block->rect.ymax - UI_POPUP_MENU_TOP;
+      /* All four corners should be rounded since this no longer button-aligned. */
+      block->direction = UI_DIR_CENTER_Y;
+      dir1 = UI_DIR_CENTER_Y;
+    }
+
     if (dir2 == UI_DIR_RIGHT) {
       offset_x = butrct.xmax - block->rect.xmax + center_x;
     }
     else {
       offset_x = butrct.xmin - block->rect.xmin - center_x;
-    }
-    /* changed direction? */
-    if ((dir1 & block->direction) == 0) {
-      /* TODO: still do */
-      UI_block_order_flip(block);
     }
   }
   else if (dir1 == UI_DIR_DOWN) {
     offset_y = (butrct.ymin - block->rect.ymax) + offset_overlap;
+
+    if (but->type == UI_BTYPE_COLOR && block->rect.ymin + offset_y < UI_SCREEN_MARGIN) {
+      /* Shift this up, aligning the bottom edge close to the window bottom. */
+      offset_y = -block->rect.ymin + UI_SCREEN_MARGIN;
+      /* All four corners should be rounded since this no longer button-aligned. */
+      block->direction = UI_DIR_CENTER_Y;
+      dir1 = UI_DIR_CENTER_Y;
+    }
+
     if (dir2 == UI_DIR_RIGHT) {
       offset_x = butrct.xmax - block->rect.xmax + center_x;
     }
     else {
       offset_x = butrct.xmin - block->rect.xmin - center_x;
-    }
-    /* changed direction? */
-    if ((dir1 & block->direction) == 0) {
-      /* TODO: still do */
-      UI_block_order_flip(block);
     }
   }
 
@@ -529,7 +538,7 @@ static void ui_popup_block_remove(bContext *C, uiPopupBlockHandle *handle)
   }
 
   if (handle->scrolltimer) {
-    WM_event_remove_timer(wm, win, handle->scrolltimer);
+    WM_event_timer_remove(wm, win, handle->scrolltimer);
   }
 }
 
@@ -564,6 +573,11 @@ uiBlock *ui_popup_block_refresh(bContext *C,
   }
   else {
     block = handle_create_func(C, handle, arg);
+  }
+
+  /* Don't create accelerator keys if the parent menu does not have them. */
+  if (but && but->block->flag & UI_BLOCK_NO_ACCELERATOR_KEYS) {
+    block->flag |= UI_BLOCK_NO_ACCELERATOR_KEYS;
   }
 
   /* callbacks _must_ leave this for us, otherwise we can't call UI_block_update_from_old */
@@ -724,10 +738,10 @@ uiBlock *ui_popup_block_refresh(bContext *C,
   /* checks which buttons are visible, sets flags to prevent draw (do after region init) */
   ui_popup_block_scrolltest(block);
 
-  /* adds subwindow */
+  /* Adds sub-window. */
   ED_region_floating_init(region);
 
-  /* get winmat now that we actually have the subwindow */
+  /* Get `winmat` now that we actually have the sub-window. */
   wmGetProjectionMatrix(block->winmat, &region->winrct);
 
   /* notify change and redraw */
@@ -806,6 +820,9 @@ uiPopupBlockHandle *ui_popup_block_create(bContext *C,
 
 void ui_popup_block_free(bContext *C, uiPopupBlockHandle *handle)
 {
+  /* This disables the status bar text that is set when opening a menu. */
+  ED_workspace_status_text(C, nullptr);
+
   /* If this popup is created from a popover which does NOT have keep-open flag set,
    * then close the popover too. We could extend this to other popup types too. */
   ARegion *region = handle->popup_create_vars.butregion;

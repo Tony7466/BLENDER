@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -101,7 +102,7 @@ class GHOST_System : public GHOST_ISystem {
    * Never explicitly delete the context, use #disposeContext() instead.
    * \return The new context (or 0 if creation failed).
    */
-  virtual GHOST_IContext *createOffscreenContext(GHOST_GLSettings glSettings) = 0;
+  virtual GHOST_IContext *createOffscreenContext(GHOST_GPUSettings gpuSettings) = 0;
 
   /**
    * Returns whether a window is valid.
@@ -255,6 +256,13 @@ class GHOST_System : public GHOST_ISystem {
   virtual void setTabletAPI(GHOST_TTabletAPI api);
   GHOST_TTabletAPI getTabletAPI(void);
 
+  /**
+   * Get the color of the pixel at the current mouse cursor location
+   * \param r_color: returned sRGB float colors
+   * \return Success value (true == successful and supported by platform)
+   */
+  GHOST_TSuccess getPixelAtCursor(float r_color[3]) const;
+
 #ifdef WITH_INPUT_NDOF
   /***************************************************************************************
    * Access to 3D mouse.
@@ -277,7 +285,7 @@ class GHOST_System : public GHOST_ISystem {
    * Do not delete the event!
    * \param event: The event to push on the stack.
    */
-  GHOST_TSuccess pushEvent(GHOST_IEvent *event);
+  GHOST_TSuccess pushEvent(const GHOST_IEvent *event);
 
   /**
    * \return The timer manager.
@@ -319,7 +327,6 @@ class GHOST_System : public GHOST_ISystem {
    * Returns the selection buffer
    * \param selection: Only used on X11.
    * \return Returns the clipboard data
-   *
    */
   virtual char *getClipboard(bool selection) const = 0;
 
@@ -329,6 +336,27 @@ class GHOST_System : public GHOST_ISystem {
    * \param selection: The clipboard to copy too only used on X11.
    */
   virtual void putClipboard(const char *buffer, bool selection) const = 0;
+
+  /**
+   * Returns GHOST_kSuccess if the clipboard contains an image.
+   */
+  GHOST_TSuccess hasClipboardImage(void) const;
+
+  /**
+   * Get image data from the Clipboard
+   * \param r_width: the returned image width in pixels.
+   * \param r_height: the returned image height in pixels.
+   * \return pointer uint array in RGBA byte order. Caller must free.
+   */
+  uint *getClipboardImage(int *r_width, int *r_height) const;
+
+  /**
+   * Put image data to the Clipboard
+   * \param rgba: uint array in RGBA byte order.
+   * \param width: the image width in pixels.
+   * \param height: the image height in pixels.
+   */
+  GHOST_TSuccess putClipboardImage(uint *rgba, int width, int height) const;
 
   /**
    * Show a system message box

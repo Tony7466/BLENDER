@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -94,18 +96,17 @@ MTLPixelFormat gpu_texture_format_to_metal(eGPUTextureFormat tex_format)
       return MTLPixelFormatR16Float;
     case GPU_R16:
       return MTLPixelFormatR16Unorm;
-    /* Special formats texture & renderbuffer */
+    /* Special formats texture & render-buffer. */
     case GPU_RGB10_A2:
       return MTLPixelFormatRGB10A2Unorm;
     case GPU_RGB10_A2UI:
       return MTLPixelFormatRGB10A2Uint;
     case GPU_R11F_G11F_B10F:
       return MTLPixelFormatRG11B10Float;
+    case GPU_DEPTH24_STENCIL8:
+      /* NOTE(fclem): DEPTH24_STENCIL8 not supported by Apple Silicon. Fallback to Depth32F8S. */
     case GPU_DEPTH32F_STENCIL8:
       return MTLPixelFormatDepth32Float_Stencil8;
-    case GPU_DEPTH24_STENCIL8:
-      BLI_assert_msg(false, "GPU_DEPTH24_STENCIL8 not supported by Apple Silicon.");
-      return MTLPixelFormatDepth24Unorm_Stencil8;
     case GPU_SRGB8_A8:
       return MTLPixelFormatRGBA8Unorm_sRGB;
     /* Texture only formats. */
@@ -185,12 +186,15 @@ MTLPixelFormat gpu_texture_format_to_metal(eGPUTextureFormat tex_format)
   return MTLPixelFormatRGBA8Unorm;
 }
 
-int get_mtl_format_bytesize(MTLPixelFormat tex_format)
+size_t get_mtl_format_bytesize(MTLPixelFormat tex_format)
 {
   switch (tex_format) {
     case MTLPixelFormatRGBA8Uint:
     case MTLPixelFormatRGBA8Sint:
     case MTLPixelFormatRGBA8Unorm:
+    case MTLPixelFormatRGBA8Snorm:
+    case MTLPixelFormatRGB10A2Uint:
+    case MTLPixelFormatRGB10A2Unorm:
       return 4;
     case MTLPixelFormatRGBA32Uint:
     case MTLPixelFormatRGBA32Sint:
@@ -200,10 +204,13 @@ int get_mtl_format_bytesize(MTLPixelFormat tex_format)
     case MTLPixelFormatRGBA16Sint:
     case MTLPixelFormatRGBA16Float:
     case MTLPixelFormatRGBA16Unorm:
+    case MTLPixelFormatRGBA16Snorm:
       return 8;
     case MTLPixelFormatRG8Uint:
     case MTLPixelFormatRG8Sint:
     case MTLPixelFormatRG8Unorm:
+    case MTLPixelFormatRG8Snorm:
+    case MTLPixelFormatRG8Unorm_sRGB:
       return 2;
     case MTLPixelFormatRG32Uint:
     case MTLPixelFormatRG32Sint:
@@ -212,10 +219,13 @@ int get_mtl_format_bytesize(MTLPixelFormat tex_format)
     case MTLPixelFormatRG16Uint:
     case MTLPixelFormatRG16Sint:
     case MTLPixelFormatRG16Float:
+    case MTLPixelFormatRG16Unorm:
+    case MTLPixelFormatRG16Snorm:
       return 4;
     case MTLPixelFormatR8Uint:
     case MTLPixelFormatR8Sint:
     case MTLPixelFormatR8Unorm:
+    case MTLPixelFormatR8Snorm:
       return 1;
     case MTLPixelFormatR32Uint:
     case MTLPixelFormatR32Sint:
@@ -225,6 +235,7 @@ int get_mtl_format_bytesize(MTLPixelFormat tex_format)
     case MTLPixelFormatR16Sint:
     case MTLPixelFormatR16Float:
     case MTLPixelFormatR16Snorm:
+    case MTLPixelFormatR16Unorm:
       return 2;
     case MTLPixelFormatRG11B10Float:
       return 4;
@@ -249,6 +260,7 @@ int get_mtl_format_num_components(MTLPixelFormat tex_format)
     case MTLPixelFormatRGBA8Uint:
     case MTLPixelFormatRGBA8Sint:
     case MTLPixelFormatRGBA8Unorm:
+    case MTLPixelFormatRGBA8Snorm:
     case MTLPixelFormatRGBA32Uint:
     case MTLPixelFormatRGBA32Sint:
     case MTLPixelFormatRGBA32Float:
@@ -256,7 +268,10 @@ int get_mtl_format_num_components(MTLPixelFormat tex_format)
     case MTLPixelFormatRGBA16Sint:
     case MTLPixelFormatRGBA16Float:
     case MTLPixelFormatRGBA16Unorm:
+    case MTLPixelFormatRGBA16Snorm:
     case MTLPixelFormatRGBA8Unorm_sRGB:
+    case MTLPixelFormatRGB10A2Uint:
+    case MTLPixelFormatRGB10A2Unorm:
       return 4;
 
     case MTLPixelFormatRG11B10Float:
@@ -272,17 +287,22 @@ int get_mtl_format_num_components(MTLPixelFormat tex_format)
     case MTLPixelFormatRG16Sint:
     case MTLPixelFormatRG16Float:
     case MTLPixelFormatDepth32Float_Stencil8:
+    case MTLPixelFormatRG16Snorm:
+    case MTLPixelFormatRG16Unorm:
+    case MTLPixelFormatRG8Snorm:
       return 2;
 
     case MTLPixelFormatR8Uint:
     case MTLPixelFormatR8Sint:
     case MTLPixelFormatR8Unorm:
+    case MTLPixelFormatR8Snorm:
     case MTLPixelFormatR32Uint:
     case MTLPixelFormatR32Sint:
     case MTLPixelFormatR32Float:
     case MTLPixelFormatR16Uint:
     case MTLPixelFormatR16Sint:
     case MTLPixelFormatR16Float:
+    case MTLPixelFormatR16Unorm:
     case MTLPixelFormatR16Snorm:
     case MTLPixelFormatDepth32Float:
     case MTLPixelFormatDepth16Unorm:
@@ -393,7 +413,9 @@ id<MTLComputePipelineState> gpu::MTLTexture::mtl_texture_update_impl(
           [NSNumber numberWithInt:specialization_params.component_count_input],
       @"COMPONENT_COUNT_OUTPUT" :
           [NSNumber numberWithInt:specialization_params.component_count_output],
-      @"TEX_TYPE" : [NSNumber numberWithInt:((int)(texture_type))]
+      @"TEX_TYPE" : [NSNumber numberWithInt:((int)(texture_type))],
+      @"IS_TEXTURE_CLEAR" :
+          [NSNumber numberWithInt:((int)(specialization_params.is_clear ? 1 : 0))]
     };
 
     /* Prepare shader library for conversion routine. */
@@ -643,7 +665,7 @@ void gpu::MTLTexture::update_sub_depth_2d(
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Texture data read  routines
+/** \name Texture data read routines
  * \{ */
 
 id<MTLComputePipelineState> gpu::MTLTexture::mtl_texture_read_impl(

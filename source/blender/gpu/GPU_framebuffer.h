@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -33,6 +34,9 @@ typedef enum eGPUFrameBufferBits {
 } eGPUFrameBufferBits;
 
 ENUM_OPERATORS(eGPUFrameBufferBits, GPU_STENCIL_BIT)
+
+/* Guaranteed by the spec and is never greater than 16 on any hardware or implementation. */
+#define GPU_MAX_VIEWPORTS 16
 
 #ifdef __cplusplus
 extern "C" {
@@ -132,15 +136,21 @@ void GPU_framebuffer_restore(void);
 typedef struct GPULoadStore {
   eGPULoadOp load_action;
   eGPUStoreOp store_action;
+  float clear_value[4];
 } GPULoadStore;
 
 /* Empty bind point. */
+#define NULL_ATTACHMENT_COLOR \
+  { \
+    0.0, 0.0, 0.0, 0.0 \
+  }
 #define NULL_LOAD_STORE \
   { \
-    GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_DONT_CARE \
+    GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_DONT_CARE, NULL_ATTACHMENT_COLOR \
   }
 
-/* Load store config array (load_store_actions) matches attachment structure of
+/**
+ * Load store config array (load_store_actions) matches attachment structure of
  * GPU_framebuffer_config_array. This allows us to explicitly specify whether attachment data needs
  * to be loaded and stored on a per-attachment basis. This enables a number of bandwidth
  * optimizations:
@@ -157,7 +167,7 @@ typedef struct GPULoadStore {
  *         {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE}, // Color attachment 1
  *         {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE} // Color attachment 2
  * })
- * \encode
+ * \endcode
  */
 void GPU_framebuffer_bind_loadstore(GPUFrameBuffer *framebuffer,
                                     const GPULoadStore *load_store_actions,
@@ -166,6 +176,38 @@ void GPU_framebuffer_bind_loadstore(GPUFrameBuffer *framebuffer,
   { \
     GPULoadStore actions[] = __VA_ARGS__; \
     GPU_framebuffer_bind_loadstore(_fb, actions, (sizeof(actions) / sizeof(GPULoadStore))); \
+  }
+
+/**
+ * Sub-pass config array matches attachment structure of `GPU_framebuffer_config_array`.
+ * This allows to explicitly specify attachment state within the next sub-pass.
+ * This enables a number of bandwidth optimizations specially on Tile Based Deferred Renderers
+ * where the attachments can be kept into tile memory and used in place for later sub-passes.
+ *
+ * IMPORTANT: When using this, the framebuffer initial state is undefined. A sub-pass transition
+ * need to be issued before any draw-call.
+ *
+ * Example:
+ * \code{.c}
+ * GPU_framebuffer_bind_loadstore(&fb, {
+ *         GPU_ATTACHEMENT_WRITE,  // must be depth buffer
+ *         GPU_ATTACHEMENT_READ,   // Color attachment 0
+ *         GPU_ATTACHEMENT_IGNORE, // Color attachment 1
+ *         GPU_ATTACHEMENT_WRITE}  // Color attachment 2
+ * })
+ * \endcode
+ *
+ * \note Excess attachments will have no effect as long as they are GPU_ATTACHEMENT_IGNORE.
+ */
+void GPU_framebuffer_subpass_transition_array(GPUFrameBuffer *framebuffer,
+                                              const GPUAttachmentState *attachment_states,
+                                              uint attachment_len);
+
+#define GPU_framebuffer_subpass_transition(_fb, ...) \
+  { \
+    GPUAttachmentState actions[] = __VA_ARGS__; \
+    GPU_framebuffer_subpass_transition_array( \
+        _fb, actions, (sizeof(actions) / sizeof(GPUAttachmentState))); \
   }
 
 /** \} */
@@ -185,7 +227,7 @@ void GPU_framebuffer_bind_loadstore(GPUFrameBuffer *framebuffer,
  *         GPU_ATTACHMENT_TEXTURE_CUBEFACE(tex2, 0),
  *         GPU_ATTACHMENT_TEXTURE_LAYER_MIP(tex2, 0, 0)
  * })
- * \encode
+ * \endcode
  *
  * \note Unspecified attachments (i.e: those beyond the last
  * GPU_ATTACHMENT_* in GPU_framebuffer_ensure_config list) are left unchanged.
@@ -338,9 +380,22 @@ void GPU_framebuffer_default_size(GPUFrameBuffer *framebuffer, int width, int he
  * or when binding the frame-buffer after modifying its attachments.
  *
  * \note Viewport and scissor size is stored per frame-buffer.
+ * \note Setting a singular viewport will only change the state of the first viewport.
+ * \note Must be called after first bind.
  */
 void GPU_framebuffer_viewport_set(
     GPUFrameBuffer *framebuffer, int x, int y, int width, int height);
+
+/**
+ * Similar to `GPU_framebuffer_viewport_set()` but specify the bounds of all 16 viewports.
+ * By default geometry renders only to the first viewport. That can be changed by setting
+ * `gpu_ViewportIndex` in the vertex.
+ *
+ * \note Viewport and scissor size is stored per frame-buffer.
+ * \note Must be called after first bind.
+ */
+void GPU_framebuffer_multi_viewports_set(GPUFrameBuffer *gpu_fb,
+                                         const int viewport_rects[GPU_MAX_VIEWPORTS][4]);
 
 /**
  * Return the viewport offset and size in a int quadruple: (x, y, width, height).
@@ -539,7 +594,7 @@ void GPU_framebuffer_read_color(GPUFrameBuffer *framebuffer,
  * TODO: Emulate this by doing some slow texture copy on the backend side or try to read the areas
  * offscreen textures directly.
  */
-void GPU_frontbuffer_read_pixels(
+void GPU_frontbuffer_read_color(
     int x, int y, int width, int height, int channels, eGPUDataFormat data_format, void *r_data);
 
 /**
@@ -567,8 +622,8 @@ void GPU_framebuffer_blit(GPUFrameBuffer *fb_read,
  */
 void GPU_framebuffer_recursive_downsample(GPUFrameBuffer *framebuffer,
                                           int max_level,
-                                          void (*per_level_callback)(void *userData, int level),
-                                          void *userData);
+                                          void (*per_level_callback)(void *user_data, int level),
+                                          void *user_data);
 
 /** \} */
 
@@ -588,9 +643,14 @@ typedef struct GPUOffScreen GPUOffScreen;
  * \a format is the format of the color buffer.
  * If \a err_out is not `nullptr` it will be use to write any configuration error message..
  * \note This function binds the framebuffer to the active context.
+ * \note `GPU_TEXTURE_USAGE_ATTACHMENT` is added to the usage parameter by default.
  */
-GPUOffScreen *GPU_offscreen_create(
-    int width, int height, bool with_depth_buffer, eGPUTextureFormat format, char err_out[256]);
+GPUOffScreen *GPU_offscreen_create(int width,
+                                   int height,
+                                   bool with_depth_buffer,
+                                   eGPUTextureFormat format,
+                                   eGPUTextureUsage usage,
+                                   char err_out[256]);
 
 /**
  * Free a #GPUOffScreen.
@@ -616,9 +676,14 @@ void GPU_offscreen_unbind(GPUOffScreen *offscreen, bool restore);
  * Read the whole color texture of the a #GPUOffScreen.
  * The pixel data will be converted to \a data_format but it needs to be compatible with the
  * attachment type.
- * IMPORTANT: \a r_data must be big enough for all pixels in \a data_format .
+ * IMPORTANT: \a r_data must be big enough for all pixels in \a data_format.
  */
-void GPU_offscreen_read_pixels(GPUOffScreen *offscreen, eGPUDataFormat data_format, void *r_data);
+void GPU_offscreen_read_color(GPUOffScreen *offscreen, eGPUDataFormat data_format, void *r_data);
+/**
+ * A version of #GPU_offscreen_read_color that reads into a region.
+ */
+void GPU_offscreen_read_color_region(
+    GPUOffScreen *offscreen, eGPUDataFormat data_format, int x, int y, int w, int h, void *r_data);
 
 /**
  * Blit the offscreen color texture to the active framebuffer at the `(x, y)` location.
@@ -640,6 +705,11 @@ int GPU_offscreen_height(const GPUOffScreen *offscreen);
  * \note only to be used by viewport code!
  */
 struct GPUTexture *GPU_offscreen_color_texture(const GPUOffScreen *offscreen);
+
+/**
+ * Return the texture format of a #GPUOffScreen.
+ */
+eGPUTextureFormat GPU_offscreen_format(const GPUOffScreen *offscreen);
 
 /**
  * Return the internals of a #GPUOffScreen. Does not give ownership.

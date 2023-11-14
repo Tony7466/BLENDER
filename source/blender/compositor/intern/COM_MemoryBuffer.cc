@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_MemoryBuffer.h"
 
@@ -208,7 +209,8 @@ void MemoryBuffer::copy_from(const MemoryBuffer *src,
     copy_single_elem_from(src, channel_offset, elem_size, to_channel_offset);
   }
   else if (!src->is_a_single_elem() && elem_size == src->get_num_channels() &&
-           elem_size == this->get_num_channels()) {
+           elem_size == this->get_num_channels())
+  {
     BLI_assert(to_channel_offset == 0);
     BLI_assert(channel_offset == 0);
     copy_rows_from(src, area, to_x, to_y);
@@ -310,9 +312,21 @@ static void colorspace_to_scene_linear(MemoryBuffer *buf, const rcti &area, Colo
   }
 }
 
-void MemoryBuffer::copy_from(const ImBuf *src, const rcti &area, const bool ensure_linear_space)
+static void premultiply_alpha(MemoryBuffer *buf, const rcti &area)
 {
-  copy_from(src, area, 0, this->get_num_channels(), 0, ensure_linear_space);
+  for (int y = area.ymin; y < area.ymax; y++) {
+    for (int x = area.xmin; x < area.xmax; x++) {
+      straight_to_premul_v4(buf->get_elem(x, y));
+    }
+  }
+}
+
+void MemoryBuffer::copy_from(const ImBuf *src,
+                             const rcti &area,
+                             const bool ensure_premultiplied,
+                             const bool ensure_linear_space)
+{
+  copy_from(src, area, 0, this->get_num_channels(), 0, ensure_premultiplied, ensure_linear_space);
 }
 
 void MemoryBuffer::copy_from(const ImBuf *src,
@@ -320,6 +334,7 @@ void MemoryBuffer::copy_from(const ImBuf *src,
                              const int channel_offset,
                              const int elem_size,
                              const int to_channel_offset,
+                             const bool ensure_premultiplied,
                              const bool ensure_linear_space)
 {
   copy_from(src,
@@ -329,6 +344,7 @@ void MemoryBuffer::copy_from(const ImBuf *src,
             area.xmin,
             area.ymin,
             to_channel_offset,
+            ensure_premultiplied,
             ensure_linear_space);
 }
 
@@ -339,14 +355,15 @@ void MemoryBuffer::copy_from(const ImBuf *src,
                              const int to_x,
                              const int to_y,
                              const int to_channel_offset,
+                             const bool ensure_premultiplied,
                              const bool ensure_linear_space)
 {
-  if (src->rect_float) {
-    const MemoryBuffer mem_buf(src->rect_float, src->channels, src->x, src->y, false);
+  if (src->float_buffer.data) {
+    const MemoryBuffer mem_buf(src->float_buffer.data, src->channels, src->x, src->y, false);
     copy_from(&mem_buf, area, channel_offset, elem_size, to_x, to_y, to_channel_offset);
   }
-  else if (src->rect) {
-    const uchar *uc_buf = (uchar *)src->rect;
+  else if (src->byte_buffer.data) {
+    const uchar *uc_buf = src->byte_buffer.data;
     const int elem_stride = src->channels;
     const int row_stride = elem_stride * src->x;
     copy_from(uc_buf,
@@ -359,7 +376,10 @@ void MemoryBuffer::copy_from(const ImBuf *src,
               to_y,
               to_channel_offset);
     if (ensure_linear_space) {
-      colorspace_to_scene_linear(this, area, src->rect_colorspace);
+      colorspace_to_scene_linear(this, area, src->byte_buffer.colorspace);
+    }
+    if (ensure_premultiplied) {
+      premultiply_alpha(this, area);
     }
   }
   else {
@@ -389,8 +409,8 @@ void MemoryBuffer::fill_from(const MemoryBuffer &src)
   rcti overlap;
   overlap.xmin = MAX2(rect_.xmin, src.rect_.xmin);
   overlap.xmax = MIN2(rect_.xmax, src.rect_.xmax);
-  overlap.ymin = MAX2(rect_.ymin, src.rect_.ymin);
-  overlap.ymax = MIN2(rect_.ymax, src.rect_.ymax);
+  overlap.ymin = std::max(rect_.ymin, src.rect_.ymin);
+  overlap.ymax = std::min(rect_.ymax, src.rect_.ymax);
   copy_from(&src, overlap);
 }
 

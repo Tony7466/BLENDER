@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -57,7 +59,7 @@ typedef struct BMEditMesh {
   int mirror_cdlayer;
 
   /**
-   * Enable for evaluated copies, causes the edit-mesh to free the memory, not it's contents.
+   * Enable for evaluated copies, causes the edit-mesh to free the memory, not its contents.
    */
   char is_shallow_copy;
 
@@ -118,11 +120,7 @@ const float (*BKE_editmesh_vert_coords_when_deformed(struct Depsgraph *depsgraph
                                                      int *r_vert_len,
                                                      bool *r_is_alloc))[3];
 
-void BKE_editmesh_lnorspace_update(BMEditMesh *em, struct Mesh *me);
-/**
- * If auto-smooth not already set, set it.
- */
-void BKE_editmesh_ensure_autosmooth(BMEditMesh *em, struct Mesh *me);
+void BKE_editmesh_lnorspace_update(BMEditMesh *em);
 struct BoundBox *BKE_editmesh_cage_boundbox_get(struct Object *object, BMEditMesh *em);
 
 #ifdef __cplusplus

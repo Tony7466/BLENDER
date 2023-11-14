@@ -1,7 +1,9 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Header, Menu, Panel
-from bl_ui_utils.layout import operator_context
 
 from bpy.app.translations import (
     pgettext_iface as iface_,
@@ -157,7 +159,7 @@ class TOPBAR_PT_gpencil_layers(Panel):
                       icon='MOD_MASK' if gpl.use_mask_layer else 'LAYER_ACTIVE')
 
             srow = col.row(align=True)
-            srow.prop(gpl, "use_lights")
+            srow.prop(gpl, "use_lights", text="Lights")
 
         col = row.column()
 
@@ -236,34 +238,34 @@ class TOPBAR_MT_file_cleanup(Menu):
         layout = self.layout
         layout.separator()
 
-        op_props = layout.operator("outliner.orphans_purge", text="Unused Data-Blocks")
-        op_props.do_local_ids = True
-        op_props.do_linked_ids = True
-        op_props.do_recursive = False
-        op_props = layout.operator("outliner.orphans_purge", text="Recursive Unused Data-Blocks")
-        op_props.do_local_ids = True
-        op_props.do_linked_ids = True
-        op_props.do_recursive = True
+        props = layout.operator("outliner.orphans_purge", text="Unused Data-Blocks")
+        props.do_local_ids = True
+        props.do_linked_ids = True
+        props.do_recursive = False
+        props = layout.operator("outliner.orphans_purge", text="Recursive Unused Data-Blocks")
+        props.do_local_ids = True
+        props.do_linked_ids = True
+        props.do_recursive = True
 
         layout.separator()
-        op_props = layout.operator("outliner.orphans_purge", text="Unused Linked Data-Blocks")
-        op_props.do_local_ids = False
-        op_props.do_linked_ids = True
-        op_props.do_recursive = False
-        op_props = layout.operator("outliner.orphans_purge", text="Recursive Unused Linked Data-Blocks")
-        op_props.do_local_ids = False
-        op_props.do_linked_ids = True
-        op_props.do_recursive = True
+        props = layout.operator("outliner.orphans_purge", text="Unused Linked Data-Blocks")
+        props.do_local_ids = False
+        props.do_linked_ids = True
+        props.do_recursive = False
+        props = layout.operator("outliner.orphans_purge", text="Recursive Unused Linked Data-Blocks")
+        props.do_local_ids = False
+        props.do_linked_ids = True
+        props.do_recursive = True
 
         layout.separator()
-        op_props = layout.operator("outliner.orphans_purge", text="Unused Local Data-Blocks")
-        op_props.do_local_ids = True
-        op_props.do_linked_ids = False
-        op_props.do_recursive = False
-        op_props = layout.operator("outliner.orphans_purge", text="Recursive Unused Local Data-Blocks")
-        op_props.do_local_ids = True
-        op_props.do_linked_ids = False
-        op_props.do_recursive = True
+        props = layout.operator("outliner.orphans_purge", text="Unused Local Data-Blocks")
+        props.do_local_ids = True
+        props.do_linked_ids = False
+        props.do_recursive = False
+        props = layout.operator("outliner.orphans_purge", text="Recursive Unused Local Data-Blocks")
+        props.do_local_ids = True
+        props.do_linked_ids = False
+        props.do_recursive = True
 
 
 class TOPBAR_MT_file(Menu):
@@ -283,6 +285,10 @@ class TOPBAR_MT_file(Menu):
 
         layout.operator_context = 'EXEC_AREA' if context.blend_data.is_saved else 'INVOKE_AREA'
         layout.operator("wm.save_mainfile", text="Save", icon='FILE_TICK')
+
+        sub = layout.row()
+        sub.enabled = context.blend_data.is_saved
+        sub.operator("wm.save_mainfile", text="Save Incremental").incremental = True
 
         layout.operator_context = 'INVOKE_AREA'
         layout.operator("wm.save_as_mainfile", text="Save As...")
@@ -477,7 +483,7 @@ class TOPBAR_MT_file_import(Menu):
         if bpy.app.build_options.io_wavefront_obj:
             self.layout.operator("wm.obj_import", text="Wavefront (.obj)")
         if bpy.app.build_options.io_ply:
-            self.layout.operator("wm.ply_import", text="Stanford PLY (.ply) (experimental)")
+            self.layout.operator("wm.ply_import", text="Stanford PLY (.ply)")
         if bpy.app.build_options.io_stl:
             self.layout.operator("wm.stl_import", text="STL (.stl) (experimental)")
 
@@ -497,17 +503,17 @@ class TOPBAR_MT_file_export(Menu):
                 "wm.usd_export", text="Universal Scene Description (.usd*)")
 
         if bpy.app.build_options.io_gpencil:
-            # Pugixml lib dependency
+            # PUGIXML library dependency.
             if bpy.app.build_options.pugixml:
                 self.layout.operator("wm.gpencil_export_svg", text="Grease Pencil as SVG")
-            # Haru lib dependency
+            # HARU library dependency.
             if bpy.app.build_options.haru:
                 self.layout.operator("wm.gpencil_export_pdf", text="Grease Pencil as PDF")
 
         if bpy.app.build_options.io_wavefront_obj:
             self.layout.operator("wm.obj_export", text="Wavefront (.obj)")
         if bpy.app.build_options.io_ply:
-            self.layout.operator("wm.ply_export", text="Stanford PLY (.ply) (experimental)")
+            self.layout.operator("wm.ply_export", text="Stanford PLY (.ply)")
         if bpy.app.build_options.io_stl:
             self.layout.operator("wm.stl_export", text="STL (.stl) (experimental)")
 
@@ -599,19 +605,13 @@ class TOPBAR_MT_edit(Menu):
 
         layout.operator("ed.undo")
         layout.operator("ed.redo")
-
-        layout.separator()
-
         layout.menu("TOPBAR_MT_undo_history")
 
         layout.separator()
 
+        layout.operator("screen.redo_last", text="Adjust Last Operation...")
         layout.operator("screen.repeat_last")
         layout.operator("screen.repeat_history", text="Repeat History...")
-
-        layout.separator()
-
-        layout.operator("screen.redo_last", text="Adjust Last Operation...")
 
         layout.separator()
 
@@ -645,10 +645,9 @@ class TOPBAR_MT_window(Menu):
 
     def draw(self, context):
         import sys
+        from bl_ui_utils.layout import operator_context
 
         layout = self.layout
-
-        operator_context_default = layout.operator_context
 
         layout.operator("wm.window_new")
         layout.operator("wm.window_new_main")
@@ -696,50 +695,32 @@ class TOPBAR_MT_help(Menu):
 
         show_developer = context.preferences.view.show_developer_ui
 
-        layout.operator("wm.url_open_preset", text="Manual",
-                        icon='HELP').type = 'MANUAL'
-
-        layout.operator(
-            "wm.url_open", text="Tutorials", icon='URL',
-        ).url = "https://www.blender.org/tutorials"
-        layout.operator(
-            "wm.url_open", text="Support", icon='URL',
-        ).url = "https://www.blender.org/support"
+        layout.operator("wm.url_open_preset", text="Manual", icon='URL').type = 'MANUAL'
+        layout.operator("wm.url_open_preset", text="Release Notes").type = 'RELEASE_NOTES'
+        layout.operator("wm.url_open", text="Tutorials").url = "https://www.blender.org/tutorials"
+        layout.operator("wm.url_open", text="Support").url = "https://www.blender.org/support"
+        layout.operator("wm.url_open", text="User Communities").url = "https://www.blender.org/community/"
 
         layout.separator()
-
-        layout.operator(
-            "wm.url_open", text="User Communities", icon='URL',
-        ).url = "https://www.blender.org/community/"
-        layout.operator(
-            "wm.url_open", text="Developer Community", icon='URL',
-        ).url = "https://devtalk.blender.org"
-
-        layout.separator()
-
-        layout.operator(
-            "wm.url_open_preset", text="Python API Reference", icon='URL',
-        ).type = 'API'
 
         if show_developer:
             layout.operator(
-                "wm.url_open", text="Developer Documentation", icon='URL',
+                "wm.url_open",
+                text="Developer Documentation",
+                icon='URL',
             ).url = "https://wiki.blender.org/wiki/Main_Page"
-
+            layout.operator("wm.url_open", text="Developer Community").url = "https://devtalk.blender.org"
+            layout.operator("wm.url_open_preset", text="Python API Reference").type = 'API'
             layout.operator("wm.operator_cheat_sheet", icon='TEXT')
 
         layout.separator()
 
-        layout.operator("wm.url_open_preset",
-                        text="Report a Bug", icon='URL').type = 'BUG'
-
-        layout.separator()
-
+        layout.operator("wm.url_open_preset", text="Report a Bug", icon='URL').type = 'BUG'
         layout.operator("wm.sysinfo")
 
 
 class TOPBAR_MT_file_context_menu(Menu):
-    bl_label = "File Context Menu"
+    bl_label = "File"
 
     def draw(self, _context):
         layout = self.layout
@@ -747,6 +728,7 @@ class TOPBAR_MT_file_context_menu(Menu):
         layout.operator_context = 'INVOKE_AREA'
         layout.menu("TOPBAR_MT_file_new", text="New", text_ctxt=i18n_contexts.id_windowmanager, icon='FILE_NEW')
         layout.operator("wm.open_mainfile", text="Open...", icon='FILE_FOLDER')
+        layout.menu("TOPBAR_MT_file_open_recent")
 
         layout.separator()
 

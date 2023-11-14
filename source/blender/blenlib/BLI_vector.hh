@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -25,22 +27,26 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
 #include <memory>
 
 #include "BLI_allocator.hh"
 #include "BLI_index_range.hh"
-#include "BLI_listbase_wrapper.hh"
-#include "BLI_math_base.h"
 #include "BLI_memory_utils.hh"
 #include "BLI_span.hh"
-#include "BLI_string.h"
-#include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
 #include "MEM_guardedalloc.h"
 
 namespace blender {
+
+namespace internal {
+void vector_print_stats(const char *name,
+                        const void *address,
+                        int64_t size,
+                        int64_t capacity,
+                        int64_t inlineCapacity,
+                        int64_t memorySize);
+}
 
 template<
     /**
@@ -199,21 +205,6 @@ class Vector {
   {
     for (InputIt current = first; current != last; ++current) {
       this->append(*current);
-    }
-  }
-
-  /**
-   * Create a vector from a ListBase. The caller has to make sure that the values in the linked
-   * list have the correct type.
-   *
-   * Example Usage:
-   *  Vector<ModifierData *> modifiers(ob->modifiers);
-   */
-  Vector(const ListBase &values, Allocator allocator = {})
-      : Vector(NoExceptConstructor(), allocator)
-  {
-    LISTBASE_FOREACH (T, value, &values) {
-      this->append(value);
     }
   }
 
@@ -816,14 +807,17 @@ class Vector {
   }
 
   /**
-   * Remove all values for which the given predicate is true.
+   * Remove all values for which the given predicate is true and return the number of values
+   * removed.
    *
    * This is similar to std::erase_if.
    */
-  template<typename Predicate> void remove_if(Predicate &&predicate)
+  template<typename Predicate> int64_t remove_if(Predicate &&predicate)
   {
+    const T *prev_end = this->end();
     end_ = std::remove_if(this->begin(), this->end(), predicate);
     UPDATE_VECTOR_SIZE(this);
+    return int64_t(prev_end - end_);
   }
 
   /**
@@ -971,17 +965,10 @@ class Vector {
   /**
    * Print some debug information about the vector.
    */
-  void print_stats(StringRef name = "") const
+  void print_stats(const char *name) const
   {
-    std::cout << "Vector Stats: " << name << "\n";
-    std::cout << "  Address: " << this << "\n";
-    std::cout << "  Elements: " << this->size() << "\n";
-    std::cout << "  Capacity: " << (capacity_end_ - begin_) << "\n";
-    std::cout << "  Inline Capacity: " << InlineBufferCapacity << "\n";
-
-    char memory_size_str[BLI_STR_FORMAT_INT64_BYTE_UNIT_SIZE];
-    BLI_str_format_byte_unit(memory_size_str, sizeof(*this), true);
-    std::cout << "  Size on Stack: " << memory_size_str << "\n";
+    internal::vector_print_stats(
+        name, this, this->size(), capacity_end_ - begin_, InlineBufferCapacity, sizeof(*this));
   }
 
  private:

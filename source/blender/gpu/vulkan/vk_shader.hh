@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -28,7 +29,7 @@ class VKShader : public Shader {
   bool compilation_failed_ = false;
   VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
   VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
-  VKPipeline compute_pipeline_;
+  VKPipeline pipeline_;
 
  public:
   VKShader(const char *name);
@@ -59,6 +60,16 @@ class VKShader : public Shader {
   std::string geometry_layout_declare(const shader::ShaderCreateInfo &info) const override;
   std::string compute_layout_declare(const shader::ShaderCreateInfo &info) const override;
 
+  /* Unused: SSBO vertex fetch draw parameters. */
+  bool get_uses_ssbo_vertex_fetch() const override
+  {
+    return false;
+  }
+  int get_ssbo_vertex_fetch_output_num_verts() const override
+  {
+    return 0;
+  }
+
   /* DEPRECATED: Kept only because of BGL API. */
   int program_handle_get() const override;
 
@@ -70,17 +81,9 @@ class VKShader : public Shader {
 
   const VKShaderInterface &interface_get() const;
 
- private:
-  Vector<uint32_t> compile_glsl_to_spirv(Span<const char *> sources, shaderc_shader_kind kind);
-  void build_shader_module(Span<uint32_t> spirv_module, VkShaderModule *r_shader_module);
-  void build_shader_module(MutableSpan<const char *> sources,
-                           shaderc_shader_kind stage,
-                           VkShaderModule *r_shader_module);
-  bool finalize_descriptor_set_layouts(VkDevice vk_device,
-                                       const VKShaderInterface &shader_interface,
-                                       const shader::ShaderCreateInfo &info);
-  bool finalize_pipeline_layout(VkDevice vk_device, const VKShaderInterface &shader_interface);
-  bool finalize_graphics_pipeline(VkDevice vk_device);
+  void update_graphics_pipeline(VKContext &context,
+                                const GPUPrimType prim_type,
+                                const VKVertexAttributeObject &vertex_attribute_object);
 
   bool is_graphics_shader() const
   {
@@ -91,6 +94,34 @@ class VKShader : public Shader {
   {
     return compute_module_ != VK_NULL_HANDLE;
   }
+
+ private:
+  Vector<uint32_t> compile_glsl_to_spirv(Span<const char *> sources, shaderc_shader_kind kind);
+  void build_shader_module(Span<uint32_t> spirv_module, VkShaderModule *r_shader_module);
+  void build_shader_module(MutableSpan<const char *> sources,
+                           shaderc_shader_kind stage,
+                           VkShaderModule *r_shader_module);
+  bool finalize_descriptor_set_layouts(VkDevice vk_device,
+                                       const VKShaderInterface &shader_interface,
+                                       const shader::ShaderCreateInfo &info);
+  bool finalize_pipeline_layout(VkDevice vk_device, const VKShaderInterface &shader_interface);
+
+  /**
+   * \brief features available on newer implementation such as native barycentric coordinates
+   * and layered rendering, necessitate a geometry shader to work on older hardware.
+   */
+  std::string workaround_geometry_shader_source_create(const shader::ShaderCreateInfo &info);
+  bool do_geometry_shader_injection(const shader::ShaderCreateInfo *info);
 };
+
+static inline VKShader &unwrap(Shader &shader)
+{
+  return static_cast<VKShader &>(shader);
+}
+
+static inline VKShader *unwrap(Shader *shader)
+{
+  return static_cast<VKShader *>(shader);
+}
 
 }  // namespace blender::gpu

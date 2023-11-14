@@ -1,5 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
 #include "BLI_task.hh"
 
 #include "BKE_curves.hh"
@@ -10,19 +13,14 @@ namespace blender::nodes::node_geo_curve_spline_parameter_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Float>(N_("Factor"))
-      .field_source()
-      .description(
-          N_("For points, the portion of the spline's total length at the control point. For "
-             "Splines, the factor of that spline within the entire curve"));
-  b.add_output<decl::Float>(N_("Length"))
-      .field_source()
-      .description(
-          N_("For points, the distance along the control point's spline, For splines, the "
-             "distance along the entire curve"));
-  b.add_output<decl::Int>(N_("Index"))
-      .field_source()
-      .description(N_("Each control point's index on its spline"));
+  b.add_output<decl::Float>("Factor").field_source().description(
+      "For points, the portion of the spline's total length at the control point. For "
+      "Splines, the factor of that spline within the entire curve");
+  b.add_output<decl::Float>("Length").field_source().description(
+      "For points, the distance along the control point's spline, For splines, the "
+      "distance along the entire curve");
+  b.add_output<decl::Int>("Index").field_source().description(
+      "Each control point's index on its spline");
 }
 
 /**
@@ -174,14 +172,15 @@ static Array<float> calculate_point_parameters(const bke::CurvesGeometry &curves
 
 class CurveParameterFieldInput final : public bke::CurvesFieldInput {
  public:
-  CurveParameterFieldInput() : bke::CurvesFieldInput(CPPType::get<float>(), "Curve Parameter node")
+  CurveParameterFieldInput()
+      : bke::CurvesFieldInput(CPPType::get<float>(), "Spline Parameter node")
   {
     category_ = Category::Generated;
   }
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     switch (domain) {
       case ATTR_DOMAIN_POINT:
@@ -215,7 +214,7 @@ class CurveLengthParameterFieldInput final : public bke::CurvesFieldInput {
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     switch (domain) {
       case ATTR_DOMAIN_POINT:
@@ -249,7 +248,7 @@ class IndexOnSplineFieldInput final : public bke::CurvesFieldInput {
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     if (domain != ATTR_DOMAIN_POINT) {
       return {};
@@ -259,9 +258,7 @@ class IndexOnSplineFieldInput final : public bke::CurvesFieldInput {
     threading::parallel_for(curves.curves_range(), 1024, [&](IndexRange range) {
       for (const int i_curve : range) {
         MutableSpan<int> indices = result.as_mutable_span().slice(points_by_curve[i_curve]);
-        for (const int i : indices.index_range()) {
-          indices[i] = i;
-        }
+        array_utils::fill_index_range(indices);
       }
     });
     return VArray<int>::ForContainer(std::move(result));
@@ -293,16 +290,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Index", std::move(index_on_spline_field));
 }
 
-}  // namespace blender::nodes::node_geo_curve_spline_parameter_cc
-
-void register_node_type_geo_curve_spline_parameter()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_curve_spline_parameter_cc;
-
   static bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_CURVE_SPLINE_PARAMETER, "Spline Parameter", NODE_CLASS_INPUT);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_curve_spline_parameter_cc

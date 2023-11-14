@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "integrator/path_trace_work_cpu.h"
 
@@ -175,6 +176,9 @@ void PathTraceWorkCPU::copy_to_display(PathTraceDisplay *display,
   const KernelFilm &kfilm = device_scene_->data.film;
 
   const PassAccessor::PassAccessInfo pass_access_info = get_display_pass_access_info(pass_mode);
+  if (pass_access_info.type == PASS_NONE) {
+    return;
+  }
 
   const PassAccessorCPU pass_accessor(pass_access_info, kfilm.exposure, num_samples);
 
@@ -232,7 +236,8 @@ int PathTraceWorkCPU::adaptive_sampling_converge_filter_count_active(float thres
       uint num_row_pixels_active = 0;
       for (int x = 0; x < width; ++x) {
         if (!kernels_.adaptive_sampling_convergence_check(
-                kernel_globals, render_buffer, full_x + x, y, threshold, reset, offset, stride)) {
+                kernel_globals, render_buffer, full_x + x, y, threshold, reset, offset, stride))
+        {
           ++num_row_pixels_active;
           row_converged = false;
         }
@@ -357,8 +362,7 @@ void PathTraceWorkCPU::guiding_push_sample_data_to_global_storage(
 #  if PATH_GUIDING_LEVEL >= 2
   const bool use_direct_light = kernel_data.integrator.use_guiding_direct_light;
   const bool use_mis_weights = kernel_data.integrator.use_guiding_mis_weights;
-  kg->opgl_path_segment_storage->PrepareSamples(
-      false, nullptr, use_mis_weights, use_direct_light, false);
+  kg->opgl_path_segment_storage->PrepareSamples(use_mis_weights, use_direct_light, false);
 #  endif
 
 #  ifdef WITH_CYCLES_DEBUG

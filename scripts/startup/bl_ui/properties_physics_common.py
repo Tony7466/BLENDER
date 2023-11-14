@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -37,6 +39,7 @@ def physics_add(layout, md, name, type, typeicon, toggles):
             text_ctxt=i18n_contexts.default,
             icon=typeicon,
         ).type = type
+        return None
 
 
 def physics_add_special(layout, data, name, addop, removeop, typeicon):
@@ -55,7 +58,7 @@ class PHYSICS_PT_add(PhysicButtonsPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     def draw(self, context):
         layout = self.layout

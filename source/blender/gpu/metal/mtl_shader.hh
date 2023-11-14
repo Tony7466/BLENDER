@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -71,7 +73,7 @@ struct MTLRenderPipelineStateInstance {
    * bound buffers such as vertex buffers, as the count can vary. */
   int base_uniform_buffer_index;
   /* Base bind index for binding storage buffers. */
-  int base_ssbo_buffer_index;
+  int base_storage_buffer_index;
   /* buffer bind slot used for null attributes (-1 if not needed). */
   int null_attribute_buffer_index;
   /* buffer bind used for transform feedback output buffer. */
@@ -101,7 +103,7 @@ struct MTLComputePipelineStateInstance {
    * bound buffers such as vertex buffers, as the count can vary. */
   int base_uniform_buffer_index = -1;
   /* Base bind index for binding storage buffers. */
-  int base_ssbo_buffer_index = -1;
+  int base_storage_buffer_index = -1;
 
   int threadgroup_x_len = 1;
   int threadgroup_y_len = 1;
@@ -196,7 +198,10 @@ class MTLShader : public Shader {
   MTLComputePipelineStateInstance compute_pso_instance_;
 
   /* True to enable multi-layered rendering support. */
-  bool uses_mtl_array_index_ = false;
+  bool uses_gpu_layer = false;
+
+  /* True to enable multi-viewport rendering support. */
+  bool uses_gpu_viewport_index = false;
 
   /** SSBO Vertex fetch pragma options. */
   /* Indicates whether to pass in VertexBuffer's as regular buffer bindings
@@ -302,23 +307,25 @@ class MTLShader : public Shader {
   bool get_push_constant_is_dirty();
   void push_constant_bindstate_mark_dirty(bool is_dirty);
 
+  /* SSBO vertex fetch draw parameters. */
+  bool get_uses_ssbo_vertex_fetch() const override
+  {
+    return use_ssbo_vertex_fetch_mode_;
+  }
+  int get_ssbo_vertex_fetch_output_num_verts() const override
+  {
+    return ssbo_vertex_fetch_output_num_verts_;
+  }
+
   /* DEPRECATED: Kept only because of BGL API. (Returning -1 in METAL). */
   int program_handle_get() const override
   {
     return -1;
   }
 
-  bool get_uses_ssbo_vertex_fetch()
-  {
-    return use_ssbo_vertex_fetch_mode_;
-  }
   MTLPrimitiveType get_ssbo_vertex_fetch_output_prim_type()
   {
     return ssbo_vertex_fetch_output_prim_type_;
-  }
-  uint32_t get_ssbo_vertex_fetch_output_num_verts()
-  {
-    return ssbo_vertex_fetch_output_num_verts_;
   }
   static int ssbo_vertex_type_to_attr_type(MTLVertexFormat attribute_type);
   void prepare_ssbo_vertex_fetch_metadata();
@@ -672,7 +679,8 @@ inline bool mtl_convert_vertex_format(MTLVertexFormat shader_attrib_format,
           if (shader_attrib_format == MTLVertexFormatChar ||
               shader_attrib_format == MTLVertexFormatChar2 ||
               shader_attrib_format == MTLVertexFormatChar3 ||
-              shader_attrib_format == MTLVertexFormatChar4) {
+              shader_attrib_format == MTLVertexFormatChar4)
+          {
 
             /* No conversion Needed (as type matches) - Just a vector resize if needed. */
             bool can_convert = mtl_vertex_format_resize(
@@ -752,7 +760,8 @@ inline bool mtl_convert_vertex_format(MTLVertexFormat shader_attrib_format,
           if (shader_attrib_format == MTLVertexFormatUChar ||
               shader_attrib_format == MTLVertexFormatUChar2 ||
               shader_attrib_format == MTLVertexFormatUChar3 ||
-              shader_attrib_format == MTLVertexFormatUChar4) {
+              shader_attrib_format == MTLVertexFormatUChar4)
+          {
 
             /* No conversion Needed (as type matches) - Just a vector resize if needed. */
             bool can_convert = mtl_vertex_format_resize(
@@ -837,7 +846,8 @@ inline bool mtl_convert_vertex_format(MTLVertexFormat shader_attrib_format,
           if (shader_attrib_format == MTLVertexFormatShort ||
               shader_attrib_format == MTLVertexFormatShort2 ||
               shader_attrib_format == MTLVertexFormatShort3 ||
-              shader_attrib_format == MTLVertexFormatShort4) {
+              shader_attrib_format == MTLVertexFormatShort4)
+          {
             /* No conversion Needed (as type matches) - Just a vector resize if needed. */
             bool can_convert = mtl_vertex_format_resize(
                 shader_attrib_format, component_length, &out_vert_format);
@@ -892,7 +902,8 @@ inline bool mtl_convert_vertex_format(MTLVertexFormat shader_attrib_format,
           if (shader_attrib_format == MTLVertexFormatUShort ||
               shader_attrib_format == MTLVertexFormatUShort2 ||
               shader_attrib_format == MTLVertexFormatUShort3 ||
-              shader_attrib_format == MTLVertexFormatUShort4) {
+              shader_attrib_format == MTLVertexFormatUShort4)
+          {
             /* No conversion Needed (as type matches) - Just a vector resize if needed. */
             bool can_convert = mtl_vertex_format_resize(
                 shader_attrib_format, component_length, &out_vert_format);
@@ -947,7 +958,8 @@ inline bool mtl_convert_vertex_format(MTLVertexFormat shader_attrib_format,
           if (shader_attrib_format == MTLVertexFormatInt ||
               shader_attrib_format == MTLVertexFormatInt2 ||
               shader_attrib_format == MTLVertexFormatInt3 ||
-              shader_attrib_format == MTLVertexFormatInt4) {
+              shader_attrib_format == MTLVertexFormatInt4)
+          {
             /* No conversion Needed (as type matches) - Just a vector resize if needed. */
             bool can_convert = mtl_vertex_format_resize(
                 shader_attrib_format, component_length, &out_vert_format);
@@ -978,7 +990,8 @@ inline bool mtl_convert_vertex_format(MTLVertexFormat shader_attrib_format,
           if (shader_attrib_format == MTLVertexFormatUInt ||
               shader_attrib_format == MTLVertexFormatUInt2 ||
               shader_attrib_format == MTLVertexFormatUInt3 ||
-              shader_attrib_format == MTLVertexFormatUInt4) {
+              shader_attrib_format == MTLVertexFormatUInt4)
+          {
             /* No conversion Needed (as type matches) - Just a vector resize if needed. */
             bool can_convert = mtl_vertex_format_resize(
                 shader_attrib_format, component_length, &out_vert_format);
@@ -1014,7 +1027,8 @@ inline bool mtl_convert_vertex_format(MTLVertexFormat shader_attrib_format,
           if (shader_attrib_format == MTLVertexFormatFloat ||
               shader_attrib_format == MTLVertexFormatFloat2 ||
               shader_attrib_format == MTLVertexFormatFloat3 ||
-              shader_attrib_format == MTLVertexFormatFloat4) {
+              shader_attrib_format == MTLVertexFormatFloat4)
+          {
             /* No conversion Needed (as type matches) - Just a vector resize, if needed. */
             bool can_convert = mtl_vertex_format_resize(
                 shader_attrib_format, component_length, &out_vert_format);

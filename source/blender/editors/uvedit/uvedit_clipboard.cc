@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eduv
@@ -17,22 +18,20 @@
  *   * An iso_edge is undirected.
  */
 
-#include "BLI_math.h"
-
 #include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_editmesh.h"
 #include "BKE_layer.h"
-#include "BKE_mesh_mapping.h" /* UvElementMap */
+#include "BKE_mesh_mapping.hh" /* UvElementMap */
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "ED_mesh.h"
-#include "ED_screen.h"
-#include "ED_uvedit.h" /* Own include. */
+#include "ED_mesh.hh"
+#include "ED_screen.hh"
+#include "ED_uvedit.hh" /* Own include. */
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "uvedit_clipboard_graph_iso.hh"
 #include "uvedit_intern.h" /* linker, extern "C" */
@@ -44,10 +43,13 @@ class UV_ClipboardBuffer {
   ~UV_ClipboardBuffer();
 
   void append(UvElementMap *element_map, const int cd_loop_uv_offset);
+  /**
+   * \return True when found.
+   */
   bool find_isomorphism(UvElementMap *dest_element_map,
                         int island_index,
-                        blender::Vector<int> &r_label,
                         int cd_loop_uv_offset,
+                        blender::Vector<int> &r_label,
                         bool *r_search_abandoned);
 
   void write_uvs(UvElementMap *element_map,
@@ -83,7 +85,7 @@ static int iso_index_for_loop(const BMLoop *loop,
                               UvElementMap *element_map,
                               const int island_index)
 {
-  UvElement *element = BM_uv_element_get(element_map, loop->f, loop);
+  UvElement *element = BM_uv_element_get(element_map, loop);
   if (!element) {
     return -1; /* Either unselected, or a different island. */
   }
@@ -196,12 +198,15 @@ void UV_ClipboardBuffer::write_uvs(UvElementMap *element_map,
   BLI_assert(unique_uv == label.size());
 }
 
-/* Call the external isomorphism solver. */
+/**
+ * Call the external isomorphism solver.
+ * \return True when found.
+ */
 static bool find_isomorphism(UvElementMap *dest,
                              const int dest_island_index,
                              GraphISO *graph_source,
+                             const int cd_loop_uv_offset,
                              blender::Vector<int> &r_label,
-                             int cd_loop_uv_offset,
                              bool *r_search_abandoned)
 {
 
@@ -215,12 +220,12 @@ static bool find_isomorphism(UvElementMap *dest,
 
   int(*solution)[2] = (int(*)[2])MEM_mallocN(graph_source->n * sizeof(*solution), __func__);
   int solution_length = 0;
-  const bool result = ED_uvedit_clipboard_maximum_common_subgraph(
+  const bool found = ED_uvedit_clipboard_maximum_common_subgraph(
       graph_source, graph_dest, solution, &solution_length, r_search_abandoned);
 
   /* Todo: Implement "Best Effort" / "Nearest Match" paste functionality here. */
 
-  if (result) {
+  if (found) {
     BLI_assert(solution_length == dest->island_total_unique_uvs[dest_island_index]);
     for (int i = 0; i < solution_length; i++) {
       int index_s = solution[i][0];
@@ -233,22 +238,23 @@ static bool find_isomorphism(UvElementMap *dest,
 
   MEM_SAFE_FREE(solution);
   delete graph_dest;
-  return result;
+  return found;
 }
 
 bool UV_ClipboardBuffer::find_isomorphism(UvElementMap *dest_element_map,
-                                          int dest_island_index,
+                                          const int dest_island_index,
+                                          const int cd_loop_uv_offset,
                                           blender::Vector<int> &r_label,
-                                          int cd_loop_uv_offset,
                                           bool *r_search_abandoned)
 {
   for (const int64_t source_island_index : graph.index_range()) {
     if (::find_isomorphism(dest_element_map,
                            dest_island_index,
                            graph[source_island_index],
-                           r_label,
                            cd_loop_uv_offset,
-                           r_search_abandoned)) {
+                           r_label,
+                           r_search_abandoned))
+    {
       const int island_total_unique_uvs =
           dest_element_map->island_total_unique_uvs[dest_island_index];
       const int island_offset = offset[source_island_index];
@@ -311,7 +317,7 @@ static int uv_paste_exec(bContext *C, wmOperator *op)
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
       scene, view_layer, ((View3D *)nullptr), &objects_len);
 
-  int result = OPERATOR_CANCELLED; /* Assume no changes. */
+  bool changed_multi = false;
   int complicated_search = 0;
   int total_search = 0;
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
@@ -328,12 +334,14 @@ static int uv_paste_exec(bContext *C, wmOperator *op)
       continue;
     }
 
+    bool changed = false;
+
     for (int i = 0; i < dest_element_map->total_islands; i++) {
       total_search++;
       blender::Vector<int> label;
       bool search_abandoned = false;
       const bool found = uv_clipboard->find_isomorphism(
-          dest_element_map, i, label, cd_loop_uv_offset, &search_abandoned);
+          dest_element_map, i, cd_loop_uv_offset, label, &search_abandoned);
       if (!found) {
         if (search_abandoned) {
           complicated_search++;
@@ -342,12 +350,17 @@ static int uv_paste_exec(bContext *C, wmOperator *op)
       }
 
       uv_clipboard->write_uvs(dest_element_map, i, cd_loop_uv_offset, label);
-      result = OPERATOR_FINISHED; /* UVs were moved. */
+      changed = true; /* UVs were moved. */
     }
 
     BM_uv_element_map_free(dest_element_map);
-    DEG_id_tag_update(static_cast<ID *>(ob->data), 0);
-    WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+
+    if (changed) {
+      changed_multi = true;
+
+      DEG_id_tag_update(static_cast<ID *>(ob->data), 0);
+      WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+    }
   }
 
   if (complicated_search) {
@@ -360,7 +373,7 @@ static int uv_paste_exec(bContext *C, wmOperator *op)
 
   MEM_freeN(objects);
 
-  return result;
+  return changed_multi ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 void UV_OT_copy(wmOperatorType *ot)

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -6,22 +8,18 @@ set(INC
   exporter
   ../common
   ../../blenkernel
-  ../../blenlib
   ../../bmesh
   ../../bmesh/intern
   ../../depsgraph
   ../../editors/include
-  ../../makesdna
   ../../makesrna
   ../../nodes
   ../../windowmanager
-  ../../../../extern/fast_float
-  ../../../../extern/fmtlib/include
-  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
-
+  ../../../../extern/fast_float
+  ../../../../extern/fmtlib/include
 )
 
 set(SRC
@@ -33,7 +31,7 @@ set(SRC
   exporter/stl_export.cc
   exporter/stl_export_writer.cc
 
-  IO_stl.h
+  IO_stl.hh
   importer/stl_import.hh
   importer/stl_import_ascii_reader.hh
   importer/stl_import_binary_reader.hh
@@ -46,7 +44,11 @@ set(SRC
 
 set(LIB
   bf_blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   bf_io_common
+  extern_fmtlib
 )
 
-blender_add_lib(bf_stl "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+blender_add_lib(bf_io_stl "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

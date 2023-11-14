@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -23,7 +24,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_utildefines.h"
 
@@ -81,26 +84,6 @@ static int vergscdata(const void *a1, const void *a2)
     return 1;
   }
   if (x1->vert->xy[0] < x2->vert->xy[0]) {
-    return -1;
-  }
-
-  return 0;
-}
-
-static int vergpoly(const void *a1, const void *a2)
-{
-  const PolyFill *x1 = a1, *x2 = a2;
-
-  if (x1->min_xy[0] > x2->min_xy[0]) {
-    return 1;
-  }
-  if (x1->min_xy[0] < x2->min_xy[0]) {
-    return -1;
-  }
-  if (x1->min_xy[1] > x2->min_xy[1]) {
-    return 1;
-  }
-  if (x1->min_xy[1] < x2->min_xy[1]) {
     return -1;
   }
 
@@ -166,7 +149,7 @@ static void addfillface(ScanFillContext *sf_ctx,
   sf_tri->v3 = v3;
 }
 
-static bool boundisect(PolyFill *pf2, PolyFill *pf1)
+static bool boundisect(const PolyFill *pf2, const PolyFill *pf1)
 {
   /* has pf2 been touched (intersected) by pf1 ? with bounding box */
   /* test first if polys exist */
@@ -189,22 +172,28 @@ static bool boundisect(PolyFill *pf2, PolyFill *pf1)
     return false;
   }
 
-  /* join */
-  if (pf2->max_xy[0] < pf1->max_xy[0]) {
-    pf2->max_xy[0] = pf1->max_xy[0];
-  }
-  if (pf2->max_xy[1] < pf1->max_xy[1]) {
-    pf2->max_xy[1] = pf1->max_xy[1];
-  }
-
-  if (pf2->min_xy[0] > pf1->min_xy[0]) {
-    pf2->min_xy[0] = pf1->min_xy[0];
-  }
-  if (pf2->min_xy[1] > pf1->min_xy[1]) {
-    pf2->min_xy[1] = pf1->min_xy[1];
-  }
-
   return true;
+}
+
+static void fill_target_map_recursive(const PolyFill *__restrict pf_list,
+                                      const uint pf_len,
+                                      const uint pf_target,
+                                      const uint pf_test,
+                                      uint *__restrict target_map)
+{
+  const PolyFill *pf_a = pf_list + pf_test;
+  for (uint pf_b_index = pf_target + 1; pf_b_index < pf_len; pf_b_index++) {
+    if (target_map[pf_b_index] != pf_b_index) {
+      /* All intersections have already been identified for this polygon. */
+      continue;
+    }
+    BLI_assert(pf_b_index != pf_test);
+    const PolyFill *pf_b = pf_list + pf_b_index;
+    if (boundisect(pf_a, pf_b)) {
+      target_map[pf_b_index] = pf_target;
+      fill_target_map_recursive(pf_list, pf_len, pf_target, pf_b_index, target_map);
+    }
+  }
 }
 
 /* add pf2 to pf1 */
@@ -226,10 +215,28 @@ static void mergepolysSimp(ScanFillContext *sf_ctx, PolyFill *pf1, PolyFill *pf2
     }
   }
 
+  /* Join. */
   pf1->verts += pf2->verts;
   pf1->edges += pf2->edges;
-  pf2->verts = pf2->edges = 0;
+
+  if (pf1->max_xy[0] < pf2->max_xy[0]) {
+    pf1->max_xy[0] = pf2->max_xy[0];
+  }
+  if (pf1->max_xy[1] < pf2->max_xy[1]) {
+    pf1->max_xy[1] = pf2->max_xy[1];
+  }
+
+  if (pf1->min_xy[0] > pf2->min_xy[0]) {
+    pf1->min_xy[0] = pf2->min_xy[0];
+  }
+  if (pf1->min_xy[1] > pf2->min_xy[1]) {
+    pf1->min_xy[1] = pf2->min_xy[1];
+  }
+
   pf1->f = (pf1->f | pf2->f);
+
+  /* Clear the other one. */
+  pf2->verts = pf2->edges = 0;
 }
 
 static bool testedgeside(const float v1[2], const float v2[2], const float v3[2])
@@ -382,8 +389,8 @@ static void testvertexnearedge(ScanFillContext *sf_ctx)
       /* find the edge which has vertex eve,
        * NOTE: we _know_ this will crash if 'ed1' becomes NULL
        * but this will never happen. */
-      for (ed1 = sf_ctx->filledgebase.first; !(ed1->v1 == eve || ed1->v2 == eve);
-           ed1 = ed1->next) {
+      for (ed1 = sf_ctx->filledgebase.first; !(ed1->v1 == eve || ed1->v2 == eve); ed1 = ed1->next)
+      {
         /* do nothing */
       }
 
@@ -510,7 +517,11 @@ static uint scanfill(ScanFillContext *sf_ctx, PolyFill *pf, const int flag)
         sc->vert = eve;
         sc->edge_first = sc->edge_last = NULL;
         /* NOTE: debug print only will work for curve poly-fill, union is in use for mesh. */
-        /* if (even->tmp.v == NULL) eve->tmp.u = verts; */
+#if 0
+        if (even->tmp.v == NULL) {
+          eve->tmp.u = verts;
+        }
+#endif
         sc++;
       }
     }
@@ -610,9 +621,13 @@ static uint scanfill(ScanFillContext *sf_ctx, PolyFill *pf, const int flag)
       ed1 = sc->edge_first;
       ed2 = ed1->next;
 
-      /* commented out... the ESC here delivers corrupted memory
+      /* Commented out: the ESC here delivers corrupted memory
        * (and doesn't work during grab). */
-      /* if (callLocalInterruptCallBack()) break; */
+#if 0
+      if (callLocalInterruptCallBack()){
+        break;
+      }
+#endif
       if (totface >= maxface) {
         // printf("Fill error: endless loop. Escaped at vert %d,  tot: %d.\n", a, verts);
         a = verts;
@@ -821,7 +836,7 @@ uint BLI_scanfill_calc_ex(ScanFillContext *sf_ctx, const int flag, const float n
   PolyFill *pflist, *pf;
   float *min_xy_p, *max_xy_p;
   uint totfaces = 0; /* total faces added */
-  ushort a, c, poly = 0;
+  ushort a, poly = 0;
   bool ok;
   float mat_2d[3][3];
 
@@ -911,7 +926,8 @@ uint BLI_scanfill_calc_ex(ScanFillContext *sf_ctx, const int flag, const float n
 
           toggle++;
           for (eed = (toggle & 1) ? sf_ctx->filledgebase.first : sf_ctx->filledgebase.last; eed;
-               eed = (toggle & 1) ? eed->next : eed->prev) {
+               eed = (toggle & 1) ? eed->next : eed->prev)
+          {
             if (eed->v1->poly_nr == SF_POLY_UNSET && eed->v2->poly_nr == poly) {
               eed->v1->poly_nr = poly;
               eed->poly_nr = poly;
@@ -983,7 +999,8 @@ uint BLI_scanfill_calc_ex(ScanFillContext *sf_ctx, const int flag, const float n
 
       toggle++;
       for (eed = (toggle & 1) ? sf_ctx->filledgebase.first : sf_ctx->filledgebase.last; eed;
-           eed = eed_next) {
+           eed = eed_next)
+      {
         eed_next = (toggle & 1) ? eed->next : eed->prev;
         if (eed->v1->edge_count == 1) {
           eed->v2->edge_count--;
@@ -1060,15 +1077,9 @@ uint BLI_scanfill_calc_ex(ScanFillContext *sf_ctx, const int flag, const float n
 
   /* STEP 4: FIND HOLES OR BOUNDS, JOIN THEM
    *  ( bounds just to divide it in pieces for optimization,
-   *    the edgefill itself has good auto-hole detection)
-   * WATCH IT: ONLY WORKS WITH SORTED POLYS!!! */
+   *    the edgefill itself has good auto-hole detection). */
 
   if ((flag & BLI_SCANFILL_CALC_HOLES) && (poly > 1)) {
-    ushort *polycache, *pc;
-
-    /* so, sort first */
-    qsort(pflist, (size_t)poly, sizeof(PolyFill), vergpoly);
-
 #if 0
     pf = pflist;
     for (a = 0; a < poly; a++) {
@@ -1078,27 +1089,26 @@ uint BLI_scanfill_calc_ex(ScanFillContext *sf_ctx, const int flag, const float n
     }
 #endif
 
-    polycache = pc = MEM_callocN(sizeof(*polycache) * (size_t)poly, "polycache");
-    pf = pflist;
-    for (a = 0; a < poly; a++, pf++) {
-      for (c = (ushort)(a + 1); c < poly; c++) {
+    uint *target_map = MEM_mallocN(sizeof(*target_map) * (size_t)poly, "polycache");
+    range_vn_u(target_map, poly, 0);
 
-        /* if 'a' inside 'c': join (bbox too)
-         * Careful: 'a' can also be inside another poly.
-         */
-        if (boundisect(pf, pflist + c)) {
-          *pc = c;
-          pc++;
-        }
-        /* only for optimize! */
-        /* else if (pf->max_xy[0] < (pflist+c)->min[cox]) break; */
+    for (a = 0; a < poly; a++) {
+      if (target_map[a] != a) {
+        continue;
       }
-      while (pc != polycache) {
-        pc--;
-        mergepolysSimp(sf_ctx, pf, pflist + *pc);
+      fill_target_map_recursive(pflist, poly, a, a, target_map);
+    }
+
+    /* Join polygons. */
+    for (a = 0; a < poly; a++) {
+      if (target_map[a] != a) {
+        PolyFill *pf_src = pflist + a;
+        PolyFill *pf_dst = pflist + target_map[a];
+        mergepolysSimp(sf_ctx, pf_dst, pf_src);
       }
     }
-    MEM_freeN(polycache);
+
+    MEM_freeN(target_map);
   }
 
 #if 0

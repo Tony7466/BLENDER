@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -10,12 +11,19 @@
 #include "GHOST_Context.hh"
 
 #ifdef _WIN32
+#  define WIN32_LEAN_AND_MEAN
+#  include <windows.h>
+
 #  include <epoxy/wgl.h>
 #  include <tchar.h>
 #
 #  ifndef ERROR_PROFILE_DOES_NOT_MATCH_DEVICE
 #    define ERROR_PROFILE_DOES_NOT_MATCH_DEVICE 0x7E7
 #  endif
+#endif
+
+#ifdef WITH_OPENGL_BACKEND
+#  include <epoxy/gl.h>
 #endif
 
 #include <cstdio>
@@ -121,9 +129,11 @@ bool win32_chk(bool result, const char *file, int line, const char *text)
 
 #endif  // _WIN32
 
+#ifdef WITH_OPENGL_BACKEND
 void GHOST_Context::initClearGL()
 {
   glClearColor(0.294, 0.294, 0.294, 0.000);
   glClear(GL_COLOR_BUFFER_BIT);
   glClearColor(0.000, 0.000, 0.000, 0.000);
 }
+#endif

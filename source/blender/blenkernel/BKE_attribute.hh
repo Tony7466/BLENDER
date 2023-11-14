@@ -1,14 +1,15 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 #include <optional>
 
-#include "BLI_color.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_generic_span.hh"
 #include "BLI_generic_virtual_array.hh"
-#include "BLI_math_vector_types.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
 
 #include "BKE_anonymous_attribute_id.hh"
@@ -86,6 +87,8 @@ struct AttributeInit {
     VArray,
     /** #AttributeInitMoveArray. */
     MoveArray,
+    /** #AttributeInitShared. */
+    Shared,
   };
   Type type;
   AttributeInit(const Type type) : type(type) {}
@@ -121,9 +124,6 @@ struct AttributeInitVArray : public AttributeInit {
  * Sometimes data is created before a geometry component is available. In that case, it's
  * preferable to move data directly to the created attribute to avoid a new allocation and a copy.
  *
- * Note that this will only have a benefit for attributes that are stored directly as contiguous
- * arrays, so not for some built-in attributes.
- *
  * The array must be allocated with MEM_*, since `attribute_try_create` will free the array if it
  * can't be used directly, and that is generally how Blender expects custom data to be allocated.
  */
@@ -131,6 +131,20 @@ struct AttributeInitMoveArray : public AttributeInit {
   void *data = nullptr;
 
   AttributeInitMoveArray(void *data) : AttributeInit(Type::MoveArray), data(data) {}
+};
+
+/**
+ * Create a shared attribute by adding a user to a shared data array.
+ * The sharing info has ownership of the provided contiguous array.
+ */
+struct AttributeInitShared : public AttributeInit {
+  const void *data = nullptr;
+  const ImplicitSharingInfo *sharing_info = nullptr;
+
+  AttributeInitShared(const void *data, const ImplicitSharingInfo &sharing_info)
+      : AttributeInit(Type::Shared), data(data), sharing_info(&sharing_info)
+  {
+  }
 };
 
 /* Returns false when the iteration should be stopped. */
@@ -150,6 +164,21 @@ template<typename T> struct AttributeReader {
    * Domain where the attribute is stored. This also determines the size of the virtual array.
    */
   eAttrDomain domain;
+
+  /**
+   * Information about shared ownership of the attribute array. This will only be provided
+   * if the virtual array directly references the contiguous original attribute array.
+   */
+  const ImplicitSharingInfo *sharing_info;
+
+  const VArray<T> &operator*() const
+  {
+    return this->varray;
+  }
+  VArray<T> &operator*()
+  {
+    return this->varray;
+  }
 
   operator bool() const
   {
@@ -270,15 +299,25 @@ template<typename T> struct SpanAttributeWriter {
 struct GAttributeReader {
   GVArray varray;
   eAttrDomain domain;
+  const ImplicitSharingInfo *sharing_info;
 
   operator bool() const
   {
     return this->varray;
   }
 
+  const GVArray &operator*() const
+  {
+    return this->varray;
+  }
+  GVArray &operator*()
+  {
+    return this->varray;
+  }
+
   template<typename T> AttributeReader<T> typed() const
   {
-    return {varray.typed<T>(), domain};
+    return {varray.typed<T>(), domain, sharing_info};
   }
 };
 
@@ -457,15 +496,15 @@ class AttributeAccessor {
    * Get read-only access to the attribute. If necessary, the attribute is interpolated to the
    * given domain, and converted to the given type, in that order.  The result may be empty.
    */
-  GVArray lookup(const AttributeIDRef &attribute_id,
-                 const std::optional<eAttrDomain> domain,
-                 const std::optional<eCustomDataType> data_type) const;
+  GAttributeReader lookup(const AttributeIDRef &attribute_id,
+                          const std::optional<eAttrDomain> domain,
+                          const std::optional<eCustomDataType> data_type) const;
 
   /**
    * Get read-only access to the attribute whereby the attribute is interpolated to the given
    * domain. The result may be empty.
    */
-  GVArray lookup(const AttributeIDRef &attribute_id, const eAttrDomain domain) const
+  GAttributeReader lookup(const AttributeIDRef &attribute_id, const eAttrDomain domain) const
   {
     return this->lookup(attribute_id, domain, std::nullopt);
   }
@@ -474,7 +513,8 @@ class AttributeAccessor {
    * Get read-only access to the attribute whereby the attribute is converted to the given type.
    * The result may be empty.
    */
-  GVArray lookup(const AttributeIDRef &attribute_id, const eCustomDataType data_type) const
+  GAttributeReader lookup(const AttributeIDRef &attribute_id,
+                          const eCustomDataType data_type) const
   {
     return this->lookup(attribute_id, std::nullopt, data_type);
   }
@@ -484,8 +524,8 @@ class AttributeAccessor {
    * given domain and then converted to the given type, in that order. The result may be empty.
    */
   template<typename T>
-  VArray<T> lookup(const AttributeIDRef &attribute_id,
-                   const std::optional<eAttrDomain> domain = std::nullopt) const
+  AttributeReader<T> lookup(const AttributeIDRef &attribute_id,
+                            const std::optional<eAttrDomain> domain = std::nullopt) const
   {
     const CPPType &cpp_type = CPPType::get<T>();
     const eCustomDataType data_type = cpp_type_to_custom_data_type(cpp_type);
@@ -498,23 +538,23 @@ class AttributeAccessor {
    * If the attribute does not exist, a virtual array with the given default value is returned.
    * If the passed in default value is null, the default value of the type is used (generally 0).
    */
-  GVArray lookup_or_default(const AttributeIDRef &attribute_id,
-                            const eAttrDomain domain,
-                            const eCustomDataType data_type,
-                            const void *default_value = nullptr) const;
+  GAttributeReader lookup_or_default(const AttributeIDRef &attribute_id,
+                                     const eAttrDomain domain,
+                                     const eCustomDataType data_type,
+                                     const void *default_value = nullptr) const;
 
   /**
    * Same as the generic version above, but should be used when the type is known at compile time.
    */
   template<typename T>
-  VArray<T> lookup_or_default(const AttributeIDRef &attribute_id,
-                              const eAttrDomain domain,
-                              const T &default_value) const
+  AttributeReader<T> lookup_or_default(const AttributeIDRef &attribute_id,
+                                       const eAttrDomain domain,
+                                       const T &default_value) const
   {
-    if (VArray<T> varray = this->lookup<T>(attribute_id, domain)) {
+    if (AttributeReader<T> varray = this->lookup<T>(attribute_id, domain)) {
       return varray;
     }
-    return VArray<T>::ForSingle(default_value, this->domain_size(domain));
+    return {VArray<T>::ForSingle(default_value, this->domain_size(domain)), domain};
   }
 
   /**
@@ -548,6 +588,7 @@ class AttributeAccessor {
 
   /**
    * Run the provided function for every attribute.
+   * Attributes should not be removed or added during iteration.
    */
   bool for_all(const AttributeForeachCallback fn) const
   {
@@ -615,6 +656,11 @@ class MutableAttributeAccessor : public AttributeAccessor {
   }
 
   /**
+   * Replace the existing attribute with a new one with a different name.
+   */
+  bool rename(const AttributeIDRef &old_attribute_id, const AttributeIDRef &new_attribute_id);
+
+  /**
    * Create a new attribute.
    * \return True, when a new attribute has been created. False, when it's not possible to create
    * this attribute or there is already an attribute with that id.
@@ -625,6 +671,15 @@ class MutableAttributeAccessor : public AttributeAccessor {
            const AttributeInit &initializer)
   {
     return fn_->add(owner_, attribute_id, domain, data_type, initializer);
+  }
+  template<typename T>
+  bool add(const AttributeIDRef &attribute_id,
+           const eAttrDomain domain,
+           const AttributeInit &initializer)
+  {
+    const CPPType &cpp_type = CPPType::get<T>();
+    const eCustomDataType data_type = cpp_type_to_custom_data_type(cpp_type);
+    return this->add(attribute_id, domain, data_type, initializer);
   }
 
   /**
@@ -753,61 +808,6 @@ eCustomDataType attribute_data_type_highest_complexity(Span<eCustomDataType> dat
  */
 eAttrDomain attribute_domain_highest_priority(Span<eAttrDomain> domains);
 
-/**
- * A basic container around DNA CustomData so that its users
- * don't have to implement special copy and move constructors.
- */
-class CustomDataAttributes {
-  /**
-   * #CustomData needs a size to be freed, and unfortunately it isn't stored in the struct
-   * itself, so keep track of the size here so this class can implement its own destructor.
-   * If the implementation of the attribute storage changes, this could be removed.
-   */
-  int size_;
-
- public:
-  CustomData data;
-
-  CustomDataAttributes();
-  ~CustomDataAttributes();
-  CustomDataAttributes(const CustomDataAttributes &other);
-  CustomDataAttributes(CustomDataAttributes &&other);
-
-  CustomDataAttributes &operator=(const CustomDataAttributes &other);
-  CustomDataAttributes &operator=(CustomDataAttributes &&other);
-
-  void reallocate(int size);
-
-  void clear();
-
-  std::optional<blender::GSpan> get_for_read(const AttributeIDRef &attribute_id) const;
-
-  /**
-   * Return a virtual array for a stored attribute, or a single value virtual array with the
-   * default value if the attribute doesn't exist. If no default value is provided, the default
-   * value for the type will be used.
-   */
-  blender::GVArray get_for_read(const AttributeIDRef &attribute_id,
-                                eCustomDataType data_type,
-                                const void *default_value) const;
-
-  template<typename T>
-  blender::VArray<T> get_for_read(const AttributeIDRef &attribute_id, const T &default_value) const
-  {
-    const blender::CPPType &cpp_type = blender::CPPType::get<T>();
-    const eCustomDataType type = blender::bke::cpp_type_to_custom_data_type(cpp_type);
-    GVArray varray = this->get_for_read(attribute_id, type, &default_value);
-    return varray.typed<T>();
-  }
-
-  std::optional<blender::GMutableSpan> get_for_write(const AttributeIDRef &attribute_id);
-  bool create(const AttributeIDRef &attribute_id, eCustomDataType data_type);
-  bool create_by_move(const AttributeIDRef &attribute_id, eCustomDataType data_type, void *buffer);
-  bool remove(const AttributeIDRef &attribute_id);
-
-  bool foreach_attribute(const AttributeForeachCallback callback, eAttrDomain domain) const;
-};
-
 /* -------------------------------------------------------------------- */
 /** \name #AttributeIDRef Inline Methods
  * \{ */
@@ -865,5 +865,51 @@ inline const AnonymousAttributeID &AttributeIDRef::anonymous_id() const
   BLI_assert(this->is_anonymous());
   return *anonymous_id_;
 }
+
+void gather_attributes(AttributeAccessor src_attributes,
+                       eAttrDomain domain,
+                       const AnonymousAttributePropagationInfo &propagation_info,
+                       const Set<std::string> &skip,
+                       const IndexMask &selection,
+                       MutableAttributeAccessor dst_attributes);
+
+/**
+ * Fill the destination attribute by gathering indexed values from src attributes.
+ */
+void gather_attributes(AttributeAccessor src_attributes,
+                       eAttrDomain domain,
+                       const AnonymousAttributePropagationInfo &propagation_info,
+                       const Set<std::string> &skip,
+                       const Span<int> indices,
+                       MutableAttributeAccessor dst_attributes);
+
+/**
+ * Copy attribute values from groups defined by \a src_offsets to groups defined by \a
+ * dst_offsets. The group indices are gathered to the result by \a selection. The size of each
+ * source and result group must be the same.
+ */
+void gather_attributes_group_to_group(AttributeAccessor src_attributes,
+                                      eAttrDomain domain,
+                                      const AnonymousAttributePropagationInfo &propagation_info,
+                                      const Set<std::string> &skip,
+                                      OffsetIndices<int> src_offsets,
+                                      OffsetIndices<int> dst_offsets,
+                                      const IndexMask &selection,
+                                      MutableAttributeAccessor dst_attributes);
+
+void copy_attributes(const AttributeAccessor src_attributes,
+                     const eAttrDomain domain,
+                     const AnonymousAttributePropagationInfo &propagation_info,
+                     const Set<std::string> &skip,
+                     MutableAttributeAccessor dst_attributes);
+
+void copy_attributes_group_to_group(AttributeAccessor src_attributes,
+                                    eAttrDomain domain,
+                                    const AnonymousAttributePropagationInfo &propagation_info,
+                                    const Set<std::string> &skip,
+                                    OffsetIndices<int> src_offsets,
+                                    OffsetIndices<int> dst_offsets,
+                                    const IndexMask &selection,
+                                    MutableAttributeAccessor dst_attributes);
 
 }  // namespace blender::bke

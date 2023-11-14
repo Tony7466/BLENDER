@@ -8,20 +8,20 @@
 #include <string>
 
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "BLI_string.h"
 
-#include "DNA_layer_types.h"
+#include "DEG_depsgraph_query.hh"
+
 #include "DNA_scene_types.h"
 
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 
-#include "IO_stl.h"
-
-#include "bmesh.h"
-#include "bmesh_tools.h"
+#include "IO_stl.hh"
 
 #include "stl_export.hh"
 #include "stl_export_writer.hh"
@@ -74,10 +74,9 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
     }
 
     Object *obj_eval = DEG_get_evaluated_object(depsgraph, object);
-    Object export_object_eval_ = dna::shallow_copy(*obj_eval);
     Mesh *mesh = export_params.use_apply_modifiers ?
-                     BKE_object_get_evaluated_mesh(&export_object_eval_) :
-                     BKE_object_get_pre_modified_mesh(&export_object_eval_);
+                     BKE_object_get_evaluated_mesh(obj_eval) :
+                     BKE_object_get_pre_modified_mesh(obj_eval);
 
     /* Calculate transform. */
     float global_scale = export_params.global_scale;

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2017-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 ########################################################################
@@ -189,6 +191,14 @@ else()
     harvest(wayland/bin wayland/bin "wayland-scanner")
     harvest(wayland/include wayland/include "*.h")
     harvest(wayland_libdecor/include wayland_libdecor/include "*.h")
+    # Only needed for running the WESTON compositor.
+    harvest(wayland/lib64 wayland/lib64 "*")
+
+    harvest(
+      wayland_weston/
+      wayland_weston/
+      "*"
+    )
   else()
     harvest(blosc/lib openvdb/lib "*.a")
     harvest(xml2/lib opencollada/lib "*.a")
@@ -215,10 +225,11 @@ else()
     "*"
   )
   harvest(openimagedenoise/include openimagedenoise/include "*")
-  harvest(openimagedenoise/lib openimagedenoise/lib "*.a")
+  harvest_rpath_lib(openimagedenoise/lib openimagedenoise/lib "*${SHAREDLIBEXT}*")
+  harvest(openimagedenoise/lib/cmake/OpenImageDenoise-${OIDN_VERSION} openimagedenoise/lib/cmake/OpenImageDenoise "*.cmake")
   harvest(embree/include embree/include "*.h")
   harvest(embree/lib embree/lib "*.a")
-  harvest(embree/lib embree/lib "*${SHAREDLIBEXT}*")
+  harvest_rpath_lib(embree/lib embree/lib "*${SHAREDLIBEXT}*")
   harvest(openpgl/include openpgl/include "*.h")
   harvest(openpgl/lib openpgl/lib "*.a")
   harvest(openpgl/lib/cmake/openpgl-${OPENPGL_SHORT_VERSION} openpgl/lib/cmake/openpgl "*.cmake")
@@ -254,7 +265,7 @@ else()
   harvest(spnav/include spnav/include "*.h")
   harvest(spnav/lib spnav/lib "*.a")
   harvest(tbb/include tbb/include "*.h")
-  harvest_rpath_lib(tbb/lib tbb/lib "libtbb${SHAREDLIBEXT}")
+  harvest_rpath_lib(tbb/lib tbb/lib "libtbb${SHAREDLIBEXT}*")
   harvest(theora/lib ffmpeg/lib "*.a")
   harvest(tiff/include tiff/include "*.h")
   harvest(tiff/lib tiff/lib "*.a")
@@ -262,7 +273,6 @@ else()
   harvest(opus/lib ffmpeg/lib "*.a")
   harvest(vpx/lib ffmpeg/lib "*.a")
   harvest(x264/lib ffmpeg/lib "*.a")
-  harvest(xvidcore/lib ffmpeg/lib "*.a")
   harvest(aom/lib ffmpeg/lib "*.a")
   harvest(webp/lib webp/lib "*.a")
   harvest(webp/include webp/include "*.h")

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -8,37 +9,44 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 
 #include "BLT_translation.h"
 
 #include "DNA_mesh_types.h"
 
 #include "BKE_context.h"
-#include "BKE_paint.h"
-#include "BKE_pbvh.h"
-#include "BKE_screen.h"
+#include "BKE_paint.hh"
+#include "BKE_pbvh_api.hh"
+#include "BKE_screen.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_view3d.hh"
 #include "sculpt_intern.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+
+#include "PIL_time.h"
+
+#include "CLG_log.h"
 
 #include <cmath>
 #include <cstdlib>
+
+static CLG_LogRef LOG = {"sculpt.detail"};
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Utilities
@@ -82,17 +90,15 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   SculptSession *ss = ob->sculpt;
   float size;
   float bb_min[3], bb_max[3], center[3], dim[3];
-  int totnodes;
-  PBVHNode **nodes;
 
-  BKE_pbvh_search_gather(ss->pbvh, nullptr, nullptr, &nodes, &totnodes);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
-  if (!totnodes) {
+  if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;
   }
 
-  for (int i = 0; i < totnodes; i++) {
-    BKE_pbvh_node_mark_topology_update(nodes[i]);
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_topology_update(node);
   }
   /* Get the bounding box, its center and size. */
   BKE_pbvh_bounding_box(ob->sculpt->pbvh, bb_min, bb_max);
@@ -109,14 +115,18 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   SCULPT_undo_push_begin(ob, op);
   SCULPT_undo_push_node(ob, nullptr, SCULPT_UNDO_COORDS);
 
+  const double start_time = PIL_check_seconds_timer();
+
   while (BKE_pbvh_bmesh_update_topology(
-      ss->pbvh, PBVH_Collapse | PBVH_Subdivide, center, nullptr, size, false, false)) {
-    for (int i = 0; i < totnodes; i++) {
-      BKE_pbvh_node_mark_topology_update(nodes[i]);
+      ss->pbvh, PBVH_Collapse | PBVH_Subdivide, center, nullptr, size, false, false))
+  {
+    for (PBVHNode *node : nodes) {
+      BKE_pbvh_node_mark_topology_update(node);
     }
   }
 
-  MEM_SAFE_FREE(nodes);
+  CLOG_INFO(&LOG, 2, "Detail flood fill took %f seconds.", PIL_check_seconds_timer() - start_time);
+
   SCULPT_undo_push_end(ob);
 
   /* Force rebuild of PBVH for better BB placement. */
@@ -147,10 +157,10 @@ void SCULPT_OT_detail_flood_fill(wmOperatorType *ot)
 /** \name Sample Detail Size
  * \{ */
 
-typedef enum eSculptSampleDetailModeTypes {
+enum eSculptSampleDetailModeTypes {
   SAMPLE_DETAIL_DYNTOPO = 0,
   SAMPLE_DETAIL_VOXEL = 1,
-} eSculptSampleDetailModeTypes;
+};
 
 static EnumPropertyItem prop_sculpt_sample_detail_mode_types[] = {
     {SAMPLE_DETAIL_DYNTOPO, "DYNTOPO", 0, "Dyntopo", "Sample dyntopo detail"},
@@ -194,7 +204,8 @@ static void sculpt_raycast_detail_cb(PBVHNode *node, void *data_v, float *tmin)
   if (BKE_pbvh_node_get_tmin(node) < *tmin) {
     SculptDetailRaycastData *srd = static_cast<SculptDetailRaycastData *>(data_v);
     if (BKE_pbvh_bmesh_node_raycast_detail(
-            node, srd->ray_start, &srd->isect_precalc, &srd->depth, &srd->edge_length)) {
+            node, srd->ray_start, &srd->isect_precalc, &srd->depth, &srd->edge_length))
+    {
       srd->hit = true;
       *tmin = srd->depth;
     }
@@ -214,7 +225,7 @@ static void sample_detail_dyntopo(bContext *C, ViewContext *vc, const int mval[2
   float depth = SCULPT_raycast_init(vc, mval_fl, ray_start, ray_end, ray_normal, false);
 
   SculptDetailRaycastData srd;
-  srd.hit = 0;
+  srd.hit = false;
   srd.ray_start = ray_start;
   srd.depth = depth;
   srd.edge_length = 0.0f;
@@ -245,8 +256,7 @@ static int sample_detail(bContext *C, const int event_xy[2], int mode)
   CTX_wm_region_set(C, region);
 
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
   Object *ob = vc.obact;
   if (ob == nullptr) {
@@ -638,7 +648,8 @@ static int dyntopo_detail_size_edit_modal(bContext *C, wmOperator *op, const wmE
 
   /* Cancel modal operator */
   if ((event->type == EVT_ESCKEY && event->val == KM_PRESS) ||
-      (event->type == RIGHTMOUSE && event->val == KM_PRESS)) {
+      (event->type == RIGHTMOUSE && event->val == KM_PRESS))
+  {
     dyntopo_detail_size_edit_cancel(C, op);
     ED_region_tag_redraw(region);
     return OPERATOR_FINISHED;
@@ -647,7 +658,8 @@ static int dyntopo_detail_size_edit_modal(bContext *C, wmOperator *op, const wmE
   /* Finish modal operator */
   if ((event->type == LEFTMOUSE && event->val == KM_RELEASE) ||
       (event->type == EVT_RETKEY && event->val == KM_PRESS) ||
-      (event->type == EVT_PADENTER && event->val == KM_PRESS)) {
+      (event->type == EVT_PADENTER && event->val == KM_PRESS))
+  {
     ED_region_draw_cb_exit(region->type, cd->draw_handle);
     sd->constant_detail = cd->detail_size;
     ss->draw_faded_cursor = false;
@@ -749,7 +761,8 @@ static int dyntopo_detail_size_edit_invoke(bContext *C, wmOperator *op, const wm
   ss->draw_faded_cursor = true;
 
   const char *status_str = TIP_(
-      "Move the mouse to change the dyntopo detail size. LMB: confirm size, ESC/RMB: cancel");
+      "Move the mouse to change the dyntopo detail size. LMB: confirm size, ESC/RMB: cancel, "
+      "SHIFT: precision mode, CTRL: sample detail size");
   ED_workspace_status_text(C, status_str);
 
   return OPERATOR_RUNNING_MODAL;

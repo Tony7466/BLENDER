@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -8,7 +9,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_matrix.h"
-#include "BLI_string_utils.h"
+#include "BLI_string.h"
+#include "BLI_string_utils.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_debug.h"
@@ -52,7 +54,7 @@ using namespace blender::gpu;
 
 Shader::Shader(const char *sh_name)
 {
-  BLI_strncpy(this->name, sh_name, sizeof(this->name));
+  STRNCPY(this->name, sh_name);
 }
 
 Shader::~Shader()
@@ -273,8 +275,8 @@ GPUShader *GPU_shader_create_from_info_name(const char *info_name)
   const GPUShaderCreateInfo *_info = gpu_shader_create_info_get(info_name);
   const ShaderCreateInfo &info = *reinterpret_cast<const ShaderCreateInfo *>(_info);
   if (!info.do_static_compilation_) {
-    printf("Warning: Trying to compile \"%s\" which was not marked for static compilation.\n",
-           info.name_.c_str());
+    std::cerr << "Warning: Trying to compile \"" << info.name_.c_str()
+              << "\" which was not marked for static compilation.\n";
   }
   return GPU_shader_create_from_info(_info);
 }
@@ -290,7 +292,7 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 
   const std::string error = info.check_error();
   if (!error.empty()) {
-    printf("%s\n", error.c_str());
+    std::cerr << error.c_str() << "\n";
     BLI_assert(false);
   }
 
@@ -500,6 +502,8 @@ const char *GPU_shader_get_name(GPUShader *shader)
   return unwrap(shader)->name_get();
 }
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Shader cache warming
  * \{ */
@@ -632,6 +636,16 @@ int GPU_shader_get_program(GPUShader *shader)
   return unwrap(shader)->program_handle_get();
 }
 
+int GPU_shader_get_ssbo_vertex_fetch_num_verts_per_prim(GPUShader *shader)
+{
+  return unwrap(shader)->get_ssbo_vertex_fetch_output_num_verts();
+}
+
+bool GPU_shader_uses_ssbo_vertex_fetch(GPUShader *shader)
+{
+  return unwrap(shader)->get_uses_ssbo_vertex_fetch();
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -736,6 +750,8 @@ void GPU_shader_uniform_4fv_array(GPUShader *sh, const char *name, int len, cons
 
 /** \} */
 
+namespace blender::gpu {
+
 /* -------------------------------------------------------------------- */
 /** \name sRGB Rendering Workaround
  *
@@ -746,8 +762,6 @@ void GPU_shader_uniform_4fv_array(GPUShader *sh, const char *name, int len, cons
  * For this reason we have a uniform to switch the transform on and off depending on the current
  * frame-buffer color-space.
  * \{ */
-
-namespace blender::gpu {
 
 static int g_shader_builtin_srgb_transform = 0;
 static bool g_shader_builtin_srgb_is_dirty = false;
@@ -774,6 +788,6 @@ void Shader::set_framebuffer_srgb_target(int use_srgb_to_linear)
   }
 }
 
-}  // namespace blender::gpu
-
 /** \} */
+
+}  // namespace blender::gpu

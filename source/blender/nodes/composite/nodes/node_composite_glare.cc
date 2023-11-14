@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup cmpnodes
@@ -16,10 +17,10 @@
 
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "IMB_colormanagement.h"
 
@@ -42,10 +43,10 @@ NODE_STORAGE_FUNCS(NodeGlare)
 
 static void cmp_node_glare_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>(N_("Image"))
+  b.add_input<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
-  b.add_output<decl::Color>(N_("Image"));
+  b.add_output<decl::Color>("Image");
 }
 
 static void node_composit_init_glare(bNodeTree * /*ntree*/, bNode *node)
@@ -149,7 +150,7 @@ class GlareOperation : public NodeOperation {
         return execute_ghost(highlights_result);
       default:
         BLI_assert_unreachable();
-        return Result(ResultType::Color, texture_pool());
+        return context().create_temporary_result(ResultType::Color);
     }
   }
 
@@ -159,7 +160,7 @@ class GlareOperation : public NodeOperation {
 
   Result execute_highlights()
   {
-    GPUShader *shader = shader_manager().get("compositor_glare_highlights");
+    GPUShader *shader = context().get_shader("compositor_glare_highlights");
     GPU_shader_bind(shader);
 
     float luminance_coefficients[3];
@@ -172,7 +173,7 @@ class GlareOperation : public NodeOperation {
     GPU_texture_filter_mode(input_image.texture(), true);
 
     const int2 glare_size = get_glare_size();
-    Result highlights_result = Result::Temporary(ResultType::Color, texture_pool());
+    Result highlights_result = context().create_temporary_result(ResultType::Color);
     highlights_result.allocate_texture(glare_size);
     highlights_result.bind_as_image(shader, "output_img");
 
@@ -207,7 +208,7 @@ class GlareOperation : public NodeOperation {
      * so just use it as the pass result. */
     Result &vertical_pass_result = highlights_result;
 
-    GPUShader *shader = shader_manager().get("compositor_glare_simple_star_vertical_pass");
+    GPUShader *shader = context().get_shader("compositor_glare_simple_star_vertical_pass");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "iterations", get_number_of_iterations());
@@ -235,12 +236,12 @@ class GlareOperation : public NodeOperation {
     /* The horizontal pass is applied in-plane, so copy the highlights to a new image since the
      * highlights result is still needed by the vertical pass. */
     const int2 glare_size = get_glare_size();
-    Result horizontal_pass_result = Result::Temporary(ResultType::Color, texture_pool());
+    Result horizontal_pass_result = context().create_temporary_result(ResultType::Color);
     horizontal_pass_result.allocate_texture(glare_size);
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
     GPU_texture_copy(horizontal_pass_result.texture(), highlights_result.texture());
 
-    GPUShader *shader = shader_manager().get("compositor_glare_simple_star_horizontal_pass");
+    GPUShader *shader = context().get_shader("compositor_glare_simple_star_horizontal_pass");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "iterations", get_number_of_iterations());
@@ -265,7 +266,7 @@ class GlareOperation : public NodeOperation {
      * so just use it as the pass result. */
     Result &anti_diagonal_pass_result = highlights_result;
 
-    GPUShader *shader = shader_manager().get("compositor_glare_simple_star_anti_diagonal_pass");
+    GPUShader *shader = context().get_shader("compositor_glare_simple_star_anti_diagonal_pass");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "iterations", get_number_of_iterations());
@@ -292,12 +293,12 @@ class GlareOperation : public NodeOperation {
     /* The diagonal pass is applied in-plane, so copy the highlights to a new image since the
      * highlights result is still needed by the anti-diagonal pass. */
     const int2 glare_size = get_glare_size();
-    Result diagonal_pass_result = Result::Temporary(ResultType::Color, texture_pool());
+    Result diagonal_pass_result = context().create_temporary_result(ResultType::Color);
     diagonal_pass_result.allocate_texture(glare_size);
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
     GPU_texture_copy(diagonal_pass_result.texture(), highlights_result.texture());
 
-    GPUShader *shader = shader_manager().get("compositor_glare_simple_star_diagonal_pass");
+    GPUShader *shader = context().get_shader("compositor_glare_simple_star_diagonal_pass");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "iterations", get_number_of_iterations());
@@ -333,7 +334,7 @@ class GlareOperation : public NodeOperation {
     /* Create an initially zero image where streaks will be accumulated. */
     const float4 zero_color = float4(0.0f);
     const int2 glare_size = get_glare_size();
-    Result accumulated_streaks_result = Result::Temporary(ResultType::Color, texture_pool());
+    Result accumulated_streaks_result = context().create_temporary_result(ResultType::Color);
     accumulated_streaks_result.allocate_texture(glare_size);
     GPU_texture_clear(accumulated_streaks_result.texture(), GPU_DATA_FLOAT, zero_color);
 
@@ -343,7 +344,7 @@ class GlareOperation : public NodeOperation {
       const float2 streak_direction = compute_streak_direction(streak_index);
       Result streak_result = apply_streak_filter(highlights_result, streak_direction);
 
-      GPUShader *shader = shader_manager().get("compositor_glare_streaks_accumulate");
+      GPUShader *shader = context().get_shader("compositor_glare_streaks_accumulate");
       GPU_shader_bind(shader);
 
       const float attenuation_factor = compute_streak_attenuation_factor();
@@ -366,18 +367,18 @@ class GlareOperation : public NodeOperation {
 
   Result apply_streak_filter(Result &highlights_result, const float2 &streak_direction)
   {
-    GPUShader *shader = shader_manager().get("compositor_glare_streaks_filter");
+    GPUShader *shader = context().get_shader("compositor_glare_streaks_filter");
     GPU_shader_bind(shader);
 
     /* Copy the highlights result into a new image because the output will be copied to the input
      * after each iteration and the highlights result is still needed to compute other streaks. */
     const int2 glare_size = get_glare_size();
-    Result input_streak_result = Result::Temporary(ResultType::Color, texture_pool());
+    Result input_streak_result = context().create_temporary_result(ResultType::Color);
     input_streak_result.allocate_texture(glare_size);
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
     GPU_texture_copy(input_streak_result.texture(), highlights_result.texture());
 
-    Result output_streak_result = Result::Temporary(ResultType::Color, texture_pool());
+    Result output_streak_result = context().create_temporary_result(ResultType::Color);
     output_streak_result.allocate_texture(glare_size);
 
     /* For the given number of iterations, apply the streak filter in the given direction. The
@@ -503,7 +504,7 @@ class GlareOperation : public NodeOperation {
   {
     Result base_ghost_result = compute_base_ghost(highlights_result);
 
-    GPUShader *shader = shader_manager().get("compositor_glare_ghost_accumulate");
+    GPUShader *shader = context().get_shader("compositor_glare_ghost_accumulate");
     GPU_shader_bind(shader);
 
     /* Color modulators are constant across iterations. */
@@ -516,7 +517,7 @@ class GlareOperation : public NodeOperation {
     /* Create an initially zero image where ghosts will be accumulated. */
     const float4 zero_color = float4(0.0f);
     const int2 glare_size = get_glare_size();
-    Result accumulated_ghosts_result = Result::Temporary(ResultType::Color, texture_pool());
+    Result accumulated_ghosts_result = context().create_temporary_result(ResultType::Color);
     accumulated_ghosts_result.allocate_texture(glare_size);
     GPU_texture_clear(accumulated_ghosts_result.texture(), GPU_DATA_FLOAT, zero_color);
 
@@ -558,7 +559,7 @@ class GlareOperation : public NodeOperation {
    * the center of the image. */
   Result compute_base_ghost(Result &highlights_result)
   {
-    Result small_ghost_result = Result::Temporary(ResultType::Color, texture_pool());
+    Result small_ghost_result = context().create_temporary_result(ResultType::Color);
     symmetric_separable_blur(context(),
                              highlights_result,
                              small_ghost_result,
@@ -567,7 +568,7 @@ class GlareOperation : public NodeOperation {
                              false,
                              false);
 
-    Result big_ghost_result = Result::Temporary(ResultType::Color, texture_pool());
+    Result big_ghost_result = context().create_temporary_result(ResultType::Color);
     symmetric_separable_blur(context(),
                              highlights_result,
                              big_ghost_result,
@@ -578,7 +579,7 @@ class GlareOperation : public NodeOperation {
 
     highlights_result.release();
 
-    GPUShader *shader = shader_manager().get("compositor_glare_ghost_base");
+    GPUShader *shader = context().get_shader("compositor_glare_ghost_base");
     GPU_shader_bind(shader);
 
     small_ghost_result.bind_as_texture(shader, "small_ghost_tx");
@@ -590,7 +591,7 @@ class GlareOperation : public NodeOperation {
     GPU_texture_extend_mode(big_ghost_result.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
 
     const int2 glare_size = get_glare_size();
-    Result base_ghost_result = Result::Temporary(ResultType::Color, texture_pool());
+    Result base_ghost_result = context().create_temporary_result(ResultType::Color);
     base_ghost_result.allocate_texture(glare_size);
     base_ghost_result.bind_as_image(shader, "combined_ghost_img");
 
@@ -690,34 +691,34 @@ class GlareOperation : public NodeOperation {
    * Fog Glow Glare.
    * --------------- */
 
-  /* Fog glow is computed by first progressively half-downsampling the highlights down to a certain
-   * size, then progressively double-upsampling the last downsampled result up to the original size
-   * of the highlights, adding the downsampled result of the same size in each upsampling step.
-   * This can be illustrated as follows:
+  /* Fog glow is computed by first progressively half-down-sampling the highlights down to a
+   * certain size, then progressively double-up-sampling the last down-sampled result up to the
+   * original size of the highlights, adding the down-sampled result of the same size in each
+   * up-sampling step. This can be illustrated as follows:
    *
-   *              Highlights  ---+---> Fog Glare
+   *             Highlights   ---+---> Fog Glare
    *                  |                   |
-   *              Downsampled ---+---> Upsampled
+   *             Down-sampled ---+---> Up-sampled
    *                  |                   |
-   *              Downsampled ---+---> Upsampled
+   *             Down-sampled ---+---> Up-sampled
    *                  |                   |
-   *              Downsampled ---+---> Upsampled
+   *             Down-sampled ---+---> Up-sampled
    *                  |                   ^
    *                 ...                  |
-   *              Downsampled ------------'
+   *            Down-sampled  ------------'
    *
-   * The smooth downsampling followed by smooth upsampling can be thought of as a cheap way to
-   * approximate a large radius blur, and adding the corresponding downsampled result while
-   * upsampling is done to counter the attenuation that happens during downsampling.
+   * The smooth down-sampling followed by smooth up-sampling can be thought of as a cheap way to
+   * approximate a large radius blur, and adding the corresponding down-sampled result while
+   * up-sampling is done to counter the attenuation that happens during down-sampling.
    *
-   * Smaller downsampled results contribute to larger glare size, so controlling the size can be
-   * done by stopping downsampling down to a certain size, where the maximum possible size is
-   * achieved when downsampling happens down to the smallest size of 2. */
+   * Smaller down-sampled results contribute to larger glare size, so controlling the size can be
+   * done by stopping down-sampling down to a certain size, where the maximum possible size is
+   * achieved when down-sampling happens down to the smallest size of 2. */
   Result execute_fog_glow(Result &highlights_result)
   {
-    /* The maximum possible glare size is achieved when we downsampled down to the smallest size of
-     * 2, which would result in a downsampling chain length of the binary logarithm of the smaller
-     * dimension of the size of the highlights.
+    /* The maximum possible glare size is achieved when we down-sampled down to the smallest size
+     * of 2, which would result in a down-sampling chain length of the binary logarithm of the
+     * smaller dimension of the size of the highlights.
      *
      * However, as users might want a smaller glare size, we reduce the chain length by the halving
      * count supplied by the user. */
@@ -729,9 +730,9 @@ class GlareOperation : public NodeOperation {
     Array<Result> downsample_chain = compute_fog_glow_downsample_chain(highlights_result,
                                                                        chain_length);
 
-    /* Notice that for a chain length of n, we need (n - 1) upsampling passes. */
+    /* Notice that for a chain length of n, we need (n - 1) up-sampling passes. */
     const IndexRange upsample_passes_range(chain_length - 1);
-    GPUShader *shader = shader_manager().get("compositor_glare_fog_glow_upsample");
+    GPUShader *shader = context().get_shader("compositor_glare_fog_glow_upsample");
     GPU_shader_bind(shader);
 
     for (const int i : upsample_passes_range) {
@@ -754,14 +755,15 @@ class GlareOperation : public NodeOperation {
     return downsample_chain[0];
   }
 
-  /* Progressively downsample the given result into a result with half the size for the given chain
-   * length, returning an array containing the chain of downsampled results. The first result of
-   * the chain is the given result itself for easier handling. The chain length is expected not
-   * to exceed the binary logarithm of the smaller dimension of the given result, because that
-   * would result in downsampling passes that produce useless textures with just one pixel. */
+  /* Progressively down-sample the given result into a result with half the size for the given
+   * chain length, returning an array containing the chain of down-sampled results. The first
+   * result of the chain is the given result itself for easier handling. The chain length is
+   * expected not to exceed the binary logarithm of the smaller dimension of the given result,
+   * because that would result in down-sampling passes that produce useless textures with just
+   * one pixel. */
   Array<Result> compute_fog_glow_downsample_chain(Result &highlights_result, int chain_length)
   {
-    const Result downsampled_result = Result::Temporary(ResultType::Color, texture_pool());
+    const Result downsampled_result = context().create_temporary_result(ResultType::Color);
     Array<Result> downsample_chain(chain_length, downsampled_result);
 
     /* We assign the original highlights result to the first result of the chain to make the code
@@ -772,16 +774,16 @@ class GlareOperation : public NodeOperation {
 
     GPUShader *shader;
     for (const int i : downsample_passes_range) {
-      /* For the first downsample pass, we use a special "Karis" downsample pass that applies a
+      /* For the first down-sample pass, we use a special "Karis" down-sample pass that applies a
        * form of local tone mapping to reduce the contributions of fireflies, see the shader for
-       * more information. Later passes use a simple average downsampling filter because fireflies
+       * more information. Later passes use a simple average down-sampling filter because fireflies
        * doesn't service the first pass. */
       if (i == downsample_passes_range.first()) {
-        shader = shader_manager().get("compositor_glare_fog_glow_downsample_karis_average");
+        shader = context().get_shader("compositor_glare_fog_glow_downsample_karis_average");
         GPU_shader_bind(shader);
       }
       else {
-        shader = shader_manager().get("compositor_glare_fog_glow_downsample_simple_average");
+        shader = context().get_shader("compositor_glare_fog_glow_downsample_simple_average");
         GPU_shader_bind(shader);
       }
 
@@ -824,7 +826,7 @@ class GlareOperation : public NodeOperation {
 
   void execute_mix(Result &glare_result)
   {
-    GPUShader *shader = shader_manager().get("compositor_glare_mix");
+    GPUShader *shader = context().get_shader("compositor_glare_mix");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1f(shader, "mix_factor", node_storage(bnode()).mix);

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # note, properties_animviz is a helper module only.
@@ -9,8 +11,12 @@ if "bpy" in locals():
     del reload
 
 _modules = [
+    "asset_shelf",
     "node_add_menu",
+    "node_add_menu_compositor",
     "node_add_menu_geometry",
+    "node_add_menu_shader",
+    "node_add_menu_texture",
     "properties_animviz",
     "properties_constraint",
     "properties_data_armature",
@@ -20,6 +26,7 @@ _modules = [
     "properties_data_curves",
     "properties_data_empty",
     "properties_data_gpencil",
+    "properties_data_grease_pencil",
     "properties_data_light",
     "properties_data_lattice",
     "properties_data_mesh",
@@ -41,6 +48,7 @@ _modules = [
     "properties_physics_common",
     "properties_physics_dynamicpaint",
     "properties_physics_field",
+    "properties_physics_geometry_nodes",
     "properties_physics_rigidbody",
     "properties_physics_rigidbody_constraint",
     "properties_physics_fluid",
@@ -169,7 +177,7 @@ def unregister():
                 unregister_class(cls)
 
 # Define a default UIList, when a list does not need any custom drawing...
-# Keep in sync with its #defined name in UI_interface.h
+# Keep in sync with its #defined name in UI_interface.hh
 
 
 class UI_UL_list(bpy.types.UIList):
@@ -185,6 +193,7 @@ class UI_UL_list(bpy.types.UIList):
         or an empty list if no flags were given and no filtering has been done.
         """
         import fnmatch
+        import re
 
         if not pattern or not items:  # Empty pattern or list = no filtering!
             return flags or []
@@ -193,12 +202,12 @@ class UI_UL_list(bpy.types.UIList):
             flags = [0] * len(items)
 
         # Implicitly add heading/trailing wildcards.
-        pattern = "*" + pattern + "*"
+        pattern_regex = re.compile(fnmatch.translate("*" + pattern + "*"))
 
         for i, item in enumerate(items):
             name = getattr(item, propname, None)
-            # This is similar to a logical xor
-            if bool(name and fnmatch.fnmatch(name, pattern)) is not bool(reverse):
+            # This is similar to a logical XOR.
+            if bool(name and pattern_regex.match(name)) is not reverse:
                 flags[i] |= bitflag
         return flags
 

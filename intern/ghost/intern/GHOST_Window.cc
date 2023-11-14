@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -21,22 +22,21 @@ GHOST_Window::GHOST_Window(uint32_t width,
                            const bool wantStereoVisual,
                            const bool /*exclusive*/)
     : m_drawingContextType(GHOST_kDrawingContextTypeNone),
+      m_userData(nullptr),
       m_cursorVisible(true),
       m_cursorGrab(GHOST_kGrabDisable),
       m_cursorGrabAxis(GHOST_kAxisNone),
+      m_cursorGrabInitPos{0, 0},
+      m_cursorGrabAccumPos{0, 0},
       m_cursorShape(GHOST_kStandardCursorDefault),
+      m_progressBarVisible(false),
+      m_canAcceptDragOperation(false),
+      m_isUnsavedChanges(false),
       m_wantStereoVisual(wantStereoVisual),
+      m_nativePixelSize(1.0f),
       m_context(new GHOST_ContextNone(false))
+
 {
-  m_isUnsavedChanges = false;
-  m_canAcceptDragOperation = false;
-
-  m_progressBarVisible = false;
-
-  m_cursorGrabAccumPos[0] = 0;
-  m_cursorGrabAccumPos[1] = 0;
-
-  m_nativePixelSize = 1.0f;
 
   m_fullScreen = state == GHOST_kWindowStateFullScreen;
   if (m_fullScreen) {
@@ -107,11 +107,12 @@ uint GHOST_Window::getDefaultFramebuffer()
   return (m_context) ? m_context->getDefaultFramebuffer() : 0;
 }
 
-GHOST_TSuccess GHOST_Window::getVulkanBackbuffer(
-    void *image, void *framebuffer, void *render_pass, void *extent, uint32_t *fb_id)
+#ifdef WITH_VULKAN_BACKEND
+GHOST_TSuccess GHOST_Window::getVulkanSwapChainFormat(GHOST_VulkanSwapChainData *r_swap_chain_data)
 {
-  return m_context->getVulkanBackbuffer(image, framebuffer, render_pass, extent, fb_id);
+  return m_context->getVulkanSwapChainFormat(r_swap_chain_data);
 }
+#endif
 
 GHOST_TSuccess GHOST_Window::activateDrawingContext()
 {
@@ -172,7 +173,7 @@ GHOST_TSuccess GHOST_Window::setCursorGrab(GHOST_TGrabCursorMode mode,
 
 GHOST_TSuccess GHOST_Window::getCursorGrabBounds(GHOST_Rect &bounds) const
 {
-  if (m_cursorGrab != GHOST_kGrabWrap) {
+  if (!(m_cursorGrab == GHOST_kGrabWrap || m_cursorGrab == GHOST_kGrabHide)) {
     return GHOST_kFailure;
   }
   bounds = m_cursorGrabBounds;

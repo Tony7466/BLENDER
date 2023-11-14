@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -6,9 +8,7 @@
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "BLI_utildefines.h"
 
 /* BrushGpencilSettings->preset_type.
  * Use a range for each group and not continuous values. */
@@ -50,7 +50,10 @@ typedef enum eGPBrush_Presets {
   GP_BRUSH_PRESET_CLONE_STROKE = 208,
 
   /* Weight Paint 300-399. */
-  GP_BRUSH_PRESET_DRAW_WEIGHT = 300,
+  GP_BRUSH_PRESET_WEIGHT_DRAW = 300,
+  GP_BRUSH_PRESET_WEIGHT_BLUR = 301,
+  GP_BRUSH_PRESET_WEIGHT_AVERAGE = 302,
+  GP_BRUSH_PRESET_WEIGHT_SMEAR = 303,
 } eGPBrush_Presets;
 
 /* BrushGpencilSettings->flag */
@@ -83,7 +86,7 @@ typedef enum eGPDbrush_Flag {
   GP_BRUSH_MATERIAL_PINNED = (1 << 13),
   /* Do not show fill color while drawing (no lasso mode) */
   GP_BRUSH_DISSABLE_LASSO = (1 << 14),
-  /* Do not erase strokes oLcluded */
+  /* Do not erase strokes occluded. */
   GP_BRUSH_OCCLUDE_ERASER = (1 << 15),
   /* Post process trim stroke */
   GP_BRUSH_TRIM_STROKE = (1 << 16),
@@ -91,6 +94,11 @@ typedef enum eGPDbrush_Flag {
   GP_BRUSH_OUTLINE_STROKE = (1 << 17),
   /* Collide with stroke. */
   GP_BRUSH_FILL_STROKE_COLLIDE = (1 << 18),
+  /* Keep the caps as they are when erasing. Otherwise flatten the caps. */
+  GP_BRUSH_ERASER_KEEP_CAPS = (1 << 19),
+  /* Affect only the drawing in the active layer.
+   * Otherwise affect all editable drawings in the object. */
+  GP_BRUSH_ACTIVE_LAYER_ONLY = (1 << 20),
 } eGPDbrush_Flag;
 
 typedef enum eGPDbrush_Flag2 {
@@ -187,6 +195,9 @@ typedef enum eGP_BrushIcons {
   GP_BRUSH_ICON_GPBRUSH_PINCH = 26,
   GP_BRUSH_ICON_GPBRUSH_CLONE = 27,
   GP_BRUSH_ICON_GPBRUSH_WEIGHT = 28,
+  GP_BRUSH_ICON_GPBRUSH_BLUR = 29,
+  GP_BRUSH_ICON_GPBRUSH_AVERAGE = 30,
+  GP_BRUSH_ICON_GPBRUSH_SMEAR = 31,
 } eGP_BrushIcons;
 
 typedef enum eBrushCurvePreset {
@@ -304,6 +315,7 @@ typedef enum eGP_Sculpt_Flag {
   /* temporary invert action */
   GP_SCULPT_FLAG_TMP_INVERT = (1 << 3),
 } eGP_Sculpt_Flag;
+ENUM_OPERATORS(eGP_Sculpt_Flag, GP_SCULPT_FLAG_TMP_INVERT)
 
 /* sculpt_mode_flag */
 typedef enum eGP_Sculpt_Mode_Flag {
@@ -607,6 +619,9 @@ typedef enum eBrushGPSculptTool {
 /* BrushGpencilSettings->brush type */
 typedef enum eBrushGPWeightTool {
   GPWEIGHT_TOOL_DRAW = 0,
+  GPWEIGHT_TOOL_BLUR = 1,
+  GPWEIGHT_TOOL_AVERAGE = 2,
+  GPWEIGHT_TOOL_SMEAR = 3,
 } eBrushGPWeightTool;
 
 /* direction that the brush displaces along */
@@ -650,7 +665,3 @@ typedef enum eBrushCurvesSculptDensityMode {
 } eBrushCurvesSculptDensityMode;
 
 #define MAX_BRUSH_PIXEL_RADIUS 500
-
-#ifdef __cplusplus
-}
-#endif

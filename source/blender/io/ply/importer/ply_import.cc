@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup ply
@@ -7,18 +9,21 @@
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_memory_utils.hh"
+#include "BLI_string.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "ply_data.hh"
 #include "ply_import.hh"
@@ -55,8 +60,9 @@ static Span<char> parse_word(Span<char> &str)
 
 static void skip_space(Span<char> &str)
 {
-  while (!str.is_empty() && str[0] <= ' ')
+  while (!str.is_empty() && str[0] <= ' ') {
     str = str.drop_front(1);
+  }
 }
 
 static PlyDataTypes type_from_string(Span<char> word)
@@ -170,8 +176,8 @@ void importer_main(Main *bmain,
 {
   /* File base name used for both mesh and object. */
   char ob_name[FILE_MAX];
-  BLI_strncpy(ob_name, BLI_path_basename(import_params.filepath), FILE_MAX);
-  BLI_path_extension_replace(ob_name, FILE_MAX, "");
+  STRNCPY(ob_name, BLI_path_basename(import_params.filepath));
+  BLI_path_extension_strip(ob_name);
 
   /* Parse header. */
   PlyReadBuffer file(import_params.filepath, 64 * 1024);
@@ -188,36 +194,34 @@ void importer_main(Main *bmain,
   std::unique_ptr<PlyData> data = import_ply_data(file, header);
   if (data == nullptr) {
     fprintf(stderr, "PLY Importer: failed importing %s, unknown error\n", ob_name);
-    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed importing, unknown error.");
+    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed importing, unknown error");
     return;
   }
   if (!data->error.empty()) {
     fprintf(stderr, "PLY Importer: failed importing %s: %s\n", ob_name, data->error.c_str());
-    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed importing, unknown error.");
+    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed importing, unknown error");
     return;
   }
   if (data->vertices.is_empty()) {
     fprintf(stderr, "PLY Importer: file %s contains no vertices\n", ob_name);
-    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed importing, no vertices.");
+    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed importing, no vertices");
     return;
   }
 
   /* Create mesh and do all prep work. */
-  Mesh *mesh = BKE_mesh_add(bmain, ob_name);
+  Mesh *mesh_in_main = BKE_mesh_add(bmain, ob_name);
   BKE_view_layer_base_deselect_all(scene, view_layer);
   LayerCollection *lc = BKE_layer_collection_get_active(view_layer);
   Object *obj = BKE_object_add_only_object(bmain, OB_MESH, ob_name);
-  BKE_mesh_assign_object(bmain, obj, mesh);
+  BKE_mesh_assign_object(bmain, obj, mesh_in_main);
   BKE_collection_object_add(bmain, lc->collection, obj);
   BKE_view_layer_synced_ensure(scene, view_layer);
   Base *base = BKE_view_layer_base_find(view_layer, obj);
   BKE_view_layer_base_select_and_set_active(view_layer, base);
 
   /* Stuff ply data into the mesh. */
-  Mesh *temp_val = convert_ply_to_mesh(*data, mesh, import_params);
-  if (import_params.merge_verts && temp_val != mesh) {
-    BKE_mesh_nomain_to_mesh(temp_val, mesh, obj);
-  }
+  Mesh *mesh = convert_ply_to_mesh(*data, import_params);
+  BKE_mesh_nomain_to_mesh(mesh, mesh_in_main, obj);
 
   /* Object matrix and finishing up. */
   float global_scale = import_params.global_scale;

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 __all__ = (
@@ -68,7 +70,7 @@ _km_hierarchy = [
         ('Font', 'EMPTY', 'WINDOW', [
             _km_expand_from_toolsystem('VIEW_3D', 'EDIT_TEXT'),
         ]),
-
+        ('Grease Pencil', 'EMPTY', 'WINDOW', []),
         ('Pose', 'EMPTY', 'WINDOW', [
             _km_expand_from_toolsystem('VIEW_3D', 'POSE'),
         ]),
@@ -204,6 +206,9 @@ _km_hierarchy = [
         ('Grease Pencil Stroke Sculpt (Clone)', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Weight Mode', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Weight (Draw)', 'EMPTY', 'WINDOW', []),
+        ('Grease Pencil Stroke Weight (Blur)', 'EMPTY', 'WINDOW', []),
+        ('Grease Pencil Stroke Weight (Average)', 'EMPTY', 'WINDOW', []),
+        ('Grease Pencil Stroke Weight (Smear)', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Vertex Mode', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Vertex (Draw)', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Vertex (Blur)', 'EMPTY', 'WINDOW', []),

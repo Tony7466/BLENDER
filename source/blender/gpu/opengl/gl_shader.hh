@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -68,6 +69,16 @@ class GLShader : public Shader {
   void uniform_float(int location, int comp_len, int array_size, const float *data) override;
   void uniform_int(int location, int comp_len, int array_size, const int *data) override;
 
+  /* Unused: SSBO vertex fetch draw parameters. */
+  bool get_uses_ssbo_vertex_fetch() const override
+  {
+    return false;
+  }
+  int get_ssbo_vertex_fetch_output_num_verts() const override
+  {
+    return 0;
+  }
+
   /** DEPRECATED: Kept only because of BGL API. */
   int program_handle_get() const override;
 
@@ -95,11 +106,11 @@ class GLShader : public Shader {
 
 class GLLogParser : public GPULogParser {
  public:
-  char *parse_line(char *log_line, GPULogItem &log_item) override;
+  const char *parse_line(const char *log_line, GPULogItem &log_item) override;
 
  protected:
-  char *skip_severity_prefix(char *log_line, GPULogItem &log_item);
-  char *skip_severity_keyword(char *log_line, GPULogItem &log_item);
+  const char *skip_severity_prefix(const char *log_line, GPULogItem &log_item);
+  const char *skip_severity_keyword(const char *log_line, GPULogItem &log_item);
 
   MEM_CXX_CLASS_ALLOC_FUNCS("GLLogParser");
 };

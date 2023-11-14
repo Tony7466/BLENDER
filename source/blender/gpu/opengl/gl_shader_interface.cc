@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -220,11 +221,9 @@ GLShaderInterface::GLShaderInterface(GLuint program)
   uniform_len = active_uniform_len;
 
   GLint max_ssbo_name_len = 0, ssbo_len = 0;
-  if (GPU_shader_storage_buffer_objects_support()) {
-    glGetProgramInterfaceiv(program, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, &ssbo_len);
-    glGetProgramInterfaceiv(
-        program, GL_SHADER_STORAGE_BLOCK, GL_MAX_NAME_LENGTH, &max_ssbo_name_len);
-  }
+  glGetProgramInterfaceiv(program, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, &ssbo_len);
+  glGetProgramInterfaceiv(
+      program, GL_SHADER_STORAGE_BLOCK, GL_MAX_NAME_LENGTH, &max_ssbo_name_len);
 
   BLI_assert_msg(ubo_len <= 16, "enabled_ubo_mask_ is uint16_t");
 
@@ -469,8 +468,7 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
     if (res.bind_type == ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER) {
       copy_input_name(input, res.uniformbuf.name, name_buffer_, name_buffer_offset);
       if (true || !GLContext::explicit_location_support) {
-        std::string prefixed_name = "_" + res.uniformbuf.name;
-        input->location = glGetUniformBlockIndex(program, prefixed_name.c_str());
+        input->location = glGetUniformBlockIndex(program, name_buffer_ + input->name_offset);
         glUniformBlockBinding(program, input->location, res.slot);
       }
       input->binding = res.slot;

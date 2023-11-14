@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -77,6 +79,10 @@ class Shader {
   /* DEPRECATED: Kept only because of BGL API. */
   virtual int program_handle_get() const = 0;
 
+  /* Only used by SSBO Vertex fetch. */
+  virtual bool get_uses_ssbo_vertex_fetch() const = 0;
+  virtual int get_ssbo_vertex_fetch_output_num_verts() const = 0;
+
   inline const char *const name_get() const
   {
     return name;
@@ -97,8 +103,11 @@ class Shader {
   static void set_framebuffer_srgb_target(int use_srgb_to_linear);
 
  protected:
-  void print_log(
-      Span<const char *> sources, char *log, const char *stage, bool error, GPULogParser *parser);
+  void print_log(Span<const char *> sources,
+                 const char *log,
+                 const char *stage,
+                 bool error,
+                 GPULogParser *parser);
 };
 
 /* Syntactic sugar. */
@@ -119,6 +128,7 @@ enum class Severity {
   Unknown,
   Warning,
   Error,
+  Note,
 };
 
 struct LogCursor {
@@ -135,18 +145,19 @@ struct GPULogItem {
 
 class GPULogParser {
  public:
-  virtual char *parse_line(char *log_line, GPULogItem &log_item) = 0;
+  virtual const char *parse_line(const char *log_line, GPULogItem &log_item) = 0;
 
  protected:
-  char *skip_severity(char *log_line,
-                      GPULogItem &log_item,
-                      const char *error_msg,
-                      const char *warning_msg) const;
-  char *skip_separators(char *log_line, const StringRef separators) const;
-  char *skip_until(char *log_line, char stop_char) const;
+  const char *skip_severity(const char *log_line,
+                            GPULogItem &log_item,
+                            const char *error_msg,
+                            const char *warning_msg,
+                            const char *note_msg) const;
+  const char *skip_separators(const char *log_line, const StringRef separators) const;
+  const char *skip_until(const char *log_line, char stop_char) const;
   bool at_number(const char *log_line) const;
   bool at_any(const char *log_line, const StringRef chars) const;
-  int parse_number(const char *log_line, char **r_new_position) const;
+  int parse_number(const char *log_line, const char **r_new_position) const;
 
   MEM_CXX_CLASS_ALLOC_FUNCS("GPULogParser");
 };
