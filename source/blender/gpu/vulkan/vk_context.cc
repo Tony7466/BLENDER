@@ -277,6 +277,7 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                              Span<VkImageBlit>(&image_blit, 1));
   wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+  color_attachment->layout_ensure(*this, color_attachment->best_layout_get());
   command_buffers_get().submit();
 }
 
