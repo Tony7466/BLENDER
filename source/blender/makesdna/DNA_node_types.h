@@ -1893,7 +1893,9 @@ typedef struct NodeShaderMix {
 } NodeShaderMix;
 
 typedef struct NodeGeometryMathExpression {
-  char expression[1024]; // TODO: maybe change this to work like NodeInputString
+  char variables[1024]; // TODO: maybe change these this to work like NodeInputString
+  char expression[1024];
+  uint32_t output_type;
 } NodeGeometryMathExpression;
 
 /* script node mode */
@@ -2764,3 +2766,8 @@ typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_HSV = 1,
   NODE_COMBSEP_COLOR_HSL = 2,
 } NodeCombSepColorMode;
+
+typedef enum GeometryNodeMathExpressionOutput {
+  GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT = 0,
+  GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR = 1,
+} GeometryNodeMathExpressionOutput;

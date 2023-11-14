@@ -66,7 +66,15 @@ public:
   }
 
   std::unique_ptr<Value> evaluate(EvaluationContext &ctx) override {
-    return ctx.get_variable(token);
+    std::unique_ptr<Value> value;
+    
+    try {
+      value = ctx.get_variable(token);
+    } catch(const char *err) {
+      throw EvaluationError { this, err };
+    }
+
+    return value;
   }
 };
 

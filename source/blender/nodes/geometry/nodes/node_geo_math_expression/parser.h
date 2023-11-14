@@ -184,3 +184,22 @@ public:
     return peeked_token;
   }
 };
+
+void parse_var_names(std::string_view vars, std::function<void(std::string_view)> cb) {
+  size_t start = vars.size();
+
+  for(size_t i = 0; i < vars.size(); i++) {
+    char c = vars[i];
+
+    if(start == vars.size() && (c == '_' || isalpha(c))) {
+      start = i;
+    } else if(start != vars.size() && (c != '_' && !isalnum(c))) {
+      cb(vars.substr(start, i - start));
+      start = vars.size();
+    }
+    
+    if(start != vars.size() && i == vars.size() - 1) {
+      cb(vars.substr(start, i + 1 - start));
+    }
+  }
+}

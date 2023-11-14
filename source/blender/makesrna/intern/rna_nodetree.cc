@@ -9329,9 +9329,34 @@ static void def_geo_string_to_curves(StructRNA *srna)
 
 static void def_geo_math_expression(StructRNA *srna)
 {
+  static const EnumPropertyItem rna_node_geometry_math_expression_output[] = {
+      {GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT,
+       "OUTPUT_FLOAT",
+       0,
+       "Output Float",
+       "Output Float"},
+      {GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR,
+       "OUTPUT_VECTOR",
+       0,
+       "Output Vector",
+       "Output Vector"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   PropertyRNA *prop;
 
   RNA_def_struct_sdna_from(srna, "NodeGeometryMathExpression", "storage");
+
+  prop = RNA_def_property(srna, "variables", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Input Variables", "The input variables");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "output_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "output_type");
+  RNA_def_property_enum_items(prop, rna_node_geometry_math_expression_output);
+  RNA_def_property_enum_default(prop, GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT);
+  RNA_def_property_ui_text(prop, "Output Type", "Output type of the node");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "expression", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Expression", "The math Expression");
