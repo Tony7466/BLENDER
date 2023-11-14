@@ -294,7 +294,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
   Map<std::pair<ComputeContextHash, int>, std::unique_ptr<NodeGizmoData>> new_gizmo_by_node;
 
-  std::cout << "Refresh Gizmos: \n";
   nodes::gizmos::foreach_active_gizmo(
       *ob_orig,
       nmd,
@@ -305,7 +304,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           return;
         }
 
-        compute_context.print_stack(std::cout, gizmo_node_const.name);
         bNode &gizmo_node = const_cast<bNode &>(gizmo_node_const);
 
         geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(

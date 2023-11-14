@@ -632,7 +632,6 @@ static void find_side_effect_nodes(const NodesModifierData &nmd,
     }
   }
 
-  std::cout << "active gizmos\n";
   Object *object_orig = DEG_get_original_object(ctx.object);
   const NodesModifierData &nmd_orig = *reinterpret_cast<const NodesModifierData *>(
       BKE_modifier_get_original(ctx.object, const_cast<ModifierData *>(&nmd.modifier)));
@@ -650,7 +649,6 @@ static void find_side_effect_nodes(const NodesModifierData &nmd,
                 compute_context, origin_node.identifier, nmd, r_side_effect_nodes);
           }
         }
-        compute_context.print_stack(std::cout, gizmo_node.name);
       });
 }
 
