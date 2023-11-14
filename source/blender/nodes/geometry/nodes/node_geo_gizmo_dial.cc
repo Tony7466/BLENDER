@@ -17,7 +17,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_register()
 {
   static bNodeType ntype;
-  geo_node_type_base(&ntype, GEO_NODE_GIZMO_DIAL, "Dial Gizmo", NODE_CLASS_GEOMETRY);
+  geo_node_type_base(&ntype, GEO_NODE_GIZMO_DIAL, "Dial Gizmo", NODE_CLASS_INTERFACE);
   ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
