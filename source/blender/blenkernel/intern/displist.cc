@@ -38,7 +38,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_vfont.h"
 
@@ -135,10 +135,10 @@ static void curve_to_displist(const Curve *cu,
 
     const int resolution = (for_render && cu->resolu_ren != 0) ? cu->resolu_ren : nu->resolu;
     const bool is_cyclic = nu->flagu & CU_NURB_CYCLIC;
-    const BezTriple *bezt_first = &nu->bezt[0];
-    const BezTriple *bezt_last = &nu->bezt[nu->pntsu - 1];
 
     if (nu->type == CU_BEZIER) {
+      const BezTriple *bezt_first = &nu->bezt[0];
+      const BezTriple *bezt_last = &nu->bezt[nu->pntsu - 1];
       int samples_len = 0;
       for (int i = 1; i < nu->pntsu; i++) {
         const BezTriple *prevbezt = &nu->bezt[i - 1];
@@ -527,7 +527,7 @@ static ModifierData *curve_get_tessellate_point(const Scene *scene,
     if (!BKE_modifier_is_enabled(scene, md, required_mode)) {
       continue;
     }
-    if (mti->type == eModifierTypeType_Constructive) {
+    if (mti->type == ModifierTypeType::Constructive) {
       return pretessellatePoint;
     }
 
@@ -609,7 +609,7 @@ void BKE_curve_calc_modifiers_pre(Depsgraph *depsgraph,
       if (!BKE_modifier_is_enabled(scene, md, required_mode)) {
         continue;
       }
-      if (mti->type != eModifierTypeType_OnlyDeform) {
+      if (mti->type != ModifierTypeType::OnlyDeform) {
         continue;
       }
 
@@ -619,7 +619,8 @@ void BKE_curve_calc_modifiers_pre(Depsgraph *depsgraph,
         deformedVerts = BKE_curve_nurbs_vert_coords_alloc(source_nurb, &numVerts);
       }
 
-      mti->deform_verts(md, &mectx, nullptr, deformedVerts, numVerts);
+      mti->deform_verts(
+          md, &mectx, nullptr, {reinterpret_cast<blender::float3 *>(deformedVerts), numVerts});
 
       if (md == pretessellatePoint) {
         break;
@@ -740,12 +741,8 @@ static blender::bke::GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
     }
     Mesh *mesh = geometry_set.get_mesh_for_write();
 
-    if (mti->type == eModifierTypeType_OnlyDeform) {
-      mti->deform_verts(md,
-                        &mectx_deform,
-                        mesh,
-                        reinterpret_cast<float(*)[3]>(mesh->vert_positions_for_write().data()),
-                        mesh->totvert);
+    if (mti->type == ModifierTypeType::OnlyDeform) {
+      mti->deform_verts(md, &mectx_deform, mesh, mesh->vert_positions_for_write());
       BKE_mesh_tag_positions_changed(mesh);
     }
     else {
