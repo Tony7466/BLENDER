@@ -11,7 +11,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Float>("Value").hide_value().multi_input();
   b.add_input<decl::Vector>("Position");
   b.add_input<decl::Vector>("Up").default_value({0, 0, 1});
-  b.add_output<decl::Geometry>("Gizmo");
+  b.add_output<decl::Geometry>("Transform");
 }
 
 static void node_register()
