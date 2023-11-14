@@ -373,6 +373,15 @@ class StorageArrayBuffer : public detail::StorageCommon<T, len, device_only> {
     return this->data_[index];
   }
 
+  /* Downsize the buffer if current size is much larger than the required size. */
+  void optimize_size(int64_t required_size)
+  {
+    size_t max_size = power_of_2_max_u(required_size + 1);
+    if (this->len_ > max_size) {
+      resize(max_size);
+    }
+  }
+
   int64_t size() const
   {
     return this->len_;
@@ -407,10 +416,16 @@ class StorageVectorBuffer : public StorageArrayBuffer<T, len, false> {
   ~StorageVectorBuffer(){};
 
   /**
-   * Set item count to zero but does not free memory or resize the buffer.
+   * Set item count to zero.
+   * If do_optimize_size is true, it may resize the buffer,
+   * but never to a capacity less than the current count.
+   * Otherwise it wont not free memory or resize the buffer.
    */
-  void clear()
+  void clear(bool do_optimize_size = true)
   {
+    if (do_optimize_size) {
+      this->optimize_size(item_len_);
+    }
     item_len_ = 0;
   }
 
