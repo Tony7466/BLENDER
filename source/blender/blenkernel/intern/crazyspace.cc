@@ -334,7 +334,7 @@ static void crazyspace_init_object_for_eval(Depsgraph *depsgraph,
 {
   Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
   *object_crazy = blender::dna::shallow_copy(*object_eval);
-  BKE_object_shallow_copy(*object_eval, *object_crazy);
+  object_crazy->runtime = MEM_new<blender::bke::ObjectRuntime>(__func__, *object_eval->runtime);
   if (object_crazy->runtime->data_orig != nullptr) {
     object_crazy->data = object_crazy->runtime->data_orig;
   }
@@ -382,7 +382,7 @@ int BKE_sculpt_get_first_deform_matrices(Depsgraph *depsgraph,
   VirtualModifierData virtual_modifier_data;
   Object object_eval;
   crazyspace_init_object_for_eval(depsgraph, object, &object_eval);
-  BLI_SCOPED_DEFER([&]() { BKE_object_shallow_copy_free(object_eval); });
+  BLI_SCOPED_DEFER([&]() { MEM_delete(object_eval.runtime); });
   MultiresModifierData *mmd = get_multires_modifier(scene, &object_eval, false);
   const bool is_sculpt_mode = (object->mode & OB_MODE_SCULPT) != 0;
   const bool has_multires = mmd != nullptr && mmd->sculptlvl > 0;

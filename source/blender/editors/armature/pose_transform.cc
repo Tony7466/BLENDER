@@ -795,8 +795,6 @@ static int pose_copy_exec(bContext *C, wmOperator *op)
   STRNCPY(temp_bmain->filepath, BKE_main_blendfile_path_from_global());
 
   Object ob_copy = blender::dna::shallow_copy(*ob);
-  BKE_object_shallow_copy(*ob, ob_copy);
-  BLI_SCOPED_DEFER([&]() { BKE_object_shallow_copy_free(ob_copy); });
 
   ob_copy.adt = nullptr;
 

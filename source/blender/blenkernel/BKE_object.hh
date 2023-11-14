@@ -575,11 +575,6 @@ void BKE_object_runtime_reset_on_copy(Object *object, int flag);
  */
 void BKE_object_runtime_free_data(Object *object);
 
-/** \note Avoid using in new code. */
-void BKE_object_shallow_copy(const Object &src, Object &dst);
-/** \note Avoid using in new code. */
-void BKE_object_shallow_copy_free(Object &object);
-
 void BKE_object_batch_cache_dirty_tag(Object *ob);
 
 /* this function returns a superset of the scenes selection based on relationships */

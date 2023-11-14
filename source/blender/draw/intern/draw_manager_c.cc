@@ -742,8 +742,8 @@ static void duplidata_key_free(void *key)
   }
   else {
     Object temp_object = blender::dna::shallow_copy(*dupli_key->ob);
-    BKE_object_shallow_copy(*dupli_key->ob, temp_object);
-    BLI_SCOPED_DEFER([&]() { BKE_object_shallow_copy_free(temp_object); });
+    blender::bke::ObjectRuntime runtime = *dupli_key->ob->runtime;
+    temp_object.runtime = &runtime;
 
     /* Do not modify the original bound-box. */
     temp_object.runtime->bb = nullptr;
