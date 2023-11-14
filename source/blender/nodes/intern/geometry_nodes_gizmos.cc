@@ -42,6 +42,10 @@ bool is_valid_gizmo_link(const bNodeLink &link)
   return from_socket.type == to_socket.type;
 }
 
+struct LocalGizmoPathElem {
+  const bNode *node = nullptr;
+};
+
 static std::optional<GizmoSource> find_local_gizmo_source_recursive(
     const bNodeSocket &current_socket,
     const SocketElem &current_elem,
@@ -125,9 +129,10 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
   }
 }
 
-std::optional<GizmoSource> find_local_gizmo_source(const bNodeSocket &socket,
-                                                   const SocketElem &elem,
-                                                   Vector<LocalGizmoPathElem> &right_to_left_path)
+static std::optional<GizmoSource> find_local_gizmo_source(
+    const bNodeSocket &socket,
+    const SocketElem &elem,
+    Vector<LocalGizmoPathElem> &right_to_left_path)
 {
   return find_local_gizmo_source_recursive(socket, elem, right_to_left_path);
 }

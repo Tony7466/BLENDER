@@ -19,6 +19,10 @@ struct NodesModifierData;
 
 namespace blender::nodes::gizmos {
 
+/**
+ * Often gizmos don't reference the whole socket value, but only a part of it. E.g. an arrow gizmo
+ * may only control the Z value of a vector socket. In this case, the `index` is set to 2.
+ */
 struct SocketElem {
   std::optional<int> index;
 
@@ -33,11 +37,17 @@ struct SocketElem {
   }
 };
 
+/**
+ * An input socket that can be modified by a gizmo.
+ */
 struct InputSocketGizmoSource {
   const bNodeSocket *input_socket;
   SocketElem elem;
 };
 
+/**
+ * A value node that can be modified by a gizmo.
+ */
 struct ValueNodeGizmoSource {
   const bNode *value_node;
   SocketElem elem;
@@ -53,13 +63,16 @@ struct ValueNodeGizmoSource {
   }
 };
 
+/**
+ * A group input that can be modified by a gizmo.
+ */
 struct GroupInputGizmoSource {
   int interface_input_index;
   SocketElem elem;
 };
 
 /**
- * A #GizmoSource is a place where a value controlled by a gizmo lives.
+ * Locates a value that can be modified by a gizmo.
  */
 using GizmoSource =
     std::variant<InputSocketGizmoSource, ValueNodeGizmoSource, GroupInputGizmoSource>;
@@ -110,18 +123,6 @@ struct GizmoInferencingResult {
 
   friend std::ostream &operator<<(std::ostream &stream, const GizmoInferencingResult &data);
 };
-
-struct LocalGizmoPathElem {
-  const bNode *node = nullptr;
-};
-
-/**
- * Find which value is controlled by a gizmo attached to the given socket. This function works
- * locally in the current node tree.
- */
-std::optional<GizmoSource> find_local_gizmo_source(const bNodeSocket &socket,
-                                                   const SocketElem &elem,
-                                                   Vector<LocalGizmoPathElem> &right_to_left_path);
 
 struct GlobalGizmoPathElem {
   const bNode *node;
