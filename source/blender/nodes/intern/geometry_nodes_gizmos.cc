@@ -35,13 +35,13 @@ static bool is_valid_gizmo_value_link(const bNodeSocket &from_sock, const bNodeS
 }
 
 static std::optional<GizmoSource> find_scalar_gizmo_source_recursive(
-    const bNodeSocket &current_socket, const std::optional<int> &current_elem_index)
+    const bNodeSocket &current_socket, const SocketElem &current_elem)
 {
   if (current_socket.is_input()) {
     const bNodeSocket &input_socket = current_socket;
     const Span<const bNodeLink *> links = input_socket.directly_linked_links();
     if ((input_socket.flag & SOCK_HIDE_VALUE) == 0 && links.is_empty()) {
-      return InputSocketGizmoSource{&current_socket, current_elem_index};
+      return InputSocketGizmoSource{&current_socket, current_elem};
     }
     if (links.size() != 1) {
       return std::nullopt;
@@ -55,7 +55,7 @@ static std::optional<GizmoSource> find_scalar_gizmo_source_recursive(
       return std::nullopt;
     }
     if (is_valid_gizmo_value_link(origin_socket, input_socket)) {
-      return find_scalar_gizmo_source_recursive(origin_socket, current_elem_index);
+      return find_scalar_gizmo_source_recursive(origin_socket, current_elem);
     }
     return std::nullopt;
   }
@@ -65,28 +65,28 @@ static std::optional<GizmoSource> find_scalar_gizmo_source_recursive(
     switch (current_node.type) {
       case NODE_REROUTE: {
         const bNodeSocket &input_socket = current_node.input_socket(0);
-        return find_scalar_gizmo_source_recursive(input_socket, current_elem_index);
+        return find_scalar_gizmo_source_recursive(input_socket, current_elem);
       }
       case SH_NODE_VALUE:
       case FN_NODE_INPUT_VECTOR:
       case FN_NODE_INPUT_INT: {
-        return ValueNodeGizmoSource{&current_node, current_elem_index};
+        return ValueNodeGizmoSource{&current_node, current_elem};
       }
       case SH_NODE_SEPXYZ: {
         const int axis = output_socket.index();
         const bNodeSocket &input_socket = current_node.input_socket(0);
-        return find_scalar_gizmo_source_recursive(input_socket, axis);
+        return find_scalar_gizmo_source_recursive(input_socket, SocketElem{axis});
       }
       case SH_NODE_COMBXYZ: {
-        BLI_assert(current_elem_index.has_value());
-        const int axis = *current_elem_index;
+        BLI_assert(current_elem.index.has_value());
+        const int axis = *current_elem.index;
         BLI_assert(axis >= 0 && axis < 3);
         const bNodeSocket &input_socket = current_node.input_socket(axis);
-        return find_scalar_gizmo_source_recursive(input_socket, std::nullopt);
+        return find_scalar_gizmo_source_recursive(input_socket, SocketElem{});
       }
       case NODE_GROUP_INPUT: {
         const int interface_input_index = output_socket.index();
-        return GroupInputGizmoSource{interface_input_index, current_elem_index};
+        return GroupInputGizmoSource{interface_input_index, current_elem};
       }
       default: {
         return std::nullopt;
@@ -95,10 +95,9 @@ static std::optional<GizmoSource> find_scalar_gizmo_source_recursive(
   }
 }
 
-std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket,
-                                             std::optional<int> elem_index)
+std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket, const SocketElem &elem)
 {
-  return find_scalar_gizmo_source_recursive(socket, elem_index);
+  return find_scalar_gizmo_source_recursive(socket, elem);
 }
 
 Vector<GizmoNodeSource> find_gizmo_node_sources(const GizmoInput &gizmo_input)
@@ -107,7 +106,7 @@ Vector<GizmoNodeSource> find_gizmo_node_sources(const GizmoInput &gizmo_input)
   const bNodeSocket &input_socket = *gizmo_input.input_socket;
   if (!input_socket.is_directly_linked()) {
     gizmo_node_sources.append(
-        {GizmoSource(InputSocketGizmoSource{&input_socket, gizmo_input.elem_index})});
+        {GizmoSource(InputSocketGizmoSource{&input_socket, gizmo_input.elem})});
   }
   for (const bNodeLink *link : input_socket.directly_linked_links()) {
     if (link->is_muted()) {
@@ -117,15 +116,14 @@ Vector<GizmoNodeSource> find_gizmo_node_sources(const GizmoInput &gizmo_input)
     if (!origin_socket.is_available()) {
       continue;
     }
-    const bNode &origin_node = origin_socket.owner_node();
     std::optional<GizmoSource> gizmo_source;
     if (is_valid_gizmo_value_link(origin_socket, input_socket)) {
-      gizmo_source = find_gizmo_source(origin_socket, gizmo_input.elem_index);
+      gizmo_source = find_gizmo_source(origin_socket, gizmo_input.elem);
     }
     if (!gizmo_source) {
       continue;
     }
-    gizmo_node_sources.append({*gizmo_source, {}});
+    gizmo_node_sources.append({*gizmo_source});
   }
   return gizmo_node_sources;
 }
@@ -142,7 +140,7 @@ static void add_gizmo_input_source_pair(GizmoInferencingResult &inferencing_resu
   }
   else if (const auto *gizmo_source = std::get_if<GroupInputGizmoSource>(&gizmo_source_variant)) {
     inferencing_result.gizmo_inputs_for_interface_input.add(
-        {gizmo_source->interface_input_index, gizmo_source->elem_index}, gizmo_input);
+        {gizmo_source->interface_input_index, gizmo_source->elem}, gizmo_input);
   }
 }
 
@@ -163,10 +161,10 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
     {
       const bNodeSocket &input_socket = group_node->input_socket(
           interface_gizmo_input.input_index);
-      const GizmoInput gizmo_input{&input_socket, interface_gizmo_input.elem_index};
+      const GizmoInput gizmo_input{&input_socket, interface_gizmo_input.elem};
 
       if (const std::optional<GizmoSource> gizmo_source_opt = find_gizmo_source(
-              input_socket, interface_gizmo_input.elem_index))
+              input_socket, interface_gizmo_input.elem))
       {
         add_gizmo_input_source_pair(inferencing_result, gizmo_input, *gizmo_source_opt);
       }
@@ -196,15 +194,15 @@ std::ostream &operator<<(std::ostream &stream, const GizmoInferencingResult &dat
   stream << "Interface inputs with gizmo:\n";
   for (const auto item : data.gizmo_inputs_for_interface_input.items()) {
     stream << "  Input Index: " << item.key.input_index;
-    if (item.key.elem_index.has_value()) {
-      stream << ", Elem Index: " << *item.key.elem_index;
+    if (item.key.elem.index.has_value()) {
+      stream << ", Elem Index: " << *item.key.elem.index;
     }
     stream << "\n";
     for (const GizmoInput &gizmo_input : item.value) {
       stream << "    " << gizmo_input.input_socket->owner_node().name << " -> "
              << gizmo_input.input_socket->name;
-      if (gizmo_input.elem_index.has_value()) {
-        stream << ", Elem Index: " << *gizmo_input.elem_index;
+      if (gizmo_input.elem.index.has_value()) {
+        stream << ", Elem Index: " << *gizmo_input.elem.index;
       }
       stream << "\n";
     }
@@ -254,7 +252,7 @@ static void foreach_gizmo_for_input(
   }
   else if (node.is_group()) {
     const GroupInputGizmoSource group_input_source{gizmo_input.input_socket->index(),
-                                                   gizmo_input.elem_index};
+                                                   gizmo_input.elem};
     const bNodeTree &group = *reinterpret_cast<const bNodeTree *>(node.id);
     compute_context_builder.push<bke::NodeGroupComputeContext>(node, tree);
     foreach_gizmo_for_source(group_input_source, compute_context_builder, group, fn);
@@ -286,7 +284,7 @@ static void foreach_gizmo_for_source(
   }
   else if (const auto *gizmo_source = std::get_if<GroupInputGizmoSource>(&gizmo_source_variant)) {
     for (const GizmoInput &gizmo_input : gizmo_inferencing.gizmo_inputs_for_interface_input.lookup(
-             {gizmo_source->interface_input_index, gizmo_source->elem_index}))
+             {gizmo_source->interface_input_index, gizmo_source->elem}))
     {
       foreach_gizmo_for_input(gizmo_input, compute_context_builder, tree, fn);
     }
@@ -370,7 +368,7 @@ void foreach_active_gizmo(
               for (const auto item :
                    group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_input.items()) {
                 const GizmoInput gizmo_input{&node->input_socket(item.key.input_index),
-                                             item.key.elem_index};
+                                             item.key.elem};
                 used_gizmo_inputs.add(gizmo_input);
               }
             }

@@ -123,7 +123,7 @@ struct GizmoFloatVariable {
 };
 
 static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &gizmo_value_socket,
-                                                          std::optional<int> elem_index,
+                                                          const nodes::gizmos::SocketElem &elem,
                                                           const ComputeContext &compute_context,
                                                           const Object &object,
                                                           const NodesModifierData &nmd)
@@ -131,8 +131,7 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
   BLI_assert(gizmo_value_socket.is_input());
   const bNodeTree &ntree = *nmd.node_group;
   const Vector<nodes::gizmos::GizmoNodeSource> gizmo_node_sources =
-      nodes::gizmos::find_gizmo_node_sources(
-          nodes::gizmos::GizmoInput{&gizmo_value_socket, elem_index});
+      nodes::gizmos::find_gizmo_node_sources(nodes::gizmos::GizmoInput{&gizmo_value_socket, elem});
   Vector<GizmoFloatVariable> value_paths;
 
   for (const nodes::gizmos::GizmoNodeSource &gizmo_node_source : gizmo_node_sources) {
@@ -159,7 +158,7 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
       value_path.owner = RNA_pointer_create(
           ntree_id, &RNA_NodeSocket, const_cast<bNodeSocket *>(gizmo_source->input_socket));
       value_path.property = RNA_struct_find_property(&value_path.owner, "default_value");
-      value_path.index = gizmo_source->elem_index;
+      value_path.index = gizmo_source->elem.index;
     }
     else if (const auto *gizmo_source = std::get_if<nodes::gizmos::ValueNodeGizmoSource>(
                  &gizmo_node_source.source))
@@ -177,7 +176,7 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
           value_path.owner = RNA_pointer_create(
               ntree_id, &RNA_Node, const_cast<bNode *>(gizmo_source->value_node));
           value_path.property = RNA_struct_find_property(&value_path.owner, "vector");
-          value_path.index = *gizmo_source->elem_index;
+          value_path.index = *gizmo_source->elem.index;
           break;
         }
         case FN_NODE_INPUT_INT: {
@@ -203,7 +202,7 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
                                               &RNA_NodesModifier,
                                               const_cast<NodesModifierData *>(&nmd));
         value_path.property = reinterpret_cast<PropertyRNA *>(id_property);
-        value_path.index = gizmo_source->elem_index;
+        value_path.index = gizmo_source->elem.index;
       }
       else if (const auto *group_node_compute_context =
                    dynamic_cast<const bke::NodeGroupComputeContext *>(&compute_context))
@@ -212,7 +211,7 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
         const bNodeSocket &gizmo_value_socket = caller_node->input_socket(
             gizmo_source->interface_input_index);
         Vector<GizmoFloatVariable> sub_value_paths = find_float_values_paths(
-            gizmo_value_socket, gizmo_source->elem_index, *compute_context.parent(), object, nmd);
+            gizmo_value_socket, gizmo_source->elem, *compute_context.parent(), object, nmd);
         value_paths.extend(sub_value_paths);
         continue;
       }
@@ -348,7 +347,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
         bNodeSocket &value_input = gizmo_node.input_socket(0);
         Vector<GizmoFloatVariable> variables = find_float_values_paths(
-            value_input, std::nullopt, compute_context, *ob_orig, nmd);
+            value_input, nodes::gizmos::SocketElem{}, compute_context, *ob_orig, nmd);
         if (variables.is_empty()) {
           return;
         }
