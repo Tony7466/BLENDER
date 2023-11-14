@@ -218,19 +218,18 @@ static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
       const IndexRange loops_range = loop_groups[i_result];
 
       MutableSpan<float3> positions = all_positions.slice(verts_range);
-      MutableSpan<int2> edges = all_edges.slice(edges_range);
-      MutableSpan<int> face_offsets = all_face_offsets.slice(faces_range);
-      MutableSpan<int> corner_verts = all_corner_verts.slice(loops_range);
-
       for (const int i : result.vert.index_range()) {
         positions[i] = float3(float(result.vert[i].x), float(result.vert[i].y), 0.0f);
       }
 
+      MutableSpan<int2> edges = all_edges.slice(edges_range);
       for (const int i : result.edge.index_range()) {
         edges[i] = int2(result.edge[i].first + verts_range.start(),
                         result.edge[i].second + verts_range.start());
       }
 
+      MutableSpan<int> face_offsets = all_face_offsets.slice(faces_range);
+      MutableSpan<int> corner_verts = all_corner_verts.slice(loops_range);
       int i_face_corner = 0;
       for (const int i_face : result.face.index_range()) {
         face_offsets[i_face] = i_face_corner + loops_range.start();
