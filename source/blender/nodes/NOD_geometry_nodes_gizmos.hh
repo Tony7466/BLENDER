@@ -109,6 +109,7 @@ struct GizmoInferencingResult {
 
 struct GlobalGizmoPathElem {
   const bNode *node;
+  SocketElem elem;
   const ComputeContext *compute_context;
 };
 

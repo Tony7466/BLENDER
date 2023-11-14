@@ -44,6 +44,7 @@ static bool is_valid_gizmo_link(const bNodeLink &link)
 
 struct LocalGizmoPathElem {
   const bNode *node = nullptr;
+  SocketElem elem;
 };
 
 static std::optional<GizmoSource> find_local_gizmo_source_recursive(
@@ -115,12 +116,29 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
           case NODE_MATH_MULTIPLY:
           case NODE_MATH_DIVIDE:
             /* We can compute the derivate of those nodes. */
-            right_to_left_path.append({&current_node});
+            right_to_left_path.append({&current_node, current_elem});
             break;
           default:
             return std::nullopt;
         }
-        return find_local_gizmo_source_recursive(input_socket, SocketElem{}, right_to_left_path);
+        return find_local_gizmo_source_recursive(input_socket, current_elem, right_to_left_path);
+      }
+      case SH_NODE_VECTOR_MATH: {
+        const int mode = current_node.custom1;
+        const bNodeSocket &input_socket = current_node.input_socket(0);
+        switch (mode) {
+          case NODE_VECTOR_MATH_ADD:
+          case NODE_VECTOR_MATH_SUBTRACT:
+            break;
+          case NODE_VECTOR_MATH_MULTIPLY:
+          case NODE_VECTOR_MATH_DIVIDE:
+          case NODE_VECTOR_MATH_SCALE:
+            right_to_left_path.append({&current_node, current_elem});
+            break;
+          default:
+            return std::nullopt;
+        }
+        return find_local_gizmo_source_recursive(input_socket, current_elem, right_to_left_path);
       }
       default: {
         return std::nullopt;
@@ -445,7 +463,7 @@ static std::optional<GizmoSource> find_global_gizmo_source_recursive(
   }
 
   for (const LocalGizmoPathElem &local_path_elem : local_path) {
-    r_path.append({local_path_elem.node, &compute_context});
+    r_path.append({local_path_elem.node, local_path_elem.elem, &compute_context});
   }
 
   if (const auto *ref = std::get_if<InputSocketRef>(&*gizmo_source_opt)) {

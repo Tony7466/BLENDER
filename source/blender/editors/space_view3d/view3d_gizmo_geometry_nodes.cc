@@ -166,14 +166,14 @@ static std::optional<float> compute_derivative(
         const float second_value = *second_value_opt;
         switch (mode) {
           case NODE_MATH_MULTIPLY: {
-            if (second_value == 0.0) {
+            if (second_value == 0.0f) {
               return std::nullopt;
             }
-            derivative = derivative / second_value;
+            derivative /= second_value;
             break;
           }
           case NODE_MATH_DIVIDE: {
-            if (second_value == 0.0) {
+            if (second_value == 0.0f) {
               return std::nullopt;
             }
             derivative *= second_value;
@@ -181,6 +181,41 @@ static std::optional<float> compute_derivative(
           }
           default:
             return std::nullopt;
+        }
+        break;
+      }
+      case SH_NODE_VECTOR_MATH: {
+        const int mode = path_node.custom1;
+        const bNodeSocket &second_input_socket = path_elem.node->input_socket(1);
+        const bNodeSocket &scale_input_socket = path_elem.node->input_by_identifier("Scale");
+        switch (mode) {
+          case NODE_VECTOR_MATH_MULTIPLY: {
+            const float factor = tree_log.find_primitive_socket_value<float3>(second_input_socket)
+                                     .value_or(float3{0, 0, 0})[*path_elem.elem.index];
+            if (factor == 0.0f) {
+              return std::nullopt;
+            }
+            derivative /= factor;
+            break;
+          }
+          case NODE_VECTOR_MATH_DIVIDE: {
+            const float divisor = tree_log.find_primitive_socket_value<float3>(second_input_socket)
+                                      .value_or(float3{0, 0, 0})[*path_elem.elem.index];
+            if (divisor == 0.0f) {
+              return std::nullopt;
+            }
+            derivative *= divisor;
+            break;
+          }
+          case NODE_VECTOR_MATH_SCALE: {
+            const float scale =
+                tree_log.find_primitive_socket_value<float>(scale_input_socket).value_or(0.0f);
+            if (scale == 0.0f) {
+              return std::nullopt;
+            }
+            derivative /= scale;
+            break;
+          }
         }
         break;
       }
