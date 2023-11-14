@@ -103,6 +103,8 @@ struct GizmoInferencingResult {
   MultiValueMap<GroupInputRef, InputSocketRef> gizmo_inputs_for_interface_inputs;
 
   friend std::ostream &operator<<(std::ostream &stream, const GizmoInferencingResult &data);
+  friend bool operator==(const GizmoInferencingResult &a, const GizmoInferencingResult &b);
+  friend bool operator!=(const GizmoInferencingResult &a, const GizmoInferencingResult &b);
 };
 
 struct GlobalGizmoPathElem {

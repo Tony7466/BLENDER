@@ -1015,6 +1015,30 @@ class Map {
     return this->count_collisions__impl(key, hash_(key));
   }
 
+  friend bool operator==(const Map &a, const Map &b)
+  {
+    if (a.size() != b.size()) {
+      return false;
+    }
+    for (const Item item : a.items()) {
+      const Key &key = item.key;
+      const Value &value_a = item.value;
+      const Value *value_b = b.lookup_ptr(key);
+      if (value_b == nullptr) {
+        return false;
+      }
+      if (value_a != *value_b) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  friend bool operator!=(const Map &a, const Map &b)
+  {
+    return !(a == b);
+  }
+
  private:
   BLI_NOINLINE void realloc_and_reinsert(int64_t min_usable_slots)
   {

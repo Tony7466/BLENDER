@@ -226,6 +226,19 @@ std::ostream &operator<<(std::ostream &stream, const GizmoInferencingResult &dat
   return stream;
 }
 
+bool operator==(const GizmoInferencingResult &a, const GizmoInferencingResult &b)
+{
+  return a.nodes_with_gizmos_inside == b.nodes_with_gizmos_inside &&
+         a.gizmo_inputs_for_value_nodes == b.gizmo_inputs_for_value_nodes &&
+         a.gizmo_inputs_for_node_inputs == b.gizmo_inputs_for_node_inputs &&
+         a.gizmo_inputs_for_interface_inputs == b.gizmo_inputs_for_interface_inputs;
+}
+
+bool operator!=(const GizmoInferencingResult &a, const GizmoInferencingResult &b)
+{
+  return !(a == b);
+}
+
 bool update_gizmo_inferencing(bNodeTree &tree)
 {
   tree.ensure_topology_cache();
@@ -236,10 +249,13 @@ bool update_gizmo_inferencing(bNodeTree &tree)
   }
 
   GizmoInferencingResult result = compute_gizmo_inferencing_result(tree);
+  const bool changed = tree.runtime->gizmo_inferencing ?
+                           *tree.runtime->gizmo_inferencing != result :
+                           true;
   tree.runtime->gizmo_inferencing = std::make_unique<GizmoInferencingResult>(std::move(result));
 
-  /* TODO: Check if interface changed. */
-  return true;
+  std::cout << tree.id.name << ": " << changed << "\n";
+  return changed;
 }
 
 static void foreach_gizmo_for_source(

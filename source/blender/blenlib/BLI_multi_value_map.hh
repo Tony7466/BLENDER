@@ -157,6 +157,16 @@ template<typename Key, typename Value> class MultiValueMap {
   {
     map_.clear_and_shrink();
   }
+
+  friend bool operator==(const MultiValueMap &a, const MultiValueMap &b)
+  {
+    return a.map_ == b.map_;
+  }
+
+  friend bool operator!=(const MultiValueMap &a, const MultiValueMap &b)
+  {
+    return !(a == b);
+  }
 };
 
 }  // namespace blender
