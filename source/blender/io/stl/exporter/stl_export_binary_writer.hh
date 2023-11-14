@@ -26,7 +26,8 @@ struct ExportBinaryTriangle {
   uint16_t attribute_byte_count;
 };
 #pragma pack(pop)
-static_assert(sizeof(ExportBinaryTriangle) == 12 + 12 * 3 + 2, "ExportBinaryTriangle expected size mismatch");
+static_assert(sizeof(ExportBinaryTriangle) == 12 + 12 * 3 + 2,
+              "ExportBinaryTriangle expected size mismatch");
 
 class BinaryFileWriter : public FileWriter, NonCopyable {
  private:

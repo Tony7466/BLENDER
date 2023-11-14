@@ -73,7 +73,12 @@ static void ui_stl_export_settings(uiLayout *layout, PointerRNA *op_props_ptr)
 
   box = uiLayoutBox(layout);
   sub = uiLayoutColumnWithHeading(box, false, IFACE_("Include"));
-  uiItemR(sub, op_props_ptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selection Only"), ICON_NONE);
+  uiItemR(sub,
+          op_props_ptr,
+          "export_selected_objects",
+          UI_ITEM_NONE,
+          IFACE_("Selection Only"),
+          ICON_NONE);
 
   box = uiLayoutBox(layout);
   sub = uiLayoutColumnWithHeading(box, false, IFACE_("Transform"));
@@ -84,7 +89,8 @@ static void ui_stl_export_settings(uiLayout *layout, PointerRNA *op_props_ptr)
 
   box = uiLayoutBox(layout);
   sub = uiLayoutColumnWithHeading(box, false, IFACE_("Geometry"));
-  uiItemR(sub, op_props_ptr, "apply_modifiers", UI_ITEM_NONE, IFACE_("Apply Modifiers"), ICON_NONE);
+  uiItemR(
+      sub, op_props_ptr, "apply_modifiers", UI_ITEM_NONE, IFACE_("Apply Modifiers"), ICON_NONE);
 }
 
 static void wm_stl_export_draw([[maybe_unused]] bContext *C, wmOperator *op)
@@ -160,11 +166,8 @@ void WM_OT_stl_export(struct wmOperatorType *ot)
   prop = RNA_def_enum(ot->srna, "up_axis", io_transform_axis, IO_AXIS_Z, "Up Axis", "");
   RNA_def_property_update_runtime(prop, io_ui_up_axis_update);
 
-  RNA_def_boolean(ot->srna,
-                  "apply_modifiers",
-                  true,
-                  "Apply Modifiers",
-                  "Apply modifiers to exported meshes");
+  RNA_def_boolean(
+      ot->srna, "apply_modifiers", true, "Apply Modifiers", "Apply modifiers to exported meshes");
 
   /* Only show .stl files by default. */
   prop = RNA_def_string(ot->srna, "filter_glob", "*.stl", 0, "Extension Filter", "");

@@ -39,7 +39,7 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
   if (!export_params.use_batch) {
     writer = create_writer(export_params.filepath,
                            export_params.ascii_format ? FileWriter::Type::ASCII :
-                                                     FileWriter::Type::BINARY);
+                                                        FileWriter::Type::BINARY);
   }
 
   DEGObjectIterSettings deg_iter_settings{};
@@ -69,14 +69,14 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
       char filepath[FILE_MAX];
       BLI_strncpy(filepath, export_params.filepath, FILE_MAX);
       BLI_path_extension_replace(filepath, FILE_MAX, suffix.c_str());
-      writer = create_writer(
-          filepath, export_params.ascii_format ? FileWriter::Type::ASCII : FileWriter::Type::BINARY);
+      writer = create_writer(filepath,
+                             export_params.ascii_format ? FileWriter::Type::ASCII :
+                                                          FileWriter::Type::BINARY);
     }
 
     Object *obj_eval = DEG_get_evaluated_object(depsgraph, object);
-    Mesh *mesh = export_params.apply_modifiers ?
-                     BKE_object_get_evaluated_mesh(obj_eval) :
-                     BKE_object_get_pre_modified_mesh(obj_eval);
+    Mesh *mesh = export_params.apply_modifiers ? BKE_object_get_evaluated_mesh(obj_eval) :
+                                                 BKE_object_get_pre_modified_mesh(obj_eval);
 
     /* Calculate transform. */
     float global_scale = export_params.global_scale;
