@@ -607,7 +607,8 @@ static void find_side_effect_nodes_for_viewer_path(
 
 static void find_side_effect_nodes(const NodesModifierData &nmd,
                                    const ModifierEvalContext &ctx,
-                                   nodes::GeoNodesSideEffectNodes &r_side_effect_nodes)
+                                   nodes::GeoNodesSideEffectNodes &r_side_effect_nodes,
+                                   Set<ComputeContextHash> &r_socket_log_contexts)
 {
   Main *bmain = DEG_get_bmain(ctx.depsgraph);
   wmWindowManager *wm = (wmWindowManager *)bmain->wm.first;
@@ -648,6 +649,7 @@ static void find_side_effect_nodes(const NodesModifierData &nmd,
           for (const nodes::gizmos::GlobalGizmoPathElem &elem : gizmo_source.right_to_left_path) {
             try_add_side_effect_node(
                 *elem.compute_context, elem.node->identifier, nmd, r_side_effect_nodes);
+            r_socket_log_contexts.add(elem.compute_context->hash());
           }
         }
       });
@@ -1191,7 +1193,7 @@ static void modifyGeometry(ModifierData *md,
   }
 
   nodes::GeoNodesSideEffectNodes side_effect_nodes;
-  find_side_effect_nodes(*nmd, *ctx, side_effect_nodes);
+  find_side_effect_nodes(*nmd, *ctx, side_effect_nodes, socket_log_contexts);
   modifier_eval_data.side_effect_nodes = &side_effect_nodes;
 
   bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
