@@ -145,17 +145,23 @@ int64_t ED_keylist_array_len(const AnimKeylist *keylist);
 
 /* Key-data Generation --------------- */
 
-/* F-Curve */
-void fcurve_to_keylist(AnimData *adt, FCurve *fcu, AnimKeylist *keylist, int saction_flag);
+/** Add the keyframes of the F-Curve to the keylist.
+ * \param adt can be a nullptr.
+ * \param range only adds keys in the given range to the keylist. Can be a nullptr.
+ */
+void fcurve_to_keylist(
+    AnimData *adt, FCurve *fcu, AnimKeylist *keylist, int saction_flag, float range[2]);
 /* Action Group */
 void action_group_to_keylist(AnimData *adt,
                              bActionGroup *agrp,
                              AnimKeylist *keylist,
                              int saction_flag);
 /* Action */
-void action_to_keylist(AnimData *adt, bAction *act, AnimKeylist *keylist, int saction_flag);
+void action_to_keylist(
+    AnimData *adt, bAction *act, AnimKeylist *keylist, int saction_flag, float range[2]);
 /* Object */
-void ob_to_keylist(bDopeSheet *ads, Object *ob, AnimKeylist *keylist, int saction_flag);
+void ob_to_keylist(
+    bDopeSheet *ads, Object *ob, AnimKeylist *keylist, int saction_flag, float range[2]);
 /* Cache File */
 void cachefile_to_keylist(bDopeSheet *ads,
                           CacheFile *cache_file,
@@ -164,7 +170,7 @@ void cachefile_to_keylist(bDopeSheet *ads,
 /* Scene */
 void scene_to_keylist(bDopeSheet *ads, Scene *sce, AnimKeylist *keylist, int saction_flag);
 /* DopeSheet Summary */
-void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, int saction_flag);
+void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, int saction_flag, float range[2]);
 
 /* Grease Pencil datablock summary (Legacy) */
 void gpencil_to_keylist(bDopeSheet *ads, bGPdata *gpd, AnimKeylist *keylist, bool active);

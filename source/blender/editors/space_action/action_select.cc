@@ -107,24 +107,24 @@ static void actkeys_list_element_to_keylist(bAnimContext *ac,
       }
       case ALE_OB: {
         Object *ob = (Object *)ale->key_data;
-        ob_to_keylist(ads, ob, keylist, 0);
+        ob_to_keylist(ads, ob, keylist, 0, nullptr);
         break;
       }
       case ALE_ACT: {
         bAction *act = (bAction *)ale->key_data;
-        action_to_keylist(adt, act, keylist, 0);
+        action_to_keylist(adt, act, keylist, 0, nullptr);
         break;
       }
       case ALE_FCURVE: {
         FCurve *fcu = (FCurve *)ale->key_data;
-        fcurve_to_keylist(adt, fcu, keylist, 0);
+        fcurve_to_keylist(adt, fcu, keylist, 0, nullptr);
         break;
       }
     }
   }
   else if (ale->type == ANIMTYPE_SUMMARY) {
     /* dopesheet summary covers everything */
-    summary_to_keylist(ac, keylist, 0);
+    summary_to_keylist(ac, keylist, 0, nullptr);
   }
   else if (ale->type == ANIMTYPE_GROUP) {
     /* TODO: why don't we just give groups key_data too? */

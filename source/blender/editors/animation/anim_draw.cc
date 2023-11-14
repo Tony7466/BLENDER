@@ -592,7 +592,7 @@ static bool find_prev_next_keyframes(bContext *C, int *r_nextfra, int *r_prevfra
   gpencil_to_keylist(&ads, scene->gpd, keylist, false);
 
   if (ob) {
-    ob_to_keylist(&ads, ob, keylist, 0);
+    ob_to_keylist(&ads, ob, keylist, 0, nullptr);
     gpencil_to_keylist(&ads, static_cast<bGPdata *>(ob->data), keylist, false);
   }
 

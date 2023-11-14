@@ -928,7 +928,10 @@ int actkeyblock_get_valid_hold(const ActKeyColumn *ac)
 
 /* *************************** Keyframe List Conversions *************************** */
 
-void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, const int saction_flag)
+void summary_to_keylist(bAnimContext *ac,
+                        AnimKeylist *keylist,
+                        const int saction_flag,
+                        float range[2])
 {
   if (!ac) {
     return;
@@ -950,7 +953,8 @@ void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, const int sactio
      * there isn't really any benefit at all from including them. - Aligorith */
     switch (ale->datatype) {
       case ALE_FCURVE:
-        fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag);
+        fcurve_to_keylist(
+            ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag, range);
         break;
       case ALE_MASKLAY:
         mask_to_keylist(ac->ads, static_cast<MaskLayer *>(ale->data), keylist);
@@ -999,13 +1003,14 @@ void scene_to_keylist(bDopeSheet *ads, Scene *sce, AnimKeylist *keylist, const i
 
   /* Loop through each F-Curve, grabbing the keyframes. */
   LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
-    fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag);
+    fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag, nullptr);
   }
 
   ANIM_animdata_freelist(&anim_data);
 }
 
-void ob_to_keylist(bDopeSheet *ads, Object *ob, AnimKeylist *keylist, const int saction_flag)
+void ob_to_keylist(
+    bDopeSheet *ads, Object *ob, AnimKeylist *keylist, const int saction_flag, float range[2])
 {
   bAnimContext ac = {nullptr};
   ListBase anim_data = {nullptr, nullptr};
@@ -1036,7 +1041,7 @@ void ob_to_keylist(bDopeSheet *ads, Object *ob, AnimKeylist *keylist, const int 
 
   /* Loop through each F-Curve, grabbing the keyframes. */
   LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
-    fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag);
+    fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag, range);
   }
 
   ANIM_animdata_freelist(&anim_data);
@@ -1071,13 +1076,14 @@ void cachefile_to_keylist(bDopeSheet *ads,
 
   /* Loop through each F-Curve, grabbing the keyframes. */
   LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
-    fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag);
+    fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag, nullptr);
   }
 
   ANIM_animdata_freelist(&anim_data);
 }
 
-void fcurve_to_keylist(AnimData *adt, FCurve *fcu, AnimKeylist *keylist, const int saction_flag)
+void fcurve_to_keylist(
+    AnimData *adt, FCurve *fcu, AnimKeylist *keylist, const int saction_flag, float range[2])
 {
   if (!fcu || fcu->totvert == 0 || !fcu->bezt) {
     return;
@@ -1093,8 +1099,17 @@ void fcurve_to_keylist(AnimData *adt, FCurve *fcu, AnimKeylist *keylist, const i
 
   BezTripleChain chain = {nullptr};
 
+  int start_index = 0;
+  int end_index = fcu->totvert;
+
+  if (range != nullptr) {
+    bool replace;
+    start_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[0], fcu->totvert, &replace);
+    end_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[1], fcu->totvert, &replace);
+  }
+
   /* Loop through beztriples, making ActKeysColumns. */
-  for (int v = 0; v < fcu->totvert; v++) {
+  for (int v = start_index; v < end_index; v++) {
     chain.cur = &fcu->bezt[v];
 
     /* Neighbor columns, accounting for being cyclic. */
@@ -1110,7 +1125,7 @@ void fcurve_to_keylist(AnimData *adt, FCurve *fcu, AnimKeylist *keylist, const i
     add_bezt_to_keycolumns_list(keylist, &chain);
   }
 
-  update_keyblocks(keylist, fcu->bezt, fcu->totvert);
+  update_keyblocks(keylist, &fcu->bezt[start_index], end_index - start_index);
 
   if (adt) {
     ANIM_nla_mapping_apply_fcurve(adt, fcu, true, false);
@@ -1130,18 +1145,19 @@ void action_group_to_keylist(AnimData *adt,
     if (fcu->grp != agrp) {
       break;
     }
-    fcurve_to_keylist(adt, fcu, keylist, saction_flag);
+    fcurve_to_keylist(adt, fcu, keylist, saction_flag, nullptr);
   }
 }
 
-void action_to_keylist(AnimData *adt, bAction *act, AnimKeylist *keylist, const int saction_flag)
+void action_to_keylist(
+    AnimData *adt, bAction *act, AnimKeylist *keylist, const int saction_flag, float range[2])
 {
   if (!act) {
     return;
   }
 
   LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
-    fcurve_to_keylist(adt, fcu, keylist, saction_flag);
+    fcurve_to_keylist(adt, fcu, keylist, saction_flag, range);
   }
 }
 

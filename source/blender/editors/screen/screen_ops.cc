@@ -3197,7 +3197,7 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   scene_to_keylist(&ads, scene, keylist, 0);
 
   if (ob) {
-    ob_to_keylist(&ads, ob, keylist, 0);
+    ob_to_keylist(&ads, ob, keylist, 0, nullptr);
 
     if (ob->type == OB_GPENCIL_LEGACY) {
       const bool active = !(scene->flag & SCE_KEYS_NO_SELONLY);
