@@ -24,6 +24,7 @@ public:
     return token;
   }
 
+  virtual std::unique_ptr<Expression> clone() const = 0;
   virtual std::unique_ptr<Value> evaluate(EvaluationContext &ctx) = 0;
 };
 
@@ -31,15 +32,25 @@ class NumberExpression : public Expression {
 public:
   NumberExpression(Token token) : Expression(token) {}
 
-  std::unique_ptr<Value> evaluate(EvaluationContext &ctx) override {
-    return ctx.get_number(token);
+  std::unique_ptr<Expression> clone() const {
+    return std::make_unique<NumberExpression>(*this);
+  }
+
+  std::unique_ptr<Value> evaluate(EvaluationContext &/*ctx*/) override {
+    double d;
+    auto result = std::from_chars(token.value.data(), token.value.data() + token.value.size(), d);
+    return std::make_unique<ScalarValue>(d);
   }
 };
 
 class GroupExpression : public Expression {
   std::unique_ptr<Expression> expr;
 public:
-  GroupExpression(std::unique_ptr<Expression> expr, Token token) : expr(std::move(expr)), Expression(token) {}
+  GroupExpression(std::unique_ptr<Expression> expr, Token token) : Expression(token), expr(std::move(expr)) {}
+
+  std::unique_ptr<Expression> clone() const {
+    return std::make_unique<GroupExpression>(expr->clone(), token);
+  }
 
   std::unique_ptr<Value> evaluate(EvaluationContext &ctx) override {
     return expr->evaluate(ctx);
@@ -49,6 +60,10 @@ public:
 class VariableExpression : public Expression {
 public:
   VariableExpression(Token token) : Expression(token) {}
+
+  std::unique_ptr<Expression> clone() const {
+    return std::make_unique<VariableExpression>(*this);
+  }
 
   std::unique_ptr<Value> evaluate(EvaluationContext &ctx) override {
     return ctx.get_variable(token);
@@ -75,7 +90,17 @@ private:
   struct FunctionDef def;
 
 public:
-  CallExpression(std::vector<std::unique_ptr<Expression>> args, FunctionDef def, Token token) : args(std::move(args)), def(def), Expression(token) {}
+  CallExpression(std::vector<std::unique_ptr<Expression>> args, FunctionDef def, Token token) : Expression(token), args(std::move(args)), def(def) {}
+
+  std::unique_ptr<Expression> clone() const {
+    std::vector<std::unique_ptr<Expression>> args_copy;
+
+    for(auto &arg : args) {
+      args_copy.emplace_back(arg->clone());
+    }
+
+    return std::make_unique<CallExpression>(std::move(args_copy), def, token);
+  }
 
   std::unique_ptr<Value> evaluate(EvaluationContext &ctx) override {
     std::vector<std::unique_ptr<Value>> evaluated_args;
@@ -100,12 +125,12 @@ public:
           return Value::z(evaluated_args[0].get());
         case FunctionName::LEN:
           return Value::len(evaluated_args[0].get());
+        default:
+          throw EvaluationError { this, "invalid function" };
       }
     } catch (const char *err) {
       throw EvaluationError{ this, err };
     }
-
-    throw EvaluationError { this, "invalid function" };
   }
 };
 
@@ -113,7 +138,11 @@ class UnaryExpression : public Expression {
   std::unique_ptr<Expression> expr;
 
 public:
-  UnaryExpression(std::unique_ptr<Expression> expr, Token token) : expr(std::move(expr)), Expression(token) {}
+  UnaryExpression(std::unique_ptr<Expression> expr, Token token) : Expression(token), expr(std::move(expr)) {}
+
+  std::unique_ptr<Expression> clone() const {
+    return std::make_unique<UnaryExpression>(expr->clone(), token);
+  }
 
   std::unique_ptr<Value> evaluate(EvaluationContext &ctx) override {
     auto value = expr->evaluate(ctx);
@@ -122,12 +151,12 @@ public:
       switch (token.kind) {
         case TokenKind::MINUS:
           return value->neg();
+        default:
+          throw EvaluationError { this, "invalid unary operator" };
       }
     } catch (const char *err) {
       throw EvaluationError{ this, err };
     }
-
-    throw EvaluationError { this, "invalid unary operator" };
   }
 };
 
@@ -135,7 +164,11 @@ class BinaryExpression : public Expression {
   std::unique_ptr<Expression> left;
   std::unique_ptr<Expression> right;
 public:
-  BinaryExpression(std::unique_ptr<Expression> left, std::unique_ptr<Expression> right, Token token) : left(std::move(left)), right(std::move(right)), Expression(token) {}
+  BinaryExpression(std::unique_ptr<Expression> left, std::unique_ptr<Expression> right, Token token) : Expression(token), left(std::move(left)), right(std::move(right)) {}
+
+  std::unique_ptr<Expression> clone() const {
+    return std::make_unique<BinaryExpression>(left->clone(), right->clone(), token);
+  }
 
   std::unique_ptr<Value> evaluate(EvaluationContext &ctx) override {
     auto vleft = left->evaluate(ctx);
@@ -151,11 +184,11 @@ public:
           return vleft->mul(vright.get());
         case TokenKind::DIV:
           return vleft->div(vright.get());
+        default:
+          throw EvaluationError { this, "invalid binary operator" };
       }
     } catch (const char *err) {
       throw EvaluationError{ this, err };
     }
-
-    throw EvaluationError { this, "invalid binary operator" };
   }
 };

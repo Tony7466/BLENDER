@@ -12,7 +12,6 @@
 #include "BKE_material.h"
 
 #include "BLI_cpp_type.hh"
-//#include "BLI_math_vector_types.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -34,16 +33,14 @@ namespace blender::nodes::node_geo_math_expression_cc {
       return;
     }
 
-    const NodeGeometryMathExpression &storage = node_storage(*node);
+    NodeGeometryMathExpression *storage = static_cast<NodeGeometryMathExpression *>(node->storage);
 
     Parser parser;
     std::set<std::string_view> variables;
     std::unique_ptr<Expression> expr;
 
-    printf("parsing: \"%s\"\n", storage.expression);
-
     try {
-      expr = parser.parse(storage.expression, &variables);
+      expr = parser.parse(storage->expression, &variables);
     } catch(LexerError err) {
       printf("LexerError: column: %d, message: %s\n", (int)err.index+1, err.message);
       return;
@@ -60,7 +57,14 @@ namespace blender::nodes::node_geo_math_expression_cc {
       }
     }
 
-    EvaluationContext ctx(nullptr);
+    EvaluationContext ctx([](std::string_view name) -> std::unique_ptr<Value> {
+      if(name[0] == 'v') {
+        return std::make_unique<VectorValue>(blender::double3(0.0, 0.0, 0.0));
+      }
+
+      return std::make_unique<ScalarValue>(0.0);
+    });
+
     std::unique_ptr<Value> value;
 
     try {
@@ -81,7 +85,6 @@ namespace blender::nodes::node_geo_math_expression_cc {
   {
     const NodeGeometryMathExpression &storage = node_storage(params.node());
 
-    // TODO: store the Expression generated in node_declare somewhere so re-parsing isn't needed
     Parser parser;
     std::unique_ptr<Expression> expr;
 
@@ -95,7 +98,15 @@ namespace blender::nodes::node_geo_math_expression_cc {
       return;
     }
 
-    EvaluationContext ctx(&params);
+    EvaluationContext ctx([&params](std::string_view name) -> std::unique_ptr<Value> {
+      if(name[0] == 'v') {
+        auto value = params.extract_input<blender::float3>(name);
+        return std::make_unique<VectorValue>(blender::double3(value.x, value.y, value.z));
+      }
+
+      return std::make_unique<ScalarValue>(params.extract_input<float>(name));
+    });
+
     std::unique_ptr<Value> value;
 
     try {
@@ -113,15 +124,14 @@ namespace blender::nodes::node_geo_math_expression_cc {
     }
   }
 
-  static void node_layout(uiLayout *layout, bContext *c, PointerRNA *ptr)
+  static void node_layout(uiLayout *layout, bContext * /*c*/, PointerRNA *ptr)
   {
     uiItemR(layout, ptr, "expression", eUI_Item_Flag::UI_ITEM_R_ICON_ONLY, "Expression", ICON_NONE);
   }
 
-  static void node_init(bNodeTree *tree, bNode *node)
+  static void node_init(bNodeTree */*tree*/, bNode *node)
   {
     node->storage = MEM_callocN(sizeof(NodeGeometryMathExpression), __func__);
-    const NodeGeometryMathExpression &storage = node_storage(*node);
   }
 
   void node_register()

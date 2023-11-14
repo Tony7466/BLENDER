@@ -118,11 +118,11 @@ public:
   }
 
   // vector op scalar
-  std::unique_ptr<Value> add(const VectorValue *left) const override {
+  std::unique_ptr<Value> add(const VectorValue */*left*/) const override {
     throw "invalid operation: VectorValue + ScalarValue";
   }
 
-  std::unique_ptr<Value> sub(const VectorValue *left) const override {
+  std::unique_ptr<Value> sub(const VectorValue */*left*/) const override {
     throw "invalid operation: VectorValue - ScalarValue";
   }
 
@@ -130,7 +130,7 @@ public:
 
   std::unique_ptr<Value> div(const VectorValue *left) const override;
 
-  std::unique_ptr<Value> pow(const VectorValue *left) const override {
+  std::unique_ptr<Value> pow(const VectorValue */*left*/) const override {
     throw "invalid operation: pow(VectorValue, ScalarValue)";
   }
 };
@@ -188,24 +188,24 @@ public:
     return std::make_unique<VectorValue>(left->get_vector() - value);
   }
 
-  std::unique_ptr<Value> mul(const VectorValue *left) const override {
+  std::unique_ptr<Value> mul(const VectorValue */*left*/) const override {
     throw "invalid operation: VectorValue * VectorValue";
   }
 
-  std::unique_ptr<Value> div(const VectorValue *left) const override {
+  std::unique_ptr<Value> div(const VectorValue */*left*/) const override {
     throw "invalid operation: VectorValue / VectorValue";
   }
 
-  std::unique_ptr<Value> pow(const VectorValue *left) const override {
+  std::unique_ptr<Value> pow(const VectorValue */*left*/) const override {
     throw "invalid operation: pow(VectorValue, VectorValue)";
   }
 
   // vector op scalar
-  std::unique_ptr<Value> add(const ScalarValue *left) const override {
+  std::unique_ptr<Value> add(const ScalarValue */*left*/) const override {
     throw "invalid operation: ScalarValue + VectorValue";
   }
 
-  std::unique_ptr<Value> sub(const ScalarValue *left) const override {
+  std::unique_ptr<Value> sub(const ScalarValue */*left*/) const override {
     throw "invalid operation: ScalarValue - VectorValue";
   }
 
@@ -217,7 +217,7 @@ public:
     return std::make_unique<VectorValue>(left->get_scalar() / value);
   }
 
-  std::unique_ptr<Value> pow(const ScalarValue *left) const override {
+  std::unique_ptr<Value> pow(const ScalarValue */*left*/) const override {
     throw "invalid operation: pow(ScalarValue, VectorValue)";
   }
 };
