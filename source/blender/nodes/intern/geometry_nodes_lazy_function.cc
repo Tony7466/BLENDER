@@ -3418,7 +3418,7 @@ struct GeometryNodesLazyFunctionBuilder {
   {
     auto &lazy_function = scope_.construct<LazyFunctionForMultiFunctionNode>(
         bnode, fn_item, mapping_->lf_index_by_bsocket);
-    lf::Node &lf_node = graph_params.lf_graph.add_function(lazy_function);
+    lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(lazy_function);
 
     for (const bNodeSocket *bsocket : bnode.input_sockets()) {
       const int lf_index = mapping_->lf_index_by_bsocket[bsocket->index_in_tree()];
@@ -3438,6 +3438,10 @@ struct GeometryNodesLazyFunctionBuilder {
       lf::OutputSocket &lf_socket = lf_node.output(lf_index);
       graph_params.lf_output_by_bsocket.add(bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
+    }
+
+    if (bnode.type == SH_NODE_MATH) {
+      mapping_->possible_side_effect_node_map.add(&bnode, &lf_node);
     }
 
     this->build_standard_node_input_socket_usage(bnode, graph_params);
