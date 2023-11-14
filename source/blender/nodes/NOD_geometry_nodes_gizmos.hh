@@ -94,8 +94,7 @@ struct GizmoInferencingResult {
 std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket,
                                              std::optional<int> elem_index);
 
-Vector<GizmoNodeSource> find_gizmo_node_sources(const bNodeSocket &gizmo_node_input,
-                                                std::optional<int> elem_index);
+Vector<GizmoNodeSource> find_gizmo_node_sources(const GizmoInput &gizmo_input);
 
 bool update_gizmo_inferencing(bNodeTree &tree);
 

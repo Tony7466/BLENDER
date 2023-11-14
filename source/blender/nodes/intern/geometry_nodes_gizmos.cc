@@ -101,16 +101,15 @@ std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket,
   return find_scalar_gizmo_source_recursive(socket, elem_index);
 }
 
-Vector<GizmoNodeSource> find_gizmo_node_sources(const bNodeSocket &gizmo_node_input,
-                                                const std::optional<int> elem_index)
+Vector<GizmoNodeSource> find_gizmo_node_sources(const GizmoInput &gizmo_input)
 {
-  BLI_assert(gizmo_node_input.is_input());
   Vector<GizmoNodeSource> gizmo_node_sources;
-  if (!gizmo_node_input.is_directly_linked()) {
+  const bNodeSocket &input_socket = *gizmo_input.input_socket;
+  if (!input_socket.is_directly_linked()) {
     gizmo_node_sources.append(
-        {GizmoSource(InputSocketGizmoSource{&gizmo_node_input, elem_index})});
+        {GizmoSource(InputSocketGizmoSource{&input_socket, gizmo_input.elem_index})});
   }
-  for (const bNodeLink *link : gizmo_node_input.directly_linked_links()) {
+  for (const bNodeLink *link : input_socket.directly_linked_links()) {
     if (link->is_muted()) {
       continue;
     }
@@ -120,8 +119,8 @@ Vector<GizmoNodeSource> find_gizmo_node_sources(const bNodeSocket &gizmo_node_in
     }
     const bNode &origin_node = origin_socket.owner_node();
     std::optional<GizmoSource> gizmo_source;
-    if (is_valid_gizmo_value_link(origin_socket, gizmo_node_input)) {
-      gizmo_source = find_gizmo_source(origin_socket, elem_index);
+    if (is_valid_gizmo_value_link(origin_socket, input_socket)) {
+      gizmo_source = find_gizmo_source(origin_socket, gizmo_input.elem_index);
     }
     if (!gizmo_source) {
       continue;
@@ -181,8 +180,7 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
     for (const bNode *gizmo_node : tree.nodes_by_type(idname)) {
       const bNodeSocket &gizmo_node_input = gizmo_node->input_socket(0);
       const GizmoInput gizmo_input{&gizmo_node_input, std::nullopt};
-      const Vector<GizmoNodeSource> gizmo_node_sources = find_gizmo_node_sources(gizmo_node_input,
-                                                                                 std::nullopt);
+      const Vector<GizmoNodeSource> gizmo_node_sources = find_gizmo_node_sources(gizmo_input);
       for (const GizmoNodeSource &gizmo_node_source : gizmo_node_sources) {
         add_gizmo_input_source_pair(inferencing_result, gizmo_input, gizmo_node_source.source);
       }

@@ -131,7 +131,8 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
   BLI_assert(gizmo_value_socket.is_input());
   const bNodeTree &ntree = *nmd.node_group;
   const Vector<nodes::gizmos::GizmoNodeSource> gizmo_node_sources =
-      nodes::gizmos::find_gizmo_node_sources(gizmo_value_socket, elem_index);
+      nodes::gizmos::find_gizmo_node_sources(
+          nodes::gizmos::GizmoInput{&gizmo_value_socket, elem_index});
   Vector<GizmoFloatVariable> value_paths;
 
   for (const nodes::gizmos::GizmoNodeSource &gizmo_node_source : gizmo_node_sources) {
