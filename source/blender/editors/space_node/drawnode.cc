@@ -2123,7 +2123,7 @@ static bool node_link_is_gizmo_link(const SpaceNode &snode, const bNodeLink &lin
       return true;
     }
   }
-  if (link.tonode->type == NODE_REROUTE) {
+  if (ELEM(link.tonode->type, NODE_REROUTE, SH_NODE_MATH)) {
     const bNodeSocket &output_socket = link.tonode->output_socket(0);
     if (output_socket.directly_linked_links().is_empty()) {
       return false;
