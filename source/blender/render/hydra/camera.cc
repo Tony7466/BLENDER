@@ -16,54 +16,37 @@
 
 namespace blender::render::hydra {
 
-static pxr::GfCamera create_gf_camera(bool is_ortho,
-                                      const pxr::GfMatrix4d &transform,
-                                      const pxr::GfVec2f &aperture,
-                                      const pxr::GfVec2f &lens_shift,
-                                      const pxr::GfRange1f &clip_range,
-                                      const float &focal_length)
-{
-  pxr::GfCamera gf_camera = pxr::GfCamera();
-
-  gf_camera.SetProjection(is_ortho ? pxr::GfCamera::Projection::Orthographic :
-                                     pxr::GfCamera::Projection::Perspective);
-  gf_camera.SetHorizontalAperture(aperture[0]);
-  gf_camera.SetVerticalAperture(aperture[1]);
-  gf_camera.SetHorizontalApertureOffset(lens_shift[0] * aperture[0]);
-  gf_camera.SetVerticalApertureOffset(lens_shift[1] * aperture[1]);
-  gf_camera.SetClippingRange(clip_range);
-  gf_camera.SetTransform(transform);
-  gf_camera.SetFocalLength(focal_length);
-
-  return gf_camera;
-}
-
 pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
                         const View3D *v3d,
                         const ARegion *region,
                         const RenderData *rd,
                         const pxr::GfVec4f &border)
 {
-  CameraParams camera_params;
-  BKE_camera_params_init(&camera_params);
+  pxr::GfCamera camera;
+
+  CameraParams params;
+  BKE_camera_params_init(&params);
 
   const RegionView3D *region_data = (const RegionView3D *)region->regiondata;
-  BKE_camera_params_from_view3d(&camera_params, depsgraph, v3d, region_data);
+  BKE_camera_params_from_view3d(&params, depsgraph, v3d, region_data);
 
-  pxr::GfRange1f clip_range = pxr::GfRange1f(camera_params.clip_start, camera_params.clip_end);
-  pxr::GfMatrix4d transform =
-      io::hydra::gf_matrix_from_transform(region_data->viewmat).GetInverse();
+  camera.SetProjection(params.is_ortho ? pxr::GfCamera::Projection::Orthographic :
+                                         pxr::GfCamera::Projection::Perspective);
+  camera.SetClippingRange(pxr::GfRange1f(params.clip_start, params.clip_end));
+  camera.SetTransform(io::hydra::gf_matrix_from_transform(region_data->viewmat).GetInverse());
+  camera.SetFocalLength(params.lens);
 
   const float fit_width = (region_data->persp == RV3D_CAMOB) ? rd->xasp * rd->xsch : region->winx;
   const float fit_height = (region_data->persp == RV3D_CAMOB) ? rd->yasp * rd->ysch : region->winy;
-  const int sensor_fit = BKE_camera_sensor_fit(camera_params.sensor_fit, fit_width, fit_height);
+  const int sensor_fit = BKE_camera_sensor_fit(
+      params.sensor_fit, region->winx, region->winy);
   float ratio = float(region->winx) / region->winy;
   const pxr::GfVec2f sensor_fit_scale = (sensor_fit == CAMERA_SENSOR_FIT_HOR) ?
                                             pxr::GfVec2f(1.0f, 1.0f / ratio) :
                                             pxr::GfVec2f(1.0f * ratio, 1.0f);
-  pxr::GfVec2f lens_shift = pxr::GfVec2f(camera_params.shiftx, camera_params.shifty);
+  pxr::GfVec2f lens_shift = pxr::GfVec2f(params.shiftx, params.shifty);
   lens_shift = pxr::GfCompDiv(lens_shift, sensor_fit_scale);
-  lens_shift += pxr::GfVec2f(camera_params.offsetx, camera_params.offsety);
+  lens_shift += pxr::GfVec2f(params.offsetx, params.offsety);
 
   pxr::GfVec2f b_pos(border[0], border[1]), b_size(border[2], border[3]);
   lens_shift += b_pos + b_size * 0.5f - pxr::GfVec2f(0.5f);
@@ -72,69 +55,74 @@ pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
   float sensor_size;
   if (region_data->persp == RV3D_CAMOB) {
     sensor_size = BKE_camera_sensor_size(
-        sensor_fit, camera_params.sensor_x, camera_params.sensor_y);
+        sensor_fit, params.sensor_x, params.sensor_y);
   }
   else {
     sensor_size = BKE_camera_sensor_size(
-        camera_params.sensor_fit, camera_params.sensor_x, camera_params.sensor_y);
+        params.sensor_fit, params.sensor_x, params.sensor_y);
   }
 
-  pxr::GfVec2f aperture = pxr::GfVec2f((camera_params.is_ortho) ? camera_params.ortho_scale :
+  pxr::GfVec2f aperture = pxr::GfVec2f((params.is_ortho) ? params.ortho_scale :
                                                                   sensor_size);
   aperture = pxr::GfCompMult(aperture, sensor_fit_scale);
   aperture = pxr::GfCompMult(aperture, b_size);
-  aperture *= camera_params.zoom;
-  if (camera_params.is_ortho) {
+  aperture *= params.zoom;
+  if (params.is_ortho) {
     /* Use tenths of a world unit according to USD docs
      * https://graphics.pixar.com/usd/docs/api/class_gf_camera.html */
     aperture *= 10.0f;
   }
 
-  return create_gf_camera(
-      camera_params.is_ortho, transform, aperture, lens_shift, clip_range, camera_params.lens);
+  camera.SetHorizontalAperture(aperture[0]);
+  camera.SetVerticalAperture(aperture[1]);
+  camera.SetHorizontalApertureOffset(lens_shift[0] * aperture[0]);
+  camera.SetVerticalApertureOffset(lens_shift[1] * aperture[1]);
+
+  return camera;
 }
 
 pxr::GfCamera gf_camera(const Object *camera_obj,
-                        const RenderData *rd,
                         const pxr::GfVec2i &res,
                         const pxr::GfVec4f &border)
 {
-  CameraParams camera_params;
-  BKE_camera_params_init(&camera_params);
-  BKE_camera_params_from_object(&camera_params, camera_obj);
+  pxr::GfCamera camera;
 
-  pxr::GfMatrix4d transform = io::hydra::gf_matrix_from_transform(camera_obj->object_to_world);
-  pxr::GfRange1f clip_range = pxr::GfRange1f(camera_params.clip_start, camera_params.clip_end);
+  CameraParams params;
+  BKE_camera_params_init(&params);
+  BKE_camera_params_from_object(&params, camera_obj);
 
-  float ratio = float(res[0]) / res[1];
-
-  int sensor_fit = BKE_camera_sensor_fit(
-      camera_params.sensor_fit, rd->xasp * rd->xsch, rd->yasp * rd->ysch);
-
-  const pxr::GfVec2f sensor_fit_scale = (sensor_fit == CAMERA_SENSOR_FIT_HOR) ?
-                                            pxr::GfVec2f(1.0f, 1.0f / ratio) :
-                                            pxr::GfVec2f(1.0f * ratio, 1.0f);
+  camera.SetProjection(params.is_ortho ? pxr::GfCamera::Projection::Orthographic :
+                                         pxr::GfCamera::Projection::Perspective);
+  camera.SetClippingRange(pxr::GfRange1f(params.clip_start, params.clip_end));
+  camera.SetTransform(io::hydra::gf_matrix_from_transform(camera_obj->object_to_world));
+  camera.SetFocalLength(params.lens);
 
   pxr::GfVec2f b_pos(border[0], border[1]), b_size(border[2], border[3]);
-  pxr::GfVec2f lens_shift = pxr::GfVec2f(camera_params.shiftx, camera_params.shifty);
-  lens_shift = pxr::GfCompDiv(lens_shift, sensor_fit_scale);
-  lens_shift += b_pos + b_size * 0.5f - pxr::GfVec2f(0.5f);
-  lens_shift = pxr::GfCompDiv(lens_shift, b_size);
-
-  float sensor_size = BKE_camera_sensor_size(
-      sensor_fit, camera_params.sensor_x, camera_params.sensor_y);
-  pxr::GfVec2f aperture = pxr::GfVec2f((camera_params.is_ortho) ? camera_params.ortho_scale :
-                                                                  sensor_size);
-  aperture = pxr::GfCompMult(aperture, sensor_fit_scale);
+  float sensor_size = BKE_camera_sensor_size(params.sensor_fit, params.sensor_x, params.sensor_y);
+  pxr::GfVec2f sensor_scale = (BKE_camera_sensor_fit(params.sensor_fit, res[0], res[1]) ==
+                               CAMERA_SENSOR_FIT_HOR) ?
+                                  pxr::GfVec2f(1.0f, float(res[1]) / res[0]) :
+                                  pxr::GfVec2f(float(res[0]) / res[1], 1.0f);
+  pxr::GfVec2f aperture = pxr::GfVec2f((params.is_ortho) ? params.ortho_scale : sensor_size);
+  aperture = pxr::GfCompMult(aperture, sensor_scale);
   aperture = pxr::GfCompMult(aperture, b_size);
-  if (camera_params.is_ortho) {
+  if (params.is_ortho) {
     /* Use tenths of a world unit according to USD docs
      * https://graphics.pixar.com/usd/docs/api/class_gf_camera.html */
     aperture *= 10.0f;
   }
+  camera.SetHorizontalAperture(aperture[0]);
+  camera.SetVerticalAperture(aperture[1]);
 
-  return create_gf_camera(
-      camera_params.is_ortho, transform, aperture, lens_shift, clip_range, camera_params.lens);
+  pxr::GfVec2f lens_shift = pxr::GfVec2f(params.shiftx, params.shifty);
+  lens_shift = pxr::GfCompDiv(lens_shift, sensor_scale);
+  lens_shift += b_pos + b_size * 0.5f - pxr::GfVec2f(0.5f);
+  lens_shift = pxr::GfCompDiv(lens_shift, b_size);
+
+  camera.SetHorizontalApertureOffset(lens_shift[0] * aperture[0]);
+  camera.SetVerticalApertureOffset(lens_shift[1] * aperture[1]);
+
+  return camera;
 }
 
 }  // namespace blender::render::hydra

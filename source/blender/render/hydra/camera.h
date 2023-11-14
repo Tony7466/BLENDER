@@ -22,7 +22,6 @@ pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
                         const pxr::GfVec4f &border);
 
 pxr::GfCamera gf_camera(const Object *camera_obj,
-                        const RenderData *rd,
                         const pxr::GfVec2i &res,
                         const pxr::GfVec4f &border);
 
