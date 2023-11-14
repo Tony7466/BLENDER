@@ -25,11 +25,7 @@ class VKBindableResource {
    */
   virtual void bind(int binding,
                     shader::ShaderCreateInfo::Resource::BindType bind_type,
-                    const GPUSamplerState /*sampler_state*/)
-  {
-    bind(binding, bind_type);
-  };
-  virtual void bind(int /*binding*/, shader::ShaderCreateInfo::Resource::BindType /*bind_type*/){};
+                    const GPUSamplerState sampler_state) = 0;
 
  protected:
   void unbind_from_active_context();
@@ -41,6 +37,7 @@ class VKBindableResource {
 /**
  * Blender binds resources at context level (VKStateManager). The bindings are organized in
  * namespaces.
+ * test
  */
 template<shader::ShaderCreateInfo::Resource::BindType BindType> class VKBindSpace {
   class ResourceBinding {
