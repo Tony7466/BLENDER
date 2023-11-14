@@ -386,13 +386,13 @@ void foreach_active_gizmo(
             used_gizmo_inputs.add_multiple(item.value);
           }
           for (const bNode *node : gizmo_inferencing.nodes_with_gizmos_inside) {
-            if (!(node->flag & NODE_SELECT)) {
-              continue;
-            }
             if (ELEM(node->type, GEO_NODE_GIZMO_ARROW, GEO_NODE_GIZMO_DIAL)) {
               fn(*compute_context_builder.current(), *node);
             }
             else if (node->is_group()) {
+              if (!(node->flag & NODE_SELECT)) {
+                continue;
+              }
               const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
               for (const auto item :
                    group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_inputs.items())
