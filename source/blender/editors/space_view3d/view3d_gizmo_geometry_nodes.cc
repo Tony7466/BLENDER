@@ -97,21 +97,36 @@ struct FloatValuePath {
     const PropertyType prop_type = RNA_property_type(this->property);
     const bool prop_is_array = RNA_property_array_check(this->property);
 
+    float softmin = -FLT_MAX;
+    float softmax = FLT_MAX;
+    if (prop_type == PROP_FLOAT) {
+      float step, precision;
+      RNA_property_float_ui_range(
+          &this->owner, this->property, &softmin, &softmax, &step, &precision);
+    }
+    else if (prop_type == PROP_INT) {
+      int softmin_i, softmax_i, step;
+      RNA_property_int_ui_range(&this->owner, this->property, &softmin_i, &softmax_i, &step);
+      softmin = float(softmin_i);
+      softmax = float(softmax_i);
+    }
+    const float value_clamped = std::clamp(value, softmin, softmax);
+
     if (prop_is_array) {
       BLI_assert(this->index.has_value());
       if (prop_type == PROP_FLOAT) {
-        RNA_property_float_set_index(&this->owner, this->property, *this->index, value);
+        RNA_property_float_set_index(&this->owner, this->property, *this->index, value_clamped);
       }
       else if (prop_type == PROP_INT) {
-        RNA_property_int_set_index(&this->owner, this->property, *this->index, value);
+        RNA_property_int_set_index(&this->owner, this->property, *this->index, value_clamped);
       }
     }
     else {
       if (prop_type == PROP_FLOAT) {
-        RNA_property_float_set(&this->owner, this->property, value);
+        RNA_property_float_set(&this->owner, this->property, value_clamped);
       }
       else if (prop_type == PROP_INT) {
-        RNA_property_int_set(&this->owner, this->property, value);
+        RNA_property_int_set(&this->owner, this->property, value_clamped);
       }
     }
     RNA_property_update(C, &this->owner, this->property);
