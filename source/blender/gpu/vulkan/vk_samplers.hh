@@ -41,6 +41,11 @@ class VKSamplers : NonCopyable {
       GPUSamplerStateHasher>
       samplers_;
 
+  struct {
+    uint64_t created = 0;
+    uint64_t freed = 0;
+  } stats;
+
  public:
   void init();
   void free();
@@ -49,6 +54,8 @@ class VKSamplers : NonCopyable {
 
   void discard_unused();
   void mark_all_unused();
+
+  void debug_print() const;
 };
 
 }  // namespace blender::gpu

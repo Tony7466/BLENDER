@@ -514,7 +514,9 @@ bool VKTexture::allocate()
   return result == VK_SUCCESS;
 }
 
-void VKTexture::bind(int binding, shader::ShaderCreateInfo::Resource::BindType bind_type)
+void VKTexture::bind(int binding,
+                     shader::ShaderCreateInfo::Resource::BindType bind_type,
+                     const GPUSamplerState sampler_state)
 {
   VKContext &context = *VKContext::get();
   VKShader *shader = static_cast<VKShader *>(context.shader);
@@ -528,8 +530,8 @@ void VKTexture::bind(int binding, shader::ShaderCreateInfo::Resource::BindType b
     }
     else {
       VKDevice &device = VKBackend::get().device_get();
-      GPUSamplerState key = {};
-      descriptor_set.bind(*this, *location, device.samplers().get(key));
+      const VKSampler &sampler = device.samplers().get(sampler_state);
+      descriptor_set.bind(*this, *location, sampler);
     }
   }
 }
