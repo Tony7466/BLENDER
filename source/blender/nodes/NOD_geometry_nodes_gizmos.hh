@@ -113,7 +113,7 @@ struct GizmoInferencingResult {
 
 std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket, const SocketElem &elem);
 
-Vector<GizmoNodeSource> find_gizmo_node_sources(const GizmoInput &gizmo_input);
+bool is_valid_gizmo_link(const bNodeLink &link);
 
 bool update_gizmo_inferencing(bNodeTree &tree);
 

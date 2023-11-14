@@ -26,12 +26,20 @@ static bool is_scalar_socket_type(const int socket_type)
   return ELEM(socket_type, SOCK_FLOAT, SOCK_INT);
 }
 
-static bool is_valid_gizmo_value_link(const bNodeSocket &from_sock, const bNodeSocket &to_sock)
+bool is_valid_gizmo_link(const bNodeLink &link)
 {
-  if (is_scalar_socket_type(from_sock.type) && is_scalar_socket_type(to_sock.type)) {
+  const bNodeSocket &from_socket = *link.fromsock;
+  const bNodeSocket &to_socket = *link.tosock;
+  if (link.is_muted()) {
+    return false;
+  }
+  if (!link.is_available()) {
+    return false;
+  }
+  if (is_scalar_socket_type(from_socket.type) && is_scalar_socket_type(to_socket.type)) {
     return true;
   }
-  return from_sock.type == to_sock.type;
+  return from_socket.type == to_socket.type;
 }
 
 static std::optional<GizmoSource> find_scalar_gizmo_source_recursive(
@@ -54,7 +62,7 @@ static std::optional<GizmoSource> find_scalar_gizmo_source_recursive(
     if (!origin_socket.is_available()) {
       return std::nullopt;
     }
-    if (is_valid_gizmo_value_link(origin_socket, input_socket)) {
+    if (is_valid_gizmo_link(link)) {
       return find_scalar_gizmo_source_recursive(origin_socket, current_elem);
     }
     return std::nullopt;
@@ -98,34 +106,6 @@ static std::optional<GizmoSource> find_scalar_gizmo_source_recursive(
 std::optional<GizmoSource> find_gizmo_source(const bNodeSocket &socket, const SocketElem &elem)
 {
   return find_scalar_gizmo_source_recursive(socket, elem);
-}
-
-Vector<GizmoNodeSource> find_gizmo_node_sources(const GizmoInput &gizmo_input)
-{
-  Vector<GizmoNodeSource> gizmo_node_sources;
-  const bNodeSocket &input_socket = *gizmo_input.input_socket;
-  if (!input_socket.is_directly_linked()) {
-    gizmo_node_sources.append(
-        {GizmoSource(InputSocketGizmoSource{&input_socket, gizmo_input.elem})});
-  }
-  for (const bNodeLink *link : input_socket.directly_linked_links()) {
-    if (link->is_muted()) {
-      continue;
-    }
-    const bNodeSocket &origin_socket = *link->fromsock;
-    if (!origin_socket.is_available()) {
-      continue;
-    }
-    std::optional<GizmoSource> gizmo_source;
-    if (is_valid_gizmo_value_link(origin_socket, input_socket)) {
-      gizmo_source = find_gizmo_source(origin_socket, gizmo_input.elem);
-    }
-    if (!gizmo_source) {
-      continue;
-    }
-    gizmo_node_sources.append({*gizmo_source});
-  }
-  return gizmo_node_sources;
 }
 
 static void add_gizmo_input_source_pair(GizmoInferencingResult &inferencing_result,
@@ -176,11 +156,17 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
 
   for (const StringRefNull idname : {"GeometryNodeGizmoArrow", "GeometryNodeGizmoDial"}) {
     for (const bNode *gizmo_node : tree.nodes_by_type(idname)) {
-      const bNodeSocket &gizmo_node_input = gizmo_node->input_socket(0);
-      const GizmoInput gizmo_input{&gizmo_node_input, std::nullopt};
-      const Vector<GizmoNodeSource> gizmo_node_sources = find_gizmo_node_sources(gizmo_input);
-      for (const GizmoNodeSource &gizmo_node_source : gizmo_node_sources) {
-        add_gizmo_input_source_pair(inferencing_result, gizmo_input, gizmo_node_source.source);
+      const bNodeSocket &gizmo_value_input = gizmo_node->input_socket(0);
+      for (const bNodeLink *link : gizmo_value_input.directly_linked_links()) {
+        if (!is_valid_gizmo_link(*link)) {
+          continue;
+        }
+        if (const std::optional<GizmoSource> gizmo_source = find_gizmo_source(*link->fromsock,
+                                                                              SocketElem{}))
+        {
+          add_gizmo_input_source_pair(
+              inferencing_result, GizmoInput{&gizmo_value_input, SocketElem{}}, *gizmo_source);
+        }
       }
       inferencing_result.nodes_with_gizmos_inside.append(gizmo_node);
     }

@@ -122,107 +122,117 @@ struct GizmoFloatVariable {
   float derivative;
 };
 
-static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &gizmo_value_socket,
-                                                          const nodes::gizmos::SocketElem &elem,
-                                                          const ComputeContext &compute_context,
-                                                          const Object &object,
-                                                          const NodesModifierData &nmd)
+static std::optional<GizmoFloatVariable> find_float_value_paths_recursive(
+    const bNodeSocket &gizmo_value_socket,
+    const nodes::gizmos::SocketElem &elem,
+    const ComputeContext &compute_context,
+    const Object &object,
+    const NodesModifierData &nmd)
 {
   BLI_assert(gizmo_value_socket.is_input());
   const bNodeTree &ntree = *nmd.node_group;
-  const Vector<nodes::gizmos::GizmoNodeSource> gizmo_node_sources =
-      nodes::gizmos::find_gizmo_node_sources(nodes::gizmos::GizmoInput{&gizmo_value_socket, elem});
-  Vector<GizmoFloatVariable> value_paths;
 
-  for (const nodes::gizmos::GizmoNodeSource &gizmo_node_source : gizmo_node_sources) {
-    float derivative = 1.0f;
-    // if (gizmo_node_source.variable_node != nullptr) {
-    //   geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
-    //       compute_context.hash());
-    //   tree_log.ensure_socket_values();
-    //   const bNodeSocket &derivative_socket = gizmo_node_source.variable_node->input_socket(1);
-    //   auto *derivative_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
-    //       tree_log.find_socket_value_log(derivative_socket));
-    //   if (derivative_value_log == nullptr) {
-    //     continue;
-    //   }
-    //   derivative = *derivative_value_log->value.get<float>();
-    // }
-
-    FloatValuePath value_path;
-    ID *ntree_id = const_cast<ID *>(&ntree.id);
-
-    if (const auto *gizmo_source = std::get_if<nodes::gizmos::InputSocketGizmoSource>(
-            &gizmo_node_source.source))
-    {
-      value_path.owner = RNA_pointer_create(
-          ntree_id, &RNA_NodeSocket, const_cast<bNodeSocket *>(gizmo_source->input_socket));
-      value_path.property = RNA_struct_find_property(&value_path.owner, "default_value");
-      value_path.index = gizmo_source->elem.index;
-    }
-    else if (const auto *gizmo_source = std::get_if<nodes::gizmos::ValueNodeGizmoSource>(
-                 &gizmo_node_source.source))
-    {
-      switch (gizmo_source->value_node->type) {
-        case SH_NODE_VALUE: {
-          value_path.owner = RNA_pointer_create(
-              ntree_id,
-              &RNA_NodeSocket,
-              const_cast<bNodeSocket *>(&gizmo_source->value_node->output_socket(0)));
-          value_path.property = RNA_struct_find_property(&value_path.owner, "default_value");
-          break;
-        }
-        case FN_NODE_INPUT_VECTOR: {
-          value_path.owner = RNA_pointer_create(
-              ntree_id, &RNA_Node, const_cast<bNode *>(gizmo_source->value_node));
-          value_path.property = RNA_struct_find_property(&value_path.owner, "vector");
-          value_path.index = *gizmo_source->elem.index;
-          break;
-        }
-        case FN_NODE_INPUT_INT: {
-          value_path.owner = RNA_pointer_create(
-              ntree_id, &RNA_Node, const_cast<bNode *>(gizmo_source->value_node));
-          value_path.property = RNA_struct_find_property(&value_path.owner, "integer");
-          break;
-        }
-      }
-    }
-    else if (const auto *gizmo_source = std::get_if<nodes::gizmos::GroupInputGizmoSource>(
-                 &gizmo_node_source.source))
-    {
-      if (dynamic_cast<const bke::ModifierComputeContext *>(&compute_context)) {
-        const StringRefNull input_identifier =
-            ntree.interface_inputs()[gizmo_source->interface_input_index]->identifier;
-        IDProperty *id_property = IDP_GetPropertyFromGroup(nmd.settings.properties,
-                                                           input_identifier.c_str());
-        if (id_property == nullptr) {
-          continue;
-        }
-        value_path.owner = RNA_pointer_create(const_cast<ID *>(&object.id),
-                                              &RNA_NodesModifier,
-                                              const_cast<NodesModifierData *>(&nmd));
-        value_path.property = reinterpret_cast<PropertyRNA *>(id_property);
-        value_path.index = gizmo_source->elem.index;
-      }
-      else if (const auto *group_node_compute_context =
-                   dynamic_cast<const bke::NodeGroupComputeContext *>(&compute_context))
-      {
-        const bNode *caller_node = group_node_compute_context->caller_group_node();
-        const bNodeSocket &gizmo_value_socket = caller_node->input_socket(
-            gizmo_source->interface_input_index);
-        Vector<GizmoFloatVariable> sub_value_paths = find_float_values_paths(
-            gizmo_value_socket, gizmo_source->elem, *compute_context.parent(), object, nmd);
-        value_paths.extend(sub_value_paths);
-        continue;
-      }
-    }
-    else {
-      BLI_assert_unreachable();
-    }
-
-    value_paths.append({value_path, derivative});
+  std::optional<nodes::gizmos::GizmoSource> gizmo_source_opt = nodes::gizmos::find_gizmo_source(
+      gizmo_value_socket, elem);
+  if (!gizmo_source_opt) {
+    return std::nullopt;
   }
-  return value_paths;
+
+  float derivative = 1.0f;
+
+  ID *ntree_id = const_cast<ID *>(&ntree.id);
+
+  if (const auto *gizmo_source = std::get_if<nodes::gizmos::InputSocketGizmoSource>(
+          &*gizmo_source_opt))
+  {
+    FloatValuePath value_path;
+    value_path.owner = RNA_pointer_create(
+        ntree_id, &RNA_NodeSocket, const_cast<bNodeSocket *>(gizmo_source->input_socket));
+    value_path.property = RNA_struct_find_property(&value_path.owner, "default_value");
+    value_path.index = gizmo_source->elem.index;
+    return GizmoFloatVariable{value_path, derivative};
+  }
+  if (const auto *gizmo_source = std::get_if<nodes::gizmos::ValueNodeGizmoSource>(
+          &*gizmo_source_opt))
+  {
+    switch (gizmo_source->value_node->type) {
+      case SH_NODE_VALUE: {
+        FloatValuePath value_path;
+        value_path.owner = RNA_pointer_create(
+            ntree_id,
+            &RNA_NodeSocket,
+            const_cast<bNodeSocket *>(&gizmo_source->value_node->output_socket(0)));
+        value_path.property = RNA_struct_find_property(&value_path.owner, "default_value");
+        return GizmoFloatVariable{value_path, derivative};
+      }
+      case FN_NODE_INPUT_VECTOR: {
+        FloatValuePath value_path;
+        value_path.owner = RNA_pointer_create(
+            ntree_id, &RNA_Node, const_cast<bNode *>(gizmo_source->value_node));
+        value_path.property = RNA_struct_find_property(&value_path.owner, "vector");
+        value_path.index = *gizmo_source->elem.index;
+        return GizmoFloatVariable{value_path, derivative};
+      }
+      case FN_NODE_INPUT_INT: {
+        FloatValuePath value_path;
+        value_path.owner = RNA_pointer_create(
+            ntree_id, &RNA_Node, const_cast<bNode *>(gizmo_source->value_node));
+        value_path.property = RNA_struct_find_property(&value_path.owner, "integer");
+        return GizmoFloatVariable{value_path, derivative};
+      }
+    }
+  }
+  if (const auto *gizmo_source = std::get_if<nodes::gizmos::GroupInputGizmoSource>(
+          &*gizmo_source_opt))
+  {
+    if (dynamic_cast<const bke::ModifierComputeContext *>(&compute_context)) {
+      const StringRefNull input_identifier =
+          ntree.interface_inputs()[gizmo_source->interface_input_index]->identifier;
+      IDProperty *id_property = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                         input_identifier.c_str());
+      if (id_property == nullptr) {
+        return std::nullopt;
+      }
+      FloatValuePath value_path;
+      value_path.owner = RNA_pointer_create(
+          const_cast<ID *>(&object.id), &RNA_NodesModifier, const_cast<NodesModifierData *>(&nmd));
+      value_path.property = reinterpret_cast<PropertyRNA *>(id_property);
+      value_path.index = gizmo_source->elem.index;
+      return GizmoFloatVariable{value_path, derivative};
+    }
+    if (const auto *group_node_compute_context =
+            dynamic_cast<const bke::NodeGroupComputeContext *>(&compute_context))
+    {
+      const bNode *caller_node = group_node_compute_context->caller_group_node();
+      const bNodeSocket &gizmo_value_socket = caller_node->input_socket(
+          gizmo_source->interface_input_index);
+      return find_float_value_paths_recursive(
+          gizmo_value_socket, gizmo_source->elem, *compute_context.parent(), object, nmd);
+    }
+  }
+  BLI_assert_unreachable();
+  return std::nullopt;
+}
+
+static Vector<GizmoFloatVariable> find_gizmo_float_value_paths(
+    const bNode &gizmo_node,
+    const ComputeContext &compute_context,
+    const Object &object,
+    const NodesModifierData &nmd)
+{
+  Vector<GizmoFloatVariable> variables;
+  const bNodeSocket &gizmo_value_input = gizmo_node.input_socket(0);
+  for (const bNodeLink *link : gizmo_value_input.directly_linked_links()) {
+    if (!nodes::gizmos::is_valid_gizmo_link(*link)) {
+      continue;
+    }
+    if (std::optional<GizmoFloatVariable> variable = find_float_value_paths_recursive(
+            *link->fromsock, nodes::gizmos::SocketElem{}, compute_context, object, nmd))
+    {
+      variables.append(std::move(*variable));
+    }
+  }
+  return variables;
 }
 
 static bool WIDGETGROUP_geometry_nodes_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
@@ -345,9 +355,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           return;
         }
 
-        bNodeSocket &value_input = gizmo_node.input_socket(0);
-        Vector<GizmoFloatVariable> variables = find_float_values_paths(
-            value_input, nodes::gizmos::SocketElem{}, compute_context, *ob_orig, nmd);
+        Vector<GizmoFloatVariable> variables = find_gizmo_float_value_paths(
+            gizmo_node, compute_context, *ob_orig, nmd);
         if (variables.is_empty()) {
           return;
         }
