@@ -72,13 +72,14 @@ void VKTexture::generate_mipmap()
 
     /* GPU Texture stores the array length in the first unused dimension size.
      * Vulkan uses layers and the array length should be removed from the dimensions. */
-    if (ELEM(this->type_get(), GPU_TEXTURE_1D_ARRAY)) {
+    if (ELEM(to_vk_image_type(this->type_get()), VK_IMAGE_TYPE_1D)) {
       src_size.y = 1;
       src_size.z = 1;
       dst_size.y = 1;
       dst_size.z = 1;
     }
-    if (ELEM(this->type_get(), GPU_TEXTURE_2D_ARRAY)) {
+    
+    if (ELEM(to_vk_image_type(this->type_get()), VK_IMAGE_TYPE_2D)) {
       src_size.z = 1;
       dst_size.z = 1;
     }
@@ -112,18 +113,21 @@ void VKTexture::generate_mipmap()
                          *this,
                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                          Span<VkImageBlit>(&image_blit, 1));
+    if (dst_mipmap == mipmaps_ - 1) {
+      layout_ensure(context,
+                    IndexRange(dst_mipmap, 1),
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    VK_ACCESS_TRANSFER_WRITE_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    VK_ACCESS_TRANSFER_READ_BIT);
+    }
   }
 
-  /* Ensure that all mipmap levels are in `VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL`. */
-  layout_ensure(context,
-                IndexRange(mipmaps_ - 1, 1),
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                VK_PIPELINE_STAGE_TRANSFER_BIT,
-                VK_ACCESS_TRANSFER_WRITE_BIT,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_ACCESS_MEMORY_READ_BIT);
   current_layout_set(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  layout_ensure(context, best_layout_get());
+  current_layout_set(best_layout_get());
 }
 
 void VKTexture::copy_to(VKTexture &dst_texture, VkImageAspectFlags vk_image_aspect)

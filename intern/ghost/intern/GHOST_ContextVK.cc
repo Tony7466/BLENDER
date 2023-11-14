@@ -251,6 +251,7 @@ class GHOST_DeviceVK {
     vulkan_12_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     vulkan_12_features.shaderOutputLayer = features_12.shaderOutputLayer;
     vulkan_12_features.shaderOutputViewportIndex = features_12.shaderOutputViewportIndex;
+    vulkan_12_features.separateDepthStencilLayouts = features_12.separateDepthStencilLayouts;
     vulkan_12_features.pNext = device_create_info_p_next;
     device_create_info_p_next = &vulkan_12_features;
 
