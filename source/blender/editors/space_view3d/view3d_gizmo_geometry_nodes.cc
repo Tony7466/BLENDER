@@ -93,11 +93,9 @@ struct FloatValuePath {
     return 0.0f;
   }
 
-  void set_and_update(bContext *C, const float value)
+  float clamp(const float value)
   {
     const PropertyType prop_type = RNA_property_type(this->property);
-    const bool prop_is_array = RNA_property_array_check(this->property);
-
     float softmin = -FLT_MAX;
     float softmax = FLT_MAX;
     if (prop_type == PROP_FLOAT) {
@@ -112,22 +110,29 @@ struct FloatValuePath {
       softmax = float(softmax_i);
     }
     const float value_clamped = std::clamp(value, softmin, softmax);
+    return value_clamped;
+  }
+
+  void set_and_update(bContext *C, const float value)
+  {
+    const PropertyType prop_type = RNA_property_type(this->property);
+    const bool prop_is_array = RNA_property_array_check(this->property);
 
     if (prop_is_array) {
       BLI_assert(this->index.has_value());
       if (prop_type == PROP_FLOAT) {
-        RNA_property_float_set_index(&this->owner, this->property, *this->index, value_clamped);
+        RNA_property_float_set_index(&this->owner, this->property, *this->index, value);
       }
       else if (prop_type == PROP_INT) {
-        RNA_property_int_set_index(&this->owner, this->property, *this->index, value_clamped);
+        RNA_property_int_set_index(&this->owner, this->property, *this->index, value);
       }
     }
     else {
       if (prop_type == PROP_FLOAT) {
-        RNA_property_float_set(&this->owner, this->property, value_clamped);
+        RNA_property_float_set(&this->owner, this->property, value);
       }
       else if (prop_type == PROP_INT) {
-        RNA_property_int_set(&this->owner, this->property, value_clamped);
+        RNA_property_int_set(&this->owner, this->property, value);
       }
     }
     RNA_property_update(C, &this->owner, this->property);
@@ -161,10 +166,16 @@ static std::optional<float> compute_derivative(
         const float second_value = *second_value_opt;
         switch (mode) {
           case NODE_MATH_MULTIPLY: {
-            derivative = safe_divide(derivative, second_value);
+            if (second_value == 0.0) {
+              return std::nullopt;
+            }
+            derivative = derivative / second_value;
             break;
           }
           case NODE_MATH_DIVIDE: {
+            if (second_value == 0.0) {
+              return std::nullopt;
+            }
             derivative *= second_value;
             break;
           }
@@ -569,18 +580,28 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           params.free_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop) {
             MEM_delete(static_cast<UserData *>(gz_prop->custom_func.user_data));
           };
-          params.value_set_fn =
-              [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, const void *value_ptr) {
-                UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
-                const float new_gizmo_value = *static_cast<const float *>(value_ptr);
-                user_data->gizmo_value = new_gizmo_value;
-                for (const int i : user_data->variables.index_range()) {
-                  GizmoFloatVariable &variable = user_data->variables[i];
-                  variable.path.set_and_update(user_data->C,
-                                               user_data->initial_values[i] +
-                                                   new_gizmo_value * variable.derivative);
-                }
-              };
+          params.value_set_fn = [](const wmGizmo * /*gz*/,
+                                   wmGizmoProperty *gz_prop,
+                                   const void *value_ptr) {
+            UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
+            const float new_gizmo_value = *static_cast<const float *>(value_ptr);
+            float new_gizmo_value_clamped = new_gizmo_value;
+            for (const int i : user_data->variables.index_range()) {
+              GizmoFloatVariable &variable = user_data->variables[i];
+              const float initial_value = user_data->initial_values[i];
+              const float new_value = initial_value + new_gizmo_value_clamped * variable.derivative;
+              const float new_value_clamped = variable.path.clamp(new_value);
+              new_gizmo_value_clamped = (new_value_clamped - initial_value) / variable.derivative;
+            }
+            user_data->gizmo_value = new_gizmo_value_clamped;
+            for (const int i : user_data->variables.index_range()) {
+              GizmoFloatVariable &variable = user_data->variables[i];
+              const float initial_value = user_data->initial_values[i];
+              const float new_value = initial_value +
+                                      new_gizmo_value_clamped * variable.derivative;
+              variable.path.set_and_update(user_data->C, new_value);
+            }
+          };
           params.value_get_fn =
               [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
                 UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
