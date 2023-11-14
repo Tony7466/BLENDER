@@ -4430,7 +4430,7 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
       C, &ptr, prop, &selection, &path_from_id, &id_to_prop_path);
 
   if (BLI_listbase_is_empty(&selection) || !selected_list_success) {
-    WM_report(RPT_ERROR, "No selection found");
+    WM_report(RPT_ERROR, "Nothing selected");
     BLI_freelistN(&selection);
     return OPERATOR_CANCELLED;
   }
