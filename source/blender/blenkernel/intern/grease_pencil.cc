@@ -1390,6 +1390,55 @@ void BKE_grease_pencil_material_remap(GreasePencil *grease_pencil, const uint *r
   }
 }
 
+void BKE_grease_pencil_material_index_reassign(GreasePencil *grease_pencil, int totcol, int index)
+{
+  using namespace blender::bke;
+
+  for (GreasePencilDrawingBase *base : grease_pencil->drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+
+    greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+    MutableAttributeAccessor attributes = drawing.strokes_for_write().attributes_for_write();
+    SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_span<int>(
+        "material_index", ATTR_DOMAIN_CURVE);
+    if (!material_indices) {
+      return;
+    }
+
+    for (int i = 0; i < material_indices.span.size(); i++) {
+      if ((material_indices.span[i] > index) || (material_indices.span[i] > totcol - 1)) {
+        material_indices.span[i]--;
+        material_indices.span[i] = std::max(material_indices.span[i], 0);
+      }
+    }
+
+    material_indices.finish();
+  }
+}
+
+bool BKE_grease_pencil_material_index_used(GreasePencil *grease_pencil, int index)
+{
+  using namespace blender;
+  using namespace blender::bke;
+
+  for (GreasePencilDrawingBase *base : grease_pencil->drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+    AttributeAccessor attributes = drawing.strokes().attributes();
+    const VArraySpan<int> material_indices = *attributes.lookup_or_default<int>(
+        "material_index", ATTR_DOMAIN_CURVE, -1);
+
+    if (material_indices.contains(index)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** \} */
 
 /* ------------------------------------------------------------------- */
