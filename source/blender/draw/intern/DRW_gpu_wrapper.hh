@@ -416,17 +416,21 @@ class StorageVectorBuffer : public StorageArrayBuffer<T, len, false> {
   ~StorageVectorBuffer(){};
 
   /**
-   * Set item count to zero.
-   * If do_optimize_size is true, it may resize the buffer,
-   * but never to a capacity less than the current count.
-   * Otherwise it wont not free memory or resize the buffer.
+   * Set item count to zero but does not free memory or resize the buffer.
    */
-  void clear(bool do_optimize_size = true)
+  void clear()
   {
-    if (do_optimize_size) {
-      this->optimize_size(item_len_);
-    }
     item_len_ = 0;
+  }
+
+  /**
+   * Set item count to zero
+   * and trim the buffer if current size is much larger than the current item count.
+   */
+  void clear_and_trim()
+  {
+    this->optimize_size(item_len_);
+    clear();
   }
 
   /**
