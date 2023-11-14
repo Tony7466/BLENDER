@@ -5005,7 +5005,7 @@ void BKE_object_runtime_free_data(Object *object)
 
 void BKE_object_shallow_copy(const Object &src, Object &dst)
 {
-  dst.runtime = MEM_new<blender::bke::ObjectRuntime>(__func__, src.runtime);
+  dst.runtime = MEM_new<blender::bke::ObjectRuntime>(__func__, *src.runtime);
 }
 
 void BKE_object_shallow_copy_free(Object &object)

@@ -113,7 +113,7 @@ struct ObjectRuntime {
    * This is a curve representation of corresponding object.
    * It created when Python calls `object.to_curve()`.
    */
-  Curve *object_as_temp_curve;
+  ::Curve *object_as_temp_curve;
 
   /** Runtime evaluated curve-specific data, not stored in the file. */
   CurveCache *curve_cache;
