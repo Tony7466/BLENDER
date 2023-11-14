@@ -384,6 +384,18 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         UI_GetThemeColor3fv(color_id, gz->color);
         UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
 
+        if (gizmo_node.type == GEO_NODE_GIZMO_ARROW) {
+          static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_ARROW) ==
+                        int(ED_GIZMO_ARROW_STYLE_NORMAL));
+          static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_BOX) == int(ED_GIZMO_ARROW_STYLE_BOX));
+          static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_CROSS) ==
+                        int(ED_GIZMO_ARROW_STYLE_CROSS));
+          RNA_enum_set(
+              gz->ptr,
+              "draw_style",
+              static_cast<const NodeGeometryArrowGizmo *>(gizmo_node.storage)->draw_style);
+        }
+
         const bool is_interacting = gz->interaction_data != nullptr;
 
         struct UserData {

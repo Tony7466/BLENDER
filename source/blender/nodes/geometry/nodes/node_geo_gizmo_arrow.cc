@@ -32,6 +32,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "color_id", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "draw_style", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_rna(StructRNA *srna)
@@ -42,6 +43,12 @@ static void node_rna(StructRNA *srna)
                     "",
                     rna_enum_geometry_nodes_gizmo_color_items,
                     NOD_storage_enum_accessors(color_id));
+  RNA_def_node_enum(srna,
+                    "draw_style",
+                    "Draw Style",
+                    "",
+                    rna_enum_geometry_nodes_arrow_gizmo_draw_style_items,
+                    NOD_storage_enum_accessors(draw_style));
 }
 
 static void node_register()
