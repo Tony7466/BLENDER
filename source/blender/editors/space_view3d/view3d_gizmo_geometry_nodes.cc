@@ -510,13 +510,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 static void WIDGETGROUP_geometry_nodes_draw_prepare(const bContext * /*C*/,
                                                     wmGizmoGroup * /*gzgroup*/)
 {
-  // GeometryNodesGizmoGroup *gzgroup_data = static_cast<GeometryNodesGizmoGroup *>(
-  //     gzgroup->customdata);
-  // Object *ob = CTX_data_active_object(C);
-  // for (auto item : gzgroup_data->gizmo_by_node_id.items()) {
-  //   wmGizmo *gz = item.value->gizmo;
-  //   normalize_m4_m4(gz->matrix_basis, ob->object_to_world);
-  // }
 }
 
 }  // namespace blender::ed::view3d
