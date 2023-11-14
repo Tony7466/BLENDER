@@ -61,6 +61,8 @@ const char *BKE_project_name_get(const BlenderProject *project) ATTR_WARN_UNUSED
     ATTR_NONNULL();
 ListBase *BKE_project_custom_asset_libraries_get(const BlenderProject *project)
     ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
+ListBase *BKE_project_addons_get(const BlenderProject *project) ATTR_WARN_UNUSED_RESULT
+    ATTR_NONNULL();
 void BKE_project_tag_has_unsaved_changes(const BlenderProject *project) ATTR_NONNULL();
 /**
  * Check if the project is marked as having unsaved changes. For convenience this allows passing

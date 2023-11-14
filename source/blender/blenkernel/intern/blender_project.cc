@@ -93,7 +93,8 @@ bool BlenderProject::delete_settings_directory(StringRef project_path)
 
   BlenderProject *active_project = get_active();
   if (active_project &&
-      BLI_path_cmp_normalized(project_root_path.c_str(), active_project->root_path().c_str())) {
+      BLI_path_cmp_normalized(project_root_path.c_str(), active_project->root_path().c_str()))
+  {
     active_project->settings_->tag_has_unsaved_changes();
   }
   return true;
@@ -286,6 +287,14 @@ ListBase *BKE_project_custom_asset_libraries_get(const BlenderProject *project_h
       project_handle);
   bke::ProjectSettings &settings = project->get_settings();
   return &settings.asset_library_definitions();
+}
+
+ListBase *BKE_project_addons_get(const BlenderProject *project_handle)
+{
+  const bke::BlenderProject *project = reinterpret_cast<const bke::BlenderProject *>(
+      project_handle);
+  bke::ProjectSettings &settings = project->get_settings();
+  return &settings.addons();
 }
 
 void BKE_project_tag_has_unsaved_changes(const BlenderProject *project_handle)

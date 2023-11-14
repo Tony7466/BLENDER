@@ -12,9 +12,11 @@
 #include "BLI_listbase.h"
 #include "BLI_serialize.hh"
 
+#include "BKE_addon.h"
 #include "BKE_asset_library_custom.h"
 
 #include "DNA_asset_types.h"
+#include "DNA_userdef_types.h"
 
 #include "BKE_blender_project.hh"
 
@@ -59,12 +61,47 @@ CustomAssetLibraries::~CustomAssetLibraries()
 }
 
 /* ---------------------------------------------------------------------- */
+
+struct ProjectAddons : NonCopyable {
+  ListBase addons = {nullptr, nullptr}; /* bAddon */
+
+  ProjectAddons() = default;
+  ProjectAddons(ListBase addons);
+  ProjectAddons(ProjectAddons &&other);
+  ~ProjectAddons();
+  auto operator=(ProjectAddons &&other) -> ProjectAddons &;
+};
+
+ProjectAddons::ProjectAddons(ListBase addons) : addons(addons) {}
+
+ProjectAddons::ProjectAddons(ProjectAddons &&other)
+{
+  *this = std::move(other);
+}
+
+ProjectAddons &ProjectAddons::operator=(ProjectAddons &&other)
+{
+  addons = other.addons;
+  BLI_listbase_clear(&other.addons);
+  return *this;
+}
+
+ProjectAddons::~ProjectAddons()
+{
+  LISTBASE_FOREACH_MUTABLE (bAddon *, addon, &addons) {
+    BKE_addon_free(addon);
+    BLI_remlink(&addons, addon);
+  }
+}
+
+/* ---------------------------------------------------------------------- */
 /** \name settings.json Reading (Deserializing)
  * \{ */
 
 struct ExtractedSettings {
   std::string project_name;
   ListBase asset_libraries = {nullptr, nullptr}; /* CustomAssetLibraryDefinition */
+  ListBase addons = {nullptr, nullptr};          /* bAddon */
 };
 
 static std::unique_ptr<serialize::Value> read_settings_file(StringRef settings_filepath)
@@ -152,6 +189,38 @@ static std::unique_ptr<ExtractedSettings> extract_settings(
       }
     }
   }
+  /* "addons": */ {
+    const DictionaryValue::LookupValue *addons_value = attributes.lookup_ptr("addons");
+    if (addons_value) {
+      const ArrayValue *addons_array = (*addons_value)->as_array_value();
+      if (!addons_array) {
+        throw std::runtime_error("Unexpected addons format in settings.json, expected array");
+      }
+
+      for (const ArrayValue::Item &element : addons_array->elements()) {
+        const DictionaryValue *object_value = element->as_dictionary_value();
+        if (!object_value) {
+          throw std::runtime_error(
+              "Unexpected addon entry in settings.json, expected dictionary entries only");
+        }
+
+        const DictionaryValue::Lookup element_lookup = object_value->create_lookup();
+        const DictionaryValue::LookupValue *module_name_value = element_lookup.lookup_ptr(
+            "module");
+        if (!module_name_value) {
+          throw std::runtime_error(
+              "Unexpected addon entry in settings.json, expected module name");
+        }
+        if ((*module_name_value)->type() != eValueType::String) {
+          throw std::runtime_error(
+              "Unexpected addon entry in settings.json, expected module to be string");
+        }
+
+        std::string name = (*module_name_value)->as_string_value()->value();
+        BKE_addon_ensure(&extracted_settings->addons, name.c_str());
+      }
+    }
+  }
 
   return extracted_settings;
 }
@@ -190,6 +259,20 @@ std::unique_ptr<serialize::DictionaryValue> ProjectSettings::to_dictionary() con
         asset_libs_elements.append_as(std::move(library_dict));
       }
       root_attributes.append_as("asset_libraries", std::move(asset_libs_array));
+    }
+  }
+  /* "addons": */ {
+    if (!BLI_listbase_is_empty(&addons_->addons)) {
+      std::unique_ptr<ArrayValue> addons_array = std::make_unique<ArrayValue>();
+      ArrayValue::Items &addons_elements = addons_array->elements();
+      LISTBASE_FOREACH (const bAddon *, addon, &addons_->addons) {
+        std::unique_ptr<DictionaryValue> addons_dict = std::make_unique<DictionaryValue>();
+        DictionaryValue::Items &addon_attributes = addons_dict->elements();
+
+        addon_attributes.append_as("module", new StringValue(addon->module));
+        addons_elements.append_as(std::move(addons_dict));
+      }
+      root_attributes.append_as("addons", std::move(addons_array));
     }
   }
 
@@ -240,6 +323,7 @@ std::unique_ptr<ProjectSettings> ProjectSettings::load_from_disk(StringRef proje
     /* Moves ownership. */
     loaded_settings->asset_libraries_ = std::make_unique<CustomAssetLibraries>(
         extracted_settings->asset_libraries);
+    loaded_settings->addons_ = std::make_unique<ProjectAddons>(extracted_settings->addons);
   }
 
   return loaded_settings;
@@ -302,6 +386,11 @@ const ListBase &ProjectSettings::asset_library_definitions() const
 ListBase &ProjectSettings::asset_library_definitions()
 {
   return asset_libraries_->asset_libraries;
+}
+
+ListBase &ProjectSettings::addons()
+{
+  return addons_->addons;
 }
 
 void ProjectSettings::tag_has_unsaved_changes()

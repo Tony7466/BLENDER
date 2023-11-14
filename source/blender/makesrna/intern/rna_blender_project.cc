@@ -10,6 +10,7 @@
 
 #ifdef RNA_RUNTIME
 
+#  include "BKE_addon.h"
 #  include "BKE_asset_library_custom.h"
 #  include "BKE_blender_project.h"
 
@@ -99,13 +100,82 @@ static void rna_BlenderProject_asset_libraries_begin(CollectionPropertyIterator 
   rna_iterator_listbase_begin(iter, asset_libraries, nullptr);
 }
 
+static void rna_BlenderProject_addons_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  BlenderProject *project = static_cast<BlenderProject *>(ptr->data);
+  ListBase *addons_list = BKE_project_addons_get(project);
+  rna_iterator_listbase_begin(iter, addons_list, nullptr);
+}
+
 static bool rna_BlenderProject_is_dirty_get(PointerRNA *ptr)
 {
   const BlenderProject *project = static_cast<BlenderProject *>(ptr->data);
   return BKE_project_has_unsaved_changes(project);
 }
 
+static bAddon *rna_BlenderProject_addon_new(ReportList *reports)
+{
+  BlenderProject *project = BKE_project_active_get();
+  if (!project) {
+    BKE_report(reports, RPT_ERROR, "No project loaded");
+  }
+
+  ListBase *addons_list = BKE_project_addons_get(project);
+
+  bAddon *addon = BKE_addon_new();
+  BLI_addtail(addons_list, addon);
+  BKE_project_tag_has_unsaved_changes(project);
+  return addon;
+}
+
+static void rna_BlenderProject_addon_remove(ReportList *reports, PointerRNA *addon_ptr)
+{
+  BlenderProject *project = BKE_project_active_get();
+  if (!project) {
+    BKE_report(reports, RPT_ERROR, "No project loaded");
+  }
+
+  bAddon *addon = static_cast<bAddon *>(addon_ptr->data);
+
+  ListBase *addons_list = BKE_project_addons_get(project);
+  if (BLI_findindex(addons_list, addon) == -1) {
+    BKE_report(reports, RPT_ERROR, "Add-on is no longer valid");
+    return;
+  }
+  BLI_remlink(addons_list, addon);
+  BKE_addon_free(addon);
+  RNA_POINTER_INVALIDATE(addon_ptr);
+  BKE_project_tag_has_unsaved_changes(project);
+}
+
 #else
+
+static void rna_def_project_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  RNA_def_property_srna(cprop, "ProjectAddons");
+  srna = RNA_def_struct(brna, "ProjectAddons", nullptr);
+  RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
+  RNA_def_struct_ui_text(
+      srna, "Project Add-ons", "Collection of add-ons, loaded for the current project");
+
+  func = RNA_def_function(srna, "new", "rna_BlenderProject_addon_new");
+  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Add a new add-on");
+  /* return type */
+  parm = RNA_def_pointer(func, "addon", "Addon", "", "Add-on data");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", "rna_BlenderProject_addon_remove");
+  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Remove add-on");
+  parm = RNA_def_pointer(func, "addon", "Addon", "", "Add-on to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+}
 
 void RNA_def_blender_project(BlenderRNA *brna)
 {
@@ -143,6 +213,20 @@ void RNA_def_blender_project(BlenderRNA *brna)
                                     nullptr,
                                     nullptr);
   RNA_def_property_ui_text(prop, "Asset Libraries", "");
+
+  prop = RNA_def_property(srna, "addons", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_BlenderProject_addons_begin",
+                                    "rna_iterator_listbase_next",
+                                    "rna_iterator_listbase_end",
+                                    "rna_iterator_listbase_get",
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
+  RNA_def_property_struct_type(prop, "Addon");
+  RNA_def_property_ui_text(prop, "Add-on", "");
+  rna_def_project_addon_collection(brna, prop);
 
   prop = RNA_def_property(srna, "is_dirty", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop, "rna_BlenderProject_is_dirty_get", nullptr);

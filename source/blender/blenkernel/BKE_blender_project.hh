@@ -22,6 +22,7 @@ namespace blender::bke {
 
 class ProjectSettings;
 struct CustomAssetLibraries;
+struct ProjectAddons;
 
 /**
  * Entry point / API for core Blender project management.
@@ -137,6 +138,7 @@ class BlenderProject {
 class ProjectSettings {
   std::string project_name_;
   std::unique_ptr<CustomAssetLibraries> asset_libraries_;
+  std::unique_ptr<ProjectAddons> addons_;
 
   bool has_unsaved_changes_ = false;
 
@@ -178,6 +180,7 @@ class ProjectSettings {
   auto project_name [[nodiscard]] () const -> StringRefNull;
   auto asset_library_definitions() const -> const ListBase &;
   auto asset_library_definitions() -> ListBase &;
+  auto addons() -> ListBase &;
   /**
    * Forcefully tag the project settings for having unsaved changes. This needs to be done if
    * project settings data is modified directly by external code, not via a project settings API
