@@ -348,11 +348,11 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         bNodeSocket &position_input = gizmo_node.input_socket(1);
         bNodeSocket &direction_input = gizmo_node.input_socket(2);
 
-        auto *position_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
-            tree_log.find_socket_value_log(position_input));
-        auto *direction_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
-            tree_log.find_socket_value_log(direction_input));
-        if (ELEM(nullptr, position_value_log, direction_value_log)) {
+        const std::optional<float3> position_opt = tree_log.find_primitive_socket_value<float3>(
+            position_input);
+        const std::optional<float3> direction_opt = tree_log.find_primitive_socket_value<float3>(
+            direction_input);
+        if (!position_opt || !direction_opt) {
           /* TODO: Add some safety measure to make sure that this does not needlessly cause updates
            * all the time. */
           DEG_id_tag_update(&ob_orig->id, ID_RECALC_GEOMETRY);
@@ -360,8 +360,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           return;
         }
 
-        const float3 position = *position_value_log->value.get<float3>();
-        const float3 direction = math::normalize(*direction_value_log->value.get<float3>());
+        const float3 position = *position_opt;
+        const float3 direction = math::normalize(*direction_opt);
         if (math::is_zero(direction)) {
           return;
         }
