@@ -641,14 +641,7 @@ static void find_side_effect_nodes(const NodesModifierData &nmd,
       *wm,
       [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
         try_add_side_effect_node(compute_context, gizmo_node.identifier, nmd, r_side_effect_nodes);
-        for (const bNodeSocket *origin_socket :
-             gizmo_node.input_socket(0).logically_linked_sockets()) {
-          const bNode &origin_node = origin_socket->owner_node();
-          if (origin_node.type == GEO_NODE_GIZMO_VARIABLE) {
-            try_add_side_effect_node(
-                compute_context, origin_node.identifier, nmd, r_side_effect_nodes);
-          }
-        }
+        /* TODO: Make sure that intermediate values are logged. */
       });
 }
 

@@ -120,21 +120,13 @@ Vector<GizmoNodeSource> find_gizmo_node_sources(const bNodeSocket &gizmo_node_in
     }
     const bNode &origin_node = origin_socket.owner_node();
     std::optional<GizmoSource> gizmo_source;
-    const bNode *variable_node = nullptr;
-    if (origin_node.type == GEO_NODE_GIZMO_VARIABLE) {
-      const bNodeSocket &gizmo_variable_input = origin_node.input_socket(0);
-      gizmo_source = find_gizmo_source(gizmo_variable_input, elem_index);
-      variable_node = &origin_node;
-    }
-    else {
-      if (is_valid_gizmo_value_link(origin_socket, gizmo_node_input)) {
-        gizmo_source = find_gizmo_source(origin_socket, elem_index);
-      }
+    if (is_valid_gizmo_value_link(origin_socket, gizmo_node_input)) {
+      gizmo_source = find_gizmo_source(origin_socket, elem_index);
     }
     if (!gizmo_source) {
       continue;
     }
-    gizmo_node_sources.append({*gizmo_source, variable_node});
+    gizmo_node_sources.append({*gizmo_source, {}});
   }
   return gizmo_node_sources;
 }

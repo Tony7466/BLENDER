@@ -334,7 +334,6 @@ DefNode(GeometryNode, GEO_NODE_FLIP_FACES, 0, "FLIP_FACES", FlipFaces, "Flip Fac
 DefNode(GeometryNode, GEO_NODE_GEOMETRY_TO_INSTANCE, 0, "GEOMETRY_TO_INSTANCE", GeometryToInstance, "Geometry to Instance", "Convert each input geometry into an instance, which can be much faster than the Join Geometry node when the inputs are large")
 DefNode(GeometryNode, GEO_NODE_GIZMO_ARROW, 0, "GIZMO_ARROW", GizmoArrow, "Arrow Gizmo", "Show an array gizmo in the viewport for a value")
 DefNode(GeometryNode, GEO_NODE_GIZMO_DIAL, 0, "GIZMO_DIAL", GizmoDial, "Dial Gizmo", "Show a dial gizmo in the viewport for a value")
-DefNode(GeometryNode, GEO_NODE_GIZMO_VARIABLE, 0, "GIZMO_VARIABLE", GizmoVariable, "Gizmo Variable", "Setup a variable that can be modified by a gizmo")
 DefNode(GeometryNode, GEO_NODE_IMAGE_INFO, 0, "IMAGE_INFO", ImageInfo, "Image Info", "Retrieve information about an image")
 DefNode(GeometryNode, GEO_NODE_IMAGE_TEXTURE, def_geo_image_texture, "IMAGE_TEXTURE", ImageTexture, "Image Texture", "Sample values from an image texture")
 DefNode(GeometryNode, GEO_NODE_INDEX_OF_NEAREST, 0, "INDEX_OF_NEAREST", IndexOfNearest, "Index of Nearest", "Find the nearest element in a group. Similar to the \"Sample Nearest\" node")

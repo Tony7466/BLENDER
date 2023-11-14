@@ -136,18 +136,18 @@ static Vector<GizmoFloatVariable> find_float_values_paths(const bNodeSocket &giz
 
   for (const nodes::gizmos::GizmoNodeSource &gizmo_node_source : gizmo_node_sources) {
     float derivative = 1.0f;
-    if (gizmo_node_source.variable_node != nullptr) {
-      geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
-          compute_context.hash());
-      tree_log.ensure_socket_values();
-      const bNodeSocket &derivative_socket = gizmo_node_source.variable_node->input_socket(1);
-      auto *derivative_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
-          tree_log.find_socket_value_log(derivative_socket));
-      if (derivative_value_log == nullptr) {
-        continue;
-      }
-      derivative = *derivative_value_log->value.get<float>();
-    }
+    // if (gizmo_node_source.variable_node != nullptr) {
+    //   geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
+    //       compute_context.hash());
+    //   tree_log.ensure_socket_values();
+    //   const bNodeSocket &derivative_socket = gizmo_node_source.variable_node->input_socket(1);
+    //   auto *derivative_value_log = dynamic_cast<geo_eval_log::GenericValueLog *>(
+    //       tree_log.find_socket_value_log(derivative_socket));
+    //   if (derivative_value_log == nullptr) {
+    //     continue;
+    //   }
+    //   derivative = *derivative_value_log->value.get<float>();
+    // }
 
     FloatValuePath value_path;
     ID *ntree_id = const_cast<ID *>(&ntree.id);

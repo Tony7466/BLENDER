@@ -79,7 +79,7 @@ struct InterfaceGizmoInput {
 
 struct GizmoNodeSource {
   GizmoSource source;
-  const bNode *variable_node = nullptr;
+  Vector<const bNode *> intermediate_nodes;
 };
 
 struct GizmoInferencingResult {

@@ -2118,8 +2118,7 @@ static bool node_link_is_gizmo_link(const SpaceNode &snode, const bNodeLink &lin
   if (link.tosock == nullptr) {
     return false;
   }
-  if (ELEM(link.tonode->type, GEO_NODE_GIZMO_ARROW, GEO_NODE_GIZMO_DIAL, GEO_NODE_GIZMO_VARIABLE))
-  {
+  if (ELEM(link.tonode->type, GEO_NODE_GIZMO_ARROW, GEO_NODE_GIZMO_DIAL)) {
     if (link.tosock->index() == 0) {
       return true;
     }
