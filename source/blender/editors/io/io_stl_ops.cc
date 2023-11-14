@@ -49,9 +49,9 @@ static int wm_stl_export_execute(bContext *C, wmOperator *op)
   export_params.forward_axis = eIOAxis(RNA_enum_get(op->ptr, "forward_axis"));
   export_params.up_axis = eIOAxis(RNA_enum_get(op->ptr, "up_axis"));
   export_params.global_scale = RNA_float_get(op->ptr, "global_scale");
-  export_params.use_apply_modifiers = RNA_boolean_get(op->ptr, "use_apply_modifiers");
-  export_params.use_selection_only = RNA_boolean_get(op->ptr, "use_selection_only");
-  export_params.use_ascii = RNA_boolean_get(op->ptr, "use_ascii");
+  export_params.apply_modifiers = RNA_boolean_get(op->ptr, "apply_modifiers");
+  export_params.export_selected_objects = RNA_boolean_get(op->ptr, "export_selected_objects");
+  export_params.ascii_format = RNA_boolean_get(op->ptr, "ascii_format");
   export_params.use_batch = RNA_boolean_get(op->ptr, "use_batch");
 
   STL_export(C, &export_params);
@@ -68,12 +68,12 @@ static void ui_stl_export_settings(uiLayout *layout, PointerRNA *op_props_ptr)
 
   box = uiLayoutBox(layout);
   col = uiLayoutColumn(box, false);
-  uiItemR(col, op_props_ptr, "use_ascii", UI_ITEM_NONE, IFACE_("ASCII"), ICON_NONE);
+  uiItemR(col, op_props_ptr, "ascii_format", UI_ITEM_NONE, IFACE_("ASCII"), ICON_NONE);
   uiItemR(col, op_props_ptr, "use_batch", UI_ITEM_NONE, IFACE_("Batch"), ICON_NONE);
 
   box = uiLayoutBox(layout);
   sub = uiLayoutColumnWithHeading(box, false, IFACE_("Include"));
-  uiItemR(sub, op_props_ptr, "use_selection_only", UI_ITEM_NONE, IFACE_("Selection Only"), ICON_NONE);
+  uiItemR(sub, op_props_ptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selection Only"), ICON_NONE);
 
   box = uiLayoutBox(layout);
   sub = uiLayoutColumnWithHeading(box, false, IFACE_("Transform"));
@@ -84,7 +84,7 @@ static void ui_stl_export_settings(uiLayout *layout, PointerRNA *op_props_ptr)
 
   box = uiLayoutBox(layout);
   sub = uiLayoutColumnWithHeading(box, false, IFACE_("Geometry"));
-  uiItemR(sub, op_props_ptr, "use_apply_modifiers", UI_ITEM_NONE, IFACE_("Apply Modifiers"), ICON_NONE);
+  uiItemR(sub, op_props_ptr, "apply_modifiers", UI_ITEM_NONE, IFACE_("Apply Modifiers"), ICON_NONE);
 }
 
 static void wm_stl_export_draw([[maybe_unused]] bContext *C, wmOperator *op)
@@ -135,14 +135,14 @@ void WM_OT_stl_export(struct wmOperatorType *ot)
                                  FILE_SORT_DEFAULT);
 
   RNA_def_boolean(ot->srna,
-                  "use_ascii",
+                  "ascii_format",
                   false,
                   "ASCII Format",
                   "Export file in ASCII format, export as binary otherwise");
   RNA_def_boolean(
       ot->srna, "use_batch", false, "Batch Export", "Export each object to a separate file");
   RNA_def_boolean(ot->srna,
-                  "use_selection_only",
+                  "export_selected_objects",
                   false,
                   "Export Selected Objects",
                   "Export only selected objects instead of all supported objects");
@@ -161,7 +161,7 @@ void WM_OT_stl_export(struct wmOperatorType *ot)
   RNA_def_property_update_runtime(prop, io_ui_up_axis_update);
 
   RNA_def_boolean(ot->srna,
-                  "use_apply_modifiers",
+                  "apply_modifiers",
                   true,
                   "Apply Modifiers",
                   "Apply modifiers to exported meshes");

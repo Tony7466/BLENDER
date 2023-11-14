@@ -28,12 +28,12 @@ struct STLExportParams {
   char filepath[FILE_MAX];
   eIOAxis forward_axis;
   eIOAxis up_axis;
-  bool use_selection_only;
-  bool use_scene_unit;
-  bool use_apply_modifiers;
-  bool use_ascii;
-  bool use_batch;
   float global_scale;
+  bool export_selected_objects;
+  bool use_scene_unit;
+  bool apply_modifiers;
+  bool ascii_format;
+  bool use_batch;
 };
 
 void STL_import(bContext *C, const STLImportParams *import_params);

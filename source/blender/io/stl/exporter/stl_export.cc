@@ -38,7 +38,7 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
   /* If not exporting in batch, create single writer for all objects. */
   if (!export_params.use_batch) {
     writer = create_writer(export_params.filepath,
-                           export_params.use_ascii ? FileWriter::Type::ASCII :
+                           export_params.ascii_format ? FileWriter::Type::ASCII :
                                                      FileWriter::Type::BINARY);
   }
 
@@ -53,7 +53,7 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
       continue;
     }
 
-    if (export_params.use_selection_only && !(object->base_flag & BASE_SELECTED)) {
+    if (export_params.export_selected_objects && !(object->base_flag & BASE_SELECTED)) {
       continue;
     }
 
@@ -70,11 +70,11 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
       BLI_strncpy(filepath, export_params.filepath, FILE_MAX);
       BLI_path_extension_replace(filepath, FILE_MAX, suffix.c_str());
       writer = create_writer(
-          filepath, export_params.use_ascii ? FileWriter::Type::ASCII : FileWriter::Type::BINARY);
+          filepath, export_params.ascii_format ? FileWriter::Type::ASCII : FileWriter::Type::BINARY);
     }
 
     Object *obj_eval = DEG_get_evaluated_object(depsgraph, object);
-    Mesh *mesh = export_params.use_apply_modifiers ?
+    Mesh *mesh = export_params.apply_modifiers ?
                      BKE_object_get_evaluated_mesh(obj_eval) :
                      BKE_object_get_pre_modified_mesh(obj_eval);
 
