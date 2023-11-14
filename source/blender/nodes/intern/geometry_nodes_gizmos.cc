@@ -45,7 +45,7 @@ bool is_valid_gizmo_link(const bNodeLink &link)
 static std::optional<GizmoSource> find_local_gizmo_source_recursive(
     const bNodeSocket &current_socket,
     const SocketElem &current_elem,
-    Vector<GizmoPathElem> &right_to_left_path)
+    Vector<LocalGizmoPathElem> &right_to_left_path)
 {
   if (current_socket.is_input()) {
     const bNodeSocket &input_socket = current_socket;
@@ -127,7 +127,7 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
 
 std::optional<GizmoSource> find_local_gizmo_source(const bNodeSocket &socket,
                                                    const SocketElem &elem,
-                                                   Vector<GizmoPathElem> &right_to_left_path)
+                                                   Vector<LocalGizmoPathElem> &right_to_left_path)
 {
   return find_local_gizmo_source_recursive(socket, elem, right_to_left_path);
 }
@@ -167,7 +167,7 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
           interface_gizmo_input.input_index);
       const GizmoInput gizmo_input{&input_socket, interface_gizmo_input.elem};
 
-      Vector<GizmoPathElem> gizmo_path;
+      Vector<LocalGizmoPathElem> gizmo_path;
       if (const std::optional<GizmoSource> gizmo_source_opt = find_local_gizmo_source(
               input_socket, interface_gizmo_input.elem, gizmo_path))
       {
@@ -186,7 +186,7 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
         if (!is_valid_gizmo_link(*link)) {
           continue;
         }
-        Vector<GizmoPathElem> gizmo_path;
+        Vector<LocalGizmoPathElem> gizmo_path;
         if (const std::optional<GizmoSource> gizmo_source = find_local_gizmo_source(
                 *link->fromsock, SocketElem{}, gizmo_path))
         {
@@ -411,6 +411,65 @@ void foreach_active_gizmo(
       }
     }
   }
+}
+
+static std::optional<GizmoSource> find_global_gizmo_source_recursive(
+    const bNodeSocket &gizmo_socket,
+    const SocketElem &elem,
+    const ComputeContext &compute_context,
+    Vector<GlobalGizmoPathElem> &r_path)
+{
+  Vector<LocalGizmoPathElem> local_path;
+  std::optional<GizmoSource> gizmo_source_opt = find_local_gizmo_source(
+      gizmo_socket, elem, local_path);
+  if (!gizmo_source_opt) {
+    return std::nullopt;
+  }
+
+  for (const LocalGizmoPathElem &local_path_elem : local_path) {
+    r_path.append({local_path_elem.node, &compute_context});
+  }
+
+  if (const auto *gizmo_source = std::get_if<InputSocketGizmoSource>(&*gizmo_source_opt)) {
+    return *gizmo_source;
+  }
+  if (const auto *gizmo_source = std::get_if<ValueNodeGizmoSource>(&*gizmo_source_opt)) {
+    return *gizmo_source;
+  }
+  if (const auto *gizmo_source = std::get_if<GroupInputGizmoSource>(&*gizmo_source_opt)) {
+    if (dynamic_cast<const bke::ModifierComputeContext *>(&compute_context)) {
+      return *gizmo_source;
+    }
+    if (const auto *group_node_compute_context =
+            dynamic_cast<const bke::NodeGroupComputeContext *>(&compute_context))
+    {
+      const bNode *caller_node = group_node_compute_context->caller_group_node();
+      const bNodeSocket &socket = caller_node->input_socket(gizmo_source->interface_input_index);
+      return find_global_gizmo_source_recursive(
+          socket, gizmo_source->elem, *compute_context.parent(), r_path);
+    }
+  }
+
+  return std::nullopt;
+}
+
+Vector<GlobalGizmoSource> find_global_gizmo_sources(const ComputeContext &compute_context,
+                                                    const bNode &gizmo_node)
+{
+  Vector<GlobalGizmoSource> global_gizmo_sources;
+  const bNodeSocket &gizmo_value_input = gizmo_node.input_socket(0);
+  for (const bNodeLink *link : gizmo_value_input.directly_linked_links()) {
+    if (!is_valid_gizmo_link(*link)) {
+      continue;
+    }
+    Vector<GlobalGizmoPathElem> path;
+    if (std::optional<GizmoSource> source = find_global_gizmo_source_recursive(
+            *link->fromsock, SocketElem{}, compute_context, path))
+    {
+      global_gizmo_sources.append({std::move(*source), std::move(path)});
+    }
+  }
+  return global_gizmo_sources;
 }
 
 }  // namespace blender::nodes::gizmos
