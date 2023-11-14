@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "BLI_math_vector_types.hh"
+
 #include "DNA_customdata_types.h" /* #CustomData_MeshMasks. */
 
 struct BoundBox;
@@ -47,7 +49,6 @@ struct ObjectRuntime {
   double overlay_mode_transfer_start_time;
 
   /** Axis aligned bound-box (in local-space). */
-  // TODO: Move runtime struct to C++. Convert to Bounds<float3>
   BoundBox *bb;
 
   /**

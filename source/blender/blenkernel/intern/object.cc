@@ -3969,6 +3969,8 @@ bool BKE_object_minmax_dupli(Depsgraph *depsgraph,
     }
     else {
       Object temp_ob = blender::dna::shallow_copy(*dob->ob);
+      BKE_object_shallow_copy(*dob->ob, temp_ob);
+      BLI_SCOPED_DEFER([&]() { BKE_object_shallow_copy_free(temp_ob); });
       /* Do not modify the original bounding-box. */
       temp_ob.runtime->bb = nullptr;
       BKE_object_replace_data_on_shallow_copy(&temp_ob, dob->ob_data);
@@ -4999,6 +5001,16 @@ void BKE_object_runtime_free_data(Object *object)
   BKE_object_free_derived_caches(object);
 
   BKE_object_runtime_reset(object);
+}
+
+void BKE_object_shallow_copy(const Object &src, Object &dst)
+{
+  dst.runtime = MEM_new<blender::bke::ObjectRuntime>(__func__, src.runtime);
+}
+
+void BKE_object_shallow_copy_free(Object &object)
+{
+  MEM_delete(object.runtime);
 }
 
 /** \} */

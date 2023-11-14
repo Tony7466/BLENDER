@@ -166,8 +166,13 @@ bool deg_iterator_duplis_step(DEGObjectIterData *data)
 
     /* Temporary object to evaluate. */
     Object *dupli_parent = data->dupli_parent;
+
     Object *temp_dupli_object = &data->temp_dupli_object;
     *temp_dupli_object = blender::dna::shallow_copy(*dob->ob);
+
+    temp_dupli_object->runtime = &data->temp_dupli_object_runtime;
+    *temp_dupli_object->runtime = *dob->ob->runtime;
+
     temp_dupli_object->base_flag = dupli_parent->base_flag | BASE_FROM_DUPLI;
     temp_dupli_object->base_local_view_bits = dupli_parent->base_local_view_bits;
     temp_dupli_object->runtime->local_collections_bits =
