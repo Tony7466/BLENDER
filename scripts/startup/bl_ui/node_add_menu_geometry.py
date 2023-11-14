@@ -655,7 +655,6 @@ class NODE_MT_category_GEO_GIZMO(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeGizmoArrow")
         node_add_menu.add_node_type(layout, "GeometryNodeGizmoDial")
-        node_add_menu.add_node_type(layout, "GeometryNodeGizmoVariable")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
