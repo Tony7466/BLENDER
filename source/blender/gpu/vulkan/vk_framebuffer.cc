@@ -569,7 +569,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
           BLI_assert(ELEM(type, GPU_FB_DEPTH_ATTACHMENT));
         }
 
-        attachment_reference->aspectMask = to_vk_image_aspect_flag_bits(texture.format_get());
+        attachment_reference->aspectMask = to_vk_image_aspect_flag_bits(texture.device_format_get());
         attachment_reference->layout = vk_aspect_to_layout(attachment_reference->aspectMask);
         attachment_reference->attachment =
             renderpass_->attachments_.idx_[renderpass_->info_id_][type];

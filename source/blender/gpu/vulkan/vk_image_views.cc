@@ -76,7 +76,7 @@ std::weak_ptr<VKImageView> VKImageViews::lookup_vk_handle(VKTexture &texture,
                                                VK_NULL_HANDLE};
 
   vk_image_view_info_.components = vk_component_mapping_;
-  auto format = texture.format_get();
+  const eGPUTextureFormat format = texture.device_format_get();
   vk_image_view_info_.subresourceRange.aspectMask = to_vk_image_aspect_flag_bits(format);
 
   if (no_srgb) {

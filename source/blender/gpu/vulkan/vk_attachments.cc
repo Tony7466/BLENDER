@@ -39,7 +39,7 @@ void VKAttachments::description_set(GPUTexture *tex,
     /* Is the transition structure unified by several attachments? */
     BLI_assert((trans_ty == render_pass_enum_));
   }
-  attachment_description.format = to_vk_format(texture.format_get());
+  attachment_description.format = to_vk_format(texture.device_format_get());
 }
 
 int VKAttachments::type_get(int view_index, int info_id) const
