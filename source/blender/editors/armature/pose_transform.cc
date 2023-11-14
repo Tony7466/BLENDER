@@ -795,7 +795,6 @@ static int pose_copy_exec(bContext *C, wmOperator *op)
   STRNCPY(temp_bmain->filepath, BKE_main_blendfile_path_from_global());
 
   Object ob_copy = blender::dna::shallow_copy(*ob);
-
   ob_copy.adt = nullptr;
 
   /* Copy the armature without using the default copy constructor. This prevents
