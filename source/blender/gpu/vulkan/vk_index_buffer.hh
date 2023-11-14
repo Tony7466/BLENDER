@@ -23,9 +23,9 @@ class VKIndexBuffer : public IndexBuf, public VKBindableResource {
 
   void bind_as_ssbo(uint binding) override;
   void bind(VKContext &context);
-  virtual void bind(int binding,
-                    shader::ShaderCreateInfo::Resource::BindType bind_type,
-                    const GPUSamplerState sampler_state) override;
+  void bind(int binding,
+            shader::ShaderCreateInfo::Resource::BindType bind_type,
+            const GPUSamplerState sampler_state) override;
 
   void read(uint32_t *data) const override;
 
