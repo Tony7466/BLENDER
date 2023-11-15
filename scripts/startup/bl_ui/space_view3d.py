@@ -8055,6 +8055,10 @@ class VIEW3D_MT_grease_pencil_assign_material(Menu):
         ob = context.active_object
         mat_active = ob.active_material
 
+        if len(ob.material_slots) == 0:
+            layout.label(text="No Materials")
+            return
+
         for slot in ob.material_slots:
             mat = slot.material
             if mat:
@@ -8117,12 +8121,12 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
 
             col.separator()
 
-            col.menu("VIEW3D_MT_mirror")
+            col.menu("VIEW3D_MT_grease_pencil_assign_material")
+            col.operator("grease_pencil.set_active_material", text="Set as Active Material")
 
             col.separator()
 
-            col.menu("VIEW3D_MT_grease_pencil_assign_material")
-            col.operator("grease_pencil.set_active_material", text="Set as Active Material")
+            col.menu("VIEW3D_MT_mirror")
 
 
 def draw_gpencil_layer_active(context, layout):
