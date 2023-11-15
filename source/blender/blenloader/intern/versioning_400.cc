@@ -1842,23 +1842,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
-    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_ACCUMULATE_FIELD, " ", " ", 1, 3);
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_CAPTURE_ATTRIBUTE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_ATTRIBUTE_STATISTIC, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_BLUR_ATTRIBUTE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_EVALUATE_AT_INDEX, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_EVALUATE_ON_DOMAIN, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_INPUT_NAMED_ATTRIBUTE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_RAYCAST, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_INDEX, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_NEAREST_SURFACE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_UV_SURFACE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_STORE_NAMED_ATTRIBUTE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_VIEWER, "_", "_");
-    }
-  }
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 1)) {
     LISTBASE_FOREACH (GreasePencil *, grease_pencil, &bmain->grease_pencils) {
       versioning_grease_pencil_stroke_radii_scaling(grease_pencil);
@@ -1942,6 +1925,23 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 8)) {
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_ACCUMULATE_FIELD, " ", " ", 1, 3);
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_CAPTURE_ATTRIBUTE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_ATTRIBUTE_STATISTIC, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_BLUR_ATTRIBUTE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_EVALUATE_AT_INDEX, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_EVALUATE_ON_DOMAIN, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_INPUT_NAMED_ATTRIBUTE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_RAYCAST, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_INDEX, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_NEAREST_SURFACE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_UV_SURFACE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_STORE_NAMED_ATTRIBUTE, "_", "_");
+      versioning_node_dynamic_socket(*ntree, GEO_NODE_VIEWER, "_", "_");
+    }
+  }
   /**
    * Versioning code until next subversion bump goes here.
    *
