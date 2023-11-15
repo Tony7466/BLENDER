@@ -20,6 +20,7 @@ set(SRC_OSL
   node_combine_rgb.osl
   node_combine_hsv.osl
   node_combine_xyz.osl
+  node_conductor_bsdf.osl
   node_convert_from_color.osl
   node_convert_from_float.osl
   node_convert_from_int.osl

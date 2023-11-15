@@ -2398,6 +2398,88 @@ void BsdfNode::compile(OSLCompiler & /*compiler*/)
   assert(0);
 }
 
+/* Conductor BSDF Closure */
+
+NODE_DEFINE(ConductorBsdfNode)
+{
+  NodeType *type = NodeType::add("Conductor_bsdf", create, NodeType::SHADER);
+
+  SOCKET_IN_COLOR(color, "Color", make_float3(1.0f, 1.0f, 1.0f));
+  SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
+  SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
+
+  static NodeEnum distribution_enum;
+  distribution_enum.insert("ggx", CLOSURE_BSDF_MICROFACET_GGX_ID);
+  distribution_enum.insert("multi_ggx", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
+  SOCKET_ENUM(
+      distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
+
+  /* SOCKET_IN_COLOR(color, "Tint", make_float3(1.0f, 1.0f, 1.0f)); */
+  SOCKET_IN_VECTOR(tangent, "Tangent", zero_float3(), SocketType::LINK_TANGENT);
+
+  SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
+  SOCKET_IN_FLOAT(anisotropy, "Anisotropy", 0.0f);
+  SOCKET_IN_FLOAT(rotation, "Rotation", 0.0f);
+
+  SOCKET_OUT_CLOSURE(BSDF, "BSDF");
+
+  return type;
+}
+
+ConductorBsdfNode::ConductorBsdfNode() : BsdfNode(get_node_type())
+{
+  closure = CLOSURE_BSDF_MICROFACET_GGX_ID;
+}
+
+bool ConductorBsdfNode::is_isotropic()
+{
+  ShaderInput *anisotropy_input = input("Anisotropy");
+  /* Keep in sync with the thresholds in OSL's node_conductor_bsdf and SVM's svm_node_closure_bsdf.
+   */
+  return (!anisotropy_input->link && fabsf(anisotropy) <= 1e-4f);
+}
+
+void ConductorBsdfNode::attributes(Shader *shader, AttributeRequestSet *attributes)
+{
+  if (shader->has_surface_link()) {
+    ShaderInput *tangent_in = input("Tangent");
+    if (!tangent_in->link && !is_isotropic()) {
+      attributes->add(ATTR_STD_GENERATED);
+    }
+  }
+
+  ShaderNode::attributes(shader, attributes);
+}
+
+void ConductorBsdfNode::simplify_settings(Scene * /* scene */)
+{
+  /* If the anisotropy is close enough to zero, fall back to the isotropic case. */
+  ShaderInput *tangent_input = input("Tangent");
+  if (tangent_input->link && is_isotropic()) {
+    tangent_input->disconnect();
+  }
+}
+
+void ConductorBsdfNode::compile(SVMCompiler &compiler)
+{
+  closure = distribution;
+
+  /* TODO: Just use weight for legacy MultiGGX? Would also simplify OSL. */
+  if (closure == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID) {
+    BsdfNode::compile(
+        compiler, input("Roughness"), input("Anisotropy"), input("Rotation"), input("Color"));
+  }
+  else {
+    BsdfNode::compile(compiler, input("Roughness"), input("Anisotropy"), input("Rotation"));
+  }
+}
+
+void ConductorBsdfNode::compile(OSLCompiler &compiler)
+{
+  compiler.parameter(this, "distribution");
+  compiler.add(this, "node_conductor_bsdf");
+}
+
 /* Glossy BSDF Closure */
 
 NODE_DEFINE(GlossyBsdfNode)

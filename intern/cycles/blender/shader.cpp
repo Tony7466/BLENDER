@@ -548,6 +548,20 @@ static ShaderNode *add_node(Scene *scene,
 
     node = subsurface;
   }
+  else if (b_node.is_a(&RNA_ShaderNodeBsdfConductor)) {
+    BL::ShaderNodeBsdfConductor b_conductor_node(b_node);
+    ConductorBsdfNode *conductor = graph->create_node<ConductorBsdfNode>();
+
+    switch (b_conductor_node.distribution()) {
+      case BL::ShaderNodeBsdfConductor::distribution_GGX:
+        conductor->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);
+        break;
+      case BL::ShaderNodeBsdfConductor::distribution_MULTI_GGX:
+        conductor->set_distribution(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
+        break;
+    }
+    node = conductor;
+  }
   else if (b_node.is_a(&RNA_ShaderNodeBsdfAnisotropic)) {
     BL::ShaderNodeBsdfAnisotropic b_glossy_node(b_node);
     GlossyBsdfNode *glossy = graph->create_node<GlossyBsdfNode>();
