@@ -33,7 +33,7 @@
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
 #include "BLI_string_utf8.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #ifndef NDEBUG
@@ -2427,7 +2427,7 @@ void CustomData_ensure_data_is_mutable(CustomDataLayer *layer, const int totelem
   ensure_layer_data_is_mutable(*layer, totelem);
 }
 
-void CustomData_ensure_layers_are_mutable(struct CustomData *data, int totelem)
+void CustomData_ensure_layers_are_mutable(CustomData *data, int totelem)
 {
   for (const int i : IndexRange(data->totlayer)) {
     ensure_layer_data_is_mutable(data->layers[i], totelem);
@@ -3257,38 +3257,6 @@ int CustomData_number_of_layers_typemask(const CustomData *data, const eCustomDa
   }
 
   return number;
-}
-
-void CustomData_free_temporary(CustomData *data, const int totelem)
-{
-  int i, j;
-  bool changed = false;
-  for (i = 0, j = 0; i < data->totlayer; i++) {
-    CustomDataLayer *layer = &data->layers[i];
-
-    if (i != j) {
-      data->layers[j] = data->layers[i];
-    }
-
-    if ((layer->flag & CD_FLAG_TEMPORARY) == CD_FLAG_TEMPORARY) {
-      customData_free_layer__internal(layer, totelem);
-      changed = true;
-    }
-    else {
-      j++;
-    }
-  }
-
-  data->totlayer = j;
-
-  if (data->totlayer <= data->maxlayer - CUSTOMDATA_GROW) {
-    customData_resize(data, -CUSTOMDATA_GROW);
-    changed = true;
-  }
-
-  if (changed) {
-    customData_update_offsets(data);
-  }
 }
 
 void CustomData_set_only_copy(const CustomData *data, const eCustomDataMask mask)

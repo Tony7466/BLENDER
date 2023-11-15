@@ -211,6 +211,20 @@ struct uiLayoutItemRoot {
 /** \name Item
  * \{ */
 
+static const char *ui_item_name_add_colon(const char *name, char namestr[UI_MAX_NAME_STR])
+{
+  const int len = strlen(name);
+
+  if (len != 0 && len + 1 < UI_MAX_NAME_STR) {
+    memcpy(namestr, name, len);
+    namestr[len] = ':';
+    namestr[len + 1] = '\0';
+    return namestr;
+  }
+
+  return name;
+}
+
 static int ui_item_fit(
     int item, int pos, int all, int available, bool is_last, int alignment, float *extra_pixel)
 {
@@ -2054,6 +2068,7 @@ void uiItemFullR(uiLayout *layout,
                  const char *placeholder)
 {
   uiBlock *block = layout->root->block;
+  char namestr[UI_MAX_NAME_STR];
   const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
   const bool inside_prop_sep = ((layout->item.flag & UI_ITEM_INSIDE_PROP_SEP) != 0);
   /* Columns can define a heading to insert. If the first item added to a split layout doesn't have
@@ -2113,14 +2128,23 @@ void uiItemFullR(uiLayout *layout,
     /* pass */
   }
   else if (ELEM(type, PROP_INT, PROP_FLOAT, PROP_STRING, PROP_POINTER)) {
-    /* pass */
+    if (use_prop_sep == false) {
+      name = ui_item_name_add_colon(name, namestr);
+    }
   }
   else if (type == PROP_BOOLEAN && is_array && index == RNA_NO_INDEX) {
-    /* pass */
+    if (use_prop_sep == false) {
+      name = ui_item_name_add_colon(name, namestr);
+    }
   }
   else if (type == PROP_ENUM && index != RNA_ENUM_VALUE) {
     if (flag & UI_ITEM_R_COMPACT) {
       name = "";
+    }
+    else {
+      if (use_prop_sep == false) {
+        name = ui_item_name_add_colon(name, namestr);
+      }
     }
   }
 
@@ -2794,7 +2818,7 @@ uiBut *ui_but_add_search(uiBut *but,
       search_but->rnasearchprop = searchprop;
     }
 
-    but->hardmax = MAX2(but->hardmax, 256.0f);
+    but->hardmax = std::max(but->hardmax, 256.0f);
     but->drawflag |= UI_BUT_ICON_LEFT | UI_BUT_TEXT_LEFT;
     if (RNA_property_is_unlink(prop)) {
       but->flag |= UI_BUT_VALUE_CLEAR;
@@ -2857,6 +2881,8 @@ void uiItemPointerR_prop(uiLayout *layout,
                          int icon,
                          bool results_are_suggestions)
 {
+  const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
+
   ui_block_new_button_group(uiLayoutGetBlock(layout), uiButtonGroupFlag(0));
 
   const PropertyType type = RNA_property_type(prop);
@@ -2887,6 +2913,11 @@ void uiItemPointerR_prop(uiLayout *layout,
   }
   if (!name) {
     name = RNA_property_ui_name(prop);
+  }
+
+  char namestr[UI_MAX_NAME_STR];
+  if (use_prop_sep == false) {
+    name = ui_item_name_add_colon(name, namestr);
   }
 
   /* create button */
@@ -3334,6 +3365,10 @@ uiLayout *uiItemL_respect_property_split(uiLayout *layout, const char *text, int
     return split_wrapper.decorate_column;
   }
 
+  char namestr[UI_MAX_NAME_STR];
+  if (text) {
+    text = ui_item_name_add_colon(text, namestr);
+  }
   uiItemL_(layout, text, icon);
 
   return layout;
@@ -3738,7 +3773,7 @@ static void ui_litem_estimate_row(uiLayout *litem)
     min_size_flag = min_size_flag && (item->flag & UI_ITEM_FIXED_SIZE);
 
     litem->w += itemw;
-    litem->h = MAX2(itemh, litem->h);
+    litem->h = std::max(itemh, litem->h);
 
     if (item->next) {
       litem->w += litem->space;
@@ -3752,7 +3787,7 @@ static void ui_litem_estimate_row(uiLayout *litem)
 
 static int ui_litem_min_width(int itemw)
 {
-  return MIN2(2 * UI_UNIT_X, itemw);
+  return std::min(2 * UI_UNIT_X, itemw);
 }
 
 static void ui_litem_layout_row(uiLayout *litem)
@@ -3919,7 +3954,7 @@ static void ui_litem_estimate_column(uiLayout *litem, bool is_box)
 
     min_size_flag = min_size_flag && (item->flag & UI_ITEM_FIXED_SIZE);
 
-    litem->w = MAX2(litem->w, itemw);
+    litem->w = std::max(litem->w, itemw);
     litem->h += itemh;
 
     if (item->next && (!is_box || item != litem->items.first)) {
@@ -4657,8 +4692,8 @@ static void ui_litem_estimate_absolute(uiLayout *litem)
     minx = min_ii(minx, itemx);
     miny = min_ii(miny, itemy);
 
-    litem->w = MAX2(litem->w, itemx + itemw);
-    litem->h = MAX2(litem->h, itemy + itemh);
+    litem->w = std::max(litem->w, itemx + itemw);
+    litem->h = std::max(litem->h, itemy + itemh);
   }
 
   litem->w -= minx;
@@ -4748,7 +4783,7 @@ static void ui_litem_layout_split(uiLayout *litem)
 
   const int w = (litem->w - (tot - 1) * litem->space);
   int colw = w * percentage;
-  colw = MAX2(colw, 0);
+  colw = std::max(colw, 0);
 
   LISTBASE_FOREACH (uiItem *, item, &litem->items) {
     int itemh;
@@ -4761,7 +4796,7 @@ static void ui_litem_layout_split(uiLayout *litem)
       const float width = extra_pixel + (w - int(w * percentage)) / (float(tot) - 1);
       extra_pixel = width - int(width);
       colw = int(width);
-      colw = MAX2(colw, 0);
+      colw = std::max(colw, 0);
 
       x += litem->space;
     }
@@ -4783,8 +4818,8 @@ static void ui_litem_estimate_overlap(uiLayout *litem)
     int itemw, itemh;
     ui_item_size(item, &itemw, &itemh);
 
-    litem->w = MAX2(itemw, litem->w);
-    litem->h = MAX2(itemh, litem->h);
+    litem->w = std::max(itemw, litem->w);
+    litem->h = std::max(itemh, litem->h);
   }
 }
 
@@ -4799,7 +4834,7 @@ static void ui_litem_layout_overlap(uiLayout *litem)
     ui_item_size(item, &itemw, &itemh);
     ui_item_position(item, x, y - itemh, litem->w, itemh);
 
-    litem->h = MAX2(litem->h, itemh);
+    litem->h = std::max(litem->h, itemh);
   }
 
   litem->x = x;

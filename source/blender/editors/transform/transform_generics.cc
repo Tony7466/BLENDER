@@ -29,10 +29,10 @@
 #include "BKE_context.h"
 #include "BKE_layer.h"
 #include "BKE_mask.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_paint.hh"
 
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
 #include "ED_clip.hh"
 #include "ED_image.hh"
@@ -47,7 +47,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "SEQ_sequencer.h"
+#include "SEQ_sequencer.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -227,6 +227,11 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
   /* GPencil editing context */
   if (GPENCIL_EDIT_MODE(gpd)) {
+    t->options |= CTX_GPENCIL_STROKES;
+  }
+
+  /* Grease Pencil editing context */
+  if (t->obedit_type == OB_GREASE_PENCIL && object_mode == OB_MODE_EDIT) {
     t->options |= CTX_GPENCIL_STROKES;
   }
 
@@ -682,9 +687,20 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
            TFM_EDGE_SLIDE,
            TFM_VERT_SLIDE))
   {
-    const bool use_alt_navigation = (prop = RNA_struct_find_property(op->ptr, "alt_navigation")) &&
-                                    RNA_property_boolean_get(op->ptr, prop);
-    t->vod = ED_view3d_navigation_init(C, use_alt_navigation);
+    wmWindowManager *wm = CTX_wm_manager(C);
+    wmKeyMap *keymap = WM_keymap_active(wm, op->type->modalkeymap);
+    const wmKeyMapItem *kmi_passthrough = nullptr;
+    LISTBASE_FOREACH (const wmKeyMapItem *, kmi, &keymap->items) {
+      if (kmi->flag & KMI_INACTIVE) {
+        continue;
+      }
+
+      if (kmi->propvalue == TFM_MODAL_PASSTHROUGH_NAVIGATE) {
+        kmi_passthrough = kmi;
+        break;
+      }
+    }
+    t->vod = ED_view3d_navigation_init(C, kmi_passthrough);
   }
 
   setTransformViewMatrices(t);
@@ -825,6 +841,9 @@ void applyTransObjects(TransInfo *t)
 
 static void transdata_restore_basic(TransDataBasic *td_basic)
 {
+  BLI_assert_msg(td_basic->val != td_basic->loc,
+                 "it shouldn't happen. `val` is for 1D, `loc` is for 3D");
+
   if (td_basic->val) {
     *td_basic->val = td_basic->ival;
   }
