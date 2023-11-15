@@ -712,47 +712,18 @@ static void subdiv_ccg_average_inner_face_normals(SubdivCCG *subdiv_ccg,
 }
 
 /* Recalculate normals which corresponds to non-boundaries elements of grids. */
-static void subdiv_ccg_recalc_inner_grid_normals(SubdivCCG *subdiv_ccg)
+static void subdiv_ccg_recalc_inner_grid_normals(SubdivCCG *subdiv_ccg, const IndexMask &face_mask)
 {
   using namespace blender;
+
+  CCGKey key;
+  BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
+
   const int grid_size_1 = subdiv_ccg->grid_size - 1;
 
   threading::EnumerableThreadSpecific<Array<float3>> face_normals_tls(
       Array<float3>(grid_size_1 * grid_size_1));
 
-  CCGKey key;
-  BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
-
-  threading::parallel_for(IndexRange(subdiv_ccg->num_grids), 512, [&](const IndexRange range) {
-    MutableSpan<float3> face_normals = face_normals_tls.local();
-    for (const int grid_index : range) {
-      subdiv_ccg_recalc_inner_face_normals(subdiv_ccg, &key, face_normals, grid_index);
-      subdiv_ccg_average_inner_face_normals(subdiv_ccg, &key, face_normals, grid_index);
-    }
-  });
-}
-
-void BKE_subdiv_ccg_recalc_normals(SubdivCCG *subdiv_ccg)
-{
-  if (!subdiv_ccg->has_normal) {
-    /* Grids don't have normals, can do early output. */
-    return;
-  }
-  subdiv_ccg_recalc_inner_grid_normals(subdiv_ccg);
-  BKE_subdiv_ccg_average_grids(subdiv_ccg);
-}
-
-static void subdiv_ccg_recalc_modified_inner_grid_normals(SubdivCCG *subdiv_ccg,
-                                                          const IndexMask &face_mask)
-{
-  using namespace blender;
-  const int grid_size_1 = subdiv_ccg->grid_size - 1;
-
-  threading::EnumerableThreadSpecific<Array<float3>> face_normals_tls(
-      Array<float3>(grid_size_1 * grid_size_1));
-
-  CCGKey key;
-  BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
   const SubdivCCGFace *faces = subdiv_ccg->faces;
   face_mask.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
     MutableSpan<float3> face_normals = face_normals_tls.local();
@@ -766,6 +737,16 @@ static void subdiv_ccg_recalc_modified_inner_grid_normals(SubdivCCG *subdiv_ccg,
   });
 }
 
+void BKE_subdiv_ccg_recalc_normals(SubdivCCG *subdiv_ccg)
+{
+  if (!subdiv_ccg->has_normal) {
+    /* Grids don't have normals, can do early output. */
+    return;
+  }
+  subdiv_ccg_recalc_inner_grid_normals(subdiv_ccg, blender::IndexMask(subdiv_ccg->num_faces));
+  BKE_subdiv_ccg_average_grids(subdiv_ccg);
+}
+
 void BKE_subdiv_ccg_update_normals(SubdivCCG *subdiv_ccg, const IndexMask &face_mask)
 {
   if (!subdiv_ccg->has_normal) {
@@ -776,7 +757,7 @@ void BKE_subdiv_ccg_update_normals(SubdivCCG *subdiv_ccg, const IndexMask &face_
     /* No faces changed, so nothing to do here. */
     return;
   }
-  subdiv_ccg_recalc_modified_inner_grid_normals(subdiv_ccg, face_mask);
+  subdiv_ccg_recalc_inner_grid_normals(subdiv_ccg, face_mask);
 
   CCGKey key;
   BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
