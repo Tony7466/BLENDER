@@ -836,6 +836,9 @@ static void change_input_socket_to_rotation_type(bNodeTree &ntree,
                                                  bNode &node,
                                                  bNodeSocket &socket)
 {
+  if (socket.type == SOCK_ROTATION) {
+    return;
+  }
   socket.type = SOCK_ROTATION;
   STRNCPY(socket.idname, "NodeSocketRotation");
   auto *old_value = static_cast<bNodeSocketValueVector *>(socket.default_value);
