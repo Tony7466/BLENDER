@@ -1,8 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 #include "DNA_curves_types.h"
+#include "DNA_object_types.h" /* #BoundBox. */
 
 /** \file
  * \ingroup bke
@@ -22,13 +25,13 @@ struct Scene;
 
 void *BKE_curves_add(struct Main *bmain, const char *name);
 
-struct BoundBox *BKE_curves_boundbox_get(struct Object *ob);
+BoundBox BKE_curves_boundbox_get(struct Object *ob);
 
 bool BKE_curves_attribute_required(const struct Curves *curves, const char *name);
 
 /* Depsgraph */
 
-struct Curves *BKE_curves_copy_for_eval(struct Curves *curves_src);
+struct Curves *BKE_curves_copy_for_eval(const struct Curves *curves_src);
 
 void BKE_curves_data_update(struct Depsgraph *depsgraph,
                             struct Scene *scene,

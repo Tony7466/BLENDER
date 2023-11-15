@@ -1,9 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_timeit.hh"
 
 #include <algorithm>
 #include <iomanip>
+#include <iostream>
 
 namespace blender::timeit {
 
@@ -27,6 +30,16 @@ void print_duration(Nanoseconds duration)
   else {
     std::cout << std::fixed << std::setprecision(1) << duration.count() / 1.0e9 << " s";
   }
+}
+
+ScopedTimer::~ScopedTimer()
+{
+  const TimePoint end = Clock::now();
+  const Nanoseconds duration = end - start_;
+
+  std::cout << "Timer '" << name_ << "' took ";
+  print_duration(duration);
+  std::cout << '\n';
 }
 
 ScopedTimerAveraged::~ScopedTimerAveraged()

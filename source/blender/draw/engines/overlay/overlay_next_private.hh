@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup overlay
@@ -9,7 +10,7 @@
 
 #include "DRW_gpu_wrapper.hh"
 #include "DRW_render.h"
-#include "UI_resources.h"
+#include "UI_resources.hh"
 #include "draw_manager.hh"
 #include "draw_pass.hh"
 #include "gpu_shader_create_info.hh"
@@ -96,7 +97,7 @@ class ShaderModule {
   using ShaderPtr = std::unique_ptr<GPUShader, ShaderDeleter>;
 
   /** Shared shader module across all engine instances. */
-  static ShaderModule *g_shader_modules[2 /*Selection Instance*/][2 /*Clipping Enabled*/];
+  static ShaderModule *g_shader_modules[2 /* Selection Instance. */][2 /* Clipping Enabled. */];
 
   const SelectionType selection_type_;
   /** TODO: Support clipping. This global state should be set by the overlay::Instance and switch

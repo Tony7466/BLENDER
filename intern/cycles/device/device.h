@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __DEVICE_H__
 #define __DEVICE_H__
@@ -66,6 +67,14 @@ enum KernelOptimizationLevel {
   KERNEL_OPTIMIZATION_NUM_LEVELS
 };
 
+enum MetalRTSetting {
+  METALRT_OFF = 0,
+  METALRT_ON = 1,
+  METALRT_AUTO = 2,
+
+  METALRT_NUM_SETTINGS
+};
+
 class DeviceInfo {
  public:
   DeviceType type;
@@ -75,12 +84,14 @@ class DeviceInfo {
   bool display_device;          /* GPU is used as a display device. */
   bool has_nanovdb;             /* Support NanoVDB volumes. */
   bool has_light_tree;          /* Support light tree. */
+  bool has_mnee;                /* Support MNEE. */
   bool has_osl;                 /* Support Open Shading Language. */
   bool has_guiding;             /* Support path guiding. */
   bool has_profiling;           /* Supports runtime collection of profiling info. */
   bool has_peer_memory;         /* GPU has P2P access to memory of another GPU. */
   bool has_gpu_queue;           /* Device supports GPU queue. */
   bool use_hardware_raytracing; /* Use hardware instructions to accelerate ray tracing. */
+  bool use_metalrt_by_default;  /* Use MetalRT by default. */
   KernelOptimizationLevel kernel_optimization_level; /* Optimization level applied to path tracing
                                                       * kernels (Metal only). */
   DenoiserTypeMask denoisers;                        /* Supported denoiser types. */
@@ -97,12 +108,14 @@ class DeviceInfo {
     display_device = false;
     has_nanovdb = false;
     has_light_tree = true;
+    has_mnee = true;
     has_osl = false;
     has_guiding = false;
     has_profiling = false;
     has_peer_memory = false;
     has_gpu_queue = false;
     use_hardware_raytracing = false;
+    use_metalrt_by_default = false;
     denoisers = DENOISER_NONE;
   }
 

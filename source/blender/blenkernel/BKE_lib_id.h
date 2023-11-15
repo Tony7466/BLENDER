@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -230,7 +231,7 @@ typedef enum eLibIDDuplicateFlags {
 
 ENUM_OPERATORS(eLibIDDuplicateFlags, LIB_ID_DUPLICATE_IS_ROOT_ID)
 
-/* lib_remap.c (keep here since they're general functions) */
+/* `lib_remap.cc` (keep here since they're general functions) */
 /**
  * New freeing logic options.
  */
@@ -354,7 +355,7 @@ void id_us_ensure_real(struct ID *id);
 void id_us_clear_real(struct ID *id);
 /**
  * Same as \a id_us_plus, but does not handle lib indirect -> extern.
- * Only used by readfile.c so far, but simpler/safer to keep it here nonetheless.
+ * Only used by `readfile.cc` so far, but simpler/safer to keep it here nonetheless.
  */
 void id_us_plus_no_lib(struct ID *id);
 void id_us_plus(struct ID *id);
@@ -377,6 +378,9 @@ enum {
   /** Clear asset data (in case the ID can actually be made local, in copy case asset data is never
    * copied over). */
   LIB_ID_MAKELOCAL_ASSET_DATA_CLEAR = 1 << 3,
+
+  /** Clear any liboverride data as part of making this linked data local. */
+  LIB_ID_MAKELOCAL_LIBOVERRIDE_CLEAR = 1 << 4,
 };
 
 /**
@@ -514,7 +518,8 @@ void BKE_lib_id_expand_local(struct Main *bmain, struct ID *id, int flags);
 /**
  * Ensures given ID has a unique name in given listbase.
  *
- * Only for local IDs (linked ones already have a unique ID in their library).
+ * Uniqueness is only ensured within the ID's library (nullptr for local ones), libraries act as
+ * some kind of namespace for IDs.
  *
  * \param name: The new name of the given ID, if NULL the current given ID name is used instead.
  * \param do_linked_data: if true, also ensure a unique name in case the given \a id is linked
@@ -561,7 +566,7 @@ void BKE_main_id_flag_listbase(struct ListBase *lb, int flag, bool value);
 void BKE_main_id_flag_all(struct Main *bmain, int flag, bool value);
 
 /**
- * Next to indirect usage in `readfile.c/writefile.c` also in `editobject.c`, `scene.cc`.
+ * Next to indirect usage in `readfile.cc` / `writefile.cc` also in `editobject.c`, `scene.cc`.
  */
 void BKE_main_id_newptr_and_tag_clear(struct Main *bmain);
 
@@ -647,7 +652,8 @@ bool BKE_id_can_be_asset(const struct ID *id);
  */
 struct ID *BKE_id_owner_get(struct ID *id);
 
-/** Check if that ID can be considered as editable from a high-level (editor) perspective.
+/**
+ * Check if that ID can be considered as editable from a high-level (editor) perspective.
  *
  * NOTE: This used to be done with a check on whether ID was linked or not, but now with system
  * overrides this is not enough anymore.
@@ -672,7 +678,7 @@ void BKE_id_blend_write(struct BlendWriter *writer, struct ID *id);
 
 #define IS_TAGGED(_id) ((_id) && (((ID *)_id)->tag & LIB_TAG_DOIT))
 
-/* lib_id_eval.c */
+/* `lib_id_eval.cc` */
 
 /**
  * Copy relatives parameters, from `id` to `id_cow`.

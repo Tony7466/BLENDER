@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -131,6 +132,8 @@ MINLINE void add_v4_v4(float r[4], const float a[4]);
 MINLINE void add_v4_v4v4(float r[4], const float a[4], const float b[4]);
 
 MINLINE void add_v3fl_v3fl_v3i(float r[3], const float a[3], const int b[3]);
+
+MINLINE void add_v3_uchar_clamped(uchar r[3], int i);
 
 MINLINE void sub_v2_v2(float r[2], const float a[2]);
 MINLINE void sub_v2_v2_db(double r[2], const double a[2]);

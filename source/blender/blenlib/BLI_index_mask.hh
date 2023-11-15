@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -31,7 +33,7 @@ namespace blender::index_mask {
  * - The second most-significant bit is not used for indices so that #max_segment_size itself can
  *   be stored in the #int16_t.
  * - The maximum number of indices in a segment is 16384, which is generally enough to make the
- *   overhead per segment negilible when processing large index masks.
+ *   overhead per segment negligible when processing large index masks.
  * - A power of two is used for #max_segment_size, because that allows for faster construction of
  *   index masks for index ranges.
  */
@@ -159,7 +161,6 @@ using IndexMaskSegment = OffsetSpan<int64_t, int16_t>;
  *
  * Extraction:
  *   An #IndexMask can be converted into various other forms using the `to_*` methods.
- *
  */
 class IndexMask : private IndexMaskData {
  public:
@@ -185,6 +186,10 @@ class IndexMask : private IndexMaskData {
                               IndexMaskMemory &memory);
   static IndexMask from_bools(const IndexMask &universe,
                               const VArray<bool> &bools,
+                              IndexMaskMemory &memory);
+  /** Construct a mask from the union of two other masks. */
+  static IndexMask from_union(const IndexMask &mask_a,
+                              const IndexMask &mask_b,
                               IndexMaskMemory &memory);
   /** Construct a mask from all the indices for which the predicate is true. */
   template<typename Fn>
@@ -335,7 +340,7 @@ class IndexMask : private IndexMaskData {
    */
   void to_bits(MutableBitSpan r_bits) const;
   /**
-   * Set the bools at indies inthe mask to true and all others to false.
+   * Set the bools at indies in the mask to true and all others to false.
    */
   void to_bools(MutableSpan<bool> r_bools) const;
   /**

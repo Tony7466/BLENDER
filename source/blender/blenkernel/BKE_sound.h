@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -126,6 +127,7 @@ void BKE_sound_update_scene_listener(struct Scene *scene);
 
 void *BKE_sound_scene_add_scene_sound(
     struct Scene *scene, struct Sequence *sequence, int startframe, int endframe, int frameskip);
+
 void *BKE_sound_scene_add_scene_sound_defaults(struct Scene *scene, struct Sequence *sequence);
 
 void *BKE_sound_add_scene_sound(
@@ -144,7 +146,13 @@ void BKE_sound_move_scene_sound(const struct Scene *scene,
                                 double audio_offset);
 void BKE_sound_move_scene_sound_defaults(struct Scene *scene, struct Sequence *sequence);
 
+/* Join the Sequence with the structure in Audaspace, the second parameter is a bSound */
 void BKE_sound_update_scene_sound(void *handle, struct bSound *sound);
+
+/* Join the Sequence with the structure in Audaspace, the second parameter is the AUD_Sound created
+ * in Audaspace previously
+ */
+void BKE_sound_update_sequence_handle(void *handle, void *sound_handle);
 
 void BKE_sound_set_cfra(int cfra);
 

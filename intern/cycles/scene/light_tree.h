@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __LIGHT_TREE_H__
 #define __LIGHT_TREE_H__
@@ -276,6 +277,7 @@ struct LightTreeNode {
   __forceinline void add(const LightTreeEmitter &emitter)
   {
     measure.add(emitter.measure);
+    light_link.add(emitter.light_set_membership);
   }
 
   __forceinline Leaf &get_leaf()

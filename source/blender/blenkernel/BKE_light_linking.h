@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2001-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -27,6 +28,9 @@ typedef enum LightLinkingType {
   LIGHT_LINKING_RECEIVER,
   LIGHT_LINKING_BLOCKER,
 } LightLinkingType;
+
+/* Free object's light_linking if it is not needed to hold any of collections. */
+void BKE_light_linking_free_if_empty(struct Object *object);
 
 /* Get a collection of the given light linking type of the given object. */
 struct Collection *BKE_light_linking_collection_get(const struct Object *object,
@@ -65,6 +69,18 @@ void BKE_light_linking_add_receiver_to_collection(struct Main *bmain,
                                                   struct Collection *collection,
                                                   struct ID *receiver,
                                                   const eCollectionLightLinkingState link_state);
+void BKE_light_linking_add_receiver_to_collection_before(
+    struct Main *bmain,
+    struct Collection *collection,
+    struct ID *receiver,
+    const struct ID *before,
+    const eCollectionLightLinkingState link_state);
+void BKE_light_linking_add_receiver_to_collection_after(
+    struct Main *bmain,
+    struct Collection *collection,
+    struct ID *receiver,
+    const struct ID *after,
+    const eCollectionLightLinkingState link_state);
 
 /* Remove the given ID from the light or shadow linking collection of the given object.
  *

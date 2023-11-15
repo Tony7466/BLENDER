@@ -1,8 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 NVIDIA Corporation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 NVIDIA Corporation. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 #include "usd.h"
+
+#include "WM_types.hh"
 
 #include "BLI_map.hh"
 
@@ -33,7 +36,7 @@ struct NodePlacementContext {
   /* Map a USD shader prim path to the Blender node converted
    * from that shader.  This map is updated during shader
    * conversion and is used to avoid creating duplicate nodes
-   * for a given shader.  */
+   * for a given shader. */
   ShaderToNodeMap node_cache;
 
   NodePlacementContext(float in_origx,
@@ -85,6 +88,12 @@ class USDMaterialReader {
 
   Material *add_material(const pxr::UsdShadeMaterial &usd_material) const;
 
+  /** Get the wmJobWorkerStatus-provided `reports` list pointer, to use with the BKE_report API. */
+  ReportList *reports() const
+  {
+    return params_.worker_status ? params_.worker_status->reports : nullptr;
+  }
+
  protected:
   /** Create the Principled BSDF shader node network. */
   void import_usd_preview(Material *mtl, const pxr::UsdShadeShader &usd_shader) const;
@@ -94,7 +103,7 @@ class USDMaterialReader {
                                   const pxr::UsdShadeShader &usd_shader) const;
 
   /** Convert the given USD shader input to an input on the given Blender node. */
-  void set_node_input(const pxr::UsdShadeInput &usd_input,
+  bool set_node_input(const pxr::UsdShadeInput &usd_input,
                       bNode *dest_node,
                       const char *dest_socket_name,
                       bNodeTree *ntree,
@@ -105,7 +114,7 @@ class USDMaterialReader {
    * Follow the connected source of the USD input to create corresponding inputs
    * for the given Blender node.
    */
-  void follow_connection(const pxr::UsdShadeInput &usd_input,
+  bool follow_connection(const pxr::UsdShadeInput &usd_input,
                          bNode *dest_node,
                          const char *dest_socket_name,
                          bNodeTree *ntree,

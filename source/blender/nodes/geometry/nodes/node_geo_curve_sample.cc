@@ -1,12 +1,18 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "BLI_math_color.hh"
+#include "BLI_math_quaternion.hh"
+#include "BLI_math_vector.hh"
 
 #include "BLI_generic_array.hh"
 #include "BLI_length_parameterize.hh"
 
 #include "BKE_curves.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "NOD_socket_search_link.hh"
 
@@ -19,13 +25,14 @@ NODE_STORAGE_FUNCS(NodeGeometryCurveSample)
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Curves").only_realized_data().supported_type(
-      GEO_COMPONENT_TYPE_CURVE);
+      GeometryComponent::Type::Curve);
 
   b.add_input<decl::Float>("Value", "Value_Float").hide_value().field_on_all();
   b.add_input<decl::Int>("Value", "Value_Int").hide_value().field_on_all();
   b.add_input<decl::Vector>("Value", "Value_Vector").hide_value().field_on_all();
   b.add_input<decl::Color>("Value", "Value_Color").hide_value().field_on_all();
   b.add_input<decl::Bool>("Value", "Value_Bool").hide_value().field_on_all();
+  b.add_input<decl::Rotation>("Value", "Value_Rotation").hide_value().field_on_all();
 
   b.add_input<decl::Float>("Factor")
       .min(0.0f)
@@ -42,22 +49,23 @@ static void node_declare(NodeDeclarationBuilder &b)
     node_storage(node).use_all_curves = false;
   });
 
-  b.add_output<decl::Float>("Value", "Value_Float").dependent_field({6, 7, 8});
-  b.add_output<decl::Int>("Value", "Value_Int").dependent_field({6, 7, 8});
-  b.add_output<decl::Vector>("Value", "Value_Vector").dependent_field({6, 7, 8});
-  b.add_output<decl::Color>("Value", "Value_Color").dependent_field({6, 7, 8});
-  b.add_output<decl::Bool>("Value", "Value_Bool").dependent_field({6, 7, 8});
+  b.add_output<decl::Float>("Value", "Value_Float").dependent_field({7, 8, 9});
+  b.add_output<decl::Int>("Value", "Value_Int").dependent_field({7, 8, 9});
+  b.add_output<decl::Vector>("Value", "Value_Vector").dependent_field({7, 8, 9});
+  b.add_output<decl::Color>("Value", "Value_Color").dependent_field({7, 8, 9});
+  b.add_output<decl::Bool>("Value", "Value_Bool").dependent_field({7, 8, 9});
+  b.add_output<decl::Rotation>("Value", "Value_Rotation").dependent_field({7, 8, 9});
 
-  b.add_output<decl::Vector>("Position").dependent_field({6, 7, 8});
-  b.add_output<decl::Vector>("Tangent").dependent_field({6, 7, 8});
-  b.add_output<decl::Vector>("Normal").dependent_field({6, 7, 8});
+  b.add_output<decl::Vector>("Position").dependent_field({7, 8, 9});
+  b.add_output<decl::Vector>("Tangent").dependent_field({7, 8, 9});
+  b.add_output<decl::Vector>("Normal").dependent_field({7, 8, 9});
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "data_type", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
   uiItemR(layout, ptr, "mode", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "use_all_curves", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_all_curves", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -80,8 +88,9 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *in_socket_vector = in_socket_int32->next;
   bNodeSocket *in_socket_color4f = in_socket_vector->next;
   bNodeSocket *in_socket_bool = in_socket_color4f->next;
+  bNodeSocket *in_socket_quat = in_socket_bool->next;
 
-  bNodeSocket *factor = in_socket_bool->next;
+  bNodeSocket *factor = in_socket_quat->next;
   bNodeSocket *length = factor->next;
   bNodeSocket *curve_index = length->next;
 
@@ -94,27 +103,30 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bke::nodeSetSocketAvailability(ntree, in_socket_color4f, data_type == CD_PROP_COLOR);
   bke::nodeSetSocketAvailability(ntree, in_socket_bool, data_type == CD_PROP_BOOL);
   bke::nodeSetSocketAvailability(ntree, in_socket_int32, data_type == CD_PROP_INT32);
+  bke::nodeSetSocketAvailability(ntree, in_socket_quat, data_type == CD_PROP_QUATERNION);
 
   bNodeSocket *out_socket_float = static_cast<bNodeSocket *>(node->outputs.first);
   bNodeSocket *out_socket_int32 = out_socket_float->next;
   bNodeSocket *out_socket_vector = out_socket_int32->next;
   bNodeSocket *out_socket_color4f = out_socket_vector->next;
   bNodeSocket *out_socket_bool = out_socket_color4f->next;
+  bNodeSocket *out_socket_quat = out_socket_bool->next;
 
   bke::nodeSetSocketAvailability(ntree, out_socket_vector, data_type == CD_PROP_FLOAT3);
   bke::nodeSetSocketAvailability(ntree, out_socket_float, data_type == CD_PROP_FLOAT);
   bke::nodeSetSocketAvailability(ntree, out_socket_color4f, data_type == CD_PROP_COLOR);
   bke::nodeSetSocketAvailability(ntree, out_socket_bool, data_type == CD_PROP_BOOL);
   bke::nodeSetSocketAvailability(ntree, out_socket_int32, data_type == CD_PROP_INT32);
+  bke::nodeSetSocketAvailability(ntree, out_socket_quat, data_type == CD_PROP_QUATERNION);
 }
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const NodeDeclaration &declaration = *params.node_type().fixed_declaration;
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
   search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(4));
   search_link_ops_for_declarations(params, declaration.outputs.as_span().take_front(3));
 
-  const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
+  const std::optional<eCustomDataType> type = bke::socket_type_to_custom_data_type(
       eNodeSocketDatatype(params.other_socket().type));
   if (type && *type != CD_PROP_STRING) {
     /* The input and output sockets have the same name. */
@@ -289,7 +301,7 @@ class SampleCurveFunction : public mf::MultiFunction {
       return return_default();
     }
 
-    const Curves &curves_id = *geometry_set_.get_curves_for_read();
+    const Curves &curves_id = *geometry_set_.get_curves();
     const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
     if (curves.points_num() == 0) {
       return return_default();
@@ -394,6 +406,7 @@ class SampleCurveFunction : public mf::MultiFunction {
       }
     }
     else {
+      Vector<int> valid_indices;
       Vector<int> invalid_indices;
       VectorSet<int> used_curves;
       devirtualize_varray(curve_indices, [&](const auto curve_indices) {
@@ -401,6 +414,7 @@ class SampleCurveFunction : public mf::MultiFunction {
           const int curve_i = curve_indices[i];
           if (curves.curves_range().contains(curve_i)) {
             used_curves.add(curve_i);
+            valid_indices.append(i);
           }
           else {
             invalid_indices.append(i);
@@ -409,9 +423,13 @@ class SampleCurveFunction : public mf::MultiFunction {
       });
 
       IndexMaskMemory memory;
+      const IndexMask valid_indices_mask = valid_indices.size() == mask.size() ?
+                                               mask :
+                                               IndexMask::from_indices(valid_indices.as_span(),
+                                                                       memory);
       Array<IndexMask> mask_by_curve(used_curves.size());
       IndexMask::from_groups<int>(
-          mask,
+          valid_indices_mask,
           memory,
           [&](const int i) { return used_curves.index_of(curve_indices[i]); },
           mask_by_curve);
@@ -426,7 +444,7 @@ class SampleCurveFunction : public mf::MultiFunction {
  private:
   void evaluate_source()
   {
-    const Curves &curves_id = *geometry_set_.get_curves_for_read();
+    const Curves &curves_id = *geometry_set_.get_curves();
     const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
     source_context_.emplace(bke::CurvesFieldContext{curves, ATTR_DOMAIN_POINT});
     source_evaluator_ = std::make_unique<FieldEvaluator>(*source_context_, curves.points_num());
@@ -453,15 +471,17 @@ static GField get_input_attribute_field(GeoNodeExecParams &params, const eCustom
 {
   switch (data_type) {
     case CD_PROP_FLOAT:
-      return params.extract_input<Field<float>>("Value_Float");
+      return params.extract_input<GField>("Value_Float");
     case CD_PROP_FLOAT3:
-      return params.extract_input<Field<float3>>("Value_Vector");
+      return params.extract_input<GField>("Value_Vector");
     case CD_PROP_COLOR:
-      return params.extract_input<Field<ColorGeometry4f>>("Value_Color");
+      return params.extract_input<GField>("Value_Color");
     case CD_PROP_BOOL:
-      return params.extract_input<Field<bool>>("Value_Bool");
+      return params.extract_input<GField>("Value_Bool");
     case CD_PROP_INT32:
-      return params.extract_input<Field<int>>("Value_Int");
+      return params.extract_input<GField>("Value_Int");
+    case CD_PROP_QUATERNION:
+      return params.extract_input<GField>("Value_Rotation");
     default:
       BLI_assert_unreachable();
   }
@@ -472,23 +492,27 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
 {
   switch (bke::cpp_type_to_custom_data_type(field.cpp_type())) {
     case CD_PROP_FLOAT: {
-      params.set_output("Value_Float", Field<float>(field));
+      params.set_output("Value_Float", field);
       break;
     }
     case CD_PROP_FLOAT3: {
-      params.set_output("Value_Vector", Field<float3>(field));
+      params.set_output("Value_Vector", field);
       break;
     }
     case CD_PROP_COLOR: {
-      params.set_output("Value_Color", Field<ColorGeometry4f>(field));
+      params.set_output("Value_Color", field);
       break;
     }
     case CD_PROP_BOOL: {
-      params.set_output("Value_Bool", Field<bool>(field));
+      params.set_output("Value_Bool", field);
       break;
     }
     case CD_PROP_INT32: {
-      params.set_output("Value_Int", Field<int>(field));
+      params.set_output("Value_Int", field);
+      break;
+    }
+    case CD_PROP_QUATERNION: {
+      params.set_output("Value_Rotation", field);
       break;
     }
     default:
@@ -504,7 +528,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  const Curves &curves_id = *geometry_set.get_curves_for_read();
+  const Curves &curves_id = *geometry_set.get_curves();
   const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
   if (curves.points_num() == 0) {
     params.set_default_remaining_outputs();
@@ -556,22 +580,21 @@ static void node_geo_exec(GeoNodeExecParams params)
   output_attribute_field(params, GField(sample_op, 3));
 }
 
-}  // namespace blender::nodes::node_geo_curve_sample_cc
-
-void register_node_type_geo_curve_sample()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_curve_sample_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_SAMPLE_CURVE, "Sample Curve", NODE_CLASS_GEOMETRY);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
   node_type_storage(
       &ntype, "NodeGeometryCurveSample", node_free_standard_storage, node_copy_standard_storage);
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
+  ntype.draw_buttons = node_layout;
+  ntype.gather_link_search_ops = node_gather_link_searches;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_curve_sample_cc

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup overlay
@@ -15,14 +17,10 @@ namespace blender::draw::overlay {
 
 class Prepass {
  private:
-  const SelectionType selection_type_;
-
   PassMain prepass_ps_ = {"prepass"};
   PassMain prepass_in_front_ps_ = {"prepass_in_front"};
 
  public:
-  Prepass(const SelectionType selection_type) : selection_type_(selection_type){};
-
   void begin_sync(Resources &res, const State &state)
   {
     auto init_pass = [&](PassMain &pass) {

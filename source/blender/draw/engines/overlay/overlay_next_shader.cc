@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup overlay
@@ -15,8 +17,9 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(const char *create_info_
   /* TODO: This is what it should be like with all variations defined with create infos. */
   // std::string create_info_name = base_create_info;
   // create_info_name += SelectEngineT::shader_suffix;
-  // create_info_name += ClippingEnabled ? "_clipped" : "";
+  // create_info_name += clipping_enabled_ ? "_clipped" : "";
   // this->shader_ = GPU_shader_create_from_info_name(create_info_name.c_str());
+  UNUSED_VARS(clipping_enabled_);
 
   /* WORKAROUND: ... but for now, we have to patch the create info used by the old engine. */
   gpu::shader::ShaderCreateInfo info = *reinterpret_cast<const gpu::shader::ShaderCreateInfo *>(

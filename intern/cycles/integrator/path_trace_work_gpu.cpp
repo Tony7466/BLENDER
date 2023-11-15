@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "integrator/path_trace_work_gpu.h"
 #include "integrator/path_trace_display.h"
@@ -1024,6 +1025,10 @@ void PathTraceWorkGPU::get_render_tile_film_pixels(const PassAccessor::Destinati
   const KernelFilm &kfilm = device_scene_->data.film;
 
   const PassAccessor::PassAccessInfo pass_access_info = get_display_pass_access_info(pass_mode);
+  if (pass_access_info.type == PASS_NONE) {
+    return;
+  }
+
   const PassAccessorGPU pass_accessor(queue_.get(), pass_access_info, kfilm.exposure, num_samples);
 
   pass_accessor.get_render_tile_pixels(buffers_.get(), effective_buffer_params_, destination);

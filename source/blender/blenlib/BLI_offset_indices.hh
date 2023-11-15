@@ -1,9 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 #include <algorithm>
 
+#include "BLI_index_mask.hh"
 #include "BLI_index_range.hh"
 #include "BLI_span.hh"
 
@@ -29,13 +32,13 @@ template<typename T> class OffsetIndices {
   OffsetIndices() = default;
   OffsetIndices(const Span<T> offsets) : offsets_(offsets)
   {
-    BLI_assert(std::is_sorted(offsets_.begin(), offsets_.end()));
+    BLI_assert(offsets_.size() < 2 || std::is_sorted(offsets_.begin(), offsets_.end()));
   }
 
   /** Return the total number of elements in the referenced arrays. */
   T total_size() const
   {
-    return offsets_.size() == 1 ? 0 : offsets_.last();
+    return offsets_.size() > 1 ? offsets_.last() : 0;
   }
 
   /**
@@ -86,9 +89,9 @@ template<typename T> class OffsetIndices {
     return OffsetIndices(offsets_.slice(range.start(), range.one_after_last()));
   }
 
-  const T *data() const
+  Span<T> data() const
   {
-    return offsets_.data();
+    return offsets_;
   }
 };
 
@@ -137,6 +140,19 @@ template<typename T> struct GroupedSpan {
 OffsetIndices<int> accumulate_counts_to_offsets(MutableSpan<int> counts_to_offsets,
                                                 int start_offset = 0);
 
+/** Create offsets where every group has the same size. */
+void fill_constant_group_size(int size, int start_offset, MutableSpan<int> offsets);
+
+/** Copy the number of indices in every group in the mask to the corresponding index. */
+void copy_group_sizes(OffsetIndices<int> offsets, const IndexMask &mask, MutableSpan<int> sizes);
+
+/** Gather the number of indices in each indexed group to sizes. */
+void gather_group_sizes(OffsetIndices<int> offsets, const IndexMask &mask, MutableSpan<int> sizes);
+
+/** Build new offsets that contains only the groups chosen by \a selection. */
+OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
+                                           const IndexMask &selection,
+                                           MutableSpan<int> dst_offsets);
 /**
  * Create a map from indexed elements to the source indices, in other words from the larger array
  * to the smaller array.

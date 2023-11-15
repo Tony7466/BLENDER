@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -15,6 +17,8 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
@@ -23,24 +27,24 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_context.h"
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 
-#include "ED_image.h"
-#include "ED_paint.h"
-#include "ED_screen.h"
+#include "ED_image.hh"
+#include "ED_paint.hh"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "curves_sculpt_intern.hh"
 #include "paint_intern.hh"
@@ -86,7 +90,7 @@ static eGPBrush_Presets gpencil_get_brush_preset_from_tool(bToolRef *tool,
                                                            enum eContextObjectMode mode)
 {
   switch (mode) {
-    case CTX_MODE_PAINT_GPENCIL: {
+    case CTX_MODE_PAINT_GPENCIL_LEGACY: {
       if (STREQ(tool->runtime->data_block, "DRAW")) {
         return GP_BRUSH_PRESET_PENCIL;
       }
@@ -101,7 +105,7 @@ static eGPBrush_Presets gpencil_get_brush_preset_from_tool(bToolRef *tool,
       }
       break;
     }
-    case CTX_MODE_SCULPT_GPENCIL: {
+    case CTX_MODE_SCULPT_GPENCIL_LEGACY: {
       if (STREQ(tool->runtime->data_block, "SMOOTH")) {
         return GP_BRUSH_PRESET_SMOOTH_STROKE;
       }
@@ -131,7 +135,7 @@ static eGPBrush_Presets gpencil_get_brush_preset_from_tool(bToolRef *tool,
       }
       break;
     }
-    case CTX_MODE_WEIGHT_GPENCIL: {
+    case CTX_MODE_WEIGHT_GPENCIL_LEGACY: {
       if (STREQ(tool->runtime->data_block, "DRAW")) {
         return GP_BRUSH_PRESET_WEIGHT_DRAW;
       }
@@ -146,7 +150,7 @@ static eGPBrush_Presets gpencil_get_brush_preset_from_tool(bToolRef *tool,
       }
       break;
     }
-    case CTX_MODE_VERTEX_GPENCIL: {
+    case CTX_MODE_VERTEX_GPENCIL_LEGACY: {
       if (STREQ(tool->runtime->data_block, "DRAW")) {
         return GP_BRUSH_PRESET_VERTEX_DRAW;
       }
@@ -204,19 +208,19 @@ static int brush_add_gpencil_exec(bContext *C, wmOperator * /*op*/)
 
     /* Get Brush mode base on context mode. */
     const enum eContextObjectMode mode = CTX_data_mode_enum(C);
-    eObjectMode obmode = OB_MODE_PAINT_GPENCIL;
+    eObjectMode obmode = OB_MODE_PAINT_GPENCIL_LEGACY;
     switch (mode) {
-      case CTX_MODE_PAINT_GPENCIL:
-        obmode = OB_MODE_PAINT_GPENCIL;
+      case CTX_MODE_PAINT_GPENCIL_LEGACY:
+        obmode = OB_MODE_PAINT_GPENCIL_LEGACY;
         break;
-      case CTX_MODE_SCULPT_GPENCIL:
-        obmode = OB_MODE_SCULPT_GPENCIL;
+      case CTX_MODE_SCULPT_GPENCIL_LEGACY:
+        obmode = OB_MODE_SCULPT_GPENCIL_LEGACY;
         break;
-      case CTX_MODE_WEIGHT_GPENCIL:
-        obmode = OB_MODE_WEIGHT_GPENCIL;
+      case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
+        obmode = OB_MODE_WEIGHT_GPENCIL_LEGACY;
         break;
-      case CTX_MODE_VERTEX_GPENCIL:
-        obmode = OB_MODE_VERTEX_GPENCIL;
+      case CTX_MODE_VERTEX_GPENCIL_LEGACY:
+        obmode = OB_MODE_VERTEX_GPENCIL_LEGACY;
         break;
       default:
         return OPERATOR_CANCELLED;
@@ -800,10 +804,9 @@ static Brush *brush_tool_cycle(Main *bmain, Paint *paint, Brush *brush_orig, con
     }
   }
   else {
-    /* If user wants to switch to brush with the same  tool as
+    /* If user wants to switch to brush with the same tool as
      * currently active brush do a cycling via all possible
-     * brushes with requested tool.
-     */
+     * brushes with requested tool. */
     first_brush = brush_orig->id.next ? static_cast<Brush *>(brush_orig->id.next) :
                                         static_cast<Brush *>(bmain->brushes.first);
   }
@@ -1009,15 +1012,17 @@ static void PAINT_OT_brush_select(wmOperatorType *ot)
     const char *prop_id = BKE_paint_get_tool_prop_id_from_paintmode(paint_mode);
     prop = RNA_def_enum(
         ot->srna, prop_id, BKE_paint_get_tool_enum_from_paintmode(paint_mode), 0, prop_id, "");
+    RNA_def_property_translation_context(
+        prop, BKE_paint_get_tool_enum_translation_context_from_paintmode(paint_mode));
     RNA_def_property_flag(prop, PROP_HIDDEN);
   }
 
   prop = RNA_def_boolean(
-      ot->srna, "toggle", 0, "Toggle", "Toggle between two brushes rather than cycling");
+      ot->srna, "toggle", false, "Toggle", "Toggle between two brushes rather than cycling");
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
   prop = RNA_def_boolean(ot->srna,
                          "create_missing",
-                         0,
+                         false,
                          "Create Missing",
                          "If the requested brush type does not exist, create a new brush");
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
@@ -1376,10 +1381,10 @@ static void BRUSH_OT_stencil_fit_image_aspect(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna, "use_repeat", 1, "Use Repeat", "Use repeat mapping values");
-  RNA_def_boolean(ot->srna, "use_scale", 1, "Use Scale", "Use texture scale values");
+  RNA_def_boolean(ot->srna, "use_repeat", true, "Use Repeat", "Use repeat mapping values");
+  RNA_def_boolean(ot->srna, "use_scale", true, "Use Scale", "Use texture scale values");
   RNA_def_boolean(
-      ot->srna, "mask", 0, "Modify Mask Stencil", "Modify either the primary or mask stencil");
+      ot->srna, "mask", false, "Modify Mask Stencil", "Modify either the primary or mask stencil");
 }
 
 static int stencil_reset_transform_exec(bContext *C, wmOperator *op)
@@ -1431,12 +1436,12 @@ static void BRUSH_OT_stencil_reset_transform(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_boolean(
-      ot->srna, "mask", 0, "Modify Mask Stencil", "Modify either the primary or mask stencil");
+      ot->srna, "mask", false, "Modify Mask Stencil", "Modify either the primary or mask stencil");
 }
 
 /**************************** registration **********************************/
 
-void ED_operatormacros_paint(void)
+void ED_operatormacros_paint()
 {
   wmOperatorType *ot;
   wmOperatorTypeMacro *otmacro;
@@ -1452,7 +1457,7 @@ void ED_operatormacros_paint(void)
   RNA_boolean_set(otmacro->ptr, "select", false);
 }
 
-void ED_operatortypes_paint(void)
+void ED_operatortypes_paint()
 {
   /* palette */
   WM_operatortype_append(PALETTE_OT_new);
@@ -1538,6 +1543,7 @@ void ED_operatortypes_paint(void)
   WM_operatortype_append(PAINT_OT_face_select_more);
   WM_operatortype_append(PAINT_OT_face_select_less);
   WM_operatortype_append(PAINT_OT_face_select_hide);
+  WM_operatortype_append(PAINT_OT_face_select_loop);
 
   WM_operatortype_append(PAINT_OT_face_vert_reveal);
 
@@ -1555,31 +1561,33 @@ void ED_keymap_paint(wmKeyConfig *keyconf)
 {
   wmKeyMap *keymap;
 
-  keymap = WM_keymap_ensure(keyconf, "Paint Curve", 0, 0);
+  keymap = WM_keymap_ensure(keyconf, "Paint Curve", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = paint_curve_poll;
 
   /* Sculpt mode */
-  keymap = WM_keymap_ensure(keyconf, "Sculpt", 0, 0);
+  keymap = WM_keymap_ensure(keyconf, "Sculpt", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = SCULPT_mode_poll;
 
   /* Vertex Paint mode */
-  keymap = WM_keymap_ensure(keyconf, "Vertex Paint", 0, 0);
+  keymap = WM_keymap_ensure(keyconf, "Vertex Paint", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = vertex_paint_mode_poll;
 
   /* Weight Paint mode */
-  keymap = WM_keymap_ensure(keyconf, "Weight Paint", 0, 0);
+  keymap = WM_keymap_ensure(keyconf, "Weight Paint", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = weight_paint_mode_poll;
 
   /* Weight paint's Vertex Selection Mode. */
-  keymap = WM_keymap_ensure(keyconf, "Paint Vertex Selection (Weight, Vertex)", 0, 0);
+  keymap = WM_keymap_ensure(
+      keyconf, "Paint Vertex Selection (Weight, Vertex)", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = vert_paint_poll;
 
   /* Image/Texture Paint mode */
-  keymap = WM_keymap_ensure(keyconf, "Image Paint", 0, 0);
+  keymap = WM_keymap_ensure(keyconf, "Image Paint", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = image_texture_paint_poll;
 
   /* face-mask mode */
-  keymap = WM_keymap_ensure(keyconf, "Paint Face Mask (Weight, Vertex, Texture)", 0, 0);
+  keymap = WM_keymap_ensure(
+      keyconf, "Paint Face Mask (Weight, Vertex, Texture)", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = facemask_paint_poll;
 
   /* paint stroke */
@@ -1587,7 +1595,7 @@ void ED_keymap_paint(wmKeyConfig *keyconf)
   WM_modalkeymap_assign(keymap, "SCULPT_OT_brush_stroke");
 
   /* Curves Sculpt mode. */
-  keymap = WM_keymap_ensure(keyconf, "Sculpt Curves", 0, 0);
+  keymap = WM_keymap_ensure(keyconf, "Sculpt Curves", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = CURVES_SCULPT_mode_poll;
 
   /* sculpt expand. */

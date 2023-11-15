@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -6,21 +8,19 @@
 
 #pragma once
 
+#include "BLI_utildefines.h"
+
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 #include "DNA_session_uuid_types.h"
 
 #ifdef __cplusplus
-namespace blender::bke::sim {
-class ModifierSimulationCache;
+namespace blender {
+struct NodesModifierRuntime;
 }
-using ModifierSimulationCacheHandle = blender::bke::sim::ModifierSimulationCache;
+using NodesModifierRuntimeHandle = blender::NodesModifierRuntime;
 #else
-typedef struct ModifierSimulationCacheHandle ModifierSimulationCacheHandle;
-#endif
-
-#ifdef __cplusplus
-extern "C" {
+typedef struct NodesModifierRuntimeHandle NodesModifierRuntimeHandle;
 #endif
 
 /* WARNING ALERT! TYPEDEF VALUES ARE WRITTEN IN FILES! SO DO NOT CHANGE!
@@ -109,6 +109,7 @@ typedef enum ModifierMode {
   eModifierMode_ApplyOnSpline = (1 << 6),
   eModifierMode_DisableTemporary = (1u << 31),
 } ModifierMode;
+ENUM_OPERATORS(ModifierMode, eModifierMode_DisableTemporary);
 
 typedef struct ModifierData {
   struct ModifierData *next, *prev;
@@ -1171,8 +1172,9 @@ typedef struct ShrinkwrapModifierData {
   /** Axis to project over. */
   char projAxis;
 
-  /** If using projection over vertex normal this controls the level of subsurface that must be
-   * done before getting the vertex coordinates and normal
+  /**
+   * If using projection over vertex normal this controls the level of subsurface that must be
+   * done before getting the vertex coordinates and normal.
    */
   char subsurfLevels;
 
@@ -2119,10 +2121,10 @@ typedef struct DataTransferModifierData {
 
   struct Object *ob_source;
 
-  /** See DT_TYPE_ enum in ED_object.h. */
+  /** See DT_TYPE_ enum in ED_object.hh. */
   int data_types;
 
-  /* See MREMAP_MODE_ enum in BKE_mesh_mapping.h */
+  /* See MREMAP_MODE_ enum in BKE_mesh_mapping.hh */
   int vmap_mode;
   int emap_mode;
   int lmap_mode;
@@ -2134,9 +2136,9 @@ typedef struct DataTransferModifierData {
 
   char _pad1[4];
 
-  /** DT_MULTILAYER_INDEX_MAX; See DT_FROMLAYERS_ enum in ED_object.h. */
+  /** DT_MULTILAYER_INDEX_MAX; See DT_FROMLAYERS_ enum in ED_object.hh. */
   int layers_select_src[5];
-  /** DT_MULTILAYER_INDEX_MAX; See DT_TOLAYERS_ enum in ED_object.h. */
+  /** DT_MULTILAYER_INDEX_MAX; See DT_TOLAYERS_ enum in ED_object.hh. */
   int layers_select_dst[5];
 
   /** See CDT_MIX_ enum in BKE_customdata.h. */
@@ -2229,6 +2231,9 @@ enum {
    * the mesh topology changes, but this heuristic sometimes fails. In these cases, users can
    * disable interpolation with this flag. */
   MOD_MESHSEQ_INTERPOLATE_VERTICES = (1 << 4),
+
+  /* Read animated custom attributes from point cache files. */
+  MOD_MESHSEQ_READ_ATTRIBUTES = (1 << 5),
 };
 
 typedef struct SDefBind {
@@ -2320,6 +2325,29 @@ typedef struct NodesModifierSettings {
   struct IDProperty *properties;
 } NodesModifierSettings;
 
+typedef struct NodesModifierBake {
+  /** An id that references a nested node in the node tree. Also see #bNestedNodeRef. */
+  int id;
+  /** #NodesModifierBakeFlag. */
+  uint32_t flag;
+  /**
+   * Directory where the baked data should be stored. This is only used when
+   * `NODES_MODIFIER_BAKE_CUSTOM_PATH` is set.
+   */
+  char *directory;
+  /**
+   * Frame range for the simulation and baking that is used if
+   * `NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE` is set.
+   */
+  int frame_start;
+  int frame_end;
+} NodesModifierBake;
+
+typedef enum NodesModifierBakeFlag {
+  NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE = 1 << 0,
+  NODES_MODIFIER_BAKE_CUSTOM_PATH = 1 << 1,
+} NodesModifierBakeFlag;
+
 typedef struct NodesModifierData {
   ModifierData modifier;
   struct bNodeTree *node_group;
@@ -2328,16 +2356,25 @@ typedef struct NodesModifierData {
    * Directory where baked simulation states are stored. This may be relative to the .blend file.
    */
   char *simulation_bake_directory;
-  void *_pad;
+  /** NodesModifierFlag. */
+  int8_t flag;
 
-  /**
-   * Contains logged information from the last evaluation.
-   * This can be used to help the user to debug a node tree.
-   */
-  void *runtime_eval_log;
+  char _pad[3];
+  int bakes_num;
+  NodesModifierBake *bakes;
+  void *_pad2;
 
-  ModifierSimulationCacheHandle *simulation_cache;
+  NodesModifierRuntimeHandle *runtime;
+
+#ifdef __cplusplus
+  NodesModifierBake *find_bake(int id);
+  const NodesModifierBake *find_bake(int id) const;
+#endif
 } NodesModifierData;
+
+typedef enum NodesModifierFlag {
+  NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR = (1 << 0),
+} NodesModifierFlag;
 
 typedef struct MeshToVolumeModifierData {
   ModifierData modifier;
@@ -2418,7 +2455,3 @@ typedef enum VolumeToMeshResolutionMode {
 typedef enum VolumeToMeshFlag {
   VOLUME_TO_MESH_USE_SMOOTH_SHADE = 1 << 0,
 } VolumeToMeshFlag;
-
-#ifdef __cplusplus
-}
-#endif

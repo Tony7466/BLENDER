@@ -1,18 +1,22 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "testing/testing.h"
 
 #include "MEM_guardedalloc.h"
 
 #include "BKE_fcurve.h"
 
-#include "ED_keyframing.h"
+#include "ANIM_fcurve.hh"
+
+#include "ED_keyframing.hh"
 
 #include "DNA_anim_types.h"
 
 #include "BLI_math_vector_types.hh"
 
 namespace blender::bke::tests {
+using namespace blender::animrig;
 
 /* Epsilon for floating point comparisons. */
 static const float EPSILON = 1e-7f;

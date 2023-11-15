@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -14,6 +15,7 @@ CCL_NAMESPACE_BEGIN
 struct GuidingRISSample {
   float3 rand;
   float2 sampled_roughness;
+  /* The relative IOR of the outgoing media and the incoming media. */
   float eta{1.0f};
   int label;
   float3 wo;

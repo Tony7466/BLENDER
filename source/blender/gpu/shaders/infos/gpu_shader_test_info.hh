@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -85,8 +86,21 @@ GPU_SHADER_CREATE_INFO(gpu_push_constants_512bytes_test)
     .push_constant(Type::FLOAT, "filler3", 64)
     .do_static_compilation(true);
 
+GPU_SHADER_CREATE_INFO(gpu_buffer_texture_test)
+    .local_group_size(1)
+    .sampler(0, ImageType::FLOAT_BUFFER, "bufferTexture")
+    .storage_buf(0, Qualifier::WRITE, "float", "data_out[]")
+    .compute_source("gpu_buffer_texture_test.glsl")
+    .do_static_compilation(true);
+
 GPU_SHADER_CREATE_INFO(eevee_shadow_test)
     .fragment_source("eevee_shadow_test.glsl")
+    .additional_info("gpu_shader_test")
+    .additional_info("eevee_shared")
+    .do_static_compilation(true);
+
+GPU_SHADER_CREATE_INFO(eevee_occupancy_test)
+    .fragment_source("eevee_occupancy_test.glsl")
     .additional_info("gpu_shader_test")
     .additional_info("eevee_shared")
     .do_static_compilation(true);

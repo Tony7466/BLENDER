@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 #include "IO_abstract_hierarchy_iterator.h"
@@ -13,9 +14,12 @@
 
 #include <vector>
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
+
+#include "WM_types.hh"
 
 #include "DNA_material_types.h"
+#include "DNA_windowmanager_types.h"
 
 struct Material;
 
@@ -49,6 +53,12 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
   virtual bool is_supported(const HierarchyContext *context) const;
 
   const pxr::SdfPath &usd_path() const;
+
+  /** Get the wmJobWorkerStatus-provided `reports` list pointer, to use with the BKE_report API. */
+  ReportList *reports() const
+  {
+    return usd_export_context_.export_params.worker_status->reports;
+  }
 
  protected:
   virtual void do_write(HierarchyContext &context) = 0;

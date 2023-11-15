@@ -1,25 +1,28 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <numeric>
 
 #include "BKE_attribute_math.hh"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_sample.hh"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
+#include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_kdtree.h"
 #include "BLI_rand.hh"
@@ -32,7 +35,7 @@
 #include "DNA_brush_types.h"
 #include "DNA_mesh_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "curves_sculpt_intern.hh"
 
@@ -73,7 +76,7 @@ struct DensityAddOperationExecutor {
   CurvesGeometry *curves_orig_ = nullptr;
 
   Object *surface_ob_orig_ = nullptr;
-  Mesh *surface_orig_ = nullptr;
+  const Mesh *surface_orig_ = nullptr;
 
   Object *surface_ob_eval_ = nullptr;
   Mesh *surface_eval_ = nullptr;
@@ -112,8 +115,8 @@ struct DensityAddOperationExecutor {
     }
 
     surface_ob_orig_ = curves_id_orig_->surface;
-    surface_orig_ = static_cast<Mesh *>(surface_ob_orig_->data);
-    if (surface_orig_->totpoly == 0) {
+    surface_orig_ = static_cast<const Mesh *>(surface_ob_orig_->data);
+    if (surface_orig_->faces_num == 0) {
       report_empty_original_surface(stroke_extension.reports);
       return;
     }
@@ -123,7 +126,7 @@ struct DensityAddOperationExecutor {
       return;
     }
     surface_eval_ = BKE_object_get_evaluated_mesh(surface_ob_eval_);
-    if (surface_eval_->totpoly == 0) {
+    if (surface_eval_->faces_num == 0) {
       report_empty_evaluated_surface(stroke_extension.reports);
       return;
     }
@@ -254,14 +257,7 @@ struct DensityAddOperationExecutor {
     }
     self_->new_deformed_root_positions_.extend(new_positions_cu);
 
-    /* Find normals. */
-    if (!CustomData_has_layer(&surface_orig_->ldata, CD_NORMAL)) {
-      BKE_mesh_calc_normals_split(surface_orig_);
-    }
-    const Span<float3> corner_normals_su = {
-        reinterpret_cast<const float3 *>(CustomData_get_layer(&surface_orig_->ldata, CD_NORMAL)),
-        surface_orig_->totloop};
-
+    const Span<float3> corner_normals_su = surface_orig_->corner_normals();
     const Span<MLoopTri> surface_looptris_orig = surface_orig_->looptris();
     const geometry::ReverseUVSampler reverse_uv_sampler{surface_uv_map, surface_looptris_orig};
 
@@ -592,31 +588,29 @@ struct DensitySubtractOperationExecutor {
     BLI_kdtree_3d_balance(root_points_kdtree_);
 
     /* Find all curves that should be deleted. */
-    Array<bool> curves_to_delete(curves_->curves_num(), false);
+    Array<bool> curves_to_keep(curves_->curves_num(), true);
     if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
-      this->reduce_density_projected_with_symmetry(curves_to_delete);
+      this->reduce_density_projected_with_symmetry(curves_to_keep);
     }
     else if (falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE) {
-      this->reduce_density_spherical_with_symmetry(curves_to_delete);
+      this->reduce_density_spherical_with_symmetry(curves_to_keep);
     }
     else {
       BLI_assert_unreachable();
     }
 
     IndexMaskMemory mask_memory;
-    const IndexMask mask_to_delete = IndexMask::from_bools(curves_to_delete, mask_memory);
+    const IndexMask mask_to_keep = IndexMask::from_bools(curves_to_keep, mask_memory);
 
     /* Remove deleted curves from the stored deformed root positions. */
-    const Vector<IndexRange> ranges_to_keep = mask_to_delete.to_ranges_invert(
-        curves_->curves_range());
     BLI_assert(curves_->curves_num() == self_->deformed_root_positions_.size());
-    Vector<float3> new_deformed_positions;
-    for (const IndexRange range : ranges_to_keep) {
-      new_deformed_positions.extend(self_->deformed_root_positions_.as_span().slice(range));
-    }
+    Vector<float3> new_deformed_positions(mask_to_keep.size());
+    array_utils::gather(self_->deformed_root_positions_.as_span(),
+                        mask_to_keep,
+                        new_deformed_positions.as_mutable_span());
     self_->deformed_root_positions_ = std::move(new_deformed_positions);
 
-    curves_->remove_curves(mask_to_delete);
+    *curves_ = bke::curves_copy_curve_selection(*curves_, mask_to_keep, {});
     BLI_assert(curves_->curves_num() == self_->deformed_root_positions_.size());
 
     DEG_id_tag_update(&curves_id_->id, ID_RECALC_GEOMETRY);
@@ -624,17 +618,16 @@ struct DensitySubtractOperationExecutor {
     ED_region_tag_redraw(ctx_.region);
   }
 
-  void reduce_density_projected_with_symmetry(MutableSpan<bool> curves_to_delete)
+  void reduce_density_projected_with_symmetry(MutableSpan<bool> curves_to_keep)
   {
     const Vector<float4x4> symmetry_brush_transforms = get_symmetry_brush_transforms(
         eCurvesSymmetryType(curves_id_->symmetry));
     for (const float4x4 &brush_transform : symmetry_brush_transforms) {
-      this->reduce_density_projected(brush_transform, curves_to_delete);
+      this->reduce_density_projected(brush_transform, curves_to_keep);
     }
   }
 
-  void reduce_density_projected(const float4x4 &brush_transform,
-                                MutableSpan<bool> curves_to_delete)
+  void reduce_density_projected(const float4x4 &brush_transform, MutableSpan<bool> curves_to_keep)
   {
     const float brush_radius_re = brush_radius_base_re_ * brush_radius_factor_;
     const float brush_radius_sq_re = pow2f(brush_radius_re);
@@ -649,7 +642,7 @@ struct DensitySubtractOperationExecutor {
       RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
 
       for (const int curve_i : range) {
-        if (curves_to_delete[curve_i]) {
+        if (!curves_to_keep[curve_i]) {
           allow_remove_curve[curve_i] = true;
           continue;
         }
@@ -675,7 +668,7 @@ struct DensitySubtractOperationExecutor {
     /* Detect curves that are too close to other existing curves. */
     curve_selection_.foreach_segment([&](const IndexMaskSegment segment) {
       for (const int curve_i : segment) {
-        if (curves_to_delete[curve_i]) {
+        if (!curves_to_keep[curve_i]) {
           continue;
         }
         if (!allow_remove_curve[curve_i]) {
@@ -698,7 +691,7 @@ struct DensitySubtractOperationExecutor {
                 return true;
               }
               if (allow_remove_curve[other_curve_i]) {
-                curves_to_delete[other_curve_i] = true;
+                curves_to_keep[other_curve_i] = false;
               }
               return true;
             });
@@ -706,7 +699,7 @@ struct DensitySubtractOperationExecutor {
     });
   }
 
-  void reduce_density_spherical_with_symmetry(MutableSpan<bool> curves_to_delete)
+  void reduce_density_spherical_with_symmetry(MutableSpan<bool> curves_to_keep)
   {
     const float brush_radius_re = brush_radius_base_re_ * brush_radius_factor_;
     const std::optional<CurvesBrush3D> brush_3d = sample_curves_surface_3d_brush(*ctx_.depsgraph,
@@ -724,13 +717,13 @@ struct DensitySubtractOperationExecutor {
         eCurvesSymmetryType(curves_id_->symmetry));
     for (const float4x4 &brush_transform : symmetry_brush_transforms) {
       const float3 brush_pos_cu = math::transform_point(brush_transform, brush_3d->position_cu);
-      this->reduce_density_spherical(brush_pos_cu, brush_3d->radius_cu, curves_to_delete);
+      this->reduce_density_spherical(brush_pos_cu, brush_3d->radius_cu, curves_to_keep);
     }
   }
 
   void reduce_density_spherical(const float3 &brush_pos_cu,
                                 const float brush_radius_cu,
-                                MutableSpan<bool> curves_to_delete)
+                                MutableSpan<bool> curves_to_keep)
   {
     const float brush_radius_sq_cu = pow2f(brush_radius_cu);
 
@@ -741,7 +734,7 @@ struct DensitySubtractOperationExecutor {
       RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
 
       for (const int curve_i : range) {
-        if (curves_to_delete[curve_i]) {
+        if (!curves_to_keep[curve_i]) {
           allow_remove_curve[curve_i] = true;
           continue;
         }
@@ -764,7 +757,7 @@ struct DensitySubtractOperationExecutor {
     /* Detect curves that are too close to other existing curves. */
     curve_selection_.foreach_segment([&](const IndexMaskSegment segment) {
       for (const int curve_i : segment) {
-        if (curves_to_delete[curve_i]) {
+        if (!curves_to_keep[curve_i]) {
           continue;
         }
         if (!allow_remove_curve[curve_i]) {
@@ -785,7 +778,7 @@ struct DensitySubtractOperationExecutor {
                 return true;
               }
               if (allow_remove_curve[other_curve_i]) {
-                curves_to_delete[other_curve_i] = true;
+                curves_to_keep[other_curve_i] = false;
               }
               return true;
             });

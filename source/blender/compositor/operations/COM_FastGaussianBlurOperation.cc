@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <climits>
 
@@ -10,6 +11,7 @@ namespace blender::compositor {
 FastGaussianBlurOperation::FastGaussianBlurOperation() : BlurBaseOperation(DataType::Color)
 {
   iirgaus_ = nullptr;
+  data_.filtertype = R_FILTER_FAST_GAUSS;
 }
 
 void FastGaussianBlurOperation::execute_pixel(float output[4], int x, int y, void *data)
@@ -65,6 +67,15 @@ void FastGaussianBlurOperation::deinit_execution()
     iirgaus_ = nullptr;
   }
   BlurBaseOperation::deinit_mutex();
+}
+
+void FastGaussianBlurOperation::set_size(int size_x, int size_y)
+{
+  /* TODO: there should be a better way to use the operation without knowing specifics of the blur
+   * node (i.e. data_). We could use factory pattern to solve this problem. */
+  data_.sizex = size_x;
+  data_.sizey = size_y;
+  sizeavailable_ = true;
 }
 
 void *FastGaussianBlurOperation::initialize_tile_data(rcti *rect)
@@ -199,7 +210,7 @@ void FastGaussianBlurOperation::IIR_gauss(MemoryBuffer *src, float sigma, uint c
   (void)0
 
   /* Intermediate buffers. */
-  src_dim_max = MAX2(src_width, src_height);
+  src_dim_max = std::max(src_width, src_height);
   X = (double *)MEM_callocN(src_dim_max * sizeof(double), "IIR_gauss X buf");
   Y = (double *)MEM_callocN(src_dim_max * sizeof(double), "IIR_gauss Y buf");
   W = (double *)MEM_callocN(src_dim_max * sizeof(double), "IIR_gauss W buf");
@@ -413,12 +424,12 @@ void FastGaussianBlurValueOperation::update_memory_buffer_partial(MemoryBuffer *
   BuffersIterator<float> it = output->iterate_with({image, iirgaus_}, area);
   if (overlay_ == FAST_GAUSS_OVERLAY_MIN) {
     for (; !it.is_end(); ++it) {
-      *it.out = MIN2(*it.in(0), *it.in(1));
+      *it.out = std::min(*it.in(0), *it.in(1));
     }
   }
   else if (overlay_ == FAST_GAUSS_OVERLAY_MAX) {
     for (; !it.is_end(); ++it) {
-      *it.out = MAX2(*it.in(0), *it.in(1));
+      *it.out = std::max(*it.in(0), *it.in(1));
     }
   }
 }

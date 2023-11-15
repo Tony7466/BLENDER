@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -135,10 +137,8 @@ static bke::curves::CurvePoint lookup_point_bezier(
     return lookup_point_bezier(
         bezier_offsets, accumulated_lengths, sample_length, cyclic, num_curve_points);
   }
-  else {
-    return lookup_point_uniform_spacing(
-        accumulated_lengths, sample_length, cyclic, resolution, num_curve_points);
-  }
+  return lookup_point_uniform_spacing(
+      accumulated_lengths, sample_length, cyclic, resolution, num_curve_points);
 }
 
 static bke::curves::CurvePoint lookup_curve_point(
@@ -173,12 +173,10 @@ static bke::curves::CurvePoint lookup_curve_point(
   else if (curve_type == CURVE_TYPE_POLY) {
     return lookup_point_polygonal(accumulated_lengths, sample_length, cyclic, num_curve_points);
   }
-  else {
-    /* Handle evaluated curve. */
-    BLI_assert(resolution > 0);
-    return lookup_point_polygonal(
-        accumulated_lengths, sample_length, cyclic, evaluated_points_by_curve[curve_index].size());
-  }
+  /* Handle evaluated curve. */
+  BLI_assert(resolution > 0);
+  return lookup_point_polygonal(
+      accumulated_lengths, sample_length, cyclic, evaluated_points_by_curve[curve_index].size());
 }
 
 /** \} */
@@ -937,8 +935,8 @@ bke::CurvesGeometry trim_curves(const bke::CurvesGeometry &src_curves,
                                 const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
-  const Vector<IndexRange> unselected_ranges = selection.to_ranges_invert(
-      src_curves.curves_range());
+  IndexMaskMemory memory;
+  const IndexMask unselected = selection.complement(src_curves.curves_range(), memory);
 
   BLI_assert(selection.size() > 0);
   BLI_assert(selection.last() <= src_curves.curves_num());
@@ -960,7 +958,7 @@ bke::CurvesGeometry trim_curves(const bke::CurvesGeometry &src_curves,
                                 start_points,
                                 end_points,
                                 src_ranges);
-  bke::curves::copy_curve_sizes(src_points_by_curve, unselected_ranges, dst_curve_offsets);
+  offset_indices::copy_group_sizes(src_points_by_curve, unselected, dst_curve_offsets);
   offset_indices::accumulate_counts_to_offsets(dst_curve_offsets);
   const OffsetIndices dst_points_by_curve = dst_curves.points_by_curve();
   dst_curves.resize(dst_curves.offsets().last(), dst_curves.curves_num());
@@ -1043,7 +1041,7 @@ bke::CurvesGeometry trim_curves(const bke::CurvesGeometry &src_curves,
   }
 
   /* Copy unselected */
-  if (unselected_ranges.is_empty()) {
+  if (unselected.is_empty()) {
     /* Since all curves were trimmed, none of them are cyclic and the attribute can be removed. */
     dst_curves.attributes_for_write().remove("cyclic");
   }
@@ -1061,20 +1059,14 @@ bke::CurvesGeometry trim_curves(const bke::CurvesGeometry &src_curves,
       copy_point_skip.add("nurbs_weight");
     }
 
-    /* Copy point domain. */
-    for (auto &attribute : bke::retrieve_attributes_for_transfer(src_attributes,
-                                                                 dst_attributes,
-                                                                 ATTR_DOMAIN_MASK_POINT,
-                                                                 propagation_info,
-                                                                 copy_point_skip))
-    {
-      bke::curves::copy_point_data(src_points_by_curve,
-                                   dst_points_by_curve,
-                                   unselected_ranges,
-                                   attribute.src,
-                                   attribute.dst.span);
-      attribute.dst.finish();
-    }
+    bke::copy_attributes_group_to_group(src_attributes,
+                                        ATTR_DOMAIN_POINT,
+                                        propagation_info,
+                                        copy_point_skip,
+                                        src_points_by_curve,
+                                        dst_points_by_curve,
+                                        unselected,
+                                        dst_attributes);
   }
 
   dst_curves.remove_attributes_based_on_types();

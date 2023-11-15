@@ -1,7 +1,9 @@
+# SPDX-FileCopyrightText: 2017-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 if(WIN32)
-  option(ENABLE_MINGW64 "Enable building of ffmpeg/iconv/libsndfile/fftw3 by installing mingw64" ON)
+  option(ENABLE_MSYS2 "Enable building of ffmpeg/libsndfile/fftw3/gmp by installing msys2" ON)
 endif()
 option(FORCE_CHECK_HASH "Force a check of all hashses during CMake the configure phase" OFF)
 
@@ -39,7 +41,7 @@ message("PATCH_DIR = ${PATCH_DIR}")
 message("BUILD_DIR = ${BUILD_DIR}")
 
 if(WIN32)
-  set(PATCH_CMD ${DOWNLOAD_DIR}/mingw/mingw64/msys/1.0/bin/patch.exe)
+  set(PATCH_CMD ${DOWNLOAD_DIR}/msys2/msys64/usr/bin/patch.exe)
   set(LIBEXT ".lib")
   set(SHAREDLIBEXT ".lib")
   set(LIBPREFIX "")
@@ -95,14 +97,30 @@ if(WIN32)
   set(BLENDER_CLANG_CMAKE_CXX_FLAGS_RELEASE "${COMMON_CLANG_FLAGS} -Xclang --dependent-lib=msvcrt -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS -O2 -DNDEBUG -DPLATFORM_WINDOWS -DPSAPI_VERSION=2 -DTINYFORMAT_ALLOW_WCHAR_STRINGS")
   set(BLENDER_CLANG_CMAKE_CXX_FLAGS_RELWITHDEBINFO "${COMMON_CLANG_FLAGS} -Xclang --dependent-lib=msvcrt -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS -g -O2 -DNDEBUG -DPLATFORM_WINDOWS -DPSAPI_VERSION=2 -DTINYFORMAT_ALLOW_WCHAR_STRINGS")
 
+  set(DEFAULT_CLANG_CMAKE_FLAGS
+    -DCMAKE_BUILD_TYPE=${BUILD_MODE}
+    -DCMAKE_C_FLAGS_DEBUG=${BLENDER_CLANG_CMAKE_C_FLAGS_DEBUG}
+    -DCMAKE_C_FLAGS_MINSIZEREL=${BLENDER_CLANG_CMAKE_C_FLAGS_MINSIZEREL}
+    -DCMAKE_C_FLAGS_RELEASE=${BLENDER_CLANG_CMAKE_C_FLAGS_RELEASE}
+    -DCMAKE_C_FLAGS_RELWITHDEBINFO=${BLENDER_CLANG_CMAKE_C_FLAGS_RELWITHDEBINFO}
+    -DCMAKE_CXX_FLAGS_DEBUG=${BLENDER_CLANG_CMAKE_CXX_FLAGS_DEBUG}
+    -DCMAKE_CXX_FLAGS_MINSIZEREL=${BLENDER_CLANG_CMAKE_CXX_FLAGS_MINSIZEREL}
+    -DCMAKE_CXX_FLAGS_RELEASE=${BLENDER_CLANG_CMAKE_CXX_FLAGS_RELEASE}
+    -DCMAKE_CXX_FLAGS_RELWITHDEBINFO=${BLENDER_CLANG_CMAKE_CXX_FLAGS_RELWITHDEBINFO}
+    -DCMAKE_CXX_STANDARD=17
+  )
+
   set(PLATFORM_FLAGS)
   set(PLATFORM_CXX_FLAGS)
   set(PLATFORM_CMAKE_FLAGS)
 
-  set(MINGW_PATH ${DOWNLOAD_DIR}/mingw/mingw64)
+  set(MINGW_PATH ${DOWNLOAD_DIR}/msys2/msys64/)
   set(MINGW_SHELL ming64sh.cmd)
   set(PERL_SHELL ${DOWNLOAD_DIR}/perl/portableshell.bat)
   set(MINGW_HOST x86_64-w64-mingw32)
+
+  set(MINGW_CFLAGS)
+  set(MINGW_LDFLAGS)
 
   # some build systems like meson will respect the *nix like environment vars
   # like CFLAGS and LDFlags but will still build with the MSVC compiler, so for
@@ -121,16 +139,21 @@ if(WIN32)
     call ${PERL_SHELL} &&
     call ${MINGW_SHELL} &&
     set path &&
-    set CFLAGS=-g &&
-    set LDFLAGS=-Wl,--as-needed -static-libgcc
+    set CC=cl &&
+    set CXX=cl &&
+    set CFLAGS=${MINGW_CFLAGS} &&
+    set LDFLAGS=${MINGW_LDFLAGS}
   )
 
   set(CONFIGURE_ENV_NO_PERL
     cd ${MINGW_PATH} &&
     call ${MINGW_SHELL} &&
     set path &&
-    set CFLAGS=-g &&
-    set LDFLAGS=-Wl,--as-needed -static-libgcc
+    set CC=cl &&
+    set CXX=cl &&
+    set LD=link &&
+    set CFLAGS=${MINGW_CFLAGS} &&
+    set LDFLAGS=${MINGW_LDFLAGS}
   )
 
   set(CONFIGURE_COMMAND sh ./configure)

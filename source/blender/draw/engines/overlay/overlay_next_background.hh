@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup overlay
@@ -12,20 +14,16 @@ namespace blender::draw::overlay {
 
 class Background {
  private:
-  const SelectionType selection_type_;
-
   PassSimple bg_ps_ = {"Background"};
 
  public:
-  Background(const SelectionType selection_type) : selection_type_(selection_type){};
-
   void begin_sync(Resources &res, const State &state)
   {
     DRWState pass_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_BACKGROUND;
     float4 color_override(0.0f, 0.0f, 0.0f, 0.0f);
     int background_type;
 
-    if (DRW_state_is_opengl_render() && !DRW_state_draw_background()) {
+    if (DRW_state_is_viewport_image_render() && !DRW_state_draw_background()) {
       background_type = BG_SOLID;
       color_override[3] = 1.0f;
     }

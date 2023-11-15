@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -33,11 +34,11 @@ struct ID;
 typedef uint64_t eCustomDataMask;
 
 /* These names are used as prefixes for UV layer names to find the associated boolean
- * layers. They should never be longer than 2 chars, as MAX_CUSTOMDATA_LAYER_NAME
+ * layers. They should never be longer than 2 chars, as #MAX_CUSTOMDATA_LAYER_NAME
  * has 4 extra bytes above what can be used for the base layer name, and these
  * prefixes are placed between 2 '.'s at the start of the layer name.
- * For example The uv vert selection layer of a layer named 'UVMap.001'
- * will be called '.vs.UVMap.001' . */
+ * For example The uv vert selection layer of a layer named `UVMap.001`
+ * will be called `.vs.UVMap.001`. */
 #define UV_VERTSEL_NAME "vs"
 #define UV_EDGESEL_NAME "es"
 #define UV_PINNED_NAME "pn"
@@ -171,7 +172,7 @@ void CustomData_copy_layout(const struct CustomData *source,
                             eCDAllocType alloctype,
                             int totelem);
 
-/* BMESH_TODO, not really a public function but readfile.c needs it */
+/* BMESH_TODO, not really a public function but `readfile.cc` needs it. */
 void CustomData_update_typemap(struct CustomData *data);
 
 /**
@@ -196,7 +197,10 @@ bool CustomData_merge_layout(const struct CustomData *source,
  * the #CD_CONSTRUCT behavior, so trivial types must be initialized by the caller. After being
  * resized, the #CustomData does not contain any referenced layers.
  */
-void CustomData_realloc(struct CustomData *data, int old_size, int new_size);
+void CustomData_realloc(struct CustomData *data,
+                        int old_size,
+                        int new_size,
+                        eCDAllocType alloctype = CD_CONSTRUCT);
 
 /**
  * BMesh version of CustomData_merge_layout; merges the layouts of source and `dest`,
@@ -232,11 +236,6 @@ void CustomData_free(struct CustomData *data, int totelem);
  * Same as above, but only frees layers which matches the given mask.
  */
 void CustomData_free_typemask(struct CustomData *data, int totelem, eCustomDataMask mask);
-
-/**
- * Frees all layers with #CD_FLAG_TEMPORARY.
- */
-void CustomData_free_temporary(struct CustomData *data, int totelem);
 
 /**
  * Adds a layer of the given type to the #CustomData object. The new layer is initialized based on
@@ -378,7 +377,8 @@ void CustomData_copy_layer_type_data(const struct CustomData *source,
                                      int count);
 
 /**
- * Frees data in a #CustomData object.
+ * Frees data in a #CustomData object. This is only expected to be called if the data layers are
+ * not shared (#CustomData_ensure_layers_are_mutable).
  */
 void CustomData_free_elem(struct CustomData *data, int index, int count);
 
@@ -429,9 +429,11 @@ void CustomData_bmesh_interp(struct CustomData *data,
 void CustomData_swap_corners(struct CustomData *data, int index, const int *corner_indices);
 
 /**
- * Swap two items of given custom data, in all available layers.
+ * Custom data layers can be shared through implicit sharing (`BLI_implicit_sharing.h`). This
+ * function makes sure that the layer is unshared if it was shared, which makes it mutable.
  */
-void CustomData_swap(struct CustomData *data, int index_a, int index_b);
+void CustomData_ensure_data_is_mutable(struct CustomDataLayer *layer, int totelem);
+void CustomData_ensure_layers_are_mutable(struct CustomData *data, int totelem);
 
 /**
  * Retrieve a pointer to an element of the active layer of the given \a type, chosen by the
@@ -611,8 +613,8 @@ int CustomData_layertype_layers_max(eCustomDataType type);
 
 #ifdef __cplusplus
 
-/** \return The maximum length for a layer name with the given prefix. */
-int CustomData_name_max_length_calc(blender::StringRef name);
+/** \return The maximum size in bytes needed for a layer name with the given prefix. */
+int CustomData_name_maxncpy_calc(blender::StringRef name);
 
 #endif
 
@@ -697,14 +699,15 @@ enum {
   /* Multiple types of mesh elements... */
   CD_FAKE_UV =
       CD_FAKE |
-      CD_PROP_FLOAT2, /* UV flag, because we handle both loop's UVs and poly's textures. */
+      CD_PROP_FLOAT2, /* UV flag, because we handle both loop's UVs and face's textures. */
 
   CD_FAKE_LNOR = CD_FAKE |
                  CD_CUSTOMLOOPNORMAL, /* Because we play with clnor and temp lnor layers here. */
 
   CD_FAKE_SHARP = CD_FAKE | 200, /* Sharp flag for edges, smooth flag for faces. */
 
-  CD_FAKE_BWEIGHT = CD_FAKE | 300, /* UV seam flag for edges. */
+  CD_FAKE_BWEIGHT = CD_FAKE | 300,
+  CD_FAKE_CREASE = CD_FAKE | 400,
 };
 
 enum {
@@ -732,7 +735,7 @@ enum {
 typedef struct CustomDataTransferLayerMap {
   struct CustomDataTransferLayerMap *next, *prev;
 
-  eCustomDataType data_type;
+  int data_type;
   int mix_mode;
   float mix_factor;
   /** If non-NULL, array of weights, one for each dest item, replaces mix_factor. */

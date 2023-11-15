@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2019-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 if(WIN32)
@@ -90,10 +92,17 @@ set(USD_EXTRA_ARGS
   -DTBB_LIBRARIES=${LIBDIR}/tbb/lib/${LIBPREFIX}${TBB_LIBRARY}${SHAREDLIBEXT}
   -DTbb_TBB_LIBRARY=${LIBDIR}/tbb/lib/${LIBPREFIX}${TBB_LIBRARY}${SHAREDLIBEXT}
   -DTBB_tbb_LIBRARY_RELEASE=${LIBDIR}/tbb/lib/${LIBPREFIX}${TBB_LIBRARY}${SHAREDLIBEXT}
-  # USD wants the tbb debug lib set even when you are doing a release build
-  # Otherwise it will error out during the cmake configure phase.
-  -DTBB_LIBRARIES_DEBUG=${LIBDIR}/tbb/lib/${LIBPREFIX}${TBB_LIBRARY}${SHAREDLIBEXT}
 )
+
+# Ray: I'm not sure if the other platforms relied on this or not but this is no longer
+# needed for windows. If mac/lin confirm, this can be removed.
+if(NOT WIN32)
+  list(APPEND USD_EXTRA_ARGS
+    # USD wants the tbb debug lib set even when you are doing a release build
+    # Otherwise it will error out during the cmake configure phase.
+    -DTBB_LIBRARIES_DEBUG=${LIBDIR}/tbb/lib/${LIBPREFIX}${TBB_LIBRARY}${SHAREDLIBEXT}
+  )
+endif()
 
 ExternalProject_Add(external_usd
   URL file://${PACKAGE_DIR}/${USD_FILE}
@@ -107,7 +116,8 @@ ExternalProject_Add(external_usd
   # usd_hydra.diff also included the blender changes and usd_pull_1965 and has been edited to remove those sections.
   PATCH_COMMAND ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/usd/src/external_usd < ${PATCH_DIR}/usd.diff &&
                 ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/usd/src/external_usd < ${PATCH_DIR}/usd_pull_1965.diff &&
-                ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/usd/src/external_usd < ${PATCH_DIR}/usd_hydra.diff
+                ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/usd/src/external_usd < ${PATCH_DIR}/usd_hydra.diff &&
+                ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/usd/src/external_usd < ${PATCH_DIR}/usd_core_profile.diff
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/usd -Wno-dev ${DEFAULT_CMAKE_FLAGS} ${USD_EXTRA_ARGS}
   INSTALL_DIR ${LIBDIR}/usd
 )

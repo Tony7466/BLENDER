@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -13,7 +14,9 @@ namespace blender::gpu {
 
 VKBuffer::~VKBuffer()
 {
-  free();
+  if (is_allocated()) {
+    free();
+  }
 }
 
 bool VKBuffer::is_allocated() const
@@ -21,31 +24,28 @@ bool VKBuffer::is_allocated() const
   return allocation_ != VK_NULL_HANDLE;
 }
 
-static VmaAllocationCreateFlagBits vma_allocation_flags(GPUUsageType usage)
+static VmaAllocationCreateFlags vma_allocation_flags(GPUUsageType usage)
 {
   switch (usage) {
     case GPU_USAGE_STATIC:
     case GPU_USAGE_DYNAMIC:
     case GPU_USAGE_STREAM:
-      return static_cast<VmaAllocationCreateFlagBits>(
-          VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+      return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
     case GPU_USAGE_DEVICE_ONLY:
-      return static_cast<VmaAllocationCreateFlagBits>(
-          VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
-          VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+      return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
+             VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
     case GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY:
       break;
   }
   BLI_assert_msg(false, "Unimplemented GPUUsageType");
-  return static_cast<VmaAllocationCreateFlagBits>(VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
-                                                  VMA_ALLOCATION_CREATE_MAPPED_BIT);
+  return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 }
 
-bool VKBuffer::create(int64_t size_in_bytes,
-                      GPUUsageType usage,
-                      VkBufferUsageFlagBits buffer_usage)
+bool VKBuffer::create(int64_t size_in_bytes, GPUUsageType usage, VkBufferUsageFlags buffer_usage)
 {
   BLI_assert(!is_allocated());
+  BLI_assert(vk_buffer_ == VK_NULL_HANDLE);
+  BLI_assert(mapped_memory_ == nullptr);
 
   size_in_bytes_ = size_in_bytes;
   const VKDevice &device = VKBackend::get().device_get();
@@ -85,16 +85,20 @@ void VKBuffer::update(const void *data) const
 {
   BLI_assert_msg(is_mapped(), "Cannot update a non-mapped buffer.");
   memcpy(mapped_memory_, data, size_in_bytes_);
+  flush();
+}
 
+void VKBuffer::flush() const
+{
   const VKDevice &device = VKBackend::get().device_get();
   VmaAllocator allocator = device.mem_allocator_get();
-  vmaFlushAllocation(allocator, allocation_, 0, VK_WHOLE_SIZE);
+  vmaFlushAllocation(allocator, allocation_, 0, max_ii(size_in_bytes(), 1));
 }
 
 void VKBuffer::clear(VKContext &context, uint32_t clear_value)
 {
-  VKCommandBuffer &command_buffer = context.command_buffer_get();
-  command_buffer.fill(*this, clear_value);
+  VKCommandBuffers &command_buffers = context.command_buffers_get();
+  command_buffers.fill(*this, clear_value);
 }
 
 void VKBuffer::read(void *data) const
@@ -138,9 +142,10 @@ bool VKBuffer::free()
     unmap();
   }
 
-  const VKDevice &device = VKBackend::get().device_get();
-  VmaAllocator allocator = device.mem_allocator_get();
-  vmaDestroyBuffer(allocator, vk_buffer_, allocation_);
+  VKDevice &device = VKBackend::get().device_get();
+  device.discard_buffer(vk_buffer_, allocation_);
+  allocation_ = VK_NULL_HANDLE;
+  vk_buffer_ = VK_NULL_HANDLE;
   return true;
 }
 

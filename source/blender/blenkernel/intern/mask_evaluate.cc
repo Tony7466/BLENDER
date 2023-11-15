@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -7,13 +8,16 @@
  * Functions for evaluating the mask beziers into points for the outline and feather.
  */
 
-#include <stddef.h>
-#include <string.h>
+#include <algorithm> /* For `min/max`. */
+#include <cstddef>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_mask_types.h"
@@ -22,8 +26,8 @@
 #include "BKE_curve.h"
 #include "BKE_mask.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 uint BKE_mask_spline_resolution(MaskSpline *spline, int width, int height)
 {
@@ -54,7 +58,7 @@ uint BKE_mask_spline_resolution(MaskSpline *spline, int width, int height)
     len = a + b + c;
     cur_resol = len / max_segment;
 
-    resol = MAX2(resol, cur_resol);
+    resol = std::max(resol, cur_resol);
 
     if (resol >= MASK_RESOL_MAX) {
       break;
@@ -186,11 +190,11 @@ float (*BKE_mask_spline_differentiate(
 
 /* ** feather points self-intersection collapse routine ** */
 
-typedef struct FeatherEdgesBucket {
+struct FeatherEdgesBucket {
   int tot_segment;
   int (*segments)[2];
   int alloc_segment;
-} FeatherEdgesBucket;
+};
 
 static void feather_bucket_add_edge(FeatherEdgesBucket *bucket, int start, int end)
 {
@@ -514,16 +518,16 @@ static float (
   point_curr = point_prev + 1;
 
   while (a--) {
-    /* BezTriple *bezt_prev; */ /* UNUSED */
-    /* BezTriple *bezt_curr; */ /* UNUSED */
+    // BezTriple *bezt_prev; /* UNUSED */
+    // BezTriple *bezt_curr; /* UNUSED */
     int j;
 
     if (a == 0 && (spline->flag & MASK_SPLINE_CYCLIC)) {
       point_curr = points_array;
     }
 
-    /* bezt_prev = &point_prev->bezt; */
-    /* bezt_curr = &point_curr->bezt; */
+    // bezt_prev = &point_prev->bezt;
+    // bezt_curr = &point_curr->bezt;
 
     for (j = 0; j < resol; j++, fp++) {
       float u = float(j) / resol, weight;
@@ -850,7 +854,7 @@ void BKE_mask_layer_evaluate_animation(MaskLayer *masklay, const float ctime)
 #if 0
       printf("%s: exact %d %d (%d)\n",
              __func__,
-             (int)ctime,
+             int(ctime),
              BLI_listbase_count(&masklay->splines_shapes),
              masklay_shape_a->frame);
 #endif
@@ -861,7 +865,7 @@ void BKE_mask_layer_evaluate_animation(MaskLayer *masklay, const float ctime)
 #if 0
       printf("%s: tween %d %d (%d %d)\n",
              __func__,
-             (int)ctime,
+             int(ctime),
              BLI_listbase_count(&masklay->splines_shapes),
              masklay_shape_a->frame,
              masklay_shape_b->frame);
@@ -909,7 +913,7 @@ void BKE_mask_layer_evaluate_deform(MaskLayer *masklay, const float ctime)
   }
 }
 
-void BKE_mask_eval_animation(struct Depsgraph *depsgraph, Mask *mask)
+void BKE_mask_eval_animation(Depsgraph *depsgraph, Mask *mask)
 {
   float ctime = DEG_get_ctime(depsgraph);
   DEG_debug_print_eval(depsgraph, __func__, mask->id.name, mask);
@@ -918,7 +922,7 @@ void BKE_mask_eval_animation(struct Depsgraph *depsgraph, Mask *mask)
   }
 }
 
-void BKE_mask_eval_update(struct Depsgraph *depsgraph, Mask *mask)
+void BKE_mask_eval_update(Depsgraph *depsgraph, Mask *mask)
 {
   const bool is_depsgraph_active = DEG_is_active(depsgraph);
   float ctime = DEG_get_ctime(depsgraph);

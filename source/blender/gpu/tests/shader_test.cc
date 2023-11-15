@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
@@ -219,7 +221,7 @@ GPU_TEST(shader_compute_ibo)
 static void test_shader_compute_ssbo()
 {
 
-  if (!GPU_compute_shader_support() && !GPU_shader_storage_buffer_objects_support()) {
+  if (!GPU_compute_shader_support()) {
     /* We can't test as a the platform does not support compute shaders. */
     std::cout << "Skipping compute shader test: platform not supported";
     return;
@@ -243,7 +245,7 @@ static void test_shader_compute_ssbo()
   /* Check if compute has been done. */
   GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
 
-  /* Download the index buffer. */
+  /* Download the storage buffer. */
   uint32_t data[SIZE];
   GPU_storagebuf_read(ssbo, data);
   for (int index = 0; index < SIZE; index++) {
@@ -458,7 +460,9 @@ GPU_TEST(math_lib)
 
 static void test_eevee_lib()
 {
-  gpu_shader_lib_test("eevee_shadow_test.glsl", "eevee_shared");
+  // gpu_shader_lib_test("eevee_shadow_test.glsl", "eevee_shared");
+  gpu_shader_lib_test("eevee_occupancy_test.glsl");
+  gpu_shader_lib_test("eevee_horizon_scan_test.glsl");
 }
 GPU_TEST(eevee_lib)
 

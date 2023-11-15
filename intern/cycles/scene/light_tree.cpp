@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/light_tree.h"
 #include "scene/mesh.h"
@@ -149,8 +150,8 @@ LightTreeEmitter::LightTreeEmitter(Scene *scene,
     const float size = lamp->get_size();
     float3 strength = lamp->get_strength();
 
-    centroid = scene->lights[object_id]->get_co();
-    measure.bcone.axis = normalize(lamp->get_dir());
+    centroid = lamp->get_co();
+    measure.bcone.axis = safe_normalize(lamp->get_dir());
 
     if (type == LIGHT_AREA) {
       measure.bcone.theta_o = 0;
@@ -166,7 +167,8 @@ LightTreeEmitter::LightTreeEmitter(Scene *scene,
       measure.bbox.grow(centroid - half_extentu + half_extentv);
       measure.bbox.grow(centroid - half_extentu - half_extentv);
 
-      strength *= 0.25f; /* eval_fac scaling in `area.h` */
+      /* Convert irradiance to radiance. */
+      strength *= M_1_PI_F;
     }
     else if (type == LIGHT_POINT) {
       measure.bcone.theta_o = M_PI_F;
@@ -404,6 +406,11 @@ LightTreeNode *LightTree::build(Scene *scene, DeviceScene *dscene)
       left, root_.get(), num_emissive_triangles, num_local_lights, emitters_.data(), 0, 1);
   task_pool.wait_work();
 
+  if (progress_.get_cancel()) {
+    root_.reset();
+    return nullptr;
+  }
+
   /* All distant lights are grouped to the right child as a leaf node. */
   root_->get_inner().children[right] = create_node(LightTreeMeasure::empty, 1);
   for (int i = 0; i < num_distant_lights; i++) {
@@ -417,6 +424,11 @@ LightTreeNode *LightTree::build(Scene *scene, DeviceScene *dscene)
                    root_->get_inner().children[right]->measure;
   root_->light_link = root_->get_inner().children[left]->light_link +
                       root_->get_inner().children[right]->light_link;
+
+  /* Root nodes are never meant to be be shared, even if the local and distant lights are from the
+   * same light linking set. Attempting to sharing it will make it so the specialized tree will
+   * try to use the same root as the default tree. */
+  root_->light_link.shareable = false;
 
   std::move(distant_lights_.begin(), distant_lights_.end(), std::back_inserter(emitters_));
 
@@ -451,7 +463,7 @@ void LightTree::recursive_build(const Child child,
   if (should_split(emitters, start, middle, end, node->measure, node->light_link, split_dim)) {
 
     if (split_dim != -1) {
-      /* Partition the emitters between start and end based on the centroids.  */
+      /* Partition the emitters between start and end based on the centroids. */
       std::nth_element(emitters + start,
                        emitters + middle,
                        emitters + end,

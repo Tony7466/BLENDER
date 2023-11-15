@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Operator
 from bpy.props import FloatProperty
@@ -561,8 +564,7 @@ class CLIP_OT_setup_tracking_scene(Operator):
             world = bpy.data.worlds.new(name="World")
             scene.world = world
 
-        # Having AO enabled is nice for shadow catcher.
-        world.light_settings.use_ambient_occlusion = True
+        # Setup ambient occlusion parameters for convenience.
         world.light_settings.distance = 1.0
         if hasattr(scene, "cycles"):
             world.light_settings.ao_factor = 0.05
@@ -607,7 +609,17 @@ class CLIP_OT_setup_tracking_scene(Operator):
         con.influence = 1.0
 
         cam.sensor_width = tracking.camera.sensor_width
+        cam.sensor_fit = 'HORIZONTAL'
         cam.lens = tracking.camera.focal_length
+
+        # Convert shift from motion tracking to Blender camera.
+        # Note that the normalization always happens along the X axis. This is
+        # how the camera shift in Blender is denoted.
+        width = clip.size[0]
+        height = clip.size[1]
+        principal_point_px = tracking.camera.principal_point_pixels
+        cam.shift_x = (0.5 * width - principal_point_px[0]) / width
+        cam.shift_y = (0.5 * height - principal_point_px[1]) / width
 
     @staticmethod
     def _setupViewport(context):
@@ -675,7 +687,7 @@ class CLIP_OT_setup_tracking_scene(Operator):
         self.createCollection(context, "foreground")
         self.createCollection(context, "background")
 
-        # rendersettings
+        # Render settings.
         setup_collection_recursively(
             vlayers["Foreground"].layer_collection.children,
             "background",
@@ -880,11 +892,12 @@ class CLIP_OT_setup_tracking_scene(Operator):
 
     @staticmethod
     def _getPlaneVertices(half_size, z):
-
-        return [(-half_size, -half_size, z),
-                (half_size, -half_size, z),
-                (half_size, half_size, z),
-                (-half_size, half_size, z)]
+        return [
+            (-half_size, -half_size, z),
+            (half_size, -half_size, z),
+            (half_size, half_size, z),
+            (-half_size, half_size, z),
+        ]
 
     def _createGround(self, collection):
         vertices = self._getPlaneVertices(4.0, 0.0)

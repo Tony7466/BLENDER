@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -12,10 +13,6 @@
 #include "DNA_ID.h"
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct Collection;
 struct Object;
@@ -134,7 +131,7 @@ typedef struct Collection {
   uint8_t lineart_intersection_mask;
   uint8_t lineart_intersection_priority;
 
-  struct SceneCollection *collection DNA_DEPRECATED;
+  void *_pad1;
   struct ViewLayer *view_layer DNA_DEPRECATED;
 
   /* Keep last. */
@@ -192,7 +189,3 @@ typedef enum CollectionColorTag {
 
   COLLECTION_COLOR_TOT,
 } CollectionColorTag;
-
-#ifdef __cplusplus
-}
-#endif

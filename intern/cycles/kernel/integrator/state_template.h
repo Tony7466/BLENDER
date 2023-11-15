@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /************************************ Path State *****************************/
 
@@ -94,7 +95,7 @@ KERNEL_STRUCT_BEGIN(subsurface)
 KERNEL_STRUCT_MEMBER(subsurface, PackedSpectrum, albedo, KERNEL_FEATURE_SUBSURFACE)
 KERNEL_STRUCT_MEMBER(subsurface, PackedSpectrum, radius, KERNEL_FEATURE_SUBSURFACE)
 KERNEL_STRUCT_MEMBER(subsurface, float, anisotropy, KERNEL_FEATURE_SUBSURFACE)
-KERNEL_STRUCT_MEMBER(subsurface, packed_float3, Ng, KERNEL_FEATURE_SUBSURFACE)
+KERNEL_STRUCT_MEMBER(subsurface, packed_float3, N, KERNEL_FEATURE_SUBSURFACE)
 KERNEL_STRUCT_END(subsurface)
 
 /********************************** Volume Stack ******************************/

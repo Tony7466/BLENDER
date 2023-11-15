@@ -1,5 +1,7 @@
+# SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+#
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2011-2022 Blender Foundation
+
 from __future__ import annotations
 
 import bpy
@@ -373,7 +375,8 @@ class CYCLES_RENDER_PT_sampling_advanced(CyclesButtonsPanel, Panel):
         layout.separator()
 
         heading = layout.column(align=True, heading="Scrambling Distance")
-        heading.active = cscene.sampling_pattern == 'TABULATED_SOBOL'
+        # Tabulated Sobol is used when the debug UI is turned off.
+        heading.active = cscene.sampling_pattern == 'TABULATED_SOBOL' or not CyclesDebugButtonsPanel.poll(context)
         heading.prop(cscene, "auto_scrambling_distance", text="Automatic")
         heading.prop(cscene, "preview_scrambling_distance", text="Viewport")
         heading.prop(cscene, "scrambling_distance", text="Multiplier")
@@ -889,7 +892,7 @@ class CYCLES_RENDER_PT_filter(CyclesButtonsPanel, Panel):
         sub.prop(view_layer, "use_motion_blur", text="Motion Blur")
         sub.active = rd.use_motion_blur
         sub = col.row()
-        sub.prop(view_layer.cycles, 'use_denoising', text='Denoising')
+        sub.prop(view_layer.cycles, "use_denoising", text="Denoising")
         sub.active = scene.cycles.use_denoising
 
 
@@ -1365,10 +1368,14 @@ class CYCLES_OBJECT_PT_light_linking(CyclesButtonsPanel, Panel):
 
         row = layout.row()
         col = row.column()
-        col.template_light_linking_collection(light_linking, "receiver_collection")
+        col.template_light_linking_collection(row, light_linking, "receiver_collection")
 
         col = row.column()
         sub = col.column(align=True)
+        prop = sub.operator("object.light_linking_receivers_link", icon='ADD', text="")
+        prop.link_state = 'INCLUDE'
+        sub.operator("object.light_linking_unlink_from_collection", icon='REMOVE', text="")
+        sub = col.column()
         sub.menu("CYCLES_OBJECT_MT_light_linking_context_menu", icon='DOWNARROW_HLT', text="")
 
 
@@ -1397,10 +1404,14 @@ class CYCLES_OBJECT_PT_shadow_linking(CyclesButtonsPanel, Panel):
 
         row = layout.row()
         col = row.column()
-        col.template_light_linking_collection(light_linking, "blocker_collection")
+        col.template_light_linking_collection(row, light_linking, "blocker_collection")
 
         col = row.column()
         sub = col.column(align=True)
+        prop = sub.operator("object.light_linking_blockers_link", icon='ADD', text="")
+        prop.link_state = 'INCLUDE'
+        sub.operator("object.light_linking_unlink_from_collection", icon='REMOVE', text="")
+        sub = col.column()
         sub.menu("CYCLES_OBJECT_MT_shadow_linking_context_menu", icon='DOWNARROW_HLT', text="")
 
 
@@ -1955,7 +1966,8 @@ class CYCLES_MATERIAL_PT_settings_surface(CyclesButtonsPanel, Panel):
         col = layout.column()
         col.prop(cmat, "displacement_method", text="Displacement")
         col.prop(cmat, "emission_sampling")
-        col.prop(cmat, "use_transparent_shadow")
+        col.prop(mat, "use_transparent_shadow")
+        col.prop(cmat, "use_bump_map_correction")
 
     def draw(self, context):
         self.draw_shared(self, context.material)
@@ -2446,6 +2458,14 @@ def draw_pause(self, context):
             layout.prop(cscene, "preview_pause", icon='PLAY' if cscene.preview_pause else 'PAUSE', text="")
 
 
+def draw_make_links(self, context):
+    if context.engine == "CYCLES":
+        layout = self.layout
+        layout.separator()
+        layout.operator_menu_enum("object.light_linking_receivers_link", "link_state")
+        layout.operator_menu_enum("object.light_linking_blockers_link", "link_state")
+
+
 def get_panels():
     exclude_panels = {
         'DATA_PT_camera_dof',
@@ -2584,6 +2604,7 @@ def register():
 
     bpy.types.RENDER_PT_context.append(draw_device)
     bpy.types.VIEW3D_HT_header.append(draw_pause)
+    bpy.types.VIEW3D_MT_make_links.append(draw_make_links)
 
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('CYCLES')
@@ -2597,6 +2618,7 @@ def unregister():
 
     bpy.types.RENDER_PT_context.remove(draw_device)
     bpy.types.VIEW3D_HT_header.remove(draw_pause)
+    bpy.types.VIEW3D_MT_make_links.remove(draw_make_links)
 
     for panel in get_panels():
         if 'CYCLES' in panel.COMPAT_ENGINES:
