@@ -609,7 +609,7 @@ class CLIP_OT_setup_tracking_scene(Operator):
         con.influence = 1.0
 
         cam.sensor_width = tracking.camera.sensor_width
-        cam.sensor_fit = "HORIZONTAL"
+        cam.sensor_fit = 'HORIZONTAL'
         cam.lens = tracking.camera.focal_length
 
     @staticmethod
