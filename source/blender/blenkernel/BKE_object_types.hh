@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <optional>
+
+#include "BLI_bounds_types.hh"
 #include "BLI_math_vector_types.hh"
 
 #include "DNA_customdata_types.h" /* #CustomData_MeshMasks. */
@@ -48,8 +51,8 @@ struct ObjectRuntime {
   /** Start time of the mode transfer overlay animation. */
   double overlay_mode_transfer_start_time;
 
-  /** Axis aligned bound-box (in local-space). */
-  BoundBox *bb;
+  // TODO: COMMENT
+  std::optional<Bounds<float3>> bounds_eval;
 
   /**
    * Original data pointer, before object->data was changed to point

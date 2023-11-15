@@ -149,6 +149,7 @@
 #include "CCGSubSurf.h"
 #include "atomic_ops.h"
 
+using blender::Bounds;
 using blender::float3;
 using blender::MutableSpan;
 using blender::Span;
@@ -3591,8 +3592,15 @@ std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(const Ob
   return std::nullopt;
 }
 
-std::optional<blender::Bounds<blender::float3>> BKE_object_evaluated_geometry_bounds(
-    const Object *ob)
+std::optional<Bounds<float3>> BKE_object_boundbox_eval_cached_get(Object *ob)
+{
+  if (ob->runtime->bounds_eval) {
+    return *ob->runtime->bounds_eval;
+  }
+  return BKE_object_boundbox_get(ob);
+}
+
+std::optional<Bounds<float3>> BKE_object_evaluated_geometry_bounds(const Object *ob)
 {
   if (!ob->runtime->geometry_set_eval) {
     return std::nullopt;
@@ -3600,16 +3608,7 @@ std::optional<blender::Bounds<blender::float3>> BKE_object_evaluated_geometry_bo
   return ob->runtime->geometry_set_eval->compute_boundbox_without_instances();
 }
 
-std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_eval_cached_get(Object *ob)
-{
-  if (ob->runtime->bb) {
-    return *ob->runtime->bb;
-  }
-  return BKE_object_boundbox_get(ob);
-}
-
-std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_calc_from_evaluated_geometry(
-    Object *ob)
+std::optional<Bounds<float3>> BKE_object_boundbox_calc_from_evaluated_geometry(Object *ob)
 {
   using namespace blender;
 
@@ -3635,14 +3634,14 @@ std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_calc_from_ev
  * \{ */
 
 static void boundbox_to_dimensions(const Object *ob,
-                                   const std::optional<BoundBox> bb,
+                                   const std::optional<Bounds<float3>> bb,
                                    float r_vec[3])
 {
   using namespace blender;
-  if (const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(ob)) {
+  if (bb) {
     float3 scale;
     mat4_to_size(scale, ob->object_to_world);
-    copy_v3_v3(r_vec, bounds->min - bounds->max);
+    copy_v3_v3(r_vec, bb->min - bb->max);
   }
   else {
     zero_v3(r_vec);
@@ -3665,8 +3664,10 @@ void BKE_object_dimensions_set_ex(Object *ob,
                                   const float ob_scale_orig[3],
                                   const float ob_obmat_orig[4][4])
 {
-  using namespace blender;
   const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(ob);
+  if (!bounds) {
+    return;
+  }
   float3 len = bounds->max - bounds->min;
 
   for (int i = 0; i < 3; i++) {
@@ -3881,7 +3882,7 @@ bool BKE_object_minmax_dupli(Depsgraph *depsgraph,
       temp_ob.runtime = &runtime;
 
       /* Do not modify the original bounding-box. */
-      temp_ob.runtime->bb = nullptr;
+      temp_ob.runtime->bounds_eval.reset();
       BKE_object_replace_data_on_shallow_copy(&temp_ob, dob->ob_data);
       if (const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(&temp_ob)) {
         BoundBox bb;
@@ -3895,8 +3896,6 @@ bool BKE_object_minmax_dupli(Depsgraph *depsgraph,
 
         ok = true;
       }
-
-      MEM_SAFE_FREE(temp_ob.runtime->bb);
     }
   }
   free_object_duplilist(lb); /* does restore */
