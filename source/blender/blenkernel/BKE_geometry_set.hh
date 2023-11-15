@@ -137,6 +137,13 @@ struct GeometrySet {
 
  public:
   /**
+   * This is a user defined name for this geometry. It is not expected to be unique. It's main
+   * purpose is help debugging instance trees. It may eventually also be used when exporting
+   * instance trees or when creating separate objects from them.
+   */
+  std::string name;
+
+  /**
    * The methods are defaulted here so that they are not instantiated in every translation unit.
    */
   GeometrySet();

@@ -173,6 +173,7 @@ set(SRC
   nodes/node_geo_set_curve_normal.cc
   nodes/node_geo_set_curve_radius.cc
   nodes/node_geo_set_curve_tilt.cc
+  nodes/node_geo_set_geometry_name.cc
   nodes/node_geo_set_id.cc
   nodes/node_geo_set_material.cc
   nodes/node_geo_set_material_index.cc

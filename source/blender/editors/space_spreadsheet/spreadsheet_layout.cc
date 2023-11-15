@@ -253,11 +253,13 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
           break;
         }
         case bke::InstanceReference::Type::GeometrySet: {
+          const bke::GeometrySet &geometry = value.geometry_set();
+          const StringRefNull name = geometry.name.empty() ? "Geometry" : geometry.name.c_str();
           uiDefIconTextBut(params.block,
                            UI_BTYPE_LABEL,
                            0,
                            ICON_MESH_DATA,
-                           "Geometry",
+                           name.c_str(),
                            params.xmin,
                            params.ymin,
                            params.width,
