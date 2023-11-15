@@ -197,7 +197,6 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
         for (const int i : range) {
           pbvh::mesh::Node face_node(*nodes[i]);
           calc_faces(sd, brush, offset, object, face_node, tls, positions_orig);
-          break;
         }
       });
       break;
@@ -206,7 +205,6 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         for (const int i : range) {
           calc_grids(object, brush, offset, *nodes[i]);
-          break;
         }
       });
       break;
@@ -214,7 +212,6 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         for (const int i : range) {
           calc_bmesh(object, brush, offset, *nodes[i]);
-          break;
         }
       });
       break;
