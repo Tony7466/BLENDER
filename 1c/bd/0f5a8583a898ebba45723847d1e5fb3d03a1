@@ -1,2 +1,3 @@
 Referenced by issue #114870, 4.1 Regression: Dimension is not reading information from modifiers
 Referenced by pull request #114897, Fix #114870: Object dimensions does not used evaluated geometry
+Referenced by commit 14eb08c3a534b07378faccf20558ed5d46a006dd, Fix #114870: Object dimensions does not used evaluated geometry
