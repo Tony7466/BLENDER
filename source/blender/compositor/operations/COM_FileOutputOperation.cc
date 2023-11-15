@@ -123,7 +123,7 @@ void FileOutputOperation::update_memory_buffer_partial(MemoryBuffer * /*output*/
     }
     int channels_count = get_channels_count(input.data_type);
     MemoryBuffer output_buf(input.output_buffer, channels_count, get_width(), get_height());
-    output_buf.copy_from(inputs[i], area, 0, channels_count, 0);
+    output_buf.copy_from(inputs[i], area, 0, inputs[i]->get_num_channels(), 0);
   }
 }
 
