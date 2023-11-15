@@ -29,9 +29,9 @@
 
 namespace blender::nodes {
 
-static bool use_translate(const math::Quaternion rotation, const float3 scale)
+static bool use_translate(const math::Quaternion &rotation, const float3 scale)
 {
-  if (math::angle_between(rotation, math::Quaternion::identity()).radian() < 1e-8f) {
+  if (math::angle_between(rotation, math::Quaternion::identity()).radian() > 1e-7f) {
     return false;
   }
   if (compare_ff(scale.x, 1.0f, 1e-9f) != 1 || compare_ff(scale.y, 1.0f, 1e-9f) != 1 ||
@@ -312,6 +312,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   /* Use only translation if rotation and scale don't apply. */
   if (use_translate(rotation, scale)) {
+    std::cout << "USE TRANSLATE\n";
     translate_geometry_set(params, geometry_set, translation, *params.depsgraph());
   }
   else {
