@@ -851,6 +851,11 @@ static void change_input_socket_to_rotation_type(bNodeTree &ntree,
     if (link->tosock != &socket) {
       continue;
     }
+    if (ELEM(link->fromsock->type, SOCK_VECTOR, SOCK_FLOAT) &&
+        link->fromnode->type != NODE_REROUTE) {
+      /* No need to add the conversion node when impicit conversions will work. */
+      continue;
+    }
     if (STREQ(link->fromnode->idname, "FunctionNodeEulerToRotation")) {
       /* Make versioning idempotent. */
       continue;
@@ -873,6 +878,10 @@ static void change_output_socket_to_rotation_type(bNodeTree &ntree,
   /* Rely on generic node declaration update to change the socket type. */
   LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree.links) {
     if (link->fromsock != &socket) {
+      continue;
+    }
+    if (link->tosock->type == SOCK_VECTOR && link->tonode->type != NODE_REROUTE) {
+      /* No need to add the conversion node when impicit conversions will work. */
       continue;
     }
     if (STREQ(link->tonode->idname, "FunctionNodeRotationToEuler"))
