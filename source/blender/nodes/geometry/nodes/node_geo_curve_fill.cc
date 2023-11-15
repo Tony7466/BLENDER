@@ -164,6 +164,19 @@ static Array<meshintersect::CDT_result<double>> do_group_aware_cdt(
   return cdt_results;
 }
 
+template<typename In, typename Out, typename Function>
+inline void parallel_transform(const Span<In> src,
+                               MutableSpan<Out> dst,
+                               const int64_t grain_size,
+                               const Function &function)
+{
+  threading::parallel_for(src.index_range(), grain_size, [&](const IndexRange range) {
+    const Span<In> src_range = src.slice(range);
+    MutableSpan<Out> dst_range = dst.slice(range);
+    std::transform(src_range.begin(), src_range.end(), dst_range.begin(), function);
+  });
+}
+
 /* Converts multiple CDT results into a single Mesh. */
 static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
 {
@@ -178,22 +191,38 @@ static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
    * that case is made as optimal as feasible. */
 
   Array<int> vert_groups_data(results.size() + 1);
+  parallel_transform(
+      results,
+      vert_groups_data.as_mutable_span().drop_back(1),
+      4098,
+      [](const meshintersect::CDT_result<double> &result) { return result.vert.size(); });
+
   Array<int> edge_groups_data(results.size() + 1);
+  parallel_transform(
+      results,
+      edge_groups_data.as_mutable_span().drop_back(1),
+      4098,
+      [](const meshintersect::CDT_result<double> &result) { return result.edge.size(); });
+
   Array<int> face_groups_data(results.size() + 1);
+  parallel_transform(
+      results,
+      face_groups_data.as_mutable_span().drop_back(1),
+      4098,
+      [](const meshintersect::CDT_result<double> &result) { return result.face.size(); });
+
   Array<int> loop_groups_data(results.size() + 1);
-  threading::parallel_for(results.index_range(), 1024, [&](const IndexRange results_range) {
-    for (const int i_result : results_range) {
-      const meshintersect::CDT_result<double> &result = results[i_result];
-      vert_groups_data[i_result] = result.vert.size();
-      edge_groups_data[i_result] = result.edge.size();
-      face_groups_data[i_result] = result.face.size();
-      int loop_len = 0;
-      for (const Vector<int> &face : result.face) {
-        loop_len += face.size();
-      }
-      loop_groups_data[i_result] = loop_len;
-    }
-  });
+  parallel_transform(results,
+                     loop_groups_data.as_mutable_span().drop_back(1),
+                     4098,
+                     [](const meshintersect::CDT_result<double> &result) {
+                       return std::accumulate(result.face.begin(),
+                                              result.face.end(),
+                                              0,
+                                              [](const int corners, const Span<int> face) {
+                                                return corners + face.size();
+                                              });
+                     });
 
   const OffsetIndices vert_groups = offset_indices::accumulate_counts_to_offsets(vert_groups_data);
   const OffsetIndices edge_groups = offset_indices::accumulate_counts_to_offsets(edge_groups_data);
@@ -210,37 +239,56 @@ static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
   MutableSpan<int> all_face_offsets = mesh->face_offsets_for_write();
   MutableSpan<int> all_corner_verts = mesh->corner_verts_for_write();
 
-  threading::parallel_for(results.index_range(), 1024, [&](const IndexRange results_range) {
-    for (const int i_result : results_range) {
-      const meshintersect::CDT_result<double> &result = results[i_result];
-      const IndexRange verts_range = vert_groups[i_result];
-      const IndexRange edges_range = edge_groups[i_result];
-      const IndexRange faces_range = face_groups[i_result];
-      const IndexRange loops_range = loop_groups[i_result];
+  threading::parallel_for(results.index_range(), 1024, [&](const IndexRange range) {
+    for (const int index : range) {
+      const Span<meshintersect::vec2<double>> src_positions = results[index].vert;
+      MutableSpan<float3> dst_positions = all_positions.slice(vert_groups[index]);
+      std::transform(
+          src_positions.begin(),
+          src_positions.end(),
+          dst_positions.begin(),
+          [](const meshintersect::vec2<double> vec) { return float3(vec.x, vec.y, 0.0f); });
+    }
+  });
 
-      MutableSpan<float3> positions = all_positions.slice(verts_range);
-      for (const int i : result.vert.index_range()) {
-        positions[i] = float3(float(result.vert[i].x), float(result.vert[i].y), 0.0f);
+  threading::parallel_for(results.index_range(), 1024, [&](const IndexRange range) {
+    for (const int index : range) {
+      const Span<std::pair<int, int>> src_edges = results[index].edge;
+      MutableSpan<int2> dst_edges = all_edges.slice(edge_groups[index]);
+      std::transform(src_edges.begin(),
+                     src_edges.end(),
+                     dst_edges.begin(),
+                     [=](const std::pair<int, int> edge) {
+                       return int2(edge.first, edge.second) + int2(vert_groups[index].start());
+                     });
+    }
+  });
+
+  threading::parallel_for(results.index_range(), 1024, [&](const IndexRange range) {
+    for (const int index : range) {
+      const Span<Vector<int>> src_faces = results[index].face;
+      MutableSpan<int> face_offsets = all_face_offsets.slice(face_groups[index]);
+      for (const int i_face : src_faces.index_range()) {
+        face_offsets[i_face] = src_faces[i_face].size();
       }
+    }
+  });
 
-      MutableSpan<int2> edges = all_edges.slice(edges_range);
-      for (const int i : result.edge.index_range()) {
-        edges[i] = int2(result.edge[i].first + verts_range.start(),
-                        result.edge[i].second + verts_range.start());
-      }
-
-      MutableSpan<int> face_offsets = all_face_offsets.slice(faces_range);
-      MutableSpan<int> corner_verts = all_corner_verts.slice(loops_range);
+  threading::parallel_for(results.index_range(), 1024, [&](const IndexRange range) {
+    for (const int index : range) {
+      const Span<Vector<int>> src_faces = results[index].face;
+      MutableSpan<int> corner_verts = all_corner_verts.slice(loop_groups[index]);
       int i_face_corner = 0;
-      for (const int i_face : result.face.index_range()) {
-        face_offsets[i_face] = i_face_corner + loops_range.start();
-        for (const int i_corner : result.face[i_face].index_range()) {
-          corner_verts[i_face_corner] = result.face[i_face][i_corner] + verts_range.start();
+      for (const int i_face : src_faces.index_range()) {
+        for (const int i_corner : src_faces[i_face].index_range()) {
+          corner_verts[i_face_corner] = src_faces[i_face][i_corner] + vert_groups[index].start();
           i_face_corner++;
         }
       }
     }
   });
+
+  offset_indices::accumulate_counts_to_offsets(all_face_offsets);
 
   /* The delaunay triangulation doesn't seem to return all of the necessary all_edges, even in
    * triangulation mode. */
