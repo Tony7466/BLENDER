@@ -93,6 +93,10 @@ static bool geometry_node_tree_validate_link(eNodeSocketDatatype type_a,
   {
     return true;
   }
+  /* Floats and vectors implicitly conver to rotations. */
+  if (ELEM(type_a, SOCK_FLOAT, SOCK_VECTOR) && type_b == SOCK_ROTATION) {
+    return true;
+  }
   return type_a == type_b;
 }
 

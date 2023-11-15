@@ -9,6 +9,8 @@
 #include "FN_multi_function_builder.hh"
 
 #include "BLI_color.hh"
+#include "BLI_math_euler.hh"
+#include "BLI_math_quaternion.hh"
 #include "BLI_math_vector.hh"
 
 namespace blender::bke {
@@ -340,6 +342,16 @@ static ColorGeometry4f byte_color_to_color(const ColorGeometry4b &a)
   return a.decode();
 }
 
+static math::Quaternion float_to_quaternion(const float &a)
+{
+  return math::to_quaternion(math::EulerXYZ(float3(a)));
+}
+
+static math::Quaternion float3_to_quaternion(const float3 &a)
+{
+  return math::to_quaternion(math::EulerXYZ(a));
+}
+
 static DataTypeConversions create_implicit_conversions()
 {
   DataTypeConversions conversions;
@@ -424,6 +436,9 @@ static DataTypeConversions create_implicit_conversions()
   add_implicit_conversion<ColorGeometry4b, float2, byte_color_to_float2>(conversions);
   add_implicit_conversion<ColorGeometry4b, float3, byte_color_to_float3>(conversions);
   add_implicit_conversion<ColorGeometry4b, ColorGeometry4f, byte_color_to_color>(conversions);
+
+  add_implicit_conversion<float, math::Quaternion, float_to_quaternion>(conversions);
+  add_implicit_conversion<float3, math::Quaternion, float3_to_quaternion>(conversions);
 
   return conversions;
 }

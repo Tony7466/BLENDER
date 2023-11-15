@@ -411,6 +411,9 @@ bool Rotation::can_connect(const bNodeSocket &socket) const
   if (!sockets_can_connect(*this, socket)) {
     return false;
   }
+  if (this->in_out == SOCK_IN) {
+    return ELEM(socket.type, SOCK_ROTATION, SOCK_FLOAT, SOCK_VECTOR);
+  }
   return socket.type == SOCK_ROTATION;
 }
 
