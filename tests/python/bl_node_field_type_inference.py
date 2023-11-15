@@ -346,6 +346,60 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_or_field_socket(node.inputs['Attribute'])
         self.assert_field_socket(node.outputs['Attribute'])
 
+        # Zone Iteration
+
+        node = tree.nodes['Simulation Input ZoneIterate1']
+        self.assertEqual(node.bl_idname, "GeometryNodeSimulationInput")
+        self.assert_field_socket(node.inputs['Attribute'])
+        self.assert_value_or_field_socket(node.inputs['Attribute.001'])
+        self.assert_value_or_field_socket(node.inputs['Attribute.002'])
+        self.assert_value_or_field_socket(node.inputs['Attribute.003'])
+        self.assert_value_or_field_socket(node.inputs['Attribute.004'])
+        self.assert_field_socket(node.outputs['Attribute'])
+        self.assert_field_socket(node.outputs['Attribute.001'])
+        self.assert_field_socket(node.outputs['Attribute.002'])
+        self.assert_field_socket(node.outputs['Attribute.003'])
+        self.assert_field_socket(node.outputs['Attribute.004'])
+
+        node = tree.nodes['Simulation Output ZoneIterate1']
+        self.assertEqual(node.bl_idname, "GeometryNodeSimulationOutput")
+        self.assert_value_or_field_socket(node.inputs['Attribute'])
+        self.assert_field_socket(node.inputs['Attribute.001'])
+        self.assert_field_socket(node.inputs['Attribute.002'])
+        self.assert_field_socket(node.inputs['Attribute.003'])
+        self.assert_field_socket(node.inputs['Attribute.004'])
+        self.assert_field_socket(node.outputs['Attribute'])
+        self.assert_field_socket(node.outputs['Attribute.001'])
+        self.assert_field_socket(node.outputs['Attribute.002'])
+        self.assert_field_socket(node.outputs['Attribute.003'])
+        self.assert_field_socket(node.outputs['Attribute.004'])
+
+        node = tree.nodes['Simulation Input ZoneIterate2']
+        self.assertEqual(node.bl_idname, "GeometryNodeSimulationInput")
+        self.assert_value_socket(node.inputs['Attribute'])
+        self.assert_value_socket(node.inputs['Attribute.001'])
+        self.assert_value_socket(node.inputs['Attribute.002'])
+        self.assert_value_socket(node.inputs['Attribute.003'])
+        self.assert_value_or_field_socket(node.inputs['Attribute.004'])
+        self.assert_value_socket(node.outputs['Attribute'])
+        self.assert_value_socket(node.outputs['Attribute.001'])
+        self.assert_value_socket(node.outputs['Attribute.002'])
+        self.assert_value_socket(node.outputs['Attribute.003'])
+        self.assert_value_or_field_socket(node.outputs['Attribute.004'])
+
+        node = tree.nodes['Simulation Output ZoneIterate2']
+        self.assertEqual(node.bl_idname, "GeometryNodeSimulationOutput")
+        self.assert_value_socket(node.inputs['Attribute'])
+        self.assert_value_socket(node.inputs['Attribute.001'])
+        self.assert_value_socket(node.inputs['Attribute.002'])
+        self.assert_value_socket(node.inputs['Attribute.003'])
+        self.assert_value_or_field_socket(node.inputs['Attribute.004'])
+        self.assert_value_socket(node.outputs['Attribute'])
+        self.assert_value_socket(node.outputs['Attribute.001'])
+        self.assert_value_socket(node.outputs['Attribute.002'])
+        self.assert_value_socket(node.outputs['Attribute.003'])
+        self.assert_value_or_field_socket(node.outputs['Attribute.004'])
+
 
 
 def main():
