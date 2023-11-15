@@ -23,6 +23,7 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_set.hh"
+#include "BLI_span.hh"
 #include "BLI_task.h"
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
@@ -48,10 +49,11 @@
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_report.h"
@@ -3297,7 +3299,7 @@ static void do_gravity_task(SculptSession *ss,
                             PBVHNode *node)
 {
   PBVHVertexIter vd;
-  float(*proxy)[3] = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -3816,9 +3818,7 @@ static void sculpt_combine_proxies_node(Object &object,
         (SCULPT_undo_push_node(&object, &node, SCULPT_UNDO_COORDS)->co.data()));
   }
 
-  int proxy_count;
-  PBVHProxyNode *proxies;
-  BKE_pbvh_node_get_proxies(&node, &proxies, &proxy_count);
+  MutableSpan<PBVHProxyNode> proxies = BKE_pbvh_node_get_proxies(&node);
 
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   MutableSpan<float3> positions = mesh.vert_positions_for_write();
@@ -3839,8 +3839,8 @@ static void sculpt_combine_proxies_node(Object &object,
       copy_v3_v3(val, vd.co);
     }
 
-    for (int p = 0; p < proxy_count; p++) {
-      add_v3_v3(val, proxies[p].co[vd.i]);
+    for (const PBVHProxyNode &proxy_node : proxies) {
+      add_v3_v3(val, proxy_node.co[vd.i]);
     }
 
     SCULPT_clip(&sd, ss, vd.co, val);
@@ -5376,11 +5376,11 @@ static void sculpt_restore_mesh(Sculpt *sd, Object *ob)
 
 void SCULPT_update_object_bounding_box(Object *ob)
 {
-  if (ob->runtime.bb) {
+  if (ob->runtime->bb) {
     float bb_min[3], bb_max[3];
 
     BKE_pbvh_bounding_box(ob->sculpt->pbvh, bb_min, bb_max);
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, bb_min, bb_max);
+    BKE_boundbox_init_from_minmax(ob->runtime->bb, bb_min, bb_max);
   }
 }
 
@@ -6176,7 +6176,6 @@ void SCULPT_fake_neighbors_free(Object *ob)
 }
 
 void SCULPT_automasking_node_begin(Object *ob,
-                                   const SculptSession * /*ss*/,
                                    AutomaskingCache *automasking,
                                    AutomaskingNodeData *automask_data,
                                    PBVHNode *node)
@@ -6186,7 +6185,6 @@ void SCULPT_automasking_node_begin(Object *ob,
     return;
   }
 
-  automask_data->node = node;
   automask_data->have_orig_data = automasking->settings.flags &
                                   (BRUSH_AUTOMASKING_BRUSH_NORMAL | BRUSH_AUTOMASKING_VIEW_NORMAL);
 
@@ -6198,9 +6196,7 @@ void SCULPT_automasking_node_begin(Object *ob,
   }
 }
 
-void SCULPT_automasking_node_update(SculptSession * /*ss*/,
-                                    AutomaskingNodeData *automask_data,
-                                    PBVHVertexIter *vd)
+void SCULPT_automasking_node_update(AutomaskingNodeData *automask_data, PBVHVertexIter *vd)
 {
   if (automask_data->have_orig_data) {
     SCULPT_orig_vert_data_update(&automask_data->orig_data, vd);
