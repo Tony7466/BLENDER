@@ -853,7 +853,7 @@ static void change_input_socket_to_rotation_type(bNodeTree &ntree,
     }
     if (ELEM(link->fromsock->type, SOCK_VECTOR, SOCK_FLOAT) &&
         link->fromnode->type != NODE_REROUTE) {
-      /* No need to add the conversion node when impicit conversions will work. */
+      /* No need to add the conversion node when implicit conversions will work. */
       continue;
     }
     if (STREQ(link->fromnode->idname, "FunctionNodeEulerToRotation")) {
@@ -881,7 +881,7 @@ static void change_output_socket_to_rotation_type(bNodeTree &ntree,
       continue;
     }
     if (link->tosock->type == SOCK_VECTOR && link->tonode->type != NODE_REROUTE) {
-      /* No need to add the conversion node when impicit conversions will work. */
+      /* No need to add the conversion node when implicit conversions will work. */
       continue;
     }
     if (STREQ(link->tonode->idname, "FunctionNodeRotationToEuler"))
