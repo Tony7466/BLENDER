@@ -85,7 +85,7 @@ bool BLI_windows_update_pinned_launcher(const char *launcher_path)
     PROPVARIANT app_model;
     PropVariantInit(&app_model);
     if (property_store->GetValue(PKEY_AppUserModel_ID, &app_model) == S_OK) {
-      if (std::wstring(BLENDER_WIN_APPID_16) == app_model.bstrVal) {
+      if (app_model.vt == VT_LPWSTR && std::wstring(BLENDER_WIN_APPID_16) == app_model.pwszVal) {
         shell_link->SetPath(launcher_path_w);
         persist_file->Save(NULL, TRUE);
       }
