@@ -5731,12 +5731,16 @@ static void sculpt_stroke_update_step(bContext *C,
    *
    * Same applies to the DEG_id_tag_update() invoked from
    * sculpt_flush_update_step().
+   *
+   * For some brushes, flushing is done in the brush code itself.
    */
-  if (ss->deform_modifiers_active) {
-    SCULPT_flush_stroke_deform(sd, ob, sculpt_tool_is_proxy_used(brush->sculpt_tool));
-  }
-  else if (ss->shapekey_active) {
-    sculpt_update_keyblock(ob);
+  if (!ELEM(brush->sculpt_tool, SCULPT_TOOL_DRAW)) {
+    if (ss->deform_modifiers_active) {
+      SCULPT_flush_stroke_deform(sd, ob, sculpt_tool_is_proxy_used(brush->sculpt_tool));
+    }
+    else if (ss->shapekey_active) {
+      sculpt_update_keyblock(ob);
+    }
   }
 
   ss->cache->first_time = false;
@@ -6586,23 +6590,36 @@ void clip_and_lock_translations(const Sculpt &sd,
   }
 }
 
-void apply_translations_to_shape_keys(Object &object,
-                                      KeyBlock &key,
-                                      const Span<int> verts,
-                                      const Span<float3> translations)
+MutableSpan<float3> mesh_brush_positions_for_write(SculptSession &ss, Mesh & /*mesh*/)
+{
+  return {reinterpret_cast<float3 *>(BKE_pbvh_get_vert_positions(ss.pbvh)),
+          ss.vert_positions.size()};
+}
+
+void flush_positions_to_shape_keys(Object &object,
+                                   const Span<int> verts,
+                                   const Span<float3> positions,
+                                   const MutableSpan<float3> positions_orig)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
-  const int active_key = object.shapenr - 1;
+  KeyBlock *active_key = BKE_keyblock_from_object(&object);
+  if (!active_key) {
+    return;
+  }
+  MutableSpan active_key_data(static_cast<float3 *>(active_key->data), active_key->totelem);
 
   /* For relative keys editing of base should update other keys. */
-  if (bool *dependent = BKE_keyblock_get_dependent_keys(mesh.key, active_key)) {
-    /* Apply offsets on other keys. */
+  if (bool *dependent = BKE_keyblock_get_dependent_keys(mesh.key, object.shapenr - 1)) {
+    Array<float3> offsets(verts.size());
+    for (const int i : verts.index_range()) {
+      offsets[i] = positions[verts[i]] - active_key_data[verts[i]];
+    }
+
     int i;
     LISTBASE_FOREACH_INDEX (KeyBlock *, other_key, &mesh.key->block, i) {
-      if ((other_key != &key) && dependent[i]) {
-        // BKE_keyblock_update_from_offset(ob, other_key, ofs);
+      if ((other_key != active_key) && dependent[i]) {
         MutableSpan<float3> data(static_cast<float3 *>(other_key->data), other_key->totelem);
-        apply_translations(translations, verts, data);
+        apply_translations(offsets, verts, data);
       }
     }
 
@@ -6610,20 +6627,18 @@ void apply_translations_to_shape_keys(Object &object,
   }
 
   /* Modifying of basis key should update mesh. */
-  // if (&key == me->key->refkey) {
-  //   BKE_mesh_vert_coords_apply(me, vertCos);
-  // }
-  apply_translations(translations, verts, mesh.vert_positions_for_write());
+  if (active_key == mesh.key->refkey) {
+    /* XXX: There are too many positions arrays getting passed around. We should have a better
+     * naming system or not have to constantly update both the basis and original positions.
+     * OTOH, maybe that's just a consequence of the bad design of shape keys in general. */
+    apply_translations(positions, verts, positions_orig);
+  }
 
   /* Apply new coords on active key block, no need to re-allocate kb->data here! */
-  MutableSpan<float3> data(static_cast<float3 *>(key.data), key.totelem);
-  apply_translations(translations, verts, data);
-}
-
-MutableSpan<float3> mesh_brush_positions_for_write(SculptSession &ss, Mesh & /*mesh*/)
-{
-  return {reinterpret_cast<float3 *>(BKE_pbvh_get_vert_positions(ss.pbvh)),
-          ss.vert_positions.size()};
+  // #array_utils::copy
+  for (const int vert : verts) {
+    active_key_data[vert] = positions[vert];
+  }
 }
 
 }  // namespace blender::ed::sculpt_paint

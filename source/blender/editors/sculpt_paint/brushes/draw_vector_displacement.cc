@@ -41,7 +41,8 @@ static void calc_faces(const Sculpt &sd,
                        Object &object,
                        pbvh::mesh::Node &node,
                        TLS &tls,
-                       MutableSpan<float3> positions_orig)
+                       MutableSpan<float3> positions_orig,
+                       MutableSpan<float3> mesh_positions)
 {
   SculptSession &ss = *object.sculpt;
   StrokeCache &cache = *ss.cache;
@@ -91,9 +92,7 @@ static void calc_faces(const Sculpt &sd,
   }
 
   apply_translations(translations, verts, positions_orig);
-  if (KeyBlock *key = BKE_keyblock_from_object(&object)) {
-    apply_translations_to_shape_keys(object, *key, verts, translations);
-  }
+  flush_positions_to_shape_keys(object, verts, positions_orig, mesh_positions);
 
   // XXX: Maybe try not to tag verts with factor == 0.0f
   BKE_pbvh_vert_tag_update_normals(*ss.pbvh, verts);
@@ -190,11 +189,12 @@ void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PB
       threading::EnumerableThreadSpecific<TLS> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);
       MutableSpan<float3> positions_orig = mesh_brush_positions_for_write(*object.sculpt, mesh);
+      MutableSpan<float3> mesh_positions = mesh.vert_positions_for_write();
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         TLS &tls = all_tls.local();
         for (const int i : range) {
           pbvh::mesh::Node face_node(*nodes[i]);
-          calc_faces(sd, brush, object, face_node, tls, positions_orig);
+          calc_faces(sd, brush, object, face_node, tls, positions_orig, mesh_positions);
         }
       });
       break;
