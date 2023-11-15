@@ -53,6 +53,7 @@
 #include "BKE_mball_tessellate.h"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph.hh"
@@ -654,5 +655,5 @@ void BKE_mball_data_update(Depsgraph *depsgraph, Scene *scene, Object *ob)
     BKE_mesh_tag_positions_changed(mesh);
   }
 
-  ob->runtime.geometry_set_eval = new GeometrySet(GeometrySet::from_mesh(mesh));
+  ob->runtime->geometry_set_eval = new GeometrySet(GeometrySet::from_mesh(mesh));
 };

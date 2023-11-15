@@ -49,6 +49,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_multires.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -1261,7 +1262,7 @@ enum {
   ORIGIN_TO_CENTER_OF_MASS_VOLUME,
 };
 
-static float3 calculate_mean(const blender::Span<blender::float3> values)
+static float3 arithmetic_mean(const blender::Span<blender::float3> values)
 {
   if (values.is_empty()) {
     return float3(0);
@@ -1503,7 +1504,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 
       Curve *cu = static_cast<Curve *>(ob->data);
 
-      if (ob->runtime.bb == nullptr && (centermode != ORIGIN_TO_CURSOR)) {
+      if (ob->runtime->bb == nullptr && (centermode != ORIGIN_TO_CURSOR)) {
         /* Do nothing. */
       }
       else {
@@ -1512,8 +1513,8 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         }
         else {
           /* extra 0.5 is the height o above line */
-          cent[0] = 0.5f * (ob->runtime.bb->vec[4][0] + ob->runtime.bb->vec[0][0]);
-          cent[1] = 0.5f * (ob->runtime.bb->vec[0][1] + ob->runtime.bb->vec[2][1]);
+          cent[0] = 0.5f * (ob->runtime->bb->vec[4][0] + ob->runtime->bb->vec[0][0]);
+          cent[1] = 0.5f * (ob->runtime->bb->vec[0][1] + ob->runtime->bb->vec[2][1]);
         }
 
         cent[2] = 0.0f;
@@ -1710,7 +1711,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         cent = math::midpoint(bounds.min, bounds.max);
       }
       else if (around == V3D_AROUND_CENTER_MEDIAN) {
-        cent = calculate_mean(curves.positions());
+        cent = arithmetic_mean(curves.positions());
       }
 
       tot_change++;
@@ -1741,7 +1742,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         }
       }
       else if (around == V3D_AROUND_CENTER_MEDIAN) {
-        cent = calculate_mean(positions.span);
+        cent = arithmetic_mean(positions.span);
       }
 
       tot_change++;

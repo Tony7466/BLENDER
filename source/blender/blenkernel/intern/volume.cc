@@ -38,8 +38,9 @@
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -1135,7 +1136,7 @@ void BKE_volume_data_update(Depsgraph *depsgraph, Scene *scene, Object *object)
   /* Assign evaluated object. */
   const bool eval_is_owned = (volume != volume_eval);
   BKE_object_eval_assign_data(object, &volume_eval->id, eval_is_owned);
-  object->runtime.geometry_set_eval = new blender::bke::GeometrySet(std::move(geometry_set));
+  object->runtime->geometry_set_eval = new blender::bke::GeometrySet(std::move(geometry_set));
 }
 
 void BKE_volume_grids_backup_restore(Volume *volume, VolumeGridVector *grids, const char *filepath)

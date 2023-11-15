@@ -39,7 +39,7 @@
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
 #include "BKE_particle.h"
@@ -3214,7 +3214,7 @@ static void outliner_draw_iconrow(bContext *C,
         if ((merged->tree_element[index] == nullptr) || (active > merged->active[index])) {
           merged->tree_element[index] = te;
         }
-        merged->active[index] = MAX2(active, merged->active[index]);
+        merged->active[index] = std::max(active, merged->active[index]);
       }
     }
 

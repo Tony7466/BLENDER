@@ -16,6 +16,7 @@
 #include "BLI_endian_switch.h"
 #include "BLI_ghash.h"
 #include "BLI_index_range.hh"
+#include "BLI_math_base_safe.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -49,6 +50,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_vfont.h"
 
 #include "DEG_depsgraph.hh"
@@ -1882,7 +1884,7 @@ static void calc_bevel_sin_cos(
     t02 = M_PI_2;
   }
   else {
-    t02 = saacos(t02) / 2.0f;
+    t02 = safe_acosf(t02) / 2.0f;
   }
 
   t02 = sinf(t02);
@@ -2554,7 +2556,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
                                cu->bevfac1_mapping, CU_BEVFAC_MAP_SEGMENT, CU_BEVFAC_MAP_SPLINE) ||
                            ELEM(cu->bevfac2_mapping, CU_BEVFAC_MAP_SEGMENT, CU_BEVFAC_MAP_SPLINE);
 
-  bev = &ob->runtime.curve_cache->bev;
+  bev = &ob->runtime->curve_cache->bev;
 
 #if 0
   /* do we need to calculate the radius for each point? */
@@ -2564,7 +2566,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
 
   /* STEP 1: MAKE POLYS */
 
-  BKE_curve_bevelList_free(&ob->runtime.curve_cache->bev);
+  BKE_curve_bevelList_free(&ob->runtime->curve_cache->bev);
   if (cu->editnurb && ob->type != OB_FONT) {
     is_editmode = true;
   }

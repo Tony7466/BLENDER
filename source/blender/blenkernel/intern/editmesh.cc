@@ -25,6 +25,7 @@
 #include "BKE_mesh_iterators.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -256,4 +257,3 @@ void BKE_editmesh_lnorspace_update(BMEditMesh *em)
 {
   BM_lnorspace_update(em->bm);
 }
-

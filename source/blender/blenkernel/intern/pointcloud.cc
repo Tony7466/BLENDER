@@ -34,8 +34,9 @@
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_pointcloud.h"
 
 #include "BLT_translation.h"
@@ -147,7 +148,7 @@ IDTypeInfo IDType_ID_PT = {
     /*main_listbase_index*/ INDEX_ID_PT,
     /*struct_size*/ sizeof(PointCloud),
     /*name*/ "PointCloud",
-    /*name_plural*/ N_("point clouds"),
+    /*name_plural*/ N_("pointclouds"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_POINTCLOUD,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -347,7 +348,7 @@ void BKE_pointcloud_data_update(Depsgraph *depsgraph, Scene *scene, Object *obje
   /* Assign evaluated object. */
   const bool eval_is_owned = pointcloud_eval != pointcloud;
   BKE_object_eval_assign_data(object, &pointcloud_eval->id, eval_is_owned);
-  object->runtime.geometry_set_eval = new blender::bke::GeometrySet(std::move(geometry_set));
+  object->runtime->geometry_set_eval = new blender::bke::GeometrySet(std::move(geometry_set));
 }
 
 void PointCloud::tag_positions_changed()

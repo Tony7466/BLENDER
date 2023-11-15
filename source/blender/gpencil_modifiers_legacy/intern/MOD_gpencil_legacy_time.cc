@@ -33,7 +33,7 @@
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_screen.hh"
 
 #include "RNA_access.hh"
@@ -102,7 +102,7 @@ static int remap_time(GpencilModifierData *md,
     offset = abs(efra - sfra + offset + 1);
   }
   /* Avoid inverse ranges. */
-  if (efra <= sfra) {
+  if (efra < sfra) {
     return cfra;
   }
 
