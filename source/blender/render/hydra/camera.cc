@@ -57,7 +57,6 @@ static pxr::GfCamera gf_camera(const CameraParams &params,
 pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
                         const View3D *v3d,
                         const ARegion *region,
-                        const RenderData *rd,
                         const pxr::GfVec4f &border)
 {
   const RegionView3D *region_data = (const RegionView3D *)region->regiondata;

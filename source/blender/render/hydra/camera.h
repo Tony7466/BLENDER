@@ -18,7 +18,6 @@ namespace blender::render::hydra {
 pxr::GfCamera gf_camera(const Depsgraph *depsgraph,
                         const View3D *v3d,
                         const ARegion *region,
-                        const RenderData *rd,
                         const pxr::GfVec4f &border);
 
 pxr::GfCamera gf_camera(const Object *camera_obj,

@@ -120,7 +120,6 @@ ViewSettings::ViewSettings(bContext *context)
   camera = gf_camera(CTX_data_ensure_evaluated_depsgraph(context),
                      view3d,
                      region,
-                     &scene->r,
                      pxr::GfVec4f(float(border[0]) / screen_width,
                                   float(border[1]) / screen_height,
                                   float(width()) / screen_width,
