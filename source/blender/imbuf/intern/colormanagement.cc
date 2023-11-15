@@ -4333,7 +4333,7 @@ static void blackbody_temperature_to_rec709(float rec709[3], float t)
   }
 }
 
-void IMB_colormanagement_blackbody_temperature_to_rgb(float *r_dest, float value)
+void IMB_colormanagement_blackbody_temperature_to_rgb(float r_dest[4], float value)
 {
   float rec709[3];
   blackbody_temperature_to_rec709(rec709, value);
@@ -4417,7 +4417,7 @@ static void wavelength_to_xyz(float xyz[3], float lambda_nm)
   }
 }
 
-void IMB_colormanagement_wavelength_to_rgb(float *r_dest, float value)
+void IMB_colormanagement_wavelength_to_rgb(float r_dest[4], float value)
 {
   float xyz[3];
   wavelength_to_xyz(xyz, value);

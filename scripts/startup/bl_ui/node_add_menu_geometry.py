@@ -33,9 +33,9 @@ class NODE_MT_geometry_node_GEO_COLOR(Menu):
 
     def draw(self, _context):
         layout = self.layout
+        node_add_menu.add_node_type(layout, "ShaderNodeBlackbody")
         node_add_menu.add_node_type(layout, "ShaderNodeValToRGB")
         node_add_menu.add_node_type(layout, "ShaderNodeRGBCurve")
-        node_add_menu.add_node_type(layout, "ShaderNodeBlackbody")
         layout.separator()
         node_add_menu.add_node_type(layout, "FunctionNodeCombineColor")
         props = node_add_menu.add_node_type(layout, "ShaderNodeMix", label=iface_("Mix Color"))
