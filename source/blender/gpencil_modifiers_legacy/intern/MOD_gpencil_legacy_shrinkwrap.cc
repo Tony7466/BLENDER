@@ -29,7 +29,7 @@
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
 #include "BKE_shrinkwrap.h"
@@ -206,7 +206,7 @@ static void update_depsgraph(GpencilModifierData *md,
   CustomData_MeshMasks mask = {0};
 
   if (BKE_shrinkwrap_needs_normals(mmd->shrink_type, mmd->shrink_mode)) {
-    mask.lmask |= CD_MASK_NORMAL | CD_MASK_CUSTOMLOOPNORMAL;
+    mask.lmask |= CD_MASK_CUSTOMLOOPNORMAL;
   }
 
   if (mmd->target != nullptr) {

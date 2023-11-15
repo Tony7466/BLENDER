@@ -38,7 +38,7 @@ void search_link_ops_for_tool_node(GatherLinkSearchOpParams &params);
 
 void transform_mesh(Mesh &mesh,
                     const float3 translation,
-                    const float3 rotation,
+                    const math::Quaternion rotation,
                     const float3 scale);
 
 void transform_geometry_set(GeoNodeExecParams &params,
@@ -66,9 +66,6 @@ void get_closest_in_bvhtree(BVHTreeFromMesh &tree_data,
                             const MutableSpan<float3> r_positions);
 
 int apply_offset_in_cyclic_range(IndexRange range, int start_index, int offset);
-
-std::optional<eCustomDataType> node_data_type_to_custom_data_type(eNodeSocketDatatype type);
-std::optional<eCustomDataType> node_socket_to_custom_data_type(const bNodeSocket &socket);
 
 #ifdef WITH_OPENVDB
 /**
@@ -99,10 +96,6 @@ class EvaluateAtIndexInput final : public bke::GeometryFieldInput {
   }
 };
 
-std::string socket_identifier_for_simulation_item(const NodeSimulationItem &item);
-
-void socket_declarations_for_simulation_items(Span<NodeSimulationItem> items,
-                                              NodeDeclaration &r_declaration);
 const CPPType &get_simulation_item_cpp_type(eNodeSocketDatatype socket_type);
 const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item);
 
@@ -126,9 +119,6 @@ void copy_with_checked_indices(const GVArray &src,
                                const IndexMask &mask,
                                GMutableSpan dst);
 
-void socket_declarations_for_repeat_items(const Span<NodeRepeatItem> items,
-                                          NodeDeclaration &r_declaration);
-
 namespace enums {
 
 const EnumPropertyItem *attribute_type_type_with_socket_fn(bContext * /*C*/,
@@ -137,6 +127,11 @@ const EnumPropertyItem *attribute_type_type_with_socket_fn(bContext * /*C*/,
                                                            bool *r_free);
 
 bool generic_attribute_type_supported(const EnumPropertyItem &item);
+
+const EnumPropertyItem *domain_experimental_grease_pencil_version3_fn(bContext * /*C*/,
+                                                                      PointerRNA * /*ptr*/,
+                                                                      PropertyRNA * /*prop*/,
+                                                                      bool *r_free);
 
 }  // namespace enums
 

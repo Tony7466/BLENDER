@@ -190,6 +190,7 @@ static SocketType::Type convert_socket_type(BL::NodeSocket &b_socket)
   switch (b_socket.type()) {
     case BL::NodeSocket::type_VALUE:
       return SocketType::FLOAT;
+    case BL::NodeSocket::type_BOOLEAN:
     case BL::NodeSocket::type_INT:
       return SocketType::INT;
     case BL::NodeSocket::type_VECTOR:
@@ -1549,7 +1550,8 @@ void BlenderSync::sync_materials(BL::Depsgraph &b_depsgraph, bool update_all)
       /* settings */
       PointerRNA cmat = RNA_pointer_get(&b_mat.ptr, "cycles");
       shader->set_emission_sampling_method(get_emission_sampling(cmat));
-      shader->set_use_transparent_shadow(get_boolean(cmat, "use_transparent_shadow"));
+      shader->set_use_transparent_shadow(b_mat.use_transparent_shadow());
+      shader->set_use_bump_map_correction(get_boolean(cmat, "use_bump_map_correction"));
       shader->set_heterogeneous_volume(!get_boolean(cmat, "homogeneous_volume"));
       shader->set_volume_sampling_method(get_volume_sampling(cmat));
       shader->set_volume_interpolation_method(get_volume_interpolation(cmat));
