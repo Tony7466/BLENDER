@@ -136,6 +136,11 @@ struct FloatValuePath {
       }
     }
     RNA_property_update(C, &this->owner, this->property);
+    if (Object *object = CTX_data_active_object(C)) {
+      /* The recalc is necessary so that the gizmo positions are updated even if they don't affect
+       * the final output currently. */
+      DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+    }
   }
 };
 
