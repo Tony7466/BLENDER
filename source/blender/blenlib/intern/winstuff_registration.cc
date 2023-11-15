@@ -59,17 +59,19 @@ bool BLI_windows_update_pinned_launcher(const char *launcher_path)
   std::wstring search_path = quick_launch_folder_path;
   CoTaskMemFree(quick_launch_folder_path);
 
-  Microsoft::WRL::ComPtr<IShellLinkW> shell_link;
-  if (CoCreateInstance(__uuidof(ShellLink), NULL, CLSCTX_ALL, IID_PPV_ARGS(&shell_link)) != S_OK) {
-    return false;
-  }
-
-  Microsoft::WRL::ComPtr<IPersistFile> persist_file;
-  if (shell_link.As(&persist_file) != S_OK) {
-    return false;
-  }
-
   for (auto const &dir_entry : std::filesystem::recursive_directory_iterator(search_path)) {
+
+    Microsoft::WRL::ComPtr<IShellLinkW> shell_link;
+    if (CoCreateInstance(__uuidof(ShellLink), NULL, CLSCTX_ALL, IID_PPV_ARGS(&shell_link)) != S_OK)
+    {
+      return false;
+    }
+
+    Microsoft::WRL::ComPtr<IPersistFile> persist_file;
+    if (shell_link.As(&persist_file) != S_OK) {
+      return false;
+    }
+
     if (persist_file->Load(dir_entry.path().c_str(), STGM_READWRITE) != S_OK) {
       continue;
     }
