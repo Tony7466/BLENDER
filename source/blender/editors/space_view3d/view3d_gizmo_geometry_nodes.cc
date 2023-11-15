@@ -545,6 +545,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
             }
             case GEO_NODE_GIZMO_DIAL: {
               gz = WM_gizmo_new("GIZMO_GT_dial_3d", gzgroup, nullptr);
+              WM_gizmo_set_flag(gz, WM_GIZMO_DRAW_VALUE, true);
               break;
             }
             default: {
