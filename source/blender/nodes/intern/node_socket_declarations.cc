@@ -116,6 +116,9 @@ bool Float::can_connect(const bNodeSocket &socket) const
   if (!sockets_can_connect(*this, socket)) {
     return false;
   }
+  if (this->in_out == SOCK_OUT && socket.type == SOCK_ROTATION) {
+    return true;
+  }
   return basic_types_can_connect(*this, socket);
 }
 
@@ -254,6 +257,9 @@ bool Vector::can_connect(const bNodeSocket &socket) const
 {
   if (!sockets_can_connect(*this, socket)) {
     return false;
+  }
+  if (this->in_out == SOCK_OUT && socket.type == SOCK_ROTATION) {
+    return true;
   }
   return basic_types_can_connect(*this, socket);
 }
