@@ -31,7 +31,7 @@ namespace blender::nodes {
 
 static bool use_translate(const math::Quaternion &rotation, const float3 scale)
 {
-  if (math::angle_between(rotation, math::Quaternion::identity()).radian() > 1e-7f) {
+  if (math::angle_of(rotation).radian() > 1e-7f) {
     return false;
   }
   if (compare_ff(scale.x, 1.0f, 1e-9f) != 1 || compare_ff(scale.y, 1.0f, 1e-9f) != 1 ||
