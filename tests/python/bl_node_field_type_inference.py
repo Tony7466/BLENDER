@@ -71,13 +71,13 @@ class FieldTypeInferenceTest(unittest.TestCase):
         is_red_link = link.from_socket.display_shape == 'DIAMOND' and link.to_socket.display_shape == 'CIRCLE'
         self.assertTrue(is_red_link)
 
-    def test_field_inferencing(self):
+    def load_testfile(self):
         bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "field_type_inference.blend"))
         self.assertEqual(bpy.data.version, (4, 1, 0))
 
+    def test_unconnected_nodes(self):
+        self.load_testfile()
         tree = bpy.data.node_groups['Geometry Nodes']
-
-        # Unconnected nodes
 
         node = tree.nodes['Group Input Unconnected']
         self.assertEqual(node.bl_idname, "NodeGroupInput")
@@ -122,7 +122,9 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_or_field_socket(node.inputs['Offset'])
         self.assert_value_socket(node.outputs['Geometry'])
 
-        # Simple connections.
+    def test_simple_connections(self):
+        self.load_testfile()
+        tree = bpy.data.node_groups['Geometry Nodes']
 
         node = tree.nodes['Group Input Simple']
         self.assertEqual(node.bl_idname, "NodeGroupInput")
@@ -146,7 +148,9 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_socket(node.outputs['Geometry'])
         self.assert_field_socket(node.outputs['Attribute'])
 
-        # Single Value to Field.
+    def test_single_value_to_field(self):
+        self.load_testfile()
+        tree = bpy.data.node_groups['Geometry Nodes']
 
         node = tree.nodes['Domain Size Value']
         self.assertEqual(node.bl_idname, "GeometryNodeAttributeDomainSize")
@@ -173,7 +177,9 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_or_field_socket(node.inputs['Offset'])
         self.assert_value_socket(node.outputs['Geometry'])
 
-        # Field to Single Value.
+    def test_field_to_single_value(self):
+        self.load_testfile()
+        tree = bpy.data.node_groups['Geometry Nodes']
 
         node = tree.nodes['Capture Attribute Field']
         self.assertEqual(node.bl_idname, "GeometryNodeCaptureAttribute")
@@ -192,7 +198,9 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_socket(node.outputs['Mesh'])
         self.assert_field_socket(node.outputs['UV Map'])
 
-        # Simulation Zone.
+    def test_zones(self):
+        self.load_testfile()
+        tree = bpy.data.node_groups['Geometry Nodes']
 
         node = tree.nodes['Simulation Input Zone1']
         self.assertEqual(node.bl_idname, "GeometryNodeSimulationInput")
@@ -240,7 +248,9 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_input_link_valid(node.inputs['Attribute'])
         self.assert_field_socket(node.outputs['Attribute'])
 
-        # Zone Errors.
+    def test_zone_errors(self):
+        self.load_testfile()
+        tree = bpy.data.node_groups['Geometry Nodes']
 
         node = tree.nodes['Simulation Input ZoneError1']
         self.assertEqual(node.bl_idname, "GeometryNodeSimulationInput")
@@ -282,7 +292,11 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_socket(node.inputs['Attribute'])
         self.assert_field_socket(node.outputs['Attribute'])
 
-        # Nested Zones.
+    def test_nested_nodes(self):
+        self.load_testfile()
+        tree = bpy.data.node_groups['Geometry Nodes']
+
+        # Nested Zones 1.
 
         node = tree.nodes['Repeat Input NestedZone1']
         self.assertEqual(node.bl_idname, "GeometryNodeRepeatInput")
@@ -346,7 +360,9 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_or_field_socket(node.inputs['Attribute'])
         self.assert_field_socket(node.outputs['Attribute'])
 
-        # Zone Iteration.
+    def test_zones_multiple_items(self):
+        self.load_testfile()
+        tree = bpy.data.node_groups['Geometry Nodes']
 
         node = tree.nodes['Simulation Input ZoneIterate1']
         self.assertEqual(node.bl_idname, "GeometryNodeSimulationInput")
