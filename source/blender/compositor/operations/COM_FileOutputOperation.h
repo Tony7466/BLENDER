@@ -35,8 +35,6 @@ class FileOutputOperation : public MultiThreadedOperation {
   const NodeImageMultiFile *node_data_;
   Vector<FileOutputInput> file_output_inputs_;
 
-  StampData *create_stamp_data() const;
-
  public:
   FileOutputOperation(const CompositorContext *context,
                       const NodeImageMultiFile *node_data,

@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <memory>
+
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -87,31 +89,6 @@ FileOutputOperation::FileOutputOperation(const CompositorContext *context,
   this->set_canvas_input_index(RESOLUTION_INPUT_ANY);
 }
 
-StampData *FileOutputOperation::create_stamp_data() const
-{
-  /* StampData API doesn't provide functions to modify an instance without having a RenderResult.
-   */
-  RenderResult render_result;
-  StampData *stamp_data = BKE_stamp_info_from_scene_static(context_->get_scene());
-  render_result.stamp_data = stamp_data;
-  for (const FileOutputInput &input : file_output_inputs_) {
-    /* Unlinked input. */
-    if (!input.image_input) {
-      continue;
-    }
-
-    std::unique_ptr<MetaData> meta_data = input.image_input->get_meta_data();
-    if (meta_data) {
-      blender::StringRef layer_name =
-          blender::bke::cryptomatte::BKE_cryptomatte_extract_layer_name(blender::StringRef(
-              input.data->layer, BLI_strnlen(input.data->layer, sizeof(input.data->layer))));
-      meta_data->replace_hash_neutral_cryptomatte_keys(layer_name);
-      meta_data->add_to_render_result(&render_result);
-    }
-  }
-  return stamp_data;
-}
-
 void FileOutputOperation::init_execution()
 {
   for (int i = 0; i < file_output_inputs_.size(); i++) {
@@ -148,6 +125,23 @@ void FileOutputOperation::update_memory_buffer_partial(MemoryBuffer * /*output*/
     MemoryBuffer output_buf(input.output_buffer, channels_count, get_width(), get_height());
     output_buf.copy_from(inputs[i], area, 0, channels_count, 0);
   }
+}
+
+static void add_meta_data_for_input(realtime_compositor::FileOutput &file_output,
+                                    const FileOutputInput &input)
+{
+  std::unique_ptr<MetaData> meta_data = input.image_input->get_meta_data();
+  if (!meta_data) {
+    return;
+  }
+
+  blender::StringRef layer_name = blender::bke::cryptomatte::BKE_cryptomatte_extract_layer_name(
+      blender::StringRef(input.data->layer,
+                         BLI_strnlen(input.data->layer, sizeof(input.data->layer))));
+  meta_data->replace_hash_neutral_cryptomatte_keys(layer_name);
+  meta_data->for_each_entry([&](const std::string &key, const std::string &value) {
+    file_output.add_meta_data(key, value);
+  });
 }
 
 void FileOutputOperation::deinit_execution()
@@ -196,6 +190,8 @@ void FileOutputOperation::execute_single_layer()
         image_path, format, size, input.data->save_as_render);
 
     add_view_for_input(file_output, input, context_->get_view_name());
+
+    add_meta_data_for_input(file_output, input);
   }
 }
 
@@ -224,6 +220,8 @@ void FileOutputOperation::execute_single_layer_multi_view_exr(const FileOutputIn
   const char *view_name = has_views ? context_->get_view_name() : "";
   file_output.add_view(view_name);
   add_pass_for_input(file_output, input, "", view_name);
+
+  add_meta_data_for_input(file_output, input);
 }
 
 /* -----------------------
@@ -259,6 +257,8 @@ void FileOutputOperation::execute_multi_layer()
 
     const char *pass_name = input.data->layer;
     add_pass_for_input(file_output, input, pass_name, pass_view);
+
+    add_meta_data_for_input(file_output, input);
   }
 }
 

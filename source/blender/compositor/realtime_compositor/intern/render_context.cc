@@ -21,6 +21,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
 
+#include "BKE_image.h"
 #include "BKE_image_save.h"
 #include "BKE_report.h"
 
@@ -105,10 +106,21 @@ void FileOutput::add_pass(const char *pass_name,
   IMB_assign_float_buffer(render_pass->ibuf, buffer, IB_TAKE_OWNERSHIP);
 }
 
+void FileOutput::add_meta_data(std::string key, std::string value)
+{
+  meta_data_.add(key, value);
+}
+
 void FileOutput::save(Scene *scene)
 {
   ReportList reports;
   BKE_reports_init(&reports, RPT_STORE);
+
+  /* Add scene stamp data as meta data as well as the custom meta data. */
+  BKE_render_result_stamp_info(scene, nullptr, render_result_, false);
+  for (const auto &field : meta_data_.items()) {
+    BKE_render_result_stamp_data(render_result_, field.key.c_str(), field.value.c_str());
+  }
 
   BKE_image_render_write(
       &reports, render_result_, scene, true, path_.c_str(), &format_, save_as_render_);

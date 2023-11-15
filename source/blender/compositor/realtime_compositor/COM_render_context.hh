@@ -35,13 +35,16 @@ namespace blender::realtime_compositor {
  * For non-EXR images, the render result needs to composed of views, so the multi-argument overload
  * of the method add_view should be used to add each view.
  *
- * Color management will be applied on the images if save_as_render_ is true. */
+ * Color management will be applied on the images if save_as_render_ is true.
+ *
+ * Meta data can be added using the add_meta_data function. */
 class FileOutput {
  private:
   std::string path_;
   ImageFormatData format_;
   RenderResult *render_result_;
   bool save_as_render_;
+  Map<std::string, std::string> meta_data_;
 
  public:
   /* Allocate and initialize the internal render result of the file output using the give
@@ -67,7 +70,11 @@ class FileOutput {
    * add_view method. */
   void add_pass(const char *pass_name, const char *view_name, const char *channels, float *buffer);
 
-  /* Save the file to the path, reporting any reports to the standard output. */
+  /* Add meta data that will eventually be saved to the file if the format supports it. */
+  void add_meta_data(std::string key, std::string value);
+
+  /* Save the file to the path along with its meta data, reporting any reports to the standard
+   * output. */
   void save(Scene *scene);
 };
 
