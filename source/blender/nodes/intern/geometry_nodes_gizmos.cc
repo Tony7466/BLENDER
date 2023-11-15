@@ -301,6 +301,7 @@ static void foreach_gizmo_for_input(
   else if (node.is_group()) {
     const GroupInputRef group_input_ref{input_ref.input_socket->index(), input_ref.elem};
     const bNodeTree &group = *reinterpret_cast<const bNodeTree *>(node.id);
+    group.ensure_topology_cache();
     compute_context_builder.push<bke::NodeGroupComputeContext>(node, tree);
     foreach_gizmo_for_source(group_input_ref, compute_context_builder, group, fn);
     compute_context_builder.pop();
@@ -380,12 +381,15 @@ void foreach_active_gizmo(
             continue;
           }
 
+          object_and_modifier->nmd->node_group->ensure_topology_cache();
+
           ComputeContextBuilder compute_context_builder;
           compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
           if (!ed::space_node::push_compute_context_for_tree_path(snode, compute_context_builder))
           {
             continue;
           }
+          snode.edittree->ensure_topology_cache();
           const GizmoInferencingResult &gizmo_inferencing =
               *snode.edittree->runtime->gizmo_inferencing;
           Set<InputSocketRef> used_gizmo_inputs;
