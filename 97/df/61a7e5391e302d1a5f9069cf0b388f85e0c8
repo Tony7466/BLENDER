@@ -1,1 +1,2 @@
 Referenced by commit d59f45fb15c, Cleanup: remove dead code from text wrapping logic
+Referenced by pull request #114916, Fix #114892: crash opening old files with text objects
