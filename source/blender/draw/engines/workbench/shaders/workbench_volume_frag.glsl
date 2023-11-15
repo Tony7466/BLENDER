@@ -225,14 +225,14 @@ vec4 volume_integration(vec3 ray_ori, vec3 ray_dir, float ray_inc, float ray_max
 
 void main()
 {
-#ifdef WORKBENCH_NEXT
   uint stencil = texelFetch(stencil_tx, ivec2(gl_FragCoord.xy), 0).r;
-  if (stencil != 0) {
+  const uint in_front_stencil_bits = 1u << 1;
+  if ((stencil & in_front_stencil_bits) != 0) {
     /* Don't draw on top of "in front" objects. */
     discard;
     return;
   }
-#endif
+
 #ifdef VOLUME_SLICE
   /* Manual depth test. TODO: remove. */
   float depth = texelFetch(depthBuffer, ivec2(gl_FragCoord.xy), 0).r;
@@ -305,6 +305,6 @@ void main()
                                  length(vs_ray_dir) * stepLength);
 #endif
 
-  /* Convert transmitance to alpha so we can use premul blending. */
+  /* Convert transmittance to alpha so we can use pre-multiply blending. */
   fragColor.a = 1.0 - fragColor.a;
 }

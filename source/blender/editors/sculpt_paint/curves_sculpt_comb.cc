@@ -14,8 +14,8 @@
 
 #include "PIL_time.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BKE_attribute_math.hh"
 #include "BKE_brush.hh"
@@ -228,7 +228,7 @@ struct CombOperationExecutor {
         const IndexRange points = points_by_curve[curve_i];
 
         const float total_length = self_->curve_lengths_[curve_i];
-        const float total_length_inv = safe_divide(1.0f, total_length);
+        const float total_length_inv = math::safe_rcp(total_length);
         float current_length = 0.0f;
         for (const int point_i : points.drop_front(1)) {
           current_length += segment_lengths[point_i - 1];
@@ -347,7 +347,7 @@ struct CombOperationExecutor {
         const IndexRange points = points_by_curve[curve_i];
 
         const float total_length = self_->curve_lengths_[curve_i];
-        const float total_length_inv = safe_divide(1.0f, total_length);
+        const float total_length_inv = math::safe_rcp(total_length);
         float current_length = 0.0f;
         for (const int point_i : points.drop_front(1)) {
           current_length += segment_lengths[point_i - 1];

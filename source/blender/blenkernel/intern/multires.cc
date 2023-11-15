@@ -28,7 +28,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
@@ -36,11 +36,11 @@
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subsurf.hh"
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "CCGSubSurf.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "multires_reshape.hh"
 
@@ -283,12 +283,15 @@ float (*BKE_multires_create_deformed_base_mesh_vert_coords(
       continue;
     }
 
-    if (mti->type != eModifierTypeType_OnlyDeform) {
+    if (mti->type != ModifierTypeType::OnlyDeform) {
       break;
     }
 
     BKE_modifier_deform_verts(
-        md, &mesh_eval_context, base_mesh, deformed_verts, num_deformed_verts);
+        md,
+        &mesh_eval_context,
+        base_mesh,
+        {reinterpret_cast<blender::float3 *>(deformed_verts), num_deformed_verts});
   }
 
   if (r_num_deformed_verts != nullptr) {
@@ -532,9 +535,9 @@ void multiresModifier_set_levels_from_disps(MultiresModifierData *mmd, Object *o
 
   if (mdisp) {
     mmd->totlvl = get_levels_from_disps(ob);
-    mmd->lvl = MIN2(mmd->sculptlvl, mmd->totlvl);
-    mmd->sculptlvl = MIN2(mmd->sculptlvl, mmd->totlvl);
-    mmd->renderlvl = MIN2(mmd->renderlvl, mmd->totlvl);
+    mmd->lvl = std::min(mmd->sculptlvl, mmd->totlvl);
+    mmd->sculptlvl = std::min(mmd->sculptlvl, mmd->totlvl);
+    mmd->renderlvl = std::min(mmd->renderlvl, mmd->totlvl);
   }
 }
 

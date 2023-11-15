@@ -10,9 +10,10 @@
 #include "DNA_volume_types.h"
 
 #include "BLI_path_util.h"
+#include "BLI_string.h"
 
 #include "BKE_mesh.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 
 #include "hydra_scene_delegate.h"
 

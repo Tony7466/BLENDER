@@ -23,7 +23,7 @@
 #include "BLI_ghash.h"
 #include "BLI_math_vector.h"
 #include "BLI_sort_utils.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
@@ -220,7 +220,6 @@ FCurve *id_data_find_fcurve(
   AnimData *adt = BKE_animdata_from_id(id);
 
   /* Rna vars */
-  PointerRNA ptr;
   PropertyRNA *prop;
 
   if (r_driven) {
@@ -232,7 +231,7 @@ FCurve *id_data_find_fcurve(
     return nullptr;
   }
 
-  RNA_pointer_create(id, type, data, &ptr);
+  PointerRNA ptr = RNA_pointer_create(id, type, data);
   prop = RNA_struct_find_property(&ptr, prop_name);
   if (prop == nullptr) {
     return nullptr;
@@ -1315,7 +1314,8 @@ void testhandles_fcurve(FCurve *fcu, eBezTriple_Flag sel_flag, const bool use_ha
   BezTriple *bezt;
   uint a;
   for (a = 0, bezt = fcu->bezt; a < fcu->totvert; a++, bezt++) {
-    BKE_nurb_bezt_handle_test(bezt, sel_flag, use_handle, false);
+    BKE_nurb_bezt_handle_test(
+        bezt, sel_flag, use_handle ? NURB_HANDLE_TEST_EACH : NURB_HANDLE_TEST_KNOT_ONLY, false);
   }
 
   /* Recalculate handles. */
@@ -1975,7 +1975,7 @@ static float fcurve_eval_keyframes_interpolate(const FCurve *fcu,
   const float eps = 1.e-8f;
   uint a;
 
-  /* Evaltime occurs somewhere in the middle of the curve. */
+  /* Evaluation-time occurs somewhere in the middle of the curve. */
   bool exact = false;
 
   /* Use binary search to find appropriate keyframes...
@@ -2020,7 +2020,7 @@ static float fcurve_eval_keyframes_interpolate(const FCurve *fcu,
     return 0.0f;
   }
 
-  /* Evaltime occurs within the interval defined by these two keyframes. */
+  /* Evaluation-time occurs within the interval defined by these two keyframes. */
   const float begin = prevbezt->vec[1][1];
   const float change = bezt->vec[1][1] - prevbezt->vec[1][1];
   const float duration = bezt->vec[1][0] - prevbezt->vec[1][0];
@@ -2351,10 +2351,10 @@ float evaluate_fcurve_driver(PathResolvedRNA *anim_rna,
   float evaltime = anim_eval_context->eval_time;
 
   /* If there is a driver (only if this F-Curve is acting as 'driver'),
-   * evaluate it to find value to use as "evaltime" since drivers essentially act as alternative
+   * evaluate it to find value to use as `evaltime` since drivers essentially act as alternative
    * input (i.e. in place of 'time') for F-Curves. */
   if (fcu->driver) {
-    /* Evaltime now serves as input for the curve. */
+    /* Evaluation-time now serves as input for the curve. */
     evaltime = evaluate_driver(anim_rna, fcu->driver, driver_orig, anim_eval_context);
 
     /* Only do a default 1-1 mapping if it's unlikely that anything else will set a value... */

@@ -25,7 +25,7 @@
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_layer.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_outliner.hh"
 
@@ -54,7 +54,7 @@ static const EnumPropertyItem space_items[] = {
 #  include "BKE_bvhutils.h"
 #  include "BKE_constraint.h"
 #  include "BKE_context.h"
-#  include "BKE_crazyspace.h"
+#  include "BKE_crazyspace.hh"
 #  include "BKE_customdata.h"
 #  include "BKE_global.h"
 #  include "BKE_layer.h"
@@ -62,8 +62,8 @@ static const EnumPropertyItem space_items[] = {
 #  include "BKE_mball.h"
 #  include "BKE_mesh.hh"
 #  include "BKE_mesh_runtime.hh"
-#  include "BKE_modifier.h"
-#  include "BKE_object.h"
+#  include "BKE_modifier.hh"
+#  include "BKE_object.hh"
 #  include "BKE_report.h"
 #  include "BKE_vfont.h"
 
@@ -76,7 +76,7 @@ static const EnumPropertyItem space_items[] = {
 #  include "DNA_scene_types.h"
 #  include "DNA_view3d_types.h"
 
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "MEM_guardedalloc.h"
 
@@ -466,9 +466,7 @@ static PointerRNA rna_Object_shape_key_add(
   KeyBlock *kb = nullptr;
 
   if ((kb = BKE_object_shapekey_insert(bmain, ob, name, from_mix))) {
-    PointerRNA keyptr;
-
-    RNA_pointer_create((ID *)BKE_key_from_object(ob), &RNA_ShapeKey, kb, &keyptr);
+    PointerRNA keyptr = RNA_pointer_create((ID *)BKE_key_from_object(ob), &RNA_ShapeKey, kb);
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -610,7 +608,7 @@ static void rna_Object_ray_cast(Object *ob,
   }
 
   /* Test BoundBox first (efficiency) */
-  const BoundBox *bb = BKE_object_boundbox_get(ob);
+  const std::optional<BoundBox> bb = BKE_object_boundbox_get(ob);
   float distmin;
 
   /* Needed for valid distance check from #isect_ray_aabb_v3_simple() call. */

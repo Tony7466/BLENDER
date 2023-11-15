@@ -7,7 +7,9 @@
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/imaging/hd/light.h>
 
-#include "DEG_depsgraph_query.h"
+#include "BLI_string.h"
+
+#include "DEG_depsgraph_query.hh"
 
 #include "hydra_scene_delegate.h"
 

@@ -7,12 +7,13 @@
  *
  * Any updated shadow caster needs to tag the shadow map tiles it was in and is now into.
  * This is done in 2 pass of this same shader. One for past object bounds and one for new object
- * bounds. The bounding boxes are roughly software rasterized (just a plain rect) in order to tag
- * the appropriate tiles.
+ * bounds. The bounding boxes are roughly software rasterized (just a plain rectangle) in order to
+ * tag the appropriate tiles.
  */
 
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_intersect_lib.glsl)
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_aabb_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
 
@@ -35,6 +36,7 @@ void main()
   }
 
   uint resource_id = resource_ids_buf[gl_GlobalInvocationID.x];
+  resource_id = (resource_id & 0x7FFFFFFFu);
 
   IsectBox box = isect_data_setup(bounds_buf[resource_id].bounding_corners[0].xyz,
                                   bounds_buf[resource_id].bounding_corners[1].xyz,

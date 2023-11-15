@@ -40,12 +40,12 @@
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_layer.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -436,7 +436,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
     }
 
     if (totcurvedata == 1) {
-      RNA_pointer_create(&cu->id, seltype, selp, &data_ptr);
+      data_ptr = RNA_pointer_create(&cu->id, seltype, selp);
     }
   }
   else if (ob->type == OB_LATTICE) {
@@ -464,7 +464,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
     }
 
     if (totlattdata == 1) {
-      RNA_pointer_create(&lt->id, seltype, selp, &data_ptr);
+      data_ptr = RNA_pointer_create(&lt->id, seltype, selp);
     }
   }
 
@@ -1194,7 +1194,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
         if (CU_IS_2D(cu)) {
           BKE_nurb_project_2d(nu);
         }
-        BKE_nurb_handles_test(nu, true, false); /* test for bezier too */
+        BKE_nurb_handles_test(nu, NURB_HANDLE_TEST_EACH, false); /* test for bezier too */
       }
     }
     else if ((ob->type == OB_LATTICE) && (apply_vcos || median_basis.lattice.weight)) {
@@ -1220,7 +1220,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
       }
     }
 
-    /*      ED_undo_push(C, "Transform properties"); */
+    // ED_undo_push(C, "Transform properties");
   }
 }
 
@@ -1291,8 +1291,7 @@ static void v3d_object_dimension_buts(bContext *C, uiLayout *layout, View3D *v3d
     BKE_object_dimensions_set_ex(
         ob, tfp->ob_dims, axis_mask, tfp->ob_scale_orig, tfp->ob_obmat_orig);
 
-    PointerRNA obptr;
-    RNA_id_pointer_create(&ob->id, &obptr);
+    PointerRNA obptr = RNA_id_pointer_create(&ob->id);
     PropertyRNA *prop = RNA_struct_find_property(&obptr, "scale");
     RNA_property_update(C, &obptr, prop);
   }
@@ -1362,7 +1361,7 @@ static void view3d_panel_vgroup(const bContext *C, Panel *panel)
     ToolSettings *ts = scene->toolsettings;
 
     wmOperatorType *ot;
-    PointerRNA op_ptr, tools_ptr;
+    PointerRNA op_ptr;
     PointerRNA *but_ptr;
 
     uiLayout *col, *bcol;
@@ -1381,7 +1380,7 @@ static void view3d_panel_vgroup(const bContext *C, Panel *panel)
     bcol = uiLayoutColumn(panel->layout, true);
     row = uiLayoutRow(bcol, true); /* The filter button row */
 
-    RNA_pointer_create(nullptr, &RNA_ToolSettings, ts, &tools_ptr);
+    PointerRNA tools_ptr = RNA_pointer_create(nullptr, &RNA_ToolSettings, ts);
     uiItemR(row, &tools_ptr, "vertex_group_subset", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 
     col = uiLayoutColumn(bcol, true);
@@ -1632,7 +1631,6 @@ static void v3d_transform_butsR(uiLayout *layout, PointerRNA *ptr)
 static void v3d_posearmature_buts(uiLayout *layout, Object *ob)
 {
   bPoseChannel *pchan;
-  PointerRNA pchanptr;
   uiLayout *col;
 
   pchan = BKE_pose_channel_active_if_bonecoll_visible(ob);
@@ -1642,7 +1640,7 @@ static void v3d_posearmature_buts(uiLayout *layout, Object *ob)
     return;
   }
 
-  RNA_pointer_create(&ob->id, &RNA_PoseBone, pchan, &pchanptr);
+  PointerRNA pchanptr = RNA_pointer_create(&ob->id, &RNA_PoseBone, pchan);
 
   col = uiLayoutColumn(layout, false);
 
@@ -1657,7 +1655,6 @@ static void v3d_editarmature_buts(uiLayout *layout, Object *ob)
   bArmature *arm = static_cast<bArmature *>(ob->data);
   EditBone *ebone;
   uiLayout *col;
-  PointerRNA eboneptr;
 
   ebone = arm->act_edbone;
 
@@ -1666,7 +1663,7 @@ static void v3d_editarmature_buts(uiLayout *layout, Object *ob)
     return;
   }
 
-  RNA_pointer_create(&arm->id, &RNA_EditBone, ebone, &eboneptr);
+  PointerRNA eboneptr = RNA_pointer_create(&arm->id, &RNA_EditBone, ebone);
 
   col = uiLayoutColumn(layout, false);
   uiItemR(col, &eboneptr, "head", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -1688,7 +1685,6 @@ static void v3d_editarmature_buts(uiLayout *layout, Object *ob)
 
 static void v3d_editmetaball_buts(uiLayout *layout, Object *ob)
 {
-  PointerRNA mbptr, ptr;
   MetaBall *mball = static_cast<MetaBall *>(ob->data);
   uiLayout *col;
 
@@ -1697,9 +1693,7 @@ static void v3d_editmetaball_buts(uiLayout *layout, Object *ob)
     return;
   }
 
-  RNA_pointer_create(&mball->id, &RNA_MetaBall, mball, &mbptr);
-
-  RNA_pointer_create(&mball->id, &RNA_MetaElement, mball->lastelem, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&mball->id, &RNA_MetaElement, mball->lastelem);
 
   col = uiLayoutColumn(layout, false);
   uiItemR(col, &ptr, "co", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -1807,9 +1801,7 @@ static void view3d_panel_transform(const bContext *C, Panel *panel)
     v3d_posearmature_buts(col, ob);
   }
   else {
-    PointerRNA obptr;
-
-    RNA_id_pointer_create(&ob->id, &obptr);
+    PointerRNA obptr = RNA_id_pointer_create(&ob->id);
     v3d_transform_butsR(col, &obptr);
 
     /* Dimensions and editmode are mostly the same check. */
@@ -1858,7 +1850,7 @@ void view3d_buttons_register(ARegionType *art)
   WM_menutype_add(mt);
 }
 
-static int view3d_object_mode_menu(bContext *C, wmOperator *op)
+static int view3d_object_mode_menu_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   if (ob == nullptr) {
@@ -1879,7 +1871,7 @@ void VIEW3D_OT_object_mode_pie_or_toggle(wmOperatorType *ot)
   ot->name = "Object Mode Menu";
   ot->idname = "VIEW3D_OT_object_mode_pie_or_toggle";
 
-  ot->exec = view3d_object_mode_menu;
+  ot->exec = view3d_object_mode_menu_exec;
   ot->poll = ED_operator_view3d_active;
 
   /* flags */

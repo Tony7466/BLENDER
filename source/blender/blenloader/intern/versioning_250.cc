@@ -59,17 +59,17 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_node.h"
 #include "BKE_node_tree_update.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_texture.h"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 
 #include "BLO_readfile.h"
 
@@ -579,7 +579,7 @@ static bNodeSocket *do_versions_node_group_add_socket_2_56_2(bNodeTree *ngroup,
 
   BLI_addtail(in_out == SOCK_IN ? &ngroup->inputs_legacy : &ngroup->outputs_legacy, gsock);
 
-  BKE_ntree_update_tag_interface(ngroup);
+  ngroup->tree_interface.tag_items_changed();
 
   return gsock;
 }
@@ -961,7 +961,7 @@ void blo_do_versions_250(FileData *fd, Library * /*lib*/, Main *bmain)
           key->refkey)
       {
         data = static_cast<const float *>(key->refkey->data);
-        tot = MIN2(me->totvert, key->refkey->totelem);
+        tot = std::min(me->totvert, key->refkey->totelem);
         MVert *verts = (MVert *)CustomData_get_layer_for_write(
             &me->vert_data, CD_MVERT, me->totvert);
         for (a = 0; a < tot; a++, data += 3) {
@@ -976,7 +976,7 @@ void blo_do_versions_250(FileData *fd, Library * /*lib*/, Main *bmain)
           key->refkey)
       {
         data = static_cast<const float *>(key->refkey->data);
-        tot = MIN2(lt->pntsu * lt->pntsv * lt->pntsw, key->refkey->totelem);
+        tot = std::min(lt->pntsu * lt->pntsv * lt->pntsw, key->refkey->totelem);
 
         for (a = 0; a < tot; a++, data += 3) {
           copy_v3_v3(lt->def[a].vec, data);
@@ -1871,7 +1871,6 @@ void blo_do_versions_250(FileData *fd, Library * /*lib*/, Main *bmain)
              */
             bNodeLink *link = static_cast<bNodeLink *>(MEM_callocN(sizeof(bNodeLink), "link"));
             BLI_addtail(&ntree->links, link);
-            nodeUniqueID(ntree, node);
             link->fromnode = nullptr;
             link->fromsock = gsock;
             link->tonode = node;
@@ -1896,7 +1895,6 @@ void blo_do_versions_250(FileData *fd, Library * /*lib*/, Main *bmain)
              */
             bNodeLink *link = static_cast<bNodeLink *>(MEM_callocN(sizeof(bNodeLink), "link"));
             BLI_addtail(&ntree->links, link);
-            nodeUniqueID(ntree, node);
             link->fromnode = node;
             link->fromsock = sock;
             link->tonode = nullptr;
@@ -2123,56 +2121,8 @@ void blo_do_versions_250(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 }
 
-/* updates group node socket identifier so that
- * external links to/from the group node are preserved.
- */
-static void lib_node_do_versions_group_indices(bNode *gnode)
-{
-  bNodeTree *ngroup = (bNodeTree *)gnode->id;
-
-  LISTBASE_FOREACH (bNodeSocket *, sock, &gnode->outputs) {
-    int old_index = sock->to_index;
-
-    LISTBASE_FOREACH (bNodeLink *, link, &ngroup->links) {
-      if (link->tonode == nullptr && link->fromsock->own_index == old_index) {
-        STRNCPY(sock->identifier, link->fromsock->identifier);
-        /* deprecated */
-        sock->own_index = link->fromsock->own_index;
-        sock->to_index = 0;
-      }
-    }
-  }
-  LISTBASE_FOREACH (bNodeSocket *, sock, &gnode->inputs) {
-    int old_index = sock->to_index;
-
-    LISTBASE_FOREACH (bNodeLink *, link, &ngroup->links) {
-      if (link->fromnode == nullptr && link->tosock->own_index == old_index) {
-        STRNCPY(sock->identifier, link->tosock->identifier);
-        /* deprecated */
-        sock->own_index = link->tosock->own_index;
-        sock->to_index = 0;
-      }
-    }
-  }
-}
-
 void do_versions_after_linking_250(Main *bmain)
 {
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 256, 2)) {
-    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      /* updates external links for all group nodes in a tree */
-      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-        if (node->type == NODE_GROUP) {
-          bNodeTree *ngroup = (bNodeTree *)node->id;
-          if (ngroup) {
-            lib_node_do_versions_group_indices(node);
-          }
-        }
-      }
-    }
-    FOREACH_NODETREE_END;
-  }
-
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 258, 0)) {
     /* Some very old (original comments claim pre-2.57) versioning that was wrongly done in
      * lib-linking code... Putting it here just to be sure (this is also checked at runtime anyway

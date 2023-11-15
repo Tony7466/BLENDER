@@ -39,7 +39,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_tangent.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
@@ -1301,7 +1301,7 @@ static void drw_add_attributes_vbo(GPUBatch *batch,
 
 #ifdef DEBUG
 /* Sanity check function to test if all requested batches are available. */
-static void drw_mesh_batch_cache_check_available(struct TaskGraph *task_graph, Mesh *me)
+static void drw_mesh_batch_cache_check_available(TaskGraph *task_graph, Mesh *me)
 {
   MeshBatchCache *cache = mesh_batch_cache_get(me);
   /* Make sure all requested batches have been setup. */

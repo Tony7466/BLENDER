@@ -31,14 +31,14 @@
 #include "BKE_editmesh.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -542,7 +542,7 @@ static int add_hook_object(const bContext *C,
   }
 
   md = static_cast<ModifierData *>(obedit->modifiers.first);
-  while (md && BKE_modifier_get_info(ModifierType(md->type))->type == eModifierTypeType_OnlyDeform)
+  while (md && BKE_modifier_get_info(ModifierType(md->type))->type == ModifierTypeType::OnlyDeform)
   {
     md = md->next;
   }
@@ -593,7 +593,7 @@ static int add_hook_object(const bContext *C,
 
   /* matrix calculus */
   /* vert x (obmat x hook->world_to_object) x hook->object_to_world x ob->world_to_object */
-  /*        (parentinv         )                          */
+  /*        (parentinv) */
   Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
   Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
   BKE_object_transform_copy(object_eval, ob);

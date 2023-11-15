@@ -16,6 +16,7 @@
 #include "BLI_endian_switch.h"
 #include "BLI_ghash.h"
 #include "BLI_index_range.hh"
+#include "BLI_math_base_safe.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -48,11 +49,11 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_vfont.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "CLG_log.h"
 
@@ -278,7 +279,7 @@ IDTypeInfo IDType_ID_CU_LEGACY = {
     /*main_listbase_index*/ INDEX_ID_CU_LEGACY,
     /*struct_size*/ sizeof(Curve),
     /*name*/ "Curve",
-    /*name_plural*/ "curves",
+    /*name_plural*/ N_("curves"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_CURVE_LEGACY,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -1908,7 +1909,7 @@ static void calc_bevel_sin_cos(
     t02 = M_PI_2;
   }
   else {
-    t02 = saacos(t02) / 2.0f;
+    t02 = safe_acosf(t02) / 2.0f;
   }
 
   t02 = sinf(t02);
@@ -2154,8 +2155,8 @@ static void bevel_list_smooth(BevList *bl, int smooth_iter)
     nr = bl->nr;
 
     if (bl->poly == -1) { /* check its not cyclic */
-      /* skip the first point */
-      /* bevp0 = bevp1; */
+      /* Skip the first point. */
+      // bevp0 = bevp1;
       bevp1 = bevp2;
       bevp2++;
       nr--;
@@ -2184,7 +2185,7 @@ static void bevel_list_smooth(BevList *bl, int smooth_iter)
       interp_qt_qtqt(bevp1->quat, bevp1->quat, q, 0.5);
       normalize_qt(bevp1->quat);
 
-      /* bevp0 = bevp1; */ /* UNUSED */
+      // bevp0 = bevp1; /* UNUSED */
       bevp1 = bevp2;
       bevp2++;
     }
@@ -2385,7 +2386,7 @@ static void make_bevel_list_3D_tangent(BevList *bl)
     normalize_v3(cross_tmp);
     tri_to_quat(bevp1->quat, zero, cross_tmp, bevp1->tan); /* XXX: could be faster. */
 
-    /* bevp0 = bevp1; */ /* UNUSED */
+    // bevp0 = bevp1; /* UNUSED */
     bevp1 = bevp2;
     bevp2++;
   }
@@ -4032,32 +4033,49 @@ void BKE_nurb_handle_calc_simple_auto(Nurb *nu, BezTriple *bezt)
   }
 }
 
-void BKE_nurb_bezt_handle_test(BezTriple *bezt,
-                               const eBezTriple_Flag__Alias sel_flag,
-                               const bool use_handle,
-                               const bool use_around_local)
-{
-  short flag = 0;
-
 #define SEL_F1 (1 << 0)
 #define SEL_F2 (1 << 1)
 #define SEL_F3 (1 << 2)
 
-  if (use_handle) {
-    if (bezt->f1 & sel_flag) {
-      flag |= SEL_F1;
-    }
-    if (bezt->f2 & sel_flag) {
-      flag |= SEL_F2;
-    }
-    if (bezt->f3 & sel_flag) {
-      flag |= SEL_F3;
-    }
-  }
-  else {
-    flag = (bezt->f2 & sel_flag) ? (SEL_F1 | SEL_F2 | SEL_F3) : 0;
-  }
+short BKE_nurb_bezt_handle_test_calc_flag(const BezTriple *bezt,
+                                          const eBezTriple_Flag__Alias sel_flag,
+                                          const eNurbHandleTest_Mode handle_mode)
+{
+  short flag = 0;
 
+  switch (handle_mode) {
+    case NURB_HANDLE_TEST_KNOT_ONLY: {
+      flag = (bezt->f2 & sel_flag) ? (SEL_F1 | SEL_F2 | SEL_F3) : 0;
+      break;
+    }
+    case NURB_HANDLE_TEST_KNOT_OR_EACH:
+      if (bezt->f2 & sel_flag) {
+        flag = (bezt->f2 & sel_flag) ? (SEL_F1 | SEL_F2 | SEL_F3) : 0;
+        break;
+      }
+      [[fallthrough]];
+    case NURB_HANDLE_TEST_EACH: {
+      if (bezt->f1 & sel_flag) {
+        flag |= SEL_F1;
+      }
+      if (bezt->f2 & sel_flag) {
+        flag |= SEL_F2;
+      }
+      if (bezt->f3 & sel_flag) {
+        flag |= SEL_F3;
+      }
+      break;
+    }
+  }
+  return flag;
+}
+
+void BKE_nurb_bezt_handle_test(BezTriple *bezt,
+                               const eBezTriple_Flag__Alias sel_flag,
+                               const eNurbHandleTest_Mode handle_mode,
+                               const bool use_around_local)
+{
+  short flag = BKE_nurb_bezt_handle_test_calc_flag(bezt, sel_flag, handle_mode);
   if (use_around_local) {
     flag &= ~SEL_F2;
   }
@@ -4082,13 +4100,15 @@ void BKE_nurb_bezt_handle_test(BezTriple *bezt,
       }
     }
   }
+}
 
 #undef SEL_F1
 #undef SEL_F2
 #undef SEL_F3
-}
 
-void BKE_nurb_handles_test(Nurb *nu, const bool use_handle, const bool use_around_local)
+void BKE_nurb_handles_test(Nurb *nu,
+                           const eNurbHandleTest_Mode handle_mode,
+                           const bool use_around_local)
 {
   BezTriple *bezt;
   int a;
@@ -4100,7 +4120,7 @@ void BKE_nurb_handles_test(Nurb *nu, const bool use_handle, const bool use_aroun
   bezt = nu->bezt;
   a = nu->pntsu;
   while (a--) {
-    BKE_nurb_bezt_handle_test(bezt, SELECT, use_handle, use_around_local);
+    BKE_nurb_bezt_handle_test(bezt, SELECT, handle_mode, use_around_local);
     bezt++;
   }
 
@@ -4195,7 +4215,9 @@ void BKE_nurbList_handles_autocalc(ListBase *editnurb, uint8_t flag)
   }
 }
 
-void BKE_nurbList_handles_set(ListBase *editnurb, const char code)
+void BKE_nurbList_handles_set(ListBase *editnurb,
+                              eNurbHandleTest_Mode handle_mode,
+                              const char code)
 {
   BezTriple *bezt;
   int a;
@@ -4206,11 +4228,12 @@ void BKE_nurbList_handles_set(ListBase *editnurb, const char code)
         bezt = nu->bezt;
         a = nu->pntsu;
         while (a--) {
-          if ((bezt->f1 & SELECT) || (bezt->f3 & SELECT)) {
-            if (bezt->f1 & SELECT) {
+          const short flag = BKE_nurb_bezt_handle_test_calc_flag(bezt, SELECT, handle_mode);
+          if ((flag & (1 << 0)) || (flag & (1 << 2))) {
+            if (flag & (1 << 0)) {
               bezt->h1 = code;
             }
-            if (bezt->f3 & SELECT) {
+            if (flag & (1 << 2)) {
               bezt->h2 = code;
             }
             if (bezt->h1 != bezt->h2) {
@@ -4247,8 +4270,9 @@ void BKE_nurbList_handles_set(ListBase *editnurb, const char code)
           bezt = nu->bezt;
           a = nu->pntsu;
           while (a--) {
-            if (((bezt->f1 & SELECT) && bezt->h1 != HD_FREE) ||
-                ((bezt->f3 & SELECT) && bezt->h2 != HD_FREE)) {
+            const short flag = BKE_nurb_bezt_handle_test_calc_flag(bezt, SELECT, handle_mode);
+            if (((flag & (1 << 0)) && bezt->h1 != HD_FREE) ||
+                ((flag & (1 << 2)) && bezt->h2 != HD_FREE)) {
               h_new = HD_AUTO;
               break;
             }
@@ -4263,10 +4287,11 @@ void BKE_nurbList_handles_set(ListBase *editnurb, const char code)
         bezt = nu->bezt;
         a = nu->pntsu;
         while (a--) {
-          if (bezt->f1 & SELECT) {
+          const short flag = BKE_nurb_bezt_handle_test_calc_flag(bezt, SELECT, handle_mode);
+          if (flag & (1 << 0)) {
             bezt->h1 = h_new;
           }
-          if (bezt->f3 & SELECT) {
+          if (flag & (1 << 2)) {
             bezt->h2 = h_new;
           }
 
@@ -5403,11 +5428,7 @@ void BKE_curve_material_remap(Curve *cu, const uint *remap, uint remap_len)
     }
 
     for (i = 0; i <= charinfo_len; i++) {
-      if (strinfo[i].mat_nr > 0) {
-        strinfo[i].mat_nr -= 1;
-        MAT_NR_REMAP(strinfo[i].mat_nr);
-        strinfo[i].mat_nr += 1;
-      }
+      MAT_NR_REMAP(strinfo[i].mat_nr);
     }
   }
   else {

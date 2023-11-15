@@ -8,6 +8,9 @@
 
 #include <cstdio>
 
+#include "ANIM_action.hh"
+#include "ANIM_keyframing.hh"
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
@@ -61,7 +64,7 @@
 #include "GPU_immediate.h"
 #include "GPU_state.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
@@ -174,58 +177,12 @@ static bool acf_show_channel_colors()
 static void acf_generic_channel_color(bAnimContext *ac, bAnimListElem *ale, float r_color[3])
 {
   const bAnimChannelType *acf = ANIM_channel_get_typeinfo(ale);
-  bActionGroup *grp = nullptr;
   short indent = (acf->get_indent_level) ? acf->get_indent_level(ac, ale) : 0;
-  bool showGroupColors = acf_show_channel_colors();
 
-  if (ale->type == ANIMTYPE_FCURVE) {
-    FCurve *fcu = (FCurve *)ale->data;
-    grp = fcu->grp;
-  }
-
-  /* set color for normal channels
-   * - use 3 shades of color group/standard color for 3 indentation level
-   * - only use group colors if allowed to, and if actually feasible
-   */
-  if (showGroupColors && (grp) && (grp->customCol)) {
-    uchar cp[3];
-
-    if (indent == 2) {
-      copy_v3_v3_uchar(cp, grp->cs.solid);
-    }
-    else if (indent == 1) {
-      copy_v3_v3_uchar(cp, grp->cs.select);
-    }
-    else {
-      copy_v3_v3_uchar(cp, grp->cs.active);
-    }
-
-    /* copy the colors over, transforming from bytes to floats */
-    rgb_uchar_to_float(r_color, cp);
-  }
-  else {
-    /* FIXME: what happens when the indentation is 1 greater than what it should be
-     * (due to grouping)? */
-    int colOfs = 10 - 10 * indent;
-    UI_GetThemeColorShade3fv(TH_SHADE2, colOfs, r_color);
-  }
-}
-
-/* get backdrop color for grease pencil channels */
-static void acf_gpencil_channel_color(bAnimContext *ac, bAnimListElem *ale, float r_color[3])
-{
-  const bAnimChannelType *acf = ANIM_channel_get_typeinfo(ale);
-  short indent = (acf->get_indent_level) ? acf->get_indent_level(ac, ale) : 0;
-  bool showGroupColors = acf_show_channel_colors();
-
-  if ((showGroupColors) && (ale->type == ANIMTYPE_GPLAYER)) {
-    bGPDlayer *gpl = (bGPDlayer *)ale->data;
-    copy_v3_v3(r_color, gpl->color);
-  }
-  else {
-    int colOfs = 10 - 10 * indent;
-    UI_GetThemeColorShade3fv(TH_SHADE2, colOfs, r_color);
-  }
+  /* FIXME: what happens when the indentation is 1 greater than what it should be
+   * (due to grouping)? */
+  const int colorOffset = 10 - 10 * indent;
+  UI_GetThemeColorShade3fv(TH_SHADE2, colorOffset, r_color);
 }
 
 /* backdrop for generic channels */
@@ -375,7 +332,7 @@ static bool acf_generic_idblock_name_prop(bAnimListElem *ale,
                                           PointerRNA *r_ptr,
                                           PropertyRNA **r_prop)
 {
-  RNA_id_pointer_create(static_cast<ID *>(ale->data), r_ptr);
+  *r_ptr = RNA_id_pointer_create(static_cast<ID *>(ale->data));
   *r_prop = RNA_struct_name_property(r_ptr->type);
 
   return (*r_prop != nullptr);
@@ -387,7 +344,7 @@ static bool acf_generic_idfill_name_prop(bAnimListElem *ale,
                                          PropertyRNA **r_prop)
 {
   /* actual ID we're representing is stored in ale->data not ale->id, as id gives the owner */
-  RNA_id_pointer_create(static_cast<ID *>(ale->data), r_ptr);
+  *r_ptr = RNA_id_pointer_create(static_cast<ID *>(ale->data));
   *r_prop = RNA_struct_name_property(r_ptr->type);
 
   return (*r_prop != nullptr);
@@ -519,6 +476,7 @@ static bAnimChannelType ACF_SUMMARY = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_summary_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_summary_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ nullptr,
@@ -630,6 +588,7 @@ static bAnimChannelType ACF_SCENE = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_root_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_root_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ nullptr,
@@ -706,7 +665,7 @@ static void acf_object_name(bAnimListElem *ale, char *name)
 /* name property for object */
 static bool acf_object_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
-  RNA_id_pointer_create(ale->id, r_ptr);
+  *r_ptr = RNA_id_pointer_create(ale->id);
   *r_prop = RNA_struct_name_property(r_ptr->type);
 
   return (*r_prop != nullptr);
@@ -810,6 +769,7 @@ static bAnimChannelType ACF_OBJECT = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_root_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_root_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ nullptr,
@@ -828,31 +788,11 @@ static bAnimChannelType ACF_OBJECT = {
 /* get backdrop color for group widget */
 static void acf_group_color(bAnimContext * /*ac*/, bAnimListElem *ale, float r_color[3])
 {
-  bActionGroup *agrp = (bActionGroup *)ale->data;
-  bool showGroupColors = acf_show_channel_colors();
-
-  if (showGroupColors && agrp->customCol) {
-    uchar cp[3];
-
-    /* highlight only for active */
-    if (ale->flag & AGRP_ACTIVE) {
-      copy_v3_v3_uchar(cp, agrp->cs.select);
-    }
-    else {
-      copy_v3_v3_uchar(cp, agrp->cs.solid);
-    }
-
-    /* copy the colors over, transforming from bytes to floats */
-    rgb_uchar_to_float(r_color, cp);
+  if (ale->flag & AGRP_ACTIVE) {
+    UI_GetThemeColor3fv(TH_GROUP_ACTIVE, r_color);
   }
   else {
-    /* highlight only for active */
-    if (ale->flag & AGRP_ACTIVE) {
-      UI_GetThemeColor3fv(TH_GROUP_ACTIVE, r_color);
-    }
-    else {
-      UI_GetThemeColor3fv(TH_GROUP, r_color);
-    }
+    UI_GetThemeColor3fv(TH_GROUP, r_color);
   }
 }
 
@@ -893,7 +833,7 @@ static void acf_group_name(bAnimListElem *ale, char *name)
 /* name property for group entries */
 static bool acf_group_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
-  RNA_pointer_create(ale->fcurve_owner_id, &RNA_ActionGroup, ale->data, r_ptr);
+  *r_ptr = RNA_pointer_create(ale->fcurve_owner_id, &RNA_ActionGroup, ale->data);
   *r_prop = RNA_struct_name_property(r_ptr->type);
 
   return (*r_prop != nullptr);
@@ -977,12 +917,45 @@ static void *acf_group_setting_ptr(bAnimListElem *ale,
   return GET_ACF_FLAG_PTR(agrp->flag, r_type);
 }
 
+static bool get_actiongroup_color(const bActionGroup *agrp, uint8_t r_color[3])
+{
+  if (!agrp) {
+    return false;
+  }
+
+  const int8_t color_index = agrp->customCol;
+  if (color_index == 0) {
+    return false;
+  }
+
+  const ThemeWireColor *wire_color;
+  if (color_index < 0) {
+    wire_color = &agrp->cs;
+  }
+  else {
+    const bTheme *btheme = UI_GetTheme();
+    wire_color = &btheme->tarm[(color_index - 1)];
+  }
+
+  r_color[0] = wire_color->solid[0];
+  r_color[1] = wire_color->solid[1];
+  r_color[2] = wire_color->solid[2];
+  return true;
+}
+
+static bool acf_group_channel_color(const bAnimListElem *ale, uint8_t r_color[3])
+{
+  const bActionGroup *agrp = static_cast<const bActionGroup *>(ale->data);
+  return get_actiongroup_color(agrp, r_color);
+}
+
 /** Group type define. */
 static bAnimChannelType ACF_GROUP = {
     /*channel_type_name*/ "Group",
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_group_color,
+    /*get_channel_color*/ acf_group_channel_color,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_group_offset,
@@ -1014,7 +987,7 @@ static bool acf_fcurve_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, Property
    * as our "name" so that user can perform quick fixes
    */
   if (fcu->flag & FCURVE_DISABLED) {
-    RNA_pointer_create(ale->fcurve_owner_id, &RNA_FCurve, ale->data, r_ptr);
+    *r_ptr = RNA_pointer_create(ale->fcurve_owner_id, &RNA_FCurve, ale->data);
     *r_prop = RNA_struct_find_property(r_ptr, "data_path");
   }
   else {
@@ -1027,26 +1000,15 @@ static bool acf_fcurve_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, Property
 
 /* check if some setting exists for this channel */
 static bool acf_fcurve_setting_valid(bAnimContext *ac,
-                                     bAnimListElem *ale,
+                                     bAnimListElem * /*ale*/,
                                      eAnimChannel_Settings setting)
 {
-  FCurve *fcu = (FCurve *)ale->data;
-
   switch (setting) {
     /* unsupported */
     case ACHANNEL_SETTING_SOLO:   /* Solo Flag is only for NLA */
     case ACHANNEL_SETTING_EXPAND: /* F-Curves are not containers */
     case ACHANNEL_SETTING_PINNED: /* This is only for NLA Actions */
       return false;
-
-    /* conditionally available */
-    case ACHANNEL_SETTING_PROTECT: /* Protection is only valid when there's keyframes */
-      if (fcu->bezt) {
-        return true;
-      }
-      else {
-        return false; /* NOTE: in this special case, we need to draw ICON_ZOOMOUT */
-      }
 
     case ACHANNEL_SETTING_VISIBLE: /* Only available in Graph Editor */
       return (ac->spacetype == SPACE_GRAPH);
@@ -1101,12 +1063,19 @@ static void *acf_fcurve_setting_ptr(bAnimListElem *ale,
   return GET_ACF_FLAG_PTR(fcu->flag, r_type);
 }
 
+static bool acf_fcurve_channel_color(const bAnimListElem *ale, uint8_t r_color[3])
+{
+  const FCurve *fcu = static_cast<const FCurve *>(ale->data);
+  return get_actiongroup_color(fcu->grp, r_color);
+}
+
 /** F-Curve type define. */
 static bAnimChannelType ACF_FCURVE = {
     /*channel_type_name*/ "F-Curve",
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_generic_channel_color,
+    /*get_channel_color*/ acf_fcurve_channel_color,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /* XXX rename this to f-curves only? */
@@ -1223,6 +1192,7 @@ static bAnimChannelType ACF_NLACONTROLS = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_nla_controls_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_nla_controls_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_group_offset,
@@ -1263,6 +1233,7 @@ static bAnimChannelType ACF_NLACURVE = {
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_generic_channel_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_group_offset,
@@ -1353,6 +1324,7 @@ static bAnimChannelType ACF_FILLACTD = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1438,6 +1410,7 @@ static bAnimChannelType ACF_FILLDRIVERS = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1519,6 +1492,7 @@ static bAnimChannelType ACF_DSMAT = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1600,6 +1574,7 @@ static bAnimChannelType ACF_DSLIGHT = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1688,6 +1663,7 @@ static bAnimChannelType ACF_DSTEX = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_dstex_offset,
@@ -1773,6 +1749,7 @@ static bAnimChannelType ACF_DSCACHEFILE = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1858,6 +1835,7 @@ static bAnimChannelType ACF_DSCAM = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -1949,6 +1927,7 @@ static bAnimChannelType ACF_DSCUR = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2049,6 +2028,7 @@ static bAnimChannelType ACF_DSSKEY = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2130,6 +2110,7 @@ static bAnimChannelType ACF_DSWOR = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2211,6 +2192,7 @@ static bAnimChannelType ACF_DSPART = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2292,6 +2274,7 @@ static bAnimChannelType ACF_DSMBALL = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2373,6 +2356,7 @@ static bAnimChannelType ACF_DSARM = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2465,6 +2449,7 @@ static bAnimChannelType ACF_DSNTREE = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_dsntree_offset,
@@ -2546,6 +2531,7 @@ static bAnimChannelType ACF_DSLINESTYLE = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2627,6 +2613,7 @@ static bAnimChannelType ACF_DSMESH = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /* XXX: this only works for compositing. */
@@ -2709,6 +2696,7 @@ static bAnimChannelType ACF_DSLAT = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /* XXX: this only works for compositing. */
@@ -2791,6 +2779,7 @@ static bAnimChannelType ACF_DSSPK = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2872,6 +2861,7 @@ static bAnimChannelType ACF_DSCURVES = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -2952,6 +2942,7 @@ static bAnimChannelType ACF_DSPOINTCLOUD = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -3032,6 +3023,7 @@ static bAnimChannelType ACF_DSVOLUME = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -3112,6 +3104,7 @@ static bAnimChannelType ACF_DSGPENCIL = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -3193,6 +3186,7 @@ static bAnimChannelType ACF_DSMCLIP = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
     /*get_indent_level*/ acf_generic_indentation_1,
     /*get_offset*/ acf_generic_basic_offset,
@@ -3232,7 +3226,7 @@ static bool acf_shapekey_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, Proper
 
   /* if the KeyBlock had a name, use it, otherwise use the index */
   if (kb && kb->name[0]) {
-    RNA_pointer_create(ale->id, &RNA_ShapeKey, kb, r_ptr);
+    *r_ptr = RNA_pointer_create(ale->id, &RNA_ShapeKey, kb);
     *r_prop = RNA_struct_name_property(r_ptr->type);
 
     return (*r_prop != nullptr);
@@ -3308,6 +3302,7 @@ static bAnimChannelType ACF_SHAPEKEY = {
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_generic_channel_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_basic_offset,
@@ -3390,6 +3385,7 @@ static bAnimChannelType ACF_GPD_LEGACY = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_gpd_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_group_offset,
@@ -3419,7 +3415,7 @@ static void acf_gpl_name_legacy(bAnimListElem *ale, char *name)
 static bool acf_gpl_name_prop_legacy(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
   if (ale->data) {
-    RNA_pointer_create(ale->id, &RNA_GPencilLayer, ale->data, r_ptr);
+    *r_ptr = RNA_pointer_create(ale->id, &RNA_GPencilLayer, ale->data);
     *r_prop = RNA_struct_name_property(r_ptr->type);
 
     return (*r_prop != nullptr);
@@ -3474,6 +3470,13 @@ static int acf_gpl_setting_flag_legacy(bAnimContext * /*ac*/,
   }
 }
 
+static bool acf_gpl_channel_color(const bAnimListElem *ale, uint8_t r_color[3])
+{
+  const bGPDlayer *gpl = static_cast<const bGPDlayer *>(ale->data);
+  rgb_float_to_uchar(r_color, gpl->color);
+  return true;
+}
+
 /* get pointer to the setting */
 static void *acf_gpl_setting_ptr_legacy(bAnimListElem *ale,
                                         eAnimChannel_Settings /*setting*/,
@@ -3490,7 +3493,8 @@ static bAnimChannelType ACF_GPL_LEGACY = {
     /*channel_type_name*/ "GPencil Layer",
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
-    /*get_backdrop_color*/ acf_gpencil_channel_color,
+    /*get_backdrop_color*/ acf_generic_channel_color,
+    /*get_channel_color*/ acf_gpl_channel_color,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /*get_offset*/ acf_generic_group_offset,
@@ -3506,6 +3510,7 @@ static bAnimChannelType ACF_GPL_LEGACY = {
 
 /* Grease Pencil Animation functions ------------------------------------------- */
 
+#ifdef WITH_GREASE_PENCIL_V3
 namespace blender::ed::animation::greasepencil {
 
 /* Get pointer to the setting */
@@ -3570,7 +3575,7 @@ static bool layer_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA *
     return false;
   }
 
-  RNA_pointer_create(ale->id, &RNA_GreasePencilLayer, ale->data, r_ptr);
+  *r_ptr = RNA_pointer_create(ale->id, &RNA_GreasePencilLayer, ale->data);
   *r_prop = RNA_struct_name_property(r_ptr->type);
 
   return (*r_prop != nullptr);
@@ -3686,6 +3691,7 @@ static bAnimChannelType ACF_GPD = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_gpd_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_group_offset,
@@ -3704,7 +3710,8 @@ static bAnimChannelType ACF_GPL = {
     /*channel_type_name*/ "Grease Pencil Layer",
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
-    /*get_backdrop_color*/ acf_gpencil_channel_color,
+    /*get_backdrop_color*/ acf_generic_channel_color,
+    /*get_channel_color*/ acf_gpl_channel_color,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /*get_offset*/ greasepencil::layer_offset,
@@ -3724,6 +3731,7 @@ static bAnimChannelType ACF_GPLGROUP = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ greasepencil::layer_group_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ greasepencil::layer_offset,
@@ -3736,6 +3744,7 @@ static bAnimChannelType ACF_GPLGROUP = {
     /*setting_flag*/ greasepencil::layer_setting_flag,
     /*setting_ptr*/ greasepencil::layer_group_setting_ptr,
 };
+#endif
 
 /* Mask Datablock ------------------------------------------- */
 
@@ -3804,6 +3813,7 @@ static bAnimChannelType ACF_MASKDATA = {
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_mask_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_group_offset,
@@ -3833,7 +3843,7 @@ static void acf_masklay_name(bAnimListElem *ale, char *name)
 static bool acf_masklay_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
   if (ale->data) {
-    RNA_pointer_create(ale->id, &RNA_MaskLayer, ale->data, r_ptr);
+    *r_ptr = RNA_pointer_create(ale->id, &RNA_MaskLayer, ale->data);
     *r_prop = RNA_struct_name_property(r_ptr->type);
 
     return (*r_prop != nullptr);
@@ -3900,6 +3910,7 @@ static bAnimChannelType ACF_MASKLAYER = {
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_generic_channel_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /*get_offset*/ acf_generic_group_offset,
@@ -3948,7 +3959,7 @@ static void acf_nlatrack_name(bAnimListElem *ale, char *name)
 static bool acf_nlatrack_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
   if (ale->data) {
-    RNA_pointer_create(ale->id, &RNA_NlaTrack, ale->data, r_ptr);
+    *r_ptr = RNA_pointer_create(ale->id, &RNA_NlaTrack, ale->data);
     *r_prop = RNA_struct_name_property(r_ptr->type);
 
     return (*r_prop != nullptr);
@@ -4040,6 +4051,7 @@ static bAnimChannelType ACF_NLATRACK = {
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
     /*get_backdrop_color*/ acf_nlatrack_color,
+    /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /*get_offset*/ acf_generic_group_offset, /* XXX? */
@@ -4149,7 +4161,7 @@ static void acf_nlaaction_name(bAnimListElem *ale, char *name)
 static bool acf_nlaaction_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
   if (ale->data) {
-    RNA_pointer_create(ale->fcurve_owner_id, &RNA_Action, ale->data, r_ptr);
+    *r_ptr = RNA_pointer_create(ale->fcurve_owner_id, &RNA_Action, ale->data);
     *r_prop = RNA_struct_name_property(r_ptr->type);
 
     return (*r_prop != nullptr);
@@ -4221,6 +4233,7 @@ static bAnimChannelType ACF_NLAACTION = {
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
     /* NOTE: the backdrop handles this too, since it needs special hacks. */
     /*get_backdrop_color*/ acf_nlaaction_color,
+    /*get_channel_color*/ nullptr,
 
     /*draw_backdrop*/ acf_nlaaction_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
@@ -4298,9 +4311,15 @@ static void ANIM_init_channel_typeinfo_data()
     animchannelTypeInfo[type++] = &ACF_GPD_LEGACY; /* Grease Pencil Datablock (Legacy) */
     animchannelTypeInfo[type++] = &ACF_GPL_LEGACY; /* Grease Pencil Layer (Legacy) */
 
+#ifdef WITH_GREASE_PENCIL_V3
     animchannelTypeInfo[type++] = &ACF_GPD;      /* Grease Pencil Datablock. */
     animchannelTypeInfo[type++] = &ACF_GPLGROUP; /* Grease Pencil Layer Group. */
     animchannelTypeInfo[type++] = &ACF_GPL;      /* Grease Pencil Layer. */
+#else
+    animchannelTypeInfo[type++] = nullptr;
+    animchannelTypeInfo[type++] = nullptr;
+    animchannelTypeInfo[type++] = nullptr;
+#endif
 
     animchannelTypeInfo[type++] = &ACF_MASKDATA;  /* Mask Datablock */
     animchannelTypeInfo[type++] = &ACF_MASKLAYER; /* Mask Layer */
@@ -4519,6 +4538,9 @@ void ANIM_channel_setting_set(bAnimContext *ac,
 #define GRAPH_COLOR_BAND_WIDTH (0.3f * U.widget_unit)
 /** Extra offset for the visibility icons in the graph editor. */
 #define GRAPH_ICON_VISIBILITY_OFFSET (GRAPH_COLOR_BAND_WIDTH * 1.5f)
+
+#define CHANNEL_COLOR_RECT_WIDTH (0.5f * ICON_WIDTH)
+#define CHANNEL_COLOR_RECT_MARGIN (2.0f * UI_SCALE_FAC)
 
 /* Helper - Check if a channel needs renaming */
 static bool achannel_is_being_renamed(const bAnimContext *ac,
@@ -4785,6 +4807,14 @@ void ANIM_channel_draw(
     /* check if there's enough space for the toggles if the sliders are drawn too */
     if (!(draw_sliders) || (BLI_rcti_size_x(&v2d->mask) > ANIM_UI_get_channel_button_width() / 2))
     {
+      /* NOTE: The comments here match the comments in ANIM_channel_draw_widgets(), as that
+       * function and this one are strongly coupled. */
+
+      /* Little channel color rectangle. */
+      if (acf_show_channel_colors()) {
+        offset += CHANNEL_COLOR_RECT_WIDTH + 2 * CHANNEL_COLOR_RECT_MARGIN;
+      }
+
       /* solo... */
       if ((ac->spacetype == SPACE_NLA) && acf->has_setting(ac, ale, ACHANNEL_SETTING_SOLO)) {
         /* A touch of padding because the star icon is so wide. */
@@ -4976,14 +5006,14 @@ static void achannel_setting_slider_cb(bContext *C, void *id_poin, void *fcu_poi
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   ToolSettings *ts = scene->toolsettings;
   ListBase nla_cache = {nullptr, nullptr};
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
   bool done = false;
   float cfra;
 
   /* Get RNA pointer */
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
 
   /* Get NLA context for value remapping */
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
@@ -5005,14 +5035,14 @@ static void achannel_setting_slider_cb(bContext *C, void *id_poin, void *fcu_poi
     }
 
     /* insert a keyframe for this F-Curve */
-    done = insert_keyframe_direct(reports,
-                                  ptr,
-                                  prop,
-                                  fcu,
-                                  &anim_eval_context,
-                                  eBezTriple_KeyframeType(ts->keyframe_type),
-                                  nla_context,
-                                  flag);
+    done = blender::animrig::insert_keyframe_direct(reports,
+                                                    ptr,
+                                                    prop,
+                                                    fcu,
+                                                    &anim_eval_context,
+                                                    eBezTriple_KeyframeType(ts->keyframe_type),
+                                                    nla_context,
+                                                    flag);
 
     if (done) {
       if (adt->action != nullptr) {
@@ -5039,13 +5069,13 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   ToolSettings *ts = scene->toolsettings;
   ListBase nla_cache = {nullptr, nullptr};
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
   bool done = false;
 
   /* Get RNA pointer */
-  RNA_id_pointer_create((ID *)key, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create((ID *)key);
 
   /* Get NLA context for value remapping */
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
@@ -5065,7 +5095,7 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
     /* find or create new F-Curve */
     /* XXX is the group name for this ok? */
     bAction *act = ED_id_action_ensure(bmain, (ID *)key);
-    FCurve *fcu = ED_action_fcurve_ensure(bmain, act, nullptr, &ptr, rna_path, 0);
+    FCurve *fcu = blender::animrig::action_fcurve_ensure(bmain, act, nullptr, &ptr, rna_path, 0);
 
     /* set the special 'replace' flag if on a keyframe */
     if (fcurve_frame_has_keyframe(fcu, remapped_frame)) {
@@ -5075,14 +5105,14 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
     /* insert a keyframe for this F-Curve */
     const AnimationEvalContext remapped_anim_eval_context = BKE_animsys_eval_context_construct_at(
         &anim_eval_context, remapped_frame);
-    done = insert_keyframe_direct(reports,
-                                  ptr,
-                                  prop,
-                                  fcu,
-                                  &remapped_anim_eval_context,
-                                  eBezTriple_KeyframeType(ts->keyframe_type),
-                                  nla_context,
-                                  flag);
+    done = blender::animrig::insert_keyframe_direct(reports,
+                                                    ptr,
+                                                    prop,
+                                                    fcu,
+                                                    &remapped_anim_eval_context,
+                                                    eBezTriple_KeyframeType(ts->keyframe_type),
+                                                    nla_context,
+                                                    flag);
 
     if (done) {
       WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
@@ -5100,7 +5130,7 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
 /* callback for NLA Control Curve widget sliders - insert keyframes */
 static void achannel_setting_slider_nla_curve_cb(bContext *C, void * /*id_poin*/, void *fcu_poin)
 {
-  /* ID *id = (ID *)id_poin; */
+  // ID *id = (ID *)id_poin;
   FCurve *fcu = (FCurve *)fcu_poin;
 
   PointerRNA ptr;
@@ -5134,14 +5164,14 @@ static void achannel_setting_slider_nla_curve_cb(bContext *C, void * /*id_poin*/
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
     const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph,
                                                                                       cfra);
-    done = insert_keyframe_direct(reports,
-                                  ptr,
-                                  prop,
-                                  fcu,
-                                  &anim_eval_context,
-                                  eBezTriple_KeyframeType(ts->keyframe_type),
-                                  nullptr,
-                                  flag);
+    done = blender::animrig::insert_keyframe_direct(reports,
+                                                    ptr,
+                                                    prop,
+                                                    fcu,
+                                                    &anim_eval_context,
+                                                    eBezTriple_KeyframeType(ts->keyframe_type),
+                                                    nullptr,
+                                                    flag);
 
     if (done) {
       WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
@@ -5385,8 +5415,25 @@ static void draw_setting_widget(bAnimContext *ac,
       UI_but_disable(but, TIP_("Can't edit this property from a linked data-block"));
     }
   }
+
+  /* Post-button-creation modifications of the button. */
+  switch (setting) {
+    case ACHANNEL_SETTING_MOD_OFF:
+      /* Deactivate the button when there are no FCurve modifiers. */
+      if (ale->datatype == ALE_FCURVE) {
+        const FCurve *fcu = static_cast<const FCurve *>(ale->key_data);
+        if (BLI_listbase_is_empty(&fcu->modifiers)) {
+          UI_but_flag_enable(but, UI_BUT_INACTIVE);
+        }
+      }
+      break;
+
+    default:
+      break;
+  }
 }
 
+#ifdef WITH_GREASE_PENCIL_V3
 static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
                                              uiBlock *block,
                                              const rctf *rect,
@@ -5405,9 +5452,8 @@ static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
   offset += SLIDER_WIDTH;
 
   /* Create the RNA pointers. */
-  PointerRNA ptr, id_ptr;
-  RNA_pointer_create(ale->id, &RNA_GreasePencilLayer, ale->data, &ptr);
-  RNA_id_pointer_create(ale->id, &id_ptr);
+  PointerRNA ptr = RNA_pointer_create(ale->id, &RNA_GreasePencilLayer, ale->data);
+  PointerRNA id_ptr = RNA_id_pointer_create(ale->id);
 
   /* Layer onion skinning switch. */
   offset -= ICON_WIDTH;
@@ -5450,6 +5496,7 @@ static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
   }
   MEM_freeN(opacity_rna_path);
 }
+#endif
 
 void ANIM_channel_draw_widgets(const bContext *C,
                                bAnimContext *ac,
@@ -5546,7 +5593,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
                       "",
                       offset + margin_x,
                       rect->ymin,
-                      MAX2(width, RENAME_TEXT_MIN_WIDTH),
+                      std::max(width, RENAME_TEXT_MIN_WIDTH),
                       channel_height,
                       &ptr,
                       RNA_property_identifier(prop),
@@ -5603,6 +5650,32 @@ void ANIM_channel_draw_widgets(const bContext *C,
     /* check if there's enough space for the toggles if the sliders are drawn too */
     if (!(draw_sliders) || (BLI_rcti_size_x(&v2d->mask) > ANIM_UI_get_channel_button_width() / 2))
     {
+      /* NOTE: The comments here match the comments in ANIM_channel_draw(), as that
+       * function and this one are strongly coupled. */
+
+      /* Little channel color rectangle. */
+      const bool show_group_colors = acf_show_channel_colors();
+      if (show_group_colors) {
+        const float rect_width = CHANNEL_COLOR_RECT_WIDTH;
+        const float rect_margin = CHANNEL_COLOR_RECT_MARGIN;
+        uint8_t color[3];
+        if (acf->get_channel_color && acf->get_channel_color(ale, color)) {
+          immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+          immUniformColor3ubv(color);
+
+          GPUVertFormat format = {0};
+          uint pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+          immRectf(pos,
+                   rect->xmax - rect_width - rect_margin,
+                   rect->ymin + rect_margin,
+                   rect->xmax - rect_margin,
+                   rect->ymax - rect_margin);
+
+          immUnbindProgram();
+        }
+        offset -= rect_width + 2 * rect_margin;
+      }
+
       /* solo... */
       if ((ac->spacetype == SPACE_NLA) && acf->has_setting(ac, ale, ACHANNEL_SETTING_SOLO)) {
         offset -= ICON_WIDTH;
@@ -5613,7 +5686,17 @@ void ANIM_channel_draw_widgets(const bContext *C,
       /* protect... */
       if (acf->has_setting(ac, ale, ACHANNEL_SETTING_PROTECT)) {
         offset -= ICON_WIDTH;
-        draw_setting_widget(ac, ale, acf, block, offset, ymid, ACHANNEL_SETTING_PROTECT);
+        if (ale->type == ANIMTYPE_FCURVE) {
+          FCurve *fcu = static_cast<FCurve *>(ale->data);
+          /* Don't draw lock icon when curve is baked.
+           * Still using the offset so icons are aligned. */
+          if (fcu->bezt) {
+            draw_setting_widget(ac, ale, acf, block, offset, ymid, ACHANNEL_SETTING_PROTECT);
+          }
+        }
+        else {
+          draw_setting_widget(ac, ale, acf, block, offset, ymid, ACHANNEL_SETTING_PROTECT);
+        }
       }
       /* mute... */
       if (acf->has_setting(ac, ale, ACHANNEL_SETTING_MUTE)) {
@@ -5706,11 +5789,10 @@ void ANIM_channel_draw_widgets(const bContext *C,
         if (ale->type == ANIMTYPE_NLACURVE) {
           NlaStrip *strip = (NlaStrip *)ale->owner;
           FCurve *fcu = (FCurve *)ale->data;
-          PointerRNA ptr;
           PropertyRNA *prop;
 
           /* create RNA pointers */
-          RNA_pointer_create(ale->id, &RNA_NlaStrip, strip, &ptr);
+          PointerRNA ptr = RNA_pointer_create(ale->id, &RNA_NlaStrip, strip);
           prop = RNA_struct_find_property(&ptr, fcu->rna_path);
 
           /* create property slider */
@@ -5734,7 +5816,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
         }
       }
       else if (ale->id) { /* Slider using RNA Access --------------- */
-        PointerRNA id_ptr, ptr;
+        PointerRNA ptr;
         PropertyRNA *prop;
         char *rna_path = nullptr;
         int array_index = 0;
@@ -5765,8 +5847,8 @@ void ANIM_channel_draw_widgets(const bContext *C,
             bGPDlayer *gpl = (bGPDlayer *)ale->data;
 
             /* Create the RNA pointers. */
-            RNA_pointer_create(ale->id, &RNA_GPencilLayer, ale->data, &ptr);
-            RNA_id_pointer_create(ale->id, &id_ptr);
+            ptr = RNA_pointer_create(ale->id, &RNA_GPencilLayer, ale->data);
+            PointerRNA id_ptr = RNA_id_pointer_create(ale->id);
             int icon;
 
             /* Layer onion skinning switch. */
@@ -5836,14 +5918,16 @@ void ANIM_channel_draw_widgets(const bContext *C,
             MEM_freeN(gp_rna_path);
           }
         }
+#ifdef WITH_GREASE_PENCIL_V3
         else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
           draw_grease_pencil_layer_widgets(ale, block, rect, offset, channel_height, array_index);
         }
+#endif
 
         /* Only if RNA-Path found. */
         if (rna_path) {
           /* get RNA pointer, and resolve the path */
-          RNA_id_pointer_create(ale->id, &id_ptr);
+          PointerRNA id_ptr = RNA_id_pointer_create(ale->id);
 
           /* try to resolve the path */
           if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop)) {

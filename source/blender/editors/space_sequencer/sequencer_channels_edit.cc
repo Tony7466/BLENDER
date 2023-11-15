@@ -19,9 +19,9 @@
 
 #include "UI_view2d.hh"
 
-#include "SEQ_channels.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_channels.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
 #include "WM_api.hh"
 
@@ -29,7 +29,7 @@
 #include "RNA_enum_types.hh"
 
 /* Own include. */
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 static int sequencer_rename_channel_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {

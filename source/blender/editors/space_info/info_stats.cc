@@ -15,6 +15,7 @@
 #include "DNA_collection_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
@@ -26,6 +27,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
+#include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_timecode.h"
@@ -38,14 +40,16 @@
 #include "BKE_blender_version.h"
 #include "BKE_context.h"
 #include "BKE_curve.h"
+#include "BKE_curves.hh"
 #include "BKE_displist.h"
 #include "BKE_editmesh.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pbvh_api.hh"
@@ -53,7 +57,7 @@
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subdiv_modifier.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_info.hh"
 
@@ -190,10 +194,32 @@ static void stats_object(Object *ob,
       }
       break;
     }
+    case OB_GREASE_PENCIL: {
+      if (!is_selected) {
+        break;
+      }
+
+      const GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+
+      for (const GreasePencilDrawingBase *drawing_base : grease_pencil->drawings()) {
+        const GreasePencilDrawing *drawing = reinterpret_cast<const GreasePencilDrawing *>(
+            drawing_base);
+        const blender::bke::CurvesGeometry &curves = drawing->wrap().strokes();
+
+        stats->totgppoint += curves.points_num();
+        stats->totgpstroke += curves.curves_num();
+      }
+
+      for (const blender::bke::greasepencil::Layer *layer : grease_pencil->layers()) {
+        stats->totgpframe += layer->frames().size();
+      }
+
+      stats->totgplayer += grease_pencil->layers().size();
+      break;
+    }
     case OB_CURVES:
     case OB_POINTCLOUD:
-    case OB_VOLUME:
-    case OB_GREASE_PENCIL: {
+    case OB_VOLUME: {
       break;
     }
   }
@@ -581,17 +607,15 @@ static void get_stats_string(char *info,
       *ofs += BLI_snprintf_rlen(info + *ofs,
                                 len - *ofs,
                                 TIP_("Verts:%s | Tris:%s"),
-                                stats_fmt->totvert,
+                                stats_fmt->totvertsculpt,
                                 stats_fmt->tottri);
     }
     else {
       *ofs += BLI_snprintf_rlen(info + *ofs,
                                 len - *ofs,
-                                TIP_("Verts:%s/%s | Faces:%s/%s"),
+                                TIP_("Verts:%s | Faces:%s"),
                                 stats_fmt->totvertsculpt,
-                                stats_fmt->totvert,
-                                stats_fmt->totfacesculpt,
-                                stats_fmt->totface);
+                                stats_fmt->totfacesculpt);
     }
   }
   else {
@@ -603,8 +627,13 @@ static void get_stats_string(char *info,
                               stats_fmt->tottri);
   }
 
-  *ofs += BLI_snprintf_rlen(
-      info + *ofs, len - *ofs, TIP_(" | Objects:%s/%s"), stats_fmt->totobjsel, stats_fmt->totobj);
+  if (!STREQ(&stats_fmt->totobj[0], "0")) {
+    *ofs += BLI_snprintf_rlen(info + *ofs,
+                              len - *ofs,
+                              TIP_(" | Objects:%s/%s"),
+                              stats_fmt->totobjsel,
+                              stats_fmt->totobj);
+  }
 }
 
 const char *ED_info_statusbar_string_ex(Main *bmain,
@@ -731,7 +760,7 @@ void ED_info_draw_stats(
   Object *ob = BKE_view_layer_active_object_get(view_layer);
   Object *obedit = OBEDIT_FROM_OBACT(ob);
   eObjectMode object_mode = ob ? (eObjectMode)ob->mode : OB_MODE_OBJECT;
-  const int font_id = BLF_set_default();
+  const int font_id = BLF_default();
 
   UI_FontThemeColor(font_id, TH_TEXT_HI);
   BLF_enable(font_id, BLF_SHADOW);
@@ -781,12 +810,13 @@ void ED_info_draw_stats(
   /* Add some extra margin above this section. */
   *y -= (0.6f * height);
 
-  bool anysel = !STREQ(&stats_fmt.totobjsel[0], "0");
+  bool any_objects = !STREQ(&stats_fmt.totobj[0], "0");
+  bool any_selected = !STREQ(&stats_fmt.totobjsel[0], "0");
 
-  if (anysel) {
+  if (any_selected) {
     stats_row(col1, labels[OBJ], col2, stats_fmt.totobjsel, stats_fmt.totobj, y, height);
   }
-  else {
+  else if (any_objects) {
     stats_row(col1, labels[OBJ], col2, stats_fmt.totobj, nullptr, y, height);
   }
 
@@ -805,22 +835,6 @@ void ED_info_draw_stats(
       stats_row(col1, labels[VERTS], col2, stats_fmt.totvertsel, stats_fmt.totvert, y, height);
     }
   }
-  else if (!anysel) {
-    /* Show scene totals if nothing is selected. */
-    stats_row(col1, labels[VERTS], col2, stats_fmt.totvert, nullptr, y, height);
-    stats_row(col1, labels[EDGES], col2, stats_fmt.totedge, nullptr, y, height);
-    stats_row(col1, labels[FACES], col2, stats_fmt.totface, nullptr, y, height);
-    stats_row(col1, labels[TRIS], col2, stats_fmt.tottri, nullptr, y, height);
-  }
-  else if (ob && (object_mode & OB_MODE_POSE)) {
-    stats_row(col1, labels[BONES], col2, stats_fmt.totbonesel, stats_fmt.totbone, y, height);
-  }
-  else if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
-    stats_row(col1, labels[LAYERS], col2, stats_fmt.totgplayer, nullptr, y, height);
-    stats_row(col1, labels[FRAMES], col2, stats_fmt.totgpframe, nullptr, y, height);
-    stats_row(col1, labels[STROKES], col2, stats_fmt.totgpstroke, nullptr, y, height);
-    stats_row(col1, labels[POINTS], col2, stats_fmt.totgppoint, nullptr, y, height);
-  }
   else if (ob && (object_mode & OB_MODE_SCULPT)) {
     if (stats_is_object_dynamic_topology_sculpt(ob)) {
       stats_row(col1, labels[VERTS], col2, stats_fmt.totvertsculpt, nullptr, y, height);
@@ -831,10 +845,32 @@ void ED_info_draw_stats(
       stats_row(col1, labels[FACES], col2, stats_fmt.totfacesculpt, nullptr, y, height);
     }
   }
+  else if (!any_selected) {
+    if (any_objects) {
+      /* Show scene totals if nothing is selected. */
+      stats_row(col1, labels[VERTS], col2, stats_fmt.totvert, nullptr, y, height);
+      stats_row(col1, labels[EDGES], col2, stats_fmt.totedge, nullptr, y, height);
+      stats_row(col1, labels[FACES], col2, stats_fmt.totface, nullptr, y, height);
+      stats_row(col1, labels[TRIS], col2, stats_fmt.tottri, nullptr, y, height);
+    }
+    else {
+      /* No objects in scene. */
+      stats_row(col1, labels[OBJ], col2, stats_fmt.totobj, nullptr, y, height);
+    }
+  }
+  else if (ob && (object_mode & OB_MODE_POSE)) {
+    stats_row(col1, labels[BONES], col2, stats_fmt.totbonesel, stats_fmt.totbone, y, height);
+  }
+  else if ((ob) && ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL)) {
+    stats_row(col1, labels[LAYERS], col2, stats_fmt.totgplayer, nullptr, y, height);
+    stats_row(col1, labels[FRAMES], col2, stats_fmt.totgpframe, nullptr, y, height);
+    stats_row(col1, labels[STROKES], col2, stats_fmt.totgpstroke, nullptr, y, height);
+    stats_row(col1, labels[POINTS], col2, stats_fmt.totgppoint, nullptr, y, height);
+  }
   else if ((ob) && (ob->type == OB_LAMP)) {
     stats_row(col1, labels[LIGHTS], col2, stats_fmt.totlampsel, stats_fmt.totlamp, y, height);
   }
-  else if ((object_mode == OB_MODE_OBJECT) && ob && (ELEM(ob->type, OB_MESH, OB_FONT))) {
+  else if ((object_mode == OB_MODE_OBJECT) && ob && ELEM(ob->type, OB_MESH, OB_FONT)) {
     /* Object mode with the active object a mesh or text object. */
     stats_row(col1, labels[VERTS], col2, stats_fmt.totvertsel, stats_fmt.totvert, y, height);
     stats_row(col1, labels[EDGES], col2, stats_fmt.totedgesel, stats_fmt.totedge, y, height);

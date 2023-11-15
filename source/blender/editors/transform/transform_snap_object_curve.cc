@@ -13,7 +13,7 @@
 #include "BKE_bvhutils.h"
 #include "BKE_curve.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "ED_transform_snap_object_context.hh"
 
@@ -45,7 +45,7 @@ eSnapMode snapCurve(SnapObjectContext *sctx, Object *ob_eval, const float4x4 &ob
     }
   }
 
-  nearest2d.clip_planes_enable(sctx, true);
+  nearest2d.clip_planes_enable(sctx, ob_eval, true);
 
   bool skip_selected = (sctx->runtime.params.snap_target_select & SCE_SNAP_TARGET_NOT_SELECTED) !=
                        0;

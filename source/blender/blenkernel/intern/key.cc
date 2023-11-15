@@ -16,7 +16,7 @@
 #include "BLI_endian_switch.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -193,7 +193,7 @@ IDTypeInfo IDType_ID_KE = {
     /*main_listbase_index*/ INDEX_ID_KE,
     /*struct_size*/ sizeof(Key),
     /*name*/ "Key",
-    /*name_plural*/ "shape_keys",
+    /*name_plural*/ N_("shape_keys"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_SHAPEKEY,
     /*flags*/ IDTYPE_FLAGS_NO_LIBLINKING,
     /*asset_type_info*/ nullptr,
@@ -461,7 +461,11 @@ static int setkeys(float fac, ListBase *lb, KeyBlock *k[], float t[4], int cycl)
   k1 = k[0] = k[1] = k[2] = k[3] = firstkey;
   t[0] = t[1] = t[2] = t[3] = k1->pos;
 
-  /* if (fac < 0.0 || fac > 1.0) return 1; */
+#if 0
+  if (fac < 0.0 || fac > 1.0) {
+    return 1;
+  }
+#endif
 
   if (k1->next == nullptr) {
     return 1;
@@ -479,7 +483,7 @@ static int setkeys(float fac, ListBase *lb, KeyBlock *k[], float t[4], int cycl)
       }
       k1 = k1->next;
     }
-    /* k1 = k[1]; */ /* UNUSED */
+    // k1 = k[1]; /* UNUSED */
     t[0] = k[0]->pos;
     t[1] += dpos;
     t[2] = k[2]->pos + dpos;
@@ -1954,7 +1958,6 @@ void BKE_keyblock_copy_settings(KeyBlock *kb_dst, const KeyBlock *kb_src)
 
 char *BKE_keyblock_curval_rnapath_get(const Key *key, const KeyBlock *kb)
 {
-  PointerRNA ptr;
   PropertyRNA *prop;
 
   /* sanity checks */
@@ -1963,7 +1966,7 @@ char *BKE_keyblock_curval_rnapath_get(const Key *key, const KeyBlock *kb)
   }
 
   /* create the RNA pointer */
-  RNA_pointer_create((ID *)&key->id, &RNA_ShapeKey, (KeyBlock *)kb, &ptr);
+  PointerRNA ptr = RNA_pointer_create((ID *)&key->id, &RNA_ShapeKey, (KeyBlock *)kb);
   /* get pointer to the property too */
   prop = RNA_struct_find_property(&ptr, "value");
 
@@ -2262,6 +2265,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         positions,
         faces,
         corner_verts,
+        mesh->vert_to_face_map(),
         {reinterpret_cast<const blender::float3 *>(face_normals), faces.size()},
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
   }
@@ -2284,8 +2288,6 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         sharp_edges,
         sharp_faces,
         clnors,
-        (mesh->flag & ME_AUTOSMOOTH) != 0,
-        mesh->smoothresh,
         nullptr,
         {reinterpret_cast<blender::float3 *>(r_loop_normals), corner_verts.size()});
   }

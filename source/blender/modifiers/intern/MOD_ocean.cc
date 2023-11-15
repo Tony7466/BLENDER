@@ -24,9 +24,9 @@
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_ocean.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -38,7 +38,7 @@
 
 #include "WM_types.hh" /* For UI free bake operator. */
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
@@ -695,7 +695,7 @@ ModifierTypeInfo modifierType_Ocean = {
     /*struct_name*/ "OceanModifierData",
     /*struct_size*/ sizeof(OceanModifierData),
     /*srna*/ &RNA_OceanModifier,
-    /*type*/ eModifierTypeType_Constructive,
+    /*type*/ ModifierTypeType::Constructive,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode |
         eModifierTypeFlag_EnableInEditmode,
     /*icon*/ ICON_MOD_OCEAN,

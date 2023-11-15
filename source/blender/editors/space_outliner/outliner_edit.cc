@@ -36,12 +36,12 @@
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_workspace.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_keyframing.hh"
 #include "ED_outliner.hh"
@@ -90,7 +90,7 @@ static void outliner_copybuffer_filepath_get(char filepath[FILE_MAX], size_t fil
 /** \name Highlight on Cursor Motion Operator
  * \{ */
 
-static int outliner_highlight_update(bContext *C, wmOperator * /*op*/, const wmEvent *event)
+static int outliner_highlight_update_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
   /* stop highlighting if out of area */
   if (!ED_screen_area_active(C)) {
@@ -150,7 +150,7 @@ void OUTLINER_OT_highlight_update(wmOperatorType *ot)
   ot->idname = "OUTLINER_OT_highlight_update";
   ot->description = "Update the item highlight based on the current mouse position";
 
-  ot->invoke = outliner_highlight_update;
+  ot->invoke = outliner_highlight_update_invoke;
 
   ot->poll = ED_operator_outliner_active;
 }
@@ -306,7 +306,10 @@ static void do_item_rename(ARegion *region,
 {
   bool add_textbut = false;
 
-  /* can't rename rna datablocks entries or listbases */
+  /* FIXME: These info messages are often useless, they should be either reworded to be more
+   * informative for the user, or purely removed? */
+
+  /* Can't rename rna datablocks entries or listbases. */
   if (ELEM(tselem->type,
            TSE_ANIM_DATA,
            TSE_NLA,
@@ -315,48 +318,40 @@ static void do_item_rename(ARegion *region,
            TSE_MODIFIER_BASE,
            TSE_DRIVER_BASE,
            TSE_POSE_BASE,
-           TSE_POSEGRP_BASE,
            TSE_R_LAYER_BASE,
            TSE_SCENE_COLLECTION_BASE,
            TSE_VIEW_COLLECTION_BASE,
            TSE_LIBRARY_OVERRIDE_BASE,
+           TSE_BONE_COLLECTION_BASE,
            TSE_RNA_STRUCT,
            TSE_RNA_PROPERTY,
            TSE_RNA_ARRAY_ELEM,
            TSE_ID_BASE) ||
       ELEM(tselem->type, TSE_SCENE_OBJECTS_BASE, TSE_GENERIC_LABEL))
   {
-    BKE_report(reports, RPT_WARNING, "Not an editable name");
+    BKE_report(reports, RPT_INFO, "Not an editable name");
   }
   else if (ELEM(tselem->type, TSE_SEQUENCE, TSE_SEQ_STRIP, TSE_SEQUENCE_DUP)) {
-    BKE_report(reports, RPT_WARNING, "Sequence names are not editable from the Outliner");
+    BKE_report(reports, RPT_INFO, "Sequence names are not editable from the Outliner");
   }
   else if (TSE_IS_REAL_ID(tselem) && ID_IS_LINKED(tselem->id)) {
-    BKE_report(reports, RPT_WARNING, "External library data is not editable");
+    BKE_report(reports, RPT_INFO, "External library data is not editable");
   }
   else if (TSE_IS_REAL_ID(tselem) && ID_IS_OVERRIDE_LIBRARY(tselem->id)) {
-    BKE_report(reports, RPT_WARNING, "Overridden data-blocks are not editable");
+    BKE_report(reports, RPT_INFO, "Overridden data-blocks names are not editable");
   }
   else if (outliner_is_collection_tree_element(te)) {
     Collection *collection = outliner_collection_from_tree_element(te);
 
     if (collection->flag & COLLECTION_IS_MASTER) {
-      BKE_report(reports, RPT_WARNING, "Not an editable name");
+      BKE_report(reports, RPT_INFO, "Not an editable name");
     }
     else {
       add_textbut = true;
     }
   }
   else if (te->idcode == ID_LI) {
-    if (reinterpret_cast<Library *>(tselem->id)->parent) {
-      BKE_report(reports, RPT_WARNING, "Cannot edit the path of an indirectly linked library");
-    }
-    else {
-      BKE_report(
-          reports,
-          RPT_WARNING,
-          "Library path is not editable from here anymore, use the Relocate operation instead");
-    }
+    BKE_report(reports, RPT_INFO, "Library path is not editable, use the Relocate operation");
   }
   else {
     add_textbut = true;
@@ -408,7 +403,7 @@ static TreeElement *outliner_item_rename_find_hovered(const SpaceOutliner *space
   return nullptr;
 }
 
-static int outliner_item_rename(bContext *C, wmOperator *op, const wmEvent *event)
+static int outliner_item_rename_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   ARegion *region = CTX_wm_region(C);
   View2D *v2d = &region->v2d;
@@ -441,7 +436,7 @@ void OUTLINER_OT_item_rename(wmOperatorType *ot)
   ot->idname = "OUTLINER_OT_item_rename";
   ot->description = "Rename the active element";
 
-  ot->invoke = outliner_item_rename;
+  ot->invoke = outliner_item_rename_invoke;
 
   ot->poll = ED_operator_outliner_active;
 

@@ -321,10 +321,10 @@ void ANIM_nla_mapping_apply_fcurve(AnimData *adt, FCurve *fcu, bool restore, boo
 /* *************************************************** */
 /* UNITS CONVERSION MAPPING (required for drawing and editing keyframes) */
 
-short ANIM_get_normalization_flags(bAnimContext *ac)
+short ANIM_get_normalization_flags(SpaceLink *space_link)
 {
-  if (ac->sl->spacetype == SPACE_GRAPH) {
-    SpaceGraph *sipo = (SpaceGraph *)ac->sl;
+  if (space_link->spacetype == SPACE_GRAPH) {
+    SpaceGraph *sipo = (SpaceGraph *)space_link;
     bool use_normalization = (sipo->flag & SIPO_NORMALIZE) != 0;
     bool freeze_normalization = (sipo->flag & SIPO_NORMALIZE_FREEZE) != 0;
     return use_normalization ? (ANIM_UNITCONV_NORMALIZE |
@@ -542,11 +542,11 @@ float ANIM_unit_mapping_get_factor(Scene *scene, ID *id, FCurve *fcu, short flag
 
   /* sanity checks */
   if (id && fcu && fcu->rna_path) {
-    PointerRNA ptr, id_ptr;
+    PointerRNA ptr;
     PropertyRNA *prop;
 
     /* get RNA property that F-Curve affects */
-    RNA_id_pointer_create(id, &id_ptr);
+    PointerRNA id_ptr = RNA_id_pointer_create(id);
     if (RNA_path_resolve_property(&id_ptr, fcu->rna_path, &ptr, &prop)) {
       /* rotations: radians <-> degrees? */
       if (RNA_SUBTYPE_UNIT(RNA_property_subtype(prop)) == PROP_UNIT_ROTATION) {

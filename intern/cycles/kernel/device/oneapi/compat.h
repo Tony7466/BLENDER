@@ -49,6 +49,7 @@
 #define ccl_loop_no_unroll
 #define ccl_optional_struct_init
 #define ccl_private
+#define ccl_ray_data ccl_private
 #define ccl_gpu_shared
 #define ATTR_FALLTHROUGH __attribute__((fallthrough))
 #define ccl_constant const
@@ -222,9 +223,7 @@ ccl_device_forceinline int __float_as_int(float x)
 #define fmodf(x, y) sycl::fmod((x), (y))
 #define lgammaf(x) sycl::lgamma((x))
 
-/* sycl::native::cos precision is not sufficient when using Nishita Sky node
- * with a small sun size. */
-#define cosf(x) sycl::cos(((float)(x)))
+#define cosf(x) sycl::native::cos(((float)(x)))
 #define sinf(x) sycl::native::sin(((float)(x)))
 #define powf(x, y) sycl::native::powr(((float)(x)), ((float)(y)))
 #define tanf(x) sycl::native::tan(((float)(x)))

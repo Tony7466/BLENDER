@@ -159,7 +159,9 @@ void VKPipeline::finalize(VKContext &context,
   pipeline_input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
   pipeline_input_assembly.topology = to_vk_primitive_topology(prim_type);
   pipeline_input_assembly.primitiveRestartEnable =
-      ELEM(prim_type, GPU_PRIM_TRIS, GPU_PRIM_LINES, GPU_PRIM_POINTS) ? VK_FALSE : VK_TRUE;
+      ELEM(prim_type, GPU_PRIM_TRIS, GPU_PRIM_LINES, GPU_PRIM_POINTS, GPU_PRIM_LINES_ADJ) ?
+          VK_FALSE :
+          VK_TRUE;
   pipeline_create_info.pInputAssemblyState = &pipeline_input_assembly;
 
   /* Viewport state. */
@@ -205,12 +207,12 @@ void VKPipeline::update_and_bind(VKContext &context,
                                  VkPipelineLayout vk_pipeline_layout,
                                  VkPipelineBindPoint vk_pipeline_bind_point)
 {
-  VKCommandBuffer &command_buffer = context.command_buffer_get();
-  command_buffer.bind(*this, vk_pipeline_bind_point);
+  VKCommandBuffers &command_buffers = context.command_buffers_get();
+  command_buffers.bind(*this, vk_pipeline_bind_point);
   push_constants_.update(context);
   if (descriptor_set_.has_layout()) {
     descriptor_set_.update(context);
-    command_buffer.bind(
+    command_buffers.bind(
         *descriptor_set_.active_descriptor_set(), vk_pipeline_layout, vk_pipeline_bind_point);
   }
 }

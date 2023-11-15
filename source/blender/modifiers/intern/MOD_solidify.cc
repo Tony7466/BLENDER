@@ -19,7 +19,7 @@
 
 #include "BKE_context.h"
 #include "BKE_particle.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -267,7 +267,7 @@ ModifierTypeInfo modifierType_Solidify = {
     /*struct_name*/ "SolidifyModifierData",
     /*struct_size*/ sizeof(SolidifyModifierData),
     /*srna*/ &RNA_SolidifyModifier,
-    /*type*/ eModifierTypeType_Constructive,
+    /*type*/ ModifierTypeType::Constructive,
 
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs |
         eModifierTypeFlag_SupportsMapping | eModifierTypeFlag_SupportsEditmode |

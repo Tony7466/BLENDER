@@ -23,7 +23,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 #include "BLT_translation.h"
 
@@ -63,15 +63,15 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_movieclip.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 #include "BKE_shrinkwrap.h"
 #include "BKE_tracking.h"
 
 #include "BIK_api.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLO_read_write.hh"
 
@@ -2578,7 +2578,8 @@ static void armdef_accumulate_matrix(const float obmat[4][4],
                                      const float iobmat[4][4],
                                      const float basemat[4][4],
                                      const float bonemat[4][4],
-                                     float weight,
+                                     const float pivot[3],
+                                     const float weight,
                                      float r_sum_mat[4][4],
                                      DualQuat *r_sum_dq)
 {
@@ -2600,7 +2601,7 @@ static void armdef_accumulate_matrix(const float obmat[4][4],
     orthogonalize_m4_stable(basemat_world, 1, true);
 
     mat4_to_dquat(&tmpdq, basemat_world, mat);
-    add_weighted_dq_dq(r_sum_dq, &tmpdq, weight);
+    add_weighted_dq_dq_pivot(r_sum_dq, &tmpdq, pivot, weight, true);
   }
   else {
     madd_m4_m4m4fl(r_sum_mat, r_sum_mat, mat, weight);
@@ -2608,16 +2609,16 @@ static void armdef_accumulate_matrix(const float obmat[4][4],
 }
 
 /* Compute and accumulate transformation for a single target bone. */
-static void armdef_accumulate_bone(bConstraintTarget *ct,
-                                   bPoseChannel *pchan,
+static void armdef_accumulate_bone(const bConstraintTarget *ct,
+                                   const bPoseChannel *pchan,
                                    const float wco[3],
-                                   bool force_envelope,
+                                   const bool force_envelope,
                                    float *r_totweight,
                                    float r_sum_mat[4][4],
                                    DualQuat *r_sum_dq)
 {
   float iobmat[4][4], co[3];
-  Bone *bone = pchan->bone;
+  const Bone *bone = pchan->bone;
   float weight = ct->weight;
 
   /* Our object's location in target pose space. */
@@ -2632,8 +2633,8 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
 
   /* Find the correct bone transform matrix in world space. */
   if (bone->segments > 1 && bone->segments == pchan->runtime.bbone_segments) {
-    Mat4 *b_bone_mats = pchan->runtime.bbone_deform_mats;
-    Mat4 *b_bone_rest_mats = pchan->runtime.bbone_rest_mats;
+    const Mat4 *b_bone_mats = pchan->runtime.bbone_deform_mats;
+    const Mat4 *b_bone_rest_mats = pchan->runtime.bbone_rest_mats;
     float basemat[4][4];
 
     /* Blend the matrix. */
@@ -2650,6 +2651,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
                              iobmat,
                              basemat,
                              b_bone_mats[index + 1].mat,
+                             wco,
                              weight * (1.0f - blend),
                              r_sum_mat,
                              r_sum_dq);
@@ -2663,6 +2665,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
                              iobmat,
                              basemat,
                              b_bone_mats[index + 2].mat,
+                             wco,
                              weight * blend,
                              r_sum_mat,
                              r_sum_dq);
@@ -2673,6 +2676,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
                              iobmat,
                              bone->arm_mat,
                              pchan->chan_mat,
+                             wco,
                              weight,
                              r_sum_mat,
                              r_sum_dq);
@@ -5455,37 +5459,37 @@ static short CTI_INIT = 1; /* when non-zero, the list needs to be updated */
 /* This function only gets called when CTI_INIT is non-zero */
 static void constraints_init_typeinfo()
 {
-  constraintsTypeInfo[0] = nullptr;                    /* 'Null' Constraint */
-  constraintsTypeInfo[1] = &CTI_CHILDOF;               /* ChildOf Constraint */
-  constraintsTypeInfo[2] = &CTI_TRACKTO;               /* TrackTo Constraint */
-  constraintsTypeInfo[3] = &CTI_KINEMATIC;             /* IK Constraint */
-  constraintsTypeInfo[4] = &CTI_FOLLOWPATH;            /* Follow-Path Constraint */
-  constraintsTypeInfo[5] = &CTI_ROTLIMIT;              /* Limit Rotation Constraint */
-  constraintsTypeInfo[6] = &CTI_LOCLIMIT;              /* Limit Location Constraint */
-  constraintsTypeInfo[7] = &CTI_SIZELIMIT;             /* Limit Scale Constraint */
-  constraintsTypeInfo[8] = &CTI_ROTLIKE;               /* Copy Rotation Constraint */
-  constraintsTypeInfo[9] = &CTI_LOCLIKE;               /* Copy Location Constraint */
-  constraintsTypeInfo[10] = &CTI_SIZELIKE;             /* Copy Scale Constraint */
-  constraintsTypeInfo[11] = &CTI_PYTHON;               /* Python/Script Constraint */
-  constraintsTypeInfo[12] = &CTI_ACTION;               /* Action Constraint */
-  constraintsTypeInfo[13] = &CTI_LOCKTRACK;            /* Locked-Track Constraint */
-  constraintsTypeInfo[14] = &CTI_DISTLIMIT;            /* Limit Distance Constraint */
-  constraintsTypeInfo[15] = &CTI_STRETCHTO;            /* StretchTo Constraint */
-  constraintsTypeInfo[16] = &CTI_MINMAX;               /* Floor Constraint */
-  /* constraintsTypeInfo[17] = &CTI_RIGIDBODYJOINT; */ /* RigidBody Constraint - Deprecated */
-  constraintsTypeInfo[18] = &CTI_CLAMPTO;              /* ClampTo Constraint */
-  constraintsTypeInfo[19] = &CTI_TRANSFORM;            /* Transformation Constraint */
-  constraintsTypeInfo[20] = &CTI_SHRINKWRAP;           /* Shrinkwrap Constraint */
-  constraintsTypeInfo[21] = &CTI_DAMPTRACK;            /* Damped TrackTo Constraint */
-  constraintsTypeInfo[22] = &CTI_SPLINEIK;             /* Spline IK Constraint */
-  constraintsTypeInfo[23] = &CTI_TRANSLIKE;            /* Copy Transforms Constraint */
-  constraintsTypeInfo[24] = &CTI_SAMEVOL;              /* Maintain Volume Constraint */
-  constraintsTypeInfo[25] = &CTI_PIVOT;                /* Pivot Constraint */
-  constraintsTypeInfo[26] = &CTI_FOLLOWTRACK;          /* Follow Track Constraint */
-  constraintsTypeInfo[27] = &CTI_CAMERASOLVER;         /* Camera Solver Constraint */
-  constraintsTypeInfo[28] = &CTI_OBJECTSOLVER;         /* Object Solver Constraint */
-  constraintsTypeInfo[29] = &CTI_TRANSFORM_CACHE;      /* Transform Cache Constraint */
-  constraintsTypeInfo[30] = &CTI_ARMATURE;             /* Armature Constraint */
+  constraintsTypeInfo[0] = nullptr;               /* 'Null' Constraint */
+  constraintsTypeInfo[1] = &CTI_CHILDOF;          /* ChildOf Constraint */
+  constraintsTypeInfo[2] = &CTI_TRACKTO;          /* TrackTo Constraint */
+  constraintsTypeInfo[3] = &CTI_KINEMATIC;        /* IK Constraint */
+  constraintsTypeInfo[4] = &CTI_FOLLOWPATH;       /* Follow-Path Constraint */
+  constraintsTypeInfo[5] = &CTI_ROTLIMIT;         /* Limit Rotation Constraint */
+  constraintsTypeInfo[6] = &CTI_LOCLIMIT;         /* Limit Location Constraint */
+  constraintsTypeInfo[7] = &CTI_SIZELIMIT;        /* Limit Scale Constraint */
+  constraintsTypeInfo[8] = &CTI_ROTLIKE;          /* Copy Rotation Constraint */
+  constraintsTypeInfo[9] = &CTI_LOCLIKE;          /* Copy Location Constraint */
+  constraintsTypeInfo[10] = &CTI_SIZELIKE;        /* Copy Scale Constraint */
+  constraintsTypeInfo[11] = &CTI_PYTHON;          /* Python/Script Constraint */
+  constraintsTypeInfo[12] = &CTI_ACTION;          /* Action Constraint */
+  constraintsTypeInfo[13] = &CTI_LOCKTRACK;       /* Locked-Track Constraint */
+  constraintsTypeInfo[14] = &CTI_DISTLIMIT;       /* Limit Distance Constraint */
+  constraintsTypeInfo[15] = &CTI_STRETCHTO;       /* StretchTo Constraint */
+  constraintsTypeInfo[16] = &CTI_MINMAX;          /* Floor Constraint */
+  constraintsTypeInfo[17] = nullptr;              /* RigidBody Constraint: DEPRECATED. */
+  constraintsTypeInfo[18] = &CTI_CLAMPTO;         /* ClampTo Constraint */
+  constraintsTypeInfo[19] = &CTI_TRANSFORM;       /* Transformation Constraint */
+  constraintsTypeInfo[20] = &CTI_SHRINKWRAP;      /* Shrinkwrap Constraint */
+  constraintsTypeInfo[21] = &CTI_DAMPTRACK;       /* Damped TrackTo Constraint */
+  constraintsTypeInfo[22] = &CTI_SPLINEIK;        /* Spline IK Constraint */
+  constraintsTypeInfo[23] = &CTI_TRANSLIKE;       /* Copy Transforms Constraint */
+  constraintsTypeInfo[24] = &CTI_SAMEVOL;         /* Maintain Volume Constraint */
+  constraintsTypeInfo[25] = &CTI_PIVOT;           /* Pivot Constraint */
+  constraintsTypeInfo[26] = &CTI_FOLLOWTRACK;     /* Follow Track Constraint */
+  constraintsTypeInfo[27] = &CTI_CAMERASOLVER;    /* Camera Solver Constraint */
+  constraintsTypeInfo[28] = &CTI_OBJECTSOLVER;    /* Object Solver Constraint */
+  constraintsTypeInfo[29] = &CTI_TRANSFORM_CACHE; /* Transform Cache Constraint */
+  constraintsTypeInfo[30] = &CTI_ARMATURE;        /* Armature Constraint */
 }
 
 const bConstraintTypeInfo *BKE_constraint_typeinfo_from_type(int type)
