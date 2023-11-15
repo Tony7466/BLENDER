@@ -8056,7 +8056,9 @@ class VIEW3D_MT_grease_pencil_assign_material(Menu):
         mat_active = ob.active_material
 
         if len(ob.material_slots) == 0:
-            layout.label(text="No Materials")
+            row = layout.row()
+            row.label(text="No Materials")
+            row.enabled = False
             return
 
         for slot in ob.material_slots:
