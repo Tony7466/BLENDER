@@ -312,7 +312,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   /* Use only translation if rotation and scale don't apply. */
   if (use_translate(rotation, scale)) {
-    std::cout << "USE TRANSLATE\n";
     translate_geometry_set(params, geometry_set, translation, *params.depsgraph());
   }
   else {
