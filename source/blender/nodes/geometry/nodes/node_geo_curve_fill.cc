@@ -195,10 +195,17 @@ static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
     }
   });
 
-  const OffsetIndices vert_groups = offset_indices::accumulate_counts_to_offsets(vert_groups_data);
-  const OffsetIndices edge_groups = offset_indices::accumulate_counts_to_offsets(edge_groups_data);
-  const OffsetIndices face_groups = offset_indices::accumulate_counts_to_offsets(face_groups_data);
-  const OffsetIndices loop_groups = offset_indices::accumulate_counts_to_offsets(loop_groups_data);
+  threading::parallel_invoke(
+      results.size() > 1000,
+      [&]() { offset_indices::accumulate_counts_to_offsets(vert_groups_data); },
+      [&]() { offset_indices::accumulate_counts_to_offsets(edge_groups_data); },
+      [&]() { offset_indices::accumulate_counts_to_offsets(face_groups_data); },
+      [&]() { offset_indices::accumulate_counts_to_offsets(loop_groups_data); });
+
+  const OffsetIndices<int> vert_groups(vert_groups_data);
+  const OffsetIndices<int> edge_groups(edge_groups_data);
+  const OffsetIndices<int> face_groups(face_groups_data);
+  const OffsetIndices<int> loop_groups(loop_groups_data);
 
   Mesh *mesh = BKE_mesh_new_nomain(vert_groups.total_size(),
                                    edge_groups.total_size(),
