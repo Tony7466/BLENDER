@@ -122,7 +122,7 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_or_field_socket(node.inputs['Offset'])
         self.assert_value_socket(node.outputs['Geometry'])
 
-        # Simple connections
+        # Simple connections.
 
         node = tree.nodes['Group Input Simple']
         self.assertEqual(node.bl_idname, "NodeGroupInput")
@@ -133,20 +133,20 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assertEqual(node.bl_idname, "NodeGroupOutput")
         self.assert_value_socket(node.inputs['Geometry'])
         self.assert_input_link_valid(node.inputs['Geometry'])
-        # Resolved as field socket
+        # Resolved as field socket.
         self.assert_field_socket(node.inputs['Socket'])
         self.assert_input_link_valid(node.inputs['Socket'])
 
         node = tree.nodes['Capture Attribute Simple']
         self.assertEqual(node.bl_idname, "GeometryNodeCaptureAttribute")
         self.assert_value_socket(node.inputs['Geometry'])
-        # Resolved as field socket
+        # Resolved as field socket.
         self.assert_field_socket(node.inputs['Value'])
         self.assert_input_link_valid(node.inputs['Value'])
         self.assert_value_socket(node.outputs['Geometry'])
         self.assert_field_socket(node.outputs['Attribute'])
 
-        # Single Value to Field
+        # Single Value to Field.
 
         node = tree.nodes['Domain Size Value']
         self.assertEqual(node.bl_idname, "GeometryNodeAttributeDomainSize")
@@ -173,7 +173,7 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_or_field_socket(node.inputs['Offset'])
         self.assert_value_socket(node.outputs['Geometry'])
 
-        # Field to Single Value
+        # Field to Single Value.
 
         node = tree.nodes['Capture Attribute Field']
         self.assertEqual(node.bl_idname, "GeometryNodeCaptureAttribute")
@@ -192,7 +192,7 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_socket(node.outputs['Mesh'])
         self.assert_field_socket(node.outputs['UV Map'])
 
-        # Simulation Zone
+        # Simulation Zone.
 
         node = tree.nodes['Simulation Input Zone1']
         self.assertEqual(node.bl_idname, "GeometryNodeSimulationInput")
@@ -212,13 +212,13 @@ class FieldTypeInferenceTest(unittest.TestCase):
 
         node = tree.nodes['Simulation Output Zone2']
         self.assertEqual(node.bl_idname, "GeometryNodeSimulationOutput")
-        # Input can still be a single value
+        # Input can still be a single value.
         self.assert_value_or_field_socket(node.inputs['Attribute'])
         self.assert_field_socket(node.outputs['Attribute'])
 
         node = tree.nodes['Simulation Input Zone3']
         self.assertEqual(node.bl_idname, "GeometryNodeSimulationInput")
-        # Input can still be a single value
+        # Input can still be a single value.
         self.assert_value_or_field_socket(node.inputs['Attribute'])
         self.assert_field_socket(node.outputs['Attribute'])
 
@@ -240,7 +240,7 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_input_link_valid(node.inputs['Attribute'])
         self.assert_field_socket(node.outputs['Attribute'])
 
-        # Zone Errors
+        # Zone Errors.
 
         node = tree.nodes['Simulation Input ZoneError1']
         self.assertEqual(node.bl_idname, "GeometryNodeSimulationInput")
@@ -282,7 +282,7 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_socket(node.inputs['Attribute'])
         self.assert_field_socket(node.outputs['Attribute'])
 
-        # Nested Zones
+        # Nested Zones.
 
         node = tree.nodes['Repeat Input NestedZone1']
         self.assertEqual(node.bl_idname, "GeometryNodeRepeatInput")
@@ -314,7 +314,7 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_or_field_socket(node.inputs['Attribute'])
         self.assert_field_socket(node.outputs['Attribute'])
 
-        # Nested Zones 2
+        # Nested Zones 2.
 
         node = tree.nodes['Repeat Input NestedZone2']
         self.assertEqual(node.bl_idname, "GeometryNodeRepeatInput")
@@ -346,7 +346,7 @@ class FieldTypeInferenceTest(unittest.TestCase):
         self.assert_value_or_field_socket(node.inputs['Attribute'])
         self.assert_field_socket(node.outputs['Attribute'])
 
-        # Zone Iteration
+        # Zone Iteration.
 
         node = tree.nodes['Simulation Input ZoneIterate1']
         self.assertEqual(node.bl_idname, "GeometryNodeSimulationInput")
