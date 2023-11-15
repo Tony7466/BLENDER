@@ -46,7 +46,6 @@
 #include "BKE_action.h"
 #include "BKE_anim_path.h"
 #include "BKE_animsys.h"
-#include "BKE_object_types.hh"
 #include "BKE_armature.h"
 #include "BKE_bvhutils.h"
 #include "BKE_cachefile.h"
@@ -65,6 +64,7 @@
 #include "BKE_mesh_runtime.hh"
 #include "BKE_movieclip.h"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_scene.h"
 #include "BKE_shrinkwrap.h"
 #include "BKE_tracking.h"
@@ -3850,7 +3850,8 @@ static void clampto_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *tar
     BKE_object_minmax(ct->tar, curveMin, curveMax, true);
 
     /* Get target-matrix. */
-    if (data->tar->runtime->curve_cache && data->tar->runtime->curve_cache->anim_path_accum_length) {
+    if (data->tar->runtime->curve_cache && data->tar->runtime->curve_cache->anim_path_accum_length)
+    {
       float vec[4], totmat[4][4];
       float curvetime;
       short clamp_axis;
