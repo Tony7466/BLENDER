@@ -336,19 +336,6 @@ BlendFileReadReport *BLO_read_lib_reports(BlendLibReader *reader);
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Blend Expand API
- *
- * BLO_expand has to be called for every data block that should be loaded. If the data block is
- * in a separate `.blend` file, it will be pulled from there.
- * \{ */
-
-void BLO_expand_id(BlendExpander *expander, struct ID *id);
-
-#define BLO_expand(expander, id) BLO_expand_id(expander, (struct ID *)id)
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Report API
  * \{ */
 
