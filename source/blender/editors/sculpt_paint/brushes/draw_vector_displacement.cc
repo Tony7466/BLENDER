@@ -193,7 +193,6 @@ void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PB
         for (const int i : range) {
           pbvh::mesh::Node face_node(*nodes[i]);
           calc_faces(sd, brush, object, face_node, tls, positions_orig);
-          break;
         }
       });
       break;
@@ -202,7 +201,6 @@ void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PB
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         for (const int i : range) {
           calc_grids(object, brush, *nodes[i]);
-          break;
         }
       });
       break;
@@ -210,7 +208,6 @@ void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PB
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         for (const int i : range) {
           calc_bmesh(object, brush, *nodes[i]);
-          break;
         }
       });
       break;
