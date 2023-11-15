@@ -13,8 +13,8 @@
 
 #include "BKE_context.h"
 #include "BKE_material.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 
 #include "BKE_screen.hh"
 

@@ -37,8 +37,8 @@
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -639,7 +639,7 @@ IDTypeInfo IDType_ID_VO = {
     /*main_listbase_index*/ INDEX_ID_VO,
     /*struct_size*/ sizeof(Volume),
     /*name*/ "Volume",
-    /*name_plural*/ "volumes",
+    /*name_plural*/ N_("volumes"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_VOLUME,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,

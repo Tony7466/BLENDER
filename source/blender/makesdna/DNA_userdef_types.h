@@ -81,7 +81,8 @@ typedef struct uiFontStyle {
   float shadowalpha;
   /** 1 value, typically white or black anyway. */
   float shadowcolor;
-  char _pad2[4];
+  /** Weight class 100-900, 400 is normal. */
+  int character_weight;
 } uiFontStyle;
 
 /* this is fed to the layout engine and widget code */
@@ -286,10 +287,11 @@ typedef struct ThemeSpace {
   unsigned char active[4], group[4], group_active[4], transform[4];
   unsigned char vertex[4], vertex_select[4], vertex_active[4], vertex_bevel[4],
       vertex_unreferenced[4];
-  unsigned char edge[4], edge_select[4];
+  unsigned char edge[4], edge_select[4], edge_mode_select[4];
   unsigned char edge_seam[4], edge_sharp[4], edge_facesel[4], edge_crease[4], edge_bevel[4];
   /** Solid faces. */
-  unsigned char face[4], face_select[4], face_retopology[4], face_back[4], face_front[4];
+  unsigned char face[4], face_select[4], face_mode_select[4], face_retopology[4];
+  unsigned char face_back[4], face_front[4];
   /** Selected color. */
   unsigned char face_dot[4];
   unsigned char extra_edge_len[4], extra_edge_angle[4], extra_face_angle[4], extra_face_area[4];
@@ -349,7 +351,6 @@ typedef struct ThemeSpace {
 
   unsigned char node_zone_simulation[4];
   unsigned char node_zone_repeat[4];
-  unsigned char _pad9[4];
   unsigned char simulated_frames[4];
 
   /** For sequence editor. */
@@ -377,7 +378,7 @@ typedef struct ThemeSpace {
   unsigned char path_keyframe_before[4], path_keyframe_after[4];
   unsigned char camera_path[4];
   unsigned char camera_passepartout[4];
-  unsigned char _pad1[6];
+  unsigned char _pad1[2];
 
   unsigned char gp_vertex_size;
   unsigned char gp_vertex[4], gp_vertex_select[4];
@@ -704,7 +705,6 @@ typedef struct UserDef_Experimental {
   char use_sculpt_tools_tilt;
   char use_extended_asset_browser;
   char use_override_templates;
-  char enable_eevee_next;
   char use_sculpt_texture_paint;
   char use_grease_pencil_version3;
   char enable_overlay_next;
@@ -712,7 +712,7 @@ typedef struct UserDef_Experimental {
   char use_shader_node_previews;
   char use_extension_repos;
 
-  char _pad[2];
+  char _pad[3];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
@@ -1281,7 +1281,6 @@ typedef enum eZoomFrame_Mode {
  * Auto-Keying flag
  * #UserDef.autokey_flag (not strictly used when autokeying only -
  * is also used when keyframing these days).
- * \note #eAutokey_Flag is used with a macro, search for lines like IS_AUTOKEY_FLAG(INSERTAVAIL).
  */
 typedef enum eAutokey_Flag {
   AUTOKEY_FLAG_INSERTAVAIL = (1 << 0),

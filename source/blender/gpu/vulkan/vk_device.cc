@@ -23,11 +23,18 @@ namespace blender::gpu {
 
 void VKDevice::deinit()
 {
+  if (!is_initialized()) {
+    return;
+  }
   VK_ALLOCATION_CALLBACKS;
   vkDestroyCommandPool(vk_device_, vk_command_pool_, vk_allocation_callbacks);
 
   dummy_buffer_.free();
-  sampler_.free();
+  if (dummy_color_attachment_.has_value()) {
+    delete &(*dummy_color_attachment_).get();
+    dummy_color_attachment_.reset();
+  }
+  samplers_.free();
   destroy_discarded_resources();
   vmaDestroyAllocator(mem_allocator_);
   mem_allocator_ = VK_NULL_HANDLE;
@@ -65,7 +72,7 @@ void VKDevice::init(void *ghost_context)
   init_command_pools();
   init_descriptor_pools();
 
-  sampler_.create();
+  samplers_.init();
 
   debug::object_label(device_get(), "LogicalDevice");
   debug::object_label(queue_get(), "GenericQueue");
@@ -85,11 +92,17 @@ void VKDevice::init_physical_device_properties()
 void VKDevice::init_physical_device_features()
 {
   BLI_assert(vk_physical_device_ != VK_NULL_HANDLE);
+
   VkPhysicalDeviceFeatures2 features = {};
   features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
   vk_physical_device_vulkan_11_features_.sType =
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+  vk_physical_device_vulkan_12_features_.sType =
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+
   features.pNext = &vk_physical_device_vulkan_11_features_;
+  vk_physical_device_vulkan_11_features_.pNext = &vk_physical_device_vulkan_12_features_;
+
   vkGetPhysicalDeviceFeatures2(vk_physical_device_, &features);
   vk_physical_device_features_ = features.features;
 }
@@ -130,9 +143,21 @@ void VKDevice::init_dummy_buffer(VKContext &context)
 
   dummy_buffer_.create(sizeof(float4x4),
                        GPU_USAGE_DEVICE_ONLY,
-                       static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                                                          VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   dummy_buffer_.clear(context, 0);
+}
+
+void VKDevice::init_dummy_color_attachment()
+{
+  if (dummy_color_attachment_.has_value()) {
+    return;
+  }
+
+  GPUTexture *texture = GPU_texture_create_2d(
+      "dummy_attachment", 1, 1, 1, GPU_R32F, GPU_TEXTURE_USAGE_ATTACHMENT, nullptr);
+  BLI_assert(texture);
+  VKTexture &vk_texture = *unwrap(unwrap(texture));
+  dummy_color_attachment_ = std::make_optional(std::reference_wrapper(vk_texture));
 }
 
 /* -------------------------------------------------------------------- */

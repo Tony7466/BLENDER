@@ -452,15 +452,8 @@ static SpaceLink *node_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 static void node_free(SpaceLink *sl)
 {
   SpaceNode *snode = (SpaceNode *)sl;
-
-  LISTBASE_FOREACH_MUTABLE (bNodeTreePath *, path, &snode->treepath) {
-    MEM_freeN(path);
-  }
-
-  if (snode->runtime) {
-    snode->runtime->linkdrag.reset();
-    MEM_delete(snode->runtime);
-  }
+  BLI_freelistN(&snode->treepath);
+  MEM_delete(snode->runtime);
 }
 
 /* spacetype; init callback */
@@ -568,9 +561,6 @@ static void node_area_listener(const wmSpaceTypeListenerParams *params)
         }
         case ND_TRANSFORM_DONE:
           node_area_tag_recalc_auto_compositing(snode, area);
-          break;
-        case ND_LAYER_CONTENT:
-          node_area_tag_tree_recalc(snode, area);
           break;
       }
       break;
@@ -1071,7 +1061,7 @@ static int /*eContextResult*/ node_context(const bContext *C,
   }
   if (CTX_data_equals(member, "selected_nodes")) {
     if (snode->edittree) {
-      LISTBASE_FOREACH_BACKWARD (bNode *, node, &snode->edittree->nodes) {
+      for (bNode *node : snode->edittree->all_nodes()) {
         if (node->flag & NODE_SELECT) {
           CTX_data_list_add(result, &snode->edittree->id, &RNA_Node, node);
         }

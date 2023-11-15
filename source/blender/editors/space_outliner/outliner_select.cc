@@ -35,8 +35,8 @@
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_report.h"
 #include "BKE_shader_fx.h"
@@ -54,8 +54,8 @@
 #include "ED_text.hh"
 #include "ED_undo.hh"
 
-#include "SEQ_select.h"
-#include "SEQ_sequencer.h"
+#include "SEQ_select.hh"
+#include "SEQ_sequencer.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
