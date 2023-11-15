@@ -83,15 +83,13 @@ static void calc_faces(const Sculpt &sd,
   clip_and_lock_translations(sd, ss, positions, verts, translations);
 
   if (ss.deform_modifiers_active) {
-    apply_crazyspace_translations(
-        translations,
+    apply_crazyspace_to_translations(
         {reinterpret_cast<const float3x3 *>(ss.deform_imats), positions.size()},
         verts,
-        positions_orig);
+        translations);
   }
-  else {
-    apply_translations(translations, verts, positions_orig);
-  }
+
+  apply_translations(translations, verts, positions_orig);
 
   // XXX: Maybe try not to tag verts with factor == 0.0f
   BKE_pbvh_vert_tag_update_normals(*ss.pbvh, verts);
@@ -187,7 +185,7 @@ void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PB
     case PBVH_FACES: {
       threading::EnumerableThreadSpecific<TLS> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);
-      MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
+      MutableSpan<float3> positions_orig = mesh_brush_positions_for_write(*object.sculpt, mesh);
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         TLS &tls = all_tls.local();
         for (const int i : range) {

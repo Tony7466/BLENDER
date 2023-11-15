@@ -6460,7 +6460,6 @@ void calc_brush_texture_factors(SculptSession &ss,
                                 const Span<int> verts,
                                 const MutableSpan<float> factors)
 {
-  BLI_assert(verts.size() == distances.size());
   BLI_assert(verts.size() == factors.size());
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
@@ -6483,7 +6482,6 @@ void calc_brush_texture_colors(SculptSession &ss,
                                const Span<float> factors,
                                const MutableSpan<float4> r_colors)
 {
-  BLI_assert(verts.size() == distances.size());
   BLI_assert(verts.size() == r_colors.size());
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
@@ -6540,14 +6538,12 @@ void apply_translations(const Span<float3> translations,
   }
 }
 
-void apply_crazyspace_translations(const Span<float3> translations,
-                                   const Span<float3x3> deform_imats,
-                                   const Span<int> verts,
-                                   const MutableSpan<float3> positions)
+void apply_crazyspace_to_translations(Span<float3x3> deform_imats,
+                                      Span<int> verts,
+                                      MutableSpan<float3> translations)
 {
   for (const int i : verts.index_range()) {
-    const int vert = verts[i];
-    positions[vert] += math::transform_point(deform_imats[vert], translations[i]);
+    translations[i] = math::transform_point(deform_imats[verts[i]], translations[i]);
   }
 }
 
@@ -6588,6 +6584,12 @@ void clip_and_lock_translations(const Sculpt &sd,
       translations[i][axis] = co_local[axis] - positions[vert][axis];
     }
   }
+}
+
+MutableSpan<float3> mesh_brush_positions_for_write(SculptSession &ss, Mesh & /*mesh*/)
+{
+  return {reinterpret_cast<float3 *>(BKE_pbvh_get_vert_positions(ss.pbvh)),
+          ss.vert_positions.size()};
 }
 
 }  // namespace blender::ed::sculpt_paint

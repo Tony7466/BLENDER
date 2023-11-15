@@ -1846,15 +1846,16 @@ void calc_mesh_automask(Object &object,
 
 void apply_translations(Span<float3> translations, Span<int> verts, MutableSpan<float3> positions);
 
-void apply_crazyspace_translations(Span<float3> translations,
-                                   Span<float3x3> deform_imats,
-                                   Span<int> verts,
-                                   MutableSpan<float3> positions);
+void apply_crazyspace_to_translations(Span<float3x3> deform_imats,
+                                      Span<int> verts,
+                                      MutableSpan<float3> translations);
 
 void clip_and_lock_translations(const Sculpt &sd,
                                 const SculptSession &ss,
                                 Span<float3> positions,
                                 Span<int> verts,
                                 MutableSpan<float3> translations);
+
+MutableSpan<float3> mesh_brush_positions_for_write(SculptSession &ss, Mesh &mesh);
 
 }
