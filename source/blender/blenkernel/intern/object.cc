@@ -3970,7 +3970,7 @@ bool BKE_object_minmax_dupli(Depsgraph *depsgraph,
     else {
       Object temp_ob = blender::dna::shallow_copy(*dob->ob);
       blender::bke::ObjectRuntime runtime = *dob->ob->runtime;
-      temp_ob->runtime = &runtime;
+      temp_ob.runtime = &runtime;
 
       /* Do not modify the original bounding-box. */
       temp_ob.runtime->bb = nullptr;
