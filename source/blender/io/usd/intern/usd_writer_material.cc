@@ -8,6 +8,8 @@
 #include "usd_exporter_context.h"
 #include "usd_hook.h"
 
+#include "hydra/image.h"
+
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_main.h"
@@ -812,33 +814,7 @@ static void export_texture(const USDExporterContext &usd_export_context, bNode *
     return;
   }
 
-  char usd_dir_path[FILE_MAX];
-  BLI_path_split_dir_part(export_path.c_str(), usd_dir_path, FILE_MAX);
-
-  char tex_dir_path[FILE_MAX];
-  BLI_path_join(tex_dir_path, FILE_MAX, usd_dir_path, "textures", SEP_STR);
-
-  BLI_dir_create_recursive(tex_dir_path);
-
-  const bool is_dirty = BKE_image_is_dirty(ima);
-  const bool is_generated = ima->source == IMA_SRC_GENERATED;
-  const bool is_packed = BKE_image_has_packedfile(ima);
-  const bool allow_overwrite = usd_export_context.export_params.overwrite_textures;
-
-  std::string dest_dir(tex_dir_path);
-
-  if (is_generated || is_dirty || is_packed) {
-    export_in_memory_texture(
-        ima, dest_dir, allow_overwrite, usd_export_context.export_params.worker_status->reports);
-  }
-  else if (ima->source == IMA_SRC_TILED) {
-    copy_tiled_textures(
-        ima, dest_dir, allow_overwrite, usd_export_context.export_params.worker_status->reports);
-  }
-  else {
-    copy_single_file(
-        ima, dest_dir, allow_overwrite, usd_export_context.export_params.worker_status->reports);
-  }
+  hydra::export_texture(ima, export_path, usd_export_context.export_params.overwrite_textures);
 }
 
 const pxr::TfToken token_for_input(const char *input_name)

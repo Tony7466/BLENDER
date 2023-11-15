@@ -18,4 +18,6 @@ std::string image_cache_file_path();
 std::string cache_or_get_image_file(Main *bmain, Scene *Scene, Image *image, ImageUser *iuser);
 std::string cache_image_color(float color[4]);
 
+std::string export_texture(Image *ima, const std::string &export_path, bool allow_overwrite);
+
 }  // namespace blender::io::hydra
