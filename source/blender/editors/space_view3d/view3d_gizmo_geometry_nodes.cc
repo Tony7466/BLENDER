@@ -541,11 +541,13 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           switch (gizmo_node.type) {
             case GEO_NODE_GIZMO_ARROW: {
               gz = WM_gizmo_new("GIZMO_GT_arrow_3d", gzgroup, nullptr);
+              WM_gizmo_set_line_width(gz, 1.0f);
               break;
             }
             case GEO_NODE_GIZMO_DIAL: {
               gz = WM_gizmo_new("GIZMO_GT_dial_3d", gzgroup, nullptr);
               WM_gizmo_set_flag(gz, WM_GIZMO_DRAW_VALUE, true);
+              WM_gizmo_set_line_width(gz, 2.0f);
               break;
             }
             default: {
