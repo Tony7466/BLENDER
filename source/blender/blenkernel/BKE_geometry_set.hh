@@ -137,7 +137,7 @@ struct GeometrySet {
 
  public:
   /**
-   * This is a user defined name for this geometry. It is not expected to be unique. It's main
+   * A user defined name for this geometry. It is not expected to be unique. Its main
    * purpose is help debugging instance trees. It may eventually also be used when exporting
    * instance trees or when creating separate objects from them.
    */
