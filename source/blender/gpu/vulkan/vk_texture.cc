@@ -359,6 +359,7 @@ bool VKTexture::init_internal()
 
 bool VKTexture::init_internal(GPUVertBuf *vbo)
 {
+  device_format_ = format_;
   if (!allocate()) {
     return false;
   }
@@ -534,7 +535,9 @@ bool VKTexture::allocate()
   return result == VK_SUCCESS;
 }
 
-void VKTexture::bind(int binding, shader::ShaderCreateInfo::Resource::BindType bind_type)
+void VKTexture::bind(int binding,
+                     shader::ShaderCreateInfo::Resource::BindType bind_type,
+                     const GPUSamplerState sampler_state)
 {
   VKContext &context = *VKContext::get();
   VKShader *shader = static_cast<VKShader *>(context.shader);
@@ -547,8 +550,9 @@ void VKTexture::bind(int binding, shader::ShaderCreateInfo::Resource::BindType b
       descriptor_set.image_bind(*this, *location);
     }
     else {
-      const VKDevice &device = VKBackend::get().device_get();
-      descriptor_set.bind(*this, *location, device.sampler_get());
+      VKDevice &device = VKBackend::get().device_get();
+      const VKSampler &sampler = device.samplers().get(sampler_state);
+      descriptor_set.bind(*this, *location, sampler);
     }
   }
 }
