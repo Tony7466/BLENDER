@@ -10,6 +10,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_colortools.h"
+#include "BKE_key.h"
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh.h"
@@ -89,7 +90,7 @@ static void calc_faces(const Sculpt &sd,
   }
 
   apply_translations(translations, verts, positions_orig);
-  if (KeyBlock *key = ss.shapekey_active) {
+  if (KeyBlock *key = BKE_keyblock_from_object(&object)) {
     apply_translations_to_shape_keys(object, *key, verts, translations);
   }
 
