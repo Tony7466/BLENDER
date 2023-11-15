@@ -99,7 +99,7 @@ static void node_point_distribute_points_on_faces_update(bNodeTree *ntree, bNode
 /**
  * Use an arbitrary choice of axes for a usable rotation attribute directly out of this node.
  */
-static math::Quaternion normal_to_euler_rotation(const float3 normal)
+static math::Quaternion normal_to_rotation(const float3 normal)
 {
   float quat[4];
   vec_to_quat(quat, normal, OB_NEGZ, OB_POSY);
@@ -400,7 +400,7 @@ static void compute_rotation_output(const Span<float3> normals,
 {
   threading::parallel_for(normals.index_range(), 512, [&](const IndexRange range) {
     for (const int i : range) {
-      r_rotations[i] = normal_to_euler_rotation(normals[i]);
+      r_rotations[i] = normal_to_rotation(normals[i]);
     }
   });
 }
