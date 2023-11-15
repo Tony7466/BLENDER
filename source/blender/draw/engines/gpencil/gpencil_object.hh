@@ -59,8 +59,8 @@ class ObjectModule {
   /** Forward vector used to sort gpencil objects. */
   float3 camera_forward_;
   float3 camera_pos_;
-  /** Scene current frame. */
-  float current_frame_ = 0;
+
+  const Scene *scene_ = nullptr;
 
   /** \note Needs not to be temporary variable since it is dereferenced later. */
   std::array<float4, 2> clear_colors_ = {float4(0.0f, 0.0f, 0.0f, 0.0f),
@@ -73,6 +73,7 @@ class ObjectModule {
   void init(const View3D *v3d, const Scene *scene)
   {
     const bool is_viewport = (v3d != nullptr);
+    scene_ = scene;
 
     if (is_viewport) {
       /* TODO(fclem): Avoid access to global DRW. */
@@ -93,11 +94,10 @@ class ObjectModule {
     }
   }
 
-  void begin_sync(Depsgraph *depsgraph, const View &main_view)
+  void begin_sync(Depsgraph * /*depsgraph*/, const View &main_view)
   {
     camera_forward_ = main_view.forward();
     camera_pos_ = main_view.location();
-    current_frame_ = DEG_get_ctime(depsgraph);
 
     is_object_fb_needed_ = false;
     is_layer_fb_needed_ = false;
@@ -116,7 +116,7 @@ class ObjectModule {
     using namespace blender::bke::greasepencil;
 
     Object *object = object_ref.object;
-    GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+    const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
     if (grease_pencil.drawings().is_empty()) {
       return;
@@ -157,9 +157,9 @@ class ObjectModule {
     object_subpass.state_set(state);
     object_subpass.shader_set(shaders_.static_shader_get(GREASE_PENCIL));
 
-    GPUVertBuf *position_tx = DRW_cache_grease_pencil_position_buffer_get(object, current_frame_);
-    GPUVertBuf *color_tx = DRW_cache_grease_pencil_color_buffer_get(object, current_frame_);
-    GPUBatch *geom = DRW_cache_grease_pencil_get(object, current_frame_);
+    GPUVertBuf *position_tx = DRW_cache_grease_pencil_position_buffer_get(scene_, object);
+    GPUVertBuf *color_tx = DRW_cache_grease_pencil_color_buffer_get(scene_, object);
+    GPUBatch *geom = DRW_cache_grease_pencil_get(scene_, object);
 
     /* TODO(fclem): Pass per frame object matrix here. */
     ResourceHandle handle = manager.resource_handle(object_ref);
@@ -196,7 +196,7 @@ class ObjectModule {
       object_subpass.draw(geom, handle);
     }
 
-    float4x4 plane_mat = get_object_plane_mat(object);
+    float4x4 plane_mat = get_object_plane_mat(*object);
     ResourceHandle handle_plane_mat = manager.resource_handle(plane_mat);
     object_subpass.framebuffer_set(&DRW_viewport_framebuffer_list_get()->depth_only_fb);
     object_subpass.state_set(DRW_STATE_DEPTH_LESS | DRW_STATE_WRITE_DEPTH);
@@ -266,7 +266,7 @@ class ObjectModule {
     return objects_buf_.size() > 0;
   }
 
-  float4x4 get_object_plane_mat(Object *object)
+  float4x4 get_object_plane_mat(const Object &object)
   {
     using namespace math;
     /* Find the normal most likely to represent the gpObject. */
@@ -274,18 +274,19 @@ class ObjectModule {
      * strokes not aligned with the object axes. Maybe we could try to
      * compute the minimum axis of all strokes. But this would be more
      * computationally heavy and should go into the GPData evaluation. */
-    const BoundBox *bbox = BKE_object_boundbox_get(object);
-    float4x4 object_to_world = float4x4(object->object_to_world);
+    BLI_assert(object.type == OB_GREASE_PENCIL);
+    const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
+    const std::optional<Bounds<float3>> bounds = grease_pencil.bounds_min_max();
+    if (!bounds) {
+      return float4x4::identity();
+    }
 
     /* Convert bbox to matrix */
-    float3 size;
-    float3 center;
-    BKE_boundbox_calc_size_aabb(bbox, size);
-    BKE_boundbox_calc_center_aabb(bbox, center);
-    /* Avoid division by 0.0 later. */
-    size += 1e-8f;
+    const float3 size = float3(bounds->max - bounds->min) + 1e-8f;
+    const float3 center = midpoint(bounds->min, bounds->max);
 
     /* BBox space to World. */
+    const float4x4 object_to_world = float4x4(object.object_to_world);
     float4x4 bbox_mat = object_to_world *
                         from_loc_rot_scale<float4x4>(center, Quaternion::identity(), size);
     float3 plane_normal;

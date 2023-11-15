@@ -34,7 +34,7 @@
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.hh"
@@ -5621,7 +5621,8 @@ static int add_vertex_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     Curve *cu;
     float location[3];
     const bool use_proj = ((vc.scene->toolsettings->snap_flag & SCE_SNAP) &&
-                           (vc.scene->toolsettings->snap_mode == SCE_SNAP_TO_FACE));
+                           (vc.scene->toolsettings->snap_mode &
+                            (SCE_SNAP_TO_FACE | SCE_SNAP_INDIVIDUAL_PROJECT)));
 
     Nurb *nu;
     BezTriple *bezt;
@@ -5702,7 +5703,12 @@ static int add_vertex_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     RNA_float_set_array(op->ptr, "location", location);
   }
 
-  return add_vertex_exec(C, op);
+  /* Support dragging to move after extrude, see: #114282. */
+  int retval = add_vertex_exec(C, op);
+  if (retval & OPERATOR_FINISHED) {
+    retval |= OPERATOR_PASS_THROUGH;
+  }
+  return WM_operator_flag_only_pass_through_on_press(retval, event);
 }
 
 void CURVE_OT_vertex_add(wmOperatorType *ot)

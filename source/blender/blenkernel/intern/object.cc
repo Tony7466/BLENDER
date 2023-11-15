@@ -76,7 +76,7 @@
 #include "BKE_camera.h"
 #include "BKE_collection.h"
 #include "BKE_constraint.h"
-#include "BKE_crazyspace.h"
+#include "BKE_crazyspace.hh"
 #include "BKE_curve.h"
 #include "BKE_curves.hh"
 #include "BKE_deform.h"
@@ -111,7 +111,7 @@
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
@@ -139,7 +139,7 @@
 #include "BLO_read_write.hh"
 #include "BLO_readfile.h"
 
-#include "SEQ_sequencer.h"
+#include "SEQ_sequencer.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -1056,7 +1056,7 @@ IDTypeInfo IDType_ID_OB = {
     /*main_listbase_index*/ INDEX_ID_OB,
     /*struct_size*/ sizeof(Object),
     /*name*/ "Object",
-    /*name_plural*/ "objects",
+    /*name_plural*/ N_("objects"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_OBJECT,
     /*flags*/ 0,
     /*asset_type_info*/ &AssetType_OB,
@@ -2637,6 +2637,7 @@ Object *BKE_object_duplicate(Main *bmain,
       }
       break;
     case OB_GPENCIL_LEGACY:
+    case OB_GREASE_PENCIL:
       if (dupflag & USER_DUP_GPENCIL) {
         id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag, copy_flags);
       }
@@ -3558,46 +3559,44 @@ void BKE_boundbox_minmax(const BoundBox *bb,
   }
 }
 
-const BoundBox *BKE_object_boundbox_get(Object *ob)
+std::optional<BoundBox> BKE_object_boundbox_get(Object *ob)
 {
-  BoundBox *bb = nullptr;
-
   switch (ob->type) {
     case OB_MESH:
-      bb = BKE_mesh_boundbox_get(ob);
-      break;
+      return BKE_mesh_boundbox_get(ob);
     case OB_CURVES_LEGACY:
     case OB_SURF:
     case OB_FONT:
-      bb = BKE_curve_boundbox_get(ob);
-      break;
+      return *BKE_curve_boundbox_get(ob);
     case OB_MBALL:
-      bb = BKE_mball_boundbox_get(ob);
-      break;
+      if (const BoundBox *bb = BKE_mball_boundbox_get(ob)) {
+        return *bb;
+      }
+      return std::nullopt;
     case OB_LATTICE:
-      bb = BKE_lattice_boundbox_get(ob);
-      break;
+      return *BKE_lattice_boundbox_get(ob);
     case OB_ARMATURE:
-      bb = BKE_armature_boundbox_get(ob);
-      break;
+      return *BKE_armature_boundbox_get(ob);
     case OB_GPENCIL_LEGACY:
-      bb = BKE_gpencil_boundbox_get(ob);
-      break;
+      return *BKE_gpencil_boundbox_get(ob);
     case OB_CURVES:
-      bb = BKE_curves_boundbox_get(ob);
-      break;
+      return BKE_curves_boundbox_get(ob);
     case OB_POINTCLOUD:
-      bb = BKE_pointcloud_boundbox_get(ob);
-      break;
+      return BKE_pointcloud_boundbox_get(ob);
     case OB_VOLUME:
-      bb = BKE_volume_boundbox_get(ob);
-      break;
+      return *BKE_volume_boundbox_get(ob);
     case OB_GREASE_PENCIL:
-      bb = BKE_grease_pencil_boundbox_get(ob);
-    default:
-      break;
+      return BKE_grease_pencil_boundbox_get(ob);
   }
-  return bb;
+  return std::nullopt;
+}
+
+std::optional<BoundBox> BKE_object_boundbox_eval_cached_get(Object *ob)
+{
+  if (ob->runtime.bb) {
+    return *ob->runtime.bb;
+  }
+  return BKE_object_boundbox_get(ob);
 }
 
 void BKE_object_boundbox_calc_from_mesh(Object *ob, const Mesh *me_eval)
@@ -3661,9 +3660,10 @@ bool BKE_object_boundbox_calc_from_evaluated_geometry(Object *ob)
  * \warning Setting dimensions is prone to feedback loops in evaluation.
  * \{ */
 
-void BKE_object_dimensions_get(Object *ob, float r_vec[3])
+static void boundbox_to_dimensions(const Object *ob,
+                                   const std::optional<BoundBox> bb,
+                                   float r_vec[3])
 {
-  const BoundBox *bb = BKE_object_boundbox_get(ob);
   if (bb) {
     float3 scale;
     mat4_to_size(scale, ob->object_to_world);
@@ -3677,14 +3677,23 @@ void BKE_object_dimensions_get(Object *ob, float r_vec[3])
   }
 }
 
+void BKE_object_dimensions_get(Object *ob, float r_vec[3])
+{
+  boundbox_to_dimensions(ob, BKE_object_boundbox_get(ob), r_vec);
+}
+
+void BKE_object_dimensions_eval_cached_get(Object *ob, float r_vec[3])
+{
+  boundbox_to_dimensions(ob, BKE_object_boundbox_eval_cached_get(ob), r_vec);
+}
+
 void BKE_object_dimensions_set_ex(Object *ob,
                                   const float value[3],
                                   int axis_mask,
                                   const float ob_scale_orig[3],
                                   const float ob_obmat_orig[4][4])
 {
-  const BoundBox *bb = BKE_object_boundbox_get(ob);
-  if (bb) {
+  if (const std::optional<BoundBox> bb = BKE_object_boundbox_get(ob)) {
     float3 len;
     len.x = bb->vec[4][0] - bb->vec[0][0];
     len.y = bb->vec[2][1] - bb->vec[0][1];
@@ -3728,7 +3737,7 @@ void BKE_object_minmax(Object *ob, float r_min[3], float r_max[3], const bool us
       break;
     }
     case OB_MESH: {
-      const BoundBox bb = *BKE_mesh_boundbox_get(ob);
+      const BoundBox bb = BKE_mesh_boundbox_get(ob);
       BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
       changed = true;
       break;
@@ -3772,13 +3781,13 @@ void BKE_object_minmax(Object *ob, float r_min[3], float r_max[3], const bool us
       break;
     }
     case OB_CURVES: {
-      const BoundBox bb = *BKE_curves_boundbox_get(ob);
+      const BoundBox bb = BKE_curves_boundbox_get(ob);
       BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
       changed = true;
       break;
     }
     case OB_POINTCLOUD: {
-      const BoundBox bb = *BKE_pointcloud_boundbox_get(ob);
+      const BoundBox bb = BKE_pointcloud_boundbox_get(ob);
       BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
       changed = true;
       break;
@@ -3790,7 +3799,7 @@ void BKE_object_minmax(Object *ob, float r_min[3], float r_max[3], const bool us
       break;
     }
     case OB_GREASE_PENCIL: {
-      const BoundBox bb = *BKE_grease_pencil_boundbox_get(ob);
+      const BoundBox bb = BKE_grease_pencil_boundbox_get(ob);
       BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
       changed = true;
       break;
@@ -3978,9 +3987,7 @@ bool BKE_object_minmax_dupli(Depsgraph *depsgraph,
       /* Do not modify the original bounding-box. */
       temp_ob.runtime.bb = nullptr;
       BKE_object_replace_data_on_shallow_copy(&temp_ob, dob->ob_data);
-      const BoundBox *bb = BKE_object_boundbox_get(&temp_ob);
-
-      if (bb) {
+      if (const std::optional<BoundBox> bb = BKE_object_boundbox_get(&temp_ob)) {
         int i;
         for (i = 0; i < 8; i++) {
           float3 vec;
@@ -4898,7 +4905,7 @@ int BKE_object_is_deform_modified(Scene *scene, Object *ob)
        md = md->next)
   {
     const ModifierTypeInfo *mti = BKE_modifier_get_info((const ModifierType)md->type);
-    bool can_deform = mti->type == eModifierTypeType_OnlyDeform || is_modifier_animated;
+    bool can_deform = mti->type == ModifierTypeType::OnlyDeform || is_modifier_animated;
 
     if (!can_deform) {
       can_deform = constructive_modifier_is_deform_modified(ob, md);

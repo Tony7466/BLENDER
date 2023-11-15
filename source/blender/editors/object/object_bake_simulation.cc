@@ -12,7 +12,7 @@
 #include "BLI_path_util.h"
 #include "BLI_serialize.hh"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_vector.hh"
 
 #include "PIL_time.h"
@@ -38,7 +38,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
 #include "BKE_pointcloud.h"

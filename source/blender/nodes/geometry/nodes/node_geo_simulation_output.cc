@@ -4,7 +4,7 @@
 
 #include "BLI_math_matrix.hh"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_task.hh"
 
 #include "BKE_attribute_math.hh"
@@ -14,7 +14,7 @@
 #include "BKE_context.h"
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_scene.h"
 

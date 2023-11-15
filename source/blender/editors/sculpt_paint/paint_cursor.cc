@@ -1065,14 +1065,14 @@ static void cursor_draw_tiling_preview(const uint gpuattr,
                                        Object *ob,
                                        const float radius)
 {
-  const BoundBox *bb = BKE_object_boundbox_get(ob);
+  const BoundBox bb = *BKE_object_boundbox_get(ob);
   float orgLoc[3], location[3];
   int tile_pass = 0;
   int start[3];
   int end[3];
   int cur[3];
-  const float *bbMin = bb->vec[0];
-  const float *bbMax = bb->vec[6];
+  const float *bbMin = bb.vec[0];
+  const float *bbMax = bb.vec[6];
   const float *step = sd->paint.tile_offset;
 
   copy_v3_v3(orgLoc, true_location);
@@ -1472,7 +1472,7 @@ static void paint_draw_2D_view_brush_cursor_default(PaintCursorContext *pcontext
 
 static void grease_pencil_eraser_draw(PaintCursorContext *pcontext)
 {
-  float radius = static_cast<float>(BKE_brush_size_get(pcontext->scene, pcontext->brush));
+  float radius = float(BKE_brush_size_get(pcontext->scene, pcontext->brush));
 
   /* Red-ish color with alpha. */
   immUniformColor4ub(255, 100, 100, 20);

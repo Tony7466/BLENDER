@@ -15,13 +15,14 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math_base_safe.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_multi_value_map.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 /* Define macros in `DNA_genfile.h`. */
@@ -73,7 +74,7 @@
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_nla.h"
 #include "BKE_node.hh"
 #include "BKE_screen.hh"
@@ -87,12 +88,12 @@
 
 #include "readfile.hh"
 
-#include "SEQ_channels.h"
-#include "SEQ_effects.h"
-#include "SEQ_iterator.h"
+#include "SEQ_channels.hh"
+#include "SEQ_effects.hh"
+#include "SEQ_iterator.hh"
 #include "SEQ_retiming.hh"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
 #include "NOD_socket.hh"
 
@@ -124,12 +125,12 @@ static void version_idproperty_move_data_int(IDPropertyUIDataInt *ui_data,
   IDProperty *soft_min = IDP_GetPropertyFromGroup(prop_ui_data, "soft_min");
   if (soft_min != nullptr) {
     ui_data->soft_min = IDP_coerce_to_int_or_zero(soft_min);
-    ui_data->soft_min = MIN2(ui_data->soft_min, ui_data->min);
+    ui_data->soft_min = std::min(ui_data->soft_min, ui_data->min);
   }
   IDProperty *soft_max = IDP_GetPropertyFromGroup(prop_ui_data, "soft_max");
   if (soft_max != nullptr) {
     ui_data->soft_max = IDP_coerce_to_int_or_zero(soft_max);
-    ui_data->soft_max = MAX2(ui_data->soft_max, ui_data->max);
+    ui_data->soft_max = std::max(ui_data->soft_max, ui_data->max);
   }
   IDProperty *step = IDP_GetPropertyFromGroup(prop_ui_data, "step");
   if (step != nullptr) {
@@ -165,12 +166,12 @@ static void version_idproperty_move_data_float(IDPropertyUIDataFloat *ui_data,
   IDProperty *soft_min = IDP_GetPropertyFromGroup(prop_ui_data, "soft_min");
   if (soft_min != nullptr) {
     ui_data->soft_min = IDP_coerce_to_double_or_zero(soft_min);
-    ui_data->soft_min = MAX2(ui_data->soft_min, ui_data->min);
+    ui_data->soft_min = std::max(ui_data->soft_min, ui_data->min);
   }
   IDProperty *soft_max = IDP_GetPropertyFromGroup(prop_ui_data, "soft_max");
   if (soft_max != nullptr) {
     ui_data->soft_max = IDP_coerce_to_double_or_zero(soft_max);
-    ui_data->soft_max = MIN2(ui_data->soft_max, ui_data->max);
+    ui_data->soft_max = std::min(ui_data->soft_max, ui_data->max);
   }
   IDProperty *step = IDP_GetPropertyFromGroup(prop_ui_data, "step");
   if (step != nullptr) {
@@ -3866,7 +3867,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 302, 14)) {
     /* Compensate for previously wrong squared distance. */
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      scene->r.bake.max_ray_distance = sasqrt(scene->r.bake.max_ray_distance);
+      scene->r.bake.max_ray_distance = safe_sqrtf(scene->r.bake.max_ray_distance);
     }
   }
 

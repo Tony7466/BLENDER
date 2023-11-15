@@ -25,6 +25,12 @@
 #include "bmesh.h"
 #include "pbvh_intern.hh"
 
+#include "PIL_time.h"
+
+#include "CLG_log.h"
+
+static CLG_LogRef LOG = {"pbvh.bmesh"};
+
 using blender::Array;
 using blender::IndexRange;
 using blender::Span;
@@ -193,25 +199,18 @@ static BMVert *bm_vert_hash_lookup_chain(GHash *deleted_verts, BMVert *v)
 
 /****************************** Building ******************************/
 
-/* Update node data after splitting. */
+/** Update node data after splitting. */
 static void pbvh_bmesh_node_finalize(PBVH *pbvh,
                                      const int node_index,
                                      const int cd_vert_node_offset,
                                      const int cd_face_node_offset)
 {
-  GSetIterator gs_iter;
   PBVHNode *n = &pbvh->nodes[node_index];
   bool has_visible = false;
 
-  /* Create vert hash sets. */
-  n->bm_unique_verts = BLI_gset_ptr_new("bm_unique_verts");
-  n->bm_other_verts = BLI_gset_ptr_new("bm_other_verts");
-
   BB_reset(&n->vb);
 
-  GSET_ITER (gs_iter, n->bm_faces) {
-    BMFace *f = static_cast<BMFace *>(BLI_gsetIterator_getKey(&gs_iter));
-
+  for (BMFace *f : n->bm_faces) {
     /* Update ownership of faces. */
     BM_ELEM_CD_SET_INT(f, cd_face_node_offset, node_index);
 
@@ -221,12 +220,12 @@ static void pbvh_bmesh_node_finalize(PBVH *pbvh,
 
     do {
       BMVert *v = l_iter->v;
-      if (!BLI_gset_haskey(n->bm_unique_verts, v)) {
+      if (!n->bm_unique_verts.contains(v)) {
         if (BM_ELEM_CD_GET_INT(v, cd_vert_node_offset) != DYNTOPO_NODE_NONE) {
-          BLI_gset_add(n->bm_other_verts, v);
+          n->bm_other_verts.add(v);
         }
         else {
-          BLI_gset_insert(n->bm_unique_verts, v);
+          n->bm_unique_verts.add(v);
           BM_ELEM_CD_SET_INT(v, cd_vert_node_offset, node_index);
         }
       }
@@ -251,14 +250,14 @@ static void pbvh_bmesh_node_finalize(PBVH *pbvh,
   n->flag |= PBVH_UpdateNormals;
 }
 
-/* Recursively split the node if it exceeds the leaf_limit. */
+/** Recursively split the node if it exceeds the leaf_limit. */
 static void pbvh_bmesh_node_split(PBVH *pbvh, const Span<BBC> bbc_array, int node_index)
 {
   const int cd_vert_node_offset = pbvh->cd_vert_node_offset;
   const int cd_face_node_offset = pbvh->cd_face_node_offset;
   PBVHNode *n = &pbvh->nodes[node_index];
 
-  if (BLI_gset_len(n->bm_faces) <= pbvh->leaf_limit) {
+  if (n->bm_faces.size() <= pbvh->leaf_limit) {
     /* Node limit not exceeded. */
     pbvh_bmesh_node_finalize(pbvh, node_index, cd_vert_node_offset, cd_face_node_offset);
     return;
@@ -267,9 +266,7 @@ static void pbvh_bmesh_node_split(PBVH *pbvh, const Span<BBC> bbc_array, int nod
   /* Calculate bounding box around primitive centroids. */
   BB cb;
   BB_reset(&cb);
-  GSetIterator gs_iter;
-  GSET_ITER (gs_iter, n->bm_faces) {
-    const BMFace *f = static_cast<const BMFace *>(BLI_gsetIterator_getKey(&gs_iter));
+  for (BMFace *f : n->bm_faces) {
     const BBC *bbc = &bbc_array[BM_elem_index_get(f)];
 
     BB_expand(&cb, bbc->bcentroid);
@@ -291,37 +288,36 @@ static void pbvh_bmesh_node_split(PBVH *pbvh, const Span<BBC> bbc_array, int nod
   PBVHNode *c1 = &pbvh->nodes[children], *c2 = &pbvh->nodes[children + 1];
   c1->flag |= PBVH_Leaf;
   c2->flag |= PBVH_Leaf;
-  c1->bm_faces = BLI_gset_ptr_new_ex("bm_faces", BLI_gset_len(n->bm_faces) / 2);
-  c2->bm_faces = BLI_gset_ptr_new_ex("bm_faces", BLI_gset_len(n->bm_faces) / 2);
+  c1->bm_faces.reserve(n->bm_faces.size() / 2);
+  c2->bm_faces.reserve(n->bm_faces.size() / 2);
 
   /* Partition the parent node's faces between the two children. */
-  GSET_ITER (gs_iter, n->bm_faces) {
-    BMFace *f = static_cast<BMFace *>(BLI_gsetIterator_getKey(&gs_iter));
+  for (BMFace *f : n->bm_faces) {
     const BBC *bbc = &bbc_array[BM_elem_index_get(f)];
 
     if (bbc->bcentroid[axis] < mid) {
-      BLI_gset_insert(c1->bm_faces, f);
+      c1->bm_faces.add(f);
     }
     else {
-      BLI_gset_insert(c2->bm_faces, f);
+      c2->bm_faces.add(f);
     }
   }
 
   /* Enforce at least one primitive in each node */
-  GSet *empty = nullptr, *other;
-  if (BLI_gset_len(c1->bm_faces) == 0) {
-    empty = c1->bm_faces;
-    other = c2->bm_faces;
+  blender::Set<BMFace *, 0> *empty = nullptr;
+  blender::Set<BMFace *, 0> *other;
+  if (c1->bm_faces.is_empty()) {
+    empty = &c1->bm_faces;
+    other = &c2->bm_faces;
   }
-  else if (BLI_gset_len(c2->bm_faces) == 0) {
-    empty = c2->bm_faces;
-    other = c1->bm_faces;
+  else if (c2->bm_faces.is_empty()) {
+    empty = &c2->bm_faces;
+    other = &c1->bm_faces;
   }
   if (empty) {
-    GSET_ITER (gs_iter, other) {
-      void *key = BLI_gsetIterator_getKey(&gs_iter);
-      BLI_gset_insert(empty, key);
-      BLI_gset_remove(other, key, nullptr);
+    for (BMFace *f : *other) {
+      empty->add(f);
+      other->remove(f);
       break;
     }
   }
@@ -329,32 +325,20 @@ static void pbvh_bmesh_node_split(PBVH *pbvh, const Span<BBC> bbc_array, int nod
   /* Clear this node */
 
   /* Mark this node's unique verts as unclaimed. */
-  if (n->bm_unique_verts) {
-    GSET_ITER (gs_iter, n->bm_unique_verts) {
-      BMVert *v = static_cast<BMVert *>(BLI_gsetIterator_getKey(&gs_iter));
-      BM_ELEM_CD_SET_INT(v, cd_vert_node_offset, DYNTOPO_NODE_NONE);
-    }
-    BLI_gset_free(n->bm_unique_verts, nullptr);
+  for (BMVert *v : n->bm_unique_verts) {
+    BM_ELEM_CD_SET_INT(v, cd_vert_node_offset, DYNTOPO_NODE_NONE);
   }
 
   /* Unclaim faces. */
-  GSET_ITER (gs_iter, n->bm_faces) {
-    BMFace *f = static_cast<BMFace *>(BLI_gsetIterator_getKey(&gs_iter));
+  for (BMFace *f : n->bm_faces) {
     BM_ELEM_CD_SET_INT(f, cd_face_node_offset, DYNTOPO_NODE_NONE);
   }
-  BLI_gset_free(n->bm_faces, nullptr);
-
-  if (n->bm_other_verts) {
-    BLI_gset_free(n->bm_other_verts, nullptr);
-  }
+  n->bm_faces.clear_and_shrink();
 
   if (n->layer_disp) {
     MEM_freeN(n->layer_disp);
   }
 
-  n->bm_faces = nullptr;
-  n->bm_unique_verts = nullptr;
-  n->bm_other_verts = nullptr;
   n->layer_disp = nullptr;
 
   if (n->draw_batches) {
@@ -376,11 +360,11 @@ static void pbvh_bmesh_node_split(PBVH *pbvh, const Span<BBC> bbc_array, int nod
   n->orig_vb = n->vb;
 }
 
-/* Recursively split the node if it exceeds the leaf_limit. */
+/** Recursively split the node if it exceeds the leaf_limit. */
 static bool pbvh_bmesh_node_limit_ensure(PBVH *pbvh, int node_index)
 {
-  GSet *bm_faces = pbvh->nodes[node_index].bm_faces;
-  const int faces_num = BLI_gset_len(bm_faces);
+  PBVHNode &node = pbvh->nodes[node_index];
+  const int faces_num = node.bm_faces.size();
   if (faces_num <= pbvh->leaf_limit) {
     /* Node limit not exceeded */
     return false;
@@ -392,10 +376,8 @@ static bool pbvh_bmesh_node_limit_ensure(PBVH *pbvh, int node_index)
   /* For each BMFace, store the AABB and AABB centroid. */
   Array<BBC> bbc_array(faces_num);
 
-  GSetIterator gs_iter;
-  int i;
-  GSET_ITER_INDEX (gs_iter, bm_faces, i) {
-    BMFace *f = static_cast<BMFace *>(BLI_gsetIterator_getKey(&gs_iter));
+  int i = 0;
+  for (BMFace *f : node.bm_faces) {
     BBC *bbc = &bbc_array[i];
 
     BB_reset((BB *)bbc);
@@ -408,7 +390,9 @@ static bool pbvh_bmesh_node_limit_ensure(PBVH *pbvh, int node_index)
 
     /* So we can do direct lookups on 'bbc_array'. */
     BM_elem_index_set(f, i); /* set_dirty! */
+    i++;
   }
+
   /* Likely this is already dirty. */
   pbvh->header.bm->elem_index_dirty |= BM_FACE;
 
@@ -457,7 +441,7 @@ static BMVert *pbvh_bmesh_vert_create(PBVH *pbvh,
 
   BLI_assert((pbvh->nodes.size() == 1 || node_index) && node_index <= pbvh->nodes.size());
 
-  /* Avoid initializing customdata because its quite involved. */
+  /* Avoid initializing custom-data because its quite involved. */
   BMVert *v = BM_vert_create(pbvh->header.bm, co, nullptr, BM_CREATE_NOP);
 
   BM_data_interp_from_verts(pbvh->header.bm, v1, v2, v, 0.5f);
@@ -465,7 +449,7 @@ static BMVert *pbvh_bmesh_vert_create(PBVH *pbvh,
   /* This value is logged below. */
   copy_v3_v3(v->no, no);
 
-  BLI_gset_insert(node->bm_unique_verts, v);
+  node->bm_unique_verts.add(v);
   BM_ELEM_CD_SET_INT(v, pbvh->cd_vert_node_offset, node_index);
 
   node->flag |= PBVH_UpdateDrawBuffers | PBVH_UpdateBB | PBVH_TopologyUpdated;
@@ -494,7 +478,7 @@ static BMFace *pbvh_bmesh_face_create(PBVH *pbvh,
       pbvh->header.bm, v_tri.data(), e_tri.data(), 3, f_example, BM_CREATE_NOP);
   f->head.hflag = f_example->head.hflag;
 
-  BLI_gset_insert(node->bm_faces, f);
+  node->bm_faces.add(f);
   BM_ELEM_CD_SET_INT(f, pbvh->cd_face_node_offset, node_index);
 
   node->flag |= PBVH_UpdateDrawBuffers | PBVH_UpdateNormals | PBVH_TopologyUpdated;
@@ -531,7 +515,7 @@ static int pbvh_bmesh_node_vert_use_count_at_most(PBVH *pbvh,
   return count;
 }
 
-/* Return a node that uses vertex 'v' other than its current owner. */
+/** Return a node that uses vertex `v` other than its current owner. */
 static PBVHNode *pbvh_bmesh_vert_other_node_find(PBVH *pbvh, BMVert *v)
 {
   PBVHNode *current_node = pbvh_bmesh_node_from_vert(pbvh, v);
@@ -557,13 +541,13 @@ static void pbvh_bmesh_vert_ownership_transfer(PBVH *pbvh, PBVHNode *new_owner, 
   BLI_assert(current_owner != new_owner);
 
   /* Remove current ownership. */
-  BLI_gset_remove(current_owner->bm_unique_verts, v, nullptr);
+  current_owner->bm_unique_verts.remove(v);
 
   /* Set new ownership */
   BM_ELEM_CD_SET_INT(v, pbvh->cd_vert_node_offset, new_owner - pbvh->nodes.data());
-  BLI_gset_insert(new_owner->bm_unique_verts, v);
-  BLI_gset_remove(new_owner->bm_other_verts, v, nullptr);
-  BLI_assert(!BLI_gset_haskey(new_owner->bm_other_verts, v));
+  new_owner->bm_unique_verts.add(v);
+  new_owner->bm_other_verts.remove(v);
+  BLI_assert(!new_owner->bm_other_verts.contains(v));
 
   new_owner->flag |= PBVH_UpdateDrawBuffers | PBVH_UpdateBB | PBVH_TopologyUpdated;
 }
@@ -574,7 +558,7 @@ static void pbvh_bmesh_vert_remove(PBVH *pbvh, BMVert *v)
   int f_node_index_prev = DYNTOPO_NODE_NONE;
 
   PBVHNode *v_node = pbvh_bmesh_node_from_vert(pbvh, v);
-  BLI_gset_remove(v_node->bm_unique_verts, v, nullptr);
+  v_node->bm_unique_verts.remove(v);
   BM_ELEM_CD_SET_INT(v, pbvh->cd_vert_node_offset, DYNTOPO_NODE_NONE);
 
   /* Have to check each neighboring face's node. */
@@ -590,10 +574,10 @@ static void pbvh_bmesh_vert_remove(PBVH *pbvh, BMVert *v)
       f_node->flag |= PBVH_UpdateDrawBuffers | PBVH_UpdateBB | PBVH_TopologyUpdated;
 
       /* Remove current ownership. */
-      BLI_gset_remove(f_node->bm_other_verts, v, nullptr);
+      f_node->bm_other_verts.remove(v);
 
-      BLI_assert(!BLI_gset_haskey(f_node->bm_unique_verts, v));
-      BLI_assert(!BLI_gset_haskey(f_node->bm_other_verts, v));
+      BLI_assert(!f_node->bm_unique_verts.contains(v));
+      BLI_assert(!f_node->bm_other_verts.contains(v));
     }
   }
   BM_FACES_OF_VERT_ITER_END;
@@ -609,7 +593,7 @@ static void pbvh_bmesh_face_remove(PBVH *pbvh, BMFace *f)
   do {
     BMVert *v = l_iter->v;
     if (pbvh_bmesh_node_vert_use_count_is_equal(pbvh, f_node, v, 1)) {
-      if (BLI_gset_haskey(f_node->bm_unique_verts, v)) {
+      if (f_node->bm_unique_verts.contains(v)) {
         /* Find a different node that uses 'v'. */
         PBVHNode *new_node;
 
@@ -622,13 +606,13 @@ static void pbvh_bmesh_face_remove(PBVH *pbvh, BMFace *f)
       }
       else {
         /* Remove from other verts. */
-        BLI_gset_remove(f_node->bm_other_verts, v, nullptr);
+        f_node->bm_other_verts.remove(v);
       }
     }
   } while ((l_iter = l_iter->next) != l_first);
 
   /* Remove face from node and top level. */
-  BLI_gset_remove(f_node->bm_faces, f, nullptr);
+  f_node->bm_faces.remove(f);
   BM_ELEM_CD_SET_INT(f, pbvh->cd_face_node_offset, DYNTOPO_NODE_NONE);
 
   /* Log removed face. */
@@ -645,7 +629,7 @@ static Array<BMLoop *> pbvh_bmesh_edge_loops(BMEdge *e)
   if (LIKELY(BM_edge_loop_pair(e, &manifold_loops[0], &manifold_loops[1]))) {
     return Array<BMLoop *>(Span(manifold_loops));
   }
-  Array<BMLoop *> loops;
+  Array<BMLoop *> loops(BM_edge_face_count(e));
   BM_iter_as_array(
       nullptr, BM_LOOPS_OF_EDGE, e, reinterpret_cast<void **>(loops.data()), loops.size());
   return loops;
@@ -760,7 +744,7 @@ static bool edge_queue_tri_in_circle(const EdgeQueue *q, BMFace *f)
   return len_squared_v3v3(q->center_proj, c) <= q->radius_squared;
 }
 
-/* Return true if the vertex mask is less than 1.0, false otherwise. */
+/** Return true if the vertex mask is less than 1.0, false otherwise. */
 static bool check_mask(EdgeQueueContext *eq_ctx, BMVert *v)
 {
   return BM_ELEM_CD_GET_FLOAT(v, eq_ctx->cd_vert_mask_offset) < 1.0f;
@@ -790,6 +774,83 @@ static void edge_queue_insert(EdgeQueueContext *eq_ctx, BMEdge *e, float priorit
   }
 }
 
+/** Return true if the edge is a boundary edge: both its vertices are on a boundary. */
+static bool is_boundary_edge(const BMEdge &edge)
+{
+  if (edge.head.hflag & BM_ELEM_SEAM) {
+    return true;
+  }
+  if ((edge.head.hflag & BM_ELEM_SMOOTH) == 0) {
+    return true;
+  }
+  if (!BM_edge_is_manifold(&edge)) {
+    return true;
+  }
+
+  /* TODO(@sergey): Other boundaries? For example, edges between two different face sets. */
+
+  return false;
+}
+
+/* Return true if the vertex is adjacent to a boundary edge. */
+static bool is_boundary_vert(const BMVert &vertex)
+{
+  BMEdge *edge = vertex.e;
+  BMEdge *first_edge = edge;
+  do {
+    if (is_boundary_edge(*edge)) {
+      return true;
+    }
+  } while ((edge = BM_DISK_EDGE_NEXT(edge, &vertex)) != first_edge);
+
+  return false;
+}
+
+/** Return true if at least one of the edge vertices is adjacent to a boundary. */
+static bool is_edge_adjacent_to_boundary(const BMEdge &edge)
+{
+  return is_boundary_vert(*edge.v1) || is_boundary_vert(*edge.v2);
+}
+
+/* Notes on edge priority.
+ *
+ * The priority is used to control the order in which edges are handled for both splitting of long
+ * edges and collapsing of short edges. For long edges we start by splitting the longest edge and
+ * for collapsing we start with the shortest.
+ *
+ * A heap-like data structure is used to accelerate such ordering. A bit confusingly, this data
+ * structure gives the higher priorities to elements with lower numbers.
+ *
+ * When edges do not belong to and are not adjacent to boundaries, their length is used as the
+ * priority directly. Prefer to handle those edges first. Modifying those edges leads to no
+ * distortion to the boundary.
+ *
+ * Edges adjacent to a boundary with one vertex are handled next, and the vertex which is
+ * on the boundary does not change position as part of the edge collapse algorithm.
+ *
+ * And last, the boundary edges are handled. While subdivision of boundary edges does not change
+ * the shape of the boundary, collapsing boundary edges distorts the boundary. Hence they are
+ * handled last. */
+
+static float long_edge_queue_priority(const BMEdge &edge)
+{
+  return -BM_edge_calc_length_squared(&edge);
+}
+
+static float short_edge_queue_priority(const BMEdge &edge)
+{
+  float priority = BM_edge_calc_length_squared(&edge);
+
+  if (is_boundary_edge(edge)) {
+    priority *= 1.5f;
+  }
+  else if (is_edge_adjacent_to_boundary(edge)) {
+    priority *= 1.25f;
+  }
+
+  return priority;
+}
+
 static void long_edge_queue_edge_add(EdgeQueueContext *eq_ctx, BMEdge *e)
 {
 #ifdef USE_EDGEQUEUE_TAG
@@ -798,7 +859,7 @@ static void long_edge_queue_edge_add(EdgeQueueContext *eq_ctx, BMEdge *e)
   {
     const float len_sq = BM_edge_calc_length_squared(e);
     if (len_sq > eq_ctx->q->limit_len_squared) {
-      edge_queue_insert(eq_ctx, e, -len_sq);
+      edge_queue_insert(eq_ctx, e, long_edge_queue_priority(*e));
     }
   }
 }
@@ -821,7 +882,7 @@ static void long_edge_queue_edge_add_recursive(
   if (EDGE_QUEUE_TEST(l_edge->e) == false)
 #  endif
   {
-    edge_queue_insert(eq_ctx, l_edge->e, -len_sq);
+    edge_queue_insert(eq_ctx, l_edge->e, long_edge_queue_priority(*l_edge->e));
   }
 
   /* temp support previous behavior! */
@@ -869,7 +930,7 @@ static void short_edge_queue_edge_add(EdgeQueueContext *eq_ctx, BMEdge *e)
   {
     const float len_sq = BM_edge_calc_length_squared(e);
     if (len_sq < eq_ctx->q->limit_len_squared) {
-      edge_queue_insert(eq_ctx, e, len_sq);
+      edge_queue_insert(eq_ctx, e, short_edge_queue_priority(*e));
     }
   }
 }
@@ -975,19 +1036,15 @@ static void long_edge_queue_create(EdgeQueueContext *eq_ctx,
     if ((node.flag & PBVH_Leaf) && (node.flag & PBVH_UpdateTopology) &&
         !(node.flag & PBVH_FullyHidden))
     {
-      GSetIterator gs_iter;
-
-      /* Check each face. */
-      GSET_ITER (gs_iter, node.bm_faces) {
-        BMFace *f = static_cast<BMFace *>(BLI_gsetIterator_getKey(&gs_iter));
-
+      for (BMFace *f : node.bm_faces) {
         long_edge_queue_face_add(eq_ctx, f);
       }
     }
   }
 }
 
-/* Create a priority queue containing vertex pairs connected by a
+/**
+ * Create a priority queue containing vertex pairs connected by a
  * short edge as defined by PBVH.bm_min_edge_len.
  *
  * Only nodes marked for topology update are checked, and in those
@@ -1033,12 +1090,7 @@ static void short_edge_queue_create(EdgeQueueContext *eq_ctx,
     if ((node.flag & PBVH_Leaf) && (node.flag & PBVH_UpdateTopology) &&
         !(node.flag & PBVH_FullyHidden))
     {
-      GSetIterator gs_iter;
-
-      /* Check each face */
-      GSET_ITER (gs_iter, node.bm_faces) {
-        BMFace *f = static_cast<BMFace *>(BLI_gsetIterator_getKey(&gs_iter));
-
+      for (BMFace *f : node.bm_faces) {
         short_edge_queue_face_add(eq_ctx, f);
       }
     }
@@ -1057,6 +1109,19 @@ static void copy_edge_data(BMesh &bm, BMEdge &dst, /*const*/ BMEdge &src)
 {
   dst.head.hflag = src.head.hflag & ~BM_ELEM_TAG;
   CustomData_bmesh_copy_data(&bm.edata, &bm.edata, src.head.data, &dst.head.data);
+}
+
+/* Merge edge custom data from src to dst. */
+static void merge_edge_data(BMesh &bm, BMEdge &dst, const BMEdge &src)
+{
+  dst.head.hflag |= (src.head.hflag & ~(BM_ELEM_TAG | BM_ELEM_SMOOTH));
+
+  /* If either of the src or dst is sharp the result is sharp. */
+  if ((src.head.hflag & BM_ELEM_SMOOTH) == 0) {
+    dst.head.hflag &= ~BM_ELEM_SMOOTH;
+  }
+
+  BM_data_interp_from_edges(&bm, &src, &dst, &dst, 0.5f);
 }
 
 static void pbvh_bmesh_split_edge(EdgeQueueContext *eq_ctx, PBVH *pbvh, BMEdge *e)
@@ -1097,8 +1162,7 @@ static void pbvh_bmesh_split_edge(EdgeQueueContext *eq_ctx, PBVH *pbvh, BMEdge *
       pbvh_bmesh_vert_ownership_transfer(pbvh, &pbvh->nodes[ni], v_new);
     }
 
-    /**
-     * The 2 new faces created and assigned to `f_new` have their
+    /* The 2 new faces created and assigned to `f_new` have their
      * verts & edges shuffled around.
      *
      * - faces wind anticlockwise in this example.
@@ -1148,8 +1212,8 @@ static void pbvh_bmesh_split_edge(EdgeQueueContext *eq_ctx, PBVH *pbvh, BMEdge *
     BM_face_kill(bm, f_adj);
 
     /* Ensure new vertex is in the node */
-    if (!BLI_gset_haskey(pbvh->nodes[ni].bm_unique_verts, v_new)) {
-      BLI_gset_add(pbvh->nodes[ni].bm_other_verts, v_new);
+    if (!pbvh->nodes[ni].bm_unique_verts.contains(v_new)) {
+      pbvh->nodes[ni].bm_other_verts.add(v_new);
     }
 
     if (BM_vert_edge_count_is_over(v_opp, 8)) {
@@ -1166,6 +1230,8 @@ static void pbvh_bmesh_split_edge(EdgeQueueContext *eq_ctx, PBVH *pbvh, BMEdge *
 
 static bool pbvh_bmesh_subdivide_long_edges(EdgeQueueContext *eq_ctx, PBVH *pbvh)
 {
+  const double start_time = PIL_check_seconds_timer();
+
   bool any_subdivided = false;
 
   while (!BLI_heapsimple_is_empty(eq_ctx->q->heap)) {
@@ -1206,19 +1272,285 @@ static bool pbvh_bmesh_subdivide_long_edges(EdgeQueueContext *eq_ctx, PBVH *pbvh
   pbvh_bmesh_edge_tag_verify(pbvh);
 #endif
 
+  CLOG_INFO(
+      &LOG, 2, "Long edge subdivision took %f seconds.", PIL_check_seconds_timer() - start_time);
+
   return any_subdivided;
+}
+
+/** Check whether the \a vert is adjacent to any face which are adjacent to the #edge. */
+static bool vert_in_face_adjacent_to_edge(BMVert &vert, BMEdge &edge)
+{
+  BMIter bm_iter;
+  BMFace *face;
+  BM_ITER_ELEM (face, &bm_iter, &edge, BM_FACES_OF_EDGE) {
+    if (BM_vert_in_face(&vert, face)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Merge attributes of a flap face into an edge which will remain after the edge collapse in
+ * #pbvh_bmesh_collapse_edge.
+ *
+ * This function is to be called before faces adjacent to \a e are deleted.
+ * This function only handles edge attributes and does not handle face deletion.
+ *
+ * \param del_face: Face which is adjacent to \a v_del and will form a flap when merging \a v_del
+ * to \a v_conn.
+ * \param flap_face: Face which is adjacent to \a v_conn and will form a flap when merging \a v_del
+ * to \a v_conn.
+ * \param e: An edge which is being collapsed. It connects \a v_del and \a v_conn.
+ * \param v_del: A vertex which will be removed after the edge collapse.
+ * \param l_del: A loop of del_face which is adjacent to v_del.
+ * \param v_conn: A vertex which into which geometry is reconnected to after the edge collapse.
+ */
+static void merge_flap_edge_data(BMesh &bm,
+                                 BMFace *del_face,
+                                 BMFace *flap_face,
+                                 BMEdge *e,
+                                 BMVert *v_del,
+                                 BMLoop *l_del,
+                                 BMVert *v_conn)
+{
+  /*
+   *                                       v_del
+   *                                      +
+   *          del_face        .        /  |
+   *                .               /     |
+   *        .                    /        |
+   * v1 +---------------------+ v2        |
+   *        .                    \        |
+   *                .               \     |
+   *                          .        \  |
+   *          flap_face                   +
+   *                                       v_conn
+   *
+   *
+   */
+
+  UNUSED_VARS_NDEBUG(del_face, flap_face);
+
+  /* Faces around `e` (which connects `v_del` to `v_conn`) are to the handled separately from this
+   * function. Help troubleshooting cases where these faces are mistakenly considered flaps. */
+  BLI_assert(!BM_edge_in_face(e, del_face));
+  BLI_assert(!BM_edge_in_face(e, flap_face));
+
+  /* The `l_del->next->v` and `l_del->prev->v` are v1 and v2, but in an unknown order. */
+  BMEdge *edge_v1_v2 = BM_edge_exists(l_del->next->v, l_del->prev->v);
+  if (!edge_v1_v2) {
+    CLOG_WARN(&LOG, "Unable to find edge shared between deleting and flap faces");
+    return;
+  }
+
+  BLI_assert(BM_edge_in_face(edge_v1_v2, del_face));
+  BLI_assert(BM_edge_in_face(edge_v1_v2, flap_face));
+
+  /* Disambiguate v1 from v2: the v2 is adjacent to a face around #e. */
+  BMVert *v2 = vert_in_face_adjacent_to_edge(*edge_v1_v2->v1, *e) ? edge_v1_v2->v1 :
+                                                                    edge_v1_v2->v2;
+  BMVert *v1 = BM_edge_other_vert(edge_v1_v2, v2);
+
+  /* Merge attributes into an edge (v1, v_conn). */
+  BMEdge *dst_edge = BM_edge_exists(v1, v_conn);
+
+  const std::array<const BMEdge *, 4> source_edges{
+      /* Edges of the `flap_face`.
+       * The face will be deleted, effectively being "collapsed" into an edge. */
+      edge_v1_v2,
+      BM_edge_exists(v2, v_conn),
+
+      /* Edges of the `del_face`.
+       * These edges are implicitly merged with the ones from the `flap_face` upon collapsing edge
+       * `e`. */
+      BM_edge_exists(v1, v_del),
+      BM_edge_exists(v2, v_del),
+  };
+
+  for (const BMEdge *src_edge : source_edges) {
+    if (!src_edge) {
+      CLOG_WARN(&LOG, "Unable to find source edge for flap attributes merge");
+      continue;
+    }
+
+    merge_edge_data(bm, *dst_edge, *src_edge);
+  }
+}
+
+/**
+ * Find vertex which can be an outer for the flap face: the vertex will become loose when the face
+ * and its edges are removed.
+ * If there are multiple of such vertices, return null.
+ */
+static BMVert *find_outer_flap_vert(BMFace &face)
+{
+  BMVert *flap_vert = nullptr;
+
+  BMIter bm_iter;
+  BMVert *vert;
+  BM_ITER_ELEM (vert, &bm_iter, &face, BM_VERTS_OF_FACE) {
+    if (BM_vert_face_count_at_most(vert, 2) == 1) {
+      if (flap_vert) {
+        /* There are multiple vertices which become loose on removing the face and its edges.*/
+        return nullptr;
+      }
+      flap_vert = vert;
+    }
+  }
+
+  return flap_vert;
+}
+
+/**
+ * If the `del_face` is a flap, merge edge data from edges adjacent to "corner" vertex into the
+ * other edge. The "corner" as it is an "outer", or a vertex which will become loose when the
+ * `del_face` and its edges are removed.
+ *
+ * If the face is not a flap then this function does nothing.
+ */
+static void try_merge_flap_edge_data_before_dissolve(BMesh &bm, BMFace &face)
+{
+  /*
+   *           v1                  v2
+   * ... ------ + ----------------- + ------ ...
+   *             \                 /
+   *               \             /
+   *                 \         /
+   *                   \     /
+   *                     \ /
+   *                      + v_flap
+   */
+
+  BMVert *v_flap = find_outer_flap_vert(face);
+  if (!v_flap) {
+    return;
+  }
+
+  BMLoop *l_flap = BM_vert_find_first_loop(v_flap);
+  BLI_assert(l_flap->v == v_flap);
+
+  /* Edges which are adjacent ot the v_flap. */
+  BMEdge *edge_1 = l_flap->prev->e;
+  BMEdge *edge_2 = l_flap->e;
+
+  BLI_assert(BM_edge_face_count(edge_1) == 1);
+  BLI_assert(BM_edge_face_count(edge_2) == 1);
+
+  BMEdge *edge_v1_v2 = l_flap->next->e;
+
+  merge_edge_data(bm, *edge_v1_v2, *edge_1);
+  merge_edge_data(bm, *edge_v1_v2, *edge_2);
+}
+
+/**
+ * Merge attributes of edges from \a v_del to \a f
+ *
+ * This function is to be called before faces adjacent to \a e are deleted.
+ * This function only handles edge attributes. and does not handle face deletion.
+ *
+ * \param del_face: Face which is adjacent to \a v_del and will be deleted as part of merging
+ * \a v_del to \a v_conn.
+ * \param new_face: A new face which is created from \a del_face by replacing \a v_del with
+ * \a v_conn.
+ * \param v_del: A vertex which will be removed after the edge collapse.
+ * \param l_del: A loop of del_face which is adjacent to v_del.
+ * \param v_conn: A vertex which into which geometry is reconnected to after the edge collapse.
+ */
+static void merge_face_edge_data(BMesh &bm,
+                                 BMFace * /*del_face*/,
+                                 BMFace *new_face,
+                                 BMVert *v_del,
+                                 BMLoop *l_del,
+                                 BMVert *v_conn)
+{
+  /* When collapsing an edge (v_conn, v_del) a face (v_conn, v2, v_del) is to be deleted and the
+   * v_del reference in the face (v_del, v2, v1) is to be replaced with v_conn. Doing vertex
+   * reference replacement in BMesh is not trivial. so for the simplicity the
+   * #pbvh_bmesh_collapse_edge deletes both original faces and creates new one (c_conn, v2, v1).
+   *
+   * When doing such re-creating attributes from old edges are to be merged into the new ones:
+   *   - Attributes of (v_del, v1) needs to be merged into (v_conn, v1),
+   *   - Attributes of (v_del, v2) needs to be merged into (v_conn, v2),
+   *
+   * <pre>
+   *
+   *            v2
+   *             +
+   *            /|\
+   *           / | \
+   *          /  |  \
+   *         /   |   \
+   *        /    |    \
+   *       /     |     \
+   *      /      |      \
+   *     +-------+-------+
+   *  v_conn   v_del      v1
+   *
+   * </pre>
+   */
+
+  /* The l_del->next->v and l_del->prev->v are v1 and v2, but in an unknown order. */
+  BMEdge *edge_v1_v2 = BM_edge_exists(l_del->next->v, l_del->prev->v);
+  if (!edge_v1_v2) {
+    CLOG_WARN(&LOG, "Unable to find edge shared between old and new faces");
+    return;
+  }
+
+  BMIter bm_iter;
+  BMEdge *dst_edge;
+  BM_ITER_ELEM (dst_edge, &bm_iter, new_face, BM_EDGES_OF_FACE) {
+    if (dst_edge == edge_v1_v2) {
+      continue;
+    }
+
+    BLI_assert(BM_vert_in_edge(dst_edge, v_conn));
+
+    /* Depending on an edge v_other will be v1 or v2. */
+    BMVert *v_other = BM_edge_other_vert(dst_edge, v_conn);
+
+    BMEdge *src_edge = BM_edge_exists(v_del, v_other);
+    BLI_assert(src_edge);
+
+    if (src_edge) {
+      merge_edge_data(bm, *dst_edge, *src_edge);
+    }
+    else {
+      CLOG_WARN(&LOG, "Unable to find edge to merge attributes from");
+    }
+  }
 }
 
 static void pbvh_bmesh_collapse_edge(
     PBVH *pbvh, BMEdge *e, BMVert *v1, BMVert *v2, GHash *deleted_verts, EdgeQueueContext *eq_ctx)
 {
   BMesh &bm = *pbvh->header.bm;
-  /* Prefer deleting the vertex that is less masked. */
+
+  const bool v1_on_boundary = is_boundary_vert(*v1);
+  const bool v2_on_boundary = is_boundary_vert(*v2);
+
   BMVert *v_del;
   BMVert *v_conn;
-  if (BM_ELEM_CD_GET_FLOAT(v1, eq_ctx->cd_vert_mask_offset) <
-      BM_ELEM_CD_GET_FLOAT(v2, eq_ctx->cd_vert_mask_offset))
+  if (v1_on_boundary || v2_on_boundary) {
+    /* Boundary edges can be collapsed with minimal distortion. For those it does not
+     * matter too much which vertex to keep and which one to remove.
+     *
+     * For edges which are adjacent to boundaries, keep the vertex which is on boundary and
+     * dissolve the other one. */
+    if (v1_on_boundary) {
+      v_del = v2;
+      v_conn = v1;
+    }
+    else {
+      v_del = v1;
+      v_conn = v2;
+    }
+  }
+  else if (BM_ELEM_CD_GET_FLOAT(v1, eq_ctx->cd_vert_mask_offset) <
+           BM_ELEM_CD_GET_FLOAT(v2, eq_ctx->cd_vert_mask_offset))
   {
+    /* Prefer deleting the vertex that is less masked. */
     v_del = v1;
     v_conn = v2;
   }
@@ -1229,6 +1561,38 @@ static void pbvh_bmesh_collapse_edge(
 
   /* Remove the merge vertex from the PBVH. */
   pbvh_bmesh_vert_remove(pbvh, v_del);
+
+  /* For all remaining faces of v_del, create a new face that is the
+   * same except it uses v_conn instead of v_del */
+  /* NOTE: this could be done with BM_vert_splice(), but that requires handling other issues like
+   * duplicate edges, so it wouldn't really buy anything. */
+  Vector<BMFace *, 16> deleted_faces;
+
+  BMLoop *l;
+  BM_LOOPS_OF_VERT_ITER_BEGIN (l, v_del) {
+    BMFace *f_del = l->f;
+
+    /* Ignore faces around `e`: they will be deleted explicitly later on.
+     * Without ignoring these faces the #bm_face_exists_tri_from_loop_vert() triggers an assert. */
+    if (BM_edge_in_face(e, f_del)) {
+      continue;
+    }
+
+    /* Schedule the faces adjacent to the v_del for deletion first.
+     * This way we know that it will be #existing_face which is deleted last when deleting faces
+     * which forms a flap. */
+    deleted_faces.append(f_del);
+
+    /* Check if a face using these vertices already exists. If so, skip adding this face and mark
+     * the existing one for deletion as well. Prevents extraneous "flaps" from being created.
+     * Check is similar to #BM_face_exists. */
+    if (BMFace *existing_face = bm_face_exists_tri_from_loop_vert(l->next, v_conn)) {
+      merge_flap_edge_data(bm, f_del, existing_face, e, v_del, l, v_conn);
+
+      deleted_faces.append(existing_face);
+    }
+  }
+  BM_LOOPS_OF_VERT_ITER_END;
 
   /* Remove all faces adjacent to the edge. */
   BMLoop *l_adj;
@@ -1243,23 +1607,12 @@ static void pbvh_bmesh_collapse_edge(
   BLI_assert(BM_edge_is_wire(e));
   BM_edge_kill(&bm, e);
 
-  /* For all remaining faces of v_del, create a new face that is the
-   * same except it uses v_conn instead of v_del */
-  /* NOTE: this could be done with BM_vert_splice(), but that
-   * requires handling other issues like duplicate edges, so doesn't
-   * really buy anything. */
-  Vector<BMFace *, 16> deleted_faces;
-
-  BMLoop *l;
   BM_LOOPS_OF_VERT_ITER_BEGIN (l, v_del) {
     /* Get vertices, replace use of v_del with v_conn */
     BMFace *f = l->f;
 
-    /* Check if a face using these vertices already exists. If so, skip adding this face and mark
-     * the existing one for deletion as well. Prevents extraneous "flaps" from being created.
-     * Check is similar to #BM_face_exists. */
-    if (BMFace *existing_face = bm_face_exists_tri_from_loop_vert(l->next, v_conn)) {
-      deleted_faces.append(existing_face);
+    if (bm_face_exists_tri_from_loop_vert(l->next, v_conn)) {
+      /* This case is handled above. */
     }
     else {
       const std::array<BMVert *, 3> v_tri{v_conn, l->next->v, l->prev->v};
@@ -1268,15 +1621,15 @@ static void pbvh_bmesh_collapse_edge(
       PBVHNode *n = pbvh_bmesh_node_from_face(pbvh, f);
       int ni = n - pbvh->nodes.data();
       const std::array<BMEdge *, 3> e_tri = bm_edges_from_tri(&bm, v_tri);
-      pbvh_bmesh_face_create(pbvh, ni, v_tri, e_tri, f);
+      BMFace *new_face = pbvh_bmesh_face_create(pbvh, ni, v_tri, e_tri, f);
+
+      merge_face_edge_data(bm, f, new_face, v_del, l, v_conn);
 
       /* Ensure that v_conn is in the new face's node */
-      if (!BLI_gset_haskey(n->bm_unique_verts, v_conn)) {
-        BLI_gset_add(n->bm_other_verts, v_conn);
+      if (!n->bm_unique_verts.contains(v_conn)) {
+        n->bm_other_verts.add(v_conn);
       }
     }
-
-    deleted_faces.append(f);
   }
   BM_LOOPS_OF_VERT_ITER_END;
 
@@ -1287,6 +1640,11 @@ static void pbvh_bmesh_collapse_edge(
     BMLoop *l_iter = BM_FACE_FIRST_LOOP(f_del);
     const std::array<BMVert *, 3> v_tri{l_iter->v, l_iter->next->v, l_iter->next->next->v};
     const std::array<BMEdge *, 3> e_tri{l_iter->e, l_iter->next->e, l_iter->next->next->e};
+
+    /* if its sa flap face merge its "outer" edge data into "base", so that boundary is propagated
+     * from edges which are about to be deleted to the base of the triangle and will stay attached
+     * to the mesh. */
+    try_merge_flap_edge_data_before_dissolve(bm, *f_del);
 
     /* Remove the face */
     pbvh_bmesh_face_remove(pbvh, f_del);
@@ -1317,14 +1675,19 @@ static void pbvh_bmesh_collapse_edge(
     }
   }
 
-  /* Move v_conn to the midpoint of v_conn and v_del (if v_conn still exists, it
-   * may have been deleted above). */
-  if (v_conn != nullptr) {
+  /* If the v_conn was not removed above move it to the midpoint of v_conn and v_del. Doing so
+   *  helps avoiding long stretched and degenerated triangles.
+   *
+   * However, if the vertex is on a boundary, do not move it to preserve the shape of the
+   * boundary. */
+  if (v_conn != nullptr && !is_boundary_vert(*v_conn)) {
     BM_log_vert_before_modified(pbvh->bm_log, v_conn, eq_ctx->cd_vert_mask_offset);
     mid_v3_v3v3(v_conn->co, v_conn->co, v_del->co);
     add_v3_v3(v_conn->no, v_del->no);
     normalize_v3(v_conn->no);
+  }
 
+  if (v_conn != nullptr) {
     /* Update bounding boxes attached to the connected vertex.
      * Note that we can often get-away without this but causes #48779. */
     BM_LOOPS_OF_VERT_ITER_BEGIN (l, v_conn) {
@@ -1344,6 +1707,8 @@ static void pbvh_bmesh_collapse_edge(
 
 static bool pbvh_bmesh_collapse_short_edges(EdgeQueueContext *eq_ctx, PBVH *pbvh)
 {
+  const double start_time = PIL_check_seconds_timer();
+
   const float min_len_squared = pbvh->bm_min_edge_len * pbvh->bm_min_edge_len;
   bool any_collapsed = false;
   /* Deleted verts point to vertices they were merged into, or nullptr when removed. */
@@ -1392,6 +1757,9 @@ static bool pbvh_bmesh_collapse_short_edges(EdgeQueueContext *eq_ctx, PBVH *pbvh
 
   BLI_ghash_free(deleted_verts, nullptr, nullptr);
 
+  CLOG_INFO(
+      &LOG, 2, "Short edge collapse took %f seconds.", PIL_check_seconds_timer() - start_time);
+
   return any_collapsed;
 }
 
@@ -1410,8 +1778,6 @@ bool pbvh_bmesh_node_raycast(PBVHNode *node,
   float nearest_vertex_co[3] = {0.0f};
 
   use_original = use_original && node->bm_tot_ortri;
-
-  GSetIterator gs_iter;
 
   if (use_original && node->bm_tot_ortri) {
     for (int i = 0; i < node->bm_tot_ortri; i++) {
@@ -1443,9 +1809,7 @@ bool pbvh_bmesh_node_raycast(PBVHNode *node,
     }
   }
   else {
-    GSET_ITER (gs_iter, node->bm_faces) {
-      BMFace *f = static_cast<BMFace *>(BLI_gsetIterator_getKey(&gs_iter));
-
+    for (BMFace *f : node->bm_faces) {
       BLI_assert(f->len == 3);
 
       if (!BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
@@ -1491,13 +1855,10 @@ bool BKE_pbvh_bmesh_node_raycast_detail(PBVHNode *node,
     return false;
   }
 
-  GSetIterator gs_iter;
   bool hit = false;
   BMFace *f_hit = nullptr;
 
-  GSET_ITER (gs_iter, node->bm_faces) {
-    BMFace *f = static_cast<BMFace *>(BLI_gsetIterator_getKey(&gs_iter));
-
+  for (BMFace *f : node->bm_faces) {
     BLI_assert(f->len == 3);
     if (!BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
       BMVert *v_tri[3];
@@ -1549,11 +1910,7 @@ bool pbvh_bmesh_node_nearest_to_ray(PBVHNode *node,
     }
   }
   else {
-    GSetIterator gs_iter;
-
-    GSET_ITER (gs_iter, node->bm_faces) {
-      BMFace *f = static_cast<BMFace *>(BLI_gsetIterator_getKey(&gs_iter));
-
+    for (BMFace *f : node->bm_faces) {
       BLI_assert(f->len == 3);
       if (!BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
         BMVert *v_tri[3];
@@ -1572,17 +1929,14 @@ void pbvh_bmesh_normals_update(Span<PBVHNode *> nodes)
 {
   for (PBVHNode *node : nodes) {
     if (node->flag & PBVH_UpdateNormals) {
-      GSetIterator gs_iter;
-
-      GSET_ITER (gs_iter, node->bm_faces) {
-        BM_face_normal_update(static_cast<BMFace *>(BLI_gsetIterator_getKey(&gs_iter)));
+      for (BMFace *face : node->bm_faces) {
+        BM_face_normal_update(face);
       }
-      GSET_ITER (gs_iter, node->bm_unique_verts) {
-        BM_vert_normal_update(static_cast<BMVert *>(BLI_gsetIterator_getKey(&gs_iter)));
+      for (BMVert *vert : node->bm_unique_verts) {
+        BM_vert_normal_update(vert);
       }
-      /* This should be unneeded normally */
-      GSET_ITER (gs_iter, node->bm_other_verts) {
-        BM_vert_normal_update(static_cast<BMVert *>(BLI_gsetIterator_getKey(&gs_iter)));
+      for (BMVert *vert : node->bm_other_verts) {
+        BM_vert_normal_update(vert);
       }
       node->flag &= ~PBVH_UpdateNormals;
     }
@@ -1730,11 +2084,7 @@ static void pbvh_bmesh_create_nodes_fast_recursive(
     bool has_visible = false;
 
     n->flag = PBVH_Leaf;
-    n->bm_faces = BLI_gset_ptr_new_ex("bm_faces", node->totface);
-
-    /* Create vert hash sets */
-    n->bm_unique_verts = BLI_gset_ptr_new("bm_unique_verts");
-    n->bm_other_verts = BLI_gset_ptr_new("bm_other_verts");
+    n->bm_faces.reserve(node->totface);
 
     BB_reset(&n->vb);
 
@@ -1745,7 +2095,7 @@ static void pbvh_bmesh_create_nodes_fast_recursive(
       BBC *bbc = &bbc_array[BM_elem_index_get(f)];
 
       /* Update ownership of faces. */
-      BLI_gset_insert(n->bm_faces, f);
+      n->bm_faces.add_new(f);
       BM_ELEM_CD_SET_INT(f, cd_face_node_offset, node_index);
 
       /* Update vertices. */
@@ -1753,12 +2103,12 @@ static void pbvh_bmesh_create_nodes_fast_recursive(
       BMLoop *l_iter = l_first;
       do {
         BMVert *v = l_iter->v;
-        if (!BLI_gset_haskey(n->bm_unique_verts, v)) {
+        if (!n->bm_unique_verts.contains(v)) {
           if (BM_ELEM_CD_GET_INT(v, cd_vert_node_offset) != DYNTOPO_NODE_NONE) {
-            BLI_gset_add(n->bm_other_verts, v);
+            n->bm_other_verts.add(v);
           }
           else {
-            BLI_gset_insert(n->bm_unique_verts, v);
+            n->bm_unique_verts.add(v);
             BM_ELEM_CD_SET_INT(v, cd_vert_node_offset, node_index);
           }
         }
@@ -1955,9 +2305,9 @@ void BKE_pbvh_bmesh_node_save_orig(BMesh *bm, BMLog *log, PBVHNode *node, bool u
     return;
   }
 
-  const int totvert = BLI_gset_len(node->bm_unique_verts) + BLI_gset_len(node->bm_other_verts);
+  const int totvert = node->bm_unique_verts.size() + node->bm_other_verts.size();
 
-  const int tottri = BLI_gset_len(node->bm_faces);
+  const int tottri = node->bm_faces.size();
 
   node->bm_orco = static_cast<float(*)[3]>(
       MEM_mallocN(sizeof(*node->bm_orco) * totvert, __func__));
@@ -1967,9 +2317,7 @@ void BKE_pbvh_bmesh_node_save_orig(BMesh *bm, BMLog *log, PBVHNode *node, bool u
 
   /* Copy out the vertices and assign a temporary index. */
   int i = 0;
-  GSetIterator gs_iter;
-  GSET_ITER (gs_iter, node->bm_unique_verts) {
-    BMVert *v = static_cast<BMVert *>(BLI_gsetIterator_getKey(&gs_iter));
+  for (BMVert *v : node->bm_unique_verts) {
     const float *origco = BM_log_original_vert_co(log, v);
 
     if (use_original && origco) {
@@ -1983,8 +2331,7 @@ void BKE_pbvh_bmesh_node_save_orig(BMesh *bm, BMLog *log, PBVHNode *node, bool u
     BM_elem_index_set(v, i); /* set_dirty! */
     i++;
   }
-  GSET_ITER (gs_iter, node->bm_other_verts) {
-    BMVert *v = static_cast<BMVert *>(BLI_gsetIterator_getKey(&gs_iter));
+  for (BMVert *v : node->bm_other_verts) {
     const float *origco = BM_log_original_vert_co(log, v);
 
     if (use_original && origco) {
@@ -2003,13 +2350,10 @@ void BKE_pbvh_bmesh_node_save_orig(BMesh *bm, BMLog *log, PBVHNode *node, bool u
 
   /* Copy the triangles */
   i = 0;
-  GSET_ITER (gs_iter, node->bm_faces) {
-    BMFace *f = static_cast<BMFace *>(BLI_gsetIterator_getKey(&gs_iter));
-
+  for (BMFace *f : node->bm_faces) {
     if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
       continue;
     }
-
     bm_face_as_array_index_tri(f, node->bm_ortri[i]);
     i++;
   }
@@ -2042,17 +2386,17 @@ void BKE_pbvh_node_mark_topology_update(PBVHNode *node)
   node->flag |= PBVH_UpdateTopology;
 }
 
-GSet *BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node)
+const blender::Set<BMVert *, 0> &BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node)
 {
   return node->bm_unique_verts;
 }
 
-GSet *BKE_pbvh_bmesh_node_other_verts(PBVHNode *node)
+const blender::Set<BMVert *, 0> &BKE_pbvh_bmesh_node_other_verts(PBVHNode *node)
 {
   return node->bm_other_verts;
 }
 
-GSet *BKE_pbvh_bmesh_node_faces(PBVHNode *node)
+const blender::Set<BMFace *, 0> &BKE_pbvh_bmesh_node_faces(PBVHNode *node)
 {
   return node->bm_faces;
 }
@@ -2141,8 +2485,8 @@ static void pbvh_bmesh_verify(PBVH *pbvh)
     int totface = 0, totvert = 0;
     for (int i = 0; i < pbvh->totnode; i++) {
       PBVHNode *n = &pbvh->nodes[i];
-      totface += n->bm_faces ? BLI_gset_len(n->bm_faces) : 0;
-      totvert += n->bm_unique_verts ? BLI_gset_len(n->bm_unique_verts) : 0;
+      totface += n->bm_faces.is_empty() ? n->bm_faces.size() : 0;
+      totvert += n->bm_unique_verts ? n->bm_unique_verts.size() : 0;
     }
 
     BLI_assert(totface == BLI_gset_len(faces_all));
@@ -2160,7 +2504,7 @@ static void pbvh_bmesh_verify(PBVH *pbvh)
       BLI_assert(n->flag & PBVH_Leaf);
 
       /* Check that the face's node knows it owns the face. */
-      BLI_assert(BLI_gset_haskey(n->bm_faces, f));
+      BLI_assert(n->bm_faces.contains(f));
 
       /* Check the face's vertices... */
       BM_ITER_ELEM (v, &bm_iter, f, BM_VERTS_OF_FACE) {
@@ -2251,8 +2595,7 @@ static void pbvh_bmesh_verify(PBVH *pbvh)
     if (n->flag & PBVH_Leaf) {
       GSetIterator gs_iter;
 
-      GSET_ITER (gs_iter, n->bm_faces) {
-        BMFace *f = BLI_gsetIterator_getKey(&gs_iter);
+      for (BMFace *f : n->bm_faces) {
         PBVHNode *n_other = pbvh_bmesh_node_lookup(pbvh, f);
         BLI_assert(n == n_other);
         BLI_assert(BLI_gset_haskey(faces_all, f));
