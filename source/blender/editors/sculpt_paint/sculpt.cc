@@ -6586,6 +6586,40 @@ void clip_and_lock_translations(const Sculpt &sd,
   }
 }
 
+void apply_translations_to_shape_keys(Object &object,
+                                      KeyBlock &key,
+                                      const Span<int> verts,
+                                      const Span<float3> translations)
+{
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  const int active_key = object.shapenr - 1;
+
+  /* For relative keys editing of base should update other keys. */
+  if (bool *dependent = BKE_keyblock_get_dependent_keys(mesh.key, active_key)) {
+    /* Apply offsets on other keys. */
+    int i;
+    LISTBASE_FOREACH_INDEX (KeyBlock *, other_key, &mesh.key->block, i) {
+      if ((other_key != &key) && dependent[i]) {
+        // BKE_keyblock_update_from_offset(ob, other_key, ofs);
+        MutableSpan<float3> data(static_cast<float3 *>(other_key->data), other_key->totelem);
+        apply_translations(translations, verts, data);
+      }
+    }
+
+    MEM_freeN(dependent);
+  }
+
+  /* Modifying of basis key should update mesh. */
+  // if (&key == me->key->refkey) {
+  //   BKE_mesh_vert_coords_apply(me, vertCos);
+  // }
+  apply_translations(translations, verts, mesh.vert_positions_for_write());
+
+  /* Apply new coords on active key block, no need to re-allocate kb->data here! */
+  MutableSpan<float3> data(static_cast<float3 *>(key.data), key.totelem);
+  apply_translations(translations, verts, data);
+}
+
 MutableSpan<float3> mesh_brush_positions_for_write(SculptSession &ss, Mesh & /*mesh*/)
 {
   return {reinterpret_cast<float3 *>(BKE_pbvh_get_vert_positions(ss.pbvh)),

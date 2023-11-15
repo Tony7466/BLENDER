@@ -1858,4 +1858,9 @@ void clip_and_lock_translations(const Sculpt &sd,
 
 MutableSpan<float3> mesh_brush_positions_for_write(SculptSession &ss, Mesh &mesh);
 
+void apply_translations_to_shape_keys(Object &object,
+                                      KeyBlock &key,
+                                      Span<int> verts,
+                                      Span<float3> translations);
+
 }

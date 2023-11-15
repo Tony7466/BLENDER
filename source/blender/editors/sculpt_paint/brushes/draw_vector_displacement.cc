@@ -90,6 +90,9 @@ static void calc_faces(const Sculpt &sd,
   }
 
   apply_translations(translations, verts, positions_orig);
+  if (KeyBlock *key = ss.shapekey_active) {
+    apply_translations_to_shape_keys(object, *key, verts, translations);
+  }
 
   // XXX: Maybe try not to tag verts with factor == 0.0f
   BKE_pbvh_vert_tag_update_normals(*ss.pbvh, verts);
