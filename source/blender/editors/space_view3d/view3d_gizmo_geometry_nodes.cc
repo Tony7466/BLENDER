@@ -690,7 +690,7 @@ void VIEW3D_GGT_geometry_nodes(wmGizmoGroupType *gzgt)
   gzgt->name = "Geometry Nodes Widgets";
   gzgt->idname = "VIEW3D_GGT_geometry_nodes";
 
-  gzgt->flag |= (WM_GIZMOGROUPTYPE_PERSISTENT | WM_GIZMOGROUPTYPE_3D | WM_GIZMOGROUPTYPE_DEPTH_3D);
+  gzgt->flag |= (WM_GIZMOGROUPTYPE_PERSISTENT | WM_GIZMOGROUPTYPE_3D);
 
   gzgt->poll = WIDGETGROUP_geometry_nodes_poll;
   gzgt->setup = WIDGETGROUP_geometry_nodes_setup;
