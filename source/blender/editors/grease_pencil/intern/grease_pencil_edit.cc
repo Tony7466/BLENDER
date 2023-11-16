@@ -1193,14 +1193,14 @@ enum class CapsMode : int8_t {
   ROUND,
 };
 
-static void toggle_caps(MutableSpan<int8_t> caps, const IndexMask &selection)
+static void toggle_caps(MutableSpan<int8_t> caps, const IndexMask &strokes)
 {
-  selection.foreach_index([&](const int i) {
-    if (caps[i] == GP_STROKE_CAP_FLAT) {
-      caps[i] = GP_STROKE_CAP_ROUND;
+  strokes.foreach_index([&](const int stroke_i) {
+    if (caps[stroke_i] == GP_STROKE_CAP_FLAT) {
+      caps[stroke_i] = GP_STROKE_CAP_ROUND;
     }
     else {
-      caps[i] = GP_STROKE_CAP_FLAT;
+      caps[stroke_i] = GP_STROKE_CAP_FLAT;
     }
   });
 }
@@ -1218,8 +1218,9 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
     IndexMaskMemory memory;
-    const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
-    if (selected_curves.is_empty()) {
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
+        *object, info.drawing, memory);
+    if (strokes.is_empty()) {
       return;
     }
 
@@ -1234,8 +1235,8 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
       const int8_t flag_set = (mode == CapsMode::ROUND) ? int8_t(GP_STROKE_CAP_TYPE_ROUND) :
                                                           int8_t(GP_STROKE_CAP_TYPE_FLAT);
 
-      index_mask::masked_fill(start_caps.span, flag_set, selected_curves);
-      index_mask::masked_fill(end_caps.span, flag_set, selected_curves);
+      index_mask::masked_fill(start_caps.span, flag_set, strokes);
+      index_mask::masked_fill(end_caps.span, flag_set, strokes);
       start_caps.finish();
       end_caps.finish();
     }
@@ -1244,14 +1245,14 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
         case CapsMode::START: {
           bke::SpanAttributeWriter<int8_t> caps = attributes.lookup_or_add_for_write_span<int8_t>(
               "start_cap", ATTR_DOMAIN_CURVE);
-          toggle_caps(caps.span, selected_curves);
+          toggle_caps(caps.span, strokes);
           caps.finish();
           break;
         }
         case CapsMode::END: {
           bke::SpanAttributeWriter<int8_t> caps = attributes.lookup_or_add_for_write_span<int8_t>(
               "end_cap", ATTR_DOMAIN_CURVE);
-          toggle_caps(caps.span, selected_curves);
+          toggle_caps(caps.span, strokes);
           caps.finish();
           break;
         }
