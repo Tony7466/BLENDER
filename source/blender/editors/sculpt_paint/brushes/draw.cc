@@ -13,7 +13,7 @@
 #include "BKE_key.h"
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh.hh"
 
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
@@ -83,11 +83,8 @@ static void calc_faces(const Sculpt &sd,
 
   clip_and_lock_translations(sd, ss, positions, verts, translations);
 
-  if (ss.deform_imats) {
-    apply_crazyspace_to_translations(
-        {reinterpret_cast<const float3x3 *>(ss.deform_imats), positions.size()},
-        verts,
-        translations);
+  if (!ss.deform_imats.is_empty()) {
+    apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
   }
 
   apply_translations(translations, verts, positions_orig);

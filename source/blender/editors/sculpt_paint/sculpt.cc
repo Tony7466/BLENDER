@@ -6587,8 +6587,11 @@ void clip_and_lock_translations(const Sculpt &sd,
 
 MutableSpan<float3> mesh_brush_positions_for_write(SculptSession &ss, Mesh & /*mesh*/)
 {
-  return {reinterpret_cast<float3 *>(BKE_pbvh_get_vert_positions(ss.pbvh)),
-          ss.vert_positions.size()};
+  /* Eventually this should retrieve mutable positions directly from the mesh or the active shape
+   * key, instead of keeping a mutable reference to an array stored in the PBVH. That will help
+   * avoid copies when user edits don't affect positions, and will help to make code safer because
+   * there will be less potentially-stale state. */
+  return BKE_pbvh_get_vert_positions(ss.pbvh);
 }
 
 void flush_positions_to_shape_keys(Object &object,
