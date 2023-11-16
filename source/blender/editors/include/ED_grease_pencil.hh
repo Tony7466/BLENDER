@@ -124,6 +124,9 @@ struct MutableDrawingInfo {
   const int layer_index;
   const int frame_number;
 };
+Array<int> get_frame_numbers_for_layer(const bke::greasepencil::Layer &layer,
+                                       const int current_frame,
+                                       const bool use_multi_frame_editing);
 Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
                                                      GreasePencil &grease_pencil);
 Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
@@ -167,7 +170,7 @@ IndexMask polyline_detect_corners(Span<float2> points,
  * first_point_of_curve = points_2d[point_contiguous]
  */
 struct Curves2DSpace {
-  Vector<GreasePencilDrawing *> drawings;
+  Vector<const bke::greasepencil::Drawing *> drawings;
   /* Curve offset for each drawing (layer). So when there are three drawings with 12, 15 and 8
    * curves, the curve offsets will be [0, 12, 27 (= 12 + 15)]. */
   Vector<int> curve_offset;
@@ -194,7 +197,7 @@ struct Curves2DSpace {
  */
 Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
                                      Object *ob,
-                                     Vector<GreasePencilDrawing *> &drawings,
+                                     Vector<const bke::greasepencil::Drawing *> &drawings,
                                      Vector<int> &layer_index,
                                      const int frame_number,
                                      const bool get_stroke_flag = false);

@@ -755,8 +755,9 @@ static void update_gap_distance(FillData *fd, const float delta)
  * in the tool settings.
  */
 static void get_fill_edge_layers(FillData *fd,
-                                 Vector<GreasePencilDrawing *> &r_drawings,
-                                 Vector<int> &r_layer_index)
+                                 Vector<const bke::greasepencil::Drawing *> &r_drawings,
+                                 Vector<int> &r_layer_index,
+                                 const int frame_number)
 {
   using namespace bke::greasepencil;
 
@@ -764,37 +765,36 @@ static void get_fill_edge_layers(FillData *fd,
   int active_layer_index = -1;
   const Layer *active_layer = fd->grease_pencil->get_active_layer();
   Span<const Layer *> layers = fd->grease_pencil->layers();
-  for (int index = 0; index < layers.size(); index++) {
-    if (layers[index] == active_layer) {
-      active_layer_index = index;
+  for (int layer_index = 0; layer_index < layers.size(); layer_index++) {
+    if (layers[layer_index] == active_layer) {
+      active_layer_index = layer_index;
       break;
     }
   }
 
   /* Select layers based on position in the layer collection. */
-  Span<GreasePencilDrawingBase *> drawings = fd->grease_pencil->drawings();
-  for (int index = 0; index < layers.size(); index++) {
+  for (int layer_index = 0; layer_index < layers.size(); layer_index++) {
     /* Skip invisible layers. */
-    if (!layers[index]->is_visible()) {
+    if (!layers[layer_index]->is_visible()) {
       continue;
     }
 
     bool add = false;
     switch (fd->brush->gpencil_settings->fill_layer_mode) {
       case GP_FILL_GPLMODE_ACTIVE:
-        add = (index == active_layer_index);
+        add = (layer_index == active_layer_index);
         break;
       case GP_FILL_GPLMODE_ABOVE:
-        add = (index == active_layer_index + 1);
+        add = (layer_index == active_layer_index + 1);
         break;
       case GP_FILL_GPLMODE_BELOW:
-        add = (index == active_layer_index - 1);
+        add = (layer_index == active_layer_index - 1);
         break;
       case GP_FILL_GPLMODE_ALL_ABOVE:
-        add = (index > active_layer_index);
+        add = (layer_index > active_layer_index);
         break;
       case GP_FILL_GPLMODE_ALL_BELOW:
-        add = (index < active_layer_index);
+        add = (layer_index < active_layer_index);
         break;
       case GP_FILL_GPLMODE_VISIBLE:
         add = true;
@@ -804,18 +804,52 @@ static void get_fill_edge_layers(FillData *fd,
     }
 
     if (add) {
-      const int drawing_index = layers[index]->drawing_index_at(fd->vc.scene->r.cfra);
-      if (drawing_index == -1) {
-        continue;
-      }
-      GreasePencilDrawingBase *drawing_base = drawings[drawing_index];
-      if (drawing_base->type == GP_DRAWING) {
-        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
+      if (const Drawing *drawing = fd->grease_pencil->get_editable_drawing_at(layers[layer_index],
+                                                                              frame_number))
+      {
         r_drawings.append(drawing);
-        r_layer_index.append(index);
+        r_layer_index.append(layer_index);
       }
     }
   }
+}
+
+/**
+ * Get drawings and gap closure data for a given frame number.
+ */
+static bool get_drawings_and_gap_closures_at_frame(FillData *fd, const int frame_number)
+{
+  /* Get layers according to tool settings (visible, above, below, etc.) */
+  Vector<const bke::greasepencil::Drawing *> drawings;
+  Vector<int> layer_indices;
+
+  get_fill_edge_layers(fd, drawings, layer_indices, frame_number);
+  if (drawings.is_empty()) {
+    return false;
+  }
+
+  /* Convert curves to viewport 2D space. */
+  fd->curves_2d = curves_in_2d_space_get(
+      &fd->vc, fd->vc.obact, drawings, layer_indices, frame_number, true);
+
+  /* Calculate epsilon values of all 2D curve segments, used to avoid floating point precision
+   * errors. */
+  get_curve_segment_epsilons(fd);
+
+  /* When using extensions of the curve ends to close gaps, build an array of those
+   * two-point 'curves'. */
+  if (fd->use_gap_close_extend) {
+    init_curve_end_extensions(fd);
+    get_curve_end_extensions(fd);
+  }
+
+  /* When using radii to close gaps, build KD tree of curve end points. */
+  if (fd->use_gap_close_radius) {
+    init_curve_end_radii(fd);
+    get_connected_curve_end_radii(fd);
+  }
+
+  return true;
 }
 
 /**
@@ -857,34 +891,9 @@ static bool operator_init(bContext *C, wmOperator *op)
   copy_v3_v3(fd->gap_closed_color, default_gap_closed_color);
   copy_v4_v4(fd->gap_proximity_color, default_gap_proximity_color);
 
-  /* Get layers according to tool settings (visible, above, below, etc.) */
-  Vector<GreasePencilDrawing *> drawings;
-  Vector<int> layer_indices;
-
-  get_fill_edge_layers(fd, drawings, layer_indices);
-  if (drawings.is_empty()) {
+  /* Get drawings for current frame. */
+  if (!get_drawings_and_gap_closures_at_frame(fd, fd->vc.scene->r.cfra)) {
     return false;
-  }
-
-  /* Convert curves to viewport 2D space. */
-  fd->curves_2d = curves_in_2d_space_get(
-      &fd->vc, fd->vc.obact, drawings, layer_indices, fd->vc.scene->r.cfra, true);
-
-  /* Calculate epsilon values of all 2D curve segments, used to avoid floating point precision
-   * errors. */
-  get_curve_segment_epsilons(fd);
-
-  /* When using extensions of the curve ends to close gaps, build an array of those
-   * two-point 'curves'. */
-  if (fd->use_gap_close_extend) {
-    init_curve_end_extensions(fd);
-    get_curve_end_extensions(fd);
-  }
-
-  /* When using radii to close gaps, build KD tree of curve end points. */
-  if (fd->use_gap_close_radius) {
-    init_curve_end_radii(fd);
-    get_connected_curve_end_radii(fd);
   }
 
   /* Activate 3D viewport overlay for showing gap closure visual aids. */
@@ -919,6 +928,61 @@ static void operator_exit(bContext *C, wmOperator *op)
     MEM_delete(fd);
     op->customdata = nullptr;
   }
+}
+
+static bool fill_do(FillData *fd)
+{
+  /* DEBUG: measure time. */
+  auto t1 = std::chrono::high_resolution_clock::now();
+
+  /* Get latest toolsetting values. */
+  get_latest_toolsettings(fd);
+
+  /* Get the fill method. */
+  bool (*perform_fill)(FillData *) = nullptr;
+  if (fd->brush->gpencil_settings->fill_mode == GP_FILL_MODE_FLOOD) {
+    perform_fill = &flood_fill_do;
+  }
+  else if (fd->brush->gpencil_settings->fill_mode == GP_FILL_MODE_GEOMETRY) {
+    perform_fill = &vector_fill_do;
+  }
+  if (perform_fill == nullptr) {
+    return false;
+  }
+
+  /* Perform the fill operation for all selected frames. */
+  const bool use_multi_frame_editing = (fd->vc.scene->toolsettings->gpencil_flags &
+                                        GP_USE_MULTI_FRAME_EDITING) != 0;
+  const Array<int> frame_numbers = get_frame_numbers_for_layer(
+      fd->grease_pencil->get_active_layer()->wrap(),
+      fd->vc.scene->r.cfra,
+      use_multi_frame_editing);
+  bool get_drawings = false;
+  bool success = false;
+
+  for (const int frame_number : frame_numbers) {
+    /* For the current frame (first entry in the array) we already retrieved the drawings during
+     * the operator invoke, so no need to do it a second time. */
+    if (get_drawings) {
+      if (!get_drawings_and_gap_closures_at_frame(fd, frame_number)) {
+        continue;
+      }
+    }
+    get_drawings = true;
+
+    fd->frame_number = frame_number;
+
+    if (perform_fill(fd)) {
+      success = true;
+    }
+  }
+
+  /* DEBUG: measure time. */
+  auto t2 = std::chrono::high_resolution_clock::now();
+  auto delta_t = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+  printf("Fill operator took %d ms.\n", int(delta_t.count()));
+
+  return success;
 }
 
 /**
@@ -966,27 +1030,8 @@ static int operator_modal(bContext *C, wmOperator *op, const wmEvent *event)
       fd->mouse_pos[0] = float(event->mval[0]);
       fd->mouse_pos[1] = float(event->mval[1]);
 
-      /* DEBUG: measure time. */
-      auto t1 = std::chrono::high_resolution_clock::now();
-
-      /* Get latest toolsetting values. */
-      get_latest_toolsettings(fd);
-
       /* Perform the fill operation. */
-      bool success = false;
-      if (fd->brush->gpencil_settings->fill_mode == GP_FILL_MODE_FLOOD) {
-        success = flood_fill_do(fd);
-      }
-      else if (fd->brush->gpencil_settings->fill_mode == GP_FILL_MODE_GEOMETRY) {
-        success = vector_fill_do(fd);
-      }
-
-      /* DEBUG: measure time. */
-      auto t2 = std::chrono::high_resolution_clock::now();
-      auto delta_t = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-      printf("Fill operator took %d ms.\n", int(delta_t.count()));
-
-      if (success) {
+      if (fill_do(fd)) {
         modal_state = OPERATOR_FINISHED;
       }
       else {

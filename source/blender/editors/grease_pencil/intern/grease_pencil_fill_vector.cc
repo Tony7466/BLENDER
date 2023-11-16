@@ -636,18 +636,26 @@ static void create_fill_geometry(FillData *fd)
 {
   /* Ensure active frame (autokey is on, we checked on operator invoke). */
   const bke::greasepencil::Layer *active_layer = fd->grease_pencil->get_active_layer();
-  const int current_frame = fd->vc.scene->r.cfra;
-  if (!fd->grease_pencil->get_active_layer()->frames().contains(current_frame)) {
+  if (!fd->grease_pencil->get_active_layer()->frames().contains(fd->frame_number)) {
     bke::greasepencil::Layer &active_layer = *fd->grease_pencil->get_active_layer_for_write();
+
+    /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
+     * current frame. */
+    bool frame_created = false;
     if (fd->additive_drawing) {
-      /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
-       * current frame. */
-      fd->grease_pencil->insert_duplicate_frame(
-          active_layer, active_layer.frame_key_at(current_frame), current_frame, false);
+      if (!fd->grease_pencil->insert_duplicate_frame(
+              active_layer, active_layer.frame_key_at(fd->frame_number), fd->frame_number, false))
+      {
+        frame_created = true;
+      }
     }
-    else {
+    if (!frame_created) {
       /* Otherwise we just insert a blank keyframe. */
-      fd->grease_pencil->insert_blank_frame(active_layer, current_frame, 0, BEZT_KEYTYPE_KEYFRAME);
+      if (!fd->grease_pencil->insert_blank_frame(
+              active_layer, fd->frame_number, 0, BEZT_KEYTYPE_KEYFRAME))
+      {
+        return;
+      }
     }
   }
 
@@ -658,7 +666,7 @@ static void create_fill_geometry(FillData *fd)
   }
 
   /* Create geometry. */
-  const int drawing_index = active_layer->drawing_index_at(fd->vc.scene->r.cfra);
+  const int drawing_index = active_layer->drawing_index_at(fd->frame_number);
   bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(
                                             fd->grease_pencil->drawings()[drawing_index])
                                             ->wrap();
@@ -1573,7 +1581,8 @@ static bool walk_along_curve(FillData *fd, EdgeSegment *segment, const int start
                                   fd);
 
     if (!segment->segment_ends.is_empty()) {
-      /* Sort intersections on distance and angle. This is important to find the narrowest edge. */
+      /* Sort intersections on distance and angle. This is important to find the narrowest edge.
+       */
       std::sort(segment->segment_ends.begin(),
                 segment->segment_ends.end(),
                 [](const SegmentEnd &a, const SegmentEnd &b) {

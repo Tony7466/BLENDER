@@ -83,14 +83,14 @@ float brush_radius_world_space(bContext &C, int x, int y)
   return radius;
 }
 
-static Array<int> get_frame_numbers_for_layer(const bke::greasepencil::Layer &layer,
-                                              const int current_frame,
-                                              const bool use_multi_frame_editing)
+Array<int> get_frame_numbers_for_layer(const bke::greasepencil::Layer &layer,
+                                       const int current_frame,
+                                       const bool use_multi_frame_editing)
 {
   Vector<int> frame_numbers({current_frame});
   if (use_multi_frame_editing) {
     for (const auto [frame_number, frame] : layer.frames().items()) {
-      if (frame.is_selected()) {
+      if (frame.is_selected() && frame_number != current_frame) {
         frame_numbers.append_unchecked(frame_number);
       }
     }
@@ -155,7 +155,7 @@ Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene, const GreasePen
 
 Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
                                      Object *ob,
-                                     Vector<GreasePencilDrawing *> &drawings,
+                                     Vector<const bke::greasepencil::Drawing *> &drawings,
                                      Vector<int> &layer_index,
                                      const int frame_number,
                                      const bool get_stroke_flag)
@@ -163,7 +163,7 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
   /* Get viewport projection matrix and evaluated GP object. */
   float4x4 projection;
   ED_view3d_ob_project_mat_get(vc->rv3d, ob, projection.ptr());
-  const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph, const_cast<Object *>(ob));
+  const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph, ob);
 
   /* Count total number of editable curves and points in given Grease Pencil drawings. */
   Curves2DSpace cv2d;
@@ -194,7 +194,7 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
   threading::parallel_for(cv2d.drawings.index_range(), 1, [&](const IndexRange range) {
     for (const int drawing_i : range) {
       /* Get deformed geomtry. */
-      const bke::CurvesGeometry &curves = cv2d.drawings[drawing_i]->geometry.wrap();
+      const bke::CurvesGeometry &curves = cv2d.drawings[drawing_i]->strokes();
       const OffsetIndices points_by_curve = curves.points_by_curve();
       const VArray<bool> cyclic = curves.cyclic();
       const bke::crazyspace::GeometryDeformation deformation =

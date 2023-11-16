@@ -67,6 +67,9 @@ struct FillData {
   /* Mouse position of the fill operation click. */
   float2 mouse_pos{};
 
+  /* Frame number to perform the fill operation on. */
+  int frame_number;
+
   /* True when edge gaps are closed by extending the curve ends. */
   bool use_gap_close_extend{};
   /* True when edge gaps are closed by curve end radii. */
