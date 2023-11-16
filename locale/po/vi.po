@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'd2b86610f058')\n"
+"Project-Id-Version: Blender 4.0.0 Release Candidate (b'f2d15d4fd19a')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-23 09:18:46\n"
+"POT-Creation-Date: 2023-11-13 11:45:13\n"
 "PO-Revision-Date: 2022-08-19 12:33+0700\n"
 "Last-Translator: HỒ NHỰT CHÂU <su_huynh@yahoo.com>\n"
 "Language-Team: Tỉnh An Giang, Đình Bình Phú\n"
@@ -318,20 +318,20 @@ msgid "Full"
 msgstr "Đầy"
 
 
+msgid "On"
+msgstr "Mở"
+
+
+msgid "Auto"
+msgstr "Tự Động"
+
+
 msgid "Distribute memory across devices"
 msgstr "Phân phối bộ nhớ giữa các thiết bị"
 
 
 msgid "Make more room for large scenes to fit by distributing memory across interconnected devices (e.g. via NVLink) rather than duplicating it"
 msgstr "Cho chỗ chứa vừa đủ cho cảnh lớn bằng phân phối bộ nhớ giữa các thiết bị được liên kết với nhau (ví dụ bằng NVLink) thay thế sao chép nó"
-
-
-msgid "MetalRT (Experimental)"
-msgstr "MetalRT (Đồ Thí Nghiệm)"
-
-
-msgid "MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better performance in specific cases. However this support is experimental and some scenes may render incorrectly"
-msgstr "Dùng MetalRT cho dò tia để giảm sử dụng bộ nhớ cho cảnh có đường cong nhiều,Nhưng nó là đồ thí nghiệm và có lẽ kết xuất một số cảnh không đúng"
 
 
 msgid "KHR_materials_variants_ui"
@@ -1925,10 +1925,6 @@ msgstr "Tự Do"
 
 msgid "Aligned"
 msgstr "Sắp Xếp"
-
-
-msgid "Auto"
-msgstr "Tự Động"
 
 
 msgid "Handle 2"
@@ -61690,6 +61686,15 @@ msgid "Switch between an attribute and a single value to define the data for eve
 msgstr "Trao đổi giữa đặc điểm và một cái giá trị cho chỉ định dữ liệu từng phần tử"
 
 
+msgctxt "Operator"
+msgid "Add Grease Pencil"
+msgstr "Thêm Bút Sáp"
+
+
+msgid "Add a Grease Pencil object to the scene"
+msgstr "Thêm một vật thể bút sáp vào cảnh"
+
+
 msgid "Stroke offset for the line art modifier"
 msgstr "Cách nới nét cho bộ điều chỉnh đường nghệ thuật"
 
@@ -61835,15 +61840,6 @@ msgstr "Xóa Bộ Điều Chỉnh Bút Sáp"
 
 msgid "Remove a modifier from the active grease pencil object"
 msgstr "Xóa một bộ điều chỉnh từ vật thể bút sáp hoạt động"
-
-
-msgctxt "Operator"
-msgid "Add Grease Pencil"
-msgstr "Thêm Bút Sáp"
-
-
-msgid "Add a Grease Pencil object to the scene"
-msgstr "Thêm một vật thể bút sáp vào cảnh"
 
 
 msgctxt "Operator"
@@ -87397,10 +87393,6 @@ msgid "Sound data-block used by this sequence"
 msgstr "Cục dữ liệu âm thanh được trình tự này dùng"
 
 
-msgid "Multiply playback speed"
-msgstr "Nhân tốc độ hát lại"
-
-
 msgid "Playback volume of the sound"
 msgstr "Âm lượng hát lại âm thanh"
 
@@ -108896,6 +108888,10 @@ msgid "Browse Particle Settings to be linked"
 msgstr "Trình duyệt Cài Đặt Hạt cho liên kết"
 
 
+msgid "Browse Grease Pencil Data to be linked"
+msgstr "Trình duyệt Bút Sáp cho liên kết"
+
+
 msgid "Browse Movie Clip to be linked"
 msgstr "Trình duyệt Đoạn Phim cho liên kết"
 
@@ -108934,10 +108930,6 @@ msgstr "Trình duyệt Dữ Liệu Điểm Mây cho được liên kết"
 
 msgid "Browse Volume Data to be linked"
 msgstr "Trình duyệt Dữ Liệu Thể Tích cho được liên kết"
-
-
-msgid "Browse Grease Pencil Data to be linked"
-msgstr "Trình duyệt Bút Sáp cho liên kết"
 
 
 msgid "Browse ID data to be linked"
@@ -115874,10 +115866,6 @@ msgstr "Cb"
 
 msgid "Cr"
 msgstr "Cr"
-
-
-msgid "On"
-msgstr "Mở"
 
 
 msgid "Val"
