@@ -27,6 +27,8 @@ class VKShader : public Shader {
   VkShaderModule fragment_module_ = VK_NULL_HANDLE;
   VkShaderModule compute_module_ = VK_NULL_HANDLE;
   bool compilation_failed_ = false;
+  /* TODO: Should we move layout and pipeline layout to VKShaderInterface? */
+  /* TODO: Rename */
   VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
   VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
   VKPipeline pipeline_;
@@ -93,6 +95,21 @@ class VKShader : public Shader {
   bool is_compute_shader() const
   {
     return compute_module_ != VK_NULL_HANDLE;
+  }
+
+  /**
+   * Some shaders don't have a descriptor set and should not bind any descriptor set to the
+   * pipeline. This function can be used to determine if a descriptor set can be bound when this
+   * shader or one of its pipelines are active.
+   */
+  bool has_descriptor_set() const
+  {
+    return layout_ != VK_NULL_HANDLE;
+  }
+
+  VkDescriptorSetLayout vk_descriptor_set_layout_get() const
+  {
+    return layout_;
   }
 
  private:

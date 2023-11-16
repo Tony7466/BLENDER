@@ -127,8 +127,12 @@ VKDescriptorSetTracker::Binding &VKDescriptorSetTracker::ensure_location(
 
 void VKDescriptorSetTracker::update(VKContext &context)
 {
-  BLI_assert(layout_ != VK_NULL_HANDLE);
-  tracked_resource_for(context, !bindings_.is_empty());
+  const VKShader &shader = *unwrap(context.shader);
+  VkDescriptorSetLayout vk_descriptor_set_layout = shader.vk_descriptor_set_layout_get();
+  const bool new_descriptor_set_layout = assign_if_different(active_vk_descriptor_set_layout,
+                                                             vk_descriptor_set_layout);
+  const bool renew_resource = new_descriptor_set_layout || !bindings_.is_empty();
+  tracked_resource_for(context, renew_resource);
   std::unique_ptr<VKDescriptorSet> &descriptor_set = active_descriptor_set();
   VkDescriptorSet vk_descriptor_set = descriptor_set->vk_handle();
   BLI_assert(vk_descriptor_set != VK_NULL_HANDLE);
@@ -204,7 +208,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
 
 std::unique_ptr<VKDescriptorSet> VKDescriptorSetTracker::create_resource(VKContext &context)
 {
-  return context.descriptor_pools_get().allocate(layout_);
+  return context.descriptor_pools_get().allocate(active_vk_descriptor_set_layout);
 }
 
 void VKDescriptorSetTracker::debug_print() const

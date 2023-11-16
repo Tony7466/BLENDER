@@ -155,12 +155,11 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
  private:
   /** A list of bindings that needs to be updated. */
   Vector<Binding> bindings_;
-  VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
+
+  VkDescriptorSetLayout active_vk_descriptor_set_layout = VK_NULL_HANDLE;
 
  public:
   VKDescriptorSetTracker() {}
-
-  VKDescriptorSetTracker(VkDescriptorSetLayout layout) : layout_(layout) {}
 
   void bind_as_ssbo(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
   void bind_as_ssbo(VKIndexBuffer &buffer, VKDescriptorSet::Location location);
@@ -172,16 +171,6 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   void bind(VKTexture &texture, VKDescriptorSet::Location location, const VKSampler &sampler);
   /* Bind as uniform texel buffer. */
   void bind(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
-  /**
-   * Some shaders don't need any descriptor sets so we don't need to bind them.
-   *
-   * The result of this function determines if the descriptor set has any layout assigned.
-   * TODO: we might want to make descriptor sets optional for pipelines.
-   */
-  bool has_layout() const
-  {
-    return layout_ != VK_NULL_HANDLE;
-  }
 
   /**
    * Update the descriptor set on the device.
