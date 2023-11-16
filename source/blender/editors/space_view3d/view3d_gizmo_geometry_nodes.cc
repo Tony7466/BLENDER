@@ -597,6 +597,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
               return;
             }
           }
+          gz->flag |= WM_GIZMO_NEEDS_UNDO;
           node_gizmo_data->gizmo = gz;
         }
 
