@@ -6,29 +6,15 @@
  * \ingroup edgreasepencil
  */
 
-#include "BLI_array_utils.hh"
-#include "BLI_index_mask.hh"
-#include "BLI_index_range.hh"
-#include "BLI_math_geom.h"
-#include "BLI_math_vector_types.hh"
-#include "BLI_span.hh"
-#include "BLI_stack.hh"
-
 #include "DNA_material_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_curves_utils.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 
-#include "RNA_access.hh"
-#include "RNA_define.hh"
-
 #include "DEG_depsgraph.hh"
 
-#include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
-#include "ED_screen.hh"
 
 #include "WM_api.hh"
 
@@ -38,7 +24,7 @@ namespace blender::ed::greasepencil {
 /** \name Show All Materials Operator
  * \{ */
 
-static int grease_pencil_material_reveal_exec(bContext *C, wmOperator *op)
+static int grease_pencil_material_reveal_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
