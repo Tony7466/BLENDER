@@ -619,7 +619,7 @@ static void cmp_node_create_sockets(void *userdata,
   }
 }
 
-static void node_rlayer_declare_dynamic(const bNodeTree & /*bntree*/,
+static void node_rlayer_declare_dynamic(const bNodeTree &ntree,
                                         const bNode &node,
                                         blender::nodes::NodeDeclaration &r_declaration)
 {
@@ -630,13 +630,7 @@ static void node_rlayer_declare_dynamic(const bNodeTree & /*bntree*/,
     return;
   }
   RenderEngineType *engine_type = RE_engines_find(scene->r.engine);
-  if (!engine_type || !engine_type->update_render_passes) {
-    return;
-  }
   RenderEngine *engine = RE_engine_create(engine_type);
-  if (!engine) {
-    return;
-  }
   ViewLayer *view_layer = (ViewLayer *)BLI_findlink(&scene->view_layers, node.custom1);
   if (!view_layer) {
     return;
