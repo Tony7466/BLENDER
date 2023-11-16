@@ -262,19 +262,17 @@ static void overlay_edit_mesh_add_ob_to_pass(OVERLAY_PrivateData *pd, Object *ob
   if (show_retopology && use_retopology_material_colors) {
     const int material_count = DRW_cache_object_material_count_get(ob);
     GPUBatch **batches = DRW_mesh_batch_cache_get_edit_surface(me);
+    float alpha = G_draw.block.color_face_retopology[3];
     for (int64_t material_slot : blender::IndexRange(material_count)) {
       GPUBatch *geom = batches[material_slot];
       if (geom == nullptr) {
         continue;
       }
       Material *material = BKE_object_material_get_eval(ob, material_slot + 1);
-      DRWShadingGroup *grp = face_shgrp;
-      if (material) {
-        grp = DRW_shgroup_create_sub(face_shgrp);
-        float4 retopology_color(
-            material->r, material->g, material->b, G_draw.block.color_face_retopology[3]);
-        DRW_shgroup_uniform_vec4_copy(grp, "retopologyColor", retopology_color);
-      }
+      float4 retopology_color = material ? float4(material->r, material->g, material->b, alpha) :
+                                           float4(0.8f, 0.8f, 0.8f, alpha);
+      DRWShadingGroup *grp = DRW_shgroup_create_sub(face_shgrp);
+      DRW_shgroup_uniform_vec4_copy(grp, "retopologyColor", retopology_color);
       DRW_shgroup_call_no_cull(grp, geom, ob);
     }
   }
