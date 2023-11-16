@@ -4522,7 +4522,9 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 
 static int view_curve_in_graph_editor_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  RNA_boolean_set(op->ptr, "isolate", event->modifier == KM_ALT);
+  if (RNA_boolean_get(op->ptr, "use_modifier_key")) {
+    RNA_boolean_set(op->ptr, "isolate", event->modifier == KM_ALT);
+  }
   return view_curve_in_graph_editor_exec(C, op);
 }
 
@@ -4550,6 +4552,16 @@ static void ANIM_OT_view_curve_in_graph_editor(wmOperatorType *ot)
                   false,
                   "Isolate",
                   "Hides all other F-Curves other than the ones being framed");
+
+  PropertyRNA *prop = RNA_def_boolean(
+      ot->srna,
+      "use_modifier_key",
+      false,
+      "Use Modifier Key",
+      "Check the Alt key when the operator is executed to define the isolation behavior. If true, "
+      "overrides the isolate property");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /** \} */

@@ -658,26 +658,47 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     if (but->flag & UI_BUT_ANIMATED) {
       uiItemS(layout);
       if (is_array_component) {
-        uiItemBooleanO(layout,
-                       CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Show Single in Graph Editor"),
-                       ICON_NONE,
-                       "ANIM_OT_view_curve_in_graph_editor",
-                       "all",
-                       false);
-        uiItemBooleanO(layout,
-                       CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Show All in Graph Editor"),
-                       ICON_NONE,
-                       "ANIM_OT_view_curve_in_graph_editor",
-                       "all",
-                       true);
+        PointerRNA op_ptr;
+        wmOperatorType *ot;
+        ot = WM_operatortype_find("ANIM_OT_view_curve_in_graph_editor", false);
+        uiItemFullO_ptr(
+            layout,
+            ot,
+            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "View Single in Graph Editor"),
+            ICON_NONE,
+            nullptr,
+            WM_OP_INVOKE_DEFAULT,
+            UI_ITEM_NONE,
+            &op_ptr);
+        RNA_boolean_set(&op_ptr, "all", false);
+        RNA_boolean_set(&op_ptr, "use_modifier_key", true);
+
+        uiItemFullO_ptr(layout,
+                        ot,
+                        CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "View All in Graph Editor"),
+                        ICON_NONE,
+                        nullptr,
+                        WM_OP_INVOKE_DEFAULT,
+                        UI_ITEM_NONE,
+                        &op_ptr);
+        RNA_boolean_set(&op_ptr, "all", true);
+        RNA_boolean_set(&op_ptr, "use_modifier_key", true);
       }
       else {
-        uiItemBooleanO(layout,
-                       CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Show in Graph Editor"),
-                       ICON_NONE,
-                       "ANIM_OT_view_curve_in_graph_editor",
-                       "all",
-                       false);
+        PointerRNA op_ptr;
+        wmOperatorType *ot;
+        ot = WM_operatortype_find("ANIM_OT_view_curve_in_graph_editor", false);
+
+        uiItemFullO_ptr(layout,
+                        ot,
+                        CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "View in Graph Editor"),
+                        ICON_NONE,
+                        nullptr,
+                        WM_OP_INVOKE_DEFAULT,
+                        UI_ITEM_NONE,
+                        &op_ptr);
+        RNA_boolean_set(&op_ptr, "all", false);
+        RNA_boolean_set(&op_ptr, "use_modifier_key", true);
       }
     }
 
