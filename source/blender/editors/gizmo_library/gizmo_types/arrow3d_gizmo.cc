@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,7 +24,7 @@
 
 #include "DNA_view3d_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"

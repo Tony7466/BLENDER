@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,13 +28,13 @@
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_editmesh.h"
+#  include "BKE_editmesh.hh"
 #  include "BKE_global.h"
 #  include "BKE_image.h"
 #  include "BKE_scene.h"
 #  include "BKE_writeavi.h"
 
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "ED_transform.hh"
 #  include "ED_transform_snap_object_context.hh"

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2021 Blender Foundation
+# SPDX-FileCopyrightText: 2021 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -16,11 +16,14 @@ set(INC
   ../../makesrna
   ../../render
   ../../windowmanager
+  ../../../../intern/clog
   ../../../../intern/sky/include
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
+set(INC_SYS
+)
 
 set(SRC
   nodes/node_shader_add_shader.cc
@@ -133,6 +136,33 @@ set(LIB
   bf_intern_sky
   bf_nodes
 )
+
+if(WITH_MATERIALX)
+  add_definitions(-DWITH_MATERIALX)
+  list(APPEND SRC
+    materialx/group_nodes.cc
+    materialx/material.cc
+    materialx/node_item.cc
+    materialx/node_parser.cc
+
+    materialx/group_nodes.h
+    materialx/material.h
+    materialx/node_item.h
+    materialx/node_parser.h
+  )
+  list(APPEND LIB
+    MaterialXCore
+    MaterialXFormat
+  )
+
+  if(WITH_USD)
+    add_definitions(-DWITH_USD)
+    list(APPEND INC_SYS
+      ${USD_INCLUDE_DIRS}
+      ${BOOST_INCLUDE_DIR}
+    )
+  endif()
+endif()
 
 if(WITH_FREESTYLE)
   add_definitions(-DWITH_FREESTYLE)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
@@ -8,7 +8,7 @@
  */
 
 /* Shrinkwrap stuff */
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BLI_bitmap.h"
 
 #ifdef __cplusplus

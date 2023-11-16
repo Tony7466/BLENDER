@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines_stack.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 
 #include "bmesh.h"
 #include "intern/bmesh_private.h"
@@ -1618,7 +1618,7 @@ BMLoop *BM_edge_find_first_loop_visible(BMEdge *e)
   return nullptr;
 }
 
-BMFace *BM_face_exists(BMVert **varr, int len)
+BMFace *BM_face_exists(BMVert *const *varr, int len)
 {
   if (varr[0]->e) {
     BMEdge *e_iter, *e_first;

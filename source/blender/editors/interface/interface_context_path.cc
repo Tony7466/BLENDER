@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
 
 #include "BLI_vector.hh"
 
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "RNA_access.hh"
 
@@ -33,22 +33,20 @@ void context_path_add_generic(Vector<ContextPathItem> &path,
     return;
   }
 
-  PointerRNA rna_ptr;
-  RNA_pointer_create(nullptr, &rna_type, ptr, &rna_ptr);
+  PointerRNA rna_ptr = RNA_pointer_create(nullptr, &rna_type, ptr);
   char name[128];
   RNA_struct_name_get_alloc(&rna_ptr, name, sizeof(name), nullptr);
 
   /* Use a blank icon by default to check whether to retrieve it automatically from the type. */
-  const BIFIconID icon = icon_override == ICON_NONE ?
-                             static_cast<BIFIconID>(RNA_struct_ui_icon(rna_ptr.type)) :
-                             icon_override;
+  const BIFIconID icon = icon_override == ICON_NONE ? RNA_struct_ui_icon(rna_ptr.type) :
+                                                      icon_override;
 
   if (&rna_type == &RNA_NodeTree) {
     ID *id = (ID *)ptr;
-    path.append({name, int(icon), ID_REAL_USERS(id)});
+    path.append({name, icon, ID_REAL_USERS(id)});
   }
   else {
-    path.append({name, int(icon), 1});
+    path.append({name, icon, 1});
   }
 }
 

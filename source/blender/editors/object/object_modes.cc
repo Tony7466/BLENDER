@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,16 +21,17 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "BLI_math_vector.h"
 
@@ -40,11 +41,12 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_armature.hh"
 #include "ED_gpencil_legacy.hh"
+#include "ED_outliner.hh"
 #include "ED_screen.hh"
 #include "ED_transform_snap_object_context.hh"
 #include "ED_undo.hh"
@@ -130,12 +132,8 @@ bool ED_object_mode_compat_test(const Object *ob, eObjectMode mode)
     case OB_FONT:
     case OB_MBALL:
     case OB_POINTCLOUD:
-      if (mode & OB_MODE_EDIT) {
-        return true;
-      }
-      break;
     case OB_LATTICE:
-      if (mode & (OB_MODE_EDIT | OB_MODE_WEIGHT_PAINT)) {
+      if (mode & OB_MODE_EDIT) {
         return true;
       }
       break;
@@ -446,7 +444,7 @@ static void object_overlay_mode_transfer_animation_start(bContext *C, Object *ob
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *ob_dst_eval = DEG_get_evaluated_object(depsgraph, ob_dst);
-  ob_dst_eval->runtime.overlay_mode_transfer_start_time = PIL_check_seconds_timer();
+  ob_dst_eval->runtime->overlay_mode_transfer_start_time = PIL_check_seconds_timer();
 }
 
 static bool object_transfer_mode_to_base(bContext *C, wmOperator *op, Base *base_dst)
@@ -492,6 +490,8 @@ static bool object_transfer_mode_to_base(bContext *C, wmOperator *op, Base *base
     }
 
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+    ED_outliner_select_sync_from_object_tag(C);
+
     WM_toolsystem_update_from_context_view3d(C);
     mode_transferred = true;
   }

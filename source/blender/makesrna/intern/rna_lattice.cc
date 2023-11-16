@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,11 +26,11 @@
 #  include "DNA_scene_types.h"
 
 #  include "BKE_deform.h"
-#  include "BKE_lattice.h"
+#  include "BKE_lattice.hh"
 #  include "BKE_main.h"
 #  include "BLI_string.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "ED_lattice.hh"
 #  include "WM_api.hh"

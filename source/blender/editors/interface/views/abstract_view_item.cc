@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup edinterface
  */
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
@@ -17,6 +17,8 @@
 #include "interface_intern.hh"
 
 #include "UI_abstract_view.hh"
+
+#include <stdexcept>
 
 namespace blender::ui {
 
@@ -104,7 +106,7 @@ bool AbstractViewItem::supports_renaming() const
   /* No renaming by default. */
   return false;
 }
-bool AbstractViewItem::rename(StringRefNull /*new_name*/)
+bool AbstractViewItem::rename(const bContext & /*C*/, StringRefNull /*new_name*/)
 {
   /* No renaming by default. */
   return false;
@@ -136,10 +138,10 @@ void AbstractViewItem::begin_renaming()
   std::copy(std::begin(initial_str), std::end(initial_str), std::begin(view.get_rename_buffer()));
 }
 
-void AbstractViewItem::rename_apply()
+void AbstractViewItem::rename_apply(const bContext &C)
 {
   const AbstractView &view = get_view();
-  rename(view.get_rename_buffer().data());
+  rename(C, view.get_rename_buffer().data());
   end_renaming();
 }
 
@@ -177,12 +179,12 @@ static AbstractViewItem *find_item_from_rename_button(const uiBut &rename_but)
   return nullptr;
 }
 
-static void rename_button_fn(bContext * /*C*/, void *arg, char * /*origstr*/)
+static void rename_button_fn(bContext *C, void *arg, char * /*origstr*/)
 {
   const uiBut *rename_but = static_cast<uiBut *>(arg);
   AbstractViewItem *item = find_item_from_rename_button(*rename_but);
   BLI_assert(item);
-  item->rename_apply();
+  item->rename_apply(*C);
 }
 
 void AbstractViewItem::add_rename_button(uiBlock &block)

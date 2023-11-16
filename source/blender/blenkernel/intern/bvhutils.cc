@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,8 +24,8 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_bvhutils.h"
-#include "BKE_editmesh.h"
+#include "BKE_bvhutils.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_pointcloud.h"
@@ -1104,7 +1104,7 @@ static BitVector<> looptri_no_hidden_map_get(const blender::OffsetIndices<int> f
   int looptri_no_hidden_len = 0;
   int looptri_index = 0;
   for (const int64_t i : faces.index_range()) {
-    const int triangles_num = ME_FACE_TRI_TOT(faces[i].size());
+    const int triangles_num = blender::bke::mesh::face_triangles_num(faces[i].size());
     if (hide_poly[i]) {
       looptri_index += triangles_num;
     }

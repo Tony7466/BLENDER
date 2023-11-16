@@ -16,7 +16,7 @@
 #include "BLI_endian_switch.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -34,13 +34,13 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_curve.h"
-#include "BKE_customdata.h"
+#include "BKE_curve.hh"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
@@ -51,7 +51,7 @@
 #include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void shapekey_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
 {
@@ -87,8 +87,14 @@ static void shapekey_free_data(ID *id)
 
 static void shapekey_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Key *key = (Key *)id;
+  Key *key = reinterpret_cast<Key *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   BKE_LIB_FOREACHID_PROCESS_ID(data, key->from, IDWALK_CB_LOOPBACK);
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, key->ipo, IDWALK_CB_USER);
+  }
 }
 
 static ID **shapekey_owner_pointer_get(ID *id)
@@ -109,10 +115,6 @@ static void shapekey_blend_write(BlendWriter *writer, ID *id, const void *id_add
   /* write LibData */
   BLO_write_id_struct(writer, Key, id_address, &key->id);
   BKE_id_blend_write(writer, &key->id);
-
-  if (key->adt) {
-    BKE_animdata_blend_write(writer, key->adt);
-  }
 
   /* direct data */
   LISTBASE_FOREACH (KeyBlock *, kb, &key->block) {
@@ -166,9 +168,6 @@ static void shapekey_blend_read_data(BlendDataReader *reader, ID *id)
   Key *key = (Key *)id;
   BLO_read_list(reader, &(key->block));
 
-  BLO_read_data_address(reader, &key->adt);
-  BKE_animdata_blend_read_data(reader, key->adt);
-
   BLO_read_data_address(reader, &key->refkey);
 
   LISTBASE_FOREACH (KeyBlock *, kb, &key->block) {
@@ -180,19 +179,12 @@ static void shapekey_blend_read_data(BlendDataReader *reader, ID *id)
   }
 }
 
-static void shapekey_blend_read_lib(BlendLibReader *reader, ID *id)
+static void shapekey_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *id)
 {
-  Key *key = (Key *)id;
-  BLI_assert((key->id.tag & LIB_TAG_EXTERN) == 0);
-
-  BLO_read_id_address(reader, id, &key->ipo); /* XXX deprecated - old animation system */
-  BLO_read_id_address(reader, id, &key->from);
-}
-
-static void shapekey_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Key *key = (Key *)id;
-  BLO_expand(expander, key->ipo); /* XXX deprecated - old animation system */
+  /* ShapeKeys should always only be linked indirectly through their user ID (mesh, Curve etc.), or
+   * be fully local data. */
+  BLI_assert((id->tag & LIB_TAG_EXTERN) == 0);
+  UNUSED_VARS_NDEBUG(id);
 }
 
 IDTypeInfo IDType_ID_KE = {
@@ -201,7 +193,7 @@ IDTypeInfo IDType_ID_KE = {
     /*main_listbase_index*/ INDEX_ID_KE,
     /*struct_size*/ sizeof(Key),
     /*name*/ "Key",
-    /*name_plural*/ "shape_keys",
+    /*name_plural*/ N_("shape_keys"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_SHAPEKEY,
     /*flags*/ IDTYPE_FLAGS_NO_LIBLINKING,
     /*asset_type_info*/ nullptr,
@@ -219,8 +211,7 @@ IDTypeInfo IDType_ID_KE = {
 
     /*blend_write*/ shapekey_blend_write,
     /*blend_read_data*/ shapekey_blend_read_data,
-    /*blend_read_lib*/ shapekey_blend_read_lib,
-    /*blend_read_expand*/ shapekey_blend_read_expand,
+    /*blend_read_after_liblink*/ shapekey_blend_read_after_liblink,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -470,7 +461,11 @@ static int setkeys(float fac, ListBase *lb, KeyBlock *k[], float t[4], int cycl)
   k1 = k[0] = k[1] = k[2] = k[3] = firstkey;
   t[0] = t[1] = t[2] = t[3] = k1->pos;
 
-  /* if (fac < 0.0 || fac > 1.0) return 1; */
+#if 0
+  if (fac < 0.0 || fac > 1.0) {
+    return 1;
+  }
+#endif
 
   if (k1->next == nullptr) {
     return 1;
@@ -488,7 +483,7 @@ static int setkeys(float fac, ListBase *lb, KeyBlock *k[], float t[4], int cycl)
       }
       k1 = k1->next;
     }
-    /* k1 = k[1]; */ /* UNUSED */
+    // k1 = k[1]; /* UNUSED */
     t[0] = k[0]->pos;
     t[1] += dpos;
     t[2] = k[2]->pos + dpos;
@@ -1963,7 +1958,6 @@ void BKE_keyblock_copy_settings(KeyBlock *kb_dst, const KeyBlock *kb_src)
 
 char *BKE_keyblock_curval_rnapath_get(const Key *key, const KeyBlock *kb)
 {
-  PointerRNA ptr;
   PropertyRNA *prop;
 
   /* sanity checks */
@@ -1972,7 +1966,7 @@ char *BKE_keyblock_curval_rnapath_get(const Key *key, const KeyBlock *kb)
   }
 
   /* create the RNA pointer */
-  RNA_pointer_create((ID *)&key->id, &RNA_ShapeKey, (KeyBlock *)kb, &ptr);
+  PointerRNA ptr = RNA_pointer_create((ID *)&key->id, &RNA_ShapeKey, (KeyBlock *)kb);
   /* get pointer to the property too */
   prop = RNA_struct_find_property(&ptr, "value");
 
@@ -2267,11 +2261,12 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         {reinterpret_cast<blender::float3 *>(face_normals), faces.size()});
   }
   if (vert_normals_needed) {
-    blender::bke::mesh::normals_calc_face_vert(
+    blender::bke::mesh::normals_calc_verts(
         positions,
         faces,
         corner_verts,
-        {reinterpret_cast<blender::float3 *>(face_normals), faces.size()},
+        mesh->vert_to_face_map(),
+        {reinterpret_cast<const blender::float3 *>(face_normals), faces.size()},
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
   }
   if (loop_normals_needed) {
@@ -2287,14 +2282,12 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         faces,
         corner_verts,
         corner_edges,
-        {},
+        mesh->corner_to_face_map(),
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert},
         {reinterpret_cast<blender::float3 *>(face_normals), faces.size()},
         sharp_edges,
         sharp_faces,
         clnors,
-        (mesh->flag & ME_AUTOSMOOTH) != 0,
-        mesh->smoothresh,
         nullptr,
         {reinterpret_cast<blender::float3 *>(r_loop_normals), corner_verts.size()});
   }

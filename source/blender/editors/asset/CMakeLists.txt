@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -31,6 +31,7 @@ set(SRC
   intern/asset_library_reference_enum.cc
   intern/asset_list.cc
   intern/asset_mark_clear.cc
+  intern/asset_menu_utils.cc
   intern/asset_ops.cc
   intern/asset_shelf.cc
   intern/asset_shelf_asset_view.cc

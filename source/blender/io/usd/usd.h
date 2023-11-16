@@ -1,10 +1,10 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "RNA_types.hh"
 
@@ -16,6 +16,7 @@ struct CacheArchiveHandle;
 struct CacheReader;
 struct Object;
 struct bContext;
+struct wmJobWorkerStatus;
 
 /* Behavior when the name of an imported material
  * conflicts with an existing material. */
@@ -44,6 +45,7 @@ struct USDExportParams {
   bool export_hair = true;
   bool export_uvmaps = true;
   bool export_normals = true;
+  bool export_mesh_colors = true;
   bool export_materials = true;
   bool selected_objects_only = false;
   bool visible_objects_only = true;
@@ -54,6 +56,10 @@ struct USDExportParams {
   bool overwrite_textures = true;
   bool relative_paths = true;
   char root_prim_path[1024] = ""; /* FILE_MAX */
+
+  /** Communication structure between the wmJob management code and the worker code. Currently used
+   * to generate safely reports from the worker thread. */
+  wmJobWorkerStatus *worker_status;
 };
 
 struct USDImportParams {
@@ -71,6 +77,8 @@ struct USDImportParams {
   bool import_meshes;
   bool import_volumes;
   bool import_shapes;
+  bool import_skeletons;
+  bool import_blendshapes;
   char *prim_path_mask;
   bool import_subdiv;
   bool import_instance_proxies;
@@ -88,6 +96,10 @@ struct USDImportParams {
   char import_textures_dir[768]; /* FILE_MAXDIR */
   eUSDTexNameCollisionMode tex_name_collision_mode;
   bool import_all_materials;
+
+  /** Communication structure between the wmJob management code and the worker code. Currently used
+   * to generate safely reports from the worker thread. */
+  wmJobWorkerStatus *worker_status;
 };
 
 /* This struct is in place to store the mesh sequence parameters needed when reading a data from a
@@ -112,12 +124,14 @@ USDMeshReadParams create_mesh_read_params(double motion_sample_time, int read_fl
 bool USD_export(struct bContext *C,
                 const char *filepath,
                 const struct USDExportParams *params,
-                bool as_background_job);
+                bool as_background_job,
+                ReportList *reports);
 
 bool USD_import(struct bContext *C,
                 const char *filepath,
                 const struct USDImportParams *params,
-                bool as_background_job);
+                bool as_background_job,
+                ReportList *reports);
 
 int USD_get_version(void);
 

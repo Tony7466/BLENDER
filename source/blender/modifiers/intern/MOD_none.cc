@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,7 +29,7 @@ ModifierTypeInfo modifierType_None = {
     /*struct_name*/ "ModifierData",
     /*struct_size*/ sizeof(ModifierData),
     /*srna*/ &RNA_Modifier,
-    /*type*/ eModifierTypeType_None,
+    /*type*/ ModifierTypeType::None,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs,
     /*icon*/ ICON_NONE,
 

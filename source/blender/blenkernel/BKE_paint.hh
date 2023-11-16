@@ -11,15 +11,18 @@
 #include "BLI_array.hh"
 #include "BLI_bitmap.h"
 #include "BLI_compiler_compat.h"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_ordered_edge.hh"
+#include "BLI_set.hh"
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_enums.h"
 #include "DNA_object_enums.h"
 
 #include "BKE_attribute.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh.hh"
 
 #include "bmesh.h"
 
@@ -31,7 +34,6 @@ struct BlendWriter;
 struct Brush;
 struct CurveMapping;
 struct Depsgraph;
-struct EdgeSet;
 struct EnumPropertyItem;
 struct ExpandCache;
 struct FilterCache;
@@ -218,10 +220,6 @@ bool BKE_paint_always_hide_test(Object *ob);
 /* Partial visibility. */
 
 /**
- * Returns non-zero if any of the face's vertices are hidden, zero otherwise.
- */
-bool paint_is_face_hidden(const int *looptri_faces, const bool *hide_poly, int tri_index);
-/**
  * Returns non-zero if any of the corners of the grid
  * face whose inner corner is at (x, y) are hidden, zero otherwise.
  */
@@ -265,30 +263,24 @@ Brush *BKE_paint_toolslots_brush_get(Paint *paint, int slot_index);
 
 void BKE_paint_blend_write(BlendWriter *writer, Paint *paint);
 void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Paint *paint);
-void BKE_paint_blend_read_lib(BlendLibReader *reader, Scene *scene, Paint *paint);
 
 #define SCULPT_FACE_SET_NONE 0
 
 /** Used for both vertex color and weight paint. */
 struct SculptVertexPaintGeomMap {
-  blender::Array<int> vert_to_loop_offsets;
-  blender::Array<int> vert_to_loop_indices;
   blender::GroupedSpan<int> vert_to_loop;
-
-  blender::Array<int> vert_to_face_offsets;
-  blender::Array<int> vert_to_face_indices;
   blender::GroupedSpan<int> vert_to_face;
 };
 
 /** Pose Brush IK Chain. */
 struct SculptPoseIKChainSegment {
-  float orig[3];
-  float head[3];
+  blender::float3 orig;
+  blender::float3 head;
 
-  float initial_orig[3];
-  float initial_head[3];
+  blender::float3 initial_orig;
+  blender::float3 initial_head;
   float len;
-  float scale[3];
+  blender::float3 scale;
   float rot[4];
   float *weights;
 
@@ -302,7 +294,7 @@ struct SculptPoseIKChainSegment {
 struct SculptPoseIKChain {
   SculptPoseIKChainSegment *segments;
   int tot_segments;
-  float grab_delta_offset[3];
+  blender::float3 grab_delta_offset;
 };
 
 /* Cloth Brush */
@@ -358,7 +350,7 @@ struct SculptClothLengthConstraint {
 struct SculptClothSimulation {
   SculptClothLengthConstraint *length_constraints;
   int tot_length_constraints;
-  EdgeSet *created_length_constraints;
+  blender::Set<blender::OrderedEdge> created_length_constraints;
   int capacity_length_constraints;
   float *length_constraint_tweak;
 
@@ -389,8 +381,8 @@ struct SculptClothSimulation {
 };
 
 struct SculptPersistentBase {
-  float co[3];
-  float no[3];
+  blender::float3 co;
+  blender::float3 no;
   float disp;
 };
 
@@ -447,8 +439,8 @@ struct SculptBoundary {
   /* Stores the initial positions of the pivot and boundary initial vertex as they may be deformed
    * during the brush action. This allows to use them as a reference positions and vectors for some
    * brush effects. */
-  float initial_vertex_position[3];
-  float initial_pivot_position[3];
+  blender::float3 initial_vertex_position;
+  blender::float3 initial_pivot_position;
 
   /* Maximum number of topology steps that were calculated from the boundary. */
   int max_propagation_steps;
@@ -470,8 +462,8 @@ struct SculptBoundary {
 
   /* Twist Deform type. */
   struct {
-    float rotation_axis[3];
-    float pivot_position[3];
+    blender::float3 rotation_axis;
+    blender::float3 pivot_position;
   } twist;
 };
 
@@ -592,12 +584,10 @@ struct SculptSession {
   eAttrDomain vcol_domain;
   eCustomDataType vcol_type;
 
-  float *vmask;
+  const float *vmask;
 
   /* Mesh connectivity maps. */
-  /* Vertices to adjacent faces. */
-  blender::Array<int> vert_to_face_offsets;
-  blender::Array<int> vert_to_face_indices;
+  /* Vertices to adjacent polys. */
   blender::GroupedSpan<int> pmap;
 
   /* Edges to adjacent faces. */
@@ -636,11 +626,14 @@ struct SculptSession {
   /* PBVH acceleration structure */
   PBVH *pbvh;
 
-  /* Painting on deformed mesh */
-  bool deform_modifiers_active; /* Object is deformed with some modifiers. */
-  float (*orig_cos)[3];         /* Coords of un-deformed mesh. */
-  float (*deform_cos)[3];       /* Coords of deformed mesh but without stroke displacement. */
-  float (*deform_imats)[3][3];  /* Crazy-space deformation matrices. */
+  /* Object is deformed with some modifiers. */
+  bool deform_modifiers_active;
+  /* Coords of un-deformed mesh. */
+  blender::Array<blender::float3> orig_cos;
+  /* Coords of deformed mesh but without stroke displacement. */
+  blender::Array<blender::float3, 0> deform_cos;
+  /* Crazy-space deformation matrices. */
+  blender::Array<blender::float3x3, 0> deform_imats;
 
   /* Pool for texture evaluations. */
   ImagePool *tex_pool;
@@ -660,17 +653,17 @@ struct SculptSession {
    */
   bool draw_faded_cursor;
   float cursor_radius;
-  float cursor_location[3];
-  float cursor_normal[3];
-  float cursor_sampled_normal[3];
-  float cursor_view_normal[3];
+  blender::float3 cursor_location;
+  blender::float3 cursor_normal;
+  blender::float3 cursor_sampled_normal;
+  blender::float3 cursor_view_normal;
 
   /* For Sculpt trimming gesture tools, initial ray-cast data from the position of the mouse
    * when
    * the gesture starts (intersection with the surface and if they ray hit the surface or not).
    */
-  float gesture_initial_location[3];
-  float gesture_initial_normal[3];
+  blender::float3 gesture_initial_location;
+  blender::float3 gesture_initial_normal;
   bool gesture_initial_hit;
 
   /* TODO(jbakker): Replace rv3d and v3d with ViewContext */
@@ -683,7 +676,7 @@ struct SculptSession {
   int preview_vert_count;
 
   /* Pose Brush Preview */
-  float pose_origin[3];
+  blender::float3 pose_origin;
   SculptPoseIKChain *pose_ik_chain_preview;
 
   /* Boundary Brush Preview */
@@ -693,17 +686,17 @@ struct SculptSession {
   SculptFakeNeighbors fake_neighbors;
 
   /* Transform operator */
-  float pivot_pos[3];
+  blender::float3 pivot_pos;
   float pivot_rot[4];
-  float pivot_scale[3];
+  blender::float3 pivot_scale;
 
-  float init_pivot_pos[3];
+  blender::float3 init_pivot_pos;
   float init_pivot_rot[4];
-  float init_pivot_scale[3];
+  blender::float3 init_pivot_scale;
 
-  float prev_pivot_pos[3];
+  blender::float3 prev_pivot_pos;
   float prev_pivot_rot[4];
-  float prev_pivot_scale[3];
+  blender::float3 prev_pivot_scale;
 
   struct {
     struct {
@@ -756,7 +749,7 @@ struct SculptSession {
    * Last used painting canvas key.
    */
   char *last_paint_canvas_key;
-  float last_normal[3];
+  blender::float3 last_normal;
 
   int last_automasking_settings_hash;
   uchar last_automask_stroke_id;

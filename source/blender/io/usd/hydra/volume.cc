@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,7 @@
 #include <pxr/usdImaging/usdVolImaging/tokens.h>
 
 #include "BKE_material.h"
-#include "BKE_volume.h"
+#include "BKE_volume.hh"
 #include "BLI_index_range.hh"
 #include "DNA_volume_types.h"
 

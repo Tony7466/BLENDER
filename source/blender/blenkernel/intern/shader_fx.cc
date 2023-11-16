@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -27,16 +27,16 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_object.h"
-#include "BKE_screen.h"
+#include "BKE_object.hh"
+#include "BKE_screen.hh"
 #include "BKE_shader_fx.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "FX_shader_types.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static ShaderFxTypeInfo *shader_fx_types[NUM_SHADER_FX_TYPES] = {nullptr};
 
@@ -121,14 +121,13 @@ void BKE_shaderfx_free(ShaderFxData *fx)
   BKE_shaderfx_free_ex(fx, 0);
 }
 
-bool BKE_shaderfx_unique_name(ListBase *shaders, ShaderFxData *fx)
+void BKE_shaderfx_unique_name(ListBase *shaders, ShaderFxData *fx)
 {
   if (shaders && fx) {
     const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(ShaderFxType(fx->type));
-    return BLI_uniquename(
+    BLI_uniquename(
         shaders, fx, DATA_(fxi->name), '.', offsetof(ShaderFxData, name), sizeof(fx->name));
   }
-  return false;
 }
 
 bool BKE_shaderfx_depends_ontime(ShaderFxData *fx)
@@ -282,28 +281,21 @@ void BKE_shaderfx_blend_write(BlendWriter *writer, ListBase *fxbase)
   }
 }
 
-void BKE_shaderfx_blend_read_data(BlendDataReader *reader, ListBase *lb)
+void BKE_shaderfx_blend_read_data(BlendDataReader *reader, ListBase *lb, Object *ob)
 {
   BLO_read_list(reader, lb);
 
   LISTBASE_FOREACH (ShaderFxData *, fx, lb) {
     fx->error = nullptr;
 
+    /* If linking from a library, clear 'local' library override flag. */
+    if (ID_IS_LINKED(ob)) {
+      fx->flag &= ~eShaderFxFlag_OverrideLibrary_Local;
+    }
+
     /* if shader disappear, or for upward compatibility */
     if (nullptr == BKE_shaderfx_get_info(ShaderFxType(fx->type))) {
       fx->type = eShaderFxType_None;
-    }
-  }
-}
-
-void BKE_shaderfx_blend_read_lib(BlendLibReader *reader, Object *ob)
-{
-  BKE_shaderfx_foreach_ID_link(ob, BKE_object_modifiers_lib_link_common, reader);
-
-  /* If linking from a library, clear 'local' library override flag. */
-  if (ID_IS_LINKED(ob)) {
-    LISTBASE_FOREACH (ShaderFxData *, fx, &ob->shader_fx) {
-      fx->flag &= ~eShaderFxFlag_OverrideLibrary_Local;
     }
   }
 }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <sstream>
 
 #include "BKE_attribute.hh"
 #include "BKE_blender_version.h"
@@ -708,7 +709,7 @@ Vector<int> MTLWriter::add_materials(const OBJMesh &mesh_to_export)
   Vector<int> r_mtl_indices;
   r_mtl_indices.resize(mesh_to_export.tot_materials());
   for (int16_t i = 0; i < mesh_to_export.tot_materials(); i++) {
-    const Material *material = mesh_to_export.get_object_material(i);
+    const Material *material = mesh_to_export.materials[i];
     if (!material) {
       r_mtl_indices[i] = -1;
       continue;

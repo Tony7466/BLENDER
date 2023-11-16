@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -64,10 +64,6 @@ extern "C" {
 
 // CurveInternal::CurvePointIterator
 #include "../stroke/CurveIterators.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -162,7 +158,3 @@ int convert_v3(PyObject *obj, void *v);
 int convert_v2(PyObject *obj, void *v);
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif

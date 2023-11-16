@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2016 Blender Foundation
+# SPDX-FileCopyrightText: 2016 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -226,7 +226,7 @@ else()
   endif()
 endif()
 
-if(WITH_WINDOWS_PDB)
+if(WITH_WINDOWS_RELEASE_PDB)
   set(PDB_INFO_OVERRIDE_FLAGS "${SYMBOL_FORMAT_RELEASE}")
   set(PDB_INFO_OVERRIDE_LINKER_FLAGS "/DEBUG /OPT:REF /OPT:ICF /INCREMENTAL:NO")
 endif()
@@ -249,7 +249,7 @@ endif()
 
 string(APPEND PLATFORM_LINKFLAGS " /SUBSYSTEM:CONSOLE /STACK:2097152")
 set(PLATFORM_LINKFLAGS_RELEASE "/NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libcmtd.lib /NODEFAULTLIB:msvcrtd.lib")
-string(APPEND PLATFORM_LINKFLAGS_DEBUG " /IGNORE:4099 /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:libcmtd.lib")
+string(APPEND PLATFORM_LINKFLAGS_DEBUG "/debug:fastlink /IGNORE:4099 /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:libcmtd.lib")
 
 # Ignore meaningless for us linker warnings.
 string(APPEND PLATFORM_LINKFLAGS " /ignore:4049 /ignore:4217 /ignore:4221")
@@ -278,7 +278,9 @@ if(NOT DEFINED LIBDIR)
     set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/${LIBDIR_BASE}_vc15)
   endif()
 else()
-  message(STATUS "Using pre-compiled LIBDIR: ${LIBDIR}")
+  if(FIRST_RUN)
+    message(STATUS "Using pre-compiled LIBDIR: ${LIBDIR}")
+  endif()
 endif()
 if(NOT EXISTS "${LIBDIR}/")
   message(FATAL_ERROR "\n\nWindows requires pre-compiled libs at: '${LIBDIR}'. Please run `make update` in the blender source folder to obtain them.")
@@ -364,9 +366,12 @@ set(FREETYPE_INCLUDE_DIRS
 )
 set(FREETYPE_LIBRARIES
   ${LIBDIR}/freetype/lib/freetype2ST.lib
+)
+set(BROTLI_LIBRARIES
   ${LIBDIR}/brotli/lib/brotlidec-static.lib
   ${LIBDIR}/brotli/lib/brotlicommon-static.lib
 )
+
 windows_find_package(Freetype REQUIRED)
 
 if(WITH_FFTW3)
@@ -385,7 +390,20 @@ endif()
 if(WITH_IMAGE_WEBP)
   set(WEBP_INCLUDE_DIRS ${LIBDIR}/webp/include)
   set(WEBP_ROOT_DIR ${LIBDIR}/webp)
-  set(WEBP_LIBRARIES ${LIBDIR}/webp/lib/webp.lib ${LIBDIR}/webp/lib/webpdemux.lib ${LIBDIR}/webp/lib/webpmux.lib)
+  if(EXISTS ${LIBDIR}/webp/lib/libsharpyuv.lib) # webp 1.3.x+
+    set(WEBP_LIBRARIES
+      ${LIBDIR}/webp/lib/libwebp.lib
+      ${LIBDIR}/webp/lib/libwebpdemux.lib
+      ${LIBDIR}/webp/lib/libwebpmux.lib
+      ${LIBDIR}/webp/lib/libsharpyuv.lib
+    )
+  else()
+    set(WEBP_LIBRARIES
+      ${LIBDIR}/webp/lib/webp.lib
+      ${LIBDIR}/webp/lib/webpdemux.lib
+      ${LIBDIR}/webp/lib/webpmux.lib
+    )
+  endif()
   set(WEBP_FOUND ON)
 endif()
 
@@ -716,19 +734,40 @@ if(WITH_NANOVDB)
   endif()
 endif()
 
-
 if(WITH_OPENIMAGEDENOISE)
-  set(OPENIMAGEDENOISE ${LIBDIR}/OpenImageDenoise)
-  set(OPENIMAGEDENOISE_LIBPATH ${LIBDIR}/OpenImageDenoise/lib)
-  set(OPENIMAGEDENOISE_INCLUDE_DIRS ${OPENIMAGEDENOISE}/include)
-  set(OPENIMAGEDENOISE_LIBRARIES
-    optimized ${OPENIMAGEDENOISE_LIBPATH}/OpenImageDenoise.lib
-    optimized ${OPENIMAGEDENOISE_LIBPATH}/common.lib
-    optimized ${OPENIMAGEDENOISE_LIBPATH}/dnnl.lib
-    debug ${OPENIMAGEDENOISE_LIBPATH}/OpenImageDenoise_d.lib
-    debug ${OPENIMAGEDENOISE_LIBPATH}/common_d.lib
-    debug ${OPENIMAGEDENOISE_LIBPATH}/dnnl_d.lib
-  )
+  if(EXISTS ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise.dll) # 4.0 libs
+    find_package(OpenImageDenoise REQUIRED CONFIG)
+    if(OpenImageDenoise_FOUND)
+      get_target_property(OPENIMAGEDENOISE_LIBRARIES_RELEASE OpenImageDenoise IMPORTED_IMPLIB_RELEASE)
+      get_target_property(OPENIMAGEDENOISE_LIBRARIES_DEBUG OpenImageDenoise IMPORTED_IMPLIB_DEBUG)
+      if(EXISTS ${OPENIMAGEDENOISE_LIBRARIES_DEBUG})
+        set(OPENIMAGEDENOISE_LIBRARIES optimized ${OPENIMAGEDENOISE_LIBRARIES_RELEASE} debug ${OPENIMAGEDENOISE_LIBRARIES_DEBUG})
+      else()
+        if(EXISTS ${OPENIMAGEDENOISE_LIBRARIES_RELEASE})
+          set(OPENIMAGEDENOISE_LIBRARIES ${OPENIMAGEDENOISE_LIBRARIES_RELEASE})
+        else()
+         set(WITH_OPENIMAGEDENOISE OFF)
+         message(STATUS "OpenImageDenoise not found, disabling WITH_OPENIMAGEDENOISE")
+        endif()
+      endif()
+      get_target_property(OPENIMAGEDENOISE_INCLUDE_DIRS OpenImageDenoise INTERFACE_INCLUDE_DIRECTORIES)
+    else()
+      set(WITH_OPENIMAGEDENOISE OFF)
+      message(STATUS "OpenImageDenoise not found, disabling WITH_OPENIMAGEDENOISE")
+    endif()
+  else()
+    set(OPENIMAGEDENOISE ${LIBDIR}/OpenImageDenoise)
+    set(OPENIMAGEDENOISE_LIBPATH ${LIBDIR}/OpenImageDenoise/lib)
+    set(OPENIMAGEDENOISE_INCLUDE_DIRS ${OPENIMAGEDENOISE}/include)
+    set(OPENIMAGEDENOISE_LIBRARIES
+      optimized ${OPENIMAGEDENOISE_LIBPATH}/OpenImageDenoise.lib
+      optimized ${OPENIMAGEDENOISE_LIBPATH}/common.lib
+      optimized ${OPENIMAGEDENOISE_LIBPATH}/dnnl.lib
+      debug ${OPENIMAGEDENOISE_LIBPATH}/OpenImageDenoise_d.lib
+      debug ${OPENIMAGEDENOISE_LIBPATH}/common_d.lib
+      debug ${OPENIMAGEDENOISE_LIBPATH}/dnnl_d.lib
+    )
+  endif()
   set(OPENIMAGEDENOISE_DEFINITIONS)
 endif()
 
@@ -975,6 +1014,8 @@ endif()
 
 if(WITH_MATERIALX)
   include("${LIBDIR}/MaterialX/lib/cmake/MaterialX/MaterialXTargets.cmake")
+  set_target_properties(MaterialXCore PROPERTIES MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELEASE)
+  set_target_properties(MaterialXFormat PROPERTIES MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELEASE)
 endif()
 
 if(WINDOWS_PYTHON_DEBUG)

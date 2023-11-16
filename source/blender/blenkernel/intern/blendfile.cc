@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -37,7 +37,7 @@
 #include "BKE_blendfile.h"
 #include "BKE_bpath.h"
 #include "BKE_colorband.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
 #include "BKE_ipo.h"
@@ -53,13 +53,13 @@
 #include "BKE_preferences.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_studiolight.h"
 #include "BKE_undo_system.h"
 #include "BKE_workspace.h"
 
 #include "BLO_readfile.h"
-#include "BLO_writefile.h"
+#include "BLO_writefile.hh"
 
 #include "RNA_access.hh"
 
@@ -159,23 +159,6 @@ bool BKE_blendfile_is_readable(const char *path, ReportList *reports)
 /* -------------------------------------------------------------------- */
 /** \name Blend File IO (High Level)
  * \{ */
-
-static bool blendfile_or_libraries_versions_atleast(Main *bmain,
-                                                    const short versionfile,
-                                                    const short subversionfile)
-{
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, versionfile, subversionfile)) {
-    return false;
-  }
-
-  LISTBASE_FOREACH (Library *, library, &bmain->libraries) {
-    if (!MAIN_VERSION_FILE_ATLEAST(library, versionfile, subversionfile)) {
-      return false;
-    }
-  }
-
-  return true;
-}
 
 static bool foreach_path_clean_cb(BPathForeachPathData * /*bpath_data*/,
                                   char *path_dst,
@@ -817,6 +800,19 @@ static void setup_app_data(bContext *C,
     wm_data_consistency_ensure(CTX_wm_manager(C), curscene, cur_view_layer);
   }
 
+  if (mode == LOAD_UNDO) {
+    /* It's possible to undo into a time before the scene existed, in this case the window's scene
+     * will be null. Since it doesn't make sense to remove the window, set it to the current scene.
+     * NOTE: Redo will restore the active scene to the window so a reasonably consistent state
+     * is maintained. We could do better by keeping a window/scene map for each undo step. */
+    wmWindowManager *wm = static_cast<wmWindowManager *>(bfd->main->wm.first);
+    LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+      if (win->scene == nullptr) {
+        win->scene = curscene;
+      }
+    }
+  }
+
   BLI_assert(BKE_main_namemap_validate(bfd->main));
 
   if (mode != LOAD_UI) {
@@ -887,25 +883,11 @@ static void setup_app_data(bContext *C,
   }
 #endif
 
-  /* FIXME: this version patching should really be part of the file-reading code,
-   * but we still get too many unrelated data-corruption crashes otherwise... */
-  if (bmain->versionfile < 250) {
-    do_versions_ipos_to_animato(bmain);
-  }
-
-  /* NOTE: readfile's `do_versions` does not allow to create new IDs, and only operates on a single
-   * library at a time. This code needs to operate on the whole Main at once. */
-  /* NOTE: Check Main version (i.e. current blend file version), AND the versions of all the
-   * linked libraries. */
-  if (mode != LOAD_UNDO && !blendfile_or_libraries_versions_atleast(bmain, 302, 1)) {
-    BKE_lib_override_library_main_proxy_convert(bmain, reports);
-    /* Currently liboverride code can generate invalid namemap. This is a known issue, requires
-     * #107847 to be properly fixed. */
-    BKE_main_namemap_validate_and_fix(bmain);
-  }
-
-  if (mode != LOAD_UNDO && !blendfile_or_libraries_versions_atleast(bmain, 302, 3)) {
-    BKE_lib_override_library_main_hierarchy_root_ensure(bmain);
+  if (mode != LOAD_UNDO) {
+    /* Perform complex versioning that involves adding or removing IDs, and/or needs to operate
+     * over the whole Main data-base (versioning done in readfile code only operates on a
+     * per-library basis). */
+    BLO_read_do_version_after_setup(bmain, reports);
   }
 
   bmain->recovered = false;
@@ -988,15 +970,14 @@ static void setup_app_blend_file_data(bContext *C,
 
 static void handle_subversion_warning(Main *main, BlendFileReadReport *reports)
 {
-  if (main->minversionfile > BLENDER_FILE_VERSION ||
-      (main->minversionfile == BLENDER_FILE_VERSION &&
-       main->minsubversionfile > BLENDER_FILE_SUBVERSION))
+  if (main->versionfile > BLENDER_FILE_VERSION || (main->versionfile == BLENDER_FILE_VERSION &&
+                                                   main->subversionfile > BLENDER_FILE_SUBVERSION))
   {
     BKE_reportf(reports->reports,
                 RPT_WARNING,
                 "File written by newer Blender binary (%d.%d), expect loss of data!",
-                main->minversionfile,
-                main->minsubversionfile);
+                main->versionfile,
+                main->subversionfile);
   }
 }
 

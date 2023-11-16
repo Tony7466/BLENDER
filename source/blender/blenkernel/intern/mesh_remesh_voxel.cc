@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,9 +28,9 @@
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
-#include "BKE_bvhutils.h"
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
+#include "BKE_bvhutils.hh"
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
@@ -386,27 +386,13 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
     return;
   }
 
-  Array<int> source_vert_to_loop_offsets;
-  Array<int> source_vert_to_loop_indices;
   GroupedSpan<int> source_lmap;
-  Array<int> target_vert_to_loop_offsets;
-  Array<int> target_vert_to_loop_indices;
   GroupedSpan<int> target_lmap;
   BVHTreeFromMesh bvhtree = {nullptr};
   threading::parallel_invoke(
       [&]() { BKE_bvhtree_from_mesh_get(&bvhtree, source, BVHTREE_FROM_VERTS, 2); },
-      [&]() {
-        source_lmap = mesh::build_vert_to_loop_map(source->corner_verts(),
-                                                   source->totvert,
-                                                   source_vert_to_loop_offsets,
-                                                   source_vert_to_loop_indices);
-      },
-      [&]() {
-        target_lmap = mesh::build_vert_to_loop_map(target->corner_verts(),
-                                                   target->totvert,
-                                                   target_vert_to_loop_offsets,
-                                                   target_vert_to_loop_indices);
-      });
+      [&]() { source_lmap = source->vert_to_corner_map(); },
+      [&]() { target_lmap = target->vert_to_corner_map(); });
 
   const Span<float3> target_positions = target->vert_positions();
   Array<int> nearest_src_verts(target_positions.size());
@@ -466,12 +452,10 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
 
   /* Make sure active/default color attribute (names) are brought over. */
   if (source->active_color_attribute) {
-    MEM_SAFE_FREE(target->active_color_attribute);
-    target->active_color_attribute = BLI_strdup(source->active_color_attribute);
+    BKE_id_attributes_active_color_set(&target->id, source->active_color_attribute);
   }
   if (source->default_color_attribute) {
-    MEM_SAFE_FREE(target->default_color_attribute);
-    target->default_color_attribute = BLI_strdup(source->default_color_attribute);
+    BKE_id_attributes_default_color_set(&target->id, source->default_color_attribute);
   }
 
   free_bvhtree_from_mesh(&bvhtree);

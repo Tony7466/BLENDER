@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -46,14 +46,4 @@ void ED_asset_handle_get_full_library_path(
 
 #ifdef __cplusplus
 }
-#endif
-
-#ifdef __cplusplus
-
-namespace blender::ed::asset {
-
-PointerRNA create_asset_rna_ptr(const asset_system::AssetRepresentation *asset);
-
-}
-
 #endif

@@ -29,17 +29,17 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_context.h"
-#include "BKE_crazyspace.h"
+#include "BKE_context.hh"
+#include "BKE_crazyspace.hh"
 #include "BKE_key.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLI_sys_types.h" /* for intptr_t support */
 
@@ -339,18 +339,16 @@ static bool shape_key_remove_poll_property(const bContext * /*C*/,
   return true;
 }
 
-static char *shape_key_remove_get_description(bContext * /*C*/,
-                                              wmOperatorType * /*ot*/,
-                                              PointerRNA *ptr)
+static std::string shape_key_remove_get_description(bContext * /*C*/,
+                                                    wmOperatorType * /*ot*/,
+                                                    PointerRNA *ptr)
 {
   const bool do_apply_mix = RNA_boolean_get(ptr, "apply_mix");
-
   if (do_apply_mix) {
-    return BLI_strdup(
-        TIP_("Apply current visible shape to the object data, and delete all shape keys"));
+    return TIP_("Apply current visible shape to the object data, and delete all shape keys");
   }
 
-  return nullptr;
+  return "";
 }
 
 void OBJECT_OT_shape_key_remove(wmOperatorType *ot)

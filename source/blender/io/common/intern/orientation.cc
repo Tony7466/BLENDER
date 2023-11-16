@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,7 +7,7 @@
 #include "RNA_access.hh"
 #include "RNA_types.hh"
 
-#include "IO_orientation.h"
+#include "IO_orientation.hh"
 
 const EnumPropertyItem io_transform_axis[] = {
     {IO_AXIS_X, "X", 0, "X", "Positive X axis"},

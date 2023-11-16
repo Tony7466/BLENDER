@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -33,7 +33,7 @@
 #  include <stdio.h>
 #endif
 
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_override.hh"
@@ -154,6 +154,12 @@ bool RNA_property_overridable_get(PointerRNA *ptr, PropertyRNA *prop)
     else if (RNA_struct_is_a(ptr->type, &RNA_CameraBackgroundImage)) {
       CameraBGImage *bgpic = static_cast<CameraBGImage *>(ptr->data);
       if (bgpic->flag & CAM_BGIMG_FLAG_OVERRIDE_LIBRARY_LOCAL) {
+        return true;
+      }
+    }
+    else if (RNA_struct_is_a(ptr->type, &RNA_BoneCollection)) {
+      BoneCollection *bcoll = static_cast<BoneCollection *>(ptr->data);
+      if (bcoll->flags & BONE_COLLECTION_OVERRIDE_LIBRARY_LOCAL) {
         return true;
       }
     }
@@ -1017,7 +1023,7 @@ static bool rna_property_override_collection_subitem_name_id_match(
   if (do_id_pointer) {
     if (*item_id != static_cast<ID *>(ptr_item_name->data)) {
       /* If the ID pointer does not match, then there is no match, no need to check the
-       * name iteself. */
+       * name itself. */
       return is_match;
     }
   }
@@ -1108,7 +1114,7 @@ static void rna_property_override_collection_subitem_name_index_lookup(
    */
   if (item_index != -1) {
     if (RNA_property_collection_lookup_int(ptr, prop, item_index, r_ptr_item_index)) {
-      if (item_name) {
+      if (item_name && r_ptr_item_index->type) {
         if (rna_property_override_collection_subitem_name_id_match(
                 item_name, item_name_len, do_id_pointer, item_id, r_ptr_item_index))
         {

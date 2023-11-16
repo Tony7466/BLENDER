@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -476,7 +476,7 @@ void BCAnimationSampler::initialize_curves(BCAnimationCurveMap &curves, Object *
     if (ma) {
       action = bc_getSceneMaterialAction(ma);
       if (action) {
-        /* isMatAnim = true; */
+        // isMatAnim = true;
         FCurve *fcu = (FCurve *)action->curves.first;
         for (; fcu; fcu = fcu->next) {
           BCCurveKey key(object_type, fcu->rna_path, fcu->array_index, a);

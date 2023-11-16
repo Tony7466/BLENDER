@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,8 +23,7 @@
 
 namespace blender::ed::curves {
 
-static IndexMask retrieve_selected_curves(const bke::CurvesGeometry &curves,
-                                          IndexMaskMemory &memory)
+IndexMask retrieve_selected_curves(const bke::CurvesGeometry &curves, IndexMaskMemory &memory)
 {
   const IndexRange curves_range = curves.curves_range();
   const bke::AttributeAccessor attributes = curves.attributes();
@@ -85,6 +84,7 @@ bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves
     if (selection_attr.domain == selection_domain) {
       return selection_attr;
     }
+    selection_attr.finish();
     attributes.remove(".selection");
   }
   const int domain_size = attributes.domain_size(selection_domain);

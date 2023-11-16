@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -61,7 +61,7 @@ const EnumPropertyItem rna_enum_keying_flag_items[] = {
 };
 
 /* Contains additional flags suitable for use in Python API functions. */
-const EnumPropertyItem rna_enum_keying_flag_items_api[] = {
+const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
     {INSERTKEY_NEEDED,
      "INSERTKEY_NEEDED",
      0,
@@ -106,8 +106,8 @@ const EnumPropertyItem rna_enum_keying_flag_items_api[] = {
 #  include "BKE_fcurve.h"
 #  include "BKE_nla.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "DNA_object_types.h"
 
@@ -197,13 +197,12 @@ static bool RKS_POLL_rna_internal(KeyingSetInfo *ksi, bContext *C)
 {
   extern FunctionRNA rna_KeyingSetInfo_poll_func;
 
-  PointerRNA ptr;
   ParameterList list;
   FunctionRNA *func;
   void *ret;
   int ok;
 
-  RNA_pointer_create(nullptr, ksi->rna_ext.srna, ksi, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, ksi->rna_ext.srna, ksi);
   func = &rna_KeyingSetInfo_poll_func; /* RNA_struct_find_function(&ptr, "poll"); */
 
   RNA_parameter_list_create(&list, &ptr, func);
@@ -229,11 +228,10 @@ static void RKS_ITER_rna_internal(KeyingSetInfo *ksi, bContext *C, KeyingSet *ks
 {
   extern FunctionRNA rna_KeyingSetInfo_iterator_func;
 
-  PointerRNA ptr;
   ParameterList list;
   FunctionRNA *func;
 
-  RNA_pointer_create(nullptr, ksi->rna_ext.srna, ksi, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, ksi->rna_ext.srna, ksi);
   func = &rna_KeyingSetInfo_iterator_func; /* RNA_struct_find_function(&ptr, "poll"); */
 
   RNA_parameter_list_create(&list, &ptr, func);
@@ -254,11 +252,10 @@ static void RKS_GEN_rna_internal(KeyingSetInfo *ksi, bContext *C, KeyingSet *ks,
 {
   extern FunctionRNA rna_KeyingSetInfo_generate_func;
 
-  PointerRNA ptr;
   ParameterList list;
   FunctionRNA *func;
 
-  RNA_pointer_create(nullptr, ksi->rna_ext.srna, ksi, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, ksi->rna_ext.srna, ksi);
   func = &rna_KeyingSetInfo_generate_func; /* RNA_struct_find_generate(&ptr, "poll"); */
 
   RNA_parameter_list_create(&list, &ptr, func);
@@ -315,13 +312,12 @@ static StructRNA *rna_KeyingSetInfo_register(Main *bmain,
   const char *error_prefix = "Registering keying set info class:";
   KeyingSetInfo dummy_ksi = {nullptr};
   KeyingSetInfo *ksi;
-  PointerRNA dummy_ksi_ptr = {nullptr};
   bool have_function[3];
 
   /* setup dummy type info to store static properties in */
   /* TODO: perhaps we want to get users to register
    * as if they're using 'KeyingSet' directly instead? */
-  RNA_pointer_create(nullptr, &RNA_KeyingSetInfo, &dummy_ksi, &dummy_ksi_ptr);
+  PointerRNA dummy_ksi_ptr = RNA_pointer_create(nullptr, &RNA_KeyingSetInfo, &dummy_ksi);
 
   /* validate the python class */
   if (validate(&dummy_ksi_ptr, data, have_function) != 0) {
@@ -748,7 +744,9 @@ bool rna_AnimaData_override_apply(Main *bmain, RNAPropertyOverrideApplyContext &
              "Unsupported RNA override operation on animdata pointer");
   UNUSED_VARS_NDEBUG(ptr_storage, len_dst, len_src, len_storage, opop);
 
-  /* AnimData is a special case, since you cannot edit/replace it, it's either existent or not. */
+  /* AnimData is a special case, since you cannot edit/replace it, it's either existent or not.
+   * Further more, when an animdata is added to the linked reference later on, the one created for
+   * the liboverride needs to be 'merged', such that its overridable data is kept. */
   AnimData *adt_dst = static_cast<AnimData *>(RNA_property_pointer_get(ptr_dst, prop_dst).data);
   AnimData *adt_src = static_cast<AnimData *>(RNA_property_pointer_get(ptr_src, prop_src).data);
 
@@ -763,6 +761,35 @@ bool rna_AnimaData_override_apply(Main *bmain, RNAPropertyOverrideApplyContext &
     BKE_animdata_free(ptr_dst->owner_id, true);
     RNA_property_update_main(bmain, nullptr, ptr_dst, prop_dst);
     return true;
+  }
+  else if (adt_dst != nullptr && adt_src != nullptr) {
+    /* Override had to create an anim data, but now its reference also has one, need to merge them
+     * by keeping the few overridable data from the liboverride, while using the animdata of the
+     * reference.
+     *
+     * Note that this case will not be encountered when the linked reference data already had
+     * anim data, since there will be no operation for the animdata pointer itself then, only
+     * potentially for its internal overridable data (NLA, action...). */
+    id_us_min(reinterpret_cast<ID *>(adt_dst->action));
+    adt_dst->action = adt_src->action;
+    id_us_plus(reinterpret_cast<ID *>(adt_dst->action));
+    id_us_min(reinterpret_cast<ID *>(adt_dst->tmpact));
+    adt_dst->tmpact = adt_src->tmpact;
+    id_us_plus(reinterpret_cast<ID *>(adt_dst->tmpact));
+    adt_dst->act_blendmode = adt_src->act_blendmode;
+    adt_dst->act_extendmode = adt_src->act_extendmode;
+    adt_dst->act_influence = adt_src->act_influence;
+    adt_dst->flag = adt_src->flag;
+
+    /* NLA tracks: since overrides are always after tracks from linked reference, we can 'just'
+     * move the whole list from `src` to the end of the list of `dst` (which currently contains
+     * tracks from linked reference). then active track and strip pointers can be kept as-is. */
+    BLI_movelisttolist(&adt_dst->nla_tracks, &adt_src->nla_tracks);
+    adt_dst->act_track = adt_src->act_track;
+    adt_dst->actstrip = adt_src->actstrip;
+
+    DEG_relations_tag_update(bmain);
+    ANIM_id_update(bmain, ptr_dst->owner_id);
   }
 
   return false;
@@ -1265,7 +1292,7 @@ static void rna_api_animdata_drivers(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  /* PropertyRNA *prop; */
+  // PropertyRNA *prop;
 
   RNA_def_property_srna(cprop, "AnimDataDrivers");
   srna = RNA_def_struct(brna, "AnimDataDrivers", nullptr);

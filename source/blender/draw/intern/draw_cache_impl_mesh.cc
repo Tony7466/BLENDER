@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,7 +14,6 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_buffer.h"
-#include "BLI_edgehash.h"
 #include "BLI_index_range.hh"
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
@@ -32,15 +31,15 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_attribute.h"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
-#include "BKE_editmesh_tangent.h"
+#include "BKE_editmesh_tangent.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_tangent.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
@@ -1302,7 +1301,7 @@ static void drw_add_attributes_vbo(GPUBatch *batch,
 
 #ifdef DEBUG
 /* Sanity check function to test if all requested batches are available. */
-static void drw_mesh_batch_cache_check_available(struct TaskGraph *task_graph, Mesh *me)
+static void drw_mesh_batch_cache_check_available(TaskGraph *task_graph, Mesh *me)
 {
   MeshBatchCache *cache = mesh_batch_cache_get(me);
   /* Make sure all requested batches have been setup. */

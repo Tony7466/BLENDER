@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -65,13 +65,6 @@ extern "C" {
 /* -------------------------------------------------------------------- */
 /** \name Views
  * \{ */
-
-/**
- * The maximum of indexable views is dictated by:
- * - The UBO limit (16KiB) of the ViewMatrices container.
- * - The maximum resource index supported for shaders using multi-view (see DRW_VIEW_SHIFT).
- */
-#define DRW_VIEW_MAX 64
 
 #ifndef DRW_VIEW_LEN
 /* Single-view case (default). */
@@ -173,7 +166,7 @@ enum eObjectInfoFlag {
 
 struct ObjectInfos {
 #if defined(GPU_SHADER) && !defined(DRAW_FINALIZE_SHADER)
-  /* TODO Rename to struct member for glsl too. */
+  /* TODO Rename to struct member for GLSL too. */
   float4 orco_mul_bias[2];
   float4 ob_color;
   float4 infos;
@@ -211,7 +204,7 @@ struct ObjectBounds {
 
 #if !defined(GPU_SHADER) && defined(__cplusplus)
   void sync();
-  void sync(Object &ob);
+  void sync(Object &ob, float inflate_bounds = 0.0f);
   void sync(const float3 &center, const float3 &size);
 #endif
 };

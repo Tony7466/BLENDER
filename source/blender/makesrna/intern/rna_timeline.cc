@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,10 +20,10 @@
 
 #  include "BKE_idprop.h"
 #  include "BKE_scene.h"
-#  include "BKE_screen.h"
+#  include "BKE_screen.hh"
 #  include "WM_api.hh"
 
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph_build.hh"
 
 static IDProperty **rna_TimelineMarker_idprops(PointerRNA *ptr)
 {

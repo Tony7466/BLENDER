@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -652,7 +652,7 @@ void *bmo_slot_buffer_grow(BMesh *bm, BMOperator *op, int slot_code, int totadd)
 {
   BMOpSlot *slot = &op->slots[slot_code];
   void *tmp;
-  ssize_t allocsize;
+  int64_t allocsize;
 
   BLI_assert(slot->slottype == BMO_OP_SLOT_ELEMENT_BUF);
 

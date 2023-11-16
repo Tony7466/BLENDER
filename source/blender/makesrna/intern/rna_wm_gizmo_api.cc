@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,6 +10,8 @@
 #include <cstdlib>
 
 #include "BLI_utildefines.h"
+
+#include "BLT_translation.h"
 
 #include "BKE_report.h"
 
@@ -24,7 +26,7 @@
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
 #  include "UI_interface.hh"
 
 #  include "ED_gizmo_library.hh"
@@ -151,8 +153,11 @@ static PointerRNA rna_gizmo_target_set_operator(wmGizmo *gz,
 
   ot = WM_operatortype_find(opname, false); /* print error next */
   if (!ot || !ot->srna) {
-    BKE_reportf(
-        reports, RPT_ERROR, "%s '%s'", ot ? "unknown operator" : "operator missing srna", opname);
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "%s '%s'",
+                ot ? TIP_("unknown operator") : TIP_("operator missing srna"),
+                opname);
     return PointerRNA_NULL;
   }
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,15 +13,12 @@
 #include "BLI_bitmap.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_set.hh"
 #include "BLI_span.hh"
 
 #include "BKE_ccg.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-struct PBVHAttrReq;
+class PBVHAttrReq;
 struct GPUBatch;
 struct PBVHNode;
 struct PBVHBatches;
@@ -33,6 +30,7 @@ struct MLoopTri;
 struct CustomData;
 struct SubdivCCG;
 struct BMesh;
+struct BMFace;
 
 struct PBVH_GPU_Args {
   int pbvh_type;
@@ -61,7 +59,6 @@ struct PBVH_GPU_Args {
   blender::Span<int> grid_indices;
   CCGKey ccg_key;
   CCGElem **grids;
-  void **gridfaces;
   BLI_bitmap **grid_hidden;
 
   blender::Span<int> prim_indices;
@@ -73,7 +70,7 @@ struct PBVH_GPU_Args {
   PBVHNode *node;
 
   /* BMesh. */
-  GSet *bm_unique_vert, *bm_other_verts, *bm_faces;
+  const blender::Set<BMFace *, 0> *bm_faces;
   int cd_mask_layer;
 };
 
@@ -95,7 +92,3 @@ GPUBatch *DRW_pbvh_lines_get(PBVHBatches *batches,
                              const PBVH_GPU_Args &args,
                              int *r_prim_count,
                              bool do_coarse_grids);
-
-#ifdef __cplusplus
-}
-#endif

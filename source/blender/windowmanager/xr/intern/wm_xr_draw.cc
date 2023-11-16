@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,7 @@
 
 #include <cstring>
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"

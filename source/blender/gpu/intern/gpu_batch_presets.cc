@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -384,6 +384,11 @@ void gpu_batch_presets_exit()
     GPU_batch_discard(preset);
     MEM_freeN(link);
   }
+
+  /* Reset pointers to null for subsequent initializations after tear-down. */
+  g_presets_2d = {{nullptr}};
+  g_presets_3d = {{nullptr}};
+  presets_list = {nullptr, nullptr};
 
   BLI_mutex_end(&g_presets_3d.mutex);
 }

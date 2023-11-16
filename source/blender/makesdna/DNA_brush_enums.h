@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,10 +9,6 @@
 #pragma once
 
 #include "BLI_utildefines.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* BrushGpencilSettings->preset_type.
  * Use a range for each group and not continuous values. */
@@ -669,7 +665,3 @@ typedef enum eBrushCurvesSculptDensityMode {
 } eBrushCurvesSculptDensityMode;
 
 #define MAX_BRUSH_PIXEL_RADIUS 500
-
-#ifdef __cplusplus
-}
-#endif

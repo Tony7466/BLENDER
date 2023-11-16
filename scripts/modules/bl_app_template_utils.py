@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2017-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2017-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -23,7 +23,7 @@ _app_template = {
     "id": "",
 }
 
-# instead of sys.modules
+# Instead of `sys.modules`
 # note that we only ever have one template enabled at a time
 # so it may not seem necessary to use this.
 #

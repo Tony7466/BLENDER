@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -45,12 +45,12 @@
 #include "BKE_fcurve.h"
 #include "BKE_nla.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_layer.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_unit.h"
 
 #include "RNA_access.hh"
@@ -67,12 +67,13 @@
 #include "ED_armature.hh"
 #include "ED_keyframes_edit.hh"
 #include "ED_keyframes_keylist.hh"
-#include "ED_keyframing.hh"
 #include "ED_markers.hh"
 #include "ED_numinput.hh"
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 #include "ED_util.hh"
+
+#include "ANIM_fcurve.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -476,11 +477,10 @@ static void pose_slide_apply_props(tPoseSlideOp *pso,
                                    tPChanFCurveLink *pfl,
                                    const char prop_prefix[])
 {
-  PointerRNA ptr = {nullptr};
   int len = strlen(pfl->pchan_path);
 
   /* Setup pointer RNA for resolving paths. */
-  RNA_pointer_create(nullptr, &RNA_PoseBone, pfl->pchan, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_PoseBone, pfl->pchan);
 
   /* - custom properties are just denoted using ["..."][etc.] after the end of the base path,
    *   so just check for opening pair after the end of the path
@@ -1741,7 +1741,7 @@ static void propagate_curve_values(ListBase /*tPChanFCurveLink*/ *pflinks,
       FCurve *fcu = (FCurve *)ld->data;
       const float current_fcu_value = evaluate_fcurve(fcu, source_frame);
       LISTBASE_FOREACH (FrameLink *, target_frame, target_frames) {
-        insert_vert_fcurve(
+        blender::animrig::insert_vert_fcurve(
             fcu, target_frame->frame, current_fcu_value, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NEEDED);
       }
     }

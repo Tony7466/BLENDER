@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,7 +14,7 @@
 #include "IMB_imbuf_types.h"
 
 #include "BKE_attribute.h"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_global.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -35,8 +35,9 @@
 
 extern "C" {
 Global G;
-UserDef U;
 }
+
+UserDef U;
 
 /* -------------------------------------------------------------------- */
 /** \name Stubs of BLI_imbuf_types.h
@@ -120,13 +121,6 @@ extern "C" eAttrDomain BKE_id_attribute_domain(const struct ID * /*id*/,
 /* -------------------------------------------------------------------- */
 /** \name Stubs of BKE_paint.hh
  * \{ */
-bool paint_is_face_hidden(const int * /*looptri_faces*/,
-                          const bool * /*hide_poly*/,
-                          int /*tri_index*/)
-{
-  BLI_assert_unreachable();
-  return false;
-}
 
 void BKE_paint_face_set_overlay_color_get(const int /*face_set*/,
                                           const int /*seed*/,
@@ -164,35 +158,33 @@ extern "C" void BKE_material_defaults_free_gpu()
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Stubs of BKE_customdata.h
+/** \name Stubs of BKE_customdata.hh
  * \{ */
 
-extern "C" int CustomData_get_offset(const struct CustomData * /*data*/, eCustomDataType /*type*/)
+int CustomData_get_offset(const struct CustomData * /*data*/, eCustomDataType /*type*/)
 {
   BLI_assert_unreachable();
   return 0;
 }
 
-extern "C" int CustomData_get_named_layer_index(const struct CustomData * /*data*/,
-                                                eCustomDataType /*type*/,
-                                                const char * /*name*/)
+int CustomData_get_named_layer_index(const struct CustomData * /*data*/,
+                                     eCustomDataType /*type*/,
+                                     const char * /*name*/)
 {
   return -1;
 }
 
-extern "C" int CustomData_get_active_layer_index(const struct CustomData * /*data*/,
-                                                 eCustomDataType /*type*/)
+int CustomData_get_active_layer_index(const struct CustomData * /*data*/, eCustomDataType /*type*/)
 {
   return -1;
 }
 
-extern "C" int CustomData_get_render_layer_index(const struct CustomData * /*data*/,
-                                                 eCustomDataType /*type*/)
+int CustomData_get_render_layer_index(const struct CustomData * /*data*/, eCustomDataType /*type*/)
 {
   return -1;
 }
 
-extern "C" bool CustomData_has_layer(const struct CustomData * /*data*/, eCustomDataType /*type*/)
+bool CustomData_has_layer(const struct CustomData * /*data*/, eCustomDataType /*type*/)
 {
   return false;
 }
@@ -230,15 +222,6 @@ extern "C" void ntreeFreeLocalTree(struct bNodeTree * /*ntree*/)
   BLI_assert_unreachable();
 }
 
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Stubs of bmesh.h
- * \{ */
-extern "C" void BM_face_as_array_vert_tri(BMFace * /*f*/, BMVert *[3] /*r_verts*/)
-{
-  BLI_assert_unreachable();
-}
 /** \} */
 
 /* -------------------------------------------------------------------- */

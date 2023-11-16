@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,17 +16,17 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_data_transfer.h"
 #include "BKE_deform.h"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_remap.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLT_translation.h"
 
@@ -522,11 +522,6 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
                                         false,
                                         op->reports))
       {
-
-        if (data_type == DT_TYPE_LNOR && use_create) {
-          ((Mesh *)ob_dst->data)->flag |= ME_AUTOSMOOTH;
-        }
-
         DEG_id_tag_update(&ob_dst->id, ID_RECALC_GEOMETRY);
         changed = true;
       }
@@ -640,18 +635,18 @@ static bool data_transfer_poll_property(const bContext * /*C*/,
   return true;
 }
 
-static char *data_transfer_get_description(bContext * /*C*/,
-                                           wmOperatorType * /*ot*/,
-                                           PointerRNA *ptr)
+static std::string data_transfer_get_description(bContext * /*C*/,
+                                                 wmOperatorType * /*ot*/,
+                                                 PointerRNA *ptr)
 {
   const bool reverse_transfer = RNA_boolean_get(ptr, "use_reverse_transfer");
 
   if (reverse_transfer) {
-    return BLI_strdup(TIP_(
-        "Transfer data layer(s) (weights, edge sharp, etc.) from selected meshes to active one"));
+    return TIP_(
+        "Transfer data layer(s) (weights, edge sharp, etc.) from selected meshes to active one");
   }
 
-  return nullptr;
+  return "";
 }
 
 void OBJECT_OT_data_transfer(wmOperatorType *ot)

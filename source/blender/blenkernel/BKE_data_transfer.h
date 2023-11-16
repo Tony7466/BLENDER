@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BLI_compiler_compat.h"
 
 #ifdef __cplusplus

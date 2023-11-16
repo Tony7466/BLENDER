@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -31,9 +31,9 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_debug.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_debug.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_context.h"
 
@@ -64,11 +64,6 @@ ListBase R_engines = {nullptr, nullptr};
 void RE_engines_init()
 {
   DRW_engines_register();
-}
-
-void RE_engines_init_experimental()
-{
-  DRW_engines_register_experimental();
 }
 
 void RE_engines_exit()
@@ -380,7 +375,7 @@ void RE_engine_update_result(RenderEngine *engine, RenderResult *result)
     render_result_merge(re->result, result);
     result->renlay = static_cast<RenderLayer *>(
         result->layers.first); /* weak, draws first layer always */
-    re->display_update(re->duh, result, nullptr);
+    re->display_update(result, nullptr);
   }
 }
 
@@ -431,16 +426,16 @@ void RE_engine_end_result(
   }
 
   if (!cancel || merge_results) {
-    if (!(re->test_break(re->tbh) && (re->r.scemode & R_BUTS_PREVIEW))) {
+    if (!(re->test_break() && (re->r.scemode & R_BUTS_PREVIEW))) {
       re_ensure_passes_allocated_thread_safe(re);
       render_result_merge(re->result, result);
     }
 
     /* draw */
-    if (!re->test_break(re->tbh)) {
+    if (!re->test_break()) {
       result->renlay = static_cast<RenderLayer *>(
           result->layers.first); /* weak, draws first layer always */
-      re->display_update(re->duh, result, nullptr);
+      re->display_update(result, nullptr);
     }
   }
 
@@ -461,7 +456,7 @@ bool RE_engine_test_break(RenderEngine *engine)
   Render *re = engine->re;
 
   if (re) {
-    return re->test_break(re->tbh);
+    return re->test_break();
   }
 
   return false;
@@ -477,7 +472,7 @@ void RE_engine_update_stats(RenderEngine *engine, const char *stats, const char 
   if (re) {
     re->i.statstr = stats;
     re->i.infostr = info;
-    re->stats_draw(re->sdh, &re->i);
+    re->stats_draw(&re->i);
     re->i.infostr = nullptr;
     re->i.statstr = nullptr;
   }
@@ -502,7 +497,7 @@ void RE_engine_update_progress(RenderEngine *engine, float progress)
 
   if (re) {
     CLAMP(progress, 0.0f, 1.0f);
-    re->progress(re->prh, progress);
+    re->progress(progress);
   }
 }
 
@@ -842,20 +837,14 @@ static void engine_render_view_layer(Render *re,
                                      const bool use_grease_pencil)
 {
   /* Lock UI so scene can't be edited while we read from it in this render thread. */
-  if (re->draw_lock) {
-    re->draw_lock(re->dlh, true);
-  }
+  re->draw_lock();
 
   /* Create depsgraph with scene evaluated at render resolution. */
   ViewLayer *view_layer = static_cast<ViewLayer *>(
       BLI_findstring(&re->scene->view_layers, view_layer_iter->name, offsetof(ViewLayer, name)));
-  if (re->prepare_viewlayer) {
-    if (!re->prepare_viewlayer(re->prepare_vl_handle, view_layer, engine->depsgraph)) {
-      if (re->draw_lock) {
-        re->draw_lock(re->dlh, false);
-      }
-      return;
-    }
+  if (!re->prepare_viewlayer(view_layer, engine->depsgraph)) {
+    re->draw_unlock();
+    return;
   }
   engine_depsgraph_init(engine, view_layer);
 
@@ -873,9 +862,7 @@ static void engine_render_view_layer(Render *re,
     }
   }
 
-  if (re->draw_lock) {
-    re->draw_lock(re->dlh, false);
-  }
+  re->draw_unlock();
 
   /* Perform render with engine. */
   if (use_engine) {
@@ -968,15 +955,11 @@ bool RE_engine_render(Render *re, bool do_all)
   }
 
   /* Lock drawing in UI during data phase. */
-  if (re->draw_lock) {
-    re->draw_lock(re->dlh, true);
-  }
+  re->draw_lock();
 
   if ((type->flag & RE_USE_GPU_CONTEXT) && !GPU_backend_supported()) {
     /* Clear UI drawing locks. */
-    if (re->draw_lock) {
-      re->draw_lock(re->dlh, false);
-    }
+    re->draw_unlock();
     BKE_report(re->reports, RPT_ERROR, "Can not initialize the GPU");
     G.is_break = true;
     return true;
@@ -1008,9 +991,7 @@ bool RE_engine_render(Render *re, bool do_all)
 
   if (re->result == nullptr) {
     /* Clear UI drawing locks. */
-    if (re->draw_lock) {
-      re->draw_lock(re->dlh, false);
-    }
+    re->draw_unlock();
     /* Free engine. */
     RE_engine_free(engine);
     re->engine = nullptr;
@@ -1043,9 +1024,7 @@ bool RE_engine_render(Render *re, bool do_all)
   engine->resolution_y = re->winy;
 
   /* Clear UI drawing locks. */
-  if (re->draw_lock) {
-    re->draw_lock(re->dlh, false);
-  }
+  re->draw_unlock();
 
   /* Render view layers. */
   bool delay_grease_pencil = false;
@@ -1195,7 +1174,7 @@ bool RE_engine_draw_acquire(Render *re)
      *
      * In the former case there will nothing to be drawn, so can simply use RenderResult drawing
      * pipeline. In the latter case the engine has destroyed its display-only resources (textures,
-     * graphics interops, etc..) so need to use use the RenderResult drawing pipeline. */
+     * graphics interops, etc..) so need to use the #RenderResult drawing pipeline. */
     BLI_mutex_unlock(&re->engine_draw_mutex);
     return false;
   }

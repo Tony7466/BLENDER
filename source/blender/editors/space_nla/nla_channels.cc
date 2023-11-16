@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,13 +19,13 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_nla.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "ED_anim_api.hh"
 #include "ED_keyframes_edit.hh"
@@ -40,15 +40,15 @@
 
 #include "UI_interface.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "UI_view2d.hh"
 
 #include "nla_intern.hh" /* own include */
 
 /* *********************************************** */
-/* Operators for NLA channels-list which need to be different
+/* Operators for NLA track-list which need to be different
  * from the standard Animation Editor ones */
 
 /* ******************** Mouse-Click Operator *********************** */
@@ -338,9 +338,9 @@ void NLA_OT_channels_click(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Mouse Click on NLA Channels";
+  ot->name = "Mouse Click on NLA Tracks";
   ot->idname = "NLA_OT_channels_click";
-  ot->description = "Handle clicks to select NLA channels";
+  ot->description = "Handle clicks to select NLA tracks";
 
   /* api callbacks */
   ot->invoke = nlachannels_mouseclick_invoke;

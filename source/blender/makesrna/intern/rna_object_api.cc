@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,7 +25,7 @@
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_layer.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_outliner.hh"
 
@@ -51,19 +51,20 @@ static const EnumPropertyItem space_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_bvhutils.h"
+#  include "BKE_bvhutils.hh"
 #  include "BKE_constraint.h"
-#  include "BKE_context.h"
-#  include "BKE_crazyspace.h"
-#  include "BKE_customdata.h"
+#  include "BKE_context.hh"
+#  include "BKE_crazyspace.hh"
+#  include "BKE_customdata.hh"
 #  include "BKE_global.h"
 #  include "BKE_layer.h"
 #  include "BKE_main.h"
 #  include "BKE_mball.h"
 #  include "BKE_mesh.hh"
 #  include "BKE_mesh_runtime.hh"
-#  include "BKE_modifier.h"
-#  include "BKE_object.h"
+#  include "BKE_modifier.hh"
+#  include "BKE_object.hh"
+#  include "BKE_object_types.hh"
 #  include "BKE_report.h"
 #  include "BKE_vfont.h"
 
@@ -76,7 +77,7 @@ static const EnumPropertyItem space_items[] = {
 #  include "DNA_scene_types.h"
 #  include "DNA_view3d_types.h"
 
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "MEM_guardedalloc.h"
 
@@ -466,9 +467,7 @@ static PointerRNA rna_Object_shape_key_add(
   KeyBlock *kb = nullptr;
 
   if ((kb = BKE_object_shapekey_insert(bmain, ob, name, from_mix))) {
-    PointerRNA keyptr;
-
-    RNA_pointer_create((ID *)BKE_key_from_object(ob), &RNA_ShapeKey, kb, &keyptr);
+    PointerRNA keyptr = RNA_pointer_create((ID *)BKE_key_from_object(ob), &RNA_ShapeKey, kb);
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -555,7 +554,7 @@ static void rna_Mesh_assign_verts_to_group(
 /* don't call inside a loop */
 static int mesh_looptri_to_face_index(Mesh *me_eval, const int tri_index)
 {
-  const int *looptri_faces = BKE_mesh_runtime_looptri_faces_ensure(me_eval);
+  const blender::Span<int> looptri_faces = me_eval->looptri_faces();
   const int face_i = looptri_faces[tri_index];
   const int *index_mp_to_orig = static_cast<const int *>(
       CustomData_get_layer(&me_eval->face_data, CD_ORIGINDEX));
@@ -569,7 +568,7 @@ static Object *eval_object_ensure(Object *ob,
                                   ReportList *reports,
                                   PointerRNA *rnaptr_depsgraph)
 {
-  if (ob->runtime.data_eval == nullptr) {
+  if (ob->runtime->data_eval == nullptr) {
     Object *ob_orig = ob;
     Depsgraph *depsgraph = rnaptr_depsgraph != nullptr ?
                                static_cast<Depsgraph *>(rnaptr_depsgraph->data) :
@@ -610,7 +609,7 @@ static void rna_Object_ray_cast(Object *ob,
   }
 
   /* Test BoundBox first (efficiency) */
-  const BoundBox *bb = BKE_object_boundbox_get(ob);
+  const std::optional<BoundBox> bb = BKE_object_boundbox_get(ob);
   float distmin;
 
   /* Needed for valid distance check from #isect_ray_aabb_v3_simple() call. */
@@ -759,7 +758,7 @@ void rna_Object_me_eval_info(
       }
       break;
     case 1:
-      me_eval = ob->runtime.mesh_deform_eval;
+      me_eval = ob->runtime->mesh_deform_eval;
       break;
     case 2:
       me_eval = BKE_object_get_evaluated_mesh(ob);

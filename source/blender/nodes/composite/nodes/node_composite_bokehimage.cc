@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -64,7 +64,7 @@ class BokehImageOperation : public NodeOperation {
 
   void execute() override
   {
-    GPUShader *shader = shader_manager().get("compositor_bokeh_image");
+    GPUShader *shader = context().get_shader("compositor_bokeh_image");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1f(shader, "exterior_angle", get_exterior_angle());

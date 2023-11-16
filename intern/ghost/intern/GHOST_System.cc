@@ -267,7 +267,7 @@ GHOST_TSuccess GHOST_System::removeEventConsumer(GHOST_IEventConsumer *consumer)
   return success;
 }
 
-GHOST_TSuccess GHOST_System::pushEvent(GHOST_IEvent *event)
+GHOST_TSuccess GHOST_System::pushEvent(const GHOST_IEvent *event)
 {
   GHOST_TSuccess success;
   if (m_eventManager) {
@@ -339,6 +339,11 @@ void GHOST_System::setTabletAPI(GHOST_TTabletAPI api)
 GHOST_TTabletAPI GHOST_System::getTabletAPI()
 {
   return m_tabletAPI;
+}
+
+GHOST_TSuccess GHOST_System::getPixelAtCursor(float[3] /* r_color */) const
+{
+  return GHOST_kFailure;
 }
 
 #ifdef WITH_INPUT_NDOF

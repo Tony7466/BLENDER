@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,7 +24,7 @@
 #include "BLI_ghash.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_idprop.h"
 
 #include "RNA_access.hh"
@@ -95,7 +95,7 @@ static wmOperatorType *wm_operatortype_append__begin()
   BLI_assert(ot_prop_basic_count == -1);
 
   ot->srna = RNA_def_struct_ptr(&BLENDER_RNA, "", &RNA_OperatorProperties);
-  RNA_def_struct_property_tags(ot->srna, rna_enum_operator_property_tags);
+  RNA_def_struct_property_tags(ot->srna, rna_enum_operator_property_tag_items);
   /* Set the default i18n context now, so that opfunc can redefine it if needed! */
   RNA_def_struct_translation_context(ot->srna, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
   ot->translation_context = BLT_I18NCONTEXT_OPERATOR_DEFAULT;
@@ -573,44 +573,41 @@ static void wm_operatortype_free_macro(wmOperatorType *ot)
   BLI_freelistN(&ot->macro);
 }
 
-const char *WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties)
+std::string WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties)
 {
-  const char *name = nullptr;
-
+  std::string name;
   if (ot->get_name && properties) {
     name = ot->get_name(ot, properties);
   }
 
-  return (name && name[0]) ? name : RNA_struct_ui_name(ot->srna);
+  return name.empty() ? std::string(RNA_struct_ui_name(ot->srna)) : name;
 }
 
-char *WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties)
+std::string WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties)
 {
   if (ot->get_description && properties) {
-    char *description = ot->get_description(C, ot, properties);
-
-    if (description) {
-      if (description[0]) {
-        return description;
-      }
-      MEM_freeN(description);
+    std::string description = ot->get_description(C, ot, properties);
+    if (!description.empty()) {
+      return description;
     }
   }
 
   const char *info = RNA_struct_ui_description(ot->srna);
   if (info && info[0]) {
-    return BLI_strdup(info);
+    return info;
   }
-  return nullptr;
+  return "";
 }
 
-char *WM_operatortype_description_or_name(bContext *C, wmOperatorType *ot, PointerRNA *properties)
+std::string WM_operatortype_description_or_name(bContext *C,
+                                                wmOperatorType *ot,
+                                                PointerRNA *properties)
 {
-  char *text = WM_operatortype_description(C, ot, properties);
-  if (text == nullptr) {
-    const char *text_orig = WM_operatortype_name(ot, properties);
-    if (text_orig != nullptr) {
-      text = BLI_strdup(text_orig);
+  std::string text = WM_operatortype_description(C, ot, properties);
+  if (text.empty()) {
+    const std::string text_orig = WM_operatortype_name(ot, properties);
+    if (!text_orig.empty()) {
+      text = BLI_strdupn(text_orig.c_str(), text_orig.size());
     }
   }
   return text;

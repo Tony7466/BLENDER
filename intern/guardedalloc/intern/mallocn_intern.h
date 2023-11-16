@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -121,7 +121,7 @@ void memory_usage_peak_reset(void);
 /**
  * Clear the listbase of allocated memory blocks.
  *
- * WARNING: This will make the whole guardedalloc system fully inconsistent. It is only intented to
+ * WARNING: This will make the whole guardedalloc system fully inconsistent. It is only indented to
  * be called in one place: the destructor of the #MemLeakPrinter class, which is only
  * instantiated once as a static variable by #MEM_init_memleak_detection, and therefore destructed
  * once at program exit.

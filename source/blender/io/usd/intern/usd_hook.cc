@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,6 +14,8 @@
 #include <boost/python/to_python_converter.hpp>
 
 #include "BLI_listbase.h"
+
+#include "BKE_report.h"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -32,7 +34,7 @@ using USDHookList = std::list<USDHook *>;
 /* USD hook type declarations */
 static USDHookList g_usd_hooks;
 
-void USD_register_hook(struct USDHook *hook)
+void USD_register_hook(USDHook *hook)
 {
   if (std::find(g_usd_hooks.begin(), g_usd_hooks.end(), hook) != g_usd_hooks.end()) {
     /* The hook is already in the list. */
@@ -43,7 +45,7 @@ void USD_register_hook(struct USDHook *hook)
   g_usd_hooks.push_back(hook);
 }
 
-void USD_unregister_hook(struct USDHook *hook)
+void USD_unregister_hook(USDHook *hook)
 {
   g_usd_hooks.remove(hook);
 }
@@ -57,7 +59,7 @@ USDHook *USD_find_hook_name(const char name[])
 
   USDHookList::iterator hook_iter = std::find_if(
       g_usd_hooks.begin(), g_usd_hooks.end(), [name](USDHook *hook) {
-        return strcmp(hook->idname, name) == 0;
+        return STREQ(hook->idname, name);
       });
 
   return (hook_iter == g_usd_hooks.end()) ? nullptr : *hook_iter;
@@ -83,7 +85,7 @@ struct USDSceneExportContext {
 
   USDSceneExportContext(pxr::UsdStageRefPtr in_stage, Depsgraph *depsgraph) : stage(in_stage)
   {
-    RNA_pointer_create(nullptr, &RNA_Depsgraph, depsgraph, &depsgraph_ptr);
+    depsgraph_ptr = RNA_pointer_create(nullptr, &RNA_Depsgraph, depsgraph);
   }
 
   pxr::UsdStageRefPtr get_stage()
@@ -152,7 +154,7 @@ void register_export_hook_converters()
 }
 
 /* Retrieve and report the current Python error. */
-static void handle_python_error(USDHook *hook)
+static void handle_python_error(USDHook *hook, ReportList *reports)
 {
   if (!PyErr_Occurred()) {
     return;
@@ -160,9 +162,10 @@ static void handle_python_error(USDHook *hook)
 
   PyErr_Print();
 
-  WM_reportf(RPT_ERROR,
-             "An exception occurred invoking USD hook '%s'.  Please see the console for details",
-             hook->name);
+  BKE_reportf(reports,
+              RPT_ERROR,
+              "An exception occurred invoking USD hook '%s'.  Please see the console for details",
+              hook->name);
 }
 
 /* Abstract base class to facilitate calling a function with a given
@@ -207,10 +210,11 @@ class USDHookInvoker {
         call_hook(hook_obj);
       }
       catch (python::error_already_set const &) {
-        handle_python_error(hook);
+        handle_python_error(hook, reports_);
       }
       catch (...) {
-        WM_reportf(RPT_ERROR, "An exception occurred invoking USD hook '%s'", hook->name);
+        BKE_reportf(
+            reports_, RPT_ERROR, "An exception occurred invoking USD hook '%s'", hook->name);
       }
     }
 
@@ -225,6 +229,9 @@ class USDHookInvoker {
    *
    * python::call_method<void>(hook_obj, function_name(), arg1, arg2); */
   virtual void call_hook(PyObject *hook_obj) const = 0;
+
+  /* Reports list provided when constructing the subclass, used by #call() to store reports. */
+  ReportList *reports_;
 };
 
 class OnExportInvoker : public USDHookInvoker {
@@ -232,9 +239,10 @@ class OnExportInvoker : public USDHookInvoker {
   USDSceneExportContext hook_context_;
 
  public:
-  OnExportInvoker(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
+  OnExportInvoker(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph, ReportList *reports)
       : hook_context_(stage, depsgraph)
   {
+    reports_ = reports;
   }
 
  protected:
@@ -258,10 +266,12 @@ class OnMaterialExportInvoker : public USDHookInvoker {
  public:
   OnMaterialExportInvoker(pxr::UsdStageRefPtr stage,
                           Material *material,
-                          pxr::UsdShadeMaterial &usd_material)
+                          pxr::UsdShadeMaterial &usd_material,
+                          ReportList *reports)
       : hook_context_(stage), usd_material_(usd_material)
   {
-    RNA_pointer_create(nullptr, &RNA_Material, material, &material_ptr_);
+    material_ptr_ = RNA_pointer_create(nullptr, &RNA_Material, material);
+    reports_ = reports;
   }
 
  protected:
@@ -277,25 +287,26 @@ class OnMaterialExportInvoker : public USDHookInvoker {
   }
 };
 
-void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
+void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph, ReportList *reports)
 {
   if (g_usd_hooks.empty()) {
     return;
   }
 
-  OnExportInvoker on_export(stage, depsgraph);
+  OnExportInvoker on_export(stage, depsgraph, reports);
   on_export.call();
 }
 
 void call_material_export_hooks(pxr::UsdStageRefPtr stage,
                                 Material *material,
-                                pxr::UsdShadeMaterial &usd_material)
+                                pxr::UsdShadeMaterial &usd_material,
+                                ReportList *reports)
 {
   if (g_usd_hooks.empty()) {
     return;
   }
 
-  OnMaterialExportInvoker on_material_export(stage, material, usd_material);
+  OnMaterialExportInvoker on_material_export(stage, material, usd_material, reports);
   on_material_export.call();
 }
 

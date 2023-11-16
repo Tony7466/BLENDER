@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,12 +16,13 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_appdir.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
+#include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -43,7 +44,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "GPU_framebuffer.h"
 #include "file_indexer.hh"
@@ -128,7 +129,7 @@ static void file_free(SpaceLink *sl)
   MEM_SAFE_FREE(sfile->params);
   MEM_SAFE_FREE(sfile->asset_params);
   if (sfile->runtime != nullptr) {
-    BKE_reports_clear(&sfile->runtime->is_blendfile_readable_reports);
+    BKE_reports_free(&sfile->runtime->is_blendfile_readable_reports);
   }
   MEM_SAFE_FREE(sfile->runtime);
 
@@ -436,10 +437,10 @@ static void file_main_region_init(wmWindowManager *wm, ARegion *region)
   UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_LIST, region->winx, region->winy);
 
   /* own keymaps */
-  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser Main", SPACE_FILE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser Main", SPACE_FILE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 }
 
@@ -487,8 +488,7 @@ static void file_main_region_message_subscribe(const wmRegionMessageSubscribePar
 
   /* SpaceFile itself. */
   {
-    PointerRNA ptr;
-    RNA_pointer_create(&screen->id, &RNA_SpaceFileBrowser, sfile, &ptr);
+    PointerRNA ptr = RNA_pointer_create(&screen->id, &RNA_SpaceFileBrowser, sfile);
 
     /* All properties for this space type. */
     WM_msg_subscribe_rna(mbus, &ptr, nullptr, &msg_sub_value_area_tag_refresh, __func__);
@@ -496,8 +496,7 @@ static void file_main_region_message_subscribe(const wmRegionMessageSubscribePar
 
   /* FileSelectParams */
   {
-    PointerRNA ptr;
-    RNA_pointer_create(&screen->id, &RNA_FileSelectParams, file_params, &ptr);
+    PointerRNA ptr = RNA_pointer_create(&screen->id, &RNA_FileSelectParams, file_params);
 
     /* All properties for this space type. */
     WM_msg_subscribe_rna(mbus, &ptr, nullptr, &msg_sub_value_area_tag_refresh, __func__);
@@ -505,8 +504,7 @@ static void file_main_region_message_subscribe(const wmRegionMessageSubscribePar
 
   /* Experimental Asset Browser features option. */
   {
-    PointerRNA ptr;
-    RNA_pointer_create(nullptr, &RNA_PreferencesExperimental, &U.experimental, &ptr);
+    PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_PreferencesExperimental, &U.experimental);
     PropertyRNA *prop = RNA_struct_find_property(&ptr, "use_extended_asset_browser");
 
     /* All properties for this space type. */
@@ -636,13 +634,13 @@ static void file_operatortypes()
 static void file_keymap(wmKeyConfig *keyconf)
 {
   /* keys for all regions */
-  WM_keymap_ensure(keyconf, "File Browser", SPACE_FILE, 0);
+  WM_keymap_ensure(keyconf, "File Browser", SPACE_FILE, RGN_TYPE_WINDOW);
 
   /* keys for main region */
-  WM_keymap_ensure(keyconf, "File Browser Main", SPACE_FILE, 0);
+  WM_keymap_ensure(keyconf, "File Browser Main", SPACE_FILE, RGN_TYPE_WINDOW);
 
   /* keys for button region (top) */
-  WM_keymap_ensure(keyconf, "File Browser Buttons", SPACE_FILE, 0);
+  WM_keymap_ensure(keyconf, "File Browser Buttons", SPACE_FILE, RGN_TYPE_WINDOW);
 }
 
 static bool file_ui_region_poll(const RegionPollParams *params)
@@ -672,7 +670,7 @@ static void file_tools_region_init(wmWindowManager *wm, ARegion *region)
   ED_region_panels_init(wm, region);
 
   /* own keymaps */
-  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 }
 
@@ -722,7 +720,7 @@ static void file_header_region_init(wmWindowManager *wm, ARegion *region)
 
   ED_region_header_init(region);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 }
 
@@ -740,10 +738,10 @@ static void file_ui_region_init(wmWindowManager *wm, ARegion *region)
   region->v2d.keepzoom |= V2D_LOCKZOOM_X | V2D_LOCKZOOM_Y;
 
   /* own keymap */
-  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser Buttons", SPACE_FILE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser Buttons", SPACE_FILE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 }
 
@@ -760,7 +758,7 @@ static void file_execution_region_init(wmWindowManager *wm, ARegion *region)
   region->v2d.keepzoom |= V2D_LOCKZOOM_X | V2D_LOCKZOOM_Y;
 
   /* own keymap */
-  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 }
 
@@ -843,6 +841,20 @@ static void file_id_remap(ScrArea *area, SpaceLink *sl, const IDRemapper * /*map
   file_reset_filelist_showing_main_data(area, sfile);
 }
 
+static void file_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
+{
+  SpaceFile *sfile = reinterpret_cast<SpaceFile *>(space_link);
+  const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
+  const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
+
+  /* TODO: investigate whether differences between this code and the one in #file_id_remap are
+   * meaningful and make sense or not. */
+  if (!is_readonly) {
+    sfile->op = nullptr;
+    sfile->tags = FILE_TAG_REBUILD_MAIN_FILES;
+  }
+}
+
 static void file_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
 {
   SpaceFile *sfile = (SpaceFile *)sl;
@@ -868,11 +880,12 @@ static void file_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
   }
 }
 
-static void file_space_blend_read_lib(BlendLibReader * /*reader*/,
-                                      ID * /*parent_id*/,
-                                      SpaceLink *sl)
+static void file_space_blend_read_after_liblink(BlendLibReader * /*reader*/,
+                                                ID * /*parent_id*/,
+                                                SpaceLink *sl)
 {
-  SpaceFile *sfile = (SpaceFile *)sl;
+  SpaceFile *sfile = reinterpret_cast<SpaceFile *>(sl);
+
   sfile->tags |= FILE_TAG_REBUILD_MAIN_FILES;
 }
 
@@ -912,8 +925,9 @@ void ED_spacetype_file()
   st->space_subtype_set = file_space_subtype_set;
   st->context = file_context;
   st->id_remap = file_id_remap;
+  st->foreach_id = file_foreach_id;
   st->blend_read_data = file_space_blend_read_data;
-  st->blend_read_lib = file_space_blend_read_lib;
+  st->blend_read_after_liblink = file_space_blend_read_after_liblink;
   st->blend_write = file_space_blend_write;
 
   /* regions: main window */

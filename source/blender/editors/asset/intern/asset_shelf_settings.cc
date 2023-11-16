@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,7 +14,7 @@
 
 #include "DNA_screen_types.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"

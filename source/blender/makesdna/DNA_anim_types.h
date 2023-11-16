@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,10 +14,6 @@
 #include "DNA_action_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_listBase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* ************************************************ */
 /* F-Curve DataTypes */
@@ -1204,7 +1200,3 @@ typedef struct IdAdtTemplate {
 #define SELECT 1
 
 /* ************************************************ */
-
-#ifdef __cplusplus
-};
-#endif

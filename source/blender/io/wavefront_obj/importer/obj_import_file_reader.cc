@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,6 +9,7 @@
 #include "BLI_map.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_vector.h"
+#include "BLI_string.h"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
@@ -18,6 +19,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <iostream>
 
 namespace blender::io::obj {
 

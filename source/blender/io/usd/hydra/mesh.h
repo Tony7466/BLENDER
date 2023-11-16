@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -27,8 +27,7 @@ class MeshData : public ObjectData {
     MaterialData *mat_data = nullptr;
   };
 
- private:
-  std::vector<SubMesh> submeshes_;
+  Vector<SubMesh> submeshes_;
   int submeshes_count_ = 0;
 
  public:

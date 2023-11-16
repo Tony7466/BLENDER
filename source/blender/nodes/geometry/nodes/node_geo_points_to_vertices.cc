@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,8 +12,6 @@
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_points_to_vertices_cc {
-
-using blender::Array;
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -83,6 +81,7 @@ static void geometry_set_points_to_vertices(
   }
 
   mesh->tag_loose_edges_none();
+  mesh->tag_overlapping_none();
 
   geometry_set.replace_mesh(mesh);
   geometry_set.keep_only_during_modify({GeometryComponent::Type::Mesh});

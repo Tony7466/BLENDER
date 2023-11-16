@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,13 +26,13 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_multires.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_packedFile.h"
 #include "BKE_paint.hh"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_undo_system.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 
@@ -400,7 +400,7 @@ void unpack_menu(bContext *C,
           break;
         case PF_CMP_EQUAL:
           SNPRINTF(line, TIP_("Use %s (identical)"), local_name);
-          // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_USE_LOCAL);
+          // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_USE_LOCAL);
           uiItemFullO_ptr(
               layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
           RNA_enum_set(&props_ptr, "method", PF_USE_LOCAL);
@@ -409,14 +409,14 @@ void unpack_menu(bContext *C,
           break;
         case PF_CMP_DIFFERS:
           SNPRINTF(line, TIP_("Use %s (differs)"), local_name);
-          // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_USE_LOCAL);
+          // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_USE_LOCAL);
           uiItemFullO_ptr(
               layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
           RNA_enum_set(&props_ptr, "method", PF_USE_LOCAL);
           RNA_string_set(&props_ptr, "id", id_name);
 
           SNPRINTF(line, TIP_("Overwrite %s"), local_name);
-          // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_WRITE_LOCAL);
+          // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_WRITE_LOCAL);
           uiItemFullO_ptr(
               layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
           RNA_enum_set(&props_ptr, "method", PF_WRITE_LOCAL);
@@ -429,7 +429,7 @@ void unpack_menu(bContext *C,
   switch (BKE_packedfile_compare_to_file(blendfile_path, abs_name, pf)) {
     case PF_CMP_NOFILE:
       SNPRINTF(line, TIP_("Create %s"), abs_name);
-      // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_WRITE_ORIGINAL);
+      // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_WRITE_ORIGINAL);
       uiItemFullO_ptr(
           layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
       RNA_enum_set(&props_ptr, "method", PF_WRITE_ORIGINAL);
@@ -437,7 +437,7 @@ void unpack_menu(bContext *C,
       break;
     case PF_CMP_EQUAL:
       SNPRINTF(line, TIP_("Use %s (identical)"), abs_name);
-      // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_USE_ORIGINAL);
+      // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_USE_ORIGINAL);
       uiItemFullO_ptr(
           layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
       RNA_enum_set(&props_ptr, "method", PF_USE_ORIGINAL);
@@ -445,14 +445,14 @@ void unpack_menu(bContext *C,
       break;
     case PF_CMP_DIFFERS:
       SNPRINTF(line, TIP_("Use %s (differs)"), abs_name);
-      // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_USE_ORIGINAL);
+      // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_USE_ORIGINAL);
       uiItemFullO_ptr(
           layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
       RNA_enum_set(&props_ptr, "method", PF_USE_ORIGINAL);
       RNA_string_set(&props_ptr, "id", id_name);
 
       SNPRINTF(line, TIP_("Overwrite %s"), abs_name);
-      // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_WRITE_ORIGINAL);
+      // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_WRITE_ORIGINAL);
       uiItemFullO_ptr(
           layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
       RNA_enum_set(&props_ptr, "method", PF_WRITE_ORIGINAL);

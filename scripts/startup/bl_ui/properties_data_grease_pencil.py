@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 import bpy
@@ -47,7 +47,6 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
 
-        ob = context.object
         grease_pencil = context.grease_pencil
         layer = grease_pencil.layers.active
 
