@@ -450,6 +450,54 @@ ccl_device
       bsdf_transparent_setup(sd, weight, path_flag);
       break;
     }
+    case CLOSURE_BSDF_CONDUCTOR: {
+#ifdef __CAUSTICS_TRICKS__
+      if (!kernel_data.integrator.caustics_reflective && (path_flag & PATH_RAY_DIFFUSE))
+        break;
+#endif
+      ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
+          sd, sizeof(MicrofacetBsdf), rgb_to_spectrum(make_float3(mix_weight)));
+      ccl_private FresnelF82Tint *fresnel = (bsdf != NULL) ?
+                                                (ccl_private FresnelF82Tint *)closure_alloc_extra(
+                                                    sd, sizeof(FresnelF82Tint)) :
+                                                NULL;
+
+      if (bsdf && fresnel) {
+        uint color_offest, tint_offset, rotation_offset, tangent_offset;
+        svm_unpack_node_uchar4(
+            node.z, &color_offest, &tint_offset, &rotation_offset, &tangent_offset);
+
+        float3 valid_reflection_N = maybe_ensure_valid_specular_reflection(sd, N);
+        float3 T = stack_load_float3(stack, tangent_offset);
+        const float anisotropy = saturatef(param2);
+        const float roughness = saturatef(param1);
+        float alpha_x = sqr(roughness), alpha_y = sqr(roughness);
+        if (anisotropy > 0.0f) {
+          float aspect = sqrtf(1.0f - anisotropy * 0.9f);
+          alpha_x /= aspect;
+          alpha_y *= aspect;
+          float anisotropic_rotation = stack_load_float(stack, rotation_offset);
+          if (anisotropic_rotation != 0.0f)
+            T = rotate_around_axis(T, N, anisotropic_rotation * M_2PI_F);
+        }
+
+        bsdf->N = valid_reflection_N;
+        bsdf->ior = 1.0f;
+        bsdf->T = T;
+        bsdf->alpha_x = alpha_x;
+        bsdf->alpha_y = alpha_y;
+
+        fresnel->f0 = rgb_to_spectrum(saturate(stack_load_float3(stack, color_offest)));
+        const Spectrum f82 = rgb_to_spectrum(saturate(stack_load_float3(stack, tint_offset)));
+
+        /* setup bsdf */
+        sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
+        ClosureType distribution = (ClosureType)node.w;
+        const bool is_multiggx = (distribution == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
+        bsdf_microfacet_setup_fresnel_f82_tint(kg, bsdf, sd, fresnel, f82, is_multiggx);
+      }
+      break;
+    }
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:
     case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:

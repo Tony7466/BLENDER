@@ -594,10 +594,10 @@ class ConductorBsdfNode : public BsdfNode {
   void simplify_settings(Scene *scene);
   ClosureType get_closure_type()
   {
-    return distribution;
+    return closure;
   }
 
-  /* NODE_SOCKET_API(float3, tint) */
+  NODE_SOCKET_API(float3, tint)
   NODE_SOCKET_API(float3, tangent)
   NODE_SOCKET_API(float, roughness)
   NODE_SOCKET_API(float, anisotropy)

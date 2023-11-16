@@ -1,50 +1,35 @@
-/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
 #include "node_fresnel.h"
 #include "stdcycles.h"
 
-shader node_glossy_bsdf(color Color = 1.0,
-                        color Tint = 1.0,
-                        string distribution = "ggx",
-                        float Roughness = 0.5,
-                        float Anisotropy = 0.0,
-                        float Rotation = 0.0,
-                        normal Normal = N,
-                        normal Tangent = 0.0,
-                        output closure color BSDF = 0)
+shader node_conductor_bsdf(color Color = 1.0,
+                           color Tint = 1.0,
+                           string distribution = "multi_ggx",
+                           float Roughness = 0.5,
+                           float Anisotropy = 0.0,
+                           float Rotation = 0.0,
+                           normal Normal = N,
+                           normal Tangent = 0.0,
+                           output closure color BSDF = 0)
 {
-  /* compute roughness */
-  float roughness = Roughness * Roughness;
-  float roughness_u, roughness_v;
-  float aniso = clamp(Anisotropy, -0.99, 0.99);
+  float r2 = clamp(Roughness, 0.0, 1.0);
+  r2 *= r2;
+  float alpha_x = r2, alpha_y = r2;
 
-  /* rotate tangent around normal */
+  /* Handle anisotropy. */
   vector T = Tangent;
-
-  if (abs(aniso) <= 1e-4) {
-    roughness_u = roughness;
-    roughness_v = roughness;
-  }
-  else {
+  if (Anisotropy > 0.0) {
+    float aspect = sqrt(1.0 - clamp(Anisotropy, 0.0, 1.0) * 0.9);
+    alpha_x /= aspect;
+    alpha_y *= aspect;
     if (Rotation != 0.0)
       T = rotate(T, Rotation * M_2PI, point(0.0, 0.0, 0.0), Normal);
-
-    if (aniso < 0.0) {
-      roughness_u = roughness / (1.0 + aniso);
-      roughness_v = roughness * (1.0 + aniso);
-    }
-    else {
-      roughness_u = roughness * (1.0 - aniso);
-      roughness_v = roughness / (1.0 - aniso);
-    }
   }
 
-  if (distribution == "Multiscatter GGX")
-    BSDF = color(1.0, 0.2, 0.1) *
-           microfacet_multi_ggx_aniso(Normal, T, roughness_u, roughness_v, Color);
-  else
-    BSDF = color(1.0, 0.2, 0.1) *
-           microfacet(distribution, Normal, T, roughness_u, roughness_v, 0.0, 0);
+  color F0 = clamp(Color, color(0.0), color(1.0));
+  color F82 = clamp(Tint, color(0.0), color(1.0));
+  BSDF = microfacet_f82_tint(distribution, Normal, T, alpha_x, alpha_y, F0, F82);
 }

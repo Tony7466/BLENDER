@@ -2414,7 +2414,7 @@ NODE_DEFINE(ConductorBsdfNode)
   SOCKET_ENUM(
       distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
 
-  /* SOCKET_IN_COLOR(color, "Tint", make_float3(1.0f, 1.0f, 1.0f)); */
+  SOCKET_IN_COLOR(tint, "Tint", make_float3(1.0f, 1.0f, 1.0f));
   SOCKET_IN_VECTOR(tangent, "Tangent", zero_float3(), SocketType::LINK_TANGENT);
 
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
@@ -2428,7 +2428,7 @@ NODE_DEFINE(ConductorBsdfNode)
 
 ConductorBsdfNode::ConductorBsdfNode() : BsdfNode(get_node_type())
 {
-  closure = CLOSURE_BSDF_MICROFACET_GGX_ID;
+  closure = CLOSURE_BSDF_CONDUCTOR;
 }
 
 bool ConductorBsdfNode::is_isotropic()
@@ -2462,16 +2462,27 @@ void ConductorBsdfNode::simplify_settings(Scene * /* scene */)
 
 void ConductorBsdfNode::compile(SVMCompiler &compiler)
 {
-  closure = distribution;
+  compiler.add_node(NODE_CLOSURE_SET_WEIGHT, one_float3());
 
-  /* TODO: Just use weight for legacy MultiGGX? Would also simplify OSL. */
-  if (closure == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID) {
-    BsdfNode::compile(
-        compiler, input("Roughness"), input("Anisotropy"), input("Rotation"), input("Color"));
-  }
-  else {
-    BsdfNode::compile(compiler, input("Roughness"), input("Anisotropy"), input("Rotation"));
-  }
+  ShaderInput *color_in = input("Color");
+  ShaderInput *anisotropy_in = input("Anisotropy");
+  ShaderInput *rotation_in = input("Rotation");
+  ShaderInput *tint_in = input("Tint");
+  ShaderInput *roughness_in = input("Roughness");
+  ShaderInput *tangent_in = input("Tangent");
+  int normal_offset = compiler.stack_assign_if_linked(input("Normal"));
+
+  compiler.add_node(NODE_CLOSURE_BSDF,
+                    compiler.encode_uchar4(closure,
+                                           compiler.stack_assign(roughness_in),
+                                           compiler.stack_assign(anisotropy_in),
+                                           compiler.closure_mix_weight_offset()),
+                    compiler.encode_uchar4(compiler.stack_assign(color_in),
+                                           compiler.stack_assign(tint_in),
+                                           compiler.stack_assign(rotation_in),
+                                           compiler.stack_assign(tangent_in)),
+                    distribution);
+  compiler.add_node(normal_offset);
 }
 
 void ConductorBsdfNode::compile(OSLCompiler &compiler)
