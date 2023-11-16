@@ -185,6 +185,7 @@ GPUBatch *DRW_mesh_batch_cache_get_all_edges(Mesh *me);
 GPUBatch *DRW_mesh_batch_cache_get_loose_edges(Mesh *me);
 GPUBatch *DRW_mesh_batch_cache_get_edge_detection(Mesh *me, bool *r_is_manifold);
 GPUBatch *DRW_mesh_batch_cache_get_surface(Mesh *me);
+GPUBatch **DRW_mesh_batch_cache_get_edit_surface(Mesh *me);
 GPUBatch *DRW_mesh_batch_cache_get_surface_edges(Object *object, Mesh *me);
 GPUBatch **DRW_mesh_batch_cache_get_surface_shaded(Object *object,
                                                    Mesh *me,

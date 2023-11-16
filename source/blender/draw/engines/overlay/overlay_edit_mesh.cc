@@ -261,7 +261,7 @@ static void overlay_edit_mesh_add_ob_to_pass(OVERLAY_PrivateData *pd, Object *ob
                                               V3D_RETOPOLOGY_COLOR_MATERIAL;
   if (show_retopology && use_retopology_material_colors) {
     const int material_count = DRW_cache_object_material_count_get(ob);
-    GPUBatch **batches = DRW_cache_mesh_surface_texpaint_get(ob);
+    GPUBatch **batches = DRW_mesh_batch_cache_get_edit_surface(me);
     for (int64_t material_slot : blender::IndexRange(material_count)) {
       GPUBatch *geom = batches[material_slot];
       if (geom == nullptr) {

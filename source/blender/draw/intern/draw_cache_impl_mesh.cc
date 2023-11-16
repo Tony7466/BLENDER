@@ -201,6 +201,7 @@ static constexpr DRWBatchFlag batches_that_use_buffer(const int buffer_index)
 }
 
 static void mesh_batch_cache_discard_surface_batches(MeshBatchCache &cache);
+static void mesh_batch_cache_discard_edit_surface_batches(MeshBatchCache &cache);
 static void mesh_batch_cache_clear(MeshBatchCache &cache);
 
 static void mesh_batch_cache_discard_batch(MeshBatchCache &cache, const DRWBatchFlag batch_map)
@@ -215,6 +216,9 @@ static void mesh_batch_cache_discard_batch(MeshBatchCache &cache, const DRWBatch
 
   if (batch_map & MBC_SURFACE_PER_MAT) {
     mesh_batch_cache_discard_surface_batches(cache);
+  }
+  if (batch_map & MBC_EDIT_TRIANGLES) {
+    mesh_batch_cache_discard_edit_surface_batches(cache);
   }
 }
 
@@ -599,6 +603,8 @@ static void mesh_batch_cache_init(Object *object, Mesh *me)
   cache->mat_len = mesh_render_mat_len_get(object, me);
   cache->surface_per_mat = static_cast<GPUBatch **>(
       MEM_callocN(sizeof(*cache->surface_per_mat) * cache->mat_len, __func__));
+  cache->edit_surface_per_mat = static_cast<GPUBatch **>(
+      MEM_callocN(sizeof(*cache->edit_surface_per_mat) * cache->mat_len, __func__));
   cache->tris_per_mat = static_cast<GPUIndexBuf **>(
       MEM_callocN(sizeof(*cache->tris_per_mat) * cache->mat_len, __func__));
 
@@ -646,6 +652,27 @@ static void mesh_batch_cache_request_surface_batches(MeshBatchCache &cache)
   for (int i = 0; i < cache.mat_len; i++) {
     DRW_batch_request(&cache.surface_per_mat[i]);
   }
+}
+
+static void mesh_batch_cache_request_edit_surface_batches(MeshBatchCache &cache)
+{
+  mesh_batch_cache_add_request(cache, MBC_EDIT_TRIANGLES);
+  DRW_batch_request(&cache.batch.edit_triangles);
+  for (int i = 0; i < cache.mat_len; i++) {
+    DRW_batch_request(&cache.edit_surface_per_mat[i]);
+  }
+}
+
+/* Free batches with material-mapped looptris.
+ * NOTE: The updating of the indices buffers (#tris_per_mat) is handled in the extractors.
+ * No need to discard them here. */
+static void mesh_batch_cache_discard_edit_surface_batches(MeshBatchCache &cache)
+{
+  GPU_BATCH_DISCARD_SAFE(cache.batch.edit_triangles);
+  for (int i = 0; i < cache.mat_len; i++) {
+    GPU_BATCH_DISCARD_SAFE(cache.edit_surface_per_mat[i]);
+  }
+  cache.batch_ready &= ~MBC_EDIT_TRIANGLES;
 }
 
 /* Free batches with material-mapped looptris.
@@ -828,6 +855,7 @@ static void mesh_batch_cache_clear(MeshBatchCache &cache)
   mesh_batch_cache_discard_shaded_tri(cache);
   mesh_batch_cache_discard_uvedit(cache);
   MEM_SAFE_FREE(cache.surface_per_mat);
+  MEM_SAFE_FREE(cache.edit_surface_per_mat);
   cache.mat_len = 0;
 
   cache.batch_ready = (DRWBatchFlag)0;
@@ -1088,6 +1116,13 @@ GPUBatch *DRW_mesh_batch_cache_get_edit_triangles(Mesh *me)
   MeshBatchCache &cache = *mesh_batch_cache_get(me);
   mesh_batch_cache_add_request(cache, MBC_EDIT_TRIANGLES);
   return DRW_batch_request(&cache.batch.edit_triangles);
+}
+
+GPUBatch **DRW_mesh_batch_cache_get_edit_surface(Mesh *me)
+{
+  MeshBatchCache &cache = *mesh_batch_cache_get(me);
+  mesh_batch_cache_request_edit_surface_batches(cache);
+  return cache.edit_surface_per_mat;
 }
 
 GPUBatch *DRW_mesh_batch_cache_get_edit_edges(Mesh *me)
@@ -1667,6 +1702,13 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     DRW_ibo_request(cache.batch.edit_triangles, &mbuflist->ibo.tris);
     DRW_vbo_request(cache.batch.edit_triangles, &mbuflist->vbo.pos_nor);
     DRW_vbo_request(cache.batch.edit_triangles, &mbuflist->vbo.edit_data);
+  }
+  for (int i = 0; i < cache.mat_len; i++) {
+    if (DRW_batch_requested(cache.edit_surface_per_mat[i], GPU_PRIM_TRIS)) {
+      DRW_ibo_request(cache.edit_surface_per_mat[i], &cache.tris_per_mat[i]);
+      DRW_vbo_request(cache.edit_surface_per_mat[i], &mbuflist->vbo.pos_nor);
+      DRW_vbo_request(cache.edit_surface_per_mat[i], &mbuflist->vbo.edit_data);
+    }
   }
   assert_deps_valid(
       MBC_EDIT_VERTICES,

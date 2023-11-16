@@ -267,6 +267,7 @@ struct MeshBatchCache {
   GPUIndexBuf **tris_per_mat;
 
   GPUBatch **surface_per_mat;
+  GPUBatch **edit_surface_per_mat;
 
   DRWSubdivCache *subdiv_cache;
 
