@@ -2010,6 +2010,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 8)) {
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type != NTREE_GEOMETRY) {
+        continue;
+      }
       versioning_node_dynamic_socket(*ntree, GEO_NODE_ACCUMULATE_FIELD, " ", " ", 1, 3);
       versioning_node_dynamic_socket(*ntree, GEO_NODE_CAPTURE_ATTRIBUTE, "_", "_");
       versioning_node_dynamic_socket(*ntree, GEO_NODE_ATTRIBUTE_STATISTIC, "_", "_");
