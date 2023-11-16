@@ -37,6 +37,12 @@ typedef enum eV3DShadingColorType {
   V3D_SHADING_VERTEX_COLOR = 5,
 } eV3DShadingColorType;
 
+/** #View3DOverlay.retopology_color_type */
+typedef enum eV3DRetopologyColorType {
+  V3D_RETOPOLOGY_COLOR_THEME = 0,
+  V3D_RETOPOLOGY_COLOR_MATERIAL = 1,
+} eV3DRetopologyColorType;
+
 /** #View3DShading.background_type */
 typedef enum eV3DShadingBackgroundType {
   V3D_SHADING_BACKGROUND_THEME = 0,

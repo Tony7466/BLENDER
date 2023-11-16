@@ -58,7 +58,7 @@ vec4 EDIT_MESH_face_color(uint face_flag)
   bool face_retopo = (retopologyOffset > 0.0);
   vec4 selected_face_col = (selectFace) ? colorFaceModeSelect : colorFaceSelect;
   vec4 color = colorFace;
-  color = face_retopo ? colorFaceRetopology : color;
+  color = face_retopo ? retopologyColor : color;
   color = face_freestyle ? colorFaceFreestyle : color;
   color = face_selected ? selected_face_col : color;
   if (selectFace && face_active) {

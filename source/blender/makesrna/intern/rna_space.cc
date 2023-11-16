@@ -430,6 +430,12 @@ static const EnumPropertyItem rna_enum_shading_color_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+static const EnumPropertyItem rna_enum_retopology_color_type_items[] = {
+    {V3D_RETOPOLOGY_COLOR_THEME, "THEME", 0, "Single", "Show theme color"},
+    {V3D_RETOPOLOGY_COLOR_MATERIAL, "MATERIAL", 0, "Material", "Show material color"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 static const EnumPropertyItem rna_enum_shading_wire_color_type_items[] = {
     {V3D_SHADING_SINGLE_COLOR,
      "THEME",
@@ -4592,6 +4598,12 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.0f, 10.0f, 0.1f, 3);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+
+  prop = RNA_def_property(srna, "retopology_color_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "overlay.retopology_color_type");
+  RNA_def_property_enum_items(prop, rna_enum_retopology_color_type_items);
+  RNA_def_property_ui_text(prop, "Retopology Color", "Color to use for retopology overlay");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
   prop = RNA_def_property(srna, "show_face_normals", PROP_BOOLEAN, PROP_NONE);
