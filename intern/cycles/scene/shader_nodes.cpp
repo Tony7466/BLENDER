@@ -2994,6 +2994,7 @@ void SubsurfaceScatteringNode::compile(SVMCompiler &compiler)
   ShaderInput *ior_in = input("IOR");
   ShaderInput *roughness_in = input("Roughness");
   ShaderInput *anisotropy_in = input("Anisotropy");
+  int normal_offset = compiler.stack_assign_if_linked(input("Normal"));
 
   compiler.add_node(NODE_CLOSURE_BSDF,
                     compiler.encode_uchar4(closure,
@@ -3003,7 +3004,7 @@ void SubsurfaceScatteringNode::compile(SVMCompiler &compiler)
                     compiler.encode_uchar4(compiler.stack_assign(radius_in),
                                            compiler.stack_assign(roughness_in),
                                            compiler.stack_assign(anisotropy_in)));
-  compiler.add_node(compiler.stack_assign_if_linked(input("Normal")));
+  compiler.add_node(normal_offset);
 }
 
 void SubsurfaceScatteringNode::compile(OSLCompiler &compiler)

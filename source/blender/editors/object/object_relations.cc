@@ -68,11 +68,12 @@
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_interface.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -103,7 +104,7 @@
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
-#include "ANIM_fcurve.hh"
+#include "ANIM_action.hh"
 
 #include "MOD_nodes.hh"
 
@@ -650,8 +651,8 @@ bool ED_object_parent_set(ReportList *reports,
               if (md) {
                 ((CurveModifierData *)md)->object = par;
               }
-              if (par->runtime.curve_cache &&
-                  par->runtime.curve_cache->anim_path_accum_length == nullptr) {
+              if (par->runtime->curve_cache &&
+                  par->runtime->curve_cache->anim_path_accum_length == nullptr) {
                 DEG_id_tag_update(&par->id, ID_RECALC_GEOMETRY);
               }
             }

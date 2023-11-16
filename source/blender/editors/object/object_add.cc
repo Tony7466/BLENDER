@@ -81,6 +81,7 @@
 #include "BKE_nla.h"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
@@ -1536,8 +1537,8 @@ static EnumPropertyItem rna_enum_gpencil_add_stroke_depth_order_items[] = {
 void OBJECT_OT_gpencil_add(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Add Grease Pencil (legacy)";
-  ot->description = "Add a Grease Pencil (legacy) object to the scene";
+  ot->name = "Add Grease Pencil";
+  ot->description = "Add a Grease Pencil object to the scene";
   ot->idname = "OBJECT_OT_gpencil_add";
 
   /* api callbacks */
@@ -2704,7 +2705,7 @@ static void make_object_duplilist_real(bContext *C,
 
     ob_dst->parent = nullptr;
     BKE_constraints_free(&ob_dst->constraints);
-    ob_dst->runtime.curve_cache = nullptr;
+    ob_dst->runtime->curve_cache = nullptr;
     const bool is_dupli_instancer = (ob_dst->transflag & OB_DUPLI) != 0;
     ob_dst->transflag &= ~OB_DUPLI;
     /* Remove instantiated collection, it's annoying to keep it here
@@ -2913,16 +2914,8 @@ static const EnumPropertyItem convert_target_items[] = {
     {OB_GPENCIL_LEGACY,
      "GPENCIL",
      ICON_OUTLINER_OB_GREASEPENCIL,
-#ifdef WITH_GREASE_PENCIL_V3
-     "Grease Pencil (legacy)",
-#else
      "Grease Pencil",
-#endif
-#ifdef WITH_GREASE_PENCIL_V3
-     "Grease Pencil (legacy) from Curve or Mesh objects"},
-#else
      "Grease Pencil from Curve or Mesh objects"},
-#endif
 #ifdef WITH_POINT_CLOUD
     {OB_POINTCLOUD,
      "POINTCLOUD",
@@ -2935,8 +2928,8 @@ static const EnumPropertyItem convert_target_items[] = {
     {OB_GREASE_PENCIL,
      "GREASEPENCIL",
      ICON_OUTLINER_OB_GREASEPENCIL,
-     "Grease Pencil",
-     "Grease Pencil from Grease Pencil (legacy)"},
+     "Grease Pencil v3",
+     "Grease Pencil v3 from Grease Pencil"},
 #endif
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -3256,8 +3249,8 @@ static int object_convert_exec(bContext *C, wmOperator *op)
 
       Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
       bke::GeometrySet geometry;
-      if (ob_eval->runtime.geometry_set_eval != nullptr) {
-        geometry = *ob_eval->runtime.geometry_set_eval;
+      if (ob_eval->runtime->geometry_set_eval != nullptr) {
+        geometry = *ob_eval->runtime->geometry_set_eval;
       }
 
       if (geometry.has_curves()) {
@@ -3554,8 +3547,8 @@ static int object_convert_exec(bContext *C, wmOperator *op)
 
       Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
       bke::GeometrySet geometry;
-      if (ob_eval->runtime.geometry_set_eval != nullptr) {
-        geometry = *ob_eval->runtime.geometry_set_eval;
+      if (ob_eval->runtime->geometry_set_eval != nullptr) {
+        geometry = *ob_eval->runtime->geometry_set_eval;
       }
 
       if (keep_original) {

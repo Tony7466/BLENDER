@@ -1244,7 +1244,7 @@ static ft_pix blf_font_height_max_ft_pix(FontBLF *font)
 {
   blf_ensure_size(font);
   /* #Metrics::height is rounded to pixel. Force minimum of one pixel. */
-  return MAX2((ft_pix)font->ft_size->metrics.height, ft_pix_from_int(1));
+  return std::max((ft_pix)font->ft_size->metrics.height, ft_pix_from_int(1));
 }
 
 int blf_font_height_max(FontBLF *font)
@@ -1256,7 +1256,7 @@ static ft_pix blf_font_width_max_ft_pix(FontBLF *font)
 {
   blf_ensure_size(font);
   /* #Metrics::max_advance is rounded to pixel. Force minimum of one pixel. */
-  return MAX2((ft_pix)font->ft_size->metrics.max_advance, ft_pix_from_int(1));
+  return std::max((ft_pix)font->ft_size->metrics.max_advance, ft_pix_from_int(1));
 }
 
 int blf_font_width_max(FontBLF *font)
@@ -1704,6 +1704,7 @@ static const FaceDetails static_face_details[] = {
     {"NotoSansHebrew-Regular.woff2", TT_UCR_HEBREW, 0, 0, 0},
     {"NotoSansJavanese-Regular.woff2", 0x80000003L, 0x2000L, 0, 0},
     {"NotoSansKannada-VariableFont_wdth,wght.woff2", TT_UCR_KANNADA, 0, 0, 0},
+    {"NotoSansKhmer-VariableFont_wdth,wght.woff2", 0, 0, TT_UCR_KHMER, 0},
     {"NotoSansMalayalam-VariableFont_wdth,wght.woff2", TT_UCR_MALAYALAM, 0, 0, 0},
     {"NotoSansMath-Regular.woff2", 0, TT_UCR_MATHEMATICAL_OPERATORS, 0, 0},
     {"NotoSansMyanmar-Regular.woff2", 0, 0, TT_UCR_MYANMAR, 0},
