@@ -205,14 +205,4 @@ void VKPipeline::update_push_constants(VKContext &context)
   push_constants_.update(context);
 }
 
-void VKPipeline::bind_descriptor_set(VKContext &context,
-                                     VKDescriptorSetTracker &descriptor_set,
-                                     VkPipelineLayout vk_pipeline_layout,
-                                     VkPipelineBindPoint vk_pipeline_bind_point)
-{
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  descriptor_set.update(context);
-  command_buffers.bind(
-      *descriptor_set.active_descriptor_set(), vk_pipeline_layout, vk_pipeline_bind_point);
-}
 }  // namespace blender::gpu

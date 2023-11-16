@@ -85,10 +85,6 @@ class VKPipeline : NonCopyable {
 
   void bind(VKContext &context, VkPipelineBindPoint vk_pipeline_bind_point);
   void update_push_constants(VKContext &context);
-  void bind_descriptor_set(VKContext &context,
-                           VKDescriptorSetTracker &descriptor_set,
-                           VkPipelineLayout vk_pipeline_layout,
-                           VkPipelineBindPoint vk_pipeline_bind_point);
 };
 
 }  // namespace blender::gpu

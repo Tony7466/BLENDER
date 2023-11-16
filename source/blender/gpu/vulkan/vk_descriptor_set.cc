@@ -224,4 +224,13 @@ void VKDescriptorSetTracker::Binding::debug_print() const
             << ", location:" << location.binding << ")\n";
 }
 
+void VKDescriptorSetTracker::bind(VKContext &context,
+                                  VkPipelineLayout vk_pipeline_layout,
+                                  VkPipelineBindPoint vk_pipeline_bind_point)
+{
+  update(context);
+  VKCommandBuffers &command_buffers = context.command_buffers_get();
+  command_buffers.bind(*active_descriptor_set(), vk_pipeline_layout, vk_pipeline_bind_point);
+}
+
 }  // namespace blender::gpu

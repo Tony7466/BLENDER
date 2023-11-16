@@ -27,10 +27,9 @@ class VKShader : public Shader {
   VkShaderModule fragment_module_ = VK_NULL_HANDLE;
   VkShaderModule compute_module_ = VK_NULL_HANDLE;
   bool compilation_failed_ = false;
-  /* TODO: Should we move layout and pipeline layout to VKShaderInterface? */
-  /* TODO: Rename */
-  VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
-  VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
+  /* TODO: Should we move descriptor set layout and pipeline layout to VKShaderInterface? */
+  VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
+  VkPipelineLayout vk_pipeline_layout_ = VK_NULL_HANDLE;
   VKPipeline pipeline_;
 
  public:
@@ -78,7 +77,7 @@ class VKShader : public Shader {
   VKPipeline &pipeline_get();
   VkPipelineLayout vk_pipeline_layout_get() const
   {
-    return pipeline_layout_;
+    return vk_pipeline_layout_;
   }
 
   const VKShaderInterface &interface_get() const;
@@ -104,12 +103,12 @@ class VKShader : public Shader {
    */
   bool has_descriptor_set() const
   {
-    return layout_ != VK_NULL_HANDLE;
+    return vk_descriptor_set_layout_ != VK_NULL_HANDLE;
   }
 
   VkDescriptorSetLayout vk_descriptor_set_layout_get() const
   {
-    return layout_;
+    return vk_descriptor_set_layout_;
   }
 
  private:
