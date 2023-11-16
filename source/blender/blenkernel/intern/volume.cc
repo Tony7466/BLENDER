@@ -1598,8 +1598,9 @@ float BKE_volume_simplify_factor(const Depsgraph *depsgraph)
 
 #ifdef WITH_OPENVDB
 
-std::optional<blender::Bounds<blender::float3>> BKE_volume_grid_bounds(
-    openvdb::GridBase::ConstPtr grid, float3 &r_min, float3 &r_max)
+std::optional<blender::Bounds<float3>> BKE_volume_grid_bounds(openvdb::GridBase::ConstPtr grid,
+                                                              float3 &r_min,
+                                                              float3 &r_max)
 {
   /* TODO: we can get this from grid metadata in some cases? */
   openvdb::CoordBBox coordbbox;
@@ -1609,9 +1610,7 @@ std::optional<blender::Bounds<blender::float3>> BKE_volume_grid_bounds(
 
   openvdb::BBoxd bbox = grid->transform().indexToWorld(coordbbox);
 
-  return blender::Bounds<float3>{
-      float3(float(bbox.min().x()), float(bbox.min().y()), float(bbox.min().z())),
-      float3(float(bbox.max().x()), float(bbox.max().y()), float(bbox.max().z()))};
+  return blender::Bounds<float3>{float3(bbox.min().asPointer()), float3(bbox.max().asPointer())};
 }
 
 openvdb::GridBase::ConstPtr BKE_volume_grid_shallow_transform(openvdb::GridBase::ConstPtr grid,

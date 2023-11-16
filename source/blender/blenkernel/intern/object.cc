@@ -215,10 +215,6 @@ static void object_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const in
     ob_dst->iuser = (ImageUser *)MEM_dupallocN(ob_src->iuser);
   }
 
-  if (ob_src->runtime->bb) {
-    ob_dst->runtime->bb = (BoundBox *)MEM_dupallocN(ob_src->runtime->bb);
-  }
-
   BLI_listbase_clear(&ob_dst->shader_fx);
   LISTBASE_FOREACH (ShaderFxData *, fx, &ob_src->shader_fx) {
     ShaderFxData *nfx = BKE_shaderfx_new(fx->type);
@@ -305,7 +301,6 @@ static void object_free_data(ID *id)
   MEM_SAFE_FREE(ob->mat);
   MEM_SAFE_FREE(ob->matbits);
   MEM_SAFE_FREE(ob->iuser);
-  MEM_SAFE_FREE(ob->runtime->bb);
 
   if (ob->pose) {
     BKE_pose_free_ex(ob->pose, false);
@@ -1615,7 +1610,7 @@ void BKE_object_eval_assign_data(Object *object_eval, ID *data_eval, bool is_own
 
 void BKE_object_free_derived_caches(Object *ob)
 {
-  MEM_SAFE_FREE(ob->runtime->bb);
+  ob->runtime->bounds_eval.reset();
 
   object_update_from_subsurf_ccg(ob);
 
@@ -3610,23 +3605,6 @@ std::optional<Bounds<float3>> BKE_object_evaluated_geometry_bounds(const Object 
   return ob->runtime->geometry_set_eval->compute_boundbox_without_instances();
 }
 
-std::optional<Bounds<float3>> BKE_object_boundbox_calc_from_evaluated_geometry(Object *ob)
-{
-  using namespace blender;
-
-  std::optional<Bounds<float3>> bounds;
-  if (ob->runtime->geometry_set_eval) {
-    bounds = ob->runtime->geometry_set_eval->compute_boundbox_without_instances();
-  }
-  if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob)) {
-    /* In case the evaluated mesh isn't part of the evaluated geometry set, check it separately.
-     * Eventually this should be removed when we can be sure that the geometry set contains the
-     * mesh. */
-    return mesh_eval->bounds_min_max();
-  }
-  return std::nullopt;
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -3639,7 +3617,6 @@ static void boundbox_to_dimensions(const Object *ob,
                                    const std::optional<Bounds<float3>> bb,
                                    float r_vec[3])
 {
-  using namespace blender;
   if (bb) {
     float3 scale;
     mat4_to_size(scale, ob->object_to_world);
@@ -3666,25 +3643,23 @@ void BKE_object_dimensions_set_ex(Object *ob,
                                   const float ob_scale_orig[3],
                                   const float ob_obmat_orig[4][4])
 {
-  const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(ob);
-  if (!bounds) {
-    return;
-  }
-  float3 len = bounds->max - bounds->min;
+  if (const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(ob)) {
+    float3 len = bounds->max - bounds->min;
 
-  for (int i = 0; i < 3; i++) {
-    if (((1 << i) & axis_mask) == 0) {
+    for (int i = 0; i < 3; i++) {
+      if (((1 << i) & axis_mask) == 0) {
 
-      if (ob_scale_orig != nullptr) {
-        const float scale_delta = len_v3(ob_obmat_orig[i]) / ob_scale_orig[i];
-        if (isfinite(scale_delta)) {
-          len[i] *= scale_delta;
+        if (ob_scale_orig != nullptr) {
+          const float scale_delta = len_v3(ob_obmat_orig[i]) / ob_scale_orig[i];
+          if (isfinite(scale_delta)) {
+            len[i] *= scale_delta;
+          }
         }
-      }
 
-      const float scale = copysignf(value[i] / len[i], ob->scale[i]);
-      if (isfinite(scale)) {
-        ob->scale[i] = scale;
+        const float scale = copysignf(value[i] / len[i], ob->scale[i]);
+        if (isfinite(scale)) {
+          ob->scale[i] = scale;
+        }
       }
     }
   }
@@ -5381,9 +5356,7 @@ void BKE_object_replace_data_on_shallow_copy(Object *ob, ID *new_data)
   ob->data = (void *)new_data;
   ob->runtime->geometry_set_eval = nullptr;
   ob->runtime->data_eval = new_data;
-  if (ob->runtime->bb != nullptr) {
-    ob->runtime->bb->flag |= BOUNDBOX_DIRTY;
-  }
+  ob->runtime->bounds_eval.reset();
   ob->id.py_instance = nullptr;
 }
 

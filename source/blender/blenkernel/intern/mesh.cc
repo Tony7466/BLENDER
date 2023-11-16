@@ -1158,36 +1158,35 @@ void BKE_mesh_ensure_default_orig_index_customdata_no_check(Mesh *mesh)
 void BKE_mesh_texspace_calc(Mesh *me)
 {
   using namespace blender;
-  if (!(me->texspace_flag & ME_TEXSPACE_FLAG_AUTO)) {
-    return;
+  if (me->texspace_flag & ME_TEXSPACE_FLAG_AUTO) {
+    const std::optional<Bounds<float3>> bounds = me->bounds_min_max();
+    const float3 min = bounds ? bounds->min : float3(-1.0f);
+    const float3 max = bounds ? bounds->max : float3(1.0f);
+
+    float texspace_location[3], texspace_size[3];
+    mid_v3_v3v3(texspace_location, min, max);
+
+    texspace_size[0] = (max[0] - min[0]) / 2.0f;
+    texspace_size[1] = (max[1] - min[1]) / 2.0f;
+    texspace_size[2] = (max[2] - min[2]) / 2.0f;
+
+    for (int a = 0; a < 3; a++) {
+      if (texspace_size[a] == 0.0f) {
+        texspace_size[a] = 1.0f;
+      }
+      else if (texspace_size[a] > 0.0f && texspace_size[a] < 0.00001f) {
+        texspace_size[a] = 0.00001f;
+      }
+      else if (texspace_size[a] < 0.0f && texspace_size[a] > -0.00001f) {
+        texspace_size[a] = -0.00001f;
+      }
+    }
+
+    copy_v3_v3(me->texspace_location, texspace_location);
+    copy_v3_v3(me->texspace_size, texspace_size);
+
+    me->texspace_flag |= ME_TEXSPACE_FLAG_AUTO_EVALUATED;
   }
-  const std::optional<Bounds<float3>> bounds = me->bounds_min_max();
-  const float3 min = bounds ? bounds->min : float3(-1.0f);
-  const float3 max = bounds ? bounds->max : float3(1.0f);
-
-  float texspace_location[3], texspace_size[3];
-  mid_v3_v3v3(texspace_location, min, max);
-
-  texspace_size[0] = (max[0] - min[0]) / 2.0f;
-  texspace_size[1] = (max[1] - min[1]) / 2.0f;
-  texspace_size[2] = (max[2] - min[2]) / 2.0f;
-
-  for (int a = 0; a < 3; a++) {
-    if (texspace_size[a] == 0.0f) {
-      texspace_size[a] = 1.0f;
-    }
-    else if (texspace_size[a] > 0.0f && texspace_size[a] < 0.00001f) {
-      texspace_size[a] = 0.00001f;
-    }
-    else if (texspace_size[a] < 0.0f && texspace_size[a] > -0.00001f) {
-      texspace_size[a] = -0.00001f;
-    }
-  }
-
-  copy_v3_v3(me->texspace_location, texspace_location);
-  copy_v3_v3(me->texspace_size, texspace_size);
-
-  me->texspace_flag |= ME_TEXSPACE_FLAG_AUTO_EVALUATED;
 }
 
 void BKE_mesh_texspace_ensure(Mesh *me)

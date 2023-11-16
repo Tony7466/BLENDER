@@ -466,37 +466,36 @@ void BKE_curve_type_test(Object *ob)
 
 void BKE_curve_texspace_calc(Curve *cu)
 {
-  if (!(cu->texspace_flag & CU_TEXSPACE_FLAG_AUTO)) {
-    return;
-  }
-  std::optional<blender::Bounds<blender::float3>> bounds = BKE_curve_minmax(cu, true);
-  if (!bounds) {
-    bounds = blender::Bounds<blender::float3>{float3(-FLT_MAX), -float3(FLT_MAX)};
-  }
-
-  float texspace_location[3], texspace_size[3];
-  mid_v3_v3v3(texspace_location, bounds->min, bounds->max);
-
-  texspace_size[0] = (bounds->max[0] - bounds->min[0]) / 2.0f;
-  texspace_size[1] = (bounds->max[1] - bounds->min[1]) / 2.0f;
-  texspace_size[2] = (bounds->max[2] - bounds->min[2]) / 2.0f;
-
-  for (int a = 0; a < 3; a++) {
-    if (texspace_size[a] == 0.0f) {
-      texspace_size[a] = 1.0f;
+  if (cu->texspace_flag & CU_TEXSPACE_FLAG_AUTO) {
+    std::optional<blender::Bounds<blender::float3>> bounds = BKE_curve_minmax(cu, true);
+    if (!bounds) {
+      bounds = blender::Bounds<blender::float3>{float3(-FLT_MAX), -float3(FLT_MAX)};
     }
-    else if (texspace_size[a] > 0.0f && texspace_size[a] < 0.00001f) {
-      texspace_size[a] = 0.00001f;
+
+    float texspace_location[3], texspace_size[3];
+    mid_v3_v3v3(texspace_location, bounds->min, bounds->max);
+
+    texspace_size[0] = (bounds->max[0] - bounds->min[0]) / 2.0f;
+    texspace_size[1] = (bounds->max[1] - bounds->min[1]) / 2.0f;
+    texspace_size[2] = (bounds->max[2] - bounds->min[2]) / 2.0f;
+
+    for (int a = 0; a < 3; a++) {
+      if (texspace_size[a] == 0.0f) {
+        texspace_size[a] = 1.0f;
+      }
+      else if (texspace_size[a] > 0.0f && texspace_size[a] < 0.00001f) {
+        texspace_size[a] = 0.00001f;
+      }
+      else if (texspace_size[a] < 0.0f && texspace_size[a] > -0.00001f) {
+        texspace_size[a] = -0.00001f;
+      }
     }
-    else if (texspace_size[a] < 0.0f && texspace_size[a] > -0.00001f) {
-      texspace_size[a] = -0.00001f;
-    }
+
+    copy_v3_v3(cu->texspace_location, texspace_location);
+    copy_v3_v3(cu->texspace_size, texspace_size);
+
+    cu->texspace_flag |= CU_TEXSPACE_FLAG_AUTO_EVALUATED;
   }
-
-  copy_v3_v3(cu->texspace_location, texspace_location);
-  copy_v3_v3(cu->texspace_size, texspace_size);
-
-  cu->texspace_flag |= CU_TEXSPACE_FLAG_AUTO_EVALUATED;
 }
 
 void BKE_curve_texspace_ensure(Curve *cu)
