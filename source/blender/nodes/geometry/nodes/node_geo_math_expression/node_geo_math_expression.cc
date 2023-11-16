@@ -18,11 +18,12 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "lexer.h"
-#include "value.h"
-#include "expression.h"
-#include "parser.h"
-#include "evaluation_context.h"
+#include "lexer.hh"
+#include "operation.hh"
+#include "expression.hh"
+#include "parser.hh"
+#include "evaluation_context.hh"
+#include "math_processor.hh"
 
 namespace blender::nodes::node_geo_math_expression_cc {
   NODE_STORAGE_FUNCS(NodeGeometryMathExpression)
@@ -76,41 +77,47 @@ namespace blender::nodes::node_geo_math_expression_cc {
       return;
     }
 
-    EvaluationContext ctx([&params, &vars](std::string_view name) -> std::unique_ptr<Value> {
+    EvaluationContext ctx([&params, &vars](std::string_view name) -> ValueKind {
       if(vars.find(name) == vars.end()) {
         throw "variable does not exist";
       }
 
       if(name[0] == 'v') {
-        auto value = params.extract_input<blender::float3>(name);
-        return std::make_unique<VectorValue>(blender::double3(value.x, value.y, value.z));
+        return ValueKind::VECTOR;
       }
 
-      return std::make_unique<ScalarValue>(params.extract_input<float>(name));
+      return ValueKind::FLOAT;
     });
 
-    std::unique_ptr<Value> value;
-
     try {
-      value = expr->evaluate(ctx);
+      ValueKind kind = expr->evaluate(ctx);
 
-      if(value->is_scalar() && storage.output_type != GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT) {
+      if(kind == ValueKind::FLOAT && storage.output_type != GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT) {
         params.error_message_add(NodeWarningType::Error, TIP_("The result of the expression (Float) does not match the ouput type of the node"));
         params.set_default_remaining_outputs();
         return;
       }
 
-      if(value->is_vector() && storage.output_type != GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR) {
+      if(kind == ValueKind::VECTOR && storage.output_type != GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR) {
         params.error_message_add(NodeWarningType::Error, TIP_("The result of the expression (Vector) does not match the ouput type of the node"));
         params.set_default_remaining_outputs();
         return;
       }
 
+      MathProcessor proc(ctx.get_operations(), [&params](std::string_view name) {
+        if(name[0] == 'v') {
+          return Constant { ValueKind::VECTOR, { .f3 = params.extract_input<blender::float3>(name) } };
+        }
+
+        return Constant { ValueKind::FLOAT, { .f = params.extract_input<float>(name) } };
+      });
+
+      Constant c = proc.execute();
+
       if(storage.output_type == GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT) {
-        params.set_output("Value", static_cast<float>(value->get_scalar()));
+        params.set_output("Value", static_cast<float>(c.value.f));
       } else if(storage.output_type == GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR) {
-        auto d3 = value->get_vector();
-        params.set_output("Value", blender::float3(d3.x, d3.y, d3.z));
+        params.set_output("Value", c.value.f3);
       }
     } catch (EvaluationError err) {
       params.error_message_add(NodeWarningType::Error, fmt::format("EvaluationError: token: {}, message: {}", err.expression->get_token().value, err.message).c_str());
@@ -131,7 +138,7 @@ namespace blender::nodes::node_geo_math_expression_cc {
     node->storage = MEM_callocN(sizeof(NodeGeometryMathExpression), __func__);
   }
 
-  void node_register()
+  inline void node_register()
   {
     namespace file_ns = blender::nodes::node_geo_math_expression_cc;
 

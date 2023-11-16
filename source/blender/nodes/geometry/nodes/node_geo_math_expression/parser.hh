@@ -7,8 +7,8 @@
 #include <vector>
 #include <set>
 
-#include "lexer.h"
-#include "expression.h"
+#include "lexer.hh"
+#include "expression.hh"
 
 struct ParserError {
   Token token;
@@ -111,32 +111,7 @@ public:
     } while(match(TokenKind::COMMA));
 
     expect(TokenKind::RPAREN, "expected closing paren");
-
-    CallExpression::FunctionDef def;
-
-    if(token.value == "pow") {
-      def = { CallExpression::FunctionName::POW, 2 };
-    } else if(token.value == "lerp") {
-      def = { CallExpression::FunctionName::LERP, 3 };
-    } else if(token.value == "vec") {
-      def = { CallExpression::FunctionName::VEC, 3 };
-    } else if(token.value == "x") {
-      def = { CallExpression::FunctionName::X, 1 };
-    } else if(token.value == "y") {
-      def = { CallExpression::FunctionName::Y, 1 };
-    } else if(token.value == "z") {
-      def = { CallExpression::FunctionName::Z, 1 };
-    } else if(token.value == "len") {
-      def = { CallExpression::FunctionName::LEN, 1 };
-    } else {
-      throw new ParserError { token, "invalid function" };
-    }
-
-    if(args.size() != def.args_size) {
-      throw new ParserError { token, "incorrect number of function arguments" };
-    }
-
-    return std::make_unique<CallExpression>(std::move(args), def, token);
+    return std::make_unique<CallExpression>(std::move(args), token);
   }
 
   void expect(TokenKind kind, const char *message) {
@@ -185,7 +160,7 @@ public:
   }
 };
 
-void parse_var_names(std::string_view vars, std::function<void(std::string_view)> cb) {
+inline void parse_var_names(std::string_view vars, std::function<void(std::string_view)> cb) {
   size_t start = vars.size();
 
   for(size_t i = 0; i < vars.size(); i++) {
