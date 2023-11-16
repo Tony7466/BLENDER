@@ -14,9 +14,12 @@
 #include "BLI_span.hh"
 #include "BLI_stack.hh"
 
+#include "DNA_material_types.h"
+
 #include "BKE_context.h"
 #include "BKE_curves_utils.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_material.h"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -29,6 +32,8 @@
 #include "ED_screen.hh"
 
 #include "WM_api.hh"
+
+#include "UI_resources.hh"
 
 namespace blender::ed::greasepencil {
 
@@ -1179,6 +1184,36 @@ static void GREASE_PENCIL_OT_stroke_switch_direction(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Set Active Material Operator
  * \{ */
+/* Retry enum items with object materials. */
+static const EnumPropertyItem *material_enum_itemf(bContext *C,
+                                                   PointerRNA * /*ptr*/,
+                                                   PropertyRNA * /*prop*/,
+                                                   bool *r_free)
+{
+  Object *ob = CTX_data_active_object(C);
+  EnumPropertyItem *item = nullptr, item_tmp = {0};
+  int totitem = 0;
+
+  if (ELEM(nullptr, C, ob)) {
+    return rna_enum_dummy_DEFAULT_items;
+  }
+
+  /* Existing materials */
+  for (const int i : IndexRange(ob->totcol)) {
+    if (Material *ma = BKE_object_material_get(ob, i + 1)) {
+      item_tmp.identifier = ma->id.name + 2;
+      item_tmp.name = ma->id.name + 2;
+      item_tmp.value = i + 1;
+      item_tmp.icon = ma->preview ? ma->preview->icon_id : ICON_NONE;
+
+      RNA_enum_item_add(&item, &totitem, &item_tmp);
+    }
+  }
+  RNA_enum_item_end(&item, &totitem);
+  *r_free = true;
+
+  return item;
+}
 
 static int grease_pencil_set_material_exec(bContext *C, wmOperator *op)
 {

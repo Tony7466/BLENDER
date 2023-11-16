@@ -156,9 +156,4 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   float angle_threshold,
                                   IndexMaskMemory &memory);
 
-const struct EnumPropertyItem *material_enum_itemf(struct bContext *C,
-                                                   struct PointerRNA *ptr,
-                                                   struct PropertyRNA *prop,
-                                                   bool *r_free);
-
 }  // namespace blender::ed::greasepencil
