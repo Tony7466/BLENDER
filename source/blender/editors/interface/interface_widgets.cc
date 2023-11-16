@@ -2909,10 +2909,14 @@ static void widget_menu_back(
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void ui_hsv_cursor(
-    const float x, const float y, const float zoom, const float rgb[3], const float hsv[3])
+static void ui_hsv_cursor(const float x,
+                          const float y,
+                          const float zoom,
+                          const float rgb[3],
+                          const float hsv[3],
+                          const bool is_active)
 {
-  const float radius = zoom * ((14.0f * UI_SCALE_FAC) + U.pixelsize);
+  const float radius = zoom * (((is_active ? 20.0f : 12.0f) * UI_SCALE_FAC) + U.pixelsize);
   float fg = MIN2(1.0f - hsv[2] + 0.2, 0.8f);
   float bg = hsv[2] / 2.0f;
 
@@ -3082,7 +3086,7 @@ static void ui_draw_but_HSVCIRCLE(uiBut *but, const uiWidgetColors *wcol, const 
   float xpos, ypos;
   ui_hsvcircle_pos_from_vals(cpicker, rect, hsv, &xpos, &ypos);
   const float zoom = 1.0f / but->block->aspect;
-  ui_hsv_cursor(xpos, ypos, zoom, rgb, hsv);
+  ui_hsv_cursor(xpos, ypos, zoom, rgb, hsv, but->flag & UI_SELECT);
 }
 
 /** \} */
@@ -3329,7 +3333,7 @@ static void ui_draw_but_HSVCUBE(uiBut *but, const rcti *rect)
     float margin = (4.0f * UI_SCALE_FAC);
     CLAMP(x, rect->xmin + margin, rect->xmax - margin);
     CLAMP(y, rect->ymin + margin, rect->ymax - margin);
-    ui_hsv_cursor(x, y, zoom, rgb, hsv);
+    ui_hsv_cursor(x, y, zoom, rgb, hsv, but->flag & UI_SELECT);
   }
   else {
     rctf rectf;
@@ -3337,10 +3341,17 @@ static void ui_draw_but_HSVCUBE(uiBut *but, const rcti *rect)
     float margin = (2.0f * UI_SCALE_FAC);
     CLAMP(x, rect->xmin + margin, rect->xmax - margin);
     CLAMP(y, rect->ymin + margin, rect->ymax - margin);
-
     rectf.ymax += 1;
     rectf.xmin = x - (4.0f * UI_SCALE_FAC) - U.pixelsize;
     rectf.xmax = x + (4.0f * UI_SCALE_FAC) + U.pixelsize;
+
+    if (but->flag & UI_SELECT) {
+      rectf.xmin -= U.pixelsize;
+      rectf.xmax += U.pixelsize;
+      rectf.ymin -= U.pixelsize;
+      rectf.ymax += U.pixelsize;
+    }
+
     float col[4] = {0.0f, 0.0f, 0.0f, 1.0f};
     UI_draw_roundbox_4fv(&rectf, false, 0, col);
 
@@ -3390,10 +3401,17 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
 
   /* cursor */
   y = rect->ymin + v * BLI_rcti_size_y(rect);
-
   rectf.ymin = y - (4.0f * UI_SCALE_FAC) - U.pixelsize;
   rectf.ymax = y + (4.0f * UI_SCALE_FAC) + U.pixelsize;
   float col[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+
+  if (but->flag & UI_SELECT) {
+    rectf.xmin -= U.pixelsize;
+    rectf.xmax += U.pixelsize;
+    rectf.ymin -= U.pixelsize;
+    rectf.ymax += U.pixelsize;
+  }
+
   UI_draw_roundbox_4fv(&rectf, false, 0, col);
 
   rectf.ymin += 1.0f;
