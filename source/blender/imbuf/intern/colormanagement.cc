@@ -4343,7 +4343,7 @@ void IMB_colormanagement_blackbody_temperature_to_rgb(float r_dest[4], float val
   clamp_v3(rgb, 0.0f, FLT_MAX);
 
   copy_v3_v3(r_dest, rgb);
-  r_dest[3] = 0.0f;
+  r_dest[3] = 1.0f;
 }
 
 void IMB_colormanagement_blackbody_temperature_to_rgb_table(float *r_table,
@@ -4427,7 +4427,7 @@ void IMB_colormanagement_wavelength_to_rgb(float r_dest[4], float value)
   clamp_v3(rgb, 0.0f, FLT_MAX);
 
   copy_v3_v3(r_dest, rgb);
-  r_dest[3] = 0.0f;
+  r_dest[3] = 1.0f;
 }
 
 void IMB_colormanagement_wavelength_to_rgb_table(float *r_table, const int width)

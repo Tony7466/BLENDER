@@ -41,7 +41,6 @@ static void sh_node_blackbody_build_multi_function(nodes::NodeMultiFunctionBuild
   static auto fn = mf::build::SI1_SO<float, ColorGeometry4f>("Blackbody", [](float temperature) {
     float color[4];
     IMB_colormanagement_blackbody_temperature_to_rgb(color, temperature);
-    color[3] = 1.0f;
     return ColorGeometry4f(color);
   });
   builder.set_matching_fn(fn);
