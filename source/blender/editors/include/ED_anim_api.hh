@@ -451,10 +451,10 @@ ENUM_OPERATORS(eAnimFilter_Flags, ANIMFILTER_TMP_IGNORE_ONLYSEL);
 #define NLATRACK_TOT_HEIGHT(ac, item_amount) \
   (-NLATRACK_FIRST_TOP(ac) + NLATRACK_STEP(((SpaceNla *)(ac)->sl)) * (item_amount + 1))
 
-/** Channel widths */
+/** Track widths */
 #define NLATRACK_NAMEWIDTH (10 * U.widget_unit)
 
-/** Channel toggle-buttons */
+/** Track toggle-buttons */
 #define NLATRACK_BUTTON_WIDTH (0.8f * U.widget_unit)
 
 /** \} */

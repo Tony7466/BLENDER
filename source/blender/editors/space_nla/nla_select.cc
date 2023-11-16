@@ -241,8 +241,7 @@ static void box_select_nla_strips(bAnimContext *ac, rcti rect, short mode, short
         /* only select strips if they fall within the required ranges (if applicable) */
         LISTBASE_FOREACH (NlaStrip *, strip, &nlt->strips) {
           if ((mode == NLA_BOXSEL_CHANNELS) ||
-              BKE_nlastrip_within_bounds(strip, rectf.xmin, rectf.xmax))
-          {
+              BKE_nlastrip_within_bounds(strip, rectf.xmin, rectf.xmax)) {
             /* set selection */
             ACHANNEL_SET_FLAG(strip, selectmode, NLASTRIP_FLAG_SELECT);
 
@@ -272,8 +271,14 @@ static void nlaedit_strip_at_region_position(
   float view_x, view_y;
   int channel_index;
   UI_view2d_region_to_view(v2d, region_x, region_y, &view_x, &view_y);
-  UI_view2d_listview_view_to_cell(
-      0, NLATRACK_STEP(snla), 0, NLATRACK_FIRST_TOP(ac), view_x, view_y, nullptr, &channel_index);
+  UI_view2d_listview_view_to_cell(0,
+                                  NLATRACK_STEP(snla),
+                                  0,
+                                  NLATRACK_FIRST_TOP(ac),
+                                  view_x,
+                                  view_y,
+                                  nullptr,
+                                  &channel_index);
 
   ListBase anim_data = {nullptr, nullptr};
   eAnimFilter_Flags filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE |
