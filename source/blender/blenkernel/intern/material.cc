@@ -505,7 +505,8 @@ bool BKE_object_material_slot_used(Object *object, short actcol)
     case ID_GD_LEGACY:
       return BKE_gpencil_material_index_used((bGPdata *)ob_data, actcol - 1);
     case ID_GP:
-      return BKE_grease_pencil_material_index_used((GreasePencil *)ob_data, actcol - 1);
+      return BKE_grease_pencil_material_index_used(reinterpret_cast<GreasePencil *>(ob_data),
+                                                   actcol - 1);
     default:
       return false;
   }
