@@ -27,7 +27,7 @@ extern "C" {
 /* Buffer size of maximum `int64` formatted as byte size (with GiB for example). */
 #define BLI_STR_FORMAT_INT64_BYTE_UNIT_SIZE 15
 
-/* Buffer size of maximum `int64` formatted as byte size, minimum length. */
+/* Buffer size of maximum `int64` formatted as byte size, minimum length (".1G" for example). */
 #define BLI_STR_FORMAT_INT64_BYTE_UNIT_COMPACT_SIZE 5
 
 /* Buffer size of maximum `int32` formatted as compact decimal size ("15.6M" for example). */
