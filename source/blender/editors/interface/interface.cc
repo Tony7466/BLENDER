@@ -4331,7 +4331,7 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
 
   const wmWindow *win = CTX_wm_window(C);
   const int row_height = int(float(UI_UNIT_Y) / but->block->aspect);
-  /* Calculate max-rows from how many rows can fit in this window.*/
+  /* Calculate max_rows from how many rows can fit in this window. */
   const int max_rows = (win->sizey - (4 * row_height)) / row_height;
   float text_width = 0.0f;
 
@@ -4360,6 +4360,7 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
   text_width += col_width;
   text_width /= but->block->aspect;
 
+  /* If the estimated width is greater than available size, collapse to one column. */
   if (columns > 1 && text_width > win->sizex) {
     columns = 1;
     rows = totitems;
