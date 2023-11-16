@@ -1,6 +1,6 @@
 """
 Custom compute shader (using image store) and vertex/fragment shader
---------------------------------
+--------------------------------------------------------------------
 
 This is an example of how to use a custom compute shader to write to a texture and then use that texture in a vertex/fragment shader.
 The expected result is a 2x2 plane (size of the default cube), which changes color from a green-black gradient to a green-red gradient,
@@ -33,6 +33,7 @@ void main()
   imageStore(img_output, ivec2(gl_GlobalInvocationID.xy), pixel);
 }''')
 compute_shader_info.push_constant('FLOAT', "time")
+compute_shader_info.local_group_size(1, 1)
 compute_shader = gpu.shader.create_from_info(compute_shader_info)
 
 # Create the shader to draw the texture
