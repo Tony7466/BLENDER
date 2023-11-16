@@ -15,7 +15,7 @@
 
 struct Volume;
 struct VolumeGrid;
-enum VolumeGridType;
+enum VolumeGridType : int8_t;
 
 /* Dense Voxels */
 
