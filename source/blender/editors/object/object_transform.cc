@@ -1503,6 +1503,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
       /* Get from bounding-box. */
 
       Curve *cu = static_cast<Curve *>(ob->data);
+      // std::optional<blender::Bounds<blender::float3>> bounds = BKE_curves_
 
       if (ob->runtime->bb == nullptr && (centermode != ORIGIN_TO_CURSOR)) {
         /* Do nothing. */

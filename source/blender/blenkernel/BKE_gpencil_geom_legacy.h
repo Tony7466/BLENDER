@@ -8,6 +8,8 @@
  * \ingroup bke
  */
 
+#include <optional>
+
 #include "BLI_bounds_types.hh"
 #include "BLI_math_vector_types.hh"
 
@@ -32,11 +34,6 @@ struct bGPdata;
  * \return True if it was possible to calculate
  */
 std::optional<blender::Bounds<blender::float3>> BKE_gpencil_data_minmax(const struct bGPdata *gpd);
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Get min/max coordinate bounds for single stroke.
  * \param gps: Grease pencil stroke
@@ -508,6 +505,3 @@ float BKE_gpencil_stroke_average_pressure_get(struct bGPDstroke *gps);
  * Check if the thickness of the stroke is constant.
  */
 bool BKE_gpencil_stroke_is_pressure_constant(struct bGPDstroke *gps);
-#ifdef __cplusplus
-}
-#endif

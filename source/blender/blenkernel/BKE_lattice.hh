@@ -44,10 +44,10 @@ void BKE_lattice_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob);
 MDeformVert *BKE_lattice_deform_verts_get(const Object *oblatt);
 BPoint *BKE_lattice_active_point_get(Lattice *lt);
 
-std::optional<blender::Bounds<blender::float3>> BKE_lattice_minmax(const struct Lattice *lt);
-void BKE_lattice_center_median(struct Lattice *lt, float cent[3]);
-void BKE_lattice_translate(struct Lattice *lt, const float offset[3], bool do_keys);
-void BKE_lattice_transform(struct Lattice *lt, const float mat[4][4], bool do_keys);
+std::optional<blender::Bounds<blender::float3>> BKE_lattice_minmax(const Lattice *lt);
+void BKE_lattice_center_median(Lattice *lt, float cent[3]);
+void BKE_lattice_translate(Lattice *lt, const float offset[3], bool do_keys);
+void BKE_lattice_transform(Lattice *lt, const float mat[4][4], bool do_keys);
 
 bool BKE_lattice_is_any_selected(const Lattice *lt);
 

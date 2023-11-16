@@ -51,7 +51,12 @@ struct ObjectRuntime {
   /** Start time of the mode transfer overlay animation. */
   double overlay_mode_transfer_start_time;
 
-  // TODO: COMMENT
+  /**
+   * The bounding box of the object's evaluated geometry in the active dependency graph. The bounds
+   * are copied back to the original object for the RNA API and for display in the interface.
+   *
+   * Only set on original objects.
+   */
   std::optional<Bounds<float3>> bounds_eval;
 
   /**
