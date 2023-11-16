@@ -58,7 +58,6 @@ static constexpr float PARALLEL_EPSILON = 0.01f;
 
 /* Runtime fill data. */
 struct FillData {
- public:
   /* For modal event handling: wait for release until processing the event key again. */
   bool wait_for_release{};
   /* Wait-for-release event key. */

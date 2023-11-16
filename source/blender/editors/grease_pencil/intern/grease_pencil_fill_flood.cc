@@ -10,9 +10,12 @@
 
 namespace blender::ed::greasepencil::fill {
 
-bool flood_fill_do(FillData * /*fd*/)
+bool flood_fill_do(FillData *fd)
 {
-  /* TODO...*/
+  /* TODO... */
+  printf("Perform flood fill algorithm on %lld strokes at frame %d \n",
+         fd->curves_2d.point_offset.size(),
+         fd->frame_number);
 
   return true;
 }
