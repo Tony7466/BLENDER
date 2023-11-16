@@ -3,3 +3,4 @@ Referenced by pull request #108138, Fix #108136: Regression : Texture paint is b
 Referenced by commit eb3e32b653fa3a6e4f9be4afb4a492eec593ef59, Fix #108136: Regression : Texture paint is broken
 Referenced by pull request #108246, Fix #108243: Set the encoded buffer after resizing
 Referenced by issue #108243, Crash when save before close with modified image
+Referenced by pull request #114989, Fix #114963: Image Editor - Fill Tool doesn't work as expected
