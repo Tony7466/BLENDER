@@ -4361,12 +4361,13 @@ static void deselect_all_fcurves(bAnimContext *ac, const bool hide)
   ANIM_animdata_freelist(&anim_data);
 }
 
-static rctf calculate_selection_fcurve_bounds(bContext *C,
-                                              ListBase /* CollectionPointerLink */ *selection,
-                                              PropertyRNA *prop,
-                                              char *id_to_prop_path,
-                                              const int index,
-                                              const bool whole_array)
+static rctf calculate_selection_fcurve_bounds_and_unhide(
+    bContext *C,
+    ListBase /* CollectionPointerLink */ *selection,
+    PropertyRNA *prop,
+    char *id_to_prop_path,
+    const int index,
+    const bool whole_array)
 {
   rctf bounds;
   bounds.xmin = INFINITY;
@@ -4493,7 +4494,7 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 
   const bool whole_array = RNA_boolean_get(op->ptr, "all");
 
-  rctf bounds = calculate_selection_fcurve_bounds(
+  rctf bounds = calculate_selection_fcurve_bounds_and_unhide(
       C, &selection, prop, id_to_prop_path, index, whole_array);
 
   BLI_freelistN(&selection);
