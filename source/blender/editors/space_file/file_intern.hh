@@ -36,9 +36,6 @@ int /*eContextResult*/ file_context(const bContext *C,
 
 #define ATTRIBUTE_COLUMN_PADDING (0.5f * UI_UNIT_X)
 
-/** Related to #FileSelectParams.thumbnail_size. */
-#define SMALL_SIZE_CHECK(_size) ((_size) < 64)
-
 void file_calc_previews(const bContext *C, ARegion *region);
 void file_draw_list(const bContext *C, ARegion *region);
 /**
@@ -224,7 +221,7 @@ void file_path_to_ui_path(const char *path, char *r_pathi, int max_size);
 /* asset_catalog_tree_view.cc */
 
 /* C-handle for #ed::asset_browser::AssetCatalogFilterSettings. */
-typedef struct FileAssetCatalogFilterSettingsHandle FileAssetCatalogFilterSettingsHandle;
+struct FileAssetCatalogFilterSettingsHandle;
 
 void file_create_asset_catalog_tree_view_in_layout(::AssetLibrary *asset_library,
                                                    uiLayout *layout,

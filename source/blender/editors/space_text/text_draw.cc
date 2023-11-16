@@ -17,7 +17,7 @@
 #include "DNA_text_types.h"
 
 #include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_text.h"
 #include "BKE_text_suggestions.h"
 
@@ -64,16 +64,19 @@ static void text_font_end(const TextDrawContext * /*tdc*/) {}
 
 static int text_font_draw(const TextDrawContext *tdc, int x, int y, const char *str)
 {
+  const char tab_columns = 1; /* Tab characters aren't used here. */
   BLF_position(tdc->font_id, x, y, 0);
-  const int columns = BLF_draw_mono(tdc->font_id, str, BLF_DRAW_STR_DUMMY_MAX, tdc->cwidth_px);
+  const int columns = BLF_draw_mono(
+      tdc->font_id, str, BLF_DRAW_STR_DUMMY_MAX, tdc->cwidth_px, tab_columns);
 
   return tdc->cwidth_px * columns;
 }
 
 static int text_font_draw_character(const TextDrawContext *tdc, int x, int y, char c)
 {
+  const char tab_columns = 1;
   BLF_position(tdc->font_id, x, y, 0);
-  BLF_draw_mono(tdc->font_id, &c, 1, tdc->cwidth_px);
+  BLF_draw_mono(tdc->font_id, &c, 1, tdc->cwidth_px, tab_columns);
 
   return tdc->cwidth_px;
 }
@@ -82,8 +85,9 @@ static int text_font_draw_character_utf8(
     const TextDrawContext *tdc, int x, int y, const char *c, const int c_len)
 {
   BLI_assert(c_len == BLI_str_utf8_size_safe(c));
+  const char tab_columns = 1; /* Tab characters aren't used here. */
   BLF_position(tdc->font_id, x, y, 0);
-  const int columns = BLF_draw_mono(tdc->font_id, c, c_len, tdc->cwidth_px);
+  const int columns = BLF_draw_mono(tdc->font_id, c, c_len, tdc->cwidth_px, tab_columns);
 
   return tdc->cwidth_px * columns;
 }
@@ -817,7 +821,7 @@ int text_get_visible_lines(const SpaceText *st, ARegion *region, const char *str
     while (chars--) {
       if (i + columns - start > max) {
         lines++;
-        start = MIN2(end, i);
+        start = std::min(end, i);
         end += max;
       }
       else if (ELEM(ch, ' ', '-')) {
@@ -923,7 +927,7 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
   sell_off = text_get_span_wrap(
       st, region, static_cast<TextLine *>(st->text->lines.first), st->text->sell);
   lhlstart = MIN2(curl_off, sell_off);
-  lhlend = MAX2(curl_off, sell_off);
+  lhlend = std::max(curl_off, sell_off);
 
   if (ltexth > 0) {
     hlstart = (lhlstart * pix_available) / ltexth;
@@ -1081,7 +1085,7 @@ static void draw_suggestion_list(const SpaceText *st, const TextDrawContext *tdc
   boxh = SUGG_LIST_SIZE * lheight + 8;
 
   if (x + boxw > region->winx) {
-    x = MAX2(0, region->winx - boxw);
+    x = std::max(0, region->winx - boxw);
   }
 
   /* not needed but stands out nicer */

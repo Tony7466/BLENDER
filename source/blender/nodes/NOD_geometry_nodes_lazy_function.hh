@@ -130,6 +130,11 @@ class GeoNodesSimulationParams {
 
 struct GeoNodesSideEffectNodes {
   MultiValueMap<ComputeContextHash, const lf::FunctionNode *> nodes_by_context;
+  /**
+   * The repeat zone is identified by the compute context of the parent and the identifier of the
+   * repeat output node.
+   */
+  MultiValueMap<std::pair<ComputeContextHash, int32_t>, int> iterations_by_repeat_zone;
 };
 
 /**
@@ -161,6 +166,7 @@ struct GeoNodesModifierData {
 };
 
 struct GeoNodesOperatorData {
+  eObjectMode mode;
   /** The object currently effected by the operator. */
   const Object *self_object = nullptr;
   /** Current evaluated depsgraph. */
@@ -265,7 +271,7 @@ struct GeometryNodeLazyFunctionGraphMapping {
    * types, so better have more specialized mappings for now.
    */
   Map<const bNode *, const lf::FunctionNode *> group_node_map;
-  Map<const bNode *, const lf::FunctionNode *> viewer_node_map;
+  Map<const bNode *, const lf::FunctionNode *> possible_side_effect_node_map;
   Map<const bke::bNodeTreeZone *, const lf::FunctionNode *> zone_node_map;
 
   /* Indexed by #bNodeSocket::index_in_all_outputs. */

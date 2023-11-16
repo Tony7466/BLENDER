@@ -272,7 +272,7 @@ set(SRC
   intern/screen.cc
   intern/shader_fx.cc
   intern/shrinkwrap.cc
-  intern/softbody.c
+  intern/softbody.cc
   intern/sound.cc
   intern/speaker.cc
   intern/studiolight.cc
@@ -363,7 +363,6 @@ set(SRC
   BKE_constraint.h
   BKE_context.h
   BKE_cpp_types.h
-  BKE_crazyspace.h
   BKE_crazyspace.hh
   BKE_cryptomatte.h
   BKE_cryptomatte.hh
@@ -449,7 +448,7 @@ set(SRC
   BKE_mesh_tangent.hh
   BKE_mesh_types.hh
   BKE_mesh_wrapper.hh
-  BKE_modifier.h
+  BKE_modifier.hh
   BKE_movieclip.h
   BKE_multires.hh
   BKE_nla.h
@@ -461,7 +460,8 @@ set(SRC
   BKE_node_tree_interface.hh
   BKE_node_tree_update.h
   BKE_node_tree_zones.hh
-  BKE_object.h
+  BKE_object.hh
+  BKE_object_types.hh
   BKE_object_deform.h
   BKE_ocean.h
   BKE_outliner_treehash.hh
@@ -479,7 +479,7 @@ set(SRC
   BKE_report.h
   BKE_rigidbody.h
   BKE_scene.h
-  BKE_screen.h
+  BKE_screen.hh
   BKE_sequencer_offscreen.h
   BKE_shader_fx.h
   BKE_shrinkwrap.h

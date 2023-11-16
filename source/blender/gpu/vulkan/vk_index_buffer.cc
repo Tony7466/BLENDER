@@ -37,7 +37,7 @@ void VKIndexBuffer::upload_data()
 
 void VKIndexBuffer::bind(VKContext &context)
 {
-  context.command_buffer_get().bind(buffer_with_offset(), to_vk_index_type(index_type_));
+  context.command_buffers_get().bind(buffer_with_offset(), to_vk_index_type(index_type_));
 }
 
 void VKIndexBuffer::bind_as_ssbo(uint binding)
@@ -45,7 +45,9 @@ void VKIndexBuffer::bind_as_ssbo(uint binding)
   VKContext::get()->state_manager_get().storage_buffer_bind(*this, binding);
 }
 
-void VKIndexBuffer::bind(int binding, shader::ShaderCreateInfo::Resource::BindType bind_type)
+void VKIndexBuffer::bind(int binding,
+                         shader::ShaderCreateInfo::Resource::BindType bind_type,
+                         const GPUSamplerState /*sampler_state*/)
 {
   BLI_assert(bind_type == shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER);
   ensure_updated();
@@ -63,8 +65,7 @@ void VKIndexBuffer::bind(int binding, shader::ShaderCreateInfo::Resource::BindTy
 void VKIndexBuffer::read(uint32_t *data) const
 {
   VKContext &context = *VKContext::get();
-  VKCommandBuffer &command_buffer = context.command_buffer_get();
-  command_buffer.submit();
+  context.flush();
 
   buffer_.read(data);
 }
@@ -82,10 +83,8 @@ void VKIndexBuffer::strip_restart_indices()
 void VKIndexBuffer::allocate()
 {
   GPUUsageType usage = data_ == nullptr ? GPU_USAGE_DEVICE_ONLY : GPU_USAGE_STATIC;
-  buffer_.create(size_get(),
-                 usage,
-                 static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-                                                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT));
+  buffer_.create(
+      size_get(), usage, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
   debug::object_label(buffer_.vk_handle(), "IndexBuffer");
 }
 

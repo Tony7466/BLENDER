@@ -94,8 +94,9 @@ static inline BL::Mesh object_to_mesh(BL::BlendData & /*data*/,
       /* Make a copy to split faces if we use auto-smooth, otherwise not needed.
        * Also in edit mode do we need to make a copy, to ensure data layers like
        * UV are not empty. */
-      if (mesh.is_editmode() ||
-          (mesh.use_auto_smooth() && subdivision_type == Mesh::SUBDIVISION_NONE)) {
+      if (mesh.is_editmode() || (mesh.normals_domain() == BL::Mesh::normals_domain_CORNER &&
+                                 subdivision_type == Mesh::SUBDIVISION_NONE))
+      {
         BL::Depsgraph depsgraph(PointerRNA_NULL);
         mesh = b_ob_info.real_object.to_mesh(false, depsgraph);
       }
@@ -119,8 +120,7 @@ static inline BL::Mesh object_to_mesh(BL::BlendData & /*data*/,
 #endif
 
   if ((bool)mesh && subdivision_type == Mesh::SUBDIVISION_NONE) {
-    if (mesh.use_auto_smooth()) {
-      mesh.calc_normals_split();
+    if (mesh.normals_domain() == BL::Mesh::normals_domain_CORNER) {
       mesh.split_faces();
     }
 
@@ -478,8 +478,9 @@ static inline string get_string(PointerRNA &ptr, const char *name)
   char cstrbuf[1024];
   char *cstr = RNA_string_get_alloc(&ptr, name, cstrbuf, sizeof(cstrbuf), NULL);
   string str(cstr);
-  if (cstr != cstrbuf)
+  if (cstr != cstrbuf) {
     MEM_freeN(cstr);
+  }
 
   return str;
 }
@@ -500,8 +501,9 @@ static inline string blender_absolute_path(BL::BlendData &b_data, BL::ID &b_id, 
       BL::ID b_library_id(b_id.library());
       dirname = blender_absolute_path(b_data, b_library_id, b_id.library().filepath());
     }
-    else
+    else {
       dirname = b_data.filepath();
+    }
 
     return path_join(path_dirname(dirname), path.substr(2));
   }
@@ -534,12 +536,15 @@ static inline void mesh_texture_space(const ::Mesh &b_mesh, float3 &loc, float3 
   loc = make_float3(texspace_location[0], texspace_location[1], texspace_location[2]);
   size = make_float3(texspace_size[0], texspace_size[1], texspace_size[2]);
 
-  if (size.x != 0.0f)
+  if (size.x != 0.0f) {
     size.x = 0.5f / size.x;
-  if (size.y != 0.0f)
+  }
+  if (size.y != 0.0f) {
     size.y = 0.5f / size.y;
-  if (size.z != 0.0f)
+  }
+  if (size.z != 0.0f) {
     size.z = 0.5f / size.z;
+  }
 
   loc = loc * size - make_float3(0.5f, 0.5f, 0.5f);
 }

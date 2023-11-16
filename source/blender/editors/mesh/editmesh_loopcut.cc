@@ -20,7 +20,7 @@
 #include "BKE_context.h"
 #include "BKE_editmesh.h"
 #include "BKE_layer.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_report.h"
 #include "BKE_unit.h"
 
@@ -39,8 +39,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "mesh_intern.h" /* own include */
 
@@ -282,7 +282,7 @@ static int ringsel_init(bContext *C, wmOperator *op, bool do_cut)
   lcd = static_cast<RingSelOpData *>(
       op->customdata = MEM_callocN(sizeof(RingSelOpData), "ringsel Modal Op Data"));
 
-  em_setup_viewcontext(C, &lcd->vc);
+  lcd->vc = em_setup_viewcontext(C);
 
   lcd->depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
@@ -554,7 +554,7 @@ static int loopcut_modal(bContext *C, wmOperator *op, const wmEvent *event)
   bool show_cuts = false;
   const bool has_numinput = hasNumInput(&lcd->num);
 
-  em_setup_viewcontext(C, &lcd->vc);
+  lcd->vc = em_setup_viewcontext(C);
   lcd->region = lcd->vc.region;
 
   view3d_operator_needs_opengl(C);
