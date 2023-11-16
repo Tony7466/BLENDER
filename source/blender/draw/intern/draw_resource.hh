@@ -162,15 +162,17 @@ inline void ObjectBounds::sync()
 
 inline void ObjectBounds::sync(Object &ob, float inflate_bounds)
 {
-  const std::optional<blender::Bounds<float3>> bbox = BKE_object_boundbox_get(&ob);
-  if (!bbox) {
+  const std::optional<blender::Bounds<float3>> bounds = BKE_object_boundbox_get(&ob);
+  if (!bounds) {
     bounding_sphere.w = -1.0f; /* Disable test. */
     return;
   }
-  *reinterpret_cast<float3 *>(&bounding_corners[0]) = bbox->vec[0];
-  *reinterpret_cast<float3 *>(&bounding_corners[1]) = bbox->vec[4];
-  *reinterpret_cast<float3 *>(&bounding_corners[2]) = bbox->vec[3];
-  *reinterpret_cast<float3 *>(&bounding_corners[3]) = bbox->vec[1];
+  BoundBox bbox;
+  BKE_boundbox_init_from_minmax(&bbox, bounds->min, bounds->max);
+  *reinterpret_cast<float3 *>(&bounding_corners[0]) = bbox.vec[0];
+  *reinterpret_cast<float3 *>(&bounding_corners[1]) = bbox.vec[4];
+  *reinterpret_cast<float3 *>(&bounding_corners[2]) = bbox.vec[3];
+  *reinterpret_cast<float3 *>(&bounding_corners[3]) = bbox.vec[1];
   bounding_sphere.w = 0.0f; /* Enable test. */
 
   if (inflate_bounds != 0.0f) {

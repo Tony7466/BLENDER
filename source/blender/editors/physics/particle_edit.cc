@@ -206,7 +206,7 @@ int PE_minmax(
   }
 
   if (!ok) {
-    BKE_object_boundbox_get() BKE_object_minmax(ob, min, max, false);
+    BKE_object_minmax(ob, min, max, false);
     ok = 1;
   }
 
