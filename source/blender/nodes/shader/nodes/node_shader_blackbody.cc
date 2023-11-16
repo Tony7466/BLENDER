@@ -36,37 +36,15 @@ static int node_shader_gpu_blackbody(GPUMaterial *mat,
   return GPU_stack_link(mat, node, "node_blackbody", in, out, ramp_texture, GPU_constant(&layer));
 }
 
-class BlackbodyFunction : public mf::MultiFunction {
- public:
-  BlackbodyFunction()
-  {
-    static const mf::Signature signature = []() {
-      mf::Signature signature;
-      mf::SignatureBuilder builder{"Blackbody", signature};
-      builder.single_input<float>("Value");
-      builder.single_output<ColorGeometry4f>("Color");
-      return signature;
-    }();
-    this->set_signature(&signature);
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    const VArray<float> &values = params.readonly_single_input<float>(0, "Value");
-    MutableSpan<ColorGeometry4f> colors = params.uninitialized_single_output<ColorGeometry4f>(
-        1, "Color");
-
-    mask.foreach_index([&](const int64_t i) {
-      const float temperature = values[i];
-      IMB_colormanagement_blackbody_temperature_to_rgb(reinterpret_cast<float *>(&colors[i]),
-                                                       temperature);
-    });
-  }
-};
-
 static void sh_node_blackbody_build_multi_function(nodes::NodeMultiFunctionBuilder &builder)
 {
-  builder.construct_and_set_matching_fn<BlackbodyFunction>();
+  static auto fn = mf::build::SI1_SO<float, ColorGeometry4f>("Blackbody", [](float temperature) {
+    float color[4];
+    IMB_colormanagement_blackbody_temperature_to_rgb(color, temperature);
+    color[3] = 1.0f;
+    return ColorGeometry4f(color);
+  });
+  builder.set_matching_fn(fn);
 }
 
 NODE_SHADER_MATERIALX_BEGIN
