@@ -1100,12 +1100,19 @@ void fcurve_to_keylist(
   BezTripleChain chain = {nullptr};
 
   int start_index = 0;
+  /* Used in an exclusive way. */
   int end_index = fcu->totvert;
 
   if (range != nullptr) {
     bool replace;
     start_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[0], fcu->totvert, &replace);
+    if (start_index > 0) {
+      start_index--;
+    }
     end_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[1], fcu->totvert, &replace);
+    if (end_index < fcu->totvert) {
+      end_index++;
+    }
   }
 
   /* Loop through beztriples, making ActKeysColumns. */
