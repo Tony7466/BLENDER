@@ -33,9 +33,6 @@ static void cmp_node_split_declare(NodeDeclarationBuilder &b)
 
 static void node_composit_init_split(bNodeTree * /*ntree*/, bNode *node)
 {
-  ImageUser *iuser = MEM_cnew<ImageUser>(__func__);
-  node->storage = iuser;
-  iuser->sfra = 1;
   node->custom1 = 50; /* default 50% split */
 }
 
@@ -113,12 +110,11 @@ void register_node_type_cmp_split()
 
   static bNodeType ntype;
 
-  cmp_node_type_base(&ntype, CMP_NODE_SPLIT, "Split Node", NODE_CLASS_LAYOUT);
+  cmp_node_type_base(&ntype, CMP_NODE_SPLIT, "Split", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::cmp_node_split_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_split;
   ntype.flag |= NODE_PREVIEW;
   ntype.initfunc = file_ns::node_composit_init_split;
-  node_type_storage(&ntype, "ImageUser", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
   ntype.no_muting = true;

@@ -329,50 +329,24 @@ static void versioning_replace_splitviewer(bNodeTree *ntree)
   /* Split viewer was replaced with a regular split node, so add a viewer node,
    * and link it to the new split node to achive the same behavior of the split viewer node. */
 
-  ntreeSetTypes(nullptr, ntree); /* Otherwise `ntree->typeInfo` is null. */
-
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
     if (node->type != CMP_NODE_SPLITVIEWER__DEPRECATED) {
       continue;
     }
-    bNodeType *node_type_info = new bNodeType();
-    node->typeinfo = node_type_info;
-    bNode *split_node = nodeAddStaticNode(nullptr, ntree, CMP_NODE_SPLIT);
+    
+    STRNCPY(node->idname, "CompositorNodeSplit");
+    node->type = CMP_NODE_SPLIT;
+    MEM_freeN(node->storage);
+    
     bNode *viewer_node = nodeAddStaticNode(nullptr, ntree, CMP_NODE_VIEWER);
     /* Nodes are created stacked on top of each other, so separate them a bit. */
-    viewer_node->locx = split_node->locx + split_node->width + viewer_node->width / 4.0f;
-
-    bNodeSocket *split_in_socket_1 = nodeFindSocket(split_node, SOCK_IN, "Image");
-    bNodeSocket *split_in_socket_2 = nodeFindSocket(split_node, SOCK_IN, "Image_001");
-    bNodeSocket *node_in_socket_1 = nodeFindSocket(node, SOCK_IN, "Image");
-    bNodeSocket *node_in_socket_2 = nodeFindSocket(node, SOCK_IN, "Image_001");
-
-    /* Transfer parameters. */
-    split_node->custom1 = node->custom1;
-    split_node->custom2 = node->custom2;
-
-    bNodeSocket *split_out_socket = nodeFindSocket(split_node, SOCK_OUT, "Image");
+    viewer_node->locx = node->locx + node->width + viewer_node->width / 4.0f;
+    viewer_node->locy = node->locy;
+    
+    bNodeSocket *split_out_socket = nodeAddStaticSocket(ntree, node, SOCK_OUT, SOCK_IMAGE, PROP_NONE, "Image", "Image");
     bNodeSocket *viewer_in_socket = nodeFindSocket(viewer_node, SOCK_IN, "Image");
-
-    nodeAddLink(ntree, split_node, split_out_socket, viewer_node, viewer_in_socket);
-    if (node_in_socket_1->link) {
-      nodeAddLink(ntree,
-                  node_in_socket_1->link->fromnode,
-                  node_in_socket_1->link->fromsock,
-                  split_node,
-                  split_in_socket_1);
-      nodeRemLink(ntree, node_in_socket_1->link);
-    }
-    if (node_in_socket_2->link) {
-      nodeAddLink(ntree,
-                  node_in_socket_2->link->fromnode,
-                  node_in_socket_2->link->fromsock,
-                  split_node,
-                  split_in_socket_2);
-      nodeRemLink(ntree, node_in_socket_2->link);
-    }
-
-    nodeRemoveNode(nullptr, ntree, node, false);
+    
+    nodeAddLink(ntree, node, split_out_socket, viewer_node, viewer_in_socket);
   }
 }
 
@@ -468,13 +442,6 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
         versioning_eevee_shadow_settings(object);
       }
     }
-
-    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      if (ntree->type == NTREE_COMPOSIT) {
-        versioning_replace_splitviewer(ntree);
-      }
-    }
-    FOREACH_NODETREE_END;
   }
 
   /**
@@ -1882,6 +1849,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadow, MA_BL_TRANSPARENT_SHADOW);
       }
     }
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_COMPOSIT) {
+        versioning_replace_splitviewer(ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
+
   }
 
   /* 401 6 did not require any do_version here. */

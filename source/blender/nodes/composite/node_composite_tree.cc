@@ -101,7 +101,7 @@ static void local_merge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree)
 
   LISTBASE_FOREACH (bNode *, lnode, &localtree->nodes) {
     if (bNode *orig_node = nodeFindNodebyName(ntree, lnode->name)) {
-      if (ELEM(lnode->type, CMP_NODE_VIEWER)) {
+      if (lnode->type == CMP_NODE_VIEWER) {
         if (lnode->id && (lnode->flag & NODE_DO_OUTPUT)) {
           /* image_merge does sanity check for pointers */
           BKE_image_merge(bmain, (Image *)orig_node->id, (Image *)lnode->id);

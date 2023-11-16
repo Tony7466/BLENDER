@@ -20,7 +20,7 @@ void SplitNode::convert_to_operations(NodeConverter &converter,
 
   SplitOperation *split_operation = new SplitOperation();
   split_operation->set_split_percentage(node->custom1);
-  split_operation->set_xsplit(!node->custom2);
+  split_operation->set_xsplit(node->custom2 == CMP_NODE_SPLIT_HORIZONTAL);
 
   converter.add_operation(split_operation);
   converter.map_input_socket(get_input_socket(0), split_operation->get_input_socket(0));
