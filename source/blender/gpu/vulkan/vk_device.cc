@@ -67,7 +67,6 @@ void VKDevice::init(void *ghost_context)
   VKBackend::capabilities_init(*this);
   init_debug_callbacks();
   init_memory_allocator();
-  init_descriptor_pools();
 
   samplers_.init();
 
@@ -114,11 +113,6 @@ void VKDevice::init_memory_allocator()
   info.instance = vk_instance_;
   info.pAllocationCallbacks = vk_allocation_callbacks;
   vmaCreateAllocator(&info, &mem_allocator_);
-}
-
-void VKDevice::init_descriptor_pools()
-{
-  descriptor_pools_.init(vk_device_);
 }
 
 void VKDevice::init_dummy_buffer(VKContext &context)

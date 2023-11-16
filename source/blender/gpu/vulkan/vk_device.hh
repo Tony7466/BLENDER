@@ -74,7 +74,6 @@ class VKDevice : public NonCopyable {
 
   /** Allocator used for texture and buffers and other resources. */
   VmaAllocator mem_allocator_ = VK_NULL_HANDLE;
-  VKDescriptorPools descriptor_pools_;
 
   /** Limits of the device linked to this context. */
   VkPhysicalDeviceProperties vk_physical_device_properties_ = {};
@@ -138,11 +137,6 @@ class VKDevice : public NonCopyable {
   VkQueue queue_get() const
   {
     return vk_queue_;
-  }
-
-  VKDescriptorPools &descriptor_pools_get()
-  {
-    return descriptor_pools_;
   }
 
   const uint32_t queue_family_get() const
@@ -224,7 +218,6 @@ class VKDevice : public NonCopyable {
   void init_physical_device_features();
   void init_debug_callbacks();
   void init_memory_allocator();
-  void init_descriptor_pools();
 
   /* During initialization the backend requires access to update the workarounds. */
   friend VKBackend;

@@ -53,10 +53,11 @@ void VKContext::sync_backbuffer()
     VKDevice &device = VKBackend::get().device_;
     if (!command_buffers_.is_initialized()) {
       command_buffers_.init(device);
+      descriptor_pools_.init(device);
       device.init_dummy_buffer(*this);
       device.init_dummy_color_attachment();
     }
-    device.descriptor_pools_get().reset();
+    descriptor_pools_.reset();
   }
 
   if (ghost_window_) {

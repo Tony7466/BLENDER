@@ -94,7 +94,8 @@ class VKDescriptorSet : NonCopyable {
     BLI_assert(other.vk_descriptor_set_ != VK_NULL_HANDLE);
     vk_descriptor_set_ = other.vk_descriptor_set_;
     vk_descriptor_pool_ = other.vk_descriptor_pool_;
-    other.mark_freed();
+    other.vk_descriptor_set_ = VK_NULL_HANDLE;
+    other.vk_descriptor_pool_ = VK_NULL_HANDLE;
     return *this;
   }
 
@@ -107,7 +108,6 @@ class VKDescriptorSet : NonCopyable {
   {
     return vk_descriptor_pool_;
   }
-  void mark_freed();
 };
 
 class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
