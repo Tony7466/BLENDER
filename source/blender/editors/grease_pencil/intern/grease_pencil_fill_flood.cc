@@ -16,6 +16,7 @@ bool flood_fill_do(FillData *fd)
   printf("Perform flood fill algorithm on %lld strokes at frame %d \n",
          fd->curves_2d.point_offset.size(),
          fd->frame_number);
+  // Here the code
 
   return true;
 }
