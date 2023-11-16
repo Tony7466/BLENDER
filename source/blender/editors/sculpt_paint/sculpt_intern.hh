@@ -961,7 +961,7 @@ void SCULPT_active_vertex_normal_get(SculptSession *ss, float normal[3]);
 
 /* Returns PBVH deformed vertices array if shape keys or deform modifiers are used, otherwise
  * returns mesh original vertices array. */
-float (*SCULPT_mesh_deformed_positions_get(SculptSession *ss))[3];
+blender::MutableSpan<blender::float3> SCULPT_mesh_deformed_positions_get(SculptSession *ss);
 
 /* Fake Neighbors */
 
@@ -1519,7 +1519,7 @@ void SCULPT_undo_push_end_ex(Object *ob, const bool use_nested_undo);
 
 /** \} */
 
-void SCULPT_vertcos_to_key(Object *ob, KeyBlock *kb, const float (*vertCos)[3]);
+void SCULPT_vertcos_to_key(Object *ob, KeyBlock *kb, blender::Span<blender::float3> vertCos);
 
 /**
  * Copy the PBVH bounding box into the object's bounding box.
