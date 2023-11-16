@@ -58,7 +58,6 @@ class VKDevice : public NonCopyable {
   VkDevice vk_device_ = VK_NULL_HANDLE;
   uint32_t vk_queue_family_ = 0;
   VkQueue vk_queue_ = VK_NULL_HANDLE;
-  VkCommandPool vk_command_pool_ = VK_NULL_HANDLE;
 
   VKSamplers samplers_;
 
@@ -146,9 +145,9 @@ class VKDevice : public NonCopyable {
     return descriptor_pools_;
   }
 
-  const uint32_t *queue_family_ptr_get() const
+  const uint32_t queue_family_get() const
   {
-    return &vk_queue_family_;
+    return vk_queue_family_;
   }
 
   VmaAllocator mem_allocator_get() const
@@ -169,11 +168,6 @@ class VKDevice : public NonCopyable {
   VKSamplers &samplers()
   {
     return samplers_;
-  }
-
-  const VkCommandPool vk_command_pool_get() const
-  {
-    return vk_command_pool_;
   }
 
   bool is_initialized() const;
@@ -230,7 +224,6 @@ class VKDevice : public NonCopyable {
   void init_physical_device_features();
   void init_debug_callbacks();
   void init_memory_allocator();
-  void init_command_pools();
   void init_descriptor_pools();
 
   /* During initialization the backend requires access to update the workarounds. */
