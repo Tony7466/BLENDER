@@ -110,11 +110,20 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
         switch (mode) {
           case NODE_MATH_ADD:
           case NODE_MATH_SUBTRACT:
+          case NODE_MATH_SNAP:
+          case NODE_MATH_MINIMUM:
+          case NODE_MATH_MAXIMUM:
+          case NODE_MATH_ROUND:
+          case NODE_MATH_FLOOR:
+          case NODE_MATH_CEIL:
+          case NODE_MATH_TRUNC:
             /* Those modes don't need special handling, because they don't affect the
              * derivative. */
             break;
           case NODE_MATH_MULTIPLY:
           case NODE_MATH_DIVIDE:
+          case NODE_MATH_RADIANS:
+          case NODE_MATH_DEGREES:
             /* We can compute the derivate of those nodes. */
             right_to_left_path.append({&current_node, current_elem});
             break;
@@ -129,6 +138,11 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
         switch (mode) {
           case NODE_VECTOR_MATH_ADD:
           case NODE_VECTOR_MATH_SUBTRACT:
+          case NODE_VECTOR_MATH_SNAP:
+          case NODE_VECTOR_MATH_MINIMUM:
+          case NODE_VECTOR_MATH_MAXIMUM:
+          case NODE_VECTOR_MATH_FLOOR:
+          case NODE_VECTOR_MATH_CEIL:
             break;
           case NODE_VECTOR_MATH_MULTIPLY:
           case NODE_VECTOR_MATH_DIVIDE:
@@ -138,6 +152,14 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
           default:
             return std::nullopt;
         }
+        return find_local_gizmo_source_recursive(input_socket, current_elem, right_to_left_path);
+      }
+      case SH_NODE_MAP_RANGE: {
+        const eCustomDataType data_type = eCustomDataType(
+            static_cast<NodeMapRange *>(current_node.storage)->data_type);
+        const bNodeSocket &input_socket = current_node.input_by_identifier(
+            data_type == CD_PROP_FLOAT ? "Value" : "Vector");
+        right_to_left_path.append({&current_node, current_elem});
         return find_local_gizmo_source_recursive(input_socket, current_elem, right_to_left_path);
       }
       default: {

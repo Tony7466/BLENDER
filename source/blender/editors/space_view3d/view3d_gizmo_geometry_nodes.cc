@@ -15,7 +15,7 @@
 #include "DNA_node_types.h"
 
 #include "BKE_compute_contexts.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_idprop.hh"
@@ -27,6 +27,7 @@
 #include "BLI_math_base_safe.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_rotation.h"
 #include "BLI_math_rotation.hh"
 #include "BLI_math_vector.h"
 
@@ -163,25 +164,23 @@ static std::optional<float> compute_derivative(
       case SH_NODE_MATH: {
         const int mode = path_node.custom1;
         const bNodeSocket &second_input_socket = path_elem.node->input_socket(1);
-        const std::optional<float> second_value_opt = tree_log.find_primitive_socket_value<float>(
-            second_input_socket);
-        if (!second_value_opt) {
-          return std::nullopt;
-        }
-        const float second_value = *second_value_opt;
+        const float second_value =
+            tree_log.find_primitive_socket_value<float>(second_input_socket).value_or(0.0f);
         switch (mode) {
           case NODE_MATH_MULTIPLY: {
-            if (second_value == 0.0f) {
-              return std::nullopt;
-            }
-            derivative /= second_value;
+            derivative = safe_divide(derivative, second_value);
             break;
           }
           case NODE_MATH_DIVIDE: {
-            if (second_value == 0.0f) {
-              return std::nullopt;
-            }
             derivative *= second_value;
+            break;
+          }
+          case NODE_MATH_RADIANS: {
+            derivative = RAD2DEG(derivative);
+            break;
+          }
+          case NODE_MATH_DEGREES: {
+            derivative = DEG2RAD(derivative);
             break;
           }
           default:
@@ -197,30 +196,71 @@ static std::optional<float> compute_derivative(
           case NODE_VECTOR_MATH_MULTIPLY: {
             const float factor = tree_log.find_primitive_socket_value<float3>(second_input_socket)
                                      .value_or(float3{0, 0, 0})[*path_elem.elem.index];
-            if (factor == 0.0f) {
-              return std::nullopt;
-            }
-            derivative /= factor;
+            derivative = safe_divide(derivative, factor);
             break;
           }
           case NODE_VECTOR_MATH_DIVIDE: {
             const float divisor = tree_log.find_primitive_socket_value<float3>(second_input_socket)
                                       .value_or(float3{0, 0, 0})[*path_elem.elem.index];
-            if (divisor == 0.0f) {
-              return std::nullopt;
-            }
             derivative *= divisor;
             break;
           }
           case NODE_VECTOR_MATH_SCALE: {
             const float scale =
                 tree_log.find_primitive_socket_value<float>(scale_input_socket).value_or(0.0f);
-            if (scale == 0.0f) {
-              return std::nullopt;
-            }
-            derivative /= scale;
+            derivative = safe_divide(derivative, scale);
             break;
           }
+        }
+        break;
+      }
+      case SH_NODE_MAP_RANGE: {
+        const eCustomDataType data_type = eCustomDataType(
+            static_cast<NodeMapRange *>(path_node.storage)->data_type);
+        switch (data_type) {
+          case CD_PROP_FLOAT: {
+            const float from_min = tree_log
+                                       .find_primitive_socket_value<float>(
+                                           path_node.input_by_identifier("From Min"))
+                                       .value_or(0.0f);
+            const float from_max = tree_log
+                                       .find_primitive_socket_value<float>(
+                                           path_node.input_by_identifier("From Max"))
+                                       .value_or(0.0f);
+            const float to_min = tree_log
+                                     .find_primitive_socket_value<float>(
+                                         path_node.input_by_identifier("To Min"))
+                                     .value_or(0.0f);
+            const float to_max = tree_log
+                                     .find_primitive_socket_value<float>(
+                                         path_node.input_by_identifier("To Max"))
+                                     .value_or(0.0f);
+            derivative *= safe_divide(from_max - from_min, to_max - to_min);
+            break;
+          }
+          case CD_PROP_FLOAT3: {
+            const int index = *path_elem.elem.index;
+            const float from_min = tree_log
+                                       .find_primitive_socket_value<float3>(
+                                           path_node.input_by_identifier("From_Min_FLOAT3"))
+                                       .value_or(float3{0, 0, 0})[index];
+            const float from_max = tree_log
+                                       .find_primitive_socket_value<float3>(
+                                           path_node.input_by_identifier("From_Max_FLOAT3"))
+                                       .value_or(float3{0, 0, 0})[index];
+            const float to_min = tree_log
+                                     .find_primitive_socket_value<float3>(
+                                         path_node.input_by_identifier("To_Min_FLOAT3"))
+                                     .value_or(float3{0, 0, 0})[index];
+            const float to_max = tree_log
+                                     .find_primitive_socket_value<float3>(
+                                         path_node.input_by_identifier("To_Max_FLOAT3"))
+                                     .value_or(float3{0, 0, 0})[index];
+            derivative *= safe_divide(from_max - from_min, to_max - to_min);
+            break;
+          }
+          default:
+            return std::nullopt;
         }
         break;
       }
@@ -228,6 +268,9 @@ static std::optional<float> compute_derivative(
         return std::nullopt;
       }
     }
+  }
+  if (derivative == 0.0f) {
+    return std::nullopt;
   }
   return derivative;
 }
