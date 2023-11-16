@@ -1717,7 +1717,11 @@ float (*BKE_mesh_vert_coords_alloc(const Mesh *mesh, int *r_vert_len))[3]
 void BKE_mesh_vert_coords_apply(Mesh *mesh, const float (*vert_coords)[3])
 {
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
-  for (const int i : positions.index_range()) {
+  const int size = mesh->totvert;
+#ifdef WITH_OMP
+#pragma omp parallel for
+#endif
+  for (int i = 0; i < size; ++i) {
     copy_v3_v3(positions[i], vert_coords[i]);
   }
   BKE_mesh_tag_positions_changed(mesh);
@@ -1728,7 +1732,11 @@ void BKE_mesh_vert_coords_apply_with_mat4(Mesh *mesh,
                                           const float mat[4][4])
 {
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
-  for (const int i : positions.index_range()) {
+  const int size = mesh->totvert;
+#ifdef WITH_OMP
+#pragma omp parallel for
+#endif
+  for (int i = 0; i < size; ++i) {
     mul_v3_m4v3(positions[i], mat, vert_coords[i]);
   }
   BKE_mesh_tag_positions_changed(mesh);
