@@ -1390,7 +1390,7 @@ void BKE_grease_pencil_material_remap(GreasePencil *grease_pencil, const uint *r
   }
 }
 
-void BKE_grease_pencil_material_index_reassign(GreasePencil *grease_pencil, int totcol, int index)
+void BKE_grease_pencil_material_index_remove(GreasePencil *grease_pencil, int index)
 {
   using namespace blender;
   using namespace blender::bke;
@@ -1409,8 +1409,8 @@ void BKE_grease_pencil_material_index_reassign(GreasePencil *grease_pencil, int 
 
     MutableVArraySpan<int> indices_span(material_indices.varray);
     for (const int i : indices_span.index_range()) {
-      if ((indices_span[i] > index) || (indices_span[i] > totcol - 1)) {
-        indices_span[i] = std::max(indices_span[i] - 1, 0);
+      if (indices_span[i] > 0 && indices_span[i] >= index) {
+        indices_span[i]--;
       }
     }
     indices_span.save();
