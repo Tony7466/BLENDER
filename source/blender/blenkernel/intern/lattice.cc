@@ -606,7 +606,7 @@ void BKE_lattice_center_median(Lattice *lt, float cent[3])
   mul_v3_fl(cent, 1.0f / float(numVerts));
 }
 
-std::optional<blender::Bounds<blender::float3>> BKE_lattice_minmax(Lattice *lt)
+std::optional<blender::Bounds<blender::float3>> BKE_lattice_minmax(const Lattice *lt)
 {
   int i, numVerts;
 

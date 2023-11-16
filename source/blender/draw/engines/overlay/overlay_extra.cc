@@ -357,7 +357,7 @@ static void OVERLAY_bounds(OVERLAY_ExtraCallBuffers *cb,
                            bool around_origin)
 {
   using namespace blender;
-  float center[3], tmp[4][4], final_mat[4][4];
+  float tmp[4][4], final_mat[4][4];
 
   if (ob->type == OB_MBALL && !BKE_mball_is_basis(ob)) {
     return;

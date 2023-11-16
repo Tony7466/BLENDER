@@ -1503,9 +1503,9 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
       /* Get from bounding-box. */
 
       Curve *cu = static_cast<Curve *>(ob->data);
-      // std::optional<blender::Bounds<blender::float3>> bounds = BKE_curves_
+      std::optional<blender::Bounds<blender::float3>> bounds = BKE_curve_minmax(cu, true);
 
-      if (ob->runtime->bb == nullptr && (centermode != ORIGIN_TO_CURSOR)) {
+      if (!bounds && (centermode != ORIGIN_TO_CURSOR)) {
         /* Do nothing. */
       }
       else {
@@ -1514,8 +1514,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         }
         else {
           /* extra 0.5 is the height o above line */
-          cent[0] = 0.5f * (ob->runtime->bb->vec[4][0] + ob->runtime->bb->vec[0][0]);
-          cent[1] = 0.5f * (ob->runtime->bb->vec[0][1] + ob->runtime->bb->vec[2][1]);
+          cent = math::midpoint(bounds->min, bounds->max);
         }
 
         cent[2] = 0.0f;

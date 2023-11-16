@@ -386,7 +386,7 @@ void BKE_object_empty_draw_type_set(Object *ob, int value);
 
 std::optional<blender::Bounds<blender::float3>> BKE_object_evaluated_geometry_bounds(
     const Object *ob);
-void BKE_object_minmax(Object *ob, float r_min[3], float r_max[3], bool use_hidden);
+void BKE_object_minmax(Object *ob, float r_min[3], float r_max[3]);
 bool BKE_object_minmax_dupli(Depsgraph *depsgraph,
                              Scene *scene,
                              Object *ob,

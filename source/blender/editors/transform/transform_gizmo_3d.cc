@@ -931,7 +931,7 @@ static int gizmo_3d_foreach_selected(const bContext *C,
       }
 
       /* Get the boundbox out of the evaluated object. */
-      std::optional<Bounds> bb;
+      std::optional<BoundBox> bb;
       if (use_only_center == false) {
         if (std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(base->object)) {
           bb.emplace();

@@ -3670,7 +3670,7 @@ void BKE_object_dimensions_set(Object *ob, const float value[3], int axis_mask)
   BKE_object_dimensions_set_ex(ob, value, axis_mask, nullptr, nullptr);
 }
 
-void BKE_object_minmax(Object *ob, float r_min[3], float r_max[3], const bool use_hidden)
+void BKE_object_minmax(Object *ob, float r_min[3], float r_max[3])
 {
   using namespace blender;
   if (const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(ob)) {

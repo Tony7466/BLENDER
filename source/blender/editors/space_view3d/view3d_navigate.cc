@@ -836,8 +836,8 @@ bool view3d_orbit_calc_center(bContext *C, float r_dyn_ofs[3])
         Object *ob_eval = base_eval->object;
 
         if (ob_eval->runtime->bounds_eval) {
-          const blender::float3 cent = blender::math::midpoint(ob_eval->runtime->bounds_eval->min,
-                                                               ob_eval->runtime->bounds_eval->max);
+          blender::float3 cent = blender::math::midpoint(ob_eval->runtime->bounds_eval->min,
+                                                         ob_eval->runtime->bounds_eval->max);
           mul_m4_v3(ob_eval->object_to_world, cent);
           add_v3_v3(select_center, cent);
         }

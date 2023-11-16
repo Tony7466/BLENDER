@@ -752,9 +752,8 @@ static void view3d_ob_drop_matrix_from_snap(V3DSnapCursorState *snap_state,
   rescale_m4(obmat_final, scale);
 
   if (const std::optional<Bounds<float3>> bb = BKE_object_boundbox_get(ob)) {
-    float offset[3];
     float3 offset = math::midpoint(bb->min, bb->max);
-    offset[2] = bb->vec[0][2];
+    offset[2] = bb->min[2];
     mul_mat3_m4_v3(obmat_final, offset);
     sub_v3_v3(obmat_final[3], offset);
   }
