@@ -619,7 +619,7 @@ static void cmp_node_create_sockets(void *userdata,
   }
 }
 
-static void node_rlayer_declare_dynamic(const bNodeTree &ntree,
+static void node_rlayer_declare_dynamic(const bNodeTree & /*ntree*/,
                                         const bNode &node,
                                         blender::nodes::NodeDeclaration &r_declaration)
 {
