@@ -464,7 +464,7 @@ static void material_data_index_remove_id(ID *id, short index)
       BKE_curve_material_index_remove((Curve *)id, index);
       break;
     case ID_GP:
-      BKE_grease_pencil_material_index_remove((GreasePencil *)id, index);
+      BKE_grease_pencil_material_index_remove(reinterpret_cast<GreasePencil *>(id), index);
       break;
     case ID_MB:
     case ID_CV:
