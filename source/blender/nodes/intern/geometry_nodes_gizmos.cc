@@ -52,6 +52,7 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
     const SocketElem &current_elem,
     Vector<LocalGizmoPathElem> &right_to_left_path)
 {
+  current_socket.runtime->has_gizmo = true;
   if (current_socket.is_input()) {
     const bNodeSocket &input_socket = current_socket;
     const Span<const bNodeLink *> links = input_socket.directly_linked_links();
@@ -197,6 +198,10 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
 {
   GizmoInferencingResult inferencing_result;
 
+  for (const bNodeSocket *socket : tree.all_sockets()) {
+    socket->runtime->has_gizmo = false;
+  }
+
   for (const bNode *group_node : tree.group_nodes()) {
     const bNodeTree *group = reinterpret_cast<const bNodeTree *>(group_node->id);
     if (group == nullptr) {
@@ -226,6 +231,7 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
   for (const StringRefNull idname : {"GeometryNodeGizmoArrow", "GeometryNodeGizmoDial"}) {
     for (const bNode *gizmo_node : tree.nodes_by_type(idname)) {
       const bNodeSocket &gizmo_value_input = gizmo_node->input_socket(0);
+      gizmo_value_input.runtime->has_gizmo = true;
       for (const bNodeLink *link : gizmo_value_input.directly_linked_links()) {
         if (!is_valid_gizmo_link(*link)) {
           continue;

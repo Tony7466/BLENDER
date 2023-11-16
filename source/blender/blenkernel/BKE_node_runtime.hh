@@ -200,6 +200,8 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
    */
   short total_inputs = 0;
 
+  bool has_gizmo = false;
+
   /**
    * The location of the socket in the tree, calculated while drawing the nodes and invalid if the
    * node tree hasn't been drawn yet. In the node tree's "world space" (the same as

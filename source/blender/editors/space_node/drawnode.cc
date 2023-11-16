@@ -94,7 +94,11 @@ static void node_buts_value(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   bNodeSocket *output = (bNodeSocket *)node->outputs.first;
   PointerRNA sockptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output);
 
-  uiItemR(layout, &sockptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
+  uiLayout *row = uiLayoutRow(layout, true);
+  uiItemR(row, &sockptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
+  if (output->runtime->has_gizmo) {
+    uiItemL(row, "", ICON_GIZMO);
+  }
 }
 
 static void node_buts_rgb(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -2110,34 +2114,6 @@ static bool node_link_is_field_link(const SpaceNode &snode, const bNodeLink &lin
   return false;
 }
 
-static bool node_link_is_gizmo_link(const SpaceNode &snode, const bNodeLink &link)
-{
-  if (snode.edittree->type != NTREE_GEOMETRY) {
-    return false;
-  }
-  if (link.tosock == nullptr) {
-    return false;
-  }
-  if (ELEM(link.tonode->type, GEO_NODE_GIZMO_ARROW, GEO_NODE_GIZMO_DIAL)) {
-    if (link.tosock->index() == 0) {
-      return true;
-    }
-  }
-  if (ELEM(link.tonode->type, NODE_REROUTE, SH_NODE_MATH)) {
-    const bNodeSocket &output_socket = link.tonode->output_socket(0);
-    if (output_socket.directly_linked_links().is_empty()) {
-      return false;
-    }
-    for (const bNodeLink *link : output_socket.directly_linked_links()) {
-      if (!node_link_is_gizmo_link(snode, *link)) {
-        return false;
-      }
-    }
-    return true;
-  }
-  return false;
-}
-
 static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
                                                    const View2D &v2d,
                                                    const SpaceNode &snode,
@@ -2159,15 +2135,10 @@ static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
   draw_config.dash_alpha = btheme->space_node.dash_alpha;
 
   const bool field_link = node_link_is_field_link(snode, link);
-  const bool gizmo_link = node_link_is_gizmo_link(snode, link);
 
   if (field_link) {
     draw_config.dash_factor = 0.75f;
     draw_config.dash_length = 10.0f * UI_SCALE_FAC;
-  }
-  else if (gizmo_link) {
-    draw_config.dash_factor = 0.5f;
-    draw_config.dash_length = 50.0f * UI_SCALE_FAC;
   }
   else {
     draw_config.dash_factor = 1.0f;

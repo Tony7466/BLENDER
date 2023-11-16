@@ -3447,7 +3447,7 @@ struct GeometryNodesLazyFunctionBuilder {
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
     }
 
-    if (bnode.type == SH_NODE_MATH) {
+    if (ELEM(bnode.type, SH_NODE_MATH, SH_NODE_VECTOR_MATH, SH_NODE_MAP_RANGE)) {
       mapping_->possible_side_effect_node_map.add(&bnode, &lf_node);
     }
 

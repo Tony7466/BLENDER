@@ -1502,7 +1502,8 @@ static void draw_property_for_socket(const bContext &C,
                                      PointerRNA *bmain_ptr,
                                      PointerRNA *md_ptr,
                                      const bNodeTreeInterfaceSocket &socket,
-                                     const int socket_index)
+                                     const int socket_index,
+                                     const bool has_gizmo)
 {
   const StringRefNull identifier = socket.identifier;
   /* The property should be created in #MOD_nodes_update_interface with the correct type. */
@@ -1567,7 +1568,10 @@ static void draw_property_for_socket(const bContext &C,
       }
     }
   }
-  if (!nodes::input_has_attribute_toggle(*nmd->node_group, socket_index)) {
+  if (has_gizmo) {
+    uiItemL(row, "", ICON_GIZMO);
+  }
+  if (!nodes::input_has_attribute_toggle(*nmd->node_group, socket_index) && !has_gizmo) {
     uiItemL(row, "", ICON_BLANK1);
   }
 }
@@ -1624,11 +1628,24 @@ static void panel_draw(const bContext *C, Panel *panel)
 
     nmd->node_group->ensure_interface_cache();
 
+    Set<int> inputs_with_gizmo;
+    if (const nodes::gizmos::GizmoInferencingResult *gizmo_inferencing =
+            nmd->node_group->runtime->gizmo_inferencing.get())
+    {
+      for (const nodes::gizmos::GroupInputRef ref :
+           gizmo_inferencing->gizmo_inputs_for_interface_inputs.keys())
+      {
+        inputs_with_gizmo.add(ref.input_index);
+      }
+    }
+
     for (const int socket_index : nmd->node_group->interface_inputs().index_range()) {
       const bNodeTreeInterfaceSocket *socket = nmd->node_group->interface_inputs()[socket_index];
       if (is_layer_selection_field(*socket) ||
           !(socket->flag & NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER)) {
-        draw_property_for_socket(*C, layout, nmd, &bmain_ptr, ptr, *socket, socket_index);
+        const bool has_gizmo = inputs_with_gizmo.contains(socket_index);
+        draw_property_for_socket(
+            *C, layout, nmd, &bmain_ptr, ptr, *socket, socket_index, has_gizmo);
       }
     }
   }
