@@ -1,2 +1,2 @@
 Referenced by issue #114706, 4.0: Candidates for corrective releases
-Referenced by issue #114892, Blender fails to open several projects done on 3.4/3.5/3.6 versions
+Referenced by issue #114892, Text object can have an unset font (leading to crash in editmode)
