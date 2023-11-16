@@ -4589,7 +4589,7 @@ def km_grease_pencil_fill(_params):
     )
 
     items.extend([
-        ("grease_pencil.vector_based_fill", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("grease_pencil.fill", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
     ])
 
     return keymap

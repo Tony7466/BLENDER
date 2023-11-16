@@ -2492,7 +2492,7 @@ class VIEW3D_PT_tools_grease_pencil_fill_options(View3DPanel, Panel):
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_settings'
     bl_category = "Tool"
     bl_options = {'DEFAULT_CLOSED'}
-    bl_ui_units_x = 13
+    bl_ui_units_x = 15
 
     def draw(self, context):
         layout = self.layout
@@ -2504,10 +2504,46 @@ class VIEW3D_PT_tools_grease_pencil_fill_options(View3DPanel, Panel):
         if brush is None:
             return
         gp_settings = brush.gpencil_settings
+        is_flood_fill = (gp_settings.fill_mode == 'FLOOD')
         
         col = layout.column(align=True)
-        row = col.row(align=True)
-        row.prop(gp_settings, "fill_layer_mode", text="Layers")
+        col.prop(gp_settings, "fill_mode")
+        
+        col.separator()
+        col.label(text="Scope")
+        
+        col = layout.column(align=True)
+        col.prop(gp_settings, "fill_layer_mode", text="Layers")
+        
+        if is_flood_fill:
+            col.separator()
+            row = col.row(align=True)
+            row.prop(gp_settings, "fill_draw_mode", text="Boundary",
+                     text_ctxt=i18n_contexts.id_gpencil)
+            row.prop(
+                gp_settings,
+                "show_fill_boundary",
+                icon='HIDE_OFF' if gp_settings.show_fill_boundary else 'HIDE_ON',
+                text="",
+            )
+        
+        if is_flood_fill:
+            col.separator()
+            col.prop(gp_settings, "fill_simplify_level", text="Simplify")
+        
+        if gp_settings.fill_draw_mode != 'STROKE':
+            col = layout.column(align=False, heading="Ignore Transparent")
+            col.use_property_decorate = False
+            row = col.row(align=True)
+            sub = row.row(align=True)
+            sub.prop(gp_settings, "show_fill", text="")
+            sub = sub.row(align=True)
+            sub.active = gp_settings.show_fill
+            sub.prop(gp_settings, "fill_threshold", text="")
+        
+        if is_flood_fill:
+            col.separator()
+            col.prop(gp_settings, "use_fill_limit")
 
 
 class VIEW3D_PT_tools_grease_pencil_fill_gap_closure(View3DPanel, Panel):
@@ -2529,14 +2565,19 @@ class VIEW3D_PT_tools_grease_pencil_fill_gap_closure(View3DPanel, Panel):
         tool_settings = context.tool_settings
         brush = tool_settings.gpencil_paint.brush
         gp_settings = brush.gpencil_settings
+        is_geometry_fill = (gp_settings.fill_mode == 'GEOMETRY')
 
-        col = layout.column()
-        col.prop(gp_settings, "fill_proximity_distance")
-        col.separator()
+        col = layout.column(align=True)
+        
+        if is_geometry_fill:
+            col.prop(gp_settings, "fill_proximity_distance")
+            col.separator()
         
         col.prop(gp_settings, "fill_extend_mode", text="End Mode")
+        col.separator()
         col.prop(gp_settings, "extend_stroke_factor", text="Size")
         
+        col.separator()
         col.prop(gp_settings, "show_fill_extend", text="Visual Aids")
         if gp_settings.fill_extend_mode == 'EXTEND':
             col.prop(gp_settings, "use_collide_strokes")

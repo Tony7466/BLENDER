@@ -639,7 +639,9 @@ class _draw_tool_settings_context_mode:
                 layout.prop(brush.gpencil_settings, "use_keep_caps_eraser")
             layout.prop(brush.gpencil_settings, "use_active_layer_only")
         elif grease_pencil_tool == 'FILL':
-            # TODO: layout.prop(brush.gpencil_settings, "dilate")
+            if brush.gpencil_settings.fill_mode == 'FLOOD':
+                layout.prop(brush.gpencil_settings, "fill_factor")
+            layout.prop(brush.gpencil_settings, "dilate")
             layout.prop(brush, "size", text="Thickness")
             layout.popover("VIEW3D_PT_tools_grease_pencil_fill_options")
 

@@ -6,44 +6,7 @@
  * \ingroup edgreasepencil
  */
 
-/* DEBUG: print segment info, show curve indices in viewport. */
-/* #define GP_VFILL_DEBUG_VERBOSE */
-
-#include "DNA_brush_types.h"
-#include "DNA_meshdata_types.h"
-
-#include "BKE_brush.hh"
-#include "BKE_context.h"
-#include "BKE_grease_pencil.hh"
-#include "BKE_report.h"
-
-#include "BLI_kdtree.h"
-#include "BLI_math_vector.h"
-#include "BLI_math_vector.hh"
-
-#include "ANIM_keyframing.hh"
-
-#include "DEG_depsgraph_query.hh"
-
-#include "ED_curves.hh"
-#include "ED_grease_pencil.hh"
-#include "ED_keyframing.hh"
-#include "ED_screen.hh"
-#include "ED_space_api.hh"
-#include "ED_view3d.hh"
-
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
-
-#include "WM_api.hh"
-
-#ifdef GP_VFILL_DEBUG_VERBOSE
-#  include "BLF_api.h"
-#  include "UI_interface.hh"
-#  include "UI_resources.hh"
-#endif
+#include "grease_pencil_fill.hh"
 
 /**
  * Explanation of the used algorithm for vector-based fill:
@@ -109,326 +72,17 @@
  * #walk_along_curve()        creating an edge segment, inspecting where the segment ends
  */
 
-namespace blender::ed::greasepencil::vectorfill {
+namespace blender::ed::greasepencil::fill {
 
 /* ------------------------------------------------------------------------------ */
 /** \name Vector Fill data structs
  * \{ */
-
-/* Number of nearest neighbours when looking for gap closure by curve end radius. */
-static constexpr unsigned int RADIUS_NEAREST_NUM = 12;
-/* Number of pixels the gap closure size stands for. */
-static constexpr float GAP_PIXEL_FACTOR = 25.0f;
-/* Margin for intersection distances to be considered equal. */
-static constexpr float DISTANCE_EPSILON = 0.001f;
-static constexpr float DISTANCE_SORT_EPSILON = 0.02f;
-/* Margin for angles to be considered equal. */
-static constexpr float ANGLE_EPSILON = 0.005f;
-/* Margin for vector cross product considered to be parallel. */
-static constexpr float PARALLEL_EPSILON = 0.01f;
-/* Maximum execution time of vector fill operator (in milliseconds). */
-static constexpr unsigned int MAX_EXECUTION_TIME = 500;
-
-/* Fill segment and segment end flags. */
-enum class vfFlag : uint16_t {
-  None = 0,
-  /* Segment is inspected on intersections and gap closures. */
-  IsInspected = 1 << 0,
-  /* When backwards, point range of segment is from high to low. */
-  DirectionBackwards = 1 << 1,
-  /* Segment is intersected by other curve (or curve end extension.) */
-  IsIntersected = 1 << 2,
-  /* Segment is part of a set (two segments of cyclic curve, or overlapping tail segments). */
-  IsPartOfSet = 1 << 3,
-  /* Segment ends with a gap closure extension to another curve. */
-  GapClosureByExtension = 1 << 4,
-  /* Segment end with a gap closure by proximity to another curve. */
-  GapClosureByProximity = 1 << 5,
-  /* Segment end connects with end extension of other curve. */
-  WithEndExtension = 1 << 6,
-  /* For the first segment only: ignore intersections before the start distance. */
-  CheckStartDistance = 1 << 7,
-  /* Segment curve has stroke material. */
-  HasStroke = 1 << 8,
-  /* Segment is inspected on proximity of curves. */
-  ProximityInspected = 1 << 9,
-  /* Segment is part of the unused head of a closed fill edge. */
-  IsUnused = 1 << 10,
-};
-ENUM_OPERATORS(vfFlag, vfFlag::IsUnused);
-static inline constexpr bool operator==(vfFlag a, bool b)
-{
-  return (uint64_t(a) != 0) == b;
-}
-
-/* Directions of casted ray to find first edge point of fill. */
-enum class vfRayDirection : uint8_t {
-  Up = 0,
-  Right = 1,
-  Down = 2,
-  Left = 3,
-};
-
-constexpr std::initializer_list<vfRayDirection> ray_directions = {
-    vfRayDirection::Up, vfRayDirection::Right, vfRayDirection::Down, vfRayDirection::Left};
-
-/* Possible turns at a curve intersection. */
-enum class vfSegmentTurn : uint8_t {
-  None = 0,
-  FirstAngle = 1,
-  StraightAhead = 2,
-  SecondAngle = 3,
-};
-
-/* Intersecting curve. Created when searching for intersections of fill edge segments. */
-struct IntersectingCurve {
-  /* Curve index in #Curves2DSpace struct. */
-  int curve_index_2d;
-  /* Start point of the intersection (relative index: 0..<curve_point_size>). */
-  int point_start;
-  /* End point of the intersection (relative index: 0..<curve_point_size>). */
-  int point_end;
-  /* Distance of the intersection point on the intersected and intersecting segment. */
-  float2 distance;
-  /* Intersection with end extension. */
-  bool with_end_extension = false;
-  /* Index of the curve end extension. */
-  int extension_index;
-  /* Curve has stroke material. */
-  bool has_stroke = true;
-};
-
-/* Proximity curve. Created when searching for curves-in-proximity of fill edge segments. */
-struct ProximityCurve {
-  /* Curve index in #Curves2DSpace struct. */
-  int curve_index_2d;
-  /* Start point of the curve in proximity (relative index: 0..<curve_point_size>). */
-  int curve_point_start;
-  /* End point of the curve in proximity (relative index: 0..<curve_point_size>). */
-  int curve_point_end;
-  /* Start point in the segment. */
-  int segment_point_start;
-  /* End point in the segment. */
-  int segment_point_end;
-  /* Flag for connecting the segment end point to the proximity start point in the fill edge.*/
-  bool use_segment_point_end;
-  /* Flag when the start point of the proximity curve is nearer to the segment than the
-   * end point. */
-  bool curve_point_start_is_nearest;
-};
-
-/* Edge segment ending: intersection data when a curve of a curve end extension intersects
- * the edge segment. */
-struct SegmentEnd {
-  /* Curve index (in #Curves2DSpace struct) of the intersecting/gap closing curve. */
-  int curve_index_2d{};
-  /* Curve point index of the intersection start point. */
-  int point_start{};
-  /* Curve point index of the intersection end point. */
-  int point_end{};
-  /* Start point index of the original segment that is intersected. */
-  int ori_segment_point_start{};
-  /* End point index of the original segment that is intersected. */
-  int ori_segment_point_end{};
-  /* Normalized distance of intersection. */
-  float distance{};
-  /* Incoming and outgoing angle of the intersection. */
-  float2 angle{};
-  /* Minimum angle. */
-  float angle_min;
-  /* Maximum angle. */
-  float angle_max;
-  /* Flag if the incoming and outgoing angle is set. */
-  bool angle_is_set[2];
-  /* Segment flags. */
-  vfFlag flag = vfFlag::None;
-  /* Turn to take at intersections. */
-  short turn{};
-
-  bool first_angle_is_smallest() const
-  {
-    if (!this->angle_is_set[0]) {
-      return false;
-    }
-    if (!this->angle_is_set[1]) {
-      return true;
-    }
-    return this->angle[0] <= this->angle[1];
-  }
-
-  bool first_angle_is_largest() const
-  {
-    if (!this->angle_is_set[0]) {
-      return false;
-    }
-    if (!this->angle_is_set[1]) {
-      return true;
-    }
-    return this->angle[0] > this->angle[1];
-  }
-};
-
-/* Fill edge segment. An edge segment is a set of points on an existing curve. A fill edge is a
- * closed set of edge segments. */
-struct EdgeSegment {
-  /* Curve index in #Curves2DSpace struct (with curve points in 2D space). */
-  int curve_index_2d{};
-  /* Curve point index range. */
-  int2 point_range{};
-  /* Segment flags. */
-  vfFlag flag = vfFlag::None;
-
-  /* Segment endings: intersection data or gap closure data. */
-  Vector<SegmentEnd> segment_ends{};
-  /* Last handled segment end. */
-  int segment_ends_index{};
-
-  void init_point_range(const int point_i)
-  {
-    this->point_range[0] = point_i;
-    this->point_range[1] = point_i;
-  }
-
-  void set_point_range(const int point_i, const int direction)
-  {
-    if (direction == -1) {
-      this->point_range[1] = this->point_range[0];
-      this->point_range[0] = point_i;
-    }
-    else {
-      this->point_range[1] = point_i;
-    }
-  }
-};
-
-/* Segment that overlaps with the last created segment. Used for closed egde inspection, when the
- * segments overlap, but have different curve indices. */
-struct OverlappingSegment {
-  int2 base_point_range{};
-  int overlapping_curve_index{};
-  int2 overlapping_point_range{};
-  bool overlapping_backwards = false;
-};
-
-struct VectorFillData {
-  /* For modal event handling: wait for release until processing the event key again. */
-  bool wait_for_release{};
-  /* Wait-for-release event key. */
-  short wait_event_type{};
-
-  /* Mouse position of the fill operation click. */
-  float2 mouse_pos{};
-
-  /* True when edge gaps are closed by extending the curve ends. */
-  bool use_gap_close_extend{};
-  /* True when edge gaps are closed by curve end radii. */
-  bool use_gap_close_radius{};
-  /* True when curve end extensions stop at their first intersection. */
-  bool extensions_stop_at_first_intersection{};
-  /* Gap closure distance in pixels. */
-  float gap_distance{};
-  /* True when edge gaps are closed by curve proximity. */
-  bool use_gap_close_proximity{};
-  /* Curve proximity distance in pixels. */
-  float proximity_distance;
-
-  /* Colors of gap closure visual aids. */
-  float gap_closure_color[3];
-  float gap_closed_color[3];
-  float gap_proximity_color[4];
-
-  /* Active Grease Pencil object. */
-  GreasePencil *grease_pencil;
-  /* View context data.*/
-  ViewContext vc;
-  /* Fill brush. */
-  Brush *brush;
-  /* Additive drawing (from tool settings). */
-  bool additive_drawing;
-
-  /* Draw handle for 3D viewport overlay. */
-  void *draw_handle = nullptr;
-
-  /* Starting time of the vector fill operator. */
-  std::chrono::high_resolution_clock::time_point operator_time_start;
-
-  /* Curve points converted to viewport 2D space. */
-  Curves2DSpace curves_2d{};
-  /* Slight normalized extension of all curve segments (epsilon), used to avoid floating point
-   * precision errors when looking for intersections. */
-  Array<float2> curve_segment_epsilon;
-  /* Curve end extensions in viewport 2D space. */
-  Curves2DSpace extensions_2d{};
-  /* Ratio between length of extension and length of curve end segment. */
-  Array<float> extension_length_ratio;
-  /* Flag for curve end extensions, true when the extension intersects a curve or other
-   * end extension. */
-  Array<bool> extension_has_intersection;
-  /* Intersections of curve end extensions with curves or other extensions. */
-  Vector<IntersectingCurve> extension_intersections;
-  /* KD tree of curve ends in 2D space, used for gap closure by radius. */
-  KDTree_2d *curve_ends = nullptr;
-  /* Flag indicating a curve end is connected by radius with one or more other curve ends. */
-  Array<bool> connected_by_radius;
-  /* Curve end connections (by radius) with other curve ends. */
-  Vector<int2> radius_connections;
-
-  /* The initial curve segments from which we try to find a closed fill edge. */
-  Vector<IntersectingCurve> starting_segments;
-  /* The curve segments that will form a closed fill edge. */
-  Vector<EdgeSegment> segments;
-  /* Overlapping curve segments of the last created edge segment. */
-  Vector<OverlappingSegment> overlapping_segments;
-
-  /* The intersection distance of the start segment (found by the casted ray). */
-  float start_distance{};
-};
 
 /** \} */
 
 /* ------------------------------------------------------------------------------ */
 /** \name Intersection functions
  * \{ */
-
-/**
- * Get the normalized distance from v1 and v3 to the intersection point of line segments v1-v2
- * and v3-v4.
- */
-static float2 get_intersection_distance_normalized(const float2 &v1,
-                                                   const float2 &v2,
-                                                   const float2 &v3,
-                                                   const float2 &v4)
-{
-  float2 distance = {0.0f, 0.0f};
-
-  /* Get intersection point. */
-  const float a1 = v2[1] - v1[1];
-  const float b1 = v1[0] - v2[0];
-  const float c1 = a1 * v1[0] + b1 * v1[1];
-
-  const float a2 = v4[1] - v3[1];
-  const float b2 = v3[0] - v4[0];
-  const float c2 = a2 * v3[0] + b2 * v3[1];
-
-  const float det = a1 * b2 - a2 * b1;
-  BLI_assert(det != 0.0f);
-
-  float2 isect;
-  isect[0] = (b2 * c1 - b1 * c2) / det;
-  isect[1] = (a1 * c2 - a2 * c1) / det;
-
-  /* Get normalized distance from v1 and v3 to intersection point. */
-  const float v1_length = math::length(v2 - v1);
-  const float v3_length = math::length(v4 - v3);
-
-  distance[0] = (v1_length == 0.0f ?
-                     0.0f :
-                     math::clamp(math::length(isect - v1) / v1_length, 0.0f, 1.0f));
-  distance[1] = (v3_length == 0.0f ?
-                     0.0f :
-                     math::clamp(math::length(isect - v3) / v3_length, 0.0f, 1.0f));
-  return distance;
-}
 
 /**
  * Store a segment that shares points with an inspected edge segment.
@@ -438,7 +92,7 @@ static void store_overlapping_segment(const int overlapping_curve,
                                       const bool in_opposite_dir,
                                       const int base_point,
                                       const int base_direction,
-                                      VectorFillData *vf)
+                                      FillData *fd)
 {
   const int overlapping_direction = (in_opposite_dir ? -base_direction : base_direction);
   const bool overlapping_backwards = (overlapping_direction == -1);
@@ -446,7 +100,7 @@ static void store_overlapping_segment(const int overlapping_curve,
   const int base_range_index = (base_direction == 1 ? 0 : 1);
 
   /* Look for an existing overlapping segment which point range we can expand. */
-  for (auto &overlap : vf->overlapping_segments) {
+  for (auto &overlap : fd->vf.overlapping_segments) {
     if (overlap.overlapping_curve_index == overlapping_curve &&
         overlap.overlapping_backwards == overlapping_backwards &&
         overlap.overlapping_point_range[overlapping_range_index] ==
@@ -470,180 +124,7 @@ static void store_overlapping_segment(const int overlapping_curve,
 
   std::mutex mutex;
   std::lock_guard lock{mutex};
-  vf->overlapping_segments.append(std::move(overlap));
-}
-
-/**
- * Get all intersections of a segment with other curves.
- */
-static Vector<IntersectingCurve> get_intersections_of_segment_with_curves(
-    const float2 &segment_a,
-    const float2 &segment_b,
-    const int segment_curve_index,
-    const Curves2DSpace *curves_2d,
-    const float2 &adj_a = {FLT_MAX, FLT_MAX},
-    const float2 &adj_b = {FLT_MAX, FLT_MAX},
-    const bool store_overlapping_segments = false,
-    const int segment_point_a = 0,
-    const int segment_point_b = 0,
-    const int segment_direction = 1,
-    const bool use_epsilon = false,
-    VectorFillData *vf = nullptr)
-{
-  /* Inits. */
-  Vector<IntersectingCurve> intersections;
-  std::mutex mutex;
-
-  const float2 segment_vec = segment_b - segment_a;
-
-  float2 segment_epsilon = {0.0f, 0.0f};
-  if (use_epsilon) {
-    if (segment_direction == 1) {
-      const int epsilon_i = curves_2d->point_offset[segment_curve_index] + segment_point_a;
-      segment_epsilon = -vf->curve_segment_epsilon[epsilon_i];
-    }
-    else {
-      const int epsilon_i = curves_2d->point_offset[segment_curve_index] + segment_point_b;
-      segment_epsilon = vf->curve_segment_epsilon[epsilon_i];
-    }
-  }
-
-  /* Loop all curves, looking for intersecting segments. */
-  threading::parallel_for(curves_2d->point_offset.index_range(), 256, [&](const IndexRange range) {
-    rctf bbox_segment, bbox_isect;
-
-    for (const int curve_i : range) {
-      /* Only process curves with at least two points. */
-      if (curves_2d->point_size[curve_i] < 2) {
-        continue;
-      }
-
-      /* Create a slightly extended segment to avoid floating point precision errors.
-       * Otherwise an intersection can be missed when it is on the outer end of a segment. */
-      float2 seg_a_extended = segment_a;
-      float2 seg_b_extended = segment_b;
-      if (use_epsilon && curve_i != segment_curve_index) {
-        seg_a_extended += segment_epsilon;
-        seg_b_extended -= segment_epsilon;
-      }
-
-      /* Create bounding box around the segment. */
-      BLI_rctf_init_minmax(&bbox_segment);
-      BLI_rctf_do_minmax_v(&bbox_segment, seg_a_extended);
-      BLI_rctf_do_minmax_v(&bbox_segment, seg_b_extended);
-
-      /* Do a quick bounding box check. When the bounding box of a curve doesn't
-       * intersect with the segment, none of the curve segments do. */
-      if (!BLI_rctf_isect(&bbox_segment, &curves_2d->curve_bbox[curve_i], nullptr)) {
-        continue;
-      }
-
-      /* Get point range. */
-      const int point_offset = curves_2d->point_offset[curve_i];
-      const int point_size = curves_2d->point_size[curve_i] -
-                             (curves_2d->is_cyclic[curve_i] ? 0 : 1);
-      const int point_last = point_offset + curves_2d->point_size[curve_i] - 1;
-
-      /* Skip curves with identical (overlapping) segments, because they produce
-       * false-positive intersections. Overlapping curves are most likely created by a
-       * previous fill operation. */
-      if (curve_i != segment_curve_index) {
-        bool skip_curve = false;
-        for (const int point_i : IndexRange(point_offset, point_size)) {
-          const int point_i_next = (point_i == point_last ? point_offset : point_i + 1);
-          const float2 p0 = curves_2d->points_2d[point_i];
-          const float2 p1 = curves_2d->points_2d[point_i_next];
-
-          /* Check for identical segments. */
-          if (segment_a == p0 && segment_b == p1) {
-            if (store_overlapping_segments) {
-              store_overlapping_segment(
-                  curve_i, point_i - point_offset, 1, segment_point_a, segment_direction, vf);
-            }
-            skip_curve = true;
-            break;
-          }
-          if (segment_a == p1 && segment_b == p0) {
-            if (store_overlapping_segments) {
-              store_overlapping_segment(
-                  curve_i, point_i - point_offset, -1, segment_point_a, segment_direction, vf);
-            }
-            skip_curve = true;
-            break;
-          }
-        }
-        if (skip_curve) {
-          continue;
-        }
-      }
-
-      /* Find intersecting curve segments. */
-      int prev_intersection_point = -1;
-      for (const int point_i : IndexRange(point_offset, point_size)) {
-        const int point_i_next = (point_i == point_last ? point_offset : point_i + 1);
-        const float2 p0 = curves_2d->points_2d[point_i];
-        const float2 p1 = curves_2d->points_2d[point_i_next];
-        float2 p0_extended = p0;
-        float2 p1_extended = p1;
-        if (use_epsilon && curve_i != segment_curve_index) {
-          p0_extended -= vf->curve_segment_epsilon[point_i];
-          p1_extended += vf->curve_segment_epsilon[point_i];
-        }
-
-        /* Skip when previous segment was intersecting. */
-        if (prev_intersection_point == point_i) {
-          continue;
-        }
-
-        /* Skip when bounding boxes don't overlap. */
-        BLI_rctf_init(&bbox_isect, p0_extended[0], p0_extended[0], p0_extended[1], p0_extended[1]);
-        BLI_rctf_do_minmax_v(&bbox_isect, p1_extended);
-        if (!BLI_rctf_isect(&bbox_segment, &bbox_isect, nullptr)) {
-          continue;
-        }
-
-        /* Don't self check. */
-        if (curve_i == segment_curve_index) {
-          if (segment_a == p0 || segment_a == p1 || segment_b == p0 || segment_b == p1) {
-            continue;
-          }
-        }
-
-        /* Skip identical adjacent segments. */
-        if ((adj_a == p0 && segment_a == p1) || (segment_b == p0 && adj_b == p1) ||
-            (adj_b == p0 && segment_b == p1) || (segment_a == p0 && adj_a == p1))
-        {
-          continue;
-        }
-
-        /* Skip segments that exactly overlap the current one. */
-        if (segment_a == p0 || segment_a == p1 || segment_b == p0 || segment_b == p1) {
-          if (compare_ff(cross_v2v2(p1 - p0, segment_vec), 0.0f, PARALLEL_EPSILON)) {
-            continue;
-          }
-        }
-
-        /* Check for intersection. */
-        auto isect = math::isect_seg_seg(seg_a_extended, seg_b_extended, p0_extended, p1_extended);
-        if (ELEM(isect.kind, isect.LINE_LINE_CROSS, isect.LINE_LINE_EXACT)) {
-          IntersectingCurve intersection{};
-          intersection.curve_index_2d = curve_i;
-          intersection.point_start = point_i - point_offset;
-          intersection.point_end = point_i_next - point_offset;
-          intersection.distance = get_intersection_distance_normalized(
-              segment_a, segment_b, p0, p1);
-          intersection.has_stroke = curves_2d->has_stroke[curve_i];
-
-          std::lock_guard lock{mutex};
-          intersections.append(intersection);
-
-          prev_intersection_point = point_i_next;
-        }
-      }
-    }
-  });
-
-  return intersections;
+  fd->vf.overlapping_segments.append(std::move(overlap));
 }
 
 /** \} */
@@ -772,27 +253,27 @@ static std::tuple<bool, bool, bool> line_segments_are_in_proximity(
 static ProximityCurve get_segment_end_proximity(EdgeSegment *segment,
                                                 const int segment_direction,
                                                 const int curve_index,
-                                                const VectorFillData *vf)
+                                                const FillData *fd)
 {
-  const float proxim_distance_squared = vf->proximity_distance * vf->proximity_distance;
+  const float proxim_distance_squared = fd->proximity_distance * fd->proximity_distance;
 
   /* Get segment end points. */
   const int segment_curve_index = segment->curve_index_2d;
-  const int segment_point_offset = vf->curves_2d.point_offset[segment_curve_index];
+  const int segment_point_offset = fd->curves_2d.point_offset[segment_curve_index];
   const int segment_point_end = (segment_direction == 1) ? segment->point_range[1] :
                                                            segment->point_range[0];
   const float2 segment_a =
-      vf->curves_2d.points_2d[segment_point_offset + segment_point_end - segment_direction];
-  const float2 segment_b = vf->curves_2d.points_2d[segment_point_offset + segment_point_end];
+      fd->curves_2d.points_2d[segment_point_offset + segment_point_end - segment_direction];
+  const float2 segment_b = fd->curves_2d.points_2d[segment_point_offset + segment_point_end];
 
   /* Get curve head and tail points. */
-  const int curve_point_offset = vf->curves_2d.point_offset[curve_index];
+  const int curve_point_offset = fd->curves_2d.point_offset[curve_index];
   const int curve_point_head = 0;
-  const float2 curve_head_p0 = vf->curves_2d.points_2d[curve_point_offset];
-  const float2 curve_head_p1 = vf->curves_2d.points_2d[curve_point_offset + 1];
-  const int curve_point_tail = vf->curves_2d.point_size[curve_index] - 2;
-  const float2 curve_tail_p0 = vf->curves_2d.points_2d[curve_point_offset + curve_point_tail];
-  const float2 curve_tail_p1 = vf->curves_2d.points_2d[curve_point_offset + curve_point_tail + 1];
+  const float2 curve_head_p0 = fd->curves_2d.points_2d[curve_point_offset];
+  const float2 curve_head_p1 = fd->curves_2d.points_2d[curve_point_offset + 1];
+  const int curve_point_tail = fd->curves_2d.point_size[curve_index] - 2;
+  const float2 curve_tail_p0 = fd->curves_2d.points_2d[curve_point_offset + curve_point_tail];
+  const float2 curve_tail_p1 = fd->curves_2d.points_2d[curve_point_offset + curve_point_tail + 1];
 
   /* When the segment curve and the proximity curve are the same (self-closing curve), take the
    * opposite point of the segment end. */
@@ -845,7 +326,7 @@ static ProximityCurve get_segment_end_proximity(EdgeSegment *segment,
  */
 static Vector<ProximityCurve> get_curves_in_proximity_of_segment(EdgeSegment *segment,
                                                                  const int segment_direction,
-                                                                 const VectorFillData *vf)
+                                                                 const FillData *fd)
 {
   /* Inits. */
   Vector<ProximityCurve> proximities;
@@ -853,19 +334,19 @@ static Vector<ProximityCurve> get_curves_in_proximity_of_segment(EdgeSegment *se
   rctf bbox_segment;
 
   const int segment_curve_index = segment->curve_index_2d;
-  const int segment_point_offset = vf->curves_2d.point_offset[segment_curve_index];
+  const int segment_point_offset = fd->curves_2d.point_offset[segment_curve_index];
 
-  const float proxim_distance_squared = vf->proximity_distance * vf->proximity_distance;
+  const float proxim_distance_squared = fd->proximity_distance * fd->proximity_distance;
 
   const bool at_end_of_curve = ((segment_direction == -1 && segment->point_range[0] == 0) ||
                                 (segment_direction == 1 &&
                                  segment->point_range[1] ==
-                                     vf->curves_2d.point_size[segment->curve_index_2d] - 1));
+                                     fd->curves_2d.point_size[segment->curve_index_2d] - 1));
 
   EdgeSegment previous_segment;
   bool has_previous_segment = false;
-  if (vf->segments.size() > 1) {
-    previous_segment = vf->segments[vf->segments.size() - 2];
+  if (fd->vf.segments.size() > 1) {
+    previous_segment = fd->vf.segments[fd->vf.segments.size() - 2];
     has_previous_segment = true;
   }
   const int prev_segment_curve_index = (has_previous_segment ? previous_segment.curve_index_2d :
@@ -873,17 +354,17 @@ static Vector<ProximityCurve> get_curves_in_proximity_of_segment(EdgeSegment *se
 
   BLI_rctf_init_minmax(&bbox_segment);
   BLI_rctf_do_minmax_v(&bbox_segment,
-                       vf->curves_2d.points_2d[segment_point_offset + segment->point_range[0]]);
+                       fd->curves_2d.points_2d[segment_point_offset + segment->point_range[0]]);
   BLI_rctf_do_minmax_v(&bbox_segment,
-                       vf->curves_2d.points_2d[segment_point_offset + segment->point_range[1]]);
-  BLI_rctf_pad(&bbox_segment, vf->proximity_distance, vf->proximity_distance);
+                       fd->curves_2d.points_2d[segment_point_offset + segment->point_range[1]]);
+  BLI_rctf_pad(&bbox_segment, fd->proximity_distance, fd->proximity_distance);
 
   /* Check all curves for promity. */
   threading::parallel_for(
-      vf->curves_2d.point_offset.index_range(), 256, [&](const IndexRange range) {
+      fd->curves_2d.point_offset.index_range(), 256, [&](const IndexRange range) {
         for (const int curve_i : range) {
           /* Only check curves with at least two points. */
-          if (vf->curves_2d.point_size[curve_i] < 2) {
+          if (fd->curves_2d.point_size[curve_i] < 2) {
             continue;
           }
 
@@ -893,7 +374,7 @@ static Vector<ProximityCurve> get_curves_in_proximity_of_segment(EdgeSegment *se
           if (curve_i == segment_curve_index || curve_i == prev_segment_curve_index) {
             if (at_end_of_curve) {
               ProximityCurve proxim = get_segment_end_proximity(
-                  segment, segment_direction, curve_i, vf);
+                  segment, segment_direction, curve_i, fd);
               if (proxim.curve_index_2d != -1) {
                 std::lock_guard lock{mutex};
                 proximities.append(proxim);
@@ -903,18 +384,18 @@ static Vector<ProximityCurve> get_curves_in_proximity_of_segment(EdgeSegment *se
           }
 
           /* Skip curves with only a fill material. */
-          if (!vf->curves_2d.has_stroke[curve_i]) {
+          if (!fd->curves_2d.has_stroke[curve_i]) {
             continue;
           }
 
           /* Skip curve when it is not overlapping the segment bounding box. */
           rctf bbox_proxim;
           BLI_rctf_init(&bbox_proxim,
-                        vf->curves_2d.curve_bbox[curve_i].xmin,
-                        vf->curves_2d.curve_bbox[curve_i].xmax,
-                        vf->curves_2d.curve_bbox[curve_i].ymin,
-                        vf->curves_2d.curve_bbox[curve_i].ymax);
-          BLI_rctf_pad(&bbox_proxim, vf->proximity_distance, vf->proximity_distance);
+                        fd->curves_2d.curve_bbox[curve_i].xmin,
+                        fd->curves_2d.curve_bbox[curve_i].xmax,
+                        fd->curves_2d.curve_bbox[curve_i].ymin,
+                        fd->curves_2d.curve_bbox[curve_i].ymax);
+          BLI_rctf_pad(&bbox_proxim, fd->proximity_distance, fd->proximity_distance);
           if (!BLI_rctf_isect(&bbox_segment, &bbox_proxim, nullptr)) {
             continue;
           }
@@ -949,7 +430,7 @@ static Vector<ProximityCurve> get_curves_in_proximity_of_segment(EdgeSegment *se
           }
 
           /* Skip curves that have exact overlap with curves intersecting the segment. */
-          for (const auto &overlap : vf->overlapping_segments) {
+          for (const auto &overlap : fd->vf.overlapping_segments) {
             if (overlap.overlapping_curve_index == curve_i) {
               skip_curve = true;
               break;
@@ -961,17 +442,17 @@ static Vector<ProximityCurve> get_curves_in_proximity_of_segment(EdgeSegment *se
 
           /* Loop over curve points. */
           bool proximity_found = false;
-          const int curve_point_offset = vf->curves_2d.point_offset[curve_i];
+          const int curve_point_offset = fd->curves_2d.point_offset[curve_i];
           for (const int point_i :
-               IndexRange(curve_point_offset, vf->curves_2d.point_size[curve_i]).drop_back(1))
+               IndexRange(curve_point_offset, fd->curves_2d.point_size[curve_i]).drop_back(1))
           {
-            const float2 curve_p0 = vf->curves_2d.points_2d[point_i];
-            const float2 curve_p1 = vf->curves_2d.points_2d[point_i + 1];
+            const float2 curve_p0 = fd->curves_2d.points_2d[point_i];
+            const float2 curve_p1 = fd->curves_2d.points_2d[point_i + 1];
 
             /* Skip when bounding box doesn't overlap with segment bounding box. */
             BLI_rctf_init(&bbox_proxim, curve_p0[0], curve_p0[0], curve_p0[1], curve_p0[1]);
             BLI_rctf_do_minmax_v(&bbox_proxim, curve_p1);
-            BLI_rctf_pad(&bbox_proxim, vf->proximity_distance, vf->proximity_distance);
+            BLI_rctf_pad(&bbox_proxim, fd->proximity_distance, fd->proximity_distance);
             if (!BLI_rctf_isect(&bbox_proxim, &bbox_segment, nullptr)) {
               continue;
             }
@@ -987,15 +468,15 @@ static Vector<ProximityCurve> get_curves_in_proximity_of_segment(EdgeSegment *se
             for (int segment_point_i = segment_start; segment_point_i != segment_end;
                  segment_point_i += segment_direction)
             {
-              const float2 segment_a = vf->curves_2d.points_2d[segment_point_i];
+              const float2 segment_a = fd->curves_2d.points_2d[segment_point_i];
               const float2 segment_b =
-                  vf->curves_2d.points_2d[segment_point_i + segment_direction];
+                  fd->curves_2d.points_2d[segment_point_i + segment_direction];
 
               /* Skip when line segments don't overlap. */
               rctf bbox_seg;
               BLI_rctf_init(&bbox_seg, segment_a[0], segment_a[0], segment_a[1], segment_a[1]);
               BLI_rctf_do_minmax_v(&bbox_seg, segment_b);
-              BLI_rctf_pad(&bbox_seg, vf->proximity_distance, vf->proximity_distance);
+              BLI_rctf_pad(&bbox_seg, fd->proximity_distance, fd->proximity_distance);
               if (!BLI_rctf_isect(&bbox_proxim, &bbox_seg, nullptr)) {
                 continue;
               }
@@ -1054,11 +535,11 @@ static bool position_equals_previous(const float3 &co, float3 &r_co_prev)
 /**
  * Convert fill edge segments to 3D points.
  */
-static Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
+static Vector<float3> get_closed_fill_edge_as_3d_points(FillData *fd)
 {
   /* Ensure head starting point and tail end point are an exact match. */
-  EdgeSegment *tail = &vf->segments.last();
-  for (auto &head : vf->segments) {
+  EdgeSegment *tail = &fd->vf.segments.last();
+  for (auto &head : fd->vf.segments) {
     if ((head.flag & vfFlag::IsUnused) == true) {
       continue;
     }
@@ -1080,15 +561,15 @@ static Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
   int edge_point_index = 0;
 
   /* Convert all edge segments to 3D coordinates. */
-  for (auto &segment : vf->segments) {
+  for (auto &segment : fd->vf.segments) {
     if ((segment.flag & vfFlag::IsUnused) == true) {
       continue;
     }
 
     /* Get original 3D curve. */
-    const int drawing_index = vf->curves_2d.drawing_index_2d[segment.curve_index_2d];
-    const int curve_index = segment.curve_index_2d - vf->curves_2d.curve_offset[drawing_index];
-    const bke::CurvesGeometry &curves = vf->curves_2d.drawings[drawing_index]->geometry.wrap();
+    const int drawing_index = fd->curves_2d.drawing_index_2d[segment.curve_index_2d];
+    const int curve_index = segment.curve_index_2d - fd->curves_2d.curve_offset[drawing_index];
+    const bke::CurvesGeometry &curves = fd->curves_2d.drawings[drawing_index]->geometry.wrap();
     const Span<float3> positions = curves.positions();
     const OffsetIndices points_by_curve = curves.points_by_curve();
     const IndexRange points_3d = points_by_curve[curve_index];
@@ -1133,7 +614,7 @@ static Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
       const float3 isect_point = edge_points[edge_point_index - 1] +
                                  (edge_points[edge_point_index - 1] -
                                   edge_points[edge_point_index - 2]) *
-                                     vf->extension_length_ratio[extension_index] *
+                                     fd->extension_length_ratio[extension_index] *
                                      segment_end->distance;
       if (!position_equals_previous(isect_point, co_prev)) {
         edge_points.append(isect_point);
@@ -1151,35 +632,35 @@ static Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
 /**
  * Create GP curve geometry from a closed fill edge.
  */
-static void create_fill_geometry(VectorFillData *vf)
+static void create_fill_geometry(FillData *fd)
 {
   /* Ensure active frame (autokey is on, we checked on operator invoke). */
-  const bke::greasepencil::Layer *active_layer = vf->grease_pencil->get_active_layer();
-  const int current_frame = vf->vc.scene->r.cfra;
-  if (!vf->grease_pencil->get_active_layer()->frames().contains(current_frame)) {
-    bke::greasepencil::Layer &active_layer = *vf->grease_pencil->get_active_layer_for_write();
-    if (vf->additive_drawing) {
+  const bke::greasepencil::Layer *active_layer = fd->grease_pencil->get_active_layer();
+  const int current_frame = fd->vc.scene->r.cfra;
+  if (!fd->grease_pencil->get_active_layer()->frames().contains(current_frame)) {
+    bke::greasepencil::Layer &active_layer = *fd->grease_pencil->get_active_layer_for_write();
+    if (fd->additive_drawing) {
       /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
        * current frame. */
-      vf->grease_pencil->insert_duplicate_frame(
+      fd->grease_pencil->insert_duplicate_frame(
           active_layer, active_layer.frame_key_at(current_frame), current_frame, false);
     }
     else {
       /* Otherwise we just insert a blank keyframe. */
-      vf->grease_pencil->insert_blank_frame(active_layer, current_frame, 0, BEZT_KEYTYPE_KEYFRAME);
+      fd->grease_pencil->insert_blank_frame(active_layer, current_frame, 0, BEZT_KEYTYPE_KEYFRAME);
     }
   }
 
   /* Get the edge points in 3D space. */
-  Vector<float3> fill_points = get_closed_fill_edge_as_3d_points(vf);
+  Vector<float3> fill_points = get_closed_fill_edge_as_3d_points(fd);
   if (fill_points.size() <= 2) {
     return;
   }
 
   /* Create geometry. */
-  const int drawing_index = active_layer->drawing_index_at(vf->vc.scene->r.cfra);
+  const int drawing_index = active_layer->drawing_index_at(fd->vc.scene->r.cfra);
   bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(
-                                            vf->grease_pencil->drawings()[drawing_index])
+                                            fd->grease_pencil->drawings()[drawing_index])
                                             ->wrap();
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
@@ -1200,7 +681,7 @@ static void create_fill_geometry(VectorFillData *vf)
   MutableSpan<float> radii = drawing.radii_for_write();
   MutableSpan<float> opacities = drawing.opacities_for_write();
   positions.slice(new_points_range).copy_from(fill_points);
-  radii.slice(new_points_range).fill(vf->brush->size);
+  radii.slice(new_points_range).fill(fd->brush->size);
   opacities.slice(new_points_range).fill(1.0f);
 
   /* Make curve cyclic. */
@@ -1210,29 +691,29 @@ static void create_fill_geometry(VectorFillData *vf)
   curves.fill_curve_types(new_curves_range, CURVE_TYPE_POLY);
 
   /* Set vertex color for fill and stroke. */
-  const bool use_vertex_color = (vf->vc.scene->toolsettings->gp_paint->mode ==
+  const bool use_vertex_color = (fd->vc.scene->toolsettings->gp_paint->mode ==
                                  GPPAINT_FLAG_USE_VERTEXCOLOR);
   const bool use_vertex_color_stroke = use_vertex_color &&
-                                       ELEM(vf->brush->gpencil_settings->vertex_mode,
+                                       ELEM(fd->brush->gpencil_settings->vertex_mode,
                                             GPPAINT_MODE_STROKE,
                                             GPPAINT_MODE_BOTH);
   const bool use_vertex_color_fill = use_vertex_color &&
-                                     ELEM(vf->brush->gpencil_settings->vertex_mode,
+                                     ELEM(fd->brush->gpencil_settings->vertex_mode,
                                           GPPAINT_MODE_FILL,
                                           GPPAINT_MODE_BOTH);
   const ColorGeometry4f vertex_color_stroke = use_vertex_color_stroke ?
                                                   ColorGeometry4f(
-                                                      vf->brush->rgb[0],
-                                                      vf->brush->rgb[1],
-                                                      vf->brush->rgb[2],
-                                                      vf->brush->gpencil_settings->vertex_factor) :
+                                                      fd->brush->rgb[0],
+                                                      fd->brush->rgb[1],
+                                                      fd->brush->rgb[2],
+                                                      fd->brush->gpencil_settings->vertex_factor) :
                                                   ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f);
   const ColorGeometry4f vertex_color_fill = use_vertex_color_fill ?
                                                 ColorGeometry4f(
-                                                    vf->brush->rgb[0],
-                                                    vf->brush->rgb[1],
-                                                    vf->brush->rgb[2],
-                                                    vf->brush->gpencil_settings->vertex_factor) :
+                                                    fd->brush->rgb[0],
+                                                    fd->brush->rgb[1],
+                                                    fd->brush->rgb[2],
+                                                    fd->brush->gpencil_settings->vertex_factor) :
                                                 ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f);
 
   drawing.vertex_colors_for_write().slice(new_points_range).fill(vertex_color_stroke);
@@ -1243,8 +724,8 @@ static void create_fill_geometry(VectorFillData *vf)
 
   /* Set material. */
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
-      vf->vc.bmain, vf->vc.obact, vf->brush);
-  const int material_index = BKE_grease_pencil_object_material_index_get(vf->vc.obact, material);
+      fd->vc.bmain, fd->vc.obact, fd->brush);
+  const int material_index = BKE_grease_pencil_object_material_index_get(fd->vc.obact, material);
 
   bke::SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", ATTR_DOMAIN_CURVE);
@@ -1279,8 +760,8 @@ static void create_fill_geometry(VectorFillData *vf)
 
   /* Set notifiers. */
   drawing.tag_topology_changed();
-  DEG_id_tag_update(&vf->grease_pencil->id, ID_RECALC_GEOMETRY);
-  WM_main_add_notifier(NC_GEOM | ND_DATA, &vf->grease_pencil->id);
+  DEG_id_tag_update(&fd->grease_pencil->id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_GEOM | ND_DATA, &fd->grease_pencil->id);
 }
 
 /**
@@ -1312,19 +793,19 @@ static bool mouse_pos_is_inside_polygon(float2 &mouse_pos, Vector<float2> &polyg
 /**
  * Convert fill edge segments to 2D points.
  */
-static Vector<float2> get_closed_fill_edge_as_2d_polygon(VectorFillData *vf)
+static Vector<float2> get_closed_fill_edge_as_2d_polygon(FillData *fd)
 {
   Vector<float2> points;
 
   /* We cut some corners here, literally, because we don't calculate the exact intersection point
    * of intersections. Since the 2D polygon is only used for a mouse-position-inside-polygon
    * check, we can afford to be a little sloppy. */
-  for (auto &segment : vf->segments) {
+  for (auto &segment : fd->vf.segments) {
     if ((segment.flag & vfFlag::IsUnused) == true) {
       continue;
     }
 
-    const int point_offset = vf->curves_2d.point_offset[segment.curve_index_2d];
+    const int point_offset = fd->curves_2d.point_offset[segment.curve_index_2d];
     const int direction = ((segment.flag & vfFlag::DirectionBackwards) == true) ? -1 : 1;
     int point_start = segment.point_range[0];
     int point_end = segment.point_range[1];
@@ -1333,18 +814,18 @@ static Vector<float2> get_closed_fill_edge_as_2d_polygon(VectorFillData *vf)
     }
     point_end += direction;
     for (int point_i = point_start; point_i != point_end; point_i += direction) {
-      points.append(vf->curves_2d.points_2d[point_offset + point_i]);
+      points.append(fd->curves_2d.points_2d[point_offset + point_i]);
     }
   }
 
   return points;
 }
 
-static bool mouse_pos_is_inside_closed_edge(VectorFillData *vf)
+static bool mouse_pos_is_inside_closed_edge(FillData *fd)
 {
-  Vector<float2> closed_edge = get_closed_fill_edge_as_2d_polygon(vf);
+  Vector<float2> closed_edge = get_closed_fill_edge_as_2d_polygon(fd);
 
-  return mouse_pos_is_inside_polygon(vf->mouse_pos, closed_edge);
+  return mouse_pos_is_inside_polygon(fd->mouse_pos, closed_edge);
 }
 
 /**
@@ -1352,7 +833,7 @@ static bool mouse_pos_is_inside_closed_edge(VectorFillData *vf)
  */
 static void split_segment_with_overlap(EdgeSegment *segment,
                                        const OverlappingSegment &overlap,
-                                       VectorFillData *vf)
+                                       FillData *fd)
 {
   const bool segment_backwards = ((segment->flag & vfFlag::DirectionBackwards) == true);
 
@@ -1385,7 +866,7 @@ static void split_segment_with_overlap(EdgeSegment *segment,
   if (overlap.overlapping_backwards) {
     new_seg.flag |= vfFlag::DirectionBackwards;
   }
-  vf->segments.append(std::move(new_seg));
+  fd->vf.segments.append(std::move(new_seg));
 }
 
 /**
@@ -1428,7 +909,7 @@ static void remove_overlapping_edge_tail_points(const EdgeSegment *head,
  * Check if edge segments overlap. This includes a check of alternative segments,
  * that share points with the original one.
  */
-static bool segments_have_overlap(EdgeSegment *head, EdgeSegment *tail, VectorFillData *vf)
+static bool segments_have_overlap(EdgeSegment *head, EdgeSegment *tail, FillData *fd)
 {
   /* Check direct overlap of head and tail.*/
   if (head->curve_index_2d == tail->curve_index_2d) {
@@ -1442,13 +923,13 @@ static bool segments_have_overlap(EdgeSegment *head, EdgeSegment *tail, VectorFi
   }
 
   /* Check alternative segments that have an overlap with the tail segment. */
-  for (const auto &overlap : vf->overlapping_segments) {
+  for (const auto &overlap : fd->vf.overlapping_segments) {
     if (head->curve_index_2d == overlap.overlapping_curve_index &&
         head->point_range[0] <= overlap.overlapping_point_range[1] &&
         head->point_range[1] >= overlap.overlapping_point_range[0])
     {
-      split_segment_with_overlap(tail, overlap, vf);
-      tail = &vf->segments.last();
+      split_segment_with_overlap(tail, overlap, fd);
+      tail = &fd->vf.segments.last();
       remove_overlapping_edge_tail_points(head, tail, head->point_range, tail->point_range);
       return true;
     }
@@ -1460,20 +941,20 @@ static bool segments_have_overlap(EdgeSegment *head, EdgeSegment *tail, VectorFi
 /**
  * Check if a set of edge segments form a closed loop.
  */
-static bool is_closed_fill_edge(VectorFillData *vf)
+static bool is_closed_fill_edge(FillData *fd)
 {
   /* Init: by default all segments are used in the edge. */
-  for (auto &segment : vf->segments) {
+  for (auto &segment : fd->vf.segments) {
     segment.flag &= ~vfFlag::IsUnused;
   }
 
   /* Loop through the edge segments and see if there is overlap with the last one. */
-  EdgeSegment *tail = &vf->segments.last();
-  for (const int segment_i : vf->segments.index_range().drop_back(1)) {
-    if (segments_have_overlap(&vf->segments[segment_i], tail, vf)) {
+  EdgeSegment *tail = &fd->vf.segments.last();
+  for (const int segment_i : fd->vf.segments.index_range().drop_back(1)) {
+    if (segments_have_overlap(&fd->vf.segments[segment_i], tail, fd)) {
       return true;
     }
-    vf->segments[segment_i].flag |= vfFlag::IsUnused;
+    fd->vf.segments[segment_i].flag |= vfFlag::IsUnused;
   }
 
   return false;
@@ -1532,12 +1013,12 @@ static int get_next_curve_point(const int point_i,
  * - Curve index, curve point index of curves in proximity.
  * - Determine the turns (angles) for the proximity curves.
  */
-static void add_curves_in_proximity_of_segment(EdgeSegment *segment, const VectorFillData *vf)
+static void add_curves_in_proximity_of_segment(EdgeSegment *segment, const FillData *fd)
 {
   /* Get curves in proximity of segment. */
   const int segment_direction = ((segment->flag & vfFlag::DirectionBackwards) == true ? -1 : 1);
   Vector<ProximityCurve> proximities = get_curves_in_proximity_of_segment(
-      segment, segment_direction, vf);
+      segment, segment_direction, fd);
 
   /* Process the proximity curves. */
   for (const auto &proxim : proximities) {
@@ -1549,15 +1030,15 @@ static void add_curves_in_proximity_of_segment(EdgeSegment *segment, const Vecto
     segment_end.flag = vfFlag::GapClosureByProximity;
 
     /* Get the segment and proximity curve points. */
-    const int segment_point_offset = vf->curves_2d.point_offset[segment->curve_index_2d];
+    const int segment_point_offset = fd->curves_2d.point_offset[segment->curve_index_2d];
     const int curve_i = segment_end.curve_index_2d;
-    const int curve_point_offset = vf->curves_2d.point_offset[curve_i];
+    const int curve_point_offset = fd->curves_2d.point_offset[curve_i];
     const float2 segment_a =
-        vf->curves_2d.points_2d[segment_point_offset + segment_end.ori_segment_point_start];
+        fd->curves_2d.points_2d[segment_point_offset + segment_end.ori_segment_point_start];
     const float2 segment_b =
-        vf->curves_2d.points_2d[segment_point_offset + segment_end.ori_segment_point_end];
-    const float2 curve_p1 = vf->curves_2d.points_2d[curve_point_offset + proxim.curve_point_start];
-    const float2 curve_p2 = vf->curves_2d.points_2d[curve_point_offset + proxim.curve_point_end];
+        fd->curves_2d.points_2d[segment_point_offset + segment_end.ori_segment_point_end];
+    const float2 curve_p1 = fd->curves_2d.points_2d[curve_point_offset + proxim.curve_point_start];
+    const float2 curve_p2 = fd->curves_2d.points_2d[curve_point_offset + proxim.curve_point_end];
 
     /* Determine the angle between the segment and the proximity curve. */
     segment_end.angle_is_set[0] = true;
@@ -1572,15 +1053,15 @@ static void add_curves_in_proximity_of_segment(EdgeSegment *segment, const Vecto
 
       const int curve_point_prev = get_next_curve_point(proxim.curve_point_start,
                                                         -1,
-                                                        vf->curves_2d.point_size[curve_i],
-                                                        vf->curves_2d.is_cyclic[curve_i]);
+                                                        fd->curves_2d.point_size[curve_i],
+                                                        fd->curves_2d.is_cyclic[curve_i]);
       if (curve_point_prev == -1) {
         segment_end.angle_is_set[1] = false;
         angle1 = 0.0f;
         segment_end.point_start = proxim.curve_point_start;
       }
       else {
-        const float2 curve_p0 = vf->curves_2d.points_2d[curve_point_offset + curve_point_prev];
+        const float2 curve_p0 = fd->curves_2d.points_2d[curve_point_offset + curve_point_prev];
         angle1 = get_rounded_angle(M_PI - angle_signed_v2v2(segment_vec, curve_p0 - segment_a));
 
         if (angle0 < angle1) {
@@ -1599,8 +1080,8 @@ static void add_curves_in_proximity_of_segment(EdgeSegment *segment, const Vecto
 
       const int curve_point_next = get_next_curve_point(proxim.curve_point_end,
                                                         1,
-                                                        vf->curves_2d.point_size[curve_i],
-                                                        vf->curves_2d.is_cyclic[curve_i]);
+                                                        fd->curves_2d.point_size[curve_i],
+                                                        fd->curves_2d.is_cyclic[curve_i]);
       if (curve_point_next == -1) {
         segment_end.angle_is_set[1] = false;
         angle1 = 0.0f;
@@ -1608,7 +1089,7 @@ static void add_curves_in_proximity_of_segment(EdgeSegment *segment, const Vecto
         dir_backwards = true;
       }
       else {
-        const float2 curve_p3 = vf->curves_2d.points_2d[curve_point_offset + curve_point_next];
+        const float2 curve_p3 = fd->curves_2d.points_2d[curve_point_offset + curve_point_next];
         angle1 = get_rounded_angle(M_PI - angle_signed_v2v2(segment_vec, curve_p3 - segment_a));
 
         if (angle0 < angle1) {
@@ -1685,14 +1166,14 @@ static void add_segment_ends_intersection(const Curves2DSpace *curves_2d,
                                           const int segment_point_b_index,
                                           const Vector<IntersectingCurve> &intersections,
                                           const bool is_end_extension,
-                                          const VectorFillData *vf)
+                                          const FillData *fd)
 {
   const float2 segment_vec = segment_point_b - segment_point_a;
 
   for (const auto &intersection : intersections) {
     /* Skip intersections before the start segment distance. */
     if ((segment->flag & vfFlag::CheckStartDistance) == true &&
-        intersection.distance[0] < vf->start_distance)
+        intersection.distance[0] < fd->vf.start_distance)
     {
       continue;
     }
@@ -1821,12 +1302,12 @@ static void add_segment_ends_intersection(const Curves2DSpace *curves_2d,
       /* Set curve direction: backwards for extension at end of curve. */
       if ((intersection.curve_index_2d & 1) == 1) {
         segment_end.flag |= vfFlag::DirectionBackwards;
-        segment_end.point_start = vf->curves_2d.point_size[segment_end.curve_index_2d] - 1;
+        segment_end.point_start = fd->curves_2d.point_size[segment_end.curve_index_2d] - 1;
       }
       segment_end.point_end = intersection.point_start;
 
       /* Set stroke material flag. */
-      if (vf->curves_2d.has_stroke[segment_end.curve_index_2d]) {
+      if (fd->curves_2d.has_stroke[segment_end.curve_index_2d]) {
         segment_end.flag |= vfFlag::HasStroke;
       }
     }
@@ -1858,7 +1339,7 @@ static void add_segment_ends_intersection(const Curves2DSpace *curves_2d,
  * is found or when the end of the curve is reached. At the end of a curve, gap closure
  * inspection is performed.
  */
-static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int started_at = -1)
+static bool walk_along_curve(FillData *fd, EdgeSegment *segment, const int started_at = -1)
 {
   /* Skip when segment is already inspected. */
   if ((segment->flag & vfFlag::IsInspected) == true) {
@@ -1868,20 +1349,20 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
 
   /* Get curve point start, range etc. */
   const int curve_i = segment->curve_index_2d;
-  const bool is_cyclic = vf->curves_2d.is_cyclic[curve_i];
+  const bool is_cyclic = fd->curves_2d.is_cyclic[curve_i];
   const int direction = ((segment->flag & vfFlag::DirectionBackwards) == true) ? -1 : 1;
-  const int point_size = vf->curves_2d.point_size[curve_i];
-  const int point_offset = vf->curves_2d.point_offset[curve_i];
+  const int point_size = fd->curves_2d.point_size[curve_i];
+  const int point_offset = fd->curves_2d.point_offset[curve_i];
   int point_i = segment->point_range[0];
   const int point_started = (started_at == -1 ? point_i : started_at);
 
   float2 segment_point_a = {FLT_MAX, FLT_MAX};
   const int point_prev = get_next_curve_point(point_i, -direction, point_size, is_cyclic);
   if (point_prev != -1) {
-    segment_point_a = vf->curves_2d.points_2d[point_offset + point_prev];
+    segment_point_a = fd->curves_2d.points_2d[point_offset + point_prev];
   }
 
-  vf->overlapping_segments.clear();
+  fd->vf.overlapping_segments.clear();
 
   bool check_gaps = false;
 
@@ -1909,14 +1390,14 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
       if (point_i != point_started) {
         new_segment.flag &= ~vfFlag::IsInspected;
       }
-      vf->segments.append(new_segment);
+      fd->vf.segments.append(new_segment);
 
       if (point_i == point_started) {
         return true;
       }
 
       /* Walk along second part of cyclic curve. */
-      walk_along_curve(vf, &vf->segments.last(), point_started);
+      walk_along_curve(fd, &fd->vf.segments.last(), point_started);
       return true;
     }
 
@@ -1929,12 +1410,12 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
 
     /* Get surrounding points. */
     const float2 point_a_prev = segment_point_a;
-    segment_point_a = vf->curves_2d.points_2d[point_offset + point_i];
-    const float2 segment_point_b = vf->curves_2d.points_2d[point_offset + point_next];
+    segment_point_a = fd->curves_2d.points_2d[point_offset + point_i];
+    const float2 segment_point_b = fd->curves_2d.points_2d[point_offset + point_next];
     float2 point_b_next = {FLT_MAX, FLT_MAX};
     const int point_next2 = get_next_curve_point(point_next, direction, point_size, is_cyclic);
     if (point_next2 != -1) {
-      point_b_next = vf->curves_2d.points_2d[point_offset + point_next2];
+      point_b_next = fd->curves_2d.points_2d[point_offset + point_next2];
     }
 
     /* Get intersections with other curves. */
@@ -1942,33 +1423,33 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
         segment_point_a,
         segment_point_b,
         curve_i,
-        &vf->curves_2d,
+        &fd->curves_2d,
         point_a_prev,
         point_b_next,
-        true,
+        store_overlapping_segment,
         point_i,
         point_next,
         direction,
         true,
-        vf);
-    add_segment_ends_intersection(&vf->curves_2d,
+        fd);
+    add_segment_ends_intersection(&fd->curves_2d,
                                   segment,
                                   segment_point_a,
                                   segment_point_b,
                                   point_next,
                                   intersections,
                                   false,
-                                  vf);
+                                  fd);
 
     /* Get intersections with curve end extensions. */
-    if (vf->use_gap_close_extend) {
+    if (fd->use_gap_close_extend) {
       intersections.clear();
 
       /* Find extension intersection by serial lookup (they have already been calculated in the
        * interactive step of the modal operator).
        * Note: we deliberately create a copy of the intersection, because we change the values.
        */
-      for (auto intersection : vf->extension_intersections) {
+      for (auto intersection : fd->extension_intersections) {
         if (intersection.with_end_extension) {
           continue;
         }
@@ -1986,14 +1467,14 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
         }
       }
 
-      add_segment_ends_intersection(&vf->extensions_2d,
+      add_segment_ends_intersection(&fd->extensions_2d,
                                     segment,
                                     segment_point_a,
                                     segment_point_b,
                                     point_next,
                                     intersections,
                                     true,
-                                    vf);
+                                    fd);
     }
 
     /* When one or more intersections are found, we can stop walking along the curve. */
@@ -2042,15 +1523,15 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
   }
 
   /* Check for gap closure by extending the end of the curve. */
-  if (vf->use_gap_close_extend) {
+  if (fd->use_gap_close_extend) {
     /* Get the coordinates of start/end extension. */
     const int extension_index = curve_i * 2 + (direction == 1 ? 1 : 0);
-    const int point_offset = vf->extensions_2d.point_offset[extension_index];
-    const float2 segment_point_a = vf->extensions_2d.points_2d[point_offset];
-    const float2 segment_point_b = vf->extensions_2d.points_2d[point_offset + 1];
+    const int point_offset = fd->extensions_2d.point_offset[extension_index];
+    const float2 segment_point_a = fd->extensions_2d.points_2d[point_offset];
+    const float2 segment_point_b = fd->extensions_2d.points_2d[point_offset + 1];
 
     /* Abort when the end extension doesn't intersect with anything. */
-    if (!vf->extension_has_intersection[extension_index]) {
+    if (!fd->extension_has_intersection[extension_index]) {
       return true;
     }
 
@@ -2058,7 +1539,7 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
      * already calculated during the interactive step of the modal operator. */
     Vector<IntersectingCurve> intersections_curves;
     Vector<IntersectingCurve> intersections_extensions;
-    for (const auto &intersection : vf->extension_intersections) {
+    for (const auto &intersection : fd->extension_intersections) {
       if (intersection.extension_index != extension_index) {
         continue;
       }
@@ -2072,24 +1553,24 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
     }
 
     /* Add intersections with other curve. */
-    add_segment_ends_intersection(&vf->curves_2d,
+    add_segment_ends_intersection(&fd->curves_2d,
                                   segment,
                                   segment_point_a,
                                   segment_point_b,
                                   -1,
                                   intersections_curves,
                                   false,
-                                  vf);
+                                  fd);
 
     /* Add intersections with other curve end extension. */
-    add_segment_ends_intersection(&vf->extensions_2d,
+    add_segment_ends_intersection(&fd->extensions_2d,
                                   segment,
                                   segment_point_a,
                                   segment_point_b,
                                   -1,
                                   intersections_extensions,
                                   true,
-                                  vf);
+                                  fd);
 
     if (!segment->segment_ends.is_empty()) {
       /* Sort intersections on distance and angle. This is important to find the narrowest edge. */
@@ -2114,25 +1595,25 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
   }
 
   /* Check for gap closure with radii at the ends of curves. */
-  if (vf->use_gap_close_radius) {
+  if (fd->use_gap_close_radius) {
     /* Get coordinates of curve start/end point. */
     const int curve_point_end = point_offset + point_i;
-    const float2 curve_point = vf->curves_2d.points_2d[curve_point_end];
+    const float2 curve_point = fd->curves_2d.points_2d[curve_point_end];
     const bool at_start_of_curve = (point_i == 0);
 
     /* Get the segment coordinates at the start/end of the curve. */
     const int curve_point_end_prev = curve_point_end +
                                      math::min(point_size - 1, 1) * (at_start_of_curve ? 1 : -1);
-    const float2 curve_point_prev = vf->curves_2d.points_2d[curve_point_end_prev];
+    const float2 curve_point_prev = fd->curves_2d.points_2d[curve_point_end_prev];
     const float2 curve_end_vec = curve_point - curve_point_prev;
-    const float max_dist = 2 * vf->gap_distance;
+    const float max_dist = 2 * fd->gap_distance;
 
     /* Find nearest end points.
      * Note: the number of points is a bit arbitrary, but the defined number will suffice for
      * normal cases. */
     KDTreeNearest_2d nearest[RADIUS_NEAREST_NUM];
     const int nearest_num = BLI_kdtree_2d_find_nearest_n(
-        vf->curve_ends, curve_point, nearest, RADIUS_NEAREST_NUM);
+        fd->curve_ends, curve_point, nearest, RADIUS_NEAREST_NUM);
 
     for (int i = 0; i < nearest_num; i++) {
       /* Skip nearest points outside the user-defined closing radius. */
@@ -2145,17 +1626,17 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
        * point. */
       const int nearest_curve = int(nearest[i].index / 2);
       const bool nearest_at_start_of_curve = (nearest[i].index & 1) == 0;
-      const int nearest_point_offset = vf->curves_2d.point_offset[nearest_curve];
+      const int nearest_point_offset = fd->curves_2d.point_offset[nearest_curve];
       const int nearest_point_i = (nearest_at_start_of_curve ?
                                        0 :
-                                       vf->curves_2d.point_size[nearest_curve] - 1);
+                                       fd->curves_2d.point_size[nearest_curve] - 1);
 
       /* Skip self (the curve end we are gap-closing). */
       if (nearest_curve == curve_i && nearest_at_start_of_curve == at_start_of_curve) {
         continue;
       }
       /* Skip cyclic curves. */
-      if (vf->curves_2d.is_cyclic[nearest_curve]) {
+      if (fd->curves_2d.is_cyclic[nearest_curve]) {
         continue;
       }
 
@@ -2167,7 +1648,7 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
 
       /* Determine the angle between the curve start/end and the nearest point. For finding the
        * narrowest fill edge, we explore the smallest angle first (= most right turn). */
-      const float2 nearest_vec = vf->curves_2d.points_2d[nearest_point_offset + nearest_point_i] -
+      const float2 nearest_vec = fd->curves_2d.points_2d[nearest_point_offset + nearest_point_i] -
                                  curve_point;
       segment_end.angle[0] = M_PI - angle_signed_v2v2(curve_end_vec, nearest_vec);
       segment_end.angle_is_set[0] = true;
@@ -2191,7 +1672,7 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
 /**
  * Get the next turn on a curve intersection or gap closure.
  */
-static void take_next_turn_on_intersection(VectorFillData *vf,
+static void take_next_turn_on_intersection(FillData *fd,
                                            SegmentEnd *segment_end,
                                            const EdgeSegment *ori_segment)
 {
@@ -2296,13 +1777,13 @@ static void take_next_turn_on_intersection(VectorFillData *vf,
   segment.init_point_range(point_start);
   segment.flag = flag;
 
-  vf->segments.append(segment);
+  fd->vf.segments.append(segment);
 }
 
 /**
  * Get the next curve found by gap closure.
  */
-static void take_next_gap_closure_curve(VectorFillData *vf, SegmentEnd *segment_end)
+static void take_next_gap_closure_curve(FillData *fd, SegmentEnd *segment_end)
 {
   /* Add new segment to the fill edge. */
   EdgeSegment segment{};
@@ -2312,38 +1793,36 @@ static void take_next_gap_closure_curve(VectorFillData *vf, SegmentEnd *segment_
     segment.flag = vfFlag::DirectionBackwards;
   }
 
-  vf->segments.append(segment);
+  fd->vf.segments.append(segment);
 }
 
 /**
  * Remove the last edge segment. Handles segment sets.
  */
-static void remove_last_segment(VectorFillData *vf)
+static void remove_last_segment(FillData *fd)
 {
   /* Remove segment. */
-  EdgeSegment *segment = &vf->segments.last();
+  EdgeSegment *segment = &fd->vf.segments.last();
   const bool is_part_of_set = ((segment->flag & vfFlag::IsPartOfSet) == true);
-  vf->segments.remove_last();
+  fd->vf.segments.remove_last();
 
   /* Repeat when segment is part of a set. */
   if (is_part_of_set) {
-    remove_last_segment(vf);
+    remove_last_segment(fd);
   }
 }
 
-#ifdef GP_VFILL_DEBUG_VERBOSE
+#ifdef GP_FILL_DEBUG_MODE
 /**
  * Debug function: print edge segment data to the console.
  */
-static void debug_print_segment_data(VectorFillData *vf,
-                                     EdgeSegment *segment,
-                                     const bool proximity_only)
+static void debug_print_segment_data(FillData *fd, EdgeSegment *segment, const bool proximity_only)
 {
   if (!proximity_only) {
     printf("Segments: %lld, walked along: curve %d (%d) %d-%d, flag %d,%s end segments %lld \n",
-           vf->segments.size(),
+           fd->vf.segments.size(),
            segment->curve_index_2d,
-           vf->curves_2d.point_size[segment->curve_index_2d],
+           fd->curves_2d.point_size[segment->curve_index_2d],
            segment->point_range[0],
            segment->point_range[1],
            segment->flag,
@@ -2364,12 +1843,12 @@ static void debug_print_segment_data(VectorFillData *vf,
              (seg_end.flag & vfFlag::WithEndExtension) == true ? ", end extension" : "",
              (seg_end.flag & vfFlag::GapClosureByProximity) == true ? ", in proximity" : "");
       if ((seg_end.flag & vfFlag::WithEndExtension) == false) {
-        const int offset = vf->curves_2d.point_offset[seg_end.curve_index_2d];
+        const int offset = fd->curves_2d.point_offset[seg_end.curve_index_2d];
         printf(", %.1f %.1f - %.1f %.1f",
-               vf->curves_2d.points_2d[offset + seg_end.point_start][0],
-               vf->curves_2d.points_2d[offset + seg_end.point_start][1],
-               vf->curves_2d.points_2d[offset + seg_end.point_end][0],
-               vf->curves_2d.points_2d[offset + seg_end.point_end][1]);
+               fd->curves_2d.points_2d[offset + seg_end.point_start][0],
+               fd->curves_2d.points_2d[offset + seg_end.point_start][1],
+               fd->curves_2d.points_2d[offset + seg_end.point_end][0],
+               fd->curves_2d.points_2d[offset + seg_end.point_end][1]);
       }
       printf("\n");
     }
@@ -2382,15 +1861,15 @@ static void debug_print_segment_data(VectorFillData *vf,
  * The edge is build in clockwise direction. The narrowest edge is created by taking
  * the most right turn first at curve intersections.
  */
-static bool find_closed_fill_edge(VectorFillData *vf)
+static bool find_closed_fill_edge(FillData *fd)
 {
-#ifdef GP_VFILL_DEBUG_VERBOSE
+#ifdef GP_FILL_DEBUG_MODE
   int iteration = 0;
 #endif
 
-  while (!vf->segments.is_empty()) {
+  while (!fd->vf.segments.is_empty()) {
 
-#ifdef GP_VFILL_DEBUG_VERBOSE
+#ifdef GP_FILL_DEBUG_MODE
     /* Limit number of iterations in debug mode. */
     if (iteration++ > 200) {
       printf("Aborted, more than 200 iterations...\n");
@@ -2400,36 +1879,36 @@ static bool find_closed_fill_edge(VectorFillData *vf)
     /* Emergency break: when the operator is taking too much time, jump to the conclusion that no
      * closed fill edge can be found. */
     auto t2 = std::chrono::high_resolution_clock::now();
-    auto delta_t = std::chrono::duration_cast<std::chrono::milliseconds>(t2 -
-                                                                         vf->operator_time_start);
+    auto delta_t = std::chrono::duration_cast<std::chrono::milliseconds>(
+        t2 - fd->vf.operator_time_start);
     if (delta_t.count() > MAX_EXECUTION_TIME) {
       return false;
     }
 #endif
 
     /* Explore the last edge segment in the array. */
-    EdgeSegment *segment = &vf->segments.last();
+    EdgeSegment *segment = &fd->vf.segments.last();
 
     /* Walk along the curve until an intersection or the end of the curve is reached. */
-    bool changed = walk_along_curve(vf, segment);
-    segment = &vf->segments.last();
+    bool changed = walk_along_curve(fd, segment);
+    segment = &fd->vf.segments.last();
 
-#ifdef GP_VFILL_DEBUG_VERBOSE
+#ifdef GP_FILL_DEBUG_MODE
     if (changed) {
-      debug_print_segment_data(vf, segment, false);
+      debug_print_segment_data(fd, segment, false);
     }
 #endif
 
     /* Check if the edge is closed. */
     if (changed) {
-      if (is_closed_fill_edge(vf)) {
+      if (is_closed_fill_edge(fd)) {
         /* Check if the mouse click position is inside the loop. */
-        if (mouse_pos_is_inside_closed_edge(vf)) {
+        if (mouse_pos_is_inside_closed_edge(fd)) {
           return true;
         }
 
         /* Remove the closing segment and continue searching. */
-        remove_last_segment(vf);
+        remove_last_segment(fd);
         continue;
       }
     }
@@ -2465,7 +1944,7 @@ static bool find_closed_fill_edge(VectorFillData *vf)
         }
 
         /* Take the next turn on the intersection: right, straight ahead, left. */
-        take_next_turn_on_intersection(vf, segment_end, segment);
+        take_next_turn_on_intersection(fd, segment_end, segment);
 
         segment_end->turn++;
       }
@@ -2477,25 +1956,25 @@ static bool find_closed_fill_edge(VectorFillData *vf)
           continue;
         }
 
-        take_next_gap_closure_curve(vf, segment_end);
+        take_next_gap_closure_curve(fd, segment_end);
         segment_end->turn++;
       }
     }
-    else if (vf->use_gap_close_proximity &&
+    else if (fd->use_gap_close_proximity &&
              (segment->flag & vfFlag::ProximityInspected) == false &&
              segment->point_range[0] != segment->point_range[1])
     {
       /* Gap closure by proximity: check for curves in proximity of this segment. */
       segment->flag |= vfFlag::ProximityInspected;
-      add_curves_in_proximity_of_segment(segment, vf);
+      add_curves_in_proximity_of_segment(segment, fd);
 
-#ifdef GP_VFILL_DEBUG_VERBOSE
-      debug_print_segment_data(vf, segment, true);
+#ifdef GP_FILL_DEBUG_MODE
+      debug_print_segment_data(fd, segment, true);
 #endif
     }
     else {
       /* We reached a dead end, delete the segment and continue with the previous. */
-      remove_last_segment(vf);
+      remove_last_segment(fd);
     }
   }
 
@@ -2506,7 +1985,7 @@ static bool find_closed_fill_edge(VectorFillData *vf)
  * Execute the fill operation, at the second mouse click. (The first mouse click is for the
  * interactive gap closure phase.)
  */
-static bool vector_fill_do(VectorFillData *vf)
+bool vector_fill_do(FillData *fd)
 {
   /* Find a first (arbitrary) edge point of the fill area by casting a ray from the mouse click
    * position in one of four directions: up, right, down, left. When this ray crosses a curve,
@@ -2514,13 +1993,13 @@ static bool vector_fill_do(VectorFillData *vf)
    * We check in four directions, because the user can click near a gap in the fill edge. */
   float2 ray_vec;
   vfRayDirection ray_direction;
-  vf->operator_time_start = std::chrono::high_resolution_clock::now();
+  fd->vf.operator_time_start = std::chrono::high_resolution_clock::now();
   const float ray_delta = 20000.0f;
   bool found = false;
 
   for (auto ray_dir : ray_directions) {
     ray_direction = ray_dir;
-    ray_vec = vf->mouse_pos;
+    ray_vec = fd->mouse_pos;
 
     switch (ray_dir) {
       case vfRayDirection::Up:
@@ -2539,17 +2018,17 @@ static bool vector_fill_do(VectorFillData *vf)
         break;
     }
 
-    vf->starting_segments = get_intersections_of_segment_with_curves(
-        vf->mouse_pos, ray_vec, -1, &vf->curves_2d);
+    fd->vf.starting_segments = get_intersections_of_segment_with_curves(
+        fd->mouse_pos, ray_vec, -1, &fd->curves_2d);
 
-    if (vf->starting_segments.size() == 0) {
+    if (fd->vf.starting_segments.size() == 0) {
       continue;
     }
 
     /* Sort starting segments on distance (closest first). At equal distance, give priority to a
      * curve with stroke material. */
-    std::sort(vf->starting_segments.begin(),
-              vf->starting_segments.end(),
+    std::sort(fd->vf.starting_segments.begin(),
+              fd->vf.starting_segments.end(),
               [](const IntersectingCurve &a, const IntersectingCurve &b) {
                 if (compare_ff(a.distance[0], b.distance[0], DISTANCE_SORT_EPSILON)) {
                   if (a.has_stroke != b.has_stroke) {
@@ -2561,10 +2040,10 @@ static bool vector_fill_do(VectorFillData *vf)
 
     /* From the first edge point we try to follow the fill edge clockwise, until we find
      * a closed loop. */
-    IntersectingCurve *start_segment = &vf->starting_segments.first();
+    IntersectingCurve *start_segment = &fd->vf.starting_segments.first();
 
     /* Start with an empty edge segment list. */
-    vf->segments.clear();
+    fd->vf.segments.clear();
 
     /* Add first edge segment. */
     EdgeSegment segment{};
@@ -2573,13 +2052,13 @@ static bool vector_fill_do(VectorFillData *vf)
 
     /* Set the minimum distance for checking intersections on this first segment. */
     segment.flag = vfFlag::CheckStartDistance;
-    vf->start_distance = start_segment->distance[1];
+    fd->vf.start_distance = start_segment->distance[1];
 
     /* We want to follow the fill edge clockwise. Determine in which direction we have to follow
      * the curve for that. */
-    const int point_offset = vf->curves_2d.point_offset[segment.curve_index_2d];
-    const float2 segment_a = vf->curves_2d.points_2d[point_offset + start_segment->point_start];
-    const float2 segment_b = vf->curves_2d.points_2d[point_offset + start_segment->point_end];
+    const int point_offset = fd->curves_2d.point_offset[segment.curve_index_2d];
+    const float2 segment_a = fd->curves_2d.points_2d[point_offset + start_segment->point_start];
+    const float2 segment_b = fd->curves_2d.points_2d[point_offset + start_segment->point_end];
     const float delta_x = segment_b[0] - segment_a[0];
     const float delta_y = segment_b[1] - segment_a[1];
     switch (ray_direction) {
@@ -2608,13 +2087,13 @@ static bool vector_fill_do(VectorFillData *vf)
     }
     if ((segment.flag & vfFlag::DirectionBackwards) == true) {
       segment.point_range[0] = start_segment->point_end;
-      vf->start_distance = 1.0f - vf->start_distance;
+      fd->vf.start_distance = 1.0f - fd->vf.start_distance;
     }
 
-    vf->segments.append(segment);
+    fd->vf.segments.append(segment);
 
     /* See if we can expand this first edge segment to a closed edge. */
-    found = find_closed_fill_edge(vf);
+    found = find_closed_fill_edge(fd);
     if (found) {
       break;
     }
@@ -2622,870 +2101,12 @@ static bool vector_fill_do(VectorFillData *vf)
 
   if (found) {
     /* Create the 3D fill curve geometry. */
-    create_fill_geometry(vf);
+    create_fill_geometry(fd);
   }
 
   return found;
 }
 
-/**
- * Create a KD tree for the gap closure of curve ends by radius.
- */
-static void init_curve_end_radii(VectorFillData *vf)
-{
-  /* Create KD tree for all curve ends. */
-  const int curve_num = vf->curves_2d.point_offset.size();
-  vf->curve_ends = BLI_kdtree_2d_new(curve_num * 2);
-
-  /* Add curve ends. */
-  int tree_index = 0;
-  for (const int curve_i : vf->curves_2d.point_offset.index_range()) {
-    /* Add first curve point. */
-    int point_i = vf->curves_2d.point_offset[curve_i];
-    BLI_kdtree_2d_insert(vf->curve_ends, tree_index, vf->curves_2d.points_2d[point_i]);
-    tree_index++;
-
-    /* Add last curve point. */
-    point_i += vf->curves_2d.point_size[curve_i] - 1;
-    BLI_kdtree_2d_insert(vf->curve_ends, tree_index, vf->curves_2d.points_2d[point_i]);
-    tree_index++;
-  }
-
-  BLI_kdtree_2d_balance(vf->curve_ends);
-
-  /* Init array with curve end connection flag. */
-  vf->connected_by_radius = Array<bool>(curve_num * 2, false);
-}
-
-/**
- * Determine which curves ends are connected with each other based on radius.
- */
-static void get_connected_curve_end_radii(VectorFillData *vf)
-{
-  const float max_dist = 2 * vf->gap_distance;
-
-  /* Init connections by radius. */
-  vf->connected_by_radius.fill(false);
-  vf->radius_connections.clear();
-
-  /* Check all curvess. */
-  for (const int curve_i : vf->curves_2d.point_offset.index_range()) {
-    /* Skip cyclic curves. */
-    if (vf->curves_2d.is_cyclic[curve_i]) {
-      continue;
-    }
-
-    /* Check both ends. */
-    for (int side = 0; side <= 1; side++) {
-      const int kdtree_index = curve_i * 2 + side;
-      const int point_index = vf->curves_2d.point_offset[curve_i] +
-                              (side == 0 ? 0 : vf->curves_2d.point_size[curve_i] - 1);
-
-      /* Find nearest curve end points. */
-      KDTreeNearest_2d nearest[RADIUS_NEAREST_NUM];
-      const int nearest_num = BLI_kdtree_2d_find_nearest_n(
-          vf->curve_ends, vf->curves_2d.points_2d[point_index], nearest, RADIUS_NEAREST_NUM);
-
-      for (int i = 0; i < nearest_num; i++) {
-        /* Skip self, already registered curve ends and curve ends out of close radius range. */
-        if (nearest[i].index <= kdtree_index || nearest[i].dist > max_dist) {
-          continue;
-        }
-
-        /* Skip cyclic curves. */
-        const int nearest_curve = int(nearest[i].index / 2);
-        if (vf->curves_2d.is_cyclic[nearest_curve]) {
-          continue;
-        }
-
-        /* Flag connection and append to list for drawing. */
-        vf->connected_by_radius[kdtree_index] = true;
-        vf->connected_by_radius[nearest[i].index] = true;
-        vf->radius_connections.append({kdtree_index, nearest[i].index});
-      }
-    }
-  }
-}
-
-/**
- * Init the data structure for curve end extensions.
- */
-static void init_curve_end_extensions(VectorFillData *vf)
-{
-  const int curve_num = vf->curves_2d.point_offset.size() * 2;
-  const int point_num = curve_num * 2;
-
-  vf->extensions_2d.point_offset = Array<int>(curve_num);
-  vf->extensions_2d.point_size = Array<int>(curve_num, 2);
-  vf->extensions_2d.is_cyclic = Array<bool>(curve_num, false);
-  vf->extensions_2d.has_stroke = Array<bool>(curve_num, false);
-  vf->extensions_2d.drawing_index_2d = Array<int>(curve_num);
-  vf->extensions_2d.points_2d = Array<float2>(point_num);
-  vf->extensions_2d.curve_bbox = Array<rctf>(curve_num);
-  vf->extension_length_ratio = Array<float>(curve_num);
-  vf->extension_has_intersection = Array<bool>(curve_num, false);
-}
-
-/**
- * Add a curve end extension to the set of extensions.
- */
-static void add_curve_end_extension(VectorFillData *vf,
-                                    const int curve_i,
-                                    const int curve_ext,
-                                    const int point_i,
-                                    const int next_point_delta,
-                                    const int point_i_ext)
-{
-  /* Set drawing index and point index for extension. */
-  vf->extensions_2d.drawing_index_2d[curve_ext] = vf->curves_2d.drawing_index_2d[curve_i];
-  vf->extensions_2d.point_offset[curve_ext] = point_i_ext;
-  vf->extensions_2d.is_cyclic[curve_ext] = vf->curves_2d.is_cyclic[curve_i];
-
-  /* Use the vector between the two outer points of the curve to calculate the extension
-   * coordinates. */
-  const float2 co = vf->curves_2d.points_2d[point_i];
-  vf->extensions_2d.points_2d[point_i_ext] = co;
-  float2 end_vec = co - vf->curves_2d.points_2d[point_i + next_point_delta];
-  const float end_length = math::length(end_vec);
-  end_vec = math::normalize(end_vec) * vf->gap_distance;
-  const float extension_length = math::length(end_vec);
-  vf->extensions_2d.points_2d[point_i_ext + 1] = co + end_vec;
-  vf->extension_length_ratio[curve_ext] = (end_length == 0.0f ? 0.0f :
-                                                                extension_length / end_length);
-}
-
-/**
- * Create a set of 2D curve end extensions. Check if the extensions intersect with curves or
- * other end extensions.
- */
-static void get_curve_end_extensions(VectorFillData *vf)
-{
-  /* Create extension curves. */
-  for (const int curve_i : vf->curves_2d.point_offset.index_range()) {
-    /* Two extensions for each curve. */
-    const int curve_ext = curve_i * 2;
-    /* Each extension contains two points. */
-    const int point_i_ext = curve_ext * 2;
-    const int point_size = vf->curves_2d.point_size[curve_i];
-
-    /* Create extension for the first segment of the 2D curve. */
-    int point_i = vf->curves_2d.point_offset[curve_i];
-    int next_point_delta = (point_size > 1 ? 1 : 0);
-    add_curve_end_extension(vf, curve_i, curve_ext, point_i, next_point_delta, point_i_ext);
-
-    /* Create extension for the last segment of the 2D curve. */
-    point_i += point_size - 1;
-    next_point_delta = (point_size > 1 ? -1 : 0);
-    add_curve_end_extension(
-        vf, curve_i, curve_ext + 1, point_i, next_point_delta, point_i_ext + 2);
-
-    /* Create bounding boxes for the extensions. */
-    BLI_rctf_init_minmax(&vf->extensions_2d.curve_bbox[curve_ext]);
-    BLI_rctf_do_minmax_v(&vf->extensions_2d.curve_bbox[curve_ext],
-                         vf->extensions_2d.points_2d[point_i_ext]);
-    BLI_rctf_do_minmax_v(&vf->extensions_2d.curve_bbox[curve_ext],
-                         vf->extensions_2d.points_2d[point_i_ext + 1]);
-
-    BLI_rctf_init_minmax(&vf->extensions_2d.curve_bbox[curve_ext + 1]);
-    BLI_rctf_do_minmax_v(&vf->extensions_2d.curve_bbox[curve_ext + 1],
-                         vf->extensions_2d.points_2d[point_i_ext + 2]);
-    BLI_rctf_do_minmax_v(&vf->extensions_2d.curve_bbox[curve_ext + 1],
-                         vf->extensions_2d.points_2d[point_i_ext + 3]);
-  }
-
-  /* Clear intersection data. */
-  vf->extension_intersections.clear();
-  vf->extension_has_intersection.fill(false);
-
-  /* Check intersections of extensions with curves or other end extensions. */
-  for (const int extension_index : vf->extensions_2d.point_offset.index_range()) {
-    /* Skip end extensions of cyclic curves. */
-    if (vf->extensions_2d.is_cyclic[extension_index]) {
-      continue;
-    }
-
-    const int point_offset = vf->extensions_2d.point_offset[extension_index];
-    const float2 segment_point_a = vf->extensions_2d.points_2d[point_offset];
-    const float2 segment_point_b = vf->extensions_2d.points_2d[point_offset + 1];
-
-    /* Get intersections with other curve end extensions. */
-    Vector<IntersectingCurve> all_intersections;
-    Vector<IntersectingCurve> intersections = get_intersections_of_segment_with_curves(
-        segment_point_a, segment_point_b, extension_index, &vf->extensions_2d);
-
-    for (auto intersection : intersections) {
-      intersection.with_end_extension = true;
-      intersection.extension_index = extension_index;
-      all_intersections.append(intersection);
-    }
-
-    /* Get intersections with other curves. */
-    const int curve_i = int(extension_index / 2);
-    intersections = get_intersections_of_segment_with_curves(
-        segment_point_a, segment_point_b, curve_i, &vf->curves_2d);
-
-    for (auto intersection : intersections) {
-      intersection.with_end_extension = false;
-      intersection.extension_index = extension_index;
-      all_intersections.append(intersection);
-    }
-
-    /* Sort intersections on distance. */
-    if (!all_intersections.is_empty()) {
-      std::sort(all_intersections.begin(),
-                all_intersections.end(),
-                [](const IntersectingCurve &a, const IntersectingCurve &b) {
-                  return a.distance[0] < b.distance[0];
-                });
-
-      /* Add closest result(s) to list of extension intersections. */
-      const float shortest_dist = all_intersections.first().distance[0];
-      for (const auto &intersection : all_intersections) {
-        if (vf->extensions_stop_at_first_intersection &&
-            (intersection.distance[0] - shortest_dist) > DISTANCE_SORT_EPSILON)
-        {
-          break;
-        }
-        vf->extension_intersections.append(intersection);
-        vf->extension_has_intersection[intersection.extension_index] = true;
-      }
-    }
-  }
-}
-
-/**
- * Get a slight extension for each curve segment, based on the normalized vector of each
- * curve point to the next.
- */
-static void get_curve_segment_epsilons(VectorFillData *vf)
-{
-  vf->curve_segment_epsilon = Array<float2>(vf->curves_2d.points_2d.size());
-
-  threading::parallel_for(
-      vf->curves_2d.point_offset.index_range(), 256, [&](const IndexRange range) {
-        for (const int curve_i : range) {
-          const int point_last = vf->curves_2d.point_offset[curve_i] +
-                                 vf->curves_2d.point_size[curve_i] - 1;
-          for (const int point_i :
-               IndexRange(vf->curves_2d.point_offset[curve_i], vf->curves_2d.point_size[curve_i]))
-          {
-            const int point_next = (point_i == point_last ? vf->curves_2d.point_offset[curve_i] :
-                                                            point_i + 1);
-            vf->curve_segment_epsilon[point_i] = math::normalize(
-                                                     vf->curves_2d.points_2d[point_next] -
-                                                     vf->curves_2d.points_2d[point_i]) *
-                                                 DISTANCE_EPSILON;
-          }
-        }
-      });
-}
-
-#ifdef GP_VFILL_DEBUG_VERBOSE
-/**
- * Debug function: show curve indices in the viewport.
- */
-static void debug_draw_curve_indices(VectorFillData *vf)
-{
-  const int font_id = BLF_default();
-  const uiStyle *style = UI_style_get();
-  BLF_size(font_id, style->widget.points * UI_SCALE_FAC * 0.8);
-
-  /* Draw point indices. */
-  BLF_color4fv(font_id, float4{0.0f, 0.0f, 0.0f, 0.5f});
-  for (const int curve_i : vf->curves_2d.point_offset.index_range()) {
-    const int point_offset = vf->curves_2d.point_offset[curve_i];
-    const int step = 5;
-    float x_prev = FLT_MAX;
-    float y_prev = FLT_MAX;
-    for (int point_i = step; point_i < vf->curves_2d.point_size[curve_i]; point_i += step) {
-      const std::string str = std::to_string(point_i) + "-" + std::to_string(curve_i);
-      const char *text = str.c_str();
-
-      const float x = vf->curves_2d.points_2d[point_offset + point_i][0] - strlen(text) * 5.4;
-      const float y = vf->curves_2d.points_2d[point_offset + point_i][1] + 1;
-
-      if (((x - x_prev) * (x - x_prev) + (y - y_prev) * (y - y_prev)) > 1000) {
-        BLF_position(font_id, x, y, 0);
-        BLF_draw(font_id, text, strlen(text));
-
-        x_prev = x;
-        y_prev = y;
-      }
-    }
-  }
-
-  /* Draw curve indices. */
-  BLF_size(font_id, style->widget.points * UI_SCALE_FAC * 1.2);
-  BLF_color4fv(font_id, float4{1.0f, 0.0f, 0.2f, 1.0f});
-  BLF_enable(font_id, BLF_BOLD);
-
-  for (const int curve_i : vf->curves_2d.point_offset.index_range()) {
-    const std::string str = std::to_string(curve_i);
-    const char *text = str.c_str();
-
-    const int point_offset = vf->curves_2d.point_offset[curve_i];
-    const float x = vf->curves_2d.points_2d[point_offset][0] - strlen(text) * 10;
-    const float y = vf->curves_2d.points_2d[point_offset][1] + 2;
-    BLF_position(font_id, x, y, 0);
-
-    BLF_draw(font_id, text, strlen(text));
-  }
-
-  BLF_disable(font_id, BLF_BOLD);
-}
-#endif
-
-/**
- * Get curve point index given an end extension index.
- */
-static int get_curve_point_by_end_index(VectorFillData *vf, const int end_index)
-{
-  const int curve_i = int(end_index / 2);
-  int point_i = vf->curves_2d.point_offset[curve_i];
-  if ((end_index & 1) == 1) {
-    point_i += vf->curves_2d.point_size[curve_i] - 1;
-  }
-  return point_i;
-}
-
-/**
- * Draw gap closure lines on an overlay in the 3D viewport.
- */
-static void draw_overlay(const bContext * /*C*/, ARegion *region, void *arg)
-{
-  VectorFillData *vf = static_cast<VectorFillData *>(arg);
-
-  /* Draw only in the region that originated the operator. */
-  if (region != vf->vc.region) {
-    return;
-  }
-
-  /* Anything to draw? */
-  if (!(vf->use_gap_close_extend || vf->use_gap_close_radius || vf->use_gap_close_proximity)) {
-    return;
-  }
-
-  const uint shdr_pos = GPU_vertformat_attr_add(
-      immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-  GPU_line_width(1.5f);
-  GPU_blend(GPU_BLEND_ALPHA);
-  GPU_line_smooth(true);
-
-  /* Draw indications of curve proximities. */
-  if (vf->use_gap_close_proximity) {
-    /* Draw filled circle at start, middle and end point of each curve. */
-    int point_indices[3];
-    immUniformColor4fv(vf->gap_proximity_color);
-    for (const int curve_i : vf->curves_2d.point_offset.index_range()) {
-      if (vf->curves_2d.point_size[curve_i] < 2) {
-        continue;
-      }
-
-      point_indices[0] = 0;
-      point_indices[1] = vf->curves_2d.point_size[curve_i] - 1;
-      point_indices[2] = int(point_indices[1] / 2);
-      const int point_count = (point_indices[1] >= 2) ? 3 : 2;
-      const int point_offset = vf->curves_2d.point_offset[curve_i];
-
-      for (int point = 0; point < point_count; point++) {
-        const int point_i = point_offset + point_indices[point];
-        imm_draw_circle_fill_2d(shdr_pos,
-                                vf->curves_2d.points_2d[point_i][0],
-                                vf->curves_2d.points_2d[point_i][1],
-                                vf->proximity_distance,
-                                40);
-      }
-    }
-  }
-
-  /* Draw curve end extensions. */
-  if (vf->use_gap_close_extend) {
-    /* Draw extensions of full length. */
-    for (const int ext_i : vf->extensions_2d.point_offset.index_range()) {
-      /* Skip intersected extensions or extensions of cyclic curves. */
-      if ((vf->extensions_stop_at_first_intersection && vf->extension_has_intersection[ext_i]) ||
-          vf->extensions_2d.is_cyclic[ext_i])
-      {
-        continue;
-      }
-
-      if (vf->extension_has_intersection[ext_i]) {
-        immUniformColor3fv(vf->gap_closed_color);
-      }
-      else {
-        immUniformColor3fv(vf->gap_closure_color);
-      }
-
-      const int point_i = vf->extensions_2d.point_offset[ext_i];
-      immBegin(GPU_PRIM_LINES, 2);
-      immVertex2fv(shdr_pos, vf->extensions_2d.points_2d[point_i]);
-      immVertex2fv(shdr_pos, vf->extensions_2d.points_2d[point_i + 1]);
-      immEnd();
-    }
-
-    /* Draw shortened extensions (that intersect a curve or other extension). */
-    if (vf->extensions_stop_at_first_intersection) {
-      immUniformColor3fv(vf->gap_closed_color);
-      int ext_prev = -1;
-      for (const auto &intersection : vf->extension_intersections) {
-        const int ext_i = intersection.extension_index;
-        const int point_i = vf->extensions_2d.point_offset[ext_i];
-        if (ext_i == ext_prev) {
-          continue;
-        }
-        ext_prev = ext_i;
-
-        /* Limit the end extension when it is intersecting something else. */
-        const float distance = intersection.distance[0];
-        const float2 p0 = vf->extensions_2d.points_2d[point_i];
-        const float2 p1 = vf->extensions_2d.points_2d[point_i + 1];
-        const float2 p_vec = p1 - p0;
-
-        immBegin(GPU_PRIM_LINES, 2);
-        immVertex2fv(shdr_pos, p0);
-        immVertex2fv(shdr_pos, p0 + p_vec * distance);
-        immEnd();
-      }
-    }
-  }
-
-  /* Draw curve end radii. */
-  if (vf->use_gap_close_radius) {
-
-    /* Draw connected curve ends. */
-    immUniformColor3fv(vf->gap_closed_color);
-    for (const int2 &connection : vf->radius_connections) {
-      const int point_i0 = get_curve_point_by_end_index(vf, connection[0]);
-      const int point_i1 = get_curve_point_by_end_index(vf, connection[1]);
-      immBegin(GPU_PRIM_LINES, 2);
-      immVertex2fv(shdr_pos, vf->curves_2d.points_2d[point_i0]);
-      immVertex2fv(shdr_pos, vf->curves_2d.points_2d[point_i1]);
-      immEnd();
-    }
-
-    /* Draw unconnected curve end radii. */
-    immUniformColor3fv(vf->gap_closure_color);
-    GPU_line_width(2.0f);
-
-    int curve_end_index = -1;
-    for (const bool connected : vf->connected_by_radius) {
-      curve_end_index++;
-      if (connected) {
-        continue;
-      }
-
-      /* Skip ends of cyclic curves. */
-      const int curve_i = int(curve_end_index / 2);
-      if (vf->curves_2d.is_cyclic[curve_i]) {
-        continue;
-      }
-
-      /* Draw radius. */
-      const int point_i = get_curve_point_by_end_index(vf, curve_end_index);
-      imm_draw_circle_wire_2d(shdr_pos,
-                              vf->curves_2d.points_2d[point_i][0],
-                              vf->curves_2d.points_2d[point_i][1],
-                              vf->gap_distance,
-                              40);
-    }
-  }
-
-  immUnbindProgram();
-
-  GPU_line_width(1.0f);
-  GPU_line_smooth(false);
-  GPU_blend(GPU_BLEND_NONE);
-
-#ifdef GP_VFILL_DEBUG_VERBOSE
-  debug_draw_curve_indices(vf);
-#endif
-}
-
-/**
- * Get latest tool settings before executing the actual fill.
- */
-static void get_latest_toolsettings(VectorFillData *vf)
-{
-  const bool use_gap_closing = (vf->brush->gpencil_settings->fill_extend_fac > FLT_EPSILON);
-  vf->use_gap_close_extend = (vf->brush->gpencil_settings->fill_extend_mode ==
-                              GP_FILL_EMODE_EXTEND) &&
-                             use_gap_closing;
-  vf->use_gap_close_radius = (vf->brush->gpencil_settings->fill_extend_mode ==
-                              GP_FILL_EMODE_RADIUS) &&
-                             use_gap_closing;
-  vf->gap_distance = vf->brush->gpencil_settings->fill_extend_fac * GAP_PIXEL_FACTOR;
-  vf->use_gap_close_proximity = (vf->brush->gpencil_settings->fill_proximity_distance > 0);
-  vf->proximity_distance = float(vf->brush->gpencil_settings->fill_proximity_distance);
-}
-
-/**
- * Update the gap closure By Proximity in the viewport when the value changed.
- */
-static void update_proximity_distance(VectorFillData *vf, const int delta)
-{
-  vf->brush->gpencil_settings->fill_proximity_distance = math::max(
-      0, math::min(100, vf->brush->gpencil_settings->fill_proximity_distance + delta));
-  get_latest_toolsettings(vf);
-  ED_region_tag_redraw(vf->vc.region);
-}
-
-/**
- * Update the gap closure connections when the radius changed.
- */
-static void update_gap_distance(VectorFillData *vf, const float delta)
-{
-  vf->brush->gpencil_settings->fill_extend_fac = math::max(
-      0.0f, math::min(10.0f, vf->brush->gpencil_settings->fill_extend_fac + delta));
-  get_latest_toolsettings(vf);
-
-  if (vf->use_gap_close_extend) {
-    get_curve_end_extensions(vf);
-  }
-  if (vf->use_gap_close_radius) {
-    get_connected_curve_end_radii(vf);
-  }
-  ED_region_tag_redraw(vf->vc.region);
-}
-
-/**
- * Get a list of layers used for the fill edge detection. The list is based on the 'Layers' field
- * in the tool settings.
- */
-static void get_fill_edge_layers(VectorFillData *vf,
-                                 Vector<GreasePencilDrawing *> &r_drawings,
-                                 Vector<int> &r_layer_index)
-{
-  using namespace bke::greasepencil;
-
-  /* Find index of active layer. */
-  int active_layer_index = -1;
-  const Layer *active_layer = vf->grease_pencil->get_active_layer();
-  Span<const Layer *> layers = vf->grease_pencil->layers();
-  for (int index = 0; index < layers.size(); index++) {
-    if (layers[index] == active_layer) {
-      active_layer_index = index;
-      break;
-    }
-  }
-
-  /* Select layers based on position in the layer collection. */
-  Span<GreasePencilDrawingBase *> drawings = vf->grease_pencil->drawings();
-  for (int index = 0; index < layers.size(); index++) {
-    /* Skip invisible layers. */
-    if (!layers[index]->is_visible()) {
-      continue;
-    }
-
-    bool add = false;
-    switch (vf->brush->gpencil_settings->fill_layer_mode) {
-      case GP_FILL_GPLMODE_ACTIVE:
-        add = (index == active_layer_index);
-        break;
-      case GP_FILL_GPLMODE_ABOVE:
-        add = (index == active_layer_index + 1);
-        break;
-      case GP_FILL_GPLMODE_BELOW:
-        add = (index == active_layer_index - 1);
-        break;
-      case GP_FILL_GPLMODE_ALL_ABOVE:
-        add = (index > active_layer_index);
-        break;
-      case GP_FILL_GPLMODE_ALL_BELOW:
-        add = (index < active_layer_index);
-        break;
-      case GP_FILL_GPLMODE_VISIBLE:
-        add = true;
-        break;
-      default:
-        break;
-    }
-
-    if (add) {
-      const int drawing_index = layers[index]->drawing_index_at(vf->vc.scene->r.cfra);
-      if (drawing_index == -1) {
-        continue;
-      }
-      GreasePencilDrawingBase *drawing_base = drawings[drawing_index];
-      if (drawing_base->type == GP_DRAWING) {
-        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-        r_drawings.append(drawing);
-        r_layer_index.append(index);
-      }
-    }
-  }
-}
-
-/**
- * Initialize the fill operator data.
- */
-static bool operator_init(bContext *C, wmOperator *op)
-{
-  VectorFillData *vf = static_cast<VectorFillData *>(op->customdata);
-
-  /* Get view context. */
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  vf->vc = ED_view3d_viewcontext_init(C, depsgraph);
-
-  /* Get active GP object. */
-  vf->grease_pencil = static_cast<GreasePencil *>(vf->vc.obact->data);
-
-  /* Get tool brush. */
-  ToolSettings *ts = CTX_data_tool_settings(C);
-  vf->brush = BKE_paint_brush(&ts->gp_paint->paint);
-  vf->additive_drawing = ((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0);
-
-  /* Init vector fill flags. */
-  vf->use_gap_close_extend = (vf->brush->gpencil_settings->fill_extend_mode ==
-                              GP_FILL_EMODE_EXTEND);
-  vf->use_gap_close_radius = (vf->brush->gpencil_settings->fill_extend_mode ==
-                              GP_FILL_EMODE_RADIUS);
-  vf->extensions_stop_at_first_intersection = (vf->brush->gpencil_settings->flag &
-                                               GP_BRUSH_FILL_STROKE_COLLIDE) != 0;
-  vf->gap_distance = vf->brush->gpencil_settings->fill_extend_fac * GAP_PIXEL_FACTOR;
-  vf->wait_for_release = true;
-  vf->wait_event_type = LEFTMOUSE;
-  vf->use_gap_close_proximity = (vf->brush->gpencil_settings->fill_proximity_distance > 0);
-  vf->proximity_distance = float(vf->brush->gpencil_settings->fill_proximity_distance);
-
-  const float default_gap_closure_color[3] = {1.0f, 0.0f, 0.5f};
-  const float default_gap_closed_color[3] = {0.0f, 1.0f, 1.0f};
-  const float default_gap_proximity_color[4] = {1.0f, 0.8f, 0.0f, 0.3f};
-  copy_v3_v3(vf->gap_closure_color, default_gap_closure_color);
-  copy_v3_v3(vf->gap_closed_color, default_gap_closed_color);
-  copy_v4_v4(vf->gap_proximity_color, default_gap_proximity_color);
-
-  /* Get layers according to tool settings (visible, above, below, etc.) */
-  Vector<GreasePencilDrawing *> drawings;
-  Vector<int> layer_indices;
-
-  get_fill_edge_layers(vf, drawings, layer_indices);
-  if (drawings.is_empty()) {
-    return false;
-  }
-
-  /* Convert curves to viewport 2D space. */
-  vf->curves_2d = curves_in_2d_space_get(
-      &vf->vc, vf->vc.obact, drawings, layer_indices, vf->vc.scene->r.cfra, true);
-
-  /* Calculate epsilon values of all 2D curve segments, used to avoid floating point precision
-   * errors. */
-  get_curve_segment_epsilons(vf);
-
-  /* When using extensions of the curve ends to close gaps, build an array of those
-   * two-point 'curves'. */
-  if (vf->use_gap_close_extend) {
-    init_curve_end_extensions(vf);
-    get_curve_end_extensions(vf);
-  }
-
-  /* When using radii to close gaps, build KD tree of curve end points. */
-  if (vf->use_gap_close_radius) {
-    init_curve_end_radii(vf);
-    get_connected_curve_end_radii(vf);
-  }
-
-  /* Activate 3D viewport overlay for showing gap closure visual aids. */
-  if ((vf->brush->gpencil_settings->flag & GP_BRUSH_FILL_SHOW_EXTENDLINES) != 0) {
-    vf->draw_handle = ED_region_draw_cb_activate(
-        vf->vc.region->type, draw_overlay, vf, REGION_DRAW_POST_PIXEL);
-    ED_region_tag_redraw(vf->vc.region);
-  }
-
-  return true;
-}
-
-/**
- * Clean up the fill operator data.
- */
-static void operator_exit(bContext *C, wmOperator *op)
-{
-  WM_cursor_modal_restore(CTX_wm_window(C));
-
-  if (op->customdata != nullptr) {
-    VectorFillData *vf = static_cast<VectorFillData *>(op->customdata);
-    if (vf->draw_handle) {
-      ED_region_draw_cb_exit(vf->vc.region->type, vf->draw_handle);
-      ED_region_tag_redraw(vf->vc.region);
-    }
-    if (vf->curve_ends) {
-      BLI_kdtree_2d_free(vf->curve_ends);
-    }
-    MEM_delete(vf);
-    op->customdata = nullptr;
-  }
-}
-
-/**
- * Modal handler for the fill operator:
- * - Change gap closure radius
- * - Perform the fill at second mouse click
- */
-static int operator_modal(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  VectorFillData *vf = static_cast<VectorFillData *>(op->customdata);
-  int modal_state = OPERATOR_RUNNING_MODAL;
-
-  /* Prevent repeating event keys, when not released yet. */
-  if (vf->wait_for_release && vf->wait_event_type == event->type) {
-    if (event->val == KM_RELEASE) {
-      vf->wait_for_release = false;
-    }
-    return modal_state;
-  }
-
-  switch (event->type) {
-    case EVT_ESCKEY:
-    case RIGHTMOUSE:
-      modal_state = OPERATOR_CANCELLED;
-      break;
-
-    case EVT_PAGEUPKEY:
-    case WHEELUPMOUSE:
-      update_gap_distance(vf, (event->modifier & KM_SHIFT) ? 0.01f : 0.1f);
-      break;
-    case EVT_PAGEDOWNKEY:
-    case WHEELDOWNMOUSE:
-      update_gap_distance(vf, (event->modifier & KM_SHIFT) ? -0.01f : -0.1f);
-      break;
-
-    case EVT_LEFTBRACKETKEY:
-      update_proximity_distance(vf, -1);
-      break;
-    case EVT_RIGHTBRACKETKEY:
-      update_proximity_distance(vf, 1);
-      break;
-
-    case LEFTMOUSE: {
-      /* Get mouse position of second click (the 'fill' click). */
-      vf->mouse_pos[0] = float(event->mval[0]);
-      vf->mouse_pos[1] = float(event->mval[1]);
-
-      /* DEBUG: measure time. */
-      auto t1 = std::chrono::high_resolution_clock::now();
-
-      /* Get latest toolsetting values. */
-      get_latest_toolsettings(vf);
-
-      /* Perform the fill operation. */
-      const bool succes = vector_fill_do(vf);
-
-      /* DEBUG: measure time. */
-      auto t2 = std::chrono::high_resolution_clock::now();
-      auto delta_t = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-      printf("Vector fill took %d ms.\n", int(delta_t.count()));
-
-      if (succes) {
-        modal_state = OPERATOR_FINISHED;
-      }
-      else {
-        BKE_report(op->reports, RPT_INFO, "Unable to fill unclosed area");
-        modal_state = OPERATOR_CANCELLED;
-      }
-      break;
-    }
-    default:
-      break;
-  }
-
-  switch (modal_state) {
-    case OPERATOR_FINISHED:
-      operator_exit(C, op);
-      WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
-      break;
-
-    case OPERATOR_CANCELLED:
-      operator_exit(C, op);
-      break;
-
-    default:
-      break;
-  }
-
-  return modal_state;
-}
-
-static void operator_cancel(bContext *C, wmOperator *op)
-{
-  operator_exit(C, op);
-}
-
-/**
- * Invoke the fill operator at first mouse click in the viewport.
- */
-static int operator_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
-{
-  const Scene *scene = CTX_data_scene(C);
-  const Object *object = CTX_data_active_object(C);
-  const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-
-  /* Check active layer. */
-  if (!grease_pencil.has_active_layer()) {
-    BKE_report(op->reports, RPT_ERROR, "No active Grease Pencil layer");
-    return OPERATOR_CANCELLED;
-  }
-
-  /* Check if layer is editable. */
-  const bke::greasepencil::Layer *active_layer = grease_pencil.get_active_layer();
-  if (!active_layer->is_editable()) {
-    BKE_report(op->reports, RPT_ERROR, "Grease Pencil layer is not editable");
-    return OPERATOR_CANCELLED;
-  }
-
-  /* Check active frame. */
-  if (!grease_pencil.get_active_layer()->frames().contains(scene->r.cfra)) {
-    if (!blender::animrig::is_autokey_on(scene)) {
-      BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
-      return OPERATOR_CANCELLED;
-    }
-  }
-
-  /* Init tool data. */
-  VectorFillData *vf = MEM_new<VectorFillData>(__func__);
-  op->customdata = vf;
-  if (!operator_init(C, op)) {
-    operator_exit(C, op);
-    BKE_report(
-        op->reports,
-        RPT_ERROR,
-        "No Grease Pencil layers with edge strokes found, see 'Layers' in Advanced options");
-    return OPERATOR_CANCELLED;
-  }
-
-  /* Add modal handler. */
-  WM_event_add_modal_handler(C, op);
-
-  /* Set cursor. */
-  WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_PAINT_BRUSH);
-
-  return OPERATOR_RUNNING_MODAL;
-}
-
-/**
- * Definition of the vector fill operator.
- */
-static void GREASE_PENCIL_OT_vector_based_fill(wmOperatorType *ot)
-{
-  ot->name = "Fill (vector based)";
-  ot->idname = __func__;
-  ot->description = "Fill a shape formed by strokes";
-
-  ot->poll = active_grease_pencil_poll;
-  ot->invoke = operator_invoke;
-  ot->modal = operator_modal;
-  ot->cancel = operator_cancel;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
 /** \} */
 
-}  // namespace blender::ed::greasepencil::vectorfill
-
-void ED_operatortypes_grease_pencil_fill()
-{
-  using namespace blender::ed::greasepencil::vectorfill;
-
-  WM_operatortype_append(GREASE_PENCIL_OT_vector_based_fill);
-}
+}  // namespace blender::ed::greasepencil::fill

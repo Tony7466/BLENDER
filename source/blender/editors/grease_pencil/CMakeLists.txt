@@ -22,8 +22,14 @@ set(INC_SYS
 )
 
 set(SRC
+  intern/grease_pencil_fill.hh
+  intern/grease_pencil_fill_vector.hh
+  intern/grease_pencil_fill_flood.hh
+
   intern/grease_pencil_add.cc
   intern/grease_pencil_edit.cc
+  intern/grease_pencil_fill.cc
+  intern/grease_pencil_fill_flood.cc
   intern/grease_pencil_fill_vector.cc
   intern/grease_pencil_frames.cc
   intern/grease_pencil_geom.cc

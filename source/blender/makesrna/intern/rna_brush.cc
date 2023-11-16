@@ -364,6 +364,15 @@ static EnumPropertyItem rna_enum_gpencil_brush_eraser_modes_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+static EnumPropertyItem rna_enum_gpencil_fill_modes_items[] = {
+    {GP_FILL_MODE_FLOOD, "FLOOD", 0, "Flood Fill", "Use the raster-based flood fill algorithm"},
+    {GP_FILL_MODE_GEOMETRY,
+     "GEOMETRY",
+     0,
+     "Geometry Fill",
+     "Use the existing stroke geometry to create fills"},
+    {0, nullptr, 0, nullptr, nullptr}};
+
 static EnumPropertyItem rna_enum_gpencil_fill_draw_modes_items[] = {
     {GP_FILL_DMODE_BOTH,
      "BOTH",
@@ -1941,6 +1950,12 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_gpencil_brush_caps_types_items);
   RNA_def_property_ui_text(prop, "Caps Type", "The shape of the start and end of the stroke");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+
+  prop = RNA_def_property(srna, "fill_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "fill_mode");
+  RNA_def_property_enum_items(prop, rna_enum_gpencil_fill_modes_items);
+  RNA_def_property_ui_text(prop, "Method", "Method to create fills");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   prop = RNA_def_property(srna, "fill_draw_mode", PROP_ENUM, PROP_NONE);
