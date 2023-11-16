@@ -14,8 +14,6 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_output<decl::Object>("Active Camera")
       .description("The camera used for rendering the scene");
-  b.add_output<decl::Bool>("Has Active Camera")
-      .description("Whether the scene has an active camera");
 }
 
 static void node_exec(GeoNodeExecParams params)
@@ -23,7 +21,6 @@ static void node_exec(GeoNodeExecParams params)
   const Scene *scene = DEG_get_evaluated_scene(params.depsgraph());
   Object *camera = DEG_get_evaluated_object(params.depsgraph(), scene->camera);
   params.set_output("Active Camera", camera);
-  params.set_output("Has Active Camera", camera != nullptr);
 }
 
 static void node_register()
