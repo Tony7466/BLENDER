@@ -875,20 +875,11 @@ void UI_icons_reload_internal_textures()
   const float icon_border_intensity = btheme->tui.icon_border_intensity;
   const bool need_icons_with_border = icon_border_intensity > 0.0f;
 
-  const char *icon_directory = BKE_appdir_folder_id(BLENDER_DATAFILES, "icons");
-  char path[FILE_MAX];
-  BLI_path_join(path, sizeof(path), icon_directory, "icons.png");
-  if (BLI_exists(path)) {
-    b64buf = IMB_loadiffname(path, IB_rect, NULL);
-    IMB_scaleImBuf(b64buf, ICON_GRID_WIDTH_MIN * 8, ICON_GRID_HEIGHT_MIN * 8);
-  }
-  else {
-    b64buf = IMB_ibImageFromMemory((const uchar *)datatoc_blender_icons64_png,
-                                   datatoc_blender_icons64_png_size,
-                                   IB_rect,
-                                   nullptr,
-                                   "<blender icons>");
-  }
+  b64buf = IMB_ibImageFromMemory((const uchar *)datatoc_blender_icons64_png,
+                                 datatoc_blender_icons64_png_size,
+                                 IB_rect,
+                                 nullptr,
+                                 "<blender icons>");
 
   if (need_icons_with_border) {
     b64buf_border = create_mono_icon_with_border(b64buf, 1, icon_border_intensity);
