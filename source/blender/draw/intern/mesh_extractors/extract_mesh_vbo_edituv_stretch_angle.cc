@@ -16,8 +16,6 @@
 
 #include "draw_subdivision.h"
 
-#include "GPU_capabilities.h"
-
 namespace blender::draw {
 
 /* ---------------------------------------------------------------------- */
@@ -79,11 +77,6 @@ static void edituv_get_edituv_stretch_angle(float auv[2][2],
   r_stretch->uv_angles[1] = v2_to_short_angle(auv[1]);
   /* Compute 3D angle here. */
   r_stretch->angle = angle_normalized_v3v3(av[0], av[1]) * float(M_1_PI) * SHRT_MAX;
-
-  printf("Stretch angle: x: (%hd) y: (%hd)   === (%hd)\n",
-         r_stretch->uv_angles[0],
-         r_stretch->uv_angles[1],
-         r_stretch->angle);
 
 #if 0 /* here for reference, this is done in shader now. */
   float uvang = angle_normalized_v2v2(auv0, auv1);
