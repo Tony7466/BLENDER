@@ -151,7 +151,7 @@ static SpaceLink *nla_duplicate(SpaceLink *sl)
 }
 
 /* add handlers, stuff you only do once or on area/region changes */
-static void nla_channel_region_init(wmWindowManager *wm, ARegion *region)
+static void nla_track_region_init(wmWindowManager *wm, ARegion *region)
 {
   wmKeyMap *keymap;
 
@@ -173,7 +173,7 @@ static void nla_channel_region_init(wmWindowManager *wm, ARegion *region)
 }
 
 /* draw entirely, view changes should be handled here */
-static void nla_channel_region_draw(const bContext *C, ARegion *region)
+static void nla_track_region_draw(const bContext *C, ARegion *region)
 {
   bAnimContext ac;
   View2D *v2d = &region->v2d;
@@ -185,7 +185,7 @@ static void nla_channel_region_draw(const bContext *C, ARegion *region)
 
   /* data */
   if (ANIM_animdata_get_context(C, &ac)) {
-    draw_nla_channel_list(C, &ac, region);
+    draw_nla_track_list(C, &ac, region);
   }
 
   /* channel filter next to scrubbing area */
@@ -436,7 +436,7 @@ static void nla_main_region_view2d_changed(const bContext * /*C*/, ARegion *regi
   UI_view2d_curRect_clamp_y(v2d);
 }
 
-static void nla_channel_region_listener(const wmRegionListenerParams *params)
+static void nla_track_region_listener(const wmRegionListenerParams *params)
 {
   ARegion *region = params->region;
   const wmNotifier *wmn = params->notifier;
@@ -478,7 +478,7 @@ static void nla_channel_region_listener(const wmRegionListenerParams *params)
   }
 }
 
-static void nla_channel_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
+static void nla_track_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
   wmMsgBus *mbus = params->message_bus;
   ARegion *region = params->region;
@@ -639,10 +639,10 @@ void ED_spacetype_nla()
   art->prefsizex = 200;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES;
 
-  art->init = nla_channel_region_init;
-  art->draw = nla_channel_region_draw;
-  art->listener = nla_channel_region_listener;
-  art->message_subscribe = nla_channel_region_message_subscribe;
+  art->init = nla_track_region_init;
+  art->draw = nla_track_region_draw;
+  art->listener = nla_track_region_listener;
+  art->message_subscribe = nla_track_region_message_subscribe;
 
   BLI_addhead(&st->regiontypes, art);
 

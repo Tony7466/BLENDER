@@ -421,7 +421,7 @@ void NLA_OT_previewrange_set(wmOperatorType *ot)
  * \param r_max: Top y-extent of channel.
  * \return Success of finding a selected channel.
  */
-static bool nla_channels_get_selected_extents(bAnimContext *ac, float *r_min, float *r_max)
+static bool nla_tracks_get_selected_extents(bAnimContext *ac, float *r_min, float *r_max)
 {
   ListBase anim_data = {nullptr, nullptr};
 
@@ -435,10 +435,10 @@ static bool nla_channels_get_selected_extents(bAnimContext *ac, float *r_min, fl
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
 
   /* loop through all channels, finding the first one that's selected */
-  float ymax = NLACHANNEL_FIRST_TOP(ac);
+  float ymax = NLATRACK_FIRST_TOP(ac);
 
   for (bAnimListElem *ale = static_cast<bAnimListElem *>(anim_data.first); ale;
-       ale = ale->next, ymax -= NLACHANNEL_STEP(snla))
+       ale = ale->next, ymax -= NLATRACK_STEP(snla))
   {
     const bAnimChannelType *acf = ANIM_channel_get_typeinfo(ale);
 
@@ -447,7 +447,7 @@ static bool nla_channels_get_selected_extents(bAnimContext *ac, float *r_min, fl
         ANIM_channel_setting_get(ac, ale, ACHANNEL_SETTING_SELECT))
     {
       /* update best estimate */
-      *r_min = ymax - NLACHANNEL_HEIGHT(snla);
+      *r_min = ymax - NLATRACK_HEIGHT(snla);
       *r_max = ymax;
 
       /* is this high enough priority yet? */
@@ -499,7 +499,7 @@ static int nlaedit_viewall(bContext *C, const bool only_sel)
     float ymin = v2d->cur.ymin;
     float ymax = v2d->cur.ymax;
 
-    if (nla_channels_get_selected_extents(&ac, &ymin, &ymax)) {
+    if (nla_tracks_get_selected_extents(&ac, &ymin, &ymax)) {
       /* recenter the view so that this range is in the middle */
       float ymid = (ymax - ymin) / 2.0f + ymin;
       float x_center;
@@ -2164,7 +2164,8 @@ static int nlaedit_apply_scale_exec(bContext *C, wmOperator * /*op*/)
        * (transitions don't have scale) */
       if ((strip->flag & NLASTRIP_FLAG_SELECT) && (strip->type == NLASTRIP_TYPE_CLIP)) {
         if (strip->act == nullptr || ID_IS_OVERRIDE_LIBRARY(strip->act) ||
-            ID_IS_LINKED(strip->act)) {
+            ID_IS_LINKED(strip->act))
+        {
           continue;
         }
         /* if the referenced action is used by other strips,

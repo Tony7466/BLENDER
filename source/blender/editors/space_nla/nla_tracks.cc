@@ -60,7 +60,7 @@
  * --> Most channels are now selection only.
  */
 
-static int mouse_nla_channels(bContext *C, bAnimContext *ac, int channel_index, short selectmode)
+static int mouse_nla_tracks(bContext *C, bAnimContext *ac, int channel_index, short selectmode)
 {
   ListBase anim_data = {nullptr, nullptr};
 
@@ -269,7 +269,7 @@ static int mouse_nla_channels(bContext *C, bAnimContext *ac, int channel_index, 
     }
     default:
       if (G.debug & G_DEBUG) {
-        printf("Error: Invalid channel type in mouse_nla_channels()\n");
+        printf("Error: Invalid channel type in mouse_nla_tracks()\n");
       }
       break;
   }
@@ -285,7 +285,7 @@ static int mouse_nla_channels(bContext *C, bAnimContext *ac, int channel_index, 
 /* ------------------- */
 
 /* handle clicking */
-static int nlachannels_mouseclick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int nlatracks_mouseclick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   bAnimContext ac;
   ARegion *region;
@@ -315,17 +315,17 @@ static int nlachannels_mouseclick_invoke(bContext *C, wmOperator *op, const wmEv
 
   /* Figure out which channel user clicked in. */
   UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &x, &y);
-  UI_view2d_listview_view_to_cell(NLACHANNEL_NAMEWIDTH,
-                                  NLACHANNEL_STEP(snla),
+  UI_view2d_listview_view_to_cell(NLATRACK_NAMEWIDTH,
+                                  NLATRACK_STEP(snla),
                                   0,
-                                  NLACHANNEL_FIRST_TOP(&ac),
+                                  NLATRACK_FIRST_TOP(&ac),
                                   x,
                                   y,
                                   nullptr,
                                   &channel_index);
 
   /* handle mouse-click in the relevant channel then */
-  notifierFlags = mouse_nla_channels(C, &ac, channel_index, selectmode);
+  notifierFlags = mouse_nla_tracks(C, &ac, channel_index, selectmode);
 
   /* set notifier that things have changed */
   WM_event_add_notifier(C, NC_ANIMATION | notifierFlags, nullptr);
@@ -343,7 +343,7 @@ void NLA_OT_channels_click(wmOperatorType *ot)
   ot->description = "Handle clicks to select NLA tracks";
 
   /* api callbacks */
-  ot->invoke = nlachannels_mouseclick_invoke;
+  ot->invoke = nlatracks_mouseclick_invoke;
   ot->poll = ED_operator_nla_active;
 
   /* flags */
@@ -359,7 +359,7 @@ void NLA_OT_channels_click(wmOperatorType *ot)
 
 /* ******************** Action Push Down ******************************** */
 
-static int nlachannels_pushdown_exec(bContext *C, wmOperator *op)
+static int nlatracks_pushdown_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
   ID *id = nullptr;
@@ -460,7 +460,7 @@ void NLA_OT_action_pushdown(wmOperatorType *ot)
   ot->description = "Push action down onto the top of the NLA stack as a new strip";
 
   /* callbacks */
-  ot->exec = nlachannels_pushdown_exec;
+  ot->exec = nlatracks_pushdown_exec;
   ot->poll = nlaop_poll_tweakmode_off;
 
   /* flags */

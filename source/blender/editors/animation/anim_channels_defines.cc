@@ -4136,8 +4136,8 @@ static void acf_nlaaction_backdrop(bAnimContext *ac, bAnimListElem *ale, float y
   rctf box;
   box.xmin = offset;
   box.xmax = float(v2d->cur.xmax);
-  box.ymin = yminc + NLACHANNEL_SKIP;
-  box.ymax = ymaxc + NLACHANNEL_SKIP - 1;
+  box.ymin = yminc + NLATRACK_SKIP;
+  box.ymax = ymaxc + NLATRACK_SKIP - 1;
   UI_draw_roundbox_4fv(&box, true, 8, color);
 }
 
@@ -4855,7 +4855,7 @@ void ANIM_channel_draw(
 
       /* NLA action channels have slightly different spacing requirements... */
       if (ale->type == ANIMTYPE_NLAACTION) {
-        ymin_ofs = NLACHANNEL_SKIP;
+        ymin_ofs = NLATRACK_SKIP;
       }
     }
 
