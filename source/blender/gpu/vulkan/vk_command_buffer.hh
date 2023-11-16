@@ -18,6 +18,10 @@ class VKDevice;
 
 /** Command buffer to keep track of the life-time of a command buffer. */
 class VKCommandBuffer : NonCopyable, NonMovable {
+  /**
+   * Not owning handle to the command pool that created this command buffer. The command pool is
+   * owned by #VKCommandBuffers.
+   */
   VkCommandPool vk_command_pool_ = VK_NULL_HANDLE;
   VkCommandBuffer vk_command_buffer_ = VK_NULL_HANDLE;
 

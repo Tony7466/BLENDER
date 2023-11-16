@@ -23,6 +23,7 @@ void VKCommandBuffer::free()
     vkFreeCommandBuffers(device.device_get(), vk_command_pool_, 1, &vk_command_buffer_);
     vk_command_buffer_ = VK_NULL_HANDLE;
   }
+  vk_command_pool_ = VK_NULL_HANDLE;
 }
 
 bool VKCommandBuffer::is_initialized() const
