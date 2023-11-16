@@ -29,11 +29,11 @@ class MathProcessor {
     }
 
     float pop_float() {
-        return pop().value.f;
+        return pop().get_float();
     }
 
     blender::float3 pop_vector() {
-        return pop().value.f3;
+        return pop().get_vector();
     }
 
 public:

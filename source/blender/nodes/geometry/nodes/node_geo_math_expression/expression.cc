@@ -132,7 +132,7 @@ ValueKind Expression::negate(EvaluationContext &ctx, Expression *x) {
   
   switch(_x) {
       case ValueKind::FLOAT:
-      ctx.push_op(Operation::float_op(-1.0));
+        ctx.push_op(Operation::float_op(-1.0));
         ctx.push_op(Operation::math_op(Operation::OpKind::MATH_FL_FL_TO_FL, NODE_MATH_MULTIPLY));
         break;
       case ValueKind::VECTOR:

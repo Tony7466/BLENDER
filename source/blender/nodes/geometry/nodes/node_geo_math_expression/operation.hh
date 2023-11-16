@@ -19,6 +19,16 @@ struct Constant {
     blender::float3 f3;
   } value;
 
+  float get_float() {
+    BLI_assert(kind == ValueKind::FLOAT);
+    return value.f;
+  }
+
+  blender::float3 get_vector() {
+    BLI_assert(kind == ValueKind::VECTOR);
+    return value.f3;
+  }
+
   static Constant make_float(float f) {
     return Constant { ValueKind::FLOAT, { .f = f } };
   }
@@ -87,7 +97,7 @@ struct Operation {
   }
 
   static Operation float_op(float f) {
-    return { OpKind::CONSTANT, { .constant = { ValueKind::FLOAT, { .f = f } } } };
+    return { OpKind::CONSTANT, { .constant = Constant::make_float(f) } };
   }
 
   static Operation variable_op(std::string_view name) {
@@ -99,7 +109,7 @@ struct Operation {
   }
 
   static Operation vector_op(blender::float3 f3) {
-    return { OpKind::CONSTANT, { .constant = { ValueKind::VECTOR, { .f3 = f3 } } } };
+    return { OpKind::CONSTANT, { .constant = Constant::make_vector(f3) } };
   }
 
   static Operation math_op(OpKind kind, NodeMathOperation op) {

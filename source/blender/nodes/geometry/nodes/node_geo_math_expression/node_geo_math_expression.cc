@@ -115,9 +115,9 @@ namespace blender::nodes::node_geo_math_expression_cc {
       // Only the stuff below here actually needs to happen every time this function is called.
       MathProcessor proc(ctx.get_operations(), [&params](std::string_view name) {
         if(name[0] == 'v') {
-          return Constant { ValueKind::VECTOR, { .f3 = params.extract_input<blender::float3>(name) } };
+          return Constant::make_vector(params.extract_input<blender::float3>(name));
         } else if(name[0] == 'f') {
-          return Constant { ValueKind::FLOAT, { .f = params.extract_input<float>(name) } };
+          return Constant::make_float(params.extract_input<float>(name));
         }
 
         BLI_assert_unreachable();
@@ -127,9 +127,9 @@ namespace blender::nodes::node_geo_math_expression_cc {
       Constant c = proc.execute();
 
       if(storage.output_type == GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT) {
-        params.set_output("Value", static_cast<float>(c.value.f));
+        params.set_output("Value", c.get_float());
       } else if(storage.output_type == GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR) {
-        params.set_output("Value", c.value.f3);
+        params.set_output("Value", c.get_vector());
       }
     } catch (EvaluationError err) {
       params.error_message_add(NodeWarningType::Error, fmt::format("EvaluationError: token: {}, message: {}", err.expression->get_token().value, err.message).c_str());
