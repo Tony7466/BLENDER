@@ -82,9 +82,6 @@ struct ObjectRuntime {
   /* Evaluated mesh cage in edit mode. */
   Mesh *editmesh_eval_cage = nullptr;
 
-  /** Cached cage bounding box of `editmesh_eval_cage` for selection. */
-  BoundBox *editmesh_bb_cage = nullptr;
-
   /**
    * Original grease pencil bGPdata pointer, before object->data was changed to point
    * to gpd_eval.
