@@ -566,7 +566,6 @@ static PyObject *pygpu_shader_image(BPyGPUShader *self, PyObject *args)
   if (!PyArg_ParseTuple(
           args, "sO!:GPUShader.image", &name, &BPyGPUTexture_Type, &py_texture))
   {
-    printf("GPUShader.image: invalid arguments\n");
     return nullptr;
   }
 
