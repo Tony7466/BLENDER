@@ -23,9 +23,6 @@ struct Object;
 struct KeyframeEditData;
 struct wmKeyConfig;
 struct ToolSettings;
-struct EnumPropertyItem;
-struct PointerRNA;
-struct PropertyRNA;
 
 enum {
   LAYER_REORDER_ABOVE,
