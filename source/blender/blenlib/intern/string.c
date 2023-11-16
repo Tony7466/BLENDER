@@ -1213,14 +1213,14 @@ void BLI_str_format_byte_unit_compact(char dst[BLI_STR_FORMAT_INT64_BYTE_UNIT_CO
   const int units_num = ARRAY_SIZE(units);
 
   while ((fabsf(number_to_format_converted) >= base) && ((order + 1) < units_num)) {
-    number_to_format_converted /= base;
+    number_to_format_converted /= (float)base;
     order++;
   }
 
   const bool add_dot = (llabs(bytes) > 99999) && fabsf(number_to_format_converted) > 99;
 
   if (add_dot) {
-    number_to_format_converted /= 100;
+    number_to_format_converted /= 100.0f;
     order++;
   }
 
