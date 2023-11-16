@@ -161,40 +161,48 @@ static bool contains(const VArray<bool> &varray,
         indices_to_check.index_range(),
         4096,
         false,
-        [&](const IndexRange indices_range, const bool init) {
+        [&](const IndexRange range, const bool init) {
           if (init) {
             return init;
           }
-          const IndexMask indices = indices_to_check.slice(indices_range);
-          if (std::optional<IndexRange> range = indices.to_range()) {
+          const IndexMask sliced_mask = indices_to_check.slice(range);
+          if (std::optional<IndexRange> range = sliced_mask.to_range()) {
             return span.slice(*range).contains(value);
           }
-          for (const int i : indices_range) {
-            if (span[indices_to_check[i]] == value) {
-              return true;
+          for (const int64_t segment_i : IndexRange(sliced_mask.segments_num())) {
+            const IndexMaskSegment segment = sliced_mask.segment(segment_i);
+            for (const int i : segment) {
+              if (span[i]) {
+                return true;
+              }
             }
           }
           return false;
         },
-        [&](const bool a, const bool b) { return a || b; });
+        std::logical_or());
   }
   return threading::parallel_reduce(
       indices_to_check.index_range(),
       2048,
       false,
-      [&](const IndexRange indices_range, const bool init) {
+      [&](const IndexRange range, const bool init) {
         if (init) {
           return init;
         }
-        /* Alternatively, this could use #materialize to retrieve many values at once. */
-        for (const int64_t i : indices_range) {
-          if (varray[indices_to_check[i]] == value) {
+        constexpr int64_t MaxChunkSize = 512;
+        for (int64_t start = range.start(); start < range.last(); start += MaxChunkSize) {
+          const int64_t end = std::min<int64_t>(start + MaxChunkSize, range.last());
+          const int64_t size = end - start;
+          const IndexMask sliced_mask = indices_to_check.slice(start, size);
+          std::array<bool, MaxChunkSize> values;
+          varray.materialize_compressed(sliced_mask, values);
+          if (std::find(values.begin(), values.end(), true) != values.end()) {
             return true;
           }
         }
         return false;
       },
-      [&](const bool a, const bool b) { return a || b; });
+      std::logical_or());
 }
 
 static bool contains(const VArray<bool> &varray, const IndexRange range_to_check, const bool value)
