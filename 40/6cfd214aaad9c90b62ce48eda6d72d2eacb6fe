@@ -5,3 +5,4 @@ Referenced by pull request #108246, Fix #108243: Set the encoded buffer after re
 Referenced by issue #108243, Crash when save before close with modified image
 Referenced by pull request #114989, Fix #114963: Image Editor - Fill Tool doesn't work as expected
 Referenced by issue #114963, 4.0.0 - Image Editor - Paint - Bucket Tool - Fill doesn't work as expected
+Referenced by commit 7f33a743d8956dd48f626b4a7ba2b7b1e96141ad, Fix #114963: Image Editor - Fill Tool doesn't work as expected
