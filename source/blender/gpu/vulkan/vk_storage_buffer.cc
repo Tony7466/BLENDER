@@ -36,9 +36,8 @@ void VKStorageBuffer::allocate()
 {
   buffer_.create(size_in_bytes_,
                  usage_,
-                 static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
-                                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-                                                    VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+                 VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                     VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   debug::object_label(buffer_.vk_handle(), name_);
 }
 
@@ -48,7 +47,9 @@ void VKStorageBuffer::bind(int slot)
   context.state_manager_get().storage_buffer_bind(*this, slot);
 }
 
-void VKStorageBuffer::bind(int slot, shader::ShaderCreateInfo::Resource::BindType bind_type)
+void VKStorageBuffer::bind(int slot,
+                           shader::ShaderCreateInfo::Resource::BindType bind_type,
+                           const GPUSamplerState /*sampler_state*/)
 {
   VKContext &context = *VKContext::get();
   VKShader *shader = static_cast<VKShader *>(context.shader);

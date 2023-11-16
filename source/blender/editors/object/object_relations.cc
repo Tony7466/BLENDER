@@ -68,11 +68,12 @@
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_interface.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -102,6 +103,8 @@
 #include "ED_object.hh"
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
+
+#include "ANIM_action.hh"
 
 #include "MOD_nodes.hh"
 
@@ -560,7 +563,8 @@ bool ED_object_parent_set(ReportList *reports,
       if (partype == PAR_FOLLOW) {
         /* get or create F-Curve */
         bAction *act = ED_id_action_ensure(bmain, &cu->id);
-        FCurve *fcu = ED_action_fcurve_ensure(bmain, act, nullptr, nullptr, "eval_time", 0);
+        FCurve *fcu = blender::animrig::action_fcurve_ensure(
+            bmain, act, nullptr, nullptr, "eval_time", 0);
 
         /* setup dummy 'generator' modifier here to get 1-1 correspondence still working */
         if (!fcu->bezt && !fcu->fpt && !fcu->modifiers.first) {
@@ -647,8 +651,8 @@ bool ED_object_parent_set(ReportList *reports,
               if (md) {
                 ((CurveModifierData *)md)->object = par;
               }
-              if (par->runtime.curve_cache &&
-                  par->runtime.curve_cache->anim_path_accum_length == nullptr) {
+              if (par->runtime->curve_cache &&
+                  par->runtime->curve_cache->anim_path_accum_length == nullptr) {
                 DEG_id_tag_update(&par->id, ID_RECALC_GEOMETRY);
               }
             }

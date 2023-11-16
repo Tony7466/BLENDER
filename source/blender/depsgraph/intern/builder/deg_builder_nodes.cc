@@ -78,7 +78,7 @@
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_movieclip.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
@@ -101,8 +101,8 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
-#include "SEQ_iterator.h"
-#include "SEQ_sequencer.h"
+#include "SEQ_iterator.hh"
+#include "SEQ_sequencer.hh"
 
 #include "intern/builder/deg_builder.h"
 #include "intern/builder/deg_builder_key.h"
