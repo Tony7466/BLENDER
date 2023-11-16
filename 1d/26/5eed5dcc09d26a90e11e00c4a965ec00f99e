@@ -1,2 +1,3 @@
 Referenced by issue #114848, Crash when adding specular texture slot in texture paint mode
 Referenced by pull request #114884, Fix #114848: Crash when adding specular texture slot in texture paint mode
+Referenced by commit 4ee531cf26099099e4e66b740015001b2c9d2117, Fix #114848: Crash when adding specular texture slot in texture paint mode
