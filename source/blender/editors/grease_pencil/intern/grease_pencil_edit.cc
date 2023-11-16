@@ -13,11 +13,13 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_stack.hh"
+#include "BLT_translation.h"
 
 #include "BKE_context.h"
 #include "BKE_curves_utils.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_lib_id.h"
+#include "BKE_report.h"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -825,8 +827,9 @@ static int grease_pencil_stroke_material_set_exec(bContext *C, wmOperator *op)
   int material_index = object->actcol - 1;
 
   if (name[0] != '\0') {
-    ma = (Material *)BKE_libblock_find_name(bmain, ID_MA, name);
+    ma = reinterpret_cast<Material *>(BKE_libblock_find_name(bmain, ID_MA, name));
     if (ma == nullptr) {
+      BKE_reportf(op->reports, RPT_WARNING, TIP_("Material '%s' could not be found"), name);
       return OPERATOR_CANCELLED;
     }
 
