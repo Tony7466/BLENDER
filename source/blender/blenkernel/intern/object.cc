@@ -3589,7 +3589,7 @@ std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(const Ob
   return std::nullopt;
 }
 
-std::optional<Bounds<float3>> BKE_object_boundbox_eval_cached_get(Object *ob)
+std::optional<Bounds<float3>> BKE_object_boundbox_eval_cached_get(const Object *ob)
 {
   if (ob->runtime->bounds_eval) {
     return *ob->runtime->bounds_eval;

@@ -353,7 +353,7 @@ void BKE_boundbox_minmax(const BoundBox *bb,
  * (not accounting for the object's transform). For evaluated objects, this includes
  * the evaluated geometry (not just #Object.data).
  */
-std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(Object *ob);
+std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(const Object *ob);
 void BKE_object_dimensions_get(Object *ob, float r_vec[3]);
 
 /**
@@ -362,7 +362,8 @@ void BKE_object_dimensions_get(Object *ob, float r_vec[3]);
  * such cache exists. For evaluated objects this indirection is unnecessary, so
  * #BKE_object_boundbox_get should be used instead.
  */
-std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_eval_cached_get(Object *ob);
+std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_eval_cached_get(
+    const Object *ob);
 /** Similar to #BKE_object_boundbox_eval_cached_get but gives the size of the bounds instead. */
 void BKE_object_dimensions_eval_cached_get(Object *ob, float r_vec[3]);
 
