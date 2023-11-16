@@ -811,19 +811,19 @@ static blender::float3 paint_init_pivot_mesh(Object *ob)
   return math::midpoint(bounds->min, bounds->max);
 }
 
-static void paint_init_pivot_curves(Object *ob, float location[3])
+static blender::float3 paint_init_pivot_curves(Object *ob)
 {
   const Curves &curves = *static_cast<const Curves *>(ob->data);
   const blender::Bounds<blender::float3> bounds = *curves.geometry.wrap().bounds_min_max();
-  copy_v3_v3(location, blender::math::midpoint(bounds.min, bounds.max));
+  return blender::math::midpoint(bounds.min, bounds.max);
 }
 
-static void paint_init_pivot_grease_pencil(Object *ob, float location[3])
+static blender::float3 paint_init_pivot_grease_pencil(Object *ob)
 {
   using namespace blender;
   const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(ob->data);
   const blender::Bounds<blender::float3> bounds = *grease_pencil.bounds_min_max();
-  copy_v3_v3(location, blender::math::midpoint(bounds.min, bounds.max));
+  return blender::math::midpoint(bounds.min, bounds.max);
 }
 
 void paint_init_pivot(Object *ob, Scene *scene)
@@ -836,10 +836,10 @@ void paint_init_pivot(Object *ob, Scene *scene)
       location = paint_init_pivot_mesh(ob);
       break;
     case OB_CURVES:
-      paint_init_pivot_curves(ob, location);
+      location = paint_init_pivot_curves(ob);
       break;
     case OB_GREASE_PENCIL:
-      paint_init_pivot_grease_pencil(ob, location);
+      location = paint_init_pivot_grease_pencil(ob);
       break;
     default:
       BLI_assert_unreachable();
