@@ -20,7 +20,11 @@ public:
     return operations;
   }
 
-  void rollback(size_t size) {
-    operations.resize(size);
+  size_t savepoint() const {
+    return operations.size();
+  }
+
+  void rollback(size_t savepoint) {
+    operations.resize(savepoint);
   }
 };

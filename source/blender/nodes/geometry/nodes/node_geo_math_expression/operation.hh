@@ -19,6 +19,18 @@ struct Constant {
     blender::float3 f3;
   } value;
 
+  static Constant make_float(float f) {
+    return Constant { ValueKind::FLOAT, { .f = f } };
+  }
+
+  static Constant make_vector(float x, float y, float z) {
+    return Constant { ValueKind::VECTOR, { .f3 = blender::float3(x, y, z) } };
+  }
+
+  static Constant make_vector(blender::float3 f3) {
+    return Constant { ValueKind::VECTOR, { .f3 = f3 } };
+  }
+
   std::string to_string() const {
     switch(kind) {
       case ValueKind::FLOAT:
@@ -35,9 +47,11 @@ struct Operation {
   enum class OpKind {
     CONSTANT,
     VARIABLE,
+    MAKE_VECTOR,
     MATH_FL_FL_TO_FL,
     VECTOR_MATH_FL3_FL3_TO_FL3,
-    VECTOR_MATH_FL3_FL_TO_FL3
+    VECTOR_MATH_FL3_FL_TO_FL3,
+    VECTOR_MATH_FL3_TO_FL
   };
 
   OpKind kind;
@@ -50,7 +64,7 @@ struct Operation {
   } op;
 
   std::string to_string() const {
-    const char *kinds[] = {"CONSTANT", "VARIABLE", "MATH_FL_FL_TO_FL", "VECTOR_MATH_FL3_FL3_TO_FL3", "VECTOR_MATH_FL3_FL_TO_FL3"};
+    const char *kinds[] = {"CONSTANT", "VARIABLE", "MAKE_VECTOR", "MATH_FL_FL_TO_FL", "VECTOR_MATH_FL3_FL3_TO_FL3", "VECTOR_MATH_FL3_FL_TO_FL3", "VECTOR_MATH_FL3_TO_FL"};
     const char *kind_str = kinds[size_t(kind)];
 
     switch(kind) {
@@ -58,10 +72,14 @@ struct Operation {
         return fmt::format("{} {}", kind_str, op.constant.to_string());
       case OpKind::VARIABLE:
         return fmt::format("{} {}", kind_str, op.variable);
+      case OpKind::MAKE_VECTOR:
+        return fmt::format("{}", kind_str);
       case OpKind::MATH_FL_FL_TO_FL:
         return fmt::format("{} {}", kind_str, (int)op.math);
       case OpKind::VECTOR_MATH_FL3_FL3_TO_FL3:
       case OpKind::VECTOR_MATH_FL3_FL_TO_FL3:
+        return fmt::format("{} {}", kind_str, (int)op.vector_math);
+      case OpKind::VECTOR_MATH_FL3_TO_FL:
         return fmt::format("{} {}", kind_str, (int)op.vector_math);
     }
 
@@ -74,6 +92,10 @@ struct Operation {
 
   static Operation variable_op(std::string_view name) {
     return { OpKind::VARIABLE, { .variable = name } };
+  }
+
+  static Operation make_vector_op() {
+    return { OpKind::MAKE_VECTOR };
   }
 
   static Operation vector_op(blender::float3 f3) {

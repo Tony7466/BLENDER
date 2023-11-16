@@ -5,19 +5,10 @@
 
 #include "operation.hh"
 
-namespace blender::nodes::node_geo_math_expression_cc {
-
 class MathProcessor {
     const std::vector<Operation> &ops;
     std::vector<Constant> stack;
     std::function<Constant(std::string_view)> variable_cb;
-
-public:
-    MathProcessor(const std::vector<Operation> &ops, std::function<Constant(std::string_view)> variable_cb) : ops(ops), variable_cb(variable_cb) {
-
-    }
-
-    Constant execute();
 
     void push(Constant c) {
         stack.emplace_back(c);
@@ -28,6 +19,27 @@ public:
         stack.pop_back();
         return c;
     }
-};
 
-}
+    void push_float(float f) {
+        push(Constant::make_float(f));
+    }
+
+    void push_vector(blender::float3 f3) {
+        push(Constant::make_vector(f3));
+    }
+
+    float pop_float() {
+        return pop().value.f;
+    }
+
+    blender::float3 pop_vector() {
+        return pop().value.f3;
+    }
+
+public:
+    MathProcessor(const std::vector<Operation> &ops, std::function<Constant(std::string_view)> variable_cb) : ops(ops), variable_cb(variable_cb) {
+
+    }
+
+    Constant execute();
+};

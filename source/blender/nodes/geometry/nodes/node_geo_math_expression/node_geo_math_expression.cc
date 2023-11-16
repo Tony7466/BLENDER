@@ -41,7 +41,7 @@ namespace blender::nodes::node_geo_math_expression_cc {
     parse_var_names(storage->variables, [&b](std::string_view name) {
       if (name[0] == 'v') {
         b.add_input<decl::Vector>(name);
-      } else {
+      } else if(name[0] == 'f') {
         b.add_input<decl::Float>(name);
       }
     });
@@ -55,11 +55,16 @@ namespace blender::nodes::node_geo_math_expression_cc {
 
   static void node_geo_exec(GeoNodeExecParams params)
   {
+    // Most of the stuff here only needs to be done once after the expression text has changed.
+    // The list of operations should be cached somewhere to avoid reparsing every time this function is called.
+
     const NodeGeometryMathExpression &storage = node_storage(params.node());
     std::unordered_set<std::string_view> vars;
 
     parse_var_names(storage.variables, [&vars](std::string_view name) {
-      vars.insert(name);
+      if (name[0] == 'v' || name[0] == 'f') {
+        vars.insert(name);
+      }
     });
 
     Parser parser;
@@ -84,9 +89,12 @@ namespace blender::nodes::node_geo_math_expression_cc {
 
       if(name[0] == 'v') {
         return ValueKind::VECTOR;
+      } else if(name[0] == 'f') {
+        return ValueKind::FLOAT;
       }
 
-      return ValueKind::FLOAT;
+      BLI_assert_unreachable();
+      return ValueKind();
     });
 
     try {
@@ -104,12 +112,16 @@ namespace blender::nodes::node_geo_math_expression_cc {
         return;
       }
 
+      // Only the stuff below here actually needs to happen every time this function is called.
       MathProcessor proc(ctx.get_operations(), [&params](std::string_view name) {
         if(name[0] == 'v') {
           return Constant { ValueKind::VECTOR, { .f3 = params.extract_input<blender::float3>(name) } };
+        } else if(name[0] == 'f') {
+          return Constant { ValueKind::FLOAT, { .f = params.extract_input<float>(name) } };
         }
 
-        return Constant { ValueKind::FLOAT, { .f = params.extract_input<float>(name) } };
+        BLI_assert_unreachable();
+        return Constant();
       });
 
       Constant c = proc.execute();

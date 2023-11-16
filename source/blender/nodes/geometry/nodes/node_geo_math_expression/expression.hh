@@ -34,6 +34,8 @@ public:
   static ValueKind sub(EvaluationContext &ctx, Expression *left, Expression *right);
   static ValueKind mul(EvaluationContext &ctx, Expression *left, Expression *right);
   static ValueKind div(EvaluationContext &ctx, Expression *left, Expression *right);
+  static ValueKind vec(EvaluationContext &ctx, Expression *x, Expression *y, Expression *z);
+  static ValueKind len(EvaluationContext &ctx, Expression *v);
 };
 
 class NumberExpression : public Expression {
@@ -114,6 +116,16 @@ public:
       if(token.value == "lerp") {
         if(args.size() != 3) { throw "incorrect number of arguments"; }
         return lerp(ctx, args[0].get(), args[1].get(), args[2].get());
+      }
+
+      if(token.value == "vec") {
+        if(args.size() != 3) { throw "incorrect number of arguments"; }
+        return vec(ctx, args[0].get(), args[1].get(), args[2].get());
+      }
+
+      if(token.value == "len") {
+        if(args.size() != 1) { throw "incorrect number of arguments"; }
+        return len(ctx, args[0].get());
       }
 
 

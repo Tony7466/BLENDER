@@ -9,8 +9,8 @@ inline bool ops_are(ValueKind left, ValueKind right, ValueKind a, ValueKind b) {
 }
 
 ValueKind Expression::add(EvaluationContext &ctx, Expression *left, Expression *right) {
-  auto _left = left->evaluate(ctx);
-  auto _right = right->evaluate(ctx);
+  ValueKind _left = left->evaluate(ctx);
+  ValueKind _right = right->evaluate(ctx);
 
   if(_left != _right) {
     throw "invalid operands";
@@ -31,8 +31,8 @@ ValueKind Expression::add(EvaluationContext &ctx, Expression *left, Expression *
 }
 
 ValueKind Expression::sub(EvaluationContext &ctx, Expression *left, Expression *right) {
-  auto _left = left->evaluate(ctx);
-  auto _right = right->evaluate(ctx);
+  ValueKind _left = left->evaluate(ctx);
+  ValueKind _right = right->evaluate(ctx);
 
   if(_left != _right) {
     throw "invalid operands";
@@ -53,9 +53,10 @@ ValueKind Expression::sub(EvaluationContext &ctx, Expression *left, Expression *
 }
 
 ValueKind Expression::mul(EvaluationContext &ctx, Expression *left, Expression *right) {
-  // TODO: these need to be evaluated in the correct order
-  auto _left = left->evaluate(ctx);
-  auto _right = right->evaluate(ctx);
+  auto savepoint = ctx.savepoint();
+  
+  ValueKind _left = left->evaluate(ctx);
+  ValueKind _right = right->evaluate(ctx);
   ValueKind result;
 
   if(ops_are(_left, _right, ValueKind::FLOAT)) {
@@ -71,6 +72,16 @@ ValueKind Expression::mul(EvaluationContext &ctx, Expression *left, Expression *
           ctx.push_op(Operation::math_op(Operation::OpKind::MATH_FL_FL_TO_FL, NODE_MATH_MULTIPLY));
           break;
       case ValueKind::VECTOR:
+          ctx.rollback(savepoint);
+
+          if(_left == ValueKind::VECTOR) {
+            left->evaluate(ctx);
+            right->evaluate(ctx);
+          } else {
+            right->evaluate(ctx);
+            left->evaluate(ctx);
+          }
+
           ctx.push_op(Operation::vector_math_op(Operation::OpKind::VECTOR_MATH_FL3_FL_TO_FL3, NODE_VECTOR_MATH_SCALE));
           break;
       default:
@@ -168,4 +179,30 @@ ValueKind Expression::lerp(EvaluationContext &ctx, Expression *a, Expression *b,
   }
 
   return b_sub_a;
+}
+
+ValueKind Expression::vec(EvaluationContext &ctx, Expression *x, Expression *y, Expression *z) {
+  ValueKind _x = x->evaluate(ctx);
+  ValueKind _y = y->evaluate(ctx);
+  ValueKind _z = z->evaluate(ctx);
+
+  if(_x != ValueKind::FLOAT || _y != ValueKind::FLOAT || _z != ValueKind::FLOAT) {
+    throw "invalid arguments";
+  }
+
+  ctx.push_op(Operation::make_vector_op());
+
+  return ValueKind::VECTOR;
+}
+
+ValueKind Expression::len(EvaluationContext &ctx, Expression *v) {
+  ValueKind _v = v->evaluate(ctx);
+
+  if(_v != ValueKind::VECTOR) {
+    throw "invalid arguments";
+  }
+
+  ctx.push_op(Operation::vector_math_op(Operation::OpKind::VECTOR_MATH_FL3_TO_FL, NODE_VECTOR_MATH_LENGTH));
+
+  return ValueKind::FLOAT;
 }
