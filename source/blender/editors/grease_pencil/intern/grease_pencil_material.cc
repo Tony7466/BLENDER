@@ -43,15 +43,9 @@ static int grease_pencil_material_reveal_exec(bContext *C, wmOperator *op)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  short *totcol = BKE_object_material_len_p(object);
-  if (totcol == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
-
   bool changed = false;
-  for (int i : IndexRange(*totcol)) {
-    Material *ma = BKE_gpencil_material(object, i + 1);
-    if (ma) {
+  for (const int i : IndexRange(object->totcol)) {
+    if (Material *ma = BKE_gpencil_material(object, i + 1)) {
       MaterialGPencilStyle *gp_style = ma->gp_style;
       gp_style->flag &= ~GP_MATERIAL_HIDE;
       DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
@@ -69,7 +63,6 @@ static int grease_pencil_material_reveal_exec(bContext *C, wmOperator *op)
 
 static void GREASE_PENCIL_OT_material_reveal(wmOperatorType *ot)
 {
-
   /* Identifiers. */
   ot->name = "Show All Materials";
   ot->idname = "GREASE_PENCIL_OT_material_reveal";
