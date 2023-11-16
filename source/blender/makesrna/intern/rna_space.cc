@@ -431,7 +431,7 @@ static const EnumPropertyItem rna_enum_shading_color_type_items[] = {
 };
 
 static const EnumPropertyItem rna_enum_retopology_color_type_items[] = {
-    {V3D_RETOPOLOGY_COLOR_THEME, "THEME", 0, "Single", "Show theme color"},
+    {V3D_RETOPOLOGY_COLOR_THEME, "THEME", 0, "Theme", "Show theme color"},
     {V3D_RETOPOLOGY_COLOR_MATERIAL, "MATERIAL", 0, "Material", "Show material color"},
     {0, nullptr, 0, nullptr, nullptr},
 };
