@@ -152,10 +152,8 @@ int64_t ED_keylist_array_len(const AnimKeylist *keylist);
 void fcurve_to_keylist(
     AnimData *adt, FCurve *fcu, AnimKeylist *keylist, int saction_flag, float range[2]);
 /* Action Group */
-void action_group_to_keylist(AnimData *adt,
-                             bActionGroup *agrp,
-                             AnimKeylist *keylist,
-                             int saction_flag);
+void action_group_to_keylist(
+    AnimData *adt, bActionGroup *agrp, AnimKeylist *keylist, int saction_flag, float range[2]);
 /* Action */
 void action_to_keylist(
     AnimData *adt, bAction *act, AnimKeylist *keylist, int saction_flag, float range[2]);
@@ -168,7 +166,8 @@ void cachefile_to_keylist(bDopeSheet *ads,
                           AnimKeylist *keylist,
                           int saction_flag);
 /* Scene */
-void scene_to_keylist(bDopeSheet *ads, Scene *sce, AnimKeylist *keylist, int saction_flag);
+void scene_to_keylist(
+    bDopeSheet *ads, Scene *sce, AnimKeylist *keylist, int saction_flag, float range[2]);
 /* DopeSheet Summary */
 void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, int saction_flag, float range[2]);
 

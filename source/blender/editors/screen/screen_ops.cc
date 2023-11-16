@@ -3194,7 +3194,7 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   }
 
   /* populate tree with keyframe nodes */
-  scene_to_keylist(&ads, scene, keylist, 0);
+  scene_to_keylist(&ads, scene, keylist, 0, nullptr);
 
   if (ob) {
     ob_to_keylist(&ads, ob, keylist, 0, nullptr);

@@ -424,7 +424,7 @@ static void build_channel_keylist(ChannelListElement *elem, blender::float2 rang
       break;
     }
     case ChannelType::SCENE: {
-      scene_to_keylist(elem->ads, elem->sce, elem->keylist, elem->saction_flag);
+      scene_to_keylist(elem->ads, elem->sce, elem->keylist, elem->saction_flag, range);
       break;
     }
     case ChannelType::OBJECT: {
@@ -440,7 +440,7 @@ static void build_channel_keylist(ChannelListElement *elem, blender::float2 rang
       break;
     }
     case ChannelType::ACTION_GROUP: {
-      action_group_to_keylist(elem->adt, elem->agrp, elem->keylist, elem->saction_flag);
+      action_group_to_keylist(elem->adt, elem->agrp, elem->keylist, elem->saction_flag, range);
       break;
     }
     case ChannelType::GREASE_PENCIL_CELS: {
