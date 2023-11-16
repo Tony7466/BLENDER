@@ -1410,8 +1410,7 @@ void BKE_grease_pencil_material_index_reassign(GreasePencil *grease_pencil, int 
     MutableVArraySpan<int> indices_span(material_indices.varray);
     for (const int i : indices_span.index_range()) {
       if ((indices_span[i] > index) || (indices_span[i] > totcol - 1)) {
-        indices_span[i]--;
-        indices_span[i] = std::max(indices_span[i], 0);
+        indices_span[i] = std::max(indices_span[i] - 1, 0);
       }
     }
     indices_span.save();
