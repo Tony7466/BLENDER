@@ -21,7 +21,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_curveprofile.h"
 #include "BKE_deform.h"
 #include "BKE_mesh.hh"
@@ -420,7 +420,7 @@ ModifierTypeInfo modifierType_Bevel = {
     /*struct_name*/ "BevelModifierData",
     /*struct_size*/ sizeof(BevelModifierData),
     /*srna*/ &RNA_BevelModifier,
-    /*type*/ eModifierTypeType_Constructive,
+    /*type*/ ModifierTypeType::Constructive,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode |
         eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_AcceptsCVs,
     /*icon*/ ICON_MOD_BEVEL,

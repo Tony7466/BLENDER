@@ -25,7 +25,7 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_colortools.h" /* CurveMapping. */
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.hh"
@@ -394,7 +394,7 @@ ModifierTypeInfo modifierType_WeightVGEdit = {
     /*struct_name*/ "WeightVGEditModifierData",
     /*struct_size*/ sizeof(WeightVGEditModifierData),
     /*srna*/ &RNA_VertexWeightEditModifier,
-    /*type*/ eModifierTypeType_NonGeometrical,
+    /*type*/ ModifierTypeType::NonGeometrical,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsMapping |
         eModifierTypeFlag_SupportsEditmode | eModifierTypeFlag_UsesPreview,
     /*icon*/ ICON_MOD_VERTEX_WEIGHT,

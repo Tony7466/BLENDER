@@ -22,7 +22,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_dynamicpaint.h"
 #include "BKE_layer.h"
 #include "BKE_lib_query.h"
@@ -196,7 +196,7 @@ ModifierTypeInfo modifierType_DynamicPaint = {
     /*struct_name*/ "DynamicPaintModifierData",
     /*struct_size*/ sizeof(DynamicPaintModifierData),
     /*srna*/ &RNA_DynamicPaintModifier,
-    /*type*/ eModifierTypeType_Constructive,
+    /*type*/ ModifierTypeType::Constructive,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsMapping |
         eModifierTypeFlag_UsesPointCache | eModifierTypeFlag_Single |
         eModifierTypeFlag_UsesPreview,
