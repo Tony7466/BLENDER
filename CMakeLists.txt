@@ -56,12 +56,7 @@ endif()
 # global compile definitions since add_definitions() adds for all.
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
   $<$<CONFIG:Debug>:DEBUG;_DEBUG>
-  $<$<CONFIG:Release>:NDEBUG>
-  $<$<CONFIG:MinSizeRel>:NDEBUG>
-  $<$<CONFIG:RelWithDebInfo>:NDEBUG>
 )
-
-
 # -----------------------------------------------------------------------------
 # Set policy
 
@@ -99,6 +94,21 @@ endif()
 
 include(build_files/cmake/macros.cmake)
 
+option(WITH_RELEASE_ASSERTS "Build with asserts enabled even for non-debug configurations" OFF)
+mark_as_advanced(WITH_RELEASE_ASSERTS)
+
+if(WITH_RELEASE_ASSERTS)
+  # CMake seemingly be setting the NDEBUG flag on its own already on some configurations
+  # therefore we need to remove the flags if they happen to be set.
+  remove_cc_flag("-DNDEBUG") # GCC/CLang
+  remove_cc_flag("/DNDEBUG") # MSVC
+else()
+  set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+    $<$<CONFIG:Release>:NDEBUG>
+    $<$<CONFIG:MinSizeRel>:NDEBUG>
+    $<$<CONFIG:RelWithDebInfo>:NDEBUG>
+  )
+endif()
 
 # -----------------------------------------------------------------------------
 # Initialize Project
