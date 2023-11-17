@@ -78,6 +78,7 @@ set(SRC
   nodes/node_geo_extrude_mesh.cc
   nodes/node_geo_flip_faces.cc
   nodes/node_geo_geometry_to_instance.cc
+  nodes/node_geo_get_named_grid.cc
   nodes/node_geo_image.cc
   nodes/node_geo_image_info.cc
   nodes/node_geo_image_texture.cc
@@ -152,6 +153,7 @@ set(SRC
   nodes/node_geo_points_to_vertices.cc
   nodes/node_geo_points_to_volume.cc
   nodes/node_geo_proximity.cc
+  nodes/node_geo_prune_grid.cc
   nodes/node_geo_raycast.cc
   nodes/node_geo_realize_instances.cc
   nodes/node_geo_remove_attribute.cc
@@ -185,6 +187,7 @@ set(SRC
   nodes/node_geo_simulation_output.cc
   nodes/node_geo_split_to_instances.cc
   nodes/node_geo_store_named_attribute.cc
+  nodes/node_geo_store_named_grid.cc
   nodes/node_geo_string_join.cc
   nodes/node_geo_string_to_curves.cc
   nodes/node_geo_subdivision_surface.cc

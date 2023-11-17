@@ -650,6 +650,7 @@ class NODE_MT_geometry_node_GEO_VOLUME_READ(Menu):
 
     def draw(self, context):
         layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeGetNamedGrid")
         if context.preferences.experimental.use_new_volume_nodes:
             node_add_menu.add_node_type(layout, "GeometryNodeInputSignedDistance")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Read")
@@ -672,6 +673,7 @@ class NODE_MT_geometry_node_GEO_VOLUME_WRITE(Menu):
 
     def draw(self, context):
         layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeStoreNamedGrid")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Write")
 
 
@@ -682,6 +684,7 @@ class NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS(Menu):
     def draw(self, context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeVolumeToMesh")
+        node_add_menu.add_node_type(layout, "GeometryNodePruneGrid")
         if context.preferences.experimental.use_new_volume_nodes:
             node_add_menu.add_node_type(layout, "GeometryNodeMeanFilterSDFVolume")
             node_add_menu.add_node_type(layout, "GeometryNodeOffsetSDFVolume")
