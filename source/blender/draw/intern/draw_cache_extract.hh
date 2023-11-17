@@ -216,7 +216,8 @@ enum DRWBatchFlag {
   MBC_WIRE_LOOPS_UVS = (1u << MBC_BATCH_INDEX(wire_loops_uvs)),
   MBC_SCULPT_OVERLAYS = (1u << MBC_BATCH_INDEX(sculpt_overlays)),
   MBC_VIEWER_ATTRIBUTE_OVERLAY = (1u << MBC_BATCH_INDEX(surface_viewer_attribute)),
-  MBC_SURFACE_PER_MAT = (1u << MBC_BATCH_LEN),
+  MBC_EDIT_SURFACE_PER_MAT = (1u << MBC_BATCH_LEN),
+  MBC_SURFACE_PER_MAT = (1u << (MBC_BATCH_LEN + 1)),
 };
 ENUM_OPERATORS(DRWBatchFlag, MBC_SURFACE_PER_MAT);
 

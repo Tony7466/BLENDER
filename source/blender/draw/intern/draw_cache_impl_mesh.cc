@@ -106,7 +106,7 @@ static constexpr DRWBatchFlag batches_that_use_buffer(const int buffer_index)
              MBC_EDIT_SELECTION_VERTS | MBC_EDIT_SELECTION_EDGES | MBC_EDIT_SELECTION_FACES |
              MBC_ALL_VERTS | MBC_ALL_EDGES | MBC_LOOSE_EDGES | MBC_EDGE_DETECTION |
              MBC_WIRE_EDGES | MBC_WIRE_LOOPS | MBC_SCULPT_OVERLAYS | MBC_VIEWER_ATTRIBUTE_OVERLAY |
-             MBC_SURFACE_PER_MAT;
+             MBC_SURFACE_PER_MAT | MBC_EDIT_SURFACE_PER_MAT;
     case BUFFER_INDEX(vbo.lnor):
       return MBC_SURFACE | MBC_EDIT_LNOR | MBC_WIRE_LOOPS | MBC_SURFACE_PER_MAT;
     case BUFFER_INDEX(vbo.edge_fac):
@@ -124,7 +124,7 @@ static constexpr DRWBatchFlag batches_that_use_buffer(const int buffer_index)
     case BUFFER_INDEX(vbo.orco):
       return MBC_SURFACE_PER_MAT;
     case BUFFER_INDEX(vbo.edit_data):
-      return MBC_EDIT_TRIANGLES | MBC_EDIT_EDGES | MBC_EDIT_VERTICES;
+      return MBC_EDIT_TRIANGLES | MBC_EDIT_EDGES | MBC_EDIT_VERTICES | MBC_EDIT_SURFACE_PER_MAT;
     case BUFFER_INDEX(vbo.edituv_data):
       return MBC_EDITUV_FACES | MBC_EDITUV_FACES_STRETCH_AREA | MBC_EDITUV_FACES_STRETCH_ANGLE |
              MBC_EDITUV_EDGES | MBC_EDITUV_VERTS;
@@ -195,7 +195,7 @@ static constexpr DRWBatchFlag batches_that_use_buffer(const int buffer_index)
     case BUFFER_INDEX(ibo.edituv_fdots):
       return MBC_EDITUV_FACEDOTS;
     case TRIS_PER_MAT_INDEX:
-      return MBC_SURFACE_PER_MAT;
+      return MBC_SURFACE_PER_MAT | MBC_EDIT_SURFACE_PER_MAT;
   }
   return (DRWBatchFlag)0;
 }
@@ -217,7 +217,7 @@ static void mesh_batch_cache_discard_batch(MeshBatchCache &cache, const DRWBatch
   if (batch_map & MBC_SURFACE_PER_MAT) {
     mesh_batch_cache_discard_surface_batches(cache);
   }
-  if (batch_map & MBC_EDIT_TRIANGLES) {
+  if (batch_map & MBC_EDIT_SURFACE_PER_MAT) {
     mesh_batch_cache_discard_edit_surface_batches(cache);
   }
 }
@@ -1114,7 +1114,8 @@ GPUVertBuf *DRW_mesh_batch_cache_pos_vertbuf_get(Mesh *me)
 GPUBatch *DRW_mesh_batch_cache_get_edit_triangles(Mesh *me)
 {
   MeshBatchCache &cache = *mesh_batch_cache_get(me);
-  mesh_batch_cache_add_request(cache, MBC_EDIT_TRIANGLES);
+  // mesh_batch_cache_add_request(cache, MBC_EDIT_TRIANGLES);
+  mesh_batch_cache_request_edit_surface_batches(cache);
   return DRW_batch_request(&cache.batch.edit_triangles);
 }
 
@@ -1692,6 +1693,17 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     }
   }
 
+  assert_deps_valid(MBC_EDIT_SURFACE_PER_MAT,
+                    {BUFFER_INDEX(vbo.pos_nor), BUFFER_INDEX(vbo.edit_data)});
+  assert_deps_valid(MBC_EDIT_SURFACE_PER_MAT, {TRIS_PER_MAT_INDEX});
+  for (int i = 0; i < cache.mat_len; i++) {
+    if (DRW_batch_requested(cache.edit_surface_per_mat[i], GPU_PRIM_TRIS)) {
+      DRW_ibo_request(cache.edit_surface_per_mat[i], &cache.tris_per_mat[i]);
+      DRW_vbo_request(cache.edit_surface_per_mat[i], &mbuflist->vbo.pos_nor);
+      DRW_vbo_request(cache.edit_surface_per_mat[i], &mbuflist->vbo.edit_data);
+    }
+  }
+
   mbuflist = (do_cage) ? &cache.cage.buff : &cache.final.buff;
 
   /* Edit Mesh */
@@ -1702,13 +1714,6 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     DRW_ibo_request(cache.batch.edit_triangles, &mbuflist->ibo.tris);
     DRW_vbo_request(cache.batch.edit_triangles, &mbuflist->vbo.pos_nor);
     DRW_vbo_request(cache.batch.edit_triangles, &mbuflist->vbo.edit_data);
-  }
-  for (int i = 0; i < cache.mat_len; i++) {
-    if (DRW_batch_requested(cache.edit_surface_per_mat[i], GPU_PRIM_TRIS)) {
-      DRW_ibo_request(cache.edit_surface_per_mat[i], &cache.tris_per_mat[i]);
-      DRW_vbo_request(cache.edit_surface_per_mat[i], &mbuflist->vbo.pos_nor);
-      DRW_vbo_request(cache.edit_surface_per_mat[i], &mbuflist->vbo.edit_data);
-    }
   }
   assert_deps_valid(
       MBC_EDIT_VERTICES,
