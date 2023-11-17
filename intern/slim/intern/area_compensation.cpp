@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_assert.h"
-#include "slim.h"
 
 #include <Eigen/Dense>
-#include <doublearea.h>
+
+#include "doublearea.h"
+#include "slim.h"
 
 using namespace Eigen;
 using namespace igl;

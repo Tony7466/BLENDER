@@ -4,8 +4,8 @@
 
 #include "slim.h"
 
+#include "doublearea.h"
 #include <Eigen/Dense>
-#include <doublearea.h>
 
 using namespace Eigen;
 using namespace igl;

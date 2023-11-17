@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 2.6)
 
 set(INC
   ./
-  extern/libigl_extract
   ../../source/blender/blenlib
   ../../intern/guardedalloc
 )
@@ -16,22 +15,20 @@ set(SRC
 
   intern/area_compensation.cpp
   intern/area_compensation.h
+  intern/cotmatrix.h
+  intern/doublearea.h
+  intern/edge_lengths.h
+  intern/flip_avoiding_line_search.h
   intern/geometry_data_retrieval.cpp
   intern/geometry_data_retrieval.h
   intern/least_squares_relocator.cpp
   intern/least_squares_relocator.h
+  intern/slim.cpp
+  intern/slim.h
   intern/slim_matrix_transfer.cpp
   intern/slim_parametrizer.cpp
   intern/uv_initializer.cpp
   intern/uv_initializer.h
-
-  extern/libigl_extract/slim.h
-  extern/libigl_extract/slim.cpp
-
-  extern/libigl_extract/cotmatrix.h
-  extern/libigl_extract/doublearea.h
-  extern/libigl_extract/edge_lengths.h
-  extern/libigl_extract/flip_avoiding_line_search.h
 )
 
 set(LIB
