@@ -11,8 +11,6 @@
 
 #include "BLI_assert.h"
 
-#include "igl/Timer.h"
-
 #include "doublearea.h"
 #include "igl/map_vertices_to_circle.h"
 
@@ -186,13 +184,9 @@ void SLIMMatrixTransfer::parametrize(int n_iterations,
                                      bool are_border_vertices_pinned,
                                      bool skip_initialization)
 {
-  igl::Timer timer;
-  timer.start();
-
   for (int uv_chart_index = 0; uv_chart_index < n_charts; uv_chart_index++) {
     SLIMMatrixTransferChart &mt_chart = mt_charts[uv_chart_index];
-    setup_slim_data(
-        mt_chart, n_iterations, timer, are_border_vertices_pinned, skip_initialization);
+    setup_slim_data(mt_chart, n_iterations, are_border_vertices_pinned, skip_initialization);
 
     mt_chart.try_slim_solve(n_iterations);
 

@@ -4,7 +4,6 @@
 #include <Eigen/SparseLU>
 
 #include "cotmatrix.h"
-#include "igl/Timer.h"
 #include <iostream>
 
 namespace slim {

@@ -23,7 +23,6 @@
 
 namespace igl {
 struct SLIMData;
-class Timer;
 }  // namespace igl
 
 namespace slim {
@@ -106,7 +105,6 @@ struct SLIMMatrixTransfer {
 
   void setup_slim_data(SLIMMatrixTransferChart &mt_chart,
                        int n_iterations,
-                       igl::Timer &timer,
                        bool border_vertices_are_pinned,
                        bool skip_initialization) const;
 };

@@ -30,9 +30,7 @@ void SLIMMatrixTransfer::setup_slim_data(SLIMMatrixTransferChart &mt_chart,
                                          bool are_border_vertices_pinned,
                                          bool skip_initialization) const
 {
-  igl::Timer timer;
-  timer.start();
-  setup_slim_data(mt_chart, 0, timer, are_border_vertices_pinned, skip_initialization);
+  setup_slim_data(mt_chart, 0, are_border_vertices_pinned, skip_initialization);
 }
 
 SLIMMatrixTransfer::SLIMMatrixTransfer() = default;
@@ -75,7 +73,6 @@ void initialize_if_needed(GeometryData &gd, SLIMData &slim_data)
 /* Transfers all the matrices from the native part and initialises SLIM. */
 void SLIMMatrixTransfer::setup_slim_data(SLIMMatrixTransferChart &mt_chart,
                                          int n_iterations,
-                                         igl::Timer &timer,
                                          bool border_vertices_are_pinned,
                                          bool skip_initialization) const
 {
