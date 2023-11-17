@@ -94,7 +94,8 @@ endif()
 
 include(build_files/cmake/macros.cmake)
 
-option(WITH_RELEASE_ASSERTS "Build with asserts enabled even for non-debug configurations" OFF)
+# for testing on the bots this is currently on by default, when landing this *NEEDS* to be off
+option(WITH_RELEASE_ASSERTS "Build with asserts enabled even for non-debug configurations" ON)
 mark_as_advanced(WITH_RELEASE_ASSERTS)
 
 if(WITH_RELEASE_ASSERTS)
