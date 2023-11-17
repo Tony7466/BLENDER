@@ -1,1 +1,2 @@
 Referenced by issue #112596, Regression: Slower rendering performance
+Referenced by issue #115022, Bevels Shader cause Fresnel issue on AMD GPU
