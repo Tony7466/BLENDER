@@ -117,12 +117,14 @@ static void create_uv_input(const USDExporterContext &usd_export_context,
                             bNodeSocket *input_socket,
                             pxr::UsdShadeMaterial &usd_material,
                             pxr::UsdShadeInput &usd_input,
-                            const pxr::TfToken &default_uv);
+                            const pxr::TfToken &default_uv,
+                            ReportList* reports);
 static void create_uvmap_shader(const USDExporterContext &usd_export_context,
                                 bNode *tex_node,
                                 pxr::UsdShadeMaterial &usd_material,
                                 pxr::UsdShadeShader &usd_tex_shader,
-                                const pxr::TfToken &default_uv);
+                                const pxr::TfToken &default_uv,
+                                ReportList* reports);
 static void export_texture(const USDExporterContext &usd_export_context, bNode *node);
 static bNode *find_bsdf_node(Material *material);
 static void get_absolute_path(Image *ima, char *r_path);
@@ -150,7 +152,8 @@ void create_input(pxr::UsdShadeShader &shader,
 static void create_usd_preview_surface_material(const USDExporterContext &usd_export_context,
                                                 Material *material,
                                                 pxr::UsdShadeMaterial &usd_material,
-                                                const std::string &default_uv)
+                                                const std::string &default_uv,
+                                                ReportList* reports)
 {
   if (!material) {
     return;
@@ -241,7 +244,7 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
         if (pxr::UsdShadeInput st_input = usd_shader.CreateInput(usdtokens::st,
                                                                  pxr::SdfValueTypeNames->Float2))
         {
-          create_uv_input(usd_export_context, socket, usd_material, st_input, default_uv_sampler);
+          create_uv_input(usd_export_context, socket, usd_material, st_input, default_uv_sampler, reports);
         }
       }
 
@@ -366,7 +369,8 @@ static void create_uvmap_shader(const USDExporterContext &usd_export_context,
                                 bNodeLink *uvmap_link,
                                 pxr::UsdShadeMaterial &usd_material,
                                 pxr::UsdShadeInput &usd_input,
-                                const pxr::TfToken &default_uv)
+                                const pxr::TfToken &default_uv,
+                                ReportList* reports)
 
 {
   bNode *uv_node = (uvmap_link && uvmap_link->fromnode ? uvmap_link->fromnode : nullptr);
@@ -379,7 +383,7 @@ static void create_uvmap_shader(const USDExporterContext &usd_export_context,
       usd_export_context, usd_material, shader_name, SH_NODE_UVMAP);
 
   if (!uv_shader) {
-    WM_reportf(RPT_WARNING, "%s: Couldn't create USD shader for UV map", __func__);
+    BKE_reportf(reports, RPT_WARNING, "%s: Couldn't create USD shader for UV map", __func__);
     return;
   }
 
@@ -398,7 +402,8 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
                                       bNodeLink *mapping_link,
                                       pxr::UsdShadeMaterial &usd_material,
                                       pxr::UsdShadeInput &usd_input,
-                                      const pxr::TfToken &default_uv)
+                                      const pxr::TfToken &default_uv,
+                                      ReportList* reports)
 
 {
   bNode *mapping_node = (mapping_link && mapping_link->fromnode ? mapping_link->fromnode :
@@ -412,7 +417,7 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
 
   if (mapping_node->custom1 != TEXMAP_TYPE_POINT) {
     if (bNodeSocket *socket = nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
-      create_uv_input(usd_export_context, socket, usd_material, usd_input, default_uv);
+      create_uv_input(usd_export_context, socket, usd_material, usd_input, default_uv, reports);
     }
     return;
   }
@@ -421,7 +426,7 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
       usd_export_context, usd_material, mapping_node);
 
   if (!transform2d_shader) {
-    WM_reportf(RPT_WARNING, "%s: Couldn't create USD shader for mapping node", __func__);
+    BKE_reportf(reports, RPT_WARNING, "%s: Couldn't create USD shader for mapping node", __func__);
     return;
   }
 
@@ -476,7 +481,7 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
     if (pxr::UsdShadeInput in_input = transform2d_shader.CreateInput(
             usdtokens::in, pxr::SdfValueTypeNames->Float2))
     {
-      create_uv_input(usd_export_context, socket, usd_material, in_input, default_uv);
+      create_uv_input(usd_export_context, socket, usd_material, in_input, default_uv, reports);
     }
   }
 }
@@ -485,7 +490,8 @@ static void create_uv_input(const USDExporterContext &usd_export_context,
                             bNodeSocket *input_socket,
                             pxr::UsdShadeMaterial &usd_material,
                             pxr::UsdShadeInput &usd_input,
-                            const pxr::TfToken &default_uv)
+                            const pxr::TfToken &default_uv,
+                            ReportList* reports)
 {
   if (!(usd_material && usd_input)) {
     return;
@@ -493,14 +499,14 @@ static void create_uv_input(const USDExporterContext &usd_export_context,
 
   if (bNodeLink *mapping_link = traverse_channel(input_socket, SH_NODE_MAPPING)) {
     create_transform2d_shader(
-        usd_export_context, mapping_link, usd_material, usd_input, default_uv);
+        usd_export_context, mapping_link, usd_material, usd_input, default_uv, reports);
     return;
   }
 
   bNodeLink *uvmap_link = traverse_channel(input_socket, SH_NODE_UVMAP);
 
   /* Note that uvmap_link might be null, but create_uv_shader() can handle this case. */
-  create_uvmap_shader(usd_export_context, uvmap_link, usd_material, usd_input, default_uv);
+  create_uvmap_shader(usd_export_context, uvmap_link, usd_material, usd_input, default_uv, reports);
 }
 
 /* Generate a file name for an in-memory image that doesn't have a
@@ -1000,13 +1006,14 @@ const pxr::TfToken token_for_input(const char *input_name)
 pxr::UsdShadeMaterial create_usd_material(const USDExporterContext &usd_export_context,
                                           pxr::SdfPath usd_path,
                                           Material *material,
-                                          const std::string &active_uv)
+                                          const std::string &active_uv,
+                                          ReportList* reports)
 {
   pxr::UsdShadeMaterial usd_material = pxr::UsdShadeMaterial::Define(usd_export_context.stage,
                                                                      usd_path);
 
   if (material->use_nodes && usd_export_context.export_params.generate_preview_surface) {
-    create_usd_preview_surface_material(usd_export_context, material, usd_material, active_uv);
+    create_usd_preview_surface_material(usd_export_context, material, usd_material, active_uv, reports);
   }
   else {
     create_usd_viewport_material(usd_export_context, material, usd_material);

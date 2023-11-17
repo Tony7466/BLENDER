@@ -13,6 +13,7 @@
 #include "BKE_material.h"
 #include "BKE_node.hh"
 #include "BKE_node_tree_update.hh"
+#include "BKE_report.h"
 
 #include "BLI_fileops.h"
 #include "BLI_math_vector.h"
@@ -399,11 +400,12 @@ static pxr::UsdShadeInput get_input(const pxr::UsdShadeShader &usd_shader,
   return input;
 }
 
-static bNodeSocket *get_input_socket(bNode *node, const char *identifier)
+static bNodeSocket *get_input_socket(bNode *node, const char *identifier, ReportList* reports)
 {
   bNodeSocket *sock = nodeFindSocket(node, SOCK_IN, identifier);
   if (!sock) {
-    WM_reportf(RPT_ERROR,
+    BKE_reportf(reports,
+               RPT_ERROR,
                "%s: Error: Couldn't get input socket %s for node %s",
                __func__,
                identifier,
@@ -812,7 +814,8 @@ void USDMaterialReader::convert_usd_transform_2d(const pxr::UsdShadeShader &usd_
     mapping = add_node(nullptr, ntree, SH_NODE_MAPPING, locx, locy);
 
     if (!mapping) {
-      WM_reportf(RPT_WARNING,
+      BKE_reportf(reports(),
+                 RPT_WARNING,
                  "%s: Couldn't create SH_NODE_MAPPING for node input  %s",
                  __func__,
                  dest_socket_name);
@@ -824,7 +827,7 @@ void USDMaterialReader::convert_usd_transform_2d(const pxr::UsdShadeShader &usd_
 
     mapping->custom1 = TEXMAP_TYPE_POINT;
 
-    if (bNodeSocket *scale_socket = get_input_socket(mapping, "Scale")) {
+    if (bNodeSocket *scale_socket = get_input_socket(mapping, "Scale", reports())) {
       if (pxr::UsdShadeInput scale_input = get_input(usd_shader, usdtokens::scale)) {
         pxr::VtValue val;
         if (scale_input.Get(&val) && val.CanCast<pxr::GfVec2f>()) {
@@ -835,7 +838,7 @@ void USDMaterialReader::convert_usd_transform_2d(const pxr::UsdShadeShader &usd_
       }
     }
 
-    if (bNodeSocket *loc_socket = get_input_socket(mapping, "Location")) {
+    if (bNodeSocket *loc_socket = get_input_socket(mapping, "Location", reports())) {
       if (pxr::UsdShadeInput trans_input = get_input(usd_shader, usdtokens::translation)) {
         pxr::VtValue val;
         if (trans_input.Get(&val) && val.CanCast<pxr::GfVec2f>()) {
@@ -846,7 +849,7 @@ void USDMaterialReader::convert_usd_transform_2d(const pxr::UsdShadeShader &usd_
       }
     }
 
-    if (bNodeSocket *rot_socket = get_input_socket(mapping, "Rotation")) {
+    if (bNodeSocket *rot_socket = get_input_socket(mapping, "Rotation", reports())) {
       if (pxr::UsdShadeInput rot_input = get_input(usd_shader, usdtokens::rotation)) {
         pxr::VtValue val;
         if (rot_input.Get(&val) && val.CanCast<float>()) {
