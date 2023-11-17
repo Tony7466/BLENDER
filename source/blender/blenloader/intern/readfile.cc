@@ -3100,7 +3100,6 @@ static BHead *read_global(BlendFileData *bfd, FileData *fd, BHead *bhead)
 
   bfd->fileflags = fg->fileflags;
   bfd->globalf = fg->globalf;
-  STRNCPY(bfd->filepath, fg->filepath);
 
   /* Error in 2.65 and older: `main->filepath` was not set if you save from startup
    * (not after loading file). */
@@ -3117,8 +3116,16 @@ static BHead *read_global(BlendFileData *bfd, FileData *fd, BHead *bhead)
     }
   }
 
+  /* Note: since 88b24bc6bb, `fg->filepath` is only written for crash recovery and autosave files,
+   * so only overwrite `fd->relabase` if it is not empty, in case a regular blendfile is opened
+   * through one of the 'recover' operators. */
   if (G.fileflags & G_FILE_RECOVER_READ) {
-    STRNCPY(fd->relabase, fg->filepath);
+    if (fg->filepath[0] != '\0') {
+      STRNCPY(fd->relabase, fg->filepath);
+      /* Used to set expected original filepath in read Main, instead of the path of the recovery
+       * file itself. */
+      STRNCPY(bfd->filepath, fg->filepath);
+    }
   }
 
   bfd->curscreen = fg->curscreen;
@@ -3577,6 +3584,7 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
 
   bfd->main = BKE_main_new();
   bfd->main->versionfile = fd->fileversion;
+  STRNCPY(bfd->filepath, filepath);
 
   bfd->type = BLENFILETYPE_BLEND;
 
