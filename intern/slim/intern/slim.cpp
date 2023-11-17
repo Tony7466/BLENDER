@@ -39,24 +39,13 @@ inline double compute_energy(igl::SLIMData &s,
                              Eigen::MatrixXd &V_new,
                              Eigen::VectorXd &singularValues);
 inline double compute_energy(igl::SLIMData &s, Eigen::MatrixXd &V_new);
-inline double compute_soft_const_energy(igl::SLIMData &s,
-                                        const Eigen::MatrixXd &V,
-                                        const Eigen::MatrixXi &F,
-                                        Eigen::MatrixXd &V_o);
+inline double compute_soft_const_energy(igl::SLIMData &s, Eigen::MatrixXd &V_o);
 inline double compute_energy_with_jacobians(igl::SLIMData &s,
-                                            const Eigen::MatrixXd &V,
-                                            const Eigen::MatrixXi &F,
                                             const Eigen::MatrixXd &Ji,
-                                            Eigen::MatrixXd &uv,
                                             Eigen::VectorXd &areas,
                                             Eigen::VectorXd &singularValues,
                                             bool gatherSingularValues);
-inline void solve_weighted_arap(igl::SLIMData &s,
-                                const Eigen::MatrixXd &V,
-                                const Eigen::MatrixXi &F,
-                                Eigen::MatrixXd &uv,
-                                Eigen::VectorXi &soft_b_p,
-                                Eigen::MatrixXd &soft_bc_p);
+inline void solve_weighted_arap(igl::SLIMData &s, Eigen::MatrixXd &uv);
 inline void update_weights_and_closest_rotations(igl::SLIMData &s,
                                                  const Eigen::MatrixXd &V,
                                                  const Eigen::MatrixXi &F,
@@ -310,10 +299,7 @@ inline void compute_jacobians(igl::SLIMData &s, const Eigen::MatrixXd &uv)
   }
 }
 
-inline void update_weights_and_closest_rotations(igl::SLIMData &s,
-                                                 const Eigen::MatrixXd &V,
-                                                 const Eigen::MatrixXi &F,
-                                                 Eigen::MatrixXd &uv)
+inline void update_weights_and_closest_rotations(igl::SLIMData &s, Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
   compute_jacobians(s, uv);
@@ -576,12 +562,7 @@ inline void update_weights_and_closest_rotations(igl::SLIMData &s,
   }  // if dim end
 }
 
-inline void solve_weighted_arap(igl::SLIMData &s,
-                                const Eigen::MatrixXd &V,
-                                const Eigen::MatrixXi &F,
-                                Eigen::MatrixXd &uv,
-                                Eigen::VectorXi &soft_b_p,
-                                Eigen::MatrixXd &soft_bc_p)
+inline void solve_weighted_arap(igl::SLIMData &s, Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
   using namespace Eigen;
@@ -717,9 +698,8 @@ inline double compute_energy(igl::SLIMData &s,
 {
   BLI_assert(s.valid);
   compute_jacobians(s, V_new);
-  return compute_energy_with_jacobians(
-             s, s.V, s.F, s.Ji, V_new, s.M, singularValues, gatherSingularValues) +
-         compute_soft_const_energy(s, s.V, s.F, V_new);
+  return compute_energy_with_jacobians(s, s.Ji, s.M, singularValues, gatherSingularValues) +
+         compute_soft_const_energy(s, V_new);
 }
 
 inline double compute_energy(igl::SLIMData &s, Eigen::MatrixXd &V_new)
@@ -737,10 +717,7 @@ inline double compute_energy(igl::SLIMData &s,
   return compute_energy(s, V_new, singularValues, true);
 }
 
-inline double compute_soft_const_energy(igl::SLIMData &s,
-                                        const Eigen::MatrixXd &V,
-                                        const Eigen::MatrixXi &F,
-                                        Eigen::MatrixXd &V_o)
+inline double compute_soft_const_energy(igl::SLIMData &s, Eigen::MatrixXd &V_o)
 {
   BLI_assert(s.valid);
   double e = 0;
@@ -751,10 +728,7 @@ inline double compute_soft_const_energy(igl::SLIMData &s,
 }
 
 inline double compute_energy_with_jacobians(igl::SLIMData &s,
-                                            const Eigen::MatrixXd &V,
-                                            const Eigen::MatrixXi &F,
                                             const Eigen::MatrixXd &Ji,
-                                            Eigen::MatrixXd &uv,
                                             Eigen::VectorXd &areas,
                                             Eigen::VectorXd &singularValues,
                                             bool gatherSingularValues)
@@ -1101,8 +1075,7 @@ void igl::slim_precompute(Eigen::MatrixXd &V,
 }
 
 inline double computeGlobalScaleInvarianceFactor(Eigen::VectorXd &singularValues,
-                                                 Eigen::VectorXd &areas,
-                                                 double relativeScaleFactor)
+                                                 Eigen::VectorXd &areas)
 {
   int nFaces = singularValues.rows() / 2;
 
@@ -1172,8 +1145,8 @@ Eigen::MatrixXd igl::slim_solve(SLIMData &data, int iter_num)
     dest_res = data.V_o;
 
     // Solve Weighted Proxy
-    igl::slim::update_weights_and_closest_rotations(data, data.V, data.F, dest_res);
-    igl::slim::solve_weighted_arap(data, data.V, data.F, dest_res, data.b, data.bc);
+    igl::slim::update_weights_and_closest_rotations(data, dest_res);
+    igl::slim::solve_weighted_arap(data, dest_res);
 
     std::function<double(Eigen::MatrixXd &)> compute_energy = [&](Eigen::MatrixXd &aaa) {
       return arePinsPresent ? igl::slim::compute_energy(data, aaa, singularValues) :

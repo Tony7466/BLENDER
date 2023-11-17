@@ -53,6 +53,6 @@ void harmonic(const Eigen::MatrixXd &v,
 
 void map_vertices_to_convex_border(Eigen::MatrixXd &vertex_positions);
 
-int count_flips(const Eigen::MatrixXd &v, const Eigen::MatrixXi &f, const Eigen::MatrixXd &uv);
+int count_flips(const Eigen::MatrixXi &f, const Eigen::MatrixXd &uv);
 
 }  // namespace slim

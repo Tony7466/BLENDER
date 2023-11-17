@@ -254,10 +254,7 @@ void map_vertices_to_convex_border(Eigen::MatrixXd &vertex_positions)
   }
 }
 
-void get_flips(const Eigen::MatrixXd &v,
-               const Eigen::MatrixXi &f,
-               const Eigen::MatrixXd &uv,
-               std::vector<int> &flip_idx)
+void get_flips(const Eigen::MatrixXi &f, const Eigen::MatrixXd &uv, std::vector<int> &flip_idx)
 {
   flip_idx.resize(0);
   for (int i = 0; i < f.rows(); i++) {
@@ -278,11 +275,11 @@ void get_flips(const Eigen::MatrixXd &v,
   }
 }
 
-int count_flips(const Eigen::MatrixXd &v, const Eigen::MatrixXi &f, const Eigen::MatrixXd &uv)
+int count_flips(const Eigen::MatrixXi &f, const Eigen::MatrixXd &uv)
 {
 
   std::vector<int> flip_idx;
-  get_flips(v, f, uv, flip_idx);
+  get_flips(f, uv, flip_idx);
 
   return flip_idx.size();
 }
