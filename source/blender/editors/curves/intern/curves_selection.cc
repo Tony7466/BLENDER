@@ -269,7 +269,7 @@ static void invert_selection(GMutableSpan selection)
 static void invert_selection(MutableSpan<float> selection, const IndexMask &mask)
 {
   mask.foreach_index_optimized<int64_t>(
-      [&](const int64_t i) { selection[i] = 1.0f - selection[i]; });
+      GrainSize(2048), [&](const int64_t i) { selection[i] = 1.0f - selection[i]; });
 }
 
 static void invert_selection(GMutableSpan selection, const IndexMask &mask)
