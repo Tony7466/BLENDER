@@ -68,7 +68,7 @@
 #include "BKE_blender_version.h"
 #include "BKE_blendfile.h"
 #include "BKE_callbacks.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_lib_id.h"
@@ -79,7 +79,7 @@
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_undo_system.h"
 #include "BKE_workspace.h"
@@ -123,7 +123,7 @@
 #  include "BPY_extern_run.h"
 #endif
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -345,7 +345,7 @@ static void wm_file_read_setup_wm_keep_old(const bContext *C,
 }
 
 static void wm_file_read_setup_wm_use_new(bContext *C,
-                                          Main * /* bmain */,
+                                          Main * /*bmain*/,
                                           BlendFileReadWMSetupData *wm_setup_data,
                                           wmWindowManager *wm)
 {
@@ -692,8 +692,6 @@ static void wm_file_read_post(bContext *C,
     CTX_wm_window_set(C, static_cast<wmWindow *>(wm->windows.first));
   }
 
-  WM_cursor_wait(true);
-
 #ifdef WITH_PYTHON
   if (is_startup_file) {
     /* On startup (by default), Python won't have been initialized.
@@ -787,12 +785,6 @@ static void wm_file_read_post(bContext *C,
 #endif
   }
 
-#ifndef WITH_HEADLESS
-  if (!G.background) {
-    WM_redraw_windows(C);
-  }
-#endif /* WITH_HEADLESS */
-
   /* report any errors.
    * currently disabled if addons aren't yet loaded */
   if (addons_loaded) {
@@ -826,8 +818,6 @@ static void wm_file_read_post(bContext *C,
       WM_toolsystem_init(C);
     }
   }
-
-  WM_cursor_wait(false);
 }
 
 static void wm_read_callback_pre_wrapper(bContext *C, const char *filepath)
@@ -1012,26 +1002,6 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
   /* so we can get the error message */
   errno = 0;
 
-#ifndef WITH_HEADLESS
-  if (!G.background) {
-    wmWindowManager *wm = CTX_wm_manager(C);
-    wmWindow *win = CTX_wm_window(C);
-    bool win_was_null = (win == nullptr);
-    if (win_was_null) {
-      win = static_cast<wmWindow *>(wm->windows.first);
-      CTX_wm_window_set(C, win);
-    }
-    if (win != nullptr) {
-      /* Redraw to remove any open menus. */
-      WM_redraw_windows(C);
-
-      if (win_was_null) {
-        CTX_wm_window_set(C, nullptr);
-      }
-    }
-  }
-#endif /* WITH_HEADLESS */
-
   WM_cursor_wait(true);
 
   /* first try to append data from exotic file formats... */
@@ -1054,6 +1024,9 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
     BlendFileData *bfd = BKE_blendfile_read(filepath, &params, &bf_reports);
     if (bfd != nullptr) {
       wm_file_read_pre(use_data, use_userdef);
+
+      /* Close any user-loaded fonts. */
+      BLF_reset_fonts();
 
       /* Put WM into a stable state for post-readfile processes (kill jobs, removes event handlers,
        * message bus, and so on). */
@@ -1097,7 +1070,6 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
       bf_reports.duration.whole = PIL_check_seconds_timer() - bf_reports.duration.whole;
       file_read_reports_finalize(&bf_reports);
 
-      WM_cursor_wait(true);
       success = true;
     }
   }
@@ -1177,6 +1149,17 @@ void wm_homefile_read_ex(bContext *C,
                          ReportList *reports,
                          wmFileReadPost_Params **r_params_file_read_post)
 {
+  /* NOTE: unlike #WM_file_read, don't set the wait cursor when reading the home-file.
+   * While technically both are reading a file and could use the wait cursor,
+   * avoid doing so for the following reasons.
+   *
+   * - When loading blend with a file (command line or external file browser)
+   *   the home-file is read before the file being loaded.
+   *   Toggling the wait cursor twice causes the cursor to flicker which looks like a glitch.
+   * - In practice it's not that useful as users tend not to set scenes with slow loading times
+   *   as their startup.
+   */
+
 /* UNUSED, keep as this may be needed later & the comment below isn't self evident. */
 #if 0
   /* Context does not always have valid main pointer here. */
@@ -1201,8 +1184,6 @@ void wm_homefile_read_ex(bContext *C,
   bool filepath_startup_is_factory = true;
   char filepath_startup[FILE_MAX];
   char filepath_userdef[FILE_MAX];
-
-  WM_cursor_wait(true);
 
   /* When 'app_template' is set:
    * '{BLENDER_USER_CONFIG}/{app_template}' */
@@ -1521,8 +1502,6 @@ void wm_homefile_read_ex(bContext *C,
       CTX_wm_window_set(C, nullptr);
     }
   }
-
-  WM_cursor_wait(false);
 }
 
 void wm_homefile_read(bContext *C,
@@ -1906,13 +1885,6 @@ static bool wm_file_write_check_with_report_on_failure(Main *bmain,
     return false;
   }
 
-  /* Check if file write permission is ok */
-  if (BLI_exists(filepath) && !BLI_file_is_writable(filepath)) {
-    BKE_reportf(
-        reports, RPT_ERROR, "Cannot save blend file, path \"%s\" is not writable", filepath);
-    return false;
-  }
-
   LISTBASE_FOREACH (Library *, li, &bmain->libraries) {
     if (BLI_path_cmp(li->filepath_abs, filepath) == 0) {
       BKE_reportf(reports, RPT_ERROR, "Cannot overwrite used library '%.240s'", filepath);
@@ -1951,6 +1923,16 @@ static bool wm_file_write(bContext *C,
   /* NOTE: either #BKE_CB_EVT_SAVE_POST or #BKE_CB_EVT_SAVE_POST_FAIL must run.
    * Runs at the end of this function, don't return beforehand. */
   BKE_callback_exec_string(bmain, BKE_CB_EVT_SAVE_PRE, filepath);
+
+  /* Check if file write permission is OK. */
+  if (BLI_exists(filepath) && !BLI_file_is_writable(filepath)) {
+    BKE_reportf(
+        reports, RPT_ERROR, "Cannot save blend file, path \"%s\" is not writable", filepath);
+
+    BKE_callback_exec_string(bmain, BKE_CB_EVT_SAVE_POST_FAIL, filepath);
+    return false;
+  }
+
   ED_assets_pre_save(bmain);
 
   /* Enforce full override check/generation on file save. */
@@ -2475,6 +2457,11 @@ static int wm_userpref_read_exec(bContext *C, wmOperator *op)
     U.runtime.is_dirty = true;
   }
 
+  /* Ensure the correct icon textures are loaded. When the current theme didn't had an
+   * #icon_border_intensity, but the loaded theme has, the icon with border intensity needs to be
+   * loaded. */
+  UI_icons_reload_internal_textures();
+
   BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_POST);
 
   /* Needed to recalculate UI scaling values (eg, #UserDef.inv_dpi_fac). */
@@ -2584,6 +2571,9 @@ static int wm_homefile_read_exec(bContext *C, wmOperator *op)
       use_userdef = true;
     }
   }
+
+  /* Close any user-loaded fonts. */
+  BLF_reset_fonts();
 
   char app_template_buf[sizeof(U.app_template)];
   const char *app_template;
@@ -2866,6 +2856,9 @@ static int wm_open_mainfile__open(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "filepath", filepath);
   BLI_path_canonicalize_native(filepath, sizeof(filepath));
 
+  /* For file opening, also print in console for warnings, not only errors. */
+  BKE_report_print_level_set(op->reports, RPT_WARNING);
+
   /* re-use last loaded setting so we can reload a file without changing */
   wm_open_init_load_ui(op, false);
   wm_open_init_use_scripts(op, false);
@@ -2873,9 +2866,6 @@ static int wm_open_mainfile__open(bContext *C, wmOperator *op)
   SET_FLAG_FROM_TEST(G.fileflags, !RNA_boolean_get(op->ptr, "load_ui"), G_FILE_NO_UI);
   SET_FLAG_FROM_TEST(G.f, RNA_boolean_get(op->ptr, "use_scripts"), G_FLAG_SCRIPT_AUTOEXEC);
   success = wm_file_read_opwrap(C, filepath, op->reports);
-
-  /* for file open also popup for warnings, not only errors */
-  BKE_report_print_level_set(op->reports, RPT_WARNING);
 
   if (success) {
     if (G.fileflags & G_FILE_NO_UI) {
@@ -2910,7 +2900,7 @@ static int wm_open_mainfile_exec(bContext *C, wmOperator *op)
 }
 
 static std::string wm_open_mainfile_description(bContext * /*C*/,
-                                                wmOperatorType * /*op*/,
+                                                wmOperatorType * /*ot*/,
                                                 PointerRNA *params)
 {
   if (!RNA_struct_property_is_set(params, "filepath")) {
@@ -4288,7 +4278,7 @@ static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, vo
     has_extra_checkboxes = true;
   }
 
-  BKE_reports_clear(&reports);
+  BKE_reports_free(&reports);
 
   uiItemS_ex(layout, has_extra_checkboxes ? 2.0f : 4.0f);
 

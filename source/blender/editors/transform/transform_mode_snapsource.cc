@@ -10,7 +10,7 @@
 
 #include "DNA_windowmanager_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "ED_screen.hh"
 #include "ED_transform_snap_object_context.hh"
@@ -74,6 +74,7 @@ static void snapsource_confirm(TransInfo *t)
   BLI_assert(t->modifiers & MOD_EDIT_SNAP_SOURCE);
   getSnapPoint(t, t->tsnap.snap_source);
   t->tsnap.snap_source_fn = nullptr;
+  t->tsnap.source_type = t->tsnap.target_type;
   t->tsnap.status |= SNAP_SOURCE_FOUND;
 
   SnapSouceCustomData *customdata = static_cast<SnapSouceCustomData *>(t->custom.mode.data);

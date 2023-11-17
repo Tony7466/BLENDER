@@ -6,7 +6,7 @@
  * \ingroup bke
  * Implementation of CustomData.
  *
- * BKE_customdata.h contains the function prototypes for this file.
+ * BKE_customdata.hh contains the function prototypes for this file.
  */
 
 #include "MEM_guardedalloc.h"
@@ -33,7 +33,7 @@
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
 #include "BLI_string_utf8.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #ifndef NDEBUG
@@ -43,7 +43,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_anonymous_attribute_id.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_customdata_file.h"
 #include "BKE_deform.h"
 #include "BKE_main.h"
@@ -2414,12 +2414,30 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totel
   }
 }
 
+[[maybe_unused]] static bool layer_is_mutable(CustomDataLayer &layer)
+{
+  if (layer.sharing_info == nullptr) {
+    return true;
+  }
+  return layer.sharing_info->is_mutable();
+}
+
 void CustomData_ensure_data_is_mutable(CustomDataLayer *layer, const int totelem)
 {
   ensure_layer_data_is_mutable(*layer, totelem);
 }
 
-void CustomData_realloc(CustomData *data, const int old_size, const int new_size)
+void CustomData_ensure_layers_are_mutable(CustomData *data, int totelem)
+{
+  for (const int i : IndexRange(data->totlayer)) {
+    ensure_layer_data_is_mutable(data->layers[i], totelem);
+  }
+}
+
+void CustomData_realloc(CustomData *data,
+                        const int old_size,
+                        const int new_size,
+                        const eCDAllocType alloctype)
 {
   BLI_assert(new_size >= 0);
   for (int i = 0; i < data->totlayer; i++) {
@@ -2452,10 +2470,25 @@ void CustomData_realloc(CustomData *data, const int old_size, const int new_size
     }
 
     if (new_size > old_size) {
-      /* Initialize new values for non-trivial types. */
-      if (typeInfo->construct) {
-        const int new_elements_num = new_size - old_size;
-        typeInfo->construct(POINTER_OFFSET(layer->data, old_size_in_bytes), new_elements_num);
+      const int new_elements_num = new_size - old_size;
+      void *new_elements_begin = POINTER_OFFSET(layer->data, old_size_in_bytes);
+      switch (alloctype) {
+        case CD_CONSTRUCT: {
+          /* Initialize new values for non-trivial types. */
+          if (typeInfo->construct) {
+            typeInfo->construct(new_elements_begin, new_elements_num);
+          }
+          break;
+        }
+        case CD_SET_DEFAULT: {
+          if (typeInfo->set_default_value) {
+            typeInfo->set_default_value(new_elements_begin, new_elements_num);
+          }
+          else {
+            memset(new_elements_begin, 0, typeInfo->size * new_elements_num);
+          }
+          break;
+        }
       }
     }
   }
@@ -3226,38 +3259,6 @@ int CustomData_number_of_layers_typemask(const CustomData *data, const eCustomDa
   return number;
 }
 
-void CustomData_free_temporary(CustomData *data, const int totelem)
-{
-  int i, j;
-  bool changed = false;
-  for (i = 0, j = 0; i < data->totlayer; i++) {
-    CustomDataLayer *layer = &data->layers[i];
-
-    if (i != j) {
-      data->layers[j] = data->layers[i];
-    }
-
-    if ((layer->flag & CD_FLAG_TEMPORARY) == CD_FLAG_TEMPORARY) {
-      customData_free_layer__internal(layer, totelem);
-      changed = true;
-    }
-    else {
-      j++;
-    }
-  }
-
-  data->totlayer = j;
-
-  if (data->totlayer <= data->maxlayer - CUSTOMDATA_GROW) {
-    customData_resize(data, -CUSTOMDATA_GROW);
-    changed = true;
-  }
-
-  if (changed) {
-    customData_update_offsets(data);
-  }
-}
-
 void CustomData_set_only_copy(const CustomData *data, const eCustomDataMask mask)
 {
   for (int i = 0; i < data->totlayer; i++) {
@@ -3291,6 +3292,8 @@ void CustomData_copy_data_layer(const CustomData *source,
                                 const int count)
 {
   const LayerTypeInfo *typeInfo;
+
+  BLI_assert(layer_is_mutable(dest->layers[dst_layer_index]));
 
   const void *src_data = source->layers[src_layer_index].data;
   void *dst_data = dest->layers[dst_layer_index].data;
@@ -3407,6 +3410,7 @@ void CustomData_free_elem(CustomData *data, const int index, const int count)
 
     if (typeInfo->free) {
       size_t offset = size_t(index) * typeInfo->size;
+      BLI_assert(layer_is_mutable(data->layers[i]));
 
       typeInfo->free(POINTER_OFFSET(data->layers[i].data, offset), count, typeInfo->size);
     }

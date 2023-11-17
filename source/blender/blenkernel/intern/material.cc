@@ -49,10 +49,11 @@
 #include "BKE_anim_data.h"
 #include "BKE_attribute.h"
 #include "BKE_brush.hh"
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_displist.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_icons.h"
 #include "BKE_idtype.h"
 #include "BKE_image.h"
@@ -63,14 +64,15 @@
 #include "BKE_mesh.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_preview_image.hh"
 #include "BKE_scene.h"
 #include "BKE_vfont.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_material.h"
 
@@ -234,7 +236,7 @@ IDTypeInfo IDType_ID_MA = {
     /*main_listbase_index*/ INDEX_ID_MA,
     /*struct_size*/ sizeof(Material),
     /*name*/ "Material",
-    /*name_plural*/ "materials",
+    /*name_plural*/ N_("materials"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_MATERIAL,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -1112,6 +1114,9 @@ void BKE_object_material_remap(Object *ob, const uint *remap)
   else if (ob->type == OB_GPENCIL_LEGACY) {
     BKE_gpencil_material_remap(static_cast<bGPdata *>(ob->data), remap, ob->totcol);
   }
+  else if (ob->type == OB_GREASE_PENCIL) {
+    BKE_grease_pencil_material_remap(static_cast<GreasePencil *>(ob->data), remap, ob->totcol);
+  }
   else {
     /* add support for this object data! */
     BLI_assert(matar == nullptr);
@@ -1357,8 +1362,8 @@ bool BKE_object_material_slot_remove(Main *bmain, Object *ob)
   /* check indices from mesh */
   if (ELEM(ob->type, OB_MESH, OB_CURVES_LEGACY, OB_SURF, OB_FONT)) {
     material_data_index_remove_id((ID *)ob->data, actcol - 1);
-    if (ob->runtime.curve_cache) {
-      BKE_displist_free(&ob->runtime.curve_cache->disp);
+    if (ob->runtime->curve_cache) {
+      BKE_displist_free(&ob->runtime->curve_cache->disp);
     }
   }
   /* check indices from gpencil */

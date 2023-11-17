@@ -10,7 +10,7 @@
 #include "BKE_appdir.h"
 #include "BKE_blender_version.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "IO_ply.hh"
 #include "intern/ply_data.hh"
@@ -523,6 +523,18 @@ TEST_F(ply_exporter_ply_data_test, CubeLooseEdgesLoadPLYDataUV)
   EXPECT_EQ_ARRAY(exp_edges, plyData.edges.data(), ARRAY_SIZE(exp_edges));
   EXPECT_EQ_ARRAY(exp_face_sizes, plyData.face_sizes.data(), ARRAY_SIZE(exp_face_sizes));
   EXPECT_EQ_ARRAY(exp_faces, plyData.face_vertices.data(), ARRAY_SIZE(exp_faces));
+}
+
+TEST_F(ply_exporter_ply_data_test, CubesVertexAttrs)
+{
+  PLYExportParams params = {};
+  params.export_uv = true;
+  params.export_attributes = true;
+  PlyData plyData = load_ply_data_from_blendfile(
+      "io_tests/blend_geometry/cubes_vertex_attrs.blend", params);
+  EXPECT_EQ(plyData.vertices.size(), 28);
+  EXPECT_EQ(plyData.vertex_custom_attr.size(), 11); /* Float 1 + Color 4 + ByteColor 4 + Int2D 2*/
+  EXPECT_EQ(plyData.vertex_custom_attr[0].data.size(), 28);
 }
 
 TEST_F(ply_exporter_ply_data_test, SuzanneLoadPLYDataUV)
