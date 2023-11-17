@@ -82,6 +82,60 @@ const EnumPropertyItem *domain_experimental_grease_pencil_version3_fn(bContext *
 
 }  // namespace enums
 
+namespace grids {
+
+bool grid_type_supported(const eCustomDataType data_type)
+{
+  return ELEM(data_type, CD_PROP_FLOAT, CD_PROP_FLOAT3);
+}
+
+const EnumPropertyItem *grid_type_items_fn(bContext * /*C*/,
+                                           PointerRNA * /*ptr*/,
+                                           PropertyRNA * /*prop*/,
+                                           bool *r_free)
+{
+  *r_free = true;
+  return enum_items_filter(rna_enum_attribute_type_items,
+                           [](const EnumPropertyItem &item) -> bool {
+                             return enums::generic_attribute_type_supported(item) &&
+                                    grid_type_supported(eCustomDataType(item.value));
+                           });
+}
+
+BaseSocketDeclarationBuilder &declare_grid_type_input(NodeDeclarationBuilder &b,
+                                                      const eCustomDataType type,
+                                                      const StringRef name)
+{
+  switch (type) {
+    case CD_PROP_FLOAT:
+      return b.add_input<decl::Float>(name);
+    case CD_PROP_FLOAT3:
+      return b.add_input<decl::Vector>(name);
+    default:
+      break;
+  }
+  BLI_assert_unreachable();
+  return b.add_input<decl::Float>(name);
+}
+
+BaseSocketDeclarationBuilder &declare_grid_type_output(NodeDeclarationBuilder &b,
+                                                       const eCustomDataType type,
+                                                       const StringRef name)
+{
+  switch (type) {
+    case CD_PROP_FLOAT:
+      return b.add_output<decl::Float>(name);
+    case CD_PROP_FLOAT3:
+      return b.add_output<decl::Vector>(name);
+    default:
+      break;
+  }
+  BLI_assert_unreachable();
+  return b.add_output<decl::Float>(name);
+}
+
+}  // namespace grids
+
 }  // namespace blender::nodes
 
 bool geo_node_poll_default(const bNodeType * /*ntype*/,

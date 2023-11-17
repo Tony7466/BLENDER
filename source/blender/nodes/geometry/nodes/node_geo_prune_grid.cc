@@ -8,10 +8,10 @@ namespace blender::nodes::node_geo_prune_grid_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  //  b.add_input<decl::Grid>("Grid");
+  grids::declare_grid_type_input(b, CD_PROP_FLOAT, "Grid");
   b.add_input<decl::Float>("Tolerance").default_value(0.01f).min(0.0f);
 
-  //  b.add_output<decl::Grid>("Grid");
+  grids::declare_grid_type_output(b, CD_PROP_FLOAT, "Grid");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

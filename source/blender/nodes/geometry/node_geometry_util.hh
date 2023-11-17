@@ -135,4 +135,21 @@ const EnumPropertyItem *domain_experimental_grease_pencil_version3_fn(bContext *
 
 }  // namespace enums
 
+namespace grids {
+
+bool grid_type_supported(eCustomDataType data_type);
+const EnumPropertyItem *grid_type_items_fn(bContext *C,
+                                           PointerRNA *ptr,
+                                           PropertyRNA *prop,
+                                           bool *r_free);
+
+BaseSocketDeclarationBuilder &declare_grid_type_input(NodeDeclarationBuilder &b,
+                                                      eCustomDataType type,
+                                                      StringRef name);
+BaseSocketDeclarationBuilder &declare_grid_type_output(NodeDeclarationBuilder &b,
+                                                       eCustomDataType type,
+                                                       StringRef name);
+
+}  // namespace grids
+
 }  // namespace blender::nodes
