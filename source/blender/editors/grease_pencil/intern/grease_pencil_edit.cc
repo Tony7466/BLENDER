@@ -639,7 +639,7 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
   bke::CurvesGeometry dst_curves(total_points, total_curves);
 
   MutableSpan<int> new_curve_offsets = dst_curves.offsets_for_write();
-  array_utils::copy(dst_curve_counts.as_span(), new_curve_offsets);
+  array_utils::copy(dst_curve_counts.as_span(), new_curve_offsets.drop_back(1));
   offset_indices::accumulate_counts_to_offsets(new_curve_offsets);
 
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
