@@ -352,7 +352,7 @@ void select_alternate(bke::CurvesGeometry &curves,
   const VArray<bool> cyclic = curves.cyclic();
 
   MutableSpan<bool> selection_typed = selection.span.typed<bool>();
-  curves_mask.foreach_index_optimized<int64_t>([&](const int64_t curve_i) {
+  curves_mask.foreach_index([&](const int64_t curve_i) {
     const IndexRange points = points_by_curve[curve_i];
     if (!has_anything_selected(selection.span.slice(points))) {
       return;
@@ -403,7 +403,7 @@ void select_adjacent(bke::CurvesGeometry &curves,
 
   if (selection.span.type().is<bool>()) {
     MutableSpan<bool> selection_typed = selection.span.typed<bool>();
-    curves_mask.foreach_index_optimized<int64_t>([&](const int64_t curve_i) {
+    curves_mask.foreach_index([&](const int64_t curve_i) {
       const IndexRange points = points_by_curve[curve_i];
 
       /* Handle all cases in the forward direction. */
@@ -431,7 +431,7 @@ void select_adjacent(bke::CurvesGeometry &curves,
   }
   else if (selection.span.type().is<float>()) {
     MutableSpan<float> selection_typed = selection.span.typed<float>();
-    curves_mask.foreach_index_optimized<int64_t>([&](const int64_t curve_i) {
+    curves_mask.foreach_index([&](const int64_t curve_i) {
       const IndexRange points = points_by_curve[curve_i];
 
       /* Handle all cases in the forward direction. */
