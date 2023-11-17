@@ -1743,12 +1743,12 @@ BezTriple *BKE_bezier_array_merge(
       memcpy(&large_array[*merged_size], &a[iterator_a], sizeof(BezTriple));
       iterator_a++;
     }
-    else if (a->vec[1][0] == b->vec[1][0]) {
+    else if (a[iterator_a].vec[1][0] == b[iterator_b].vec[1][0]) {
       memcpy(&large_array[*merged_size], &a[iterator_a], sizeof(BezTriple));
       iterator_a++;
       iterator_b++;
     }
-    else if (a->vec[1][0] < b->vec[1][0]) {
+    else if (a[iterator_a].vec[1][0] < b[iterator_b].vec[1][0]) {
       memcpy(&large_array[*merged_size], &a[iterator_a], sizeof(BezTriple));
       iterator_a++;
     }
