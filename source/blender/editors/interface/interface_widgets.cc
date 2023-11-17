@@ -3375,9 +3375,6 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
   const uiButHSVCube *hsv_but = (uiButHSVCube *)but;
   bTheme *btheme = UI_GetTheme();
   uiWidgetColors *wcol = &btheme->tui.wcol_numslider;
-  uiWidgetBase wtb;
-  const float rad = wcol->roundness * BLI_rcti_size_x(rect);
-  float x, y;
   float rgb[3], hsv[3], v;
 
   ui_but_v3_get(but, rgb);
@@ -3406,7 +3403,7 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
   UI_draw_roundbox_4fv_ex(&rectf, inner1, inner2, U.pixelsize, outline, 1.0f, 0.0f);
 
   /* cursor */
-  y = rect->ymin + v * BLI_rcti_size_y(rect);
+  const float y = rect->ymin + v * BLI_rcti_size_y(rect);
   rectf.ymin = y - (4.0f * UI_SCALE_FAC) - U.pixelsize;
   rectf.ymax = y + (4.0f * UI_SCALE_FAC) + U.pixelsize;
   float col[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -3419,7 +3416,7 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
     rectf.ymax += U.pixelsize;
   }
 
-  UI_draw_roundbox_4fv(&rectf, false, 0, col);
+  UI_draw_roundbox_4fv(&rectf, false, 0.0f, col);
 
   rectf.ymin += 1.0f;
   rectf.ymax -= 1.0f;
