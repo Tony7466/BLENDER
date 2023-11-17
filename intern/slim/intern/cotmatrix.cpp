@@ -11,6 +11,8 @@
 
 #include <vector>
 
+namespace slim {
+
 // Inputs:
 //   V  #V by dim list of rest domain positions
 //   F  #F by 3 list of triangle indices into V
@@ -33,7 +35,7 @@ static inline void cotmatrix_entries(const Eigen::PlainObjectBase<DerivedV> &V,
   // Law of cosines + law of sines
   // Compute Squared Edge lenghts
   Matrix<typename DerivedC::Scalar, Dynamic, 3> l2;
-  igl::squared_edge_lengths(V, F, l2);
+  squared_edge_lengths(V, F, l2);
   // Compute Edge lenghts
   Matrix<typename DerivedC::Scalar, Dynamic, 3> l;
   l = l2.array().sqrt();
@@ -52,9 +54,9 @@ static inline void cotmatrix_entries(const Eigen::PlainObjectBase<DerivedV> &V,
 }
 
 template<typename DerivedV, typename DerivedF, typename Scalar>
-inline void igl::cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
-                           const Eigen::PlainObjectBase<DerivedF> &F,
-                           Eigen::SparseMatrix<Scalar> &L)
+inline void cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
+                      const Eigen::PlainObjectBase<DerivedF> &F,
+                      Eigen::SparseMatrix<Scalar> &L)
 {
   using namespace Eigen;
   using namespace std;
@@ -91,3 +93,5 @@ inline void igl::cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
   }
   L.setFromTriplets(IJV.begin(), IJV.end());
 }
+
+}  // namespace slim

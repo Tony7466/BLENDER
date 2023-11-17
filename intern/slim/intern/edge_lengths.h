@@ -10,7 +10,7 @@
 
 #include <Eigen/Dense>
 
-namespace igl {
+namespace slim {
 // Constructs a list of lengths of edges opposite each index in a face
 // (triangle) list
 //
@@ -56,6 +56,6 @@ template<typename DerivedV, typename DerivedF, typename DerivedL>
 inline void squared_edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
                                  const Eigen::PlainObjectBase<DerivedF> &F,
                                  Eigen::PlainObjectBase<DerivedL> &L);
-}  // namespace igl
+}  // namespace slim
 
 #include "edge_lengths.cpp"

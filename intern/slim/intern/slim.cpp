@@ -14,8 +14,6 @@
 #include "BLI_assert.h"
 
 #include <iostream>
-#include <map>
-#include <set>
 #include <vector>
 
 #include <Eigen/Geometry>
@@ -23,8 +21,8 @@
 #include <Eigen/SVD>
 #include <Eigen/SparseCholesky>
 
-namespace igl {
 namespace slim {
+
 // Definitions of internal functions
 inline void compute_surface_gradient_matrix(const Eigen::MatrixXd &V,
                                             const Eigen::MatrixXi &F,
@@ -32,27 +30,25 @@ inline void compute_surface_gradient_matrix(const Eigen::MatrixXd &V,
                                             const Eigen::MatrixXd &F2,
                                             Eigen::SparseMatrix<double> &D1,
                                             Eigen::SparseMatrix<double> &D2);
-inline void buildA(igl::SLIMData &s, Eigen::SparseMatrix<double> &A);
-inline void buildRhs(igl::SLIMData &s, const Eigen::SparseMatrix<double> &At);
-inline void add_soft_constraints(igl::SLIMData &s, Eigen::SparseMatrix<double> &L);
-inline double compute_energy(igl::SLIMData &s,
-                             Eigen::MatrixXd &V_new,
-                             Eigen::VectorXd &singularValues);
-inline double compute_energy(igl::SLIMData &s, Eigen::MatrixXd &V_new);
-inline double compute_soft_const_energy(igl::SLIMData &s, Eigen::MatrixXd &V_o);
-inline double compute_energy_with_jacobians(igl::SLIMData &s,
+inline void buildA(SLIMData &s, Eigen::SparseMatrix<double> &A);
+inline void buildRhs(SLIMData &s, const Eigen::SparseMatrix<double> &At);
+inline void add_soft_constraints(SLIMData &s, Eigen::SparseMatrix<double> &L);
+inline double compute_energy(SLIMData &s, Eigen::MatrixXd &V_new, Eigen::VectorXd &singularValues);
+inline double compute_energy(SLIMData &s, Eigen::MatrixXd &V_new);
+inline double compute_soft_const_energy(SLIMData &s, Eigen::MatrixXd &V_o);
+inline double compute_energy_with_jacobians(SLIMData &s,
                                             const Eigen::MatrixXd &Ji,
                                             Eigen::VectorXd &areas,
                                             Eigen::VectorXd &singularValues,
                                             bool gatherSingularValues);
-inline void solve_weighted_arap(igl::SLIMData &s, Eigen::MatrixXd &uv);
-inline void update_weights_and_closest_rotations(igl::SLIMData &s,
+inline void solve_weighted_arap(SLIMData &s, Eigen::MatrixXd &uv);
+inline void update_weights_and_closest_rotations(SLIMData &s,
                                                  const Eigen::MatrixXd &V,
                                                  const Eigen::MatrixXi &F,
                                                  Eigen::MatrixXd &uv);
-inline void compute_jacobians(igl::SLIMData &s, const Eigen::MatrixXd &uv);
-inline void build_linear_system(igl::SLIMData &s, Eigen::SparseMatrix<double> &L);
-inline void pre_calc(igl::SLIMData &s);
+inline void compute_jacobians(SLIMData &s, const Eigen::MatrixXd &uv);
+inline void build_linear_system(SLIMData &s, Eigen::SparseMatrix<double> &L);
+inline void pre_calc(SLIMData &s);
 
 // GRAD
 // G = grad(V,F)
@@ -258,7 +254,7 @@ inline void compute_surface_gradient_matrix(const Eigen::MatrixXd &V,
   D2 = F2.col(0).asDiagonal() * Dx + F2.col(1).asDiagonal() * Dy + F2.col(2).asDiagonal() * Dz;
 }
 
-inline void compute_weighted_jacobians(igl::SLIMData &s, const Eigen::MatrixXd &uv)
+inline void compute_weighted_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
 
@@ -276,7 +272,7 @@ inline void compute_weighted_jacobians(igl::SLIMData &s, const Eigen::MatrixXd &
   s.Ji.col(3) = weights.cwiseProduct(s.Ji.col(3));
 }
 
-inline void compute_unweighted_jacobians(igl::SLIMData &s, const Eigen::MatrixXd &uv)
+inline void compute_unweighted_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
 
@@ -287,7 +283,7 @@ inline void compute_unweighted_jacobians(igl::SLIMData &s, const Eigen::MatrixXd
   s.Ji.col(3) = s.Dy * uv.col(1);
 }
 
-inline void compute_jacobians(igl::SLIMData &s, const Eigen::MatrixXd &uv)
+inline void compute_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
 
@@ -299,7 +295,7 @@ inline void compute_jacobians(igl::SLIMData &s, const Eigen::MatrixXd &uv)
   }
 }
 
-inline void update_weights_and_closest_rotations(igl::SLIMData &s, Eigen::MatrixXd &uv)
+inline void update_weights_and_closest_rotations(SLIMData &s, Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
   compute_jacobians(s, uv);
@@ -330,23 +326,23 @@ inline void update_weights_and_closest_rotations(igl::SLIMData &s, Eigen::Matrix
 
       // Update Weights according to energy
       switch (s.slim_energy) {
-        case igl::SLIMData::ARAP: {
+        case SLIMData::ARAP: {
           m_sing_new << 1, 1;
           break;
         }
-        case igl::SLIMData::SYMMETRIC_DIRICHLET: {
+        case SLIMData::SYMMETRIC_DIRICHLET: {
           double s1_g = 2 * (s1 - pow(s1, -3));
           double s2_g = 2 * (s2 - pow(s2, -3));
           m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(s2_g / (2 * (s2 - 1)));
           break;
         }
-        case igl::SLIMData::LOG_ARAP: {
+        case SLIMData::LOG_ARAP: {
           double s1_g = 2 * (log(s1) / s1);
           double s2_g = 2 * (log(s2) / s2);
           m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(s2_g / (2 * (s2 - 1)));
           break;
         }
-        case igl::SLIMData::CONFORMAL: {
+        case SLIMData::CONFORMAL: {
           double s1_g = 1 / (2 * s2) - s2 / (2 * pow(s1, 2));
           double s2_g = 1 / (2 * s1) - s1 / (2 * pow(s2, 2));
 
@@ -361,7 +357,7 @@ inline void update_weights_and_closest_rotations(igl::SLIMData &s, Eigen::Matrix
           ri = ui * closest_sing_vec.asDiagonal() * vi.transpose();
           break;
         }
-        case igl::SLIMData::EXP_CONFORMAL: {
+        case SLIMData::EXP_CONFORMAL: {
           double s1_g = 2 * (s1 - pow(s1, -3));
           double s2_g = 2 * (s2 - pow(s2, -3));
 
@@ -374,7 +370,7 @@ inline void update_weights_and_closest_rotations(igl::SLIMData &s, Eigen::Matrix
           m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(s2_g / (2 * (s2 - 1)));
           break;
         }
-        case igl::SLIMData::EXP_SYMMETRIC_DIRICHLET: {
+        case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
           double s1_g = 2 * (s1 - pow(s1, -3));
           double s2_g = 2 * (s2 - pow(s2, -3));
 
@@ -436,11 +432,11 @@ inline void update_weights_and_closest_rotations(igl::SLIMData &s, Eigen::Matrix
 
       // 1) Update Weights
       switch (s.slim_energy) {
-        case igl::SLIMData::ARAP: {
+        case SLIMData::ARAP: {
           m_sing_new << 1, 1, 1;
           break;
         }
-        case igl::SLIMData::LOG_ARAP: {
+        case SLIMData::LOG_ARAP: {
           double s1_g = 2 * (log(s1) / s1);
           double s2_g = 2 * (log(s2) / s2);
           double s3_g = 2 * (log(s3) / s3);
@@ -448,7 +444,7 @@ inline void update_weights_and_closest_rotations(igl::SLIMData &s, Eigen::Matrix
               sqrt(s3_g / (2 * (s3 - 1)));
           break;
         }
-        case igl::SLIMData::SYMMETRIC_DIRICHLET: {
+        case SLIMData::SYMMETRIC_DIRICHLET: {
           double s1_g = 2 * (s1 - pow(s1, -3));
           double s2_g = 2 * (s2 - pow(s2, -3));
           double s3_g = 2 * (s3 - pow(s3, -3));
@@ -456,7 +452,7 @@ inline void update_weights_and_closest_rotations(igl::SLIMData &s, Eigen::Matrix
               sqrt(s3_g / (2 * (s3 - 1)));
           break;
         }
-        case igl::SLIMData::EXP_SYMMETRIC_DIRICHLET: {
+        case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
           double s1_g = 2 * (s1 - pow(s1, -3));
           double s2_g = 2 * (s2 - pow(s2, -3));
           double s3_g = 2 * (s3 - pow(s3, -3));
@@ -476,7 +472,7 @@ inline void update_weights_and_closest_rotations(igl::SLIMData &s, Eigen::Matrix
 
           break;
         }
-        case igl::SLIMData::CONFORMAL: {
+        case SLIMData::CONFORMAL: {
           double common_div = 9 * (pow(s1 * s2 * s3, 5. / 3.));
 
           double s1_g = (-2 * s2 * s3 * (pow(s2, 2) + pow(s3, 2) - 2 * pow(s1, 2))) / common_div;
@@ -496,7 +492,7 @@ inline void update_weights_and_closest_rotations(igl::SLIMData &s, Eigen::Matrix
           ri = ui * closest_sing_vec.asDiagonal() * vi.transpose();
           break;
         }
-        case igl::SLIMData::EXP_CONFORMAL: {
+        case SLIMData::EXP_CONFORMAL: {
           // E_conf = (s1^2 + s2^2 + s3^2)/(3*(s1*s2*s3)^(2/3) )
           // dE_conf/ds1 = (-2*(s2*s3)*(s2^2+s3^2 -2*s1^2) ) / (9*(s1*s2*s3)^(5/3))
           // Argmin E_conf(s1): s1 = sqrt(s1^2+s2^2)/sqrt(2)
@@ -562,7 +558,7 @@ inline void update_weights_and_closest_rotations(igl::SLIMData &s, Eigen::Matrix
   }  // if dim end
 }
 
-inline void solve_weighted_arap(igl::SLIMData &s, Eigen::MatrixXd &uv)
+inline void solve_weighted_arap(SLIMData &s, Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
   using namespace Eigen;
@@ -620,7 +616,7 @@ inline void local_basis(const Eigen::PlainObjectBase<DerivedV> &V,
   }
 }
 
-inline void pre_calc(igl::SLIMData &s)
+inline void pre_calc(SLIMData &s)
 {
   BLI_assert(s.valid);
   if (!s.has_pre_calc) {
@@ -655,7 +651,7 @@ inline void pre_calc(igl::SLIMData &s)
   }
 }
 
-inline void build_linear_system(igl::SLIMData &s, Eigen::SparseMatrix<double> &L)
+inline void build_linear_system(SLIMData &s, Eigen::SparseMatrix<double> &L)
 {
   BLI_assert(s.valid);
   // formula (35) in paper
@@ -678,7 +674,7 @@ inline void build_linear_system(igl::SLIMData &s, Eigen::SparseMatrix<double> &L
   L.makeCompressed();
 }
 
-inline void add_soft_constraints(igl::SLIMData &s, Eigen::SparseMatrix<double> &L)
+inline void add_soft_constraints(SLIMData &s, Eigen::SparseMatrix<double> &L)
 {
   BLI_assert(s.valid);
   int v_n = s.v_num;
@@ -691,7 +687,7 @@ inline void add_soft_constraints(igl::SLIMData &s, Eigen::SparseMatrix<double> &
   }
 }
 
-inline double compute_energy(igl::SLIMData &s,
+inline double compute_energy(SLIMData &s,
                              Eigen::MatrixXd &V_new,
                              Eigen::VectorXd &singularValues,
                              bool gatherSingularValues)
@@ -702,22 +698,20 @@ inline double compute_energy(igl::SLIMData &s,
          compute_soft_const_energy(s, V_new);
 }
 
-inline double compute_energy(igl::SLIMData &s, Eigen::MatrixXd &V_new)
+inline double compute_energy(SLIMData &s, Eigen::MatrixXd &V_new)
 {
   BLI_assert(s.valid);
   Eigen::VectorXd temp;
   return compute_energy(s, V_new, temp, false);
 }
 
-inline double compute_energy(igl::SLIMData &s,
-                             Eigen::MatrixXd &V_new,
-                             Eigen::VectorXd &singularValues)
+inline double compute_energy(SLIMData &s, Eigen::MatrixXd &V_new, Eigen::VectorXd &singularValues)
 {
   BLI_assert(s.valid);
   return compute_energy(s, V_new, singularValues, true);
 }
 
-inline double compute_soft_const_energy(igl::SLIMData &s, Eigen::MatrixXd &V_o)
+inline double compute_soft_const_energy(SLIMData &s, Eigen::MatrixXd &V_o)
 {
   BLI_assert(s.valid);
   double e = 0;
@@ -727,7 +721,7 @@ inline double compute_soft_const_energy(igl::SLIMData &s, Eigen::MatrixXd &V_o)
   return e;
 }
 
-inline double compute_energy_with_jacobians(igl::SLIMData &s,
+inline double compute_energy_with_jacobians(SLIMData &s,
                                             const Eigen::MatrixXd &Ji,
                                             Eigen::VectorXd &areas,
                                             Eigen::VectorXd &singularValues,
@@ -752,11 +746,11 @@ inline double compute_energy_with_jacobians(igl::SLIMData &s,
       double s2 = sing(1);
 
       switch (s.slim_energy) {
-        case igl::SLIMData::ARAP: {
+        case SLIMData::ARAP: {
           energy += areas(i) * (pow(s1 - 1, 2) + pow(s2 - 1, 2));
           break;
         }
-        case igl::SLIMData::SYMMETRIC_DIRICHLET: {
+        case SLIMData::SYMMETRIC_DIRICHLET: {
           energy += areas(i) * (pow(s1, 2) + pow(s1, -2) + pow(s2, 2) + pow(s2, -2));
 
           if (gatherSingularValues) {
@@ -765,20 +759,20 @@ inline double compute_energy_with_jacobians(igl::SLIMData &s,
           }
           break;
         }
-        case igl::SLIMData::EXP_SYMMETRIC_DIRICHLET: {
+        case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
           energy += areas(i) *
                     exp(s.exp_factor * (pow(s1, 2) + pow(s1, -2) + pow(s2, 2) + pow(s2, -2)));
           break;
         }
-        case igl::SLIMData::LOG_ARAP: {
+        case SLIMData::LOG_ARAP: {
           energy += areas(i) * (pow(log(s1), 2) + pow(log(s2), 2));
           break;
         }
-        case igl::SLIMData::CONFORMAL: {
+        case SLIMData::CONFORMAL: {
           energy += areas(i) * ((pow(s1, 2) + pow(s2, 2)) / (2 * s1 * s2));
           break;
         }
-        case igl::SLIMData::EXP_CONFORMAL: {
+        case SLIMData::EXP_CONFORMAL: {
           energy += areas(i) * exp(s.exp_factor * ((pow(s1, 2) + pow(s2, 2)) / (2 * s1 * s2)));
           break;
         }
@@ -808,31 +802,31 @@ inline double compute_energy_with_jacobians(igl::SLIMData &s,
       double s3 = sing(2);
 
       switch (s.slim_energy) {
-        case igl::SLIMData::ARAP: {
+        case SLIMData::ARAP: {
           energy += areas(i) * (pow(s1 - 1, 2) + pow(s2 - 1, 2) + pow(s3 - 1, 2));
           break;
         }
-        case igl::SLIMData::SYMMETRIC_DIRICHLET: {
+        case SLIMData::SYMMETRIC_DIRICHLET: {
           energy += areas(i) * (pow(s1, 2) + pow(s1, -2) + pow(s2, 2) + pow(s2, -2) + pow(s3, 2) +
                                 pow(s3, -2));
           break;
         }
-        case igl::SLIMData::EXP_SYMMETRIC_DIRICHLET: {
+        case SLIMData::EXP_SYMMETRIC_DIRICHLET: {
           energy += areas(i) * exp(s.exp_factor * (pow(s1, 2) + pow(s1, -2) + pow(s2, 2) +
                                                    pow(s2, -2) + pow(s3, 2) + pow(s3, -2)));
           break;
         }
-        case igl::SLIMData::LOG_ARAP: {
+        case SLIMData::LOG_ARAP: {
           energy += areas(i) *
                     (pow(log(s1), 2) + pow(log(std::abs(s2)), 2) + pow(log(std::abs(s3)), 2));
           break;
         }
-        case igl::SLIMData::CONFORMAL: {
+        case SLIMData::CONFORMAL: {
           energy += areas(i) *
                     ((pow(s1, 2) + pow(s2, 2) + pow(s3, 2)) / (3 * pow(s1 * s2 * s3, 2. / 3.)));
           break;
         }
-        case igl::SLIMData::EXP_CONFORMAL: {
+        case SLIMData::EXP_CONFORMAL: {
           energy += areas(i) *
                     exp((pow(s1, 2) + pow(s2, 2) + pow(s3, 2)) / (3 * pow(s1 * s2 * s3, 2. / 3.)));
           break;
@@ -844,7 +838,7 @@ inline double compute_energy_with_jacobians(igl::SLIMData &s,
   return energy;
 }
 
-inline void buildA(igl::SLIMData &s, Eigen::SparseMatrix<double> &A)
+inline void buildA(SLIMData &s, Eigen::SparseMatrix<double> &A)
 {
   BLI_assert(s.valid);
   // formula (35) in paper
@@ -971,7 +965,7 @@ inline void buildA(igl::SLIMData &s, Eigen::SparseMatrix<double> &A)
   A.setFromTriplets(IJV.begin(), IJV.end());
 }
 
-inline void buildRhs(igl::SLIMData &s, const Eigen::SparseMatrix<double> &At)
+inline void buildRhs(SLIMData &s, const Eigen::SparseMatrix<double> &At)
 {
   BLI_assert(s.valid);
 
@@ -1028,19 +1022,16 @@ inline void buildRhs(igl::SLIMData &s, const Eigen::SparseMatrix<double> &At)
   s.rhs = (At * s.WGL_M.asDiagonal() * f_rhs + s.proximal_p * uv_flat);
 }
 
-}  // namespace slim
-}  // namespace igl
-
 /// Slim Implementation
 
-void igl::slim_precompute(Eigen::MatrixXd &V,
-                          Eigen::MatrixXi &F,
-                          Eigen::MatrixXd &V_init,
-                          SLIMData &data,
-                          SLIMData::SLIM_ENERGY slim_energy,
-                          Eigen::VectorXi &b,
-                          Eigen::MatrixXd &bc,
-                          double soft_p)
+void slim_precompute(Eigen::MatrixXd &V,
+                     Eigen::MatrixXi &F,
+                     Eigen::MatrixXd &V_init,
+                     SLIMData &data,
+                     SLIMData::SLIM_ENERGY slim_energy,
+                     Eigen::VectorXi &b,
+                     Eigen::MatrixXd &bc,
+                     double soft_p)
 {
   BLI_assert(data.valid);
   data.V = V;
@@ -1058,7 +1049,7 @@ void igl::slim_precompute(Eigen::MatrixXd &V,
 
   data.proximal_p = 0.0001;
 
-  igl::doublearea(V, F, data.M);
+  doublearea(V, F, data.M);
   data.M /= 2.;
   data.mesh_area = data.M.sum();
 
@@ -1069,9 +1060,9 @@ void igl::slim_precompute(Eigen::MatrixXd &V,
 
   assert(F.cols() == 3);
 
-  igl::slim::pre_calc(data);
+  pre_calc(data);
 
-  data.energy = igl::slim::compute_energy(data, data.V_o) / data.mesh_area;
+  data.energy = compute_energy(data, data.V_o) / data.mesh_area;
 }
 
 inline double computeGlobalScaleInvarianceFactor(Eigen::VectorXd &singularValues,
@@ -1129,7 +1120,7 @@ inline double computeGlobalScaleInvarianceFactor(Eigen::VectorXd &singularValues
   return 1 / x;
 }
 
-Eigen::MatrixXd igl::slim_solve(SLIMData &data, int iter_num)
+Eigen::MatrixXd slim_solve(SLIMData &data, int iter_num)
 {
   BLI_assert(data.valid);
   Eigen::VectorXd singularValues;
@@ -1137,7 +1128,7 @@ Eigen::MatrixXd igl::slim_solve(SLIMData &data, int iter_num)
 
   if (arePinsPresent) {
     singularValues.resize(data.F.rows() * 2);
-    data.energy = igl::slim::compute_energy(data, data.V_o, singularValues) / data.mesh_area;
+    data.energy = compute_energy(data, data.V_o, singularValues) / data.mesh_area;
   }
 
   for (int i = 0; i < iter_num; i++) {
@@ -1145,16 +1136,19 @@ Eigen::MatrixXd igl::slim_solve(SLIMData &data, int iter_num)
     dest_res = data.V_o;
 
     // Solve Weighted Proxy
-    igl::slim::update_weights_and_closest_rotations(data, dest_res);
-    igl::slim::solve_weighted_arap(data, dest_res);
+    update_weights_and_closest_rotations(data, dest_res);
+    solve_weighted_arap(data, dest_res);
 
-    std::function<double(Eigen::MatrixXd &)> compute_energy = [&](Eigen::MatrixXd &aaa) {
-      return arePinsPresent ? igl::slim::compute_energy(data, aaa, singularValues) :
-                              igl::slim::compute_energy(data, aaa);
+    std::function<double(Eigen::MatrixXd &)> compute_energy_func = [&](Eigen::MatrixXd &aaa) {
+      return arePinsPresent ? compute_energy(data, aaa, singularValues) :
+                              compute_energy(data, aaa);
     };
 
-    data.energy = igl::flip_avoiding_line_search(
-                      data.F, data.V_o, dest_res, compute_energy, data.energy * data.mesh_area) /
+    data.energy = flip_avoiding_line_search(data.F,
+                                            data.V_o,
+                                            dest_res,
+                                            compute_energy_func,
+                                            data.energy * data.mesh_area) /
                   data.mesh_area;
 
     if (arePinsPresent) {
@@ -1162,9 +1156,11 @@ Eigen::MatrixXd igl::slim_solve(SLIMData &data, int iter_num)
                                                                             data.M);
       data.Dx /= data.globalScaleInvarianceFactor;
       data.Dy /= data.globalScaleInvarianceFactor;
-      data.energy = igl::slim::compute_energy(data, data.V_o, singularValues) / data.mesh_area;
+      data.energy = compute_energy(data, data.V_o, singularValues) / data.mesh_area;
     }
   }
 
   return data.V_o;
 }
+
+}  // namespace slim

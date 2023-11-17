@@ -10,7 +10,6 @@
 #include "uv_initializer.h"
 
 using namespace Eigen;
-using namespace igl;
 
 namespace slim {
 

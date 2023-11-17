@@ -12,7 +12,6 @@
 namespace slim {
 
 using namespace Eigen;
-using namespace igl;
 
 void apply_transformation(SLIMData &slim_data, Matrix2d &transformation_matrix)
 {

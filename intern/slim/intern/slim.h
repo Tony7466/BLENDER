@@ -13,7 +13,7 @@
 
 #include <stdexcept>
 
-namespace igl {
+namespace slim {
 
 class SlimFailedException : public std::runtime_error {
  public:
@@ -122,4 +122,4 @@ Eigen::MatrixXd slim_solve(SLIMData &data, int iter_num);
 
 void adjustSoftConstraintViolationPenalty(SLIMData &data);
 
-}  // namespace igl
+}  // namespace slim

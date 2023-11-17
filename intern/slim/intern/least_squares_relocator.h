@@ -3,10 +3,11 @@
 #pragma once
 
 #include "slim.h"
+
 #include <stdio.h>
 
-using namespace igl;
-
 namespace slim {
+
 void transform_initialization_if_necessary(SLIMData &slimData);
+
 }

@@ -11,7 +11,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-namespace igl {
+namespace slim {
 
 // Constructs the cotangent stiffness matrix (discrete laplacian) for a given
 // mesh (V,F).
@@ -37,6 +37,6 @@ template<typename DerivedV, typename DerivedF, typename Scalar>
 inline void cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
                       const Eigen::PlainObjectBase<DerivedF> &F,
                       Eigen::SparseMatrix<Scalar> &L);
-}  // namespace igl
+}  // namespace slim
 
 #include "cotmatrix.cpp"

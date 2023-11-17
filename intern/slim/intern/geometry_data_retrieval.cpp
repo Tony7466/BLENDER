@@ -10,7 +10,6 @@
 
 #include "BLI_assert.h"
 
-using namespace igl;
 using namespace Eigen;
 
 namespace slim {

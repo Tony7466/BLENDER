@@ -5,13 +5,13 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at http://mozilla.org/MPL/2.0/.
+
 #include "flip_avoiding_line_search.h"
 
 #include <Eigen/Dense>
 #include <vector>
 
-namespace igl {
-namespace flip_avoiding {
+namespace slim {
 
 // Implement a bisection linesearch to minimize a mesh-based energy on vertices given at 'x' at a
 // search direction 'd', with initial step size. Stops when a point with lower energy is found, or
@@ -28,11 +28,11 @@ namespace flip_avoiding {
 // Outputs:
 //		x  						#X by dim list of variables at the new location
 // Returns the energy at the new point 'x'
-inline double line_search(Eigen::MatrixXd &x,
-                          const Eigen::MatrixXd &d,
-                          double step_size,
-                          std::function<double(Eigen::MatrixXd &)> energy,
-                          double cur_energy = -1)
+static inline double line_search(Eigen::MatrixXd &x,
+                                 const Eigen::MatrixXd &d,
+                                 double step_size,
+                                 std::function<double(Eigen::MatrixXd &)> energy,
+                                 double cur_energy = -1)
 {
   double old_energy;
   if (cur_energy > 0) {
@@ -61,7 +61,7 @@ inline double line_search(Eigen::MatrixXd &x,
   return new_energy;
 }
 
-inline double get_smallest_pos_quad_zero(double a, double b, double c)
+static inline double get_smallest_pos_quad_zero(double a, double b, double c)
 {
   using namespace std;
   double t1, t2;
@@ -100,10 +100,10 @@ inline double get_smallest_pos_quad_zero(double a, double b, double c)
   }
 }
 
-inline double get_min_pos_root_2D(const Eigen::MatrixXd &uv,
-                                  const Eigen::MatrixXi &F,
-                                  Eigen::MatrixXd &d,
-                                  int f)
+static inline double get_min_pos_root_2D(const Eigen::MatrixXd &uv,
+                                         const Eigen::MatrixXi &F,
+                                         Eigen::MatrixXd &d,
+                                         int f)
 {
   using namespace std;
   /*
@@ -170,9 +170,9 @@ inline double get_min_pos_root_2D(const Eigen::MatrixXd &uv,
   return get_smallest_pos_quad_zero(a, b, c);
 }
 
-inline double compute_max_step_from_singularities(const Eigen::MatrixXd &uv,
-                                                  const Eigen::MatrixXi &F,
-                                                  Eigen::MatrixXd &d)
+static inline double compute_max_step_from_singularities(const Eigen::MatrixXd &uv,
+                                                         const Eigen::MatrixXi &F,
+                                                         Eigen::MatrixXd &d)
 {
   using namespace std;
   double max_step = INFINITY;
@@ -184,20 +184,19 @@ inline double compute_max_step_from_singularities(const Eigen::MatrixXd &uv,
   }
   return max_step;
 }
-}  // namespace flip_avoiding
-}  // namespace igl
 
-inline double igl::flip_avoiding_line_search(const Eigen::MatrixXi F,
-                                             Eigen::MatrixXd &cur_v,
-                                             Eigen::MatrixXd &dst_v,
-                                             std::function<double(Eigen::MatrixXd &)> energy,
-                                             double cur_energy)
+inline double flip_avoiding_line_search(const Eigen::MatrixXi F,
+                                        Eigen::MatrixXd &cur_v,
+                                        Eigen::MatrixXd &dst_v,
+                                        std::function<double(Eigen::MatrixXd &)> energy,
+                                        double cur_energy)
 {
   using namespace std;
 
   Eigen::MatrixXd d = dst_v - cur_v;
-  double min_step_to_singularity = igl::flip_avoiding::compute_max_step_from_singularities(
-      cur_v, F, d);
+  double min_step_to_singularity = compute_max_step_from_singularities(cur_v, F, d);
   double max_step_size = min(1., min_step_to_singularity * 0.8);
-  return igl::flip_avoiding::line_search(cur_v, d, max_step_size, energy, cur_energy);
+  return line_search(cur_v, d, max_step_size, energy, cur_energy);
 }
+
+}  // namespace slim

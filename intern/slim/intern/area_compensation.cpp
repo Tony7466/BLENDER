@@ -8,7 +8,6 @@
 #include "slim.h"
 
 using namespace Eigen;
-using namespace igl;
 
 namespace slim {
 
@@ -25,7 +24,7 @@ template<typename VertexPositionType, typename FaceIndicesType>
 double compute_surface_area(const VertexPositionType v, const FaceIndicesType f)
 {
   Eigen::VectorXd doubled_area_of_triangles;
-  igl::doublearea(v, f, doubled_area_of_triangles);
+  doublearea(v, f, doubled_area_of_triangles);
   double area_of_map = doubled_area_of_triangles.sum() / 2;
   return area_of_map;
 }

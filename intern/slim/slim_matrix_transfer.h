@@ -21,13 +21,11 @@
  * Bvector         | vertexindices of boundary vertices
  * ________________|_____________________________________________ */
 
-namespace igl {
-struct SLIMData;
-}  // namespace igl
-
 namespace slim {
 
-typedef std::unique_ptr<igl::SLIMData> SLIMDataPtr;
+struct SLIMData;
+
+typedef std::unique_ptr<SLIMData> SLIMDataPtr;
 
 struct SLIMMatrixTransferChart {
   int n_verts = 0;

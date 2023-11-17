@@ -13,6 +13,8 @@
 
 #include <BLI_task.hh>
 
+namespace slim {
+
 // Sort the elements of a matrix X along a given dimension like matlabs sort
 // function, assuming X.cols() == 3.
 //
@@ -111,9 +113,9 @@ static inline void doublearea_sort3(const Eigen::PlainObjectBase<DerivedX> &X,
 }
 
 template<typename DerivedV, typename DerivedF, typename DeriveddblA>
-inline void igl::doublearea(const Eigen::PlainObjectBase<DerivedV> &V,
-                            const Eigen::PlainObjectBase<DerivedF> &F,
-                            Eigen::PlainObjectBase<DeriveddblA> &dblA)
+inline void doublearea(const Eigen::PlainObjectBase<DerivedV> &V,
+                       const Eigen::PlainObjectBase<DerivedF> &F,
+                       Eigen::PlainObjectBase<DeriveddblA> &dblA)
 {
   const int dim = V.cols();
   // Only support triangles
@@ -158,8 +160,8 @@ inline void igl::doublearea(const Eigen::PlainObjectBase<DerivedV> &V,
 }
 
 template<typename Derivedl, typename DeriveddblA>
-inline void igl::doublearea(const Eigen::PlainObjectBase<Derivedl> &ul,
-                            Eigen::PlainObjectBase<DeriveddblA> &dblA)
+inline void doublearea(const Eigen::PlainObjectBase<Derivedl> &ul,
+                       Eigen::PlainObjectBase<DeriveddblA> &dblA)
 {
   using namespace Eigen;
   using namespace std;
@@ -196,3 +198,5 @@ inline void igl::doublearea(const Eigen::PlainObjectBase<Derivedl> &ul,
     }
   });
 }
+
+}  // namespace slim

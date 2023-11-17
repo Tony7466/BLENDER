@@ -12,8 +12,6 @@
 
 namespace slim {
 
-using namespace igl;
-
 SLIMMatrixTransferChart::SLIMMatrixTransferChart() = default;
 SLIMMatrixTransferChart::SLIMMatrixTransferChart(SLIMMatrixTransferChart &&) = default;
 SLIMMatrixTransferChart::~SLIMMatrixTransferChart() = default;

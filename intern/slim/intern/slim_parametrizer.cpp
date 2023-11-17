@@ -22,7 +22,6 @@
 
 namespace slim {
 
-using namespace igl;
 using namespace Eigen;
 
 void transfer_uvs_back_to_native_part_live(SLIMMatrixTransferChart &mt_chart, Eigen::MatrixXd &uv)

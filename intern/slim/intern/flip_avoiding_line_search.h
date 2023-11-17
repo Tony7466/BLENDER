@@ -10,7 +10,7 @@
 
 #include <Eigen/Dense>
 
-namespace igl {
+namespace slim {
 // A bisection line search for a mesh based energy that avoids triangle flips as suggested in
 // 		"Bijective Parameterization with Free Boundaries" (Smith J. and Schaefer S., 2015).
 //
@@ -38,6 +38,6 @@ inline double flip_avoiding_line_search(const Eigen::MatrixXi F,
                                         std::function<double(Eigen::MatrixXd &)> energy,
                                         double cur_energy = -1);
 
-}  // namespace igl
+}  // namespace slim
 
 #include "flip_avoiding_line_search.cpp"

@@ -10,19 +10,21 @@
 
 #include "edge_lengths.h"
 
+namespace slim {
+
 template<typename DerivedV, typename DerivedF, typename DerivedL>
-inline void igl::edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
-                              const Eigen::PlainObjectBase<DerivedF> &F,
-                              Eigen::PlainObjectBase<DerivedL> &L)
+inline void edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
+                         const Eigen::PlainObjectBase<DerivedF> &F,
+                         Eigen::PlainObjectBase<DerivedL> &L)
 {
-  igl::squared_edge_lengths(V, F, L);
+  squared_edge_lengths(V, F, L);
   L = L.array().sqrt().eval();
 }
 
 template<typename DerivedV, typename DerivedF, typename DerivedL>
-inline void igl::squared_edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
-                                      const Eigen::PlainObjectBase<DerivedF> &F,
-                                      Eigen::PlainObjectBase<DerivedL> &L)
+inline void squared_edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
+                                 const Eigen::PlainObjectBase<DerivedF> &F,
+                                 Eigen::PlainObjectBase<DerivedL> &L)
 {
   using namespace std;
   const int m = F.rows();
@@ -40,3 +42,5 @@ inline void igl::squared_edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
     }
   });
 }
+
+}  // namespace slim

@@ -10,7 +10,7 @@
 
 #include <Eigen/Dense>
 
-namespace igl {
+namespace slim {
 // DOUBLEAREA computes twice the area for each input triangle
 //
 // Templates:
@@ -42,6 +42,6 @@ template<typename Derivedl, typename DeriveddblA>
 inline void doublearea(const Eigen::PlainObjectBase<Derivedl> &l,
                        Eigen::PlainObjectBase<DeriveddblA> &dblA);
 
-}  // namespace igl
+}  // namespace slim
 
 #include "doublearea.cpp"
