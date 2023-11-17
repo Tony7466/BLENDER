@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_editmesh.h"
-#include "BKE_modifier.h"
+#include "BKE_editmesh.hh"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
@@ -781,6 +781,9 @@ static void workbench_render_to_image(void *vedata,
 
     /* Perform render step between samples to allow
      * flushing of freed GPUBackend resources. */
+    if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+      GPU_flush();
+    }
     GPU_render_step();
     GPU_FINISH_DELIMITER();
   } while (ved->instance->scene_state.sample + 1 < ved->instance->scene_state.samples_len);

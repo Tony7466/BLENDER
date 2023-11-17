@@ -42,7 +42,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_appdir.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_idtype.h"
 #include "BKE_main.h"
 #include "BKE_preferences.h"
@@ -1086,7 +1086,7 @@ void ED_fileselect_init_layout(SpaceFile *sfile, ARegion *region)
                (layout->tile_h + 2 * layout->tile_border_y);
     file_attribute_columns_init(params, layout);
 
-    layout->rows = MAX2(rowcount, numfiles);
+    layout->rows = std::max(rowcount, numfiles);
     BLI_assert(layout->rows != 0);
     layout->height = sfile->layout->rows * (layout->tile_h + 2 * layout->tile_border_y) +
                      layout->tile_border_y * 2 + layout->offset_top;

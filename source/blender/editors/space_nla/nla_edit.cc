@@ -22,7 +22,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_action.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
@@ -1276,6 +1276,12 @@ static int nlaedit_delete_exec(bContext *C, wmOperator * /*op*/)
 
       /* if selected, delete */
       if (strip->flag & NLASTRIP_FLAG_SELECT) {
+        /* Fix for #109430. Defensively exit tweak mode before deleting
+         * the active strip. */
+        if (ale->adt && ale->adt->actstrip == strip) {
+          BKE_nla_tweakmode_exit(ale->adt);
+        }
+
         /* if a strip either side of this was a transition, delete those too */
         if ((strip->prev) && (strip->prev->type == NLASTRIP_TYPE_TRANSITION)) {
           BKE_nlastrip_remove_and_free(&nlt->strips, strip->prev, true);

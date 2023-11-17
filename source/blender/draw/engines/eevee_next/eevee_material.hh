@@ -67,6 +67,11 @@ enum eMaterialDisplacement {
   MAT_DISPLACEMENT_BOTH,
 };
 
+static inline eMaterialDisplacement to_displacement_type(int displacement_method)
+{
+  return static_cast<eMaterialDisplacement>(displacement_method);
+}
+
 enum eMaterialProbe {
   MAT_PROBE_NONE = 0,
   MAT_PROBE_REFLECTION,
@@ -76,7 +81,8 @@ enum eMaterialProbe {
 static inline void material_type_from_shader_uuid(uint64_t shader_uuid,
                                                   eMaterialPipeline &pipeline_type,
                                                   eMaterialGeometry &geometry_type,
-                                                  eMaterialDisplacement &displacement_type)
+                                                  eMaterialDisplacement &displacement_type,
+                                                  bool &transparent_shadows)
 {
   const uint64_t geometry_mask = ((1u << 4u) - 1u);
   const uint64_t pipeline_mask = ((1u << 4u) - 1u);
@@ -84,20 +90,21 @@ static inline void material_type_from_shader_uuid(uint64_t shader_uuid,
   geometry_type = static_cast<eMaterialGeometry>(shader_uuid & geometry_mask);
   pipeline_type = static_cast<eMaterialPipeline>((shader_uuid >> 4u) & pipeline_mask);
   displacement_type = static_cast<eMaterialDisplacement>((shader_uuid >> 8u) & displacement_mask);
+  transparent_shadows = (shader_uuid >> 10u) & 1u;
 }
 
 static inline uint64_t shader_uuid_from_material_type(
     eMaterialPipeline pipeline_type,
     eMaterialGeometry geometry_type,
-    eMaterialDisplacement displacement_type = MAT_DISPLACEMENT_BUMP)
+    eMaterialDisplacement displacement_type = MAT_DISPLACEMENT_BUMP,
+    char blend_flags = 0)
 {
-  BLI_assert(geometry_type < (1 << 4));
   BLI_assert(displacement_type < (1 << 2));
-  /* NOTE(@fclem): Displacement type requires shader recompilation but it is not a shader
-   * variation as there can be only one displacement type set per material. We still store it
-   * inside the uuid to pass it to `material_create_info_ammend()` instead of relying on the weak
-   * reference to the ::Material. */
-  return geometry_type | (pipeline_type << 4) | (displacement_type << 8);
+  BLI_assert(geometry_type < (1 << 4));
+  BLI_assert(pipeline_type < (1 << 4));
+  uint64_t transparent_shadows = blend_flags & MA_BL_TRANSPARENT_SHADOW ? 1 : 0;
+  return geometry_type | (pipeline_type << 4) | (displacement_type << 8) |
+         (transparent_shadows << 10);
 }
 
 ENUM_OPERATORS(eClosureBits, CLOSURE_AMBIENT_OCCLUSION)
@@ -158,7 +165,8 @@ struct MaterialKey {
 
   MaterialKey(::Material *mat_, eMaterialGeometry geometry, eMaterialPipeline pipeline) : mat(mat_)
   {
-    options = shader_uuid_from_material_type(pipeline, geometry);
+    options = shader_uuid_from_material_type(
+        pipeline, geometry, to_displacement_type(mat_->displacement_method), mat_->blend_flag);
   }
 
   uint64_t hash() const

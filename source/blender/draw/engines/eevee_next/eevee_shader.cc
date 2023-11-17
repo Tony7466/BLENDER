@@ -120,6 +120,10 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_debug_irradiance_grid";
     case DISPLAY_PROBE_GRID:
       return "eevee_display_probe_grid";
+    case DISPLAY_PROBE_REFLECTION:
+      return "eevee_display_probe_reflection";
+    case DISPLAY_PROBE_PLANAR:
+      return "eevee_display_probe_planar";
     case DOF_BOKEH_LUT:
       return "eevee_depth_of_field_bokeh_lut";
     case DOF_DOWNSAMPLE:
@@ -308,7 +312,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   eMaterialPipeline pipeline_type;
   eMaterialGeometry geometry_type;
   eMaterialDisplacement displacement_type;
-  material_type_from_shader_uuid(shader_uuid, pipeline_type, geometry_type, displacement_type);
+  bool transparent_shadows;
+  material_type_from_shader_uuid(
+      shader_uuid, pipeline_type, geometry_type, displacement_type, transparent_shadows);
 
   GPUCodegenOutput &codegen = *codegen_;
   ShaderCreateInfo &info = *reinterpret_cast<ShaderCreateInfo *>(codegen.create_info);
@@ -353,7 +359,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   }
 
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
-    info.define("MAT_TRANSPARENT");
+    if (pipeline_type != MAT_PIPE_SHADOW || transparent_shadows) {
+      info.define("MAT_TRANSPARENT");
+    }
     /* Transparent material do not have any velocity specific pipeline. */
     if (pipeline_type == MAT_PIPE_PREPASS_FORWARD_VELOCITY) {
       pipeline_type = MAT_PIPE_PREPASS_FORWARD;
@@ -643,11 +651,10 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
 {
   bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_MATERIAL, MAT_PIPE_VOLUME_OCCUPANCY);
 
-  eMaterialDisplacement displacement_type = static_cast<eMaterialDisplacement>(
-      blender_mat->displacement_method);
+  eMaterialDisplacement displacement_type = to_displacement_type(blender_mat->displacement_method);
 
   uint64_t shader_uuid = shader_uuid_from_material_type(
-      pipeline_type, geometry_type, displacement_type);
+      pipeline_type, geometry_type, displacement_type, blender_mat->blend_flag);
 
   return DRW_shader_from_material(
       blender_mat, nodetree, shader_uuid, is_volume, deferred_compilation, codegen_callback, this);

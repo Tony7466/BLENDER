@@ -454,12 +454,9 @@ class NODE_PT_geometry_node_tool_object_types(Panel):
         col = layout.column()
         col.active = group.is_tool
         for prop, name, icon in types:
-            row = col.row()
-            row_checkbox = row.row()
-            row_checkbox.prop(group, prop, text="")
-            row_label = row.row()
-            row_label.label(text=name, icon=icon)
-            row_label.active = getattr(group, prop)
+            row = col.row(align=True)
+            row.label(text=name, icon=icon)
+            row.prop(group, prop, text="")
 
 
 class NODE_PT_geometry_node_tool_mode(Panel):
@@ -475,6 +472,7 @@ class NODE_PT_geometry_node_tool_mode(Panel):
         group = snode.node_tree
 
         modes = (
+            ("is_mode_object", "Object Mode", 'OBJECT_DATAMODE'),
             ("is_mode_edit", "Edit Mode", 'EDITMODE_HLT'),
             ("is_mode_sculpt", "Sculpt Mode", 'SCULPTMODE_HLT'),
         )
@@ -482,12 +480,9 @@ class NODE_PT_geometry_node_tool_mode(Panel):
         col = layout.column()
         col.active = group.is_tool
         for prop, name, icon in modes:
-            row = col.row()
-            row_checkbox = row.row()
-            row_checkbox.prop(group, prop, text="")
-            row_label = row.row()
-            row_label.label(text=name, icon=icon)
-            row_label.active = getattr(group, prop)
+            row = col.row(align=True)
+            row.label(text=name, icon=icon)
+            row.prop(group, prop, text="")
 
 
 class NODE_PT_node_color_presets(PresetPanel, Panel):
@@ -836,6 +831,7 @@ class NODE_PT_quality(bpy.types.Panel):
         if prefs.experimental.use_experimental_compositors:
             col.prop(tree, "execution_mode")
             use_realtime = tree.execution_mode == 'REALTIME'
+        col.prop(tree, "precision")
 
         col = layout.column()
         col.active = not use_realtime
