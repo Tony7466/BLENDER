@@ -14,6 +14,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_listbase.h"
+#include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
 #include "DNA_anim_types.h"
@@ -28,7 +29,7 @@
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
@@ -63,7 +64,9 @@
  * \{ */
 
 static bool get_normalized_fcurve_bounds(FCurve *fcu,
-                                         bAnimContext *ac,
+                                         AnimData *anim_data,
+                                         SpaceLink *space_link,
+                                         Scene *scene,
                                          bAnimListElem *ale,
                                          const bool include_handles,
                                          const float range[2],
@@ -77,11 +80,10 @@ static bool get_normalized_fcurve_bounds(FCurve *fcu,
     return false;
   }
 
-  const short mapping_flag = ANIM_get_normalization_flags(ac);
+  const short mapping_flag = ANIM_get_normalization_flags(space_link);
 
   float offset;
-  const float unit_fac = ANIM_unit_mapping_get_factor(
-      ac->scene, ale->id, fcu, mapping_flag, &offset);
+  const float unit_fac = ANIM_unit_mapping_get_factor(scene, ale->id, fcu, mapping_flag, &offset);
 
   r_bounds->ymin = (r_bounds->ymin + offset) * unit_fac;
   r_bounds->ymax = (r_bounds->ymax + offset) * unit_fac;
@@ -92,9 +94,8 @@ static bool get_normalized_fcurve_bounds(FCurve *fcu,
     r_bounds->ymin -= (min_height - height) / 2;
     r_bounds->ymax += (min_height - height) / 2;
   }
-  AnimData *adt = ANIM_nla_mapping_get(ac, ale);
-  r_bounds->xmin = BKE_nla_tweakedit_remap(adt, r_bounds->xmin, NLATIME_CONVERT_MAP);
-  r_bounds->xmax = BKE_nla_tweakedit_remap(adt, r_bounds->xmax, NLATIME_CONVERT_MAP);
+  r_bounds->xmin = BKE_nla_tweakedit_remap(anim_data, r_bounds->xmin, NLATIME_CONVERT_MAP);
+  r_bounds->xmax = BKE_nla_tweakedit_remap(anim_data, r_bounds->xmax, NLATIME_CONVERT_MAP);
 
   return true;
 }
@@ -125,6 +126,39 @@ static bool get_gpencil_bounds(bGPDlayer *gpl, const float range[2], rctf *r_bou
   return found_start;
 }
 
+static bool get_grease_pencil_layer_bounds(const GreasePencilLayer *gplayer,
+                                           const float range[2],
+                                           rctf *r_bounds)
+{
+  using namespace blender::bke::greasepencil;
+  const Layer &layer = gplayer->wrap();
+
+  bool found_start = false;
+  int start_frame = 0;
+  int end_frame = 1;
+
+  for (const FramesMapKey key : layer.sorted_keys()) {
+    if (key < range[0]) {
+      continue;
+    }
+    if (key > range[1]) {
+      break;
+    }
+
+    if (!found_start) {
+      start_frame = key;
+      found_start = true;
+    }
+    end_frame = key;
+  }
+  r_bounds->xmin = start_frame;
+  r_bounds->xmax = end_frame;
+  r_bounds->ymin = 0;
+  r_bounds->ymax = 1;
+
+  return found_start;
+}
+
 static bool get_channel_bounds(bAnimContext *ac,
                                bAnimListElem *ale,
                                const float range[2],
@@ -138,9 +172,16 @@ static bool get_channel_bounds(bAnimContext *ac,
       found_bounds = get_gpencil_bounds(gpl, range, r_bounds);
       break;
     }
+    case ALE_GREASE_PENCIL_CEL:
+      found_bounds = get_grease_pencil_layer_bounds(
+          static_cast<const GreasePencilLayer *>(ale->data), range, r_bounds);
+      break;
+
     case ALE_FCURVE: {
       FCurve *fcu = (FCurve *)ale->key_data;
-      found_bounds = get_normalized_fcurve_bounds(fcu, ac, ale, include_handles, range, r_bounds);
+      AnimData *anim_data = ANIM_nla_mapping_get(ac, ale);
+      found_bounds = get_normalized_fcurve_bounds(
+          fcu, anim_data, ac->sl, ac->scene, ale, include_handles, range, r_bounds);
       break;
     }
   }
