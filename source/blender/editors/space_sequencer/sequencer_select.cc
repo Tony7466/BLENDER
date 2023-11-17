@@ -905,13 +905,13 @@ static void sequencer_select_strip_impl(const Editing *ed,
  * r_seq2 second strip to be selected.
  * r_side which handle is selected. This further clarifies result if seq2 is nullptr.
  */
-bool sequencer_handle_selection_refine(const Scene *scene,
-                                       ARegion *region,
-                                       float view_x,
-                                       float view_y,
-                                       Sequence **r_seq1,
-                                       Sequence **r_seq2,
-                                       int *r_side)
+bool ED_sequencer_handle_selection_refine(const Scene *scene,
+                                          ARegion *region,
+                                          float view_x,
+                                          float view_y,
+                                          Sequence **r_seq1,
+                                          Sequence **r_seq2,
+                                          int *r_side)
 {
   View2D *v2d = &region->v2d;
   Editing *ed = SEQ_editing_get(scene);
@@ -1029,12 +1029,16 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     seq = seq_select_seq_from_preview(C, mval, toggle, extend, center);
   }
   else {
-    sequencer_handle_selection_refine(
+    ED_sequencer_handle_selection_refine(
         scene, region, mouse_view[0], mouse_view[1], &seq, &seq2, &handle_clicked);
   }
 
-  /* NOTE: `side_of_frame` and `linked_time` functionality is designed to be shared on one keymap,
-   * therefore both properties can be true at the same time. */
+  if (RNA_boolean_get(op->ptr, "handles_only") && handle_clicked == SEQ_SIDE_NONE) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* NOTE: `side_of_frame` and `linked_time` functionality is designed to be shared on one
+   * keymap, therefore both properties can be true at the same time. */
   if (seq && RNA_boolean_get(op->ptr, "linked_time")) {
     if (!extend && !toggle) {
       ED_sequencer_deselect_all(scene);
@@ -1072,7 +1076,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   /* Clicking on already selected element falls on modal operation.
    * All strips are deselected on mouse button release unless extend mode is used. */
   if (seq && element_already_selected(seq, seq2, handle_clicked) && wait_to_deselect_others &&
-      !toggle)
+      !toggle && !RNA_boolean_get(op->ptr, "handles_only"))
   {
     return OPERATOR_RUNNING_MODAL;
   }
@@ -1188,6 +1192,11 @@ void SEQUENCER_OT_select(wmOperatorType *ot)
       "Side of Frame",
       "Select all strips on same side of the current frame as the mouse cursor");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  /* Used for handle tweaking. */
+  prop = RNA_def_boolean(ot->srna, "handles_only", false, "Handles Only", "Select handles only");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
 /** \} */

@@ -58,21 +58,6 @@ struct SeqChannelDrawContext {
   float scale;
 };
 
-/**
- * Returns true if strip can be selected, false otherwise.
- *
- * r_seq1 first strip to be selected. Never nullptr if function returns true
- * r_seq2 second strip to be selected.
- * r_side which handle is selected. This further clarifies result if seq2 is nullptr.
- */
-bool sequencer_handle_selection_refine(const struct Scene *scene,
-                                       struct ARegion *region,
-                                       const float view_x,
-                                       const float view_y,
-                                       struct Sequence **r_seq1,
-                                       struct Sequence **r_seq2,
-                                       int *r_side);
-
 /* `sequencer_timeline_draw.cc` */
 
 void draw_timeline_seq(const bContext *C, ARegion *region);

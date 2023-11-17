@@ -30,6 +30,7 @@
 
 #include "ED_markers.hh"
 #include "ED_screen.hh"
+#include "ED_sequencer.hh"
 #include "ED_space_api.hh"
 #include "ED_time_scrub_ui.hh"
 #include "ED_transform.hh"
@@ -689,7 +690,7 @@ static void sequencer_cursor(wmWindow *win, ScrArea * /* area */, ARegion *regio
   Sequence *seq1, *seq2;
   int side;
 
-  sequencer_handle_selection_refine(scene, region, view_x, view_y, &seq1, &seq2, &side);
+  ED_sequencer_handle_selection_refine(scene, region, view_x, view_y, &seq1, &seq2, &side);
 
   if (seq1 == nullptr) {
     WM_cursor_set(win, wmcursor);

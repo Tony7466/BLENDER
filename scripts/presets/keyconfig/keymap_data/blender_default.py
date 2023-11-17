@@ -8311,7 +8311,13 @@ def km_sequencer_editor_tool_generic_select_timeline(params, *, fallback):
         {"items": [
             *([] if (params.select_mouse == 'RIGHTMOUSE') else _template_items_tool_select(
                 params, "sequencer.select", "sequencer.cursor_set", cursor_prioritize=True, fallback=fallback)),
+            ("sequencer.select", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+             {"properties": [("handles_only", True), ("wait_to_deselect_others", False)]}),
             *_template_items_change_frame(params),
+
+            # Frame change can be cancelled if click happens on strip handle. In such case move the handle.
+            ("transform.seq_slide", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+             {"properties": [("view2d_edge_pan", True)]}),
         ]},
     )
 
@@ -8327,7 +8333,6 @@ def km_sequencer_editor_tool_generic_select_box_timeline(params, *, fallback):
                 **(params.select_tweak_event if (fallback and params.use_fallback_tool_select_mouse) else
                    params.tool_tweak_event),
                 properties=[("tweak", params.select_mouse == 'LEFTMOUSE')])),
-
             # RMB select can already set the frame, match the tweak tool.
             # Ignored for preview.
             *(_template_items_change_frame(params)

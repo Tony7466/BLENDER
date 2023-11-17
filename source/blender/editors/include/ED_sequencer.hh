@@ -46,3 +46,17 @@ Sequence *ED_sequencer_special_preview_get();
 void ED_sequencer_special_preview_set(bContext *C, const int mval[2]);
 void ED_sequencer_special_preview_clear();
 bool sequencer_retiming_mode_is_active(const bContext *C);
+/**
+ * Returns true if strip can be selected, false otherwise.
+ *
+ * r_seq1 first strip to be selected. Never nullptr if function returns true
+ * r_seq2 second strip to be selected.
+ * r_side which handle is selected. This further clarifies result if seq2 is nullptr.
+ */
+bool ED_sequencer_handle_selection_refine(const struct Scene *scene,
+                                          struct ARegion *region,
+                                          const float view_x,
+                                          const float view_y,
+                                          struct Sequence **r_seq1,
+                                          struct Sequence **r_seq2,
+                                          int *r_side);
