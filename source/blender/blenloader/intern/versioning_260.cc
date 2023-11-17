@@ -57,9 +57,9 @@
 #include "BKE_main.h"  /* for Main */
 #include "BKE_mesh.hh" /* for ME_ defines (patching) */
 #include "BKE_mesh_legacy_convert.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
@@ -2558,7 +2558,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 268, 1)) {
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
-      brush->spacing = MAX2(1, brush->spacing);
+      brush->spacing = std::max(1, brush->spacing);
     }
   }
 

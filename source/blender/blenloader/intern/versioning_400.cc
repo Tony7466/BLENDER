@@ -23,6 +23,7 @@
 #include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_material_types.h"
+#include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_scene_types.h"
@@ -45,13 +46,15 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_attribute.h"
-#include "BKE_curve.h"
+#include "BKE_collection.h"
+#include "BKE_curve.hh"
 #include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
 #include "BKE_main.h"
+#include "BKE_material.h"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
@@ -298,6 +301,30 @@ static void version_principled_bsdf_update_animdata(ID *owner_id, bNodeTree *ntr
   }
 }
 
+static void versioning_eevee_shadow_settings(Object *object)
+{
+  /** EEVEE no longer uses the Material::blend_shadow property.
+   * Instead, it uses Object::visibility_flag for disabling shadow casting
+   */
+
+  short *material_len = BKE_object_material_len_p(object);
+  if (!material_len) {
+    return;
+  }
+
+  using namespace blender;
+  bool hide_shadows = *material_len > 0;
+  for (int i : IndexRange(*material_len)) {
+    Material *material = BKE_object_material_get(object, i + 1);
+    if (!material || material->blend_shadow != MA_BS_NONE) {
+      hide_shadows = false;
+    }
+  }
+
+  /* Enable the hide_shadow flag only if there's not any shadow casting material. */
+  SET_FLAG_FROM_TEST(object->visibility_flag, hide_shadows, OB_HIDE_SHADOW);
+}
+
 void do_versions_after_linking_400(FileData *fd, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 9)) {
@@ -382,6 +409,16 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     BKE_mesh_legacy_face_map_to_generic(bmain);
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
+    if (!is_cycles) {
+      LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+        versioning_eevee_shadow_settings(object);
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -452,15 +489,6 @@ static void version_movieclips_legacy_camera_object(Main *bmain)
 {
   LISTBASE_FOREACH (MovieClip *, movieclip, &bmain->movieclips) {
     version_motion_tracking_legacy_camera_object(*movieclip);
-  }
-}
-
-static void version_geometry_nodes_add_realize_instance_nodes(bNodeTree *ntree)
-{
-  LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
-    if (STREQ(node->idname, "GeometryNodeMeshBoolean")) {
-      add_realize_instances_before_socket(ntree, node, nodeFindSocket(node, SOCK_IN, "Mesh 2"));
-    }
   }
 }
 
@@ -805,6 +833,89 @@ static void version_replace_principled_hair_model(bNodeTree *ntree)
   }
 }
 
+static void change_input_socket_to_rotation_type(bNodeTree &ntree,
+                                                 bNode &node,
+                                                 bNodeSocket &socket)
+{
+  if (socket.type == SOCK_ROTATION) {
+    return;
+  }
+  socket.type = SOCK_ROTATION;
+  STRNCPY(socket.idname, "NodeSocketRotation");
+  auto *old_value = static_cast<bNodeSocketValueVector *>(socket.default_value);
+  auto *new_value = MEM_new<bNodeSocketValueRotation>(__func__);
+  copy_v3_v3(new_value->value_euler, old_value->value);
+  socket.default_value = new_value;
+  MEM_freeN(old_value);
+  LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree.links) {
+    if (link->tosock != &socket) {
+      continue;
+    }
+    if (ELEM(link->fromsock->type, SOCK_VECTOR, SOCK_FLOAT) &&
+        link->fromnode->type != NODE_REROUTE) {
+      /* No need to add the conversion node when implicit conversions will work. */
+      continue;
+    }
+    if (STREQ(link->fromnode->idname, "FunctionNodeEulerToRotation")) {
+      /* Make versioning idempotent. */
+      continue;
+    }
+    bNode *convert = nodeAddNode(nullptr, &ntree, "FunctionNodeEulerToRotation");
+    convert->parent = node.parent;
+    convert->locx = node.locx - 40;
+    convert->locy = node.locy;
+    link->tonode = convert;
+    link->tosock = nodeFindSocket(convert, SOCK_IN, "Euler");
+
+    nodeAddLink(&ntree, convert, nodeFindSocket(convert, SOCK_OUT, "Rotation"), &node, &socket);
+  }
+}
+
+static void change_output_socket_to_rotation_type(bNodeTree &ntree,
+                                                  bNode &node,
+                                                  bNodeSocket &socket)
+{
+  /* Rely on generic node declaration update to change the socket type. */
+  LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree.links) {
+    if (link->fromsock != &socket) {
+      continue;
+    }
+    if (link->tosock->type == SOCK_VECTOR && link->tonode->type != NODE_REROUTE) {
+      /* No need to add the conversion node when implicit conversions will work. */
+      continue;
+    }
+    if (STREQ(link->tonode->idname, "FunctionNodeRotationToEuler"))
+    { /* Make versioning idempotent. */
+      continue;
+    }
+    bNode *convert = nodeAddNode(nullptr, &ntree, "FunctionNodeRotationToEuler");
+    convert->parent = node.parent;
+    convert->locx = node.locx + 40;
+    convert->locy = node.locy;
+    link->fromnode = convert;
+    link->fromsock = nodeFindSocket(convert, SOCK_OUT, "Euler");
+
+    nodeAddLink(&ntree, &node, &socket, convert, nodeFindSocket(convert, SOCK_IN, "Rotation"));
+  }
+}
+
+static void version_geometry_nodes_use_rotation_socket(bNodeTree &ntree)
+{
+  LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree.nodes) {
+    if (STR_ELEM(node->idname,
+                 "GeometryNodeInstanceOnPoints",
+                 "GeometryNodeRotateInstances",
+                 "GeometryNodeTransform"))
+    {
+      bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Rotation");
+      change_input_socket_to_rotation_type(ntree, *node, *socket);
+    }
+    if (STREQ(node->idname, "GeometryNodeDistributePointsOnFaces")) {
+      bNodeSocket *socket = nodeFindSocket(node, SOCK_OUT, "Rotation");
+      change_output_socket_to_rotation_type(ntree, *node, *socket);
+    }
+  }
+}
 static bNodeTreeInterfaceItem *legacy_socket_move_to_interface(bNodeSocket &legacy_socket,
                                                                const eNodeSocketInOut in_out)
 {
@@ -1126,6 +1237,61 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
   }
 }
 
+static void version_socket_identifier_suffixes_for_dynamic_types(
+    ListBase sockets, const char *separator, const std::optional<int> total = std::nullopt)
+{
+  int index = 0;
+  LISTBASE_FOREACH (bNodeSocket *, socket, &sockets) {
+    if (socket->is_available()) {
+      if (char *pos = strstr(socket->identifier, separator)) {
+        /* End the identifier at the separator so that the old suffix is ignored. */
+        *pos = '\0';
+
+        if (total.has_value()) {
+          index++;
+          if (index == *total) {
+            return;
+          }
+        }
+      }
+    }
+    else {
+      /* Rename existing identifiers so that they don't conflict with the renamed one. Those will
+       * be removed after versioning code. */
+      BLI_strncat(socket->identifier, "_deprecated", sizeof(socket->identifier));
+    }
+  }
+}
+
+static void versioning_nodes_dynamic_sockets(bNodeTree &ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree.nodes) {
+    switch (node->type) {
+      case GEO_NODE_ACCUMULATE_FIELD:
+        /* This node requires the extra `total` parameter, because the `Group Index` identifier
+         * also has a space in the name, that should not be treated as separator. */
+        version_socket_identifier_suffixes_for_dynamic_types(node->inputs, " ", 1);
+        version_socket_identifier_suffixes_for_dynamic_types(node->outputs, " ", 3);
+        break;
+      case GEO_NODE_CAPTURE_ATTRIBUTE:
+      case GEO_NODE_ATTRIBUTE_STATISTIC:
+      case GEO_NODE_BLUR_ATTRIBUTE:
+      case GEO_NODE_EVALUATE_AT_INDEX:
+      case GEO_NODE_EVALUATE_ON_DOMAIN:
+      case GEO_NODE_INPUT_NAMED_ATTRIBUTE:
+      case GEO_NODE_RAYCAST:
+      case GEO_NODE_SAMPLE_INDEX:
+      case GEO_NODE_SAMPLE_NEAREST_SURFACE:
+      case GEO_NODE_SAMPLE_UV_SURFACE:
+      case GEO_NODE_STORE_NAMED_ATTRIBUTE:
+      case GEO_NODE_VIEWER:
+        version_socket_identifier_suffixes_for_dynamic_types(node->inputs, "_");
+        version_socket_identifier_suffixes_for_dynamic_types(node->outputs, "_");
+        break;
+    }
+  }
+}
+
 static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_pencil)
 {
   using namespace blender;
@@ -1162,14 +1328,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 2)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
       BKE_mesh_legacy_bevel_weight_to_generic(mesh);
-    }
-  }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 3)) {
-    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-      if (ntree->type == NTREE_GEOMETRY) {
-        version_geometry_nodes_add_realize_instance_nodes(ntree);
-      }
     }
   }
 
@@ -1760,10 +1918,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       const int curvetype = BKE_curve_type_get(curve);
       if (curvetype == OB_FONT) {
         CharInfo *info = curve->strinfo;
-        for (int i = curve->len_char32 - 1; i >= 0; i--, info++) {
-          if (info->mat_nr > 0) {
-            /** CharInfo mat_nr used to start at 1, unlike mesh & nurbs, now zero-based. */
-            info->mat_nr--;
+        if (info != nullptr) {
+          for (int i = curve->len_char32 - 1; i >= 0; i--, info++) {
+            if (info->mat_nr > 0) {
+              /** CharInfo mat_nr used to start at 1, unlike mesh & nurbs, now zero-based. */
+              info->mat_nr--;
+            }
           }
         }
       }
@@ -1783,19 +1943,32 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - #do_versions_after_linking_400 in this file.
-   * - `versioning_userdef.cc`, #blo_do_versions_userdef
-   * - `versioning_userdef.cc`, #do_versions_theme
-   *
-   * \note Keep this message at the bottom of the function.
-   */
-  {
-    /* Keep this block, even when empty. */
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
+    /* Unify Material::blend_shadow and Cycles.use_transparent_shadows into the
+     * Material::blend_flag. */
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
+    if (is_cycles) {
+      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        bool transparent_shadows = true;
+        if (IDProperty *cmat = version_cycles_properties_from_ID(&material->id)) {
+          transparent_shadows = version_cycles_property_boolean(
+              cmat, "use_transparent_shadow", true);
+        }
+        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
+      }
+    }
+    else {
+      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        bool transparent_shadow = material->blend_shadow != MA_BS_SOLID;
+        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadow, MA_BL_TRANSPARENT_SHADOW);
+      }
+    }
+  }
 
+  /* 401 6 did not require any do_version here. */
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 7)) {
     if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "int", "volumetric_ray_depth")) {
       SceneEEVEE default_eevee = *DNA_struct_default_get(SceneEEVEE);
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
@@ -1839,6 +2012,37 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       LightProbe default_probe = *DNA_struct_default_get(LightProbe);
       LISTBASE_FOREACH (LightProbe *, probe, &bmain->lightprobes) {
         probe->data_display_size = default_probe.data_display_size;
+      }
+    }
+
+    LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
+      mesh->flag &= ~ME_NO_OVERLAPPING_TOPOLOGY;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 8)) {
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type != NTREE_GEOMETRY) {
+        continue;
+      }
+      versioning_nodes_dynamic_sockets(*ntree);
+    }
+  }
+  /**
+   * Versioning code until next subversion bump goes here.
+   *
+   * \note Be sure to check when bumping the version:
+   * - #do_versions_after_linking_400 in this file.
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
+   *
+   * \note Keep this message at the bottom of the function.
+   */
+  {
+    /* Keep this block, even when empty. */
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        version_geometry_nodes_use_rotation_socket(*ntree);
       }
     }
   }

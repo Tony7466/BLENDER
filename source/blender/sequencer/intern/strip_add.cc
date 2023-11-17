@@ -23,7 +23,7 @@
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
@@ -490,7 +490,7 @@ Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
     }
   }
 
-  seq->len = MAX2(1, seq->len);
+  seq->len = std::max(1, seq->len);
   if (load_data->adjust_playback_rate) {
     seq->flag |= SEQ_AUTO_PLAYBACK_RATE;
   }
@@ -511,8 +511,6 @@ Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
   seq_add_set_name(scene, seq, load_data);
   seq_add_generic_update(scene, seq);
 
-  /* Prevent high memory usage when adding many files at once. */
-  SEQ_relations_sequence_free_anim(seq);
   MEM_freeN(anim_arr);
   return seq;
 }
@@ -628,9 +626,6 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
       if (seq->len < 0) {
         seq->len = 0;
       }
-
-      /* Prevent high memory usage when reloading many files at once. */
-      SEQ_relations_sequence_free_anim(seq);
       break;
     }
     case SEQ_TYPE_MOVIECLIP:
