@@ -582,12 +582,14 @@ static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
  * \{ */
 
 static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &curves,
-                                                   const VArray<bool> &selection)
+                                                   const IndexMask &mask)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const VArray<bool> src_cyclic = curves.cyclic();
-  const VArraySpan<bool> points_to_delete = VArraySpan(selection);
-  const int total_points = points_to_delete.count(false);
+
+  Array<bool> points_to_delete(curves.points_num());
+  mask.to_bools(points_to_delete.as_mutable_span());
+  const int total_points = points_to_delete.as_span().count(false);
 
   /* Return if deleting everything. */
   if (total_points == 0) {
@@ -602,7 +604,7 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
 
   for (const int curve_i : curves.curves_range()) {
     const IndexRange points = points_by_curve[curve_i];
-    const Span<bool> curve_points_to_delete = points_to_delete.slice(points);
+    const Span<bool> curve_points_to_delete = points_to_delete.as_span().slice(points);
     const bool curve_cyclic = src_cyclic[curve_i];
 
     /* Note, these ranges start at zero and needed to be shifted by `points.first()` */
@@ -674,24 +676,24 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator * /*op*/)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  const eAttrDomain domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
+  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
 
   bool changed = false;
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-    if (!ed::curves::has_anything_selected(curves)) {
+    IndexMaskMemory memory;
+    const IndexMask elements = ed::greasepencil::retrieve_editable_and_selected_elements(
+        *object, info.drawing, selection_domain, memory);
+    if (elements.is_empty()) {
       return;
     }
 
-    if (domain == ATTR_DOMAIN_CURVE) {
-      IndexMaskMemory memory;
-      curves.remove_curves(ed::curves::retrieve_selected_curves(curves, memory));
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    if (selection_domain == ATTR_DOMAIN_CURVE) {
+      curves.remove_curves(elements);
     }
-    else if (domain == ATTR_DOMAIN_POINT) {
-      const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
-          ".selection", ATTR_DOMAIN_POINT, true);
-      curves = remove_points_and_split(curves, selection);
+    else if (selection_domain == ATTR_DOMAIN_POINT) {
+      curves = remove_points_and_split(curves, elements);
     }
     info.drawing.tag_topology_changed();
     changed = true;
