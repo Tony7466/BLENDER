@@ -375,7 +375,7 @@ struct Panel_Runtime {
 
   blender::Vector<LayoutPanelBodyExtend> sub_panel_body_extends;
   blender::Vector<LayoutPanelHeaderInfo> sub_panel_headers;
-} Panel_Runtime;
+};
 
 /* #uiList types. */
 
