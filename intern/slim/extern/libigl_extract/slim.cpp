@@ -10,7 +10,6 @@
 
 #include "doublearea.h"
 #include "flip_avoiding_line_search.h"
-#include "polar_svd.h"
 
 #include "BLI_assert.h"
 
@@ -19,7 +18,9 @@
 #include <set>
 #include <vector>
 
+#include <Eigen/Geometry>
 #include <Eigen/IterativeLinearSolvers>
+#include <Eigen/SVD>
 #include <Eigen/SparseCholesky>
 
 namespace igl {
@@ -205,6 +206,51 @@ inline void grad(const Eigen::PlainObjectBase<DerivedV> &V,
   G.setFromTriplets(triplets.begin(), triplets.end());
 }
 
+// Computes the polar decomposition (R,T) of a matrix A using SVD singular
+// value decomposition
+//
+// Inputs:
+//   A  3 by 3 matrix to be decomposed
+// Outputs:
+//   R  3 by 3 rotation matrix part of decomposition (**always rotataion**)
+//   T  3 by 3 stretch matrix part of decomposition
+//   U  3 by 3 left-singular vectors
+//   S  3 by 1 singular values
+//   V  3 by 3 right-singular vectors
+template<typename DerivedA,
+         typename DerivedR,
+         typename DerivedT,
+         typename DerivedU,
+         typename DerivedS,
+         typename DerivedV>
+static inline void polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
+                             Eigen::PlainObjectBase<DerivedR> &R,
+                             Eigen::PlainObjectBase<DerivedT> &T,
+                             Eigen::PlainObjectBase<DerivedU> &U,
+                             Eigen::PlainObjectBase<DerivedS> &S,
+                             Eigen::PlainObjectBase<DerivedV> &V)
+{
+  using namespace std;
+  Eigen::JacobiSVD<DerivedA> svd;
+  svd.compute(A, Eigen::ComputeFullU | Eigen::ComputeFullV);
+  U = svd.matrixU();
+  V = svd.matrixV();
+  S = svd.singularValues();
+  R = U * V.transpose();
+  const auto &SVT = S.asDiagonal() * V.adjoint();
+  // Check for reflection
+  if (R.determinant() < 0) {
+    // Annoyingly the .eval() is necessary
+    auto W = V.eval();
+    W.col(V.cols() - 1) *= -1.;
+    R = U * W.transpose();
+    T = W * SVT;
+  }
+  else {
+    T = V * SVT;
+  }
+}
+
 // Implementation
 inline void compute_surface_gradient_matrix(const Eigen::MatrixXd &V,
                                             const Eigen::MatrixXi &F,
@@ -291,7 +337,7 @@ inline void update_weights_and_closest_rotations(igl::SLIMData &s,
       ji(1, 0) = s.Ji(i, 2);
       ji(1, 1) = s.Ji(i, 3);
 
-      igl::polar_svd(ji, ri, ti, ui, sing, vi);
+      polar_svd(ji, ri, ti, ui, sing, vi);
 
       s1 = sing(0);
       s2 = sing(1);
@@ -396,7 +442,7 @@ inline void update_weights_and_closest_rotations(igl::SLIMData &s,
 
       Mat3 ri, ti, ui, vi;
       Vec3 sing;
-      igl::polar_svd(ji, ri, ti, ui, sing, vi);
+      polar_svd(ji, ri, ti, ui, sing, vi);
 
       double s1 = sing(0);
       double s2 = sing(1);
@@ -727,7 +773,7 @@ inline double compute_energy_with_jacobians(igl::SLIMData &s,
       typedef Eigen::Matrix<double, 2, 1> Vec2;
       Mat2 ri, ti, ui, vi;
       Vec2 sing;
-      igl::polar_svd(ji, ri, ti, ui, sing, vi);
+      polar_svd(ji, ri, ti, ui, sing, vi);
       double s1 = sing(0);
       double s2 = sing(1);
 
@@ -782,7 +828,7 @@ inline double compute_energy_with_jacobians(igl::SLIMData &s,
       typedef Eigen::Matrix<double, 3, 1> Vec3;
       Mat3 ri, ti, ui, vi;
       Vec3 sing;
-      igl::polar_svd(ji, ri, ti, ui, sing, vi);
+      polar_svd(ji, ri, ti, ui, sing, vi);
       double s1 = sing(0);
       double s2 = sing(1);
       double s3 = sing(2);

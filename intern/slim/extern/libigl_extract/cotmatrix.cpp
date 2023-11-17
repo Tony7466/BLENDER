@@ -19,9 +19,9 @@
 //       for triangles, columns correspond to edges [1,2],[2,0],[0,1]
 //
 template<typename DerivedV, typename DerivedF, typename DerivedC>
-inline void cotmatrix_entries(const Eigen::PlainObjectBase<DerivedV> &V,
-                              const Eigen::PlainObjectBase<DerivedF> &F,
-                              Eigen::PlainObjectBase<DerivedC> &C)
+static inline void cotmatrix_entries(const Eigen::PlainObjectBase<DerivedV> &V,
+                                     const Eigen::PlainObjectBase<DerivedF> &F,
+                                     Eigen::PlainObjectBase<DerivedC> &C)
 {
   using namespace std;
   using namespace Eigen;

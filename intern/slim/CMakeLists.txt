@@ -33,7 +33,6 @@ set(SRC
   extern/libigl_extract/edge_lengths.h
   extern/libigl_extract/flip_avoiding_line_search.h
   extern/libigl_extract/parallel_for.h
-  extern/libigl_extract/polar_svd.h
 )
 
 set(LIB
