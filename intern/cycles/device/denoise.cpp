@@ -13,8 +13,6 @@ const char *denoiserTypeToHumanReadable(DenoiserType type)
       return "OptiX";
     case DENOISER_OPENIMAGEDENOISE:
       return "OpenImageDenoise (CPU)";
-    case DENOISER_OPENIMAGEDENOISE_GPU:
-      return "OpenImageDenoise (GPU)";
 
     case DENOISER_NUM:
     case DENOISER_NONE:
@@ -32,7 +30,6 @@ const NodeEnum *DenoiseParams::get_type_enum()
   if (type_enum.empty()) {
     type_enum.insert("optix", DENOISER_OPTIX);
     type_enum.insert("openimageio", DENOISER_OPENIMAGEDENOISE);
-    type_enum.insert("oidn_gpu", DENOISER_OPENIMAGEDENOISE_GPU);
   }
 
   return &type_enum;

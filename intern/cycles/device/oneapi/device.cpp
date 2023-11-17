@@ -110,7 +110,7 @@ static void device_iterator_cb(
   info.has_nanovdb = true;
 #  if defined(WITH_OPENIMAGEDENOISE)
   if (OIDNDenoiserGPU::is_device_supported(info)) {
-    info.denoisers |= DENOISER_OPENIMAGEDENOISE_GPU;
+    info.denoisers |= DENOISER_OPENIMAGEDENOISE;
   }
 #  endif
 

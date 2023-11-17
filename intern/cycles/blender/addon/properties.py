@@ -219,19 +219,11 @@ enum_guiding_directional_sampling_types = (
 )
 
 
-def enum_openimagedenoise_gpu_denoiser(self, context):
-    import _cycles
-    if _cycles.with_openimagedenoise_gpu:
-        return [('OPENIMAGEDENOISE_GPU', "OpenImageDenoise (GPU)",
-                 "Use Intel OpenImageDenoise AI denoiser running on the GPU", 8)]
-    return []
-
-
 def enum_openimagedenoise_denoiser(self, context):
     import _cycles
     if _cycles.with_openimagedenoise:
-        return [('OPENIMAGEDENOISE', "OpenImageDenoise (CPU)",
-                 "Use Intel OpenImageDenoise AI denoiser running on the CPU", 4)]
+        return [('OPENIMAGEDENOISE', "OpenImageDenoise",
+                 "Use Intel OpenImageDenoise AI denoiser", 4)]
     return []
 
 
@@ -244,7 +236,6 @@ def enum_optix_denoiser(self, context):
 def enum_preview_denoiser(self, context):
     optix_items = enum_optix_denoiser(self, context)
     oidn_items = enum_openimagedenoise_denoiser(self, context)
-    oidn_items += enum_openimagedenoise_gpu_denoiser(self, context)
 
     if len(optix_items) or len(oidn_items):
         items = [
@@ -265,7 +256,6 @@ def enum_denoiser(self, context):
     items = []
     items += enum_optix_denoiser(self, context)
     items += enum_openimagedenoise_denoiser(self, context)
-    items += enum_openimagedenoise_gpu_denoiser(self, context)
     return items
 
 

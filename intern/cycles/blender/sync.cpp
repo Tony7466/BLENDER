@@ -998,9 +998,6 @@ DenoiseParams BlenderSync::get_denoise_params(BL::Scene &b_scene,
       if (!Device::available_devices(DEVICE_MASK_OPTIX).empty()) {
         denoising.type = DENOISER_OPTIX;
       }
-      else if (openimagedenoise_gpu_supported()) {
-        denoising.type = DENOISER_OPENIMAGEDENOISE_GPU;
-      }
       else if (openimagedenoise_supported()) {
         denoising.type = DENOISER_OPENIMAGEDENOISE;
       }

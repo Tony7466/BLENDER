@@ -53,7 +53,7 @@ bool OIDNDenoiserGPU::is_device_supported(const DeviceInfo &device)
 OIDNDenoiserGPU::OIDNDenoiserGPU(Device *path_trace_device, const DenoiseParams &params)
     : DenoiserGPU(path_trace_device, params)
 {
-  DCHECK_EQ(params.type, DENOISER_OPENIMAGEDENOISE_GPU);
+  DCHECK_EQ(params.type, DENOISER_OPENIMAGEDENOISE);
 }
 
 OIDNDenoiserGPU::~OIDNDenoiserGPU()
@@ -79,9 +79,9 @@ OIDNDenoiserGPU::~OIDNDenoiserGPU()
 }
 
 bool OIDNDenoiserGPU::denoise_buffer(const BufferParams &buffer_params,
-                                   RenderBuffers *render_buffers,
-                                   const int num_samples,
-                                   bool allow_inplace_modification)
+                                     RenderBuffers *render_buffers,
+                                     const int num_samples,
+                                     bool allow_inplace_modification)
 {
   return DenoiserGPU::denoise_buffer(
       buffer_params, render_buffers, num_samples, allow_inplace_modification);

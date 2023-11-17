@@ -1043,17 +1043,10 @@ void *CCL_python_module_init()
 
   if (ccl::openimagedenoise_supported()) {
     PyModule_AddObject(mod, "with_openimagedenoise", Py_True);
-    if (ccl::openimagedenoise_gpu_supported()) {
-      PyModule_AddObject(mod, "with_openimagedenoise_gpu", Py_True);
-    }
-    else {
-      PyModule_AddObject(mod, "with_openimagedenoise_gpu", Py_False);
-    }
     Py_INCREF(Py_True);
   }
   else {
     PyModule_AddObject(mod, "with_openimagedenoise", Py_False);
-    PyModule_AddObject(mod, "with_openimagedenoise_gpu", Py_False);
     Py_INCREF(Py_False);
   }
 
