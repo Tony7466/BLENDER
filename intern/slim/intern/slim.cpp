@@ -9,7 +9,6 @@
 
 #include "BLI_assert.h"
 
-#include <iostream>
 #include <vector>
 
 #include <Eigen/Geometry>

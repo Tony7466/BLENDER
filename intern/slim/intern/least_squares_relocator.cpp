@@ -6,7 +6,6 @@
 #include "slim.h"
 
 #include <Eigen/Dense>
-#include <iostream>
 
 #include "BLI_assert.h"
 
@@ -190,7 +189,6 @@ void transform_initialized_map(SLIMData &slim_data)
 
   switch (number_of_pinned_vertices) {
     case 0:
-      std::cout << "no transformation possible because no pinned vertices exist." << std::endl;
       return;
     case 1: /* Only translation is needed with one pin. */
       compute_translation1_pin(slim_data, translation_vector);

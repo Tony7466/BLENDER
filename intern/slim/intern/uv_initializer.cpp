@@ -6,8 +6,6 @@
 
 #include <Eigen/SparseLU>
 
-#include <iostream>
-
 namespace slim {
 
 double compute_angle(const Eigen::Vector3d &a, const Eigen::Vector3d &b)
@@ -84,10 +82,8 @@ void find_vertex_to_its_angles_correspondence(const Eigen::MatrixXi &f,
   vertex_to_face_indices.setFromTriplets(coefficients.begin(), coefficients.end());
 }
 
-/*
-  implementation of different fixed-border parameterizations, mean value coordinates, harmonic,
-  tutte.
- */
+/* Implementation of different fixed-border parameterizations, mean value coordinates, harmonic,
+ * tutte. */
 void convex_border_parameterization(const Eigen::MatrixXi &f,
                                     const Eigen::MatrixXd &v,
                                     const Eigen::MatrixXi &e,

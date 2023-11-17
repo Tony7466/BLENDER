@@ -3,8 +3,6 @@
 
 #include "geometry_data_retrieval.h"
 
-#include <iostream>
-
 #include "slim.h"
 #include "slim_matrix_transfer.h"
 #include <Eigen/Dense>
@@ -53,8 +51,6 @@ void create_weights_per_face(SLIMData &slim_data)
     slim_data.weightPerFaceMap = Eigen::VectorXf::Ones(slim_data.F.rows());
     return;
   }
-
-  std::cout << "weightmap: " << slim_data.weightmap << std::endl;
 
   slim_data.weightPerFaceMap = Eigen::VectorXf(slim_data.F.rows());
 
