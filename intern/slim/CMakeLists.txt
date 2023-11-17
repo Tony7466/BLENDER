@@ -43,7 +43,6 @@ set(SRC
   extern/libigl_extract/isdiag.h
   extern/libigl_extract/line_search.h
   extern/libigl_extract/local_basis.h
-  extern/libigl_extract/massmatrix.h
   extern/libigl_extract/normalize_row_sums.h
   extern/libigl_extract/parallel_for.h
   extern/libigl_extract/per_face_normals.h
