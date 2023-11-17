@@ -5,20 +5,14 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at http://mozilla.org/MPL/2.0/.
-#ifndef IGL_COTMATRIX_H
-#define IGL_COTMATRIX_H
+
+#pragma once
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-// History:
-//  Used const references rather than copying the entire mesh
-//    Alec 9 October 2011
-//  removed cotan (uniform weights) optional parameter it was building a buggy
-//    half of the uniform laplacian, please see adjacency_matrix istead
-//    Alec 9 October 2011
-
 namespace igl {
+
 // Constructs the cotangent stiffness matrix (discrete laplacian) for a given
 // mesh (V,F).
 //
@@ -34,8 +28,6 @@ namespace igl {
 // Outputs:
 //   L  #V by #V cotangent matrix, each row i corresponding to V(i,:)
 //
-// See also: adjacency_matrix
-//
 // Note: This Laplacian uses the convention that diagonal entries are
 // **minus** the sum of off-diagonal entries. The diagonal entries are
 // therefore in general negative and the matrix is **negative** semi-definite
@@ -48,5 +40,3 @@ inline void cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
 }  // namespace igl
 
 #include "cotmatrix.cpp"
-
-#endif

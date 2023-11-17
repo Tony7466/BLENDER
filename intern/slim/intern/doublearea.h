@@ -5,10 +5,11 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at http://mozilla.org/MPL/2.0/.
-#ifndef IGL_DOUBLEAREA_H
-#define IGL_DOUBLEAREA_H
+
+#pragma once
 
 #include <Eigen/Dense>
+
 namespace igl {
 // DOUBLEAREA computes twice the area for each input triangle
 //
@@ -44,5 +45,3 @@ inline void doublearea(const Eigen::PlainObjectBase<Derivedl> &l,
 }  // namespace igl
 
 #include "doublearea.cpp"
-
-#endif

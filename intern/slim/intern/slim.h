@@ -6,8 +6,7 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef SLIM_H
-#define SLIM_H
+#pragma once
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -124,5 +123,3 @@ Eigen::MatrixXd slim_solve(SLIMData &data, int iter_num);
 void adjustSoftConstraintViolationPenalty(SLIMData &data);
 
 }  // namespace igl
-
-#endif  // SLIM_H
