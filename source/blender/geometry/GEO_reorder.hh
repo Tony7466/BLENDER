@@ -4,20 +4,20 @@
 
 #pragma once
 
+#include "BLI_multi_value_map.hh"
 #include "BLI_span.hh"
 
-#include "DNA_mesh_types.h"
+#include "BKE_geometry_set.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
 
 namespace blender::geometry {
 
-void reorder_mesh_verts(const Span<int> indices, Mesh &mesh);
-void reorder_mesh_edges(const Span<int> indices, Mesh &mesh);
-void reorder_mesh_faces(const Span<int> indices, Mesh &mesh);
-void reorder_points(const Span<int> indices, PointCloud &pointcloud);
-void reorder_curves(const Span<int> indices, bke::CurvesGeometry &curves);
-void reorder_instaces(const Span<int> indices, bke::Instances &instances);
+const MultiValueMap<bke::GeometryComponent::Type, eAttrDomain> &reorder_supports();
+
+bke::GeometryComponent &reordered_component_copy(const bke::GeometryComponent &src_component,
+                                                 const Span<int> old_by_new_map,
+                                                 const eAttrDomain domain);
 
 };  // namespace blender::geometry

@@ -7,6 +7,7 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_multi_value_map.hh"
 #include "BLI_sort.hh"
 #include "BLI_task.hh"
 
@@ -194,65 +195,25 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<float> weight_field = params.extract_input<Field<float>>("Sort Weight");
   const eAttrDomain domain = eAttrDomain(params.node().custom1);
 
-  using ComponentType = bke::GeometryComponent::Type;
-
-  static const MultiValueMap<ComponentType, eAttrDomain> supported_types_and_domains = []() {
-    MultiValueMap<ComponentType, eAttrDomain> supported_types_and_domains;
-    supported_types_and_domains.add_multiple(
-        ComponentType::Mesh, {ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE});
-    supported_types_and_domains.add(ComponentType::Curve, ATTR_DOMAIN_CURVE);
-    supported_types_and_domains.add(ComponentType::PointCloud, ATTR_DOMAIN_POINT);
-    supported_types_and_domains.add(ComponentType::Instance, ATTR_DOMAIN_INSTANCE);
-    return supported_types_and_domains;
-  }();
-
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    for (const auto [type, domains] : supported_types_and_domains.items()) {
+    for (const auto [type, domains] : geometry::reorder_supports().items()) {
       if (!domains.contains(domain)) {
         continue;
       }
-      const bke::GeometryComponent *component = geometry_set.get_component(type);
-      if (component == nullptr || component->is_empty()) {
+      const bke::GeometryComponent *src_component = geometry_set.get_component(type);
+      if (src_component == nullptr || src_component->is_empty()) {
         continue;
       }
       const std::optional<Array<int>> indices = sorted_indices(
-          *component, selection_field, group_id_field, weight_field, domain);
+          *src_component, selection_field, group_id_field, weight_field, domain);
       if (!indices.has_value()) {
         continue;
       }
-      switch (type) {
-        case ComponentType::Mesh: {
-          Mesh &mesh = *geometry_set.get_mesh_for_write();
-          switch (domain) {
-            case ATTR_DOMAIN_POINT:
-              geometry::reorder_mesh_verts(indices->as_span(), mesh);
-              break;
-            case ATTR_DOMAIN_EDGE:
-              geometry::reorder_mesh_edges(indices->as_span(), mesh);
-              break;
-            case ATTR_DOMAIN_FACE:
-              geometry::reorder_mesh_faces(indices->as_span(), mesh);
-              break;
-            default:
-              BLI_assert_unreachable();
-              break;
-          }
-          break;
-        }
-        case ComponentType::Curve:
-          geometry::reorder_curves(indices->as_span(),
-                                   geometry_set.get_curves_for_write()->geometry.wrap());
-          break;
-        case ComponentType::PointCloud:
-          geometry::reorder_points(indices->as_span(), *geometry_set.get_pointcloud_for_write());
-          break;
-        case ComponentType::Instance:
-          geometry::reorder_instaces(indices->as_span(), *geometry_set.get_instances_for_write());
-          break;
-        default:
-          BLI_assert_unreachable();
-          break;
-      }
+      bke::GeometryComponent &dst_component = geometry::reordered_component_copy(
+          *src_component, *indices, domain);
+      geometry_set.remove(type);
+      geometry_set.add(dst_component);
+      dst_component.remove_user_and_delete_if_last();
     }
   });
 
