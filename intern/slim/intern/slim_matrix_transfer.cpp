@@ -33,7 +33,7 @@ void SLIMMatrixTransfer::setup_slim_data(SLIMMatrixTransferChart &mt_chart,
 SLIMMatrixTransfer::SLIMMatrixTransfer() = default;
 SLIMMatrixTransfer::~SLIMMatrixTransfer() = default;
 
-void initialize_uvs(GeometryData &gd, SLIMData &slim_data)
+static void initialize_uvs(GeometryData &gd, SLIMData &slim_data)
 {
   MatrixXd vertex_positions2d = slim_data.V;
   MatrixXi faces_by_vertex_indices = slim_data.F;
@@ -58,7 +58,7 @@ void initialize_uvs(GeometryData &gd, SLIMData &slim_data)
       slim_data.V_o);
 }
 
-void initialize_if_needed(GeometryData &gd, SLIMData &slim_data)
+static void initialize_if_needed(GeometryData &gd, SLIMData &slim_data)
 {
   BLI_assert(slim_data.valid);
 

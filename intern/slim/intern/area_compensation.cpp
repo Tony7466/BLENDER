@@ -12,9 +12,9 @@ using namespace Eigen;
 
 namespace slim {
 
-void correct_geometry_size(double surface_area_to_map_area_ratio,
-                           MatrixXd &vertex_positions,
-                           double desired_surface_area_to_map_ration)
+static void correct_geometry_size(double surface_area_to_map_area_ratio,
+                                  MatrixXd &vertex_positions,
+                                  double desired_surface_area_to_map_ration)
 {
   BLI_assert(surface_area_to_map_area_ratio > 0);
   double sqrt_of_ratio = sqrt(surface_area_to_map_area_ratio / desired_surface_area_to_map_ration);
@@ -22,7 +22,7 @@ void correct_geometry_size(double surface_area_to_map_area_ratio,
 }
 
 template<typename VertexPositionType, typename FaceIndicesType>
-double compute_surface_area(const VertexPositionType v, const FaceIndicesType f)
+static double compute_surface_area(const VertexPositionType v, const FaceIndicesType f)
 {
   Eigen::VectorXd doubled_area_of_triangles;
   doublearea(v, f, doubled_area_of_triangles);

@@ -13,7 +13,7 @@ namespace slim {
 
 using namespace Eigen;
 
-void apply_transformation(SLIMData &slim_data, Matrix2d &transformation_matrix)
+static void apply_transformation(SLIMData &slim_data, Matrix2d &transformation_matrix)
 {
   BLI_assert(slim_data.valid);
 
@@ -22,7 +22,7 @@ void apply_transformation(SLIMData &slim_data, Matrix2d &transformation_matrix)
   }
 }
 
-void apply_translation(SLIMData &slim_data, Vector2d &translation_vector)
+static void apply_translation(SLIMData &slim_data, Vector2d &translation_vector)
 {
   BLI_assert(slim_data.valid);
 
@@ -31,7 +31,7 @@ void apply_translation(SLIMData &slim_data, Vector2d &translation_vector)
   }
 }
 
-void retrieve_positions_of_pinned_vertices_in_initialization(
+static void retrieve_positions_of_pinned_vertices_in_initialization(
     const MatrixXd &all_uv_positions_in_initialization,
     const VectorXi &indices_of_pinned_vertices,
     MatrixXd &position_of_pinned_vertices_in_initialization)
@@ -44,7 +44,7 @@ void retrieve_positions_of_pinned_vertices_in_initialization(
   }
 }
 
-void flip_input_geometry(SLIMData &slim_data)
+static void flip_input_geometry(SLIMData &slim_data)
 {
   BLI_assert(slim_data.valid);
 
@@ -53,11 +53,11 @@ void flip_input_geometry(SLIMData &slim_data)
   slim_data.F.col(2) = temp;
 }
 
-void compute_centroid(const MatrixXd &point_cloud, Vector2d &centroid)
+static void compute_centroid(const MatrixXd &point_cloud, Vector2d &centroid)
 {
   centroid << point_cloud.col(0).sum(), point_cloud.col(1).sum();
   centroid /= point_cloud.rows();
-};
+}
 
 /* Finds scaling matrix:
  *
@@ -86,9 +86,9 @@ void compute_centroid(const MatrixXd &point_cloud, Vector2d &centroid)
  *
  * `t` is of dimension `1 x 1` and `p` of dimension `2*numberOfPinnedVertices x 1`
  * is the vector holding the uv positions of the pinned vertices. */
-void compute_least_squares_scaling(MatrixXd centered_pins,
-                                   MatrixXd centered_initialized_pins,
-                                   Matrix2d &transformation_matrix)
+static void compute_least_squares_scaling(MatrixXd centered_pins,
+                                          MatrixXd centered_initialized_pins,
+                                          Matrix2d &transformation_matrix)
 {
   int number_of_pinned_vertices = centered_pins.rows();
 
@@ -103,10 +103,10 @@ void compute_least_squares_scaling(MatrixXd centered_pins,
   transformation_matrix << t(0), 0, 0, t(0);
 }
 
-void comput_least_squares_rotation_scale_only(SLIMData &slim_data,
-                                              Vector2d &translation_vector,
-                                              Matrix2d &transformation_matrix,
-                                              bool is_flip_allowed)
+static void comput_least_squares_rotation_scale_only(SLIMData &slim_data,
+                                                     Vector2d &translation_vector,
+                                                     Matrix2d &transformation_matrix,
+                                                     bool is_flip_allowed)
 {
   BLI_assert(slim_data.valid);
 
@@ -150,8 +150,8 @@ void comput_least_squares_rotation_scale_only(SLIMData &slim_data,
   translation_vector = centroid_of_pins - transformation_matrix * centroid_of_initialized;
 }
 
-void compute_transformation_matrix2_pins(const SLIMData &slim_data,
-                                         Matrix2d &transformation_matrix)
+static void compute_transformation_matrix2_pins(const SLIMData &slim_data,
+                                                Matrix2d &transformation_matrix)
 {
   BLI_assert(slim_data.valid);
 
@@ -173,13 +173,13 @@ void compute_transformation_matrix2_pins(const SLIMData &slim_data,
   transformation_matrix = (Matrix2d::Identity() * scale) * transformation_matrix;
 }
 
-void compute_translation1_pin(const SLIMData &slim_data, Vector2d &translation_vector)
+static void compute_translation1_pin(const SLIMData &slim_data, Vector2d &translation_vector)
 {
   BLI_assert(slim_data.valid);
   translation_vector = slim_data.bc.row(0) - slim_data.V_o.row(slim_data.b(0));
 }
 
-void transform_initialized_map(SLIMData &slim_data)
+static void transform_initialized_map(SLIMData &slim_data)
 {
   BLI_assert(slim_data.valid);
   Matrix2d transformation_matrix;
@@ -214,7 +214,7 @@ void transform_initialized_map(SLIMData &slim_data)
   }
 }
 
-bool is_translation_needed(const SLIMData &slim_data)
+static bool is_translation_needed(const SLIMData &slim_data)
 {
   BLI_assert(slim_data.valid);
   bool pinned_vertices_exist = (slim_data.b.rows() > 0);

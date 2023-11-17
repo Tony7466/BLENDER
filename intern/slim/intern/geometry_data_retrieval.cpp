@@ -41,7 +41,7 @@ GeometryData::GeometryData(const SLIMMatrixTransfer &mt, SLIMMatrixTransferChart
 {
 }
 
-void create_weights_per_face(SLIMData &slim_data)
+static void create_weights_per_face(SLIMData &slim_data)
 {
   if (!slim_data.valid) {
     return;

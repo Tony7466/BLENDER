@@ -8,12 +8,12 @@
 
 namespace slim {
 
-double compute_angle(const Eigen::Vector3d &a, const Eigen::Vector3d &b)
+static double compute_angle(const Eigen::Vector3d &a, const Eigen::Vector3d &b)
 {
   return acos(a.dot(b) / (a.norm() * b.norm()));
 }
 
-void find_vertex_to_opposite_angles_correspondence(
+static void find_vertex_to_opposite_angles_correspondence(
     const Eigen::MatrixXi &f,
     const Eigen::MatrixXd &v,
     Eigen::SparseMatrix<double> &vertex_to_face_indices)
@@ -48,9 +48,10 @@ void find_vertex_to_opposite_angles_correspondence(
   vertex_to_face_indices.setFromTriplets(coefficients.begin(), coefficients.end());
 }
 
-void find_vertex_to_its_angles_correspondence(const Eigen::MatrixXi &f,
-                                              const Eigen::MatrixXd &v,
-                                              Eigen::SparseMatrix<double> &vertex_to_face_indices)
+static void find_vertex_to_its_angles_correspondence(
+    const Eigen::MatrixXi &f,
+    const Eigen::MatrixXd &v,
+    Eigen::SparseMatrix<double> &vertex_to_face_indices)
 {
 
   typedef Eigen::Triplet<double> t;
@@ -252,7 +253,9 @@ void map_vertices_to_convex_border(Eigen::MatrixXd &vertex_positions)
   }
 }
 
-void get_flips(const Eigen::MatrixXi &f, const Eigen::MatrixXd &uv, std::vector<int> &flip_idx)
+static void get_flips(const Eigen::MatrixXi &f,
+                      const Eigen::MatrixXd &uv,
+                      std::vector<int> &flip_idx)
 {
   flip_idx.resize(0);
   for (int i = 0; i < f.rows(); i++) {
