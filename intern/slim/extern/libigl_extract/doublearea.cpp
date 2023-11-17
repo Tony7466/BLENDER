@@ -8,9 +8,10 @@
 
 #include "doublearea.h"
 #include "edge_lengths.h"
-#include "parallel_for.h"
 
 #include <cassert>
+
+#include <BLI_task.hh>
 
 // Sort the elements of a matrix X along a given dimension like matlabs sort
 // function, assuming X.cols() == 3.
@@ -59,51 +60,54 @@ static inline void doublearea_sort3(const Eigen::PlainObjectBase<DerivedX> &X,
     IX.col(2).setConstant(2);  // = Eigen::PlainObjectBase<DerivedIX>::Ones (IX.rows(),1);
   }
 
-  const auto &inner = [&IX, &Y, &dim, &ascending](const Index &i) {
-    YScalar &a = (dim == 1 ? Y(0, i) : Y(i, 0));
-    YScalar &b = (dim == 1 ? Y(1, i) : Y(i, 1));
-    YScalar &c = (dim == 1 ? Y(2, i) : Y(i, 2));
-    Index &ai = (dim == 1 ? IX(0, i) : IX(i, 0));
-    Index &bi = (dim == 1 ? IX(1, i) : IX(i, 1));
-    Index &ci = (dim == 1 ? IX(2, i) : IX(i, 2));
-    if (ascending) {
-      // 123 132 213 231 312 321
-      if (a > b) {
-        std::swap(a, b);
-        std::swap(ai, bi);
-      }
-      // 123 132 123 231 132 231
-      if (b > c) {
-        std::swap(b, c);
-        std::swap(bi, ci);
-        // 123 123 123 213 123 213
-        if (a > b) {
-          std::swap(a, b);
-          std::swap(ai, bi);
+  using namespace blender;
+  threading::parallel_for(
+      IndexRange(num_outer), 16000, [&IX, &Y, &dim, &ascending](const IndexRange range) {
+        for (const Index i : range) {
+          YScalar &a = (dim == 1 ? Y(0, i) : Y(i, 0));
+          YScalar &b = (dim == 1 ? Y(1, i) : Y(i, 1));
+          YScalar &c = (dim == 1 ? Y(2, i) : Y(i, 2));
+          Index &ai = (dim == 1 ? IX(0, i) : IX(i, 0));
+          Index &bi = (dim == 1 ? IX(1, i) : IX(i, 1));
+          Index &ci = (dim == 1 ? IX(2, i) : IX(i, 2));
+          if (ascending) {
+            // 123 132 213 231 312 321
+            if (a > b) {
+              std::swap(a, b);
+              std::swap(ai, bi);
+            }
+            // 123 132 123 231 132 231
+            if (b > c) {
+              std::swap(b, c);
+              std::swap(bi, ci);
+              // 123 123 123 213 123 213
+              if (a > b) {
+                std::swap(a, b);
+                std::swap(ai, bi);
+              }
+              // 123 123 123 123 123 123
+            }
+          }
+          else {
+            // 123 132 213 231 312 321
+            if (a < b) {
+              std::swap(a, b);
+              std::swap(ai, bi);
+            }
+            // 213 312 213 321 312 321
+            if (b < c) {
+              std::swap(b, c);
+              std::swap(bi, ci);
+              // 231 321 231 321 321 321
+              if (a < b) {
+                std::swap(a, b);
+                std::swap(ai, bi);
+              }
+              // 321 321 321 321 321 321
+            }
+          }
         }
-        // 123 123 123 123 123 123
-      }
-    }
-    else {
-      // 123 132 213 231 312 321
-      if (a < b) {
-        std::swap(a, b);
-        std::swap(ai, bi);
-      }
-      // 213 312 213 321 312 321
-      if (b < c) {
-        std::swap(b, c);
-        std::swap(bi, ci);
-        // 231 321 231 321 321 321
-        if (a < b) {
-          std::swap(a, b);
-          std::swap(ai, bi);
-        }
-        // 321 321 321 321 321 321
-      }
-    }
-  };
-  igl::parallel_for(num_outer, inner, 16000);
+      });
 }
 
 template<typename DerivedV, typename DerivedF, typename DeriveddblA>
@@ -177,17 +181,18 @@ inline void igl::doublearea(const Eigen::PlainObjectBase<Derivedl> &ul,
   // assert((Index)s.rows() == m);
   // resize output
   dblA.resize(l.rows(), 1);
-  igl::parallel_for(
-      m,
-      [&l, &dblA](const int i) {
-        // Kahan's Heron's formula
-        const typename Derivedl::Scalar arg = (l(i, 0) + (l(i, 1) + l(i, 2))) *
-                                              (l(i, 2) - (l(i, 0) - l(i, 1))) *
-                                              (l(i, 2) + (l(i, 0) - l(i, 1))) *
-                                              (l(i, 0) + (l(i, 1) - l(i, 2)));
-        dblA(i) = 2.0 * 0.25 * sqrt(arg);
-        assert(l(i, 2) - (l(i, 0) - l(i, 1)) && "FAILED KAHAN'S ASSERTION");
-        assert(dblA(i) == dblA(i) && "DOUBLEAREA() PRODUCED NaN");
-      },
-      1000l);
+
+  using namespace blender;
+  threading::parallel_for(IndexRange(m), 1000, [&l, &dblA](const IndexRange range) {
+    for (const Index i : range) {
+      // Kahan's Heron's formula
+      const typename Derivedl::Scalar arg = (l(i, 0) + (l(i, 1) + l(i, 2))) *
+                                            (l(i, 2) - (l(i, 0) - l(i, 1))) *
+                                            (l(i, 2) + (l(i, 0) - l(i, 1))) *
+                                            (l(i, 0) + (l(i, 1) - l(i, 2)));
+      dblA(i) = 2.0 * 0.25 * sqrt(arg);
+      assert(l(i, 2) - (l(i, 0) - l(i, 1)) && "FAILED KAHAN'S ASSERTION");
+      assert(dblA(i) == dblA(i) && "DOUBLEAREA() PRODUCED NaN");
+    }
+  });
 }

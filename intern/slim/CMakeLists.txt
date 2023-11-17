@@ -32,7 +32,6 @@ set(SRC
   extern/libigl_extract/doublearea.h
   extern/libigl_extract/edge_lengths.h
   extern/libigl_extract/flip_avoiding_line_search.h
-  extern/libigl_extract/parallel_for.h
 )
 
 set(LIB

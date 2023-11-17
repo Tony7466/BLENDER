@@ -6,8 +6,9 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at http://mozilla.org/MPL/2.0/.
 
+#include "BLI_task.hh"
+
 #include "edge_lengths.h"
-#include "parallel_for.h"
 
 template<typename DerivedV, typename DerivedF, typename DerivedL>
 inline void igl::edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
@@ -28,13 +29,14 @@ inline void igl::squared_edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
   assert(F.cols() == 3);
 
   L.resize(m, 3);
+
   // loop over faces
-  parallel_for(
-      m,
-      [&V, &F, &L](const int i) {
-        L(i, 0) = (V.row(F(i, 1)) - V.row(F(i, 2))).squaredNorm();
-        L(i, 1) = (V.row(F(i, 2)) - V.row(F(i, 0))).squaredNorm();
-        L(i, 2) = (V.row(F(i, 0)) - V.row(F(i, 1))).squaredNorm();
-      },
-      1000);
+  using namespace blender;
+  threading::parallel_for(IndexRange(m), 1000, [&V, &F, &L](const IndexRange range) {
+    for (const int i : range) {
+      L(i, 0) = (V.row(F(i, 1)) - V.row(F(i, 2))).squaredNorm();
+      L(i, 1) = (V.row(F(i, 2)) - V.row(F(i, 0))).squaredNorm();
+      L(i, 2) = (V.row(F(i, 0)) - V.row(F(i, 1))).squaredNorm();
+    }
+  });
 }
