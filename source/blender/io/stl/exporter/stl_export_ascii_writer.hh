@@ -29,7 +29,7 @@ class ASCIIFileWriter : public FileWriter, NonCopyable {
   void write_triangle(const Triangle &t) override;
 };
 
-ASCIIFileWriter::ASCIIFileWriter(const char *filepath) : file_(filepath)
+ASCIIFileWriter::ASCIIFileWriter(const char *filepath) : file_(filepath, std::ios::out)
 {
   file_ << "solid \n";
 }

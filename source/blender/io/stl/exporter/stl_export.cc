@@ -19,6 +19,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 
 #include "IO_stl.hh"
@@ -83,16 +84,16 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
     if ((scene->unit.system != USER_UNIT_NONE) && export_params.use_scene_unit) {
       global_scale *= scene->unit.scale_length;
     }
-    float scale_vec[3] = {global_scale, global_scale, global_scale};
-    float obmat3x3[3][3];
-    unit_m3(obmat3x3);
-    float obmat4x4[4][4];
-    unit_m4(obmat4x4);
-    /* +Y-forward and +Z-up are the Blender's default axis settings. */
+    float axes_transform[3][3];
+    unit_m3(axes_transform);
+    float xform[4][4];
+    /* +Y-forward and +Z-up are the default Blender axis settings. */
     mat3_from_axis_conversion(
-        IO_AXIS_Y, IO_AXIS_Z, export_params.forward_axis, export_params.up_axis, obmat3x3);
-    copy_m4_m3(obmat4x4, obmat3x3);
-    rescale_m4(obmat4x4, scale_vec);
+        export_params.forward_axis, export_params.up_axis, IO_AXIS_Y, IO_AXIS_Z, axes_transform);
+    mul_m4_m3m4(xform, axes_transform, obj_eval->object_to_world);
+    /* mul_m4_m3m4 does not transform last row of obmat, i.e. location data. */
+    mul_v3_m3v3(xform[3], axes_transform, obj_eval->object_to_world[3]);
+    xform[3][3] = obj_eval->object_to_world[3][3];
 
     /* Write triangles. */
     const Span<float3> positions = mesh->vert_positions();
@@ -100,10 +101,12 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
     for (const MLoopTri &loop_tri : mesh->looptris()) {
       Triangle t;
       for (int i = 0; i < 3; i++) {
-        float3 co = positions[corner_verts[loop_tri.tri[i]]];
-        mul_m4_v3(obmat4x4, co);
-        t.vertices[i] = co;
+        float3 pos = positions[corner_verts[loop_tri.tri[i]]];
+        mul_m4_v3(xform, pos);
+        pos *= global_scale;
+        t.vertices[i] = pos;
       }
+      t.normal = math::normal_tri(t.vertices[0], t.vertices[1], t.vertices[2]);
       writer->write_triangle(t);
     }
   }
