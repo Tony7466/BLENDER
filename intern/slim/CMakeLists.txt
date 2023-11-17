@@ -34,7 +34,6 @@ set(SRC
   extern/libigl_extract/flip_avoiding_line_search.h
   extern/libigl_extract/parallel_for.h
   extern/libigl_extract/polar_svd.h
-  extern/libigl_extract/sort.h
 )
 
 set(LIB

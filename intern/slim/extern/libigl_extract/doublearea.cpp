@@ -5,21 +5,112 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at http://mozilla.org/MPL/2.0/.
+
 #include "doublearea.h"
 #include "edge_lengths.h"
 #include "parallel_for.h"
-#include "sort.h"
+
 #include <cassert>
-#include <iostream>
+
+// Sort the elements of a matrix X along a given dimension like matlabs sort
+// function, assuming X.cols() == 3.
+//
+// Templates:
+//   DerivedX derived scalar type, e.g. MatrixXi or MatrixXd
+//   DerivedIX derived integer type, e.g. MatrixXi
+// Inputs:
+//   X  m by n matrix whose entries are to be sorted
+//   dim  dimensional along which to sort:
+//     1  sort each column (matlab default)
+//     2  sort each row
+//   ascending  sort ascending (true, matlab default) or descending (false)
+// Outputs:
+//   Y  m by n matrix whose entries are sorted
+//   IX  m by n matrix of indices so that if dim = 1, then in matlab notation
+//     for j = 1:n, Y(:,j) = X(I(:,j),j); end
+
+template<typename DerivedX, typename DerivedY, typename DerivedIX>
+static inline void doublearea_sort3(const Eigen::PlainObjectBase<DerivedX> &X,
+                                    const int dim,
+                                    const bool ascending,
+                                    Eigen::PlainObjectBase<DerivedY> &Y,
+                                    Eigen::PlainObjectBase<DerivedIX> &IX)
+{
+  using namespace Eigen;
+  using namespace std;
+  typedef typename Eigen::PlainObjectBase<DerivedY>::Scalar YScalar;
+  Y = X.template cast<YScalar>();
+  // get number of columns (or rows)
+  int num_outer = (dim == 1 ? X.cols() : X.rows());
+  // get number of rows (or columns)
+  int num_inner = (dim == 1 ? X.rows() : X.cols());
+  assert(num_inner == 3);
+  (void)num_inner;
+  typedef typename Eigen::PlainObjectBase<DerivedIX>::Scalar Index;
+  IX.resize(X.rows(), X.cols());
+  if (dim == 1) {
+    IX.row(0).setConstant(0);  // = Eigen::PlainObjectBase<DerivedIX>::Zero(1,IX.cols());
+    IX.row(1).setConstant(1);  // = Eigen::PlainObjectBase<DerivedIX>::Ones (1,IX.cols());
+    IX.row(2).setConstant(2);  // = Eigen::PlainObjectBase<DerivedIX>::Ones (1,IX.cols());
+  }
+  else {
+    IX.col(0).setConstant(0);  // = Eigen::PlainObjectBase<DerivedIX>::Zero(IX.rows(),1);
+    IX.col(1).setConstant(1);  // = Eigen::PlainObjectBase<DerivedIX>::Ones (IX.rows(),1);
+    IX.col(2).setConstant(2);  // = Eigen::PlainObjectBase<DerivedIX>::Ones (IX.rows(),1);
+  }
+
+  const auto &inner = [&IX, &Y, &dim, &ascending](const Index &i) {
+    YScalar &a = (dim == 1 ? Y(0, i) : Y(i, 0));
+    YScalar &b = (dim == 1 ? Y(1, i) : Y(i, 1));
+    YScalar &c = (dim == 1 ? Y(2, i) : Y(i, 2));
+    Index &ai = (dim == 1 ? IX(0, i) : IX(i, 0));
+    Index &bi = (dim == 1 ? IX(1, i) : IX(i, 1));
+    Index &ci = (dim == 1 ? IX(2, i) : IX(i, 2));
+    if (ascending) {
+      // 123 132 213 231 312 321
+      if (a > b) {
+        std::swap(a, b);
+        std::swap(ai, bi);
+      }
+      // 123 132 123 231 132 231
+      if (b > c) {
+        std::swap(b, c);
+        std::swap(bi, ci);
+        // 123 123 123 213 123 213
+        if (a > b) {
+          std::swap(a, b);
+          std::swap(ai, bi);
+        }
+        // 123 123 123 123 123 123
+      }
+    }
+    else {
+      // 123 132 213 231 312 321
+      if (a < b) {
+        std::swap(a, b);
+        std::swap(ai, bi);
+      }
+      // 213 312 213 321 312 321
+      if (b < c) {
+        std::swap(b, c);
+        std::swap(bi, ci);
+        // 231 321 231 321 321 321
+        if (a < b) {
+          std::swap(a, b);
+          std::swap(ai, bi);
+        }
+        // 321 321 321 321 321 321
+      }
+    }
+  };
+  igl::parallel_for(num_outer, inner, 16000);
+}
 
 template<typename DerivedV, typename DerivedF, typename DeriveddblA>
 inline void igl::doublearea(const Eigen::PlainObjectBase<DerivedV> &V,
                             const Eigen::PlainObjectBase<DerivedF> &F,
                             Eigen::PlainObjectBase<DeriveddblA> &dblA)
 {
-  if (F.cols() == 4)  // quads are handled by a specialized function
-    return doublearea_quad(V, F, dblA);
-
   const int dim = V.cols();
   // Only support triangles
   assert(F.cols() == 3);
@@ -62,47 +153,6 @@ inline void igl::doublearea(const Eigen::PlainObjectBase<DerivedV> &V,
   }
 }
 
-template<typename DerivedA, typename DerivedB, typename DerivedC, typename DerivedD>
-inline void igl::doublearea(const Eigen::PlainObjectBase<DerivedA> &A,
-                            const Eigen::PlainObjectBase<DerivedB> &B,
-                            const Eigen::PlainObjectBase<DerivedC> &C,
-                            Eigen::PlainObjectBase<DerivedD> &D)
-{
-  assert((B.cols() == A.cols()) && "dimensions of A and B should match");
-  assert((C.cols() == A.cols()) && "dimensions of A and C should match");
-  assert(A.rows() == B.rows() && "corners should have same length");
-  assert(A.rows() == C.rows() && "corners should have same length");
-  switch (A.cols()) {
-    case 2: {
-      // For 2d compute signed area
-      const auto &R = A - C;
-      const auto &S = B - C;
-      D = R.col(0).array() * S.col(1).array() - R.col(1).array() * S.col(0).array();
-      break;
-    }
-    default: {
-      Eigen::Matrix<typename DerivedD::Scalar, DerivedD::RowsAtCompileTime, 3> uL(A.rows(), 3);
-      uL.col(0) = (B - C).rowwise().norm();
-      uL.col(1) = (C - A).rowwise().norm();
-      uL.col(2) = (A - B).rowwise().norm();
-      doublearea(uL, D);
-    }
-  }
-}
-
-template<typename DerivedA, typename DerivedB, typename DerivedC>
-inline typename DerivedA::Scalar igl::doublearea_single(const Eigen::PlainObjectBase<DerivedA> &A,
-                                                        const Eigen::PlainObjectBase<DerivedB> &B,
-                                                        const Eigen::PlainObjectBase<DerivedC> &C)
-{
-  assert(A.size() == 2 && "Vertices should be 2D");
-  assert(B.size() == 2 && "Vertices should be 2D");
-  assert(C.size() == 2 && "Vertices should be 2D");
-  auto r = A - C;
-  auto s = B - C;
-  return r(0) * s(1) - r(1) * s(0);
-}
-
 template<typename Derivedl, typename DeriveddblA>
 inline void igl::doublearea(const Eigen::PlainObjectBase<Derivedl> &ul,
                             Eigen::PlainObjectBase<DeriveddblA> &dblA)
@@ -121,13 +171,13 @@ inline void igl::doublearea(const Eigen::PlainObjectBase<Derivedl> &ul,
   //
   // "Miscalculating Area and Angles of a Needle-like Triangle"
   // https://people.eecs.berkeley.edu/~wkahan/Triangle.pdf
-  igl::sort(ul, 2, false, l, _);
+  doublearea_sort3(ul, 2, false, l, _);
   // semiperimeters
   // Matrix<typename Derivedl::Scalar,Dynamic,1> s = l.rowwise().sum()*0.5;
   // assert((Index)s.rows() == m);
   // resize output
   dblA.resize(l.rows(), 1);
-  parallel_for(
+  igl::parallel_for(
       m,
       [&l, &dblA](const int i) {
         // Kahan's Heron's formula
@@ -140,30 +190,4 @@ inline void igl::doublearea(const Eigen::PlainObjectBase<Derivedl> &ul,
         assert(dblA(i) == dblA(i) && "DOUBLEAREA() PRODUCED NaN");
       },
       1000l);
-}
-
-template<typename DerivedV, typename DerivedF, typename DeriveddblA>
-inline void igl::doublearea_quad(const Eigen::PlainObjectBase<DerivedV> &V,
-                                 const Eigen::PlainObjectBase<DerivedF> &F,
-                                 Eigen::PlainObjectBase<DeriveddblA> &dblA)
-{
-  assert(V.cols() == 3);  // Only supports points in 3D
-  assert(F.cols() == 4);  // Only support quads
-  const size_t m = F.rows();
-
-  // Split the quads into triangles
-  Eigen::MatrixXi Ft(F.rows() * 2, 3);
-
-  for (size_t i = 0; i < m; ++i) {
-    Ft.row(i * 2) << F(i, 0), F(i, 1), F(i, 2);
-    Ft.row(i * 2 + 1) << F(i, 2), F(i, 3), F(i, 0);
-  }
-
-  // Compute areas
-  Eigen::VectorXd doublearea_tri;
-  igl::doublearea(V, Ft, doublearea_tri);
-
-  dblA.resize(F.rows(), 1);
-  for (unsigned i = 0; i < F.rows(); ++i)
-    dblA(i) = doublearea_tri(i * 2) + doublearea_tri(i * 2 + 1);
 }
