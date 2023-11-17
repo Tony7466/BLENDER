@@ -37,8 +37,8 @@
 
 #include "BKE_animsys.h"
 #include "BKE_collection.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_geom_legacy.h"
@@ -66,7 +66,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "ANIM_fcurve.hh"
+#include "ANIM_action.hh"
 #include "ANIM_keyframing.hh"
 
 #include "ED_clip.hh"

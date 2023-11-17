@@ -2044,6 +2044,20 @@ void BKE_pbvh_node_num_verts(const PBVH *pbvh,
   }
 }
 
+int BKE_pbvh_node_num_unique_verts(const PBVH &pbvh, const PBVHNode &node)
+{
+  switch (pbvh.header.type) {
+    case PBVH_GRIDS:
+      return node.prim_indices.size() * pbvh.gridkey.grid_area;
+    case PBVH_FACES:
+      return node.uniq_verts;
+    case PBVH_BMESH:
+      return node.bm_unique_verts.size();
+  }
+  BLI_assert_unreachable();
+  return 0;
+}
+
 void BKE_pbvh_node_get_grids(PBVH *pbvh,
                              PBVHNode *node,
                              const int **r_grid_indices,
@@ -2103,24 +2117,9 @@ void BKE_pbvh_node_get_original_BB(PBVHNode *node, float bb_min[3], float bb_max
   copy_v3_v3(bb_max, node->orig_vb.bmax);
 }
 
-void BKE_pbvh_node_get_proxies(PBVHNode *node, PBVHProxyNode **proxies, int *proxy_count)
+blender::MutableSpan<PBVHProxyNode> BKE_pbvh_node_get_proxies(PBVHNode *node)
 {
-  if (node->proxy_count > 0) {
-    if (proxies) {
-      *proxies = node->proxies;
-    }
-    if (proxy_count) {
-      *proxy_count = node->proxy_count;
-    }
-  }
-  else {
-    if (proxies) {
-      *proxies = nullptr;
-    }
-    if (proxy_count) {
-      *proxy_count = 0;
-    }
-  }
+  return node->proxies;
 }
 
 void BKE_pbvh_node_get_bm_orco_data(PBVHNode *node,
@@ -3012,12 +3011,9 @@ void BKE_pbvh_grids_update(PBVH *pbvh,
   }
 }
 
-void BKE_pbvh_vert_coords_apply(PBVH *pbvh, const float (*vertCos)[3], const int totvert)
+void BKE_pbvh_vert_coords_apply(PBVH *pbvh, const Span<float3> vert_positions)
 {
-  if (totvert != pbvh->totvert) {
-    BLI_assert_msg(0, "PBVH: Given deforming vcos number does not match PBVH vertex number!");
-    return;
-  }
+  BLI_assert(vert_positions.size() == pbvh->totvert);
 
   if (!pbvh->deformed) {
     if (!pbvh->vert_positions.is_empty()) {
@@ -3046,8 +3042,8 @@ void BKE_pbvh_vert_coords_apply(PBVH *pbvh, const float (*vertCos)[3], const int
     /* copy new verts coords */
     for (int a = 0; a < pbvh->totvert; a++) {
       /* no need for float comparison here (memory is exactly equal or not) */
-      if (memcmp(positions[a], vertCos[a], sizeof(float[3])) != 0) {
-        copy_v3_v3(positions[a], vertCos[a]);
+      if (memcmp(positions[a], vert_positions[a], sizeof(float[3])) != 0) {
+        positions[a] = vert_positions[a];
         BKE_pbvh_vert_tag_update_normal(pbvh, BKE_pbvh_make_vref(a));
       }
     }
@@ -3066,40 +3062,27 @@ bool BKE_pbvh_is_deformed(PBVH *pbvh)
 }
 /* Proxies */
 
-PBVHProxyNode *BKE_pbvh_node_add_proxy(PBVH *pbvh, PBVHNode *node)
+PBVHProxyNode &BKE_pbvh_node_add_proxy(PBVH &pbvh, PBVHNode &node)
 {
-  int index, totverts;
+  node.proxies.append_as(PBVHProxyNode{});
 
-  index = node->proxy_count;
+  /* It is fine to access pointer of the back element, since node is never handled from multiple
+   * threads, and the brush handler only requests a single proxy from the node, and never holds
+   * pointers to multiple proxies. */
+  PBVHProxyNode &proxy_node = node.proxies.last();
 
-  node->proxy_count++;
+  const int num_unique_verts = BKE_pbvh_node_num_unique_verts(pbvh, node);
 
-  if (node->proxies) {
-    node->proxies = static_cast<PBVHProxyNode *>(
-        MEM_reallocN(node->proxies, node->proxy_count * sizeof(PBVHProxyNode)));
-  }
-  else {
-    node->proxies = static_cast<PBVHProxyNode *>(MEM_mallocN(sizeof(PBVHProxyNode), __func__));
-  }
+  /* Brushes expect proxies to be zero-initialized, so that they can do additive operation to them.
+   */
+  proxy_node.co.resize(num_unique_verts, float3(0, 0, 0));
 
-  BKE_pbvh_node_num_verts(pbvh, node, &totverts, nullptr);
-  node->proxies[index].co = static_cast<float(*)[3]>(
-      MEM_callocN(sizeof(float[3]) * totverts, __func__));
-
-  return node->proxies + index;
+  return proxy_node;
 }
 
 void BKE_pbvh_node_free_proxies(PBVHNode *node)
 {
-  for (int p = 0; p < node->proxy_count; p++) {
-    MEM_freeN(node->proxies[p].co);
-    node->proxies[p].co = nullptr;
-  }
-
-  MEM_freeN(node->proxies);
-  node->proxies = nullptr;
-
-  node->proxy_count = 0;
+  node->proxies.clear_and_shrink();
 }
 
 PBVHColorBufferNode *BKE_pbvh_node_color_buffer_get(PBVHNode *node)
@@ -3233,10 +3216,10 @@ Mesh *BKE_pbvh_get_mesh(PBVH *pbvh)
   return pbvh->mesh;
 }
 
-float (*BKE_pbvh_get_vert_positions(const PBVH *pbvh))[3]
+MutableSpan<float3> BKE_pbvh_get_vert_positions(const PBVH *pbvh)
 {
   BLI_assert(pbvh->header.type == PBVH_FACES);
-  return reinterpret_cast<float(*)[3]>(pbvh->vert_positions.data());
+  return pbvh->vert_positions;
 }
 
 const float (*BKE_pbvh_get_vert_normals(const PBVH *pbvh))[3]
@@ -3479,7 +3462,7 @@ Vector<PBVHNode *> gather_proxies(PBVH *pbvh)
   Vector<PBVHNode *> array;
 
   for (PBVHNode &node : pbvh->nodes) {
-    if (node.proxy_count > 0) {
+    if (!node.proxies.is_empty()) {
       array.append(&node);
     }
   }
