@@ -645,7 +645,7 @@ void EEVEE_render_draw(EEVEE_Data *vedata, RenderEngine *engine, RenderLayer *rl
     EEVEE_renderpasses_output_accumulate(sldata, vedata, false);
     /* Transparent */
     EEVEE_material_transparent_output_accumulate(vedata);
-    GPU_framebuffer_texture_attach(fbl->main_color_fb, dtxl->depth, 0, 0);
+    GPU_framebuffer_texture_attach_config(fbl->main_color_fb, dtxl->depth, 0, 0);
     GPU_framebuffer_bind(fbl->main_color_fb);
     DRW_draw_pass(psl->transparent_pass);
     GPU_framebuffer_bind(fbl->main_fb);

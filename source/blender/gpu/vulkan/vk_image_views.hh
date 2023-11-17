@@ -19,8 +19,6 @@ class VKImageView;
  *
  *  Required Variations
  *  -Layout (Whether to use it as an attachment or in a shader.)
- *  -Format (It is closely related to the format of the `VkImage`. It is used in variations such as
- * sRGB.)
  *
  *  Special Variations
  *  -Layer (Multi-layer permutations.)
@@ -33,9 +31,7 @@ class VKImageViews {
  private:
   enum class Location : uint8_t {
     SHADER_BINDING,
-    SHADER_BINDING_NO_SRGB,
     ATTCHMENT,
-    ATTCHMENT_NO_SRGB,
     LOCATION_ALL
   };
   /**

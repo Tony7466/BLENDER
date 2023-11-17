@@ -61,11 +61,10 @@ std::weak_ptr<VKImageView> VKImageViews::lookup_vk_handle(VKTexture &texture,
 
   switch (usage) {
     case eImageViewUsage::ShaderBinding:
-      location = static_cast<int>((no_srgb) ? Location::SHADER_BINDING_NO_SRGB :
-                                              Location::SHADER_BINDING);
+      location = static_cast<int>(Location::SHADER_BINDING);
       break;
     case eImageViewUsage::Attachment:
-      location = static_cast<int>((no_srgb) ? Location::ATTCHMENT_NO_SRGB : Location::ATTCHMENT);
+      location = static_cast<int>(Location::ATTCHMENT);
       break;
     default:
       BLI_assert_unreachable();

@@ -13,6 +13,7 @@
 #include <memory>
 
 namespace blender::gpu {
+#define VK_ATTACHMENT_EMPTY -1000
 /*
  * Implementing Image Transitions in the `VkRenderPass`.
  * Of course, there are various transitions that can be considered, but with the following two

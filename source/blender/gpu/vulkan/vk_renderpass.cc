@@ -254,7 +254,7 @@ void VKRenderPass::cache_init()
   render_pass_enum_ = eRenderpassType::Any;
 
   for (auto &i : attachments_.idx_[info_id_]) {
-    i = -1;
+    i =  VK_ATTACHMENT_EMPTY;
   }
 };
 
