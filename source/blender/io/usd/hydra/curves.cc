@@ -8,7 +8,7 @@
 #include <pxr/imaging/hd/tokens.h>
 
 #include "BKE_curves.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_material.h"
 #include "BKE_particle.h"
 

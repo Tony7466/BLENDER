@@ -29,9 +29,9 @@
 
 #include "BIK_api.h"
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_constraint.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
@@ -60,7 +60,7 @@
 #include "ED_object.hh"
 #include "ED_screen.hh"
 
-#include "ANIM_fcurve.hh"
+#include "ANIM_action.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"

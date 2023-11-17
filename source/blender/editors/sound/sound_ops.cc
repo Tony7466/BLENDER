@@ -22,7 +22,7 @@
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
@@ -357,7 +357,7 @@ static int sound_mixdown_exec(bContext *C, wmOperator *op)
 
   BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
 
-  const double fps = (double(scene_eval->r.frs_sec) / double(scene_eval->r.frs_sec_base));
+  const double fps = double(scene_eval->r.frs_sec) / double(scene_eval->r.frs_sec_base);
   const int start_frame = scene_eval->r.sfra;
   const int end_frame = scene_eval->r.efra;
 
