@@ -58,12 +58,6 @@ OIDNDenoiserGPU::OIDNDenoiserGPU(Device *path_trace_device, const DenoiseParams 
 
 OIDNDenoiserGPU::~OIDNDenoiserGPU()
 {
-  if (albedo_memory_) {
-    delete albedo_memory_;
-  }
-  if (normal_memory_) {
-    delete normal_memory_;
-  }
   if (albedo_filter_) {
     oidnReleaseFilter(albedo_filter_);
   }
@@ -193,22 +187,6 @@ bool OIDNDenoiserGPU::denoise_configure_if_needed(DenoiseContext &context)
     return true;
   }
 
-  if (params_.prefilter != DENOISER_PREFILTER_NONE) {
-    if (albedo_memory_) {
-      delete albedo_memory_;
-    }
-    if (normal_memory_) {
-      delete normal_memory_;
-    }
-    size_t buffer_size = context.buffer_params.width * context.buffer_params.height *
-                         sizeof(float) * 3;
-
-    albedo_memory_ = new device_only_memory<char>(denoiser_device_, "__oidn_albedo");
-    albedo_memory_->alloc_to_device(buffer_size);
-    normal_memory_ = new device_only_memory<char>(denoiser_device_, "__oidn_normal");
-    normal_memory_->alloc_to_device(buffer_size);
-  }
-
   is_configured_ = true;
   configured_size_ = size;
 
@@ -269,25 +247,25 @@ bool OIDNDenoiserGPU::denoise_run(const DenoiseContext &context, const DenoisePa
                                  row_stride_in_bytes);
         oidnSetSharedFilterImage(albedo_filter_,
                                  "output",
-                                 (void *)albedo_memory_->device_pointer,
+                                 (void *)d_guiding_buffer,
                                  OIDN_FORMAT_FLOAT3,
                                  context.buffer_params.width,
                                  context.buffer_params.height,
-                                 0,
-                                 3 * sizeof(float),
-                                 context.buffer_params.width * 3 * sizeof(float));
+                                 context.guiding_params.pass_albedo * sizeof(float),
+                                 pixel_stride_in_bytes,
+                                 row_stride_in_bytes);
         oidnCommitFilter(albedo_filter_);
         oidnExecuteFilterAsync(albedo_filter_);
 
         oidnSetSharedFilterImage(oidn_filter_,
                                  "albedo",
-                                 (void *)albedo_memory_->device_pointer,
+                                 (void *)d_guiding_buffer,
                                  OIDN_FORMAT_FLOAT3,
                                  context.buffer_params.width,
                                  context.buffer_params.height,
-                                 0,
-                                 3 * sizeof(float),
-                                 context.buffer_params.width * 3 * sizeof(float));
+                                 context.guiding_params.pass_albedo * sizeof(float),
+                                 pixel_stride_in_bytes,
+                                 row_stride_in_bytes);
       }
     }
 
@@ -316,26 +294,26 @@ bool OIDNDenoiserGPU::denoise_run(const DenoiseContext &context, const DenoisePa
 
         oidnSetSharedFilterImage(normal_filter_,
                                  "output",
-                                 (void *)normal_memory_->device_pointer,
+                                 (void *)d_guiding_buffer,
                                  OIDN_FORMAT_FLOAT3,
                                  context.buffer_params.width,
                                  context.buffer_params.height,
-                                 0,
-                                 3 * sizeof(float),
-                                 context.buffer_params.width * 3 * sizeof(float));
+                                 context.guiding_params.pass_normal * sizeof(float),
+                                 pixel_stride_in_bytes,
+                                 row_stride_in_bytes);
 
         oidnCommitFilter(normal_filter_);
         oidnExecuteFilterAsync(normal_filter_);
 
         oidnSetSharedFilterImage(oidn_filter_,
                                  "normal",
-                                 (void *)normal_memory_->device_pointer,
+                                 (void *)d_guiding_buffer,
                                  OIDN_FORMAT_FLOAT3,
                                  context.buffer_params.width,
                                  context.buffer_params.height,
-                                 0,
-                                 3 * sizeof(float),
-                                 context.buffer_params.width * 3 * sizeof(float));
+                                 context.guiding_params.pass_normal * sizeof(float),
+                                 pixel_stride_in_bytes,
+                                 row_stride_in_bytes);
       }
     }
   }

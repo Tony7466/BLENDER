@@ -61,9 +61,6 @@ class OIDNDenoiserGPU : public DenoiserGPU {
   OIDNFilter albedo_filter_ = nullptr;
   OIDNFilter normal_filter_ = nullptr;
 
-  device_only_memory<char> *albedo_memory_ = nullptr;
-  device_only_memory<char> *normal_memory_ = nullptr;
-
   bool is_configured_ = false;
   int2 configured_size_ = make_int2(0, 0);
 
