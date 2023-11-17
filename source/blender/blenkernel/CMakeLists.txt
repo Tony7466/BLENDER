@@ -400,6 +400,7 @@ set(SRC
   BKE_gpencil_update_cache_legacy.h
   BKE_grease_pencil.h
   BKE_grease_pencil.hh
+  BKE_grid_types.hh
   BKE_icons.h
   BKE_idprop.h
   BKE_idprop.hh
