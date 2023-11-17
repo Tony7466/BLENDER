@@ -3281,7 +3281,7 @@ class VIEW3D_MT_object_convert(Menu):
 
         if ob and ob.type == 'CURVES':
             layout.operator("curves.convert_to_particle_system", text="Particle System")
-        
+
         layout.template_node_operator_asset_menu_items(catalog_path="Object/Convert")
 
 
@@ -5006,6 +5006,10 @@ class VIEW3D_MT_edit_greasepencil_delete(Menu):
 
     def draw(self, _context):
         layout = self.layout
+
+        layout.operator("grease_pencil.delete")
+        
+        layout.separator()
 
         layout.operator_enum("grease_pencil.dissolve", "type")
 
