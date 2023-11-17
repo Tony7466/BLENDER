@@ -26,10 +26,10 @@
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_layer.h"
 #include "BKE_mask.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_paint.hh"
 
 #include "SEQ_transform.hh"
@@ -841,6 +841,9 @@ void applyTransObjects(TransInfo *t)
 
 static void transdata_restore_basic(TransDataBasic *td_basic)
 {
+  BLI_assert_msg(td_basic->val != td_basic->loc,
+                 "it shouldn't happen. `val` is for 1D, `loc` is for 3D");
+
   if (td_basic->val) {
     *td_basic->val = td_basic->ival;
   }
