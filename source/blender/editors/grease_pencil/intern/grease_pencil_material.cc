@@ -16,6 +16,9 @@
 
 #include "ED_grease_pencil.hh"
 
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+
 #include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
@@ -63,10 +66,66 @@ static void GREASE_PENCIL_OT_material_reveal(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Hide Others Materials Operator
+ * \{ */
+
+static int grease_pencil_material_hide_exec(bContext *C, wmOperator *op)
+{
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  const bool unselected = RNA_boolean_get(op->ptr, "unselected");
+
+  bool changed = false;
+
+  for (const int i : IndexRange(object->totcol)) {
+    if (unselected && i == object->actcol - 1) {
+      continue;
+    }
+    if (!unselected && i != object->actcol - 1) {
+      continue;
+    }
+    if (Material *ma = BKE_gpencil_material(object, i + 1)) {
+      MaterialGPencilStyle *gp_style = ma->gp_style;
+      gp_style->flag |= GP_MATERIAL_HIDE;
+      DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA | NA_EDITED, &grease_pencil);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_material_hide(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Show All Materials";
+  ot->idname = "GREASE_PENCIL_OT_material_hide";
+  ot->description = "Hide selected/unselected Grease Pencil materials";
+
+  /* Callbacks. */
+  ot->exec = grease_pencil_material_hide_exec;
+  ot->poll = active_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* props */
+  RNA_def_boolean(
+      ot->srna, "unselected", false, "Unselected", "Hide unselected rather than selected colors");
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_material()
 {
   using namespace blender::ed::greasepencil;
   WM_operatortype_append(GREASE_PENCIL_OT_material_reveal);
+  WM_operatortype_append(GREASE_PENCIL_OT_material_hide);
 }
