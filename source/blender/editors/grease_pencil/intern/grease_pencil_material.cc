@@ -74,19 +74,20 @@ static int grease_pencil_material_hide_exec(bContext *C, wmOperator *op)
 {
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  const bool unselected = RNA_boolean_get(op->ptr, "unselected");
+  const bool invert = RNA_boolean_get(op->ptr, "invert");
 
   bool changed = false;
 
   for (const int i : IndexRange(object->totcol)) {
-    if (unselected && i == object->actcol - 1) {
+    if (invert && i == object->actcol - 1) {
       continue;
     }
-    if (!unselected && i != object->actcol - 1) {
+    if (!invert && i != object->actcol - 1) {
       continue;
     }
-    if (Material *ma = BKE_gpencil_material(object, i + 1)) {
+    if (Material *ma = BKE_object_material_get(object, i + 1)) {
       MaterialGPencilStyle *gp_style = ma->gp_style;
+      BLI_assert(gp_style != nullptr);
       gp_style->flag |= GP_MATERIAL_HIDE;
       DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
       changed = true;
@@ -104,9 +105,9 @@ static int grease_pencil_material_hide_exec(bContext *C, wmOperator *op)
 static void GREASE_PENCIL_OT_material_hide(wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "Show All Materials";
+  ot->name = "Hide Materials";
   ot->idname = "GREASE_PENCIL_OT_material_hide";
-  ot->description = "Hide selected/unselected Grease Pencil materials";
+  ot->description = "Hide active/inactive Grease Pencil material(s)";
 
   /* Callbacks. */
   ot->exec = grease_pencil_material_hide_exec;
@@ -116,7 +117,7 @@ static void GREASE_PENCIL_OT_material_hide(wmOperatorType *ot)
 
   /* props */
   RNA_def_boolean(
-      ot->srna, "unselected", false, "Unselected", "Hide unselected rather than selected colors");
+      ot->srna, "invert", false, "Invert", "Hide inactive materials instead of the active one");
 }
 
 /** \} */
