@@ -2916,9 +2916,8 @@ static void ui_hsv_cursor(const float x,
                           const float hsv[3],
                           const bool is_active)
 {
+  /* Draw the circle larger while the mouse button is pressed down. */
   const float radius = zoom * (((is_active ? 20.0f : 12.0f) * UI_SCALE_FAC) + U.pixelsize);
-  float fg = MIN2(1.0f - hsv[2] + 0.2, 0.8f);
-  float bg = hsv[2] / 2.0f;
 
   GPU_blend(GPU_BLEND_ALPHA);
   const uint pos = GPU_vertformat_attr_add(
@@ -2927,6 +2926,10 @@ static void ui_hsv_cursor(const float x,
   immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_OUTLINE_AA);
   immUniformColor3fv(rgb);
   immUniform1f("outlineWidth", U.pixelsize);
+
+  /* Alpha of outline colors just strong enough to give good contrast. */
+  const float fg = MIN2(1.0f - hsv[2] + 0.2, 0.8f);
+  const float bg = hsv[2] / 2.0f;
 
   immUniform4f("outlineColor", 0.0f, 0.0f, 0.0f, bg);
   immUniform1f("size", radius);
@@ -3330,15 +3333,17 @@ static void ui_draw_but_HSVCUBE(uiBut *but, const rcti *rect)
   immUnbindProgram();
 
   if (BLI_rcti_size_x(rect) / BLI_rcti_size_y(rect) < 3) {
+    /* This is for the full square HSV cube. */
     float margin = (4.0f * UI_SCALE_FAC);
     CLAMP(x, rect->xmin + margin, rect->xmax - margin);
     CLAMP(y, rect->ymin + margin, rect->ymax - margin);
     ui_hsv_cursor(x, y, zoom, rgb, hsv, but->flag & UI_SELECT);
   }
   else {
+    /* This is for the narrow horizontal gradient. */
     rctf rectf;
     BLI_rctf_rcti_copy(&rectf, rect);
-    float margin = (2.0f * UI_SCALE_FAC);
+    const float margin = (2.0f * UI_SCALE_FAC);
     CLAMP(x, rect->xmin + margin, rect->xmax - margin);
     CLAMP(y, rect->ymin + margin, rect->ymax - margin);
     rectf.ymax += 1;
@@ -3346,19 +3351,20 @@ static void ui_draw_but_HSVCUBE(uiBut *but, const rcti *rect)
     rectf.xmax = x + (4.0f * UI_SCALE_FAC) + U.pixelsize;
 
     if (but->flag & UI_SELECT) {
+      /* Make the indicator larger while the mouse button is pressed. */
       rectf.xmin -= U.pixelsize;
       rectf.xmax += U.pixelsize;
       rectf.ymin -= U.pixelsize;
       rectf.ymax += U.pixelsize;
     }
 
-    float col[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    const float col[4] = {0.0f, 0.0f, 0.0f, 1.0f};
     UI_draw_roundbox_4fv(&rectf, false, 0, col);
 
     rectf.xmin += 1.0f;
     rectf.xmax -= 1.0f;
-    float inner[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    float col2[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    const float inner[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    const float col2[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     UI_draw_roundbox_4fv_ex(&rectf, col2, nullptr, 0.0f, inner, U.pixelsize, 0.0f);
   }
 }
@@ -3394,9 +3400,9 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
   rctf rectf;
   BLI_rctf_rcti_copy(&rectf, rect);
 
-  float inner1[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-  float inner2[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  float outline[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  const float inner1[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  const float inner2[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  const float outline[4] = {0.0f, 0.0f, 0.0f, 1.0f};
   UI_draw_roundbox_4fv_ex(&rectf, inner1, inner2, U.pixelsize, outline, 1.0f, 0.0f);
 
   /* cursor */
@@ -3406,6 +3412,7 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
   float col[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   if (but->flag & UI_SELECT) {
+    /* Enlarge the indicator while the mouse button is pressed down. */
     rectf.xmin -= U.pixelsize;
     rectf.xmax += U.pixelsize;
     rectf.ymin -= U.pixelsize;
@@ -3416,7 +3423,7 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
 
   rectf.ymin += 1.0f;
   rectf.ymax -= 1.0f;
-  float col2[4] = {v, v, v, 1.0f};
+  const float col2[4] = {v, v, v, 1.0f};
   UI_draw_roundbox_4fv_ex(&rectf, col2, nullptr, 0.0f, inner1, U.pixelsize, 0.0f);
 }
 
