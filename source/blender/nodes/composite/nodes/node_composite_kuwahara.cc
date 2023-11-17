@@ -95,7 +95,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
       return;
     }
 
-    GPUShader *shader = shader_manager().get(get_classic_convolution_shader_name());
+    GPUShader *shader = context().get_shader(get_classic_convolution_shader_name());
     GPU_shader_bind(shader);
 
     const Result &input_image = get_input("Image");
@@ -122,19 +122,19 @@ class ConvertKuwaharaOperation : public NodeOperation {
 
   void execute_classic_summed_area_table()
   {
-    Result blocks = Result::Temporary(ResultType::Color, texture_pool(), ResultPrecision::Full);
-    Result x_prologues = Result::Temporary(
-        ResultType::Color, texture_pool(), ResultPrecision::Full);
-    Result y_prologues = Result::Temporary(
-        ResultType::Color, texture_pool(), ResultPrecision::Full);
+    Result blocks = context().create_temporary_result(ResultType::Color, ResultPrecision::Full);
+    Result x_prologues = context().create_temporary_result(ResultType::Color,
+                                                           ResultPrecision::Full);
+    Result y_prologues = context().create_temporary_result(ResultType::Color,
+                                                           ResultPrecision::Full);
     summed_area_table(context(), get_input("Image"), blocks, x_prologues, y_prologues);
 
-    Result squared_blocks = Result::Temporary(
-        ResultType::Color, texture_pool(), ResultPrecision::Full);
-    Result squared_x_prologues = Result::Temporary(
-        ResultType::Color, texture_pool(), ResultPrecision::Full);
-    Result squared_y_prologues = Result::Temporary(
-        ResultType::Color, texture_pool(), ResultPrecision::Full);
+    Result squared_blocks = context().create_temporary_result(ResultType::Color,
+                                                              ResultPrecision::Full);
+    Result squared_x_prologues = context().create_temporary_result(ResultType::Color,
+                                                                   ResultPrecision::Full);
+    Result squared_y_prologues = context().create_temporary_result(ResultType::Color,
+                                                                   ResultPrecision::Full);
     summed_area_table(context(),
                       get_input("Image"),
                       squared_blocks,
@@ -142,7 +142,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
                       squared_y_prologues,
                       SummedAreaTableOperation::Square);
 
-    GPUShader *shader = shader_manager().get(get_classic_summed_area_table_shader_name());
+    GPUShader *shader = context().get_shader(get_classic_summed_area_table_shader_name());
     GPU_shader_bind(shader);
 
     Result &size_input = get_input("Size");
@@ -193,14 +193,14 @@ class ConvertKuwaharaOperation : public NodeOperation {
   void execute_anisotropic()
   {
     Result structure_tensor = compute_structure_tensor();
-    Result smoothed_structure_tensor = Result::Temporary(ResultType::Color, texture_pool());
+    Result smoothed_structure_tensor = context().create_temporary_result(ResultType::Color);
     symmetric_separable_blur(context(),
                              structure_tensor,
                              smoothed_structure_tensor,
                              float2(node_storage(bnode()).uniformity));
     structure_tensor.release();
 
-    GPUShader *shader = shader_manager().get(get_anisotropic_shader_name());
+    GPUShader *shader = context().get_shader(get_anisotropic_shader_name());
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1f(shader, "eccentricity", get_eccentricity());
@@ -236,7 +236,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
 
   Result compute_structure_tensor()
   {
-    GPUShader *shader = shader_manager().get(
+    GPUShader *shader = context().get_shader(
         "compositor_kuwahara_anisotropic_compute_structure_tensor");
     GPU_shader_bind(shader);
 
@@ -244,7 +244,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
     input.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
-    Result structure_tensor = Result::Temporary(ResultType::Color, texture_pool());
+    Result structure_tensor = context().create_temporary_result(ResultType::Color);
     structure_tensor.allocate_texture(domain);
     structure_tensor.bind_as_image(shader, "structure_tensor_img");
 

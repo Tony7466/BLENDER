@@ -22,7 +22,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_attribute.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_mesh_types.hh"
 
 #include "RNA_access.hh"
@@ -55,7 +55,7 @@ static const EnumPropertyItem rna_enum_mesh_remesh_mode_items[] = {
 
 #  include "BLI_math_vector.h"
 
-#  include "BKE_customdata.h"
+#  include "BKE_customdata.hh"
 #  include "BKE_main.h"
 #  include "BKE_mesh.hh"
 #  include "BKE_mesh_runtime.hh"
@@ -1261,16 +1261,6 @@ static void rna_MeshPoly_vertices_get(PointerRNA *ptr, int *values)
   memcpy(values, &me->corner_verts()[poly_start], sizeof(int) * poly_size);
 }
 
-static int rna_MeshPolygon_loop_start_get(PointerRNA *ptr)
-{
-  return *static_cast<const int *>(ptr->data);
-}
-
-static void rna_MeshPolygon_loop_start_set(PointerRNA *ptr, int value)
-{
-  *static_cast<int *>(ptr->data) = value;
-}
-
 static int rna_MeshPolygon_loop_total_get(PointerRNA *ptr)
 {
   const int *data = static_cast<const int *>(ptr->data);
@@ -2282,8 +2272,7 @@ static void rna_def_mpolygon(BlenderRNA *brna)
 
   /* these are both very low level access */
   prop = RNA_def_property(srna, "loop_start", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_funcs(
-      prop, "rna_MeshPolygon_loop_start_get", "rna_MeshPolygon_loop_start_set", nullptr);
+  RNA_def_property_int_sdna(prop, nullptr, "i");
   RNA_def_property_ui_text(prop, "Loop Start", "Index of the first loop of this face");
   /* also low level */
   prop = RNA_def_property(srna, "loop_total", PROP_INT, PROP_UNSIGNED);

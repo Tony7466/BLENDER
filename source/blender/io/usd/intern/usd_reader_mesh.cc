@@ -10,7 +10,7 @@
 #include "usd_skel_convert.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -933,7 +933,7 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
              pxr::SdfValueTypeNames->QuatdArray,
              pxr::SdfValueTypeNames->QuathArray))
     {
-      /* Skip creating known unsupported types, and avoid spammy error prints. */
+      /* Skip creating known unsupported types, and avoid noisy error prints. */
       continue;
     }
 
