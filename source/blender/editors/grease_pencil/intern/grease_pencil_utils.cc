@@ -272,4 +272,18 @@ IndexMask retrieve_editable_and_selected_points(Object &object,
   return IndexMask::from_bits(points_range, editable_points_bits, memory);
 }
 
+IndexMask retrieve_editable_and_selected_elements(Object &object,
+                                                  const bke::greasepencil::Drawing &drawing,
+                                                  const eAttrDomain selection_domain,
+                                                  IndexMaskMemory &memory)
+{
+  if (selection_domain == ATTR_DOMAIN_CURVE) {
+    return ed::greasepencil::retrieve_editable_and_selected_strokes(object, drawing, memory);
+  }
+  else if (selection_domain == ATTR_DOMAIN_POINT) {
+    return ed::greasepencil::retrieve_editable_and_selected_points(object, drawing, memory);
+  }
+  return {};
+}
+
 }  // namespace blender::ed::greasepencil
