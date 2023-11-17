@@ -27,7 +27,7 @@ struct SLIMData {
 
   // Input
   Eigen::MatrixXd V;  // #V by 3 list of mesh vertex positions
-  Eigen::MatrixXi F;  // #F by 3/3 list of mesh faces (triangles/tets)
+  Eigen::MatrixXi F;  // #F by 3/3 list of mesh faces (triangles)
   enum SLIM_ENERGY {
     ARAP,
     LOG_ARAP,
@@ -100,7 +100,7 @@ struct SLIMData {
 // Compute necessary information to start using SLIM
 // Inputs:
 //		V           #V by 3 list of mesh vertex positions
-//		F           #F by 3/3 list of mesh faces (triangles/tets)
+//		F           #F by 3/3 list of mesh faces (triangles)
 //    b           list of boundary indices into V
 //    bc          #b by dim list of boundary conditions
 //    soft_p      Soft penalty factor (can be zero)

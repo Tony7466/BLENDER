@@ -19,10 +19,10 @@ namespace igl {
 // vertices that does not incur flips, and then minimizes a given energy using this maximal step
 // and a bisection linesearch (see igl::line_search).
 //
-// Supports both triangle and tet meshes.
+// Supports triangle meshes.
 //
 // Inputs:
-//   F  #F by 3/4 				list of mesh faces or tets
+//   F  #F by 3 				list of mesh faces
 //   cur_v  						#V by dim list of variables
 //   dst_v  						#V by dim list of target vertices. This mesh may have flipped triangles
 //   energy       			    A function to compute the mesh-based energy (return an energy that is

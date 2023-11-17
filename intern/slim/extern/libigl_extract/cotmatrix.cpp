@@ -25,25 +25,16 @@ inline void igl::cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
 
   L.resize(V.rows(), V.rows());
   Matrix<int, Dynamic, 2> edges;
-  int simplex_size = F.cols();
-  // 3 for triangles, 4 for tets
-  assert(simplex_size == 3 || simplex_size == 4);
-  if (simplex_size == 3) {
-    // This is important! it could decrease the comptuation time by a factor of 2
-    // Laplacian for a closed 2d manifold mesh will have on average 7 entries per
-    // row
-    L.reserve(10 * V.rows());
-    edges.resize(3, 2);
-    edges << 1, 2, 2, 0, 0, 1;
-  }
-  else if (simplex_size == 4) {
-    L.reserve(17 * V.rows());
-    edges.resize(6, 2);
-    edges << 1, 2, 2, 0, 0, 1, 3, 0, 3, 1, 3, 2;
-  }
-  else {
-    return;
-  }
+  // 3 for triangles
+  assert(F.cols() == 3);
+
+  // This is important! it could decrease the comptuation time by a factor of 2
+  // Laplacian for a closed 2d manifold mesh will have on average 7 entries per
+  // row
+  L.reserve(10 * V.rows());
+  edges.resize(3, 2);
+  edges << 1, 2, 2, 0, 0, 1;
+
   // Gather cotangents
   Matrix<Scalar, Dynamic, Dynamic> C;
   cotmatrix_entries(V, F, C);

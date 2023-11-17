@@ -89,57 +89,29 @@ inline void compute_weighted_jacobians(igl::SLIMData &s, const Eigen::MatrixXd &
 {
   BLI_assert(s.valid);
 
-  if (s.F.cols() == 3) {
-    // Ji=[D1*u,D2*u,D1*v,D2*v];
-    s.Ji.col(0) = s.Dx * uv.col(0);
-    s.Ji.col(1) = s.Dy * uv.col(0);
-    s.Ji.col(2) = s.Dx * uv.col(1);
-    s.Ji.col(3) = s.Dy * uv.col(1);
+  // Ji=[D1*u,D2*u,D1*v,D2*v];
+  s.Ji.col(0) = s.Dx * uv.col(0);
+  s.Ji.col(1) = s.Dy * uv.col(0);
+  s.Ji.col(2) = s.Dx * uv.col(1);
+  s.Ji.col(3) = s.Dy * uv.col(1);
 
-    // add weights
-    Eigen::VectorXd weights = s.weightPerFaceMap.cast<double>();
-    s.Ji.col(0) = weights.cwiseProduct(s.Ji.col(0));
-    s.Ji.col(1) = weights.cwiseProduct(s.Ji.col(1));
-    s.Ji.col(2) = weights.cwiseProduct(s.Ji.col(2));
-    s.Ji.col(3) = weights.cwiseProduct(s.Ji.col(3));
-  }
-  else /*tet mesh*/ {
-    // Ji=[D1*u,D2*u,D3*u, D1*v,D2*v, D3*v, D1*w,D2*w,D3*w];
-    s.Ji.col(0) = s.Dx * uv.col(0);
-    s.Ji.col(1) = s.Dy * uv.col(0);
-    s.Ji.col(2) = s.Dz * uv.col(0);
-    s.Ji.col(3) = s.Dx * uv.col(1);
-    s.Ji.col(4) = s.Dy * uv.col(1);
-    s.Ji.col(5) = s.Dz * uv.col(1);
-    s.Ji.col(6) = s.Dx * uv.col(2);
-    s.Ji.col(7) = s.Dy * uv.col(2);
-    s.Ji.col(8) = s.Dz * uv.col(2);
-  }
+  // add weights
+  Eigen::VectorXd weights = s.weightPerFaceMap.cast<double>();
+  s.Ji.col(0) = weights.cwiseProduct(s.Ji.col(0));
+  s.Ji.col(1) = weights.cwiseProduct(s.Ji.col(1));
+  s.Ji.col(2) = weights.cwiseProduct(s.Ji.col(2));
+  s.Ji.col(3) = weights.cwiseProduct(s.Ji.col(3));
 }
 
 inline void compute_unweighted_jacobians(igl::SLIMData &s, const Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
 
-  if (s.F.cols() == 3) {
-    // Ji=[D1*u,D2*u,D1*v,D2*v];
-    s.Ji.col(0) = s.Dx * uv.col(0);
-    s.Ji.col(1) = s.Dy * uv.col(0);
-    s.Ji.col(2) = s.Dx * uv.col(1);
-    s.Ji.col(3) = s.Dy * uv.col(1);
-  }
-  else /*tet mesh*/ {
-    // Ji=[D1*u,D2*u,D3*u, D1*v,D2*v, D3*v, D1*w,D2*w,D3*w];
-    s.Ji.col(0) = s.Dx * uv.col(0);
-    s.Ji.col(1) = s.Dy * uv.col(0);
-    s.Ji.col(2) = s.Dz * uv.col(0);
-    s.Ji.col(3) = s.Dx * uv.col(1);
-    s.Ji.col(4) = s.Dy * uv.col(1);
-    s.Ji.col(5) = s.Dz * uv.col(1);
-    s.Ji.col(6) = s.Dx * uv.col(2);
-    s.Ji.col(7) = s.Dy * uv.col(2);
-    s.Ji.col(8) = s.Dz * uv.col(2);
-  }
+  // Ji=[D1*u,D2*u,D1*v,D2*v];
+  s.Ji.col(0) = s.Dx * uv.col(0);
+  s.Ji.col(1) = s.Dy * uv.col(0);
+  s.Ji.col(2) = s.Dx * uv.col(1);
+  s.Ji.col(3) = s.Dy * uv.col(1);
 }
 
 inline void compute_jacobians(igl::SLIMData &s, const Eigen::MatrixXd &uv)
@@ -464,36 +436,15 @@ inline void pre_calc(igl::SLIMData &s)
     s.v_n = s.v_num;
     s.f_n = s.f_num;
 
-    if (s.F.cols() == 3) {
-      s.dim = 2;
-      Eigen::MatrixXd F1, F2, F3;
-      igl::local_basis(s.V, s.F, F1, F2, F3);
-      compute_surface_gradient_matrix(s.V, s.F, F1, F2, s.Dx, s.Dy);
+    s.dim = 2;
+    Eigen::MatrixXd F1, F2, F3;
+    igl::local_basis(s.V, s.F, F1, F2, F3);
+    compute_surface_gradient_matrix(s.V, s.F, F1, F2, s.Dx, s.Dy);
 
-      s.W_11.resize(s.f_n);
-      s.W_12.resize(s.f_n);
-      s.W_21.resize(s.f_n);
-      s.W_22.resize(s.f_n);
-    }
-    else {
-      s.dim = 3;
-      Eigen::SparseMatrix<double> G;
-      igl::grad(
-          s.V, s.F, G, s.mesh_improvement_3d /*use normal gradient, or one from a "regular" tet*/);
-      s.Dx = G.block(0, 0, s.F.rows(), s.V.rows());
-      s.Dy = G.block(s.F.rows(), 0, s.F.rows(), s.V.rows());
-      s.Dz = G.block(2 * s.F.rows(), 0, s.F.rows(), s.V.rows());
-
-      s.W_11.resize(s.f_n);
-      s.W_12.resize(s.f_n);
-      s.W_13.resize(s.f_n);
-      s.W_21.resize(s.f_n);
-      s.W_22.resize(s.f_n);
-      s.W_23.resize(s.f_n);
-      s.W_31.resize(s.f_n);
-      s.W_32.resize(s.f_n);
-      s.W_33.resize(s.f_n);
-    }
+    s.W_11.resize(s.f_n);
+    s.W_12.resize(s.f_n);
+    s.W_21.resize(s.f_n);
+    s.W_22.resize(s.f_n);
 
     s.Dx.makeCompressed();
     s.Dy.makeCompressed();
@@ -932,7 +883,7 @@ void igl::slim_precompute(Eigen::MatrixXd &V,
   data.exp_factor =
       1.0;  // param used only for exponential energies (e.g exponential symmetric dirichlet)
 
-  assert(F.cols() == 3 || F.cols() == 4);
+  assert(F.cols() == 3);
 
   igl::slim::pre_calc(data);
 

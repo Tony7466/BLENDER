@@ -33,10 +33,8 @@ set(SRC
   extern/libigl_extract/colon.h
   extern/libigl_extract/cotmatrix.h
   extern/libigl_extract/cotmatrix_entries.h
-  extern/libigl_extract/dihedral_angles.h
   extern/libigl_extract/doublearea.h
   extern/libigl_extract/edge_lengths.h
-  extern/libigl_extract/face_areas.h
   extern/libigl_extract/find.h
   extern/libigl_extract/flip_avoiding_line_search.h
   extern/libigl_extract/grad.h
@@ -56,7 +54,6 @@ set(SRC
   extern/libigl_extract/sparse.h
   extern/libigl_extract/squared_edge_lengths.h
   extern/libigl_extract/verbose.h
-  extern/libigl_extract/volume.h
 )
 
 set(LIB

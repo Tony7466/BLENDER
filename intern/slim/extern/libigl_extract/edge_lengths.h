@@ -12,7 +12,7 @@
 
 namespace igl {
 // Constructs a list of lengths of edges opposite each index in a face
-// (triangle/tet) list
+// (triangle) list
 //
 // Templates:
 //   DerivedV derived from vertex positions matrix type: i.e. MatrixXd
@@ -29,8 +29,6 @@ namespace igl {
 //   L  #F by {1|3|6} list of edge lengths
 //     for edges, column of lengths
 //     for triangles, columns correspond to edges [1,2],[2,0],[0,1]
-//     for tets, columns correspond to edges
-//     [3 0],[3 1],[3 2],[1 2],[2 0],[0 1]
 //
 template<typename DerivedV, typename DerivedF, typename DerivedL>
 inline void edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
