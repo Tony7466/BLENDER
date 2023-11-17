@@ -3,3 +3,4 @@ Referenced by issue #103957, Follow Active Quads affects on non-selected islands
 Referenced by issue #109674, Uv folllow active quad its not working
 Referenced by issue #110328, The symmetry of the brush in sculpture mode only mirrors position but not rotation.
 Referenced by issue #114869, Regression: Follow Active Quads not working
+Referenced by issue #115075, Follow Active Quads errors if used via the UV Editor
