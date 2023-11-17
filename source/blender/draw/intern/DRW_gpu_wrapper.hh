@@ -373,12 +373,17 @@ class StorageArrayBuffer : public detail::StorageCommon<T, len, device_only> {
     return this->data_[index];
   }
 
-  /* Downsize the buffer if current size is much larger than the required size. */
-  void optimize_size(int64_t required_size)
+  /*
+   * Ensure the allocated size is not much larger than the currently required size,
+   * using the same heuristic as `get_or_resize`.
+   */
+  void trim_to_next_power_of_2(int64_t required_size)
   {
-    size_t max_size = power_of_2_max_u(required_size + 1);
-    if (this->len_ > max_size) {
-      resize(max_size);
+    /* Don't go below the size used at creation. */
+    required_size = std::max(required_size, len);
+    size_t target_size = power_of_2_max_u(required_size);
+    if (this->len_ > target_size) {
+      this->resize(target_size);
     }
   }
 
@@ -429,7 +434,7 @@ class StorageVectorBuffer : public StorageArrayBuffer<T, len, false> {
    */
   void clear_and_trim()
   {
-    this->optimize_size(item_len_);
+    this->trim_to_next_power_of_2(item_len_);
     clear();
   }
 
