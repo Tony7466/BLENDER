@@ -10,8 +10,6 @@
 #include "geometry_data_retrieval.h"
 #include "least_squares_relocator.h"
 
-#include <igl/Timer.h>
-
 namespace slim {
 
 using namespace igl;

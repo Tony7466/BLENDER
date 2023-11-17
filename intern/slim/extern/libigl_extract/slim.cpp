@@ -11,6 +11,7 @@
 #include "grad.h"
 #include "local_basis.h"
 
+#include "doublearea.h"
 #include "flip_avoiding_line_search.h"
 #include "polar_svd.h"
 

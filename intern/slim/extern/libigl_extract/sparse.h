@@ -62,8 +62,6 @@ IGL_INLINE Eigen::SparseMatrix<typename DerivedD::Scalar> sparse(
 
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "sparse.cpp"
-#endif
+#include "sparse.cpp"
 
 #endif

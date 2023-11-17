@@ -39,8 +39,6 @@ IGL_INLINE void squared_edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
                                      Eigen::PlainObjectBase<DerivedL> &L);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "squared_edge_lengths.cpp"
-#endif
+#include "squared_edge_lengths.cpp"
 
 #endif

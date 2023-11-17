@@ -59,8 +59,6 @@ template<class Mat> IGL_INLINE Mat cat(const int dim, const Mat &A, const Mat &B
 template<class Mat> IGL_INLINE void cat(const std::vector<std::vector<Mat>> &A, Mat &C);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "cat.cpp"
-#endif
+#include "cat.cpp"
 
 #endif

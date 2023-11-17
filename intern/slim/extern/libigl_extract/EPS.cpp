@@ -24,7 +24,3 @@ template<> IGL_INLINE double igl::EPS_SQ()
 {
   return igl::DOUBLE_EPS_SQ;
 }
-
-#ifdef IGL_STATIC_LIBRARY
-// Explicit template specialization
-#endif

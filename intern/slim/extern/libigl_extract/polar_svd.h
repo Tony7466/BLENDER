@@ -41,7 +41,7 @@ IGL_INLINE void polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
                           Eigen::PlainObjectBase<DerivedR> &R,
                           Eigen::PlainObjectBase<DerivedT> &T);
 }  // namespace igl
-#ifndef IGL_STATIC_LIBRARY
-#  include "polar_svd.cpp"
-#endif
+
+#include "polar_svd.cpp"
+
 #endif

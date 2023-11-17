@@ -28,8 +28,6 @@ IGL_INLINE void cotmatrix_entries(const Eigen::PlainObjectBase<DerivedV> &V,
                                   Eigen::PlainObjectBase<DerivedC> &C);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "cotmatrix_entries.cpp"
-#endif
+#include "cotmatrix_entries.cpp"
 
 #endif

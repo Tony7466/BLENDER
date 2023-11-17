@@ -39,6 +39,3 @@ IGL_INLINE double igl::line_search(Eigen::MatrixXd &x,
   }
   return new_energy;
 }
-
-#ifdef IGL_STATIC_LIBRARY
-#endif

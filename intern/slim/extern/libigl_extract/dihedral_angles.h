@@ -36,8 +36,6 @@ IGL_INLINE void dihedral_angles_intrinsic(Eigen::PlainObjectBase<DerivedL> &L,
 
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "dihedral_angles.cpp"
-#endif
+#include "dihedral_angles.cpp"
 
 #endif

@@ -36,8 +36,6 @@ IGL_INLINE void local_basis(const Eigen::PlainObjectBase<DerivedV> &V,
 
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "local_basis.cpp"
-#endif
+#include "local_basis.cpp"
 
 #endif

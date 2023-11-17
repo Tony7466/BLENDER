@@ -51,8 +51,6 @@ template<typename T, typename L, typename H>
 IGL_INLINE Eigen::Matrix<T, Eigen::Dynamic, 1> colon(const L low, const H hi);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "colon.cpp"
-#endif
+#include "colon.cpp"
 
 #endif

@@ -48,8 +48,6 @@ IGL_INLINE void cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
                           Eigen::SparseMatrix<Scalar> &L);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "cotmatrix.cpp"
-#endif
+#include "cotmatrix.cpp"
 
 #endif

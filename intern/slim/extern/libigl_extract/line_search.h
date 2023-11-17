@@ -20,8 +20,8 @@ namespace igl {
 //   x  						#X by dim list of variables
 //   d  						#X by dim list of a given search direction
 //   i_step_size  			initial step size
-//   energy       			A function to compute the mesh-based energy (return an energy that is bigger
-//   than 0) cur_energy(OPTIONAL)     The energy at the given point. Helps save redundant
+//   energy       			A function to compute the mesh-based energy (return an energy that is
+//   bigger than 0) cur_energy(OPTIONAL)     The energy at the given point. Helps save redundant
 //   computations.
 //							This is optional. If not specified, the function will compute it.
 // Outputs:
@@ -35,8 +35,6 @@ IGL_INLINE double line_search(Eigen::MatrixXd &x,
 
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "line_search.cpp"
-#endif
+#include "line_search.cpp"
 
 #endif

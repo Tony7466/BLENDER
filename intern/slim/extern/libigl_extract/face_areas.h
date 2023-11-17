@@ -40,8 +40,6 @@ IGL_INLINE void face_areas(const Eigen::PlainObjectBase<DerivedL> &L,
                            Eigen::PlainObjectBase<DerivedA> &A);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "face_areas.cpp"
-#endif
+#include "face_areas.cpp"
 
 #endif

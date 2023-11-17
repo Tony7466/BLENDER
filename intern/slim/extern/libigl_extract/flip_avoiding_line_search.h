@@ -41,8 +41,6 @@ IGL_INLINE double flip_avoiding_line_search(const Eigen::MatrixXi F,
 
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "flip_avoiding_line_search.cpp"
-#endif
+#include "flip_avoiding_line_search.cpp"
 
 #endif

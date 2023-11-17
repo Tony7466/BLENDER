@@ -50,8 +50,6 @@ IGL_INLINE void massmatrix(const Eigen::MatrixBase<DerivedV> &V,
                            Eigen::SparseMatrix<Scalar> &M);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "massmatrix.cpp"
-#endif
+#include "massmatrix.cpp"
 
 #endif

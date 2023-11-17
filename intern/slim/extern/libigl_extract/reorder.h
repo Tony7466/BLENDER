@@ -25,8 +25,6 @@ IGL_INLINE void reorder(const std::vector<T> &unordered,
                         std::vector<T> &ordered);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "reorder.cpp"
-#endif
+#include "reorder.cpp"
 
 #endif

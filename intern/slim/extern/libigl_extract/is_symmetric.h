@@ -24,8 +24,6 @@ template<typename DerivedA>
 IGL_INLINE bool is_symmetric(const Eigen::PlainObjectBase<DerivedA> &A);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "is_symmetric.cpp"
-#endif
+#include "is_symmetric.cpp"
 
 #endif

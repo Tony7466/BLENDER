@@ -39,8 +39,6 @@ IGL_INLINE void edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
                              Eigen::PlainObjectBase<DerivedL> &L);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "edge_lengths.cpp"
-#endif
+#include "edge_lengths.cpp"
 
 #endif

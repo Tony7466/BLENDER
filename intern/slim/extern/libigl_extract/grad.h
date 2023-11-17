@@ -39,8 +39,7 @@ IGL_INLINE void grad(const Eigen::PlainObjectBase<DerivedV> &V,
                      Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
                      bool uniform = false);
 }  // namespace igl
-#ifndef IGL_STATIC_LIBRARY
-#  include "grad.cpp"
-#endif
+
+#include "grad.cpp"
 
 #endif

@@ -25,8 +25,6 @@ template<typename T>
 IGL_INLINE void invert_diag(const Eigen::SparseMatrix<T> &X, Eigen::SparseMatrix<T> &Y);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "invert_diag.cpp"
-#endif
+#include "invert_diag.cpp"
 
 #endif

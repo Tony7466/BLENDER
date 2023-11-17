@@ -40,8 +40,6 @@ IGL_INLINE void per_face_normals_stable(const Eigen::PlainObjectBase<DerivedV> &
                                         Eigen::PlainObjectBase<DerivedN> &N);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "per_face_normals.cpp"
-#endif
+#include "per_face_normals.cpp"
 
 #endif

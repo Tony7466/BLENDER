@@ -28,8 +28,6 @@ IGL_INLINE void map_vertices_to_circle(const Eigen::MatrixXd &V,
                                        Eigen::MatrixXd &UV);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "map_vertices_to_circle.cpp"
-#endif
+#include "map_vertices_to_circle.cpp"
 
 #endif

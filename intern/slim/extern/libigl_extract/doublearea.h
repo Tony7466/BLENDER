@@ -69,8 +69,6 @@ IGL_INLINE void doublearea_quad(const Eigen::PlainObjectBase<DerivedV> &V,
 
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "doublearea.cpp"
-#endif
+#include "doublearea.cpp"
 
 #endif

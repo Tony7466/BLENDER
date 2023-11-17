@@ -354,6 +354,3 @@ IGL_INLINE double igl::flip_avoiding_line_search(const Eigen::MatrixXi F,
   double max_step_size = min(1., min_step_to_singularity * 0.8);
   return igl::line_search(cur_v, d, max_step_size, energy, cur_energy);
 }
-
-#ifdef IGL_STATIC_LIBRARY
-#endif

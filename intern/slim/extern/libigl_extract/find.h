@@ -55,8 +55,6 @@ IGL_INLINE void find(const Eigen::SparseVector<T> &X,
                      Eigen::Matrix<T, Eigen::Dynamic, 1> &V);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "find.cpp"
-#endif
+#include "find.cpp"
 
 #endif

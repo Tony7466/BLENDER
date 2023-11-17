@@ -24,8 +24,6 @@ IGL_INLINE void normalize_row_sums(const Eigen::MatrixBase<DerivedA> &A,
                                    Eigen::MatrixBase<DerivedB> &B);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "normalize_row_sums.cpp"
-#endif
+#include "normalize_row_sums.cpp"
 
 #endif

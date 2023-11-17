@@ -50,8 +50,6 @@ IGL_INLINE void volume(const Eigen::PlainObjectBase<DerivedL> &L,
                        Eigen::PlainObjectBase<Derivedvol> &vol);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "volume.cpp"
-#endif
+#include "volume.cpp"
 
 #endif

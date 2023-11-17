@@ -24,8 +24,6 @@ template<> IGL_INLINE float EPS_SQ<float>();
 template<> IGL_INLINE double EPS_SQ<double>();
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "EPS.cpp"
-#endif
+#include "EPS.cpp"
 
 #endif

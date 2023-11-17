@@ -74,8 +74,6 @@ IGL_INLINE void sort(const std::vector<T> &unsorted,
 
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "sort.cpp"
-#endif
+#include "sort.cpp"
 
 #endif

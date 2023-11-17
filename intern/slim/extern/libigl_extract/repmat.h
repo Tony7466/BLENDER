@@ -43,8 +43,6 @@ IGL_INLINE void repmat(const Eigen::SparseMatrix<T> &A,
                        Eigen::SparseMatrix<T> &B);
 }  // namespace igl
 
-#ifndef IGL_STATIC_LIBRARY
-#  include "repmat.cpp"
-#endif
+#include "repmat.cpp"
 
 #endif

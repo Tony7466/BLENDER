@@ -18,7 +18,7 @@ namespace igl {
 // Returns true iff and only if the matrix is diagonal.
 template<typename Scalar> IGL_INLINE bool isdiag(const Eigen::SparseMatrix<Scalar> &A);
 };  // namespace igl
-#ifndef IGL_STATIC_LIBRARY
-#  include "isdiag.cpp"
-#endif
+
+#include "isdiag.cpp"
+
 #endif
