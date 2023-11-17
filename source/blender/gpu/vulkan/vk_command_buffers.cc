@@ -36,6 +36,11 @@ VKCommandBuffers::~VKCommandBuffers()
     vk_fence_ = VK_NULL_HANDLE;
   }
 
+  if (vk_semaphore_ != VK_NULL_HANDLE) {
+    vkDestroySemaphore(device.device_get(), vk_semaphore_, vk_allocation_callbacks);
+    vk_semaphore_ = VK_NULL_HANDLE;
+  }
+
   destroy_discarded_resources();
   if (vk_command_pool_ != VK_NULL_HANDLE) {
     vkDestroyCommandPool(device.device_get(), vk_command_pool_, vk_allocation_callbacks);
@@ -59,6 +64,7 @@ void VKCommandBuffers::init(const VKDevice &device)
   init_command_pool(device);
   init_command_buffers(device, true, true);
   init_fence(device);
+  init_semaphore(device);
   submission_id_.reset();
 }
 
@@ -123,6 +129,26 @@ void VKCommandBuffers::init_fence(const VKDevice &device)
   }
 }
 
+void VKCommandBuffers::init_semaphore(const VKDevice &device)
+{
+  if (vk_semaphore_ == VK_NULL_HANDLE) {
+    VK_ALLOCATION_CALLBACKS;
+    VkSemaphoreTypeCreateInfo semaphore_type_create_info = {};
+    semaphore_type_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+    semaphore_type_create_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+    semaphore_type_create_info.initialValue = 0;
+
+    VkSemaphoreCreateInfo semaphore_create_info{};
+    semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    semaphore_create_info.pNext = &semaphore_type_create_info;
+    vkCreateSemaphore(
+        device.device_get(), &semaphore_create_info, vk_allocation_callbacks, &vk_semaphore_);
+
+    semaphore_value_ = 0;
+    wait_semaphore_value_ = 0;
+  }
+}
+
 void VKCommandBuffers::submit_command_buffers(const VKDevice &device,
                                               MutableSpan<VKCommandBuffer *> command_buffers)
 {
@@ -133,21 +159,45 @@ void VKCommandBuffers::submit_command_buffers(const VKDevice &device,
     command_buffer->end_recording();
     handles[num_command_buffers++] = command_buffer->vk_command_buffer();
   }
+  wait_semaphore_value_ = semaphore_value_;
+  semaphore_value_++;
 
+  VkTimelineSemaphoreSubmitInfo timelineInfo;
+  timelineInfo.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+  timelineInfo.pNext = NULL;
+  timelineInfo.waitSemaphoreValueCount = 1;
+  timelineInfo.pWaitSemaphoreValues = &wait_semaphore_value_;
+  timelineInfo.signalSemaphoreValueCount = 1;
+  timelineInfo.pSignalSemaphoreValues = &semaphore_value_;
+  VkPipelineStageFlags wait_stages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
   VkSubmitInfo submit_info = {};
   submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submit_info.commandBufferCount = num_command_buffers;
   submit_info.pCommandBuffers = handles;
+  submit_info.pNext = &timelineInfo;
+  submit_info.waitSemaphoreCount = 1;
+  submit_info.pWaitSemaphores = &vk_semaphore_;
+  submit_info.pWaitDstStageMask = &wait_stages;
+  submit_info.signalSemaphoreCount = 1;
+  submit_info.pSignalSemaphores = &vk_semaphore_;
 
-  vkQueueSubmit(device.queue_get(), 1, &submit_info, vk_fence_);
-
-  vkWaitForFences(device.device_get(), 1, &vk_fence_, VK_TRUE, FenceTimeout);
-  vkResetFences(device.device_get(), 1, &vk_fence_);
+  vkQueueSubmit(device.queue_get(), 1, &submit_info, VK_NULL_HANDLE);
 
   for (VKCommandBuffer *command_buffer : command_buffers) {
     discarded_command_buffers_.append(command_buffer->vk_command_buffer());
     command_buffer->reset();
   }
+}
+
+void VKCommandBuffers::finish()
+{
+  const VKDevice &device = VKBackend::get().device_get();
+  VkSemaphoreWaitInfo wait_info = {};
+  wait_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+  wait_info.semaphoreCount = 1;
+  wait_info.pSemaphores = &vk_semaphore_;
+  wait_info.pValues = &semaphore_value_;
+  vkWaitSemaphores(device.device_get(), &wait_info, UINT64_MAX);
 }
 
 void VKCommandBuffers::submit()

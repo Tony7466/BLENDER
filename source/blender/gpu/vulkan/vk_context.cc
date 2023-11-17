@@ -117,6 +117,7 @@ void VKContext::begin_frame() {}
 void VKContext::end_frame()
 {
   VKDevice &device = VKBackend::get().device_get();
+  command_buffers_.finish();
   command_buffers_.destroy_discarded_resources();
   device.destroy_discarded_resources();
 }
@@ -129,6 +130,7 @@ void VKContext::flush()
 void VKContext::finish()
 {
   command_buffers_.submit();
+  command_buffers_.finish();
 }
 
 void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/) {}

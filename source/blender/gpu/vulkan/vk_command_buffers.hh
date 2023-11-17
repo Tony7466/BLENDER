@@ -41,6 +41,9 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
 
   /* Fence for CPU GPU synchronization when submitting the command buffers. */
   VkFence vk_fence_ = VK_NULL_HANDLE;
+  VkSemaphore vk_semaphore_ = VK_NULL_HANDLE;
+  uint64_t semaphore_value_ = 0;
+  uint64_t wait_semaphore_value_ = 0;
 
   /**
    * Active framebuffer for graphics command buffer.
@@ -147,6 +150,7 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
                              uint32_t stride);
 
   void submit();
+  void finish();
 
   const VKSubmissionID &submission_id_get() const
   {
@@ -157,6 +161,7 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
 
  private:
   void init_fence(const VKDevice &device);
+  void init_semaphore(const VKDevice &device);
   void init_command_pool(const VKDevice &device);
   void init_command_buffers(const VKDevice &device,
                             bool init_data_transfer_compute,
