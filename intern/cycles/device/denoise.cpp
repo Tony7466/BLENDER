@@ -12,7 +12,7 @@ const char *denoiserTypeToHumanReadable(DenoiserType type)
     case DENOISER_OPTIX:
       return "OptiX";
     case DENOISER_OPENIMAGEDENOISE:
-      return "OpenImageDenoise (CPU)";
+      return "OpenImageDenoise";
 
     case DENOISER_NUM:
     case DENOISER_NONE:
