@@ -132,7 +132,7 @@ static void compo_tag_output_nodes(bNodeTree *nodetree, int recalc_flags)
         node->flag |= NODE_DO_OUTPUT_RECALC;
       }
     }
-    else if (ELEM(node->type, CMP_NODE_VIEWER)) {
+    else if (node->type == CMP_NODE_VIEWER) {
       if (recalc_flags & COM_RECALC_VIEWER) {
         node->flag |= NODE_DO_OUTPUT_RECALC;
       }
@@ -781,22 +781,23 @@ void ED_node_set_active(
   }
   else if (ntree->type == NTREE_COMPOSIT) {
     /* Make active viewer, currently only one is supported. */
-    if (ELEM(node->type, CMP_NODE_VIEWER)) {
-      for (bNode *node_iter : ntree->all_nodes()) {
-        if (ELEM(node_iter->type, CMP_NODE_VIEWER)) {
-          node_iter->flag &= ~NODE_DO_OUTPUT;
+    if node->type == CMP_NODE_VIEWER)
+      {
+        for (bNode *node_iter : ntree->all_nodes()) {
+          if (node_iter->type == CMP_NODE_VIEWER) {
+            node_iter->flag &= ~NODE_DO_OUTPUT;
+          }
         }
-      }
 
-      node->flag |= NODE_DO_OUTPUT;
-      if (was_output == 0) {
-        BKE_ntree_update_tag_active_output_changed(ntree);
-        ED_node_tree_propagate_change(nullptr, bmain, ntree);
-      }
+        node->flag |= NODE_DO_OUTPUT;
+        if (was_output == 0) {
+          BKE_ntree_update_tag_active_output_changed(ntree);
+          ED_node_tree_propagate_change(nullptr, bmain, ntree);
+        }
 
-      /* Adding a node doesn't link this yet. */
-      node->id = (ID *)BKE_image_ensure_viewer(bmain, IMA_TYPE_COMPOSITE, "Viewer Node");
-    }
+        /* Adding a node doesn't link this yet. */
+        node->id = (ID *)BKE_image_ensure_viewer(bmain, IMA_TYPE_COMPOSITE, "Viewer Node");
+      }
     else if (node->type == CMP_NODE_COMPOSITE) {
       if (was_output == 0) {
         for (bNode *node_iter : ntree->all_nodes()) {

@@ -3450,7 +3450,7 @@ void ntreeSetOutput(bNodeTree *ntree)
       if (ELEM(node->type, CMP_NODE_OUTPUT_FILE, GEO_NODE_VIEWER)) {
         continue;
       }
-      const bool node_is_output = ELEM(node->type, CMP_NODE_VIEWER);
+      const bool node_is_output = node->type == CMP_NODE_VIEWER;
 
       int output = 0;
       /* there is more types having output class, each one is checked */
@@ -3461,7 +3461,7 @@ void ntreeSetOutput(bNodeTree *ntree)
         }
 
         /* same type, exception for viewer */
-        const bool tnode_is_output = ELEM(tnode->type, CMP_NODE_VIEWER);
+        const bool tnode_is_output = tnode->type == CMP_NODE_VIEWER;
         const bool compositor_case = is_compositor && tnode_is_output && node_is_output;
         if (tnode->type == node->type || compositor_case) {
           if (tnode->flag & NODE_DO_OUTPUT) {

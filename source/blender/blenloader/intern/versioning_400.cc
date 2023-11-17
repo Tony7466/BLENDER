@@ -333,19 +333,20 @@ static void versioning_replace_splitviewer(bNodeTree *ntree)
     if (node->type != CMP_NODE_SPLITVIEWER__DEPRECATED) {
       continue;
     }
-    
+
     STRNCPY(node->idname, "CompositorNodeSplit");
     node->type = CMP_NODE_SPLIT;
     MEM_freeN(node->storage);
-    
+
     bNode *viewer_node = nodeAddStaticNode(nullptr, ntree, CMP_NODE_VIEWER);
     /* Nodes are created stacked on top of each other, so separate them a bit. */
     viewer_node->locx = node->locx + node->width + viewer_node->width / 4.0f;
     viewer_node->locy = node->locy;
-    
-    bNodeSocket *split_out_socket = nodeAddStaticSocket(ntree, node, SOCK_OUT, SOCK_IMAGE, PROP_NONE, "Image", "Image");
+
+    bNodeSocket *split_out_socket = nodeAddStaticSocket(
+        ntree, node, SOCK_OUT, SOCK_IMAGE, PROP_NONE, "Image", "Image");
     bNodeSocket *viewer_in_socket = nodeFindSocket(viewer_node, SOCK_IN, "Image");
-    
+
     nodeAddLink(ntree, node, split_out_socket, viewer_node, viewer_in_socket);
   }
 }
@@ -1856,7 +1857,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
     FOREACH_NODETREE_END;
-
   }
 
   /* 401 6 did not require any do_version here. */
