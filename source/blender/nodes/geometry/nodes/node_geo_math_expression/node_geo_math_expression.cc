@@ -40,6 +40,8 @@ namespace blender::nodes::node_geo_math_expression_cc {
 
     NodeGeometryMathExpression *storage = static_cast<NodeGeometryMathExpression *>(node->storage);
 
+    b.is_function_node();
+
     parse_var_names(storage->variables, [&b](std::string_view name) {
       if (name[0] == 'v') {
         b.add_input<decl::Vector>(name);
