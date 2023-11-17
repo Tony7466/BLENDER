@@ -13,25 +13,25 @@
 
 namespace slim {
 
-SLIMMatrixTransferChart::SLIMMatrixTransferChart() = default;
-SLIMMatrixTransferChart::SLIMMatrixTransferChart(SLIMMatrixTransferChart &&) = default;
-SLIMMatrixTransferChart::~SLIMMatrixTransferChart() = default;
+MatrixTransferChart::MatrixTransferChart() = default;
+MatrixTransferChart::MatrixTransferChart(MatrixTransferChart &&) = default;
+MatrixTransferChart::~MatrixTransferChart() = default;
 
-void SLIMMatrixTransferChart::free_slim_data()
+void MatrixTransferChart::free_slim_data()
 {
   data.reset(nullptr);
-};
+}
 
 /* Setup call from the native C part. Necessary for interactive parametrisation. */
-void SLIMMatrixTransfer::setup_slim_data(SLIMMatrixTransferChart &mt_chart,
-                                         bool are_border_vertices_pinned,
-                                         bool skip_initialization) const
+void MatrixTransfer::setup_slim_data(MatrixTransferChart &mt_chart,
+                                     bool are_border_vertices_pinned,
+                                     bool skip_initialization) const
 {
   setup_slim_data(mt_chart, 0, are_border_vertices_pinned, skip_initialization);
 }
 
-SLIMMatrixTransfer::SLIMMatrixTransfer() = default;
-SLIMMatrixTransfer::~SLIMMatrixTransfer() = default;
+MatrixTransfer::MatrixTransfer() = default;
+MatrixTransfer::~MatrixTransfer() = default;
 
 static void initialize_uvs(GeometryData &gd, SLIMData &slim_data)
 {
@@ -68,10 +68,10 @@ static void initialize_if_needed(GeometryData &gd, SLIMData &slim_data)
 }
 
 /* Transfers all the matrices from the native part and initialises SLIM. */
-void SLIMMatrixTransfer::setup_slim_data(SLIMMatrixTransferChart &mt_chart,
-                                         int n_iterations,
-                                         bool border_vertices_are_pinned,
-                                         bool skip_initialization) const
+void MatrixTransfer::setup_slim_data(MatrixTransferChart &mt_chart,
+                                     int n_iterations,
+                                     bool border_vertices_are_pinned,
+                                     bool skip_initialization) const
 {
   SLIMDataPtr slim_data = std::make_unique<SLIMDataPtr::element_type>();
 

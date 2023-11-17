@@ -43,7 +43,7 @@ struct GeometryData {
   Map<VectorXi> boundary_vertex_indices = Map<VectorXi>(NULL, 0);
   Map<VectorXf> weights_per_vertex = Map<VectorXf>(NULL, 0);
 
-  GeometryData(const SLIMMatrixTransfer &mt, SLIMMatrixTransferChart &mt_chart);
+  GeometryData(const MatrixTransfer &mt, MatrixTransferChart &mt_chart);
   GeometryData(const GeometryData &) = delete;
   GeometryData &operator=(const GeometryData &) = delete;
 

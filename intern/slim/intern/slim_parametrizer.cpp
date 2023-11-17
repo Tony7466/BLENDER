@@ -20,7 +20,7 @@ namespace slim {
 
 using namespace Eigen;
 
-void transfer_uvs_back_to_native_part_live(SLIMMatrixTransferChart &mt_chart, Eigen::MatrixXd &uv)
+void transfer_uvs_back_to_native_part_live(MatrixTransferChart &mt_chart, Eigen::MatrixXd &uv)
 {
   if (!mt_chart.succeeded) {
     return;
@@ -36,7 +36,7 @@ void transfer_uvs_back_to_native_part_live(SLIMMatrixTransferChart &mt_chart, Ei
   }
 }
 
-void transfer_uvs_back_to_native_part(SLIMMatrixTransferChart &mt_chart, Eigen::MatrixXd &uv)
+void transfer_uvs_back_to_native_part(MatrixTransferChart &mt_chart, Eigen::MatrixXd &uv)
 {
   if (!mt_chart.succeeded) {
     return;
@@ -111,7 +111,7 @@ static void adjust_pins(SLIMData &slim_data,
   }
 }
 
-void SLIMMatrixTransferChart::transfer_uvs_blended_live()
+void MatrixTransferChart::transfer_uvs_blended_live()
 {
   if (!succeeded) {
     return;
@@ -123,7 +123,7 @@ void SLIMMatrixTransferChart::transfer_uvs_blended_live()
 /* Called from the native part during each iteration of interactive parametrisation.
  * The blend parameter decides the linear blending between the original UV map and the one
  * optained from the accumulated SLIM iterations so far. */
-void SLIMMatrixTransferChart::transfer_uvs_blended(float blend)
+void MatrixTransferChart::transfer_uvs_blended(float blend)
 {
   if (!succeeded) {
     return;
@@ -134,7 +134,7 @@ void SLIMMatrixTransferChart::transfer_uvs_blended(float blend)
   transfer_uvs_back_to_native_part(*this, blended_uvs);
 }
 
-void SLIMMatrixTransferChart::try_slim_solve(int iter_num)
+void MatrixTransferChart::try_slim_solve(int iter_num)
 {
   if (!succeeded) {
     return;
@@ -149,19 +149,19 @@ void SLIMMatrixTransferChart::try_slim_solve(int iter_num)
 }
 
 /* Executes a single iteration of SLIM, must follow a proper setup & initialisation. */
-void SLIMMatrixTransferChart::parametrize_single_iteration()
+void MatrixTransferChart::parametrize_single_iteration()
 {
   int number_of_iterations = 1;
   try_slim_solve(number_of_iterations);
 }
 
 /* Executes slim iterations during live unwrap. needs to provide new selected-pin positions. */
-void SLIMMatrixTransfer::parametrize_live(SLIMMatrixTransferChart &mt_chart,
-                                          int n_pins,
-                                          const std::vector<int> &pinned_vertex_indices,
-                                          const std::vector<double> &pinned_vertex_positions_2D,
-                                          int n_selected_pins,
-                                          const std::vector<int> &selected_pins)
+void MatrixTransfer::parametrize_live(MatrixTransferChart &mt_chart,
+                                      int n_pins,
+                                      const std::vector<int> &pinned_vertex_indices,
+                                      const std::vector<double> &pinned_vertex_positions_2D,
+                                      int n_selected_pins,
+                                      const std::vector<int> &selected_pins)
 {
   int number_of_iterations = 3;
   adjust_pins(*mt_chart.data,
@@ -174,12 +174,12 @@ void SLIMMatrixTransfer::parametrize_live(SLIMMatrixTransferChart &mt_chart,
   mt_chart.try_slim_solve(number_of_iterations);
 }
 
-void SLIMMatrixTransfer::parametrize(int n_iterations,
-                                     bool are_border_vertices_pinned,
-                                     bool skip_initialization)
+void MatrixTransfer::parametrize(int n_iterations,
+                                 bool are_border_vertices_pinned,
+                                 bool skip_initialization)
 {
   for (int uv_chart_index = 0; uv_chart_index < n_charts; uv_chart_index++) {
-    SLIMMatrixTransferChart &mt_chart = mt_charts[uv_chart_index];
+    MatrixTransferChart &mt_chart = mt_charts[uv_chart_index];
     setup_slim_data(mt_chart, n_iterations, are_border_vertices_pinned, skip_initialization);
 
     mt_chart.try_slim_solve(n_iterations);

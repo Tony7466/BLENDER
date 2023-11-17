@@ -13,7 +13,7 @@ using namespace Eigen;
 
 namespace slim {
 
-GeometryData::GeometryData(const SLIMMatrixTransfer &mt, SLIMMatrixTransferChart &mt_chart)
+GeometryData::GeometryData(const MatrixTransfer &mt, MatrixTransferChart &mt_chart)
     : number_of_vertices(mt_chart.n_verts),
       number_of_faces(mt_chart.n_faces),
       /* `n_edges` in transferred_data accounts for boundary edges only once. */

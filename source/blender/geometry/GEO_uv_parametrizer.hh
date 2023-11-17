@@ -6,7 +6,10 @@
 
 #include "BLI_sys_types.h" /* for intptr_t support */
 #include "DNA_ID.h"        /* for MAX_ID_NAME */
-#include "slim_matrix_transfer.h"
+
+namespace slim {
+struct MatrixTransfer;
+}
 
 /** \file
  * \ingroup geo
@@ -59,7 +62,7 @@ class ParamHandle {
   float blend;
 
   /* SLIM uv unwrapping */
-  slim::SLIMMatrixTransfer *slim_mt;
+  slim::MatrixTransfer *slim_mt;
 };
 
 /* -------------------------------------------------------------------- */

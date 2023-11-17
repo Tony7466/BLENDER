@@ -27,7 +27,7 @@ struct SLIMData;
 
 typedef std::unique_ptr<SLIMData> SLIMDataPtr;
 
-struct SLIMMatrixTransferChart {
+struct MatrixTransferChart {
   int n_verts = 0;
   int n_faces = 0;
   int n_pinned_vertices = 0;
@@ -49,13 +49,13 @@ struct SLIMMatrixTransferChart {
 
   SLIMDataPtr data;
 
-  SLIMMatrixTransferChart();
-  SLIMMatrixTransferChart(SLIMMatrixTransferChart &&);
+  MatrixTransferChart();
+  MatrixTransferChart(MatrixTransferChart &&);
 
-  SLIMMatrixTransferChart(const SLIMMatrixTransferChart &) = delete;
-  SLIMMatrixTransferChart &operator=(const SLIMMatrixTransferChart &) = delete;
+  MatrixTransferChart(const MatrixTransferChart &) = delete;
+  MatrixTransferChart &operator=(const MatrixTransferChart &) = delete;
 
-  ~SLIMMatrixTransferChart();
+  ~MatrixTransferChart();
 
   void try_slim_solve(int iter_num);
   void parametrize_single_iteration();
@@ -66,7 +66,7 @@ struct SLIMMatrixTransferChart {
   void free_slim_data();
 };
 
-struct SLIMMatrixTransfer {
+struct MatrixTransfer {
   int n_charts = 0;
 
   bool fixed_boundary = false;
@@ -80,27 +80,27 @@ struct SLIMMatrixTransfer {
   bool skip_initialization = false;
   bool is_minimize_stretch = false;
 
-  std::vector<SLIMMatrixTransferChart> mt_charts;
+  std::vector<MatrixTransferChart> mt_charts;
 
-  SLIMMatrixTransfer();
-  SLIMMatrixTransfer(const SLIMMatrixTransfer &) = delete;
-  SLIMMatrixTransfer &operator=(const SLIMMatrixTransfer &) = delete;
-  ~SLIMMatrixTransfer();
+  MatrixTransfer();
+  MatrixTransfer(const MatrixTransfer &) = delete;
+  MatrixTransfer &operator=(const MatrixTransfer &) = delete;
+  ~MatrixTransfer();
 
   void parametrize(int n_iterations, bool are_border_vertices_pinned, bool skip_initialization);
 
-  void parametrize_live(SLIMMatrixTransferChart &mt_chart,
+  void parametrize_live(MatrixTransferChart &mt_chart,
                         int n_pins,
                         const std::vector<int> &pinned_vertex_indices,
                         const std::vector<double> &pinned_vertex_positions_2D,
                         int n_selected_pins,
                         const std::vector<int> &selected_pins);
 
-  void setup_slim_data(SLIMMatrixTransferChart &mt_chart,
+  void setup_slim_data(MatrixTransferChart &mt_chart,
                        bool are_border_vertices_pinned,
                        bool skip_initialization) const;
 
-  void setup_slim_data(SLIMMatrixTransferChart &mt_chart,
+  void setup_slim_data(MatrixTransferChart &mt_chart,
                        int n_iterations,
                        bool border_vertices_are_pinned,
                        bool skip_initialization) const;
