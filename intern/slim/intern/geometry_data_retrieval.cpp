@@ -114,14 +114,12 @@ bool GeometryData::can_initialization_be_skipped(bool skip_initialization) const
 
 void GeometryData::construct_slim_data(SLIMData &slim_data,
                                        bool skip_initialization,
-                                       int reflection_mode,
-                                       double relative_scale) const
+                                       int reflection_mode) const
 {
   BLI_assert(slim_data.valid);
 
   slim_data.skipInitialization = can_initialization_be_skipped(skip_initialization);
   slim_data.weightInfluence = weight_influence;
-  slim_data.relativeScale = relative_scale;
   slim_data.reflection_mode = reflection_mode;
   slim_data.withWeightedParameterization = with_weighted_parameteriztion;
   set_geometry_data_matrices(slim_data);

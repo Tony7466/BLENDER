@@ -86,8 +86,7 @@ void SLIMMatrixTransfer::setup_slim_data(SLIMMatrixTransferChart &mt_chart,
     geometry_data.retrieve_pinned_vertices(border_vertices_are_pinned);
     mt_chart.n_pinned_vertices = geometry_data.number_of_pinned_vertices;
 
-    geometry_data.construct_slim_data(
-        *slim_data, skip_initialization, reflection_mode, relative_scale);
+    geometry_data.construct_slim_data(*slim_data, skip_initialization, reflection_mode);
     slim_data->nIterations = n_iterations;
 
     initialize_if_needed(geometry_data, *slim_data);

@@ -258,7 +258,6 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
            sizeof(options.mt_options.vertex_group));
 
     options.mt_options.vertex_group_factor = ts->uvcalc_vertex_group_factor;
-    options.mt_options.relative_scale = ts->uvcalc_relative_scale;
     options.mt_options.iterations = ts->uvcalc_iterations;
     options.mt_options.reflection_mode = ts->uvcalc_reflection_mode;
   }
@@ -275,7 +274,6 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
 
     RNA_string_get(&ptr, "vertex_group", options.mt_options.vertex_group);
     options.mt_options.vertex_group_factor = RNA_float_get(&ptr, "vertex_group_factor");
-    options.mt_options.relative_scale = RNA_float_get(&ptr, "relative_scale");
     options.mt_options.iterations = RNA_int_get(&ptr, "iterations");
     options.mt_options.reflection_mode = RNA_enum_get(&ptr, "reflection_mode");
 
@@ -352,13 +350,6 @@ static void unwrap_options_sync_toolsettings(wmOperator *op, ToolSettings *ts)
   }
   else {
     RNA_float_set(op->ptr, "vertex_group_factor", ts->uvcalc_vertex_group_factor);
-  }
-
-  if (RNA_struct_property_is_set(op->ptr, "relative_scale")) {
-    ts->uvcalc_relative_scale = RNA_float_get(op->ptr, "relative_scale");
-  }
-  else {
-    RNA_float_set(op->ptr, "relative_scale", ts->uvcalc_relative_scale);
   }
 
   if (RNA_struct_property_is_set(op->ptr, "vertex_group")) {
@@ -2811,8 +2802,7 @@ static bool unwrap_draw_check_prop_abf(PointerRNA *ptr, PropertyRNA *prop, void 
   const char *prop_id = RNA_property_identifier(prop);
 
   return !(STREQ(prop_id, "reflection_mode") || STREQ(prop_id, "iterations") ||
-           STREQ(prop_id, "relative_scale") || STREQ(prop_id, "vertex_group") ||
-           STREQ(prop_id, "vertex_group_factor"));
+           STREQ(prop_id, "vertex_group") || STREQ(prop_id, "vertex_group_factor"));
 }
 
 static void unwrap_draw(bContext *C, wmOperator *op)
@@ -2912,15 +2902,6 @@ void UV_OT_unwrap(wmOperatorType *ot)
               "Number of Iterations if the SLIM algorithm is used",
               1,
               30);
-  RNA_def_float(ot->srna,
-                "relative_scale",
-                _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale,
-                0.001,
-                1000.0,
-                "Relative Scale",
-                "Relative Scale of UV Map with respect to pins",
-                0.1,
-                10.0);
   RNA_def_string(ot->srna,
                  "vertex_group",
                  NULL,

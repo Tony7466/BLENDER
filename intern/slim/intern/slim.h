@@ -63,7 +63,6 @@ struct SLIMData {
   Eigen::VectorXf weightmap;
   Eigen::VectorXf weightPerFaceMap;
   double weightInfluence;
-  double relativeScale;
   double globalScaleInvarianceFactor = 1.0;
 
   double energy;  // objective value

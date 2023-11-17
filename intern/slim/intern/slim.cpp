@@ -1158,8 +1158,8 @@ Eigen::MatrixXd igl::slim_solve(SLIMData &data, int iter_num)
                   data.mesh_area;
 
     if (arePinsPresent) {
-      data.globalScaleInvarianceFactor = computeGlobalScaleInvarianceFactor(
-          singularValues, data.M, data.relativeScale);
+      data.globalScaleInvarianceFactor = computeGlobalScaleInvarianceFactor(singularValues,
+                                                                            data.M);
       data.Dx /= data.globalScaleInvarianceFactor;
       data.Dy /= data.globalScaleInvarianceFactor;
       data.energy = igl::slim::compute_energy(data, data.V_o, singularValues) / data.mesh_area;

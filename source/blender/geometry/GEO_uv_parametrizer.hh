@@ -114,7 +114,6 @@ class MatrixTransferOptions {
  public:
   char vertex_group[MAX_ID_NAME];
   float vertex_group_factor;
-  float relative_scale;
   int iterations;
   int reflection_mode;
 

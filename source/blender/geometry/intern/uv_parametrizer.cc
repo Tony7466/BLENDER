@@ -4590,7 +4590,6 @@ static SLIMMatrixTransfer *slim_matrix_transfer(const MatrixTransferOptions *mt_
 
   mt->with_weighted_parameterization = strlen(mt_options->vertex_group) > 0;
   mt->weight_influence = mt_options->vertex_group_factor;
-  mt->relative_scale = mt_options->relative_scale;
   mt->n_iterations = mt_options->iterations;
   mt->reflection_mode = mt_options->reflection_mode;
   mt->skip_initialization = mt_options->skip_initialization;

@@ -76,7 +76,6 @@ struct SLIMMatrixTransfer {
   bool with_weighted_parameterization = false;
   double weight_influence = 0.0;
   int reflection_mode = 0;
-  double relative_scale = 0.0;
 
   /* External. */
   int n_iterations = 0;
