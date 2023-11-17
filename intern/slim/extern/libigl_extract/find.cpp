@@ -7,7 +7,6 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #include "find.h"
 
-#include "verbose.h"
 #include <iostream>
 
 template<typename T, typename DerivedI, typename DerivedJ, typename DerivedV>

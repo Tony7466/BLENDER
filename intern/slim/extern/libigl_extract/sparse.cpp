@@ -21,7 +21,6 @@ inline void igl::sparse(const IndexVector &I,
   return igl::sparse(I, J, V, m, n, X);
 }
 
-#include "verbose.h"
 template<class IndexVector, class ValueVector, typename T>
 inline void igl::sparse(const IndexVector &I,
                         const IndexVector &J,

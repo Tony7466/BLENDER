@@ -10,8 +10,6 @@
 #include "edge_lengths.h"
 #include "squared_edge_lengths.h"
 
-//#include "verbose.h"
-
 template<typename DerivedV, typename DerivedF, typename DerivedC>
 inline void igl::cotmatrix_entries(const Eigen::PlainObjectBase<DerivedV> &V,
                                    const Eigen::PlainObjectBase<DerivedF> &F,

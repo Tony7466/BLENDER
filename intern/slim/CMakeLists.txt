@@ -53,7 +53,6 @@ set(SRC
   extern/libigl_extract/sort.h
   extern/libigl_extract/sparse.h
   extern/libigl_extract/squared_edge_lengths.h
-  extern/libigl_extract/verbose.h
 )
 
 set(LIB
