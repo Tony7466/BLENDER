@@ -1982,5 +1982,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         version_geometry_nodes_use_rotation_socket(*ntree);
       }
     }
+
+    LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
+      blender::bke::mesh_sculpt_mask_to_generic(*mesh);
+    }
   }
 }
