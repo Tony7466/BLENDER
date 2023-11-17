@@ -1268,6 +1268,8 @@ static void versioning_nodes_dynamic_sockets(bNodeTree &ntree)
   LISTBASE_FOREACH (bNode *, node, &ntree.nodes) {
     switch (node->type) {
       case GEO_NODE_ACCUMULATE_FIELD:
+        /* This node requires the extra `total` parameter, because the `Group Index` identifier
+         * also has a space in the name, that should not be treated as separator. */
         version_socket_identifier_suffixes_for_dynamic_types(node->inputs, " ", 1);
         version_socket_identifier_suffixes_for_dynamic_types(node->outputs, " ", 3);
         break;
