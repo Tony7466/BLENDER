@@ -29,7 +29,6 @@ set(SRC
   extern/libigl_extract/slim.cpp
 
   extern/libigl_extract/EPS.h
-  extern/libigl_extract/IndexComparison.h
   extern/libigl_extract/cat.h
   extern/libigl_extract/colon.h
   extern/libigl_extract/cotmatrix.h

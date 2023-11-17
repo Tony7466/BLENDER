@@ -12,6 +12,16 @@
 #include <vector>
 namespace igl {
 
+// For use with functions like std::sort
+template<class T> struct IndexLessThan {
+  IndexLessThan(const T arr) : arr(arr) {}
+  bool operator()(const size_t a, const size_t b) const
+  {
+    return arr[a] < arr[b];
+  }
+  const T arr;
+};
+
 // Sort the elements of a matrix X along a given dimension like matlabs sort
 // function
 //
@@ -34,13 +44,6 @@ inline void sort(const Eigen::PlainObjectBase<DerivedX> &X,
                  const bool ascending,
                  Eigen::PlainObjectBase<DerivedY> &Y,
                  Eigen::PlainObjectBase<DerivedIX> &IX);
-template<typename DerivedX, typename DerivedY, typename DerivedIX>
-// Only better if size(X,dim) is small
-inline void sort_new(const Eigen::PlainObjectBase<DerivedX> &X,
-                     const int dim,
-                     const bool ascending,
-                     Eigen::PlainObjectBase<DerivedY> &Y,
-                     Eigen::PlainObjectBase<DerivedIX> &IX);
 // Special case if size(X,dim) == 2
 template<typename DerivedX, typename DerivedY, typename DerivedIX>
 inline void sort2(const Eigen::PlainObjectBase<DerivedX> &X,

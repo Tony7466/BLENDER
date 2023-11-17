@@ -6,7 +6,6 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at http://mozilla.org/MPL/2.0/.
 #include "sort.h"
-#include "IndexComparison.h"
 #include "colon.h"
 #include "reorder.h"
 
@@ -65,65 +64,6 @@ inline void igl::sort(const Eigen::PlainObjectBase<DerivedX> &X,
       else {
         Y(i, j) = data[j];
         IX(i, j) = index_map[j];
-      }
-    }
-  }
-}
-
-template<typename DerivedX, typename DerivedY, typename DerivedIX>
-inline void igl::sort_new(const Eigen::PlainObjectBase<DerivedX> &X,
-                          const int dim,
-                          const bool ascending,
-                          Eigen::PlainObjectBase<DerivedY> &Y,
-                          Eigen::PlainObjectBase<DerivedIX> &IX)
-{
-  // get number of rows (or columns)
-  int num_inner = (dim == 1 ? X.rows() : X.cols());
-  // Special case for swapping
-  switch (num_inner) {
-    default:
-      break;
-    case 2:
-      return igl::sort2(X, dim, ascending, Y, IX);
-    case 3:
-      return igl::sort3(X, dim, ascending, Y, IX);
-  }
-  using namespace Eigen;
-  // get number of columns (or rows)
-  int num_outer = (dim == 1 ? X.cols() : X.rows());
-  // dim must be 2 or 1
-  assert(dim == 1 || dim == 2);
-  // Resize output
-  Y.resize(X.rows(), X.cols());
-  IX.resize(X.rows(), X.cols());
-  // idea is to process each column (or row) as a std vector
-  // loop over columns (or rows)
-  for (int i = 0; i < num_outer; i++) {
-    Eigen::VectorXi ix;
-    colon(0, num_inner - 1, ix);
-    // Sort the index map, using unsorted for comparison
-    if (dim == 1) {
-      std::sort(ix.data(),
-                ix.data() + ix.size(),
-                igl::IndexVectorLessThan<const typename DerivedX::ConstColXpr>(X.col(i)));
-    }
-    else {
-      std::sort(ix.data(),
-                ix.data() + ix.size(),
-                igl::IndexVectorLessThan<const typename DerivedX::ConstRowXpr>(X.row(i)));
-    }
-    // if not ascending then reverse
-    if (!ascending) {
-      std::reverse(ix.data(), ix.data() + ix.size());
-    }
-    for (int j = 0; j < num_inner; j++) {
-      if (dim == 1) {
-        Y(j, i) = X(ix[j], i);
-        IX(j, i) = ix[j];
-      }
-      else {
-        Y(i, j) = X(i, ix[j]);
-        IX(i, j) = ix[j];
       }
     }
   }
