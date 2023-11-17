@@ -19,33 +19,6 @@
 
 namespace slim {
 
-/* Definitions of internal functions. */
-inline void compute_surface_gradient_matrix(const Eigen::MatrixXd &V,
-                                            const Eigen::MatrixXi &F,
-                                            const Eigen::MatrixXd &F1,
-                                            const Eigen::MatrixXd &F2,
-                                            Eigen::SparseMatrix<double> &D1,
-                                            Eigen::SparseMatrix<double> &D2);
-inline void buildA(SLIMData &s, Eigen::SparseMatrix<double> &A);
-inline void buildRhs(SLIMData &s, const Eigen::SparseMatrix<double> &At);
-inline void add_soft_constraints(SLIMData &s, Eigen::SparseMatrix<double> &L);
-inline double compute_energy(SLIMData &s, Eigen::MatrixXd &V_new, Eigen::VectorXd &singularValues);
-inline double compute_energy(SLIMData &s, Eigen::MatrixXd &V_new);
-inline double compute_soft_const_energy(SLIMData &s, Eigen::MatrixXd &V_o);
-inline double compute_energy_with_jacobians(SLIMData &s,
-                                            const Eigen::MatrixXd &Ji,
-                                            Eigen::VectorXd &areas,
-                                            Eigen::VectorXd &singularValues,
-                                            bool gatherSingularValues);
-inline void solve_weighted_arap(SLIMData &s, Eigen::MatrixXd &uv);
-inline void update_weights_and_closest_rotations(SLIMData &s,
-                                                 const Eigen::MatrixXd &V,
-                                                 const Eigen::MatrixXi &F,
-                                                 Eigen::MatrixXd &uv);
-inline void compute_jacobians(SLIMData &s, const Eigen::MatrixXd &uv);
-inline void build_linear_system(SLIMData &s, Eigen::SparseMatrix<double> &L);
-inline void pre_calc(SLIMData &s);
-
 /* GRAD
  * G = grad(V,F)
  *
@@ -67,10 +40,10 @@ inline void pre_calc(SLIMData &s);
  * 90 degrees
  */
 template<typename DerivedV, typename DerivedF>
-inline void grad(const Eigen::PlainObjectBase<DerivedV> &V,
-                 const Eigen::PlainObjectBase<DerivedF> &F,
-                 Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
-                 bool uniform = false)
+static inline void grad(const Eigen::PlainObjectBase<DerivedV> &V,
+                        const Eigen::PlainObjectBase<DerivedF> &F,
+                        Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
+                        bool uniform = false)
 {
   Eigen::Matrix<typename DerivedV::Scalar, Eigen::Dynamic, 3> eperp21(F.rows(), 3),
       eperp13(F.rows(), 3);
@@ -234,13 +207,12 @@ static inline void polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
   }
 }
 
-/* Implementation. */
-inline void compute_surface_gradient_matrix(const Eigen::MatrixXd &V,
-                                            const Eigen::MatrixXi &F,
-                                            const Eigen::MatrixXd &F1,
-                                            const Eigen::MatrixXd &F2,
-                                            Eigen::SparseMatrix<double> &D1,
-                                            Eigen::SparseMatrix<double> &D2)
+static inline void compute_surface_gradient_matrix(const Eigen::MatrixXd &V,
+                                                   const Eigen::MatrixXi &F,
+                                                   const Eigen::MatrixXd &F1,
+                                                   const Eigen::MatrixXd &F2,
+                                                   Eigen::SparseMatrix<double> &D1,
+                                                   Eigen::SparseMatrix<double> &D2)
 {
   Eigen::SparseMatrix<double> G;
   grad(V, F, G);
@@ -252,7 +224,7 @@ inline void compute_surface_gradient_matrix(const Eigen::MatrixXd &V,
   D2 = F2.col(0).asDiagonal() * Dx + F2.col(1).asDiagonal() * Dy + F2.col(2).asDiagonal() * Dz;
 }
 
-inline void compute_weighted_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
+static inline void compute_weighted_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
 
@@ -270,7 +242,7 @@ inline void compute_weighted_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
   s.Ji.col(3) = weights.cwiseProduct(s.Ji.col(3));
 }
 
-inline void compute_unweighted_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
+static inline void compute_unweighted_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
 
@@ -281,7 +253,7 @@ inline void compute_unweighted_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
   s.Ji.col(3) = s.Dy * uv.col(1);
 }
 
-inline void compute_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
+static inline void compute_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
 
@@ -293,7 +265,7 @@ inline void compute_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
   }
 }
 
-inline void update_weights_and_closest_rotations(SLIMData &s, Eigen::MatrixXd &uv)
+static inline void update_weights_and_closest_rotations(SLIMData &s, Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
   compute_jacobians(s, uv);
@@ -402,33 +374,12 @@ inline void update_weights_and_closest_rotations(SLIMData &s, Eigen::MatrixXd &u
   }
 }
 
-inline void solve_weighted_arap(SLIMData &s, Eigen::MatrixXd &uv)
-{
-  BLI_assert(s.valid);
-  using namespace Eigen;
-
-  Eigen::SparseMatrix<double> L;
-  build_linear_system(s, L);
-
-  /* Solve. */
-  Eigen::VectorXd Uc;
-  SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
-  Uc = solver.compute(L).solve(s.rhs);
-
-  for (int i = 0; i < Uc.size(); i++)
-    if (!std::isfinite(Uc(i)))
-      throw SlimFailedException();
-
-  for (int i = 0; i < s.dim; i++)
-    uv.col(i) = Uc.block(i * s.v_n, 0, s.v_n, 1);
-}
-
 template<typename DerivedV, typename DerivedF>
-inline void local_basis(const Eigen::PlainObjectBase<DerivedV> &V,
-                        const Eigen::PlainObjectBase<DerivedF> &F,
-                        Eigen::PlainObjectBase<DerivedV> &B1,
-                        Eigen::PlainObjectBase<DerivedV> &B2,
-                        Eigen::PlainObjectBase<DerivedV> &B3)
+static inline void local_basis(const Eigen::PlainObjectBase<DerivedV> &V,
+                               const Eigen::PlainObjectBase<DerivedF> &F,
+                               Eigen::PlainObjectBase<DerivedV> &B1,
+                               Eigen::PlainObjectBase<DerivedV> &B2,
+                               Eigen::PlainObjectBase<DerivedV> &B3)
 {
   using namespace Eigen;
   using namespace std;
@@ -449,7 +400,7 @@ inline void local_basis(const Eigen::PlainObjectBase<DerivedV> &V,
   }
 }
 
-inline void pre_calc(SLIMData &s)
+static inline void pre_calc(SLIMData &s)
 {
   BLI_assert(s.valid);
   if (!s.has_pre_calc) {
@@ -484,7 +435,94 @@ inline void pre_calc(SLIMData &s)
   }
 }
 
-inline void build_linear_system(SLIMData &s, Eigen::SparseMatrix<double> &L)
+static inline void buildA(SLIMData &s, Eigen::SparseMatrix<double> &A)
+{
+  BLI_assert(s.valid);
+  /* Formula (35) in paper. */
+  std::vector<Eigen::Triplet<double>> IJV;
+
+  IJV.reserve(4 * (s.Dx.outerSize() + s.Dy.outerSize()));
+
+  /* A = [W11*Dx, W12*Dx;
+   *      W11*Dy, W12*Dy;
+   *      W21*Dx, W22*Dx;
+   *      W21*Dy, W22*Dy]; */
+  for (int k = 0; k < s.Dx.outerSize(); ++k) {
+    for (Eigen::SparseMatrix<double>::InnerIterator it(s.Dx, k); it; ++it) {
+      int dx_r = it.row();
+      int dx_c = it.col();
+      double val = it.value();
+      double weight = s.weightPerFaceMap(dx_r);
+
+      IJV.push_back(Eigen::Triplet<double>(dx_r, dx_c, weight * val * s.W_11(dx_r)));
+      IJV.push_back(Eigen::Triplet<double>(dx_r, s.v_n + dx_c, weight * val * s.W_12(dx_r)));
+
+      IJV.push_back(Eigen::Triplet<double>(2 * s.f_n + dx_r, dx_c, weight * val * s.W_21(dx_r)));
+      IJV.push_back(
+          Eigen::Triplet<double>(2 * s.f_n + dx_r, s.v_n + dx_c, weight * val * s.W_22(dx_r)));
+    }
+  }
+
+  for (int k = 0; k < s.Dy.outerSize(); ++k) {
+    for (Eigen::SparseMatrix<double>::InnerIterator it(s.Dy, k); it; ++it) {
+      int dy_r = it.row();
+      int dy_c = it.col();
+      double val = it.value();
+      double weight = s.weightPerFaceMap(dy_r);
+
+      IJV.push_back(Eigen::Triplet<double>(s.f_n + dy_r, dy_c, weight * val * s.W_11(dy_r)));
+      IJV.push_back(
+          Eigen::Triplet<double>(s.f_n + dy_r, s.v_n + dy_c, weight * val * s.W_12(dy_r)));
+
+      IJV.push_back(Eigen::Triplet<double>(3 * s.f_n + dy_r, dy_c, weight * val * s.W_21(dy_r)));
+      IJV.push_back(
+          Eigen::Triplet<double>(3 * s.f_n + dy_r, s.v_n + dy_c, weight * val * s.W_22(dy_r)));
+    }
+  }
+
+  A.setFromTriplets(IJV.begin(), IJV.end());
+}
+
+static inline void buildRhs(SLIMData &s, const Eigen::SparseMatrix<double> &At)
+{
+  BLI_assert(s.valid);
+
+  Eigen::VectorXd f_rhs(s.dim * s.dim * s.f_n);
+  f_rhs.setZero();
+
+  /* b = [W11*R11 + W12*R21; (formula (36))
+   *      W11*R12 + W12*R22;
+   *      W21*R11 + W22*R21;
+   *      W21*R12 + W22*R22]; */
+  for (int i = 0; i < s.f_n; i++) {
+    f_rhs(i + 0 * s.f_n) = s.W_11(i) * s.Ri(i, 0) + s.W_12(i) * s.Ri(i, 1);
+    f_rhs(i + 1 * s.f_n) = s.W_11(i) * s.Ri(i, 2) + s.W_12(i) * s.Ri(i, 3);
+    f_rhs(i + 2 * s.f_n) = s.W_21(i) * s.Ri(i, 0) + s.W_22(i) * s.Ri(i, 1);
+    f_rhs(i + 3 * s.f_n) = s.W_21(i) * s.Ri(i, 2) + s.W_22(i) * s.Ri(i, 3);
+  }
+
+  Eigen::VectorXd uv_flat(s.dim * s.v_n);
+  for (int i = 0; i < s.dim; i++)
+    for (int j = 0; j < s.v_n; j++)
+      uv_flat(s.v_n * i + j) = s.V_o(j, i);
+
+  s.rhs = (At * s.WGL_M.asDiagonal() * f_rhs + s.proximal_p * uv_flat);
+}
+
+static inline void add_soft_constraints(SLIMData &s, Eigen::SparseMatrix<double> &L)
+{
+  BLI_assert(s.valid);
+  int v_n = s.v_num;
+  for (int d = 0; d < s.dim; d++) {
+    for (int i = 0; i < s.b.rows(); i++) {
+      int v_idx = s.b(i);
+      s.rhs(d * v_n + v_idx) += s.soft_const_p * s.bc(i, d);          /* Right hand side. */
+      L.coeffRef(d * v_n + v_idx, d * v_n + v_idx) += s.soft_const_p; /* Diagonal of matrix. */
+    }
+  }
+}
+
+static inline void build_linear_system(SLIMData &s, Eigen::SparseMatrix<double> &L)
 {
   BLI_assert(s.valid);
   /* Formula (35) in paper. */
@@ -507,58 +545,11 @@ inline void build_linear_system(SLIMData &s, Eigen::SparseMatrix<double> &L)
   L.makeCompressed();
 }
 
-inline void add_soft_constraints(SLIMData &s, Eigen::SparseMatrix<double> &L)
-{
-  BLI_assert(s.valid);
-  int v_n = s.v_num;
-  for (int d = 0; d < s.dim; d++) {
-    for (int i = 0; i < s.b.rows(); i++) {
-      int v_idx = s.b(i);
-      s.rhs(d * v_n + v_idx) += s.soft_const_p * s.bc(i, d);          /* Right hand side. */
-      L.coeffRef(d * v_n + v_idx, d * v_n + v_idx) += s.soft_const_p; /* Diagonal of matrix. */
-    }
-  }
-}
-
-inline double compute_energy(SLIMData &s,
-                             Eigen::MatrixXd &V_new,
-                             Eigen::VectorXd &singularValues,
-                             bool gatherSingularValues)
-{
-  BLI_assert(s.valid);
-  compute_jacobians(s, V_new);
-  return compute_energy_with_jacobians(s, s.Ji, s.M, singularValues, gatherSingularValues) +
-         compute_soft_const_energy(s, V_new);
-}
-
-inline double compute_energy(SLIMData &s, Eigen::MatrixXd &V_new)
-{
-  BLI_assert(s.valid);
-  Eigen::VectorXd temp;
-  return compute_energy(s, V_new, temp, false);
-}
-
-inline double compute_energy(SLIMData &s, Eigen::MatrixXd &V_new, Eigen::VectorXd &singularValues)
-{
-  BLI_assert(s.valid);
-  return compute_energy(s, V_new, singularValues, true);
-}
-
-inline double compute_soft_const_energy(SLIMData &s, Eigen::MatrixXd &V_o)
-{
-  BLI_assert(s.valid);
-  double e = 0;
-  for (int i = 0; i < s.b.rows(); i++) {
-    e += s.soft_const_p * (s.bc.row(i) - V_o.row(s.b(i))).squaredNorm();
-  }
-  return e;
-}
-
-inline double compute_energy_with_jacobians(SLIMData &s,
-                                            const Eigen::MatrixXd &Ji,
-                                            Eigen::VectorXd &areas,
-                                            Eigen::VectorXd &singularValues,
-                                            bool gatherSingularValues)
+static inline double compute_energy_with_jacobians(SLIMData &s,
+                                                   const Eigen::MatrixXd &Ji,
+                                                   Eigen::VectorXd &areas,
+                                                   Eigen::VectorXd &singularValues,
+                                                   bool gatherSingularValues)
 {
   BLI_assert(s.valid);
   double energy = 0;
@@ -615,78 +606,40 @@ inline double compute_energy_with_jacobians(SLIMData &s,
   return energy;
 }
 
-inline void buildA(SLIMData &s, Eigen::SparseMatrix<double> &A)
+static inline double compute_soft_const_energy(SLIMData &s, Eigen::MatrixXd &V_o)
 {
   BLI_assert(s.valid);
-  /* Formula (35) in paper. */
-  std::vector<Eigen::Triplet<double>> IJV;
-
-  IJV.reserve(4 * (s.Dx.outerSize() + s.Dy.outerSize()));
-
-  /* A = [W11*Dx, W12*Dx;
-   *      W11*Dy, W12*Dy;
-   *      W21*Dx, W22*Dx;
-   *      W21*Dy, W22*Dy]; */
-  for (int k = 0; k < s.Dx.outerSize(); ++k) {
-    for (Eigen::SparseMatrix<double>::InnerIterator it(s.Dx, k); it; ++it) {
-      int dx_r = it.row();
-      int dx_c = it.col();
-      double val = it.value();
-      double weight = s.weightPerFaceMap(dx_r);
-
-      IJV.push_back(Eigen::Triplet<double>(dx_r, dx_c, weight * val * s.W_11(dx_r)));
-      IJV.push_back(Eigen::Triplet<double>(dx_r, s.v_n + dx_c, weight * val * s.W_12(dx_r)));
-
-      IJV.push_back(Eigen::Triplet<double>(2 * s.f_n + dx_r, dx_c, weight * val * s.W_21(dx_r)));
-      IJV.push_back(
-          Eigen::Triplet<double>(2 * s.f_n + dx_r, s.v_n + dx_c, weight * val * s.W_22(dx_r)));
-    }
+  double e = 0;
+  for (int i = 0; i < s.b.rows(); i++) {
+    e += s.soft_const_p * (s.bc.row(i) - V_o.row(s.b(i))).squaredNorm();
   }
-
-  for (int k = 0; k < s.Dy.outerSize(); ++k) {
-    for (Eigen::SparseMatrix<double>::InnerIterator it(s.Dy, k); it; ++it) {
-      int dy_r = it.row();
-      int dy_c = it.col();
-      double val = it.value();
-      double weight = s.weightPerFaceMap(dy_r);
-
-      IJV.push_back(Eigen::Triplet<double>(s.f_n + dy_r, dy_c, weight * val * s.W_11(dy_r)));
-      IJV.push_back(
-          Eigen::Triplet<double>(s.f_n + dy_r, s.v_n + dy_c, weight * val * s.W_12(dy_r)));
-
-      IJV.push_back(Eigen::Triplet<double>(3 * s.f_n + dy_r, dy_c, weight * val * s.W_21(dy_r)));
-      IJV.push_back(
-          Eigen::Triplet<double>(3 * s.f_n + dy_r, s.v_n + dy_c, weight * val * s.W_22(dy_r)));
-    }
-  }
-
-  A.setFromTriplets(IJV.begin(), IJV.end());
+  return e;
 }
 
-inline void buildRhs(SLIMData &s, const Eigen::SparseMatrix<double> &At)
+static inline double compute_energy(SLIMData &s,
+                                    Eigen::MatrixXd &V_new,
+                                    Eigen::VectorXd &singularValues,
+                                    bool gatherSingularValues)
 {
   BLI_assert(s.valid);
+  compute_jacobians(s, V_new);
+  return compute_energy_with_jacobians(s, s.Ji, s.M, singularValues, gatherSingularValues) +
+         compute_soft_const_energy(s, V_new);
+}
 
-  Eigen::VectorXd f_rhs(s.dim * s.dim * s.f_n);
-  f_rhs.setZero();
+static inline double compute_energy(SLIMData &s, Eigen::MatrixXd &V_new)
+{
+  BLI_assert(s.valid);
+  Eigen::VectorXd temp;
+  return compute_energy(s, V_new, temp, false);
+}
 
-  /* b = [W11*R11 + W12*R21; (formula (36))
-   *      W11*R12 + W12*R22;
-   *      W21*R11 + W22*R21;
-   *      W21*R12 + W22*R22]; */
-  for (int i = 0; i < s.f_n; i++) {
-    f_rhs(i + 0 * s.f_n) = s.W_11(i) * s.Ri(i, 0) + s.W_12(i) * s.Ri(i, 1);
-    f_rhs(i + 1 * s.f_n) = s.W_11(i) * s.Ri(i, 2) + s.W_12(i) * s.Ri(i, 3);
-    f_rhs(i + 2 * s.f_n) = s.W_21(i) * s.Ri(i, 0) + s.W_22(i) * s.Ri(i, 1);
-    f_rhs(i + 3 * s.f_n) = s.W_21(i) * s.Ri(i, 2) + s.W_22(i) * s.Ri(i, 3);
-  }
-
-  Eigen::VectorXd uv_flat(s.dim * s.v_n);
-  for (int i = 0; i < s.dim; i++)
-    for (int j = 0; j < s.v_n; j++)
-      uv_flat(s.v_n * i + j) = s.V_o(j, i);
-
-  s.rhs = (At * s.WGL_M.asDiagonal() * f_rhs + s.proximal_p * uv_flat);
+static inline double compute_energy(SLIMData &s,
+                                    Eigen::MatrixXd &V_new,
+                                    Eigen::VectorXd &singularValues)
+{
+  BLI_assert(s.valid);
+  return compute_energy(s, V_new, singularValues, true);
 }
 
 void slim_precompute(Eigen::MatrixXd &V,
@@ -783,13 +736,34 @@ inline double computeGlobalScaleInvarianceFactor(Eigen::VectorXd &singularValues
   return 1 / x;
 }
 
+static inline void solve_weighted_arap(SLIMData &s, Eigen::MatrixXd &uv)
+{
+  BLI_assert(s.valid);
+  using namespace Eigen;
+
+  Eigen::SparseMatrix<double> L;
+  build_linear_system(s, L);
+
+  /* Solve. */
+  Eigen::VectorXd Uc;
+  SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+  Uc = solver.compute(L).solve(s.rhs);
+
+  for (int i = 0; i < Uc.size(); i++)
+    if (!std::isfinite(Uc(i)))
+      throw SlimFailedException();
+
+  for (int i = 0; i < s.dim; i++)
+    uv.col(i) = Uc.block(i * s.v_n, 0, s.v_n, 1);
+}
+
 Eigen::MatrixXd slim_solve(SLIMData &data, int iter_num)
 {
   BLI_assert(data.valid);
   Eigen::VectorXd singularValues;
-  bool arePinsPresent = data.b.rows() > 0;
+  bool are_pins_present = data.b.rows() > 0;
 
-  if (arePinsPresent) {
+  if (are_pins_present) {
     singularValues.resize(data.F.rows() * 2);
     data.energy = compute_energy(data, data.V_o, singularValues) / data.mesh_area;
   }
@@ -803,8 +777,8 @@ Eigen::MatrixXd slim_solve(SLIMData &data, int iter_num)
     solve_weighted_arap(data, dest_res);
 
     std::function<double(Eigen::MatrixXd &)> compute_energy_func = [&](Eigen::MatrixXd &aaa) {
-      return arePinsPresent ? compute_energy(data, aaa, singularValues) :
-                              compute_energy(data, aaa);
+      return are_pins_present ? compute_energy(data, aaa, singularValues) :
+                                compute_energy(data, aaa);
     };
 
     data.energy = flip_avoiding_line_search(data.F,
@@ -814,7 +788,7 @@ Eigen::MatrixXd slim_solve(SLIMData &data, int iter_num)
                                             data.energy * data.mesh_area) /
                   data.mesh_area;
 
-    if (arePinsPresent) {
+    if (are_pins_present) {
       data.globalScaleInvarianceFactor = computeGlobalScaleInvarianceFactor(singularValues,
                                                                             data.M);
       data.Dx /= data.globalScaleInvarianceFactor;
