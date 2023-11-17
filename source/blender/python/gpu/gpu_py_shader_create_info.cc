@@ -989,7 +989,7 @@ static PyObject *pygpu_shader_info_compute_source(BPyGPUShaderCreateInfo *self, 
 #endif
 
   ShaderCreateInfo *info = reinterpret_cast<ShaderCreateInfo *>(self->info);
-  info->compute_source("common_compute_lib.glsl");
+  info->compute_source("common_colormanagement_lib.glsl");
   info->compute_source_generated = compute_source;
 
   Py_RETURN_NONE;

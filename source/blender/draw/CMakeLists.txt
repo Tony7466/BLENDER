@@ -677,7 +677,6 @@ set(GLSL_SRC
   intern/shaders/common_subdiv_vbo_sculpt_data_comp.glsl
   intern/shaders/common_view_clipping_lib.glsl
   intern/shaders/common_view_lib.glsl
-  intern/shaders/common_compute_lib.glsl
   intern/shaders/draw_command_generate_comp.glsl
   intern/shaders/draw_debug_draw_display_frag.glsl
   intern/shaders/draw_debug_draw_display_vert.glsl
