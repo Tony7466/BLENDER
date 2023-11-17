@@ -854,6 +854,7 @@ static void mesh_batch_cache_clear(MeshBatchCache &cache)
 
   mesh_batch_cache_discard_shaded_tri(cache);
   mesh_batch_cache_discard_uvedit(cache);
+  mesh_batch_cache_discard_edit_surface_batches(cache);
   MEM_SAFE_FREE(cache.surface_per_mat);
   MEM_SAFE_FREE(cache.edit_surface_per_mat);
   cache.mat_len = 0;
