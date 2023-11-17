@@ -11,10 +11,10 @@
 #include <iostream>
 
 template<typename T, typename DerivedI, typename DerivedJ, typename DerivedV>
-IGL_INLINE void igl::find(const Eigen::SparseMatrix<T> &X,
-                          Eigen::MatrixBase<DerivedI> &I,
-                          Eigen::MatrixBase<DerivedJ> &J,
-                          Eigen::MatrixBase<DerivedV> &V)
+inline void igl::find(const Eigen::SparseMatrix<T> &X,
+                      Eigen::MatrixBase<DerivedI> &I,
+                      Eigen::MatrixBase<DerivedJ> &J,
+                      Eigen::MatrixBase<DerivedV> &V)
 {
   // Resize outputs to fit nonzeros
   I.derived().resize(X.nonZeros(), 1);
@@ -35,10 +35,10 @@ IGL_INLINE void igl::find(const Eigen::SparseMatrix<T> &X,
 }
 
 template<typename DerivedX, typename DerivedI, typename DerivedJ, typename DerivedV>
-IGL_INLINE void igl::find(const Eigen::PlainObjectBase<DerivedX> &X,
-                          Eigen::PlainObjectBase<DerivedI> &I,
-                          Eigen::PlainObjectBase<DerivedJ> &J,
-                          Eigen::PlainObjectBase<DerivedV> &V)
+inline void igl::find(const Eigen::PlainObjectBase<DerivedX> &X,
+                      Eigen::PlainObjectBase<DerivedI> &I,
+                      Eigen::PlainObjectBase<DerivedJ> &J,
+                      Eigen::PlainObjectBase<DerivedV> &V)
 {
   const int nnz = X.count();
   I.resize(nnz, 1);
@@ -60,8 +60,8 @@ IGL_INLINE void igl::find(const Eigen::PlainObjectBase<DerivedX> &X,
 }
 
 template<typename DerivedX, typename DerivedI>
-IGL_INLINE void igl::find(const Eigen::PlainObjectBase<DerivedX> &X,
-                          Eigen::PlainObjectBase<DerivedI> &I)
+inline void igl::find(const Eigen::PlainObjectBase<DerivedX> &X,
+                      Eigen::PlainObjectBase<DerivedI> &I)
 {
   const int nnz = X.count();
   I.resize(nnz, 1);
@@ -79,9 +79,9 @@ IGL_INLINE void igl::find(const Eigen::PlainObjectBase<DerivedX> &X,
 }
 
 template<typename T>
-IGL_INLINE void igl::find(const Eigen::SparseVector<T> &X,
-                          Eigen::Matrix<int, Eigen::Dynamic, 1> &I,
-                          Eigen::Matrix<T, Eigen::Dynamic, 1> &V)
+inline void igl::find(const Eigen::SparseVector<T> &X,
+                      Eigen::Matrix<int, Eigen::Dynamic, 1> &I,
+                      Eigen::Matrix<T, Eigen::Dynamic, 1> &V)
 {
   // Resize outputs to fit nonzeros
   I.resize(X.nonZeros());

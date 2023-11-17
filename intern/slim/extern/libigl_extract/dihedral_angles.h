@@ -7,7 +7,7 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_DIHEDRAL_ANGLES_H
 #define IGL_DIHEDRAL_ANGLES_H
-#include "igl_inline.h"
+
 #include <Eigen/Core>
 namespace igl {
 // DIHEDRAL_ANGLES Compute dihedral angles for all tets of a given tet mesh
@@ -24,15 +24,15 @@ namespace igl {
 //   cos_theta  #T by 6 list of cosine of dihedral angles (in radians)
 //
 template<typename DerivedV, typename DerivedT, typename Derivedtheta, typename Derivedcos_theta>
-IGL_INLINE void dihedral_angles(Eigen::PlainObjectBase<DerivedV> &V,
-                                Eigen::PlainObjectBase<DerivedT> &T,
-                                Eigen::PlainObjectBase<Derivedtheta> &theta,
-                                Eigen::PlainObjectBase<Derivedcos_theta> &cos_theta);
+inline void dihedral_angles(Eigen::PlainObjectBase<DerivedV> &V,
+                            Eigen::PlainObjectBase<DerivedT> &T,
+                            Eigen::PlainObjectBase<Derivedtheta> &theta,
+                            Eigen::PlainObjectBase<Derivedcos_theta> &cos_theta);
 template<typename DerivedL, typename DerivedA, typename Derivedtheta, typename Derivedcos_theta>
-IGL_INLINE void dihedral_angles_intrinsic(Eigen::PlainObjectBase<DerivedL> &L,
-                                          Eigen::PlainObjectBase<DerivedA> &A,
-                                          Eigen::PlainObjectBase<Derivedtheta> &theta,
-                                          Eigen::PlainObjectBase<Derivedcos_theta> &cos_theta);
+inline void dihedral_angles_intrinsic(Eigen::PlainObjectBase<DerivedL> &L,
+                                      Eigen::PlainObjectBase<DerivedA> &A,
+                                      Eigen::PlainObjectBase<Derivedtheta> &theta,
+                                      Eigen::PlainObjectBase<Derivedcos_theta> &cos_theta);
 
 }  // namespace igl
 

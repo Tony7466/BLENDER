@@ -8,7 +8,7 @@
 #include "is_symmetric.h"
 #include "find.h"
 
-template<typename T> IGL_INLINE bool igl::is_symmetric(const Eigen::SparseMatrix<T> &A)
+template<typename T> inline bool igl::is_symmetric(const Eigen::SparseMatrix<T> &A)
 {
   if (A.rows() != A.cols()) {
     return false;
@@ -24,7 +24,7 @@ template<typename T> IGL_INLINE bool igl::is_symmetric(const Eigen::SparseMatrix
 }
 
 template<typename DerivedA>
-IGL_INLINE bool igl::is_symmetric(const Eigen::PlainObjectBase<DerivedA> &A)
+inline bool igl::is_symmetric(const Eigen::PlainObjectBase<DerivedA> &A)
 {
   if (A.rows() != A.cols()) {
     return false;
@@ -40,7 +40,7 @@ IGL_INLINE bool igl::is_symmetric(const Eigen::PlainObjectBase<DerivedA> &A)
 }
 
 template<typename AType, typename epsilonT>
-IGL_INLINE bool igl::is_symmetric(const Eigen::SparseMatrix<AType> &A, const epsilonT epsilon)
+inline bool igl::is_symmetric(const Eigen::SparseMatrix<AType> &A, const epsilonT epsilon)
 {
   using namespace Eigen;
   using namespace std;

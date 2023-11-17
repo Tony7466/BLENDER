@@ -7,20 +7,20 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #include "EPS.h"
 
-template<> IGL_INLINE float igl::EPS()
+template<> inline float igl::EPS()
 {
   return igl::FLOAT_EPS;
 }
-template<> IGL_INLINE double igl::EPS()
+template<> inline double igl::EPS()
 {
   return igl::DOUBLE_EPS;
 }
 
-template<> IGL_INLINE float igl::EPS_SQ()
+template<> inline float igl::EPS_SQ()
 {
   return igl::FLOAT_EPS_SQ;
 }
-template<> IGL_INLINE double igl::EPS_SQ()
+template<> inline double igl::EPS_SQ()
 {
   return igl::DOUBLE_EPS_SQ;
 }

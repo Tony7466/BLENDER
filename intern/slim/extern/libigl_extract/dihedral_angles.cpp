@@ -9,10 +9,10 @@
 #include <cassert>
 
 template<typename DerivedV, typename DerivedT, typename Derivedtheta, typename Derivedcos_theta>
-IGL_INLINE void igl::dihedral_angles(Eigen::PlainObjectBase<DerivedV> &V,
-                                     Eigen::PlainObjectBase<DerivedT> &T,
-                                     Eigen::PlainObjectBase<Derivedtheta> &theta,
-                                     Eigen::PlainObjectBase<Derivedcos_theta> &cos_theta)
+inline void igl::dihedral_angles(Eigen::PlainObjectBase<DerivedV> &V,
+                                 Eigen::PlainObjectBase<DerivedT> &T,
+                                 Eigen::PlainObjectBase<Derivedtheta> &theta,
+                                 Eigen::PlainObjectBase<Derivedcos_theta> &cos_theta)
 {
   using namespace Eigen;
   assert(T.cols() == 4);
@@ -24,10 +24,10 @@ IGL_INLINE void igl::dihedral_angles(Eigen::PlainObjectBase<DerivedV> &V,
 }
 
 template<typename DerivedL, typename DerivedA, typename Derivedtheta, typename Derivedcos_theta>
-IGL_INLINE void igl::dihedral_angles_intrinsic(Eigen::PlainObjectBase<DerivedL> &L,
-                                               Eigen::PlainObjectBase<DerivedA> &A,
-                                               Eigen::PlainObjectBase<Derivedtheta> &theta,
-                                               Eigen::PlainObjectBase<Derivedcos_theta> &cos_theta)
+inline void igl::dihedral_angles_intrinsic(Eigen::PlainObjectBase<DerivedL> &L,
+                                           Eigen::PlainObjectBase<DerivedA> &A,
+                                           Eigen::PlainObjectBase<Derivedtheta> &theta,
+                                           Eigen::PlainObjectBase<Derivedcos_theta> &cos_theta)
 {
   using namespace Eigen;
   const int m = L.rows();

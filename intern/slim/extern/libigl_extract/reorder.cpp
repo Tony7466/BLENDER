@@ -12,9 +12,9 @@
 
 // This implementation is O(n), but also uses O(n) extra memory
 template<class T>
-IGL_INLINE void igl::reorder(const std::vector<T> &unordered,
-                             std::vector<size_t> const &index_map,
-                             std::vector<T> &ordered)
+inline void igl::reorder(const std::vector<T> &unordered,
+                         std::vector<size_t> const &index_map,
+                         std::vector<T> &ordered)
 {
   // copy for the reorder according to index_map, because unsorted may also be
   // sorted

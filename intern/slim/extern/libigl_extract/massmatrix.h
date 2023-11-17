@@ -7,7 +7,6 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_MASSMATRIX_TYPE_H
 #define IGL_MASSMATRIX_TYPE_H
-#include "igl_inline.h"
 
 #define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
 #include <Eigen/Dense>
@@ -44,10 +43,10 @@ enum MassMatrixType {
 // See also: adjacency_matrix
 //
 template<typename DerivedV, typename DerivedF, typename Scalar>
-IGL_INLINE void massmatrix(const Eigen::MatrixBase<DerivedV> &V,
-                           const Eigen::MatrixBase<DerivedF> &F,
-                           const MassMatrixType type,
-                           Eigen::SparseMatrix<Scalar> &M);
+inline void massmatrix(const Eigen::MatrixBase<DerivedV> &V,
+                       const Eigen::MatrixBase<DerivedF> &F,
+                       const MassMatrixType type,
+                       Eigen::SparseMatrix<Scalar> &M);
 }  // namespace igl
 
 #include "massmatrix.cpp"

@@ -10,9 +10,9 @@
 #include <iostream>
 
 template<typename DerivedV, typename DerivedF, typename DerivedL>
-IGL_INLINE void igl::squared_edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
-                                          const Eigen::PlainObjectBase<DerivedF> &F,
-                                          Eigen::PlainObjectBase<DerivedL> &L)
+inline void igl::squared_edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
+                                      const Eigen::PlainObjectBase<DerivedF> &F,
+                                      Eigen::PlainObjectBase<DerivedL> &L)
 {
   using namespace std;
   const int m = F.rows();

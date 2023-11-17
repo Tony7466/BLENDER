@@ -10,23 +10,23 @@
 #include <cstdio>
 
 template<typename L, typename S, typename H, typename T>
-IGL_INLINE void igl::colon(const L low,
-                           const S step,
-                           const H hi,
-                           Eigen::Matrix<T, Eigen::Dynamic, 1> &I)
+inline void igl::colon(const L low,
+                       const S step,
+                       const H hi,
+                       Eigen::Matrix<T, Eigen::Dynamic, 1> &I)
 {
   const int size = ((hi - low) / step) + 1;
   I = Eigen::Matrix<T, Eigen::Dynamic, 1>::LinSpaced(size, low, low + step * (size - 1));
 }
 
 template<typename L, typename H, typename T>
-IGL_INLINE void igl::colon(const L low, const H hi, Eigen::Matrix<T, Eigen::Dynamic, 1> &I)
+inline void igl::colon(const L low, const H hi, Eigen::Matrix<T, Eigen::Dynamic, 1> &I)
 {
   return igl::colon(low, (T)1, hi, I);
 }
 
 template<typename T, typename L, typename H>
-IGL_INLINE Eigen::Matrix<T, Eigen::Dynamic, 1> igl::colon(const L low, const H hi)
+inline Eigen::Matrix<T, Eigen::Dynamic, 1> igl::colon(const L low, const H hi)
 {
   Eigen::Matrix<T, Eigen::Dynamic, 1> I;
   igl::colon(low, hi, I);

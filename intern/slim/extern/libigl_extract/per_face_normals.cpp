@@ -10,10 +10,10 @@
 
 #define SQRT_ONE_OVER_THREE 0.57735026918962573
 template<typename DerivedV, typename DerivedF, typename DerivedZ, typename DerivedN>
-IGL_INLINE void igl::per_face_normals(const Eigen::PlainObjectBase<DerivedV> &V,
-                                      const Eigen::PlainObjectBase<DerivedF> &F,
-                                      const Eigen::PlainObjectBase<DerivedZ> &Z,
-                                      Eigen::PlainObjectBase<DerivedN> &N)
+inline void igl::per_face_normals(const Eigen::PlainObjectBase<DerivedV> &V,
+                                  const Eigen::PlainObjectBase<DerivedF> &F,
+                                  const Eigen::PlainObjectBase<DerivedZ> &Z,
+                                  Eigen::PlainObjectBase<DerivedN> &N)
 {
   N.resize(F.rows(), 3);
   // loop over faces
@@ -34,9 +34,9 @@ IGL_INLINE void igl::per_face_normals(const Eigen::PlainObjectBase<DerivedV> &V,
 }
 
 template<typename DerivedV, typename DerivedF, typename DerivedN>
-IGL_INLINE void igl::per_face_normals(const Eigen::PlainObjectBase<DerivedV> &V,
-                                      const Eigen::PlainObjectBase<DerivedF> &F,
-                                      Eigen::PlainObjectBase<DerivedN> &N)
+inline void igl::per_face_normals(const Eigen::PlainObjectBase<DerivedV> &V,
+                                  const Eigen::PlainObjectBase<DerivedF> &F,
+                                  Eigen::PlainObjectBase<DerivedN> &N)
 {
   using namespace Eigen;
   Matrix<typename DerivedN::Scalar, 3, 1> Z(0, 0, 0);
@@ -44,9 +44,9 @@ IGL_INLINE void igl::per_face_normals(const Eigen::PlainObjectBase<DerivedV> &V,
 }
 
 template<typename DerivedV, typename DerivedF, typename DerivedN>
-IGL_INLINE void igl::per_face_normals_stable(const Eigen::PlainObjectBase<DerivedV> &V,
-                                             const Eigen::PlainObjectBase<DerivedF> &F,
-                                             Eigen::PlainObjectBase<DerivedN> &N)
+inline void igl::per_face_normals_stable(const Eigen::PlainObjectBase<DerivedV> &V,
+                                         const Eigen::PlainObjectBase<DerivedF> &F,
+                                         Eigen::PlainObjectBase<DerivedN> &N)
 {
   using namespace Eigen;
   typedef Matrix<typename DerivedV::Scalar, 1, 3> RowVectorV3;

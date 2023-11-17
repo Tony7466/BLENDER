@@ -12,9 +12,9 @@
 
 // Adapted from Olga's CGAL mentee's ARAP code
 template<typename DerivedA, typename DerivedR, typename DerivedT>
-IGL_INLINE void igl::polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
-                               Eigen::PlainObjectBase<DerivedR> &R,
-                               Eigen::PlainObjectBase<DerivedT> &T)
+inline void igl::polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
+                           Eigen::PlainObjectBase<DerivedR> &R,
+                           Eigen::PlainObjectBase<DerivedT> &T)
 {
   DerivedA U;
   DerivedA V;
@@ -28,12 +28,12 @@ template<typename DerivedA,
          typename DerivedU,
          typename DerivedS,
          typename DerivedV>
-IGL_INLINE void igl::polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
-                               Eigen::PlainObjectBase<DerivedR> &R,
-                               Eigen::PlainObjectBase<DerivedT> &T,
-                               Eigen::PlainObjectBase<DerivedU> &U,
-                               Eigen::PlainObjectBase<DerivedS> &S,
-                               Eigen::PlainObjectBase<DerivedV> &V)
+inline void igl::polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
+                           Eigen::PlainObjectBase<DerivedR> &R,
+                           Eigen::PlainObjectBase<DerivedT> &T,
+                           Eigen::PlainObjectBase<DerivedU> &U,
+                           Eigen::PlainObjectBase<DerivedS> &S,
+                           Eigen::PlainObjectBase<DerivedV> &V)
 {
   using namespace std;
   Eigen::JacobiSVD<DerivedA> svd;

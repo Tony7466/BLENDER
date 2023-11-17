@@ -16,9 +16,9 @@
 //#include "verbose.h"
 
 template<typename DerivedV, typename DerivedF, typename DerivedC>
-IGL_INLINE void igl::cotmatrix_entries(const Eigen::PlainObjectBase<DerivedV> &V,
-                                       const Eigen::PlainObjectBase<DerivedF> &F,
-                                       Eigen::PlainObjectBase<DerivedC> &C)
+inline void igl::cotmatrix_entries(const Eigen::PlainObjectBase<DerivedV> &V,
+                                   const Eigen::PlainObjectBase<DerivedF> &F,
+                                   Eigen::PlainObjectBase<DerivedC> &C)
 {
   using namespace std;
   using namespace Eigen;

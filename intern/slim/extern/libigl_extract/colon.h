@@ -7,7 +7,7 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_COLON_H
 #define IGL_COLON_H
-#include "igl_inline.h"
+
 #include <Eigen/Dense>
 namespace igl {
 // Note:
@@ -39,16 +39,13 @@ namespace igl {
 // Output:
 //   I  list of values from low to hi with step size step
 template<typename L, typename S, typename H, typename T>
-IGL_INLINE void colon(const L low,
-                      const S step,
-                      const H hi,
-                      Eigen::Matrix<T, Eigen::Dynamic, 1> &I);
+inline void colon(const L low, const S step, const H hi, Eigen::Matrix<T, Eigen::Dynamic, 1> &I);
 // Same as above but step == (T)1
 template<typename L, typename H, typename T>
-IGL_INLINE void colon(const L low, const H hi, Eigen::Matrix<T, Eigen::Dynamic, 1> &I);
+inline void colon(const L low, const H hi, Eigen::Matrix<T, Eigen::Dynamic, 1> &I);
 // Return output rather than set in reference
 template<typename T, typename L, typename H>
-IGL_INLINE Eigen::Matrix<T, Eigen::Dynamic, 1> colon(const L low, const H hi);
+inline Eigen::Matrix<T, Eigen::Dynamic, 1> colon(const L low, const H hi);
 }  // namespace igl
 
 #include "colon.cpp"

@@ -15,11 +15,11 @@
 #include <iostream>
 
 template<typename DerivedX, typename DerivedY, typename DerivedIX>
-IGL_INLINE void igl::sort(const Eigen::PlainObjectBase<DerivedX> &X,
-                          const int dim,
-                          const bool ascending,
-                          Eigen::PlainObjectBase<DerivedY> &Y,
-                          Eigen::PlainObjectBase<DerivedIX> &IX)
+inline void igl::sort(const Eigen::PlainObjectBase<DerivedX> &X,
+                      const int dim,
+                      const bool ascending,
+                      Eigen::PlainObjectBase<DerivedY> &Y,
+                      Eigen::PlainObjectBase<DerivedIX> &IX)
 {
   // get number of rows (or columns)
   int num_inner = (dim == 1 ? X.rows() : X.cols());
@@ -71,11 +71,11 @@ IGL_INLINE void igl::sort(const Eigen::PlainObjectBase<DerivedX> &X,
 }
 
 template<typename DerivedX, typename DerivedY, typename DerivedIX>
-IGL_INLINE void igl::sort_new(const Eigen::PlainObjectBase<DerivedX> &X,
-                              const int dim,
-                              const bool ascending,
-                              Eigen::PlainObjectBase<DerivedY> &Y,
-                              Eigen::PlainObjectBase<DerivedIX> &IX)
+inline void igl::sort_new(const Eigen::PlainObjectBase<DerivedX> &X,
+                          const int dim,
+                          const bool ascending,
+                          Eigen::PlainObjectBase<DerivedY> &Y,
+                          Eigen::PlainObjectBase<DerivedIX> &IX)
 {
   // get number of rows (or columns)
   int num_inner = (dim == 1 ? X.rows() : X.cols());
@@ -130,11 +130,11 @@ IGL_INLINE void igl::sort_new(const Eigen::PlainObjectBase<DerivedX> &X,
 }
 
 template<typename DerivedX, typename DerivedY, typename DerivedIX>
-IGL_INLINE void igl::sort2(const Eigen::PlainObjectBase<DerivedX> &X,
-                           const int dim,
-                           const bool ascending,
-                           Eigen::PlainObjectBase<DerivedY> &Y,
-                           Eigen::PlainObjectBase<DerivedIX> &IX)
+inline void igl::sort2(const Eigen::PlainObjectBase<DerivedX> &X,
+                       const int dim,
+                       const bool ascending,
+                       Eigen::PlainObjectBase<DerivedY> &Y,
+                       Eigen::PlainObjectBase<DerivedIX> &IX)
 {
   using namespace Eigen;
   using namespace std;
@@ -170,11 +170,11 @@ IGL_INLINE void igl::sort2(const Eigen::PlainObjectBase<DerivedX> &X,
 }
 
 template<typename DerivedX, typename DerivedY, typename DerivedIX>
-IGL_INLINE void igl::sort3(const Eigen::PlainObjectBase<DerivedX> &X,
-                           const int dim,
-                           const bool ascending,
-                           Eigen::PlainObjectBase<DerivedY> &Y,
-                           Eigen::PlainObjectBase<DerivedIX> &IX)
+inline void igl::sort3(const Eigen::PlainObjectBase<DerivedX> &X,
+                       const int dim,
+                       const bool ascending,
+                       Eigen::PlainObjectBase<DerivedY> &Y,
+                       Eigen::PlainObjectBase<DerivedIX> &IX)
 {
   using namespace Eigen;
   using namespace std;
@@ -247,10 +247,10 @@ IGL_INLINE void igl::sort3(const Eigen::PlainObjectBase<DerivedX> &X,
 }
 
 template<class T>
-IGL_INLINE void igl::sort(const std::vector<T> &unsorted,
-                          const bool ascending,
-                          std::vector<T> &sorted,
-                          std::vector<size_t> &index_map)
+inline void igl::sort(const std::vector<T> &unsorted,
+                      const bool ascending,
+                      std::vector<T> &sorted,
+                      std::vector<size_t> &index_map)
 {
   // Original unsorted index map
   index_map.resize(unsorted.size());

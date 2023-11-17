@@ -13,9 +13,9 @@
 #include <iostream>
 
 template<typename DerivedV, typename DerivedF, typename DeriveddblA>
-IGL_INLINE void igl::doublearea(const Eigen::PlainObjectBase<DerivedV> &V,
-                                const Eigen::PlainObjectBase<DerivedF> &F,
-                                Eigen::PlainObjectBase<DeriveddblA> &dblA)
+inline void igl::doublearea(const Eigen::PlainObjectBase<DerivedV> &V,
+                            const Eigen::PlainObjectBase<DerivedF> &F,
+                            Eigen::PlainObjectBase<DeriveddblA> &dblA)
 {
   if (F.cols() == 4)  // quads are handled by a specialized function
     return doublearea_quad(V, F, dblA);
@@ -63,10 +63,10 @@ IGL_INLINE void igl::doublearea(const Eigen::PlainObjectBase<DerivedV> &V,
 }
 
 template<typename DerivedA, typename DerivedB, typename DerivedC, typename DerivedD>
-IGL_INLINE void igl::doublearea(const Eigen::PlainObjectBase<DerivedA> &A,
-                                const Eigen::PlainObjectBase<DerivedB> &B,
-                                const Eigen::PlainObjectBase<DerivedC> &C,
-                                Eigen::PlainObjectBase<DerivedD> &D)
+inline void igl::doublearea(const Eigen::PlainObjectBase<DerivedA> &A,
+                            const Eigen::PlainObjectBase<DerivedB> &B,
+                            const Eigen::PlainObjectBase<DerivedC> &C,
+                            Eigen::PlainObjectBase<DerivedD> &D)
 {
   assert((B.cols() == A.cols()) && "dimensions of A and B should match");
   assert((C.cols() == A.cols()) && "dimensions of A and C should match");
@@ -91,10 +91,9 @@ IGL_INLINE void igl::doublearea(const Eigen::PlainObjectBase<DerivedA> &A,
 }
 
 template<typename DerivedA, typename DerivedB, typename DerivedC>
-IGL_INLINE typename DerivedA::Scalar igl::doublearea_single(
-    const Eigen::PlainObjectBase<DerivedA> &A,
-    const Eigen::PlainObjectBase<DerivedB> &B,
-    const Eigen::PlainObjectBase<DerivedC> &C)
+inline typename DerivedA::Scalar igl::doublearea_single(const Eigen::PlainObjectBase<DerivedA> &A,
+                                                        const Eigen::PlainObjectBase<DerivedB> &B,
+                                                        const Eigen::PlainObjectBase<DerivedC> &C)
 {
   assert(A.size() == 2 && "Vertices should be 2D");
   assert(B.size() == 2 && "Vertices should be 2D");
@@ -105,8 +104,8 @@ IGL_INLINE typename DerivedA::Scalar igl::doublearea_single(
 }
 
 template<typename Derivedl, typename DeriveddblA>
-IGL_INLINE void igl::doublearea(const Eigen::PlainObjectBase<Derivedl> &ul,
-                                Eigen::PlainObjectBase<DeriveddblA> &dblA)
+inline void igl::doublearea(const Eigen::PlainObjectBase<Derivedl> &ul,
+                            Eigen::PlainObjectBase<DeriveddblA> &dblA)
 {
   using namespace Eigen;
   using namespace std;
@@ -144,9 +143,9 @@ IGL_INLINE void igl::doublearea(const Eigen::PlainObjectBase<Derivedl> &ul,
 }
 
 template<typename DerivedV, typename DerivedF, typename DeriveddblA>
-IGL_INLINE void igl::doublearea_quad(const Eigen::PlainObjectBase<DerivedV> &V,
-                                     const Eigen::PlainObjectBase<DerivedF> &F,
-                                     Eigen::PlainObjectBase<DeriveddblA> &dblA)
+inline void igl::doublearea_quad(const Eigen::PlainObjectBase<DerivedV> &V,
+                                 const Eigen::PlainObjectBase<DerivedF> &F,
+                                 Eigen::PlainObjectBase<DeriveddblA> &dblA)
 {
   assert(V.cols() == 3);  // Only supports points in 3D
   assert(F.cols() == 4);  // Only support quads

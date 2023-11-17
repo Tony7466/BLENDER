@@ -17,10 +17,10 @@
 // Template:
 //   Scalar  sparse matrix scalar type, e.g. double
 template<typename Scalar>
-IGL_INLINE void igl::cat(const int dim,
-                         const Eigen::SparseMatrix<Scalar> &A,
-                         const Eigen::SparseMatrix<Scalar> &B,
-                         Eigen::SparseMatrix<Scalar> &C)
+inline void igl::cat(const int dim,
+                     const Eigen::SparseMatrix<Scalar> &A,
+                     const Eigen::SparseMatrix<Scalar> &B,
+                     Eigen::SparseMatrix<Scalar> &C)
 {
 
   assert(dim == 1 || dim == 2);
@@ -159,10 +159,10 @@ IGL_INLINE void igl::cat(const int dim,
 }
 
 template<typename Derived, class MatC>
-IGL_INLINE void igl::cat(const int dim,
-                         const Eigen::MatrixBase<Derived> &A,
-                         const Eigen::MatrixBase<Derived> &B,
-                         MatC &C)
+inline void igl::cat(const int dim,
+                     const Eigen::MatrixBase<Derived> &A,
+                     const Eigen::MatrixBase<Derived> &B,
+                     MatC &C)
 {
   assert(dim == 1 || dim == 2);
   // Special case if B or A is empty
@@ -190,7 +190,7 @@ IGL_INLINE void igl::cat(const int dim,
   }
 }
 
-template<class Mat> IGL_INLINE Mat igl::cat(const int dim, const Mat &A, const Mat &B)
+template<class Mat> inline Mat igl::cat(const int dim, const Mat &A, const Mat &B)
 {
   assert(dim == 1 || dim == 2);
   Mat C;
@@ -198,7 +198,7 @@ template<class Mat> IGL_INLINE Mat igl::cat(const int dim, const Mat &A, const M
   return C;
 }
 
-template<class Mat> IGL_INLINE void igl::cat(const std::vector<std::vector<Mat>> &A, Mat &C)
+template<class Mat> inline void igl::cat(const std::vector<std::vector<Mat>> &A, Mat &C)
 {
   using namespace std;
   // Start with empty matrix

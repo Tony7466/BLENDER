@@ -8,8 +8,8 @@
 #include "normalize_row_sums.h"
 
 template<typename DerivedA, typename DerivedB>
-IGL_INLINE void igl::normalize_row_sums(const Eigen::MatrixBase<DerivedA> &A,
-                                        Eigen::MatrixBase<DerivedB> &B)
+inline void igl::normalize_row_sums(const Eigen::MatrixBase<DerivedA> &A,
+                                    Eigen::MatrixBase<DerivedB> &B)
 {
 #ifndef NDEBUG
   // loop over rows

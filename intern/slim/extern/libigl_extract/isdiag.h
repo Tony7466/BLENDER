@@ -7,7 +7,7 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_ISDIAG_H
 #define IGL_ISDIAG_H
-#include "igl_inline.h"
+
 #include <Eigen/Sparse>
 namespace igl {
 // Determine if a given matrix is diagonal: all non-zeros lie on the
@@ -16,7 +16,7 @@ namespace igl {
 // Inputs:
 //   A  m by n sparse matrix
 // Returns true iff and only if the matrix is diagonal.
-template<typename Scalar> IGL_INLINE bool isdiag(const Eigen::SparseMatrix<Scalar> &A);
+template<typename Scalar> inline bool isdiag(const Eigen::SparseMatrix<Scalar> &A);
 };  // namespace igl
 
 #include "isdiag.cpp"

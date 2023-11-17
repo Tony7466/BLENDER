@@ -15,11 +15,11 @@
 #include <vector>
 
 template<typename DerivedV, typename DerivedF>
-IGL_INLINE void igl::local_basis(const Eigen::PlainObjectBase<DerivedV> &V,
-                                 const Eigen::PlainObjectBase<DerivedF> &F,
-                                 Eigen::PlainObjectBase<DerivedV> &B1,
-                                 Eigen::PlainObjectBase<DerivedV> &B2,
-                                 Eigen::PlainObjectBase<DerivedV> &B3)
+inline void igl::local_basis(const Eigen::PlainObjectBase<DerivedV> &V,
+                             const Eigen::PlainObjectBase<DerivedF> &F,
+                             Eigen::PlainObjectBase<DerivedV> &B1,
+                             Eigen::PlainObjectBase<DerivedV> &B2,
+                             Eigen::PlainObjectBase<DerivedV> &B3)
 {
   using namespace Eigen;
   using namespace std;

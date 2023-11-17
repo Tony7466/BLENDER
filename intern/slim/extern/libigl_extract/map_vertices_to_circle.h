@@ -7,7 +7,6 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_MAP_VERTICES_TO_CIRCLE_H
 #define IGL_MAP_VERTICES_TO_CIRCLE_H
-#include "igl_inline.h"
 
 #include <Eigen/Dense>
 #include <vector>
@@ -23,9 +22,9 @@ namespace igl {
 //   b  #W list of vertex ids
 // Outputs:
 //   UV   #W by 2 list of 2D position on the unit circle for the vertices in b
-IGL_INLINE void map_vertices_to_circle(const Eigen::MatrixXd &V,
-                                       const Eigen::VectorXi &bnd,
-                                       Eigen::MatrixXd &UV);
+inline void map_vertices_to_circle(const Eigen::MatrixXd &V,
+                                   const Eigen::VectorXi &bnd,
+                                   Eigen::MatrixXd &UV);
 }  // namespace igl
 
 #include "map_vertices_to_circle.cpp"

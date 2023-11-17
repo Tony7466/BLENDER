@@ -8,9 +8,9 @@
 #include "volume.h"
 #include <Eigen/Geometry>
 template<typename DerivedV, typename DerivedT, typename Derivedvol>
-IGL_INLINE void igl::volume(const Eigen::PlainObjectBase<DerivedV> &V,
-                            const Eigen::PlainObjectBase<DerivedT> &T,
-                            Eigen::PlainObjectBase<Derivedvol> &vol)
+inline void igl::volume(const Eigen::PlainObjectBase<DerivedV> &V,
+                        const Eigen::PlainObjectBase<DerivedT> &T,
+                        Eigen::PlainObjectBase<Derivedvol> &vol)
 {
   using namespace Eigen;
   const int m = T.rows();
@@ -29,11 +29,11 @@ template<typename DerivedA,
          typename DerivedC,
          typename DerivedD,
          typename Derivedvol>
-IGL_INLINE void igl::volume(const Eigen::PlainObjectBase<DerivedA> &A,
-                            const Eigen::PlainObjectBase<DerivedB> &B,
-                            const Eigen::PlainObjectBase<DerivedC> &C,
-                            const Eigen::PlainObjectBase<DerivedD> &D,
-                            Eigen::PlainObjectBase<Derivedvol> &vol)
+inline void igl::volume(const Eigen::PlainObjectBase<DerivedA> &A,
+                        const Eigen::PlainObjectBase<DerivedB> &B,
+                        const Eigen::PlainObjectBase<DerivedC> &C,
+                        const Eigen::PlainObjectBase<DerivedD> &D,
+                        Eigen::PlainObjectBase<Derivedvol> &vol)
 {
   const auto &AmD = A - D;
   const auto &BmD = B - D;
@@ -45,17 +45,17 @@ IGL_INLINE void igl::volume(const Eigen::PlainObjectBase<DerivedA> &A,
 }
 
 template<typename VecA, typename VecB, typename VecC, typename VecD>
-IGL_INLINE typename VecA::Scalar igl::volume_single(const VecA &a,
-                                                    const VecB &b,
-                                                    const VecC &c,
-                                                    const VecD &d)
+inline typename VecA::Scalar igl::volume_single(const VecA &a,
+                                                const VecB &b,
+                                                const VecC &c,
+                                                const VecD &d)
 {
   return -(a - d).dot((b - d).cross(c - d)) / 6.;
 }
 
 template<typename DerivedL, typename Derivedvol>
-IGL_INLINE void igl::volume(const Eigen::PlainObjectBase<DerivedL> &L,
-                            Eigen::PlainObjectBase<Derivedvol> &vol)
+inline void igl::volume(const Eigen::PlainObjectBase<DerivedL> &L,
+                        Eigen::PlainObjectBase<Derivedvol> &vol)
 {
   using namespace Eigen;
   const int m = L.rows();

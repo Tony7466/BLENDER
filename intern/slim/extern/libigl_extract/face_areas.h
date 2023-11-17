@@ -7,7 +7,6 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_FACE_AREAS_H
 #define IGL_FACE_AREAS_H
-#include "igl_inline.h"
 
 #include <Eigen/Dense>
 
@@ -22,9 +21,9 @@ namespace igl {
 //     0,1,2,3
 //
 template<typename DerivedV, typename DerivedT, typename DerivedA>
-IGL_INLINE void face_areas(const Eigen::PlainObjectBase<DerivedV> &V,
-                           const Eigen::PlainObjectBase<DerivedT> &T,
-                           Eigen::PlainObjectBase<DerivedA> &A);
+inline void face_areas(const Eigen::PlainObjectBase<DerivedV> &V,
+                       const Eigen::PlainObjectBase<DerivedT> &T,
+                       Eigen::PlainObjectBase<DerivedA> &A);
 // Compute tet-mesh face areas from edge lengths.
 //
 // Inputs:
@@ -36,8 +35,8 @@ IGL_INLINE void face_areas(const Eigen::PlainObjectBase<DerivedV> &V,
 //
 //
 template<typename DerivedL, typename DerivedA>
-IGL_INLINE void face_areas(const Eigen::PlainObjectBase<DerivedL> &L,
-                           Eigen::PlainObjectBase<DerivedA> &A);
+inline void face_areas(const Eigen::PlainObjectBase<DerivedL> &L,
+                       Eigen::PlainObjectBase<DerivedA> &A);
 }  // namespace igl
 
 #include "face_areas.cpp"

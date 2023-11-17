@@ -7,7 +7,7 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_SPARSE_H
 #define IGL_SPARSE_H
-#include "igl_inline.h"
+
 #define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -33,17 +33,17 @@ namespace igl {
 //   X  m by n matrix of type T whose entries are to be found
 //
 template<class IndexVector, class ValueVector, typename T>
-IGL_INLINE void sparse(const IndexVector &I,
-                       const IndexVector &J,
-                       const ValueVector &V,
-                       Eigen::SparseMatrix<T> &X);
+inline void sparse(const IndexVector &I,
+                   const IndexVector &J,
+                   const ValueVector &V,
+                   Eigen::SparseMatrix<T> &X);
 template<class IndexVector, class ValueVector, typename T>
-IGL_INLINE void sparse(const IndexVector &I,
-                       const IndexVector &J,
-                       const ValueVector &V,
-                       const size_t m,
-                       const size_t n,
-                       Eigen::SparseMatrix<T> &X);
+inline void sparse(const IndexVector &I,
+                   const IndexVector &J,
+                   const ValueVector &V,
+                   const size_t m,
+                   const size_t n,
+                   Eigen::SparseMatrix<T> &X);
 // THIS MAY BE SUPERSEDED BY EIGEN'S .sparseView Indeed it is.
 // Convert a full, dense matrix to a sparse one
 //
@@ -54,10 +54,10 @@ IGL_INLINE void sparse(const IndexVector &I,
 // Output:
 //   X  m by n sparse matrix
 template<typename DerivedD, typename T>
-IGL_INLINE void sparse(const Eigen::PlainObjectBase<DerivedD> &D, Eigen::SparseMatrix<T> &X);
+inline void sparse(const Eigen::PlainObjectBase<DerivedD> &D, Eigen::SparseMatrix<T> &X);
 // Wrapper with return
 template<typename DerivedD>
-IGL_INLINE Eigen::SparseMatrix<typename DerivedD::Scalar> sparse(
+inline Eigen::SparseMatrix<typename DerivedD::Scalar> sparse(
     const Eigen::PlainObjectBase<DerivedD> &D);
 
 }  // namespace igl

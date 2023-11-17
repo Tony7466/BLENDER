@@ -7,7 +7,7 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_POLAR_SVD
 #define IGL_POLAR_SVD
-#include "igl_inline.h"
+
 #include <Eigen/Core>
 
 namespace igl {
@@ -30,16 +30,16 @@ template<typename DerivedA,
          typename DerivedU,
          typename DerivedS,
          typename DerivedV>
-IGL_INLINE void polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
-                          Eigen::PlainObjectBase<DerivedR> &R,
-                          Eigen::PlainObjectBase<DerivedT> &T,
-                          Eigen::PlainObjectBase<DerivedU> &U,
-                          Eigen::PlainObjectBase<DerivedS> &S,
-                          Eigen::PlainObjectBase<DerivedV> &V);
+inline void polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
+                      Eigen::PlainObjectBase<DerivedR> &R,
+                      Eigen::PlainObjectBase<DerivedT> &T,
+                      Eigen::PlainObjectBase<DerivedU> &U,
+                      Eigen::PlainObjectBase<DerivedS> &S,
+                      Eigen::PlainObjectBase<DerivedV> &V);
 template<typename DerivedA, typename DerivedR, typename DerivedT>
-IGL_INLINE void polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
-                          Eigen::PlainObjectBase<DerivedR> &R,
-                          Eigen::PlainObjectBase<DerivedT> &T);
+inline void polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
+                      Eigen::PlainObjectBase<DerivedR> &R,
+                      Eigen::PlainObjectBase<DerivedT> &T);
 }  // namespace igl
 
 #include "polar_svd.cpp"

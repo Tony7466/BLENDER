@@ -15,10 +15,10 @@
 #include <iostream>
 
 template<typename DerivedV, typename DerivedF, typename Scalar>
-IGL_INLINE void igl::massmatrix(const Eigen::MatrixBase<DerivedV> &V,
-                                const Eigen::MatrixBase<DerivedF> &F,
-                                const MassMatrixType type,
-                                Eigen::SparseMatrix<Scalar> &M)
+inline void igl::massmatrix(const Eigen::MatrixBase<DerivedV> &V,
+                            const Eigen::MatrixBase<DerivedF> &F,
+                            const MassMatrixType type,
+                            Eigen::SparseMatrix<Scalar> &M)
 {
   using namespace Eigen;
   using namespace std;

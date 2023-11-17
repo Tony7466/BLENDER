@@ -10,9 +10,9 @@
 #include "edge_lengths.h"
 
 template<typename DerivedV, typename DerivedT, typename DerivedA>
-IGL_INLINE void igl::face_areas(const Eigen::PlainObjectBase<DerivedV> &V,
-                                const Eigen::PlainObjectBase<DerivedT> &T,
-                                Eigen::PlainObjectBase<DerivedA> &A)
+inline void igl::face_areas(const Eigen::PlainObjectBase<DerivedV> &V,
+                            const Eigen::PlainObjectBase<DerivedT> &T,
+                            Eigen::PlainObjectBase<DerivedA> &A)
 {
   assert(T.cols() == 4);
   typename Eigen::PlainObjectBase<DerivedA> L;
@@ -21,8 +21,8 @@ IGL_INLINE void igl::face_areas(const Eigen::PlainObjectBase<DerivedV> &V,
 }
 
 template<typename DerivedL, typename DerivedA>
-IGL_INLINE void igl::face_areas(const Eigen::PlainObjectBase<DerivedL> &L,
-                                Eigen::PlainObjectBase<DerivedA> &A)
+inline void igl::face_areas(const Eigen::PlainObjectBase<DerivedL> &L,
+                            Eigen::PlainObjectBase<DerivedA> &A)
 {
   using namespace Eigen;
   assert(L.cols() == 6);

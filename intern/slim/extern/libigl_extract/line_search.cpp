@@ -7,11 +7,11 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #include "line_search.h"
 
-IGL_INLINE double igl::line_search(Eigen::MatrixXd &x,
-                                   const Eigen::MatrixXd &d,
-                                   double step_size,
-                                   std::function<double(Eigen::MatrixXd &)> energy,
-                                   double cur_energy)
+inline double igl::line_search(Eigen::MatrixXd &x,
+                               const Eigen::MatrixXd &d,
+                               double step_size,
+                               std::function<double(Eigen::MatrixXd &)> energy,
+                               double cur_energy)
 {
   double old_energy;
   if (cur_energy > 0) {

@@ -7,7 +7,6 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_LINE_SEARCH_H
 #define IGL_LINE_SEARCH_H
-#include "igl_inline.h"
 
 #include <Eigen/Dense>
 
@@ -27,11 +26,11 @@ namespace igl {
 // Outputs:
 //		x  						#X by dim list of variables at the new location
 // Returns the energy at the new point 'x'
-IGL_INLINE double line_search(Eigen::MatrixXd &x,
-                              const Eigen::MatrixXd &d,
-                              double i_step_size,
-                              std::function<double(Eigen::MatrixXd &)> energy,
-                              double cur_energy = -1);
+inline double line_search(Eigen::MatrixXd &x,
+                          const Eigen::MatrixXd &d,
+                          double i_step_size,
+                          std::function<double(Eigen::MatrixXd &)> energy,
+                          double cur_energy = -1);
 
 }  // namespace igl
 

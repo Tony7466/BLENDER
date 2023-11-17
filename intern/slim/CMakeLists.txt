@@ -41,7 +41,6 @@ set(SRC
   extern/libigl_extract/find.h
   extern/libigl_extract/flip_avoiding_line_search.h
   extern/libigl_extract/grad.h
-  extern/libigl_extract/igl_inline.h
   extern/libigl_extract/invert_diag.h
   extern/libigl_extract/is_symmetric.h
   extern/libigl_extract/isdiag.h

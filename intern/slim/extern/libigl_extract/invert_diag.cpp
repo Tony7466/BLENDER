@@ -8,7 +8,7 @@
 #include "invert_diag.h"
 
 template<typename T>
-IGL_INLINE void igl::invert_diag(const Eigen::SparseMatrix<T> &X, Eigen::SparseMatrix<T> &Y)
+inline void igl::invert_diag(const Eigen::SparseMatrix<T> &X, Eigen::SparseMatrix<T> &Y)
 {
 #ifndef NDEBUG
   typename Eigen::SparseVector<T> dX = X.diagonal().sparseView();

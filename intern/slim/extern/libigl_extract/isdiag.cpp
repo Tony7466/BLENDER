@@ -7,7 +7,7 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #include "isdiag.h"
 
-template<typename Scalar> IGL_INLINE bool igl::isdiag(const Eigen::SparseMatrix<Scalar> &A)
+template<typename Scalar> inline bool igl::isdiag(const Eigen::SparseMatrix<Scalar> &A)
 {
   // Iterate over outside of A
   for (int k = 0; k < A.outerSize(); ++k) {

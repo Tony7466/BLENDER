@@ -19,7 +19,7 @@ namespace flip_avoiding {
 //         2 real roots: x[0], x[1],          return 2
 //         1 real root : x[0], x[1] ± i*x[2], return 1
 // http://math.ivanovo.ac.ru/dalgebra/Khashin/poly/index.html
-IGL_INLINE int SolveP3(std::vector<double> &x, double a, double b, double c)
+inline int SolveP3(std::vector<double> &x, double a, double b, double c)
 {  // solve cubic equation x^3 + a*x^2 + b*x + c
   using namespace std;
   double a2 = a * a;
@@ -60,7 +60,7 @@ IGL_INLINE int SolveP3(std::vector<double> &x, double a, double b, double c)
   }
 }
 
-IGL_INLINE double get_smallest_pos_quad_zero(double a, double b, double c)
+inline double get_smallest_pos_quad_zero(double a, double b, double c)
 {
   using namespace std;
   double t1, t2;
@@ -99,10 +99,10 @@ IGL_INLINE double get_smallest_pos_quad_zero(double a, double b, double c)
   }
 }
 
-IGL_INLINE double get_min_pos_root_2D(const Eigen::MatrixXd &uv,
-                                      const Eigen::MatrixXi &F,
-                                      Eigen::MatrixXd &d,
-                                      int f)
+inline double get_min_pos_root_2D(const Eigen::MatrixXd &uv,
+                                  const Eigen::MatrixXi &F,
+                                  Eigen::MatrixXd &d,
+                                  int f)
 {
   using namespace std;
   /*
@@ -169,10 +169,10 @@ IGL_INLINE double get_min_pos_root_2D(const Eigen::MatrixXd &uv,
   return get_smallest_pos_quad_zero(a, b, c);
 }
 
-IGL_INLINE double get_min_pos_root_3D(const Eigen::MatrixXd &uv,
-                                      const Eigen::MatrixXi &F,
-                                      Eigen::MatrixXd &direc,
-                                      int f)
+inline double get_min_pos_root_3D(const Eigen::MatrixXd &uv,
+                                  const Eigen::MatrixXi &F,
+                                  Eigen::MatrixXd &direc,
+                                  int f)
 {
   using namespace std;
   /*
@@ -315,9 +315,9 @@ IGL_INLINE double get_min_pos_root_3D(const Eigen::MatrixXd &uv,
   }
 }
 
-IGL_INLINE double compute_max_step_from_singularities(const Eigen::MatrixXd &uv,
-                                                      const Eigen::MatrixXi &F,
-                                                      Eigen::MatrixXd &d)
+inline double compute_max_step_from_singularities(const Eigen::MatrixXd &uv,
+                                                  const Eigen::MatrixXi &F,
+                                                  Eigen::MatrixXd &d)
 {
   using namespace std;
   double max_step = INFINITY;
@@ -340,11 +340,11 @@ IGL_INLINE double compute_max_step_from_singularities(const Eigen::MatrixXd &uv,
 }  // namespace flip_avoiding
 }  // namespace igl
 
-IGL_INLINE double igl::flip_avoiding_line_search(const Eigen::MatrixXi F,
-                                                 Eigen::MatrixXd &cur_v,
-                                                 Eigen::MatrixXd &dst_v,
-                                                 std::function<double(Eigen::MatrixXd &)> energy,
-                                                 double cur_energy)
+inline double igl::flip_avoiding_line_search(const Eigen::MatrixXi F,
+                                             Eigen::MatrixXd &cur_v,
+                                             Eigen::MatrixXd &dst_v,
+                                             std::function<double(Eigen::MatrixXd &)> energy,
+                                             double cur_energy)
 {
   using namespace std;
 

@@ -8,10 +8,10 @@
 #include "repmat.h"
 
 template<typename DerivedA, typename DerivedB>
-IGL_INLINE void igl::repmat(const Eigen::PlainObjectBase<DerivedA> &A,
-                            const int r,
-                            const int c,
-                            Eigen::PlainObjectBase<DerivedB> &B)
+inline void igl::repmat(const Eigen::PlainObjectBase<DerivedA> &A,
+                        const int r,
+                        const int c,
+                        Eigen::PlainObjectBase<DerivedB> &B)
 {
   assert(r > 0);
   assert(c > 0);
@@ -27,10 +27,10 @@ IGL_INLINE void igl::repmat(const Eigen::PlainObjectBase<DerivedA> &A,
 }
 
 template<typename T>
-IGL_INLINE void igl::repmat(const Eigen::SparseMatrix<T> &A,
-                            const int r,
-                            const int c,
-                            Eigen::SparseMatrix<T> &B)
+inline void igl::repmat(const Eigen::SparseMatrix<T> &A,
+                        const int r,
+                        const int c,
+                        Eigen::SparseMatrix<T> &B)
 {
   assert(r > 0);
   assert(c > 0);

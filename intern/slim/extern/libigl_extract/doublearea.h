@@ -7,7 +7,7 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_DOUBLEAREA_H
 #define IGL_DOUBLEAREA_H
-#include "igl_inline.h"
+
 #include <Eigen/Dense>
 namespace igl {
 // DOUBLEAREA computes twice the area for each input triangle[quad]
@@ -28,22 +28,22 @@ namespace igl {
 // Known bug: For dim==3 complexity is O(#V + #F)!! Not just O(#F). This is a big deal
 // if you have 1million unreferenced vertices and 1 face
 template<typename DerivedV, typename DerivedF, typename DeriveddblA>
-IGL_INLINE void doublearea(const Eigen::PlainObjectBase<DerivedV> &V,
-                           const Eigen::PlainObjectBase<DerivedF> &F,
-                           Eigen::PlainObjectBase<DeriveddblA> &dblA);
+inline void doublearea(const Eigen::PlainObjectBase<DerivedV> &V,
+                       const Eigen::PlainObjectBase<DerivedF> &F,
+                       Eigen::PlainObjectBase<DeriveddblA> &dblA);
 // Stream of triangles, computes signed area...
 template<typename DerivedA, typename DerivedB, typename DerivedC, typename DerivedD>
-IGL_INLINE void doublearea(const Eigen::PlainObjectBase<DerivedA> &A,
-                           const Eigen::PlainObjectBase<DerivedB> &B,
-                           const Eigen::PlainObjectBase<DerivedC> &C,
-                           Eigen::PlainObjectBase<DerivedD> &D);
+inline void doublearea(const Eigen::PlainObjectBase<DerivedA> &A,
+                       const Eigen::PlainObjectBase<DerivedB> &B,
+                       const Eigen::PlainObjectBase<DerivedC> &C,
+                       Eigen::PlainObjectBase<DerivedD> &D);
 // Single triangle in 2D!
 //
 // This should handle streams of corners not just single corners
 template<typename DerivedA, typename DerivedB, typename DerivedC>
-IGL_INLINE typename DerivedA::Scalar doublearea_single(const Eigen::PlainObjectBase<DerivedA> &A,
-                                                       const Eigen::PlainObjectBase<DerivedB> &B,
-                                                       const Eigen::PlainObjectBase<DerivedC> &C);
+inline typename DerivedA::Scalar doublearea_single(const Eigen::PlainObjectBase<DerivedA> &A,
+                                                   const Eigen::PlainObjectBase<DerivedB> &B,
+                                                   const Eigen::PlainObjectBase<DerivedC> &C);
 // Same as above but use instrinsic edge lengths rather than (V,F) mesh
 // Inputs:
 //   l  #F by dim list of edge lengths using
@@ -51,8 +51,8 @@ IGL_INLINE typename DerivedA::Scalar doublearea_single(const Eigen::PlainObjectB
 // Outputs:
 //   dblA  #F list of triangle double areas
 template<typename Derivedl, typename DeriveddblA>
-IGL_INLINE void doublearea(const Eigen::PlainObjectBase<Derivedl> &l,
-                           Eigen::PlainObjectBase<DeriveddblA> &dblA);
+inline void doublearea(const Eigen::PlainObjectBase<Derivedl> &l,
+                       Eigen::PlainObjectBase<DeriveddblA> &dblA);
 
 // DOUBLEAREA_QUAD computes twice the area for each input quadrilateral
 //
@@ -63,9 +63,9 @@ IGL_INLINE void doublearea(const Eigen::PlainObjectBase<Derivedl> &l,
 //   dblA  #F list of quadrilateral double areas
 //
 template<typename DerivedV, typename DerivedF, typename DeriveddblA>
-IGL_INLINE void doublearea_quad(const Eigen::PlainObjectBase<DerivedV> &V,
-                                const Eigen::PlainObjectBase<DerivedF> &F,
-                                Eigen::PlainObjectBase<DeriveddblA> &dblA);
+inline void doublearea_quad(const Eigen::PlainObjectBase<DerivedV> &V,
+                            const Eigen::PlainObjectBase<DerivedF> &F,
+                            Eigen::PlainObjectBase<DeriveddblA> &dblA);
 
 }  // namespace igl
 

@@ -16,9 +16,9 @@
 #include <iostream>
 
 template<typename DerivedV, typename DerivedF, typename Scalar>
-IGL_INLINE void igl::cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
-                               const Eigen::PlainObjectBase<DerivedF> &F,
-                               Eigen::SparseMatrix<Scalar> &L)
+inline void igl::cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
+                           const Eigen::PlainObjectBase<DerivedF> &F,
+                           Eigen::SparseMatrix<Scalar> &L)
 {
   using namespace Eigen;
   using namespace std;

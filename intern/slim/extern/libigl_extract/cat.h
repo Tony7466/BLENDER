@@ -7,7 +7,6 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_CAT_H
 #define IGL_CAT_H
-#include "igl_inline.h"
 
 #define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
 #include <Eigen/Dense>
@@ -34,17 +33,17 @@ namespace igl {
 //   C  output matrix
 //
 template<typename Scalar>
-IGL_INLINE void cat(const int dim,
-                    const Eigen::SparseMatrix<Scalar> &A,
-                    const Eigen::SparseMatrix<Scalar> &B,
-                    Eigen::SparseMatrix<Scalar> &C);
+inline void cat(const int dim,
+                const Eigen::SparseMatrix<Scalar> &A,
+                const Eigen::SparseMatrix<Scalar> &B,
+                Eigen::SparseMatrix<Scalar> &C);
 template<typename Derived, class MatC>
-IGL_INLINE void cat(const int dim,
-                    const Eigen::MatrixBase<Derived> &A,
-                    const Eigen::MatrixBase<Derived> &B,
-                    MatC &C);
+inline void cat(const int dim,
+                const Eigen::MatrixBase<Derived> &A,
+                const Eigen::MatrixBase<Derived> &B,
+                MatC &C);
 // Wrapper that returns C
-template<class Mat> IGL_INLINE Mat cat(const int dim, const Mat &A, const Mat &B);
+template<class Mat> inline Mat cat(const int dim, const Mat &A, const Mat &B);
 
 // Note: Maybe we can autogenerate a bunch of overloads D = cat(int,A,B,C),
 // E = cat(int,A,B,C,D), etc.
@@ -56,7 +55,7 @@ template<class Mat> IGL_INLINE Mat cat(const int dim, const Mat &A, const Mat &B
 //   A  a matrix (vector of row vectors)
 // Output:
 //   C
-template<class Mat> IGL_INLINE void cat(const std::vector<std::vector<Mat>> &A, Mat &C);
+template<class Mat> inline void cat(const std::vector<std::vector<Mat>> &A, Mat &C);
 }  // namespace igl
 
 #include "cat.cpp"

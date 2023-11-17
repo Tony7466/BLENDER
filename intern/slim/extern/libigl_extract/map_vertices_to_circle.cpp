@@ -8,9 +8,9 @@
 
 #include "map_vertices_to_circle.h"
 
-IGL_INLINE void igl::map_vertices_to_circle(const Eigen::MatrixXd &V,
-                                            const Eigen::VectorXi &bnd,
-                                            Eigen::MatrixXd &UV)
+inline void igl::map_vertices_to_circle(const Eigen::MatrixXd &V,
+                                        const Eigen::VectorXi &bnd,
+                                        Eigen::MatrixXd &UV)
 {
   // Get sorted list of boundary vertices
   std::vector<int> interior, map_ij;

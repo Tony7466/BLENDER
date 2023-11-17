@@ -7,7 +7,6 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_EDGE_LENGTHS_H
 #define IGL_EDGE_LENGTHS_H
-#include "igl_inline.h"
 
 #include <Eigen/Dense>
 
@@ -34,9 +33,9 @@ namespace igl {
 //     [3 0],[3 1],[3 2],[1 2],[2 0],[0 1]
 //
 template<typename DerivedV, typename DerivedF, typename DerivedL>
-IGL_INLINE void edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
-                             const Eigen::PlainObjectBase<DerivedF> &F,
-                             Eigen::PlainObjectBase<DerivedL> &L);
+inline void edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
+                         const Eigen::PlainObjectBase<DerivedF> &F,
+                         Eigen::PlainObjectBase<DerivedL> &L);
 }  // namespace igl
 
 #include "edge_lengths.cpp"

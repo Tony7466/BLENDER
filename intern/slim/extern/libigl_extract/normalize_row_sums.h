@@ -7,7 +7,7 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_NORMALIZE_ROW_SUMS_H
 #define IGL_NORMALIZE_ROW_SUMS_H
-#include "igl_inline.h"
+
 #include <Eigen/Core>
 
 namespace igl {
@@ -20,8 +20,8 @@ namespace igl {
 //
 // Note: This is just calling an Eigen one-liner.
 template<typename DerivedA, typename DerivedB>
-IGL_INLINE void normalize_row_sums(const Eigen::MatrixBase<DerivedA> &A,
-                                   Eigen::MatrixBase<DerivedB> &B);
+inline void normalize_row_sums(const Eigen::MatrixBase<DerivedA> &A,
+                               Eigen::MatrixBase<DerivedB> &B);
 }  // namespace igl
 
 #include "normalize_row_sums.cpp"

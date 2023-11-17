@@ -8,7 +8,6 @@
 #ifndef IGL_LOCALBASIS_H
 #define IGL_LOCALBASIS_H
 
-#include "igl_inline.h"
 #include <Eigen/Core>
 #include <string>
 #include <vector>
@@ -28,11 +27,11 @@ namespace igl {
 //
 // See also: adjacency_matrix
 template<typename DerivedV, typename DerivedF>
-IGL_INLINE void local_basis(const Eigen::PlainObjectBase<DerivedV> &V,
-                            const Eigen::PlainObjectBase<DerivedF> &F,
-                            Eigen::PlainObjectBase<DerivedV> &B1,
-                            Eigen::PlainObjectBase<DerivedV> &B2,
-                            Eigen::PlainObjectBase<DerivedV> &B3);
+inline void local_basis(const Eigen::PlainObjectBase<DerivedV> &V,
+                        const Eigen::PlainObjectBase<DerivedF> &F,
+                        Eigen::PlainObjectBase<DerivedV> &B1,
+                        Eigen::PlainObjectBase<DerivedV> &B2,
+                        Eigen::PlainObjectBase<DerivedV> &B3);
 
 }  // namespace igl
 

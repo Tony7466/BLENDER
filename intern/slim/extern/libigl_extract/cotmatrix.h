@@ -7,7 +7,6 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #ifndef IGL_COTMATRIX_H
 #define IGL_COTMATRIX_H
-#include "igl_inline.h"
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -43,9 +42,9 @@ namespace igl {
 // (immediately, -L is **positive** semi-definite)
 //
 template<typename DerivedV, typename DerivedF, typename Scalar>
-IGL_INLINE void cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
-                          const Eigen::PlainObjectBase<DerivedF> &F,
-                          Eigen::SparseMatrix<Scalar> &L);
+inline void cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
+                      const Eigen::PlainObjectBase<DerivedF> &F,
+                      Eigen::SparseMatrix<Scalar> &L);
 }  // namespace igl
 
 #include "cotmatrix.cpp"

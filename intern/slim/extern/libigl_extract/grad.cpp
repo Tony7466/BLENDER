@@ -14,10 +14,10 @@
 #include "volume.h"
 
 template<typename DerivedV, typename DerivedF>
-IGL_INLINE void grad_tet(const Eigen::PlainObjectBase<DerivedV> &V,
-                         const Eigen::PlainObjectBase<DerivedF> &T,
-                         Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
-                         bool uniform)
+inline void grad_tet(const Eigen::PlainObjectBase<DerivedV> &V,
+                     const Eigen::PlainObjectBase<DerivedF> &T,
+                     Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
+                     bool uniform)
 {
   using namespace Eigen;
   assert(T.cols() == 4);
@@ -121,10 +121,10 @@ IGL_INLINE void grad_tet(const Eigen::PlainObjectBase<DerivedV> &V,
 }
 
 template<typename DerivedV, typename DerivedF>
-IGL_INLINE void grad_tri(const Eigen::PlainObjectBase<DerivedV> &V,
-                         const Eigen::PlainObjectBase<DerivedF> &F,
-                         Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
-                         bool uniform)
+inline void grad_tri(const Eigen::PlainObjectBase<DerivedV> &V,
+                     const Eigen::PlainObjectBase<DerivedF> &F,
+                     Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
+                     bool uniform)
 {
   Eigen::Matrix<typename DerivedV::Scalar, Eigen::Dynamic, 3> eperp21(F.rows(), 3),
       eperp13(F.rows(), 3);
@@ -243,10 +243,10 @@ IGL_INLINE void grad_tri(const Eigen::PlainObjectBase<DerivedV> &V,
 }
 
 template<typename DerivedV, typename DerivedF>
-IGL_INLINE void igl::grad(const Eigen::PlainObjectBase<DerivedV> &V,
-                          const Eigen::PlainObjectBase<DerivedF> &F,
-                          Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
-                          bool uniform)
+inline void igl::grad(const Eigen::PlainObjectBase<DerivedV> &V,
+                      const Eigen::PlainObjectBase<DerivedF> &F,
+                      Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
+                      bool uniform)
 {
   assert(F.cols() == 3 || F.cols() == 4);
   if (F.cols() == 3)

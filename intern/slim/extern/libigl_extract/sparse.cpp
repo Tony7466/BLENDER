@@ -11,10 +11,10 @@
 #include <vector>
 
 template<class IndexVector, class ValueVector, typename T>
-IGL_INLINE void igl::sparse(const IndexVector &I,
-                            const IndexVector &J,
-                            const ValueVector &V,
-                            Eigen::SparseMatrix<T> &X)
+inline void igl::sparse(const IndexVector &I,
+                        const IndexVector &J,
+                        const ValueVector &V,
+                        Eigen::SparseMatrix<T> &X)
 {
   size_t m = (size_t)I.maxCoeff() + 1;
   size_t n = (size_t)J.maxCoeff() + 1;
@@ -23,12 +23,12 @@ IGL_INLINE void igl::sparse(const IndexVector &I,
 
 #include "verbose.h"
 template<class IndexVector, class ValueVector, typename T>
-IGL_INLINE void igl::sparse(const IndexVector &I,
-                            const IndexVector &J,
-                            const ValueVector &V,
-                            const size_t m,
-                            const size_t n,
-                            Eigen::SparseMatrix<T> &X)
+inline void igl::sparse(const IndexVector &I,
+                        const IndexVector &J,
+                        const ValueVector &V,
+                        const size_t m,
+                        const size_t n,
+                        Eigen::SparseMatrix<T> &X)
 {
   using namespace std;
   using namespace Eigen;
@@ -64,7 +64,7 @@ IGL_INLINE void igl::sparse(const IndexVector &I,
 }
 
 template<typename DerivedD, typename T>
-IGL_INLINE void igl::sparse(const Eigen::PlainObjectBase<DerivedD> &D, Eigen::SparseMatrix<T> &X)
+inline void igl::sparse(const Eigen::PlainObjectBase<DerivedD> &D, Eigen::SparseMatrix<T> &X)
 {
   assert(false && "Obsolete. Just call D.sparseView() directly");
   using namespace std;
@@ -84,7 +84,7 @@ IGL_INLINE void igl::sparse(const Eigen::PlainObjectBase<DerivedD> &D, Eigen::Sp
 }
 
 template<typename DerivedD>
-IGL_INLINE Eigen::SparseMatrix<typename DerivedD::Scalar> igl::sparse(
+inline Eigen::SparseMatrix<typename DerivedD::Scalar> igl::sparse(
     const Eigen::PlainObjectBase<DerivedD> &D)
 {
   assert(false && "Obsolete. Just call D.sparseView() directly");

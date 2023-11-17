@@ -9,9 +9,9 @@
 #include "squared_edge_lengths.h"
 
 template<typename DerivedV, typename DerivedF, typename DerivedL>
-IGL_INLINE void igl::edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
-                                  const Eigen::PlainObjectBase<DerivedF> &F,
-                                  Eigen::PlainObjectBase<DerivedL> &L)
+inline void igl::edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
+                              const Eigen::PlainObjectBase<DerivedF> &F,
+                              Eigen::PlainObjectBase<DerivedL> &L)
 {
   igl::squared_edge_lengths(V, F, L);
   L = L.array().sqrt().eval();
