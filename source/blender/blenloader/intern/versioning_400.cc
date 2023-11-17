@@ -1237,9 +1237,8 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
   }
 }
 
-static void version_socket_identifier_suffixes_for_dynamic_types(ListBase sockets,
-                                                                 const char *separator,
-                                                                 const std::optional<int> total)
+static void version_socket_identifier_suffixes_for_dynamic_types(
+    ListBase sockets, const char *separator, const std::optional<int> total = std::nullopt)
 {
   int index = 0;
   LISTBASE_FOREACH (bNodeSocket *, socket, &sockets) {
@@ -1264,21 +1263,30 @@ static void version_socket_identifier_suffixes_for_dynamic_types(ListBase socket
   }
 }
 
-static void versioning_node_dynamic_socket(bNodeTree &ntree,
-                                           const int type,
-                                           const char *input_separator,
-                                           const char *output_separator,
-                                           const std::optional<int> total_inputs = std::nullopt,
-                                           const std::optional<int> total_outputs = std::nullopt)
+static void versioning_nodes_dynamic_sockets(bNodeTree &ntree)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree.nodes) {
-    if (node->type != type) {
-      continue;
+    switch (node->type) {
+      case GEO_NODE_ACCUMULATE_FIELD:
+        version_socket_identifier_suffixes_for_dynamic_types(node->inputs, " ", 1);
+        version_socket_identifier_suffixes_for_dynamic_types(node->outputs, " ", 3);
+        break;
+      case GEO_NODE_CAPTURE_ATTRIBUTE:
+      case GEO_NODE_ATTRIBUTE_STATISTIC:
+      case GEO_NODE_BLUR_ATTRIBUTE:
+      case GEO_NODE_EVALUATE_AT_INDEX:
+      case GEO_NODE_EVALUATE_ON_DOMAIN:
+      case GEO_NODE_INPUT_NAMED_ATTRIBUTE:
+      case GEO_NODE_RAYCAST:
+      case GEO_NODE_SAMPLE_INDEX:
+      case GEO_NODE_SAMPLE_NEAREST_SURFACE:
+      case GEO_NODE_SAMPLE_UV_SURFACE:
+      case GEO_NODE_STORE_NAMED_ATTRIBUTE:
+      case GEO_NODE_VIEWER:
+        version_socket_identifier_suffixes_for_dynamic_types(node->inputs, "_");
+        version_socket_identifier_suffixes_for_dynamic_types(node->outputs, "_");
+        break;
     }
-    version_socket_identifier_suffixes_for_dynamic_types(
-        node->inputs, input_separator, total_inputs);
-    version_socket_identifier_suffixes_for_dynamic_types(
-        node->outputs, output_separator, total_outputs);
   }
 }
 
@@ -2015,19 +2023,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       if (ntree->type != NTREE_GEOMETRY) {
         continue;
       }
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_ACCUMULATE_FIELD, " ", " ", 1, 3);
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_CAPTURE_ATTRIBUTE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_ATTRIBUTE_STATISTIC, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_BLUR_ATTRIBUTE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_EVALUATE_AT_INDEX, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_EVALUATE_ON_DOMAIN, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_INPUT_NAMED_ATTRIBUTE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_RAYCAST, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_INDEX, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_NEAREST_SURFACE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_SAMPLE_UV_SURFACE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_STORE_NAMED_ATTRIBUTE, "_", "_");
-      versioning_node_dynamic_socket(*ntree, GEO_NODE_VIEWER, "_", "_");
+      versioning_nodes_dynamic_sockets(*ntree);
     }
   }
   /**
