@@ -461,13 +461,7 @@ vec3 displacement_bump()
 {
 #  if defined(GPU_FRAGMENT_SHADER) && !defined(MAT_GEOM_CURVES)
   vec2 dHd;
-#    ifdef MAT_DISPLACEMENT_VERTEX_ONLY
-  dF_branch(
-      dot(displace_interp.vector + dF_impl(displace_interp.vector), g_data.N + dF_impl(g_data.N)),
-      dHd);
-#    else
   dF_branch(dot(nodetree_displacement(), g_data.N + dF_impl(g_data.N)), dHd);
-#    endif
 
   vec3 dPdx = dFdx(g_data.P);
   vec3 dPdy = dFdy(g_data.P);

@@ -34,13 +34,6 @@ GPU_SHADER_CREATE_INFO(eevee_clip_plane)
     .uniform_buf(CLIP_PLANE_BUF, "ClipPlaneData", "clip_plane")
     .define("MAT_CLIP_PLANE");
 
-GPU_SHADER_INTERFACE_INFO(eevee_displace_iface, "displace_interp").smooth(Type::VEC3, "vector");
-
-GPU_SHADER_CREATE_INFO(eevee_displace_vertex_only)
-    .vertex_out(eevee_displace_iface)
-    .define("GPU_FAST_DERIVATIVE")
-    .define("MAT_DISPLACEMENT_VERTEX_ONLY");
-
 /** \} */
 
 /* -------------------------------------------------------------------- */

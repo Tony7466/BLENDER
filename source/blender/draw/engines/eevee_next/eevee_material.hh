@@ -63,13 +63,20 @@ static inline bool geometry_type_has_surface(eMaterialGeometry geometry_type)
 
 enum eMaterialDisplacement {
   MAT_DISPLACEMENT_BUMP = 0,
-  MAT_DISPLACEMENT_VERTEX,
-  MAT_DISPLACEMENT_BOTH,
+  MAT_DISPLACEMENT_VERTEX_WITH_BUMP,
 };
 
 static inline eMaterialDisplacement to_displacement_type(int displacement_method)
 {
-  return static_cast<eMaterialDisplacement>(displacement_method);
+  switch (displacement_method) {
+    case MA_DISPLACEMENT_DISPLACE:
+      /* Currently unsupported. Revert to vertex displacement + bump. */
+      ATTR_FALLTHROUGH;
+    case MA_DISPLACEMENT_BOTH:
+      return MAT_DISPLACEMENT_VERTEX_WITH_BUMP;
+    default:
+      return MAT_DISPLACEMENT_BUMP;
+  }
 }
 
 enum eMaterialProbe {
