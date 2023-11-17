@@ -770,27 +770,6 @@ static void layerFree_bmesh_elem_py_ptr(void *data, const int count, const int s
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Callbacks for (`float`, #CD_PAINT_MASK)
- * \{ */
-
-static void layerInterp_paint_mask(const void **sources,
-                                   const float *weights,
-                                   const float * /*sub_weights*/,
-                                   int count,
-                                   void *dest)
-{
-  float mask = 0.0f;
-  for (int i = 0; i < count; i++) {
-    const float interp_weight = weights[i];
-    const float *src = static_cast<const float *>(sources[i]);
-    mask += (*src) * interp_weight;
-  }
-  *(float *)dest = mask;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Callbacks for (#GridPaintMask, #CD_GRID_PAINT_MASK)
  * \{ */
 
@@ -1821,8 +1800,8 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
      nullptr,
      nullptr,
      nullptr},
-    /* 34: CD_PAINT_MASK */
-    {sizeof(float), "", 0, nullptr, nullptr, nullptr, layerInterp_paint_mask, nullptr, nullptr},
+    /* 34: CD_PAINT_MASK */ /* DEPRECATED */
+    {sizeof(float), "", 0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     /* 35: CD_GRID_PAINT_MASK */
     {sizeof(GridPaintMask),
      "GridPaintMask",

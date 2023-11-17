@@ -211,7 +211,7 @@ static int geometry_extract_apply(bContext *C,
   CustomData_free_layer_named(&new_ob_mesh->face_data, ".sculpt_face_set", new_ob_mesh->faces_num);
 
   /* Remove the mask from the new object so it can be sculpted directly after extracting. */
-  CustomData_free_layers(&new_ob_mesh->vert_data, CD_PAINT_MASK, new_ob_mesh->totvert);
+  CustomData_free_layer_named(&new_ob_mesh->vert_data, ".sculpt_mask", new_ob_mesh->totvert);
 
   BKE_mesh_copy_parameters_for_eval(new_ob_mesh, mesh);
 
