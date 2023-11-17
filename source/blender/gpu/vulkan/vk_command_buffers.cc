@@ -22,8 +22,11 @@ namespace blender::gpu {
 
 VKCommandBuffers::~VKCommandBuffers()
 {
-  command_buffer_get(Type::DataTransferCompute).free();
-  command_buffer_get(Type::Graphics).free();
+  discarded_command_buffers_.append(
+      command_buffer_get(Type::DataTransferCompute).vk_command_buffer());
+  discarded_command_buffers_.append(command_buffer_get(Type::Graphics).vk_command_buffer());
+  command_buffer_get(Type::DataTransferCompute).reset();
+  command_buffer_get(Type::Graphics).reset();
 
   VK_ALLOCATION_CALLBACKS;
   const VKDevice &device = VKBackend::get().device_get();
@@ -33,6 +36,7 @@ VKCommandBuffers::~VKCommandBuffers()
     vk_fence_ = VK_NULL_HANDLE;
   }
 
+  destroy_discarded_resources();
   if (vk_command_pool_ != VK_NULL_HANDLE) {
     vkDestroyCommandPool(device.device_get(), vk_command_pool_, vk_allocation_callbacks);
     vk_command_pool_ = VK_NULL_HANDLE;
@@ -53,19 +57,9 @@ void VKCommandBuffers::init(const VKDevice &device)
     return;
   }
   init_command_pool(device);
-  init_command_buffers(device);
+  init_command_buffers(device, true, true);
   init_fence(device);
   submission_id_.reset();
-}
-
-static void init_command_buffer(VKCommandBuffer &command_buffer,
-                                VkCommandPool vk_command_pool,
-                                VkCommandBuffer vk_command_buffer,
-                                const char *name)
-{
-  command_buffer.init(vk_command_pool, vk_command_buffer);
-  command_buffer.begin_recording();
-  debug::object_label(vk_command_buffer, name);
 }
 
 void VKCommandBuffers::init_command_pool(const VKDevice &device)
@@ -75,32 +69,48 @@ void VKCommandBuffers::init_command_pool(const VKDevice &device)
   VK_ALLOCATION_CALLBACKS;
   VkCommandPoolCreateInfo command_pool_info = {};
   command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-  command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  command_pool_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
   command_pool_info.queueFamilyIndex = device.queue_family_get();
 
   vkCreateCommandPool(
       device.device_get(), &command_pool_info, vk_allocation_callbacks, &vk_command_pool_);
 }
 
-void VKCommandBuffers::init_command_buffers(const VKDevice &device)
+static void init_command_buffer(VKCommandBuffer &command_buffer,
+                                VkCommandBuffer vk_command_buffer,
+                                const char *name)
 {
+  command_buffer.init(vk_command_buffer);
+  command_buffer.begin_recording();
+  debug::object_label(vk_command_buffer, name);
+}
+
+void VKCommandBuffers::init_command_buffers(const VKDevice &device,
+                                            bool init_data_transfer_compute,
+                                            bool init_graphics)
+
+{
+  BLI_assert(init_data_transfer_compute || init_graphics);
   BLI_assert(vk_command_pool_ != VK_NULL_HANDLE);
   VkCommandBuffer vk_command_buffers[(uint32_t)Type::Max] = {VK_NULL_HANDLE};
   VkCommandBufferAllocateInfo alloc_info = {};
   alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   alloc_info.commandPool = vk_command_pool_;
   alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  alloc_info.commandBufferCount = (uint32_t)Type::Max;
+  alloc_info.commandBufferCount = uint32_t(init_data_transfer_compute) + uint32_t(init_graphics);
   vkAllocateCommandBuffers(device.device_get(), &alloc_info, vk_command_buffers);
 
-  init_command_buffer(command_buffer_get(Type::DataTransferCompute),
-                      vk_command_pool_,
-                      vk_command_buffers[(int)Type::DataTransferCompute],
-                      "Data Transfer Compute Command Buffer");
-  init_command_buffer(command_buffer_get(Type::Graphics),
-                      vk_command_pool_,
-                      vk_command_buffers[(int)Type::Graphics],
-                      "Graphics Command Buffer");
+  if (init_data_transfer_compute) {
+    init_command_buffer(command_buffer_get(Type::DataTransferCompute),
+                        vk_command_buffers[0],
+                        "Data Transfer Compute Command Buffer");
+  }
+  if (init_graphics) {
+    uint32_t graphics_index = init_data_transfer_compute ? 1 : 0;
+    init_command_buffer(command_buffer_get(Type::Graphics),
+                        vk_command_buffers[graphics_index],
+                        "Graphics Command Buffer");
+  }
 }
 
 void VKCommandBuffers::init_fence(const VKDevice &device)
@@ -113,10 +123,8 @@ void VKCommandBuffers::init_fence(const VKDevice &device)
   }
 }
 
-static void submit_command_buffers(const VKDevice &device,
-                                   MutableSpan<VKCommandBuffer *> command_buffers,
-                                   VkFence vk_fence,
-                                   uint64_t timeout)
+void VKCommandBuffers::submit_command_buffers(const VKDevice &device,
+                                              MutableSpan<VKCommandBuffer *> command_buffers)
 {
   BLI_assert(ELEM(command_buffers.size(), 1, 2));
   VkCommandBuffer handles[2];
@@ -131,14 +139,14 @@ static void submit_command_buffers(const VKDevice &device,
   submit_info.commandBufferCount = num_command_buffers;
   submit_info.pCommandBuffers = handles;
 
-  vkQueueSubmit(device.queue_get(), 1, &submit_info, vk_fence);
+  vkQueueSubmit(device.queue_get(), 1, &submit_info, vk_fence_);
 
-  vkWaitForFences(device.device_get(), 1, &vk_fence, VK_TRUE, timeout);
-  vkResetFences(device.device_get(), 1, &vk_fence);
+  vkWaitForFences(device.device_get(), 1, &vk_fence_, VK_TRUE, FenceTimeout);
+  vkResetFences(device.device_get(), 1, &vk_fence_);
 
   for (VKCommandBuffer *command_buffer : command_buffers) {
-    command_buffer->commands_submitted();
-    command_buffer->begin_recording();
+    discarded_command_buffers_.append(command_buffer->vk_command_buffer());
+    command_buffer->reset();
   }
 }
 
@@ -163,20 +171,17 @@ void VKCommandBuffers::submit()
     end_render_pass(*framebuffer);
     command_buffers[command_buffer_index++] = &graphics;
     submit_command_buffers(device,
-                           MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index),
-                           vk_fence_,
-                           FenceTimeout);
+                           MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index));
     begin_render_pass(*framebuffer);
   }
   else if (has_data_transfer_compute_work) {
     submit_command_buffers(device,
-                           MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index),
-                           vk_fence_,
-                           FenceTimeout);
+                           MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index));
   }
 
   const bool reset_submission_id = has_data_transfer_compute_work || has_graphics_work;
   if (reset_submission_id) {
+    init_command_buffers(device, has_data_transfer_compute_work, has_graphics_work);
     submission_id_.next();
   }
 }
@@ -219,6 +224,20 @@ void VKCommandBuffers::ensure_active_framebuffer()
         command_buffer.vk_command_buffer(), &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
     framebuffer_bound_ = true;
   }
+}
+
+void VKCommandBuffers::destroy_discarded_resources()
+{
+  if (discarded_command_buffers_.is_empty()) {
+    return;
+  }
+
+  VKDevice &device = VKBackend::get().device_get();
+  vkFreeCommandBuffers(device.device_get(),
+                       vk_command_pool_,
+                       discarded_command_buffers_.size(),
+                       discarded_command_buffers_.data());
+  discarded_command_buffers_.clear();
 }
 
 /**

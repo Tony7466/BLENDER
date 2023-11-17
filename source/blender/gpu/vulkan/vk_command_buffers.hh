@@ -52,6 +52,11 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   VKCommandBuffer buffers_[(int)Type::Max];
   VKSubmissionID submission_id_;
 
+  /**
+   * List of command buffer handles that should be freed.
+   */
+  Vector<VkCommandBuffer> discarded_command_buffers_;
+
  public:
   ~VKCommandBuffers();
 
@@ -148,10 +153,17 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
     return submission_id_;
   }
 
+  void destroy_discarded_resources();
+
  private:
   void init_fence(const VKDevice &device);
   void init_command_pool(const VKDevice &device);
-  void init_command_buffers(const VKDevice &device);
+  void init_command_buffers(const VKDevice &device,
+                            bool init_data_transfer_compute,
+                            bool init_graphics);
+
+  void submit_command_buffers(const VKDevice &device,
+                              MutableSpan<VKCommandBuffer *> command_buffers);
 
   VKCommandBuffer &command_buffer_get(Type type)
   {

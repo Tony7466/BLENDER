@@ -117,6 +117,7 @@ void VKContext::begin_frame() {}
 void VKContext::end_frame()
 {
   VKDevice &device = VKBackend::get().device_get();
+  command_buffers_.destroy_discarded_resources();
   device.destroy_discarded_resources();
 }
 
