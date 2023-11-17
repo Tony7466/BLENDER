@@ -3373,8 +3373,6 @@ static void ui_draw_but_HSVCUBE(uiBut *but, const rcti *rect)
 static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
 {
   const uiButHSVCube *hsv_but = (uiButHSVCube *)but;
-  bTheme *btheme = UI_GetTheme();
-  uiWidgetColors *wcol = &btheme->tui.wcol_numslider;
   float rgb[3], hsv[3], v;
 
   ui_but_v3_get(but, rgb);
