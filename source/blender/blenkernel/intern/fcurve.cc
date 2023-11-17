@@ -1728,7 +1728,7 @@ BezTriple *BKE_bezier_array_merge(
     BezTriple *a, const int size_a, BezTriple *b, const int size_b, int *merged_size)
 {
   BezTriple *large_array = static_cast<BezTriple *>(
-      MEM_callocN(size_a + size_b * sizeof(BezTriple), "beztriple"));
+      MEM_callocN((size_a + size_b) * sizeof(BezTriple), "beztriple"));
 
   int iterator_a = 0;
   int iterator_b = 0;

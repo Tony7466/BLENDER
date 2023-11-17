@@ -1297,9 +1297,9 @@ void bake_fcurve(FCurve *fcu,
 
   for (int i = 0; i < sample_count; i++) {
     BezTriple *key = &baked_keys[i];
-    BEZKEYTYPE(key) = BEZT_KEYTYPE_KEYFRAME;
-    key->vec[1][0] = range[0] + i * step;
-    key->vec[1][1] = samples[i];
+    blender::float2 key_position = {range[0] + i * step, samples[i]};
+    blender::animrig::initialize_bezt(
+        key, key_position, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NOFLAGS, eFCurve_Flags(0));
   }
 
   int merged_size;
