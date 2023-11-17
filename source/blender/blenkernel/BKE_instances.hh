@@ -26,12 +26,13 @@
 #include "BLI_vector_set.hh"
 
 #include "BKE_attribute.hh"
-#include "BKE_geometry_set.hh"
 
 struct Object;
 struct Collection;
 
 namespace blender::bke {
+
+struct GeometrySet;
 
 /**
  * Holds a reference to conceptually unique geometry or a pointer to object/collection data

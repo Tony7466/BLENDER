@@ -39,6 +39,7 @@ void ED_operatortypes_grease_pencil_frames();
 void ED_operatortypes_grease_pencil_layers();
 void ED_operatortypes_grease_pencil_select();
 void ED_operatortypes_grease_pencil_edit();
+void ED_operatortypes_grease_pencil_material();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
 /**
  * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
@@ -109,6 +110,21 @@ bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
+
+struct DrawingInfo {
+  const bke::greasepencil::Drawing &drawing;
+  const int layer_index;
+  const int frame_number;
+};
+struct MutableDrawingInfo {
+  bke::greasepencil::Drawing &drawing;
+  const int layer_index;
+  const int frame_number;
+};
+Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
+                                                     GreasePencil &grease_pencil);
+Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
+                                             const GreasePencil &grease_pencil);
 
 void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);

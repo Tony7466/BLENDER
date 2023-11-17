@@ -1812,7 +1812,7 @@ void UI_but_func_tooltip_custom_set(uiBut *but,
  * \param text: Allocated text (transfer ownership to `data`) or null.
  * \param suffix: Allocated text (transfer ownership to `data`) or null.
  */
-void UI_tooltip_text_field_add(struct uiTooltipData *data,
+void UI_tooltip_text_field_add(uiTooltipData *data,
                                char *text,
                                char *suffix,
                                const uiTooltipStyle style,
@@ -1823,9 +1823,8 @@ void UI_tooltip_text_field_add(struct uiTooltipData *data,
  * \param image: Image buffer (duplicated, ownership is *not* transferred to `data`).
  * \param image_size: Display size for the image (pixels without UI scale applied).
  */
-void UI_tooltip_image_field_add(struct uiTooltipData *data,
-                                const struct ImBuf *image,
-                                const short image_size[2]) ATTR_NONNULL(1, 2, 3);
+void UI_tooltip_image_field_add(uiTooltipData *data, const ImBuf *image, const short image_size[2])
+    ATTR_NONNULL(1, 2, 3);
 
 /**
  * Recreate tool-tip (use to update dynamic tips)
@@ -1989,9 +1988,12 @@ bool UI_panel_can_be_pinned(const Panel *panel);
 bool UI_panel_category_is_visible(const ARegion *region);
 void UI_panel_category_add(ARegion *region, const char *name);
 PanelCategoryDyn *UI_panel_category_find(const ARegion *region, const char *idname);
+int UI_panel_category_index_find(ARegion *region, const char *idname);
 PanelCategoryStack *UI_panel_category_active_find(ARegion *region, const char *idname);
 const char *UI_panel_category_active_get(ARegion *region, bool set_fallback);
 void UI_panel_category_active_set(ARegion *region, const char *idname);
+/** \param index: index of item _in #ARegion.panels_category list_. */
+void UI_panel_category_index_active_set(ARegion *region, const int index);
 void UI_panel_category_active_set_default(ARegion *region, const char *idname);
 void UI_panel_category_clear_all(ARegion *region);
 /**
@@ -2676,7 +2678,7 @@ void uiTemplateLightLinkingCollection(uiLayout *layout,
 void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C);
 #endif
 
-void uiTemplateNodeTreeInterface(struct uiLayout *layout, struct PointerRNA *ptr);
+void uiTemplateNodeTreeInterface(uiLayout *layout, PointerRNA *ptr);
 
 /**
  * \return: A RNA pointer for the operator properties.
