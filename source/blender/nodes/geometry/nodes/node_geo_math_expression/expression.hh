@@ -5,9 +5,13 @@
 #include <string>
 #include <cstdio>
 
+#include "FN_field.hh"
+#include "NOD_math_functions.hh"
+
 #include "lexer.hh"
-#include "operation.hh"
 #include "evaluation_context.hh"
+
+namespace blender::nodes::node_geo_math_expression_cc {
 
 struct EvaluationError {
   class Expression *expression;
@@ -25,24 +29,86 @@ public:
     return token;
   }
 
-  virtual ValueKind evaluate(EvaluationContext &ctx) = 0;
+  virtual fn::GField evaluate(EvaluationContext &ctx) = 0;
 
-  static ValueKind pow(EvaluationContext &ctx, Expression *x, Expression *y);
-  static ValueKind lerp(EvaluationContext &ctx, Expression *a, Expression *b, Expression *t);
-  static ValueKind negate(EvaluationContext &ctx, Expression *x);
-  static ValueKind add(EvaluationContext &ctx, Expression *left, Expression *right);
-  static ValueKind sub(EvaluationContext &ctx, Expression *left, Expression *right);
-  static ValueKind mul(EvaluationContext &ctx, Expression *left, Expression *right);
-  static ValueKind div(EvaluationContext &ctx, Expression *left, Expression *right);
-  static ValueKind vec(EvaluationContext &ctx, Expression *x, Expression *y, Expression *z);
-  static ValueKind len(EvaluationContext &ctx, Expression *v);
+  static fn::GField constant(float f) {
+    auto c = std::make_shared<mf::CustomMF_Constant<float>>(f);
+    return fn::Field<float>(fn::FieldOperation::Create(std::move(c)));
+  }
+
+  static fn::GField constant(float3 f3) {
+    auto c = std::make_shared<mf::CustomMF_Constant<float3>>(f3);
+    return fn::Field<float3>(fn::FieldOperation::Create(std::move(c)));
+  }
+
+  static fn::GField fl_fl_to_fl(fn::GField a, fn::GField b, NodeMathOperation op) {
+    const mf::MultiFunction *fn = nullptr;
+
+    try_dispatch_float_math_fl_fl_to_fl(op, [&fn](auto devi_fn, auto function, const blender::nodes::FloatMathOperationInfo &info) {
+      static auto _fn = mf::build::SI2_SO<float, float, float>(info.title_case_name.c_str(), function, devi_fn);
+      fn = &_fn;
+    });
+
+    BLI_assert(fn != nullptr);
+
+    return fn::Field<float>(fn::FieldOperation::Create(*fn, { std::move(a), std::move(b) }));
+  }
+
+  static fn::GField fl3_fl3_to_fl3(fn::GField a, fn::GField b, NodeVectorMathOperation op) {
+    const mf::MultiFunction *fn = nullptr;
+
+    try_dispatch_float_math_fl3_fl3_to_fl3(op, [&fn](auto devi_fn, auto function, const blender::nodes::FloatMathOperationInfo &info) {
+      static auto _fn = mf::build::SI2_SO<float3, float3, float3>(info.title_case_name.c_str(), function, devi_fn);
+      fn = &_fn;
+    });
+
+    BLI_assert(fn != nullptr);
+
+    return fn::Field<float3>(fn::FieldOperation::Create(*fn, { std::move(a), std::move(b) }));
+  }
+
+  static fn::GField fl3_fl_to_fl3(fn::GField a, fn::GField b, NodeVectorMathOperation op) {
+    const mf::MultiFunction *fn = nullptr;
+
+    try_dispatch_float_math_fl3_fl_to_fl3(op, [&fn](auto devi_fn, auto function, const blender::nodes::FloatMathOperationInfo &info) {
+      static auto _fn = mf::build::SI2_SO<float3, float, float3>(info.title_case_name.c_str(), function, devi_fn);
+      fn = &_fn;
+    });
+
+    BLI_assert(fn != nullptr);
+
+    return fn::Field<float3>(fn::FieldOperation::Create(*fn, { std::move(a), std::move(b) }));
+  }
+
+  static fn::GField fl3_to_fl(fn::GField a, NodeVectorMathOperation op) {
+    const mf::MultiFunction *fn = nullptr;
+
+    try_dispatch_float_math_fl3_to_fl(op, [&fn](auto devi_fn, auto function, const blender::nodes::FloatMathOperationInfo &info) {
+      static auto _fn = mf::build::SI1_SO<float3, float>(info.title_case_name.c_str(), function, devi_fn);
+      fn = &_fn;
+    });
+
+    BLI_assert(fn != nullptr);
+
+    return fn::Field<float3>(fn::FieldOperation::Create(*fn, { std::move(a) }));
+  }
+
+  static fn::GField pow(EvaluationContext &ctx, Expression *x, Expression *y);
+  static fn::GField lerp(EvaluationContext &ctx, Expression *a, Expression *b, Expression *t);
+  static fn::GField negate(EvaluationContext &ctx, Expression *x);
+  static fn::GField add(EvaluationContext &ctx, Expression *left, Expression *right);
+  static fn::GField sub(EvaluationContext &ctx, Expression *left, Expression *right);
+  static fn::GField mul(EvaluationContext &ctx, Expression *left, Expression *right);
+  static fn::GField div(EvaluationContext &ctx, Expression *left, Expression *right);
+  static fn::GField vec(EvaluationContext &ctx, Expression *x, Expression *y, Expression *z);
+  static fn::GField len(EvaluationContext &ctx, Expression *v);
 };
 
 class NumberExpression : public Expression {
 public:
   NumberExpression(Token token) : Expression(token) {}
 
-  ValueKind evaluate(EvaluationContext &ctx) override {
+  fn::GField evaluate(EvaluationContext &/*ctx*/) override {
     double d;
     auto result = std::from_chars(token.value.data(), token.value.data() + token.value.size(), d);
 
@@ -50,9 +116,7 @@ public:
       throw EvaluationError { this, "failed to parse number literal" };
     }
 
-    ctx.push_op(Operation::float_op(d));
-
-    return ValueKind::FLOAT;
+    return constant(d);
   }
 };
 
@@ -61,7 +125,7 @@ class GroupExpression : public Expression {
 public:
   GroupExpression(std::unique_ptr<Expression> expr, Token token) : Expression(token), expr(std::move(expr)) {}
 
-  ValueKind evaluate(EvaluationContext &ctx) override {
+  fn::GField evaluate(EvaluationContext &ctx) override {
     return expr->evaluate(ctx);
   }
 };
@@ -70,16 +134,14 @@ class VariableExpression : public Expression {
 public:
   VariableExpression(Token token) : Expression(token) {}
 
-  ValueKind evaluate(EvaluationContext &ctx) override {
-    ValueKind value;
+  fn::GField evaluate(EvaluationContext &ctx) override {
+    fn::GField value;
     
     try {
       value = ctx.get_variable(token.value);
     } catch(const char *err) {
       throw EvaluationError { this, err };
     }
-
-    ctx.push_op(Operation::variable_op(token.value));
 
     return value;
   }
@@ -106,7 +168,7 @@ private:
 public:
   CallExpression(std::vector<std::unique_ptr<Expression>> args, Token token) : Expression(token), args(std::move(args)) {}
 
-  ValueKind evaluate(EvaluationContext &ctx) override {
+  fn::GField evaluate(EvaluationContext &ctx) override {
     try {
       if(token.value == "pow") {
         if(args.size() != 2) { throw "incorrect number of arguments"; }
@@ -128,20 +190,6 @@ public:
         return len(ctx, args[0].get());
       }
 
-
-      /*case FunctionName::LERP:
-        return Value::lerp(evaluated_args[0].get(), evaluated_args[1].get(), evaluated_args[2].get());
-      case FunctionName::VEC:
-        return Value::vec(evaluated_args[0].get(), evaluated_args[1].get(), evaluated_args[2].get());
-      case FunctionName::X:
-        return Value::x(evaluated_args[0].get());
-      case FunctionName::Y:
-        return Value::y(evaluated_args[0].get());
-      case FunctionName::Z:
-        return Value::z(evaluated_args[0].get());
-      case FunctionName::LEN:
-        return Value::len(evaluated_args[0].get());*/
-
       throw "invalid function";
     } catch (const char *err) {
       throw EvaluationError{ this, err };
@@ -155,7 +203,7 @@ class UnaryExpression : public Expression {
 public:
   UnaryExpression(std::unique_ptr<Expression> expr, Token token) : Expression(token), expr(std::move(expr)) {}
 
-  ValueKind evaluate(EvaluationContext &ctx) override {
+  fn::GField evaluate(EvaluationContext &ctx) override {
     try {
       switch (token.kind) {
         case TokenKind::MINUS:
@@ -175,7 +223,7 @@ class BinaryExpression : public Expression {
 public:
   BinaryExpression(std::unique_ptr<Expression> left, std::unique_ptr<Expression> right, Token token) : Expression(token), left(std::move(left)), right(std::move(right)) {}
 
-  ValueKind evaluate(EvaluationContext &ctx) override {
+  fn::GField evaluate(EvaluationContext &ctx) override {
     try {
       switch (token.kind) {
         case TokenKind::PLUS:
@@ -194,3 +242,5 @@ public:
     }
   }
 };
+
+}

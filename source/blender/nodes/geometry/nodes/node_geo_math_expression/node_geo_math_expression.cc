@@ -18,18 +18,20 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "NOD_math_functions.hh"
+
 #include "lexer.hh"
-#include "operation.hh"
 #include "expression.hh"
 #include "parser.hh"
 #include "evaluation_context.hh"
-#include "math_processor.hh"
 
 namespace blender::nodes::node_geo_math_expression_cc {
   NODE_STORAGE_FUNCS(NodeGeometryMathExpression)
 
   static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
   {
+    printf("node_declare: %p\n", b.node_or_null());
+
     auto node = b.node_or_null();
 
     if (node == nullptr) {
@@ -55,6 +57,9 @@ namespace blender::nodes::node_geo_math_expression_cc {
 
   static void node_geo_exec(GeoNodeExecParams params)
   {
+    SCOPED_TIMER(__func__);
+    printf("node_geo_exec\n");
+
     // Most of the stuff here only needs to be done once after the expression text has changed.
     // The list of operations should be cached somewhere to avoid reparsing every time this function is called.
 
@@ -82,55 +87,37 @@ namespace blender::nodes::node_geo_math_expression_cc {
       return;
     }
 
-    EvaluationContext ctx([&params, &vars](std::string_view name) -> ValueKind {
+    EvaluationContext ctx([&params, &vars](std::string_view name) -> fn::GField {
       if(vars.find(name) == vars.end()) {
         throw "variable does not exist";
       }
 
       if(name[0] == 'v') {
-        return ValueKind::VECTOR;
+        return params.extract_input<Field<float3>>(name);
       } else if(name[0] == 'f') {
-        return ValueKind::FLOAT;
+        return params.extract_input<Field<float>>(name);
       }
 
       BLI_assert_unreachable();
-      return ValueKind();
+      return fn::GField();
     });
 
     try {
-      ValueKind kind = expr->evaluate(ctx);
+      fn::GField field = expr->evaluate(ctx);
 
-      if(kind == ValueKind::FLOAT && storage.output_type != GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT) {
+      if(field.cpp_type().is<float>() && storage.output_type != GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT) {
         params.error_message_add(NodeWarningType::Error, TIP_("The result of the expression (Float) does not match the ouput type of the node"));
         params.set_default_remaining_outputs();
         return;
       }
 
-      if(kind == ValueKind::VECTOR && storage.output_type != GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR) {
+      if(field.cpp_type().is<float3>() && storage.output_type != GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR) {
         params.error_message_add(NodeWarningType::Error, TIP_("The result of the expression (Vector) does not match the ouput type of the node"));
         params.set_default_remaining_outputs();
         return;
       }
 
-      // Only the stuff below here actually needs to happen every time this function is called.
-      MathProcessor proc(ctx.get_operations(), [&params](std::string_view name) {
-        if(name[0] == 'v') {
-          return Constant::make_vector(params.extract_input<blender::float3>(name));
-        } else if(name[0] == 'f') {
-          return Constant::make_float(params.extract_input<float>(name));
-        }
-
-        BLI_assert_unreachable();
-        return Constant();
-      });
-
-      Constant c = proc.execute();
-
-      if(storage.output_type == GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT) {
-        params.set_output("Value", c.get_float());
-      } else if(storage.output_type == GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR) {
-        params.set_output("Value", c.get_vector());
-      }
+      params.set_output("Value", field);
     } catch (EvaluationError err) {
       params.error_message_add(NodeWarningType::Error, fmt::format("EvaluationError: token: {}, message: {}", err.expression->get_token().value, err.message).c_str());
       params.set_default_remaining_outputs();
@@ -148,6 +135,10 @@ namespace blender::nodes::node_geo_math_expression_cc {
   static void node_init(bNodeTree */*tree*/, bNode *node)
   {
     node->storage = MEM_callocN(sizeof(NodeGeometryMathExpression), __func__);
+    NodeGeometryMathExpression &storage = node_storage(*node);
+    storage.output_type = GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR;
+    strcpy(storage.variables, "v1, fa, fb, fc");
+    strcpy(storage.expression, "vec(fa, fb, fc) + v1");
   }
 
   inline void node_register()

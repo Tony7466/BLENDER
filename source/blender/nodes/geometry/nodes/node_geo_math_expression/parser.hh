@@ -10,6 +10,8 @@
 #include "lexer.hh"
 #include "expression.hh"
 
+namespace blender::nodes::node_geo_math_expression_cc {
+
 struct ParserError {
   Token token;
   const char *message;
@@ -177,4 +179,6 @@ inline void parse_var_names(std::string_view vars, std::function<void(std::strin
       cb(vars.substr(start, i + 1 - start));
     }
   }
+}
+
 }

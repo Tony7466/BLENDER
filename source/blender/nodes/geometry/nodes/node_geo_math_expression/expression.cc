@@ -1,208 +1,158 @@
 #include "expression.hh"
 
-inline bool ops_are(ValueKind left, ValueKind right, ValueKind a) {
-  return left == a && right == a;
+namespace blender::nodes::node_geo_math_expression_cc {
+
+// TODO: variadic template
+template<typename T>
+inline static bool op_is(fn::GField a) {
+  return a.cpp_type().is<T>();
 }
 
-inline bool ops_are(ValueKind left, ValueKind right, ValueKind a, ValueKind b) {
-  return (left == a && right == b) || (left == b && right == a);
+template<typename T, typename U>
+inline static bool ops_are(fn::GField a, fn::GField b) {
+  return a.cpp_type().is<T>() && b.cpp_type().is<U>();
 }
 
-ValueKind Expression::add(EvaluationContext &ctx, Expression *left, Expression *right) {
-  ValueKind _left = left->evaluate(ctx);
-  ValueKind _right = right->evaluate(ctx);
-
-  if(_left != _right) {
-    throw "invalid operands";
-  }
-
-  switch(_left) {
-      case ValueKind::FLOAT:
-          ctx.push_op(Operation::math_op(Operation::OpKind::MATH_FL_FL_TO_FL, NODE_MATH_ADD));
-          break;
-      case ValueKind::VECTOR:
-          ctx.push_op(Operation::vector_math_op(Operation::OpKind::VECTOR_MATH_FL3_FL3_TO_FL3, NODE_VECTOR_MATH_ADD));
-          break;
-      default:
-          BLI_assert_unreachable();
-  }
-
-  return _left;
+template<typename T, typename U, typename V>
+inline static bool ops_are(fn::GField a, fn::GField b, fn::GField c) {
+  return a.cpp_type().is<T>() && b.cpp_type().is<U>() && c.cpp_type().is<V>();
 }
 
-ValueKind Expression::sub(EvaluationContext &ctx, Expression *left, Expression *right) {
-  ValueKind _left = left->evaluate(ctx);
-  ValueKind _right = right->evaluate(ctx);
+fn::GField Expression::add(EvaluationContext &ctx, Expression *left, Expression *right) {
+  fn::GField _left = left->evaluate(ctx);
+  fn::GField _right = right->evaluate(ctx);
 
-  if(_left != _right) {
-    throw "invalid operands";
+  if(ops_are<float, float>(_left, _right)) {
+    return fl_fl_to_fl(_left, _right, NODE_MATH_ADD);
   }
 
-  switch(_left) {
-      case ValueKind::FLOAT:
-          ctx.push_op(Operation::math_op(Operation::OpKind::MATH_FL_FL_TO_FL, NODE_MATH_SUBTRACT));
-          break;
-      case ValueKind::VECTOR:
-          ctx.push_op(Operation::vector_math_op(Operation::OpKind::VECTOR_MATH_FL3_FL3_TO_FL3, NODE_VECTOR_MATH_SUBTRACT));
-          break;
-      default:
-          BLI_assert_unreachable();
+  if(ops_are<float3, float3>(_left, _right)) {
+    return fl3_fl3_to_fl3(_left, _right, NODE_VECTOR_MATH_ADD);
   }
 
-    return _left;
+  throw "invalid operands";
 }
 
-ValueKind Expression::mul(EvaluationContext &ctx, Expression *left, Expression *right) {
-  auto savepoint = ctx.savepoint();
+fn::GField Expression::sub(EvaluationContext &ctx, Expression *left, Expression *right) {
+  fn::GField _left = left->evaluate(ctx);
+  fn::GField _right = right->evaluate(ctx);
+
+  if(ops_are<float, float>(_left, _right)) {
+    return fl_fl_to_fl(_left, _right, NODE_MATH_SUBTRACT);
+  }
+
+  if(ops_are<float3, float3>(_left, _right)) {
+    return fl3_fl3_to_fl3(_left, _right, NODE_VECTOR_MATH_SUBTRACT);
+  }
+
+  throw "invalid operands";
+}
+
+fn::GField Expression::mul(EvaluationContext &ctx, Expression *left, Expression *right) {
+  fn::GField _left = left->evaluate(ctx);
+  fn::GField _right = right->evaluate(ctx);
+
+  if(ops_are<float, float>(_left, _right)) {
+    return fl_fl_to_fl(_left, _right, NODE_MATH_MULTIPLY);
+  }
+
+  if(ops_are<float3, float>(_left, _right)) {
+    return fl3_fl_to_fl3(_left, _right, NODE_VECTOR_MATH_SCALE);
+  }
+
+  if(ops_are<float, float3>(_left, _right)) {
+    return fl3_fl_to_fl3(_right, _left, NODE_VECTOR_MATH_SCALE);
+  }
+
+  throw "invalid operands";
+}
+
+fn::GField Expression::div(EvaluationContext &ctx, Expression *left, Expression *right) {
+  fn::GField _left = left->evaluate(ctx);
+  fn::GField _right = right->evaluate(ctx);
+
+  if(ops_are<float, float>(_left, _right)) {
+    return fl_fl_to_fl(_left, _right, NODE_MATH_DIVIDE);
+  }
+
+  if(ops_are<float3, float>(_left, _right)) {
+    auto one_div_right = fl_fl_to_fl(constant(1.0f), _right, NODE_MATH_DIVIDE);
+    return fl3_fl_to_fl3(_left, one_div_right, NODE_VECTOR_MATH_SCALE);
+  }
+
+  throw "invalid operands";
+}
+
+fn::GField Expression::negate(EvaluationContext &ctx, Expression *x) {
+  fn::GField _x = x->evaluate(ctx);
   
-  ValueKind _left = left->evaluate(ctx);
-  ValueKind _right = right->evaluate(ctx);
-  ValueKind result;
-
-  if(ops_are(_left, _right, ValueKind::FLOAT)) {
-    result = ValueKind::FLOAT;
-  } else if(ops_are(_left, _right, ValueKind::FLOAT, ValueKind::VECTOR)) {
-    result = ValueKind::VECTOR;
-  } else {
-    throw "invalid operands";
+  if(op_is<float>(_x)) {
+    return fl_fl_to_fl(_x, constant(-1.0f), NODE_MATH_MULTIPLY);
   }
 
-  switch(result) {
-      case ValueKind::FLOAT:
-          ctx.push_op(Operation::math_op(Operation::OpKind::MATH_FL_FL_TO_FL, NODE_MATH_MULTIPLY));
-          break;
-      case ValueKind::VECTOR:
-          ctx.rollback(savepoint);
-
-          if(_left == ValueKind::VECTOR) {
-            left->evaluate(ctx);
-            right->evaluate(ctx);
-          } else {
-            right->evaluate(ctx);
-            left->evaluate(ctx);
-          }
-
-          ctx.push_op(Operation::vector_math_op(Operation::OpKind::VECTOR_MATH_FL3_FL_TO_FL3, NODE_VECTOR_MATH_SCALE));
-          break;
-      default:
-          BLI_assert_unreachable();
+  if(op_is<float3>(_x)) {
+    return fl3_fl_to_fl3(_x, constant(-1.0f), NODE_VECTOR_MATH_SCALE);
   }
 
-  return result;
+  throw "invalid operand";
 }
 
-ValueKind Expression::div(EvaluationContext &ctx, Expression *left, Expression *right) {
-  ValueKind _left = left->evaluate(ctx);
+fn::GField Expression::pow(EvaluationContext &ctx, Expression *x, Expression *y) {
+  fn::GField _x = x->evaluate(ctx);
+  fn::GField _y = y->evaluate(ctx);
 
-  switch(_left) {
-      case ValueKind::FLOAT: {
-          ValueKind _right = right->evaluate(ctx);
-
-          if(_right != ValueKind::FLOAT) {
-              throw "divisor must be a float";
-          }
-
-          ctx.push_op(Operation::math_op(Operation::OpKind::MATH_FL_FL_TO_FL, NODE_MATH_DIVIDE));
-          break;
-      }
-      case ValueKind::VECTOR: {
-          // v / f needs to be turned into v scaled by 1 / f
-          ctx.push_op(Operation::float_op(1.0f));
-
-          ValueKind _right = right->evaluate(ctx);
-
-          if(_right != ValueKind::FLOAT) {
-              throw "divisor must be a float";
-          }
-
-          ctx.push_op(Operation::math_op(Operation::OpKind::MATH_FL_FL_TO_FL, NODE_MATH_DIVIDE));
-          ctx.push_op(Operation::vector_math_op(Operation::OpKind::VECTOR_MATH_FL3_FL_TO_FL3, NODE_VECTOR_MATH_SCALE));
-          break;
-      }
-      default:
-          BLI_assert_unreachable();
+  if(ops_are<float, float>(_x, _y)) {
+    return fl_fl_to_fl(_x, _y, NODE_MATH_EXPONENT);
   }
 
-  return _left;
+  throw "invalid operands";
 }
 
-ValueKind Expression::negate(EvaluationContext &ctx, Expression *x) {
-  // there's no blender negate math op, so turn it into a multiply with -1
-  ValueKind _x = x->evaluate(ctx);
-  
-  switch(_x) {
-      case ValueKind::FLOAT:
-        ctx.push_op(Operation::float_op(-1.0));
-        ctx.push_op(Operation::math_op(Operation::OpKind::MATH_FL_FL_TO_FL, NODE_MATH_MULTIPLY));
-        break;
-      case ValueKind::VECTOR:
-        ctx.push_op(Operation::float_op(-1.0));
-        ctx.push_op(Operation::vector_math_op(Operation::OpKind::VECTOR_MATH_FL3_FL_TO_FL3, NODE_VECTOR_MATH_SCALE));
-        break;
-      default:
-        BLI_assert_unreachable();
-  }
-
-  return _x;
-}
-
-ValueKind Expression::pow(EvaluationContext &ctx, Expression *x, Expression *y) {
-  ValueKind _x = x->evaluate(ctx);
-  ValueKind _y = y->evaluate(ctx);
-
-  if(!ops_are(_x, _y, ValueKind::FLOAT)) {
-    throw "invalid arguments";
-  }
-  
-  ctx.push_op(Operation::math_op(Operation::OpKind::MATH_FL_FL_TO_FL, NODE_MATH_EXPONENT));
-  return _x;
-}
-
-ValueKind Expression::lerp(EvaluationContext &ctx, Expression *a, Expression *b, Expression *t) {
+fn::GField Expression::lerp(EvaluationContext &ctx, Expression *a, Expression *b, Expression *t) {
   // (b - a) * t + a
-  ValueKind b_sub_a = sub(ctx, b, a);
-  t->evaluate(ctx);
+  fn::GField _a = a->evaluate(ctx);
+  fn::GField _b = b->evaluate(ctx);
+  fn::GField _t = t->evaluate(ctx);
 
-  switch(b_sub_a) {
-      case ValueKind::FLOAT:
-          ctx.push_op(Operation::math_op(Operation::OpKind::MATH_FL_FL_TO_FL, NODE_MATH_MULTIPLY));
-          a->evaluate(ctx);
-          ctx.push_op(Operation::math_op(Operation::OpKind::MATH_FL_FL_TO_FL, NODE_MATH_ADD));
-          break;
-      case ValueKind::VECTOR:
-          ctx.push_op(Operation::vector_math_op(Operation::OpKind::VECTOR_MATH_FL3_FL_TO_FL3, NODE_VECTOR_MATH_SCALE));
-          a->evaluate(ctx);
-          ctx.push_op(Operation::vector_math_op(Operation::OpKind::VECTOR_MATH_FL3_FL3_TO_FL3, NODE_VECTOR_MATH_ADD));
-          break;
-      default:
-          BLI_assert_unreachable();
+  if(ops_are<float, float, float>(_a, _b, _t)) {
+    auto b_sub_a = fl_fl_to_fl(_b, _a, NODE_MATH_SUBTRACT);
+    auto mul_t = fl_fl_to_fl(b_sub_a, _t, NODE_MATH_MULTIPLY);
+    return fl_fl_to_fl(mul_t, _a, NODE_MATH_ADD);
   }
 
-  return b_sub_a;
+  if(ops_are<float3, float3, float>(_a, _b, _t)) {
+    auto b_sub_a = fl3_fl3_to_fl3(_b, _a, NODE_VECTOR_MATH_SUBTRACT);
+    auto mul_t = fl3_fl_to_fl3(b_sub_a, _t, NODE_VECTOR_MATH_SCALE);
+    return fl3_fl3_to_fl3(mul_t, _a, NODE_VECTOR_MATH_ADD);
+  }
+
+  throw "invalid operands";
 }
 
-ValueKind Expression::vec(EvaluationContext &ctx, Expression *x, Expression *y, Expression *z) {
-  ValueKind _x = x->evaluate(ctx);
-  ValueKind _y = y->evaluate(ctx);
-  ValueKind _z = z->evaluate(ctx);
+fn::GField Expression::vec(EvaluationContext &ctx, Expression *x, Expression *y, Expression *z) {
+  fn::GField _x = x->evaluate(ctx);
+  fn::GField _y = y->evaluate(ctx);
+  fn::GField _z = z->evaluate(ctx);
 
-  if(_x != ValueKind::FLOAT || _y != ValueKind::FLOAT || _z != ValueKind::FLOAT) {
-    throw "invalid arguments";
+  if(ops_are<float, float, float>(_x, _y, _z)) {
+    static auto fn = mf::build::SI3_SO<float, float, float, float3>("vec", [](float x, float y, float z) {
+      return float3 {x, y, z};
+    });
+
+    return fn::Field<float3>(fn::FieldOperation::Create(fn, { std::move(_x), std::move(_y), std::move(_z) }));
   }
 
-  ctx.push_op(Operation::make_vector_op());
-
-  return ValueKind::VECTOR;
+  throw "invalid operands";
 }
 
-ValueKind Expression::len(EvaluationContext &ctx, Expression *v) {
-  ValueKind _v = v->evaluate(ctx);
+fn::GField Expression::len(EvaluationContext &ctx, Expression *v) {
+  auto _v = v->evaluate(ctx);
 
-  if(_v != ValueKind::VECTOR) {
-    throw "invalid arguments";
+  if(op_is<float3>(_v)) {
+    return fl3_to_fl(_v, NODE_VECTOR_MATH_LENGTH);
   }
 
-  ctx.push_op(Operation::vector_math_op(Operation::OpKind::VECTOR_MATH_FL3_TO_FL, NODE_VECTOR_MATH_LENGTH));
+  throw "invalid operands";
+}
 
-  return ValueKind::FLOAT;
 }

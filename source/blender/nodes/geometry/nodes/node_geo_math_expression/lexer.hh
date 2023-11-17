@@ -4,6 +4,8 @@
 #include <cctype>
 #include <cstdint>
 
+namespace blender::nodes::node_geo_math_expression_cc {
+
 enum class TokenKind { IDENT, NUMBER, LPAREN, RPAREN, COMMA, PLUS, MINUS, MUL, DIV, EXP, END };
 
 struct Token {
@@ -165,3 +167,5 @@ private:
     return text[index];
   }
 };
+
+}
