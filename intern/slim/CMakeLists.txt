@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 2.6)
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ./

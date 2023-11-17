@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
+#include "doublearea.h"
 #include "slim.h"
 
-#include "doublearea.h"
 #include <Eigen/Dense>
 
 using namespace Eigen;

@@ -1,9 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
-#include <Eigen/Dense>
 #include <stdio.h>
+
+#include <Eigen/Dense>
 
 #include "slim.h"
 #include "slim_matrix_transfer.h"

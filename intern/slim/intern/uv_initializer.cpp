@@ -1,9 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "uv_initializer.h"
+#include "cotmatrix.h"
+
 #include <Eigen/SparseLU>
 
-#include "cotmatrix.h"
 #include <iostream>
 
 namespace slim {

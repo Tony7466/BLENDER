@@ -1,13 +1,9 @@
-// This file is part of libigl, a simple c++ geometry processing library.
-//
-// Copyright (C) 2016 Michael Rabinovich
-//
-// This Source Code Form is subject to the terms of the Mozilla Public License
-// v. 2.0. If a copy of the MPL was not distributed with this file, You can
-// obtain one at http://mozilla.org/MPL/2.0/.
+/* SPDX-FileCopyrightText: 2016 Michael Rabinovich, 2023 Blender Authors
+ * SPDX-License-Identifier: MPL-2.0
+ *
+ * Derived from libigl, a simple c++ geometry processing library. */
 
 #include "slim.h"
-
 #include "doublearea.h"
 #include "flip_avoiding_line_search.h"
 

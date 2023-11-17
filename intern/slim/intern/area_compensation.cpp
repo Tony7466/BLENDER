@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_assert.h"
 
@@ -83,4 +84,5 @@ void correct_mesh_surface_area_if_necessary(SLIMData &slim_data)
   double desired_ratio = 1.0;
   correct_geometry_size(surface_area_to_map_area_ratio, slim_data.V, desired_ratio);
 }
+
 }  // namespace slim
