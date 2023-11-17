@@ -29,11 +29,7 @@ class VKImageView;
  */
 class VKImageViews {
  private:
-  enum class Location : uint8_t {
-    SHADER_BINDING,
-    ATTCHMENT,
-    LOCATION_ALL
-  };
+  enum class Location : uint8_t { SHADER_BINDING, ATTCHMENT, LOCATION_ALL };
   /**
    * Types for restriction
    *

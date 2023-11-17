@@ -521,7 +521,6 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
     /* Set the current information on the `render_pass_info_id_` side and compare it with the
      * information cached in the reverse id. */
     if (type >= GPU_FB_COLOR_ATTACHMENT0) {
-      BLI_assert(renderpass_->attachments_.idx_[renderpass_->info_id_][type] == -1);
       if (vk_framebuffer_create_info_.attachmentCount > 0) {
         /* If the frame buffer information is not the default value, a color attachment change is
          * forced. */
@@ -529,7 +528,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       }
       /* Specify the order of reference as an index, starting with the description of each subpass.
        */
-	  if (!reconfig) {
+      if (!reconfig) {
         attachment_reference = renderpass_->attachments_.reference_get(
             renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount,
             renderpass_->info_id_);
@@ -539,7 +538,6 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
         attachment_reference = renderpass_->attachments_.reference_get(
             renderpass_->attachments_.idx_[renderpass_->info_id_][type], renderpass_->info_id_);
       }
-
 
       attachment_reference->aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       attachment_reference->layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -570,7 +568,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       if (tex) {
         /* Use depth-attachment. */
         renderpass_->attachments_.idx_[renderpass_->info_id_][type] =
-              renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount++;
+            renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount++;
         VKTexture &texture = *reinterpret_cast<VKTexture *>(tex);
         if (GPU_texture_has_stencil_format(tex)) {
           BLI_assert(ELEM(type, GPU_FB_DEPTH_STENCIL_ATTACHMENT));
@@ -579,7 +577,8 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
           BLI_assert(ELEM(type, GPU_FB_DEPTH_ATTACHMENT));
         }
 
-        attachment_reference->aspectMask = to_vk_image_aspect_flag_bits(texture.device_format_get());
+        attachment_reference->aspectMask = to_vk_image_aspect_flag_bits(
+            texture.device_format_get());
         attachment_reference->layout = vk_aspect_to_layout(attachment_reference->aspectMask);
         attachment_reference->attachment =
             renderpass_->attachments_.idx_[renderpass_->info_id_][type];
@@ -757,7 +756,7 @@ void VKFrameBuffer::create()
           break;
         }
       }
-    
+
       if (size[0] == -1) {
         type = renderpass_->attachments_.type_get(
             renderpass_->subpass_[renderpass_->info_id_].pDepthStencilAttachment->attachment,
@@ -765,7 +764,6 @@ void VKFrameBuffer::create()
         const GPUAttachment &attachment = attachments_[type];
         reinterpret_cast<Texture *>(attachment.tex)->mip_size_get(attachment.mip, size);
       }
-
     }
   }
 
@@ -820,15 +818,16 @@ void VKFrameBuffer::ensure()
         continue;
       }
       VkAttachmentReference2 *attachment_reference = renderpass_->attachments_.reference_get(
-         ( (type<2) ? -1:renderpass_->attachments_.idx_[renderpass_->info_id_][type] ), renderpass_->info_id_);
+          ((type < 2) ? -1 : renderpass_->attachments_.idx_[renderpass_->info_id_][type]),
+          renderpass_->info_id_);
       if (attachment_reference->attachment == VK_ATTACHMENT_UNUSED) {
         continue;
       }
       VkAttachmentDescription2 &attachment_description =
           renderpass_->attachments_
               .descriptions_[renderpass_->info_id_][attachment_reference->attachment];
-      renderpass_->dirty_ = ! renderpass_->attachments_.check_format(
-          attachment.tex,  attachment_description);
+      renderpass_->dirty_ = !renderpass_->attachments_.check_format(attachment.tex,
+                                                                    attachment_description);
       auto layer_range = layer_range_get(attachment.tex, attachment.layer);
       flush |= image_view_ensure(attachment.tex, attachment.mip, layer_range, i);
       flush |= renderpass_->dirty_;

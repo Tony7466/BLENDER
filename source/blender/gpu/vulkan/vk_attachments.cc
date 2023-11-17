@@ -3,11 +3,10 @@
 
 namespace blender::gpu {
 bool VKAttachments::check_format(GPUTexture *texture,
-                  VkAttachmentDescription2 &attachment_description)
+                                 VkAttachmentDescription2 &attachment_description)
 {
   VkFormat vk_format = to_vk_format(reinterpret_cast<VKTexture *>(texture)->device_format_get());
-  if(attachment_description.format != vk_format)
-  {
+  if (attachment_description.format != vk_format) {
     attachment_description.format = vk_format;
     return false;
   };

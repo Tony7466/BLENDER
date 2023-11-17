@@ -78,7 +78,7 @@ void VKTexture::generate_mipmap()
       dst_size.y = 1;
       dst_size.z = 1;
     }
-    
+
     if (ELEM(to_vk_image_type(this->type_get()), VK_IMAGE_TYPE_2D)) {
       src_size.z = 1;
       dst_size.z = 1;

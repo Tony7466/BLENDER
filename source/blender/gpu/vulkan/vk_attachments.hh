@@ -66,8 +66,7 @@ class VKAttachments {
   std::array<vk_attachment::idx_ty, 2> idx_;
 
  public:
-  bool check_format(GPUTexture *texture,
-                    VkAttachmentDescription2 &attachment_description);
+  bool check_format(GPUTexture *texture, VkAttachmentDescription2 &attachment_description);
   void description_set(GPUTexture *texture,
                        const VkAttachmentReference2 &attachment_reference,
                        VkAttachmentDescription2 &attachment_description,
@@ -77,8 +76,9 @@ class VKAttachments {
 
   bool is_valid() const;
 
-  VkAttachmentReference2* reference_get(int attachemnt_id, int id) {
-    if (attachemnt_id ==-1) {
+  VkAttachmentReference2 *reference_get(int attachemnt_id, int id)
+  {
+    if (attachemnt_id == -1) {
       return &depth_references_[id];
     }
     return &references_[id][attachemnt_id];
