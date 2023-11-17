@@ -15,27 +15,21 @@
 
 #include <stdexcept>
 
-
-namespace igl
-{
+namespace igl {
 
 class SlimFailedException : public std::runtime_error {
  public:
-  SlimFailedException() : std::runtime_error("Slim operation failed")
-  {}
+  SlimFailedException() : std::runtime_error("Slim operation failed") {}
 };
 
-
 // Compute a SLIM map as derived in "Scalable Locally Injective Maps" [Rabinovich et al. 2016].
-struct SLIMData
-{
+struct SLIMData {
   bool valid = true;
 
   // Input
-  Eigen::MatrixXd V; // #V by 3 list of mesh vertex positions
-  Eigen::MatrixXi F; // #F by 3/3 list of mesh faces (triangles/tets)
-  enum SLIM_ENERGY
-  {
+  Eigen::MatrixXd V;  // #V by 3 list of mesh vertex positions
+  Eigen::MatrixXi F;  // #F by 3/3 list of mesh faces (triangles/tets)
+  enum SLIM_ENERGY {
     ARAP,
     LOG_ARAP,
     SYMMETRIC_DIRICHLET,
@@ -51,8 +45,8 @@ struct SLIMData
   Eigen::MatrixXd bc;
   double soft_const_p;
 
-  double exp_factor; // used for exponential energies, ignored otherwise
-  bool mesh_improvement_3d; // only supported for 3d
+  double exp_factor;         // used for exponential energies, ignored otherwise
+  bool mesh_improvement_3d;  // only supported for 3d
 
   int reflection_mode;
   bool skipInitialization = false;
@@ -60,10 +54,12 @@ struct SLIMData
   double expectedSurfaceAreaOfResultingMap = 0;
 
   // Output
-  Eigen::MatrixXd V_o; // #V by dim list of mesh vertex positions (dim = 2 for parametrization, 3 otherwise)
-  Eigen::MatrixXd oldUVs; // #V by dim list of mesh vertex positions (dim = 2 for parametrization, 3 otherwise)
+  Eigen::MatrixXd
+      V_o;  // #V by dim list of mesh vertex positions (dim = 2 for parametrization, 3 otherwise)
+  Eigen::MatrixXd oldUVs;  // #V by dim list of mesh vertex positions (dim = 2 for parametrization,
+                           // 3 otherwise)
 
-  //weightmap for weighted parameterization
+  // weightmap for weighted parameterization
   bool withWeightedParameterization;
   Eigen::VectorXf weightmap;
   Eigen::VectorXf weightPerFaceMap;
@@ -71,7 +67,7 @@ struct SLIMData
   double relativeScale;
   double globalScaleInvarianceFactor = 1.0;
 
-  double energy; // objective value
+  double energy;  // objective value
 
   int nIterations;
 
@@ -85,12 +81,18 @@ struct SLIMData
 
   Eigen::VectorXd WGL_M;
   Eigen::VectorXd rhs;
-  Eigen::MatrixXd Ri,Ji;
-  Eigen::VectorXd W_11; Eigen::VectorXd W_12; Eigen::VectorXd W_13;
-  Eigen::VectorXd W_21; Eigen::VectorXd W_22; Eigen::VectorXd W_23;
-  Eigen::VectorXd W_31; Eigen::VectorXd W_32; Eigen::VectorXd W_33;
-  Eigen::SparseMatrix<double> Dx,Dy,Dz;
-  int f_n,v_n;
+  Eigen::MatrixXd Ri, Ji;
+  Eigen::VectorXd W_11;
+  Eigen::VectorXd W_12;
+  Eigen::VectorXd W_13;
+  Eigen::VectorXd W_21;
+  Eigen::VectorXd W_22;
+  Eigen::VectorXd W_23;
+  Eigen::VectorXd W_31;
+  Eigen::VectorXd W_32;
+  Eigen::VectorXd W_33;
+  Eigen::SparseMatrix<double> Dx, Dy, Dz;
+  int f_n, v_n;
   bool first_solve;
   bool has_pre_calc = false;
   int dim;
@@ -104,25 +106,25 @@ struct SLIMData
 //    bc          #b by dim list of boundary conditions
 //    soft_p      Soft penalty factor (can be zero)
 //    slim_energy Energy to minimize
-	void slim_precompute(Eigen::MatrixXd& V,
-                                Eigen::MatrixXi& F,
-                                Eigen::MatrixXd& V_init,
-                                SLIMData& data,
-                                SLIMData::SLIM_ENERGY slim_energy,
-                                Eigen::VectorXi& b,
-                                Eigen::MatrixXd& bc,
-                                double soft_p);
+void slim_precompute(Eigen::MatrixXd &V,
+                     Eigen::MatrixXi &F,
+                     Eigen::MatrixXd &V_init,
+                     SLIMData &data,
+                     SLIMData::SLIM_ENERGY slim_energy,
+                     Eigen::VectorXi &b,
+                     Eigen::MatrixXd &bc,
+                     double soft_p);
 
 // Recompute the current energy if using liveunwrap
-	void recompute_energy(SLIMData &data);
+void recompute_energy(SLIMData &data);
 
 // Run iter_num iterations of SLIM
 // Outputs:
 //    V_o (in SLIMData): #V by dim list of mesh vertex positions
-	Eigen::MatrixXd slim_solve(SLIMData& data, int iter_num);
+Eigen::MatrixXd slim_solve(SLIMData &data, int iter_num);
 
-	void adjustSoftConstraintViolationPenalty(SLIMData &data);
+void adjustSoftConstraintViolationPenalty(SLIMData &data);
 
-} // END NAMESPACE
+}  // namespace igl
 
-#endif // SLIM_H
+#endif  // SLIM_H

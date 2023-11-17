@@ -12,23 +12,21 @@
 #include <Eigen/Dense>
 #include <vector>
 
-namespace igl
-{
+namespace igl {
 
-  // Map the vertices whose indices are in a given boundary loop (bnd) on the
-  // unit circle with spacing proportional to the original boundary edge
-  // lengths.
-  //
-  // Inputs:
-  //   V  #V by dim list of mesh vertex positions
-  //   b  #W list of vertex ids
-  // Outputs:
-  //   UV   #W by 2 list of 2D position on the unit circle for the vertices in b
-  IGL_INLINE void map_vertices_to_circle(
-  	const Eigen::MatrixXd& V,
-    const Eigen::VectorXi& bnd,
-  	Eigen::MatrixXd& UV);
-}
+// Map the vertices whose indices are in a given boundary loop (bnd) on the
+// unit circle with spacing proportional to the original boundary edge
+// lengths.
+//
+// Inputs:
+//   V  #V by dim list of mesh vertex positions
+//   b  #W list of vertex ids
+// Outputs:
+//   UV   #W by 2 list of 2D position on the unit circle for the vertices in b
+IGL_INLINE void map_vertices_to_circle(const Eigen::MatrixXd &V,
+                                       const Eigen::VectorXi &bnd,
+                                       Eigen::MatrixXd &UV);
+}  // namespace igl
 
 #ifndef IGL_STATIC_LIBRARY
 #  include "map_vertices_to_circle.cpp"
