@@ -1982,5 +1982,15 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         version_geometry_nodes_use_rotation_socket(*ntree);
       }
     }
+
+    /* Replace Cycles.displacement_method by Material::displacement_method. */
+    LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+      int displacement_method = MA_DISPLACEMENT_BUMP;
+      if (IDProperty *cmat = version_cycles_properties_from_ID(&material->id)) {
+        displacement_method = version_cycles_property_int(
+            cmat, "displacement_method", MA_DISPLACEMENT_BUMP);
+      }
+      material->displacement_method = displacement_method;
+    }
   }
 }
