@@ -781,7 +781,7 @@ void ED_node_set_active(
   }
   else if (ntree->type == NTREE_COMPOSIT) {
     /* Make active viewer, currently only one is supported. */
-    if node->type == CMP_NODE_VIEWER)
+    if (node->type == CMP_NODE_VIEWER)
       {
         for (bNode *node_iter : ntree->all_nodes()) {
           if (node_iter->type == CMP_NODE_VIEWER) {
