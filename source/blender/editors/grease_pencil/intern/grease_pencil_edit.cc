@@ -646,22 +646,12 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
   const bke::AttributeAccessor src_attributes = curves.attributes();
 
   /* Transfer curve attributes. */
-  for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
-           src_attributes, dst_attributes, ATTR_DOMAIN_MASK_CURVE, {}, {"cyclic"}))
-  {
-    bke::attribute_math::gather(attribute.src, dst_to_src_curve, attribute.dst.span);
-    attribute.dst.finish();
-  }
-
+  gather_attributes(
+      src_attributes, ATTR_DOMAIN_CURVE, {}, {"cyclic"}, dst_to_src_curve, dst_attributes);
   array_utils::copy(dst_cyclic.as_span(), dst_curves.cyclic_for_write());
 
   /* Transfer point attributes. */
-  for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
-           src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, {}))
-  {
-    bke::attribute_math::gather(attribute.src, dst_to_src_point.as_span(), attribute.dst.span);
-    attribute.dst.finish();
-  }
+  gather_attributes(src_attributes, ATTR_DOMAIN_POINT, {}, {}, dst_to_src_point, dst_attributes);
 
   dst_curves.remove_attributes_based_on_types();
 
