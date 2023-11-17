@@ -3,19 +3,15 @@
 
 #include <iostream>
 #include <stdlib.h>
+#include <string>
+#include <vector>
 
 #include "area_compensation.h"
+#include "doublearea.h"
 #include "geometry_data_retrieval.h"
 #include "least_squares_relocator.h"
 #include "slim.h"
 #include "uv_initializer.h"
-
-#include "BLI_assert.h"
-
-#include "doublearea.h"
-
-#include <string>
-#include <vector>
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>

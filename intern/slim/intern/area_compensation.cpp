@@ -16,7 +16,7 @@ void correct_geometry_size(double surface_area_to_map_area_ratio,
                            MatrixXd &vertex_positions,
                            double desired_surface_area_to_map_ration)
 {
-  assert(surface_area_to_map_area_ratio > 0);
+  BLI_assert(surface_area_to_map_area_ratio > 0);
   double sqrt_of_ratio = sqrt(surface_area_to_map_area_ratio / desired_surface_area_to_map_ration);
   vertex_positions = vertex_positions / sqrt_of_ratio;
 }

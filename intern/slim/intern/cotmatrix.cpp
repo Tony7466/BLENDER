@@ -10,13 +10,13 @@
 
 namespace slim {
 
-// Inputs:
-//   V  #V by dim list of rest domain positions
-//   F  #F by 3 list of triangle indices into V
-// Outputs:
-//     C  #F by 3 list of 1/2*cotangents corresponding angles
-//       for triangles, columns correspond to edges [1,2],[2,0],[0,1]
-//
+/* Inputs:
+ *   V  #V by dim list of rest domain positions
+ *   F  #F by 3 list of triangle indices into V
+ * Outputs:
+ *     C  #F by 3 list of 1/2*cotangents corresponding angles
+ *       for triangles, columns correspond to edges [1,2],[2,0],[0,1]
+ */
 template<typename DerivedV, typename DerivedF, typename DerivedC>
 static inline void cotmatrix_entries(const Eigen::PlainObjectBase<DerivedV> &V,
                                      const Eigen::PlainObjectBase<DerivedF> &F,
@@ -24,24 +24,24 @@ static inline void cotmatrix_entries(const Eigen::PlainObjectBase<DerivedV> &V,
 {
   using namespace std;
   using namespace Eigen;
-  // Number of elements
+  /* Number of elements. */
   int m = F.rows();
 
   assert(F.cols() == 3);
 
-  // Law of cosines + law of sines
-  // Compute Squared Edge lenghts
+  /* Law of cosines + law of sines. */
+  /* Compute Squared Edge lenghts. */
   Matrix<typename DerivedC::Scalar, Dynamic, 3> l2;
   squared_edge_lengths(V, F, l2);
-  // Compute Edge lenghts
+  /* Compute Edge lenghts. */
   Matrix<typename DerivedC::Scalar, Dynamic, 3> l;
   l = l2.array().sqrt();
 
-  // double area
+  /* Double area. */
   Matrix<typename DerivedC::Scalar, Dynamic, 1> dblA;
   doublearea(l, dblA);
-  // cotangents and diagonal entries for element matrices
-  // correctly divided by 4 (alec 2010)
+  /* Cotangents and diagonal entries for element matrices.
+   * correctly divided by 4. */
   C.resize(m, 3);
   for (int i = 0; i < m; i++) {
     C(i, 0) = (l2(i, 1) + l2(i, 2) - l2(i, 0)) / dblA(i) / 4.0;
@@ -60,25 +60,25 @@ inline void cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
 
   L.resize(V.rows(), V.rows());
   Matrix<int, Dynamic, 2> edges;
-  // 3 for triangles
+  /* 3 for triangles. */
   assert(F.cols() == 3);
 
-  // This is important! it could decrease the comptuation time by a factor of 2
-  // Laplacian for a closed 2d manifold mesh will have on average 7 entries per
-  // row
+  /* This is important! it could decrease the comptuation time by a factor of 2
+   * Laplacian for a closed 2d manifold mesh will have on average 7 entries per
+   * row. */
   L.reserve(10 * V.rows());
   edges.resize(3, 2);
   edges << 1, 2, 2, 0, 0, 1;
 
-  // Gather cotangents
+  /* Gather cotangents. */
   Matrix<Scalar, Dynamic, Dynamic> C;
   cotmatrix_entries(V, F, C);
 
   vector<Triplet<Scalar>> IJV;
   IJV.reserve(F.rows() * edges.rows() * 4);
-  // Loop over triangles
+  /* Loop over triangles. */
   for (int i = 0; i < F.rows(); i++) {
-    // loop over edges of element
+    /* loop over edges of element. */
     for (int e = 0; e < edges.rows(); e++) {
       int source = F(i, edges(e, 0));
       int dest = F(i, edges(e, 1));

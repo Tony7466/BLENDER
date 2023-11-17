@@ -10,21 +10,22 @@
 
 namespace slim {
 
-// Implement a bisection linesearch to minimize a mesh-based energy on vertices given at 'x' at a
-// search direction 'd', with initial step size. Stops when a point with lower energy is found, or
-// after maximal iterations have been reached.
-//
-// Inputs:
-//   x  						#X by dim list of variables
-//   d  						#X by dim list of a given search direction
-//   step_size  			initial step size
-//   energy       			A function to compute the mesh-based energy (return an energy that is
-//   bigger than 0) cur_energy(OPTIONAL)     The energy at the given point. Helps save redundant
-//   computations.
-//							This is optional. If not specified, the function will compute it.
-// Outputs:
-//		x  						#X by dim list of variables at the new location
-// Returns the energy at the new point 'x'
+/* Implement a bisection linesearch to minimize a mesh-based energy on vertices given at 'x' at a
+ * search direction 'd', with initial step size. Stops when a point with lower energy is found, or
+ * after maximal iterations have been reached.
+ *
+ * Inputs:
+ *   x  						#X by dim list of variables
+ *   d  						#X by dim list of a given search direction
+ *   step_size  			initial step size
+ *   energy       			A function to compute the mesh-based energy (return an energy that is
+ *   bigger than 0) cur_energy(OPTIONAL)     The energy at the given point. Helps save redundant
+ *   computations.
+ *							This is optional. If not specified, the function will compute it.
+ * Outputs:
+ *		x  						#X by dim list of variables at the new location
+ * Returns the energy at the new point 'x'.
+ */
 static inline double line_search(Eigen::MatrixXd &x,
                                  const Eigen::MatrixXd &d,
                                  double step_size,
@@ -36,7 +37,7 @@ static inline double line_search(Eigen::MatrixXd &x,
     old_energy = cur_energy;
   }
   else {
-    old_energy = energy(x);  // no energy was given -> need to compute the current energy
+    old_energy = energy(x); /* No energy was given -> need to compute the current energy. */
   }
   double new_energy = old_energy;
   int cur_iter = 0;
@@ -81,9 +82,9 @@ static inline double get_smallest_pos_quad_zero(double a, double b, double c)
   t1 = max(t1, t2);
   t2 = tmp_n;
   if (t1 == t2) {
-    return INFINITY;  // means the orientation flips twice = doesn't flip
+    return INFINITY; /* Means the orientation flips twice = doesn't flip. */
   }
-  // return the smallest negative root if it exists, otherwise return infinity
+  /* Return the smallest negative root if it exists, otherwise return infinity. */
   if (t1 > 0) {
     if (t2 > 0) {
       return t2;
@@ -103,48 +104,11 @@ static inline double get_min_pos_root_2D(const Eigen::MatrixXd &uv,
                                          int f)
 {
   using namespace std;
-  /*
-        Finding the smallest timestep t s.t a triangle get degenerated (<=> det = 0)
-        The following code can be derived by a symbolic expression in matlab:
-
-        Symbolic matlab:
-        U11 = sym('U11');
-        U12 = sym('U12');
-        U21 = sym('U21');
-        U22 = sym('U22');
-        U31 = sym('U31');
-        U32 = sym('U32');
-
-        V11 = sym('V11');
-        V12 = sym('V12');
-        V21 = sym('V21');
-        V22 = sym('V22');
-        V31 = sym('V31');
-        V32 = sym('V32');
-
-        t = sym('t');
-
-        U1 = [U11,U12];
-        U2 = [U21,U22];
-        U3 = [U31,U32];
-
-        V1 = [V11,V12];
-        V2 = [V21,V22];
-        V3 = [V31,V32];
-
-        A = [(U2+V2*t) - (U1+ V1*t)];
-        B = [(U3+V3*t) - (U1+ V1*t)];
-        C = [A;B];
-
-        solve(det(C), t);
-        cf = coeffs(det(C),t); % Now cf(1),cf(2),cf(3) holds the coefficients for the polynom. at
-     order c,b,a
-      */
-
+  /* Finding the smallest timestep t s.t a triangle get degenerated (<=> det = 0). */
   int v1 = F(f, 0);
   int v2 = F(f, 1);
   int v3 = F(f, 2);
-  // get quadratic coefficients (ax^2 + b^x + c)
+  /* Get quadratic coefficients (ax^2 + b^x + c). */
   const double &U11 = uv(v1, 0);
   const double &U12 = uv(v1, 1);
   const double &U21 = uv(v2, 0);
@@ -174,7 +138,7 @@ static inline double compute_max_step_from_singularities(const Eigen::MatrixXd &
   using namespace std;
   double max_step = INFINITY;
 
-  // The if statement is outside the for loops to avoid branching/ease parallelizing
+  /* The if statement is outside the for loops to avoid branching/ease parallelizing. */
   for (int f = 0; f < F.rows(); f++) {
     double min_positive_root = get_min_pos_root_2D(uv, F, d, f);
     max_step = min(max_step, min_positive_root);

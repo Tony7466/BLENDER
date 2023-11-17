@@ -19,7 +19,7 @@
 
 namespace slim {
 
-// Definitions of internal functions
+/* Definitions of internal functions. */
 inline void compute_surface_gradient_matrix(const Eigen::MatrixXd &V,
                                             const Eigen::MatrixXi &F,
                                             const Eigen::MatrixXd &F1,
@@ -46,25 +46,26 @@ inline void compute_jacobians(SLIMData &s, const Eigen::MatrixXd &uv);
 inline void build_linear_system(SLIMData &s, Eigen::SparseMatrix<double> &L);
 inline void pre_calc(SLIMData &s);
 
-// GRAD
-// G = grad(V,F)
-//
-// Compute the numerical gradient operator
-//
-// Inputs:
-//   V          #vertices by 3 list of mesh vertex positions
-//   F          #faces by 3 list of mesh face indices
-//   indices] uniform    boolean (default false) - Use a uniform mesh instead of the vertices V
-// Outputs:
-//   G  #faces*dim by #V Gradient operator
-//
-
-// Gradient of a scalar function defined on piecewise linear elements (mesh)
-// is constant on each triangle i,j,k:
-// grad(Xijk) = (Xj-Xi) * (Vi - Vk)^R90 / 2A + (Xk-Xi) * (Vj - Vi)^R90 / 2A
-// where Xi is the scalar value at vertex i, Vi is the 3D position of vertex
-// i, and A is the area of triangle (i,j,k). ^R90 represent a rotation of
-// 90 degrees
+/* GRAD
+ * G = grad(V,F)
+ *
+ * Compute the numerical gradient operator
+ *
+ * Inputs:
+ *   V          #vertices by 3 list of mesh vertex positions
+ *   F          #faces by 3 list of mesh face indices
+ *   indices] uniform    boolean (default false) - Use a uniform mesh instead of the vertices V
+ * Outputs:
+ *   G  #faces*dim by #V Gradient operator
+ *
+ *
+ * Gradient of a scalar function defined on piecewise linear elements (mesh)
+ * is constant on each triangle i,j,k:
+ * grad(Xijk) = (Xj-Xi) * (Vi - Vk)^R90 / 2A + (Xk-Xi) * (Vj - Vi)^R90 / 2A
+ * where Xi is the scalar value at vertex i, Vi is the 3D position of vertex
+ * i, and A is the area of triangle (i,j,k). ^R90 represent a rotation of
+ * 90 degrees
+ */
 template<typename DerivedV, typename DerivedF>
 inline void grad(const Eigen::PlainObjectBase<DerivedV> &V,
                  const Eigen::PlainObjectBase<DerivedF> &F,
@@ -75,46 +76,46 @@ inline void grad(const Eigen::PlainObjectBase<DerivedV> &V,
       eperp13(F.rows(), 3);
 
   for (int i = 0; i < F.rows(); ++i) {
-    // renaming indices of vertices of triangles for convenience
+    /* Renaming indices of vertices of triangles for convenience. */
     int i1 = F(i, 0);
     int i2 = F(i, 1);
     int i3 = F(i, 2);
 
-    // #F x 3 matrices of triangle edge vectors, named after opposite vertices
+    /* #F x 3 matrices of triangle edge vectors, named after opposite vertices. */
     Eigen::Matrix<typename DerivedV::Scalar, 1, 3> v32 = V.row(i3) - V.row(i2);
     Eigen::Matrix<typename DerivedV::Scalar, 1, 3> v13 = V.row(i1) - V.row(i3);
     Eigen::Matrix<typename DerivedV::Scalar, 1, 3> v21 = V.row(i2) - V.row(i1);
     Eigen::Matrix<typename DerivedV::Scalar, 1, 3> n = v32.cross(v13);
-    // area of parallelogram is twice area of triangle
-    // area of parallelogram is || v1 x v2 ||
-    // This does correct l2 norm of rows, so that it contains #F list of twice
-    // triangle areas
+    /* Area of parallelogram is twice area of triangle.
+     * Area of parallelogram is || v1 x v2 ||.
+     * This does correct l2 norm of rows, so that it contains #F list of twice.
+     * triangle areas. */
     double dblA = std::sqrt(n.dot(n));
     Eigen::Matrix<typename DerivedV::Scalar, 1, 3> u;
     if (!uniform) {
-      // now normalize normals to get unit normals
+      /* Now normalize normals to get unit normals. */
       u = n / dblA;
     }
     else {
-      // Abstract equilateral triangle v1=(0,0), v2=(h,0), v3=(h/2, (sqrt(3)/2)*h)
+      /* Abstract equilateral triangle v1=(0,0), v2=(h,0), v3=(h/2, (sqrt(3)/2)*h) */
 
-      // get h (by the area of the triangle)
+      /* Get h (by the area of the triangle). */
       double h = sqrt((dblA) /
-                      sin(M_PI / 3.0));  // (h^2*sin(60))/2. = Area => h = sqrt(2*Area/sin_60)
+                      sin(M_PI / 3.0)); /* (h^2*sin(60))/2. = Area => h = sqrt(2*Area/sin_60) */
 
       Eigen::VectorXd v1, v2, v3;
       v1 << 0, 0, 0;
       v2 << h, 0, 0;
       v3 << h / 2., (sqrt(3) / 2.) * h, 0;
 
-      // now fix v32,v13,v21 and the normal
+      /* Now fix v32,v13,v21 and the normal. */
       v32 = v3 - v2;
       v13 = v1 - v3;
       v21 = v2 - v1;
       n = v32.cross(v13);
     }
 
-    // rotate each vector 90 degrees around normal
+    /* Rotate each vector 90 degrees around normal. */
     double norm21 = std::sqrt(v21.dot(v21));
     double norm13 = std::sqrt(v13.dot(v13));
     eperp21.row(i) = u.cross(v21);
@@ -132,7 +133,7 @@ inline void grad(const Eigen::PlainObjectBase<DerivedV> &V,
   std::vector<double> vs;
   vs.reserve(F.rows() * 4 * 3);
 
-  // row indices
+  /* Row indices. */
   for (int r = 0; r < 3; r++) {
     for (int j = 0; j < 4; j++) {
       for (int i = r * F.rows(); i < (r + 1) * F.rows(); i++)
@@ -140,7 +141,7 @@ inline void grad(const Eigen::PlainObjectBase<DerivedV> &V,
     }
   }
 
-  // column indices
+  /* Column indices. */
   for (int r = 0; r < 3; r++) {
     for (int i = 0; i < F.rows(); i++)
       cs.push_back(F(i, 1));
@@ -152,7 +153,7 @@ inline void grad(const Eigen::PlainObjectBase<DerivedV> &V,
       cs.push_back(F(i, 0));
   }
 
-  // values
+  /* Values. */
   for (int i = 0; i < F.rows(); i++)
     vs.push_back(eperp13(i, 0));
   for (int i = 0; i < F.rows(); i++)
@@ -178,7 +179,7 @@ inline void grad(const Eigen::PlainObjectBase<DerivedV> &V,
   for (int i = 0; i < F.rows(); i++)
     vs.push_back(-eperp21(i, 2));
 
-  // create sparse gradient operator matrix
+  /* Create sparse gradient operator matrix.. */
   G.resize(3 * F.rows(), V.rows());
   std::vector<Eigen::Triplet<typename DerivedV::Scalar>> triplets;
   for (int i = 0; i < (int)vs.size(); ++i) {
@@ -187,17 +188,18 @@ inline void grad(const Eigen::PlainObjectBase<DerivedV> &V,
   G.setFromTriplets(triplets.begin(), triplets.end());
 }
 
-// Computes the polar decomposition (R,T) of a matrix A using SVD singular
-// value decomposition
-//
-// Inputs:
-//   A  3 by 3 matrix to be decomposed
-// Outputs:
-//   R  3 by 3 rotation matrix part of decomposition (**always rotataion**)
-//   T  3 by 3 stretch matrix part of decomposition
-//   U  3 by 3 left-singular vectors
-//   S  3 by 1 singular values
-//   V  3 by 3 right-singular vectors
+/* Computes the polar decomposition (R,T) of a matrix A using SVD singular
+ * value decomposition
+ *
+ * Inputs:
+ *   A  3 by 3 matrix to be decomposed
+ * Outputs:
+ *   R  3 by 3 rotation matrix part of decomposition (**always rotataion**)
+ *   T  3 by 3 stretch matrix part of decomposition
+ *   U  3 by 3 left-singular vectors
+ *   S  3 by 1 singular values
+ *   V  3 by 3 right-singular vectors
+ */
 template<typename DerivedA,
          typename DerivedR,
          typename DerivedT,
@@ -219,9 +221,9 @@ static inline void polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
   S = svd.singularValues();
   R = U * V.transpose();
   const auto &SVT = S.asDiagonal() * V.adjoint();
-  // Check for reflection
+  /* Check for reflection. */
   if (R.determinant() < 0) {
-    // Annoyingly the .eval() is necessary
+    /* Annoyingly the .eval() is necessary. */
     auto W = V.eval();
     W.col(V.cols() - 1) *= -1.;
     R = U * W.transpose();
@@ -232,7 +234,7 @@ static inline void polar_svd(const Eigen::PlainObjectBase<DerivedA> &A,
   }
 }
 
-// Implementation
+/* Implementation. */
 inline void compute_surface_gradient_matrix(const Eigen::MatrixXd &V,
                                             const Eigen::MatrixXi &F,
                                             const Eigen::MatrixXd &F1,
@@ -254,13 +256,13 @@ inline void compute_weighted_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
 
-  // Ji=[D1*u,D2*u,D1*v,D2*v];
+  /* Ji=[D1*u,D2*u,D1*v,D2*v] */
   s.Ji.col(0) = s.Dx * uv.col(0);
   s.Ji.col(1) = s.Dy * uv.col(0);
   s.Ji.col(2) = s.Dx * uv.col(1);
   s.Ji.col(3) = s.Dy * uv.col(1);
 
-  // add weights
+  /* Add weights. */
   Eigen::VectorXd weights = s.weightPerFaceMap.cast<double>();
   s.Ji.col(0) = weights.cwiseProduct(s.Ji.col(0));
   s.Ji.col(1) = weights.cwiseProduct(s.Ji.col(1));
@@ -272,7 +274,7 @@ inline void compute_unweighted_jacobians(SLIMData &s, const Eigen::MatrixXd &uv)
 {
   BLI_assert(s.valid);
 
-  // Ji=[D1*u,D2*u,D1*v,D2*v];
+  /* Ji=[D1*u,D2*u,D1*v,D2*v] */
   s.Ji.col(0) = s.Dx * uv.col(0);
   s.Ji.col(1) = s.Dy * uv.col(0);
   s.Ji.col(2) = s.Dx * uv.col(1);
@@ -320,7 +322,7 @@ inline void update_weights_and_closest_rotations(SLIMData &s, Eigen::MatrixXd &u
       s1 = sing(0);
       s2 = sing(1);
 
-      // Update Weights according to energy
+      /* Update Weights according to energy. */
       switch (s.slim_energy) {
         case SLIMData::ARAP: {
           m_sing_new << 1, 1;
@@ -348,7 +350,7 @@ inline void update_weights_and_closest_rotations(SLIMData &s, Eigen::MatrixXd &u
 
           m_sing_new << sqrt(s1_g / (2 * (s1 - s1_min))), sqrt(s2_g / (2 * (s2 - s2_min)));
 
-          // change local step
+          /* Change local step. */
           closest_sing_vec << s1_min, s2_min;
           ri = ui * closest_sing_vec.asDiagonal() * vi.transpose();
           break;
@@ -392,8 +394,8 @@ inline void update_weights_and_closest_rotations(SLIMData &s, Eigen::MatrixXd &u
       s.W_21(i) = mat_W(1, 0);
       s.W_22(i) = mat_W(1, 1);
 
-      // 2) Update local step (doesn't have to be a rotation, for instance in case of conformal
-      // energy)
+      /* 2) Update local step (doesn't have to be a rotation, for instance in case of conformal
+       * energy). */
       s.Ri(i, 0) = ri(0, 0);
       s.Ri(i, 1) = ri(1, 0);
       s.Ri(i, 2) = ri(0, 1);
@@ -426,7 +428,7 @@ inline void update_weights_and_closest_rotations(SLIMData &s, Eigen::MatrixXd &u
       double s2 = sing(1);
       double s3 = sing(2);
 
-      // 1) Update Weights
+      /* 1) Update Weights. */
       switch (s.slim_energy) {
         case SLIMData::ARAP: {
           m_sing_new << 1, 1, 1;
@@ -483,15 +485,15 @@ inline void update_weights_and_closest_rotations(SLIMData &s, Eigen::MatrixXd &u
           m_sing_new << sqrt(s1_g / (2 * (s1 - s1_min))), sqrt(s2_g / (2 * (s2 - s2_min))),
               sqrt(s3_g / (2 * (s3 - s3_min)));
 
-          // change local step
+          /* Change local step. */
           closest_sing_vec << s1_min, s2_min, s3_min;
           ri = ui * closest_sing_vec.asDiagonal() * vi.transpose();
           break;
         }
         case SLIMData::EXP_CONFORMAL: {
-          // E_conf = (s1^2 + s2^2 + s3^2)/(3*(s1*s2*s3)^(2/3) )
-          // dE_conf/ds1 = (-2*(s2*s3)*(s2^2+s3^2 -2*s1^2) ) / (9*(s1*s2*s3)^(5/3))
-          // Argmin E_conf(s1): s1 = sqrt(s1^2+s2^2)/sqrt(2)
+          /* E_conf = (s1^2 + s2^2 + s3^2)/(3*(s1*s2*s3)^(2/3) )
+           * dE_conf/ds1 = (-2*(s2*s3)*(s2^2+s3^2 -2*s1^2) ) / (9*(s1*s2*s3)^(5/3))
+           * Argmin E_conf(s1): s1 = sqrt(s1^2+s2^2)/sqrt(2) */
           double common_div = 9 * (pow(s1 * s2 * s3, 5. / 3.));
 
           double s1_g = (-2 * s2 * s3 * (pow(s2, 2) + pow(s3, 2) - 2 * pow(s1, 2))) / common_div;
@@ -515,7 +517,7 @@ inline void update_weights_and_closest_rotations(SLIMData &s, Eigen::MatrixXd &u
           m_sing_new << sqrt(s1_g / (2 * (s1 - s1_min))), sqrt(s2_g / (2 * (s2 - s2_min))),
               sqrt(s3_g / (2 * (s3 - s3_min)));
 
-          // change local step
+          /* Change local step. */
           closest_sing_vec << s1_min, s2_min, s3_min;
           ri = ui * closest_sing_vec.asDiagonal() * vi.transpose();
         }
@@ -539,7 +541,7 @@ inline void update_weights_and_closest_rotations(SLIMData &s, Eigen::MatrixXd &u
       s.W_32(i) = mat_W(2, 1);
       s.W_33(i) = mat_W(2, 2);
 
-      // 2) Update closest rotations (not rotations in case of conformal energy)
+      /* 2) Update closest rotations (not rotations in case of conformal energy). */
       s.Ri(i, 0) = ri(0, 0);
       s.Ri(i, 1) = ri(1, 0);
       s.Ri(i, 2) = ri(2, 0);
@@ -549,9 +551,8 @@ inline void update_weights_and_closest_rotations(SLIMData &s, Eigen::MatrixXd &u
       s.Ri(i, 6) = ri(0, 2);
       s.Ri(i, 7) = ri(1, 2);
       s.Ri(i, 8) = ri(2, 2);
-    }  // for loop end
-
-  }  // if dim end
+    }
+  }
 }
 
 inline void solve_weighted_arap(SLIMData &s, Eigen::MatrixXd &uv)
@@ -562,17 +563,17 @@ inline void solve_weighted_arap(SLIMData &s, Eigen::MatrixXd &uv)
   Eigen::SparseMatrix<double> L;
   build_linear_system(s, L);
 
-  // solve
+  /* Solve. */
   Eigen::VectorXd Uc;
   if (s.dim == 2) {
     SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
     Uc = solver.compute(L).solve(s.rhs);
   }
-  else {  // seems like CG performs much worse for 2D and way better for 3D
+  else { /* Seems like CG performs much worse for 2D and way better for 3D. */
     Eigen::VectorXd guess(uv.rows() * s.dim);
     for (int i = 0; i < s.dim; i++)
       for (int j = 0; j < s.dim; j++)
-        guess(uv.rows() * i + j) = uv(i, j);  // flatten vector
+        guess(uv.rows() * i + j) = uv(i, j); /* Flatten vector. */
     ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Upper> solver;
     solver.setTolerance(1e-8);
     Uc = solver.compute(L).solveWithGuess(s.rhs, guess);
@@ -636,7 +637,7 @@ inline void pre_calc(SLIMData &s)
     s.Ji.resize(s.f_n, s.dim * s.dim);
     s.rhs.resize(s.dim * s.v_num);
 
-    // flattened weight matrix
+    /* Flattened weight matrix. */
     s.WGL_M.resize(s.dim * s.dim * s.f_n);
     for (int i = 0; i < s.dim * s.dim; i++)
       for (int j = 0; j < s.f_n; j++)
@@ -650,7 +651,7 @@ inline void pre_calc(SLIMData &s)
 inline void build_linear_system(SLIMData &s, Eigen::SparseMatrix<double> &L)
 {
   BLI_assert(s.valid);
-  // formula (35) in paper
+  /* Formula (35) in paper. */
   Eigen::SparseMatrix<double> A(s.dim * s.dim * s.f_n, s.dim * s.v_n);
   buildA(s, A);
 
@@ -660,8 +661,8 @@ inline void build_linear_system(SLIMData &s, Eigen::SparseMatrix<double> &L)
   Eigen::SparseMatrix<double> id_m(At.rows(), At.rows());
   id_m.setIdentity();
 
-  // add proximal penalty
-  L = At * s.WGL_M.asDiagonal() * A + s.proximal_p * id_m;  // add also a proximal term
+  /* Add proximal penalty. */
+  L = At * s.WGL_M.asDiagonal() * A + s.proximal_p * id_m; /* Add also a proximal term. */
   L.makeCompressed();
 
   buildRhs(s, At);
@@ -677,8 +678,8 @@ inline void add_soft_constraints(SLIMData &s, Eigen::SparseMatrix<double> &L)
   for (int d = 0; d < s.dim; d++) {
     for (int i = 0; i < s.b.rows(); i++) {
       int v_idx = s.b(i);
-      s.rhs(d * v_n + v_idx) += s.soft_const_p * s.bc(i, d);           // rhs
-      L.coeffRef(d * v_n + v_idx, d * v_n + v_idx) += s.soft_const_p;  // diagonal of matrix
+      s.rhs(d * v_n + v_idx) += s.soft_const_p * s.bc(i, d);          /* Right hand side. */
+      L.coeffRef(d * v_n + v_idx, d * v_n + v_idx) += s.soft_const_p; /* Diagonal of matrix. */
     }
   }
 }
@@ -837,7 +838,7 @@ inline double compute_energy_with_jacobians(SLIMData &s,
 inline void buildA(SLIMData &s, Eigen::SparseMatrix<double> &A)
 {
   BLI_assert(s.valid);
-  // formula (35) in paper
+  /* Formula (35) in paper. */
   std::vector<Eigen::Triplet<double>> IJV;
   if (s.dim == 2) {
     IJV.reserve(4 * (s.Dx.outerSize() + s.Dy.outerSize()));
@@ -1018,8 +1019,6 @@ inline void buildRhs(SLIMData &s, const Eigen::SparseMatrix<double> &At)
   s.rhs = (At * s.WGL_M.asDiagonal() * f_rhs + s.proximal_p * uv_flat);
 }
 
-/// Slim Implementation
-
 void slim_precompute(Eigen::MatrixXd &V,
                      Eigen::MatrixXi &F,
                      Eigen::MatrixXd &V_init,
@@ -1049,10 +1048,10 @@ void slim_precompute(Eigen::MatrixXd &V,
   data.M /= 2.;
   data.mesh_area = data.M.sum();
 
-  data.mesh_improvement_3d = false;  // whether to use a jacobian derived from a real mesh or an
-                                     // abstract regular mesh (used for mesh improvement)
+  data.mesh_improvement_3d = false; /* Whether to use a jacobian derived from a real mesh or an
+                                     * abstract regular mesh (used for mesh improvement). */
   data.exp_factor =
-      1.0;  // param used only for exponential energies (e.g exponential symmetric dirichlet)
+      1.0; /* Param used only for exponential energies (e.g exponential symmetric dirichlet). */
 
   assert(F.cols() == 3);
 
@@ -1069,29 +1068,27 @@ inline double computeGlobalScaleInvarianceFactor(Eigen::VectorXd &singularValues
   Eigen::VectorXd areasChained(2 * nFaces);
   areasChained << areas, areas;
 
-  /*
-   per Face Energy for face i with singvals si1 and si2 and area ai when scaling geometry by x is
-
-    ai*(si1*x)^2 + ai*(si2*x)^2 + ai/(si1*x)^2 + ai/(si2*x)^2)
-
-   The combined Energy of all faces is therefore
-   (s1 and s2 are the sums over all ai*(si1^2) and ai*(si2^2) respectively. t1 and t2
-   are the sums over all ai/(si1^2) and ai/(si2^2) respectively)
-
-     s1*(x^2) + s2*(x^2) + t1/(x^2) + t2/(x^2)
-
-   with a = (s1 + s2) and b = (t1 + t2) we get
-
-     ax^2 + b/x^2
-
-   it's derivative is
-
-     2ax - 2b/(x^3)
-
-   and when we set it zero we get
-
-    x^4 = b/a => x = sqrt(sqrt(b/a))
-
+  /* Per face energy for face i with singvals si1 and si2 and area ai when scaling geometry by x is
+   *
+   *  ai*(si1*x)^2 + ai*(si2*x)^2 + ai/(si1*x)^2 + ai/(si2*x)^2)
+   *
+   * The combined Energy of all faces is therefore
+   * (s1 and s2 are the sums over all ai*(si1^2) and ai*(si2^2) respectively. t1 and t2
+   * are the sums over all ai/(si1^2) and ai/(si2^2) respectively)
+   *
+   *   s1*(x^2) + s2*(x^2) + t1/(x^2) + t2/(x^2)
+   *
+   * with a = (s1 + s2) and b = (t1 + t2) we get
+   *
+   *   ax^2 + b/x^2
+   *
+   * it's derivative is
+   *
+   *   2ax - 2b/(x^3)
+   *
+   * and when we set it zero we get
+   *
+   *  x^4 = b/a => x = sqrt(sqrt(b/a))
    */
 
   Eigen::VectorXd squaredSingularValues = singularValues.cwiseProduct(singularValues);
@@ -1131,7 +1128,7 @@ Eigen::MatrixXd slim_solve(SLIMData &data, int iter_num)
     Eigen::MatrixXd dest_res;
     dest_res = data.V_o;
 
-    // Solve Weighted Proxy
+    /* Solve Weighted Proxy. */
     update_weights_and_closest_rotations(data, dest_res);
     solve_weighted_arap(data, dest_res);
 

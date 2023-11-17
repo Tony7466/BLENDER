@@ -17,13 +17,13 @@ class SlimFailedException : public std::runtime_error {
   SlimFailedException() : std::runtime_error("Slim operation failed") {}
 };
 
-// Compute a SLIM map as derived in "Scalable Locally Injective Maps" [Rabinovich et al. 2016].
+/* Compute a SLIM map as derived in "Scalable Locally Injective Maps" [Rabinovich et al. 2016].. */
 struct SLIMData {
   bool valid = true;
 
-  // Input
-  Eigen::MatrixXd V;  // #V by 3 list of mesh vertex positions
-  Eigen::MatrixXi F;  // #F by 3/3 list of mesh faces (triangles)
+  /* Input. */
+  Eigen::MatrixXd V; /* #V by 3 list of mesh vertex positions. */
+  Eigen::MatrixXi F; /* #F by 3/3 list of mesh faces (triangles). */
   enum SLIM_ENERGY {
     ARAP,
     LOG_ARAP,
@@ -34,38 +34,39 @@ struct SLIMData {
   };
   SLIM_ENERGY slim_energy;
 
-  // Optional Input
-  // soft constraints
+  /* Optional Input. */
+  /* Soft constraints. */
   Eigen::VectorXi b;
   Eigen::MatrixXd bc;
   double soft_const_p;
 
-  double exp_factor;         // used for exponential energies, ignored otherwise
-  bool mesh_improvement_3d;  // only supported for 3d
+  double exp_factor;        /* Used for exponential energies, ignored otherwise. */
+  bool mesh_improvement_3d; /* Only supported for 3d. */
 
   int reflection_mode;
   bool skipInitialization = false;
   bool validPreInitialization = false;
   double expectedSurfaceAreaOfResultingMap = 0;
 
-  // Output
+  /* Output. */
+  Eigen::MatrixXd V_o; /* #V by dim list of mesh vertex positions (dim = 2 for parametrization, 3
+                          otherwise). */
   Eigen::MatrixXd
-      V_o;  // #V by dim list of mesh vertex positions (dim = 2 for parametrization, 3 otherwise)
-  Eigen::MatrixXd oldUVs;  // #V by dim list of mesh vertex positions (dim = 2 for parametrization,
-                           // 3 otherwise)
+      oldUVs; /* #V by dim list of mesh vertex positions (dim = 2 for parametrization,. */
+              /* 3 otherwise). */
 
-  // weightmap for weighted parameterization
+  /* weightmap for weighted parameterization. */
   bool withWeightedParameterization;
   Eigen::VectorXf weightmap;
   Eigen::VectorXf weightPerFaceMap;
   double weightInfluence;
   double globalScaleInvarianceFactor = 1.0;
 
-  double energy;  // objective value
+  double energy; /* Objective value. */
 
   int nIterations;
 
-  // INTERNAL
+  /* Internal. */
   Eigen::VectorXd M;
   double mesh_area;
   double avg_edge_length;
@@ -92,14 +93,15 @@ struct SLIMData {
   int dim;
 };
 
-// Compute necessary information to start using SLIM
-// Inputs:
-//		V           #V by 3 list of mesh vertex positions
-//		F           #F by 3/3 list of mesh faces (triangles)
-//    b           list of boundary indices into V
-//    bc          #b by dim list of boundary conditions
-//    soft_p      Soft penalty factor (can be zero)
-//    slim_energy Energy to minimize
+/* Compute necessary information to start using SLIM
+ * Inputs:
+ *		V           #V by 3 list of mesh vertex positions
+ *		F           #F by 3/3 list of mesh faces (triangles)
+ *    b           list of boundary indices into V
+ *    bc          #b by dim list of boundary conditions
+ *    soft_p      Soft penalty factor (can be zero)
+ *    slim_energy Energy to minimize
+ */
 void slim_precompute(Eigen::MatrixXd &V,
                      Eigen::MatrixXi &F,
                      Eigen::MatrixXd &V_init,
@@ -109,12 +111,13 @@ void slim_precompute(Eigen::MatrixXd &V,
                      Eigen::MatrixXd &bc,
                      double soft_p);
 
-// Recompute the current energy if using liveunwrap
+/* Recompute the current energy if using liveunwrap. */
 void recompute_energy(SLIMData &data);
 
-// Run iter_num iterations of SLIM
-// Outputs:
-//    V_o (in SLIMData): #V by dim list of mesh vertex positions
+/* Run iter_num iterations of SLIM
+ * Outputs:
+ *    V_o (in SLIMData): #V by dim list of mesh vertex positions
+ */
 Eigen::MatrixXd slim_solve(SLIMData &data, int iter_num);
 
 void adjustSoftConstraintViolationPenalty(SLIMData &data);

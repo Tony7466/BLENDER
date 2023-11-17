@@ -29,7 +29,7 @@ inline void squared_edge_lengths(const Eigen::PlainObjectBase<DerivedV> &V,
 
   L.resize(m, 3);
 
-  // loop over faces
+  /* Loop over faces. */
   using namespace blender;
   threading::parallel_for(IndexRange(m), 1000, [&V, &F, &L](const IndexRange range) {
     for (const int i : range) {

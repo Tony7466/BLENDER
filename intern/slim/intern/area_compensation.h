@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "doublearea.h"
 #include "slim.h"
 
 #include <Eigen/Dense>
