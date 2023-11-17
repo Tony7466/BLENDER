@@ -12,7 +12,7 @@
 #include "BLI_assert.h"
 
 #include "doublearea.h"
-#include "igl/map_vertices_to_circle.h"
+#include "map_vertices_to_circle.h"
 
 #include <string>
 #include <vector>
