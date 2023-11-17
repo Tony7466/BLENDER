@@ -38,7 +38,7 @@ void search_link_ops_for_tool_node(GatherLinkSearchOpParams &params);
 
 void transform_mesh(Mesh &mesh,
                     const float3 translation,
-                    const float3 rotation,
+                    const math::Quaternion rotation,
                     const float3 scale);
 
 void transform_geometry_set(GeoNodeExecParams &params,
@@ -66,9 +66,6 @@ void get_closest_in_bvhtree(BVHTreeFromMesh &tree_data,
                             const MutableSpan<float3> r_positions);
 
 int apply_offset_in_cyclic_range(IndexRange range, int start_index, int offset);
-
-std::optional<eCustomDataType> node_data_type_to_custom_data_type(eNodeSocketDatatype type);
-std::optional<eCustomDataType> node_socket_to_custom_data_type(const bNodeSocket &socket);
 
 #ifdef WITH_OPENVDB
 /**
@@ -135,6 +132,9 @@ const EnumPropertyItem *domain_experimental_grease_pencil_version3_fn(bContext *
                                                                       PointerRNA * /*ptr*/,
                                                                       PropertyRNA * /*prop*/,
                                                                       bool *r_free);
+
+const EnumPropertyItem *domain_without_corner_experimental_grease_pencil_version3_fn(
+    bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free);
 
 }  // namespace enums
 

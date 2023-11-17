@@ -12,7 +12,7 @@
 
 #include "RNA_types.hh"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 namespace blender::asset_system {
 class AssetRepresentation;
@@ -353,7 +353,7 @@ struct LayoutPanelHeaderInfo {
   std::string open_prop_name;
 };
 
-typedef struct Panel_Runtime {
+struct Panel_Runtime {
   /* Applied to Panel.ofsx, but saved separately so we can track changes between redraws. */
   int region_ofsx = 0;
 
