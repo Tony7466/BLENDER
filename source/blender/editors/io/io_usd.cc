@@ -657,7 +657,7 @@ void WM_OT_usd_import(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna,
                   "import_instance_proxies",
-                  true,
+                  false,
                   "Import Instance Proxies",
                   "Create unique Blender objects for USD instances");
 
