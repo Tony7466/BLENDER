@@ -323,6 +323,15 @@ static void panel_list_copy(ListBase *newlb, const ListBase *lb)
     new_panel->runtime = new_runtime;
     new_panel->activedata = nullptr;
     new_panel->drawname = nullptr;
+    if (old_panel->collapsibles) {
+      new_panel->collapsibles = static_cast<CollapsibleLayoutState *>(
+          MEM_dupallocN(old_panel->collapsibles));
+      for (CollapsibleLayoutState &state :
+           blender::MutableSpan{new_panel->collapsibles, new_panel->collapsibles_num})
+      {
+        state.id = BLI_strdup(state.id);
+      }
+    }
     BLI_addtail(newlb, new_panel);
     panel_list_copy(&new_panel->children, &old_panel->children);
   }
@@ -502,8 +511,39 @@ void BKE_panel_free(Panel *panel)
 {
   MEM_SAFE_FREE(panel->activedata);
   MEM_SAFE_FREE(panel->drawname);
+
+  for (CollapsibleLayoutState &state :
+       blender::MutableSpan{panel->collapsibles, panel->collapsibles_num})
+  {
+    MEM_SAFE_FREE(state.id);
+  }
+  MEM_SAFE_FREE(panel->collapsibles);
+
   MEM_delete(panel->runtime);
   MEM_freeN(panel);
+}
+
+CollapsibleLayoutState &BKE_panel_collapsible_ensure(Panel &panel, const char *id)
+{
+  BLI_assert(id != nullptr);
+  BLI_assert(id[0] != '\0');
+
+  for (CollapsibleLayoutState &state :
+       blender::MutableSpan{panel.collapsibles, panel.collapsibles_num})
+  {
+    if (STREQ(state.id, id)) {
+      return state;
+    }
+  }
+  panel.collapsibles = static_cast<CollapsibleLayoutState *>(MEM_reallocN(
+      panel.collapsibles, sizeof(CollapsibleLayoutState) * (panel.collapsibles_num + 1)));
+  panel.collapsibles_num++;
+
+  CollapsibleLayoutState &state = panel.collapsibles[panel.collapsibles_num - 1];
+  memset(&state, 0, sizeof(CollapsibleLayoutState));
+  state.id = BLI_strdup(id);
+
+  return state;
 }
 
 static void area_region_panels_free_recursive(Panel *panel)
@@ -1054,6 +1094,13 @@ static void write_panel_list(BlendWriter *writer, ListBase *lb)
 {
   LISTBASE_FOREACH (Panel *, panel, lb) {
     BLO_write_struct(writer, Panel, panel);
+    BLO_write_struct_array(
+        writer, CollapsibleLayoutState, panel->collapsibles_num, panel->collapsibles);
+    for (const CollapsibleLayoutState &state :
+         blender::Span{panel->collapsibles, panel->collapsibles_num})
+    {
+      BLO_write_string(writer, state.id);
+    }
     write_panel_list(writer, &panel->children);
   }
 }
@@ -1116,6 +1163,14 @@ static void direct_link_panel_list(BlendDataReader *reader, ListBase *lb)
     panel->activedata = nullptr;
     panel->type = nullptr;
     panel->drawname = nullptr;
+
+    BLO_read_data_address(reader, &panel->collapsibles);
+    for (CollapsibleLayoutState &state :
+         blender::MutableSpan{panel->collapsibles, panel->collapsibles_num})
+    {
+      BLO_read_data_address(reader, &state.id);
+    }
+
     direct_link_panel_list(reader, &panel->children);
   }
 }

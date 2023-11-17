@@ -200,8 +200,7 @@ struct uiLayoutItemBx {
 
 struct uiLayoutItemPanelHeader {
   uiLayout litem;
-  PointerRNA open_prop_owner;
-  char open_prop_name[64];
+  char id[64];
 };
 
 struct uiLayoutItemPanelBody {
@@ -4189,10 +4188,8 @@ static void ui_litem_layout_panel_header(uiLayout *litem)
 
   ui_litem_layout_column(litem, false, false);
 
-  panel->runtime->sub_panel_headers.append({float(litem->y),
-                                            float(litem->y + litem->h),
-                                            header_litem->open_prop_owner,
-                                            header_litem->open_prop_name});
+  panel->runtime->sub_panel_headers.append(
+      {float(litem->y), float(litem->y + litem->h), header_litem->id});
 }
 
 /* box layout */
@@ -4936,15 +4933,17 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align)
   return litem;
 }
 
-uiLayout *uiLayoutPanel(const bContext *C,
-                        uiLayout *layout,
-                        const char *name,
-                        PointerRNA *open_prop_owner,
-                        const char *open_prop_name)
+uiLayout *uiLayoutPanel(const bContext *C, uiLayout *layout, const char *name, const char *id)
 {
   const ARegion *region = CTX_wm_region(C);
 
-  const bool is_real_open = RNA_boolean_get(open_prop_owner, open_prop_name);
+  Panel *panel = layout->root->block->panel;
+  if (panel == nullptr) {
+    return nullptr;
+  }
+  CollapsibleLayoutState &state = BKE_panel_collapsible_ensure(*panel, id);
+
+  const bool is_real_open = state.flag & COLLAPSIBLE_LAYOUT_OPEN;
   const bool search_filter_active = region->flag & RGN_FLAG_SEARCH_FILTER_ACTIVE;
   const bool is_open = is_real_open || search_filter_active;
 
@@ -4954,8 +4953,7 @@ uiLayout *uiLayoutPanel(const bContext *C,
     ui_litem_init_from_parent(litem, layout, false);
     litem->item.type = ITEM_LAYOUT_PANEL_HEADER;
 
-    header_litem->open_prop_owner = *open_prop_owner;
-    STRNCPY(header_litem->open_prop_name, open_prop_name);
+    STRNCPY(header_litem->id, id);
 
     UI_block_layout_set_current(layout->root->block, litem);
 

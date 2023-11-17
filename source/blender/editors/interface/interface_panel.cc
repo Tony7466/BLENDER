@@ -1991,12 +1991,9 @@ static void ui_panel_drag_collapse(const bContext *C,
       rect.ymax = block->rect.ymax + info.end_y + 8;
 
       if (BLI_rctf_isect_segment(&rect, xy_a_block, xy_b_block)) {
-        RNA_boolean_set(
-            &info.open_owner_ptr, info.open_prop_name.c_str(), !dragcol_data->was_first_open);
-        RNA_property_update(
-            const_cast<bContext *>(C),
-            &info.open_owner_ptr,
-            RNA_struct_find_property(&info.open_owner_ptr, info.open_prop_name.c_str()));
+        CollapsibleLayoutState &state = BKE_panel_collapsible_ensure(*panel, info.id.c_str());
+        SET_FLAG_FROM_TEST(state.flag, !dragcol_data->was_first_open, COLLAPSIBLE_LAYOUT_OPEN);
+        ED_region_tag_redraw(region);
       }
     }
 
@@ -2082,6 +2079,7 @@ static void ui_panel_drag_collapse_handler_add(const bContext *C, const bool was
 static void ui_handle_layout_panel_header(
     const bContext *C, const uiBlock *block, const int mx, const int my, const int event_type)
 {
+  ARegion *region = CTX_wm_region(C);
   Panel *panel = block->panel;
   BLI_assert(panel->type != nullptr);
 
@@ -2095,18 +2093,11 @@ static void ui_handle_layout_panel_header(
     return;
   }
 
-  const bool is_open = RNA_boolean_get(&header_info->open_owner_ptr,
-                                       header_info->open_prop_name.c_str());
-  if (is_open) {
-    RNA_boolean_set(&header_info->open_owner_ptr, header_info->open_prop_name.c_str(), false);
-  }
-  else {
-    RNA_boolean_set(&header_info->open_owner_ptr, header_info->open_prop_name.c_str(), true);
-  }
-  RNA_property_update(
-      const_cast<bContext *>(C),
-      &header_info->open_owner_ptr,
-      RNA_struct_find_property(&header_info->open_owner_ptr, header_info->open_prop_name.c_str()));
+  CollapsibleLayoutState &state = BKE_panel_collapsible_ensure(*panel, header_info->id.c_str());
+
+  const bool is_open = state.flag & COLLAPSIBLE_LAYOUT_OPEN;
+  SET_FLAG_FROM_TEST(state.flag, !is_open, COLLAPSIBLE_LAYOUT_OPEN);
+  ED_region_tag_redraw(region);
 
   if (event_type == LEFTMOUSE) {
     ui_panel_drag_collapse_handler_add(C, is_open);
