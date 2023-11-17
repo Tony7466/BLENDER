@@ -6,13 +6,60 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at http://mozilla.org/MPL/2.0/.
 #include "flip_avoiding_line_search.h"
-#include "line_search.h"
 
 #include <Eigen/Dense>
 #include <vector>
 
 namespace igl {
 namespace flip_avoiding {
+
+// Implement a bisection linesearch to minimize a mesh-based energy on vertices given at 'x' at a
+// search direction 'd', with initial step size. Stops when a point with lower energy is found, or
+// after maximal iterations have been reached.
+//
+// Inputs:
+//   x  						#X by dim list of variables
+//   d  						#X by dim list of a given search direction
+//   step_size  			initial step size
+//   energy       			A function to compute the mesh-based energy (return an energy that is
+//   bigger than 0) cur_energy(OPTIONAL)     The energy at the given point. Helps save redundant
+//   computations.
+//							This is optional. If not specified, the function will compute it.
+// Outputs:
+//		x  						#X by dim list of variables at the new location
+// Returns the energy at the new point 'x'
+inline double line_search(Eigen::MatrixXd &x,
+                          const Eigen::MatrixXd &d,
+                          double step_size,
+                          std::function<double(Eigen::MatrixXd &)> energy,
+                          double cur_energy = -1)
+{
+  double old_energy;
+  if (cur_energy > 0) {
+    old_energy = cur_energy;
+  }
+  else {
+    old_energy = energy(x);  // no energy was given -> need to compute the current energy
+  }
+  double new_energy = old_energy;
+  int cur_iter = 0;
+  int MAX_STEP_SIZE_ITER = 12;
+
+  while (new_energy >= old_energy && cur_iter < MAX_STEP_SIZE_ITER) {
+    Eigen::MatrixXd new_x = x + step_size * d;
+
+    double cur_e = energy(new_x);
+    if (cur_e >= old_energy) {
+      step_size /= 2;
+    }
+    else {
+      x = new_x;
+      new_energy = cur_e;
+    }
+    cur_iter++;
+  }
+  return new_energy;
+}
 
 inline double get_smallest_pos_quad_zero(double a, double b, double c)
 {
@@ -152,5 +199,5 @@ inline double igl::flip_avoiding_line_search(const Eigen::MatrixXi F,
   double min_step_to_singularity = igl::flip_avoiding::compute_max_step_from_singularities(
       cur_v, F, d);
   double max_step_size = min(1., min_step_to_singularity * 0.8);
-  return igl::line_search(cur_v, d, max_step_size, energy, cur_energy);
+  return igl::flip_avoiding::line_search(cur_v, d, max_step_size, energy, cur_energy);
 }

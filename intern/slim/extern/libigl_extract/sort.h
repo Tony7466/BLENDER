@@ -12,16 +12,6 @@
 #include <vector>
 namespace igl {
 
-// For use with functions like std::sort
-template<class T> struct IndexLessThan {
-  IndexLessThan(const T arr) : arr(arr) {}
-  bool operator()(const size_t a, const size_t b) const
-  {
-    return arr[a] < arr[b];
-  }
-  const T arr;
-};
-
 // Sort the elements of a matrix X along a given dimension like matlabs sort
 // function
 //
@@ -58,31 +48,6 @@ inline void sort3(const Eigen::PlainObjectBase<DerivedX> &X,
                   const bool ascending,
                   Eigen::PlainObjectBase<DerivedY> &Y,
                   Eigen::PlainObjectBase<DerivedIX> &IX);
-
-// Act like matlab's [Y,I] = SORT(X) for std library vectors
-// Templates:
-//   T  should be a class that implements the '<' comparator operator
-// Input:
-//   unsorted  unsorted vector
-//   ascending  sort ascending (true, matlab default) or descending (false)
-// Output:
-//   sorted     sorted vector, allowed to be same as unsorted
-//   index_map  an index map such that sorted[i] = unsorted[index_map[i]]
-template<class T>
-inline void sort(const std::vector<T> &unsorted,
-                 const bool ascending,
-                 std::vector<T> &sorted,
-                 std::vector<size_t> &index_map);
-
-// Act like matlab's Y = X(I) for std vectors
-// where I contains a vector of indices so that after,
-// Y[j] = X[I[j]] for index j
-// this implies that Y.size() == I.size()
-// X and Y are allowed to be the same reference
-template<class T>
-inline void reorder(const std::vector<T> &unordered,
-                    std::vector<size_t> const &index_map,
-                    std::vector<T> &ordered);
 
 }  // namespace igl
 

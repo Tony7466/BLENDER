@@ -8,9 +8,6 @@
 
 #include "slim.h"
 
-#include "grad.h"
-#include "local_basis.h"
-
 #include "doublearea.h"
 #include "flip_avoiding_line_search.h"
 #include "polar_svd.h"
@@ -67,6 +64,147 @@ inline void compute_jacobians(igl::SLIMData &s, const Eigen::MatrixXd &uv);
 inline void build_linear_system(igl::SLIMData &s, Eigen::SparseMatrix<double> &L);
 inline void pre_calc(igl::SLIMData &s);
 
+// GRAD
+// G = grad(V,F)
+//
+// Compute the numerical gradient operator
+//
+// Inputs:
+//   V          #vertices by 3 list of mesh vertex positions
+//   F          #faces by 3 list of mesh face indices
+//   indices] uniform    boolean (default false) - Use a uniform mesh instead of the vertices V
+// Outputs:
+//   G  #faces*dim by #V Gradient operator
+//
+
+// Gradient of a scalar function defined on piecewise linear elements (mesh)
+// is constant on each triangle i,j,k:
+// grad(Xijk) = (Xj-Xi) * (Vi - Vk)^R90 / 2A + (Xk-Xi) * (Vj - Vi)^R90 / 2A
+// where Xi is the scalar value at vertex i, Vi is the 3D position of vertex
+// i, and A is the area of triangle (i,j,k). ^R90 represent a rotation of
+// 90 degrees
+template<typename DerivedV, typename DerivedF>
+inline void grad(const Eigen::PlainObjectBase<DerivedV> &V,
+                 const Eigen::PlainObjectBase<DerivedF> &F,
+                 Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
+                 bool uniform = false)
+{
+  Eigen::Matrix<typename DerivedV::Scalar, Eigen::Dynamic, 3> eperp21(F.rows(), 3),
+      eperp13(F.rows(), 3);
+
+  for (int i = 0; i < F.rows(); ++i) {
+    // renaming indices of vertices of triangles for convenience
+    int i1 = F(i, 0);
+    int i2 = F(i, 1);
+    int i3 = F(i, 2);
+
+    // #F x 3 matrices of triangle edge vectors, named after opposite vertices
+    Eigen::Matrix<typename DerivedV::Scalar, 1, 3> v32 = V.row(i3) - V.row(i2);
+    Eigen::Matrix<typename DerivedV::Scalar, 1, 3> v13 = V.row(i1) - V.row(i3);
+    Eigen::Matrix<typename DerivedV::Scalar, 1, 3> v21 = V.row(i2) - V.row(i1);
+    Eigen::Matrix<typename DerivedV::Scalar, 1, 3> n = v32.cross(v13);
+    // area of parallelogram is twice area of triangle
+    // area of parallelogram is || v1 x v2 ||
+    // This does correct l2 norm of rows, so that it contains #F list of twice
+    // triangle areas
+    double dblA = std::sqrt(n.dot(n));
+    Eigen::Matrix<typename DerivedV::Scalar, 1, 3> u;
+    if (!uniform) {
+      // now normalize normals to get unit normals
+      u = n / dblA;
+    }
+    else {
+      // Abstract equilateral triangle v1=(0,0), v2=(h,0), v3=(h/2, (sqrt(3)/2)*h)
+
+      // get h (by the area of the triangle)
+      double h = sqrt((dblA) /
+                      sin(M_PI / 3.0));  // (h^2*sin(60))/2. = Area => h = sqrt(2*Area/sin_60)
+
+      Eigen::VectorXd v1, v2, v3;
+      v1 << 0, 0, 0;
+      v2 << h, 0, 0;
+      v3 << h / 2., (sqrt(3) / 2.) * h, 0;
+
+      // now fix v32,v13,v21 and the normal
+      v32 = v3 - v2;
+      v13 = v1 - v3;
+      v21 = v2 - v1;
+      n = v32.cross(v13);
+    }
+
+    // rotate each vector 90 degrees around normal
+    double norm21 = std::sqrt(v21.dot(v21));
+    double norm13 = std::sqrt(v13.dot(v13));
+    eperp21.row(i) = u.cross(v21);
+    eperp21.row(i) = eperp21.row(i) / std::sqrt(eperp21.row(i).dot(eperp21.row(i)));
+    eperp21.row(i) *= norm21 / dblA;
+    eperp13.row(i) = u.cross(v13);
+    eperp13.row(i) = eperp13.row(i) / std::sqrt(eperp13.row(i).dot(eperp13.row(i)));
+    eperp13.row(i) *= norm13 / dblA;
+  }
+
+  std::vector<int> rs;
+  rs.reserve(F.rows() * 4 * 3);
+  std::vector<int> cs;
+  cs.reserve(F.rows() * 4 * 3);
+  std::vector<double> vs;
+  vs.reserve(F.rows() * 4 * 3);
+
+  // row indices
+  for (int r = 0; r < 3; r++) {
+    for (int j = 0; j < 4; j++) {
+      for (int i = r * F.rows(); i < (r + 1) * F.rows(); i++)
+        rs.push_back(i);
+    }
+  }
+
+  // column indices
+  for (int r = 0; r < 3; r++) {
+    for (int i = 0; i < F.rows(); i++)
+      cs.push_back(F(i, 1));
+    for (int i = 0; i < F.rows(); i++)
+      cs.push_back(F(i, 0));
+    for (int i = 0; i < F.rows(); i++)
+      cs.push_back(F(i, 2));
+    for (int i = 0; i < F.rows(); i++)
+      cs.push_back(F(i, 0));
+  }
+
+  // values
+  for (int i = 0; i < F.rows(); i++)
+    vs.push_back(eperp13(i, 0));
+  for (int i = 0; i < F.rows(); i++)
+    vs.push_back(-eperp13(i, 0));
+  for (int i = 0; i < F.rows(); i++)
+    vs.push_back(eperp21(i, 0));
+  for (int i = 0; i < F.rows(); i++)
+    vs.push_back(-eperp21(i, 0));
+  for (int i = 0; i < F.rows(); i++)
+    vs.push_back(eperp13(i, 1));
+  for (int i = 0; i < F.rows(); i++)
+    vs.push_back(-eperp13(i, 1));
+  for (int i = 0; i < F.rows(); i++)
+    vs.push_back(eperp21(i, 1));
+  for (int i = 0; i < F.rows(); i++)
+    vs.push_back(-eperp21(i, 1));
+  for (int i = 0; i < F.rows(); i++)
+    vs.push_back(eperp13(i, 2));
+  for (int i = 0; i < F.rows(); i++)
+    vs.push_back(-eperp13(i, 2));
+  for (int i = 0; i < F.rows(); i++)
+    vs.push_back(eperp21(i, 2));
+  for (int i = 0; i < F.rows(); i++)
+    vs.push_back(-eperp21(i, 2));
+
+  // create sparse gradient operator matrix
+  G.resize(3 * F.rows(), V.rows());
+  std::vector<Eigen::Triplet<typename DerivedV::Scalar>> triplets;
+  for (int i = 0; i < (int)vs.size(); ++i) {
+    triplets.push_back(Eigen::Triplet<typename DerivedV::Scalar>(rs[i], cs[i], vs[i]));
+  }
+  G.setFromTriplets(triplets.begin(), triplets.end());
+}
+
 // Implementation
 inline void compute_surface_gradient_matrix(const Eigen::MatrixXd &V,
                                             const Eigen::MatrixXi &F,
@@ -76,7 +214,7 @@ inline void compute_surface_gradient_matrix(const Eigen::MatrixXd &V,
                                             Eigen::SparseMatrix<double> &D2)
 {
   Eigen::SparseMatrix<double> G;
-  igl::grad(V, F, G);
+  grad(V, F, G);
   Eigen::SparseMatrix<double> Dx = G.block(0, 0, F.rows(), V.rows());
   Eigen::SparseMatrix<double> Dy = G.block(F.rows(), 0, F.rows(), V.rows());
   Eigen::SparseMatrix<double> Dz = G.block(2 * F.rows(), 0, F.rows(), V.rows());
@@ -429,6 +567,32 @@ inline void solve_weighted_arap(igl::SLIMData &s,
     uv.col(i) = Uc.block(i * s.v_n, 0, s.v_n, 1);
 }
 
+template<typename DerivedV, typename DerivedF>
+inline void local_basis(const Eigen::PlainObjectBase<DerivedV> &V,
+                        const Eigen::PlainObjectBase<DerivedF> &F,
+                        Eigen::PlainObjectBase<DerivedV> &B1,
+                        Eigen::PlainObjectBase<DerivedV> &B2,
+                        Eigen::PlainObjectBase<DerivedV> &B3)
+{
+  using namespace Eigen;
+  using namespace std;
+  B1.resize(F.rows(), 3);
+  B2.resize(F.rows(), 3);
+  B3.resize(F.rows(), 3);
+
+  for (unsigned i = 0; i < F.rows(); ++i) {
+    Eigen::Matrix<typename DerivedV::Scalar, 1, 3> v1 =
+        (V.row(F(i, 1)) - V.row(F(i, 0))).normalized();
+    Eigen::Matrix<typename DerivedV::Scalar, 1, 3> t = V.row(F(i, 2)) - V.row(F(i, 0));
+    Eigen::Matrix<typename DerivedV::Scalar, 1, 3> v3 = v1.cross(t).normalized();
+    Eigen::Matrix<typename DerivedV::Scalar, 1, 3> v2 = v1.cross(v3).normalized();
+
+    B1.row(i) = v1;
+    B2.row(i) = -v2;
+    B3.row(i) = v3;
+  }
+}
+
 inline void pre_calc(igl::SLIMData &s)
 {
   BLI_assert(s.valid);
@@ -438,7 +602,7 @@ inline void pre_calc(igl::SLIMData &s)
 
     s.dim = 2;
     Eigen::MatrixXd F1, F2, F3;
-    igl::local_basis(s.V, s.F, F1, F2, F3);
+    local_basis(s.V, s.F, F1, F2, F3);
     compute_surface_gradient_matrix(s.V, s.F, F1, F2, s.Dx, s.Dy);
 
     s.W_11.resize(s.f_n);

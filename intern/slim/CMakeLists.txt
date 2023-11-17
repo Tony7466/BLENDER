@@ -29,17 +29,12 @@ set(SRC
   extern/libigl_extract/slim.cpp
 
   extern/libigl_extract/cotmatrix.h
-  extern/libigl_extract/cotmatrix_entries.h
   extern/libigl_extract/doublearea.h
   extern/libigl_extract/edge_lengths.h
   extern/libigl_extract/flip_avoiding_line_search.h
-  extern/libigl_extract/grad.h
-  extern/libigl_extract/line_search.h
-  extern/libigl_extract/local_basis.h
   extern/libigl_extract/parallel_for.h
   extern/libigl_extract/polar_svd.h
   extern/libigl_extract/sort.h
-  extern/libigl_extract/squared_edge_lengths.h
 )
 
 set(LIB
