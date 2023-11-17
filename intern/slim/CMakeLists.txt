@@ -28,29 +28,17 @@ set(SRC
   extern/libigl_extract/slim.h
   extern/libigl_extract/slim.cpp
 
-  extern/libigl_extract/EPS.h
-  extern/libigl_extract/cat.h
-  extern/libigl_extract/colon.h
   extern/libigl_extract/cotmatrix.h
   extern/libigl_extract/cotmatrix_entries.h
   extern/libigl_extract/doublearea.h
   extern/libigl_extract/edge_lengths.h
-  extern/libigl_extract/find.h
   extern/libigl_extract/flip_avoiding_line_search.h
   extern/libigl_extract/grad.h
-  extern/libigl_extract/invert_diag.h
-  extern/libigl_extract/is_symmetric.h
-  extern/libigl_extract/isdiag.h
   extern/libigl_extract/line_search.h
   extern/libigl_extract/local_basis.h
-  extern/libigl_extract/normalize_row_sums.h
   extern/libigl_extract/parallel_for.h
-  extern/libigl_extract/per_face_normals.h
   extern/libigl_extract/polar_svd.h
-  extern/libigl_extract/reorder.h
-  extern/libigl_extract/repmat.h
   extern/libigl_extract/sort.h
-  extern/libigl_extract/sparse.h
   extern/libigl_extract/squared_edge_lengths.h
 )
 

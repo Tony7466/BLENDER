@@ -74,6 +74,16 @@ inline void sort(const std::vector<T> &unsorted,
                  std::vector<T> &sorted,
                  std::vector<size_t> &index_map);
 
+// Act like matlab's Y = X(I) for std vectors
+// where I contains a vector of indices so that after,
+// Y[j] = X[I[j]] for index j
+// this implies that Y.size() == I.size()
+// X and Y are allowed to be the same reference
+template<class T>
+inline void reorder(const std::vector<T> &unordered,
+                    std::vector<size_t> const &index_map,
+                    std::vector<T> &ordered);
+
 }  // namespace igl
 
 #include "sort.cpp"

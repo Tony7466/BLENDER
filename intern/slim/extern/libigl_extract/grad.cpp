@@ -10,13 +10,12 @@
 #include <vector>
 
 #include "doublearea.h"
-#include "per_face_normals.h"
 
 template<typename DerivedV, typename DerivedF>
-inline void grad_tri(const Eigen::PlainObjectBase<DerivedV> &V,
-                     const Eigen::PlainObjectBase<DerivedF> &F,
-                     Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
-                     bool uniform)
+inline void igl::grad(const Eigen::PlainObjectBase<DerivedV> &V,
+                      const Eigen::PlainObjectBase<DerivedF> &F,
+                      Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
+                      bool uniform)
 {
   Eigen::Matrix<typename DerivedV::Scalar, Eigen::Dynamic, 3> eperp21(F.rows(), 3),
       eperp13(F.rows(), 3);
@@ -132,14 +131,4 @@ inline void grad_tri(const Eigen::PlainObjectBase<DerivedV> &V,
     triplets.push_back(Eigen::Triplet<typename DerivedV::Scalar>(rs[i], cs[i], vs[i]));
   }
   G.setFromTriplets(triplets.begin(), triplets.end());
-}
-
-template<typename DerivedV, typename DerivedF>
-inline void igl::grad(const Eigen::PlainObjectBase<DerivedV> &V,
-                      const Eigen::PlainObjectBase<DerivedF> &F,
-                      Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
-                      bool uniform)
-{
-  assert(F.cols() == 3);
-  return grad_tri(V, F, G, uniform);
 }

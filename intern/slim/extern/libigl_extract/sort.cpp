@@ -6,8 +6,6 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at http://mozilla.org/MPL/2.0/.
 #include "sort.h"
-#include "colon.h"
-#include "reorder.h"
 
 #include <algorithm>
 #include <cassert>
@@ -184,6 +182,21 @@ inline void igl::sort3(const Eigen::PlainObjectBase<DerivedX> &X,
     }
   };
   parallel_for(num_outer, inner, 16000);
+}
+
+// This implementation is O(n), but also uses O(n) extra memory
+template<class T>
+inline void igl::reorder(const std::vector<T> &unordered,
+                         std::vector<size_t> const &index_map,
+                         std::vector<T> &ordered)
+{
+  // copy for the reorder according to index_map, because unsorted may also be
+  // sorted
+  std::vector<T> copy = unordered;
+  ordered.resize(index_map.size());
+  for (int i = 0; i < (int)index_map.size(); i++) {
+    ordered[i] = copy[index_map[i]];
+  }
 }
 
 template<class T>
