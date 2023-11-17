@@ -80,7 +80,6 @@ static const pxr::TfToken clamp("clamp", pxr::TfToken::Immortal);
 static const pxr::TfToken repeat("repeat", pxr::TfToken::Immortal);
 static const pxr::TfToken wrapS("wrapS", pxr::TfToken::Immortal);
 static const pxr::TfToken wrapT("wrapT", pxr::TfToken::Immortal);
-static const pxr::TfToken emissiveColor("emissiveColor", pxr::TfToken::Immortal);
 static const pxr::TfToken in("in", pxr::TfToken::Immortal);
 static const pxr::TfToken translation("translation", pxr::TfToken::Immortal);
 static const pxr::TfToken rotation("rotation", pxr::TfToken::Immortal);
@@ -88,17 +87,7 @@ static const pxr::TfToken rotation("rotation", pxr::TfToken::Immortal);
 
 /* Cycles specific tokens. */
 namespace cyclestokens {
-static const pxr::TfToken cycles("cycles", pxr::TfToken::Immortal);
 static const pxr::TfToken UVMap("UVMap", pxr::TfToken::Immortal);
-static const pxr::TfToken filename("filename", pxr::TfToken::Immortal);
-static const pxr::TfToken interpolation("interpolation", pxr::TfToken::Immortal);
-static const pxr::TfToken projection("projection", pxr::TfToken::Immortal);
-static const pxr::TfToken extension("extension", pxr::TfToken::Immortal);
-static const pxr::TfToken colorspace("colorspace", pxr::TfToken::Immortal);
-static const pxr::TfToken attribute("attribute", pxr::TfToken::Immortal);
-static const pxr::TfToken bsdf("bsdf", pxr::TfToken::Immortal);
-static const pxr::TfToken closure("closure", pxr::TfToken::Immortal);
-static const pxr::TfToken vector("vector", pxr::TfToken::Immortal);
 }  // namespace cyclestokens
 
 namespace blender::io::usd {
@@ -465,24 +454,14 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
           usdtokens::scale, pxr::SdfValueTypeNames->Float2))
   {
     pxr::GfVec2f scale_val(scale[0], scale[1]);
-    if (!scale_input.Set(scale_val)) {
-      WM_reportf(RPT_WARNING,
-                 "%s: Couldn't set scale input for UVTransform2d prim %s",
-                 __func__,
-                 transform2d_shader.GetPath().GetAsString().c_str());
-    }
+    scale_input.Set(scale_val);
   }
 
   if (pxr::UsdShadeInput trans_input = transform2d_shader.CreateInput(
           usdtokens::translation, pxr::SdfValueTypeNames->Float2))
   {
     pxr::GfVec2f trans_val(loc[0], loc[1]);
-    if (!trans_input.Set(trans_val)) {
-      WM_reportf(RPT_WARNING,
-                 "%s: Couldn't set translation input for UVTransform2d prim %s",
-                 __func__,
-                 transform2d_shader.GetPath().GetAsString().c_str());
-    }
+    trans_input.Set(trans_val);
   }
 
   if (pxr::UsdShadeInput rot_input = transform2d_shader.CreateInput(usdtokens::rotation,
@@ -490,12 +469,7 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
   {
     /* Convert to degrees. */
     float rot_val = rot[2] * 180.0f / M_PI;
-    if (!rot_input.Set(rot_val)) {
-      WM_reportf(RPT_WARNING,
-                 "%s: Couldn't set rotation input for UVTransform2d prim %s",
-                 __func__,
-                 transform2d_shader.GetPath().GetAsString().c_str());
-    }
+    rot_input.Set(rot_val);
   }
 
   if (bNodeSocket *socket = nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
@@ -642,7 +616,6 @@ static pxr::TfToken get_node_tex_image_color_space(bNode *node)
 static pxr::TfToken get_node_tex_image_wrap(bNode *node)
 {
   if (node->type != SH_NODE_TEX_IMAGE) {
-    std::cout << "get_node_tex_image_wrap() called with unexpected type.\n";
     return pxr::TfToken();
   }
 
