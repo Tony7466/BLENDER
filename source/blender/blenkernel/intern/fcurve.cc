@@ -1734,7 +1734,7 @@ BezTriple *BKE_bezier_array_merge(
   int iterator_b = 0;
   *merged_size = 0;
 
-  while (iterator_a < size_a && iterator_b < size_b) {
+  while (iterator_a < size_a || iterator_b < size_b) {
     if (iterator_a >= size_a) {
       memcpy(&large_array[*merged_size], &b[iterator_b], sizeof(BezTriple));
       iterator_b++;
@@ -1743,7 +1743,7 @@ BezTriple *BKE_bezier_array_merge(
       memcpy(&large_array[*merged_size], &a[iterator_a], sizeof(BezTriple));
       iterator_a++;
     }
-    else if (b->vec[1][0] == a->vec[1][0]) {
+    else if (a->vec[1][0] == b->vec[1][0]) {
       memcpy(&large_array[*merged_size], &a[iterator_a], sizeof(BezTriple));
       iterator_a++;
       iterator_b++;
