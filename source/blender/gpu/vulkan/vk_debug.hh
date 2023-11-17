@@ -20,7 +20,7 @@
 namespace blender::gpu {
 class VKContext;
 class VKDevice;
-
+extern std::mutex mutex_submit_global;
 namespace debug {
 class VKDebuggingTools {
  public:

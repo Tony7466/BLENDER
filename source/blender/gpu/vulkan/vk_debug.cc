@@ -18,6 +18,8 @@
 static CLG_LogRef LOG = {"gpu.debug.vulkan"};
 
 namespace blender::gpu {
+std::mutex mutex_submit_global;
+
 void VKContext::debug_group_begin(const char *name, int)
 {
   const VKDevice &device = VKBackend::get().device_get();
@@ -188,7 +190,10 @@ void push_marker(const VKDevice &device, const char *name)
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
       info.pLabelName = name;
-      debugging_tools.vkQueueBeginDebugUtilsLabelEXT_r(device.queue_get(), &info);
+      {
+        std::scoped_lock lock(mutex_submit_global);
+        debugging_tools.vkQueueBeginDebugUtilsLabelEXT_r(device.queue_get(), &info);
+      }
     }
   }
 }
@@ -201,7 +206,10 @@ void set_marker(const VKDevice &device, const char *name)
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
       info.pLabelName = name;
-      debugging_tools.vkQueueInsertDebugUtilsLabelEXT_r(device.queue_get(), &info);
+      {
+        std::scoped_lock lock(mutex_submit_global);
+        debugging_tools.vkQueueInsertDebugUtilsLabelEXT_r(device.queue_get(), &info);
+      }
     }
   }
 }
@@ -211,7 +219,10 @@ void pop_marker(const VKDevice &device)
   if (G.debug & G_DEBUG_GPU) {
     const VKDebuggingTools &debugging_tools = device.debugging_tools_get();
     if (debugging_tools.enabled) {
-      debugging_tools.vkQueueEndDebugUtilsLabelEXT_r(device.queue_get());
+      {
+        std::scoped_lock lock(mutex_submit_global);
+        debugging_tools.vkQueueEndDebugUtilsLabelEXT_r(device.queue_get());
+      }
     }
   }
 }

@@ -8,6 +8,7 @@
 
 #include "vk_command_buffers.hh"
 #include "vk_backend.hh"
+#include "vk_debug.hh"
 #include "vk_device.hh"
 #include "vk_framebuffer.hh"
 #include "vk_memory.hh"
@@ -130,12 +131,13 @@ static void submit_command_buffers(const VKDevice &device,
   submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submit_info.commandBufferCount = num_command_buffers;
   submit_info.pCommandBuffers = handles;
+  {
+    std::scoped_lock submit_lock(mutex_submit_global);
+    vkQueueSubmit(device.queue_get(), 1, &submit_info, vk_fence);
 
-  vkQueueSubmit(device.queue_get(), 1, &submit_info, vk_fence);
-
-  vkWaitForFences(device.device_get(), 1, &vk_fence, VK_TRUE, timeout);
-  vkResetFences(device.device_get(), 1, &vk_fence);
-
+    vkWaitForFences(device.device_get(), 1, &vk_fence, VK_TRUE, timeout);
+    vkResetFences(device.device_get(), 1, &vk_fence);
+  }
   for (VKCommandBuffer *command_buffer : command_buffers) {
     command_buffer->commands_submitted();
     command_buffer->begin_recording();
