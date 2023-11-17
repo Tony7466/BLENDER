@@ -40,7 +40,6 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   static constexpr uint64_t FenceTimeout = UINT64_MAX;
 
   /* Fence for CPU GPU synchronization when submitting the command buffers. */
-  VkFence vk_fence_ = VK_NULL_HANDLE;
   VkSemaphore vk_semaphore_ = VK_NULL_HANDLE;
   uint64_t semaphore_value_ = 0;
   uint64_t wait_semaphore_value_ = 0;
@@ -160,7 +159,6 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   void destroy_discarded_resources();
 
  private:
-  void init_fence(const VKDevice &device);
   void init_semaphore(const VKDevice &device);
   void init_command_pool(const VKDevice &device);
   void init_command_buffers(const VKDevice &device,

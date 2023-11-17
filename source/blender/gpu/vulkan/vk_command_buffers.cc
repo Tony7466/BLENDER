@@ -28,13 +28,10 @@ VKCommandBuffers::~VKCommandBuffers()
   command_buffer_get(Type::DataTransferCompute).reset();
   command_buffer_get(Type::Graphics).reset();
 
+  finish();
+
   VK_ALLOCATION_CALLBACKS;
   const VKDevice &device = VKBackend::get().device_get();
-
-  if (vk_fence_ != VK_NULL_HANDLE) {
-    vkDestroyFence(device.device_get(), vk_fence_, vk_allocation_callbacks);
-    vk_fence_ = VK_NULL_HANDLE;
-  }
 
   if (vk_semaphore_ != VK_NULL_HANDLE) {
     vkDestroySemaphore(device.device_get(), vk_semaphore_, vk_allocation_callbacks);
@@ -63,7 +60,6 @@ void VKCommandBuffers::init(const VKDevice &device)
   }
   init_command_pool(device);
   init_command_buffers(device, true, true);
-  init_fence(device);
   init_semaphore(device);
   submission_id_.reset();
 }
@@ -116,16 +112,6 @@ void VKCommandBuffers::init_command_buffers(const VKDevice &device,
     init_command_buffer(command_buffer_get(Type::Graphics),
                         vk_command_buffers[graphics_index],
                         "Graphics Command Buffer");
-  }
-}
-
-void VKCommandBuffers::init_fence(const VKDevice &device)
-{
-  if (vk_fence_ == VK_NULL_HANDLE) {
-    VK_ALLOCATION_CALLBACKS;
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    vkCreateFence(device.device_get(), &fenceInfo, vk_allocation_callbacks, &vk_fence_);
   }
 }
 
@@ -198,6 +184,8 @@ void VKCommandBuffers::finish()
   wait_info.pSemaphores = &vk_semaphore_;
   wait_info.pValues = &semaphore_value_;
   vkWaitSemaphores(device.device_get(), &wait_info, UINT64_MAX);
+
+  submission_id_.next();
 }
 
 void VKCommandBuffers::submit()
@@ -208,6 +196,9 @@ void VKCommandBuffers::submit()
 
   const bool has_data_transfer_compute_work = data_transfer_compute.has_recorded_commands();
   const bool has_graphics_work = graphics.has_recorded_commands();
+  if (!(has_data_transfer_compute_work || has_graphics_work)) {
+    return;
+  }
 
   VKCommandBuffer *command_buffers[2] = {nullptr, nullptr};
   int command_buffer_index = 0;
@@ -229,11 +220,7 @@ void VKCommandBuffers::submit()
                            MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index));
   }
 
-  const bool reset_submission_id = has_data_transfer_compute_work || has_graphics_work;
-  if (reset_submission_id) {
-    init_command_buffers(device, has_data_transfer_compute_work, has_graphics_work);
-    submission_id_.next();
-  }
+  init_command_buffers(device, has_data_transfer_compute_work, has_graphics_work);
 }
 
 void VKCommandBuffers::ensure_no_draw_commands()
