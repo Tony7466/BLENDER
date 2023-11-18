@@ -270,32 +270,33 @@ ccl_device
       }
 
       /* Metallic component */
-      if (reflective_caustics && metallic > CLOSURE_WEIGHT_CUTOFF) {
-        ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
-            sd, sizeof(MicrofacetBsdf), metallic * weight);
-        ccl_private FresnelF82Tint *fresnel =
-            (bsdf != NULL) ?
-                (ccl_private FresnelF82Tint *)closure_alloc_extra(sd, sizeof(FresnelF82Tint)) :
-                NULL;
+      if (metallic > CLOSURE_WEIGHT_CUTOFF) {
+        if (reflective_caustics) {
+          ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
+              sd, sizeof(MicrofacetBsdf), metallic * weight);
+          ccl_private FresnelF82Tint *fresnel =
+              (bsdf != NULL) ?
+                  (ccl_private FresnelF82Tint *)closure_alloc_extra(sd, sizeof(FresnelF82Tint)) :
+                  NULL;
 
-        if (bsdf && fresnel) {
-          bsdf->N = valid_reflection_N;
-          bsdf->ior = 1.0f;
-          bsdf->T = T;
-          bsdf->alpha_x = alpha_x;
-          bsdf->alpha_y = alpha_y;
+          if (bsdf && fresnel) {
+            bsdf->N = valid_reflection_N;
+            bsdf->ior = 1.0f;
+            bsdf->T = T;
+            bsdf->alpha_x = alpha_x;
+            bsdf->alpha_y = alpha_y;
 
-          fresnel->f0 = rgb_to_spectrum(clamped_base_color);
-          const Spectrum f82 = min(specular_tint, one_spectrum());
+            fresnel->f0 = rgb_to_spectrum(clamped_base_color);
+            const Spectrum f82 = min(specular_tint, one_spectrum());
 
-          /* setup bsdf */
-          sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
-          const bool is_multiggx = (distribution == CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
-          bsdf_microfacet_setup_fresnel_f82_tint(kg, bsdf, sd, fresnel, f82, is_multiggx);
-
-          /* Attenuate other components */
-          weight *= (1.0f - metallic);
+            /* setup bsdf */
+            sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
+            const bool is_multiggx = (distribution == CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+            bsdf_microfacet_setup_fresnel_f82_tint(kg, bsdf, sd, fresnel, f82, is_multiggx);
+          }
         }
+        /* Attenuate other components */
+        weight *= (1.0f - metallic);
       }
 
       /* Transmission component */
