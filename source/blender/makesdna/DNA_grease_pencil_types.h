@@ -210,7 +210,7 @@ typedef struct GreasePencilLayerMask {
  * Layer blending modes.
  */
 typedef enum GreasePencilLayerBlendMode {
-  GP_LAYER_BLEND_NONE = 0,
+  GP_LAYER_BLEND_NORMAL = 0,
   GP_LAYER_BLEND_HARDLIGHT = 1,
   GP_LAYER_BLEND_ADD = 2,
   GP_LAYER_BLEND_SUBTRACT = 3,

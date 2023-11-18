@@ -46,10 +46,10 @@ class LayerModule {
     const bke::AttributeAccessor attributes = grease_pencil.attributes();
 
     const VArray<int> blend_mode = *attributes.lookup_or_default<int>(
-        "blend_mode", ATTR_DOMAIN_LAYER, GP_LAYER_BLEND_NONE);
+        "blend_mode", ATTR_DOMAIN_LAYER, GP_LAYER_BLEND_NORMAL);
 
     gp_layer.blend_mode = blend_mode[layer_index];
-    if (gp_layer.blend_mode != GP_LAYER_BLEND_NONE) {
+    if (gp_layer.blend_mode != GP_LAYER_BLEND_NORMAL) {
       do_layer_blending = true;
     }
 

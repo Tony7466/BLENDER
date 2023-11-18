@@ -19,7 +19,7 @@
 #include "WM_api.hh"
 
 static const EnumPropertyItem rna_enum_layer_blend_modes_items[] = {
-    {GP_LAYER_BLEND_NONE, "REGULAR", 0, "Regular", ""},
+    {GP_LAYER_BLEND_NORMAL, "NORMAL", 0, "Normal", ""},
     {GP_LAYER_BLEND_HARDLIGHT, "HARDLIGHT", 0, "Hard Light", ""},
     {GP_LAYER_BLEND_ADD, "ADD", 0, "Add", ""},
     {GP_LAYER_BLEND_SUBTRACT, "SUBTRACT", 0, "Subtract", ""},
@@ -192,7 +192,7 @@ static int rna_GreasePencilLayer_blend_mode_get(PointerRNA *ptr)
 
   const bke::AttributeAccessor attributes = grease_pencil.attributes();
   const VArray<int> blend_mode = *attributes.lookup_or_default<int>(
-      "blend_mode", ATTR_DOMAIN_LAYER, GP_LAYER_BLEND_NONE);
+      "blend_mode", ATTR_DOMAIN_LAYER, GP_LAYER_BLEND_NORMAL);
 
   return blend_mode[layer_index];
 }
