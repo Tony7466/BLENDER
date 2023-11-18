@@ -115,8 +115,9 @@ ccl_device_inline void path_state_next(KernelGlobals kg,
       flag |= PATH_RAY_TERMINATE_ON_NEXT_SURFACE;
     }
 
-    if (!kernel_data.integrator.transparent_shadows)
+    if (!kernel_data.integrator.transparent_shadows || label & LABEL_PORTAL) {
       flag |= PATH_RAY_MIS_SKIP;
+    }
 
     INTEGRATOR_STATE_WRITE(state, path, flag) = flag;
     INTEGRATOR_STATE_WRITE(state, path, transparent_bounce) = transparent_bounce;
