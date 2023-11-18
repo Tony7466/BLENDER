@@ -7,6 +7,20 @@
 #pragma BLENDER_REQUIRE(lightprobe_lib.glsl)
 #pragma BLENDER_REQUIRE(surface_lib.glsl)
 
+#ifdef GPU_VULKAN
+mat3 StudioLightMatrix_ = mat3(StudioLightMatrix,
+                              StudioLightMatrix2,
+                              StudioLightMatrix3,
+                              StudioLightMatrix4,
+                              StudioLightMatrix5,
+                              StudioLightMatrix6,
+                              StudioLightMatrix7,
+                              StudioLightMatrix8,
+                              StudioLightMatrix9);
+#else
+mat3 StudioLightMatrix_ = StudioLightMatrix;
+#endif
+
 vec3 background_transform_to_world(vec3 viewvec)
 {
   vec4 v = (ProjectionMatrix[3][3] == 0.0) ? vec4(viewvec, 1.0) : vec4(0.0, 0.0, 1.0, 1.0);

@@ -204,6 +204,37 @@ GPU_SHADER_CREATE_INFO(eevee_legacy_studiolight_probe)
     .do_static_compilation(true)
     .auto_resource_location(true);
 
+#ifdef WITH_VULKAN_BACKEND
+GPU_SHADER_CREATE_INFO(eevee_legacy_studiolight_probe_vulkan)
+    .additional_info("draw_resource_id_varying")
+    .additional_info("eevee_legacy_lightprobe_lib")
+    .additional_info("eevee_legacy_surface_lib_lookdev")
+    .vertex_in(0, Type::VEC2, "pos")
+    .sampler(0, ImageType::FLOAT_2D, "studioLight")
+    .push_constant(Type::FLOAT, "backgroundAlpha")
+    .push_constant(Type::FLOAT, "StudioLightMatrix")
+    .push_constant(Type::FLOAT, "StudioLightMatrix2")
+    .push_constant(Type::FLOAT, "StudioLightMatrix3")
+    .push_constant(Type::FLOAT, "StudioLightMatrix4")
+    .push_constant(Type::FLOAT, "StudioLightMatrix5")
+    .push_constant(Type::FLOAT, "StudioLightMatrix6")
+    .push_constant(Type::FLOAT, "StudioLightMatrix7")
+    .push_constant(Type::FLOAT, "StudioLightMatrix8")
+    .push_constant(Type::FLOAT, "StudioLightMatrix9")
+    .push_constant(Type::FLOAT, "studioLightIntensity")
+    .push_constant(Type::FLOAT, "studioLightBlur")
+    .fragment_out(0, Type::VEC4, "FragColor")
+    .vertex_source("background_vert.glsl")
+    .fragment_source("lookdev_world_frag.glsl")
+    .do_static_compilation(true)
+    .auto_resource_location(true);
+GPU_SHADER_CREATE_INFO(eevee_legacy_studiolight_background_vulkan)
+    .define("LOOKDEV_BG")
+    .additional_info("eevee_legacy_studiolight_probe_vulkan")
+    .do_static_compilation(true)
+    .auto_resource_location(true);
+#endif
+
 /* EEVEE_shaders_studiolight_background_sh_get */
 GPU_SHADER_CREATE_INFO(eevee_legacy_studiolight_background)
     .define("LOOKDEV_BG")
