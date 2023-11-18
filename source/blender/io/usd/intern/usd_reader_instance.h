@@ -11,6 +11,9 @@ struct Collection;
 
 namespace blender::io::usd {
 
+/**
+ * Convert a USD instanced prim to a blender collection instance.
+ */
 class USDInstanceReader : public USDXformReader {
 
  public:
@@ -20,10 +23,19 @@ class USDInstanceReader : public USDXformReader {
 
   bool valid() const override;
 
+  /**
+   * Create an object that instances a collection.
+   */
   void create_object(Main *bmain, double motionSampleTime) override;
 
+  /**
+   * Assign the given collection to the object.
+   */
   void set_instance_collection(Collection *coll);
 
+  /**
+   * Get the path of the USD prototype prim.
+   */
   pxr::SdfPath proto_path() const;
 };
 

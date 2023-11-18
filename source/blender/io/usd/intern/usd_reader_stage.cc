@@ -55,7 +55,9 @@
 
 namespace blender::io::usd {
 
-/* Create a collection with the given parent and name. */
+/**
+ * Create a collection with the given parent and name.
+ */
 static Collection *create_collection(Main *bmain, Collection *parent, const char *name)
 {
   if (!bmain) {
@@ -72,9 +74,11 @@ static Collection *create_collection(Main *bmain, Collection *parent, const char
   return coll;
 }
 
-/* Set the instance collection on the given instance reader.
+/**
+ * Set the instance collection on the given instance reader.
  * The collection is assigned from the given map based on
- * the prototype (maser) prim path. */
+ * the prototype prim path.
+ */
 static void set_instance_collection(
     USDInstanceReader *instance_reader,
     const std::map<pxr::SdfPath, Collection *> &proto_collection_map)
@@ -95,7 +99,6 @@ static void set_instance_collection(
               << std::endl;
   }
 }
-
 
 USDStageReader::USDStageReader(pxr::UsdStageRefPtr stage,
                                const USDImportParams &params,
@@ -568,7 +571,6 @@ void USDStageReader::sort_readers()
       });
 }
 
-/* Create instance collections for the USD instance readers. */
 void USDStageReader::create_proto_collections(Main *bmain,
                                               ViewLayer *view_layer,
                                               Collection *parent_collection)
@@ -587,14 +589,13 @@ void USDStageReader::create_proto_collections(Main *bmain,
   std::map<pxr::SdfPath, Collection *> proto_collection_map;
 
   for (const auto &pair : proto_readers_) {
-    Collection *proto_collection = create_collection(
-        bmain, all_protos_collection, "proto");
+    Collection *proto_collection = create_collection(bmain, all_protos_collection, "proto");
 
     proto_collection_map.insert(std::make_pair(pair.first, proto_collection));
   }
 
-  // Set the instance collections on the readers, including the prototype
-  // readers, as instancing may be recursive.
+  /* Set the instance collections on the readers, including the prototype
+   * readers, as instancing may be nested. */
 
   for (const auto &pair : proto_readers_) {
     for (USDPrimReader *reader : pair.second) {
@@ -610,7 +611,7 @@ void USDStageReader::create_proto_collections(Main *bmain,
     }
   }
 
-  // Add the prototype objects to the collections.
+  /* Add the prototype objects to the collections. */
   for (const auto &pair : proto_readers_) {
 
     std::map<pxr::SdfPath, Collection *>::const_iterator it = proto_collection_map.find(
@@ -635,6 +636,5 @@ void USDStageReader::create_proto_collections(Main *bmain,
     }
   }
 }
-
 
 }  // Namespace blender::io::usd

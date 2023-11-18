@@ -19,6 +19,10 @@ struct ImportSettings;
 
 namespace blender::io::usd {
 
+/**
+ * Map a USD prototype prim path to the list of readers that convert
+ * the prototype data.
+ */
 using ProtoReaderMap = std::map<pxr::SdfPath, std::vector<USDPrimReader *>>;
 
 class USDStageReader {
@@ -101,7 +105,9 @@ class USDStageReader {
 
   void sort_readers();
 
-  /* Create prototype collections for instancing by the USD instance readers. */
+  /**
+   * Create prototype collections for instancing by the USD instance readers.
+   */
   void create_proto_collections(Main *bmain, ViewLayer *view_layer, Collection *parent_collection);
 
  private:
@@ -132,7 +138,6 @@ class USDStageReader {
    * procedural shape, such as UsdGeomCube.
    */
   bool is_primitive_prim(const pxr::UsdPrim &prim) const;
-
 };
 
 };  // namespace blender::io::usd
