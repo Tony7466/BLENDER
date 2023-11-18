@@ -54,7 +54,9 @@ class MapUVOperation : public NodeOperation {
     }
     bool nearest_neighbour = get_nearest_neighbour();
 
-    GPUShader *shader = nearest_neighbour ? context().get_shader("compositor_map_uv_nearest_neighbour") : context().get_shader("compositor_map_uv");
+    GPUShader *shader = nearest_neighbour ?
+                            context().get_shader("compositor_map_uv_nearest_neighbour") :
+                            context().get_shader("compositor_map_uv");
 
     GPU_shader_bind(shader);
 
@@ -97,7 +99,6 @@ class MapUVOperation : public NodeOperation {
   {
     return bnode().custom2 != 0;
   }
-
 };
 
 static NodeOperation *get_compositor_operation(Context &context, DNode node)

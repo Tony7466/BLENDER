@@ -58,10 +58,11 @@ void MapUVOperation::execute_pixel_sampled(float output[4],
 
   if (nearest_neighbour_) {
     input_color_program_->read_sampled(output, uv[0], uv[1], PixelSampler::Nearest);
-  } else {
+  }
+  else {
     /* EWA filtering */
     input_color_program_->read_filtered(output, uv[0], uv[1], deriv[0], deriv[1]);
-  
+
     /* UV to alpha threshold */
     const float threshold = alpha_ * 0.05f;
     /* XXX alpha threshold is used to fade out pixels on boundaries with invalid derivatives.
@@ -78,7 +79,6 @@ void MapUVOperation::execute_pixel_sampled(float output[4],
       alpha *= factor;
     }
   }
-
 
   /* "premul" */
   if (alpha < 1.0f) {

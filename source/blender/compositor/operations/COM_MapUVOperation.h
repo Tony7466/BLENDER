@@ -66,7 +66,6 @@ class MapUVOperation : public MultiThreadedOperation {
     nearest_neighbour_ = nearest_neighbour;
   }
 
-
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_started(MemoryBuffer *output,
                                     const rcti &area,
