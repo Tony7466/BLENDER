@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BKE_attribute.hh"
 #include "BKE_grease_pencil.hh"
 #include "DRW_gpu_wrapper.hh"
 #include "DRW_render.h"
@@ -30,9 +31,7 @@ class LayerModule {
     layers_buf_.clear();
   }
 
-  void sync(const Object * /*object*/,
-            const bke::greasepencil::Layer &layer,
-            bool &do_layer_blending)
+  void sync(const Object *object, const bke::greasepencil::Layer &layer, bool &do_layer_blending)
   {
     /* TODO(fclem): All of this is placeholder. */
     gpLayer gp_layer;
@@ -41,14 +40,21 @@ class LayerModule {
     gp_layer.tint = float4(1.0f, 1.0f, 1.0f, 0.0f);
     gp_layer.stroke_index_offset = 0.0f;
 
-    // gp_layer.blend_mode = layer.blend_mode;
-    gp_layer.opacity = layer.opacity;
+    const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-    if (layer.opacity != 1.0f) {
+    const int64_t layer_index = grease_pencil.layers().first_index(&layer);
+    const bke::AttributeAccessor attributes = grease_pencil.attributes();
+
+    const VArray<int> blend_mode = *attributes.lookup_or_default<int>(
+        "blend_mode", ATTR_DOMAIN_LAYER, GP_LAYER_BLEND_NONE);
+
+    gp_layer.blend_mode = blend_mode[layer_index];
+    if (gp_layer.blend_mode != GP_LAYER_BLEND_NONE) {
       do_layer_blending = true;
     }
 
-    if (layer.blend_mode != GP_LAYER_BLEND_NONE) {
+    gp_layer.opacity = layer.opacity;
+    if (gp_layer.opacity != 1.0f) {
       do_layer_blending = true;
     }
 

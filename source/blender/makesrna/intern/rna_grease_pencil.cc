@@ -36,8 +36,6 @@ static const EnumPropertyItem rna_enum_layer_blend_modes_items[] = {
 
 #  include "DEG_depsgraph.hh"
 
-//#  include "WM_api.hh"
-
 static GreasePencil *rna_grease_pencil(const PointerRNA *ptr)
 {
   return reinterpret_cast<GreasePencil *>(ptr->owner_id);
@@ -185,30 +183,18 @@ static int rna_iterator_grease_pencil_layer_groups_length(PointerRNA *ptr)
   return grease_pencil->layer_groups().size();
 }
 
-static int get_active_layer_index(const GreasePencil &grease_pencil)
-{
-  for (const int layer_index : grease_pencil.layers().index_range()) {
-    if (grease_pencil.is_layer_active(grease_pencil.layers()[layer_index])) {
-      return layer_index;
-    }
-  }
-
-  return 0;
-}
-
 static int rna_GreasePencilLayer_blend_mode_get(PointerRNA *ptr)
 {
   using namespace blender;
   GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
 
-  const int active_index = get_active_layer_index(grease_pencil);
+  const int64_t layer_index = grease_pencil.layers().first_index(grease_pencil.get_active_layer());
 
-  bke::MutableAttributeAccessor attributes = grease_pencil.attributes_for_write();
-
+  const bke::AttributeAccessor attributes = grease_pencil.attributes();
   const VArray<int> blend_mode = *attributes.lookup_or_default<int>(
-      "blend_mode", ATTR_DOMAIN_LAYER, int(GP_LAYER_BLEND_NONE));
+      "blend_mode", ATTR_DOMAIN_LAYER, GP_LAYER_BLEND_NONE);
 
-  return blend_mode[active_index];
+  return blend_mode[layer_index];
 }
 
 static void rna_GreasePencilLayer_blend_mode_set(PointerRNA *ptr, int value)
@@ -217,11 +203,11 @@ static void rna_GreasePencilLayer_blend_mode_set(PointerRNA *ptr, int value)
   GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
   bke::MutableAttributeAccessor attributes = grease_pencil.attributes_for_write();
 
-  const int active_index = get_active_layer_index(grease_pencil);
+  const int64_t layer_index = grease_pencil.layers().first_index(grease_pencil.get_active_layer());
 
   bke::SpanAttributeWriter<int> blend_mode = attributes.lookup_or_add_for_write_span<int>(
       "blend_mode", ATTR_DOMAIN_LAYER);
-  blend_mode.span[active_index] = value;
+  blend_mode.span[layer_index] = value;
   blend_mode.finish();
 
   return;
@@ -280,12 +266,6 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
                               "rna_GreasePencilLayer_blend_mode_get",
                               "rna_GreasePencilLayer_blend_mode_set",
                               nullptr);
-  /*
-  RNA_def_property_enum_funcs(prop,
-                              "rna_GreasePencilLayer_blend_mode_get",
-                              "rna_GreasePencilLayer_blend_mode_set",
-                              "rna_GreasePencilLayer_blend_mode_itemf");
-  */
   RNA_def_property_ui_text(prop, "Blend Mode", "Blend mode");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 

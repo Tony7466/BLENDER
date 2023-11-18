@@ -594,7 +594,6 @@ Layer::Layer()
   this->frames_storage.values = nullptr;
   this->frames_storage.flag = 0;
 
-  // this->blend_mode = GP_LAYER_BLEND_NONE;
   this->opacity = 1.0f;
 
   BLI_listbase_clear(&this->masks);
@@ -615,7 +614,6 @@ Layer::Layer(const Layer &other) : Layer()
 
   /* Note: We do not duplicate the frame storage since it is only needed for writing. */
 
-  // this->blend_mode = other.blend_mode;
   this->opacity = other.opacity;
 
   this->runtime->frames_ = other.runtime->frames_;

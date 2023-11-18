@@ -37,17 +37,6 @@ void select_layer_channel(GreasePencil &grease_pencil, bke::greasepencil::Layer 
   }
 }
 
-static int get_active_layer_index(const GreasePencil &grease_pencil)
-{
-  for (const int layer_index : grease_pencil.layers().index_range()) {
-    if (grease_pencil.is_layer_active(grease_pencil.layers()[layer_index])) {
-      return layer_index;
-    }
-  }
-
-  return 0;
-}
-
 static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
 {
   using namespace blender::bke::greasepencil;
@@ -59,20 +48,19 @@ static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
   char *new_layer_name = RNA_string_get_alloc(
       op->ptr, "new_layer_name", nullptr, 0, &new_layer_name_length);
 
+  Layer &new_layer = grease_pencil.add_layer(new_layer_name);
   if (grease_pencil.has_active_layer()) {
-    Layer &new_layer = grease_pencil.add_layer(new_layer_name);
     grease_pencil.move_node_after(new_layer.as_node(),
                                   grease_pencil.get_active_layer_for_write()->as_node());
     grease_pencil.set_active_layer(&new_layer);
     grease_pencil.insert_blank_frame(new_layer, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
   }
   else {
-    Layer &new_layer = grease_pencil.add_layer(new_layer_name);
     grease_pencil.set_active_layer(&new_layer);
     grease_pencil.insert_blank_frame(new_layer, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
   }
 
-  const int active_index = get_active_layer_index(grease_pencil);
+  const int64_t layer_index = grease_pencil.layers().first_index(&new_layer);
 
   bke::MutableAttributeAccessor attributes = grease_pencil.attributes_for_write();
 
@@ -85,7 +73,7 @@ static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
         }
         bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
         const CPPType &type = attribute.span.type();
-        GMutableSpan new_data = attribute.span.slice(IndexRange(active_index, 1));
+        GMutableSpan new_data = attribute.span.slice(IndexRange(layer_index, 1));
         type.fill_assign_n(type.default_value(), new_data.data(), new_data.size());
         attribute.finish();
         return true;
