@@ -2,8 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <iostream>
-
 #include "BKE_curves.hh"
 
 #include "DNA_mesh_types.h"
