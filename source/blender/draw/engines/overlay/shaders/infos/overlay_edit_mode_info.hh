@@ -178,6 +178,26 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_analysis)
     .fragment_source("overlay_edit_mesh_analysis_frag.glsl")
     .additional_info("draw_modelmat");
 
+GPU_SHADER_INTERFACE_INFO(overlay_edit_mesh_analysis_v2_iface, "geometry_in")
+    .smooth(Type::VEC4, "weightColor")
+    .flat(Type::IVEC2, "vid");
+GPU_SHADER_INTERFACE_INFO(overlay_edit_mesh_analysis_geo_out_v2_iface, "geometry_out")
+    .smooth(Type::VEC4, "weightColorGeo");
+
+GPU_SHADER_CREATE_INFO(overlay_edit_mesh_analysis_v2)
+    .do_static_compilation(true)
+    .vertex_in(0, Type::VEC3, "pos")
+    .vertex_in(1, Type::VEC3, "weight")
+    .vertex_out(overlay_edit_mesh_analysis_v2_iface)
+    .geometry_out(overlay_edit_mesh_analysis_geo_out_v2_iface)
+    .sampler(0, ImageType::FLOAT_1D, "weightTex")
+    .fragment_out(0, Type::VEC4, "fragColor")
+    .vertex_source("overlay_edit_mesh_analysis_v2_vert.glsl")
+    .fragment_source("overlay_edit_mesh_analysis_v2_frag.glsl")
+    .geometry_layout(PrimitiveIn::TRIANGLES, PrimitiveOut::TRIANGLE_STRIP, 15)
+    .geometry_source("overlay_edit_mesh_analysis_v2_geom.glsl")
+    .additional_info("draw_modelmat");
+
 GPU_SHADER_CREATE_INFO(overlay_edit_mesh_skin_root)
     .do_static_compilation(true)
     .vertex_in(0, Type::VEC3, "pos")
@@ -230,6 +250,10 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_normal_clipped)
 GPU_SHADER_CREATE_INFO(overlay_edit_mesh_analysis_clipped)
     .do_static_compilation(true)
     .additional_info("overlay_edit_mesh_analysis", "drw_clipped");
+
+GPU_SHADER_CREATE_INFO(overlay_edit_mesh_analysis_v2_clipped)
+    .do_static_compilation(true)
+    .additional_info("overlay_edit_mesh_analysis_v2", "drw_clipped");
 
 GPU_SHADER_CREATE_INFO(overlay_edit_mesh_skin_root_clipped)
     .do_static_compilation(true)

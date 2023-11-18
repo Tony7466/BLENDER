@@ -2471,6 +2471,7 @@ enum {
   SCE_STATVIS_INTERSECT = 2,
   SCE_STATVIS_DISTORT = 3,
   SCE_STATVIS_SHARP = 4,
+  SCE_STATVIS_ANGLE = 5,
 };
 
 /** #ParticleEditSettings::selectmode for particles */

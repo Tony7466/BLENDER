@@ -4518,6 +4518,7 @@ static void rna_def_statvis(BlenderRNA *brna)
       {SCE_STATVIS_INTERSECT, "INTERSECT", 0, "Intersect", ""},
       {SCE_STATVIS_DISTORT, "DISTORT", 0, "Distortion", ""},
       {SCE_STATVIS_SHARP, "SHARP", 0, "Sharp", ""},
+      {SCE_STATVIS_ANGLE, "ANGLE", 0, "Angle", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

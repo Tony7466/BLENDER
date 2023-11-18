@@ -84,6 +84,7 @@ struct OVERLAY_PassList {
   DRWPass *edit_curves_handles_ps;
   DRWPass *edit_curves_lines_ps[2];
   DRWPass *edit_mesh_analysis_ps;
+  DRWPass *edit_mesh_analysis_v2_ps;
   DRWPass *edit_mesh_normals_ps;
   DRWPass *edit_particle_ps;
   DRWPass *edit_text_cursor_ps;
@@ -265,6 +266,7 @@ struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_mesh_skin_roots_grp[2];
   DRWShadingGroup *edit_mesh_normals_grp;
   DRWShadingGroup *edit_mesh_analysis_grp;
+  DRWShadingGroup *edit_mesh_analysis_v2_grp;
   DRWShadingGroup *edit_particle_strand_grp;
   DRWShadingGroup *edit_particle_point_grp;
   DRWShadingGroup *edit_text_cursor_grp;
@@ -747,6 +749,7 @@ GPUShader *OVERLAY_shader_edit_gpencil_wire();
 GPUShader *OVERLAY_shader_edit_lattice_point();
 GPUShader *OVERLAY_shader_edit_lattice_wire();
 GPUShader *OVERLAY_shader_edit_mesh_analysis();
+GPUShader *OVERLAY_shader_edit_mesh_analysis_v2();
 GPUShader *OVERLAY_shader_edit_mesh_depth();
 GPUShader *OVERLAY_shader_edit_mesh_edge(bool use_flat_interp);
 GPUShader *OVERLAY_shader_edit_mesh_face();

@@ -176,6 +176,7 @@ blender::gpu::Batch *DRW_cache_mesh_surface_vertpaint_get(Object *ob);
 blender::gpu::Batch *DRW_cache_mesh_surface_sculptcolors_get(Object *ob);
 blender::gpu::Batch *DRW_cache_mesh_surface_weights_get(Object *ob);
 blender::gpu::Batch *DRW_cache_mesh_surface_mesh_analysis_get(Object *ob);
+blender::gpu::Batch *DRW_cache_mesh_surface_mesh_analysis_v2_get(Object *ob);
 blender::gpu::Batch *DRW_cache_mesh_face_wireframe_get(Object *ob);
 blender::gpu::Batch *DRW_cache_mesh_surface_viewer_attribute_get(Object *ob);
 

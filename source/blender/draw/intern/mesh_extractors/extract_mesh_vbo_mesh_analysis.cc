@@ -32,12 +32,17 @@ static void extract_mesh_analysis_init(const MeshRenderData &mr,
                                        void * /*tls_data*/)
 {
   gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buf);
-  static GPUVertFormat format = {0};
+  static GPUVertFormat format = {0}, format_v2 = {0};
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "weight", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format_v2, "weight", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   }
 
-  GPU_vertbuf_init_with_format(vbo, &format);
+  if (mr.toolsettings->statvis.type == SCE_STATVIS_ANGLE ||
+      mr.toolsettings->statvis.type == SCE_STATVIS_SHARP)
+    GPU_vertbuf_init_with_format(vbo, &format_v2);
+  else
+    GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, mr.corners_num);
 }
 
@@ -478,7 +483,7 @@ BLI_INLINE float sharp_remap(float fac, float min, float /*max*/, float minmax_i
   /* important not '>=' */
   if (fac > min) {
     fac = (fac - min) * minmax_irange;
-    CLAMP(fac, 0.0f, 1.0f);
+    CLAMP(fac, 0.001f, 0.999f);
   }
   else {
     /* fallback */
@@ -581,6 +586,116 @@ static void statvis_calc_sharp(const MeshRenderData &mr, float *r_sharp)
   MEM_freeN(vert_angles);
 }
 
+BLI_INLINE float angle_remap(float angle)
+{
+  angle /= 2 * 3.1415926f;
+  CLAMP(angle, -0.4999f, 0.4999f);
+  return 1.5f + angle;
+}
+
+struct angle_data {
+  float angle;
+  int vs[2];
+};
+
+static void statvis_calc_angle(const MeshRenderData &mr, float *data, bool sharp)
+{
+  BMEditMesh *em = mr.edit_bmesh;
+  const MeshStatVis *statvis = &mr.toolsettings->statvis;
+
+  const float min = statvis->sharp_min;
+  const float max = statvis->sharp_max;
+  const float minmax_irange = 1.0f / (max - min);
+
+  angle_data *r_angle = (angle_data *)data;
+
+  if (mr.extract_type == MR_EXTRACT_BMESH) {
+    for (int l_index = 0; l_index < mr.corners_num; l_index++) {
+      r_angle[l_index].angle = 0.0f;
+      r_angle[l_index].vs[0] = -1;
+      r_angle[l_index].vs[1] = -1;
+    }
+
+    BMIter iter;
+    BMesh *bm = em->bm;
+    BMFace *efa;
+    BMEdge *e;
+
+    BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
+      BMLoop *l_iter, *l_first;
+      l_iter = l_first = BM_FACE_FIRST_LOOP(efa);
+      do {
+        BMEdge *e = l_iter->e;
+        int l_index = BM_elem_index_get(l_iter);
+        int v_index = BM_elem_index_get(l_iter->v);
+        float angle = BM_edge_calc_face_angle_signed_ex(e, 0.0f);
+        if (sharp)
+          angle = sharp_remap(angle, min, max, minmax_irange);
+        else
+          angle = angle_remap(angle);
+        r_angle[l_index].angle = angle;
+        r_angle[l_index].vs[0] = BM_elem_index_get(l_iter->v);
+        r_angle[l_index].vs[1] = BM_elem_index_get(l_iter->next->v);
+      } while ((l_iter = l_iter->next) != l_first);
+    }
+  }
+  else {
+    // TODO: this is untested: how can I trigger this pathway?
+    angle_data *vert_angles = (angle_data *)MEM_mallocN(sizeof(angle_data) * mr.verts_num,
+                                                        __func__);
+    memset(vert_angles, 0, sizeof(angle_data) * mr.verts_num);
+
+    Map<OrderedEdge, int> eh;
+    eh.reserve(mr.edges_num);
+
+    for (int face_index = 0; face_index < mr.faces_num; face_index++) {
+      const IndexRange face = mr.faces[face_index];
+      for (int i = 0; i < face.size(); i++) {
+        const int vert_curr = mr.corner_verts[face.start() + (i + 0) % face.size()];
+        const int vert_next = mr.corner_verts[face.start() + (i + 1) % face.size()];
+        float angle;
+        bool angle_set = false;
+        eh.add_or_modify(
+            {vert_curr, vert_next},
+            [&](int *value) { *value = face_index; },
+            [&](int *value) {
+              const int other_face_index = *value;
+              if (other_face_index == -1) {
+                /* non-manifold edge */
+                // angle = DEG2RADF(90.0f);
+                return;
+              }
+              const float *f1_no = mr.face_normals[face_index];
+              const float *f2_no = mr.face_normals[other_face_index];
+              angle = angle_normalized_v3v3(f1_no, f2_no);
+              angle = is_edge_convex_v3(mr.vert_positions[vert_curr],
+                                        mr.vert_positions[vert_next],
+                                        f1_no,
+                                        f2_no) ?
+                          angle :
+                          -angle;
+              /* Tag as manifold. */
+              *value = -1;
+              angle_set = true;
+            });
+        if (angle_set) {
+          if (sharp)
+            angle = sharp_remap(angle, min, max, minmax_irange);
+          else
+            angle = angle_remap(angle);
+          vert_angles[vert_curr] = angle_data{angle, vert_curr, vert_next};
+        }
+      }
+    }
+
+    for (int l_index = 0; l_index < mr.corners_num; l_index++) {
+      const int vert = mr.corner_verts[l_index];
+      r_angle[l_index] = vert_angles[vert];
+    }
+    MEM_freeN(vert_angles);
+  }
+}
+
 static void extract_analysis_iter_finish_mesh(const MeshRenderData &mr,
                                               MeshBatchCache & /*cache*/,
                                               void *buf,
@@ -605,7 +720,10 @@ static void extract_analysis_iter_finish_mesh(const MeshRenderData &mr,
       statvis_calc_distort(mr, l_weight);
       break;
     case SCE_STATVIS_SHARP:
-      statvis_calc_sharp(mr, l_weight);
+      statvis_calc_angle(mr, l_weight, true);
+      break;
+    case SCE_STATVIS_ANGLE:
+      statvis_calc_angle(mr, l_weight, false);
       break;
   }
 }

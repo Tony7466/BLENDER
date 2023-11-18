@@ -52,6 +52,7 @@ struct OVERLAY_Shaders {
   GPUShader *edit_mesh_normals;
   GPUShader *edit_mesh_fnormals;
   GPUShader *edit_mesh_analysis;
+  GPUShader *edit_mesh_analysis_v2;
   GPUShader *edit_particle_strand;
   GPUShader *edit_particle_point;
   GPUShader *edit_uv_verts;
@@ -463,6 +464,18 @@ GPUShader *OVERLAY_shader_edit_mesh_analysis()
                                                        "overlay_edit_mesh_analysis");
   }
   return sh_data->edit_mesh_analysis;
+}
+
+GPUShader *OVERLAY_shader_edit_mesh_analysis_v2()
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_mesh_analysis_v2) {
+    sh_data->edit_mesh_analysis_v2 = GPU_shader_create_from_info_name(
+        (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ? "overlay_edit_mesh_analysis_v2_clipped" :
+                                                       "overlay_edit_mesh_analysis_v2");
+  }
+  return sh_data->edit_mesh_analysis_v2;
 }
 
 GPUShader *OVERLAY_shader_edit_mesh_skin_root()

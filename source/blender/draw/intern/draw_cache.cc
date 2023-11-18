@@ -2983,6 +2983,13 @@ blender::gpu::Batch *DRW_cache_mesh_surface_mesh_analysis_get(Object *ob)
   return DRW_mesh_batch_cache_get_edit_mesh_analysis(*static_cast<Mesh *>(ob->data));
 }
 
+blender::gpu::Batch *DRW_cache_mesh_surface_mesh_analysis_v2_get(Object *ob)
+{
+  using namespace blender::draw;
+  BLI_assert(ob->type == OB_MESH);
+  return DRW_mesh_batch_cache_get_edit_mesh_analysis_v2(*static_cast<Mesh *>(ob->data));
+}
+
 blender::gpu::Batch *DRW_cache_mesh_surface_viewer_attribute_get(Object *ob)
 {
   using namespace blender::draw;

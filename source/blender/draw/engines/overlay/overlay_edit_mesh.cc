@@ -138,6 +138,17 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     pd->edit_mesh_analysis_grp = grp = DRW_shgroup_create(sh, psl->edit_mesh_analysis_ps);
     DRW_shgroup_uniform_texture(grp, "weightTex", G_draw.weight_ramp);
   }
+
+  {
+    /* Mesh Analysis Pass */
+    state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA;
+    DRW_PASS_CREATE(psl->edit_mesh_analysis_v2_ps, state | pd->clipping_state);
+
+    sh = OVERLAY_shader_edit_mesh_analysis_v2();
+    pd->edit_mesh_analysis_v2_grp = grp = DRW_shgroup_create(sh, psl->edit_mesh_analysis_v2_ps);
+    DRW_shgroup_uniform_texture(grp, "weightTex", G_draw.weight_ramp);
+  }
+
   /* Run Twice for in-front passes. */
   for (int i = 0; i < 2; i++) {
     GPUShader *edge_sh = OVERLAY_shader_edit_mesh_edge(!select_vert);
@@ -288,9 +299,19 @@ void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
   bool lnormals_do = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_LOOP_NORMALS) != 0;
 
   if (do_show_mesh_analysis && !pd->xray_enabled) {
-    geom = DRW_cache_mesh_surface_mesh_analysis_get(ob);
-    if (geom) {
-      DRW_shgroup_call_no_cull(pd->edit_mesh_analysis_grp, geom, ob);
+    const DRWContextState *draw_ctx = DRW_context_state_get();
+    auto type = draw_ctx->scene->toolsettings->statvis.type;
+    if (type == SCE_STATVIS_ANGLE || type == SCE_STATVIS_SHARP) {
+      geom = DRW_cache_mesh_surface_mesh_analysis_v2_get(ob);
+      if (geom) {
+        DRW_shgroup_call_no_cull(pd->edit_mesh_analysis_v2_grp, geom, ob);
+      }
+    }
+    else {
+      geom = DRW_cache_mesh_surface_mesh_analysis_get(ob);
+      if (geom) {
+        DRW_shgroup_call_no_cull(pd->edit_mesh_analysis_grp, geom, ob);
+      }
     }
   }
 
@@ -362,6 +383,7 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
   }
 
   DRW_draw_pass(psl->edit_mesh_analysis_ps);
+  DRW_draw_pass(psl->edit_mesh_analysis_v2_ps);
 
   DRW_draw_pass(psl->edit_mesh_depth_ps[NOT_IN_FRONT]);
 

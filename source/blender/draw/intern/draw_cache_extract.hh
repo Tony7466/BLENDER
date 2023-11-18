@@ -140,6 +140,7 @@ struct MeshBatchList {
   gpu::Batch *edit_lnor;
   gpu::Batch *edit_fdots;
   gpu::Batch *edit_mesh_analysis;
+  gpu::Batch *edit_mesh_analysis_v2;
   gpu::Batch *edit_skin_roots;
   /* Edit UVs */
   gpu::Batch *edituv_faces_stretch_area;

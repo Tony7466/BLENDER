@@ -951,6 +951,13 @@ gpu::Batch *DRW_mesh_batch_cache_get_edit_mesh_analysis(Mesh &mesh)
   return DRW_batch_request(&cache.batch.edit_mesh_analysis);
 }
 
+gpu::Batch *DRW_mesh_batch_cache_get_edit_mesh_analysis_v2(Mesh &mesh)
+{
+  MeshBatchCache &cache = *mesh_batch_cache_get(mesh);
+  mesh_batch_cache_add_request(cache, MBC_EDIT_MESH_ANALYSIS);
+  return DRW_batch_request(&cache.batch.edit_mesh_analysis_v2);
+}
+
 void DRW_mesh_get_attributes(const Object &object,
                              const Mesh &mesh,
                              const GPUMaterial *const *gpumat_array,
@@ -1624,6 +1631,11 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph &task_graph,
     DRW_ibo_request(cache.batch.edit_mesh_analysis, &mbuflist->ibo.tris);
     DRW_vbo_request(cache.batch.edit_mesh_analysis, &mbuflist->vbo.pos);
     DRW_vbo_request(cache.batch.edit_mesh_analysis, &mbuflist->vbo.mesh_analysis);
+  }
+  if (DRW_batch_requested(cache.batch.edit_mesh_analysis_v2, GPU_PRIM_TRIS)) {
+    DRW_ibo_request(cache.batch.edit_mesh_analysis_v2, &mbuflist->ibo.tris);
+    DRW_vbo_request(cache.batch.edit_mesh_analysis_v2, &mbuflist->vbo.pos);
+    DRW_vbo_request(cache.batch.edit_mesh_analysis_v2, &mbuflist->vbo.mesh_analysis);
   }
 
   /* Per Material */
