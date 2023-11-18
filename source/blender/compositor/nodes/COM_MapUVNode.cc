@@ -19,6 +19,7 @@ void MapUVNode::convert_to_operations(NodeConverter &converter,
 
   MapUVOperation *operation = new MapUVOperation();
   operation->set_alpha(float(node->custom1));
+  operation->set_nearestNeighbour(bool(node->custom2));
   operation->set_canvas_input_index(1);
   converter.add_operation(operation);
 

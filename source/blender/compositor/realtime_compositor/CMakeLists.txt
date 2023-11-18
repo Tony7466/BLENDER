@@ -161,6 +161,7 @@ set(GLSL_SRC
   shaders/compositor_kuwahara_anisotropic_compute_structure_tensor.glsl
   shaders/compositor_kuwahara_classic.glsl
   shaders/compositor_map_uv.glsl
+  shaders/compositor_map_uv_nearest_neighbour.glsl
   shaders/compositor_morphological_distance.glsl
   shaders/compositor_morphological_distance_feather.glsl
   shaders/compositor_morphological_distance_threshold.glsl

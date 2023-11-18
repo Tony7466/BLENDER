@@ -6914,6 +6914,10 @@ static void def_cmp_map_uv(StructRNA *srna)
   RNA_def_property_range(prop, 0, 100);
   RNA_def_property_ui_text(prop, "Alpha", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  prop = RNA_def_property(srna, "nearest_neighbour", PROP_INT, PROP_BOOLEAN);
+  RNA_def_property_int_sdna(prop, nullptr, "custom2");
+  RNA_def_property_ui_text(prop, "Nearest Neighbour", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_cmp_defocus(StructRNA *srna)

@@ -37,6 +37,7 @@ static void cmp_node_map_uv_declare(NodeDeclarationBuilder &b)
 static void node_composit_buts_map_uv(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "alpha", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "nearest_neighbour", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 }
 
 using namespace blender::realtime_compositor;
@@ -51,12 +52,16 @@ class MapUVOperation : public NodeOperation {
       get_input("Image").pass_through(get_result("Image"));
       return;
     }
+    bool nearest_neighbour = get_nearest_neighbour();
 
-    GPUShader *shader = context().get_shader("compositor_map_uv");
+    GPUShader *shader = nearest_neighbour ? context().get_shader("compositor_map_uv_nearest_neighbour") : context().get_shader("compositor_map_uv");
+
     GPU_shader_bind(shader);
 
-    GPU_shader_uniform_1f(
-        shader, "gradient_attenuation_factor", get_gradient_attenuation_factor());
+    if (!nearest_neighbour) {
+      GPU_shader_uniform_1f(
+          shader, "gradient_attenuation_factor", get_gradient_attenuation_factor());
+    }
 
     const Result &input_image = get_input("Image");
     GPU_texture_mipmap_mode(input_image.texture(), true, true);
@@ -87,6 +92,12 @@ class MapUVOperation : public NodeOperation {
   {
     return bnode().custom1 / 100.0f;
   }
+
+  bool get_nearest_neighbour()
+  {
+    return bnode().custom2 != 0;
+  }
+
 };
 
 static NodeOperation *get_compositor_operation(Context &context, DNode node)
