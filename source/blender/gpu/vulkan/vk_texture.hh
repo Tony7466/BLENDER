@@ -182,8 +182,7 @@ class VKTexture : public Texture, public VKBindableResource {
    * \{ */
  public:
   /** Attchment type does not make multiple mips into views. **/
-  std::weak_ptr<VKImageView> image_view_get(bool use_srgb, int mip, IndexRange layers_range);
-
+  std::weak_ptr<VKImageView> image_view_get(bool use_srgb, int mip, int layer);
   /** Types other than Attchment **/
   std::weak_ptr<VKImageView> image_view_get();
 

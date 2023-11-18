@@ -627,8 +627,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       reinterpret_cast<Texture *>(tex)->attach_to(this, type);
     }
 
-    auto layer_range = layer_range_get(tex, atta_layer);
-    dirty_view |= image_view_ensure(tex, atta_mip, layer_range, attachment_reference->attachment);
+    dirty_view |= image_view_ensure(tex, atta_mip, atta_layer, attachment_reference->attachment);
 
     VkAttachmentDescription2 &attachment_description =
         renderpass_->attachments_
@@ -752,7 +751,9 @@ void VKFrameBuffer::create()
               renderpass_->subpass_[renderpass_->info_id_].pColorAttachments[i].attachment,
               renderpass_->info_id_);
           const GPUAttachment &attachment = attachments_[type];
-          reinterpret_cast<Texture *>(attachment.tex)->mip_size_get(attachment.mip, size);
+          VKTexture* tex = reinterpret_cast<VKTexture *>(attachment.tex);
+          tex->mip_size_get(attachment.mip, size);
+          vk_framebuffer_create_info_.layers = (attachment.layer == -1) ? tex->vk_layer_count(1) :1;
           break;
         }
       }
@@ -762,7 +763,9 @@ void VKFrameBuffer::create()
             renderpass_->subpass_[renderpass_->info_id_].pDepthStencilAttachment->attachment,
             renderpass_->info_id_);
         const GPUAttachment &attachment = attachments_[type];
-        reinterpret_cast<Texture *>(attachment.tex)->mip_size_get(attachment.mip, size);
+        VKTexture *tex = reinterpret_cast<VKTexture *>(attachment.tex);
+        tex->mip_size_get(attachment.mip, size);
+        vk_framebuffer_create_info_.layers = (attachment.layer == -1) ? tex->vk_layer_count(1) : 1;
       }
     }
   }
@@ -772,7 +775,6 @@ void VKFrameBuffer::create()
   vk_framebuffer_create_info_.renderPass = renderpass_->vk_render_pass_;
   vk_framebuffer_create_info_.width = width_;
   vk_framebuffer_create_info_.height = height_;
-  vk_framebuffer_create_info_.layers = 1;
   vk_framebuffer_create_info_.pAttachments = data.data();
   /* TODO:Multilayered rendering*/
   viewport_reset();
@@ -828,8 +830,7 @@ void VKFrameBuffer::ensure()
               .descriptions_[renderpass_->info_id_][attachment_reference->attachment];
       renderpass_->dirty_ = !renderpass_->attachments_.check_format(attachment.tex,
                                                                     attachment_description);
-      auto layer_range = layer_range_get(attachment.tex, attachment.layer);
-      flush |= image_view_ensure(attachment.tex, attachment.mip, layer_range, i);
+      flush |= image_view_ensure(attachment.tex, attachment.mip, attachment.layer, i);
       flush |= renderpass_->dirty_;
     }
   }
@@ -844,14 +845,14 @@ void VKFrameBuffer::ensure()
 
 bool VKFrameBuffer::image_view_ensure(GPUTexture *tex,
                                       int mip,
-                                      IndexRange &layer_range,
+                                      int layer,
                                       int attachment_index)
 {
   VKTexture &texture = *reinterpret_cast<VKTexture *>(tex);
   srgb_ = (texture.format_flag_get() & GPU_FORMAT_SRGB) != 0;
 
   bool use_srgb = srgb_ && enabled_srgb_;
-  std::weak_ptr<VKImageView> image_view = texture.image_view_get(use_srgb, mip, layer_range);
+  std::weak_ptr<VKImageView> image_view = texture.image_view_get(use_srgb, mip, layer);
 
   if (image_views_[attachment_index].expired() ||
       !vk_image_view_equal(image_views_[attachment_index], image_view))

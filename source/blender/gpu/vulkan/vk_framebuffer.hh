@@ -153,7 +153,7 @@ class VKFrameBuffer : public FrameBuffer {
   void create();
   void free();
   void ensure();
-  bool image_view_ensure(GPUTexture *tex, int mip, IndexRange &layer_range, int attachment_index);
+  bool image_view_ensure(GPUTexture *tex, int mip, int layer, int attachment_index);
   /* Clearing attachments */
   void build_clear_attachments_depth_stencil(eGPUFrameBufferBits buffers,
                                              float clear_depth,
