@@ -29,11 +29,14 @@ static const EnumPropertyItem rna_enum_layer_blend_modes_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include "BKE_attribute.hh"
 #  include "BKE_grease_pencil.hh"
 
 #  include "BLI_span.hh"
 
 #  include "DEG_depsgraph.hh"
+
+//#  include "WM_api.hh"
 
 static GreasePencil *rna_grease_pencil(const PointerRNA *ptr)
 {
@@ -182,6 +185,48 @@ static int rna_iterator_grease_pencil_layer_groups_length(PointerRNA *ptr)
   return grease_pencil->layer_groups().size();
 }
 
+static int get_active_layer_index(const GreasePencil &grease_pencil)
+{
+  for (const int layer_index : grease_pencil.layers().index_range()) {
+    if (grease_pencil.is_layer_active(grease_pencil.layers()[layer_index])) {
+      return layer_index;
+    }
+  }
+
+  return 0;
+}
+
+static int rna_GreasePencilLayer_blend_mode_get(PointerRNA *ptr)
+{
+  using namespace blender;
+  GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+
+  const int active_index = get_active_layer_index(grease_pencil);
+
+  bke::MutableAttributeAccessor attributes = grease_pencil.attributes_for_write();
+
+  const VArray<int> blend_mode = *attributes.lookup_or_default<int>(
+      "blend_mode", ATTR_DOMAIN_LAYER, int(GP_LAYER_BLEND_NONE));
+
+  return blend_mode[active_index];
+}
+
+static void rna_GreasePencilLayer_blend_mode_set(PointerRNA *ptr, int value)
+{
+  using namespace blender;
+  GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  bke::MutableAttributeAccessor attributes = grease_pencil.attributes_for_write();
+
+  const int active_index = get_active_layer_index(grease_pencil);
+
+  bke::SpanAttributeWriter<int> blend_mode = attributes.lookup_or_add_for_write_span<int>(
+      "blend_mode", ATTR_DOMAIN_LAYER);
+  blend_mode.span[active_index] = value;
+  blend_mode.finish();
+
+  return;
+}
+
 #else
 
 static void rna_def_grease_pencil_layer(BlenderRNA *brna)
@@ -231,8 +276,19 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "blend_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "blend_mode");
   RNA_def_property_enum_items(prop, rna_enum_layer_blend_modes_items);
+  RNA_def_property_enum_funcs(prop,
+                              "rna_GreasePencilLayer_blend_mode_get",
+                              "rna_GreasePencilLayer_blend_mode_set",
+                              nullptr);
+  /*
+  RNA_def_property_enum_funcs(prop,
+                              "rna_GreasePencilLayer_blend_mode_get",
+                              "rna_GreasePencilLayer_blend_mode_set",
+                              "rna_GreasePencilLayer_blend_mode_itemf");
+  */
   RNA_def_property_ui_text(prop, "Blend Mode", "Blend mode");
-  
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
   /* Onion Skinning. */
   prop = RNA_def_property(srna, "use_onion_skinning", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(

@@ -11,6 +11,7 @@
 
 #include "DEG_depsgraph.hh"
 
+#include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 
 #include "RNA_access.hh"
@@ -36,6 +37,17 @@ void select_layer_channel(GreasePencil &grease_pencil, bke::greasepencil::Layer 
   }
 }
 
+static int get_active_layer_index(const GreasePencil &grease_pencil)
+{
+  for (const int layer_index : grease_pencil.layers().index_range()) {
+    if (grease_pencil.is_layer_active(grease_pencil.layers()[layer_index])) {
+      return layer_index;
+    }
+  }
+
+  return 0;
+}
+
 static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
 {
   using namespace blender::bke::greasepencil;
@@ -59,6 +71,25 @@ static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
     grease_pencil.set_active_layer(&new_layer);
     grease_pencil.insert_blank_frame(new_layer, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
   }
+
+  const int active_index = get_active_layer_index(grease_pencil);
+
+  bke::MutableAttributeAccessor attributes = grease_pencil.attributes_for_write();
+
+  /* Initialize the rest of the attributes with default values. */
+  Set<std::string> attributes_to_skip{{"Name"}};
+  attributes.for_all(
+      [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData /*meta_data*/) {
+        if (attributes_to_skip.contains(id.name())) {
+          return true;
+        }
+        bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
+        const CPPType &type = attribute.span.type();
+        GMutableSpan new_data = attribute.span.slice(IndexRange(active_index, 1));
+        type.fill_assign_n(type.default_value(), new_data.data(), new_data.size());
+        attribute.finish();
+        return true;
+      });
 
   MEM_SAFE_FREE(new_layer_name);
 
