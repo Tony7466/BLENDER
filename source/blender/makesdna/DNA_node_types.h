@@ -2504,6 +2504,10 @@ typedef enum CMPNodeCombSepColorMode {
   CMP_NODE_COMBSEP_COLOR_YUV = 4,
 } CMPNodeCombSepColorMode;
 
+typedef enum CMPNodeMapUVNearestNeighbour {
+  CMP_NODE_MAPUV_NEARESTNEIGHBOUR = 1,
+} CMPNodeMapUVNearestNeighbour;
+
 /* Point Density shader node */
 
 enum {
