@@ -8,7 +8,7 @@
 #include "BKE_compute_contexts.hh"
 #include "BKE_curves.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_viewer_path.h"
+#include "BKE_viewer_path.hh"
 
 #include "FN_field_cpp_type.hh"
 
@@ -132,8 +132,7 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         const auto &grease_pencil_component = *static_cast<const bke::GreasePencilComponent *>(
             component);
         GreasePencilInfo &info = this->grease_pencil_info.emplace();
-        info.layers_num = grease_pencil_component.attribute_domain_size(
-            ATTR_DOMAIN_GREASE_PENCIL_LAYER);
+        info.layers_num = grease_pencil_component.attribute_domain_size(ATTR_DOMAIN_LAYER);
         break;
       }
     }

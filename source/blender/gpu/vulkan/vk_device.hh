@@ -15,7 +15,7 @@
 #include "vk_common.hh"
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
-#include "vk_sampler.hh"
+#include "vk_samplers.hh"
 
 namespace blender::gpu {
 class VKBackend;
@@ -28,6 +28,26 @@ struct VKWorkarounds {
    * If set to true we should work around this issue by using a different texture format.
    */
   bool not_aligned_pixel_formats = false;
+
+  /**
+   * Is the workaround for devices that don't support
+   * #VkPhysicalDeviceVulkan12Features::shaderOutputViewportIndex enabled.
+   */
+  bool shader_output_viewport_index = false;
+
+  /**
+   * Is the workaround for devices that don't support
+   * #VkPhysicalDeviceVulkan12Features::shaderOutputLayer enabled.
+   */
+  bool shader_output_layer = false;
+
+  struct {
+    /**
+     * Is the workaround enabled for devices that don't support using VK_FORMAT_R8G8B8_* as vertex
+     * buffer.
+     */
+    bool r8g8b8 = false;
+  } vertex_formats;
 };
 
 class VKDevice : public NonCopyable {
@@ -38,10 +58,8 @@ class VKDevice : public NonCopyable {
   VkDevice vk_device_ = VK_NULL_HANDLE;
   uint32_t vk_queue_family_ = 0;
   VkQueue vk_queue_ = VK_NULL_HANDLE;
-  VkCommandPool vk_command_pool_ = VK_NULL_HANDLE;
 
-  /* Dummy sampler for now. */
-  VKSampler sampler_;
+  VKSamplers samplers_;
 
   /**
    * Available Contexts for this device.
@@ -56,13 +74,13 @@ class VKDevice : public NonCopyable {
 
   /** Allocator used for texture and buffers and other resources. */
   VmaAllocator mem_allocator_ = VK_NULL_HANDLE;
-  VKDescriptorPools descriptor_pools_;
 
   /** Limits of the device linked to this context. */
   VkPhysicalDeviceProperties vk_physical_device_properties_ = {};
   /** Features support. */
   VkPhysicalDeviceFeatures vk_physical_device_features_ = {};
   VkPhysicalDeviceVulkan11Features vk_physical_device_vulkan_11_features_ = {};
+  VkPhysicalDeviceVulkan12Features vk_physical_device_vulkan_12_features_ = {};
 
   /** Functions of vk_ext_debugutils for this device/instance. */
   debug::VKDebuggingTools debugging_tools_;
@@ -101,6 +119,11 @@ class VKDevice : public NonCopyable {
     return vk_physical_device_vulkan_11_features_;
   }
 
+  const VkPhysicalDeviceVulkan12Features &physical_device_vulkan_12_features_get() const
+  {
+    return vk_physical_device_vulkan_12_features_;
+  }
+
   VkInstance instance_get() const
   {
     return vk_instance_;
@@ -116,14 +139,9 @@ class VKDevice : public NonCopyable {
     return vk_queue_;
   }
 
-  VKDescriptorPools &descriptor_pools_get()
+  const uint32_t queue_family_get() const
   {
-    return descriptor_pools_;
-  }
-
-  const uint32_t *queue_family_ptr_get() const
-  {
-    return &vk_queue_family_;
+    return vk_queue_family_;
   }
 
   VmaAllocator mem_allocator_get() const
@@ -141,14 +159,9 @@ class VKDevice : public NonCopyable {
     return debugging_tools_;
   }
 
-  const VKSampler &sampler_get() const
+  VKSamplers &samplers()
   {
-    return sampler_;
-  }
-
-  const VkCommandPool vk_command_pool_get() const
-  {
-    return vk_command_pool_;
+    return samplers_;
   }
 
   bool is_initialized() const;
@@ -205,8 +218,6 @@ class VKDevice : public NonCopyable {
   void init_physical_device_features();
   void init_debug_callbacks();
   void init_memory_allocator();
-  void init_command_pools();
-  void init_descriptor_pools();
 
   /* During initialization the backend requires access to update the workarounds. */
   friend VKBackend;

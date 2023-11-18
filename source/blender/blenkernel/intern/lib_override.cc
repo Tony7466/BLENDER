@@ -26,7 +26,7 @@
 #include "DEG_depsgraph_build.hh"
 
 #include "BKE_anim_data.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_blender.h"
 #include "BKE_collection.h"
 #include "BKE_fcurve.h"
@@ -1575,12 +1575,12 @@ static ID *lib_override_root_find(Main *bmain, ID *id, const int curr_level, int
   }
 
   if (entry->tags & MAINIDRELATIONS_ENTRY_TAGS_INPROGRESS) {
-    /* Re-processing an entry already being processed higher in the callgraph (re-entry caused by a
-     * dependency loops). Just do nothing, there is no more usefull info to provide here. */
+    /* Re-processing an entry already being processed higher in the call-graph (re-entry caused by
+     * a dependency loops). Just do nothing, there is no more useful info to provide here. */
     return nullptr;
   }
   /* Flag this entry to avoid re-processing it in case some dependency loop leads to it again
-   * downwards in the callstack. */
+   * downwards in the call-stack. */
   entry->tags |= MAINIDRELATIONS_ENTRY_TAGS_INPROGRESS;
 
   int best_level_candidate = curr_level;
@@ -3619,8 +3619,11 @@ void BKE_lib_override_library_make_local(Main *bmain, ID *id)
   }
 
   /* In case a liboverride hierarchy root is 'made local', i.e. is not a liboverride anymore, all
-   * hierarchy roots of all liboverrides need to be validated/re-generated again. */
-  BKE_lib_override_library_main_hierarchy_root_ensure(bmain);
+   * hierarchy roots of all liboverrides need to be validated/re-generated again.
+   * Only in case `bmain` is given, otherwise caller is responsible to do this. */
+  if (bmain) {
+    BKE_lib_override_library_main_hierarchy_root_ensure(bmain);
+  }
 }
 
 /* We only build override GHash on request. */

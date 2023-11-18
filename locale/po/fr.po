@@ -1,10 +1,10 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'26346464e0c0')\n"
+"Project-Id-Version: Blender 4.0.0 Release Candidate (b'f2d15d4fd19a')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-09 09:45:23\n"
-"PO-Revision-Date: 2023-10-06 18:25+0000\n"
+"POT-Creation-Date: 2023-11-13 11:45:13\n"
+"PO-Revision-Date: 2023-11-07 21:51+0000\n"
 "Last-Translator: Damien Picard <dam.pic@free.fr>\n"
 "Language-Team: French <https://translate.blender.org/projects/blender-ui/ui/fr/>\n"
 "Language: fr\n"
@@ -343,6 +343,34 @@ msgid "Optimize all kernels. Fastest rendering, may result in extra background C
 msgstr "Optimiser tous les noyaux. Rendu le plus rapide, utilisation CPU en arrière-plan supplémentaire possible"
 
 
+msgid "MetalRT"
+msgstr "MetalRT"
+
+
+msgid "MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better performance in specific cases"
+msgstr "Le lancer de rayons avec MetalRT utilise moins de mémoire pour les scènes utilisant beaucoup de courbes, et peut donner de meilleures performances dans certains cas"
+
+
+msgid "Disable MetalRT (uses BVH2 layout for intersection queries)"
+msgstr "Désactiver MetalRT (utilise une disposition BVH2 pour les requêtes d’intersections)"
+
+
+msgid "On"
+msgstr "Activé"
+
+
+msgid "Enable MetalRT for intersection queries"
+msgstr "Activer MetalRT pour les requêtes d’intersections"
+
+
+msgid "Auto"
+msgstr "Auto"
+
+
+msgid "Automatically pick the fastest intersection method"
+msgstr "Choisir automatiquement la méthode d’intersection la plus rapide"
+
+
 msgid "Distribute memory across devices"
 msgstr "Distribuer la mémoire dans les prériphériques"
 
@@ -357,14 +385,6 @@ msgstr "HIP RT (expérimental)"
 
 msgid "HIP RT enables AMD hardware ray tracing on RDNA2 and above, with shader fallback on older cards. This feature is experimental and some scenes may render incorrectly"
 msgstr "HIP RT permet le lancer de rayons avec accélération matérielle sur AMD RDNA2 et supérieur, en se rabattant sur du shader pour les cartes plus anciennes. Cette fonctionnalité est expérimentale et le rendu de certaines scènes peut être incorrect"
-
-
-msgid "MetalRT (Experimental)"
-msgstr "MetalRT (expérimental)"
-
-
-msgid "MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better performance in specific cases. However this support is experimental and some scenes may render incorrectly"
-msgstr "Le lancer de rayons avec MetalRT utilise moins de mémoire pour les scènes utilisant beaucoup de courbes, et peut donner de meilleures performances dans certains cas. Cependant la prise en charge est expérimentale et le rendu de certaines scènes peut être incorrect"
 
 
 msgid "Embree on GPU"
@@ -1235,11 +1255,6 @@ msgstr "Courbes"
 msgctxt "ID"
 msgid "Font"
 msgstr "Police"
-
-
-msgctxt "ID"
-msgid "Grease Pencil (legacy)"
-msgstr "Grease Pencil (obsolète)"
 
 
 msgctxt "ID"
@@ -2166,10 +2181,6 @@ msgid "Aligned"
 msgstr "Alignée"
 
 
-msgid "Auto"
-msgstr "Auto"
-
-
 msgid "Handle 2"
 msgstr "Poignée 2"
 
@@ -2391,7 +2402,7 @@ msgstr "Blocs de données éclairages"
 
 
 msgid "Line Styles"
-msgstr "Styles de ligne"
+msgstr "Styles de lignes"
 
 
 msgid "Line Style data-blocks"
@@ -2703,11 +2714,11 @@ msgstr "Collection d’éclairages"
 
 
 msgid "Main Line Styles"
-msgstr "Styles de ligne du Main"
+msgstr "Styles de lignes du Main"
 
 
 msgid "Collection of line styles"
-msgstr "Collection de styles de ligne"
+msgstr "Collection de styles de lignes"
 
 
 msgid "Main Masks"
@@ -6495,10 +6506,6 @@ msgid "High Dynamic Range"
 msgstr "Grande gamme dynamique"
 
 
-msgid "Enable high dynamic range display in rendered viewport, uncapping display brightness. This requires a monitor with HDR support and a view transform designed for HDR. 'Filmic' does not generate HDR colors"
-msgstr "Activer l’affichage à grande gamme dynamique (HDR) dans les vues rendues, en enlevant la limite de luminosité de l’affichage. Nécessite un écran avec prise en charge HDR et une transformation de vue conçue pour l’HDR. « Filmic » ne génère pas de couleurs HDR"
-
-
 msgid "View Transform"
 msgstr "Transformation de vue"
 
@@ -10011,11 +10018,11 @@ msgstr "Inclure la visualisation des données d’animation relatives aux éclai
 
 
 msgid "Display Line Style"
-msgstr "Afficher les styles de ligne"
+msgstr "Afficher les styles de lignes"
 
 
 msgid "Include visualization of Line Style related Animation data"
-msgstr "Inclure la visualisation des données d’animation relatives aux styles de ligne"
+msgstr "Inclure la visualisation des données d’animation relatives aux styles de lignes"
 
 
 msgid "Display Material"
@@ -12963,7 +12970,7 @@ msgstr "Afficher les blocs de données sonde lumière"
 
 
 msgid "Freestyle Linestyles"
-msgstr "Styles de ligne Freestyle"
+msgstr "Styles de lignes Freestyle"
 
 
 msgid "Show Freestyle's Line Style data-blocks"
@@ -33459,7 +33466,7 @@ msgstr "Tableau complet"
 
 
 msgid "When an 'array/vector' type is chosen (Location, Rotation, Color, etc.), entire array is to be used"
-msgstr "Quand un type « tableau/vecteur » est choisi (Position, Rotation, Couleur, etc.), l’ensemble entier sera utilisé"
+msgstr "Quand un type « tableau/vecteur » est choisi (Position, Rotation, Couleur, etc.), le tableau entier sera utilisé"
 
 
 msgid "Keying set paths"
@@ -33662,6 +33669,14 @@ msgid "Base type to define alpha transparency modifiers"
 msgstr "Type de base pour définir des modificateurs de transparence alpha"
 
 
+msgid "Modifier Name"
+msgstr "Nom du modificateur"
+
+
+msgid "Name of the modifier"
+msgstr "Nom du modificateur"
+
+
 msgid "Along Stroke"
 msgstr "Le long du trait"
 
@@ -33700,14 +33715,6 @@ msgstr "Utiliser une conversion linéaire"
 
 msgid "Use curve mapping"
 msgstr "Utiliser une courbe de conversion"
-
-
-msgid "Modifier Name"
-msgstr "Nom du modificateur"
-
-
-msgid "Name of the modifier"
-msgstr "Nom du modificateur"
 
 
 msgid "Modifier Type"
@@ -44005,7 +44012,7 @@ msgstr "Placage UV"
 
 
 msgid "Map Value"
-msgstr "Convertir valeur"
+msgstr "Convertir la valeur"
 
 
 msgid "Use Maximum"
@@ -49972,7 +49979,7 @@ msgstr "Appel répété"
 
 
 msgid "True when run from the operator 'Repeat Last'"
-msgstr "Vrai si lancé depuis l’opérateur « Répéter la dernière action »"
+msgstr "Vrai si lancé depuis l’opérateur « Répéter la dernière opération »"
 
 
 msgid "Focus Region"
@@ -51491,12 +51498,25 @@ msgid "Name of the bone to unassign from the collection; empty to use the active
 msgstr "Nom de l’os à retirer de la collection. Laisser vide pour utiliser l’os actif"
 
 
+msgctxt "Operator"
+msgid "Copy Colors to Selected"
+msgstr "Copier les couleurs vers la sélection"
+
+
 msgid "Copy the bone color of the active bone to all selected bones"
 msgstr "Copier la couleur de l’os actif vers les os sélectionnés"
 
 
+msgid "Copy Bone colors from the active bone to all selected bones"
+msgstr "Copier les couleurs de l’os actif vers tous les os sélectionnés"
+
+
 msgid "Pose Bone"
 msgstr "Os de pose"
+
+
+msgid "Copy Pose Bone colors from the active pose bone to all selected pose bones"
+msgstr "Copier les couleurs de l’os de pose actif vers tous les os de pose sélectionnés"
 
 
 msgctxt "Operator"
@@ -52061,11 +52081,11 @@ msgstr "Rendre permanentes toutes les modifications de catalogues en enregistran
 
 msgctxt "Operator"
 msgid "Clear Asset"
-msgstr "Effacer l’asset"
+msgstr "Annuler l’asset"
 
 
 msgid "Delete all asset metadata and turn the selected asset data-blocks back into normal data-blocks"
-msgstr "Effacer toutes les métadonnées d’asset et redéfinir les blocs de données d’asset en tant que blocs de données normaux"
+msgstr "Effacer toutes les métadonnées des assets et les reconvertir en blocs de données normaux"
 
 
 msgid "Set Fake User"
@@ -52074,6 +52094,15 @@ msgstr "Définir en utilisateur factice"
 
 msgid "Ensure the data-block is saved, even when it is no longer marked as asset"
 msgstr "S’assurer que le bloc de données est sauvegardé, même lorsqu’il n’est plus indiqué comme étant un asset"
+
+
+msgctxt "Operator"
+msgid "Clear Single Asset"
+msgstr "Effacer un seul asset"
+
+
+msgid "Delete all asset metadata and turn the asset data-block back into a normal data-block"
+msgstr "Effacer toutes les métadonnées de l’asset et le reconvertir en bloc de données normal"
 
 
 msgctxt "Operator"
@@ -52092,6 +52121,15 @@ msgstr "Définir comme asset"
 
 msgid "Enable easier reuse of selected data-blocks through the Asset Browser, with the help of customizable metadata (like previews, descriptions and tags)"
 msgstr "Permet de réutiliser simplement les blocs de données sélectionnés via l’explorateur d’assets, à l’aide de métadonnées personnalisables (comme les prévisualisations, les descriptions et les étiquettes)"
+
+
+msgctxt "Operator"
+msgid "Mark as Single Asset"
+msgstr "Définir un seul asset"
+
+
+msgid "Enable easier reuse of a data-block through the Asset Browser, with the help of customizable metadata (like previews, descriptions and tags)"
+msgstr "Permet de réutiliser simplement le bloc de données sélectionné via l’explorateur d’assets, à l’aide de métadonnées personnalisables (comme les prévisualisations, les descriptions et les étiquettes)"
 
 
 msgctxt "Operator"
@@ -56036,8 +56074,8 @@ msgid "Apply sampling to all animations"
 msgstr "Appliquer un échantillonnage à toutes les animations"
 
 
-msgid "Output format and embedding options. Binary is most efficient, but JSON (embedded or separate) may be easier to edit later"
-msgstr "Format de sortie et options d’incorporation. Binaire est le plus compact, mais JSON (incorporé ou séparé) peut être plus facile à éditer ultérieurement"
+msgid "Output format. Binary is most efficient, but JSON may be easier to edit later"
+msgstr "Format de sortie. Binaire est le plus compact, mais JSON peut être plus facile à éditer ultérieurement"
 
 
 msgid "glTF Binary (.glb)"
@@ -56056,14 +56094,6 @@ msgid "Exports multiple files, with separate JSON, binary and texture data. Easi
 msgstr "Exporter plusieurs fichiers, avec des données JSON, binaires, et textures séparées. Le plus facile à éditer ultérieurement"
 
 
-msgid "glTF Embedded (.gltf)"
-msgstr "glTF incorporé (.gltf)"
-
-
-msgid "Exports a single file, with all data packed in JSON. Less efficient than binary, but easier to edit later"
-msgstr "Exporter un seul fichier, comprenant toutes les données sous forme JSON. Moins compact que le binaire, mais plus facile à éditer ultérieurement"
-
-
 msgid "Limit to Playback Range"
 msgstr "Limiter à l’intervalle de lecture"
 
@@ -56076,7 +56106,7 @@ msgid "GPU Instances"
 msgstr "Instances GPU"
 
 
-msgid "Export using EXT_mesh_gpu_instancing.Limited to children of a same Empty. multiple Materials might be omitted"
+msgid "Export using EXT_mesh_gpu_instancing. Limited to children of a given Empty. Multiple materials might be omitted"
 msgstr "Exporter en utilisant EXT_mesh_gpu_instancing. Limité aux enfants d’un même objet vide. Certains matériaux peuvent être omis"
 
 
@@ -56088,11 +56118,11 @@ msgid "Flatten Bone Hierarchy. Useful in case of non decomposable transformation
 msgstr "Aplatir la hiérarchie d’os. Utile en cas de matrices de transformation non-décomposables"
 
 
-msgid "Create Webp"
+msgid "Create WebP"
 msgstr "Créer WebP"
 
 
-msgid "Creates webp textures for every textures. For already webp textures, nothing happen"
+msgid "Creates WebP textures for every texture. For already WebP textures, nothing happens"
 msgstr "Créer des textures WebP pour chaque texture. Pour les textures déjà en WebP, ne rien faire"
 
 
@@ -56100,7 +56130,7 @@ msgid "Output format for images. PNG is lossless and generally preferred, but JP
 msgstr "Format de sortie pour les images. PNG est sans perte et généralement préféré, mais JPEG peut être préférable pour des applications web à cause de sa plus petite taille de fichiers. Elles peuvent également être omises si elles ne sont pas nécessaires"
 
 
-msgid "Save PNGs as PNGs, JPEGs as JPEGs, WEBPs as WEBPs. If neither one, use PNG"
+msgid "Save PNGs as PNGs, JPEGs as JPEGs, WebPs as WebPs. For other formats, use PNG"
 msgstr "Enregistrer les PNG en PNG, les JPEG en JPEG, et les WebP en WebP. Pour les autres formats, utiliser PNG"
 
 
@@ -56112,11 +56142,11 @@ msgid "Save images as JPEGs. (Images that need alpha are saved as PNGs though.) 
 msgstr "Enregistrer les images en JPEG. (Les images qui ont besoin d’alpha sont quand même enregistrées en PNG.) Attention : une perte de qualité est possible"
 
 
-msgid "Webp Format"
+msgid "WebP Format"
 msgstr "Format WebP"
 
 
-msgid "Save images as WEBPs as main image (no fallback)"
+msgid "Save images as WebPs as main image (no fallback)"
 msgstr "Enregistrer les images en WebP comme image principale (sans solution de repli)"
 
 
@@ -56132,12 +56162,12 @@ msgid "Quality of image export"
 msgstr "Qualité de l’image exportée"
 
 
-msgid "Webp fallback"
+msgid "WebP fallback"
 msgstr "Solution de repli de WebP"
 
 
-msgid "For all webp textures, create a PNG fallback texture."
-msgstr "Pour toutes les textures WebP, créer une texture PNG en solution de repli."
+msgid "For all WebP textures, create a PNG fallback texture"
+msgstr "Pour toutes les textures WebP, créer une texture PNG en solution de repli"
 
 
 msgid "Lighting Mode"
@@ -56225,7 +56255,7 @@ msgstr "Exporter les clés de forme (morph targets)"
 
 
 msgid "Shape Key Animations"
-msgstr "Animation des clés de forme"
+msgstr "Animations des clés de forme"
 
 
 msgid "Export shape keys animations (morph targets)"
@@ -56376,7 +56406,7 @@ msgid "Use Sparse Accessor if better"
 msgstr "Utiliser l’accesseur sporadique si c’est mieux"
 
 
-msgid "Try using Sparce Accessor if it save space"
+msgid "Try using Sparse Accessor if it saves space"
 msgstr "Essayer d’utiliser l’accesseur sporadique si ça fait gagner de l’espace"
 
 
@@ -61742,6 +61772,21 @@ msgid "Always face the camera"
 msgstr "Toujours faire face à la caméra"
 
 
+msgctxt "Material"
+msgid "Blend"
+msgstr "Mélange"
+
+
+msgctxt "Material"
+msgid "Clip"
+msgstr "Seuil"
+
+
+msgctxt "Material"
+msgid "Hashed"
+msgstr "Hachage"
+
+
 msgid "Setup Corner Pin"
 msgstr "Préparer l’épingle de coin"
 
@@ -61872,6 +61917,16 @@ msgstr "Visible uniquement à la caméra et dans les reflets"
 
 msgid "Emission Shader"
 msgstr "Shader émission"
+
+
+msgctxt "Material"
+msgid "Shadow Mode"
+msgstr "Mode d’ombrage"
+
+
+msgctxt "Material"
+msgid "None"
+msgstr "Aucun"
 
 
 msgid "Size Mode"
@@ -62101,7 +62156,7 @@ msgid "Blender (best for import/export round trip)"
 msgstr "Blender (idéal pour les aller-retours d’import-export)"
 
 
-msgid "Good for re-importing glTFs exported from Blender, and re-exporting glTFs to glTFs after Blender editingBone tips are placed on their local +Y axis (in glTF space)"
+msgid "Good for re-importing glTFs exported from Blender, and re-exporting glTFs to glTFs after Blender editing. Bone tips are placed on their local +Y axis (in glTF space)"
 msgstr "Utile pour réimporter les glTF exportés depuis Blender et les réexporter en glTF après édition dans Blender. Les extrémités des os sont placées sur leur axe local +Y (dans l’espace glTF)"
 
 
@@ -62149,11 +62204,11 @@ msgid "Flat Shading"
 msgstr "Ombrage plat"
 
 
-msgid "Import Webp textures"
-msgstr "Import les textures WebP"
+msgid "Import WebP textures"
+msgstr "Importer les textures WebP"
 
 
-msgid "If a texture exists in webp format,loads the webp texture instead of the fallback png/jpg one"
+msgid "If a texture exists in WebP format, loads the WebP texture instead of the fallback PNG/JPEG one"
 msgstr "Si une texture existe au format WebP, la charger plutôt que sa solution de repli PNG ou JPG"
 
 
@@ -65109,6 +65164,15 @@ msgstr "Axe aligné"
 
 
 msgctxt "Operator"
+msgid "Select by Attribute"
+msgstr "Sélectionner par attribut"
+
+
+msgid "Select elements based on the active boolean attribute"
+msgstr "Sélectionner les éléments d’après l’attribut booléen actif"
+
+
+msgctxt "Operator"
 msgid "Select Faces by Sides"
 msgstr "Sélectionner les faces par côtés"
 
@@ -67847,12 +67911,12 @@ msgstr "Déplacer les entrées et sorties à l’intérieur du modificateur vers
 
 
 msgctxt "Operator"
-msgid "Add Grease Pencil (legacy)"
-msgstr "Ajouter un Grease Pencil (obsolète)"
+msgid "Add Grease Pencil"
+msgstr "Ajouter un Grease Pencil"
 
 
-msgid "Add a Grease Pencil (legacy) object to the scene"
-msgstr "Ajouter un objet Grease Pencil (obsolète) à la scène"
+msgid "Add a Grease Pencil object to the scene"
+msgstr "Ajouter un objet Grease Pencil à la scène"
 
 
 msgid "Stroke offset for the line art modifier"
@@ -68000,15 +68064,6 @@ msgstr "Supprimer le modificateur de Grease Pencil"
 
 msgid "Remove a modifier from the active grease pencil object"
 msgstr "Retirer un modificateur de l’objet Grease Pencil actif"
-
-
-msgctxt "Operator"
-msgid "Add Grease Pencil"
-msgstr "Ajouter un Grease Pencil"
-
-
-msgid "Add a Grease Pencil object to the scene"
-msgstr "Ajouter un objet Grease Pencil à la scène"
 
 
 msgctxt "Operator"
@@ -68871,7 +68926,7 @@ msgstr "Reconstruire tous les niveaux possibles de subdivisions pour générer u
 
 msgctxt "Operator"
 msgid "Multires Reshape"
-msgstr "Multires – changer forme"
+msgstr "Multires – changer la forme"
 
 
 msgid "Copy vertex coordinates from other object"
@@ -74729,7 +74784,7 @@ msgstr "Afficher un menu des précédentes actions effectuées"
 
 msgctxt "Operator"
 msgid "Repeat Last"
-msgstr "Répéter la dernière action"
+msgstr "Répéter la dernière opération"
 
 
 msgid "Repeat last action"
@@ -77751,6 +77806,15 @@ msgid "Line number to jump to"
 msgstr "Numéro de la ligne à rejoindre"
 
 
+msgctxt "Operator"
+msgid "Jump to File at Point"
+msgstr "Ouvrir le fichier texte actuel"
+
+
+msgid "Jump to a file for the text editor"
+msgstr "Aller au fichier dans l’éditeur de texte"
+
+
 msgid "Column"
 msgstr "Colonne"
 
@@ -79454,8 +79518,9 @@ msgid "Export the UV layout to a bitmap image"
 msgstr "Exporter la disposition UV dans une image bitmap"
 
 
+msgctxt "Mesh"
 msgid "Modified"
-msgstr "Modifiées"
+msgstr "Modifié"
 
 
 msgid "Exports UVs from the modified mesh"
@@ -79566,7 +79631,7 @@ msgstr "Effacer au lieu de créer des coutures"
 
 msgctxt "Operator"
 msgid "Minimize Stretch"
-msgstr "Minimiser étirement"
+msgstr "Minimiser l’étirement"
 
 
 msgid "Reduce UV stretching by relaxing angles"
@@ -79970,22 +80035,32 @@ msgid "Select similar UVs by property types"
 msgstr "Sélectionner les UV similaires d’après un type de propriété"
 
 
+msgctxt "Mesh"
+msgid "Pinned"
+msgstr "Épinglées"
+
+
+msgctxt "Mesh"
 msgid "Length 3D"
 msgstr "Longueur 3D"
 
 
+msgctxt "Mesh"
 msgid "Area 3D"
 msgstr "Aire 3D"
 
 
-msgid "Polygon Sides"
-msgstr "Côtés des polygones"
+msgctxt "Mesh"
+msgid "Object"
+msgstr "Objet"
 
 
+msgctxt "Mesh"
 msgid "Winding"
 msgstr "Enroulement"
 
 
+msgctxt "Mesh"
 msgid "Amount of Faces in Island"
 msgstr "Nombre de faces dans l’îlot"
 
@@ -82931,10 +83006,6 @@ msgstr "Longueur du tableau"
 
 msgid "Python value for unsupported custom property types"
 msgstr "Valeur Python pour les types de propriétés personnalisées non pris en charge"
-
-
-msgid "Grease Pencil (legacy)"
-msgstr "Grease Pencil (obsolète)"
 
 
 msgid "Speaker"
@@ -94984,7 +95055,7 @@ msgstr "Options de lancer diffus"
 
 
 msgid "EEVEE settings for tracing diffuse reflections"
-msgstr "Réglages EEVEE pour le lancer diffus des réflexions"
+msgstr "Réglages EEVEE pour le lancer des réflexions diffuses"
 
 
 msgid "Auto Bake"
@@ -95252,7 +95323,7 @@ msgstr "Options du lancer de réfraction"
 
 
 msgid "EEVEE settings for tracing refractions"
-msgstr "Réglages EEVEE pour le lancer des réfraction"
+msgstr "Réglages EEVEE pour le lancer des réfractions"
 
 
 msgid "Directional Shadows Resolution"
@@ -95862,6 +95933,10 @@ msgstr "Multiplier les couleurs"
 
 msgid "Adjust the intensity of the input's color"
 msgstr "Ajuster l’intensité de la couleur d’entrée"
+
+
+msgid "Multiply alpha along with color channels"
+msgstr "Multiplier l’alpha en même temps que les canaux de couleur"
 
 
 msgid "Strobe"
@@ -96478,10 +96553,6 @@ msgid "Sound data-block used by this sequence"
 msgstr "Bloc de données son utilisé par cette séquence"
 
 
-msgid "Multiply playback speed"
-msgstr "Multiplier la vitesse de lecture"
-
-
 msgid "Playback volume of the sound"
 msgstr "Volume de lecture du son"
 
@@ -96835,6 +96906,10 @@ msgstr "Conversion tonale"
 
 msgid "White Balance"
 msgstr "Balance des blancs"
+
+
+msgid "Sound Equalizer"
+msgstr "Égaliseur audio"
 
 
 msgid "Bright/contrast modifier data for sequence strip"
@@ -102887,16 +102962,32 @@ msgid "Shade for bones corresponding to a locked weight group during painting"
 msgstr "Teinte pour les os correspondants à un groupe de poids verrouillé pendant la peinture"
 
 
+msgid "Bone Pose Selected"
+msgstr "Os de pose sélectionné"
+
+
+msgid "Outline color of selected pose bones"
+msgstr "Couleur du contour des os de pose sélectionnés"
+
+
 msgid "Bone Pose Active"
-msgstr "Pose d’os active"
+msgstr "Os de pose actif"
+
+
+msgid "Outline color of active pose bones"
+msgstr "Couleur du contour des os de pose actifs"
 
 
 msgid "Bone Solid"
-msgstr "Os solide"
+msgstr "Os plein"
+
+
+msgid "Default color of the solid shapes of bones"
+msgstr "Couleur par défaut de la forme pleine des os"
 
 
 msgid "Bundle Solid"
-msgstr "Faisceau solide"
+msgstr "Faisceau plein"
 
 
 msgid "Camera Passepartout"
@@ -109238,6 +109329,10 @@ msgid "%s is not supported"
 msgstr "%s n’est pas pris en charge"
 
 
+msgid "Please select at least an image."
+msgstr "Veuillez sélectionner au moins une image."
+
+
 msgid "Cannot generate materials for unknown %s render engine"
 msgstr "Impossible de générer des matériaux pour le moteur de rendu inconnu %s"
 
@@ -111445,6 +111540,11 @@ msgstr "Seuil d’influence"
 
 msgid "Update on Edit"
 msgstr "Mettre à jour à l’édition"
+
+
+msgctxt "Operator"
+msgid "Search..."
+msgstr "Rechercher…"
 
 
 msgid "Distance Reference"
@@ -114316,6 +114416,16 @@ msgstr "Intervertir les données"
 
 
 msgctxt "Operator"
+msgid "Delete Retiming Keys"
+msgstr "Supprimer les clés de reminutage"
+
+
+msgctxt "Operator"
+msgid "Toggle Retiming Keys"
+msgstr "(Dés)activer les clés de reminutage"
+
+
+msgctxt "Operator"
 msgid "Slip Strip Contents"
 msgstr "Faire glisser le contenu de la bande"
 
@@ -115830,6 +115940,11 @@ msgstr "Faces plates liées"
 msgctxt "Operator"
 msgid "Side of Active"
 msgstr "D’un côté de l’actif"
+
+
+msgctxt "Operator"
+msgid "By Attribute"
+msgstr "Par attribut"
 
 
 msgctxt "Operator"
@@ -117506,6 +117621,14 @@ msgid "Gradient (Radial)"
 msgstr "Dégradé (radial)"
 
 
+msgid "Relax Topology"
+msgstr "Relâcher la topologie"
+
+
+msgid "Erase Multires Displacement"
+msgstr "Effacer le déplacement multires"
+
+
 msgctxt "Operator"
 msgid "Randomize Vertices"
 msgstr "Sommets aléatoires"
@@ -117945,6 +118068,10 @@ msgid "Documents"
 msgstr "Documents"
 
 
+msgid "armatures"
+msgstr "armatures"
+
+
 msgid "Attribute name can not be empty"
 msgstr "Le nom d’attribut ne peut pas être vide"
 
@@ -118061,6 +118188,18 @@ msgid "Path '%s' cannot be made absolute for %s '%s'"
 msgstr "Le chemin « %s » ne peut pas être passé en absolu pour %s « %s »"
 
 
+msgid "brushes"
+msgstr "brosses"
+
+
+msgid "cache_files"
+msgstr "fichiers de cache"
+
+
+msgid "cameras"
+msgstr "caméras"
+
+
 msgid "Can't initialize cloth"
 msgstr "Impossible d’initialiser le tissu"
 
@@ -118093,6 +118232,10 @@ msgid "Collection %d"
 msgstr "Collection %d"
 
 
+msgid "collections"
+msgstr "collections"
+
+
 msgid "Const"
 msgstr "Cont"
 
@@ -118123,6 +118266,14 @@ msgstr "%d ligne(s) supplémentaires en %s requise(s) pour Bézier"
 
 msgid "%d more point(s) needed for Bezier"
 msgstr "%d point(s) supplémentaires requis pour Bézier"
+
+
+msgid "curves"
+msgstr "courbes"
+
+
+msgid "hair_curves"
+msgstr "courbes de poils"
 
 
 msgid "UVMap"
@@ -118307,6 +118458,18 @@ msgid "GP_Layer"
 msgstr "Calque_GP"
 
 
+msgid "grease_pencils"
+msgstr "grease pencils"
+
+
+msgid "GP_Group"
+msgstr "Groupe_GP"
+
+
+msgid "grease_pencils_v3"
+msgstr "grease pencils v3"
+
+
 msgid "Cannot pack multiview images from raw data currently..."
 msgstr "Impossible d’empaqueter des images multivues à partir de données brutes pour le moment…"
 
@@ -118339,8 +118502,24 @@ msgid "Render error (%s) cannot save: '%s'"
 msgstr "Erreur de rendu (%s), impossible d’enregistrer : « %s »"
 
 
+msgid "ipos"
+msgstr "ipos"
+
+
 msgid "Key %d"
 msgstr "Clé %d"
+
+
+msgid "shape_keys"
+msgstr "clés de forme"
+
+
+msgid "lattices"
+msgstr "lattices"
+
+
+msgid "link_placeholders"
+msgstr "emplacements reservés de liens"
 
 
 msgid "Impossible to resync data-block %s and its dependencies, as its linked reference is missing"
@@ -118359,6 +118538,14 @@ msgid "Data corruption: data-block '%s' is using another local data-block ('%s')
 msgstr "Corruption de données : le bloc de données « %s » utilise un autre bloc de données local (« %s ») comme référence de redéfinition de bibliothèque"
 
 
+msgid "libraries"
+msgstr "bibliothèques"
+
+
+msgid "lights"
+msgstr "éclairages"
+
+
 msgid "Light Linking for %s"
 msgstr "Liaison de lumière pour %s"
 
@@ -118371,8 +118558,32 @@ msgid "Cannot unlink unsupported '%s' from light linking collection '%s'"
 msgstr "Impossible de dé-lier « %s » non pris en charge de la collection de liaison d’éclairage « %s »"
 
 
+msgid "lightprobes"
+msgstr "sondes lumière"
+
+
+msgid "linestyles"
+msgstr "styles de lignes"
+
+
 msgid "MaskLayer"
 msgstr "CalqueMasque"
+
+
+msgid "masks"
+msgstr "masques"
+
+
+msgid "materials"
+msgstr "matériaux"
+
+
+msgid "metaballs"
+msgstr "métaballes"
+
+
+msgid "meshes"
+msgstr "maillages"
 
 
 msgid "Tangent space can only be computed for tris/quads, aborting"
@@ -118391,6 +118602,10 @@ msgid "Possible data loss when saving this file! %s modifier is deprecated (Obje
 msgstr "Perte de données possible lors de l’enregistrement de ce fichier ! Le modificateur %s est obsolète (objet : %s)"
 
 
+msgid "movieclips"
+msgstr "clips vidéo"
+
+
 msgid "NlaTrack"
 msgstr "PisteNLA"
 
@@ -118401,6 +118616,10 @@ msgstr "BandeNLA"
 
 msgid "[Action Stash]"
 msgstr "[Actions réservées]"
+
+
+msgid "node_groups"
+msgstr "groupes de nœuds"
 
 
 msgid "Can't find object data of %s lib %s"
@@ -118435,12 +118654,24 @@ msgid "GreasePencil"
 msgstr "GreasePencil"
 
 
+msgid "objects"
+msgstr "objets"
+
+
 msgid "No new files have been packed"
 msgstr "Aucun nouveau fichier n’a été empaqueté"
 
 
 msgid "Unable to pack file, source path '%s' not found"
 msgstr "Impossible d’empaqueter le fichier, le chemin de la source « %s » est introuvable"
+
+
+msgid "Unable to access the size of, source path '%s'"
+msgstr "Impossible d’accéder à la taille, chemin de la source « %s »"
+
+
+msgid "Unable to pack files over 2gb, source path '%s'"
+msgstr "Impossible d’empaqueter les fichiers de plus de 2 Go, chemin de la source « %s »"
 
 
 msgid "Image '%s' skipped, packing movies or image sequences not supported"
@@ -118483,12 +118714,24 @@ msgid "Cannot unpack individual Library file, '%s'"
 msgstr "Impossible de dépaqueter le fichier de bibliothèque individuel, « %s »"
 
 
+msgid "palettes"
+msgstr "palettes"
+
+
+msgid "paint_curves"
+msgstr "courbes de peinture"
+
+
 msgid "ParticleSystem"
 msgstr "SystèmeParticules"
 
 
 msgid "ParticleSettings"
 msgstr "RéglagesParticules"
+
+
+msgid "particles"
+msgstr "particules"
 
 
 msgid "%i frames found!"
@@ -118525,6 +118768,10 @@ msgstr "%s, le cache est obsolète !"
 
 msgid "%s, not exact since frame %i"
 msgstr "%s, non-exact depuis la frame %i"
+
+
+msgid "pointclouds"
+msgstr "nuages de points"
 
 
 msgid "Warning"
@@ -118565,6 +118812,26 @@ msgstr "LIB : objet perdu dans la scène : « %s »"
 
 msgid "RenderView"
 msgstr "Vue de rendu"
+
+
+msgid "screens"
+msgstr "écrans"
+
+
+msgid "sounds"
+msgstr "sons"
+
+
+msgid "speakers"
+msgstr "haut-parleurs"
+
+
+msgid "texts"
+msgstr "textes"
+
+
+msgid "textures"
+msgstr "textures"
 
 
 msgctxt "MovieClip"
@@ -118888,6 +119155,14 @@ msgid "Kelvin"
 msgstr "Kelvin"
 
 
+msgid "fonts"
+msgstr "polices"
+
+
+msgid "volumes"
+msgstr "volumes"
+
+
 msgid "Could not load volume for writing"
 msgstr "Impossible d’ouvrir le volume en écriture"
 
@@ -118898,6 +119173,14 @@ msgstr "Impossible d’écrire le volume : %s"
 
 msgid "Could not write volume: Unknown error writing VDB file"
 msgstr "Impossible d’écrire le volume : erreur inconnue à l’écriture du fichier VDB"
+
+
+msgid "workspaces"
+msgstr "espaces de travail"
+
+
+msgid "worlds"
+msgstr "mondes"
 
 
 msgid "Cannot open or start AVI movie file"
@@ -119975,7 +120258,7 @@ msgstr "Aucun bloc de données sélectionné n’est marqué comme étant un ass
 
 
 msgid "Delete all asset metadata, turning the selected asset data-blocks back into normal data-blocks, and set Fake User to ensure the data-blocks will still be saved"
-msgstr "Supprimer toutes les métadonnées de l’asset, les blocs de données de l’asset sélectionné redeviendront des blocs de données normaux, l’utilisateur factice y sera défini pour s’assurer que les blocs de données soient toujours sauvegardés"
+msgstr "Effacer toutes les métadonnées des assets et les reconvertir en blocs de données normaux. L’utilisateur factice y sera défini pour s’assurer que les blocs de données soient toujours sauvegardés"
 
 
 msgid "Selected data-blocks are already assets (or do not support use as assets)"
@@ -120285,6 +120568,10 @@ msgstr "L’asset n’est pas un groupe de nœuds de géométrie"
 
 msgid "Cannot evaluate node group"
 msgstr "Impossible d’évaluer le groupe de nœuds"
+
+
+msgid "Node group must have a group output node"
+msgstr "Le groupe de nœuds doit avoir un nœud de sortie"
 
 
 msgid "Annotation Create Poly: LMB click to place next stroke vertex | ESC/Enter to end  (or click outside this area)"
@@ -120770,6 +121057,14 @@ msgid "Missing Menu: %s"
 msgstr "Menu manquant : %s"
 
 
+msgid "Mark as Asset"
+msgstr "Définir comme asset"
+
+
+msgid "Clear Asset"
+msgstr "Annuler l’asset"
+
+
 msgid "Non-Keyboard Shortcut"
 msgstr "Raccourci non-clavier"
 
@@ -121070,7 +121365,7 @@ msgstr "Rouge, vert, bleu"
 
 
 msgid "Hue, Saturation, Lightness"
-msgstr "Teinte, saturation, valeur"
+msgstr "Teinte, saturation, luminosité"
 
 
 msgid "Color as hexadecimal values"
@@ -121097,6 +121392,10 @@ msgstr "Valeur"
 
 msgid "Redo"
 msgstr "Refaire"
+
+
+msgid "Press spacebar to search..."
+msgstr "Appuyer sur la barre d’espace pour rechercher…"
 
 
 msgid "Type to search..."
@@ -121537,8 +121836,8 @@ msgid "Browse Particle Settings to be linked"
 msgstr "Parcourir les réglages de particules à lier"
 
 
-msgid "Browse Grease Pencil (legacy) Data to be linked"
-msgstr "Parcourir les données Grease Pencil (obsolète) à lier"
+msgid "Browse Grease Pencil Data to be linked"
+msgstr "Parcourir les données Grease Pencil à lier"
 
 
 msgid "Browse Movie Clip to be linked"
@@ -121579,10 +121878,6 @@ msgstr "Parcourir les données nuage de points à lier"
 
 msgid "Browse Volume Data to be linked"
 msgstr "Parcourir les données volume à lier"
-
-
-msgid "Browse Grease Pencil Data to be linked"
-msgstr "Parcourir les données Grease Pencil à lier"
 
 
 msgid "Browse ID data to be linked"
@@ -122087,6 +122382,18 @@ msgstr "Doit être en mode sélection sommet"
 
 msgid "No weights/vertex groups on object"
 msgstr "Aucun poids/groupe de sommets dans l’objet"
+
+
+msgid "There must be an active attribute"
+msgstr "Il faut un attribut actif"
+
+
+msgid "The active attribute must have a boolean type"
+msgstr "L’attribut actif doit être de type booléen"
+
+
+msgid "The active attribute must be on the vertex, edge, or face domain"
+msgstr "L’attribut actif doit être sur le domaine sommet, arête, ou face"
 
 
 msgid "No face selected"
@@ -124636,6 +124943,14 @@ msgid "Move asset out of any catalog"
 msgstr "Sortir l’asset de tout catalogue"
 
 
+msgid "Today"
+msgstr "Aujourd’hui"
+
+
+msgid "Yesterday"
+msgstr "Hier"
+
+
 msgid "File path"
 msgstr "Chemin de fichier"
 
@@ -124654,14 +124969,6 @@ msgstr ""
 
 msgid "Unreadable Blender library file:"
 msgstr "Fichier bibliothèque Blender illisible :"
-
-
-msgid "Today"
-msgstr "Aujourd’hui"
-
-
-msgid "Yesterday"
-msgstr "Hier"
 
 
 msgid "Could not rename: %s"
@@ -125994,7 +126301,7 @@ msgstr "Le chemin de bibliothèque « %s » est maintenant valide, veuillez re
 
 
 msgid "Purging %d unused data-blocks ("
-msgstr "%d blocs de données en cours de purge ("
+msgstr "%d blocs de données à nettoyer ("
 
 
 msgid "). Click here to proceed..."
@@ -126107,6 +126414,10 @@ msgstr "Impossible de dé-lier la texture « %s ». Il n’est pas clair depui
 
 msgid "Cannot unlink collection '%s'. It's not clear which scene, collection or instance empties it should be unlinked from, there's no scene, collection or instance empties as parent in the Outliner tree"
 msgstr "Impossible de dé-lier la collection « %s ». Il n’est pas clair depuis quelle scène, collection ou objets vides d’instance elle est censée être dé-liée, elle n’a pas de scène, de collection ou d’objet vide d’instance en tant que parent dans le synoptique"
+
+
+msgid "Cannot unlink collection '%s' parented to another linked collection '%s'"
+msgstr "Impossible de dé-lier la collection « %s » parentée à l’autre collection liée « %s »"
 
 
 msgid "Cannot unlink object '%s' parented to another linked object '%s'"
@@ -126505,6 +126816,10 @@ msgid "Python disabled in this build"
 msgstr "Python est désactivé dans cette build"
 
 
+msgid "File path property not set"
+msgstr "La propriété de chemin de fichier n’est pas définie"
+
+
 msgid "No file path for \"%s\""
 msgstr "Aucun chemin de fichier pour « %s »"
 
@@ -126527,6 +126842,10 @@ msgstr "Impossible de faire un stat sur « %s » : %s"
 
 msgid "Text not found: %s"
 msgstr "Texte introuvable : %s"
+
+
+msgid "See '%s' in the external editor"
+msgstr "Voir « %s » dans l’éditeur externe"
 
 
 msgid "File '%s' cannot be opened"
@@ -128054,7 +128373,7 @@ msgstr "%s : Incohérence des nombres d’éléments des poids et indices d’a
 
 
 msgid "%s: Joint weights and joint indices size mismatch for prim %s"
-msgstr "%s : Incohérence des nombres d’éléments des poids et indices d’articulations pour la prim %s"
+msgstr "%s : Incohérence des nombres d’indices des poids et indices d’articulations pour la prim %s"
 
 
 msgid "%s: Unexpected joint weights interpolation type %s for prim %s"
@@ -128981,6 +129300,10 @@ msgid "Registering node tree class: '%s' is too long, maximum length is %d"
 msgstr "Enregistrement de la classe d’arborescence nodale : « %s » est trop long, longueur maximum de %d"
 
 
+msgid "Registering node tree class: '%s', bl_idname '%s' could not be unregistered"
+msgstr "Enregistrement de la classe d’arborescence nodale : « %s », avec le bl_idname « %s » n’a pas pu être déchargé"
+
+
 msgid "Node tree '%s' has undefined type %s"
 msgstr "L’arborescence de nœuds « %s » a un type indéfini %s"
 
@@ -129010,11 +129333,11 @@ msgstr "Enregistrement de la classe de nœud : « %s » est trop long, longue
 
 
 msgid "Registering node class: '%s', bl_idname '%s' is a builtin node"
-msgstr "Enregistrement de la classe de nœud : « %s » le bl_idname « %s » est un nœud prédéfini"
+msgstr "Enregistrement de la classe de nœud : « %s », avec le bl_idname « %s » est un nœud prédéfini"
 
 
 msgid "Registering node class: '%s', bl_idname '%s' could not be unregistered"
-msgstr "Enregistrement de la classe de nœud : « %s » le bl_idname « %s » n’a pas pu être déchargé"
+msgstr "Enregistrement de la classe de nœud : « %s », avec le bl_idname « %s » n’a pas pu être déchargé"
 
 
 msgid "Unable to locate socket '%s' in node"
@@ -129342,7 +129665,7 @@ msgstr "%s '%s' a la catégorie '%s'"
 
 
 msgid "%s '%s', bl_idname '%s' could not be unregistered"
-msgstr "%s '%s', bl_idname '%s' n’a pas pu être déchargé"
+msgstr "%s « %s », bl_idname « %s » n’a pas pu être déchargé"
 
 
 msgid "%s parent '%s' for '%s' not found"
@@ -129836,10 +130159,6 @@ msgstr "Le type de propriété ne correspond pas à la prise d’entrée « %s�
 
 msgid "Node group's geometry input must be the first"
 msgstr "L’entrée de géométrie du groupe de nœuds doit être en premier"
-
-
-msgid "Node group must have a group output node"
-msgstr "Le groupe de nœuds doit avoir un nœud de sortie"
 
 
 msgid "Node group must have an output socket"
@@ -130337,10 +130656,6 @@ msgstr "Cb"
 
 msgid "Cr"
 msgstr "Cr"
-
-
-msgid "On"
-msgstr "Activé"
 
 
 msgid "Val"
@@ -131904,6 +132219,10 @@ msgid "Delta Time"
 msgstr "Delta temps"
 
 
+msgid "Skip"
+msgstr "Passer"
+
+
 msgid "Forward the output of the simulation input node directly to the output node and ignore the nodes in the simulation zone"
 msgstr "Transmettre directement la sortie du nœud entrée de simulation au nœud de sortie et ignorer les nœuds dans la zone de simulation"
 
@@ -132228,10 +132547,6 @@ msgid "Specular IOR Level"
 msgstr "Niveau IDR de spéculaire"
 
 
-msgid "Specular Tint"
-msgstr "Teinte de spéculaire"
-
-
 msgid "Anisotropic Rotation"
 msgstr "Rotation anisotrope"
 
@@ -132252,10 +132567,6 @@ msgid "Coat IOR"
 msgstr "IDR de vernis"
 
 
-msgid "Coat Tint"
-msgstr "Teinte de vernis"
-
-
 msgid "Coat Normal"
 msgstr "Normale de vernis"
 
@@ -132268,16 +132579,27 @@ msgid "Sheen Roughness"
 msgstr "Rugosité de lustre"
 
 
-msgid "Sheen Tint"
-msgstr "Teinte de lustre"
-
-
 msgid "Emission Color"
 msgstr "Couleur d’émission"
 
 
 msgid "Emission Strength"
 msgstr "Force d’émission"
+
+
+msgctxt "NodeTree"
+msgid "Specular Tint"
+msgstr "Teinte de spéculaire"
+
+
+msgctxt "NodeTree"
+msgid "Coat Tint"
+msgstr "Teinte de vernis"
+
+
+msgctxt "NodeTree"
+msgid "Sheen Tint"
+msgstr "Teinte de lustre"
 
 
 msgid "Blend between diffuse surface and subsurface scattering. Typically should be zero or one (either fully diffuse or subsurface)"
@@ -132322,6 +132644,23 @@ msgstr "Indice de réfraction de la couche de vernis (affecte sa réflectivité 
 
 msgid "Adds a colored tint to the coat layer by modeling absorption in the layer. Saturation increases at shallower angles, as the light travels farther through the medium (depending on the Coat IOR)"
 msgstr "Ajouter une teinte colorée à la couche de vernis en modélisant l’absorption dans la couche. La saturation augmente aux angles rasants, car la lumière voyage plus loin dans le médium (selon l’IDR de la couche)"
+
+
+msgid "IOR Level"
+msgstr "Niveau IDR"
+
+
+msgctxt "NodeTree"
+msgid "Tint"
+msgstr "Teinte"
+
+
+msgid "Subsurface"
+msgstr "Subsurface"
+
+
+msgid "Sheen"
+msgstr "Lustre"
 
 
 msgid "View Vector"
@@ -132840,6 +133179,10 @@ msgid "WaveDistortion"
 msgstr "Ondulation"
 
 
+msgid "window_managers"
+msgstr "gestionnaires de fenêtre"
+
+
 msgid "Region could not be drawn!"
 msgstr "La région n’a pas pu être affichée !"
 
@@ -132878,6 +133221,10 @@ msgstr "impossible d’ouvrir le fichier"
 
 msgid "File Not Found"
 msgstr "Fichier introuvable"
+
+
+msgid "Modified"
+msgstr "Modifiées"
 
 
 msgid "Save the current file in the desired location but do not make the saved file active"
@@ -133248,6 +133595,10 @@ msgstr "Le mode stéréo 3D nécessite que la fenêtre soit en plein écran"
 
 msgid "(Unsaved)"
 msgstr "(Non-enregistré)"
+
+
+msgid " (Recovered)"
+msgstr " (Récupéré)"
 
 
 msgid "Python script uses OpenGL for drawing"
@@ -134122,6 +134473,18 @@ msgid "Georgian (ქართული)"
 msgstr "Géorgien (ქართული)"
 
 
+msgid "Tamil (தமிழ்)"
+msgstr "Tamoul (தமிழ்)"
+
+
+msgid "Khmer (ខ្មែរ)"
+msgstr "Khmer (ខ្មែរ)"
+
+
+msgid "Swahili (Kiswahili)"
+msgstr "Swahili (Kiswahili)"
+
+
 msgid "Complete"
 msgstr "Complètes"
 
@@ -134332,4 +134695,12 @@ msgstr "Tailler les courbes de poils"
 
 msgid "Trims or scales hair curves to a certain length"
 msgstr "Tailler ou redimensionner les courbes de poils à une certaine longueur"
+
+
+msgid "Smooth by Angle"
+msgstr "Lisser selon l’angle"
+
+
+msgid "Set the sharpness of mesh edges based on the angle between the neighboring faces"
+msgstr "Définir la dureté des arêtes du maillage d’après l’angle entre les faces adjacentes"
 

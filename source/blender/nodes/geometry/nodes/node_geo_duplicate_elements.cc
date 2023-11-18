@@ -291,7 +291,7 @@ static void duplicate_curves(GeometrySet &geometry_set,
     return;
   }
   geometry_set.keep_only_during_modify({GeometryComponent::Type::Curve});
-  GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(geometry_set);
+  GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
 
   const Curves &curves_id = *geometry_set.get_curves();
   const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
@@ -541,6 +541,7 @@ static void duplicate_faces(GeometrySet &geometry_set,
 
   new_mesh->tag_loose_verts_none();
   new_mesh->tag_loose_edges_none();
+  new_mesh->tag_overlapping_none();
 
   copy_face_attributes_without_id(edge_mapping,
                                   vert_mapping,
@@ -722,6 +723,8 @@ static void duplicate_edges(GeometrySet &geometry_set,
                                      duplicates);
   }
 
+  new_mesh->tag_overlapping_none();
+
   geometry_set.replace_mesh(new_mesh);
 }
 
@@ -850,6 +853,8 @@ static void duplicate_points_mesh(GeometrySet &geometry_set,
                                      attribute_outputs,
                                      duplicates);
   }
+
+  new_mesh->tag_overlapping_none();
 
   geometry_set.replace_mesh(new_mesh);
 }

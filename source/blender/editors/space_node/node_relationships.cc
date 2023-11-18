@@ -16,13 +16,13 @@
 #include "BLI_stack.hh"
 
 #include "BKE_anim_data.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_screen.hh"
 
 #include "ED_node.hh" /* own include */
@@ -453,8 +453,8 @@ static bNodeSocket *node_link_viewer_get_socket(bNodeTree &ntree,
         return viewer_socket;
       }
       NodeGeometryViewer *storage = (NodeGeometryViewer *)viewer_node.storage;
-      const eCustomDataType data_type = bke::socket_type_to_custom_data_type(
-          (eNodeSocketDatatype)src_socket.type);
+      const eCustomDataType data_type = *bke::socket_type_to_custom_data_type(
+          eNodeSocketDatatype(src_socket.type));
       BLI_assert(data_type != CD_AUTO_FROM_NAME);
       storage->data_type = data_type;
       viewer_node.typeinfo->updatefunc(&ntree, &viewer_node);
