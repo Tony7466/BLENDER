@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <iostream>
+
 #include "BKE_curves.hh"
 
 #include "DNA_mesh_types.h"
@@ -23,47 +25,86 @@ static void node_declare(NodeDeclarationBuilder &b)
 static Curves *edge_paths_to_curves_convert(
     const Mesh &mesh,
     const IndexMask &start_verts_mask,
-    const Span<int> next_indices,
+    MutableSpan<int> next_indices,
     const AnonymousAttributePropagationInfo &propagation_info)
 {
-  Vector<int> vert_indices;
-  Vector<int> curve_offsets;
-  Array<bool> visited(mesh.totvert, false);
-  start_verts_mask.foreach_index([&](const int first_vert) {
-    const int second_vert = next_indices[first_vert];
-    if (first_vert == second_vert) {
-      return;
-    }
-    if (second_vert < 0 || second_vert >= mesh.totvert) {
-      return;
-    }
+  const IndexRange vert_range(mesh.totvert);
 
-    curve_offsets.append(vert_indices.size());
-
-    /* Iterate through path defined by #next_indices. */
-    int current_vert = first_vert;
-    while (!visited[current_vert]) {
-      visited[current_vert] = true;
-      vert_indices.append(current_vert);
-      const int next_vert = next_indices[current_vert];
-      if (next_vert < 0 || next_vert >= mesh.totvert) {
-        break;
+  threading::parallel_for(next_indices.index_range(), 2048, [&](const IndexRange range) {
+    MutableSpan<int> next_indices_range = next_indices.slice(range);
+    for (const int vert_i : range) {
+      int &next_vert = next_indices[vert_i];
+      if (UNLIKELY(!vert_range.contains(next_vert))) {
+        next_vert = vert_i;
       }
-      current_vert = next_vert;
-    }
-
-    /* Reset visited status. */
-    const int points_in_curve_num = vert_indices.size() - curve_offsets.last();
-    for (const int vert_in_curve : vert_indices.as_span().take_back(points_in_curve_num)) {
-      visited[vert_in_curve] = false;
     }
   });
 
-  if (vert_indices.is_empty()) {
+  const constexpr int non_checked = -1;
+
+  Array<int> rang(mesh.totvert, non_checked);
+  Array<bool> visited(mesh.totvert, false);
+  const auto rang_for_vertex = [&](const int vertex) -> int {
+    if (rang[vertex] != non_checked) {
+      return rang[vertex];
+    }
+
+    int total_rang = 0;
+    for (int current_vert = vertex; !visited[current_vert];
+         current_vert = next_indices[current_vert]) {
+      if (rang[current_vert] != non_checked) {
+        total_rang += rang[current_vert];
+        break;
+      }
+      visited[current_vert] = true;
+      total_rang++;
+    }
+
+    for (int current_vert = vertex; visited[current_vert];
+         current_vert = next_indices[current_vert]) {
+      if (rang[current_vert] != non_checked) {
+        break;
+      }
+      visited[current_vert] = false;
+      rang[current_vert] = total_rang;
+      total_rang--;
+    }
+    return rang[vertex];
+  };
+
+  IndexMaskMemory memory;
+  const IndexMask valid_start_verts = IndexMask::from_predicate(
+      start_verts_mask, GrainSize(2048), memory, [&](const int vert_i) {
+        return vert_range.contains(next_indices[vert_i]);
+      });
+
+  Array<int> curve_offsets(valid_start_verts.size() + 1);
+  valid_start_verts.foreach_index([&](const int first_vert, const int pos) {
+    curve_offsets[pos] = rang_for_vertex(first_vert);
+  });
+
+  const OffsetIndices<int> curves = offset_indices::accumulate_counts_to_offsets(
+      curve_offsets.as_mutable_span());
+  if (curves.is_empty()) {
     return nullptr;
   }
-  Curves *curves_id = bke::curves_new_nomain(geometry::create_curve_from_vert_indices(
-      mesh.attributes(), vert_indices, curve_offsets, IndexRange(0), propagation_info));
+
+  Array<int> indices(curves.total_size());
+  valid_start_verts.foreach_index(GrainSize(1024), [&](const int first_vert, const int pos) {
+    MutableSpan<int> curve_indices = indices.as_mutable_span().slice(curves[pos]);
+    int current_vert = first_vert;
+    for (const int i : curve_indices.index_range()) {
+      curve_indices[i] = current_vert;
+      current_vert = next_indices[current_vert];
+    }
+  });
+
+  Curves *curves_id = bke::curves_new_nomain(
+      geometry::create_curve_from_vert_indices(mesh.attributes(),
+                                               indices,
+                                               curve_offsets.as_span().drop_back(1),
+                                               IndexRange(0),
+                                               propagation_info));
   return curves_id;
 }
 
@@ -80,10 +121,11 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     const bke::MeshFieldContext context{*mesh, ATTR_DOMAIN_POINT};
     fn::FieldEvaluator evaluator{context, mesh->totvert};
-    evaluator.add(params.get_input<Field<int>>("Next Vertex Index"));
+    Array<int> next_vert(mesh->totvert);
+    evaluator.add_with_destination(params.get_input<Field<int>>("Next Vertex Index"),
+                                   next_vert.as_mutable_span());
     evaluator.add(params.get_input<Field<bool>>("Start Vertices"));
     evaluator.evaluate();
-    const VArraySpan<int> next_vert = evaluator.get_evaluated<int>(0);
     IndexMask start_verts = evaluator.get_evaluated_as_mask(1);
 
     if (start_verts.is_empty()) {
