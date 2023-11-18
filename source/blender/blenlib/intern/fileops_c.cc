@@ -436,16 +436,11 @@ bool BLI_file_ensure_parent_dir_exists(const char *filepath)
 
 int BLI_rename(const char *from, const char *to)
 {
-#ifdef WIN32
-  return urename(from, to);
-#else
-  return rename(from, to);
-#endif
-}
-
-int BLI_rename_overwrite(const char *from, const char *to)
-{
   if (!BLI_exists(from)) {
+    return 1;
+  }
+
+  if (BLI_exists(to)) {
     return 1;
   }
 
@@ -462,13 +457,33 @@ int BLI_rename_overwrite(const char *from, const char *to)
    * In this particular case we would not want to follow symbolic-links as well.
    * Since this functionality isn't required at the moment, leave this as-is.
    * Noting it as a potential improvement. */
-  if (BLI_exists(to)) {
-    if (BLI_delete(to, false, false)) {
+
+#ifdef WIN32
+  return urename(from, to);
+#else
+  return rename(from, to);
+#endif
+}
+
+int BLI_rename_overwrite(const char *from, const char *to)
+{
+  if (!BLI_exists(from)) {
+    return 1;
+  }
+
+#ifdef WIN32
+  /* `urename` from `utfconv` intern utils uses `MoveFileExW`, which allows to replace an existing
+   * file, but not an existing directory, even if empty. This will only delete empty directories.
+   */
+  if (BLI_is_dir(to)) {
+    if (BLI_delete(to, true, false)) {
       return 1;
     }
   }
-
-  return BLI_rename(from, to);
+  return urename(from, to);
+#else
+  return rename(from, to);
+#endif
 }
 
 #ifdef WIN32
