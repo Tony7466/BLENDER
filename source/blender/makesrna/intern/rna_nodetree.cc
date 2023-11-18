@@ -9333,13 +9333,13 @@ static void def_geo_math_expression(StructRNA *srna)
       {GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT,
        "OUTPUT_FLOAT",
        0,
-       "Output Float",
-       "Output Float"},
+       "Float",
+       "Float"},
       {GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR,
        "OUTPUT_VECTOR",
        0,
-       "Output Vector",
-       "Output Vector"},
+       "Vector",
+       "Vector"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

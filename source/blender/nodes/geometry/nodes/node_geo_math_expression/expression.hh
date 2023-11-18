@@ -29,7 +29,7 @@ public:
     return token;
   }
 
-  virtual fn::GField evaluate(EvaluationContext &ctx) = 0;
+  virtual fn::GField compile(EvaluationContext &ctx) = 0;
 
   static fn::GField constant(float f) {
     auto c = std::make_shared<mf::CustomMF_Constant<float>>(f);
@@ -102,13 +102,16 @@ public:
   static fn::GField div(EvaluationContext &ctx, Expression *left, Expression *right);
   static fn::GField vec(EvaluationContext &ctx, Expression *x, Expression *y, Expression *z);
   static fn::GField len(EvaluationContext &ctx, Expression *v);
+  static fn::GField x(EvaluationContext &ctx, Expression *v);
+  static fn::GField y(EvaluationContext &ctx, Expression *v);
+  static fn::GField z(EvaluationContext &ctx, Expression *v);
 };
 
 class NumberExpression : public Expression {
 public:
   NumberExpression(Token token) : Expression(token) {}
 
-  fn::GField evaluate(EvaluationContext &/*ctx*/) override {
+  fn::GField compile(EvaluationContext &/*ctx*/) override {
     double d;
     auto result = std::from_chars(token.value.data(), token.value.data() + token.value.size(), d);
 
@@ -125,8 +128,8 @@ class GroupExpression : public Expression {
 public:
   GroupExpression(std::unique_ptr<Expression> expr, Token token) : Expression(token), expr(std::move(expr)) {}
 
-  fn::GField evaluate(EvaluationContext &ctx) override {
-    return expr->evaluate(ctx);
+  fn::GField compile(EvaluationContext &ctx) override {
+    return expr->compile(ctx);
   }
 };
 
@@ -134,7 +137,7 @@ class VariableExpression : public Expression {
 public:
   VariableExpression(Token token) : Expression(token) {}
 
-  fn::GField evaluate(EvaluationContext &ctx) override {
+  fn::GField compile(EvaluationContext &ctx) override {
     fn::GField value;
     
     try {
@@ -168,7 +171,7 @@ private:
 public:
   CallExpression(std::vector<std::unique_ptr<Expression>> args, Token token) : Expression(token), args(std::move(args)) {}
 
-  fn::GField evaluate(EvaluationContext &ctx) override {
+  fn::GField compile(EvaluationContext &ctx) override {
     try {
       if(token.value == "pow") {
         if(args.size() != 2) { throw "incorrect number of arguments"; }
@@ -190,6 +193,21 @@ public:
         return len(ctx, args[0].get());
       }
 
+      if(token.value == "x") {
+        if(args.size() != 1) { throw "incorrect number of arguments"; }
+        return x(ctx, args[0].get());
+      }
+
+      if(token.value == "y") {
+        if(args.size() != 1) { throw "incorrect number of arguments"; }
+        return y(ctx, args[0].get());
+      }
+
+      if(token.value == "z") {
+        if(args.size() != 1) { throw "incorrect number of arguments"; }
+        return z(ctx, args[0].get());
+      }
+
       throw "invalid function";
     } catch (const char *err) {
       throw EvaluationError{ this, err };
@@ -203,7 +221,7 @@ class UnaryExpression : public Expression {
 public:
   UnaryExpression(std::unique_ptr<Expression> expr, Token token) : Expression(token), expr(std::move(expr)) {}
 
-  fn::GField evaluate(EvaluationContext &ctx) override {
+  fn::GField compile(EvaluationContext &ctx) override {
     try {
       switch (token.kind) {
         case TokenKind::MINUS:
@@ -223,7 +241,7 @@ class BinaryExpression : public Expression {
 public:
   BinaryExpression(std::unique_ptr<Expression> left, std::unique_ptr<Expression> right, Token token) : Expression(token), left(std::move(left)), right(std::move(right)) {}
 
-  fn::GField evaluate(EvaluationContext &ctx) override {
+  fn::GField compile(EvaluationContext &ctx) override {
     try {
       switch (token.kind) {
         case TokenKind::PLUS:
