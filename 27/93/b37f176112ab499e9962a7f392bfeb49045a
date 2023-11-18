@@ -1,1 +1,1 @@
-Referenced by issue #115108, obj.dimensions is always (0,0,0) during armature creation by script
+Referenced by issue #115108, Regression 4.1: obj.dimensions is always (0,0,0) during armature creation by script
