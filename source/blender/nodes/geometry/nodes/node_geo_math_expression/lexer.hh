@@ -21,23 +21,30 @@ struct Token {
 
 struct LexerError {
   size_t index;
+  char c;
   const char *message;
+
+  LexerError(size_t index, char c, const char *message) : index(index), c(c), message(message) {
+
+  }
 };
 
 class Lexer {
-  const char *text;
+  std::string_view text;
   size_t index;
   size_t start;
 
 public:
-  void init(const char* text) {
+  void init(std::string_view text) {
       this->text = text;
       index = 0;
+      start = 0;
   }
 
   Token next_token()
   {
     if (end()) {
+      start = index;
       return make_token(TokenKind::END);
     }
 
@@ -83,7 +90,7 @@ public:
       return parse_number(c);
     }
 
-    throw LexerError { start, "unexpected character" };
+    throw make_error("unexpected character");
   }
 
 private:
@@ -136,11 +143,11 @@ private:
   }
 
   LexerError make_error(const char* message) {
-    return LexerError{index, message};
+    return LexerError(index - 1, text[index - 1], message);
   }
 
   Token make_token(TokenKind kind) {
-    return Token{ kind, start, std::string_view(text + start, index - start) };
+    return Token{ kind, start, text.substr(start, index - start) };
   }
 
   bool match(char c) {
@@ -154,7 +161,7 @@ private:
 
   bool end()
   {
-    return text[index] == '\0';
+    return index >= text.size();
   }
 
   char next()

@@ -21,17 +21,10 @@ class Parser {;
   Lexer lexer;
   Token peeked_token;
   bool peeked;
-  std::set<std::string_view> *variables;
 
 public:
-  std::unique_ptr<Expression> parse(const char *text, std::set<std::string_view> *variables)
+  std::unique_ptr<Expression> parse(std::string_view text)
   {
-    this->variables = variables;
-
-    if (variables) {
-      variables->clear();
-    }
-
     peeked = false;
     lexer.init(text);
     auto expr = parse_expression();
@@ -85,10 +78,6 @@ public:
         return parse_call(token);
       }
 
-      if(variables) {
-        variables->insert(token.value);
-      }
-
       return std::make_unique<VariableExpression>(token);
     }
 
@@ -102,7 +91,11 @@ public:
       return expr;
     }
 
-    throw ParserError { token, "unexpected token" };
+    if(token.kind == TokenKind::END) {
+      throw ParserError { token, "unexpected end of expression" };
+    } else {
+      throw ParserError { token, "unexpected token" };
+    }
   }
 
   std::unique_ptr<Expression> parse_call(Token token) {

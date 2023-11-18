@@ -82,13 +82,13 @@ namespace blender::nodes::node_geo_math_expression_cc {
     std::unique_ptr<Expression> expr;
 
     try {
-      expr = parser.parse(storage.expression, nullptr);
+      expr = parser.parse(storage.expression);
     } catch(LexerError err) {
-      params.error_message_add(NodeWarningType::Error, fmt::format("LexerError: column: {}, message: {}", err.index+1, err.message).c_str());
+      params.error_message_add(NodeWarningType::Error, fmt::format("{}: col:{} '{}'", err.message, err.index+1, err.c).c_str());
       params.set_default_remaining_outputs();
       return;
     } catch(ParserError err) {
-      params.error_message_add(NodeWarningType::Error, fmt::format(TIP_("ParserError: column: {}, message: {}"), err.token.index+1, err.message).c_str());
+      params.error_message_add(NodeWarningType::Error, fmt::format(TIP_("{}: col:{} '{}'"), err.message, err.token.index+1, err.token.value).c_str());
       params.set_default_remaining_outputs();
       return;
     }
@@ -118,7 +118,7 @@ namespace blender::nodes::node_geo_math_expression_cc {
 
       params.set_output("Value", field);
     } catch (EvaluationError err) {
-      params.error_message_add(NodeWarningType::Error, fmt::format("EvaluationError: token: {}, message: {}", err.expression->get_token().value, err.message).c_str());
+      params.error_message_add(NodeWarningType::Error, fmt::format("{}: col:{} '{}'", err.message, err.expression->get_token().index+1, err.expression->get_token().value).c_str());
       params.set_default_remaining_outputs();
       return;
     }
