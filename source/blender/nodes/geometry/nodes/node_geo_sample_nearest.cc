@@ -179,7 +179,7 @@ static void get_closest_mesh_corners(const Mesh &mesh,
 
   BLI_assert(mesh.totloop > 0);
   Array<int> face_indices(positions.size());
-  (mesh, positions, mask, face_indices, {}, {});
+  get_closest_mesh_faces(mesh, positions, mask, face_indices, {}, {});
 
   mask.foreach_index([&](const int i) {
     const float3 position = positions[i];
