@@ -51,7 +51,7 @@ void main()
 #if defined(LOOKDEV_BG)
   background_color = probe_evaluate_world_spec(worldvec, studioLightBlur).rgb;
 #else
-  worldvec = StudioLightMatrix * worldvec;
+  worldvec = StudioLightMatrix_ * worldvec;
   background_color = node_tex_environment_equirectangular(worldvec, studioLight).rgb;
   background_color *= studioLightIntensity;
 #endif
