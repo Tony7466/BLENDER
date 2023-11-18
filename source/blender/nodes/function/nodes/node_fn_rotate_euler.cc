@@ -17,25 +17,26 @@
 
 namespace blender::nodes::node_fn_rotate_euler_cc {
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  const auto type = FunctionNodeRotateEulerType(node.custom1);
-
   b.add_input<decl::Vector>("Rotation").subtype(PROP_EULER).hide_value();
-  switch (type) {
-    case FN_NODE_ROTATE_EULER_TYPE_EULER:
-      b.add_input<decl::Vector>("Rotate By").subtype(PROP_EULER);
-      break;
-    case FN_NODE_ROTATE_EULER_TYPE_AXIS_ANGLE:
-      b.add_input<decl::Vector>("Axis").default_value({0.0, 0.0, 1.0}).subtype(PROP_XYZ);
-      b.add_input<decl::Float>("Angle").subtype(PROP_ANGLE);
-      break;
-    default:
-      BLI_assert_unreachable();
-      break;
+
+  const bNode *node = b.node_or_null();
+  if (node != nullptr) {
+    const auto type = FunctionNodeRotateEulerType(node->custom1);
+    switch (type) {
+      case FN_NODE_ROTATE_EULER_TYPE_EULER:
+        b.add_input<decl::Vector>("Rotate By").subtype(PROP_EULER);
+        break;
+      case FN_NODE_ROTATE_EULER_TYPE_AXIS_ANGLE:
+        b.add_input<decl::Vector>("Axis").default_value({0.0, 0.0, 1.0}).subtype(PROP_XYZ);
+        b.add_input<decl::Float>("Angle").subtype(PROP_ANGLE);
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
   }
   b.add_output<decl::Vector>("Rotation");
 }
@@ -125,7 +126,7 @@ static void node_register()
 
   fn_node_type_base(&ntype, FN_NODE_ROTATE_EULER, "Rotate Euler", NODE_CLASS_CONVERTER);
   ntype.draw_buttons = node_layout;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
   nodeRegisterType(&ntype);
 }

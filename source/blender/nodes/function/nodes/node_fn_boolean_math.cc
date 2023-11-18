@@ -19,16 +19,17 @@
 
 namespace blender::nodes::node_fn_boolean_math_cc {
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  const auto type = NodeBooleanMathOperation(node.custom1);
-
   b.add_input<decl::Bool>("Boolean", "Boolean");
-  if (type == NODE_BOOLEAN_MATH_NOT) {
-    b.add_input<decl::Bool>("Boolean", "Boolean_001");
+
+  const bNode *node = b.node_or_null();
+  if (node != nullptr) {
+    const auto type = NodeBooleanMathOperation(node->custom1);
+    if (type != NODE_BOOLEAN_MATH_NOT) {
+      b.add_input<decl::Bool>("Boolean", "Boolean_001");
+    }
   }
   b.add_output<decl::Bool>("Boolean");
 }
@@ -142,7 +143,7 @@ static void node_register()
   static bNodeType ntype;
 
   fn_node_type_base(&ntype, FN_NODE_BOOLEAN_MATH, "Boolean Math", NODE_CLASS_CONVERTER);
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.labelfunc = node_label;
   ntype.build_multi_function = node_build_multi_function;
   ntype.draw_buttons = node_layout;

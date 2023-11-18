@@ -25,32 +25,34 @@ namespace blender::nodes::node_fn_compare_cc {
 
 NODE_STORAGE_FUNCS(NodeFunctionCompare)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  const NodeFunctionCompare &storage = node_storage(node);
-  const NodeCompareOperation operation = NodeCompareOperation(storage.operation);
-  const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
-  const NodeCompareMode mode = NodeCompareMode(storage.mode);
 
-  const bool type_is_floating = !ELEM(data_type, SOCK_INT, SOCK_STRING);
-  const bool is_vector = data_type == SOCK_VECTOR;
+  const bNode *node = b.node_or_null();
+  if (node != nullptr) {
+    const NodeFunctionCompare &storage = node_storage(*node);
+    const NodeCompareOperation operation = NodeCompareOperation(storage.operation);
+    const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
+    const NodeCompareMode mode = NodeCompareMode(storage.mode);
 
-  b.add_output(data_type, "A").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_output(data_type, "B").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+    const bool type_is_floating = !ELEM(data_type, SOCK_INT, SOCK_STRING);
+    const bool is_vector = data_type == SOCK_VECTOR;
 
-  if (is_vector && mode == NODE_COMPARE_MODE_DOT_PRODUCT) {
-    b.add_input<decl::Float>("C").default_value(0.9f);
-  }
+    b.add_output(data_type, "A").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+    b.add_output(data_type, "B").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
 
-  if (is_vector && mode == NODE_COMPARE_MODE_DIRECTION) {
-    b.add_input<decl::Float>("Angle").default_value(0.0872665f).subtype(PROP_ANGLE);
-  }
+    if (is_vector && mode == NODE_COMPARE_MODE_DOT_PRODUCT) {
+      b.add_input<decl::Float>("C").default_value(0.9f);
+    }
 
-  if (type_is_floating && ELEM(operation, NODE_COMPARE_EQUAL, NODE_COMPARE_NOT_EQUAL)) {
-    b.add_input<decl::Float>("Epsilon").default_value(0.001).min(-10000.0f).max(10000.0f);
+    if (is_vector && mode == NODE_COMPARE_MODE_DIRECTION) {
+      b.add_input<decl::Float>("Angle").default_value(0.0872665f).subtype(PROP_ANGLE);
+    }
+
+    if (type_is_floating && ELEM(operation, NODE_COMPARE_EQUAL, NODE_COMPARE_NOT_EQUAL)) {
+      b.add_input<decl::Float>("Epsilon").default_value(0.001);
+    }
   }
 
   b.add_output<decl::Bool>("Result");
@@ -708,7 +710,7 @@ static void node_register()
 {
   static bNodeType ntype;
   fn_node_type_base(&ntype, FN_NODE_COMPARE, "Compare", NODE_CLASS_CONVERTER);
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.labelfunc = node_label;
   ntype.initfunc = node_init;
   node_type_storage(

@@ -15,48 +15,35 @@ namespace blender::nodes::node_fn_combine_color_cc {
 
 NODE_STORAGE_FUNCS(NodeCombSepColor)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  const NodeCombSepColor &storage = node_storage(node);
-  const NodeCombSepColorMode mode = NodeCombSepColorMode(storage.mode);
 
-  switch (mode) {
-    case NODE_COMBSEP_COLOR_RGB:
-      b.add_input<decl::Float>("Red").default_value(0.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
-      b.add_input<decl::Float>("Green").default_value(0.0f).min(0.0f).max(1.0f).subtype(
-          PROP_FACTOR);
-      b.add_input<decl::Float>("Blue").default_value(0.0f).min(0.0f).max(1.0f).subtype(
-          PROP_FACTOR);
-      break;
-    case NODE_COMBSEP_COLOR_HSL:
-      b.add_input<decl::Float>("Hue").default_value(0.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
-      b.add_input<decl::Float>("Saturation")
-          .default_value(0.0f)
-          .min(0.0f)
-          .max(1.0f)
-          .subtype(PROP_FACTOR);
-      b.add_input<decl::Float>("Lightness")
-          .default_value(0.0f)
-          .min(0.0f)
-          .max(1.0f)
-          .subtype(PROP_FACTOR);
-      break;
-    case NODE_COMBSEP_COLOR_HSV:
-      b.add_input<decl::Float>("Hue").default_value(0.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
-      b.add_input<decl::Float>("Saturation")
-          .default_value(0.0f)
-          .min(0.0f)
-          .max(1.0f)
-          .subtype(PROP_FACTOR);
-      b.add_input<decl::Float>("Value").default_value(0.0f).min(0.0f).max(1.0f).subtype(
-          PROP_FACTOR);
-      break;
-    default: {
-      BLI_assert_unreachable();
-      break;
+  const bNode *node = b.node_or_null();
+  if (node != nullptr) {
+    const NodeCombSepColor &storage = node_storage(*node);
+    const NodeCombSepColorMode mode = NodeCombSepColorMode(storage.mode);
+
+    switch (mode) {
+      case NODE_COMBSEP_COLOR_RGB:
+        b.add_input<decl::Float>("Red").min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+        b.add_input<decl::Float>("Green").min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+        b.add_input<decl::Float>("Blue").min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+        break;
+      case NODE_COMBSEP_COLOR_HSL:
+        b.add_input<decl::Float>("Hue").min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+        b.add_input<decl::Float>("Saturation").min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+        b.add_input<decl::Float>("Lightness").min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+        break;
+      case NODE_COMBSEP_COLOR_HSV:
+        b.add_input<decl::Float>("Hue").min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+        b.add_input<decl::Float>("Saturation").min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+        b.add_input<decl::Float>("Value").min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+        break;
+      default: {
+        BLI_assert_unreachable();
+        break;
+      }
     }
   }
   b.add_input<decl::Float>("Alpha").default_value(1.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
@@ -131,7 +118,7 @@ static void node_register()
   static bNodeType ntype;
 
   fn_node_type_base(&ntype, FN_NODE_COMBINE_COLOR, "Combine Color", NODE_CLASS_CONVERTER);
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.initfunc = node_init;
   node_type_storage(
       &ntype, "NodeCombSepColor", node_free_standard_storage, node_copy_standard_storage);

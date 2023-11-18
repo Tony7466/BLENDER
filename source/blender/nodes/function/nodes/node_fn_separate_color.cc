@@ -15,36 +15,38 @@ namespace blender::nodes::node_fn_separate_color_cc {
 
 NODE_STORAGE_FUNCS(NodeCombSepColor)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  const NodeCombSepColor &storage = node_storage(node);
-  const NodeCombSepColorMode mode = NodeCombSepColorMode(storage.mode);
-
   b.add_input<decl::Color>("Color").default_value({1.0f, 1.0f, 1.0f, 1.0f});
-  switch (mode) {
-    case NODE_COMBSEP_COLOR_RGB:
-      b.add_output<decl::Float>("Red");
-      b.add_output<decl::Float>("Green");
-      b.add_output<decl::Float>("Blue");
-      break;
-    case NODE_COMBSEP_COLOR_HSL:
-      b.add_output<decl::Float>("Hue");
-      b.add_output<decl::Float>("Saturation");
-      b.add_output<decl::Float>("Lightness");
-      break;
-    case NODE_COMBSEP_COLOR_HSV:
-      b.add_output<decl::Float>("Hue");
-      b.add_output<decl::Float>("Saturation");
-      b.add_output<decl::Float>("Value");
-      break;
-    default: {
-      BLI_assert_unreachable();
-      break;
+
+  const bNode *node = b.node_or_null();
+  if (node != nullptr) {
+    const NodeCombSepColor &storage = node_storage(*node);
+    const NodeCombSepColorMode mode = NodeCombSepColorMode(storage.mode);
+    switch (mode) {
+      case NODE_COMBSEP_COLOR_RGB:
+        b.add_output<decl::Float>("Red");
+        b.add_output<decl::Float>("Green");
+        b.add_output<decl::Float>("Blue");
+        break;
+      case NODE_COMBSEP_COLOR_HSL:
+        b.add_output<decl::Float>("Hue");
+        b.add_output<decl::Float>("Saturation");
+        b.add_output<decl::Float>("Lightness");
+        break;
+      case NODE_COMBSEP_COLOR_HSV:
+        b.add_output<decl::Float>("Hue");
+        b.add_output<decl::Float>("Saturation");
+        b.add_output<decl::Float>("Value");
+        break;
+      default: {
+        BLI_assert_unreachable();
+        break;
+      }
     }
   }
+
   b.add_output<decl::Float>("Alpha");
 }
 
@@ -233,7 +235,7 @@ static void node_register()
   static bNodeType ntype;
 
   fn_node_type_base(&ntype, FN_NODE_SEPARATE_COLOR, "Separate Color", NODE_CLASS_CONVERTER);
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.initfunc = node_init;
   node_type_storage(
       &ntype, "NodeCombSepColor", node_free_standard_storage, node_copy_standard_storage);

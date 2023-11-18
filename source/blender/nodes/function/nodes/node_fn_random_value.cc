@@ -16,43 +16,47 @@ namespace blender::nodes::node_fn_random_value_cc {
 
 NODE_STORAGE_FUNCS(NodeRandomValue)
 
-static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  // b.is_function_node(); ?
-  const NodeRandomValue &storage = node_storage(node);
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+  const bNode *node = b.node_or_null();
 
-  switch (data_type) {
-    case CD_PROP_FLOAT3:
-      b.add_input<decl::Vector>("Min");
-      b.add_input<decl::Vector>("Max").default_value({1.0f, 1.0f, 1.0f});
-      break;
-    case CD_PROP_FLOAT:
-      b.add_input<decl::Float>("Min");
-      b.add_input<decl::Float>("Max").default_value(1.0f);
-      break;
-    case CD_PROP_INT32:
-      b.add_input<decl::Int>("Min").min(-100000).max(100000);
-      b.add_input<decl::Int>("Max").default_value(100).min(-100000).max(100000);
-      break;
-    case CD_PROP_BOOL:
-      b.add_input<decl::Float>("Probability")
-          .min(0.0f)
-          .max(1.0f)
-          .default_value(0.5f)
-          .subtype(PROP_FACTOR);
-      break;
-    default:
-      BLI_assert_unreachable();
-      break;
+  if (node != nullptr) {
+    const NodeRandomValue &storage = node_storage(*node);
+    const eCustomDataType data_type = eCustomDataType(storage.data_type);
+    switch (data_type) {
+      case CD_PROP_FLOAT3:
+        b.add_input<decl::Vector>("Min");
+        b.add_input<decl::Vector>("Max").default_value({1.0f, 1.0f, 1.0f});
+        break;
+      case CD_PROP_FLOAT:
+        b.add_input<decl::Float>("Min");
+        b.add_input<decl::Float>("Max").default_value(1.0f);
+        break;
+      case CD_PROP_INT32:
+        b.add_input<decl::Int>("Min");
+        b.add_input<decl::Int>("Max").default_value(100);
+        break;
+      case CD_PROP_BOOL:
+        b.add_input<decl::Float>("Probability")
+            .min(0.0f)
+            .max(1.0f)
+            .default_value(0.5f)
+            .subtype(PROP_FACTOR);
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
   }
 
   b.add_input<decl::Int>("ID").implicit_field(implicit_field_inputs::id_or_index);
-  b.add_input<decl::Int>("Seed").default_value(0).min(-10000).max(10000);
+  b.add_input<decl::Int>("Seed");
 
-  b.add_output(data_type, "Value");
+  if (node != nullptr) {
+    const NodeRandomValue &storage = node_storage(*node);
+    const eCustomDataType data_type = eCustomDataType(storage.data_type);
+    b.add_output(data_type, "Value");
+  }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -182,7 +186,7 @@ static void node_register()
   fn_node_type_base(&ntype, FN_NODE_RANDOM_VALUE, "Random Value", NODE_CLASS_CONVERTER);
   ntype.initfunc = fn_node_random_value_init;
   ntype.draw_buttons = node_layout;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
   ntype.gather_link_search_ops = node_gather_link_search_ops;
   node_type_storage(
