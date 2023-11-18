@@ -94,23 +94,6 @@ endif()
 
 include(build_files/cmake/macros.cmake)
 
-# for testing on the bots this is currently on by default, when landing this *NEEDS* to be off
-option(WITH_RELEASE_ASSERTS "Build with asserts enabled even for non-debug configurations" ON)
-mark_as_advanced(WITH_RELEASE_ASSERTS)
-
-if(WITH_RELEASE_ASSERTS)
-  # CMake seemingly be setting the NDEBUG flag on its own already on some configurations
-  # therefore we need to remove the flags if they happen to be set.
-  remove_cc_flag("-DNDEBUG") # GCC/CLang
-  remove_cc_flag("/DNDEBUG") # MSVC
-else()
-  set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
-    $<$<CONFIG:Release>:NDEBUG>
-    $<$<CONFIG:MinSizeRel>:NDEBUG>
-    $<$<CONFIG:RelWithDebInfo>:NDEBUG>
-  )
-endif()
-
 # -----------------------------------------------------------------------------
 # Initialize Project
 
@@ -857,6 +840,11 @@ Ensure string operations on fixed size buffers \
 (works well with with \"WITH_COMPILER_ASAN\" & valgrind to detect incorrect buffer size arguments)"
   OFF)
 mark_as_advanced(WITH_STRSIZE_DEBUG)
+
+
+# for testing on the bots this is currently on by default, when landing this *NEEDS* to be off
+option(WITH_RELEASE_ASSERTS "Build with asserts enabled even for non-debug configurations" ON)
+mark_as_advanced(WITH_RELEASE_ASSERTS)
 
 # Compiler tool-chain.
 if(UNIX)
@@ -2170,6 +2158,19 @@ endif()
 
 if(WITH_ASSERT_ABORT)
   add_definitions(-DWITH_ASSERT_ABORT)
+endif()
+
+if(WITH_RELEASE_ASSERTS)
+  # CMake seemingly be setting the NDEBUG flag on its own already on some configurations
+  # therefore we need to remove the flags if they happen to be set.
+  remove_cc_flag("-DNDEBUG") # GCC/CLang
+  remove_cc_flag("/DNDEBUG") # MSVC
+else()
+  set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+    $<$<CONFIG:Release>:NDEBUG>
+    $<$<CONFIG:MinSizeRel>:NDEBUG>
+    $<$<CONFIG:RelWithDebInfo>:NDEBUG>
+  )
 endif()
 
 # message(STATUS "Using CFLAGS: ${CMAKE_C_FLAGS}")
