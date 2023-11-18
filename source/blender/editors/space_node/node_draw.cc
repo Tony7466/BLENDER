@@ -497,7 +497,12 @@ static bool node_update_basis_socket(const bContext &C,
     input_socket->typeinfo->draw(
         (bContext *)&C, row, &sockptr, &nodeptr, node_socket_get_label(input_socket, panel_label));
     if (input_socket->runtime->has_gizmo) {
-      uiItemL(row, "", ICON_GIZMO);
+      if (input_socket->is_directly_linked()) {
+        uiItemL(row, "", ICON_GIZMO);
+      }
+      else {
+        uiItemR(row, &sockptr, "pin_gizmo", UI_ITEM_NONE, "", ICON_GIZMO);
+      }
     }
   }
   else {

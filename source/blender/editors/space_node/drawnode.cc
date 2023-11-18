@@ -97,7 +97,7 @@ static void node_buts_value(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiLayout *row = uiLayoutRow(layout, true);
   uiItemR(row, &sockptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
   if (output->runtime->has_gizmo) {
-    uiItemL(row, "", ICON_GIZMO);
+    uiItemR(row, &sockptr, "pin_gizmo", UI_ITEM_NONE, "", ICON_GIZMO);
   }
 }
 

@@ -423,17 +423,17 @@ void foreach_active_gizmo(
           Set<InputSocketRef> used_gizmo_inputs;
           for (auto item : gizmo_inferencing.gizmo_inputs_for_value_nodes.items()) {
             const bNode &node = *item.key;
-            if (!(node.flag & NODE_SELECT)) {
-              continue;
+            if ((node.flag & NODE_SELECT) ||
+                (node.type == SH_NODE_VALUE && node.output_socket(0).flag & SOCK_GIZMO_PIN))
+            {
+              used_gizmo_inputs.add_multiple(item.value);
             }
-            used_gizmo_inputs.add_multiple(item.value);
           }
           for (auto item : gizmo_inferencing.gizmo_inputs_for_node_inputs.items()) {
             const bNode &node = item.key->owner_node();
-            if (!(node.flag & NODE_SELECT)) {
-              continue;
+            if ((node.flag & NODE_SELECT) || (item.key->flag & SOCK_GIZMO_PIN)) {
+              used_gizmo_inputs.add_multiple(item.value);
             }
-            used_gizmo_inputs.add_multiple(item.value);
           }
           for (const bNode *node : gizmo_inferencing.nodes_with_gizmos_inside) {
             if (ELEM(node->type, GEO_NODE_GIZMO_ARROW, GEO_NODE_GIZMO_DIAL)) {

@@ -283,8 +283,7 @@ typedef enum eNodeSocketFlag {
   SOCK_IS_LINKED = (1 << 2),
   /** Unavailable is for dynamic sockets. */
   SOCK_UNAVAIL = (1 << 3),
-  // /** DEPRECATED  dynamic socket (can be modified by user) */
-  // SOCK_DYNAMIC = (1 << 4),
+  SOCK_GIZMO_PIN = (1 << 4),
   // /** DEPRECATED  group socket should not be exposed */
   // SOCK_INTERNAL = (1 << 5),
   /** Socket collapsed in UI. */
