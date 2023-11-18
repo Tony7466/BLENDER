@@ -207,7 +207,7 @@ typedef struct GreasePencilLayerMask {
 } GreasePencilLayerMask;
 
 /**
- * Layer blending modes. #GreasePencilLayer.blend_mode
+ * Layer blending modes.
  */
 typedef enum GreasePencilLayerBlendMode {
   GP_LAYER_BLEND_NONE = 0,
@@ -278,11 +278,7 @@ typedef struct GreasePencilLayer {
   GreasePencilLayerTreeNode base;
   /* Only used for storage in the .blend file. */
   GreasePencilLayerFramesMapStorage frames_storage;
-  /**
-   * Layer blend mode. See `GreasePencilLayerBlendMode`.
-   */
-  int8_t blend_mode;
-  char _pad[3];
+  char _pad[4];
   /**
    * Opacity of the layer.
    */

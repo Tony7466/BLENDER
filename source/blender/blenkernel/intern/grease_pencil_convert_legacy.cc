@@ -189,6 +189,8 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
   grease_pencil.drawing_array = reinterpret_cast<GreasePencilDrawingBase **>(
       MEM_cnew_array<GreasePencilDrawing *>(num_drawings, __func__));
 
+  bke::MutableAttributeAccessor attributes = grease_pencil.attributes_for_write();
+
   int i = 0, layer_idx = 0;
   LISTBASE_FOREACH_INDEX (bGPDlayer *, gpl, &gpd.layers, layer_idx) {
     /* Create a new layer. */
@@ -207,7 +209,10 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
                        (gpl->onion_flag & GP_LAYER_ONIONSKIN),
                        GP_LAYER_TREE_NODE_USE_ONION_SKINNING);
 
-    new_layer.blend_mode = int8_t(gpl->blend_mode);
+    bke::SpanAttributeWriter<int> blend_mode = attributes.lookup_or_add_for_write_span<int>(
+        "blend_mode", ATTR_DOMAIN_LAYER);
+
+    blend_mode.span[layer_idx] = int8_t(gpl->blend_mode);
 
     /* Convert the layer masks. */
     LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {

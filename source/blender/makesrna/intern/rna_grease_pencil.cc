@@ -260,7 +260,6 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
 
   /* Blend Mode */
   prop = RNA_def_property(srna, "blend_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "blend_mode");
   RNA_def_property_enum_items(prop, rna_enum_layer_blend_modes_items);
   RNA_def_property_enum_funcs(prop,
                               "rna_GreasePencilLayer_blend_mode_get",
