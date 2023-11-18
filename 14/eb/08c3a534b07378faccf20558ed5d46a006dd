@@ -1,1 +1,2 @@
 Referenced by issue #114487, Object dimensions are not calculated properly if there's subdivision
+Referenced by issue #115108, obj.dimensions is always (0,0,0) during armature creation by script
