@@ -9,14 +9,14 @@
 
 #ifdef GPU_VULKAN
 mat3 StudioLightMatrix_ = mat3(StudioLightMatrix,
-                              StudioLightMatrix2,
-                              StudioLightMatrix3,
-                              StudioLightMatrix4,
-                              StudioLightMatrix5,
-                              StudioLightMatrix6,
-                              StudioLightMatrix7,
-                              StudioLightMatrix8,
-                              StudioLightMatrix9);
+                               StudioLightMatrix2,
+                               StudioLightMatrix3,
+                               StudioLightMatrix4,
+                               StudioLightMatrix5,
+                               StudioLightMatrix6,
+                               StudioLightMatrix7,
+                               StudioLightMatrix8,
+                               StudioLightMatrix9);
 #else
 mat3 StudioLightMatrix_ = StudioLightMatrix;
 #endif

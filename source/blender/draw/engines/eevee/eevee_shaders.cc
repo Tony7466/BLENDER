@@ -337,8 +337,8 @@ GPUShader *EEVEE_shaders_studiolight_probe_sh_get()
 {
   if (e_data.studiolight_probe_sh == nullptr) {
     e_data.studiolight_probe_sh = DRW_shader_create_from_info_name(
-        (GPU_backend_get_type() == GPU_BACKEND_VULKAN)? "eevee_legacy_studiolight_probe_vulkan":
-        "eevee_legacy_studiolight_probe");
+        (GPU_backend_get_type() == GPU_BACKEND_VULKAN) ? "eevee_legacy_studiolight_probe_vulkan" :
+                                                         "eevee_legacy_studiolight_probe");
   }
   return e_data.studiolight_probe_sh;
 }
@@ -347,8 +347,9 @@ GPUShader *EEVEE_shaders_studiolight_background_sh_get()
 {
   if (e_data.studiolight_background_sh == nullptr) {
     e_data.studiolight_background_sh = DRW_shader_create_from_info_name(
-        (GPU_backend_get_type() == GPU_BACKEND_VULKAN)? "eevee_legacy_studiolight_background_vulkan":
-        "eevee_legacy_studiolight_background");
+        (GPU_backend_get_type() == GPU_BACKEND_VULKAN) ?
+            "eevee_legacy_studiolight_background_vulkan" :
+            "eevee_legacy_studiolight_background");
   }
   return e_data.studiolight_background_sh;
 }

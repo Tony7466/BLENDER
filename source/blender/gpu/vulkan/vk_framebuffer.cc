@@ -751,9 +751,10 @@ void VKFrameBuffer::create()
               renderpass_->subpass_[renderpass_->info_id_].pColorAttachments[i].attachment,
               renderpass_->info_id_);
           const GPUAttachment &attachment = attachments_[type];
-          VKTexture* tex = reinterpret_cast<VKTexture *>(attachment.tex);
+          VKTexture *tex = reinterpret_cast<VKTexture *>(attachment.tex);
           tex->mip_size_get(attachment.mip, size);
-          vk_framebuffer_create_info_.layers = (attachment.layer == -1) ? tex->vk_layer_count(1) :1;
+          vk_framebuffer_create_info_.layers = (attachment.layer == -1) ? tex->vk_layer_count(1) :
+                                                                          1;
           break;
         }
       }
@@ -843,10 +844,7 @@ void VKFrameBuffer::ensure()
   return;
 }
 
-bool VKFrameBuffer::image_view_ensure(GPUTexture *tex,
-                                      int mip,
-                                      int layer,
-                                      int attachment_index)
+bool VKFrameBuffer::image_view_ensure(GPUTexture *tex, int mip, int layer, int attachment_index)
 {
   VKTexture &texture = *reinterpret_cast<VKTexture *>(tex);
   srgb_ = (texture.format_flag_get() & GPU_FORMAT_SRGB) != 0;

@@ -673,13 +673,11 @@ VkExtent3D VKTexture::vk_extent_3d(int mip_level) const
   return result;
 }
 
-std::weak_ptr<VKImageView> VKTexture::image_view_get(bool use_srgb,
-                                                     int mip,
-                                                     int layer)
+std::weak_ptr<VKImageView> VKTexture::image_view_get(bool use_srgb, int mip, int layer)
 {
   BLI_assert(mip > -1);
-  int layer_offset   = 0;
-  int layer_size     = 1;
+  int layer_offset = 0;
+  int layer_size = 1;
   if (layer == -1) {
     layer_size = vk_layer_count(1);
   }
@@ -688,7 +686,7 @@ std::weak_ptr<VKImageView> VKTexture::image_view_get(bool use_srgb,
   }
   return image_views_->lookup_vk_handle(*this,
                                         eImageViewUsage::Attachment,
-                                        IndexRange( layer_offset, layer_size),
+                                        IndexRange(layer_offset, layer_size),
                                         IndexRange(mip, 1),
                                         use_stencil_,
                                         use_srgb,
