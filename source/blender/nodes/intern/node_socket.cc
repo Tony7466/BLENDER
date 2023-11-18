@@ -23,7 +23,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_material_types.h"
@@ -450,6 +450,9 @@ static const char *get_current_socket_identifier_for_future_socket(
       return get_identifier_from_decl({"A", "B", "Result"}, socket, socket_decls);
     }
     case FN_NODE_COMPARE: {
+      if (STREQ(socket.identifier, "Angle")) {
+        return nullptr;
+      }
       return get_identifier_from_decl({"A", "B"}, socket, socket_decls);
     }
     case SH_NODE_MAP_RANGE: {

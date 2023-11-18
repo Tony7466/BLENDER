@@ -18,7 +18,7 @@ namespace blender::nodes::node_geo_tool_set_selection_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry");
-  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
+  b.add_input<decl::Bool>("Selection").default_value(true).field_on_all();
   b.add_output<decl::Geometry>("Geometry");
 }
 
@@ -35,6 +35,11 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   if (!check_tool_context_and_error(params)) {
+    return;
+  }
+  if (params.user_data()->operator_data->mode == OB_MODE_OBJECT) {
+    params.error_message_add(NodeWarningType::Error,
+                             "Selection control is not supported in object mode");
     return;
   }
   const Field<bool> selection = params.extract_input<Field<bool>>("Selection");

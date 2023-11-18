@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'd2b86610f058')\n"
+"Project-Id-Version: Blender 4.0.0 Release Candidate (b'f2d15d4fd19a')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-23 09:18:46\n"
+"POT-Creation-Date: 2023-11-13 11:45:13\n"
 "PO-Revision-Date: 2023-10-20 06:21+0000\n"
 "Last-Translator: Jozef Matta <jozef.m923@gmail.com>\n"
 "Language-Team: Slovak <https://translate.blender.org/projects/blender-ui/ui/sk/>\n"
@@ -343,6 +343,14 @@ msgid "Optimize all kernels. Fastest rendering, may result in extra background C
 msgstr "Optimalizuje všetky jadrá. Najrýchlejšie prekresľovanie, môže mať za následok ďalšie využitie CPU na pozadí"
 
 
+msgid "On"
+msgstr "Zapnúť"
+
+
+msgid "Auto"
+msgstr "Automaticky"
+
+
 msgid "Distribute memory across devices"
 msgstr "Rozdeľujte pamäť medzi zariadeniami"
 
@@ -357,14 +365,6 @@ msgstr "HIP RT (experimentálne)"
 
 msgid "HIP RT enables AMD hardware ray tracing on RDNA2 and above, with shader fallback on older cards. This feature is experimental and some scenes may render incorrectly"
 msgstr "HIP RT umožňuje hardvérové sledovanie lúčov AMD na kartách RDNA2 a vyšších, pričom na starších kartách je k dispozícii spätný tieňovač. Táto funkcia je experimentálna a niektoré scény sa môžu prekresľovať nesprávne"
-
-
-msgid "MetalRT (Experimental)"
-msgstr "MetalRT (experimentálne)"
-
-
-msgid "MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better performance in specific cases. However this support is experimental and some scenes may render incorrectly"
-msgstr "MetalRT pre sledovanie lúče využíva menej pamäte pre scény, ktoré vo veľkej miere využívajú krivky, a v špecifických prípadoch môže poskytnúť lepší výkon. Táto podpora je však experimentálna a niektoré scény sa môžu prekresľovať nesprávne"
 
 
 msgid "Embree on GPU"
@@ -1235,11 +1235,6 @@ msgstr "Krivky"
 msgctxt "ID"
 msgid "Font"
 msgstr "Písmo"
-
-
-msgctxt "ID"
-msgid "Grease Pencil (legacy)"
-msgstr "Pastelka (staršia verzia)"
 
 
 msgctxt "ID"
@@ -2164,10 +2159,6 @@ msgstr "Voľný"
 
 msgid "Aligned"
 msgstr "Zarovnaný"
-
-
-msgid "Auto"
-msgstr "Automaticky"
 
 
 msgid "Handle 2"
@@ -6493,10 +6484,6 @@ msgstr "Použije RGB krivky pre transformáciu predbežného zobrazenia"
 
 msgid "High Dynamic Range"
 msgstr "Vysoký dynamický rozsah"
-
-
-msgid "Enable high dynamic range display in rendered viewport, uncapping display brightness. This requires a monitor with HDR support and a view transform designed for HDR. 'Filmic' does not generate HDR colors"
-msgstr "Povolí zobrazenie vysokého dynamického rozsahu vo vykreslenom zobrazení, čím sa zruší obmedzenie jasu displeja. To si vyžaduje monitor s podporou HDR a transformáciu zobrazenia určenú pre HDR. \"Filmový\" nevytvára farby HDR"
 
 
 msgid "View Transform"
@@ -67823,12 +67810,12 @@ msgstr "Presunie vstupy a výstupy z modifikátora do novej skupiny uzlov"
 
 
 msgctxt "Operator"
-msgid "Add Grease Pencil (legacy)"
-msgstr "Pridať Pastelku (zastaralé)"
+msgid "Add Grease Pencil"
+msgstr "Pridať pastelku"
 
 
-msgid "Add a Grease Pencil (legacy) object to the scene"
-msgstr "Pridá objekt Pastelky (zastaralé) na scénu"
+msgid "Add a Grease Pencil object to the scene"
+msgstr "Pridá objekt pastelky na scénu"
 
 
 msgid "Stroke offset for the line art modifier"
@@ -67976,15 +67963,6 @@ msgstr "Odstrániť modifikátor pastelky"
 
 msgid "Remove a modifier from the active grease pencil object"
 msgstr "Odstráni modifikátor z aktívneho objektu pastelky"
-
-
-msgctxt "Operator"
-msgid "Add Grease Pencil"
-msgstr "Pridať pastelku"
-
-
-msgid "Add a Grease Pencil object to the scene"
-msgstr "Pridá objekt pastelky na scénu"
 
 
 msgctxt "Operator"
@@ -82894,10 +82872,6 @@ msgid "Python value for unsupported custom property types"
 msgstr "Hodnota jazyka Python pre nepodporované vlastné typy vlastností"
 
 
-msgid "Grease Pencil (legacy)"
-msgstr "Pastelka (staršia verzia)"
-
-
 msgid "Speaker"
 msgstr "Reproduktor"
 
@@ -96437,10 +96411,6 @@ msgstr "Zobrazí tvarovú vlnu vnútri pásu"
 
 msgid "Sound data-block used by this sequence"
 msgstr "Blok údajov zvuku používaný touto sekvenciou"
-
-
-msgid "Multiply playback speed"
-msgstr "Násobok rýchlosti prehrávania"
 
 
 msgid "Playback volume of the sound"
@@ -121557,8 +121527,8 @@ msgid "Browse Particle Settings to be linked"
 msgstr "Prehľadávať nastavenia častíc na prepojenie"
 
 
-msgid "Browse Grease Pencil (legacy) Data to be linked"
-msgstr "Prehľadávať Pastelku (staršie) Údaje, ktoré sa majú prepojiť"
+msgid "Browse Grease Pencil Data to be linked"
+msgstr "Prehľadávať údaje pastelky na prepojenie"
 
 
 msgid "Browse Movie Clip to be linked"
@@ -121599,10 +121569,6 @@ msgstr "Prehľadávať údaje mračna bodov na prepojenie"
 
 msgid "Browse Volume Data to be linked"
 msgstr "Prehľadávať údaje objemov na prepojenie"
-
-
-msgid "Browse Grease Pencil Data to be linked"
-msgstr "Prehľadávať údaje pastelky na prepojenie"
 
 
 msgid "Browse ID data to be linked"
@@ -127961,10 +127927,6 @@ msgid "USD Import: unable to open stage to read %s"
 msgstr "Import USD: nemožné otvoriť oblasť na čítanie %s"
 
 
-msgid "USD Import: unable to open cache reader for object %s"
-msgstr "Import USD: nemožno otvoriť čítačku zásobníka pre objekt %s"
-
-
 msgid "An exception occurred invoking USD hook '%s'.  Please see the console for details"
 msgstr "Pri volaní háku USD '%s' došlo k výnimke.  Podrobnosti nájdete v konzole"
 
@@ -130369,10 +130331,6 @@ msgstr "Cb"
 
 msgid "Cr"
 msgstr "Cr"
-
-
-msgid "On"
-msgstr "Zapnúť"
 
 
 msgid "Val"
