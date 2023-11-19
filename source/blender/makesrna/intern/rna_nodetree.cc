@@ -3921,6 +3921,7 @@ static const EnumPropertyItem node_ycc_items[] = {
 };
 
 static const EnumPropertyItem node_conductor_items[] = {
+    {SHD_GLOSSY_BECKMANN, "BECKMANN", 0, "Beckmann", ""},
     {SHD_GLOSSY_GGX, "GGX", 0, "GGX", ""},
     {SHD_GLOSSY_MULTI_GGX,
      "MULTI_GGX",

@@ -490,9 +490,14 @@ ccl_device
         fresnel->f0 = rgb_to_spectrum(saturate(stack_load_float3(stack, color_offest)));
         const Spectrum f82 = rgb_to_spectrum(saturate(stack_load_float3(stack, tint_offset)));
 
-        /* setup bsdf */
-        sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
         ClosureType distribution = (ClosureType)node.w;
+        /* setup bsdf */
+        if (distribution == CLOSURE_BSDF_MICROFACET_BECKMANN_ID) {
+          sd->flag |= bsdf_microfacet_beckmann_setup(bsdf);
+        }
+        else {
+          sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
+        }
         const bool is_multiggx = (distribution == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
         bsdf_microfacet_setup_fresnel_f82_tint(kg, bsdf, sd, fresnel, f82, is_multiggx);
       }

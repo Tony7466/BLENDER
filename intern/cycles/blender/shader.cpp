@@ -553,6 +553,9 @@ static ShaderNode *add_node(Scene *scene,
     ConductorBsdfNode *conductor = graph->create_node<ConductorBsdfNode>();
 
     switch (b_conductor_node.distribution()) {
+      case BL::ShaderNodeBsdfConductor::distribution_BECKMANN:
+        conductor->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
+        break;
       case BL::ShaderNodeBsdfConductor::distribution_GGX:
         conductor->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);
         break;
