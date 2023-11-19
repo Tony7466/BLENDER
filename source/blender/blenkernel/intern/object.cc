@@ -3812,7 +3812,8 @@ bool BKE_object_minmax_empty_drawtype(const Object *ob, float r_min[3], float r_
     }
     case OB_EMPTY_IMAGE: {
       const float *ofs = ob->ima_ofs;
-      /* NOTE: this is the best approximation that can be calculated without loading the image. */
+      /* NOTE: this is the best approximation that can be calculated without loading the image.
+       */
       min[0] = ofs[0] * radius;
       min[1] = ofs[1] * radius;
       max[0] = radius + (ofs[0] * radius);
@@ -4145,9 +4146,9 @@ Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
   blender::bke::GeometrySet *geometry_set_eval = object->runtime->geometry_set_eval;
   if (geometry_set_eval) {
     /* Some areas expect to be able to modify the evaluated mesh in limited ways. Theoretically
-     * this should be avoided, or at least protected with a lock, so a const mesh could be returned
-     * from this function. We use a const_cast instead of #get_mesh_for_write, because that might
-     * result in a copy of the mesh when it is shared. */
+     * this should be avoided, or at least protected with a lock, so a const mesh could be
+     * returned from this function. We use a const_cast instead of #get_mesh_for_write, because
+     * that might result in a copy of the mesh when it is shared. */
     Mesh *mesh = const_cast<Mesh *>(geometry_set_eval->get_mesh());
     if (mesh) {
       return mesh;
@@ -4287,8 +4288,8 @@ static int pc_cmp(const void *a, const void *b)
 
 /* TODO: Review the usages of this function, currently with COW it will be called for orig object
  * and then again for COW copies of it, think this is bad since there is no guarantee that we get
- * the same stack index in both cases? Order is important since this index is used for filenames on
- * disk. */
+ * the same stack index in both cases? Order is important since this index is used for filenames
+ * on disk. */
 int BKE_object_insert_ptcache(Object *ob)
 {
   LinkData *link = nullptr;

@@ -104,10 +104,12 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
 
   const float4x4 mesh_to_volume_space_transform = float4x4::identity();
 
-  auto bounds_fn = [&]() { return *mesh.bounds_min_max(); };
-
   const float voxel_size = geometry::volume_compute_voxel_size(
-      params.depsgraph(), bounds_fn, resolution, 0.0f, mesh_to_volume_space_transform);
+      params.depsgraph(),
+      [&]() { return *mesh.bounds_min_max(); },
+      resolution,
+      0.0f,
+      mesh_to_volume_space_transform);
 
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
 
