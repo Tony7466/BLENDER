@@ -235,11 +235,11 @@ static std::pair<bke::MeshNormalDomain, Span<float3>> get_mesh_normals(const Mes
 
 template<typename T>
 void gather_vert_data(const Span<int> verts,
-                      const bool is_full_copy,
+                      const bool copy_all_verts,
                       const Span<T> src_data,
                       MutableSpan<T> dst_data)
 {
-  if (is_full_copy) {
+  if (copy_all_verts) {
     array_utils::copy(src_data, dst_data);
   }
   else {
@@ -284,7 +284,8 @@ template<typename T> static void resize_uninitialized(pxr::VtArray<T> &array, co
   array.resize(new_size, [](auto /*begin*/, auto /*end*/) {});
 }
 
-static void copy_submesh(const Span<float3> vert_positions,
+static void copy_submesh(const Mesh &mesh,
+                         const Span<float3> vert_positions,
                          const Span<int> corner_verts,
                          const Span<MLoopTri> looptris,
                          const Span<int> looptri_faces,
@@ -294,14 +295,15 @@ static void copy_submesh(const Span<float3> vert_positions,
                          MeshData::SubMesh &sm)
 {
   resize_uninitialized(sm.face_vertex_indices, triangles.size() * 3);
-  const bool is_full_copy = triangles.size() == looptris.size();
+
+  /* If all triangles are part of this submesh and there are no loose vertices that shouldn't be
+   * copied (Hydra will warn about this), vertex index compression can be completely skipped. */
+  const bool copy_all_verts = triangles.size() == looptris.size() &&
+                              mesh.verts_no_face().count == 0;
 
   int dst_verts_num;
   VectorSet<int> verts;
-  if (is_full_copy) {
-    /* All triangles are in the same submesh, so we can copy values directly without wasting space
-     * for unused vertices. There may still be loose vertices that could be skipped, but it most
-     * likely isn't worth checking that here. */
+  if (copy_all_verts) {
     triangles.foreach_index(GrainSize(4096), [&](const int src, const int dst) {
       const MLoopTri &tri = looptris[src];
       sm.face_vertex_indices[dst * 3 + 0] = corner_verts[tri.tri[0]];
@@ -325,7 +327,7 @@ static void copy_submesh(const Span<float3> vert_positions,
 
   resize_uninitialized(sm.vertices, dst_verts_num);
   gather_vert_data(verts,
-                   is_full_copy,
+                   copy_all_verts,
                    vert_positions,
                    MutableSpan(sm.vertices.data(), sm.vertices.size()).cast<float3>());
 
@@ -380,7 +382,8 @@ void MeshData::write_submeshes(const Mesh *mesh)
 
   const int *material_indices = BKE_mesh_material_indices(mesh);
   if (!material_indices) {
-    copy_submesh(vert_positions,
+    copy_submesh(*mesh,
+                 vert_positions,
                  corner_verts,
                  looptris,
                  looptri_faces,
@@ -401,7 +404,8 @@ void MeshData::write_submeshes(const Mesh *mesh)
 
   threading::parallel_for(submeshes_.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
-      copy_submesh(vert_positions,
+      copy_submesh(*mesh,
+                   vert_positions,
                    corner_verts,
                    looptris,
                    looptri_faces,
