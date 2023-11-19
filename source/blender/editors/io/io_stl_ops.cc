@@ -30,7 +30,7 @@
 #  include "IO_stl.hh"
 #  include "io_stl_ops.hh"
 
-static int wm_stl_export_invoke(bContext *C, wmOperator *op, [[maybe_unused]] const wmEvent *event)
+static int wm_stl_export_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   ED_fileselect_ensure_default_filepath(C, op, ".stl");
 
@@ -93,7 +93,7 @@ static void ui_stl_export_settings(uiLayout *layout, PointerRNA *op_props_ptr)
       sub, op_props_ptr, "apply_modifiers", UI_ITEM_NONE, IFACE_("Apply Modifiers"), ICON_NONE);
 }
 
-static void wm_stl_export_draw([[maybe_unused]] bContext *C, wmOperator *op)
+static void wm_stl_export_draw(bContext * /*C*/, wmOperator *op)
 {
   PointerRNA ptr = RNA_pointer_create(nullptr, op->type->srna, op->properties);
   ui_stl_export_settings(op->layout, &ptr);
@@ -102,7 +102,7 @@ static void wm_stl_export_draw([[maybe_unused]] bContext *C, wmOperator *op)
 /**
  * Return true if any property in the UI is changed.
  */
-static bool wm_stl_export_check([[maybe_unused]] bContext *C, wmOperator *op)
+static bool wm_stl_export_check(bContext * /*C*/, wmOperator *op)
 {
   char filepath[FILE_MAX];
   bool changed = false;
@@ -116,7 +116,7 @@ static bool wm_stl_export_check([[maybe_unused]] bContext *C, wmOperator *op)
   return changed;
 }
 
-void WM_OT_stl_export(struct wmOperatorType *ot)
+void WM_OT_stl_export(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
