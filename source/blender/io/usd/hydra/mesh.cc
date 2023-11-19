@@ -332,24 +332,25 @@ static void copy_submesh(const Mesh &mesh,
   resize_uninitialized(sm.face_vertex_counts, triangles.size());
   std::fill(sm.face_vertex_counts.begin(), sm.face_vertex_counts.end(), 3);
 
+  const Span<float3> src_normals = normals.second;
   resize_uninitialized(sm.normals, triangles.size() * 3);
   MutableSpan dst_normals = MutableSpan(sm.normals.data(), sm.normals.size()).cast<float3>();
   switch (normals.first) {
     case bke::MeshNormalDomain::Face:
       triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
-        std::fill_n(&dst_normals[dst * 3], 3, normals.second[looptri_faces[src]]);
+        std::fill_n(&dst_normals[dst * 3], 3, src_normals[looptri_faces[src]]);
       });
       break;
     case bke::MeshNormalDomain::Point:
       triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
         const MLoopTri &tri = looptris[src];
-        dst_normals[dst * 3 + 0] = normals.second[corner_verts[tri.tri[0]]];
-        dst_normals[dst * 3 + 1] = normals.second[corner_verts[tri.tri[1]]];
-        dst_normals[dst * 3 + 2] = normals.second[corner_verts[tri.tri[2]]];
+        dst_normals[dst * 3 + 0] = src_normals[corner_verts[tri.tri[0]]];
+        dst_normals[dst * 3 + 1] = src_normals[corner_verts[tri.tri[1]]];
+        dst_normals[dst * 3 + 2] = src_normals[corner_verts[tri.tri[2]]];
       });
       break;
     case bke::MeshNormalDomain::Corner:
-      gather_corner_data(looptris, triangles, normals.second, dst_normals);
+      gather_corner_data(looptris, triangles, src_normals, dst_normals);
       break;
   }
 
