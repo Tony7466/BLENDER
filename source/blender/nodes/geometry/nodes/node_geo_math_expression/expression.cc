@@ -2,20 +2,9 @@
 
 namespace blender::nodes::node_geo_math_expression_cc {
 
-// TODO: variadic template?
-template<typename T>
-inline static bool args_are(fn::GField a) {
-  return a.cpp_type().is<T>();
-}
-
-template<typename T, typename U>
-inline static bool args_are(fn::GField a, fn::GField b) {
-  return a.cpp_type().is<T>() && b.cpp_type().is<U>();
-}
-
-template<typename T, typename U, typename V>
-inline static bool args_are(fn::GField a, fn::GField b, fn::GField c) {
-  return a.cpp_type().is<T>() && b.cpp_type().is<U>() && c.cpp_type().is<V>();
+template <typename... T, typename... Args>
+bool args_are(Args... args) {
+    return (args.cpp_type().template is<T>() && ...);
 }
 
 fn::GField Expression::add(EvaluationContext &ctx, Expression *left, Expression *right) {

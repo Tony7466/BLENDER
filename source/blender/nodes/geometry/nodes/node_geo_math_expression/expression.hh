@@ -24,6 +24,7 @@ protected:
 
 public:
   Expression(Token token) : token(token) {}
+  virtual ~Expression() = default;
 
   const Token &get_token() const {
     return token;
