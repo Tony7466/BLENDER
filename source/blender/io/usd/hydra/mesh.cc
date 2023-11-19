@@ -265,7 +265,7 @@ void gather_face_data(const Span<int> looptri_faces,
                       const Span<T> src_data,
                       MutableSpan<T> dst_data)
 {
-  triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
+  triangles.foreach_index_optimized<int>(GrainSize(1024), [&](const int src, const int dst) {
     dst_data[dst] = src_data[looptri_faces[src]];
   });
 }
@@ -276,7 +276,7 @@ void gather_corner_data(const Span<MLoopTri> looptris,
                         const Span<T> src_data,
                         MutableSpan<T> dst_data)
 {
-  triangles.foreach_index(GrainSize(1024), [&](const int src, const int dst) {
+  triangles.foreach_index_optimized<int>(GrainSize(1024), [&](const int src, const int dst) {
     const MLoopTri &tri = looptris[src];
     dst_data[dst * 3 + 0] = src_data[tri.tri[0]];
     dst_data[dst * 3 + 1] = src_data[tri.tri[1]];
