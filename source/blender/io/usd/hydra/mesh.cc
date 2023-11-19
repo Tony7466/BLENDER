@@ -304,12 +304,10 @@ static void copy_submesh(const Mesh &mesh,
   int dst_verts_num;
   VectorSet<int> verts;
   if (copy_all_verts) {
-    triangles.foreach_index(GrainSize(4096), [&](const int src, const int dst) {
-      const MLoopTri &tri = looptris[src];
-      sm.face_vertex_indices[dst * 3 + 0] = corner_verts[tri.tri[0]];
-      sm.face_vertex_indices[dst * 3 + 1] = corner_verts[tri.tri[1]];
-      sm.face_vertex_indices[dst * 3 + 2] = corner_verts[tri.tri[2]];
-    });
+    /* Copy the vertex indices from the corner indices stored in every triangle. */
+    array_utils::gather(corner_verts,
+                        looptris.cast<int>(),
+                        MutableSpan(sm.face_vertex_indices.data(), sm.face_vertex_indices.size()));
     dst_verts_num = vert_positions.size();
   }
   else {
