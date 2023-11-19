@@ -395,10 +395,11 @@ void MeshData::write_submeshes(const Mesh *mesh)
 
   IndexMaskMemory memory;
   Array<IndexMask> triangles_by_material(submeshes_.size());
+  const int max_index = std::max(mat_count - 1, 0);
   IndexMask::from_groups<int>(
       looptris.index_range(),
       memory,
-      [&](const int i) { return material_indices[looptri_faces[i]]; },
+      [&](const int i) { return std::min(material_indices[looptri_faces[i]], max_index); },
       triangles_by_material);
 
   threading::parallel_for(submeshes_.index_range(), 1, [&](const IndexRange range) {
