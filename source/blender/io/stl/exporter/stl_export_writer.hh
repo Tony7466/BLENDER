@@ -17,12 +17,14 @@ struct Triangle {
 
 class FileWriter {
  public:
-  enum class Type { BINARY, ASCII };
+  FileWriter(const char *filepath, bool ascii);
+  ~FileWriter();
+  void write_triangle(const Triangle &t);
 
-  virtual ~FileWriter() = default;
-  virtual void write_triangle(const Triangle &t) = 0;
+ private:
+  FILE *file_;
+  uint32_t tris_num_;
+  bool ascii_;
 };
-
-std::unique_ptr<FileWriter> create_writer(const char *filepath, FileWriter::Type type);
 
 }  // namespace blender::io::stl

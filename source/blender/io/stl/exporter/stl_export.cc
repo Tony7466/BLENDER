@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <memory>
 #include <string>
 
 #include "BKE_mesh.hh"
@@ -38,9 +39,7 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
 
   /* If not exporting in batch, create single writer for all objects. */
   if (!export_params.use_batch) {
-    writer = create_writer(export_params.filepath,
-                           export_params.ascii_format ? FileWriter::Type::ASCII :
-                                                        FileWriter::Type::BINARY);
+    writer = std::make_unique<FileWriter>(export_params.filepath, export_params.ascii_format);
   }
 
   DEGObjectIterSettings deg_iter_settings{};
@@ -70,9 +69,7 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
       char filepath[FILE_MAX];
       BLI_strncpy(filepath, export_params.filepath, FILE_MAX);
       BLI_path_extension_replace(filepath, FILE_MAX, suffix.c_str());
-      writer = create_writer(filepath,
-                             export_params.ascii_format ? FileWriter::Type::ASCII :
-                                                          FileWriter::Type::BINARY);
+      writer = std::make_unique<FileWriter>(export_params.filepath, export_params.ascii_format);
     }
 
     Object *obj_eval = DEG_get_evaluated_object(depsgraph, object);

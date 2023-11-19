@@ -36,8 +36,6 @@ set(SRC
   importer/stl_import_ascii_reader.hh
   importer/stl_import_binary_reader.hh
   importer/stl_import_mesh.hh
-  exporter/stl_export_binary_writer.hh
-  exporter/stl_export_ascii_writer.hh
   exporter/stl_export_writer.hh
   exporter/stl_export.hh
 )
