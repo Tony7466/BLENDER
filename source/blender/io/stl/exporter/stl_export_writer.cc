@@ -49,6 +49,7 @@ FileWriter::FileWriter(const char *filepath, bool ascii) : tris_num_(0), ascii_(
     fwrite(&tris_num_, sizeof(uint32_t), 1, file_);
   }
 }
+
 FileWriter::~FileWriter()
 {
   if (file_ == nullptr) {
@@ -63,6 +64,7 @@ FileWriter::~FileWriter()
   }
   fclose(file_);
 }
+
 void FileWriter::write_triangle(const Triangle &t)
 {
   tris_num_++;
