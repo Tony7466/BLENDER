@@ -115,7 +115,7 @@ ccl_device_inline void path_state_next(KernelGlobals kg,
       flag |= PATH_RAY_TERMINATE_ON_NEXT_SURFACE;
     }
 
-    if (!kernel_data.integrator.transparent_shadows || label & LABEL_PORTAL) {
+    if (!kernel_data.integrator.transparent_shadows || shader_flag & SD_PORTAL) {
       flag |= PATH_RAY_MIS_SKIP;
     }
 

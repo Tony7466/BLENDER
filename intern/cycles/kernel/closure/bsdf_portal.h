@@ -35,13 +35,6 @@ ccl_device void bsdf_portal_setup(ccl_private ShaderData *sd,
   }
   sd->flag |= SD_BSDF | SD_PORTAL;
 
-  if (path_flag & PATH_RAY_TERMINATE) {
-    /* In this case the number of closures is set to zero to disable
-     * all others, but we still want to get transparency so increase
-     * the number just for this. */
-    sd->num_closure_left = 1;
-  }
-
   ccl_private PortalClosure *pc = (ccl_private PortalClosure *)closure_alloc(
       sd, sizeof(PortalClosure), CLOSURE_BSDF_PORTAL_ID, weight);
 
@@ -50,9 +43,6 @@ ccl_device void bsdf_portal_setup(ccl_private ShaderData *sd,
     pc->N = sd->N;
     pc->P = position;
     pc->D = direction;
-  }
-  else if (path_flag & PATH_RAY_TERMINATE) {
-    sd->num_closure_left = 0;
   }
 }
 
