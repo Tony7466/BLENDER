@@ -31,6 +31,22 @@ static void update_first_occurrence(Map<int, int> &map, const int root, const in
       });
 }
 
+void AtomicDisjointSet::connect_all_loos_to(const int index)
+{
+  threading::parallel_for(items_.index_range(), 4096, [&](const IndexRange range) {
+    for (const int i : range) {
+      Item item = items_[i].load(relaxed);
+      if (item.parent != i || item.rank != 0) {
+        continue;
+      }
+      if (index == i) {
+        continue;
+      }
+      this->join(index, i);
+    }
+  });
+}
+
 void AtomicDisjointSet::calc_reduced_ids(MutableSpan<int> result) const
 {
   BLI_assert(result.size() == items_.size());

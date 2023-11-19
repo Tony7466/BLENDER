@@ -2,15 +2,20 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <iostream>
+
 #include "atomic_ops.h"
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_atomic_disjoint_set.hh"
 #include "BLI_disjoint_set.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
+
+#include "BLI_timeit.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -217,12 +222,38 @@ using GetVertexIndicesFn = FunctionRef<void(Span<int2> edges,
                                             int element_index,
                                             VectorSet<int> &r_vertex_indices)>;
 
+template<typename T, typename Function>
+inline void parallel_transform(MutableSpan<T> data,
+                               const int64_t grain_size,
+                               const Function &function)
+{
+  threading::parallel_for(data.index_range(), grain_size, [&](const IndexRange range) {
+    MutableSpan<T> data_range = data.slice(range);
+    std::transform(data_range.begin(), data_range.end(), data_range.begin(), function);
+  });
+}
+
+static Array<int> copy_without(const Span<int> data, const int except, Array<int> &r_indices)
+{
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_predicate(IndexMask(data.size()),
+                                                   GrainSize(2048),
+                                                   memory,
+                                                   [&](const int i) { return data[i] != except; });
+  Array<int> result(mask.size());
+  r_indices.reinitialize(mask.size());
+  array_utils::gather(data, mask, result.as_mutable_span());
+  mask.to_indices<int>(r_indices);
+  return result;
+}
+
 static int face_island_indices(const Mesh &mesh,
                                const IndexMask &face_selection,
-                               MutableSpan<int> r_vert_island_indices,
-                               MutableSpan<int> r_face_island_indices)
+                               Array<int> &r_vert_island_indices,
+                               MutableSpan<int> r_face_island_indices,
+                               Array<int> &r_remap_indices)
 {
-  AtomicDisjointSet disjoint_set(mesh.totvert);
+  AtomicDisjointSet disjoint_set(mesh.totvert + 1);
   const GroupedSpan<int> face_verts(mesh.face_offsets(), mesh.corner_verts());
   face_selection.foreach_index(GrainSize(2048), [&](const int face_index) {
     const Span<int> verts = face_verts[face_index];
@@ -234,15 +265,35 @@ static int face_island_indices(const Mesh &mesh,
     disjoint_set.join(verts.first(), verts.last());
   });
 
-  disjoint_set.calc_reduced_ids(r_vert_island_indices);
+  disjoint_set.connect_all_loos_to(mesh.totvert);
+  Array<int> all_vert(mesh.totvert + 1);
+  disjoint_set.calc_reduced_ids(all_vert);
+
+  const int total_islands = disjoint_set.count_sets();
+
+  const int except_island = all_vert.last();
+  r_vert_island_indices = copy_without(all_vert, except_island, r_remap_indices);
+  if (except_island != total_islands - 1) {
+    parallel_transform<int>(r_vert_island_indices, 4098, [&](const int i) {
+      if (i > except_island) {
+        return i - 1;
+      }
+      return i;
+    });
+  }
 
   face_selection.foreach_index(GrainSize(4096), [&](const int face_index, const int face_pos) {
     const int face_vertex_i = face_verts[face_index].first();
-    const int face_island = r_vert_island_indices[face_vertex_i];
-    r_face_island_indices[face_pos] = face_island;
+    const int face_island = all_vert[face_vertex_i];
+    if (face_island > except_island) {
+      r_face_island_indices[face_pos] = face_island - 1;
+    }
+    else {
+      r_face_island_indices[face_pos] = face_island;
+    }
   });
 
-  return disjoint_set.count_sets();
+  return total_islands - 1;
 }
 
 static int edge_island_indices(const Mesh &mesh,
@@ -250,12 +301,14 @@ static int edge_island_indices(const Mesh &mesh,
                                MutableSpan<int> r_vert_island_indices,
                                MutableSpan<int> r_edge_island_indices)
 {
-  AtomicDisjointSet disjoint_set(mesh.totvert);
+  AtomicDisjointSet disjoint_set(mesh.totvert + 1);
   const Span<int2> edges = mesh.edges();
   edge_selection.foreach_index(GrainSize(4096), [&](const int edge_index) {
     const int2 &edge = edges[edge_index];
     disjoint_set.join(edge[0], edge[1]);
   });
+
+  disjoint_set.connect_all_loos_to(mesh.totvert + 1);
 
   disjoint_set.calc_reduced_ids(r_vert_island_indices);
 
@@ -274,7 +327,7 @@ static void scale_vertex_islands_uniformly(Mesh &mesh,
                                            const UniformScaleParams &params)
 {
   MutableSpan<float3> positions = mesh.vert_positions_for_write();
-  threading::parallel_for(elem_islands.index_range(), 256, [&](const IndexRange range) {
+  threading::parallel_for(elem_islands.index_range(), 256 * 100, [&](const IndexRange range) {
     for (const int island_index : range) {
       const Span<int> vert_island = vert_islands[island_index];
       const Span<int> elem_island = elem_islands[island_index];
@@ -304,7 +357,7 @@ static void scale_vertex_islands_on_axis(Mesh &mesh,
                                          const AxisScaleParams &params)
 {
   MutableSpan<float3> positions = mesh.vert_positions_for_write();
-  threading::parallel_for(elem_islands.index_range(), 256, [&](const IndexRange range) {
+  threading::parallel_for(elem_islands.index_range(), 256 * 100, [&](const IndexRange range) {
     for (const int island_index : range) {
       const Span<int> vert_island = vert_islands[island_index];
       const Span<int> elem_island = elem_islands[island_index];
@@ -349,15 +402,16 @@ static AxisScaleParams evaluate_axis_scale_fields(FieldEvaluator &evaluator,
   return out;
 }
 
-template<typename T, typename Function>
-inline void parallel_transform(MutableSpan<T> data,
-                               const int64_t grain_size,
-                               const Function &function)
+static UniformScaleParams evaluate_uniform_scale_fields(FieldEvaluator &evaluator,
+                                                        const UniformScaleFields &fields)
 {
-  threading::parallel_for(data.index_range(), grain_size, [&](const IndexRange range) {
-    MutableSpan<T> data_range = data.slice(range);
-    std::transform(data_range.begin(), data_range.end(), data_range.begin(), function);
-  });
+  UniformScaleParams out;
+  evaluator.set_selection(fields.selection);
+  evaluator.add(fields.scale, &out.scales);
+  evaluator.add(fields.center, &out.centers);
+  evaluator.evaluate();
+  out.selection = evaluator.get_evaluated_selection_as_mask();
+  return out;
 }
 
 static void scale_faces_on_axis(Mesh &mesh, const AxisScaleFields &fields)
@@ -371,12 +425,15 @@ static void scale_faces_on_axis(Mesh &mesh, const AxisScaleFields &fields)
 
   Array<int> face_offsets;
   Array<int> face_indices;
+
   {
-    Array<int> vert_island_indices(mesh.totvert);
+    Array<int> remap_indices;
+    Array<int> vert_island_indices(mesh.totvert + 1);
     Array<int> face_island_indices_data(params.selection.size());
     const int total_islands = face_island_indices(
-        mesh, params.selection, vert_island_indices, face_island_indices_data);
-    gather_groups(vert_island_indices, total_islands, vert_offsets, vert_indices);
+        mesh, params.selection, vert_island_indices, face_island_indices_data, remap_indices);
+    gather_groups(
+        vert_island_indices.as_span().drop_back(1), total_islands, vert_offsets, vert_indices);
     gather_groups(face_island_indices_data, total_islands, face_offsets, face_indices);
     parallel_transform<int>(
         face_indices, 2048, [&](const int pos) { return params.selection[pos]; });
@@ -384,18 +441,6 @@ static void scale_faces_on_axis(Mesh &mesh, const AxisScaleFields &fields)
   const GroupedSpan<int> vert_islands(vert_offsets.as_span(), vert_indices);
   const GroupedSpan<int> face_islands(face_offsets.as_span(), face_indices);
   scale_vertex_islands_on_axis(mesh, vert_islands, face_islands, params);
-}
-
-static UniformScaleParams evaluate_uniform_scale_fields(FieldEvaluator &evaluator,
-                                                        const UniformScaleFields &fields)
-{
-  UniformScaleParams out;
-  evaluator.set_selection(fields.selection);
-  evaluator.add(fields.scale, &out.scales);
-  evaluator.add(fields.center, &out.centers);
-  evaluator.evaluate();
-  out.selection = evaluator.get_evaluated_selection_as_mask();
-  return out;
 }
 
 static void scale_faces_uniformly(Mesh &mesh, const UniformScaleFields &fields)
@@ -409,15 +454,32 @@ static void scale_faces_uniformly(Mesh &mesh, const UniformScaleFields &fields)
 
   Array<int> face_offsets;
   Array<int> face_indices;
+
   {
-    Array<int> vert_island_indices(mesh.totvert);
+    Array<int> remap_indices;
+    Array<int> vert_island_indices;
     Array<int> face_island_indices_data(params.selection.size());
     const int total_islands = face_island_indices(
-        mesh, params.selection, vert_island_indices, face_island_indices_data);
-    gather_groups(vert_island_indices, total_islands, vert_offsets, vert_indices);
-    gather_groups(face_island_indices_data, total_islands, face_offsets, face_indices);
-    parallel_transform<int>(
-        face_indices, 2048, [&](const int pos) { return params.selection[pos]; });
+        mesh, params.selection, vert_island_indices, face_island_indices_data, remap_indices);
+    {
+      SCOPED_TIMER_AVERAGED("aaa 1");
+      gather_groups(vert_island_indices, total_islands, vert_offsets, vert_indices);
+    }
+    {
+      SCOPED_TIMER_AVERAGED("aaa 1.5");
+      parallel_transform<int>(
+          vert_indices, 2048, [&](const int pos) { return remap_indices[pos]; });
+    }
+    {
+      SCOPED_TIMER_AVERAGED("aaa 2");
+      gather_groups(face_island_indices_data, total_islands, face_offsets, face_indices);
+    }
+
+    {
+      SCOPED_TIMER_AVERAGED("aaa 3");
+      parallel_transform<int>(
+          face_indices, 2048, [&](const int pos) { return params.selection[pos]; });
+    }
   }
   const GroupedSpan<int> vert_islands(vert_offsets.as_span(), vert_indices);
   const GroupedSpan<int> face_islands(face_offsets.as_span(), face_indices);
@@ -435,8 +497,9 @@ static void scale_edges_uniformly(Mesh &mesh, const UniformScaleFields &fields)
 
   Array<int> edge_offsets;
   Array<int> edge_indices;
+
   {
-    Array<int> vert_island_indices(mesh.totvert);
+    Array<int> vert_island_indices(mesh.totvert + 1);
     Array<int> edge_island_indices_data(params.selection.size());
     const int total_islands = edge_island_indices(
         mesh, params.selection, vert_island_indices, edge_island_indices_data);
@@ -461,8 +524,9 @@ static void scale_edges_on_axis(Mesh &mesh, const AxisScaleFields &fields)
 
   Array<int> edge_offsets;
   Array<int> edge_indices;
+
   {
-    Array<int> vert_island_indices(mesh.totvert);
+    Array<int> vert_island_indices(mesh.totvert + 1);
     Array<int> edge_island_indices_data(params.selection.size());
     const int total_islands = edge_island_indices(
         mesh, params.selection, vert_island_indices, edge_island_indices_data);
@@ -493,6 +557,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   geometry.modify_geometry_sets([&](GeometrySet &geometry) {
+    SCOPED_TIMER_AVERAGED("New");
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       switch (domain) {
         case ATTR_DOMAIN_FACE: {
