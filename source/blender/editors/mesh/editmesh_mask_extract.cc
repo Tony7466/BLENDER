@@ -509,8 +509,7 @@ static int paint_mask_slice_exec(bContext *C, wmOperator *op)
     BM_mesh_free(bm);
 
     /* Remove the mask from the new object so it can be sculpted directly after slicing. */
-    CustomData_free_layer_named(
-        &new_ob_mesh->vert_data, CD_PROP_FLOAT, ".sculpt_mask", new_ob_mesh->totvert);
+    CustomData_free_layer_named(&new_ob_mesh->vert_data, ".sculpt_mask", new_ob_mesh->totvert);
 
     Mesh *new_mesh = static_cast<Mesh *>(new_ob->data);
     BKE_mesh_nomain_to_mesh(new_ob_mesh, new_mesh, new_ob);

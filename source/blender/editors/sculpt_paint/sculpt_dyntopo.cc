@@ -293,7 +293,7 @@ static int dyntopo_warning_popup(bContext *C, wmOperatorType *ot, enum eDynTopoW
   return OPERATOR_INTERFACE;
 }
 
-static bool dyntopo_supports_layer(const CustomDataLayer &layer, const int elem_num)
+static bool dyntopo_supports_layer(const CustomDataLayer &layer)
 {
   if (CD_TYPE_AS_MASK(layer.type) & CD_MASK_PROP_ALL) {
     /* Some data is stored as generic attributes on #Mesh but in flags or fields on #BMesh. */
@@ -303,11 +303,10 @@ static bool dyntopo_supports_layer(const CustomDataLayer &layer, const int elem_
   return ELEM(layer.type, CD_ORIGINDEX);
 }
 
-static bool dyntopo_supports_customdata_layers(const blender::Span<CustomDataLayer> layers,
-                                               const int elem_num)
+static bool dyntopo_supports_customdata_layers(const blender::Span<CustomDataLayer> layers)
 {
   return std::all_of(layers.begin(), layers.end(), [&](const CustomDataLayer &layer) {
-    return dyntopo_supports_layer(layer, elem_num);
+    return dyntopo_supports_layer(layer);
   });
 }
 
@@ -321,24 +320,16 @@ enum eDynTopoWarnFlag SCULPT_dynamic_topology_check(Scene *scene, Object *ob)
   BLI_assert(ss->bm == nullptr);
   UNUSED_VARS_NDEBUG(ss);
 
-  if (!dyntopo_supports_customdata_layers({me->vert_data.layers, me->vert_data.totlayer},
-                                          me->totvert))
-  {
+  if (!dyntopo_supports_customdata_layers({me->vert_data.layers, me->vert_data.totlayer})) {
     flag |= DYNTOPO_WARN_VDATA;
   }
-  if (!dyntopo_supports_customdata_layers({me->edge_data.layers, me->edge_data.totlayer},
-                                          me->totedge))
-  {
+  if (!dyntopo_supports_customdata_layers({me->edge_data.layers, me->edge_data.totlayer})) {
     flag |= DYNTOPO_WARN_EDATA;
   }
-  if (!dyntopo_supports_customdata_layers({me->face_data.layers, me->face_data.totlayer},
-                                          me->faces_num))
-  {
+  if (!dyntopo_supports_customdata_layers({me->face_data.layers, me->face_data.totlayer})) {
     flag |= DYNTOPO_WARN_LDATA;
   }
-  if (!dyntopo_supports_customdata_layers({me->loop_data.layers, me->loop_data.totlayer},
-                                          me->totloop))
-  {
+  if (!dyntopo_supports_customdata_layers({me->loop_data.layers, me->loop_data.totlayer})) {
     flag |= DYNTOPO_WARN_LDATA;
   }
 

@@ -612,7 +612,7 @@ static int mesh_customdata_mask_clear_exec(bContext *C, wmOperator *op)
 {
   Object *object = ED_object_context(C);
   Mesh *mesh = static_cast<Mesh *>(object->data);
-  const bool ret_a BKE_id_attribute_remove(&mesh->id, ".sculpt_mask", op->reports);
+  const bool ret_a = BKE_id_attribute_remove(&mesh->id, ".sculpt_mask", op->reports);
   int ret_b = mesh_customdata_clear_exec__internal(C, BM_LOOP, CD_GRID_PAINT_MASK);
 
   if (ret_a || ret_b == OPERATOR_FINISHED) {
