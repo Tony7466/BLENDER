@@ -23,12 +23,20 @@ static void node_declare(NodeDeclarationBuilder &b)
 static Curves *edge_paths_to_curves_convert(
     const Mesh &mesh,
     const IndexMask &start_verts_mask,
-    MutableSpan<int> next_indices,
-    const AnonymousAttributePropagationInfo &propagation_info)
+    const AnonymousAttributePropagationInfo &propagation_info,
+    MutableSpan<int> next_indices)
 {
   const IndexRange vert_range(mesh.totvert);
 
-  threading::parallel_for(next_indices.index_range(), 2048, [&](const IndexRange range) {
+  /* Do not create curves from first point with incorrect index. */
+  IndexMaskMemory memory;
+  const IndexMask valid_start_verts = IndexMask::from_predicate(
+      start_verts_mask, GrainSize(4096), memory, [&](const int vert_i) {
+        return vert_range.contains(next_indices[vert_i]);
+      });
+
+  /* All the next points can pointing to itself. */
+  threading::parallel_for(next_indices.index_range(), 4096, [&](const IndexRange range) {
     MutableSpan<int> next_indices_range = next_indices.slice(range);
     for (const int vert_i : range) {
       int &next_vert = next_indices[vert_i];
@@ -70,19 +78,12 @@ static Curves *edge_paths_to_curves_convert(
     return rang[vertex];
   };
 
-  IndexMaskMemory memory;
-  const IndexMask valid_start_verts = IndexMask::from_predicate(
-      start_verts_mask, GrainSize(2048), memory, [&](const int vert_i) {
-        return vert_range.contains(next_indices[vert_i]);
-      });
-
   Array<int> curve_offsets(valid_start_verts.size() + 1);
-  valid_start_verts.foreach_index([&](const int first_vert, const int pos) {
-    curve_offsets[pos] = rang_for_vertex(first_vert);
+  valid_start_verts.foreach_index([&](const int first_vert, const int vert_pos) {
+    curve_offsets[vert_pos] = rang_for_vertex(first_vert);
   });
 
-  const OffsetIndices<int> curves = offset_indices::accumulate_counts_to_offsets(
-      curve_offsets.as_mutable_span());
+  const OffsetIndices<int> curves = offset_indices::accumulate_counts_to_offsets(curve_offsets);
   if (curves.is_empty()) {
     return nullptr;
   }
@@ -132,7 +133,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
 
     geometry_set.replace_curves(edge_paths_to_curves_convert(
-        *mesh, start_verts, next_vert, params.get_output_propagation_info("Curves")));
+        *mesh, start_verts, params.get_output_propagation_info("Curves"), next_vert));
     geometry_set.keep_only({GeometryComponent::Type::Curve, GeometryComponent::Type::Instance});
   });
 
