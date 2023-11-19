@@ -219,6 +219,18 @@ const MeshData::SubMesh &MeshData::submesh(pxr::SdfPath const &id) const
   return submeshes_[index];
 }
 
+/**
+ * #VtArray::resize() does value initialization of every new value, which ends up being `memset`
+ * for the trivial attribute types we deal with here. This is unnecessary since every item is
+ * initialized via copy from a Blender mesh here anyway. This specializes the resize call to skip
+ * initialization.
+ */
+template<typename T> static void resize_uninitialized(pxr::VtArray<T> &array, const int new_size)
+{
+  static_assert(std::is_trivial_v<T>);
+  array.resize(new_size, [](auto /*begin*/, auto /*end*/) {});
+}
+
 static std::pair<bke::MeshNormalDomain, Span<float3>> get_mesh_normals(const Mesh &mesh)
 {
   switch (mesh.normals_domain()) {
@@ -270,18 +282,6 @@ void gather_corner_data(const Span<MLoopTri> looptris,
     dst_data[dst * 3 + 1] = src_data[tri.tri[1]];
     dst_data[dst * 3 + 2] = src_data[tri.tri[2]];
   });
-}
-
-/**
- * #VtArray::resize() does value initialization of every new value, which ends up being `memset`
- * for the trivial attribute types we deal with here. This is unnecessary since every item is
- * initialized via copy from a Blender mesh here anyway. This specializes the resize call to skip
- * initialization.
- */
-template<typename T> static void resize_uninitialized(pxr::VtArray<T> &array, const int new_size)
-{
-  static_assert(std::is_trivial_v<T>);
-  array.resize(new_size, [](auto /*begin*/, auto /*end*/) {});
 }
 
 static void copy_submesh(const Mesh &mesh,
