@@ -67,7 +67,26 @@ public:
       return std::make_unique<UnaryExpression>(parse_unary(), token);
     }
 
-    return parse_primary();
+    return parse_ufcs();
+  }
+
+  std::unique_ptr<Expression> parse_ufcs() {
+    auto expr = parse_primary();
+    Token token;
+
+    while(match({TokenKind::DOT}, token)) {
+      Token ident = expect(TokenKind::IDENT, "expected identifier");
+      std::vector<std::unique_ptr<Expression>> args;
+      args.emplace_back(std::move(expr));
+
+      if(match(TokenKind::LPAREN)) {
+        expr = parse_call(ident, std::move(args));
+      } else {
+        expr = std::make_unique<CallExpression>(std::move(args), ident);
+      }
+    }
+
+    return expr;
   }
 
   std::unique_ptr<Expression> parse_primary() {
@@ -98,23 +117,23 @@ public:
     }
   }
 
-  std::unique_ptr<Expression> parse_call(Token token) {
-    std::vector<std::unique_ptr<Expression>> args;
-
-    do {
-      args.emplace_back(parse_expression());
-    } while(match(TokenKind::COMMA));
+  std::unique_ptr<Expression> parse_call(Token token, std::vector<std::unique_ptr<Expression>> args = std::vector<std::unique_ptr<Expression>>()) {
+    if(!check(TokenKind::RPAREN)) {
+      do {
+        args.emplace_back(parse_expression());
+      } while(match(TokenKind::COMMA));
+    }
 
     expect(TokenKind::RPAREN, "expected closing paren");
     return std::make_unique<CallExpression>(std::move(args), token);
   }
 
-  void expect(TokenKind kind, const char *message) {
+  [[maybe_unused]] Token expect(TokenKind kind, const char *message) {
     if(peek().kind != kind) {
       throw ParserError{ peek(), message };
     }
 
-    next();
+    return next();
   }
 
   template<size_t N>
@@ -132,6 +151,14 @@ public:
   bool match(const TokenKind kind) {
     if(peek().kind == kind) {
       next();
+      return true;
+    }
+
+    return false;
+  }
+
+  bool check(const TokenKind kind) {
+    if(peek().kind == kind) {
       return true;
     }
 

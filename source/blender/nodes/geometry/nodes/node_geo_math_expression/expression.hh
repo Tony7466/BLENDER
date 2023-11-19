@@ -91,7 +91,7 @@ public:
 
     BLI_assert(fn != nullptr);
 
-    return fn::Field<float3>(fn::FieldOperation::Create(*fn, { std::move(a) }));
+    return fn::Field<float>(fn::FieldOperation::Create(*fn, { std::move(a) }));
   }
 
   static fn::GField pow(EvaluationContext &ctx, Expression *x, Expression *y);

@@ -6,7 +6,7 @@
 
 namespace blender::nodes::node_geo_math_expression_cc {
 
-enum class TokenKind { IDENT, NUMBER, LPAREN, RPAREN, COMMA, PLUS, MINUS, MUL, DIV, EXP, END };
+enum class TokenKind { IDENT, NUMBER, LPAREN, RPAREN, DOT, COMMA, PLUS, MINUS, MUL, DIV, END };
 
 struct Token {
   TokenKind kind;
@@ -14,7 +14,7 @@ struct Token {
   std::string_view value;
 
   const char *kind_str() {
-    const char *names[] = { "IDENT", "NUMBER", "LPAREN", "RPAREN", "COMMA", "PLUS", "MINUS", "MUL", "DIV", "EXP", "END" };
+    const char *names[] = { "IDENT", "NUMBER", "LPAREN", "RPAREN", "DOT", "COMMA", "PLUS", "MINUS", "MUL", "DIV", "END" };
     return names[static_cast<size_t>(kind)];
   }
 };
@@ -62,6 +62,12 @@ public:
     case ')':
       return make_token(TokenKind::RPAREN);
       break;
+    case '.':
+      if(!std::isdigit(peek())) {
+        return make_token(TokenKind::DOT);
+      }
+
+      break;
     case ',':
       return make_token(TokenKind::COMMA);
       break;
@@ -76,9 +82,6 @@ public:
       break;
     case '/':
       return make_token(TokenKind::DIV);
-      break;
-    case '^':
-      return make_token(TokenKind::EXP);
       break;
     }
 

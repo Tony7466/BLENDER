@@ -91,7 +91,7 @@ fn::GField Expression::pow(EvaluationContext &ctx, Expression *x, Expression *y)
   fn::GField _y = y->compile(ctx);
 
   if(args_are<float, float>(_x, _y)) {
-    return fl_fl_to_fl(_x, _y, NODE_MATH_EXPONENT);
+    return fl_fl_to_fl(_x, _y, NODE_MATH_POWER);
   }
 
   throw "invalid operands";
