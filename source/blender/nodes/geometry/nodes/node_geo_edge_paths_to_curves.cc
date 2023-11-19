@@ -48,39 +48,39 @@ static Curves *edge_paths_to_curves_convert(
 
   const constexpr int non_checked = -1;
 
-  Array<int> rang(mesh.totvert, non_checked);
+  Array<int> rank(mesh.totvert, non_checked);
   Array<bool> visited(mesh.totvert, false);
-  const auto rang_for_vertex = [&](const int vertex) -> int {
-    if (rang[vertex] != non_checked) {
-      return rang[vertex];
+  const auto rank_for_vertex = [&](const int vertex) -> int {
+    if (rank[vertex] != non_checked) {
+      return rank[vertex];
     }
 
-    int total_rang = 0;
+    int total_rank = 0;
     for (int current_vert = vertex; !visited[current_vert];
          current_vert = next_indices[current_vert]) {
-      if (rang[current_vert] != non_checked) {
-        total_rang += rang[current_vert];
+      if (rank[current_vert] != non_checked) {
+        total_rank += rank[current_vert];
         break;
       }
       visited[current_vert] = true;
-      total_rang++;
+      total_rank++;
     }
 
     for (int current_vert = vertex; visited[current_vert];
          current_vert = next_indices[current_vert]) {
-      if (rang[current_vert] != non_checked) {
+      if (rank[current_vert] != non_checked) {
         break;
       }
       visited[current_vert] = false;
-      rang[current_vert] = total_rang;
-      total_rang--;
+      rank[current_vert] = total_rank;
+      total_rank--;
     }
-    return rang[vertex];
+    return rank[vertex];
   };
 
   Array<int> curve_offsets(valid_start_verts.size() + 1);
   valid_start_verts.foreach_index([&](const int first_vert, const int vert_pos) {
-    curve_offsets[vert_pos] = rang_for_vertex(first_vert);
+    curve_offsets[vert_pos] = rank_for_vertex(first_vert);
   });
 
   const OffsetIndices<int> curves = offset_indices::accumulate_counts_to_offsets(curve_offsets);
