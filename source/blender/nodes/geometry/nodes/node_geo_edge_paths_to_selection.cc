@@ -9,8 +9,6 @@
 #include "BLI_set.hh"
 #include "BLI_task.hh"
 
-#include "BLI_timeit.hh"
-
 #include "node_geometry_util.hh"
 
 #include <set>
