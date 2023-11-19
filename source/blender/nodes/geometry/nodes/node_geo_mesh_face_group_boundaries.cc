@@ -61,42 +61,33 @@ class BoundaryFieldInput final : public bke::MeshFieldInput {
       for (const int face_i : range) {
         const int group_id = face_set[face_i];
         for (const int edge_i : face_edges[face_i]) {
-          int fff = 0;
           while (true) {
-            fff++;
-            BLI_assert(fff < 100);
-
             const int last_face_i = atomic_load_int32(&previos_face[edge_i]);
             if (last_face_i == is_bad_group) {
               break;
             }
-
-            if (last_face_i == is_first_face) {
+            else if (last_face_i == is_first_face) {
               const int last_face_i_test = atomic_cas_int32(
                   &previos_face[edge_i], is_first_face, face_i);
-              if (last_face_i_test != last_face_i) {
-                continue;
+              if (last_face_i_test == last_face_i) {
+                break;
               }
-              break;
             }
-
-            const int last_face_id = face_set[last_face_i];
-            if (last_face_id != group_id) {
+            else if (face_set[last_face_i] != group_id) {
               const int last_face_i_test = atomic_cas_int32(
                   &previos_face[edge_i], last_face_i, is_bad_group);
-              if (last_face_i_test != last_face_i) {
-                continue;
+              if (last_face_i_test == last_face_i) {
+                boundary[edge_i] = true;
+                break;
               }
-              boundary[edge_i] = true;
-              break;
             }
-
-            const int last_face_i_test = atomic_cas_int32(
-                &previos_face[edge_i], last_face_i, face_i);
-            if (last_face_i_test != face_i) {
-              continue;
+            else {
+              const int last_face_i_test = atomic_cas_int32(
+                  &previos_face[edge_i], last_face_i, face_i);
+              if (last_face_i_test == face_i) {
+                break;
+              }
             }
-            break;
           }
         }
       }
