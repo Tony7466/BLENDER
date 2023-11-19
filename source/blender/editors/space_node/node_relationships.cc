@@ -448,10 +448,14 @@ static bNodeSocket *node_link_viewer_get_socket(bNodeTree &ntree,
     return (bNodeSocket *)viewer_node.inputs.first;
   }
   /* For the geometry nodes viewer, find the socket with the correct type. */
-  BLI_assert(socket_can_be_viewed(src_socket.owner_node(), src_socket));
 
   if (src_socket.type == SOCK_GEOMETRY) {
     return static_cast<bNodeSocket *>(viewer_node.inputs.first);
+  }
+
+  ntree.ensure_topology_cache();
+  if (!socket_can_be_viewed(src_socket.owner_node(), src_socket)) {
+    return nullptr;
   }
 
   NodeGeometryViewer &storage = *static_cast<NodeGeometryViewer *>(viewer_node.storage);
