@@ -1991,15 +1991,14 @@ static void rna_Object_boundbox_get(PointerRNA *ptr, float *values)
 {
   using namespace blender;
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
-  const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_eval_cached_get(ob);
-  if (!bounds) {
-    copy_vn_fl(values, sizeof(float[3][8]), 0.0f);
-    return;
+  if (const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_eval_cached_get(ob)) {
+    BoundBox bb;
+    BKE_boundbox_init_from_minmax(&bb, bounds->min, bounds->max);
+    memcpy(values, bb.vec, sizeof(bb.vec));
   }
-
-  BoundBox bb;
-  BKE_boundbox_init_from_minmax(&bb, bounds->min, bounds->max);
-  memcpy(values, bb.vec, sizeof(bb.vec));
+  else {
+    copy_vn_fl(values, sizeof(bb->vec) / sizeof(float), 0.0f);
+  }
 }
 
 static bool check_object_vgroup_support_and_warn(const Object *ob,
