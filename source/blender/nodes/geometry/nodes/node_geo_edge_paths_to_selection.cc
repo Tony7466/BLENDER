@@ -27,7 +27,7 @@ static void edge_paths_to_selection(const Mesh &src_mesh,
                                     const Span<int> next_indices,
                                     MutableSpan<bool> r_edge_selection)
 {
-  Array<bool> vert_selection(src_mesh.totvert);
+  Array<bool> vert_selection(src_mesh.totvert, false);
 
   const IndexRange vert_range(src_mesh.totvert);
   start_selection.foreach_index(GrainSize(2048), [&](const int start_vert) {
