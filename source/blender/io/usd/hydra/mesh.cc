@@ -272,6 +272,18 @@ void gather_corner_data(const Span<MLoopTri> looptris,
   });
 }
 
+/**
+ * #VtArray::resize() does value initialization of every new value, which ends up being `memset`
+ * for the trivial attribute types we deal with here. This is unnecessary since every item is
+ * initialized via copy from a Blender mesh here anyway. This specializes the resize call to skip
+ * initialization.
+ */
+template<typename T> static void resize_uninitialized(pxr::VtArray<T> &array, const int new_size)
+{
+  static_assert(std::is_trivial_v<T>);
+  array.resize(new_size, [](auto /*begin*/, auto /*end*/) {});
+}
+
 static void copy_submesh(const Span<float3> vert_positions,
                          const Span<int> corner_verts,
                          const Span<MLoopTri> looptris,
@@ -281,7 +293,7 @@ static void copy_submesh(const Span<float3> vert_positions,
                          const IndexMask &triangles,
                          MeshData::SubMesh &sm)
 {
-  sm.face_vertex_indices.resize(triangles.size() * 3);
+  resize_uninitialized(sm.face_vertex_indices, triangles.size() * 3);
   const bool is_full_copy = triangles.size() == looptris.size();
 
   int dst_verts_num;
@@ -311,16 +323,16 @@ static void copy_submesh(const Span<float3> vert_positions,
     dst_verts_num = verts.size();
   }
 
-  sm.vertices.resize(dst_verts_num);
+  resize_uninitialized(sm.vertices, dst_verts_num);
   gather_vert_data(verts,
                    is_full_copy,
                    vert_positions,
                    MutableSpan(sm.vertices.data(), sm.vertices.size()).cast<float3>());
 
-  sm.face_vertex_counts.resize(triangles.size());
+  resize_uninitialized(sm.face_vertex_counts, triangles.size());
   std::fill(sm.face_vertex_counts.begin(), sm.face_vertex_counts.end(), 3);
 
-  sm.normals.resize(triangles.size() * 3);
+  resize_uninitialized(sm.normals, triangles.size() * 3);
   MutableSpan dst_normals = MutableSpan(sm.normals.data(), sm.normals.size()).cast<float3>();
   switch (normals.first) {
     case bke::MeshNormalDomain::Face:
@@ -342,7 +354,7 @@ static void copy_submesh(const Span<float3> vert_positions,
   }
 
   if (!uv_map.is_empty()) {
-    sm.uvs.resize(triangles.size() * 3);
+    resize_uninitialized(sm.uvs, triangles.size() * 3);
     gather_corner_data(
         looptris, triangles, uv_map, MutableSpan(sm.uvs.data(), sm.uvs.size()).cast<float2>());
   }
