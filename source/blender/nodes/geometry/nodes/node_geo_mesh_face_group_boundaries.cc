@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "atomic_ops.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
@@ -45,24 +47,60 @@ class BoundaryFieldInput final : public bke::MeshFieldInput {
     face_evaluator.add(face_set_);
     face_evaluator.evaluate();
     const VArray<int> face_set = face_evaluator.get_evaluated<int>(0);
+    if (face_set.is_single()) {
+      return {};
+    }
+
+    const constexpr int is_first_face = -1;
+    const constexpr int is_bad_group = -2;
 
     Array<bool> boundary(mesh.totedge, false);
-    Array<bool> edge_visited(mesh.totedge, false);
-    Array<int> edge_face_set(mesh.totedge, 0);
-    const OffsetIndices faces = mesh.faces();
-    const Span<int> corner_edges = mesh.corner_edges();
-    for (const int i : faces.index_range()) {
-      for (const int edge : corner_edges.slice(faces[i])) {
-        if (edge_visited[edge]) {
-          if (edge_face_set[edge] != face_set[i]) {
-            /* This edge is connected to two faces on different face sets. */
-            boundary[edge] = true;
+    Array<int> previos_face(mesh.totedge, is_first_face);
+    const GroupedSpan<int> face_edges(mesh.face_offsets(), mesh.corner_edges());
+    threading::parallel_for(face_edges.index_range(), 2048, [&](const IndexRange range) {
+      for (const int face_i : range) {
+        const int group_id = face_set[face_i];
+        for (const int edge_i : face_edges[face_i]) {
+          int fff = 0;
+          while (true) {
+            fff++;
+            BLI_assert(fff < 100);
+
+            const int last_face_i = atomic_load_int32(&previos_face[edge_i]);
+            if (last_face_i == is_bad_group) {
+              break;
+            }
+
+            if (last_face_i == is_first_face) {
+              const int last_face_i_test = atomic_cas_int32(
+                  &previos_face[edge_i], is_first_face, face_i);
+              if (last_face_i_test != last_face_i) {
+                continue;
+              }
+              break;
+            }
+
+            const int last_face_id = face_set[last_face_i];
+            if (last_face_id != group_id) {
+              const int last_face_i_test = atomic_cas_int32(
+                  &previos_face[edge_i], last_face_i, is_bad_group);
+              if (last_face_i_test != last_face_i) {
+                continue;
+              }
+              boundary[edge_i] = true;
+              break;
+            }
+
+            const int last_face_i_test = atomic_cas_int32(
+                &previos_face[edge_i], last_face_i, face_i);
+            if (last_face_i_test != face_i) {
+              continue;
+            }
+            break;
           }
         }
-        edge_visited[edge] = true;
-        edge_face_set[edge] = face_set[i];
       }
-    }
+    });
     return mesh.attributes().adapt_domain<bool>(
         VArray<bool>::ForContainer(std::move(boundary)), ATTR_DOMAIN_EDGE, domain);
   }
