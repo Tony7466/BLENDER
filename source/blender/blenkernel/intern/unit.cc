@@ -1954,7 +1954,13 @@ static bool unit_distribute_negatives(char *str, const int str_maxncpy)
  */
 static int find_previous_non_value_char(const char *str, const int start_ofs)
 {
-  for (int i = start_ofs; i > 0; i--) {
+  int spacetrim_ofs;
+  for (spacetrim_ofs = start_ofs; spacetrim_ofs > 0; spacetrim_ofs--) {
+    if (!(str[spacetrim_ofs - 1] == ' ')) {
+      break;
+    }
+  }
+  for (int i = spacetrim_ofs; i > 0; i--) {
     if (ch_is_op(str[i - 1]) || strchr("( )", str[i - 1])) {
       return i;
     }
