@@ -42,7 +42,11 @@ VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf)
   VFontData *vfd = static_cast<VFontData *>(MEM_callocN(sizeof(*vfd), "FTVFontData"));
 
   /* Get the font name. */
-  STRNCPY(vfd->name, BLF_display_name(fontid));
+  char *name = BLF_display_name(fontid);
+  STRNCPY(vfd->name, name);
+  /* BLF_display_name result must be freed. */
+  MEM_freeN(name);
+
   BLI_str_utf8_invalid_strip(vfd->name, ARRAY_SIZE(vfd->name));
 
   BLF_get_vfont_metrics(fontid, &vfd->ascender, &vfd->em_height, &vfd->scale);
