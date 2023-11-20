@@ -1799,7 +1799,6 @@ class SEQUENCER_PT_scene_sound(SequencerButtonsPanel, Panel):
 
     def draw(self, context):
         strip = context.active_sequence_strip
-        scene = strip.scene
 
         layout = self.layout
         layout.use_property_split = True
