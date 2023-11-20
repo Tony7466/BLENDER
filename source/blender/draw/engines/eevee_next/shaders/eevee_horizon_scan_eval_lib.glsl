@@ -153,9 +153,7 @@ float bxdf_eval(ClosureDiffuse closure, vec3 L, vec3 V)
 
 float bxdf_eval(ClosureReflection closure, vec3 L, vec3 V)
 {
-  /* TODO(fclem): Figure out how to make it work properly. Currently losses too much energy. */
   return bsdf_ggx(closure.N, L, V, closure.roughness);
-  // return bsdf_lambert(closure.N, L);
 }
 
 float bxdf_eval(ClosureRefraction closure, vec3 L, vec3 V)
@@ -171,25 +169,25 @@ void horizon_scan_context_sample_finish(
   vec3 sample_normal = horizon_scan_sample_normal(sample_uv);
   /* Discard backfacing samples.
    * The paper suggests a smooth test which is not physically correct since we
-   * already consider the sample reflected radiance. */
-  // sample_radiance *= step(dot(sample_normal, -L), 0.0);
-  float bxdf = 1.0;
+   * already consider the sample reflected radiance.
+   * Set the weight to allow energy conservation. If we modulate the radiance, we loose energy. */
+  float weight = step(dot(sample_normal, -L), 0.0);
 
 #ifdef HORIZON_OCCLUSION
-  horizon_scan_context_sample_finish(ctx.occlusion_common, sample_radiance, bxdf, theta, bias);
+  horizon_scan_context_sample_finish(ctx.occlusion_common, sample_radiance, 1.0, theta, bias);
 #endif
 #ifdef HORIZON_DIFFUSE
-  bxdf = bxdf_eval(ctx.diffuse, L, V);
-  horizon_scan_context_sample_finish(ctx.diffuse_common, sample_radiance, bxdf, theta, bias);
+  weight = bxdf_eval(ctx.diffuse, L, V);
+  horizon_scan_context_sample_finish(ctx.diffuse_common, sample_radiance, weight, theta, bias);
 #endif
 #ifdef HORIZON_REFLECT
-  bxdf = bxdf_eval(ctx.reflection, L, V);
-  horizon_scan_context_sample_finish(ctx.reflection_common, sample_radiance, bxdf, theta, bias);
+  weight = bxdf_eval(ctx.reflection, L, V);
+  horizon_scan_context_sample_finish(ctx.reflection_common, sample_radiance, weight, theta, bias);
 #endif
 #ifdef HORIZON_REFRACT
   /* TODO(fclem): Broken: Black. */
-  bxdf = bxdf_eval(ctx.refraction, L, V);
-  horizon_scan_context_sample_finish(ctx.refraction_common, sample_radiance, bxdf, theta, bias);
+  weight = bxdf_eval(ctx.refraction, L, V);
+  horizon_scan_context_sample_finish(ctx.refraction_common, sample_radiance, weight, theta, bias);
 #endif
 }
 
