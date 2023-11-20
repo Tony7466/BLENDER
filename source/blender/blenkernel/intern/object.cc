@@ -3599,10 +3599,16 @@ std::optional<Bounds<float3>> BKE_object_boundbox_eval_cached_get(const Object *
 
 std::optional<Bounds<float3>> BKE_object_evaluated_geometry_bounds(const Object *ob)
 {
-  if (!ob->runtime->geometry_set_eval) {
-    return std::nullopt;
+  if (const blender::bke::GeometrySet *geometry = ob->runtime->geometry_set_eval) {
+    return geometry->compute_boundbox_without_instances();
   }
-  return ob->runtime->geometry_set_eval->compute_boundbox_without_instances();
+  if (const CurveCache *curve_cache = ob->runtime->curve_cache) {
+    float3 min(std::numeric_limits<float>::max());
+    float3 max(std::numeric_limits<float>::lowest());
+    BKE_displist_minmax(&curve_cache->disp, min, max);
+    return Bounds<float3>{min, max};
+  }
+  return std::nullopt;
 }
 
 /** \} */
