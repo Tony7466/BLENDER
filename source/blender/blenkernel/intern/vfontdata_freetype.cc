@@ -21,7 +21,7 @@
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_vfont.h"
 #include "BKE_vfontdata.h"
 
@@ -77,14 +77,14 @@ VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont, ulong character)
     return nullptr;
   }
 
-  int font_id;
+  int font_id = -1;
 
   if (BKE_vfont_is_builtin(vfont)) {
     font_id = BLF_load_mem(vfont->data->name,
                            static_cast<const unsigned char *>(builtin_font_data),
                            builtin_font_size);
   }
-  else {
+  else if (vfont->temp_pf) {
     font_id = BLF_load_mem(vfont->data->name,
                            static_cast<const unsigned char *>(vfont->temp_pf->data),
                            vfont->temp_pf->size);
