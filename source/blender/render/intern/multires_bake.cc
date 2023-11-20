@@ -523,6 +523,7 @@ static void do_multires_bake(MultiresBakeRender *bkr,
           CustomData_get_layer_named(&dm->edgeData, CD_PROP_BOOL, "sharp_edge"));
       const bool *sharp_faces = static_cast<const bool *>(
           CustomData_get_layer_named(&dm->polyData, CD_PROP_BOOL, "sharp_face"));
+<<<<<<< HEAD
 
       /* Copy sharp faces and edges, for corner normals domain and tangents
        * to be computed correctly. */
@@ -559,6 +560,9 @@ static void do_multires_bake(MultiresBakeRender *bkr,
                                     face_normals,
                                     corner_normals,
                                     orco ? Span(orco, positions.size()) : Span<float3>(),
+                                    (uint)corner_verts.size(),
+                                    (uint)vert_normals.size(),
+                                    (uint)face_normals.size(),
                                     /* result */
                                     &dm->loopData,
                                     dm->getNumLoops(dm),

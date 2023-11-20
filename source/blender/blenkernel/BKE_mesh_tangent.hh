@@ -65,7 +65,11 @@ void BKE_mesh_calc_loop_tangent_ex(blender::Span<blender::float3> vert_positions
                                    /* result */
                                    CustomData *loopdata_out,
                                    uint loopdata_out_len,
-                                   short *tangent_mask_curr_p);
+                                   short *tangent_mask_curr_p,
+                                   int len_vert_positions,
+                                   int len_corner_verts,
+                                   int len_vert_normals,
+                                   int len_face_normals);
 
 void BKE_mesh_calc_loop_tangents(Mesh *mesh_eval,
                                  bool calc_active_tangent,

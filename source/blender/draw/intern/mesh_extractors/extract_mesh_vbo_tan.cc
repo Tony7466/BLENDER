@@ -141,7 +141,11 @@ static void extract_tan_init_common(const MeshRenderData &mr,
                                     orco,
                                     r_loop_data,
                                     mr.corner_verts.size(),
-                                    &tangent_mask);
+                                    &tangent_mask,
+                                    (uint)mr.vert_positions.size(),
+                                    (uint)mr.corner_verts.size(),
+                                    (uint)mr.vert_normals.size(),
+                                    (uint)mr.face_normals.size());
     }
   }
 
