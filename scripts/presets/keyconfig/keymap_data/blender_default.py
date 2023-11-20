@@ -8304,20 +8304,31 @@ def km_3d_view_tool_sculpt_gpencil_select_lasso(params):
 # ------------------------------------------------------------------------------
 # Tool System (Sequencer, Generic)
 
+def km_sequencer_editor_tool_generic_select_timeline_rcs(params, fallback):
+    return [
+        ("sequencer.select", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("handles_only", True), ("wait_to_deselect_others", True)]}),
+        *_template_items_change_frame(params),
+        # Frame change can be cancelled if click happens on strip handle. In such case move the handle.
+        ("transform.seq_slide", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("view2d_edge_pan", True)]}),
+    ]
+
+
+def km_sequencer_editor_tool_generic_select_timeline_lcs(params, fallback):
+    return [
+        *_template_items_tool_select(
+            params, "sequencer.select", "sequencer.cursor_set", cursor_prioritize=True, fallback=fallback),
+    ]
+
+
 def km_sequencer_editor_tool_generic_select_timeline(params, *, fallback):
     return (
         _fallback_id("Sequencer Timeline Tool: Tweak", fallback),
         {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
-            *([] if (params.select_mouse == 'RIGHTMOUSE') else _template_items_tool_select(
-                params, "sequencer.select", "sequencer.cursor_set", cursor_prioritize=True, fallback=fallback)),
-            ("sequencer.select", {"type": 'LEFTMOUSE', "value": 'PRESS'},
-             {"properties": [("handles_only", True), ("wait_to_deselect_others", False)]}),
-            *_template_items_change_frame(params),
-
-            # Frame change can be cancelled if click happens on strip handle. In such case move the handle.
-            ("transform.seq_slide", {"type": 'LEFTMOUSE', "value": 'PRESS'},
-             {"properties": [("view2d_edge_pan", True)]}),
+            *(km_sequencer_editor_tool_generic_select_timeline_rcs(params, fallback) if (params.select_mouse == 'RIGHTMOUSE')
+              else km_sequencer_editor_tool_generic_select_timeline_lcs(params, fallback)),
         ]},
     )
 
