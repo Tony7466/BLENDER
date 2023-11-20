@@ -101,7 +101,7 @@ set(SRC
   intern/math_color.c
   intern/math_color_blend_inline.c
   intern/math_color_inline.c
-  intern/math_geom.c
+  intern/math_geom.cc
   intern/math_geom_inline.c
   intern/math_interp.c
   intern/math_matrix.c
@@ -355,6 +355,7 @@ set(SRC
   BLI_string_utf8.h
   BLI_string_utf8_symbols.h
   BLI_string_utils.hh
+  BLI_struct_equality_utils.hh
   BLI_sub_frame.hh
   BLI_sys_types.h
   BLI_system.h
@@ -382,6 +383,7 @@ set(SRC
   BLI_voronoi_2d.h
   BLI_voxel.h
   BLI_winstuff.h
+  BLI_winstuff_com.hh
   PIL_time.h
   PIL_time_utildefines.h
 

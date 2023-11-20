@@ -42,8 +42,8 @@ const EnumPropertyItem rna_enum_id_type_items[] = {
     {ID_CU_LEGACY, "CURVE", ICON_CURVE_DATA, "Curve", ""},
     {ID_CV, "CURVES", ICON_CURVES_DATA, "Curves", ""},
     {ID_VF, "FONT", ICON_FONT_DATA, "Font", ""},
-    {ID_GD_LEGACY, "GREASEPENCIL", ICON_GREASEPENCIL, "Grease Pencil (legacy)", ""},
-    {ID_GP, "GREASEPENCIL_V3", ICON_GREASEPENCIL, "Grease Pencil", ""},
+    {ID_GD_LEGACY, "GREASEPENCIL", ICON_GREASEPENCIL, "Grease Pencil", ""},
+    {ID_GP, "GREASEPENCIL_V3", ICON_GREASEPENCIL, "Grease Pencil v3", ""},
     {ID_IM, "IMAGE", ICON_IMAGE_DATA, "Image", ""},
     {ID_KE, "KEY", ICON_SHAPEKEY_DATA, "Key", ""},
     {ID_LT, "LATTICE", ICON_LATTICE_DATA, "Lattice", ""},
@@ -916,10 +916,11 @@ static bool rna_ID_override_library_resync(ID *id,
   if (!override_library->hierarchy_root ||
       (override_library->flag & LIBOVERRIDE_FLAG_NO_HIERARCHY) != 0)
   {
-    BKE_reportf(reports,
-                RPT_ERROR_INVALID_INPUT,
-                "Data-block '%s' is not a liboverride, or not part of a liboverride hierarchy",
-                id->name);
+    BKE_reportf(
+        reports,
+        RPT_ERROR_INVALID_INPUT,
+        "Data-block '%s' is not a library override, or not part of a library override hierarchy",
+        id->name);
     return false;
   }
 

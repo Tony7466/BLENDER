@@ -1076,7 +1076,7 @@ class USERPREF_PT_theme_text_style(ThemePanel, CenterAlignMixIn, Panel):
 
         col = flow.column()
         col.prop(font_style, "points")
-        col.prop(font_style, "character_weight", text="Weight")
+        col.prop(font_style, "character_weight", text="Weight", text_ctxt=i18n_contexts.id_text)
 
         col = flow.column(align=True)
         col.prop(font_style, "shadow_offset_x", text="Shadow Offset X")
@@ -2008,7 +2008,7 @@ class USERPREF_PT_extensions(ExtensionsPanel, Panel):
         row = layout.row()
         row.label(text="The add-on to use extensions is disabled! See:")
         row.operator(
-            "wm.url_open", text="Extension Add-on Repo", icon='URL',
+            "wm.url_open", text="Extension Add-on Repository", icon='URL',
         ).url = "https://projects.blender.org/ideasman42/bl_ext"
 
 

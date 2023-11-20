@@ -38,7 +38,7 @@ float horizon_scan_bitmask_to_visibility_uniform(uint bitmask)
 }
 
 /**
- * For a given visibility bitmask storing localy occluded sectors,
+ * For a given visibility bitmask storing locally occluded sectors,
  * returns the uniform (non-cosine weighted) occlusion (visibility).
  */
 float horizon_scan_bitmask_to_occlusion_uniform(uint bitmask)
@@ -48,7 +48,7 @@ float horizon_scan_bitmask_to_occlusion_uniform(uint bitmask)
 }
 
 /**
- * For a given visibility bitmask storing localy occluded sectors,
+ * For a given visibility bitmask storing locally occluded sectors,
  * returns the cosine weighted occlusion (visibility).
  */
 float horizon_scan_bitmask_to_occlusion_cosine(uint bitmask)

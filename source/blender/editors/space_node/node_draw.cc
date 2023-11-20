@@ -35,7 +35,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_compute_contexts.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
@@ -43,7 +43,7 @@
 #include "BKE_main.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_object.hh"
 #include "BKE_scene.h"
@@ -88,7 +88,6 @@
 #include "NOD_socket_declarations_geometry.hh"
 
 #include "FN_field.hh"
-#include "FN_field_cpp_type.hh"
 
 #include "GEO_fillet_curves.hh"
 
@@ -1109,9 +1108,9 @@ static void node_draw_mute_line(const bContext &C,
 static void node_socket_draw(const bNodeSocket &sock,
                              const float color[4],
                              const float color_outline[4],
-                             float size,
-                             int locx,
-                             int locy,
+                             const float size,
+                             const float locx,
+                             const float locy,
                              uint pos_id,
                              uint col_id,
                              uint shape_id,
@@ -1205,7 +1204,13 @@ void node_socket_color_get(const bContext &C,
                            float r_color[4])
 {
   if (!sock.typeinfo->draw_color) {
-    copy_v4_v4(r_color, float4(1.0f, 0.0f, 1.0f, 1.0f));
+    /* Fallback to the simple variant. If not defined either, fallback to a magenta color. */
+    if (sock.typeinfo->draw_color_simple) {
+      sock.typeinfo->draw_color_simple(sock.typeinfo, r_color);
+    }
+    else {
+      copy_v4_v4(r_color, float4(1.0f, 0.0f, 1.0f, 1.0f));
+    }
     return;
   }
 
@@ -2222,6 +2227,7 @@ static void node_draw_panels(bNodeTree &ntree, const bNode &node, uiBlock &block
                        0.0f,
                        0.0f,
                        "");
+    UI_but_func_pushed_state_set(but, [&state](const uiBut &) { return state.is_collapsed(); });
     UI_but_func_set(
         but, node_panel_toggle_button_cb, const_cast<bNodePanelState *>(&state), &ntree);
 
