@@ -3582,7 +3582,7 @@ std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(const Ob
     case OB_POINTCLOUD:
       return static_cast<const PointCloud *>(ob->data)->bounds_min_max();
     case OB_VOLUME:
-      return *BKE_volume_min_max(static_cast<const Volume *>(ob->data));
+      return BKE_volume_min_max(static_cast<const Volume *>(ob->data));
     case OB_GREASE_PENCIL:
       return static_cast<const GreasePencil *>(ob->data)->bounds_min_max();
   }
@@ -3620,13 +3620,13 @@ std::optional<Bounds<float3>> BKE_object_evaluated_geometry_bounds(const Object 
  * \{ */
 
 static void boundbox_to_dimensions(const Object *ob,
-                                   const std::optional<Bounds<float3>> bb,
+                                   const std::optional<Bounds<float3>> bounds,
                                    float r_vec[3])
 {
-  if (bb) {
+  if (bounds) {
     float3 scale;
     mat4_to_size(scale, ob->object_to_world);
-    copy_v3_v3(r_vec, bb->min - bb->max);
+    copy_v3_v3(r_vec, bounds->max - bounds->min);
   }
   else {
     zero_v3(r_vec);
@@ -3640,7 +3640,8 @@ void BKE_object_dimensions_get(Object *ob, float r_vec[3])
 
 void BKE_object_dimensions_eval_cached_get(Object *ob, float r_vec[3])
 {
-  boundbox_to_dimensions(ob, BKE_object_boundbox_eval_cached_get(ob), r_vec);
+  const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_eval_cached_get(ob);
+  boundbox_to_dimensions(ob, bounds, r_vec);
 }
 
 void BKE_object_dimensions_set_ex(Object *ob,
