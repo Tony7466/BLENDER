@@ -4357,6 +4357,7 @@ static void keyboard_handle_modifiers(void *data,
 
   GWL_Seat *seat = static_cast<GWL_Seat *>(data);
   xkb_state_update_mask(seat->xkb.state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
+  xkb_state_update_mask(seat->xkb.state_empty, 0, 0, 0, 0, 0, group);
 
   /* A modifier changed so reset the timer,
    * see comment in #keyboard_handle_key regarding this behavior. */
