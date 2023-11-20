@@ -869,6 +869,30 @@ char *MSLGeneratorInterface::msl_patch_default_get()
   return msl_patch_default;
 }
 
+/* Specialization constants will evaluate using a dynamic value if provided at PSO compile time.
+ * Otherwise, they will fall back to fetching a value by running a specified string of code. A
+ * macro also exists to check whether a given specialization constant has had a value assigned by
+ * appending
+ * _DEFINED onto the original specialization constant name. e.g. "SC_my_runtime_constant" for
+ * fetching the value in all cases and "SC_my_runtime_constant_DEFINED" to determine if the
+ * constant is specified. */
+static void generate_specialization_constant_declarations(const shader::ShaderCreateInfo *info,
+                                                          std::stringstream &ss)
+{
+  for (const ShaderCreateInfo::SpecializationConstant &sc : info->specialization_constants_) {
+    /* TODO(Metal): Output specialization constant chain. */
+    uint function_constant_id = MTL_SHADER_SPECIALIZATION_CONSTANT_BASE_ID + sc.constant_id;
+    std::string fc_constant_declaration = sc.constant_name + "_fc";
+    ss << "constant " << sc.type << " " << fc_constant_declaration << " [[function_constant("
+       << function_constant_id << ")]];\n";
+    ss << "#define " << sc.constant_name << " ((is_function_constant_defined("
+       << fc_constant_declaration << ")) ? (" << fc_constant_declaration << ") : ("
+       << sc.fallback_code_string << "))\n";
+    ss << "#define " << sc.constant_name << "_DEFINED (is_function_constant_defined("
+       << fc_constant_declaration << "))\n";
+  }
+}
+
 bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
 {
   /* Verify if create-info is available.
@@ -1047,6 +1071,10 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   /* Setup `stringstream` for populating generated MSL shader vertex/frag shaders. */
   std::stringstream ss_vertex;
   std::stringstream ss_fragment;
+
+  /* Generate specialization constants. */
+  generate_specialization_constant_declarations(info, ss_vertex);
+  generate_specialization_constant_declarations(info, ss_fragment);
 
   /*** Generate VERTEX Stage ***/
   /* Conditional defines. */
@@ -1506,6 +1534,8 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
   ss_compute << "#define GPU_ARB_texture_cube_map_array 1\n"
                 "#define GPU_ARB_shader_draw_parameters 1\n";
 
+  generate_specialization_constant_declarations(info, ss_compute);
+
 #ifndef NDEBUG
   extract_global_scope_constants(shd_builder_->glsl_compute_source_, ss_compute);
 #endif
@@ -1664,7 +1694,7 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
   this->set_interface(msl_iface.bake_shader_interface(this->name));
 
   /* Compute dims. */
-  this->compute_pso_instance_.set_compute_workgroup_size(
+  this->compute_pso_common_state_.set_compute_workgroup_size(
       max_ii(info->compute_layout_.local_size_x, 1),
       max_ii(info->compute_layout_.local_size_y, 1),
       max_ii(info->compute_layout_.local_size_z, 1));

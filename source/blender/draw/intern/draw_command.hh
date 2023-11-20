@@ -98,6 +98,7 @@ enum class Type : uint8_t {
   DrawIndirect,
   FramebufferBind,
   PushConstant,
+  SpecializeConstant,
   ResourceBind,
   ShaderBind,
   SubPassTransition,
@@ -296,6 +297,50 @@ struct PushConstant {
   std::string serialize() const;
 };
 
+struct SpecializeConstant {
+  uint specialization_constant_id;
+  enum class Type : uint8_t {
+    IntValue = 0,
+    FloatValue,
+    BoolValue,
+    IntReference,
+    FloatReference,
+    BoolReference,
+  } type;
+  /**
+   * IMPORTANT: Data is at the end of the struct as it can span over the next commands.
+   * These next commands are not real commands but just memory to hold the data and are not
+   * referenced by any Command::Header.
+   * This is a hack to support float4x4 copy.
+   */
+  union {
+    int int_value;
+    float float_value;
+    bool bool_value;
+    const int *int_ref;
+    const float *float_ref;
+    const bool *bool_ref;
+  };
+
+  SpecializeConstant() = default;
+
+  SpecializeConstant(uint constant_id, const float &val)
+      : specialization_constant_id(constant_id), type(Type::FloatValue), float_value(val){};
+  SpecializeConstant(uint constant_id, const int &val)
+      : specialization_constant_id(constant_id), type(Type::IntValue), int_value(val){};
+  SpecializeConstant(uint constant_id, const bool &val)
+      : specialization_constant_id(constant_id), type(Type::BoolValue), bool_value(val){};
+  SpecializeConstant(uint constant_id, const float *val)
+      : specialization_constant_id(constant_id), type(Type::FloatReference), float_ref(val){};
+  SpecializeConstant(uint constant_id, const int *val)
+      : specialization_constant_id(constant_id), type(Type::IntReference), int_ref(val){};
+  SpecializeConstant(uint constant_id, const bool *val)
+      : specialization_constant_id(constant_id), type(Type::BoolReference), bool_ref(val){};
+
+  void execute(RecordingState &state) const;
+  std::string serialize() const;
+};
+
 struct Draw {
   GPUBatch *batch;
   uint instance_len;
@@ -403,6 +448,7 @@ union Undetermined {
   FramebufferBind framebuffer_bind;
   SubPassTransition subpass_transition;
   PushConstant push_constant;
+  SpecializeConstant specialize_constant;
   Draw draw;
   DrawMulti draw_multi;
   DrawIndirect draw_indirect;

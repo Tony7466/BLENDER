@@ -458,6 +458,21 @@ void Film::sync()
   accumulate_ps_.bind_image("color_accum_img", &color_accum_tx_);
   accumulate_ps_.bind_image("value_accum_img", &value_accum_tx_);
   accumulate_ps_.bind_image("cryptomatte_img", &cryptomatte_tx_);
+
+  accumulate_ps_.specialize_constant(SC_display_only_SLOT, &inst_.film.get_data().display_only);
+  accumulate_ps_.specialize_constant(SC_combined_id_SLOT, &inst_.film.get_data().combined_id);
+  accumulate_ps_.specialize_constant(SC_has_data_SLOT, &inst_.film.get_data().has_data);
+  accumulate_ps_.specialize_constant(SC_use_reprojection_SLOT,
+                                     &inst_.film.get_data().use_reprojection);
+  accumulate_ps_.specialize_constant(SC_use_history_SLOT, &inst_.film.get_data().use_history);
+  accumulate_ps_.specialize_constant(SC_normal_id_SLOT, &inst_.film.get_data().normal_id);
+  accumulate_ps_.specialize_constant(SC_any_render_pass_1_SLOT,
+                                     &inst_.film.get_data().any_render_pass_1);
+  accumulate_ps_.specialize_constant(SC_any_render_pass_2_SLOT,
+                                     &inst_.film.get_data().any_render_pass_2);
+  accumulate_ps_.specialize_constant(SC_aov_color_len_SLOT, &inst_.film.get_data().aov_color_len);
+  accumulate_ps_.specialize_constant(SC_cryptomatte_samples_len_SLOT,
+                                     &inst_.film.get_data().cryptomatte_samples_len);
   /* Sync with rendering passes. */
   accumulate_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
   if (use_compute) {

@@ -57,8 +57,14 @@ void light_shadow_single(uint l_idx,
   if (attenuation < LIGHT_ATTENUATION_THRESHOLD) {
     return;
   }
+
+#ifdef SPECIALIZED_SHADOW_PARAMS
+  int ray_count = SC_shadow_ray_count;
+  int ray_step_count = SC_shadow_ray_step_count;
+#else
   int ray_count = uniform_buf.shadow.ray_count;
   int ray_step_count = uniform_buf.shadow.step_count;
+#endif
 
   ShadowEvalResult result = shadow_eval(
       light, is_directional, P, Ng, thickness, ray_count, ray_step_count);
@@ -130,8 +136,14 @@ void light_eval_single(uint l_idx,
                        inout uint shift)
 {
   LightData light = light_buf[l_idx];
+
+#ifdef SPECIALIZED_SHADOW_PARAMS
+  int ray_count = SC_shadow_ray_count;
+  int ray_step_count = SC_shadow_ray_step_count;
+#else
   int ray_count = uniform_buf.shadow.ray_count;
   int ray_step_count = uniform_buf.shadow.step_count;
+#endif
 
   bool use_subsurface = thickness > 0.0;
   LightVector lv = light_vector_get(light, is_directional, P);

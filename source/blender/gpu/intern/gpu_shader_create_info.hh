@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include "BLI_map.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 #include "GPU_material.h"
@@ -161,6 +162,8 @@ static inline std::ostream &operator<<(std::ostream &stream, const Type type)
       return stream << "short3";
     case Type::SHORT4:
       return stream << "short4";
+    case Type::BOOL:
+      return stream << "bool";
     default:
       BLI_assert(0);
       return stream;
@@ -481,6 +484,22 @@ struct ShaderCreateInfo {
   using SubpassIn = FragOut;
   Vector<SubpassIn> subpass_inputs_;
 
+  struct SpecializationConstant {
+    int constant_id;
+    Type type;
+    StringRefNull constant_name;
+    StringRefNull fallback_code_string;
+    bool operator==(const SpecializationConstant &b) const
+    {
+      TEST_EQUAL(*this, b, constant_id);
+      TEST_EQUAL(*this, b, type);
+      TEST_EQUAL(*this, b, constant_name);
+      TEST_EQUAL(*this, b, fallback_code_string);
+      return true;
+    }
+  };
+  Vector<SpecializationConstant> specialization_constants_;
+
   struct Sampler {
     ImageType type;
     GPUSamplerState sampler;
@@ -579,6 +598,17 @@ struct ShaderCreateInfo {
   };
 
   Vector<PushConst> push_constants_;
+
+  /** Optional cross-API tuning parameters. */
+  struct CustomParameter {
+    Type type;
+    union {
+      float value_f;
+      int value_i;
+      bool value_b;
+    };
+  };
+  Map<StringRefNull, CustomParameter> custom_parameters_;
 
   /* Sources for resources type definitions. */
   Vector<StringRefNull> typedef_sources_;
@@ -696,6 +726,39 @@ struct ShaderCreateInfo {
     subpass_inputs_.append({slot, type, DualBlend::NONE, name, raster_order_group});
     return *(Self *)this;
   }
+
+  /** \} */
+
+  /* -------------------------------------------------------------------- */
+  /** \name Specialization Constants
+   * \{ */
+
+  /* Adds a specialization constant which will either fetch a statically compiled
+   * constant value within the PSO, if a specialization config has been provided,
+   * or fallback to a default fallback code string, which will run if no value
+   * has been provided.
+   *
+   * Specialization constants will also expose the macro:
+   * "constant_name_DEFINED" which will return true if a runtime specialized value
+   * has been specified.
+   *
+   * NOTE: Specialization constants will incur new compilation of PSOs and thus can incur an
+   * unexpected cost. Specialization constants should be reserved for infrequently changing
+   * parameters (e.g. user setting parameters such as toggling of features or quality level
+   * presets), or those with a low set of possible runtime permutations.
+   * */
+  Self &specialization_constant(int constant_id,
+                                Type type,
+                                StringRefNull constant_name,
+                                StringRefNull fallback_code_string)
+  {
+    specialization_constants_.append({constant_id, type, constant_name, fallback_code_string});
+    return *(Self *)this;
+  }
+
+  /* TODO: Add API to specify unique specialization config permutations in CreateInfo, allowing
+   * specialized compilation to be primed and handled in the background at start-up, rather than
+   * waiting for a given permutation to occur dynamically. */
 
   /** \} */
 

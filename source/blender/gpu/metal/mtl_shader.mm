@@ -144,17 +144,19 @@ MTLShader::~MTLShader()
       delete pso_inst;
     }
     pso_cache_.clear();
+
+    /* Free Compute pipeline cache. */
+    for (const MTLComputePipelineStateInstance *pso_inst : compute_pso_cache_.values()) {
+      if (pso_inst->compute) {
+        [pso_inst->compute release];
+      }
+      if (pso_inst->pso) {
+        [pso_inst->pso release];
+      }
+    }
+    compute_pso_cache_.clear();
     pso_cache_lock_.unlock();
 
-    /* Free Compute pipeline state object. */
-    if (compute_pso_instance_.compute) {
-      [compute_pso_instance_.compute release];
-      compute_pso_instance_.compute = nil;
-    }
-    if (compute_pso_instance_.pso) {
-      [compute_pso_instance_.pso release];
-      compute_pso_instance_.pso = nil;
-    }
     /* NOTE(Metal): #ShaderInterface deletion is handled in the super destructor `~Shader()`. */
   }
   valid_ = false;
@@ -435,9 +437,10 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
       push_constant_data_ = nullptr;
     }
 
-    /* If this is a compute shader, bake PSO for compute straight-away. */
+    /* If this is a compute shader, bake base PSO for compute straight-away.
+     * NOTE: This will compile the base unspecialized variant. */
     if (is_compute) {
-      this->bake_compute_pipeline_state(context_);
+      this->bake_compute_pipeline_state(context_, false);
     }
   }
 
@@ -445,11 +448,6 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
   delete shd_builder_;
   shd_builder_ = nullptr;
   return true;
-}
-
-const MTLComputePipelineStateInstance &MTLShader::get_compute_pipeline_state()
-{
-  return this->compute_pso_instance_;
 }
 
 void MTLShader::transform_feedback_names_set(Span<const char *> name_list,
@@ -737,6 +735,104 @@ void MTLShader::set_interface(MTLShaderInterface *interface)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Shader specialization common utilities.
+ * \{ */
+
+static void populate_specialization_descriptor(
+    const Map<uint, SpecializationConstantValue> &shader_specialization_constants,
+    SpecializationStateDescriptor &specialization_descriptor)
+{
+  int num_specialized_constants = 0;
+  if (shader_specialization_constants.size() > 0) {
+    specialization_descriptor.specialization_constants.clear();
+    MTL_LOG_INFO(" -- Fetching specailized PSO for shader with config: --\n");
+    for (const SpecializationConstantValue &sc_value : shader_specialization_constants.values()) {
+
+      if (sc_value.assigned) {
+        SpecializationConstantDescriptor sc_descriptor;
+        sc_descriptor.constant_id = sc_value.constant_id;
+        switch (sc_value.type) {
+          case Type::FLOAT:
+            MTL_LOG_INFO("  -> {%u : '%s', assigned: %s, value: %f)}\n",
+                         sc_value.constant_id,
+                         sc_value.constant_name.c_str(),
+                         (sc_value.assigned) ? "YES" : "NO",
+                         sc_value.value_f);
+            sc_descriptor.value_f = sc_value.value_f;
+            break;
+          case Type::INT:
+            MTL_LOG_INFO("  -> {%u : '%s', assigned: %s, value: %i)}\n",
+                         sc_value.constant_id,
+                         sc_value.constant_name.c_str(),
+                         (sc_value.assigned) ? "YES" : "NO",
+                         sc_value.value_i);
+            sc_descriptor.value_i = sc_value.value_i;
+            break;
+          case Type::BOOL:
+            MTL_LOG_INFO("  -> {%u : '%s', assigned: %s, value: %u)}\n",
+                         sc_value.constant_id,
+                         sc_value.constant_name.c_str(),
+                         (sc_value.assigned) ? "YES" : "NO",
+                         sc_value.value_b ? 1 : 0);
+            sc_descriptor.value_b = sc_value.value_b;
+            break;
+          default:
+            BLI_assert_unreachable();
+            break;
+        }
+
+        specialization_descriptor.specialization_constants.append(sc_descriptor);
+      }
+    }
+    num_specialized_constants = specialization_descriptor.specialization_constants.size();
+  }
+  specialization_descriptor.num_specialized_constants = num_specialized_constants;
+}
+
+static void populate_specialization_constant_values(
+    MTLFunctionConstantValues *values,
+    const Map<uint, SpecializationConstantValue> &shader_specialization_constants,
+    const SpecializationStateDescriptor &specialization_descriptor)
+{
+  if (specialization_descriptor.num_specialized_constants > 0) {
+    for (const SpecializationConstantDescriptor &scd :
+         specialization_descriptor.specialization_constants)
+    {
+      /* Fetch shader specialization constant info. */
+      const SpecializationConstantValue *shader_specialization_constant =
+          shader_specialization_constants.lookup_ptr(scd.constant_id);
+      if (shader_specialization_constant == nullptr) {
+        BLI_assert_msg(false, "Could not find specialization constant with the given ID\n");
+        continue;
+      }
+      uint constant_id_with_offset = scd.constant_id + MTL_SHADER_SPECIALIZATION_CONSTANT_BASE_ID;
+      switch (shader_specialization_constant->type) {
+        case Type::INT:
+          [values setConstantValue:&scd.value_i
+                              type:MTLDataTypeInt
+                           atIndex:constant_id_with_offset];
+          break;
+        case Type::FLOAT:
+          [values setConstantValue:&scd.value_f
+                              type:MTLDataTypeFloat
+                           atIndex:constant_id_with_offset];
+          break;
+
+        case Type::BOOL:
+          [values setConstantValue:&scd.value_b
+                              type:MTLDataTypeBool
+                           atIndex:constant_id_with_offset];
+          break;
+        default:
+          BLI_assert_msg(false, "Unsupported custom constant type.");
+          break;
+      }
+    }
+  }
+}
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Bake Pipeline State Objects
  * \{ */
 
@@ -828,6 +924,10 @@ MTLRenderPipelineStateInstance *MTLShader::bake_current_pipeline_state(
   pipeline_descriptor.vertex_descriptor.prim_topology_class =
       (requires_specific_topology_class) ? prim_type : MTLPrimitiveTopologyClassUnspecified;
 
+  /* Specialization configuration. */
+  populate_specialization_descriptor(specialization_constants_,
+                                     pipeline_descriptor.specialization_state);
+
   /* Bake pipeline state using global descriptor. */
   return bake_pipeline_state(ctx, prim_type, pipeline_descriptor);
 }
@@ -854,6 +954,13 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
     return pipeline_state;
   }
 
+  /* TODO: When fetching a specialized variant of a shader, if this does not yet exist, verify
+   * whether the base unspecialized variant exists:
+   * - If unspecialized version exists: Compile specialized PSO asynchronously, returning base PSO
+   * and flagging state of specialization in cache as being built.
+   *  - If unspecialized does NOT exist, build specialized version straight away, as we pay the
+   * cost of compilation in both cases regardless. */
+
   /* Generate new Render Pipeline State Object (PSO). */
   @autoreleasepool {
     /* Prepare Render Pipeline Descriptor. */
@@ -861,6 +968,10 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
     /* Setup function specialization constants, used to modify and optimize
      * generated code based on current render pipeline configuration. */
     MTLFunctionConstantValues *values = [[MTLFunctionConstantValues new] autorelease];
+
+    /* Custom function constant values: */
+    populate_specialization_constant_values(
+        values, specialization_constants_, pipeline_descriptor.specialization_state);
 
     /* Prepare Vertex descriptor based on current pipeline vertex binding state. */
     MTLRenderPipelineDescriptor *desc = pso_descriptor_;
@@ -1347,7 +1458,8 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
   }
 }
 
-bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
+MTLComputePipelineStateInstance *MTLShader::bake_compute_pipeline_state(MTLContext *ctx,
+                                                                        bool allow_specialized)
 {
   /* NOTE(Metal): Bakes and caches a PSO for compute. */
   BLI_assert(this);
@@ -1356,12 +1468,43 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
   BLI_assert(this->is_valid());
   BLI_assert(shader_library_compute_ != nil);
 
-  if (compute_pso_instance_.pso == nil) {
+  /* Evaluate descriptor for specialization constants. */
+  MTLComputePipelineStateDescriptor compute_pipeline_descriptor;
+
+  /* Specialization configuration.
+   * NOTE: If allow_specialized is disabled, we will build the base un-specialized variant. */
+  if (allow_specialized) {
+    populate_specialization_descriptor(specialization_constants_,
+                                       compute_pipeline_descriptor.specialization_state);
+  }
+  else {
+    compute_pipeline_descriptor.specialization_state.num_specialized_constants = 0;
+  }
+
+  /* Check if current PSO exists in the cache. */
+  pso_cache_lock_.lock();
+  MTLComputePipelineStateInstance **pso_lookup = compute_pso_cache_.lookup_ptr(
+      compute_pipeline_descriptor);
+  MTLComputePipelineStateInstance *pipeline_state = (pso_lookup) ? *pso_lookup : nullptr;
+  pso_cache_lock_.unlock();
+
+  if (pipeline_state != nullptr) {
+    /* Return cached PSO state. */
+    BLI_assert(pipeline_state->pso != nil);
+    return pipeline_state;
+  }
+  else {
     /* Prepare Compute Pipeline Descriptor. */
 
     /* Setup function specialization constants, used to modify and optimize
      * generated code based on current render pipeline configuration. */
     MTLFunctionConstantValues *values = [[MTLFunctionConstantValues new] autorelease];
+
+    /* TODO: Compile specialized shader variants asynchronously
+
+    /* Custom function constant values: */
+    populate_specialization_constant_values(
+        values, specialization_constants_, compute_pipeline_descriptor.specialization_state);
 
     /* Offset the bind index for Uniform buffers such that they begin after the VBO
      * buffer bind slots. `MTL_uniform_buffer_base_index` is passed as a function
@@ -1403,7 +1546,7 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
       if ([[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
           NSNotFound) {
         BLI_assert(false);
-        return false;
+        return nullptr;
       }
     }
 
@@ -1421,13 +1564,13 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
     if (error) {
       NSLog(@"Failed to create PSO for compute shader: %s error %@\n", this->name, error);
       BLI_assert(false);
-      return false;
+      return nullptr;
     }
     else if (!pso) {
       NSLog(@"Failed to create PSO for compute shader: %s, but no error was provided!\n",
             this->name);
       BLI_assert(false);
-      return false;
+      return nullptr;
     }
     else {
 #if 0
@@ -1438,12 +1581,19 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
     }
 
     /* Gather reflection data and create MTLComputePipelineStateInstance to store results. */
-    compute_pso_instance_.compute = [compute_function retain];
-    compute_pso_instance_.pso = [pso retain];
-    compute_pso_instance_.base_uniform_buffer_index = MTL_uniform_buffer_base_index;
-    compute_pso_instance_.base_storage_buffer_index = MTL_storage_buffer_base_index;
+    MTLComputePipelineStateInstance *compute_pso_instance = new MTLComputePipelineStateInstance();
+    compute_pso_instance->compute = [compute_function retain];
+    compute_pso_instance->pso = [pso retain];
+    compute_pso_instance->base_uniform_buffer_index = MTL_uniform_buffer_base_index;
+    compute_pso_instance->base_storage_buffer_index = MTL_storage_buffer_base_index;
+
+    pso_cache_lock_.lock();
+    compute_pso_instance->shader_pso_index = compute_pso_cache_.size();
+    compute_pso_cache_.add(compute_pipeline_descriptor, compute_pso_instance);
+    pso_cache_lock_.unlock();
+
+    return compute_pso_instance;
   }
-  return true;
 }
 /** \} */
 

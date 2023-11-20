@@ -51,7 +51,7 @@ void main()
   vec4 samp = textureGather(depth_tx, samp_co);
 #endif
 
-  if (update_mip_0) {
+  if (SC_update_mip_0) {
     imageStore(out_mip_0, src_px + ivec2(0, 1), samp.xxxx);
     imageStore(out_mip_0, src_px + ivec2(1, 1), samp.yyyy);
     imageStore(out_mip_0, src_px + ivec2(1, 0), samp.zzzz);

@@ -1020,6 +1020,13 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
   interface.init(info);
   std::stringstream ss;
 
+  /* TODO: Add support for specialization constants at compile time. */
+  ss << "\n/* Specialization Constants (pass-through). */\n";
+  for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
+    ss << "#define " << sc.constant_name << " (" << sc.fallback_code_string << ")\n";
+    ss << "#define " << sc.constant_name << "_DEFINED (false)\n";
+  }
+
   ss << "\n/* Pass Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
     print_resource(ss, interface, res);

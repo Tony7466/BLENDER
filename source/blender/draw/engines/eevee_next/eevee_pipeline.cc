@@ -519,6 +519,12 @@ void DeferredLayer::end_sync()
       inst_.shadows.bind_resources(pass);
       inst_.sampling.bind_resources(pass);
       inst_.hiz_buffer.bind_resources(pass);
+      pass.specialize_constant(SC_render_pass_shadow_id_SLOT,
+                               &inst_.render_buffers.data.shadow_id);
+      pass.specialize_constant(SC_shadow_ray_count_SLOT, &inst_.shadows.get_data().ray_count);
+      pass.specialize_constant(SC_shadow_ray_step_count_SLOT,
+                               &inst_.shadows.get_data().step_count);
+      pass.specialize_constant(SC_shadow_normal_bias_SLOT, &inst_.shadows.get_data().normal_bias);
       pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
       pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
     }
@@ -539,6 +545,12 @@ void DeferredLayer::end_sync()
       pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
       inst_.gbuffer.bind_resources(pass);
       inst_.bind_uniform_data(&pass);
+
+      pass.specialize_constant(SC_diffuse_light_id_SLOT,
+                               &inst_.render_buffers.data.diffuse_light_id);
+      pass.specialize_constant(SC_specular_light_id_SLOT,
+                               &inst_.render_buffers.data.specular_light_id);
+
       pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
       pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
     }

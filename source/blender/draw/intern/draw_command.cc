@@ -111,6 +111,33 @@ void PushConstant::execute(RecordingState &state) const
   }
 }
 
+void SpecializeConstant::execute(RecordingState &state) const
+{
+  if (specialization_constant_id == -1) {
+    return;
+  }
+  switch (type) {
+    case SpecializeConstant::Type::IntValue:
+      GPU_shader_specialize_constant_1i(state.shader, specialization_constant_id, int_value);
+      break;
+    case SpecializeConstant::Type::IntReference:
+      GPU_shader_specialize_constant_1i(state.shader, specialization_constant_id, *int_ref);
+      break;
+    case SpecializeConstant::Type::FloatValue:
+      GPU_shader_specialize_constant_1f(state.shader, specialization_constant_id, float_value);
+      break;
+    case SpecializeConstant::Type::FloatReference:
+      GPU_shader_specialize_constant_1f(state.shader, specialization_constant_id, *float_ref);
+      break;
+    case SpecializeConstant::Type::BoolValue:
+      GPU_shader_specialize_constant_1b(state.shader, specialization_constant_id, bool_value);
+      break;
+    case SpecializeConstant::Type::BoolReference:
+      GPU_shader_specialize_constant_1b(state.shader, specialization_constant_id, *bool_ref);
+      break;
+  }
+}
+
 void Draw::execute(RecordingState &state) const
 {
   state.front_facing_set(handle.has_inverted_handedness());

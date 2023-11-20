@@ -30,6 +30,10 @@ void HiZBuffer::sync()
 
   data_.uv_scale = float2(render_extent) / float2(hiz_extent);
 
+  /* TODO(@fclem): There might be occasions where we might not want to
+   * copy mip 0 for performance reasons if there is no need for it. */
+  bool update_mip_0 = true;
+
   {
     PassSimple &pass = hiz_update_ps_;
     pass.init();
@@ -44,9 +48,8 @@ void HiZBuffer::sync()
     pass.bind_image("out_mip_4", hiz_tx_.mip_view(4));
     pass.bind_image("out_mip_5", hiz_tx_.mip_view(5));
     pass.bind_image("out_mip_6", hiz_tx_.mip_view(6));
-    /* TODO(@fclem): There might be occasions where we might not want to
-     * copy mip 0 for performance reasons if there is no need for it. */
-    pass.push_constant("update_mip_0", true);
+    pass.push_constant("update_mip_0", update_mip_0);
+    pass.specialize_constant(SC_update_mip_0_SLOT, update_mip_0);
     pass.dispatch(int3(dispatch_size, 1));
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }
@@ -64,10 +67,9 @@ void HiZBuffer::sync()
     pass.bind_image("out_mip_4", hiz_tx_.mip_view(4));
     pass.bind_image("out_mip_5", hiz_tx_.mip_view(5));
     pass.bind_image("out_mip_6", hiz_tx_.mip_view(6));
-    /* TODO(@fclem): There might be occasions where we might not want to
-     * copy mip 0 for performance reasons if there is no need for it. */
-    pass.push_constant("update_mip_0", true);
+    pass.push_constant("update_mip_0", update_mip_0);
     pass.push_constant("layer_id", &layer_id_);
+    pass.specialize_constant(SC_update_mip_0_SLOT, update_mip_0);
     pass.dispatch(int3(dispatch_size, 1));
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }

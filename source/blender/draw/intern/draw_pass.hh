@@ -359,6 +359,22 @@ class PassBase {
   void push_constant(const char *name, const float4x4 *data);
 
   /**
+   * Update a shader specialization constant.
+   *
+   * Reference versions are to be used when the resource might change between the time it is
+   * referenced and the time it is dereferenced for drawing.
+   *
+   * IMPORTANT: Will keep a reference to the data and dereference it upon drawing. Make sure data
+   * still alive until pass submission.
+   */
+  void specialize_constant(uint constant_id, const float &data);
+  void specialize_constant(uint constant_id, const int &data);
+  void specialize_constant(uint constant_id, const bool &data);
+  void specialize_constant(uint constant_id, const float *data);
+  void specialize_constant(uint constant_id, const int *data);
+  void specialize_constant(uint constant_id, const bool *data);
+
+  /**
    * Turn the pass into a string for inspection.
    */
   std::string serialize(std::string line_prefix = "") const;
@@ -569,6 +585,9 @@ template<class T> void PassBase<T>::submit(command::RecordingState &state) const
         break;
       case command::Type::PushConstant:
         commands_[header.index].push_constant.execute(state);
+        break;
+      case command::Type::SpecializeConstant:
+        commands_[header.index].specialize_constant.execute(state);
         break;
       case command::Type::Draw:
         commands_[header.index].draw.execute(state);
@@ -1217,6 +1236,48 @@ template<class T> inline void PassBase<T>::push_constant(const char *name, const
   create_command(Type::PushConstant) = commands[0];
   create_command(Type::None) = commands[1];
   create_command(Type::None) = commands[2];
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(uint specialization_constant_id, const int &value)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {specialization_constant_id,
+                                                                  value};
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(uint specialization_constant_id, const float &value)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {specialization_constant_id,
+                                                                  value};
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(uint specialization_constant_id, const bool &value)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {specialization_constant_id,
+                                                                  value};
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(uint specialization_constant_id, const int *data)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {specialization_constant_id,
+                                                                  data};
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(uint specialization_constant_id, const float *data)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {specialization_constant_id,
+                                                                  data};
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(uint specialization_constant_id, const bool *data)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {specialization_constant_id,
+                                                                  data};
 }
 
 /** \} */

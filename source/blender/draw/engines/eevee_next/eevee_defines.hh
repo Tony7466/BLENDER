@@ -228,3 +228,33 @@
 #define VELOCITY_GEO_PREV_BUF_SLOT 2
 #define VELOCITY_GEO_NEXT_BUF_SLOT 3
 #define VELOCITY_INDIRECTION_BUF_SLOT 4
+
+/** Specialization constant slot id's. */
+/* eevee_deferred_light. */
+#define SC_render_pass_shadow_id_SLOT 0
+#define SC_shadow_ray_count_SLOT 1
+#define SC_shadow_ray_step_count_SLOT 2
+#define SC_shadow_normal_bias_SLOT 3
+
+/* eevee_deferred_combine. */
+#define SC_diffuse_light_id_SLOT 0
+#define SC_specular_light_id_SLOT 1
+
+/* eevee_film. */
+#define SC_display_only_SLOT 0
+#define SC_combined_id_SLOT 1
+#define SC_has_data_SLOT 2
+#define SC_use_reprojection_SLOT 3
+#define SC_use_history_SLOT 4
+#define SC_normal_id_SLOT 5
+#define SC_any_render_pass_1_SLOT 6
+#define SC_any_render_pass_2_SLOT 7
+#define SC_aov_color_len_SLOT 8
+#define SC_cryptomatte_samples_len_SLOT 9
+
+/* eevee_hiz_update. */
+#define SC_update_mip_0_SLOT 0
+
+/* eevee ray denoise. */
+#define SC_raytrace_resolution_scale_SLOT 0
+#define SC_raytrace_skip_denoise_SLOT 1

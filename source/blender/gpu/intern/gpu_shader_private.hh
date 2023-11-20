@@ -16,12 +16,29 @@
 #include "gpu_shader_interface.hh"
 #include "gpu_vertex_buffer_private.hh"
 
+#include "BLI_map.hh"
+
 #include <string>
 
 namespace blender {
 namespace gpu {
 
 class GPULogParser;
+
+struct SpecializationConstantValue {
+  uint constant_id;
+  /* String value name of constant. */
+  std::string constant_name;
+  shader::Type type;
+  /* Whether the specialization constant has been assigned and the active assignment
+   * should be used. */
+  bool assigned = false;
+  union {
+    float value_f;
+    int value_i;
+    bool value_b;
+  };
+};
 
 /**
  * Implementation of shader compilation and uniforms handling.
@@ -41,6 +58,9 @@ class Shader {
    * such as PSOs upfront. This enables asynchronous PSO compilation which mitigates stuttering
    * when updating new materials. */
   Shader *parent_shader_ = nullptr;
+
+  /* Activate shader specialization state for current shader. */
+  Map<uint, SpecializationConstantValue> specialization_constants_;
 
  public:
   Shader(const char *name);
@@ -67,6 +87,25 @@ class Shader {
 
   virtual void uniform_float(int location, int comp_len, int array_size, const float *data) = 0;
   virtual void uniform_int(int location, int comp_len, int array_size, const int *data) = 0;
+
+  /* Reset the current specialization configuration. This should happen between binds to avoid
+   * utilizing a stale state for a secondary use of a shader. If no specialization constants have
+   * been assigned, the unspecialized base variant of a shader PSO will be used.*/
+  void specialization_config_reset();
+
+  /* Assign runtime constant value.
+   * NOTE: Use with caution as any previously unspecified values will trigger a recompilation of a
+   * PSO. */
+  void specialize_constant_float(int constant_id, float value);
+  void specialize_constant_int(int constant_id, int value);
+  void specialize_constant_bool(int constant_id, bool value);
+
+  /* Adds a specialization constant to the shader's internal map. Only constants which are in this
+   * map can be assigned to. Any others will be ignored. */
+  inline void specialization_constant_add(uint constant_id, SpecializationConstantValue sc_value)
+  {
+    specialization_constants_.add(constant_id, sc_value);
+  }
 
   std::string defines_declare(const shader::ShaderCreateInfo &info) const;
   virtual std::string resources_declare(const shader::ShaderCreateInfo &info) const = 0;

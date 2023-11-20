@@ -604,6 +604,12 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
    * are reused for local variables. This is to match other backend behavior which needs accessors
    * macros. */
 
+  ss << "\n/* Specialization Constants (pass-through). */\n";
+  for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
+    ss << "#define " << sc.constant_name << " (" << sc.fallback_code_string << ")\n";
+    ss << "#define " << sc.constant_name << "_DEFINED (false)\n";
+  }
+
   ss << "\n/* Pass Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
     print_resource(ss, res, info.auto_resource_location_);

@@ -89,7 +89,7 @@ void main()
 
   /* TODO(fclem): Change shadow pass to be colored. */
   vec3 shadows = radiance_shadowed * safe_rcp(radiance_unshadowed);
-  output_renderpass_value(uniform_buf.render_pass.shadow_id, average(shadows));
+  output_renderpass_value(SC_render_pass_shadow_id, average(shadows));
 
   imageStore(direct_diffuse_img, texel, vec4(radiance_diffuse, 1.0));
   imageStore(direct_reflect_img, texel, vec4(radiance_specular, 1.0));

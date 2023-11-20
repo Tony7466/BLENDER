@@ -131,7 +131,7 @@ void film_sample_accum_mist(FilmSample samp, inout float accum)
 
 void film_sample_accum_combined(FilmSample samp, inout vec4 accum, inout float weight_accum)
 {
-  if (uniform_buf.film.combined_id == -1) {
+  if (SC_combined_id == -1) {
     return;
   }
   vec4 color = film_texelfetch_as_YCoCg_opacity(combined_tx, samp.texel);
@@ -201,7 +201,7 @@ float film_distance_load(ivec2 texel)
   /* Repeat texture coordinates as the weight can be optimized to a small portion of the film. */
   texel = texel % imageSize(in_weight_img).xy;
 
-  if (!uniform_buf.film.use_history || uniform_buf.film.use_reprojection) {
+  if (!SC_use_history || SC_use_reprojection) {
     return 1.0e16;
   }
   return imageLoad(in_weight_img, ivec3(texel, FILM_WEIGHT_LAYER_DISTANCE)).x;
@@ -212,7 +212,7 @@ float film_weight_load(ivec2 texel)
   /* Repeat texture coordinates as the weight can be optimized to a small portion of the film. */
   texel = texel % imageSize(in_weight_img).xy;
 
-  if (!uniform_buf.film.use_history || uniform_buf.film.use_reprojection) {
+  if (!SC_use_history || SC_use_reprojection) {
     return 0.0;
   }
   return imageLoad(in_weight_img, ivec3(texel, FILM_WEIGHT_LAYER_ACCUMULATION)).x;
@@ -436,7 +436,7 @@ float film_history_blend_factor(float velocity,
     blend = 1.0;
   }
   /* Discard history if invalid. */
-  if (uniform_buf.film.use_history == false) {
+  if (SC_use_history == false) {
     blend = 1.0;
   }
   return blend;
@@ -446,7 +446,7 @@ float film_history_blend_factor(float velocity,
 void film_store_combined(
     FilmSample dst, ivec2 src_texel, vec4 color, float color_weight, inout vec4 display)
 {
-  if (uniform_buf.film.combined_id == -1) {
+  if (SC_combined_id == -1) {
     return;
   }
 
@@ -456,7 +456,7 @@ void film_store_combined(
   /* Undo the weighting to get final spatially-filtered color. */
   color_src = color / color_weight;
 
-  if (uniform_buf.film.use_reprojection) {
+  if (SC_use_reprojection) {
     /* Interactive accumulation. Do reprojection and Temporal Anti-Aliasing. */
 
     /* Reproject by finding where this pixel was in the previous frame. */
@@ -626,7 +626,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
   /* NOTE: We split the accumulations into separate loops to avoid using too much registers and
    * maximize occupancy. */
 
-  if (uniform_buf.film.combined_id != -1) {
+  if (SC_combined_id != -1) {
     /* NOTE: Do weight accumulation again since we use custom weights. */
     float weight_accum = 0.0;
     vec4 combined_accum = vec4(0.0);
@@ -640,23 +640,23 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     film_store_combined(dst, src.texel, combined_accum, weight_accum, out_color);
   }
 
-  if (uniform_buf.film.has_data) {
+  if (SC_has_data) {
     float film_distance = film_distance_load(texel_film);
 
     /* Get sample closest to target texel. It is always sample 0. */
     FilmSample film_sample = film_sample_get(0, texel_film);
 
-    if (uniform_buf.film.use_reprojection || film_sample.weight < film_distance) {
+    if (SC_use_reprojection || film_sample.weight < film_distance) {
       float depth = texelFetch(depth_tx, film_sample.texel, 0).x;
       vec4 vector = velocity_resolve(vector_tx, film_sample.texel, depth);
       /* Transform to pixel space, matching Cycles format. */
       vector *= vec4(vec2(uniform_buf.film.render_extent), vec2(uniform_buf.film.render_extent));
 
       film_store_depth(texel_film, depth, out_depth);
-      if (uniform_buf.film.normal_id != -1) {
+      if (SC_normal_id != -1) {
         vec4 normal = texelFetch(
             rp_color_tx, ivec3(film_sample.texel, uniform_buf.render_pass.normal_id), 0);
-        film_store_data(texel_film, uniform_buf.film.normal_id, normal, out_color);
+        film_store_data(texel_film, SC_normal_id, normal, out_color);
       }
       if (uniform_buf.film.position_id != -1) {
         vec4 position = texelFetch(
@@ -668,8 +668,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     }
     else {
       out_depth = imageLoad(depth_img, texel_film).r;
-      if (uniform_buf.film.display_id != -1 &&
-          uniform_buf.film.display_id == uniform_buf.film.normal_id) {
+      if (uniform_buf.film.display_id != -1 && uniform_buf.film.display_id == SC_normal_id) {
         out_color = imageLoad(color_accum_img, ivec3(texel_film, uniform_buf.film.display_id));
       }
     }
@@ -710,7 +709,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     film_store_color(dst, uniform_buf.film.emission_id, emission_accum, out_color);
   }
 
-  if (uniform_buf.film.any_render_pass_2) {
+  if (SC_any_render_pass_2) {
     vec4 diffuse_color_accum = vec4(0.0);
     vec4 specular_color_accum = vec4(0.0);
     vec4 environment_accum = vec4(0.0);
@@ -759,7 +758,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     film_store_value(dst, uniform_buf.film.mist_id, mist_accum, out_color);
   }
 
-  for (int aov = 0; aov < uniform_buf.film.aov_color_len; aov++) {
+  for (int aov = 0; aov < SC_aov_color_len; aov++) {
     vec4 aov_accum = vec4(0.0);
 
     for (int i = 0; i < uniform_buf.film.samples_len; i++) {
@@ -779,9 +778,9 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     film_store_value(dst, uniform_buf.film.aov_value_id + aov, aov_accum, out_color);
   }
 
-  if (uniform_buf.film.cryptomatte_samples_len != 0) {
+  if (SC_cryptomatte_samples_len != 0) {
     /* Cryptomatte passes cannot be cleared by a weighted store like other passes. */
-    if (!uniform_buf.film.use_history || uniform_buf.film.use_reprojection) {
+    if (!SC_use_history || SC_use_reprojection) {
       cryptomatte_clear_samples(dst);
     }
 
