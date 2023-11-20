@@ -44,11 +44,6 @@ ObjectHandle &SyncModule::sync_object(Object *ob)
 {
   ObjectKey key(ob);
 
-  printf("%u | %u | %u\n",
-         ob->runtime->last_update_transform,
-         ob->runtime->last_update_geometry,
-         ob->runtime->last_update_shading);
-
   ObjectHandle &handle = ob_handles.lookup_or_add_cb(key, [&]() {
     ObjectHandle new_handle;
     new_handle.object_key = key;
