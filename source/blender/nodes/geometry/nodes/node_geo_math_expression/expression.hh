@@ -22,6 +22,20 @@ class Expression {
  protected:
   Token token;
 
+  static int _type_id()
+  {
+    static int type_id = 0;
+    return type_id++;
+  }
+
+  template<typename T> static int _type_id()
+  {
+    static int type_id = _type_id();
+    return type_id;
+  }
+
+  virtual int type_id() const = 0;
+
  public:
   Expression(Token token) : token(token) {}
   virtual ~Expression() = default;
@@ -33,6 +47,12 @@ class Expression {
 
   virtual fn::GField compile(EvaluationContext &ctx) = 0;
 
+  template<typename T> T *as()
+  {
+    return type_id() == _type_id<T>() ? static_cast<T *>(this) : nullptr;
+  }
+
+ protected:
   static fn::GField constant(float f)
   {
     auto c = std::make_shared<mf::CustomMF_Constant<float>>(f);
@@ -128,10 +148,16 @@ class Expression {
 };
 
 class NumberExpression : public Expression {
+ protected:
+  int type_id() const override
+  {
+    return _type_id<NumberExpression>();
+  }
+
  public:
   NumberExpression(Token token) : Expression(token) {}
 
-  fn::GField compile(EvaluationContext & /*ctx*/) override
+  float value()
   {
     double d;
     auto result = std::from_chars(token.value.data(), token.value.data() + token.value.size(), d);
@@ -140,12 +166,23 @@ class NumberExpression : public Expression {
       throw EvaluationError{this, "failed to parse number literal"};
     }
 
-    return constant(d);
+    return d;
+  }
+
+  fn::GField compile(EvaluationContext & /*ctx*/) override
+  {
+    return constant(value());
   }
 };
 
 class GroupExpression : public Expression {
   std::unique_ptr<Expression> expr;
+
+ protected:
+  int type_id() const override
+  {
+    return _type_id<GroupExpression>();
+  }
 
  public:
   GroupExpression(std::unique_ptr<Expression> expr, Token token)
@@ -160,6 +197,12 @@ class GroupExpression : public Expression {
 };
 
 class VariableExpression : public Expression {
+ protected:
+  int type_id() const override
+  {
+    return _type_id<VariableExpression>();
+  }
+
  public:
   VariableExpression(Token token) : Expression(token) {}
 
@@ -179,8 +222,13 @@ class VariableExpression : public Expression {
 };
 
 class CallExpression : public Expression {
- private:
   const Vector<std::unique_ptr<Expression>> args;
+
+ protected:
+  int type_id() const override
+  {
+    return _type_id<CallExpression>();
+  }
 
  public:
   CallExpression(Vector<std::unique_ptr<Expression>> args, Token token)
@@ -209,6 +257,16 @@ class CallExpression : public Expression {
         if (args.size() != 3) {
           throw "incorrect number of arguments";
         }
+
+        auto x = args[0]->as<NumberExpression>();
+        auto y = args[1]->as<NumberExpression>();
+        auto z = args[2]->as<NumberExpression>();
+
+        if (x && y && z) {
+          // optimize to constant
+          return constant({x->value(), y->value(), z->value()});
+        }
+
         return vec(ctx, args[0].get(), args[1].get(), args[2].get());
       }
 
@@ -251,6 +309,12 @@ class CallExpression : public Expression {
 class UnaryExpression : public Expression {
   std::unique_ptr<Expression> expr;
 
+ protected:
+  int type_id() const override
+  {
+    return _type_id<UnaryExpression>();
+  }
+
  public:
   UnaryExpression(std::unique_ptr<Expression> expr, Token token)
       : Expression(token), expr(std::move(expr))
@@ -259,13 +323,19 @@ class UnaryExpression : public Expression {
 
   fn::GField compile(EvaluationContext &ctx) override
   {
+    if (token.kind != TokenKind::MINUS) {
+      throw EvaluationError{this, "invalid unary operator"};
+    }
+
     try {
-      switch (token.kind) {
-        case TokenKind::MINUS:
-          return negate(ctx, expr.get());
-        default:
-          throw EvaluationError{this, "invalid unary operator"};
+      auto number_expr = expr->as<NumberExpression>();
+
+      if (number_expr) {
+        // optimize to constant
+        return constant(-number_expr->value());
       }
+
+      return negate(ctx, expr.get());
     }
     catch (const char *err) {
       throw EvaluationError{this, err};
@@ -276,6 +346,12 @@ class UnaryExpression : public Expression {
 class BinaryExpression : public Expression {
   std::unique_ptr<Expression> left;
   std::unique_ptr<Expression> right;
+
+ protected:
+  int type_id() const override
+  {
+    return _type_id<BinaryExpression>();
+  }
 
  public:
   BinaryExpression(std::unique_ptr<Expression> left,
