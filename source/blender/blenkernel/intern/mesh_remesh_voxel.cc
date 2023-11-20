@@ -303,15 +303,22 @@ static void find_nearest_tris(const Span<float3> positions,
                               BVHTreeFromMesh &bvhtree,
                               MutableSpan<int> tris)
 {
+  for (const int i : positions.index_range()) {
+    BVHTreeNearest nearest;
+    nearest.index = -1;
+    nearest.dist_sq = FLT_MAX;
+    BLI_bvhtree_find_nearest(
+        bvhtree.tree, positions[i], &nearest, bvhtree.nearest_callback, &bvhtree);
+    tris[i] = nearest.index;
+  }
+}
+
+static void find_nearest_tris_parallel(const Span<float3> positions,
+                                       BVHTreeFromMesh &bvhtree,
+                                       MutableSpan<int> tris)
+{
   threading::parallel_for(tris.index_range(), 512, [&](const IndexRange range) {
-    for (const int i : range) {
-      BVHTreeNearest nearest;
-      nearest.index = -1;
-      nearest.dist_sq = FLT_MAX;
-      BLI_bvhtree_find_nearest(
-          bvhtree.tree, positions[i], &nearest, bvhtree.nearest_callback, &bvhtree);
-      tris[i] = nearest.index;
-    }
+    find_nearest_tris(positions.slice(range), bvhtree, tris.slice(range));
   });
 }
 
@@ -422,7 +429,7 @@ static void find_nearest_edges(const Span<float3> src_positions,
 
     Vector<int> &tri_indices = tls.tri_indices;
     tri_indices.reinitialize(range.size());
-    find_nearest_tris(edge_centers, bvhtree, tri_indices);
+    find_nearest_tris_parallel(edge_centers, bvhtree, tri_indices);
 
     Vector<int> &face_indices = tls.face_indices;
     face_indices.reinitialize(range.size());
@@ -533,7 +540,7 @@ void mesh_remesh_reproject_attributes(const Mesh &src, Mesh &dst)
 
   if (!point_ids.is_empty() || !corner_ids.is_empty()) {
     Array<int> vert_nearest_tris(dst_positions.size());
-    find_nearest_tris(dst_positions, bvhtree, vert_nearest_tris);
+    find_nearest_tris_parallel(dst_positions, bvhtree, vert_nearest_tris);
 
     if (!point_ids.is_empty()) {
       Array<int> map(dst.totvert);
