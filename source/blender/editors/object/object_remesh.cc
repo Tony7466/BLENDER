@@ -162,7 +162,7 @@ static int voxel_remesh_exec(bContext *C, wmOperator *op)
   }
 
   if (mesh->flag & ME_REMESH_REPROJECT_ATTRIBUTES) {
-    blender::bke::mesh_remesh_reproject_attributes(*mesh, *new_mesh);
+    bke::mesh_remesh_reproject_attributes(*mesh, *new_mesh);
   }
 
   BKE_mesh_nomain_to_mesh(new_mesh, mesh, ob);
