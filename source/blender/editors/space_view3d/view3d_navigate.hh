@@ -287,6 +287,20 @@ extern const ViewOpsType ViewOpsType_ndof_pan;
 extern const ViewOpsType ViewOpsType_ndof_all;
 #endif /* WITH_INPUT_NDOF */
 
+#ifdef WITH_INPUT_GAMEPAD
+struct wmGamepadAxisData;
+void view3d_gamepad_fly(const wmGamepadAxisData &gamepad,
+                        View3D *v3d,
+                        RegionView3D *rv3d,
+                        bool use_precision,
+                        short protect_flag,
+                        bool &r_has_translate,
+                        bool &r_has_rotate);
+void VIEW3D_OT_gamepad_all(wmOperatorType *ot);
+
+extern const ViewOpsType ViewOpsType_gamepad_all;
+#endif /* WITH_INPUT_GAMEPAD */
+
 /* view3d_navigate_roll.cc */
 
 void VIEW3D_OT_view_roll(wmOperatorType *ot);

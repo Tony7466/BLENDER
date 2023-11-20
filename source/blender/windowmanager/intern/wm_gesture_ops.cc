@@ -255,6 +255,14 @@ int WM_gesture_box_modal(bContext *C, wmOperator *op, const wmEvent *event)
         return OPERATOR_PASS_THROUGH;
       }
 #endif
+#ifdef WITH_INPUT_GAMEPAD
+      case GAMEPAD_LEFT_THUMB:
+      case GAMEPAD_RIGHT_THUMB:
+      case GAMEPAD_LEFT_TRIGGER:
+      case GAMEPAD_RIGHT_TRIGGER: {
+        return OPERATOR_PASS_THROUGH;
+      }
+#endif
 
 #if 0 /* This allows view navigation, keep disabled as it's too unpredictable. */
       default:
@@ -430,6 +438,16 @@ int WM_gesture_circle_modal(bContext *C, wmOperator *op, const wmEvent *event)
   }
 #ifdef WITH_INPUT_NDOF
   else if (event->type == NDOF_MOTION) {
+    return OPERATOR_PASS_THROUGH;
+  }
+#endif
+#ifdef WITH_INPUT_GAMEPAD
+  else if (ELEM(event->type,
+                GAMEPAD_LEFT_THUMB,
+                GAMEPAD_RIGHT_THUMB,
+                GAMEPAD_LEFT_TRIGGER,
+                GAMEPAD_RIGHT_TRIGGER))
+  {
     return OPERATOR_PASS_THROUGH;
   }
 #endif

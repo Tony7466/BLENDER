@@ -5461,7 +5461,7 @@ static int ui_do_but_NUM(
     }
   }
   else if (data->state == BUTTON_STATE_NUM_EDITING) {
-    if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE)) {
+    if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE, GAMEPAD_BUTTON_B)) {
       if (event->val == KM_PRESS) {
         data->cancel = true;
         data->escapecancel = true;
@@ -5820,7 +5820,7 @@ static int ui_do_but_SLI(
 #endif
   }
   else if (data->state == BUTTON_STATE_NUM_EDITING) {
-    if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE)) {
+    if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE, GAMEPAD_BUTTON_B)) {
       if (event->val == KM_PRESS) {
         data->cancel = true;
         data->escapecancel = true;
@@ -6467,7 +6467,7 @@ static int ui_do_but_UNITVEC(
         }
       }
     }
-    else if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE)) {
+    else if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE, GAMEPAD_BUTTON_B)) {
       if (event->val == KM_PRESS) {
         data->cancel = true;
         data->escapecancel = true;
@@ -6798,7 +6798,7 @@ static int ui_do_but_HSVCUBE(
     }
   }
   else if (data->state == BUTTON_STATE_NUM_EDITING) {
-    if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE)) {
+    if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE, GAMEPAD_BUTTON_B)) {
       if (event->val == KM_PRESS) {
         data->cancel = true;
         data->escapecancel = true;
@@ -7071,7 +7071,7 @@ static int ui_do_but_HSVCIRCLE(
     }
   }
   else if (data->state == BUTTON_STATE_NUM_EDITING) {
-    if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE)) {
+    if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE, GAMEPAD_BUTTON_B)) {
       if (event->val == KM_PRESS) {
         data->cancel = true;
         data->escapecancel = true;
@@ -7193,7 +7193,7 @@ static int ui_do_but_COLORBAND(
     else if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
       button_activate_state(C, but, BUTTON_STATE_EXIT);
     }
-    else if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE)) {
+    else if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE, GAMEPAD_BUTTON_B)) {
       if (event->val == KM_PRESS) {
         data->dragcbd->pos = data->dragfstart;
         BKE_colorband_update_sort(data->coba);

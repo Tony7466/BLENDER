@@ -175,6 +175,10 @@ if(WITH_INPUT_NDOF)
   add_definitions(-DWITH_INPUT_NDOF)
 endif()
 
+if(WITH_INPUT_GAMEPAD)
+  add_definitions(-DWITH_INPUT_GAMEPAD)
+endif()
+
 if(WITH_INPUT_IME)
   add_definitions(-DWITH_INPUT_IME)
 endif()

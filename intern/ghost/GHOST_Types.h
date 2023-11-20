@@ -276,6 +276,11 @@ typedef enum {
    */
   GHOST_kEventNDOFButton,
 #endif
+#ifdef WITH_INPUT_GAMEPAD
+  GHOST_kEventGamepadThumb,
+  GHOST_kEventGamepadTrigger,
+  GHOST_kEventGamepadButton,
+#endif
 
   /**
    * Keyboard up/down events.
@@ -636,6 +641,10 @@ typedef enum {
   GHOST_kFinished
 } GHOST_TProgress;
 
+#if defined(WITH_INPUT_NDOF) || defined(WITH_INPUT_GAMEPAD)
+typedef enum { GHOST_kPress, GHOST_kRelease } GHOST_TButtonAction;
+#endif
+
 #ifdef WITH_INPUT_NDOF
 typedef struct {
   /** N-degree of freedom device data v3 [GSoC 2010] */
@@ -654,14 +663,59 @@ typedef struct {
   GHOST_TProgress progress;
 } GHOST_TEventNDOFMotionData;
 
-typedef enum { GHOST_kPress, GHOST_kRelease } GHOST_TButtonAction;
-/* Good for mouse or other buttons too? */
-
 typedef struct {
   GHOST_TButtonAction action;
   short button;
 } GHOST_TEventNDOFButtonData;
 #endif  // WITH_INPUT_NDOF
+
+#ifdef WITH_INPUT_GAMEPAD
+
+typedef enum { GHOST_kGamepadLeftThumb = 0, GHOST_kGamepadRightThumb } GHOST_TGamepadThumb;
+
+typedef enum { GHOST_kGamepadLeftTrigger = 0, GHOST_kGamepadRightTrigger } GHOST_TGamepadTrigger;
+
+typedef enum {
+  GHOST_kGAMEPAD_BUTTON_A = 0,
+  GHOST_kGAMEPAD_BUTTON_B,
+  GHOST_kGAMEPAD_BUTTON_X,
+  GHOST_kGAMEPAD_BUTTON_Y,
+
+  GHOST_kGAMEPAD_BUTTON_LEFT_SHOULDER,
+  GHOST_kGAMEPAD_BUTTON_RIGHT_SHOULDER,
+
+  GHOST_kGAMEPAD_BUTTON_VIEW,
+  GHOST_kGAMEPAD_BUTTON_MENU,
+
+  GHOST_kGAMEPAD_BUTTON_LEFT_THUMB,
+  GHOST_kGAMEPAD_BUTTON_RIGHT_THUMB,
+
+  GHOST_kGAMEPAD_BUTTON_DPAD_UP,
+  GHOST_kGAMEPAD_BUTTON_DPAD_DOWN,
+  GHOST_kGAMEPAD_BUTTON_DPAD_LEFT,
+  GHOST_kGAMEPAD_BUTTON_DPAD_RIGHT,
+
+} GHOST_TGamepadButton;
+
+typedef struct {
+  float value;
+  float dt;
+  GHOST_TGamepadTrigger trigger;
+  GHOST_TButtonAction action;
+} GHOST_TEventGamepadTriggerData;
+
+typedef struct {
+  float value[2];
+  float dt;
+  GHOST_TGamepadThumb thumb;
+  GHOST_TButtonAction action;
+} GHOST_TEventGamepadThumbData;
+
+typedef struct {
+  GHOST_TGamepadButton button;
+  GHOST_TButtonAction action;
+} GHOST_TEventGamepadButtonData;
+#endif  // WITH_INPUT_GAMEPAD
 
 typedef struct {
   /** The key code. */

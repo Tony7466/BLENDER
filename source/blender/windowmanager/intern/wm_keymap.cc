@@ -231,6 +231,9 @@ int WM_keymap_item_map_type_get(const wmKeyMapItem *kmi)
   if (ISNDOF(kmi->type)) {
     return KMI_TYPE_NDOF;
   }
+  if (ISGAMEPAD(kmi->type)) {
+    return KMI_TYPE_GAMEPAD;
+  }
   if (kmi->type == KM_TEXTINPUT) {
     return KMI_TYPE_TEXTINPUT;
   }

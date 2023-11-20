@@ -4110,6 +4110,16 @@ void wm_event_do_handlers(bContext *C)
           win->addmousemove = true;
         }
 #endif
+#ifdef WITH_INPUT_GAMEPAD
+        else if (ELEM(event->type,
+                      GAMEPAD_LEFT_THUMB,
+                      GAMEPAD_RIGHT_THUMB,
+                      GAMEPAD_LEFT_TRIGGER,
+                      GAMEPAD_RIGHT_TRIGGER))
+        {
+          win->addmousemove = true;
+        }
+#endif
 
         ED_screen_areas_iter (win, screen, area) {
           /* After restoring a screen from SCREENMAXIMIZED we have to wait
@@ -5913,7 +5923,61 @@ void wm_event_add_ghostevent(wmWindowManager *wm,
       break;
     }
 #endif /* WITH_INPUT_NDOF */
+#ifdef WITH_INPUT_GAMEPAD
+    case GHOST_kEventGamepadThumb: {
+      const GHOST_TEventGamepadThumbData *thumb_data =
+          static_cast<const GHOST_TEventGamepadThumbData *>(customdata);
+      event.type = thumb_data->thumb ? GAMEPAD_RIGHT_THUMB : GAMEPAD_LEFT_THUMB;
+      event.axis_value[0] = thumb_data->value[0];
+      event.axis_value[1] = thumb_data->value[1];
+      event.dt = thumb_data->dt;
+      event.custom = 0;
+      event.customdata = nullptr;
 
+      BLI_assert(ELEM(thumb_data->action, GHOST_kPress, GHOST_kRelease));
+      event.val = thumb_data->action == GHOST_kPress ? KM_PRESS : KM_RELEASE;
+
+      wm_event_add(win, &event);
+      break;
+    }
+
+    case GHOST_kEventGamepadTrigger: {
+      const GHOST_TEventGamepadTriggerData *trigger_data =
+          static_cast<const GHOST_TEventGamepadTriggerData *>(customdata);
+      event.type = trigger_data->trigger ? GAMEPAD_RIGHT_TRIGGER : GAMEPAD_LEFT_TRIGGER;
+      event.axis_value[0] = trigger_data->value;
+      event.dt = trigger_data->dt;
+      event.custom = 0;
+      event.customdata = nullptr;
+
+      BLI_assert(ELEM(thumb_data->action, GHOST_kPress, GHOST_kRelease));
+      event.val = trigger_data->action == GHOST_kPress ? KM_PRESS : KM_RELEASE;
+
+      wm_event_add(win, &event);
+      break;
+    }
+
+    case GHOST_kEventGamepadButton: {
+      const GHOST_TEventGamepadButtonData *button =
+          static_cast<const GHOST_TEventGamepadButtonData *>(customdata);
+
+      event.type = GAMEPAD_BUTTON_INDEX_AS_EVENT(button->button);
+      event.custom = 0;
+      event.customdata = nullptr;
+
+      BLI_assert(ELEM(e->action, GHOST_kPress, GHOST_kRelease));
+      event.val = button->action == GHOST_kPress ? KM_PRESS : KM_RELEASE;
+
+      wm_event_state_update_and_click_set(&event,
+                                          event_time_ms,
+                                          event_state,
+                                          event_state_prev_press_time_ms_p,
+                                          (GHOST_TEventType)type);
+      wm_event_add(win, &event);
+
+      break;
+    }
+#endif /* WITH_INPUT_GAMEPAD */
     case GHOST_kEventUnknown:
     case GHOST_kNumEventTypes:
       break;

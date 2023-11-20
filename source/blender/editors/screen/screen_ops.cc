@@ -3694,6 +3694,7 @@ static int area_join_modal(bContext *C, wmOperator *op, const wmEvent *event)
       break;
 
     case RIGHTMOUSE:
+    case GAMEPAD_BUTTON_B:
     case EVT_ESCKEY:
       area_join_cancel(C, op);
       return OPERATOR_CANCELLED;

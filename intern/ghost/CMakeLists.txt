@@ -145,6 +145,16 @@ if(WITH_INPUT_NDOF)
   )
 endif()
 
+if(WITH_INPUT_GAMEPAD)
+  add_definitions(-DWITH_INPUT_GAMEPAD)
+  list(APPEND SRC
+    intern/GHOST_GamepadManager.cc
+
+    intern/GHOST_EventGamepad.hh
+    intern/GHOST_GamepadManager.hh
+  )
+endif()
+
 list(APPEND SRC
   intern/GHOST_DisplayManagerNULL.hh
   intern/GHOST_SystemHeadless.hh
@@ -516,6 +526,14 @@ elseif(WIN32)
       intern/GHOST_NDOFManagerWin32.cc
 
       intern/GHOST_NDOFManagerWin32.hh
+    )
+  endif()
+
+  if(WITH_INPUT_GAMEPAD)
+    list(APPEND SRC
+      intern/GHOST_GamepadManagerWin32.cc
+
+      intern/GHOST_GamepadManagerWin32.hh
     )
   endif()
 endif()

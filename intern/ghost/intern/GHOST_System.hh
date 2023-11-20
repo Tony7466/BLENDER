@@ -27,7 +27,9 @@ class GHOST_WindowManager;
 #ifdef WITH_INPUT_NDOF
 class GHOST_NDOFManager;
 #endif
-
+#ifdef WITH_INPUT_GAMEPAD
+class GHOST_GamepadManager;
+#endif
 /**
  * Implementation of platform independent functionality of the GHOST_ISystem
  * interface.
@@ -189,6 +191,11 @@ class GHOST_System : public GHOST_ISystem {
   void dispatchEvents();
 
   /**
+   * Dispatches events that can be continuous over time.
+   */
+  void dispatchFrameEvents();
+
+  /**
    * Adds the given event consumer to our list.
    * \param consumer: The event consumer to add.
    * \return Indication of success.
@@ -307,6 +314,13 @@ class GHOST_System : public GHOST_ISystem {
    * \return A pointer to our n-degree of freedom manager.
    */
   inline GHOST_NDOFManager *getNDOFManager() const;
+#endif
+
+#ifdef WITH_INPUT_GAMEPAD
+  /**
+   * \return A pointer to our gamepad manager.
+   */
+  inline GHOST_GamepadManager *get_gamepad_manager() const;
 #endif
 
   /**
@@ -431,6 +445,13 @@ class GHOST_System : public GHOST_ISystem {
   GHOST_NDOFManager *m_ndofManager;
 #endif
 
+#ifdef WITH_INPUT_GAMEPAD
+  /** The Gamepad manager. */
+  std::unique_ptr<GHOST_GamepadManager> _gamepad_manager;
+  /** Time since the last frame. */
+  uint64_t _time_stamp;
+#endif
+
   /** Prints all the events. */
 #ifdef WITH_GHOST_DEBUG
   GHOST_EventPrinter *m_eventPrinter;
@@ -467,5 +488,12 @@ inline GHOST_WindowManager *GHOST_System::getWindowManager() const
 inline GHOST_NDOFManager *GHOST_System::getNDOFManager() const
 {
   return m_ndofManager;
+}
+#endif
+
+#ifdef WITH_INPUT_GAMEPAD
+inline GHOST_GamepadManager *GHOST_System::get_gamepad_manager() const
+{
+  return _gamepad_manager.get();
 }
 #endif

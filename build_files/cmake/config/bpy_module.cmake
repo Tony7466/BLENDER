@@ -79,6 +79,7 @@ endif()
 
 # Other features which are not especially useful as a python module.
 set(WITH_INPUT_NDOF          OFF CACHE BOOL "" FORCE)
+set(WITH_INPUT_GAMEPAD       OFF CACHE BOOL "" FORCE)
 if(WIN32 OR APPLE)
   set(WITH_INPUT_IME           OFF CACHE BOOL "" FORCE)
 endif()

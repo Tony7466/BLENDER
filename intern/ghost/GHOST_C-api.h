@@ -289,6 +289,12 @@ extern bool GHOST_ProcessEvents(GHOST_SystemHandle systemhandle, bool waitForEve
 extern void GHOST_DispatchEvents(GHOST_SystemHandle systemhandle);
 
 /**
+ * Retrieves events that can be continuous over time and send them to the event consumers.
+ * \param systemhandle: The handle to the system.
+ */
+extern void GHOST_DispatchFrameEvents(GHOST_SystemHandle systemhandle);
+
+/**
  * Adds the given event consumer to our list.
  * \param systemhandle: The handle to the system.
  * \param consumerhandle: The event consumer to add.

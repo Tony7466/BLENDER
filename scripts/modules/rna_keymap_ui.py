@@ -135,6 +135,8 @@ def draw_kmi(display_keymaps, kc, km, kmi, layout, level):
         row.prop(kmi, "type", text="", full_event=True)
     elif map_type == 'NDOF':
         row.prop(kmi, "type", text="", full_event=True)
+    elif map_type == 'GAMEPAD':
+        row.prop(kmi, "type", text="", full_event=True)
     elif map_type == 'TWEAK':
         subrow = row.row()
         subrow.prop(kmi, "type", text="")
@@ -178,7 +180,7 @@ def draw_kmi(display_keymaps, kc, km, kmi, layout, level):
                 subrow_repeat = subrow.row(align=True)
                 subrow_repeat.active = kmi.value in {'ANY', 'PRESS'}
                 subrow_repeat.prop(kmi, "repeat", text="Repeat")
-            elif map_type in {'MOUSE', 'NDOF'}:
+            elif map_type in {'MOUSE', 'NDOF', 'GAMEPAD'}:
                 subrow.prop(kmi, "type", text="")
                 subrow.prop(kmi, "value", text="")
 

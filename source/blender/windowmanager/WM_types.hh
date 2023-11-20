@@ -779,6 +779,10 @@ struct wmEvent {
   uint8_t prev_press_modifier;
   /** The `keymodifier` at the point of the press action. */
   short prev_press_keymodifier;
+
+  /*Gamepad*/
+  float axis_value[2];
+  float dt;
 };
 
 /**
@@ -822,6 +826,21 @@ struct wmNDOFMotionData {
   wmProgress progress;
 };
 #endif /* WITH_INPUT_NDOF */
+
+#ifdef WITH_INPUT_GAMEPAD
+struct wmGamepadAxisData {
+  struct {
+    float value[2]{0.0};
+    short buttons_state{KM_RELEASE};
+  } left_thumb, right_thumb;
+  struct {
+    float value{0.0};
+    short buttons_state{KM_RELEASE};
+  } left_trigger, right_trigger;
+
+  float dt{0.0};
+};
+#endif /* WITH_INPUT_GAMEPAD */
 
 #ifdef WITH_XR_OPENXR
 /* Similar to GHOST_XrPose. */

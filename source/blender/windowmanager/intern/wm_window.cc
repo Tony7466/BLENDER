@@ -1728,6 +1728,9 @@ void wm_window_events_process(const bContext *C)
   if (has_event) {
     GHOST_DispatchEvents(g_system);
   }
+#ifdef WITH_INPUT_GAMEPAD
+  GHOST_DispatchFrameEvents(g_system);
+#endif
 
   /* When there is no event, sleep 5 milliseconds not to use too much CPU when idle. */
   const int sleep_us_default = 5000;

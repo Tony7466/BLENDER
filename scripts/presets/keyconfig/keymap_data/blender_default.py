@@ -720,6 +720,7 @@ def km_window(params):
 
         # NDOF settings
         op_panel("USERPREF_PT_ndof_settings", {"type": 'NDOF_BUTTON_MENU', "value": 'PRESS'}),
+        op_menu("TEXT_MT_context_menu", {"type": 'GAMEPAD_BUTTON_MENU', "value": 'PRESS'}),
         ("wm.context_scale_float", {"type": 'NDOF_BUTTON_PLUS', "value": 'PRESS'},
          {"properties": [("data_path", 'preferences.inputs.ndof_sensitivity'), ("value", 1.1)]}),
         ("wm.context_scale_float", {"type": 'NDOF_BUTTON_MINUS', "value": 'PRESS'},
@@ -899,6 +900,7 @@ def km_screen_region_context_menu(_params):
 
     items.extend([
         ("screen.region_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        ("screen.region_context_menu", {"type": 'GAMEPAD_BUTTON_MENU', "value": 'PRESS'}, None)
     ])
 
     return keymap
@@ -1627,6 +1629,7 @@ def km_view3d(params):
         ("view3d.ndof_orbit_zoom", {"type": 'NDOF_MOTION', "value": 'ANY'}, None),
         ("view3d.ndof_orbit", {"type": 'NDOF_MOTION', "value": 'ANY', "ctrl": True}, None),
         ("view3d.ndof_pan", {"type": 'NDOF_MOTION', "value": 'ANY', "shift": True}, None),
+        ("view3d.gamepad_all", {"type": 'GAMEPAD_LEFT_THUMB', "value": 'ANY'}, None),
         ("view3d.ndof_all", {"type": 'NDOF_MOTION', "value": 'ANY', "shift": True, "ctrl": True}, None),
         ("view3d.view_selected", {"type": 'NDOF_BUTTON_FIT', "value": 'PRESS'},
          {"properties": [("use_all_regions", False)]}),
@@ -6086,6 +6089,7 @@ def km_eyedropper_modal_map(_params):
     items.extend([
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("SAMPLE_CONFIRM", {"type": 'RET', "value": 'RELEASE', "any": True}, None),
         ("SAMPLE_CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'RELEASE', "any": True}, None),
         ("SAMPLE_CONFIRM", {"type": 'LEFTMOUSE', "value": 'RELEASE', "any": True}, None),
@@ -6133,6 +6137,7 @@ def km_transform_modal_map(params):
         ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'SPACE', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("AXIS_X", {"type": 'X', "value": 'PRESS'}, None),
         ("AXIS_Y", {"type": 'Y', "value": 'PRESS'}, None),
@@ -6228,6 +6233,7 @@ def km_view3d_gesture_circle(_params):
         # this is needed when circle select is activated as a tool.
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'ANY', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS'}, None),
         ("SELECT", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
@@ -6256,6 +6262,7 @@ def km_gesture_border(_params):
     items.extend([
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("SELECT", {"type": 'RIGHTMOUSE', "value": 'RELEASE', "any": True}, None),
         ("BEGIN", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True}, None),
         ("DESELECT", {"type": 'LEFTMOUSE', "value": 'RELEASE', "shift": True}, None),
@@ -6280,6 +6287,7 @@ def km_gesture_zoom_border(_params):
     items.extend([
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'ANY', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("BEGIN", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("IN", {"type": 'LEFTMOUSE', "value": 'RELEASE'}, None),
         ("BEGIN", {"type": 'MIDDLEMOUSE', "value": 'PRESS'}, None),
@@ -6300,6 +6308,7 @@ def km_gesture_straight_line(_params):
     items.extend([
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'ANY', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("BEGIN", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("SELECT", {"type": 'LEFTMOUSE', "value": 'RELEASE', "any": True}, None),
         ("MOVE", {"type": 'SPACE', "value": 'ANY', "any": True}, None),
@@ -6365,6 +6374,7 @@ def km_knife_tool_modal_map(_params):
         ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'SPACE', "value": 'PRESS', "any": True}, None),
         ("NEW_CUT", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("SNAP_MIDPOINTS_ON", {"type": 'LEFT_SHIFT', "value": 'PRESS', "any": True}, None),
         ("SNAP_MIDPOINTS_OFF", {"type": 'LEFT_SHIFT', "value": 'RELEASE', "any": True}, None),
         ("SNAP_MIDPOINTS_ON", {"type": 'RIGHT_SHIFT', "value": 'PRESS', "any": True}, None),
@@ -6397,6 +6407,7 @@ def km_custom_normals_modal_map(_params):
     items.extend([
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
@@ -6425,6 +6436,7 @@ def km_bevel_modal_map(_params):
     items.extend([
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
@@ -6460,6 +6472,7 @@ def km_view3d_fly_modal(_params):
 
     items.extend([
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'ANY', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'ANY', "any": True}, None),
         ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
@@ -6513,6 +6526,7 @@ def km_view3d_walk_modal(_params):
 
     items.extend([
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'ANY', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'ANY', "any": True}, None),
         ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
@@ -6577,6 +6591,7 @@ def km_view3d_rotate_modal(_params):
 
     items.extend([
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("AXIS_SNAP_ENABLE", {"type": 'LEFT_ALT', "value": 'PRESS', "any": True}, None),
         ("AXIS_SNAP_DISABLE", {"type": 'LEFT_ALT', "value": 'RELEASE', "any": True}, None),
         ("AXIS_SNAP_ENABLE", {"type": 'RIGHT_ALT', "value": 'PRESS', "any": True}, None),
@@ -6596,6 +6611,7 @@ def km_view3d_move_modal(_params):
 
     items.extend([
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
     ])
 
     return keymap
@@ -6611,6 +6627,7 @@ def km_view3d_zoom_modal(_params):
 
     items.extend([
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
     ])
 
     return keymap
@@ -6626,6 +6643,7 @@ def km_view3d_dolly_modal(_params):
 
     items.extend([
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
     ])
 
     return keymap
@@ -6657,6 +6675,7 @@ def km_sculpt_expand_modal(_params):
     items.extend([
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'RELEASE', "any": True}, None),
         ("INVERT", {"type": 'F', "value": 'PRESS', "any": True}, None),
@@ -6696,6 +6715,7 @@ def km_sculpt_mesh_filter_modal_map(_params):
 
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
     ])
     return keymap
 
@@ -6731,6 +6751,7 @@ def km_node_link_modal_map(_params):
         ("BEGIN", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'RELEASE', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("SWAP", {"type": 'LEFT_ALT', "value": 'ANY', "any": True}, None),
         ("SWAP", {"type": 'RIGHT_ALT', "value": 'ANY', "any": True}, None),
@@ -6802,6 +6823,7 @@ def km_generic_gizmo_tweak_modal_map(_params):
         {"items": [
             ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
             ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+            ("CANCEL", {"type": 'GAMEPAD_BUTTON_B', "value": 'PRESS', "any": True}, None),
             ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
             ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
             ("PRECISION_ON", {"type": 'RIGHT_SHIFT', "value": 'PRESS', "any": True}, None),

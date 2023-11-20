@@ -318,6 +318,29 @@ enum {
 #define _NDOF_MAX NDOF_BUTTON_C
 #define _NDOF_BUTTON_MAX NDOF_BUTTON_C
 
+#define _GAMEPAD_MIN GAMEPAD_LEFT_THUMB
+#define _GAMEPAD_BUTTON_MIN GAMEPAD_BUTTON_A
+  GAMEPAD_LEFT_THUMB = 0x001be,            /* 446*/
+  GAMEPAD_RIGHT_THUMB = 0x001bf,           /* 447 */
+  GAMEPAD_LEFT_TRIGGER = 0x001c0,          /* 448 */
+  GAMEPAD_RIGHT_TRIGGER = 0x001c1,         /* 449 */
+  GAMEPAD_BUTTON_A = 0x001c2,              /* 450 */
+  GAMEPAD_BUTTON_B = 0x001c3,              /* 451 */
+  GAMEPAD_BUTTON_X = 0x001c4,              /* 452 */
+  GAMEPAD_BUTTON_Y = 0x001c5,              /* 453 */
+  GAMEPAD_BUTTON_LEFT_SHOULDER = 0x001c6,  /* 454 */
+  GAMEPAD_BUTTON_RIGHT_SHOULDER = 0x001c7, /* 455 */
+  GAMEPAD_BUTTON_VIEW = 0x001c8,           /* 456 */
+  GAMEPAD_BUTTON_MENU = 0x001c9,           /* 457 */
+  GAMEPAD_BUTTON_LEFT_THUMB = 0x001ca,     /* 458 */
+  GAMEPAD_BUTTON_RIGHT_THUMB = 0x001cb,    /* 459 */
+  GAMEPAD_BUTTON_DPAD_UP = 0x001cc,        /* 460 */
+  GAMEPAD_BUTTON_DPAD_DOWN = 0x001cd,      /* 461 */
+  GAMEPAD_BUTTON_DPAD_LEFT = 0x001ce,      /* 462 */
+  GAMEPAD_BUTTON_DPAD_RIGHT = 0x001cf,     /* 463 */
+#define _GAMEPAD_MAX GAMEPAD_BUTTON_DPAD_RIGHT
+#define _GAMEPAD_BUTTON_MAX GAMEPAD_BUTTON_DPAD_RIGHT
+
   /* ********** End of Input devices. ********** */
 
   /* ********** Start of Blender internal events. ********** */
@@ -386,7 +409,8 @@ enum {
  * doesn't make sense to have click & click-drag events for a mouse-wheel as it can't be held down.
  */
 #define ISKEYBOARD_OR_BUTTON(event_type) \
-  (ISMOUSE_BUTTON(event_type) || ISKEYBOARD(event_type) || ISNDOF_BUTTON(event_type))
+  (ISMOUSE_BUTTON(event_type) || ISKEYBOARD(event_type) || ISNDOF_BUTTON(event_type) || \
+   ISGAMEPAD_BUTTON(event_type))
 
 /** Test whether the event is a modifier key. */
 #define ISKEYMODIFIER(event_type) \
@@ -423,13 +447,18 @@ enum {
 #define ISNDOF_BUTTON(event_type) \
   ((event_type) >= _NDOF_BUTTON_MIN && (event_type) <= _NDOF_BUTTON_MAX)
 
+/** Test whether the event is a NDOF event. */
+#define ISGAMEPAD(event_type) ((event_type) >= _GAMEPAD_MIN && (event_type) <= _GAMEPAD_MAX)
+#define ISGAMEPAD_BUTTON(event_type) \
+  ((event_type) >= _GAMEPAD_BUTTON_MIN && (event_type) <= _GAMEPAD_BUTTON_MAX)
+
 #define IS_EVENT_ACTIONZONE(event_type) \
   ELEM(event_type, EVT_ACTIONZONE_AREA, EVT_ACTIONZONE_REGION, EVT_ACTIONZONE_FULLSCREEN)
 
 /** Test whether event type is acceptable as hotkey (excluding modifiers). */
 #define ISHOTKEY(event_type) \
   ((ISKEYBOARD(event_type) || ISMOUSE_BUTTON(event_type) || ISMOUSE_WHEEL(event_type) || \
-    ISNDOF_BUTTON(event_type)) && \
+    ISNDOF_BUTTON(event_type) || ISGAMEPAD_BUTTON(event_type)) && \
    (ISKEYMODIFIER(event_type) == false))
 
 enum eEventType_Mask {
@@ -449,15 +478,20 @@ enum eEventType_Mask {
   EVT_TYPE_MASK_NDOF = (1 << 6),
   /** #IS_EVENT_ACTIONZONE */
   EVT_TYPE_MASK_ACTIONZONE = (1 << 7),
+  /** #ISGAMEPAD */
+  EVT_TYPE_MASK_GAMEPAD = (1 << 8),
 };
 #define EVT_TYPE_MASK_ALL \
-  (EVT_TYPE_MASK_KEYBOARD | EVT_TYPE_MASK_MOUSE | EVT_TYPE_MASK_NDOF | EVT_TYPE_MASK_ACTIONZONE)
+  (EVT_TYPE_MASK_KEYBOARD | EVT_TYPE_MASK_MOUSE | EVT_TYPE_MASK_NDOF | EVT_TYPE_MASK_ACTIONZONE | \
+   EVT_TYPE_MASK_GAMEPAD)
 
 #define EVT_TYPE_MASK_HOTKEY_INCLUDE \
-  (EVT_TYPE_MASK_KEYBOARD | EVT_TYPE_MASK_MOUSE | EVT_TYPE_MASK_NDOF)
+  (EVT_TYPE_MASK_KEYBOARD | EVT_TYPE_MASK_MOUSE | EVT_TYPE_MASK_NDOF | EVT_TYPE_MASK_GAMEPAD)
 #define EVT_TYPE_MASK_HOTKEY_EXCLUDE EVT_TYPE_MASK_KEYBOARD_MODIFIER
 
 #define NDOF_BUTTON_INDEX_AS_EVENT(i) (_NDOF_BUTTON_MIN + (i))
+
+#define GAMEPAD_BUTTON_INDEX_AS_EVENT(i) (_GAMEPAD_BUTTON_MIN + (i))
 
 bool WM_event_type_mask_test(int event_type, enum eEventType_Mask mask);
 

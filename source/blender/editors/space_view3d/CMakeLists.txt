@@ -60,6 +60,7 @@ set(SRC
   view3d_navigate_view_dolly.cc
   view3d_navigate_view_move.cc
   view3d_navigate_view_ndof.cc
+  view3d_navigate_view_gamepad.cc
   view3d_navigate_view_orbit.cc
   view3d_navigate_view_pan.cc
   view3d_navigate_view_roll.cc

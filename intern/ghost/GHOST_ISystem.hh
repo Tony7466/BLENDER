@@ -359,6 +359,11 @@ class GHOST_ISystem {
   virtual void dispatchEvents() = 0;
 
   /**
+   * Retrieves events that can be continuous over time and send them to the event consumers.
+   */
+  virtual void dispatchFrameEvents() = 0;
+
+  /**
    * Adds the given event consumer to our list.
    * \param consumer: The event consumer to add.
    * \return Indication of success.

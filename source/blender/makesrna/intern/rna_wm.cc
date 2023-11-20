@@ -134,6 +134,43 @@ static const EnumPropertyItem event_ndof_type_items[] = {
 #  endif
     {0, nullptr, 0, nullptr, nullptr},
 };
+
+/** Gamepad Buttons.
+ * This specific order visually separates the buttons that are to the left/right of the gamepad, So
+ * they are not ordered by value.
+ */
+
+static const EnumPropertyItem event_gamepad_type_items[] = {
+    RNA_ENUM_ITEM_HEADING("Gamepad buttons", ""),
+    {GAMEPAD_LEFT_TRIGGER, "GAMEPAD_LEFT_TRIGGER", 0, "LT", ""},
+    {GAMEPAD_BUTTON_LEFT_SHOULDER, "GAMEPAD_BUTTON_LEFT_SHOULDER", 0, "LB", ""},
+    {GAMEPAD_BUTTON_LEFT_THUMB, "GAMEPAD_BUTTON_LEFT_THUMB", 0, "L3", ""},
+    RNA_ENUM_ITEM_SEPR,
+    {GAMEPAD_LEFT_THUMB, "GAMEPAD_LEFT_THUMB", 0, "Left Thumb", ""},
+    RNA_ENUM_ITEM_SEPR,
+    {GAMEPAD_BUTTON_DPAD_UP, "GAMEPAD_BUTTON_DPAD_UP", 0, "Up", ""},
+    {GAMEPAD_BUTTON_DPAD_DOWN, "GAMEPAD_BUTTON_DPAD_DOWN", 0, "Down", ""},
+    {GAMEPAD_BUTTON_DPAD_LEFT, "GAMEPAD_BUTTON_DPAD_LEFT", 0, "Left", ""},
+    {GAMEPAD_BUTTON_DPAD_RIGHT, "GAMEPAD_BUTTON_DPAD_RIGHT", 0, "Right", ""},
+    RNA_ENUM_ITEM_SEPR,
+    {GAMEPAD_BUTTON_VIEW, "GAMEPAD_BUTTON_VIEW", 0, "View", ""},
+    
+    RNA_ENUM_ITEM_SEPR_COLUMN,
+    {GAMEPAD_RIGHT_TRIGGER, "GAMEPAD_RIGHT_TRIGGER", 0, "RT", ""},
+    {GAMEPAD_BUTTON_RIGHT_SHOULDER, "GAMEPAD_BUTTON_RIGHT_SHOULDER", 0, "RB", ""},
+    {GAMEPAD_BUTTON_RIGHT_THUMB, "GAMEPAD_BUTTON_RIGHT_THUMB", 0, "R3", ""},
+    RNA_ENUM_ITEM_SEPR,
+    {GAMEPAD_RIGHT_THUMB, "GAMEPAD_RIGHT_THUMB", 0, "Right Thumb", ""},
+    RNA_ENUM_ITEM_SEPR,
+    {GAMEPAD_BUTTON_A, "GAMEPAD_BUTTON_A", 0, "A", ""},
+    {GAMEPAD_BUTTON_B, "GAMEPAD_BUTTON_B", 0, "B", ""},
+    {GAMEPAD_BUTTON_X, "GAMEPAD_BUTTON_X", 0, "X", ""},
+    {GAMEPAD_BUTTON_Y, "GAMEPAD_BUTTON_Y", 0, "Y", ""},
+    RNA_ENUM_ITEM_SEPR,
+    {GAMEPAD_BUTTON_MENU, "GAMEPAD_BUTTON_MENU", 0, "Menu", ""},
+
+    {0, nullptr, 0, nullptr, nullptr},
+};
 #endif /* RNA_RUNTIME */
 
 /**
@@ -389,6 +426,31 @@ const EnumPropertyItem rna_enum_event_type_items[] = {
     {NDOF_BUTTON_A, "NDOF_BUTTON_A", 0, "NDOF Button A", "NdofBA"},
     {NDOF_BUTTON_B, "NDOF_BUTTON_B", 0, "NDOF Button B", "NdofBB"},
     {NDOF_BUTTON_C, "NDOF_BUTTON_C", 0, "NDOF Button C", "NdofBC"},
+    RNA_ENUM_ITEM_SEPR,
+    {GAMEPAD_LEFT_THUMB, "GAMEPAD_LEFT_THUMB", 0, "Gamepad Left Thumb", "Left Thumb"},
+    {GAMEPAD_RIGHT_THUMB, "GAMEPAD_RIGHT_THUMB", 0, "Gamepad Right Thumb", "Right Thumb"},
+    {GAMEPAD_LEFT_TRIGGER, "GAMEPAD_LEFT_TRIGGER", 0, "Gamepad Left Trigger", "LT"},
+    {GAMEPAD_RIGHT_TRIGGER, "GAMEPAD_RIGHT_TRIGGER", 0, "Gamepad Right Trigger", "RT"},
+    RNA_ENUM_ITEM_SEPR,
+    {GAMEPAD_BUTTON_A, "GAMEPAD_BUTTON_A", 0, "Gamepad A", "A"},
+    {GAMEPAD_BUTTON_B, "GAMEPAD_BUTTON_B", 0, "Gamepad B", "B"},
+    {GAMEPAD_BUTTON_X, "GAMEPAD_BUTTON_X", 0, "Gamepad X", "X"},
+    {GAMEPAD_BUTTON_Y, "GAMEPAD_BUTTON_Y", 0, "Gamepad Y", "Y"},
+    RNA_ENUM_ITEM_SEPR,
+    {GAMEPAD_BUTTON_LEFT_SHOULDER, "GAMEPAD_BUTTON_LEFT_SHOULDER", 0, "Left Shoulder", "LB"},
+    {GAMEPAD_BUTTON_RIGHT_SHOULDER, "GAMEPAD_BUTTON_RIGHT_SHOULDER", 0, "Right Shoulder", "RB"},
+    RNA_ENUM_ITEM_SEPR,
+    {GAMEPAD_BUTTON_VIEW, "GAMEPAD_BUTTON_VIEW", 0, "Gamepad View", "View"},
+    {GAMEPAD_BUTTON_MENU, "GAMEPAD_BUTTON_MENU", 0, "Gamepad Menu", "Menu"},
+    RNA_ENUM_ITEM_SEPR,
+    {GAMEPAD_BUTTON_LEFT_THUMB, "GAMEPAD_BUTTON_LEFT_THUMB", 0, "Button Left Thumb", "L3"},
+    {GAMEPAD_BUTTON_RIGHT_THUMB, "GAMEPAD_BUTTON_RIGHT_THUMB", 0, "Button Right Thumb", "R3"},
+    RNA_ENUM_ITEM_SEPR,
+    {GAMEPAD_BUTTON_DPAD_UP, "GAMEPAD_BUTTON_DPAD_UP", 0, "DPAD Up", "Up"},
+    {GAMEPAD_BUTTON_DPAD_DOWN, "GAMEPAD_BUTTON_DPAD_DOWN", 0, "DPAD Down", "Down"},
+    {GAMEPAD_BUTTON_DPAD_LEFT, "GAMEPAD_BUTTON_DPAD_LEFT", 0, "DPAD Left", "Left"},
+    {GAMEPAD_BUTTON_DPAD_RIGHT, "GAMEPAD_BUTTON_DPAD_RIGHT", 0, "DPAD Right", "Right"},
+    RNA_ENUM_ITEM_SEPR,
     /* Action Zones. */
     {EVT_ACTIONZONE_AREA, "ACTIONZONE_AREA", 0, "ActionZone Area", "AZone Area"},
     {EVT_ACTIONZONE_REGION, "ACTIONZONE_REGION", 0, "ActionZone Region", "AZone Region"},
@@ -450,6 +512,7 @@ const EnumPropertyItem rna_enum_event_type_mask_items[] = {
     {EVT_TYPE_MASK_MOUSE, "MOUSE", 0, "Mouse", ""},
     {EVT_TYPE_MASK_NDOF, "NDOF", 0, "NDOF", ""},
     {EVT_TYPE_MASK_ACTIONZONE, "ACTIONZONE", 0, "Action Zone", ""},
+    {EVT_TYPE_MASK_GAMEPAD, "GAMEPAD", 0, "Gamepad", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -957,6 +1020,10 @@ static void rna_wmKeyMapItem_map_type_set(PointerRNA *ptr, int value)
         kmi->type = NDOF_MOTION;
         kmi->val = KM_NOTHING;
         break;
+      case KMI_TYPE_GAMEPAD:
+        kmi->type = GAMEPAD_LEFT_THUMB;
+        kmi->val = KM_PRESS;
+        break;
     }
   }
 }
@@ -998,6 +1065,9 @@ static const EnumPropertyItem *rna_KeyMapItem_type_itemf(bContext * /*C*/,
   }
   if (map_type == KMI_TYPE_NDOF) {
     return event_ndof_type_items;
+  }
+  if (map_type == KMI_TYPE_GAMEPAD) {
+    return event_gamepad_type_items;
   }
   if (map_type == KMI_TYPE_TEXTINPUT) {
     return event_textinput_type_items;
@@ -2609,6 +2679,7 @@ static void rna_def_keyconfig(BlenderRNA *brna)
       {KMI_TYPE_NDOF, "NDOF", 0, "NDOF", ""},
       {KMI_TYPE_TEXTINPUT, "TEXTINPUT", 0, "Text Input", ""},
       {KMI_TYPE_TIMER, "TIMER", 0, "Timer", ""},
+      {KMI_TYPE_GAMEPAD, "GAMEPAD", 0, "Gamepad", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

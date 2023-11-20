@@ -182,6 +182,10 @@ struct FlyInfo {
   /** Latest 3D mouse values. */
   wmNDOFMotionData *ndof;
 #endif
+#ifdef WITH_INPUT_GAMEPAD
+  /** Latest gamepad axis values. */
+  std::unique_ptr<wmGamepadAxisData> gamepad;
+#endif
 
   /* Fly state. */
   /** The speed the view is moving per redraw. */
@@ -221,6 +225,11 @@ struct FlyInfo {
 #ifdef WITH_INPUT_NDOF
 static void flyApply_ndof(bContext *C, FlyInfo *fly, bool is_confirm);
 #endif /* WITH_INPUT_NDOF */
+
+#ifdef WITH_INPUT_GAMEPAD
+static void flyApply_gamepad(bContext *C, FlyInfo *fly, bool is_confirm);
+#endif /* WITH_INPUT_GAMEPAD */
+
 static int flyApply(bContext *C, FlyInfo *fly, bool is_confirm);
 
 static void drawFlyPixel(const bContext * /*C*/, ARegion * /*region*/, void *arg)
@@ -371,6 +380,10 @@ static bool initFlyInfo(bContext *C, FlyInfo *fly, wmOperator *op, const wmEvent
   fly->ndof = nullptr;
 #endif
 
+#ifdef WITH_INPUT_GAMEPAD
+  fly->gamepad.reset();
+#endif
+
   fly->time_lastdraw = fly->time_lastwheel = PIL_check_seconds_timer();
 
   fly->draw_handle_pixel = ED_region_draw_cb_activate(
@@ -432,6 +445,13 @@ static int flyEnd(bContext *C, FlyInfo *fly)
     }
     else
 #endif /* WITH_INPUT_NDOF */
+#ifdef WITH_INPUT_GAMEPAD
+        if (fly->gamepad)
+    {
+      flyApply_gamepad(C, fly, true);
+    }
+    else
+#endif /* WITH_INPUT_GAMEPAD */
     {
       flyApply(C, fly, true);
     }
@@ -456,6 +476,10 @@ static int flyEnd(bContext *C, FlyInfo *fly)
   if (fly->ndof) {
     MEM_freeN(fly->ndof);
   }
+#endif
+
+#ifdef WITH_INPUT_GAMEPAD
+  fly->gamepad.reset();
 #endif
 
   if (fly->state == FLY_CONFIRM) {
@@ -528,6 +552,56 @@ static void flyEvent(FlyInfo *fly, const wmEvent *event)
     }
   }
 #endif /* WITH_INPUT_NDOF */
+
+#ifdef WITH_INPUT_GAMEPAD
+  else if (ELEM(event->type,
+                GAMEPAD_LEFT_THUMB,
+                GAMEPAD_RIGHT_THUMB,
+                GAMEPAD_LEFT_TRIGGER,
+                GAMEPAD_RIGHT_TRIGGER))
+  {
+    if (!fly->gamepad) {
+      fly->gamepad = std::make_unique<wmGamepadAxisData>();
+    }
+    fly->gamepad->dt = event->dt;
+    fly->gamepad->left_thumb.value[0] = fly->gamepad->left_thumb.value[1] = 0.0f;
+    fly->gamepad->right_thumb.value[0] = fly->gamepad->right_thumb.value[1] = 0.0f;
+    fly->gamepad->left_trigger.value = fly->gamepad->right_trigger.value = 0.0f;
+    switch (event->type) {
+      case GAMEPAD_LEFT_THUMB: {
+        fly->gamepad->left_thumb.value[0] = event->axis_value[0];
+        fly->gamepad->left_thumb.value[1] = event->axis_value[1];
+        fly->gamepad->left_thumb.buttons_state = event->val;
+        break;
+      }
+      case GAMEPAD_RIGHT_THUMB: {
+        fly->gamepad->right_thumb.value[0] = event->axis_value[0];
+        fly->gamepad->right_thumb.value[1] = event->axis_value[1];
+        fly->gamepad->right_thumb.buttons_state = event->val;
+        break;
+      }
+      case GAMEPAD_LEFT_TRIGGER: {
+        fly->gamepad->left_trigger.value = event->axis_value[0];
+        fly->gamepad->left_trigger.buttons_state = event->val;
+        break;
+      }
+      case GAMEPAD_RIGHT_TRIGGER: {
+        fly->gamepad->right_trigger.value = event->axis_value[0];
+        fly->gamepad->right_trigger.buttons_state = event->val;
+        break;
+      }
+    }
+    if (!ELEM(KM_PRESS,
+              fly->gamepad->left_thumb.buttons_state,
+              fly->gamepad->right_thumb.buttons_state,
+              fly->gamepad->left_trigger.buttons_state,
+              fly->gamepad->right_trigger.buttons_state))
+    {
+      fly->gamepad.reset();
+    }
+  }
+#endif /* WITH_INPUT_GAMEPAD */
+
   /* Handle modal key-map first. */
   else if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
@@ -1055,6 +1129,29 @@ static void flyApply_ndof(bContext *C, FlyInfo *fly, bool is_confirm)
 }
 #endif /* WITH_INPUT_NDOF */
 
+#ifdef WITH_INPUT_GAMEPAD
+static void flyApply_gamepad(bContext *C, FlyInfo *fly, bool is_confirm)
+{
+  Object *lock_ob = ED_view3d_cameracontrol_object_get(fly->v3d_camera_control);
+  bool has_translate, has_rotate;
+
+  view3d_gamepad_fly(*fly->gamepad.get(),
+                     fly->v3d,
+                     fly->rv3d,
+                     fly->use_precision,
+                     lock_ob ? lock_ob->protectflag : 0,
+                     has_translate,
+                     has_rotate);
+
+  if (has_translate || has_rotate) {
+    fly->redraw = true;
+
+    if (fly->rv3d->persp == RV3D_CAMOB) {
+      flyMoveCamera(C, fly, has_rotate, has_translate, is_confirm);
+    }
+  }
+}
+#endif /* WITH_INPUT_NDOF */
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1069,7 +1166,7 @@ static int fly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_CANCELLED;
   }
 
-  FlyInfo *fly = MEM_cnew<FlyInfo>("FlyOperation");
+  FlyInfo *fly = MEM_new<FlyInfo>("FlyOperation");
 
   op->customdata = fly;
 
@@ -1111,6 +1208,20 @@ static int fly_modal(bContext *C, wmOperator *op, const wmEvent *event)
   if (fly->ndof) { /* 3D mouse overrules [2D mouse + timer]. */
     if (event->type == NDOF_MOTION) {
       flyApply_ndof(C, fly, false);
+    }
+  }
+  else
+#endif /* WITH_INPUT_NDOF */
+#ifdef WITH_INPUT_GAMEPAD
+      if (fly->gamepad.get())
+  {
+    if (ELEM(event->type,
+             GAMEPAD_LEFT_THUMB,
+             GAMEPAD_RIGHT_THUMB,
+             GAMEPAD_LEFT_TRIGGER,
+             GAMEPAD_RIGHT_TRIGGER))
+    {
+      flyApply_gamepad(C, fly, false);
     }
   }
   else

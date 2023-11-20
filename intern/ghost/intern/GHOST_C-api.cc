@@ -277,6 +277,12 @@ void GHOST_DispatchEvents(GHOST_SystemHandle systemhandle)
   system->dispatchEvents();
 }
 
+void GHOST_DispatchFrameEvents(GHOST_SystemHandle systemhandle)
+{
+  GHOST_ISystem *system = (GHOST_ISystem *)systemhandle;
+  system->dispatchFrameEvents();
+}
+
 GHOST_TSuccess GHOST_AddEventConsumer(GHOST_SystemHandle systemhandle,
                                       GHOST_EventConsumerHandle consumerhandle)
 {

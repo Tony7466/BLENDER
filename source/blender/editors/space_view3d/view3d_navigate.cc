@@ -1048,6 +1048,9 @@ static const ViewOpsType *view3d_navigation_type_from_idname(const char *idname)
       &ViewOpsType_ndof_pan,
       &ViewOpsType_ndof_all,
 #endif
+#ifdef WITH_INPUT_GAMEPAD
+      &ViewOpsType_gamepad_all,
+#endif
   };
 
   const char *op_name = idname + sizeof("VIEW3D_OT_");

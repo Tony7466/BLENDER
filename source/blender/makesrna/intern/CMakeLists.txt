@@ -421,6 +421,10 @@ if(WITH_INPUT_NDOF)
   add_definitions(-DWITH_INPUT_NDOF)
 endif()
 
+if(WITH_INPUT_GAMEPAD)
+  add_definitions(-DWITH_INPUT_GAMEPAD)
+endif()
+
 if(WITH_XR_OPENXR)
   add_definitions(-DWITH_XR_OPENXR)
 endif()

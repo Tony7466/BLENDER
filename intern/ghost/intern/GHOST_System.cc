@@ -20,6 +20,9 @@
 #ifdef WITH_INPUT_NDOF
 #  include "GHOST_NDOFManager.hh"
 #endif
+#ifdef WITH_INPUT_GAMEPAD
+#  include "GHOST_GamepadManager.hh"
+#endif
 
 GHOST_System::GHOST_System()
     : m_nativePixel(false),
@@ -31,6 +34,10 @@ GHOST_System::GHOST_System()
       m_eventManager(nullptr),
 #ifdef WITH_INPUT_NDOF
       m_ndofManager(nullptr),
+#endif
+#ifdef WITH_INPUT_GAMEPAD
+      _gamepad_manager(nullptr),
+      _time_stamp(getMilliSeconds()),
 #endif
       m_preFullScreenSetting{0},
       m_multitouchGestures(true),
@@ -241,6 +248,18 @@ void GHOST_System::dispatchEvents()
   }
 
   m_timerManager->fireTimers(getMilliSeconds());
+}
+
+void GHOST_System::dispatchFrameEvents()
+{
+#ifdef WITH_INPUT_GAMEPAD
+  const uint64_t now = getMilliSeconds();
+  const float delta_time = float(now - _time_stamp) / 1000.0f;
+  if (_gamepad_manager) {
+    _gamepad_manager->send_gamepad_frame_events(delta_time);
+  }
+  _time_stamp = now;
+#endif
 }
 
 GHOST_TSuccess GHOST_System::addEventConsumer(GHOST_IEventConsumer *consumer)
