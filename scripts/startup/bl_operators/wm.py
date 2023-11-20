@@ -2868,8 +2868,11 @@ class WM_OT_batch_rename(Operator):
                         # Outliner.
                         tuple(set(
                             action for id in context.selected_ids
-                            if (((animation_data := id.animation_data) is not None) and
-                                ((action := animation_data.action) is not None) and
+                            if (((action := id) and action.rna_type.identifier == "Action")
+                                or
+                                (((animation_data := id.animation_data) is not None) and
+                                ((action := animation_data.action) is not None))
+                                and
                                 (action.library is None))
                         ))
                         if space_type == 'OUTLINER' else
