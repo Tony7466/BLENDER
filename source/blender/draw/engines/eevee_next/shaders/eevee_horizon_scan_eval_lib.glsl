@@ -288,15 +288,15 @@ void horizon_scan_eval(vec3 vP,
 {
   vec3 vV = drw_view_incident_vector(vP);
 
-  const int slice_len = 8;
-  // const int slice_len = 2;
-
-  // vec2 v_dir = sample_circle(noise.x * (0.5 / float(slice_len)));
+  const int slice_len = 2;
+  vec2 v_dir = sample_circle(noise.x * (0.5 / float(slice_len)));
 
   horizon_scan_context_accumulation_reset(context);
 
   for (int slice = 0; slice < slice_len; slice++) {
+#if 0 /* For debug purpose. For when slice_len is greater than 2. */
     vec2 v_dir = sample_circle(((float(slice) + noise.x) / float(slice_len)));
+#endif
 
     /* Setup integration domain around V. */
     vec3 vB = normalize(cross(vV, vec3(v_dir, 0.0)));
