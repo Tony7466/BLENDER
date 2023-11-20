@@ -979,6 +979,7 @@ std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume 
       openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
       result = blender::bounds::merge(result, BKE_volume_grid_bounds(grid));
     }
+    return result;
   }
 #else
   UNUSED_VARS(volume);
