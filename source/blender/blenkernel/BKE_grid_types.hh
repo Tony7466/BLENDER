@@ -8,9 +8,11 @@
  * \ingroup bli
  */
 
+#include "BLI_color.hh"
 #include "BLI_cpp_type.hh"
 #include "BLI_math_base.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
 
 /* Note: version header included here to enable correct forward declaration of some types. No other
@@ -21,7 +23,12 @@
 #  include <openvdb/version.h>
 #endif
 
+/* -------------------------------------------------------------------- */
+/** \name OpenVDB Forward Declaration
+ * \{ */
+
 #ifdef WITH_OPENVDB
+
 /* Forward declaration for basic OpenVDB types. */
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
@@ -71,6 +78,7 @@ template<typename ValueType, typename Codec> class TypedAttributeArray;
 using BoolTree = tree::Tree4Fwd<bool, 5, 4, 3>::Type;
 using DoubleTree = tree::Tree4Fwd<double, 5, 4, 3>::Type;
 using FloatTree = tree::Tree4Fwd<float, 5, 4, 3>::Type;
+using Int8Tree = tree::Tree4Fwd<int8_t, 5, 4, 3>::Type;
 using Int32Tree = tree::Tree4Fwd<int32_t, 5, 4, 3>::Type;
 using Int64Tree = tree::Tree4Fwd<int64_t, 5, 4, 3>::Type;
 using MaskTree = tree::Tree4Fwd<ValueMask, 5, 4, 3>::Type;
@@ -81,16 +89,19 @@ using Vec2STree = tree::Tree4Fwd<Vec2s, 5, 4, 3>::Type;
 using Vec3DTree = tree::Tree4Fwd<Vec3d, 5, 4, 3>::Type;
 using Vec3ITree = tree::Tree4Fwd<Vec3i, 5, 4, 3>::Type;
 using Vec3STree = tree::Tree4Fwd<Vec3f, 5, 4, 3>::Type;
+using Vec4STree = tree::Tree4Fwd<Vec4f, 5, 4, 3>::Type;
 using ScalarTree = FloatTree;
 using TopologyTree = MaskTree;
 using Vec3dTree = Vec3DTree;
 using Vec3fTree = Vec3STree;
+using Vec4fTree = Vec4STree;
 using VectorTree = Vec3fTree;
 
 /// Common grid types
 using BoolGrid = Grid<BoolTree>;
 using DoubleGrid = Grid<DoubleTree>;
 using FloatGrid = Grid<FloatTree>;
+using Int8Grid = Grid<Int8Tree>;
 using Int32Grid = Grid<Int32Tree>;
 using Int64Grid = Grid<Int64Tree>;
 using UInt32Grid = Grid<UInt32Tree>;
@@ -100,22 +111,31 @@ using Vec2IGrid = Grid<Vec2ITree>;
 using Vec3IGrid = Grid<Vec3ITree>;
 using Vec2SGrid = Grid<Vec2STree>;
 using Vec3SGrid = Grid<Vec3STree>;
+using Vec4SGrid = Grid<Vec4STree>;
 using ScalarGrid = FloatGrid;
 using TopologyGrid = MaskGrid;
 using Vec3dGrid = Vec3DGrid;
 using Vec2fGrid = Vec2SGrid;
 using Vec3fGrid = Vec3SGrid;
+using Vec4fGrid = Vec4SGrid;
 using VectorGrid = Vec3fGrid;
 
 }  // namespace OPENVDB_VERSION_NAME
 }  // namespace openvdb
-#endif
 
-namespace blender::bke {
+#endif /* WITH_OPENVDB */
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Attribute Grid
+ *
+ * Grid class template using Blender data types.
+ * \{ */
+
+namespace blender::bke::grid_types {
 
 #ifdef WITH_OPENVDB
-
-namespace grid_types {
 
 using SupportedAttributeValueTypes = std::tuple<bool,
                                                 float,
@@ -190,6 +210,9 @@ template<> struct AttributeTreeImpl<double> {
 template<> struct AttributeTreeImpl<double3> {
   using Type = openvdb::Vec3DTree;
 };
+template<> struct AttributeTreeImpl<int8_t> {
+  using Type = openvdb::Int8Grid;
+};
 template<> struct AttributeTreeImpl<int32_t> {
   using Type = openvdb::Int32Tree;
 };
@@ -205,9 +228,45 @@ template<> struct AttributeTreeImpl<int3> {
 template<> struct AttributeTreeImpl<uint32_t> {
   using Type = openvdb::UInt32Tree;
 };
+template<> struct AttributeTreeImpl<ColorGeometry4f> {
+  using Type = openvdb::Vec4fTree;
+};
+template<> struct AttributeTreeImpl<blender::ColorGeometry4b> {
+  using Type = openvdb::UInt32Tree;
+};
+template<> struct AttributeTreeImpl<math::Quaternion> {
+  using Type = openvdb::Vec4fTree;
+};
+/* Stub class for string attributes, not supported. */
+template<> struct AttributeTreeImpl<std::string> {
+  using Type = openvdb::MaskTree;
+};
 
 template<typename T> using AttributeTree = typename AttributeTreeImpl<T>::Type;
 template<typename T> using AttributeGrid = typename openvdb::Grid<AttributeTree<T>>;
+
+#else /* WITH_OPENVDB */
+
+template<typename T> struct AttributeTree {
+};
+template<typename T> struct AttributeGrid {
+};
+
+#endif /* WITH_OPENVDB */
+
+}  // namespace blender::bke::grid_types
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Grid Type Converter
+ *
+ * Converter between Blender types and OpenVDB types.
+ * \{ */
+
+namespace blender::bke::grid_types {
+
+#ifdef WITH_OPENVDB
 
 namespace detail {
 
@@ -397,8 +456,8 @@ template<> struct Converter<openvdb::BoolGrid> {
   }
 };
 
-}  // namespace grid_types
+#endif /* WITH_OPENVDB */
 
-#endif
+}  // namespace blender::bke::grid_types
 
-}  // namespace blender::bke
+/** \} */

@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BKE_grid_types.hh"
+
 #include "FN_field.hh"
 
 namespace blender::bke {
@@ -20,10 +22,13 @@ namespace blender::bke {
 
 template<typename T> struct ValueOrField {
   using Field = fn::Field<T>;
+  using GridType = typename grid_types::AttributeGrid<T>;
+  using Grid = typename std::shared_ptr<GridType>;
 
   /** Value that is used when the field is empty. */
   T value{};
   Field field;
+  Grid grid;
 
   ValueOrField() = default;
 
