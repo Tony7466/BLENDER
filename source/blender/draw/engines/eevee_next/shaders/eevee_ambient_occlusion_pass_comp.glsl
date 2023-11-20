@@ -19,7 +19,7 @@ void main()
 
   if (depth == 1.0) {
     /* Do not trace for background */
-    imageStore(out_ao_img, ivec3(texel, out_ao_img_layer_index), vec4(0.0));
+    imageStoreFast(out_ao_img, ivec3(texel, out_ao_img_layer_index), vec4(0.0));
     return;
   }
 
@@ -45,5 +45,6 @@ void main()
   /* We can have some float imprecision because of the weighted accumulation. */
   ambient_occlusion = saturate(ambient_occlusion * 1.02);
 
-  imageStore(out_ao_img, ivec3(texel, out_ao_img_layer_index), saturate(ambient_occlusion.rrrr));
+  imageStoreFast_1chFloat(
+      out_ao_img, ivec3(texel, out_ao_img_layer_index), saturate(ambient_occlusion.r));
 }

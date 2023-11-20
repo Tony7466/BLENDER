@@ -43,8 +43,8 @@ void main()
 
   ivec2 out_texel = ivec2(gl_GlobalInvocationID.xy);
   vec4 out_color = weighted_sum_array(colors, weights);
-  imageStore(out_color_img, out_texel, out_color);
+  imageStoreFast(out_color_img, out_texel, out_color);
 
   float out_coc = dot(cocs, weights);
-  imageStore(out_coc_img, out_texel, vec4(out_coc));
+  imageStoreFast(out_coc_img, out_texel, vec4(out_coc));
 }

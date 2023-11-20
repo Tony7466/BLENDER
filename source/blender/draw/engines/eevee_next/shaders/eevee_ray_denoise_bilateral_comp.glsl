@@ -123,8 +123,8 @@ void main()
   float roughness = center_closure.roughness;
 #endif
 
-  float variance = imageLoad(in_variance_img, texel_fullres).r;
-  vec3 in_radiance = imageLoad(in_radiance_img, texel_fullres).rgb;
+  float variance = imageLoadFast(in_variance_img, texel_fullres).r;
+  vec3 in_radiance = imageLoadFast(in_radiance_img, texel_fullres).rgb;
 
   bool is_background = (center_depth == 0.0);
   bool is_smooth = (roughness < 0.05);
@@ -138,7 +138,7 @@ void main()
 
   if (is_smooth || is_background || is_low_variance) {
     /* Early out cases. */
-    imageStore(out_radiance_img, texel_fullres, vec4(in_radiance, 0.0));
+    imageStoreFast(out_radiance_img, texel_fullres, vec4(in_radiance, 0.0));
     return;
   }
 
@@ -157,7 +157,7 @@ void main()
     ivec2 sample_texel = texel_fullres + offset;
     ivec2 sample_tile = sample_texel / RAYTRACE_GROUP_SIZE;
     /* Make sure the sample has been processed and do not contain garbage data. */
-    bool unprocessed_tile = imageLoad(tile_mask_img, sample_tile).r == 0;
+    bool unprocessed_tile = imageLoadFast(tile_mask_img, sample_tile).r == 0;
     if (unprocessed_tile) {
       continue;
     }
@@ -179,7 +179,7 @@ void main()
 
     float weight = depth_weight * spatial_weight * normal_weight;
 
-    vec3 radiance = imageLoad(in_radiance_img, sample_texel).rgb;
+    vec3 radiance = imageLoadFast(in_radiance_img, sample_texel).rgb;
     /* Do not gather unprocessed pixels. */
     if (all(equal(in_radiance, FLT_11_11_10_MAX))) {
       continue;
@@ -191,5 +191,5 @@ void main()
   vec3 out_radiance = accum_radiance * safe_rcp(accum_weight);
   out_radiance = from_accumulation_space(out_radiance);
 
-  imageStore(out_radiance_img, texel_fullres, vec4(out_radiance, 0.0));
+  imageStoreFast(out_radiance_img, texel_fullres, vec4(out_radiance, 0.0));
 }

@@ -33,7 +33,7 @@ void main()
 #endif
 
   if (!valid_pixel) {
-    imageStore(out_ray_data_img, texel, vec4(0.0));
+    imageStoreFast(out_ray_data_img, texel, vec4(0.0));
     return;
   }
 
@@ -57,5 +57,5 @@ void main()
    * Limit to the smallest non-0 value that the format can encode.
    * Strangely it does not correspond to the IEEE spec. */
   float inv_pdf = (pdf == 0.0) ? 0.0 : max(6e-8, 1.0 / pdf);
-  imageStore(out_ray_data_img, texel, vec4(ray_direction, inv_pdf));
+  imageStoreFast(out_ray_data_img, texel, vec4(ray_direction, inv_pdf));
 }

@@ -288,6 +288,7 @@ struct SStruct {
 #define texelFetchOffset(__tex, __texel, __lod, __offset) \
   _texelFetch_internal(__tex, __texel, __lod, __offset)
 #define imageLoad(__image, __coord) _texelFetch_internal(__image, __coord, 0)
+#define imageLoadFast(__image, __coord) _texelFetch_internal_fast(__image, __coord, 0)
 #define texture2(__tex, __uv) _texture_internal_samp(__tex, __uv)
 #define texture3(__tex, __uv, _bias) _texture_internal_bias(__tex, __uv, bias(float(_bias)))
 #define textureLod(__tex, __uv, __lod) _texture_internal_level(__tex, __uv, level(float(__lod)))
@@ -307,6 +308,13 @@ struct SStruct {
 /* Texture-write functions. */
 #define imageStore(_tex, _coord, _value) _texture_write_internal(_tex, _coord, _value)
 #define imageStoreFast(_tex, _coord, _value) _texture_write_internal_fast(_tex, _coord, _value)
+
+/* Fast store variant for single-channel writes. Special case which avoids unnecessary vector
+ * pack/unpback. */
+#define imageStoreFast_1chFloat(_tex, _coord, _value) \
+  _texture_write_internal_fast(_tex, _coord, _value)
+#define imageStoreFast_1chUint(_tex, _coord, _value) \
+  _texture_write_internal_fast(_tex, _coord, _value)
 
 /* Cube-map support always available when using Metal. */
 #define textureLod_cubemapArray(tex, co, lod) textureLod(tex, co, lod)
@@ -426,6 +434,14 @@ inline vec<S, 4> _texelFetch_internal(thread _mtl_combined_image_sampler_1d<S, A
   }
 }
 
+template<typename S, typename T, access A>
+inline vec<S, 4> _texelFetch_internal_fast(thread _mtl_combined_image_sampler_1d<S, A> tex,
+                                           T texel,
+                                           uint lod = 0)
+{
+  return tex.texture->read(uint(texel));
+}
+
 template<typename S, typename T>
 inline vec<S, 4> _texelFetch_internal(
     const thread _mtl_combined_image_sampler_buffer<S, access::read> tex, T texel, uint lod = 0)
@@ -437,6 +453,13 @@ inline vec<S, 4> _texelFetch_internal(
   else {
     return vec<S, 4>(0);
   }
+}
+
+template<typename S, typename T>
+inline vec<S, 4> _texelFetch_internal_fast(
+    const thread _mtl_combined_image_sampler_buffer<S, access::read> tex, T texel, uint lod = 0)
+{
+  return tex.texture->read(uint(texel));
 }
 
 template<typename S, typename T, access A>
@@ -453,6 +476,15 @@ inline vec<S, 4> _texelFetch_internal(thread _mtl_combined_image_sampler_1d<S, A
   else {
     return vec<S, 4>(0);
   }
+}
+
+template<typename S, typename T, access A>
+inline vec<S, 4> _texelFetch_internal_fast(thread _mtl_combined_image_sampler_1d<S, A> tex,
+                                           T texel,
+                                           uint lod,
+                                           T offset)
+{
+  return tex.texture->read(uint(texel + offset), 0);
 }
 
 template<typename S, typename T, access A>
@@ -476,6 +508,16 @@ inline vec<S, 4> _texelFetch_internal(thread _mtl_combined_image_sampler_1d_arra
 }
 
 template<typename S, typename T, access A>
+inline vec<S, 4> _texelFetch_internal_fast(thread _mtl_combined_image_sampler_1d_array<S, A> tex,
+                                           vec<T, 2> texel,
+                                           uint lod,
+                                           vec<T, 2> offset = vec<T, 2>(0, 0))
+{
+  /* LODs not supported for 1d textures. This must be zero. */
+  return tex.texture->read(uint(texel.x + offset.x), uint(texel.y + offset.y), 0);
+}
+
+template<typename S, typename T, access A>
 inline vec<S, 4> _texelFetch_internal(thread _mtl_combined_image_sampler_2d<S, A> tex,
                                       vec<T, 2> texel,
                                       uint lod,
@@ -492,6 +534,15 @@ inline vec<S, 4> _texelFetch_internal(thread _mtl_combined_image_sampler_2d<S, A
   else {
     return vec<S, 4>(0);
   }
+}
+
+template<typename S, typename T, access A>
+inline vec<S, 4> _texelFetch_internal_fast(thread _mtl_combined_image_sampler_2d<S, A> tex,
+                                           vec<T, 2> texel,
+                                           uint lod,
+                                           vec<T, 2> offset = vec<T, 2>(0))
+{
+  return tex.texture->read(uint2(texel + offset), lod);
 }
 
 template<typename S, typename T, access A>
@@ -514,6 +565,15 @@ inline vec<S, 4> _texelFetch_internal(thread _mtl_combined_image_sampler_2d_arra
 }
 
 template<typename S, typename T, access A>
+inline vec<S, 4> _texelFetch_internal_fast(thread _mtl_combined_image_sampler_2d_array<S, A> tex,
+                                           vec<T, 3> texel,
+                                           uint lod,
+                                           vec<T, 3> offset = vec<T, 3>(0))
+{
+  return tex.texture->read(uint2(texel.xy + offset.xy), uint(texel.z + offset.z), lod);
+}
+
+template<typename S, typename T, access A>
 inline vec<S, 4> _texelFetch_internal(thread _mtl_combined_image_sampler_3d<S, A> tex,
                                       vec<T, 3> texel,
                                       uint lod,
@@ -531,6 +591,15 @@ inline vec<S, 4> _texelFetch_internal(thread _mtl_combined_image_sampler_3d<S, A
   else {
     return vec<S, 4>(0);
   }
+}
+
+template<typename S, typename T, access A>
+inline vec<S, 4> _texelFetch_internal_fast(thread _mtl_combined_image_sampler_3d<S, A> tex,
+                                           vec<T, 3> texel,
+                                           uint lod,
+                                           vec<T, 3> offset = vec<T, 3>(0))
+{
+  return tex.texture->read(uint3(texel + offset), lod);
 }
 
 template<typename T, access A>
@@ -553,6 +622,17 @@ inline _msl_return_float _texelFetch_internal(
     _msl_return_float fl = {0};
     return fl;
   }
+}
+
+template<typename T, access A>
+inline _msl_return_float _texelFetch_internal_fast(
+    thread _mtl_combined_image_sampler_depth_2d<float, A> tex,
+    vec<T, 2> texel,
+    uint lod,
+    vec<T, 2> offset = vec<T, 2>(0))
+{
+  _msl_return_float fl = {tex.texture->read(uint2(texel + offset), lod)};
+  return fl;
 }
 
 template<typename S, typename T, access A>
@@ -910,6 +990,14 @@ inline void _texture_write_internal_fast(thread _mtl_combined_image_sampler_1d<S
 }
 
 template<typename S, typename T, access A>
+inline void _texture_write_internal_fast(thread _mtl_combined_image_sampler_1d<S, A> tex,
+                                         T _coord,
+                                         S value)
+{
+  tex.texture->write(value, uint(_coord));
+}
+
+template<typename S, typename T, access A>
 inline void _texture_write_internal(thread _mtl_combined_image_sampler_2d<S, A> tex,
                                     T _coord,
                                     vec<S, 4> value)
@@ -925,6 +1013,14 @@ template<typename S, typename T, access A>
 inline void _texture_write_internal_fast(thread _mtl_combined_image_sampler_2d<S, A> tex,
                                          T _coord,
                                          vec<S, 4> value)
+{
+  tex.texture->write(value, uint2(_coord.xy));
+}
+
+template<typename S, typename T, access A>
+inline void _texture_write_internal_fast(thread _mtl_combined_image_sampler_2d<S, A> tex,
+                                         T _coord,
+                                         S value)
 {
   tex.texture->write(value, uint2(_coord.xy));
 }
@@ -953,6 +1049,14 @@ inline void _texture_write_internal_fast(thread _mtl_combined_image_sampler_2d_a
 }
 
 template<typename S, typename T, access A>
+inline void _texture_write_internal_fast(thread _mtl_combined_image_sampler_2d_array<S, A> tex,
+                                         T _coord,
+                                         S value)
+{
+  tex.texture->write(value, uint2(_coord.xy), _coord.z);
+}
+
+template<typename S, typename T, access A>
 inline void _texture_write_internal(thread _mtl_combined_image_sampler_3d<S, A> tex,
                                     T _coord,
                                     vec<S, 4> value)
@@ -971,6 +1075,14 @@ template<typename S, typename T, access A>
 inline void _texture_write_internal_fast(thread _mtl_combined_image_sampler_3d<S, A> tex,
                                          T _coord,
                                          vec<S, 4> value)
+{
+  tex.texture->write(value, uint3(_coord.xyz));
+}
+
+template<typename S, typename T, access A>
+inline void _texture_write_internal_fast(thread _mtl_combined_image_sampler_3d<S, A> tex,
+                                         T _coord,
+                                         S value)
 {
   tex.texture->write(value, uint3(_coord.xyz));
 }

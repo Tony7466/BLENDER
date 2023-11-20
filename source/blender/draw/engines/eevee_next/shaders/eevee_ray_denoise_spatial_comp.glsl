@@ -46,7 +46,7 @@ void main()
   ivec2 texel = (texel_fullres) / uniform_buf.raytrace.resolution_scale;
 
   if (uniform_buf.raytrace.skip_denoise) {
-    imageStore(out_radiance_img, texel_fullres, imageLoad(ray_radiance_img, texel));
+    imageStoreFast(out_radiance_img, texel_fullres, imageLoadFast(ray_radiance_img, texel));
     return;
   }
 
@@ -63,13 +63,13 @@ void main()
         continue;
       }
 
-      bool tile_is_unused = imageLoad(tile_mask_img, tile_coord_neighbor).r == 0;
+      bool tile_is_unused = imageLoadFast(tile_mask_img, tile_coord_neighbor).r == 0;
       if (tile_is_unused) {
         ivec2 texel_fullres_neighbor = texel_fullres + ivec2(x, y) * int(tile_size);
 
-        imageStore(out_radiance_img, texel_fullres_neighbor, vec4(FLT_11_11_10_MAX, 0.0));
-        imageStore(out_variance_img, texel_fullres_neighbor, vec4(0.0));
-        imageStore(out_hit_depth_img, texel_fullres_neighbor, vec4(0.0));
+        imageStoreFast(out_radiance_img, texel_fullres_neighbor, vec4(FLT_11_11_10_MAX, 0.0));
+        imageStoreFast(out_variance_img, texel_fullres_neighbor, vec4(0.0));
+        imageStoreFast(out_hit_depth_img, texel_fullres_neighbor, vec4(0.0));
       }
     }
   }
@@ -77,9 +77,9 @@ void main()
   bool valid_texel = in_texture_range(texel_fullres, gbuf_header_tx);
   uint closure_bits = (!valid_texel) ? 0u : texelFetch(gbuf_header_tx, texel_fullres, 0).r;
   if (!flag_test(closure_bits, CLOSURE_ACTIVE)) {
-    imageStore(out_radiance_img, texel_fullres, vec4(FLT_11_11_10_MAX, 0.0));
-    imageStore(out_variance_img, texel_fullres, vec4(0.0));
-    imageStore(out_hit_depth_img, texel_fullres, vec4(0.0));
+    imageStoreFast(out_radiance_img, texel_fullres, vec4(FLT_11_11_10_MAX, 0.0));
+    imageStoreFast(out_variance_img, texel_fullres, vec4(0.0));
+    imageStoreFast(out_hit_depth_img, texel_fullres, vec4(0.0));
     return;
   }
 
@@ -165,7 +165,7 @@ void main()
   float scene_z = drw_depth_screen_to_view(texelFetch(depth_tx, texel_fullres, 0).r);
   float hit_depth = drw_depth_view_to_screen(scene_z - closest_hit_time);
 
-  imageStore(out_radiance_img, texel_fullres, vec4(radiance_accum, 0.0));
-  imageStore(out_variance_img, texel_fullres, vec4(hit_variance));
-  imageStore(out_hit_depth_img, texel_fullres, vec4(hit_depth));
+  imageStoreFast(out_radiance_img, texel_fullres, vec4(radiance_accum, 0.0));
+  imageStoreFast(out_variance_img, texel_fullres, vec4(hit_variance));
+  imageStoreFast(out_hit_depth_img, texel_fullres, vec4(hit_depth));
 }

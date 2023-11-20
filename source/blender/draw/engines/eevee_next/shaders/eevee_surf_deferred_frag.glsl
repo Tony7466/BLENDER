@@ -70,7 +70,7 @@ void main()
   if (imageSize(rp_cryptomatte_img).x > 1) {
     vec4 cryptomatte_output = vec4(
         cryptomatte_object_buf[resource_id], node_tree.crypto_hash, 0.0);
-    imageStore(rp_cryptomatte_img, out_texel, cryptomatte_output);
+    imageStoreFast(rp_cryptomatte_img, out_texel, cryptomatte_output);
   }
   output_renderpass_color(uniform_buf.render_pass.normal_id, vec4(out_normal, 1.0));
   output_renderpass_color(uniform_buf.render_pass.position_id, vec4(g_data.P, 1.0));
@@ -90,10 +90,10 @@ void main()
     closure.xy = gbuffer_normal_pack(g_reflection_data.N);
     closure.z = g_reflection_data.roughness;
     closure.w = 0.0;
-    imageStore(out_gbuf_closure_img, ivec3(out_texel, 0), closure);
+    imageStoreFast(out_gbuf_closure_img, ivec3(out_texel, 0), closure);
 
     vec4 color = gbuffer_color_pack(g_reflection_data.color);
-    imageStore(out_gbuf_color_img, ivec3(out_texel, 0), color);
+    imageStoreFast(out_gbuf_color_img, ivec3(out_texel, 0), color);
     header |= CLOSURE_REFLECTION;
   }
 
@@ -108,10 +108,10 @@ void main()
       closure.xy = gbuffer_normal_pack(g_refraction_data.N);
       closure.z = g_refraction_data.roughness;
       closure.w = gbuffer_ior_pack(g_refraction_data.ior);
-      imageStore(out_gbuf_closure_img, ivec3(out_texel, 1), closure);
+      imageStoreFast(out_gbuf_closure_img, ivec3(out_texel, 1), closure);
 
       vec4 color = gbuffer_color_pack(g_refraction_data.color);
-      imageStore(out_gbuf_color_img, ivec3(out_texel, 1), color);
+      imageStoreFast(out_gbuf_color_img, ivec3(out_texel, 1), color);
       header |= CLOSURE_REFRACTION;
     }
     else {
@@ -120,10 +120,10 @@ void main()
       closure.xy = gbuffer_normal_pack(g_diffuse_data.N);
       closure.z = gbuffer_thickness_pack(thickness);
       closure.w = 0.0; /* Unused. */
-      imageStore(out_gbuf_closure_img, ivec3(out_texel, 1), closure);
+      imageStoreFast(out_gbuf_closure_img, ivec3(out_texel, 1), closure);
 
       vec4 color = gbuffer_color_pack(g_diffuse_data.color);
-      imageStore(out_gbuf_color_img, ivec3(out_texel, 1), color);
+      imageStoreFast(out_gbuf_color_img, ivec3(out_texel, 1), color);
       header |= CLOSURE_DIFFUSE;
     }
 
@@ -132,7 +132,7 @@ void main()
       vec4 closure;
       closure.xyz = gbuffer_sss_radii_pack(g_diffuse_data.sss_radius);
       closure.w = gbuffer_object_id_unorm16_pack(uint(resource_id));
-      imageStore(out_gbuf_closure_img, ivec3(out_texel, 2), closure);
+      imageStoreFast(out_gbuf_closure_img, ivec3(out_texel, 2), closure);
       header |= CLOSURE_SSS;
     }
   }

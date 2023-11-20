@@ -52,16 +52,16 @@ void main()
 #endif
 
   if (update_mip_0) {
-    imageStore(out_mip_0, src_px + ivec2(0, 1), samp.xxxx);
-    imageStore(out_mip_0, src_px + ivec2(1, 1), samp.yyyy);
-    imageStore(out_mip_0, src_px + ivec2(1, 0), samp.zzzz);
-    imageStore(out_mip_0, src_px + ivec2(0, 0), samp.wwww);
+    imageStoreFast_1chFloat(out_mip_0, src_px + ivec2(0, 1), samp.x);
+    imageStoreFast_1chFloat(out_mip_0, src_px + ivec2(1, 1), samp.y);
+    imageStoreFast_1chFloat(out_mip_0, src_px + ivec2(1, 0), samp.z);
+    imageStoreFast_1chFloat(out_mip_0, src_px + ivec2(0, 0), samp.w);
   }
 
   /* Level 1. (No load) */
   float max_depth = reduce_max(samp);
   ivec2 dst_px = ivec2(kernel_origin + local_px);
-  imageStore(out_mip_1, dst_px, vec4(max_depth));
+  imageStoreFast_1chFloat(out_mip_1, dst_px, max_depth);
   store_local_depth(local_px, max_depth);
 
   /* Level 2-5. */
@@ -74,7 +74,7 @@ void main()
   if (active_thread) { \
     max_depth = reduce_max(load_local_depths(local_px)); \
     dst_px = ivec2((kernel_origin >> mask_shift) + local_px); \
-    imageStore(out_mip__, dst_px, vec4(max_depth)); \
+    imageStoreFast_1chFloat(out_mip__, dst_px, max_depth); \
   } \
   barrier(); /* Wait for previous reads to finish. */ \
   if (active_thread) { \
@@ -104,14 +104,14 @@ void main()
       kernel_origin = ivec2(gl_WorkGroupSize.xy) * ivec2(x, y);
       src_px = ivec2(kernel_origin + local_px) * 2;
       vec4 samp;
-      samp.x = imageLoad(out_mip_5, min(src_px + ivec2(0, 1), image_border)).x;
-      samp.y = imageLoad(out_mip_5, min(src_px + ivec2(1, 1), image_border)).x;
-      samp.z = imageLoad(out_mip_5, min(src_px + ivec2(1, 0), image_border)).x;
-      samp.w = imageLoad(out_mip_5, min(src_px + ivec2(0, 0), image_border)).x;
+      samp.x = imageLoadFast(out_mip_5, min(src_px + ivec2(0, 1), image_border)).x;
+      samp.y = imageLoadFast(out_mip_5, min(src_px + ivec2(1, 1), image_border)).x;
+      samp.z = imageLoadFast(out_mip_5, min(src_px + ivec2(1, 0), image_border)).x;
+      samp.w = imageLoadFast(out_mip_5, min(src_px + ivec2(0, 0), image_border)).x;
       /* Level 6. */
       float max_depth = reduce_max(samp);
       ivec2 dst_px = ivec2(kernel_origin + local_px);
-      imageStore(out_mip_6, dst_px, vec4(max_depth));
+      imageStoreFast_1chFloat(out_mip_6, dst_px, max_depth);
       store_local_depth(local_px, max_depth);
 
       mask_shift = 1;

@@ -367,7 +367,7 @@ void main()
   result.color /= weight_src + weight_dst;
 
   /* Save history for next iteration. Still in YCoCg space with CoC in alpha. */
-  imageStore(out_history_img, src_texel, result.color);
+  imageStoreFast(out_history_img, src_texel, result.color);
 
   /* Un-swizzle. */
   result.coc = result.color.a;
@@ -376,6 +376,6 @@ void main()
 
   result.color = colorspace_scene_linear_from_YCoCg(result.color);
 
-  imageStore(out_color_img, src_texel, result.color);
-  imageStore(out_coc_img, src_texel, vec4(result.coc));
+  imageStoreFast(out_color_img, src_texel, result.color);
+  imageStoreFast(out_coc_img, src_texel, vec4(result.coc));
 }

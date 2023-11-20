@@ -91,8 +91,8 @@ void main()
 #define LOCAL_OFFSET(x_, y_) texel_local.y + (y_)][texel_local.x + (x_)
 
   /* Load level 0 into cache. */
-  color_cache[LOCAL_INDEX] = imageLoad(inout_color_lod0_img, texel);
-  coc_cache[LOCAL_INDEX] = imageLoad(in_coc_lod0_img, texel).r;
+  color_cache[LOCAL_INDEX] = imageLoadFast(inout_color_lod0_img, texel);
+  coc_cache[LOCAL_INDEX] = imageLoadFast(in_coc_lod0_img, texel).r;
 
   /* Only scatter if luminous enough. */
   do_scatter[LOCAL_INDEX] = dof_scatter_luminosity_rejection(color_cache[LOCAL_INDEX].rgb);
@@ -202,7 +202,7 @@ void main()
 
   /* Remove scatter color from gather. */
   color_cache[LOCAL_INDEX].rgb *= 1.0 - do_scatter[LOCAL_INDEX];
-  imageStore(inout_color_lod0_img, texel, color_cache[LOCAL_INDEX]);
+  imageStoreFast(inout_color_lod0_img, texel, color_cache[LOCAL_INDEX]);
 
   /* Recursive downsample. */
   for (uint i = 1u; i < DOF_MIP_COUNT; i++) {
@@ -235,16 +235,16 @@ void main()
       ivec2 texel = ivec2(gl_GlobalInvocationID.xy >> i);
 
       if (i == 1) {
-        imageStore(out_color_lod1_img, texel, color_cache[LOCAL_INDEX]);
-        imageStore(out_coc_lod1_img, texel, vec4(coc_cache[LOCAL_INDEX]));
+        imageStoreFast(out_color_lod1_img, texel, color_cache[LOCAL_INDEX]);
+        imageStoreFast(out_coc_lod1_img, texel, vec4(coc_cache[LOCAL_INDEX]));
       }
       else if (i == 2) {
-        imageStore(out_color_lod2_img, texel, color_cache[LOCAL_INDEX]);
-        imageStore(out_coc_lod2_img, texel, vec4(coc_cache[LOCAL_INDEX]));
+        imageStoreFast(out_color_lod2_img, texel, color_cache[LOCAL_INDEX]);
+        imageStoreFast(out_coc_lod2_img, texel, vec4(coc_cache[LOCAL_INDEX]));
       }
       else /* if (i == 3) */ {
-        imageStore(out_color_lod3_img, texel, color_cache[LOCAL_INDEX]);
-        imageStore(out_coc_lod3_img, texel, vec4(coc_cache[LOCAL_INDEX]));
+        imageStoreFast(out_color_lod3_img, texel, color_cache[LOCAL_INDEX]);
+        imageStoreFast(out_coc_lod3_img, texel, vec4(coc_cache[LOCAL_INDEX]));
       }
     }
   }

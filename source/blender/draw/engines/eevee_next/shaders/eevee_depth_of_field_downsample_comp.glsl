@@ -32,5 +32,5 @@ void main()
 
   vec4 out_color = weighted_sum_array(colors, weights);
 
-  imageStore(out_color_img, ivec2(gl_GlobalInvocationID.xy), out_color);
+  imageStoreFast(out_color_img, ivec2(gl_GlobalInvocationID.xy), out_color);
 }

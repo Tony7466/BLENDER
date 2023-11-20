@@ -9,9 +9,14 @@
 #  define samplerCubeArray sampler2DArray
 #endif
 
-/* Fast store variant macro. In GLSL this is the same as imageStore, but assumes no bounds
- * checking. */
+/* Fast load/store variant macro. In GLSL this is the same as imageLoad/imageStore, but assumes no
+ * bounds checking. */
 #define imageStoreFast imageStore
+#define imageLoadFast imageLoad
+/* Fast store variant for single-channel writes. Special case which avoids unnecessary vector
+ * pack/unpback. Passthrough in GLSL. */
+#define imageStoreFast_1chFloat(tex, px, val) imageStore(tex, px, vec4(val))
+#define imageStoreFast_1chUint(tex, px, val) imageStore(tex, px, uvec4(val))
 
 /* Texture format tokens -- Type explicitness required by other Graphics APIs. */
 #define depth2D sampler2D

@@ -59,7 +59,7 @@ void main()
   int occupancy_layer = froxel.z >> shift;
   /* Modulo 32. */
   uint occupancy_shift = froxel.z & mask;
-  uint occupancy_bits = imageLoad(occupancy_img, ivec3(froxel.xy, occupancy_layer)).r;
+  uint occupancy_bits = imageLoadFast(occupancy_img, ivec3(froxel.xy, occupancy_layer)).r;
   if (((occupancy_bits >> occupancy_shift) & 1u) == 0u) {
     return;
   }
@@ -107,14 +107,14 @@ void main()
 #ifdef MAT_GEOM_VOLUME_OBJECT
   /* Additive Blending.
    * No race condition since each invocation only handles its own froxel. */
-  scattering += imageLoad(out_scattering_img, froxel).rgb;
-  extinction += imageLoad(out_extinction_img, froxel).rgb;
-  emission += imageLoad(out_emissive_img, froxel).rgb;
-  phase += imageLoad(out_phase_img, froxel).rg;
+  scattering += imageLoadFast(out_scattering_img, froxel).rgb;
+  extinction += imageLoadFast(out_extinction_img, froxel).rgb;
+  emission += imageLoadFast(out_emissive_img, froxel).rgb;
+  phase += imageLoadFast(out_phase_img, froxel).rg;
 #endif
 
-  imageStore(out_scattering_img, froxel, vec4(scattering, 1.0));
-  imageStore(out_extinction_img, froxel, vec4(extinction, 1.0));
-  imageStore(out_emissive_img, froxel, vec4(emission, 1.0));
-  imageStore(out_phase_img, froxel, vec4(phase, vec2(1.0)));
+  imageStoreFast(out_scattering_img, froxel, vec4(scattering, 1.0));
+  imageStoreFast(out_extinction_img, froxel, vec4(extinction, 1.0));
+  imageStoreFast(out_emissive_img, froxel, vec4(emission, 1.0));
+  imageStoreFast(out_phase_img, froxel, vec4(phase, vec2(1.0)));
 }

@@ -21,18 +21,18 @@ void main()
   vec3 refract_light = vec3(0.0);
 
   if (gbuf.has_diffuse) {
-    diffuse_light = imageLoad(direct_diffuse_img, texel).rgb +
-                    imageLoad(indirect_diffuse_img, texel).rgb;
+    diffuse_light = imageLoadFast(direct_diffuse_img, texel).rgb +
+                    imageLoadFast(indirect_diffuse_img, texel).rgb;
   }
 
   if (gbuf.has_reflection) {
-    reflect_light = imageLoad(direct_reflect_img, texel).rgb +
-                    imageLoad(indirect_reflect_img, texel).rgb;
+    reflect_light = imageLoadFast(direct_reflect_img, texel).rgb +
+                    imageLoadFast(indirect_reflect_img, texel).rgb;
   }
 
   if (gbuf.has_refraction) {
     refract_light = /* imageLoad(direct_refract_img, texel).rgb + */ /* TODO: Not implemented. */
-                    imageLoad(indirect_refract_img, texel).rgb;
+                    imageLoadFast(indirect_refract_img, texel).rgb;
   }
 
   /* Light passes. */

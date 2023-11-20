@@ -134,6 +134,8 @@ void main()
 
           view_infos_buf[view_index].winmat = winmat;
           view_infos_buf[view_index].wininv = inverse(winmat);
+          /* NOTE: We may not end up using this due to potential imprecision. */
+          view_infos_buf[view_index].persmat_sh = winmat * tilemap_data.viewmat;
         }
       }
     }
@@ -181,7 +183,7 @@ void main()
 
   /* Store the highest LOD valid page for rendering. */
   uint tile_packed = (valid_tile_index != -1) ? tiles_buf[valid_tile_index] : SHADOW_NO_DATA;
-  imageStore(tilemaps_img, atlas_texel, uvec4(tile_packed));
+  imageStoreFast(tilemaps_img, atlas_texel, uvec4(tile_packed));
 
   if (all(equal(gl_GlobalInvocationID, uvec3(0)))) {
     /* Clamp it as it can underflow if there is too much tile present on screen. */

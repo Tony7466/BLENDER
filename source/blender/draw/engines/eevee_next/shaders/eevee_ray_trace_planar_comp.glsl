@@ -21,13 +21,13 @@ void main()
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
   ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
 
-  vec4 ray_data = imageLoad(ray_data_img, texel);
-  float ray_pdf_inv = ray_data.w;
+  vec4 ray_data_im = imageLoadFast(ray_data_img, texel);
+  float ray_pdf_inv = ray_data_im.w;
 
   if (ray_pdf_inv == 0.0) {
     /* Invalid ray or pixels without ray. Do not trace. */
-    imageStore(ray_time_img, texel, vec4(0.0));
-    imageStore(ray_radiance_img, texel, vec4(0.0));
+    imageStoreFast(ray_time_img, texel, vec4(0.0));
+    imageStoreFast(ray_radiance_img, texel, vec4(0.0));
     return;
   }
 
@@ -40,7 +40,7 @@ void main()
   vec3 P = drw_point_screen_to_world(vec3(uv, depth));
   vec3 V = drw_world_incident_vector(P);
 
-  int planar_id = lightprobe_planar_select(P, V, ray_data.xyz);
+  int planar_id = lightprobe_planar_select(P, V, ray_data_im.xyz);
   if (planar_id == -1) {
     return;
   }
@@ -48,11 +48,11 @@ void main()
   ProbePlanarData planar = probe_planar_buf[planar_id];
 
   /* Tag the ray data so that screen trace will not try to evaluate it and override the result. */
-  imageStore(ray_data_img, texel, vec4(ray_data.xyz, -ray_data.w));
+  imageStoreFast(ray_data_img, texel, vec4(ray_data_im.xyz, -ray_data_im.w));
 
   Ray ray;
   ray.origin = P;
-  ray.direction = ray_data.xyz;
+  ray.direction = ray_data_im.xyz;
 
   vec3 radiance = vec3(0.0);
   float noise_offset = sampling_rng_1D_get(SAMPLING_RAYTRACE_W);
@@ -77,7 +77,7 @@ void main()
     radiance = textureLod(planar_radiance_tx, vec3(hit.ss_hit_P.xy, planar_id), 0.0).rgb;
 
     /* Transmit twice if thickness is set and ray is longer than thickness. */
-    // if (thickness > 0.0 && length(ray_data.xyz) > thickness) {
+    // if (thickness > 0.0 && length(ray_data_im.xyz) > thickness) {
     //   ray_radiance.rgb *= color;
     // }
   }
@@ -96,6 +96,6 @@ void main()
   float luma = max(1e-8, reduce_max(radiance));
   radiance *= 1.0 - max(0.0, luma - uniform_buf.raytrace.brightness_clamp) / luma;
 
-  imageStore(ray_time_img, texel, vec4(hit.time));
-  imageStore(ray_radiance_img, texel, vec4(radiance, 0.0));
+  imageStoreFast(ray_time_img, texel, vec4(hit.time));
+  imageStoreFast(ray_radiance_img, texel, vec4(radiance, 0.0));
 }

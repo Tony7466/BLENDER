@@ -13,7 +13,7 @@ void cryptomatte_load_samples(ivec2 texel, int layer, out vec2 samples[CRYPTOMAT
 
   /* Read all samples from the cryptomatte layer. */
   for (int p = 0; p < pass_len; p++) {
-    vec4 pass_sample = imageLoad(cryptomatte_img, ivec3(texel, p + layer_id));
+    vec4 pass_sample = imageLoadFast(cryptomatte_img, ivec3(texel, p + layer_id));
     samples[p * 2] = pass_sample.xy;
     samples[p * 2 + 1] = pass_sample.zw;
   }
@@ -59,7 +59,7 @@ void cryptomatte_store_samples(ivec2 texel, int layer, vec2 samples[CRYPTOMATTE_
     vec4 pass_sample;
     pass_sample.xy = samples[p * 2];
     pass_sample.zw = samples[p * 2 + 1];
-    imageStore(cryptomatte_img, ivec3(texel, p + layer_id), pass_sample);
+    imageStoreFast(cryptomatte_img, ivec3(texel, p + layer_id), pass_sample);
   }
 }
 
@@ -71,7 +71,7 @@ void main()
     cryptomatte_load_samples(texel, layer, samples);
     cryptomatte_sort_samples(samples);
     /* Repeat texture coordinates as the weight can be optimized to a small portion of the film. */
-    float weight = imageLoad(
+    float weight = imageLoadFast(
                        weight_img,
                        ivec3(texel % imageSize(weight_img).xy, FILM_WEIGHT_LAYER_ACCUMULATION))
                        .x;

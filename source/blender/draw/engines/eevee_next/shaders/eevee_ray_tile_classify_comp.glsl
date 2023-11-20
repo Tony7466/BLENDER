@@ -68,6 +68,6 @@ void main()
       tile_mask = 1u;
     }
 
-    imageStore(tile_mask_img, tile_co, uvec4(tile_mask));
+    imageStoreFast(tile_mask_img, tile_co, uvec4(tile_mask));
   }
 }

@@ -24,13 +24,13 @@ void main()
   float depth = texelFetch(depth_tx, texel_fullres, 0).r;
   vec2 uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
 
-  vec4 ray_data = imageLoad(ray_data_img, texel);
-  float ray_pdf_inv = ray_data.w;
+  vec4 ray_data_im = imageLoadFast(ray_data_img, texel);
+  float ray_pdf_inv = ray_data_im.w;
 
   if (ray_pdf_inv == 0.0) {
     /* Invalid ray or pixels without ray. Do not trace. */
-    imageStore(ray_time_img, texel, vec4(0.0));
-    imageStore(ray_radiance_img, texel, vec4(0.0));
+    imageStoreFast(ray_time_img, texel, vec4(0.0));
+    imageStoreFast(ray_radiance_img, texel, vec4(0.0));
     return;
   }
 
@@ -39,7 +39,7 @@ void main()
 
   Ray ray;
   ray.origin = P;
-  ray.direction = ray_data.xyz;
+  ray.direction = ray_data_im.xyz;
 
   /* Using ray direction as geometric normal to bias the sampling position.
    * This is faster than loading the gbuffer again and averages between reflected and normal
@@ -53,6 +53,6 @@ void main()
   float luma = max(1e-8, reduce_max(radiance));
   radiance *= 1.0 - max(0.0, luma - uniform_buf.raytrace.brightness_clamp) / luma;
 
-  imageStore(ray_time_img, texel, vec4(hit_time));
-  imageStore(ray_radiance_img, texel, vec4(radiance, 0.0));
+  imageStoreFast(ray_time_img, texel, vec4(hit_time));
+  imageStoreFast(ray_radiance_img, texel, vec4(radiance, 0.0));
 }

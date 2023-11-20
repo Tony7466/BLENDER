@@ -18,8 +18,8 @@ void main()
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
   ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
 
-  vec4 ray_data = imageLoad(ray_data_img, texel);
-  float ray_pdf_inv = ray_data.w;
+  vec4 ray_data_im = imageLoadFast(ray_data_img, texel);
+  float ray_pdf_inv = ray_data_im.w;
 
   if (ray_pdf_inv < 0.0) {
     /* Ray destined to planar trace. */
@@ -28,8 +28,8 @@ void main()
 
   if (ray_pdf_inv == 0.0) {
     /* Invalid ray or pixels without ray. Do not trace. */
-    imageStore(ray_time_img, texel, vec4(0.0));
-    imageStore(ray_radiance_img, texel, vec4(0.0));
+    imageStoreFast(ray_time_img, texel, vec4(0.0));
+    imageStoreFast(ray_radiance_img, texel, vec4(0.0));
     return;
   }
 
@@ -43,7 +43,7 @@ void main()
   vec3 V = drw_world_incident_vector(P);
   Ray ray;
   ray.origin = P;
-  ray.direction = ray_data.xyz;
+  ray.direction = ray_data_im.xyz;
 
   vec3 radiance = vec3(0.0);
   float noise_offset = sampling_rng_1D_get(SAMPLING_RAYTRACE_W);
@@ -86,7 +86,7 @@ void main()
     radiance = textureLod(screen_radiance_tx, history_ss_hit_P.xy, 0.0).rgb;
 
     /* Transmit twice if thickness is set and ray is longer than thickness. */
-    // if (thickness > 0.0 && length(ray_data.xyz) > thickness) {
+    // if (thickness > 0.0 && length(ray_data_im.xyz) > thickness) {
     //   ray_radiance.rgb *= color;
     // }
   }
@@ -105,6 +105,6 @@ void main()
   float luma = max(1e-8, reduce_max(radiance));
   radiance *= 1.0 - max(0.0, luma - uniform_buf.raytrace.brightness_clamp) / luma;
 
-  imageStore(ray_time_img, texel, vec4(hit.time));
-  imageStore(ray_radiance_img, texel, vec4(radiance, 0.0));
+  imageStoreFast(ray_time_img, texel, vec4(hit.time));
+  imageStoreFast(ray_radiance_img, texel, vec4(radiance, 0.0));
 }

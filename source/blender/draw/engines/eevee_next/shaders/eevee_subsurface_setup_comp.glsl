@@ -26,13 +26,13 @@ void main(void)
   GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
 
   if (gbuf.has_diffuse && gbuf.diffuse.sss_id != 0u) {
-    vec3 radiance = imageLoad(direct_light_img, texel).rgb +
-                    imageLoad(indirect_light_img, texel).rgb;
+    vec3 radiance = imageLoadFast(direct_light_img, texel).rgb +
+                    imageLoadFast(indirect_light_img, texel).rgb;
 
     float max_radius = reduce_max(gbuf.diffuse.sss_radius);
 
-    imageStore(radiance_img, texel, vec4(radiance, 0.0));
-    imageStore(object_id_img, texel, uvec4(gbuf.diffuse.sss_id));
+    imageStoreFast(radiance_img, texel, vec4(radiance, 0.0));
+    imageStoreFast(object_id_img, texel, uvec4(gbuf.diffuse.sss_id));
 
     vec2 center_uv = (vec2(texel) + 0.5) / vec2(textureSize(gbuf_header_tx, 0));
     float depth = texelFetch(depth_tx, texel, 0).r;
@@ -48,7 +48,7 @@ void main(void)
   }
   else {
     /* No need to write radiance_img since the radiance won't be used at all. */
-    imageStore(object_id_img, texel, uvec4(0));
+    imageStoreFast(object_id_img, texel, uvec4(0));
   }
 
   barrier();
