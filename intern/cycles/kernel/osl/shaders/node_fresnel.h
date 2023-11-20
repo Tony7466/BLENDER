@@ -37,6 +37,36 @@ color fresnel_conductor(float cosi, color eta, color k)
   return (Rparl2 + Rperp2) * 0.5;
 }
 
+vector conductor_ior_from_color(color reflectivity, color edge_tint)
+{
+  /* "Artist Friendly Metallic Fresnel", Ole Gulbrandsen, 2014
+   * https://jcgt.org/published/0003/04/03/paper.pdf */
+
+  vector r = clamp(reflectivity, 0.0, 0.99);
+  vector r_sqrt = sqrt(r);
+  vector one = 1.0;
+
+  vector n_min = (one - r) / (one + r);
+  vector n_max = (one + r_sqrt) / (one - r_sqrt);
+
+  return mix(n_max, n_min, edge_tint);
+}
+
+vector conductor_extinction_from_color(color reflectivity, vector n)
+{
+  /* "Artist Friendly Metallic Fresnel", Ole Gulbrandsen, 2014
+   * https://jcgt.org/published/0003/04/03/paper.pdf */
+
+  vector r = clamp(reflectivity, 0.0, 0.99);
+
+  vector np1 = n + 1.0;
+  vector nm1 = n - 1.0;
+  vector k2 = ((r * np1 * np1) - (nm1 * nm1)) / (1.0 - r);
+  k2 = max(k2, 0.0);
+
+  return sqrt(k2);
+}
+
 float F0_from_ior(float eta)
 {
   float f0 = (eta - 1.0) / (eta + 1.0);

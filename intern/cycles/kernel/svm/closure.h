@@ -450,22 +450,20 @@ ccl_device
       bsdf_transparent_setup(sd, weight, path_flag);
       break;
     }
-    case CLOSURE_BSDF_CONDUCTOR: {
+    case CLOSURE_BSDF_CONDUCTOR:
+    case CLOSURE_BSDF_CONDUCTOR_F82:
+    case CLOSURE_BSDF_ARTISTIC_CONDUCTOR: {
 #ifdef __CAUSTICS_TRICKS__
       if (!kernel_data.integrator.caustics_reflective && (path_flag & PATH_RAY_DIFFUSE))
         break;
 #endif
       ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
           sd, sizeof(MicrofacetBsdf), rgb_to_spectrum(make_float3(mix_weight)));
-      ccl_private FresnelF82Tint *fresnel = (bsdf != NULL) ?
-                                                (ccl_private FresnelF82Tint *)closure_alloc_extra(
-                                                    sd, sizeof(FresnelF82Tint)) :
-                                                NULL;
 
-      if (bsdf && fresnel) {
-        uint color_offest, tint_offset, rotation_offset, tangent_offset;
+      if (!(bsdf == NULL)) {
+        uint base_ior_offest, edge_tint_k_offset, rotation_offset, tangent_offset;
         svm_unpack_node_uchar4(
-            node.z, &color_offest, &tint_offset, &rotation_offset, &tangent_offset);
+            node.z, &base_ior_offest, &edge_tint_k_offset, &rotation_offset, &tangent_offset);
 
         float3 valid_reflection_N = maybe_ensure_valid_specular_reflection(sd, N);
         float3 T = stack_load_float3(stack, tangent_offset);
@@ -487,9 +485,6 @@ ccl_device
         bsdf->alpha_x = alpha_x;
         bsdf->alpha_y = alpha_y;
 
-        fresnel->f0 = rgb_to_spectrum(saturate(stack_load_float3(stack, color_offest)));
-        const Spectrum f82 = rgb_to_spectrum(saturate(stack_load_float3(stack, tint_offset)));
-
         ClosureType distribution = (ClosureType)node.w;
         /* setup bsdf */
         if (distribution == CLOSURE_BSDF_MICROFACET_BECKMANN_ID) {
@@ -498,8 +493,39 @@ ccl_device
         else {
           sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
         }
+
         const bool is_multiggx = (distribution == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
-        bsdf_microfacet_setup_fresnel_f82_tint(kg, bsdf, sd, fresnel, f82, is_multiggx);
+
+        if (type == CLOSURE_BSDF_CONDUCTOR || type == CLOSURE_BSDF_ARTISTIC_CONDUCTOR) {
+          ccl_private FresnelConductor *fresnel = (ccl_private FresnelConductor *)
+              closure_alloc_extra(sd, sizeof(FresnelConductor));
+
+          float3 n, k;
+          if (type == CLOSURE_BSDF_CONDUCTOR) {
+            n = max(stack_load_float3(stack, base_ior_offest), zero_float3());
+            k = max(stack_load_float3(stack, edge_tint_k_offset), zero_float3());
+          }
+          else {
+            const float3 color = saturate(stack_load_float3(stack, base_ior_offest));
+            const float3 tint = saturate(stack_load_float3(stack, edge_tint_k_offset));
+            complex_ior_from_base_edge(color, tint, &n, &k);
+          }
+
+          fresnel->n = rgb_to_spectrum(n);
+          fresnel->k = rgb_to_spectrum(k);
+          bsdf_microfacet_setup_fresnel_conductor(kg, bsdf, sd, fresnel, is_multiggx);
+        }
+        else {
+          ccl_private FresnelF82Tint *fresnel = (ccl_private FresnelF82Tint *)closure_alloc_extra(
+              sd, sizeof(FresnelF82Tint));
+
+          const float3 color = saturate(stack_load_float3(stack, base_ior_offest));
+          const float3 tint = saturate(stack_load_float3(stack, edge_tint_k_offset));
+
+          fresnel->f0 = rgb_to_spectrum(color);
+          const Spectrum f82 = rgb_to_spectrum(tint);
+          bsdf_microfacet_setup_fresnel_f82_tint(kg, bsdf, sd, fresnel, f82, is_multiggx);
+        }
       }
       break;
     }

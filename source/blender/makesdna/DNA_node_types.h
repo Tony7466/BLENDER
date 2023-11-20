@@ -1935,6 +1935,13 @@ enum {
   CMP_NODE_CHANNEL_MATTE_CS_YCC = 4,
 };
 
+/* Conductive fresnel types */
+enum {
+  SHD_CONDUCTOR = 0,
+  SHD_ARTISTIC_CONDUCTOR = 1,
+  SHD_CONDUCTOR_F82 = 2,
+};
+
 /* glossy distributions */
 enum {
   SHD_GLOSSY_BECKMANN = 0,

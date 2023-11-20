@@ -2404,7 +2404,7 @@ NODE_DEFINE(ConductorBsdfNode)
 {
   NodeType *type = NodeType::add("Conductor_bsdf", create, NodeType::SHADER);
 
-  SOCKET_IN_COLOR(color, "Color", make_float3(1.0f, 1.0f, 1.0f));
+  SOCKET_IN_COLOR(color, "Base Color", make_float3(1.0f, 1.0f, 1.0f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
@@ -2415,7 +2415,17 @@ NODE_DEFINE(ConductorBsdfNode)
   SOCKET_ENUM(
       distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
 
-  SOCKET_IN_COLOR(tint, "Tint", make_float3(1.0f, 1.0f, 1.0f));
+  static NodeEnum fresnel_type_enum;
+  fresnel_type_enum.insert("f82", CLOSURE_BSDF_CONDUCTOR_F82);
+  fresnel_type_enum.insert("artist_conductor", CLOSURE_BSDF_ARTISTIC_CONDUCTOR);
+  fresnel_type_enum.insert("conductor", CLOSURE_BSDF_CONDUCTOR);
+  SOCKET_ENUM(fresnel_type, "fresnel_type", fresnel_type_enum, CLOSURE_BSDF_ARTISTIC_CONDUCTOR);
+
+  SOCKET_IN_COLOR(edge_tint, "Edge Tint", make_float3(1.0f, 1.0f, 1.0f));
+
+  SOCKET_IN_VECTOR(ior, "IOR", make_float3(0.183f, 0.421f, 1.373f));
+  SOCKET_IN_VECTOR(k, "Extinction Coefficient", make_float3(3.424f, 2.346f, 1.770f));
+
   SOCKET_IN_VECTOR(tangent, "Tangent", zero_float3(), SocketType::LINK_TANGENT);
 
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
@@ -2465,21 +2475,32 @@ void ConductorBsdfNode::compile(SVMCompiler &compiler)
 {
   compiler.add_node(NODE_CLOSURE_SET_WEIGHT, one_float3());
 
-  ShaderInput *color_in = input("Color");
+  ShaderInput *base_color_in = input("Base Color");
+  ShaderInput *edge_tint_in = input("Edge Tint");
+  ShaderInput *ior_in = input("IOR");
+  ShaderInput *k_in = input("Extinction Coefficient");
+
+  int base_color_ior_offset = fresnel_type == CLOSURE_BSDF_CONDUCTOR ?
+                                  compiler.stack_assign(ior_in) :
+                                  compiler.stack_assign(base_color_in);
+  int edge_tint_k_offset = fresnel_type == CLOSURE_BSDF_CONDUCTOR ?
+                               compiler.stack_assign(k_in) :
+                               compiler.stack_assign(edge_tint_in);
+
   ShaderInput *anisotropy_in = input("Anisotropy");
   ShaderInput *rotation_in = input("Rotation");
-  ShaderInput *tint_in = input("Tint");
   ShaderInput *roughness_in = input("Roughness");
   ShaderInput *tangent_in = input("Tangent");
+
   int normal_offset = compiler.stack_assign_if_linked(input("Normal"));
 
   compiler.add_node(NODE_CLOSURE_BSDF,
-                    compiler.encode_uchar4(closure,
+                    compiler.encode_uchar4(fresnel_type,
                                            compiler.stack_assign(roughness_in),
                                            compiler.stack_assign(anisotropy_in),
                                            compiler.closure_mix_weight_offset()),
-                    compiler.encode_uchar4(compiler.stack_assign(color_in),
-                                           compiler.stack_assign(tint_in),
+                    compiler.encode_uchar4(base_color_ior_offset,
+                                           edge_tint_k_offset,
                                            compiler.stack_assign(rotation_in),
                                            compiler.stack_assign(tangent_in)),
                     distribution);
@@ -2489,6 +2510,7 @@ void ConductorBsdfNode::compile(SVMCompiler &compiler)
 void ConductorBsdfNode::compile(OSLCompiler &compiler)
 {
   compiler.parameter(this, "distribution");
+  compiler.parameter(this, "fresnel_type");
   compiler.add(this, "node_conductor_bsdf");
 }
 

@@ -426,7 +426,9 @@ typedef enum ClosureType {
   CLOSURE_BSDF_TRANSLUCENT_ID,
 
   /* Glossy */
-  CLOSURE_BSDF_CONDUCTOR, /* virtual closure */
+  CLOSURE_BSDF_CONDUCTOR,          /* virtual closure */
+  CLOSURE_BSDF_ARTISTIC_CONDUCTOR, /* virtual closure */
+  CLOSURE_BSDF_CONDUCTOR_F82,      /* virtual closure */
   CLOSURE_BSDF_MICROFACET_GGX_ID,
   CLOSURE_BSDF_MICROFACET_BECKMANN_ID,
   CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID, /* virtual closure */

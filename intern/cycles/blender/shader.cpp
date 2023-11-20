@@ -563,6 +563,18 @@ static ShaderNode *add_node(Scene *scene,
         conductor->set_distribution(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
         break;
     }
+
+    switch (b_conductor_node.fresnel_type()) {
+      case BL::ShaderNodeBsdfConductor::fresnel_type_ARTISTIC_CONDUCTOR:
+        conductor->set_fresnel_type(CLOSURE_BSDF_ARTISTIC_CONDUCTOR);
+        break;
+      case BL::ShaderNodeBsdfConductor::fresnel_type_CONDUCTOR:
+        conductor->set_fresnel_type(CLOSURE_BSDF_CONDUCTOR);
+        break;
+      case BL::ShaderNodeBsdfConductor::fresnel_type_F82:
+        conductor->set_fresnel_type(CLOSURE_BSDF_CONDUCTOR_F82);
+        break;
+    }
     node = conductor;
   }
   else if (b_node.is_a(&RNA_ShaderNodeBsdfAnisotropic)) {

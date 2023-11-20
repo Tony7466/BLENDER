@@ -5,9 +5,12 @@
 #include "node_fresnel.h"
 #include "stdcycles.h"
 
-shader node_conductor_bsdf(color Color = 1.0,
-                           color Tint = 1.0,
+shader node_conductor_bsdf(color BaseColor = 1.0,
+                           color EdgeTint = 1.0,
+                           vector IOR = vector(0.183, 0.421, 1.373),
+                           vector ExtinctionCoefficient = vector(3.424, 2.346, 1.770),
                            string distribution = "multi_ggx",
+                           string fresnel_type = "conductor",
                            float Roughness = 0.5,
                            float Anisotropy = 0.0,
                            float Rotation = 0.0,
@@ -29,7 +32,23 @@ shader node_conductor_bsdf(color Color = 1.0,
       T = rotate(T, Rotation * M_2PI, point(0.0, 0.0, 0.0), Normal);
   }
 
-  color F0 = clamp(Color, color(0.0), color(1.0));
-  color F82 = clamp(Tint, color(0.0), color(1.0));
-  BSDF = microfacet_f82_tint(distribution, Normal, T, alpha_x, alpha_y, F0, F82);
+  color F0 = clamp(BaseColor, color(0.0), color(1.0));
+  color F82 = clamp(EdgeTint, color(0.0), color(1.0));
+
+  if (fresnel_type == "f82") {
+    BSDF = microfacet_f82_tint(distribution, Normal, T, alpha_x, alpha_y, F0, F82);
+  }
+  else {
+    vector n, k;
+    if (fresnel_type == "conductor") {
+      n = max(IOR, 0.0);
+      k = max(ExtinctionCoefficient, 0.0);
+    }
+    else {
+      n = conductor_ior_from_color(F0, F82);
+      k = conductor_extinction_from_color(F0, n);
+    }
+
+    BSDF = conductor_bsdf(Normal, T, alpha_x, alpha_y, n, k, distribution);
+  }
 }

@@ -74,6 +74,43 @@ ccl_device Spectrum fresnel_conductor(float cosi, const Spectrum eta, const Spec
   return (Rparl2 + Rperp2) * 0.5f;
 }
 
+ccl_device float3 conductor_ior_from_color(float3 r, const float3 edge_tint)
+{
+  r = clamp(r, zero_float3(), make_float3(0.99));
+  const float3 r_sqrt = sqrt(r);
+  const float3 one = one_float3();
+
+  const float3 n_min = (one - r) / (one + r);
+  const float3 n_max = (one + r_sqrt) / (one - r_sqrt);
+
+  return mix(n_max, n_min, edge_tint);
+}
+
+ccl_device float3 conductor_extinction_from_color(float3 r, const float3 eta)
+{
+  r = clamp(r, zero_float3(), make_float3(0.99));
+  const float3 one = one_float3();
+
+  const float3 np1 = eta + one;
+  const float3 nm1 = eta - one;
+  float3 k2 = ((r * np1 * np1) - (nm1 * nm1)) / (one - r);
+  k2 = max(k2, zero_float3());
+
+  return sqrt(k2);
+}
+
+ccl_device void complex_ior_from_base_edge(const float3 reflectivity,
+                                           const float3 edge_tint,
+                                           ccl_private float3 *eta,
+                                           ccl_private float3 *k)
+{
+  /* Equations from "Artist Friendly Metallic Fresnel", Ole Gulbrandsen, 2014
+   * https://jcgt.org/published/0003/04/03/paper.pdf */
+
+  *eta = conductor_ior_from_color(reflectivity, edge_tint);
+  *k = conductor_extinction_from_color(reflectivity, *eta);
+}
+
 ccl_device float ior_from_F0(float f0)
 {
   const float sqrt_f0 = sqrtf(clamp(f0, 0.0f, 0.99f));
