@@ -58,7 +58,7 @@ VkSamplerAddressMode to_vk_sampler_address_mode(const GPUSamplerExtendMode exten
 const char *to_string(VkObjectType type);
 const char *to_string(VkImageLayout layout);
 VkImageLayout vk_aspect_to_layout(VkImageAspectFlags aspect);
-
+VkFormat to_non_srgb_format(const VkFormat format);
 /* Types per VKTexture */
 enum class eRenderpassType { ShaderBinding, Attachment, Storage, Any };
 

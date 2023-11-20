@@ -693,6 +693,12 @@ std::weak_ptr<VKImageView> VKTexture::image_view_get(bool use_srgb, int mip, int
                                         name_);
 };
 
+bool VKTexture::is_format_dirty(eImageViewUsage usage, bool use_srgb)
+{
+  bool enabled_srgb = !(format_flag_get() & GPU_FORMAT_SRGB && !use_srgb);
+  return image_views_->is_srgb_dirty(usage, enabled_srgb);
+}
+
 std::weak_ptr<VKImageView> VKTexture::image_view_get()
 {
   return image_views_->lookup_vk_handle(*this,

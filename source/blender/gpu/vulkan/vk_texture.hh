@@ -188,6 +188,7 @@ class VKTexture : public Texture, public VKBindableResource {
 
   /**  From the VkImage,we get the layout that is most likely to be used in blender. **/
   VkImageLayout best_layout_get();
+  bool is_format_dirty(eImageViewUsage usage, bool use_srgb);
 
  private:
   IndexRange mip_map_range() const;

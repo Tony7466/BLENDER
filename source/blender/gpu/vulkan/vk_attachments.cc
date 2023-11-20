@@ -2,10 +2,14 @@
 #include "vk_texture.hh"
 
 namespace blender::gpu {
-bool VKAttachments::check_format(GPUTexture *texture,
-                                 VkAttachmentDescription2 &attachment_description)
+bool VKAttachments::check_format(VKTexture &texture,
+                                 VkAttachmentDescription2 &attachment_description,
+                                 bool enabled_srgb)
 {
-  VkFormat vk_format = to_vk_format(reinterpret_cast<VKTexture *>(texture)->device_format_get());
+  VkFormat vk_format = (enabled_srgb) ?
+      to_vk_format(texture.device_format_get()):
+          to_non_srgb_format(to_vk_format(texture.device_format_get()));
+
   if (attachment_description.format != vk_format) {
     attachment_description.format = vk_format;
     return false;

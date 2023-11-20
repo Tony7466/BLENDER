@@ -16,6 +16,7 @@
 namespace blender::gpu {
 
 VKImageView::VKImageView(VkImageViewCreateInfo &vk_image_view_info,
+                         bool enabled_srgb,
                          bool use_stencil,
                          IndexRange mip_range,
                          IndexRange layer_range)
@@ -23,7 +24,7 @@ VKImageView::VKImageView(VkImageViewCreateInfo &vk_image_view_info,
   const VkImageAspectFlags allowed_bits = VK_IMAGE_ASPECT_COLOR_BIT |
                                           (use_stencil ? VK_IMAGE_ASPECT_STENCIL_BIT :
                                                          VK_IMAGE_ASPECT_DEPTH_BIT);
-
+  enabled_srgb_ = enabled_srgb;
   use_stencil_ = use_stencil;
   view_type_ = vk_image_view_info.viewType;
   mip_range_ = mip_range;

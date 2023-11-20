@@ -826,13 +826,8 @@ void VKFrameBuffer::ensure()
       if (attachment_reference->attachment == VK_ATTACHMENT_UNUSED) {
         continue;
       }
-      VkAttachmentDescription2 &attachment_description =
-          renderpass_->attachments_
-              .descriptions_[renderpass_->info_id_][attachment_reference->attachment];
-      renderpass_->dirty_ = !renderpass_->attachments_.check_format(attachment.tex,
-                                                                    attachment_description);
-      flush |= image_view_ensure(attachment.tex, attachment.mip, attachment.layer, i);
-      flush |= renderpass_->dirty_;
+      flush |= image_view_ensure(
+          attachment.tex, attachment.mip, attachment.layer, attachment_reference->attachment);
     }
   }
   dirty_attachments_8_ = 0;
@@ -847,10 +842,13 @@ void VKFrameBuffer::ensure()
 bool VKFrameBuffer::image_view_ensure(GPUTexture *tex, int mip, int layer, int attachment_index)
 {
   VKTexture &texture = *reinterpret_cast<VKTexture *>(tex);
-  srgb_ = (texture.format_flag_get() & GPU_FORMAT_SRGB) != 0;
-
-  bool use_srgb = srgb_ && enabled_srgb_;
-  std::weak_ptr<VKImageView> image_view = texture.image_view_get(use_srgb, mip, layer);
+  if (texture.is_format_dirty(eImageViewUsage::Attachment, enabled_srgb_)) {
+    VkAttachmentDescription2 &attachment_description =
+        renderpass_->attachments_.descriptions_[renderpass_->info_id_][attachment_index];
+    renderpass_->dirty_ |= !renderpass_->attachments_.check_format(
+        texture, attachment_description, enabled_srgb_);
+  };
+  std::weak_ptr<VKImageView> image_view = texture.image_view_get(enabled_srgb_, mip, layer);
 
   if (image_views_[attachment_index].expired() ||
       !vk_image_view_equal(image_views_[attachment_index], image_view))

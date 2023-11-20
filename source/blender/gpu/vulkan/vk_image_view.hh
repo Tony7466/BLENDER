@@ -19,6 +19,7 @@ class VKTexture;
 class VKImageView : NonCopyable {
  private:
   VkImageView vk_image_view_ = VK_NULL_HANDLE;
+  bool enabled_srgb_;
   bool use_stencil_;
   VkImageViewType view_type_;
   IndexRange mip_range_;
@@ -26,6 +27,7 @@ class VKImageView : NonCopyable {
 
  public:
   VKImageView(VkImageViewCreateInfo &vk_image_view_info_,
+              bool enabled_srgb,
               bool use_stencil,
               IndexRange mip_range,
               IndexRange layer_range);
@@ -37,6 +39,11 @@ class VKImageView : NonCopyable {
   {
     BLI_assert(vk_image_view_ != VK_NULL_HANDLE);
     return vk_image_view_;
+  }
+
+  bool check_srgb(bool enabled_srgb) const
+  {
+    return enabled_srgb == enabled_srgb_;
   }
 
   bool check_eq(bool use_stencil) const

@@ -14,20 +14,6 @@
 
 namespace blender::gpu {
 
-static VkFormat to_non_srgb_format(const VkFormat format)
-{
-  switch (format) {
-    case VK_FORMAT_R8G8B8_SRGB:
-      return VK_FORMAT_R8G8B8_UNORM;
-    case VK_FORMAT_R8G8B8A8_SRGB:
-      return VK_FORMAT_R8G8B8A8_UNORM;
-
-    default:
-      break;
-  }
-  return format;
-}
-
 VKImageViews::VKImageViews(VkImage vk_image, const VkImageCreateInfo &image_info)
 {
   image_type_ = IMAGE_TYPE_BASIC;
@@ -47,18 +33,9 @@ VKImageViews::VKImageViews(VkImage vk_image, const VkImageCreateInfo &image_info
   vk_image_ref_ = vk_image;
 }
 
-std::weak_ptr<VKImageView> VKImageViews::lookup_vk_handle(VKTexture &texture,
-                                                          eImageViewUsage usage,
-                                                          IndexRange layer_range,
-                                                          IndexRange mip_range,
-                                                          bool use_stencil,
-                                                          bool use_srgb,
-                                                          StringRefNull name)
+int VKImageViews::location_get(eImageViewUsage usage)
 {
-  BLI_assert(texture.vk_image_handle() == vk_image_ref_);
   int location = -1;
-  bool no_srgb = texture.format_flag_get() & GPU_FORMAT_SRGB && !use_srgb;
-
   switch (usage) {
     case eImageViewUsage::ShaderBinding:
       location = static_cast<int>(Location::SHADER_BINDING);
@@ -70,20 +47,34 @@ std::weak_ptr<VKImageView> VKImageViews::lookup_vk_handle(VKTexture &texture,
       BLI_assert_unreachable();
       break;
   }
+  return location;
+}
+
+std::weak_ptr<VKImageView> VKImageViews::lookup_vk_handle(VKTexture &texture,
+                                                          eImageViewUsage usage,
+                                                          IndexRange layer_range,
+                                                          IndexRange mip_range,
+                                                          bool use_stencil,
+                                                          bool use_srgb,
+                                                          StringRefNull name)
+{
+  BLI_assert(texture.vk_image_handle() == vk_image_ref_);
+  int location = location_get(usage);
+  const eGPUTextureFormat format = texture.device_format_get();
 
   VkImageViewCreateInfo vk_image_view_info_ = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                                                VK_NULL_HANDLE};
 
-  vk_image_view_info_.components = vk_component_mapping_;
-  const eGPUTextureFormat format = texture.device_format_get();
-  vk_image_view_info_.subresourceRange.aspectMask = to_vk_image_aspect_flag_bits(format);
+  bool enabled_srgb = !(texture.format_flag_get() & GPU_FORMAT_SRGB && !use_srgb);
 
-  if (no_srgb) {
-    vk_image_view_info_.format = to_non_srgb_format(to_vk_format(format));
-  }
-  else {
+  if (enabled_srgb) {
     vk_image_view_info_.format = to_vk_format(format);
   }
+  else {
+    vk_image_view_info_.format = to_non_srgb_format(to_vk_format(format));
+  }
+  vk_image_view_info_.components = vk_component_mapping_;
+  vk_image_view_info_.subresourceRange.aspectMask = to_vk_image_aspect_flag_bits(format);
 
   vk_image_view_info_.viewType = to_vk_image_view_type(texture.type_get(), usage);
 
@@ -94,6 +85,7 @@ std::weak_ptr<VKImageView> VKImageViews::lookup_vk_handle(VKTexture &texture,
     need_create = true;
   }
   else {
+    need_create |= !image_view->check_srgb(enabled_srgb);
     need_create |= !image_view->check_eq(use_stencil);
     if (image_type_ & IMAGE_TYPE_ARRAY) {
       need_create |= !image_view->check_eq(vk_image_view_info_.viewType);
@@ -109,7 +101,7 @@ std::weak_ptr<VKImageView> VKImageViews::lookup_vk_handle(VKTexture &texture,
   if (need_create) {
     vk_image_view_info_.image = vk_image_ref_;
     image_views_[location] = std::shared_ptr<VKImageView>(
-        new VKImageView(vk_image_view_info_, use_stencil, mip_range, layer_range));
+        new VKImageView(vk_image_view_info_, enabled_srgb, use_stencil, mip_range, layer_range));
     debug::object_label(image_views_[location]->vk_handle(), name.c_str());
   }
 
@@ -123,4 +115,15 @@ void VKImageViews::swizzle_set(const char swizzle_mask[4])
   vk_component_mapping_.b = to_vk_component_swizzle(swizzle_mask[2]);
   vk_component_mapping_.a = to_vk_component_swizzle(swizzle_mask[3]);
 };
+
+bool VKImageViews::is_srgb_dirty(eImageViewUsage usage, bool enabled_srgb)
+{
+  int location = location_get(usage);
+  std::shared_ptr<VKImageView> image_view = image_views_[location];
+  if (image_view.use_count() == 0) {
+    return false;
+  }
+  return !image_view->check_srgb(enabled_srgb);
+};
+
 }  // namespace blender::gpu

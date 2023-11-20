@@ -1052,4 +1052,18 @@ VkImageLayout vk_aspect_to_layout(VkImageAspectFlags aspect)
   return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 };
 
+VkFormat to_non_srgb_format(const VkFormat format)
+{
+  switch (format) {
+    case VK_FORMAT_R8G8B8_SRGB:
+      return VK_FORMAT_R8G8B8_UNORM;
+    case VK_FORMAT_R8G8B8A8_SRGB:
+      return VK_FORMAT_R8G8B8A8_UNORM;
+
+    default:
+      break;
+  }
+  return format;
+}
+
 }  // namespace blender::gpu
