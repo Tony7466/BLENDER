@@ -225,11 +225,6 @@ Nurb *BKE_nurb_duplicate(const Nurb *nu);
 Nurb *BKE_nurb_copy(Nurb *src, int pntsu, int pntsv);
 
 void BKE_nurb_project_2d(Nurb *nu);
-/**
- * if use_radius is truth, minmax will take points' radius into account,
- * which will make bound-box closer to beveled curve.
- */
-void BKE_nurb_minmax(const Nurb *nu, bool use_radius, float min[3], float max[3]);
 float BKE_nurb_calc_length(const Nurb *nu, int resolution);
 
 /**

@@ -707,7 +707,7 @@ void BKE_nurb_project_2d(Nurb *nu)
   }
 }
 
-void BKE_nurb_minmax(const Nurb *nu, bool use_radius, float min[3], float max[3])
+static void calc_nurb_minmax(const Nurb *nu, bool use_radius, float min[3], float max[3])
 {
   BezTriple *bezt;
   BPoint *bp;
@@ -5083,34 +5083,44 @@ void BKE_curve_nurb_vert_active_validate(Curve *cu)
   }
 }
 
+static std::optional<blender::Bounds<blender::float3>> calc_nurblist_bounds(const ListBase *nurbs,
+                                                                            const bool use_radius)
+{
+  if (BLI_listbase_is_empty(nurbs)) {
+    return std::nullopt;
+  }
+  float3 min(std::numeric_limits<float>::max());
+  float3 max(std::numeric_limits<float>::lowest());
+  LISTBASE_FOREACH (const Nurb *, nu, nurbs) {
+    calc_nurb_minmax(nu, use_radius, min, max);
+  }
+  return blender::Bounds<float3>{min, max};
+}
+
 std::optional<blender::Bounds<blender::float3>> BKE_curve_minmax(const Curve *cu, bool use_radius)
 {
-  ListBase nurb_lb = *BKE_curve_nurbs_get_for_read(cu);
-  ListBase temp_nurb_lb = {nullptr, nullptr};
-  const bool is_font = BLI_listbase_is_empty(&nurb_lb) && (cu->len != 0);
+  const ListBase *nurb_lb = BKE_curve_nurbs_get_for_read(cu);
+  const bool is_font = BLI_listbase_is_empty(nurb_lb) && (cu->len != 0);
   /* For font curves we generate temp list of splines.
    *
    * This is likely to be fine, this function is not supposed to be called
    * often, and it's the only way to get meaningful bounds for fonts.
    */
   if (is_font) {
-    nurb_lb = temp_nurb_lb;
-    BKE_vfont_to_curve_ex(
-        nullptr, const_cast<Curve *>(cu), FO_EDIT, &nurb_lb, nullptr, nullptr, nullptr, nullptr);
-    use_radius = false;
+    ListBase temp_nurb_lb{};
+    BKE_vfont_to_curve_ex(nullptr,
+                          const_cast<Curve *>(cu),
+                          FO_EDIT,
+                          &temp_nurb_lb,
+                          nullptr,
+                          nullptr,
+                          nullptr,
+                          nullptr);
+    BLI_SCOPED_DEFER([&]() { BKE_nurbList_free(&temp_nurb_lb); });
+    return calc_nurblist_bounds(&temp_nurb_lb, false);
   }
-  /* Do bounding box based on splines. */
-  blender::Bounds<blender::float3> bounds{blender::float3(FLT_MAX), blender::float3(-FLT_MAX)};
-  LISTBASE_FOREACH (const Nurb *, nu, &nurb_lb) {
-    BKE_nurb_minmax(nu, use_radius, bounds.min, bounds.max);
-  }
-  const bool result = (BLI_listbase_is_empty(&nurb_lb) == false);
-  /* Cleanup if needed. */
-  BKE_nurbList_free(&temp_nurb_lb);
-  if (!result) {
-    return std::nullopt;
-  }
-  return bounds;
+
+  return calc_nurblist_bounds(nurb_lb, use_radius);
 }
 
 bool BKE_curve_center_median(Curve *cu, float cent[3])
