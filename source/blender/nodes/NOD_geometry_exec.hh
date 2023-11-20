@@ -14,6 +14,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_grid_types.hh"
 #include "BKE_node_socket_value_cpp_type.hh"
 
 #include "DNA_node_types.h"
@@ -175,6 +176,10 @@ class GeoNodeExecParams {
         Field<ValueT> value_typed(std::forward<T>(value));
         this->set_output(identifier, ValueOrField<ValueT>(std::move(value_typed)));
       });
+    }
+    else if constexpr (bke::grid_types::is_field_value_grid_v<StoredT>) {
+      using BaseType = typename StoredT::FieldValueType;
+      this->set_output(identifier, ValueOrField<BaseType>(std::forward<T>(value)));
     }
     else {
 #ifdef DEBUG

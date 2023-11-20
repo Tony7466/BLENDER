@@ -22,8 +22,7 @@ namespace blender::bke {
 
 template<typename T> struct ValueOrField {
   using Field = fn::Field<T>;
-  using GridType = typename grid_types::FieldValueGrid<T>;
-  using Grid = typename std::shared_ptr<GridType>;
+  using Grid = typename grid_types::FieldValueGrid<T>;
 
   /** Value that is used when the field is empty. */
   T value{};
@@ -73,7 +72,7 @@ template<typename T> struct ValueOrField {
     if (this->grid) {
       /* Returns the grid background value. */
       T value;
-      if (grid_types::get_background_value(*this->grid, value)) {
+      if (grid_types::get_background_value(this->grid, value)) {
         return value;
       }
     }

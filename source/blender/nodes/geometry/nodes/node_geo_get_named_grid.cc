@@ -4,6 +4,10 @@
 
 #include "node_geometry_util.hh"
 
+#include "BKE_grid_types.hh"
+#include "BKE_volume.hh"
+#include "BKE_volume_openvdb.hh"
+
 #include "RNA_enum_types.hh"
 
 #include "NOD_rna_define.hh"
@@ -38,9 +42,47 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = CD_PROP_FLOAT;
 }
 
+template<typename T>
+static bool try_output_grid_value(GeoNodeExecParams params, const openvdb::GridBase::Ptr &grid)
+{
+  using GridType = typename bke::grid_types::FieldValueGrid<T>::GridType;
+
+  std::shared_ptr<GridType> typed_grid = openvdb::GridBase::grid<GridType>(grid);
+  if (!typed_grid) {
+    return false;
+  }
+
+  params.set_output("Grid", bke::grid_types::FieldValueGrid<T>(typed_grid));
+  return true;
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
+  const eCustomDataType data_type = eCustomDataType(params.node().custom1);
+  BLI_assert(grids::grid_type_supported(data_type));
+  GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");
+  const std::string grid_name = params.extract_input<std::string>("Name");
+
+  if (Volume *volume = geometry_set.get_volume_for_write()) {
+    if (VolumeGrid *grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
+      if (openvdb::GridBase::Ptr grid_vdb = BKE_volume_grid_openvdb_for_write(volume, grid, false))
+      {
+        switch (data_type) {
+          case CD_PROP_FLOAT:
+            try_output_grid_value<float>(params, grid_vdb);
+            break;
+          case CD_PROP_FLOAT3:
+            try_output_grid_value<float3>(params, grid_vdb);
+            break;
+          default:
+            BLI_assert_unreachable();
+            break;
+        }
+      }
+    }
+  }
+
   params.set_default_remaining_outputs();
 #else
   params.set_default_remaining_outputs();

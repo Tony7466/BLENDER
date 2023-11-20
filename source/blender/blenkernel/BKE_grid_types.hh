@@ -391,22 +391,33 @@ template<typename T> struct FieldValueGridImpl {
 
 #endif /* WITH_OPENVDB */
 
-template<typename T> struct FieldValueGrid : public ImplicitSharingMixin {
+namespace detail {
+/* Utility class to make #is_field_value_grid_v work. */
+struct FieldValueGridBase {
+};
+}  // namespace detail
+
+template<typename T>
+struct FieldValueGrid : public ImplicitSharingMixin, public detail::FieldValueGridBase {
+  using FieldValueType = T;
   using GridType = FieldValueGridImpl<T>;
 
   std::shared_ptr<GridType> grid;
 
   FieldValueGrid() : grid(nullptr) {}
+  FieldValueGrid(const FieldValueGrid<T> &other) : grid(other.grid) {}
   FieldValueGrid(const std::shared_ptr<GridType> &grid) : grid(grid) {}
 
   FieldValueGrid<T> &operator=(const FieldValueGrid<T> &other)
   {
     this->grid = other.grid;
+    return *this;
   }
 
   FieldValueGrid<T> &operator=(const std::shared_ptr<GridType> &grid)
   {
     this->grid = grid;
+    return *this;
   }
 
   void delete_self() override
@@ -414,13 +425,18 @@ template<typename T> struct FieldValueGrid : public ImplicitSharingMixin {
     delete this;
   }
 
-  bool operator==(const FieldValueGrid<T> &other)
+  bool operator==(const FieldValueGrid<T> &other) const
   {
     return this->grid == other.grid;
   }
-  bool operator!=(const FieldValueGrid<T> &other)
+  bool operator!=(const FieldValueGrid<T> &other) const
   {
     return this->grid != other.grid;
+  }
+
+  operator bool() const
+  {
+    return bool(this->grid);
   }
 
   GridType &operator*()
@@ -451,6 +467,11 @@ template<typename T> struct FieldValueGrid : public ImplicitSharingMixin {
  * \{ */
 
 namespace blender::bke::grid_types {
+
+/** True when T is any FieldValueGrid<...> type. */
+template<typename T>
+static constexpr bool is_field_value_grid_v = std::is_base_of_v<detail::FieldValueGridBase, T> &&
+                                              !std::is_same_v<detail::FieldValueGridBase, T>;
 
 template<typename T> bool get_background_value(const FieldValueGrid<T> &grid, T &r_value)
 {
