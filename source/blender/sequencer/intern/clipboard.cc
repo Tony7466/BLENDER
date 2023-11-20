@@ -10,8 +10,6 @@
 
 #include <cstring>
 
-#include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
 #include "MEM_guardedalloc.h"
 
 #include "ED_keyframing.hh"
@@ -35,6 +33,8 @@
 #include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
+#include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -63,11 +63,11 @@
 /* Copy Operator Helper functions
  */
 
-static void null_scene_strips(Sequence *seq)
+static void set_strip_scene_to_null_recursive(Sequence *seq)
 {
   if (seq->type == SEQ_TYPE_META) {
     LISTBASE_FOREACH (Sequence *, meta_child, &seq->seqbase) {
-      null_scene_strips(meta_child);
+      set_strip_scene_to_null_recursive(meta_child);
     }
   }
   else if (seq->type == SEQ_TYPE_SCENE) {
@@ -156,7 +156,7 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
     /* Null and scene pointers in scene strips. We don't want to copy whole scenes.
      * We have to come up with a proper idea of how to copy and paste scene strips.
      */
-    null_scene_strips(seq);
+    set_strip_scene_to_null_recursive(seq);
     /* Copy animation curves from seq (if any). */
     sequencer_copy_animation(scene_src, &fcurves_dst, &drivers_dst, seq);
   }
@@ -206,14 +206,18 @@ int SEQ_clipboard_copy_exec(bContext *C, wmOperator *op)
 /* Paste Operator Helper functions
  */
 
+struct Main_pair {
+  Main *first;
+  Main *second;
+};
+
 /**
  * Re-map ID's from the clipboard to ID's in `bmain`, by name.
  * If the ID name doesn't already exist, it is pasted in.
  */
 static int paste_strips_data_ids_reuse_or_add(LibraryIDLinkCallbackData *cb_data)
 {
-  std::pair<Main *, Main *> *pair_main = static_cast<std::pair<Main *, Main *> *>(
-      cb_data->user_data);
+  Main_pair *pair_main = static_cast<Main_pair *>(cb_data->user_data);
   Main *bmain = pair_main->first;
   Main *temp_bmain = pair_main->second;
   ID *id_p = *cb_data->id_pointer;
@@ -293,19 +297,19 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
     }
   }
 
-  int stripts_to_paste = 0;
+  int num_strips_to_paste = 0;
   if (paste_scene && paste_scene->ed) {
-    stripts_to_paste = BLI_listbase_count(&paste_scene->ed->seqbase);
+    num_strips_to_paste = BLI_listbase_count(&paste_scene->ed->seqbase);
   }
 
-  if (stripts_to_paste == 0) {
+  if (num_strips_to_paste == 0) {
     BKE_report(op->reports, RPT_INFO, "No strips to paste");
     BKE_main_free(temp_bmain);
     return OPERATOR_CANCELLED;
   }
 
   Main *bmain = CTX_data_main(C);
-  std::pair<Main *, Main *> pair_main = std::pair(bmain, temp_bmain);
+  Main_pair pair_main = {bmain, temp_bmain};
   BKE_library_foreach_ID_link(
       temp_bmain, &paste_scene->id, paste_strips_data_ids_reuse_or_add, &pair_main, IDWALK_NOP);
 
@@ -380,7 +384,7 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   ED_outliner_select_sync_from_sequence_tag(C);
 
-  BKE_reportf(op->reports, RPT_INFO, "%d strips pasted", stripts_to_paste);
+  BKE_reportf(op->reports, RPT_INFO, "%d strips pasted", num_strips_to_paste);
 
   return OPERATOR_FINISHED;
 }
