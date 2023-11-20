@@ -1,2 +1,3 @@
 Referenced by issue #115023, Changing the mix node operation in the compositor crashes Blender
 Referenced by issue #115065, Regression: Clicking Brush Blending Mode in Vertex Paint crashes
+Referenced by issue #115192, Inconsistancy renaming datablock behaviour
