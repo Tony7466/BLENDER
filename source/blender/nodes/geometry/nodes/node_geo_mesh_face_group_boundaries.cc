@@ -51,8 +51,8 @@ class BoundaryFieldInput final : public bke::MeshFieldInput {
       return {};
     }
 
-    const constexpr int no_face_yet = -1;
-    const constexpr int no_more_face = -2;
+    const static constexpr int no_face_yet = -1;
+    const static constexpr int no_more_face = -2;
 
     Array<bool> boundary(mesh.totedge, false);
     Array<int> previos_face(mesh.totedge, no_face_yet);
@@ -63,22 +63,24 @@ class BoundaryFieldInput final : public bke::MeshFieldInput {
         for (const int edge_i : face_edges[face_i]) {
           while (true) {
             const int last_face_i = atomic_load_int32(&previos_face[edge_i]);
-            if (last_face_i == no_more_face) {
-              break;
-            }
-            else if (last_face_i == no_face_yet) {
-              const int last_face_i_test = atomic_cas_int32(
-                  &previos_face[edge_i], no_face_yet, face_i);
-              if (last_face_i_test == last_face_i) {
+            switch (last_face_i) {
+              case no_more_face:
+                break;
+              case no_face_yet: {
+                if (atomic_cas_int32(&previos_face[edge_i], last_face_i, face_i) != last_face_i) {
+                  continue;
+                }
                 break;
               }
-            }
-            else if (face_set[last_face_i] != group_id) {
-              const int last_face_i_test = atomic_cas_int32(
-                  &previos_face[edge_i], last_face_i, no_more_face);
-              if (last_face_i_test == last_face_i) {
+              default: {
+                if (face_set[last_face_i] == group_id) {
+                  break;
+                }
+                if (atomic_cas_int32(&previos_face[edge_i], last_face_i, no_more_face) !=
+                    last_face_i) {
+                  continue;
+                }
                 boundary[edge_i] = true;
-                break;
               }
             }
             break;
