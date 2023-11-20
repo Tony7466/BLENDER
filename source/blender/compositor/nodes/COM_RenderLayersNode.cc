@@ -58,12 +58,18 @@ void RenderLayersNode::test_render_link(NodeConverter &converter,
   }
 
   for (NodeOutput *output : get_output_sockets()) {
-    const char *socket_identifier = output->get_bnode_socket()->identifier;
-    if (strstr(socket_identifier, "Combined")) {
-      socket_identifier = "Combined";
+    const char *selected_render_pass;
+    BLI_assert(output->get_bnode_socket()->name != nullptr);
+    if (STREQ(output->get_bnode_socket()->name, "Image") ||
+        STREQ(output->get_bnode_socket()->name, "Alpha"))
+    {
+      selected_render_pass = RE_PASSNAME_COMBINED;
+    }
+    else {
+      selected_render_pass = output->get_bnode_socket()->name;
     }
     RenderPass *rpass = (RenderPass *)BLI_findstring(
-        &rl->passes, socket_identifier, offsetof(RenderPass, name));
+        &rl->passes, selected_render_pass, offsetof(RenderPass, name));
     if (rpass == nullptr) {
       missing_socket_link(converter, output);
       continue;
