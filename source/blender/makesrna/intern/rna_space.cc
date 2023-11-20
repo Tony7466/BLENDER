@@ -543,6 +543,7 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 
 const EnumPropertyItem rna_enum_project_settings_section_items[] = {
     {PROJECT_SETTINGS_SECTION_GENERAL, "GENERAL", 0, "General", ""},
+    {PROJECT_SETTINGS_SECTION_ADDONS, "ADDONS", 0, "Add-ons", ""},
     {PROJECT_SETTINGS_SECTION_ASSET_LIBRARIES, "ASSET_LIBRARIES", 0, "Asset Libraries", ""},
     {0, NULL, 0, NULL, NULL},
 };

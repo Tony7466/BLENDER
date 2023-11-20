@@ -1787,7 +1787,8 @@ typedef struct SpaceProjectSettings {
 
 typedef enum eSpaceProjectSettings_Section {
   PROJECT_SETTINGS_SECTION_GENERAL = 0,
-  PROJECT_SETTINGS_SECTION_ASSET_LIBRARIES = 1,
+  PROJECT_SETTINGS_SECTION_ADDONS = 1,
+  PROJECT_SETTINGS_SECTION_ASSET_LIBRARIES = 2,
 } eSpaceProjectSettings_Section;
 
 /** \} */

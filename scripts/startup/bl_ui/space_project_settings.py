@@ -6,6 +6,7 @@ import bpy
 from bpy.types import Header, Menu, Panel
 from bpy.app.translations import pgettext_iface as iface_
 from bl_ui.utils import CenterAlignMixIn
+from bl_ui.addons_ui import AddonsUI
 
 
 # -----------------------------------------------------------------------------
@@ -155,6 +156,19 @@ class PROJECTSETTINGS_PT_setup(CenterAlignMixIn, Panel):
         layout.prop(project, "root_path", text="Location")
 
 
+class PROJECTSETTINGS_PT_addons(Panel):
+    bl_space_type = 'PROJECT_SETTINGS'
+    bl_region_type = 'WINDOW'
+    bl_label = "Add-ons"
+    bl_options = {'HIDE_HEADER'}
+    bl_context = "addons"
+
+    def draw(self, context):
+        layout = self.layout
+
+        AddonsUI.draw(context, layout)
+
+
 class PROJECTSETTINGS_PT_asset_libraries(Panel):
     bl_space_type = 'PROJECT_SETTINGS'
     bl_region_type = 'WINDOW'
@@ -206,6 +220,7 @@ classes = (
     PROJECTSETTINGS_PT_save_project_settings,
     PROJECTSETTINGS_PT_no_project,
     PROJECTSETTINGS_PT_setup,
+    PROJECTSETTINGS_PT_addons,
     PROJECTSETTINGS_PT_asset_libraries,
 )
 
