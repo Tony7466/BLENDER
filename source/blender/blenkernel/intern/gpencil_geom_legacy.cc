@@ -91,7 +91,6 @@ bool BKE_gpencil_stroke_minmax(const bGPDstroke *gps,
 
 std::optional<blender::Bounds<blender::float3>> BKE_gpencil_data_minmax(const bGPdata *gpd)
 {
-  // TODO: Caching?
   bool changed = false;
 
   float3 min;
