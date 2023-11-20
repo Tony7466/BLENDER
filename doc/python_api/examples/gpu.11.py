@@ -42,7 +42,7 @@ vert_out.smooth('VEC2', "uvInterp")
 shader_info = gpu.types.GPUShaderCreateInfo()
 shader_info.push_constant('MAT4', "viewProjectionMatrix")
 shader_info.push_constant('MAT4', "modelMatrix")
-shader_info.sampler(0, 'FLOAT_2D', "img_output")
+shader_info.sampler(0, 'FLOAT_2D', "img_input")
 shader_info.vertex_in(0, 'VEC2', "position")
 shader_info.vertex_in(1, 'VEC2', "uv")
 shader_info.vertex_out(vert_out)
@@ -59,7 +59,7 @@ shader_info.vertex_source(
 shader_info.fragment_source(
     "void main()"
     "{"
-    "  FragColor = texture(img_output, uvInterp);"
+    "  FragColor = texture(img_input, uvInterp);"
     "}"
 )
 
@@ -76,7 +76,7 @@ batch = batch_for_shader(
 def draw(): 
     shader.uniform_float("modelMatrix", Matrix.Translation((0, 0, 0)) @ Matrix.Scale(1, 4))
     shader.uniform_float("viewProjectionMatrix", bpy.context.region_data.perspective_matrix)
-    shader.uniform_sampler("img_output", texture) 
+    shader.uniform_sampler("img_input", texture)
     batch.draw(shader)
     compute_shader.image('img_output', texture)
     compute_shader.uniform_float("time", time.time() - start_time)
