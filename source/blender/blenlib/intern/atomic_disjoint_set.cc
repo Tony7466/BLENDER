@@ -33,12 +33,12 @@ void AtomicDisjointSet::calc_reduced_ids(MutableSpan<int> result) const
       const int root = this->find_root(index);
       while (true) {
         const int other_index = atomic_load_int32(&least_root_index[root]);
-        if (index < other_index) {
-          if (atomic_cas_int32(&least_root_index[root], other_index, index) == other_index) {
-            break;
-          }
+        if (index >= other_index) {
+          break;
         }
-        break;
+        if (atomic_cas_int32(&least_root_index[root], other_index, index) == other_index) {
+          break;
+        }
       }
     }
   });
