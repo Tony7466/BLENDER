@@ -1,159 +1,182 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#include <unordered_map>
-#include <unordered_set>
-
-#include <fmt/format.h>
+#include "BLI_map.hh"
+#include "BLI_set.hh"
+#include "BLI_vector.hh"
 #include "DNA_node_types.h"
 #include "UI_interface.hh"
+#include <fmt/format.h>
 
-#include "lexer.hh"
-#include "expression.hh"
-#include "parser.hh"
 #include "evaluation_context.hh"
+#include "expression.hh"
+#include "lexer.hh"
+#include "parser.hh"
 
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_math_expression_cc {
-  NODE_STORAGE_FUNCS(NodeGeometryMathExpression)
+NODE_STORAGE_FUNCS(NodeGeometryMathExpression)
 
-  static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
-  {
-    auto node = b.node_or_null();
+static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
+{
+  auto node = b.node_or_null();
 
-    if (node == nullptr) {
+  if (node == nullptr) {
+    return;
+  }
+
+  NodeGeometryMathExpression *storage = static_cast<NodeGeometryMathExpression *>(node->storage);
+
+  b.is_function_node();
+
+  Set<std::string_view> vars;
+
+  parse_var_names(storage->variables, [&b, &vars](std::string_view name) {
+    if (vars.contains(name)) {
       return;
     }
 
-    NodeGeometryMathExpression *storage = static_cast<NodeGeometryMathExpression *>(node->storage);
-
-    b.is_function_node();
-
-    std::unordered_set<std::string_view> vars;
-
-    parse_var_names(storage->variables, [&b, &vars](std::string_view name) {
-      if(vars.find(name) != vars.end()) {
-        return;
-      }
-
-      if (name[0] == 'f') {
-        b.add_input<decl::Float>(name);
-      } else if(name[0] == 'v') {
-        b.add_input<decl::Vector>(name);
-      } else {
-        return;
-      }
-
-      vars.insert(name);
-    });
-
-    if(storage->output_type == GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT) {
-      b.add_output<decl::Float>("Value");
-    } else if(storage->output_type == GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR) {
-      b.add_output<decl::Vector>("Value");
+    if (name[0] == 'f') {
+      b.add_input<decl::Float>(name);
     }
-  }
-
-  static void node_geo_exec(GeoNodeExecParams params)
-  {
-    SCOPED_TIMER(__func__);
-    // Most of the stuff here only needs to be done once after the expression text has changed.
-    // The list of operations should be cached somewhere to avoid reparsing every time this function is called.
-
-    const NodeGeometryMathExpression &storage = node_storage(params.node());
-    std::unordered_map<std::string_view, fn::GField> vars;
-
-    parse_var_names(storage.variables, [&vars, &params](std::string_view name) {
-      if(vars.find(name) != vars.end()) {
-        return;
-      }
-
-      if (name[0] == 'f') {
-        if(vars.find(name) == vars.end()) {
-          vars[name] = params.extract_input<Field<float>>(name);
-        }
-      } else if (name[0] == 'v') {
-        if(vars.find(name) == vars.end()) {
-          vars[name] = params.extract_input<Field<float3>>(name);
-        }
-      }
-    });
-
-    Parser parser;
-    std::unique_ptr<Expression> expr;
-
-    try {
-      expr = parser.parse(storage.expression);
-    } catch(LexerError err) {
-      params.error_message_add(NodeWarningType::Error, fmt::format("{}: col:{} '{}'", err.message, err.index+1, err.c).c_str());
-      params.set_default_remaining_outputs();
-      return;
-    } catch(ParserError err) {
-      params.error_message_add(NodeWarningType::Error, fmt::format(TIP_("{}: col:{} '{}'"), err.message, err.token.index+1, err.token.value).c_str());
-      params.set_default_remaining_outputs();
+    else if (name[0] == 'v') {
+      b.add_input<decl::Vector>(name);
+    }
+    else {
       return;
     }
 
-    EvaluationContext ctx([&params, &vars](std::string_view name) -> fn::GField {
-      if(vars.find(name) == vars.end()) {
-        throw "variable does not exist";
-      }
+    vars.add(name);
+  });
 
-      return vars.at(name);
-    });
-
-    try {
-      fn::GField field = expr->compile(ctx);
-
-      if(field.cpp_type().is<float>() && storage.output_type != GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT) {
-        params.error_message_add(NodeWarningType::Error, TIP_("The result of the expression (Float) does not match the ouput type of the node"));
-        params.set_default_remaining_outputs();
-        return;
-      }
-
-      if(field.cpp_type().is<float3>() && storage.output_type != GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR) {
-        params.error_message_add(NodeWarningType::Error, TIP_("The result of the expression (Vector) does not match the ouput type of the node"));
-        params.set_default_remaining_outputs();
-        return;
-      }
-
-      params.set_output("Value", field);
-    } catch (EvaluationError err) {
-      params.error_message_add(NodeWarningType::Error, fmt::format("{}: col:{} '{}'", err.message, err.expression->get_token().index+1, err.expression->get_token().value).c_str());
-      params.set_default_remaining_outputs();
-      return;
-    }
+  if (storage->output_type == GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT) {
+    b.add_output<decl::Float>("Value");
   }
-
-  static void node_layout(uiLayout *layout, bContext * /*c*/, PointerRNA *ptr)
-  {
-    uiItemR(layout, ptr, "variables", UI_ITEM_NONE, "Variables", ICON_NONE);
-    uiItemR(layout, ptr, "output_type", UI_ITEM_NONE, "Output Type", ICON_NONE);
-    uiItemR(layout, ptr, "expression", UI_ITEM_NONE, "Expression", ICON_NONE);
+  else if (storage->output_type == GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR) {
+    b.add_output<decl::Vector>("Value");
   }
-
-  static void node_init(bNodeTree */*tree*/, bNode *node)
-  {
-    node->storage = MEM_callocN(sizeof(NodeGeometryMathExpression), __func__);
-    NodeGeometryMathExpression &storage = node_storage(*node);
-    storage.output_type = GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR;
-    strcpy(storage.variables, "v1, fa, fb, fc");
-    strcpy(storage.expression, "vec(fa, fb, fc) + v1");
-  }
-
-  inline void node_register()
-  {
-    namespace file_ns = blender::nodes::node_geo_math_expression_cc;
-
-    static bNodeType ntype;
-
-    geo_node_type_base(&ntype, GEO_NODE_MATH_EXPRESSION, "Math Expression", NODE_CLASS_CONVERTER);
-    ntype.declare = file_ns::node_declare;
-    ntype.initfunc = file_ns::node_init;
-    ntype.geometry_node_execute = file_ns::node_geo_exec;
-    ntype.draw_buttons = file_ns::node_layout;
-
-    node_type_storage(&ntype, "NodeGeometryMathExpression", node_free_standard_storage, node_copy_standard_storage);
-    nodeRegisterType(&ntype);
-  }
-  NOD_REGISTER_NODE(node_register)
 }
+
+static void node_geo_exec(GeoNodeExecParams params)
+{
+  SCOPED_TIMER(__func__);
+  // Most of the stuff here only needs to be done once after the expression text has changed.
+  // The list of operations should be cached somewhere to avoid reparsing every time this function
+  // is called.
+
+  const NodeGeometryMathExpression &storage = node_storage(params.node());
+  Map<std::string_view, fn::GField> vars;
+
+  parse_var_names(storage.variables, [&vars, &params](std::string_view name) {
+    if (vars.contains(name)) {
+      return;
+    }
+
+    if (name[0] == 'f') {
+      vars.add(name, params.extract_input<Field<float>>(name));
+    }
+    else if (name[0] == 'v') {
+      vars.add(name, params.extract_input<Field<float3>>(name));
+    }
+  });
+
+  Parser parser;
+  std::unique_ptr<Expression> expr;
+
+  try {
+    expr = parser.parse(storage.expression);
+  }
+  catch (LexerError err) {
+    params.error_message_add(
+        NodeWarningType::Error,
+        fmt::format("{}: col:{} '{}'", err.message, err.index + 1, err.c).c_str());
+    params.set_default_remaining_outputs();
+    return;
+  }
+  catch (ParserError err) {
+    params.error_message_add(
+        NodeWarningType::Error,
+        fmt::format(TIP_("{}: col:{} '{}'"), err.message, err.token.index + 1, err.token.value)
+            .c_str());
+    params.set_default_remaining_outputs();
+    return;
+  }
+
+  EvaluationContext ctx([&params, &vars](std::string_view name) -> fn::GField {
+    if (!vars.contains(name)) {
+      throw "variable does not exist";
+    }
+
+    return vars.lookup(name);
+  });
+
+  try {
+    fn::GField field = expr->compile(ctx);
+
+    if (field.cpp_type().is<float>() &&
+        storage.output_type != GEO_NODE_MATH_EXPRESSION_OUTPUT_FLOAT) {
+      params.error_message_add(
+          NodeWarningType::Error,
+          TIP_("The result of the expression (Float) does not match the ouput type of the node"));
+      params.set_default_remaining_outputs();
+      return;
+    }
+
+    if (field.cpp_type().is<float3>() &&
+        storage.output_type != GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR) {
+      params.error_message_add(
+          NodeWarningType::Error,
+          TIP_("The result of the expression (Vector) does not match the ouput type of the node"));
+      params.set_default_remaining_outputs();
+      return;
+    }
+
+    params.set_output("Value", field);
+  }
+  catch (EvaluationError err) {
+    params.error_message_add(NodeWarningType::Error,
+                             fmt::format("{}: col:{} '{}'",
+                                         err.message,
+                                         err.expression->get_token().index + 1,
+                                         err.expression->get_token().value)
+                                 .c_str());
+    params.set_default_remaining_outputs();
+    return;
+  }
+}
+
+static void node_layout(uiLayout *layout, bContext * /*c*/, PointerRNA *ptr)
+{
+  uiItemR(layout, ptr, "variables", UI_ITEM_NONE, "Variables", ICON_NONE);
+  uiItemR(layout, ptr, "output_type", UI_ITEM_NONE, "Output Type", ICON_NONE);
+  uiItemR(layout, ptr, "expression", UI_ITEM_NONE, "Expression", ICON_NONE);
+}
+
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  node->storage = MEM_callocN(sizeof(NodeGeometryMathExpression), __func__);
+  NodeGeometryMathExpression &storage = node_storage(*node);
+  storage.output_type = GEO_NODE_MATH_EXPRESSION_OUTPUT_VECTOR;
+  strcpy(storage.variables, "v1, fa, fb, fc");
+  strcpy(storage.expression, "vec(fa, fb, fc) + v1");
+}
+
+inline void node_register()
+{
+  namespace file_ns = blender::nodes::node_geo_math_expression_cc;
+
+  static bNodeType ntype;
+
+  geo_node_type_base(&ntype, GEO_NODE_MATH_EXPRESSION, "Math Expression", NODE_CLASS_CONVERTER);
+  ntype.declare = file_ns::node_declare;
+  ntype.initfunc = file_ns::node_init;
+  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.draw_buttons = file_ns::node_layout;
+
+  node_type_storage(&ntype,
+                    "NodeGeometryMathExpression",
+                    node_free_standard_storage,
+                    node_copy_standard_storage);
+  nodeRegisterType(&ntype);
+}
+NOD_REGISTER_NODE(node_register)
+}  // namespace blender::nodes::node_geo_math_expression_cc
