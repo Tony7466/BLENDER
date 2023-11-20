@@ -441,7 +441,7 @@ void EEVEE_downsample_cube_buffer(EEVEE_Data *vedata, GPUTexture *texture_src, i
   GPU_framebuffer_ensure_config(&fbl->downsample_fb,
                                 {
                                     GPU_ATTACHMENT_NONE,
-                                    GPU_ATTACHMENT_TEXTURE(texture_src, 0),
+                                    GPU_ATTACHMENT_TEXTURE(texture_src),
                                 });
   GPU_framebuffer_recursive_downsample(
       fbl->downsample_fb, level, &simple_downsample_cube_cb, vedata);
