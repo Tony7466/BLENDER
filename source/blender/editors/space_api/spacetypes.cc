@@ -16,7 +16,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_screen.hh"
 
 #include "GPU_state.h"
@@ -45,7 +45,7 @@
 #include "ED_object.hh"
 #include "ED_paint.hh"
 #include "ED_physics.hh"
-#include "ED_project.h"
+#include "ED_project.hh"
 #include "ED_render.hh"
 #include "ED_scene.hh"
 #include "ED_screen.hh"

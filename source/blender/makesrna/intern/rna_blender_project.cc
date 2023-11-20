@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -10,13 +12,17 @@
 
 #ifdef RNA_RUNTIME
 
+#  include "BLI_string_ref.hh"
+
 #  include "BKE_addon.h"
 #  include "BKE_asset_library_custom.h"
-#  include "BKE_blender_project.h"
+#  include "BKE_blender_project.hh"
 
 #  include "BLT_translation.h"
 
 #  include "WM_api.hh"
+
+using namespace blender;
 
 static void rna_BlenderProject_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
@@ -27,55 +33,55 @@ static void rna_BlenderProject_update(Main * /*bmain*/, Scene * /*scene*/, Point
 
 static void rna_BlenderProject_name_get(PointerRNA *ptr, char *value)
 {
-  const BlenderProject *project = static_cast<BlenderProject *>(ptr->data);
+  const bke::BlenderProject *project = static_cast<bke::BlenderProject *>(ptr->data);
   if (!project) {
     value[0] = '\0';
     return;
   }
 
-  strcpy(value, BKE_project_name_get(project));
+  strcpy(value, project->project_name().c_str());
 }
 
 static int rna_BlenderProject_name_length(PointerRNA *ptr)
 {
-  const BlenderProject *project = static_cast<BlenderProject *>(ptr->data);
+  const bke::BlenderProject *project = static_cast<bke::BlenderProject *>(ptr->data);
   if (!project) {
     return 0;
   }
 
-  return strlen(BKE_project_name_get(project));
+  return project->project_name().size();
 }
 
 static void rna_BlenderProject_name_set(PointerRNA *ptr, const char *value)
 {
-  BlenderProject *project = static_cast<BlenderProject *>(ptr->data);
+  bke::BlenderProject *project = static_cast<bke::BlenderProject *>(ptr->data);
 
   if (!project) {
     return;
   }
 
-  BKE_project_name_set(project, value);
+  project->set_project_name(value);
 }
 
 static void rna_BlenderProject_root_path_get(PointerRNA *ptr, char *value)
 {
-  const BlenderProject *project = static_cast<BlenderProject *>(ptr->data);
+  const bke::BlenderProject *project = static_cast<bke::BlenderProject *>(ptr->data);
   if (!project) {
     value[0] = '\0';
     return;
   }
 
-  strcpy(value, BKE_project_root_path_get(project));
+  strcpy(value, project->root_path().c_str());
 }
 
 static int rna_BlenderProject_root_path_length(PointerRNA *ptr)
 {
-  const BlenderProject *project = static_cast<BlenderProject *>(ptr->data);
+  const bke::BlenderProject *project = static_cast<bke::BlenderProject *>(ptr->data);
   if (!project) {
     return 0;
   }
 
-  return strlen(BKE_project_root_path_get(project));
+  return project->root_path().size();
 }
 
 static void rna_BlenderProject_root_path_set(PointerRNA * /*ptr*/, const char * /*value*/)
@@ -95,9 +101,9 @@ static int rna_BlenderProject_root_path_editable(PointerRNA * /*ptr*/, const cha
 static void rna_BlenderProject_asset_libraries_begin(CollectionPropertyIterator *iter,
                                                      PointerRNA *ptr)
 {
-  BlenderProject *project = static_cast<BlenderProject *>(ptr->data);
-  ListBase *asset_libraries = BKE_project_custom_asset_libraries_get(project);
-  rna_iterator_listbase_begin(iter, asset_libraries, nullptr);
+  bke::BlenderProject *project = static_cast<bke::BlenderProject *>(ptr->data);
+  ListBase &asset_libraries = project->asset_library_definitions();
+  rna_iterator_listbase_begin(iter, &asset_libraries, nullptr);
 }
 
 static void rna_BlenderProject_addons_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -109,8 +115,8 @@ static void rna_BlenderProject_addons_begin(CollectionPropertyIterator *iter, Po
 
 static bool rna_BlenderProject_is_dirty_get(PointerRNA *ptr)
 {
-  const BlenderProject *project = static_cast<BlenderProject *>(ptr->data);
-  return BKE_project_has_unsaved_changes(project);
+  const bke::BlenderProject *project = static_cast<bke::BlenderProject *>(ptr->data);
+  return project->has_unsaved_changes();
 }
 
 static bAddon *rna_BlenderProject_addon_new(ReportList *reports)

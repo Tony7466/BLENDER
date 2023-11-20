@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_screen.hh"
 
@@ -93,7 +95,7 @@ static void project_settings_listener(const wmSpaceTypeListenerParams *params)
   }
 }
 
-static void project_settings_operatortypes(void) {}
+static void project_settings_operatortypes() {}
 
 static void project_settings_keymap(struct wmKeyConfig * /*keyconf*/) {}
 
@@ -119,7 +121,7 @@ static void project_settings_main_region_layout(const bContext *C, ARegion *regi
   SpaceProjectSettings *sproject_settings = CTX_wm_space_project_settings(C);
 
   char id_lower[64];
-  const char *contexts[2] = {id_lower, NULL};
+  const char *contexts[2] = {id_lower, nullptr};
 
   if (!CTX_wm_project()) {
     /* Special context for when there is no project. UI can draw a special panel then. */
@@ -139,7 +141,7 @@ static void project_settings_main_region_layout(const bContext *C, ARegion *regi
     BLI_str_tolower_ascii(id_lower, strlen(id_lower));
   }
 
-  ED_region_panels_layout_ex(C, region, &region->type->paneltypes, contexts, NULL);
+  ED_region_panels_layout_ex(C, region, &region->type->paneltypes, contexts, nullptr);
 }
 
 static void project_settings_main_region_listener(const wmRegionListenerParams * /*params*/) {}

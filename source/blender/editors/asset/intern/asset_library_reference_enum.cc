@@ -14,8 +14,8 @@
 #include "BLI_listbase.h"
 
 #include "BKE_asset_library_custom.h"
-#include "BKE_blender_project.h"
-#include "BKE_context.h"
+#include "BKE_blender_project.hh"
+#include "BKE_context.hh"
 
 #include "DNA_userdef_types.h"
 
@@ -24,6 +24,8 @@
 #include "RNA_define.hh"
 
 #include "ED_asset_library.h"
+
+using namespace blender;
 
 int ED_asset_library_reference_to_enum_value(const AssetLibraryReference *library)
 {
@@ -67,7 +69,8 @@ AssetLibraryReference ED_asset_library_reference_from_enum_value(int value)
 
     /* Note that there is no check if the path exists here. If an invalid library path is used, the
      * Asset Browser can give a nice hint on what's wrong. */
-    const bool is_valid = custom_library && (custom_library->name[0] && custom_library->dirpath[0]);
+    const bool is_valid = custom_library &&
+                          (custom_library->name[0] && custom_library->dirpath[0]);
     if (!is_valid) {
       library.custom_library_index = -1;
     }
@@ -77,13 +80,13 @@ AssetLibraryReference ED_asset_library_reference_from_enum_value(int value)
 }
 
 static void add_custom_asset_library_enum_items(
-    const ListBase * /*CustomAssetLibraryDefinition*/ libraries,
+    const ListBase & /*CustomAssetLibraryDefinition*/ libraries,
     const eAssetLibraryType library_type,
     EnumPropertyItem **items,
     int *totitem)
 {
   int i;
-  LISTBASE_FOREACH_INDEX (CustomAssetLibraryDefinition *, custom_library, libraries, i) {
+  LISTBASE_FOREACH_INDEX (CustomAssetLibraryDefinition *, custom_library, &libraries, i) {
     /* Note that the path itself isn't checked for validity here. If an invalid library path is
      * used, the Asset Browser can give a nice hint on what's wrong. */
     const bool is_valid = (custom_library->name[0] && custom_library->dirpath[0]);
@@ -97,8 +100,11 @@ static void add_custom_asset_library_enum_items(
 
     const int enum_value = ED_asset_library_reference_to_enum_value(&library_reference);
     /* Use library path as description, it's a nice hint for users. */
-    EnumPropertyItem tmp = {
-        enum_value, custom_library->name, ICON_NONE, custom_library->name, custom_library->dirpath};
+    EnumPropertyItem tmp = {enum_value,
+                            custom_library->name,
+                            ICON_NONE,
+                            custom_library->name,
+                            custom_library->dirpath};
     RNA_enum_item_add(items, totitem, &tmp);
   }
 }
@@ -130,21 +136,19 @@ const EnumPropertyItem *ED_asset_library_reference_to_rna_enum_itemf(const bool 
     RNA_enum_items_add(&item, &totitem, generated_items);
   }
 
-  BlenderProject *project = CTX_wm_project();
-  if (project && !BLI_listbase_is_empty(BKE_project_custom_asset_libraries_get(project))) {
+  bke::BlenderProject *project = CTX_wm_project();
+  if (project && !BLI_listbase_is_empty(&project->asset_library_definitions())) {
     RNA_enum_item_add_separator(&item, &totitem);
 
-    add_custom_asset_library_enum_items(BKE_project_custom_asset_libraries_get(project),
-                                        ASSET_LIBRARY_CUSTOM_FROM_PROJECT,
-                                        &item,
-                                        &totitem);
+    add_custom_asset_library_enum_items(
+        project->asset_library_definitions(), ASSET_LIBRARY_CUSTOM_FROM_PROJECT, &item, &totitem);
   }
 
   if (!BLI_listbase_is_empty(&U.asset_libraries)) {
     RNA_enum_item_add_separator(&item, &totitem);
 
     add_custom_asset_library_enum_items(
-        &U.asset_libraries, ASSET_LIBRARY_CUSTOM_FROM_PREFERENCES, &item, &totitem);
+        U.asset_libraries, ASSET_LIBRARY_CUSTOM_FROM_PREFERENCES, &item, &totitem);
   }
 
   RNA_enum_item_end(&item, &totitem);
