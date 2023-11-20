@@ -17,26 +17,6 @@
 #include "vk_texture.hh"
 
 namespace blender::gpu {
-
-static IndexRange layer_range_get(GPUTexture *tex, int layer)
-{
-  /* At the time of VkImage generation, the multi-layer type is recognized. */
-  IndexRange layers_range(0, 0);
-  if (layer > -1 && GPU_texture_is_cube(tex) && !GPU_texture_is_array(tex)) {
-    /**
-     * TODO:: When MultiView is enabled, the layer is set to 1,
-     * making it a multilayer render that relies on the attributes of the sub-pass
-     * description.
-     * Availability of CubeMap is another issue.
-     */
-    layers_range = IndexRange(max_ii(layer, 0), 1);
-  }
-  else if (layer > -1) {
-    layers_range = IndexRange(max_ii(layer, 0), 1);
-  }
-  return layers_range;
-};
-
 /* -------------------------------------------------------------------- */
 /** \name Creation & Deletion
  * \{ */
