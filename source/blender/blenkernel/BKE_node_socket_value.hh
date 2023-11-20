@@ -12,6 +12,10 @@
 
 #include "FN_field.hh"
 
+#ifdef WITH_OPENVDB
+#  include <openvdb/openvdb.h>
+#endif
+
 namespace blender::bke {
 
 /* -------------------------------------------------------------------- */
@@ -22,7 +26,7 @@ namespace blender::bke {
 
 template<typename T> struct ValueOrField {
   using Field = fn::Field<T>;
-  using GridType = typename grid_types::AttributeGrid<T>;
+  using GridType = typename grid_types::FieldValueGrid<T>;
   using Grid = typename std::shared_ptr<GridType>;
 
   /** Value that is used when the field is empty. */
@@ -54,6 +58,13 @@ template<typename T> struct ValueOrField {
     if (this->field) {
       /* This returns a default value when the field is not constant. */
       return fn::evaluate_constant_field(this->field);
+    }
+    if (this->grid) {
+      /* Returns the grid background value. */
+      T value;
+      if (grid_types::get_background_value(*this->grid, value)) {
+        return value;
+      }
     }
     return this->value;
   }

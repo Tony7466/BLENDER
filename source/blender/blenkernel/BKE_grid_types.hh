@@ -128,6 +128,144 @@ using VectorGrid = Vec3fGrid;
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Grid Type Converter
+ *
+ * Converter between Blender types and OpenVDB types.
+ * \{ */
+
+namespace blender::bke::grid_types {
+
+#ifdef WITH_OPENVDB
+
+namespace detail {
+
+template<typename FieldValueType, typename GridValueType, typename LeafBufferValueType>
+struct GridConverter_ReinterpretCast {
+  static GridValueType single_value_to_grid(const FieldValueType &value)
+  {
+    return reinterpret_cast<const GridValueType &>(value);
+  }
+
+  static FieldValueType single_value_to_attribute(const GridValueType &value)
+  {
+    return reinterpret_cast<const FieldValueType &>(value);
+  }
+
+  static MutableSpan<FieldValueType> leaf_buffer_to_varray(
+      const MutableSpan<LeafBufferValueType> values)
+  {
+    return {reinterpret_cast<FieldValueType *>(values.begin()), values.size()};
+  }
+};
+
+template<typename FieldValueType, typename GridValueType, typename LeafBufferValueType>
+struct GridConverter_CopyConstruct {
+  static GridValueType single_value_to_grid(const FieldValueType &value)
+  {
+    return GridValueType(value);
+  }
+
+  static FieldValueType single_value_to_attribute(const GridValueType &value)
+  {
+    return FieldValueType(value);
+  }
+
+  // XXX can't do this, will only work as a DerivedSpan varray.
+  //  static MutableSpan<FieldValueType> leaf_buffer_to_varray(
+  //      const MutableSpan<LeafBufferValueType> values)
+  //  {
+  //    return {reinterpret_cast<FieldValueType *>(values.begin()), values.size()};
+  //  }
+};
+
+template<typename FieldValueType, typename GridValueType, typename LeafBufferValueType>
+struct GridConverter_Vector3CopyConstruct {
+  using GridBaseType = typename GridValueType::ValueType;
+  using FieldBaseType = typename FieldValueType::base_type;
+
+  static GridValueType single_value_to_grid(const FieldValueType &value)
+  {
+    return GridValueType(GridBaseType(value[0]), GridBaseType(value[1]), GridBaseType(value[2]));
+  }
+
+  static FieldValueType single_value_to_attribute(const GridValueType &value)
+  {
+    return FieldValueType(
+        FieldBaseType(value[0]), FieldBaseType(value[1]), FieldBaseType(value[2]));
+  }
+
+  // XXX can't do this, will only work as a DerivedSpan varray.
+  //  static MutableSpan<FieldValueType> leaf_buffer_to_varray(
+  //      const MutableSpan<LeafBufferValueType> values)
+  //  {
+  //    return {reinterpret_cast<FieldValueType *>(values.begin()), values.size()};
+  //  }
+};
+
+/* Return default values without trying to convert. */
+template<typename FieldValueType, typename GridValueType, typename LeafBufferValueType>
+struct GridConverter_Dummy {
+  static GridValueType single_value_to_grid(const FieldValueType & /*value*/)
+  {
+    return GridValueType();
+  }
+
+  static FieldValueType single_value_to_attribute(const GridValueType & /*value*/)
+  {
+    return FieldValueType();
+  }
+
+  static MutableSpan<FieldValueType> leaf_buffer_to_varray(
+      const MutableSpan<LeafBufferValueType> /*values*/)
+  {
+    return {};
+  }
+};
+
+}  // namespace detail
+
+/* Default implementation, only used when grid and attribute types are exactly the same. */
+template<typename T> struct GridConverter : public detail::GridConverter_ReinterpretCast<T, T, T> {
+  using FieldValueType = T;
+};
+
+/* TODO Some base types (double, int3, ...) don't have a CPPType registered yet, and even then
+ * there are other layers like attributes, customdata, node sockets, which need to support these
+ * types. In the meantime the converters will use smaller base types for fields and attributes. */
+
+template<>
+struct GridConverter<float3>
+    : public detail::GridConverter_ReinterpretCast<float3, openvdb::Vec3f, openvdb::Vec3f> {
+  using FieldValueType = float3;
+};
+
+template<>
+struct GridConverter<math::Quaternion>
+    : public detail::
+          GridConverter_ReinterpretCast<math::Quaternion, openvdb::Vec4f, openvdb::Vec4f> {
+  using FieldValueType = math::Quaternion;
+};
+
+template<>
+struct GridConverter<blender::ColorGeometry4f>
+    : public detail::
+          GridConverter_ReinterpretCast<blender::ColorGeometry4f, openvdb::Vec4f, openvdb::Vec4f> {
+  using FieldValueType = blender::ColorGeometry4f;
+};
+
+template<>
+struct GridConverter<std::string>
+    : public detail::GridConverter_Dummy<std::string, openvdb::ValueMask, uint64_t> {
+  using FieldValueType = std::string;
+};
+
+#endif /* WITH_OPENVDB */
+
+}  // namespace blender::bke::grid_types
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Attribute Grid
  *
  * Grid class template using Blender data types.
@@ -137,18 +275,18 @@ namespace blender::bke::grid_types {
 
 #ifdef WITH_OPENVDB
 
-using SupportedAttributeValueTypes = std::tuple<bool,
-                                                float,
-                                                float2,
-                                                float3,
-                                                /*float4,*/
-                                                int32_t,
-                                                int64_t,
-                                                int2,
-                                                /*int3,*/ /*int4,*/ uint32_t
-                                                /*,uint2*/
-                                                /*,uint3*/
-                                                /*,uint4*/>;
+using SupportedValueTypes = std::tuple<bool,
+                                       float,
+                                       float2,
+                                       float3,
+                                       /*float4,*/
+                                       int32_t,
+                                       int64_t,
+                                       int2,
+                                       /*int3,*/ /*int4,*/ uint32_t
+                                       /*,uint2*/
+                                       /*,uint3*/
+                                       /*,uint4*/>;
 
 using SupportedPointGridAttributeTypes = openvdb::TypeList<
     openvdb::points::TypedAttributeArray<bool, openvdb::points::NullCodec>,
@@ -184,72 +322,72 @@ void field_to_static_type_resolve(std::tuple<Types...> /*dummy*/, const CPPType 
 /* Helper function to evaluate a function with a static field type. */
 template<typename Func> void field_to_static_type(const CPPType &type, Func func)
 {
-  detail::field_to_static_type_resolve(grid_types::SupportedAttributeValueTypes(), type, func);
+  detail::field_to_static_type_resolve(grid_types::SupportedValueTypes(), type, func);
 }
 
 /**
  * Tree types for commonly used values.
  */
-template<typename T> struct AttributeTreeImpl;
+template<typename T> struct FieldValueTreeImpl;
 
-template<> struct AttributeTreeImpl<bool> {
+template<> struct FieldValueTreeImpl<bool> {
   using Type = openvdb::BoolTree;
 };
-template<> struct AttributeTreeImpl<float> {
+template<> struct FieldValueTreeImpl<float> {
   using Type = openvdb::FloatTree;
 };
-template<> struct AttributeTreeImpl<float2> {
+template<> struct FieldValueTreeImpl<float2> {
   using Type = openvdb::Vec2STree;
 };
-template<> struct AttributeTreeImpl<float3> {
+template<> struct FieldValueTreeImpl<float3> {
   using Type = openvdb::Vec3STree;
 };
-template<> struct AttributeTreeImpl<double> {
+template<> struct FieldValueTreeImpl<double> {
   using Type = openvdb::DoubleTree;
 };
-template<> struct AttributeTreeImpl<double3> {
+template<> struct FieldValueTreeImpl<double3> {
   using Type = openvdb::Vec3DTree;
 };
-template<> struct AttributeTreeImpl<int8_t> {
+template<> struct FieldValueTreeImpl<int8_t> {
   using Type = openvdb::Int8Grid;
 };
-template<> struct AttributeTreeImpl<int32_t> {
+template<> struct FieldValueTreeImpl<int32_t> {
   using Type = openvdb::Int32Tree;
 };
-template<> struct AttributeTreeImpl<int64_t> {
+template<> struct FieldValueTreeImpl<int64_t> {
   using Type = openvdb::Int64Tree;
 };
-template<> struct AttributeTreeImpl<int2> {
+template<> struct FieldValueTreeImpl<int2> {
   using Type = openvdb::Vec2ITree;
 };
-template<> struct AttributeTreeImpl<int3> {
+template<> struct FieldValueTreeImpl<int3> {
   using Type = openvdb::Vec3ITree;
 };
-template<> struct AttributeTreeImpl<uint32_t> {
+template<> struct FieldValueTreeImpl<uint32_t> {
   using Type = openvdb::UInt32Tree;
 };
-template<> struct AttributeTreeImpl<ColorGeometry4f> {
+template<> struct FieldValueTreeImpl<ColorGeometry4f> {
   using Type = openvdb::Vec4fTree;
 };
-template<> struct AttributeTreeImpl<blender::ColorGeometry4b> {
+template<> struct FieldValueTreeImpl<blender::ColorGeometry4b> {
   using Type = openvdb::UInt32Tree;
 };
-template<> struct AttributeTreeImpl<math::Quaternion> {
+template<> struct FieldValueTreeImpl<math::Quaternion> {
   using Type = openvdb::Vec4fTree;
 };
 /* Stub class for string attributes, not supported. */
-template<> struct AttributeTreeImpl<std::string> {
+template<> struct FieldValueTreeImpl<std::string> {
   using Type = openvdb::MaskTree;
 };
 
-template<typename T> using AttributeTree = typename AttributeTreeImpl<T>::Type;
-template<typename T> using AttributeGrid = typename openvdb::Grid<AttributeTree<T>>;
+template<typename T> using FieldValueTree = typename FieldValueTreeImpl<T>::Type;
+template<typename T> using FieldValueGrid = typename openvdb::Grid<FieldValueTree<T>>;
 
 #else /* WITH_OPENVDB */
 
-template<typename T> struct AttributeTree {
+template<typename T> struct FieldValueTree {
 };
-template<typename T> struct AttributeGrid {
+template<typename T> struct FieldValueGrid {
 };
 
 #endif /* WITH_OPENVDB */
@@ -259,202 +397,31 @@ template<typename T> struct AttributeGrid {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Grid Type Converter
- *
- * Converter between Blender types and OpenVDB types.
+/** \name Grid Utility Functions
  * \{ */
 
 namespace blender::bke::grid_types {
 
 #ifdef WITH_OPENVDB
 
-namespace detail {
-
-template<typename AttributeValueType, typename GridValueType, typename LeafBufferValueType>
-struct ReinterpretCastConverter {
-  static GridValueType single_value_to_grid(const AttributeValueType &value)
-  {
-    return reinterpret_cast<const GridValueType &>(value);
+template<typename GridType, typename T> bool get_background_value(const GridType &grid, T &r_value)
+{
+  if constexpr (std::is_same_v<GridType, openvdb::MaskGrid>) {
+    return false;
   }
-
-  static AttributeValueType single_value_to_attribute(const GridValueType &value)
-  {
-    return reinterpret_cast<const AttributeValueType &>(value);
+  else {
+    using Converter = GridConverter<T>;
+    r_value = Converter::single_value_to_attribute(grid.background());
+    return true;
   }
+}
 
-  static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
-      const MutableSpan<LeafBufferValueType> values)
-  {
-    return {reinterpret_cast<AttributeValueType *>(values.begin()), values.size()};
-  }
-};
+#else
 
-template<typename AttributeValueType, typename GridValueType, typename LeafBufferValueType>
-struct CopyConstructConverter {
-  static GridValueType single_value_to_grid(const AttributeValueType &value)
-  {
-    return GridValueType(value);
-  }
-
-  static AttributeValueType single_value_to_attribute(const GridValueType &value)
-  {
-    return AttributeValueType(value);
-  }
-
-  // XXX can't do this, will only work as a DerivedSpan varray.
-  //  static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
-  //      const MutableSpan<LeafBufferValueType> values)
-  //  {
-  //    return {reinterpret_cast<AttributeValueType *>(values.begin()), values.size()};
-  //  }
-};
-
-template<typename AttributeValueType, typename GridValueType, typename LeafBufferValueType>
-struct Vector3CopyConstructConverter {
-  using GridBaseType = typename GridValueType::ValueType;
-  using AttributeBaseType = typename AttributeValueType::base_type;
-
-  static GridValueType single_value_to_grid(const AttributeValueType &value)
-  {
-    return GridValueType(GridBaseType(value[0]), GridBaseType(value[1]), GridBaseType(value[2]));
-  }
-
-  static AttributeValueType single_value_to_attribute(const GridValueType &value)
-  {
-    return AttributeValueType(
-        AttributeBaseType(value[0]), AttributeBaseType(value[1]), AttributeBaseType(value[2]));
-  }
-
-  // XXX can't do this, will only work as a DerivedSpan varray.
-  //  static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
-  //      const MutableSpan<LeafBufferValueType> values)
-  //  {
-  //    return {reinterpret_cast<AttributeValueType *>(values.begin()), values.size()};
-  //  }
-};
-
-}  // namespace detail
-
-/* Default implementation, only used when grid and attribute types are exactly the same. */
-template<typename GridType>
-struct Converter : public detail::ReinterpretCastConverter<typename GridType::ValueType,
-                                                           typename GridType::ValueType,
-                                                           typename GridType::ValueType> {
-  using AttributeValueType = typename GridType::ValueType;
-};
-
-/* TODO Some base types (double, int3, ...) don't have a CPPType registered yet, and even then
- * there are other layers like attributes, customdata, node sockets, which need to support these
- * types. In the meantime the converters will use smaller base types for fields and attributes. */
-
-#  ifndef USE_CPPTYPE_DOUBLE
-template<>
-struct Converter<openvdb::DoubleGrid>
-    : public detail::CopyConstructConverter<float, double, double> {
-  using AttributeValueType = float;
-};
-#  endif
-
-/* Vector implementation, casts Blender vectors to OpenVDB vectors and vice versa. */
-template<>
-struct Converter<openvdb::Vec2fGrid>
-    : public detail::ReinterpretCastConverter<float2, openvdb::math::Vec2s, openvdb::math::Vec2s> {
-  using AttributeValueType = float2;
-};
-
-template<>
-struct Converter<openvdb::Vec3fGrid>
-    : public detail::ReinterpretCastConverter<float3, openvdb::math::Vec3s, openvdb::math::Vec3s> {
-  using AttributeValueType = float3;
-};
-
-#  ifdef USE_CPPTYPE_DOUBLE3
-template<>
-struct Converter<openvdb::Vec3DGrid>
-    : public detail::
-          ReinterpretCastConverter<double3, openvdb::math::Vec3d, openvdb::math::Vec3d> {
-  using AttributeValueType = double3;
-};
-#  else
-/* Store double3 data as float3 */
-template<>
-struct Converter<openvdb::Vec3DGrid>
-    : public detail::
-          Vector3CopyConstructConverter<float3, openvdb::math::Vec3d, openvdb::math::Vec3d> {
-  using AttributeValueType = float3;
-};
-#  endif
-
-template<>
-struct Converter<openvdb::Vec2IGrid>
-    : public detail::ReinterpretCastConverter<int2, openvdb::math::Vec2i, openvdb::math::Vec2i> {
-  using AttributeValueType = int2;
-};
-
-#  ifdef USE_CPPTYPE_INT3
-template<>
-struct Converter<openvdb::Vec3IGrid>
-    : public detail::ReinterpretCastConverter<int3, openvdb::math::Vec3i, openvdb::math::Vec3i> {
-  using AttributeValueType = int3;
-};
-#  else
-/* Store int3 data as float3 */
-template<>
-struct Converter<openvdb::Vec3IGrid>
-    : public detail::
-          Vector3CopyConstructConverter<float3, openvdb::math::Vec3i, openvdb::math::Vec3i> {
-  using AttributeValueType = float3;
-};
-#  endif
-
-/* Specialization for MaskGrid: Leaf buffers directly expose the activation state bit fields. */
-template<> struct Converter<openvdb::MaskGrid> {
-  using GridValueType = openvdb::ValueMask;
-  // using LeafBufferValueType = unsigned long int;
-  using LeafBufferValueType = uint64_t;
-  using AttributeValueType = bool;
-
-  static GridValueType single_value_to_grid(const AttributeValueType & /*value*/)
-  {
-    return {};
-  }
-
-  /* MaskGrid accessor also returns a bool. */
-  static AttributeValueType single_value_to_attribute(const bool value)
-  {
-    return value;
-  }
-
-  static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
-      const MutableSpan<LeafBufferValueType> values)
-  {
-    return {reinterpret_cast<AttributeValueType *>(values.begin()), values.size()};
-  }
-};
-
-/* Specialization for BoolGrid: Leaf buffers directly expose the activation state bit fields. */
-template<> struct Converter<openvdb::BoolGrid> {
-  using GridValueType = bool;
-  // using LeafBufferValueType = unsigned long int;
-  using LeafBufferValueType = uint64_t;
-  using AttributeValueType = bool;
-
-  static GridValueType single_value_to_grid(const AttributeValueType &value)
-  {
-    return value;
-  }
-
-  static AttributeValueType single_value_to_attribute(const AttributeValueType &value)
-  {
-    return value;
-  }
-
-  static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
-      const MutableSpan<LeafBufferValueType> values)
-  {
-    return {reinterpret_cast<AttributeValueType *>(values.begin()), values.size()};
-  }
-};
+template<typename GridType, typename T> bool get_background_value(const GridType &, T &r_value)
+{
+  return false;
+}
 
 #endif /* WITH_OPENVDB */
 
