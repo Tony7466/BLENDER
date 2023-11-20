@@ -34,7 +34,7 @@ void AtomicDisjointSet::calc_reduced_ids(MutableSpan<int> result) const
       while (true) {
         const int other_index = atomic_load_int32(&least_root_index[root]);
         if (index < other_index) {
-          if (atomic_cas_int32(&least_root_index[root], other_index, index) != other_index) {
+          if (atomic_cas_int32(&least_root_index[root], other_index, index) == other_index) {
             break;
           }
         }
