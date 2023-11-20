@@ -12,9 +12,9 @@
 
 #include "DNA_screen_types.h"
 
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BKE_duplilist.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_layer.h"
 #include "BKE_mesh.hh"
@@ -156,7 +156,7 @@ void SnapData::clip_planes_enable(SnapObjectContext *sctx,
 
 bool SnapData::snap_boundbox(const float3 &min, const float3 &max)
 {
-  /* In vertex and edges you need to get the pixel distance from ray to BoundBox,
+  /* In vertex and edges you need to get the pixel distance from ray to bounding box,
    * see: #46099, #46816 */
 
 #ifdef TEST_CLIPPLANES_IN_BOUNDBOX
@@ -722,6 +722,12 @@ bool nearest_world_tree(SnapObjectContext *sctx,
   *r_nearest = nearest;
   if (sctx->runtime.params.keep_on_same_target) {
     r_nearest->dist_sq = original_distance;
+  }
+  else if (sctx->runtime.params.face_nearest_steps > 1) {
+    /* Recalculate the distance.
+     * When multiple steps are tested, we cannot depend on the distance calculated for
+     * `nearest.dist_sq`, as it reduces with each step. */
+    r_nearest->dist_sq = math::distance_squared(sctx->runtime.curr_co, co);
   }
   return true;
 }
