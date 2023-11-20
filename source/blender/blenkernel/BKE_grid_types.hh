@@ -10,6 +10,7 @@
 
 #include "BLI_color.hh"
 #include "BLI_cpp_type.hh"
+#include "BLI_implicit_sharing.hh"
 #include "BLI_math_base.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_quaternion_types.hh"
@@ -380,17 +381,66 @@ template<> struct FieldValueTreeImpl<std::string> {
   using Type = openvdb::MaskTree;
 };
 
-template<typename T> using FieldValueTree = typename FieldValueTreeImpl<T>::Type;
-template<typename T> using FieldValueGrid = typename openvdb::Grid<FieldValueTree<T>>;
+template<typename T>
+using FieldValueGridImpl = openvdb::Grid<typename FieldValueTreeImpl<T>::Type>;
 
 #else /* WITH_OPENVDB */
 
-template<typename T> struct FieldValueTree {
-};
-template<typename T> struct FieldValueGrid {
+template<typename T> struct FieldValueGridImpl {
 };
 
 #endif /* WITH_OPENVDB */
+
+template<typename T> struct FieldValueGrid : public ImplicitSharingMixin {
+  using GridType = FieldValueGridImpl<T>;
+
+  std::shared_ptr<GridType> grid;
+
+  FieldValueGrid() : grid(nullptr) {}
+  FieldValueGrid(const std::shared_ptr<GridType> &grid) : grid(grid) {}
+
+  FieldValueGrid<T> &operator=(const FieldValueGrid<T> &other)
+  {
+    this->grid = other.grid;
+  }
+
+  FieldValueGrid<T> &operator=(const std::shared_ptr<GridType> &grid)
+  {
+    this->grid = grid;
+  }
+
+  void delete_self() override
+  {
+    delete this;
+  }
+
+  bool operator==(const FieldValueGrid<T> &other)
+  {
+    return this->grid == other.grid;
+  }
+  bool operator!=(const FieldValueGrid<T> &other)
+  {
+    return this->grid != other.grid;
+  }
+
+  GridType &operator*()
+  {
+    return *this->grid;
+  }
+  const GridType &operator*() const
+  {
+    return *this->grid;
+  }
+
+  GridType *operator->()
+  {
+    return this->grid.get();
+  }
+  const GridType *operator->() const
+  {
+    return this->grid.get();
+  }
+};
 
 }  // namespace blender::bke::grid_types
 
@@ -402,28 +452,36 @@ template<typename T> struct FieldValueGrid {
 
 namespace blender::bke::grid_types {
 
-#ifdef WITH_OPENVDB
-
-template<typename GridType, typename T> bool get_background_value(const GridType &grid, T &r_value)
+template<typename T> bool get_background_value(const FieldValueGrid<T> &grid, T &r_value)
 {
-  if constexpr (std::is_same_v<GridType, openvdb::MaskGrid>) {
+#ifdef WITH_OPENVDB
+  if constexpr (std::is_same_v<T, std::string>) {
     return false;
   }
   else {
     using Converter = GridConverter<T>;
-    r_value = Converter::single_value_to_attribute(grid.background());
+    r_value = Converter::single_value_to_attribute(grid->background());
     return true;
   }
-}
-
 #else
-
-template<typename GridType, typename T> bool get_background_value(const GridType &, T &r_value)
-{
   return false;
+#endif /* WITH_OPENVDB */
 }
 
+template<typename T> std::shared_ptr<FieldValueGrid<T>> make_empty_grid(const T background_value)
+{
+#ifdef WITH_OPENVDB
+  if constexpr (std::is_same_v<T, std::string>) {
+    return nullptr;
+  }
+  else {
+    using Converter = GridConverter<T>;
+    return FieldValueGrid<T>::GridType::create(Converter::single_value_to_grid(background_value));
+  }
+#else
+  return nullptr;
 #endif /* WITH_OPENVDB */
+}
 
 }  // namespace blender::bke::grid_types
 

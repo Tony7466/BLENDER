@@ -12,10 +12,6 @@
 
 #include "FN_field.hh"
 
-#ifdef WITH_OPENVDB
-#  include <openvdb/openvdb.h>
-#endif
-
 namespace blender::bke {
 
 /* -------------------------------------------------------------------- */
@@ -40,9 +36,16 @@ template<typename T> struct ValueOrField {
 
   ValueOrField(Field field) : field(std::move(field)) {}
 
+  ValueOrField(Grid grid) : grid(std::move(grid)) {}
+
   bool is_field() const
   {
     return bool(this->field);
+  }
+
+  bool is_grid() const
+  {
+    return bool(this->grid);
   }
 
   Field as_field() const
@@ -51,6 +54,14 @@ template<typename T> struct ValueOrField {
       return this->field;
     }
     return fn::make_constant_field(this->value);
+  }
+
+  Grid as_grid() const
+  {
+    if (this->grid) {
+      return this->grid;
+    }
+    return grid_types::make_empty_grid(this->value);
   }
 
   T as_value() const
@@ -71,7 +82,7 @@ template<typename T> struct ValueOrField {
 
   friend std::ostream &operator<<(std::ostream &stream, const ValueOrField<T> &value_or_field)
   {
-    if (value_or_field.field) {
+    if (value_or_field.field || value_or_field.grid) {
       stream << "ValueOrField<T>";
     }
     else {

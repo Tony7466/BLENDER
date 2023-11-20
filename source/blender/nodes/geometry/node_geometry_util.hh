@@ -17,7 +17,7 @@
 #include "node_util.hh"
 
 #ifdef WITH_OPENVDB
-#  include <openvdb/Types.h>
+#  include <openvdb/openvdb.h>
 #endif
 
 struct BVHTreeFromMesh;
