@@ -1012,9 +1012,19 @@ void DepsgraphRelationBuilder::build_object_data(Object *object)
   }
   /* Materials. */
   Material ***materials_ptr = BKE_object_material_array_p(object);
+  short *num_materials_ptr = BKE_object_material_len_p(object);
   if (materials_ptr != nullptr) {
-    short *num_materials_ptr = BKE_object_material_len_p(object);
     build_materials(*materials_ptr, *num_materials_ptr);
+  }
+
+  if (num_materials_ptr) {
+    OperationKey object_shading_key(&object->id, NodeType::SHADING, OperationCode::SHADING);
+    for (int i = 0; i < *num_materials_ptr; i++) {
+      if (Material *material = BKE_object_material_get(object, i + 1)) {
+        ComponentKey material_key(&material->id, NodeType::SHADING);
+        add_relation(material_key, object_shading_key, "Material -> Object Shading");
+      }
+    }
   }
 }
 
@@ -1034,6 +1044,8 @@ void DepsgraphRelationBuilder::build_object_data_light(Object *object)
   ComponentKey lamp_parameters_key(&lamp->id, NodeType::PARAMETERS);
   ComponentKey object_parameters_key(&object->id, NodeType::PARAMETERS);
   add_relation(lamp_parameters_key, object_parameters_key, "Light -> Object");
+  OperationKey object_shading_key(&object->id, NodeType::SHADING, OperationCode::SHADING);
+  add_relation(lamp_parameters_key, object_shading_key, "Light -> Object Shading");
 }
 
 void DepsgraphRelationBuilder::build_object_data_lightprobe(Object *object)
@@ -1043,6 +1055,8 @@ void DepsgraphRelationBuilder::build_object_data_lightprobe(Object *object)
   OperationKey probe_key(&probe->id, NodeType::PARAMETERS, OperationCode::LIGHT_PROBE_EVAL);
   OperationKey object_key(&object->id, NodeType::PARAMETERS, OperationCode::LIGHT_PROBE_EVAL);
   add_relation(probe_key, object_key, "LightProbe Update");
+  OperationKey object_shading_key(&object->id, NodeType::SHADING, OperationCode::SHADING);
+  add_relation(probe_key, object_shading_key, "LightProbe -> Object Shading");
 }
 
 void DepsgraphRelationBuilder::build_object_data_speaker(Object *object)
