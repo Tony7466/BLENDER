@@ -381,8 +381,8 @@ static void find_nearest_corners(const Span<float3> src_positions,
       const float3 &dst_position = dst_positions[dst_vert];
 
       const int src_tri = nearest_vert_tris[dst_vert];
-      const int src_face = src_tri_faces[src_tri];
-      const Span<int> src_face_verts = src_corner_verts.slice(src_faces[src_face]);
+      const IndexRange src_face = src_faces[src_tri_faces[src_tri]];
+      const Span<int> src_face_verts = src_corner_verts.slice(src_face);
 
       /* Find the corner in the face that's closest in the closest face. */
       distances.reinitialize(src_face_verts.size());
@@ -392,7 +392,7 @@ static void find_nearest_corners(const Span<float3> src_positions,
       }
 
       const int min = std::min_element(distances.begin(), distances.end()) - distances.begin();
-      nearest_corners[dst_corner] = src_face_verts[min];
+      nearest_corners[dst_corner] = src_face[min];
     }
   });
 }
