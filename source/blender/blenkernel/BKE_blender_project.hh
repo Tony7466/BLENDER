@@ -150,6 +150,8 @@ class BlenderProject {
 
   [[nodiscard]] const ListBase &asset_library_definitions() const;
   [[nodiscard]] ListBase &asset_library_definitions();
+  [[nodiscard]] const ListBase &addons() const;
+  [[nodiscard]] ListBase &addons();
   /**
    * Forcefully tag the project settings for having unsaved changes. This needs to be done if
    * project settings data is modified directly by external code, not via a project API function.

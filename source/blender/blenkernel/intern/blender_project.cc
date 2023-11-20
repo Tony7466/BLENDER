@@ -168,6 +168,15 @@ ListBase &BlenderProject::asset_library_definitions()
   return settings_->asset_library_definitions();
 }
 
+const ListBase &BlenderProject::addons() const
+{
+  return settings_->addons();
+}
+ListBase &BlenderProject::addons()
+{
+  return settings_->addons();
+}
+
 void BlenderProject::tag_has_unsaved_changes()
 {
   settings_->tag_has_unsaved_changes();

@@ -108,9 +108,9 @@ static void rna_BlenderProject_asset_libraries_begin(CollectionPropertyIterator 
 
 static void rna_BlenderProject_addons_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
-  BlenderProject *project = static_cast<BlenderProject *>(ptr->data);
-  ListBase *addons_list = BKE_project_addons_get(project);
-  rna_iterator_listbase_begin(iter, addons_list, nullptr);
+  bke::BlenderProject *project = static_cast<bke::BlenderProject *>(ptr->data);
+  ListBase &addons_list = project->addons();
+  rna_iterator_listbase_begin(iter, &addons_list, nullptr);
 }
 
 static bool rna_BlenderProject_is_dirty_get(PointerRNA *ptr)
@@ -121,37 +121,35 @@ static bool rna_BlenderProject_is_dirty_get(PointerRNA *ptr)
 
 static bAddon *rna_BlenderProject_addon_new(ReportList *reports)
 {
-  BlenderProject *project = BKE_project_active_get();
+  bke::BlenderProject *project = bke::BlenderProject::get_active();
   if (!project) {
     BKE_report(reports, RPT_ERROR, "No project loaded");
   }
 
-  ListBase *addons_list = BKE_project_addons_get(project);
-
   bAddon *addon = BKE_addon_new();
-  BLI_addtail(addons_list, addon);
-  BKE_project_tag_has_unsaved_changes(project);
+  BLI_addtail(&project->addons(), addon);
+  project->tag_has_unsaved_changes();
   return addon;
 }
 
 static void rna_BlenderProject_addon_remove(ReportList *reports, PointerRNA *addon_ptr)
 {
-  BlenderProject *project = BKE_project_active_get();
+  bke::BlenderProject *project = bke::BlenderProject::get_active();
   if (!project) {
     BKE_report(reports, RPT_ERROR, "No project loaded");
   }
 
   bAddon *addon = static_cast<bAddon *>(addon_ptr->data);
 
-  ListBase *addons_list = BKE_project_addons_get(project);
-  if (BLI_findindex(addons_list, addon) == -1) {
+  ListBase &addons_list = project->addons();
+  if (BLI_findindex(&addons_list, addon) == -1) {
     BKE_report(reports, RPT_ERROR, "Add-on is no longer valid");
     return;
   }
-  BLI_remlink(addons_list, addon);
+  BLI_remlink(&addons_list, addon);
   BKE_addon_free(addon);
   RNA_POINTER_INVALIDATE(addon_ptr);
-  BKE_project_tag_has_unsaved_changes(project);
+  project->tag_has_unsaved_changes();
 }
 
 #else
