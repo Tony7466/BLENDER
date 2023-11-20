@@ -619,19 +619,18 @@ static void cmp_node_create_sockets(void *userdata,
   }
 }
 
-static void node_rlayer_declare_dynamic(const bNodeTree & /*ntree*/,
-                                        const bNode &node,
-                                        blender::nodes::NodeDeclaration &r_declaration)
+static void node_rlayer_declare(NodeDeclarationBuilder &builder)
 {
-  Scene *scene = reinterpret_cast<Scene *>(node.id);
-  NodeDeclarationBuilder builder(r_declaration);
+
   builder.add_output<decl::Color>("Image", "Combined_i");
-  if (!scene) {
+  const bNode *node = builder.node_or_null();
+  if (node == nullptr || node->id == nullptr) {
     return;
   }
+  Scene *scene = reinterpret_cast<Scene *>(node->id);
   RenderEngineType *engine_type = RE_engines_find(scene->r.engine);
   RenderEngine *engine = RE_engine_create(engine_type);
-  ViewLayer *view_layer = (ViewLayer *)BLI_findlink(&scene->view_layers, node.custom1);
+  ViewLayer *view_layer = (ViewLayer *)BLI_findlink(&scene->view_layers, node->custom1);
   if (!view_layer) {
     return;
   }
@@ -842,7 +841,7 @@ void register_node_type_cmp_rlayers()
   static bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_R_LAYERS, "Render Layers", NODE_CLASS_INPUT);
-  ntype.declare_dynamic = file_ns::node_rlayer_declare_dynamic;
+  ntype.declare = file_ns::node_rlayer_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_viewlayers;
   ntype.initfunc_api = file_ns::node_composit_init_rlayers;
   ntype.poll = file_ns::node_composit_poll_rlayers;
