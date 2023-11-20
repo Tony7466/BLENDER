@@ -2,3 +2,4 @@ Referenced by commit 83ef3bc9232be4daf155652965428413b3c1a5af, Mesh: Forward com
 Referenced by issue #109033, Missing max length checks accessing some properties with foreach_get/set
 Referenced by issue #110942, Can't open .blend file with 3.6.1
 Referenced by issue #115105, Regression: Edge Crease Doesn't Transfer
+Referenced by pull request #115180, Fix #115105: Edge Crease Doesn't Transfer
