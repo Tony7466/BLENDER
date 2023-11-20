@@ -231,7 +231,7 @@ static PyObject *pygpu_hdr_support_get(PyObject * /*self*/)
 }
 
 PyDoc_STRVAR(pygpu_max_work_group_count_get_doc,
-             ".. function:: max_work_group_count_get()\n"
+             ".. function:: max_work_group_count_get(index)\n"
              "\n"
              "   Get maximum number of work groups that may be dispatched to a compute shader.\n"
              "\n"
@@ -252,7 +252,7 @@ static PyObject *pygpu_max_work_group_count_get(PyObject * /*self*/, PyObject *a
 }
 
 PyDoc_STRVAR(pygpu_max_work_group_size_get_doc,
-             ".. function:: max_work_group_size_get()\n"
+             ".. function:: max_work_group_size_get(index)\n"
              "\n"
              "   Get maximum size of a work group that may be dispatched to a compute shader.\n"
              "\n"
