@@ -513,7 +513,7 @@ void mesh_remesh_reproject_attributes(const Mesh &src, Mesh &dst)
 
   /* The main idea in the following code is to trade some complexity in sampling for the benefit of
    * only using and building a single BVH tree. Since sculpt mode doesn't generally deal with loose
-   * vertices and edges, we use the standard "triangles" which won't contain them. Also, only
+   * vertices and edges, we use the standard "triangles" BVH which won't contain them. Also, only
    * relying on a single BVH should reduce memory usage, and work better if the BVH and PBVH are
    * ever merged.
    *
@@ -521,7 +521,7 @@ void mesh_remesh_reproject_attributes(const Mesh &src, Mesh &dst)
    * attribute data. This is important to keep attribute storage independent from the specifics of
    * the decisions made here, which mainly results in easier refactoring, more generic code, and
    * possibly improved performance from lower cache usage in the "complex" sampling part of the
-   * algorithm. */
+   * algorithm and the copying itself. */
   BVHTreeFromMesh bvhtree{};
   BKE_bvhtree_from_mesh_get(&bvhtree, &src, BVHTREE_FROM_LOOPTRI, 2);
 
