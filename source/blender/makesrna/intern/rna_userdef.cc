@@ -4705,12 +4705,12 @@ static void rna_def_userdef_walk_navigation(BlenderRNA *brna)
   prop = RNA_def_property(srna, "view_height", PROP_FLOAT, PROP_UNIT_LENGTH);
   RNA_def_property_ui_range(prop, 0.1f, 10.0f, 0.1, 2);
   RNA_def_property_range(prop, 0.0f, 1000.0f);
-  RNA_def_property_ui_text(prop, "View Height", "View distance from the floor when walking");
+  RNA_def_property_ui_text(prop, "View Height", "Height from the floor when walking with gravity enabled");
 
   prop = RNA_def_property(srna, "jump_height", PROP_FLOAT, PROP_UNIT_LENGTH);
   RNA_def_property_ui_range(prop, 0.1f, 10.0f, 0.1, 2);
   RNA_def_property_range(prop, 0.1f, 100.0f);
-  RNA_def_property_ui_text(prop, "Jump Height", "Maximum height of a jump");
+  RNA_def_property_ui_text(prop, "Jump Height", "Maximum height of a jump when walking with gravity enabled");
 
   prop = RNA_def_property(srna, "teleport_time", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0f, 10.0f);
@@ -4719,7 +4719,7 @@ static void rna_def_userdef_walk_navigation(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_gravity", PROP_BOOLEAN, PROP_BOOLEAN);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_WALK_GRAVITY);
-  RNA_def_property_ui_text(prop, "Gravity", "Walk with gravity, or free navigate");
+  RNA_def_property_ui_text(prop, "Gravity", "Start walk navigation with gravity enabled");
 
   prop = RNA_def_property(srna, "use_mouse_reverse", PROP_BOOLEAN, PROP_BOOLEAN);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_WALK_MOUSE_REVERSE);
