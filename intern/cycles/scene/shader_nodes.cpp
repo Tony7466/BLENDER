@@ -2353,7 +2353,7 @@ NODE_DEFINE(ConductorBsdfNode)
   SOCKET_IN_COLOR(edge_tint, "Edge Tint", make_float3(1.0f, 1.0f, 1.0f));
 
   SOCKET_IN_VECTOR(ior, "IOR", make_float3(0.183f, 0.421f, 1.373f));
-  SOCKET_IN_VECTOR(k, "Extinction Coefficient", make_float3(3.424f, 2.346f, 1.770f));
+  SOCKET_IN_VECTOR(k, "Extinction", make_float3(3.424f, 2.346f, 1.770f));
 
   SOCKET_IN_VECTOR(tangent, "Tangent", zero_float3(), SocketType::LINK_TANGENT);
 
@@ -2407,7 +2407,7 @@ void ConductorBsdfNode::compile(SVMCompiler &compiler)
   ShaderInput *base_color_in = input("Base Color");
   ShaderInput *edge_tint_in = input("Edge Tint");
   ShaderInput *ior_in = input("IOR");
-  ShaderInput *k_in = input("Extinction Coefficient");
+  ShaderInput *k_in = input("Extinction");
 
   int base_color_ior_offset = fresnel_type == CLOSURE_BSDF_CONDUCTOR ?
                                   compiler.stack_assign(ior_in) :

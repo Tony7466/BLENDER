@@ -18,7 +18,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .min(0.0f)
       .max(100.0f)
       .description("PLACEHOLDER");
-  b.add_input<decl::Vector>("Extinction Coefficient")
+  b.add_input<decl::Vector>("Extinction")
       .default_value({3.424f, 2.346f, 1.770f})
       .min(0.0f)
       .max(100.0f)
@@ -90,9 +90,8 @@ static void node_shader_update_conductor(bNodeTree *ntree, bNode *node)
       ntree, nodeFindSocket(node, SOCK_IN, "Edge Tint"), fresnel_method != SHD_CONDUCTOR);
   bke::nodeSetSocketAvailability(
       ntree, nodeFindSocket(node, SOCK_IN, "IOR"), fresnel_method == SHD_CONDUCTOR);
-  bke::nodeSetSocketAvailability(ntree,
-                                 nodeFindSocket(node, SOCK_IN, "Extinction Coefficient"),
-                                 fresnel_method == SHD_CONDUCTOR);
+  bke::nodeSetSocketAvailability(
+      ntree, nodeFindSocket(node, SOCK_IN, "Extinction"), fresnel_method == SHD_CONDUCTOR);
 }
 
 NODE_SHADER_MATERIALX_BEGIN
@@ -102,12 +101,23 @@ NODE_SHADER_MATERIALX_BEGIN
     return empty();
   }
 
-  NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
+  NodeItem color = get_input_value("Base Color", NodeItem::Type::Color3);
   NodeItem edge_tint = get_input_value("Edge Tint", NodeItem::Type::Color3);
   NodeItem roughness = get_input_value("Roughness", NodeItem::Type::Vector2);
   NodeItem anisotropy = get_input_value("Anisotropy", NodeItem::Type::Color3);
   NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
   NodeItem tangent = get_input_link("Tangent", NodeItem::Type::Vector3);
+
+  /* TODO: Figure out how to switch between artisitic_ior and using
+   * the IOR and Extinction values directly.
+   * `node` is not defined here so we can't use `node->custom2` */
+
+  /* if (node->custom2 == SHD_CONDUCTOR) {
+      USE_IOR_AND_EXTINCTION;
+   }
+   else {
+      USE ARTISTIC_IOR;
+   }*/
 
   NodeItem artistic_ior = create_node("artistic_ior",
                                       NodeItem::Type::Multioutput,

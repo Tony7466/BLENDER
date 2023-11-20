@@ -21,8 +21,8 @@ vec4 fresnel_conductor(float cosi, const vec3 eta, const vec3 k)
 
 void node_bsdf_conductor(vec4 base_color,
                          vec4 edge_tint,
-                         vec3 eta,
-                         vec3 k,
+                         vec3 ior,
+                         vec3 extinction,
                          float roughness,
                          float anisotropy,
                          float rotation,
@@ -34,8 +34,8 @@ void node_bsdf_conductor(vec4 base_color,
                          out Closure result)
 {
   if (use_complex_ior != 0.0) {
-    base_color = fresnel_conductor(1.0, eta, k);
-    edge_tint = fresnel_conductor(1.0 / 7.0, eta, k);
+    base_color = fresnel_conductor(1.0, ior, extinction);
+    edge_tint = fresnel_conductor(1.0 / 7.0, ior, extinction);
   }
 
   /* Clamp to match Cycles */
