@@ -274,6 +274,7 @@ void VKCommandBuffers::destroy_discarded_resources()
                        vk_command_pool_,
                        discarded_command_buffers_.size(),
                        discarded_command_buffers_.data());
+  vkTrimCommandPool(device.device_get(), vk_command_pool_, 0);
   discarded_command_buffers_.clear();
 }
 
