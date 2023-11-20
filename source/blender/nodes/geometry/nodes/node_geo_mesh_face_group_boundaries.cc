@@ -51,11 +51,11 @@ class BoundaryFieldInput final : public bke::MeshFieldInput {
       return {};
     }
 
-    const constexpr int is_first_face = -1;
-    const constexpr int is_bad_group = -2;
+    const constexpr int no_face_yet = -1;
+    const constexpr int no_more_face = -2;
 
     Array<bool> boundary(mesh.totedge, false);
-    Array<int> previos_face(mesh.totedge, is_first_face);
+    Array<int> previos_face(mesh.totedge, no_face_yet);
     const GroupedSpan<int> face_edges(mesh.face_offsets(), mesh.corner_edges());
     threading::parallel_for(face_edges.index_range(), 2048, [&](const IndexRange range) {
       for (const int face_i : range) {
@@ -63,31 +63,25 @@ class BoundaryFieldInput final : public bke::MeshFieldInput {
         for (const int edge_i : face_edges[face_i]) {
           while (true) {
             const int last_face_i = atomic_load_int32(&previos_face[edge_i]);
-            if (last_face_i == is_bad_group) {
+            if (last_face_i == no_more_face) {
               break;
             }
-            else if (last_face_i == is_first_face) {
+            else if (last_face_i == no_face_yet) {
               const int last_face_i_test = atomic_cas_int32(
-                  &previos_face[edge_i], is_first_face, face_i);
+                  &previos_face[edge_i], no_face_yet, face_i);
               if (last_face_i_test == last_face_i) {
                 break;
               }
             }
             else if (face_set[last_face_i] != group_id) {
               const int last_face_i_test = atomic_cas_int32(
-                  &previos_face[edge_i], last_face_i, is_bad_group);
+                  &previos_face[edge_i], last_face_i, no_more_face);
               if (last_face_i_test == last_face_i) {
                 boundary[edge_i] = true;
                 break;
               }
             }
-            else {
-              const int last_face_i_test = atomic_cas_int32(
-                  &previos_face[edge_i], last_face_i, face_i);
-              if (last_face_i_test == face_i) {
-                break;
-              }
-            }
+            break;
           }
         }
       }
