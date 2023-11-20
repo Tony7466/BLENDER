@@ -206,7 +206,7 @@ int SEQ_clipboard_copy_exec(bContext *C, wmOperator *op)
 /* Paste Operator Helper functions
  */
 
-struct Main_pair {
+struct MainPair {
   Main *first;
   Main *second;
 };
@@ -217,7 +217,7 @@ struct Main_pair {
  */
 static int paste_strips_data_ids_reuse_or_add(LibraryIDLinkCallbackData *cb_data)
 {
-  Main_pair *pair_main = static_cast<Main_pair *>(cb_data->user_data);
+  MainPair *pair_main = static_cast<MainPair *>(cb_data->user_data);
   Main *bmain = pair_main->first;
   Main *temp_bmain = pair_main->second;
   ID *id_p = *cb_data->id_pointer;
@@ -309,7 +309,7 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
   }
 
   Main *bmain = CTX_data_main(C);
-  Main_pair pair_main = {bmain, temp_bmain};
+  MainPair pair_main = {bmain, temp_bmain};
   BKE_library_foreach_ID_link(
       temp_bmain, &paste_scene->id, paste_strips_data_ids_reuse_or_add, &pair_main, IDWALK_NOP);
 
