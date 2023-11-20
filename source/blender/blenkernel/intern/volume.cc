@@ -968,7 +968,6 @@ bool BKE_volume_save(const Volume *volume,
 
 std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume *volume)
 {
-  // TODO: GEOMETRY CACHING
 #ifdef WITH_OPENVDB
   /* TODO: if we know the volume is going to be displayed, it may be good to
    * load it as part of dependency graph evaluation for better threading. We
