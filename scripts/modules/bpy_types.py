@@ -670,16 +670,16 @@ class Mesh(bpy_types.ID):
         _name_convention_attribute_remove(self.attributes, "crease_edge")
 
     @property
-    def paint_mask(self):
+    def vertex_paint_mask(self):
         """
         Mask values for sculpting and painting, corresponding to the ".sculpt_mask" attribute.
         """
         return _name_convention_attribute_get(self.attributes, ".sculpt_mask", 'POINT', 'FLOAT')
 
-    def paint_mask_ensure(self):
+    def vertex_paint_mask_ensure(self):
         return _name_convention_attribute_ensure(self.attributes, ".sculpt_mask", 'POINT', 'FLOAT')
 
-    def paint_mask_remove(self):
+    def vertex_paint_mask_remove(self):
         _name_convention_attribute_remove(self.attributes, ".sculpt_mask")
 
     def shade_flat(self):
