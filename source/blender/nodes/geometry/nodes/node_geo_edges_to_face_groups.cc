@@ -5,6 +5,8 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
+#include "BLI_timeit.hh"
+
 #include "BLI_atomic_disjoint_set.hh"
 
 #include "node_geometry_util.hh"
@@ -26,10 +28,8 @@ static void node_declare(NodeDeclarationBuilder &b)
 /** Join all unique unordered combinations of indices. */
 static void join_indices(AtomicDisjointSet &set, const Span<int> indices)
 {
-  for (const int i : indices.index_range()) {
-    for (int j = i + 1; j < indices.size(); j++) {
-      set.join(indices[i], indices[j]);
-    }
+  for (const int i : indices.index_range().drop_back(1)) {
+    set.join(indices[i], indices[i + 1]);
   }
 }
 
@@ -62,8 +62,11 @@ class FaceSetFromBoundariesInput final : public bke::MeshFieldInput {
         faces, mesh.corner_edges(), mesh.totedge, edge_to_face_offsets, edge_to_face_indices);
 
     AtomicDisjointSet islands(faces.size());
-    non_boundary_edges.foreach_index(
-        [&](const int edge) { join_indices(islands, edge_to_face_map[edge]); });
+    {
+      SCOPED_TIMER_AVERAGED("New");
+      non_boundary_edges.foreach_index(
+          [&](const int edge) { join_indices(islands, edge_to_face_map[edge]); });
+    }
 
     Array<int> output(faces.size());
     islands.calc_reduced_ids(output);
