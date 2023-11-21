@@ -9,6 +9,7 @@
 #pragma once
 
 #include "vk_command_buffer.hh"
+#include "vk_command_pool.hh"
 #include "vk_timeline_semaphore.hh"
 
 namespace blender::gpu {
@@ -24,7 +25,7 @@ class VKPipeline;
 class VKDescriptorSet;
 
 class VKCommandBuffers : public NonCopyable, NonMovable {
-  VkCommandPool vk_command_pool_ = VK_NULL_HANDLE;
+  VKCommandPool command_pool_;
   enum class Type {
     DataTransferCompute = 0,
     Graphics = 1,
@@ -33,6 +34,10 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
 
   bool initialized_ = false;
 
+  /**
+   * Last submitted timeline value, what can be used to validate that all commands related
+   * submitted by this command buffers have been finished.
+   */
   VKTimelineSemaphore::Value last_signal_value_;
 
   /**
@@ -49,6 +54,13 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
    * List of command buffer handles that should be freed.
    */
   Vector<VkCommandBuffer> discarded_command_buffers_;
+
+  struct {
+    uint64_t command_buffers_created = 0;
+    uint64_t command_buffers_submitted = 0;
+    uint64_t command_buffers_freed = 0;
+
+  } stats;
 
  public:
   ~VKCommandBuffers();
@@ -150,7 +162,6 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   void destroy_discarded_resources();
 
  private:
-  void init_command_pool(const VKDevice &device);
   void init_command_buffers(const VKDevice &device,
                             bool init_data_transfer_compute,
                             bool init_graphics);

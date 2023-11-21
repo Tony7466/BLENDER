@@ -30,14 +30,9 @@ VKCommandBuffers::~VKCommandBuffers()
 
   finish();
 
-  VK_ALLOCATION_CALLBACKS;
   const VKDevice &device = VKBackend::get().device_get();
-
   destroy_discarded_resources();
-  if (vk_command_pool_ != VK_NULL_HANDLE) {
-    vkDestroyCommandPool(device.device_get(), vk_command_pool_, vk_allocation_callbacks);
-    vk_command_pool_ = VK_NULL_HANDLE;
-  }
+  command_pool_.free(device);
 }
 
 void VKCommandBuffers::init(const VKDevice &device)
@@ -53,23 +48,9 @@ void VKCommandBuffers::init(const VKDevice &device)
   if (!device.is_initialized()) {
     return;
   }
-  init_command_pool(device);
+  command_pool_.init(device);
   init_command_buffers(device, true, true);
   submission_id_.reset();
-}
-
-void VKCommandBuffers::init_command_pool(const VKDevice &device)
-{
-  BLI_assert(vk_command_pool_ == VK_NULL_HANDLE);
-
-  VK_ALLOCATION_CALLBACKS;
-  VkCommandPoolCreateInfo command_pool_info = {};
-  command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-  command_pool_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-  command_pool_info.queueFamilyIndex = device.queue_family_get();
-
-  vkCreateCommandPool(
-      device.device_get(), &command_pool_info, vk_allocation_callbacks, &vk_command_pool_);
 }
 
 static void init_command_buffer(VKCommandBuffer &command_buffer,
@@ -87,15 +68,11 @@ void VKCommandBuffers::init_command_buffers(const VKDevice &device,
 
 {
   BLI_assert(init_data_transfer_compute || init_graphics);
-  BLI_assert(vk_command_pool_ != VK_NULL_HANDLE);
   VkCommandBuffer vk_command_buffers[(uint32_t)Type::Max] = {VK_NULL_HANDLE};
-  VkCommandBufferAllocateInfo alloc_info = {};
-  alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  alloc_info.commandPool = vk_command_pool_;
-  alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  alloc_info.commandBufferCount = uint32_t(init_data_transfer_compute) + uint32_t(init_graphics);
-  vkAllocateCommandBuffers(device.device_get(), &alloc_info, vk_command_buffers);
-
+  const uint32_t command_buffers_count = uint32_t(init_data_transfer_compute) +
+                                         uint32_t(init_graphics);
+  command_pool_.allocate_buffers(
+      device, MutableSpan<VkCommandBuffer>(vk_command_buffers, command_buffers_count));
   if (init_data_transfer_compute) {
     init_command_buffer(command_buffer_get(Type::DataTransferCompute),
                         vk_command_buffers[0],
@@ -107,6 +84,7 @@ void VKCommandBuffers::init_command_buffers(const VKDevice &device,
                         vk_command_buffers[graphics_index],
                         "Graphics Command Buffer");
   }
+  stats.command_buffers_created += command_buffers_count;
 }
 
 void VKCommandBuffers::submit_command_buffers(VKDevice &device,
@@ -150,6 +128,7 @@ void VKCommandBuffers::submit_command_buffers(VKDevice &device,
     discarded_command_buffers_.append(command_buffer->vk_command_buffer());
     command_buffer->reset();
   }
+  stats.command_buffers_submitted += command_buffers.size();
 }
 
 void VKCommandBuffers::finish()
@@ -190,6 +169,7 @@ void VKCommandBuffers::submit()
     submit_command_buffers(device,
                            MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index));
   }
+  finish();
 
   init_command_buffers(device, has_data_transfer_compute_work, has_graphics_work);
 }
@@ -241,12 +221,13 @@ void VKCommandBuffers::destroy_discarded_resources()
   }
 
   VKDevice &device = VKBackend::get().device_get();
-  vkFreeCommandBuffers(device.device_get(),
-                       vk_command_pool_,
-                       discarded_command_buffers_.size(),
-                       discarded_command_buffers_.data());
-  vkTrimCommandPool(device.device_get(), vk_command_pool_, 0);
+  command_pool_.free_buffers(device, discarded_command_buffers_);
+  stats.command_buffers_freed += discarded_command_buffers_.size();
   discarded_command_buffers_.clear();
+
+  std::cout << "VKCommandBuffers(created=" << stats.command_buffers_created;
+  std::cout << ",submitted=" << stats.command_buffers_submitted;
+  std::cout << ",freed=" << stats.command_buffers_freed << ")\n";
 }
 
 /**
