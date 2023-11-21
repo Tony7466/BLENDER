@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include "BLI_map.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 #include "GPU_material.h"
@@ -580,6 +581,18 @@ struct ShaderCreateInfo {
 
   Vector<PushConst> push_constants_;
 
+  /** Allow speification of custom parameters which can optionally be consumed by backends to
+   * provide additional feature enablement or tuning support outside of core API requirments. */
+  struct CustomParameter {
+    Type type;
+    union {
+      float value_f;
+      int value_i;
+      bool value_b;
+    };
+  };
+  Map<StringRefNull, CustomParameter> custom_parameters_;
+
   /* Sources for resources type definitions. */
   Vector<StringRefNull> typedef_sources_;
 
@@ -694,6 +707,42 @@ struct ShaderCreateInfo {
   Self &subpass_in(int slot, Type type, StringRefNull name, int raster_order_group = -1)
   {
     subpass_inputs_.append({slot, type, DualBlend::NONE, name, raster_order_group});
+    return *(Self *)this;
+  }
+
+  /** \} */
+
+  /* -------------------------------------------------------------------- */
+  /** \name Custom parameters.
+   * API TO allow declaration of custom key-value pairs to be consumed as desired
+   * by the backends. These can be used for optional feature enablements without
+   * introducing API requiring implementation from each API.
+   * \{ */
+
+  Self &custom_parameter(StringRefNull parameter_key, Type param_type, int int_val)
+  {
+    CustomParameter param;
+    param.type = param_type;
+    param.value_i = int_val;
+    custom_parameters_.add(parameter_key, param);
+    return *(Self *)this;
+  }
+
+  Self &custom_parameter(StringRefNull parameter_key, Type param_type, float float_val)
+  {
+    CustomParameter param;
+    param.type = param_type;
+    param.value_f = float_val;
+    custom_parameters_.add(parameter_key, param);
+    return *(Self *)this;
+  }
+
+  Self &custom_parameter(StringRefNull parameter_key, Type param_type, bool bool_val)
+  {
+    CustomParameter param;
+    param.type = param_type;
+    param.value_b = bool_val;
+    custom_parameters_.add(parameter_key, param);
     return *(Self *)this;
   }
 

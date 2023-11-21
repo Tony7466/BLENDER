@@ -132,6 +132,14 @@ void ShaderCreateInfo::finalize()
     pass_resources_.extend_non_duplicates(info.pass_resources_);
     typedef_sources_.extend_non_duplicates(info.typedef_sources_);
 
+    /* Custom parameters.
+     * Will only add a custom parameter if it does not already exist.
+     * This should only be used to inherit parameters from "common"
+     * create info definitions which are shared amongst sub-declarations. */
+    for (const auto param : info.custom_parameters_.items()) {
+      custom_parameters_.add(param.key, param.value);
+    }
+
     if (info.early_fragment_test_) {
       early_fragment_test_ = true;
     }

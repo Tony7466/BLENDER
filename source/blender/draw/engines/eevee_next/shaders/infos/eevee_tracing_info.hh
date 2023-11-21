@@ -104,7 +104,9 @@ GPU_SHADER_CREATE_INFO(eevee_ray_trace_screen)
     .sampler(0, ImageType::FLOAT_2D, "screen_radiance_tx")
     .sampler(1, ImageType::DEPTH_2D, "depth_tx")
     .storage_buf(5, Qualifier::READ, "uint", "tiles_coord_buf[]")
-    .compute_source("eevee_ray_trace_screen_comp.glsl");
+    .compute_source("eevee_ray_trace_screen_comp.glsl")
+    /* Metal: Provide compiler with hint to tune per-thread resource allocation. */
+    .custom_parameter("MTL_MAX_THREADS_PER_THREADGROUP", Type::INT, 400);
 
 EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_trace_screen)
 
@@ -125,6 +127,8 @@ GPU_SHADER_CREATE_INFO(eevee_ray_denoise_spatial)
     .image(5, GPU_R32F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_hit_depth_img")
     .image(6, RAYTRACE_TILEMASK_FORMAT, Qualifier::READ, ImageType::UINT_2D, "tile_mask_img")
     .storage_buf(4, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    /* Metal: Provide compiler with hint to tune per-thread resource allocation. */
+    .custom_parameter("MTL_MAX_THREADS_PER_THREADGROUP", Type::INT, 316)
     .compute_source("eevee_ray_denoise_spatial_comp.glsl");
 
 EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_denoise_spatial)
@@ -143,7 +147,9 @@ GPU_SHADER_CREATE_INFO(eevee_ray_denoise_temporal)
     .image(3, RAYTRACE_VARIANCE_FORMAT, Qualifier::READ, ImageType::FLOAT_2D, "in_variance_img")
     .image(4, RAYTRACE_VARIANCE_FORMAT, Qualifier::WRITE, ImageType::FLOAT_2D, "out_variance_img")
     .storage_buf(4, Qualifier::READ, "uint", "tiles_coord_buf[]")
-    .compute_source("eevee_ray_denoise_temporal_comp.glsl");
+    .compute_source("eevee_ray_denoise_temporal_comp.glsl")
+    /* Metal: Provide compiler with hint to tune per-thread resource allocation. */
+    .custom_parameter("MTL_MAX_THREADS_PER_THREADGROUP", Type::INT, 512);
 
 GPU_SHADER_CREATE_INFO(eevee_ray_denoise_bilateral)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)

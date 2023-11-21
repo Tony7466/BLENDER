@@ -392,6 +392,21 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
    * with Apple Silicon GPUs. Disabling for now to avoid erroneous rendering. */
   MTLBackend::capabilities.supports_texture_gather = [device hasUnifiedMemory];
 
+  /* GPU Type. */
+  const char *gpu_name = [device.name UTF8String];
+  if (strstr(gpu_name, "M1")) {
+    MTLBackend::capabilities.gpu = APPLE_GPU_M1;
+  }
+  else if (strstr(gpu_name, "M2")) {
+    MTLBackend::capabilities.gpu = APPLE_GPU_M2;
+  }
+  else if (strstr(gpu_name, "M3")) {
+    MTLBackend::capabilities.gpu = APPLE_GPU_M3;
+  }
+  else {
+    MTLBackend::capabilities.gpu = APPLE_GPU_UNKNOWN;
+  }
+
   /* Common Global Capabilities. */
   GCaps.max_texture_size = ([device supportsFamily:MTLGPUFamilyApple3] ||
                             MTLBackend::capabilities.supports_family_mac1) ?
