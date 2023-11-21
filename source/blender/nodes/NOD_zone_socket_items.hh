@@ -170,7 +170,7 @@ struct IndexSwitchItemsAccessor {
   static socket_items::SocketItemsRef<IndexSwitchItem> get_items_from_node(bNode &node)
   {
     auto &storage = *static_cast<NodeIndexSwitch *>(node.storage);
-    return {&storage.items, &storage.items_num, &storage.active_index};
+    return {&storage.items, &storage.items_num, nullptr};
   }
   static void copy_item(const IndexSwitchItem &src, IndexSwitchItem &dst)
   {

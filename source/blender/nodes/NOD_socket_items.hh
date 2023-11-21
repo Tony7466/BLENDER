@@ -69,7 +69,6 @@ inline void remove_item(T **items,
 
   const int old_items_num = *items_num;
   const int new_items_num = old_items_num - 1;
-  const int old_active_index = *active_index;
 
   T *old_items = *items;
   T *new_items = MEM_cnew_array<T>(new_items_num, __func__);
@@ -81,12 +80,15 @@ inline void remove_item(T **items,
   destruct_item(&old_items[remove_index]);
   MEM_SAFE_FREE(old_items);
 
-  const int new_active_index = std::max(
-      0, old_active_index == new_items_num ? new_items_num - 1 : old_active_index);
-
   *items = new_items;
   *items_num = new_items_num;
-  *active_index = new_active_index;
+
+  if (active_index) {
+    const int old_active_index = active_index ? *active_index : 0;
+    const int new_active_index = std::max(
+        0, old_active_index == new_items_num ? new_items_num - 1 : old_active_index);
+    *active_index = new_active_index;
+  }
 }
 
 /**
@@ -101,7 +103,9 @@ inline void clear_items(T **items, int *items_num, int *active_index, void (*des
   }
   MEM_SAFE_FREE(*items);
   *items_num = 0;
-  *active_index = 0;
+  if (active_index) {
+    *active_index = 0;
+  }
 }
 
 /**
@@ -227,7 +231,9 @@ template<typename Accessor> inline typename Accessor::ItemT &add_item_to_array(b
   MEM_SAFE_FREE(old_items);
   *array.items = new_items;
   *array.items_num = new_items_num;
-  *array.active_index = old_items_num;
+  if (array.active_index) {
+    *array.active_index = old_items_num;
+  }
 
   return new_item;
 }
