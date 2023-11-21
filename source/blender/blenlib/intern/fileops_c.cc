@@ -481,7 +481,7 @@ int BLI_rename(const char *from, const char *to)
   return renameat2(AT_FDCWD, from, AT_FDCWD, to, RENAME_NOREPLACE);
 #else
   /* At least all BSD's currently. */
-  if (!BLI_exists(to)) {
+  if (BLI_exists(to)) {
     return 1;
   }
   return rename(from, to);
