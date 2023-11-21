@@ -780,9 +780,10 @@ struct wmEvent {
   /** The `keymodifier` at the point of the press action. */
   short prev_press_keymodifier;
 
-  /*Gamepad*/
+#ifdef WITH_INPUT_GAMEPAD
   float axis_value[2];
   float dt;
+#endif
 };
 
 /**

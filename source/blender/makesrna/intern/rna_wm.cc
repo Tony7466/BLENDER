@@ -136,7 +136,7 @@ static const EnumPropertyItem event_ndof_type_items[] = {
 };
 
 /** Gamepad Buttons.
- * This specific order visually separates the buttons that are to the left/right of the gamepad, So
+ * This specific order visually separates the buttons that are to the left/right of the gamepad, so
  * they are not ordered by value.
  */
 
@@ -154,7 +154,7 @@ static const EnumPropertyItem event_gamepad_type_items[] = {
     {GAMEPAD_BUTTON_DPAD_RIGHT, "GAMEPAD_BUTTON_DPAD_RIGHT", 0, "Right", ""},
     RNA_ENUM_ITEM_SEPR,
     {GAMEPAD_BUTTON_VIEW, "GAMEPAD_BUTTON_VIEW", 0, "View", ""},
-    
+
     RNA_ENUM_ITEM_SEPR_COLUMN,
     {GAMEPAD_RIGHT_TRIGGER, "GAMEPAD_RIGHT_TRIGGER", 0, "RT", ""},
     {GAMEPAD_BUTTON_RIGHT_SHOULDER, "GAMEPAD_BUTTON_RIGHT_SHOULDER", 0, "RB", ""},

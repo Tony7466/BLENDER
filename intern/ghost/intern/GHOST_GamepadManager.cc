@@ -7,25 +7,28 @@
 #include "GHOST_WindowManager.hh"
 #include <ratio>
 
-struct GHOST_ThumbData {
+/** Active gamepad triggers snapshots. */
+struct GHOST_ThumbState {
   float values[2];
   GHOST_TButtonAction state;
   const GHOST_TGamepadThumb type;
 };
 
-struct GHOST_TriggerData {
+/** Active gamepad triggers snapshots. */
+struct GHOST_TriggerState {
   float value;
   GHOST_TButtonAction state;
   const GHOST_TGamepadTrigger type;
 };
 
+/** Active gamepad input snapshot. */
 struct GHOST_GamepadState {
 
-  GHOST_ThumbData left_thumb{{0.0f}, GHOST_kRelease, GHOST_kGamepadLeftThumb};
-  GHOST_ThumbData right_thumb{{0.0f}, GHOST_kRelease, GHOST_kGamepadRightThumb};
+  GHOST_ThumbState left_thumb{{0.0f}, GHOST_kRelease, GHOST_kGamepadLeftThumb};
+  GHOST_ThumbState right_thumb{{0.0f}, GHOST_kRelease, GHOST_kGamepadRightThumb};
 
-  GHOST_TriggerData left_trigger{{0.0f}, GHOST_kRelease, GHOST_kGamepadLeftTrigger};
-  GHOST_TriggerData right_trigger{{0.0f}, GHOST_kRelease, GHOST_kGamepadRightTrigger};
+  GHOST_TriggerState left_trigger{{0.0f}, GHOST_kRelease, GHOST_kGamepadLeftTrigger};
+  GHOST_TriggerState right_trigger{{0.0f}, GHOST_kRelease, GHOST_kGamepadRightTrigger};
 
   std::bitset<14> button_depressed{false};
   float dead_zone{0.0f};
@@ -83,11 +86,12 @@ void GHOST_GamepadManager::update_gamepad_state(const bool button_state[14], con
 
   GHOST_IWindow *window = _system.getWindowManager()->getActiveWindow();
 
- const  uint64_t now = _system.getMilliSeconds();
+  const uint64_t now = _system.getMilliSeconds();
 
   for (int x = 0; x < 14; x++) {
     bool button_depressed = _gamepad_state->button_depressed.test(x);
     if (button_depressed != button_state[x]) {
+      /** Send buttons events only if the button status changed. */
       send_button_event(GHOST_TGamepadButton(x), button_state[x], now, window);
       _gamepad_state->button_depressed.set(x, button_state[x]);
     }
@@ -111,15 +115,17 @@ bool GHOST_GamepadManager::send_gamepad_frame_events(const float delta_time)
   if (!_gamepad_state) {
     return false;
   }
-
-  auto test_dead_zone = [this](float val) { return std::abs(val) < _dead_zone ? 0.0f : val; };
+  auto test_dead_zone = [this](float value) {
+    return std::abs(value) < _dead_zone ? 0.0f : value;
+  };
 
   int pushed_events = 0;
-  
-  auto send_thumb_event = [&, this](GHOST_ThumbData &thumb) {
+
+  auto send_thumb_event = [&, this](GHOST_ThumbState &thumb) {
     const float _values[]{test_dead_zone(thumb.values[0]), test_dead_zone(thumb.values[1])};
     const bool in_depressed = (_values[0] || _values[1]);
 
+    /** Send only thumbstick events if there is non-zero reading or the thumbstick are released. */
     if (!in_depressed && thumb.state == GHOST_kRelease) {
       return 0;
     }
@@ -139,7 +145,7 @@ bool GHOST_GamepadManager::send_gamepad_frame_events(const float delta_time)
   pushed_events += send_thumb_event(_gamepad_state->left_thumb);
   pushed_events += send_thumb_event(_gamepad_state->right_thumb);
 
-  auto send_trigger_event = [&, this](GHOST_TriggerData &trigger) {
+  auto send_trigger_event = [&, this](GHOST_TriggerState &trigger) {
     const float _value{test_dead_zone(trigger.value)};
     const bool in_depressed = (_value);
 
@@ -147,6 +153,7 @@ bool GHOST_GamepadManager::send_gamepad_frame_events(const float delta_time)
       return 0;
     }
 
+    /** Send only triggers events if there is non-zero reading or the triggers are released. */
     GHOST_EventGamepadTrigger *event = new GHOST_EventGamepadTrigger(now, window);
     GHOST_TEventGamepadTriggerData *data = (GHOST_TEventGamepadTriggerData *)event->getData();
     data->value = _value;

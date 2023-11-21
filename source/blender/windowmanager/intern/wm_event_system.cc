@@ -5927,6 +5927,15 @@ void wm_event_add_ghostevent(wmWindowManager *wm,
     case GHOST_kEventGamepadThumb: {
       const GHOST_TEventGamepadThumbData *thumb_data =
           static_cast<const GHOST_TEventGamepadThumbData *>(customdata);
+
+      BLI_assert(ELEM(thumb_data->action, GHOST_kPress, GHOST_kRelease));
+      /** If `thumb_data->action == GHOST_kRelease`, values should be zero. */
+      BLI_assert(thumb_data->action != GHOST_kPress ||
+                 (thumb_data->value[0] == 0.0f && thumb_data->value[1] == 0.0f));
+      /** If `thumb_data->action == GHOST_kPress`, at least one value should not be zero. */
+      BLI_assert(thumb_data->action != GHOST_kRelease ||
+                 (thumb_data.value[0] != 0.0f || thumb_data->value[1] != 0.0f));
+
       event.type = thumb_data->thumb ? GAMEPAD_RIGHT_THUMB : GAMEPAD_LEFT_THUMB;
       event.axis_value[0] = thumb_data->value[0];
       event.axis_value[1] = thumb_data->value[1];
@@ -5934,7 +5943,6 @@ void wm_event_add_ghostevent(wmWindowManager *wm,
       event.custom = 0;
       event.customdata = nullptr;
 
-      BLI_assert(ELEM(thumb_data->action, GHOST_kPress, GHOST_kRelease));
       event.val = thumb_data->action == GHOST_kPress ? KM_PRESS : KM_RELEASE;
 
       wm_event_add(win, &event);
@@ -5944,13 +5952,18 @@ void wm_event_add_ghostevent(wmWindowManager *wm,
     case GHOST_kEventGamepadTrigger: {
       const GHOST_TEventGamepadTriggerData *trigger_data =
           static_cast<const GHOST_TEventGamepadTriggerData *>(customdata);
+
+      BLI_assert(ELEM(trigger_data->action, GHOST_kPress, GHOST_kRelease));
+      /** If `trigger_data->action == GHOST_kRelease`, value should be zero. */
+      BLI_assert(trigger_data->action != GHOST_kPress || (trigger_data->value == 0.0f));
+      /** If `trigger_data->action == GHOST_kPress`, value should not be zero. */
+      BLI_assert(trigger_data->action != GHOST_kRelease || (trigger_data->value != 0.0f));
+
       event.type = trigger_data->trigger ? GAMEPAD_RIGHT_TRIGGER : GAMEPAD_LEFT_TRIGGER;
       event.axis_value[0] = trigger_data->value;
       event.dt = trigger_data->dt;
       event.custom = 0;
       event.customdata = nullptr;
-
-      BLI_assert(ELEM(thumb_data->action, GHOST_kPress, GHOST_kRelease));
       event.val = trigger_data->action == GHOST_kPress ? KM_PRESS : KM_RELEASE;
 
       wm_event_add(win, &event);

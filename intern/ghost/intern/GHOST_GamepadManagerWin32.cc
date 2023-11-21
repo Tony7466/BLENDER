@@ -18,16 +18,11 @@ GHOST_GamepadManagerWin32::GHOST_GamepadManagerWin32(GHOST_System &sys) : GHOST_
 
 GHOST_GamepadManagerWin32::~GHOST_GamepadManagerWin32() {}
 
-bool GHOST_GamepadManagerWin32::available()
-{
-  return true;
-}
-
 bool GHOST_GamepadManagerWin32::update_gamepad()
 {
   XINPUT_STATE input_state{0};
   DWORD dwResult = XInputGetState(0, &input_state);
-  
+
   if (dwResult == 0) {
     bool buttons[16];
     float axis_data[6];
@@ -35,7 +30,7 @@ bool GHOST_GamepadManagerWin32::update_gamepad()
 
     constexpr float shrt_max_float = float(std::numeric_limits<short>::max());
     constexpr float uchar_max_float = float(std::numeric_limits<unsigned char>::max());
-    
+
     axis_data[0] = float(gamepad.sThumbLX) / shrt_max_float;
     axis_data[1] = float(gamepad.sThumbLY) / shrt_max_float;
     axis_data[2] = float(gamepad.sThumbRX) / shrt_max_float;

@@ -359,7 +359,8 @@ class GHOST_ISystem {
   virtual void dispatchEvents() = 0;
 
   /**
-   * Retrieves events that can be continuous over time and send them to the event consumers.
+   * Retrieves events that can be continuous over time, like analog input, and send them to the
+   * event consumers.
    */
   virtual void dispatchFrameEvents() = 0;
 

@@ -676,36 +676,40 @@ typedef enum { GHOST_kGamepadLeftThumb = 0, GHOST_kGamepadRightThumb } GHOST_TGa
 typedef enum { GHOST_kGamepadLeftTrigger = 0, GHOST_kGamepadRightTrigger } GHOST_TGamepadTrigger;
 
 typedef enum {
-  GHOST_kGAMEPAD_BUTTON_A = 0,
-  GHOST_kGAMEPAD_BUTTON_B,
-  GHOST_kGAMEPAD_BUTTON_X,
-  GHOST_kGAMEPAD_BUTTON_Y,
+  GHOST_kGamepadButtonA = 0,
+  GHOST_kGamepadButtonB,
+  GHOST_kGamepadButtonX,
+  GHOST_kGamepadButtonY,
 
-  GHOST_kGAMEPAD_BUTTON_LEFT_SHOULDER,
-  GHOST_kGAMEPAD_BUTTON_RIGHT_SHOULDER,
+  GHOST_kGamepadButtonLeftShoulder,
+  GHOST_kGamepadButtonRightShoulder,
 
-  GHOST_kGAMEPAD_BUTTON_VIEW,
-  GHOST_kGAMEPAD_BUTTON_MENU,
+  GHOST_kgamepadButtonView,
+  GHOST_kgamepadButtonMenu,
 
-  GHOST_kGAMEPAD_BUTTON_LEFT_THUMB,
-  GHOST_kGAMEPAD_BUTTON_RIGHT_THUMB,
+  GHOST_kGamepadButtonLeftThumb,
+  GHOST_kGamepadButtonRightThumb,
 
-  GHOST_kGAMEPAD_BUTTON_DPAD_UP,
-  GHOST_kGAMEPAD_BUTTON_DPAD_DOWN,
-  GHOST_kGAMEPAD_BUTTON_DPAD_LEFT,
-  GHOST_kGAMEPAD_BUTTON_DPAD_RIGHT,
+  GHOST_kGamepadButtonDPADUp,
+  GHOST_kGamepadButtonDPADDown,
+  GHOST_kGamepadButtonDPADLeft,
+  GHOST_kGamepadButtonDPADRight,
 
 } GHOST_TGamepadButton;
 
 typedef struct {
+  /* 1d Axis trigger value. */
   float value;
+  /* Time since the previos frame reading. */
   float dt;
   GHOST_TGamepadTrigger trigger;
   GHOST_TButtonAction action;
 } GHOST_TEventGamepadTriggerData;
 
 typedef struct {
+  /* 2d Axis value from the thumbstick. */
   float value[2];
+  /* Time since the previos frame reading. */
   float dt;
   GHOST_TGamepadThumb thumb;
   GHOST_TButtonAction action;

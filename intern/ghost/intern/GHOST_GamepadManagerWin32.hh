@@ -12,8 +12,6 @@ class GHOST_GamepadManagerWin32 : public GHOST_GamepadManager {
   GHOST_GamepadManagerWin32(GHOST_System &);
   ~GHOST_GamepadManagerWin32();
 
-  bool available();
-
   /** Retrieves the current state of the gamepad reported by the system. */
   bool update_gamepad();
 };
