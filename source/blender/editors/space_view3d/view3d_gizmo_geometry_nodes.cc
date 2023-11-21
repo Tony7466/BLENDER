@@ -471,7 +471,7 @@ static bool has_nested_gizmo_transform(const bke::GeometrySet &geometry,
   return false;
 }
 
-static std::optional<float4x4> find_gizmo_crazy_space_transform_recursive(
+static std::optional<float4x4> find_gizmo_geometry_transform_recursive(
     const bke::GeometrySet &geometry,
     const bke::GeoNodesGizmoID &gizmo_id,
     const float4x4 &transform)
@@ -496,7 +496,7 @@ static std::optional<float4x4> find_gizmo_crazy_space_transform_recursive(
       const int index = handles.first_index_try(reference_i);
       if (index >= 0) {
         const float4x4 sub_transform = transform * transforms[index];
-        if (const std::optional<float4x4> m = find_gizmo_crazy_space_transform_recursive(
+        if (const std::optional<float4x4> m = find_gizmo_geometry_transform_recursive(
                 reference_geometry, gizmo_id, sub_transform))
         {
           return *m;
@@ -510,11 +510,68 @@ static std::optional<float4x4> find_gizmo_crazy_space_transform_recursive(
 /**
  * Tries to find a transformation of the gizmo in the given geometry.
  */
-static std::optional<float4x4> find_gizmo_crazy_space_transform(
-    const bke::GeometrySet &geometry, const bke::GeoNodesGizmoID &gizmo_id)
+static std::optional<float4x4> find_gizmo_geometry_transform(const bke::GeometrySet &geometry,
+                                                             const bke::GeoNodesGizmoID &gizmo_id)
 {
   const float4x4 identity = float4x4::identity();
-  return find_gizmo_crazy_space_transform_recursive(geometry, gizmo_id, identity);
+  return find_gizmo_geometry_transform_recursive(geometry, gizmo_id, identity);
+}
+
+static float4x4 matrix_from_position_and_up_direction(const float3 &position,
+                                                      const float3 &direction,
+                                                      const math::AxisSigned direction_axis)
+{
+  BLI_assert(math::is_unit_scale(direction));
+  math::Quaternion rotation;
+  const float3 base_direction = math::to_vector<float3>(direction_axis);
+  rotation_between_vecs_to_quat(&rotation.w, base_direction, direction);
+  float4x4 mat = math::from_rotation<float4x4>(rotation);
+  mat.location() = position;
+  return mat;
+}
+
+static std::optional<float4x4> get_arrow_gizmo_base_transform(const bNode &gizmo_node,
+                                                              geo_eval_log::GeoTreeLog &tree_log,
+                                                              bool &r_missing_socket_logs)
+{
+  const bNodeSocket &position_input = gizmo_node.input_socket(1);
+  const bNodeSocket &direction_input = gizmo_node.input_socket(2);
+  const std::optional<float3> position_opt = tree_log.find_primitive_socket_value<float3>(
+      position_input);
+  const std::optional<float3> direction_opt = tree_log.find_primitive_socket_value<float3>(
+      direction_input);
+  if (!position_opt || !direction_opt) {
+    r_missing_socket_logs = true;
+    return std::nullopt;
+  }
+  const float3 position = *position_opt;
+  const float3 direction = math::normalize(*direction_opt);
+  if (math::is_zero(direction)) {
+    return std::nullopt;
+  }
+  return matrix_from_position_and_up_direction(position, direction, math::AxisSigned::Z_POS);
+}
+
+static std::optional<float4x4> get_dial_gizmo_base_transform(const bNode &gizmo_node,
+                                                             geo_eval_log::GeoTreeLog &tree_log,
+                                                             bool &r_missing_socket_logs)
+{
+  const bNodeSocket &position_input = gizmo_node.input_socket(1);
+  const bNodeSocket &direction_input = gizmo_node.input_socket(2);
+  const std::optional<float3> position_opt = tree_log.find_primitive_socket_value<float3>(
+      position_input);
+  const std::optional<float3> direction_opt = tree_log.find_primitive_socket_value<float3>(
+      direction_input);
+  if (!position_opt || !direction_opt) {
+    r_missing_socket_logs = true;
+    return std::nullopt;
+  }
+  const float3 position = *position_opt;
+  const float3 direction = math::normalize(*direction_opt);
+  if (math::is_zero(direction)) {
+    return std::nullopt;
+  }
+  return matrix_from_position_and_up_direction(position, direction, math::AxisSigned::Z_NEG);
 }
 
 static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *gzgroup)
@@ -543,6 +600,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   bNodeTree &ntree = *nmd.node_group;
   ntree.ensure_topology_cache();
 
+  const float4x4 object_to_world{ob_orig->object_to_world};
+
   /* Rebuild the set of all active gizmos, reusing gizmo data from before if possible. */
   Map<bke::GeoNodesGizmoID, std::unique_ptr<NodeGizmoData>> new_gizmo_by_node;
   nodes::gizmos::foreach_active_gizmo(
@@ -550,48 +609,65 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
       nmd,
       *wm,
       [&](const ComputeContext &compute_context, const bNode &gizmo_node_const) {
-        if (new_gizmo_by_node.contains({compute_context.hash(), gizmo_node_const.identifier})) {
+        /* Need const-cast because we might actually want to modify data indirectly referenced by
+         * the node. */
+        bNode &gizmo_node = const_cast<bNode &>(gizmo_node_const);
+        const bke::GeoNodesGizmoID gizmo_id = {compute_context.hash(),
+                                               gizmo_node_const.identifier};
+        if (new_gizmo_by_node.contains(gizmo_id)) {
           /* Already handled. */
           return;
         }
 
-        bNode &gizmo_node = const_cast<bNode &>(gizmo_node_const);
+        std::optional<std::unique_ptr<NodeGizmoData>> old_node_gizmo_data =
+            gzgroup_data->gizmo_by_node.pop_try(gizmo_id);
+        /* While the user interacts with the gizmo, it should not be removed and its base transform
+         * should not change. */
+        const bool is_interacting = old_node_gizmo_data ?
+                                        old_node_gizmo_data->get()->gizmo->interaction_data !=
+                                            nullptr :
+                                        false;
+
+        const float4x4 geometry_transform =
+            find_gizmo_geometry_transform(geometry, gizmo_id).value_or(float4x4::identity());
 
         geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
             compute_context.hash());
         tree_log.ensure_socket_values();
-
-        bNodeSocket &position_input = gizmo_node.input_socket(1);
-        bNodeSocket &direction_input = gizmo_node.input_socket(2);
-
-        const std::optional<float3> position_opt = tree_log.find_primitive_socket_value<float3>(
-            position_input);
-        const std::optional<float3> direction_opt = tree_log.find_primitive_socket_value<float3>(
-            direction_input);
-        if (!position_opt || !direction_opt) {
-          /* TODO: Add some safety measure to make sure that this does not needlessly cause updates
-           * all the time. */
-          DEG_id_tag_update(&ob_orig->id, ID_RECALC_GEOMETRY);
-          WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
-          return;
+        std::optional<float4x4> base_gizmo_transform;
+        bool missing_socket_logs = false;
+        switch (gizmo_node.type) {
+          case GEO_NODE_GIZMO_ARROW: {
+            base_gizmo_transform = get_arrow_gizmo_base_transform(
+                gizmo_node, tree_log, missing_socket_logs);
+            break;
+          }
+          case GEO_NODE_GIZMO_DIAL: {
+            base_gizmo_transform = get_dial_gizmo_base_transform(
+                gizmo_node, tree_log, missing_socket_logs);
+            break;
+          }
         }
-
-        const float3 position = *position_opt;
-        const float3 direction = math::normalize(*direction_opt);
-        if (math::is_zero(direction)) {
-          return;
+        if (!base_gizmo_transform) {
+          if (missing_socket_logs) {
+            /* TODO: protect against repeated updates */
+            DEG_id_tag_update(&ob_orig->id, ID_RECALC_GEOMETRY);
+            WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
+          }
+          if (!is_interacting) {
+            return;
+          }
         }
 
         Vector<DerivedFloatTargetProperty> variables = find_gizmo_target_properties(
             gizmo_node, compute_context, *ob_orig, nmd);
         /* The gizmo should be drawn even if there is nothing linked to the value input, because
-         * that results in a better initial user experience. */
-        if (variables.is_empty() && gizmo_node.input_socket(0).is_directly_linked()) {
+         * that results in a better initial user experience. It also should not be removed while
+         * the user interacts with it. */
+        if (variables.is_empty() && gizmo_node.input_socket(0).is_directly_linked() &&
+            !is_interacting) {
           return;
         }
-
-        std::optional<std::unique_ptr<NodeGizmoData>> old_node_gizmo_data =
-            gzgroup_data->gizmo_by_node.pop_try({compute_context.hash(), gizmo_node.identifier});
 
         std::unique_ptr<NodeGizmoData> node_gizmo_data;
         if (old_node_gizmo_data.has_value()) {
@@ -613,6 +689,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
               break;
             }
             default: {
+              BLI_assert_unreachable();
               return;
             }
           }
@@ -622,11 +699,12 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
         wmGizmo *gz = node_gizmo_data->gizmo;
 
+        /* Update gizmo draw styles. */
         const ThemeColorID color_id = get_gizmo_theme_color_id(gizmo_node);
         UI_GetThemeColor3fv(color_id, gz->color);
         UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
-
         if (gizmo_node.type == GEO_NODE_GIZMO_ARROW) {
+          /* Make sure the enum values are in sync. */
           static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_ARROW) ==
                         int(ED_GIZMO_ARROW_STYLE_NORMAL));
           static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_BOX) == int(ED_GIZMO_ARROW_STYLE_BOX));
@@ -640,8 +718,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
               static_cast<const NodeGeometryArrowGizmo *>(gizmo_node.storage)->draw_style);
         }
 
-        const bool is_interacting = gz->interaction_data != nullptr;
-
         struct UserData {
           bContext *C;
           Vector<float> initial_values;
@@ -651,6 +727,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
         wmGizmoProperty *gz_prop = WM_gizmo_target_property_find(gz, "offset");
         if (is_interacting) {
+          /* Don't update the base transform while interacting with the gizmo, so that its behavior
+           * stays more predictable. */
           UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
           for (const int i : user_data->variables.index_range()) {
             const DerivedFloatTargetProperty &new_variable = variables[i];
@@ -659,22 +737,10 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           }
         }
         else {
-          float4x4 crazy_space_transform = float4x4::identity();
-          const bke::GeoNodesGizmoID gizmo_id = {compute_context.hash(), gizmo_node.identifier};
-          if (const std::optional<float4x4> m = find_gizmo_crazy_space_transform(geometry,
-                                                                                 gizmo_id)) {
-            crazy_space_transform = *m;
-          }
-
-          const math::Quaternion rotation = math::from_vector(
-              math::normalize(direction),
-              gz->type->idname == StringRef("GIZMO_GT_arrow_3d") ? math::AxisSigned::Z_NEG :
-                                                                   math::AxisSigned::Z_POS,
-              math::Axis::X);
-          float4x4 mat = math::from_rotation<float4x4>(rotation);
-          mat.location() = position;
-          mat = float4x4(ob_orig->object_to_world) * crazy_space_transform * mat;
-          copy_m4_m4(node_gizmo_data->gizmo->matrix_basis, mat.ptr());
+          /* Update gizmo base transform. */
+          const float4x4 current_gizmo_transform = object_to_world * geometry_transform *
+                                                   *base_gizmo_transform;
+          copy_m4_m4(node_gizmo_data->gizmo->matrix_basis, current_gizmo_transform.ptr());
 
           UserData *user_data = MEM_new<UserData>(__func__);
           /* The code that calls `value_set_fn` has the context, but its not passed into the
@@ -696,6 +762,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
             UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
             const float new_gizmo_value = *static_cast<const float *>(value_ptr);
             float new_gizmo_value_clamped = new_gizmo_value;
+            /* First clamp the value based on all target properties. */
             for (const int i : user_data->variables.index_range()) {
               DerivedFloatTargetProperty &variable = user_data->variables[i];
               const float initial_value = user_data->initial_values[i];
@@ -703,6 +770,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
               const float new_value_clamped = variable.property.clamp(new_value);
               new_gizmo_value_clamped = (new_value_clamped - initial_value) / variable.factor;
             }
+            /* Now apply the same clamped value to all targets. */
             user_data->gizmo_value = new_gizmo_value_clamped;
             for (const int i : user_data->variables.index_range()) {
               DerivedFloatTargetProperty &variable = user_data->variables[i];
@@ -716,7 +784,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
                 UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
                 *static_cast<float *>(value_ptr) = user_data->gizmo_value;
               };
-
+          /* Free the old property data because it's replaced now. */
           if (gz_prop->custom_func.free_fn) {
             gz_prop->custom_func.free_fn(node_gizmo_data->gizmo, gz_prop);
           }
