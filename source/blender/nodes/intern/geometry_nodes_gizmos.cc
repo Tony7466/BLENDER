@@ -185,25 +185,24 @@ static std::optional<GizmoTarget> find_local_gizmo_target(const bNodeSocket &ini
   }
 }
 
-static void add_gizmo_input_target_pair(GizmoPropagationResult &inferencing_result,
+static void add_gizmo_input_target_pair(GizmoPropagationResult &result,
                                         const InputSocketRef &gizmo_input,
                                         const GizmoTarget &gizmo_target)
 {
   if (const auto *ref = std::get_if<ValueNodeRef>(&gizmo_target)) {
-    inferencing_result.gizmo_inputs_for_value_nodes.add(ref->value_node, gizmo_input);
+    result.gizmo_inputs_for_value_nodes.add(ref->value_node, gizmo_input);
   }
   else if (const auto *ref = std::get_if<InputSocketRef>(&gizmo_target)) {
-    inferencing_result.gizmo_inputs_for_node_inputs.add(ref->input_socket, gizmo_input);
+    result.gizmo_inputs_for_node_inputs.add(ref->input_socket, gizmo_input);
   }
   else if (const auto *ref = std::get_if<GroupInputRef>(&gizmo_target)) {
-    inferencing_result.gizmo_inputs_for_interface_inputs.add({ref->input_index, ref->elem},
-                                                             gizmo_input);
+    result.gizmo_inputs_for_interface_inputs.add({ref->input_index, ref->elem}, gizmo_input);
   }
 }
 
 static GizmoPropagationResult propagate_gizmos(const bNodeTree &tree)
 {
-  GizmoPropagationResult inferencing_result;
+  GizmoPropagationResult result;
 
   for (const bNodeSocket *socket : tree.all_sockets()) {
     socket->runtime->has_gizmo = false;
@@ -227,11 +226,11 @@ static GizmoPropagationResult propagate_gizmos(const bNodeTree &tree)
       if (const std::optional<GizmoTarget> gizmo_target_opt = find_local_gizmo_target(
               input_socket, group_input_ref.elem, propagation_path))
       {
-        add_gizmo_input_target_pair(inferencing_result, gizmo_input, *gizmo_target_opt);
+        add_gizmo_input_target_pair(result, gizmo_input, *gizmo_target_opt);
       }
     }
     if (group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_inputs.size() > 0) {
-      inferencing_result.nodes_with_gizmos_inside.append(group_node);
+      result.nodes_with_gizmos_inside.append(group_node);
     }
   }
 
@@ -248,14 +247,14 @@ static GizmoPropagationResult propagate_gizmos(const bNodeTree &tree)
                 *link->fromsock, ValueElem{}, propagation_path))
         {
           add_gizmo_input_target_pair(
-              inferencing_result, InputSocketRef{&gizmo_value_input, ValueElem{}}, *gizmo_target);
+              result, InputSocketRef{&gizmo_value_input, ValueElem{}}, *gizmo_target);
         }
       }
-      inferencing_result.nodes_with_gizmos_inside.append(gizmo_node);
+      result.nodes_with_gizmos_inside.append(gizmo_node);
     }
   }
 
-  return inferencing_result;
+  return result;
 }
 
 std::ostream &operator<<(std::ostream &stream, const GizmoPropagationResult &data)
