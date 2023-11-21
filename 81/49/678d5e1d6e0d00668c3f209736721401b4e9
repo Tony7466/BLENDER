@@ -2,3 +2,4 @@ Referenced by commit 02bc43d08e1d9fa67aea6d54fa8cb3bb8e3bae43, Fix: versioning c
 Referenced by pull request #115130, Fix #115207: Dynamically typed Viewer node
 Referenced by pull request #115136, Fix: Dynamically typed Input Named Attribute node
 Referenced by commit acee93bd6d6210fd8881cb8af9f4a2ec6d63a6f7, Fix #115207: dynamically typed Viewer node
+Referenced by commit b24610053fbc41b85e8443b5c398874445516233, Fix: crash when using attribute search in Named Attribute node
