@@ -330,7 +330,7 @@ static void foreach_gizmo_for_input(
     const GroupInputRef group_input_ref{input_ref.input_socket->index(), input_ref.elem};
     const bNodeTree &group = *reinterpret_cast<const bNodeTree *>(node.id);
     group.ensure_topology_cache();
-    compute_context_builder.push<bke::NodeGroupComputeContext>(node, tree);
+    compute_context_builder.push<bke::GroupNodeComputeContext>(node, tree);
     foreach_gizmo_for_source(group_input_ref, compute_context_builder, group, fn);
     compute_context_builder.pop();
   }
@@ -509,7 +509,7 @@ static std::optional<GizmoSource> find_global_gizmo_source_recursive(
       return *ref;
     }
     if (const auto *group_node_compute_context =
-            dynamic_cast<const bke::NodeGroupComputeContext *>(&compute_context))
+            dynamic_cast<const bke::GroupNodeComputeContext *>(&compute_context))
     {
       const bNode *caller_node = group_node_compute_context->caller_group_node();
       const bNodeSocket &socket = caller_node->input_socket(ref->input_index);
