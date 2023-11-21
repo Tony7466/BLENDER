@@ -5,8 +5,6 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
-#include "BLI_timeit.hh"
-
 #include "BLI_atomic_disjoint_set.hh"
 
 #include "node_geometry_util.hh"
