@@ -139,11 +139,10 @@ class IndexSwitchFunction : public mf::MultiFunction {
         signature_.params.index_range().last(), "Output");
 
     for (const int i : IndexRange(inputs_num)) {
-      if (masks[i].is_empty()) {
-        continue;
+      if (!masks[i].is_empty()) {
+        const GVArray inputs = params.readonly_single_input(value_inputs_start + i);
+        array_utils::copy(inputs, masks[i], output);
       }
-      const GVArray inputs = params.readonly_single_input(value_inputs_start + i);
-      array_utils::copy(inputs, masks[i], output);
     }
 
     const CPPType &type = output.type();
