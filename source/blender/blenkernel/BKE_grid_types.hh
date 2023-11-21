@@ -405,8 +405,9 @@ struct FieldValueGrid : public ImplicitSharingMixin, public detail::FieldValueGr
   std::shared_ptr<GridType> grid;
 
   FieldValueGrid() : grid(nullptr) {}
-  FieldValueGrid(const FieldValueGrid<T> &other) : grid(other.grid) {}
+  FieldValueGrid(const FieldValueGrid<T> &other) : grid(other.grid){}
   FieldValueGrid(const std::shared_ptr<GridType> &grid) : grid(grid) {}
+  virtual ~FieldValueGrid() = default;
 
   FieldValueGrid<T> &operator=(const FieldValueGrid<T> &other)
   {
@@ -489,7 +490,7 @@ template<typename T> bool get_background_value(const FieldValueGrid<T> &grid, T 
 #endif /* WITH_OPENVDB */
 }
 
-template<typename T> std::shared_ptr<FieldValueGrid<T>> make_empty_grid(const T background_value)
+template<typename T> FieldValueGrid<T> make_empty_grid(const T background_value)
 {
 #ifdef WITH_OPENVDB
   if constexpr (std::is_same_v<T, std::string>) {
