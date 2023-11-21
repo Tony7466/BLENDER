@@ -40,8 +40,14 @@ static void deg_flush_updates_and_refresh(deg::Depsgraph *deg_graph)
     BKE_scene_frame_set(deg_graph->scene_cow, deg_graph->frame);
   }
 
+  /* This is needed to identify if flushing updates to editors is necessary, since flushing updates
+   * to editors needn't happen for the initial evaluation when the data-blocks first become
+   * visible. Store here and pass to deg_graph_flush_updates because the value will get reset in
+   * graph_tag_ids_for_visible_update. */
+  const bool is_visibility_update = deg_graph->need_tag_id_on_graph_visibility_update;
+
   deg::graph_tag_ids_for_visible_update(deg_graph);
-  deg::deg_graph_flush_updates(deg_graph);
+  deg::deg_graph_flush_updates(deg_graph, is_visibility_update);
   deg::deg_evaluate_on_refresh(deg_graph);
 }
 

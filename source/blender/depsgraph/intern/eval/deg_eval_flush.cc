@@ -214,7 +214,9 @@ void flush_engine_data_update(ID *id)
 }
 
 /* NOTE: It will also accumulate flags from changed components. */
-void flush_editors_id_update(Depsgraph *graph, const DEGEditorUpdateContext *update_ctx)
+static void flush_editors_id_update(Depsgraph *graph,
+                                    const DEGEditorUpdateContext *update_ctx,
+                                    bool is_visibility_update)
 {
   for (IDNode *id_node : graph->id_nodes) {
     if (id_node->custom_flags != ID_STATE_MODIFIED) {
@@ -241,11 +243,8 @@ void flush_editors_id_update(Depsgraph *graph, const DEGEditorUpdateContext *upd
 
     /* Inform editors. Only if the data-block is being evaluated a second
      * time, to distinguish between user edits and initial evaluation when
-     * the data-block becomes visible.
-     *
-     * TODO: image data-blocks do not use COW, so might not be detected
-     * correctly. */
-    if (deg_copy_on_write_is_expanded(id_cow)) {
+     * the data-block becomes visible. */
+    if (!is_visibility_update) {
       if (graph->is_active && id_node->is_user_modified) {
         deg_editors_id_update(update_ctx, id_orig);
 
@@ -343,7 +342,7 @@ void invalidate_tagged_evaluated_data(Depsgraph *graph)
 
 }  // namespace
 
-void deg_graph_flush_updates(Depsgraph *graph)
+void deg_graph_flush_updates(Depsgraph *graph, bool is_visibility_update)
 {
   /* Sanity checks. */
   BLI_assert(graph != nullptr);
@@ -383,7 +382,7 @@ void deg_graph_flush_updates(Depsgraph *graph)
     }
   }
   /* Inform editors about all changes. */
-  flush_editors_id_update(graph, &update_ctx);
+  flush_editors_id_update(graph, &update_ctx, is_visibility_update);
   /* Reset evaluation result tagged which is tagged for update to some state
    * which is obvious to catch. */
   invalidate_tagged_evaluated_data(graph);
