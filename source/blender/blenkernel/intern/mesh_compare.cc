@@ -14,7 +14,7 @@
 
 #include "BKE_mesh_compare.hh"
 
-namespace blender::bke::mesh {
+namespace blender::bke::compare_meshes {
 
 enum class MeshMismatch : int8_t {
   NumVerts,         /* The number of vertices is different. */

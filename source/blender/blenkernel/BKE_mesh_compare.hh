@@ -10,7 +10,7 @@
  * \ingroup bke
  */
 
-namespace blender::bke::mesh {
+namespace blender::bke::compare_meshes {
 
 enum class MeshMismatch : int8_t;
 
@@ -37,4 +37,4 @@ std::optional<MeshMismatch> compare_meshes(const Mesh &mesh1,
                                            const Mesh &mesh2,
                                            const float threshold);
 
-}  // namespace blender::bke::mesh
+}  // namespace blender::bke::compare_meshes
