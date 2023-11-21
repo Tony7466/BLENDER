@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
-from bpy.types import Operator
+from bpy.types import Operator, IntProperty
+from bpy.props import IntProperty
 
 from bpy.app.translations import pgettext_data as data_
 
@@ -465,7 +466,7 @@ def editable_tree_with_active_node_type(context, node_type):
     if not space or space.type != 'NODE_EDITOR' or not space.edit_tree or space.edit_tree.library:
         return False
     node = context.active_node
-    if node is None or node.bl_idname != 'FunctionNodeIndexSwitch':
+    if node is None or node.bl_idname != 'GeometryNodeIndexSwitch':
         return False
     return True
 
@@ -478,7 +479,7 @@ class IndexSwitchItemAddOperator(Operator):
 
     @classmethod
     def poll(cls, context):
-        return editable_tree_with_active_node_type(context, 'FunctionNodeIndexSwitch')
+        return editable_tree_with_active_node_type(context, 'GeometryNodeIndexSwitch')
 
     def execute(self, context):
         node = context.active_node
@@ -499,12 +500,12 @@ class IndexSwitchItemRemoveOperator(Operator):
 
     @classmethod
     def poll(cls, context):
-        return editable_tree_with_active_node_type(context, 'FunctionNodeIndexSwitch')
+        return editable_tree_with_active_node_type(context, 'GeometryNodeIndexSwitch')
 
     def execute(self, context):
         node = context.active_node
         items = node.index_switch_items
-        items.remove(items[index])
+        items.remove(items[self.index])
         return {'FINISHED'}
 
 
