@@ -475,7 +475,7 @@ int BLI_rename(const char *from, const char *to)
 #ifdef WIN32
   return urename(from, to, false);
 #elif defined(__APPLE__)
-  renamex_np(from, to, RENAME_EXCL);
+  return renamex_np(from, to, RENAME_EXCL);
 #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
   if (!BLI_exists(to)) {
     return 1;
