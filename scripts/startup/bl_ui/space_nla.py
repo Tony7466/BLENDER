@@ -356,8 +356,9 @@ class NLA_MT_channel_context_menu(Menu):
 
         layout.separator()
 
-        layout.operator("nla.tracks_add").above_selected = False
         layout.operator("nla.tracks_add", text="Add Tracks Above Selected").above_selected = True
+        layout.operator("nla.tracks_add", text="Add Tracks Below Selected").above_selected = False
+        layout.separator()
         layout.operator("nla.tracks_delete")
         layout.operator("anim.channels_clean_empty")
 
