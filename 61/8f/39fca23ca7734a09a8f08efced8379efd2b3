@@ -3,3 +3,4 @@ Referenced by commit 90864d3fb80ebebef0f90cc6d60e9eb01e665ba5, Curve: operate on
 Referenced by commit cabf935afb77811c917fccd2952f097aa372f181, Fix: Box select not working with tweak took in VSE
 Referenced by issue #112761, Regression: Box select no longer works with tweak tool in VSE
 Referenced by commit 883033a0969fd2a135ac3394b0388665322d557e, Curve: adjust behavior of invert selection for bezier handlers
+Referenced by issue #115188, Right click tweak don't select vert/ege/face when all selected
