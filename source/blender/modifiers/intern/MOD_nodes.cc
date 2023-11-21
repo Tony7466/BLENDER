@@ -643,9 +643,9 @@ static void find_side_effect_nodes(const NodesModifierData &nmd,
         try_add_side_effect_node(compute_context, gizmo_node.identifier, nmd, r_side_effect_nodes);
         r_socket_log_contexts.add(compute_context.hash());
 
-        const Vector<nodes::gizmos::GlobalGizmoSource> gizmo_sources =
-            nodes::gizmos::find_global_gizmo_sources(compute_context, gizmo_node);
-        for (const nodes::gizmos::GlobalGizmoSource &gizmo_source : gizmo_sources) {
+        const Vector<nodes::gizmos::PropagatedGizmoSource> gizmo_sources =
+            nodes::gizmos::find_propagated_gizmo_sources(compute_context, gizmo_node);
+        for (const nodes::gizmos::PropagatedGizmoSource &gizmo_source : gizmo_sources) {
           for (const nodes::gizmos::PropagationPath::PathElem &elem :
                gizmo_source.propagation_path.path) {
             try_add_side_effect_node(

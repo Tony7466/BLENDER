@@ -151,7 +151,7 @@ struct GizmoFloatVariable {
 };
 
 static std::optional<float> compute_derivative(
-    const NodesModifierData &nmd, const nodes::gizmos::GlobalGizmoSource &gizmo_source)
+    const NodesModifierData &nmd, const nodes::gizmos::PropagatedGizmoSource &gizmo_source)
 {
   float derivative = 1.0f;
   for (const nodes::gizmos::PropagationPath::PathElem &path_elem :
@@ -278,7 +278,7 @@ static std::optional<float> compute_derivative(
 }
 
 static std::optional<FloatValuePath> get_float_value_path(
-    const nodes::gizmos::GlobalGizmoSource &gizmo_source,
+    const nodes::gizmos::PropagatedGizmoSource &gizmo_source,
     const Object &object,
     const NodesModifierData &nmd)
 {
@@ -342,10 +342,10 @@ static Vector<GizmoFloatVariable> find_gizmo_float_value_paths(
     const Object &object,
     const NodesModifierData &nmd)
 {
-  Vector<nodes::gizmos::GlobalGizmoSource> gizmo_sources =
-      nodes::gizmos::find_global_gizmo_sources(compute_context, gizmo_node);
+  Vector<nodes::gizmos::PropagatedGizmoSource> gizmo_sources =
+      nodes::gizmos::find_propagated_gizmo_sources(compute_context, gizmo_node);
   Vector<GizmoFloatVariable> variables;
-  for (const nodes::gizmos::GlobalGizmoSource &gizmo_source : gizmo_sources) {
+  for (const nodes::gizmos::PropagatedGizmoSource &gizmo_source : gizmo_sources) {
     const std::optional<float> derivative = compute_derivative(nmd, gizmo_source);
     if (!derivative) {
       continue;

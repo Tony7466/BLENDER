@@ -116,13 +116,13 @@ struct PropagationPath {
   Vector<PathElem> path;
 };
 
-struct GlobalGizmoSource {
+struct PropagatedGizmoSource {
   GizmoSource source;
   PropagationPath propagation_path;
 };
 
-Vector<GlobalGizmoSource> find_global_gizmo_sources(const ComputeContext &compute_context,
-                                                    const bNode &gizmo_node);
+Vector<PropagatedGizmoSource> find_propagated_gizmo_sources(const ComputeContext &compute_context,
+                                                            const bNode &gizmo_node);
 
 void foreach_active_gizmo(
     const Object &object,

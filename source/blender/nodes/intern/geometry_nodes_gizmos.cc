@@ -478,7 +478,7 @@ void foreach_active_gizmo(
   }
 }
 
-static std::optional<GizmoSource> find_global_gizmo_source_recursive(
+static std::optional<GizmoSource> find_propagated_gizmo_source_recursive(
     const bNodeSocket &gizmo_socket,
     const ValueElem &elem,
     const ComputeContext &compute_context,
@@ -510,7 +510,7 @@ static std::optional<GizmoSource> find_global_gizmo_source_recursive(
     {
       const bNode *caller_node = group_node_compute_context->caller_group_node();
       const bNodeSocket &socket = caller_node->input_socket(ref->input_index);
-      return find_global_gizmo_source_recursive(
+      return find_propagated_gizmo_source_recursive(
           socket, ref->elem, *compute_context.parent(), r_path);
     }
   }
@@ -518,23 +518,23 @@ static std::optional<GizmoSource> find_global_gizmo_source_recursive(
   return std::nullopt;
 }
 
-Vector<GlobalGizmoSource> find_global_gizmo_sources(const ComputeContext &compute_context,
-                                                    const bNode &gizmo_node)
+Vector<PropagatedGizmoSource> find_propagated_gizmo_sources(const ComputeContext &compute_context,
+                                                            const bNode &gizmo_node)
 {
-  Vector<GlobalGizmoSource> global_gizmo_sources;
+  Vector<PropagatedGizmoSource> propagated_gizmo_sources;
   const bNodeSocket &gizmo_value_input = gizmo_node.input_socket(0);
   for (const bNodeLink *link : gizmo_value_input.directly_linked_links()) {
     if (!is_valid_gizmo_link(*link)) {
       continue;
     }
     PropagationPath path;
-    if (std::optional<GizmoSource> source = find_global_gizmo_source_recursive(
+    if (std::optional<GizmoSource> source = find_propagated_gizmo_source_recursive(
             *link->fromsock, ValueElem{}, compute_context, path))
     {
-      global_gizmo_sources.append({std::move(*source), std::move(path)});
+      propagated_gizmo_sources.append({std::move(*source), std::move(path)});
     }
   }
-  return global_gizmo_sources;
+  return propagated_gizmo_sources;
 }
 
 }  // namespace blender::nodes::gizmos
