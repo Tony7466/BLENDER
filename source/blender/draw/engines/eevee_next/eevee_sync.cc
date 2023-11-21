@@ -52,12 +52,6 @@ ObjectHandle &SyncModule::sync_object(const ObjectRef &ob_ref)
 
   handle.recalc = inst_.get_recalc_flags(ob_ref);
 
-  printf("%s | %u | %u | %u\n",
-         ob_ref.object->id.name,
-         (handle.recalc & ID_RECALC_TRANSFORM) != 0,
-         (handle.recalc & ID_RECALC_GEOMETRY) != 0,
-         (handle.recalc & ID_RECALC_SHADING) != 0);
-
   if (handle.recalc != 0) {
     inst_.sampling.reset();
   }
