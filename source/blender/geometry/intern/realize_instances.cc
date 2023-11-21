@@ -1502,6 +1502,32 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Edit Data
+ * \{ */
+
+static void execute_realize_edit_data_tasks(const Span<RealizeEditDataTask> tasks,
+                                            bke::GeometrySet &r_realized_geometry)
+{
+  if (tasks.is_empty()) {
+    return;
+  }
+  auto &component = r_realized_geometry.get_component_for_write<bke::GeometryComponentEditData>();
+  for (const RealizeEditDataTask &task : tasks) {
+    if (!component.curves_edit_hints_) {
+      if (task.edit_data->curves_edit_hints_) {
+        component.curves_edit_hints_ = std::make_unique<bke::CurvesEditHints>(
+            *task.edit_data->curves_edit_hints_);
+      }
+    }
+    for (auto item : task.edit_data->gizmo_transforms_.items()) {
+      component.gizmo_transforms_.add(item.key, task.transform * item.value);
+    }
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Realize Instances
  * \{ */
 
@@ -1566,24 +1592,10 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                               gather_info.r_tasks.curve_tasks,
                               all_curves_info.attributes,
                               new_geometry_set);
+  execute_realize_edit_data_tasks(gather_info.r_tasks.edit_data_tasks, new_geometry_set);
 
   if (gather_info.r_tasks.first_volume) {
     new_geometry_set.add(*gather_info.r_tasks.first_volume);
-  }
-
-  if (!gather_info.r_tasks.edit_data_tasks.is_empty()) {
-    auto &component = new_geometry_set.get_component_for_write<bke::GeometryComponentEditData>();
-    for (const RealizeEditDataTask &task : gather_info.r_tasks.edit_data_tasks) {
-      if (!component.curves_edit_hints_) {
-        if (task.edit_data->curves_edit_hints_) {
-          component.curves_edit_hints_ = std::make_unique<bke::CurvesEditHints>(
-              *task.edit_data->curves_edit_hints_);
-        }
-      }
-      for (auto item : task.edit_data->gizmo_transforms_.items()) {
-        component.gizmo_transforms_.add(item.key, task.transform * item.value);
-      }
-    }
   }
 
   return new_geometry_set;
