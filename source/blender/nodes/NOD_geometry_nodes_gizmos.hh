@@ -85,7 +85,14 @@ struct GroupInputRef {
  */
 using GizmoSource = std::variant<InputSocketRef, ValueNodeRef, GroupInputRef>;
 
+/**
+ * Gizmo propagation is preprocessed on a per node-group basis, instead processing the same node
+ * group multiple depending on how it's used.
+ */
 struct GizmoPropagationResult {
+  /**
+   * These members allow quickly looking up which gizmos are active.
+   */
   Vector<const bNode *> nodes_with_gizmos_inside;
   MultiValueMap<const bNode *, InputSocketRef> gizmo_inputs_for_value_nodes;
   MultiValueMap<const bNodeSocket *, InputSocketRef> gizmo_inputs_for_node_inputs;
@@ -96,15 +103,22 @@ struct GizmoPropagationResult {
   friend bool operator!=(const GizmoPropagationResult &a, const GizmoPropagationResult &b);
 };
 
-struct GlobalGizmoPathElem {
-  const bNode *node;
-  ValueElem elem;
-  const ComputeContext *compute_context;
+struct PropagationPath {
+  struct PathElem {
+    const bNode *node;
+    ValueElem elem;
+    const ComputeContext *compute_context;
+  };
+  /**
+   * Contains nodes that influence how changes in the gizmo modify the controlled value. The nodes
+   * are ordered right-to-left based on the node tree.
+   */
+  Vector<PathElem> path;
 };
 
 struct GlobalGizmoSource {
   GizmoSource source;
-  Vector<GlobalGizmoPathElem> propagation_path;
+  PropagationPath propagation_path;
 };
 
 Vector<GlobalGizmoSource> find_global_gizmo_sources(const ComputeContext &compute_context,

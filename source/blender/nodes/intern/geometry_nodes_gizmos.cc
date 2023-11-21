@@ -482,7 +482,7 @@ static std::optional<GizmoSource> find_global_gizmo_source_recursive(
     const bNodeSocket &gizmo_socket,
     const ValueElem &elem,
     const ComputeContext &compute_context,
-    Vector<GlobalGizmoPathElem> &r_path)
+    PropagationPath &r_path)
 {
   Vector<LocalGizmoPathElem> local_path;
   std::optional<GizmoSource> gizmo_source_opt = find_local_gizmo_source(
@@ -492,7 +492,7 @@ static std::optional<GizmoSource> find_global_gizmo_source_recursive(
   }
 
   for (const LocalGizmoPathElem &local_path_elem : local_path) {
-    r_path.append({local_path_elem.node, local_path_elem.elem, &compute_context});
+    r_path.path.append({local_path_elem.node, local_path_elem.elem, &compute_context});
   }
 
   if (const auto *ref = std::get_if<InputSocketRef>(&*gizmo_source_opt)) {
@@ -527,7 +527,7 @@ Vector<GlobalGizmoSource> find_global_gizmo_sources(const ComputeContext &comput
     if (!is_valid_gizmo_link(*link)) {
       continue;
     }
-    Vector<GlobalGizmoPathElem> path;
+    PropagationPath path;
     if (std::optional<GizmoSource> source = find_global_gizmo_source_recursive(
             *link->fromsock, ValueElem{}, compute_context, path))
     {
