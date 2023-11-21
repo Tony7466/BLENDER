@@ -2,3 +2,4 @@ Referenced by pull request #111081, BLI: Group Deduce functions for GroupedSpan
 Referenced by issue #111811, Regression: Crash during open of Charge open movie project
 Referenced by pull request #111815, Fix (unreported): Assert for mesh without corners
 Referenced by commit 4b899588eb5ac52f8e2393e1477fc9e86269194b, Fix: Vert to corner topology map assert for mesh with no faces
+Referenced by commit bb80716244d3539d52439585b68f48d734197b55, Mesh: Parallelize remaining topology maps
