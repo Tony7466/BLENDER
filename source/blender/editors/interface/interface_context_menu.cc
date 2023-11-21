@@ -671,7 +671,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
             UI_ITEM_NONE,
             &op_ptr);
         RNA_boolean_set(&op_ptr, "all", false);
-        RNA_boolean_set(&op_ptr, "use_modifier_key", true);
 
         uiItemFullO_ptr(layout,
                         ot,
@@ -682,7 +681,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                         UI_ITEM_NONE,
                         &op_ptr);
         RNA_boolean_set(&op_ptr, "all", true);
-        RNA_boolean_set(&op_ptr, "use_modifier_key", true);
       }
       else {
         PointerRNA op_ptr;
@@ -698,7 +696,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                         UI_ITEM_NONE,
                         &op_ptr);
         RNA_boolean_set(&op_ptr, "all", false);
-        RNA_boolean_set(&op_ptr, "use_modifier_key", true);
       }
     }
 
