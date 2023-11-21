@@ -405,7 +405,7 @@ struct FieldValueGrid : public ImplicitSharingMixin, public detail::FieldValueGr
   std::shared_ptr<GridType> grid;
 
   FieldValueGrid() : grid(nullptr) {}
-  FieldValueGrid(const FieldValueGrid<T> &other) : grid(other.grid){}
+  FieldValueGrid(const FieldValueGrid<T> &other) : grid(other.grid) {}
   FieldValueGrid(const std::shared_ptr<GridType> &grid) : grid(grid) {}
   virtual ~FieldValueGrid() = default;
 
