@@ -143,10 +143,113 @@ struct FloatTargetProperty {
   }
 };
 
-struct DerivedFloatTargetProperty {
-  FloatTargetProperty property;
-  float factor;
-};
+static std::optional<float> apply_reverse_function_to_factor(const float target_factor,
+                                                             const NodesModifierData &nmd,
+                                                             const ComputeContext &compute_context,
+                                                             const bNode &node,
+                                                             const nodes::gizmos::ValueElem &elem)
+{
+  geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(compute_context.hash());
+  tree_log.ensure_socket_values();
+
+  switch (node.type) {
+    case SH_NODE_MATH: {
+      const int mode = node.custom1;
+      const bNodeSocket &second_input_socket = node.input_socket(1);
+      const float second_value =
+          tree_log.find_primitive_socket_value<float>(second_input_socket).value_or(0.0f);
+      switch (mode) {
+        case NODE_MATH_MULTIPLY: {
+          return safe_divide(target_factor, second_value);
+        }
+        case NODE_MATH_DIVIDE: {
+          return target_factor * second_value;
+        }
+        case NODE_MATH_RADIANS: {
+          return RAD2DEG(target_factor);
+        }
+        case NODE_MATH_DEGREES: {
+          return DEG2RAD(target_factor);
+        }
+        default:
+          return std::nullopt;
+      }
+      break;
+    }
+    case SH_NODE_VECTOR_MATH: {
+      const int mode = node.custom1;
+      const bNodeSocket &second_input_socket = node.input_socket(1);
+      const bNodeSocket &scale_input_socket = node.input_by_identifier("Scale");
+      switch (mode) {
+        case NODE_VECTOR_MATH_MULTIPLY: {
+          const float factor = tree_log.find_primitive_socket_value<float3>(second_input_socket)
+                                   .value_or(float3{0, 0, 0})[*elem.index];
+          return safe_divide(target_factor, factor);
+        }
+        case NODE_VECTOR_MATH_DIVIDE: {
+          const float divisor = tree_log.find_primitive_socket_value<float3>(second_input_socket)
+                                    .value_or(float3{0, 0, 0})[*elem.index];
+          return target_factor * divisor;
+        }
+        case NODE_VECTOR_MATH_SCALE: {
+          const float scale =
+              tree_log.find_primitive_socket_value<float>(scale_input_socket).value_or(0.0f);
+          return safe_divide(target_factor, scale);
+        }
+      }
+      break;
+    }
+    case SH_NODE_MAP_RANGE: {
+      const eCustomDataType data_type = eCustomDataType(
+          static_cast<NodeMapRange *>(node.storage)->data_type);
+      switch (data_type) {
+        case CD_PROP_FLOAT: {
+          const float from_min = tree_log
+                                     .find_primitive_socket_value<float>(
+                                         node.input_by_identifier("From Min"))
+                                     .value_or(0.0f);
+          const float from_max = tree_log
+                                     .find_primitive_socket_value<float>(
+                                         node.input_by_identifier("From Max"))
+                                     .value_or(0.0f);
+          const float to_min = tree_log
+                                   .find_primitive_socket_value<float>(
+                                       node.input_by_identifier("To Min"))
+                                   .value_or(0.0f);
+          const float to_max = tree_log
+                                   .find_primitive_socket_value<float>(
+                                       node.input_by_identifier("To Max"))
+                                   .value_or(0.0f);
+          return target_factor * safe_divide(from_max - from_min, to_max - to_min);
+        }
+        case CD_PROP_FLOAT3: {
+          const int index = *elem.index;
+          const float from_min = tree_log
+                                     .find_primitive_socket_value<float3>(
+                                         node.input_by_identifier("From_Min_FLOAT3"))
+                                     .value_or(float3{0, 0, 0})[index];
+          const float from_max = tree_log
+                                     .find_primitive_socket_value<float3>(
+                                         node.input_by_identifier("From_Max_FLOAT3"))
+                                     .value_or(float3{0, 0, 0})[index];
+          const float to_min = tree_log
+                                   .find_primitive_socket_value<float3>(
+                                       node.input_by_identifier("To_Min_FLOAT3"))
+                                   .value_or(float3{0, 0, 0})[index];
+          const float to_max = tree_log
+                                   .find_primitive_socket_value<float3>(
+                                       node.input_by_identifier("To_Max_FLOAT3"))
+                                   .value_or(float3{0, 0, 0})[index];
+          return target_factor * safe_divide(from_max - from_min, to_max - to_min);
+        }
+        default:
+          return std::nullopt;
+      }
+      break;
+    }
+  }
+  return std::nullopt;
+}
 
 /**
  * Computes the factor that is applied when gizmo-movements are converted to value-changes.
@@ -156,134 +259,33 @@ struct DerivedFloatTargetProperty {
 static std::optional<float> compute_target_factor(
     const NodesModifierData &nmd, const nodes::gizmos::PropagationPath &propagation_path)
 {
+  /* The default factor is 1. */
   float target_factor = 1.0f;
+  /* Check the nodes that propagated the gizmo target from right-to-left. */
   for (const nodes::gizmos::PropagationPath::PathElem &path_elem : propagation_path.path) {
-    geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
-        path_elem.compute_context->hash());
-    tree_log.ensure_socket_values();
-
-    const bNode &path_node = *path_elem.node;
-    switch (path_node.type) {
-      case SH_NODE_MATH: {
-        const int mode = path_node.custom1;
-        const bNodeSocket &second_input_socket = path_elem.node->input_socket(1);
-        const float second_value =
-            tree_log.find_primitive_socket_value<float>(second_input_socket).value_or(0.0f);
-        switch (mode) {
-          case NODE_MATH_MULTIPLY: {
-            target_factor = safe_divide(target_factor, second_value);
-            break;
-          }
-          case NODE_MATH_DIVIDE: {
-            target_factor *= second_value;
-            break;
-          }
-          case NODE_MATH_RADIANS: {
-            target_factor = RAD2DEG(target_factor);
-            break;
-          }
-          case NODE_MATH_DEGREES: {
-            target_factor = DEG2RAD(target_factor);
-            break;
-          }
-          default:
-            return std::nullopt;
-        }
-        break;
-      }
-      case SH_NODE_VECTOR_MATH: {
-        const int mode = path_node.custom1;
-        const bNodeSocket &second_input_socket = path_elem.node->input_socket(1);
-        const bNodeSocket &scale_input_socket = path_elem.node->input_by_identifier("Scale");
-        switch (mode) {
-          case NODE_VECTOR_MATH_MULTIPLY: {
-            const float factor = tree_log.find_primitive_socket_value<float3>(second_input_socket)
-                                     .value_or(float3{0, 0, 0})[*path_elem.elem.index];
-            target_factor = safe_divide(target_factor, factor);
-            break;
-          }
-          case NODE_VECTOR_MATH_DIVIDE: {
-            const float divisor = tree_log.find_primitive_socket_value<float3>(second_input_socket)
-                                      .value_or(float3{0, 0, 0})[*path_elem.elem.index];
-            target_factor *= divisor;
-            break;
-          }
-          case NODE_VECTOR_MATH_SCALE: {
-            const float scale =
-                tree_log.find_primitive_socket_value<float>(scale_input_socket).value_or(0.0f);
-            target_factor = safe_divide(target_factor, scale);
-            break;
-          }
-        }
-        break;
-      }
-      case SH_NODE_MAP_RANGE: {
-        const eCustomDataType data_type = eCustomDataType(
-            static_cast<NodeMapRange *>(path_node.storage)->data_type);
-        switch (data_type) {
-          case CD_PROP_FLOAT: {
-            const float from_min = tree_log
-                                       .find_primitive_socket_value<float>(
-                                           path_node.input_by_identifier("From Min"))
-                                       .value_or(0.0f);
-            const float from_max = tree_log
-                                       .find_primitive_socket_value<float>(
-                                           path_node.input_by_identifier("From Max"))
-                                       .value_or(0.0f);
-            const float to_min = tree_log
-                                     .find_primitive_socket_value<float>(
-                                         path_node.input_by_identifier("To Min"))
-                                     .value_or(0.0f);
-            const float to_max = tree_log
-                                     .find_primitive_socket_value<float>(
-                                         path_node.input_by_identifier("To Max"))
-                                     .value_or(0.0f);
-            target_factor *= safe_divide(from_max - from_min, to_max - to_min);
-            break;
-          }
-          case CD_PROP_FLOAT3: {
-            const int index = *path_elem.elem.index;
-            const float from_min = tree_log
-                                       .find_primitive_socket_value<float3>(
-                                           path_node.input_by_identifier("From_Min_FLOAT3"))
-                                       .value_or(float3{0, 0, 0})[index];
-            const float from_max = tree_log
-                                       .find_primitive_socket_value<float3>(
-                                           path_node.input_by_identifier("From_Max_FLOAT3"))
-                                       .value_or(float3{0, 0, 0})[index];
-            const float to_min = tree_log
-                                     .find_primitive_socket_value<float3>(
-                                         path_node.input_by_identifier("To_Min_FLOAT3"))
-                                     .value_or(float3{0, 0, 0})[index];
-            const float to_max = tree_log
-                                     .find_primitive_socket_value<float3>(
-                                         path_node.input_by_identifier("To_Max_FLOAT3"))
-                                     .value_or(float3{0, 0, 0})[index];
-            target_factor *= safe_divide(from_max - from_min, to_max - to_min);
-            break;
-          }
-          default:
-            return std::nullopt;
-        }
-        break;
-      }
-      default: {
-        return std::nullopt;
-      }
+    target_factor = apply_reverse_function_to_factor(target_factor,
+                                                     nmd,
+                                                     *path_elem.compute_context,
+                                                     *path_elem.node,
+                                                     path_elem.elem)
+                        .value_or(0.0f);
+    if (target_factor == 0.0f) {
+      return std::nullopt;
     }
-  }
-  if (target_factor == 0.0f) {
-    return std::nullopt;
   }
   return target_factor;
 }
 
+/**
+ * Get an actual property accessor for the value controlled by the gizmo.
+ */
 static std::optional<FloatTargetProperty> get_float_target_property(
     const nodes::gizmos::PropagatedGizmoTarget &gizmo_target,
     const Object &object,
     const NodesModifierData &nmd)
 {
   if (const auto *ref = std::get_if<nodes::gizmos::InputSocketRef>(&gizmo_target.target)) {
+    /* The gizmo controls the value of an input socket. */
     const bNodeTree &tree = ref->input_socket->owner_tree();
     ID *id = const_cast<ID *>(&tree.id);
     FloatTargetProperty target_property;
@@ -294,6 +296,7 @@ static std::optional<FloatTargetProperty> get_float_target_property(
     return target_property;
   }
   if (const auto *ref = std::get_if<nodes::gizmos::ValueNodeRef>(&gizmo_target.target)) {
+    /* The gizmo controls the value of a value node. */
     const bNodeTree &tree = ref->value_node->owner_tree();
     ID *id = const_cast<ID *>(&tree.id);
     switch (ref->value_node->type) {
@@ -323,6 +326,7 @@ static std::optional<FloatTargetProperty> get_float_target_property(
     }
   }
   if (const auto *ref = std::get_if<nodes::gizmos::GroupInputRef>(&gizmo_target.target)) {
+    /* The gizmo controls a value stored in the modifier. */
     const bNodeTree &ntree = *nmd.node_group;
     const StringRefNull input_identifier = ntree.interface_inputs()[ref->input_index]->identifier;
     IDProperty *id_property = IDP_GetPropertyFromGroup(nmd.settings.properties,
@@ -340,7 +344,19 @@ static std::optional<FloatTargetProperty> get_float_target_property(
   return std::nullopt;
 }
 
-static Vector<DerivedFloatTargetProperty> find_gizmo_float_value_paths(
+/**
+ * The target property with a factor that determines how gizmo-changes affect changes in the
+ * controlled property.
+ */
+struct DerivedFloatTargetProperty {
+  FloatTargetProperty property;
+  float factor;
+};
+
+/**
+ * Find all properties controlled by a specific gizmo node.
+ */
+static Vector<DerivedFloatTargetProperty> find_gizmo_target_properties(
     const bNode &gizmo_node,
     const ComputeContext &compute_context,
     const Object &object,
@@ -348,7 +364,7 @@ static Vector<DerivedFloatTargetProperty> find_gizmo_float_value_paths(
 {
   Vector<nodes::gizmos::PropagatedGizmoTarget> gizmo_targets =
       nodes::gizmos::find_propagated_gizmo_targets(compute_context, gizmo_node);
-  Vector<DerivedFloatTargetProperty> variables;
+  Vector<DerivedFloatTargetProperty> target_properties;
   for (const nodes::gizmos::PropagatedGizmoTarget &gizmo_target : gizmo_targets) {
     const std::optional<float> target_factor = compute_target_factor(
         nmd, gizmo_target.propagation_path);
@@ -358,10 +374,10 @@ static Vector<DerivedFloatTargetProperty> find_gizmo_float_value_paths(
     if (std::optional<FloatTargetProperty> target_property = get_float_target_property(
             gizmo_target, object, nmd))
     {
-      variables.append({std::move(*target_property), *target_factor});
+      target_properties.append({std::move(*target_property), *target_factor});
     }
   }
-  return variables;
+  return target_properties;
 }
 
 static bool WIDGETGROUP_geometry_nodes_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
@@ -418,25 +434,25 @@ static ThemeColorID get_gizmo_theme_color_id(const bNode &gizmo_node)
   return TH_GIZMO_PRIMARY;
 }
 
+/** Finds the gizmo transform stored directly in the geometry, ignoring the instances. */
 static const float4x4 *find_direct_gizmo_transform(const bke::GeometrySet &geometry,
-                                                   const ComputeContextHash &compute_context_hash,
-                                                   const int gizmo_node_identifier)
+                                                   const bke::GeoNodesGizmoID &gizmo_id)
 {
   if (const auto *edit_data_component = geometry.get_component<bke::GeometryComponentEditData>()) {
-    if (const float4x4 *m = edit_data_component->gizmo_transforms_.lookup_ptr(
-            {compute_context_hash, gizmo_node_identifier}))
-    {
+    if (const float4x4 *m = edit_data_component->gizmo_transforms_.lookup_ptr(gizmo_id)) {
       return m;
     }
   }
   return nullptr;
 }
 
+/**
+ * True, if the geometry contains a transform for the given gizmo. Also checks if all instances.
+ */
 static bool has_nested_gizmo_transform(const bke::GeometrySet &geometry,
-                                       const ComputeContextHash &compute_context_hash,
-                                       const int gizmo_node_identifier)
+                                       const bke::GeoNodesGizmoID &gizmo_id)
 {
-  if (find_direct_gizmo_transform(geometry, compute_context_hash, gizmo_node_identifier)) {
+  if (find_direct_gizmo_transform(geometry, gizmo_id)) {
     return true;
   }
   if (!geometry.has_instances()) {
@@ -448,8 +464,7 @@ static bool has_nested_gizmo_transform(const bke::GeometrySet &geometry,
       continue;
     }
     const bke::GeometrySet &reference_geometry = reference.geometry_set();
-    if (has_nested_gizmo_transform(
-            reference_geometry, compute_context_hash, gizmo_node_identifier)) {
+    if (has_nested_gizmo_transform(reference_geometry, gizmo_id)) {
       return true;
     }
   }
@@ -458,13 +473,10 @@ static bool has_nested_gizmo_transform(const bke::GeometrySet &geometry,
 
 static std::optional<float4x4> find_gizmo_crazy_space_transform_recursive(
     const bke::GeometrySet &geometry,
-    const ComputeContextHash &compute_context_hash,
-    const int gizmo_node_identifier,
+    const bke::GeoNodesGizmoID &gizmo_id,
     const float4x4 &transform)
 {
-  if (const float4x4 *m = find_direct_gizmo_transform(
-          geometry, compute_context_hash, gizmo_node_identifier))
-  {
+  if (const float4x4 *m = find_direct_gizmo_transform(geometry, gizmo_id)) {
     return transform * *m;
   }
   if (!geometry.has_instances()) {
@@ -480,13 +492,12 @@ static std::optional<float4x4> find_gizmo_crazy_space_transform_recursive(
       continue;
     }
     const bke::GeometrySet &reference_geometry = reference.geometry_set();
-    if (has_nested_gizmo_transform(
-            reference_geometry, compute_context_hash, gizmo_node_identifier)) {
+    if (has_nested_gizmo_transform(reference_geometry, gizmo_id)) {
       const int index = handles.first_index_try(reference_i);
       if (index >= 0) {
         const float4x4 sub_transform = transform * transforms[index];
         if (const std::optional<float4x4> m = find_gizmo_crazy_space_transform_recursive(
-                reference_geometry, compute_context_hash, gizmo_node_identifier, sub_transform))
+                reference_geometry, gizmo_id, sub_transform))
         {
           return *m;
         }
@@ -496,14 +507,14 @@ static std::optional<float4x4> find_gizmo_crazy_space_transform_recursive(
   return std::nullopt;
 }
 
+/**
+ * Tries to find a transformation of the gizmo in the given geometry.
+ */
 static std::optional<float4x4> find_gizmo_crazy_space_transform(
-    const bke::GeometrySet &geometry,
-    const ComputeContextHash &compute_context_hash,
-    const int gizmo_node_identifier)
+    const bke::GeometrySet &geometry, const bke::GeoNodesGizmoID &gizmo_id)
 {
   const float4x4 identity = float4x4::identity();
-  return find_gizmo_crazy_space_transform_recursive(
-      geometry, compute_context_hash, gizmo_node_identifier, identity);
+  return find_gizmo_crazy_space_transform_recursive(geometry, gizmo_id, identity);
 }
 
 static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *gzgroup)
@@ -571,7 +582,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           return;
         }
 
-        Vector<DerivedFloatTargetProperty> variables = find_gizmo_float_value_paths(
+        Vector<DerivedFloatTargetProperty> variables = find_gizmo_target_properties(
             gizmo_node, compute_context, *ob_orig, nmd);
         /* The gizmo should be drawn even if there is nothing linked to the value input, because
          * that results in a better initial user experience. */
@@ -649,9 +660,9 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         }
         else {
           float4x4 crazy_space_transform = float4x4::identity();
-          if (const std::optional<float4x4> m = find_gizmo_crazy_space_transform(
-                  geometry, compute_context.hash(), gizmo_node.identifier))
-          {
+          const bke::GeoNodesGizmoID gizmo_id = {compute_context.hash(), gizmo_node.identifier};
+          if (const std::optional<float4x4> m = find_gizmo_crazy_space_transform(geometry,
+                                                                                 gizmo_id)) {
             crazy_space_transform = *m;
           }
 
