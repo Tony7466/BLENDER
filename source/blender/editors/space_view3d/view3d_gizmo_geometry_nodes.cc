@@ -56,7 +56,7 @@ struct NodeGizmoData {
 };
 
 struct GeometryNodesGizmoGroup {
-  Map<std::pair<ComputeContextHash, int>, std::unique_ptr<NodeGizmoData>> gizmo_by_node;
+  Map<bke::GeoNodesGizmoID, std::unique_ptr<NodeGizmoData>> gizmo_by_node;
 };
 
 struct SocketItem {
@@ -524,7 +524,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   bNodeTree &ntree = *nmd.node_group;
   ntree.ensure_topology_cache();
 
-  Map<std::pair<ComputeContextHash, int>, std::unique_ptr<NodeGizmoData>> new_gizmo_by_node;
+  Map<bke::GeoNodesGizmoID, std::unique_ptr<NodeGizmoData>> new_gizmo_by_node;
 
   nodes::gizmos::foreach_active_gizmo(
       *ob_orig,

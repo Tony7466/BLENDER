@@ -661,6 +661,18 @@ class VolumeComponent : public GeometryComponent {
   static constexpr inline GeometryComponent::Type static_type = Type::Volume;
 };
 
+struct GeoNodesGizmoID {
+  ComputeContextHash compute_context_hash;
+  int node_id;
+
+  BLI_STRUCT_EQUALITY_OPERATORS_2(GeoNodesGizmoID, compute_context_hash, node_id)
+
+  uint64_t hash() const
+  {
+    return get_default_hash_2(this->compute_context_hash, this->node_id);
+  }
+};
+
 /**
  * When the original data is in some edit mode, we want to propagate some additional information
  * through object evaluation. This information can be used by edit modes to support working on
@@ -681,7 +693,7 @@ class GeometryComponentEditData final : public GeometryComponent {
    * Information about how drawings on the grease pencil layers are manipulated during evaluation.
    */
   std::unique_ptr<GreasePencilEditHints> grease_pencil_edit_hints_;
-  Map<std::pair<ComputeContextHash, int>, float4x4> gizmo_transforms_;
+  Map<GeoNodesGizmoID, float4x4> gizmo_transforms_;
 
   GeometryComponentEditData();
 
