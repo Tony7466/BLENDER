@@ -476,13 +476,15 @@ int BLI_rename(const char *from, const char *to)
   return urename(from, to, false);
 #elif defined(__APPLE__)
   return renamex_np(from, to, RENAME_EXCL);
-#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+#elif defined(__GLIBC_PREREQ) && __GLIBC_PREREQ(2, 28)
+  /* Most common Linux cases. */
+  return renameat2(AT_FDCWD, from, AT_FDCWD, to, RENAME_NOREPLACE);
+#else
+  /* At least all BSD's currently. */
   if (!BLI_exists(to)) {
     return 1;
   }
   return rename(from, to);
-#else /* __linux__ */
-  return renameat2(AT_FDCWD, from, AT_FDCWD, to, RENAME_NOREPLACE);
 #endif
 }
 
