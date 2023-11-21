@@ -547,7 +547,7 @@ void ANIM_OT_keyframe_insert(wmOperatorType *ot)
   ot->name = "Insert Keyframe";
   ot->idname = "ANIM_OT_keyframe_insert";
   ot->description =
-      "Insert keyframes on the current frame using the either the active keying set, or the user "
+      "Insert keyframes on the current frame using either the active keying set, or the user "
       "preferences if no keying set is active";
 
   /* callbacks */
