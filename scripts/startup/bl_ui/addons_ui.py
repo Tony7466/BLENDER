@@ -5,6 +5,7 @@
 import bpy
 from bpy.app.translations import (
     pgettext_iface as iface_,
+    pgettext_tip as tip_,
 )
 
 class AddonsUI:
@@ -193,7 +194,7 @@ class AddonsUI:
                         split.label(text="Warning:")
                         split.label(text="  " + info["warning"], icon='ERROR')
 
-                    user_addon = USERPREF_PT_addons.is_user_addon(mod, user_addon_paths)
+                    user_addon = AddonsUI.is_user_addon(mod, user_addon_paths)
                     if info["doc_url"] or info.get("tracker_url"):
                         split = colsub.row().split(factor=0.15)
                         split.label(text="Internet:")

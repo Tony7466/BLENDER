@@ -106,7 +106,19 @@ class BlenderProject {
    * Check if \a path points to or into a project root path (i.e. if one of the ancestors of the
    * referenced file/directory is a project root directory).
    */
-  [[nodiscard]] static bool path_is_within_project(StringRef path);
+  [[nodiscard]] static bool path_is_within_any_project(StringRef path);
+
+  /**
+   * Utility to check if loading a file/directory at \a new_path would require loading a different
+   * project than \a current_project. This allows both \a current_project and \a new_path to be
+   * null/empty. If the project is empty, true is returned if the path leads into any project;
+   * otherwise false since no project will be loaded either (no change). If the path is empty, true
+   * is returned if the project is also null; otherwise false since there is a project to unload.
+   * So this will reliably detect if a project change will happen, either to load a new one or
+   * unload the current one.
+   */
+  [[nodiscard]] static bool path_implies_project_change(const BlenderProject *current_project,
+                                                        StringRef new_path);
 
   /**
    * Check if \a path points into a project and return the root directory path of that project (the
@@ -141,6 +153,13 @@ class BlenderProject {
    * \return True on success (settings directory was deleted).
    */
   bool delete_settings_directory();
+
+  /**
+   * Check if \a path is owned by this project. Isn't a simple contains-path-check. It checks if
+   * the path leads to the same project by walking "up" the path until a project root directory is
+   * found (see #project_root_path_find_from_path()), and comparing that.
+   */
+  [[nodiscard]] bool owns_path(StringRef new_path) const;
 
   [[nodiscard]] StringRefNull root_path() const;
   [[nodiscard]] ProjectSettings &get_settings() const;

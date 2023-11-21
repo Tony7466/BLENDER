@@ -234,10 +234,25 @@ bool BlenderProject::path_is_project_root(StringRef path)
   return BLI_exists(std::string(path + SEP_STR + SETTINGS_DIRNAME).c_str());
 }
 
-bool BlenderProject::path_is_within_project(StringRef path)
+bool BlenderProject::path_is_within_any_project(StringRef path)
 {
   const StringRef found_root_path = project_root_path_find_from_path(path);
   return !found_root_path.is_empty();
+}
+
+bool BlenderProject::path_implies_project_change(const BlenderProject *current_project,
+                                                 const StringRef new_path)
+{
+  if (new_path.is_empty()) {
+    /* If there is a project it needs to be unloaded. */
+    return current_project != nullptr;
+  }
+  if (!current_project) {
+    /* No project but the path leads to one. */
+    return path_is_within_any_project(new_path);
+  }
+
+  return !current_project->owns_path(new_path);
 }
 
 std::string BlenderProject::project_path_to_native_project_root_path(StringRef project_path)
@@ -263,6 +278,19 @@ std::string BlenderProject::project_root_path_to_settings_filepath(StringRef pro
 {
   BLI_assert(project_root_path.back() == SEP);
   return project_root_path_to_settings_path(project_root_path) + SETTINGS_FILENAME;
+}
+
+bool BlenderProject::owns_path(StringRef new_path) const
+{
+  if (new_path.is_empty()) {
+    return false;
+  }
+  const std::string found_root_path = project_root_path_find_from_path(new_path);
+  if (found_root_path.empty()) {
+    return false;
+  }
+
+  return BLI_path_cmp_normalized(root_path().c_str(), found_root_path.c_str()) == 0;
 }
 
 /** \} */

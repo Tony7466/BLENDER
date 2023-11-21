@@ -639,10 +639,28 @@ void wm_file_read_report(Main *bmain, wmWindow *win)
  * Logic shared between #WM_file_read & #wm_homefile_read,
  * call before loading a file.
  * \note In the case of #WM_file_read the file may fail to load.
- * Change here shouldn't cause user-visible changes in that case.
+ * Change here shouldn't cause user-visible changes in that case (scripts will still reload if \a
+ * reset_scripts is true).
+ *
+ * \param reset_scripts: Calls #addon_utils.disable_all() in preparation of scripts being re-loaded
+ * in #wm_file_read_post(). Should be done if the available scripts/add-ons may change, i.e. when
+ * loading different preferences, a different app template or project.
  */
-static void wm_file_read_pre(bool use_data, bool /*use_userdef*/)
+static void wm_file_read_pre(bContext *C, const bool use_data, const bool reset_scripts)
 {
+  if (reset_scripts) {
+#ifdef WITH_PYTHON
+    /* This only runs once Blender has already started. */
+    if (CTX_py_init_get(C)) {
+      /* This is restored by 'wm_file_read_post', disable before loading any preferences
+       * so an add-on can read their own preferences when un-registering,
+       * and use new preferences if/when re-registering, see #67577. */
+      const char *imports[] = {"addon_utils", nullptr};
+      BPY_run_string_eval(C, imports, "addon_utils.disable_all()");
+    }
+#endif /* WITH_PYTHON */
+  }
+
   if (use_data) {
     BLI_timer_on_file_load();
   }
@@ -664,6 +682,7 @@ struct wmFileReadPost_Params {
   uint is_startup_file : 1;
   uint is_factory_startup : 1;
   uint reset_app_template : 1;
+  uint reset_project : 1;
 
   /* Used by #wm_homefile_read_post */
   uint success : 1;
@@ -685,6 +704,7 @@ static void wm_file_read_post(bContext *C,
   const bool is_startup_file = params->is_startup_file;
   const bool is_factory_startup = params->is_factory_startup;
   const bool reset_app_template = params->reset_app_template;
+  const bool reset_project = params->reset_project;
 
   bool addons_loaded = false;
 
@@ -697,33 +717,41 @@ static void wm_file_read_post(bContext *C,
   }
 
 #ifdef WITH_PYTHON
+  /* When reading a regular file, only reset scripts when the active project changes. */
+  bool reset_scripts = use_userdef || reset_project;
+
+  auto reset_scripts_fn = [C]() {
+    BLI_assert(CTX_py_init_get(C));
+
+    const char *imports[] = {"bpy", "addon_utils", nullptr};
+    BPY_run_string_exec(
+        C,
+        imports,
+        /* Refresh scripts as the preferences may have changed the user-scripts path.
+         *
+         * This is needed when loading settings from the previous version,
+         * otherwise the script path stored in the preferences would be ignored. */
+        "bpy.utils.refresh_script_paths()\n"
+        /* Sync add-ons, these may have changed from the defaults. */
+        "addon_utils.reset_all()");
+  };
+
   if (is_startup_file) {
     /* On startup (by default), Python won't have been initialized.
      *
      * The following block handles data & preferences being reloaded
      * which requires resetting some internal variables. */
     if (CTX_py_init_get(C)) {
-      bool reset_all = use_userdef;
-      if (use_userdef || reset_app_template) {
+      if (reset_scripts || reset_app_template) {
         /* Only run when we have a template path found. */
         if (BKE_appdir_app_template_any()) {
           const char *imports[] = {"bl_app_template_utils", nullptr};
           BPY_run_string_eval(C, imports, "bl_app_template_utils.reset()");
-          reset_all = true;
+          reset_scripts = true;
         }
       }
-      if (reset_all) {
-        const char *imports[] = {"bpy", "addon_utils", nullptr};
-        BPY_run_string_exec(
-            C,
-            imports,
-            /* Refresh scripts as the preferences may have changed the user-scripts path.
-             *
-             * This is needed when loading settings from the previous version,
-             * otherwise the script path stored in the preferences would be ignored. */
-            "bpy.utils.refresh_script_paths()\n"
-            /* Sync add-ons, these may have changed from the defaults. */
-            "addon_utils.reset_all()");
+      if (reset_scripts) {
+        reset_scripts_fn();
       }
       if (use_data) {
         BPY_python_reset(C);
@@ -732,6 +760,9 @@ static void wm_file_read_post(bContext *C,
     }
   }
   else {
+    if (reset_scripts) {
+      reset_scripts_fn();
+    }
     /* run any texts that were loaded in and flagged as modules */
     if (use_data) {
       BPY_python_reset(C);
@@ -739,7 +770,7 @@ static void wm_file_read_post(bContext *C,
     addons_loaded = true;
   }
 #else
-  UNUSED_VARS(is_startup_file, reset_app_template);
+  UNUSED_VARS(is_startup_file, reset_project, reset_app_template);
 #endif /* WITH_PYTHON */
 
   Main *bmain = CTX_data_main(C);
@@ -1022,12 +1053,18 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
      * if a user loads a file and various preferences change. */
     params.skip_flags = BLO_READ_SKIP_USERDEF;
 
+    const bool reset_project = bke::BlenderProject::path_implies_project_change(CTX_wm_project(),
+                                                                                filepath);
+    /* When the active project changes, scripts need to be reloaded since the project can define
+     * own scripts/add-ons. */
+    const bool reset_scripts = reset_project;
+
     BlendFileReadReport bf_reports{};
     bf_reports.reports = reports;
     bf_reports.duration.whole = PIL_check_seconds_timer();
     BlendFileData *bfd = BKE_blendfile_read(filepath, &params, &bf_reports);
     if (bfd != nullptr) {
-      wm_file_read_pre(use_data, use_userdef);
+      wm_file_read_pre(C, use_data, reset_scripts);
 
       /* Close any user-loaded fonts. */
       BLF_reset_fonts();
@@ -1067,6 +1104,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
       read_file_post_params.is_startup_file = false;
       read_file_post_params.is_factory_startup = false;
       read_file_post_params.reset_app_template = false;
+      read_file_post_params.reset_project = reset_project;
       read_file_post_params.success = true;
       read_file_post_params.is_alloc = false;
       wm_file_read_post(C, filepath, &read_file_post_params);
@@ -1226,11 +1264,77 @@ void wm_homefile_read_ex(bContext *C,
     app_template = U.app_template;
   }
 
-  const bool reset_app_template = ((!app_template && U.app_template[0]) ||
-                                   (app_template && !STREQ(app_template, U.app_template)));
-
   /* Options exclude each other. */
   BLI_assert((use_factory_settings && filepath_startup_override) == 0);
+
+  filepath_startup[0] = '\0';
+  filepath_userdef[0] = '\0';
+  app_template_system[0] = '\0';
+  app_template_config[0] = '\0';
+
+  /* Get startup file path. */
+  {
+    const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
+    if (!use_factory_settings) {
+      if (cfgdir) {
+        BLI_path_join(filepath_startup, sizeof(filepath_startup), cfgdir, BLENDER_STARTUP_FILE);
+        filepath_startup_is_factory = false;
+        if (use_userdef) {
+          BLI_path_join(filepath_userdef, sizeof(filepath_startup), cfgdir, BLENDER_USERPREF_FILE);
+        }
+      }
+      else {
+        use_factory_settings = true;
+      }
+
+      if (filepath_startup_override) {
+        STRNCPY(filepath_startup, filepath_startup_override);
+        filepath_startup_is_factory = false;
+      }
+    }
+    if ((app_template != nullptr) && (app_template[0] != '\0')) {
+      if (!BKE_appdir_app_template_id_search(
+              app_template, app_template_system, sizeof(app_template_system)))
+      {
+        /* Can safely continue with code below, just warn it's not found. */
+        BKE_reportf(reports, RPT_WARNING, "Application Template \"%s\" not found", app_template);
+      }
+
+      /* Insert template name into startup file. */
+
+      /* note that the path is being set even when 'use_factory_settings == true'
+       * this is done so we can load a templates factory-settings */
+      if (!use_factory_settings) {
+        BLI_path_join(app_template_config, sizeof(app_template_config), cfgdir, app_template);
+        BLI_path_join(
+            filepath_startup, sizeof(filepath_startup), app_template_config, BLENDER_STARTUP_FILE);
+        filepath_startup_is_factory = false;
+        if (BLI_access(filepath_startup, R_OK) != 0) {
+          filepath_startup[0] = '\0';
+        }
+      }
+      else {
+        filepath_startup[0] = '\0';
+      }
+
+      if (filepath_startup[0] == '\0') {
+        BLI_path_join(
+            filepath_startup, sizeof(filepath_startup), app_template_system, BLENDER_STARTUP_FILE);
+        filepath_startup_is_factory = true;
+
+        /* Update defaults only for system templates. */
+        update_defaults = true;
+      }
+    }
+  }
+
+  const bool reset_project = bke::BlenderProject::path_implies_project_change(CTX_wm_project(),
+                                                                              filepath_startup);
+  const bool reset_app_template = ((!app_template && U.app_template[0]) ||
+                                   (app_template && !STREQ(app_template, U.app_template)));
+  /* Preferences, application templates and projects can define own scripts/add-ons. Loading them
+   * requires reloading scripts. */
+  const bool reset_scripts = use_userdef || reset_app_template || reset_project;
 
   if ((G.f & G_FLAG_SCRIPT_OVERRIDE_PREF) == 0) {
     SET_FLAG_FROM_TEST(G.f, (U.flag & USER_SCRIPT_AUTOEXEC_DISABLE) == 0, G_FLAG_SCRIPT_AUTOEXEC);
@@ -1242,22 +1346,7 @@ void wm_homefile_read_ex(bContext *C,
       G.fileflags &= ~G_FILE_NO_UI;
     }
   }
-
-  if (use_userdef || reset_app_template) {
-#ifdef WITH_PYTHON
-    /* This only runs once Blender has already started. */
-    if (CTX_py_init_get(C)) {
-      /* This is restored by 'wm_file_read_post', disable before loading any preferences
-       * so an add-on can read their own preferences when un-registering,
-       * and use new preferences if/when re-registering, see #67577.
-       *
-       * Note that this fits into 'wm_file_read_pre' function but gets messy
-       * since we need to know if 'reset_app_template' is true. */
-      const char *imports[] = {"addon_utils", nullptr};
-      BPY_run_string_eval(C, imports, "addon_utils.disable_all()");
-    }
-#endif /* WITH_PYTHON */
-  }
+  BLI_assert(!(filepath_startup[0] && use_factory_settings));
 
   if (use_data) {
     /* NOTE: a matching #wm_read_callback_post_wrapper must be called.
@@ -1268,37 +1357,13 @@ void wm_homefile_read_ex(bContext *C,
   /* For regular file loading this only runs after the file is successfully read.
    * In the case of the startup file, the in-memory startup file is used as a fallback
    * so we know this will work if all else fails. */
-  wm_file_read_pre(use_data, use_userdef);
+  wm_file_read_pre(C, use_data, reset_scripts);
 
   BlendFileReadWMSetupData *wm_setup_data = nullptr;
   if (use_data) {
     /* Put WM into a stable state for post-readfile processes (kill jobs, removes event handlers,
      * message bus, and so on). */
     wm_setup_data = wm_file_read_setup_wm_init(C, bmain, true);
-  }
-
-  filepath_startup[0] = '\0';
-  filepath_userdef[0] = '\0';
-  app_template_system[0] = '\0';
-  app_template_config[0] = '\0';
-
-  const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
-  if (!use_factory_settings) {
-    if (cfgdir) {
-      BLI_path_join(filepath_startup, sizeof(filepath_startup), cfgdir, BLENDER_STARTUP_FILE);
-      filepath_startup_is_factory = false;
-      if (use_userdef) {
-        BLI_path_join(filepath_userdef, sizeof(filepath_startup), cfgdir, BLENDER_USERPREF_FILE);
-      }
-    }
-    else {
-      use_factory_settings = true;
-    }
-
-    if (filepath_startup_override) {
-      STRNCPY(filepath_startup, filepath_startup_override);
-      filepath_startup_is_factory = false;
-    }
   }
 
   /* load preferences before startup.blend */
@@ -1316,41 +1381,6 @@ void wm_homefile_read_ex(bContext *C,
         skip_flags |= BLO_READ_SKIP_USERDEF;
         printf("Read prefs: \"%s\"\n", filepath_userdef);
       }
-    }
-  }
-
-  if ((app_template != nullptr) && (app_template[0] != '\0')) {
-    if (!BKE_appdir_app_template_id_search(
-            app_template, app_template_system, sizeof(app_template_system)))
-    {
-      /* Can safely continue with code below, just warn it's not found. */
-      BKE_reportf(reports, RPT_WARNING, "Application Template \"%s\" not found", app_template);
-    }
-
-    /* Insert template name into startup file. */
-
-    /* note that the path is being set even when 'use_factory_settings == true'
-     * this is done so we can load a templates factory-settings */
-    if (!use_factory_settings) {
-      BLI_path_join(app_template_config, sizeof(app_template_config), cfgdir, app_template);
-      BLI_path_join(
-          filepath_startup, sizeof(filepath_startup), app_template_config, BLENDER_STARTUP_FILE);
-      filepath_startup_is_factory = false;
-      if (BLI_access(filepath_startup, R_OK) != 0) {
-        filepath_startup[0] = '\0';
-      }
-    }
-    else {
-      filepath_startup[0] = '\0';
-    }
-
-    if (filepath_startup[0] == '\0') {
-      BLI_path_join(
-          filepath_startup, sizeof(filepath_startup), app_template_system, BLENDER_STARTUP_FILE);
-      filepath_startup_is_factory = true;
-
-      /* Update defaults only for system templates. */
-      update_defaults = true;
     }
   }
 
@@ -1489,6 +1519,7 @@ void wm_homefile_read_ex(bContext *C,
     params_file_read_post.is_startup_file = true;
     params_file_read_post.is_factory_startup = is_factory_startup;
     params_file_read_post.reset_app_template = reset_app_template;
+    params_file_read_post.reset_project = reset_project;
 
     params_file_read_post.success = success;
     params_file_read_post.is_alloc = false;
@@ -3343,7 +3374,7 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
   }
 
   const bke::BlenderProject *active_project = CTX_wm_project();
-  if (active_project && !bke::BlenderProject::path_is_within_project(filepath)) {
+  if (active_project && !bke::BlenderProject::path_is_within_any_project(filepath)) {
     BKE_reportf(
         op->reports,
         RPT_WARNING,

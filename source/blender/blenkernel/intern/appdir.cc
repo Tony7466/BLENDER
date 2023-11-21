@@ -23,6 +23,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_appdir.h" /* own include */
+#include "BKE_blender_project.hh"
 #include "BKE_blender_version.h"
 
 #include "BLT_translation.h"
@@ -508,6 +509,43 @@ static bool get_path_user(char *targetpath,
       targetpath, targetpath_maxncpy, folder_name, subfolder_name, version, check_is_dir);
 }
 
+static bool get_path_project_ex(char *targetpath,
+                                size_t targetpath_maxncpy,
+                                const char *folder_name,
+                                const char *subfolder_name,
+                                const bool check_is_dir)
+{
+  using namespace blender::bke;
+  BlenderProject *project = BlenderProject::get_active();
+  if (!project) {
+    CLOG_INFO(&LOG, 3, "No active project");
+    return false;
+  }
+
+  CLOG_INFO(&LOG,
+            3,
+            "folder='%s', subfolder='%s'",
+            STR_OR_FALLBACK(folder_name),
+            STR_OR_FALLBACK(subfolder_name));
+  /* `subfolder_name` may be nullptr. */
+  return test_path(targetpath,
+                   targetpath_maxncpy,
+                   check_is_dir,
+                   project->root_path().c_str(),
+                   folder_name,
+                   subfolder_name);
+}
+
+static bool get_path_project(char *targetpath,
+                             size_t targetpath_maxncpy,
+                             const char *folder_name,
+                             const char *subfolder_name)
+{
+  const bool check_is_dir = true;
+  return get_path_project_ex(
+      targetpath, targetpath_maxncpy, folder_name, subfolder_name, check_is_dir);
+}
+
 /**
  * Returns the path of a folder within the Blender installation directory.
  *
@@ -649,6 +687,12 @@ bool BKE_appdir_folder_id_ex(const int folder_id,
         break;
       }
       if (get_path_user(path, path_maxncpy, "scripts", subfolder)) {
+        break;
+      }
+      return false;
+
+    case BLENDER_PROJECT_SCRIPTS:
+      if (get_path_project(path, path_maxncpy, "scripts", subfolder)) {
         break;
       }
       return false;

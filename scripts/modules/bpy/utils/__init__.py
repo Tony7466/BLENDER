@@ -52,6 +52,7 @@ from _bpy import (
     resource_path,
     script_paths as _bpy_script_paths,
     unregister_class,
+    project_resource as _project_resource,
     user_resource as _user_resource,
     system_resource,
 )
@@ -367,6 +368,12 @@ def script_path_user():
     return _os.path.normpath(path) if path else None
 
 
+def script_path_project():
+    """Returns the active project's script directory, or none if no active project is set."""
+    path = _project_resource('SCRIPTS')
+    return _os.path.normpath(path) if path else None
+
+
 def script_paths_pref():
     """Returns a list of user preference script directories."""
     paths = []
@@ -377,12 +384,14 @@ def script_paths_pref():
     return paths
 
 
-def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True):
+def script_paths(*, subdir=None, project=True, user_pref=True, check_all=False, use_user=True):
     """
     Returns a list of valid script paths.
 
     :arg subdir: Optional subdir.
     :type subdir: string
+    :arg project: Include the active project's script paths.
+    :type project: bool
     :arg user_pref: Include the user preference script paths.
     :type user_pref: bool
     :arg check_all: Include local, user and system paths rather just the paths Blender uses.
@@ -414,6 +423,11 @@ def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True)
     if not check_all:
         if use_user:
             base_paths.append(path_user)
+
+    if project:
+        project_script_paths = script_path_project()
+        if project_script_paths:
+            base_paths.append(project_script_paths)
 
     if user_pref:
         base_paths.extend(script_paths_pref())

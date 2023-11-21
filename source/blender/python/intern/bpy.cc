@@ -255,6 +255,51 @@ static PyObject *bpy_user_resource(PyObject * /*self*/, PyObject *args, PyObject
   return PyC_UnicodeFromBytes(path ? path : "");
 }
 
+PyDoc_STRVAR(bpy_project_resource_doc,
+             ".. function:: project_resource(type, path=\"\")\n"
+             "\n"
+             "   Return a project resource path.\n"
+             "\n"
+             "   :arg type: string in ['SCRIPTS'].\n"
+             "   :type type: string\n"
+             "   :arg path: Optional subdirectory.\n"
+             "   :type path: string or bytes\n");
+static PyObject *bpy_project_resource(PyObject * /*self*/, PyObject *args, PyObject *kw)
+{
+  const PyC_StringEnumItems type_items[] = {
+      {BLENDER_PROJECT_SCRIPTS, "SCRIPTS"},
+      {0, nullptr},
+  };
+  PyC_StringEnum type = {type_items};
+  PyC_UnicodeAsBytesAndSize_Data subdir_data = {nullptr};
+
+  static const char *_keywords[] = {"type", "path", nullptr};
+  static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
+      "O&" /* `type` */
+      "|$" /* Optional keyword only arguments. */
+      "O&" /* `path` */
+      ":project_resource",
+      _keywords,
+      nullptr,
+  };
+  if (!_PyArg_ParseTupleAndKeywordsFast(args,
+                                        kw,
+                                        &_parser,
+                                        PyC_ParseStringEnum,
+                                        &type,
+                                        PyC_ParseUnicodeAsBytesAndSize,
+                                        &subdir_data))
+  {
+    return nullptr;
+  }
+
+  const char *path = BKE_appdir_folder_id(type.value_found, subdir_data.value);
+  Py_XDECREF(subdir_data.value_coerce);
+
+  return PyC_UnicodeFromBytes(path ? path : "");
+}
+
 PyDoc_STRVAR(bpy_system_resource_doc,
              ".. function:: system_resource(type, path=\"\")\n"
              "\n"
@@ -588,6 +633,10 @@ static PyMethodDef bpy_methods[] = {
      bpy_blend_paths_doc},
     {"flip_name", (PyCFunction)bpy_flip_name, METH_VARARGS | METH_KEYWORDS, bpy_flip_name_doc},
     {"user_resource", (PyCFunction)bpy_user_resource, METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"project_resource",
+     (PyCFunction)bpy_project_resource,
+     METH_VARARGS | METH_KEYWORDS,
+     bpy_project_resource_doc},
     {"system_resource",
      (PyCFunction)bpy_system_resource,
      METH_VARARGS | METH_KEYWORDS,

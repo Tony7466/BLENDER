@@ -473,7 +473,7 @@ def disable(module_name, *, default_set=False, handle_error=None):
 
 def reset_all(*, reload_scripts=False):
     """
-    Sets the addon state based on the user preferences.
+    Sets the addon state based on the user preferences and project settings.
     """
     import sys
 

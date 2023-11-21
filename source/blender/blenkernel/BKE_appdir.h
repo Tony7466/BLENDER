@@ -174,6 +174,9 @@ enum {
   BLENDER_SYSTEM_DATAFILES = 52,
   BLENDER_SYSTEM_SCRIPTS = 53,
   BLENDER_SYSTEM_PYTHON = 54,
+
+  /* Project */
+  BLENDER_PROJECT_SCRIPTS = 55,
 };
 
 /* for BKE_appdir_folder_id_version only */
