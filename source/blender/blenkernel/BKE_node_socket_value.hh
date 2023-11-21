@@ -38,7 +38,7 @@ template<typename T> struct ValueOrField {
 
   ValueOrField(Field field) : field(std::move(field)) {}
 
-  ValueOrField(const GridPtr &grid) : grid(std::move(grid)) {}
+  ValueOrField(GridPtr grid) : grid(std::move(grid)) {}
 
   ~ValueOrField()
   {
