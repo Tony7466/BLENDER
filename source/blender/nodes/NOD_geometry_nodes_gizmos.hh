@@ -83,7 +83,7 @@ struct GroupInputRef {
 /**
  * Locates a value that can be modified by a gizmo.
  */
-using GizmoSource = std::variant<InputSocketRef, ValueNodeRef, GroupInputRef>;
+using GizmoTarget = std::variant<InputSocketRef, ValueNodeRef, GroupInputRef>;
 
 /**
  * Gizmo propagation is preprocessed on a per node-group basis, instead processing the same node
@@ -116,12 +116,12 @@ struct PropagationPath {
   Vector<PathElem> path;
 };
 
-struct PropagatedGizmoSource {
-  GizmoSource source;
+struct PropagatedGizmoTarget {
+  GizmoTarget target;
   PropagationPath propagation_path;
 };
 
-Vector<PropagatedGizmoSource> find_propagated_gizmo_sources(const ComputeContext &compute_context,
+Vector<PropagatedGizmoTarget> find_propagated_gizmo_targets(const ComputeContext &compute_context,
                                                             const bNode &gizmo_node);
 
 void foreach_active_gizmo(

@@ -151,11 +151,11 @@ struct GizmoFloatVariable {
 };
 
 static std::optional<float> compute_derivative(
-    const NodesModifierData &nmd, const nodes::gizmos::PropagatedGizmoSource &gizmo_source)
+    const NodesModifierData &nmd, const nodes::gizmos::PropagatedGizmoTarget &gizmo_target)
 {
   float derivative = 1.0f;
   for (const nodes::gizmos::PropagationPath::PathElem &path_elem :
-       gizmo_source.propagation_path.path)
+       gizmo_target.propagation_path.path)
   {
     geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
         path_elem.compute_context->hash());
@@ -278,11 +278,11 @@ static std::optional<float> compute_derivative(
 }
 
 static std::optional<FloatValuePath> get_float_value_path(
-    const nodes::gizmos::PropagatedGizmoSource &gizmo_source,
+    const nodes::gizmos::PropagatedGizmoTarget &gizmo_target,
     const Object &object,
     const NodesModifierData &nmd)
 {
-  if (const auto *ref = std::get_if<nodes::gizmos::InputSocketRef>(&gizmo_source.source)) {
+  if (const auto *ref = std::get_if<nodes::gizmos::InputSocketRef>(&gizmo_target.target)) {
     const bNodeTree &tree = ref->input_socket->owner_tree();
     ID *id = const_cast<ID *>(&tree.id);
     FloatValuePath value_path;
@@ -292,7 +292,7 @@ static std::optional<FloatValuePath> get_float_value_path(
     value_path.index = ref->elem.index;
     return value_path;
   }
-  if (const auto *ref = std::get_if<nodes::gizmos::ValueNodeRef>(&gizmo_source.source)) {
+  if (const auto *ref = std::get_if<nodes::gizmos::ValueNodeRef>(&gizmo_target.target)) {
     const bNodeTree &tree = ref->value_node->owner_tree();
     ID *id = const_cast<ID *>(&tree.id);
     switch (ref->value_node->type) {
@@ -318,7 +318,7 @@ static std::optional<FloatValuePath> get_float_value_path(
       }
     }
   }
-  if (const auto *ref = std::get_if<nodes::gizmos::GroupInputRef>(&gizmo_source.source)) {
+  if (const auto *ref = std::get_if<nodes::gizmos::GroupInputRef>(&gizmo_target.target)) {
     const bNodeTree &ntree = *nmd.node_group;
     const StringRefNull input_identifier = ntree.interface_inputs()[ref->input_index]->identifier;
     IDProperty *id_property = IDP_GetPropertyFromGroup(nmd.settings.properties,
@@ -342,15 +342,15 @@ static Vector<GizmoFloatVariable> find_gizmo_float_value_paths(
     const Object &object,
     const NodesModifierData &nmd)
 {
-  Vector<nodes::gizmos::PropagatedGizmoSource> gizmo_sources =
-      nodes::gizmos::find_propagated_gizmo_sources(compute_context, gizmo_node);
+  Vector<nodes::gizmos::PropagatedGizmoTarget> gizmo_targets =
+      nodes::gizmos::find_propagated_gizmo_targets(compute_context, gizmo_node);
   Vector<GizmoFloatVariable> variables;
-  for (const nodes::gizmos::PropagatedGizmoSource &gizmo_source : gizmo_sources) {
-    const std::optional<float> derivative = compute_derivative(nmd, gizmo_source);
+  for (const nodes::gizmos::PropagatedGizmoTarget &gizmo_target : gizmo_targets) {
+    const std::optional<float> derivative = compute_derivative(nmd, gizmo_target);
     if (!derivative) {
       continue;
     }
-    if (std::optional<FloatValuePath> value_path = get_float_value_path(gizmo_source, object, nmd))
+    if (std::optional<FloatValuePath> value_path = get_float_value_path(gizmo_target, object, nmd))
     {
       variables.append({std::move(*value_path), *derivative});
     }
