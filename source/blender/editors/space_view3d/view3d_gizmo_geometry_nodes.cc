@@ -59,7 +59,10 @@ struct GeometryNodesGizmoGroup {
   Map<bke::GeoNodesGizmoID, std::unique_ptr<NodeGizmoData>> gizmo_by_node;
 };
 
-struct FloatValuePath {
+/**
+ * A float property that is controlled by a gizmo.
+ */
+struct FloatTargetProperty {
   PointerRNA owner;
   PropertyRNA *property;
   std::optional<int> index;
@@ -140,18 +143,21 @@ struct FloatValuePath {
   }
 };
 
-struct GizmoFloatVariable {
-  FloatValuePath path;
+struct DerivedFloatTargetProperty {
+  FloatTargetProperty property;
   float derivative;
 };
 
+/**
+ * Computes the factor that is applied when gizmo-movements are converted to value-changes.
+ * For example, a factor of 10 means that when the gizmo is moved by 2 units, the target value
+ * changes by 20.
+ */
 static std::optional<float> compute_derivative(
-    const NodesModifierData &nmd, const nodes::gizmos::PropagatedGizmoTarget &gizmo_target)
+    const NodesModifierData &nmd, const nodes::gizmos::PropagationPath &propagation_path)
 {
   float derivative = 1.0f;
-  for (const nodes::gizmos::PropagationPath::PathElem &path_elem :
-       gizmo_target.propagation_path.path)
-  {
+  for (const nodes::gizmos::PropagationPath::PathElem &path_elem : propagation_path.path) {
     geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
         path_elem.compute_context->hash());
     tree_log.ensure_socket_values();
@@ -272,7 +278,7 @@ static std::optional<float> compute_derivative(
   return derivative;
 }
 
-static std::optional<FloatValuePath> get_float_value_path(
+static std::optional<FloatTargetProperty> get_float_target_property(
     const nodes::gizmos::PropagatedGizmoTarget &gizmo_target,
     const Object &object,
     const NodesModifierData &nmd)
@@ -280,36 +286,39 @@ static std::optional<FloatValuePath> get_float_value_path(
   if (const auto *ref = std::get_if<nodes::gizmos::InputSocketRef>(&gizmo_target.target)) {
     const bNodeTree &tree = ref->input_socket->owner_tree();
     ID *id = const_cast<ID *>(&tree.id);
-    FloatValuePath value_path;
-    value_path.owner = RNA_pointer_create(
+    FloatTargetProperty target_property;
+    target_property.owner = RNA_pointer_create(
         id, &RNA_NodeSocket, const_cast<bNodeSocket *>(ref->input_socket));
-    value_path.property = RNA_struct_find_property(&value_path.owner, "default_value");
-    value_path.index = ref->elem.index;
-    return value_path;
+    target_property.property = RNA_struct_find_property(&target_property.owner, "default_value");
+    target_property.index = ref->elem.index;
+    return target_property;
   }
   if (const auto *ref = std::get_if<nodes::gizmos::ValueNodeRef>(&gizmo_target.target)) {
     const bNodeTree &tree = ref->value_node->owner_tree();
     ID *id = const_cast<ID *>(&tree.id);
     switch (ref->value_node->type) {
       case SH_NODE_VALUE: {
-        FloatValuePath value_path;
-        value_path.owner = RNA_pointer_create(
+        FloatTargetProperty target_property;
+        target_property.owner = RNA_pointer_create(
             id, &RNA_NodeSocket, const_cast<bNodeSocket *>(&ref->value_node->output_socket(0)));
-        value_path.property = RNA_struct_find_property(&value_path.owner, "default_value");
-        return value_path;
+        target_property.property = RNA_struct_find_property(&target_property.owner,
+                                                            "default_value");
+        return target_property;
       }
       case FN_NODE_INPUT_VECTOR: {
-        FloatValuePath value_path;
-        value_path.owner = RNA_pointer_create(id, &RNA_Node, const_cast<bNode *>(ref->value_node));
-        value_path.property = RNA_struct_find_property(&value_path.owner, "vector");
-        value_path.index = *ref->elem.index;
-        return value_path;
+        FloatTargetProperty target_property;
+        target_property.owner = RNA_pointer_create(
+            id, &RNA_Node, const_cast<bNode *>(ref->value_node));
+        target_property.property = RNA_struct_find_property(&target_property.owner, "vector");
+        target_property.index = *ref->elem.index;
+        return target_property;
       }
       case FN_NODE_INPUT_INT: {
-        FloatValuePath value_path;
-        value_path.owner = RNA_pointer_create(id, &RNA_Node, const_cast<bNode *>(ref->value_node));
-        value_path.property = RNA_struct_find_property(&value_path.owner, "integer");
-        return value_path;
+        FloatTargetProperty target_property;
+        target_property.owner = RNA_pointer_create(
+            id, &RNA_Node, const_cast<bNode *>(ref->value_node));
+        target_property.property = RNA_struct_find_property(&target_property.owner, "integer");
+        return target_property;
       }
     }
   }
@@ -321,17 +330,17 @@ static std::optional<FloatValuePath> get_float_value_path(
     if (id_property == nullptr) {
       return std::nullopt;
     }
-    FloatValuePath value_path;
-    value_path.owner = RNA_pointer_create(
+    FloatTargetProperty target_property;
+    target_property.owner = RNA_pointer_create(
         const_cast<ID *>(&object.id), &RNA_NodesModifier, const_cast<NodesModifierData *>(&nmd));
-    value_path.property = reinterpret_cast<PropertyRNA *>(id_property);
-    value_path.index = ref->elem.index;
-    return value_path;
+    target_property.property = reinterpret_cast<PropertyRNA *>(id_property);
+    target_property.index = ref->elem.index;
+    return target_property;
   }
   return std::nullopt;
 }
 
-static Vector<GizmoFloatVariable> find_gizmo_float_value_paths(
+static Vector<DerivedFloatTargetProperty> find_gizmo_float_value_paths(
     const bNode &gizmo_node,
     const ComputeContext &compute_context,
     const Object &object,
@@ -339,15 +348,16 @@ static Vector<GizmoFloatVariable> find_gizmo_float_value_paths(
 {
   Vector<nodes::gizmos::PropagatedGizmoTarget> gizmo_targets =
       nodes::gizmos::find_propagated_gizmo_targets(compute_context, gizmo_node);
-  Vector<GizmoFloatVariable> variables;
+  Vector<DerivedFloatTargetProperty> variables;
   for (const nodes::gizmos::PropagatedGizmoTarget &gizmo_target : gizmo_targets) {
-    const std::optional<float> derivative = compute_derivative(nmd, gizmo_target);
+    const std::optional<float> derivative = compute_derivative(nmd, gizmo_target.propagation_path);
     if (!derivative) {
       continue;
     }
-    if (std::optional<FloatValuePath> value_path = get_float_value_path(gizmo_target, object, nmd))
+    if (std::optional<FloatTargetProperty> target_property = get_float_target_property(
+            gizmo_target, object, nmd))
     {
-      variables.append({std::move(*value_path), *derivative});
+      variables.append({std::move(*target_property), *derivative});
     }
   }
   return variables;
@@ -560,7 +570,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           return;
         }
 
-        Vector<GizmoFloatVariable> variables = find_gizmo_float_value_paths(
+        Vector<DerivedFloatTargetProperty> variables = find_gizmo_float_value_paths(
             gizmo_node, compute_context, *ob_orig, nmd);
         /* The gizmo should be drawn even if there is nothing linked to the value input, because
          * that results in a better initial user experience. */
@@ -623,7 +633,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         struct UserData {
           bContext *C;
           Vector<float> initial_values;
-          Vector<GizmoFloatVariable> variables;
+          Vector<DerivedFloatTargetProperty> variables;
           float gizmo_value = 0.0f;
         };
 
@@ -631,8 +641,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         if (is_interacting) {
           UserData *user_data = static_cast<UserData *>(gz_prop->custom_func.user_data);
           for (const int i : user_data->variables.index_range()) {
-            const GizmoFloatVariable &new_variable = variables[i];
-            GizmoFloatVariable &variable = user_data->variables[i];
+            const DerivedFloatTargetProperty &new_variable = variables[i];
+            DerivedFloatTargetProperty &variable = user_data->variables[i];
             variable.derivative = new_variable.derivative;
           }
         }
@@ -658,8 +668,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           /* The code that calls `value_set_fn` has the context, but its not passed into the
            * callback currently. */
           user_data->C = const_cast<bContext *>(C);
-          for (GizmoFloatVariable &variable : variables) {
-            user_data->initial_values.append(variable.path.get());
+          for (DerivedFloatTargetProperty &variable : variables) {
+            user_data->initial_values.append(variable.property.get());
           }
           user_data->variables = std::move(variables);
 
@@ -675,20 +685,20 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
             const float new_gizmo_value = *static_cast<const float *>(value_ptr);
             float new_gizmo_value_clamped = new_gizmo_value;
             for (const int i : user_data->variables.index_range()) {
-              GizmoFloatVariable &variable = user_data->variables[i];
+              DerivedFloatTargetProperty &variable = user_data->variables[i];
               const float initial_value = user_data->initial_values[i];
               const float new_value = initial_value +
                                       new_gizmo_value_clamped * variable.derivative;
-              const float new_value_clamped = variable.path.clamp(new_value);
+              const float new_value_clamped = variable.property.clamp(new_value);
               new_gizmo_value_clamped = (new_value_clamped - initial_value) / variable.derivative;
             }
             user_data->gizmo_value = new_gizmo_value_clamped;
             for (const int i : user_data->variables.index_range()) {
-              GizmoFloatVariable &variable = user_data->variables[i];
+              DerivedFloatTargetProperty &variable = user_data->variables[i];
               const float initial_value = user_data->initial_values[i];
               const float new_value = initial_value +
                                       new_gizmo_value_clamped * variable.derivative;
-              variable.path.set_and_update(user_data->C, new_value);
+              variable.property.set_and_update(user_data->C, new_value);
             }
           };
           params.value_get_fn =
