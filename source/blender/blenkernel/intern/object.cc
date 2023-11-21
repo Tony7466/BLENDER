@@ -180,7 +180,7 @@ static void object_init_data(ID *id)
 
   ob->trackflag = OB_POSY;
   ob->upflag = OB_POSZ;
-  ob->runtime = MEM_cnew<blender::bke::ObjectRuntime>(__func__);
+  ob->runtime = MEM_new<blender::bke::ObjectRuntime>(__func__);
 
   /* Animation Visualization defaults */
   animviz_settings_init(&ob->avs);
@@ -682,7 +682,7 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Object *ob = (Object *)id;
 
-  ob->runtime = MEM_cnew<blender::bke::ObjectRuntime>(__func__);
+  ob->runtime = MEM_new<blender::bke::ObjectRuntime>(__func__);
 
   PartEff *paf;
 
@@ -3606,19 +3606,15 @@ std::optional<BoundBox> BKE_object_boundbox_eval_cached_get(Object *ob)
 
 void BKE_object_boundbox_calc_from_mesh(Object *ob, const Mesh *me_eval)
 {
-  float3 min(FLT_MAX);
-  float3 max(-FLT_MAX);
-
-  if (!BKE_mesh_wrapper_minmax(me_eval, min, max)) {
-    min = float3(0);
-    max = float3(0);
-  }
+  using namespace blender;
+  const Bounds<float3> bounds = me_eval->bounds_min_max().value_or(
+      Bounds<float3>{float3(0), float3(0)});
 
   if (ob->runtime->bb == nullptr) {
     ob->runtime->bb = MEM_cnew<BoundBox>("DM-BoundBox");
   }
 
-  BKE_boundbox_init_from_minmax(ob->runtime->bb, min, max);
+  BKE_boundbox_init_from_minmax(ob->runtime->bb, bounds.min, bounds.max);
 
   ob->runtime->bb->flag &= ~BOUNDBOX_DIRTY;
 }
@@ -3632,11 +3628,7 @@ bool BKE_object_boundbox_calc_from_evaluated_geometry(Object *ob)
     bounds = ob->runtime->geometry_set_eval->compute_boundbox_without_instances();
   }
   else if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob)) {
-    Bounds<float3> mesh_bounds{float3(std::numeric_limits<float>::max()),
-                               float3(std::numeric_limits<float>::lowest())};
-    if (BKE_mesh_wrapper_minmax(mesh_eval, mesh_bounds.min, mesh_bounds.max)) {
-      bounds = bounds::merge(bounds, {mesh_bounds});
-    }
+    bounds = bounds::merge(bounds, mesh_eval->bounds_min_max());
   }
   else {
     return false;
@@ -3947,7 +3939,8 @@ bool BKE_object_minmax_empty_drawtype(const Object *ob, float r_min[3], float r_
     }
     case OB_EMPTY_IMAGE: {
       const float *ofs = ob->ima_ofs;
-      /* NOTE: this is the best approximation that can be calculated without loading the image. */
+      /* NOTE: this is the best approximation that can be calculated without loading the image.
+       */
       min[0] = ofs[0] * radius;
       min[1] = ofs[1] * radius;
       max[0] = radius + (ofs[0] * radius);
@@ -4279,9 +4272,9 @@ Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
   blender::bke::GeometrySet *geometry_set_eval = object->runtime->geometry_set_eval;
   if (geometry_set_eval) {
     /* Some areas expect to be able to modify the evaluated mesh in limited ways. Theoretically
-     * this should be avoided, or at least protected with a lock, so a const mesh could be returned
-     * from this function. We use a const_cast instead of #get_mesh_for_write, because that might
-     * result in a copy of the mesh when it is shared. */
+     * this should be avoided, or at least protected with a lock, so a const mesh could be
+     * returned from this function. We use a const_cast instead of #get_mesh_for_write, because
+     * that might result in a copy of the mesh when it is shared. */
     Mesh *mesh = const_cast<Mesh *>(geometry_set_eval->get_mesh());
     if (mesh) {
       return mesh;
@@ -4421,8 +4414,8 @@ static int pc_cmp(const void *a, const void *b)
 
 /* TODO: Review the usages of this function, currently with COW it will be called for orig object
  * and then again for COW copies of it, think this is bad since there is no guarantee that we get
- * the same stack index in both cases? Order is important since this index is used for filenames on
- * disk. */
+ * the same stack index in both cases? Order is important since this index is used for filenames
+ * on disk. */
 int BKE_object_insert_ptcache(Object *ob)
 {
   LinkData *link = nullptr;
@@ -5012,8 +5005,8 @@ void BKE_object_runtime_reset_on_copy(Object *object, const int /*flag*/)
   runtime->object_as_temp_curve = nullptr;
   runtime->geometry_set_eval = nullptr;
 
-  runtime->crazyspace_deform_imats = nullptr;
-  runtime->crazyspace_deform_cos = nullptr;
+  runtime->crazyspace_deform_imats = {};
+  runtime->crazyspace_deform_cos = {};
 }
 
 void BKE_object_runtime_free_data(Object *object)
