@@ -18,6 +18,7 @@
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
+#  include <openvdb/tools/Morphology.h>
 #endif
 
 struct BVHTreeFromMesh;
@@ -153,6 +154,11 @@ BaseSocketDeclarationBuilder &declare_grid_type_input(NodeDeclarationBuilder &b,
 BaseSocketDeclarationBuilder &declare_grid_type_output(NodeDeclarationBuilder &b,
                                                        eCustomDataType type,
                                                        StringRef name);
+
+#ifdef WITH_OPENVDB
+openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
+    GeometryNodeGridNeighborTopology neighbors_mode);
+#endif
 
 }  // namespace grids
 

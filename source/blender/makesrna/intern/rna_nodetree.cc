@@ -550,6 +550,21 @@ const EnumPropertyItem rna_enum_node_geometry_mesh_circle_fill_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_grid_neighbors_topology_items[] = {
+    {GEO_NODE_GRID_NEIGHBOR_FACE, "FACE", 0, "Face", "6 neighbors along primary axes"},
+    {GEO_NODE_GRID_NEIGHBOR_FACE_EDGE,
+     "FACE_EDGE",
+     0,
+     "Face Edge",
+     "18 neighbors along one or two primary axes"},
+    {GEO_NODE_GRID_NEIGHBOR_FACE_EDGE_VERTEX,
+     "FACE_EDGE_VERTEX",
+     0,
+     "Face Edge Vertex",
+     "26 neighbors along one, two, or three primary axes"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifndef RNA_RUNTIME
 static const EnumPropertyItem node_sampler_type_items[] = {
     {0, "NEAREST", 0, "Nearest", ""},

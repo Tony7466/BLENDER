@@ -275,6 +275,8 @@ DEF_ENUM(rna_enum_keyblock_type_items)
 
 DEF_ENUM(rna_enum_aset_library_type_items)
 
+DEF_ENUM(rna_enum_grid_neighbors_topology_items)
+
 #endif
 
 #undef DEF_ENUM

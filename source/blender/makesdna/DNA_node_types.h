@@ -2766,6 +2766,12 @@ typedef enum GeometryNodeSampleVolumeInterpolationMode {
   GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC = 2,
 } GeometryNodeSampleVolumeInterpolationMode;
 
+typedef enum GeometryNodeGridNeighborTopology {
+  GEO_NODE_GRID_NEIGHBOR_FACE = 0,
+  GEO_NODE_GRID_NEIGHBOR_FACE_EDGE = 1,
+  GEO_NODE_GRID_NEIGHBOR_FACE_EDGE_VERTEX = 2,
+} GeometryNodeGridNeighborTopology;
+
 typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_RGB = 0,
   NODE_COMBSEP_COLOR_HSV = 1,

@@ -145,6 +145,21 @@ BaseSocketDeclarationBuilder &declare_grid_type_output(NodeDeclarationBuilder &b
   return b.add_output<decl::Float>(name);
 }
 
+openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
+    GeometryNodeGridNeighborTopology neighbors_mode)
+{
+  switch (neighbors_mode) {
+    case GEO_NODE_GRID_NEIGHBOR_FACE:
+      return openvdb::tools::NearestNeighbors::NN_FACE;
+    case GEO_NODE_GRID_NEIGHBOR_FACE_EDGE:
+      return openvdb::tools::NearestNeighbors::NN_FACE_EDGE;
+    case GEO_NODE_GRID_NEIGHBOR_FACE_EDGE_VERTEX:
+      return openvdb::tools::NearestNeighbors::NN_FACE_EDGE_VERTEX;
+  }
+  BLI_assert_unreachable();
+  return openvdb::tools::NearestNeighbors::NN_FACE;
+}
+
 }  // namespace grids
 
 }  // namespace blender::nodes

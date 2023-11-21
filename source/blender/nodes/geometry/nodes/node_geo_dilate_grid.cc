@@ -4,18 +4,13 @@
 
 #include "node_geometry_util.hh"
 
-#include "BKE_lib_id.h"
-#include "BKE_volume.hh"
-#include "BKE_volume_openvdb.hh"
-
 #include "RNA_enum_types.hh"
 
-#include "NOD_rna_define.hh"
+#ifdef WITH_OPENVDB
+#  include <openvdb/tools/Morphology.h>
+#endif
 
-#include "UI_interface.hh"
-#include "UI_resources.hh"
-
-namespace blender::nodes::node_geo_store_named_grid_cc {
+namespace blender::nodes::node_geo_dilate_grid_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -24,11 +19,10 @@ static void node_declare(NodeDeclarationBuilder &b)
     return;
   }
 
-  b.add_input<decl::Geometry>("Volume");
-  b.add_input<decl::String>("Name");
-  grids::declare_grid_type_input(b, eCustomDataType(node->custom1), "Grid");
+  grids::declare_grid_type_input(b, CD_PROP_FLOAT, "Grid");
+  b.add_input<decl::Int>("Iterations").default_value(1).min(0);
 
-  b.add_output<decl::Geometry>("Volume");
+  grids::declare_grid_type_output(b, CD_PROP_FLOAT, "Grid");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -36,57 +30,54 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "neighbors_mode", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   node->custom1 = CD_PROP_FLOAT;
+  node->custom2 = GEO_NODE_GRID_NEIGHBOR_FACE;
 }
 
 template<typename T>
-static void try_store_grid(GeoNodeExecParams params, Volume *volume, StringRef name)
+static void try_dilate_grid(GeoNodeExecParams params,
+                            const int iterations,
+                            const GeometryNodeGridNeighborTopology neighbors_mode)
 {
   const bke::ValueOrField<T> value = params.extract_input<bke::ValueOrField<T>>("Grid");
   if (!value.is_grid()) {
     return;
   }
 
-  if (VolumeGrid *existing_grid = BKE_volume_grid_find_for_write(volume, name.data())) {
-    BKE_volume_grid_remove(volume, existing_grid);
-  }
+  using GridType = typename bke::grid_types::FieldValueGrid<T>::GridType;
+  typename GridType::Ptr grid = value.grid->grid;
+  BLI_assert(grid);
 
-  BKE_volume_grid_add_vdb(*volume, name, value.grid->grid);
+  openvdb::tools::dilateActiveValues(
+      grid->tree(), iterations, grids::get_vdb_neighbors_mode(neighbors_mode));
+
+  params.set_output("Grid", bke::ValueOrField<T>(value.grid));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
+  const GeometryNodeGridNeighborTopology neighbors_mode = GeometryNodeGridNeighborTopology(
+      params.node().custom2);
   BLI_assert(grids::grid_type_supported(data_type));
-  GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");
-  const std::string grid_name = params.extract_input<std::string>("Name");
+  const int iterations = params.extract_input<int>("Iterations");
 
-  Volume *volume = geometry_set.get_volume_for_write();
-  if (!volume) {
-    volume = static_cast<Volume *>(BKE_id_new_nomain(ID_VO, "Store Named Grid Output"));
-    geometry_set.replace_volume(volume);
-  }
-
-  if (volume) {
-    switch (data_type) {
-      case CD_PROP_FLOAT:
-        try_store_grid<float>(params, volume, grid_name);
-        break;
-      case CD_PROP_FLOAT3:
-        try_store_grid<float3>(params, volume, grid_name);
-        break;
-      default:
-        BLI_assert_unreachable();
-        break;
-    }
-
-    params.set_output("Volume", geometry_set);
-    return;
+  switch (data_type) {
+    case CD_PROP_FLOAT:
+      try_dilate_grid<float>(params, iterations, neighbors_mode);
+      break;
+    case CD_PROP_FLOAT3:
+      try_dilate_grid<float3>(params, iterations, neighbors_mode);
+      break;
+    default:
+      BLI_assert_unreachable();
+      break;
   }
 
   params.set_default_remaining_outputs();
@@ -107,13 +98,21 @@ static void node_rna(StructRNA *srna)
                     NOD_inline_enum_accessors(custom1),
                     CD_PROP_FLOAT,
                     grids::grid_type_items_fn);
+
+  RNA_def_node_enum(srna,
+                    "neighbors_mode",
+                    "Neighbors Mode",
+                    "Which voxel neighbors to use",
+                    rna_enum_grid_neighbors_topology_items,
+                    NOD_inline_enum_accessors(custom2),
+                    GEO_NODE_GRID_NEIGHBOR_FACE);
 }
 
 static void node_register()
 {
   static bNodeType ntype;
 
-  geo_node_type_base(&ntype, GEO_NODE_STORE_NAMED_GRID, "Store Named Grid", NODE_CLASS_GEOMETRY);
+  geo_node_type_base(&ntype, GEO_NODE_DILATE_GRID, "Dilate Grid", NODE_CLASS_CONVERTER);
 
   ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
@@ -125,4 +124,4 @@ static void node_register()
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_geo_store_named_grid_cc
+}  // namespace blender::nodes::node_geo_dilate_grid_cc

@@ -1318,7 +1318,8 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_INPUT_NAMED_LAYER_SELECTION 2117
 #define GEO_NODE_GET_NAMED_GRID 2118
 #define GEO_NODE_STORE_NAMED_GRID 2119
-#define GEO_NODE_PRUNE_GRID 2120
+#define GEO_NODE_DILATE_GRID 2120
+#define GEO_NODE_ERODE_GRID 2121
 
 /** \} */
 
