@@ -134,7 +134,7 @@ IndexMask retrieve_editable_points(Object &object,
                                    IndexMaskMemory &memory);
 IndexMask retrieve_editable_elements(Object &object,
                                      const bke::greasepencil::Drawing &drawing,
-                                     const eAttrDomain selection_domain,
+                                     eAttrDomain selection_domain,
                                      IndexMaskMemory &memory);
 
 IndexMask retrieve_editable_and_selected_strokes(Object &grease_pencil_object,
@@ -145,12 +145,12 @@ IndexMask retrieve_editable_and_selected_points(Object &object,
                                                 IndexMaskMemory &memory);
 IndexMask retrieve_editable_and_selected_elements(Object &object,
                                                   const bke::greasepencil::Drawing &drawing,
-                                                  const eAttrDomain selection_domain,
+                                                  eAttrDomain selection_domain,
                                                   IndexMaskMemory &memory);
 
 void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);
-void create_suzanne(Main &bmain, Object &object, float4x4 matrix, const int frame_number);
+void create_suzanne(Main &bmain, Object &object, float4x4 matrix, int frame_number);
 
 void gaussian_blur_1D(const GSpan src,
                       int64_t iterations,
