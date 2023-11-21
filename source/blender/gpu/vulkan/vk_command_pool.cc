@@ -71,6 +71,7 @@ void VKCommandPool::allocate_secondary_buffers(const VKDevice &device,
 
     return;
   }
+
   VkCommandBufferAllocateInfo alloc_info = {};
   alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   alloc_info.commandPool = vk_command_pool_;
