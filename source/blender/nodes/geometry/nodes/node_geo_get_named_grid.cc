@@ -45,14 +45,18 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 template<typename T>
 static bool try_output_grid_value(GeoNodeExecParams params, const openvdb::GridBase::Ptr &grid)
 {
-  using GridType = typename bke::grid_types::FieldValueGrid<T>::GridType;
+  using FVGrid = bke::grid_types::FieldValueGrid<T>;
+  using FVGridPtr = ImplicitSharingPtr<FVGrid>;
+  using GridType = typename FVGrid::GridType;
 
   std::shared_ptr<GridType> typed_grid = openvdb::GridBase::grid<GridType>(grid);
   if (!typed_grid) {
     return false;
   }
 
-  params.set_output("Grid", bke::grid_types::FieldValueGrid<T>(typed_grid));
+  FVGridPtr grid_ptr(new FVGrid(typed_grid));
+  params.set_output("Grid", ValueOrField<T>(std::move(grid_ptr)));
+  //  params.set_output("Grid", FVGridPtr(new FVGrid(typed_grid)));
   return true;
 }
 

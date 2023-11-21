@@ -40,13 +40,6 @@ template<typename T> struct ValueOrField {
 
   ValueOrField(GridPtr grid) : grid(std::move(grid)) {}
 
-  ~ValueOrField()
-  {
-    //    if (grid) {
-    //      grid->remove_user_and_delete_if_last();
-    //    }
-  }
-
   bool is_field() const
   {
     return bool(this->field);
