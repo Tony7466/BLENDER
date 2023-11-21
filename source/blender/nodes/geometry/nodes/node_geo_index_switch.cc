@@ -98,6 +98,8 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
+constexpr int value_inputs_start = 1;
+
 class IndexSwitchFunction : public mf::MultiFunction {
   mf::Signature signature_;
   Array<std::string> debug_names_;
@@ -118,7 +120,6 @@ class IndexSwitchFunction : public mf::MultiFunction {
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const
   {
-    constexpr int value_inputs_start = 1;
     const int inputs_num = signature_.params.size() - 2;
     const VArray<int> indices = params.readonly_single_input<int>(0, "Index");
 
@@ -160,7 +161,6 @@ class IndexSwitchFunction : public mf::MultiFunction {
 class LazyFunctionForIndexSwitchNode : public LazyFunction {
  private:
   bool can_be_field_ = false;
-  static constexpr int values_index_offset = 1;
 
  public:
   LazyFunctionForIndexSwitchNode(const bNode &node)
@@ -174,7 +174,7 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
     debug_name_ = node.name;
     inputs_.append_as("Index", CPPType::get<ValueOrField<int>>(), lf::ValueUsage::Used);
     for (const int i : storage.items_span().index_range()) {
-      const bNodeSocket &input = node.input_socket(values_index_offset + i);
+      const bNodeSocket &input = node.input_socket(value_inputs_start + i);
       inputs_.append_as(input.identifier, cpp_type, lf::ValueUsage::Maybe);
     }
     outputs_.append_as("Value", cpp_type);
@@ -213,7 +213,7 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
     }
 
     /* Request input and try again if unavailable. */
-    void *value_to_forward = params.try_get_input_data_ptr_or_request(index + values_index_offset);
+    void *value_to_forward = params.try_get_input_data_ptr_or_request(index + value_inputs_start);
     if (value_to_forward == nullptr) {
       return;
     }
