@@ -1628,7 +1628,7 @@ static void panel_draw(const bContext *C, Panel *panel)
     nmd->node_group->ensure_interface_cache();
 
     Set<int> inputs_with_gizmo;
-    if (const nodes::gizmos::GizmoInferencingResult *gizmo_inferencing =
+    if (const nodes::gizmos::GizmoPropagationResult *gizmo_inferencing =
             nmd->node_group->runtime->gizmo_inferencing.get())
     {
       for (const nodes::gizmos::GroupInputRef ref :

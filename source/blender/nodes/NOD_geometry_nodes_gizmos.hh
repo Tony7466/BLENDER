@@ -85,15 +85,15 @@ struct GroupInputRef {
  */
 using GizmoSource = std::variant<InputSocketRef, ValueNodeRef, GroupInputRef>;
 
-struct GizmoInferencingResult {
+struct GizmoPropagationResult {
   Vector<const bNode *> nodes_with_gizmos_inside;
   MultiValueMap<const bNode *, InputSocketRef> gizmo_inputs_for_value_nodes;
   MultiValueMap<const bNodeSocket *, InputSocketRef> gizmo_inputs_for_node_inputs;
   MultiValueMap<GroupInputRef, InputSocketRef> gizmo_inputs_for_interface_inputs;
 
-  friend std::ostream &operator<<(std::ostream &stream, const GizmoInferencingResult &data);
-  friend bool operator==(const GizmoInferencingResult &a, const GizmoInferencingResult &b);
-  friend bool operator!=(const GizmoInferencingResult &a, const GizmoInferencingResult &b);
+  friend std::ostream &operator<<(std::ostream &stream, const GizmoPropagationResult &data);
+  friend bool operator==(const GizmoPropagationResult &a, const GizmoPropagationResult &b);
+  friend bool operator!=(const GizmoPropagationResult &a, const GizmoPropagationResult &b);
 };
 
 struct GlobalGizmoPathElem {
@@ -116,6 +116,6 @@ void foreach_active_gizmo(
     const wmWindowManager &wm,
     FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)> fn);
 
-bool update_gizmo_inferencing(bNodeTree &tree);
+bool update_gizmo_propagation(bNodeTree &tree);
 
 }  // namespace blender::nodes::gizmos

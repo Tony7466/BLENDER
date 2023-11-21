@@ -178,7 +178,7 @@ static std::optional<GizmoSource> find_local_gizmo_source(
   return find_local_gizmo_source_recursive(socket, elem, right_to_left_path);
 }
 
-static void add_gizmo_input_source_pair(GizmoInferencingResult &inferencing_result,
+static void add_gizmo_input_source_pair(GizmoPropagationResult &inferencing_result,
                                         const InputSocketRef &gizmo_input,
                                         const GizmoSource &gizmo_source)
 {
@@ -194,9 +194,9 @@ static void add_gizmo_input_source_pair(GizmoInferencingResult &inferencing_resu
   }
 }
 
-static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &tree)
+static GizmoPropagationResult compute_gizmo_inferencing_result(const bNodeTree &tree)
 {
-  GizmoInferencingResult inferencing_result;
+  GizmoPropagationResult inferencing_result;
 
   for (const bNodeSocket *socket : tree.all_sockets()) {
     socket->runtime->has_gizmo = false;
@@ -251,7 +251,7 @@ static GizmoInferencingResult compute_gizmo_inferencing_result(const bNodeTree &
   return inferencing_result;
 }
 
-std::ostream &operator<<(std::ostream &stream, const GizmoInferencingResult &data)
+std::ostream &operator<<(std::ostream &stream, const GizmoPropagationResult &data)
 {
   stream << "Interface inputs with gizmo:\n";
   for (const auto item : data.gizmo_inputs_for_interface_inputs.items()) {
@@ -272,7 +272,7 @@ std::ostream &operator<<(std::ostream &stream, const GizmoInferencingResult &dat
   return stream;
 }
 
-bool operator==(const GizmoInferencingResult &a, const GizmoInferencingResult &b)
+bool operator==(const GizmoPropagationResult &a, const GizmoPropagationResult &b)
 {
   return a.nodes_with_gizmos_inside == b.nodes_with_gizmos_inside &&
          a.gizmo_inputs_for_value_nodes == b.gizmo_inputs_for_value_nodes &&
@@ -280,12 +280,12 @@ bool operator==(const GizmoInferencingResult &a, const GizmoInferencingResult &b
          a.gizmo_inputs_for_interface_inputs == b.gizmo_inputs_for_interface_inputs;
 }
 
-bool operator!=(const GizmoInferencingResult &a, const GizmoInferencingResult &b)
+bool operator!=(const GizmoPropagationResult &a, const GizmoPropagationResult &b)
 {
   return !(a == b);
 }
 
-bool update_gizmo_inferencing(bNodeTree &tree)
+bool update_gizmo_propagation(bNodeTree &tree)
 {
   tree.ensure_topology_cache();
   if (tree.has_available_link_cycle()) {
@@ -294,11 +294,11 @@ bool update_gizmo_inferencing(bNodeTree &tree)
     return changed;
   }
 
-  GizmoInferencingResult result = compute_gizmo_inferencing_result(tree);
+  GizmoPropagationResult result = compute_gizmo_inferencing_result(tree);
   const bool changed = tree.runtime->gizmo_inferencing ?
                            *tree.runtime->gizmo_inferencing != result :
                            true;
-  tree.runtime->gizmo_inferencing = std::make_unique<GizmoInferencingResult>(std::move(result));
+  tree.runtime->gizmo_inferencing = std::make_unique<GizmoPropagationResult>(std::move(result));
   return changed;
 }
 
@@ -342,7 +342,7 @@ static void foreach_gizmo_for_source(
     const bNodeTree &tree,
     FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)> fn)
 {
-  const GizmoInferencingResult &gizmo_inferencing = *tree.runtime->gizmo_inferencing;
+  const GizmoPropagationResult &gizmo_inferencing = *tree.runtime->gizmo_inferencing;
 
   if (const auto *ref = std::get_if<ValueNodeRef>(&gizmo_source)) {
     for (const InputSocketRef &gizmo_input :
@@ -418,7 +418,7 @@ void foreach_active_gizmo(
             continue;
           }
           snode.edittree->ensure_topology_cache();
-          const GizmoInferencingResult &gizmo_inferencing =
+          const GizmoPropagationResult &gizmo_inferencing =
               *snode.edittree->runtime->gizmo_inferencing;
           Set<InputSocketRef> used_gizmo_inputs;
           for (auto item : gizmo_inferencing.gizmo_inputs_for_value_nodes.items()) {
@@ -466,7 +466,7 @@ void foreach_active_gizmo(
     if (!tree.runtime->gizmo_inferencing) {
       return;
     }
-    const GizmoInferencingResult &gizmo_inferencing = *tree.runtime->gizmo_inferencing;
+    const GizmoPropagationResult &gizmo_inferencing = *tree.runtime->gizmo_inferencing;
 
     ComputeContextBuilder compute_context_builder;
     compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);

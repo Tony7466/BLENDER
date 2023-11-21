@@ -34,7 +34,7 @@ struct RelationsInNode;
 }
 namespace aal = anonymous_attribute_lifetime;
 namespace gizmos {
-struct GizmoInferencingResult;
+struct GizmoPropagationResult;
 }
 }  // namespace blender::nodes
 namespace blender::bke {
@@ -136,7 +136,7 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   /** Information about usage of anonymous attributes within the group. */
   std::unique_ptr<anonymous_attribute_inferencing::AnonymousAttributeInferencingResult>
       anonymous_attribute_inferencing;
-  std::unique_ptr<nodes::gizmos::GizmoInferencingResult> gizmo_inferencing;
+  std::unique_ptr<nodes::gizmos::GizmoPropagationResult> gizmo_inferencing;
 
   /**
    * For geometry nodes, a lazy function graph with some additional info is cached. This is used to
@@ -201,7 +201,7 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
   short total_inputs = 0;
 
   /**
-   * This is set in #update_gizmo_inferencing and is stored here so that it can be quickly accessed
+   * This is set in #update_gizmo_propagation and is stored here so that it can be quickly accessed
    * during socket drawing.
    */
   bool has_gizmo = false;

@@ -494,7 +494,7 @@ class NodeTreeMainUpdater {
       if (anonymous_attribute_inferencing::update_anonymous_attribute_relations(ntree)) {
         result.interface_changed = true;
       }
-      if (nodes::gizmos::update_gizmo_inferencing(ntree)) {
+      if (nodes::gizmos::update_gizmo_propagation(ntree)) {
         result.interface_changed = true;
       }
     }
