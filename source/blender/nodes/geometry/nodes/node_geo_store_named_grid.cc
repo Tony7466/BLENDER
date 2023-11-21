@@ -4,6 +4,7 @@
 
 #include "node_geometry_util.hh"
 
+#include "BKE_lib_id.h"
 #include "BKE_volume.hh"
 #include "BKE_volume_openvdb.hh"
 
@@ -63,7 +64,13 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");
   const std::string grid_name = params.extract_input<std::string>("Name");
 
-  if (Volume *volume = geometry_set.get_volume_for_write()) {
+  Volume *volume = geometry_set.get_volume_for_write();
+  if (!volume){
+    volume = static_cast<Volume *>(BKE_id_new_nomain(ID_VO, "Store Named Grid Output"));
+    geometry_set.replace_volume(volume);
+  }
+
+  if (volume) {
     switch (data_type) {
       case CD_PROP_FLOAT:
         try_store_grid<float>(params, volume, grid_name);
