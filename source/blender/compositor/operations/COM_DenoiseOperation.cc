@@ -33,6 +33,10 @@ class DenoiseFilter {
   oidn::DeviceRef device_;
   oidn::FilterRef filter_;
   bool initialized_ = false;
+  bool system_memory_supported_ = true;
+  std::vector<oidn::BufferRef> buffers_;
+  oidn::BufferRef oidn_output_;
+  MemoryBuffer *output_ = nullptr;
 #endif
 
  public:
@@ -49,7 +53,11 @@ class DenoiseFilter {
      * nonetheless. */
     BLI_mutex_lock(&oidn_lock);
 
-    device_ = oidn::newDevice(oidn::DeviceType::CPU);
+    device_ = oidn::newDevice();
+#if OIDN_VERSION_MAJOR >= 2
+    system_memory_supported_ = device_.get<bool>("systemMemorySupported");
+    if (device_.get<int>("type") == (int)oidn::DeviceType::CPU)
+#endif
     device_.set("setAffinity", false);
     device_.commit();
     filter_ = device_.newFilter("RT");
@@ -67,8 +75,24 @@ class DenoiseFilter {
   {
     BLI_assert(initialized_);
     BLI_assert(!buffer->is_a_single_elem());
+    oidn::BufferRef oidn_buffer;
+    size_t buffer_len = buffer->get_elem_bytes_len() * buffer->get_width() * buffer->get_height();
+    if (system_memory_supported_) {
+      oidn_buffer = device_.newBuffer(buffer->get_buffer(), buffer_len);
+    }
+#if OIDN_VERSION_MAJOR >= 2
+    else {
+      oidn_buffer = device_.newBuffer(buffer_len);
+      oidn_buffer.write(0, buffer_len, buffer->get_buffer());
+      if (name == "output") {
+        oidn_output_ = oidn_buffer;
+        output_ = buffer;
+      }
+    }
+#endif
+    buffers_.emplace_back(oidn_buffer);
     filter_.setImage(name.data(),
-                     buffer->get_buffer(),
+                     oidn_buffer,
                      oidn::Format::Float3,
                      buffer->get_width(),
                      buffer->get_height(),
@@ -87,6 +111,13 @@ class DenoiseFilter {
     BLI_assert(initialized_);
     filter_.commit();
     filter_.execute();
+#if OIDN_VERSION_MAJOR >= 2
+    if (!system_memory_supported_ && output_ && oidn_output_) {
+      size_t buffer_len = output_->get_elem_bytes_len() * output_->get_width() * output_->get_height();
+      assert(buffer_len == oidn_output_.getSize());
+      oidn_output_.read(0, buffer_len, output_->get_buffer());
+    }
+#endif
   }
 
 #else
