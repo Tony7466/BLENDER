@@ -3299,9 +3299,12 @@ static void rna_Node_ItemArray_remove(ID *id,
 {
   blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
   if (item_to_remove < *ref.items || item_to_remove >= *ref.items + *ref.items_num) {
-    const char **name_ptr = Accessor::get_name(*item_to_remove);
-    if (name_ptr && *name_ptr) {
-      BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item_to_remove->name);
+    if constexpr (Accessor::has_name()) {
+      char **name_ptr = Accessor::get_name(*item_to_remove);
+      if (name_ptr && *name_ptr) {
+        BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", *name_ptr);
+        return;
+      }
     }
     else {
       BKE_report(reports, RPT_ERROR, "Unable to locate item in node");
@@ -3431,6 +3434,19 @@ typename Accessor::ItemT *rna_Node_ItemArray_new_with_socket_and_name(
   }
   ItemT *new_item = blender::nodes::socket_items::add_item_with_socket_and_name<Accessor>(
       *node, eNodeSocketDatatype(socket_type), name);
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+
+  return new_item;
+}
+
+static IndexSwitchItem *rna_NodeIndexSwitchItems_new(ID *id, bNode *node, Main *bmain)
+{
+  IndexSwitchItem *new_item = blender::nodes::socket_items::add_item<IndexSwitchItemsAccessor>(
+      *node);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -9072,20 +9088,25 @@ static void rna_def_index_switch_item(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Identifier", "Consistent identifier used for the item");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
-
-  // rna_def_node_item_array_socket_item_common(srna, "IndexSwitchItemsAccessor");
 }
 
 static void rna_def_geo_index_switch_items(BlenderRNA *brna)
 {
   StructRNA *srna;
+  FunctionRNA *func;
+  PropertyRNA *parm;
 
   srna = RNA_def_struct(brna, "NodeIndexSwitchItems", nullptr);
   RNA_def_struct_sdna(srna, "bNode");
   RNA_def_struct_ui_text(srna, "Items", "Collection of index_switch items");
 
-  rna_def_node_item_array_new_with_socket_and_name(
-      srna, "IndexSwitchItem", "IndexSwitchItemsAccessor");
+  func = RNA_def_function(srna, "new", "rna_NodeIndexSwitchItems_new");
+  RNA_def_function_ui_description(func, "Add an item");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+  /* Return value. */
+  parm = RNA_def_pointer(func, "item", "IndexSwitchItem", "Item", "New item");
+  RNA_def_function_return(func, parm);
+
   rna_def_node_item_array_common_functions(srna, "IndexSwitchItem", "IndexSwitchItemsAccessor");
 }
 

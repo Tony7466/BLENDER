@@ -39,9 +39,17 @@ struct SimulationItemsAccessor {
   }
   static void blend_write(BlendWriter *writer, const bNode &node);
   static void blend_read_data(BlendDataReader *reader, bNode &node);
+  static constexpr bool has_type()
+  {
+    return true;
+  }
   static short *get_socket_type(NodeSimulationItem &item)
   {
     return &item.socket_type;
+  }
+  static constexpr bool has_name()
+  {
+    return true;
   }
   static char **get_name(NodeSimulationItem &item)
   {
@@ -101,9 +109,17 @@ struct RepeatItemsAccessor {
   }
   static void blend_write(BlendWriter *writer, const bNode &node);
   static void blend_read_data(BlendDataReader *reader, bNode &node);
+  static constexpr bool has_type()
+  {
+    return true;
+  }
   static short *get_socket_type(NodeRepeatItem &item)
   {
     return &item.socket_type;
+  }
+  static constexpr bool has_name()
+  {
+    return true;
   }
   static char **get_name(NodeRepeatItem &item)
   {
@@ -153,8 +169,8 @@ struct IndexSwitchItemsAccessor {
 
   static socket_items::SocketItemsRef<IndexSwitchItem> get_items_from_node(bNode &node)
   {
-    auto *storage = static_cast<NodeIndexSwitch *>(node.storage);
-    return {&storage->items, &storage->items_num, &storage->active_index};
+    auto &storage = *static_cast<NodeIndexSwitch *>(node.storage);
+    return {&storage.items, &storage.items_num, &storage.active_index};
   }
   static void copy_item(const IndexSwitchItem &src, IndexSwitchItem &dst)
   {
@@ -163,39 +179,18 @@ struct IndexSwitchItemsAccessor {
   static void destruct_item(IndexSwitchItem * /*item*/) {}
   static void blend_write(BlendWriter *writer, const bNode &node);
   static void blend_read_data(BlendDataReader *reader, bNode &node);
-  static short *get_socket_type(IndexSwitchItem & /*item*/)
+  static constexpr bool has_type()
   {
-    return nullptr;
+    return false;
   }
-  static char **get_name(IndexSwitchItem & /*item*/)
+  static constexpr bool has_name()
   {
-    return nullptr;
+    return false;
   }
-  static bool supports_socket_type(const eNodeSocketDatatype socket_type)
+  static void init(bNode &node, IndexSwitchItem &item)
   {
-    return ELEM(socket_type,
-                SOCK_FLOAT,
-                SOCK_VECTOR,
-                SOCK_RGBA,
-                SOCK_BOOLEAN,
-                SOCK_ROTATION,
-                SOCK_INT,
-                SOCK_STRING,
-                SOCK_GEOMETRY,
-                SOCK_OBJECT,
-                SOCK_MATERIAL,
-                SOCK_IMAGE,
-                SOCK_COLLECTION);
-  }
-  static void init_with_socket_type_and_name(bNode &node,
-                                             IndexSwitchItem &item,
-                                             const eNodeSocketDatatype socket_type,
-                                             const char *name)
-  {
-    auto *storage = static_cast<NodeIndexSwitch *>(node.storage);
-    item.socket_type = socket_type;
-    item.identifier = storage->next_identifier++;
-    socket_items::set_item_name_and_make_unique<IndexSwitchItemsAccessor>(node, item, name);
+    auto &storage = *static_cast<NodeIndexSwitch *>(node.storage);
+    item.identifier = storage.next_identifier++;
   }
   static std::string socket_identifier_for_item(const IndexSwitchItem &item)
   {

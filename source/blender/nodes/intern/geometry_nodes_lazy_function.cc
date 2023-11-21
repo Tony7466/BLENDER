@@ -1137,8 +1137,8 @@ class LazyFunctionForIndexSwitchSocketUsage : public lf::LazyFunction {
   {
     debug_name_ = "Index Switch Socket Usage";
     inputs_.append_as("Index", CPPType::get<ValueOrField<int>>());
-    for (const bNodeSocket *output : bnode.output_sockets()) {
-      outputs_.append_as(output->identifier, CPPType::get<bool>());
+    for (const bNodeSocket *socket : bnode.input_sockets().drop_front(1)) {
+      outputs_.append_as(socket->identifier, CPPType::get<bool>());
     }
   }
 
@@ -3608,23 +3608,13 @@ struct GeometryNodesLazyFunctionBuilder {
     lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
     scope_.add(std::move(lazy_function));
 
-    int input_index = 0;
-    for (const bNodeSocket *bsocket : bnode.input_sockets()) {
-      if (bsocket->is_available()) {
-        lf::InputSocket &lf_socket = lf_node.input(input_index);
-        graph_params.lf_inputs_by_bsocket.add(bsocket, &lf_socket);
-        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
-        input_index++;
-      }
+    for (const int i : bnode.input_sockets().drop_back(1).index_range()) {
+      graph_params.lf_inputs_by_bsocket.add(&bnode.input_socket(i), &lf_node.input(i));
+      mapping_->bsockets_by_lf_socket_map.add(&lf_node.input(i), &bnode.input_socket(i));
     }
-    for (const bNodeSocket *bsocket : bnode.output_sockets()) {
-      if (bsocket->is_available()) {
-        lf::OutputSocket &lf_socket = lf_node.output(0);
-        graph_params.lf_output_by_bsocket.add(bsocket, &lf_socket);
-        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
-        break;
-      }
-    }
+
+    graph_params.lf_output_by_bsocket.add(&bnode.output_socket(0), &lf_node.output(0));
+    mapping_->bsockets_by_lf_socket_map.add(&lf_node.output(0), &bnode.output_socket(0));
 
     this->build_index_switch_node_socket_usage(bnode, graph_params);
   }
@@ -3653,7 +3643,9 @@ struct GeometryNodesLazyFunctionBuilder {
     }
     else {
       const int index = index_socket.default_value_typed<bNodeSocketValueInt>()->value;
-      graph_params.usage_by_bsocket.add(&bnode.input_socket(index + 1), output_is_used);
+      if (IndexRange(items_num).contains(index)) {
+        graph_params.usage_by_bsocket.add(&bnode.input_socket(index + 1), output_is_used);
+      }
     }
   }
 

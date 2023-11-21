@@ -12,10 +12,11 @@
 #include "NOD_rna_define.hh"
 #include "NOD_socket.hh"
 #include "NOD_socket_search_link.hh"
+#include "NOD_zone_socket_items.hh"
 
 #include "RNA_enum_types.hh"
 
-#include "FN_field_cpp_type.hh"
+#include "BKE_node_socket_value_cpp_type.hh"
 
 namespace blender::nodes::node_geo_index_switch_cc {
 
@@ -23,8 +24,6 @@ NODE_STORAGE_FUNCS(NodeIndexSwitch)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  // TODO: Only supports field if data type supports it.
-  b.add_input<decl::Int>("Index").supports_field();
   const bNode *node = b.node_or_null();
   if (!node) {
     return;
@@ -33,14 +32,20 @@ static void node_declare(NodeDeclarationBuilder &b)
   const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
   const bool supports_fields = socket_type_supports_fields(data_type);
 
-  const Span<IndexSwitchItem> items = storage.items_span();
+  auto &index = b.add_input<decl::Int>("Index");
+  if (supports_fields) {
+    index.supports_field();
+  }
 
+  const Span<IndexSwitchItem> items = storage.items_span();
   for (const int i : items.index_range()) {
-    const std::string identifier = SimulationItemsAccessor::socket_identifier_for_item(item);
+    const std::string identifier = IndexSwitchItemsAccessor::socket_identifier_for_item(items[i]);
     auto &input = b.add_input(data_type, std::to_string(i), std::move(identifier));
     if (supports_fields) {
       input.supports_field();
     }
+    /* Labels are ugly with data-block pickers and are usually disabled. */
+    input.hide_label(ELEM(data_type, SOCK_OBJECT, SOCK_IMAGE, SOCK_COLLECTION, SOCK_MATERIAL));
   }
 
   auto &output = b.add_output(data_type, "Output");
@@ -113,40 +118,50 @@ class IndexSwitchFunction : public mf::MultiFunction {
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const
   {
+    constexpr int value_inputs_start = 1;
+    const int inputs_num = signature_.params.size() - 2;
     const VArray<int> indices = params.readonly_single_input<int>(0, "Index");
 
+    /* Use one extra mask for invalid indices. */
+    const int invalid_index = inputs_num;
     IndexMaskMemory memory;
-    Array<IndexMask> masks(signature_.params.size() - 2);
-    // TODO: Invalid indices.
+    Array<IndexMask> masks(inputs_num + 1);
     IndexMask::from_groups<int64_t>(
-        mask, memory, [&](const int64_t i) { return indices[i]; }, masks);
+        mask,
+        memory,
+        [&](const int64_t i) {
+          const int index = indices[i];
+          return (index >= 0 && index < inputs_num) ? index : invalid_index;
+        },
+        masks);
 
-    int64_t all_valid_indices_size = 0;
-    for (const IndexMask &index_mask : masks) {
-      all_valid_indices_size += index_mask.size();
-    }
+    GMutableSpan output = params.uninitialized_single_output(
+        signature_.params.index_range().last(), "Output");
 
-    GMutableSpan outputs = params.uninitialized_single_output(signature_.params.size() - 1,
-                                                              "Output");
-    const CPPType &type = outputs.type();
-
-    if (all_valid_indices_size != mask.size()) {
-      type.fill_construct_n(type.default_value(), outputs.data(), outputs.size());
-    }
-
-    for (const int i : masks.index_range()) {
+    for (const int i : IndexRange(inputs_num)) {
       if (masks[i].is_empty()) {
         continue;
       }
-      const GVArray inputs = params.readonly_single_input(i + 1);
-      array_utils::copy(inputs, masks[i], outputs);
+      const GVArray inputs = params.readonly_single_input(value_inputs_start + i);
+      array_utils::copy(inputs, masks[i], output);
     }
+
+    const CPPType &type = output.type();
+    type.fill_construct_indices(type.default_value(), output.data(), masks[invalid_index]);
+  }
+
+  ExecutionHints get_execution_hints() const override
+  {
+    ExecutionHints hints;
+    hints.allocates_array = true;
+    return hints;
   }
 };
 
 class LazyFunctionForIndexSwitchNode : public LazyFunction {
  private:
   bool can_be_field_ = false;
+  static constexpr int values_index_offset = 1;
 
  public:
   LazyFunctionForIndexSwitchNode(const bNode &node)
@@ -158,9 +173,10 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
     const CPPType &cpp_type = *node.output_socket(0).typeinfo->geometry_nodes_cpp_type;
 
     debug_name_ = node.name;
-    inputs_.append_as("Index", CPPType::get<ValueOrField<int>>());
-    for (const int i : storage.items_span().index_range().drop_front(1)) {
-      inputs_.append_as(node.input_socket(i).identifier, cpp_type, lf::ValueUsage::Maybe);
+    inputs_.append_as("Index", CPPType::get<ValueOrField<int>>(), lf::ValueUsage::Used);
+    for (const int i : storage.items_span().index_range()) {
+      const bNodeSocket &input = node.input_socket(values_index_offset + i);
+      inputs_.append_as(input.identifier, cpp_type, lf::ValueUsage::Maybe);
     }
     outputs_.append_as("Value", cpp_type);
   }
@@ -172,26 +188,34 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
       Field<int> index_field = index.as_field();
       if (index_field.node().depends_on_input()) {
         this->execute_field(index.as_field(), params);
-        return;
       }
-      const bool index_int = fn::evaluate_constant_field(index_field);
-      this->execute_single(index_int, params);
-      return;
+      else {
+        this->execute_single(fn::evaluate_constant_field(index_field), params);
+      }
     }
-    this->execute_single(index.as_value(), params);
+    else {
+      this->execute_single(index.as_value(), params);
+    }
   }
 
   void execute_single(const int index, lf::Params &params) const
   {
-    constexpr int values_index_offset = 1;
-    for (const int i : inputs_.index_range().drop_front(1)) {
+    const IndexRange values_range = inputs_.index_range().drop_front(1);
+    for (const int i : values_range.index_range()) {
       if (i != index) {
-        params.set_input_unused(i + values_index_offset);
+        params.set_input_unused(values_range[i]);
       }
     }
+
+    /* Check for an invalid index. */
+    if (!values_range.index_range().contains(index)) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+
+    /* Request input and try again if unavailable. */
     void *value_to_forward = params.try_get_input_data_ptr_or_request(index + values_index_offset);
     if (value_to_forward == nullptr) {
-      /* Try again when the value is available. */
       return;
     }
 
@@ -203,9 +227,10 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
 
   void execute_field(Field<int> index, lf::Params &params) const
   {
-    Array<void *, 8> input_values(inputs_.size());
-    for (const int i : inputs_.index_range()) {
-      input_values[i] = params.try_get_input_data_ptr_or_request(i);
+    const IndexRange values_range = inputs_.index_range().drop_front(1);
+    Array<void *, 8> input_values(values_range.size());
+    for (const int i : values_range.index_range()) {
+      input_values[i] = params.try_get_input_data_ptr_or_request(values_range[i]);
     }
     if (input_values.as_span().contains(nullptr)) {
       /* Try again when inputs are available. */
@@ -213,17 +238,16 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
     }
 
     const CPPType &type = *outputs_[0].type;
-    const fn::ValueOrFieldCPPType &value_or_field_type = *fn::ValueOrFieldCPPType::get_from_self(
-        type);
+    const auto &value_or_field_type = *bke::ValueOrFieldCPPType::get_from_self(type);
     const CPPType &value_type = value_or_field_type.value;
 
     Vector<GField> input_fields({std::move(index)});
-    for (const int i : inputs_.index_range().drop_front(1)) {
+    for (const int i : values_range.index_range()) {
       input_fields.append(value_or_field_type.as_field(input_values[i]));
     }
 
     std::unique_ptr<mf::MultiFunction> switch_fn = std::make_unique<IndexSwitchFunction>(
-        value_type, inputs_.size() - 1);
+        value_type, values_range.size());
     GField output_field(FieldOperation::Create(std::move(switch_fn), std::move(input_fields)));
 
     void *output_ptr = params.get_output_data_ptr(0);
@@ -257,20 +281,26 @@ static void node_rna(StructRNA *srna)
                                                SOCK_GEOMETRY,
                                                SOCK_OBJECT,
                                                SOCK_COLLECTION,
-                                               SOCK_TEXTURE,
                                                SOCK_MATERIAL,
                                                SOCK_IMAGE);
                                  });
       });
 }
 
+static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
+{
+  return socket_items::try_add_item_via_any_extend_socket<IndexSwitchItemsAccessor>(
+      *ntree, *node, *node, *link);
+}
+
 static void register_node()
 {
   static bNodeType ntype;
 
-  geo_node_type_base(&ntype, GEO_NODE_SWITCH, "Switch", NODE_CLASS_CONVERTER);
+  geo_node_type_base(&ntype, GEO_NODE_INDEX_SWITCH, "Index Switch", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
+  ntype.insert_link = node_insert_link;
   node_type_storage(
       &ntype, "NodeIndexSwitch", node_free_standard_storage, node_copy_standard_storage);
   ntype.gather_link_search_ops = node_gather_link_searches;
@@ -288,7 +318,7 @@ namespace blender::nodes {
 std::unique_ptr<LazyFunction> get_index_switch_node_lazy_function(const bNode &node)
 {
   using namespace node_geo_index_switch_cc;
-  BLI_assert(node.type == GEO_NODE_SWITCH);
+  BLI_assert(node.type == GEO_NODE_INDEX_SWITCH);
   return std::make_unique<LazyFunctionForIndexSwitchNode>(node);
 }
 

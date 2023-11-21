@@ -1857,10 +1857,7 @@ typedef struct NodeGeometryRepeatOutput {
 } NodeGeometryRepeatOutput;
 
 typedef struct IndexSwitchItem {
-  /**
-   * Generated unique identifier for sockets which stays the same even when the item order or
-   * names change.
-   */
+  /** Generated unique identifier which stays the same even when the item order or names change. */
   int identifier;
 } IndexSwitchItem;
 
