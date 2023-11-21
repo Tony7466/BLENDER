@@ -99,6 +99,9 @@ eInsertKeyFlags ANIM_get_keyframing_flags(Scene *scene, const bool use_autokey_m
   }
 
   /* only if including settings from the autokeying mode... */
+  /* TODO: The fact that this flag needs to be passed as true is confusing because it is not clear
+   * why those two flags would be exclusive to autokeying. Refactor flags so they are separate
+   * between normal keying and autokeying. */
   if (use_autokey_mode) {
     /* keyframing mode - only replace existing keyframes */
     if (is_autokey_mode(scene, AUTOKEY_MODE_EDITKEYS)) {
