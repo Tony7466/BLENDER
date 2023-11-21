@@ -139,7 +139,7 @@ static QuadDirection calc_quad_direction_beauty(const float3 &v0,
   if (UNLIKELY(flip_flag & (1 << 0))) {
     return QuadDirection::Edge_0_2;
   }
-  else if (UNLIKELY(flip_flag & (1 << 1))) {
+  if (UNLIKELY(flip_flag & (1 << 1))) {
     return QuadDirection::Edge_1_3;
   }
   return BLI_polyfill_edge_calc_rotate_beauty__area(v1, v2, v3, v0, false) > 0.0f ?
@@ -329,6 +329,8 @@ static void calc_ngon_corner_maps(const Span<float3> positions,
     /* Only used for the "Beauty" method. */
     MemArena *arena = nullptr;
     Heap *heap = nullptr;
+
+    Set<int> duplicate_faces;
 
     ~TLS()
     {
@@ -686,9 +688,7 @@ std::optional<Mesh *> mesh_triangulate(
 
   if (!quads.is_empty()) {
     const Span<int> quad_corner_map = corner_map.as_mutable_span().take_back(quad_corners_num);
-    // TODO: Investigate fusing with loop inside of #calc_quad_edges.
-    bke::attribute_math::gather(
-        src_corner_verts, quad_corner_map, corner_verts.slice(quad_corners_range));
+    array_utils::gather(src_corner_verts, quad_corner_map, corner_verts.slice(quad_corners_range));
     calc_quad_edges(src_corner_edges,
                     quad_corner_map,
                     corner_verts,
@@ -697,7 +697,8 @@ std::optional<Mesh *> mesh_triangulate(
                     corner_edges.slice(quad_corners_range));
   }
 
-  /* Vertex attributes are totally unnaffected and can be shared with implicit sharing. */
+  /* Vertex attributes are totally unnaffected and can be shared with implicit sharing.
+   * Use the #CustomData API for better support for vertex groups. */
   CustomData_merge(&src_mesh.vert_data, &mesh->vert_data, CD_MASK_MESH.vmask, mesh->totvert);
 
   array_utils::copy(src_edges, edges.take_back(src_edges.size()));
