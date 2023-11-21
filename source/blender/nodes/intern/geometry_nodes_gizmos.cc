@@ -42,15 +42,23 @@ static bool is_valid_gizmo_link(const bNodeLink &link)
   return from_socket.type == to_socket.type;
 }
 
-struct LocalGizmoPathElem {
-  const bNode *node = nullptr;
-  ValueElem elem;
+/**
+ * Contains the nodes that propagate the gizmo from left-to-right and influence the mapping from
+ * gizmo to value changes.
+ */
+struct LocalPropagationPath {
+  struct PathElem {
+    const bNode *node = nullptr;
+    ValueElem elem;
+  };
+
+  Vector<PathElem> path;
 };
 
 static std::optional<GizmoSource> find_local_gizmo_source_recursive(
     const bNodeSocket &current_socket,
     const ValueElem &current_elem,
-    Vector<LocalGizmoPathElem> &propagation_path)
+    LocalPropagationPath &r_propagation_path)
 {
   current_socket.runtime->has_gizmo = true;
   if (current_socket.is_input()) {
@@ -71,7 +79,7 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
       return std::nullopt;
     }
     if (is_valid_gizmo_link(link)) {
-      return find_local_gizmo_source_recursive(origin_socket, current_elem, propagation_path);
+      return find_local_gizmo_source_recursive(origin_socket, current_elem, r_propagation_path);
     }
     return std::nullopt;
   }
@@ -81,7 +89,7 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
     switch (current_node.type) {
       case NODE_REROUTE: {
         const bNodeSocket &input_socket = current_node.input_socket(0);
-        return find_local_gizmo_source_recursive(input_socket, current_elem, propagation_path);
+        return find_local_gizmo_source_recursive(input_socket, current_elem, r_propagation_path);
       }
       case SH_NODE_VALUE:
       case FN_NODE_INPUT_VECTOR:
@@ -91,14 +99,15 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
       case SH_NODE_SEPXYZ: {
         const int axis = output_socket.index();
         const bNodeSocket &input_socket = current_node.input_socket(0);
-        return find_local_gizmo_source_recursive(input_socket, ValueElem{axis}, propagation_path);
+        return find_local_gizmo_source_recursive(
+            input_socket, ValueElem{axis}, r_propagation_path);
       }
       case SH_NODE_COMBXYZ: {
         BLI_assert(current_elem.index.has_value());
         const int axis = *current_elem.index;
         BLI_assert(axis >= 0 && axis < 3);
         const bNodeSocket &input_socket = current_node.input_socket(axis);
-        return find_local_gizmo_source_recursive(input_socket, ValueElem{}, propagation_path);
+        return find_local_gizmo_source_recursive(input_socket, ValueElem{}, r_propagation_path);
       }
       case NODE_GROUP_INPUT: {
         const int input_index = output_socket.index();
@@ -125,12 +134,12 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
           case NODE_MATH_RADIANS:
           case NODE_MATH_DEGREES:
             /* We can compute the derivate of those nodes. */
-            propagation_path.append({&current_node, current_elem});
+            r_propagation_path.path.append({&current_node, current_elem});
             break;
           default:
             return std::nullopt;
         }
-        return find_local_gizmo_source_recursive(input_socket, current_elem, propagation_path);
+        return find_local_gizmo_source_recursive(input_socket, current_elem, r_propagation_path);
       }
       case SH_NODE_VECTOR_MATH: {
         const int mode = current_node.custom1;
@@ -147,20 +156,20 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
           case NODE_VECTOR_MATH_MULTIPLY:
           case NODE_VECTOR_MATH_DIVIDE:
           case NODE_VECTOR_MATH_SCALE:
-            propagation_path.append({&current_node, current_elem});
+            r_propagation_path.path.append({&current_node, current_elem});
             break;
           default:
             return std::nullopt;
         }
-        return find_local_gizmo_source_recursive(input_socket, current_elem, propagation_path);
+        return find_local_gizmo_source_recursive(input_socket, current_elem, r_propagation_path);
       }
       case SH_NODE_MAP_RANGE: {
         const eCustomDataType data_type = eCustomDataType(
             static_cast<NodeMapRange *>(current_node.storage)->data_type);
         const bNodeSocket &input_socket = current_node.input_by_identifier(
             data_type == CD_PROP_FLOAT ? "Value" : "Vector");
-        propagation_path.append({&current_node, current_elem});
-        return find_local_gizmo_source_recursive(input_socket, current_elem, propagation_path);
+        r_propagation_path.path.append({&current_node, current_elem});
+        return find_local_gizmo_source_recursive(input_socket, current_elem, r_propagation_path);
       }
       default: {
         return std::nullopt;
@@ -169,10 +178,11 @@ static std::optional<GizmoSource> find_local_gizmo_source_recursive(
   }
 }
 
-static std::optional<GizmoSource> find_local_gizmo_source(
-    const bNodeSocket &socket, const ValueElem &elem, Vector<LocalGizmoPathElem> &propagation_path)
+static std::optional<GizmoSource> find_local_gizmo_source(const bNodeSocket &socket,
+                                                          const ValueElem &elem,
+                                                          LocalPropagationPath &r_propagation_path)
 {
-  return find_local_gizmo_source_recursive(socket, elem, propagation_path);
+  return find_local_gizmo_source_recursive(socket, elem, r_propagation_path);
 }
 
 static void add_gizmo_input_source_pair(GizmoPropagationResult &inferencing_result,
@@ -213,9 +223,9 @@ static GizmoPropagationResult compute_gizmo_inferencing_result(const bNodeTree &
       const bNodeSocket &input_socket = group_node->input_socket(group_input_ref.input_index);
       const InputSocketRef gizmo_input{&input_socket, group_input_ref.elem};
 
-      Vector<LocalGizmoPathElem> gizmo_path;
+      LocalPropagationPath propagation_path;
       if (const std::optional<GizmoSource> gizmo_source_opt = find_local_gizmo_source(
-              input_socket, group_input_ref.elem, gizmo_path))
+              input_socket, group_input_ref.elem, propagation_path))
       {
         add_gizmo_input_source_pair(inferencing_result, gizmo_input, *gizmo_source_opt);
       }
@@ -233,9 +243,9 @@ static GizmoPropagationResult compute_gizmo_inferencing_result(const bNodeTree &
         if (!is_valid_gizmo_link(*link)) {
           continue;
         }
-        Vector<LocalGizmoPathElem> gizmo_path;
+        LocalPropagationPath propagation_path;
         if (const std::optional<GizmoSource> gizmo_source = find_local_gizmo_source(
-                *link->fromsock, ValueElem{}, gizmo_path))
+                *link->fromsock, ValueElem{}, propagation_path))
         {
           add_gizmo_input_source_pair(
               inferencing_result, InputSocketRef{&gizmo_value_input, ValueElem{}}, *gizmo_source);
@@ -484,14 +494,14 @@ static std::optional<GizmoSource> find_propagated_gizmo_source_recursive(
     const ComputeContext &compute_context,
     PropagationPath &r_path)
 {
-  Vector<LocalGizmoPathElem> local_path;
+  LocalPropagationPath local_propagation_path;
   std::optional<GizmoSource> gizmo_source_opt = find_local_gizmo_source(
-      gizmo_socket, elem, local_path);
+      gizmo_socket, elem, local_propagation_path);
   if (!gizmo_source_opt) {
     return std::nullopt;
   }
 
-  for (const LocalGizmoPathElem &local_path_elem : local_path) {
+  for (const LocalPropagationPath::PathElem &local_path_elem : local_propagation_path.path) {
     r_path.path.append({local_path_elem.node, local_path_elem.elem, &compute_context});
   }
 
