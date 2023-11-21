@@ -23,14 +23,16 @@ namespace blender::gpu {
 VKCommandBuffers::~VKCommandBuffers()
 {
   const VKDevice &device = VKBackend::get().device_get();
-  VkCommandBuffer vk_command_buffers[2] = {
+  VkCommandBuffer vk_command_buffers[(int)Type::Max] = {
+      command_buffer_get(Type::Primary).vk_command_buffer(),
       command_buffer_get(Type::DataTransferCompute).vk_command_buffer(),
       command_buffer_get(Type::Graphics).vk_command_buffer(),
   };
+  command_buffer_get(Type::Primary).reset();
   command_buffer_get(Type::DataTransferCompute).reset();
   command_buffer_get(Type::Graphics).reset();
 
-  command_pool_.free_buffers(device, Span<VkCommandBuffer>(vk_command_buffers, 2));
+  command_pool_.free_buffers(device, Span<VkCommandBuffer>(vk_command_buffers, (int)Type::Max));
 
   finish();
 
@@ -51,6 +53,7 @@ void VKCommandBuffers::init(const VKDevice &device)
     return;
   }
   command_pool_.init(device);
+  init_primary_command_buffer(device);
   init_command_buffers(device, true, true);
   submission_id_.reset();
 }
@@ -64,16 +67,24 @@ static void init_command_buffer(VKCommandBuffer &command_buffer,
   debug::object_label(vk_command_buffer, name);
 }
 
+void VKCommandBuffers::init_primary_command_buffer(const VKDevice &device)
+{
+  VkCommandBuffer vk_command_buffer = VK_NULL_HANDLE;
+  command_pool_.allocate_primary_buffer(device, vk_command_buffer);
+  init_command_buffer(
+      command_buffer_get(Type::Primary), vk_command_buffer, "Primary Command Buffer");
+}
+
 void VKCommandBuffers::init_command_buffers(const VKDevice &device,
                                             bool init_data_transfer_compute,
                                             bool init_graphics)
 
 {
   BLI_assert(init_data_transfer_compute || init_graphics);
-  VkCommandBuffer vk_command_buffers[(uint32_t)Type::Max] = {VK_NULL_HANDLE};
+  VkCommandBuffer vk_command_buffers[2] = {VK_NULL_HANDLE};
   const uint32_t command_buffers_count = uint32_t(init_data_transfer_compute) +
                                          uint32_t(init_graphics);
-  command_pool_.allocate_buffers(
+  command_pool_.allocate_secondary_buffers(
       device, MutableSpan<VkCommandBuffer>(vk_command_buffers, command_buffers_count));
   if (init_data_transfer_compute) {
     init_command_buffer(command_buffer_get(Type::DataTransferCompute),
@@ -89,16 +100,35 @@ void VKCommandBuffers::init_command_buffers(const VKDevice &device,
   stats.command_buffers_created += command_buffers_count;
 }
 
-void VKCommandBuffers::submit_command_buffers(VKDevice &device,
-                                              MutableSpan<VKCommandBuffer *> command_buffers)
+void VKCommandBuffers::submit_command_buffers(MutableSpan<VKCommandBuffer *> command_buffers)
 {
   BLI_assert(ELEM(command_buffers.size(), 1, 2));
-  VkCommandBuffer handles[2];
   int num_command_buffers = 0;
+  VkCommandBuffer vk_command_buffers[2] = {VK_NULL_HANDLE};
+
+  VKCommandBuffer &prim_command_buffer = command_buffer_get(Type::Primary);
   for (VKCommandBuffer *command_buffer : command_buffers) {
     command_buffer->end_recording();
-    handles[num_command_buffers++] = command_buffer->vk_command_buffer();
+    vk_command_buffers[num_command_buffers] = command_buffer->vk_command_buffer();
   }
+
+  vkCmdExecuteCommands(
+      prim_command_buffer.vk_command_buffer(), num_command_buffers, vk_command_buffers);
+
+  for (VKCommandBuffer *command_buffer : command_buffers) {
+    VkCommandBuffer vk_command_buffer = command_buffer->vk_command_buffer();
+    command_pool_.mark_buffers_in_flight(Span<VkCommandBuffer>(&vk_command_buffer, 1),
+                                         last_signal_value_);
+    command_buffer->reset();
+  }
+}
+
+void VKCommandBuffers::submit_command_buffer(VKDevice &device)
+{
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Primary);
+  command_buffer.end_recording();
+  VkCommandBuffer vk_command_buffer = command_buffer.vk_command_buffer();
+
   VKTimelineSemaphore &timeline_semaphore = device.timeline_semaphore_get();
   VKTimelineSemaphore::Value wait_value = timeline_semaphore.value_get();
   last_signal_value_ = timeline_semaphore.value_increase();
@@ -115,8 +145,8 @@ void VKCommandBuffers::submit_command_buffers(VKDevice &device,
   VkPipelineStageFlags wait_stages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
   VkSubmitInfo submit_info = {};
   submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submit_info.commandBufferCount = num_command_buffers;
-  submit_info.pCommandBuffers = handles;
+  submit_info.commandBufferCount = 1;
+  submit_info.pCommandBuffers = &vk_command_buffer;
   submit_info.pNext = &timelineInfo;
   submit_info.waitSemaphoreCount = 1;
   submit_info.pWaitSemaphores = &timeline_handle;
@@ -125,14 +155,9 @@ void VKCommandBuffers::submit_command_buffers(VKDevice &device,
   submit_info.pSignalSemaphores = &timeline_handle;
 
   vkQueueSubmit(device.queue_get(), 1, &submit_info, VK_NULL_HANDLE);
+  finish();
 
-  for (VKCommandBuffer *command_buffer : command_buffers) {
-    VkCommandBuffer vk_command_buffer = command_buffer->vk_command_buffer();
-    command_pool_.mark_buffers_in_flight(Span<VkCommandBuffer>(&vk_command_buffer, 1),
-                                         last_signal_value_);
-    command_buffer->reset();
-  }
-  stats.command_buffers_submitted += command_buffers.size();
+  stats.command_buffers_submitted += 1;
 }
 
 void VKCommandBuffers::submit()
@@ -158,14 +183,14 @@ void VKCommandBuffers::submit()
     VKFrameBuffer *framebuffer = framebuffer_;
     end_render_pass(*framebuffer);
     command_buffers[command_buffer_index++] = &graphics;
-    submit_command_buffers(device,
-                           MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index));
+    submit_command_buffers(MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index));
     begin_render_pass(*framebuffer);
   }
   else if (has_data_transfer_compute_work) {
-    submit_command_buffers(device,
-                           MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index));
+    submit_command_buffers(MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index));
   }
+
+  submit_command_buffer(device);
   init_command_buffers(device, has_data_transfer_compute_work, has_graphics_work);
 }
 

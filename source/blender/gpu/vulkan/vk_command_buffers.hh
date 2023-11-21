@@ -27,9 +27,10 @@ class VKDescriptorSet;
 class VKCommandBuffers : public NonCopyable, NonMovable {
   VKCommandPool command_pool_;
   enum class Type {
-    DataTransferCompute = 0,
-    Graphics = 1,
-    Max = 2,
+    Primary = 0,
+    DataTransferCompute = 1,
+    Graphics = 2,
+    Max = 3,
   };
 
   bool initialized_ = false;
@@ -157,11 +158,15 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   }
 
  private:
+  void init_primary_command_buffer(const VKDevice &device);
   void init_command_buffers(const VKDevice &device,
                             bool init_data_transfer_compute,
                             bool init_graphics);
 
-  void submit_command_buffers(VKDevice &device, MutableSpan<VKCommandBuffer *> command_buffers);
+  /** Submit primary command buffer to device queue. */
+  void submit_command_buffer(VKDevice &device);
+  /** Submit secondary command buffers to the primary command buffer. */
+  void submit_command_buffers(MutableSpan<VKCommandBuffer *> command_buffers);
 
   VKCommandBuffer &command_buffer_get(Type type)
   {

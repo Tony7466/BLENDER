@@ -38,7 +38,9 @@ class VKCommandPool : public NonCopyable {
   void init(const VKDevice &device);
   void free(const VKDevice &device);
   void trim(const VKDevice &device);
-  void allocate_buffers(const VKDevice &device, MutableSpan<VkCommandBuffer> r_command_buffers);
+  void allocate_secondary_buffers(const VKDevice &device,
+                                  MutableSpan<VkCommandBuffer> r_command_buffers);
+  void allocate_primary_buffer(const VKDevice &device, VkCommandBuffer &r_command_buffer);
   void free_buffers(const VKDevice &device, Span<VkCommandBuffer> command_buffers);
 
   void mark_buffers_in_flight(Span<VkCommandBuffer> command_buffers,

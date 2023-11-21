@@ -58,8 +58,8 @@ void VKCommandPool::trim(const VKDevice &device)
   vkTrimCommandPool(device.device_get(), vk_command_pool_, 0);
 }
 
-void VKCommandPool::allocate_buffers(const VKDevice &device,
-                                     MutableSpan<VkCommandBuffer> r_command_buffers)
+void VKCommandPool::allocate_secondary_buffers(const VKDevice &device,
+                                               MutableSpan<VkCommandBuffer> r_command_buffers)
 {
   if (r_command_buffers.is_empty()) {
     return;
@@ -74,10 +74,22 @@ void VKCommandPool::allocate_buffers(const VKDevice &device,
   VkCommandBufferAllocateInfo alloc_info = {};
   alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   alloc_info.commandPool = vk_command_pool_;
-  alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  alloc_info.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
   alloc_info.commandBufferCount = r_command_buffers.size();
   vkAllocateCommandBuffers(device.device_get(), &alloc_info, r_command_buffers.data());
   stats.command_buffers_allocated += r_command_buffers.size();
+}
+
+void VKCommandPool::allocate_primary_buffer(const VKDevice &device,
+                                            VkCommandBuffer &r_command_buffer)
+{
+  VkCommandBufferAllocateInfo alloc_info = {};
+  alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  alloc_info.commandPool = vk_command_pool_;
+  alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  alloc_info.commandBufferCount = 1;
+  vkAllocateCommandBuffers(device.device_get(), &alloc_info, &r_command_buffer);
+  stats.command_buffers_allocated += 1;
 }
 
 void VKCommandPool::free_buffers(const VKDevice &device, Span<VkCommandBuffer> command_buffers)
