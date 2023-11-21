@@ -154,7 +154,7 @@ static std::optional<float> compute_derivative(
     const NodesModifierData &nmd, const nodes::gizmos::GlobalGizmoSource &gizmo_source)
 {
   float derivative = 1.0f;
-  for (const nodes::gizmos::GlobalGizmoPathElem &path_elem : gizmo_source.right_to_left_path) {
+  for (const nodes::gizmos::GlobalGizmoPathElem &path_elem : gizmo_source.propagation_path) {
     geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
         path_elem.compute_context->hash());
     tree_log.ensure_socket_values();

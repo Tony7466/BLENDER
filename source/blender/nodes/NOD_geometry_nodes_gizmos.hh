@@ -104,7 +104,7 @@ struct GlobalGizmoPathElem {
 
 struct GlobalGizmoSource {
   GizmoSource source;
-  Vector<GlobalGizmoPathElem> right_to_left_path;
+  Vector<GlobalGizmoPathElem> propagation_path;
 };
 
 Vector<GlobalGizmoSource> find_global_gizmo_sources(const ComputeContext &compute_context,
