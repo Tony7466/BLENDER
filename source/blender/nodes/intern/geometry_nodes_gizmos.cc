@@ -62,123 +62,123 @@ struct LocalPropagationPath {
  * Propagates a gizmo controlling the given socket to its "real" linked target within the current
  * node group. Also keeps track of the nodes the modify the gizmo-to-value-mapping.
  */
-static std::optional<GizmoTarget> find_local_gizmo_target(const bNodeSocket &current_socket,
-                                                          const ValueElem &current_elem,
+static std::optional<GizmoTarget> find_local_gizmo_target(const bNodeSocket &initial_socket,
+                                                          const ValueElem &initial_elem,
                                                           LocalPropagationPath &r_propagation_path)
 {
-  current_socket.runtime->has_gizmo = true;
-  if (current_socket.is_input()) {
-    const bNodeSocket &input_socket = current_socket;
-    const Span<const bNodeLink *> links = input_socket.directly_linked_links();
-    if ((input_socket.flag & SOCK_HIDE_VALUE) == 0 && links.is_empty()) {
-      return InputSocketRef{&current_socket, current_elem};
-    }
-    if (links.size() != 1) {
-      return std::nullopt;
-    }
-    const bNodeLink &link = *links[0];
-    if (link.is_muted()) {
-      return std::nullopt;
-    }
-    const bNodeSocket &origin_socket = *link.fromsock;
-    if (!origin_socket.is_available()) {
-      return std::nullopt;
-    }
-    if (is_valid_gizmo_link(link)) {
-      return find_local_gizmo_target(origin_socket, current_elem, r_propagation_path);
-    }
-    return std::nullopt;
-  }
-  else {
-    const bNodeSocket &output_socket = current_socket;
-    const bNode &current_node = output_socket.owner_node();
-    switch (current_node.type) {
-      case SH_NODE_VALUE:
-      case FN_NODE_INPUT_VECTOR:
-      case FN_NODE_INPUT_INT: {
-        /* The value in those nodes is the gizmo target. */
-        return ValueNodeRef{&current_node, current_elem};
-      }
-      case NODE_REROUTE: {
-        const bNodeSocket &input_socket = current_node.input_socket(0);
-        return find_local_gizmo_target(input_socket, current_elem, r_propagation_path);
-      }
-      case SH_NODE_SEPXYZ: {
-        const int axis = output_socket.index();
-        const bNodeSocket &input_socket = current_node.input_socket(0);
-        return find_local_gizmo_target(input_socket, ValueElem{axis}, r_propagation_path);
-      }
-      case SH_NODE_COMBXYZ: {
-        BLI_assert(current_elem.index.has_value());
-        const int axis = *current_elem.index;
-        BLI_assert(axis >= 0 && axis < 3);
-        const bNodeSocket &input_socket = current_node.input_socket(axis);
-        return find_local_gizmo_target(input_socket, ValueElem{}, r_propagation_path);
-      }
-      case NODE_GROUP_INPUT: {
-        const int input_index = output_socket.index();
-        return GroupInputRef{input_index, current_elem};
-      }
-      case SH_NODE_MATH: {
-        const int mode = current_node.custom1;
-        const bNodeSocket &input_socket = current_node.input_socket(0);
-        switch (mode) {
-          case NODE_MATH_ADD:
-          case NODE_MATH_SUBTRACT:
-          case NODE_MATH_SNAP:
-          case NODE_MATH_MINIMUM:
-          case NODE_MATH_MAXIMUM:
-          case NODE_MATH_ROUND:
-          case NODE_MATH_FLOOR:
-          case NODE_MATH_CEIL:
-          case NODE_MATH_TRUNC:
-            /* Those modes don't need special handling, because they don't affect the
-             * derivative. */
-            break;
-          case NODE_MATH_MULTIPLY:
-          case NODE_MATH_DIVIDE:
-          case NODE_MATH_RADIANS:
-          case NODE_MATH_DEGREES:
-            /* We can compute the derivate of those nodes. */
-            r_propagation_path.path.append({&current_node, current_elem});
-            break;
-          default:
-            return std::nullopt;
+  const bNodeSocket *current_socket = &initial_socket;
+  ValueElem current_elem = initial_elem;
+  while (true) {
+    if (current_socket->is_input()) {
+      const bNodeSocket &input_socket = *current_socket;
+      const Span<const bNodeLink *> links = input_socket.directly_linked_links();
+      if (links.is_empty()) {
+        if ((input_socket.flag & SOCK_HIDE_VALUE) == 0) {
+          return InputSocketRef{&input_socket, current_elem};
         }
-        return find_local_gizmo_target(input_socket, current_elem, r_propagation_path);
       }
-      case SH_NODE_VECTOR_MATH: {
-        const int mode = current_node.custom1;
-        const bNodeSocket &input_socket = current_node.input_socket(0);
-        switch (mode) {
-          case NODE_VECTOR_MATH_ADD:
-          case NODE_VECTOR_MATH_SUBTRACT:
-          case NODE_VECTOR_MATH_SNAP:
-          case NODE_VECTOR_MATH_MINIMUM:
-          case NODE_VECTOR_MATH_MAXIMUM:
-          case NODE_VECTOR_MATH_FLOOR:
-          case NODE_VECTOR_MATH_CEIL:
-            break;
-          case NODE_VECTOR_MATH_MULTIPLY:
-          case NODE_VECTOR_MATH_DIVIDE:
-          case NODE_VECTOR_MATH_SCALE:
-            r_propagation_path.path.append({&current_node, current_elem});
-            break;
-          default:
-            return std::nullopt;
-        }
-        return find_local_gizmo_target(input_socket, current_elem, r_propagation_path);
-      }
-      case SH_NODE_MAP_RANGE: {
-        const eCustomDataType data_type = eCustomDataType(
-            static_cast<NodeMapRange *>(current_node.storage)->data_type);
-        const bNodeSocket &input_socket = current_node.input_by_identifier(
-            data_type == CD_PROP_FLOAT ? "Value" : "Vector");
-        r_propagation_path.path.append({&current_node, current_elem});
-        return find_local_gizmo_target(input_socket, current_elem, r_propagation_path);
-      }
-      default: {
+      if (links.size() != 1) {
         return std::nullopt;
+      }
+      const bNodeLink &link = *links[0];
+      if (!is_valid_gizmo_link(link)) {
+        return std::nullopt;
+      }
+      current_socket = link.fromsock;
+    }
+    else {
+      const bNodeSocket &output_socket = *current_socket;
+      const bNode &node = current_socket->owner_node();
+      switch (node.type) {
+        case SH_NODE_VALUE:
+        case FN_NODE_INPUT_VECTOR:
+        case FN_NODE_INPUT_INT: {
+          /* The value stored in those nodes is the gizmo target. */
+          return ValueNodeRef{&node, current_elem};
+        }
+        case NODE_GROUP_INPUT: {
+          /* The gizmo target is propagated to the caller of the node group. */
+          const int input_index = output_socket.index();
+          return GroupInputRef{input_index, current_elem};
+        }
+        case NODE_REROUTE: {
+          current_socket = &node.input_socket(0);
+          break;
+        }
+        case SH_NODE_SEPXYZ: {
+          const int axis = output_socket.index();
+          current_socket = &node.input_socket(0);
+          current_elem = ValueElem{axis};
+          break;
+        }
+        case SH_NODE_COMBXYZ: {
+          BLI_assert(current_elem.index.has_value());
+          const int axis = *current_elem.index;
+          BLI_assert(axis >= 0 && axis < 3);
+          current_socket = &node.input_socket(axis);
+          current_elem = ValueElem{};
+          break;
+        }
+        case SH_NODE_MATH: {
+          const int mode = node.custom1;
+          switch (mode) {
+            case NODE_MATH_ADD:
+            case NODE_MATH_SUBTRACT:
+            case NODE_MATH_SNAP:
+            case NODE_MATH_MINIMUM:
+            case NODE_MATH_MAXIMUM:
+            case NODE_MATH_ROUND:
+            case NODE_MATH_FLOOR:
+            case NODE_MATH_CEIL:
+            case NODE_MATH_TRUNC:
+              /* Those modes don't need special handling, because they don't affect the
+               * derivative. */
+              break;
+            case NODE_MATH_MULTIPLY:
+            case NODE_MATH_DIVIDE:
+            case NODE_MATH_RADIANS:
+            case NODE_MATH_DEGREES:
+              /* We can compute the derivate of those nodes. */
+              r_propagation_path.path.append({&node, current_elem});
+              break;
+            default:
+              return std::nullopt;
+          }
+          current_socket = &node.input_socket(0);
+          break;
+        }
+        case SH_NODE_VECTOR_MATH: {
+          const int mode = node.custom1;
+          switch (mode) {
+            case NODE_VECTOR_MATH_ADD:
+            case NODE_VECTOR_MATH_SUBTRACT:
+            case NODE_VECTOR_MATH_SNAP:
+            case NODE_VECTOR_MATH_MINIMUM:
+            case NODE_VECTOR_MATH_MAXIMUM:
+            case NODE_VECTOR_MATH_FLOOR:
+            case NODE_VECTOR_MATH_CEIL:
+              break;
+            case NODE_VECTOR_MATH_MULTIPLY:
+            case NODE_VECTOR_MATH_DIVIDE:
+            case NODE_VECTOR_MATH_SCALE:
+              r_propagation_path.path.append({&node, current_elem});
+              break;
+            default:
+              return std::nullopt;
+          }
+          current_socket = &node.input_socket(0);
+          break;
+        }
+        case SH_NODE_MAP_RANGE: {
+          r_propagation_path.path.append({&node, current_elem});
+          const eCustomDataType data_type = eCustomDataType(
+              static_cast<NodeMapRange *>(node.storage)->data_type);
+          current_socket = &node.input_by_identifier(data_type == CD_PROP_FLOAT ? "Value" :
+                                                                                  "Vector");
+          break;
+        }
+        default:
+          return std::nullopt;
       }
     }
   }
