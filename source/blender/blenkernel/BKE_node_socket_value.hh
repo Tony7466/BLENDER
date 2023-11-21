@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BLI_implicit_sharing_ptr.hh"
+
 #include "BKE_grid_types.hh"
 
 #include "FN_field.hh"
@@ -23,11 +25,12 @@ namespace blender::bke {
 template<typename T> struct ValueOrField {
   using Field = fn::Field<T>;
   using Grid = typename grid_types::FieldValueGrid<T>;
+  using GridPtr = ImplicitSharingPtr<Grid>;
 
   /** Value that is used when the field is empty. */
   T value{};
   Field field;
-  Grid grid;
+  GridPtr grid;
 
   ValueOrField() = default;
 
@@ -35,11 +38,13 @@ template<typename T> struct ValueOrField {
 
   ValueOrField(Field field) : field(std::move(field)) {}
 
-  ValueOrField(Grid grid) : grid(std::move(grid)) {}
+  ValueOrField(const GridPtr &grid) : grid(std::move(grid)) {}
 
   ~ValueOrField()
   {
-    grid.remove_user_and_delete_if_last();
+    //    if (grid) {
+    //      grid->remove_user_and_delete_if_last();
+    //    }
   }
 
   bool is_field() const
@@ -60,7 +65,7 @@ template<typename T> struct ValueOrField {
     return fn::make_constant_field(this->value);
   }
 
-  Grid as_grid() const
+  GridPtr as_grid() const
   {
     if (this->grid) {
       return this->grid;
@@ -77,7 +82,7 @@ template<typename T> struct ValueOrField {
     if (this->grid) {
       /* Returns the grid background value. */
       T value;
-      if (grid_types::get_background_value(this->grid, value)) {
+      if (grid_types::get_background_value(*this->grid, value)) {
         return value;
       }
     }

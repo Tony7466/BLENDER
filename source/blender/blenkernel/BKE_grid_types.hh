@@ -391,39 +391,31 @@ template<typename T> struct FieldValueGridImpl {
 
 #endif /* WITH_OPENVDB */
 
-namespace detail {
-/* Utility class to make #is_field_value_grid_v work. */
-struct FieldValueGridBase {
-};
-}  // namespace detail
-
-template<typename T>
-struct FieldValueGrid : public ImplicitSharingMixin, public detail::FieldValueGridBase {
+template<typename T> struct FieldValueGrid : public ImplicitSharingMixin {
   using FieldValueType = T;
   using GridType = FieldValueGridImpl<T>;
 
+  /* XXX Grid could be stored by-value as well, but that makes it harder to use some OpenVDB API
+   * functions. The actual data is in the tree, which is always a shared_ptr anyway. */
   std::shared_ptr<GridType> grid;
 
   FieldValueGrid() : grid(nullptr) {}
   FieldValueGrid(const FieldValueGrid<T> &other) : grid(other.grid) {}
-  FieldValueGrid(const std::shared_ptr<GridType> &grid) : grid(grid) {}
+  /* Takes ownership of the grid, which must not be shared. */
+  FieldValueGrid(const std::shared_ptr<GridType> &grid) : grid(grid)
+  {
+    BLI_assert(grid);
+  }
   virtual ~FieldValueGrid() = default;
-
-  FieldValueGrid<T> &operator=(const FieldValueGrid<T> &other)
-  {
-    this->grid = other.grid;
-    return *this;
-  }
-
-  FieldValueGrid<T> &operator=(const std::shared_ptr<GridType> &grid)
-  {
-    this->grid = grid;
-    return *this;
-  }
 
   void delete_self() override
   {
     delete this;
+  }
+
+  void delete_data_only() override
+  {
+    this->grid.reset();
   }
 
   bool operator==(const FieldValueGrid<T> &other) const
@@ -433,11 +425,6 @@ struct FieldValueGrid : public ImplicitSharingMixin, public detail::FieldValueGr
   bool operator!=(const FieldValueGrid<T> &other) const
   {
     return this->grid != other.grid;
-  }
-
-  operator bool() const
-  {
-    return bool(this->grid);
   }
 
   GridType &operator*()
@@ -469,11 +456,6 @@ struct FieldValueGrid : public ImplicitSharingMixin, public detail::FieldValueGr
 
 namespace blender::bke::grid_types {
 
-/** True when T is any FieldValueGrid<...> type. */
-template<typename T>
-static constexpr bool is_field_value_grid_v = std::is_base_of_v<detail::FieldValueGridBase, T> &&
-                                              !std::is_same_v<detail::FieldValueGridBase, T>;
-
 template<typename T> bool get_background_value(const FieldValueGrid<T> &grid, T &r_value)
 {
 #ifdef WITH_OPENVDB
@@ -490,16 +472,20 @@ template<typename T> bool get_background_value(const FieldValueGrid<T> &grid, T 
 #endif /* WITH_OPENVDB */
 }
 
-template<typename T> FieldValueGrid<T> make_empty_grid(const T background_value)
+template<typename T> FieldValueGrid<T> *make_empty_grid(const T background_value)
 {
 #ifdef WITH_OPENVDB
+  using GridType = typename FieldValueGrid<T>::GridType;
+
+  std::shared_ptr<GridType> grid;
   if constexpr (std::is_same_v<T, std::string>) {
-    return nullptr;
+    grid = nullptr;
   }
   else {
     using Converter = GridConverter<T>;
-    return FieldValueGrid<T>::GridType::create(Converter::single_value_to_grid(background_value));
+    grid = GridType::create(Converter::single_value_to_grid(background_value));
   }
+  return new FieldValueGrid<T>(grid);
 #else
   return nullptr;
 #endif /* WITH_OPENVDB */

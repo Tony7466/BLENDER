@@ -11,6 +11,7 @@
 
 #include "BKE_cpp_types.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_grid_types.hh"
 #include "BKE_instances.hh"
 #include "BKE_node_socket_value_cpp_type.hh"
 
@@ -37,6 +38,9 @@ BLI_CPP_TYPE_MAKE(MStringProperty, CPPTypeFlags::None);
 
 BLI_CPP_TYPE_MAKE(blender::bke::AnonymousAttributeSet, CPPTypeFlags::None);
 
+BLI_CPP_TYPE_MAKE(blender::bke::grid_types::FieldValueGrid<float>, CPPTypeFlags::None);
+BLI_CPP_TYPE_MAKE(blender::bke::grid_types::FieldValueGrid<blender::float3>, CPPTypeFlags::None);
+
 void BKE_cpp_types_init()
 {
   blender::register_cpp_types();
@@ -56,6 +60,9 @@ void BKE_cpp_types_init()
   BLI_CPP_TYPE_REGISTER(MStringProperty);
 
   BLI_CPP_TYPE_REGISTER(blender::bke::AnonymousAttributeSet);
+
+  BLI_CPP_TYPE_REGISTER(blender::bke::grid_types::FieldValueGrid<float>);
+  BLI_CPP_TYPE_REGISTER(blender::bke::grid_types::FieldValueGrid<blender::float3>);
 }
 
 SOCKET_VALUE_CPP_TYPE_MAKE(float);

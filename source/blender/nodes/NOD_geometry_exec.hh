@@ -163,6 +163,8 @@ class GeoNodeExecParams {
   template<typename T> void set_output(StringRef identifier, T &&value)
   {
     using StoredT = std::decay_t<T>;
+    using GridType = bke::grid_types::FieldValueGrid<T>;
+
     if constexpr (is_field_base_type_v<StoredT>) {
       this->set_output(identifier, ValueOrField<StoredT>(std::forward<T>(value)));
     }
@@ -170,15 +172,15 @@ class GeoNodeExecParams {
       using BaseType = typename StoredT::base_type;
       this->set_output(identifier, ValueOrField<BaseType>(std::forward<T>(value)));
     }
-    else if constexpr (std::is_same_v<std::decay_t<StoredT>, GField>) {
+    else if constexpr (std::is_same_v<StoredT, GField>) {
       bke::attribute_math::convert_to_static_type(value.cpp_type(), [&](auto dummy) {
         using ValueT = decltype(dummy);
         Field<ValueT> value_typed(std::forward<T>(value));
         this->set_output(identifier, ValueOrField<ValueT>(std::move(value_typed)));
       });
     }
-    else if constexpr (bke::grid_types::is_field_value_grid_v<StoredT>) {
-      using BaseType = typename StoredT::FieldValueType;
+    else if constexpr (std::is_same_v<StoredT, ImplicitSharingPtr<GridType>>) {
+      using BaseType = typename GridType::FieldValueType;
       this->set_output(identifier, ValueOrField<BaseType>(std::forward<T>(value)));
     }
     else {
