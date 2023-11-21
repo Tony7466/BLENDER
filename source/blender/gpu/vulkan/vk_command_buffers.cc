@@ -131,13 +131,6 @@ void VKCommandBuffers::submit_command_buffers(VKDevice &device,
   stats.command_buffers_submitted += command_buffers.size();
 }
 
-void VKCommandBuffers::finish()
-{
-  VKDevice &device = VKBackend::get().device_get();
-  device.timeline_semaphore_get().wait(device, last_signal_value_);
-  submission_id_.next();
-}
-
 void VKCommandBuffers::submit()
 {
   VKDevice &device = VKBackend::get().device_get();
@@ -170,8 +163,21 @@ void VKCommandBuffers::submit()
                            MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index));
   }
   finish();
-
+  destroy_discarded_resources();
   init_command_buffers(device, has_data_transfer_compute_work, has_graphics_work);
+}
+
+void VKCommandBuffers::finish()
+{
+  VKDevice &device = VKBackend::get().device_get();
+  device.timeline_semaphore_get().wait(device, last_signal_value_);
+  submission_id_.next();
+}
+
+void VKCommandBuffers::trim()
+{
+  const VKDevice &device = VKBackend::get().device_get();
+  command_pool_.trim(device);
 }
 
 void VKCommandBuffers::ensure_no_draw_commands()
@@ -225,9 +231,12 @@ void VKCommandBuffers::destroy_discarded_resources()
   stats.command_buffers_freed += discarded_command_buffers_.size();
   discarded_command_buffers_.clear();
 
-  std::cout << "VKCommandBuffers(created=" << stats.command_buffers_created;
+  std::cout << "VKCommandBuffers(";
+  std::cout << "created=" << stats.command_buffers_created;
   std::cout << ",submitted=" << stats.command_buffers_submitted;
-  std::cout << ",freed=" << stats.command_buffers_freed << ")\n";
+  std::cout << ",freed=" << stats.command_buffers_freed;
+  std::cout << ")\n";
+  command_pool_.debug_print();
 }
 
 /**

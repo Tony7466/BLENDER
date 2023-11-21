@@ -18,7 +18,6 @@ VKCommandPool::VKCommandPool() {}
 VKCommandPool::~VKCommandPool()
 {
   const VKDevice &device = VKBackend::get().device_get();
-  /* TODO: free reusable buffers. */
   free(device);
 }
 
@@ -29,7 +28,7 @@ void VKCommandPool::init(const VKDevice &device)
   VK_ALLOCATION_CALLBACKS;
   VkCommandPoolCreateInfo command_pool_info = {};
   command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-  command_pool_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+  command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
   command_pool_info.queueFamilyIndex = device.queue_family_get();
 
   vkCreateCommandPool(
@@ -48,23 +47,50 @@ void VKCommandPool::free(const VKDevice &device)
   vk_command_pool_ = VK_NULL_HANDLE;
 }
 
-void VKCommandPool::allocate_buffers(const VKDevice &device,
-                                     MutableSpan<VkCommandBuffer> command_buffers)
+void VKCommandPool::trim(const VKDevice &device)
 {
+  vkFreeCommandBuffers(
+      device.device_get(), vk_command_pool_, reusable_handles_.size(), reusable_handles_.data());
+  reusable_handles_.clear();
+  vkTrimCommandPool(device.device_get(), vk_command_pool_, 0);
+}
+
+void VKCommandPool::allocate_buffers(const VKDevice &device,
+                                     MutableSpan<VkCommandBuffer> r_command_buffers)
+{
+  if (reusable_handles_.size() >= r_command_buffers.size()) {
+    for (int index : r_command_buffers.index_range()) {
+      r_command_buffers[index] = reusable_handles_.pop_last();
+    }
+
+    return;
+  }
   VkCommandBufferAllocateInfo alloc_info = {};
   alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   alloc_info.commandPool = vk_command_pool_;
   alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  alloc_info.commandBufferCount = command_buffers.size();
-  vkAllocateCommandBuffers(device.device_get(), &alloc_info, command_buffers.data());
+  alloc_info.commandBufferCount = r_command_buffers.size();
+  vkAllocateCommandBuffers(device.device_get(), &alloc_info, r_command_buffers.data());
+  stats.command_buffers_allocated += r_command_buffers.size();
 }
 
-void VKCommandPool::free_buffers(const VKDevice &device, Span<VkCommandBuffer> command_buffers)
+void VKCommandPool::free_buffers(const VKDevice & /*device*/,
+                                 Span<VkCommandBuffer> command_buffers)
 {
   BLI_assert(vk_command_pool_ != VK_NULL_HANDLE);
-  vkFreeCommandBuffers(
-      device.device_get(), vk_command_pool_, command_buffers.size(), command_buffers.data());
-  vkTrimCommandPool(device.device_get(), vk_command_pool_, 0);
+  for (VkCommandBuffer vk_command_buffer : command_buffers) {
+    vkResetCommandBuffer(vk_command_buffer, 0);
+  }
+  reusable_handles_.extend(command_buffers);
+}
+
+void VKCommandPool::debug_print() const
+{
+  std::cout << "VKCommandPool(";
+  std::cout << "allocated=" << stats.command_buffers_allocated;
+  std::cout << ",reused=" << stats.command_buffers_reused;
+  std::cout << ",reusable=" << reusable_handles_.size();
+  std::cout << ")\n";
 }
 
 }  // namespace blender::gpu

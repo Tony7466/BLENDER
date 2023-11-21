@@ -153,6 +153,7 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
 
   void submit();
   void finish();
+  void trim();
 
   const VKSubmissionID &submission_id_get() const
   {
