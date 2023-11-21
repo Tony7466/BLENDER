@@ -24,10 +24,10 @@ namespace blender::nodes::gizmos {
  * Often gizmos don't reference the whole socket value, but only a part of it. E.g. an arrow gizmo
  * may only control the Z value of a vector socket. In this case, the `index` is set to 2.
  */
-struct SocketElem {
+struct ValueElem {
   std::optional<int> index;
 
-  BLI_STRUCT_EQUALITY_OPERATORS_1(SocketElem, index)
+  BLI_STRUCT_EQUALITY_OPERATORS_1(ValueElem, index)
 
   uint64_t hash() const
   {
@@ -40,7 +40,7 @@ struct SocketElem {
  */
 struct InputSocketRef {
   const bNodeSocket *input_socket;
-  SocketElem elem;
+  ValueElem elem;
 
   BLI_STRUCT_EQUALITY_OPERATORS_2(InputSocketRef, input_socket, elem)
 
@@ -55,7 +55,7 @@ struct InputSocketRef {
  */
 struct ValueNodeRef {
   const bNode *value_node;
-  SocketElem elem;
+  ValueElem elem;
 
   BLI_STRUCT_EQUALITY_OPERATORS_2(ValueNodeRef, value_node, elem)
 
@@ -70,7 +70,7 @@ struct ValueNodeRef {
  */
 struct GroupInputRef {
   int input_index;
-  SocketElem elem;
+  ValueElem elem;
 
   BLI_STRUCT_EQUALITY_OPERATORS_2(GroupInputRef, input_index, elem)
 
@@ -98,7 +98,7 @@ struct GizmoPropagationResult {
 
 struct GlobalGizmoPathElem {
   const bNode *node;
-  SocketElem elem;
+  ValueElem elem;
   const ComputeContext *compute_context;
 };
 
