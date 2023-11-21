@@ -376,8 +376,6 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   BLI_SCOPED_DEFER([&]() { IDP_FreeProperty_ex(properties, false); });
 
   OperatorComputeContext compute_context(op->type->idname);
-  Set<ComputeContextHash> socket_log_contexts;
-  socket_log_contexts.add(compute_context.hash());
   auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
 
   for (Object *object : objects) {
