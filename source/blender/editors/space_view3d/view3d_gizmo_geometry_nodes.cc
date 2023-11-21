@@ -59,11 +59,6 @@ struct GeometryNodesGizmoGroup {
   Map<bke::GeoNodesGizmoID, std::unique_ptr<NodeGizmoData>> gizmo_by_node;
 };
 
-struct SocketItem {
-  const bNodeSocket &socket;
-  int elem_index = -1;
-};
-
 struct FloatValuePath {
   PointerRNA owner;
   PropertyRNA *property;
