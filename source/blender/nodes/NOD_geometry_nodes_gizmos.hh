@@ -103,33 +103,47 @@ struct GizmoPropagationResult {
   friend bool operator!=(const GizmoPropagationResult &a, const GizmoPropagationResult &b);
 };
 
+/**
+ * Nodes that influence how changes in the gizmo modify the controlled value. The nodes
+ * are ordered right-to-left based on the node tree.
+ */
 struct PropagationPath {
   struct PathElem {
     const bNode *node;
     ValueElem elem;
     const ComputeContext *compute_context;
   };
-  /**
-   * Contains nodes that influence how changes in the gizmo modify the controlled value. The nodes
-   * are ordered right-to-left based on the node tree.
-   */
   Vector<PathElem> path;
 };
 
+/**
+ * The target controlled by the gizmo and the propagation path.
+ */
 struct PropagatedGizmoTarget {
   GizmoTarget target;
   PropagationPath propagation_path;
 };
 
+/**
+ * Finds the targets that are controlled by a specific built-in gizmo node.
+ */
 Vector<PropagatedGizmoTarget> find_propagated_gizmo_targets(const ComputeContext &compute_context,
                                                             const bNode &gizmo_node);
 
+/**
+ * Invoke the callback for every active built-in gizmo node.
+ */
 void foreach_active_gizmo(
     const Object &object,
     const NodesModifierData &nmd,
     const wmWindowManager &wm,
     FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)> fn);
 
+/**
+ * Propagate gizmos in the tree locally. This does some preprocessing that makes it more efficient
+ * to find active gizmo targets later on. It is expected that this function has been called on used
+ * node groups already.
+ */
 bool update_gizmo_propagation(bNodeTree &tree);
 
 }  // namespace blender::nodes::gizmos

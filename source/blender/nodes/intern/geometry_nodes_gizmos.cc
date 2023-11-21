@@ -185,9 +185,9 @@ static std::optional<GizmoTarget> find_local_gizmo_target(const bNodeSocket &ini
   }
 }
 
-static void add_gizmo_input_target_pair(GizmoPropagationResult &result,
-                                        const InputSocketRef &gizmo_input,
-                                        const GizmoTarget &gizmo_target)
+static void add_propagated_gizmo(GizmoPropagationResult &result,
+                                 const InputSocketRef &gizmo_input,
+                                 const GizmoTarget &gizmo_target)
 {
   if (const auto *ref = std::get_if<ValueNodeRef>(&gizmo_target)) {
     result.gizmo_inputs_for_value_nodes.add(ref->value_node, gizmo_input);
@@ -200,14 +200,33 @@ static void add_gizmo_input_target_pair(GizmoPropagationResult &result,
   }
 }
 
-static GizmoPropagationResult propagate_gizmos(const bNodeTree &tree)
+static void propagate_gizmos_from_builtin_nodes(GizmoPropagationResult &result,
+                                                const bNodeTree &tree)
 {
-  GizmoPropagationResult result;
-
-  for (const bNodeSocket *socket : tree.all_sockets()) {
-    socket->runtime->has_gizmo = false;
+  for (const StringRefNull idname : {"GeometryNodeGizmoArrow", "GeometryNodeGizmoDial"}) {
+    for (const bNode *gizmo_node : tree.nodes_by_type(idname)) {
+      const bNodeSocket &gizmo_value_input = gizmo_node->input_socket(0);
+      gizmo_value_input.runtime->has_gizmo = true;
+      for (const bNodeLink *link : gizmo_value_input.directly_linked_links()) {
+        if (!is_valid_gizmo_link(*link)) {
+          continue;
+        }
+        LocalPropagationPath propagation_path;
+        if (const std::optional<GizmoTarget> gizmo_target = find_local_gizmo_target(
+                *link->fromsock, ValueElem{}, propagation_path))
+        {
+          add_propagated_gizmo(
+              result, InputSocketRef{&gizmo_value_input, ValueElem{}}, *gizmo_target);
+        }
+      }
+      result.nodes_with_gizmos_inside.append(gizmo_node);
+    }
   }
+}
 
+static void propagate_gizmos_from_group_nodes(GizmoPropagationResult &result,
+                                              const bNodeTree &tree)
+{
   for (const bNode *group_node : tree.group_nodes()) {
     const bNodeTree *group = reinterpret_cast<const bNodeTree *>(group_node->id);
     if (group == nullptr) {
@@ -226,35 +245,43 @@ static GizmoPropagationResult propagate_gizmos(const bNodeTree &tree)
       if (const std::optional<GizmoTarget> gizmo_target_opt = find_local_gizmo_target(
               input_socket, group_input_ref.elem, propagation_path))
       {
-        add_gizmo_input_target_pair(result, gizmo_input, *gizmo_target_opt);
+        add_propagated_gizmo(result, gizmo_input, *gizmo_target_opt);
       }
     }
     if (group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_inputs.size() > 0) {
       result.nodes_with_gizmos_inside.append(group_node);
     }
   }
+}
 
-  for (const StringRefNull idname : {"GeometryNodeGizmoArrow", "GeometryNodeGizmoDial"}) {
-    for (const bNode *gizmo_node : tree.nodes_by_type(idname)) {
-      const bNodeSocket &gizmo_value_input = gizmo_node->input_socket(0);
-      gizmo_value_input.runtime->has_gizmo = true;
-      for (const bNodeLink *link : gizmo_value_input.directly_linked_links()) {
-        if (!is_valid_gizmo_link(*link)) {
-          continue;
-        }
-        LocalPropagationPath propagation_path;
-        if (const std::optional<GizmoTarget> gizmo_target = find_local_gizmo_target(
-                *link->fromsock, ValueElem{}, propagation_path))
-        {
-          add_gizmo_input_target_pair(
-              result, InputSocketRef{&gizmo_value_input, ValueElem{}}, *gizmo_target);
-        }
-      }
-      result.nodes_with_gizmos_inside.append(gizmo_node);
-    }
+static GizmoPropagationResult propagate_gizmos(const bNodeTree &tree)
+{
+  for (const bNodeSocket *socket : tree.all_sockets()) {
+    /* Reset gizmo state of sockets. */
+    socket->runtime->has_gizmo = false;
   }
 
+  GizmoPropagationResult result;
+  propagate_gizmos_from_builtin_nodes(result, tree);
+  propagate_gizmos_from_group_nodes(result, tree);
   return result;
+}
+
+bool update_gizmo_propagation(bNodeTree &tree)
+{
+  tree.ensure_topology_cache();
+  if (tree.has_available_link_cycle()) {
+    const bool changed = tree.runtime->gizmo_inferencing.get() != nullptr;
+    tree.runtime->gizmo_inferencing.reset();
+    return changed;
+  }
+
+  GizmoPropagationResult result = propagate_gizmos(tree);
+  const bool changed = tree.runtime->gizmo_inferencing ?
+                           *tree.runtime->gizmo_inferencing != result :
+                           true;
+  tree.runtime->gizmo_inferencing = std::make_unique<GizmoPropagationResult>(std::move(result));
+  return changed;
 }
 
 std::ostream &operator<<(std::ostream &stream, const GizmoPropagationResult &data)
@@ -291,23 +318,6 @@ bool operator!=(const GizmoPropagationResult &a, const GizmoPropagationResult &b
   return !(a == b);
 }
 
-bool update_gizmo_propagation(bNodeTree &tree)
-{
-  tree.ensure_topology_cache();
-  if (tree.has_available_link_cycle()) {
-    const bool changed = tree.runtime->gizmo_inferencing.get() != nullptr;
-    tree.runtime->gizmo_inferencing.reset();
-    return changed;
-  }
-
-  GizmoPropagationResult result = propagate_gizmos(tree);
-  const bool changed = tree.runtime->gizmo_inferencing ?
-                           *tree.runtime->gizmo_inferencing != result :
-                           true;
-  tree.runtime->gizmo_inferencing = std::make_unique<GizmoPropagationResult>(std::move(result));
-  return changed;
-}
-
 static void foreach_gizmo_for_target(
     const GizmoTarget &gizmo_target,
     ComputeContextBuilder &compute_context_builder,
@@ -330,9 +340,11 @@ static void foreach_gizmo_for_input(
     return;
   }
   if (ELEM(node.type, GEO_NODE_GIZMO_ARROW, GEO_NODE_GIZMO_DIAL)) {
+    /* Found an actual built-in gizmo node. */
     fn(*compute_context_builder.current(), node);
   }
   else if (node.is_group()) {
+    /* Recurse into the group node to find the used gizmo. */
     const GroupInputRef group_input_ref{input_ref.input_socket->index(), input_ref.elem};
     const bNodeTree &group = *reinterpret_cast<const bNodeTree *>(node.id);
     group.ensure_topology_cache();
