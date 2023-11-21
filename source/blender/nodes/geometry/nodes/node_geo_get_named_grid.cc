@@ -56,7 +56,6 @@ static bool try_output_grid_value(GeoNodeExecParams params, const openvdb::GridB
 
   FVGridPtr grid_ptr(new FVGrid(typed_grid));
   params.set_output("Grid", ValueOrField<T>(std::move(grid_ptr)));
-  //  params.set_output("Grid", FVGridPtr(new FVGrid(typed_grid)));
   return true;
 }
 
@@ -67,6 +66,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   BLI_assert(grids::grid_type_supported(data_type));
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");
   const std::string grid_name = params.extract_input<std::string>("Name");
+  const bool remove_grid = params.extract_input<bool>("Remove");
 
   if (Volume *volume = geometry_set.get_volume_for_write()) {
     if (VolumeGrid *grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
@@ -83,6 +83,10 @@ static void node_geo_exec(GeoNodeExecParams params)
             BLI_assert_unreachable();
             break;
         }
+      }
+
+      if (remove_grid) {
+        BKE_volume_grid_remove(volume, grid);
       }
     }
   }
