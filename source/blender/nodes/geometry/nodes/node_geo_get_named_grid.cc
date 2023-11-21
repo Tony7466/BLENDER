@@ -51,6 +51,7 @@ static bool try_output_grid_value(GeoNodeExecParams params, const openvdb::GridB
 
   std::shared_ptr<GridType> typed_grid = openvdb::GridBase::grid<GridType>(grid);
   if (!typed_grid) {
+    params.set_output("Grid", ValueOrField<T>());
     return false;
   }
 
@@ -88,6 +89,9 @@ static void node_geo_exec(GeoNodeExecParams params)
       if (remove_grid) {
         BKE_volume_grid_remove(volume, grid);
       }
+
+      params.set_output("Volume", geometry_set);
+      return;
     }
   }
 

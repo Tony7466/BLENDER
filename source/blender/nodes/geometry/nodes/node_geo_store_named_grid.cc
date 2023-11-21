@@ -4,6 +4,9 @@
 
 #include "node_geometry_util.hh"
 
+#include "BKE_volume.hh"
+#include "BKE_volume_openvdb.hh"
+
 #include "RNA_enum_types.hh"
 
 #include "NOD_rna_define.hh"
@@ -37,9 +40,46 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = CD_PROP_FLOAT;
 }
 
+template<typename T>
+static void try_store_grid(GeoNodeExecParams params, Volume *volume, StringRef name)
+{
+  const bke::ValueOrField<T> value = params.extract_input<bke::ValueOrField<T>>("Grid");
+  if (!value.is_grid()) {
+    return;
+  }
+
+  if (VolumeGrid *existing_grid = BKE_volume_grid_find_for_write(volume, name.data())) {
+    BKE_volume_grid_remove(volume, existing_grid);
+  }
+
+  BKE_volume_grid_add_vdb(*volume, name, value.grid->grid);
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
+  const eCustomDataType data_type = eCustomDataType(params.node().custom1);
+  BLI_assert(grids::grid_type_supported(data_type));
+  GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");
+  const std::string grid_name = params.extract_input<std::string>("Name");
+
+  if (Volume *volume = geometry_set.get_volume_for_write()) {
+    switch (data_type) {
+      case CD_PROP_FLOAT:
+        try_store_grid<float>(params, volume, grid_name);
+        break;
+      case CD_PROP_FLOAT3:
+        try_store_grid<float3>(params, volume, grid_name);
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
+
+    params.set_output("Volume", geometry_set);
+    return;
+  }
+
   params.set_default_remaining_outputs();
 #else
   params.set_default_remaining_outputs();
