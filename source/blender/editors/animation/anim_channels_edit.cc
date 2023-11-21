@@ -4525,9 +4525,7 @@ static void ANIM_OT_view_curve_in_graph_editor(wmOperatorType *ot)
   /* Identifiers */
   ot->name = "View In Graph Editor";
   ot->idname = "ANIM_OT_view_curve_in_graph_editor";
-  ot->description =
-      "Frame the property under the cursor in the Graph Editor. Use Alt+Click to isolate the "
-      "curves";
+  ot->description = "Frame the property under the cursor in the Graph Editor";
 
   /* API callbacks */
   ot->exec = view_curve_in_graph_editor_exec;
