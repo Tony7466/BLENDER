@@ -22,8 +22,7 @@ namespace blender::gpu {
 
 VKCommandBuffers::~VKCommandBuffers()
 {
-  command_buffer_get(Type::DataTransfer).free();
-  command_buffer_get(Type::Compute).free();
+  command_buffer_get(Type::DataTransferCompute).free();
   command_buffer_get(Type::Graphics).free();
 
   VK_ALLOCATION_CALLBACKS;
@@ -94,14 +93,10 @@ void VKCommandBuffers::init_command_buffers(const VKDevice &device)
   alloc_info.commandBufferCount = (uint32_t)Type::Max;
   vkAllocateCommandBuffers(device.device_get(), &alloc_info, vk_command_buffers);
 
-  init_command_buffer(command_buffer_get(Type::DataTransfer),
+  init_command_buffer(command_buffer_get(Type::DataTransferCompute),
                       vk_command_pool_,
-                      vk_command_buffers[(int)Type::DataTransfer],
-                      "Data Transfer Command Buffer");
-  init_command_buffer(command_buffer_get(Type::Compute),
-                      vk_command_pool_,
-                      vk_command_buffers[(int)Type::Compute],
-                      "Compute Command Buffer");
+                      vk_command_buffers[(int)Type::DataTransferCompute],
+                      "Data Transfer Compute Command Buffer");
   init_command_buffer(command_buffer_get(Type::Graphics),
                       vk_command_pool_,
                       vk_command_buffers[(int)Type::Graphics],
@@ -150,33 +145,20 @@ static void submit_command_buffers(const VKDevice &device,
 void VKCommandBuffers::submit()
 {
   const VKDevice &device = VKBackend::get().device_get();
-  VKCommandBuffer &data_transfer = command_buffer_get(Type::DataTransfer);
-  VKCommandBuffer &compute = command_buffer_get(Type::Compute);
+  VKCommandBuffer &data_transfer_compute = command_buffer_get(Type::DataTransferCompute);
   VKCommandBuffer &graphics = command_buffer_get(Type::Graphics);
 
-  const bool has_transfer_work = data_transfer.has_recorded_commands();
-  const bool has_compute_work = compute.has_recorded_commands();
+  const bool has_data_transfer_compute_work = data_transfer_compute.has_recorded_commands();
   const bool has_graphics_work = graphics.has_recorded_commands();
-  BLI_assert_msg((has_compute_work && !has_graphics_work) ||
-                     (!has_compute_work && has_graphics_work) ||
-                     !(has_compute_work || has_graphics_work),
-                 "Cannot determine dependency when compute and graphics work needs to be done");
 
   VKCommandBuffer *command_buffers[2] = {nullptr, nullptr};
   int command_buffer_index = 0;
 
-  if (has_transfer_work) {
-    command_buffers[command_buffer_index++] = &data_transfer;
+  if (has_data_transfer_compute_work) {
+    command_buffers[command_buffer_index++] = &data_transfer_compute;
   }
 
-  if (has_compute_work) {
-    command_buffers[command_buffer_index++] = &compute;
-    submit_command_buffers(device,
-                           MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index),
-                           vk_fence_,
-                           FenceTimeout);
-  }
-  else if (has_graphics_work) {
+  if (has_graphics_work) {
     VKFrameBuffer *framebuffer = framebuffer_;
     end_render_pass(*framebuffer);
     command_buffers[command_buffer_index++] = &graphics;
@@ -186,25 +168,16 @@ void VKCommandBuffers::submit()
                            FenceTimeout);
     begin_render_pass(*framebuffer);
   }
-  /* Check needs to go as last, transfer work is already included with the compute/graphics
-   * submission. */
-  else if (has_transfer_work) {
+  else if (has_data_transfer_compute_work) {
     submit_command_buffers(device,
                            MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index),
                            vk_fence_,
                            FenceTimeout);
   }
 
-  const bool reset_submission_id = has_compute_work || has_graphics_work;
+  const bool reset_submission_id = has_data_transfer_compute_work || has_graphics_work;
   if (reset_submission_id) {
     submission_id_.next();
-  }
-}
-
-void VKCommandBuffers::ensure_no_compute_commands()
-{
-  if (command_buffer_get(Type::Compute).has_recorded_commands()) {
-    submit();
   }
 }
 
@@ -258,10 +231,9 @@ void VKCommandBuffers::bind(const VKPipeline &vk_pipeline, VkPipelineBindPoint b
   Type type;
   if (bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
     ensure_no_draw_commands();
-    type = Type::Compute;
+    type = Type::DataTransferCompute;
   }
   else if (bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
-    ensure_no_compute_commands();
     type = Type::Graphics;
   }
 
@@ -277,10 +249,9 @@ void VKCommandBuffers::bind(const VKDescriptorSet &descriptor_set,
   Type type;
   if (bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
     ensure_no_draw_commands();
-    type = Type::Compute;
+    type = Type::DataTransferCompute;
   }
   if (bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
-    ensure_no_compute_commands();
     type = Type::Graphics;
   }
 
@@ -313,7 +284,6 @@ void VKCommandBuffers::bind(const uint32_t binding,
                             const VkBuffer &vk_vertex_buffer,
                             const VkDeviceSize offset)
 {
-  ensure_no_compute_commands();
   VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
 
   validate_framebuffer_exists();
@@ -323,23 +293,19 @@ void VKCommandBuffers::bind(const uint32_t binding,
   command_buffer.command_recorded();
 }
 
-void VKCommandBuffers::bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type)
+void VKCommandBuffers::bind(const VKBuffer &index_buffer, VkIndexType index_type)
 {
-  ensure_no_compute_commands();
   VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
 
   validate_framebuffer_exists();
   ensure_active_framebuffer();
-  vkCmdBindIndexBuffer(command_buffer.vk_command_buffer(),
-                       index_buffer.buffer.vk_handle(),
-                       index_buffer.offset,
-                       index_type);
+  vkCmdBindIndexBuffer(
+      command_buffer.vk_command_buffer(), index_buffer.vk_handle(), 0, index_type);
   command_buffer.command_recorded();
 }
 
 void VKCommandBuffers::begin_render_pass(VKFrameBuffer &framebuffer)
 {
-  ensure_no_compute_commands();
   BLI_assert(framebuffer_ == nullptr);
   framebuffer_ = &framebuffer;
   framebuffer_bound_ = false;
@@ -357,7 +323,6 @@ void VKCommandBuffers::ensure_no_active_framebuffer()
 
 void VKCommandBuffers::end_render_pass(const VKFrameBuffer &framebuffer)
 {
-  ensure_no_compute_commands();
   UNUSED_VARS_NDEBUG(framebuffer);
   BLI_assert(framebuffer_ == nullptr || framebuffer_ == &framebuffer);
   ensure_no_active_framebuffer();
@@ -371,10 +336,9 @@ void VKCommandBuffers::push_constants(const VKPushConstants &push_constants,
   Type type;
   if (vk_shader_stages == VK_SHADER_STAGE_COMPUTE_BIT) {
     ensure_no_draw_commands();
-    type = Type::Compute;
+    type = Type::DataTransferCompute;
   }
   else {
-    ensure_no_compute_commands();
     type = Type::Graphics;
   }
 
@@ -394,7 +358,7 @@ void VKCommandBuffers::dispatch(int groups_x_len, int groups_y_len, int groups_z
 {
   ensure_no_draw_commands();
 
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::Compute);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdDispatch(command_buffer.vk_command_buffer(), groups_x_len, groups_y_len, groups_z_len);
   command_buffer.command_recorded();
 }
@@ -403,7 +367,7 @@ void VKCommandBuffers::dispatch(VKStorageBuffer &command_storage_buffer)
 {
   ensure_no_draw_commands();
 
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::Compute);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdDispatchIndirect(command_buffer.vk_command_buffer(), command_storage_buffer.vk_handle(), 0);
   command_buffer.command_recorded();
 }
@@ -412,7 +376,7 @@ void VKCommandBuffers::copy(VKBuffer &dst_buffer,
                             VKTexture &src_texture,
                             Span<VkBufferImageCopy> regions)
 {
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdCopyImageToBuffer(command_buffer.vk_command_buffer(),
                          src_texture.vk_image_handle(),
                          src_texture.current_layout_get(),
@@ -426,7 +390,7 @@ void VKCommandBuffers::copy(VKTexture &dst_texture,
                             VKBuffer &src_buffer,
                             Span<VkBufferImageCopy> regions)
 {
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdCopyBufferToImage(command_buffer.vk_command_buffer(),
                          src_buffer.vk_handle(),
                          dst_texture.vk_image_handle(),
@@ -440,7 +404,7 @@ void VKCommandBuffers::copy(VKTexture &dst_texture,
                             VKTexture &src_texture,
                             Span<VkImageCopy> regions)
 {
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdCopyImage(command_buffer.vk_command_buffer(),
                  src_texture.vk_image_handle(),
                  src_texture.current_layout_get(),
@@ -453,7 +417,7 @@ void VKCommandBuffers::copy(VKTexture &dst_texture,
 
 void VKCommandBuffers::copy(VKBuffer &dst_buffer, VkBuffer src_buffer, Span<VkBufferCopy> regions)
 {
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdCopyBuffer(command_buffer.vk_command_buffer(),
                   src_buffer,
                   dst_buffer.vk_handle(),
@@ -479,7 +443,7 @@ void VKCommandBuffers::blit(VKTexture &dst_texture,
                             VkImageLayout src_layout,
                             Span<VkImageBlit> regions)
 {
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdBlitImage(command_buffer.vk_command_buffer(),
                  src_texture.vk_image_handle(),
                  src_layout,
@@ -495,7 +459,7 @@ void VKCommandBuffers::pipeline_barrier(const VkPipelineStageFlags src_stages,
                                         const VkPipelineStageFlags dst_stages,
                                         Span<VkImageMemoryBarrier> image_memory_barriers)
 {
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdPipelineBarrier(command_buffer.vk_command_buffer(),
                        src_stages,
                        dst_stages,
@@ -514,7 +478,7 @@ void VKCommandBuffers::clear(VkImage vk_image,
                              const VkClearColorValue &vk_clear_color,
                              Span<VkImageSubresourceRange> ranges)
 {
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdClearColorImage(command_buffer.vk_command_buffer(),
                        vk_image,
                        vk_image_layout,
@@ -529,7 +493,7 @@ void VKCommandBuffers::clear(VkImage vk_image,
                              const VkClearDepthStencilValue &vk_clear_depth_stencil,
                              Span<VkImageSubresourceRange> ranges)
 {
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdClearDepthStencilImage(command_buffer.vk_command_buffer(),
                               vk_image,
                               vk_image_layout,
@@ -541,7 +505,6 @@ void VKCommandBuffers::clear(VkImage vk_image,
 
 void VKCommandBuffers::clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas)
 {
-  ensure_no_compute_commands();
   VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
   validate_framebuffer_exists();
   ensure_active_framebuffer();
@@ -555,7 +518,7 @@ void VKCommandBuffers::clear(Span<VkClearAttachment> attachments, Span<VkClearRe
 
 void VKCommandBuffers::fill(VKBuffer &buffer, uint32_t clear_data)
 {
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransfer);
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdFillBuffer(command_buffer.vk_command_buffer(),
                   buffer.vk_handle(),
                   0,
@@ -566,7 +529,6 @@ void VKCommandBuffers::fill(VKBuffer &buffer, uint32_t clear_data)
 
 void VKCommandBuffers::draw(int v_first, int v_count, int i_first, int i_count)
 {
-  ensure_no_compute_commands();
   validate_framebuffer_exists();
   ensure_active_framebuffer();
 
@@ -578,7 +540,6 @@ void VKCommandBuffers::draw(int v_first, int v_count, int i_first, int i_count)
 void VKCommandBuffers::draw_indexed(
     int index_count, int instance_count, int first_index, int vertex_offset, int first_instance)
 {
-  ensure_no_compute_commands();
   validate_framebuffer_exists();
   ensure_active_framebuffer();
 
@@ -597,7 +558,6 @@ void VKCommandBuffers::draw_indirect(const VKStorageBuffer &buffer,
                                      uint32_t draw_count,
                                      uint32_t stride)
 {
-  ensure_no_compute_commands();
   validate_framebuffer_exists();
   ensure_active_framebuffer();
 
@@ -612,7 +572,6 @@ void VKCommandBuffers::draw_indexed_indirect(const VKStorageBuffer &buffer,
                                              uint32_t draw_count,
                                              uint32_t stride)
 {
-  ensure_no_compute_commands();
   validate_framebuffer_exists();
   ensure_active_framebuffer();
 
