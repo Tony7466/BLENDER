@@ -1015,6 +1015,9 @@ class Map {
     return this->count_collisions__impl(key, hash_(key));
   }
 
+  /**
+   * True if both maps have the same key-value-pairs.
+   */
   friend bool operator==(const Map &a, const Map &b)
   {
     if (a.size() != b.size()) {
