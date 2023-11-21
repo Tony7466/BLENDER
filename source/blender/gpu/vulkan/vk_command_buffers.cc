@@ -22,16 +22,18 @@ namespace blender::gpu {
 
 VKCommandBuffers::~VKCommandBuffers()
 {
-  discarded_command_buffers_.append(
-      command_buffer_get(Type::DataTransferCompute).vk_command_buffer());
-  discarded_command_buffers_.append(command_buffer_get(Type::Graphics).vk_command_buffer());
+  const VKDevice &device = VKBackend::get().device_get();
+  VkCommandBuffer vk_command_buffers[2] = {
+      command_buffer_get(Type::DataTransferCompute).vk_command_buffer(),
+      command_buffer_get(Type::Graphics).vk_command_buffer(),
+  };
   command_buffer_get(Type::DataTransferCompute).reset();
   command_buffer_get(Type::Graphics).reset();
 
+  command_pool_.free_buffers(device, Span<VkCommandBuffer>(vk_command_buffers, 2));
+
   finish();
 
-  const VKDevice &device = VKBackend::get().device_get();
-  destroy_discarded_resources();
   command_pool_.free(device);
 }
 
@@ -125,7 +127,9 @@ void VKCommandBuffers::submit_command_buffers(VKDevice &device,
   vkQueueSubmit(device.queue_get(), 1, &submit_info, VK_NULL_HANDLE);
 
   for (VKCommandBuffer *command_buffer : command_buffers) {
-    discarded_command_buffers_.append(command_buffer->vk_command_buffer());
+    VkCommandBuffer vk_command_buffer = command_buffer->vk_command_buffer();
+    command_pool_.mark_buffers_in_flight(Span<VkCommandBuffer>(&vk_command_buffer, 1),
+                                         last_signal_value_);
     command_buffer->reset();
   }
   stats.command_buffers_submitted += command_buffers.size();
@@ -162,15 +166,15 @@ void VKCommandBuffers::submit()
     submit_command_buffers(device,
                            MutableSpan<VKCommandBuffer *>(command_buffers, command_buffer_index));
   }
-  finish();
-  destroy_discarded_resources();
   init_command_buffers(device, has_data_transfer_compute_work, has_graphics_work);
 }
 
 void VKCommandBuffers::finish()
 {
   VKDevice &device = VKBackend::get().device_get();
-  device.timeline_semaphore_get().wait(device, last_signal_value_);
+  VKTimelineSemaphore &timeline_semaphore = device.timeline_semaphore_get();
+  timeline_semaphore.wait(device, last_signal_value_);
+  command_pool_.mark_buffers_reusable(last_signal_value_);
   submission_id_.next();
 }
 
@@ -220,17 +224,8 @@ void VKCommandBuffers::ensure_active_framebuffer()
   }
 }
 
-void VKCommandBuffers::destroy_discarded_resources()
+void VKCommandBuffers::debug_print() const
 {
-  if (discarded_command_buffers_.is_empty()) {
-    return;
-  }
-
-  VKDevice &device = VKBackend::get().device_get();
-  command_pool_.free_buffers(device, discarded_command_buffers_);
-  stats.command_buffers_freed += discarded_command_buffers_.size();
-  discarded_command_buffers_.clear();
-
   std::cout << "VKCommandBuffers(";
   std::cout << "created=" << stats.command_buffers_created;
   std::cout << ",submitted=" << stats.command_buffers_submitted;

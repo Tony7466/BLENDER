@@ -118,21 +118,20 @@ void VKContext::end_frame()
 {
   VKDevice &device = VKBackend::get().device_get();
   command_buffers_.finish();
-  command_buffers_.destroy_discarded_resources();
-  command_buffers_.trim();
+  command_buffers_.debug_print();
   device.destroy_discarded_resources();
 }
 
 void VKContext::flush()
 {
   command_buffers_.submit();
+  command_buffers_.finish();
 }
 
 void VKContext::finish()
 {
   command_buffers_.submit();
   command_buffers_.finish();
-  command_buffers_.trim();
 }
 
 void VKContext::memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb)

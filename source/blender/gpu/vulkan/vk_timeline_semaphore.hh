@@ -53,6 +53,11 @@ class VKTimelineSemaphore {
       return &value_;
     }
 
+    bool operator<(const Value &other) const
+    {
+      return this->value_ < other.value_;
+    }
+
    private:
     void reset()
     {

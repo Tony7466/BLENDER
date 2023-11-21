@@ -28,7 +28,8 @@ void VKCommandPool::init(const VKDevice &device)
   VK_ALLOCATION_CALLBACKS;
   VkCommandPoolCreateInfo command_pool_info = {};
   command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-  command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT |
+                            VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
   command_pool_info.queueFamilyIndex = device.queue_family_get();
 
   vkCreateCommandPool(
@@ -49,8 +50,10 @@ void VKCommandPool::free(const VKDevice &device)
 
 void VKCommandPool::trim(const VKDevice &device)
 {
-  vkFreeCommandBuffers(
-      device.device_get(), vk_command_pool_, reusable_handles_.size(), reusable_handles_.data());
+  if (reusable_handles_.is_empty()) {
+    return;
+  }
+  free_buffers(device, reusable_handles_);
   reusable_handles_.clear();
   vkTrimCommandPool(device.device_get(), vk_command_pool_, 0);
 }
@@ -58,6 +61,9 @@ void VKCommandPool::trim(const VKDevice &device)
 void VKCommandPool::allocate_buffers(const VKDevice &device,
                                      MutableSpan<VkCommandBuffer> r_command_buffers)
 {
+  if (r_command_buffers.is_empty()) {
+    return;
+  }
   if (reusable_handles_.size() >= r_command_buffers.size()) {
     for (int index : r_command_buffers.index_range()) {
       r_command_buffers[index] = reusable_handles_.pop_last();
@@ -74,20 +80,50 @@ void VKCommandPool::allocate_buffers(const VKDevice &device,
   stats.command_buffers_allocated += r_command_buffers.size();
 }
 
-void VKCommandPool::free_buffers(const VKDevice & /*device*/,
-                                 Span<VkCommandBuffer> command_buffers)
+void VKCommandPool::free_buffers(const VKDevice &device, Span<VkCommandBuffer> command_buffers)
 {
   BLI_assert(vk_command_pool_ != VK_NULL_HANDLE);
-  for (VkCommandBuffer vk_command_buffer : command_buffers) {
-    vkResetCommandBuffer(vk_command_buffer, 0);
+  vkFreeCommandBuffers(
+      device.device_get(), vk_command_pool_, command_buffers.size(), command_buffers.data());
+}
+
+void VKCommandPool::mark_buffers_reusable(VKTimelineSemaphore::Value &value)
+{
+  int completed = 0;
+  for (InFlight &in_flight : in_flight_handles_) {
+    if (in_flight.time < value) {
+      completed += 1;
+      reusable_handles_.extend(in_flight.command_buffers);
+      in_flight.command_buffers.clear();
+    }
+    else {
+      break;
+    }
   }
-  reusable_handles_.extend(command_buffers);
+
+  if (completed != 0) {
+    in_flight_handles_.remove(0, completed);
+  }
+}
+
+void VKCommandPool::mark_buffers_in_flight(Span<VkCommandBuffer> command_buffers,
+                                           VKTimelineSemaphore::Value &value)
+{
+  if (in_flight_handles_.is_empty() || in_flight_handles_.last().time < value) {
+    InFlight in_flight;
+    in_flight.command_buffers.extend(command_buffers);
+    in_flight.time = value;
+    in_flight_handles_.append(in_flight);
+    return;
+  }
+  in_flight_handles_.last().command_buffers.extend(command_buffers);
 }
 
 void VKCommandPool::debug_print() const
 {
   std::cout << "VKCommandPool(";
   std::cout << "allocated=" << stats.command_buffers_allocated;
+  std::cout << ",inflight=" << stats.command_buffers_in_flight;
   std::cout << ",reused=" << stats.command_buffers_reused;
   std::cout << ",reusable=" << reusable_handles_.size();
   std::cout << ")\n";

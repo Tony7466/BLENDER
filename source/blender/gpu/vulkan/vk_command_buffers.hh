@@ -50,11 +50,6 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   VKCommandBuffer buffers_[(int)Type::Max];
   VKSubmissionID submission_id_;
 
-  /**
-   * List of command buffer handles that should be freed.
-   */
-  Vector<VkCommandBuffer> discarded_command_buffers_;
-
   struct {
     uint64_t command_buffers_created = 0;
     uint64_t command_buffers_submitted = 0;
@@ -154,13 +149,12 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   void submit();
   void finish();
   void trim();
+  void debug_print() const;
 
   const VKSubmissionID &submission_id_get() const
   {
     return submission_id_;
   }
-
-  void destroy_discarded_resources();
 
  private:
   void init_command_buffers(const VKDevice &device,
