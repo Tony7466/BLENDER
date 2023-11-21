@@ -200,6 +200,10 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
    */
   short total_inputs = 0;
 
+  /**
+   * This is set in #update_gizmo_inferencing and is stored here so that it can be quickly accessed
+   * during socket drawing.
+   */
   bool has_gizmo = false;
 
   /**
