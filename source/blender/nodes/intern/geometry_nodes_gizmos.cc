@@ -69,6 +69,7 @@ static std::optional<GizmoTarget> find_local_gizmo_target(const bNodeSocket &ini
   const bNodeSocket *current_socket = &initial_socket;
   ValueElem current_elem = initial_elem;
   while (true) {
+    current_socket->runtime->has_gizmo = true;
     if (current_socket->is_input()) {
       const bNodeSocket &input_socket = *current_socket;
       const Span<const bNodeLink *> links = input_socket.directly_linked_links();
