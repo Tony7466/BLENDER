@@ -283,11 +283,16 @@ class AutoKeyframingTest(AbstractKeyframingTest, unittest.TestCase):
         bpy.context.preferences.edit.use_keyframe_insert_available = True
 
         with bpy.context.temp_override(**_get_view3d_context()):
+            bpy.context.scene.frame_set(1)
             bpy.ops.anim.keyframe_insert_by_name(type="Location")
+            bpy.context.scene.frame_set(5)
             bpy.ops.transform.translate(value=(1, 0, 0))
 
         action = keyed_object.animation_data.action
         self.assertTrue(_fcurve_paths_match(action.fcurves, ["location"]))
+
+        for fcurve in action.fcurves:
+            self.assertEqual(len(fcurve.keyframe_points), 2)
 
         bpy.context.preferences.edit.use_keyframe_insert_available = False
         bpy.data.objects.remove(keyed_object, do_unlink=True)
