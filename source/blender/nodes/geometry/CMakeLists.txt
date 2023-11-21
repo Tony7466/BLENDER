@@ -216,7 +216,6 @@ set(LIB
   bf_functions
   bf_geometry
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::intern::atomic
   bf_nodes
   extern_fmtlib
 )
