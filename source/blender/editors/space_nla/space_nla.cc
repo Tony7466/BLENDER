@@ -66,8 +66,8 @@ static SpaceLink *nla_create(const ScrArea *area, const Scene *scene)
   region->regiontype = RGN_TYPE_HEADER;
   region->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
 
-  /* channel list region */
-  region = MEM_cnew<ARegion>("channel list for nla");
+  /* track list region */
+  region = MEM_cnew<ARegion>("track list for nla");
   BLI_addtail(&snla->regionbase, region);
   region->regiontype = RGN_TYPE_CHANNELS;
   region->alignment = RGN_ALIGN_LEFT;
@@ -161,7 +161,7 @@ static void nla_track_region_init(wmWindowManager *wm, ARegion *region)
   UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_LIST, region->winx, region->winy);
 
   /* own keymap */
-  /* own channels map first to override some channel keymaps */
+  /* own tracks map first to override some track keymaps */
   keymap = WM_keymap_ensure(wm->defaultconf, "NLA Tracks", SPACE_NLA, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
   /* now generic channels map for everything else that can apply */
@@ -188,7 +188,7 @@ static void nla_track_region_draw(const bContext *C, ARegion *region)
     draw_nla_track_list(C, &ac, region);
   }
 
-  /* channel filter next to scrubbing area */
+  /* track filter next to scrubbing area */
   ED_time_scrub_channel_search_draw(C, region, ac.ads);
 
   /* reset view matrix */
@@ -633,7 +633,7 @@ void ED_spacetype_nla()
 
   BLI_addhead(&st->regiontypes, art);
 
-  /* regions: channels */
+  /* regions: tracks */
   art = MEM_cnew<ARegionType>("spacetype nla region");
   art->regionid = RGN_TYPE_CHANNELS;
   art->prefsizex = 200;

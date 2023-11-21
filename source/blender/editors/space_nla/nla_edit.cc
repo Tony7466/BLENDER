@@ -322,9 +322,9 @@ static void get_nlastrip_extents(bAnimContext *ac, float *min, float *max, const
   *min = 999999999.0f;
   *max = -999999999.0f;
 
-  /* check if any channels to set range with */
+  /* check if any tracks to set range with */
   if (anim_data.first) {
-    /* go through channels, finding max extents */
+    /* go through tracks, finding max extents */
     LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
       NlaTrack *nlt = static_cast<NlaTrack *>(ale->data);
 
@@ -415,18 +415,18 @@ void NLA_OT_previewrange_set(wmOperatorType *ot)
  * \{ */
 
 /**
- * Find the extents of the active channel
+ * Find the extents of the active track
  *
- * \param r_min: Bottom y-extent of channel.
- * \param r_max: Top y-extent of channel.
- * \return Success of finding a selected channel.
+ * \param r_min: Bottom y-extent of track.
+ * \param r_max: Top y-extent of track.
+ * \return Success of finding a selected track.
  */
 static bool nla_tracks_get_selected_extents(bAnimContext *ac, float *r_min, float *r_max)
 {
   ListBase anim_data = {nullptr, nullptr};
 
   SpaceNla *snla = reinterpret_cast<SpaceNla *>(ac->sl);
-  /* NOTE: not bool, since we want prioritize individual channels over expanders. */
+  /* NOTE: not bool, since we want prioritize individual tracks over expanders. */
   short found = 0;
 
   /* get all items - we need to do it this way */
@@ -434,7 +434,7 @@ static bool nla_tracks_get_selected_extents(bAnimContext *ac, float *r_min, floa
                               ANIMFILTER_LIST_CHANNELS | ANIMFILTER_FCURVESONLY);
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
 
-  /* loop through all channels, finding the first one that's selected */
+  /* loop through all tracks, finding the first one that's selected */
   float ymax = NLATRACK_FIRST_TOP(ac);
 
   for (bAnimListElem *ale = static_cast<bAnimListElem *>(anim_data.first); ale;
@@ -453,7 +453,7 @@ static bool nla_tracks_get_selected_extents(bAnimContext *ac, float *r_min, floa
       /* is this high enough priority yet? */
       found = acf->channel_role;
 
-      /* only stop our search when we've found an actual channel
+      /* only stop our search when we've found an actual track
        * - data-block expanders get less priority so that we don't abort prematurely
        */
       if (found == ACHANNEL_ROLE_CHANNEL) {
@@ -489,13 +489,13 @@ static int nlaedit_viewall(bContext *C, const bool only_sel)
 
   /* set vertical range */
   if (only_sel == false) {
-    /* view all -> the summary channel is usually the shows everything,
+    /* view all -> the summary track is usually the shows everything,
      * and resides right at the top... */
     v2d->cur.ymax = 0.0f;
     v2d->cur.ymin = float(-BLI_rcti_size_y(&v2d->mask));
   }
   else {
-    /* locate first selected channel (or the active one), and frame those */
+    /* locate first selected track (or the active one), and frame those */
     float ymin = v2d->cur.ymin;
     float ymax = v2d->cur.ymax;
 
@@ -2164,7 +2164,8 @@ static int nlaedit_apply_scale_exec(bContext *C, wmOperator * /*op*/)
        * (transitions don't have scale) */
       if ((strip->flag & NLASTRIP_FLAG_SELECT) && (strip->type == NLASTRIP_TYPE_CLIP)) {
         if (strip->act == nullptr || ID_IS_OVERRIDE_LIBRARY(strip->act) ||
-            ID_IS_LINKED(strip->act)) {
+            ID_IS_LINKED(strip->act))
+        {
           continue;
         }
         /* if the referenced action is used by other strips,

@@ -959,7 +959,7 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
   ListBase anim_data = {nullptr, nullptr};
   short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_FCURVESONLY);
 
-  /* get channels to work on */
+  /* get tracks to work on */
   ANIM_animdata_filter(
       &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
