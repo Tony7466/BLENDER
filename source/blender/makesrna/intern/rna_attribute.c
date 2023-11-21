@@ -305,6 +305,7 @@ static void rna_Attribute_data_begin(CollectionPropertyIterator *iter, PointerRN
       break;
   }
 
+  CustomData_ensure_data_is_mutable(layer, length);
   rna_iterator_array_begin(iter, layer->data, struct_size, length, 0, NULL);
 }
 
