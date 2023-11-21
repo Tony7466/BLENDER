@@ -16,6 +16,7 @@
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
 #include "vk_samplers.hh"
+#include "vk_timeline_semaphore.hh"
 
 namespace blender::gpu {
 class VKBackend;
@@ -58,6 +59,9 @@ class VKDevice : public NonCopyable {
   VkDevice vk_device_ = VK_NULL_HANDLE;
   uint32_t vk_queue_family_ = 0;
   VkQueue vk_queue_ = VK_NULL_HANDLE;
+
+  /* Semaphore for CPU GPU synchronization when submitting commands to the queue. */
+  VKTimelineSemaphore timeline_semaphore_;
 
   VKSamplers samplers_;
 
@@ -213,6 +217,16 @@ class VKDevice : public NonCopyable {
   void destroy_discarded_resources();
 
   void memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb) const;
+
+  /** \} */
+
+  /* -------------------------------------------------------------------- */
+  /** \name Queue management
+   * \{ */
+  VKTimelineSemaphore &timeline_semaphore_get()
+  {
+    return timeline_semaphore_;
+  }
 
   /** \} */
 
