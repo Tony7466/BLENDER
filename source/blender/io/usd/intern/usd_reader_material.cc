@@ -282,7 +282,6 @@ static pxr::TfToken get_source_color_space(const pxr::UsdShadeShader &usd_shader
   return pxr::TfToken();
 }
 
-
 static int get_image_extension(const pxr::UsdShadeShader &usd_shader, const int default_value)
 {
   pxr::UsdShadeInput wrap_input = usd_shader.GetInput(usdtokens::wrapS);
@@ -316,7 +315,6 @@ static int get_image_extension(const pxr::UsdShadeShader &usd_shader, const int 
 
   return default_value;
 }
-
 
 /* Attempts to return in r_preview_surface the UsdPreviewSurface shader source
  * of the given material.  Returns true if a UsdPreviewSurface source was found
@@ -400,16 +398,16 @@ static pxr::UsdShadeInput get_input(const pxr::UsdShadeShader &usd_shader,
   return input;
 }
 
-static bNodeSocket *get_input_socket(bNode *node, const char *identifier, ReportList* reports)
+static bNodeSocket *get_input_socket(bNode *node, const char *identifier, ReportList *reports)
 {
   bNodeSocket *sock = nodeFindSocket(node, SOCK_IN, identifier);
   if (!sock) {
     BKE_reportf(reports,
-               RPT_ERROR,
-               "%s: Error: Couldn't get input socket %s for node %s",
-               __func__,
-               identifier,
-               node->idname);
+                RPT_ERROR,
+                "%s: Error: Couldn't get input socket %s for node %s",
+                __func__,
+                identifier,
+                node->idname);
   }
 
   return sock;
@@ -815,10 +813,10 @@ void USDMaterialReader::convert_usd_transform_2d(const pxr::UsdShadeShader &usd_
 
     if (!mapping) {
       BKE_reportf(reports(),
-                 RPT_WARNING,
-                 "%s: Couldn't create SH_NODE_MAPPING for node input  %s",
-                 __func__,
-                 dest_socket_name);
+                  RPT_WARNING,
+                  "%s: Couldn't create SH_NODE_MAPPING for node input  %s",
+                  __func__,
+                  dest_socket_name);
       return;
     }
 

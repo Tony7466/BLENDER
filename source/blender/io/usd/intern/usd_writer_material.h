@@ -26,7 +26,7 @@ pxr::UsdShadeMaterial create_usd_material(const USDExporterContext &usd_export_c
                                           pxr::SdfPath usd_path,
                                           Material *material,
                                           const std::string &active_uv,
-                                          ReportList* reports);
+                                          ReportList *reports);
 
 /* Returns a USDPreviewSurface token name for a given Blender shader Socket name,
  * or an empty TfToken if the input name is not found in the map. */
