@@ -45,6 +45,10 @@ class NodeGroupComputeContext : public ComputeContext {
   static constexpr const char *s_static_type = "NODE_GROUP";
 
   int32_t node_id_;
+  /**
+   * The caller node tree and group node are not always necessary or even available, but storing
+   * them here simplifies "walking up" the compute context to the parent node groups.
+   */
   const bNodeTree *caller_tree_ = nullptr;
   const bNode *caller_group_node_ = nullptr;
 
