@@ -145,7 +145,7 @@ struct FloatTargetProperty {
 
 struct DerivedFloatTargetProperty {
   FloatTargetProperty property;
-  float derivative;
+  float factor;
 };
 
 /**
@@ -153,10 +153,10 @@ struct DerivedFloatTargetProperty {
  * For example, a factor of 10 means that when the gizmo is moved by 2 units, the target value
  * changes by 20.
  */
-static std::optional<float> compute_derivative(
+static std::optional<float> compute_target_factor(
     const NodesModifierData &nmd, const nodes::gizmos::PropagationPath &propagation_path)
 {
-  float derivative = 1.0f;
+  float target_factor = 1.0f;
   for (const nodes::gizmos::PropagationPath::PathElem &path_elem : propagation_path.path) {
     geo_eval_log::GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(
         path_elem.compute_context->hash());
@@ -171,19 +171,19 @@ static std::optional<float> compute_derivative(
             tree_log.find_primitive_socket_value<float>(second_input_socket).value_or(0.0f);
         switch (mode) {
           case NODE_MATH_MULTIPLY: {
-            derivative = safe_divide(derivative, second_value);
+            target_factor = safe_divide(target_factor, second_value);
             break;
           }
           case NODE_MATH_DIVIDE: {
-            derivative *= second_value;
+            target_factor *= second_value;
             break;
           }
           case NODE_MATH_RADIANS: {
-            derivative = RAD2DEG(derivative);
+            target_factor = RAD2DEG(target_factor);
             break;
           }
           case NODE_MATH_DEGREES: {
-            derivative = DEG2RAD(derivative);
+            target_factor = DEG2RAD(target_factor);
             break;
           }
           default:
@@ -199,19 +199,19 @@ static std::optional<float> compute_derivative(
           case NODE_VECTOR_MATH_MULTIPLY: {
             const float factor = tree_log.find_primitive_socket_value<float3>(second_input_socket)
                                      .value_or(float3{0, 0, 0})[*path_elem.elem.index];
-            derivative = safe_divide(derivative, factor);
+            target_factor = safe_divide(target_factor, factor);
             break;
           }
           case NODE_VECTOR_MATH_DIVIDE: {
             const float divisor = tree_log.find_primitive_socket_value<float3>(second_input_socket)
                                       .value_or(float3{0, 0, 0})[*path_elem.elem.index];
-            derivative *= divisor;
+            target_factor *= divisor;
             break;
           }
           case NODE_VECTOR_MATH_SCALE: {
             const float scale =
                 tree_log.find_primitive_socket_value<float>(scale_input_socket).value_or(0.0f);
-            derivative = safe_divide(derivative, scale);
+            target_factor = safe_divide(target_factor, scale);
             break;
           }
         }
@@ -238,7 +238,7 @@ static std::optional<float> compute_derivative(
                                      .find_primitive_socket_value<float>(
                                          path_node.input_by_identifier("To Max"))
                                      .value_or(0.0f);
-            derivative *= safe_divide(from_max - from_min, to_max - to_min);
+            target_factor *= safe_divide(from_max - from_min, to_max - to_min);
             break;
           }
           case CD_PROP_FLOAT3: {
@@ -259,7 +259,7 @@ static std::optional<float> compute_derivative(
                                      .find_primitive_socket_value<float3>(
                                          path_node.input_by_identifier("To_Max_FLOAT3"))
                                      .value_or(float3{0, 0, 0})[index];
-            derivative *= safe_divide(from_max - from_min, to_max - to_min);
+            target_factor *= safe_divide(from_max - from_min, to_max - to_min);
             break;
           }
           default:
@@ -272,10 +272,10 @@ static std::optional<float> compute_derivative(
       }
     }
   }
-  if (derivative == 0.0f) {
+  if (target_factor == 0.0f) {
     return std::nullopt;
   }
-  return derivative;
+  return target_factor;
 }
 
 static std::optional<FloatTargetProperty> get_float_target_property(
@@ -350,14 +350,15 @@ static Vector<DerivedFloatTargetProperty> find_gizmo_float_value_paths(
       nodes::gizmos::find_propagated_gizmo_targets(compute_context, gizmo_node);
   Vector<DerivedFloatTargetProperty> variables;
   for (const nodes::gizmos::PropagatedGizmoTarget &gizmo_target : gizmo_targets) {
-    const std::optional<float> derivative = compute_derivative(nmd, gizmo_target.propagation_path);
-    if (!derivative) {
+    const std::optional<float> target_factor = compute_target_factor(
+        nmd, gizmo_target.propagation_path);
+    if (!target_factor) {
       continue;
     }
     if (std::optional<FloatTargetProperty> target_property = get_float_target_property(
             gizmo_target, object, nmd))
     {
-      variables.append({std::move(*target_property), *derivative});
+      variables.append({std::move(*target_property), *target_factor});
     }
   }
   return variables;
@@ -643,7 +644,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           for (const int i : user_data->variables.index_range()) {
             const DerivedFloatTargetProperty &new_variable = variables[i];
             DerivedFloatTargetProperty &variable = user_data->variables[i];
-            variable.derivative = new_variable.derivative;
+            variable.factor = new_variable.factor;
           }
         }
         else {
@@ -687,17 +688,15 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
             for (const int i : user_data->variables.index_range()) {
               DerivedFloatTargetProperty &variable = user_data->variables[i];
               const float initial_value = user_data->initial_values[i];
-              const float new_value = initial_value +
-                                      new_gizmo_value_clamped * variable.derivative;
+              const float new_value = initial_value + new_gizmo_value_clamped * variable.factor;
               const float new_value_clamped = variable.property.clamp(new_value);
-              new_gizmo_value_clamped = (new_value_clamped - initial_value) / variable.derivative;
+              new_gizmo_value_clamped = (new_value_clamped - initial_value) / variable.factor;
             }
             user_data->gizmo_value = new_gizmo_value_clamped;
             for (const int i : user_data->variables.index_range()) {
               DerivedFloatTargetProperty &variable = user_data->variables[i];
               const float initial_value = user_data->initial_values[i];
-              const float new_value = initial_value +
-                                      new_gizmo_value_clamped * variable.derivative;
+              const float new_value = initial_value + new_gizmo_value_clamped * variable.factor;
               variable.property.set_and_update(user_data->C, new_value);
             }
           };
