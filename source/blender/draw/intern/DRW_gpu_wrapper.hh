@@ -248,6 +248,11 @@ class StorageCommon : public DataBuffer<T, len, false>, NonMovable, NonCopyable 
     GPU_storagebuf_clear_to_zero(ssbo_);
   }
 
+  void async_flush_to_host()
+  {
+    GPU_storagebuf_sync_to_host(ssbo_);
+  }
+
   void read()
   {
     GPU_storagebuf_read(ssbo_, this->data_);
@@ -368,6 +373,20 @@ class StorageArrayBuffer : public detail::StorageCommon<T, len, device_only> {
     return this->data_[index];
   }
 
+  /*
+   * Ensure the allocated size is not much larger than the currently required size,
+   * using the same heuristic as `get_or_resize`.
+   */
+  void trim_to_next_power_of_2(int64_t required_size)
+  {
+    /* Don't go below the size used at creation. */
+    required_size = std::max(required_size, len);
+    size_t target_size = power_of_2_max_u(required_size);
+    if (this->len_ > target_size) {
+      this->resize(target_size);
+    }
+  }
+
   int64_t size() const
   {
     return this->len_;
@@ -407,6 +426,16 @@ class StorageVectorBuffer : public StorageArrayBuffer<T, len, false> {
   void clear()
   {
     item_len_ = 0;
+  }
+
+  /**
+   * Set item count to zero
+   * and trim the buffer if current size is much larger than the current item count.
+   */
+  void clear_and_trim()
+  {
+    this->trim_to_next_power_of_2(item_len_);
+    clear();
   }
 
   /**
@@ -861,8 +890,8 @@ class Texture : NonCopyable {
   }
 
   /**
-   * Clear the texture to NaN for floats, or a to debug value for ints.
-   * (For debugging unitialized data issues)
+   * Clear the texture to NaN for floats, or a to debug value for integers.
+   * (For debugging uninitialized data issues)
    */
   void debug_clear()
   {

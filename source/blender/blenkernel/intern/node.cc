@@ -41,7 +41,7 @@
 #include "BLI_stack.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector_set.hh"
@@ -51,10 +51,10 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_asset.h"
+#include "BKE_asset.hh"
 #include "BKE_bpath.h"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_cryptomatte.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
@@ -68,7 +68,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_interface.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_preview_image.hh"
 #include "BKE_type_conversions.hh"
@@ -514,7 +514,7 @@ static void construct_interface_as_legacy_sockets(bNodeTree *ntree)
   auto make_legacy_socket = [&](const bNodeTreeInterfaceSocket &socket,
                                 eNodeSocketInOut in_out) -> bNodeSocket * {
     bNodeSocket *iosock = make_socket(
-        ntree, in_out, socket.socket_type, socket.name, socket.identifier);
+        ntree, in_out, socket.socket_type, socket.name ? socket.name : "", socket.identifier);
     if (!iosock) {
       return nullptr;
     }
@@ -836,6 +836,34 @@ static void ntree_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   }
 }
 
+/**
+ * Sockets with default_value data must be known built-in types, otherwise reading and writing data
+ * correctly cannot be guaranteed. Discard any socket with default_value data that has an unknown
+ * type.
+ */
+static bool is_node_socket_supported(const bNodeSocket *sock)
+{
+  switch (eNodeSocketDatatype(sock->type)) {
+    case SOCK_FLOAT:
+    case SOCK_VECTOR:
+    case SOCK_RGBA:
+    case SOCK_BOOLEAN:
+    case SOCK_INT:
+    case SOCK_STRING:
+    case SOCK_CUSTOM:
+    case SOCK_SHADER:
+    case SOCK_GEOMETRY:
+    case SOCK_OBJECT:
+    case SOCK_IMAGE:
+    case SOCK_COLLECTION:
+    case SOCK_TEXTURE:
+    case SOCK_MATERIAL:
+    case SOCK_ROTATION:
+      return true;
+  }
+  return false;
+}
+
 static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
 {
   BLO_read_data_address(reader, &sock->prop);
@@ -847,6 +875,20 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   BLO_read_data_address(reader, &sock->default_value);
   BLO_read_data_address(reader, &sock->default_attribute_name);
   sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
+}
+
+static void direct_link_node_socket_list(BlendDataReader *reader, ListBase *socket_list)
+{
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, socket_list) {
+    if (is_node_socket_supported(sock)) {
+      direct_link_node_socket(reader, sock);
+    }
+    else {
+      /* Remove unsupported sockets. */
+      BLI_remlink(socket_list, sock);
+      MEM_SAFE_FREE(sock);
+    }
+  }
 }
 
 void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
@@ -1005,12 +1047,8 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     BLO_read_data_address(reader, &node->parent);
 
-    LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
-      direct_link_node_socket(reader, sock);
-    }
-    LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
-      direct_link_node_socket(reader, sock);
-    }
+    direct_link_node_socket_list(reader, &node->inputs);
+    direct_link_node_socket_list(reader, &node->outputs);
 
     /* Socket storage. */
     if (node->type == CMP_NODE_OUTPUT_FILE) {
@@ -1025,12 +1063,8 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
   /* Read legacy interface socket lists for versioning. */
   BLO_read_list(reader, &ntree->inputs_legacy);
   BLO_read_list(reader, &ntree->outputs_legacy);
-  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs_legacy) {
-    direct_link_node_socket(reader, sock);
-  }
-  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs_legacy) {
-    direct_link_node_socket(reader, sock);
-  }
+  direct_link_node_socket_list(reader, &ntree->inputs_legacy);
+  direct_link_node_socket_list(reader, &ntree->outputs_legacy);
 
   ntree->tree_interface.read_data(reader);
 
@@ -1094,11 +1128,11 @@ void node_update_asset_metadata(bNodeTree &node_tree)
   auto outputs = idprop::create_group("outputs");
   node_tree.ensure_interface_cache();
   for (const bNodeTreeInterfaceSocket *socket : node_tree.interface_inputs()) {
-    auto property = idprop::create(socket->name, socket->socket_type);
+    auto property = idprop::create(socket->name ? socket->name : "", socket->socket_type);
     IDP_AddToGroup(inputs.get(), property.release());
   }
   for (const bNodeTreeInterfaceSocket *socket : node_tree.interface_outputs()) {
-    auto property = idprop::create(socket->name, socket->socket_type);
+    auto property = idprop::create(socket->name ? socket->name : "", socket->socket_type);
     IDP_AddToGroup(outputs.get(), property.release());
   }
   BKE_asset_metadata_idprop_ensure(asset_data, inputs.release());
@@ -1133,7 +1167,7 @@ IDTypeInfo IDType_ID_NT = {
     /*main_listbase_index*/ INDEX_ID_NT,
     /*struct_size*/ sizeof(bNodeTree),
     /*name*/ "NodeTree",
-    /*name_plural*/ "node_groups",
+    /*name_plural*/ N_("node_groups"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_NODETREE,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ &AssetType_NT,
