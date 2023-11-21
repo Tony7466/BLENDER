@@ -703,19 +703,29 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         const ThemeColorID color_id = get_gizmo_theme_color_id(gizmo_node);
         UI_GetThemeColor3fv(color_id, gz->color);
         UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
-        if (gizmo_node.type == GEO_NODE_GIZMO_ARROW) {
-          /* Make sure the enum values are in sync. */
-          static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_ARROW) ==
-                        int(ED_GIZMO_ARROW_STYLE_NORMAL));
-          static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_BOX) == int(ED_GIZMO_ARROW_STYLE_BOX));
-          static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_CROSS) ==
-                        int(ED_GIZMO_ARROW_STYLE_CROSS));
-          static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_PLANE) ==
-                        int(ED_GIZMO_ARROW_STYLE_PLANE));
-          RNA_enum_set(
-              gz->ptr,
-              "draw_style",
-              static_cast<const NodeGeometryArrowGizmo *>(gizmo_node.storage)->draw_style);
+        switch (gizmo_node.type) {
+          case GEO_NODE_GIZMO_ARROW: {
+            /* Make sure the enum values are in sync. */
+            static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_ARROW) ==
+                          int(ED_GIZMO_ARROW_STYLE_NORMAL));
+            static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_BOX) ==
+                          int(ED_GIZMO_ARROW_STYLE_BOX));
+            static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_CROSS) ==
+                          int(ED_GIZMO_ARROW_STYLE_CROSS));
+            static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_PLANE) ==
+                          int(ED_GIZMO_ARROW_STYLE_PLANE));
+            RNA_enum_set(
+                gz->ptr,
+                "draw_style",
+                static_cast<const NodeGeometryArrowGizmo *>(gizmo_node.storage)->draw_style);
+            break;
+          }
+          case GEO_NODE_GIZMO_DIAL: {
+            int draw_options = RNA_enum_get(gz->ptr, "draw_options");
+            SET_FLAG_FROM_TEST(draw_options, is_interacting, ED_GIZMO_DIAL_DRAW_FLAG_ANGLE_VALUE);
+            RNA_enum_set(gz->ptr, "draw_options", draw_options);
+            break;
+          }
         }
 
         struct UserData {
