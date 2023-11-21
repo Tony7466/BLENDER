@@ -43,7 +43,6 @@ if(WITH_RENDERDOC)
 endif()
 
 set(INC_SYS
-  ${Epoxy_INCLUDE_DIRS}
 )
 
 set(SRC
@@ -201,6 +200,7 @@ set(VULKAN_SRC
   vulkan/vk_bindable_resource.cc
   vulkan/vk_buffer.cc
   vulkan/vk_command_buffer.cc
+  vulkan/vk_command_buffers.cc
   vulkan/vk_common.cc
   vulkan/vk_context.cc
   vulkan/vk_data_conversion.cc
@@ -223,6 +223,7 @@ set(VULKAN_SRC
   vulkan/vk_query.cc
   vulkan/vk_resource_tracker.cc
   vulkan/vk_sampler.cc
+  vulkan/vk_samplers.cc
   vulkan/vk_shader.cc
   vulkan/vk_shader_interface.cc
   vulkan/vk_shader_log.cc
@@ -238,6 +239,7 @@ set(VULKAN_SRC
   vulkan/vk_bindable_resource.hh
   vulkan/vk_buffer.hh
   vulkan/vk_command_buffer.hh
+  vulkan/vk_command_buffers.hh
   vulkan/vk_common.hh
   vulkan/vk_context.hh
   vulkan/vk_data_conversion.hh
@@ -260,6 +262,7 @@ set(VULKAN_SRC
   vulkan/vk_query.hh
   vulkan/vk_resource_tracker.hh
   vulkan/vk_sampler.hh
+  vulkan/vk_samplers.hh
   vulkan/vk_shader.hh
   vulkan/vk_shader_interface.hh
   vulkan/vk_shader_log.hh
@@ -325,14 +328,20 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::atomic
-  ${Epoxy_LIBRARIES}
   PRIVATE bf::intern::guardedalloc
 )
 
 # Select Backend source based on availability
 if(WITH_OPENGL_BACKEND)
-  list(APPEND SRC ${OPENGL_SRC})
-
+  list(APPEND INC_SYS
+    ${Epoxy_INCLUDE_DIRS}
+  )
+  list(APPEND SRC
+    ${OPENGL_SRC}
+  )
+  list(APPEND LIB
+    ${Epoxy_LIBRARIES}
+  )
   add_definitions(-DWITH_OPENGL_BACKEND)
 endif()
 
@@ -342,12 +351,25 @@ endif()
 
 
 if(WITH_VULKAN_BACKEND)
+
+  if(APPLE)
+    list(APPEND INC_SYS
+      ${MOLTENVK_INCLUDE_DIRS}
+    )
+
+    list(APPEND LIB
+      ${MOLTENVK_LIBRARIES}
+    )
+  endif()
+
   list(APPEND INC
     ../../../extern/vulkan_memory_allocator
   )
   list(APPEND INC_SYS
     ${VULKAN_INCLUDE_DIRS}
-    ${MOLTENVK_INCLUDE_DIRS}
+  )
+
+  list(APPEND INC_SYS
     ${SHADERC_INCLUDE_DIRS}
   )
   list(APPEND SRC
@@ -357,7 +379,6 @@ if(WITH_VULKAN_BACKEND)
   list(APPEND LIB
     ${VULKAN_LIBRARIES}
     ${SHADERC_LIBRARIES}
-    ${MOLTENVK_LIBRARIES}
     extern_vulkan_memory_allocator
   )
 
@@ -456,6 +477,7 @@ set(GLSL_SRC
   shaders/common/gpu_shader_common_math.glsl
   shaders/common/gpu_shader_common_math_utils.glsl
   shaders/common/gpu_shader_common_mix_rgb.glsl
+  shaders/common/gpu_shader_debug_gradients_lib.glsl
   shaders/common/gpu_shader_math_base_lib.glsl
   shaders/common/gpu_shader_math_fast_lib.glsl
   shaders/common/gpu_shader_math_matrix_lib.glsl
@@ -531,7 +553,6 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_tex_gradient.glsl
   shaders/material/gpu_shader_material_tex_image.glsl
   shaders/material/gpu_shader_material_tex_magic.glsl
-  shaders/material/gpu_shader_material_tex_musgrave.glsl
   shaders/material/gpu_shader_material_tex_noise.glsl
   shaders/material/gpu_shader_material_tex_sky.glsl
   shaders/material/gpu_shader_material_texture_coordinates.glsl

@@ -98,7 +98,6 @@ set(SRC
   nodes/node_shader_tex_gradient.cc
   nodes/node_shader_tex_image.cc
   nodes/node_shader_tex_magic.cc
-  nodes/node_shader_tex_musgrave.cc
   nodes/node_shader_tex_noise.cc
   nodes/node_shader_tex_pointdensity.cc
   nodes/node_shader_tex_sky.cc
@@ -140,20 +139,28 @@ set(LIB
 if(WITH_MATERIALX)
   add_definitions(-DWITH_MATERIALX)
   list(APPEND SRC
+    materialx/group_nodes.cc
     materialx/material.cc
     materialx/node_item.cc
     materialx/node_parser.cc
-    materialx/group_nodes.cc
 
+    materialx/group_nodes.h
     materialx/material.h
     materialx/node_item.h
     materialx/node_parser.h
-    materialx/group_nodes.h
   )
   list(APPEND LIB
     MaterialXCore
     MaterialXFormat
   )
+
+  if(WITH_USD)
+    add_definitions(-DWITH_USD)
+    list(APPEND INC_SYS
+      ${USD_INCLUDE_DIRS}
+      ${BOOST_INCLUDE_DIR}
+    )
+  endif()
 endif()
 
 if(WITH_FREESTYLE)
