@@ -26,6 +26,9 @@ static bool is_scalar_socket_type(const int socket_type)
   return ELEM(socket_type, SOCK_FLOAT, SOCK_INT);
 }
 
+/**
+ * True if a gizmo can be propagated through that link.
+ */
 static bool is_valid_gizmo_link(const bNodeLink &link)
 {
   const bNodeSocket &from_socket = *link.fromsock;
@@ -90,14 +93,15 @@ static std::optional<GizmoTarget> find_local_gizmo_target(const bNodeSocket &cur
     const bNodeSocket &output_socket = current_socket;
     const bNode &current_node = output_socket.owner_node();
     switch (current_node.type) {
-      case NODE_REROUTE: {
-        const bNodeSocket &input_socket = current_node.input_socket(0);
-        return find_local_gizmo_target(input_socket, current_elem, r_propagation_path);
-      }
       case SH_NODE_VALUE:
       case FN_NODE_INPUT_VECTOR:
       case FN_NODE_INPUT_INT: {
+        /* The value in those nodes is the gizmo target. */
         return ValueNodeRef{&current_node, current_elem};
+      }
+      case NODE_REROUTE: {
+        const bNodeSocket &input_socket = current_node.input_socket(0);
+        return find_local_gizmo_target(input_socket, current_elem, r_propagation_path);
       }
       case SH_NODE_SEPXYZ: {
         const int axis = output_socket.index();
