@@ -10,6 +10,7 @@
 #include "BLI_compute_context.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_multi_value_map.hh"
+#include "BLI_struct_equality_utils.hh"
 #include "BLI_vector.hh"
 
 #include "DNA_node_types.h"
@@ -26,10 +27,7 @@ namespace blender::nodes::gizmos {
 struct SocketElem {
   std::optional<int> index;
 
-  friend bool operator==(const SocketElem &a, const SocketElem &b)
-  {
-    return a.index == b.index;
-  }
+  BLI_STRUCT_EQUALITY_OPERATORS_1(SocketElem, index)
 
   uint64_t hash() const
   {
@@ -44,10 +42,7 @@ struct InputSocketRef {
   const bNodeSocket *input_socket;
   SocketElem elem;
 
-  friend bool operator==(const InputSocketRef &a, const InputSocketRef &b)
-  {
-    return a.input_socket == b.input_socket && a.elem == b.elem;
-  }
+  BLI_STRUCT_EQUALITY_OPERATORS_2(InputSocketRef, input_socket, elem)
 
   uint64_t hash() const
   {
@@ -62,10 +57,7 @@ struct ValueNodeRef {
   const bNode *value_node;
   SocketElem elem;
 
-  friend bool operator==(const ValueNodeRef &a, const ValueNodeRef &b)
-  {
-    return a.value_node == b.value_node && a.elem == b.elem;
-  }
+  BLI_STRUCT_EQUALITY_OPERATORS_2(ValueNodeRef, value_node, elem)
 
   uint64_t hash() const
   {
@@ -80,10 +72,7 @@ struct GroupInputRef {
   int input_index;
   SocketElem elem;
 
-  friend bool operator==(const GroupInputRef &a, const GroupInputRef &b)
-  {
-    return a.input_index == b.input_index && a.elem == b.elem;
-  }
+  BLI_STRUCT_EQUALITY_OPERATORS_2(GroupInputRef, input_index, elem)
 
   uint64_t hash() const
   {
