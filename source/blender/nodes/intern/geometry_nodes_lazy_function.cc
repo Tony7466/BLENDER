@@ -868,6 +868,11 @@ class LazyFunctionForViewerInputUsage : public LazyFunction {
   }
 };
 
+/**
+ * A lazy-function that is used for gizmo nodes. Generally, the first input of those nodes is not
+ * evaluated. The other inputs are only required if the node is a side effect node. The transform
+ * output should only contain the transform if it is a side effect node as well.
+ */
 class LazyFunctionForGizmoNode : public LazyFunction {
  private:
   const bNode &bnode_;

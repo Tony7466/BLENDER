@@ -177,7 +177,7 @@ template<typename T> struct AngleCartesianBase {
    */
   AngleCartesianBase(const T &x, const T &y) : cos_(x), sin_(y)
   {
-    // BLI_assert(math::abs(x * x + y * y - T(1)) < T(1e-4));
+    BLI_assert(math::abs(x * x + y * y - T(1)) < T(1e-4));
   }
 
   /**
