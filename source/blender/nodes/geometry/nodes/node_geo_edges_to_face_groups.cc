@@ -60,11 +60,8 @@ class FaceSetFromBoundariesInput final : public bke::MeshFieldInput {
         faces, mesh.corner_edges(), mesh.totedge, edge_to_face_offsets, edge_to_face_indices);
 
     AtomicDisjointSet islands(faces.size());
-    {
-      SCOPED_TIMER_AVERAGED("New");
-      non_boundary_edges.foreach_index(
-          [&](const int edge) { join_indices(islands, edge_to_face_map[edge]); });
-    }
+    non_boundary_edges.foreach_index(
+        [&](const int edge) { join_indices(islands, edge_to_face_map[edge]); });
 
     Array<int> output(faces.size());
     islands.calc_reduced_ids(output);
