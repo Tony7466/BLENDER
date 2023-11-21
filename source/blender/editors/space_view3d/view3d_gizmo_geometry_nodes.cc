@@ -543,8 +543,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   bNodeTree &ntree = *nmd.node_group;
   ntree.ensure_topology_cache();
 
+  /* Rebuild the set of all active gizmos, reusing gizmo data from before if possible. */
   Map<bke::GeoNodesGizmoID, std::unique_ptr<NodeGizmoData>> new_gizmo_by_node;
-
   nodes::gizmos::foreach_active_gizmo(
       *ob_orig,
       nmd,
