@@ -4,3 +4,4 @@ Referenced by issue #75063, Wireframe Drawing Errors
 Referenced by issue #74961, wireframe precision
 Referenced by issue #73831, orthographic view wireframe regression on small scale mesh ( cm )
 Referenced by pull request #114466, Overlay: Wireframe: avoid using custom depth bias with xray enabled
+Referenced by commit 14500953ed5a6ecbdc5842c9f86c557b1f6af5e1, Overlay: Wireframe: avoid using custom depth bias with xray enabled
