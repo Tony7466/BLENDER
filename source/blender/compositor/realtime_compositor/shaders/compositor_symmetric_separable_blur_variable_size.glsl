@@ -27,8 +27,9 @@ void main()
    * weights texture only stores the weights for the positive half, but since the filter is
    * symmetric, the same weight is used for the negative half and we add both of their
    * contributions. */
-  for (int i = 1; i < radius; i++) {
-    float weight = texture(weights_tx, i / float(radius)).x;
+  for (int i = 1; i <= radius; i++) {
+    /* Add 0.5 to evaluate at the center of the pixels. */
+    float weight = texture(weights_tx, (float(i) + 0.5) / float(radius + 1)).x;
     accumulated_color += texture_load(input_tx, texel + ivec2(i, 0)) * weight;
     accumulated_color += texture_load(input_tx, texel + ivec2(-i, 0)) * weight;
     accumulated_weight += weight * 2.0;
