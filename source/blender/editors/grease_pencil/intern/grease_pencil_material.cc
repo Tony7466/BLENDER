@@ -13,6 +13,8 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 
+#include "BLI_vector_set.hh"
+
 #include "DEG_depsgraph.hh"
 
 #include "ED_grease_pencil.hh"
@@ -68,6 +70,20 @@ static void GREASE_PENCIL_OT_material_reveal(wmOperatorType *ot)
 /** \name Lock Unselected Materials Operator
  * \{ */
 
+static VectorSet<int> find_materials_in_mask(const VArray<int> &material_indices,
+                                             const IndexMask &mask)
+{
+  VectorSet<int> materials;
+  if (const std::optional<int> single = material_indices.get_if_single()) {
+    materials.add(*single);
+  }
+  else {
+    mask.foreach_index([&](const int i) { materials.add(material_indices[i]); });
+  }
+
+  return materials;
+}
+
 static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator * /*op*/)
 {
   using namespace blender;
@@ -88,24 +104,20 @@ static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator *
     }
 
     AttributeAccessor attributes = info.drawing.strokes().attributes();
-    const VArraySpan<int> material_indices = *attributes.lookup_or_default<int>(
+    const VArray<int> material_indices = *attributes.lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_CURVE, 0);
+    const VectorSet<int> selected_materials = find_materials_in_mask(material_indices, strokes);
 
     for (const int material_index : IndexRange(object->totcol)) {
-      bool found = false;
-      strokes.foreach_index([&](const int64_t curve_i) {
-        if (material_indices[curve_i] == material_index) {
-          found = true;
-        }
-      });
+      if (selected_materials.contains(material_index)) {
+        continue;
+      }
 
-      if (!found) {
-        if (Material *ma = BKE_object_material_get(object, material_index + 1)) {
-          MaterialGPencilStyle &gp_style = *ma->gp_style;
-          gp_style.flag |= GP_MATERIAL_LOCKED;
-          DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
-          changed = true;
-        }
+      if (Material *ma = BKE_object_material_get(object, material_index + 1)) {
+        MaterialGPencilStyle &gp_style = *ma->gp_style;
+        gp_style.flag |= GP_MATERIAL_LOCKED;
+        DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+        changed = true;
       }
     }
   });
