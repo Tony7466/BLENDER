@@ -619,8 +619,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           return;
         }
 
-        std::optional<std::unique_ptr<NodeGizmoData>> old_node_gizmo_data =
-            gzgroup_data->gizmo_by_node.pop_try(gizmo_id);
+        const std::unique_ptr<NodeGizmoData> *old_node_gizmo_data =
+            gzgroup_data->gizmo_by_node.lookup_ptr(gizmo_id);
         /* While the user interacts with the gizmo, it should not be removed and its base transform
          * should not change. */
         const bool is_interacting = old_node_gizmo_data ?
@@ -670,8 +670,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         }
 
         std::unique_ptr<NodeGizmoData> node_gizmo_data;
-        if (old_node_gizmo_data.has_value()) {
-          node_gizmo_data = std::move(*old_node_gizmo_data);
+        if (old_node_gizmo_data) {
+          node_gizmo_data = *gzgroup_data->gizmo_by_node.pop_try(gizmo_id);
         }
         else {
           node_gizmo_data = std::make_unique<NodeGizmoData>();
