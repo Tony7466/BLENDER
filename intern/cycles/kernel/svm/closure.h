@@ -132,6 +132,7 @@ ccl_device
       float3 coat_normal = stack_valid(coat_normal_offset) ?
                                stack_load_float3(stack, coat_normal_offset) :
                                sd->N;
+      coat_normal = safe_normal(sd, coat_normal);
 
       // get the base color
       uint4 data_base_color = read_node(kg, &offset);
