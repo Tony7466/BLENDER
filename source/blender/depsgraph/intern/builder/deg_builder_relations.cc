@@ -1012,19 +1012,10 @@ void DepsgraphRelationBuilder::build_object_data(Object *object)
   }
   /* Materials. */
   Material ***materials_ptr = BKE_object_material_array_p(object);
-  short *num_materials_ptr = BKE_object_material_len_p(object);
   if (materials_ptr != nullptr) {
-    build_materials(*materials_ptr, *num_materials_ptr);
-  }
-
-  if (num_materials_ptr) {
-    OperationKey object_shading_key(&object->id, NodeType::SHADING, OperationCode::SHADING);
-    for (int i = 0; i < *num_materials_ptr; i++) {
-      if (Material *material = BKE_object_material_get(object, i + 1)) {
-        ComponentKey material_key(&material->id, NodeType::SHADING);
-        add_relation(material_key, object_shading_key, "Material -> Object Shading");
-      }
-    }
+    short *num_materials_ptr = BKE_object_material_len_p(object);
+    ID *obdata = (ID *)object->data;
+    build_materials(obdata, *materials_ptr, *num_materials_ptr);
   }
 }
 
@@ -2513,7 +2504,7 @@ void DepsgraphRelationBuilder::build_object_data_geometry(Object *object)
     }
   }
   /* Materials. */
-  build_materials(object->mat, object->totcol);
+  build_materials(&object->id, object->mat, object->totcol);
   /* Geometry collision. */
   if (ELEM(object->type, OB_MESH, OB_CURVES_LEGACY, OB_LATTICE)) {
     // add geometry collider relations
@@ -2578,6 +2569,10 @@ void DepsgraphRelationBuilder::build_object_data_geometry(Object *object)
   add_relation(object_data_select_key, object_select_key, "Data Selection -> Object Selection");
   add_relation(
       geom_key, object_select_key, "Object Geometry -> Select Update", RELATION_FLAG_NO_FLUSH);
+  /* Shading. */
+  ComponentKey geometry_shading_key(obdata, NodeType::SHADING);
+  OperationKey object_shading_key(&object->id, NodeType::SHADING, OperationCode::SHADING);
+  add_relation(geometry_shading_key, object_shading_key, "Geometry Shading -> Object Shading");
 }
 
 void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
@@ -2967,8 +2962,14 @@ void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
 }
 
 /* Recursively build graph for material */
-void DepsgraphRelationBuilder::build_material(Material *material)
+void DepsgraphRelationBuilder::build_material(Material *material, ID *owner)
 {
+  if (owner) {
+    ComponentKey material_key(&material->id, NodeType::SHADING);
+    OperationKey owner_shading_key(owner, NodeType::SHADING, OperationCode::SHADING);
+    add_relation(material_key, owner_shading_key, "Material -> Owner Shading");
+  }
+
   if (built_map_.checkIsBuiltAndTag(material)) {
     return;
   }
@@ -2995,13 +2996,13 @@ void DepsgraphRelationBuilder::build_material(Material *material)
   }
 }
 
-void DepsgraphRelationBuilder::build_materials(Material **materials, int num_materials)
+void DepsgraphRelationBuilder::build_materials(ID *owner, Material **materials, int num_materials)
 {
   for (int i = 0; i < num_materials; i++) {
     if (materials[i] == nullptr) {
       continue;
     }
-    build_material(materials[i]);
+    build_material(materials[i], owner);
   }
 }
 
