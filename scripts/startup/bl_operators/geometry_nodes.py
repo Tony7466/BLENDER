@@ -466,7 +466,7 @@ def _editable_tree_with_active_node_type(context, node_type):
     if not space or space.type != 'NODE_EDITOR' or not space.edit_tree or space.edit_tree.library:
         return False
     node = context.active_node
-    if node is None or node.bl_idname != 'GeometryNodeIndexSwitch':
+    if node is None or node.bl_idname != node_type:
         return False
     return True
 
