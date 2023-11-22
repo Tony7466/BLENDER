@@ -70,6 +70,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   data->data_type = SOCK_GEOMETRY;
   data->next_identifier = 0;
 
+  BLI_assert(data->items == nullptr);
   data->items = MEM_cnew_array<IndexSwitchItem>(1, __func__);
   data->items[0].identifier = data->next_identifier++;
   data->items_num = 1;
@@ -301,6 +302,21 @@ static void node_rna(StructRNA *srna)
       });
 }
 
+static void node_free_storage(bNode *node)
+{
+  socket_items::destruct_array<IndexSwitchItemsAccessor>(*node);
+  MEM_freeN(node->storage);
+}
+
+static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
+{
+  const NodeIndexSwitch &src_storage = node_storage(*src_node);
+  auto *dst_storage = MEM_new<NodeIndexSwitch>(__func__, src_storage);
+  dst_node->storage = dst_storage;
+
+  socket_items::copy_array<IndexSwitchItemsAccessor>(*src_node, *dst_node);
+}
+
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 {
   return socket_items::try_add_item_via_any_extend_socket<IndexSwitchItemsAccessor>(
@@ -315,8 +331,7 @@ static void register_node()
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.insert_link = node_insert_link;
-  node_type_storage(
-      &ntype, "NodeIndexSwitch", node_free_standard_storage, node_copy_standard_storage);
+  node_type_storage(&ntype, "NodeIndexSwitch", node_free_storage, node_copy_storage);
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
