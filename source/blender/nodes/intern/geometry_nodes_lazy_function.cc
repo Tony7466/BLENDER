@@ -1129,7 +1129,7 @@ class LazyFunctionForSwitchSocketUsage : public lf::LazyFunction {
 
 /**
  * Outputs booleans that indicate which inputs of a switch node are used. Note that it's possible
- * that both inputs are used when the condition is a field.
+ * that all inputs are used when the index input is a field.
  */
 class LazyFunctionForIndexSwitchSocketUsage : public lf::LazyFunction {
  public:
