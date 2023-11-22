@@ -158,16 +158,18 @@ bool BLF_has_glyph(int fontid, uint unicode)
   return false;
 }
 
-void BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, float *scale)
+bool BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, float *scale)
 {
   FontBLF *font = blf_get(fontid);
   if (!font) {
-    return;
+    return false;
   }
 
-  blf_ensure_face(font);
+  if (!blf_ensure_face(font)) {
+    return false;
+  }
 
-  /* This is really ugly for now. Copied without change from vfontdata_freetype.cc */
+  /* Copied without change from vfontdata_freetype.cc to ensure consistant sizing. */
 
   /* Blender default BFont is not "complete". */
   const bool complete_font = (font->face->ascender != 0) && (font->face->descender != 0) &&
@@ -195,6 +197,8 @@ void BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, flo
   else {
     *scale = 1.0f / 1000.0f;
   }
+
+  return true;
 }
 
 float BLF_character_to_curves(int fontid,
@@ -983,7 +987,7 @@ void BLF_draw_buffer(int fontid, const char *str, const size_t str_len)
   BLF_draw_buffer_ex(fontid, str, str_len, nullptr);
 }
 
-char *BLF_display_name(int fontid)
+char *BLF_display_name_from_id(int fontid)
 {
   FontBLF *font = blf_get(fontid);
   if (!font) {

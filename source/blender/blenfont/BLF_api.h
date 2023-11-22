@@ -69,20 +69,28 @@ void BLF_unload_mem(const char *name) ATTR_NONNULL(1);
 void BLF_unload_id(int fontid);
 void BLF_unload_all(void);
 
-char *BLF_display_name(int fontid) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 char *BLF_display_name_from_file(const char *filepath) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
+
+char *BLF_display_name_from_id(int fontid) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
+
+/**
+ * Get the metrics needed for the initial sizing of text objects.
+ */
+bool BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, float *scale);
+
+/**
+ * Convert a character's outlines into curves.
+ */
+float BLF_character_to_curves(int fontid,
+                              unsigned int unicode,
+                              struct ListBase *nurbsbase,
+                              const float scale);
 
 /**
  * Check if font supports a particular glyph.
  */
 bool BLF_has_glyph(int fontid, unsigned int unicode) ATTR_WARN_UNUSED_RESULT;
 
-void BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, float *scale);
-
-float BLF_character_to_curves(int fontid,
-                              unsigned int unicode,
-                              struct ListBase *nurbsbase,
-                              const float scale);
 
 /**
  * Attach a file with metrics information from memory.
