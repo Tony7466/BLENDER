@@ -8,6 +8,9 @@
 
 #include <cstdio>
 
+#include "ANIM_action.hh"
+#include "ANIM_keyframing.hh"
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
@@ -49,8 +52,8 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
@@ -3507,6 +3510,7 @@ static bAnimChannelType ACF_GPL_LEGACY = {
 
 /* Grease Pencil Animation functions ------------------------------------------- */
 
+#ifdef WITH_GREASE_PENCIL_V3
 namespace blender::ed::animation::greasepencil {
 
 /* Get pointer to the setting */
@@ -3740,6 +3744,7 @@ static bAnimChannelType ACF_GPLGROUP = {
     /*setting_flag*/ greasepencil::layer_setting_flag,
     /*setting_ptr*/ greasepencil::layer_group_setting_ptr,
 };
+#endif
 
 /* Mask Datablock ------------------------------------------- */
 
@@ -4306,9 +4311,15 @@ static void ANIM_init_channel_typeinfo_data()
     animchannelTypeInfo[type++] = &ACF_GPD_LEGACY; /* Grease Pencil Datablock (Legacy) */
     animchannelTypeInfo[type++] = &ACF_GPL_LEGACY; /* Grease Pencil Layer (Legacy) */
 
+#ifdef WITH_GREASE_PENCIL_V3
     animchannelTypeInfo[type++] = &ACF_GPD;      /* Grease Pencil Datablock. */
     animchannelTypeInfo[type++] = &ACF_GPLGROUP; /* Grease Pencil Layer Group. */
     animchannelTypeInfo[type++] = &ACF_GPL;      /* Grease Pencil Layer. */
+#else
+    animchannelTypeInfo[type++] = nullptr;
+    animchannelTypeInfo[type++] = nullptr;
+    animchannelTypeInfo[type++] = nullptr;
+#endif
 
     animchannelTypeInfo[type++] = &ACF_MASKDATA;  /* Mask Datablock */
     animchannelTypeInfo[type++] = &ACF_MASKLAYER; /* Mask Layer */
@@ -5024,14 +5035,14 @@ static void achannel_setting_slider_cb(bContext *C, void *id_poin, void *fcu_poi
     }
 
     /* insert a keyframe for this F-Curve */
-    done = insert_keyframe_direct(reports,
-                                  ptr,
-                                  prop,
-                                  fcu,
-                                  &anim_eval_context,
-                                  eBezTriple_KeyframeType(ts->keyframe_type),
-                                  nla_context,
-                                  flag);
+    done = blender::animrig::insert_keyframe_direct(reports,
+                                                    ptr,
+                                                    prop,
+                                                    fcu,
+                                                    &anim_eval_context,
+                                                    eBezTriple_KeyframeType(ts->keyframe_type),
+                                                    nla_context,
+                                                    flag);
 
     if (done) {
       if (adt->action != nullptr) {
@@ -5084,7 +5095,7 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
     /* find or create new F-Curve */
     /* XXX is the group name for this ok? */
     bAction *act = ED_id_action_ensure(bmain, (ID *)key);
-    FCurve *fcu = ED_action_fcurve_ensure(bmain, act, nullptr, &ptr, rna_path, 0);
+    FCurve *fcu = blender::animrig::action_fcurve_ensure(bmain, act, nullptr, &ptr, rna_path, 0);
 
     /* set the special 'replace' flag if on a keyframe */
     if (fcurve_frame_has_keyframe(fcu, remapped_frame)) {
@@ -5094,14 +5105,14 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
     /* insert a keyframe for this F-Curve */
     const AnimationEvalContext remapped_anim_eval_context = BKE_animsys_eval_context_construct_at(
         &anim_eval_context, remapped_frame);
-    done = insert_keyframe_direct(reports,
-                                  ptr,
-                                  prop,
-                                  fcu,
-                                  &remapped_anim_eval_context,
-                                  eBezTriple_KeyframeType(ts->keyframe_type),
-                                  nla_context,
-                                  flag);
+    done = blender::animrig::insert_keyframe_direct(reports,
+                                                    ptr,
+                                                    prop,
+                                                    fcu,
+                                                    &remapped_anim_eval_context,
+                                                    eBezTriple_KeyframeType(ts->keyframe_type),
+                                                    nla_context,
+                                                    flag);
 
     if (done) {
       WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
@@ -5153,14 +5164,14 @@ static void achannel_setting_slider_nla_curve_cb(bContext *C, void * /*id_poin*/
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
     const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph,
                                                                                       cfra);
-    done = insert_keyframe_direct(reports,
-                                  ptr,
-                                  prop,
-                                  fcu,
-                                  &anim_eval_context,
-                                  eBezTriple_KeyframeType(ts->keyframe_type),
-                                  nullptr,
-                                  flag);
+    done = blender::animrig::insert_keyframe_direct(reports,
+                                                    ptr,
+                                                    prop,
+                                                    fcu,
+                                                    &anim_eval_context,
+                                                    eBezTriple_KeyframeType(ts->keyframe_type),
+                                                    nullptr,
+                                                    flag);
 
     if (done) {
       WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
@@ -5422,6 +5433,7 @@ static void draw_setting_widget(bAnimContext *ac,
   }
 }
 
+#ifdef WITH_GREASE_PENCIL_V3
 static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
                                              uiBlock *block,
                                              const rctf *rect,
@@ -5484,6 +5496,7 @@ static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
   }
   MEM_freeN(opacity_rna_path);
 }
+#endif
 
 void ANIM_channel_draw_widgets(const bContext *C,
                                bAnimContext *ac,
@@ -5580,7 +5593,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
                       "",
                       offset + margin_x,
                       rect->ymin,
-                      MAX2(width, RENAME_TEXT_MIN_WIDTH),
+                      std::max(width, RENAME_TEXT_MIN_WIDTH),
                       channel_height,
                       &ptr,
                       RNA_property_identifier(prop),
@@ -5905,9 +5918,11 @@ void ANIM_channel_draw_widgets(const bContext *C,
             MEM_freeN(gp_rna_path);
           }
         }
+#ifdef WITH_GREASE_PENCIL_V3
         else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
           draw_grease_pencil_layer_widgets(ale, block, rect, offset, channel_height, array_index);
         }
+#endif
 
         /* Only if RNA-Path found. */
         if (rna_path) {

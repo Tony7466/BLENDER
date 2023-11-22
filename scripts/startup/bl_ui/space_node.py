@@ -64,8 +64,9 @@ class NODE_HT_header(Header):
 
                 layout.separator_spacer()
 
-                types_that_support_material = {'MESH', 'CURVE', 'SURFACE', 'FONT', 'META',
-                                               'GPENCIL', 'VOLUME', 'CURVES', 'POINTCLOUD'}
+                types_that_support_material = {
+                    'MESH', 'CURVE', 'SURFACE', 'FONT', 'META', 'GPENCIL', 'VOLUME', 'CURVES', 'POINTCLOUD',
+                }
                 # disable material slot buttons when pinned, cannot find correct slot within id_from (#36589)
                 # disable also when the selected object does not support materials
                 has_material_slots = not snode.pin and ob_type in types_that_support_material
@@ -140,8 +141,7 @@ class NODE_HT_header(Header):
                 layout.prop(snode_id, "use_nodes")
 
         elif snode.tree_type == 'GeometryNodeTree':
-            if context.preferences.experimental.use_node_group_operators:
-                layout.prop(snode, "geometry_nodes_type", text="")
+            layout.prop(snode, "geometry_nodes_type", text="")
             NODE_MT_editor_menus.draw_collapsible(context, layout)
             layout.separator_spacer()
 
@@ -162,7 +162,7 @@ class NODE_HT_header(Header):
                     else:
                         row.template_ID(snode, "node_tree", new="node.new_geometry_nodes_modifier")
             else:
-                layout.template_ID(snode, "node_tree", new="node.new_geometry_node_group_tool")
+                layout.template_ID(snode, "geometry_nodes_tool_tree", new="node.new_geometry_node_group_tool")
                 if snode.node_tree:
                     layout.popover(panel="NODE_PT_geometry_node_tool_object_types", text="Types")
                     layout.popover(panel="NODE_PT_geometry_node_tool_mode", text="Modes")
@@ -232,6 +232,12 @@ class NODE_MT_add(bpy.types.Menu):
         import nodeitems_utils
 
         layout = self.layout
+
+        if layout.operator_context == 'EXEC_REGION_WIN':
+            layout.operator_context = 'INVOKE_REGION_WIN'
+            layout.operator("WM_OT_search_single_menu", text="Search...", icon='VIEWZOOM').menu_idname = "NODE_MT_add"
+            layout.separator()
+
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         snode = context.space_data
@@ -325,15 +331,15 @@ class NODE_MT_node(Menu):
         layout.operator("transform.resize")
 
         layout.separator()
-        layout.operator("node.clipboard_copy", text="Copy", icon="COPYDOWN")
+        layout.operator("node.clipboard_copy", text="Copy", icon='COPYDOWN')
         layout.operator_context = 'EXEC_DEFAULT'
-        layout.operator("node.clipboard_paste", text="Paste", icon="PASTEDOWN")
+        layout.operator("node.clipboard_paste", text="Paste", icon='PASTEDOWN')
         layout.operator_context = 'INVOKE_REGION_WIN'
-        layout.operator("node.duplicate_move", icon="DUPLICATE")
+        layout.operator("node.duplicate_move", icon='DUPLICATE')
         layout.operator("node.duplicate_move_linked")
 
         layout.separator()
-        layout.operator("node.delete", icon="X")
+        layout.operator("node.delete", icon='X')
         layout.operator("node.delete_reconnect")
 
         layout.separator()
@@ -353,7 +359,7 @@ class NODE_MT_node(Menu):
         layout.operator("node.links_mute")
 
         layout.separator()
-        layout.operator("node.group_make", icon="NODETREE")
+        layout.operator("node.group_make", icon='NODETREE')
         layout.operator("node.group_insert", text="Insert Into Group")
         layout.operator("node.group_edit").exit = False
         layout.operator("node.group_ungroup")
@@ -363,7 +369,7 @@ class NODE_MT_node(Menu):
 
         if is_compositor:
             layout.separator()
-            layout.operator("node.read_viewlayers", icon="RENDERLAYERS")
+            layout.operator("node.read_viewlayers", icon='RENDERLAYERS')
 
 
 class NODE_MT_view_pie(Menu):
@@ -438,20 +444,19 @@ class NODE_PT_geometry_node_tool_object_types(Panel):
         snode = context.space_data
         group = snode.node_tree
 
-        types = [("is_type_mesh", "Mesh", 'MESH_DATA'),
-                 ("is_type_curve", "Curves", 'CURVES_DATA')]
+        types = [
+            ("is_type_mesh", "Mesh", 'MESH_DATA'),
+            ("is_type_curve", "Hair Curves", 'CURVES_DATA'),
+        ]
         if context.preferences.experimental.use_new_point_cloud_type:
             types.append(("is_type_point_cloud", "Point Cloud", 'POINTCLOUD_DATA'))
 
         col = layout.column()
         col.active = group.is_tool
         for prop, name, icon in types:
-            row = col.row()
-            row_checkbox = row.row()
-            row_checkbox.prop(group, prop, text="")
-            row_label = row.row()
-            row_label.label(text=name, icon=icon)
-            row_label.active = getattr(group, prop)
+            row = col.row(align=True)
+            row.label(text=name, icon=icon)
+            row.prop(group, prop, text="")
 
 
 class NODE_PT_geometry_node_tool_mode(Panel):
@@ -466,18 +471,18 @@ class NODE_PT_geometry_node_tool_mode(Panel):
         snode = context.space_data
         group = snode.node_tree
 
-        modes = [("is_mode_edit", "Edit Mode", 'EDITMODE_HLT'),
-                 ("is_mode_sculpt", "Sculpt Mode", 'SCULPTMODE_HLT')]
+        modes = (
+            ("is_mode_object", "Object Mode", 'OBJECT_DATAMODE'),
+            ("is_mode_edit", "Edit Mode", 'EDITMODE_HLT'),
+            ("is_mode_sculpt", "Sculpt Mode", 'SCULPTMODE_HLT'),
+        )
 
         col = layout.column()
         col.active = group.is_tool
         for prop, name, icon in modes:
-            row = col.row()
-            row_checkbox = row.row()
-            row_checkbox.prop(group, prop, text="")
-            row_label = row.row()
-            row_label.label(text=name, icon=icon)
-            row_label.active = getattr(group, prop)
+            row = col.row(align=True)
+            row.label(text=name, icon=icon)
+            row.prop(group, prop, text="")
 
 
 class NODE_PT_node_color_presets(PresetPanel, Panel):
@@ -662,7 +667,7 @@ class NODE_PT_active_node_color(Panel):
     bl_category = "Node"
     bl_label = "Color"
     bl_options = {'DEFAULT_CLOSED'}
-    bl_parent_id = 'NODE_PT_active_node_generic'
+    bl_parent_id = "NODE_PT_active_node_generic"
 
     @classmethod
     def poll(cls, context):
@@ -826,6 +831,7 @@ class NODE_PT_quality(bpy.types.Panel):
         if prefs.experimental.use_experimental_compositors:
             col.prop(tree, "execution_mode")
             use_realtime = tree.execution_mode == 'REALTIME'
+        col.prop(tree, "precision")
 
         col = layout.column()
         col.active = not use_realtime
@@ -933,7 +939,6 @@ class NODE_PT_node_tree_interface(Panel):
             if active_item.item_type == 'SOCKET':
                 layout.prop(active_item, "socket_type", text="Type")
                 layout.prop(active_item, "description")
-                layout.prop(active_item, "in_out", text="Input/Output")
                 # Display descriptions only for Geometry Nodes, since it's only used in the modifier panel.
                 if tree.type == 'GEOMETRY':
                     field_socket_types = {
@@ -988,16 +993,19 @@ class NODE_PT_node_tree_properties(Panel):
         col.prop(group, "is_tool")
 
 
+def draw_socket_item_in_list(uilist, layout, item, icon):
+    if uilist.layout_type in {'DEFAULT', 'COMPACT'}:
+        row = layout.row(align=True)
+        row.template_node_socket(color=item.color)
+        row.prop(item, "name", text="", emboss=False, icon_value=icon)
+    elif uilist.layout_type == 'GRID':
+        layout.alignment = 'CENTER'
+        layout.template_node_socket(color=item.color)
+
+
 class NODE_UL_simulation_zone_items(bpy.types.UIList):
     def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            row = layout.row(align=True)
-
-            row.template_node_socket(color=item.color)
-            row.prop(item, "name", text="", emboss=False, icon_value=icon)
-        elif self.layout_type == 'GRID':
-            layout.alignment = 'CENTER'
-            layout.template_node_socket(color=item.color)
+        draw_socket_item_in_list(self, layout, item, icon)
 
 
 class NODE_PT_simulation_zone_items(Panel):
@@ -1069,13 +1077,7 @@ class NODE_PT_simulation_zone_items(Panel):
 
 class NODE_UL_repeat_zone_items(bpy.types.UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            row = layout.row(align=True)
-            row.template_node_socket(color=item.color)
-            row.prop(item, "name", text="", emboss=False, icon_value=icon)
-        elif self.layout_type == 'GRID':
-            layout.alignment = 'CENTER'
-            layout.template_node_socket(color=item.color)
+        draw_socket_item_in_list(self, layout, item, icon)
 
 
 class NODE_PT_repeat_zone_items(Panel):
@@ -1176,7 +1178,7 @@ def node_panel(cls):
     node_cls.bl_region_type = 'UI'
     node_cls.bl_category = "Options"
     if hasattr(node_cls, "bl_parent_id"):
-        node_cls.bl_parent_id = 'NODE_' + node_cls.bl_parent_id
+        node_cls.bl_parent_id = "NODE_" + node_cls.bl_parent_id
 
     return node_cls
 

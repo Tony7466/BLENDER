@@ -14,13 +14,13 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_report.h"
 
-#include "SEQ_relations.h"
+#include "SEQ_relations.hh"
 #include "SEQ_retiming.hh"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
 #include "ED_keyframing.hh"
 
@@ -153,6 +153,6 @@ static void recalcData_sequencer_retiming(TransInfo *t)
 
 TransConvertTypeInfo TransConvertType_SequencerRetiming = {
     /*flags*/ (T_POINTS | T_2D_EDIT),
-    /*createTransData*/ createTransSeqRetimingData,
-    /*recalcData*/ recalcData_sequencer_retiming,
+    /*create_trans_data*/ createTransSeqRetimingData,
+    /*recalc_data*/ recalcData_sequencer_retiming,
 };

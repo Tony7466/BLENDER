@@ -1626,6 +1626,13 @@ typedef struct SpaceNode {
    */
   char geometry_nodes_type;
 
+  /**
+   * Used as the editor's top-level node group for #SNODE_GEOMETRY_TOOL. This is stored in the
+   * node editor because it isn't part of the context otherwise, and it isn't meant to be set
+   * separately from the editor's regular node group.
+   */
+  struct bNodeTree *geometry_nodes_tool_tree;
+
   /** Grease-pencil data. */
   struct bGPdata *gpd;
 
@@ -1978,9 +1985,12 @@ typedef struct SpaceSpreadsheet {
   uint8_t attribute_domain;
   /* eSpaceSpreadsheet_ObjectEvalState. */
   uint8_t object_eval_state;
+  /* Active grease pencil layer index for grease pencil component. */
+  int active_layer_index;
 
   /* eSpaceSpreadsheet_Flag. */
   uint32_t flag;
+  char _pad1[4];
 
   SpaceSpreadsheet_Runtime *runtime;
 } SpaceSpreadsheet;

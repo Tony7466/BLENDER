@@ -14,8 +14,8 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "BKE_asset.h"
-#include "BKE_context.h"
+#include "BKE_asset.hh"
+#include "BKE_context.hh"
 #include "BKE_idprop.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
@@ -158,8 +158,8 @@ static void unassigned_assets_draw(const bContext *C, Menu *menu)
     asset::operator_asset_reference_props_set(*asset, props_ptr);
   }
 
+  bool first = true;
   bool add_separator = !tree.unassigned_assets.is_empty();
-
   LISTBASE_FOREACH (const bNodeTree *, group, &bmain.nodetrees) {
     /* Assets are displayed in other menus, and non-local data-blocks aren't added to this menu. */
     if (group->id.library_weak_reference || group->id.asset_data) {
@@ -173,8 +173,11 @@ static void unassigned_assets_draw(const bContext *C, Menu *menu)
 
     if (add_separator) {
       uiItemS(layout);
-      uiItemL(layout, IFACE_("Non-Assets"), ICON_NONE);
       add_separator = false;
+    }
+    if (first) {
+      uiItemL(layout, IFACE_("Non-Assets"), ICON_NONE);
+      first = false;
     }
 
     PointerRNA props_ptr;
