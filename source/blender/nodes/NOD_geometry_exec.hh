@@ -14,7 +14,6 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_grid_types.hh"
 #include "BKE_node_socket_value_cpp_type.hh"
 
 #include "DNA_node_types.h"

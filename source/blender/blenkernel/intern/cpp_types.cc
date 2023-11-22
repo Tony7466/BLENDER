@@ -11,7 +11,6 @@
 
 #include "BKE_cpp_types.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_grid_types.hh"
 #include "BKE_instances.hh"
 #include "BKE_node_socket_value_cpp_type.hh"
 

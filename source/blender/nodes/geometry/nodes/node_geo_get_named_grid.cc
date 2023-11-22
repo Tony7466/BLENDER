@@ -4,7 +4,6 @@
 
 #include "node_geometry_util.hh"
 
-#include "BKE_grid_types.hh"
 #include "BKE_volume.hh"
 #include "BKE_volume_openvdb.hh"
 
