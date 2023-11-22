@@ -20,7 +20,7 @@ struct Object;
 struct PTCacheEdit;
 struct ParticleSystem;
 struct Volume;
-struct GVolumeGrid;
+struct VolumeGrid;
 struct bGPDstroke;
 struct bGPdata;
 struct Scene;
@@ -251,7 +251,7 @@ typedef struct DRWVolumeGrid {
 } DRWVolumeGrid;
 
 DRWVolumeGrid *DRW_volume_batch_cache_get_grid(struct Volume *volume,
-                                               const struct GVolumeGrid *grid);
+                                               const struct VolumeGrid *grid);
 struct GPUBatch *DRW_cache_volume_face_wireframe_get(struct Object *ob);
 struct GPUBatch *DRW_cache_volume_selection_surface_get(struct Object *ob);
 

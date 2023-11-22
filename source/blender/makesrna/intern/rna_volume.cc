@@ -96,46 +96,46 @@ static void rna_Volume_velocity_grid_set(PointerRNA *ptr, const char *value)
 
 static void rna_VolumeGrid_name_get(PointerRNA *ptr, char *value)
 {
-  GVolumeGrid *grid = static_cast<GVolumeGrid *>(ptr->data);
+  VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
   strcpy(value, BKE_volume_grid_name(grid));
 }
 
 static int rna_VolumeGrid_name_length(PointerRNA *ptr)
 {
-  GVolumeGrid *grid = static_cast<GVolumeGrid *>(ptr->data);
+  VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
   return strlen(BKE_volume_grid_name(grid));
 }
 
 static int rna_VolumeGrid_data_type_get(PointerRNA *ptr)
 {
-  const GVolumeGrid *grid = static_cast<GVolumeGrid *>(ptr->data);
+  const VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
   return BKE_volume_grid_type(grid);
 }
 
 static int rna_VolumeGrid_channels_get(PointerRNA *ptr)
 {
-  const GVolumeGrid *grid = static_cast<GVolumeGrid *>(ptr->data);
+  const VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
   return BKE_volume_grid_channels(grid);
 }
 
 static void rna_VolumeGrid_matrix_object_get(PointerRNA *ptr, float *value)
 {
-  GVolumeGrid *grid = static_cast<GVolumeGrid *>(ptr->data);
+  VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
   BKE_volume_grid_transform_matrix(grid, (float(*)[4])value);
 }
 
 static bool rna_VolumeGrid_is_loaded_get(PointerRNA *ptr)
 {
-  GVolumeGrid *grid = static_cast<GVolumeGrid *>(ptr->data);
+  VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
   return BKE_volume_grid_is_loaded(grid);
 }
 
-static bool rna_VolumeGrid_load(ID *id, GVolumeGrid *grid)
+static bool rna_VolumeGrid_load(ID *id, VolumeGrid *grid)
 {
   return BKE_volume_grid_load((Volume *)id, grid);
 }
 
-static void rna_VolumeGrid_unload(ID *id, GVolumeGrid *grid)
+static void rna_VolumeGrid_unload(ID *id, VolumeGrid *grid)
 {
   BKE_volume_grid_unload((Volume *)id, grid);
 }
@@ -164,7 +164,7 @@ static void rna_Volume_grids_end(CollectionPropertyIterator * /*iter*/) {}
 static PointerRNA rna_Volume_grids_get(CollectionPropertyIterator *iter)
 {
   Volume *volume = static_cast<Volume *>(iter->internal.count.ptr);
-  const GVolumeGrid *grid = BKE_volume_grid_get_for_read(volume, iter->internal.count.item);
+  const VolumeGrid *grid = BKE_volume_grid_get_for_read(volume, iter->internal.count.item);
   return rna_pointer_inherit_refine(&iter->parent, &RNA_VolumeGrid, (void *)grid);
 }
 
@@ -252,7 +252,6 @@ static void rna_def_volume_grid(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "VolumeGrid", nullptr);
-  RNA_def_struct_sdna(srna, "GVolumeGrid");
   RNA_def_struct_ui_text(srna, "Volume Grid", "3D volume grid");
   RNA_def_struct_ui_icon(srna, ICON_VOLUME_DATA);
 
