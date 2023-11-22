@@ -3101,24 +3101,13 @@ static BHead *read_global(BlendFileData *bfd, FileData *fd, BHead *bhead)
   bfd->fileflags = fg->fileflags;
   bfd->globalf = fg->globalf;
 
-  /* Error in 2.65 and older: `main->filepath` was not set if you save from startup
-   * (not after loading file). */
-  if (bfd->filepath[0] == 0) {
-    if (fd->fileversion < 265 || (fd->fileversion == 265 && fg->subversion < 1)) {
-      if ((G.fileflags & G_FILE_RECOVER_READ) == 0) {
-        STRNCPY(bfd->filepath, BKE_main_blendfile_path(bfd->main));
-      }
-    }
-
-    /* early 2.50 version patch - filepath not in FileGlobal struct at all */
-    if (fd->fileversion <= 250) {
-      STRNCPY(bfd->filepath, BKE_main_blendfile_path(bfd->main));
-    }
-  }
-
   /* Note: since 88b24bc6bb, `fg->filepath` is only written for crash recovery and autosave files,
    * so only overwrite `fd->relabase` if it is not empty, in case a regular blendfile is opened
-   * through one of the 'recover' operators. */
+   * through one of the 'recover' operators.
+   *
+   * In all other cases, the path is just set to the current path of the blendfile being read, so
+   * there is no need to handle anymore older files (pre-2.65) that did not store (correctly) their
+   * path. */
   if (G.fileflags & G_FILE_RECOVER_READ) {
     if (fg->filepath[0] != '\0') {
       STRNCPY(fd->relabase, fg->filepath);
