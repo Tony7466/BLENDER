@@ -205,24 +205,26 @@ static struct VolumeFileCache {
   std::mutex mutex;
 } GLOBAL_CACHE;
 
-VolumeGrid::VolumeGrid(const VolumeFileCacheEntry &template_entry, const int simplify_level)
+namespace blender::bke {
+
+GVolumeGrid::GVolumeGrid(const VolumeFileCacheEntry &template_entry, const int simplify_level)
     : entry(nullptr), simplify_level(simplify_level), is_loaded(false)
 {
   entry = GLOBAL_CACHE.add_metadata_user(template_entry);
 }
 
-VolumeGrid::VolumeGrid(const char *file_path, const GridPtr &vdb_grid, const int simplify_level)
+GVolumeGrid::GVolumeGrid(const char *file_path, const GridPtr &vdb_grid, const int simplify_level)
     : entry(nullptr), simplify_level(simplify_level), is_loaded(false)
 {
   entry = GLOBAL_CACHE.add_metadata_user(VolumeFileCacheEntry(file_path, vdb_grid));
 }
 
-VolumeGrid::VolumeGrid(const openvdb::GridBase::Ptr &grid)
+GVolumeGrid::GVolumeGrid(const openvdb::GridBase::Ptr &grid)
     : entry(nullptr), local_grid(grid), is_loaded(true)
 {
 }
 
-VolumeGrid::VolumeGrid(const VolumeGrid &other)
+GVolumeGrid::GVolumeGrid(const GVolumeGrid &other)
     : entry(other.entry),
       simplify_level(other.simplify_level),
       local_grid(other.local_grid),
@@ -233,14 +235,14 @@ VolumeGrid::VolumeGrid(const VolumeGrid &other)
   }
 }
 
-VolumeGrid::~VolumeGrid()
+GVolumeGrid::~GVolumeGrid()
 {
   if (entry) {
     GLOBAL_CACHE.remove_user(*entry, is_loaded);
   }
 }
 
-void VolumeGrid::load(const char *volume_name, const char *filepath) const
+void GVolumeGrid::load(const char *volume_name, const char *filepath) const
 {
   /* If already loaded or not file-backed, nothing to do. */
   if (is_loaded || entry == nullptr) {
@@ -292,7 +294,7 @@ void VolumeGrid::load(const char *volume_name, const char *filepath) const
   is_loaded = true;
 }
 
-void VolumeGrid::unload(const char *volume_name) const
+void GVolumeGrid::unload(const char *volume_name) const
 {
   /* Not loaded or not file-backed, nothing to do. */
   if (!is_loaded || entry == nullptr) {
@@ -316,7 +318,7 @@ void VolumeGrid::unload(const char *volume_name) const
   is_loaded = false;
 }
 
-void VolumeGrid::clear_reference(const char * /*volume_name*/)
+void GVolumeGrid::clear_reference(const char * /*volume_name*/)
 {
   /* Clear any reference to a grid in the file cache. */
   local_grid = grid()->copyGridWithNewTree();
@@ -327,7 +329,7 @@ void VolumeGrid::clear_reference(const char * /*volume_name*/)
   is_loaded = true;
 }
 
-void VolumeGrid::duplicate_reference(const char *volume_name, const char *filepath)
+void GVolumeGrid::duplicate_reference(const char *volume_name, const char *filepath)
 {
   /* Make a deep copy of the grid and remove any reference to a grid in the
    * file cache. Load file grid into memory first if needed. */
@@ -341,7 +343,7 @@ void VolumeGrid::duplicate_reference(const char *volume_name, const char *filepa
   is_loaded = true;
 }
 
-const char *VolumeGrid::name() const
+const char *GVolumeGrid::name() const
 {
   /* Don't use vdb.getName() since it copies the string, we want a pointer to the
    * original so it doesn't get freed out of scope. */
@@ -350,7 +352,7 @@ const char *VolumeGrid::name() const
   return (name_meta) ? name_meta->value().c_str() : "";
 }
 
-const char *VolumeGrid::error_message() const
+const char *GVolumeGrid::error_message() const
 {
   if (is_loaded && entry && !entry->error_msg.empty()) {
     return entry->error_msg.c_str();
@@ -359,12 +361,12 @@ const char *VolumeGrid::error_message() const
   return nullptr;
 }
 
-bool VolumeGrid::grid_is_loaded() const
+bool GVolumeGrid::grid_is_loaded() const
 {
   return is_loaded;
 }
 
-openvdb::GridBase::Ptr VolumeGrid::grid() const
+openvdb::GridBase::Ptr GVolumeGrid::grid() const
 {
   if (entry) {
     return entry->simplified_grid(simplify_level);
@@ -372,15 +374,17 @@ openvdb::GridBase::Ptr VolumeGrid::grid() const
   return local_grid;
 }
 
-void VolumeGrid::set_simplify_level(const int simplify_level)
+void GVolumeGrid::set_simplify_level(const int simplify_level)
 {
   BLI_assert(simplify_level >= 0);
   this->simplify_level = simplify_level;
 }
 
-const openvdb::GridBase::Ptr &VolumeGrid::main_grid() const
+const openvdb::GridBase::Ptr &GVolumeGrid::main_grid() const
 {
   return (entry) ? entry->grid : local_grid;
 }
+
+}  // namespace blender::bke
 
 #endif

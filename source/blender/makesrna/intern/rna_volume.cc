@@ -18,6 +18,7 @@
 #include "DNA_volume_types.h"
 
 #include "BKE_volume.hh"
+#include "BKE_volume_types.hh"
 
 #include "BLI_math_base.h"
 #include "BLI_string_utf8_symbols.h"
@@ -252,6 +253,7 @@ static void rna_def_volume_grid(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "VolumeGrid", nullptr);
+  RNA_def_struct_sdna(srna, "VolumeGrid");
   RNA_def_struct_ui_text(srna, "Volume Grid", "3D volume grid");
   RNA_def_struct_ui_icon(srna, ICON_VOLUME_DATA);
 

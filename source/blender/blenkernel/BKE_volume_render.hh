@@ -13,9 +13,9 @@
 
 #include "DNA_volume_types.h"
 
+#include "BKE_volume_types.hh"
+
 struct Volume;
-struct VolumeGrid;
-enum VolumeGridType : int8_t;
 
 /* Dense Voxels */
 

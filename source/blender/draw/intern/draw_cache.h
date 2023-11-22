@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BKE_volume_types.hh"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -20,7 +22,6 @@ struct Object;
 struct PTCacheEdit;
 struct ParticleSystem;
 struct Volume;
-struct VolumeGrid;
 struct bGPDstroke;
 struct bGPdata;
 struct Scene;
@@ -250,8 +251,7 @@ typedef struct DRWVolumeGrid {
   float bounds_to_texture[4][4];
 } DRWVolumeGrid;
 
-DRWVolumeGrid *DRW_volume_batch_cache_get_grid(struct Volume *volume,
-                                               const struct VolumeGrid *grid);
+DRWVolumeGrid *DRW_volume_batch_cache_get_grid(struct Volume *volume, const VolumeGrid *grid);
 struct GPUBatch *DRW_cache_volume_face_wireframe_get(struct Object *ob);
 struct GPUBatch *DRW_cache_volume_selection_surface_get(struct Object *ob);
 

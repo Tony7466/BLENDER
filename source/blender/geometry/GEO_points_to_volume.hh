@@ -8,10 +8,11 @@
 
 #include "DNA_modifier_types.h"
 
+#include "BKE_volume_types.hh"
+
 #pragma once
 
 struct Volume;
-struct VolumeGrid;
 
 /** \file
  * \ingroup geo

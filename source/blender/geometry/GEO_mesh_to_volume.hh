@@ -11,10 +11,11 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 
+#include "BKE_volume_types.hh"
+
 #pragma once
 
 struct Volume;
-struct VolumeGrid;
 struct Depsgraph;
 
 /** \file

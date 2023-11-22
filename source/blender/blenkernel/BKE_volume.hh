@@ -20,7 +20,6 @@ struct Object;
 struct ReportList;
 struct Scene;
 struct Volume;
-struct VolumeGrid;
 struct VolumeGridVector;
 
 /* Module */

@@ -13,8 +13,9 @@
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_string_ref.hh"
 
+#  include "BKE_volume_types.hh"
+
 struct Volume;
-struct VolumeGrid;
 
 VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
                                     blender::StringRef name,
