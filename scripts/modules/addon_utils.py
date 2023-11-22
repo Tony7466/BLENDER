@@ -15,6 +15,8 @@ __all__ = (
 
 import bpy as _bpy
 _preferences = _bpy.context.preferences
+# Don't use this as global since it changes at runtime, and is typically None on startup.
+# _project = _bpy.context.project
 
 error_encoding = False
 # (name, file, path)
@@ -31,6 +33,20 @@ def _initialize_once():
 
     for addon in _preferences.addons:
         enable(addon.module)
+
+    project = _bpy.context.project
+    if project:
+        for addon in project.addons:
+            enable(addon.module)
+
+
+
+def _enabled_addons_names():
+    addons = [addon.module for addon in _preferences.addons]
+    project = _bpy.context.project
+    if project:
+        addons.append(addon.module for addon in project.addons)
+    return addons
 
 
 def paths():
@@ -242,7 +258,8 @@ def check(module_name):
     :rtype: tuple of booleans
     """
     import sys
-    loaded_default = module_name in _preferences.addons
+    enabled_addons = _enabled_addons_names()
+    loaded_default = module_name in enabled_addons
 
     mod = sys.modules.get(module_name)
     loaded_state = (
@@ -268,31 +285,42 @@ def check(module_name):
 # utility functions
 
 
-def _addon_ensure(module_name):
-    addons = _preferences.addons
+# `owner` should be either preferences or a project. Expected to have a `.addons` member
+# collection. Can be None for convenience (the project is None often), no change will be done then.
+def _addon_ensure(module_name, owner):
+    if owner is None:
+        return
+
+    addons = owner.addons
     addon = addons.get(module_name)
     if not addon:
         addon = addons.new()
         addon.module = module_name
 
 
-def _addon_remove(module_name):
-    addons = _preferences.addons
+# `owner` should be either preferences or a project. Expected to have a `.addons` member
+# collection. Can be None for convenience (the project is None often), no change will be done then.
+def _addon_remove(module_name, owner):
+    if owner is None:
+        return
 
+    addons = owner.addons
     while module_name in addons:
         addon = addons.get(module_name)
         if addon:
             addons.remove(addon)
 
 
-def enable(module_name, *, default_set=False, persistent=False, handle_error=None):
+def enable(module_name, *, enable_in_prefs=False, enable_in_project=False, persistent=False, handle_error=None):
     """
     Enables an addon by name.
 
     :arg module_name: the name of the addon and module.
     :type module_name: string
-    :arg default_set: Set the user-preference.
-    :type default_set: bool
+    :arg enable_in_prefs: Update the Preferences to have this addon enabled.
+    :type enable_in_prefs: bool
+    :arg enable_in_project: Update the Project Settings to have this addon enabled.
+    :type enable_in_project: bool
     :arg persistent: Ensure the addon is enabled for the entire session (after loading new files).
     :type persistent: bool
     :arg handle_error: Called in the case of an error, taking an exception argument.
@@ -347,8 +375,10 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
 
     # add the addon first it may want to initialize its own preferences.
     # must remove on fail through.
-    if default_set:
-        _addon_ensure(module_name)
+    if enable_in_prefs:
+        _addon_ensure(module_name, _preferences)
+    if enable_in_project:
+        _addon_ensure(module_name, _bpy.context.project)
 
     # Split registering up into 3 steps so we can undo
     # if it fails par way through.
@@ -377,8 +407,10 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
             else:
                 handle_error(ex)
 
-            if default_set:
-                _addon_remove(module_name)
+            if enable_in_prefs:
+                _addon_remove(module_name, _preferences)
+            if enable_in_project:
+                _addon_remove(module_name, _bpy.context.project)
             return None
 
         # 1.1) Fail when add-on is too old.
@@ -406,8 +438,10 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
             )
             handle_error(ex)
             del sys.modules[module_name]
-            if default_set:
-                _addon_remove(module_name)
+            if enable_in_prefs:
+                _addon_remove(module_name, _preferences)
+            if enable_in_project:
+                _addon_remove(module_name, _bpy.context.project)
             return None
         finally:
             _bl_owner_id_set(owner_id_prev)
@@ -422,14 +456,16 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
     return mod
 
 
-def disable(module_name, *, default_set=False, handle_error=None):
+def disable(module_name, *, disable_in_prefs=False, disable_in_project=False, handle_error=None):
     """
     Disables an addon by name.
 
     :arg module_name: The name of the addon and module.
     :type module_name: string
-    :arg default_set: Set the user-preference.
-    :type default_set: bool
+    :arg disable_in_prefs: Update the Preferences to have this addon disabled.
+    :type disable_in_prefs: bool
+    :arg disable_in_project: Update the Project Settings to have this addon disabled.
+    :type disable_in_project: bool
     :arg handle_error: Called in the case of an error, taking an exception argument.
     :type handle_error: function
     """
@@ -464,8 +500,10 @@ def disable(module_name, *, default_set=False, handle_error=None):
         )
 
     # could be in more than once, unlikely but better do this just in case.
-    if default_set:
-        _addon_remove(module_name)
+    if disable_in_prefs:
+        _addon_remove(module_name, _preferences)
+    if disable_in_project:
+        _addon_remove(module_name, _bpy.context.project)
 
     if _bpy.app.debug_python:
         print("\taddon_utils.disable", module_name)

@@ -32,6 +32,7 @@ __all__ = (
     "previews",
     "resource_path",
     "script_path_user",
+    "script_path_project",
     "script_paths",
     "smpte_from_frame",
     "smpte_from_seconds",
@@ -39,6 +40,7 @@ __all__ = (
     "unregister_class",
     "unregister_tool",
     "user_resource",
+    "project_resource",
     "execfile",
 )
 
@@ -745,6 +747,24 @@ def keyconfig_set(filepath, *, report=None):
         return True
 
 
+def create_resource_path(target_path):
+    if target_path is None:
+        return False
+
+    # create path if not existing.
+    if not _os.path.exists(target_path):
+        try:
+            _os.makedirs(target_path)
+        except:
+            import traceback
+            traceback.print_exc()
+            return False
+    elif not _os.path.isdir(target_path):
+        print("Path %r found but isn't a directory!" % target_path)
+        return False
+    return True
+
+
 def user_resource(resource_type, *, path="", create=False):
     """
     Return a user resource path (normally from the users home directory).
@@ -761,22 +781,29 @@ def user_resource(resource_type, *, path="", create=False):
     """
 
     target_path = _user_resource(resource_type, path=path)
-
     if create:
-        # should always be true.
-        if target_path:
-            # create path if not existing.
-            if not _os.path.exists(target_path):
-                try:
-                    _os.makedirs(target_path)
-                except:
-                    import traceback
-                    traceback.print_exc()
-                    target_path = ""
-            elif not _os.path.isdir(target_path):
-                print("Path %r found but isn't a directory!" % target_path)
-                target_path = ""
+        create_resource_path(target_path)
+    return target_path
 
+
+def project_resource(resource_type, *, path="", create=False):
+    """
+    Return a project resource path.
+
+    :arg type: Resource type in ['SCRIPTS'].
+    :type type: string
+    :arg path: Optional subdirectory.
+    :type path: string
+    :arg create: Treat the path as a directory and create
+       it if its not existing.
+    :type create: boolean
+    :return: a path.
+    :rtype: string
+    """
+
+    target_path = _project_resource(resource_type, path=path)
+    if create:
+        create_resource_path(target_path)
     return target_path
 
 

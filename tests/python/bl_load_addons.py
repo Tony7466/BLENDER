@@ -57,7 +57,7 @@ def disable_addons():
     # first disable all
     addons = bpy.context.preferences.addons
     for mod_name in list(addons.keys()):
-        addon_utils.disable(mod_name, default_set=True)
+        addon_utils.disable(mod_name, disable_in_prefs=True)
     assert bool(addons) is False
 
 
@@ -73,7 +73,7 @@ def test_load_addons():
     for mod in modules:
         mod_name = mod.__name__
         print("\tenabling:", mod_name)
-        addon_utils.enable(mod_name, default_set=True)
+        addon_utils.enable(mod_name, enable_in_prefs=True)
         if (mod_name not in addons) and (mod_name not in BLACKLIST_ADDONS):
             addons_fail.append(mod_name)
 
@@ -97,13 +97,13 @@ def reload_addons(do_reload=True, do_reverse=True):
         for mod in modules:
             mod_name = mod.__name__
             print("\tenabling:", mod_name)
-            addon_utils.enable(mod_name, default_set=True)
+            addon_utils.enable(mod_name, enable_in_prefs=True)
             assert mod_name in addons
 
         for mod in modules:
             mod_name = mod.__name__
             print("\tdisabling:", mod_name)
-            addon_utils.disable(mod_name, default_set=True)
+            addon_utils.disable(mod_name, disable_in_prefs=True)
             assert not (mod_name in addons)
 
             # now test reloading

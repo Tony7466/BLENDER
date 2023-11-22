@@ -424,6 +424,11 @@ class PREFERENCES_OT_keyconfig_remove(Operator):
 # -----------------------------------------------------------------------------
 # Add-on Operators
 
+addon_owner = (
+    ('PREFERENCES', "Preferences", "Affect add-ons from the preferences only"),
+    ('PROJECT', "Project", "Affect add-ons of the active project only"),
+)
+
 class PREFERENCES_OT_addon_enable(Operator):
     """Enable an add-on"""
     bl_idname = "preferences.addon_enable"
@@ -432,6 +437,11 @@ class PREFERENCES_OT_addon_enable(Operator):
     module: StringProperty(
         name="Module",
         description="Module name of the add-on to enable",
+    )
+    owner: EnumProperty(
+        items=addon_owner,
+        description="Determine where the add-on should be enabled in",
+        default='PREFERENCES',
     )
 
     def execute(self, _context):
@@ -445,7 +455,9 @@ class PREFERENCES_OT_addon_enable(Operator):
             err_str = traceback.format_exc()
             print(err_str)
 
-        mod = addon_utils.enable(self.module, default_set=True, handle_error=err_cb)
+        enable_in_prefs = self.owner == 'PREFERENCES'
+        enable_in_project = self.owner == 'PROJECT'
+        mod = addon_utils.enable(self.module, enable_in_prefs=enable_in_prefs, enable_in_project=enable_in_project, handle_error=err_cb)
 
         if mod:
             info = addon_utils.module_bl_info(mod)
@@ -479,6 +491,11 @@ class PREFERENCES_OT_addon_disable(Operator):
         name="Module",
         description="Module name of the add-on to disable",
     )
+    owner: EnumProperty(
+        items=addon_owner,
+        description="Determine from which source the add-on should be disabled",
+        default='PREFERENCES',
+    )
 
     def execute(self, _context):
         import addon_utils
@@ -491,7 +508,9 @@ class PREFERENCES_OT_addon_disable(Operator):
             err_str = traceback.format_exc()
             print(err_str)
 
-        addon_utils.disable(self.module, default_set=True, handle_error=err_cb)
+        disable_in_prefs = self.owner == 'PREFERENCES'
+        disable_in_project = self.owner =='PROJECT'
+        addon_utils.disable(self.module, disable_in_prefs=disable_in_prefs, disable_in_project=disable_in_project, handle_error=err_cb)
 
         if err_str:
             self.report({'ERROR'}, err_str)
@@ -577,32 +596,18 @@ class PREFERENCES_OT_addon_refresh(Operator):
         return {'FINISHED'}
 
 
+# Helper to share most code between the preferences and project addon install operators
+# (`PREFERENCES_OT_addon_install` and `PREFERENCES_OT_project_addon_install`). Main difference is
+# that they need different `target` properties.
+#
 # Note: shares some logic with PREFERENCES_OT_app_template_install
 # but not enough to de-duplicate. Fixed here may apply to both.
-class PREFERENCES_OT_addon_install(Operator):
-    """Install an add-on"""
-    bl_idname = "preferences.addon_install"
-    bl_label = "Install Add-on"
-
+class AddonEnableOperatorMixin():
     overwrite: BoolProperty(
         name="Overwrite",
         description="Remove existing add-ons with the same ID",
         default=True,
     )
-
-    def _target_path_items(_self, context):
-        paths = context.preferences.filepaths
-        return (
-            ('DEFAULT', "Default", ""),
-            None,
-            *[(item.name, item.name, "") for index, item in enumerate(paths.script_directories) if item.directory],
-        )
-
-    target: EnumProperty(
-        name="Target Path",
-        items=_target_path_items,
-    )
-
     filepath: StringProperty(
         subtype='FILE_PATH',
     )
@@ -630,9 +635,14 @@ class PREFERENCES_OT_addon_install(Operator):
 
         pyfile = self.filepath
 
+        is_owner_project = False
+
         if self.target == 'DEFAULT':
             # Don't use `bpy.utils.script_paths(path="addons")` because we may not be able to write to it.
             path_addons = bpy.utils.user_resource('SCRIPTS', path="addons", create=True)
+        elif self.target == 'PROJECT_DEFAULT':
+            path_addons = bpy.utils.project_resource('SCRIPTS', path="addons", create=True)
+            is_owner_project = True
         else:
             paths = context.preferences.filepaths
             for script_directory in paths.script_directories:
@@ -712,7 +722,10 @@ class PREFERENCES_OT_addon_install(Operator):
         # disable any addons we may have enabled previously and removed.
         # this is unlikely but do just in case. bug #23978.
         for new_addon in addons_new:
-            addon_utils.disable(new_addon, default_set=True)
+            # Mutually exclusive.
+            disable_in_project = is_owner_project
+            disable_in_prefs = not disable_in_project
+            addon_utils.disable(new_addon, disable_in_prefs=disable_in_prefs, disable_in_project=disable_in_project)
 
         # possible the zip contains multiple addons, we could disallow this
         # but for now just use the first
@@ -745,6 +758,47 @@ class PREFERENCES_OT_addon_install(Operator):
         return {'RUNNING_MODAL'}
 
 
+class PREFERENCES_OT_addon_install(Operator, AddonEnableOperatorMixin):
+    """Install an add-on for the Preferences"""
+    bl_idname = "preferences.addon_install"
+    bl_label = "Install Add-on"
+
+    def _target_path_items(_self, context):
+        paths = context.preferences.filepaths
+        return (
+            # Would be nicer if this was called 'USER_DEFAULT', not done to keep compatibility.
+            ('DEFAULT', "User Default", "Install the add-on to the default user script location"),
+            # Used by `PREFERENCES_OT_project_addon_install` and `AddonEnableOperatorMixin`.
+            # ('PROJECT_DEFAULT', "Project Default", "Install the add-on to the default location of the project"),
+            None,
+            *[(item.name, item.name, "") for index, item in enumerate(paths.script_directories) if item.directory],
+        )
+
+    target: EnumProperty(
+        name="Target Path",
+        items=_target_path_items,
+    )
+
+    # Rest is handled by `AddonEnableOperatorMixin` (further properties and methods).
+
+
+class PREFERENCES_OT_project_addon_install(Operator, AddonEnableOperatorMixin):
+    """Install an add-on for the project"""
+    bl_idname = "preferences.project_addon_install"
+    bl_label = "Install Project Add-on"
+
+    target: EnumProperty(
+        name="Target Path",
+        items=(
+            # Must not collide with `PREFERENCES_OT_addon_install._target_path_items`, since
+            # `AddonEnableOperatorMixin` works with both.
+            ('PROJECT_DEFAULT', "Project Default", "Install the add-on to the default location of the project"),
+        ),
+    )
+
+    # Rest is handled by `AddonEnableOperatorMixin` (further properties and methods).
+
+
 class PREFERENCES_OT_addon_remove(Operator):
     """Delete the add-on from the file system"""
     bl_idname = "preferences.addon_remove"
@@ -753,6 +807,11 @@ class PREFERENCES_OT_addon_remove(Operator):
     module: StringProperty(
         name="Module",
         description="Module name of the add-on to remove",
+    )
+    owner: EnumProperty(
+        items=addon_owner,
+        description="Determine from which source the add-on should be removed from",
+        default='PREFERENCES',
     )
 
     @staticmethod
@@ -779,8 +838,10 @@ class PREFERENCES_OT_addon_remove(Operator):
             self.report({'WARNING'}, tip_("Add-on path %r could not be found") % path)
             return {'CANCELLED'}
 
+        disable_in_prefs = self.owner == 'PREFERENCES'
+        disable_in_project = self.owner =='PROJECT'
         # in case its enabled
-        addon_utils.disable(self.module, default_set=True)
+        addon_utils.disable(self.module, disable_in_prefs=disable_in_prefs, disable_in_project=disable_in_project)
 
         import shutil
         if isdir and (not os.path.islink(path)):
@@ -1212,6 +1273,7 @@ classes = (
     PREFERENCES_OT_addon_refresh,
     PREFERENCES_OT_addon_remove,
     PREFERENCES_OT_addon_show,
+    PREFERENCES_OT_project_addon_install,
     PREFERENCES_OT_app_template_install,
     PREFERENCES_OT_copy_prev,
     PREFERENCES_OT_keyconfig_activate,
