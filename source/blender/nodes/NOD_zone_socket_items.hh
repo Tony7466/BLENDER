@@ -22,6 +22,8 @@ struct SimulationItemsAccessor {
   static StructRNA *item_srna;
   static int node_type;
   static constexpr const char *node_idname = "GeometryNodeSimulationOutput";
+  static constexpr bool has_type = true;
+  static constexpr bool has_name = true;
 
   static socket_items::SocketItemsRef<NodeSimulationItem> get_items_from_node(bNode &node)
   {
@@ -39,17 +41,9 @@ struct SimulationItemsAccessor {
   }
   static void blend_write(BlendWriter *writer, const bNode &node);
   static void blend_read_data(BlendDataReader *reader, bNode &node);
-  static constexpr bool has_type()
-  {
-    return true;
-  }
   static short *get_socket_type(NodeSimulationItem &item)
   {
     return &item.socket_type;
-  }
-  static constexpr bool has_name()
-  {
-    return true;
   }
   static char **get_name(NodeSimulationItem &item)
   {
@@ -92,6 +86,8 @@ struct RepeatItemsAccessor {
   static StructRNA *item_srna;
   static int node_type;
   static constexpr const char *node_idname = "GeometryNodeRepeatOutput";
+  static constexpr bool has_type = true;
+  static constexpr bool has_name = true;
 
   static socket_items::SocketItemsRef<NodeRepeatItem> get_items_from_node(bNode &node)
   {
@@ -109,17 +105,9 @@ struct RepeatItemsAccessor {
   }
   static void blend_write(BlendWriter *writer, const bNode &node);
   static void blend_read_data(BlendDataReader *reader, bNode &node);
-  static constexpr bool has_type()
-  {
-    return true;
-  }
   static short *get_socket_type(NodeRepeatItem &item)
   {
     return &item.socket_type;
-  }
-  static constexpr bool has_name()
-  {
-    return true;
   }
   static char **get_name(NodeRepeatItem &item)
   {
@@ -166,6 +154,8 @@ struct IndexSwitchItemsAccessor {
   static StructRNA *item_srna;
   static int node_type;
   static constexpr const char *node_idname = "GeometryNodeIndexSwitch";
+  static constexpr bool has_type = false;
+  static constexpr bool has_name = false;
 
   static socket_items::SocketItemsRef<IndexSwitchItem> get_items_from_node(bNode &node)
   {
@@ -179,14 +169,6 @@ struct IndexSwitchItemsAccessor {
   static void destruct_item(IndexSwitchItem * /*item*/) {}
   static void blend_write(BlendWriter *writer, const bNode &node);
   static void blend_read_data(BlendDataReader *reader, bNode &node);
-  static constexpr bool has_type()
-  {
-    return false;
-  }
-  static constexpr bool has_name()
-  {
-    return false;
-  }
   static void init(bNode &node, IndexSwitchItem &item)
   {
     auto &storage = *static_cast<NodeIndexSwitch *>(node.storage);

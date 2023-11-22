@@ -290,7 +290,7 @@ template<typename Accessor>
   }
 
   const ItemT *item = nullptr;
-  if constexpr (Accessor::has_name() && Accessor::has_type()) {
+  if constexpr (Accessor::has_name && Accessor::has_type) {
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(src_socket->type);
     if (!Accessor::supports_socket_type(socket_type)) {
       return false;

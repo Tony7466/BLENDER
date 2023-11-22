@@ -3299,7 +3299,7 @@ static void rna_Node_ItemArray_remove(ID *id,
 {
   blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
   if (item_to_remove < *ref.items || item_to_remove >= *ref.items + *ref.items_num) {
-    if constexpr (Accessor::has_name()) {
+    if constexpr (Accessor::has_name) {
       char **name_ptr = Accessor::get_name(*item_to_remove);
       if (name_ptr && *name_ptr) {
         BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", *name_ptr);
