@@ -51,6 +51,11 @@ typedef enum eScreenAxis {
 #define AREAJOINTOLERANCEY (HEADERY * UI_SCALE_FAC)
 
 /**
+ * Gutter space between areas.
+ */
+#define BORDERWIDTH ((int)((3.0f * UI_SCALE_FAC) + (2.0f * U.pixelsize)))
+
+/**
  * Expanded interaction influence of area borders.
  */
 #define BORDERPADDING ((2.0f * UI_SCALE_FAC) + U.pixelsize)

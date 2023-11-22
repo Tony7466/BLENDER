@@ -150,8 +150,7 @@ void UI_draw_roundbox_4fv(const rctf *rect, bool filled, float rad, const float 
 }
 
 void ui_draw_rounded_corners_inverted(const rcti &rect,
-                                      const float rad,
-                                      const blender::float4 color)
+                                      const float rad, const float color[4])
 {
   GPUVertFormat *format = immVertexFormat();
   const uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);

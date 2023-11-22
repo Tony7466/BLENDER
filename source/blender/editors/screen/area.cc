@@ -1670,28 +1670,42 @@ static void region_rect_recursive(
   memset(&region->runtime.visible_rect, 0, sizeof(region->runtime.visible_rect));
 }
 
-static void area_calc_totrct(ScrArea *area, const rcti *window_rect)
+static void area_calc_totrct(const bScreen *screen, ScrArea *area, const rcti *window_rect)
 {
-  short px = short(U.pixelsize);
-
   area->totrct.xmin = area->v1->vec.x;
   area->totrct.xmax = area->v4->vec.x;
   area->totrct.ymin = area->v1->vec.y;
   area->totrct.ymax = area->v2->vec.y;
 
-  /* scale down totrct by 1 pixel on all sides not matching window borders */
-  if (area->totrct.xmin > window_rect->xmin) {
-    area->totrct.xmin += px;
+  if (ED_area_is_global(area) || screen->state == SCREENFULL ||
+      (screen->temp && BLI_listbase_is_single(&screen->areabase)))
+  {
+    /* pass */
   }
-  if (area->totrct.xmax < (window_rect->xmax - 1)) {
-    area->totrct.xmax -= px;
+  else {
+    /* split and handle odd-number widths */
+    int half1 = BORDERWIDTH / 2;
+    int half2 = BORDERWIDTH - half1;
+
+    /* scale down window borders. */
+
+    if (area->totrct.xmin > window_rect->xmin) {
+      area->totrct.xmin += half2;
+    }
+
+    if (area->totrct.xmax < (window_rect->xmax - 1)) {
+      area->totrct.xmax -= (half1 + 1);
+    }
+
+    if (area->totrct.ymin > window_rect->ymin) {
+      area->totrct.ymin += half2;
+    }
+
+    if (area->totrct.ymax < (window_rect->ymax - 1)) {
+      area->totrct.ymax -= (half1 + 1);
+    }
   }
-  if (area->totrct.ymin > window_rect->ymin) {
-    area->totrct.ymin += px;
-  }
-  if (area->totrct.ymax < (window_rect->ymax - 1)) {
-    area->totrct.ymax -= px;
-  }
+
   /* Although the following asserts are correct they lead to a very unstable Blender.
    * And the asserts would fail even in 2.7x
    * (they were added in 2.8x as part of the top-bar commit).
@@ -1997,8 +2011,8 @@ void ED_area_update_region_sizes(wmWindowManager *wm, wmWindow *win, ScrArea *ar
   const bScreen *screen = WM_window_get_active_screen(win);
 
   rcti window_rect;
-  WM_window_rect_calc(win, &window_rect);
-  area_calc_totrct(area, &window_rect);
+  WM_window_screen_rect_calc(win, &window_rect);
+  area_calc_totrct(screen, area, &window_rect);
 
   /* region rect sizes */
   rcti rect = area->totrct;
@@ -2075,7 +2089,7 @@ void ED_area_init(wmWindowManager *wm, wmWindow *win, ScrArea *area)
   }
 
   rcti window_rect;
-  WM_window_rect_calc(win, &window_rect);
+  WM_window_screen_rect_calc(win, &window_rect);
 
   /* Set type-definitions. */
   area->type = BKE_spacetype_from_id(area->spacetype);
@@ -2093,7 +2107,7 @@ void ED_area_init(wmWindowManager *wm, wmWindow *win, ScrArea *area)
   }
 
   /* area sizes */
-  area_calc_totrct(area, &window_rect);
+  area_calc_totrct(screen, area, &window_rect);
 
   /* region rect sizes */
   rcti rect = area->totrct;

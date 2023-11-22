@@ -489,6 +489,14 @@ void UI_draw_roundbox_4fv_ex(const rctf *rect,
                              float outline_width,
                              float rad);
 
+/**
+ * Draws rounded corner segments but inverted. Imagine each corner like a filled right triangle,
+ * just that the hypotenuse is nicely curved inwards (towards the right angle of the triangle).
+ *
+ * Useful for connecting orthogonal shapes with a rounded corner, which can look quite nice.
+ */
+void ui_draw_rounded_corners_inverted(const rcti &rect, const float rad, const float color[4]);
+
 #if 0 /* unused */
 int UI_draw_roundbox_corner_get();
 #endif
