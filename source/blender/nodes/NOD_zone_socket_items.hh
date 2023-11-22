@@ -158,8 +158,8 @@ struct RepeatItemsAccessor {
 };
 
 /**
- * Makes it possible to use various functions (e.g. the ones in `NOD_socket_items.hh`) with
- * repeat items.
+ * Makes it possible to use various functions (e.g. the ones in `NOD_socket_items.hh`) for index
+ * switch items.
  */
 struct IndexSwitchItemsAccessor {
   using ItemT = IndexSwitchItem;
