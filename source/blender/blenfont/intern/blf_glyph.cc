@@ -1235,33 +1235,6 @@ static GlyphBLF *blf_glyph_ensure_ex(FontBLF *font,
   return g;
 }
 
-static FT_GlyphSlot blf_glyphslot_ensure_outline(FontBLF *font, const uint charcode)
-{
-  /* Glyph might not come from the initial font. */
-  FontBLF *font_with_glyph = font;
-  FT_UInt glyph_index = blf_glyph_index_from_charcode(&font_with_glyph, charcode);
-
-  if (!blf_ensure_face(font_with_glyph)) {
-    return nullptr;
-  }
-
-  FT_GlyphSlot glyph = blf_glyph_render(font, font_with_glyph, glyph_index, charcode, 0, 0, true);
-
-  if (font != font_with_glyph)
-  {
-    if (!blf_ensure_face(font)) {
-      return nullptr;
-    }
-    double ratio = float(font->face->units_per_EM) / float(font_with_glyph->face->units_per_EM);
-    FT_Matrix transform = {to_16dot16(ratio), 0, 0, to_16dot16(ratio)};
-    FT_Outline_Transform(&glyph->outline, &transform);
-    glyph->advance.x = int(float(glyph->advance.x) * ratio);
-    glyph->metrics.horiAdvance = int(float(glyph->metrics.horiAdvance) * ratio);
-  }
-
-  return glyph;
-}
-
 GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode)
 {
   return blf_glyph_ensure_ex(font, gc, charcode, 0);
@@ -1765,6 +1738,32 @@ static void blf_glyph_to_curves(FT_Outline ftoutline, ListBase *nurbsbase, const
   }
 
   MEM_freeN(onpoints);
+}
+
+static FT_GlyphSlot blf_glyphslot_ensure_outline(FontBLF *font, const uint charcode)
+{
+  /* Glyph might not come from the initial font. */
+  FontBLF *font_with_glyph = font;
+  FT_UInt glyph_index = blf_glyph_index_from_charcode(&font_with_glyph, charcode);
+
+  if (!blf_ensure_face(font_with_glyph)) {
+    return nullptr;
+  }
+
+  FT_GlyphSlot glyph = blf_glyph_render(font, font_with_glyph, glyph_index, charcode, 0, 0, true);
+
+  if (font != font_with_glyph) {
+    if (!blf_ensure_face(font)) {
+      return nullptr;
+    }
+    double ratio = float(font->face->units_per_EM) / float(font_with_glyph->face->units_per_EM);
+    FT_Matrix transform = {to_16dot16(ratio), 0, 0, to_16dot16(ratio)};
+    FT_Outline_Transform(&glyph->outline, &transform);
+    glyph->advance.x = int(float(glyph->advance.x) * ratio);
+    glyph->metrics.horiAdvance = int(float(glyph->metrics.horiAdvance) * ratio);
+  }
+
+  return glyph;
 }
 
 float blf_character_to_curves(FontBLF *font,

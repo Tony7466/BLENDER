@@ -91,7 +91,6 @@ float BLF_character_to_curves(int fontid,
  */
 bool BLF_has_glyph(int fontid, unsigned int unicode) ATTR_WARN_UNUSED_RESULT;
 
-
 /**
  * Attach a file with metrics information from memory.
  */
