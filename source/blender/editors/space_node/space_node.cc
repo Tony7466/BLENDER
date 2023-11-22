@@ -1156,9 +1156,8 @@ static void node_id_remap_cb(ID *old_id, ID *new_id, void *user_data)
   }
   else if (GS(old_id->name) == ID_NT) {
 
-    if ((snode->geometry_nodes_type == SNODE_GEOMETRY_TOOL) && (new_id == nullptr)) {
-      snode->geometry_nodes_tool_tree = nullptr;
-      return;
+    if ((ID *)snode->geometry_nodes_tool_tree == old_id) {
+      snode->geometry_nodes_tool_tree = (bNodeTree *)new_id;
     }
 
     bNodeTreePath *path, *path_next;
