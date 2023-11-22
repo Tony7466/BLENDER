@@ -272,7 +272,7 @@ static void gpu_framebuffer_texture_attach_ex(GPUFrameBuffer *gpu_fb,
 {
   Texture *tex = reinterpret_cast<Texture *>(attachment.tex);
   GPUAttachmentType type = tex->attachment_type(slot);
-  unwrap(gpu_fb)->attachment_set(type, attachment, false);
+  unwrap(gpu_fb)->attachment_set(type, attachment, true);
 }
 
 void GPU_framebuffer_texture_attach(GPUFrameBuffer *fb, GPUTexture *tex, int slot, int mip)
@@ -281,11 +281,11 @@ void GPU_framebuffer_texture_attach(GPUFrameBuffer *fb, GPUTexture *tex, int slo
   gpu_framebuffer_texture_attach_ex(fb, attachment, slot);
 }
 
-void GPU_framebuffer_texture_attach_config(GPUFrameBuffer *fb, GPUTexture *tex, int slot, int mip)
+void GPU_framebuffer_texture_attach_no_config(GPUFrameBuffer *fb, GPUTexture *tex, int slot, int mip)
 {
   GPUAttachment attachment = GPU_ATTACHMENT_TEXTURE_MIP(tex, mip);
   GPUAttachmentType type = reinterpret_cast<Texture *>(attachment.tex)->attachment_type(slot);
-  unwrap(fb)->attachment_set(type, attachment, true);
+  unwrap(fb)->attachment_set(type, attachment, false);
 }
 
 void GPU_framebuffer_texture_layer_attach(
