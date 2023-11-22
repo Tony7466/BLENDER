@@ -3,3 +3,4 @@ Referenced by pull request #113494, Fix #113463: VSE Hold-Split has no visual in
 Referenced by commit 0e18097674c840f6f371fc095a94b853576e9aea, Fix #113463: VSE Hold-Split has no visual indication anymore
 Referenced by pull request #114285, Fix #114287: Drawing in post-view draw handlers broken
 Referenced by issue #114287, VSE: Drawing in post-view draw handlers broken
+Referenced by commit 16e2698632dab0d51d4f3f0683aa0da57288cd74, Fix (unreported): VSE offset drawing not working
