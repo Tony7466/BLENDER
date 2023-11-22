@@ -640,9 +640,9 @@ void gather_group_to_group(OffsetIndices<int> src_offsets,
                            const IndexMask &selection,
                            GSpan src,
                            GMutableSpan dst);
-void gather_to_groups(GSpan src,
+void gather_to_groups(OffsetIndices<int> dst_offsets,
                       const IndexMask &src_selection,
-                      OffsetIndices<int> dst_groups,
+                      GSpan src,
                       GMutableSpan dst);
 
 /** \} */

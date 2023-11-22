@@ -189,14 +189,14 @@ void gather_group_to_group(const OffsetIndices<int> src_offsets,
   });
 }
 
-void gather_to_groups(const GSpan src,
+void gather_to_groups(const OffsetIndices<int> dst_offsets,
                       const IndexMask &src_selection,
-                      const OffsetIndices<int> dst_groups,
+                      const GSpan src,
                       GMutableSpan dst)
 {
   bke::attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
     using T = decltype(dummy);
-    array_utils::gather_to_groups(src.typed<T>(), src_selection, dst_groups, dst.typed<T>());
+    array_utils::gather_to_groups(dst_offsets, src_selection, src.typed<T>(), dst.typed<T>());
   });
 }
 
