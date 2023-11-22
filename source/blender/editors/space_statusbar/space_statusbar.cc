@@ -149,7 +149,7 @@ void ED_spacetype_statusbar()
   /* regions: header window */
   art = static_cast<ARegionType *>(MEM_callocN(sizeof(*art), "spacetype statusbar header region"));
   art->regionid = RGN_TYPE_HEADER;
-  art->prefsizey = 0.8f * HEADERY;
+  art->prefsizey = 0.88f * HEADERY;
   art->prefsizex = UI_UNIT_X * 5; /* Mainly to avoid glitches */
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_HEADER;
   art->init = statusbar_header_region_init;

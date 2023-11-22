@@ -530,7 +530,7 @@ enum {
 
 #define AREAGRID 4
 #define AREAMINX 29
-#define HEADER_PADDING_Y 4
+#define HEADER_PADDING_Y 5
 #define HEADERY (20 + HEADER_PADDING_Y)
 
 /** #bScreen.flag */
