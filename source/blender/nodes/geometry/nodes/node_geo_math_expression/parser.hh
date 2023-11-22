@@ -5,217 +5,49 @@
 
 #include "BLI_vector.hh"
 
-#include "expression.hh"
+#include "functions.hh"
 #include "lexer.hh"
 
 namespace blender::nodes::node_geo_math_expression_cc {
 
+class Expression;
+
 struct ParserError {
   Token token;
   const char *message;
+
+  ParserError(Token token, const char *message) : token(token), message(message) {}
 };
 
 class Parser {
-  ;
   Lexer lexer;
   Token peeked_token;
   bool peeked;
 
  public:
-  std::unique_ptr<Expression> parse(std::string_view text)
-  {
-    peeked = false;
-    lexer.init(text);
-    auto expr = parse_expression();
-
-    expect(TokenKind::END, "expected end of input");
-
-    return expr;
-  }
-
-  std::unique_ptr<Expression> parse_expression()
-  {
-    return parse_addition();
-  }
-
-  std::unique_ptr<Expression> parse_addition()
-  {
-    auto expr = parse_multiplication();
-
-    Token token;
-    while (match({TokenKind::PLUS, TokenKind::MINUS}, token)) {
-      expr = std::make_unique<BinaryExpression>(std::move(expr), parse_multiplication(), token);
-    }
-
-    return expr;
-  }
-
-  std::unique_ptr<Expression> parse_multiplication()
-  {
-    auto expr = parse_unary();
-    Token token;
-
-    while (match({TokenKind::MUL, TokenKind::DIV}, token)) {
-      expr = std::make_unique<BinaryExpression>(std::move(expr), parse_unary(), token);
-    }
-
-    return expr;
-  }
-
-  std::unique_ptr<Expression> parse_unary()
-  {
-    Token token;
-
-    if (match({TokenKind::MINUS}, token)) {
-      return std::make_unique<UnaryExpression>(parse_unary(), token);
-    }
-
-    return parse_ufcs();
-  }
-
-  std::unique_ptr<Expression> parse_ufcs()
-  {
-    auto expr = parse_primary();
-    Token token;
-
-    while (match({TokenKind::DOT}, token)) {
-      Token ident = expect(TokenKind::IDENT, "expected identifier");
-      Vector<std::unique_ptr<Expression>> args;
-      args.append(std::move(expr));
-
-      if (match(TokenKind::LPAREN)) {
-        expr = parse_call(ident, std::move(args));
-      }
-      else {
-        expr = std::make_unique<CallExpression>(std::move(args), ident);
-      }
-    }
-
-    return expr;
-  }
-
-  std::unique_ptr<Expression> parse_primary()
-  {
-    Token token = next();
-
-    if (token.kind == TokenKind::IDENT) {
-      if (match(TokenKind::LPAREN)) {
-        return parse_call(token);
-      }
-
-      return std::make_unique<VariableExpression>(token);
-    }
-
-    if (token.kind == TokenKind::NUMBER) {
-      return std::make_unique<NumberExpression>(token);
-    }
-
-    if (token.kind == TokenKind::LPAREN) {
-      auto expr = std::make_unique<GroupExpression>(parse_expression(), token);
-      expect(TokenKind::RPAREN, "expected closing paren");
-      return expr;
-    }
-
-    if (token.kind == TokenKind::END) {
-      throw ParserError{token, "unexpected end of expression"};
-    }
-    else {
-      throw ParserError{token, "unexpected token"};
-    }
-  }
+  std::unique_ptr<Expression> parse(std::string_view text);
+  std::unique_ptr<Expression> parse_expression();
+  std::unique_ptr<Expression> parse_addition();
+  std::unique_ptr<Expression> parse_multiplication();
+  std::unique_ptr<Expression> parse_unary();
+  std::unique_ptr<Expression> parse_ufcs();
+  std::unique_ptr<Expression> parse_primary();
 
   std::unique_ptr<Expression> parse_call(
       Token token,
-      Vector<std::unique_ptr<Expression>> args = Vector<std::unique_ptr<Expression>>())
-  {
-    if (!check(TokenKind::RPAREN)) {
-      do {
-        args.append(parse_expression());
-      } while (match(TokenKind::COMMA));
-    }
+      Vector<std::unique_ptr<Expression>> args = Vector<std::unique_ptr<Expression>>());
 
-    expect(TokenKind::RPAREN, "expected closing paren");
-    return std::make_unique<CallExpression>(std::move(args), token);
-  }
+  std::unique_ptr<Expression> make_call_expression(Vector<std::unique_ptr<Expression>> args,
+                                                   Token token);
 
-  [[maybe_unused]] Token expect(TokenKind kind, const char *message)
-  {
-    if (peek().kind != kind) {
-      throw ParserError{peek(), message};
-    }
-
-    return next();
-  }
-
-  template<size_t N> bool match(const TokenKind (&kind)[N], Token &r_token)
-  {
-    for (size_t i = 0; i < N; i++) {
-      if (peek().kind == kind[i]) {
-        r_token = next();
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  bool match(const TokenKind kind)
-  {
-    if (peek().kind == kind) {
-      next();
-      return true;
-    }
-
-    return false;
-  }
-
-  bool check(const TokenKind kind)
-  {
-    if (peek().kind == kind) {
-      return true;
-    }
-
-    return false;
-  }
-
-  Token next()
-  {
-    Token token = peek();
-    peeked = false;
-    return token;
-  }
-
-  Token peek()
-  {
-    if (peeked) {
-      return peeked_token;
-    }
-
-    peeked_token = lexer.next_token();
-    peeked = true;
-    return peeked_token;
-  }
+  [[maybe_unused]] Token expect(TokenKind kind, const char *message);
+  template<size_t N> bool match(const TokenKind (&kind)[N], Token &r_token);
+  bool match(const TokenKind kind);
+  bool check(const TokenKind kind);
+  Token next();
+  Token peek();
 };
 
-inline void parse_var_names(std::string_view vars, std::function<void(std::string_view)> cb)
-{
-  size_t start = vars.size();
-
-  for (size_t i = 0; i < vars.size(); i++) {
-    char c = vars[i];
-
-    if (start == vars.size() && (c == '_' || isalpha(c))) {
-      start = i;
-    }
-    else if (start != vars.size() && (c != '_' && !isalnum(c))) {
-      cb(vars.substr(start, i - start));
-      start = vars.size();
-    }
-
-    if (start != vars.size() && i == vars.size() - 1) {
-      cb(vars.substr(start, i + 1 - start));
-    }
-  }
-}
+void parse_var_names(std::string_view vars, std::function<void(std::string_view)> cb);
 
 }  // namespace blender::nodes::node_geo_math_expression_cc

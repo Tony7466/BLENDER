@@ -122,6 +122,7 @@ set(SRC
   nodes/node_geo_math_expression/node_geo_math_expression.cc
   nodes/node_geo_math_expression/evaluation_context.cc
   nodes/node_geo_math_expression/expression.cc
+  nodes/node_geo_math_expression/parser.cc
   nodes/node_geo_mean_filter_sdf_volume.cc
   nodes/node_geo_merge_by_distance.cc
   nodes/node_geo_mesh_face_group_boundaries.cc
