@@ -1867,12 +1867,10 @@ typedef struct NodeIndexSwitch {
 
   /* #eNodeSocketDataType. */
   int data_type;
-
   /** Identifier to give to the next item. */
   int next_identifier;
 
   char _pad[4];
-
 #ifdef __cplusplus
   blender::Span<IndexSwitchItem> items_span() const;
   blender::MutableSpan<IndexSwitchItem> items_span();
