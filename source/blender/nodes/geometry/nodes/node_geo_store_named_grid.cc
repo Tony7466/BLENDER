@@ -55,7 +55,7 @@ static void try_store_grid(GeoNodeExecParams params, Volume *volume, StringRef n
     BKE_volume_grid_remove(volume, existing_grid);
   }
 
-  BKE_volume_grid_add_vdb(*volume, name, value.grid->grid);
+  BKE_volume_grid_add_vdb(*volume, name, value.grid->get_grid_for_write());
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

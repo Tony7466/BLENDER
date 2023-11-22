@@ -50,7 +50,7 @@ static void try_erode_grid(GeoNodeExecParams params,
   }
 
   using GridType = typename bke::grid_types::FieldValueGrid<T>::GridType;
-  typename GridType::Ptr grid = value.grid->grid;
+  typename GridType::Ptr grid = value.grid->get_grid_for_write();
   BLI_assert(grid);
 
   openvdb::tools::erodeActiveValues(

@@ -391,20 +391,21 @@ template<typename T> struct FieldValueGridImpl {
 
 #endif /* WITH_OPENVDB */
 
-template<typename T> struct FieldValueGrid : public ImplicitSharingMixin {
+template<typename T> class FieldValueGrid : public ImplicitSharingMixin {
+ public:
   using FieldValueType = T;
   using GridType = FieldValueGridImpl<T>;
 
-  /* XXX Grid could be stored by-value as well, but that makes it harder to use some OpenVDB API
-   * functions. The actual data is in the tree, which is always a shared_ptr anyway. */
-  std::shared_ptr<GridType> grid;
+ private:
+  std::shared_ptr<GridType> grid_;
 
-  FieldValueGrid() : grid(nullptr) {}
-  FieldValueGrid(const FieldValueGrid<T> &other) : grid(other.grid) {}
+ public:
+  FieldValueGrid() : grid_(nullptr) {}
+  FieldValueGrid(const FieldValueGrid<T> &other) : grid_(other.grid) {}
   /* Takes ownership of the grid, which must not be shared. */
-  FieldValueGrid(const std::shared_ptr<GridType> &grid) : grid(grid)
+  FieldValueGrid(const std::shared_ptr<GridType> &grid) : grid_(grid)
   {
-    BLI_assert(grid);
+    BLI_assert(grid_);
   }
   virtual ~FieldValueGrid() = default;
 
@@ -415,34 +416,30 @@ template<typename T> struct FieldValueGrid : public ImplicitSharingMixin {
 
   void delete_data_only() override
   {
-    this->grid.reset();
+    this->grid_.reset();
   }
 
   bool operator==(const FieldValueGrid<T> &other) const
   {
-    return this->grid == other.grid;
+    return this->grid_ == other.grid_;
   }
   bool operator!=(const FieldValueGrid<T> &other) const
   {
-    return this->grid != other.grid;
+    return this->grid_ != other.grid_;
   }
 
-  GridType &operator*()
+  std::shared_ptr<const GridType> get_grid() const
   {
-    return *this->grid;
-  }
-  const GridType &operator*() const
-  {
-    return *this->grid;
+    return grid_;
   }
 
-  GridType *operator->()
+  std::shared_ptr<GridType> get_grid_for_write() const
   {
-    return this->grid.get();
-  }
-  const GridType *operator->() const
-  {
-    return this->grid.get();
+    if (is_mutable()) {
+      return grid_;
+    }
+
+    return grid_->deepCopy();
   }
 };
 
@@ -464,7 +461,7 @@ template<typename T> bool get_background_value(const FieldValueGrid<T> &grid, T 
   }
   else {
     using Converter = GridConverter<T>;
-    r_value = Converter::single_value_to_attribute(grid->background());
+    r_value = Converter::single_value_to_attribute(grid.get_grid()->background());
     return true;
   }
 #else
