@@ -93,8 +93,8 @@ ProjectAddons &ProjectAddons::operator=(ProjectAddons &&other)
 ProjectAddons::~ProjectAddons()
 {
   LISTBASE_FOREACH_MUTABLE (bAddon *, addon, &addons) {
-    BKE_addon_free(addon);
     BLI_remlink(&addons, addon);
+    BKE_addon_free(addon);
   }
 }
 
