@@ -9101,7 +9101,7 @@ static void rna_def_geo_index_switch_items(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Items", "Collection of index_switch items");
 
   func = RNA_def_function(srna, "new", "rna_NodeIndexSwitchItems_new");
-  RNA_def_function_ui_description(func, "Add an item");
+  RNA_def_function_ui_description(func, "Add an item at the end");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   /* Return value. */
   parm = RNA_def_pointer(func, "item", "IndexSwitchItem", "Item", "New item");
