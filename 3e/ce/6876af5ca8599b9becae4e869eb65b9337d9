@@ -1,1 +1,2 @@
 Referenced by issue #115279, FModifier.type enum 'NULL' item was renamed to 'nullptr'
+Referenced by commit a13696a242fb07c5aa83d796639ff21e1aaf1201, Fix #115279: FModifier.type enum 'NULL' item was renamed to 'nullptr'
