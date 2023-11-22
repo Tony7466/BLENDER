@@ -520,6 +520,7 @@ static int collection_objects_select_exec(bContext *C, wmOperator *op)
     }
   }
 
+  BLI_freelistN(&selected_collections.selected_array);
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, scene);
   ED_outliner_select_sync_from_object_tag(C);
