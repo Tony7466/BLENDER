@@ -1,1 +1,2 @@
 Referenced by issue #79373, Crash undo painting on linked image
+Referenced by pull request #115263, Fix #115140: Crash undoing painting on linked image from 3DView
