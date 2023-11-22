@@ -21,8 +21,8 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Bool>("End Vertex").default_value(false).hide_value().supports_field();
   b.add_input<decl::Float>("Edge Cost").default_value(1.0f).hide_value().supports_field();
-  b.add_output<decl::Int>("Next Vertex Index").reference_pass_all();
-  b.add_output<decl::Float>("Total Cost").reference_pass_all();
+  b.add_output<decl::Int>("Next Vertex Index").field_source().reference_pass_all();
+  b.add_output<decl::Float>("Total Cost").field_source().reference_pass_all();
 }
 
 using VertPriority = std::pair<float, int>;
@@ -54,7 +54,7 @@ static void shortest_paths(const Mesh &mesh,
     visited[vert_i] = true;
     for (const int edge_i : vert_to_edge[vert_i]) {
       const int2 &edge = edges[edge_i];
-      const int neighbor_vert_i = edge[0] + edge[1] - vert_i;
+      const int neighbor_vert_i = bke::mesh::edge_other_vert(edge, vert_i);
       if (visited[neighbor_vert_i]) {
         continue;
       }
