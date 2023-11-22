@@ -45,7 +45,7 @@ def _enabled_addons_names():
     addons = [addon.module for addon in _preferences.addons]
     project = _bpy.context.project
     if project:
-        addons.append(addon.module for addon in project.addons)
+        addons.extend(addon.module for addon in project.addons)
     return addons
 
 
