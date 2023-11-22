@@ -153,7 +153,7 @@ class IndexSwitchFunction : public mf::MultiFunction {
     for (const int i : IndexRange(inputs_num)) {
       if (!masks[i].is_empty()) {
         const GVArray inputs = params.readonly_single_input(value_inputs_start + i);
-        array_utils::copy(inputs, masks[i], output);
+        inputs.materialize_to_uninitialized(masks[i], output.data());
       }
     }
 
