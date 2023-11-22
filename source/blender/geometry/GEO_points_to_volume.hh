@@ -11,7 +11,7 @@
 #pragma once
 
 struct Volume;
-struct VolumeGrid;
+struct GVolumeGrid;
 
 /** \file
  * \ingroup geo
@@ -24,7 +24,7 @@ namespace blender::geometry {
 /**
  * Add a new fog VolumeGrid to the Volume by converting the supplied points.
  */
-VolumeGrid *fog_volume_grid_add_from_points(Volume *volume,
+GVolumeGrid *fog_volume_grid_add_from_points(Volume *volume,
                                             StringRefNull name,
                                             Span<float3> positions,
                                             Span<float> radii,
@@ -33,7 +33,7 @@ VolumeGrid *fog_volume_grid_add_from_points(Volume *volume,
 /**
  * Add a new SDF VolumeGrid to the Volume by converting the supplied points.
  */
-VolumeGrid *sdf_volume_grid_add_from_points(Volume *volume,
+GVolumeGrid *sdf_volume_grid_add_from_points(Volume *volume,
                                             StringRefNull name,
                                             Span<float3> positions,
                                             Span<float> radii,

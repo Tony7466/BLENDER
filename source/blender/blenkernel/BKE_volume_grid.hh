@@ -34,15 +34,15 @@ struct VolumeFileCacheEntry;
  * Wrapper around OpenVDB grid. Grids loaded from OpenVDB files are always
  * stored in the global cache. Procedurally generated grids are not. */
 
-struct VolumeGrid {
+struct GVolumeGrid {
   using GridPtr = std::shared_ptr<openvdb::GridBase>;
   using GridConstPtr = std::shared_ptr<const openvdb::GridBase>;
 
-  VolumeGrid(const VolumeFileCacheEntry &template_entry, int simplify_level);
-  VolumeGrid(const char *file_path, const GridPtr &vdb_grid, int simplify_level);
-  VolumeGrid(const GridPtr &grid);
-  VolumeGrid(const VolumeGrid &other);
-  ~VolumeGrid();
+  GVolumeGrid(const VolumeFileCacheEntry &template_entry, int simplify_level);
+  GVolumeGrid(const char *file_path, const GridPtr &vdb_grid, int simplify_level);
+  GVolumeGrid(const GridPtr &grid);
+  GVolumeGrid(const GVolumeGrid &other);
+  ~GVolumeGrid();
 
   void load(const char *volume_name, const char *filepath) const;
   void unload(const char *volume_name) const;
