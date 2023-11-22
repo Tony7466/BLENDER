@@ -122,7 +122,7 @@ class IndexSwitchFunction : public mf::MultiFunction {
     const int inputs_num = signature_.params.size() - 2;
     const VArray<int> indices = params.readonly_single_input<int>(0, "Index");
 
-    /* Use one extra mask for invalid indices. */
+    /* Use one extra mask at the end for invalid indices. */
     const int invalid_index = inputs_num;
     IndexMaskMemory memory;
     Array<IndexMask> masks(inputs_num + 1);
@@ -196,17 +196,22 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
     }
   }
 
+  int values_num() const
+  {
+    return inputs_.size() - value_inputs_start;
+  }
+
   void execute_single(const int index, lf::Params &params) const
   {
-    const IndexRange values_range = inputs_.index_range().drop_front(1);
-    for (const int i : values_range.index_range()) {
+    const int values_num = this->values_num();
+    for (const int i : IndexRange(values_num)) {
       if (i != index) {
-        params.set_input_unused(values_range[i]);
+        params.set_input_unused(value_inputs_start + i);
       }
     }
 
     /* Check for an invalid index. */
-    if (!values_range.index_range().contains(index)) {
+    if (!IndexRange(values_num).contains(index)) {
       params.set_default_remaining_outputs();
       return;
     }
@@ -225,10 +230,10 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
 
   void execute_field(Field<int> index, lf::Params &params) const
   {
-    const IndexRange values_range = inputs_.index_range().drop_front(1);
-    Array<void *, 8> input_values(values_range.size());
-    for (const int i : values_range.index_range()) {
-      input_values[i] = params.try_get_input_data_ptr_or_request(values_range[i]);
+    const int values_num = this->values_num();
+    Array<void *, 8> input_values(values_num);
+    for (const int i : IndexRange(values_num)) {
+      input_values[i] = params.try_get_input_data_ptr_or_request(value_inputs_start + i);
     }
     if (input_values.as_span().contains(nullptr)) {
       /* Try again when inputs are available. */
@@ -240,12 +245,12 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
     const CPPType &value_type = value_or_field_type.value;
 
     Vector<GField> input_fields({std::move(index)});
-    for (const int i : values_range.index_range()) {
+    for (const int i : IndexRange(values_num)) {
       input_fields.append(value_or_field_type.as_field(input_values[i]));
     }
 
     std::unique_ptr<mf::MultiFunction> switch_fn = std::make_unique<IndexSwitchFunction>(
-        value_type, values_range.size());
+        value_type, values_num);
     GField output_field(FieldOperation::Create(std::move(switch_fn), std::move(input_fields)));
 
     void *output_ptr = params.get_output_data_ptr(0);
