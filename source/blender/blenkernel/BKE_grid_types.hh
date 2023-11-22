@@ -162,6 +162,8 @@ struct GridConverter<std::string>
  * Wrapper around OpenVDB grids using a Blender type parameter.
  * \{ */
 
+namespace detail {
+
 #ifdef WITH_OPENVDB
 
 /**
@@ -229,10 +231,12 @@ template<typename T> struct FieldValueGridImpl {
 
 #endif /* WITH_OPENVDB */
 
+}  // namespace detail
+
 template<typename T> class FieldValueGrid : public ImplicitSharingMixin {
  public:
   using FieldValueType = T;
-  using GridType = FieldValueGridImpl<T>;
+  using GridType = detail::FieldValueGridImpl<T>;
 
  private:
   std::shared_ptr<GridType> grid_;
@@ -281,15 +285,11 @@ template<typename T> class FieldValueGrid : public ImplicitSharingMixin {
   }
 };
 
-}  // namespace blender::bke::grid_types
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Grid Utility Functions
  * \{ */
-
-namespace blender::bke::grid_types {
 
 template<typename T> bool get_background_value(const FieldValueGrid<T> &grid, T &r_value)
 {
