@@ -122,6 +122,21 @@ class IndexSwitchFunction : public mf::MultiFunction {
     const int inputs_num = signature_.params.size() - 2;
     const VArray<int> indices = params.readonly_single_input<int>(0, "Index");
 
+    GMutableSpan output = params.uninitialized_single_output(
+        signature_.params.index_range().last(), "Output");
+    const CPPType &type = output.type();
+
+    if (const std::optional<int> i = indices.get_if_single()) {
+      if (IndexRange(inputs_num).contains(*i)) {
+        const GVArray inputs = params.readonly_single_input(value_inputs_start + *i);
+        inputs.materialize_to_uninitialized(mask, output.data());
+      }
+      else {
+        type.fill_construct_indices(type.default_value(), output.data(), mask);
+      }
+      return;
+    }
+
     /* Use one extra mask at the end for invalid indices. */
     const int invalid_index = inputs_num;
     IndexMaskMemory memory;
@@ -131,12 +146,9 @@ class IndexSwitchFunction : public mf::MultiFunction {
         memory,
         [&](const int64_t i) {
           const int index = indices[i];
-          return (index >= 0 && index < inputs_num) ? index : invalid_index;
+          return IndexRange(inputs_num).contains(index) ? index : invalid_index;
         },
         masks);
-
-    GMutableSpan output = params.uninitialized_single_output(
-        signature_.params.index_range().last(), "Output");
 
     for (const int i : IndexRange(inputs_num)) {
       if (!masks[i].is_empty()) {
@@ -145,7 +157,6 @@ class IndexSwitchFunction : public mf::MultiFunction {
       }
     }
 
-    const CPPType &type = output.type();
     type.fill_construct_indices(type.default_value(), output.data(), masks[invalid_index]);
   }
 
