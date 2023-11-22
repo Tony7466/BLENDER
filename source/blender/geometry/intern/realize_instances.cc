@@ -31,11 +31,9 @@ namespace blender::geometry {
 using blender::bke::AttributeIDRef;
 using blender::bke::AttributeKind;
 using blender::bke::AttributeMetaData;
-using blender::bke::custom_data_type_to_cpp_type;
 using blender::bke::GSpanAttributeWriter;
 using blender::bke::InstanceReference;
 using blender::bke::Instances;
-using blender::bke::object_get_evaluated_geometry_set;
 using blender::bke::SpanAttributeWriter;
 
 /**
@@ -206,6 +204,7 @@ struct AllMeshesInfo {
   /** True if we know that there are no loose edges in any of the input meshes. */
   bool no_loose_edges_hint = false;
   bool no_loose_verts_hint = false;
+  bool no_overlapping_hint = false;
 };
 
 struct AllCurvesInfo {
@@ -406,7 +405,7 @@ static Vector<std::pair<int, GSpan>> prepare_attribute_fallbacks(
     const eCustomDataType expected_type = ordered_attributes.kinds[attribute_index].data_type;
     if (meta_data.data_type != expected_type) {
       const CPPType &from_type = span.type();
-      const CPPType &to_type = *custom_data_type_to_cpp_type(expected_type);
+      const CPPType &to_type = *bke::custom_data_type_to_cpp_type(expected_type);
       const bke::DataTypeConversions &conversions = bke::get_implicit_type_conversions();
       if (!conversions.is_convertible(from_type, to_type)) {
         /* Ignore the attribute because it can not be converted to the desired type. */
@@ -439,8 +438,8 @@ static void foreach_geometry_in_reference(
   switch (reference.type()) {
     case InstanceReference::Type::Object: {
       const Object &object = reference.object();
-      const bke::GeometrySet object_geometry_set = object_get_evaluated_geometry_set(object);
-      fn(object_geometry_set, base_transform, id);
+      const bke::GeometrySet object_geometry = bke::object_get_evaluated_geometry_set(object);
+      fn(object_geometry, base_transform, id);
       break;
     }
     case InstanceReference::Type::Collection: {
@@ -449,11 +448,11 @@ static void foreach_geometry_in_reference(
       offset_matrix.location() -= collection.instance_offset;
       int index = 0;
       FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (&collection, object) {
-        const bke::GeometrySet object_geometry_set = object_get_evaluated_geometry_set(*object);
+        const bke::GeometrySet object_geometry = bke::object_get_evaluated_geometry_set(*object);
         const float4x4 matrix = base_transform * offset_matrix *
                                 float4x4_view(object->object_to_world);
         const int sub_id = noise::hash(id, index);
-        fn(object_geometry_set, matrix, sub_id);
+        fn(object_geometry, matrix, sub_id);
         index++;
       }
       FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
@@ -964,6 +963,10 @@ static AllMeshesInfo preprocess_meshes(const bke::GeometrySet &geometry_set,
       info.order.begin(), info.order.end(), [](const Mesh *mesh) {
         return mesh->runtime->loose_verts_cache.is_cached() && mesh->loose_verts().count == 0;
       });
+  info.no_overlapping_hint = std::all_of(
+      info.order.begin(), info.order.end(), [](const Mesh *mesh) {
+        return mesh->no_overlapping_topology();
+      });
 
   return info;
 }
@@ -1173,6 +1176,9 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
   }
   if (all_meshes_info.no_loose_verts_hint) {
     dst_mesh->tag_loose_verts_none();
+  }
+  if (all_meshes_info.no_overlapping_hint) {
+    dst_mesh->tag_overlapping_none();
   }
 }
 
