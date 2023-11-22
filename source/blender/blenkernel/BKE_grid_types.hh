@@ -20,13 +20,13 @@
 #  include "openvdb_fwd.hh"
 #endif
 
+namespace blender::bke::grid_types {
+
 /* -------------------------------------------------------------------- */
 /** \name Grid Type Converter
  *
  * Converter between Blender types and OpenVDB types.
  * \{ */
-
-namespace blender::bke::grid_types {
 
 #ifdef WITH_OPENVDB
 
@@ -154,8 +154,6 @@ struct GridConverter<std::string>
 
 #endif /* WITH_OPENVDB */
 
-}  // namespace blender::bke::grid_types
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -163,8 +161,6 @@ struct GridConverter<std::string>
  *
  * Grid class template using Blender data types.
  * \{ */
-
-namespace blender::bke::grid_types {
 
 #ifdef WITH_OPENVDB
 
@@ -380,6 +376,6 @@ template<typename T> FieldValueGrid<T> *make_empty_grid(const T background_value
 #endif /* WITH_OPENVDB */
 }
 
-}  // namespace blender::bke::grid_types
-
 /** \} */
+
+}  // namespace blender::bke::grid_types
