@@ -460,7 +460,7 @@ class RepeatZoneItemMoveOperator(RepeatZoneOperator, ZoneMoveItemOperator, Opera
     bl_options = {'REGISTER', 'UNDO'}
 
 
-def editable_tree_with_active_node_type(context, node_type):
+def _editable_tree_with_active_node_type(context, node_type):
     space = context.space_data
     # Needs active node editor and a tree.
     if not space or space.type != 'NODE_EDITOR' or not space.edit_tree or space.edit_tree.library:
@@ -479,7 +479,7 @@ class IndexSwitchItemAddOperator(Operator):
 
     @classmethod
     def poll(cls, context):
-        return editable_tree_with_active_node_type(context, 'GeometryNodeIndexSwitch')
+        return _editable_tree_with_active_node_type(context, 'GeometryNodeIndexSwitch')
 
     def execute(self, context):
         node = context.active_node
@@ -500,7 +500,7 @@ class IndexSwitchItemRemoveOperator(Operator):
 
     @classmethod
     def poll(cls, context):
-        return editable_tree_with_active_node_type(context, 'GeometryNodeIndexSwitch')
+        return _editable_tree_with_active_node_type(context, 'GeometryNodeIndexSwitch')
 
     def execute(self, context):
         node = context.active_node
