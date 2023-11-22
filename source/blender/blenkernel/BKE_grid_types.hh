@@ -157,62 +157,12 @@ struct GridConverter<std::string>
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Attribute Grid
+/** \name Volume Grid
  *
- * Grid class template using Blender data types.
+ * Wrapper around OpenVDB grids using a Blender type parameter.
  * \{ */
 
 #ifdef WITH_OPENVDB
-
-using SupportedValueTypes = std::tuple<bool,
-                                       float,
-                                       float2,
-                                       float3,
-                                       /*float4,*/
-                                       int32_t,
-                                       int64_t,
-                                       int2,
-                                       /*int3,*/ /*int4,*/ uint32_t
-                                       /*,uint2*/
-                                       /*,uint3*/
-                                       /*,uint4*/>;
-
-using SupportedPointGridAttributeTypes = openvdb::TypeList<
-    openvdb::points::TypedAttributeArray<bool, openvdb::points::NullCodec>,
-    openvdb::points::TypedAttributeArray<float, openvdb::points::NullCodec>,
-    openvdb::points::TypedAttributeArray<openvdb::Vec2f, openvdb::points::NullCodec>,
-    openvdb::points::TypedAttributeArray<openvdb::Vec3f, openvdb::points::NullCodec>,
-    openvdb::points::TypedAttributeArray<int32_t, openvdb::points::NullCodec>,
-    openvdb::points::TypedAttributeArray<int64_t, openvdb::points::NullCodec>,
-    //    openvdb::points::TypedAttributeArray<openvdb::Vec2I, openvdb::points::NullCodec>,
-    openvdb::points::TypedAttributeArray<uint32_t, openvdb::points::NullCodec>>;
-
-namespace detail {
-
-template<typename Func> struct FilterVoidOp {
-  Func func;
-  void operator()(TypeTag<void> /*type_tag*/) const {}
-  template<typename T> void operator()(TypeTag<T> type_tag) const
-  {
-    func(type_tag);
-  }
-};
-
-/* Helper function to turn a tuple into a parameter pack by means of the dummy argument. */
-template<typename... Types, typename Func>
-void field_to_static_type_resolve(std::tuple<Types...> /*dummy*/, const CPPType &type, Func func)
-{
-  FilterVoidOp<Func> wrapper{func};
-  type.to_static_type_tag<Types...>(wrapper);
-}
-
-}  // namespace detail
-
-/* Helper function to evaluate a function with a static field type. */
-template<typename Func> void field_to_static_type(const CPPType &type, Func func)
-{
-  detail::field_to_static_type_resolve(grid_types::SupportedValueTypes(), type, func);
-}
 
 /**
  * Tree types for commonly used values.
