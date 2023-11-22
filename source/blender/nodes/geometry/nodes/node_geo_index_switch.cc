@@ -44,7 +44,7 @@ static void node_declare(NodeDeclarationBuilder &b)
     if (supports_fields) {
       input.supports_field();
     }
-    /* Labels are ugly with data-block pickers and are usually disabled. */
+    /* Labels are ugly in combination with data-block pickers and are usually disabled. */
     input.hide_label(ELEM(data_type, SOCK_OBJECT, SOCK_IMAGE, SOCK_COLLECTION, SOCK_MATERIAL));
   }
 
@@ -87,9 +87,8 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     });
   }
   else {
-    if (params.node_tree().typeinfo->validate_link(eNodeSocketDatatype(params.other_socket().type),
-                                                   SOCK_INT))
-    {
+    const eNodeSocketDatatype other_type = eNodeSocketDatatype(params.other_socket().type);
+    if (params.node_tree().typeinfo->validate_link(other_type, SOCK_INT)) {
       params.add_item(IFACE_("Index"), [](LinkSearchOpParams &params) {
         bNode &node = params.add_node("GeometryNodeIndexSwitch");
         params.update_and_connect_available_socket(node, "Index");
