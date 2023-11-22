@@ -12,6 +12,44 @@
 
 namespace blender::gpu {
 
+static VkFormat to_vk_dummy_format(const shader::Type type)
+{
+  switch (type) {
+    case shader::Type::FLOAT:
+    case shader::Type::VEC2:
+    case shader::Type::VEC3:
+    case shader::Type::VEC4:
+    case shader::Type::MAT3:
+    case shader::Type::MAT4:
+      return VK_FORMAT_R32_SFLOAT;
+    case shader::Type::UINT:
+    case shader::Type::UVEC2:
+    case shader::Type::UVEC3:
+    case shader::Type::UVEC4:
+      return VK_FORMAT_R32_UINT;
+    case shader::Type::INT:
+    case shader::Type::IVEC2:
+    case shader::Type::IVEC3:
+    case shader::Type::IVEC4:
+    case shader::Type::BOOL:
+      return VK_FORMAT_R32_SINT;
+    case shader::Type::UCHAR:
+    case shader::Type::UCHAR2:
+    case shader::Type::UCHAR3:
+    case shader::Type::UCHAR4:
+      return VK_FORMAT_R8_UINT;
+    case shader::Type::CHAR:
+    case shader::Type::CHAR2:
+    case shader::Type::CHAR3:
+    case shader::Type::CHAR4:
+      return VK_FORMAT_R8_SINT;
+    case shader::Type::VEC3_101010I2:
+    default:
+      BLI_assert_unreachable();
+  }
+  return VK_FORMAT_MAX_ENUM;
+}
+
 void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
 {
   static char PUSH_CONSTANTS_FALLBACK_NAME[] = "push_constants_fallback";
@@ -72,11 +110,12 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
 
   name_buffer_ = (char *)MEM_mallocN(names_size, "name_buffer");
   uint32_t name_buffer_offset = 0;
-
+  dummy_formats_.resize(16);
   /* Attributes */
   for (const ShaderCreateInfo::VertIn &attr : info.vertex_inputs_) {
     copy_input_name(input, attr.name, name_buffer_, name_buffer_offset);
     input->location = input->binding = attr.index;
+    dummy_formats_[attr.index] = to_vk_dummy_format(attr.type);
     if (input->location != -1) {
       enabled_attr_mask_ |= (1 << input->location);
 

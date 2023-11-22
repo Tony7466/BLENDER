@@ -232,7 +232,7 @@ void VKVertexAttributeObject::fill_unused_bindings(const VKShaderInterface &inte
       attribute_description.binding = binding;
       attribute_description.location = location + location_offset;
       attribute_description.offset = 0;
-      attribute_description.format = to_vk_format(attribute_type);
+      attribute_description.format = interface.dummy_format_get(attribute_description.location);
       attributes.append(attribute_description);
 
       VkVertexInputBindingDescription vk_binding_descriptor = {};
