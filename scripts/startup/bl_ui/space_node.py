@@ -1166,8 +1166,9 @@ class NODE_PT_index_switch_node_items(Panel):
         layout = self.layout
         node = context.active_node
         layout.operator("node.index_switch_item_add", icon='ADD', text="Add Item")
+        col = layout.column()
         for i, item in enumerate(node.index_switch_items):
-            row = layout.row()
+            row = col.row()
             row.label(text=node.inputs[i + 1].name)
             row.operator("node.index_switch_item_remove", icon='REMOVE', text="").index = i
 
