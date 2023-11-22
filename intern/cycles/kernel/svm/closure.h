@@ -70,8 +70,8 @@ ccl_device
     return svm_node_closure_bsdf_skip(kg, offset, type);
   }
 
-  float3 N = stack_valid(data_node.x) ? safe_normalize(stack_load_float3(stack, data_node.x)) :
-                                        sd->N;
+  float3 N = stack_valid(data_node.x) ? stack_load_float3(stack, data_node.x) : sd->N;
+  N = safe_normal(sd, N);
 
   float param1 = (stack_valid(param1_offset)) ? stack_load_float(stack, param1_offset) :
                                                 __uint_as_float(node.z);
