@@ -74,7 +74,7 @@ static int grease_pencil_material_lock_all_exec(bContext *C, wmOperator * /*op*/
 
   bool changed = false;
   for (const int i : IndexRange(object->totcol)) {
-    if (Material *ma = BKE_gpencil_material(object, i + 1)) {
+    if (Material *ma = BKE_object_material_get(object, i + 1)) {
       MaterialGPencilStyle &gp_style = *ma->gp_style;
       gp_style.flag |= GP_MATERIAL_LOCKED;
       DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
@@ -118,7 +118,7 @@ static int grease_pencil_material_unlock_all_exec(bContext *C, wmOperator * /*op
 
   bool changed = false;
   for (const int i : IndexRange(object->totcol)) {
-    if (Material *ma = BKE_gpencil_material(object, i + 1)) {
+    if (Material *ma = BKE_object_material_get(object, i + 1)) {
       MaterialGPencilStyle &gp_style = *ma->gp_style;
       gp_style.flag &= ~GP_MATERIAL_LOCKED;
       DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
