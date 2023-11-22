@@ -76,27 +76,32 @@ World::~World()
   return default_world_;
 }
 
-void World::world_and_ntree_get(::World *&world, bNodeTree *&ntree)
-{
-  world = inst_.scene->world;
-  if (world == nullptr) {
-    world = default_world_get();
-  }
-
-  ntree = (world->nodetree && world->use_nodes && !inst_.use_studio_light()) ?
-              world->nodetree :
-              default_tree.nodetree_get(world);
-}
-
 void World::sync()
 {
-  ::World *bl_world;
-  bNodeTree *ntree;
-  world_and_ntree_get(bl_world, ntree);
+  ::World *bl_world = inst_.scene->world;
+  if (bl_world == nullptr) {
+    bl_world = default_world_get();
+  }
 
-  GPUMaterial *volume_gpumat = inst_.shaders.world_shader_get(
-      bl_world, ntree, MAT_PIPE_VOLUME_MATERIAL);
-  inst_.pipelines.world_volume.sync(volume_gpumat);
+  bNodeTree *ntree = (bl_world->nodetree && bl_world->use_nodes && !inst_.use_studio_light()) ?
+                         bl_world->nodetree :
+                         default_tree.nodetree_get(bl_world);
+
+  {
+    GPUMaterial *volume_gpumat = inst_.shaders.world_shader_get(
+        bl_world, ntree, MAT_PIPE_VOLUME_MATERIAL);
+
+    inst_.pipelines.world_volume.sync(volume_gpumat);
+
+    if (GPU_material_status(volume_gpumat) == GPU_MAT_SUCCESS) {
+      has_volume_ = true;
+      has_volume_scatter_ = GPU_material_flag_get(volume_gpumat, GPU_MATFLAG_VOLUME_SCATTER);
+      has_volume_absorption_ = GPU_material_flag_get(volume_gpumat, GPU_MATFLAG_VOLUME_ABSORPTION);
+    }
+    else {
+      has_volume_ = has_volume_absorption_ = has_volume_scatter_ = false;
+    }
+  }
 
   if (inst_.lookdev.sync_world()) {
     return;
@@ -121,16 +126,6 @@ void World::sync()
 
   inst_.pipelines.background.sync(gpumat, inst_.film.background_opacity_get());
   inst_.pipelines.world.sync(gpumat);
-}
-
-bool World::has_volume()
-{
-  ::World *bl_world;
-  bNodeTree *ntree;
-  world_and_ntree_get(bl_world, ntree);
-
-  GPUMaterial *gpumat = inst_.shaders.world_shader_get(bl_world, ntree, MAT_PIPE_VOLUME_MATERIAL);
-  return GPU_material_has_volume_output(gpumat);
 }
 
 /** \} */
