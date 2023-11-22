@@ -11,6 +11,8 @@
 
 #include "BLI_math_vector_types.hh"
 
+#include "BKE_volume_types.hh"
+
 struct BoundBox;
 struct Depsgraph;
 struct Main;
@@ -85,20 +87,6 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name)
  *
  * By default only grid metadata is loaded, for access to the tree and voxels
  * BKE_volume_grid_load must be called first. */
-
-enum VolumeGridType : int8_t {
-  VOLUME_GRID_UNKNOWN = 0,
-  VOLUME_GRID_BOOLEAN,
-  VOLUME_GRID_FLOAT,
-  VOLUME_GRID_DOUBLE,
-  VOLUME_GRID_INT,
-  VOLUME_GRID_INT64,
-  VOLUME_GRID_MASK,
-  VOLUME_GRID_VECTOR_FLOAT,
-  VOLUME_GRID_VECTOR_DOUBLE,
-  VOLUME_GRID_VECTOR_INT,
-  VOLUME_GRID_POINTS,
-};
 
 bool BKE_volume_grid_load(const Volume *volume, const VolumeGrid *grid);
 void BKE_volume_grid_unload(const Volume *volume, const VolumeGrid *grid);

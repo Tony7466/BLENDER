@@ -8,6 +8,9 @@
  * \ingroup bli
  */
 
+#include <mutex>
+#include <unordered_set>
+
 #include "BLI_color.hh"
 #include "BLI_cpp_type.hh"
 #include "BLI_implicit_sharing.hh"
@@ -16,11 +19,72 @@
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
 
+#include "BKE_volume_types.hh"
+
 #ifdef WITH_OPENVDB
 #  include "openvdb_fwd.hh"
 #endif
 
-namespace blender::bke::grid_types {
+struct VolumeFileCacheEntry;
+
+#ifdef WITH_OPENVDB
+
+/* VolumeGrid
+ *
+ * Wrapper around OpenVDB grid. Grids loaded from OpenVDB files are always
+ * stored in the global cache. Procedurally generated grids are not. */
+
+struct VolumeGrid {
+  using GridPtr = std::shared_ptr<openvdb::GridBase>;
+  using GridConstPtr = std::shared_ptr<const openvdb::GridBase>;
+
+  VolumeGrid(const VolumeFileCacheEntry &template_entry, int simplify_level);
+  VolumeGrid(const char *file_path, const GridPtr &vdb_grid, int simplify_level);
+  VolumeGrid(const GridPtr &grid);
+  VolumeGrid(const VolumeGrid &other);
+  ~VolumeGrid();
+
+  void load(const char *volume_name, const char *filepath) const;
+  void unload(const char *volume_name) const;
+
+  void clear_reference(const char *volume_name);
+  void duplicate_reference(const char *volume_name, const char *filepath);
+
+  const char *name() const;
+
+  const char *error_message() const;
+
+  bool grid_is_loaded() const;
+
+  GridPtr grid() const;
+
+  void set_simplify_level(int simplify_level);
+
+ private:
+  const GridPtr &main_grid() const;
+
+ protected:
+  /* File cache entry when grid comes directly from a file and may be shared
+   * with other volume datablocks. */
+  VolumeFileCacheEntry *entry;
+  /* If this volume grid is in the global file cache, we can reference a simplified version of it,
+   * instead of the original high resolution grid. */
+  int simplify_level = 0;
+  /* OpenVDB grid if it's not shared through the file cache. */
+  GridPtr local_grid;
+  /**
+   * Indicates if the tree has been loaded for this grid. Note that vdb.tree()
+   * may actually be loaded by another user while this is false. But only after
+   * calling load() and is_loaded changes to true is it safe to access.
+   *
+   * `const` write access to this must be protected by `entry->mutex`.
+   */
+  mutable bool is_loaded;
+};
+
+#endif
+
+namespace blender::bke {
 
 /* -------------------------------------------------------------------- */
 /** \name Grid Type Converter
@@ -291,6 +355,8 @@ template<typename T> class FieldValueGrid : public ImplicitSharingMixin {
 /** \name Grid Utility Functions
  * \{ */
 
+namespace grid_utils {
+
 template<typename T> bool get_background_value(const FieldValueGrid<T> &grid, T &r_value)
 {
 #ifdef WITH_OPENVDB
@@ -326,6 +392,8 @@ template<typename T> FieldValueGrid<T> *make_empty_grid(const T background_value
 #endif /* WITH_OPENVDB */
 }
 
+}  // namespace grid_utils
+
 /** \} */
 
-}  // namespace blender::bke::grid_types
+}  // namespace blender::bke

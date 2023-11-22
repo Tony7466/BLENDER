@@ -311,6 +311,7 @@ set(SRC
   intern/vfontdata_freetype.cc
   intern/viewer_path.cc
   intern/volume.cc
+  intern/volume_grid.cc
   intern/volume_render.cc
   intern/volume_to_mesh.cc
   intern/workspace.cc
@@ -401,7 +402,6 @@ set(SRC
   BKE_gpencil_update_cache_legacy.h
   BKE_grease_pencil.h
   BKE_grease_pencil.hh
-  BKE_grid_types.hh
   BKE_icons.h
   BKE_idprop.h
   BKE_idprop.hh
@@ -510,9 +510,11 @@ set(SRC
   BKE_vfontdata.h
   BKE_viewer_path.hh
   BKE_volume.hh
+  BKE_volume_grid.hh
   BKE_volume_openvdb.hh
   BKE_volume_render.hh
   BKE_volume_to_mesh.hh
+  BKE_volume_types.hh
   BKE_workspace.h
   BKE_world.h
   BKE_writeavi.h

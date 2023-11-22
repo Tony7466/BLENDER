@@ -46,7 +46,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 template<typename T>
 static bool try_output_grid_value(GeoNodeExecParams params, const openvdb::GridBase::Ptr &grid)
 {
-  using FVGrid = bke::grid_types::FieldValueGrid<T>;
+  using FVGrid = bke::FieldValueGrid<T>;
   using FVGridPtr = ImplicitSharingPtr<FVGrid>;
   using GridType = typename FVGrid::GridType;
 

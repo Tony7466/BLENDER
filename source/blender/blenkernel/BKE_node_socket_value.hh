@@ -10,7 +10,7 @@
 
 #include "BLI_implicit_sharing_ptr.hh"
 
-#include "BKE_grid_types.hh"
+#include "BKE_volume_grid.hh"
 
 #include "FN_field.hh"
 
@@ -24,7 +24,7 @@ namespace blender::bke {
 
 template<typename T> struct ValueOrField {
   using Field = fn::Field<T>;
-  using Grid = typename grid_types::FieldValueGrid<T>;
+  using Grid = FieldValueGrid<T>;
   using GridPtr = ImplicitSharingPtr<Grid>;
 
   /** Value that is used when the field is empty. */
@@ -63,7 +63,7 @@ template<typename T> struct ValueOrField {
     if (this->grid) {
       return this->grid;
     }
-    return grid_types::make_empty_grid(this->value);
+    return grid_utils::make_empty_grid(this->value);
   }
 
   T as_value() const
@@ -75,7 +75,7 @@ template<typename T> struct ValueOrField {
     if (this->grid) {
       /* Returns the grid background value. */
       T value;
-      if (grid_types::get_background_value(*this->grid, value)) {
+      if (grid_utils::get_background_value(*this->grid, value)) {
         return value;
       }
     }
