@@ -36,7 +36,7 @@ void main()
    * inpainting distance. Additionally, we clamp to the distance to the inpainting distance since
    * areas outside of the clamp range only indirectly affect the inpainting region due to blurring
    * and thus needn't use higher blur radii. */
-  float blur_window_size = min(max_distance, distance_to_boundary) / M_SQRT2;
+  float blur_window_size = min(float(max_distance), distance_to_boundary) / M_SQRT2;
   bool skip_smoothing = distance_to_boundary > (max_distance * 2.0);
   float smoothing_radius = skip_smoothing ? 0.0 : blur_window_size;
   imageStore(smoothing_radius_img, texel, vec4(smoothing_radius));
