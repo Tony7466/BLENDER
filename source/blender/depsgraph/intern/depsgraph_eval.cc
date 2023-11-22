@@ -35,7 +35,6 @@ namespace deg = blender::deg;
 
 static void deg_flush_updates_and_refresh(deg::Depsgraph *deg_graph)
 {
-  deg_graph->update_count++;
   /* Update the time on the cow scene. */
   if (deg_graph->scene_cow) {
     BKE_scene_frame_set(deg_graph->scene_cow, deg_graph->frame);
