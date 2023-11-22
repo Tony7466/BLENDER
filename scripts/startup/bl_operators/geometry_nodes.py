@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
-from bpy.types import Operator, IntProperty
+from bpy.types import Operator
 from bpy.props import IntProperty
 
 from bpy.app.translations import pgettext_data as data_
