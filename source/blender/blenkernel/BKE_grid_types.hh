@@ -439,7 +439,7 @@ template<typename T> class FieldValueGrid : public ImplicitSharingMixin {
       return grid_;
     }
 
-    return grid_->deepCopy();
+    return grid_ ? grid_->deepCopy() : nullptr;
   }
 };
 
