@@ -621,6 +621,8 @@ template<typename Fn> inline void IndexMask::foreach_index(Fn &&fn) const
       [&](const IndexMaskSegment indices, [[maybe_unused]] const int64_t start_segment_pos) {
         if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
           for (const int64_t i : indices.index_range()) {
+            BLI_assert(indices.base_span()[i] >= 0);
+            BLI_assert(indices[i] >= 0);
             fn(indices[i], start_segment_pos + i);
           }
         }
@@ -848,13 +850,15 @@ inline IndexMask IndexMask::from_predicate(const IndexMask &universe,
         for (const int16_t *in_current = indices.base_span().data(); in_current < in_end;
              in_current++) {
           const int16_t local_index = *in_current;
+          BLI_assert(local_index >= 0);
           const int64_t global_index = int64_t(local_index) + offset;
+          BLI_assert(global_index >= 0);
           const bool condition = predicate(global_index);
           *r_current = local_index;
           /* Branchless conditional increment. */
           r_current += condition;
         }
-        const int16_t true_indices_num = int16_t(r_current - r_true_indices);
+        const int64_t true_indices_num = int64_t(r_current - r_true_indices);
         return true_indices_num;
       });
 }
