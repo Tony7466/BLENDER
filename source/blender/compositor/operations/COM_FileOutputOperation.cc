@@ -36,6 +36,7 @@ static int get_channels_count(DataType datatype)
     case DataType::Value:
       return 1;
     case DataType::Vector:
+      return 3;
     case DataType::Color:
       return 4;
     default:
@@ -45,7 +46,7 @@ static int get_channels_count(DataType datatype)
 
 static float *initialize_buffer(uint width, uint height, DataType datatype)
 {
-  int size = get_channels_count(datatype);
+  const int size = get_channels_count(datatype);
   return static_cast<float *>(
       MEM_malloc_arrayN(size_t(width) * height, sizeof(float) * size, "File Output Buffer."));
 }
@@ -274,13 +275,7 @@ void FileOutputOperation::add_pass_for_input(realtime_compositor::FileOutput &fi
       file_output.add_pass(pass_name, view_name, "RGBA", input.output_buffer);
       break;
     case DataType::Vector:
-      /* Vectors are saved using lowercase rgba identifiers, that's because the Y and Z in XYZW
-       * can be interpreted as luminance and Z Depth channels respectively, which can cause
-       * issues like undesired lossy compression of data passes. Further, lower case rgba seems
-       * to be more portable when sharing saved files with other software. Also note that this
-       * pass can be saved as 3D or 4D depending on the format option that the user chose, where
-       * the fourth component will be ignored for the 3D case. */
-      file_output.add_pass(pass_name, view_name, "rgba", input.output_buffer);
+      file_output.add_pass(pass_name, view_name, "XYZ", input.output_buffer);
       break;
     case DataType::Value:
       file_output.add_pass(pass_name, view_name, "V", input.output_buffer);
@@ -295,8 +290,10 @@ void FileOutputOperation::add_view_for_input(realtime_compositor::FileOutput &fi
 {
   switch (input.data_type) {
     case DataType::Color:
-    case DataType::Vector:
       file_output.add_view(view_name, 4, input.output_buffer);
+      break;
+    case DataType::Vector:
+      file_output.add_view(view_name, 3, input.output_buffer);
       break;
     case DataType::Value:
       file_output.add_view(view_name, 1, input.output_buffer);

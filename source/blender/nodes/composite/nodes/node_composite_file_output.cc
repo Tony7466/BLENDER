@@ -10,11 +10,15 @@
 
 #include "BLI_assert.h"
 #include "BLI_fileops.h"
+#include "BLI_index_range.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_string_utils.hh"
+#include "BLI_task.hh"
 #include "BLI_utildefines.h"
+
+#include "MEM_guardedalloc.h"
 
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
@@ -591,18 +595,13 @@ class FileOutputOperation : public NodeOperation {
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
     float *buffer = static_cast<float *>(GPU_texture_read(result.texture(), GPU_DATA_FLOAT, 0));
 
+    const int2 size = result.domain().size;
     switch (result.type()) {
       case ResultType::Color:
         file_output.add_pass(pass_name, view_name, "RGBA", buffer);
         break;
       case ResultType::Vector:
-        /* Vectors are saved using lowercase rgba identifiers, that's because the Y and Z in XYZW
-         * can be interpreted as luminance and Z Depth channels respectively, which can cause
-         * issues like undesired lossy compression of data passes. Further, lower case rgba seems
-         * to be more portable when sharing saved files with other software. Also note that this
-         * pass can be saved as 3D or 4D depending on the format option that the user chose, where
-         * the fourth component will be ignored for the 3D case. */
-        file_output.add_pass(pass_name, view_name, "rgba", buffer);
+        file_output.add_pass(pass_name, view_name, "XYZ", float4_to_float3_image(size, buffer));
         break;
       case ResultType::Float:
         file_output.add_pass(pass_name, view_name, "V", buffer);
@@ -623,10 +622,13 @@ class FileOutputOperation : public NodeOperation {
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
     float *buffer = static_cast<float *>(GPU_texture_read(result.texture(), GPU_DATA_FLOAT, 0));
 
+    const int2 size = result.domain().size;
     switch (result.type()) {
       case ResultType::Color:
-      case ResultType::Vector:
         file_output.add_view(view_name, 4, buffer);
+        break;
+      case ResultType::Vector:
+        file_output.add_view(view_name, 3, float4_to_float3_image(size, buffer));
         break;
       case ResultType::Float:
         file_output.add_view(view_name, 1, buffer);
@@ -636,6 +638,28 @@ class FileOutputOperation : public NodeOperation {
         BLI_assert_unreachable();
         break;
     }
+  }
+
+  /* Given a float4 image, return a newly allocated float3 image that ignores the last channel. The
+   * input image is freed. */
+  float *float4_to_float3_image(int2 size, float *float4_image)
+  {
+    float *float3_image = static_cast<float *>(MEM_malloc_arrayN(
+        size_t(size.x) * size.y, sizeof(float[3]), "File Output Vector Buffer."));
+
+    threading::parallel_for(IndexRange(size.y), 1, [&](const IndexRange sub_y_range) {
+      for (const int64_t y : sub_y_range) {
+        for (const int64_t x : IndexRange(size.x)) {
+          for (int i = 0; i < 3; i++) {
+            const int pixel_index = y * size.x + x;
+            float3_image[pixel_index * 3 + i] = float4_image[pixel_index * 4 + i];
+          }
+        }
+      }
+    });
+
+    MEM_freeN(float4_image);
+    return float3_image;
   }
 
   /* Get the base path of the image to be saved, based on the base path of the node. The base name
