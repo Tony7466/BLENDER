@@ -64,7 +64,8 @@ bool VKBuffer::create(int64_t size_in_bytes, GPUUsageType usage, VkBufferUsageFl
    * exclusive resource handling. */
   create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
   create_info.queueFamilyIndexCount = 1;
-  create_info.pQueueFamilyIndices = device.queue_family_ptr_get();
+  const uint32_t queue_family_indices[1] = {device.queue_family_get()};
+  create_info.pQueueFamilyIndices = queue_family_indices;
 
   VmaAllocationCreateInfo vma_create_info = {};
   vma_create_info.flags = vma_allocation_flags(usage);
@@ -85,7 +86,11 @@ void VKBuffer::update(const void *data) const
 {
   BLI_assert_msg(is_mapped(), "Cannot update a non-mapped buffer.");
   memcpy(mapped_memory_, data, size_in_bytes_);
+  flush();
+}
 
+void VKBuffer::flush() const
+{
   const VKDevice &device = VKBackend::get().device_get();
   VmaAllocator allocator = device.mem_allocator_get();
   vmaFlushAllocation(allocator, allocation_, 0, max_ii(size_in_bytes(), 1));

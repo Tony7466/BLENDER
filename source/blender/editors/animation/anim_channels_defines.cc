@@ -8,7 +8,7 @@
 
 #include <cstdio>
 
-#include "ANIM_fcurve.hh"
+#include "ANIM_action.hh"
 #include "ANIM_keyframing.hh"
 
 #include "MEM_guardedalloc.h"
@@ -52,8 +52,8 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
