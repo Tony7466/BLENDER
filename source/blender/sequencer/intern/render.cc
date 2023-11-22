@@ -697,8 +697,7 @@ static ImBuf *seq_render_preprocess_ibuf(const SeqRenderData *context,
                                          const bool is_proxy_image)
 {
   if (context->is_proxy_render == false &&
-      (ibuf->x != context->rectx || ibuf->y != context->recty))
-  {
+      (ibuf->x != context->rectx || ibuf->y != context->recty)) {
     use_preprocess = true;
   }
 
@@ -1431,8 +1430,8 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
    */
 
   const bool is_rendering = G.is_rendering;
-  bool do_seq_gl = !context->for_render && (context->scene->r.seq_prev_type) != OB_RENDER;
-  do_seq_gl &= BLI_thread_is_main();
+  bool do_seq_gl = !context->for_render && (context->scene->r.seq_prev_type) != OB_RENDER &&
+                   BLI_thread_is_main();
 
   bool have_comp = false;
   bool use_gpencil = true;
@@ -1555,7 +1554,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
      * case it's always safe to render scene here
      */
     if (!context->for_render && (is_rendering && !G.background)) {
-      return nullptr;
+      goto finally;
     }
 
     ibufs_arr = static_cast<ImBuf **>(
