@@ -40,29 +40,29 @@ class ParamHandle {
   ParamHandle();
   ~ParamHandle();
 
-  PHandleState state;
-  MemArena *arena;
-  MemArena *polyfill_arena;
-  Heap *polyfill_heap;
+  PHandleState state = PHANDLE_STATE_ALLOCATED;
+  MemArena *arena = nullptr;
+  MemArena *polyfill_arena = nullptr;
+  Heap *polyfill_heap = nullptr;
 
-  PChart *construction_chart;
-  PHash *hash_verts;
-  PHash *hash_edges;
-  PHash *hash_faces;
+  PChart *construction_chart = nullptr;
+  PHash *hash_verts = nullptr;
+  PHash *hash_edges = nullptr;
+  PHash *hash_faces = nullptr;
 
-  GHash *pin_hash;
-  int unique_pin_count;
+  GHash *pin_hash = nullptr;
+  int unique_pin_count = 0;
 
-  PChart **charts;
-  int ncharts;
+  PChart **charts = nullptr;
+  int ncharts = 0;
 
-  float aspect_y;
+  float aspect_y = 1.0f;
 
-  RNG *rng;
-  float blend;
+  RNG *rng = nullptr;
+  float blend = 1.0f;
 
   /* SLIM uv unwrapping */
-  slim::MatrixTransfer *slim_mt;
+  slim::MatrixTransfer *slim_mt = nullptr;
 };
 
 /* -------------------------------------------------------------------- */
@@ -115,11 +115,10 @@ void uv_parametrizer_construct_end(ParamHandle *handle,
 
 struct ParamSlimOptions {
  public:
-  float weight_influence;
-  int iterations;
-  int reflection_mode;
-
-  bool skip_initialization;
+  float weight_influence = 0.0f;
+  int iterations = 0;
+  int reflection_mode = 0;
+  bool skip_initialization = false;
 };
 
 void uv_parametrizer_slim_reload_all_uvs(ParamHandle *handle);
