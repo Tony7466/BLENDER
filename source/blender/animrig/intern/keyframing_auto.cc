@@ -32,6 +32,38 @@
 
 namespace blender::animrig {
 
+static eInsertKeyFlags get_keyframing_flags(Scene *scene)
+{
+  eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
+
+  /* Visual keying. */
+  if (is_autokey_flag(scene, AUTOKEY_FLAG_AUTOMATKEY)) {
+    flag |= INSERTKEY_MATRIX;
+  }
+
+  /* Only needed. */
+  if (is_autokey_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
+    flag |= INSERTKEY_NEEDED;
+  }
+
+  /* Default F-Curve color mode - RGB from XYZ indices. */
+  if (is_autokey_flag(scene, AUTOKEY_FLAG_XYZ2RGB)) {
+    flag |= INSERTKEY_XYZ2RGB;
+  }
+
+  /* Keyframing mode - only replace existing keyframes. */
+  if (is_autokey_mode(scene, AUTOKEY_MODE_EDITKEYS)) {
+    flag |= INSERTKEY_REPLACE;
+  }
+
+  /* Cycle-aware keyframe insertion - preserve cycle period and flow. */
+  if (is_autokey_flag(scene, AUTOKEY_FLAG_CYCLEAWARE)) {
+    flag |= INSERTKEY_CYCLE_AWARE;
+  }
+
+  return flag;
+}
+
 bool is_autokey_on(const Scene *scene)
 {
   if (scene) {
