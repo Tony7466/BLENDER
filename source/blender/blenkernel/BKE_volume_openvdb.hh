@@ -18,9 +18,9 @@
 
 struct Volume;
 
-using VolumeGridPtr = blender::ImplicitSharingPtr<VolumeGrid>;
+using GVolumeGridPtr = blender::ImplicitSharingPtr<GVolumeGrid>;
 
-VolumeGridPtr BKE_volume_grid_add_vdb(Volume &volume,
+GVolumeGridPtr BKE_volume_grid_add_vdb(Volume &volume,
                                       blender::StringRef name,
                                       openvdb::GridBase::Ptr vdb_grid);
 
@@ -36,14 +36,14 @@ bool BKE_volume_grid_bounds(openvdb::GridBase::ConstPtr grid,
 openvdb::GridBase::ConstPtr BKE_volume_grid_shallow_transform(openvdb::GridBase::ConstPtr grid,
                                                               const blender::float4x4 &transform);
 
-openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_metadata(const VolumeGrid *grid);
+openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_metadata(const GVolumeGrid *grid);
 openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_read(const Volume *volume,
-                                                             const VolumeGrid *grid);
+                                                             const GVolumeGrid *grid);
 openvdb::GridBase::Ptr BKE_volume_grid_openvdb_for_write(const Volume *volume,
-                                                         VolumeGrid *grid,
+                                                         GVolumeGrid *grid,
                                                          bool clear);
 
-void BKE_volume_grid_clear_tree(Volume &volume, VolumeGrid &volume_grid);
+void BKE_volume_grid_clear_tree(Volume &volume, GVolumeGrid &volume_grid);
 void BKE_volume_grid_clear_tree(openvdb::GridBase &grid);
 
 VolumeGridType BKE_volume_grid_type_openvdb(const openvdb::GridBase &grid);

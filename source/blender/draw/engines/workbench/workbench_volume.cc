@@ -46,7 +46,7 @@ void VolumePass::object_sync_volume(Manager &manager,
   /* Create 3D textures. */
   Volume *volume = static_cast<Volume *>(ob->data);
   BKE_volume_load(volume, G.main);
-  const VolumeGridPtr volume_grid = BKE_volume_grid_active_get_for_read(volume);
+  const GVolumeGridPtr volume_grid = BKE_volume_grid_active_get_for_read(volume);
   if (volume_grid == nullptr) {
     return;
   }

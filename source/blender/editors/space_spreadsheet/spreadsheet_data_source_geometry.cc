@@ -487,14 +487,14 @@ std::unique_ptr<ColumnValues> VolumeDataSource::get_column_values(
   if (STREQ(column_id.name, "Grid Name")) {
     return std::make_unique<ColumnValues>(
         IFACE_("Grid Name"), VArray<std::string>::ForFunc(size, [volume](int64_t index) {
-          const VolumeGridPtr volume_grid = BKE_volume_grid_get_for_read(volume, index);
+          const GVolumeGridPtr volume_grid = BKE_volume_grid_get_for_read(volume, index);
           return BKE_volume_grid_name(volume_grid.get());
         }));
   }
   if (STREQ(column_id.name, "Data Type")) {
     return std::make_unique<ColumnValues>(
         IFACE_("Data Type"), VArray<std::string>::ForFunc(size, [volume](int64_t index) {
-          const VolumeGridPtr volume_grid = BKE_volume_grid_get_for_read(volume, index);
+          const GVolumeGridPtr volume_grid = BKE_volume_grid_get_for_read(volume, index);
           const VolumeGridType type = BKE_volume_grid_type(volume_grid.get());
           const char *name = nullptr;
           RNA_enum_name_from_value(rna_enum_volume_grid_data_type_items, type, &name);
@@ -504,7 +504,7 @@ std::unique_ptr<ColumnValues> VolumeDataSource::get_column_values(
   if (STREQ(column_id.name, "Class")) {
     return std::make_unique<ColumnValues>(
         IFACE_("Class"), VArray<std::string>::ForFunc(size, [volume](int64_t index) {
-          const VolumeGridPtr volume_grid = BKE_volume_grid_get_for_read(volume, index);
+          const GVolumeGridPtr volume_grid = BKE_volume_grid_get_for_read(volume, index);
           openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume,
                                                                               volume_grid.get());
           openvdb::GridClass grid_class = grid->getGridClass();

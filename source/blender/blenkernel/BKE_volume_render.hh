@@ -28,7 +28,7 @@ struct DenseFloatVolumeGrid {
 };
 
 bool BKE_volume_grid_dense_floats(const Volume *volume,
-                                  const VolumeGrid *volume_grid,
+                                  const GVolumeGrid *volume_grid,
                                   DenseFloatVolumeGrid *r_dense_grid);
 void BKE_volume_dense_float_grid_clear(DenseFloatVolumeGrid *dense_grid);
 
@@ -38,7 +38,7 @@ typedef void (*BKE_volume_wireframe_cb)(
     void *userdata, const float (*verts)[3], const int (*edges)[2], int totvert, int totedge);
 
 void BKE_volume_grid_wireframe(const Volume *volume,
-                               const VolumeGrid *volume_grid,
+                               const GVolumeGrid *volume_grid,
                                BKE_volume_wireframe_cb cb,
                                void *cb_userdata);
 
@@ -48,7 +48,7 @@ using BKE_volume_selection_surface_cb =
     void (*)(void *userdata, float (*verts)[3], int (*tris)[3], int totvert, int tottris);
 
 void BKE_volume_grid_selection_surface(const Volume *volume,
-                                       const VolumeGrid *volume_grid,
+                                       const GVolumeGrid *volume_grid,
                                        BKE_volume_selection_surface_cb cb,
                                        void *cb_userdata);
 

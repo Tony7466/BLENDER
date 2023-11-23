@@ -71,7 +71,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const bool remove_grid = params.extract_input<bool>("Remove");
 
   if (Volume *volume = geometry_set.get_volume_for_write()) {
-    if (VolumeGridPtr grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
+    if (GVolumeGridPtr grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
       if (openvdb::GridBase::Ptr grid_vdb = BKE_volume_grid_openvdb_for_write(
               volume, grid.get(), false)) {
         switch (data_type) {

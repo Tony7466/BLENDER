@@ -51,7 +51,7 @@ static void try_store_grid(GeoNodeExecParams params, Volume *volume, StringRef n
     return;
   }
 
-  if (VolumeGridPtr existing_grid = BKE_volume_grid_find_for_write(volume, name.data())) {
+  if (GVolumeGridPtr existing_grid = BKE_volume_grid_find_for_write(volume, name.data())) {
     BKE_volume_grid_remove(volume, existing_grid.get());
   }
 

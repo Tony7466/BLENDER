@@ -180,7 +180,7 @@ static openvdb::FloatGrid::Ptr mesh_to_sdf_volume_grid(const Mesh &mesh,
   return new_grid;
 }
 
-VolumeGridPtr fog_volume_grid_add_from_mesh(Volume *volume,
+GVolumeGridPtr fog_volume_grid_add_from_mesh(Volume *volume,
                                             const StringRefNull name,
                                             const Mesh *mesh,
                                             const float4x4 &mesh_to_volume_space_transform,
@@ -193,7 +193,7 @@ VolumeGridPtr fog_volume_grid_add_from_mesh(Volume *volume,
   return mesh_grid ? BKE_volume_grid_add_vdb(*volume, name, std::move(mesh_grid)) : nullptr;
 }
 
-VolumeGridPtr sdf_volume_grid_add_from_mesh(Volume *volume,
+GVolumeGridPtr sdf_volume_grid_add_from_mesh(Volume *volume,
                                             const StringRefNull name,
                                             const Mesh &mesh,
                                             const float voxel_size,

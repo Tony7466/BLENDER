@@ -25,19 +25,19 @@ namespace blender::geometry {
 /**
  * Add a new fog VolumeGrid to the Volume by converting the supplied points.
  */
-VolumeGridPtr fog_volume_grid_add_from_points(Volume *volume,
-                                              StringRefNull name,
-                                              Span<float3> positions,
-                                              Span<float> radii,
-                                              float voxel_size,
-                                              float density);
+GVolumeGridPtr fog_volume_grid_add_from_points(Volume *volume,
+                                               StringRefNull name,
+                                               Span<float3> positions,
+                                               Span<float> radii,
+                                               float voxel_size,
+                                               float density);
 /**
  * Add a new SDF VolumeGrid to the Volume by converting the supplied points.
  */
-VolumeGridPtr sdf_volume_grid_add_from_points(Volume *volume,
-                                              StringRefNull name,
-                                              Span<float3> positions,
-                                              Span<float> radii,
-                                              float voxel_size);
+GVolumeGridPtr sdf_volume_grid_add_from_points(Volume *volume,
+                                               StringRefNull name,
+                                               Span<float3> positions,
+                                               Span<float> radii,
+                                               float voxel_size);
 #endif
 }  // namespace blender::geometry

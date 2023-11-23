@@ -41,7 +41,7 @@ static void search_link_ops(GatherLinkSearchOpParams &params)
 #ifdef WITH_OPENVDB
 static void sdf_volume_mean_filter(Volume &volume, const GeoNodeExecParams &params)
 {
-  VolumeGridPtr volume_grid = BKE_volume_grid_find_for_write(&volume, "distance");
+  GVolumeGridPtr volume_grid = BKE_volume_grid_find_for_write(&volume, "distance");
   if (volume_grid == nullptr) {
     return;
   }

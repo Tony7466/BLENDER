@@ -16,9 +16,9 @@
 namespace blender::bke {
 struct GVolumeGrid;
 }
-using VolumeGrid = blender::bke::GVolumeGrid;
+using GVolumeGrid = blender::bke::GVolumeGrid;
 openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_read(const Volume *volume,
-                                                             const VolumeGrid *grid);
+                                                             const GVolumeGrid *grid);
 #endif
 
 CCL_NAMESPACE_BEGIN
@@ -239,7 +239,7 @@ class BlenderVolumeLoader : public VDBImageLoader {
         const bool unload = !b_volume_grid.is_loaded();
 
         ::Volume *volume = (::Volume *)b_volume.ptr.data;
-        const VolumeGrid *volume_grid = (VolumeGrid *)b_volume_grid.ptr.data;
+        const GVolumeGrid *volume_grid = (GVolumeGrid *)b_volume_grid.ptr.data;
         grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
 
         if (unload) {

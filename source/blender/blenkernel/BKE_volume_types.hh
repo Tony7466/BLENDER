@@ -27,4 +27,4 @@ enum VolumeGridType : int8_t {
 };
 
 /** Global namespace alias for the GVolumeGrid type. */
-using VolumeGrid = blender::bke::GVolumeGrid;
+using GVolumeGrid = blender::bke::GVolumeGrid;
