@@ -75,25 +75,25 @@ static void set_strip_scene_to_null_recursive(Sequence *seq)
   }
 }
 
-static void sequencer_copy_animation_listbase(Scene *scene,
-                                              Sequence *seq,
-                                              ListBase *clipboard,
+static void sequencer_copy_animation_listbase(Scene *scene_src,
+                                              Sequence *seq_dst,
+                                              ListBase *clipboard_dst,
                                               ListBase *fcurve_base)
 {
   /* Add curves for strips inside meta strip. */
-  if (seq->type == SEQ_TYPE_META) {
-    LISTBASE_FOREACH (Sequence *, meta_child, &seq->seqbase) {
-      sequencer_copy_animation_listbase(scene, meta_child, clipboard, fcurve_base);
+  if (seq_dst->type == SEQ_TYPE_META) {
+    LISTBASE_FOREACH (Sequence *, meta_child, &seq_dst->seqbase) {
+      sequencer_copy_animation_listbase(scene_src, meta_child, clipboard_dst, fcurve_base);
     }
   }
 
-  GSet *fcurves = SEQ_fcurves_by_strip_get(seq, fcurve_base);
+  GSet *fcurves = SEQ_fcurves_by_strip_get(seq_dst, fcurve_base);
   if (fcurves == nullptr) {
     return;
   }
 
   GSET_FOREACH_BEGIN (FCurve *, fcu, fcurves) {
-    BLI_addtail(clipboard, BKE_fcurve_copy(fcu));
+    BLI_addtail(clipboard_dst, BKE_fcurve_copy(fcu));
   }
   GSET_FOREACH_END();
 
@@ -101,16 +101,16 @@ static void sequencer_copy_animation_listbase(Scene *scene,
 }
 
 static void sequencer_copy_animation(Scene *scene_src,
-                                     ListBase *copied_fcurves,
-                                     ListBase *copied_drivers,
-                                     Sequence *seq)
+                                     ListBase *fcurves_dst,
+                                     ListBase *drivers_dst,
+                                     Sequence *seq_dst)
 {
   if (SEQ_animation_curves_exist(scene_src)) {
     sequencer_copy_animation_listbase(
-        scene_src, seq, copied_fcurves, &scene_src->adt->action->curves);
+        scene_src, seq_dst, fcurves_dst, &scene_src->adt->action->curves);
   }
   if (SEQ_animation_drivers_exist(scene_src)) {
-    sequencer_copy_animation_listbase(scene_src, seq, copied_drivers, &scene_src->adt->drivers);
+    sequencer_copy_animation_listbase(scene_src, seq_dst, drivers_dst, &scene_src->adt->drivers);
   }
 }
 
@@ -132,37 +132,38 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
    */
   scene_dst->ed = MEM_cnew<Editing>(__func__);
   scene_dst->ed->seqbasep = &scene_dst->ed->seqbase;
-  const int flag_subdata = LIB_ID_CREATE_NO_USER_REFCOUNT;
   SEQ_sequence_base_dupli_recursive(
-      scene_src, scene_dst, &scene_dst->ed->seqbase, &scene_src->ed->seqbase, 0, flag_subdata);
+      scene_src, scene_dst, &scene_dst->ed->seqbase, &scene_src->ed->seqbase, 0, 0);
 
   BLI_duplicatelist(&scene_dst->ed->channels, &scene_src->ed->channels);
   scene_dst->ed->displayed_channels = &scene_dst->ed->channels;
 
   /* Save current frame and active strip. */
   scene_dst->r.cfra = scene_src->r.cfra;
-  Sequence *prev_active_seq = SEQ_select_active_get(scene_src);
-  if (prev_active_seq) {
-    LISTBASE_FOREACH (Sequence *, seq, &scene_dst->ed->seqbase) {
-      if (STREQ(seq->name, prev_active_seq->name)) {
-        SEQ_select_active_set(scene_dst, seq);
+  Sequence *active_seq_src = SEQ_select_active_get(scene_src);
+  if (active_seq_src) {
+    LISTBASE_FOREACH (Sequence *, seq_dst, &scene_dst->ed->seqbase) {
+      if (STREQ(seq_dst->name, active_seq_src->name)) {
+        SEQ_select_active_set(scene_dst, seq_dst);
       }
     }
   }
 
   ListBase fcurves_dst = {nullptr, nullptr};
   ListBase drivers_dst = {nullptr, nullptr};
-  LISTBASE_FOREACH (Sequence *, seq, &scene_dst->ed->seqbase) {
+  LISTBASE_FOREACH (Sequence *, seq_dst, &scene_dst->ed->seqbase) {
     /* Null and scene pointers in scene strips. We don't want to copy whole scenes.
      * We have to come up with a proper idea of how to copy and paste scene strips.
      */
-    set_strip_scene_to_null_recursive(seq);
-    /* Copy animation curves from seq (if any). */
-    sequencer_copy_animation(scene_src, &fcurves_dst, &drivers_dst, seq);
+    set_strip_scene_to_null_recursive(seq_dst);
+    /* Copy animation curves from seq_dst (if any). */
+    sequencer_copy_animation(scene_src, &fcurves_dst, &drivers_dst, seq_dst);
   }
-  if (BLI_listbase_count(&fcurves_dst) != 0 || BLI_listbase_count(&drivers_dst) != 0) {
-    bAction *act = ED_id_action_ensure(bmain_src, &scene_dst->id);
-    BLI_movelisttolist(&act->curves, &fcurves_dst);
+
+  if (!BLI_listbase_is_empty(&fcurves_dst) || !BLI_listbase_is_empty(&drivers_dst)) {
+    BLI_assert(scene_dst->adt == nullptr);
+    bAction *act_dst = ED_id_action_ensure(bmain_src, &scene_dst->id);
+    BLI_movelisttolist(&act_dst->curves, &fcurves_dst);
     BLI_movelisttolist(&scene_dst->adt->drivers, &drivers_dst);
   }
 
@@ -172,6 +173,12 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
   BKE_copybuffer_copy_tag_ID(&scene_dst->id);
   /* Create the copy/paste temp file */
   bool retval = BKE_copybuffer_copy_end(bmain_src, filepath, reports);
+
+  /* Clean up the action ID if we created any. */
+  if (scene_dst->adt != nullptr && scene_dst->adt->action != nullptr) {
+    BKE_id_delete(bmain_src, scene_dst->adt->action);
+  }
+
   /* Cleanup the dummy scene file */
   BKE_id_delete(bmain_src, scene_dst);
 
@@ -206,9 +213,10 @@ int SEQ_clipboard_copy_exec(bContext *C, wmOperator *op)
 /* Paste Operator Helper functions
  */
 
-struct MainPair {
-  Main *first;
-  Main *second;
+struct SEQPasteData {
+  Main *bmain;
+  IDRemapper *id_remapper;
+  std::vector<ID *> ids_to_copy;
 };
 
 /**
@@ -217,33 +225,47 @@ struct MainPair {
  */
 static int paste_strips_data_ids_reuse_or_add(LibraryIDLinkCallbackData *cb_data)
 {
-  MainPair *pair_main = static_cast<MainPair *>(cb_data->user_data);
-  Main *bmain = pair_main->first;
-  Main *temp_bmain = pair_main->second;
-  ID *id_p = *cb_data->id_pointer;
+  SEQPasteData *paste_data = static_cast<SEQPasteData *>(cb_data->user_data);
+  Main *bmain = paste_data->bmain;
+  ID *id = *cb_data->id_pointer;
 
-  if (id_p && cb_data->cb_flag & IDWALK_CB_USER) {
-    ID_Type type = GS((id_p)->name);
-    if (type == ID_AC) {
-      /* Don't copy in actions here as we already handle these in "sequencer_paste_animation". */
+  /* We don't care about embedded, loopback, or internal IDs. */
+  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_LOOPBACK | IDWALK_CB_INTERNAL)) {
+    return IDWALK_RET_NOP;
+  }
+
+  if (id) {
+    ID_Type id_type = GS((id)->name);
+    if (id_type == ID_AC || id_type == ID_GR) {
+      /* Don't copy in actions here as we already handle these in "sequencer_paste_animation".
+       * We don't copy Collections (ID_GR) here either as we don't care about scene collections.
+       */
       return IDWALK_RET_NOP;
     }
 
-    ListBase *lb = which_libbase(bmain, type);
-    ID *id_local = static_cast<ID *>(BLI_findstring(lb, (id_p)->name + 2, offsetof(ID, name) + 2));
+    ListBase *lb = which_libbase(bmain, id_type);
+    ID *id_local = static_cast<ID *>(BLI_findstring(lb, id->name + 2, offsetof(ID, name) + 2));
 
     if (id_local) {
       /* A data block with the same name already exists.
        * Don't copy over any new datablocks, reuse the data block that exists.
        */
-      id_us_min(id_local);
-      BKE_libblock_remap(temp_bmain, id_p, id_local, ID_REMAP_SKIP_INDIRECT_USAGE);
+      if (id_local->lib != nullptr && id->lib != nullptr) {
+        /* Check if they are using the same the same filepath. */
+        if (STREQ(id_local->lib->filepath_abs, id->lib->filepath_abs)) {
+          BKE_id_remapper_add(paste_data->id_remapper, id, id_local);
+        }
+        else {
+          paste_data->ids_to_copy.push_back(id);
+        }
+      }
+      else {
+        BKE_id_remapper_add(paste_data->id_remapper, id, id_local);
+      }
     }
     else {
       /* No data block of the same name already exists, transfer it over from temp_bmain. */
-      id_us_min(id_p);
-      BKE_libblock_management_main_remove(temp_bmain, id_p);
-      BKE_libblock_management_main_add(bmain, id_p);
+      paste_data->ids_to_copy.push_back(id);
     }
   }
   return IDWALK_RET_NOP;
@@ -274,8 +296,8 @@ static void sequencer_paste_animation(bContext *C, Scene *paste_scene)
     BLI_addtail(&scene->adt->drivers, BKE_fcurve_copy(fcu));
   }
 }
-int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
 
+int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
 {
   char filepath[FILE_MAX];
   sequencer_copybuffer_filepath_get(filepath, sizeof(filepath));
@@ -297,11 +319,13 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
     }
   }
 
-  int num_strips_to_paste = 0;
-  if (paste_scene && paste_scene->ed) {
-    num_strips_to_paste = BLI_listbase_count(&paste_scene->ed->seqbase);
+  if (!paste_scene || !paste_scene->ed) {
+    BKE_report(op->reports, RPT_INFO, "No clipboard scene to paste VSE data from");
+    BKE_main_free(temp_bmain);
+    return OPERATOR_CANCELLED;
   }
 
+  const int num_strips_to_paste = BLI_listbase_count(&paste_scene->ed->seqbase);
   if (num_strips_to_paste == 0) {
     BKE_report(op->reports, RPT_INFO, "No strips to paste");
     BKE_main_free(temp_bmain);
@@ -309,9 +333,22 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
   }
 
   Main *bmain = CTX_data_main(C);
-  MainPair pair_main = {bmain, temp_bmain};
-  BKE_library_foreach_ID_link(
-      temp_bmain, &paste_scene->id, paste_strips_data_ids_reuse_or_add, &pair_main, IDWALK_NOP);
+  SEQPasteData paste_data;
+  paste_data.bmain = bmain;
+  paste_data.id_remapper = BKE_id_remapper_create();
+  BKE_library_foreach_ID_link(temp_bmain,
+                              &paste_scene->id,
+                              paste_strips_data_ids_reuse_or_add,
+                              &paste_data,
+                              IDWALK_RECURSE);
+
+  /* Copy over all new ID data, save remapping for after we have moved over all the strips into
+   * bmain.
+   */
+  for (ID *id_to_copy : paste_data.ids_to_copy) {
+    BKE_libblock_management_main_remove(temp_bmain, id_to_copy);
+    BKE_libblock_management_main_add(bmain, id_to_copy);
+  }
 
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_ensure(scene); /* Create if needed. */
@@ -345,7 +382,7 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
 
   ListBase nseqbase = {nullptr, nullptr};
   SEQ_sequence_base_dupli_recursive(
-      paste_scene, scene, &nseqbase, &paste_scene->ed->seqbase, 0, 0);
+      paste_scene, scene, &nseqbase, &paste_scene->ed->seqbase, 0, LIB_ID_CREATE_NO_USER_REFCOUNT);
 
   Sequence *prev_active_seq = SEQ_select_active_get(paste_scene);
 
@@ -374,6 +411,9 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
       SEQ_transform_seqbase_shuffle(ed->seqbasep, iseq, scene);
     }
   }
+
+  BKE_libblock_remap_multiple(bmain, paste_data.id_remapper, 0);
+  BKE_id_remapper_free(paste_data.id_remapper);
 
   BKE_main_free(temp_bmain);
 
