@@ -80,7 +80,7 @@ bool is_autokey_mode(const Scene *scene, const eAutokey_Mode mode)
   return U.autokey_mode == mode;
 }
 
-bool is_autokey_flag(const Scene *scene, const eKeyInsert_Flag flag)
+bool is_autokey_flag(const Scene *scene, const eKeying_Flag flag)
 {
   if (scene) {
     return (scene->toolsettings->autokey_flag & flag) || (U.autokey_flag & flag);

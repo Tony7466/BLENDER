@@ -1286,7 +1286,7 @@ typedef enum eZoomFrame_Mode {
  * Not all of those flags are stored in the user preferences (U.autokey_flag).
  * Some are stored on the scene (toolsettings.autokey_flag).
  */
-typedef enum eKeyInsert_Flag {
+typedef enum eKeying_Flag {
   /* Settings used across manual and auto-keying. */
   KEYING_FLAG_VISUALKEY = (1 << 2),
   KEYING_FLAG_XYZ2RGB = (1 << 3),
@@ -1301,7 +1301,7 @@ typedef enum eKeyInsert_Flag {
 
   /* Manual Keying options. */
   MANUALKEY_FLAG_INSERTNEEDED = (1 << 11),
-} eKeyInsert_Flag;
+} eKeying_Flag;
 
 typedef enum eKeyInsertChannels {
   USER_ANIM_KEY_CHANNEL_LOCATION = (1 << 0),
@@ -1314,7 +1314,7 @@ typedef enum eKeyInsertChannels {
 /**
  * Animation flags
  * #UserDef.animation_flag, used for animation flags that aren't covered by more specific flags
- * (like eKeyInsert_Flag).
+ * (like eKeying_Flag).
  */
 typedef enum eUserpref_Anim_Flags {
   USER_ANIM_SHOW_CHANNEL_GROUP_COLORS = (1 << 0),
