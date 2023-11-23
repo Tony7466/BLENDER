@@ -1584,7 +1584,7 @@ static void blf_glyph_to_curves(FT_Outline ftoutline, ListBase *nurbsbase, const
   int contour_prev;
 
   /* Start converting the FT data */
-  int *onpoints = static_cast<int *>(MEM_callocN(size_t(ftoutline.n_contours * sizeof(int)), "onpoints"));
+  int *onpoints = static_cast<int *>(MEM_callocN(size_t(ftoutline.n_contours) * sizeof(int), "onpoints"));
 
   /* Get number of on-curve points for bezier-triples (including conic virtual on-points). */
   for (j = 0, contour_prev = -1; j < ftoutline.n_contours; j++) {
@@ -1618,7 +1618,7 @@ static void blf_glyph_to_curves(FT_Outline ftoutline, ListBase *nurbsbase, const
 
     /* add new curve */
     nu = (Nurb *)MEM_callocN(sizeof(Nurb), "objfnt_nurb");
-    bezt = static_cast<BezTriple *>(MEM_callocN(size_t(onpoints[j] * sizeof(BezTriple)), "objfnt_bezt"));
+    bezt = static_cast<BezTriple *>(MEM_callocN(size_t(onpoints[j]) * sizeof(BezTriple), "objfnt_bezt"));
     BLI_addtail(nurbsbase, nu);
 
     nu->type = CU_BEZIER;
