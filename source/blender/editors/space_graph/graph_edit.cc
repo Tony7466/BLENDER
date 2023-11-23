@@ -146,7 +146,7 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
   }
 
   /* Init key-framing flag. */
-  flag = ANIM_get_keyframing_flags(scene, true);
+  flag = ANIM_get_keyframing_flags(scene);
 
   /* Insert keyframes. */
   if (mode & GRAPHKEYS_INSERTKEY_CURSOR) {

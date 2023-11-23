@@ -104,7 +104,7 @@ static int add_default_keyingset_exec(bContext *C, wmOperator * /*op*/)
   flag |= KEYINGSET_ABSOLUTE;
 
   /* 2nd arg is 0 to indicate that we don't want to include autokeying mode related settings */
-  keyingflag = ANIM_get_keyframing_flags(scene, false);
+  keyingflag = ANIM_get_keyframing_flags(scene);
 
   /* call the API func, and set the active keyingset index */
   BKE_keyingset_add(&scene->keyingsets, nullptr, nullptr, flag, keyingflag);
@@ -292,7 +292,7 @@ static int add_keyingset_button_exec(bContext *C, wmOperator *op)
      */
     flag |= KEYINGSET_ABSOLUTE;
 
-    keyingflag |= ANIM_get_keyframing_flags(scene, false);
+    keyingflag |= ANIM_get_keyframing_flags(scene);
 
     if (blender::animrig::is_autokey_flag(scene, KEYING_FLAG_XYZ2RGB)) {
       keyingflag |= INSERTKEY_XYZ2RGB;
@@ -1028,7 +1028,7 @@ int ANIM_apply_keyingset(
 
   /* get flags to use */
   Scene *scene = CTX_data_scene(C);
-  const eInsertKeyFlags base_kflags = ANIM_get_keyframing_flags(scene, true);
+  const eInsertKeyFlags base_kflags = ANIM_get_keyframing_flags(scene);
   eInsertKeyFlags kflag = INSERTKEY_NOFLAGS;
   if (mode == MODIFYKEY_MODE_INSERT) {
     /* use context settings as base */
