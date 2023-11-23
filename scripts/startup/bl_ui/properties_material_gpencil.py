@@ -24,6 +24,7 @@ class GPENCIL_MT_material_context_menu(Menu):
 
             layout.operator("grease_pencil.material_lock_all", icon='LOCKED', text="Lock All")
             layout.operator("grease_pencil.material_unlock_all", icon='UNLOCKED', text="Unlock All")
+            layout.operator("grease_pencil.material_lock_unused", text="Lock Unused")
         else:
             layout.operator("gpencil.material_reveal", icon='RESTRICT_VIEW_OFF', text="Show All")
             layout.operator("gpencil.material_hide", icon='RESTRICT_VIEW_ON', text="Hide Others").unselected = True
