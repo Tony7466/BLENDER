@@ -136,8 +136,11 @@ void ShaderCreateInfo::finalize()
      * Will only add a custom parameter if it does not already exist.
      * This should only be used to inherit parameters from "common"
      * create info definitions which are shared amongst sub-declarations. */
-    for (const auto param : info.custom_parameters_.items()) {
-      custom_parameters_.add(param.key, param.value);
+    for (int i : IndexRange(static_cast<uint>(CustomParameterKey::MAX))) {
+      int param = info.custom_parameters_.parameters[i].int_value;
+      custom_parameters_.parameters[i].int_value = (param) ?
+                                                       param :
+                                                       custom_parameters_.parameters[i].int_value;
     }
 
     if (info.early_fragment_test_) {

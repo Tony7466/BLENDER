@@ -265,11 +265,10 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
   /** Extract desired custom parameters from CreateInfo. */
   /* Tuning paramters for compute kernels. */
   if (is_compute) {
-    const shader::ShaderCreateInfo::CustomParameter *param = info->custom_parameters_.lookup_ptr(
-        "MTL_MAX_THREADS_PER_THREADGROUP");
-    if (param) {
-      BLI_assert(param->type == Type::INT);
-      maxTotalThreadsPerThreadgroup_Tuning_ = param->value_i;
+    int param = info->custom_parameters_.fetch_i(
+        CustomParameterKey::MTL_MAX_THREADS_PER_THREADGROUP);
+    if (param > 0) {
+      maxTotalThreadsPerThreadgroup_Tuning_ = param;
     }
   }
 
@@ -1434,9 +1433,9 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
     if (ELEM(capabilities.gpu, APPLE_GPU_M1, APPLE_GPU_M2)) {
       if (maxTotalThreadsPerThreadgroup_Tuning_ > 0) {
         desc.maxTotalThreadsPerThreadgroup = this->maxTotalThreadsPerThreadgroup_Tuning_;
-        printf("Using custom parameter for shader %s value %u\n",
-               this->name,
-               maxTotalThreadsPerThreadgroup_Tuning_);
+        MTL_LOG_INFO("Using custom parameter for shader %s value %u\n",
+                     this->name,
+                     maxTotalThreadsPerThreadgroup_Tuning_);
       }
     }
 

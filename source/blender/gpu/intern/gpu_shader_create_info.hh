@@ -75,6 +75,29 @@ enum class Type {
   SHORT4
 };
 
+/** Custom parameter types.
+ * These represent optional value assignments for shaders which can provide hints for specific GPU
+ * backends, for fine-tuning of performance or enablement of optional features and settings. Add
+ * entries as required for custom parameters.
+ *
+ * NOTE: Add new parameter keys to enum as required. Each parameter should have a description and
+ * an expected type which is any of int, float or boolean.  */
+enum class CustomParameterKey : uint {
+
+  /** MTL_MAX_THREADS_PER_THREADGROUP - unsigned int:
+   * This controls the pipeline descriptor parmeter `maxTotalThreadsPerThreadgroup` which can be
+   * used to fine-tune target workload memory requirements based on the known runtime performance
+   * characteristics of a given kernel. This enables tuned kernels to run at a higher target
+   * occupancy resulting in improved performance.
+   *
+   * Must be > 0 and <= 1024.
+   * Applies to Apple M1 and M2 GPU generations only. */
+  MTL_MAX_THREADS_PER_THREADGROUP = 0,
+
+  /* MAX must be at end for custom parameter array sizing. */
+  MAX
+};
+
 /* All of these functions is a bit out of place */
 static inline Type to_type(const eGPUType type)
 {
@@ -581,17 +604,28 @@ struct ShaderCreateInfo {
 
   Vector<PushConst> push_constants_;
 
-  /** Allow speification of custom parameters which can optionally be consumed by backends to
-   * provide additional feature enablement or tuning support outside of core API requirments. */
-  struct CustomParameter {
-    Type type;
+  /** Struct of custom parameters specified */
+  struct CustomParameters {
     union {
-      float value_f;
-      int value_i;
-      bool value_b;
-    };
+      int int_value;
+      float float_value;
+      bool bool_value;
+    } parameters[static_cast<uint>(CustomParameterKey::MAX)];
+
+    inline int fetch_i(CustomParameterKey key) const
+    {
+      return parameters[static_cast<uint>(key)].int_value;
+    }
+    inline float fetch_f(CustomParameterKey key) const
+    {
+      return parameters[static_cast<uint>(key)].float_value;
+    }
+    inline bool fetch_b(CustomParameterKey key) const
+    {
+      return parameters[static_cast<uint>(key)].bool_value;
+    }
   };
-  Map<StringRefNull, CustomParameter> custom_parameters_;
+  CustomParameters custom_parameters_ = {{0}};
 
   /* Sources for resources type definitions. */
   Vector<StringRefNull> typedef_sources_;
@@ -719,30 +753,21 @@ struct ShaderCreateInfo {
    * introducing API requiring implementation from each API.
    * \{ */
 
-  Self &custom_parameter(StringRefNull parameter_key, Type param_type, int int_val)
+  Self &custom_parameter(CustomParameterKey parameter_key, int int_val)
   {
-    CustomParameter param;
-    param.type = param_type;
-    param.value_i = int_val;
-    custom_parameters_.add(parameter_key, param);
+    custom_parameters_.parameters[static_cast<uint>(parameter_key)].int_value = int_val;
     return *(Self *)this;
   }
 
-  Self &custom_parameter(StringRefNull parameter_key, Type param_type, float float_val)
+  Self &custom_parameter(CustomParameterKey parameter_key, float float_val)
   {
-    CustomParameter param;
-    param.type = param_type;
-    param.value_f = float_val;
-    custom_parameters_.add(parameter_key, param);
+    custom_parameters_.parameters[static_cast<uint>(parameter_key)].float_value = float_val;
     return *(Self *)this;
   }
 
-  Self &custom_parameter(StringRefNull parameter_key, Type param_type, bool bool_val)
+  Self &custom_parameter(CustomParameterKey parameter_key, bool bool_val)
   {
-    CustomParameter param;
-    param.type = param_type;
-    param.value_b = bool_val;
-    custom_parameters_.add(parameter_key, param);
+    custom_parameters_.parameters[static_cast<uint>(parameter_key)].bool_value = bool_val;
     return *(Self *)this;
   }
 
