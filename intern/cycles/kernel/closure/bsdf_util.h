@@ -130,8 +130,8 @@ ccl_device float3 ensure_valid_specular_reflection(float3 Ng, float3 I, float3 N
    * The Y axis isn't actually needed.
    */
   const float3 X = safe_normalize(N - dot(N, Ng) * Ng);
-  if (len(X) < 0.5f) {
-    /* Vector was not normalized by `safe_normlize()` function. This can cause rendering issues
+  if (len_squared(X) < 0.5f) {
+    /* Vector was not normalized by `safe_normalize()` function. This can cause rendering issues
      * later on. So return the default normals instead. */
     return N;
   }
@@ -208,8 +208,8 @@ ccl_device float3 maybe_ensure_valid_specular_reflection(ccl_private ShaderData 
 ccl_device_inline float3 safe_normal(ccl_private ShaderData *sd, float3 N)
 {
   N = safe_normalize(N);
-  if (len(N) < 0.5f) {
-    /* Vector was not normalized by `safe_normlize()` function. This can cause rendering issues
+  if (len_squared(N) < 0.5f) {
+    /* Vector was not normalized by `safe_normalize()` function. This can cause rendering issues
      * later on. So return the default normals instead. */
     return sd->N;
   }
