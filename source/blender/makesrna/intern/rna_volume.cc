@@ -44,6 +44,17 @@ const EnumPropertyItem rna_enum_volume_grid_data_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+/**
+ * Dummy type used as a stand-in for the actual VolumeGrid struct.
+ * Generated RNA callbacks need a C struct as the main "self" argument.
+ * The struct does not have to be an actual DNA struct.
+ * - VolumeGrid is a type alias ("using") that cannot be used directly for this purpose.
+ * - blender::bke::GVolumeGrid is the actual struct but C++ namespaces also don't work.
+ * This dummy struct is used as a placeholder for the callbacks and reinterpreted as the actual
+ * VolumeGrid type.
+ */
+struct DummyVolumeGrid;
+
 #ifdef RNA_RUNTIME
 
 #  include "DEG_depsgraph.hh"
@@ -131,14 +142,15 @@ static bool rna_VolumeGrid_is_loaded_get(PointerRNA *ptr)
   return BKE_volume_grid_is_loaded(grid);
 }
 
-static bool rna_VolumeGrid_load(ID *id, VolumeGrid *grid)
+static bool rna_VolumeGrid_load(ID *id, DummyVolumeGrid *grid)
 {
-  return BKE_volume_grid_load((Volume *)id, grid);
+  return BKE_volume_grid_load(reinterpret_cast<Volume *>(id),
+                              reinterpret_cast<VolumeGrid *>(grid));
 }
 
-static void rna_VolumeGrid_unload(ID *id, VolumeGrid *grid)
+static void rna_VolumeGrid_unload(ID *id, DummyVolumeGrid *grid)
 {
-  BKE_volume_grid_unload((Volume *)id, grid);
+  BKE_volume_grid_unload(reinterpret_cast<Volume *>(id), reinterpret_cast<VolumeGrid *>(grid));
 }
 
 /* Grids Iterator */
@@ -253,7 +265,7 @@ static void rna_def_volume_grid(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "VolumeGrid", nullptr);
-  RNA_def_struct_sdna(srna, "VolumeGrid");
+  RNA_def_struct_sdna(srna, "DummyVolumeGrid");
   RNA_def_struct_ui_text(srna, "Volume Grid", "3D volume grid");
   RNA_def_struct_ui_icon(srna, ICON_VOLUME_DATA);
 

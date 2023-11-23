@@ -13,8 +13,12 @@
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
-openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_read(const struct Volume *volume,
-                                                             const struct VolumeGrid *grid);
+namespace blender::bke {
+struct GVolumeGrid;
+}
+using VolumeGrid = blender::bke::GVolumeGrid;
+openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_read(const Volume *volume,
+                                                             const VolumeGrid *grid);
 #endif
 
 CCL_NAMESPACE_BEGIN
