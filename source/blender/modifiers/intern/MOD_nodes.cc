@@ -90,7 +90,6 @@
 #include "NOD_node_declaration.hh"
 
 #include "FN_field.hh"
-#include "FN_field_cpp_type.hh"
 #include "FN_lazy_function_execute.hh"
 #include "FN_lazy_function_graph_executor.hh"
 #include "FN_multi_function.hh"
@@ -512,7 +511,7 @@ static void try_add_side_effect_node(const ComputeContext &final_compute_context
           compute_context->iteration());
       current_zone = repeat_zone;
     }
-    else if (const auto *compute_context = dynamic_cast<const bke::NodeGroupComputeContext *>(
+    else if (const auto *compute_context = dynamic_cast<const bke::GroupNodeComputeContext *>(
                  compute_context_generic))
     {
       const bNode *group_node = current_tree->node_by_id(compute_context->node_id());
