@@ -1500,7 +1500,7 @@ MTLComputePipelineStateInstance *MTLShader::bake_compute_pipeline_state(MTLConte
      * generated code based on current render pipeline configuration. */
     MTLFunctionConstantValues *values = [[MTLFunctionConstantValues new] autorelease];
 
-    /* TODO: Compile specialized shader variants asynchronously
+    /* TODO: Compile specialized shader variants asynchronously. */
 
     /* Custom function constant values: */
     populate_specialization_constant_values(
