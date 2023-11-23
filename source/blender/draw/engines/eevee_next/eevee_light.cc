@@ -261,7 +261,7 @@ void LightModule::begin_sync()
   use_scene_lights_ = inst_.use_scene_lights();
   /* Disable sunlight if world has a volume shader as we consider the light cannot go through an
    * infinite opaque medium. */
-  use_sun_lights_ = (inst_.world.has_volume() == false);
+  use_sun_lights_ = (inst_.world.has_volume_absorption() == false);
 
   /* In begin_sync so it can be animated. */
   if (assign_if_different(light_threshold_, max_ff(1e-16f, inst_.scene->eevee.light_threshold))) {

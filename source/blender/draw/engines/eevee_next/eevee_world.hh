@@ -13,6 +13,8 @@
 
 #include "DNA_world_types.h"
 
+#include "eevee_lookdev.hh"
+
 namespace blender::eevee {
 
 class Instance;
@@ -63,7 +65,7 @@ class World {
   /* Is true if the volume shader has scattering. */
   bool has_volume_scatter_ = false;
 
-  ::World *default_world_get();
+  LookdevWorld lookdev_world_;
 
  public:
   World(Instance &inst) : inst_(inst){};
@@ -85,6 +87,13 @@ class World {
   {
     return has_volume_scatter_;
   }
+
+ private:
+  void sync_volume();
+
+  /* Returns a dummy black world for when a valid world isn't present or when we want to suppress
+   * any light comming from the world. */
+  ::World *default_world_get();
 };
 
 /** \} */
