@@ -1283,18 +1283,24 @@ typedef enum eZoomFrame_Mode {
 /**
  * Defines how keyframes are inserted.
  * Used for regular keying and auto-keying.
+ * Not all of those flags are stored in the user preferences (U.autokey_flag).
+ * Some are stored on the scene (toolsettings.autokey_flag).
  */
 typedef enum eKeyInsert_Flag {
-  AUTOKEY_FLAG_INSERTAVAILABLE = (1 << 0),
-  AUTOKEY_FLAG_INSERTNEEDED = (1 << 1),
+  /* Settings used across manual and auto-keying. */
   AUTOKEY_FLAG_VISUALKEY = (1 << 2),
   AUTOKEY_FLAG_XYZ2RGB = (1 << 3),
+  AUTOKEY_FLAG_CYCLEAWARE = (1 << 8),
 
-  /* toolsettings->autokey_flag */
+  /* Autokey options. */
+  AUTOKEY_FLAG_INSERTAVAILABLE = (1 << 0),
+  AUTOKEY_FLAG_INSERTNEEDED = (1 << 1),
   AUTOKEY_FLAG_ONLYKEYINGSET = (1 << 6),
   AUTOKEY_FLAG_NOWARNING = (1 << 7),
-  AUTOKEY_FLAG_CYCLEAWARE = (1 << 8),
   AUTOKEY_FLAG_LAYERED_RECORD = (1 << 10),
+
+  /* Manual Keying options. */
+  KEYING_FLAG_INSERTNEEDED = (1 << 11),
 } eKeyInsert_Flag;
 
 typedef enum eKeyInsertChannels {

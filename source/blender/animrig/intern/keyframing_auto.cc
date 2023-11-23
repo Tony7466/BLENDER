@@ -37,7 +37,7 @@ static eInsertKeyFlags get_keyframing_flags(Scene *scene)
   eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
 
   /* Visual keying. */
-  if (is_autokey_flag(scene, AUTOKEY_FLAG_AUTOMATKEY)) {
+  if (is_autokey_flag(scene, AUTOKEY_FLAG_VISUALKEY)) {
     flag |= INSERTKEY_MATRIX;
   }
 
