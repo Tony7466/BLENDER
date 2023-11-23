@@ -2792,6 +2792,8 @@ static int unwrap_exec(bContext *C, wmOperator *op)
 
 static bool unwrap_draw_check_prop_slim(PointerRNA *ptr, PropertyRNA *prop, void *user_data)
 {
+  (void)ptr;
+  (void)user_data;
   const char *prop_id = RNA_property_identifier(prop);
 
   return !(STREQ(prop_id, "fill_holes"));
@@ -2799,6 +2801,8 @@ static bool unwrap_draw_check_prop_slim(PointerRNA *ptr, PropertyRNA *prop, void
 
 static bool unwrap_draw_check_prop_abf(PointerRNA *ptr, PropertyRNA *prop, void *user_data)
 {
+  (void)ptr;
+  (void)user_data;
   const char *prop_id = RNA_property_identifier(prop);
 
   return !(STREQ(prop_id, "reflection_mode") || STREQ(prop_id, "iterations") ||
@@ -2807,6 +2811,7 @@ static bool unwrap_draw_check_prop_abf(PointerRNA *ptr, PropertyRNA *prop, void 
 
 static void unwrap_draw(bContext *C, wmOperator *op)
 {
+  (void)C;
   uiLayout *layout = op->layout;
 
   uiLayoutSetPropSep(layout, true);
