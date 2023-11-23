@@ -81,9 +81,9 @@
 
 #include "uvedit_intern.h"
 
-using blender::geometry::MatrixTransferOptions;
 using blender::geometry::ParamHandle;
 using blender::geometry::ParamKey;
+using blender::geometry::ParamSlimOptions;
 
 /* -------------------------------------------------------------------- */
 /** \name Utility Functions
@@ -198,7 +198,8 @@ struct UnwrapOptions {
   bool use_abf;
   bool use_subsurf;
 
-  MatrixTransferOptions mt_options;
+  ParamSlimOptions slim_options;
+  char slim_vertex_group[MAX_VGROUP_NAME];
 };
 
 void blender::geometry::UVPackIsland_Params::setFromUnwrapOptions(const UnwrapOptions &options)
@@ -243,7 +244,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
   options.only_selected_uvs = false;
   options.pin_unselected = false;
 
-  options.mt_options.skip_initialization = false;
+  options.slim_options.skip_initialization = false;
 
   if (ts) {
     options.method = ts->unwrapper;
@@ -251,15 +252,13 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.fill_holes = (ts->uvcalc_flag & UVCALC_FILLHOLES) != 0;
     options.use_subsurf = (ts->uvcalc_flag & UVCALC_USESUBSURF) != 0;
 
-    static_assert(sizeof(options.mt_options.vertex_group) == sizeof(ts->uvcalc_vertex_group),
-                  "vertex_group size mismatch.");
-    memcpy(options.mt_options.vertex_group,
-           ts->uvcalc_vertex_group,
-           sizeof(options.mt_options.vertex_group));
+    STRNCPY(options.slim_vertex_group, ts->uvcalc_vertex_group);
 
-    options.mt_options.vertex_group_factor = ts->uvcalc_vertex_group_factor;
-    options.mt_options.iterations = ts->uvcalc_iterations;
-    options.mt_options.reflection_mode = ts->uvcalc_reflection_mode;
+    options.slim_options.weight_influence = strlen(options.slim_vertex_group) ?
+                                                ts->uvcalc_vertex_group_factor :
+                                                0.0f;
+    options.slim_options.iterations = ts->uvcalc_iterations;
+    options.slim_options.reflection_mode = ts->uvcalc_reflection_mode;
   }
   else {
     /* We use the properties from the last unwrap operator for subsequent
@@ -272,10 +271,12 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.fill_holes = RNA_boolean_get(&ptr, "fill_holes");
     options.use_subsurf = RNA_boolean_get(&ptr, "use_subsurf_data");
 
-    RNA_string_get(&ptr, "vertex_group", options.mt_options.vertex_group);
-    options.mt_options.vertex_group_factor = RNA_float_get(&ptr, "vertex_group_factor");
-    options.mt_options.iterations = RNA_int_get(&ptr, "iterations");
-    options.mt_options.reflection_mode = RNA_enum_get(&ptr, "reflection_mode");
+    RNA_string_get(&ptr, "vertex_group", options.slim_vertex_group);
+    options.slim_options.weight_influence = strlen(options.slim_vertex_group) ?
+                                                RNA_float_get(&ptr, "vertex_group_factor") :
+                                                0.0f;
+    options.slim_options.iterations = RNA_int_get(&ptr, "iterations");
+    options.slim_options.reflection_mode = RNA_enum_get(&ptr, "reflection_mode");
 
     WM_operator_properties_free(&ptr);
   }
@@ -626,7 +627,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
   BM_mesh_elem_index_ensure(bm, BM_VERT);
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
-  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->mt_options.vertex_group);
+  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->slim_vertex_group);
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
     if (uvedit_is_face_affected(scene, efa, options, offsets)) {
@@ -683,8 +684,7 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
       continue;
     }
 
-    const int cd_weight_index = BKE_object_defgroup_name_index(obedit,
-                                                               options->mt_options.vertex_group);
+    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->slim_vertex_group);
 
     BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
       if (uvedit_is_face_affected(scene, efa, options, offsets)) {
@@ -787,7 +787,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   BMEdge **edgeMap;
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
-  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->mt_options.vertex_group);
+  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->slim_vertex_group);
 
   ParamHandle *handle = new blender::geometry::ParamHandle();
 
@@ -2020,9 +2020,9 @@ void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit)
   }
 
   if (options.use_slim) {
-    options.mt_options.reflection_mode = 0;
-    options.mt_options.skip_initialization = true;
-    uv_parametrizer_slim_begin(handle, &options.mt_options);
+    options.slim_options.reflection_mode = 0;
+    options.slim_options.skip_initialization = true;
+    uv_parametrizer_slim_begin(handle, &options.slim_options);
 
     if (C) {
       BLI_assert(!g_live_unwrap.timer);
@@ -2614,7 +2614,7 @@ static void uvedit_unwrap(const Scene *scene,
   }
 
   if (options->use_slim) {
-    uv_parametrizer_slim_solve(handle, &options->mt_options, r_count_changed, r_count_failed);
+    uv_parametrizer_slim_solve(handle, &options->slim_options, r_count_changed, r_count_failed);
   }
   else {
     blender::geometry::uv_parametrizer_lscm_begin(handle, false, options->use_abf);

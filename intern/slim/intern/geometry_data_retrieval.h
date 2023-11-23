@@ -24,7 +24,7 @@ struct GeometryData {
   int number_of_boundary_vertices = 0;
   int number_of_pinned_vertices = 0;
 
-  bool with_weighted_parameteriztion = false;
+  bool use_weights = false;
   double weight_influence = 0.0;
 
   /* All the following maps have to be declared as last members. */
@@ -43,7 +43,7 @@ struct GeometryData {
   Map<VectorXi> boundary_vertex_indices = Map<VectorXi>(NULL, 0);
   Map<VectorXf> weights_per_vertex = Map<VectorXf>(NULL, 0);
 
-  GeometryData(const MatrixTransfer &mt, MatrixTransferChart &mt_chart);
+  GeometryData(const MatrixTransfer &mt, MatrixTransferChart &chart);
   GeometryData(const GeometryData &) = delete;
   GeometryData &operator=(const GeometryData &) = delete;
 

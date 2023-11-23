@@ -20,16 +20,15 @@ namespace slim {
 
 using namespace Eigen;
 
-static void transfer_uvs_back_to_native_part_live(MatrixTransferChart &mt_chart,
-                                                  Eigen::MatrixXd &uv)
+static void transfer_uvs_back_to_native_part_live(MatrixTransferChart &chart, Eigen::MatrixXd &uv)
 {
-  if (!mt_chart.succeeded) {
+  if (!chart.succeeded) {
     return;
   }
 
-  auto &uv_coordinate_array = mt_chart.uv_matrices;
+  auto &uv_coordinate_array = chart.uv_matrices;
   size_t uv_idx = 0;
-  int number_of_vertices = mt_chart.n_verts;
+  int number_of_vertices = chart.n_verts;
 
   for (int i = 0; i < number_of_vertices; i++) {
     uv_coordinate_array[uv_idx++] = uv(i, 0);
@@ -37,14 +36,14 @@ static void transfer_uvs_back_to_native_part_live(MatrixTransferChart &mt_chart,
   }
 }
 
-static void transfer_uvs_back_to_native_part(MatrixTransferChart &mt_chart, Eigen::MatrixXd &uv)
+static void transfer_uvs_back_to_native_part(MatrixTransferChart &chart, Eigen::MatrixXd &uv)
 {
-  if (!mt_chart.succeeded) {
+  if (!chart.succeeded) {
     return;
   }
 
-  auto &uv_coordinate_array = mt_chart.uv_matrices;
-  int number_of_vertices = mt_chart.n_verts;
+  auto &uv_coordinate_array = chart.uv_matrices;
+  int number_of_vertices = chart.n_verts;
 
   for (int i = 0; i < number_of_vertices; i++) {
     for (int j = 0; j < 2; j++) {
@@ -157,7 +156,7 @@ void MatrixTransferChart::parametrize_single_iteration()
 }
 
 /* Executes slim iterations during live unwrap. needs to provide new selected-pin positions. */
-void MatrixTransfer::parametrize_live(MatrixTransferChart &mt_chart,
+void MatrixTransfer::parametrize_live(MatrixTransferChart &chart,
                                       int n_pins,
                                       const std::vector<int> &pinned_vertex_indices,
                                       const std::vector<double> &pinned_vertex_positions_2D,
@@ -165,31 +164,28 @@ void MatrixTransfer::parametrize_live(MatrixTransferChart &mt_chart,
                                       const std::vector<int> &selected_pins)
 {
   int number_of_iterations = 3;
-  adjust_pins(*mt_chart.data,
+  adjust_pins(*chart.data,
               n_pins,
               pinned_vertex_indices,
               pinned_vertex_positions_2D,
               n_selected_pins,
               selected_pins);
 
-  mt_chart.try_slim_solve(number_of_iterations);
+  chart.try_slim_solve(number_of_iterations);
 }
 
-void MatrixTransfer::parametrize(int n_iterations,
-                                 bool are_border_vertices_pinned,
-                                 bool skip_initialization)
+void MatrixTransfer::parametrize()
 {
-  for (int uv_chart_index = 0; uv_chart_index < n_charts; uv_chart_index++) {
-    MatrixTransferChart &mt_chart = mt_charts[uv_chart_index];
-    setup_slim_data(mt_chart, n_iterations, are_border_vertices_pinned, skip_initialization);
+  for (MatrixTransferChart &chart : charts) {
+    setup_slim_data(chart, n_iterations);
 
-    mt_chart.try_slim_solve(n_iterations);
+    chart.try_slim_solve(n_iterations);
 
-    correct_map_surface_area_if_necessary(*mt_chart.data);
-    transfer_uvs_back_to_native_part(mt_chart, mt_chart.data->V_o);
+    correct_map_surface_area_if_necessary(*chart.data);
+    transfer_uvs_back_to_native_part(chart, chart.data->V_o);
 
-    mt_chart.free_slim_data();
+    chart.free_slim_data();
   }
-};
+}
 
 }  // namespace slim

@@ -16,22 +16,13 @@ namespace slim {
 MatrixTransferChart::MatrixTransferChart() = default;
 MatrixTransferChart::MatrixTransferChart(MatrixTransferChart &&) = default;
 MatrixTransferChart::~MatrixTransferChart() = default;
+MatrixTransfer::MatrixTransfer() = default;
+MatrixTransfer::~MatrixTransfer() = default;
 
 void MatrixTransferChart::free_slim_data()
 {
   data.reset(nullptr);
 }
-
-/* Setup call from the native C part. Necessary for interactive parametrisation. */
-void MatrixTransfer::setup_slim_data(MatrixTransferChart &mt_chart,
-                                     bool are_border_vertices_pinned,
-                                     bool skip_initialization) const
-{
-  setup_slim_data(mt_chart, 0, are_border_vertices_pinned, skip_initialization);
-}
-
-MatrixTransfer::MatrixTransfer() = default;
-MatrixTransfer::~MatrixTransfer() = default;
 
 static void initialize_uvs(GeometryData &gd, SLIMData &slim_data)
 {
@@ -68,22 +59,19 @@ static void initialize_if_needed(GeometryData &gd, SLIMData &slim_data)
 }
 
 /* Transfers all the matrices from the native part and initialises SLIM. */
-void MatrixTransfer::setup_slim_data(MatrixTransferChart &mt_chart,
-                                     int n_iterations,
-                                     bool border_vertices_are_pinned,
-                                     bool skip_initialization) const
+void MatrixTransfer::setup_slim_data(MatrixTransferChart &chart, int n_iterations) const
 {
   SLIMDataPtr slim_data = std::make_unique<SLIMDataPtr::element_type>();
 
   try {
-    if (!mt_chart.succeeded) {
+    if (!chart.succeeded) {
       throw SlimFailedException();
     }
 
-    GeometryData geometry_data(*this, mt_chart);
+    GeometryData geometry_data(*this, chart);
 
-    geometry_data.retrieve_pinned_vertices(border_vertices_are_pinned);
-    mt_chart.n_pinned_vertices = geometry_data.number_of_pinned_vertices;
+    geometry_data.retrieve_pinned_vertices(fixed_boundary);
+    chart.n_pinned_vertices = geometry_data.number_of_pinned_vertices;
 
     geometry_data.construct_slim_data(*slim_data, skip_initialization, reflection_mode);
     slim_data->nIterations = n_iterations;
@@ -104,10 +92,10 @@ void MatrixTransfer::setup_slim_data(MatrixTransferChart &mt_chart,
   }
   catch (SlimFailedException &) {
     slim_data->valid = false;
-    mt_chart.succeeded = false;
+    chart.succeeded = false;
   }
 
-  mt_chart.data = std::move(slim_data);
+  chart.data = std::move(slim_data);
 }
 
 }  // namespace slim

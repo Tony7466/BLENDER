@@ -4581,15 +4581,15 @@ void uv_parametrizer_flush_restore(ParamHandle *phandle)
 /***************************** SLIM Integration *******************************/
 
 /* Get SLIM parameters from scene */
-static slim::MatrixTransfer *slim_matrix_transfer(const MatrixTransferOptions *mt_options)
+static slim::MatrixTransfer *slim_matrix_transfer(const ParamSlimOptions *slim_options)
 {
   slim::MatrixTransfer *mt = new slim::MatrixTransfer();
 
-  mt->with_weighted_parameterization = strlen(mt_options->vertex_group) > 0;
-  mt->weight_influence = mt_options->vertex_group_factor;
-  mt->n_iterations = mt_options->iterations;
-  mt->reflection_mode = mt_options->reflection_mode;
-  mt->skip_initialization = mt_options->skip_initialization;
+  mt->use_weights = slim_options->weight_influence > 0.0f;
+  mt->weight_influence = slim_options->weight_influence;
+  mt->n_iterations = slim_options->iterations;
+  mt->reflection_mode = slim_options->reflection_mode;
+  mt->skip_initialization = slim_options->skip_initialization;
 
   return mt;
 }
@@ -4681,7 +4681,7 @@ static void slim_transfer_vertices(const PChart *chart,
   /* For every vertex, fill up V matrix and P matrix (pinned vertices) */
   for (PVert *v = chart->verts; v; v = v->nextlink) {
     if (!v->on_boundary_flag) {
-      if (mt->with_weighted_parameterization) {
+      if (mt->use_weights) {
         W[vid] = v->weight;
       }
 
@@ -4697,7 +4697,6 @@ static void slim_transfer_vertices(const PChart *chart,
     UV[r + v->slim_id] = v->uv[1];
 
     if (v->flag & PVERT_PIN || (mt->is_minimize_stretch && !(v->flag & PVERT_SELECT))) {
-      mt->pinned_vertices = true;
       mt_chart->n_pinned_vertices += 1;
 
       P[pVid] = v->slim_id;
@@ -4729,7 +4728,7 @@ static void slim_transfer_boundary_vertices(PChart *chart,
   int vid = 0;
 
   do {
-    if (mt->with_weighted_parameterization) {
+    if (mt->use_weights) {
       W[vid] = be->vert->weight;
     }
 
@@ -4770,12 +4769,11 @@ static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
   /* 0.1 degree */
   static const float SLIM_CORR_MIN_ANGLE = 0.1f * M_PI / 180.0f;
 
-  mt->n_charts = phandle->ncharts;
-  mt->mt_charts.resize(phandle->ncharts);
+  mt->charts.resize(phandle->ncharts);
 
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
-    slim::MatrixTransferChart *mt_chart = &mt->mt_charts[i];
+    slim::MatrixTransferChart *mt_chart = &mt->charts[i];
 
     if (!p_chart_correct_zero_angles(chart, SLIM_CORR_MIN_ANGLE)) {
       mt_chart->succeeded = false;
@@ -4809,10 +4807,9 @@ static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
   }
 }
 
-static void slim_transfer_data_to_slim(ParamHandle *phandle,
-                                       const MatrixTransferOptions *mt_options)
+static void slim_transfer_data_to_slim(ParamHandle *phandle, const ParamSlimOptions *slim_options)
 {
-  slim::MatrixTransfer *mt = slim_matrix_transfer(mt_options);
+  slim::MatrixTransfer *mt = slim_matrix_transfer(slim_options);
 
   slim_convert_blender(phandle, mt);
   phandle->slim_mt = mt;
@@ -4829,7 +4826,7 @@ static void slim_flush_uvs(ParamHandle *phandle,
 
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
-    slim::MatrixTransferChart *mt_chart = &mt->mt_charts[i];
+    slim::MatrixTransferChart *mt_chart = &mt->charts[i];
 
     if (mt_chart->succeeded) {
       if (count_changed) {
@@ -4932,22 +4929,22 @@ void uv_parametrizer_slim_reload_all_uvs(ParamHandle *phandle)
 }
 
 void uv_parametrizer_slim_solve(ParamHandle *phandle,
-                                const MatrixTransferOptions *mt_options,
+                                const ParamSlimOptions *slim_options,
                                 int *count_changed,
                                 int *count_failed)
 {
-  slim_transfer_data_to_slim(phandle, mt_options);
+  slim_transfer_data_to_slim(phandle, slim_options);
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
-  mt->parametrize(mt->n_iterations, mt->fixed_boundary, mt->skip_initialization);
+  mt->parametrize();
 
   slim_flush_uvs(phandle, mt, count_changed, count_failed);
   slim_free_matrix_transfer(phandle);
 }
 
-void uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOptions *mt_options)
+void uv_parametrizer_slim_begin(ParamHandle *phandle, const ParamSlimOptions *slim_options)
 {
-  slim_transfer_data_to_slim(phandle, mt_options);
+  slim_transfer_data_to_slim(phandle, slim_options);
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
   for (int i = 0; i < phandle->ncharts; i++) {
@@ -4958,7 +4955,7 @@ void uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOption
 
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
-    slim::MatrixTransferChart &mt_chart = mt->mt_charts[i];
+    slim::MatrixTransferChart &mt_chart = mt->charts[i];
 
     bool select = false, deselect = false;
     int npins = 0;
@@ -4975,7 +4972,7 @@ void uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOption
         deselect = true;
     }
 
-    mt->setup_slim_data(mt_chart, mt->fixed_boundary, mt->is_minimize_stretch);
+    mt->setup_slim_data(mt_chart);
   }
 }
 
@@ -4985,8 +4982,8 @@ void uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blend)
 
   /* Do one iterationand tranfer UVs. */
   for (int i = 0; i < phandle->ncharts; i++) {
-    mt->mt_charts[i].parametrize_single_iteration();
-    mt->mt_charts[i].transfer_uvs_blended(blend);
+    mt->charts[i].parametrize_single_iteration();
+    mt->charts[i].transfer_uvs_blended(blend);
   }
 
   /* Assign new UVs back to each vertex. */
@@ -5000,10 +4997,11 @@ void uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
   /* Do one iteration and tranfer UVs */
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
-    slim::MatrixTransferChart *mt_chart = &mt->mt_charts[i];
+    slim::MatrixTransferChart *mt_chart = &mt->charts[i];
 
-    if (!mt_chart->data)
+    if (!mt_chart->data) {
       continue;
+    }
 
     std::vector<int> pinned_vertex_indices(mt_chart->n_verts, 0);
     std::vector<double> pinned_vertex_positions_2D(2 * mt_chart->n_verts, 0.0);
@@ -5039,7 +5037,7 @@ void uv_parametrizer_slim_end(ParamHandle *phandle)
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
   for (int i = 0; i < phandle->ncharts; i++) {
-    slim::MatrixTransferChart *mt_chart = &mt->mt_charts[i];
+    slim::MatrixTransferChart *mt_chart = &mt->charts[i];
     mt_chart->free_slim_data();
   }
 

@@ -5,28 +5,14 @@
 #include <memory>
 #include <vector>
 
-/* Struct that holds all the information and data matrices to be transfered from the native
- * Blender part to SLIM, named as follows:
- *
- * Matrix/Vector   | contains pointers to arrays of:
- * ________________|_____________________________________________
- * v_matrices      | vertex positions
- * uv_matrices     | UV positions of vertices
- * PPmatrice       | positions of pinned vertices
- * el_vectors      | Edge lengths
- * w_vectors       | weights pre vertex
- * f_matrices      | vertexindex-triplets making up the faces
- * p_matrices      | indices of pinned vertices
- * Ematrix         | vertexindex-tuples making up edges
- * Bvector         | vertexindices of boundary vertices
- * ________________|_____________________________________________ */
-
 namespace slim {
 
 struct SLIMData;
 
 typedef std::unique_ptr<SLIMData> SLIMDataPtr;
 
+/* MatrixTransferChart holds all information and data matrices to be
+ * transferred from Blender to SLIM. */
 struct MatrixTransferChart {
   int n_verts = 0;
   int n_faces = 0;
@@ -36,15 +22,24 @@ struct MatrixTransferChart {
 
   bool succeeded = false;
 
+  /* Vertex positions. */
   std::vector<double> v_matrices;
+  /* UV positions of vertices. */
   std::vector<double> uv_matrices;
+  /* Positions of pinned vertices. */
   std::vector<double> pp_matrices;
+  /* Edge lengths. */
   std::vector<double> el_vectors;
+  /* Weights per vertex. */
   std::vector<float> w_vectors;
 
+  /* Vertex index triplets making up faces. */
   std::vector<int> f_matrices;
+  /* Indices of pinned vertices. */
   std::vector<int> p_matrices;
+  /* Vertex index tuples making up edges. */
   std::vector<int> e_matrices;
+  /* Vertex indices of boundary vertices. */
   std::vector<int> b_vectors;
 
   SLIMDataPtr data;
@@ -67,43 +62,31 @@ struct MatrixTransferChart {
 };
 
 struct MatrixTransfer {
-  int n_charts = 0;
-
   bool fixed_boundary = false;
-  bool pinned_vertices = false;
-  bool with_weighted_parameterization = false;
+  bool use_weights = false;
   double weight_influence = 0.0;
   int reflection_mode = 0;
-
-  /* External. */
   int n_iterations = 0;
   bool skip_initialization = false;
   bool is_minimize_stretch = false;
 
-  std::vector<MatrixTransferChart> mt_charts;
+  std::vector<MatrixTransferChart> charts;
 
   MatrixTransfer();
   MatrixTransfer(const MatrixTransfer &) = delete;
   MatrixTransfer &operator=(const MatrixTransfer &) = delete;
   ~MatrixTransfer();
 
-  void parametrize(int n_iterations, bool are_border_vertices_pinned, bool skip_initialization);
+  void parametrize();
 
-  void parametrize_live(MatrixTransferChart &mt_chart,
+  void parametrize_live(MatrixTransferChart &chart,
                         int n_pins,
                         const std::vector<int> &pinned_vertex_indices,
                         const std::vector<double> &pinned_vertex_positions_2D,
                         int n_selected_pins,
                         const std::vector<int> &selected_pins);
 
-  void setup_slim_data(MatrixTransferChart &mt_chart,
-                       bool are_border_vertices_pinned,
-                       bool skip_initialization) const;
-
-  void setup_slim_data(MatrixTransferChart &mt_chart,
-                       int n_iterations,
-                       bool border_vertices_are_pinned,
-                       bool skip_initialization) const;
+  void setup_slim_data(MatrixTransferChart &chart, int n_iterations = 0) const;
 };
 
 }  // namespace slim

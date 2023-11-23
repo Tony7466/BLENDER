@@ -1568,9 +1568,7 @@ typedef struct ToolSettings {
   float uvcalc_vertex_group_factor;
   float uvcalc_relative_scale;
 
-  /** 2 characters for ID code and 64 for actual name, MAX_ID_NAME. */
-  char uvcalc_vertex_group[66];
-  char _pad1[6];
+  char uvcalc_vertex_group[64]; /* MAX_VGROUP_NAME */
 
   /* Auto-IK. */
   /** Runtime only. */
