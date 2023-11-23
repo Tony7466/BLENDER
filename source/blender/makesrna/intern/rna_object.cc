@@ -34,7 +34,7 @@
 #include "BKE_camera.h"
 #include "BKE_collection.h"
 #include "BKE_editlattice.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
@@ -321,11 +321,11 @@ const EnumPropertyItem rna_enum_object_axis_items[] = {
 #  include "DNA_lattice_types.h"
 #  include "DNA_node_types.h"
 
-#  include "BKE_armature.h"
+#  include "BKE_armature.hh"
 #  include "BKE_brush.hh"
 #  include "BKE_constraint.h"
-#  include "BKE_context.h"
-#  include "BKE_curve.h"
+#  include "BKE_context.hh"
+#  include "BKE_curve.hh"
 #  include "BKE_deform.h"
 #  include "BKE_effect.h"
 #  include "BKE_global.h"
@@ -2914,15 +2914,16 @@ static void rna_def_object_visibility(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Disable in Volume Probes", "Globally disable in volume probes");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update_draw");
 
-  prop = RNA_def_property(srna, "hide_probe_cubemap", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "hide_probe_sphere", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "visibility_flag", OB_HIDE_PROBE_CUBEMAP);
   RNA_def_property_ui_text(
-      prop, "Disable in Cubemap Probes", "Globally disable in cubemap probes");
+      prop, "Disable in Spherical Light Probes", "Globally disable in spherical light probes");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update_draw");
 
-  prop = RNA_def_property(srna, "hide_probe_planar", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "hide_probe_plane", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "visibility_flag", OB_HIDE_PROBE_PLANAR);
-  RNA_def_property_ui_text(prop, "Disable in Planar Probes", "Globally disable in planar probes");
+  RNA_def_property_ui_text(
+      prop, "Disable in Planar Light Probes", "Globally disable in planar light probes");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update_draw");
 
   /* Instancer options. */
