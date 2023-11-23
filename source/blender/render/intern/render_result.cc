@@ -448,21 +448,8 @@ GPUTexture *RE_pass_ensure_gpu_texture_cache(Render *re, RenderPass *rpass)
     return nullptr;
   }
 
-  const eGPUTextureFormat format = (rpass->channels == 1) ? GPU_R16F :
-                                   (rpass->channels == 3) ? GPU_RGB16F :
-                                                            GPU_RGBA16F;
-
-  /* TODO(sergey): Use utility to assign the texture. */
-  ibuf->gpu.texture = GPU_texture_create_2d("RenderBuffer.gpu_texture",
-                                            rpass->rectx,
-                                            rpass->recty,
-                                            1,
-                                            format,
-                                            GPU_TEXTURE_USAGE_GENERAL,
-                                            nullptr);
-
+  ibuf->gpu.texture = IMB_create_gpu_texture("RenderBuffer.gpu_texture", ibuf, true, true);
   if (ibuf->gpu.texture) {
-    GPU_texture_update(ibuf->gpu.texture, GPU_DATA_FLOAT, ibuf->float_buffer.data);
     re->result_has_gpu_texture_caches = true;
   }
 

@@ -4,7 +4,10 @@
 
 #include <cstring>
 #include <string>
+#include <utility>
 
+#include "BLI_math_vector.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_threads.h"
 #include "BLI_vector.hh"
 
@@ -24,6 +27,9 @@
 
 #include "COM_context.hh"
 #include "COM_evaluator.hh"
+
+#include "GPU_capabilities.h"
+#include "GPU_texture.h"
 
 #include "RE_compositor.hh"
 #include "RE_pipeline.h"
@@ -150,6 +156,9 @@ class Context : public realtime_compositor::Context {
   /* Cached textures that the compositor took ownership of. */
   Vector<GPUTexture *> textures_;
 
+  /* Cache of the previously found valid render size. See get_valid_render_size. */
+  mutable std::pair<int2, int2> cached_valid_render_size_;
+
  public:
   Context(const ContextInputData &input_data, TexturePool &texture_pool)
       : realtime_compositor::Context(texture_pool), input_data_(input_data)
@@ -199,7 +208,58 @@ class Context : public realtime_compositor::Context {
   {
     int width, height;
     BKE_render_resolution(input_data_.render_data, false, &width, &height);
-    return int2(width, height);
+    return get_valid_render_size(width, height);
+  }
+
+  /* The render size might be larger than what can fit on a GPU texture, and since we still do not
+   * support huge textures, we scale down the size to one that fits in a GPU texture. Render inputs
+   * are retrieved using IMB_create_gpu_texture, which has logic for downscaling those huge inputs,
+   * so we follow that same logic logic. This function is a bit expensive, due to a temporary
+   * texture allocation, so cache its result in a member variable. */
+  int2 get_valid_render_size(int width, int height) const
+  {
+    /* A cache hit, return its size. */
+    if (cached_valid_render_size_.first == int2(width, height)) {
+      return cached_valid_render_size_.second;
+    }
+
+    /* Limit the size by the reported driver's max texture size.  */
+    int2 size = int2(GPU_texture_size_with_limit(width), GPU_texture_size_with_limit(height));
+
+    /* Correct the smaller size to maintain the original aspect ratio of the image. */
+    if (width != height) {
+      if (size.x > size.y) {
+        size.y = int(height * (float(size.x) / width));
+      }
+      else {
+        size.x = int(width * (float(size.y) / height));
+      }
+    }
+
+    /* Try to allocate a texture to see if the driver will accept the size. Some drivers report bad
+     * max texture sizes, hence the need for this test. */
+    GPUTexture *texture = GPU_texture_create_2d("Test Valid Texture Size",
+                                                size.x,
+                                                size.y,
+                                                9999,
+                                                GPU_RGBA32F,
+                                                GPU_TEXTURE_USAGE_GENERAL,
+                                                nullptr);
+
+    /* Allocation failed, half the size. No need to try again, since no drivers had issues with
+     * this logic so far. */
+    if (texture == nullptr) {
+      size = math::max(int2(1), size / 2);
+    }
+    else {
+      GPU_texture_free(texture);
+    }
+
+    /* Update the cache. */
+    cached_valid_render_size_.first = int2(width, height);
+    cached_valid_render_size_.second = size;
+
+    return size;
   }
 
   rcti get_compositing_region() const override
@@ -357,7 +417,24 @@ class Context : public realtime_compositor::Context {
 
       if (output_buffer) {
         ImBuf *ibuf = RE_RenderViewEnsureImBuf(rr, rv);
-        IMB_assign_float_buffer(ibuf, output_buffer, IB_TAKE_OWNERSHIP);
+
+        const int2 buffer_size = int2(GPU_texture_width(output_texture_),
+                                      GPU_texture_height(output_texture_));
+
+        /* The output buffer may have a different size than the render view due to render size
+         * validation, see get_valid_render_size. */
+        if (buffer_size == int2(ibuf->x, ibuf->y)) {
+          IMB_assign_float_buffer(ibuf, output_buffer, IB_TAKE_OWNERSHIP);
+        }
+        else {
+          ImBuf *scaled_image_buffer = IMB_allocImBuf(buffer_size.x, buffer_size.y, 8 * 4, 0);
+          IMB_assign_float_buffer(scaled_image_buffer, output_buffer, IB_TAKE_OWNERSHIP);
+          IMB_scaleImBuf(scaled_image_buffer, ibuf->x, ibuf->y);
+
+          IMB_assign_float_buffer(
+              ibuf, IMB_steal_float_buffer(scaled_image_buffer), IB_TAKE_OWNERSHIP);
+          IMB_freeImBuf(scaled_image_buffer);
+        }
       }
 
       /* TODO: z-buffer output. */
