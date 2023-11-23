@@ -23,6 +23,7 @@ class SeqQuadsBatch {
   void draw();
   void add_quad(float x1, float y1, float x2, float y2, const uchar color[4]);
   void add_wire_quad(float x1, float y1, float x2, float y2, const uchar color[4]);
+  void add_line(float x1, float y1, float x2, float y2, const uchar color[4]);
 
  private:
   static constexpr int MAX_QUADS = 1024;

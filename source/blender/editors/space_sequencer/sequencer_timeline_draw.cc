@@ -384,14 +384,6 @@ void color3ubv_from_seq(const Scene *curscene,
   UI_Theme_Restore(&theme_state);
 }
 
-struct WaveVizData {
-  float pos[2];
-  float rms_pos;
-  bool clip;
-  bool draw_line;    /* Draw triangle otherwise. */
-  bool final_sample; /* There are no more samples. */
-};
-
 static void waveform_job_start_if_needed(const bContext *C, Sequence *seq)
 {
   bSound *sound = seq->sound;
@@ -412,122 +404,9 @@ static void waveform_job_start_if_needed(const bContext *C, Sequence *seq)
   BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
 }
 
-static size_t get_vertex_count(WaveVizData *waveform_data)
-{
-  bool draw_line = waveform_data->draw_line;
-  size_t length = 0;
-
-  while (waveform_data->draw_line == draw_line && !waveform_data->final_sample) {
-    waveform_data++;
-    length++;
-  }
-
-  return length;
-}
-
-static size_t draw_waveform_segment(WaveVizData *waveform_data, bool use_rms)
-{
-  size_t vertices_done = 0;
-  size_t vertex_count = get_vertex_count(waveform_data);
-
-  /* Not enough data to draw. */
-  if (vertex_count <= 2) {
-    return vertex_count;
-  }
-
-  GPU_blend(GPU_BLEND_ALPHA);
-  GPUVertFormat *format = immVertexFormat();
-  GPUPrimType prim_type = waveform_data->draw_line ? GPU_PRIM_LINE_STRIP : GPU_PRIM_TRI_STRIP;
-  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  uint col = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_3D_FLAT_COLOR);
-  immBegin(prim_type, vertex_count);
-
-  while (vertices_done < vertex_count && !waveform_data->final_sample) {
-    /* Color. */
-    if (waveform_data->clip) {
-      immAttr4f(col, 1.0f, 0.0f, 0.0f, 0.5f);
-    }
-    else if (use_rms) {
-      immAttr4f(col, 1.0f, 1.0f, 1.0f, 0.8f);
-    }
-    else {
-      immAttr4f(col, 1.0f, 1.0f, 1.0f, 0.5f);
-    }
-
-    /* Vertices. */
-    if (use_rms) {
-      immVertex2f(pos, waveform_data->pos[0], waveform_data->rms_pos);
-    }
-    else {
-      immVertex2f(pos, waveform_data->pos[0], waveform_data->pos[1]);
-    }
-
-    vertices_done++;
-    waveform_data++;
-  }
-
-  immEnd();
-  immUnbindProgram();
-
-  GPU_blend(GPU_BLEND_NONE);
-
-  return vertices_done;
-}
-
-static void draw_waveform(WaveVizData *waveform_data, size_t wave_data_len)
-{
-  size_t items_done = 0;
-  while (items_done < wave_data_len) {
-    if (!waveform_data[items_done].draw_line) { /* Draw RMS. */
-      draw_waveform_segment(&waveform_data[items_done], true);
-    }
-    items_done += draw_waveform_segment(&waveform_data[items_done], false);
-  }
-}
-
 static float align_frame_with_pixel(float frame_coord, float frames_per_pixel)
 {
   return round_fl_to_int(frame_coord / frames_per_pixel) * frames_per_pixel;
-}
-
-static void write_waveform_data(WaveVizData *waveform_data,
-                                const vec2f pos,
-                                const float rms,
-                                const bool is_clipping,
-                                const bool draw_line)
-{
-  waveform_data->pos[0] = pos.x;
-  waveform_data->pos[1] = pos.y;
-  waveform_data->clip = is_clipping;
-  waveform_data->rms_pos = rms;
-  waveform_data->draw_line = draw_line;
-}
-
-static size_t waveform_append_sample(WaveVizData *waveform_data,
-                                     vec2f pos,
-                                     const float value_min,
-                                     const float value_max,
-                                     const float y_mid,
-                                     const float y_scale,
-                                     const float rms,
-                                     const bool is_clipping,
-                                     const bool is_line_strip)
-{
-  size_t data_written = 0;
-  pos.y = y_mid + value_min * y_scale;
-  float rms_value = y_mid + max_ff(-rms, value_min) * y_scale;
-  write_waveform_data(&waveform_data[0], pos, rms_value, is_clipping, is_line_strip);
-  data_written++;
-
-  /* Use `value_max` as second vertex for triangle drawing. */
-  if (!is_line_strip) {
-    pos.y = y_mid + value_max * y_scale;
-    rms_value = y_mid + min_ff(rms, value_max) * y_scale;
-    write_waveform_data(&waveform_data[1], pos, rms_value, is_clipping, is_line_strip);
-    data_written++;
-  }
-  return data_written;
 }
 
 static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
@@ -554,7 +433,7 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
   const int pixels_to_draw = round_fl_to_int((frame_end - frame_start) / frames_per_pixel);
 
   if (pixels_to_draw < 2) {
-    return; /* Not much to draw, exit before running job. */
+    return; /* Not much to draw. */
   }
 
   waveform_job_start_if_needed(timeline_ctx->C, seq);
@@ -566,8 +445,6 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
 
   /* F-Curve lookup is quite expensive, so do this after precondition. */
   FCurve *fcu = id_data_find_fcurve(&scene->id, seq, &RNA_Sequence, "volume", 0, nullptr);
-  WaveVizData *waveform_data = MEM_cnew_array<WaveVizData>(pixels_to_draw * 3, __func__);
-  size_t wave_data_len = 0;
 
   /* Offset must be also aligned, otherwise waveform flickers when moving left handle. */
   float start_frame = SEQ_time_left_handle_frame_get(scene, seq);
@@ -576,9 +453,20 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
   start_frame += (frame_start - x1_aligned);
   start_frame += seq->sound->offset_time / FPS;
 
+  /* The y coordinate for the middle of the strip. */
+  const float y_mid = (strip_ctx->bottom + strip_ctx->strip_content_top) / 2.0f;
+  /* The length from the middle of the strip to the top/bottom. */
+  const float y_scale = (strip_ctx->strip_content_top - strip_ctx->bottom) / 2.0f;
+  const float samples_per_pixel = samples_per_frame * frames_per_pixel;
+
+  /* Draw zero line (when actual samples close to zero are drawn, they might not cover a pixel. */
+  uchar color[4] = {255, 255, 255, 127};
+  uchar color_clip[4] = {255, 0, 0, 127};
+  uchar color_rms[4] = {255, 255, 255, 204};
+  timeline_ctx->quads->add_line(frame_start, y_mid, frame_end, y_mid, color);
+
   for (int i = 0; i < pixels_to_draw; i++) {
     float timeline_frame = start_frame + i * frames_per_pixel;
-    /* TODO: Use linear interpolation between frames to avoid bad drawing quality. */
     float frame_index = SEQ_give_frame_index(scene, seq, timeline_frame);
     float sample = frame_index * samples_per_frame;
     int sample_index = round_fl_to_int(sample);
@@ -595,24 +483,15 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
     float value_max = waveform->data[sample_index * 3 + 1];
     float rms = waveform->data[sample_index * 3 + 2];
 
-    if (sample_index + 1 < waveform->length) {
-      /* Use simple linear interpolation. */
-      float f = sample - sample_index;
-      value_min = (1.0f - f) * value_min + f * waveform->data[sample_index * 3 + 3];
-      value_max = (1.0f - f) * value_max + f * waveform->data[sample_index * 3 + 4];
-      rms = (1.0f - f) * rms + f * waveform->data[sample_index * 3 + 5];
+    if (samples_per_pixel > 1.0f) {
+      /* We need to sum up the values we skip over until the next step. */
+      float next_pos = sample + samples_per_pixel;
+      int end_idx = round_fl_to_int(next_pos);
 
-      float samples_per_pixel = samples_per_frame * frames_per_pixel;
-      if (samples_per_pixel > 1.0f) {
-        /* We need to sum up the values we skip over until the next step. */
-        float next_pos = sample + samples_per_pixel;
-        int end_idx = next_pos;
-
-        for (int j = sample_index + 1; (j < waveform->length) && (j < end_idx); j++) {
-          value_min = min_ff(value_min, waveform->data[j * 3]);
-          value_max = max_ff(value_max, waveform->data[j * 3 + 1]);
-          rms = max_ff(rms, waveform->data[j * 3 + 2]);
-        }
+      for (int j = sample_index + 1; (j < waveform->length) && (j < end_idx); j++) {
+        value_min = min_ff(value_min, waveform->data[j * 3]);
+        value_max = max_ff(value_max, waveform->data[j * 3 + 1]);
+        rms = max_ff(rms, waveform->data[j * 3 + 2]);
       }
     }
 
@@ -636,22 +515,47 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
       CLAMP_MIN(value_min, -1.0f);
     }
 
-    bool is_line_strip = (value_max - value_min < 0.05f);
-    /* The y coordinate for the middle of the strip. */
-    float y_mid = (strip_ctx->bottom + strip_ctx->strip_content_top) / 2.0f;
-    /* The length from the middle of the strip to the top/bottom. */
-    float y_scale = (strip_ctx->strip_content_top - strip_ctx->bottom) / 2.0f;
+    /* Do not draw the bars below 2px height. */
+    if ((value_max - value_min) * y_scale < timeline_ctx->pixely * 2) {
+      continue;
+    }
 
-    vec2f pos = {frame_start + i * frames_per_pixel, y_mid + value_min * y_scale};
-    WaveVizData *new_data = &waveform_data[wave_data_len];
-    wave_data_len += waveform_append_sample(
-        new_data, pos, value_min, value_max, y_mid, y_scale, rms, is_clipping, is_line_strip);
+    float x1 = frame_start + i * frames_per_pixel;
+    float x2 = frame_start + (i + 1) * frames_per_pixel;
+
+    /* RMS */
+    timeline_ctx->quads->add_quad(x1,
+                                  y_mid + max_ff(-rms, value_min) * y_scale,
+                                  x2,
+                                  y_mid + min_ff(rms, value_max) * y_scale,
+                                  is_clipping ? color_clip : color_rms);
+    /* Sample */
+    timeline_ctx->quads->add_quad(x1,
+                                  y_mid + value_min * y_scale,
+                                  x2,
+                                  y_mid + value_max * y_scale,
+                                  is_clipping ? color_clip : color);
+  }
+}
+
+static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
+                                      const blender::Vector<StripDrawContext> &strips)
+{
+  if ((timeline_ctx->sseq->timeline_overlay.flag & SEQ_TIMELINE_NO_WAVEFORMS) != 0) {
+    /* No waveforms. */
+    return;
+  }
+  if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0) {
+    /* No overlays. */
+    return;
   }
 
-  /* Terminate array, so `get_segment_length()` can know when to stop. */
-  waveform_data[wave_data_len].final_sample = true;
-  draw_waveform(waveform_data, wave_data_len);
-  MEM_freeN(waveform_data);
+  GPU_blend(GPU_BLEND_ALPHA);
+  for (const StripDrawContext &strip_ctx : strips) {
+    draw_seq_waveform_overlay(timeline_ctx, &strip_ctx);
+  }
+  timeline_ctx->quads->draw();
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDrawContext *strip_ctx)
@@ -1659,7 +1563,12 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx)
                              timeline_ctx->pixelx,
                              timeline_ctx->pixely);
     draw_seq_fcurve_overlay(timeline_ctx, &strip_ctx);
-    draw_seq_waveform_overlay(timeline_ctx, &strip_ctx);
+  }
+
+  draw_seq_waveform_overlay(timeline_ctx, strip_contexts);
+
+  for (const StripDrawContext &strip_ctx : strip_contexts) {
+    // continue;
     draw_seq_locked(timeline_ctx, &strip_ctx);
     draw_seq_invalid(&strip_ctx); /* Draw Red line on the top of invalid strip (Missing media). */
     draw_effect_inputs_highlight(timeline_ctx, &strip_ctx);

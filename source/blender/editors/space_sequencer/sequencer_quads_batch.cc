@@ -148,3 +148,26 @@ void SeqQuadsBatch::add_wire_quad(float x1, float y1, float x2, float y2, const 
 
   lines_num += 4;
 }
+
+void SeqQuadsBatch::add_line(float x1, float y1, float x2, float y2, const uchar color[4])
+{
+  if (lines_num + 1 > MAX_LINES) {
+    draw();
+  }
+  if (lines_num == 0) {
+    /* Don't actually need this, but it's the only way to clear GPU_VERTBUF_DATA_UPLOADED flag. */
+    GPUVertBufRaw attr_data;
+    GPU_vertbuf_attr_get_raw_data(vbo_lines, 0, &attr_data);
+
+    verts_lines = (ColorVertex *)GPU_vertbuf_get_data(vbo_lines);
+    BLI_assert(verts_lines != nullptr);
+  }
+
+  ColorVertex v0 = {blender::float2(x1, y1), color};
+  ColorVertex v1 = {blender::float2(x2, y2), color};
+
+  *verts_lines++ = v0;
+  *verts_lines++ = v1;
+
+  lines_num++;
+}
