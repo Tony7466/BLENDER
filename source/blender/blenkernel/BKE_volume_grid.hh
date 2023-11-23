@@ -89,7 +89,7 @@ struct VolumeGridCommon : public ImplicitSharingMixin {
   mutable bool is_loaded;
 };
 #else
-struct VolumeGridCommon {
+struct VolumeGridCommon : public ImplicitSharingMixin {
 };
 #endif
 
@@ -127,7 +127,7 @@ struct GVolumeGrid : public VolumeGridCommon {
   void delete_data_only() override;
 };
 #else
-struct GVolumeGrid {
+struct GVolumeGrid : public VolumeGridCommon {
 };
 #endif
 

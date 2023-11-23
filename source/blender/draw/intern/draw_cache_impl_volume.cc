@@ -22,6 +22,7 @@
 
 #include "BKE_global.h"
 #include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 #include "BKE_volume_render.hh"
 
 #include "GPU_batch.h"
@@ -210,7 +211,7 @@ GPUBatch *DRW_volume_batch_cache_get_wireframes_face(Volume *volume)
   VolumeBatchCache *cache = volume_batch_cache_get(volume);
 
   if (cache->face_wire.batch == nullptr) {
-    const VolumeGrid *volume_grid = BKE_volume_grid_active_get_for_read(volume);
+    const VolumeGridPtr volume_grid = BKE_volume_grid_active_get_for_read(volume);
     if (volume_grid == nullptr) {
       return nullptr;
     }
@@ -220,7 +221,7 @@ GPUBatch *DRW_volume_batch_cache_get_wireframes_face(Volume *volume)
     VolumeWireframeUserData userdata;
     userdata.volume = volume;
     userdata.scene = draw_ctx->scene;
-    BKE_volume_grid_wireframe(volume, volume_grid, drw_volume_wireframe_cb, &userdata);
+    BKE_volume_grid_wireframe(volume, volume_grid.get(), drw_volume_wireframe_cb, &userdata);
   }
 
   return cache->face_wire.batch;
@@ -259,12 +260,12 @@ GPUBatch *DRW_volume_batch_cache_get_selection_surface(Volume *volume)
 {
   VolumeBatchCache *cache = volume_batch_cache_get(volume);
   if (cache->selection_surface == nullptr) {
-    const VolumeGrid *volume_grid = BKE_volume_grid_active_get_for_read(volume);
+    const VolumeGridPtr volume_grid = BKE_volume_grid_active_get_for_read(volume);
     if (volume_grid == nullptr) {
       return nullptr;
     }
     BKE_volume_grid_selection_surface(
-        volume, volume_grid, drw_volume_selection_surface_cb, volume);
+        volume, volume_grid.get(), drw_volume_selection_surface_cb, volume);
   }
   return cache->selection_surface;
 }

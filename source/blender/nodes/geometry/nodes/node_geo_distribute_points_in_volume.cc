@@ -220,13 +220,13 @@ static void node_geo_exec(GeoNodeExecParams params)
     Vector<float3> positions;
 
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
-      const VolumeGrid *volume_grid = BKE_volume_grid_get_for_read(volume, i);
+      const VolumeGridPtr volume_grid = BKE_volume_grid_get_for_read(volume, i);
       if (volume_grid == nullptr) {
         continue;
       }
 
       openvdb::GridBase::ConstPtr base_grid = BKE_volume_grid_openvdb_for_read(volume,
-                                                                               volume_grid);
+                                                                               volume_grid.get());
       if (!base_grid) {
         continue;
       }
