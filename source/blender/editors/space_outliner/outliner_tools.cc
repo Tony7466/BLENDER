@@ -473,6 +473,10 @@ static void unlink_object_fn(bContext *C,
         DEG_relations_tag_update(bmain);
       }
       else if (GS(tsep->id->name) == ID_SCE) {
+        /* Following execution is expected to happen in outliner scene view. */
+        SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
+        BLI_assert(space_outliner->outlinevis == SO_SCENES);
+
         Scene *scene = (Scene *)tsep->id;
         FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
           if (BKE_collection_has_object(collection, ob)){
