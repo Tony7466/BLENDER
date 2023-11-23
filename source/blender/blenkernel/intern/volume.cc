@@ -1196,7 +1196,7 @@ void BKE_volume_grid_remove(Volume *volume, VolumeGrid *grid)
 #ifdef WITH_OPENVDB
   VolumeGridVector &grids = *volume->runtime.grids;
   for (VolumeGridVector::iterator it = grids.begin(); it != grids.end(); it++) {
-    if (*it == grid) {
+    if (it->get() == grid) {
       grids.erase(it);
       break;
     }
