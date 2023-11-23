@@ -931,7 +931,7 @@ int actkeyblock_get_valid_hold(const ActKeyColumn *ac)
 void summary_to_keylist(bAnimContext *ac,
                         AnimKeylist *keylist,
                         const int saction_flag,
-                        float range[2])
+                        blender::float2 range)
 {
   if (!ac) {
     return;
@@ -974,8 +974,11 @@ void summary_to_keylist(bAnimContext *ac,
   ANIM_animdata_freelist(&anim_data);
 }
 
-void scene_to_keylist(
-    bDopeSheet *ads, Scene *sce, AnimKeylist *keylist, const int saction_flag, float range[2])
+void scene_to_keylist(bDopeSheet *ads,
+                      Scene *sce,
+                      AnimKeylist *keylist,
+                      const int saction_flag,
+                      blender::float2 range)
 {
   bAnimContext ac = {nullptr};
   ListBase anim_data = {nullptr, nullptr};
@@ -1010,8 +1013,11 @@ void scene_to_keylist(
   ANIM_animdata_freelist(&anim_data);
 }
 
-void ob_to_keylist(
-    bDopeSheet *ads, Object *ob, AnimKeylist *keylist, const int saction_flag, float range[2])
+void ob_to_keylist(bDopeSheet *ads,
+                   Object *ob,
+                   AnimKeylist *keylist,
+                   const int saction_flag,
+                   blender::float2 range)
 {
   bAnimContext ac = {nullptr};
   ListBase anim_data = {nullptr, nullptr};
@@ -1077,14 +1083,18 @@ void cachefile_to_keylist(bDopeSheet *ads,
 
   /* Loop through each F-Curve, grabbing the keyframes. */
   LISTBASE_FOREACH (const bAnimListElem *, ale, &anim_data) {
-    fcurve_to_keylist(ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag, nullptr);
+    fcurve_to_keylist(
+        ale->adt, static_cast<FCurve *>(ale->data), keylist, saction_flag, {-FLT_MAX, FLT_MAX});
   }
 
   ANIM_animdata_freelist(&anim_data);
 }
 
-void fcurve_to_keylist(
-    AnimData *adt, FCurve *fcu, AnimKeylist *keylist, const int saction_flag, float range[2])
+void fcurve_to_keylist(AnimData *adt,
+                       FCurve *fcu,
+                       AnimKeylist *keylist,
+                       const int saction_flag,
+                       blender::float2 range)
 {
   if (!fcu || fcu->totvert == 0 || !fcu->bezt) {
     return;
@@ -1104,16 +1114,14 @@ void fcurve_to_keylist(
   /* Used in an exclusive way. */
   int end_index = fcu->totvert;
 
-  if (range != nullptr) {
-    bool replace;
-    start_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[0], fcu->totvert, &replace);
-    if (start_index > 0) {
-      start_index--;
-    }
-    end_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[1], fcu->totvert, &replace);
-    if (end_index < fcu->totvert) {
-      end_index++;
-    }
+  bool replace;
+  start_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[0], fcu->totvert, &replace);
+  if (start_index > 0) {
+    start_index--;
+  }
+  end_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[1], fcu->totvert, &replace);
+  if (end_index < fcu->totvert) {
+    end_index++;
   }
 
   /* Loop through beztriples, making ActKeysColumns. */
@@ -1144,7 +1152,7 @@ void action_group_to_keylist(AnimData *adt,
                              bActionGroup *agrp,
                              AnimKeylist *keylist,
                              const int saction_flag,
-                             float range[2])
+                             blender::float2 range)
 {
   if (!agrp) {
     return;
@@ -1158,8 +1166,11 @@ void action_group_to_keylist(AnimData *adt,
   }
 }
 
-void action_to_keylist(
-    AnimData *adt, bAction *act, AnimKeylist *keylist, const int saction_flag, float range[2])
+void action_to_keylist(AnimData *adt,
+                       bAction *act,
+                       AnimKeylist *keylist,
+                       const int saction_flag,
+                       blender::float2 range)
 {
   if (!act) {
     return;
