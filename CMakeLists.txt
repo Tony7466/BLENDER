@@ -419,7 +419,7 @@ option(WITH_MATERIALX "Enable MaterialX Support" ON)
 # Hydra render engine
 option(WITH_HYDRA "Enable Hydra render engine" ON)
 
-# Text shaping
+# RTL Languages, Complex Shaping, OpenType Features
 option(WITH_FRIBIDI "Enable features relying on fribidi" OFF)
 option(WITH_HARFBUZZ "Enable features relying on harfbuzz" OFF)
 
