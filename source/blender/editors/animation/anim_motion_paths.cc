@@ -360,7 +360,7 @@ void animviz_motionpath_compute_range(Object *ob, Scene *scene)
 
   AnimKeylist *keylist = ED_keylist_create();
   LISTBASE_FOREACH (FCurve *, fcu, &ob->adt->action->curves) {
-    fcurve_to_keylist(ob->adt, fcu, keylist, 0, {avs->path_sf, avs->path_ef});
+    fcurve_to_keylist(ob->adt, fcu, keylist, 0, {-FLT_MAX, FLT_MAX});
   }
 
   Range2f frame_range;
@@ -460,12 +460,12 @@ void animviz_calc_motionpaths(Depsgraph *depsgraph,
 
         if (agrp) {
           fcurve_list = &agrp->channels;
-          action_group_to_keylist(adt, agrp, mpt->keylist, 0, {float(sfra), float(efra)});
+          action_group_to_keylist(adt, agrp, mpt->keylist, 0, {-FLT_MAX, FLT_MAX});
         }
       }
       else {
         fcurve_list = &adt->action->curves;
-        action_to_keylist(adt, adt->action, mpt->keylist, 0, {float(sfra), float(efra)});
+        action_to_keylist(adt, adt->action, mpt->keylist, 0, {-FLT_MAX, FLT_MAX});
       }
     }
     ED_keylist_prepare_for_direct_access(mpt->keylist);
