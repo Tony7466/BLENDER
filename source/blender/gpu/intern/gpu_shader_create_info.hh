@@ -604,13 +604,13 @@ struct ShaderCreateInfo {
 
   Vector<PushConst> push_constants_;
 
-  /** Struct of custom parameters specified */
+  /** Struct containing array of custom parameters indexed by CustomParameterKey enum. */
   struct CustomParameters {
     union {
       int int_value;
       float float_value;
       bool bool_value;
-    } parameters[static_cast<uint>(CustomParameterKey::MAX)];
+    } parameters[static_cast<uint>(CustomParameterKey::MAX)] = {{0}};
 
     inline int fetch_i(CustomParameterKey key) const
     {
@@ -625,7 +625,7 @@ struct ShaderCreateInfo {
       return parameters[static_cast<uint>(key)].bool_value;
     }
   };
-  CustomParameters custom_parameters_ = {{0}};
+  CustomParameters custom_parameters_;
 
   /* Sources for resources type definitions. */
   Vector<StringRefNull> typedef_sources_;
