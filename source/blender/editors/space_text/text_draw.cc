@@ -412,8 +412,8 @@ static int text_draw_wrapped(const SpaceText *st,
   int basex, lines;
   int i, wrap, end, max, columns, padding; /* column */
   /* warning, only valid when 'use_syntax' is set */
-  int a, fstart, fpos;      /* utf8 chars */
-  int mi, ma, mstart, mend; /* mem */
+  int fstart, fpos;     /* utf8 chars */
+  int mi, mstart, mend; /* mem */
   /* don't draw lines below this */
   const int clip_min_y = -int(st->runtime.lheight_px - 1);
 
@@ -489,7 +489,6 @@ static void text_draw(const SpaceText *st,
                       int y,
                       const char *format)
 {
-  const bool use_syntax = (tdc->syntax_highlight && format);
   FlattenString fs;
   int columns, size, n, w = 0, padding, amount = 0;
   const char *in = nullptr;
