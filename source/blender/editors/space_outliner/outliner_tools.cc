@@ -473,9 +473,11 @@ static void unlink_object_fn(bContext *C,
         DEG_relations_tag_update(bmain);
       }
       else if (GS(tsep->id->name) == ID_SCE) {
-        /* Following execution is expected to happen in outliner scene view. */
+        /* Following execution is expected to happen exclusively in the Outliner scene view. */
+#ifdef NDEBUG
         SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
         BLI_assert(space_outliner->outlinevis == SO_SCENES);
+#endif
 
         Scene *scene = (Scene *)tsep->id;
         FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
