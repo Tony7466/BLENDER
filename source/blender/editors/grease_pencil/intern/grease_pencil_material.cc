@@ -285,12 +285,15 @@ static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator *
 
   bool changed = false;
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
-  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+
+  Vector<int> materials_used;
+
+  for (const MutableDrawingInfo &info : drawings) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
         *object, info.drawing, memory);
     if (strokes.is_empty()) {
-      return;
+      return OPERATOR_CANCELLED;
     }
 
     AttributeAccessor attributes = info.drawing.strokes().attributes();
@@ -300,17 +303,23 @@ static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator *
 
     for (const int material_index : IndexRange(object->totcol)) {
       if (selected_materials.contains(material_index)) {
-        continue;
-      }
-
-      if (Material *ma = BKE_object_material_get(object, material_index + 1)) {
-        MaterialGPencilStyle &gp_style = *ma->gp_style;
-        gp_style.flag |= GP_MATERIAL_LOCKED;
-        DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
-        changed = true;
+        materials_used.append(material_index);
       }
     }
-  });
+  };
+
+  /* Iterate materials to be locked. */
+  for (const int material_index : IndexRange(object->totcol)) {
+    if (materials_used.contains(material_index)) {
+      continue;
+    }
+    if (Material *ma = BKE_object_material_get(object, material_index + 1)) {
+      MaterialGPencilStyle &gp_style = *ma->gp_style;
+      gp_style.flag |= GP_MATERIAL_LOCKED;
+      DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+      changed = true;
+    }
+  }
 
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
