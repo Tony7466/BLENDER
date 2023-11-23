@@ -36,7 +36,7 @@ namespace blender::bke {
  * \{ */
 
 #ifdef WITH_OPENVDB
-struct VolumeGridCommon {
+struct VolumeGridCommon : public ImplicitSharingMixin {
  public:
   using GridPtr = std::shared_ptr<openvdb::GridBase>;
   using GridConstPtr = std::shared_ptr<const openvdb::GridBase>;
@@ -47,7 +47,7 @@ struct VolumeGridCommon {
                    const GridPtr &template_grid,
                    int simplify_level = 0);
   VolumeGridCommon(const VolumeGridCommon &other);
-  ~VolumeGridCommon();
+  virtual ~VolumeGridCommon();
 
   const char *name() const;
 
@@ -68,6 +68,9 @@ struct VolumeGridCommon {
   void clear_cache_entry();
 
   virtual GridPtr main_grid() const = 0;
+
+  void delete_self() override;
+  void delete_data_only() override;
 
  protected:
   /* File cache entry when grid comes directly from a file and may be shared
@@ -121,6 +124,7 @@ struct GVolumeGrid : public VolumeGridCommon {
 
  private:
   GridPtr main_grid() const override;
+  void delete_data_only() override;
 };
 #else
 struct GVolumeGrid {

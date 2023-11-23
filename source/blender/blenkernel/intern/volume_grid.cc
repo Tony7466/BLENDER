@@ -356,6 +356,18 @@ void VolumeGridCommon::set_simplify_level(const int simplify_level)
   this->simplify_level = simplify_level;
 }
 
+void VolumeGridCommon::delete_self()
+{
+  delete this;
+}
+
+void VolumeGridCommon::delete_data_only()
+{
+  if (entry) {
+    GLOBAL_CACHE.remove_user(*entry, is_loaded);
+  }
+}
+
 GVolumeGrid::GVolumeGrid(const openvdb::GridBase::Ptr &grid)
     : VolumeGridCommon(/*is_loaded=*/true), grid_(grid)
 {
@@ -390,6 +402,12 @@ void GVolumeGrid::duplicate_reference(const char *volume_name, const char *filep
   /* TODO: avoid deep copy if we are the only user. */
   grid_ = grid()->deepCopyGrid();
   clear_cache_entry();
+}
+
+void GVolumeGrid::delete_data_only()
+{
+  this->grid_.reset();
+  VolumeGridCommon::delete_data_only();
 }
 
 }  // namespace blender::bke
