@@ -30,110 +30,6 @@ struct VolumeFileCacheEntry;
 namespace blender::bke {
 
 /* -------------------------------------------------------------------- */
-/** \name Common Grid Wrapper
- *
- * Base class for both generic and typed grid wrapper classes.
- * \{ */
-
-#ifdef WITH_OPENVDB
-struct VolumeGridCommon : public ImplicitSharingMixin {
- public:
-  using GridPtr = std::shared_ptr<openvdb::GridBase>;
-  using GridConstPtr = std::shared_ptr<const openvdb::GridBase>;
-
-  VolumeGridCommon(bool is_loaded, int simplify_level = 0);
-  VolumeGridCommon(const VolumeFileCacheEntry &template_entry, int simplify_level = 0);
-  VolumeGridCommon(const char *template_file_path,
-                   const GridPtr &template_grid,
-                   int simplify_level = 0);
-  VolumeGridCommon(const VolumeGridCommon &other);
-  virtual ~VolumeGridCommon();
-
-  const char *name() const;
-
-  const char *error_message() const;
-
-  bool grid_is_loaded() const;
-
-  void load(const char *volume_name, const char *filepath) const;
-  void unload(const char *volume_name) const;
-
-  void set_simplify_level(int simplify_level);
-
-  virtual void clear_reference(const char *volume_name) = 0;
-  virtual void duplicate_reference(const char *volume_name, const char *filepath) = 0;
-
- protected:
-  /* Clear any reference to a grid in the file cache. */
-  void clear_cache_entry();
-
-  virtual GridPtr main_grid() const = 0;
-
-  void delete_self() override;
-  void delete_data_only() override;
-
- protected:
-  /* File cache entry when grid comes directly from a file and may be shared
-   * with other volume datablocks. */
-  VolumeFileCacheEntry *entry;
-  /* If this volume grid is in the global file cache, we can reference a simplified version of it,
-   * instead of the original high resolution grid. */
-  int simplify_level;
-  /**
-   * Indicates if the tree has been loaded for this grid. Note that vdb.tree()
-   * may actually be loaded by another user while this is false. But only after
-   * calling load() and is_loaded changes to true is it safe to access.
-   *
-   * `const` write access to this must be protected by `entry->mutex`.
-   */
-  mutable bool is_loaded;
-};
-#else
-struct VolumeGridCommon : public ImplicitSharingMixin {
-};
-#endif
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Generic Volume Grid
- *
- * Wrapper around a generic OpenVDB grid.
- * Grids loaded from OpenVDB files are always stored in the global cache.
- * Procedurally generated grids are not.
- * \{ */
-
-#ifdef WITH_OPENVDB
-struct GVolumeGrid : public VolumeGridCommon {
-  using GridPtr = std::shared_ptr<openvdb::GridBase>;
-  using GridConstPtr = std::shared_ptr<const openvdb::GridBase>;
-
- private:
-  /* OpenVDB grid. */
-  GridPtr grid_;
-
- public:
-  GVolumeGrid(const GridPtr &grid);
-  GVolumeGrid(const GVolumeGrid &other);
-  using VolumeGridCommon::VolumeGridCommon;
-
-  GridPtr grid() const;
-
-  void clear_reference(const char *volume_name) override;
-  void duplicate_reference(const char *volume_name, const char *filepath) override;
-
- private:
-  GridPtr main_grid() const override;
-  void delete_data_only() override;
-};
-#else
-struct GVolumeGrid : public VolumeGridCommon {
-};
-#endif
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Grid Type Converter
  *
  * Converter between Blender types and OpenVDB types.
@@ -262,6 +158,135 @@ struct GridConverter<std::string>
   using FieldValueType = std::string;
 };
 #endif /* WITH_OPENVDB */
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Shared Grid Data
+ *
+ * Wraps around OpenVDB grid pointer to manage it with implicit sharing.
+ * \{ */
+
+template<typename GridType> struct SharedGrid : public ImplicitSharingMixin {
+  using GridPtr = std::shared_ptr<GridType>;
+  using GridConstPtr = std::shared_ptr<const GridType>;
+
+  GridPtr grid;
+
+  void delete_self() override
+  {
+    delete this;
+  }
+
+  void delete_data_only() override
+  {
+    grid.reset();
+  }
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Common Grid Wrapper
+ *
+ * Base class for both generic and typed grid wrapper classes.
+ * \{ */
+
+#ifdef WITH_OPENVDB
+struct VolumeGridCommon : public ImplicitSharingMixin {
+ public:
+  using GridPtr = std::shared_ptr<openvdb::GridBase>;
+  using GridConstPtr = std::shared_ptr<const openvdb::GridBase>;
+
+  VolumeGridCommon(bool is_loaded, int simplify_level = 0);
+  VolumeGridCommon(const VolumeFileCacheEntry &template_entry, int simplify_level = 0);
+  VolumeGridCommon(const char *template_file_path,
+                   const GridPtr &template_grid,
+                   int simplify_level = 0);
+  VolumeGridCommon(const VolumeGridCommon &other);
+  virtual ~VolumeGridCommon();
+
+  const char *name() const;
+
+  const char *error_message() const;
+
+  bool grid_is_loaded() const;
+
+  void load(const char *volume_name, const char *filepath) const;
+  void unload(const char *volume_name) const;
+
+  void set_simplify_level(int simplify_level);
+
+  virtual void clear_reference(const char *volume_name) = 0;
+  virtual void duplicate_reference(const char *volume_name, const char *filepath) = 0;
+
+ protected:
+  /* Clear any reference to a grid in the file cache. */
+  void clear_cache_entry();
+
+  virtual GridPtr main_grid() const = 0;
+
+  void delete_self() override;
+  void delete_data_only() override;
+
+ protected:
+  /* File cache entry when grid comes directly from a file and may be shared
+   * with other volume datablocks. */
+  VolumeFileCacheEntry *entry;
+  /* If this volume grid is in the global file cache, we can reference a simplified version of it,
+   * instead of the original high resolution grid. */
+  int simplify_level;
+  /**
+   * Indicates if the tree has been loaded for this grid. Note that vdb.tree()
+   * may actually be loaded by another user while this is false. But only after
+   * calling load() and is_loaded changes to true is it safe to access.
+   *
+   * `const` write access to this must be protected by `entry->mutex`.
+   */
+  mutable bool is_loaded;
+};
+#else
+struct VolumeGridCommon : public ImplicitSharingMixin {
+};
+#endif
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Generic Volume Grid
+ *
+ * Wrapper around a generic OpenVDB grid.
+ * Grids loaded from OpenVDB files are always stored in the global cache.
+ * Procedurally generated grids are not.
+ * \{ */
+
+#ifdef WITH_OPENVDB
+struct GVolumeGrid : public VolumeGridCommon {
+  using GridPtr = std::shared_ptr<openvdb::GridBase>;
+  using GridConstPtr = std::shared_ptr<const openvdb::GridBase>;
+
+ private:
+  /* OpenVDB grid. */
+  GridPtr grid_;
+
+ public:
+  GVolumeGrid(const GridPtr &grid);
+  GVolumeGrid(const GVolumeGrid &other);
+  using VolumeGridCommon::VolumeGridCommon;
+
+  GridPtr grid() const;
+
+  void clear_reference(const char *volume_name) override;
+  void duplicate_reference(const char *volume_name, const char *filepath) override;
+
+ private:
+  GridPtr main_grid() const override;
+  void delete_data_only() override;
+};
+#else
+struct GVolumeGrid : public VolumeGridCommon {
+};
+#endif
 
 /** \} */
 
