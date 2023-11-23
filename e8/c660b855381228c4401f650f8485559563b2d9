@@ -1,1 +1,2 @@
 Referenced by issue #110662, Blender 3.6.1 laggy in the render preview
+Referenced by issue #115156, Enabling the real time compositor when a denoise node is present in the compositor tree hangs blender.
