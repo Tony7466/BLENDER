@@ -87,6 +87,11 @@ const char *BKE_appdir_folder_id(int folder_id, const char *subfolder) ATTR_WARN
 const char *BKE_appdir_folder_id_create(int folder_id,
                                         const char *subfolder) ATTR_WARN_UNUSED_RESULT;
 /**
+ * Returns the path to a folder in the project area without checking that it actually exists first.
+ */
+const char *BKE_appdir_folder_id_project_notest(int folder_id,
+                                                const char *subfolder) ATTR_WARN_UNUSED_RESULT;
+/**
  * Returns the path to a folder in the user area without checking that it actually exists first.
  */
 const char *BKE_appdir_folder_id_user_notest(int folder_id,

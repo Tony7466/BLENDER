@@ -738,6 +738,23 @@ const char *BKE_appdir_folder_id(const int folder_id, const char *subfolder)
   return nullptr;
 }
 
+const char *BKE_appdir_folder_id_project_notest(const int folder_id, const char *subfolder)
+{
+  static char path[FILE_MAX] = "";
+  const bool check_is_dir = false;
+
+  switch (folder_id) {
+    case BLENDER_PROJECT_SCRIPTS:
+      get_path_project_ex(path, sizeof(path), "scripts", subfolder, check_is_dir);
+      break;
+  }
+
+  if ('\0' == path[0]) {
+    return nullptr;
+  }
+  return path;
+}
+
 const char *BKE_appdir_folder_id_user_notest(const int folder_id, const char *subfolder)
 {
   const int version = BLENDER_VERSION;

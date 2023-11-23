@@ -294,7 +294,7 @@ static PyObject *bpy_project_resource(PyObject * /*self*/, PyObject *args, PyObj
     return nullptr;
   }
 
-  const char *path = BKE_appdir_folder_id(type.value_found, subdir_data.value);
+  const char *path = BKE_appdir_folder_id_project_notest(type.value_found, subdir_data.value);
   Py_XDECREF(subdir_data.value_coerce);
 
   return PyC_UnicodeFromBytes(path ? path : "");
