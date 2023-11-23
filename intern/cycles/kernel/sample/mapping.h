@@ -43,6 +43,21 @@ ccl_device void make_orthonormals_tangent(const float3 N,
   *a = cross(*b, N);
 }
 
+ccl_device void make_orthonormals_safe_tangent(const float3 N,
+                                               const float3 T,
+                                               ccl_private float3 *a,
+                                               ccl_private float3 *b)
+{
+  /* N and T are assumed to be normalized. */
+  if (fabsf(dot(N, T)) >= 0.99f) {
+    /* Vectors are almost or exactly parallel. This will cause NaN in `make_orthonormals_tangent`,
+     * so use `make_orthonormals` instead. */
+    make_orthonormals(N, a, b);
+    return;
+  }
+  make_orthonormals_tangent(N, T, a, b);
+}
+
 /* sample direction with cosine weighted distributed in hemisphere */
 ccl_device_inline void sample_cos_hemisphere(const float3 N,
                                              float2 rand_in,
