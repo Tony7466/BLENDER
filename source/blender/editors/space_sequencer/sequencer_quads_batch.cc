@@ -79,7 +79,7 @@ void SeqQuadsBatch::draw()
   }
   if (lines_num > 0) {
     GPU_vertbuf_tag_dirty(vbo_lines);
-    GPU_vertbuf_data_len_set(vbo_lines, lines_num * 4);
+    GPU_vertbuf_data_len_set(vbo_lines, lines_num * 2);
     GPU_vertbuf_use(vbo_lines);
     GPU_batch_draw_range(batch_lines, 0, lines_num * 2);
     lines_num = 0;

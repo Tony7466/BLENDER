@@ -473,9 +473,7 @@ static void retime_keys_draw(const bContext *C, SeqQuadsBatch *quads)
       retime_key_draw(C, seq, &key, &sh_bindings, &selection, &point_counter);
     }
   }
-  if (point_counter != 0) {
-    immEnd();
-  }
+  immEnd();
   GPU_program_point_size(false);
   immUnbindProgram();
   GPU_blend(GPU_BLEND_NONE);
