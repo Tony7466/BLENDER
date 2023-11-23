@@ -23,12 +23,9 @@ void VKCommandBuffer::init(const VkCommandBuffer vk_command_buffer)
 
 void VKCommandBuffer::begin_recording()
 {
-  VkCommandBufferInheritanceInfo inheritance_info = {};
-  inheritance_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-
   VkCommandBufferBeginInfo begin_info = {};
   begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  begin_info.pInheritanceInfo = &inheritance_info;
+  begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
   vkBeginCommandBuffer(vk_command_buffer_, &begin_info);
   state.recorded_command_counts = 0;

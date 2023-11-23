@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <queue>
+
 #include "vk_common.hh"
 #include "vk_timeline_semaphore.hh"
 
@@ -15,20 +17,21 @@
 
 namespace blender::gpu {
 class VKDevice;
+struct TimelineCommandBuffers {
+  VKTimelineSemaphore::Value timeline_value;
+  Vector<VkCommandBuffer> vk_command_buffers;
+};
 
 class VKCommandPool : public NonCopyable {
-  struct InFlight {
-    VKTimelineSemaphore::Value time;
-    Vector<VkCommandBuffer> command_buffers;
-  };
   VkCommandPool vk_command_pool_ = VK_NULL_HANDLE;
-  Vector<VkCommandBuffer> reusable_handles_;
-  Vector<InFlight> in_flight_handles_;
+  std::queue<TimelineCommandBuffers> in_flight_command_buffers_;
 
   struct {
     uint64_t command_buffers_allocated = 0;
+    uint64_t command_buffers_freed = 0;
     uint64_t command_buffers_in_flight = 0;
-    uint64_t command_buffers_reused = 0;
+    uint64_t trimmed = 0;
+    uint64_t reset = 0;
   } stats;
 
  public:
@@ -37,15 +40,19 @@ class VKCommandPool : public NonCopyable {
 
   void init(const VKDevice &device);
   void free(const VKDevice &device);
+  /**
+   * Reset the command buffer, releasing memory to system.
+   *
+   * NOTE: Resetting a command pool may only be used when no command buffer is in pending for
+   * execution state.
+   */
+  void reset(const VKDevice &device);
   void trim(const VKDevice &device);
-  void allocate_secondary_buffers(const VKDevice &device,
-                                  MutableSpan<VkCommandBuffer> r_command_buffers);
-  void allocate_primary_buffer(const VKDevice &device, VkCommandBuffer &r_command_buffer);
-  void free_buffers(const VKDevice &device, Span<VkCommandBuffer> command_buffers);
 
-  void mark_buffers_in_flight(Span<VkCommandBuffer> command_buffers,
-                              VKTimelineSemaphore::Value &value);
-  void mark_buffers_reusable(VKTimelineSemaphore::Value &value);
+  void allocate_buffers(const VKDevice &device, MutableSpan<VkCommandBuffer> r_command_buffers);
+  void mark_in_flight(TimelineCommandBuffers &in_flight);
+  void free_completed_buffers(const VKDevice &device);
+  void free_buffers(const VKDevice &device, Span<VkCommandBuffer> command_buffers);
 
   void debug_print() const;
 };

@@ -64,6 +64,7 @@ void VKTimelineSemaphore::wait(const VKDevice &device, const Value &wait_value)
   wait_info.pSemaphores = &vk_semaphore_;
   wait_info.pValues = wait_value;
   vkWaitSemaphores(device.device_get(), &wait_info, UINT64_MAX);
+  last_completed_ = wait_value;
 }
 
 VKTimelineSemaphore::Value VKTimelineSemaphore::value_increase()
@@ -75,6 +76,11 @@ VKTimelineSemaphore::Value VKTimelineSemaphore::value_increase()
 VKTimelineSemaphore::Value VKTimelineSemaphore::value_get() const
 {
   return value_;
+}
+
+VKTimelineSemaphore::Value VKTimelineSemaphore::last_completed_value_get() const
+{
+  return last_completed_;
 }
 
 }  // namespace blender::gpu

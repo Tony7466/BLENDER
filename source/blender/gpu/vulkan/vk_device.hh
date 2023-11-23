@@ -227,6 +227,10 @@ class VKDevice : public NonCopyable {
   {
     return timeline_semaphore_;
   }
+  const VKTimelineSemaphore &timeline_semaphore_get() const
+  {
+    return timeline_semaphore_;
+  }
 
   /** \} */
 

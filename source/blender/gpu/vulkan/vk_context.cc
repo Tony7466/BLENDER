@@ -118,6 +118,7 @@ void VKContext::end_frame()
 {
   VKDevice &device = VKBackend::get().device_get();
   command_buffers_.finish();
+  command_buffers_.trim();
   command_buffers_.debug_print();
   device.destroy_discarded_resources();
 }
@@ -125,12 +126,10 @@ void VKContext::end_frame()
 void VKContext::flush()
 {
   command_buffers_.submit();
-  command_buffers_.finish();
 }
 
 void VKContext::finish()
 {
-  command_buffers_.submit();
   command_buffers_.finish();
 }
 

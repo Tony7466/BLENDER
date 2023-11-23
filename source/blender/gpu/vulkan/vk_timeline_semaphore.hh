@@ -58,6 +58,11 @@ class VKTimelineSemaphore {
       return this->value_ < other.value_;
     }
 
+    bool operator==(const Value &other) const
+    {
+      return this->value_ == other.value_;
+    }
+
    private:
     void reset()
     {
@@ -75,6 +80,7 @@ class VKTimelineSemaphore {
  private:
   VkSemaphore vk_semaphore_ = VK_NULL_HANDLE;
   Value value_;
+  Value last_completed_;
 
  public:
   ~VKTimelineSemaphore();
@@ -91,6 +97,7 @@ class VKTimelineSemaphore {
 
   Value value_increase();
   Value value_get() const;
+  Value last_completed_value_get() const;
 
   VkSemaphore vk_handle() const
   {
