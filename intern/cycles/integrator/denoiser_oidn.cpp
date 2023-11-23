@@ -164,6 +164,18 @@ class OIDNDenoiseContext {
     oidn_filter.setProgressMonitorFunction(oidn_progress_monitor_function, denoiser_);
     oidn_filter.set("hdr", true);
     oidn_filter.set("srgb", false);
+
+#  if OIDN_VERSION_MAJOR >= 2
+    switch (denoise_params_.quality) {
+      case DENOISER_QUALITY_BALANCED:
+        oidn_filter.set("quality", OIDN_QUALITY_BALANCED);
+        break;
+      case DENOISER_QUALITY_HIGH:
+      default:
+        oidn_filter.set("quality", OIDN_QUALITY_HIGH);
+    }
+#  endif
+
     if (denoise_params_.prefilter == DENOISER_PREFILTER_NONE ||
         denoise_params_.prefilter == DENOISER_PREFILTER_ACCURATE)
     {
@@ -630,7 +642,7 @@ Device *OIDNDenoiser::ensure_denoiser_device(Progress *progress)
 {
 #ifndef WITH_OPENIMAGEDENOISE
   (void)progress;
-  path_trace_device_->set_error("Build without OpenImageDenoiser");
+  path_trace_device_->set_error("Failed to denoise, build has no OpenImageDenoise support");
   return nullptr;
 #else
   if (!openimagedenoise_supported()) {
