@@ -57,8 +57,6 @@ struct DummyVolumeGrid;
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_volume_grid.hh"
-
 #  include "DEG_depsgraph.hh"
 #  include "DEG_depsgraph_build.hh"
 
@@ -179,8 +177,8 @@ static void rna_Volume_grids_end(CollectionPropertyIterator * /*iter*/) {}
 static PointerRNA rna_Volume_grids_get(CollectionPropertyIterator *iter)
 {
   Volume *volume = static_cast<Volume *>(iter->internal.count.ptr);
-  const GVolumeGridPtr grid = BKE_volume_grid_get_for_read(volume, iter->internal.count.item);
-  return rna_pointer_inherit_refine(&iter->parent, &RNA_VolumeGrid, (void *)grid.get());
+  const GVolumeGrid *grid = BKE_volume_grid_get_for_read(volume, iter->internal.count.item);
+  return rna_pointer_inherit_refine(&iter->parent, &RNA_VolumeGrid, (void *)grid);
 }
 
 static int rna_Volume_grids_length(PointerRNA *ptr)

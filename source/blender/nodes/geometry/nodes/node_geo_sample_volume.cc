@@ -331,13 +331,12 @@ static void node_geo_exec(GeoNodeExecParams params)
   const VolumeComponent *component = geometry_set.get_component<VolumeComponent>();
   const Volume *volume = component->get();
   BKE_volume_load(volume, DEG_get_bmain(params.depsgraph()));
-  const GVolumeGridPtr volume_grid = BKE_volume_grid_find_for_read(volume, grid_name.c_str());
+  const GVolumeGrid *volume_grid = BKE_volume_grid_find_for_read(volume, grid_name.c_str());
   if (volume_grid == nullptr) {
     params.set_default_remaining_outputs();
     return;
   }
-  openvdb::GridBase::ConstPtr base_grid = BKE_volume_grid_openvdb_for_read(volume,
-                                                                           volume_grid.get());
+  openvdb::GridBase::ConstPtr base_grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
   const VolumeGridType grid_type = BKE_volume_grid_type_openvdb(*base_grid);
 
   /* Check that the grid type is supported. */

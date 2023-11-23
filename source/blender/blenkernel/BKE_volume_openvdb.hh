@@ -9,7 +9,6 @@
 #  include <openvdb/openvdb.h>
 #  include <openvdb/points/PointDataGrid.h>
 
-#  include "BLI_implicit_sharing_ptr.hh"
 #  include "BLI_math_matrix_types.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_string_ref.hh"
@@ -18,11 +17,9 @@
 
 struct Volume;
 
-using GVolumeGridPtr = blender::ImplicitSharingPtr<GVolumeGrid>;
-
-GVolumeGridPtr BKE_volume_grid_add_vdb(Volume &volume,
-                                      blender::StringRef name,
-                                      openvdb::GridBase::Ptr vdb_grid);
+GVolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
+                                     blender::StringRef name,
+                                     openvdb::GridBase::Ptr vdb_grid);
 
 bool BKE_volume_grid_bounds(openvdb::GridBase::ConstPtr grid,
                             blender::float3 &r_min,

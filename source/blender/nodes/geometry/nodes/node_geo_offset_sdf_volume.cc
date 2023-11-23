@@ -40,12 +40,12 @@ static void search_link_ops(GatherLinkSearchOpParams &params)
 #ifdef WITH_OPENVDB
 static void sdf_volume_offset(Volume &volume, const GeoNodeExecParams &params)
 {
-  GVolumeGridPtr volume_grid = BKE_volume_grid_find_for_write(&volume, "distance");
+  GVolumeGrid *volume_grid = BKE_volume_grid_find_for_write(&volume, "distance");
   if (volume_grid == nullptr) {
     return;
   }
   openvdb::GridBase::Ptr base_grid = BKE_volume_grid_openvdb_for_write(
-      &volume, volume_grid.get(), false);
+      &volume, volume_grid, false);
 
   if (!base_grid->isType<openvdb::FloatGrid>()) {
     return;

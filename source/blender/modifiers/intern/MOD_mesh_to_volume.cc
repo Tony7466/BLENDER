@@ -16,7 +16,6 @@
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_volume.hh"
-#include "BKE_volume_grid.hh"
 
 #include "BLT_translation.h"
 

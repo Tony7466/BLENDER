@@ -12,7 +12,6 @@
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_volume.hh"
-#include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 #include "BKE_volume_to_mesh.hh"
 
@@ -153,14 +152,14 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   const Volume *volume = static_cast<Volume *>(vmmd->object->data);
 
   BKE_volume_load(volume, DEG_get_bmain(ctx->depsgraph));
-  const GVolumeGridPtr volume_grid = BKE_volume_grid_find_for_read(volume, vmmd->grid_name);
+  const GVolumeGrid *volume_grid = BKE_volume_grid_find_for_read(volume, vmmd->grid_name);
   if (volume_grid == nullptr) {
     BKE_modifier_set_error(ctx->object, md, "Cannot find '%s' grid", vmmd->grid_name);
     return create_empty_mesh(input_mesh);
   }
 
-  const openvdb::GridBase::ConstPtr local_grid = BKE_volume_grid_openvdb_for_read(
-      volume, volume_grid.get());
+  const openvdb::GridBase::ConstPtr local_grid = BKE_volume_grid_openvdb_for_read(volume,
+                                                                                  volume_grid);
 
   openvdb::math::Transform::Ptr transform = local_grid->transform().copy();
   transform->postMult(openvdb::Mat4d((float *)vmmd->object->object_to_world));
