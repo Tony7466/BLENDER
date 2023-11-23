@@ -44,6 +44,46 @@ def seq_items_as_dims(data):
     return ((len(data),) + seq_items_as_dims(data[0])) if hasattr(data, "__len__") else ()
 
 
+def dtype_byteorder_swap_standard_size(dtype):
+    """
+    Return a copy of the input NumPy dtype, but with the byteorder swapped and in standard size.
+
+    Used to help test buffer formats with "<" or ">" prefixes that do not match native byteorder.
+    """
+    dtype = np.dtype(dtype)  # Allow passing in anything that can be coerced into a dtype.
+    assert dtype.byteorder != '|', "Byteorder is not applicable to %s" % dtype
+    return dtype.newbyteorder('S')
+
+
+def dtype_explicit_endian_standard_size(dtype):
+    """
+    Return a copy of the input NumPy dtype, but with native byteorder replaced with explicit little-endian/big-endian
+    byteorder that matches the native byteorder and uses standard sizes.
+    Normally when a "<" or ">" dtype is created that matches native byteorder, NumPy will replace it with implicit
+    native byteorder instead, but this function forces "<" or ">" to be used.
+
+    Used to help test buffer formats with "<" or ">" prefixes that match native byteorder.
+    """
+    return dtype_byteorder_swap_standard_size(dtype_byteorder_swap_standard_size(dtype))
+
+
+def buffer_cast_explicit_native(buffer):
+    """
+    Create a memoryview of a buffer, where the buffer's format's implicit "@" prefix (native byte order, native size and
+    native alignment) has been replaced with an explicit "@" prefix.
+
+    The input buffer must have a single character format with no prefix.
+
+    Used to help test buffer formats with explicit "@" prefixes.
+    """
+    mv = memoryview(buffer)
+    new_format = "@" + mv.format
+    # memoryview.cast() can only cast when one of the source or destination formats is "b", "B" or "c".
+    # Additionally, only single character formats are supported, and only an implicit or explicit "@" prefix is
+    # supported.
+    return mv.cast("B").cast(new_format)
+
+
 # -----------------------------------------------------------------------------
 # Tests
 
@@ -63,6 +103,13 @@ class TestPropArray(unittest.TestCase):
             self.array_i.foreach_set(range(5))
 
         self.array_i.foreach_set(range(5, 15))
+
+        self.array_i.foreach_set(np.arange(10, dtype=dtype_explicit_endian_standard_size(np.int32)))
+
+        self.array_i.foreach_set(buffer_cast_explicit_native(np.arange(10, dtype=np.int32)))
+
+        with self.assertRaises(TypeError):
+            self.array_i.foreach_set(np.arange(10, dtype=dtype_byteorder_swap_standard_size(np.int32)))
 
         with self.assertRaises(TypeError):
             self.array_i.foreach_set(np.arange(5, dtype=np.int32))
@@ -97,6 +144,13 @@ class TestPropArray(unittest.TestCase):
             self.array_f.foreach_set(range(5))
 
         self.array_f.foreach_set(range(5, 15))
+
+        self.array_f.foreach_set(np.arange(10, dtype=dtype_explicit_endian_standard_size(np.float32)))
+
+        self.array_f.foreach_set(buffer_cast_explicit_native(np.arange(10, dtype=np.float32)))
+
+        with self.assertRaises(TypeError):
+            self.array_f.foreach_set(np.arange(10, dtype=dtype_byteorder_swap_standard_size(np.float32)))
 
         with self.assertRaises(TypeError):
             self.array_f.foreach_set(np.arange(5, dtype=np.float32))
