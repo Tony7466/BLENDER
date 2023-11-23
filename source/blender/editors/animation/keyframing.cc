@@ -83,7 +83,7 @@ eInsertKeyFlags ANIM_get_keyframing_flags(Scene *scene, const bool use_autokey_m
   /* standard flags */
   {
     /* visual keying */
-    if (is_autokey_flag(scene, AUTOKEY_FLAG_VISUALKEY)) {
+    if (is_autokey_flag(scene, KEYING_FLAG_VISUALKEY)) {
       flag |= INSERTKEY_MATRIX;
     }
 
@@ -93,7 +93,7 @@ eInsertKeyFlags ANIM_get_keyframing_flags(Scene *scene, const bool use_autokey_m
     }
 
     /* default F-Curve color mode - RGB from XYZ indices */
-    if (is_autokey_flag(scene, AUTOKEY_FLAG_XYZ2RGB)) {
+    if (is_autokey_flag(scene, KEYING_FLAG_XYZ2RGB)) {
       flag |= INSERTKEY_XYZ2RGB;
     }
   }
@@ -109,7 +109,7 @@ eInsertKeyFlags ANIM_get_keyframing_flags(Scene *scene, const bool use_autokey_m
     }
 
     /* cycle-aware keyframe insertion - preserve cycle period and flow */
-    if (is_autokey_flag(scene, AUTOKEY_FLAG_CYCLEAWARE)) {
+    if (is_autokey_flag(scene, KEYING_FLAG_CYCLEAWARE)) {
       flag |= INSERTKEY_CYCLE_AWARE;
     }
   }

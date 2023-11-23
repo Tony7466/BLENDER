@@ -3814,7 +3814,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_icon(prop, ICON_KEYINGSET, 0);
 
   prop = RNA_def_property(srna, "use_keyframe_cycle_aware", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_CYCLEAWARE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", KEYING_FLAG_CYCLEAWARE);
   RNA_def_property_ui_text(
       prop,
       "Cycle-Aware Keying",

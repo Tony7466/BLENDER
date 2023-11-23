@@ -1288,9 +1288,9 @@ typedef enum eZoomFrame_Mode {
  */
 typedef enum eKeyInsert_Flag {
   /* Settings used across manual and auto-keying. */
-  AUTOKEY_FLAG_VISUALKEY = (1 << 2),
-  AUTOKEY_FLAG_XYZ2RGB = (1 << 3),
-  AUTOKEY_FLAG_CYCLEAWARE = (1 << 8),
+  KEYING_FLAG_VISUALKEY = (1 << 2),
+  KEYING_FLAG_XYZ2RGB = (1 << 3),
+  KEYING_FLAG_CYCLEAWARE = (1 << 8),
 
   /* Autokey options. */
   AUTOKEY_FLAG_INSERTAVAILABLE = (1 << 0),
@@ -1300,7 +1300,7 @@ typedef enum eKeyInsert_Flag {
   AUTOKEY_FLAG_LAYERED_RECORD = (1 << 10),
 
   /* Manual Keying options. */
-  KEYING_FLAG_INSERTNEEDED = (1 << 11),
+  MANUALKEY_FLAG_INSERTNEEDED = (1 << 11),
 } eKeyInsert_Flag;
 
 typedef enum eKeyInsertChannels {

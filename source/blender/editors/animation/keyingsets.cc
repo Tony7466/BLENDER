@@ -294,7 +294,7 @@ static int add_keyingset_button_exec(bContext *C, wmOperator *op)
 
     keyingflag |= ANIM_get_keyframing_flags(scene, false);
 
-    if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_XYZ2RGB)) {
+    if (blender::animrig::is_autokey_flag(scene, KEYING_FLAG_XYZ2RGB)) {
       keyingflag |= INSERTKEY_XYZ2RGB;
     }
 

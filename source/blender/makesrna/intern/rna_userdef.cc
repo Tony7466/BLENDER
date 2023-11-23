@@ -5449,12 +5449,12 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
       prop, "Keyframe Insert Needed", "Keyframe insertion only when keyframe needed");
 
   prop = RNA_def_property(srna, "use_visual_keying", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_VISUALKEY);
+  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", KEYING_FLAG_VISUALKEY);
   RNA_def_property_ui_text(
       prop, "Visual Keying", "Use Visual keying automatically for constrained objects");
 
   prop = RNA_def_property(srna, "use_insertkey_xyz_to_rgb", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_XYZ2RGB);
+  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", KEYING_FLAG_XYZ2RGB);
   RNA_def_property_ui_text(
       prop,
       "New F-Curve Colors - XYZ to RGB",

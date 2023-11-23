@@ -37,7 +37,7 @@ static eInsertKeyFlags get_keyframing_flags(Scene *scene)
   eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
 
   /* Visual keying. */
-  if (is_autokey_flag(scene, AUTOKEY_FLAG_VISUALKEY)) {
+  if (is_autokey_flag(scene, KEYING_FLAG_VISUALKEY)) {
     flag |= INSERTKEY_MATRIX;
   }
 
@@ -47,7 +47,7 @@ static eInsertKeyFlags get_keyframing_flags(Scene *scene)
   }
 
   /* Default F-Curve color mode - RGB from XYZ indices. */
-  if (is_autokey_flag(scene, AUTOKEY_FLAG_XYZ2RGB)) {
+  if (is_autokey_flag(scene, KEYING_FLAG_XYZ2RGB)) {
     flag |= INSERTKEY_XYZ2RGB;
   }
 
@@ -57,7 +57,7 @@ static eInsertKeyFlags get_keyframing_flags(Scene *scene)
   }
 
   /* Cycle-aware keyframe insertion - preserve cycle period and flow. */
-  if (is_autokey_flag(scene, AUTOKEY_FLAG_CYCLEAWARE)) {
+  if (is_autokey_flag(scene, KEYING_FLAG_CYCLEAWARE)) {
     flag |= INSERTKEY_CYCLE_AWARE;
   }
 
