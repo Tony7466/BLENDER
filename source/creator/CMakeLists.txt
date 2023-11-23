@@ -636,7 +636,6 @@ if(UNIX AND NOT APPLE)
 
     # none of the other files are needed currently
   elseif(WITH_INSTALL_PORTABLE)
-    set(BLENDER_BIN "blender")
     install(
       TARGETS blender
       DESTINATION "."
@@ -691,7 +690,6 @@ file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
     endif()
   else()
     # main blender binary
-    set(BLENDER_BIN "bin/blender")
     install(
       TARGETS blender
       DESTINATION "./bin"
@@ -1454,7 +1452,6 @@ elseif(APPLE)
     COMMAND SetFile -d ${SETFILE_DATE} -m ${SETFILE_DATE} ${EXECUTABLE_OUTPUT_PATH}/Blender.app
   )
 
-  set(BLENDER_BIN "bin/blender")
   install(
     TARGETS blender
     DESTINATION "."
@@ -1769,7 +1766,6 @@ endif()
 # Setup launcher
 
 if(WIN32 AND NOT WITH_PYTHON_MODULE)
-  set(BLENDER_BIN "blender.exe")
   install(
     TARGETS blender blender-launcher
     COMPONENT Blender
@@ -1804,7 +1800,7 @@ if(UNIX AND NOT APPLE)
       # Blender's requirement of libraries mean the installation path must be used.
       install(
         CODE "\
-set(BLENDER_BIN \"${CMAKE_INSTALL_PREFIX}/${BLENDER_BIN}\")\n\
+set(BLENDER_BIN \"${EXECUTABLE_OUTPUT_PATH}/blender\")\n\
 set(MANPAGE_GEN \"${CMAKE_SOURCE_DIR}/doc/manpage/blender.1.py\")\n\
 set(MANPAGE_OUT \"${CMAKE_CURRENT_BINARY_DIR}/blender.1\")\n\
 if(\n\
@@ -1819,7 +1815,8 @@ detect_leaks=0\"\n\
   )\n\
   execute_process(\n\
     OUTPUT_QUIET\n\
-    COMMAND $\{BLENDER_BIN\}\n\
+    COMMAND ${CMAKE_COMMAND} -E env ${PLATFORM_ENV_BUILD}\n\
+    $\{BLENDER_BIN\}\n\
     --background\n\
     --factory-startup\n\
     --python $\{MANPAGE_GEN\}\n\
