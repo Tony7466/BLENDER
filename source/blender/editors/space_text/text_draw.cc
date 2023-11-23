@@ -99,6 +99,7 @@ static void format_draw_color(const TextDrawContext *tdc, char formatchar)
   }
 }
 
+/* Draw plain or formatted monospaced text. */
 static int text_font_draw(const TextDrawContext *tdc,
                           int x,
                           int y,
