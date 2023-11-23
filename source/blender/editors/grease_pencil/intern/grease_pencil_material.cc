@@ -309,9 +309,8 @@ static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator *
     }
   };
 
-  /* Iterate materials to be locked. The lock must be done outside the drawing loop
-   * because if the material is locked inside the loop, the function
-   * `retrieve_editable_and_selected_strokes` can return a wrong IndexMask.
+  /* The material lock must be done outside of the drawing loop to prevent
+   * 'retrieve_editable_and_selected_strokes' from returning an incorrect IndexMask.
    */
   for (const int material_index : IndexRange(object->totcol)) {
     if (materials_used.contains(material_index)) {
