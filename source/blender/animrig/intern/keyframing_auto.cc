@@ -32,7 +32,7 @@
 
 namespace blender::animrig {
 
-static eInsertKeyFlags get_keyframing_flags(Scene *scene)
+static eInsertKeyFlags get_autokey_flags(Scene *scene)
 {
   eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
 
@@ -128,10 +128,9 @@ void autokeyframe_object(
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
       depsgraph, BKE_scene_frame_get(scene));
-  eInsertKeyFlags flag = eInsertKeyFlags(0);
 
   /* Get flags used for inserting keyframes. */
-  flag = ANIM_get_keyframing_flags(scene, true);
+  const eInsertKeyFlags flag = get_autokey_flags(scene);
 
   /* Add data-source override for the object. */
   blender::Vector<PointerRNA> sources;
@@ -288,7 +287,7 @@ void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, int tmode, short t
    *   visual keyframes even if flag not set, as it's not that useful otherwise
    *   (for quick animation recording)
    */
-  flag = ANIM_get_keyframing_flags(scene, true);
+  flag = get_autokey_flags(scene);
 
   if (targetless_ik) {
     flag |= INSERTKEY_MATRIX;
@@ -468,7 +467,7 @@ bool autokeyframe_property(bContext *C,
     if (autokeyframe_cfra_can_key(scene, id)) {
       ReportList *reports = CTX_wm_reports(C);
       ToolSettings *ts = scene->toolsettings;
-      const eInsertKeyFlags flag = ANIM_get_keyframing_flags(scene, true);
+      const eInsertKeyFlags flag = get_autokey_flags(scene);
       char *path = RNA_path_from_ID_to_property(ptr, prop);
 
       if (only_if_property_keyed) {
