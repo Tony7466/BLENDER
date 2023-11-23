@@ -144,27 +144,25 @@ void World::sync()
 void World::sync_volume()
 {
   /* Studio lights have no volume shader. */
-  ::World *bl_world = inst_.use_studio_light() ? nullptr : inst_.scene->world;
-  bNodeTree *ntree = nullptr;
+  ::World *world = inst_.use_studio_light() ? nullptr : inst_.scene->world;
 
-  has_volume_ = has_volume_absorption_ = has_volume_scatter_ = false;
+  GPUMaterial *gpumat = nullptr;
 
-  if (bl_world && bl_world->nodetree && bl_world->use_nodes) {
-    ntree = bl_world->nodetree;
-  }
-  else {
-    /* Only the scene world nodetree can have volume shader. */
-    return;
+  /* Only the scene world nodetree can have volume shader. */
+  if (world && world->nodetree && world->use_nodes) {
+    gpumat = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_VOLUME_MATERIAL);
   }
 
-  GPUMaterial *gpumat = inst_.shaders.world_shader_get(bl_world, ntree, MAT_PIPE_VOLUME_MATERIAL);
-
-  if (GPU_material_status(gpumat) == GPU_MAT_SUCCESS) {
+  if (gpumat && (GPU_material_status(gpumat) == GPU_MAT_SUCCESS)) {
     has_volume_ = true;
     has_volume_scatter_ = GPU_material_flag_get(gpumat, GPU_MATFLAG_VOLUME_SCATTER);
     has_volume_absorption_ = GPU_material_flag_get(gpumat, GPU_MATFLAG_VOLUME_ABSORPTION);
   }
+  else {
+    has_volume_ = has_volume_absorption_ = has_volume_scatter_ = false;
+  }
 
+  /* World volume needs to be always synced for correct clearing of parameter buffers. */
   inst_.pipelines.world_volume.sync(gpumat);
 }
 

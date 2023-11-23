@@ -108,7 +108,7 @@ void WorldPipeline::render(View &view)
 
 void WorldVolumePipeline::sync(GPUMaterial *gpumat)
 {
-  is_valid_ = GPU_material_status(gpumat) == GPU_MAT_SUCCESS;
+  is_valid_ = (gpumat != nullptr) && (GPU_material_status(gpumat) == GPU_MAT_SUCCESS);
   if (!is_valid_) {
     /* Skip if the material has not compiled yet. */
     return;
