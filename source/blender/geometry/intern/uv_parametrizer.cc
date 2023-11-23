@@ -4860,7 +4860,6 @@ static void slim_flush_uvs(ParamHandle *phandle,
 /* Cleanup memory. */
 static void slim_free_matrix_transfer(ParamHandle *phandle)
 {
-  slim::MatrixTransfer *mt = phandle->slim_mt;
   delete phandle->slim_mt;
   phandle->slim_mt = nullptr;
 }
@@ -5040,9 +5039,7 @@ void uv_parametrizer_slim_end(ParamHandle *phandle)
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
   for (int i = 0; i < phandle->ncharts; i++) {
-    PChart *chart = phandle->charts[i];
     slim::MatrixTransferChart *mt_chart = &mt->mt_charts[i];
-
     mt_chart->free_slim_data();
   }
 

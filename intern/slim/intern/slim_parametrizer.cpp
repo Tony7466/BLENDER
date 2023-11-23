@@ -20,7 +20,8 @@ namespace slim {
 
 using namespace Eigen;
 
-void transfer_uvs_back_to_native_part_live(MatrixTransferChart &mt_chart, Eigen::MatrixXd &uv)
+static void transfer_uvs_back_to_native_part_live(MatrixTransferChart &mt_chart,
+                                                  Eigen::MatrixXd &uv)
 {
   if (!mt_chart.succeeded) {
     return;
@@ -36,7 +37,7 @@ void transfer_uvs_back_to_native_part_live(MatrixTransferChart &mt_chart, Eigen:
   }
 }
 
-void transfer_uvs_back_to_native_part(MatrixTransferChart &mt_chart, Eigen::MatrixXd &uv)
+static void transfer_uvs_back_to_native_part(MatrixTransferChart &mt_chart, Eigen::MatrixXd &uv)
 {
   if (!mt_chart.succeeded) {
     return;
@@ -52,8 +53,8 @@ void transfer_uvs_back_to_native_part(MatrixTransferChart &mt_chart, Eigen::Matr
   }
 }
 
-Eigen::MatrixXd get_interactive_result_blended_with_original(float blend,
-                                                             const SLIMData &slim_data)
+static Eigen::MatrixXd get_interactive_result_blended_with_original(float blend,
+                                                                    const SLIMData &slim_data)
 {
   Eigen::MatrixXd original_map_weighted = blend * slim_data.oldUVs;
   Eigen::MatrixXd interactive_result_map = (1.0 - blend) * slim_data.V_o;

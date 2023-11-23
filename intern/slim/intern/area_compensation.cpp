@@ -5,6 +5,7 @@
 
 #include <Eigen/Dense>
 
+#include "area_compensation.h"
 #include "doublearea.h"
 #include "slim.h"
 
