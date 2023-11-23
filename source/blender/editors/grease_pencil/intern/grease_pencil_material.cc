@@ -77,12 +77,13 @@ static int grease_pencil_material_hide_exec(bContext *C, wmOperator *op)
   const bool invert = RNA_boolean_get(op->ptr, "invert");
 
   bool changed = false;
+  const int material_index = object->actcol - 1;
 
   for (const int i : IndexRange(object->totcol)) {
-    if (invert && i == object->actcol - 1) {
+    if (invert && i == material_index) {
       continue;
     }
-    if (!invert && i != object->actcol - 1) {
+    if (!invert && i != material_index) {
       continue;
     }
     if (Material *ma = BKE_object_material_get(object, i + 1)) {
