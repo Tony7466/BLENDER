@@ -24,7 +24,7 @@ namespace blender::bke {
 
 template<typename T> struct ValueOrField {
   using Field = fn::Field<T>;
-  using Grid = FieldValueGrid<T>;
+  using Grid = VolumeGrid<T>;
   using GridPtr = ImplicitSharingPtr<Grid>;
 
   /** Value that is used when the field is empty. */

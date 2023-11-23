@@ -162,7 +162,6 @@ class GeoNodeExecParams {
   template<typename T> void set_output(StringRef identifier, T &&value)
   {
     using StoredT = std::decay_t<T>;
-    //    using GridType = bke::grid_types::FieldValueGrid<T>;
 
     if constexpr (is_field_base_type_v<StoredT>) {
       this->set_output(identifier, ValueOrField<StoredT>(std::forward<T>(value)));
@@ -178,7 +177,7 @@ class GeoNodeExecParams {
         this->set_output(identifier, ValueOrField<ValueT>(std::move(value_typed)));
       });
     }
-    /* XXX causes linker errors because it needs a CPPType for FieldValueGrid<T>.
+    /* XXX causes linker errors because it needs a CPPType for VolumeGrid<T>.
      * Adding such CPPTypes creates memory leaks because the default value is a static instance
      * that never releases the strong user. */
     //    else if constexpr (std::is_same_v<StoredT, ImplicitSharingPtr<GridType>>) {

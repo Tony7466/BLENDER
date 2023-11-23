@@ -277,72 +277,71 @@ namespace detail {
 /**
  * Tree types for commonly used values.
  */
-template<typename T> struct FieldValueTreeImpl;
+template<typename T> struct VolumeGridTraits;
 
-template<> struct FieldValueTreeImpl<bool> {
-  using Type = openvdb::BoolTree;
+template<> struct VolumeGridTraits<bool> {
+  using TreeType = openvdb::BoolTree;
 };
-template<> struct FieldValueTreeImpl<float> {
-  using Type = openvdb::FloatTree;
+template<> struct VolumeGridTraits<float> {
+  using TreeType = openvdb::FloatTree;
 };
-template<> struct FieldValueTreeImpl<float2> {
-  using Type = openvdb::Vec2STree;
+template<> struct VolumeGridTraits<float2> {
+  using TreeType = openvdb::Vec2STree;
 };
-template<> struct FieldValueTreeImpl<float3> {
-  using Type = openvdb::Vec3STree;
+template<> struct VolumeGridTraits<float3> {
+  using TreeType = openvdb::Vec3STree;
 };
-template<> struct FieldValueTreeImpl<double> {
-  using Type = openvdb::DoubleTree;
+template<> struct VolumeGridTraits<double> {
+  using TreeType = openvdb::DoubleTree;
 };
-template<> struct FieldValueTreeImpl<double3> {
-  using Type = openvdb::Vec3DTree;
+template<> struct VolumeGridTraits<double3> {
+  using TreeType = openvdb::Vec3DTree;
 };
-template<> struct FieldValueTreeImpl<int8_t> {
-  using Type = openvdb::Int8Grid;
+template<> struct VolumeGridTraits<int8_t> {
+  using TreeType = openvdb::Int8Grid;
 };
-template<> struct FieldValueTreeImpl<int32_t> {
-  using Type = openvdb::Int32Tree;
+template<> struct VolumeGridTraits<int32_t> {
+  using TreeType = openvdb::Int32Tree;
 };
-template<> struct FieldValueTreeImpl<int64_t> {
-  using Type = openvdb::Int64Tree;
+template<> struct VolumeGridTraits<int64_t> {
+  using TreeType = openvdb::Int64Tree;
 };
-template<> struct FieldValueTreeImpl<int2> {
-  using Type = openvdb::Vec2ITree;
+template<> struct VolumeGridTraits<int2> {
+  using TreeType = openvdb::Vec2ITree;
 };
-template<> struct FieldValueTreeImpl<int3> {
-  using Type = openvdb::Vec3ITree;
+template<> struct VolumeGridTraits<int3> {
+  using TreeType = openvdb::Vec3ITree;
 };
-template<> struct FieldValueTreeImpl<uint32_t> {
-  using Type = openvdb::UInt32Tree;
+template<> struct VolumeGridTraits<uint32_t> {
+  using TreeType = openvdb::UInt32Tree;
 };
-template<> struct FieldValueTreeImpl<ColorGeometry4f> {
-  using Type = openvdb::Vec4fTree;
+template<> struct VolumeGridTraits<ColorGeometry4f> {
+  using TreeType = openvdb::Vec4fTree;
 };
-template<> struct FieldValueTreeImpl<blender::ColorGeometry4b> {
-  using Type = openvdb::UInt32Tree;
+template<> struct VolumeGridTraits<blender::ColorGeometry4b> {
+  using TreeType = openvdb::UInt32Tree;
 };
-template<> struct FieldValueTreeImpl<math::Quaternion> {
-  using Type = openvdb::Vec4fTree;
+template<> struct VolumeGridTraits<math::Quaternion> {
+  using TreeType = openvdb::Vec4fTree;
 };
 /* Stub class for string attributes, not supported. */
-template<> struct FieldValueTreeImpl<std::string> {
-  using Type = openvdb::MaskTree;
+template<> struct VolumeGridTraits<std::string> {
+  using TreeType = openvdb::MaskTree;
 };
 
-template<typename T>
-using FieldValueGridImpl = openvdb::Grid<typename FieldValueTreeImpl<T>::Type>;
+template<typename T> using VolumeGridType = openvdb::Grid<typename VolumeGridTraits<T>::TreeType>;
 #else  /* WITH_OPENVDB */
-template<typename T> struct FieldValueGridImpl {
+template<typename T> struct VolumeGridType {
 };
 #endif /* WITH_OPENVDB */
 
 }  // namespace detail
 
 #ifdef WITH_OPENVDB
-template<typename T> class FieldValueGrid : public VolumeGridCommon {
+template<typename T> class VolumeGrid : public VolumeGridCommon {
  public:
   using FieldValueType = T;
-  using GridType = detail::FieldValueGridImpl<T>;
+  using GridType = detail::VolumeGridType<T>;
   using GridBasePtr = std::shared_ptr<openvdb::GridBase>;
   using GridBaseConstPtr = std::shared_ptr<const openvdb::GridBase>;
   using GridPtr = std::shared_ptr<GridType>;
@@ -352,18 +351,18 @@ template<typename T> class FieldValueGrid : public VolumeGridCommon {
   GridPtr grid_;
 
  public:
-  FieldValueGrid(const FieldValueGrid<T> &other) : VolumeGridCommon(other), grid_(other.grid) {}
+  VolumeGrid(const VolumeGrid<T> &other) : VolumeGridCommon(other), grid_(other.grid) {}
   /* Takes ownership of the grid, which must not be shared. */
-  FieldValueGrid(const GridPtr &grid) : VolumeGridCommon(/*is_loaded=*/true), grid_(grid)
+  VolumeGrid(const GridPtr &grid) : VolumeGridCommon(/*is_loaded=*/true), grid_(grid)
   {
     BLI_assert(grid_);
   }
 
-  bool operator==(const FieldValueGrid<T> &other) const
+  bool operator==(const VolumeGrid<T> &other) const
   {
     return grid_ == other.grid_;
   }
-  bool operator!=(const FieldValueGrid<T> &other) const
+  bool operator!=(const VolumeGrid<T> &other) const
   {
     return grid_ != other.grid_;
   }
@@ -409,7 +408,7 @@ template<typename T> class FieldValueGrid : public VolumeGridCommon {
   }
 };
 #else
-template<typename T> class FieldValueGrid : public VolumeGridCommon {
+template<typename T> class VolumeGrid : public VolumeGridCommon {
 };
 #endif
 
@@ -421,7 +420,7 @@ template<typename T> class FieldValueGrid : public VolumeGridCommon {
 
 namespace grid_utils {
 
-template<typename T> bool get_background_value(const FieldValueGrid<T> &grid, T &r_value)
+template<typename T> bool get_background_value(const VolumeGrid<T> &grid, T &r_value)
 {
 #ifdef WITH_OPENVDB
   if constexpr (std::is_same_v<T, std::string>) {
@@ -437,10 +436,10 @@ template<typename T> bool get_background_value(const FieldValueGrid<T> &grid, T 
 #endif /* WITH_OPENVDB */
 }
 
-template<typename T> FieldValueGrid<T> *make_empty_grid(const T background_value)
+template<typename T> VolumeGrid<T> *make_empty_grid(const T background_value)
 {
 #ifdef WITH_OPENVDB
-  using GridType = typename FieldValueGrid<T>::GridType;
+  using GridType = typename VolumeGrid<T>::GridType;
 
   std::shared_ptr<GridType> grid;
   if constexpr (std::is_same_v<T, std::string>) {
@@ -450,7 +449,7 @@ template<typename T> FieldValueGrid<T> *make_empty_grid(const T background_value
     using Converter = GridConverter<T>;
     grid = GridType::create(Converter::single_value_to_grid(background_value));
   }
-  return new FieldValueGrid<T>(grid);
+  return new VolumeGrid<T>(grid);
 #else
   return nullptr;
 #endif /* WITH_OPENVDB */
