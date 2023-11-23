@@ -207,42 +207,65 @@ static struct VolumeFileCache {
 
 namespace blender::bke {
 
-GVolumeGrid::GVolumeGrid(const VolumeFileCacheEntry &template_entry, const int simplify_level)
+VolumeGridCommon::VolumeGridCommon(const bool is_loaded, const int simplify_level)
+    : entry(nullptr), simplify_level(simplify_level), is_loaded(is_loaded)
+{
+}
+
+VolumeGridCommon::VolumeGridCommon(const VolumeFileCacheEntry &template_entry,
+                                   const int simplify_level)
     : entry(nullptr), simplify_level(simplify_level), is_loaded(false)
 {
   entry = GLOBAL_CACHE.add_metadata_user(template_entry);
 }
 
-GVolumeGrid::GVolumeGrid(const char *file_path, const GridPtr &vdb_grid, const int simplify_level)
+VolumeGridCommon::VolumeGridCommon(const char *template_file_path,
+                                   const GridPtr &template_grid,
+                                   const int simplify_level)
     : entry(nullptr), simplify_level(simplify_level), is_loaded(false)
 {
-  entry = GLOBAL_CACHE.add_metadata_user(VolumeFileCacheEntry(file_path, vdb_grid));
+  entry = GLOBAL_CACHE.add_metadata_user(VolumeFileCacheEntry(template_file_path, template_grid));
 }
 
-GVolumeGrid::GVolumeGrid(const openvdb::GridBase::Ptr &grid)
-    : entry(nullptr), local_grid(grid), is_loaded(true)
-{
-}
-
-GVolumeGrid::GVolumeGrid(const GVolumeGrid &other)
-    : entry(other.entry),
-      simplify_level(other.simplify_level),
-      local_grid(other.local_grid),
-      is_loaded(other.is_loaded)
+VolumeGridCommon::VolumeGridCommon(const VolumeGridCommon &other)
+    : entry(other.entry), simplify_level(other.simplify_level), is_loaded(other.is_loaded)
 {
   if (entry) {
     GLOBAL_CACHE.copy_user(*entry, is_loaded);
   }
 }
 
-GVolumeGrid::~GVolumeGrid()
+VolumeGridCommon::~VolumeGridCommon()
 {
   if (entry) {
     GLOBAL_CACHE.remove_user(*entry, is_loaded);
   }
 }
 
-void GVolumeGrid::load(const char *volume_name, const char *filepath) const
+const char *VolumeGridCommon::name() const
+{
+  /* Don't use vdb.getName() since it copies the string, we want a pointer to the
+   * original so it doesn't get freed out of scope. */
+  openvdb::StringMetadata::ConstPtr name_meta = main_grid()->getMetadata<openvdb::StringMetadata>(
+      openvdb::GridBase::META_GRID_NAME);
+  return (name_meta) ? name_meta->value().c_str() : "";
+}
+
+const char *VolumeGridCommon::error_message() const
+{
+  if (is_loaded && entry && !entry->error_msg.empty()) {
+    return entry->error_msg.c_str();
+  }
+
+  return nullptr;
+}
+
+bool VolumeGridCommon::grid_is_loaded() const
+{
+  return is_loaded;
+}
+
+void VolumeGridCommon::load(const char *volume_name, const char *filepath) const
 {
   /* If already loaded or not file-backed, nothing to do. */
   if (is_loaded || entry == nullptr) {
@@ -294,7 +317,7 @@ void GVolumeGrid::load(const char *volume_name, const char *filepath) const
   is_loaded = true;
 }
 
-void GVolumeGrid::unload(const char *volume_name) const
+void VolumeGridCommon::unload(const char *volume_name) const
 {
   /* Not loaded or not file-backed, nothing to do. */
   if (!is_loaded || entry == nullptr) {
@@ -318,15 +341,45 @@ void GVolumeGrid::unload(const char *volume_name) const
   is_loaded = false;
 }
 
-void GVolumeGrid::clear_reference(const char * /*volume_name*/)
+void VolumeGridCommon::clear_cache_entry()
 {
-  /* Clear any reference to a grid in the file cache. */
-  local_grid = grid()->copyGridWithNewTree();
   if (entry) {
     GLOBAL_CACHE.remove_user(*entry, is_loaded);
     entry = nullptr;
   }
   is_loaded = true;
+}
+
+void VolumeGridCommon::set_simplify_level(const int simplify_level)
+{
+  BLI_assert(simplify_level >= 0);
+  this->simplify_level = simplify_level;
+}
+
+GVolumeGrid::GVolumeGrid(const openvdb::GridBase::Ptr &grid)
+    : VolumeGridCommon(/*is_loaded=*/true), grid_(grid)
+{
+}
+
+GVolumeGrid::GVolumeGrid(const GVolumeGrid &other) : VolumeGridCommon(other), grid_(other.grid_) {}
+
+openvdb::GridBase::Ptr GVolumeGrid::grid() const
+{
+  if (entry) {
+    return entry->simplified_grid(simplify_level);
+  }
+  return grid_;
+}
+
+openvdb::GridBase::Ptr GVolumeGrid::main_grid() const
+{
+  return (entry) ? entry->grid : grid_;
+}
+
+void GVolumeGrid::clear_reference(const char * /*volume_name*/)
+{
+  grid_ = grid()->copyGridWithNewTree();
+  clear_cache_entry();
 }
 
 void GVolumeGrid::duplicate_reference(const char *volume_name, const char *filepath)
@@ -335,54 +388,8 @@ void GVolumeGrid::duplicate_reference(const char *volume_name, const char *filep
    * file cache. Load file grid into memory first if needed. */
   load(volume_name, filepath);
   /* TODO: avoid deep copy if we are the only user. */
-  local_grid = grid()->deepCopyGrid();
-  if (entry) {
-    GLOBAL_CACHE.remove_user(*entry, is_loaded);
-    entry = nullptr;
-  }
-  is_loaded = true;
-}
-
-const char *GVolumeGrid::name() const
-{
-  /* Don't use vdb.getName() since it copies the string, we want a pointer to the
-   * original so it doesn't get freed out of scope. */
-  openvdb::StringMetadata::ConstPtr name_meta = main_grid()->getMetadata<openvdb::StringMetadata>(
-      openvdb::GridBase::META_GRID_NAME);
-  return (name_meta) ? name_meta->value().c_str() : "";
-}
-
-const char *GVolumeGrid::error_message() const
-{
-  if (is_loaded && entry && !entry->error_msg.empty()) {
-    return entry->error_msg.c_str();
-  }
-
-  return nullptr;
-}
-
-bool GVolumeGrid::grid_is_loaded() const
-{
-  return is_loaded;
-}
-
-openvdb::GridBase::Ptr GVolumeGrid::grid() const
-{
-  if (entry) {
-    return entry->simplified_grid(simplify_level);
-  }
-  return local_grid;
-}
-
-void GVolumeGrid::set_simplify_level(const int simplify_level)
-{
-  BLI_assert(simplify_level >= 0);
-  this->simplify_level = simplify_level;
-}
-
-const openvdb::GridBase::Ptr &GVolumeGrid::main_grid() const
-{
-  return (entry) ? entry->grid : local_grid;
+  grid_ = grid()->deepCopyGrid();
+  clear_cache_entry();
 }
 
 }  // namespace blender::bke
