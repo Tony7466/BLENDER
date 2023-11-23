@@ -1438,7 +1438,10 @@ static int imb_exr_split_token(const char *str, const char *end, const char **to
   return int(end - *token);
 }
 
-static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *passname)
+static int imb_exr_split_channel_name(ExrHandle *exr_handle,
+                                      ExrChannel *echan,
+                                      char *layname,
+                                      char *passname)
 {
   const int layname_maxncpy = EXR_TOT_MAXNAME;
   const int passname_maxncpy = EXR_TOT_MAXNAME;
@@ -1446,19 +1449,24 @@ static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *pa
   const char *end = name + strlen(name);
   const char *token;
 
-  /* Some multi-layers have the combined buffer with names A B G R saved. */
+  /* Some multi-layers have the combined buffer with names V, RGBA, or XYZ saved. Additionally, the
+   * Z channel can be interpreted as a Depth channel, but we only detect it as such if no X and Y
+   * channels exists, since the Z in this case is part of XYZ. */
   if (name[1] == 0) {
+    /* Notice that we will be comparing with this upper-case version of the channel name, so the
+     * below comparisons are effectively not case sensitive, and would also consider lowercase
+     * versions of the listed channels. */
     echan->chan_id = BLI_toupper_ascii(name[0]);
     layname[0] = '\0';
 
-    /* Notice that we are comparing with an upper-case version of the channel name, so the
-     * comparison is effectively not case sensitive, and would also consider lowercase versions of
-     * the listed channels. */
-    if (ELEM(echan->chan_id, 'R', 'G', 'B', 'A', 'V')) {
-      BLI_strncpy(passname, "Combined", passname_maxncpy);
-    }
-    else if (echan->chan_id == 'Z') {
+    if (echan->chan_id == 'Z' &&
+        !(BLI_findstring(&exr_handle->channels, "X", offsetof(ExrChannel, chan_id)) != nullptr &&
+          BLI_findstring(&exr_handle->channels, "Y", offsetof(ExrChannel, chan_id)) != nullptr))
+    {
       BLI_strncpy(passname, "Depth", passname_maxncpy);
+    }
+    else if (ELEM(echan->chan_id, 'R', 'G', 'B', 'A', 'V', 'X', 'Y', 'Z')) {
+      BLI_strncpy(passname, "Combined", passname_maxncpy);
     }
     else {
       BLI_strncpy(passname, name, passname_maxncpy);
@@ -1595,7 +1603,7 @@ static bool imb_exr_multilayer_parse_channels_from_file(ExrHandle *data)
   ExrChannel *echan = (ExrChannel *)data->channels.first;
   for (; echan; echan = echan->next) {
     char layname[EXR_TOT_MAXNAME], passname[EXR_TOT_MAXNAME];
-    if (imb_exr_split_channel_name(echan, layname, passname)) {
+    if (imb_exr_split_channel_name(data, echan, layname, passname)) {
 
       const char *view = echan->m->view.c_str();
       char internal_name[EXR_PASS_MAXNAME];
@@ -1781,8 +1789,23 @@ static int exr_has_rgb(MultiPartInputFile &file, const char *rgb_channels[3])
 {
   /* Common names for RGB-like channels in order. The V channel name is used by convention for BW
    * images, which will be broadcast to RGB channel at the end. */
-  static const char *channel_names[] = {
-      "V", "R", "Red", "G", "Green", "B", "Blue", "AR", "RA", "AG", "GA", "AB", "BA", nullptr};
+  static const char *channel_names[] = {"V",
+                                        "R",
+                                        "Red",
+                                        "G",
+                                        "Green",
+                                        "B",
+                                        "Blue",
+                                        "AR",
+                                        "RA",
+                                        "AG",
+                                        "GA",
+                                        "AB",
+                                        "BA",
+                                        "X",
+                                        "Y",
+                                        "Z",
+                                        nullptr};
 
   const Header &header = file.header(0);
   int num_channels = 0;
