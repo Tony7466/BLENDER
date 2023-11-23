@@ -8,7 +8,40 @@ from bpy.app.translations import (
     pgettext_tip as tip_,
 )
 
+
+class AddonProvider:
+    """
+    Interface to let the UI determine which addons it wants to show. Could use regular duck typing,
+    but defining the interface allows documenting things.
+    """
+
+    # Important: This is passed to operators taking an "owner" option, so this should be one of
+    # `addon_owner` in `userpref.py`.
+    owner_name = ''
+    install_operator = ""
+
+    @staticmethod
+    def enabled_addons(context):
+        """
+        Returns the addon collection of the given owner (e.g. Preferences.addons), or None if not found.
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def addon_paths():
+        """Returns a list of valid addon paths. Typically created with `addon_utils.paths()`"""
+        raise NotImplementedError
+
+
 class AddonsUI:
+    """
+    Reusable addons UI. Used to share the addons UI between the Preferences and Project Settings
+    UI. `AddonProvider` can be subclassed and passed to the main `draw()` method, to define which
+    addons to display, as well as other UI specific information.
+
+    Note that UI settings like searching/filtering are shared.
+    """
+
     _support_icon_mapping = {
         'OFFICIAL': 'BLENDER',
         'COMMUNITY': 'COMMUNITY',
@@ -16,25 +49,26 @@ class AddonsUI:
     }
 
     @staticmethod
-    def is_user_addon(mod, user_addon_paths):
-        import os
+    def _is_addon_builtin(mod, builtin_paths=None):
+        import addon_utils
+        # Allow passing in the paths for repeated calls.
+        if not builtin_paths:
+            builtin_paths = addon_utils.paths(include_project=False, include_prefs=False)
 
-        if not user_addon_paths:
-            for path in (
-                    bpy.utils.script_path_user(),
-                    *bpy.utils.script_paths_pref(),
-            ):
-                if path is not None:
-                    user_addon_paths.append(os.path.join(path, "addons"))
-
-        for path in user_addon_paths:
+        for path in builtin_paths:
             if bpy.path.is_subdir(mod.__file__, path):
                 return True
         return False
 
+    @staticmethod
+    def _is_addon_from_provider(provider, module, addon_paths=None):
+        # Allow passing in the paths for repeated calls.
+        if not addon_paths:
+            addon_paths = tuple(provider.addon_paths())
+        return module.__file__.startswith(tuple(addon_paths))
 
     @staticmethod
-    def draw_error(layout, message):
+    def _draw_error(layout, message):
         lines = message.split("\n")
         box = layout.box()
         sub = box.row()
@@ -43,16 +77,23 @@ class AddonsUI:
         for l in lines[1:]:
             box.label(text=l)
 
-
+    # `provider`: A subclass of `AddonProvider` implementing its variables & methods.
     @staticmethod
-    def draw(context, layout):
+    def draw(context, layout, provider):
         import os
         import addon_utils
 
         wm = context.window_manager
+        # Careful: Don't access addons via this, addons may also be stored in the project now. This should only be
+        # used for accessing shared settings.
         prefs = context.preferences
-        used_ext = {ext.module for ext in prefs.addons}
+        enabled_addons = provider.enabled_addons(context)
+        used_ext = {ext.module for ext in enabled_addons if ext}
 
+        # This doesn't really make sense for projects, since they don't have the concept of user
+        # scripts, only project scripts.
+        # TODO anything we should do about this? Won't make a difference in the UI, but maybe we
+        # shouldn't let users select the "User" addon filter.
         addon_user_dirs = tuple(
             p for p in (
                 *[os.path.join(pref_p, "addons") for pref_p in bpy.utils.script_paths_pref()],
@@ -60,11 +101,15 @@ class AddonsUI:
             )
             if p
         )
+        # initialized on demand
+        addon_paths = []
+        # initialized on demand
+        builtin_addon_paths = []
 
         # collect the categories that can be filtered on
         addons = [
             (mod, addon_utils.module_bl_info(mod))
-            for mod in addon_utils.modules(refresh=False)
+            for mod in addon_utils.modules(refresh=False) if AddonsUI._is_addon_from_provider(provider, mod, addon_paths)
         ]
 
         split = layout.split(factor=0.6)
@@ -73,7 +118,8 @@ class AddonsUI:
         row.prop(wm, "addon_support", expand=True)
 
         row = split.row(align=True)
-        row.operator("preferences.addon_install", icon='IMPORT', text="Install...")
+        if provider.install_operator:
+            row.operator(provider.install_operator, icon='IMPORT', text="Install...")
         row.operator("preferences.addon_refresh", icon='FILE_REFRESH', text="Refresh")
 
         row = layout.row()
@@ -98,7 +144,7 @@ class AddonsUI:
                 sub_col.label(text="    " + addon_path)
 
         if addon_utils.error_encoding:
-            AddonsUI.draw_error(
+            AddonsUI._draw_error(
                 col,
                 "One or more addons do not have UTF-8 encoding\n"
                 "(see console for details)",
@@ -108,9 +154,6 @@ class AddonsUI:
         filter = wm.addon_filter
         search = wm.addon_search.lower()
         support = wm.addon_support
-
-        # initialized on demand
-        user_addon_paths = []
 
         for mod, info in addons:
             module_name = mod.__name__
@@ -151,11 +194,13 @@ class AddonsUI:
                     emboss=False,
                 ).module = module_name
 
-                row.operator(
+                props = row.operator(
                     "preferences.addon_disable" if is_enabled else "preferences.addon_enable",
                     icon='CHECKBOX_HLT' if is_enabled else 'CHECKBOX_DEHLT', text="",
                     emboss=False,
-                ).module = module_name
+                )
+                props.module = module_name
+                props.owner = provider.owner_name
 
                 sub = row.row()
                 sub.active = is_enabled
@@ -194,7 +239,7 @@ class AddonsUI:
                         split.label(text="Warning:")
                         split.label(text="  " + info["warning"], icon='ERROR')
 
-                    user_addon = AddonsUI.is_user_addon(mod, user_addon_paths)
+                    is_builtin = AddonsUI._is_addon_builtin(mod, builtin_addon_paths)
                     if info["doc_url"] or info.get("tracker_url"):
                         split = colsub.row().split(factor=0.15)
                         split.label(text="Internet:")
@@ -209,7 +254,7 @@ class AddonsUI:
                             sub.operator(
                                 "wm.url_open", text="Report a Bug", icon='URL',
                             ).url = info["tracker_url"]
-                        elif not user_addon:
+                        elif is_builtin:
                             addon_info = (
                                 "Name: %s %s\n"
                                 "Author: %s\n"
@@ -220,16 +265,18 @@ class AddonsUI:
                             props.type = 'BUG_ADDON'
                             props.id = addon_info
 
-                    if user_addon:
+                    if not is_builtin:
                         split = colsub.row().split(factor=0.15)
                         split.label(text="User:")
-                        split.operator(
+                        props = split.operator(
                             "preferences.addon_remove", text="Remove", icon='CANCEL',
-                        ).module = mod.__name__
+                        )
+                        props.module = mod.__name__
+                        props.owner = provider.owner_name
 
                     # Show addon user preferences
                     if is_enabled:
-                        addon_preferences = prefs.addons[module_name].preferences
+                        addon_preferences = enabled_addons[module_name].preferences
                         if addon_preferences is not None:
                             draw = getattr(addon_preferences, "draw", None)
                             if draw is not None:
@@ -265,8 +312,10 @@ class AddonsUI:
                 row.label(text="", icon='ERROR')
 
                 if is_enabled:
-                    row.operator(
+                    props = row.operator(
                         "preferences.addon_disable", icon='CHECKBOX_HLT', text="", emboss=False,
-                    ).module = module_name
+                    )
+                    props.module = module_name
+                    props.owner = provider.owner_name
 
                 row.label(text=module_name, translate=False)

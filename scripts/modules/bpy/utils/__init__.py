@@ -386,16 +386,18 @@ def script_paths_pref():
     return paths
 
 
-def script_paths(*, subdir=None, project=True, user_pref=True, check_all=False, use_user=True):
+def script_paths(*, subdir=None, include_base_dir=True, include_project=True, include_prefs=True, check_all=False, use_user=True):
     """
     Returns a list of valid script paths.
 
     :arg subdir: Optional subdir.
     :type subdir: string
-    :arg project: Include the active project's script paths.
-    :type project: bool
-    :arg user_pref: Include the user preference script paths.
-    :type user_pref: bool
+    :arg include_base_dir: Include `_script_base_dir`.
+    :type include_base_dir: bool
+    :arg include_project: Include the active project's script paths.
+    :type include_project: bool
+    :arg include_prefs: Include the user preference script paths.
+    :type include_prefs: bool
     :arg check_all: Include local, user and system paths rather just the paths Blender uses.
     :type check_all: bool
     :return: script paths.
@@ -415,23 +417,24 @@ def script_paths(*, subdir=None, project=True, user_pref=True, check_all=False, 
             base_paths.append(path_user)
         base_paths.append(path_system)  # Same as: `system_resource('SCRIPTS')`.
 
-    # Note that `_script_base_dir` may be either:
-    # - `os.path.join(bpy.utils.resource_path('LOCAL'), "scripts")`
-    # - `bpy.utils.system_resource('SCRIPTS')`.
-    # When `check_all` is enabled duplicate paths will be added however
-    # paths are de-duplicated so it wont cause problems.
-    base_paths.append(_script_base_dir)
+    if include_base_dir:
+        # Note that `_script_base_dir` may be either:
+        # - `os.path.join(bpy.utils.resource_path('LOCAL'), "scripts")`
+        # - `bpy.utils.system_resource('SCRIPTS')`.
+        # When `check_all` is enabled duplicate paths will be added however
+        # paths are de-duplicated so it wont cause problems.
+        base_paths.append(_script_base_dir)
 
     if not check_all:
         if use_user:
             base_paths.append(path_user)
 
-    if project:
+    if include_project:
         project_script_paths = script_path_project()
         if project_script_paths:
             base_paths.append(project_script_paths)
 
-    if user_pref:
+    if include_prefs:
         base_paths.extend(script_paths_pref())
 
     scripts = []

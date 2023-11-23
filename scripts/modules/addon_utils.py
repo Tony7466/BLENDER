@@ -49,7 +49,20 @@ def _enabled_addons_names():
     return addons
 
 
-def paths():
+def paths(include_project=True, include_prefs=True, exclude_others=False):
+    """
+    Returns a list of valid addon paths.
+
+    :arg include_project: Include the active project's addon paths.
+    :type include_project: bool
+    :arg include_prefs: Include the user preference addon paths.
+    :type include_prefs: bool
+    :arg exclude_others: Only include the project and/or preferences paths as requested, no others
+       like system/installation script paths.
+    :type exclude_others: bool
+    :return: script paths.
+    :rtype: list
+    """
     return [
         path for subdir in (
             # RELEASE SCRIPTS: official scripts distributed in Blender releases.
@@ -58,7 +71,14 @@ def paths():
             # if folder addons_contrib/ exists, scripts in there will be loaded too.
             "addons_contrib",
         )
-        for path in _bpy.utils.script_paths(subdir=subdir)
+        for path in _bpy.utils.script_paths(
+            subdir=subdir,
+            include_project=include_project,
+            include_prefs=include_prefs,
+            check_all=False,
+            include_base_dir=(not exclude_others),
+            use_user=exclude_others
+        )
     ]
 
 

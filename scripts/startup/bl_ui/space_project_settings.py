@@ -6,7 +6,10 @@ import bpy
 from bpy.types import Header, Menu, Panel
 from bpy.app.translations import pgettext_iface as iface_
 from bl_ui.utils import CenterAlignMixIn
-from bl_ui.addons_ui import AddonsUI
+from bl_ui.addons_ui import (
+    AddonsUI,
+    AddonProvider,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -156,6 +159,23 @@ class PROJECTSETTINGS_PT_setup(CenterAlignMixIn, Panel):
         layout.prop(project, "root_path", text="Location")
 
 
+class AddonProviderProjectUI(AddonProvider):
+    owner_name = 'PROJECT'
+    install_operator = "preferences.project_addon_install"
+
+    @staticmethod
+    def enabled_addons(context):
+        project = context.project
+        return project.addons if project else {}
+
+    @staticmethod
+    def addon_paths():
+        import addon_utils
+        # The Project Settings only show project addons, not addons from other sources (like
+        # bundled ones).
+        return addon_utils.paths(include_project=True, include_prefs=False, exclude_others=True)
+
+
 class PROJECTSETTINGS_PT_addons(Panel):
     bl_space_type = 'PROJECT_SETTINGS'
     bl_region_type = 'WINDOW'
@@ -164,79 +184,8 @@ class PROJECTSETTINGS_PT_addons(Panel):
     bl_context = "addons"
 
     def draw(self, context):
-
         layout = self.layout
-
-        # TODO temporary duplicated UI code.
-
-        # AddonsUI.draw(context, layout)
-
-        layout.operator("preferences.project_addon_install", icon='IMPORT', text="Install...")
-
-        import os
-        import addon_utils
-        from bpy.app.translations import (
-            pgettext_iface as iface_,
-            pgettext_tip as tip_,
-        )
-        project = context.project
-        used_ext = {ext.module for ext in project.addons}
-
-        project_addon_dirs = tuple(
-            p for p in (
-                [os.path.join(bpy.utils.script_path_project(), "addons")]
-            )
-            if p
-        )
-
-        addons = [
-            (mod, addon_utils.module_bl_info(mod))
-            for mod in addon_utils.modules(refresh=False) if mod.__file__.startswith(project_addon_dirs)
-        ]
-
-        col = layout.column()
-
-        for mod, info in addons:
-            module_name = mod.__name__
-
-            is_enabled = module_name in used_ext
-
-            col_box = col.column()
-            box = col_box.box()
-            colsub = box.column()
-            row = colsub.row(align=True)
-
-            row.operator(
-                "preferences.addon_expand",
-                icon='DISCLOSURE_TRI_DOWN' if info["show_expanded"] else 'DISCLOSURE_TRI_RIGHT',
-                emboss=False,
-            ).module = module_name
-
-            props = row.operator(
-                "preferences.addon_disable" if is_enabled else "preferences.addon_enable",
-                icon='CHECKBOX_HLT' if is_enabled else 'CHECKBOX_DEHLT', text="",
-                emboss=False,
-            )
-            props.module = module_name
-            props.owner = 'PROJECT'
-
-            sub = row.row()
-            sub.active = is_enabled
-            sub.label(text=iface_("%s: %s") % (iface_(info["category"]), iface_(info["name"])))
-            if info["show_expanded"]:
-                if info["description"]:
-                    split = colsub.row().split(factor=0.15)
-                    split.label(text="Description:")
-                    split.label(text=tip_(info["description"]))
-
-                split = colsub.row().split(factor=0.15)
-
-                props = split.operator(
-                    "preferences.addon_remove", text="Remove From Project", icon='CANCEL',
-                )
-                props.module = module_name
-                props.owner = 'PROJECT'
-
+        AddonsUI.draw(context, layout, AddonProviderProjectUI)
 
 
 class PROJECTSETTINGS_PT_asset_libraries(Panel):

@@ -15,7 +15,10 @@ from bpy.app.translations import (
 )
 from bl_ui.utils import CenterAlignMixIn
 from bl_ui.utils import PresetPanel
-from bl_ui.addons_ui import AddonsUI
+from bl_ui.addons_ui import (
+    AddonsUI,
+    AddonProvider,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -2040,13 +2043,28 @@ class AddOnPanel:
     bl_context = "addons"
 
 
+class AddonProviderPreferencesUI(AddonProvider):
+    owner_name = 'PREFERENCES'
+    install_operator = "preferences.addon_install"
+
+    @staticmethod
+    def enabled_addons(context):
+        return context.preferences.addons
+
+    @staticmethod
+    def addon_paths():
+        import addon_utils
+        # The Preferences show add-ons from all sources, except of project add-ons.
+        return addon_utils.paths(include_project=False, include_prefs=True, exclude_others=False)
+
+
 class USERPREF_PT_addons(AddOnPanel, Panel):
     bl_label = "Add-ons"
     bl_options = {'HIDE_HEADER'}
 
     def draw(self, context):
         layout = self.layout
-        AddonsUI.draw(context, layout)
+        AddonsUI.draw(context, layout, AddonProviderPreferencesUI)
 
 
 # -----------------------------------------------------------------------------
