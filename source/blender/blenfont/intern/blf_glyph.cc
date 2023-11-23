@@ -1604,8 +1604,7 @@ static void blf_glyph_to_curves(FT_Outline ftoutline, ListBase *nurbsbase, const
       {
         const int l_next = (k < n - 1) ? (l + 1) : l_first;
         if (ftoutline.tags[l] == FT_Curve_Tag_Conic &&
-            ftoutline.tags[l_next] == FT_Curve_Tag_Conic)
-        {
+            ftoutline.tags[l_next] == FT_Curve_Tag_Conic) {
           onpoints[j]++;
         }
       }
@@ -1639,8 +1638,7 @@ static void blf_glyph_to_curves(FT_Outline ftoutline, ListBase *nurbsbase, const
       {
         const int l_next = (k < n - 1) ? (l + 1) : l_first;
         if (ftoutline.tags[l] == FT_Curve_Tag_Conic &&
-            ftoutline.tags[l_next] == FT_Curve_Tag_Conic)
-        {
+            ftoutline.tags[l_next] == FT_Curve_Tag_Conic) {
           dx = (ftoutline.points[l].x + ftoutline.points[l_next].x) * scale / 2.0f;
           dy = (ftoutline.points[l].y + ftoutline.points[l_next].y) * scale / 2.0f;
 
