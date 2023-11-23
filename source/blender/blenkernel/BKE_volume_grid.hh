@@ -140,7 +140,6 @@ struct GVolumeGrid : public VolumeGridCommon {
  * \{ */
 
 #ifdef WITH_OPENVDB
-
 namespace detail {
 
 template<typename FieldValueType, typename GridValueType, typename LeafBufferValueType>
@@ -262,7 +261,6 @@ struct GridConverter<std::string>
     : public detail::GridConverter_Dummy<std::string, openvdb::ValueMask, uint64_t> {
   using FieldValueType = std::string;
 };
-
 #endif /* WITH_OPENVDB */
 
 /** \} */
@@ -276,7 +274,6 @@ struct GridConverter<std::string>
 namespace detail {
 
 #ifdef WITH_OPENVDB
-
 /**
  * Tree types for commonly used values.
  */
@@ -334,59 +331,49 @@ template<> struct FieldValueTreeImpl<std::string> {
 
 template<typename T>
 using FieldValueGridImpl = openvdb::Grid<typename FieldValueTreeImpl<T>::Type>;
-
-#else /* WITH_OPENVDB */
-
+#else  /* WITH_OPENVDB */
 template<typename T> struct FieldValueGridImpl {
 };
-
 #endif /* WITH_OPENVDB */
 
 }  // namespace detail
 
-template<typename T> class FieldValueGrid : public ImplicitSharingMixin {
+#ifdef WITH_OPENVDB
+template<typename T> class FieldValueGrid : public VolumeGridCommon {
  public:
   using FieldValueType = T;
   using GridType = detail::FieldValueGridImpl<T>;
+  using GridBasePtr = std::shared_ptr<openvdb::GridBase>;
+  using GridBaseConstPtr = std::shared_ptr<const openvdb::GridBase>;
+  using GridPtr = std::shared_ptr<GridType>;
+  using GridConstPtr = std::shared_ptr<const GridType>;
 
  private:
-  std::shared_ptr<GridType> grid_;
+  GridPtr grid_;
 
  public:
-  FieldValueGrid() : grid_(nullptr) {}
-  FieldValueGrid(const FieldValueGrid<T> &other) : grid_(other.grid) {}
+  FieldValueGrid(const FieldValueGrid<T> &other) : VolumeGridCommon(other), grid_(other.grid) {}
   /* Takes ownership of the grid, which must not be shared. */
-  FieldValueGrid(const std::shared_ptr<GridType> &grid) : grid_(grid)
+  FieldValueGrid(const GridPtr &grid) : VolumeGridCommon(/*is_loaded=*/true), grid_(grid)
   {
     BLI_assert(grid_);
-  }
-  virtual ~FieldValueGrid() = default;
-
-  void delete_self() override
-  {
-    delete this;
-  }
-
-  void delete_data_only() override
-  {
-    this->grid_.reset();
   }
 
   bool operator==(const FieldValueGrid<T> &other) const
   {
-    return this->grid_ == other.grid_;
+    return grid_ == other.grid_;
   }
   bool operator!=(const FieldValueGrid<T> &other) const
   {
-    return this->grid_ != other.grid_;
+    return grid_ != other.grid_;
   }
 
-  std::shared_ptr<const GridType> get_grid() const
+  GridConstPtr get_grid() const
   {
     return grid_;
   }
 
-  std::shared_ptr<GridType> get_grid_for_write() const
+  GridPtr get_grid_for_write() const
   {
     if (is_mutable()) {
       return grid_;
@@ -394,7 +381,37 @@ template<typename T> class FieldValueGrid : public ImplicitSharingMixin {
 
     return grid_ ? grid_->deepCopy() : nullptr;
   }
+
+  void clear_reference(const char * /*volume_name*/) override
+  {
+    grid_ = get_grid()->copyWithNewTree();
+    clear_cache_entry();
+  }
+
+  void duplicate_reference(const char *volume_name, const char *filepath) override
+  {
+    /* Make a deep copy of the grid and remove any reference to a grid in the
+     * file cache. Load file grid into memory first if needed. */
+    load(volume_name, filepath);
+    /* TODO: avoid deep copy if we are the only user. */
+    grid_ = get_grid()->deepCopy();
+    clear_cache_entry();
+  }
+
+ private:
+  GridBasePtr main_grid() const override
+  {
+    return grid_;
+  }
+  void delete_data_only() override
+  {
+    grid_.reset();
+  }
 };
+#else
+template<typename T> class FieldValueGrid : public VolumeGridCommon {
+};
+#endif
 
 /** \} */
 
