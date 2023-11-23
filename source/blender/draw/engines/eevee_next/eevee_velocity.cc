@@ -277,9 +277,9 @@ void VelocityModule::geometry_steps_fill()
     else {
       BLI_assert(format->stride % 4 == 0);
       copy_ps.bind_ssbo("in_buf", geom.pos_buf);
-      copy_ps.push_constant("offset", geom.ofs);
-      copy_ps.push_constant("stride", int(format->stride / 4));
-      copy_ps.push_constant("length", geom.len);
+      copy_ps.push_constant("start_offset", geom.ofs);
+      copy_ps.push_constant("vertex_stride", int(format->stride / 4));
+      copy_ps.push_constant("vertex_count", geom.len);
       copy_ps.dispatch(int3(divide_ceil_u(geom.len, VERTEX_COPY_GROUP_SIZE), 1, 1));
     }
   }
