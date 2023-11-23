@@ -11,7 +11,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_sys_types.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 
 namespace blender::ed::greasepencil::fill {
 
