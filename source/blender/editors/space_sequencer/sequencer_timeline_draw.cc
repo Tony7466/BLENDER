@@ -1001,74 +1001,69 @@ static void draw_seq_text_overlay(TimelineDrawContext *timeline_ctx,
 }
 
 static void draw_strip_offsets(TimelineDrawContext *timeline_ctx,
-                               const StripDrawContext *strip_ctx)
+                               const blender::Vector<StripDrawContext> &strips)
 {
-  Sequence *seq = strip_ctx->seq;
-
-  if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0) {
-    return;
-  }
-  if (strip_ctx->is_single_image || timeline_ctx->pixely <= 0) {
-    return;
-  }
-  if ((timeline_ctx->sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_OFFSETS) == 0 &&
-      (strip_ctx->seq != ED_sequencer_special_preview_get()))
-  {
+  if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0 || timeline_ctx->pixely <= 0) {
     return;
   }
 
+  const bool show_offsets = (timeline_ctx->sseq->timeline_overlay.flag &
+                             SEQ_TIMELINE_SHOW_STRIP_OFFSETS) != 0;
+  const Sequence *special_preview = ED_sequencer_special_preview_get();
   Scene *scene = timeline_ctx->scene;
   ListBase *channels = timeline_ctx->channels;
 
-  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   GPU_blend(GPU_BLEND_ALPHA);
 
-  uchar col[4], blend_col[3];
-  color3ubv_from_seq(scene, seq, strip_ctx->show_strip_color_tag, col);
-  if (seq->flag & SELECT) {
-    UI_GetColorPtrShade3ubv(col, col, 50);
+  for (const StripDrawContext &strip_ctx : strips) {
+    Sequence *seq = strip_ctx.seq;
+
+    if (strip_ctx.is_single_image) {
+      continue;
+    }
+    if (!show_offsets && (strip_ctx.seq != special_preview)) {
+      continue;
+    }
+
+    uchar col[4], blend_col[4];
+    color3ubv_from_seq(scene, seq, strip_ctx.show_strip_color_tag, col);
+    if (seq->flag & SELECT) {
+      UI_GetColorPtrShade3ubv(col, col, 50);
+    }
+    col[3] = SEQ_render_is_muted(channels, seq) ? MUTE_ALPHA : 200;
+    UI_GetColorPtrShade3ubv(col, blend_col, 10);
+    blend_col[3] = 255;
+
+    const int strip_start = SEQ_time_start_frame_get(seq);
+    const int strip_end = SEQ_time_content_end_frame_get(scene, seq);
+
+    if (strip_ctx.left_handle > strip_start) {
+      timeline_ctx->quads->add_quad(strip_start,
+                                    strip_ctx.bottom - timeline_ctx->pixely,
+                                    strip_ctx.content_start,
+                                    strip_ctx.bottom - SEQ_STRIP_OFSBOTTOM,
+                                    col);
+      timeline_ctx->quads->add_wire_quad(strip_start,
+                                         strip_ctx.bottom - timeline_ctx->pixely,
+                                         strip_ctx.content_start,
+                                         strip_ctx.bottom - SEQ_STRIP_OFSBOTTOM,
+                                         blend_col);
+    }
+    if (strip_ctx.right_handle < strip_end) {
+      timeline_ctx->quads->add_quad(strip_ctx.right_handle,
+                                    strip_ctx.top + timeline_ctx->pixely,
+                                    strip_end,
+                                    strip_ctx.top + SEQ_STRIP_OFSBOTTOM,
+                                    col);
+      timeline_ctx->quads->add_wire_quad(strip_ctx.right_handle,
+                                         strip_ctx.top + timeline_ctx->pixely,
+                                         strip_end,
+                                         strip_ctx.top + SEQ_STRIP_OFSBOTTOM,
+                                         blend_col);
+    }
   }
-  col[3] = SEQ_render_is_muted(channels, seq) ? MUTE_ALPHA : 200;
-  UI_GetColorPtrShade3ubv(col, blend_col, 10);
-
-  const int strip_start = SEQ_time_start_frame_get(seq);
-  const int strip_end = SEQ_time_content_end_frame_get(scene, seq);
-
-  if (strip_ctx->left_handle > strip_start) {
-    immUniformColor4ubv(col);
-    immRectf(pos,
-             strip_start,
-             strip_ctx->bottom - timeline_ctx->pixely,
-             strip_ctx->content_start,
-             strip_ctx->bottom - SEQ_STRIP_OFSBOTTOM);
-
-    /* Outline. */
-    immUniformColor3ubv(blend_col);
-    imm_draw_box_wire_2d(pos,
-                         strip_start,
-                         strip_ctx->bottom - timeline_ctx->pixely,
-                         strip_ctx->content_start,
-                         strip_ctx->bottom - SEQ_STRIP_OFSBOTTOM);
-  }
-  if (strip_ctx->right_handle < strip_end) {
-    immUniformColor4ubv(col);
-    immRectf(pos,
-             strip_ctx->right_handle,
-             strip_ctx->top + timeline_ctx->pixely,
-             strip_end,
-             strip_ctx->top + SEQ_STRIP_OFSBOTTOM);
-
-    /* Outline. */
-    immUniformColor3ubv(blend_col);
-    imm_draw_box_wire_2d(pos,
-                         strip_ctx->right_handle,
-                         strip_ctx->top + timeline_ctx->pixely,
-                         strip_end,
-                         strip_ctx->top + SEQ_STRIP_OFSBOTTOM);
-  }
+  timeline_ctx->quads->draw();
   GPU_blend(GPU_BLEND_NONE);
-  immUnbindProgram();
 }
 
 static uchar mute_overlap_alpha_factor_get(const ListBase *channels, const Sequence *seq)
@@ -1123,7 +1118,6 @@ static void draw_strip_color_band(TimelineDrawContext *timeline_ctx,
                                   col);
   }
   timeline_ctx->quads->draw();
-
   GPU_blend(GPU_BLEND_NONE);
 }
 
@@ -1549,9 +1543,9 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx)
 
   draw_strip_background(timeline_ctx, strip_contexts);
   draw_strip_color_band(timeline_ctx, strip_contexts);
+  draw_strip_offsets(timeline_ctx, strip_contexts);
   for (const StripDrawContext &strip_ctx : strip_contexts) {
     // continue;
-    draw_strip_offsets(timeline_ctx, &strip_ctx);
     draw_seq_transition_strip(timeline_ctx, &strip_ctx);
     drawmeta_contents(timeline_ctx, &strip_ctx);
     draw_seq_strip_thumbnail(timeline_ctx->v2d,
