@@ -1584,7 +1584,7 @@ static void blf_glyph_to_curves(FT_Outline ftoutline, ListBase *nurbsbase, const
   int contour_prev;
 
   /* Start converting the FT data */
-  int *onpoints = (int *)MEM_callocN((ftoutline.n_contours) * sizeof(int), "onpoints");
+  int *onpoints = static_cast<int *>(MEM_callocN(size_t(ftoutline.n_contours * sizeof(int)), "onpoints"));
 
   /* Get number of on-curve points for bezier-triples (including conic virtual on-points). */
   for (j = 0, contour_prev = -1; j < ftoutline.n_contours; j++) {
@@ -1618,7 +1618,7 @@ static void blf_glyph_to_curves(FT_Outline ftoutline, ListBase *nurbsbase, const
 
     /* add new curve */
     nu = (Nurb *)MEM_callocN(sizeof(Nurb), "objfnt_nurb");
-    bezt = (BezTriple *)MEM_callocN((onpoints[j]) * sizeof(BezTriple), "objfnt_bezt");
+    bezt = static_cast<BezTriple *>(MEM_callocN(size_t(onpoints[j] * sizeof(BezTriple)), "objfnt_bezt"));
     BLI_addtail(nurbsbase, nu);
 
     nu->type = CU_BEZIER;
@@ -1639,20 +1639,20 @@ static void blf_glyph_to_curves(FT_Outline ftoutline, ListBase *nurbsbase, const
         const int l_next = (k < n - 1) ? (l + 1) : l_first;
         if (ftoutline.tags[l] == FT_Curve_Tag_Conic &&
             ftoutline.tags[l_next] == FT_Curve_Tag_Conic) {
-          dx = (ftoutline.points[l].x + ftoutline.points[l_next].x) * scale / 2.0f;
-          dy = (ftoutline.points[l].y + ftoutline.points[l_next].y) * scale / 2.0f;
+          dx = float(ftoutline.points[l].x + ftoutline.points[l_next].x) * scale / 2.0f;
+          dy = float(ftoutline.points[l].y + ftoutline.points[l_next].y) * scale / 2.0f;
 
           /* left handle */
-          bezt->vec[0][0] = (dx + (2 * ftoutline.points[l].x) * scale) / 3.0f;
-          bezt->vec[0][1] = (dy + (2 * ftoutline.points[l].y) * scale) / 3.0f;
+          bezt->vec[0][0] = (dx + (2.0f * float(ftoutline.points[l].x)) * scale) / 3.0f;
+          bezt->vec[0][1] = (dy + (2.0f * float(ftoutline.points[l].y)) * scale) / 3.0f;
 
           /* midpoint (virtual on-curve point) */
           bezt->vec[1][0] = dx;
           bezt->vec[1][1] = dy;
 
           /* right handle */
-          bezt->vec[2][0] = (dx + (2 * ftoutline.points[l_next].x) * scale) / 3.0f;
-          bezt->vec[2][1] = (dy + (2 * ftoutline.points[l_next].y) * scale) / 3.0f;
+          bezt->vec[2][0] = (dx + (2.0f * float(ftoutline.points[l_next].x)) * scale) / 3.0f;
+          bezt->vec[2][1] = (dy + (2.0f * float(ftoutline.points[l_next].y)) * scale) / 3.0f;
 
           bezt->h1 = bezt->h2 = HD_ALIGN;
           bezt->radius = 1.0f;
@@ -1667,47 +1667,49 @@ static void blf_glyph_to_curves(FT_Outline ftoutline, ListBase *nurbsbase, const
 
         /* left handle */
         if (ftoutline.tags[l_prev] == FT_Curve_Tag_Cubic) {
-          bezt->vec[0][0] = ftoutline.points[l_prev].x * scale;
-          bezt->vec[0][1] = ftoutline.points[l_prev].y * scale;
+          bezt->vec[0][0] = float(ftoutline.points[l_prev].x) * scale;
+          bezt->vec[0][1] = float(ftoutline.points[l_prev].y) * scale;
           bezt->h1 = HD_FREE;
         }
         else if (ftoutline.tags[l_prev] == FT_Curve_Tag_Conic) {
-          bezt->vec[0][0] = (ftoutline.points[l].x + (2 * ftoutline.points[l_prev].x)) * scale /
-                            3.0f;
-          bezt->vec[0][1] = (ftoutline.points[l].y + (2 * ftoutline.points[l_prev].y)) * scale /
-                            3.0f;
+          bezt->vec[0][0] = (float(ftoutline.points[l].x) +
+                             (2.0f * float(ftoutline.points[l_prev].x))) *
+                            scale / 3.0f;
+          bezt->vec[0][1] = (float(ftoutline.points[l].y) +
+                             (2.0f * float(ftoutline.points[l_prev].y))) *
+                            scale / 3.0f;
           bezt->h1 = HD_FREE;
         }
         else {
-          bezt->vec[0][0] = ftoutline.points[l].x * scale -
-                            (ftoutline.points[l].x - ftoutline.points[l_prev].x) * scale / 3.0f;
-          bezt->vec[0][1] = ftoutline.points[l].y * scale -
-                            (ftoutline.points[l].y - ftoutline.points[l_prev].y) * scale / 3.0f;
+          bezt->vec[0][0] = float(ftoutline.points[l].x) * scale -
+                            (float(ftoutline.points[l].x) - float(ftoutline.points[l_prev].x)) * scale / 3.0f;
+          bezt->vec[0][1] = float(ftoutline.points[l].y) * scale -
+                            (float(ftoutline.points[l].y) - float(ftoutline.points[l_prev].y)) * scale / 3.0f;
           bezt->h1 = HD_VECT;
         }
 
         /* midpoint (on-curve point) */
-        bezt->vec[1][0] = ftoutline.points[l].x * scale;
-        bezt->vec[1][1] = ftoutline.points[l].y * scale;
+        bezt->vec[1][0] = float(ftoutline.points[l].x) * scale;
+        bezt->vec[1][1] = float(ftoutline.points[l].y) * scale;
 
         /* right handle */
         if (ftoutline.tags[l_next] == FT_Curve_Tag_Cubic) {
-          bezt->vec[2][0] = ftoutline.points[l_next].x * scale;
-          bezt->vec[2][1] = ftoutline.points[l_next].y * scale;
+          bezt->vec[2][0] = float(ftoutline.points[l_next].x) * scale;
+          bezt->vec[2][1] = float(ftoutline.points[l_next].y) * scale;
           bezt->h2 = HD_FREE;
         }
         else if (ftoutline.tags[l_next] == FT_Curve_Tag_Conic) {
-          bezt->vec[2][0] = (ftoutline.points[l].x + (2 * ftoutline.points[l_next].x)) * scale /
+          bezt->vec[2][0] = (float(ftoutline.points[l].x) + (2.0f * float(ftoutline.points[l_next].x))) * scale /
                             3.0f;
-          bezt->vec[2][1] = (ftoutline.points[l].y + (2 * ftoutline.points[l_next].y)) * scale /
+          bezt->vec[2][1] = (float(ftoutline.points[l].y) + (2.0f * float(ftoutline.points[l_next].y))) * scale /
                             3.0f;
           bezt->h2 = HD_FREE;
         }
         else {
-          bezt->vec[2][0] = ftoutline.points[l].x * scale -
-                            (ftoutline.points[l].x - ftoutline.points[l_next].x) * scale / 3.0f;
-          bezt->vec[2][1] = ftoutline.points[l].y * scale -
-                            (ftoutline.points[l].y - ftoutline.points[l_next].y) * scale / 3.0f;
+          bezt->vec[2][0] = float(ftoutline.points[l].x) * scale -
+                            (float(ftoutline.points[l].x) - float(ftoutline.points[l_next].x)) * scale / 3.0f;
+          bezt->vec[2][1] = float(ftoutline.points[l].y) * scale -
+                            (float(ftoutline.points[l].y) - float(ftoutline.points[l_next].y)) * scale / 3.0f;
           bezt->h2 = HD_VECT;
         }
 
