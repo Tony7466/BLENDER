@@ -103,7 +103,6 @@
 /* Keep this as a define to avoid shader variations. */
 #define RAYTRACE_RADIANCE_FORMAT GPU_R11F_G11F_B10F
 #define RAYTRACE_RAYTIME_FORMAT GPU_R32F
-#define RAYTRACE_HORIZON_FORMAT GPU_R32UI
 #define RAYTRACE_VARIANCE_FORMAT GPU_R16F
 #define RAYTRACE_TILEMASK_FORMAT GPU_R8UI
 
@@ -249,8 +248,9 @@
 #define SC_normal_id_SLOT 5
 #define SC_any_render_pass_1_SLOT 6
 #define SC_any_render_pass_2_SLOT 7
-#define SC_aov_color_len_SLOT 8
-#define SC_cryptomatte_samples_len_SLOT 9
+#define SC_any_render_pass_3_SLOT 8
+#define SC_aov_color_len_SLOT 9
+#define SC_cryptomatte_samples_len_SLOT 10
 
 /* eevee_hiz_update. */
 #define SC_update_mip_0_SLOT 0

@@ -295,11 +295,13 @@ void Film::init(const int2 &extent, const rcti *output_rect)
                                                    EEVEE_RENDER_PASS_ENVIRONMENT |
                                                    EEVEE_RENDER_PASS_MIST |
                                                    EEVEE_RENDER_PASS_SHADOW | EEVEE_RENDER_PASS_AO;
+    const eViewLayerEEVEEPassType color_passes_3 = EEVEE_RENDER_PASS_TRANSPARENT;
 
     data_.exposure_scale = pow2f(scene.view_settings.exposure);
     data_.has_data = (enabled_passes_ & data_passes) != 0;
     data_.any_render_pass_1 = (enabled_passes_ & color_passes_1) != 0;
     data_.any_render_pass_2 = (enabled_passes_ & color_passes_2) != 0;
+    data_.any_render_pass_3 = (enabled_passes_ & color_passes_3) != 0;
   }
   {
     /* Set pass offsets. */
@@ -341,6 +343,7 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     data_.environment_id = pass_index_get(EEVEE_RENDER_PASS_ENVIRONMENT);
     data_.shadow_id = pass_index_get(EEVEE_RENDER_PASS_SHADOW);
     data_.ambient_occlusion_id = pass_index_get(EEVEE_RENDER_PASS_AO);
+    data_.transparent_id = pass_index_get(EEVEE_RENDER_PASS_TRANSPARENT);
 
     data_.aov_color_id = data_.color_len;
     data_.aov_value_id = data_.value_len;
@@ -470,6 +473,8 @@ void Film::sync()
                                      &inst_.film.get_data().any_render_pass_1);
   accumulate_ps_.specialize_constant(SC_any_render_pass_2_SLOT,
                                      &inst_.film.get_data().any_render_pass_2);
+  accumulate_ps_.specialize_constant(SC_any_render_pass_3_SLOT,
+                                     &inst_.film.get_data().any_render_pass_3);
   accumulate_ps_.specialize_constant(SC_aov_color_len_SLOT, &inst_.film.get_data().aov_color_len);
   accumulate_ps_.specialize_constant(SC_cryptomatte_samples_len_SLOT,
                                      &inst_.film.get_data().cryptomatte_samples_len);
@@ -644,7 +649,7 @@ void Film::update_sample_table()
   }
 }
 
-void Film::accumulate(const DRWView *view, GPUTexture *combined_final_tx)
+void Film::accumulate(View &view, GPUTexture *combined_final_tx)
 {
   if (inst_.is_viewport()) {
     DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
@@ -665,9 +670,7 @@ void Film::accumulate(const DRWView *view, GPUTexture *combined_final_tx)
   data_.display_only = false;
   inst_.push_uniform_data();
 
-  draw::View drw_view("MainView", view);
-
-  inst_.manager->submit(accumulate_ps_, drw_view);
+  inst_.manager->submit(accumulate_ps_, view);
 
   combined_tx_.swap();
   weight_tx_.swap();

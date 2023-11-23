@@ -58,6 +58,10 @@ GPU_SHADER_CREATE_INFO(eevee_film)
                              Type::INT,
                              "SC_any_render_pass_2",
                              "uniform_buf.film.any_render_pass_2")
+    .specialization_constant(SC_any_render_pass_3_SLOT,
+                             Type::INT,
+                             "SC_any_render_pass_3",
+                             "uniform_buf.film.any_render_pass_3")
     .specialization_constant(SC_aov_color_len_SLOT,
                              Type::INT,
                              "SC_aov_color_len",
