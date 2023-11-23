@@ -283,17 +283,15 @@ std::string ShaderCreateInfo::check_error() const
 
   /* validate specialization constants. */
   for (int i = 0; i < specialization_constants_.size(); i++) {
-    for (int j = 0; j < specialization_constants_.size(); j++) {
-      if (i != j) {
-        if (specialization_constants_[i].constant_id == specialization_constants_[j].constant_id) {
-          error += this->name_ + " contains two specialization constants with the ID: " +
-                   std::to_string(specialization_constants_[i].constant_id);
-        }
-        if (specialization_constants_[i].constant_name ==
-            specialization_constants_[j].constant_name) {
-          error += this->name_ + " contains two specialization constants with the name: " +
-                   std::string(specialization_constants_[i].constant_name);
-        }
+    for (int j = i + 1; j < specialization_constants_.size(); j++) {
+      if (specialization_constants_[i].constant_id == specialization_constants_[j].constant_id) {
+        error += this->name_ + " contains two specialization constants with the ID: " +
+                 std::to_string(specialization_constants_[i].constant_id);
+      }
+      if (specialization_constants_[i].constant_name == specialization_constants_[j].constant_name)
+      {
+        error += this->name_ + " contains two specialization constants with the name: " +
+                 std::string(specialization_constants_[i].constant_name);
       }
     }
   }
