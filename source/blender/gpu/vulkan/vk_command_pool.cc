@@ -28,7 +28,8 @@ void VKCommandPool::init(const VKDevice &device)
   VK_ALLOCATION_CALLBACKS;
   VkCommandPoolCreateInfo command_pool_info = {};
   command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-  command_pool_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+  command_pool_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
+                            VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
   command_pool_info.queueFamilyIndex = device.queue_family_get();
 
   vkCreateCommandPool(
@@ -50,18 +51,19 @@ void VKCommandPool::free(const VKDevice &device)
 void VKCommandPool::trim(const VKDevice &device)
 {
   vkTrimCommandPool(device.device_get(), vk_command_pool_, 0);
-  stats.trimmed += 1;
+  stats.trimming_events += 1;
 }
 
 void VKCommandPool::reset(const VKDevice &device)
 {
-  if (stats.command_buffers_allocated != stats.command_buffers_freed) {
-    return;
-  }
-
   vkResetCommandPool(
       device.device_get(), vk_command_pool_, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-  stats.reset += 1;
+  stats.reset_events += 1;
+
+  std::queue<TimelineCommandBuffers> empty;
+  in_flight_command_buffers_.swap(empty);
+  stats.command_buffers_in_flight = 0;
+  stats.command_buffers_freed = stats.command_buffers_allocated;
 }
 
 void VKCommandPool::allocate_buffers(const VKDevice &device,
@@ -83,6 +85,9 @@ void VKCommandPool::allocate_buffers(const VKDevice &device,
 void VKCommandPool::free_buffers(const VKDevice &device, Span<VkCommandBuffer> command_buffers)
 {
   BLI_assert(vk_command_pool_ != VK_NULL_HANDLE);
+  for (const VkCommandBuffer command_buffer : command_buffers) {
+    vkResetCommandBuffer(command_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+  }
   vkFreeCommandBuffers(
       device.device_get(), vk_command_pool_, command_buffers.size(), command_buffers.data());
   stats.command_buffers_freed += command_buffers.size();
@@ -120,8 +125,8 @@ void VKCommandPool::debug_print() const
   std::cout << "allocated=" << stats.command_buffers_allocated;
   std::cout << ",in_flight=" << stats.command_buffers_in_flight;
   std::cout << ",freed=" << stats.command_buffers_freed;
-  std::cout << ",reset=" << stats.reset;
-  std::cout << ",trimmed=" << stats.trimmed;
+  std::cout << ",reset_events=" << stats.reset_events;
+  std::cout << ",trimmed_events=" << stats.trimming_events;
   std::cout << ")\n";
 }
 

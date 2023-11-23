@@ -1001,9 +1001,6 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   }
   extensions_device.push_back(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
   extensions_device.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
-  // TODO: should we remove this as it is already in core? Currently tested implementation fails to
-  // enable the extension.
-  extensions_device.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
 
   /* Enable MoltenVK required instance extensions. */
 #ifdef VK_MVK_MOLTENVK_EXTENSION_NAME

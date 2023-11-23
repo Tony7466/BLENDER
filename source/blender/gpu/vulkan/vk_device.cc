@@ -115,12 +115,14 @@ void VKDevice::init_physical_device_features()
 void VKDevice::init_memory_allocator()
 {
   VK_ALLOCATION_CALLBACKS;
+  VMA_DEVICE_MEMORY_CALLBACKS;
   VmaAllocatorCreateInfo info = {};
   info.vulkanApiVersion = VK_API_VERSION_1_2;
   info.physicalDevice = vk_physical_device_;
   info.device = vk_device_;
   info.instance = vk_instance_;
   info.pAllocationCallbacks = vk_allocation_callbacks;
+  info.pDeviceMemoryCallbacks = vma_device_memory_callbacks;
   vmaCreateAllocator(&info, &mem_allocator_);
 }
 

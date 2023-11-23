@@ -119,8 +119,14 @@ void VKContext::end_frame()
   VKDevice &device = VKBackend::get().device_get();
   command_buffers_.finish();
   command_buffers_.trim();
-  command_buffers_.debug_print();
   device.destroy_discarded_resources();
+
+#ifdef WITH_VULKAN_GUARDEDALLOC
+  char *result;
+  vmaBuildStatsString(device.mem_allocator_get(), &result, VK_FALSE);
+  std::cout << result;
+  vmaFreeStatsString(device.mem_allocator_get(), result);
+#endif
 }
 
 void VKContext::flush()

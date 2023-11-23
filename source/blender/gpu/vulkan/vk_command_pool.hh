@@ -30,8 +30,8 @@ class VKCommandPool : public NonCopyable {
     uint64_t command_buffers_allocated = 0;
     uint64_t command_buffers_freed = 0;
     uint64_t command_buffers_in_flight = 0;
-    uint64_t trimmed = 0;
-    uint64_t reset = 0;
+    uint64_t trimming_events = 0;
+    uint64_t reset_events = 0;
   } stats;
 
  public:
