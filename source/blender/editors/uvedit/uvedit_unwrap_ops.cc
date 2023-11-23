@@ -2790,28 +2790,27 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool unwrap_draw_check_prop_slim(PointerRNA *ptr, PropertyRNA *prop, void *user_data)
+static bool unwrap_draw_check_prop_slim(PointerRNA * /*ptr*/,
+                                        PropertyRNA *prop,
+                                        void * /*user_data*/)
 {
-  (void)ptr;
-  (void)user_data;
   const char *prop_id = RNA_property_identifier(prop);
 
   return !(STREQ(prop_id, "fill_holes"));
 }
 
-static bool unwrap_draw_check_prop_abf(PointerRNA *ptr, PropertyRNA *prop, void *user_data)
+static bool unwrap_draw_check_prop_abf(PointerRNA * /*ptr*/,
+                                       PropertyRNA *prop,
+                                       void * /*user_data*/)
 {
-  (void)ptr;
-  (void)user_data;
   const char *prop_id = RNA_property_identifier(prop);
 
   return !(STREQ(prop_id, "reflection_mode") || STREQ(prop_id, "iterations") ||
            STREQ(prop_id, "vertex_group") || STREQ(prop_id, "vertex_group_factor"));
 }
 
-static void unwrap_draw(bContext *C, wmOperator *op)
+static void unwrap_draw(bContext * /*C*/, wmOperator *op)
 {
-  (void)C;
   uiLayout *layout = op->layout;
 
   uiLayoutSetPropSep(layout, true);
