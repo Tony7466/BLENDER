@@ -439,7 +439,7 @@ static void nla_main_region_view2d_changed(const bContext *C, ARegion *region)
    * so bottom strip isn't hidden.
    */
   if (!BLI_listbase_is_empty(ED_context_get_markers(C))) {
-    v2d->tot.ymin -= (UI_MARKER_MARGIN_Y - NLACHANNEL_STEP(snla));
+    v2d->tot.ymin -= (UI_MARKER_MARGIN_Y - NLATRACK_STEP(snla));
   }
   UI_view2d_curRect_clamp_y(v2d);
 }
