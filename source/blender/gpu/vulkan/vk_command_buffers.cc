@@ -128,7 +128,7 @@ void VKCommandBuffers::submit_command_buffers(VKDevice &device,
   stats.command_buffers_submitted += in_flight.vk_command_buffers.size();
 
   command_pool_.mark_in_flight(in_flight);
-  finish();
+  // finish();
 }
 
 void VKCommandBuffers::submit()
@@ -173,6 +173,15 @@ void VKCommandBuffers::finish()
   timeline_semaphore.wait(device, last_signal_value_);
   command_pool_.free_completed_buffers(device);
   submission_id_.next();
+}
+
+void VKCommandBuffers::reset()
+{
+  const VKDevice &device = VKBackend::get().device_get();
+  submit();
+  finish();
+  command_pool_.reset(device);
+  init_command_buffers(device, true, true);
 }
 
 void VKCommandBuffers::trim()

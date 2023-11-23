@@ -112,7 +112,10 @@ void VKContext::deactivate()
   is_active_ = false;
 }
 
-void VKContext::begin_frame() {}
+void VKContext::begin_frame()
+{
+  command_buffers_.reset();
+}
 
 void VKContext::end_frame()
 {
