@@ -57,8 +57,8 @@ void VKBatch::draw(int vertex_first, int vertex_count, int instance_first, int i
   if (draw_indexed) {
     command_buffers.draw_indexed(vertex_count,
                                  instance_count,
-                                 vertex_first,
                                  index_buffer->index_start_get(),
+                                 vertex_first,
                                  instance_first);
   }
   else {
