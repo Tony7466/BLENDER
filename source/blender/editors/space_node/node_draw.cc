@@ -91,8 +91,6 @@
 
 #include "GEO_fillet_curves.hh"
 
-#include "../interface/interface_intern.hh" /* TODO: Remove */
-
 #include "node_intern.hh" /* own include */
 
 #include <fmt/format.h>
@@ -1863,7 +1861,7 @@ static void node_draw_shadow(const SpaceNode &snode,
 
   ui_draw_dropshadow(&rct, radius, shadow_width, snode.runtime->aspect, shadow_alpha);
 
-  /* Outline emphasis. */
+  /* Outline emphasis. Slight darkening _inside_ the outline. */
   const float color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
   rctf rect{};
   rect.xmin = rct.xmin - 0.5f;

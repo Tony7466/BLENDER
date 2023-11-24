@@ -494,6 +494,7 @@ int UI_draw_roundbox_corner_get();
 #endif
 
 void ui_draw_dropshadow(const rctf *rct, float radius, float width, float aspect, float alpha);
+
 void UI_draw_text_underline(int pos_x, int pos_y, int len, int height, const float color[4]);
 
 /**
