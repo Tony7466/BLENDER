@@ -168,7 +168,7 @@ struct GridConverter<std::string>
  * Wraps around an OpenVDB grid to manage it with implicit sharing.
  * \{ */
 
-struct VolumeGridSharedData : public ImplicitSharingMixin {
+struct VolumeGrid : public ImplicitSharingMixin {
 #ifdef WITH_OPENVDB
  public:
   using GridBase = openvdb::GridBase;
@@ -194,14 +194,14 @@ struct VolumeGridSharedData : public ImplicitSharingMixin {
   mutable bool is_loaded_;
 
  public:
-  VolumeGridSharedData(const GridBasePtr &grid);
-  VolumeGridSharedData(bool is_loaded, int simplify_level = 0);
-  VolumeGridSharedData(const VolumeFileCacheEntry &template_entry, int simplify_level = 0);
-  VolumeGridSharedData(const char *template_file_path,
-                       const GridBasePtr &template_grid,
-                       int simplify_level = 0);
-  VolumeGridSharedData(const VolumeGridSharedData &other);
-  ~VolumeGridSharedData();
+  VolumeGrid(const GridBasePtr &grid);
+  VolumeGrid(bool is_loaded, int simplify_level = 0);
+  VolumeGrid(const VolumeFileCacheEntry &template_entry, int simplify_level = 0);
+  VolumeGrid(const char *template_file_path,
+             const GridBasePtr &template_grid,
+             int simplify_level = 0);
+  VolumeGrid(const VolumeGrid &other);
+  ~VolumeGrid();
 
   void delete_self() override;
   void delete_data_only() override;
@@ -231,4 +231,4 @@ struct VolumeGridSharedData : public ImplicitSharingMixin {
 }  // namespace blender::bke
 
 /* Root namespace alias for older code. */
-using VolumeGridSharedData = blender::bke::VolumeGridSharedData;
+using VolumeGrid = blender::bke::VolumeGrid;

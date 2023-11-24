@@ -44,7 +44,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 }
 
 template<typename T>
-static bool try_output_grid_value(GeoNodeExecParams params, VolumeGridSharedData &grid)
+static bool try_output_grid_value(GeoNodeExecParams params, VolumeGrid &grid)
 {
   using GridType = typename bke::VolumeGridPtr<T>::GridType;
   typename GridType::Ptr vdb_grid = openvdb::GridBase::grid<GridType>(grid.grid);
@@ -69,7 +69,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const bool remove_grid = params.extract_input<bool>("Remove");
 
   if (Volume *volume = geometry_set.get_volume_for_write()) {
-    if (VolumeGridSharedData *grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
+    if (VolumeGrid *grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
       switch (data_type) {
         case CD_PROP_FLOAT:
           try_output_grid_value<float>(params, *grid);

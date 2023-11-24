@@ -48,8 +48,7 @@ const EnumPropertyItem rna_enum_volume_grid_data_type_items[] = {
  * Dummy type used as a stand-in for the actual VolumeGrid struct.
  * Generated RNA callbacks need a C struct as the main "self" argument.
  * The struct does not have to be an actual DNA struct.
- * - VolumeGrid is a type alias ("using") that cannot be used directly for this purpose.
- * - VolumeGridSharedData is the actual struct but C++ namespaces also don't work.
+ * blender::bke::VolumeGrid is the actual struct but C++ namespaces don't work.
  * This dummy struct is used as a placeholder for the callbacks and reinterpreted as the actual
  * VolumeGrid type.
  */
@@ -108,50 +107,49 @@ static void rna_Volume_velocity_grid_set(PointerRNA *ptr, const char *value)
 
 static void rna_VolumeGrid_name_get(PointerRNA *ptr, char *value)
 {
-  VolumeGridSharedData *grid = static_cast<VolumeGridSharedData *>(ptr->data);
+  VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
   strcpy(value, BKE_volume_grid_name(grid));
 }
 
 static int rna_VolumeGrid_name_length(PointerRNA *ptr)
 {
-  VolumeGridSharedData *grid = static_cast<VolumeGridSharedData *>(ptr->data);
+  VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
   return strlen(BKE_volume_grid_name(grid));
 }
 
 static int rna_VolumeGrid_data_type_get(PointerRNA *ptr)
 {
-  const VolumeGridSharedData *grid = static_cast<VolumeGridSharedData *>(ptr->data);
+  const VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
   return BKE_volume_grid_type(grid);
 }
 
 static int rna_VolumeGrid_channels_get(PointerRNA *ptr)
 {
-  const VolumeGridSharedData *grid = static_cast<VolumeGridSharedData *>(ptr->data);
+  const VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
   return BKE_volume_grid_channels(grid);
 }
 
 static void rna_VolumeGrid_matrix_object_get(PointerRNA *ptr, float *value)
 {
-  VolumeGridSharedData *grid = static_cast<VolumeGridSharedData *>(ptr->data);
+  VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
   BKE_volume_grid_transform_matrix(grid, (float(*)[4])value);
 }
 
 static bool rna_VolumeGrid_is_loaded_get(PointerRNA *ptr)
 {
-  VolumeGridSharedData *grid = static_cast<VolumeGridSharedData *>(ptr->data);
+  VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
   return BKE_volume_grid_is_loaded(grid);
 }
 
 static bool rna_VolumeGrid_load(ID *id, DummyVolumeGrid *grid)
 {
   return BKE_volume_grid_load(reinterpret_cast<Volume *>(id),
-                              reinterpret_cast<VolumeGridSharedData *>(grid));
+                              reinterpret_cast<VolumeGrid *>(grid));
 }
 
 static void rna_VolumeGrid_unload(ID *id, DummyVolumeGrid *grid)
 {
-  BKE_volume_grid_unload(reinterpret_cast<Volume *>(id),
-                         reinterpret_cast<VolumeGridSharedData *>(grid));
+  BKE_volume_grid_unload(reinterpret_cast<Volume *>(id), reinterpret_cast<VolumeGrid *>(grid));
 }
 
 /* Grids Iterator */
@@ -178,8 +176,7 @@ static void rna_Volume_grids_end(CollectionPropertyIterator * /*iter*/) {}
 static PointerRNA rna_Volume_grids_get(CollectionPropertyIterator *iter)
 {
   Volume *volume = static_cast<Volume *>(iter->internal.count.ptr);
-  const VolumeGridSharedData *grid = BKE_volume_grid_get_for_read(volume,
-                                                                  iter->internal.count.item);
+  const VolumeGrid *grid = BKE_volume_grid_get_for_read(volume, iter->internal.count.item);
   return rna_pointer_inherit_refine(&iter->parent, &RNA_VolumeGrid, (void *)grid);
 }
 

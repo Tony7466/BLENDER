@@ -14,9 +14,9 @@
 
 struct Volume;
 namespace blender::bke {
-struct VolumeGridSharedData;
+struct VolumeGrid;
 }
-using VolumeGridSharedData = blender::bke::VolumeGridSharedData;
+using VolumeGrid = blender::bke::VolumeGrid;
 
 /** \file
  * \ingroup geo
@@ -29,7 +29,7 @@ namespace blender::geometry {
 /**
  * Add a new fog VolumeGrid to the Volume by converting the supplied points.
  */
-VolumeGridSharedData *fog_volume_grid_add_from_points(Volume *volume,
+VolumeGrid *fog_volume_grid_add_from_points(Volume *volume,
                                                       StringRefNull name,
                                                       Span<float3> positions,
                                                       Span<float> radii,
@@ -38,7 +38,7 @@ VolumeGridSharedData *fog_volume_grid_add_from_points(Volume *volume,
 /**
  * Add a new SDF VolumeGrid to the Volume by converting the supplied points.
  */
-VolumeGridSharedData *sdf_volume_grid_add_from_points(Volume *volume,
+VolumeGrid *sdf_volume_grid_add_from_points(Volume *volume,
                                                       StringRefNull name,
                                                       Span<float3> positions,
                                                       Span<float> radii,

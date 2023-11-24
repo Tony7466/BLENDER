@@ -208,32 +208,31 @@ static struct VolumeFileCache {
 
 namespace blender::bke {
 
-VolumeGridSharedData::VolumeGridSharedData(const GridBasePtr &grid)
+VolumeGrid::VolumeGrid(const GridBasePtr &grid)
     : grid(grid), entry_(nullptr), simplify_level_(0), is_loaded_(false)
 {
 }
 
-VolumeGridSharedData::VolumeGridSharedData(const bool is_loaded, const int simplify_level)
+VolumeGrid::VolumeGrid(const bool is_loaded, const int simplify_level)
     : grid(nullptr), entry_(nullptr), simplify_level_(simplify_level), is_loaded_(is_loaded)
 {
 }
 
-VolumeGridSharedData::VolumeGridSharedData(const VolumeFileCacheEntry &template_entry,
-                                           const int simplify_level)
+VolumeGrid::VolumeGrid(const VolumeFileCacheEntry &template_entry, const int simplify_level)
     : grid(nullptr), entry_(nullptr), simplify_level_(simplify_level), is_loaded_(false)
 {
   entry_ = GLOBAL_CACHE.add_metadata_user(template_entry);
 }
 
-VolumeGridSharedData::VolumeGridSharedData(const char *template_file_path,
-                                           const GridBasePtr &template_grid,
-                                           const int simplify_level)
+VolumeGrid::VolumeGrid(const char *template_file_path,
+                       const GridBasePtr &template_grid,
+                       const int simplify_level)
     : grid(nullptr), entry_(nullptr), simplify_level_(simplify_level), is_loaded_(false)
 {
   entry_ = GLOBAL_CACHE.add_metadata_user(VolumeFileCacheEntry(template_file_path, template_grid));
 }
 
-VolumeGridSharedData::VolumeGridSharedData(const VolumeGridSharedData &other)
+VolumeGrid::VolumeGrid(const VolumeGrid &other)
     : grid(nullptr),
       entry_(other.entry_),
       simplify_level_(other.simplify_level_),
@@ -244,24 +243,24 @@ VolumeGridSharedData::VolumeGridSharedData(const VolumeGridSharedData &other)
   }
 }
 
-VolumeGridSharedData::~VolumeGridSharedData()
+VolumeGrid::~VolumeGrid()
 {
   if (entry_) {
     GLOBAL_CACHE.remove_user(*entry_, is_loaded_);
   }
 }
 
-void VolumeGridSharedData::delete_self()
+void VolumeGrid::delete_self()
 {
   delete this;
 }
 
-void VolumeGridSharedData::delete_data_only()
+void VolumeGrid::delete_data_only()
 {
   grid.reset();
 }
 
-const char *VolumeGridSharedData::name() const
+const char *VolumeGrid::name() const
 {
   /* Don't use vdb.getName() since it copies the string, we want a pointer to the
    * original so it doesn't get freed out of scope. */
@@ -270,7 +269,7 @@ const char *VolumeGridSharedData::name() const
   return (name_meta) ? name_meta->value().c_str() : "";
 }
 
-const char *VolumeGridSharedData::error_message() const
+const char *VolumeGrid::error_message() const
 {
   if (is_loaded_ && entry_ && !entry_->error_msg.empty()) {
     return entry_->error_msg.c_str();
@@ -279,12 +278,12 @@ const char *VolumeGridSharedData::error_message() const
   return nullptr;
 }
 
-bool VolumeGridSharedData::grid_is_loaded() const
+bool VolumeGrid::grid_is_loaded() const
 {
   return is_loaded_;
 }
 
-void VolumeGridSharedData::load(const char *volume_name, const char *filepath) const
+void VolumeGrid::load(const char *volume_name, const char *filepath) const
 {
   /* If already loaded or not file-backed, nothing to do. */
   if (is_loaded_ || entry_ == nullptr) {
@@ -336,7 +335,7 @@ void VolumeGridSharedData::load(const char *volume_name, const char *filepath) c
   is_loaded_ = true;
 }
 
-void VolumeGridSharedData::unload(const char *volume_name) const
+void VolumeGrid::unload(const char *volume_name) const
 {
   /* Not loaded or not file-backed, nothing to do. */
   if (!is_loaded_ || entry_ == nullptr) {
@@ -360,19 +359,19 @@ void VolumeGridSharedData::unload(const char *volume_name) const
   is_loaded_ = false;
 }
 
-void VolumeGridSharedData::set_simplify_level(const int simplify_level)
+void VolumeGrid::set_simplify_level(const int simplify_level)
 {
   BLI_assert(simplify_level_ >= 0);
   simplify_level_ = simplify_level;
 }
 
-void VolumeGridSharedData::clear_reference(const char * /*volume_name*/)
+void VolumeGrid::clear_reference(const char * /*volume_name*/)
 {
   grid = main_grid()->copyGridWithNewTree();
   clear_cache_entry();
 }
 
-void VolumeGridSharedData::duplicate_reference(const char *volume_name, const char *filepath)
+void VolumeGrid::duplicate_reference(const char *volume_name, const char *filepath)
 {
   /* Make a deep copy of the grid and remove any reference to a grid in the
    * file cache. Load file grid into memory first if needed. */
@@ -382,12 +381,12 @@ void VolumeGridSharedData::duplicate_reference(const char *volume_name, const ch
   clear_cache_entry();
 }
 
-openvdb::GridBase::Ptr VolumeGridSharedData::main_grid() const
+openvdb::GridBase::Ptr VolumeGrid::main_grid() const
 {
   return (entry_) ? entry_->grid : grid;
 }
 
-void VolumeGridSharedData::clear_cache_entry()
+void VolumeGrid::clear_cache_entry()
 {
   if (entry_) {
     GLOBAL_CACHE.remove_user(*entry_, is_loaded_);

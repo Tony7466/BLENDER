@@ -50,7 +50,7 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
   using GridType = openvdb::GridBase;
   using GridPtr = std::shared_ptr<GridType>;
   using GridConstPtr = std::shared_ptr<const GridType>;
-  using SharedDataPtr = ImplicitSharingPtr<VolumeGridSharedData>;
+  using SharedDataPtr = ImplicitSharingPtr<VolumeGrid>;
 
   /* OpenVDB grid. */
   SharedDataPtr data;
@@ -177,7 +177,7 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
   using GridType = detail::VolumeGridType<T>;
   using GridPtr = std::shared_ptr<GridType>;
   using GridConstPtr = std::shared_ptr<const GridType>;
-  using SharedDataPtr = ImplicitSharingPtr<VolumeGridSharedData>;
+  using SharedDataPtr = ImplicitSharingPtr<VolumeGrid>;
 
   /* OpenVDB grid. */
   SharedDataPtr data;

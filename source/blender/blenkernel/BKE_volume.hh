@@ -22,9 +22,9 @@ struct Scene;
 struct Volume;
 struct VolumeGridVector;
 namespace blender::bke {
-struct VolumeGridSharedData;
+struct VolumeGrid;
 }
-using VolumeGridSharedData = blender::bke::VolumeGridSharedData;
+using VolumeGrid = blender::bke::VolumeGrid;
 
 /* Module */
 
@@ -74,12 +74,12 @@ bool BKE_volume_is_loaded(const Volume *volume);
 int BKE_volume_num_grids(const Volume *volume);
 const char *BKE_volume_grids_error_msg(const Volume *volume);
 const char *BKE_volume_grids_frame_filepath(const Volume *volume);
-const VolumeGridSharedData *BKE_volume_grid_get_for_read(const Volume *volume, int grid_index);
-VolumeGridSharedData *BKE_volume_grid_get_for_write(Volume *volume, int grid_index);
-const VolumeGridSharedData *BKE_volume_grid_active_get_for_read(const Volume *volume);
+const VolumeGrid *BKE_volume_grid_get_for_read(const Volume *volume, int grid_index);
+VolumeGrid *BKE_volume_grid_get_for_write(Volume *volume, int grid_index);
+const VolumeGrid *BKE_volume_grid_active_get_for_read(const Volume *volume);
 /* Tries to find a grid with the given name. Make sure that the volume has been loaded. */
-const VolumeGridSharedData *BKE_volume_grid_find_for_read(const Volume *volume, const char *name);
-VolumeGridSharedData *BKE_volume_grid_find_for_write(Volume *volume, const char *name);
+const VolumeGrid *BKE_volume_grid_find_for_read(const Volume *volume, const char *name);
+VolumeGrid *BKE_volume_grid_find_for_write(Volume *volume, const char *name);
 
 /* Tries to set the name of the velocity field. If no such grid exists with the given base name,
  * this will try common post-fixes in order to detect velocity fields split into multiple grids.
@@ -91,21 +91,21 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name)
  * By default only grid metadata is loaded, for access to the tree and voxels
  * BKE_volume_grid_load must be called first. */
 
-bool BKE_volume_grid_load(const Volume *volume, const VolumeGridSharedData *grid);
-void BKE_volume_grid_unload(const Volume *volume, const VolumeGridSharedData *grid);
-bool BKE_volume_grid_is_loaded(const VolumeGridSharedData *grid);
+bool BKE_volume_grid_load(const Volume *volume, const VolumeGrid *grid);
+void BKE_volume_grid_unload(const Volume *volume, const VolumeGrid *grid);
+bool BKE_volume_grid_is_loaded(const VolumeGrid *grid);
 
 /* Metadata */
 
-const char *BKE_volume_grid_name(const VolumeGridSharedData *grid);
-VolumeGridType BKE_volume_grid_type(const VolumeGridSharedData *grid);
-int BKE_volume_grid_channels(const VolumeGridSharedData *grid);
+const char *BKE_volume_grid_name(const VolumeGrid *grid);
+VolumeGridType BKE_volume_grid_type(const VolumeGrid *grid);
+int BKE_volume_grid_channels(const VolumeGrid *grid);
 /**
  * Transformation from index space to object space.
  */
-void BKE_volume_grid_transform_matrix(const VolumeGridSharedData *grid, float mat[4][4]);
+void BKE_volume_grid_transform_matrix(const VolumeGrid *grid, float mat[4][4]);
 void BKE_volume_grid_transform_matrix_set(const Volume *volume,
-                                          VolumeGridSharedData *volume_grid,
+                                          VolumeGrid *volume_grid,
                                           const float mat[4][4]);
 
 /* Volume Editing
@@ -121,8 +121,8 @@ void BKE_volume_grid_transform_matrix_set(const Volume *volume,
 Volume *BKE_volume_new_for_eval(const Volume *volume_src);
 Volume *BKE_volume_copy_for_eval(const Volume *volume_src);
 
-VolumeGridSharedData *BKE_volume_grid_add(Volume *volume, const char *name, VolumeGridType type);
-void BKE_volume_grid_remove(Volume *volume, VolumeGridSharedData *grid);
+VolumeGrid *BKE_volume_grid_add(Volume *volume, const char *name, VolumeGridType type);
+void BKE_volume_grid_remove(Volume *volume, VolumeGrid *grid);
 
 /**
  * OpenVDB crashes when the determinant of the transform matrix becomes too small.
