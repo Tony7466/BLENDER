@@ -272,7 +272,7 @@ static int face_verts_selected(const Mesh &mesh,
                                MutableSpan<int> face_verts_remap,
                                Array<int> &r_gather_vert_indices)
 {
-  Array<bool> vert_selection(mesh.totvert);
+  Array<bool> vert_selection(mesh.totvert, false);
   const GroupedSpan<int> face_verts(mesh.face_offsets(), mesh.corner_verts());
   face_selection.foreach_index_optimized<int>(GrainSize(4098), [&](const int face_i) {
     for (const int vert_i : face_verts[face_i]) {
@@ -281,12 +281,13 @@ static int face_verts_selected(const Mesh &mesh,
   });
 
   IndexMaskMemory memory;
-  const IndexMask vert_mask = IndexMask::from_bools(
-      IndexMask(mesh.totvert), vert_selection, memory);
+  const IndexMask vert_mask = IndexMask::from_bools(vert_selection, memory);
+
   r_gather_vert_indices.reinitialize(vert_mask.size());
   vert_mask.to_indices<int>(r_gather_vert_indices);
   Array<int> gathered_verts(vert_mask.min_array_size());
-  vert_mask.foreach_index(
+  vert_mask.foreach_index_optimized<int>(
+      GrainSize(4098),
       [&](const int vert_i, const int vert_pos) { gathered_verts[vert_i] = vert_pos; });
 
   face_selection.foreach_index_optimized<int>(GrainSize(4098), [&](const int face_i) {
@@ -409,7 +410,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       evaluator.evaluate();
       const IndexMask &mask = evaluator.get_evaluated_selection_as_mask();
       if (mask.is_empty()) {
-        return;
+        // return;
       }
 
       Array<int> vert_offsets;
