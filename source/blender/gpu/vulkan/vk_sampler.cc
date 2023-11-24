@@ -32,6 +32,8 @@ void VKSampler::create(const GPUSamplerState &sampler_state)
   sampler_info.addressModeU = to_vk_sampler_address_mode(sampler_state.extend_x);
   sampler_info.addressModeV = sampler_info.addressModeW = to_vk_sampler_address_mode(
     sampler_state.extend_yz);
+  sampler_info.minLod = -1000;
+  sampler_info.maxLod = 1000;
   if (sampler_state.type == GPU_SAMPLER_STATE_TYPE_PARAMETERS) {
     /* Apply filtering. */
     if (sampler_state.filtering & GPU_SAMPLER_FILTERING_LINEAR) {
@@ -61,8 +63,6 @@ void VKSampler::create(const GPUSamplerState &sampler_state)
       sampler_info.minFilter = VK_FILTER_LINEAR;
       sampler_info.compareEnable = VK_TRUE;
       sampler_info.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-      sampler_info.minLod = -1000;
-      sampler_info.maxLod = 1000;
     }
   }
 
