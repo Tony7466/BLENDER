@@ -1,5 +1,7 @@
-#include "parser.hh"
+#include <cmath>
+
 #include "expression.hh"
+#include "parser.hh"
 
 namespace blender::nodes::node_geo_math_expression_cc {
 
@@ -84,11 +86,11 @@ std::unique_ptr<Expression> Parser::parse_primary()
       return parse_call(token);
     }
 
-    return std::make_unique<VariableExpression>(token);
+    return parse_identifier(token);
   }
 
   if (token.kind == TokenKind::NUMBER) {
-    return std::make_unique<NumberExpression>(token);
+    return std::make_unique<NumberExpression>(parse_number(token.value), token);
   }
 
   if (token.kind == TokenKind::LPAREN) {
@@ -118,6 +120,21 @@ std::unique_ptr<Expression> Parser::parse_call(Token token,
   return make_call_expression(std::move(args), token);
 }
 
+std::unique_ptr<Expression> Parser::parse_identifier(Token token)
+{
+  if (token.value == "pi") {
+    return std::make_unique<NumberExpression>(M_PI, token);
+  }
+  else if (token.value == "tau") {
+    return std::make_unique<NumberExpression>(M_PI * 2, token);
+  }
+  else if (token.value == "e") {
+    return std::make_unique<NumberExpression>(M_E, token);
+  }
+
+  return std::make_unique<VariableExpression>(token);
+}
+
 std::unique_ptr<Expression> Parser::make_call_expression(Vector<std::unique_ptr<Expression>> args,
                                                          Token token)
 {
@@ -132,6 +149,19 @@ std::unique_ptr<Expression> Parser::make_call_expression(Vector<std::unique_ptr<
   }
 
   return std::make_unique<CallExpression>(def->name, std::move(args), token);
+}
+
+float Parser::parse_number(std::string_view text)
+{
+  double d;
+  auto result = std::from_chars(text.data(), text.data() + text.size(), d);
+
+  if (result.ec != std::errc()) {
+    // The number has already been parsed and is valid.
+    BLI_assert_unreachable();
+  }
+
+  return d;
 }
 
 [[maybe_unused]] Token Parser::expect(TokenKind kind, const char *message)

@@ -80,6 +80,8 @@ class Expression {
 };
 
 class NumberExpression : public Expression {
+  float _value;
+
  protected:
   int type_id() const override
   {
@@ -87,23 +89,16 @@ class NumberExpression : public Expression {
   }
 
  public:
-  NumberExpression(Token token) : Expression(token) {}
+  NumberExpression(float value, Token token) : Expression(token), _value(value) {}
 
   float value()
   {
-    double d;
-    auto result = std::from_chars(token.value.data(), token.value.data() + token.value.size(), d);
-
-    if (result.ec != std::errc()) {
-      throw EvaluationError{this, "failed to parse number literal"};
-    }
-
-    return d;
+    return _value;
   }
 
   fn::GField compile(EvaluationContext & /*ctx*/) override
   {
-    return constant(value());
+    return constant(_value);
   }
 };
 

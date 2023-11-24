@@ -37,8 +37,12 @@ class Parser {
       Token token,
       Vector<std::unique_ptr<Expression>> args = Vector<std::unique_ptr<Expression>>());
 
+  std::unique_ptr<Expression> parse_identifier(Token token);
+
   std::unique_ptr<Expression> make_call_expression(Vector<std::unique_ptr<Expression>> args,
                                                    Token token);
+
+  float parse_number(std::string_view text);
 
   [[maybe_unused]] Token expect(TokenKind kind, const char *message);
   template<size_t N> bool match(const TokenKind (&kind)[N], Token &r_token);
