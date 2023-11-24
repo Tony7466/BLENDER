@@ -225,14 +225,6 @@ static eFCU_Cycle_Type remap_cyclic_keyframe_location(FCurve *fcu, float *px, fl
   return type;
 }
 
-/* Return codes for new_key_needed. */
-enum {
-  KEYNEEDED_DONTADD = 0,
-  KEYNEEDED_JUSTADD,
-  KEYNEEDED_DELPREV,
-  KEYNEEDED_DELNEXT,
-} /*eKeyNeededStatus*/;
-
 /**
  * This helper function determines whether a new keyframe is needed.
  *
@@ -241,13 +233,13 @@ enum {
  * 2. Keyframe to be added on frame where two keyframes are already situated.
  * 3. Keyframe lies at point that intersects the linear line between two keyframes.
  */
-static short new_key_needed(FCurve *fcu, float frame, float value)
+static bool new_key_needed(FCurve *fcu, const float frame, const float value)
 {
   if (fcu == nullptr) {
-    return KEYNEEDED_JUSTADD;
+    return true;
   }
   if (fcu->totvert == 0) {
-    return KEYNEEDED_JUSTADD;
+    return true;
   }
 
   bool replace;
@@ -257,33 +249,37 @@ static short new_key_needed(FCurve *fcu, float frame, float value)
   if (replace) {
     /** In case there is a key at the current frame just let
      * the keyframe insertion code do its thing. */
-    return KEYNEEDED_JUSTADD;
+    return true;
   }
 
-  BezTriple *bezt = fcu->bezt;
+  BezTriple *next = nullptr;
   BezTriple *prev = nullptr;
 
-  float prevPosi = 0.0f, prevVal = 0.0f;
-  float beztPosi = 0.0f, beztVal = 0.0f;
+  if (bezt_index < fcu->totvert) {
+    next = &fcu->bezt[bezt_index];
+  }
+  if (bezt_index - 1 >= 0) {
+    prev = &fcu->bezt[bezt_index - 1];
+  }
 
-  beztPosi = bezt->vec[1][0];
-  beztVal = bezt->vec[1][1];
+  const float prevPosi = prev->vec[1][0];
+  const float prevVal = prev->vec[1][1];
+  const float beztPosi = next->vec[1][0];
+  const float beztVal = next->vec[1][1];
 
   if (prev) {
     /* There is a keyframe before the one currently being examined. */
-    prevPosi = prev->vec[1][0];
-    prevVal = prev->vec[1][1];
 
     /* Keyframe to be added at point where there are already two similar points? */
     if (IS_EQF(prevPosi, frame) && IS_EQF(beztPosi, frame) && IS_EQF(beztPosi, prevPosi)) {
-      return KEYNEEDED_DONTADD;
+      return false;
     }
 
     /* Keyframe between prev+current points? */
     if ((prevPosi <= frame) && (frame <= beztPosi)) {
       /* Is the value of keyframe to be added the same as keyframes on either side? */
       if (IS_EQF(prevVal, value) && IS_EQF(beztVal, value) && IS_EQF(prevVal, beztVal)) {
-        return KEYNEEDED_DONTADD;
+        return false;
       }
 
       /* Get real value of curve at that point. */
@@ -291,9 +287,9 @@ static short new_key_needed(FCurve *fcu, float frame, float value)
 
       /* Compare whether it's the same as proposed. */
       if (IS_EQF(realVal, value)) {
-        return KEYNEEDED_DONTADD;
+        return false;
       }
-      return KEYNEEDED_JUSTADD;
+      return true;
     }
 
     /* New keyframe before prev beztriple? */
@@ -303,10 +299,10 @@ static short new_key_needed(FCurve *fcu, float frame, float value)
        * beztriples and new keyframe are the same.
        */
       if (IS_EQF(prevVal, value) && IS_EQF(beztVal, value) && IS_EQF(prevVal, beztVal)) {
-        return KEYNEEDED_DELNEXT;
+        return false;
       }
 
-      return KEYNEEDED_JUSTADD;
+      return true;
     }
   }
   else {
@@ -314,7 +310,7 @@ static short new_key_needed(FCurve *fcu, float frame, float value)
      * and the new one occurs before the existing one does.
      */
     if ((frame < beztPosi) && (fcu->totvert == 1)) {
-      return KEYNEEDED_JUSTADD;
+      return true;
     }
   }
 
@@ -325,21 +321,21 @@ static short new_key_needed(FCurve *fcu, float frame, float value)
    * -> Otherwise, a keyframe is just added. 1.0 is added so that fake-2nd-to-last
    *    keyframe is not equal to last keyframe.
    */
-  bezt = (fcu->bezt + (fcu->totvert - 1));
-  const float valA = bezt->vec[1][1];
+  next = &fcu->bezt[fcu->totvert - 1];
+  const float valA = next->vec[1][1];
   float valB;
   if (prev) {
     valB = prev->vec[1][1];
   }
   else {
-    valB = bezt->vec[1][1] + 1.0f;
+    valB = next->vec[1][1] + 1.0f;
   }
 
   if (IS_EQF(valA, value) && IS_EQF(valA, valB)) {
-    return KEYNEEDED_DELPREV;
+    return false;
   }
 
-  return KEYNEEDED_JUSTADD;
+  return true;
 }
 
 static AnimationEvalContext nla_time_remap(const AnimationEvalContext *anim_eval_context,
@@ -396,27 +392,14 @@ static bool insert_keyframe_value(
   }
 
   if (flag & INSERTKEY_NEEDED) {
-    static short insert_mode = new_key_needed(fcu, cfra, curval);
+    static bool key_needed = new_key_needed(fcu, cfra, curval);
 
-    if (insert_mode == KEYNEEDED_DONTADD) {
+    if (!key_needed) {
       return false;
     }
 
     if (insert_vert_fcurve(fcu, cfra, curval, keytype, flag) < 0) {
       return false;
-    }
-
-    /* Based on the heuristics applied in new_key_needed(), the previous or next key needs to be
-     * deleted. */
-    switch (insert_mode) {
-      case KEYNEEDED_DELPREV:
-        BKE_fcurve_delete_key(fcu, fcu->totvert - 2);
-        BKE_fcurve_handles_recalc(fcu);
-        break;
-      case KEYNEEDED_DELNEXT:
-        BKE_fcurve_delete_key(fcu, 1);
-        BKE_fcurve_handles_recalc(fcu);
-        break;
     }
 
     return true;
