@@ -297,8 +297,6 @@ void view3d_gamepad_fly(const wmGamepadAxisData &gamepad,
                         bool &r_has_translate,
                         bool &r_has_rotate);
 void VIEW3D_OT_gamepad_all(wmOperatorType *ot);
-
-extern const ViewOpsType ViewOpsType_gamepad_all;
 #endif /* WITH_INPUT_GAMEPAD */
 
 /* view3d_navigate_roll.cc */

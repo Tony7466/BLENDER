@@ -167,6 +167,14 @@ bool GHOST_GamepadManager::send_gamepad_frame_events(const float delta_time)
 
   pushed_events += send_trigger_event(_gamepad_state->left_trigger);
   pushed_events += send_trigger_event(_gamepad_state->right_trigger);
+
+  for (int x = 0; x < 14; x++) {
+    bool button_depressed = _gamepad_state->button_depressed.test(x);
+    if (button_depressed) {
+      send_button_event(GHOST_TGamepadButton(x), button_depressed, now, window);
+    }
+  }
+
   return pushed_events > 0;
 }
 
