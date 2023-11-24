@@ -235,9 +235,59 @@ TEST_F(ProjectTest, settings_read_change_write)
       });
 }
 
-TEST_F(ProjectTest, project_root_path_find_from_path)
+TEST_F(ProjectTest, path_is_within_any_project)
 {
   /* Test the temporarily created directories with their various path formats. */
+  test_foreach_project_path([](StringRefNull project_path, StringRefNull /*project_path_native*/) {
+    /* First test without a .blender_project directory present. */
+    EXPECT_FALSE(BlenderProject::path_is_within_any_project(project_path));
+
+    BlenderProject::create_settings_directory(project_path);
+    EXPECT_TRUE(BlenderProject::path_is_within_any_project(project_path));
+  });
+
+  SVNFiles svn_files{};
+
+  /* Test the prepared project directory from the libs SVN repository. */
+  EXPECT_TRUE(BlenderProject::path_is_within_any_project(svn_files.project_root));
+  EXPECT_TRUE(BlenderProject::path_is_within_any_project(svn_files.project_root +
+                                                         "/some_project_file.blend"));
+  EXPECT_TRUE(BlenderProject::path_is_within_any_project(
+      svn_files.project_root +
+      "/unicode_subdirectory_новый/another_subdirectory/some_nested_project_file.blend"));
+}
+
+TEST_F(ProjectTest, path_implies_project_change)
+{
+  /* No project loaded, no path requested -> No project change. */
+  EXPECT_FALSE(BlenderProject::path_implies_project_change(nullptr, ""));
+  /* No project loaded, requested path doesn't lead into a project -> No project change. */
+  EXPECT_FALSE(BlenderProject::path_implies_project_change(nullptr, "/some/path"));
+
+  SVNFiles svn_files{};
+
+  EXPECT_TRUE(BlenderProject::path_implies_project_change(nullptr, svn_files.project_root));
+  EXPECT_TRUE(BlenderProject::path_implies_project_change(
+      nullptr, svn_files.project_root + "/some_project_file.blend"));
+
+  BlenderProject *svn_project = BlenderProject::load_active_from_path(svn_files.project_root);
+  EXPECT_TRUE(BlenderProject::path_implies_project_change(svn_project, ""));
+  EXPECT_FALSE(BlenderProject::path_implies_project_change(svn_project, svn_files.project_root));
+  EXPECT_FALSE(BlenderProject::path_implies_project_change(svn_project,
+                                                           svn_files.project_root + "/some_path"));
+  EXPECT_FALSE(BlenderProject::path_implies_project_change(
+      svn_project, svn_files.project_root + "/some_path/some_project_file.blend"));
+
+  test_foreach_project_path(
+      [svn_project](StringRefNull project_path, StringRefNull /*project_path_native*/) {
+        EXPECT_TRUE(BlenderProject::path_implies_project_change(svn_project, project_path));
+        EXPECT_TRUE(BlenderProject::path_implies_project_change(
+            svn_project, project_path + "subpath/project_file.blend"));
+      });
+}
+
+TEST_F(ProjectTest, project_root_path_find_from_path)
+{
   test_foreach_project_path([](StringRefNull project_path, StringRefNull /*project_path_native*/) {
     /* First test without a .blender_project directory present. */
     EXPECT_EQ(BlenderProject::project_root_path_find_from_path(project_path), "");
@@ -245,17 +295,6 @@ TEST_F(ProjectTest, project_root_path_find_from_path)
     BlenderProject::create_settings_directory(project_path);
     EXPECT_EQ(BlenderProject::project_root_path_find_from_path(project_path), project_path);
   });
-
-  SVNFiles svn_files{};
-
-  /* Test the prepared project directory from the libs SVN repository. */
-  EXPECT_EQ(BlenderProject::project_root_path_find_from_path(svn_files.project_root +
-                                                             "/some_project_file.blend"),
-            svn_files.project_root);
-  EXPECT_EQ(BlenderProject::project_root_path_find_from_path(
-                svn_files.project_root +
-                "/unicode_subdirectory_новый/another_subdirectory/some_nested_project_file.blend"),
-            svn_files.project_root);
 }
 
 class BlendfileProjectLoadingTest : public BlendfileLoadingBaseTest {

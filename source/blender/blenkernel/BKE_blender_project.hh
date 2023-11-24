@@ -155,9 +155,10 @@ class BlenderProject {
   bool delete_settings_directory();
 
   /**
-   * Check if \a path is owned by this project. Isn't a simple contains-path-check. It checks if
-   * the path leads to the same project by walking "up" the path until a project root directory is
-   * found (see #project_root_path_find_from_path()), and comparing that.
+   * Check if \a path is owned by this project. Isn't just a simple contains-path-check since
+   * multiple projects may contain the path. It checks if the path leads to the same project by
+   * walking "up" the path until a project root directory is found (see
+   * #project_root_path_find_from_path()), and comparing that.
    */
   [[nodiscard]] bool owns_path(StringRef new_path) const;
 
