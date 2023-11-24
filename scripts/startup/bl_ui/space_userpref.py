@@ -578,14 +578,17 @@ class USERPREF_PT_animation_keyframes(AnimationPanel, CenterAlignMixIn, Panel):
 
         layout.prop(edit, "key_insert_channels", expand=True)
 
-        col = layout.column()
+        col = layout.column(heading="Keyframing")
         col.prop(edit, "use_visual_keying")
+
+        col = layout.column(heading="Manual-Keyframing")
         col.prop(edit, "use_keyframe_insert_needed", text="Only Insert Needed")
 
         col = layout.column(heading="Auto-Keyframing")
-        col.prop(edit, "use_auto_keying_warning", text="Show Warning")
-        col.prop(edit, "use_keyframe_insert_available", text="Only Insert Available")
         col.prop(edit, "use_auto_keying", text="Enable in New Scenes")
+        col.prop(edit, "use_auto_keying_warning", text="Show Warning")
+        col.prop(edit, "use_auto_keyframe_insert_needed", text="Only Insert Needed")
+        col.prop(edit, "use_keyframe_insert_available", text="Only Insert Available")
 
 
 class USERPREF_PT_animation_fcurves(AnimationPanel, CenterAlignMixIn, Panel):
