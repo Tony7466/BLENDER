@@ -59,7 +59,7 @@ class ParamHandle {
   float aspect_y = 1.0f;
 
   RNG *rng = nullptr;
-  float blend = 1.0f;
+  float blend = 0.0f;
 
   /* SLIM uv unwrapping */
   slim::MatrixTransfer *slim_mt = nullptr;
