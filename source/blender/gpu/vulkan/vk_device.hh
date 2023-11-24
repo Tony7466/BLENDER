@@ -78,6 +78,7 @@ class VKDevice : public NonCopyable {
 
   /** Allocator used for texture and buffers and other resources. */
   VmaAllocator mem_allocator_ = VK_NULL_HANDLE;
+  VkPipelineCache vk_pipeline_cache_ = VK_NULL_HANDLE;
 
   /** Limits of the device linked to this context. */
   VkPhysicalDeviceProperties vk_physical_device_properties_ = {};
@@ -152,6 +153,11 @@ class VKDevice : public NonCopyable {
   VmaAllocator mem_allocator_get() const
   {
     return mem_allocator_;
+  }
+
+  VkPipelineCache vk_pipeline_cache_get() const
+  {
+    return vk_pipeline_cache_;
   }
 
   debug::VKDebuggingTools &debugging_tools_get()
@@ -240,6 +246,7 @@ class VKDevice : public NonCopyable {
   void init_physical_device_features();
   void init_debug_callbacks();
   void init_memory_allocator();
+  void init_pipeline_cache();
 
   /* During initialization the backend requires access to update the workarounds. */
   friend VKBackend;

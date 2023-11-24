@@ -510,9 +510,12 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_geom_world_vert.glsl
   engines/eevee_next/shaders/eevee_hiz_debug_frag.glsl
   engines/eevee_next/shaders/eevee_hiz_update_comp.glsl
+  engines/eevee_next/shaders/eevee_horizon_denoise_comp.glsl
   engines/eevee_next/shaders/eevee_horizon_scan_eval_lib.glsl
+  engines/eevee_next/shaders/eevee_horizon_scan_comp.glsl
   engines/eevee_next/shaders/eevee_horizon_scan_lib.glsl
   engines/eevee_next/shaders/eevee_horizon_scan_test.glsl
+  engines/eevee_next/shaders/eevee_horizon_setup_comp.glsl
   engines/eevee_next/shaders/eevee_light_culling_debug_frag.glsl
   engines/eevee_next/shaders/eevee_light_culling_select_comp.glsl
   engines/eevee_next/shaders/eevee_light_culling_sort_comp.glsl
@@ -602,6 +605,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_thickness_lib.glsl
   engines/eevee_next/shaders/eevee_transparency_lib.glsl
   engines/eevee_next/shaders/eevee_velocity_lib.glsl
+  engines/eevee_next/shaders/eevee_vertex_copy_comp.glsl
   engines/eevee_next/shaders/eevee_volume_integration_comp.glsl
   engines/eevee_next/shaders/eevee_volume_lib.glsl
   engines/eevee_next/shaders/eevee_volume_material_comp.glsl
