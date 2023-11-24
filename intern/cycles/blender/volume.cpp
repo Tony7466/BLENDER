@@ -14,11 +14,11 @@
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
 namespace blender::bke {
-struct GVolumeGrid;
+struct VolumeGridSharedData;
 }
-using GVolumeGrid = blender::bke::GVolumeGrid;
+using VolumeGridSharedData = blender::bke::VolumeGridSharedData;
 openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_read(const Volume *volume,
-                                                             const GVolumeGrid *grid);
+                                                             const VolumeGridSharedData *grid);
 #endif
 
 CCL_NAMESPACE_BEGIN
@@ -239,7 +239,7 @@ class BlenderVolumeLoader : public VDBImageLoader {
         const bool unload = !b_volume_grid.is_loaded();
 
         ::Volume *volume = (::Volume *)b_volume.ptr.data;
-        const GVolumeGrid *volume_grid = (GVolumeGrid *)b_volume_grid.ptr.data;
+        const VolumeGridSharedData *volume_grid = (VolumeGridSharedData *)b_volume_grid.ptr.data;
         grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
 
         if (unload) {

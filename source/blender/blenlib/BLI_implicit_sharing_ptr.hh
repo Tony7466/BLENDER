@@ -8,6 +8,7 @@
  * \ingroup bli
  */
 
+#include "BLI_allocator.hh"
 #include "BLI_implicit_sharing.hh"
 #include "BLI_struct_equality_utils.hh"
 
@@ -148,5 +149,11 @@ template<typename T> class ImplicitSharingPtr {
     }
   }
 };
+
+template<typename T, typename... Args>
+inline ImplicitSharingPtr<T> make_implicit_shared(Args &&...args)
+{
+  return ImplicitSharingPtr<T>(std::forward<Args>(args)...);
+}
 
 }  // namespace blender

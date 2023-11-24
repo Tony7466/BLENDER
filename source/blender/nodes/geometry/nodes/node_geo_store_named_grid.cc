@@ -51,11 +51,11 @@ static void try_store_grid(GeoNodeExecParams params, Volume *volume, StringRef n
     return;
   }
 
-  if (GVolumeGrid *existing_grid = BKE_volume_grid_find_for_write(volume, name.data())) {
+  if (VolumeGridSharedData *existing_grid = BKE_volume_grid_find_for_write(volume, name.data())) {
     BKE_volume_grid_remove(volume, existing_grid);
   }
 
-  BKE_volume_grid_add_vdb(*volume, name, value.grid->get_grid_for_write());
+  BKE_volume_grid_add_vdb(*volume, name, value.grid.grid_for_write());
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

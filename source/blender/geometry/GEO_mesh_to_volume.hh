@@ -46,17 +46,17 @@ float volume_compute_voxel_size(const Depsgraph *depsgraph,
 /**
  * Add a new fog VolumeGrid to the Volume by converting the supplied mesh.
  */
-GVolumeGrid *fog_volume_grid_add_from_mesh(Volume *volume,
-                                           StringRefNull name,
-                                           const Mesh *mesh,
-                                           const float4x4 &mesh_to_volume_space_transform,
-                                           float voxel_size,
-                                           float interior_band_width,
-                                           float density);
+VolumeGridSharedData *fog_volume_grid_add_from_mesh(Volume *volume,
+                                                    StringRefNull name,
+                                                    const Mesh *mesh,
+                                                    const float4x4 &mesh_to_volume_space_transform,
+                                                    float voxel_size,
+                                                    float interior_band_width,
+                                                    float density);
 /**
  * Add a new SDF VolumeGrid to the Volume by converting the supplied mesh.
  */
-GVolumeGrid *sdf_volume_grid_add_from_mesh(
+VolumeGridSharedData *sdf_volume_grid_add_from_mesh(
     Volume *volume, StringRefNull name, const Mesh &mesh, float voxel_size, float half_band_width);
 #endif
 }  // namespace blender::geometry

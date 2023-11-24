@@ -16,10 +16,14 @@
 #  include "BKE_volume_types.hh"
 
 struct Volume;
+namespace blender::bke {
+struct VolumeGridSharedData;
+}
+using VolumeGridSharedData = blender::bke::VolumeGridSharedData;
 
-GVolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
-                                     blender::StringRef name,
-                                     openvdb::GridBase::Ptr vdb_grid);
+VolumeGridSharedData *BKE_volume_grid_add_vdb(Volume &volume,
+                                              blender::StringRef name,
+                                              openvdb::GridBase::Ptr vdb_grid);
 
 bool BKE_volume_grid_bounds(openvdb::GridBase::ConstPtr grid,
                             blender::float3 &r_min,
@@ -33,14 +37,14 @@ bool BKE_volume_grid_bounds(openvdb::GridBase::ConstPtr grid,
 openvdb::GridBase::ConstPtr BKE_volume_grid_shallow_transform(openvdb::GridBase::ConstPtr grid,
                                                               const blender::float4x4 &transform);
 
-openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_metadata(const GVolumeGrid *grid);
+openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_metadata(const VolumeGridSharedData *grid);
 openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_read(const Volume *volume,
-                                                             const GVolumeGrid *grid);
+                                                             const VolumeGridSharedData *grid);
 openvdb::GridBase::Ptr BKE_volume_grid_openvdb_for_write(const Volume *volume,
-                                                         GVolumeGrid *grid,
+                                                         VolumeGridSharedData *grid,
                                                          bool clear);
 
-void BKE_volume_grid_clear_tree(Volume &volume, GVolumeGrid &volume_grid);
+void BKE_volume_grid_clear_tree(Volume &volume, VolumeGridSharedData &volume_grid);
 void BKE_volume_grid_clear_tree(openvdb::GridBase &grid);
 
 VolumeGridType BKE_volume_grid_type_openvdb(const openvdb::GridBase &grid);

@@ -8,9 +8,7 @@
 
 #pragma once
 
-#include "BLI_implicit_sharing_ptr.hh"
-
-#include "BKE_volume_grid.hh"
+#include "BKE_volume_grid_ref.hh"
 
 #include "FN_field.hh"
 
@@ -25,12 +23,11 @@ namespace blender::bke {
 template<typename T> struct ValueOrField {
   using Field = fn::Field<T>;
   using Grid = VolumeGrid<T>;
-  using GridPtr = ImplicitSharingPtr<Grid>;
 
   /** Value that is used when the field is empty. */
   T value{};
   Field field;
-  GridPtr grid;
+  Grid grid;
 
   ValueOrField() = default;
 
@@ -38,7 +35,7 @@ template<typename T> struct ValueOrField {
 
   ValueOrField(Field field) : field(std::move(field)) {}
 
-  ValueOrField(GridPtr grid) : grid(std::move(grid)) {}
+  ValueOrField(Grid grid) : grid(std::move(grid)) {}
 
   bool is_field() const
   {
@@ -58,7 +55,7 @@ template<typename T> struct ValueOrField {
     return fn::make_constant_field(this->value);
   }
 
-  GridPtr as_grid() const
+  Grid as_grid() const
   {
     if (this->grid) {
       return this->grid;
@@ -75,7 +72,7 @@ template<typename T> struct ValueOrField {
     if (this->grid) {
       /* Returns the grid background value. */
       T value;
-      if (grid_utils::get_background_value(*this->grid, value)) {
+      if (grid_utils::get_background_value(this->grid, value)) {
         return value;
       }
     }

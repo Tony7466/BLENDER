@@ -152,7 +152,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   const Volume *volume = static_cast<Volume *>(vmmd->object->data);
 
   BKE_volume_load(volume, DEG_get_bmain(ctx->depsgraph));
-  const GVolumeGrid *volume_grid = BKE_volume_grid_find_for_read(volume, vmmd->grid_name);
+  const VolumeGridSharedData *volume_grid = BKE_volume_grid_find_for_read(volume, vmmd->grid_name);
   if (volume_grid == nullptr) {
     BKE_modifier_set_error(ctx->object, md, "Cannot find '%s' grid", vmmd->grid_name);
     return create_empty_mesh(input_mesh);
