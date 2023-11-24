@@ -346,7 +346,7 @@ void DEG_disable_visibility_optimization(Depsgraph *depsgraph)
   deg_graph->use_visibility_optimization = false;
 }
 
-uint64_t DEG_update_count(const Depsgraph *depsgraph)
+uint64_t DEG_get_update_count(const Depsgraph *depsgraph)
 {
   const deg::Depsgraph *deg_graph = reinterpret_cast<const deg::Depsgraph *>(depsgraph);
   return deg_graph->update_count;
