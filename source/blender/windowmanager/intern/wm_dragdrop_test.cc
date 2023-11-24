@@ -15,7 +15,7 @@
 
 namespace blender::tests {
 
-TEST(wm_dragdrop, create)
+TEST(wm_drag, wmDragPath)
 {
   {
     /**

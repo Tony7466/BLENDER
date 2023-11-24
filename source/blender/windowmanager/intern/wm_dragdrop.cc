@@ -767,7 +767,7 @@ wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths)
 
   path_data->file_type = ED_path_extension_type(paths[0]);
 
-  for (auto path : paths) {
+  for (const char *path : paths) {
     path_data->paths.append(path);
   }
 
@@ -797,7 +797,7 @@ const char *WM_drag_get_single_path(const wmDrag *drag)
   return path_data->paths[0].c_str();
 }
 
-const blender::Span<std::string> WM_drag_get_paths(const wmDrag *drag)
+blender::Span<std::string> WM_drag_get_paths(const wmDrag *drag)
 {
   if (drag->type != WM_DRAG_PATH) {
     return blender::Span<std::string>();

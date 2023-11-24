@@ -65,8 +65,6 @@
 #include "ED_scene.hh"
 #include "ED_screen.hh"
 
-#include <fmt/format.h>
-
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
@@ -1583,7 +1581,6 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
               blender::Span((char **)stra->strings, stra->count));
           WM_event_start_drag(C, icon, WM_DRAG_PATH, path_data, 0.0, WM_DRAG_NOP);
           /* Void pointer should point to string, it makes a copy. */
-          break;
         }
       }
 

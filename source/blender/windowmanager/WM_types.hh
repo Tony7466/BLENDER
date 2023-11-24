@@ -1175,8 +1175,8 @@ struct wmDragAssetListItem {
 struct wmDragPath {
   blender::Vector<std::string> paths;
   /* Note that even though the enum type uses bit-flags, this should never have multiple type-bits
-   * set, so `ELEM()` like comparison is possible. For internal use only, and only indicates the
-   * file type of first path in `wmDragPath.paths`. */
+   * set, so `ELEM()` like comparison is possible. Only indicates the file type of first path in
+   * `wmDragPath.paths`. */
   int file_type; /* eFileSel_File_Types */
   std::string tooltip;
 };
