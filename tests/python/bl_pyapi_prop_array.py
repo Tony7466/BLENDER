@@ -130,6 +130,11 @@ class TestPropArrayForeachSetInt(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.array_i.foreach_set(buffer)
 
+    def test_buffer_itemsize_too_small(self):
+        buffer = np.arange(10, dtype=np.int16)
+        with self.assertRaises(TypeError):
+            self.array_i.foreach_set(buffer)
+
     def test_buffer_itemsize_too_large(self):
         buffer = np.arange(10, dtype=np.int64)
         with self.assertRaises(TypeError):
@@ -207,6 +212,11 @@ class TestPropArrayForeachSetFloat(unittest.TestCase):
 
     def test_buffer_too_short(self):
         buffer = np.arange(5, dtype=np.float32)
+        with self.assertRaises(TypeError):
+            self.array_f.foreach_set(buffer)
+
+    def test_buffer_itemsize_too_small(self):
+        buffer = np.arange(10, dtype=np.float16)
         with self.assertRaises(TypeError):
             self.array_f.foreach_set(buffer)
 
