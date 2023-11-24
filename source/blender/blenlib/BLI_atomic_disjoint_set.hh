@@ -85,8 +85,6 @@ class AtomicDisjointSet {
     }
   }
 
-  void connect_all_loos_to(const int index);
-
   /**
    * Return true when x and y are in the same set.
    */
