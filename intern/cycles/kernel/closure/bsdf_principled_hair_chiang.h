@@ -395,7 +395,7 @@ ccl_device int bsdf_hair_chiang_sample(KernelGlobals kg,
   rand.z = max(rand.z, 1e-5f);
   const float fac = 1.0f + v * logf(rand.z + (1.0f - rand.z) * expf(-2.0f / v));
   float sin_theta_i = -fac * sintheta_temp_o +
-                      cos_from_sin(fac) * cosf(M_2PI_F * rand.y) * costheta_temp_o;
+                      sin_from_cos(fac) * cosf(M_2PI_F * rand.y) * costheta_temp_o;
   float cos_theta_i = cos_from_sin(sin_theta_i);
 
   float phi;
@@ -406,8 +406,6 @@ ccl_device int bsdf_hair_chiang_sample(KernelGlobals kg,
     phi = M_2PI_F * rand.x;
   }
   const float phi_i = phi_o + phi;
-
-  hair_alpha_angles(sin_theta_o, cos_theta_o, bsdf->alpha, angles);
 
   Spectrum F = zero_spectrum();
   float F_energy = 0.0f;
