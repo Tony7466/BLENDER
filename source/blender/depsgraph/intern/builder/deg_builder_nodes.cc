@@ -1664,11 +1664,9 @@ void DepsgraphNodeBuilder::build_object_data_geometry(Object *object)
       NodeType::BATCH_CACHE,
       OperationCode::GEOMETRY_SELECT_UPDATE,
       [object_cow](::Depsgraph *depsgraph) { BKE_object_select_update(depsgraph, object_cow); });
-  /* Shading (No-Op). */
-  add_operation_node((ID *)object->data,
-                     NodeType::SHADING,
-                     OperationCode::SHADING,
-                     [](::Depsgraph *depsgraph) { /* No-op. */ });
+  /* Shading (No-Op).
+   * Needed to allow the Material shading updates reach the Object. */
+  add_operation_node((ID *)object->data, NodeType::SHADING, OperationCode::SHADING);
 }
 
 void DepsgraphNodeBuilder::build_object_data_geometry_datablock(ID *obdata)
