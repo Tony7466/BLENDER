@@ -18,6 +18,7 @@
 
 #include "BKE_addon.h"
 #include "BKE_asset_library_custom.h"
+#include "BKE_idprop.hh"
 
 #include "DNA_asset_types.h"
 #include "DNA_userdef_types.h"
@@ -220,8 +221,14 @@ static std::unique_ptr<ExtractedSettings> extract_settings(
               "Unexpected addon entry in settings.json, expected module to be string");
         }
 
-        std::string name = (*module_name_value)->as_string_value()->value();
-        BKE_addon_ensure(&extracted_settings->addons, name.c_str());
+        const std::string name = (*module_name_value)->as_string_value()->value();
+        bAddon *addon = BKE_addon_ensure(&extracted_settings->addons, name.c_str());
+
+        if (const DictionaryValue::LookupValue *properties_value = element_lookup.lookup_ptr(
+                "properties")) {
+          const Value &value = *(properties_value->get());
+          addon->prop = idprop::convert_from_serialize_value(value);
+        }
       }
     }
   }
@@ -274,6 +281,12 @@ std::unique_ptr<serialize::DictionaryValue> ProjectSettings::to_dictionary() con
         DictionaryValue::Items &addon_attributes = addons_dict->elements();
 
         addon_attributes.append_as("module", new StringValue(addon->module));
+        if (addon->prop) {
+          std::unique_ptr<Value> value = idprop::convert_to_serialize_values(addon->prop);
+          if (value) {
+            addon_attributes.append_as(std::pair("properties", value.release()));
+          }
+        }
         addons_elements.append_as(std::move(addons_dict));
       }
       root_attributes.append_as("addons", std::move(addons_array));
