@@ -85,6 +85,14 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
   {
     return data != other.data;
   }
+  bool operator==(const std::nullptr_t &) const
+  {
+    return data == nullptr;
+  }
+  bool operator!=(const std::nullptr_t &) const
+  {
+    return data != nullptr;
+  }
   template<typename U> bool operator==(const VolumeGridPtr<U> &other) const
   {
     return data == other.data;
@@ -93,8 +101,8 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
   {
     return data != other.data;
   }
-
   operator bool() const;
+
 #endif
 };
 

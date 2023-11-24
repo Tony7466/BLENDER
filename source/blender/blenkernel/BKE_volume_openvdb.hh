@@ -18,12 +18,14 @@
 struct Volume;
 namespace blender::bke {
 struct VolumeGrid;
-}
+struct GVolumeGridPtr;
+}  // namespace blender::bke
 using VolumeGrid = blender::bke::VolumeGrid;
+using GVolumeGridPtr = blender::bke::GVolumeGridPtr;
 
-VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
-                                              blender::StringRef name,
-                                              openvdb::GridBase::Ptr vdb_grid);
+GVolumeGridPtr BKE_volume_grid_add_vdb(Volume &volume,
+                                       blender::StringRef name,
+                                       openvdb::GridBase::Ptr vdb_grid);
 
 bool BKE_volume_grid_bounds(openvdb::GridBase::ConstPtr grid,
                             blender::float3 &r_min,
