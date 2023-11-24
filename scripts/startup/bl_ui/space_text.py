@@ -275,6 +275,8 @@ class TEXT_MT_text(Menu):
 
             layout.prop(st, "use_live_edit")
 
+            layout.prop(st, "use_auto_reload")
+
             layout.separator()
             layout.operator("text.run_script")
 

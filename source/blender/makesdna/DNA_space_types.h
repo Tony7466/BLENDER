@@ -1437,7 +1437,7 @@ typedef struct SpaceText {
   char overwrite;
   /** Run python while editing, evil. */
   char live_edit;
-  char _pad2[1];
+  char auto_reload;
 
   /** ST_MAX_FIND_STR. */
   char findstr[256];
