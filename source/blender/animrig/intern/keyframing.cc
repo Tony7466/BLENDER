@@ -262,10 +262,10 @@ static bool new_key_needed(FCurve *fcu, const float frame, const float value)
     prev = &fcu->bezt[bezt_index - 1];
   }
 
-  const float prevPosi = prev->vec[1][0];
-  const float prevVal = prev->vec[1][1];
-  const float beztPosi = next->vec[1][0];
-  const float beztVal = next->vec[1][1];
+  const float beztPosi = next ? next->vec[1][0] : INFINITY;
+  const float beztVal = next ? next->vec[1][1] : INFINITY;
+  const float prevPosi = prev ? prev->vec[1][0] : INFINITY;
+  const float prevVal = prev ? prev->vec[1][1] : INFINITY;
 
   if (prev) {
     /* There is a keyframe before the one currently being examined. */
@@ -392,7 +392,7 @@ static bool insert_keyframe_value(
   }
 
   if (flag & INSERTKEY_NEEDED) {
-    static bool key_needed = new_key_needed(fcu, cfra, curval);
+    const bool key_needed = new_key_needed(fcu, cfra, curval);
 
     if (!key_needed) {
       return false;
