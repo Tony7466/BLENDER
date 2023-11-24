@@ -8,9 +8,9 @@
  * Engine for drawing a selection map where the pixels indicate the selection indices.
  */
 
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_scene_types.h"
