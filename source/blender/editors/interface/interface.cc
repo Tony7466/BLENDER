@@ -2610,8 +2610,14 @@ double ui_but_value_get(uiBut *but)
   return value;
 }
 
-void ui_but_value_set(uiBut *but, double value)
+bool ui_but_value_set(uiBut *but, double value)
 {
+
+  if (ui_but_value_get(but) == value) {
+    /* Value did not change. */
+    return false;
+  }
+
   /* Value is a HSV value: convert to RGB. */
   if (but->rnaprop) {
     PropertyRNA *prop = but->rnaprop;
@@ -2704,6 +2710,8 @@ void ui_but_value_set(uiBut *but, double value)
   }
 
   ui_but_update_select_flag(but, &value);
+
+  return true;
 }
 
 int ui_but_string_get_maxncpy(uiBut *but)

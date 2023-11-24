@@ -497,6 +497,8 @@ struct uiAfterFunc {
 
   PointerRNA rnapoin;
   PropertyRNA *rnaprop;
+  /* If the value did not change we can skip the update. */
+  bool rna_skip_update;
 
   void *search_arg;
   uiFreeArgFunc search_arg_free_fn;
@@ -826,7 +828,7 @@ static bool ui_afterfunc_check(const uiBlock *block, const uiBut *but)
  * handling is done, i.e. menus are closed, in order to avoid conflicts
  * with these functions removing the buttons we are working with.
  */
-static void ui_apply_but_func(bContext *C, uiBut *but)
+static void ui_apply_but_func(bContext *C, uiBut *but, const bool rna_skip_update = false)
 {
   uiBlock *block = but->block;
   if (!ui_afterfunc_check(block, but)) {
@@ -875,6 +877,7 @@ static void ui_apply_but_func(bContext *C, uiBut *but)
 
   after->rnapoin = but->rnapoin;
   after->rnaprop = but->rnaprop;
+  after->rna_skip_update = rna_skip_update;
 
   if (but->type == UI_BTYPE_SEARCH_MENU) {
     uiButSearch *search_but = (uiButSearch *)but;
@@ -1048,7 +1051,7 @@ static void ui_apply_but_funcs_after(bContext *C)
       WM_operator_properties_free(&opptr);
     }
 
-    if (after.rnapoin.data) {
+    if (after.rnapoin.data && !after.rna_skip_update) {
       RNA_property_update(C, &after.rnapoin, after.rnaprop);
     }
 
@@ -1117,8 +1120,8 @@ static void ui_apply_but_BUT(bContext *C, uiBut *but, uiHandleButtonData *data)
 
 static void ui_apply_but_BUTM(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
-  ui_but_value_set(but, but->hardmin);
-  ui_apply_but_func(C, but);
+  const bool changed = ui_but_value_set(but, but->hardmin);
+  ui_apply_but_func(C, but, !changed);
 
   data->retval = but->retval;
   data->applied = true;
@@ -1160,9 +1163,9 @@ static void ui_apply_but_TOG(bContext *C, uiBut *but, uiHandleButtonData *data)
 
 static void ui_apply_but_ROW(bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data)
 {
-  ui_but_value_set(but, but->hardmax);
+  const bool changed = ui_but_value_set(but, but->hardmax);
 
-  ui_apply_but_func(C, but);
+  ui_apply_but_func(C, but, !changed);
 
   /* states of other row buttons */
   LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {
@@ -1273,8 +1276,8 @@ static void ui_apply_but_TAB(bContext *C, uiBut *but, uiHandleButtonData *data)
     ui_but_update_edited(but);
   }
   else {
-    ui_but_value_set(but, but->hardmax);
-    ui_apply_but_func(C, but);
+    const bool changed = ui_but_value_set(but, but->hardmax);
+    ui_apply_but_func(C, but, !changed);
   }
 
   data->retval = but->retval;
@@ -1283,6 +1286,8 @@ static void ui_apply_but_TAB(bContext *C, uiBut *but, uiHandleButtonData *data)
 
 static void ui_apply_but_NUM(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
+  bool changed = true;
+
   if (data->str) {
     /* This is intended to avoid unnecessary updates when the value stays the same, however there
      * are issues with the current implementation. It does not work with multi-button editing
@@ -1310,11 +1315,11 @@ static void ui_apply_but_NUM(bContext *C, uiBut *but, uiHandleButtonData *data)
     }
   }
   else {
-    ui_but_value_set(but, data->value);
+    changed = ui_but_value_set(but, data->value);
   }
 
   ui_but_update_edited(but);
-  ui_apply_but_func(C, but);
+  ui_apply_but_func(C, but, !changed);
 
   data->retval = but->retval;
   data->applied = true;

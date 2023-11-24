@@ -690,7 +690,10 @@ void ui_block_add_dynamic_listener(uiBlock *block,
 uiBut *ui_but_change_type(uiBut *but, eButType new_type);
 
 double ui_but_value_get(uiBut *but);
-void ui_but_value_set(uiBut *but, double value);
+/**
+ * Returns false if the value did not change.
+ */
+bool ui_but_value_set(uiBut *but, double value);
 /**
  * For picker, while editing HSV.
  */
