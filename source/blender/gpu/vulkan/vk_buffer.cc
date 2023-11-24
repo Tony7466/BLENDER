@@ -93,14 +93,6 @@ bool VKBuffer::create(int64_t size_in_bytes,
   return true;
 }
 
-bool VKBuffer::create_staging(int64_t size_in_bytes)
-{
-  return create(size_in_bytes,
-                GPU_USAGE_STREAM,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                true);
-}
-
 void VKBuffer::update(const void *data) const
 {
   BLI_assert_msg(is_mapped(), "Cannot update a non-mapped buffer.");
