@@ -29,6 +29,7 @@ VKStagingBuffer::VKStagingBuffer(const VKBuffer &device_buffer, Direction direct
 
 void VKStagingBuffer::copy_to_device(VKContext &context)
 {
+  BLI_assert(host_buffer_.is_allocated() && host_buffer_.is_mapped());
   VkBufferCopy buffer_copy = {};
   buffer_copy.size = device_buffer_.size_in_bytes();
   VKCommandBuffers &command_buffers = context.command_buffers_get();
@@ -39,12 +40,18 @@ void VKStagingBuffer::copy_to_device(VKContext &context)
 
 void VKStagingBuffer::copy_from_device(VKContext &context)
 {
+  BLI_assert(host_buffer_.is_allocated() && host_buffer_.is_mapped());
   VkBufferCopy buffer_copy = {};
   buffer_copy.size = device_buffer_.size_in_bytes();
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.copy(
       host_buffer_, device_buffer_.vk_handle(), Span<VkBufferCopy>(&buffer_copy, 1));
   command_buffers.submit();
+}
+
+void VKStagingBuffer::free()
+{
+  host_buffer_.free();
 }
 
 }  // namespace blender::gpu

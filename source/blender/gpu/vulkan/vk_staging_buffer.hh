@@ -33,5 +33,6 @@ class VKStagingBuffer {
   {
     return host_buffer_;
   }
+  void free();
 };
 }  // namespace blender::gpu

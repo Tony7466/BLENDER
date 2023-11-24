@@ -60,9 +60,13 @@ class VKBuffer {
    */
   void *mapped_memory_get() const;
 
+  /**
+   * Is this buffer mapped (visible on host)
+   */
+  bool is_mapped() const;
+
  private:
   /** Check if this buffer is mapped. */
-  bool is_mapped() const;
   bool map();
   void unmap();
 };
