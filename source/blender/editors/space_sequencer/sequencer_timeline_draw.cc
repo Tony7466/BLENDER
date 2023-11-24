@@ -1277,77 +1277,60 @@ static void draw_seq_invalid(const StripDrawContext *strip_ctx)
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void fcurve_batch_add_verts(GPUVertBuf *vbo,
-                                   float y1,
-                                   float y2,
-                                   float y_height,
-                                   int timeline_frame,
-                                   float curve_val,
-                                   uint *vert_count)
-{
-  float vert_pos[2][2];
-
-  copy_v2_fl2(vert_pos[0], timeline_frame, (curve_val * y_height) + y1);
-  copy_v2_fl2(vert_pos[1], timeline_frame, y2);
-
-  GPU_vertbuf_vert_set(vbo, *vert_count, vert_pos[0]);
-  GPU_vertbuf_vert_set(vbo, *vert_count + 1, vert_pos[1]);
-  *vert_count += 2;
-}
-
 /**
  * Draw f-curves as darkened regions of the strip:
  * - Volume for sound strips.
  * - Opacity for the other types.
  */
 static void draw_seq_fcurve_overlay(TimelineDrawContext *timeline_ctx,
-                                    const StripDrawContext *strip_ctx)
+                                    const blender::Vector<StripDrawContext> &strips)
 {
-  if (!strip_ctx->can_draw_strip_content || (timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0 ||
+  if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0 ||
       (timeline_ctx->sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_FCURVES) == 0)
   {
     return;
   }
 
   Scene *scene = timeline_ctx->scene;
+  const int eval_step = max_ii(1, floor(timeline_ctx->pixelx));
+  uchar color[4] = {0, 0, 0, 38};
+  GPU_blend(GPU_BLEND_ALPHA);
 
-  FCurve *fcu;
-  if (strip_ctx->seq->type == SEQ_TYPE_SOUND_RAM) {
-    fcu = id_data_find_fcurve(&scene->id, strip_ctx->seq, &RNA_Sequence, "volume", 0, nullptr);
-  }
-  else {
-    fcu = id_data_find_fcurve(
-        &scene->id, strip_ctx->seq, &RNA_Sequence, "blend_alpha", 0, nullptr);
-  }
-
-  if (fcu && !BKE_fcurve_is_empty(fcu)) {
-
-    /* Clamp curve evaluation to the editor's borders. */
-    int eval_start = max_ff(strip_ctx->left_handle, timeline_ctx->v2d->cur.xmin);
-    int eval_end = min_ff(strip_ctx->right_handle, timeline_ctx->v2d->cur.xmax + 1);
-
-    int eval_step = max_ii(1, floor(timeline_ctx->pixelx));
-
-    if (eval_start >= eval_end) {
-      return;
+  for (const StripDrawContext &strip_ctx : strips) {
+    if (!strip_ctx.can_draw_strip_content) {
+      continue;
     }
 
-    GPUVertFormat format = {0};
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    FCurve *fcu;
+    if (strip_ctx.seq->type == SEQ_TYPE_SOUND_RAM) {
+      fcu = id_data_find_fcurve(&scene->id, strip_ctx.seq, &RNA_Sequence, "volume", 0, nullptr);
+    }
+    else {
+      fcu = id_data_find_fcurve(
+          &scene->id, strip_ctx.seq, &RNA_Sequence, "blend_alpha", 0, nullptr);
+    }
 
-    uint max_verts = 2 * ((eval_end - eval_start) / eval_step + 1);
-    GPU_vertbuf_data_alloc(vbo, max_verts);
-    uint vert_count = 0;
+    if (fcu == nullptr || BKE_fcurve_is_empty(fcu)) {
+      continue;
+    }
 
-    const float y_height = strip_ctx->top - strip_ctx->bottom;
-    float curve_val;
-    float prev_val = INT_MIN;
+    /* Clamp curve evaluation to the editor's borders. */
+    int eval_start = max_ff(strip_ctx.left_handle, timeline_ctx->v2d->cur.xmin);
+    int eval_end = min_ff(strip_ctx.right_handle, timeline_ctx->v2d->cur.xmax + 1);
+    if (eval_start >= eval_end) {
+      continue;
+    }
+
+    const float y_height = strip_ctx.top - strip_ctx.bottom;
+    float prev_x = eval_start;
+    float prev_val = evaluate_fcurve(fcu, eval_start);
+    CLAMP(prev_val, 0.0f, 1.0f);
     bool skip = false;
 
-    for (int timeline_frame = eval_start; timeline_frame <= eval_end; timeline_frame += eval_step)
+    for (int timeline_frame = eval_start + eval_step; timeline_frame <= eval_end;
+         timeline_frame += eval_step)
     {
-      curve_val = evaluate_fcurve(fcu, timeline_frame);
+      float curve_val = evaluate_fcurve(fcu, timeline_frame);
       CLAMP(curve_val, 0.0f, 1.0f);
 
       /* Avoid adding adjacent verts that have the same value. */
@@ -1358,39 +1341,34 @@ static void draw_seq_fcurve_overlay(TimelineDrawContext *timeline_ctx,
 
       /* If some frames were skipped above, we need to close the shape. */
       if (skip) {
-        fcurve_batch_add_verts(vbo,
-                               strip_ctx->bottom,
-                               strip_ctx->top,
-                               y_height,
-                               timeline_frame - eval_step,
-                               prev_val,
-                               &vert_count);
+        timeline_ctx->quads->add_quad(prev_x,
+                                      (prev_val * y_height) + strip_ctx.bottom,
+                                      prev_x,
+                                      strip_ctx.top,
+                                      timeline_frame - eval_step,
+                                      (prev_val * y_height) + strip_ctx.bottom,
+                                      timeline_frame - eval_step,
+                                      strip_ctx.top,
+                                      color);
         skip = false;
+        prev_x = timeline_frame - eval_step;
       }
 
-      fcurve_batch_add_verts(vbo,
-                             strip_ctx->bottom,
-                             strip_ctx->top,
-                             y_height,
-                             timeline_frame,
-                             curve_val,
-                             &vert_count);
+      timeline_ctx->quads->add_quad(prev_x,
+                                    (prev_val * y_height) + strip_ctx.bottom,
+                                    prev_x,
+                                    strip_ctx.top,
+                                    timeline_frame,
+                                    (curve_val * y_height) + strip_ctx.bottom,
+                                    timeline_frame,
+                                    strip_ctx.top,
+                                    color);
+      prev_x = timeline_frame;
       prev_val = curve_val;
     }
-
-    GPUBatch *batch = GPU_batch_create_ex(GPU_PRIM_TRI_STRIP, vbo, nullptr, GPU_BATCH_OWNS_VBO);
-    GPU_vertbuf_data_len_set(vbo, vert_count);
-    GPU_batch_program_set_builtin(batch, GPU_SHADER_3D_UNIFORM_COLOR);
-    GPU_batch_uniform_4f(batch, "color", 0.0f, 0.0f, 0.0f, 0.15f);
-    GPU_blend(GPU_BLEND_ALPHA);
-
-    if (vert_count > 0) {
-      GPU_batch_draw(batch);
-    }
-
-    GPU_blend(GPU_BLEND_NONE);
-    GPU_batch_discard(batch);
   }
+  timeline_ctx->quads->draw();
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 /* When active strip is a Multi-cam strip, highlight its source channel. */
@@ -1556,9 +1534,9 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx)
                              strip_ctx.strip_content_top,
                              timeline_ctx->pixelx,
                              timeline_ctx->pixely);
-    draw_seq_fcurve_overlay(timeline_ctx, &strip_ctx);
   }
 
+  draw_seq_fcurve_overlay(timeline_ctx, strip_contexts);
   draw_seq_waveform_overlay(timeline_ctx, strip_contexts);
 
   for (const StripDrawContext &strip_ctx : strip_contexts) {

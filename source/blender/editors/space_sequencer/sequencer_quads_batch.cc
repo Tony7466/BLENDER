@@ -87,7 +87,15 @@ void SeqQuadsBatch::draw()
   }
 }
 
-void SeqQuadsBatch::add_quad(float x1, float y1, float x2, float y2, const uchar color[4])
+void SeqQuadsBatch::add_quad(float x1,
+                             float y1,
+                             float x2,
+                             float y2,
+                             float x3,
+                             float y3,
+                             float x4,
+                             float y4,
+                             const uchar color[4])
 {
   if (quads_num >= MAX_QUADS) {
     draw();
@@ -102,9 +110,9 @@ void SeqQuadsBatch::add_quad(float x1, float y1, float x2, float y2, const uchar
   }
 
   ColorVertex v0 = {blender::float2(x1, y1), color};
-  ColorVertex v1 = {blender::float2(x1, y2), color};
-  ColorVertex v2 = {blender::float2(x2, y1), color};
-  ColorVertex v3 = {blender::float2(x2, y2), color};
+  ColorVertex v1 = {blender::float2(x2, y2), color};
+  ColorVertex v2 = {blender::float2(x3, y3), color};
+  ColorVertex v3 = {blender::float2(x4, y4), color};
 
   *verts_quads++ = v0;
   *verts_quads++ = v1;

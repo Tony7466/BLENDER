@@ -21,7 +21,19 @@ class SeqQuadsBatch {
   ~SeqQuadsBatch();
 
   void draw();
-  void add_quad(float x1, float y1, float x2, float y2, const uchar color[4]);
+  void add_quad(float x1, float y1, float x2, float y2, const uchar color[4])
+  {
+    add_quad(x1, y1, x1, y2, x2, y1, x2, y2, color);
+  }
+  void add_quad(float x1,
+                float y1,
+                float x2,
+                float y2,
+                float x3,
+                float y3,
+                float x4,
+                float y4,
+                const uchar color[4]);
   void add_wire_quad(float x1, float y1, float x2, float y2, const uchar color[4]);
   void add_line(float x1, float y1, float x2, float y2, const uchar color[4]);
 
