@@ -156,21 +156,21 @@ inline std::ostream &operator<<(std::ostream &stream, const ObjectInfos &infos)
 
 inline void ObjectBounds::sync()
 {
-  bounding_sphere.w = -1.0f; /* Disable test. */
+  set_frustum_culling_test(false);
 }
 
 inline void ObjectBounds::sync(Object &ob, float inflate_bounds)
 {
   const std::optional<BoundBox> bbox = BKE_object_boundbox_get(&ob);
   if (!bbox) {
-    bounding_sphere.w = -1.0f; /* Disable test. */
+    set_frustum_culling_test(false);
     return;
   }
   *reinterpret_cast<float3 *>(&bounding_corners[0]) = bbox->vec[0];
   *reinterpret_cast<float3 *>(&bounding_corners[1]) = bbox->vec[4];
   *reinterpret_cast<float3 *>(&bounding_corners[2]) = bbox->vec[3];
   *reinterpret_cast<float3 *>(&bounding_corners[3]) = bbox->vec[1];
-  bounding_sphere.w = 0.0f; /* Enable test. */
+  set_frustum_culling_test(true);
 
   if (inflate_bounds != 0.0f) {
     BLI_assert(inflate_bounds >= 0.0f);
@@ -189,7 +189,12 @@ inline void ObjectBounds::sync(const float3 &center, const float3 &size)
   *reinterpret_cast<float3 *>(&bounding_corners[1]) = center + float3(+size.x, -size.y, -size.z);
   *reinterpret_cast<float3 *>(&bounding_corners[2]) = center + float3(-size.x, +size.y, -size.z);
   *reinterpret_cast<float3 *>(&bounding_corners[3]) = center + float3(-size.x, -size.y, +size.z);
-  bounding_sphere.w = 0.0; /* Enable test. */
+  set_frustum_culling_test(true);
+}
+
+inline void ObjectBounds::set_frustum_culling_test(bool enabled)
+{
+  bounding_sphere.w = enabled ? 0.0 : -1.0;
 }
 
 inline std::ostream &operator<<(std::ostream &stream, const ObjectBounds &bounds)

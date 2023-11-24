@@ -206,6 +206,7 @@ struct ObjectBounds {
   void sync();
   void sync(Object &ob, float inflate_bounds = 0.0f);
   void sync(const float3 &center, const float3 &size);
+  void set_frustum_culling_test(bool enabled);
 #endif
 };
 BLI_STATIC_ASSERT_ALIGN(ObjectBounds, 16)

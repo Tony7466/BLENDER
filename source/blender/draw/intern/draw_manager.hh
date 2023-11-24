@@ -150,6 +150,8 @@ class Manager {
   void update_handle_bounds(ResourceHandle handle,
                             const float3 &bounds_center,
                             const float3 &bounds_half_extent);
+  /** Enable or disable frustum culling for an already created handle. */
+  void update_handle_frustum_culling_test(ResourceHandle handle, bool enabled);
 
   /**
    * Populate additional per resource data on demand.
@@ -276,6 +278,11 @@ inline void Manager::update_handle_bounds(ResourceHandle handle,
                                           const float3 &bounds_half_extent)
 {
   bounds_buf.current()[handle.resource_index()].sync(bounds_center, bounds_half_extent);
+}
+
+inline void Manager::update_handle_frustum_culling_test(ResourceHandle handle, bool enabled)
+{
+  bounds_buf.current()[handle.resource_index()].set_frustum_culling_test(enabled);
 }
 
 inline void Manager::extract_object_attributes(ResourceHandle handle,
