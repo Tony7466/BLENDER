@@ -201,8 +201,7 @@ const static VkSubpassDependency2 dependencies[static_cast<uint64_t>(
 
 bool VKRenderPass::ensure()
 {
-  if (vk_render_pass_ == VK_NULL_HANDLE|| dirty_)
-  {
+  if (vk_render_pass_ == VK_NULL_HANDLE || dirty_) {
     dirty_ = true;
     create();
     return true;

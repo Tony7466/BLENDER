@@ -66,7 +66,9 @@ class VKAttachments {
   std::array<vk_attachment::idx_ty, 2> idx_;
 
  public:
-  bool check_format(VKTexture &texture, VkAttachmentDescription2 &attachment_description,bool enabled_srgb);
+  bool check_format(VKTexture &texture,
+                    VkAttachmentDescription2 &attachment_description,
+                    bool enabled_srgb);
   void description_set(GPUTexture *texture,
                        const VkAttachmentReference2 &attachment_reference,
                        VkAttachmentDescription2 &attachment_description,

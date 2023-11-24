@@ -31,7 +31,7 @@ void VKSampler::create(const GPUSamplerState &sampler_state)
   /* Extend */
   sampler_info.addressModeU = to_vk_sampler_address_mode(sampler_state.extend_x);
   sampler_info.addressModeV = sampler_info.addressModeW = to_vk_sampler_address_mode(
-    sampler_state.extend_yz);
+      sampler_state.extend_yz);
   sampler_info.minLod = -1000;
   sampler_info.maxLod = 1000;
   if (sampler_state.type == GPU_SAMPLER_STATE_TYPE_PARAMETERS) {

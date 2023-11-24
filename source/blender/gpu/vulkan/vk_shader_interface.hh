@@ -34,6 +34,7 @@ class VKShaderInterface : public ShaderInterface {
 
   shader::BuiltinBits shader_builtins_;
   Vector<VkFormat> dummy_formats_;
+
  public:
   VKShaderInterface() = default;
 
@@ -59,11 +60,12 @@ class VKShaderInterface : public ShaderInterface {
   {
     return (shader_builtins_ & shader::BuiltinBits::POINT_SIZE) == shader::BuiltinBits::POINT_SIZE;
   }
-  
+
   VkFormat dummy_format_get(int index) const
   {
     return dummy_formats_[index];
   }
+
  private:
   /**
    * Retrieve the shader input for the given resource.

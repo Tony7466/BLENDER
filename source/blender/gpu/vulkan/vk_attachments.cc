@@ -7,8 +7,8 @@ bool VKAttachments::check_format(VKTexture &texture,
                                  bool enabled_srgb)
 {
   VkFormat vk_format = (enabled_srgb) ?
-      to_vk_format(texture.device_format_get()):
-          to_non_srgb_format(to_vk_format(texture.device_format_get()));
+                           to_vk_format(texture.device_format_get()) :
+                           to_non_srgb_format(to_vk_format(texture.device_format_get()));
 
   if (attachment_description.format != vk_format) {
     attachment_description.format = vk_format;

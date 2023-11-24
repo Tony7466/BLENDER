@@ -491,12 +491,10 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
   int atta_layer = (leave) ? attachment.layer : new_attachment.layer;
   int atta_mip = (leave) ? attachment.mip : new_attachment.mip;
   if (config) {
-    bool reconfig = false;
     if ((renderpass_->attachments_.idx_[renderpass_->info_id_][type] != VK_ATTACHMENT_UNUSED) &&
         (renderpass_->attachments_.idx_[renderpass_->info_id_][type] != VK_ATTACHMENT_EMPTY))
     {
       renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount--;
-      reconfig = true;
     };
     /* Set the current information on the `render_pass_info_id_` side and compare it with the
      * information cached in the reverse id. */
@@ -512,8 +510,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       attachment_reference = renderpass_->attachments_.reference_get(type_index,
                                                                      renderpass_->info_id_);
       renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount = max_ii(
-          renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount,
-          type_index+1);
+          renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount, type_index + 1);
 
       attachment_reference->aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       attachment_reference->layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -587,8 +584,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
     if (type >= GPU_FB_COLOR_ATTACHMENT0) {
       int type_index = static_cast<int>(type) - static_cast<int>(GPU_FB_COLOR_ATTACHMENT0);
       attachment_reference =
-          &renderpass_->attachments_
-               .references_[renderpass_->info_id_][type_index];
+          &renderpass_->attachments_.references_[renderpass_->info_id_][type_index];
     }
     else {
       attachment_reference = &renderpass_->attachments_.depth_references_[renderpass_->info_id_];

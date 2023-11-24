@@ -310,7 +310,10 @@ void GPU_framebuffer_texture_attach(GPUFrameBuffer *framebuffer,
                                     GPUTexture *texture,
                                     int slot,
                                     int mip);
-void GPU_framebuffer_texture_attach_no_config(GPUFrameBuffer *fb, GPUTexture *tex, int slot, int mip);
+void GPU_framebuffer_texture_attach_no_config(GPUFrameBuffer *fb,
+                                              GPUTexture *tex,
+                                              int slot,
+                                              int mip);
 /**
  * Attach a single layer of an array texture mip level to a #GPUFrameBuffer.
  * Changes will only take effect next time `GPU_framebuffer_bind()` is called.
