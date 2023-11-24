@@ -88,7 +88,6 @@ ATOMIC_INLINE int32_t atomic_sub_and_fetch_int32(int32_t *p, int32_t x);
 ATOMIC_INLINE int32_t atomic_cas_int32(int32_t *v, int32_t old, int32_t _new);
 ATOMIC_INLINE int32_t atomic_load_int32(const int32_t *v);
 ATOMIC_INLINE void atomic_store_int32(int32_t *p, int32_t v);
-ATOMIC_INLINE void atomic_swap_int32(int32_t *a, int32_t *b);
 
 ATOMIC_INLINE int32_t atomic_fetch_and_add_int32(int32_t *p, int32_t x);
 ATOMIC_INLINE int32_t atomic_fetch_and_or_int32(int32_t *p, int32_t x);

@@ -11,6 +11,8 @@
 
 #include "MEM_guardedalloc.h"
 
+#include <atomic>
+
 #include "atomic_ops.h"
 
 #include "DNA_meshdata_types.h"
@@ -24,6 +26,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
+
+#include "BLI_timeit.hh"
 
 #include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
@@ -320,8 +324,8 @@ static void sort_small_groups(const OffsetIndices<int> groups,
   });
 }
 
-static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
-                                            const OffsetIndices<int> offsets)
+static Array<int> reverse_indices_in_groups_(const Span<int> group_indices,
+                                             const OffsetIndices<int> offsets)
 {
   if (group_indices.is_empty()) {
     return {};
@@ -329,26 +333,58 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
   BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) < offsets.size());
   BLI_assert(*std::min_element(group_indices.begin(), group_indices.end()) >= 0);
 
-  constexpr const int list_start = -1;
-  Array<int> lists_ends(offsets.size(), list_start);
-  Array<int> group_lists(group_indices.size());
-  /* Construction of a multiple single-linked lists.
-   * Each element point on previous one or list_start. Length the same as group size.
-   * End of each groups is contained in lists_ends array. */
-  threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
+  /* `counts` keeps track of how many elements have been added to each group, and is incremented
+   * atomically by many threads in parallel. `calloc` can be measurably faster than a parallel fill
+   * of zero. Alternatively the offsets could be copied and incremented directly, but the cost of
+   * the copy is slightly higher than the cost of `calloc`. */
+  int *counts = MEM_cnew_array<int>(size_t(offsets.size()), __func__);
+  BLI_SCOPED_DEFER([&]() { MEM_freeN(counts); })
+  Array<int> results(group_indices.size());
+  threading::parallel_for(group_indices.index_range(), 4098, [&](const IndexRange range) {
     for (const int64_t i : range) {
       const int group_index = group_indices[i];
-      group_lists[i] = int(i);
-      /* Swap current index with any other in list head. */
-      atomic_swap_int32(&lists_ends[group_index], &group_lists[i]);
+      const int index_in_group = atomic_fetch_and_add_int32(&counts[group_index], 1);
+      results[offsets[group_index][index_in_group]] = int(i);
+    }
+  });
+  // sort_small_groups(offsets, 4098, results);
+  return results;
+}
+
+static Array<int> reverse_indices_in_groups_new(const Span<int> group_indices,
+                                                const OffsetIndices<int> offsets)
+{
+  if (group_indices.is_empty()) {
+    return {};
+  }
+  SCOPED_TIMER_AVERAGED(__func__);
+  BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) < offsets.size());
+  BLI_assert(*std::min_element(group_indices.begin(), group_indices.end()) >= 0);
+
+  Array<std::atomic<int>> lists_ends(offsets.size());
+#ifdef DEBUG
+  for (auto &value : lists_ends) {
+    value.store(-1);
+  }
+#endif
+
+  Array<int> group_lists(group_indices.size());
+  /* Construction of a multiple single-linked lists.
+   * Each element point on previous. Length the same as group size.
+   * End of each groups is contained in lists_ends array. */
+  threading::parallel_for(group_indices.index_range(), 4098, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      const int group_index = group_indices[i];
+      const int previous_index = lists_ends[group_index].exchange(int(i));
+      group_lists[i] = previous_index;
     }
   });
 
   Array<int> results(group_indices.size());
-  threading::parallel_for(lists_ends.index_range(), 1024, [&](const IndexRange range) {
+  threading::parallel_for(lists_ends.index_range(), 4098, [&](const IndexRange range) {
     for (const int64_t group_v : range) {
       MutableSpan<int> dst_results = results.as_mutable_span().slice(offsets[group_v]);
-      int next_index = lists_ends[group_v];
+      int next_index = lists_ends[group_v].load(std::memory_order_relaxed);
       dst_results.first() = next_index;
       for (int &result_value : dst_results.drop_front(1)) {
         next_index = group_lists[next_index];
@@ -357,7 +393,35 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
     }
   });
 
-  sort_small_groups(offsets, 1024, results);
+  // sort_small_groups(offsets, 4098, results);
+  return results;
+}
+
+static Array<int> reverse_indices_in_groups_old(const Span<int> group_indices,
+                                                const OffsetIndices<int> offsets)
+{
+  if (group_indices.is_empty()) {
+    return {};
+  }
+  SCOPED_TIMER_AVERAGED(__func__);
+  BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) < offsets.size());
+  BLI_assert(*std::min_element(group_indices.begin(), group_indices.end()) >= 0);
+
+  /* `counts` keeps track of how many elements have been added to each group, and is incremented
+   * atomically by many threads in parallel. `calloc` can be measurably faster than a parallel fill
+   * of zero. Alternatively the offsets could be copied and incremented directly, but the cost of
+   * the copy is slightly higher than the cost of `calloc`. */
+  int *counts = MEM_cnew_array<int>(size_t(offsets.size()), __func__);
+  BLI_SCOPED_DEFER([&]() { MEM_freeN(counts); })
+  Array<int> results(group_indices.size());
+  threading::parallel_for(group_indices.index_range(), 4098, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      const int group_index = group_indices[i];
+      const int index_in_group = atomic_fetch_and_add_int32(&counts[group_index], 1);
+      results[offsets[group_index][index_in_group]] = int(i);
+    }
+  });
+  // sort_small_groups(offsets, 4098, results);
   return results;
 }
 
@@ -386,7 +450,7 @@ static GroupedSpan<int> gather_groups(const Span<int> group_indices,
                                       Array<int> &r_indices)
 {
   r_offsets = create_reverse_offsets(group_indices, groups_num);
-  r_indices = reverse_indices_in_groups(group_indices, r_offsets.as_span());
+  r_indices = reverse_indices_in_groups_old(group_indices, r_offsets.as_span());
   return {OffsetIndices<int>(r_offsets), r_indices};
 }
 
@@ -443,7 +507,7 @@ GroupedSpan<int> build_vert_to_face_map(const OffsetIndices<int> faces,
 Array<int> build_vert_to_corner_indices(const Span<int> corner_verts,
                                         const OffsetIndices<int> offsets)
 {
-  return reverse_indices_in_groups(corner_verts, offsets);
+  return reverse_indices_in_groups_(corner_verts, offsets);
 }
 
 GroupedSpan<int> build_vert_to_loop_map(const Span<int> corner_verts,

@@ -216,11 +216,6 @@ ATOMIC_INLINE int32_t atomic_fetch_and_and_int32(int32_t *p, int32_t x)
   return InterlockedAnd((long *)p, x);
 }
 
-ATOMIC_INLINE void atomic_swap_int32(int32_t *a, int32_t *b)
-{
-  *b = (int)InterlockedExchange((long *)a, (long)*b);
-}
-
 /******************************************************************************/
 /* 16-bit operations. */
 
