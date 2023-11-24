@@ -27,8 +27,8 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
-#include "BKE_context.h"
+#include "BKE_armature.hh"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
@@ -50,8 +50,8 @@
 
 #include "ANIM_bone_collections.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "gpencil_intern.h"
 

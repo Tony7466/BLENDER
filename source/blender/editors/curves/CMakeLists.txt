@@ -12,7 +12,6 @@ set(INC
   ../../gpu
   ../../makesrna
   ../../windowmanager
-  ../../../../intern/clog
   ../../bmesh
 
   # RNA_prototypes.h
@@ -24,6 +23,7 @@ set(INC_SYS
 
 set(SRC
   intern/curves_add.cc
+  intern/curves_attribute_set.cc
   intern/curves_data.cc
   intern/curves_edit.cc
   intern/curves_masks.cc
@@ -36,6 +36,7 @@ set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
 

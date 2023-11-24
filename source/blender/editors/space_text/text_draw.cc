@@ -16,8 +16,8 @@
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
 
-#include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_screen.hh"
 #include "BKE_text.h"
 #include "BKE_text_suggestions.h"
 
@@ -62,48 +62,6 @@ static void text_font_begin(const TextDrawContext *tdc)
 
 static void text_font_end(const TextDrawContext * /*tdc*/) {}
 
-static int text_font_draw(const TextDrawContext *tdc, int x, int y, const char *str)
-{
-  BLF_position(tdc->font_id, x, y, 0);
-  const int columns = BLF_draw_mono(tdc->font_id, str, BLF_DRAW_STR_DUMMY_MAX, tdc->cwidth_px);
-
-  return tdc->cwidth_px * columns;
-}
-
-static int text_font_draw_character(const TextDrawContext *tdc, int x, int y, char c)
-{
-  BLF_position(tdc->font_id, x, y, 0);
-  BLF_draw_mono(tdc->font_id, &c, 1, tdc->cwidth_px);
-
-  return tdc->cwidth_px;
-}
-
-static int text_font_draw_character_utf8(
-    const TextDrawContext *tdc, int x, int y, const char *c, const int c_len)
-{
-  BLI_assert(c_len == BLI_str_utf8_size_safe(c));
-  BLF_position(tdc->font_id, x, y, 0);
-  const int columns = BLF_draw_mono(tdc->font_id, c, c_len, tdc->cwidth_px);
-
-  return tdc->cwidth_px * columns;
-}
-
-#if 0
-/* Formats every line of the current text */
-static void txt_format_text(SpaceText *st)
-{
-  TextLine *linep;
-
-  if (!st->text) {
-    return;
-  }
-
-  for (linep = st->text->lines.first; linep; linep = linep->next) {
-    txt_format_line(st, linep, 0);
-  }
-}
-#endif
-
 /* Sets the current drawing color based on the format character specified */
 static void format_draw_color(const TextDrawContext *tdc, char formatchar)
 {
@@ -139,6 +97,47 @@ static void format_draw_color(const TextDrawContext *tdc, char formatchar)
       UI_FontThemeColor(tdc->font_id, TH_TEXT);
       break;
   }
+}
+
+/* Draw plain or formatted monospaced text. */
+static int text_font_draw(const TextDrawContext *tdc,
+                          int x,
+                          int y,
+                          const char *str,
+                          const int str_len,
+                          const char *format)
+{
+  int columns = 0;
+  int str_pos = 0;
+  const int tab_columns = 1; /* Tab characters aren't used here. */
+
+  if (tdc->syntax_highlight && format) {
+    char fmt_prev = 0xff;
+    for (int a = 0; a < str_len; a++) {
+      if (format[a] != fmt_prev) {
+        /* Change of format so ouptut the previous section. */
+        if (a - str_pos > 0) {
+          BLF_position(tdc->font_id, x + (columns * tdc->cwidth_px), y, 0);
+          columns += BLF_draw_mono(
+              tdc->font_id, str + str_pos, a - str_pos, tdc->cwidth_px, tab_columns);
+        }
+        format_draw_color(tdc, fmt_prev = format[a]);
+        str_pos = a;
+      }
+      if (a == (str_len - 1)) {
+        /* At end so output the last section. */
+        BLF_position(tdc->font_id, x + (columns * tdc->cwidth_px), y, 0);
+        columns += BLF_draw_mono(
+            tdc->font_id, str + str_pos, str_len - str_pos, tdc->cwidth_px, tab_columns);
+      }
+    }
+  }
+  else {
+    /* Not syntax highlighted, so output the entire line. */
+    BLF_position(tdc->font_id, x, y, 0);
+    columns = BLF_draw_mono(tdc->font_id, str, str_len, tdc->cwidth_px, tab_columns);
+  }
+  return tdc->cwidth_px * columns;
 }
 
 /** \} */
@@ -191,7 +190,8 @@ void wrap_offset(
 {
   Text *text;
   TextLine *linep;
-  int i, j, start, end, max, chop;
+  int i, j, start, end, max;
+  bool chop;
   char ch;
 
   *offl = *offc = 0;
@@ -229,12 +229,12 @@ void wrap_offset(
   }
 
   max = wrap_width(st, region);
-  cursin = BLI_str_utf8_offset_to_column(linein->line, cursin);
+  cursin = BLI_str_utf8_offset_to_column(linein->line, linein->len, cursin);
 
   while (linep) {
     start = 0;
     end = max;
-    chop = 1;
+    chop = true;
     *offc = 0;
     for (i = 0, j = 0; linep->line[j]; j += BLI_str_utf8_size_safe(linep->line + j)) {
       int chars;
@@ -271,11 +271,11 @@ void wrap_offset(
 
           start = end;
           end += max;
-          chop = 1;
+          chop = true;
         }
         else if (ELEM(ch, ' ', '-')) {
           end = i + 1;
-          chop = 0;
+          chop = false;
           if (linep == linein && i >= cursin) {
             return;
           }
@@ -293,7 +293,8 @@ void wrap_offset(
 void wrap_offset_in_line(
     const SpaceText *st, ARegion *region, TextLine *linein, int cursin, int *offl, int *offc)
 {
-  int i, j, start, end, chars, max, chop;
+  int i, j, start, end, chars, max;
+  bool chop;
   char ch;
 
   *offl = *offc = 0;
@@ -309,9 +310,9 @@ void wrap_offset_in_line(
 
   start = 0;
   end = max;
-  chop = 1;
+  chop = true;
   *offc = 0;
-  cursin = BLI_str_utf8_offset_to_column(linein->line, cursin);
+  cursin = BLI_str_utf8_offset_to_column(linein->line, linein->len, cursin);
 
   for (i = 0, j = 0; linein->line[j]; j += BLI_str_utf8_size_safe(linein->line + j)) {
     int columns = BLI_str_utf8_char_width_safe(linein->line + j); /* = 1 for tab */
@@ -347,11 +348,11 @@ void wrap_offset_in_line(
 
         start = end;
         end += max;
-        chop = 1;
+        chop = true;
       }
       else if (ELEM(ch, ' ', '-')) {
         end = i + 1;
-        chop = 0;
+        chop = false;
         if (i >= cursin) {
           return;
         }
@@ -381,7 +382,7 @@ static const char *txt_utf8_forward_columns(const char *str, int columns, int *p
   int col;
   const char *p = str;
   while (*p) {
-    col = BLI_str_utf8_char_width(p);
+    col = BLI_str_utf8_char_width_safe(p);
     if (columns - col < 0) {
       break;
     }
@@ -411,9 +412,8 @@ static int text_draw_wrapped(const SpaceText *st,
   int basex, lines;
   int i, wrap, end, max, columns, padding; /* column */
   /* warning, only valid when 'use_syntax' is set */
-  int a, fstart, fpos;      /* utf8 chars */
-  int mi, ma, mstart, mend; /* mem */
-  char fmt_prev = 0xff;
+  int fstart, fpos;     /* utf8 chars */
+  int mi, mstart, mend; /* mem */
   /* don't draw lines below this */
   const int clip_min_y = -int(st->runtime.lheight_px - 1);
 
@@ -449,17 +449,9 @@ static int text_draw_wrapped(const SpaceText *st,
       }
 
       /* Draw the visible portion of text on the overshot line */
-      for (a = fstart, ma = mstart; ma < mend; a++) {
-        if (use_syntax) {
-          if (fmt_prev != format[a]) {
-            format_draw_color(tdc, fmt_prev = format[a]);
-          }
-        }
-        const int c_len = BLI_str_utf8_size_safe(str + ma);
-        x += text_font_draw_character_utf8(tdc, x, y, str + ma, c_len);
-        ma += c_len;
-        fpos++;
-      }
+      x += text_font_draw(tdc, x, y, str + fstart, mend - fstart, format + fstart);
+      fpos += (mend - fstart);
+
       y -= TXT_LINE_HEIGHT(st);
       x = basex;
       lines++;
@@ -479,16 +471,8 @@ static int text_draw_wrapped(const SpaceText *st,
   }
 
   /* Draw the remaining text */
-  for (a = fstart, ma = mstart; str[ma] && y > clip_min_y; a++) {
-    if (use_syntax) {
-      if (fmt_prev != format[a]) {
-        format_draw_color(tdc, fmt_prev = format[a]);
-      }
-    }
-
-    const int c_len = BLI_str_utf8_size_safe(str + ma);
-    x += text_font_draw_character_utf8(tdc, x, y, str + ma, c_len);
-    ma += c_len;
+  if (y > clip_min_y) {
+    x += text_font_draw(tdc, x, y, str + fstart, strlen(str + fstart), format + fstart);
   }
 
   flatten_string_free(&fs);
@@ -505,7 +489,6 @@ static void text_draw(const SpaceText *st,
                       int y,
                       const char *format)
 {
-  const bool use_syntax = (tdc->syntax_highlight && format);
   FlattenString fs;
   int columns, size, n, w = 0, padding, amount = 0;
   const char *in = nullptr;
@@ -539,23 +522,7 @@ static void text_draw(const SpaceText *st,
   }
 
   x += tdc->cwidth_px * padding;
-
-  if (use_syntax) {
-    int a, str_shift = 0;
-    char fmt_prev = 0xff;
-
-    for (a = 0; a < amount; a++) {
-      if (format[a] != fmt_prev) {
-        format_draw_color(tdc, fmt_prev = format[a]);
-      }
-      const int c_len = BLI_str_utf8_size_safe(in + str_shift);
-      x += text_font_draw_character_utf8(tdc, x, y, in + str_shift, c_len);
-      str_shift += c_len;
-    }
-  }
-  else {
-    text_font_draw(tdc, x, y, in);
-  }
+  x += text_font_draw(tdc, x, y, in, amount, format);
 
   flatten_string_free(&fs);
 }
@@ -576,8 +543,8 @@ struct DrawCache {
   char cwidth_px;
   char text_id[MAX_ID_NAME];
 
-  /* for partial lines recalculation */
-  short update_flag;
+  /** For partial lines recalculation. */
+  bool update;
   int valid_head, valid_tail; /* amount of unchanged lines */
 };
 
@@ -596,7 +563,8 @@ static void text_drawcache_init(SpaceText *st)
 static void text_update_drawcache(SpaceText *st, ARegion *region)
 {
   DrawCache *drawcache;
-  int full_update = 0, nlines = 0;
+  bool full_update = false;
+  int nlines = 0;
   Text *txt = st->text;
 
   if (st->runtime.drawcache == nullptr) {
@@ -630,10 +598,10 @@ static void text_update_drawcache(SpaceText *st, ARegion *region)
     if (full_update || !drawcache->line_height) {
       drawcache->valid_head = 0;
       drawcache->valid_tail = 0;
-      drawcache->update_flag = 1;
+      drawcache->update = true;
     }
 
-    if (drawcache->update_flag) {
+    if (drawcache->update) {
       TextLine *line = static_cast<TextLine *>(st->text->lines.first);
       int lineno = 0, size, lines_count;
       int *fp = drawcache->line_height, *new_tail, *old_tail;
@@ -684,7 +652,7 @@ static void text_update_drawcache(SpaceText *st, ARegion *region)
   else {
     MEM_SAFE_FREE(drawcache->line_height);
 
-    if (full_update || drawcache->update_flag) {
+    if (full_update || drawcache->update) {
       nlines = BLI_listbase_count(&txt->lines);
 
       if (st->showlinenrs) {
@@ -708,7 +676,7 @@ static void text_update_drawcache(SpaceText *st, ARegion *region)
   STRNCPY(drawcache->text_id, txt->id.name);
 
   /* clear update flag */
-  drawcache->update_flag = 0;
+  drawcache->update = false;
   drawcache->valid_head = 0;
   drawcache->valid_tail = 0;
 }
@@ -724,7 +692,7 @@ void text_drawcache_tag_update(SpaceText *st, const bool full)
     DrawCache *drawcache = static_cast<DrawCache *>(st->runtime.drawcache);
     Text *txt = st->text;
 
-    if (drawcache->update_flag) {
+    if (drawcache->update) {
       /* happens when tagging update from space listener */
       /* should do nothing to prevent locally tagged cache be fully recalculated */
       return;
@@ -758,7 +726,7 @@ void text_drawcache_tag_update(SpaceText *st, const bool full)
       drawcache->valid_tail = 0;
     }
 
-    drawcache->update_flag = 1;
+    drawcache->update = true;
   }
 }
 
@@ -814,7 +782,7 @@ int text_get_visible_lines(const SpaceText *st, ARegion *region, const char *str
     while (chars--) {
       if (i + columns - start > max) {
         lines++;
-        start = MIN2(end, i);
+        start = std::min(end, i);
         end += max;
       }
       else if (ELEM(ch, ' ', '-')) {
@@ -920,7 +888,7 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
   sell_off = text_get_span_wrap(
       st, region, static_cast<TextLine *>(st->text->lines.first), st->text->sell);
   lhlstart = MIN2(curl_off, sell_off);
-  lhlend = MAX2(curl_off, sell_off);
+  lhlend = std::max(curl_off, sell_off);
 
   if (ltexth > 0) {
     hlstart = (lhlstart * pix_available) / ltexth;
@@ -1078,7 +1046,7 @@ static void draw_suggestion_list(const SpaceText *st, const TextDrawContext *tdc
   boxh = SUGG_LIST_SIZE * lheight + 8;
 
   if (x + boxw > region->winx) {
-    x = MAX2(0, region->winx - boxw);
+    x = std::max(0, region->winx - boxw);
   }
 
   /* not needed but stands out nicer */
@@ -1145,7 +1113,8 @@ static void draw_suggestion_list(const SpaceText *st, const TextDrawContext *tdc
 static void draw_text_decoration(SpaceText *st, ARegion *region)
 {
   Text *text = st->text;
-  int vcurl, vcurc, vsell, vselc, hidden = 0;
+  int vcurl, vcurc, vsell, vselc;
+  bool hidden = false;
   int x, y, w, i;
   int offl, offc;
   const int lheight = TXT_LINE_HEIGHT(st);
@@ -1157,7 +1126,7 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
 
   if (vselc < 0) {
     vselc = 0;
-    hidden = 1;
+    hidden = true;
   }
 
   if (text->curl == text->sell && text->curc == text->selc && !st->line_hlight && hidden) {
@@ -1334,7 +1303,7 @@ static void draw_brackets(const SpaceText *st, const TextDrawContext *tdc, ARegi
 
   linep = startl;
   c = startc;
-  fc = BLI_str_utf8_offset_to_index(linep->line, startc);
+  fc = BLI_str_utf8_offset_to_index(linep->line, linep->len, startc);
   endl = nullptr;
   endc = -1;
   find = -b;
@@ -1446,11 +1415,10 @@ static void draw_brackets(const SpaceText *st, const TextDrawContext *tdc, ARegi
 
   if (viewc >= 0) {
     viewl = txt_get_span(static_cast<TextLine *>(text->lines.first), startl) - st->top + offl;
-
-    text_font_draw_character(
-        tdc, x + viewc * st->runtime.cwidth_px, y - viewl * TXT_LINE_HEIGHT(st), ch);
-    text_font_draw_character(
-        tdc, x + viewc * st->runtime.cwidth_px + 1, y - viewl * TXT_LINE_HEIGHT(st), ch);
+    BLF_enable(tdc->font_id, BLF_BOLD);
+    text_font_draw(
+        tdc, x + viewc * st->runtime.cwidth_px, y - viewl * TXT_LINE_HEIGHT(st), &ch, 1, nullptr);
+    BLF_disable(tdc->font_id, BLF_BOLD);
   }
 
   /* draw closing bracket */
@@ -1460,11 +1428,10 @@ static void draw_brackets(const SpaceText *st, const TextDrawContext *tdc, ARegi
 
   if (viewc >= 0) {
     viewl = txt_get_span(static_cast<TextLine *>(text->lines.first), endl) - st->top + offl;
-
-    text_font_draw_character(
-        tdc, x + viewc * st->runtime.cwidth_px, y - viewl * TXT_LINE_HEIGHT(st), ch);
-    text_font_draw_character(
-        tdc, x + viewc * st->runtime.cwidth_px + 1, y - viewl * TXT_LINE_HEIGHT(st), ch);
+    BLF_enable(tdc->font_id, BLF_BOLD);
+    text_font_draw(
+        tdc, x + viewc * st->runtime.cwidth_px, y - viewl * TXT_LINE_HEIGHT(st), &ch, 1, nullptr);
+    BLF_disable(tdc->font_id, BLF_BOLD);
   }
 }
 
@@ -1585,7 +1552,12 @@ void draw_text_main(SpaceText *st, ARegion *region)
       /* Draw line number. */
       UI_FontThemeColor(tdc.font_id, (tmp == text->sell) ? TH_HILITE : TH_LINENUMBERS);
       SNPRINTF(linenr, "%*d", st->runtime.line_number_display_digits, i + linecount + 1);
-      text_font_draw(&tdc, TXT_NUMCOL_PAD * st->runtime.cwidth_px, y, linenr);
+      text_font_draw(&tdc,
+                     TXT_NUMCOL_PAD * st->runtime.cwidth_px,
+                     y,
+                     linenr,
+                     st->runtime.line_number_display_digits,
+                     nullptr);
       /* Change back to text color. */
       UI_FontThemeColor(tdc.font_id, TH_TEXT);
     }

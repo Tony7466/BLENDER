@@ -265,6 +265,14 @@ void GPU_framebuffer_bind_loadstore(GPUFrameBuffer *gpu_fb,
   fb->load_store_config_array(load_store_actions, actions_len);
 }
 
+void GPU_framebuffer_subpass_transition_array(GPUFrameBuffer *gpu_fb,
+                                              const GPUAttachmentState *attachment_states,
+                                              uint attachment_len)
+{
+  unwrap(gpu_fb)->subpass_transition(
+      attachment_states[0], Span<GPUAttachmentState>(attachment_states + 1, attachment_len - 1));
+}
+
 void GPU_framebuffer_bind_no_srgb(GPUFrameBuffer *gpu_fb)
 {
   const bool enable_srgb = false;
@@ -678,8 +686,10 @@ GPUOffScreen *GPU_offscreen_create(int width,
   ofs->color = GPU_texture_create_2d("ofs_color", width, height, 1, format, usage, nullptr);
 
   if (depth) {
+    /* Format view flag is needed by Workbench Volumes to read the stencil view. */
+    eGPUTextureUsage depth_usage = usage | GPU_TEXTURE_USAGE_FORMAT_VIEW;
     ofs->depth = GPU_texture_create_2d(
-        "ofs_depth", width, height, 1, GPU_DEPTH24_STENCIL8, usage, nullptr);
+        "ofs_depth", width, height, 1, GPU_DEPTH24_STENCIL8, depth_usage, nullptr);
   }
 
   if ((depth && !ofs->depth) || !ofs->color) {

@@ -22,7 +22,7 @@
 #include "BLI_listbase.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_asset.h"
+#include "BKE_asset.hh"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
@@ -35,7 +35,7 @@
 
 #include "lib_intern.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"

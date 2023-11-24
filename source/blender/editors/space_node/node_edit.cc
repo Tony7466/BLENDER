@@ -17,7 +17,7 @@
 #include "DNA_world_types.h"
 
 #include "BKE_callbacks.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
@@ -26,7 +26,7 @@
 #include "BKE_material.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_workspace.h"
@@ -37,9 +37,10 @@
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_debug.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -65,7 +66,7 @@
 
 #include "IMB_imbuf_types.h"
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 #include "NOD_geometry.hh"
 #include "NOD_shader.h"
 #include "NOD_socket.hh"
@@ -234,6 +235,7 @@ static void compo_initjob(void *cjv)
   ViewLayer *view_layer = cj->view_layer;
 
   cj->compositor_depsgraph = DEG_graph_new(bmain, scene, view_layer, DAG_EVAL_RENDER);
+  DEG_debug_name_set(cj->compositor_depsgraph, "COMPOSITOR");
   DEG_graph_build_for_compositor_preview(cj->compositor_depsgraph, cj->ntree);
 
   /* NOTE: Don't update animation to preserve unkeyed changes, this means can not use
@@ -267,12 +269,7 @@ static void compo_progressjob(void *cjv, float progress)
 }
 
 /* Only this runs inside thread. */
-static void compo_startjob(void *cjv,
-                           /* Cannot be const, this function implements wm_jobs_start_callback.
-                            * NOLINTNEXTLINE: readability-non-const-parameter. */
-                           bool *stop,
-                           bool *do_update,
-                           float *progress)
+static void compo_startjob(void *cjv, wmJobWorkerStatus *worker_status)
 {
   CompoJob *cj = (CompoJob *)cjv;
   bNodeTree *ntree = cj->localtree;
@@ -282,9 +279,9 @@ static void compo_startjob(void *cjv,
     return;
   }
 
-  cj->stop = stop;
-  cj->do_update = do_update;
-  cj->progress = progress;
+  cj->stop = &worker_status->stop;
+  cj->do_update = &worker_status->do_update;
+  cj->progress = &worker_status->progress;
 
   ntree->runtime->test_break = compo_breakjob;
   ntree->runtime->tbh = cj;
@@ -420,7 +417,7 @@ bool composite_node_editable(bContext *C)
 
 static void send_notifiers_after_tree_change(ID *id, bNodeTree *ntree)
 {
-  WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, id);
 
   if (ntree->type == NTREE_SHADER && id != nullptr) {
     if (GS(id->name) == ID_MA) {
@@ -851,9 +848,9 @@ namespace blender::ed::space_node {
 
 static bool socket_is_occluded(const float2 &location,
                                const bNode &node_the_socket_belongs_to,
-                               const SpaceNode &snode)
+                               const Span<bNode *> sorted_nodes)
 {
-  LISTBASE_FOREACH_BACKWARD (bNode *, node, &snode.edittree->nodes) {
+  for (bNode *node : sorted_nodes) {
     if (node == &node_the_socket_belongs_to) {
       /* Nodes after this one are underneath and can't occlude the socket. */
       return false;
@@ -1102,6 +1099,11 @@ bool node_has_hidden_sockets(bNode *node)
 
 void node_set_hidden_sockets(bNode *node, int set)
 {
+  /* The Reroute node is the socket itself, do not hide this. */
+  if (node->is_reroute()) {
+    return;
+  }
+
   if (set == 0) {
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
       sock->flag &= ~SOCK_HIDDEN;
@@ -1133,7 +1135,7 @@ bool node_is_previewable(const SpaceNode &snode, const bNodeTree &ntree, const b
     return false;
   }
   if (ntree.type == NTREE_SHADER) {
-    return U.experimental.use_shader_node_previews && !(node.is_frame());
+    return U.experimental.use_shader_node_previews && !node.is_frame();
   }
   return node.typeinfo->flag & NODE_PREVIEW;
 }
@@ -1168,13 +1170,14 @@ bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
 
   bNodeTree &node_tree = *snode.edittree;
   node_tree.ensure_topology_cache();
-  const Span<bNode *> nodes = node_tree.all_nodes();
-  if (nodes.is_empty()) {
+
+  const Array<bNode *> sorted_nodes = tree_draw_order_calc_nodes_reversed(*snode.edittree);
+  if (sorted_nodes.is_empty()) {
     return nullptr;
   }
 
-  for (int i = nodes.index_range().last(); i >= 0; i--) {
-    bNode &node = *nodes[i];
+  for (const int i : sorted_nodes.index_range()) {
+    bNode &node = *sorted_nodes[i];
 
     BLI_rctf_init_pt_radius(&rect, cursor, size_sock_padded);
     if (!(node.flag & NODE_HIDDEN)) {
@@ -1191,17 +1194,17 @@ bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
 
     if (in_out & SOCK_IN) {
       for (bNodeSocket *sock : node.input_sockets()) {
-        if (sock->is_visible()) {
+        if (node.is_socket_icon_drawn(*sock)) {
           const float2 location = sock->runtime->location;
           if (sock->flag & SOCK_MULTI_INPUT && !(node.flag & NODE_HIDDEN)) {
             if (cursor_isect_multi_input_socket(cursor, *sock)) {
-              if (!socket_is_occluded(location, node, snode)) {
+              if (!socket_is_occluded(location, node, sorted_nodes)) {
                 return sock;
               }
             }
           }
           else if (BLI_rctf_isect_pt(&rect, location.x, location.y)) {
-            if (!socket_is_occluded(location, node, snode)) {
+            if (!socket_is_occluded(location, node, sorted_nodes)) {
               return sock;
             }
           }
@@ -1210,10 +1213,10 @@ bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
     }
     if (in_out & SOCK_OUT) {
       for (bNodeSocket *sock : node.output_sockets()) {
-        if (sock->is_visible()) {
+        if (node.is_socket_icon_drawn(*sock)) {
           const float2 location = sock->runtime->location;
           if (BLI_rctf_isect_pt(&rect, location.x, location.y)) {
-            if (!socket_is_occluded(location, node, snode)) {
+            if (!socket_is_occluded(location, node, sorted_nodes)) {
               return sock;
             }
           }
@@ -1292,37 +1295,21 @@ void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &
    * so we have to build a map first to find copied output nodes in the new tree. */
   Map<int32_t, bNode *> dst_output_node_map;
   for (const auto &item : node_map.items()) {
-    if (ELEM(item.key->type, GEO_NODE_SIMULATION_OUTPUT, GEO_NODE_REPEAT_OUTPUT)) {
+    if (bke::all_zone_output_node_types().contains(item.key->type)) {
       dst_output_node_map.add_new(item.key->identifier, item.value);
     }
   }
 
   for (bNode *dst_node : node_map.values()) {
-    switch (dst_node->type) {
-      case GEO_NODE_SIMULATION_INPUT: {
-        NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
-            dst_node->storage);
-        if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
-                                                                          nullptr)) {
-          data->output_node_id = output_node->identifier;
-        }
-        else {
-          data->output_node_id = 0;
-          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
-        }
-        break;
+    if (bke::all_zone_input_node_types().contains(dst_node->type)) {
+      const bke::bNodeZoneType &zone_type = *bke::zone_type_by_node_type(dst_node->type);
+      int &output_node_id = zone_type.get_corresponding_output_id(*dst_node);
+      if (const bNode *output_node = dst_output_node_map.lookup_default(output_node_id, nullptr)) {
+        output_node_id = output_node->identifier;
       }
-      case GEO_NODE_REPEAT_INPUT: {
-        NodeGeometryRepeatInput *data = static_cast<NodeGeometryRepeatInput *>(dst_node->storage);
-        if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
-                                                                          nullptr)) {
-          data->output_node_id = output_node->identifier;
-        }
-        else {
-          data->output_node_id = 0;
-          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
-        }
-        break;
+      else {
+        output_node_id = 0;
+        blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
       }
     }
   }
@@ -1796,6 +1783,8 @@ static int node_socket_toggle_exec(bContext *C, wmOperator * /*op*/)
   ED_node_tree_propagate_change(C, CTX_data_main(C), snode->edittree);
 
   WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
+  /* Hack to force update of the button state after drawing, see #112462. */
+  WM_event_add_mousemove(CTX_wm_window(C));
 
   return OPERATOR_FINISHED;
 }

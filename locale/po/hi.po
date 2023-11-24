@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'6221ff436fc2')\n"
+"Project-Id-Version: Blender 4.1.0 Alpha (b'7ce745a76b47')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-09-11 10:35:14\n"
+"POT-Creation-Date: 2023-11-20 11:21:26\n"
 "PO-Revision-Date: 2015-03-03 16:21+0530\n"
 "Last-Translator: Roshan Lal Gumasta <roshan@anisecrets.com>\n"
 "Language-Team: Hindi <www.anisecrets.com>\n"
@@ -187,20 +187,12 @@ msgid "Full"
 msgstr "पूर्ण"
 
 
+msgid "Auto"
+msgstr "स्वत:"
+
+
 msgid "Fribidi Library"
 msgstr "Fribidi पुस्तकालय"
-
-
-msgid "The FriBidi C compiled library (.so under Linux, .dll under windows...), you’ll likely have to edit it if you’re under Windows, e.g. using the one included in svn's libraries repository"
-msgstr "FriBidi C लाइब्रेरी (Linux, windows.. अंतर्गत. dll के तहत .so) संकलित, आप की संभावना अगर आप उदाहरण के लिए एक svn के पुस्तकालयों भंडार में अंतर्गत का उपयोग कर Windows, के तहत कर रहे हैं इसे संपादित करने के लिए होगा"
-
-
-msgid "Gettext 'msgfmt' executable"
-msgstr "Gettext 'msgfmt' निष्पादन योग्य"
-
-
-msgid "The gettext msgfmt 'compiler'. You’ll likely have to edit it if you’re under Windows"
-msgstr "Gettext msgfmt 'कम्पाइलर'। आप की संभावना संपादित करें यदि आप Windows के तहत कर रहे हैं करने के लिए होगा"
 
 
 msgid "The bf-translation repository"
@@ -375,6 +367,10 @@ msgid "Face"
 msgstr "फलक"
 
 
+msgid "Layer"
+msgstr "परत"
+
+
 msgid "Image Format"
 msgstr "छवि प्रारूप"
 
@@ -437,10 +433,6 @@ msgstr "मुक्त"
 
 msgid "Aligned"
 msgstr "संरेखित"
-
-
-msgid "Auto"
-msgstr "स्वत:"
 
 
 msgid "Hide"
@@ -577,6 +569,14 @@ msgstr "स्वत:"
 
 msgid "Relative"
 msgstr "सापेक्ष"
+
+
+msgid "Straight"
+msgstr "सीधे"
+
+
+msgid "Curved"
+msgstr "घुमावदार"
 
 
 msgid "Head"
@@ -1565,10 +1565,6 @@ msgid "Frames"
 msgstr "गठन"
 
 
-msgid "Layer"
-msgstr "परत"
-
-
 msgid "Grid"
 msgstr "जालक"
 
@@ -2014,10 +2010,6 @@ msgid "Alpha Mode"
 msgstr "पारदर्शिता रूप"
 
 
-msgid "Straight"
-msgstr "सीधे"
-
-
 msgid "Iris"
 msgstr "आईरिस"
 
@@ -2158,16 +2150,16 @@ msgid "Cloth"
 msgstr "कपड़ा"
 
 
+msgid "Fast"
+msgstr "तेजी से"
+
+
 msgid "Edges"
 msgstr "किनारों"
 
 
 msgid "Loops"
 msgstr "कुण्डली"
-
-
-msgid "Auto Smooth"
-msgstr "स्वत: चिकना"
 
 
 msgid "Vertex Selection"
@@ -2192,10 +2184,6 @@ msgstr "आवरण यूवी कुण्डली परत सूचक�
 
 msgid "Vertices"
 msgstr "शिरोबिन्दु"
-
-
-msgid "Fast"
-msgstr "तेजी से"
 
 
 msgid "Never"
@@ -2800,6 +2788,10 @@ msgid "Snap"
 msgstr "स्नैप"
 
 
+msgid "Files"
+msgstr "संचिकाएँ"
+
+
 msgid "Align"
 msgstr "संरेखित करें"
 
@@ -3254,10 +3246,6 @@ msgid "Translate"
 msgstr "स्थानांतर"
 
 
-msgid "Curved"
-msgstr "घुमावदार"
-
-
 msgid "Equal"
 msgstr "बराबर"
 
@@ -3320,10 +3308,6 @@ msgstr "ईंटें"
 
 msgid "Curve Time"
 msgstr "वक्र समय"
-
-
-msgid "Both"
-msgstr "दोनों"
 
 
 msgid "Column Select"
@@ -3450,6 +3434,11 @@ msgid "Paste Driver"
 msgstr "चिपकाएँ यंत्र-संवादी"
 
 
+msgctxt "Operator"
+msgid "Show All"
+msgstr "सभी दिखाएँ"
+
+
 msgid "Move"
 msgstr "विचलन"
 
@@ -3457,11 +3446,6 @@ msgstr "विचलन"
 msgctxt "Operator"
 msgid "Extrude"
 msgstr "बिहर्वेधन"
-
-
-msgctxt "Operator"
-msgid "Show All Layers"
-msgstr "सभी परतों को दिखाएँ"
 
 
 msgid "Type of parenting"
@@ -3559,10 +3543,6 @@ msgstr "संप गठन"
 msgctxt "Operator"
 msgid "Select"
 msgstr "चयन"
-
-
-msgid "Files"
-msgstr "संचिकाएँ"
 
 
 msgctxt "Operator"
@@ -3771,6 +3751,15 @@ msgid "Limit"
 msgstr "सीमा"
 
 
+msgctxt "Operator"
+msgid "Show All Layers"
+msgstr "सभी परतों को दिखाएँ"
+
+
+msgid "Both"
+msgstr "दोनों"
+
+
 msgid "Flatten"
 msgstr "समतल"
 
@@ -3781,6 +3770,10 @@ msgstr "सिग्मा"
 
 msgid "Next Keyframe"
 msgstr "अगले अनुबोधक चिन्ह"
+
+
+msgid "Flat"
+msgstr "समतल"
 
 
 msgctxt "Operator"
@@ -4407,17 +4400,9 @@ msgid "Save translations' settings in a persistent JSon file"
 msgstr "एक लगातार JSon संचिका में अनुवाद सेटिंग्स सहेजें"
 
 
-msgid "Update i18n svn's branches (po files)"
-msgstr "I18n svn शाखाओं (po संचिकाें) अद्यतन करें"
-
-
 msgctxt "Operator"
 msgid "Init I18n Update Settings"
 msgstr "Init I18n अद्यतन सेटिंग्स"
-
-
-msgid "Init settings for i18n svn's update operators"
-msgstr "Init i18n svn अद्यतन ऑपरेटरों के लिए सेटिंग्स"
 
 
 msgctxt "Operator"
@@ -4427,11 +4412,6 @@ msgstr "Init I18n अद्यतन भाषाओं का चयन कर�
 
 msgid "Select all if True, else deselect all"
 msgstr "सभी का चयन करें अगर यह सच है, और सभी का चयन हटाएँ"
-
-
-msgctxt "Operator"
-msgid "Update I18n Trunk"
-msgstr "अद्यतन I18n ट्रंक"
 
 
 msgctxt "Operator"
@@ -4456,10 +4436,6 @@ msgstr "घन आकार"
 msgctxt "Operator"
 msgid "Cylinder Projection"
 msgstr "बेलन प्रक्षेपण"
-
-
-msgid "Modified"
-msgstr "संशोधित"
 
 
 msgctxt "Operator"
@@ -4851,24 +4827,8 @@ msgid "Settings/info about a language"
 msgstr "एक भाषा के बारे में सेटिंग्स/जानकारी"
 
 
-msgid "Path to the relevant mo file"
-msgstr "प्रासंगिक एमओ संचिका का पथ"
-
-
 msgid "Numeric ID"
 msgstr "सांख्यिक ID"
-
-
-msgid "Path to the relevant po file in branches"
-msgstr "शाखाओं में प्रासंगिक po संचिका का पथ"
-
-
-msgid "PO Trunk File Path"
-msgstr "महत्व मानचित्र आकार है बिंदू विसबिंदू विस्तार संकल्प; उच्च संभावित मान कम खुरदुरा, स्मृति और गति की कीमत पर उत्पादन"
-
-
-msgid "Path to the relevant po file in trunk"
-msgstr "ट्रंक में प्रासंगिक po संचिका का पथ"
 
 
 msgid "Active Language"
@@ -4881,10 +4841,6 @@ msgstr "Langs संग्रह में सक्रिय भाषा क�
 
 msgid "Whether these settings have already been auto-set or not"
 msgstr "यह है कि क्या इन सेटिंग पहले से ही या नहीं ऑटो-सेट गया है"
-
-
-msgid "Languages to update in branches"
-msgstr "भाषाओं में शाखाओं को अद्यतन करने के लिए"
 
 
 msgid "Path to the pot template file"
@@ -5141,10 +5097,6 @@ msgstr "वस्तु के लिए तालाबंदी"
 
 msgid "3D"
 msgstr "त्रि-आयाम"
-
-
-msgid "Flat"
-msgstr "समतल"
 
 
 msgid "Density Factor"
@@ -5449,16 +5401,6 @@ msgstr "नहीं init भाषाओं डेटा सकता है!"
 
 
 msgctxt "Operator"
-msgid "Update Branches"
-msgstr "शाखाओं को अद्यतन"
-
-
-msgctxt "Operator"
-msgid "Update Trunk"
-msgstr "अद्यतन ट्रंक"
-
-
-msgctxt "Operator"
 msgid "New"
 msgstr "नई"
 
@@ -5523,11 +5465,6 @@ msgstr "मोटा एवं तिर्यगक्षर"
 
 msgid "Endpoint"
 msgstr "समापन बिंदु"
-
-
-msgctxt "Operator"
-msgid "Show All"
-msgstr "सभी दिखाएँ"
 
 
 msgctxt "Operator"
@@ -6099,6 +6036,10 @@ msgid "Apply"
 msgstr "लागू करें"
 
 
+msgid "<Missing ID block>"
+msgstr "< अनुपलब्ध ID ब्लॉक >"
+
+
 msgid "No AnimData to set action on"
 msgstr "कार्य पर स्थापित करने के लिए कोई अनुप्राणन सामग्री नहीं"
 
@@ -6146,6 +6087,10 @@ msgstr "अंतर्निहित फ़ंक्शन"
 
 msgid "Key %d"
 msgstr "कुंजी %d"
+
+
+msgid "Auto Smooth"
+msgstr "स्वत: चिकना"
 
 
 msgid "GPencil"
@@ -6298,10 +6243,6 @@ msgstr "बाहर"
 
 msgid "<Unknown Modifier>"
 msgstr "< अज्ञात संशोधक >"
-
-
-msgid "<Missing ID block>"
-msgstr "< अनुपलब्ध ID ब्लॉक >"
 
 
 msgid "\"%s\" property cannot be animated"
@@ -6768,15 +6709,6 @@ msgid "(Key) "
 msgstr "(कुंजी) "
 
 
-msgctxt "Action"
-msgid "Group"
-msgstr "समूह"
-
-
-msgid "Bone Groups"
-msgstr "अस्थि समूह"
-
-
 msgid "(empty)"
 msgstr "(खाली)"
 
@@ -6914,6 +6846,11 @@ msgid "Overwrite %s"
 msgstr "अधिलेखित करें %s"
 
 
+msgctxt "Action"
+msgid "Group"
+msgstr "समूह"
+
+
 msgid "Flame"
 msgstr "लौ"
 
@@ -6993,6 +6930,10 @@ msgstr "रिम"
 
 msgid "Blender File View"
 msgstr "ब्लेंडर संचिका दृश्य"
+
+
+msgid "Modified"
+msgstr "संशोधित"
 
 
 msgid "ON"
@@ -7130,10 +7071,6 @@ msgstr "हंगेरियन (Magyar)"
 
 msgid "Hebrew (תירִבְעִ)"
 msgstr "हिब्रू (תירִבְעִ)"
-
-
-msgid "Spanish from Spain (Español de España)"
-msgstr "स्पेनिश स्पेन से (Español de España)"
 
 
 msgid "Amharic (አማርኛ)"

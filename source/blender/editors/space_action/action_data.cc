@@ -28,7 +28,7 @@
 #include "RNA_prototypes.h"
 
 #include "BKE_action.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
@@ -46,7 +46,7 @@
 #include "ED_mask.hh"
 #include "ED_screen.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

@@ -22,17 +22,17 @@
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BKE_cloth.hh"
 #include "BKE_effect.h"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_pointcache.h"
 
 #include "SIM_mass_spring.h"

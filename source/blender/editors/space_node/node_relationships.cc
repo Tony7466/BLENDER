@@ -16,14 +16,14 @@
 #include "BLI_stack.hh"
 
 #include "BKE_anim_data.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
-#include "BKE_screen.h"
+#include "BKE_node_tree_update.hh"
+#include "BKE_screen.hh"
 
 #include "ED_node.hh" /* own include */
 #include "ED_render.hh"
@@ -36,7 +36,7 @@
 #include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -50,6 +50,7 @@
 #include "BLT_translation.h"
 
 #include "NOD_node_declaration.hh"
+#include "NOD_socket.hh"
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
 
@@ -170,7 +171,7 @@ static void pick_input_link_by_link_intersect(const bContext &C,
 
 static bool socket_is_available(bNodeTree * /*ntree*/, bNodeSocket *sock, const bool allow_used)
 {
-  if (!sock->is_visible_or_panel_collapsed()) {
+  if (!sock->is_visible()) {
     return false;
   }
 
@@ -414,9 +415,9 @@ namespace viewer_linking {
  * \{ */
 
 /* Depending on the node tree type, different socket types are supported by viewer nodes. */
-static bool socket_can_be_viewed(const bNodeSocket &socket)
+static bool socket_can_be_viewed(const bNode &node, const bNodeSocket &socket)
 {
-  if (!socket.is_visible()) {
+  if (!node.is_socket_icon_drawn(socket)) {
     return false;
   }
   if (STREQ(socket.idname, "NodeSocketVirtual")) {
@@ -435,27 +436,6 @@ static bool socket_can_be_viewed(const bNodeSocket &socket)
               SOCK_RGBA);
 }
 
-static eCustomDataType socket_type_to_custom_data_type(const eNodeSocketDatatype socket_type)
-{
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      return CD_PROP_FLOAT;
-    case SOCK_INT:
-      return CD_PROP_INT32;
-    case SOCK_VECTOR:
-      return CD_PROP_FLOAT3;
-    case SOCK_BOOLEAN:
-      return CD_PROP_BOOL;
-    case SOCK_RGBA:
-      return CD_PROP_COLOR;
-    case SOCK_ROTATION:
-      return CD_PROP_QUATERNION;
-    default:
-      /* Fallback. */
-      return CD_AUTO_FROM_NAME;
-  }
-}
-
 /**
  * Find the socket to link to in a viewer node.
  */
@@ -468,21 +448,24 @@ static bNodeSocket *node_link_viewer_get_socket(bNodeTree &ntree,
     return (bNodeSocket *)viewer_node.inputs.first;
   }
   /* For the geometry nodes viewer, find the socket with the correct type. */
-  LISTBASE_FOREACH (bNodeSocket *, viewer_socket, &viewer_node.inputs) {
-    if (viewer_socket->type == src_socket.type) {
-      if (viewer_socket->type == SOCK_GEOMETRY) {
-        return viewer_socket;
-      }
-      NodeGeometryViewer *storage = (NodeGeometryViewer *)viewer_node.storage;
-      const eCustomDataType data_type = socket_type_to_custom_data_type(
-          (eNodeSocketDatatype)src_socket.type);
-      BLI_assert(data_type != CD_AUTO_FROM_NAME);
-      storage->data_type = data_type;
-      viewer_node.typeinfo->updatefunc(&ntree, &viewer_node);
-      return viewer_socket;
-    }
+
+  if (src_socket.type == SOCK_GEOMETRY) {
+    return static_cast<bNodeSocket *>(viewer_node.inputs.first);
   }
-  return nullptr;
+
+  ntree.ensure_topology_cache();
+  if (!socket_can_be_viewed(src_socket.owner_node(), src_socket)) {
+    return nullptr;
+  }
+
+  NodeGeometryViewer &storage = *static_cast<NodeGeometryViewer *>(viewer_node.storage);
+  const eCustomDataType data_type = *bke::socket_type_to_custom_data_type(
+      eNodeSocketDatatype(src_socket.type));
+  BLI_assert(data_type != CD_AUTO_FROM_NAME);
+  storage.data_type = data_type;
+  nodes::update_node_declaration_and_sockets(ntree, viewer_node);
+
+  return static_cast<bNodeSocket *>(viewer_node.inputs.last);
 }
 
 static bool is_viewer_node(const bNode &node)
@@ -530,7 +513,7 @@ static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
   int last_linked_data_socket_index = -1;
   bool has_linked_geometry_socket = false;
   for (bNodeSocket *socket : node_to_view.output_sockets()) {
-    if (!socket_can_be_viewed(*socket)) {
+    if (!socket_can_be_viewed(node_to_view, *socket)) {
       continue;
     }
     for (bNodeLink *link : socket->directly_linked_links()) {
@@ -554,7 +537,7 @@ static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
   if (last_linked_data_socket_index == -1 && !has_linked_geometry_socket) {
     /* Return the first socket that can be viewed. */
     for (bNodeSocket *socket : node_to_view.output_sockets()) {
-      if (socket_can_be_viewed(*socket)) {
+      if (socket_can_be_viewed(node_to_view, *socket)) {
         return socket;
       }
     }
@@ -566,7 +549,7 @@ static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
   for (const int offset : IndexRange(1, tot_outputs)) {
     const int index = (last_linked_data_socket_index + offset) % tot_outputs;
     bNodeSocket &output_socket = node_to_view.output_socket(index);
-    if (!socket_can_be_viewed(output_socket)) {
+    if (!socket_can_be_viewed(node_to_view, output_socket)) {
       continue;
     }
     if (has_linked_geometry_socket && output_socket.type == SOCK_GEOMETRY) {
@@ -740,7 +723,17 @@ static bool node_active_link_viewer_poll(bContext *C)
     return false;
   }
   SpaceNode *snode = CTX_wm_space_node(C);
-  return ED_node_is_compositor(snode) || ED_node_is_geometry(snode);
+  if (ED_node_is_compositor(snode)) {
+    return true;
+  }
+  if (ED_node_is_geometry(snode)) {
+    if (snode->geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
+      /* The viewer node is not supported in the "Tool" context. */
+      return false;
+    }
+    return true;
+  }
+  return false;
 }
 
 void NODE_OT_link_viewer(wmOperatorType *ot)
@@ -1772,7 +1765,7 @@ static int node_parent_set_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
-  node_sort(ntree);
+  tree_draw_order_update(ntree);
   WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
 
   return OPERATOR_FINISHED;
@@ -1859,7 +1852,7 @@ static int node_join_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
-  node_sort(ntree);
+  tree_draw_order_update(ntree);
   ED_node_tree_propagate_change(C, &bmain, snode.edittree);
   WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
 
@@ -1887,15 +1880,13 @@ void NODE_OT_join(wmOperatorType *ot)
 /** \name Attach Operator
  * \{ */
 
-static bNode *node_find_frame_to_attach(ARegion &region,
-                                        const bNodeTree &ntree,
-                                        const int2 mouse_xy)
+static bNode *node_find_frame_to_attach(ARegion &region, bNodeTree &ntree, const int2 mouse_xy)
 {
   /* convert mouse coordinates to v2d space */
   float2 cursor;
   UI_view2d_region_to_view(&region.v2d, mouse_xy.x, mouse_xy.y, &cursor.x, &cursor.y);
 
-  LISTBASE_FOREACH_BACKWARD (bNode *, frame, &ntree.nodes) {
+  for (bNode *frame : tree_draw_order_calc_nodes_reversed(ntree)) {
     /* skip selected, those are the nodes we want to attach */
     if ((frame->type != NODE_FRAME) || (frame->flag & NODE_SELECT)) {
       continue;
@@ -1919,7 +1910,7 @@ static int node_attach_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *e
     return OPERATOR_FINISHED;
   }
 
-  LISTBASE_FOREACH_BACKWARD (bNode *, node, &ntree.nodes) {
+  for (bNode *node : tree_draw_order_calc_nodes_reversed(*snode.edittree)) {
     if (!(node->flag & NODE_SELECT)) {
       continue;
     }
@@ -1944,7 +1935,7 @@ static int node_attach_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *e
     nodeAttachNode(&ntree, node, frame);
   }
 
-  node_sort(ntree);
+  tree_draw_order_update(ntree);
   WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
 
   return OPERATOR_FINISHED;
@@ -2019,7 +2010,7 @@ static int node_detach_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
-  node_sort(ntree);
+  tree_draw_order_update(ntree);
   WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
 
   return OPERATOR_FINISHED;
@@ -2264,7 +2255,7 @@ bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_
     int index;
     LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, sockets, index) {
       const nodes::SocketDeclaration &socket_decl = *socket_decls[index];
-      if (!socket->is_visible_or_panel_collapsed()) {
+      if (!socket->is_visible()) {
         continue;
       }
       if (socket_decl.is_default_link_socket) {
@@ -2285,7 +2276,7 @@ bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_
   /* Try all priorities, starting from 'highest'. */
   for (int priority = maxpriority; priority >= 0; priority--) {
     LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
-      if (!!sock->is_visible_or_panel_collapsed() && priority == get_main_socket_priority(sock)) {
+      if (!!sock->is_visible() && priority == get_main_socket_priority(sock)) {
         return sock;
       }
     }
@@ -2451,7 +2442,7 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
     rctf totr_frame;
 
     /* check nodes front to back */
-    LISTBASE_FOREACH_BACKWARD (bNode *, frame, &ntree->nodes) {
+    for (bNode *frame : tree_draw_order_calc_nodes_reversed(*ntree)) {
       /* skip selected, those are the nodes we want to attach */
       if ((frame->type != NODE_FRAME) || (frame->flag & NODE_SELECT)) {
         continue;

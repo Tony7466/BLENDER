@@ -36,7 +36,7 @@
 
 #include "BKE_appdir.h"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_main.h"
@@ -45,7 +45,7 @@
 
 #include "RNA_define.hh"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 
 #include <ocio_capi.h>
 
@@ -3376,8 +3376,19 @@ const char *IMB_colormanagement_look_validate_for_view(const char *view_name,
     return look_name;
   }
 
+  /* Keep same look if compatible. */
   if (colormanage_compatible_look(look_descr, view_name)) {
     return look_name;
+  }
+
+  /* Try to find another compatible look with the same UI name, in case
+   * of looks specialized for view transform, */
+  LISTBASE_FOREACH (ColorManagedLook *, other_look, &global_looks) {
+    if (STREQ(look_descr->ui_name, other_look->ui_name) &&
+        colormanage_compatible_look(other_look, view_name))
+    {
+      return other_look->name;
+    }
   }
 
   return IMB_colormanagement_look_get_default_name();

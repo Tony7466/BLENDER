@@ -16,19 +16,19 @@
 #include "BLI_rect.h"
 
 #include "BKE_action.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "UI_resources.hh"
 
