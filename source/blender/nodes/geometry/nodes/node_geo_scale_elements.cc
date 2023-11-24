@@ -7,16 +7,12 @@
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
 #include "BLI_atomic_disjoint_set.hh"
-#include "BLI_disjoint_set.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_sort.hh"
 #include "BLI_task.hh"
-#include "BLI_vector.hh"
-#include "BLI_vector_set.hh"
 #include "BLI_virtual_array.hh"
 
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -93,8 +89,8 @@ static void from_indices_large_groups(const Span<int> group_indices,
                                       MutableSpan<int> r_counts_to_offset,
                                       MutableSpan<int> r_indices)
 {
-  constexpr int segment_size = 1024;
-  constexpr IndexRange segment(segment_size);
+  constexpr const int segment_size = 1024;
+  constexpr const IndexRange segment(segment_size);
   const bool last_small_segmet = bool(group_indices.size() % segment_size);
   const int total_segments = group_indices.size() / segment_size + int(last_small_segmet);
 
@@ -199,7 +195,7 @@ template<typename T> static T accumulate(const VArray<T> &values, const Span<int
   devirtualize_varray(values, [&](const auto values) {
     value = threading::parallel_reduce(
         indices.index_range(),
-        1024,
+        2048,
         T(),
         [&](const IndexRange range, T other_value) {
           for (const int i : indices.slice(range)) {
@@ -234,10 +230,10 @@ static void scale_uniformly(const GroupedSpan<int> elem_islands,
       const Span<int> vert_island = vert_islands[island_index];
       const Span<int> elem_island = elem_islands[island_index];
 
-      BLI_assert(!elem_island.is_empty());
-      const float scale = accumulate<float>(scale_varray, elem_island) / float(elem_island.size());
-      const float3 center = accumulate<float3>(center_varray, elem_island) /
-                            float3(elem_island.size());
+      const float total = elem_island.size();
+      BLI_assert(total > 0.0f);
+      const float scale = accumulate<float>(scale_varray, elem_island) / total;
+      const float3 center = accumulate<float3>(center_varray, elem_island) / total;
 
       threading::parallel_for(vert_island.index_range(), 2048, [&](const IndexRange range) {
         for (const int vert_i : vert_island.slice(range)) {
@@ -391,10 +387,13 @@ static void gather_face_islands(const Mesh &mesh,
   gather_groups(vert_island_indices, total_islands, r_vert_offsets, r_vert_indices);
   gather_groups(face_island_indices, total_islands, r_item_offsets, r_item_indices);
 
-  /* Right now grouped positions of vertices/faces is in gathered array. Convert them into real
-   * indices. */
-  parallel_transform<int>(r_item_indices, 4098, [&](const int pos) { return face_mask[pos]; });
-  parallel_transform<int>(r_vert_indices, 4098, [&](const int pos) { return vert_mask[pos]; });
+  /* If result indices is for gathered array, map than back into global indices. */
+  if (face_mask.size() != mesh.faces_num) {
+    parallel_transform<int>(r_item_indices, 4098, [&](const int pos) { return face_mask[pos]; });
+  }
+  if (vert_mask.size() != mesh.totvert) {
+    parallel_transform<int>(r_vert_indices, 4098, [&](const int pos) { return vert_mask[pos]; });
+  }
 }
 
 static IndexMask vertices_for_edges(const Mesh &mesh,
@@ -461,14 +460,17 @@ static void gather_edge_islands(const Mesh &mesh,
   const int total_islands = edge_to_vert_islands(
       mesh, edge_mask, vert_mask, edge_island_indices, vert_island_indices);
 
-  /* Group gathered vertices and faces. */
+  /* Group gathered vertices and edges. */
   gather_groups(vert_island_indices, total_islands, r_vert_offsets, r_vert_indices);
   gather_groups(edge_island_indices, total_islands, r_item_offsets, r_item_indices);
 
-  /* Right now grouped positions of vertices/faces is in gathered array. Convert them into real
-   * indices. */
-  parallel_transform<int>(r_item_indices, 4098, [&](const int pos) { return edge_mask[pos]; });
-  parallel_transform<int>(r_vert_indices, 4098, [&](const int pos) { return vert_mask[pos]; });
+  /* If result indices is for gathered array, map than back into global indices. */
+  if (edge_mask.size() != mesh.totedge) {
+    parallel_transform<int>(r_item_indices, 4098, [&](const int pos) { return edge_mask[pos]; });
+  }
+  if (vert_mask.size() != mesh.totvert) {
+    parallel_transform<int>(r_vert_indices, 4098, [&](const int pos) { return vert_mask[pos]; });
+  }
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -479,15 +481,9 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   GeometrySet geometry = params.extract_input<GeometrySet>("Geometry");
 
-  const Field<bool> selection_field = params.get_input<Field<bool>>("Selection");
-  const Field<float> scale_field = params.get_input<Field<float>>("Scale");
-  const Field<float3> center_field = params.get_input<Field<float3>>("Center");
-  const Field<float3> axis_field = [&]() {
-    if (scale_mode == GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS) {
-      return params.get_input<Field<float3>>("Axis");
-    }
-    return fn::make_constant_field<float3>({});
-  }();
+  const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
+  const Field<float> scale_field = params.extract_input<Field<float>>("Scale");
+  const Field<float3> center_field = params.extract_input<Field<float3>>("Center");
 
   geometry.modify_geometry_sets([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
@@ -496,7 +492,9 @@ static void node_geo_exec(GeoNodeExecParams params)
       evaluator.set_selection(selection_field);
       evaluator.add(scale_field);
       evaluator.add(center_field);
-      evaluator.add(axis_field);
+      if (scale_mode == GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS) {
+        evaluator.add(params.get_input<Field<float3>>("Axis"));
+      }
       evaluator.evaluate();
       const IndexMask &mask = evaluator.get_evaluated_selection_as_mask();
       if (mask.is_empty()) {
