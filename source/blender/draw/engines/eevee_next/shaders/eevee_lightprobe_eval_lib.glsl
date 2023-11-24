@@ -135,6 +135,9 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
 #ifdef IRRADIANCE_GRID_UPLOAD
   i = grid_start_index;
 #endif
+#ifdef IRRADIANCE_GRID_SAMPLING
+  float sampling_random = sampling_rng_1D_get(SAMPLING_LIGHTPROBE);
+#endif
   for (; i < IRRADIANCE_GRID_MAX; i++) {
     /* Last grid is tagged as invalid to stop the iteration. */
     if (grids_infos_buf[i].grid_size.x == -1) {
@@ -148,9 +151,8 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
       index = i;
 #ifdef IRRADIANCE_GRID_SAMPLING
       float distance_to_border = reduce_min(min(lP, vec3(grids_infos_buf[i].grid_size) - lP));
-      float noise = interlieved_gradient_noise(
-          UTIL_TEXEL, float(i), sampling_rng_1D_get(SAMPLING_VOLUME_U));
-      if (distance_to_border < fract(noise + sampling_rng_1D_get(SAMPLING_VOLUME_V))) {
+      float sampling_noise = interlieved_gradient_noise(UTIL_TEXEL, float(i), 0.0);
+      if (distance_to_border < fract(sampling_noise + sampling_random)) {
         /* Try to sample another grid to get smooth transitions at borders. */
         continue;
       }
