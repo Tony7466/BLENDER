@@ -227,11 +227,7 @@ static eFCU_Cycle_Type remap_cyclic_keyframe_location(FCurve *fcu, float *px, fl
 
 /**
  * This helper function determines whether a new keyframe is needed.
- *
- * Cases where keyframes should not be added:
- * 1. Keyframe to be added between two keyframes with similar values.
- * 2. Keyframe to be added on frame where two keyframes are already situated.
- * 3. Keyframe lies at point that intersects the linear line between two keyframes.
+ * A keyframe doesn't get added when it is the same value as it's two neighboring keys.
  */
 static bool new_key_needed(FCurve *fcu, const float frame, const float value)
 {
@@ -262,76 +258,19 @@ static bool new_key_needed(FCurve *fcu, const float frame, const float value)
     prev = &fcu->bezt[bezt_index - 1];
   }
 
-  const float beztPosi = next ? next->vec[1][0] : INFINITY;
-  const float beztVal = next ? next->vec[1][1] : INFINITY;
-  const float prevPosi = prev ? prev->vec[1][0] : INFINITY;
-  const float prevVal = prev ? prev->vec[1][1] : INFINITY;
+  /* Either next or prev might be a nullptr, but never both because we already checked if the
+   * FCurve has at least 1 key. */
+  const float next_key_y = next ? next->vec[1][1] : INFINITY;
+  const float prev_key_y = prev ? prev->vec[1][1] : INFINITY;
 
-  if (prev) {
-    /* There is a keyframe before the one currently being examined. */
-
-    /* Keyframe to be added at point where there are already two similar points? */
-    if (IS_EQF(prevPosi, frame) && IS_EQF(beztPosi, frame) && IS_EQF(beztPosi, prevPosi)) {
-      return false;
-    }
-
-    /* Keyframe between prev+current points? */
-    if ((prevPosi <= frame) && (frame <= beztPosi)) {
-      /* Is the value of keyframe to be added the same as keyframes on either side? */
-      if (IS_EQF(prevVal, value) && IS_EQF(beztVal, value) && IS_EQF(prevVal, beztVal)) {
-        return false;
-      }
-
-      /* Get real value of curve at that point. */
-      const float realVal = evaluate_fcurve(fcu, frame);
-
-      /* Compare whether it's the same as proposed. */
-      if (IS_EQF(realVal, value)) {
-        return false;
-      }
-      return true;
-    }
-
-    /* New keyframe before prev beztriple? */
-    if (frame < prevPosi) {
-      /* A new keyframe will be added. However, whether the previous beztriple
-       * stays around or not depends on whether the values of previous/current
-       * beztriples and new keyframe are the same.
-       */
-      if (IS_EQF(prevVal, value) && IS_EQF(beztVal, value) && IS_EQF(prevVal, beztVal)) {
-        return false;
-      }
-
-      return true;
-    }
-  }
-  else {
-    /* Just add a keyframe if there's only one keyframe
-     * and the new one occurs before the existing one does.
-     */
-    if ((frame < beztPosi) && (fcu->totvert == 1)) {
-      return true;
-    }
+  const float fcu_eval = evaluate_fcurve(fcu, frame);
+  /* No need to insert a key if the same value is already the value of the FCurve at that point. */
+  if (IS_EQF(fcu_eval, value)) {
+    return false;
   }
 
-  /* Frame in which to add a new-keyframe occurs after all other keys
-   * -> If there are at least two existing keyframes, then if the values of the
-   *    last two keyframes and the new-keyframe match, the last existing keyframe
-   *    gets deleted as it is no longer required.
-   * -> Otherwise, a keyframe is just added. 1.0 is added so that fake-2nd-to-last
-   *    keyframe is not equal to last keyframe.
-   */
-  next = &fcu->bezt[fcu->totvert - 1];
-  const float valA = next->vec[1][1];
-  float valB;
-  if (prev) {
-    valB = prev->vec[1][1];
-  }
-  else {
-    valB = next->vec[1][1] + 1.0f;
-  }
-
-  if (IS_EQF(valA, value) && IS_EQF(valA, valB)) {
+  /* Is the value of keyframe to be added the same as keyframes on either side? */
+  if (IS_EQF(prev_key_y, value) && IS_EQF(next_key_y, value)) {
     return false;
   }
 
