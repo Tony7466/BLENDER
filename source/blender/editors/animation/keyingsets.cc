@@ -103,7 +103,6 @@ static int add_default_keyingset_exec(bContext *C, wmOperator * /*op*/)
    */
   flag |= KEYINGSET_ABSOLUTE;
 
-  /* 2nd arg is 0 to indicate that we don't want to include autokeying mode related settings */
   keyingflag = ANIM_get_keyframing_flags(scene);
 
   /* call the API func, and set the active keyingset index */

@@ -204,7 +204,7 @@ void autokeyframe_object(
         do_scale = true;
       }
     }
-
+    AnimData *adt = ob->adt;
     if (do_loc) {
       KeyingSet *ks = ANIM_builtin_keyingset_get_named(ANIM_KS_LOCATION_ID);
       ANIM_apply_keyingset(C, &sources, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
@@ -280,14 +280,13 @@ void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, int tmode, short t
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
       depsgraph, BKE_scene_frame_get(scene));
-  eInsertKeyFlags flag = eInsertKeyFlags(0);
 
   /* flag is initialized from UserPref keyframing settings
    * - special exception for targetless IK - INSERTKEY_MATRIX keyframes should get
    *   visual keyframes even if flag not set, as it's not that useful otherwise
    *   (for quick animation recording)
    */
-  flag = get_autokey_flags(scene);
+  eInsertKeyFlags flag = get_autokey_flags(scene);
 
   if (targetless_ik) {
     flag |= INSERTKEY_MATRIX;
