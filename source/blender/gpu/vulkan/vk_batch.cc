@@ -30,16 +30,16 @@ void VKBatch::draw_setup()
   state_manager.apply_bindings();
   VKVertexAttributeObject vao;
   vao.update_bindings(context, *this);
-  context.bind_graphics_pipeline(prim_type, vao);
-
-  /* Bind geometry resources. */
-  vao.bind(context);
   VKIndexBuffer *index_buffer = index_buffer_get();
   const bool draw_indexed = index_buffer != nullptr;
   if (draw_indexed) {
     index_buffer->upload_data();
     index_buffer->bind(context);
   }
+  context.bind_graphics_pipeline(prim_type, vao);
+
+  /* Bind geometry resources. */
+  vao.bind(context);
 }
 
 void VKBatch::draw(int vertex_first, int vertex_count, int instance_first, int instance_count)
