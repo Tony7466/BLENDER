@@ -19,7 +19,7 @@
 
 #include "rna_internal.h"
 
-const EnumPropertyItem rna_enum_aset_library_type_items[] = {
+const EnumPropertyItem rna_enum_asset_library_type_items[] = {
     {ASSET_LIBRARY_LOCAL, "LOCAL", 0, "Local", ""},
     {ASSET_LIBRARY_ALL, "ALL", 0, "All", ""},
     {ASSET_LIBRARY_ESSENTIALS, "ESSENTIALS", 0, "Essentials", ""},
@@ -32,8 +32,8 @@ const EnumPropertyItem rna_enum_aset_library_type_items[] = {
 #  include "AS_asset_library.h"
 #  include "AS_asset_representation.hh"
 
-#  include "BKE_asset.h"
-#  include "BKE_context.h"
+#  include "BKE_asset.hh"
+#  include "BKE_context.hh"
 #  include "BKE_idprop.h"
 
 #  include "BLI_listbase.h"
