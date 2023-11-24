@@ -109,8 +109,8 @@ static void ui_popup_block_position(wmWindow *window,
     }
   }
 
-  /* Trim the popup and its contents to the width of the button, if the size difference is too
-   * small. This avoids cases, where the rounded corner clips underneath the button. */
+  /* Trim the popup and its contents to the width of the button if the size difference
+   * is small. This avoids cases where the rounded corner clips underneath the button. */
   const int delta = BLI_rctf_size_x(&block->rect) - BLI_rctf_size_x(&butrct);
   const float max_radius = (0.5f * U.widget_unit);
 
@@ -365,12 +365,12 @@ static void ui_popup_block_position(wmWindow *window,
       dir2 &= ~(UI_DIR_LEFT | UI_DIR_RIGHT);
     }
     else if (off_screen_left || off_screen_right) {
-      /* Popup is both left and right from the button */
+      /* Popup is both left and right from the button. */
       dir2 |= (UI_DIR_LEFT | UI_DIR_RIGHT);
     }
 
-    /* Popovers don't need secondary direction. Pulldowns to the left or right are currently not
-     * supported. */
+    /* Popovers don't need secondary direction. Pulldowns to
+     * the left or right are currently not supported. */
     const bool no_2nd_dir = (but->type == UI_BTYPE_POPOVER || ui_but_menu_draw_as_popover(but) ||
                              dir1 & (UI_DIR_RIGHT | UI_DIR_LEFT));
     block->direction = no_2nd_dir ? dir1 : (dir1 | dir2);
