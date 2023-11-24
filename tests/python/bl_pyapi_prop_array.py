@@ -87,94 +87,164 @@ def buffer_cast_explicit_native(buffer):
 # -----------------------------------------------------------------------------
 # Tests
 
-class TestPropArray(unittest.TestCase):
+class TestPropArrayForeachSetInt(unittest.TestCase):
     def setUp(self):
-        id_type.test_array_f = FloatVectorProperty(size=10)
         id_type.test_array_i = IntVectorProperty(size=10)
-        self.array_f = id_inst.test_array_f
         self.array_i = id_inst.test_array_i
 
     def tearDown(self):
-        del id_type.test_array_f
         del id_type.test_array_i
 
-    def test_foreach_getset_i(self):
-        with self.assertRaises(TypeError):
-            self.array_i.foreach_set(range(5))
-
+    def test_sequence(self):
+        sequence = range(5, 15)
         self.array_i.foreach_set(range(5, 15))
+        self.assertSequenceEqual(self.array_i, sequence)
 
-        self.array_i.foreach_set(np.arange(10, dtype=dtype_explicit_endian_standard_size(np.int32)))
-
-        self.array_i.foreach_set(buffer_cast_explicit_native(np.arange(10, dtype=np.int32)))
-
+    def test_sequence_too_short(self):
+        sequence = range(5)
         with self.assertRaises(TypeError):
-            self.array_i.foreach_set(np.arange(10, dtype=dtype_byteorder_swap_standard_size(np.int32)))
+            self.array_i.foreach_set(sequence)
 
+    def test_buffer(self):
+        buffer = np.arange(10, dtype=np.int32)
+        self.array_i.foreach_set(buffer)
+        self.assertSequenceEqual(self.array_i, buffer)
+
+    def test_buffer_explicit_endian_standard_size(self):
+        buffer = np.arange(10, dtype=dtype_explicit_endian_standard_size(np.int32))
+        self.array_i.foreach_set(buffer)
+        self.assertSequenceEqual(self.array_i, buffer)
+
+    def test_buffer_explicit_native(self):
+        buffer = buffer_cast_explicit_native(np.arange(10, dtype=np.int32))
+        self.array_i.foreach_set(buffer)
+        self.assertSequenceEqual(self.array_i, buffer)
+
+    def test_buffer_non_native_byteorder(self):
+        buffer = np.arange(10, dtype=dtype_byteorder_swap_standard_size(np.int32))
         with self.assertRaises(TypeError):
-            self.array_i.foreach_set(np.arange(5, dtype=np.int32))
+            self.array_i.foreach_set(buffer)
 
+    def test_buffer_too_short(self):
+        buffer = np.arange(5, dtype=np.int32)
         with self.assertRaises(TypeError):
-            self.array_i.foreach_set(np.arange(10, dtype=np.int64))
+            self.array_i.foreach_set(buffer)
 
+    def test_buffer_itemsize_too_large(self):
+        buffer = np.arange(10, dtype=np.int64)
         with self.assertRaises(TypeError):
-            self.array_i.foreach_get(np.arange(10, dtype=np.float32))
+            self.array_i.foreach_set(buffer)
 
-        a = np.arange(10, dtype=np.int32)
-        self.array_i.foreach_set(a)
-
+    def test_buffer_wrong_data_kind(self):
+        buffer = np.arange(10, dtype=np.float32)
         with self.assertRaises(TypeError):
-            self.array_i.foreach_set(a[:5])
+            self.array_i.foreach_set(buffer)
 
-        for v1, v2 in zip(a, self.array_i[:]):
-            self.assertEqual(v1, v2)
 
-        b = np.empty(10, dtype=np.int32)
-        self.array_i.foreach_get(b)
-        for v1, v2 in zip(a, b):
-            self.assertEqual(v1, v2)
+class TestPropArrayForeachGetInt(unittest.TestCase):
+    def setUp(self):
+        id_type.test_array_i = IntVectorProperty(size=10)
+        # Initialize the array.
+        id_inst.test_array_i[:] = range(10)
+        self.array_i = id_inst.test_array_i
 
-        b = [None] * 10
-        self.array_i.foreach_get(b)
-        for v1, v2 in zip(a, b):
-            self.assertEqual(v1, v2)
+    def tearDown(self):
+        del id_type.test_array_i
 
-    def test_foreach_getset_f(self):
+    def test_sequence(self):
+        sequence = [None] * 10
+        self.array_i.foreach_get(sequence)
+        self.assertSequenceEqual(sequence, self.array_i)
+
+    def test_buffer(self):
+        buffer = np.zeros(10, dtype=np.int32)
+        self.array_i.foreach_get(buffer)
+        self.assertSequenceEqual(buffer, self.array_i)
+
+    def test_buffer_wrong_data_kind(self):
+        buffer = np.arange(10, dtype=np.float32)
         with self.assertRaises(TypeError):
-            self.array_f.foreach_set(range(5))
+            self.array_i.foreach_get(buffer)
 
+
+class TestPropArrayForeachSetFloat(unittest.TestCase):
+    def setUp(self):
+        id_type.test_array_f = FloatVectorProperty(size=10)
+        self.array_f = id_inst.test_array_f
+
+    def tearDown(self):
+        del id_type.test_array_f
+
+    def test_sequence(self):
+        sequence = range(5, 15)
         self.array_f.foreach_set(range(5, 15))
+        self.assertSequenceEqual(self.array_f, sequence)
 
-        self.array_f.foreach_set(np.arange(10, dtype=dtype_explicit_endian_standard_size(np.float32)))
-
-        self.array_f.foreach_set(buffer_cast_explicit_native(np.arange(10, dtype=np.float32)))
-
+    def test_sequence_too_short(self):
+        sequence = range(5)
         with self.assertRaises(TypeError):
-            self.array_f.foreach_set(np.arange(10, dtype=dtype_byteorder_swap_standard_size(np.float32)))
+            self.array_f.foreach_set(sequence)
 
+    def test_buffer(self):
+        buffer = np.arange(10, dtype=np.float32)
+        self.array_f.foreach_set(buffer)
+        self.assertSequenceEqual(self.array_f, buffer)
+
+    def test_buffer_explicit_endian_standard_size(self):
+        buffer = np.arange(10, dtype=dtype_explicit_endian_standard_size(np.float32))
+        self.array_f.foreach_set(buffer)
+        self.assertSequenceEqual(self.array_f, buffer)
+
+    def test_buffer_explicit_native(self):
+        buffer = buffer_cast_explicit_native(np.arange(10, dtype=np.float32))
+        self.array_f.foreach_set(buffer)
+        self.assertSequenceEqual(self.array_f, buffer)
+
+    def test_buffer_non_native_byteorder(self):
+        buffer = np.arange(10, dtype=dtype_byteorder_swap_standard_size(np.float32))
         with self.assertRaises(TypeError):
-            self.array_f.foreach_set(np.arange(5, dtype=np.float32))
+            self.array_f.foreach_set(buffer)
 
+    def test_buffer_too_short(self):
+        buffer = np.arange(5, dtype=np.float32)
         with self.assertRaises(TypeError):
-            self.array_f.foreach_set(np.arange(10, dtype=np.int32))
+            self.array_f.foreach_set(buffer)
 
+    def test_buffer_itemsize_too_large(self):
+        buffer = np.arange(10, dtype=np.float64)
         with self.assertRaises(TypeError):
-            self.array_f.foreach_get(np.arange(10, dtype=np.float64))
+            self.array_f.foreach_set(buffer)
 
-        a = np.arange(10, dtype=np.float32)
-        self.array_f.foreach_set(a)
-        for v1, v2 in zip(a, self.array_f[:]):
-            self.assertEqual(v1, v2)
+    def test_buffer_wrong_data_kind(self):
+        buffer = np.arange(10, dtype=np.int32)
+        with self.assertRaises(TypeError):
+            self.array_f.foreach_set(buffer)
 
-        b = np.empty(10, dtype=np.float32)
-        self.array_f.foreach_get(b)
-        for v1, v2 in zip(a, b):
-            self.assertEqual(v1, v2)
 
-        b = [None] * 10
-        self.array_f.foreach_get(b)
-        for v1, v2 in zip(a, b):
-            self.assertEqual(v1, v2)
+class TestPropArrayForeachGetFloat(unittest.TestCase):
+    def setUp(self):
+        id_type.test_array_f = FloatVectorProperty(size=10)
+        # Initialize the array.
+        id_inst.test_array_f[:] = range(10)
+        self.array_f = id_inst.test_array_f
+
+    def tearDown(self):
+        del id_type.test_array_f
+
+    def test_sequence(self):
+        sequence = [None] * 10
+        self.array_f.foreach_get(sequence)
+        self.assertSequenceEqual(sequence, self.array_f)
+
+    def test_buffer(self):
+        buffer = np.zeros(10, dtype=np.float32)
+        self.array_f.foreach_get(buffer)
+        self.assertSequenceEqual(buffer, self.array_f)
+
+    def test_buffer_wrong_data_kind(self):
+        buffer = np.arange(10, dtype=np.int32)
+        with self.assertRaises(TypeError):
+            self.array_f.foreach_get(buffer)
 
 
 class TestPropArrayMultiDimensional(unittest.TestCase):
