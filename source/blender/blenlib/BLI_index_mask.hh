@@ -853,6 +853,8 @@ inline IndexMask IndexMask::from_predicate(const IndexMask &universe,
           *r_current = local_index;
           /* Branchless conditional increment. */
           r_current += condition;
+          /* Uninitialized boolean data can break the class invariant by incrementing above. */
+          BLI_assert(ELEM(int8_t(condition), 0, 1));
         }
         const int16_t true_indices_num = int16_t(r_current - r_true_indices);
         return true_indices_num;
