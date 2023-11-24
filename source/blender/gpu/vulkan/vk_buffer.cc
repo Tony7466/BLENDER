@@ -46,6 +46,11 @@ static VkMemoryPropertyFlags vma_preferred_flags(const bool is_host_visible)
                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 }
 
+/*
+ * TODO: Check which memory is selected and adjust the creation flag to add mapping. This way the
+ * staging buffer can be skipped, or in case of a vertex buffer an intermediate buffer can be
+ * removed.
+ */
 bool VKBuffer::create(int64_t size_in_bytes,
                       GPUUsageType usage,
                       VkBufferUsageFlags buffer_usage,
