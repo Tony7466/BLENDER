@@ -269,11 +269,6 @@ static bool new_key_needed(FCurve *fcu, const float frame, const float value)
     return false;
   }
 
-  /* Is the value of keyframe to be added the same as keyframes on either side? */
-  if (IS_EQF(prev_key_y, value) && IS_EQF(next_key_y, value)) {
-    return false;
-  }
-
   return true;
 }
 
