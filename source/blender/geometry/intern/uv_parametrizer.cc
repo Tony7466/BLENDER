@@ -405,7 +405,7 @@ static float p_edge_length(PEdge *e)
   return len_v3v3(e->vert->co, e->next->vert->co);
 }
 
-static float p_edge_length_squared(PEdge* e)
+static float p_edge_length_squared(PEdge *e)
 {
   return len_squared_v3v3(e->vert->co, e->next->vert->co);
 }
@@ -636,7 +636,7 @@ static void p_vert_load_pin_select_uvs(ParamHandle *handle, PVert *v)
   }
 }
 
-static void p_chart_flush_collapsed_uvs(PChart* chart);
+static void p_chart_flush_collapsed_uvs(PChart *chart);
 
 static void p_flush_uvs(ParamHandle *handle, PChart *chart)
 {
@@ -2304,10 +2304,9 @@ static void p_chart_simplify(PChart *chart)
 #  endif
 #endif
 
-
-static void p_vert_fix_edge_pointer(PVert* v)
+static void p_vert_fix_edge_pointer(PVert *v)
 {
-  PEdge* start = v->edge;
+  PEdge *start = v->edge;
 
   /* set v->edge pointer to the edge with no pair, if there is one */
   while (v->edge->pair) {
@@ -2319,7 +2318,7 @@ static void p_vert_fix_edge_pointer(PVert* v)
   }
 }
 
-static void p_collapsing_verts(PEdge* edge, PEdge* pair, PVert** r_newv, PVert** r_keepv)
+static void p_collapsing_verts(PEdge *edge, PEdge *pair, PVert **r_newv, PVert **r_keepv)
 {
   /* the two vertices that are involved in the collapse */
   if (edge) {
@@ -2332,10 +2331,10 @@ static void p_collapsing_verts(PEdge* edge, PEdge* pair, PVert** r_newv, PVert**
   }
 }
 
-static void p_collapse_edge(PEdge* edge, PEdge* pair)
+static void p_collapse_edge(PEdge *edge, PEdge *pair)
 {
-  PVert* oldv, * keepv;
-  PEdge* e;
+  PVert *oldv, *keepv;
+  PEdge *e;
 
   p_collapsing_verts(edge, pair, &oldv, &keepv);
 
@@ -2367,7 +2366,7 @@ static void p_collapse_edge(PEdge* edge, PEdge* pair)
 
   /* update pairs and v->edge pointers */
   if (edge) {
-    PEdge* e1 = edge->next, * e2 = e1->next;
+    PEdge *e1 = edge->next, *e2 = e1->next;
 
     if (e1->pair) {
       e1->pair->pair = e2->pair;
@@ -2385,7 +2384,7 @@ static void p_collapse_edge(PEdge* edge, PEdge* pair)
   }
 
   if (pair) {
-    PEdge* e1 = pair->next, * e2 = e1->next;
+    PEdge *e1 = pair->next, *e2 = e1->next;
 
     if (e1->pair) {
       e1->pair->pair = e2->pair;
@@ -2408,8 +2407,8 @@ static void p_collapse_edge(PEdge* edge, PEdge* pair)
   oldv->flag |= PVERT_COLLAPSE;
 
   if (edge) {
-    PFace* f = edge->face;
-    PEdge* e1 = edge->next, * e2 = e1->next;
+    PFace *f = edge->face;
+    PEdge *e1 = edge->next, *e2 = e1->next;
 
     f->flag |= PFACE_COLLAPSE;
     edge->flag |= PEDGE_COLLAPSE;
@@ -2418,8 +2417,8 @@ static void p_collapse_edge(PEdge* edge, PEdge* pair)
   }
 
   if (pair) {
-    PFace* f = pair->face;
-    PEdge* e1 = pair->next, * e2 = e1->next;
+    PFace *f = pair->face;
+    PEdge *e1 = pair->next, *e2 = e1->next;
 
     f->flag |= PFACE_COLLAPSE;
     pair->flag |= PEDGE_COLLAPSE;
@@ -2428,9 +2427,9 @@ static void p_collapse_edge(PEdge* edge, PEdge* pair)
   }
 }
 
-static bool p_collapse_allowed_topologic(PEdge* edge, PEdge* pair)
+static bool p_collapse_allowed_topologic(PEdge *edge, PEdge *pair)
 {
-  PVert* oldv, * keepv;
+  PVert *oldv, *keepv;
 
   p_collapsing_verts(edge, pair, &oldv, &keepv);
 
@@ -2453,9 +2452,9 @@ static bool p_collapse_allowed_topologic(PEdge* edge, PEdge* pair)
   return true;
 }
 
-static bool p_collapse_allowed(PEdge* edge, PEdge* pair, float threshold_squared)
+static bool p_collapse_allowed(PEdge *edge, PEdge *pair, float threshold_squared)
 {
-  PVert* oldv, * keepv;
+  PVert *oldv, *keepv;
 
   p_collapsing_verts(edge, pair, &oldv, &keepv);
 
@@ -2469,19 +2468,22 @@ static bool p_collapse_allowed(PEdge* edge, PEdge* pair, float threshold_squared
     return false;
   }
 
-  PEdge* collapse_e = edge ? edge : pair;
+  PEdge *collapse_e = edge ? edge : pair;
   return p_edge_length_squared(collapse_e) < threshold_squared;
 }
 
-static float p_collapse_cost(PEdge* edge, PEdge* pair)
+static float p_collapse_cost(PEdge *edge, PEdge *pair)
 {
-  PEdge* collapse_e = edge ? edge : pair;
+  PEdge *collapse_e = edge ? edge : pair;
   return p_edge_length_squared(collapse_e);
 }
 
-static void p_collapse_cost_vertex(PVert* vert, float* r_mincost, PEdge** r_mine, float threshold_squared)
+static void p_collapse_cost_vertex(PVert *vert,
+                                   float *r_mincost,
+                                   PEdge **r_mine,
+                                   float threshold_squared)
 {
-  PEdge* e, * enext, * pair;
+  PEdge *e, *enext, *pair;
 
   *r_mine = NULL;
   *r_mincost = 0.0f;
@@ -2518,13 +2520,13 @@ static void p_collapse_cost_vertex(PVert* vert, float* r_mincost, PEdge** r_mine
   } while (e != vert->edge);
 }
 
-static void p_chart_post_collapse_flush(PChart* chart, PEdge* collapsed)
+static void p_chart_post_collapse_flush(PChart *chart, PEdge *collapsed)
 {
   /* Move to `collapsed_*`. */
 
-  PVert* v, * nextv = NULL, * verts = chart->verts;
-  PEdge* e, * nexte = NULL, * edges = chart->edges, * laste = NULL;
-  PFace* f, * nextf = NULL, * faces = chart->faces;
+  PVert *v, *nextv = NULL, *verts = chart->verts;
+  PEdge *e, *nexte = NULL, *edges = chart->edges, *laste = NULL;
+  PFace *f, *nextf = NULL, *faces = chart->faces;
 
   chart->verts = chart->collapsed_verts = NULL;
   chart->edges = chart->collapsed_edges = NULL;
@@ -2588,7 +2590,7 @@ static void p_chart_post_collapse_flush(PChart* chart, PEdge* collapsed)
   }
 }
 
-static void p_chart_collapse_doubles(PChart* chart, float threshold)
+static void p_chart_collapse_doubles(PChart *chart, float threshold)
 {
   /* Computes a list of edge collapses / vertex splits. The collapsed
    * simplices go in the `chart->collapsed_*` lists, The original and
@@ -2598,11 +2600,11 @@ static void p_chart_collapse_doubles(PChart* chart, float threshold)
   /* unlimited collapsing */
   static const int NCOLLAPSE = -1;
 
-  Heap* heap = BLI_heap_new();
-  PVert* v;
-  PEdge* collapsededges = NULL, * e;
+  Heap *heap = BLI_heap_new();
+  PVert *v;
+  PEdge *collapsededges = NULL, *e;
   int ncollapsed = 0;
-  std::vector<PVert*> wheelverts;
+  std::vector<PVert *> wheelverts;
   wheelverts.reserve(6);
 
   float threshold_squared = threshold * threshold;
@@ -2610,7 +2612,7 @@ static void p_chart_collapse_doubles(PChart* chart, float threshold)
   /* insert all potential collapses into heap */
   for (v = chart->verts; v; v = v->nextlink) {
     float cost;
-    PEdge* e = NULL;
+    PEdge *e = NULL;
 
     p_collapse_cost_vertex(v, &cost, &e, threshold_squared);
 
@@ -2632,10 +2634,10 @@ static void p_chart_collapse_doubles(PChart* chart, float threshold)
       break;
     }
 
-    HeapNode* link = BLI_heap_top(heap);
-    PEdge* edge = (PEdge*)BLI_heap_pop_min(heap), * pair = edge->pair;
-    PVert* oldv, * keepv;
-    PEdge* wheele, * nexte;
+    HeapNode *link = BLI_heap_top(heap);
+    PEdge *edge = (PEdge *)BLI_heap_pop_min(heap), *pair = edge->pair;
+    PVert *oldv, *keepv;
+    PEdge *wheele, *nexte;
 
     /* remember the edges we collapsed */
     edge->u.nextcollapse = collapsededges;
@@ -2644,7 +2646,7 @@ static void p_chart_collapse_doubles(PChart* chart, float threshold)
     if (edge->vert->u.heaplink != link) {
       edge->flag |= (PEDGE_COLLAPSE_EDGE | PEDGE_COLLAPSE_PAIR);
       edge->next->vert->u.heaplink = NULL;
-      SWAP(PEdge*, edge, pair);
+      SWAP(PEdge *, edge, pair);
     }
     else {
       edge->flag |= PEDGE_COLLAPSE_EDGE;
@@ -2671,9 +2673,9 @@ static void p_chart_collapse_doubles(PChart* chart, float threshold)
     /* collapse */
     p_collapse_edge(edge, pair);
 
-    for (PVert* v : wheelverts) {
+    for (PVert *v : wheelverts) {
       float cost;
-      PEdge* collapse = NULL;
+      PEdge *collapse = NULL;
 
       if (v->u.heaplink) {
         BLI_heap_remove(heap, v->u.heaplink);
@@ -2695,7 +2697,7 @@ static void p_chart_collapse_doubles(PChart* chart, float threshold)
   p_chart_post_collapse_flush(chart, collapsededges);
 }
 
-static void p_chart_flush_collapsed_uvs(PChart* chart)
+static void p_chart_flush_collapsed_uvs(PChart *chart)
 {
   PEdge *e, *pair, *edge;
   PVert *newv, *keepv;
@@ -2707,7 +2709,7 @@ static void p_chart_flush_collapsed_uvs(PChart* chart)
     edge = e;
     pair = e->pair;
     if (edge->flag & PEDGE_COLLAPSE_PAIR) {
-      SWAP(PEdge*, edge, pair);
+      SWAP(PEdge *, edge, pair);
     }
     p_collapsing_verts(edge, pair, &newv, &keepv);
 
