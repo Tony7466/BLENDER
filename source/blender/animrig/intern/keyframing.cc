@@ -227,7 +227,8 @@ static eFCU_Cycle_Type remap_cyclic_keyframe_location(FCurve *fcu, float *px, fl
 
 /**
  * This helper function determines whether a new keyframe is needed.
- * A keyframe doesn't get added when it is the same value as it's two neighboring keys.
+ * A keyframe doesn't get added when it is the same value as it's two neighboring keys,
+ * or if there is already a key on the frame with the same value.
  */
 static bool new_key_needed(FCurve *fcu, const float frame, const float value)
 {
@@ -243,9 +244,8 @@ static bool new_key_needed(FCurve *fcu, const float frame, const float value)
       fcu->bezt, frame, fcu->totvert, &replace);
 
   if (replace) {
-    /** In case there is a key at the current frame just let
-     * the keyframe insertion code do its thing. */
-    return true;
+    /* If there is already a key, we only need to modify it if the proposed value is different. */
+    return !IS_EQF(fcu->bezt[bezt_index].vec[1][1], value);
   }
 
   BezTriple *next = nullptr;
