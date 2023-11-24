@@ -636,6 +636,7 @@ if(UNIX AND NOT APPLE)
 
     # none of the other files are needed currently
   elseif(WITH_INSTALL_PORTABLE)
+    set(BLENDER_BIN "blender")
     install(
       TARGETS blender
       DESTINATION "."
@@ -690,6 +691,7 @@ file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
     endif()
   else()
     # main blender binary
+    set(BLENDER_BIN "bin/blender")
     install(
       TARGETS blender
       DESTINATION "./bin"
@@ -1452,6 +1454,7 @@ elseif(APPLE)
     COMMAND SetFile -d ${SETFILE_DATE} -m ${SETFILE_DATE} ${EXECUTABLE_OUTPUT_PATH}/Blender.app
   )
 
+  set(BLENDER_BIN "bin/blender")
   install(
     TARGETS blender
     DESTINATION "."
@@ -1766,6 +1769,7 @@ endif()
 # Setup launcher
 
 if(WIN32 AND NOT WITH_PYTHON_MODULE)
+  set(BLENDER_BIN "blender.exe")
   install(
     TARGETS blender blender-launcher
     COMPONENT Blender
@@ -1796,13 +1800,22 @@ if(UNIX AND NOT APPLE)
       # Only run the command to generate the man-page when it may be outdated.
       # The `IS_NEWER_THAN` checks always run when files are missing.
 
-      # NOTE: While `${EXECUTABLE_OUTPUT_PATH}/blender` may work in some cases
-      # Blender's requirement of libraries mean the installation path must be used.
+      # This runs the Blender executable from the install directory.
+      #
+      # BLENDER_SYSTEM_RESOURCES is set because DESTDIR may cause the
+      # effective install directory to be different than the install
+      # prefix compiled into the binary.
+      #
+      # PLATFORM_ENV_BUILD sets LD_LIBRATY_PATH to find dynamic
+      # precompiled libraries if needed.
       install(
         CODE "\
-set(BLENDER_BIN \"${EXECUTABLE_OUTPUT_PATH}/blender\")\n\
 set(MANPAGE_GEN \"${CMAKE_SOURCE_DIR}/doc/manpage/blender.1.py\")\n\
 set(MANPAGE_OUT \"${CMAKE_CURRENT_BINARY_DIR}/blender.1\")\n\
+set(BLENDER_INSTALL_DIR \"${CMAKE_INSTALL_PREFIX_WITH_CONFIG}\")\n\
+if(DEFINED ENV\{DESTDIR\})\n\
+  set(BLENDER_INSTALL_DIR $ENV\{DESTDIR\}/$\{BLENDER_INSTALL_DIR\})\n\
+endif()\n\
 if(\n\
   ($\{BLENDER_BIN\} IS_NEWER_THAN $\{MANPAGE_OUT\}) OR\n\
   ($\{MANPAGE_GEN\} IS_NEWER_THAN $\{MANPAGE_OUT\})\n\
@@ -1815,8 +1828,12 @@ detect_leaks=0\"\n\
   )\n\
   execute_process(\n\
     OUTPUT_QUIET\n\
-    COMMAND ${CMAKE_COMMAND} -E env ${PLATFORM_ENV_BUILD}\n\
-    $\{BLENDER_BIN\}\n\
+    COMMAND
+    ${CMAKE_COMMAND} -E env\n\
+    BLENDER_SYSTEM_RESOURCES=$\{BLENDER_INSTALL_DIR\}/${TARGETDIR_VER}\n\
+    --\n\
+    ${PLATFORM_ENV_BUILD}\n\
+    $\{BLENDER_INSTALL_DIR\}/${BLENDER_BIN}\n\
     --background\n\
     --factory-startup\n\
     --python $\{MANPAGE_GEN\}\n\
