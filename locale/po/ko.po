@@ -18837,7 +18837,7 @@ msgstr "셰이더 노드 트리"
 
 
 msgid "Node tree consisting of linked nodes used for materials (and other shading data-blocks)"
-msgstr "매테리얼(및 다른 쉐이딩 데이터-블록)을 위해 사용된 연결된 노드로 구성된 노드 트리"
+msgstr "매테리얼(및 다른 셰이딩 데이터-블록)을 위해 사용된 연결된 노드로 구성된 노드 트리"
 
 
 msgid "Texture Node Tree"
@@ -26101,7 +26101,7 @@ msgstr "템플릿"
 
 
 msgid "Open Shading Language"
-msgstr "셰이딩 언어를 열기"
+msgstr "오픈 셰이딩 언어 사용"
 
 
 msgid "Python"
@@ -27269,7 +27269,7 @@ msgstr "페이스 강도를 설정하지 마십시오"
 
 
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgid "Set face strength on new faces only"
@@ -33753,7 +33753,7 @@ msgstr "흡수 계수"
 
 
 msgid "Choose the color of your preference, and the shader will approximate the absorption coefficient to render lookalike hair"
-msgstr "선호하는 컬러를 선택하면 쉐이더가 흡수율에 근접하여 닮은 헤어를을 렌더합니다"
+msgstr "선호하는 컬러를 선택하면 셰이더가 흡수율에 근접하여 닮은 헤어를을 렌더합니다"
 
 
 msgid "Principled BSDF"
@@ -33965,11 +33965,11 @@ msgstr "이 노드가 활성 내보내기로 사용되는 경우 True"
 
 
 msgid "Which renderer and viewport shading types to use the shaders for"
-msgstr "다음에서 쉐이더를 사용할 렌더러 및 뷰포트 쉐이딩 유형"
+msgstr "다음에서 셰이더를 사용할 렌더러 및 뷰포트 셰이딩 유형"
 
 
 msgid "Use shaders for all renderers and viewports, unless there exists a more specific output"
-msgstr "보다 구체적인 출력이 없으면 모든 렌더와 뷰포트에 쉐이더를 사용"
+msgstr "보다 구체적인 출력이 없으면 모든 렌더와 뷰포트에 셰이더를 사용"
 
 
 msgid "Cycles"
@@ -35290,7 +35290,7 @@ msgstr "첫 번째로 선택한 마커를 기준점으로 사용하여 선택한
 
 msgctxt "Operator"
 msgid "New Action"
-msgstr "새로운"
+msgstr "새로운 액션"
 
 
 msgctxt "Operator"
@@ -52383,7 +52383,7 @@ msgstr "유형으로 새로운 씬을 추가"
 
 msgctxt "Scene"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgid "Add a new, empty scene with default settings"
@@ -56491,7 +56491,7 @@ msgstr "3D 뷰포트에서 셰이딩 유형을 토글"
 
 
 msgid "Shading type to toggle"
-msgstr "쉐이딩 유형을 토글"
+msgstr "셰이딩 유형을 토글"
 
 
 msgid "Toggle wireframe shading"
@@ -57261,7 +57261,7 @@ msgstr "블렌더 프로필을 사용"
 
 
 msgid "Export additional Blender specific information (for material, shaders, bones, etc.)"
-msgstr "추가적인 블렌더 지정 정보를 내보내기 (매테리얼, 쉐이더, 본, 등.)"
+msgstr "추가적인 블렌더 지정 정보를 내보내기 (매테리얼, 셰이더, 본, 등.)"
 
 
 msgid "Use Object Instances"
@@ -64804,7 +64804,7 @@ msgstr "프레임 비율 베이스"
 
 
 msgid "Frame Map New"
-msgstr "프레임 맵 새로운"
+msgstr "새로운 프레임 맵"
 
 
 msgid "How many frames the Map Old will last"
@@ -73391,7 +73391,7 @@ msgstr "월드 공간에서 계산된 캐비티 셰이드, 대규모 폐색에 �
 
 
 msgid "Curvature-based shading, useful for making fine details more visible"
-msgstr "곡률 기반 쉐이딩, 미세한 디테일을 보다 잘 보이게하는 데 유용합니다"
+msgstr "곡률 기반 셰이딩, 미세한 디테일을 보다 잘 보이게하는 데 유용합니다"
 
 
 msgid "Use both effects simultaneously"
@@ -73443,7 +73443,7 @@ msgstr "Cycles 설정"
 
 
 msgid "Lighting Method for Solid/Texture Viewport Shading"
-msgstr "솔리드/텍스쳐 뷰포트 쉐이딩을 위한 라이트닝 메서드"
+msgstr "솔리드/텍스쳐 뷰포트 셰이딩을 위한 라이트닝 메서드"
 
 
 msgid "Display using studio lighting"
@@ -74354,7 +74354,7 @@ msgstr "노드에서 지정된 텍스트 또는 파일이 없음, 컴파일 할 
 
 
 msgid "External shader script must have .osl or .oso extension, or be a module name"
-msgstr "외부 쉐이더 스크립트는 .osl 또는 .oso 확장자를 가져야하며, 또는 모듈 이름이어야 합니다"
+msgstr "외부 셰이더 스크립트는 .osl 또는 .oso 확장자를 가져야하며, 또는 모듈 이름이어야 합니다"
 
 
 msgid "Can't read OSO bytecode to store in node at %r"
@@ -74775,7 +74775,7 @@ msgstr "선택을 반전"
 
 msgctxt "Operator"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgid "API Defined"
@@ -76816,7 +76816,7 @@ msgstr "최단 경로"
 
 msgctxt "Image"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Operator"
@@ -77539,7 +77539,7 @@ msgstr "이 스트립 아래에 두 개 이상의 채널이 필요합니다"
 
 msgctxt "Text"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Operator"
@@ -81416,112 +81416,112 @@ msgstr "연결할 ID 데이터를 찾아보기"
 
 msgctxt "Object"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Mesh"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Curve"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Metaball"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Material"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Texture"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Lattice"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Light"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Camera"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "World"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Screen"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Speaker"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Sound"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Armature"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Action"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "NodeTree"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "Brush"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "ParticleSettings"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "GPencil"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "FreestyleLineStyle"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "WorkSpace"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgctxt "LightProbe"
 msgid "New"
-msgstr "새로운"
+msgstr "새로 만들기"
 
 
 msgid "%d items"
