@@ -580,13 +580,122 @@ NODE_SHADER_MATERIALX_BEGIN
   if (data->clamp_factor) {
     factor = factor.clamp();
   }
-  NodeItem res = factor.mix(value1, value2);
-  if (data->data_type == SOCK_RGBA) {
-    /* TODO: Apply data->blend_type */
 
-    if (data->clamp_result) {
-      res = res.clamp();
+  if (data->data_type == SOCK_RGBA) {
+    switch (data->blend_type) {
+      case MA_RAMP_BLEND:
+        value2 = value2;
+        break;
+      case MA_RAMP_ADD:
+        value2 = value1 + value2;
+        break;
+      case MA_RAMP_MULT:
+        value2 = value1 * value2;
+        break;
+      case MA_RAMP_SUB:
+        value2 = value1 - value2;
+        break;
+      case MA_RAMP_SCREEN:
+        value2 = val(1.0f) - (val(1.0f) - value2) * (val(1.0f) - value1);
+        break;
+      case MA_RAMP_DIV:
+        value2 = value1 / value2;
+        break;
+      case MA_RAMP_DIFF:
+        value2 = (value1 - value2).abs();
+        break;
+      case MA_RAMP_EXCLUSION:
+        value2 = value1 + value2 - val(2.0f) * value1 * value2;
+        break;
+      case MA_RAMP_DARK:
+        value2 = value1.min(value2);
+        break;
+      case MA_RAMP_LIGHT:
+        value2 = value1.max(value2);
+        break;
+      case MA_RAMP_SOFT: {
+        NodeItem screen = val(1.0f) - (val(1.0f) - value2) * (val(1.0f) - value1);
+        value2 = (val(1.0f) - value1) * value2 * value1 + value1 * screen;
+        break;
+      }
+      case MA_RAMP_OVERLAY: {
+        NodeItem value = create_node("combine4", NodeItem::Type::Color4, {{"in4", value1[3]}});
+        std::vector<std::string> inputs = {"in1", "in2", "in3"};
+        std::string in;
+        for (size_t i = 0; i < inputs.size(); ++i) {
+          in = inputs[i];
+          value.set_input(in,
+                          value2[i].if_else(NodeItem::CompareOp::Less,
+                                            val(0.5f),
+                                            val(2.0f) * value1[i] * value2[i],
+                                            val(1.0f) - val(2.0f) * (val(1.0f) - value2[i]) *
+                                                            (val(1.0f) - value1[i])));
+        }
+        value2 = value;
+        break;
+      }
+      case MA_RAMP_DODGE:
+        value2 = value1 / (val(1.0f) - value2);
+        break;
+      case MA_RAMP_BURN:
+        value2 = val(1.0f) - (val(1.0f) - value1) / value2;
+        break;
+      case MA_RAMP_COLOR:
+      case MA_RAMP_VAL:
+      case MA_RAMP_SAT:
+      case MA_RAMP_HUE: {
+        NodeItem value1_hsv = create_node("rgbtohsv", NodeItem::Type::Color4, {{"in", value1}});
+        NodeItem value2_hsv = create_node("rgbtohsv", NodeItem::Type::Color4, {{"in", value2}});
+        NodeItem channels = create_node(
+            "combine4", NodeItem::Type::Color4, {{"in4", value1_hsv[3]}});
+
+        if (data->blend_type == MA_RAMP_COLOR) {
+          channels.set_input("in1", value2_hsv[0]);
+          channels.set_input("in2", value2_hsv[1]);
+          channels.set_input("in3", value1_hsv[2]);
+        }
+        else if (data->blend_type == MA_RAMP_VAL) {
+          channels.set_input("in1", value1_hsv[0]);
+          channels.set_input("in2", value1_hsv[1]);
+          channels.set_input("in3", value2_hsv[2]);
+        }
+        else if (data->blend_type == MA_RAMP_SAT) {
+          channels.set_input("in1", value1_hsv[0]);
+          channels.set_input("in2", value2_hsv[1]);
+          channels.set_input("in3", value1_hsv[2]);
+        }
+        // MA_RAMP_HUE
+        else {
+          channels.set_input("in1", value2_hsv[0]);
+          channels.set_input("in2", value1_hsv[1]);
+          channels.set_input("in3", value1_hsv[2]);
+        }
+
+        value2 = create_node("hsvtorgb", NodeItem::Type::Color4, {{"in", channels}});
+        break;
+      }
+      case MA_RAMP_LINEAR: {
+        NodeItem value = create_node("combine4", NodeItem::Type::Color4, {{"in4", value1[3]}});
+        std::vector<std::string> inputs = {"in1", "in2", "in3"};
+        std::string in;
+        for (size_t i = 0; i < inputs.size(); ++i) {
+          in = inputs[i];
+          value.set_input(in,
+                          value2[i].if_else(NodeItem::CompareOp::Greater,
+                                            val(0.5f),
+                                            value1[2] + (val(2.0f) * (value2[2]) - val(0.5f)),
+                                            value1[2] + (val(2.0f) * (value2[2]) - val(1.0f))));
+        }
+        value2 = value;
+        break;
+      }
+      default:
+        BLI_assert_unreachable();
     }
+  }
+  NodeItem res = factor.mix(value1, value2);
+  if (data->data_type == SOCK_RGBA && data->clamp_result) {
+    res = res.clamp();
   }
   return res;
 }
