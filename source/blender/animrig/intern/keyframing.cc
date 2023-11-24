@@ -241,84 +241,80 @@ enum {
  * 2. Keyframe to be added on frame where two keyframes are already situated.
  * 3. Keyframe lies at point that intersects the linear line between two keyframes.
  */
-static short new_key_needed(FCurve *fcu, float cFrame, float nValue)
+static short new_key_needed(FCurve *fcu, float frame, float value)
 {
   if (fcu == nullptr) {
     return KEYNEEDED_JUSTADD;
   }
-  int totCount = fcu->totvert;
-  if (totCount == 0) {
+  if (fcu->totvert == 0) {
     return KEYNEEDED_JUSTADD;
   }
 
-  /* Loop through checking if any are the same. */
+  bool replace;
+  const int bezt_index = BKE_fcurve_bezt_binarysearch_index(
+      fcu->bezt, frame, fcu->totvert, &replace);
+
+  if (replace) {
+    /** In case there is a key at the current frame just let
+     * the keyframe insertion code do its thing. */
+    return KEYNEEDED_JUSTADD;
+  }
+
   BezTriple *bezt = fcu->bezt;
   BezTriple *prev = nullptr;
-  for (int i = 0; i < totCount; i++) {
-    float prevPosi = 0.0f, prevVal = 0.0f;
-    float beztPosi = 0.0f, beztVal = 0.0f;
 
-    beztPosi = bezt->vec[1][0];
-    beztVal = bezt->vec[1][1];
+  float prevPosi = 0.0f, prevVal = 0.0f;
+  float beztPosi = 0.0f, beztVal = 0.0f;
 
-    if (prev) {
-      /* There is a keyframe before the one currently being examined. */
-      prevPosi = prev->vec[1][0];
-      prevVal = prev->vec[1][1];
+  beztPosi = bezt->vec[1][0];
+  beztVal = bezt->vec[1][1];
 
-      /* Keyframe to be added at point where there are already two similar points? */
-      if (IS_EQF(prevPosi, cFrame) && IS_EQF(beztPosi, cFrame) && IS_EQF(beztPosi, prevPosi)) {
+  if (prev) {
+    /* There is a keyframe before the one currently being examined. */
+    prevPosi = prev->vec[1][0];
+    prevVal = prev->vec[1][1];
+
+    /* Keyframe to be added at point where there are already two similar points? */
+    if (IS_EQF(prevPosi, frame) && IS_EQF(beztPosi, frame) && IS_EQF(beztPosi, prevPosi)) {
+      return KEYNEEDED_DONTADD;
+    }
+
+    /* Keyframe between prev+current points? */
+    if ((prevPosi <= frame) && (frame <= beztPosi)) {
+      /* Is the value of keyframe to be added the same as keyframes on either side? */
+      if (IS_EQF(prevVal, value) && IS_EQF(beztVal, value) && IS_EQF(prevVal, beztVal)) {
         return KEYNEEDED_DONTADD;
       }
 
-      /* Keyframe between prev+current points? */
-      if ((prevPosi <= cFrame) && (cFrame <= beztPosi)) {
-        /* Is the value of keyframe to be added the same as keyframes on either side? */
-        if (IS_EQF(prevVal, nValue) && IS_EQF(beztVal, nValue) && IS_EQF(prevVal, beztVal)) {
-          return KEYNEEDED_DONTADD;
-        }
+      /* Get real value of curve at that point. */
+      const float realVal = evaluate_fcurve(fcu, frame);
 
-        float realVal;
-
-        /* Get real value of curve at that point. */
-        realVal = evaluate_fcurve(fcu, cFrame);
-
-        /* Compare whether it's the same as proposed. */
-        if (IS_EQF(realVal, nValue)) {
-          return KEYNEEDED_DONTADD;
-        }
-        return KEYNEEDED_JUSTADD;
+      /* Compare whether it's the same as proposed. */
+      if (IS_EQF(realVal, value)) {
+        return KEYNEEDED_DONTADD;
       }
-
-      /* New keyframe before prev beztriple? */
-      if (cFrame < prevPosi) {
-        /* A new keyframe will be added. However, whether the previous beztriple
-         * stays around or not depends on whether the values of previous/current
-         * beztriples and new keyframe are the same.
-         */
-        if (IS_EQF(prevVal, nValue) && IS_EQF(beztVal, nValue) && IS_EQF(prevVal, beztVal)) {
-          return KEYNEEDED_DELNEXT;
-        }
-
-        return KEYNEEDED_JUSTADD;
-      }
+      return KEYNEEDED_JUSTADD;
     }
-    else {
-      /* Just add a keyframe if there's only one keyframe
-       * and the new one occurs before the existing one does.
+
+    /* New keyframe before prev beztriple? */
+    if (frame < prevPosi) {
+      /* A new keyframe will be added. However, whether the previous beztriple
+       * stays around or not depends on whether the values of previous/current
+       * beztriples and new keyframe are the same.
        */
-      if ((cFrame < beztPosi) && (totCount == 1)) {
-        return KEYNEEDED_JUSTADD;
+      if (IS_EQF(prevVal, value) && IS_EQF(beztVal, value) && IS_EQF(prevVal, beztVal)) {
+        return KEYNEEDED_DELNEXT;
       }
-    }
 
-    /* Continue. Frame to do not yet passed (or other conditions not met) */
-    if (i < (totCount - 1)) {
-      prev = bezt;
-      bezt++;
+      return KEYNEEDED_JUSTADD;
     }
-    else {
-      break;
+  }
+  else {
+    /* Just add a keyframe if there's only one keyframe
+     * and the new one occurs before the existing one does.
+     */
+    if ((frame < beztPosi) && (fcu->totvert == 1)) {
+      return KEYNEEDED_JUSTADD;
     }
   }
 
@@ -339,7 +335,7 @@ static short new_key_needed(FCurve *fcu, float cFrame, float nValue)
     valB = bezt->vec[1][1] + 1.0f;
   }
 
-  if (IS_EQF(valA, nValue) && IS_EQF(valA, valB)) {
+  if (IS_EQF(valA, value) && IS_EQF(valA, valB)) {
     return KEYNEEDED_DELPREV;
   }
 
