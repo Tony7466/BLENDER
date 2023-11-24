@@ -230,6 +230,7 @@ set(VULKAN_SRC
   vulkan/vk_shader.cc
   vulkan/vk_shader_interface.cc
   vulkan/vk_shader_log.cc
+  vulkan/vk_staging_buffer.cc
   vulkan/vk_state_manager.cc
   vulkan/vk_storage_buffer.cc
   vulkan/vk_texture.cc
@@ -272,6 +273,7 @@ set(VULKAN_SRC
   vulkan/vk_shader.hh
   vulkan/vk_shader_interface.hh
   vulkan/vk_shader_log.hh
+  vulkan/vk_staging_buffer.hh
   vulkan/vk_state_manager.hh
   vulkan/vk_storage_buffer.hh
   vulkan/vk_texture.hh
@@ -881,8 +883,12 @@ endif()
 
 
 if(WITH_GTESTS)
+  set(TEST_SRC)
+  set(TEST_INC)
+  set(TEST_LIB)
+
   if(WITH_OPENGL_DRAW_TESTS)
-    set(TEST_SRC
+    list(APPEND TEST_SRC
       tests/gpu_testing.cc
 
       tests/buffer_texture_test.cc
@@ -899,17 +905,16 @@ if(WITH_GTESTS)
 
       tests/gpu_testing.hh
     )
-    if(WITH_VULKAN_BACKEND)
-      list(APPEND TEST_SRC
-        tests/memory_layout_test.cc
-        vulkan/vk_data_conversion_test.cc
-      )
-    endif()
+  endif()
 
-    set(TEST_INC
+  if(WITH_VULKAN_BACKEND)
+    list(APPEND TEST_SRC
+      vulkan/vk_memory_layout_test.cc
+      vulkan/vk_data_conversion_test.cc
     )
-    set(TEST_LIB
-    )
+  endif()
+
+  if (TEST_SRC)
     include(GTestTesting)
     blender_add_test_lib(bf_gpu_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
   endif()
