@@ -91,6 +91,7 @@ set(SRC
   intern/usd_writer_camera.cc
   intern/usd_writer_curves.cc
   intern/usd_writer_hair.cc
+  intern/usd_writer_image.cc
   intern/usd_writer_light.cc
   intern/usd_writer_material.cc
   intern/usd_writer_mesh.cc
@@ -125,6 +126,7 @@ set(SRC
   intern/usd_writer_camera.h
   intern/usd_writer_curves.h
   intern/usd_writer_hair.h
+  intern/usd_writer_image.h
   intern/usd_writer_light.h
   intern/usd_writer_material.h
   intern/usd_writer_mesh.h
