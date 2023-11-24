@@ -146,8 +146,8 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
     /* If sample fall inside the grid, step out of the loop. */
     if (lightprobe_irradiance_grid_local_coord(grids_infos_buf[i], P, lP)) {
       index = i;
-#ifdef SAMPLING_LIGHTPROBE
-      float distance_to_border = min_v3(min(lP, vec3(grids_infos_buf[i].grid_size) - lP));
+#ifdef IRRADIANCE_GRID_SAMPLING
+      float distance_to_border = reduce_min(min(lP, vec3(grids_infos_buf[i].grid_size) - lP));
       float noise = interlieved_gradient_noise(
           UTIL_TEXEL, float(i), sampling_rng_1D_get(SAMPLING_VOLUME_U));
       if (distance_to_border < fract(noise + sampling_rng_1D_get(SAMPLING_VOLUME_V))) {
