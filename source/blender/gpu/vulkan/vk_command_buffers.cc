@@ -128,7 +128,7 @@ void VKCommandBuffers::submit_command_buffers(VKDevice &device,
   stats.command_buffers_submitted += in_flight.vk_command_buffers.size();
 
   command_pool_.mark_in_flight(in_flight);
-  // finish();
+  finish();
 }
 
 void VKCommandBuffers::submit()
