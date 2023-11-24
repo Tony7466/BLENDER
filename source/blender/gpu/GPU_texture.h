@@ -777,6 +777,7 @@ void GPU_texture_update_mipmap(GPUTexture *texture,
                                eGPUDataFormat data_format,
                                const void *pixels);
 
+void GPU_texture_mipmap_range(GPUTexture *texture, int mip_min, int mip_max);
 /**
  * Fills the whole texture with the same data for all pixels.
  * \warning Only works for 2D and 3D textures.

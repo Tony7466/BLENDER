@@ -505,6 +505,12 @@ void GPU_texture_update_mipmap(GPUTexture *tex_,
   reinterpret_cast<Texture *>(tex)->update_sub(miplvl, offset, extent, data_format, pixels);
 }
 
+void GPU_texture_mipmap_range(GPUTexture *texture, int mip_min, int mip_max)
+{
+  Texture *tex = reinterpret_cast<Texture *>(texture);
+  tex->mip_range_set(mip_min, mip_max);
+}
+
 void GPU_texture_update_sub(GPUTexture *tex,
                             eGPUDataFormat data_format,
                             const void *pixels,

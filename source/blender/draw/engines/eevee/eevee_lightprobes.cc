@@ -1068,6 +1068,7 @@ void EEVEE_lightbake_filter_glossy(EEVEE_ViewLayerData *sldata,
     mipsize /= 2;
     CLAMP_MIN(mipsize, 1);
   }
+  GPU_texture_mipmap_range(light_cache->cube_tx.tex, 0, maxlevel);
 }
 
 void EEVEE_lightbake_filter_diffuse(EEVEE_ViewLayerData *sldata,
