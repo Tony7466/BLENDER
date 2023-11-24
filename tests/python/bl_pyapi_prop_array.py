@@ -145,6 +145,17 @@ class TestPropArrayForeachSetInt(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.array_i.foreach_set(buffer)
 
+    @unittest.skipUnless(np.dtype(np.intc).itemsize == np.dtype(np.int_).itemsize == 4,
+                         "requires a system where both C int and C long are 32 bit")
+    def test_buffer_other_c_type(self):
+        int_type = np.intc
+        long_type = np.int_
+        # Use whichever dtype np.int32 is not an alias of.
+        other_dtype = int_type if np.int32 == long_type else long_type
+        buffer = np.arange(10, dtype=other_dtype)
+        self.array_i.foreach_set(buffer)
+        self.assertSequenceEqual(self.array_i, buffer)
+
 
 class TestPropArrayForeachGetInt(unittest.TestCase):
     def setUp(self):
