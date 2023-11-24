@@ -18,7 +18,7 @@ extern struct CLG_LogRef *LOG_MATERIALX_SHADER;
 
 class GroupNodeParser;
 
-using ExportImageFunction = std::function<std::string(Main *, Scene *, Image *, ImageUser *)>;
+using ExportImageFunction = std::function<std::string(Image *)>;
 
 /**
  * This is base abstraction class for parsing Blender nodes into MaterialX nodes.

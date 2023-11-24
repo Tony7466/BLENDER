@@ -17,6 +17,7 @@ std::string get_in_memory_texture_filename(Image *ima);
 std::string export_texture(Image *ima,
                            const std::string &export_path,
                            bool allow_overwrite,
+                           bool only_in_memory,
                            ReportList *reports);
 
 }  // namespace blender::io::usd

@@ -66,6 +66,8 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   HydraSceneDelegate(pxr::HdRenderIndex *parent_index, pxr::SdfPath const &delegate_id);
   ~HydraSceneDelegate() override = default;
 
+  static std::string cache_file_path(const std::string &file_name = "", bool mkdir = false);
+
   /* Delegate methods */
   pxr::HdMeshTopology GetMeshTopology(pxr::SdfPath const &id) override;
   pxr::HdBasisCurvesTopology GetBasisCurvesTopology(pxr::SdfPath const &id) override;

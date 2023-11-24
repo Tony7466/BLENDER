@@ -31,10 +31,10 @@
 #include "bpy_rna.h"
 
 #include "hydra_scene_delegate.h"
-#include "image.h"
 
 #include "intern/usd_exporter_context.h"
 #include "intern/usd_writer_material.h"
+#include "intern/usd_writer_image.h"
 
 #ifdef WITH_MATERIALX
 #  include "shader/materialx/node_parser.h"
@@ -49,6 +49,11 @@ MaterialData::MaterialData(HydraSceneDelegate *scene_delegate,
                            pxr::SdfPath const &prim_id)
     : IdData(scene_delegate, &material->id, prim_id)
 {
+}
+
+static std::string export_texture(Image* image)
+{
+  return usd::export_texture(image, HydraSceneDelegate::cache_file_path(), false, true, nullptr);
 }
 
 void MaterialData::init()
@@ -77,13 +82,13 @@ void MaterialData::init()
                                          material_library_path,
                                          get_time_code,
                                          export_params,
-                                         image_cache_file_path()};
+                                         scene_delegate_->cache_file_path()};
   /* Create USD material. */
   pxr::UsdShadeMaterial usd_material;
 #ifdef WITH_MATERIALX
   if (scene_delegate_->use_materialx) {
     MaterialX::DocumentPtr doc = blender::nodes::materialx::export_to_materialx(
-        scene_delegate_->depsgraph, (Material *)id, cache_or_get_image_file);
+        scene_delegate_->depsgraph, (Material *)id, export_texture);
     pxr::UsdMtlxRead(doc, stage);
 
     /* Logging stage: creating lambda stage_str() to not call stage->ExportToString()

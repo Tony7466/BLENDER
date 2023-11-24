@@ -155,7 +155,6 @@ if(WITH_HYDRA)
     hydra/curves.cc
     hydra/hydra_scene_delegate.cc
     hydra/id.cc
-    hydra/image.cc
     hydra/instancer.cc
     hydra/light.cc
     hydra/material.cc
@@ -169,7 +168,6 @@ if(WITH_HYDRA)
     hydra/curves.h
     hydra/hydra_scene_delegate.h
     hydra/id.h
-    hydra/image.h
     hydra/instancer.h
     hydra/light.h
     hydra/material.h

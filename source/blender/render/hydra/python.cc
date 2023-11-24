@@ -19,8 +19,6 @@
 
 #include "RNA_prototypes.h"
 
-#include "hydra/image.h"
-
 namespace blender::render::hydra {
 
 template<typename T> T *pyrna_to_pointer(PyObject *pyobject, const StructRNA *rnatype)
@@ -164,21 +162,6 @@ static PyObject *engine_set_render_setting_func(PyObject * /*self*/, PyObject *a
   Py_RETURN_NONE;
 }
 
-static PyObject *cache_or_get_image_file_func(PyObject * /*self*/, PyObject *args)
-{
-  PyObject *pycontext, *pyimage;
-  if (!PyArg_ParseTuple(args, "OO", &pycontext, &pyimage)) {
-    return nullptr;
-  }
-
-  bContext *context = static_cast<bContext *>(PyLong_AsVoidPtr(pycontext));
-  Image *image = static_cast<Image *>(PyLong_AsVoidPtr(pyimage));
-
-  std::string image_path = io::hydra::cache_or_get_image_file(
-      CTX_data_main(context), CTX_data_scene(context), image, nullptr);
-  return PyC_UnicodeFromBytes(image_path.c_str());
-}
-
 static PyMethodDef methods[] = {
     {"engine_create", engine_create_func, METH_VARARGS, ""},
     {"engine_free", engine_free_func, METH_VARARGS, ""},
@@ -186,8 +169,6 @@ static PyMethodDef methods[] = {
     {"engine_render", engine_render_func, METH_VARARGS, ""},
     {"engine_view_draw", engine_view_draw_func, METH_VARARGS, ""},
     {"engine_set_render_setting", engine_set_render_setting_func, METH_VARARGS, ""},
-
-    {"cache_or_get_image_file", cache_or_get_image_file_func, METH_VARARGS, ""},
 
     {nullptr, nullptr, 0, nullptr},
 };

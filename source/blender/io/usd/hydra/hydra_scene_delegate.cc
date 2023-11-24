@@ -8,6 +8,10 @@
 
 #include "DNA_scene_types.h"
 
+#include "BKE_appdir.h"
+
+#include "BLI_fileops.h"
+#include "BLI_path_util.h"
 #include "BLI_set.hh"
 #include "BLI_string.h"
 
@@ -36,6 +40,19 @@ HydraSceneDelegate::HydraSceneDelegate(pxr::HdRenderIndex *parent_index,
 {
   instancer_data_ = std::make_unique<InstancerData>(this, instancer_prim_id());
   world_data_ = std::make_unique<WorldData>(this, world_prim_id());
+}
+
+std::string HydraSceneDelegate::cache_file_path(const std::string &file_name, bool mkdir)
+{
+  char path[FILE_MAX];
+  BLI_path_join(path, sizeof(path), BKE_tempdir_session(), "hydra");
+  if (mkdir) {
+    BLI_dir_create_recursive(path);
+  }
+  if (!file_name.empty()) {
+    BLI_path_append(path, sizeof(path), file_name.c_str());
+  }
+  return path;
 }
 
 pxr::HdMeshTopology HydraSceneDelegate::GetMeshTopology(pxr::SdfPath const &id)

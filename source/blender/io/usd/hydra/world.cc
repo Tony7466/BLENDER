@@ -2,7 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "hydra_scene_delegate.h"
 #include "world.h"
+
+#include "intern/usd_writer_image.h"
 
 #include <pxr/base/gf/rotation.h>
 #include <pxr/base/gf/vec2f.h>
@@ -15,17 +18,20 @@
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLI_fileops.h"
 #include "BLI_math_rotation.h"
 #include "BLI_path_util.h"
+#include "BLI_string.h"
 
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_studiolight.h"
 
+#include "IMB_imbuf.h"
+#include "IMB_imbuf_types.h"
+
 #include "NOD_shader.h"
 
-#include "hydra_scene_delegate.h"
-#include "image.h"
 
 /* TODO: add custom `tftoken` "transparency"? */
 
@@ -37,6 +43,35 @@ WorldData::WorldData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &pri
     : LightData(scene_delegate, nullptr, prim_id)
 {
   prim_type_ = pxr::HdPrimTypeTokens->domeLight;
+}
+
+static std::string cache_image_color(float color[4])
+{
+  char name[128];
+  SNPRINTF(name,
+           "color_%02d%02d%02d.hdr",
+           int(color[0] * 255),
+           int(color[1] * 255),
+           int(color[2] * 255));
+  std::string file_path = HydraSceneDelegate::cache_file_path(name, true);
+  if (BLI_exists(file_path.c_str())) {
+    return file_path;
+  }
+
+  ImBuf *ibuf = IMB_allocImBuf(4, 4, 32, IB_rectfloat);
+  IMB_rectfill(ibuf, color);
+  ibuf->ftype = IMB_FTYPE_RADHDR;
+
+  if (IMB_saveiff(ibuf, file_path.c_str(), IB_rectfloat)) {
+    CLOG_INFO(LOG_HYDRA_SCENE, 1, "%s", file_path.c_str());
+  }
+  else {
+    CLOG_ERROR(LOG_HYDRA_SCENE, "Can't save %s", file_path.c_str());
+    file_path = "";
+  }
+  IMB_freeImBuf(ibuf);
+
+  return file_path;
 }
 
 void WorldData::init()
@@ -93,11 +128,10 @@ void WorldData::init()
       if (!color_input.directly_linked_links().is_empty()) {
         bNode *color_input_node = color_input.directly_linked_links()[0]->fromnode;
         if (ELEM(color_input_node->type, SH_NODE_TEX_IMAGE, SH_NODE_TEX_ENVIRONMENT)) {
-          NodeTexImage *tex = static_cast<NodeTexImage *>(color_input_node->storage);
           Image *image = (Image *)color_input_node->id;
           if (image) {
-            std::string image_path = cache_or_get_image_file(
-                scene_delegate_->bmain, scene_delegate_->scene, image, &tex->iuser);
+            std::string image_path = usd::export_texture(
+                image, scene_delegate_->cache_file_path(), false, true, nullptr);
             if (!image_path.empty()) {
               texture_file = pxr::SdfAssetPath(image_path, image_path);
             }
@@ -169,5 +203,6 @@ void WorldData::write_transform()
                         RAD2DEGF(scene_delegate_->shading_settings.studiolight_rotation)));
   }
 }
+
 
 }  // namespace blender::io::hydra

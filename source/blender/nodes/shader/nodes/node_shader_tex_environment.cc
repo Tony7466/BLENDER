@@ -143,9 +143,7 @@ NODE_SHADER_MATERIALX_BEGIN
 
   std::string image_path = image->id.name;
   if (export_image_fn_) {
-    Scene *scene = DEG_get_input_scene(depsgraph_);
-    Main *bmain = DEG_get_bmain(depsgraph_);
-    image_path = export_image_fn_(bmain, scene, image, &tex_env->iuser);
+    image_path = export_image_fn_(image);
   }
 
   NodeItem vector = get_input_link("Vector", NodeItem::Type::Vector2);

@@ -184,6 +184,8 @@ static std::string copy_tiled_textures(Image *ima,
     return "";
   }
 
+  std::string dest_path;
+
   /* Copy all tiles. */
   LISTBASE_FOREACH (ImageTile *, tile, &ima->tiles) {
     char src_tile_path[FILE_MAX];
@@ -216,10 +218,13 @@ static std::string copy_tiled_textures(Image *ima,
                   src_tile_path,
                   dest_tile_path);
     }
+    if (dest_path.empty()) {
+      dest_path = dest_tile_path;
+    }
   }
   MEM_SAFE_FREE(udim_pattern);
 
-  return "";
+  return dest_path;
 }
 
 /* Export the given texture node's image to a 'textures' directory in the export path.
@@ -227,6 +232,7 @@ static std::string copy_tiled_textures(Image *ima,
 std::string export_texture(Image *ima,
                            const std::string &export_path,
                            bool allow_overwrite,
+                           bool only_in_memory,
                            ReportList *reports)
 {
   char usd_dir_path[FILE_MAX];
@@ -246,6 +252,9 @@ std::string export_texture(Image *ima,
 
   if (is_generated || is_dirty || is_packed) {
     dest_path = export_in_memory_texture(ima, dest_dir, allow_overwrite, reports);
+  }
+  else if (only_in_memory) {
+    dest_path = get_tex_image_asset_filepath(ima);
   }
   else if (ima->source == IMA_SRC_TILED) {
     dest_path = copy_tiled_textures(ima, dest_dir, allow_overwrite, reports);

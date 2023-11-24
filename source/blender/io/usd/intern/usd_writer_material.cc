@@ -623,6 +623,7 @@ static void export_texture(const USDExporterContext &usd_export_context, bNode *
   export_texture(ima,
                  export_path,
                  usd_export_context.export_params.overwrite_textures,
+                 false,
                  usd_export_context.export_params.worker_status->reports);
 }
 
