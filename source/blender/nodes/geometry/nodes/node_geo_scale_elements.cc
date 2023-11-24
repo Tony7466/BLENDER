@@ -185,6 +185,15 @@ inline void parallel_transform(MutableSpan<T> data,
   });
 }
 
+static void reverse_mask(const IndexMask &mask, MutableSpan<int> r_map)
+{
+#ifdef DEBUG
+  r_map.fill(-1);
+#endif
+  mask.foreach_index_optimized<int>(GrainSize(4096),
+                                    [&](const int index, const int pos) { r_map[index] = pos; });
+}
+
 template<typename T> static T accumulate(const VArray<T> &values, const Span<int> indices)
 {
   if (const std::optional<T> value = values.get_if_single()) {
@@ -242,8 +251,6 @@ static void scale_uniformly(const GroupedSpan<int> elem_islands,
       });
     }
   });
-
-  BKE_mesh_tag_positions_changed(&mesh);
 }
 
 static float4x4 create_single_axis_transform(const float3 &center,
@@ -314,8 +321,6 @@ static void scale_on_axis(const GroupedSpan<int> elem_islands,
       });
     }
   });
-
-  BKE_mesh_tag_positions_changed(&mesh);
 }
 
 static IndexMask vertices_for_faces(const Mesh &mesh,
@@ -340,9 +345,7 @@ static int face_to_vert_islands(const Mesh &mesh,
                                 MutableSpan<int> vert_island_indices)
 {
   Array<int> verts_pos(vert_mask.min_array_size());
-  vert_mask.foreach_index_optimized<int>(
-      GrainSize(4098),
-      [&](const int vert_i, const int vert_pos) { verts_pos[vert_i] = vert_pos; });
+  reverse_mask(vert_mask, verts_pos);
 
   AtomicDisjointSet disjoint_set(vert_mask.size());
   const GroupedSpan<int> face_verts(mesh.face_offsets(), mesh.corner_verts());
@@ -350,8 +353,8 @@ static int face_to_vert_islands(const Mesh &mesh,
   face_mask.foreach_index_optimized<int>(GrainSize(4098), [&](const int face_i) {
     const Span<int> verts = face_verts[face_i];
     const int v1 = verts_pos[verts.first()];
-    for (const int loop_index : verts.index_range().drop_front(1)) {
-      const int v2 = verts_pos[verts[loop_index]];
+    for (const int vert_i : verts.drop_front(1)) {
+      const int v2 = verts_pos[vert_i];
       disjoint_set.join(v1, v2);
     }
   });
@@ -418,9 +421,7 @@ static int edge_to_vert_islands(const Mesh &mesh,
                                 MutableSpan<int> vert_island_indices)
 {
   Array<int> verts_pos(vert_mask.min_array_size());
-  vert_mask.foreach_index_optimized<int>(
-      GrainSize(4098),
-      [&](const int vert_i, const int vert_pos) { verts_pos[vert_i] = vert_pos; });
+  reverse_mask(vert_mask, verts_pos);
 
   AtomicDisjointSet disjoint_set(vert_mask.size());
   const Span<int2> edges = mesh.edges();
@@ -535,6 +536,7 @@ static void node_geo_exec(GeoNodeExecParams params)
           break;
         }
       }
+      BKE_mesh_tag_positions_changed(mesh);
     }
   });
 
