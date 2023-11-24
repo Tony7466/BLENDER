@@ -412,14 +412,6 @@ static float align_frame_with_pixel(float frame_coord, float frames_per_pixel)
 static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
                                       const StripDrawContext *strip_ctx)
 {
-  if ((timeline_ctx->sseq->timeline_overlay.flag & SEQ_TIMELINE_NO_WAVEFORMS) != 0) {
-    /* No waveforms. */
-    return;
-  }
-  if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0) {
-    /* No overlays. */
-    return;
-  }
   if (!seq_draw_waveforms_poll(timeline_ctx->C, timeline_ctx->sseq, strip_ctx->seq) ||
       strip_ctx->strip_is_too_small)
   {
@@ -441,7 +433,7 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
   const int pixels_to_draw = round_fl_to_int((frame_end - frame_start) / frames_per_pixel);
 
   if (pixels_to_draw < 2) {
-    return; /* Not much to draw. */
+    return; /* Not much to draw, exit before running job. */
   }
 
   waveform_job_start_if_needed(timeline_ctx->C, seq);
@@ -650,7 +642,7 @@ float sequence_handle_size_get_clamped(const Scene *scene, Sequence *seq, const 
                  4.0f));
 }
 
-/* Draw handle, on left or right side of the strip. */
+/* Draw a handle, on left or right side of strip. */
 static void draw_seq_handle(TimelineDrawContext *timeline_ctx,
                             const StripDrawContext *strip_ctx,
                             const short direction)
@@ -965,16 +957,16 @@ static void draw_seq_text_overlay(TimelineDrawContext *timeline_ctx,
 static void draw_strip_offsets(TimelineDrawContext *timeline_ctx,
                                const StripDrawContext *strip_ctx)
 {
-  if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0 || timeline_ctx->pixely <= 0) {
-    return;
-  }
-  if (strip_ctx->is_single_image) {
-    return;
-  }
-  const bool show_offsets = (timeline_ctx->sseq->timeline_overlay.flag &
-                             SEQ_TIMELINE_SHOW_STRIP_OFFSETS) != 0;
   Sequence *seq = strip_ctx->seq;
-  if (!show_offsets && (strip_ctx->seq != ED_sequencer_special_preview_get())) {
+  if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0) {
+    return;
+  }
+  if (strip_ctx->is_single_image || timeline_ctx->pixely <= 0) {
+    return;
+  }
+  if ((timeline_ctx->sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_OFFSETS) == 0 &&
+      (strip_ctx->seq != ED_sequencer_special_preview_get()))
+  {
     return;
   }
 
@@ -1037,12 +1029,8 @@ static uchar mute_overlap_alpha_factor_get(const ListBase *channels, const Seque
 static void draw_strip_color_band(TimelineDrawContext *timeline_ctx,
                                   const StripDrawContext *strip_ctx)
 {
-  if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0) {
-    return;
-  }
-
   Sequence *seq = strip_ctx->seq;
-  if (seq->type != SEQ_TYPE_COLOR) {
+  if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0 || (seq->type != SEQ_TYPE_COLOR)) {
     return;
   }
 
@@ -1058,12 +1046,11 @@ static void draw_strip_color_band(TimelineDrawContext *timeline_ctx,
                                 col);
 
   /* 1px line to better separate the color band. */
-  float halfpix_y = timeline_ctx->pixely * 0.5f;
   UI_GetColorPtrShade3ubv(col, col, -20);
-  timeline_ctx->quads->add_quad(strip_ctx->left_handle,
-                                strip_ctx->strip_content_top - halfpix_y,
+  timeline_ctx->quads->add_line(strip_ctx->left_handle,
+                                strip_ctx->strip_content_top,
                                 strip_ctx->right_handle,
-                                strip_ctx->strip_content_top + halfpix_y,
+                                strip_ctx->strip_content_top,
                                 col);
 }
 
@@ -1071,27 +1058,28 @@ static void draw_strip_background(TimelineDrawContext *timeline_ctx,
                                   const StripDrawContext *strip_ctx)
 {
   Scene *scene = timeline_ctx->scene;
+  Sequence *seq = strip_ctx->seq;
 
-  /* Draw main strip body. */
   uchar col[4];
-  color3ubv_from_seq(scene, strip_ctx->seq, strip_ctx->show_strip_color_tag, col);
-  col[3] = mute_overlap_alpha_factor_get(timeline_ctx->channels, strip_ctx->seq);
+  color3ubv_from_seq(scene, seq, strip_ctx->show_strip_color_tag, col);
+  col[3] = mute_overlap_alpha_factor_get(timeline_ctx->channels, seq);
 
+  /* Draw the main strip body. */
   float x1 = strip_ctx->is_single_image ? strip_ctx->left_handle : strip_ctx->content_start;
   float x2 = strip_ctx->is_single_image ? strip_ctx->right_handle : strip_ctx->content_end;
   timeline_ctx->quads->add_quad(x1, strip_ctx->bottom, x2, strip_ctx->top, col);
 
-  /* Draw backgrounds for hold still regions. */
+  /* Draw background for hold still regions. */
   if (!strip_ctx->is_single_image) {
     UI_GetColorPtrShade3ubv(col, col, -35);
-    if (SEQ_time_has_left_still_frames(scene, strip_ctx->seq)) {
+    if (SEQ_time_has_left_still_frames(scene, seq)) {
       timeline_ctx->quads->add_quad(strip_ctx->left_handle,
                                     strip_ctx->bottom,
                                     strip_ctx->content_start,
                                     strip_ctx->top,
                                     col);
     }
-    if (SEQ_time_has_right_still_frames(scene, strip_ctx->seq)) {
+    if (SEQ_time_has_right_still_frames(scene, seq)) {
       timeline_ctx->quads->add_quad(
           strip_ctx->content_end, strip_ctx->bottom, strip_ctx->right_handle, strip_ctx->top, col);
     }
@@ -1163,6 +1151,7 @@ static void draw_seq_locked(TimelineDrawContext *timeline_ctx,
                             const blender::Vector<StripDrawContext> &strips)
 {
   GPU_blend(GPU_BLEND_ALPHA);
+
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_2D_DIAG_STRIPES);
 
@@ -1180,6 +1169,7 @@ static void draw_seq_locked(TimelineDrawContext *timeline_ctx,
   }
 
   immUnbindProgram();
+
   GPU_blend(GPU_BLEND_NONE);
 }
 
@@ -1204,7 +1194,7 @@ static void draw_seq_invalid(TimelineDrawContext *timeline_ctx, const StripDrawC
 static void draw_seq_fcurve_overlay(TimelineDrawContext *timeline_ctx,
                                     const StripDrawContext *strip_ctx)
 {
-  if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0 ||
+  if (!strip_ctx->can_draw_strip_content || (timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0 ||
       (timeline_ctx->sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_FCURVES) == 0)
   {
     return;
@@ -1213,10 +1203,6 @@ static void draw_seq_fcurve_overlay(TimelineDrawContext *timeline_ctx,
   Scene *scene = timeline_ctx->scene;
   const int eval_step = max_ii(1, floor(timeline_ctx->pixelx));
   uchar color[4] = {0, 0, 0, 38};
-
-  if (!strip_ctx->can_draw_strip_content) {
-    return;
-  }
 
   FCurve *fcu;
   if (strip_ctx->seq->type == SEQ_TYPE_SOUND_RAM) {
