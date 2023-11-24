@@ -9,7 +9,7 @@
  */
 
 namespace blender::bke {
-struct GVolumeGrid;
+struct GVolumeGridPtr;
 }
 
 enum VolumeGridType : int8_t {
@@ -27,4 +27,4 @@ enum VolumeGridType : int8_t {
 };
 
 /** Global namespace alias for the GVolumeGrid type. */
-using GVolumeGrid = blender::bke::GVolumeGrid;
+using GVolumeGrid = blender::bke::GVolumeGridPtr;

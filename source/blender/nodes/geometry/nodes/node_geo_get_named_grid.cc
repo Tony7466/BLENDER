@@ -46,14 +46,14 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 template<typename T>
 static bool try_output_grid_value(GeoNodeExecParams params, VolumeGridSharedData &grid)
 {
-  using GridType = typename bke::VolumeGrid<T>::GridType;
+  using GridType = typename bke::VolumeGridPtr<T>::GridType;
   typename GridType::Ptr vdb_grid = openvdb::GridBase::grid<GridType>(grid.grid);
   /* XXX Hack! Constructing a new pointer from scratch here requires incrementing user count since
    * the data is still owned by the Volume. Eventually should return shared ptrs from the Volume
    * API directly so that this isn't necessary. */
   grid.add_user();
-  bke::GVolumeGrid grid_ref = bke::GVolumeGrid(GVolumeGrid::SharedDataPtr(&grid));
-  bke::VolumeGrid<T> typed_grid_ref = grid_ref.typed<T>();
+  bke::GVolumeGridPtr grid_ref = bke::GVolumeGridPtr(GVolumeGrid::SharedDataPtr(&grid));
+  bke::VolumeGridPtr<T> typed_grid_ref = grid_ref.typed<T>();
 
   params.set_output("Grid", ValueOrField<T>(typed_grid_ref));
   return bool(typed_grid_ref);

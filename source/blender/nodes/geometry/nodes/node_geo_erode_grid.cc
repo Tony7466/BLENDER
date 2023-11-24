@@ -49,7 +49,7 @@ static void try_erode_grid(GeoNodeExecParams params,
     return;
   }
 
-  using GridType = typename bke::VolumeGrid<T>::GridType;
+  using GridType = typename bke::VolumeGridPtr<T>::GridType;
   typename GridType::Ptr grid = value.grid.grid_for_write();
   BLI_assert(grid);
 

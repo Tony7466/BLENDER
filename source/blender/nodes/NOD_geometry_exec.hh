@@ -177,7 +177,7 @@ class GeoNodeExecParams {
         this->set_output(identifier, ValueOrField<ValueT>(std::move(value_typed)));
       });
     }
-    /* XXX causes linker errors because it needs a CPPType for VolumeGrid<T>.
+    /* XXX causes linker errors because it needs a CPPType for VolumeGridPtr<T>.
      * Adding such CPPTypes creates memory leaks because the default value is a static instance
      * that never releases the strong user. */
     //    else if constexpr (std::is_same_v<StoredT, ImplicitSharingPtr<GridType>>) {

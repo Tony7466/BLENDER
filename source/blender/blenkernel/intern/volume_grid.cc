@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_volume_grid.hh"
-#include "BKE_volume_grid_ref.hh"
+#include "BKE_volume_grid_ptr.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "BLI_ghash.h"
@@ -396,19 +396,19 @@ void VolumeGridSharedData::clear_cache_entry()
   is_loaded_ = true;
 }
 
-VolumeGridCommon::~VolumeGridCommon() {}
+VolumeGridPtrCommon::~VolumeGridPtrCommon() {}
 
-GVolumeGrid::operator bool() const
+GVolumeGridPtr::operator bool() const
 {
   return bool(data);
 }
 
-GVolumeGrid::GridConstPtr GVolumeGrid::grid() const
+GVolumeGridPtr::GridConstPtr GVolumeGridPtr::grid() const
 {
   return data ? data->grid : nullptr;
 }
 
-GVolumeGrid::GridPtr GVolumeGrid::grid_for_write() const
+GVolumeGridPtr::GridPtr GVolumeGridPtr::grid_for_write() const
 {
   return data && data->is_mutable() ? data->grid : nullptr;
 }

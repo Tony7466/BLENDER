@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "BKE_volume_grid_ref.hh"
+#include "BKE_volume_grid_ptr.hh"
 
 #include "FN_field.hh"
 
@@ -22,7 +22,7 @@ namespace blender::bke {
 
 template<typename T> struct ValueOrField {
   using Field = fn::Field<T>;
-  using Grid = VolumeGrid<T>;
+  using Grid = VolumeGridPtr<T>;
 
   /** Value that is used when the field is empty. */
   T value{};
