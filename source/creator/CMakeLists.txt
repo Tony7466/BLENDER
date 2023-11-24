@@ -1831,8 +1831,8 @@ detect_leaks=0\"\n\
     COMMAND
     ${CMAKE_COMMAND} -E env\n\
     BLENDER_SYSTEM_RESOURCES=$\{BLENDER_INSTALL_DIR\}/${TARGETDIR_VER}\n\
-    --\n\
     ${PLATFORM_ENV_BUILD}\n\
+    --\n\
     $\{BLENDER_INSTALL_DIR\}/${BLENDER_BIN}\n\
     --background\n\
     --factory-startup\n\
