@@ -1457,11 +1457,13 @@ static void p_polygon_kernel_center(float (*points)[2], int npoints, float *cent
 }
 #endif
 
-#if 0
-/* Edge Collapser */
+/* Simplify/Complexity
+ *
+ * This is currently used for elminating degenerate vertex coordinates.
+ * In the future this can be used for efficient unwrapping of high resolution
+ * charts at lower resolution. */
 
-int NCOLLAPSE = 1;
-int NCOLLAPSEX = 0;
+#if 0
 
 static float p_vert_cotan(const float v1[3], const float v2[3], const float v3[3])
 {
@@ -1625,6 +1627,7 @@ static void p_vert_harmonic_insert(PVert *v)
 
   p_vert_map_harmonic_weights(v);
 }
+#endif
 
 static void p_vert_fix_edge_pointer(PVert *v)
 {
@@ -1749,6 +1752,7 @@ static void p_collapse_edge(PEdge *edge, PEdge *pair)
   }
 }
 
+#if 0
 static void p_split_vertex(PEdge *edge, PEdge *pair)
 {
   PVert *newv, *keepv;
@@ -1796,6 +1800,7 @@ static void p_split_vertex(PEdge *edge, PEdge *pair)
     e = p_wheel_edge_next(e);
   } while (e && (e != newv->edge));
 }
+#endif
 
 static bool p_collapse_allowed_topologic(PEdge *edge, PEdge *pair)
 {
@@ -1822,6 +1827,7 @@ static bool p_collapse_allowed_topologic(PEdge *edge, PEdge *pair)
   return true;
 }
 
+#if 0
 static bool p_collapse_normal_flipped(float *v1, float *v2, float *vold, float *vnew)
 {
   float nold[3], nnew[3], sub1[3], sub2[3];
@@ -2013,8 +2019,14 @@ static float p_collapse_cost(PEdge *edge, PEdge *pair)
 
   return cost;
 }
+#endif
 
-static void p_collapse_cost_vertex(PVert *vert, float *r_mincost, PEdge **r_mine)
+static void p_collapse_cost_vertex(
+    PVert *vert,
+    float *r_mincost,
+    PEdge **r_mine,
+    const std::function<float(PEdge *, PEdge *)> &collapse_cost_fn,
+    const std::function<float(PEdge *, PEdge *)> &collapse_allowed_fn)
 {
   PEdge *e, *enext, *pair;
 
@@ -2022,8 +2034,8 @@ static void p_collapse_cost_vertex(PVert *vert, float *r_mincost, PEdge **r_mine
   *r_mincost = 0.0f;
   e = vert->edge;
   do {
-    if (p_collapse_allowed(e, e->pair)) {
-      float cost = p_collapse_cost(e, e->pair);
+    if (collapse_allowed_fn(e, e->pair)) {
+      float cost = collapse_cost_fn(e, e->pair);
 
       if ((*r_mine == nullptr) || (cost < *r_mincost)) {
         *r_mincost = cost;
@@ -2037,8 +2049,8 @@ static void p_collapse_cost_vertex(PVert *vert, float *r_mincost, PEdge **r_mine
       /* The other boundary edge, where we only have the pair half-edge. */
       pair = e->next->next;
 
-      if (p_collapse_allowed(nullptr, pair)) {
-        float cost = p_collapse_cost(nullptr, pair);
+      if (collapse_allowed_fn(nullptr, pair)) {
+        float cost = collapse_cost_fn(nullptr, pair);
 
         if ((*r_mine == nullptr) || (cost < *r_mincost)) {
           *r_mincost = cost;
@@ -2123,6 +2135,114 @@ static void p_chart_post_collapse_flush(PChart *chart, PEdge *collapsed)
   }
 }
 
+static void p_chart_simplify_compute(PChart *chart,
+                                     std::function<float(PEdge *, PEdge *)> collapse_cost_fn,
+                                     std::function<float(PEdge *, PEdge *)> collapse_allowed_fn)
+{
+  /* For debugging. */
+  static const int MAX_SIMPLIFY = INT_MAX;
+
+  /* Computes a list of edge collapses / vertex splits. The collapsed
+   * simplices go in the `chart->collapsed_*` lists, The original and
+   * collapsed may then be view as stacks, where the next collapse/split
+   * is at the top of the respective lists. */
+
+  Heap *heap = BLI_heap_new();
+  PVert *v;
+  PEdge *collapsededges = nullptr, *e;
+  int ncollapsed = 0;
+  std::vector<PVert *> wheelverts;
+  wheelverts.reserve(6);
+
+  /* insert all potential collapses into heap */
+  for (v = chart->verts; v; v = v->nextlink) {
+    float cost;
+    PEdge *e = nullptr;
+
+    p_collapse_cost_vertex(v, &cost, &e, collapse_cost_fn, collapse_allowed_fn);
+
+    if (e) {
+      v->u.heaplink = BLI_heap_insert(heap, cost, e);
+    }
+    else {
+      v->u.heaplink = nullptr;
+    }
+  }
+
+  for (e = chart->edges; e; e = e->nextlink) {
+    e->u.nextcollapse = nullptr;
+  }
+
+  /* pop edge collapse out of heap one by one */
+  while (!BLI_heap_is_empty(heap)) {
+    if (ncollapsed == MAX_SIMPLIFY) {
+      break;
+    }
+
+    HeapNode *link = BLI_heap_top(heap);
+    PEdge *edge = (PEdge *)BLI_heap_pop_min(heap), *pair = edge->pair;
+    PVert *oldv, *keepv;
+    PEdge *wheele, *nexte;
+
+    /* remember the edges we collapsed */
+    edge->u.nextcollapse = collapsededges;
+    collapsededges = edge;
+
+    if (edge->vert->u.heaplink != link) {
+      edge->flag |= (PEDGE_COLLAPSE_EDGE | PEDGE_COLLAPSE_PAIR);
+      edge->next->vert->u.heaplink = nullptr;
+      std::swap(edge, pair);
+    }
+    else {
+      edge->flag |= PEDGE_COLLAPSE_EDGE;
+      edge->vert->u.heaplink = nullptr;
+    }
+
+    p_collapsing_verts(edge, pair, &oldv, &keepv);
+
+    /* gather all wheel verts and remember them before collapse */
+    wheelverts.clear();
+    wheele = oldv->edge;
+
+    do {
+      wheelverts.push_back(wheele->next->vert);
+      nexte = p_wheel_edge_next(wheele);
+
+      if (nexte == nullptr) {
+        wheelverts.push_back(wheele->next->next->vert);
+      }
+
+      wheele = nexte;
+    } while (wheele && (wheele != oldv->edge));
+
+    /* collapse */
+    p_collapse_edge(edge, pair);
+
+    for (PVert *v : wheelverts) {
+      float cost;
+      PEdge *collapse = nullptr;
+
+      if (v->u.heaplink) {
+        BLI_heap_remove(heap, v->u.heaplink);
+        v->u.heaplink = nullptr;
+      }
+
+      p_collapse_cost_vertex(v, &cost, &collapse, collapse_cost_fn, collapse_allowed_fn);
+
+      if (collapse) {
+        v->u.heaplink = BLI_heap_insert(heap, cost, collapse);
+      }
+    }
+
+    ncollapsed++;
+  }
+
+  BLI_heap_free(heap, nullptr);
+
+  p_chart_post_collapse_flush(chart, collapsededges);
+}
+
+#if 0
 static void p_chart_post_split_flush(PChart *chart)
 {
   /* Move from `collapsed_*`. */
@@ -2157,113 +2277,11 @@ static void p_chart_post_split_flush(PChart *chart)
   chart->collapsed_faces = nullptr;
 }
 
-static void p_chart_simplify_compute(PChart *chart)
-{
-  /* Computes a list of edge collapses / vertex splits. The collapsed
-   * simplices go in the `chart->collapsed_*` lists, The original and
-   * collapsed may then be view as stacks, where the next collapse/split
-   * is at the top of the respective lists. */
-
-  Heap *heap = BLI_heap_new();
-  PVert *v, **wheelverts;
-  PEdge *collapsededges = nullptr, *e;
-  int nwheelverts, i, ncollapsed = 0;
-
-  wheelverts = MEM_mallocN(sizeof(PVert *) * chart->nverts, "PChartWheelVerts");
-
-  /* insert all potential collapses into heap */
-  for (v = chart->verts; v; v = v->nextlink) {
-    float cost;
-    PEdge *e = nullptr;
-
-    p_collapse_cost_vertex(v, &cost, &e);
-
-    if (e) {
-      v->u.heaplink = BLI_heap_insert(heap, cost, e);
-    }
-    else {
-      v->u.heaplink = nullptr;
-    }
-  }
-
-  for (e = chart->edges; e; e = e->nextlink) {
-    e->u.nextcollapse = nullptr;
-  }
-
-  /* pop edge collapse out of heap one by one */
-  while (!BLI_heap_is_empty(heap)) {
-    if (ncollapsed == NCOLLAPSE) {
-      break;
-    }
-
-    HeapNode *link = BLI_heap_top(heap);
-    PEdge *edge = (PEdge *)BLI_heap_pop_min(heap), *pair = edge->pair;
-    PVert *oldv, *keepv;
-    PEdge *wheele, *nexte;
-
-    /* remember the edges we collapsed */
-    edge->u.nextcollapse = collapsededges;
-    collapsededges = edge;
-
-    if (edge->vert->u.heaplink != link) {
-      edge->flag |= (PEDGE_COLLAPSE_EDGE | PEDGE_COLLAPSE_PAIR);
-      edge->next->vert->u.heaplink = nullptr;
-      std::swap(edge, pair);
-    }
-    else {
-      edge->flag |= PEDGE_COLLAPSE_EDGE;
-      edge->vert->u.heaplink = nullptr;
-    }
-
-    p_collapsing_verts(edge, pair, &oldv, &keepv);
-
-    /* gather all wheel verts and remember them before collapse */
-    nwheelverts = 0;
-    wheele = oldv->edge;
-
-    do {
-      wheelverts[nwheelverts++] = wheele->next->vert;
-      nexte = p_wheel_edge_next(wheele);
-
-      if (nexte == nullptr) {
-        wheelverts[nwheelverts++] = wheele->next->next->vert;
-      }
-
-      wheele = nexte;
-    } while (wheele && (wheele != oldv->edge));
-
-    /* collapse */
-    p_collapse_edge(edge, pair);
-
-    for (i = 0; i < nwheelverts; i++) {
-      float cost;
-      PEdge *collapse = nullptr;
-
-      v = wheelverts[i];
-
-      if (v->u.heaplink) {
-        BLI_heap_remove(heap, v->u.heaplink);
-        v->u.heaplink = nullptr;
-      }
-
-      p_collapse_cost_vertex(v, &cost, &collapse);
-
-      if (collapse) {
-        v->u.heaplink = BLI_heap_insert(heap, cost, collapse);
-      }
-    }
-
-    ncollapsed++;
-  }
-
-  MEM_freeN(wheelverts);
-  BLI_heap_free(heap, nullptr);
-
-  p_chart_post_collapse_flush(chart, collapsededges);
-}
-
 static void p_chart_complexify(PChart *chart)
 {
+  /* For debugging. */
+  static const int MAX_COMPLEXIFY = INT_MAX;
+
   PEdge *e, *pair, *edge;
   PVert *newv, *keepv;
   int x = 0;
@@ -2283,7 +2301,7 @@ static void p_chart_complexify(PChart *chart)
     p_split_vertex(edge, pair);
     p_collapsing_verts(edge, pair, &newv, &keepv);
 
-    if (x >= NCOLLAPSEX) {
+    if (x >= MAX_COMPLEXIFY) {
       newv->uv[0] = keepv->uv[0];
       newv->uv[1] = keepv->uv[1];
     }
@@ -2296,652 +2314,11 @@ static void p_chart_complexify(PChart *chart)
   p_chart_post_split_flush(chart);
 }
 
-#  if 0
 static void p_chart_simplify(PChart *chart)
 {
   /* Not implemented, needs proper reordering in split_flush. */
 }
-#  endif
 #endif
-
-static void p_vert_fix_edge_pointer(PVert *v)
-{
-  PEdge *start = v->edge;
-
-  /* set v->edge pointer to the edge with no pair, if there is one */
-  while (v->edge->pair) {
-    v->edge = p_wheel_edge_prev(v->edge);
-
-    if (v->edge == start) {
-      break;
-    }
-  }
-}
-
-static void p_collapsing_verts(PEdge *edge, PEdge *pair, PVert **r_newv, PVert **r_keepv)
-{
-  /* the two vertices that are involved in the collapse */
-  if (edge) {
-    *r_newv = edge->vert;
-    *r_keepv = edge->next->vert;
-  }
-  else {
-    *r_newv = pair->next->vert;
-    *r_keepv = pair->vert;
-  }
-}
-
-static void p_collapse_edge(PEdge *edge, PEdge *pair)
-{
-  PVert *oldv, *keepv;
-  PEdge *e;
-
-  p_collapsing_verts(edge, pair, &oldv, &keepv);
-
-  /* change e->vert pointers from old vertex to the target vertex */
-  e = oldv->edge;
-  do {
-    if ((e != edge) && !(pair && pair->next == e)) {
-      e->vert = keepv;
-    }
-
-    e = p_wheel_edge_next(e);
-  } while (e && (e != oldv->edge));
-
-  /* set keepv->edge pointer */
-  if ((edge && (keepv->edge == edge->next)) || (keepv->edge == pair)) {
-    if (edge && edge->next->pair) {
-      keepv->edge = edge->next->pair->next;
-    }
-    else if (pair && pair->next->next->pair) {
-      keepv->edge = pair->next->next->pair;
-    }
-    else if (edge && edge->next->next->pair) {
-      keepv->edge = edge->next->next->pair;
-    }
-    else {
-      keepv->edge = pair->next->pair->next;
-    }
-  }
-
-  /* update pairs and v->edge pointers */
-  if (edge) {
-    PEdge *e1 = edge->next, *e2 = e1->next;
-
-    if (e1->pair) {
-      e1->pair->pair = e2->pair;
-    }
-
-    if (e2->pair) {
-      e2->pair->pair = e1->pair;
-      e2->vert->edge = p_wheel_edge_prev(e2);
-    }
-    else {
-      e2->vert->edge = p_wheel_edge_next(e2);
-    }
-
-    p_vert_fix_edge_pointer(e2->vert);
-  }
-
-  if (pair) {
-    PEdge *e1 = pair->next, *e2 = e1->next;
-
-    if (e1->pair) {
-      e1->pair->pair = e2->pair;
-    }
-
-    if (e2->pair) {
-      e2->pair->pair = e1->pair;
-      e2->vert->edge = p_wheel_edge_prev(e2);
-    }
-    else {
-      e2->vert->edge = p_wheel_edge_next(e2);
-    }
-
-    p_vert_fix_edge_pointer(e2->vert);
-  }
-
-  p_vert_fix_edge_pointer(keepv);
-
-  /* mark for move to collapsed list later */
-  oldv->flag |= PVERT_COLLAPSE;
-
-  if (edge) {
-    PFace *f = edge->face;
-    PEdge *e1 = edge->next, *e2 = e1->next;
-
-    f->flag |= PFACE_COLLAPSE;
-    edge->flag |= PEDGE_COLLAPSE;
-    e1->flag |= PEDGE_COLLAPSE;
-    e2->flag |= PEDGE_COLLAPSE;
-  }
-
-  if (pair) {
-    PFace *f = pair->face;
-    PEdge *e1 = pair->next, *e2 = e1->next;
-
-    f->flag |= PFACE_COLLAPSE;
-    pair->flag |= PEDGE_COLLAPSE;
-    e1->flag |= PEDGE_COLLAPSE;
-    e2->flag |= PEDGE_COLLAPSE;
-  }
-}
-
-static bool p_collapse_allowed_topologic(PEdge *edge, PEdge *pair)
-{
-  PVert *oldv, *keepv;
-
-  p_collapsing_verts(edge, pair, &oldv, &keepv);
-
-  /* boundary edges */
-  if (!edge || !pair) {
-    /* avoid collapsing chart into an edge */
-    if (edge && !edge->next->pair && !edge->next->next->pair) {
-      return false;
-    }
-    else if (pair && !pair->next->pair && !pair->next->next->pair) {
-      return false;
-    }
-  }
-  /* avoid merging two boundaries (oldv and keepv are on the 'other side' of
-   * the chart) */
-  else if (!p_vert_interior(oldv) && !p_vert_interior(keepv)) {
-    return false;
-  }
-
-  return true;
-}
-
-static bool p_collapse_allowed(PEdge *edge, PEdge *pair, float threshold_squared)
-{
-  PVert *oldv, *keepv;
-
-  p_collapsing_verts(edge, pair, &oldv, &keepv);
-
-  /* do not collapse a pinned vertex unless the target vertex
-   * is also pinned */
-  if ((oldv->flag & PVERT_PIN) && !(keepv->flag & PVERT_PIN)) {
-    return false;
-  }
-
-  if (!p_collapse_allowed_topologic(edge, pair)) {
-    return false;
-  }
-
-  PEdge *collapse_e = edge ? edge : pair;
-  return p_edge_length_squared(collapse_e) < threshold_squared;
-}
-
-static float p_collapse_cost(PEdge *edge, PEdge *pair)
-{
-  PEdge *collapse_e = edge ? edge : pair;
-  return p_edge_length_squared(collapse_e);
-}
-
-static void p_collapse_cost_vertex(PVert *vert,
-                                   float *r_mincost,
-                                   PEdge **r_mine,
-                                   float threshold_squared)
-{
-  PEdge *e, *enext, *pair;
-
-  *r_mine = NULL;
-  *r_mincost = 0.0f;
-  e = vert->edge;
-  do {
-    if (p_collapse_allowed(e, e->pair, threshold_squared)) {
-      float cost = p_collapse_cost(e, e->pair);
-
-      if ((*r_mine == NULL) || (cost < *r_mincost)) {
-        *r_mincost = cost;
-        *r_mine = e;
-      }
-    }
-
-    enext = p_wheel_edge_next(e);
-
-    if (enext == NULL) {
-      /* The other boundary edge, where we only have the pair half-edge. */
-      pair = e->next->next;
-
-      if (p_collapse_allowed(NULL, pair, threshold_squared)) {
-        float cost = p_collapse_cost(NULL, pair);
-
-        if ((*r_mine == NULL) || (cost < *r_mincost)) {
-          *r_mincost = cost;
-          *r_mine = pair;
-        }
-      }
-
-      break;
-    }
-
-    e = enext;
-  } while (e != vert->edge);
-}
-
-static void p_chart_post_collapse_flush(PChart *chart, PEdge *collapsed)
-{
-  /* Move to `collapsed_*`. */
-
-  PVert *v, *nextv = NULL, *verts = chart->verts;
-  PEdge *e, *nexte = NULL, *edges = chart->edges, *laste = NULL;
-  PFace *f, *nextf = NULL, *faces = chart->faces;
-
-  chart->verts = chart->collapsed_verts = NULL;
-  chart->edges = chart->collapsed_edges = NULL;
-  chart->faces = chart->collapsed_faces = NULL;
-
-  chart->nverts = chart->nedges = chart->nfaces = 0;
-
-  for (v = verts; v; v = nextv) {
-    nextv = v->nextlink;
-
-    if (v->flag & PVERT_COLLAPSE) {
-      v->nextlink = chart->collapsed_verts;
-      chart->collapsed_verts = v;
-    }
-    else {
-      v->nextlink = chart->verts;
-      chart->verts = v;
-      chart->nverts++;
-    }
-  }
-
-  for (e = edges; e; e = nexte) {
-    nexte = e->nextlink;
-
-    if (!collapsed || !(e->flag & PEDGE_COLLAPSE_EDGE)) {
-      if (e->flag & PEDGE_COLLAPSE) {
-        e->nextlink = chart->collapsed_edges;
-        chart->collapsed_edges = e;
-      }
-      else {
-        e->nextlink = chart->edges;
-        chart->edges = e;
-        chart->nedges++;
-      }
-    }
-  }
-
-  /* these are added last so they can be popped of in the right order
-   * for splitting */
-  for (e = collapsed; e; e = e->nextlink) {
-    e->nextlink = e->u.nextcollapse;
-    laste = e;
-  }
-  if (laste) {
-    laste->nextlink = chart->collapsed_edges;
-    chart->collapsed_edges = collapsed;
-  }
-
-  for (f = faces; f; f = nextf) {
-    nextf = f->nextlink;
-
-    if (f->flag & PFACE_COLLAPSE) {
-      f->nextlink = chart->collapsed_faces;
-      chart->collapsed_faces = f;
-    }
-    else {
-      f->nextlink = chart->faces;
-      chart->faces = f;
-      chart->nfaces++;
-    }
-  }
-}
-
-static void p_chart_collapse_doubles(PChart *chart, float threshold)
-{
-  /* Computes a list of edge collapses / vertex splits. The collapsed
-   * simplices go in the `chart->collapsed_*` lists, The original and
-   * collapsed may then be view as stacks, where the next collapse/split
-   * is at the top of the respective lists. */
-
-  /* unlimited collapsing */
-  static const int NCOLLAPSE = -1;
-
-  Heap *heap = BLI_heap_new();
-  PVert *v;
-  PEdge *collapsededges = NULL, *e;
-  int ncollapsed = 0;
-  std::vector<PVert *> wheelverts;
-  wheelverts.reserve(6);
-
-  float threshold_squared = threshold * threshold;
-
-  /* insert all potential collapses into heap */
-  for (v = chart->verts; v; v = v->nextlink) {
-    float cost;
-    PEdge *e = NULL;
-
-    p_collapse_cost_vertex(v, &cost, &e, threshold_squared);
-
-    if (e) {
-      v->u.heaplink = BLI_heap_insert(heap, cost, e);
-    }
-    else {
-      v->u.heaplink = NULL;
-    }
-  }
-
-  for (e = chart->edges; e; e = e->nextlink) {
-    e->u.nextcollapse = NULL;
-  }
-
-  /* pop edge collapse out of heap one by one */
-  while (!BLI_heap_is_empty(heap)) {
-    if (ncollapsed == NCOLLAPSE) {
-      break;
-    }
-
-    HeapNode *link = BLI_heap_top(heap);
-    PEdge *edge = (PEdge *)BLI_heap_pop_min(heap), *pair = edge->pair;
-    PVert *oldv, *keepv;
-    PEdge *wheele, *nexte;
-
-    /* remember the edges we collapsed */
-    edge->u.nextcollapse = collapsededges;
-    collapsededges = edge;
-
-    if (edge->vert->u.heaplink != link) {
-      edge->flag |= (PEDGE_COLLAPSE_EDGE | PEDGE_COLLAPSE_PAIR);
-      edge->next->vert->u.heaplink = NULL;
-      SWAP(PEdge *, edge, pair);
-    }
-    else {
-      edge->flag |= PEDGE_COLLAPSE_EDGE;
-      edge->vert->u.heaplink = NULL;
-    }
-
-    p_collapsing_verts(edge, pair, &oldv, &keepv);
-
-    /* gather all wheel verts and remember them before collapse */
-    wheelverts.clear();
-    wheele = oldv->edge;
-
-    do {
-      wheelverts.push_back(wheele->next->vert);
-      nexte = p_wheel_edge_next(wheele);
-
-      if (nexte == NULL) {
-        wheelverts.push_back(wheele->next->next->vert);
-      }
-
-      wheele = nexte;
-    } while (wheele && (wheele != oldv->edge));
-
-    /* collapse */
-    p_collapse_edge(edge, pair);
-
-    for (PVert *v : wheelverts) {
-      float cost;
-      PEdge *collapse = NULL;
-
-      if (v->u.heaplink) {
-        BLI_heap_remove(heap, v->u.heaplink);
-        v->u.heaplink = NULL;
-      }
-
-      p_collapse_cost_vertex(v, &cost, &collapse, threshold_squared);
-
-      if (collapse) {
-        v->u.heaplink = BLI_heap_insert(heap, cost, collapse);
-      }
-    }
-
-    ncollapsed++;
-  }
-
-  BLI_heap_free(heap, NULL);
-
-  p_chart_post_collapse_flush(chart, collapsededges);
-}
-
-static void p_chart_flush_collapsed_uvs(PChart *chart)
-{
-  PEdge *e, *pair, *edge;
-  PVert *newv, *keepv;
-
-  for (e = chart->collapsed_edges; e; e = e->nextlink) {
-    if (!(e->flag & PEDGE_COLLAPSE_EDGE)) {
-      break;
-    }
-    edge = e;
-    pair = e->pair;
-    if (edge->flag & PEDGE_COLLAPSE_PAIR) {
-      SWAP(PEdge *, edge, pair);
-    }
-    p_collapsing_verts(edge, pair, &newv, &keepv);
-
-    if (!(newv->flag & PVERT_PIN)) {
-      newv->uv[0] = keepv->uv[0];
-      newv->uv[1] = keepv->uv[1];
-    }
-  }
-}
-
-static bool p_validate_corrected_coords(const PEdge *corr_e,
-                                        const PVert *corr_v,
-                                        const float corr_co[3],
-                                        float corr_min_angle_cos,
-                                        std::vector<PFace *> &r_faces)
-{
-  /* Check whether the given corrected coordinates don't result in any other angle lower than
-   * `corr_min_angle` - in such a case the coordinates have to be rejected.
-   */
-
-  r_faces.clear();
-  const PEdge *e = corr_v->edge;
-
-  do {
-    r_faces.push_back(e->face);
-
-    if (e == corr_e) {
-      continue;
-    }
-
-    const PVert *other_v1 = e->next->vert;
-    const PVert *other_v2 = e->next->next->vert;
-
-    float f_cos[3];
-    p_triangle_cos(corr_co, other_v1->co, other_v2->co, f_cos, f_cos + 1, f_cos + 2);
-
-    int min_angle_idx = 0;
-
-    /* cos is a decreasing funtion on [0.0, PI] so we can
-     * comapre angles by comparing their cos values using the
-     * inverted operator.
-     */
-    for (int i = 1; i < 3; i++) {
-      if (f_cos[i] > f_cos[min_angle_idx]) {
-        min_angle_idx = i;
-      }
-    }
-
-    if (f_cos[min_angle_idx] > corr_min_angle_cos) {
-      return false;
-    }
-
-  } while ((e = p_wheel_edge_next(e)) && (e != corr_v->edge));
-
-  return true;
-}
-
-static bool p_edge_matrix(float R[3][3], const PEdge *e)
-{
-  static const float eps = 1.0e-5;
-  static const float n1[3] = {0.0f, 0.0f, 1.0f};
-  static const float n2[3] = {0.0f, 1.0f, 0.0f};
-
-  float edge_dir[3];
-  copy_v3_v3(edge_dir, e->next->vert->co);
-  sub_v3_v3(edge_dir, e->vert->co);
-
-  float edge_len = len_v3(edge_dir);
-  if (edge_len < eps) {
-    return false;
-  }
-  mul_v3_fl(edge_dir, 1.0f / edge_len);
-
-  float normal_dir[3];
-  cross_v3_v3v3(normal_dir, edge_dir, n1);
-  float normal_len = len_v3(normal_dir);
-
-  if (normal_len < eps) {
-    cross_v3_v3v3(normal_dir, edge_dir, n2);
-    normal_len = len_v3(normal_dir);
-
-    if (normal_len < eps) {
-      return false;
-    }
-  }
-
-  mul_v3_fl(normal_dir, 1.0f / normal_len);
-
-  float tangent_dir[3];
-  cross_v3_v3v3(tangent_dir, edge_dir, normal_dir);
-
-  R[0][0] = edge_dir[0];
-  R[1][0] = edge_dir[1];
-  R[2][0] = edge_dir[2];
-
-  R[0][1] = normal_dir[0];
-  R[1][1] = normal_dir[1];
-  R[2][1] = normal_dir[2];
-
-  R[0][2] = tangent_dir[0];
-  R[1][2] = tangent_dir[1];
-  R[2][2] = tangent_dir[2];
-
-  return true;
-}
-
-static bool p_chart_correct_zero_angles2(PChart *chart, float corr_min_angle)
-{
-  std::vector<PFace *> faces;
-  faces.reserve(4);
-
-  float corr_min_angle_sin = sin(corr_min_angle);
-  float corr_min_angle_cos = cos(corr_min_angle);
-
-  for (PFace *f = chart->faces; f; f = f->nextlink) {
-    if (f->flag & PFACE_DONE) {
-      continue;
-    }
-
-    PEdge *edges[3];
-    edges[0] = f->edge;
-    edges[1] = f->edge->next;
-    edges[2] = f->edge->next->next;
-
-    float f_cos[3];
-    p_face_cos(f, f_cos, f_cos + 1, f_cos + 2);
-
-    int min_angle_idx = 0;
-    int max_angle_idx = 0;
-
-    /* cos is a decreasing funtion on [0.0, PI] so we can
-     * comapre angles by comparing their cos values using the
-     * inverted operator.
-     */
-    for (int i = 1; i < 3; i++) {
-      if (f_cos[i] > f_cos[min_angle_idx]) {
-        min_angle_idx = i;
-      }
-      else if (f_cos[i] < f_cos[max_angle_idx]) {
-        max_angle_idx = i;
-      }
-    }
-
-    if (f_cos[min_angle_idx] < corr_min_angle_cos) {
-      f->flag |= PFACE_DONE;
-      continue;
-    }
-
-    PEdge *max_angle_edge = edges[max_angle_idx];
-
-    PEdge *ref_edge;
-    if (((min_angle_idx + 1) % 3) == max_angle_idx) {
-      ref_edge = max_angle_edge->next->next;
-    }
-    else {
-      ref_edge = max_angle_edge;
-    }
-
-    float ref_len = p_edge_length(ref_edge);
-
-    PEdge *corr_e = max_angle_edge;
-    PVert *corr_v = corr_e->vert;
-    float corr_len = ref_len * corr_min_angle_sin;
-    PEdge *max_edge = max_angle_edge->next;
-
-    float M[3][3];
-    if (!p_edge_matrix(M, max_edge)) {
-      continue;
-    }
-
-    /* check 4 distinct directions */
-    static const int DIR_COUNT = 4;
-    float corr_co[3];
-    int d;
-
-    for (d = 0; d < DIR_COUNT; d++) {
-      float angle = (float)d / DIR_COUNT * 2.0 * M_PI;
-      float corr_dir[3] = {0.0f, cos(angle), sin(angle)};
-
-      mul_m3_v3(M, corr_dir);
-      mul_v3_fl(corr_dir, corr_len);
-
-      copy_v3_v3(corr_co, corr_v->co);
-      add_v3_v3(corr_co, corr_dir);
-
-      if (p_validate_corrected_coords(corr_e, corr_v, corr_co, corr_min_angle_cos, faces)) {
-        break;
-      }
-    }
-
-    if (d == DIR_COUNT) {
-      continue;
-    }
-
-    copy_v3_v3(corr_v->co, corr_co);
-    for (PFace *other_f : faces) {
-      other_f->flag |= PFACE_DONE;
-    }
-  }
-
-  return true;
-}
-
-static bool p_chart_correct_zero_angles(PChart *chart, float corr_min_angle)
-{
-  /* Look for angles in the 3D space which are lower than `corr_min_angle`
-   * and try to correct vertex coordinates so that the resulting angle
-   * is greater than `corr_min_angle`. The algorithm will result in correcting
-   * all triangles with zero area.
-   *
-   * The return value indicates whether zero angles could be corrected by
-   * the algorithm.
-   *
-   * Due to performance reasons, if the chart contains doubled vertices,
-   * the function may return true with the chart still having zero area
-   * triangles. The function will not crash in such a case though.
-   * It is recommended to always run the function on a chart with doubled
-   * vertices removed beforehand.
-   */
-
-  bool ret = p_chart_correct_zero_angles2(chart, corr_min_angle);
-
-  for (PFace *f = chart->faces; f; f = f->nextlink) {
-    if (!(f->flag & PFACE_DONE)) {
-      ret = false;
-    }
-
-    f->flag &= ~PFACE_DONE;
-  }
-
-  return ret;
-}
 
 /* ABF */
 
@@ -3683,7 +3060,7 @@ static void p_chart_lscm_begin(PChart *chart, bool live, bool abf)
     return;
   }
 #if 0
-  p_chart_simplify_compute(chart);
+  p_chart_simplify_compute(chart, p_collapse_cost, p_collapse_allowed);
   p_chart_topological_sanity_check(chart);
 #endif
 
@@ -4514,7 +3891,7 @@ static void p_add_ngon(ParamHandle *handle,
     const float *tri_co[3] = {co[v0], co[v1], co[v2]};
     float *tri_uv[3] = {uv[v0], uv[v1], uv[v2]};
 
-    float *tri_weight = NULL;
+    float *tri_weight = nullptr;
     float tri_weight_tmp[3];
 
     if (weight) {
@@ -5012,6 +4389,289 @@ void uv_parametrizer_flush_restore(ParamHandle *phandle)
   }
 }
 
+/************************ Degenerate Geometry Fixing **************************/
+
+static bool p_collapse_doubles_allowed(PEdge *edge, PEdge *pair, float threshold_squared)
+{
+  PVert *oldv, *keepv;
+
+  p_collapsing_verts(edge, pair, &oldv, &keepv);
+
+  /* do not collapse a pinned vertex unless the target vertex
+   * is also pinned */
+  if ((oldv->flag & PVERT_PIN) && !(keepv->flag & PVERT_PIN)) {
+    return false;
+  }
+
+  if (!p_collapse_allowed_topologic(edge, pair)) {
+    return false;
+  }
+
+  PEdge *collapse_e = edge ? edge : pair;
+  return p_edge_length_squared(collapse_e) < threshold_squared;
+}
+
+static float p_collapse_doubles_cost(PEdge *edge, PEdge *pair)
+{
+  PEdge *collapse_e = edge ? edge : pair;
+  return p_edge_length_squared(collapse_e);
+}
+
+static void p_chart_collapse_doubles(PChart *chart, float threshold)
+{
+  const float threshold_squared = threshold * threshold;
+
+  p_chart_simplify_compute(chart, p_collapse_doubles_cost, [=](PEdge *e, PEdge *pair) {
+    return p_collapse_doubles_allowed(e, pair, threshold_squared);
+  });
+}
+
+static void p_chart_flush_collapsed_uvs(PChart *chart)
+{
+  PEdge *e, *pair, *edge;
+  PVert *newv, *keepv;
+
+  for (e = chart->collapsed_edges; e; e = e->nextlink) {
+    if (!(e->flag & PEDGE_COLLAPSE_EDGE)) {
+      break;
+    }
+    edge = e;
+    pair = e->pair;
+    if (edge->flag & PEDGE_COLLAPSE_PAIR) {
+      std::swap(edge, pair);
+    }
+    p_collapsing_verts(edge, pair, &newv, &keepv);
+
+    if (!(newv->flag & PVERT_PIN)) {
+      newv->uv[0] = keepv->uv[0];
+      newv->uv[1] = keepv->uv[1];
+    }
+  }
+}
+
+static bool p_validate_corrected_coords(const PEdge *corr_e,
+                                        const PVert *corr_v,
+                                        const float corr_co[3],
+                                        float corr_min_angle_cos,
+                                        std::vector<PFace *> &r_faces)
+{
+  /* Check whether the given corrected coordinates don't result in any other angle lower than
+   * `corr_min_angle` - in such a case the coordinates have to be rejected.
+   */
+
+  r_faces.clear();
+  const PEdge *e = corr_v->edge;
+
+  do {
+    r_faces.push_back(e->face);
+
+    if (e == corr_e) {
+      continue;
+    }
+
+    const PVert *other_v1 = e->next->vert;
+    const PVert *other_v2 = e->next->next->vert;
+
+    float f_cos[3];
+    p_triangle_cos(corr_co, other_v1->co, other_v2->co, f_cos, f_cos + 1, f_cos + 2);
+
+    int min_angle_idx = 0;
+
+    /* cos is a decreasing funtion on [0.0, PI] so we can
+     * comapre angles by comparing their cos values using the
+     * inverted operator.
+     */
+    for (int i = 1; i < 3; i++) {
+      if (f_cos[i] > f_cos[min_angle_idx]) {
+        min_angle_idx = i;
+      }
+    }
+
+    if (f_cos[min_angle_idx] > corr_min_angle_cos) {
+      return false;
+    }
+
+  } while ((e = p_wheel_edge_next(e)) && (e != corr_v->edge));
+
+  return true;
+}
+
+static bool p_edge_matrix(float R[3][3], const PEdge *e)
+{
+  static const float eps = 1.0e-5;
+  static const float n1[3] = {0.0f, 0.0f, 1.0f};
+  static const float n2[3] = {0.0f, 1.0f, 0.0f};
+
+  float edge_dir[3];
+  copy_v3_v3(edge_dir, e->next->vert->co);
+  sub_v3_v3(edge_dir, e->vert->co);
+
+  float edge_len = len_v3(edge_dir);
+  if (edge_len < eps) {
+    return false;
+  }
+  mul_v3_fl(edge_dir, 1.0f / edge_len);
+
+  float normal_dir[3];
+  cross_v3_v3v3(normal_dir, edge_dir, n1);
+  float normal_len = len_v3(normal_dir);
+
+  if (normal_len < eps) {
+    cross_v3_v3v3(normal_dir, edge_dir, n2);
+    normal_len = len_v3(normal_dir);
+
+    if (normal_len < eps) {
+      return false;
+    }
+  }
+
+  mul_v3_fl(normal_dir, 1.0f / normal_len);
+
+  float tangent_dir[3];
+  cross_v3_v3v3(tangent_dir, edge_dir, normal_dir);
+
+  R[0][0] = edge_dir[0];
+  R[1][0] = edge_dir[1];
+  R[2][0] = edge_dir[2];
+
+  R[0][1] = normal_dir[0];
+  R[1][1] = normal_dir[1];
+  R[2][1] = normal_dir[2];
+
+  R[0][2] = tangent_dir[0];
+  R[1][2] = tangent_dir[1];
+  R[2][2] = tangent_dir[2];
+
+  return true;
+}
+
+static bool p_chart_correct_zero_angles2(PChart *chart, float corr_min_angle)
+{
+  std::vector<PFace *> faces;
+  faces.reserve(4);
+
+  float corr_min_angle_sin = sin(corr_min_angle);
+  float corr_min_angle_cos = cos(corr_min_angle);
+
+  for (PFace *f = chart->faces; f; f = f->nextlink) {
+    if (f->flag & PFACE_DONE) {
+      continue;
+    }
+
+    PEdge *edges[3];
+    edges[0] = f->edge;
+    edges[1] = f->edge->next;
+    edges[2] = f->edge->next->next;
+
+    float f_cos[3];
+    p_face_cos(f, f_cos, f_cos + 1, f_cos + 2);
+
+    int min_angle_idx = 0;
+    int max_angle_idx = 0;
+
+    /* cos is a decreasing funtion on [0.0, PI] so we can
+     * comapre angles by comparing their cos values using the
+     * inverted operator.
+     */
+    for (int i = 1; i < 3; i++) {
+      if (f_cos[i] > f_cos[min_angle_idx]) {
+        min_angle_idx = i;
+      }
+      else if (f_cos[i] < f_cos[max_angle_idx]) {
+        max_angle_idx = i;
+      }
+    }
+
+    if (f_cos[min_angle_idx] < corr_min_angle_cos) {
+      f->flag |= PFACE_DONE;
+      continue;
+    }
+
+    PEdge *max_angle_edge = edges[max_angle_idx];
+
+    PEdge *ref_edge;
+    if (((min_angle_idx + 1) % 3) == max_angle_idx) {
+      ref_edge = max_angle_edge->next->next;
+    }
+    else {
+      ref_edge = max_angle_edge;
+    }
+
+    float ref_len = p_edge_length(ref_edge);
+
+    PEdge *corr_e = max_angle_edge;
+    PVert *corr_v = corr_e->vert;
+    float corr_len = ref_len * corr_min_angle_sin;
+    PEdge *max_edge = max_angle_edge->next;
+
+    float M[3][3];
+    if (!p_edge_matrix(M, max_edge)) {
+      continue;
+    }
+
+    /* check 4 distinct directions */
+    static const int DIR_COUNT = 4;
+    float corr_co[3];
+    int d;
+
+    for (d = 0; d < DIR_COUNT; d++) {
+      float angle = (float)d / DIR_COUNT * 2.0 * M_PI;
+      float corr_dir[3] = {0.0f, cos(angle), sin(angle)};
+
+      mul_m3_v3(M, corr_dir);
+      mul_v3_fl(corr_dir, corr_len);
+
+      copy_v3_v3(corr_co, corr_v->co);
+      add_v3_v3(corr_co, corr_dir);
+
+      if (p_validate_corrected_coords(corr_e, corr_v, corr_co, corr_min_angle_cos, faces)) {
+        break;
+      }
+    }
+
+    if (d == DIR_COUNT) {
+      continue;
+    }
+
+    copy_v3_v3(corr_v->co, corr_co);
+    for (PFace *other_f : faces) {
+      other_f->flag |= PFACE_DONE;
+    }
+  }
+
+  return true;
+}
+
+static bool p_chart_correct_zero_angles(PChart *chart, float corr_min_angle)
+{
+  /* Look for angles in the 3D space which are lower than `corr_min_angle`
+   * and try to correct vertex coordinates so that the resulting angle
+   * is greater than `corr_min_angle`. The algorithm will result in correcting
+   * all triangles with zero area.
+   *
+   * The return value indicates whether zero angles could be corrected by
+   * the algorithm.
+   *
+   * Due to performance reasons, if the chart contains doubled vertices,
+   * the function may return true with the chart still having zero area
+   * triangles. The function will not crash in such a case though.
+   * It is recommended to always run the function on a chart with doubled
+   * vertices removed beforehand.
+   */
+
+  bool ret = p_chart_correct_zero_angles2(chart, corr_min_angle);
+
+  for (PFace *f = chart->faces; f; f = f->nextlink) {
+    if (!(f->flag & PFACE_DONE)) {
+      ret = false;
+    }
+
+    f->flag &= ~PFACE_DONE;
+  }
+
+  return ret;
+}
+
 /***************************** SLIM Integration *******************************/
 
 /* Get SLIM parameters from scene */
@@ -5424,7 +5084,7 @@ void uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blend)
   }
 
   /* Assign new UVs back to each vertex. */
-  slim_flush_uvs(phandle, mt, NULL, NULL);
+  slim_flush_uvs(phandle, mt, nullptr, nullptr);
 }
 
 void uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
@@ -5466,7 +5126,7 @@ void uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
   }
 
   /* Assign new UVs back to each vertex. */
-  slim_flush_uvs(phandle, mt, NULL, NULL);
+  slim_flush_uvs(phandle, mt, nullptr, nullptr);
 }
 
 void uv_parametrizer_slim_end(ParamHandle *phandle)
@@ -5483,7 +5143,7 @@ void uv_parametrizer_slim_end(ParamHandle *phandle)
 
 bool uv_parametrizer_is_slim(ParamHandle *phandle)
 {
-  return phandle->slim_mt != NULL;
+  return phandle->slim_mt != nullptr;
 }
 
 }  // namespace blender::geometry
