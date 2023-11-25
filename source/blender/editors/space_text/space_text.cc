@@ -23,6 +23,7 @@
 
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
+#include "ED_text.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -54,6 +55,8 @@ static SpaceLink *text_create(const ScrArea * /*area*/, const Scene * /*scene*/)
   stext->margin_column = 80;
   stext->showsyntax = true;
   stext->showlinenrs = true;
+
+  stext->runtime = MEM_new<SpaceText_Runtime>(__func__);
 
   /* header */
   region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "header for text"));
@@ -89,7 +92,7 @@ static SpaceLink *text_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 static void text_free(SpaceLink *sl)
 {
   SpaceText *stext = (SpaceText *)sl;
-
+  MEM_delete(stext->runtime);
   stext->text = nullptr;
   text_free_caches(stext);
 }
@@ -102,8 +105,9 @@ static SpaceLink *text_duplicate(SpaceLink *sl)
   SpaceText *stextn = static_cast<SpaceText *>(MEM_dupallocN(sl));
 
   /* clear or remove stuff from old */
+  stextn->runtime = MEM_new<SpaceText_Runtime>(__func__);
 
-  stextn->runtime.drawcache = nullptr; /* space need its own cache */
+  stextn->runtime->drawcache = nullptr; /* space need its own cache */
 
   return (SpaceLink *)stextn;
 }
@@ -290,9 +294,9 @@ static void text_cursor(wmWindow *win, ScrArea *area, ARegion *region)
   SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
   int wmcursor = WM_CURSOR_TEXT_EDIT;
 
-  if (st->text && BLI_rcti_isect_pt(&st->runtime.scroll_region_handle,
+  if (st->text && BLI_rcti_isect_pt(&st->runtime->scroll_region_handle,
                                     win->eventstate->xy[0] - region->winrct.xmin,
-                                    st->runtime.scroll_region_handle.ymin))
+                                    st->runtime->scroll_region_handle.ymin))
   {
     wmcursor = WM_CURSOR_DEFAULT;
   }
@@ -406,7 +410,7 @@ static void text_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
 static void text_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *sl)
 {
   SpaceText *st = (SpaceText *)sl;
-  memset(&st->runtime, 0x0, sizeof(st->runtime));
+  st->runtime = MEM_new<SpaceText_Runtime>(__func__);
 }
 
 static void text_space_blend_write(BlendWriter *writer, SpaceLink *sl)
