@@ -664,6 +664,7 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
   /* Transfer point attributes. */
   gather_attributes(src_attributes, ATTR_DOMAIN_POINT, {}, {}, dst_to_src_point, dst_attributes);
 
+  dst_curves.update_curve_types();
   dst_curves.remove_attributes_based_on_types();
 
   return dst_curves;
@@ -714,7 +715,6 @@ static void GREASE_PENCIL_OT_delete(wmOperatorType *ot)
   ot->description = "Delete selected strokes or points";
 
   /* Callbacks. */
-  ot->invoke = WM_menu_invoke;
   ot->exec = grease_pencil_delete_exec;
   ot->poll = editable_grease_pencil_poll;
 
@@ -1448,6 +1448,160 @@ static void GREASE_PENCIL_OT_caps_set(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Duplicate Operator
+ * \{ */
+
+static bke::CurvesGeometry duplicate_points(const bke::CurvesGeometry &curves,
+                                            const IndexMask &mask)
+{
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const VArray<bool> src_cyclic = curves.cyclic();
+
+  Array<bool> points_to_duplicate(curves.points_num());
+  mask.to_bools(points_to_duplicate.as_mutable_span());
+  const int num_points_to_add = points_to_duplicate.as_span().count(true);
+
+  int curr_dst_point_id = 0;
+  Array<int> dst_to_src_point(curves.points_num() + num_points_to_add);
+  Vector<int> dst_curve_counts;
+  Vector<int> dst_to_src_curve;
+  Vector<bool> dst_cyclic;
+
+  /* Add all of the orignal curves and points. */
+  for (const int curve_i : curves.curves_range()) {
+    const IndexRange points = points_by_curve[curve_i];
+    const bool curve_cyclic = src_cyclic[curve_i];
+    const int count = points.size();
+
+    for (const int src_point : points) {
+      dst_to_src_point[curr_dst_point_id++] = src_point;
+    }
+
+    dst_curve_counts.append(count);
+    dst_to_src_curve.append(curve_i);
+    dst_cyclic.append(curve_cyclic);
+  }
+
+  /* Add the duplicated curves and points. */
+  for (const int curve_i : curves.curves_range()) {
+    const IndexRange points = points_by_curve[curve_i];
+    const Span<bool> curve_points_to_duplicate = points_to_duplicate.as_span().slice(points);
+    const bool curve_cyclic = src_cyclic[curve_i];
+
+    /* Note, these ranges start at zero and needed to be shifted by `points.first()` */
+    const Vector<IndexRange> ranges_to_duplicate = array_utils::find_all_ranges(
+        curve_points_to_duplicate, true);
+
+    if (ranges_to_duplicate.size() == 0) {
+      continue;
+    }
+
+    const bool is_last_segment_selected = curve_cyclic &&
+                                          ranges_to_duplicate.first().first() == 0 &&
+                                          ranges_to_duplicate.last().last() == points.size() - 1;
+    const bool is_curve_self_joined = is_last_segment_selected && ranges_to_duplicate.size() != 1;
+    const bool is_cyclic = ranges_to_duplicate.size() == 1 && is_last_segment_selected;
+
+    IndexRange range_ids = ranges_to_duplicate.index_range();
+    /* Skip the first range because it is joined to the end of the last range. */
+    for (const int range_i : ranges_to_duplicate.index_range().drop_front(is_curve_self_joined)) {
+      const IndexRange range = ranges_to_duplicate[range_i];
+
+      int count = range.size();
+      for (const int src_point : range.shift(points.first())) {
+        dst_to_src_point[curr_dst_point_id++] = src_point;
+      }
+
+      /* Join the first range to the end of the last range. */
+      if (is_curve_self_joined && range_i == range_ids.last()) {
+        const IndexRange first_range = ranges_to_duplicate[range_ids.first()];
+        for (const int src_point : first_range.shift(points.first())) {
+          dst_to_src_point[curr_dst_point_id++] = src_point;
+        }
+        count += first_range.size();
+      }
+
+      dst_curve_counts.append(count);
+      dst_to_src_curve.append(curve_i);
+      dst_cyclic.append(is_cyclic);
+    }
+  }
+
+  bke::CurvesGeometry dst_curves(dst_to_src_point.size(), dst_to_src_curve.size());
+
+  MutableSpan<int> new_curve_offsets = dst_curves.offsets_for_write();
+  array_utils::copy(dst_curve_counts.as_span(), new_curve_offsets.drop_back(1));
+  offset_indices::accumulate_counts_to_offsets(new_curve_offsets);
+
+  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+  const bke::AttributeAccessor src_attributes = curves.attributes();
+
+  /* Transfer curve attributes. */
+  gather_attributes(
+      src_attributes, ATTR_DOMAIN_CURVE, {}, {"cyclic"}, dst_to_src_curve, dst_attributes);
+  array_utils::copy(dst_cyclic.as_span(), dst_curves.cyclic_for_write());
+
+  /* Transfer point attributes. */
+  gather_attributes(src_attributes, ATTR_DOMAIN_POINT, {}, {}, dst_to_src_point, dst_attributes);
+
+  /* Deselect the original curves. */
+  bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
+      dst_curves, ATTR_DOMAIN_CURVE, CD_PROP_BOOL);
+  curves::fill_selection_false(selection.span, IndexMask(curves.curves_range()));
+  selection.finish();
+
+  dst_curves.update_curve_types();
+  dst_curves.remove_attributes_based_on_types();
+
+  return dst_curves;
+}
+
+static int grease_pencil_duplicate_exec(bContext *C, wmOperator * /*op*/)
+{
+  using namespace blender;
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  bool changed = false;
+  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    IndexMaskMemory memory;
+    const IndexMask points = ed::greasepencil::retrieve_editable_and_selected_points(
+        *object, info.drawing, memory);
+    if (points.is_empty()) {
+      return;
+    }
+
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    curves = duplicate_points(curves, points);
+    info.drawing.tag_topology_changed();
+    changed = true;
+  });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+  return OPERATOR_FINISHED;
+}
+static void GREASE_PENCIL_OT_duplicate(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Duplicate";
+  ot->idname = "GREASE_PENCIL_OT_duplicate";
+  ot->description = "Duplicate the selected strokes";
+
+  /* Callbacks. */
+  ot->exec = grease_pencil_duplicate_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -1465,6 +1619,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_set_uniform_thickness);
   WM_operatortype_append(GREASE_PENCIL_OT_set_uniform_opacity);
   WM_operatortype_append(GREASE_PENCIL_OT_caps_set);
+  WM_operatortype_append(GREASE_PENCIL_OT_duplicate);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
