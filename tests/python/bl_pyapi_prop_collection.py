@@ -24,31 +24,23 @@ id_type = bpy.types.Scene
 # -----------------------------------------------------------------------------
 # Utility Classes
 
-class DummySequenceBuffer(np.ndarray):
+class SequenceCheckBuffer(np.ndarray):
     """
-    np.ndarray subtype that can be accessed as a buffer normally, but, when accessed as a sequence, only returns
-    dummy values and ignores attempts to set values.
+    np.ndarray subtype that tracks whether it has been used as a sequence.
 
-    This can be used to test whether a foreach_get/foreach_set call used the buffer protocol or sequence protocol
-    because they fall back to using the sequence protocol when the buffer is considered incompatible.
+    Used in tests that expect the buffer to be accessed as a buffer without falling back to being accessed as a
+    sequence.
     """
-    _DUMMY_VALUES_BY_DTYPE_KIND = {
-        'b': False,  # boolean
-        'i': 0,  # signed integer
-        'u': 0,  # unsigned integer
-        'f': 0.0,  # floating point
-    }
+    def __array_finalize__(self, obj):
+        self.used_as_sequence = False
 
     def __getitem__(self, key):
-        # Blender does not currently handle exceptions raised by __getitem__ in foreach_get/foreach_set (`NULL` returned
-        # by PySequence_GetItem on failure) and will crash, so dummy values are returned instead.
-        return self._DUMMY_VALUES_BY_DTYPE_KIND[self.dtype.kind]
+        self.used_as_sequence = True
+        return super().__getitem__(key)
 
     def __setitem__(self, key, value):
-        # Blender does not currently catch exceptions raised by __setitem__ in foreach_get/foreach_set
-        # (PySequence_SetItem raises an exception and returns -1 on failure) , which leads to a SystemError being
-        # raised, so ignore the value to set instead of raising an exception.
-        pass
+        self.used_as_sequence = True
+        super().__setitem__(key, value)
 
 
 class TestPropertyGroup(bpy.types.PropertyGroup):
@@ -112,11 +104,11 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         """
         Helper function to reduce duplicate code for foreach_get/foreach_set tests that are expected to pass.
         """
-        if isinstance(seq_or_ndarray, np.ndarray):
-            # np.ndarray are viewed as the DummySequenceBuffer subclass so that they only work correctly as a buffer.
-            # This ensures that, if foreach_get/foreach_set falls back to accessing the buffer as a sequence, the test
-            # will fail.
-            foreach_arg = seq_or_ndarray.view(DummySequenceBuffer)
+        is_buffer = isinstance(seq_or_ndarray, np.ndarray)
+        if is_buffer:
+            # np.ndarray are viewed as the SequenceCheckBuffer subclass so that tests can check whether the buffer was
+            # accessed as a sequence.
+            foreach_arg = seq_or_ndarray.view(SequenceCheckBuffer)
         else:
             foreach_arg = seq_or_ndarray
 
@@ -138,6 +130,10 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
             self.assertSequenceEqual(seq_or_ndarray, flat_collection_sequence)
         else:
             self.assertSequenceEqual(flat_collection_sequence, seq_or_ndarray)
+
+        if is_buffer:
+            # To ensure that buffer code is being tested, check that the buffer was not accessed as a sequence.
+            self.assertFalse(foreach_arg.used_as_sequence)
 
     def do_get_test(self, *args, **kwargs):
         self.do_getset_test(*args, **kwargs, is_get=True)
