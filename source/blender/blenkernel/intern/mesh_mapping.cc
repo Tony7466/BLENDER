@@ -338,14 +338,14 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
   int *counts = MEM_cnew_array<int>(size_t(offsets.size()), __func__);
   BLI_SCOPED_DEFER([&]() { MEM_freeN(counts); })
   Array<int> results(group_indices.size());
-  threading::parallel_for(group_indices.index_range(), 4098, [&](const IndexRange range) {
+  threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
     for (const int64_t i : range) {
       const int group_index = group_indices[i];
       const int index_in_group = atomic_fetch_and_add_int32(&counts[group_index], 1);
       results[offsets[group_index][index_in_group]] = int(i);
     }
   });
-  sort_small_groups(offsets, 4098, results);
+  sort_small_groups(offsets, 1024, results);
   return results;
 }
 
