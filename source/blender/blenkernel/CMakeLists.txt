@@ -9,7 +9,6 @@ set(INC
   ../blentranslation
   ../bmesh
   ../draw
-  ../functions
   ../gpencil_modifiers_legacy
   ../gpu
   ../ikplugin
@@ -545,7 +544,7 @@ set(LIB
   PRIVATE bf::dna
   bf_draw
   PRIVATE bf::extern::curve_fit_nd
-  bf_functions
+  PRIVATE bf::functions
   bf_gpencil_modifiers_legacy
   bf_gpu
   bf_ikplugin
