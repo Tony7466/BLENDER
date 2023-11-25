@@ -53,7 +53,6 @@ struct SpaceText_Runtime {
   void *drawcache;
 };
 
-
 bool ED_text_activate_in_screen(bContext *C, Text *text);
 
 /**
