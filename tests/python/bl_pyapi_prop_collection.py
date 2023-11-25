@@ -108,183 +108,144 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         del id_type.test_collection
         bpy.utils.unregister_class(TestPropertyGroup)
 
+    def do_getset_test(self, seq_or_ndarray, foreach_attribute, is_get):
+        """
+        Helper function to reduce duplicate code for foreach_get/foreach_set tests that are expected to pass.
+        """
+        if isinstance(seq_or_ndarray, np.ndarray):
+            # np.ndarray are viewed as the DummySequenceBuffer subclass so that they only work correctly as a buffer.
+            # This ensures that, if foreach_get/foreach_set falls back to accessing the buffer as a sequence, the test
+            # will fail.
+            foreach_arg = seq_or_ndarray.view(DummySequenceBuffer)
+        else:
+            foreach_arg = seq_or_ndarray
+
+        if is_get:
+            self.collection.foreach_get(foreach_attribute, foreach_arg)
+        else:
+            self.collection.foreach_set(foreach_attribute, foreach_arg)
+
+        # Enum properties are a special case where we can't get property values directly.
+        prop_name = "test_enum_value" if foreach_attribute == "test_enum" else foreach_attribute
+
+        if "vector" in foreach_attribute:
+            flat_collection_sequence = [x for group in self.collection for x in getattr(group, prop_name)]
+        else:
+            flat_collection_sequence = [getattr(group, prop_name) for group in self.collection]
+
+        # Order the arguments so that the expected sequence is always the second argument.
+        if is_get:
+            self.assertSequenceEqual(seq_or_ndarray, flat_collection_sequence)
+        else:
+            self.assertSequenceEqual(flat_collection_sequence, seq_or_ndarray)
+
+    def do_get_test(self, *args, **kwargs):
+        self.do_getset_test(*args, **kwargs, is_get=True)
+
+    def do_set_test(self, *args, **kwargs):
+        self.do_getset_test(*args, **kwargs, is_get=False)
+
     def test_buffer_get_bool(self):
-        buffer = np.full(5, True, dtype=bool)
-        self.collection.foreach_get("test_bool", buffer.view(DummySequenceBuffer))
-        self.assertSequenceEqual(buffer, [group.test_bool for group in self.collection])
+        self.do_get_test(np.full(5, True, dtype=bool), "test_bool")
 
     def test_buffer_set_bool(self):
-        buffer = np.full(5, True, dtype=bool)
-        self.collection.foreach_set("test_bool", buffer.view(DummySequenceBuffer))
-        self.assertSequenceEqual([group.test_bool for group in self.collection], buffer)
+        self.do_set_test(np.full(5, True, dtype=bool), "test_bool")
 
     def test_sequence_get_bool(self):
-        sequence = [None] * 5
-        self.collection.foreach_get("test_bool", sequence)
-        self.assertSequenceEqual(sequence, [group.test_bool for group in self.collection])
+        self.do_get_test([None] * 5, "test_bool")
 
     def test_sequence_set_bool(self):
-        sequence = [True] * 5
-        self.collection.foreach_set("test_bool", sequence)
-        self.assertSequenceEqual([group.test_bool for group in self.collection], sequence)
+        self.do_set_test([True] * 5, "test_bool")
 
     def test_buffer_get_bool_vector(self):
-        buffer = np.full(5 * 3, True, dtype=bool)
-        self.collection.foreach_get("test_bool_vector", buffer.view(DummySequenceBuffer))
-        flat_actual_sequence = [b for group in self.collection for b in group.test_bool_vector]
-        self.assertSequenceEqual(buffer, flat_actual_sequence)
+        self.do_get_test(np.full(5 * 3, True, dtype=bool), "test_bool_vector")
 
     def test_buffer_set_bool_vector(self):
-        buffer = np.full(5 * 3, True, dtype=bool)
-        self.collection.foreach_set("test_bool_vector", buffer.view(DummySequenceBuffer))
-        flat_result_sequence = [b for group in self.collection for b in group.test_bool_vector]
-        self.assertSequenceEqual(flat_result_sequence, buffer)
+        self.do_set_test(np.full(5 * 3, True, dtype=bool), "test_bool_vector")
 
     def test_sequence_get_bool_vector(self):
-        sequence = [None] * (5 * 3)
-        self.collection.foreach_get("test_bool_vector", sequence)
-        flat_actual_sequence = [b for group in self.collection for b in group.test_bool_vector]
-        self.assertSequenceEqual(sequence, flat_actual_sequence)
+        self.do_get_test([None] * (5 * 3), "test_bool_vector")
 
     def test_sequence_set_bool_vector(self):
-        sequence = [True] * (5 * 3)
-        self.collection.foreach_set("test_bool_vector", sequence)
-        flat_result_sequence = [b for group in self.collection for b in group.test_bool_vector]
-        self.assertSequenceEqual(flat_result_sequence, sequence)
+        self.do_set_test([True] * (5 * 3), "test_bool_vector")
 
     def test_buffer_get_float(self):
-        buffer = np.zeros(5, dtype=np.float32)
-        self.collection.foreach_get("test_float", buffer.view(DummySequenceBuffer))
-        self.assertSequenceEqual(buffer, [group.test_float for group in self.collection])
+        self.do_get_test(np.zeros(5, dtype=np.float32), "test_float")
 
     def test_buffer_set_float(self):
-        buffer = np.arange(5, dtype=np.float32)
-        self.collection.foreach_set("test_float", buffer.view(DummySequenceBuffer))
-        self.assertSequenceEqual([group.test_float for group in self.collection], buffer)
+        self.do_set_test(np.arange(5, dtype=np.float32), "test_float")
 
     def test_sequence_get_float(self):
-        sequence = [None] * 5
-        self.collection.foreach_get("test_float", sequence)
-        self.assertSequenceEqual(sequence, [group.test_float for group in self.collection])
+        self.do_get_test([None] * 5, "test_float")
 
     def test_sequence_set_float(self):
-        sequence = range(5)
-        self.collection.foreach_set("test_float", sequence)
-        self.assertSequenceEqual([group.test_float for group in self.collection], sequence)
+        self.do_set_test(range(5), "test_float")
 
     def test_buffer_get_float_vector(self):
-        buffer = np.zeros(5 * 3, dtype=np.float32)
-        self.collection.foreach_get("test_float_vector", buffer.view(DummySequenceBuffer))
-        flat_actual_sequence = [f for group in self.collection for f in group.test_float_vector]
-        self.assertSequenceEqual(buffer, flat_actual_sequence)
+        self.do_get_test(np.zeros(5 * 3, dtype=np.float32), "test_float_vector")
 
     def test_buffer_set_float_vector(self):
-        buffer = np.arange(5 * 3, dtype=np.float32)
-        self.collection.foreach_set("test_float_vector", buffer.view(DummySequenceBuffer))
-        flat_result_sequence = [f for group in self.collection for f in group.test_float_vector]
-        self.assertSequenceEqual(flat_result_sequence, buffer)
+        self.do_set_test(np.arange(5 * 3, dtype=np.float32), "test_float_vector")
 
     def test_sequence_get_float_vector(self):
-        sequence = [None] * (5 * 3)
-        self.collection.foreach_get("test_float_vector", sequence)
-        flat_actual_sequence = [f for group in self.collection for f in group.test_float_vector]
-        self.assertSequenceEqual(sequence, flat_actual_sequence)
+        self.do_get_test([None] * (5 * 3), "test_float_vector")
 
     def test_sequence_set_float_vector(self):
-        sequence = range(5 * 3)
-        self.collection.foreach_set("test_float_vector", sequence)
-        flat_result_sequence = [f for group in self.collection for f in group.test_float_vector]
-        self.assertSequenceEqual(flat_result_sequence, sequence)
+        self.do_set_test(range(5 * 3), "test_float_vector")
 
     def test_buffer_get_int(self):
-        buffer = np.zeros(5, dtype=np.int32)
-        self.collection.foreach_get("test_int", buffer.view(DummySequenceBuffer))
-        self.assertSequenceEqual(buffer, [group.test_int for group in self.collection])
+        self.do_get_test(np.zeros(5, dtype=np.int32), "test_int")
 
     def test_buffer_set_int(self):
-        buffer = np.arange(5, dtype=np.int32)
-        self.collection.foreach_set("test_int", buffer.view(DummySequenceBuffer))
-        self.assertSequenceEqual([group.test_int for group in self.collection], buffer)
+        self.do_set_test(np.arange(5, dtype=np.int32), "test_int")
 
     def test_sequence_get_int(self):
-        sequence = [None] * 5
-        self.collection.foreach_get("test_int", sequence)
-        self.assertSequenceEqual(sequence, [group.test_int for group in self.collection])
+        self.do_get_test([None] * 5, "test_int")
 
     def test_sequence_set_int(self):
-        sequence = range(5)
-        self.collection.foreach_set("test_int", sequence)
-        self.assertSequenceEqual([group.test_int for group in self.collection], sequence)
+        self.do_set_test(range(5), "test_int")
 
     def test_buffer_get_int_vector(self):
-        buffer = np.zeros(5 * 3, dtype=np.int32)
-        self.collection.foreach_get("test_int_vector", buffer.view(DummySequenceBuffer))
-        flat_actual_sequence = [i for group in self.collection for i in group.test_int_vector]
-        self.assertSequenceEqual(buffer, flat_actual_sequence)
+        self.do_get_test(np.zeros(5 * 3, dtype=np.int32), "test_int_vector")
 
     def test_buffer_set_int_vector(self):
-        buffer = np.arange(5 * 3, dtype=np.int32)
-        self.collection.foreach_set("test_int_vector", buffer.view(DummySequenceBuffer))
-        flat_result_sequence = [i for group in self.collection for i in group.test_int_vector]
-        self.assertSequenceEqual(flat_result_sequence, buffer)
+        self.do_set_test(np.arange(5 * 3, dtype=np.int32), "test_int_vector")
 
     def test_sequence_get_int_vector(self):
-        sequence = [None] * (5 * 3)
-        self.collection.foreach_get("test_int_vector", sequence)
-        flat_actual_sequence = [i for group in self.collection for i in group.test_int_vector]
-        self.assertSequenceEqual(sequence, flat_actual_sequence)
+        self.do_get_test([None] * (5 * 3), "test_int_vector")
 
     def test_sequence_set_int_vector(self):
-        sequence = range(5 * 3)
-        self.collection.foreach_set("test_int_vector", sequence)
-        flat_result_sequence = [i for group in self.collection for i in group.test_int_vector]
-        self.assertSequenceEqual(flat_result_sequence, sequence)
+        self.do_set_test(range(5 * 3), "test_int_vector")
 
     def test_buffer_get_unsigned_int(self):
-        buffer = np.zeros(5, dtype=np.uint32)
-        self.collection.foreach_get("test_unsigned_int", buffer.view(DummySequenceBuffer))
-        self.assertSequenceEqual(buffer, [group.test_unsigned_int for group in self.collection])
+        self.do_get_test(np.zeros(5, dtype=np.uint32), "test_unsigned_int")
 
     def test_buffer_set_unsigned_int(self):
-        buffer = np.arange(5, dtype=np.uint32)
-        self.collection.foreach_set("test_unsigned_int", buffer.view(DummySequenceBuffer))
-        self.assertSequenceEqual([group.test_unsigned_int for group in self.collection], buffer)
+        self.do_set_test(np.arange(5, dtype=np.uint32), "test_unsigned_int")
 
     def test_sequence_get_unsigned_int(self):
-        sequence = [None] * 5
-        self.collection.foreach_get("test_unsigned_int", sequence)
-        self.assertSequenceEqual(sequence, [group.test_unsigned_int for group in self.collection])
+        self.do_get_test([None] * 5, "test_unsigned_int")
 
     def test_sequence_set_unsigned_int(self):
-        sequence = range(5)
-        self.collection.foreach_set("test_unsigned_int", sequence)
-        self.assertSequenceEqual([group.test_unsigned_int for group in self.collection], sequence)
+        self.do_set_test(range(5), "test_unsigned_int")
 
     @unittest.expectedFailure  # See #92621
     def test_buffer_get_enum(self):
         # Note: RNA enum properties commonly vary in itemsize, int32 may not be correct for other properties.
-        buffer = np.ones(5, dtype=np.int32)
-        self.collection.foreach_get("test_enum", buffer.view(DummySequenceBuffer))
-        self.assertSequenceEqual(buffer, [group.test_enum_value for group in self.collection])
+        self.do_get_test(np.ones(5, dtype=np.int32), "test_enum")
 
     @unittest.expectedFailure  # See #92621
     def test_buffer_set_enum(self):
         # Note: RNA enum properties commonly vary in itemsize, int32 may not be correct for other properties.
-        buffer = np.ones(5, dtype=np.int32)
-        self.collection.foreach_set("test_enum", buffer.view(DummySequenceBuffer))
-        self.assertSequenceEqual([group.test_enum_value for group in self.collection], buffer)
+        self.do_set_test(np.ones(5, dtype=np.int32), "test_enum")
 
     @unittest.expectedFailure  # See #92621
     def test_sequence_get_enum(self):
-        sequence = [None] * 5
-        self.collection.foreach_get("test_enum", sequence)
-        self.assertSequenceEqual(sequence, [group.test_enum_value for group in self.collection])
+        self.do_get_test([None] * 5, "test_enum")
 
     @unittest.expectedFailure  # See #92621
     def test_sequence_set_enum(self):
-        sequence = [1] * 5
-        self.collection.foreach_set("test_enum", sequence)
-        self.assertSequenceEqual([group.test_enum_value for group in self.collection], sequence)
+        self.do_get_test([1] * 5, "test_enum")
 
 
 if __name__ == '__main__':
