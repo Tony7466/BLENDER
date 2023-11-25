@@ -33,8 +33,8 @@
 #include "hydra_scene_delegate.h"
 
 #include "intern/usd_exporter_context.h"
-#include "intern/usd_writer_material.h"
 #include "intern/usd_writer_image.h"
+#include "intern/usd_writer_material.h"
 
 #ifdef WITH_MATERIALX
 #  include "shader/materialx/node_parser.h"
@@ -51,7 +51,7 @@ MaterialData::MaterialData(HydraSceneDelegate *scene_delegate,
 {
 }
 
-static std::string export_texture(Image* image)
+static std::string export_texture(Image *image)
 {
   return usd::export_texture(image, HydraSceneDelegate::cache_file_path(), false, true, nullptr);
 }

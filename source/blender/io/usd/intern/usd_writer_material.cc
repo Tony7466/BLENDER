@@ -615,13 +615,16 @@ static void export_texture(const USDExporterContext &usd_export_context, bNode *
     return;
   }
 
-  std::string export_path = usd_export_context.export_file_path;
-  if (export_path.empty()) {
+  if (usd_export_context.export_file_path.empty()) {
     return;
   }
 
+  char tex_dir_path[FILE_MAX];
+  BLI_path_split_dir_part(usd_export_context.export_file_path.c_str(), tex_dir_path, FILE_MAX);
+  BLI_path_append_dir(tex_dir_path, FILE_MAX, "textures");
+
   export_texture(ima,
-                 export_path,
+                 tex_dir_path,
                  usd_export_context.export_params.overwrite_textures,
                  false,
                  usd_export_context.export_params.worker_status->reports);

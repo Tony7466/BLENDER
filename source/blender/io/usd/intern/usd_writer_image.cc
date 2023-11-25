@@ -40,7 +40,6 @@ std::string get_tex_image_asset_filepath(Image *ima)
   return std::string(filepath);
 }
 
-
 /* Generate a file name for an in-memory image that doesn't have a
  * filepath already defined. */
 std::string get_in_memory_texture_filename(Image *ima)
@@ -146,7 +145,7 @@ static std::string export_in_memory_texture(Image *ima,
   BLI_path_join(export_path, FILE_MAX, export_dir.c_str(), file_name);
 
   if (!allow_overwrite && BLI_exists(export_path)) {
-    return "";
+    return export_path;
   }
 
   if ((BLI_path_cmp_normalized(export_path, image_abs_path) == 0) && BLI_exists(image_abs_path)) {
@@ -161,7 +160,7 @@ static std::string export_in_memory_texture(Image *ima,
         reports, RPT_WARNING, "USD export: couldn't export in-memory texture to %s", export_path);
   }
 
-  return image_abs_path;
+  return export_path;
 }
 
 /* If the given image is tiled, copy the image tiles to the given
@@ -235,32 +234,26 @@ std::string export_texture(Image *ima,
                            bool only_in_memory,
                            ReportList *reports)
 {
-  char usd_dir_path[FILE_MAX];
-  BLI_path_split_dir_part(export_path.c_str(), usd_dir_path, FILE_MAX);
-
-  char tex_dir_path[FILE_MAX];
-  BLI_path_join(tex_dir_path, FILE_MAX, usd_dir_path, "textures", SEP_STR);
-
-  BLI_dir_create_recursive(tex_dir_path);
-
   const bool is_dirty = BKE_image_is_dirty(ima);
   const bool is_generated = ima->source == IMA_SRC_GENERATED;
   const bool is_packed = BKE_image_has_packedfile(ima);
 
-  std::string dest_dir(tex_dir_path);
   std::string dest_path;
-
   if (is_generated || is_dirty || is_packed) {
-    dest_path = export_in_memory_texture(ima, dest_dir, allow_overwrite, reports);
+    BLI_dir_create_recursive(export_path.c_str());
+    dest_path = export_in_memory_texture(ima, export_path, allow_overwrite, reports);
   }
   else if (only_in_memory) {
     dest_path = get_tex_image_asset_filepath(ima);
   }
-  else if (ima->source == IMA_SRC_TILED) {
-    dest_path = copy_tiled_textures(ima, dest_dir, allow_overwrite, reports);
-  }
   else {
-    dest_path = copy_single_file(ima, dest_dir, allow_overwrite, reports);
+    BLI_dir_create_recursive(export_path.c_str());
+    if (ima->source == IMA_SRC_TILED) {
+      dest_path = copy_tiled_textures(ima, export_path, allow_overwrite, reports);
+    }
+    else {
+      dest_path = copy_single_file(ima, export_path, allow_overwrite, reports);
+    }
   }
   return dest_path;
 }

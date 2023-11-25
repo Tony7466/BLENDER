@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "hydra_scene_delegate.h"
 #include "world.h"
+#include "hydra_scene_delegate.h"
 
 #include "intern/usd_writer_image.h"
 
@@ -31,7 +31,6 @@
 #include "IMB_imbuf_types.h"
 
 #include "NOD_shader.h"
-
 
 /* TODO: add custom `tftoken` "transparency"? */
 
@@ -203,6 +202,5 @@ void WorldData::write_transform()
                         RAD2DEGF(scene_delegate_->shading_settings.studiolight_rotation)));
   }
 }
-
 
 }  // namespace blender::io::hydra
