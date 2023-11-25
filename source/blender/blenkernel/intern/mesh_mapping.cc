@@ -27,8 +27,6 @@
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
 
-#include "BLI_timeit.hh"
-
 #include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
@@ -347,7 +345,7 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
       results[offsets[group_index][index_in_group]] = int(i);
     }
   });
-  // sort_small_groups(offsets, 4098, results);
+  sort_small_groups(offsets, 4098, results);
   return results;
 }
 
@@ -426,6 +424,7 @@ static GroupedSpan<int> gather_groups(const Span<int> group_indices,
     }
   });
 
+  sort_small_groups(r_offsets.as_span(), 4098, r_indices);
   return {OffsetIndices<int>(r_offsets), r_indices};
 }
 
