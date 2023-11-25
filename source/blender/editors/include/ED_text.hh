@@ -6,9 +6,9 @@
  * \ingroup editors
  */
 
-#include "DNA_vec_types.h"
-
 #pragma once
+
+#include "DNA_vec_types.h"
 
 struct ARegion;
 struct SpaceText;
