@@ -441,6 +441,18 @@ if(WITH_GMP)
   add_definitions(-DWITH_GMP)
 endif()
 
+if(WITH_TBB)
+  list(APPEND INC_SYS
+    ${TBB_INCLUDE_DIRS}
+  )
+  add_definitions(-DWITH_TBB)
+  if(WIN32)
+    # TBB includes Windows.h which will define min/max macros
+    # that will collide with the stl versions.
+    add_definitions(-DNOMINMAX)
+  endif()
+endif()
+
 # Build makesrna executable
 add_cc_flags_custom_test(makesrna)
 

@@ -203,9 +203,6 @@ struct VolumeGrid : public ImplicitSharingMixin {
   VolumeGrid(const VolumeGrid &other);
   ~VolumeGrid();
 
-  void delete_self() override;
-  void delete_data_only() override;
-
   const char *name() const;
 
   const char *error_message() const;
@@ -224,6 +221,9 @@ struct VolumeGrid : public ImplicitSharingMixin {
   GridBasePtr main_grid() const;
   void clear_cache_entry();
 #endif
+
+  void delete_self() override;
+  void delete_data_only() override;
 };
 
 /** \} */

@@ -15,10 +15,9 @@
 #  include <openvdb/openvdb.h>
 #endif
 
-#ifdef WITH_OPENVDB
-
 static CLG_LogRef LOG = {"bke.volume"};
 
+#ifdef WITH_OPENVDB
 /* Global Volume File Cache
  *
  * Global cache of grids read from VDB files. This is used for sharing grids
@@ -205,9 +204,11 @@ static struct VolumeFileCache {
   /* Mutex for multithreaded access. */
   std::mutex mutex;
 } GLOBAL_CACHE;
+#endif
 
 namespace blender::bke {
 
+#ifdef WITH_OPENVDB
 VolumeGrid::VolumeGrid(const GridBasePtr &grid)
     : grid(grid), entry_(nullptr), simplify_level_(0), is_loaded_(false)
 {
@@ -248,16 +249,6 @@ VolumeGrid::~VolumeGrid()
   if (entry_) {
     GLOBAL_CACHE.remove_user(*entry_, is_loaded_);
   }
-}
-
-void VolumeGrid::delete_self()
-{
-  delete this;
-}
-
-void VolumeGrid::delete_data_only()
-{
-  grid.reset();
 }
 
 const char *VolumeGrid::name() const
@@ -394,6 +385,17 @@ void VolumeGrid::clear_cache_entry()
   }
   is_loaded_ = true;
 }
+#endif
+
+void VolumeGrid::delete_self()
+{
+  delete this;
+}
+
+void VolumeGrid::delete_data_only()
+{
+  grid.reset();
+}
 
 VolumeGridPtrCommon::~VolumeGridPtrCommon() {}
 
@@ -404,14 +406,20 @@ GVolumeGridPtr::operator bool() const
 
 GVolumeGridPtr::GridConstPtr GVolumeGridPtr::grid() const
 {
+#ifdef WITH_OPENVDB
   return data ? data->grid : nullptr;
+#else
+  return nullptr;
+#endif
 }
 
 GVolumeGridPtr::GridPtr GVolumeGridPtr::grid_for_write() const
 {
+#ifdef WITH_OPENVDB
   return data && data->is_mutable() ? data->grid : nullptr;
+#else
+  return nullptr;
+#endif
 }
 
 }  // namespace blender::bke
-
-#endif

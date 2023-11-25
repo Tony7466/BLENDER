@@ -43,22 +43,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = CD_PROP_FLOAT;
 }
 
-template<typename T>
-static bool try_output_grid_value(GeoNodeExecParams params, VolumeGrid &grid)
-{
-  using GridType = typename bke::VolumeGridPtr<T>::GridType;
-  typename GridType::Ptr vdb_grid = openvdb::GridBase::grid<GridType>(grid.grid);
-  /* XXX Hack! Constructing a new pointer from scratch here requires incrementing user count since
-   * the data is still owned by the Volume. Eventually should return shared ptrs from the Volume
-   * API directly so that this isn't necessary. */
-  grid.add_user();
-  bke::GVolumeGridPtr grid_ref = bke::GVolumeGridPtr(GVolumeGrid::SharedDataPtr(&grid));
-  bke::VolumeGridPtr<T> typed_grid_ref = grid_ref.typed<T>();
-
-  params.set_output("Grid", ValueOrField<T>(typed_grid_ref));
-  return bool(typed_grid_ref);
-}
-
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
@@ -69,13 +53,13 @@ static void node_geo_exec(GeoNodeExecParams params)
   const bool remove_grid = params.extract_input<bool>("Remove");
 
   if (Volume *volume = geometry_set.get_volume_for_write()) {
-    if (VolumeGrid *grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
+    if (GVolumeGridPtr grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
       switch (data_type) {
         case CD_PROP_FLOAT:
-          try_output_grid_value<float>(params, *grid);
+          params.set_output("Grid", ValueOrField<float>(grid.typed<float>()));
           break;
         case CD_PROP_FLOAT3:
-          try_output_grid_value<float3>(params, *grid);
+          params.set_output("Grid", ValueOrField<float3>(grid.typed<float3>()));
           break;
         default:
           BLI_assert_unreachable();
@@ -83,7 +67,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       }
 
       if (remove_grid) {
-        BKE_volume_grid_remove(volume, grid);
+        BKE_volume_grid_remove(volume, grid.get());
       }
 
       params.set_output("Volume", geometry_set);

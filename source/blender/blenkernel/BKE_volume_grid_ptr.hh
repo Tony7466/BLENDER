@@ -30,9 +30,9 @@ struct VolumeGridPtrCommon {
 #ifdef WITH_OPENVDB
   using GridPtr = std::shared_ptr<openvdb::GridBase>;
   using GridConstPtr = std::shared_ptr<const openvdb::GridBase>;
+#endif
 
   virtual ~VolumeGridPtrCommon();
-#endif
 };
 
 /** \} */
@@ -46,11 +46,12 @@ struct VolumeGridPtrCommon {
  * \{ */
 
 struct GVolumeGridPtr : public VolumeGridPtrCommon {
+  using SharedDataPtr = ImplicitSharingPtr<VolumeGrid>;
 #ifdef WITH_OPENVDB
   using GridType = openvdb::GridBase;
   using GridPtr = std::shared_ptr<GridType>;
   using GridConstPtr = std::shared_ptr<const GridType>;
-  using SharedDataPtr = ImplicitSharingPtr<VolumeGrid>;
+#endif
 
   /* OpenVDB grid. */
   SharedDataPtr data;
@@ -60,6 +61,16 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
   GVolumeGridPtr(const SharedDataPtr data) : data(data) {}
   template<typename T> GVolumeGridPtr(const VolumeGridPtr<T> &typed_grid) : data(typed_grid.data)
   {
+  }
+  GVolumeGridPtr(std::nullptr_t) : data(nullptr) {}
+
+  inline VolumeGrid *get()
+  {
+    return data.get();
+  }
+  inline const VolumeGrid *get() const
+  {
+    return data.get();
   }
 
   template<typename T> VolumeGridPtr<T> typed() const
@@ -74,8 +85,34 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
     return VolumeGridPtr<T>(data);
   }
 
+#ifdef WITH_OPENVDB
   GridConstPtr grid() const;
   GridPtr grid_for_write() const;
+#endif
+
+  VolumeGrid *operator->()
+  {
+    BLI_assert(data);
+    return data.get();
+  }
+
+  const VolumeGrid *operator->() const
+  {
+    BLI_assert(data);
+    return data.get();
+  }
+
+  VolumeGrid &operator*()
+  {
+    BLI_assert(data);
+    return *data;
+  }
+
+  const VolumeGrid &operator*() const
+  {
+    BLI_assert(data);
+    return *data;
+  }
 
   bool operator==(const GVolumeGridPtr &other) const
   {
@@ -102,8 +139,6 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
     return data != other.data;
   }
   operator bool() const;
-
-#endif
 };
 
 /** \} */
@@ -227,7 +262,7 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
   }
 };
 #else
-template<typename T> class VolumeGridPtr : public VolumeGridPtrCommon {
+template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
 };
 #endif
 

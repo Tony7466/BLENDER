@@ -153,7 +153,8 @@ template<typename T> class ImplicitSharingPtr {
 template<typename T, typename... Args>
 inline ImplicitSharingPtr<T> make_implicit_shared(Args &&...args)
 {
-  return ImplicitSharingPtr<T>(std::forward<Args>(args)...);
+  /* TODO Enable different allocators. */
+  return ImplicitSharingPtr<T>(new T(std::forward<Args>(args)...));
 }
 
 }  // namespace blender

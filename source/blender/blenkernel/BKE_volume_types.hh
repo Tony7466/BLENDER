@@ -8,9 +8,7 @@
  * \ingroup bli
  */
 
-namespace blender::bke {
-struct GVolumeGridPtr;
-}
+#include "BKE_volume_grid_ptr.hh"
 
 enum VolumeGridType : int8_t {
   VOLUME_GRID_UNKNOWN = 0,
@@ -25,6 +23,3 @@ enum VolumeGridType : int8_t {
   VOLUME_GRID_VECTOR_INT,
   VOLUME_GRID_POINTS,
 };
-
-/** Global namespace alias for the GVolumeGrid type. */
-using GVolumeGrid = blender::bke::GVolumeGridPtr;
