@@ -24,9 +24,9 @@ class IESFile {
  protected:
   bool parse(const string &ies);
   bool process();
-  bool process_type_a();
-  bool process_type_b();
-  bool process_type_c();
+  void process_type_a();
+  void process_type_b();
+  void process_type_c();
 
   /* The brightness distribution is stored in spherical coordinates.
    * The horizontal angles correspond to theta in the regular notation
