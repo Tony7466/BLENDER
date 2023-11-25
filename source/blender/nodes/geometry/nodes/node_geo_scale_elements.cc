@@ -19,6 +19,8 @@
 
 #include "BKE_mesh.hh"
 
+#include "GEO_mesh_selection.hh"
+
 #include "NOD_rna_define.hh"
 
 #include "node_geometry_util.hh"
@@ -323,21 +325,6 @@ static void scale_on_axis(const GroupedSpan<int> elem_islands,
   });
 }
 
-static IndexMask vertices_for_faces(const Mesh &mesh,
-                                    const IndexMask &face_mask,
-                                    IndexMaskMemory &memory)
-{
-  Array<bool> vert_mask(mesh.totvert, false);
-  const GroupedSpan<int> face_verts(mesh.face_offsets(), mesh.corner_verts());
-  face_mask.foreach_index_optimized<int>(GrainSize(4098), [&](const int face_i) {
-    for (const int vert_i : face_verts[face_i]) {
-      vert_mask[vert_i] = true;
-    }
-  });
-
-  return IndexMask::from_bools(vert_mask, memory);
-}
-
 static int face_to_vert_islands(const Mesh &mesh,
                                 const IndexMask &face_mask,
                                 const IndexMask &vert_mask,
@@ -379,7 +366,8 @@ static void gather_face_islands(const Mesh &mesh,
                                 Array<int> &r_vert_indices)
 {
   IndexMaskMemory memory;
-  const IndexMask vert_mask = vertices_for_faces(mesh, face_mask, memory);
+  const IndexMask vert_mask = geometry::vert_selection_from_face(
+      mesh.face_offsets(), face_mask, mesh.corner_verts(), mesh.totvert, memory);
 
   Array<int> face_island_indices(face_mask.size());
   Array<int> vert_island_indices(vert_mask.size());
@@ -397,21 +385,6 @@ static void gather_face_islands(const Mesh &mesh,
   if (vert_mask.size() != mesh.totvert) {
     parallel_transform<int>(r_vert_indices, 4098, [&](const int pos) { return vert_mask[pos]; });
   }
-}
-
-static IndexMask vertices_for_edges(const Mesh &mesh,
-                                    const IndexMask &edge_mask,
-                                    IndexMaskMemory &memory)
-{
-  Array<bool> vert_mask(mesh.totvert, false);
-  const Span<int2> edges = mesh.edges();
-  edge_mask.foreach_index_optimized<int>(GrainSize(4098), [&](const int edge_i) {
-    const int2 edge = edges[edge_i];
-    vert_mask[edge[0]] = true;
-    vert_mask[edge[1]] = true;
-  });
-
-  return IndexMask::from_bools(vert_mask, memory);
 }
 
 static int edge_to_vert_islands(const Mesh &mesh,
@@ -454,7 +427,8 @@ static void gather_edge_islands(const Mesh &mesh,
                                 Array<int> &r_vert_indices)
 {
   IndexMaskMemory memory;
-  const IndexMask vert_mask = vertices_for_edges(mesh, edge_mask, memory);
+  const IndexMask vert_mask = geometry::edge_selection_from_face(
+      mesh.face_offsets(), edge_mask, mesh.corner_edges(), mesh.totvert, memory);
 
   Array<int> edge_island_indices(edge_mask.size());
   Array<int> vert_island_indices(vert_mask.size());
