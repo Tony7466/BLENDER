@@ -1768,6 +1768,15 @@ void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4],
   GPU_blend(state);
 }
 
+/* Some elements of the node UI are hidden, when they get too small. */
+#define NODE_TREE_SCALE_SMALL 0.2f
+
+/* The node tree scales both with the view and with the UI. */
+static float node_tree_view_scale(const SpaceNode &snode)
+{
+  return (1.0f / snode.runtime->aspect) * UI_SCALE_FAC;
+}
+
 static void node_draw_preview_background(rctf *rect)
 {
   GPUVertFormat *format = immVertexFormat();
@@ -3168,11 +3177,8 @@ static void node_draw_basis(const bContext &C,
     UI_draw_roundbox_4fv(&rect, false, BASIS_RAD + outline_width, color_outline);
   }
 
-  float scale;
-  UI_view2d_scale_get(&v2d, &scale, nullptr);
-
   /* Skip slow socket drawing if zoom is small. */
-  if (scale > 0.2f) {
+  if (node_tree_view_scale(snode) > NODE_TREE_SCALE_SMALL) {
     node_draw_sockets(v2d, C, ntree, node, block, true, false);
   }
 
@@ -3696,6 +3702,11 @@ static void reroute_node_draw_label(const SpaceNode &snode, const bNode &node, u
                               (snode.overlay.flag & SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS);
 
   if (!has_label && !use_auto_label) {
+    return;
+  }
+
+  /* Don't show the automatic label, when being zoomed out. */
+  if (!has_label && node_tree_view_scale(snode) < NODE_TREE_SCALE_SMALL) {
     return;
   }
 
