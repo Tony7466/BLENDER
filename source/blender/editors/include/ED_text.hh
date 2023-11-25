@@ -6,8 +6,6 @@
  * \ingroup editors
  */
 
-#include "BLI_vector.hh"
-
 #include "DNA_vec_types.h"
 
 #pragma once
