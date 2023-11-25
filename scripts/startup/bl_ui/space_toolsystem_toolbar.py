@@ -3106,6 +3106,11 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             ),
             None,
             lambda context: (
+                (_defs_view3d_select.select,)
+                if context is None or (context.pose_object and not _defs_weight_paint.poll_select_mask(context))
+                else ()
+            ),
+            lambda context: (
                 (
                     _defs_view3d_generic.cursor,
                     None,
