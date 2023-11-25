@@ -519,6 +519,89 @@ void register_node_type_reroute()
   nodeRegisterType(ntype);
 }
 
+// TODO(Leon): Check if there's already a utility to do something like this.
+/* Some socket labels don't add any information - e.g. "Vector" for vector sockets.
+ * Those don't need to be propagated. */
+static const char *non_trivial_socket_label(const bNodeSocket &sock)
+{
+  const char *socket_label = blender::bke::nodeSocketLabel(&sock);
+  switch (sock.typeinfo->type) {
+    case SOCK_FLOAT:
+      if (socket_label == StringRef("Value")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_VECTOR:
+      if (socket_label == StringRef("Vector")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_RGBA:
+      if (socket_label == StringRef("Color")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_SHADER:
+      if (socket_label == StringRef("Shader")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_BOOLEAN:
+      if (socket_label == StringRef("Boolean")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_INT:
+      if (socket_label == StringRef("Integer")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_STRING:
+      if (socket_label == StringRef("String")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_OBJECT:
+      if (socket_label == StringRef("Object")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_IMAGE:
+      if (socket_label == StringRef("Image")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_GEOMETRY:
+      if (socket_label == StringRef("Geometry")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_COLLECTION:
+      if (socket_label == StringRef("Collection")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_TEXTURE:
+      if (socket_label == StringRef("Texture")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_MATERIAL:
+      if (socket_label == StringRef("Material")) {
+        return nullptr;
+      }
+      break;
+    case SOCK_ROTATION:
+      if (socket_label == StringRef("Rotation")) {
+        return nullptr;
+      }
+      break;
+    default:
+      break;
+  }
+  return socket_label;
+}
+
 static void update_reroute_node_auto_labels(bNodeTree *ntree)
 {
   ntree->ensure_topology_cache();
@@ -551,7 +634,12 @@ static void update_reroute_node_auto_labels(bNodeTree *ntree)
       continue;
     }
 
-    node_sock_label(output, blender::bke::nodeSocketLabel(&from_sock));
+    if (const char *socket_label = non_trivial_socket_label(from_sock)) {
+      node_sock_label(output, socket_label);
+      continue;
+    }
+
+    node_sock_label_clear(output);
   }
 }
 
