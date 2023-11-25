@@ -29,7 +29,6 @@ set(INC
   # For node muting stuff.
   ../nodes
 
-  ../../../intern/clog
   ../../../intern/ghost
   ../../../intern/mantaflow/extern
 )
@@ -338,6 +337,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::atomic
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
 
