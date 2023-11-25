@@ -51,11 +51,6 @@ MaterialData::MaterialData(HydraSceneDelegate *scene_delegate,
 {
 }
 
-static std::string export_texture(Image *image)
-{
-  return usd::export_texture(image, HydraSceneDelegate::cache_file_path(), false, true, nullptr);
-}
-
 void MaterialData::init()
 {
   ID_LOGN(1, "");
@@ -88,7 +83,13 @@ void MaterialData::init()
 #ifdef WITH_MATERIALX
   if (scene_delegate_->use_materialx) {
     MaterialX::DocumentPtr doc = blender::nodes::materialx::export_to_materialx(
-        scene_delegate_->depsgraph, (Material *)id, export_texture);
+        scene_delegate_->depsgraph, (Material *)id, [this](Image *image) {
+          return usd::export_texture(image,
+                                     this->scene_delegate_->cache_file_path(),
+                                     false,
+                                     true,
+                                     &this->scene_delegate_->reports);
+        });
     pxr::UsdMtlxRead(doc, stage);
 
     /* Logging stage: creating lambda stage_str() to not call stage->ExportToString()

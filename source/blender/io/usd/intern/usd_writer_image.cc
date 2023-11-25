@@ -40,8 +40,6 @@ std::string get_tex_image_asset_filepath(Image *ima)
   return std::string(filepath);
 }
 
-/* Generate a file name for an in-memory image that doesn't have a
- * filepath already defined. */
 std::string get_in_memory_texture_filename(Image *ima)
 {
   bool is_dirty = BKE_image_is_dirty(ima);
@@ -144,7 +142,7 @@ static std::string export_in_memory_texture(Image *ima,
   char export_path[FILE_MAX];
   BLI_path_join(export_path, FILE_MAX, export_dir.c_str(), file_name);
 
-  if (!allow_overwrite && BLI_exists(export_path)) {
+  if (!allow_overwrite && BLI_exists(export_path) && !BKE_image_is_dirty(ima)) {
     return export_path;
   }
 

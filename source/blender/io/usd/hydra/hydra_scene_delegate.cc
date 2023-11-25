@@ -40,6 +40,12 @@ HydraSceneDelegate::HydraSceneDelegate(pxr::HdRenderIndex *parent_index,
 {
   instancer_data_ = std::make_unique<InstancerData>(this, instancer_prim_id());
   world_data_ = std::make_unique<WorldData>(this, world_prim_id());
+  BKE_reports_init(&reports, RPT_PRINT | RPT_STORE);
+}
+
+HydraSceneDelegate::~HydraSceneDelegate()
+{
+  BKE_reports_free(&reports);
 }
 
 std::string HydraSceneDelegate::cache_file_path(const std::string &file_name, bool mkdir)

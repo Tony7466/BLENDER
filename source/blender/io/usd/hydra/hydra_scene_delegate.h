@@ -9,6 +9,8 @@
 
 #include "BLI_map.hh"
 
+#include "BKE_report.h"
+
 #include "DEG_depsgraph.hh"
 
 #include "CLG_log.h"
@@ -52,6 +54,7 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   const View3D *view3d = nullptr;
   Main *bmain = nullptr;
   Scene *scene = nullptr;
+  ReportList reports;
 
   ShadingSettings shading_settings;
   bool use_materialx = true;
@@ -64,7 +67,7 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
 
  public:
   HydraSceneDelegate(pxr::HdRenderIndex *parent_index, pxr::SdfPath const &delegate_id);
-  ~HydraSceneDelegate() override = default;
+  ~HydraSceneDelegate() override;
 
   static std::string cache_file_path(const std::string &file_name = "", bool mkdir = false);
 

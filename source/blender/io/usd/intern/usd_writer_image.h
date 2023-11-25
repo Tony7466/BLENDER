@@ -11,6 +11,9 @@ struct ReportList;
 namespace blender::io::usd {
 
 std::string get_tex_image_asset_filepath(Image *ima);
+
+/* Generate a file name for an in-memory image that doesn't have a
+ * filepath already defined. */
 std::string get_in_memory_texture_filename(Image *ima);
 
 /* Export the given texture */
