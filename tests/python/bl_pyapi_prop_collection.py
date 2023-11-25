@@ -110,6 +110,12 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
             # accessed as a sequence.
             foreach_arg = seq_or_ndarray.view(SequenceCheckBuffer)
         else:
+            with self.assertRaises(TypeError, msg="Buffers that are not np.ndarray are not allowed because it will be"
+                                                  " impossible to tell whether the buffer was accessed using the"
+                                                  " sequence protocol or the buffer protocol in foreach_get"
+                                                  "/foreach_set."):
+                # Raises TypeError for any argument which is not a buffer.
+                memoryview(seq_or_ndarray)
             foreach_arg = seq_or_ndarray
 
         if is_get:
