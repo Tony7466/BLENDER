@@ -287,6 +287,9 @@ static std::optional<FloatTargetProperty> get_float_target_property(
   if (const auto *ref = std::get_if<nodes::gizmos::InputSocketRef>(&gizmo_target.target)) {
     /* The gizmo controls the value of an input socket. */
     const bNodeTree &tree = ref->input_socket->owner_tree();
+    if (ID_IS_LINKED(&tree)) {
+      return std::nullopt;
+    }
     ID *id = const_cast<ID *>(&tree.id);
     FloatTargetProperty target_property;
     target_property.owner = RNA_pointer_create(
@@ -298,6 +301,9 @@ static std::optional<FloatTargetProperty> get_float_target_property(
   if (const auto *ref = std::get_if<nodes::gizmos::ValueNodeRef>(&gizmo_target.target)) {
     /* The gizmo controls the value of a value node. */
     const bNodeTree &tree = ref->value_node->owner_tree();
+    if (ID_IS_LINKED(&tree)) {
+      return std::nullopt;
+    }
     ID *id = const_cast<ID *>(&tree.id);
     switch (ref->value_node->type) {
       case SH_NODE_VALUE: {
@@ -327,6 +333,9 @@ static std::optional<FloatTargetProperty> get_float_target_property(
   }
   if (const auto *ref = std::get_if<nodes::gizmos::GroupInputRef>(&gizmo_target.target)) {
     /* The gizmo controls a value stored in the modifier. */
+    if (ID_IS_LINKED(&object)) {
+      return std::nullopt;
+    }
     const bNodeTree &ntree = *nmd.node_group;
     const StringRefNull input_identifier = ntree.interface_inputs()[ref->input_index]->identifier;
     IDProperty *id_property = IDP_GetPropertyFromGroup(nmd.settings.properties,
