@@ -1,2 +1,3 @@
 Referenced by commit 8cadeac18b8e10db7f71e6d333b28b1ccf93730b, Cleanup: fix node registration
 Referenced by issue blender/blender-addons#104865, Node wrangler preview error.
+Referenced by issue #115395, Regression: Custom category for custom node is not available for the rest. Bug?
