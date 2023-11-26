@@ -22,8 +22,11 @@ namespace blender::gpu {
 
 VKCommandBuffers::~VKCommandBuffers()
 {
-  command_buffer_get(Type::DataTransferCompute).free();
-  command_buffer_get(Type::Graphics).free();
+  for (int i = command_nums_ - 1; i >= 0; i--) {
+    command_id_ = i;
+    command_buffer_get(Type::DataTransferCompute).free();
+    command_buffer_get(Type::Graphics).free();
+  }
 
   VK_ALLOCATION_CALLBACKS;
   const VKDevice &device = VKBackend::get().device_get();
@@ -79,22 +82,26 @@ void VKCommandBuffers::init_command_pool(const VKDevice &device)
 void VKCommandBuffers::init_command_buffers(const VKDevice &device)
 {
   BLI_assert(vk_command_pool_ != VK_NULL_HANDLE);
-  VkCommandBuffer vk_command_buffers[(uint32_t)Type::Max] = {VK_NULL_HANDLE};
+
+  Vector<VkCommandBuffer> vk_command_buffers;
   VkCommandBufferAllocateInfo alloc_info = {};
   alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   alloc_info.commandPool = vk_command_pool_;
   alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  alloc_info.commandBufferCount = (uint32_t)Type::Max;
-  vkAllocateCommandBuffers(device.device_get(), &alloc_info, vk_command_buffers);
-
-  init_command_buffer(command_buffer_get(Type::DataTransferCompute),
-                      vk_command_pool_,
-                      vk_command_buffers[(int)Type::DataTransferCompute],
-                      "Data Transfer Compute Command Buffer");
-  init_command_buffer(command_buffer_get(Type::Graphics),
-                      vk_command_pool_,
-                      vk_command_buffers[(int)Type::Graphics],
-                      "Graphics Command Buffer");
+  alloc_info.commandBufferCount = (uint32_t)Type::Max * command_nums_;
+  vk_command_buffers.resize(alloc_info.commandBufferCount);
+  vkAllocateCommandBuffers(device.device_get(), &alloc_info, vk_command_buffers.data());
+  for (int i = command_nums_ - 1; i >= 0; i--) {
+    command_id_ = i;
+    init_command_buffer(command_buffer_get(Type::DataTransferCompute),
+                        vk_command_pool_,
+                        vk_command_buffers[(int)Type::DataTransferCompute + (int)Type::Max * i],
+                        "Data Transfer Compute Command Buffer");
+    init_command_buffer(command_buffer_get(Type::Graphics),
+                        vk_command_pool_,
+                        vk_command_buffers[(int)Type::Graphics + (int)Type::Max * i],
+                        "Graphics Command Buffer");
+  }
 }
 
 void VKCommandBuffers::submit_command_buffers(VKDevice &device,
@@ -141,6 +148,7 @@ void VKCommandBuffers::submit_command_buffers(VKDevice &device,
     command_buffer->commands_submitted();
     command_buffer->begin_recording();
   }
+  command_id_ = (command_id_ + 1) % command_nums_;
 }
 
 void VKCommandBuffers::submit()

@@ -45,9 +45,11 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   VKFrameBuffer *framebuffer_ = nullptr;
   bool framebuffer_bound_ = false;
 
-  /* TODO: General command buffer should not be used, but is added to help during the transition.*/
-  VKCommandBuffer buffers_[(int)Type::Max];
   VKSubmissionID submission_id_;
+  int command_id_ = 0;
+  static const int command_nums_ = 2;
+  /* TODO: General command buffer should not be used, but is added to help during the transition.*/
+  VKCommandBuffer buffers_[(int)Type::Max * command_nums_];
 
  public:
   ~VKCommandBuffers();
@@ -154,7 +156,7 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
 
   VKCommandBuffer &command_buffer_get(Type type)
   {
-    return buffers_[(int)type];
+    return buffers_[(int)type + (int)Type::Max * command_id_];
   }
 
   /**
