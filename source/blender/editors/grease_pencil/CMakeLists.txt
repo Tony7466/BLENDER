@@ -8,9 +8,7 @@ set(INC
   ../../blenkernel
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../gpu
-  ../../imbuf
   ../../makesrna
   ../../windowmanager
   ../../../../extern/curve_fit_nd
@@ -44,7 +42,9 @@ set(LIB
   bf_blenkernel
   PRIVATE bf::animrig
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
   extern_curve_fit_nd
 )
