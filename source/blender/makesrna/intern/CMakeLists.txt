@@ -442,15 +442,7 @@ if(WITH_GMP)
 endif()
 
 if(WITH_TBB)
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
   add_definitions(-DWITH_TBB)
-  if(WIN32)
-    # TBB includes Windows.h which will define min/max macros
-    # that will collide with the stl versions.
-    add_definitions(-DNOMINMAX)
-  endif()
 endif()
 
 # Build makesrna executable
@@ -470,6 +462,9 @@ target_link_libraries(makesrna PRIVATE bf_dna_blenlib)
 if(WIN32 AND NOT UNIX)
   if(DEFINED PTHREADS_LIBRARIES)
     target_link_libraries(makesrna PRIVATE ${PTHREADS_LIBRARIES})
+  endif()
+  if(WITH_TBB)
+    target_link_libraries(makesrna PRIVATE ${TBB_LIBRARIES})
   endif()
 endif()
 
