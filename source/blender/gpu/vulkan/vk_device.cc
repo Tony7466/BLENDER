@@ -148,19 +148,6 @@ void VKDevice::init_dummy_buffer(VKContext &context)
   dummy_buffer_.clear(context, 0);
 }
 
-void VKDevice::init_dummy_color_attachment()
-{
-  if (dummy_color_attachment_.has_value()) {
-    return;
-  }
-
-  GPUTexture *texture = GPU_texture_create_2d(
-      "dummy_attachment", 1, 1, 1, GPU_R32F, GPU_TEXTURE_USAGE_ATTACHMENT, nullptr);
-  BLI_assert(texture);
-  VKTexture &vk_texture = *unwrap(unwrap(texture));
-  dummy_color_attachment_ = std::make_optional(std::reference_wrapper(vk_texture));
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Platform/driver/device information
  * \{ */
