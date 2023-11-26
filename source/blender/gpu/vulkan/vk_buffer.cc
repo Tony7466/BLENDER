@@ -158,9 +158,14 @@ bool VKBuffer::free()
   if (is_mapped()) {
     unmap();
   }
-
   VKDevice &device = VKBackend::get().device_get();
-  device.discard_buffer(vk_buffer_, allocation_);
+  VKContext *context = VKContext::get();
+  if (context == nullptr) {
+    vmaDestroyBuffer(device.mem_allocator_get(), vk_buffer_, allocation_);
+  }
+  else {
+    context->discard_buffer(vk_buffer_, allocation_);
+  }
   allocation_ = VK_NULL_HANDLE;
   vk_buffer_ = VK_NULL_HANDLE;
   return true;

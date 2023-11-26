@@ -32,8 +32,13 @@ VKTexture::~VKTexture()
   }
   if (vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE) {
     VKDevice &device = VKBackend::get().device_get();
-    device.discard_image(vk_image_, allocation_);
-
+    VKContext *context = VKContext::get();
+    if (context == nullptr) {
+      vmaDestroyImage(device.mem_allocator_get(), vk_image_, allocation_);
+    }
+    else {
+      context->discard_image(vk_image_, allocation_);
+    }
     vk_image_ = VK_NULL_HANDLE;
     allocation_ = VK_NULL_HANDLE;
   }

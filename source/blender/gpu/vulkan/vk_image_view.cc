@@ -47,9 +47,16 @@ VKImageView::VKImageView(VkImageViewCreateInfo &vk_image_view_info,
 
 VKImageView::~VKImageView()
 {
+  VK_ALLOCATION_CALLBACKS
   VKDevice &device = VKBackend::get().device_get();
   if (vk_image_view_ != VK_NULL_HANDLE) {
-    device.discard_image_view(vk_image_view_);
+    VKContext *context = VKContext::get();
+    if (context == nullptr) {
+      vkDestroyImageView(device.device_get(), vk_image_view_, vk_allocation_callbacks);
+    }
+    else {
+      context->discard_image_view(vk_image_view_);
+    }
   }
   vk_image_view_ = VK_NULL_HANDLE;
 }

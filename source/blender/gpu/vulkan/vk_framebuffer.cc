@@ -760,12 +760,22 @@ void VKFrameBuffer::create()
 
 void VKFrameBuffer::free()
 {
+  VK_ALLOCATION_CALLBACKS
   if (vk_framebuffer_ == VK_NULL_HANDLE) {
     return;
   }
   VKDevice &device = VKBackend::get().device_get();
   if (device.is_initialized()) {
-    device.discard_frame_buffer(vk_framebuffer_);
+    VKDevice &device = VKBackend::get().device_get();
+    if (device.is_initialized()) {
+      VKContext *context = VKContext::get();
+      if (context == nullptr) {
+        vkDestroyFramebuffer(device.device_get(), vk_framebuffer_, vk_allocation_callbacks);
+      }
+      else {
+        context->discard_frame_buffer(vk_framebuffer_);
+      }
+    }
   }
   vk_framebuffer_ = VK_NULL_HANDLE;
 }

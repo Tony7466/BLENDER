@@ -34,6 +34,12 @@ class VKContext : public Context, NonCopyable {
   GPUTexture *surface_texture_ = nullptr;
   void *ghost_context_;
 
+  Vector<std::pair<VkImage, VmaAllocation>> discarded_images_;
+  Vector<std::pair<VkBuffer, VmaAllocation>> discarded_buffers_;
+  Vector<VkRenderPass> discarded_render_passes_;
+  Vector<VkFramebuffer> discarded_frame_buffers_;
+  Vector<VkImageView> discarded_image_views_;
+
  public:
   VKContext(void *ghost_window, void *ghost_context);
   virtual ~VKContext();
@@ -87,6 +93,13 @@ class VKContext : public Context, NonCopyable {
   }
 
   VKStateManager &state_manager_get() const;
+
+  void discard_image(VkImage vk_image, VmaAllocation vma_allocation);
+  void discard_image_view(VkImageView vk_image_view);
+  void discard_buffer(VkBuffer vk_buffer, VmaAllocation vma_allocation);
+  void discard_render_pass(VkRenderPass vk_render_pass);
+  void discard_frame_buffer(VkFramebuffer vk_framebuffer);
+  void destroy_discarded_resources();
 
   static void swap_buffers_pre_callback(const GHOST_VulkanSwapChainData *data);
   static void swap_buffers_post_callback();

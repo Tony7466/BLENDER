@@ -45,6 +45,9 @@ VKContext::~VKContext()
 
   delete imm;
   imm = nullptr;
+  delete back_left;
+  back_left = nullptr;
+  destroy_discarded_resources();
 }
 
 void VKContext::sync_backbuffer()
@@ -116,8 +119,7 @@ void VKContext::begin_frame() {}
 
 void VKContext::end_frame()
 {
-  VKDevice &device = VKBackend::get().device_get();
-  device.destroy_discarded_resources();
+  destroy_discarded_resources();
 }
 
 void VKContext::flush()
@@ -296,6 +298,61 @@ void VKContext::swap_buffers_post_handler()
   sync_backbuffer();
 }
 
+void VKContext::discard_image(VkImage vk_image, VmaAllocation vma_allocation)
+{
+  discarded_images_.append(std::pair(vk_image, vma_allocation));
+}
+
+void VKContext::discard_image_view(VkImageView vk_image_view)
+{
+  discarded_image_views_.append(vk_image_view);
+}
+
+void VKContext::discard_buffer(VkBuffer vk_buffer, VmaAllocation vma_allocation)
+{
+  discarded_buffers_.append(std::pair(vk_buffer, vma_allocation));
+}
+
+void VKContext::discard_render_pass(VkRenderPass vk_render_pass)
+{
+  discarded_render_passes_.append(vk_render_pass);
+}
+
+void VKContext::discard_frame_buffer(VkFramebuffer vk_frame_buffer)
+{
+  discarded_frame_buffers_.append(vk_frame_buffer);
+}
+
+void VKContext::destroy_discarded_resources()
+{
+  VK_ALLOCATION_CALLBACKS
+  VKDevice &device = VKBackend::get().device_get();
+  while (!discarded_image_views_.is_empty()) {
+    VkImageView vk_image_view = discarded_image_views_.pop_last();
+    vkDestroyImageView(device.device_get(), vk_image_view, vk_allocation_callbacks);
+  }
+
+  while (!discarded_images_.is_empty()) {
+    std::pair<VkImage, VmaAllocation> image_allocation = discarded_images_.pop_last();
+    vmaDestroyImage(device.mem_allocator_get(), image_allocation.first, image_allocation.second);
+  }
+
+  while (!discarded_buffers_.is_empty()) {
+    std::pair<VkBuffer, VmaAllocation> buffer_allocation = discarded_buffers_.pop_last();
+    vmaDestroyBuffer(
+        device.mem_allocator_get(), buffer_allocation.first, buffer_allocation.second);
+  }
+
+  while (!discarded_render_passes_.is_empty()) {
+    VkRenderPass vk_render_pass = discarded_render_passes_.pop_last();
+    vkDestroyRenderPass(device.device_get(), vk_render_pass, vk_allocation_callbacks);
+  }
+
+  while (!discarded_frame_buffers_.is_empty()) {
+    VkFramebuffer vk_frame_buffer = discarded_frame_buffers_.pop_last();
+    vkDestroyFramebuffer(device.device_get(), vk_frame_buffer, vk_allocation_callbacks);
+  }
+}
 /** \} */
 
 }  // namespace blender::gpu

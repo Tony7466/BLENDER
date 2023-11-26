@@ -224,15 +224,22 @@ void VKRenderPass::create()
 
 void VKRenderPass::free()
 {
-
+  VK_ALLOCATION_CALLBACKS
   if (vk_render_pass_ == VK_NULL_HANDLE) {
     return;
   }
   VKDevice &device = VKBackend::get().device_get();
   if (device.is_initialized()) {
-    device.discard_render_pass(vk_render_pass_);
+    VKContext *context = VKContext::get();
+    if (context == nullptr) {
+      vkDestroyRenderPass(device.device_get(), vk_render_pass_, vk_allocation_callbacks);
+    }
+    else {
+      context->discard_render_pass(vk_render_pass_);
+    }
   }
   dirty_ = true;
+  vk_render_pass_ = VK_NULL_HANDLE;
 }
 
 void VKRenderPass::cache_init()
