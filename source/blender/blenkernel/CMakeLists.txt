@@ -5,17 +5,14 @@
 set(INC
   .
   ../asset_system
-  ../blenfont
   ../blenloader
   ../blentranslation
   ../bmesh
-  ../depsgraph
   ../draw
   ../functions
   ../gpencil_modifiers_legacy
   ../gpu
   ../ikplugin
-  ../imbuf
   ../makesrna
   ../modifiers
   ../nodes
@@ -26,7 +23,6 @@ set(INC
   ../../../intern/eigen
   ../../../intern/ghost
   ../../../intern/iksolver/extern
-  ../../../intern/clog
   ../../../intern/libmv
   ../../../intern/mantaflow/extern
   ../../../intern/memutil
@@ -234,6 +230,7 @@ set(SRC
   intern/nla.cc
   intern/node.cc
   intern/node_runtime.cc
+  intern/node_socket_value_cpp_type.cc
   intern/node_tree_anonymous_attributes.cc
   intern/node_tree_dot_export.cc
   intern/node_tree_field_inferencing.cc
@@ -454,6 +451,8 @@ set(SRC
   BKE_node.h
   BKE_node.hh
   BKE_node_runtime.hh
+  BKE_node_socket_value.hh
+  BKE_node_socket_value_cpp_type.hh
   BKE_node_tree_anonymous_attributes.hh
   BKE_node_tree_dot_export.hh
   BKE_node_tree_interface.hh
@@ -537,12 +536,12 @@ set(SRC
 set(LIB
   PRIVATE bf::animrig
   bf_asset_system
-  bf_blenfont
+  PRIVATE bf::blenfont
   PRIVATE bf::blenlib
   bf_blenloader
   bf_blentranslation
   bf_bmesh
-  bf_depsgraph
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_draw
   PRIVATE bf::extern::curve_fit_nd
@@ -550,8 +549,8 @@ set(LIB
   bf_gpencil_modifiers_legacy
   bf_gpu
   bf_ikplugin
-  bf_imbuf
-  bf_intern_clog
+  PRIVATE bf::imbuf
+  PRIVATE bf::intern::clog
   bf_intern_ghost
   PRIVATE bf::intern::guardedalloc
   bf_intern_libmv  # Uses stub when disabled.
