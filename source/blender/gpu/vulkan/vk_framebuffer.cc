@@ -719,6 +719,9 @@ void VKFrameBuffer::create()
               renderpass_->subpass_[renderpass_->info_id_].pColorAttachments[i].attachment,
               renderpass_->info_id_);
           const GPUAttachment &attachment = attachments_[type];
+          if (!attachment.tex) {
+            continue;
+          }
           VKTexture *tex = reinterpret_cast<VKTexture *>(attachment.tex);
           tex->mip_size_get(attachment.mip, size);
           vk_framebuffer_create_info_.layers = (attachment.layer == -1) ? tex->vk_layer_count(1) :
@@ -733,6 +736,7 @@ void VKFrameBuffer::create()
             renderpass_->info_id_);
         const GPUAttachment &attachment = attachments_[type];
         VKTexture *tex = reinterpret_cast<VKTexture *>(attachment.tex);
+        BLI_assert(attachment.tex);
         tex->mip_size_get(attachment.mip, size);
         vk_framebuffer_create_info_.layers = (attachment.layer == -1) ? tex->vk_layer_count(1) : 1;
       }
