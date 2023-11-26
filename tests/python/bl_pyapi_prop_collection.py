@@ -20,6 +20,11 @@ import numpy as np
 id_inst = bpy.context.scene
 id_type = bpy.types.Scene
 
+# Some tests only run on systems where `int` and `long` are both 32 bits, so that both types are tested.
+LONG_AND_INT_BOTH_32_BIT = np.iinfo('i').bits == np.iinfo('l').bits == 32
+# Get the other int32 compatible type which isn't the np.int32 alias.
+OTHER_INT32_DTYPE = ('i' if np.sctype2char(np.int32) == 'l' else 'l') if LONG_AND_INT_BOTH_32_BIT else ...
+
 
 # -----------------------------------------------------------------------------
 # Utility Classes
@@ -251,6 +256,14 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
     @unittest.expectedFailure  # See #92621
     def test_sequence_set_enum(self):
         self.do_get_test([1] * self.num_items, "test_enum")
+
+    @unittest.skipUnless(LONG_AND_INT_BOTH_32_BIT, "requires a system where both C int and C long are 32 bit")
+    def test_buffer_get_int_other_c_type(self):
+        self.do_get_test(np.arange(self.num_items, dtype=OTHER_INT32_DTYPE), "test_int")
+
+    @unittest.skipUnless(LONG_AND_INT_BOTH_32_BIT, "requires a system where both C int and C long are 32 bit")
+    def test_buffer_set_int_other_c_type(self):
+        self.do_set_test(np.arange(self.num_items, dtype=OTHER_INT32_DTYPE), "test_int")
 
 
 if __name__ == '__main__':
