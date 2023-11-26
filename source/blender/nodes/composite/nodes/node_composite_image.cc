@@ -603,26 +603,26 @@ static void cmp_node_create_sockets(void *userdata,
   if (!STREQ(name, RE_PASSNAME_COMBINED)) {
     switch (type) {
       case SOCK_FLOAT:
-        builder->add_output<decl::Float>(name, name);
+        builder->add_output<decl::Float>(name);
         break;
       case SOCK_VECTOR:
-        builder->add_output<decl::Vector>(name, name);
+        builder->add_output<decl::Vector>(name);
         break;
       case SOCK_RGBA:
-        builder->add_output<decl::Color>(name, name);
+        builder->add_output<decl::Color>(name);
       default:
         break;
     }
   }
   else {
-    builder->add_output<decl::Float>("Alpha", "Combined_a");
+    builder->add_output<decl::Float>("Alpha");
   }
 }
 
 static void node_rlayer_declare(NodeDeclarationBuilder &builder)
 {
 
-  builder.add_output<decl::Color>("Image", "Combined_i");
+  builder.add_output<decl::Color>("Image");
   const bNode *node = builder.node_or_null();
   if (node == nullptr || node->id == nullptr) {
     return;
