@@ -16,6 +16,7 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
 #include "BKE_global.h"
@@ -214,6 +215,40 @@ void DRW_text_cache_draw(DRWTextStore *dt, ARegion *region, View3D *v3d)
     }
 
     drw_text_cache_draw_ex(dt, region);
+  }
+}
+
+void DRW_text_viewer_attribute(View3D *v3d, Object &object)
+{
+  using namespace blender;
+  using namespace blender::bke;
+
+  DRWTextStore *dt = DRW_text_cache_ensure();
+  const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
+
+  const char *conv_float;        /* Use a float conversion matching the grid size */
+  uchar col[4] = {0, 0, 0, 255}; /* color of the text to draw */
+  char numstr[32];
+  conv_float = "%.2f";
+
+  Mesh *me = static_cast<Mesh *>(object.data);
+
+  const int num_verts = me->totvert;
+  const AttributeAccessor attributes = me->attributes();
+  const VArray viewer_attributes = *attributes.lookup<float3>(".viewer");
+  const VArray position_attributes = *attributes.lookup<float3>("position");
+
+  // TODO: configure from overlay UI
+  UI_GetThemeColor3ubv(TH_DRAWEXTRA_FACEANG, col);
+
+  for (int i = 0; i < num_verts; i++) {
+    float3 viewer_attribute = viewer_attributes.get(i);
+    float3 position_attribute = position_attributes.get(i);
+
+    mul_m4_v3(object.object_to_world, position_attribute);
+
+    size_t numstr_len = SNPRINTF_RLEN(numstr, conv_float, viewer_attribute[0]);
+    DRW_text_cache_add(dt, position_attribute, numstr, numstr_len, 0, 0, txt_flag, col);
   }
 }
 

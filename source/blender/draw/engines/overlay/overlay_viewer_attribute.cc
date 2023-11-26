@@ -23,6 +23,7 @@
 
 #include "draw_cache_extract.hh"
 #include "draw_cache_impl.hh"
+#include "draw_manager_text.h"
 #include "overlay_private.hh"
 
 void OVERLAY_viewer_attribute_cache_init(OVERLAY_Data *vedata)
@@ -116,6 +117,9 @@ static void populate_cache_for_geometry(Object &object,
         GPUBatch *batch = DRW_cache_mesh_surface_viewer_attribute_get(&object);
         DRW_shgroup_uniform_float_copy(pd.viewer_attribute_mesh_grp, "opacity", opacity);
         DRW_shgroup_call(pd.viewer_attribute_mesh_grp, batch, &object);
+
+        const DRWContextState *draw_ctx = DRW_context_state_get();
+        DRW_text_viewer_attribute(draw_ctx->v3d, object);
       }
       break;
     }
