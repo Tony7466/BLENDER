@@ -519,91 +519,9 @@ void register_node_type_reroute()
   nodeRegisterType(ntype);
 }
 
-// TODO(Leon): Check if there's already a utility to do something like this.
-/* Some socket labels don't add any information - e.g. "Vector" for vector sockets.
- * Those don't need to be propagated. */
-static const char *non_trivial_socket_label(const bNodeSocket &sock)
-{
-  const char *socket_label = blender::bke::nodeSocketLabel(&sock);
-  switch (sock.typeinfo->type) {
-    case SOCK_FLOAT:
-      if (socket_label == StringRef("Value")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_VECTOR:
-      if (socket_label == StringRef("Vector")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_RGBA:
-      if (socket_label == StringRef("Color")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_SHADER:
-      if (socket_label == StringRef("Shader")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_BOOLEAN:
-      if (socket_label == StringRef("Boolean")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_INT:
-      if (socket_label == StringRef("Integer")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_STRING:
-      if (socket_label == StringRef("String")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_OBJECT:
-      if (socket_label == StringRef("Object")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_IMAGE:
-      if (socket_label == StringRef("Image")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_GEOMETRY:
-      if (socket_label == StringRef("Geometry")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_COLLECTION:
-      if (socket_label == StringRef("Collection")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_TEXTURE:
-      if (socket_label == StringRef("Texture")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_MATERIAL:
-      if (socket_label == StringRef("Material")) {
-        return nullptr;
-      }
-      break;
-    case SOCK_ROTATION:
-      if (socket_label == StringRef("Rotation")) {
-        return nullptr;
-      }
-      break;
-    default:
-      break;
-  }
-  return socket_label;
-}
-
 static void update_reroute_node_auto_labels(bNodeTree *ntree)
 {
+  using namespace blender;
   ntree->ensure_topology_cache();
 
   for (bNode *reroute : ntree->toposort_left_to_right()) {
@@ -613,7 +531,7 @@ static void update_reroute_node_auto_labels(bNodeTree *ntree)
 
     bNodeSocket *output = reroute->output_sockets().first();
     const bNodeSocket &input = *reroute->input_sockets().first();
-    const blender::Span<const bNodeSocket *> linked_sockets = input.directly_linked_sockets();
+    const Span<const bNodeSocket *> linked_sockets = input.directly_linked_sockets();
 
     if (linked_sockets.is_empty()) {
       /* Clear auto-label. */
@@ -634,12 +552,35 @@ static void update_reroute_node_auto_labels(bNodeTree *ntree)
       continue;
     }
 
-    if (const char *socket_label = non_trivial_socket_label(from_sock)) {
-      node_sock_label(output, socket_label);
+    static const VectorSet<std::pair<eNodeSocketDatatype, StringRefNull>> template_names = []() {
+      VectorSet<std::pair<eNodeSocketDatatype, StringRefNull>> names;
+      names.add_new({SOCK_FLOAT, "Value"});
+      names.add_new({SOCK_VECTOR, "Vector"});
+      names.add_new({SOCK_RGBA, "Color"});
+      names.add_new({SOCK_SHADER, "Shader"});
+      names.add_new({SOCK_BOOLEAN, "Boolean"});
+      names.add_new({SOCK_INT, "Integer"});
+      names.add_new({SOCK_STRING, "String"});
+      names.add_new({SOCK_OBJECT, "Object"});
+      names.add_new({SOCK_IMAGE, "Image"});
+      names.add_new({SOCK_GEOMETRY, "Geometry"});
+      names.add_new({SOCK_COLLECTION, "Collection"});
+      names.add_new({SOCK_TEXTURE, "Texture"});
+      names.add_new({SOCK_MATERIAL, "Material"});
+      names.add_new({SOCK_ROTATION, "Rotation"});
+      return names;
+    }();
+
+    const char *socket_label = bke::nodeSocketLabel(&from_sock);
+    const bool label_is_trivial = template_names.contains(
+        {eNodeSocketDatatype(from_sock.typeinfo->type), socket_label});
+
+    if (label_is_trivial) {
+      node_sock_label_clear(output);
       continue;
     }
 
-    node_sock_label_clear(output);
+    node_sock_label(output, socket_label);
   }
 }
 
