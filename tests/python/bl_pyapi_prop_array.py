@@ -108,17 +108,17 @@ class TestPropArrayForeachSetInt(unittest.TestCase):
     def test_buffer(self):
         buffer = np.arange(10, dtype=np.int32)
         self.array_i.foreach_set(buffer)
-        self.assertSequenceEqual(self.array_i, buffer)
+        self.assertSequenceEqual(self.array_i, buffer.tolist())
 
     def test_buffer_explicit_endian_standard_size(self):
         buffer = np.arange(10, dtype=dtype_explicit_endian_standard_size(np.int32))
         self.array_i.foreach_set(buffer)
-        self.assertSequenceEqual(self.array_i, buffer)
+        self.assertSequenceEqual(self.array_i, buffer.tolist())
 
     def test_buffer_explicit_native(self):
         buffer = buffer_cast_explicit_native(np.arange(10, dtype=np.int32))
         self.array_i.foreach_set(buffer)
-        self.assertSequenceEqual(self.array_i, buffer)
+        self.assertSequenceEqual(self.array_i, buffer.tolist())
 
     def test_buffer_non_native_byteorder(self):
         buffer = np.arange(10, dtype=dtype_byteorder_swap_standard_size(np.int32))
@@ -154,7 +154,7 @@ class TestPropArrayForeachSetInt(unittest.TestCase):
         other_dtype = int_type if np.int32 == long_type else long_type
         buffer = np.arange(10, dtype=other_dtype)
         self.array_i.foreach_set(buffer)
-        self.assertSequenceEqual(self.array_i, buffer)
+        self.assertSequenceEqual(self.array_i, buffer.tolist())
 
 
 class TestPropArrayForeachGetInt(unittest.TestCase):
@@ -175,7 +175,7 @@ class TestPropArrayForeachGetInt(unittest.TestCase):
     def test_buffer(self):
         buffer = np.zeros(10, dtype=np.int32)
         self.array_i.foreach_get(buffer)
-        self.assertSequenceEqual(buffer, self.array_i)
+        self.assertSequenceEqual(buffer.tolist(), self.array_i)
 
     def test_buffer_wrong_data_kind(self):
         buffer = np.arange(10, dtype=np.float32)
@@ -204,17 +204,17 @@ class TestPropArrayForeachSetFloat(unittest.TestCase):
     def test_buffer(self):
         buffer = np.arange(10, dtype=np.float32)
         self.array_f.foreach_set(buffer)
-        self.assertSequenceEqual(self.array_f, buffer)
+        self.assertSequenceEqual(self.array_f, buffer.tolist())
 
     def test_buffer_explicit_endian_standard_size(self):
         buffer = np.arange(10, dtype=dtype_explicit_endian_standard_size(np.float32))
         self.array_f.foreach_set(buffer)
-        self.assertSequenceEqual(self.array_f, buffer)
+        self.assertSequenceEqual(self.array_f, buffer.tolist())
 
     def test_buffer_explicit_native(self):
         buffer = buffer_cast_explicit_native(np.arange(10, dtype=np.float32))
         self.array_f.foreach_set(buffer)
-        self.assertSequenceEqual(self.array_f, buffer)
+        self.assertSequenceEqual(self.array_f, buffer.tolist())
 
     def test_buffer_non_native_byteorder(self):
         buffer = np.arange(10, dtype=dtype_byteorder_swap_standard_size(np.float32))
@@ -260,7 +260,7 @@ class TestPropArrayForeachGetFloat(unittest.TestCase):
     def test_buffer(self):
         buffer = np.zeros(10, dtype=np.float32)
         self.array_f.foreach_get(buffer)
-        self.assertSequenceEqual(buffer, self.array_f)
+        self.assertSequenceEqual(buffer.tolist(), self.array_f)
 
     def test_buffer_wrong_data_kind(self):
         buffer = np.arange(10, dtype=np.int32)
