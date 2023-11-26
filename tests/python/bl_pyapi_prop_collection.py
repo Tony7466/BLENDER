@@ -112,12 +112,18 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         """
         Helper function to reduce duplicate code for foreach_get/foreach_set tests that are expected to pass.
         """
+        # Almost all buffers are also sequences. foreach_get/foreach_set fall back to accessing buffers as sequences
+        # when the buffers are considered incompatible, so a buffer test will be invalid if the buffer is accessed as a
+        # sequence. Similarly, a sequence test will be invalid if the sequence is accessed as a buffer.
         is_buffer = isinstance(seq_or_ndarray, np.ndarray)
         if is_buffer:
-            # np.ndarray are viewed as the SequenceCheckBuffer subclass so that tests can check whether the buffer was
-            # accessed as a sequence.
+            # np.ndarray are viewed as the SequenceCheckBuffer subclass that has an extra `used_as_sequence` attribute
+            # that is True if the SequenceCheckBuffer has been used as a sequence. This allows buffer tests to fail if
+            # they were accessed as a sequence instead of being accessed as a buffer.
             foreach_arg = seq_or_ndarray.view(SequenceCheckBuffer)
         else:
+            # Ensure that the sequence is not a buffer so that it is impossible for the sequence to be accessed as a
+            # buffer.
             with self.assertRaises(TypeError, msg="Buffers that are not np.ndarray are not allowed because it will be"
                                                   " impossible to tell whether the buffer was accessed using the"
                                                   " sequence protocol or the buffer protocol in foreach_get"
@@ -126,34 +132,47 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
                 memoryview(seq_or_ndarray)
             foreach_arg = seq_or_ndarray
 
+        # Run the foreach_get/foreach_set method.
         if is_get:
             self.collection.foreach_get(foreach_attribute, foreach_arg)
         else:
             self.collection.foreach_set(foreach_attribute, foreach_arg)
 
-        # Enum properties are a special case where we can't get property values directly.
+        # Now to check the results.
+
+        # Enum properties are a special case where foreach_get/set access the enum as an integer, but accessing the enum
+        # property directly is done using the string identifiers of the enum's items. TestPropertyGroup has an extra
+        # `test_enum_value` property that gets the index of the current item instead of its string identifier.
         prop_name = "test_enum_value" if foreach_attribute == "test_enum" else foreach_attribute
 
         if "vector" in foreach_attribute:
+            # foreach_get/foreach_set require flat inputs even when used with vector properties, so flatten the values
+            # retrieved from the collection to more easily compare results.
             flat_collection_sequence = [x for group in self.collection for x in getattr(group, prop_name)]
         else:
             flat_collection_sequence = [getattr(group, prop_name) for group in self.collection]
 
         # Order the arguments so that the expected sequence is always the second argument.
         if is_get:
-            self.assertSequenceEqual(seq_or_ndarray, flat_collection_sequence)
+            self.assertSequenceEqual(seq_or_ndarray, flat_collection_sequence, "values got with foreach_get do not"
+                                                                               " match the collection")
         else:
-            self.assertSequenceEqual(flat_collection_sequence, seq_or_ndarray)
+            self.assertSequenceEqual(flat_collection_sequence, seq_or_ndarray, "collection property values set with"
+                                                                               " foreach_set do not match the buffer"
+                                                                               "/sequence")
 
         if is_buffer:
             # To ensure that buffer code is being tested, check that the buffer was not accessed as a sequence.
-            self.assertFalse(foreach_arg.used_as_sequence)
+            self.assertFalse(foreach_arg.used_as_sequence, "buffer in a buffer test was used as a sequence instead of a"
+                                                           " buffer meaning that the buffer was not considered a"
+                                                           " compatible buffer by foreach_get/set (perhaps the C type"
+                                                           " of the property was changed?)")
 
-    def do_get_test(self, *args, **kwargs):
-        self.do_getset_test(*args, **kwargs, is_get=True)
+    def do_get_test(self, seq_or_ndarray, foreach_attribute):
+        self.do_getset_test(seq_or_ndarray, foreach_attribute, is_get=True)
 
-    def do_set_test(self, *args, **kwargs):
-        self.do_getset_test(*args, **kwargs, is_get=False)
+    def do_set_test(self, seq_or_ndarray, foreach_attribute):
+        self.do_getset_test(seq_or_ndarray, foreach_attribute, is_get=False)
 
     def test_buffer_get_bool(self):
         self.do_get_test(np.full(self.num_items, True, dtype=bool), "test_bool")
