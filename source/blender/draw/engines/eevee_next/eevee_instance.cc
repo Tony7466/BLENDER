@@ -290,7 +290,7 @@ void Instance::end_sync()
 
   global_ubo_.push_update();
 
-  depsgraph_last_update_ = DEG_update_count(depsgraph);
+  depsgraph_last_update_ = DEG_get_update_count(depsgraph);
 }
 
 void Instance::render_sync()
