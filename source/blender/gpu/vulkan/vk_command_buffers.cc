@@ -123,7 +123,7 @@ void VKCommandBuffers::submit_command_buffers(VKDevice &device,
 
   VkTimelineSemaphoreSubmitInfo timelineInfo;
   timelineInfo.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-  timelineInfo.pNext = NULL;
+  timelineInfo.pNext = nullptr;
   timelineInfo.waitSemaphoreValueCount = 1;
   timelineInfo.pWaitSemaphoreValues = wait_value;
   timelineInfo.signalSemaphoreValueCount = 1;
