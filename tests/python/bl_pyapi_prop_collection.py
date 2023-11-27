@@ -16,36 +16,41 @@ from bpy.props import (
 )
 import unittest
 import numpy as np
+import ctypes
 
 id_inst = bpy.context.scene
 id_type = bpy.types.Scene
 
-# Some tests only run on systems where `int` and `long` are both 32 bits, so that both types are tested.
-LONG_AND_INT_BOTH_32_BIT = np.iinfo('i').bits == np.iinfo('l').bits == 32
-# Get the other int32 compatible type which isn't the np.int32 alias.
-OTHER_INT32_DTYPE = ('i' if np.sctype2char(np.int32) == 'l' else 'l') if LONG_AND_INT_BOTH_32_BIT else ...
-
 
 # -----------------------------------------------------------------------------
-# Utility Classes
+# Utility Functions
 
-class SequenceCheckBuffer(np.ndarray):
+def as_sequence_check_buffer(inst):
     """
-    np.ndarray subtype that tracks whether it has been used as a sequence.
-
-    Used in tests that expect the buffer to be accessed as a buffer without falling back to being accessed as a
-    sequence.
+    Wrap the buffer instance as a subclass of its type that tracks whether is has been used as a sequence.
     """
-    def __array_finalize__(self, obj):
-        self.used_as_sequence = False
+    class SequenceCheckBuffer(type(inst)):
+        """
+        __getitem__ and __setitem__ are called by PySequence_GetItem and PySequence_SetItem (and also PyObject_GetItem
+        and PyObject_SetItem).
+        """
+        def __getitem__(self, key):
+            self.used_as_sequence = True
+            return super().__getitem__(key)
 
-    def __getitem__(self, key):
-        self.used_as_sequence = True
-        return super().__getitem__(key)
-
-    def __setitem__(self, key, value):
-        self.used_as_sequence = True
-        super().__setitem__(key, value)
+        def __setitem__(self, key, value):
+            self.used_as_sequence = True
+            super().__setitem__(key, value)
+    if isinstance(inst, np.ndarray):
+        wrapped = inst.view(SequenceCheckBuffer)
+    elif isinstance(inst, ctypes.Array):
+        wrapped = SequenceCheckBuffer.from_buffer(inst)
+    else:
+        # Notably, `memoryview` cannot be subclassed.
+        raise TypeError("Unsupported buffer type %s" % type(inst))
+    # __init__ and __new__ are not reliably called, so set the `used_as_sequence` attribute here.
+    wrapped.used_as_sequence = False
+    return wrapped
 
 
 class TestPropertyGroup(bpy.types.PropertyGroup):
@@ -59,7 +64,7 @@ class TestPropertyGroup(bpy.types.PropertyGroup):
     test_float_vector: FloatVectorProperty(size=VECTOR_SIZE, default=[-1.0, -2.0, -3.0])
     test_int: IntProperty(default=-1)
     test_int_vector: IntVectorProperty(size=VECTOR_SIZE, default=[-1, -2, -3])
-    test_unsigned_int: IntProperty(subtype='UNSIGNED', default=2 ** 31 - 1)
+    test_unsigned_int: IntProperty(subtype='UNSIGNED', default=255)
     test_enum: EnumProperty(items=_ENUM_ITEMS, default=_ENUM_ITEMS[0][0])
 
     @property
@@ -91,6 +96,28 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         seq2 = seq2.tolist() if isinstance(seq2, np.ndarray) else seq2
         super().assertSequenceEqual(seq1, seq2, msg, seq_type)
 
+    def assertSequenceFallbackNotUsed(self, buffer_with_sequence_check):
+        """
+        Assert that a buffer with sequence checking has not been used as a sequence. Used to check that a buffer was not
+        used by foreach_get/foreach_set's sequence fallback.
+        """
+        self.assertFalse(buffer_with_sequence_check.used_as_sequence, "Buffer was considered incompatible and the"
+                                                                      " sequence fallback was used.")
+
+    def assertSequenceAlmostEqual(self, seq1, seq2, places=None, msg=None, delta=None):
+        """
+        Similar to assertSequenceEqual, but intended for comparing float values.
+
+        Compares using unittest.TestCase.assertAlmostEqual().
+        """
+        # Replace any numpy arrays with lists so we can compare with `==`.
+        seq1 = seq1.tolist() if isinstance(seq1, np.ndarray) else seq1
+        seq2 = seq2.tolist() if isinstance(seq2, np.ndarray) else seq2
+        if not seq1 == seq2:
+            self.assertEqual(len(seq1), len(seq2), msg=msg)
+            for v1, v2 in zip(seq1, seq2):
+                self.assertAlmostEqual(v1, v2, places=places, msg=msg, delta=delta)
+
     def setUp(self):
         bpy.utils.register_class(TestPropertyGroup)
         id_type.test_collection = CollectionProperty(type=TestPropertyGroup)
@@ -108,181 +135,381 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         del id_type.test_collection
         bpy.utils.unregister_class(TestPropertyGroup)
 
-    def do_getset_test(self, seq_or_ndarray, foreach_attribute, is_get):
+    def get_num_items(self, prop_name):
         """
-        Helper function to reduce duplicate code for foreach_get/foreach_set tests that are expected to pass.
+        Helper to get the flattened number of items of a property.
         """
-        # Almost all buffers are also sequences. foreach_get/foreach_set fall back to accessing buffers as sequences
-        # when the buffers are considered incompatible, so a buffer test will be invalid if the buffer is accessed as a
-        # sequence. Similarly, a sequence test will be invalid if the sequence is accessed as a buffer.
-        is_buffer = isinstance(seq_or_ndarray, np.ndarray)
-        if is_buffer:
-            # np.ndarray are viewed as the SequenceCheckBuffer subclass that has an extra `used_as_sequence` attribute
-            # that is True if the SequenceCheckBuffer has been used as a sequence. This allows buffer tests to fail if
-            # they were accessed as a sequence instead of being accessed as a buffer.
-            foreach_arg = seq_or_ndarray.view(SequenceCheckBuffer)
+        return self.num_vector_items if "vector" in prop_name else self.num_items
+
+    def get_sequence(self, prop_name):
+        """
+        Helper to get a flat sequence of a specific property through iteration instead of foreach_get.
+        """
+        if "vector" in prop_name:
+            return [x for group in self.collection for x in getattr(group, prop_name)]
+        elif prop_name == "test_enum":
+            # Enum properties are a special case where foreach_get/set access the enum as an index, but accessing the
+            # enum property directly is done using the string identifiers of the enum's items. TestPropertyGroup has an
+            # extra `test_enum_value` property that gets the index of the current item instead of its string identifier.
+            return [getattr(group, "test_enum_value") for group in self.collection]
         else:
-            # Ensure that the sequence is not a buffer so that it is impossible for the sequence to be accessed as a
-            # buffer.
-            with self.assertRaises(TypeError, msg="Buffers that are not np.ndarray are not allowed because it will be"
-                                                  " impossible to tell whether the buffer was accessed using the"
-                                                  " sequence protocol or the buffer protocol in foreach_get"
-                                                  "/foreach_set."):
-                # Raises TypeError for any argument which is not a buffer.
-                memoryview(seq_or_ndarray)
-            foreach_arg = seq_or_ndarray
+            return [getattr(group, prop_name) for group in self.collection]
 
-        # Run the foreach_get/foreach_set method.
-        if is_get:
-            self.collection.foreach_get(foreach_attribute, foreach_arg)
+    @staticmethod
+    def get_nth_arange(n, num_items, dtype=None):
+        """
+        Helper to create the nth np.arange with num_items items.
+        """
+        start = n * num_items
+        end_excl = start + num_items
+        return np.arange(start, end_excl, dtype=dtype)
+
+    def do_test_sequence_get(self, prop_name):
+        expected_sequence = self.get_sequence(prop_name)
+        sequence = [None] * self.get_num_items(prop_name)
+        self.collection.foreach_get(prop_name, sequence)
+        if "float" in prop_name:
+            self.assertSequenceAlmostEqual(sequence, expected_sequence)
         else:
-            self.collection.foreach_set(foreach_attribute, foreach_arg)
+            self.assertSequenceEqual(sequence, expected_sequence)
 
-        # Now to check the results.
-
-        # Enum properties are a special case where foreach_get/set access the enum as an integer, but accessing the enum
-        # property directly is done using the string identifiers of the enum's items. TestPropertyGroup has an extra
-        # `test_enum_value` property that gets the index of the current item instead of its string identifier.
-        prop_name = "test_enum_value" if foreach_attribute == "test_enum" else foreach_attribute
-
-        if "vector" in foreach_attribute:
-            # foreach_get/foreach_set require flat inputs even when used with vector properties, so flatten the values
-            # retrieved from the collection to more easily compare results.
-            flat_collection_sequence = [x for group in self.collection for x in getattr(group, prop_name)]
+    def do_test_sequence_set(self, prop_name, sequence=None):
+        if sequence is None:
+            sequence = range(self.get_num_items(prop_name))
+        self.collection.foreach_set(prop_name, sequence)
+        result_sequence = self.get_sequence(prop_name)
+        expected_sequence = sequence
+        if "float" in prop_name:
+            self.assertSequenceAlmostEqual(result_sequence, expected_sequence)
         else:
-            flat_collection_sequence = [getattr(group, prop_name) for group in self.collection]
-
-        # Order the arguments so that the expected sequence is always the second argument.
-        if is_get:
-            self.assertSequenceEqual(seq_or_ndarray, flat_collection_sequence, "values got with foreach_get do not"
-                                                                               " match the collection")
-        else:
-            self.assertSequenceEqual(flat_collection_sequence, seq_or_ndarray, "collection property values set with"
-                                                                               " foreach_set do not match the buffer"
-                                                                               "/sequence")
-
-        if is_buffer:
-            # To ensure that buffer code is being tested, check that the buffer was not accessed as a sequence.
-            self.assertFalse(foreach_arg.used_as_sequence, "buffer in a buffer test was used as a sequence instead of a"
-                                                           " buffer meaning that the buffer was not considered a"
-                                                           " compatible buffer by foreach_get/set (perhaps the C type"
-                                                           " of the property was changed?)")
-
-    def do_get_test(self, seq_or_ndarray, foreach_attribute):
-        self.do_getset_test(seq_or_ndarray, foreach_attribute, is_get=True)
-
-    def do_set_test(self, seq_or_ndarray, foreach_attribute):
-        self.do_getset_test(seq_or_ndarray, foreach_attribute, is_get=False)
-
-    def test_buffer_get_bool(self):
-        self.do_get_test(np.full(self.num_items, True, dtype=bool), "test_bool")
-
-    def test_buffer_set_bool(self):
-        self.do_set_test(np.full(self.num_items, True, dtype=bool), "test_bool")
+            self.assertSequenceEqual(result_sequence, expected_sequence)
 
     def test_sequence_get_bool(self):
-        self.do_get_test([None] * self.num_items, "test_bool")
+        for prop_name in ("test_bool", "test_bool_vector"):
+            with self.subTest(prop_name=prop_name):
+                self.do_test_sequence_get(prop_name)
 
     def test_sequence_set_bool(self):
-        self.do_set_test([True] * self.num_items, "test_bool")
+        for prop_name in ("test_bool", "test_bool_vector"):
+            with self.subTest(prop_name=prop_name):
+                self.do_test_sequence_set(prop_name, [True] * self.get_num_items(prop_name))
 
-    def test_buffer_get_bool_vector(self):
-        self.do_get_test(np.full(self.num_vector_items, True, dtype=bool), "test_bool_vector")
+    def test_buffer_get_bool(self):
+        for prop_name in ("test_bool", "test_bool_vector"):
+            with self.subTest(prop_name=prop_name):
+                expected_sequence = self.get_sequence(prop_name)
+                buffer = np.full(self.get_num_items(prop_name), True, dtype=bool)
+                buffer_with_sequence_check = as_sequence_check_buffer(buffer)
+                self.collection.foreach_get(prop_name, buffer_with_sequence_check)
+                self.assertSequenceFallbackNotUsed(buffer_with_sequence_check)
+                self.assertSequenceEqual(buffer, expected_sequence)
 
-    def test_buffer_set_bool_vector(self):
-        self.do_set_test(np.full(self.num_vector_items, True, dtype=bool), "test_bool_vector")
-
-    def test_sequence_get_bool_vector(self):
-        self.do_get_test([None] * self.num_vector_items, "test_bool_vector")
-
-    def test_sequence_set_bool_vector(self):
-        self.do_set_test([True] * self.num_vector_items, "test_bool_vector")
-
-    def test_buffer_get_float(self):
-        self.do_get_test(np.zeros(self.num_items, dtype=np.float32), "test_float")
-
-    def test_buffer_set_float(self):
-        self.do_set_test(np.arange(self.num_items, dtype=np.float32), "test_float")
+    def test_buffer_set_bool(self):
+        for prop_name in ("test_bool", "test_bool_vector"):
+            with self.subTest(prop_name=prop_name):
+                buffer = np.full(self.get_num_items(prop_name), True, dtype=bool)
+                buffer_with_sequence_check = as_sequence_check_buffer(buffer)
+                self.collection.foreach_set(prop_name, buffer_with_sequence_check)
+                self.assertSequenceFallbackNotUsed(buffer_with_sequence_check)
+                result_sequence = self.get_sequence(prop_name)
+                expected_sequence = buffer
+                self.assertSequenceEqual(result_sequence, expected_sequence)
 
     def test_sequence_get_float(self):
-        self.do_get_test([None] * self.num_items, "test_float")
+        for prop_name in ("test_float", "test_float_vector"):
+            with self.subTest(prop_name=prop_name):
+                self.do_test_sequence_get(prop_name)
 
     def test_sequence_set_float(self):
-        self.do_set_test(range(self.num_items), "test_float")
+        for prop_name in ("test_float", "test_float_vector"):
+            with self.subTest(prop_name=prop_name):
+                self.do_test_sequence_set(prop_name)
 
-    def test_buffer_get_float_vector(self):
-        self.do_get_test(np.zeros(self.num_vector_items, dtype=np.float32), "test_float_vector")
+    def test_buffer_get_float(self):
+        float_types = (np.half, np.single, np.double, np.longdouble)
+        for prop_name in ("test_float", "test_float_vector"):
+            with self.subTest(prop_name=prop_name):
+                expected_sequence = self.get_sequence(prop_name)
 
-    def test_buffer_set_float_vector(self):
-        self.do_set_test(np.arange(self.num_vector_items, dtype=np.float32), "test_float_vector")
+                compatible_itemsizes = set()
+                for float_type in float_types:
+                    buffer = np.zeros(self.get_num_items(prop_name), dtype=float_type)
+                    buffer_with_sequence_check = as_sequence_check_buffer(buffer)
 
-    def test_sequence_get_float_vector(self):
-        self.do_get_test([None] * self.num_vector_items, "test_float_vector")
+                    self.collection.foreach_get(prop_name, buffer_with_sequence_check)
 
-    def test_sequence_set_float_vector(self):
-        self.do_set_test(range(self.num_vector_items), "test_float_vector")
+                    self.assertSequenceAlmostEqual(buffer, expected_sequence)
+                    if not buffer_with_sequence_check.used_as_sequence:
+                        compatible_itemsizes.add(buffer.itemsize)
 
-    def test_buffer_get_int(self):
-        self.do_get_test(np.zeros(self.num_items, dtype=np.int32), "test_int")
+                self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
+                                                               "compatible itemsizes were '%s'" % compatible_itemsizes)
 
-    def test_buffer_set_int(self):
-        self.do_set_test(np.arange(self.num_items, dtype=np.int32), "test_int")
+    def test_buffer_set_float(self):
+        float_types = (np.half, np.single, np.double, np.longdouble)
+        for prop_name in ("test_float", "test_float_vector"):
+            with self.subTest(prop_name=prop_name):
+                num_items = self.get_num_items(prop_name)
+
+                compatible_itemsizes = set()
+                for i, float_type in enumerate(float_types):
+                    # Ensure each buffer has different contents from the previous buffer.
+                    buffer = self.get_nth_arange(i, num_items, dtype=float_type)
+                    buffer_with_sequence_check = as_sequence_check_buffer(buffer)
+
+                    self.collection.foreach_set(prop_name, buffer_with_sequence_check)
+
+                    result_sequence = self.get_sequence(prop_name)
+                    expected_sequence = buffer
+                    self.assertSequenceAlmostEqual(result_sequence, expected_sequence)
+                    if not buffer_with_sequence_check.used_as_sequence:
+                        compatible_itemsizes.add(buffer.itemsize)
+
+                self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
+                                                               "compatible itemsizes were '%s'" % compatible_itemsizes)
 
     def test_sequence_get_int(self):
-        self.do_get_test([None] * self.num_items, "test_int")
+        for prop_name in ("test_int", "test_int_vector"):
+            with self.subTest(prop_name=prop_name):
+                self.do_test_sequence_get(prop_name)
 
     def test_sequence_set_int(self):
-        self.do_set_test(range(self.num_items), "test_int")
+        for prop_name in ("test_int", "test_int_vector"):
+            with self.subTest(prop_name=prop_name):
+                self.do_test_sequence_set(prop_name)
 
-    def test_buffer_get_int_vector(self):
-        self.do_get_test(np.zeros(self.num_vector_items, dtype=np.int32), "test_int_vector")
+    def test_buffer_get_int(self):
+        for prop_name in ("test_int", "test_int_vector"):
+            with self.subTest(prop_name=prop_name):
+                expected_sequence = self.get_sequence(prop_name)
+                num_items = self.get_num_items(prop_name)
 
-    def test_buffer_set_int_vector(self):
-        self.do_set_test(np.arange(self.num_vector_items, dtype=np.int32), "test_int_vector")
+                # The remaining int types we can check if they were accessed as a buffer or a sequence.
+                int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
+                compatible_itemsizes = set()
+                for int_type in int_types:
+                    buffer = np.zeros(num_items, dtype=int_type)
+                    buffer_with_sequence_check = as_sequence_check_buffer(buffer)
 
-    def test_sequence_get_int_vector(self):
-        self.do_get_test([None] * self.num_vector_items, "test_int_vector")
+                    self.collection.foreach_get(prop_name, buffer_with_sequence_check)
 
-    def test_sequence_set_int_vector(self):
-        self.do_set_test(range(self.num_vector_items), "test_int_vector")
+                    self.assertSequenceEqual(buffer, expected_sequence)
+                    if not buffer_with_sequence_check.used_as_sequence:
+                        compatible_itemsizes.add(buffer.itemsize)
+                self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
+                                                               "compatible itemsizes were '%s'" % compatible_itemsizes)
 
-    def test_buffer_get_unsigned_int(self):
-        self.do_get_test(np.zeros(self.num_items, dtype=np.uint32), "test_unsigned_int")
+                # ssize_t ('n') format is not supported by NumPy.
+                ssize_t_array = (ctypes.c_ssize_t * num_items)()
+                # ctypes exports its ssize_t arrays as one of the other integer types with the same size instead of 'n',
+                # but we can cast it to an 'n' format memoryview.
+                ssize_t_array_as_n = memoryview(ssize_t_array).cast('b').cast('n')
+                # memoryview objects are not writable as a sequence (only readable), so we only expect them to work when
+                # they are a compatible buffer.
+                if ssize_t_array_as_n.itemsize in compatible_itemsizes:
+                    self.collection.foreach_get(prop_name, ssize_t_array_as_n)
 
-    def test_buffer_set_unsigned_int(self):
-        self.do_set_test(np.arange(self.num_items, dtype=np.uint32), "test_unsigned_int")
+                    self.assertSequenceEqual(ssize_t_array_as_n, expected_sequence)
+                else:
+                    with self.assertRaises(TypeError):
+                        self.collection.foreach_get(prop_name, ssize_t_array_as_n)
+
+    def test_buffer_set_int(self):
+        for prop_name in ("test_int", "test_int_vector"):
+            with self.subTest(prop_name=prop_name):
+                num_items = self.get_num_items(prop_name)
+
+                # ssize_t ('n') format is not supported by NumPy.
+                ssize_t_array = (ctypes.c_ssize_t * num_items)(*self.get_nth_arange(0, num_items))
+                # ctypes exports its ssize_t arrays as one of the other integer types of the same size instead of 'n',
+                # but we can cast it to an 'n' format memoryview.
+                ssize_t_array_as_n = memoryview(ssize_t_array).cast('b').cast('n')
+
+                self.collection.foreach_set(prop_name, ssize_t_array_as_n)
+
+                result_sequence = self.get_sequence(prop_name)
+                expected_sequence = ssize_t_array_as_n
+                self.assertSequenceEqual(result_sequence, expected_sequence)
+                # Unfortunately, memoryview cannot be subclassed, so we cannot check if it was accessed as a buffer or
+                # sequence.
+
+                # For the remaining int types we can check if they were accessed as a buffer or a sequence.
+                int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
+                compatible_itemsizes = set()
+                # ssize_t has been done beforehand, so start at 1.
+                for i, int_type in enumerate(int_types, start=1):
+                    # Ensure each buffer has different contents from the previous buffer.
+                    buffer = self.get_nth_arange(i, num_items, dtype=int_type)
+                    buffer_with_sequence_check = as_sequence_check_buffer(buffer)
+
+                    self.collection.foreach_set(prop_name, buffer_with_sequence_check)
+
+                    result_sequence = self.get_sequence(prop_name)
+                    self.assertSequenceEqual(result_sequence, buffer)
+                    if not buffer_with_sequence_check.used_as_sequence:
+                        compatible_itemsizes.add(buffer.itemsize)
+                self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
+                                                               "compatible itemsizes were '%s'" % compatible_itemsizes)
 
     def test_sequence_get_unsigned_int(self):
-        self.do_get_test([None] * self.num_items, "test_unsigned_int")
+        self.do_test_sequence_get("test_unsigned_int")
 
     def test_sequence_set_unsigned_int(self):
-        self.do_set_test(range(self.num_items), "test_unsigned_int")
+        self.do_test_sequence_set("test_unsigned_int")
 
-    @unittest.expectedFailure  # See #92621
-    def test_buffer_get_enum(self):
-        # Note: RNA enum properties commonly vary in itemsize, int32 may not be correct for other properties.
-        self.do_get_test(np.ones(self.num_items, dtype=np.int32), "test_enum")
+    def test_buffer_get_unsigned_int(self):
+        expected_sequence = self.get_sequence("test_unsigned_int")
+        num_items = self.get_num_items("test_unsigned_int")
 
-    @unittest.expectedFailure  # See #92621
-    def test_buffer_set_enum(self):
-        # Note: RNA enum properties commonly vary in itemsize, int32 may not be correct for other properties.
-        self.do_set_test(np.ones(self.num_items, dtype=np.int32), "test_enum")
+        # For the remaining uint types we can check if they were accessed as a buffer or a sequence.
+        np_uint_types = (np.ubyte, np.ushort, np.uintc, np.uint, np.ulonglong)
+        uint_buffers = [np.zeros(num_items, dtype=uint_type) for uint_type in np_uint_types]
+        # void* ('P') format arrays are not supported by NumPy but are supported by ctypes.
+        void_p_array_type = ctypes.c_void_p * num_items
+        uint_buffers.append(void_p_array_type())
+        compatible_itemsizes = set()
+        for buffer in uint_buffers:
+            buffer_with_sequence_check = as_sequence_check_buffer(buffer)
+
+            self.collection.foreach_get("test_unsigned_int", buffer_with_sequence_check)
+
+            self.assertSequenceEqual(buffer, expected_sequence)
+            if not buffer_with_sequence_check.used_as_sequence:
+                # View as a memoryview so there's a common interface to get the itemsize.
+                compatible_itemsizes.add(memoryview(buffer).itemsize)
+        self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
+                                                       "compatible itemsizes were '%s'" % compatible_itemsizes)
+
+        # size_t ('N') format is not supported by NumPy.
+        size_t_array_type = ctypes.c_size_t * num_items
+        # ctypes exports its size_t arrays as one of the other integer types instead of 'N', but we can cast it to an
+        # 'N' format memoryview.
+        size_t_array_as_n = memoryview(size_t_array_type()).cast('b').cast('N')
+        # memoryview objects are not writable as a sequence (only readable), so we only expect them to work when
+        # they are a compatible buffer.
+        if size_t_array_as_n.itemsize in compatible_itemsizes:
+            self.collection.foreach_get("test_unsigned_int", size_t_array_as_n)
+
+            self.assertSequenceEqual(size_t_array_as_n, expected_sequence)
+        else:
+            with self.assertRaises(TypeError):
+                self.collection.foreach_get("test_unsigned_int", size_t_array_as_n)
+
+    def test_buffer_set_unsigned_int(self):
+        num_items = self.get_num_items("test_unsigned_int")
+
+        # ssize_t ('n') format is not supported by NumPy.
+        ssize_t_array_type = ctypes.c_ssize_t * num_items
+        ssize_t_array = ssize_t_array_type(*self.get_nth_arange(0, num_items))
+        # ctypes exports its ssize_t arrays as one of the other integer types of the same size instead of 'n',
+        # but we can cast it to an 'n' format memoryview.
+        ssize_t_array_as_n = memoryview(ssize_t_array).cast('b').cast('n')
+        self.collection.foreach_set("test_unsigned_int", ssize_t_array_as_n)
+        result_sequence = self.get_sequence("test_unsigned_int")
+        expected_sequence = ssize_t_array_as_n
+        self.assertSequenceEqual(result_sequence, expected_sequence)
+        # Unfortunately, memoryview cannot be subclassed, so we cannot check if it was accessed as a buffer or
+        # sequence.
+
+        # For the remaining int types we can check if they were accessed as a buffer or a sequence.
+        # void* ('P') format arrays are not supported by NumPy but are supported by ctypes.
+        void_p_array_type = ctypes.c_void_p * num_items
+        # ctypes's conversion to void* only accepts Python int, but the NumPy array returned by get_nth_arange()
+        # contains NumPy scalar types, so convert to a list containing Python ints.
+        void_p_array = void_p_array_type(*self.get_nth_arange(1, num_items).tolist())
+        uint_buffers = [void_p_array]
+        np_uint_types = (np.ubyte, np.ushort, np.uintc, np.uint, np.ulonglong)
+        for i, uint_type in enumerate(np_uint_types, start=2):
+            # Ensure each buffer has different contents from the previous buffer.
+            uint_buffers.append(self.get_nth_arange(i, num_items, dtype=uint_type))
+
+        compatible_itemsizes = set()
+        for buffer in uint_buffers:
+            buffer_with_sequence_check = as_sequence_check_buffer(buffer)
+            self.collection.foreach_set("test_unsigned_int", buffer_with_sequence_check)
+            result_sequence = self.get_sequence("test_unsigned_int")
+            self.assertSequenceEqual(result_sequence, buffer)
+            if not buffer_with_sequence_check.used_as_sequence:
+                compatible_itemsizes.add(memoryview(buffer).itemsize)
+        self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
+                                                       "compatible itemsizes were '%s'" % compatible_itemsizes)
 
     @unittest.expectedFailure  # See #92621
     def test_sequence_get_enum(self):
-        self.do_get_test([None] * self.num_items, "test_enum")
+        self.do_test_sequence_get("test_enum")
 
     @unittest.expectedFailure  # See #92621
     def test_sequence_set_enum(self):
-        self.do_get_test([1] * self.num_items, "test_enum")
+        self.do_test_sequence_set("test_enum", [1] * self.get_num_items("test_enum"))
 
-    @unittest.skipUnless(LONG_AND_INT_BOTH_32_BIT, "requires a system where both C int and C long are 32 bit")
-    def test_buffer_get_int_other_c_type(self):
-        self.do_get_test(np.arange(self.num_items, dtype=OTHER_INT32_DTYPE), "test_int")
+    @unittest.expectedFailure  # See #92621
+    def test_buffer_get_enum(self):
+        expected_sequence = self.get_sequence("test_enum")
+        num_items = self.get_num_items("test_enum")
 
-    @unittest.skipUnless(LONG_AND_INT_BOTH_32_BIT, "requires a system where both C int and C long are 32 bit")
-    def test_buffer_set_int_other_c_type(self):
-        self.do_set_test(np.arange(self.num_items, dtype=OTHER_INT32_DTYPE), "test_int")
+        int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
+        compatible_itemsizes = set()
+        for int_type in int_types:
+            buffer = np.zeros(num_items, dtype=int_type)
+            buffer_with_sequence_check = as_sequence_check_buffer(buffer)
+
+            self.collection.foreach_get("test_enum", buffer_with_sequence_check)
+
+            self.assertSequenceEqual(buffer, expected_sequence)
+            if not buffer_with_sequence_check.used_as_sequence:
+                compatible_itemsizes.add(buffer.itemsize)
+        self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
+                                                       "compatible itemsizes were '%s'" % compatible_itemsizes)
+
+        # ssize_t ('n') format is not supported by NumPy.
+        ssize_t_array = (ctypes.c_ssize_t * num_items)()
+        # ctypes exports its ssize_t arrays as one of the other integer types with the same size instead of 'n',
+        # but we can cast it to an 'n' format memoryview.
+        ssize_t_array_as_n = memoryview(ssize_t_array).cast('b').cast('n')
+        # memoryview objects are not writable as a sequence (only readable), so we only expect them to work when
+        # they are a compatible buffer.
+        if ssize_t_array_as_n.itemsize in compatible_itemsizes:
+            self.collection.foreach_get("test_enum", ssize_t_array_as_n)
+
+            self.assertSequenceEqual(ssize_t_array_as_n, expected_sequence)
+        else:
+            with self.assertRaises(TypeError):
+                self.collection.foreach_get("test_enum", ssize_t_array_as_n)
+
+    @unittest.expectedFailure  # See #92621
+    def test_buffer_set_enum(self):
+        num_items = self.get_num_items("test_enum")
+
+        # ssize_t ('n') format is not supported by NumPy.
+        ssize_t_array = (ctypes.c_ssize_t * num_items)(*self.get_nth_arange(0, num_items))
+        # ctypes exports its ssize_t arrays as one of the other integer types of the same size instead of 'n',
+        # but we can cast it to an 'n' format memoryview.
+        ssize_t_array_as_n = memoryview(ssize_t_array).cast('b').cast('n')
+
+        self.collection.foreach_set("test_enum", ssize_t_array_as_n)
+
+        result_sequence = self.get_sequence("test_enum")
+        expected_sequence = ssize_t_array_as_n
+        self.assertSequenceEqual(result_sequence, expected_sequence)
+        # Unfortunately, memoryview cannot be subclassed, so we cannot check if it was accessed as a buffer or
+        # sequence.
+
+        # For the remaining int types we can check if they were accessed as a buffer or a sequence.
+        int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
+        compatible_itemsizes = set()
+        for i, int_type in enumerate(int_types, start=1):
+            # Ensure each buffer has different contents from the previous buffer.
+            buffer = self.get_nth_arange(i, num_items, dtype=int_type)
+            buffer_with_sequence_check = as_sequence_check_buffer(buffer)
+
+            self.collection.foreach_set("test_enum", buffer_with_sequence_check)
+
+            result_sequence = self.get_sequence("test_enum")
+            self.assertSequenceEqual(result_sequence, buffer)
+            if not buffer_with_sequence_check.used_as_sequence:
+                compatible_itemsizes.add(buffer.itemsize)
+        self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
+                                                       "compatible itemsizes were '%s'" % compatible_itemsizes)
 
 
 if __name__ == '__main__':
