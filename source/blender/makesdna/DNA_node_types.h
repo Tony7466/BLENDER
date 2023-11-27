@@ -1890,7 +1890,10 @@ typedef struct NodeGeometrySampleVolume {
 } NodeGeometrySampleVolume;
 
 typedef struct NodeGeometryExtrapolateGrid {
-  int8_t dummy;
+  /** #eCustomDataType. */
+  int8_t data_type;
+  /** #GeometryNodeFastSweepingRegion. */
+  int8_t fast_sweeping_region;
 } NodeGeometryExtrapolateGrid;
 
 typedef struct NodeFunctionCompare {
@@ -2790,6 +2793,17 @@ typedef enum GeometryNodeSampleVolumeInterpolationMode {
   GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR = 1,
   GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC = 2,
 } GeometryNodeSampleVolumeInterpolationMode;
+
+typedef enum GeometryNodeGridExtrapolationMode {
+  GEO_NODE_EXTRAPOLATE_GRID_SDF = 0,
+  GEO_NODE_EXTRAPOLATE_GRID_FOG = 1,
+} GeometryNodeGridExtrapolationMode;
+
+typedef enum GeometryNodeFastSweepingRegion {
+  GEO_NODE_FAST_SWEEPING_REGION_ALL = 0,
+  GEO_NODE_FAST_SWEEPING_REGION_GREATER_THAN_ISOVALUE = 1,
+  GEO_NODE_FAST_SWEEPING_REGION_LESS_THAN_ISOVALUE = 2,
+} GeometryNodeFastSweepingRegion;
 
 typedef enum GeometryNodeGridNeighborTopology {
   GEO_NODE_GRID_NEIGHBOR_FACE = 0,

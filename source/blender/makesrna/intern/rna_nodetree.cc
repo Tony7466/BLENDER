@@ -565,6 +565,21 @@ const EnumPropertyItem rna_enum_grid_neighbors_topology_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_fast_sweeping_region_items[] = {
+    {GEO_NODE_FAST_SWEEPING_REGION_ALL, "ALL", 0, "All", "Apply to all active voxels"},
+    {GEO_NODE_FAST_SWEEPING_REGION_GREATER_THAN_ISOVALUE,
+     "GREATER_THAN_ISOVALUE",
+     0,
+     "Greater Than Isovalue",
+     "Apply to active values greater than the isovalue"},
+    {GEO_NODE_FAST_SWEEPING_REGION_LESS_THAN_ISOVALUE,
+     "LESS_THAN_ISOVALUE",
+     0,
+     "Less Than Isovalue",
+     "Apply to active values less than the isovalue"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifndef RNA_RUNTIME
 static const EnumPropertyItem node_sampler_type_items[] = {
     {0, "NEAREST", 0, "Nearest", ""},

@@ -2,31 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DEG_depsgraph_query.hh"
-#ifdef WITH_OPENVDB
-#  include <openvdb/tools/GridTransformer.h>
-#  include <openvdb/tools/VolumeToMesh.h>
-#endif
-
 #include "node_geometry_util.hh"
-
-#include "BKE_lib_id.h"
-#include "BKE_material.h"
-#include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.hh"
-#include "BKE_volume.hh"
-#include "BKE_volume_openvdb.hh"
-#include "BKE_volume_to_mesh.hh"
-
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 
 #include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "GEO_randomize.hh"
+#include "RNA_enum_types.hh"
 
 namespace blender::nodes::node_geo_extrapolate_grid_cc {
 
@@ -38,13 +21,14 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  //  uiItemR(layout, ptr, "resolution_mode", UI_ITEM_NONE, IFACE_("Resolution"), ICON_NONE);
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "fast_sweeping_region", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryExtrapolateGrid *data = MEM_cnew<NodeGeometryExtrapolateGrid>(__func__);
-  //  data->resolution_mode = VOLUME_TO_MESH_RESOLUTION_MODE_GRID;
+  data->data_type = CD_PROP_FLOAT;
   node->storage = data;
 }
 
@@ -65,31 +49,21 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  //  static EnumPropertyItem resolution_mode_items[] = {
-  //      {VOLUME_TO_MESH_RESOLUTION_MODE_GRID,
-  //       "GRID",
-  //       0,
-  //       "Grid",
-  //       "Use resolution of the volume grid"},
-  //      {VOLUME_TO_MESH_RESOLUTION_MODE_VOXEL_AMOUNT,
-  //       "VOXEL_AMOUNT",
-  //       0,
-  //       "Amount",
-  //       "Desired number of voxels along one axis"},
-  //      {VOLUME_TO_MESH_RESOLUTION_MODE_VOXEL_SIZE,
-  //       "VOXEL_SIZE",
-  //       0,
-  //       "Size",
-  //       "Desired voxel side length"},
-  //      {0, nullptr, 0, nullptr, nullptr},
-  //  };
+  RNA_def_node_enum(srna,
+                    "data_type",
+                    "Data Type",
+                    "Type of grid data",
+                    rna_enum_attribute_type_items,
+                    NOD_storage_enum_accessors(data_type),
+                    CD_PROP_FLOAT,
+                    grids::grid_type_items_fn);
 
-  //  RNA_def_node_enum(srna,
-  //                    "resolution_mode",
-  //                    "Resolution Mode",
-  //                    "How the voxel size is specified",
-  //                    resolution_mode_items,
-  //                    NOD_storage_enum_accessors(resolution_mode));
+  RNA_def_node_enum(srna,
+                    "fast_sweeping_region",
+                    "Region",
+                    "Region of voxels affected by the node",
+                    rna_enum_fast_sweeping_region_items,
+                    NOD_storage_enum_accessors(fast_sweeping_region));
 }
 
 static void node_register()

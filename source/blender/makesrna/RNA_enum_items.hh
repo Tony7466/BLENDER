@@ -276,6 +276,7 @@ DEF_ENUM(rna_enum_keyblock_type_items)
 DEF_ENUM(rna_enum_asset_library_type_items)
 
 DEF_ENUM(rna_enum_grid_neighbors_topology_items)
+DEF_ENUM(rna_enum_fast_sweeping_region_items)
 
 #endif
 
