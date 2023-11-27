@@ -2074,6 +2074,7 @@ ImBuf *imb_load_openexr(const uchar *mem, size_t size, int flags, char colorspac
           const char *rgb_channels[3];
           const int num_rgb_channels = exr_has_rgb(*file, rgb_channels);
           const bool has_luma = exr_has_luma(*file);
+          const bool has_xyz = exr_has_xyz(*file);
           FrameBuffer frameBuffer;
           float *first;
           size_t xstride = sizeof(float[4]);
@@ -2093,7 +2094,7 @@ ImBuf *imb_load_openexr(const uchar *mem, size_t size, int flags, char colorspac
                                  Slice(Imf::FLOAT, (char *)(first + i), xstride, ystride));
             }
           }
-          else if (exr_has_xyz(*file)) {
+          else if (has_xyz) {
             frameBuffer.insert(exr_rgba_channelname(*file, "X"),
                                Slice(Imf::FLOAT, (char *)first, xstride, ystride));
             frameBuffer.insert(exr_rgba_channelname(*file, "Y"),
@@ -2145,7 +2146,7 @@ ImBuf *imb_load_openexr(const uchar *mem, size_t size, int flags, char colorspac
                          BLI_YCC_ITU_BT709);
             }
           }
-          else if (num_rgb_channels == 1) {
+          else if (!has_xyz && num_rgb_channels <= 1) {
             /* Convert 1 to 3 channels. */
             for (size_t a = 0; a < size_t(ibuf->x) * ibuf->y; a++) {
               float *color = ibuf->float_buffer.data + a * 4;
