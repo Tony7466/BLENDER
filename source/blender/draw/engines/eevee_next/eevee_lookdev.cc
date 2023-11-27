@@ -119,6 +119,37 @@ bool LookdevWorld::sync(const LookdevParameters &new_parameters)
  *
  * \{ */
 
+LookdevModule::LookdevModule(Instance &inst) : inst_(inst)
+{
+  STRNCPY(mat_specular_.id.name, "MALookdevSpecular");
+  BKE_libblock_init_empty(&mat_specular_.id);
+  mat_specular_.use_nodes = false;
+  mat_specular_.r = 0.8f;
+  mat_specular_.g = 0.8f;
+  mat_specular_.b = 0.8f;
+  mat_specular_.a = 1.0f;
+  mat_specular_.metallic = 1.0f;
+  mat_specular_.roughness = 0.0f;
+  mat_specular_.spec = 0.0f;
+
+  STRNCPY(mat_specular_.id.name, "MALookdevDiffuse");
+  BKE_libblock_init_empty(&mat_diffuse_.id);
+  mat_diffuse_.use_nodes = false;
+  mat_diffuse_.r = 0.8f;
+  mat_diffuse_.g = 0.8f;
+  mat_diffuse_.b = 0.8f;
+  mat_diffuse_.a = 1.0f;
+  mat_diffuse_.metallic = 0.0f;
+  mat_diffuse_.roughness = 1.0f;
+  mat_diffuse_.spec = 0.0f;
+}
+
+LookdevModule::~LookdevModule()
+{
+  BKE_libblock_free_datablock(&mat_specular_.id, 0);
+  BKE_libblock_free_datablock(&mat_diffuse_.id, 0);
+}
+
 /* TODO(fclem): This is where the lookdev balls display should go. */
 
 /** \} */

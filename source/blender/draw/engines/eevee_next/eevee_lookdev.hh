@@ -85,8 +85,12 @@ class LookdevModule {
  private:
   Instance &inst_;
 
+  ::Material mat_specular_ = {};
+  ::Material mat_diffuse_ = {};
+
  public:
-  LookdevModule(Instance &inst) : inst_(inst){};
+  LookdevModule(Instance &inst);
+  ~LookdevModule();
 
   /* TODO(fclem): This is where the lookdev balls display should go. */
 };
