@@ -197,9 +197,9 @@ class NLA_MT_add(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("nla.actionclip_add", text="Action Strip")
-        layout.operator("nla.transition_add", text="Transition Strip")
-        layout.operator("nla.soundclip_add", text="Sound Strip")
+        layout.operator("nla.actionclip_add", text="Action")
+        layout.operator("nla.transition_add", text="Transition")
+        layout.operator("nla.soundclip_add", text="Sound")
 
         layout.separator()
         layout.operator("nla.selected_objects_add", text="Selected Objects")
@@ -211,15 +211,15 @@ class NLA_MT_tracks(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("nla.tracks_add").above_selected = False
-        layout.operator("nla.tracks_add", text="Add Tracks Above Selected").above_selected = True
-        layout.operator("nla.tracks_delete")
+        layout.operator("nla.tracks_add", text="Add").above_selected = False
+        layout.operator("nla.tracks_add", text="Add Above Selected").above_selected = True
+        layout.operator("nla.tracks_delete", text="Delete")
 
         layout.separator()
         layout.operator_menu_enum("anim.channels_move", "direction", text="Move")
 
         layout.separator()
-        layout.operator("anim.channels_clean_empty", text="Remove Empties")
+        layout.operator("anim.channels_clean_empty")
 
 
 class NLA_MT_strips(Menu):
@@ -239,12 +239,12 @@ class NLA_MT_strips(Menu):
         layout.separator()
         layout.operator("nla.duplicate", text="Duplicate").linked = False
         layout.operator("nla.duplicate", text="Linked Duplicate").linked = True
-        layout.operator("nla.delete")
+        layout.operator("nla.delete", text="Delete")
 
         layout.separator()
 
-        layout.operator("nla.meta_add", text="Make Meta Strips")
-        layout.operator("nla.meta_remove", text="Remove Meta Strips")
+        layout.operator("nla.meta_add", text="Make Meta")
+        layout.operator("nla.meta_remove", text="Remove Meta")
 
         layout.separator()
         layout.operator("nla.mute_toggle")
