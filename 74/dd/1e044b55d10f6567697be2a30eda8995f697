@@ -1,1 +1,2 @@
 Referenced by issue #115451, Node resizing is broken
+Referenced by commit f8c8878232236c11c0dfbaf1cbe53621b2489a6d, Fix #115451: hard to resize collapsed nodes
