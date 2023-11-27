@@ -677,10 +677,10 @@ struct IntermediateNode {
   const char *sock_output_name;
 };
 
-IntermediateNode add_normal_map(const pxr::UsdShadeShader &usd_shader,
-                                bNodeTree *ntree,
-                                int column,
-                                NodePlacementContext *r_ctx)
+static IntermediateNode add_normal_map(const pxr::UsdShadeShader &usd_shader,
+                                       bNodeTree *ntree,
+                                       int column,
+                                       NodePlacementContext *r_ctx)
 {
   float locx = 0.0f;
   float locy = 0.0f;
@@ -749,7 +749,9 @@ static IntermediateNode add_scale_bias(const pxr::UsdShadeShader &usd_shader,
   return scale_bias;
 }
 
-IntermediateNode add_scale_bias_adjust(bNodeTree *ntree, int column, NodePlacementContext *r_ctx)
+static IntermediateNode add_scale_bias_adjust(bNodeTree *ntree,
+                                              int column,
+                                              NodePlacementContext *r_ctx)
 {
   float locx = 0.0f;
   float locy = 0.0f;
