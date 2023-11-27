@@ -328,6 +328,7 @@ DefNode(GeometryNode, GEO_NODE_EDGES_TO_FACE_GROUPS, 0, "EDGES_TO_FACE_GROUPS", 
 DefNode(GeometryNode, GEO_NODE_ERODE_GRID, 0, "ERODE_GRID", ErodeGrid, "Erode Grid", "Erode active values from neighboring voxels")
 DefNode(GeometryNode, GEO_NODE_EVALUATE_AT_INDEX, 0, "FIELD_AT_INDEX", FieldAtIndex, "Evaluate at Index", "Retrieve data of other elements in the context's geometry")
 DefNode(GeometryNode, GEO_NODE_EVALUATE_ON_DOMAIN, 0, "FIELD_ON_DOMAIN", FieldOnDomain, "Evaluate on Domain", "Retrieve values from a field on a different domain besides the domain from the context")
+DefNode(GeometryNode, GEO_NODE_EXTRAPOLATE_GRID, 0, "EXTRAPOLATE_GRID", ExtrapolateGrid, "Extrapolate Grid", "Extend a grid")
 DefNode(GeometryNode, GEO_NODE_EXTRUDE_MESH, 0, "EXTRUDE_MESH", ExtrudeMesh, "Extrude Mesh", "Generate new vertices, edges, or faces from selected elements and move them based on an offset while keeping them connected by their boundary")
 DefNode(GeometryNode, GEO_NODE_FILL_CURVE, 0, "FILL_CURVE", FillCurve, "Fill Curve", "Generate a mesh on the XY plane with faces on the inside of input curves")
 DefNode(GeometryNode, GEO_NODE_FILLET_CURVE, 0, "FILLET_CURVE", FilletCurve, "Fillet Curve", "Round corners by generating circular arcs on each control point")

@@ -1889,6 +1889,10 @@ typedef struct NodeGeometrySampleVolume {
   int8_t interpolation_mode;
 } NodeGeometrySampleVolume;
 
+typedef struct NodeGeometryExtrapolateGrid {
+  int8_t dummy;
+} NodeGeometryExtrapolateGrid;
+
 typedef struct NodeFunctionCompare {
   /** #NodeCompareOperation */
   int8_t operation;
