@@ -22,7 +22,6 @@
 
 #include "BKE_global.h"
 #include "BKE_volume.hh"
-#include "BKE_volume_grid_ptr.hh"
 #include "BKE_volume_render.hh"
 
 #include "GPU_batch.h"

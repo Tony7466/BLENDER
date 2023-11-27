@@ -5,7 +5,6 @@
 #include "BLI_math_matrix.hh"
 
 #include "BKE_volume.hh"
-#include "BKE_volume_grid_ptr.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "GEO_points_to_volume.hh"

@@ -56,8 +56,6 @@ struct DummyVolumeGrid;
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_volume_grid_ptr.hh"
-
 #  include "DEG_depsgraph.hh"
 #  include "DEG_depsgraph_build.hh"
 

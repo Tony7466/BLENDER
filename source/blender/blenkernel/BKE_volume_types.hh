@@ -8,8 +8,6 @@
  * \ingroup bli
  */
 
-#include "BKE_volume_grid_ptr.hh"
-
 enum VolumeGridType : int8_t {
   VOLUME_GRID_UNKNOWN = 0,
   VOLUME_GRID_BOOLEAN,

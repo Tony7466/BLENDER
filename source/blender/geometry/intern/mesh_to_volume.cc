@@ -8,7 +8,6 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_volume.hh"
-#include "BKE_volume_grid_ptr.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "GEO_mesh_to_volume.hh"
