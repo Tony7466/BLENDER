@@ -1093,11 +1093,13 @@ static void subdiv_mesh_vertex_of_loose_edge(const SubdivForeachContext *foreach
   if (ctx->vert_to_edge_map.is_empty()) {
     std::lock_guard lock{ctx->vert_to_edge_map_mutex};
     if (ctx->vert_to_edge_map.is_empty()) {
-      ctx->vert_to_edge_map = blender::bke::mesh::build_vert_to_edge_map(
-          ctx->coarse_edges,
-          coarse_mesh->totvert,
-          ctx->vert_to_edge_offsets,
-          ctx->vert_to_edge_indices);
+      blender::threading::isolate_task([&]() {
+        ctx->vert_to_edge_map = blender::bke::mesh::build_vert_to_edge_map(
+            ctx->coarse_edges,
+            coarse_mesh->totvert,
+            ctx->vert_to_edge_offsets,
+            ctx->vert_to_edge_indices);
+      });
     }
   }
 
