@@ -83,6 +83,7 @@ static void node_rna(StructRNA *srna)
        0,
        "Dirichlet",
        "Extrapolate from existing values in the input grid"},
+      {0, nullptr, 0, nullptr, nullptr},
   };
   static EnumPropertyItem input_type_items[] = {
       {GEO_NODE_EXTRAPOLATE_GRID_INPUT_SDF, "SDF", 0, "SDF", "Extrapolate an SDF grid"},
@@ -91,6 +92,7 @@ static void node_rna(StructRNA *srna)
        0,
        "Density",
        "Extrapolate a density grid"},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   RNA_def_node_enum(srna,
