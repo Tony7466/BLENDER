@@ -454,7 +454,7 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
   start_frame += seq->sound->offset_time / FPS;
 
   /* The y coordinate for the middle of the strip. */
-  const float y_mid = (strip_ctx->bottom + strip_ctx->strip_content_top) / 2.0f;
+  const float y_zero = (strip_ctx->bottom + strip_ctx->strip_content_top) / 2.0f;
   /* The length from the middle of the strip to the top/bottom. */
   const float y_scale = (strip_ctx->strip_content_top - strip_ctx->bottom) / 2.0f;
   const float samples_per_pixel = samples_per_frame * frames_per_pixel;
@@ -463,8 +463,9 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
   uchar color[4] = {255, 255, 255, 127};
   uchar color_clip[4] = {255, 0, 0, 127};
   uchar color_rms[4] = {255, 255, 255, 204};
-  timeline_ctx->quads->add_line(frame_start, y_mid, frame_end, y_mid, color);
+  timeline_ctx->quads->add_line(frame_start, y_zero, frame_end, y_zero, color);
 
+  float prev_y_mid = y_zero;
   for (int i = 0; i < pixels_to_draw; i++) {
     float timeline_frame = start_frame + i * frames_per_pixel;
     float frame_index = SEQ_give_frame_index(scene, seq, timeline_frame);
@@ -515,26 +516,33 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
       CLAMP_MIN(value_min, -1.0f);
     }
 
-    /* Do not draw the bars below 2px height. */
-    if ((value_max - value_min) * y_scale < timeline_ctx->pixely * 2) {
-      continue;
-    }
-
     float x1 = frame_start + i * frames_per_pixel;
     float x2 = frame_start + (i + 1) * frames_per_pixel;
+    float y_min = y_zero + value_min * y_scale;
+    float y_max = y_zero + value_max * y_scale;
+    float y_mid = (y_max + y_min) * 0.5f;
 
-    /* RMS */
-    timeline_ctx->quads->add_quad(x1,
-                                  y_mid + max_ff(-rms, value_min) * y_scale,
-                                  x2,
-                                  y_mid + min_ff(rms, value_max) * y_scale,
-                                  is_clipping ? color_clip : color_rms);
-    /* Sample */
-    timeline_ctx->quads->add_quad(x1,
-                                  y_mid + value_min * y_scale,
-                                  x2,
-                                  y_mid + value_max * y_scale,
-                                  is_clipping ? color_clip : color);
+    /* If a bar would be below 2px, make it a line. */
+    if (y_max - y_min < timeline_ctx->pixely * 2) {
+      /* If previous segment was also a line of different enough
+       * height, join them. */
+      if (std::abs(y_mid - prev_y_mid) > timeline_ctx->pixely) {
+        float x0 = frame_start + (i - 1) * frames_per_pixel;
+        timeline_ctx->quads->add_line(x0, prev_y_mid, x1, y_mid, color);
+      }
+      timeline_ctx->quads->add_line(x1, y_mid, x2, y_mid, color);
+    }
+    else {
+      float rms_min = y_zero + max_ff(-rms, value_min) * y_scale;
+      float rms_max = y_zero + min_ff(rms, value_max) * y_scale;
+      /* RMS */
+      timeline_ctx->quads->add_quad(
+          x1, rms_min, x2, rms_max, is_clipping ? color_clip : color_rms);
+      /* Sample */
+      timeline_ctx->quads->add_quad(x1, y_min, x2, y_max, is_clipping ? color_clip : color);
+    }
+
+    prev_y_mid = y_mid;
   }
 }
 
