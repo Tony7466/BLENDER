@@ -1759,6 +1759,16 @@ static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_p
   }
 }
 
+static void version_ensure_opaque_bone_colors_recursive(Bone *bone)
+{
+  bone->color.custom.solid[3] = 255;
+  bone->color.custom.select[3] = 255;
+  bone->color.custom.active[3] = 255;
+  LISTBASE_FOREACH (Bone *, child_bone, &bone->childbase) {
+    version_ensure_opaque_bone_colors_recursive(child_bone);
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -2485,6 +2495,34 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       versioning_nodes_dynamic_sockets(*ntree);
     }
   }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 9)) {
+    /* Prevent custom bone colors from having alpha zero.
+     * Part of the fix for issue #115434. */
+    LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
+      LISTBASE_FOREACH (Bone *, bone, &arm->bonebase) {
+        version_ensure_opaque_bone_colors_recursive(bone);
+      }
+      if (arm->edbo) {
+        LISTBASE_FOREACH (EditBone *, ebone, arm->edbo) {
+          ebone->color.custom.solid[3] = 255;
+          ebone->color.custom.select[3] = 255;
+          ebone->color.custom.active[3] = 255;
+        }
+      }
+    }
+    LISTBASE_FOREACH (Object *, obj, &bmain->objects) {
+      if (obj->pose == nullptr) {
+        continue;
+      }
+      LISTBASE_FOREACH (bPoseChannel *, pchan, &obj->pose->chanbase) {
+        pchan->color.custom.solid[3] = 255;
+        pchan->color.custom.select[3] = 255;
+        pchan->color.custom.active[3] = 255;
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
