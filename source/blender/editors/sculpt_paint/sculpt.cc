@@ -5445,12 +5445,17 @@ void SCULPT_flush_update_step(bContext *C, SculptUpdateType update_flags)
        * modifies, it's generally okay.
        *
        * Vertex and face normals are updated later in #BKE_pbvh_update_normals. However, we update
-       * the mesh's bounds eagerly here since they are trivial to access from the PBVH. */
+       * the mesh's bounds eagerly here since they are trivial to access from the PBVH. Updating
+       * the object's evaluated geometry bounding box is necessary because sculpt strokes don't
+       * cause an object reevaluation. */
       BKE_mesh_tag_positions_changed_no_normals(mesh);
 
       Bounds<float3> bounds;
       BKE_pbvh_bounding_box(ob->sculpt->pbvh, bounds.min, bounds.max);
       mesh->bounds_set_eager(bounds);
+      if (ob->runtime->bounds_eval) {
+        ob->runtime->bounds_eval = mesh->bounds_min_max();
+      }
     }
   }
 }

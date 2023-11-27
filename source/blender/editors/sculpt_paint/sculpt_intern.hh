@@ -1519,7 +1519,6 @@ void SCULPT_undo_push_end_ex(Object *ob, const bool use_nested_undo);
 
 void SCULPT_vertcos_to_key(Object *ob, KeyBlock *kb, blender::Span<blender::float3> vertCos);
 
-
 /**
  * Get a screen-space rectangle of the modified area.
  */
