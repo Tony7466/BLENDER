@@ -958,8 +958,8 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
       }
 
       /* the end of the highlight is in the current viewport */
-      if (st->runtime->viewlines && lhlend >= st->top && lhlend <= st->top + st->runtime->viewlines)
-      {
+      if (st->runtime->viewlines && lhlend >= st->top &&
+          lhlend <= st->top + st->runtime->viewlines) {
         /* Speed the progression of the end of the highlight through the scroll-bar. */
         hlend = (((pix_available - pix_bardiff) * lhlend) / ltexth) +
                 (pix_bardiff * (lhlend - st->top) / st->runtime->viewlines);
@@ -1232,7 +1232,8 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
 
       y -= froml * lheight;
 
-      immRecti(pos, x + fromc * st->runtime->cwidth_px - U.pixelsize, y, region->winx, y - lheight);
+      immRecti(
+          pos, x + fromc * st->runtime->cwidth_px - U.pixelsize, y, region->winx, y - lheight);
       y -= lheight;
 
       for (i = froml + 1; i < tol; i++) {
@@ -1454,10 +1455,11 @@ static void draw_brackets(const SpaceText *st, const TextDrawContext *tdc, ARegi
 
   if (viewc >= 0) {
     viewl = txt_get_span(static_cast<TextLine *>(text->lines.first), startl) - st->top + offl;
-    BLF_enable(tdc->font_id, BLF_BOLD);
-    text_font_draw(
-        tdc, x + viewc * st->runtime->cwidth_px, y - viewl * TXT_LINE_HEIGHT(st), &ch, 1, nullptr);
-    BLF_disable(tdc->font_id, BLF_BOLD);
+
+    text_font_draw_character(
+        tdc, x + viewc * st->runtime->cwidth_px, y - viewl * TXT_LINE_HEIGHT(st), ch);
+    text_font_draw_character(
+        tdc, x + viewc * st->runtime->cwidth_px + 1, y - viewl * TXT_LINE_HEIGHT(st), ch);
   }
 
   /* draw closing bracket */
@@ -1468,6 +1470,8 @@ static void draw_brackets(const SpaceText *st, const TextDrawContext *tdc, ARegi
   if (viewc >= 0) {
     viewl = txt_get_span(static_cast<TextLine *>(text->lines.first), endl) - st->top + offl;
 
+    text_font_draw_character(
+        tdc, x + viewc * st->runtime->cwidth_px, y - viewl * TXT_LINE_HEIGHT(st), ch);
     text_font_draw_character(
         tdc, x + viewc * st->runtime->cwidth_px + 1, y - viewl * TXT_LINE_HEIGHT(st), ch);
   }
@@ -1503,8 +1507,8 @@ void draw_text_main(SpaceText *st, ARegion *region)
   const int clip_min_y = -int(st->runtime->lheight_px - 1);
 
   st->runtime->viewlines = (st->runtime->lheight_px) ?
-                              int(region->winy - clip_min_y) / TXT_LINE_HEIGHT(st) :
-                              0;
+                               int(region->winy - clip_min_y) / TXT_LINE_HEIGHT(st) :
+                               0;
 
   text_draw_context_init(st, &tdc);
 
@@ -1590,12 +1594,7 @@ void draw_text_main(SpaceText *st, ARegion *region)
       /* Draw line number. */
       UI_FontThemeColor(tdc.font_id, (tmp == text->sell) ? TH_HILITE : TH_LINENUMBERS);
       SNPRINTF(linenr, "%*d", st->runtime->line_number_display_digits, i + linecount + 1);
-      text_font_draw(&tdc,
-                     TXT_NUMCOL_PAD * st->runtime->cwidth_px,
-                     y,
-                     linenr,
-                     st->runtime->line_number_display_digits,
-                     nullptr);
+      text_font_draw(&tdc, TXT_NUMCOL_PAD * st->runtime->cwidth_px, y, linenr);
       /* Change back to text color. */
       UI_FontThemeColor(tdc.font_id, TH_TEXT);
     }
