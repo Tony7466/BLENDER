@@ -3,12 +3,9 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
-  ../../intern/clog
   ../blender/blenkernel
-  ../blender/depsgraph
   ../blender/editors/include
   ../blender/gpu
-  ../blender/imbuf
   ../blender/io/usd
   ../blender/bmesh
   ../blender/makesrna
@@ -18,7 +15,10 @@ set(INC
 
 set(LIB
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::imbuf
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_windowmanager
 )
@@ -545,6 +545,15 @@ if(WIN32)
       FILES ${LIBDIR}/opencolorio/lib/site-packages/PyOpenColorIO.pyd
       DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
       CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
+    )
+  endif()
+  if(EXISTS ${LIBDIR}/OpenImageDenoise/bin/openimagedenoise.dll) # 4.0
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise.dll
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_core.dll
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_cpu.dll
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_sycl.dll
     )
   endif()
 endif()

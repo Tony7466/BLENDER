@@ -8,6 +8,7 @@
 
 #include <cfloat>
 #include <cmath>
+#include <string>
 
 #include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
@@ -36,9 +37,8 @@
 #include "ED_keyframing.hh"
 #include "MEM_guardedalloc.h"
 #include "RNA_access.hh"
-#include "RNA_define.hh"
 #include "RNA_path.hh"
-#include "RNA_types.hh"
+#include "RNA_prototypes.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -366,39 +366,29 @@ static AnimationEvalContext nla_time_remap(const AnimationEvalContext *anim_eval
   return *anim_eval_context;
 }
 
-/* Insert the specified keyframe value into a single F-Curve. */
-static bool insert_keyframe_value(ReportList *reports,
-                                  PointerRNA *ptr,
-                                  PropertyRNA *prop,
-                                  FCurve *fcu,
-                                  const AnimationEvalContext *anim_eval_context,
-                                  float curval,
-                                  eBezTriple_KeyframeType keytype,
-                                  eInsertKeyFlags flag)
+/* Adjust frame on which to add keyframe, to make it easier to add corrective drivers. */
+static float remap_driver_frame(const AnimationEvalContext *anim_eval_context,
+                                PointerRNA *ptr,
+                                PropertyRNA *prop,
+                                const FCurve *fcu)
 {
-  if (BKE_fcurve_is_keyframable(fcu) == 0) {
-    BKE_reportf(
-        reports,
-        RPT_ERROR,
-        "F-Curve with path '%s[%d]' cannot be keyframed, ensure that it is not locked or sampled, "
-        "and try removing F-Modifiers",
-        fcu->rna_path,
-        fcu->array_index);
-    return false;
-  }
-
   float cfra = anim_eval_context->eval_time;
+  PathResolvedRNA anim_rna;
+  if (RNA_path_resolved_create(ptr, prop, fcu->array_index, &anim_rna)) {
+    cfra = evaluate_driver(&anim_rna, fcu->driver, fcu->driver, anim_eval_context);
+  }
+  else {
+    cfra = 0.0f;
+  }
+  return cfra;
+}
 
-  /* Adjust frame on which to add keyframe, to make it easier to add corrective drivers. */
-  if ((flag & INSERTKEY_DRIVER) && (fcu->driver)) {
-    PathResolvedRNA anim_rna;
-
-    if (RNA_path_resolved_create(ptr, prop, fcu->array_index, &anim_rna)) {
-      cfra = evaluate_driver(&anim_rna, fcu->driver, fcu->driver, anim_eval_context);
-    }
-    else {
-      cfra = 0.0f;
-    }
+/* Insert the specified keyframe value into a single F-Curve. */
+static bool insert_keyframe_value(
+    FCurve *fcu, float cfra, float curval, eBezTriple_KeyframeType keytype, eInsertKeyFlags flag)
+{
+  if (!BKE_fcurve_is_keyframable(fcu)) {
+    return false;
   }
 
   /* Adjust coordinates for cycle aware insertion. */
@@ -507,8 +497,22 @@ bool insert_keyframe_direct(ReportList *reports,
     return false;
   }
 
-  return insert_keyframe_value(
-      reports, &ptr, prop, fcu, anim_eval_context, current_value, keytype, flag);
+  float cfra = anim_eval_context->eval_time;
+  if ((flag & INSERTKEY_DRIVER) && (fcu->driver)) {
+    cfra = remap_driver_frame(anim_eval_context, &ptr, prop, fcu);
+  }
+
+  const bool success = insert_keyframe_value(fcu, cfra, current_value, keytype, flag);
+
+  if (!success) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Failed to insert keys on F-Curve with path '%s[%d]', ensure that it is not "
+                "locked or sampled, and try removing F-Modifiers",
+                fcu->rna_path,
+                fcu->array_index);
+  }
+  return success;
 }
 
 /** Find or create the FCurve based on the given path, and insert the specified value into it. */
@@ -541,20 +545,6 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
 
   const bool is_new_curve = (fcu->totvert == 0);
 
-  /* Set color mode if the F-Curve is new (i.e. without any keyframes). */
-  if (is_new_curve && (flag & INSERTKEY_XYZ2RGB)) {
-    /* For Loc/Rot/Scale and also Color F-Curves, the color of the F-Curve in the Graph Editor,
-     * is determined by the array index for the F-Curve
-     */
-    PropertySubType prop_subtype = RNA_property_subtype(prop);
-    if (ELEM(prop_subtype, PROP_TRANSLATION, PROP_XYZ, PROP_EULER, PROP_COLOR, PROP_COORDS)) {
-      fcu->color_mode = FCURVE_COLOR_AUTO_RGB;
-    }
-    else if (ELEM(prop_subtype, PROP_QUATERNION)) {
-      fcu->color_mode = FCURVE_COLOR_AUTO_YRGB;
-    }
-  }
-
   /* If the curve has only one key, make it cyclic if appropriate. */
   const bool is_cyclic_action = (flag & INSERTKEY_CYCLE_AWARE) && BKE_action_is_cyclic(act);
 
@@ -565,8 +555,21 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
   /* Update F-Curve flags to ensure proper behavior for property type. */
   update_autoflags_fcurve_direct(fcu, prop);
 
-  const bool success = insert_keyframe_value(
-      reports, ptr, prop, fcu, anim_eval_context, curval, keytype, flag);
+  float cfra = anim_eval_context->eval_time;
+  if ((flag & INSERTKEY_DRIVER) && (fcu->driver)) {
+    cfra = remap_driver_frame(anim_eval_context, ptr, prop, fcu);
+  }
+
+  const bool success = insert_keyframe_value(fcu, cfra, curval, keytype, flag);
+
+  if (!success) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Failed to insert keys on F-Curve with path '%s[%d]', ensure that it is not "
+                "locked or sampled, and try removing F-Modifiers",
+                fcu->rna_path,
+                fcu->array_index);
+  }
 
   /* If the curve is new, make it cyclic if appropriate. */
   if (is_cyclic_action && is_new_curve) {
@@ -946,6 +949,119 @@ int clear_keyframe(Main *bmain,
   }
 
   return key_count;
+}
+
+int insert_key_action(Main *bmain,
+                      bAction *action,
+                      PointerRNA *ptr,
+                      const std::string &rna_path,
+                      const float frame,
+                      const Span<float> values,
+                      eInsertKeyFlags insert_key_flag,
+                      eBezTriple_KeyframeType key_type)
+{
+  BLI_assert(bmain != nullptr);
+  BLI_assert(action != nullptr);
+
+  std::string group;
+  if (ptr->type == &RNA_PoseBone) {
+    bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
+    group = pose_channel->name;
+  }
+  else {
+    group = "Object Transforms";
+  }
+
+  int property_array_index = 0;
+  int inserted_keys = 0;
+  for (float value : values) {
+    FCurve *fcurve = action_fcurve_ensure(
+        bmain, action, group.c_str(), ptr, rna_path.c_str(), property_array_index);
+    const bool inserted_key = insert_keyframe_value(
+        fcurve, frame, value, key_type, insert_key_flag);
+    if (inserted_key) {
+      inserted_keys++;
+    }
+    property_array_index++;
+  }
+  return inserted_keys;
+}
+
+static blender::Vector<float> get_keyframe_values(PointerRNA *ptr,
+                                                  PropertyRNA *prop,
+                                                  const bool visual_key)
+{
+  Vector<float> values;
+
+  if (visual_key && visualkey_can_use(ptr, prop)) {
+    /* Visual-keying is only available for object and pchan datablocks, as
+     * it works by keyframing using a value extracted from the final matrix
+     * instead of using the kt system to extract a value.
+     */
+    values = visualkey_get_values(ptr, prop);
+  }
+  else {
+    values = get_rna_values(ptr, prop);
+  }
+  return values;
+}
+
+void insert_key_rna(PointerRNA *rna_pointer,
+                    const blender::Span<std::string> rna_paths,
+                    const float scene_frame,
+                    const eInsertKeyFlags insert_key_flags,
+                    const eBezTriple_KeyframeType key_type,
+                    Main *bmain,
+                    ReportList *reports)
+{
+  ID *id = rna_pointer->owner_id;
+  bAction *action = ED_id_action_ensure(bmain, id);
+  if (action == nullptr) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Could not insert keyframe, as this type does not support animation data (ID = "
+                "%s)",
+                id->name);
+    return;
+  }
+
+  AnimData *adt = BKE_animdata_from_id(id);
+  const float nla_frame = BKE_nla_tweakedit_remap(adt, scene_frame, NLATIME_CONVERT_UNMAP);
+  const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
+
+  int insert_key_count = 0;
+  for (const std::string &rna_path : rna_paths) {
+    PointerRNA ptr;
+    PropertyRNA *prop = nullptr;
+    const bool path_resolved = RNA_path_resolve_property(
+        rna_pointer, rna_path.c_str(), &ptr, &prop);
+    if (!path_resolved) {
+      BKE_reportf(reports,
+                  RPT_ERROR,
+                  "Could not insert keyframe, as this property does not exist (ID = "
+                  "%s, path = %s)",
+                  id->name,
+                  rna_path.c_str());
+      continue;
+    }
+    char *rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
+    Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
+
+    insert_key_count += insert_key_action(bmain,
+                                          action,
+                                          rna_pointer,
+                                          rna_path_id_to_prop,
+                                          nla_frame,
+                                          rna_values.as_span(),
+                                          insert_key_flags,
+                                          key_type);
+
+    MEM_freeN(rna_path_id_to_prop);
+  }
+
+  if (insert_key_count == 0) {
+    BKE_reportf(reports, RPT_ERROR, "Failed to insert any keys");
+  }
 }
 
 }  // namespace blender::animrig
