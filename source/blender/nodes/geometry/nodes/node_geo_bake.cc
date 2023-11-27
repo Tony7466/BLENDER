@@ -82,6 +82,49 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
       *ntree, *node, *node, *link);
 }
 
+const CPPType &get_item_cpp_type(const eNodeSocketDatatype socket_type)
+{
+  const char *socket_idname = nodeStaticSocketType(socket_type, 0);
+  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
+  BLI_assert(typeinfo);
+  BLI_assert(typeinfo->geometry_nodes_cpp_type);
+  return *typeinfo->geometry_nodes_cpp_type;
+}
+
+class LazyFunctionForBakeNode final : public LazyFunction {
+  const bNode &node_;
+  Span<NodeGeometryBakeItem> bake_items_;
+
+ public:
+  LazyFunctionForBakeNode(const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
+      : node_(node)
+  {
+    debug_name_ = "Bake";
+    const NodeGeometryBake &storage = node_storage(node);
+    bake_items_ = {storage.items, storage.items_num};
+
+    MutableSpan<int> lf_index_by_bsocket = lf_graph_info.mapping.lf_index_by_bsocket;
+
+    for (const int i : bake_items_.index_range()) {
+      const NodeGeometryBakeItem &item = bake_items_[i];
+      const bNodeSocket &input_bsocket = node.input_socket(i);
+      const bNodeSocket &output_bsocket = node.output_socket(i);
+      const CPPType &type = get_item_cpp_type(eNodeSocketDatatype(item.socket_type));
+      lf_index_by_bsocket[input_bsocket.index_in_tree()] = inputs_.append_and_get_index_as(
+          item.name, type, lf::ValueUsage::Maybe);
+      lf_index_by_bsocket[output_bsocket.index_in_tree()] = outputs_.append_and_get_index_as(
+          item.name, type);
+    }
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context &context) const final
+  {
+    GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    UNUSED_VARS(user_data);
+    params.set_default_remaining_outputs();
+  }
+};
+
 static void node_rna(StructRNA *srna)
 {
   UNUSED_VARS(srna);
@@ -104,3 +147,15 @@ static void node_register()
 NOD_REGISTER_NODE(node_register)
 
 }  // namespace blender::nodes::node_geo_bake_cc
+
+namespace blender::nodes {
+
+std::unique_ptr<LazyFunction> get_bake_lazy_function(
+    const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
+{
+  namespace file_ns = blender::nodes::node_geo_bake_cc;
+  BLI_assert(node.type == GEO_NODE_BAKE);
+  return std::make_unique<file_ns::LazyFunctionForBakeNode>(node, lf_graph_info);
+}
+
+};  // namespace blender::nodes

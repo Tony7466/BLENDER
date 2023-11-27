@@ -3060,6 +3060,10 @@ struct GeometryNodesLazyFunctionBuilder {
         this->build_index_switch_node(bnode, graph_params);
         break;
       }
+      case GEO_NODE_BAKE: {
+        this->build_bake_node(bnode, graph_params);
+        break;
+      }
       default: {
         if (node_type->geometry_node_execute) {
           this->build_geometry_node(bnode, graph_params);
@@ -3523,6 +3527,28 @@ struct GeometryNodesLazyFunctionBuilder {
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
     return lf_node;
+  }
+
+  void build_bake_node(const bNode &bnode, BuildGraphParams &graph_params)
+  {
+    std::unique_ptr<LazyFunction> lazy_function = get_bake_lazy_function(bnode, *lf_graph_info_);
+    lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
+    scope_.add(std::move(lazy_function));
+
+    for (const int i : bnode.input_sockets().index_range().drop_back(1)) {
+      const bNodeSocket &bsocket = bnode.input_socket(i);
+      lf::InputSocket &lf_socket = lf_node.input(
+          mapping_->lf_index_by_bsocket[bsocket.index_in_tree()]);
+      graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
+      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+    }
+    for (const int i : bnode.output_sockets().index_range().drop_back(1)) {
+      const bNodeSocket &bsocket = bnode.output_socket(i);
+      lf::OutputSocket &lf_socket = lf_node.output(
+          mapping_->lf_index_by_bsocket[bsocket.index_in_tree()]);
+      graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);
+      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+    }
   }
 
   void build_switch_node(const bNode &bnode, BuildGraphParams &graph_params)
