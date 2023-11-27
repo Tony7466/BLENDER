@@ -1,1 +1,2 @@
 Referenced by issue #115444, Regression: Text editor does not correctly display accented keys
+Referenced by pull request #115458, Fix #115444: Revert "Refactor: Text Editor Formatted Output"
