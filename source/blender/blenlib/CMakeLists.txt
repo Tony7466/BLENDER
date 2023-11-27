@@ -14,6 +14,7 @@ set(INC
 set(INC_SYS
   ../../../extern/wcwidth
   ../../../extern/json/include
+  ../../../extern/fmtlib/include
 
   ${EIGEN3_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
@@ -120,6 +121,7 @@ set(SRC
   intern/noise.c
   intern/noise.cc
   intern/offset_indices.cc
+  intern/ordered_edge.cc
   intern/path_util.cc
   intern/polyfill_2d.c
   intern/polyfill_2d_beautify.c
@@ -397,6 +399,7 @@ set(LIB
   PRIVATE bf::intern::guardedalloc
   extern_wcwidth
   PRIVATE bf::intern::atomic
+  PRIVATE extern_fmtlib
   ${ZLIB_LIBRARIES}
   ${ZSTD_LIBRARIES}
 )
