@@ -198,6 +198,40 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
             with self.subTest(prop_name=prop_name):
                 self.do_test_sequence_set(prop_name, [True] * self.get_num_items(prop_name))
 
+    def test_sequence_get_float(self):
+        for prop_name in ("test_float", "test_float_vector"):
+            with self.subTest(prop_name=prop_name):
+                self.do_test_sequence_get(prop_name)
+
+    def test_sequence_set_float(self):
+        for prop_name in ("test_float", "test_float_vector"):
+            with self.subTest(prop_name=prop_name):
+                self.do_test_sequence_set(prop_name)
+
+    def test_sequence_get_int(self):
+        for prop_name in ("test_int", "test_int_vector"):
+            with self.subTest(prop_name=prop_name):
+                self.do_test_sequence_get(prop_name)
+
+    def test_sequence_set_int(self):
+        for prop_name in ("test_int", "test_int_vector"):
+            with self.subTest(prop_name=prop_name):
+                self.do_test_sequence_set(prop_name)
+
+    def test_sequence_get_unsigned_int(self):
+        self.do_test_sequence_get("test_unsigned_int")
+
+    def test_sequence_set_unsigned_int(self):
+        self.do_test_sequence_set("test_unsigned_int")
+
+    @unittest.expectedFailure  # See #92621
+    def test_sequence_get_enum(self):
+        self.do_test_sequence_get("test_enum")
+
+    @unittest.expectedFailure  # See #92621
+    def test_sequence_set_enum(self):
+        self.do_test_sequence_set("test_enum", [1] * self.get_num_items("test_enum"))
+
     def test_buffer_get_bool(self):
         for prop_name in ("test_bool", "test_bool_vector"):
             with self.subTest(prop_name=prop_name):
@@ -222,16 +256,6 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
                 result_sequence = self.get_sequence(prop_name)
                 expected_sequence = buffer
                 self.assertSequenceEqual(result_sequence, expected_sequence)
-
-    def test_sequence_get_float(self):
-        for prop_name in ("test_float", "test_float_vector"):
-            with self.subTest(prop_name=prop_name):
-                self.do_test_sequence_get(prop_name)
-
-    def test_sequence_set_float(self):
-        for prop_name in ("test_float", "test_float_vector"):
-            with self.subTest(prop_name=prop_name):
-                self.do_test_sequence_set(prop_name)
 
     def test_buffer_get_float(self):
         float_types = (np.half, np.single, np.double, np.longdouble)
@@ -275,16 +299,6 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
 
                 self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
                                                                "compatible itemsizes were '%s'" % compatible_itemsizes)
-
-    def test_sequence_get_int(self):
-        for prop_name in ("test_int", "test_int_vector"):
-            with self.subTest(prop_name=prop_name):
-                self.do_test_sequence_get(prop_name)
-
-    def test_sequence_set_int(self):
-        for prop_name in ("test_int", "test_int_vector"):
-            with self.subTest(prop_name=prop_name):
-                self.do_test_sequence_set(prop_name)
 
     def test_buffer_get_int(self):
         for prop_name in ("test_int", "test_int_vector"):
@@ -356,12 +370,6 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
                         compatible_itemsizes.add(buffer.itemsize)
                 self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
                                                                "compatible itemsizes were '%s'" % compatible_itemsizes)
-
-    def test_sequence_get_unsigned_int(self):
-        self.do_test_sequence_get("test_unsigned_int")
-
-    def test_sequence_set_unsigned_int(self):
-        self.do_test_sequence_set("test_unsigned_int")
 
     def test_buffer_get_unsigned_int(self):
         expected_sequence = self.get_sequence("test_unsigned_int")
@@ -437,14 +445,6 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
                 compatible_itemsizes.add(memoryview(buffer).itemsize)
         self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
                                                        "compatible itemsizes were '%s'" % compatible_itemsizes)
-
-    @unittest.expectedFailure  # See #92621
-    def test_sequence_get_enum(self):
-        self.do_test_sequence_get("test_enum")
-
-    @unittest.expectedFailure  # See #92621
-    def test_sequence_set_enum(self):
-        self.do_test_sequence_set("test_enum", [1] * self.get_num_items("test_enum"))
 
     @unittest.expectedFailure  # See #92621
     def test_buffer_get_enum(self):
