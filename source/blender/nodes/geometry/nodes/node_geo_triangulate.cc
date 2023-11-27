@@ -38,7 +38,6 @@ static void geo_triangulate_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
