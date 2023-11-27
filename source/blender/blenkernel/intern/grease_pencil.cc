@@ -1858,7 +1858,7 @@ blender::bke::greasepencil::Drawing *GreasePencil::get_editable_drawing_at(
   return &drawing->wrap();
 }
 
-std::optional<blender::Bounds<blender::float3>> GreasePencil::bounds_min_max() const
+std::optional<blender::Bounds<blender::float3>> GreasePencil::bounds_min_max(const int frame) const
 {
   using namespace blender;
   std::optional<Bounds<float3>> bounds;
@@ -1868,14 +1868,17 @@ std::optional<blender::Bounds<blender::float3>> GreasePencil::bounds_min_max() c
     if (!layer->is_visible()) {
       continue;
     }
-    if (const bke::greasepencil::Drawing *drawing = this->get_drawing_at(
-            layer, this->runtime->eval_frame))
-    {
+    if (const bke::greasepencil::Drawing *drawing = this->get_drawing_at(layer, frame)) {
       const bke::CurvesGeometry &curves = drawing->strokes();
       bounds = bounds::merge(bounds, curves.bounds_min_max());
     }
   }
   return bounds;
+}
+
+std::optional<blender::Bounds<blender::float3>> GreasePencil::bounds_min_max_eval() const
+{
+  return this->bounds_min_max(this->runtime->eval_frame);
 }
 
 blender::Span<const blender::bke::greasepencil::Layer *> GreasePencil::layers() const
