@@ -729,7 +729,7 @@ std::optional<Mesh *> mesh_triangulate(
            src_attributes, attributes, ATTR_DOMAIN_MASK_FACE, propagation_info, {}))
   {
     bke::attribute_math::gather_to_groups(
-        attribute.src, ngons, tris_by_ngon, attribute.dst.span.slice(ngon_tris_range));
+        tris_by_ngon, ngons, attribute.src, attribute.dst.span.slice(ngon_tris_range));
     copy_quad_face_data_to_tris(attribute.src, quads, attribute.dst.span.slice(quad_tris_range));
     array_utils::gather(attribute.src, unselected, attribute.dst.span.slice(unselected_range));
     attribute.dst.finish();
@@ -742,7 +742,7 @@ std::optional<Mesh *> mesh_triangulate(
     MutableSpan dst(static_cast<int *>(CustomData_add_layer(
                         &mesh->face_data, CD_ORIGINDEX, CD_CONSTRUCT, mesh->faces_num)),
                     mesh->faces_num);
-    bke::attribute_math::gather_to_groups(src, ngons, tris_by_ngon, dst.slice(ngon_tris_range));
+    bke::attribute_math::gather_to_groups(tris_by_ngon, ngons, src, dst.slice(ngon_tris_range));
     copy_quad_face_data_to_tris(src, quads, dst.slice(quad_tris_range));
     array_utils::gather(src, unselected, dst.slice(unselected_range));
   }

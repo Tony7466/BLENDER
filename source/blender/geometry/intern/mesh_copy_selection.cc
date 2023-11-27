@@ -4,7 +4,6 @@
 
 #include "DNA_object_types.h"
 
-#include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_listbase.h"
@@ -152,8 +151,6 @@ static void gather_vert_attributes(const Mesh &mesh_src,
                                vert_mask,
                                mesh_dst.attributes_for_write());
       });
-  // if ()
-  // array_utils::gather()
 }
 
 std::optional<Mesh *> mesh_copy_selection(
