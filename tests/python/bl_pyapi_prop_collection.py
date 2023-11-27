@@ -188,6 +188,79 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         else:
             self.assertSequenceEqual(result_sequence, expected_sequence)
 
+    def do_test_buffer_get_int_like(self, prop_name):
+        """
+        Int and enum buffer get tests are the same.
+        """
+        expected_sequence = self.get_sequence(prop_name)
+        num_items = self.get_num_items(prop_name)
+
+        int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
+        compatible_itemsizes = set()
+        for int_type in int_types:
+            buffer = np.zeros(num_items, dtype=int_type)
+            buffer_with_sequence_check = as_sequence_check_buffer(buffer)
+
+            self.collection.foreach_get(prop_name, buffer_with_sequence_check)
+
+            self.assertSequenceEqual(buffer, expected_sequence)
+            if not buffer_with_sequence_check.used_as_sequence:
+                compatible_itemsizes.add(buffer.itemsize)
+        self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
+                                                       "compatible itemsizes were '%s'" % compatible_itemsizes)
+
+        # ssize_t ("n") format is not supported by NumPy.
+        ssize_t_array = (ctypes.c_ssize_t * num_items)()
+        # ctypes exposed its ssize_t arrays as buffers with one of the other integer types with the same size instead of
+        # the "n" format. A memoryview using the "n" format can be created by casting.
+        ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
+        # memoryview objects are not writable as a sequence (only readable), so they are only expected to work when they
+        # are the correct itemsize to be considered a compatible buffer.
+        if ssize_t_array_as_n.itemsize in compatible_itemsizes:
+            self.collection.foreach_get(prop_name, ssize_t_array_as_n)
+
+            self.assertSequenceEqual(ssize_t_array_as_n, expected_sequence)
+        else:
+            with self.assertRaises(TypeError):
+                self.collection.foreach_get(prop_name, ssize_t_array_as_n)
+
+    def do_test_buffer_set_int_like(self, prop_name):
+        """
+        Int and enum buffer get tests are the same.
+        """
+        num_items = self.get_num_items(prop_name)
+
+        # ssize_t ("n") format is not supported by NumPy.
+        ssize_t_array = (ctypes.c_ssize_t * num_items)(*([1] * num_items))
+        # ctypes exposes its ssize_t arrays as buffers with one of the other integer types with the same size
+        # instead of the "n" format. A memoryview using the "n" format can be created by casting.
+        ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
+
+        self.collection.foreach_set(prop_name, ssize_t_array_as_n)
+
+        result_sequence = self.get_sequence(prop_name)
+        expected_sequence = ssize_t_array_as_n
+        self.assertSequenceEqual(result_sequence, expected_sequence)
+        # `memoryview` cannot be subclassed, so it is not possible to check if it was accessed as a buffer or
+        # sequence.
+
+        int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
+        compatible_itemsizes = set()
+        # ssize_t has been done beforehand, so start at 1.
+        for i, int_type in enumerate(int_types):
+            # Ensure each buffer has different contents from the previous buffer.
+            buffer = np.full(num_items, i % 2, dtype=int_type)
+            buffer_with_sequence_check = as_sequence_check_buffer(buffer)
+
+            self.collection.foreach_set(prop_name, buffer_with_sequence_check)
+
+            result_sequence = self.get_sequence(prop_name)
+            self.assertSequenceEqual(result_sequence, buffer)
+            if not buffer_with_sequence_check.used_as_sequence:
+                compatible_itemsizes.add(buffer.itemsize)
+        self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
+                                                       "compatible itemsizes were '%s'" % compatible_itemsizes)
+
     def test_sequence_get_bool(self):
         for prop_name in ("test_bool", "test_bool_vector"):
             with self.subTest(prop_name=prop_name):
@@ -303,73 +376,12 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
     def test_buffer_get_int(self):
         for prop_name in ("test_int", "test_int_vector"):
             with self.subTest(prop_name=prop_name):
-                expected_sequence = self.get_sequence(prop_name)
-                num_items = self.get_num_items(prop_name)
-
-                int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
-                compatible_itemsizes = set()
-                for int_type in int_types:
-                    buffer = np.zeros(num_items, dtype=int_type)
-                    buffer_with_sequence_check = as_sequence_check_buffer(buffer)
-
-                    self.collection.foreach_get(prop_name, buffer_with_sequence_check)
-
-                    self.assertSequenceEqual(buffer, expected_sequence)
-                    if not buffer_with_sequence_check.used_as_sequence:
-                        compatible_itemsizes.add(buffer.itemsize)
-                self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
-                                                               "compatible itemsizes were '%s'" % compatible_itemsizes)
-
-                # ssize_t ("n") format is not supported by NumPy.
-                ssize_t_array = (ctypes.c_ssize_t * num_items)()
-                # ctypes exposed its ssize_t arrays as buffers with one of the other integer types with the same size
-                # instead of the "n" format. A memoryview using the "n" format can be created by casting.
-                ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
-                # memoryview objects are not writable as a sequence (only readable), so they are only expected to work
-                # when they are the correct itemsize to be considered a compatible buffer.
-                if ssize_t_array_as_n.itemsize in compatible_itemsizes:
-                    self.collection.foreach_get(prop_name, ssize_t_array_as_n)
-
-                    self.assertSequenceEqual(ssize_t_array_as_n, expected_sequence)
-                else:
-                    with self.assertRaises(TypeError):
-                        self.collection.foreach_get(prop_name, ssize_t_array_as_n)
+                self.do_test_buffer_get_int_like(prop_name)
 
     def test_buffer_set_int(self):
         for prop_name in ("test_int", "test_int_vector"):
             with self.subTest(prop_name=prop_name):
-                num_items = self.get_num_items(prop_name)
-
-                # ssize_t ("n") format is not supported by NumPy.
-                ssize_t_array = (ctypes.c_ssize_t * num_items)(*self.get_nth_arange(0, num_items))
-                # ctypes exposes its ssize_t arrays as buffers with one of the other integer types with the same size
-                # instead of the "n" format. A memoryview using the "n" format can be created by casting.
-                ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
-
-                self.collection.foreach_set(prop_name, ssize_t_array_as_n)
-
-                result_sequence = self.get_sequence(prop_name)
-                expected_sequence = ssize_t_array_as_n
-                self.assertSequenceEqual(result_sequence, expected_sequence)
-                # `memoryview` cannot be subclassed, so it is not possible to check if it was accessed as a buffer or
-                # sequence.
-
-                int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
-                compatible_itemsizes = set()
-                # ssize_t has been done beforehand, so start at 1.
-                for i, int_type in enumerate(int_types, start=1):
-                    # Ensure each buffer has different contents from the previous buffer.
-                    buffer = self.get_nth_arange(i, num_items, dtype=int_type)
-                    buffer_with_sequence_check = as_sequence_check_buffer(buffer)
-
-                    self.collection.foreach_set(prop_name, buffer_with_sequence_check)
-
-                    result_sequence = self.get_sequence(prop_name)
-                    self.assertSequenceEqual(result_sequence, buffer)
-                    if not buffer_with_sequence_check.used_as_sequence:
-                        compatible_itemsizes.add(buffer.itemsize)
-                self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
-                                                               "compatible itemsizes were '%s'" % compatible_itemsizes)
+                self.do_test_buffer_set_int_like(prop_name)
 
     def test_buffer_get_unsigned_int(self):
         expected_sequence = self.get_sequence("test_unsigned_int")
@@ -448,71 +460,11 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
 
     @unittest.expectedFailure  # See #92621
     def test_buffer_get_enum(self):
-        expected_sequence = self.get_sequence("test_enum")
-        num_items = self.get_num_items("test_enum")
-
-        int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
-        compatible_itemsizes = set()
-        for int_type in int_types:
-            buffer = np.zeros(num_items, dtype=int_type)
-            buffer_with_sequence_check = as_sequence_check_buffer(buffer)
-
-            self.collection.foreach_get("test_enum", buffer_with_sequence_check)
-
-            self.assertSequenceEqual(buffer, expected_sequence)
-            if not buffer_with_sequence_check.used_as_sequence:
-                compatible_itemsizes.add(buffer.itemsize)
-        self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
-                                                       "compatible itemsizes were '%s'" % compatible_itemsizes)
-
-        # ssize_t ("n") format is not supported by NumPy.
-        ssize_t_array = (ctypes.c_ssize_t * num_items)()
-        # ctypes exposed its ssize_t arrays as buffers with one of the other integer types with the same size instead of
-        # the "n" format. A memoryview using the "n" format can be created by casting.
-        ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
-        # memoryview objects are not writable as a sequence (only readable), so they are only expected to work when they
-        # are the correct itemsize to be considered a compatible buffer.
-        if ssize_t_array_as_n.itemsize in compatible_itemsizes:
-            self.collection.foreach_get("test_enum", ssize_t_array_as_n)
-
-            self.assertSequenceEqual(ssize_t_array_as_n, expected_sequence)
-        else:
-            with self.assertRaises(TypeError):
-                self.collection.foreach_get("test_enum", ssize_t_array_as_n)
+        self.do_test_buffer_get_int_like("test_enum")
 
     @unittest.expectedFailure  # See #92621
     def test_buffer_set_enum(self):
-        num_items = self.get_num_items("test_enum")
-
-        # ssize_t ("n") format is not supported by NumPy.
-        ssize_t_array = (ctypes.c_ssize_t * num_items)(*self.get_nth_arange(0, num_items))
-        # ctypes exposed its ssize_t arrays as buffers with one of the other integer types with the same size instead of
-        # the "n" format. A memoryview using the "n" format can be created by casting.
-        ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
-
-        self.collection.foreach_set("test_enum", ssize_t_array_as_n)
-
-        result_sequence = self.get_sequence("test_enum")
-        expected_sequence = ssize_t_array_as_n
-        self.assertSequenceEqual(result_sequence, expected_sequence)
-        # `memoryview` cannot be subclassed, so it is not possible to check if it was accessed as a buffer or
-        # sequence.
-
-        int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
-        compatible_itemsizes = set()
-        for i, int_type in enumerate(int_types, start=1):
-            # Ensure each buffer has different contents from the previous buffer.
-            buffer = self.get_nth_arange(i, num_items, dtype=int_type)
-            buffer_with_sequence_check = as_sequence_check_buffer(buffer)
-
-            self.collection.foreach_set("test_enum", buffer_with_sequence_check)
-
-            result_sequence = self.get_sequence("test_enum")
-            self.assertSequenceEqual(result_sequence, buffer)
-            if not buffer_with_sequence_check.used_as_sequence:
-                compatible_itemsizes.add(buffer.itemsize)
-        self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
-                                                       "compatible itemsizes were '%s'" % compatible_itemsizes)
+        self.do_test_buffer_set_int_like("test_enum")
 
 
 if __name__ == '__main__':
