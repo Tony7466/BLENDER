@@ -67,6 +67,11 @@ static void node_geo_exec(GeoNodeExecParams params)
       storage.fast_sweeping_region);
   const eCustomDataType data_type = eCustomDataType(storage.data_type);
 
+  const bke::GVolumeGridPtr grid = grids::extract_grid_input(params, "Grid", data_type);
+  grids::set_output_grid(params, "Grid", data_type, grid);
+
+  UNUSED_VARS(mode, input_type, fast_sweeping_region);
+
   params.set_default_remaining_outputs();
 #else
   params.set_default_remaining_outputs();

@@ -155,6 +155,15 @@ BaseSocketDeclarationBuilder &declare_grid_type_output(NodeDeclarationBuilder &b
                                                        eCustomDataType type,
                                                        StringRef name);
 
+bke::GVolumeGridPtr extract_grid_input(GeoNodeExecParams params,
+                                       StringRef name,
+                                       const eCustomDataType data_type);
+
+void set_output_grid(GeoNodeExecParams params,
+                     StringRef name,
+                     eCustomDataType data_type,
+                     const bke::GVolumeGridPtr &grid);
+
 #ifdef WITH_OPENVDB
 openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
     GeometryNodeGridNeighborTopology neighbors_mode);
