@@ -1357,14 +1357,18 @@ static void draw_seq_timeline_channels(TimelineDrawContext *ctx)
   immUnbindProgram();
 }
 
-/* Get visible strips in following order:
- * Unselected strips, selected strips and finally selected active strip. */
-static blender::Vector<Sequence *> visible_strips_ordered_get(TimelineDrawContext *timeline_ctx)
+/* Get visible strips into two sets: unselected strips, and selected strips
+ * (with selected active being the last in there). This is to make
+ * sure that visually selected are always "on top" of others. It matters
+ * while selection is being dragged over other strips. */
+static void visible_strips_ordered_get(TimelineDrawContext *timeline_ctx,
+                                       blender::Vector<StripDrawContext> &r_unselected,
+                                       blender::Vector<StripDrawContext> &r_selected)
 {
   Sequence *act_seq = SEQ_select_active_get(timeline_ctx->scene);
   blender::Vector<Sequence *> strips = sequencer_visible_strips_get(timeline_ctx->C);
-  blender::Vector<Sequence *> strips_ordered;
-  strips_ordered.reserve(strips.size());
+  r_unselected.clear();
+  r_selected.clear();
   const bool act_seq_is_selected = act_seq != nullptr && (act_seq->flag & SELECT) != 0;
 
   if (act_seq_is_selected) {
@@ -1372,40 +1376,36 @@ static blender::Vector<Sequence *> visible_strips_ordered_get(TimelineDrawContex
   }
 
   for (Sequence *seq : strips) {
-    if ((seq->flag & SELECT) == 0) {
-      strips_ordered.append(seq);
+    /* Selected active will be added last. */
+    if (act_seq_is_selected && seq == act_seq) {
+      continue;
     }
-  }
-  for (Sequence *seq : strips) {
-    if ((seq->flag & SELECT) != 0) {
-      strips_ordered.append(seq);
-    }
-  }
-  if (act_seq_is_selected) {
-    strips_ordered.append(act_seq);
-  }
 
-  return strips_ordered;
+    StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, seq);
+    if ((seq->flag & SELECT) == 0) {
+      r_unselected.append(strip_ctx);
+    }
+    else {
+      r_selected.append(strip_ctx);
+    }
+  }
+  /* Add selected active, if any. */
+  if (act_seq_is_selected) {
+    StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, act_seq);
+    r_selected.append(strip_ctx);
+  }
 }
 
-static void draw_seq_strips(TimelineDrawContext *timeline_ctx)
+static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
+                            const blender::Vector<StripDrawContext> &strips)
 {
-  if (timeline_ctx->ed == nullptr) {
-    return;
-  }
-
-  blender::Vector<Sequence *> strips = visible_strips_ordered_get(timeline_ctx);
   if (strips.is_empty()) {
     return;
-  }
-  blender::Vector<StripDrawContext> strip_contexts(strips.size());
-  for (const int i : strips.index_range()) {
-    strip_contexts[i] = strip_draw_context_get(timeline_ctx, strips[i]);
   }
 
   /* Draw parts of strips below thumbnails. */
   GPU_blend(GPU_BLEND_ALPHA);
-  for (const StripDrawContext &strip_ctx : strip_contexts) {
+  for (const StripDrawContext &strip_ctx : strips) {
     draw_strip_background(timeline_ctx, &strip_ctx);
     draw_strip_color_band(timeline_ctx, &strip_ctx);
     draw_strip_offsets(timeline_ctx, &strip_ctx);
@@ -1416,7 +1416,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx)
   GPU_blend(GPU_BLEND_NONE);
 
   /* Draw all thumbnails. */
-  for (const StripDrawContext &strip_ctx : strip_contexts) {
+  for (const StripDrawContext &strip_ctx : strips) {
     draw_seq_strip_thumbnail(timeline_ctx->v2d,
                              timeline_ctx->C,
                              timeline_ctx->scene,
@@ -1429,7 +1429,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx)
 
   /* Draw parts of strips above thumbnails. */
   GPU_blend(GPU_BLEND_ALPHA);
-  for (const StripDrawContext &strip_ctx : strip_contexts) {
+  for (const StripDrawContext &strip_ctx : strips) {
     draw_seq_fcurve_overlay(timeline_ctx, &strip_ctx);
     draw_seq_waveform_overlay(timeline_ctx, &strip_ctx);
   }
@@ -1437,11 +1437,11 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx)
   GPU_blend(GPU_BLEND_NONE);
 
   /* Locked state is drawn separately since it uses a different shader. */
-  draw_seq_locked(timeline_ctx, strip_contexts);
+  draw_seq_locked(timeline_ctx, strips);
 
   /* Draw the rest. */
   GPU_blend(GPU_BLEND_ALPHA);
-  for (const StripDrawContext &strip_ctx : strip_contexts) {
+  for (const StripDrawContext &strip_ctx : strips) {
     draw_seq_invalid(timeline_ctx, &strip_ctx);
     draw_effect_inputs_highlight(timeline_ctx, &strip_ctx);
     draw_multicam_highlight(timeline_ctx, &strip_ctx);
@@ -1449,11 +1449,32 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx)
     draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_LEFTHANDLE);
     draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_RIGHTHANDLE);
     draw_seq_outline(timeline_ctx, &strip_ctx);
-    draw_seq_text_overlay(timeline_ctx, &strip_ctx);
   }
   timeline_ctx->quads->draw();
   GPU_blend(GPU_BLEND_NONE);
+}
 
+static void draw_seq_strips(TimelineDrawContext *timeline_ctx)
+{
+  if (timeline_ctx->ed == nullptr) {
+    return;
+  }
+
+  blender::Vector<StripDrawContext> unselected, selected;
+  visible_strips_ordered_get(timeline_ctx, unselected, selected);
+  draw_seq_strips(timeline_ctx, unselected);
+  draw_seq_strips(timeline_ctx, selected);
+
+  /* Draw text overlay parts in the opposite order: first selected set, then
+   * unselected (UI_view2d_text_cache_add_rectf adds new text in front of
+   * other entries!). This is to make sure selected strip labels are on top
+   * of others while they are being dragged over. */
+  for (const StripDrawContext &strip_ctx : selected) {
+    draw_seq_text_overlay(timeline_ctx, &strip_ctx);
+  }
+  for (const StripDrawContext &strip_ctx : unselected) {
+    draw_seq_text_overlay(timeline_ctx, &strip_ctx);
+  }
   UI_view2d_text_cache_draw(timeline_ctx->region);
 }
 
