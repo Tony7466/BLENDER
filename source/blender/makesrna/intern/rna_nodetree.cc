@@ -10,6 +10,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <utility>
+
 #include "BLI_function_ref.hh"
 #include "BLI_linear_allocator.hh"
 #include "BLI_math_rotation.h"
