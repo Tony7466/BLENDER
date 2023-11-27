@@ -3645,7 +3645,7 @@ void BKE_object_dimensions_set_ex(Object *ob,
                                   const float ob_scale_orig[3],
                                   const float ob_obmat_orig[4][4])
 {
-  if (const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(ob)) {
+  if (const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_eval_cached_get(ob)) {
     float3 len = bounds->max - bounds->min;
 
     for (int i = 0; i < 3; i++) {
