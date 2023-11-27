@@ -51,10 +51,10 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_asset.h"
+#include "BKE_asset.hh"
 #include "BKE_bpath.h"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_cryptomatte.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
@@ -68,7 +68,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_interface.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_preview_image.hh"
 #include "BKE_type_conversions.hh"
@@ -788,6 +788,9 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
     if (node->type == GEO_NODE_REPEAT_OUTPUT) {
       blender::nodes::RepeatItemsAccessor::blend_write(writer, *node);
     }
+    if (node->type == GEO_NODE_INDEX_SWITCH) {
+      blender::nodes::IndexSwitchItemsAccessor::blend_write(writer, *node);
+    }
   }
 
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
@@ -888,29 +891,6 @@ static void direct_link_node_socket_list(BlendDataReader *reader, ListBase *sock
   }
 }
 
-/* Build a set of built-in node types to check for known types. */
-static blender::Set<int> get_known_node_types_set()
-{
-  blender::Set<int> result;
-  NODE_TYPES_BEGIN (ntype) {
-    result.add(ntype->type);
-  }
-  NODE_TYPES_END;
-  return result;
-}
-
-static bool can_read_node_type(const int type)
-{
-  /* Can always read custom node types. */
-  if (type == NODE_CUSTOM) {
-    return true;
-  }
-
-  /* Check known built-in types. */
-  static blender::Set<int> known_types = get_known_node_types_set();
-  return known_types.contains(type);
-}
-
 void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
 {
   /* Special case for this pointer, do not rely on regular `lib_link` process here. Avoids needs
@@ -968,18 +948,6 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
 
     BLO_read_data_address(reader, &node->prop);
     IDP_BlendDataRead(reader, &node->prop);
-
-    /* Unknown built-in node types cannot be read reliably, so replace them with 'undefined' type
-     * nodes. This keeps links and socket names but discards storage an other type-specific data.
-     */
-    if (!can_read_node_type(node->type)) {
-      node->type = NODE_CUSTOM;
-      /* This type name is arbitrary, it just has to be unique enough to not match a future node
-       * idname. Includes the old type identifier for debugging purposes. */
-      const std::string old_idname = node->idname;
-      BLI_snprintf(node->idname, sizeof(node->idname), "Undefined[%s]", old_idname.c_str());
-      continue;
-    }
 
     if (node->type == CMP_NODE_MOVIEDISTORTION) {
       /* Do nothing, this is runtime cache and hence handled by generic code using
@@ -1060,6 +1028,10 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
         }
         case GEO_NODE_REPEAT_OUTPUT: {
           blender::nodes::RepeatItemsAccessor::blend_read_data(reader, *node);
+          break;
+        }
+        case GEO_NODE_INDEX_SWITCH: {
+          blender::nodes::IndexSwitchItemsAccessor::blend_read_data(reader, *node);
           break;
         }
 
