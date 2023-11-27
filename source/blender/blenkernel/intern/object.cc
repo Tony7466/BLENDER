@@ -3619,29 +3619,24 @@ std::optional<Bounds<float3>> BKE_object_evaluated_geometry_bounds(const Object 
  * \warning Setting dimensions is prone to feedback loops in evaluation.
  * \{ */
 
-static void boundbox_to_dimensions(const Object *ob,
-                                   const std::optional<Bounds<float3>> bounds,
-                                   float r_vec[3])
+static float3 boundbox_to_dimensions(const Object *ob, const std::optional<Bounds<float3>> bounds)
 {
-  if (bounds) {
-    float3 scale;
-    mat4_to_size(scale, ob->object_to_world);
-    copy_v3_v3(r_vec, bounds->max - bounds->min);
+  using namespace blender;
+  if (!bounds) {
+    return float3(0);
   }
-  else {
-    zero_v3(r_vec);
-  }
+  const float3 scale = math::to_scale(float4x4(ob->object_to_world));
+  return scale * (bounds->max - bounds->min);
 }
 
 void BKE_object_dimensions_get(Object *ob, float r_vec[3])
 {
-  boundbox_to_dimensions(ob, BKE_object_boundbox_get(ob), r_vec);
+  copy_v3_v3(r_vec, boundbox_to_dimensions(ob, BKE_object_boundbox_get(ob)));
 }
 
 void BKE_object_dimensions_eval_cached_get(Object *ob, float r_vec[3])
 {
-  const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_eval_cached_get(ob);
-  boundbox_to_dimensions(ob, bounds, r_vec);
+  copy_v3_v3(r_vec, boundbox_to_dimensions(ob, BKE_object_boundbox_eval_cached_get(ob)));
 }
 
 void BKE_object_dimensions_set_ex(Object *ob,
