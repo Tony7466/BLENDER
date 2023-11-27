@@ -3584,7 +3584,7 @@ std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(const Ob
     case OB_VOLUME:
       return BKE_volume_min_max(static_cast<const Volume *>(ob->data));
     case OB_GREASE_PENCIL:
-      return static_cast<const GreasePencil *>(ob->data)->bounds_min_max();
+      return static_cast<const GreasePencil *>(ob->data)->bounds_min_max_eval();
   }
   return std::nullopt;
 }
