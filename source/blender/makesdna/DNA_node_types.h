@@ -1915,6 +1915,21 @@ typedef struct NodeShaderMix {
   char _pad[3];
 } NodeShaderMix;
 
+typedef struct NodeGeometryBakeItem {
+  char *name;
+  int16_t socket_type;
+  int16_t attribute_domain;
+  int identifier;
+} NodeGeometryBakeItem;
+
+typedef struct NodeGeometryBake {
+  NodeGeometryBakeItem *items;
+  int items_num;
+  int next_identifier;
+  int active_index;
+  char _pad[4];
+} NodeGeometryBake;
+
 /* script node mode */
 enum {
   NODE_SCRIPT_INTERNAL = 0,
