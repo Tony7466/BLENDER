@@ -12,7 +12,6 @@ set(INC
   ../blenkernel
   ../bmesh
   ../draw
-  ../imbuf
   ../makesrna
 
   # For theme color access.
@@ -29,7 +28,6 @@ set(INC
   # For node muting stuff.
   ../nodes
 
-  ../../../intern/clog
   ../../../intern/ghost
   ../../../intern/mantaflow/extern
 )
@@ -231,6 +229,7 @@ set(VULKAN_SRC
   vulkan/vk_state_manager.cc
   vulkan/vk_storage_buffer.cc
   vulkan/vk_texture.cc
+  vulkan/vk_timeline_semaphore.cc
   vulkan/vk_uniform_buffer.cc
   vulkan/vk_vertex_attribute_object.cc
   vulkan/vk_vertex_buffer.cc
@@ -271,6 +270,7 @@ set(VULKAN_SRC
   vulkan/vk_state_manager.hh
   vulkan/vk_storage_buffer.hh
   vulkan/vk_texture.hh
+  vulkan/vk_timeline_semaphore.hh
   vulkan/vk_uniform_buffer.hh
   vulkan/vk_vertex_attribute_object.hh
   vulkan/vk_vertex_buffer.hh
@@ -329,7 +329,9 @@ set(METAL_SRC
 set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::imbuf
   PRIVATE bf::intern::atomic
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
 
@@ -852,6 +854,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     bf_intern_ghost
     ${PLATFORM_LINKLIBS}
     PRIVATE bf::intern::guardedalloc
+    PRIVATE bf::imbuf
   )
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 
