@@ -76,6 +76,7 @@ set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
 )
 
