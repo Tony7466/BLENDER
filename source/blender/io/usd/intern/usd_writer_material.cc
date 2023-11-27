@@ -129,8 +129,6 @@ static bNodeLink *traverse_channel(bNodeSocket *input, short target_type);
 
 void set_normal_texture_range(pxr::UsdShadeShader &usd_shader, const InputSpec &input_spec);
 
-<<<<<<< HEAD
-=======
 /* Create an input on the given shader with name and type
  * provided by the InputSpec and assign the given value to the
  * input.  Parameters T1 and T2 indicate the Blender and USD
@@ -145,7 +143,6 @@ void create_input(pxr::UsdShadeShader &shader,
   shader.CreateInput(spec.input_name, spec.input_type).Set(scale * T2(cast_value->value));
 }
 
->>>>>>> origin/main
 static void create_usd_preview_surface_material(const USDExporterContext &usd_export_context,
                                                 Material *material,
                                                 pxr::UsdShadeMaterial &usd_material,
@@ -275,9 +272,15 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
         }
       }
 
-      /* Look for a connected uv node. */
-      create_uvmap_shader(
-          usd_export_context, input_node, usd_material, usd_shader, default_uv_sampler);
+      /* Look for a connected uvmap node. */
+      if (bNodeSocket *socket = nodeFindSocket(input_node, SOCK_IN, "Vector")) {
+        if (pxr::UsdShadeInput st_input = usd_shader.CreateInput(usdtokens::st,
+                                                                 pxr::SdfValueTypeNames->Float2))
+        {
+          create_uv_input(
+              usd_export_context, socket, usd_material, st_input, default_uv_sampler, reports);
+        }
+      }
 
       /* Set opacityThreshold if an alpha cutout is used. */
       if ((input_spec.input_name == usdtokens::opacity) &&

@@ -76,7 +76,6 @@ static const pxr::TfToken wrapT("wrapT", pxr::TfToken::Immortal);
 
 /* Transform 2d names. */
 static const pxr::TfToken rotation("rotation", pxr::TfToken::Immortal);
-static const pxr::TfToken scale("scale", pxr::TfToken::Immortal);
 static const pxr::TfToken translation("translation", pxr::TfToken::Immortal);
 
 /* USD shader names. */
