@@ -53,13 +53,13 @@ class BoundaryFieldInput final : public bke::MeshFieldInput {
 
     Array<bool> boundary(mesh.totedge, false);
 
-    Array<std::atomic_int> edge_states(mesh.totedge);
+    Array<std::atomic<int>> edge_states(mesh.totedge);
     /* State is index of face or one of invalid values: */
-    const static constexpr int no_face_yet = -1;
-    const static constexpr int no_more_face = -2;
+    static constexpr int no_face_yet = -1;
+    static constexpr int is_boundary = -2;
 
     threading::parallel_for(edge_states.index_range(), 4096, [&](const IndexRange range) {
-      for (std::atomic_int &v : edge_states.as_mutable_span().slice(range)) {
+      for (std::atomic<int> &v : edge_states.as_mutable_span().slice(range)) {
         v.store(no_face_yet, std::memory_order_relaxed);
       }
     });
@@ -69,14 +69,14 @@ class BoundaryFieldInput final : public bke::MeshFieldInput {
       for (const int face_i : range) {
         const int group_id = faces_group_id[face_i];
         for (const int edge_i : face_edges[face_i]) {
-          std::atomic_int &edge_state = edge_states[edge_i];
+          std::atomic<int> &edge_state = edge_states[edge_i];
           while (true) {
-            int edge_state_v = edge_state.load(std::memory_order_relaxed);
-            switch (edge_state_v) {
-              case no_more_face:
+            int edge_state_value = edge_state.load(std::memory_order_relaxed);
+            switch (edge_state_value) {
+              case is_boundary:
                 break;
               case no_face_yet: {
-                if (edge_state.compare_exchange_weak(edge_state_v,
+                if (edge_state.compare_exchange_weak(edge_state_value,
                                                      face_i,
                                                      std::memory_order_relaxed,
                                                      std::memory_order_relaxed))
@@ -86,11 +86,11 @@ class BoundaryFieldInput final : public bke::MeshFieldInput {
                 continue;
               }
               default: {
-                if (faces_group_id[edge_state_v] == group_id) {
+                if (faces_group_id[edge_state_value] == group_id) {
                   break;
                 }
-                if (edge_state.compare_exchange_weak(edge_state_v,
-                                                     no_more_face,
+                if (edge_state.compare_exchange_weak(edge_state_value,
+                                                     is_boundary,
                                                      std::memory_order_release,
                                                      std::memory_order_release))
                 {
