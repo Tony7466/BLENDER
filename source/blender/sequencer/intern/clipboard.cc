@@ -78,26 +78,26 @@ static void set_strip_scene_to_null_recursive(Sequence *seq)
 static void sequencer_copy_animation_listbase(Scene *scene_src,
                                               Sequence *seq_dst,
                                               ListBase *clipboard_dst,
-                                              ListBase *fcurve_base)
+                                              ListBase *fcurve_base_src)
 {
   /* Add curves for strips inside meta strip. */
   if (seq_dst->type == SEQ_TYPE_META) {
     LISTBASE_FOREACH (Sequence *, meta_child, &seq_dst->seqbase) {
-      sequencer_copy_animation_listbase(scene_src, meta_child, clipboard_dst, fcurve_base);
+      sequencer_copy_animation_listbase(scene_src, meta_child, clipboard_dst, fcurve_base_src);
     }
   }
 
-  GSet *fcurves = SEQ_fcurves_by_strip_get(seq_dst, fcurve_base);
-  if (fcurves == nullptr) {
+  GSet *fcurves_src = SEQ_fcurves_by_strip_get(seq_dst, fcurve_base_src);
+  if (fcurves_src == nullptr) {
     return;
   }
 
-  GSET_FOREACH_BEGIN (FCurve *, fcu, fcurves) {
-    BLI_addtail(clipboard_dst, BKE_fcurve_copy(fcu));
+  GSET_FOREACH_BEGIN (FCurve *, fcu_src, fcurves_src) {
+    BLI_addtail(clipboard_dst, BKE_fcurve_copy(fcu_src));
   }
   GSET_FOREACH_END();
 
-  BLI_gset_free(fcurves, nullptr);
+  BLI_gset_free(fcurves_src, nullptr);
 }
 
 static void sequencer_copy_animation(Scene *scene_src,
@@ -142,17 +142,17 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
   scene_dst->r.cfra = scene_src->r.cfra;
   Sequence *active_seq_src = SEQ_select_active_get(scene_src);
   if (active_seq_src) {
-    LISTBASE_FOREACH (Sequence *, seq_dst, &scene_dst->ed->seqbase) {
-      if (STREQ(seq_dst->name, active_seq_src->name)) {
-        SEQ_select_active_set(scene_dst, seq_dst);
-      }
+    Sequence *seq_dst = static_cast<Sequence *>(
+        BLI_findstring(&scene_dst->ed->seqbase, active_seq_src->name, offsetof(Sequence, name)));
+    if (seq_dst) {
+      SEQ_select_active_set(scene_dst, seq_dst);
     }
   }
 
   ListBase fcurves_dst = {nullptr, nullptr};
   ListBase drivers_dst = {nullptr, nullptr};
   LISTBASE_FOREACH (Sequence *, seq_dst, &scene_dst->ed->seqbase) {
-    /* Null and scene pointers in scene strips. We don't want to copy whole scenes.
+    /* Nullify all scene pointers in scene strips. We don't want to copy whole scenes.
      * We have to come up with a proper idea of how to copy and paste scene strips.
      */
     set_strip_scene_to_null_recursive(seq_dst);
@@ -251,7 +251,7 @@ static int paste_strips_data_ids_reuse_or_add(LibraryIDLinkCallbackData *cb_data
        * Don't copy over any new datablocks, reuse the data block that exists.
        */
       if (id_local->lib != nullptr && id->lib != nullptr) {
-        /* Check if they are using the same the same filepath. */
+        /* Check if they are using the same filepath. */
         if (STREQ(id_local->lib->filepath_abs, id->lib->filepath_abs)) {
           BKE_id_remapper_add(paste_data->id_remapper, id, id_local);
         }
@@ -320,7 +320,7 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
   }
 
   if (!paste_scene || !paste_scene->ed) {
-    BKE_report(op->reports, RPT_INFO, "No clipboard scene to paste VSE data from");
+    BKE_report(op->reports, RPT_ERROR, "No clipboard scene to paste VSE data from");
     BKE_main_free(temp_bmain);
     return OPERATOR_CANCELLED;
   }
