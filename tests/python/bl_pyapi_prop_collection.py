@@ -110,7 +110,7 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
 
         Compares using unittest.TestCase.assertAlmostEqual().
         """
-        # Replace any numpy arrays with lists so we can compare with `==`.
+        # Replace any numpy arrays with lists, so they can be compared with `==`.
         seq1 = seq1.tolist() if isinstance(seq1, np.ndarray) else seq1
         seq2 = seq2.tolist() if isinstance(seq2, np.ndarray) else seq2
         if not seq1 == seq2:
@@ -167,7 +167,9 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
     def do_test_sequence_get(self, prop_name):
         expected_sequence = self.get_sequence(prop_name)
         sequence = [None] * self.get_num_items(prop_name)
+
         self.collection.foreach_get(prop_name, sequence)
+
         if "float" in prop_name:
             self.assertSequenceAlmostEqual(sequence, expected_sequence)
         else:
@@ -176,7 +178,9 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
     def do_test_sequence_set(self, prop_name, sequence=None):
         if sequence is None:
             sequence = range(self.get_num_items(prop_name))
+
         self.collection.foreach_set(prop_name, sequence)
+
         result_sequence = self.get_sequence(prop_name)
         expected_sequence = sequence
         if "float" in prop_name:
@@ -200,7 +204,9 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
                 expected_sequence = self.get_sequence(prop_name)
                 buffer = np.full(self.get_num_items(prop_name), True, dtype=bool)
                 buffer_with_sequence_check = as_sequence_check_buffer(buffer)
+
                 self.collection.foreach_get(prop_name, buffer_with_sequence_check)
+
                 self.assertSequenceFallbackNotUsed(buffer_with_sequence_check)
                 self.assertSequenceEqual(buffer, expected_sequence)
 
@@ -209,7 +215,9 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
             with self.subTest(prop_name=prop_name):
                 buffer = np.full(self.get_num_items(prop_name), True, dtype=bool)
                 buffer_with_sequence_check = as_sequence_check_buffer(buffer)
+
                 self.collection.foreach_set(prop_name, buffer_with_sequence_check)
+
                 self.assertSequenceFallbackNotUsed(buffer_with_sequence_check)
                 result_sequence = self.get_sequence(prop_name)
                 expected_sequence = buffer
@@ -284,7 +292,6 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
                 expected_sequence = self.get_sequence(prop_name)
                 num_items = self.get_num_items(prop_name)
 
-                # The remaining int types we can check if they were accessed as a buffer or a sequence.
                 int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
                 compatible_itemsizes = set()
                 for int_type in int_types:
@@ -299,13 +306,13 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
                 self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
                                                                "compatible itemsizes were '%s'" % compatible_itemsizes)
 
-                # ssize_t ('n') format is not supported by NumPy.
+                # ssize_t ("n") format is not supported by NumPy.
                 ssize_t_array = (ctypes.c_ssize_t * num_items)()
-                # ctypes exports its ssize_t arrays as one of the other integer types with the same size instead of 'n',
-                # but we can cast it to an 'n' format memoryview.
-                ssize_t_array_as_n = memoryview(ssize_t_array).cast('b').cast('n')
-                # memoryview objects are not writable as a sequence (only readable), so we only expect them to work when
-                # they are a compatible buffer.
+                # ctypes exposed its ssize_t arrays as buffers with one of the other integer types with the same size
+                # instead of the "n" format. A memoryview using the "n" format can be created by casting.
+                ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
+                # memoryview objects are not writable as a sequence (only readable), so they are only expected to work
+                # when they are the correct itemsize to be considered a compatible buffer.
                 if ssize_t_array_as_n.itemsize in compatible_itemsizes:
                     self.collection.foreach_get(prop_name, ssize_t_array_as_n)
 
@@ -319,21 +326,20 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
             with self.subTest(prop_name=prop_name):
                 num_items = self.get_num_items(prop_name)
 
-                # ssize_t ('n') format is not supported by NumPy.
+                # ssize_t ("n") format is not supported by NumPy.
                 ssize_t_array = (ctypes.c_ssize_t * num_items)(*self.get_nth_arange(0, num_items))
-                # ctypes exports its ssize_t arrays as one of the other integer types of the same size instead of 'n',
-                # but we can cast it to an 'n' format memoryview.
-                ssize_t_array_as_n = memoryview(ssize_t_array).cast('b').cast('n')
+                # ctypes exposes its ssize_t arrays as buffers with one of the other integer types with the same size
+                # instead of the "n" format. A memoryview using the "n" format can be created by casting.
+                ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
 
                 self.collection.foreach_set(prop_name, ssize_t_array_as_n)
 
                 result_sequence = self.get_sequence(prop_name)
                 expected_sequence = ssize_t_array_as_n
                 self.assertSequenceEqual(result_sequence, expected_sequence)
-                # Unfortunately, memoryview cannot be subclassed, so we cannot check if it was accessed as a buffer or
+                # `memoryview` cannot be subclassed, so it is not possible to check if it was accessed as a buffer or
                 # sequence.
 
-                # For the remaining int types we can check if they were accessed as a buffer or a sequence.
                 int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
                 compatible_itemsizes = set()
                 # ssize_t has been done beforehand, so start at 1.
@@ -361,7 +367,6 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         expected_sequence = self.get_sequence("test_unsigned_int")
         num_items = self.get_num_items("test_unsigned_int")
 
-        # For the remaining uint types we can check if they were accessed as a buffer or a sequence.
         np_uint_types = (np.ubyte, np.ushort, np.uintc, np.uint, np.ulonglong)
         uint_buffers = [np.zeros(num_items, dtype=uint_type) for uint_type in np_uint_types]
         # void* ('P') format arrays are not supported by NumPy but are supported by ctypes.
@@ -382,11 +387,11 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
 
         # size_t ('N') format is not supported by NumPy.
         size_t_array_type = ctypes.c_size_t * num_items
-        # ctypes exports its size_t arrays as one of the other integer types instead of 'N', but we can cast it to an
-        # 'N' format memoryview.
-        size_t_array_as_n = memoryview(size_t_array_type()).cast('b').cast('N')
-        # memoryview objects are not writable as a sequence (only readable), so we only expect them to work when
-        # they are a compatible buffer.
+        # ctypes exposed its size_t arrays as buffers with one of the other integer types with the same size instead of
+        # the "N" format. A memoryview using the "N" format can be created by casting.
+        size_t_array_as_n = memoryview(size_t_array_type()).cast("b").cast("N")
+        # memoryview objects are not writable as a sequence (only readable), so they are only expected to work when they
+        # are the correct itemsize to be considered a compatible buffer.
         if size_t_array_as_n.itemsize in compatible_itemsizes:
             self.collection.foreach_get("test_unsigned_int", size_t_array_as_n)
 
@@ -398,24 +403,23 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
     def test_buffer_set_unsigned_int(self):
         num_items = self.get_num_items("test_unsigned_int")
 
-        # ssize_t ('n') format is not supported by NumPy.
+        # ssize_t ("n") format is not supported by NumPy.
         ssize_t_array_type = ctypes.c_ssize_t * num_items
         ssize_t_array = ssize_t_array_type(*self.get_nth_arange(0, num_items))
-        # ctypes exports its ssize_t arrays as one of the other integer types of the same size instead of 'n',
-        # but we can cast it to an 'n' format memoryview.
-        ssize_t_array_as_n = memoryview(ssize_t_array).cast('b').cast('n')
+        # ctypes exposed its ssize_t arrays as buffers with one of the other integer types with the same size instead of
+        # the "n" format. A memoryview using the "n" format can be created by casting.
+        ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
         self.collection.foreach_set("test_unsigned_int", ssize_t_array_as_n)
         result_sequence = self.get_sequence("test_unsigned_int")
         expected_sequence = ssize_t_array_as_n
         self.assertSequenceEqual(result_sequence, expected_sequence)
-        # Unfortunately, memoryview cannot be subclassed, so we cannot check if it was accessed as a buffer or
+        # `memoryview` cannot be subclassed, so it is not possible to check if it was accessed as a buffer or
         # sequence.
 
-        # For the remaining int types we can check if they were accessed as a buffer or a sequence.
-        # void* ('P') format arrays are not supported by NumPy but are supported by ctypes.
+        # void* ("P") format arrays are not supported by NumPy but are supported by ctypes.
         void_p_array_type = ctypes.c_void_p * num_items
         # ctypes's conversion to void* only accepts Python int, but the NumPy array returned by get_nth_arange()
-        # contains NumPy scalar types, so convert to a list containing Python ints.
+        # contains NumPy scalar types, so convert the NumPy array to a list containing Python ints.
         void_p_array = void_p_array_type(*self.get_nth_arange(1, num_items).tolist())
         uint_buffers = [void_p_array]
         np_uint_types = (np.ubyte, np.ushort, np.uintc, np.uint, np.ulonglong)
@@ -461,13 +465,13 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         self.assertEqual(len(compatible_itemsizes), 1, "There should only be one compatible itemsize, but the"
                                                        "compatible itemsizes were '%s'" % compatible_itemsizes)
 
-        # ssize_t ('n') format is not supported by NumPy.
+        # ssize_t ("n") format is not supported by NumPy.
         ssize_t_array = (ctypes.c_ssize_t * num_items)()
-        # ctypes exports its ssize_t arrays as one of the other integer types with the same size instead of 'n',
-        # but we can cast it to an 'n' format memoryview.
-        ssize_t_array_as_n = memoryview(ssize_t_array).cast('b').cast('n')
-        # memoryview objects are not writable as a sequence (only readable), so we only expect them to work when
-        # they are a compatible buffer.
+        # ctypes exposed its ssize_t arrays as buffers with one of the other integer types with the same size instead of
+        # the "n" format. A memoryview using the "n" format can be created by casting.
+        ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
+        # memoryview objects are not writable as a sequence (only readable), so they are only expected to work when they
+        # are the correct itemsize to be considered a compatible buffer.
         if ssize_t_array_as_n.itemsize in compatible_itemsizes:
             self.collection.foreach_get("test_enum", ssize_t_array_as_n)
 
@@ -480,21 +484,20 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
     def test_buffer_set_enum(self):
         num_items = self.get_num_items("test_enum")
 
-        # ssize_t ('n') format is not supported by NumPy.
+        # ssize_t ("n") format is not supported by NumPy.
         ssize_t_array = (ctypes.c_ssize_t * num_items)(*self.get_nth_arange(0, num_items))
-        # ctypes exports its ssize_t arrays as one of the other integer types of the same size instead of 'n',
-        # but we can cast it to an 'n' format memoryview.
-        ssize_t_array_as_n = memoryview(ssize_t_array).cast('b').cast('n')
+        # ctypes exposed its ssize_t arrays as buffers with one of the other integer types with the same size instead of
+        # the "n" format. A memoryview using the "n" format can be created by casting.
+        ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
 
         self.collection.foreach_set("test_enum", ssize_t_array_as_n)
 
         result_sequence = self.get_sequence("test_enum")
         expected_sequence = ssize_t_array_as_n
         self.assertSequenceEqual(result_sequence, expected_sequence)
-        # Unfortunately, memoryview cannot be subclassed, so we cannot check if it was accessed as a buffer or
+        # `memoryview` cannot be subclassed, so it is not possible to check if it was accessed as a buffer or
         # sequence.
 
-        # For the remaining int types we can check if they were accessed as a buffer or a sequence.
         int_types = (np.byte, np.short, np.intc, np.int_, np.longlong)
         compatible_itemsizes = set()
         for i, int_type in enumerate(int_types, start=1):
