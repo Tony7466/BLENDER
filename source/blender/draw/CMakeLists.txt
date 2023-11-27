@@ -6,18 +6,15 @@ set(INC
   .
   intern
 
-  ../blenfont
   ../blenkernel
   ../blenloader
   ../blentranslation
   ../bmesh
-  ../depsgraph
   ../editors/include
   ../editors/space_view3d
   ../functions
   ../gpu
   ../gpu/intern
-  ../imbuf
   ../makesrna
   ../nodes
   ../render
@@ -27,7 +24,6 @@ set(INC
   ../compositor/realtime_compositor/cached_resources
   ../windowmanager
 
-  ../../../intern/clog
   ../../../intern/opensubdiv
 )
 
@@ -350,9 +346,13 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::imbuf
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
   bf_windowmanager
@@ -605,6 +605,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_thickness_lib.glsl
   engines/eevee_next/shaders/eevee_transparency_lib.glsl
   engines/eevee_next/shaders/eevee_velocity_lib.glsl
+  engines/eevee_next/shaders/eevee_vertex_copy_comp.glsl
   engines/eevee_next/shaders/eevee_volume_integration_comp.glsl
   engines/eevee_next/shaders/eevee_volume_lib.glsl
   engines/eevee_next/shaders/eevee_volume_material_comp.glsl
