@@ -33,8 +33,6 @@ const char *mismatch_to_string(const MeshMismatch &mismatch);
  *
  * \returns The type of mismatch that was detected, if there is any.
  */
-std::optional<MeshMismatch> compare_meshes(const Mesh &mesh1,
-                                           const Mesh &mesh2,
-                                           const float threshold);
+std::optional<MeshMismatch> compare_meshes(const Mesh &mesh1, const Mesh &mesh2, float threshold);
 
 }  // namespace blender::bke::compare_meshes
