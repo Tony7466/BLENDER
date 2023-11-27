@@ -287,7 +287,7 @@ static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator *
   bool changed = false;
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
 
-  blender::Vector<int> materials_used;
+  Vector<int> materials_used;
 
   for (const MutableDrawingInfo &info : drawings) {
     IndexMaskMemory memory;
@@ -303,7 +303,7 @@ static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator *
     const VectorSet<int> selected_materials = find_materials_in_mask(material_indices, strokes);
 
     for (const int material_index : IndexRange(object->totcol)) {
-      /* Add the material as used to not be blocked. */
+      /* Add the material as used to not be locked. */
       if (selected_materials.contains(material_index)) {
         materials_used.append(material_index);
       }
