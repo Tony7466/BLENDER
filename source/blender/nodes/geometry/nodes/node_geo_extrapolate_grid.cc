@@ -15,12 +15,29 @@ namespace blender::nodes::node_geo_extrapolate_grid_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryExtrapolateGrid)
 
-static void node_declare(NodeDeclarationBuilder &b) {}
+static void node_declare(NodeDeclarationBuilder &b)
+{
+  const bNode *node = b.node_or_null();
+  if (!node) {
+    return;
+  }
+  const NodeGeometryExtrapolateGrid &storage = node_storage(*node);
+  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+
+  grids::declare_grid_type_input(b, data_type, "Grid").hide_value();
+  b.add_input(data_type, "Background");
+  b.add_input(data_type, "Iso-Value");
+  b.add_input<decl::Int>("Iterations").default_value(1).min(1);
+
+  grids::declare_grid_type_output(b, data_type, "Grid");
+}
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "input_type", UI_ITEM_NONE, "", ICON_NONE);
   uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
   uiItemR(layout, ptr, "fast_sweeping_region", UI_ITEM_NONE, "", ICON_NONE);
 }
@@ -28,7 +45,10 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryExtrapolateGrid *data = MEM_cnew<NodeGeometryExtrapolateGrid>(__func__);
+  data->mode = GEO_NODE_EXTRAPOLATE_GRID_DIRICHLET;
+  data->input_type = GEO_NODE_EXTRAPOLATE_GRID_INPUT_SDF;
   data->data_type = CD_PROP_FLOAT;
+  data->fast_sweeping_region = GEO_NODE_FAST_SWEEPING_REGION_ALL;
   node->storage = data;
 }
 
@@ -39,6 +59,14 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
+  const NodeGeometryExtrapolateGrid &storage = node_storage(params.node());
+  const GeometryNodeGridExtrapolationMode mode = GeometryNodeGridExtrapolationMode(storage.mode);
+  const GeometryNodeGridExtrapolationInputType input_type = GeometryNodeGridExtrapolationInputType(
+      storage.input_type);
+  const GeometryNodeFastSweepingRegion fast_sweeping_region = GeometryNodeFastSweepingRegion(
+      storage.fast_sweeping_region);
+  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+
   params.set_default_remaining_outputs();
 #else
   params.set_default_remaining_outputs();
@@ -49,6 +77,35 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
+  static EnumPropertyItem mode_items[] = {
+      {GEO_NODE_EXTRAPOLATE_GRID_DIRICHLET,
+       "Dirichlet",
+       0,
+       "Dirichlet",
+       "Extrapolate from existing values in the input grid"},
+  };
+  static EnumPropertyItem input_type_items[] = {
+      {GEO_NODE_EXTRAPOLATE_GRID_INPUT_SDF, "SDF", 0, "SDF", "Extrapolate an SDF grid"},
+      {GEO_NODE_EXTRAPOLATE_GRID_INPUT_DENSITY,
+       "DENSITY",
+       0,
+       "Density",
+       "Extrapolate a density grid"},
+  };
+
+  RNA_def_node_enum(srna,
+                    "mode",
+                    "Mode",
+                    "How the extrapolation is computed",
+                    mode_items,
+                    NOD_storage_enum_accessors(mode),
+                    GEO_NODE_EXTRAPOLATE_GRID_DIRICHLET);
+  RNA_def_node_enum(srna,
+                    "input_type",
+                    "Input Type",
+                    "Expected kind of grid input data",
+                    input_type_items,
+                    NOD_storage_enum_accessors(input_type));
   RNA_def_node_enum(srna,
                     "data_type",
                     "Data Type",
@@ -57,7 +114,6 @@ static void node_rna(StructRNA *srna)
                     NOD_storage_enum_accessors(data_type),
                     CD_PROP_FLOAT,
                     grids::grid_type_items_fn);
-
   RNA_def_node_enum(srna,
                     "fast_sweeping_region",
                     "Region",
