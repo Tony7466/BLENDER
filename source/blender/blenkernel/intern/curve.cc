@@ -368,16 +368,16 @@ void BKE_curve_init(Curve *cu, const short curve_type)
 
     const char *str = DATA_("Text");
     size_t len_bytes;
-    size_t len_chars = BLI_strlen_utf8_ex(str, &len_bytes);
+    size_t len_char32 = BLI_strlen_utf8_ex(str, &len_bytes);
 
-    cu->str = static_cast<char *>(MEM_mallocN(len_bytes + sizeof(char32_t), "str"));
-    memcpy(cu->str, str, len_bytes + 1);
+    cu->str = static_cast<char *>(MEM_mallocN(len_bytes + 1, "str"));
+    BLI_strncpy(cu->str, str, len_bytes + 1);
 
     cu->len = len_bytes;
-    cu->len_char32 = cu->pos = len_chars;
+    cu->len_char32 = cu->pos = len_char32;
 
     cu->strinfo = static_cast<CharInfo *>(
-        MEM_callocN((len_chars + 4) * sizeof(CharInfo), "strinfo new"));
+        MEM_calloc_arrayN((len_char32 + 1), sizeof(CharInfo), "strinfo new"));
 
     cu->totbox = cu->actbox = 1;
     cu->tb = (TextBox *)MEM_calloc_arrayN(MAXTEXTBOX, sizeof(TextBox), "textbox");
