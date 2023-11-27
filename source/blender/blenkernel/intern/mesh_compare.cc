@@ -150,6 +150,7 @@ static void sort_indices(MutableSpan<int> indices, const Span<T> values, const i
     }
 
     BLI_assert_unreachable();
+    return false;
   });
 }
 
@@ -628,8 +629,7 @@ static void make_set_sizes_one(IndexMapping &indices)
     }
     int match = sorted_i;
     for (const int other_index :
-         IndexRange(indices.set_ids[sorted_i], indices.set_sizes[sorted_i]))
-    {
+         IndexRange(indices.set_ids[sorted_i], indices.set_sizes[sorted_i])) {
       if (indices.from_sorted1[sorted_i] == indices.from_sorted2[other_index]) {
         match = other_index;
         break;
@@ -637,8 +637,7 @@ static void make_set_sizes_one(IndexMapping &indices)
     }
     std::swap(indices.from_sorted2[sorted_i], indices.from_sorted2[match]);
     for (const int other_set_i :
-         IndexRange(indices.set_ids[sorted_i], indices.set_sizes[sorted_i]))
-    {
+         IndexRange(indices.set_ids[sorted_i], indices.set_sizes[sorted_i])) {
       /* New first element, since this one is now in a new set. */
       indices.set_ids[other_set_i] = sorted_i + 1;
       indices.set_sizes[other_set_i] -= 1;
@@ -905,4 +904,4 @@ std::optional<MeshMismatch> compare_meshes(const Mesh &mesh1,
   return std::nullopt;
 }
 
-}  // namespace blender::bke::mesh
+}  // namespace blender::bke::compare_meshes
