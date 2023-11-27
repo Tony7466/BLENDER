@@ -209,18 +209,18 @@ static struct VolumeFileCache {
 namespace blender::bke {
 
 #ifdef WITH_OPENVDB
-VolumeGrid::VolumeGrid(const GridBasePtr &grid)
-    : grid(grid), entry_(nullptr), simplify_level_(0), is_loaded_(false)
+VolumeGrid::VolumeGrid(const GridBasePtr &local_grid)
+    : local_grid_(local_grid), entry_(nullptr), simplify_level_(0), is_loaded_(false)
 {
 }
 
 VolumeGrid::VolumeGrid(const bool is_loaded, const int simplify_level)
-    : grid(nullptr), entry_(nullptr), simplify_level_(simplify_level), is_loaded_(is_loaded)
+    : local_grid_(nullptr), entry_(nullptr), simplify_level_(simplify_level), is_loaded_(is_loaded)
 {
 }
 
 VolumeGrid::VolumeGrid(const VolumeFileCacheEntry &template_entry, const int simplify_level)
-    : grid(nullptr), entry_(nullptr), simplify_level_(simplify_level), is_loaded_(false)
+    : local_grid_(nullptr), entry_(nullptr), simplify_level_(simplify_level), is_loaded_(false)
 {
   entry_ = GLOBAL_CACHE.add_metadata_user(template_entry);
 }
@@ -228,13 +228,13 @@ VolumeGrid::VolumeGrid(const VolumeFileCacheEntry &template_entry, const int sim
 VolumeGrid::VolumeGrid(const char *template_file_path,
                        const GridBasePtr &template_grid,
                        const int simplify_level)
-    : grid(nullptr), entry_(nullptr), simplify_level_(simplify_level), is_loaded_(false)
+    : local_grid_(nullptr), entry_(nullptr), simplify_level_(simplify_level), is_loaded_(false)
 {
   entry_ = GLOBAL_CACHE.add_metadata_user(VolumeFileCacheEntry(template_file_path, template_grid));
 }
 
 VolumeGrid::VolumeGrid(const VolumeGrid &other)
-    : grid(nullptr),
+    : local_grid_(nullptr),
       entry_(other.entry_),
       simplify_level_(other.simplify_level_),
       is_loaded_(other.is_loaded_)
@@ -358,7 +358,7 @@ void VolumeGrid::set_simplify_level(const int simplify_level)
 
 void VolumeGrid::clear_reference(const char * /*volume_name*/)
 {
-  grid = main_grid()->copyGridWithNewTree();
+  local_grid_ = main_grid()->copyGridWithNewTree();
   clear_cache_entry();
 }
 
@@ -368,13 +368,23 @@ void VolumeGrid::duplicate_reference(const char *volume_name, const char *filepa
    * file cache. Load file grid into memory first if needed. */
   load(volume_name, filepath);
   /* TODO: avoid deep copy if we are the only user. */
-  grid = main_grid()->deepCopyGrid();
+  local_grid_ = main_grid()->deepCopyGrid();
   clear_cache_entry();
 }
 
-openvdb::GridBase::Ptr VolumeGrid::main_grid() const
+VolumeGrid::GridBaseConstPtr VolumeGrid::grid() const
 {
-  return (entry_) ? entry_->grid : grid;
+  return (entry_) ? entry_->simplified_grid(simplify_level_) : local_grid_;
+}
+
+VolumeGrid::GridBasePtr VolumeGrid::grid_for_write() const
+{
+  return (entry_) ? entry_->simplified_grid(simplify_level_) : local_grid_;
+}
+
+VolumeGrid::GridBasePtr VolumeGrid::main_grid() const
+{
+  return (entry_) ? entry_->grid : local_grid_;
 }
 
 void VolumeGrid::clear_cache_entry()
@@ -394,7 +404,7 @@ void VolumeGrid::delete_self()
 
 void VolumeGrid::delete_data_only()
 {
-  grid.reset();
+  local_grid_.reset();
 }
 
 VolumeGridPtrCommon::~VolumeGridPtrCommon() {}
@@ -407,7 +417,7 @@ GVolumeGridPtr::operator bool() const
 GVolumeGridPtr::GridConstPtr GVolumeGridPtr::grid() const
 {
 #ifdef WITH_OPENVDB
-  return data ? data->grid : nullptr;
+  return data ? data->grid() : nullptr;
 #else
   return nullptr;
 #endif
@@ -416,7 +426,7 @@ GVolumeGridPtr::GridConstPtr GVolumeGridPtr::grid() const
 GVolumeGridPtr::GridPtr GVolumeGridPtr::grid_for_write() const
 {
 #ifdef WITH_OPENVDB
-  return data && data->is_mutable() ? data->grid : nullptr;
+  return data && data->is_mutable() ? data->grid_for_write() : nullptr;
 #else
   return nullptr;
 #endif

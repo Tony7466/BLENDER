@@ -231,12 +231,13 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
 
   GridConstPtr grid() const
   {
-    return data ? openvdb::GridBase::grid<GridType>(data->grid) : nullptr;
+    return data ? openvdb::GridBase::grid<GridType>(data->grid()) : nullptr;
   }
 
   GridPtr grid_for_write() const
   {
-    return data && data->is_mutable() ? openvdb::GridBase::grid<GridType>(data->grid) : nullptr;
+    return data && data->is_mutable() ? openvdb::GridBase::grid<GridType>(data->grid_for_write()) :
+                                        nullptr;
   }
 
   bool operator==(const GVolumeGridPtr &other) const

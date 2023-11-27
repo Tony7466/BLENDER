@@ -173,11 +173,11 @@ struct VolumeGrid : public ImplicitSharingMixin {
  public:
   using GridBase = openvdb::GridBase;
   using GridBasePtr = std::shared_ptr<GridBase>;
-
-  // TODO make protected
-  GridBasePtr grid;
+  using GridBaseConstPtr = std::shared_ptr<const GridBase>;
 
  protected:
+  /* OpenVDB grid used when there is no file cache entry. */
+  GridBasePtr local_grid_;
   /* File cache entry when grid comes directly from a file and may be shared
    * with other volume datablocks. */
   VolumeFileCacheEntry *entry_;
@@ -216,6 +216,9 @@ struct VolumeGrid : public ImplicitSharingMixin {
 
   void clear_reference(const char *volume_name);
   void duplicate_reference(const char *volume_name, const char *filepath);
+
+  GridBaseConstPtr grid() const;
+  GridBasePtr grid_for_write() const;
 
  protected:
   GridBasePtr main_grid() const;
