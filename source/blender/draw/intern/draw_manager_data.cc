@@ -646,8 +646,10 @@ static void drw_call_calc_orco(Object *ob, float (*r_orcofacs)[4])
         BoundBox *bbox = BKE_volume_boundbox_get(ob);
         mid_v3_v3v3(static_buf.texspace_location, bbox->vec[0], bbox->vec[6]);
         sub_v3_v3v3(static_buf.texspace_size, bbox->vec[0], bbox->vec[6]);
+        static_buf.texspace_size[0] = std::max(static_buf.texspace_size[0], 0.001f);
+        static_buf.texspace_size[1] = std::max(static_buf.texspace_size[1], 0.001f);
+        static_buf.texspace_size[2] = std::max(static_buf.texspace_size[2], 0.001f);
         texspace_location = static_buf.texspace_location;
-        texspace_size = static_buf.texspace_size;
         break;
       }
       case ID_ME:
