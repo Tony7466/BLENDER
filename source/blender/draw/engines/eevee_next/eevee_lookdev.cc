@@ -13,6 +13,8 @@
 
 #include "NOD_shader.h"
 
+#include "GPU_material.h"
+
 #include "eevee_instance.hh"
 
 namespace blender::eevee {
@@ -119,38 +121,63 @@ bool LookdevWorld::sync(const LookdevParameters &new_parameters)
  *
  * \{ */
 
-LookdevModule::LookdevModule(Instance &inst) : inst_(inst)
-{
-  STRNCPY(mat_specular_.id.name, "MALookdevSpecular");
-  BKE_libblock_init_empty(&mat_specular_.id);
-  mat_specular_.use_nodes = false;
-  mat_specular_.r = 0.8f;
-  mat_specular_.g = 0.8f;
-  mat_specular_.b = 0.8f;
-  mat_specular_.a = 1.0f;
-  mat_specular_.metallic = 1.0f;
-  mat_specular_.roughness = 0.0f;
-  mat_specular_.spec = 0.0f;
+LookdevModule::LookdevModule(Instance &inst) : inst_(inst) {}
 
-  STRNCPY(mat_specular_.id.name, "MALookdevDiffuse");
-  BKE_libblock_init_empty(&mat_diffuse_.id);
-  mat_diffuse_.use_nodes = false;
-  mat_diffuse_.r = 0.8f;
-  mat_diffuse_.g = 0.8f;
-  mat_diffuse_.b = 0.8f;
-  mat_diffuse_.a = 1.0f;
-  mat_diffuse_.metallic = 0.0f;
-  mat_diffuse_.roughness = 1.0f;
-  mat_diffuse_.spec = 0.0f;
+LookdevModule::~LookdevModule() {}
+
+void LookdevModule::init()
+{
+  enabled_ = inst_.is_viewport() && inst_.overlays_enabled() && inst_.use_lookdev_overlay();
 }
 
-LookdevModule::~LookdevModule()
+void LookdevModule::sync()
 {
-  BKE_libblock_free_datablock(&mat_specular_.id, 0);
-  BKE_libblock_free_datablock(&mat_diffuse_.id, 0);
+  metallic_ps_.init();
+  diffuse_ps_.init();
+
+  if (!enabled_) {
+    return;
+  }
+  const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                         DRW_STATE_DEPTH_GREATER_EQUAL;
+  ResourceHandle handle(0);
+  GPUBatch *geom = DRW_cache_sphere_get(DRW_LOD_MEDIUM);
+  {
+    ::Material *mat = inst_.materials.metallic_mat;
+    GPUMaterial *gpumat = inst_.shaders.material_shader_get(
+        mat, mat->nodetree, MAT_PIPE_FORWARD, MAT_GEOM_MESH, MAT_PROBE_NONE);
+    GPUShader *shader = GPU_material_get_shader(gpumat);
+    metallic_ps_.state_set(state);
+    metallic_ps_.shader_set(shader);
+    metallic_ps_.draw(geom, handle, 0);
+  }
+
+  {
+    ::Material *mat = inst_.materials.diffuse_mat;
+    GPUMaterial *gpumat = inst_.shaders.material_shader_get(
+        mat, mat->nodetree, MAT_PIPE_FORWARD, MAT_GEOM_MESH, MAT_PROBE_NONE);
+    GPUShader *shader = GPU_material_get_shader(gpumat);
+    diffuse_ps_.state_set(state);
+    diffuse_ps_.shader_set(shader);
+    diffuse_ps_.draw(geom, handle, 0);
+  }
 }
 
-/* TODO(fclem): This is where the lookdev balls display should go. */
+void LookdevModule::draw_metallic(View &view)
+{
+  if (!enabled_) {
+    return;
+  }
+  inst_.manager->submit(metallic_ps_, view);
+}
+
+void LookdevModule::draw_diffuse(View &view)
+{
+  if (!enabled_) {
+    return;
+  }
+  inst_.manager->submit(diffuse_ps_, view);
+}
 
 /** \} */
 

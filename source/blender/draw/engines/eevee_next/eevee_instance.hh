@@ -79,6 +79,7 @@ class Instance {
   MainView main_view;
   CaptureView capture_view;
   World world;
+  LookdevView lookdev_view;
   LookdevModule lookdev;
   LightProbeModule light_probes;
   IrradianceCache irradiance_cache;
@@ -136,6 +137,7 @@ class Instance {
         main_view(*this),
         capture_view(*this),
         world(*this),
+        lookdev_view(*this),
         lookdev(*this),
         light_probes(*this),
         irradiance_cache(*this),
@@ -217,6 +219,12 @@ class Instance {
                       ((v3d->shading.flag & V3D_SHADING_SCENE_WORLD) == 0)) ||
                      ((v3d->shading.type == OB_RENDER) &&
                       ((v3d->shading.flag & V3D_SHADING_SCENE_WORLD_RENDER) == 0)));
+  }
+
+  bool use_lookdev_overlay() const
+  {
+    return (v3d) &&
+           ((v3d->shading.type == OB_MATERIAL) && (v3d->overlay.flag & V3D_OVERLAY_LOOK_DEV));
   }
 
   void push_uniform_data()

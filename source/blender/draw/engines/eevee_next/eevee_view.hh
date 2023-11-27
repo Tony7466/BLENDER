@@ -181,4 +181,28 @@ class CapturePlanarView {
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Capture Planar View
+ *
+ * View for capturing planar probes outside a ShadingView.
+ * \{ */
+
+class LookdevView {
+ private:
+  Instance &inst_;
+  Texture metallic_depth_tx_ = {"Lookdev.Metallic.Depth"};
+  Texture metallic_color_tx_ = {"Lookdev.Metallic.Color"};
+  Framebuffer metallic_fb_ = {"Lookdev.Metallic"};
+
+  Texture diffuse_depth_tx_ = {"Lookdev.Diffuse.Depth"};
+  Texture diffuse_color_tx_ = {"Lookdev.Diffuse.Color"};
+  Framebuffer diffuse_fb_ = {"Lookdev.Diffuse"};
+
+ public:
+  LookdevView(Instance &inst) : inst_(inst) {}
+  void render();
+};
+
+/** \} */
+
 }  // namespace blender::eevee

@@ -85,14 +85,27 @@ class LookdevModule {
  private:
   Instance &inst_;
 
-  ::Material mat_specular_ = {};
-  ::Material mat_diffuse_ = {};
+  bool enabled_;
+
+  PassSimple metallic_ps_ = {"Lookdev.Metallic"};
+  PassSimple diffuse_ps_ = {"Lookdev.Diffuse"};
 
  public:
   LookdevModule(Instance &inst);
   ~LookdevModule();
 
-  /* TODO(fclem): This is where the lookdev balls display should go. */
+  void init();
+  void sync();
+  void draw_metallic(View &view);
+  void draw_diffuse(View &view);
+
+  /**
+   * Check if the lookdev spheres should be draw.
+   */
+  bool is_enabled() const
+  {
+    return enabled_;
+  }
 };
 
 /** \} */

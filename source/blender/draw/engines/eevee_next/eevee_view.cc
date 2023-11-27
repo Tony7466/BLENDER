@@ -300,4 +300,57 @@ void CaptureView::render_probes()
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Lookdev View
+ * \{ */
+
+void LookdevView::render()
+{
+  if (!inst_.lookdev.is_enabled()) {
+    metallic_depth_tx_.free();
+    metallic_color_tx_.free();
+    diffuse_depth_tx_.free();
+    diffuse_color_tx_.free();
+    return;
+  }
+  GPU_debug_group_begin("Lookdev");
+
+  // TODO: calculate extent from dpi and window size.
+  const int2 extent(256, 256);
+
+  const eGPUTextureFormat depth_format = GPU_DEPTH_COMPONENT24;
+  const eGPUTextureFormat color_format = GPU_RGBA16F;
+
+  metallic_depth_tx_.ensure_2d(depth_format, extent);
+  metallic_color_tx_.ensure_2d(color_format, extent);
+  metallic_fb_.ensure(GPU_ATTACHMENT_TEXTURE(metallic_depth_tx_),
+                      GPU_ATTACHMENT_TEXTURE(metallic_color_tx_));
+  metallic_depth_tx_.clear(float4(1.0f));
+  metallic_color_tx_.clear(float4(0.0f));
+
+  diffuse_depth_tx_.ensure_2d(depth_format, extent);
+  diffuse_color_tx_.ensure_2d(color_format, extent);
+  diffuse_fb_.ensure(GPU_ATTACHMENT_TEXTURE(diffuse_depth_tx_),
+                     GPU_ATTACHMENT_TEXTURE(diffuse_color_tx_));
+  diffuse_depth_tx_.clear(float4(1.0f));
+  diffuse_color_tx_.clear(float4(0.0f));
+
+  // create view for rendering spheres
+  View view = {"Lookdev.View"};
+  float4x4 view_m4 = float4x4::identity();
+  float4x4 win_m4 = math::projection::orthographic(-1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 10.0f);
+  view.sync(view_m4, win_m4);
+
+  metallic_fb_.bind();
+  inst_.lookdev.draw_metallic(view);
+
+  metallic_fb_.bind();
+  inst_.lookdev.draw_diffuse(view);
+
+  // blit framebuffer1 and framebuffer2 to the main framebuffer color texture.
+  GPU_debug_group_end();
+}
+
+/** \} */
+
 }  // namespace blender::eevee
