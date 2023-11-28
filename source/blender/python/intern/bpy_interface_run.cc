@@ -80,6 +80,61 @@ struct PyModuleObject {
 #endif
 
 /**
+ * Compatibility wrapper for #PyRun_FileExFlags.
+ */
+static PyObject *python_compat_wrapper_PyRun_FileExFlags(FILE *fp,
+                                                         const char *filepath,
+                                                         const int start,
+                                                         PyObject *globals,
+                                                         PyObject *locals,
+                                                         const int closeit,
+                                                         PyCompilerFlags *flags)
+{
+  /* Previously we used #PyRun_File to run directly the code on a FILE
+   * object, but as written in the Python/C API Ref Manual, chapter 2,
+   * 'FILE structs for different C libraries can be different and incompatible'.
+   * So now we load the script file data to a buffer on MS-Windows. */
+#ifdef _WIN32
+  bool use_file_handle_workaround = true;
+#else
+  bool use_file_handle_workaround = false;
+#endif
+
+  if (!use_file_handle_workaround) {
+    return PyRun_FileExFlags(fp, filepath, start, globals, locals, closeit, flags);
+  }
+
+  PyObject *py_result = nullptr;
+  size_t buf_len;
+  char *buf = static_cast<char *>(BLI_file_read_data_as_mem_from_handle(fp, false, 1, &buf_len));
+  if (closeit) {
+    fclose(fp);
+  }
+
+  if (UNLIKELY(buf == nullptr)) {
+    PyErr_Format(PyExc_IOError, "Python file \"%s\" could not read buffer", filepath);
+  }
+  else {
+    buf[buf_len] = '\0';
+    PyObject *filepath_py = PyC_UnicodeFromBytes(filepath);
+    PyObject *compiled = Py_CompileStringObject(buf, filepath_py, Py_file_input, flags, -1);
+    MEM_freeN(buf);
+    Py_DECREF(filepath_py);
+
+    if (compiled == nullptr) {
+      if (!PyErr_Occurred()) {
+        PyErr_Format(PyExc_SyntaxError, "Python file \"%s\" could not be compiled", filepath);
+      }
+    }
+    else {
+      py_result = PyEval_EvalCode(compiled, globals, locals);
+      Py_DECREF(compiled);
+    }
+  }
+  return py_result;
+}
+
+/**
  * Execute a file-path or text-block.
  *
  * \param reports: Report exceptions as errors (may be nullptr).
@@ -137,40 +192,21 @@ static bool python_script_exec(
     }
   }
   else {
-    FILE *fp = BLI_fopen(filepath, "r");
+    FILE *fp = BLI_fopen(filepath, "rb");
     filepath_namespace = filepath;
 
     if (fp) {
-      py_dict = PyC_DefaultNameSpace(filepath);
-
-#ifdef _WIN32
-      /* Previously we used PyRun_File to run directly the code on a FILE
-       * object, but as written in the Python/C API Ref Manual, chapter 2,
-       * 'FILE structs for different C libraries can be different and
-       * incompatible'.
-       * So now we load the script file data to a buffer.
-       *
-       * Note on use of 'globals()', it's important not copy the dictionary because
-       * tools may inspect 'sys.modules["__main__"]' for variables defined in the code
-       * where using a copy of 'globals()' causes code execution
-       * to leave the main namespace untouched. see: #51444
-       *
-       * This leaves us with the problem of variables being included,
-       * currently this is worked around using 'dict.__del__' it's ugly but works.
-       */
-      {
-        const char *pystring =
-            "with open(__file__, 'rb') as f:"
-            "exec(compile(f.read(), __file__, 'exec'), globals().__delitem__('f') or globals())";
-
-        fclose(fp);
-
-        py_result = PyRun_String(pystring, Py_file_input, py_dict, py_dict);
+      BLI_stat_t st;
+      if (BLI_fstat(fileno(fp), &st) == 0 && S_ISDIR(st.st_mode)) {
+        PyErr_Format(PyExc_IsADirectoryError, "Python file \"%s\" is a directory", filepath);
+        py_result = nullptr;
       }
-#else
-      py_result = PyRun_File(fp, filepath, Py_file_input, py_dict, py_dict);
+      else {
+        py_dict = PyC_DefaultNameSpace(filepath);
+        py_result = python_compat_wrapper_PyRun_FileExFlags(
+            fp, filepath, Py_file_input, py_dict, py_dict, 0, nullptr);
+      }
       fclose(fp);
-#endif
     }
     else {
       PyErr_Format(
@@ -180,7 +216,9 @@ static bool python_script_exec(
   }
 
   if (!py_result) {
-    BPy_errors_to_report(reports);
+    if (reports) {
+      BPy_errors_to_report(reports);
+    }
     if (text) {
       if (do_jump) {
         /* ensure text is valid before use, the script may have freed itself */
@@ -190,6 +228,7 @@ static bool python_script_exec(
         }
       }
     }
+    PyErr_Print();
     PyErr_Clear();
   }
   else {
@@ -272,12 +311,9 @@ static bool bpy_run_string_impl(bContext *C,
     ReportList reports;
     BKE_reports_init(&reports, RPT_STORE);
     BPy_errors_to_report(&reports);
-    PyErr_Clear();
 
-    /* Ensure the reports are printed. */
-    if (!BKE_reports_print_test(&reports, RPT_ERROR)) {
-      BKE_reports_print(&reports, RPT_ERROR);
-    }
+    PyErr_Print();
+    PyErr_Clear();
 
     ReportList *wm_reports = CTX_wm_reports(C);
     if (wm_reports) {
