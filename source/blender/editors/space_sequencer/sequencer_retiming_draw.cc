@@ -265,8 +265,8 @@ SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], 
 static void retime_key_draw(const bContext *C,
                             const Sequence *seq,
                             const SeqRetimingKey *key,
-                            const KeyframeShaderBindings *sh_bindings,
-                            const blender::Set<const SeqRetimingKey *> *selection)
+                            const KeyframeShaderBindings &sh_bindings,
+                            const blender::Map<SeqRetimingKey *, Sequence *> &selection)
 {
   const Scene *scene = CTX_data_scene(C);
   const float key_x = key_x_get(scene, seq, key);
@@ -285,7 +285,7 @@ static void retime_key_draw(const bContext *C,
     key_type = BEZT_KEYTYPE_MOVEHOLD;
   }
 
-  const bool is_selected = selection->contains(key);
+  const bool is_selected = selection.contains(const_cast<SeqRetimingKey *>(key));
   const int size = KEY_SIZE;
   const float bottom = KEY_CENTER;
 
@@ -307,7 +307,7 @@ static void retime_key_draw(const bContext *C,
                       key_type,
                       KEYFRAME_SHAPE_BOTH,
                       alpha,
-                      sh_bindings,
+                      &sh_bindings,
                       0,
                       0);
 }
@@ -315,7 +315,7 @@ static void retime_key_draw(const bContext *C,
 static void draw_continuity(const bContext *C,
                             const Sequence *seq,
                             const SeqRetimingKey *key,
-                            const blender::Set<const SeqRetimingKey *> *selection,
+                            const blender::Map<SeqRetimingKey *, Sequence *> &selection,
                             SeqQuadsBatch *quads)
 {
   const View2D *v2d = UI_view2d_fromcontext(C);
@@ -346,7 +346,8 @@ static void draw_continuity(const bContext *C,
 
   uchar color[4];
   if (SEQ_retiming_data_is_editable(seq) &&
-      (selection->contains(key) || selection->contains(key - 1)))
+      (selection.contains(const_cast<SeqRetimingKey *>(key)) ||
+       selection.contains(const_cast<SeqRetimingKey *>(key - 1))))
   {
     color[0] = 166;
     color[1] = 127;
@@ -364,13 +365,13 @@ static void draw_continuity(const bContext *C,
 
 /* If there are no keys, draw fake keys and create real key when they are selected. */
 /* TODO: would be nice to draw continuity between fake keys. */
-static void fake_keys_draw(const bContext *C,
+static bool fake_keys_draw(const bContext *C,
                            Sequence *seq,
-                           const KeyframeShaderBindings *sh_bindings,
-                           const blender::Set<const SeqRetimingKey *> *selection)
+                           const KeyframeShaderBindings &sh_bindings,
+                           const blender::Map<SeqRetimingKey *, Sequence *> &selection)
 {
   if (!SEQ_retiming_is_active(seq) && !SEQ_retiming_data_is_editable(seq)) {
-    return;
+    return false;
   }
 
   const Scene *scene = CTX_data_scene(C);
@@ -390,6 +391,7 @@ static void fake_keys_draw(const bContext *C,
     fake_key.flag = 0;
     retime_key_draw(C, seq, &fake_key, sh_bindings, selection);
   }
+  return true;
 }
 
 static void retime_keys_draw(const bContext *C, SeqQuadsBatch *quads)
@@ -403,16 +405,8 @@ static void retime_keys_draw(const bContext *C, SeqQuadsBatch *quads)
     return;
   }
 
-  /* Get the selection here once, for faster "is key selected?" lookups later.
-     This is similar to SEQ_retiming_selection_get, except we want only a set. */
-  blender::Set<const SeqRetimingKey *> selection;
-  LISTBASE_FOREACH (const Sequence *, seq, scene->ed->seqbasep) {
-    for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
-      if ((key.flag & SEQ_KEY_SELECTED) != 0) {
-        selection.add(&key);
-      }
-    }
-  }
+  /* Get the selection here once, for faster "is key selected?" lookups later. */
+  blender::Map<SeqRetimingKey *, Sequence *> selection = SEQ_retiming_selection_get(scene->ed);
 
   wmOrtho2_region_pixelspace(CTX_wm_region(C));
 
@@ -426,7 +420,7 @@ static void retime_keys_draw(const bContext *C, SeqQuadsBatch *quads)
     }
 
     for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
-      draw_continuity(C, seq, &key, &selection, quads);
+      draw_continuity(C, seq, &key, selection, quads);
     }
   }
   quads->draw();
@@ -459,22 +453,21 @@ static void retime_keys_draw(const bContext *C, SeqQuadsBatch *quads)
       continue;
     }
 
-    /* If batch is full, start a new one (fake keys add 2 points max). */
-    if (point_counter + 2 > MAX_KEYS_IN_BATCH) {
-      immEnd();
-      immBeginAtMost(GPU_PRIM_POINTS, MAX_KEYS_IN_BATCH);
-      point_counter = 0;
+    if (fake_keys_draw(C, seq, sh_bindings, selection)) {
+      point_counter += 2;
     }
-    fake_keys_draw(C, seq, &sh_bindings, &selection);
 
     for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
-      /* If batch is full, start a new one. */
-      if (point_counter + 1 > MAX_KEYS_IN_BATCH) {
+      retime_key_draw(C, seq, &key, sh_bindings, selection);
+      point_counter++;
+
+      /* Next key plus possible two fake keys for next sequence would need at
+       * most 3 points, so restart the batch if we're close to that. */
+      if (point_counter + 3 >= MAX_KEYS_IN_BATCH) {
         immEnd();
         immBeginAtMost(GPU_PRIM_POINTS, MAX_KEYS_IN_BATCH);
         point_counter = 0;
       }
-      retime_key_draw(C, seq, &key, &sh_bindings, &selection);
     }
   }
   immEnd();
