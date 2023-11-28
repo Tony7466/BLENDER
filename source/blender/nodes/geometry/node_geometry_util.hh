@@ -164,6 +164,20 @@ void set_output_grid(GeoNodeExecParams params,
                      eCustomDataType data_type,
                      const bke::GVolumeGridPtr &grid);
 
+template<typename OpT>
+auto apply(const bke::GVolumeGridPtr &grid, const eCustomDataType data_type, OpT op)
+{
+  switch (data_type) {
+    case CD_PROP_FLOAT:
+      return op.template operator()<float>(grid.typed<float>());
+    case CD_PROP_FLOAT3:
+      return op.template operator()<float3>(grid.typed<float3>());
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+}
+
 #ifdef WITH_OPENVDB
 openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
     GeometryNodeGridNeighborTopology neighbors_mode);

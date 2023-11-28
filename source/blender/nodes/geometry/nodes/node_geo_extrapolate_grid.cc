@@ -11,6 +11,11 @@
 
 #include "RNA_enum_types.hh"
 
+#ifdef WITH_OPENVDB
+#include <openvdb/tools/FastSweeping.h>
+#include <openvdb/tools/Interpolation.h>
+#endif
+
 namespace blender::nodes::node_geo_extrapolate_grid_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryExtrapolateGrid)
@@ -22,11 +27,21 @@ static void node_declare(NodeDeclarationBuilder &b)
     return;
   }
   const NodeGeometryExtrapolateGrid &storage = node_storage(*node);
+  const GeometryNodeGridExtrapolationInputType input_type = GeometryNodeGridExtrapolationInputType(
+      storage.input_type);
   const eCustomDataType data_type = eCustomDataType(storage.data_type);
 
+  switch (input_type) {
+    case GEO_NODE_EXTRAPOLATE_GRID_INPUT_SDF:
+      b.add_input<decl::Float>("SDF", "InputGrid").hide_value();
+      break;
+    case GEO_NODE_EXTRAPOLATE_GRID_INPUT_DENSITY:
+      b.add_input<decl::Float>("Density", "InputGrid").hide_value();
+      break;
+  }
   grids::declare_grid_type_input(b, data_type, "Grid").hide_value();
   b.add_input(data_type, "Background");
-  b.add_input(data_type, "Iso-Value");
+  b.add_input(data_type, "Iso Value");
   b.add_input<decl::Int>("Iterations").default_value(1).min(1);
 
   grids::declare_grid_type_output(b, data_type, "Grid");
@@ -45,7 +60,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryExtrapolateGrid *data = MEM_cnew<NodeGeometryExtrapolateGrid>(__func__);
-  data->mode = GEO_NODE_EXTRAPOLATE_GRID_DIRICHLET;
+  data->mode = GEO_NODE_EXTRAPOLATE_GRID_BOUNDARY_DIRICHLET;
   data->input_type = GEO_NODE_EXTRAPOLATE_GRID_INPUT_SDF;
   data->data_type = CD_PROP_FLOAT;
   data->fast_sweeping_region = GEO_NODE_FAST_SWEEPING_REGION_ALL;
@@ -54,13 +69,100 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 #ifdef WITH_OPENVDB
 
+static openvdb::tools::FastSweepingDomain get_fast_sweeping_domain(
+    const GeometryNodeFastSweepingRegion fast_sweeping_region)
+{
+  switch (fast_sweeping_region) {
+  case GEO_NODE_FAST_SWEEPING_REGION_ALL:
+      return openvdb::tools::FastSweepingDomain::SWEEP_ALL;
+  case GEO_NODE_FAST_SWEEPING_REGION_GREATER_THAN_ISOVALUE:
+    return openvdb::tools::FastSweepingDomain::SWEEP_GREATER_THAN_ISOVALUE;
+  case GEO_NODE_FAST_SWEEPING_REGION_LESS_THAN_ISOVALUE:
+    return openvdb::tools::FastSweepingDomain::SWEEP_LESS_THAN_ISOVALUE;
+  }
+  return openvdb::tools::FastSweepingDomain::SWEEP_ALL;
+}
+
+template<typename GridType> struct DirichletBoundaryOp {
+  using ValueType = typename GridType::ValueType;
+  using SamplerType = openvdb::tools::GridSampler<GridType, openvdb::tools::BoxSampler>;
+
+  SamplerType sampler;
+
+  DirichletBoundaryOp(const GridType &grid) : sampler(SamplerType(grid)) {}
+
+  ValueType operator()(const openvdb::Vec3d &xyz) const {
+    return sampler.isSample(xyz);
+  }
+};
+
+struct ExtrapolateOp {
+  GeoNodeExecParams params;
+  GeometryNodeGridExtrapolationBoundaryMode boundary_mode;
+  GeometryNodeGridExtrapolationInputType input_type;
+  openvdb::tools::FastSweepingDomain fast_sweeping_domain;
+  bke::VolumeGridPtr<float> input_grid;
+
+  bke::GVolumeGridPtr result;
+
+  template<typename T, template<typename> typename BoundaryOpT>
+  void extrapolate_with_boundary(const bke::VolumeGridPtr<T> &grid)
+  {
+    using GridType = typename bke::VolumeGridPtr<T>::GridType;
+    using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
+    using GridConstPtr = typename bke::VolumeGridPtr<T>::GridConstPtr;
+    using Converter = bke::GridConverter<T>;
+
+    const GridConstPtr vdb_grid = grid.grid();
+    BLI_assert(vdb_grid);
+    const T background = params.extract_input<T>("Background");
+    const T iso_value = params.extract_input<T>("Iso Value");
+    const typename GridType::ValueType vdb_background = Converter::single_value_to_grid(
+        background);
+    const typename GridType::ValueType vdb_iso_value = Converter::single_value_to_grid(iso_value);
+
+    BoundaryOpT<GridType> boundary_op(*input_grid);
+
+    GridPtr vdb_result;
+    switch (this->input_type) {
+      case GEO_NODE_EXTRAPOLATE_GRID_INPUT_SDF:
+        /* Only supported for float types. */
+        if constexpr (std::is_same_v<T, float>) {
+          vdb_result = openvdb::tools::sdfToExt(
+              *vdb_grid, boundary_op, vdb_background, vdb_iso_value);
+        }
+        else {
+          params.error_message_add(geo_eval_log::NodeWarningType::Warning,
+                                   "Only float grids supported for SDF extrapolation");
+        }
+        break;
+    case GEO_NODE_EXTRAPOLATE_GRID_INPUT_DENSITY:
+      break;
+    }
+
+    result = bke::GVolumeGridPtr(make_implicit_shared<bke::VolumeGrid>(vdb_result));
+  }
+
+  template<typename T> void operator()(const bke::VolumeGridPtr<T> &grid) {
+    if (!grid) {
+      return;
+    }
+    switch (this->boundary_mode) {
+      case GEO_NODE_EXTRAPOLATE_GRID_BOUNDARY_DIRICHLET:
+        extrapolate_with_boundary<T, DirichletBoundaryOp>(grid);
+        break;
+    }
+  }
+};
+
 #endif /* WITH_OPENVDB */
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const NodeGeometryExtrapolateGrid &storage = node_storage(params.node());
-  const GeometryNodeGridExtrapolationMode mode = GeometryNodeGridExtrapolationMode(storage.mode);
+  const GeometryNodeGridExtrapolationBoundaryMode boundary_mode = GeometryNodeGridExtrapolationBoundaryMode(
+      storage.mode);
   const GeometryNodeGridExtrapolationInputType input_type = GeometryNodeGridExtrapolationInputType(
       storage.input_type);
   const GeometryNodeFastSweepingRegion fast_sweeping_region = GeometryNodeFastSweepingRegion(
@@ -68,10 +170,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   const eCustomDataType data_type = eCustomDataType(storage.data_type);
 
   const bke::GVolumeGridPtr grid = grids::extract_grid_input(params, "Grid", data_type);
-  grids::set_output_grid(params, "Grid", data_type, grid);
 
-  UNUSED_VARS(mode, input_type, fast_sweeping_region);
+  const openvdb::tools::FastSweepingDomain fs_domain = get_fast_sweeping_domain(
+      fast_sweeping_region);
 
+  ExtrapolateOp extrapolate_op = {params, boundary_mode, input_type, fs_domain};
+  grids::apply(grid, data_type, extrapolate_op);
+
+  grids::set_output_grid(params, "Grid", data_type, extrapolate_op.result);
   params.set_default_remaining_outputs();
 #else
   params.set_default_remaining_outputs();
@@ -83,7 +189,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 static void node_rna(StructRNA *srna)
 {
   static EnumPropertyItem mode_items[] = {
-      {GEO_NODE_EXTRAPOLATE_GRID_DIRICHLET,
+      {GEO_NODE_EXTRAPOLATE_GRID_BOUNDARY_DIRICHLET,
        "Dirichlet",
        0,
        "Dirichlet",
@@ -106,7 +212,7 @@ static void node_rna(StructRNA *srna)
                     "How the extrapolation is computed",
                     mode_items,
                     NOD_storage_enum_accessors(mode),
-                    GEO_NODE_EXTRAPOLATE_GRID_DIRICHLET);
+                    GEO_NODE_EXTRAPOLATE_GRID_BOUNDARY_DIRICHLET);
   RNA_def_node_enum(srna,
                     "input_type",
                     "Input Type",

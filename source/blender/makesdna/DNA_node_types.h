@@ -2803,9 +2803,9 @@ typedef enum GeometryNodeGridExtrapolationInputType {
   GEO_NODE_EXTRAPOLATE_GRID_INPUT_DENSITY = 1,
 } GeometryNodeGridExtrapolationInputType;
 
-typedef enum GeometryNodeGridExtrapolationMode {
-  GEO_NODE_EXTRAPOLATE_GRID_DIRICHLET = 0,
-} GeometryNodeGridExtrapolationMode;
+typedef enum GeometryNodeGridExtrapolationBoundaryMode {
+  GEO_NODE_EXTRAPOLATE_GRID_BOUNDARY_DIRICHLET = 0,
+} GeometryNodeGridExtrapolationBoundaryMode;
 
 typedef enum GeometryNodeFastSweepingRegion {
   GEO_NODE_FAST_SWEEPING_REGION_ALL = 0,
