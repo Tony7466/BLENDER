@@ -10,7 +10,7 @@
 
 #include "NOD_geometry.hh"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_layer.h"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
@@ -94,7 +94,7 @@ static bool geometry_node_tree_validate_link(eNodeSocketDatatype type_a,
     return true;
   }
   if (ELEM(type_a, SOCK_FLOAT, SOCK_VECTOR) && type_b == SOCK_ROTATION) {
-    /* Floats and vectors implicitly conver to rotations. */
+    /* Floats and vectors implicitly convert to rotations. */
     return true;
   }
   if (type_a == SOCK_ROTATION && type_b == SOCK_VECTOR) {

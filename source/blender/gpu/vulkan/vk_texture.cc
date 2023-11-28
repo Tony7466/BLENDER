@@ -525,7 +525,7 @@ void VKTexture::bind(int binding,
   const std::optional<VKDescriptorSet::Location> location =
       shader_interface.descriptor_set_location(bind_type, binding);
   if (location) {
-    VKDescriptorSetTracker &descriptor_set = shader->pipeline_get().descriptor_set_get();
+    VKDescriptorSetTracker &descriptor_set = context.descriptor_set_get();
     if (bind_type == shader::ShaderCreateInfo::Resource::BindType::IMAGE) {
       descriptor_set.image_bind(*this, *location);
     }
@@ -670,9 +670,7 @@ VkExtent3D VKTexture::vk_extent_3d(int mip_level) const
     extent[2] = 1;
   }
 
-  VkExtent3D result{static_cast<uint32_t>(extent[0]),
-                    static_cast<uint32_t>(extent[1]),
-                    static_cast<uint32_t>(extent[2])};
+  VkExtent3D result{uint32_t(extent[0]), uint32_t(extent[1]), uint32_t(extent[2])};
   return result;
 }
 

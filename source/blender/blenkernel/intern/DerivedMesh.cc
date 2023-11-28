@@ -32,11 +32,11 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "BKE_DerivedMesh.h"
-#include "BKE_bvhutils.h"
+#include "BKE_DerivedMesh.hh"
+#include "BKE_bvhutils.hh"
 #include "BKE_colorband.h"
 #include "BKE_deform.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
@@ -391,7 +391,9 @@ static Mesh *create_orco_mesh(Object *ob, Mesh *me, BMEditMesh *em, int layer)
   orco = get_orco_coords(ob, em, layer, &free);
 
   if (orco) {
-    BKE_mesh_vert_coords_apply(mesh, orco);
+    mesh->vert_positions_for_write().copy_from(
+        {reinterpret_cast<const float3 *>(orco), mesh->totvert});
+    BKE_mesh_tag_positions_changed(mesh);
     if (free) {
       MEM_freeN(orco);
     }
@@ -1336,8 +1338,6 @@ static void mesh_build_data(Depsgraph *depsgraph,
   ob->runtime->last_data_mask = *dataMask;
   ob->runtime->last_need_mapping = need_mapping;
 
-  BKE_object_boundbox_calc_from_mesh(ob, mesh_eval);
-
   /* Make sure that drivers can target shapekey properties.
    * Note that this causes a potential inconsistency, as the shapekey may have a
    * different topology than the evaluated mesh. */
@@ -1396,8 +1396,6 @@ static void editbmesh_build_data(Depsgraph *depsgraph,
   obedit->runtime->editmesh_eval_cage = me_cage;
 
   obedit->runtime->geometry_set_eval = non_mesh_components;
-
-  BKE_object_boundbox_calc_from_mesh(obedit, me_final);
 
   obedit->runtime->last_data_mask = *dataMask;
 }
@@ -1626,21 +1624,18 @@ static void make_vertexcos__mapFunc(void *user_data,
   }
 }
 
-void mesh_get_mapped_verts_coords(Mesh *me_eval, float (*r_cos)[3], const int totcos)
+void mesh_get_mapped_verts_coords(Mesh *me_eval, blender::MutableSpan<blender::float3> r_cos)
 {
   if (me_eval->runtime->deformed_only == false) {
     MappedUserData user_data;
-    memset(r_cos, 0, sizeof(*r_cos) * totcos);
-    user_data.vertexcos = r_cos;
-    user_data.vertex_visit = BLI_BITMAP_NEW(totcos, "vertexcos flags");
+    r_cos.fill(float3(0));
+    user_data.vertexcos = reinterpret_cast<float(*)[3]>(r_cos.data());
+    user_data.vertex_visit = BLI_BITMAP_NEW(r_cos.size(), "vertexcos flags");
     BKE_mesh_foreach_mapped_vert(me_eval, make_vertexcos__mapFunc, &user_data, MESH_FOREACH_NOP);
     MEM_freeN(user_data.vertex_visit);
   }
   else {
-    const Span<float3> positions = me_eval->vert_positions();
-    for (int i = 0; i < totcos; i++) {
-      copy_v3_v3(r_cos[i], positions[i]);
-    }
+    r_cos.copy_from(me_eval->vert_positions());
   }
 }
 
