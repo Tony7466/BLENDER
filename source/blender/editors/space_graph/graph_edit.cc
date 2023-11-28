@@ -1126,6 +1126,8 @@ static int graphkeys_sound_to_samples_exec(bContext *C, wmOperator *op)
 
   /* Store necessary data for the baking steps. */
   sbi.samples = AUD_readSoundBuffer(filepath,
+
+                                    RNA_boolean_get(op->ptr, "use_filter"),
                                     RNA_float_get(op->ptr, "low"),
                                     RNA_float_get(op->ptr, "high"),
                                     RNA_float_get(op->ptr, "attack"),
@@ -1200,6 +1202,46 @@ static int graphkeys_sound_to_samples_invoke(bContext *C, wmOperator *op, const 
   return WM_operator_filesel(C, op, event);
 }
 
+
+
+static void wm_sound_to_samples_draw(bContext * /*C*/, wmOperator *op)
+{
+
+  uiLayout *box, *col, *sub;
+
+  uiLayoutSetPropSep(op->layout, true);
+  uiLayoutSetPropDecorate(op->layout, false);
+
+  box = uiLayoutBox(op->layout);
+
+  uiItemL(box, IFACE_("Sound Import Options"), ICON_NONE);
+
+  uiItemR(box, op->ptr, "use_filter", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  col = uiLayoutColumn(box, false);
+
+  sub = uiLayoutColumn(col, false);
+  uiLayoutSetActive(sub, RNA_boolean_get(op->ptr, "use_filter"));
+
+  uiItemR(sub, op->ptr, "low", UI_ITEM_NONE, IFACE_("Low Frequency"), ICON_NONE);
+  uiItemR(sub, op->ptr, "high", UI_ITEM_NONE, IFACE_("High Frequency"), ICON_NONE);
+  uiItemR(sub, op->ptr, "attack", UI_ITEM_NONE, IFACE_("Attack"), ICON_NONE);
+  uiItemR(sub, op->ptr, "release", UI_ITEM_NONE, IFACE_("Release"), ICON_NONE);
+  uiItemR(sub, op->ptr, "threshold", UI_ITEM_NONE, IFACE_("Threshold"), ICON_NONE);
+
+  uiItemR(sub, op->ptr, "use_accumulate", UI_ITEM_NONE, IFACE_("Accumulate"), ICON_NONE);
+
+  uiItemR(sub, op->ptr, "use_additive", UI_ITEM_NONE, IFACE_("Additive"), ICON_NONE);
+
+  uiItemR(sub, op->ptr, "use_square", UI_ITEM_NONE, IFACE_("Square"), ICON_NONE);
+
+  sub = uiLayoutColumn(col, false);
+  uiLayoutSetActive(sub, RNA_boolean_get(op->ptr, "use_square"));
+  uiItemR(sub, op->ptr, "sthreshold", UI_ITEM_NONE, IFACE_("Square Threshold"), ICON_NONE);
+}
+
+
+
 void GRAPH_OT_sound_to_samples(wmOperatorType *ot)
 {
   /* Identifiers */
@@ -1211,6 +1253,8 @@ void GRAPH_OT_sound_to_samples(wmOperatorType *ot)
   ot->invoke = graphkeys_sound_to_samples_invoke;
   ot->exec = graphkeys_sound_to_samples_exec;
   ot->poll = graphop_selected_fcurve_poll;
+  ot->ui = wm_sound_to_samples_draw;
+
 
   /* Flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1223,6 +1267,10 @@ void GRAPH_OT_sound_to_samples(wmOperatorType *ot)
                                  WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
+
+  RNA_def_boolean(
+      ot->srna, "use_filter", false, "Use filter", "Filter the sound with the settings below");
+
   RNA_def_float(ot->srna,
                 "low",
                 0.0f,
