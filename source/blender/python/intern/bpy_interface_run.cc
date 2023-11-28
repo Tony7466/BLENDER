@@ -80,61 +80,6 @@ struct PyModuleObject {
 #endif
 
 /**
- * Compatibility wrapper for #PyRun_FileExFlags.
- */
-static PyObject *python_PyRun_FileExFlags_compat_wrapper(FILE *fp,
-                                                         const char *filepath,
-                                                         const int start,
-                                                         PyObject *globals,
-                                                         PyObject *locals,
-                                                         const int closeit,
-                                                         PyCompilerFlags *flags)
-{
-  /* Previously we used #PyRun_File to run directly the code on a FILE
-   * object, but as written in the Python/C API Ref Manual, chapter 2,
-   * 'FILE structs for different C libraries can be different and incompatible'.
-   * So now we load the script file data to a buffer on MS-Windows. */
-#ifdef _WIN32
-  bool use_file_handle_workaround = true;
-#else
-  bool use_file_handle_workaround = false;
-#endif
-
-  if (!use_file_handle_workaround) {
-    return PyRun_FileExFlags(fp, filepath, start, globals, locals, closeit, flags);
-  }
-
-  PyObject *py_result = nullptr;
-  size_t buf_len;
-  char *buf = static_cast<char *>(BLI_file_read_data_as_mem_from_handle(fp, false, 1, &buf_len));
-  if (closeit) {
-    fclose(fp);
-  }
-
-  if (UNLIKELY(buf == nullptr)) {
-    PyErr_Format(PyExc_IOError, "Python file \"%s\" could not read buffer", filepath);
-  }
-  else {
-    buf[buf_len] = '\0';
-    PyObject *filepath_py = PyC_UnicodeFromBytes(filepath);
-    PyObject *compiled = Py_CompileStringObject(buf, filepath_py, Py_file_input, flags, -1);
-    MEM_freeN(buf);
-    Py_DECREF(filepath_py);
-
-    if (compiled == nullptr) {
-      if (!PyErr_Occurred()) {
-        PyErr_Format(PyExc_SyntaxError, "Python file \"%s\" could not be compiled", filepath);
-      }
-    }
-    else {
-      py_result = PyEval_EvalCode(compiled, globals, locals);
-      Py_DECREF(compiled);
-    }
-  }
-  return py_result;
-}
-
-/**
  * Execute a file-path or text-block.
  *
  * \param reports: Report exceptions as errors (may be nullptr).
@@ -192,14 +137,35 @@ static bool python_script_exec(
     }
   }
   else {
-    FILE *fp = BLI_fopen(filepath, "r");
+    /* Ensure FILE is compatible with Python's C API. from the Python/C API Ref Manual, chapter 2,
+     * 'FILE structs for different C libraries can be different and incompatible'.
+     * So use `_Py_fopen_obj` on MS-Windows. */
+#ifdef _WIN32
+    const bool use_py_fopen = true;
+#else
+    const bool use_py_fopen = false;
+#endif
+
+    FILE *fp;
+    if (use_py_fopen) {
+      PyObject *filepath_py = PyC_UnicodeFromBytes(filepath);
+      fp = _Py_fopen_obj(filepath_py, "rb");
+      Py_DECREF(filepath_py);
+    }
+    else {
+      fp = BLI_fopen(filepath, "rb");
+    }
+
     filepath_namespace = filepath;
 
     if (fp) {
-      const int closeit = 1; /* Handles closing `fp`. */
+      const int closeit = use_py_fopen ? 1 : 0;
       py_dict = PyC_DefaultNameSpace(filepath);
-      py_result = python_PyRun_FileExFlags_compat_wrapper(
+      py_result = PyRun_FileExFlags(
           fp, filepath, Py_file_input, py_dict, py_dict, closeit, nullptr);
+      if (closeit == 0) {
+        fclose(fp);
+      }
     }
     else {
       PyErr_Format(
