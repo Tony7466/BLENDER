@@ -743,7 +743,7 @@ void BKE_subdiv_ccg_recalc_normals(SubdivCCG *subdiv_ccg)
     /* Grids don't have normals, can do early output. */
     return;
   }
-  subdiv_ccg_recalc_inner_grid_normals(subdiv_ccg, blender::IndexMask(subdiv_ccg->num_faces));
+  subdiv_ccg_recalc_inner_grid_normals(subdiv_ccg, IndexMask(subdiv_ccg->num_faces));
   BKE_subdiv_ccg_average_grids(subdiv_ccg);
 }
 
@@ -1029,10 +1029,7 @@ static void subdiv_ccg_affected_face_adjacency(SubdivCCG *subdiv_ccg,
     face_vertices.reinitialize(num_face_grids);
     topology_refiner->getFaceVertices(topology_refiner, face_index, face_vertices.data());
     adjacent_verts.add_multiple(face_vertices);
-  });
 
-  face_mask.foreach_index([&](const int face_index) {
-    const int num_face_grids = subdiv_ccg->faces[face_index].num_grids;
     face_edges.reinitialize(num_face_grids);
     topology_refiner->getFaceEdges(topology_refiner, face_index, face_edges.data());
     adjacent_edges.add_multiple(face_edges);
@@ -1047,12 +1044,10 @@ void subdiv_ccg_average_faces_boundaries_and_corners(SubdivCCG *subdiv_ccg,
   VectorSet<int> adjacent_edges;
   subdiv_ccg_affected_face_adjacency(subdiv_ccg, face_mask, adjacent_verts, adjacent_edges);
 
-  /* Average boundaries. */
   IndexMaskMemory memory;
   subdiv_ccg_average_boundaries(
       subdiv_ccg, key, IndexMask::from_indices(adjacent_edges.as_span(), memory));
 
-  /* Average corners. */
   subdiv_ccg_average_corners(
       subdiv_ccg, key, IndexMask::from_indices(adjacent_verts.as_span(), memory));
 }
