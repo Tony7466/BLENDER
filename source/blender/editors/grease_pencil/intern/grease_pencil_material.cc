@@ -361,9 +361,11 @@ static int grease_pencil_material_copy_to_object_exec(bContext *C, wmOperator *o
         continue;
       }
 
-      if (ma_src != nullptr) {
-        BKE_grease_pencil_object_material_ensure(bmain, ob, ma_src);
+      if (ma_src == nullptr) {
+        continue;
       }
+
+      BKE_object_material_ensure(bmain, ob, ma_src);
     }
 
     /* notifiers */
@@ -371,7 +373,6 @@ static int grease_pencil_material_copy_to_object_exec(bContext *C, wmOperator *o
   }
   CTX_DATA_END;
 
-  /* notifiers */
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;

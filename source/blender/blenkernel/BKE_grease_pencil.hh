@@ -813,14 +813,12 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
 void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil_src,
                                                GreasePencil *grease_pencil_dst);
 
-int BKE_grease_pencil_object_material_index_get(Object *ob, Material *ma);
 int BKE_grease_pencil_object_material_index_get_by_name(Object *ob, const char *name);
 Material *BKE_grease_pencil_object_material_new(Main *bmain,
                                                 Object *ob,
                                                 const char *name,
                                                 int *r_index);
 Material *BKE_grease_pencil_object_material_from_brush_get(Object *ob, Brush *brush);
-int BKE_grease_pencil_object_material_ensure(Main *bmain, Object *ob, Material *material);
 Material *BKE_grease_pencil_object_material_ensure_by_name(Main *bmain,
                                                            Object *ob,
                                                            const char *name,
