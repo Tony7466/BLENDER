@@ -1,2 +1,3 @@
 Referenced by commit cf1b3eee995a04736f8d5e9544b210f090b13e9c, Fix "make doc_man" not working, after changes in 61d99d45
 Referenced by pull request #115320, Fix #115056: man page fails to build with non-portable install
+Referenced by commit 5486c70aae94196d715c07364292fc108ebf59a8, Fix #115056: man-page fails to build with non-portable install
