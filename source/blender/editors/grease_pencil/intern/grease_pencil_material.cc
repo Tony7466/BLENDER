@@ -261,20 +261,6 @@ static void GREASE_PENCIL_OT_material_lock_unused(wmOperatorType *ot)
 /** \name Lock Unselected Materials Operator
  * \{ */
 
-static VectorSet<int> find_materials_in_mask(const VArray<int> &material_indices,
-                                             const IndexMask &mask)
-{
-  VectorSet<int> materials;
-  if (const std::optional<int> single = material_indices.get_if_single()) {
-    materials.add(*single);
-  }
-  else {
-    mask.foreach_index([&](const int i) { materials.add(material_indices[i]); });
-  }
-
-  return materials;
-}
-
 static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator * /*op*/)
 {
   using namespace blender;
@@ -287,7 +273,7 @@ static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator *
   bool changed = false;
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
 
-  Vector<int> materials_used;
+  Set<int> materials_used;
 
   for (const MutableDrawingInfo &info : drawings) {
     IndexMaskMemory memory;
@@ -300,23 +286,19 @@ static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator *
     AttributeAccessor attributes = info.drawing.strokes().attributes();
     const VArray<int> material_indices = *attributes.lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_CURVE, 0);
-    const VectorSet<int> selected_materials = find_materials_in_mask(material_indices, strokes);
 
-    for (const int material_index : IndexRange(object->totcol)) {
-      /* Add the material as used to not be locked. */
-      if (selected_materials.contains(material_index)) {
-        materials_used.append(material_index);
-      }
+    if (const std::optional<int> single = material_indices.get_if_single()) {
+      materials_used.add(*single);
+    }
+    else {
+      strokes.foreach_index([&](const int i) { materials_used.add(material_indices[i]); });
     }
   };
 
   /* The material lock must be done outside of the drawing loop to prevent
    * 'retrieve_editable_and_selected_strokes' from returning an incorrect IndexMask.
    */
-  for (const int material_index : IndexRange(object->totcol)) {
-    if (materials_used.contains(material_index)) {
-      continue;
-    }
+  for (const int material_index : materials_used) {
     if (Material *ma = BKE_object_material_get(object, material_index + 1)) {
       MaterialGPencilStyle &gp_style = *ma->gp_style;
       gp_style.flag |= GP_MATERIAL_LOCKED;
