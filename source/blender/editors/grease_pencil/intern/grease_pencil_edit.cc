@@ -1460,7 +1460,7 @@ static bke::CurvesGeometry duplicate_points(const bke::CurvesGeometry &curves,
 
   Array<bool> points_to_duplicate(curves.points_num());
   mask.to_bools(points_to_duplicate.as_mutable_span());
-  const int num_points_to_add = points_to_duplicate.as_span().count(true);
+  const int num_points_to_add = mask.size();
 
   int curr_dst_point_id = 0;
   Array<int> dst_to_src_point(curves.points_num() + num_points_to_add);
