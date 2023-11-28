@@ -195,6 +195,7 @@ set(SRC
   intern/mesh_boolean_convert.cc
   intern/mesh_calc_edges.cc
   intern/mesh_convert.cc
+  intern/mesh_compare.cc
   intern/mesh_debug.cc
   intern/mesh_evaluate.cc
   intern/mesh_fair.cc
@@ -422,8 +423,8 @@ set(SRC
   BKE_lightprobe.h
   BKE_linestyle.h
   BKE_main.h
-  BKE_main_idmap.h
-  BKE_main_namemap.h
+  BKE_main_idmap.hh
+  BKE_main_namemap.hh
   BKE_mask.h
   BKE_material.h
   BKE_mball.h
@@ -431,6 +432,7 @@ set(SRC
   BKE_mesh.h
   BKE_mesh.hh
   BKE_mesh_boolean_convert.hh
+  BKE_mesh_compare.hh
   BKE_mesh_fair.hh
   BKE_mesh_iterators.hh
   BKE_mesh_legacy_convert.hh
