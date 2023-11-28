@@ -71,7 +71,6 @@ void SeqQuadsBatch::draw()
 {
   if (quads_num > 0) {
     GPU_vertbuf_tag_dirty(vbo_quads);
-    GPU_vertbuf_data_len_set(vbo_quads, quads_num * 4);
     GPU_vertbuf_use(vbo_quads);
     GPU_batch_draw_range(batch_quads, 0, quads_num * 6);
     quads_num = 0;
@@ -79,7 +78,6 @@ void SeqQuadsBatch::draw()
   }
   if (lines_num > 0) {
     GPU_vertbuf_tag_dirty(vbo_lines);
-    GPU_vertbuf_data_len_set(vbo_lines, lines_num * 2);
     GPU_vertbuf_use(vbo_lines);
     GPU_batch_draw_range(batch_lines, 0, lines_num * 2);
     lines_num = 0;
@@ -101,10 +99,6 @@ void SeqQuadsBatch::add_quad(float x1,
     draw();
   }
   if (quads_num == 0) {
-    /* Don't actually need this, but it's the only way to clear GPU_VERTBUF_DATA_UPLOADED flag. */
-    GPUVertBufRaw attr_data;
-    GPU_vertbuf_attr_get_raw_data(vbo_quads, 0, &attr_data);
-
     verts_quads = (ColorVertex *)GPU_vertbuf_get_data(vbo_quads);
     BLI_assert(verts_quads != nullptr);
   }
@@ -128,10 +122,6 @@ void SeqQuadsBatch::add_wire_quad(float x1, float y1, float x2, float y2, const 
     draw();
   }
   if (lines_num == 0) {
-    /* Don't actually need this, but it's the only way to clear GPU_VERTBUF_DATA_UPLOADED flag. */
-    GPUVertBufRaw attr_data;
-    GPU_vertbuf_attr_get_raw_data(vbo_lines, 0, &attr_data);
-
     verts_lines = (ColorVertex *)GPU_vertbuf_get_data(vbo_lines);
     BLI_assert(verts_lines != nullptr);
   }
@@ -163,10 +153,6 @@ void SeqQuadsBatch::add_line(float x1, float y1, float x2, float y2, const uchar
     draw();
   }
   if (lines_num == 0) {
-    /* Don't actually need this, but it's the only way to clear GPU_VERTBUF_DATA_UPLOADED flag. */
-    GPUVertBufRaw attr_data;
-    GPU_vertbuf_attr_get_raw_data(vbo_lines, 0, &attr_data);
-
     verts_lines = (ColorVertex *)GPU_vertbuf_get_data(vbo_lines);
     BLI_assert(verts_lines != nullptr);
   }
