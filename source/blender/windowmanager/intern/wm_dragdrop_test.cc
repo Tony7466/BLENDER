@@ -4,9 +4,6 @@
 
 #include "testing/testing.h"
 
-/* #bContextStore. */
-#include "BKE_context.h"
-
 /* #eFileSel_File_Types. */
 #include "DNA_space_types.h"
 
@@ -38,7 +35,11 @@ TEST(wm_drag, wmDragPath)
     EXPECT_STREQ(WM_drag_get_single_path(&drag), "text_file.txt");
     EXPECT_EQ(WM_drag_get_path_file_type(&drag), FILE_TYPE_TEXT);
     EXPECT_EQ(WM_drag_get_paths(&drag), expected_file_paths.as_span());
-
+    EXPECT_STREQ(WM_drag_get_single_path(&drag, FILE_TYPE_TEXT), "text_file.txt");
+    EXPECT_EQ(WM_drag_get_single_path(&drag, FILE_TYPE_BLENDER), nullptr);
+    EXPECT_TRUE(
+        WM_drag_has_path_file_type(&drag, FILE_TYPE_BLENDER | FILE_TYPE_TEXT | FILE_TYPE_IMAGE));
+    EXPECT_FALSE(WM_drag_has_path_file_type(&drag, FILE_TYPE_BLENDER | FILE_TYPE_IMAGE));
     MEM_delete(path_data);
   }
   {
@@ -58,7 +59,20 @@ TEST(wm_drag, wmDragPath)
     EXPECT_STREQ(WM_drag_get_single_path(&drag), "blender.blend");
     EXPECT_EQ(WM_drag_get_path_file_type(&drag), FILE_TYPE_BLENDER);
     EXPECT_EQ(WM_drag_get_paths(&drag), expected_file_paths.as_span());
-
+    EXPECT_STREQ(WM_drag_get_single_path(&drag, FILE_TYPE_BLENDER), "blender.blend");
+    EXPECT_STREQ(WM_drag_get_single_path(&drag, FILE_TYPE_IMAGE), "image.png");
+    EXPECT_STREQ(WM_drag_get_single_path(&drag, FILE_TYPE_TEXT), "text_file.txt");
+    EXPECT_STREQ(
+        WM_drag_get_single_path(&drag, FILE_TYPE_BLENDER | FILE_TYPE_TEXT | FILE_TYPE_IMAGE),
+        "blender.blend");
+    EXPECT_STREQ(WM_drag_get_single_path(&drag, FILE_TYPE_TEXT | FILE_TYPE_IMAGE),
+                 "text_file.txt");
+    EXPECT_EQ(WM_drag_get_single_path(&drag, FILE_TYPE_ASSET), nullptr);
+    EXPECT_TRUE(
+        WM_drag_has_path_file_type(&drag, FILE_TYPE_BLENDER | FILE_TYPE_TEXT | FILE_TYPE_IMAGE));
+    EXPECT_TRUE(WM_drag_has_path_file_type(&drag, FILE_TYPE_BLENDER | FILE_TYPE_IMAGE));
+    EXPECT_TRUE(WM_drag_has_path_file_type(&drag, FILE_TYPE_IMAGE));
+    EXPECT_FALSE(WM_drag_has_path_file_type(&drag, FILE_TYPE_ASSET));
     MEM_delete(path_data);
   }
   {
@@ -68,6 +82,11 @@ TEST(wm_drag, wmDragPath)
     EXPECT_EQ(WM_drag_get_single_path(&drag), nullptr);
     EXPECT_EQ(WM_drag_get_path_file_type(&drag), 0);
     EXPECT_EQ(WM_drag_get_paths(&drag).size(), 0);
+    EXPECT_EQ(WM_drag_get_single_path(
+                  &drag, FILE_TYPE_BLENDER | FILE_TYPE_IMAGE | FILE_TYPE_TEXT | FILE_TYPE_ASSET),
+              nullptr);
+    EXPECT_FALSE(WM_drag_has_path_file_type(
+        &drag, FILE_TYPE_BLENDER | FILE_TYPE_IMAGE | FILE_TYPE_TEXT | FILE_TYPE_ASSET));
   }
 }
 

@@ -768,10 +768,10 @@ wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths)
   BLI_assert(!paths.is_empty());
   wmDragPath *path_data = MEM_new<wmDragPath>("wmDragPath");
 
-  path_data->file_type = ED_path_extension_type(paths[0]);
-
   for (const char *path : paths) {
     path_data->paths.append(path);
+    path_data->file_types_bit_flag |= ED_path_extension_type(path);
+    path_data->file_types.append(ED_path_extension_type(path));
   }
 
   path_data->tooltip = path_data->paths[0];
@@ -800,6 +800,35 @@ const char *WM_drag_get_single_path(const wmDrag *drag)
   return path_data->paths[0].c_str();
 }
 
+const char *WM_drag_get_single_path(const wmDrag *drag, int file_type)
+{
+  if (drag->type != WM_DRAG_PATH) {
+    return nullptr;
+  }
+  const wmDragPath *path_data = static_cast<const wmDragPath *>(drag->poin);
+  auto const file_types = path_data->file_types;
+
+  auto itr = std::find_if(
+      file_types.begin(), file_types.end(), [file_type](const int file_fype_test) {
+        return file_fype_test & file_type;
+      });
+
+  if (itr == file_types.end()) {
+    return nullptr;
+  }
+  const int index = itr - file_types.begin();
+  return path_data->paths[index].c_str();
+}
+
+bool WM_drag_has_path_file_type(const wmDrag *drag, int file_type)
+{
+  if (drag->type != WM_DRAG_PATH) {
+    return false;
+  }
+  const wmDragPath *path_data = static_cast<const wmDragPath *>(drag->poin);
+  return bool(path_data->file_types_bit_flag & file_type);
+}
+
 blender::Span<std::string> WM_drag_get_paths(const wmDrag *drag)
 {
   if (drag->type != WM_DRAG_PATH) {
@@ -817,7 +846,7 @@ int WM_drag_get_path_file_type(const wmDrag *drag)
   }
 
   const wmDragPath *path_data = static_cast<const wmDragPath *>(drag->poin);
-  return path_data->file_type;
+  return path_data->file_types[0];
 }
 
 /* ************** draw ***************** */
