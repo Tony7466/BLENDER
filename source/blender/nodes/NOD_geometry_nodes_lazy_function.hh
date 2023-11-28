@@ -128,6 +128,13 @@ class GeoNodesSimulationParams {
   virtual SimulationZoneBehavior *get(const int zone_id) const = 0;
 };
 
+using BakeNodeBehavior = sim_output::Behavior;
+
+class GeoNodesBakeParams {
+ public:
+  virtual BakeNodeBehavior *get(const int id) const = 0;
+};
+
 struct GeoNodesSideEffectNodes {
   MultiValueMap<ComputeContextHash, const lf::FunctionNode *> nodes_by_context;
   /**
