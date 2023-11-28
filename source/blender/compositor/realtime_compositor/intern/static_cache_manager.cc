@@ -18,6 +18,7 @@ void StaticCacheManager::reset()
   distortion_grids.reset();
   keying_screens.reset();
   cached_shaders.reset();
+  cached_images.reset();
 }
 
 }  // namespace blender::realtime_compositor

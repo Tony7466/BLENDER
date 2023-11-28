@@ -450,8 +450,6 @@ class ImageOperation : public NodeOperation {
       return;
     }
 
-    update_image_frame_number();
-
     for (const bNodeSocket *output : this->node()->output_sockets()) {
       compute_output(output->identifier);
     }
@@ -466,15 +464,16 @@ class ImageOperation : public NodeOperation {
       return false;
     }
 
-    if (BKE_image_is_multilayer(image)) {
-      if (!image->rr) {
-        return false;
-      }
+    if (!BKE_image_is_multilayer(image)) {
+      return true;
+    }
 
-      RenderLayer *render_layer = get_render_layer();
-      if (!render_layer) {
-        return false;
-      }
+    if (!image->rr) {
+      return false;
+    }
+
+    if (!get_render_layer()) {
+      return false;
     }
 
     return true;
@@ -493,22 +492,20 @@ class ImageOperation : public NodeOperation {
     }
   }
 
-  /* Compute the effective frame number of the image if it was animated and invalidate the cached
-   * GPU texture if the computed frame number is different. */
-  void update_image_frame_number()
-  {
-    BKE_image_user_frame_calc(get_image(), get_image_user(), context().get_frame_number());
-  }
-
   void compute_output(StringRef identifier)
   {
     if (!should_compute_output(identifier)) {
       return;
     }
 
-    ImageUser image_user = compute_image_user_for_output(identifier);
-    BKE_image_ensure_gpu_texture(get_image(), &image_user);
-    GPUTexture *image_texture = BKE_image_get_gpu_texture(get_image(), &image_user, nullptr);
+    GPUTexture *image_texture = context().cache_manager().cached_images.get(
+        context(), get_image(), get_image_user(), get_pass_name(identifier));
+
+    if (!image_texture) {
+      Result &result = get_result(identifier);
+      result.allocate_invalid();
+      return;
+    }
 
     const int2 size = int2(GPU_texture_width(image_texture), GPU_texture_height(image_texture));
     Result &result = get_result(identifier);
@@ -520,10 +517,6 @@ class ImageOperation : public NodeOperation {
     const int2 lower_bound = int2(0);
     GPU_shader_uniform_2iv(shader, "lower_bound", lower_bound);
 
-    if (result.type() == ResultType::Color) {
-      GPU_shader_uniform_1b(shader, "premultiply_alpha", should_premultiply_alpha(image_user));
-    }
-
     const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
     GPU_texture_bind(image_texture, input_unit);
 
@@ -534,28 +527,6 @@ class ImageOperation : public NodeOperation {
     GPU_shader_unbind();
     GPU_texture_unbind(image_texture);
     result.unbind_as_image();
-  }
-
-  /* Get a copy of the image user that is appropriate to retrieve the image buffer for the output
-   * with the given identifier. This essentially sets the appropriate pass and view indices that
-   * corresponds to the output. */
-  ImageUser compute_image_user_for_output(StringRef identifier)
-  {
-    ImageUser image_user = *get_image_user();
-
-    /* Set the needed view. */
-    image_user.view = get_view_index();
-
-    /* Set the needed pass. */
-    if (BKE_image_is_multilayer(get_image())) {
-      image_user.pass = get_pass_index(get_pass_name(identifier));
-      BKE_image_multilayer_index(get_image()->rr, &image_user);
-    }
-    else {
-      BKE_image_multiview_index(get_image(), &image_user);
-    }
-
-    return image_user;
   }
 
   /* Get the shader that should be used to compute the output with the given identifier. The
@@ -575,100 +546,28 @@ class ImageOperation : public NodeOperation {
     }
   }
 
-  /* Compositor image inputs are expected to be always pre-multiplied, so identify if the GPU
-   * texture returned by the image module is straight and needs to be pre-multiplied. An exception
-   * is when the image has an alpha mode of channel packed or alpha ignore, in which case, we
-   * always ignore pre-multiplication. */
-  bool should_premultiply_alpha(ImageUser &image_user)
-  {
-    Image *image = get_image();
-    if (ELEM(image->alpha_mode, IMA_ALPHA_CHANNEL_PACKED, IMA_ALPHA_IGNORE)) {
-      return false;
-    }
-
-    ImBuf *image_buffer = BKE_image_acquire_ibuf(image, &image_user, nullptr);
-    if (!image_buffer) {
-      return false;
-    }
-
-    const bool has_premultiplied_alpha = BKE_image_has_gpu_texture_premultiplied_alpha(
-        image, image_buffer);
-    BKE_image_release_ibuf(image, image_buffer, nullptr);
-
-    return !has_premultiplied_alpha;
-  }
-
-  Image *get_image()
-  {
-    return (Image *)bnode().id;
-  }
-
-  ImageUser *get_image_user()
-  {
-    return static_cast<ImageUser *>(bnode().storage);
-  }
-
-  /* Get the render layer selected in the node assuming the image is a multilayer image. */
-  RenderLayer *get_render_layer()
-  {
-    const ListBase *layers = &get_image()->rr->layers;
-    return static_cast<RenderLayer *>(BLI_findlink(layers, get_image_user()->layer));
-  }
-
-  /* Get the name of the pass corresponding to the output with the given identifier assuming the
-   * image is a multilayer image. */
+  /* Get the name of the pass corresponding to the output with the given identifier. */
   const char *get_pass_name(StringRef identifier)
   {
     DOutputSocket output = node().output_by_identifier(identifier);
     return static_cast<NodeImageLayer *>(output->storage)->pass_name;
   }
 
-  /* Get the index of the pass with the given name in the selected render layer's passes list
-   * assuming the image is a multilayer image. */
-  int get_pass_index(const char *name)
+  /* Get the selected render layer selected assuming the image is a multilayer image. */
+  RenderLayer *get_render_layer()
   {
-    return BLI_findstringindex(&get_render_layer()->passes, name, offsetof(RenderPass, name));
+    const ListBase *layers = &get_image()->rr->layers;
+    return static_cast<RenderLayer *>(BLI_findlink(layers, get_image_user()->layer));
   }
 
-  /* Get the index of the view selected in the node. If the image is not a multi-view image or only
-   * has a single view, then zero is returned. Otherwise, if the image is a multi-view image, the
-   * index of the selected view is returned. However, note that the value of the view member of the
-   * image user is not the actual index of the view. More specifically, the index 0 is reserved to
-   * denote the special mode of operation "All", which dynamically selects the view whose name
-   * matches the view currently being rendered. It follows that the views are then indexed starting
-   * from 1. So for non zero view values, the actual index of the view is the value of the view
-   * member of the image user minus 1. */
-  int get_view_index()
+  Image *get_image()
   {
-    /* The image is not a multi-view image, so just return zero. */
-    if (!BKE_image_is_multiview(get_image())) {
-      return 0;
-    }
+    return reinterpret_cast<Image *>(bnode().id);
+  }
 
-    const ListBase *views = &get_image()->rr->views;
-    /* There is only one view and its index is 0. */
-    if (BLI_listbase_count_at_most(views, 2) < 2) {
-      return 0;
-    }
-
-    const int view = get_image_user()->view;
-    /* The view is not zero, which means it is manually specified and the actual index is then the
-     * view value minus 1. */
-    if (view != 0) {
-      return view - 1;
-    }
-
-    /* Otherwise, the view value is zero, denoting the special mode of operation "All", which finds
-     * the index of the view whose name matches the view currently being rendered. */
-    const char *view_name = context().get_view_name().data();
-    const int matched_view = BLI_findstringindex(views, view_name, offsetof(RenderView, name));
-
-    /* No view matches the view currently being rendered, so fallback to the first view. */
-    if (matched_view == -1) {
-      return 0;
-    }
-
-    return matched_view;
+  ImageUser *get_image_user()
+  {
+    return static_cast<ImageUser *>(bnode().storage);
   }
 };
 
@@ -726,7 +625,8 @@ static void node_composit_init_rlayers(const bContext *C, PointerRNA *ptr)
   id_us_plus(node->id);
 
   for (bNodeSocket *sock = (bNodeSocket *)node->outputs.first; sock;
-       sock = sock->next, sock_index++) {
+       sock = sock->next, sock_index++)
+  {
     NodeImageLayer *sockdata = MEM_cnew<NodeImageLayer>(__func__);
     sock->storage = sockdata;
 
