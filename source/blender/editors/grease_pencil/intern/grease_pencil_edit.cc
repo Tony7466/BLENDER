@@ -1503,7 +1503,7 @@ static bke::CurvesGeometry duplicate_points(const bke::CurvesGeometry &curves,
     const bool is_curve_self_joined = is_last_segment_selected && ranges_to_duplicate.size() != 1;
     const bool is_cyclic = ranges_to_duplicate.size() == 1 && is_last_segment_selected;
 
-    IndexRange range_ids = ranges_to_duplicate.index_range();
+    const IndexRange range_ids = ranges_to_duplicate.index_range();
     /* Skip the first range because it is joined to the end of the last range. */
     for (const int range_i : ranges_to_duplicate.index_range().drop_front(is_curve_self_joined)) {
       const IndexRange range = ranges_to_duplicate[range_i];
