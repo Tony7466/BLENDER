@@ -7,7 +7,6 @@ set(INC
   ../space_sequencer
   ../../asset_system
   ../../blenkernel
-  ../../blentranslation
   ../../bmesh
   ../../gpu
   ../../makesrna
@@ -109,6 +108,7 @@ set(LIB
   PRIVATE bf::animrig
   PRIVATE bf::blenfont
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::imbuf

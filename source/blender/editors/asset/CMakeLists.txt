@@ -8,7 +8,6 @@ set(INC
   ../../asset_system
   ../../blenkernel
   ../../blenloader
-  ../../blentranslation
   ../../makesrna
   ../../windowmanager
   # dna_type_offsets.h
@@ -61,6 +60,7 @@ set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
   bf_blenloader
+  PRIVATE bf::blentranslation
   PRIVATE bf::dna
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc

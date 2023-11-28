@@ -8,7 +8,6 @@ set(INC
   ../../asset_system
   ../../blenkernel
   ../../blenloader
-  ../../blentranslation
   ../../bmesh
   ../../draw
   ../../gpu
@@ -80,6 +79,7 @@ set(LIB
   PRIVATE bf::animrig
   PRIVATE bf::blenfont
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_curves

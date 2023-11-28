@@ -6,7 +6,6 @@ set(INC
   .
   ../asset_system
   ../blenloader
-  ../blentranslation
   ../bmesh
   ../draw
   ../gpencil_modifiers_legacy
@@ -540,7 +539,7 @@ set(LIB
   PRIVATE bf::blenfont
   PRIVATE bf::blenlib
   bf_blenloader
-  bf_blentranslation
+  PRIVATE bf::blentranslation
   bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna

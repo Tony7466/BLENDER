@@ -7,7 +7,6 @@ set(INC
   intern
 
   ../blenkernel
-  ../blentranslation
   ../editors/include
   ../makesrna
   ../windowmanager
@@ -44,6 +43,7 @@ set(SRC
 set(LIB
   bf_blenkernel
   bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   bf::dna
   PRIVATE bf_editor_interface

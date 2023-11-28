@@ -9,7 +9,6 @@ set(INC
   ../asset_system
   ../blenkernel
   ../blenloader
-  ../blentranslation
   ../compositor
   ../editors/include
   ../draw
@@ -97,6 +96,7 @@ set(SRC
 set(LIB
   PRIVATE bf::blenfont
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_screen

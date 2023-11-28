@@ -7,7 +7,6 @@ set(INC
   .
   intern
   ../blenkernel
-  ../blentranslation
   ../compositor/realtime_compositor
   ../compositor/realtime_compositor/cached_resources
   ../draw
@@ -59,6 +58,7 @@ set(SRC
 
 set(LIB
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::imbuf

@@ -7,7 +7,6 @@ set(INC
   intern
   ../blenkernel
   ../blenloader
-  ../blentranslation
   ../bmesh
   ../editors/include
   ../geometry
@@ -107,6 +106,7 @@ set(LIB
   PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PUBLIC bf::dna
   PRIVATE bf::functions

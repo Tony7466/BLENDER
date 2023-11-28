@@ -5,7 +5,6 @@
 set(INC
   PUBLIC .
   ../blenkernel
-  ../blentranslation
   ../gpu
   ../makesrna
 )
@@ -31,6 +30,7 @@ set(SRC
 
 set(LIB
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::dna
   bf_gpu
   PRIVATE bf::imbuf

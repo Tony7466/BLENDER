@@ -6,7 +6,6 @@ set(INC
   ../include
   ../uvedit
   ../../blenkernel
-  ../../blentranslation
   ../../bmesh
   ../../draw
   ../../geometry
@@ -95,6 +94,7 @@ set(LIB
   bf_blenkernel
   PRIVATE bf::animrig
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::functions

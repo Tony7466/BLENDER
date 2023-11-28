@@ -531,6 +531,7 @@ set(SRC
 
 set(LIB
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::imbuf
@@ -544,7 +545,6 @@ set(LIB
 set(INC
   .
   ../blenkernel
-  ../blentranslation
   ../makesrna
   ../python
   ../python/intern

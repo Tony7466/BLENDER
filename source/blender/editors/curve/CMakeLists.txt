@@ -5,7 +5,6 @@
 set(INC
   ../include
   ../../blenkernel
-  ../../blentranslation
   ../../gpu
   ../../makesrna
   ../../windowmanager
@@ -34,6 +33,7 @@ set(SRC
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::extern::curve_fit_nd

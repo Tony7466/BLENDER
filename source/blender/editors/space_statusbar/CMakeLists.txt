@@ -6,7 +6,6 @@ set(INC
   ../include
   ../../blenkernel
   ../../blenloader
-  ../../blentranslation
   ../../gpu
   ../../makesrna
   ../../windowmanager
@@ -25,6 +24,7 @@ set(SRC
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
 )

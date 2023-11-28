@@ -6,7 +6,6 @@ set(INC
   ../include
   ../../asset_system
   ../../blenkernel
-  ../../blentranslation
   ../../bmesh
   ../../makesrna
   ../../nodes
@@ -31,6 +30,7 @@ set(SRC
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_object

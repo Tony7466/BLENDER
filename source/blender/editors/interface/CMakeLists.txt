@@ -8,7 +8,6 @@ set(INC
   ../../asset_system
   ../../blenkernel
   ../../blenloader
-  ../../blentranslation
   ../../draw
   ../../gpu
   ../../makesrna
@@ -96,6 +95,7 @@ set(LIB
   PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_datafiles

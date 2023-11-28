@@ -6,7 +6,6 @@ set(INC
   ../include
   ../../blenkernel
   ../../blenloader
-  ../../blentranslation
   ../../gpu
   ../../makesrna
   ../../sequencer
@@ -131,6 +130,7 @@ set(LIB
   PRIVATE bf::animrig
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_undo
