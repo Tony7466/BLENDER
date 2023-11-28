@@ -35,7 +35,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_compute_contexts.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
@@ -43,7 +43,7 @@
 #include "BKE_main.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_object.hh"
 #include "BKE_scene.h"
@@ -88,11 +88,8 @@
 #include "NOD_socket_declarations_geometry.hh"
 
 #include "FN_field.hh"
-#include "FN_field_cpp_type.hh"
 
 #include "GEO_fillet_curves.hh"
-
-#include "../interface/interface_intern.hh" /* TODO: Remove */
 
 #include "node_intern.hh" /* own include */
 
@@ -287,26 +284,37 @@ static bool compare_node_depth(const bNode *a, const bNode *b)
   return false;
 }
 
-void node_sort(bNodeTree &ntree)
+void tree_draw_order_update(bNodeTree &ntree)
 {
   Array<bNode *> sort_nodes = ntree.all_nodes();
   std::stable_sort(sort_nodes.begin(), sort_nodes.end(), compare_node_depth);
-
-  /* If nothing was changed, exit early. Otherwise the node tree's runtime
-   * node vector needs to be rebuilt, since it cannot be reordered in place. */
-  if (sort_nodes == ntree.all_nodes()) {
-    return;
-  }
-
-  BKE_ntree_update_tag_node_reordered(&ntree);
-
-  ntree.runtime->nodes_by_id.clear();
-  BLI_listbase_clear(&ntree.nodes);
   for (const int i : sort_nodes.index_range()) {
-    BLI_addtail(&ntree.nodes, sort_nodes[i]);
-    ntree.runtime->nodes_by_id.add_new(sort_nodes[i]);
-    sort_nodes[i]->runtime->index_in_tree = i;
+    sort_nodes[i]->ui_order = i;
   }
+}
+
+Array<bNode *> tree_draw_order_calc_nodes(bNodeTree &ntree)
+{
+  Array<bNode *> nodes = ntree.all_nodes();
+  if (nodes.is_empty()) {
+    return {};
+  }
+  std::sort(nodes.begin(), nodes.end(), [](const bNode *a, const bNode *b) {
+    return a->ui_order < b->ui_order;
+  });
+  return nodes;
+}
+
+Array<bNode *> tree_draw_order_calc_nodes_reversed(bNodeTree &ntree)
+{
+  Array<bNode *> nodes = ntree.all_nodes();
+  if (nodes.is_empty()) {
+    return {};
+  }
+  std::sort(nodes.begin(), nodes.end(), [](const bNode *a, const bNode *b) {
+    return a->ui_order > b->ui_order;
+  });
+  return nodes;
 }
 
 static Array<uiBlock *> node_uiblocks_init(const bContext &C, const Span<bNode *> nodes)
@@ -1098,9 +1106,9 @@ static void node_draw_mute_line(const bContext &C,
 static void node_socket_draw(const bNodeSocket &sock,
                              const float color[4],
                              const float color_outline[4],
-                             float size,
-                             int locx,
-                             int locy,
+                             const float size,
+                             const float locx,
+                             const float locy,
                              uint pos_id,
                              uint col_id,
                              uint shape_id,
@@ -1178,7 +1186,7 @@ static void node_socket_outline_color_get(const bool selected,
   }
   else if (socket_type == SOCK_CUSTOM) {
     /* Until there is a better place for per socket color,
-     * the outline color for virtual sockets is set  here. */
+     * the outline color for virtual sockets is set here. */
     copy_v4_v4(r_outline_color, virtual_node_socket_outline_color);
   }
   else {
@@ -1407,7 +1415,14 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         break;
       }
       case bke::GeometryComponent::Type::GreasePencil: {
-        /* TODO. Do nothing for now. */
+        const geo_log::GeometryInfoLog::GreasePencilInfo &grease_pencil_info =
+            *value_log.grease_pencil_info;
+        char line[256];
+        SNPRINTF(line,
+                 TIP_("\u2022 Grease Pencil: %s layers"),
+                 to_string(grease_pencil_info.layers_num).c_str());
+        ss << line;
+        break;
         break;
       }
     }
@@ -1840,7 +1855,20 @@ static void node_draw_shadow(const SpaceNode &snode,
 {
   const rctf &rct = node.runtime->totr;
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  ui_draw_dropshadow(&rct, radius, snode.runtime->aspect, alpha, node.flag & SELECT);
+
+  const float shadow_width = 0.6f * U.widget_unit;
+  const float shadow_alpha = 0.5f * alpha;
+
+  ui_draw_dropshadow(&rct, radius, shadow_width, snode.runtime->aspect, shadow_alpha);
+
+  /* Outline emphasis. Slight darkening _inside_ the outline. */
+  const float color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
+  rctf rect{};
+  rect.xmin = rct.xmin - 0.5f;
+  rect.xmax = rct.xmax + 0.5f;
+  rect.ymin = rct.ymin - 0.5f;
+  rect.ymax = rct.ymax + 0.5f;
+  UI_draw_roundbox_4fv(&rect, false, radius + 0.5f, color);
 }
 
 static void node_draw_sockets(const View2D &v2d,
@@ -2210,6 +2238,7 @@ static void node_draw_panels(bNodeTree &ntree, const bNode &node, uiBlock &block
                        0.0f,
                        0.0f,
                        "");
+    UI_but_func_pushed_state_set(but, [&state](const uiBut &) { return state.is_collapsed(); });
     UI_but_func_set(
         but, node_panel_toggle_button_cb, const_cast<bNodePanelState *>(&state), &ntree);
 
@@ -2700,7 +2729,7 @@ static void node_draw_extra_info_panel_back(const bNode &node, const rctf &extra
 {
   const rctf &node_rect = node.runtime->totr;
   rctf panel_back_rect = extra_info_rect;
-  /* Extend the panel behind hidden nodes to accomodate the large rounded corners. */
+  /* Extend the panel behind hidden nodes to accommodate the large rounded corners. */
   if (node.flag & NODE_HIDDEN) {
     panel_back_rect.ymin = BLI_rctf_cent_y(&node_rect);
   }
@@ -3362,26 +3391,22 @@ int node_get_resize_cursor(NodeResizeDirection directions)
 
 static const bNode *find_node_under_cursor(SpaceNode &snode, const float2 &cursor)
 {
-  const Span<bNode *> nodes = snode.edittree->all_nodes();
-  if (nodes.is_empty()) {
-    return nullptr;
-  }
-  for (int i = nodes.index_range().last(); i >= 0; i--) {
-    if (BLI_rctf_isect_pt(&nodes[i]->runtime->totr, cursor[0], cursor[1])) {
-      return nodes[i];
+  for (const bNode *node : tree_draw_order_calc_nodes_reversed(*snode.edittree)) {
+    if (BLI_rctf_isect_pt(&node->runtime->totr, cursor[0], cursor[1])) {
+      return node;
     }
   }
   return nullptr;
 }
 
-void node_set_cursor(wmWindow &win, SpaceNode &snode, const float2 &cursor)
+void node_set_cursor(wmWindow &win, ARegion &region, SpaceNode &snode, const float2 &cursor)
 {
   const bNodeTree *ntree = snode.edittree;
   if (ntree == nullptr) {
     WM_cursor_set(&win, WM_CURSOR_DEFAULT);
     return;
   }
-  if (node_find_indicated_socket(snode, cursor, SOCK_IN | SOCK_OUT)) {
+  if (node_find_indicated_socket(snode, region, cursor, SOCK_IN | SOCK_OUT)) {
     WM_cursor_set(&win, WM_CURSOR_DEFAULT);
     return;
   }
@@ -4087,7 +4112,7 @@ static void draw_nodetree(const bContext &C,
   SpaceNode *snode = CTX_wm_space_node(&C);
   ntree.ensure_topology_cache();
 
-  const Span<bNode *> nodes = ntree.all_nodes();
+  Array<bNode *> nodes = tree_draw_order_calc_nodes(ntree);
 
   Array<uiBlock *> blocks = node_uiblocks_init(C, nodes);
 

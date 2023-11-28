@@ -15,14 +15,14 @@
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_camera.h"
 #include "BKE_collection.h"
-#include "BKE_context.h"
-#include "BKE_customdata.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
@@ -48,7 +48,7 @@
 #include "DNA_windowmanager_types.h"
 
 #include "DRW_engine.h"
-#include "DRW_select_buffer.h"
+#include "DRW_select_buffer.hh"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_info.hh"
@@ -177,7 +177,7 @@ void ED_view3d_update_viewmat(Depsgraph *depsgraph,
       len_sc = float(max_ii(BLI_rcti_size_x(rect), BLI_rcti_size_y(rect)));
     }
     else {
-      len_sc = float(MAX2(region->winx, region->winy));
+      len_sc = float(std::max(region->winx, region->winy));
     }
 
     rv3d->pixsize = len_px / len_sc;
@@ -2234,7 +2234,7 @@ static void validate_object_select_id(Depsgraph *depsgraph,
   if (obact_eval && ((obact_eval->base_flag & BASE_ENABLED_AND_MAYBE_VISIBLE_IN_VIEWPORT) != 0)) {
     BKE_view_layer_synced_ensure(scene, view_layer);
     Base *base = BKE_view_layer_base_find(view_layer, obact);
-    DRW_select_buffer_context_create(&base, 1, -1);
+    DRW_select_buffer_context_create(depsgraph, &base, 1, -1);
   }
 
   v3d->runtime.flag |= V3D_RUNTIME_DEPTHBUF_OVERRIDDEN;
@@ -2496,10 +2496,6 @@ void ED_view3d_datamask(const Scene *scene,
             if (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_WEIGHT) {
               r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
             }
-            break;
-          }
-          case OB_MODE_SCULPT: {
-            r_cddata_masks->vmask |= CD_MASK_PAINT_MASK;
             break;
           }
         }

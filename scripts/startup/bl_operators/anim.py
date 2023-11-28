@@ -4,12 +4,6 @@
 
 from __future__ import annotations
 
-if "bpy" in locals():
-    from importlib import reload
-    if "anim_utils" in locals():
-        reload(anim_utils)
-    del reload
-
 
 import bpy
 from bpy.types import Operator
@@ -252,19 +246,43 @@ class NLA_OT_bake(Operator):
         ),
         default={'POSE'},
     )
+    channel_types: EnumProperty(
+        name="Channels",
+        description="Which channels to bake",
+        options={'ENUM_FLAG'},
+        items=(
+            ('LOCATION', "Location", "Bake location channels"),
+            ('ROTATION', "Rotation", "Bake rotation channels"),
+            ('SCALE', "Scale", "Bake scale channels"),
+            ('BBONE', "B-Bone", "Bake b-bone channels"),
+        ),
+        default={'LOCATION', 'ROTATION', 'SCALE', 'BBONE'},
+    )
 
     def execute(self, context):
         from bpy_extras import anim_utils
-        do_pose = 'POSE' in self.bake_types
-        do_object = 'OBJECT' in self.bake_types
 
-        if do_pose and self.only_selected:
+        bake_options = anim_utils.BakeOptions(
+            only_selected=self.only_selected,
+            do_pose='POSE' in self.bake_types,
+            do_object='OBJECT' in self.bake_types,
+            do_visual_keying=self.visual_keying,
+            do_constraint_clear=self.clear_constraints,
+            do_parents_clear=self.clear_parents,
+            do_clean=self.clean_curves,
+            do_location='LOCATION' in self.channel_types,
+            do_rotation='ROTATION' in self.channel_types,
+            do_scale='SCALE' in self.channel_types,
+            do_bbone='BBONE' in self.channel_types,
+        )
+
+        if bake_options.do_pose and self.only_selected:
             pose_bones = context.selected_pose_bones or []
             armatures = {pose_bone.id_data for pose_bone in pose_bones}
             objects = list(armatures)
         else:
             objects = context.selected_editable_objects
-            if do_pose and not do_object:
+            if bake_options.do_pose and not bake_options.do_object:
                 objects = [obj for obj in objects if obj.pose is not None]
 
         object_action_pairs = (
@@ -276,13 +294,7 @@ class NLA_OT_bake(Operator):
         actions = anim_utils.bake_action_objects(
             object_action_pairs,
             frames=range(self.frame_start, self.frame_end + 1, self.step),
-            only_selected=self.only_selected,
-            do_pose=do_pose,
-            do_object=do_object,
-            do_visual_keying=self.visual_keying,
-            do_constraint_clear=self.clear_constraints,
-            do_parents_clear=self.clear_parents,
-            do_clean=self.clean_curves,
+            bake_options=bake_options
         )
 
         if not any(actions):
@@ -475,11 +487,11 @@ class ARMATURE_OT_copy_bone_color_to_selected(Operator):
                 return {'CANCELLED'}
 
         if not bone_source:
-            self.report({'ERROR'}, "No active bone to copy from.")
+            self.report({'ERROR'}, "No active bone to copy from")
             return {'CANCELLED'}
 
         if not bones_dest:
-            self.report({'ERROR'}, "No selected bones to copy to.")
+            self.report({'ERROR'}, "No selected bones to copy to")
             return {'CANCELLED'}
 
         num_pose_color_overrides = 0

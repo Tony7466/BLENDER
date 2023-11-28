@@ -222,7 +222,8 @@ enum_guiding_directional_sampling_types = (
 def enum_openimagedenoise_denoiser(self, context):
     import _cycles
     if _cycles.with_openimagedenoise:
-        return [('OPENIMAGEDENOISE', "OpenImageDenoise", "Use Intel OpenImageDenoise AI denoiser running on the CPU", 4)]
+        return [('OPENIMAGEDENOISE', "OpenImageDenoise",
+                 "Use Intel OpenImageDenoise AI denoiser", 4)]
     return []
 
 
@@ -1013,10 +1014,9 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
         default="AUTO",
     )
 
-    use_transparent_shadow: BoolProperty(
-        name="Transparent Shadows",
-        description="Use transparent shadows for this material if it contains a Transparent BSDF, "
-        "disabling will render faster but not give accurate shadows",
+    use_bump_map_correction: BoolProperty(
+        name="Bump Map Correction",
+        description="Apply corrections to solve shadow terminator artifacts caused by bump mapping",
         default=True,
     )
     homogeneous_volume: BoolProperty(
@@ -1643,7 +1643,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
             elif device_type == 'ONEAPI':
                 import sys
                 if sys.platform.startswith("win"):
-                    driver_version = "XX.X.101.4644"
+                    driver_version = "XX.X.101.4824"
                     col.label(text="Requires Intel GPU with Xe-HPG architecture", icon='BLANK1')
                     col.label(text=iface_("and Windows driver version %s or newer") % driver_version,
                               icon='BLANK1', translate=False)

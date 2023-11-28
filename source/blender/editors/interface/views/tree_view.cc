@@ -9,7 +9,7 @@
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "BLT_translation.h"
 
@@ -242,8 +242,9 @@ AbstractTreeViewItem *AbstractTreeView::find_matching_child(
 
 /* ---------------------------------------------------------------------- */
 
-TreeViewItemDropTarget::TreeViewItemDropTarget(AbstractTreeView &view, DropBehavior behavior)
-    : view_(view), behavior_(behavior)
+TreeViewItemDropTarget::TreeViewItemDropTarget(AbstractTreeViewItem &view_item,
+                                               DropBehavior behavior)
+    : view_item_(view_item), behavior_(behavior)
 {
 }
 
@@ -254,12 +255,11 @@ std::optional<DropLocation> TreeViewItemDropTarget::choose_drop_location(
     return DropLocation::Into;
   }
 
-  const AbstractTreeViewItem *hovered_item = view_.find_hovered(region, event.xy);
-  if (!hovered_item) {
+  std::optional<rctf> win_rect = view_item_.get_win_rect(region);
+  if (!win_rect) {
+    BLI_assert_unreachable();
     return std::nullopt;
   }
-  std::optional<rctf> win_rect = hovered_item->get_win_rect(region);
-  BLI_assert(win_rect.has_value());
   const float item_height = BLI_rctf_size_y(&*win_rect);
 
   BLI_assert(ELEM(behavior_, DropBehavior::Reorder, DropBehavior::ReorderAndInsert));
@@ -276,8 +276,8 @@ std::optional<DropLocation> TreeViewItemDropTarget::choose_drop_location(
     return DropLocation::Before;
   }
   if (event.xy[1] - win_rect->ymin <= segment_height) {
-    if (behavior_ == DropBehavior::ReorderAndInsert && hovered_item->is_collapsible() &&
-        !hovered_item->is_collapsed())
+    if (behavior_ == DropBehavior::ReorderAndInsert && view_item_.is_collapsible() &&
+        !view_item_.is_collapsed())
     {
       /* Special case: Dropping at the lower 3rd of an uncollapsed item should insert into it, not
        * after. */
@@ -493,7 +493,7 @@ bool AbstractTreeViewItem::is_hovered() const
    * Get the matching button from the previous redraw instead. */
   uiButViewItem *old_item_but = ui_block_view_find_matching_view_item_but_in_old_block(
       view_item_but_->block, this_item_handle);
-  return old_item_but && (old_item_but->flag & UI_ACTIVE);
+  return old_item_but && (old_item_but->flag & UI_HOVER);
 }
 
 bool AbstractTreeViewItem::is_collapsed() const

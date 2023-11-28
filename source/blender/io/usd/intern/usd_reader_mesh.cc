@@ -10,11 +10,12 @@
 #include "usd_skel_convert.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
+#include "BKE_report.h"
 
 #include "BLI_math_color.hh"
 #include "BLI_math_geom.h"
@@ -165,7 +166,7 @@ USDMeshReader::USDMeshReader(const pxr::UsdPrim &prim,
 }
 
 static std::optional<eCustomDataType> convert_usd_type_to_blender(
-    const pxr::SdfValueTypeName usd_type)
+    const pxr::SdfValueTypeName usd_type, ReportList *reports)
 {
   static const blender::Map<pxr::SdfValueTypeName, eCustomDataType> type_map = []() {
     blender::Map<pxr::SdfValueTypeName, eCustomDataType> map;
@@ -202,7 +203,10 @@ static std::optional<eCustomDataType> convert_usd_type_to_blender(
 
   const eCustomDataType *value = type_map.lookup_ptr(usd_type);
   if (value == nullptr) {
-    WM_reportf(RPT_WARNING, "Unsupported type %s for mesh data", usd_type.GetAsToken().GetText());
+    BKE_reportf(reports,
+                RPT_WARNING,
+                "Unsupported type %s for mesh data",
+                usd_type.GetAsToken().GetText());
     return std::nullopt;
   }
 
@@ -210,7 +214,7 @@ static std::optional<eCustomDataType> convert_usd_type_to_blender(
 }
 
 static const std::optional<eAttrDomain> convert_usd_varying_to_blender(
-    const pxr::TfToken usd_domain)
+    const pxr::TfToken usd_domain, ReportList *reports)
 {
   static const blender::Map<pxr::TfToken, eAttrDomain> domain_map = []() {
     blender::Map<pxr::TfToken, eAttrDomain> map;
@@ -229,7 +233,8 @@ static const std::optional<eAttrDomain> convert_usd_varying_to_blender(
   const eAttrDomain *value = domain_map.lookup_ptr(usd_domain);
 
   if (value == nullptr) {
-    WM_reportf(RPT_WARNING, "Unsupported domain for mesh data type %s", usd_domain.GetText());
+    BKE_reportf(
+        reports, RPT_WARNING, "Unsupported domain for mesh data type %s", usd_domain.GetText());
     return std::nullopt;
   }
 
@@ -279,11 +284,11 @@ void USDMeshReader::read_object_data(Main *bmain, const double motionSampleTime)
   }
 
   if (import_params_.import_blendshapes) {
-    import_blendshapes(bmain, object_, prim_);
+    import_blendshapes(bmain, object_, prim_, reports());
   }
 
   if (import_params_.import_skeletons) {
-    import_mesh_skel_bindings(bmain, object_, prim_);
+    import_mesh_skel_bindings(bmain, object_, prim_, reports());
   }
 
   USDXformReader::read_object_data(bmain, motionSampleTime);
@@ -357,22 +362,26 @@ void USDMeshReader::read_mpolys(Mesh *mesh)
 
 template<typename T>
 pxr::VtArray<T> get_prim_attribute_array(const pxr::UsdGeomPrimvar &primvar,
-                                         const double motionSampleTime)
+                                         const double motionSampleTime,
+                                         ReportList *reports)
 {
   pxr::VtArray<T> array;
 
   pxr::VtValue primvar_val;
 
   if (!primvar.ComputeFlattened(&primvar_val, motionSampleTime)) {
-    WM_reportf(
-        RPT_WARNING, "Unable to get array values for primvar %s", primvar.GetName().GetText());
+    BKE_reportf(reports,
+                RPT_WARNING,
+                "Unable to get array values for primvar %s",
+                primvar.GetName().GetText());
     return array;
   }
 
   if (!primvar_val.CanCast<pxr::VtArray<T>>()) {
-    WM_reportf(RPT_WARNING,
-               "USD Import: can't cast attribute '%s' to array",
-               primvar.GetName().GetText());
+    BKE_reportf(reports,
+                RPT_WARNING,
+                "USD Import: can't cast attribute '%s' to array",
+                primvar.GetName().GetText());
     return array;
   }
 
@@ -388,8 +397,8 @@ void USDMeshReader::read_color_data_primvar(Mesh *mesh,
     return;
   }
 
-  pxr::VtArray<pxr::GfVec3f> usd_colors = get_prim_attribute_array<pxr::GfVec3f>(primvar,
-                                                                                 motionSampleTime);
+  pxr::VtArray<pxr::GfVec3f> usd_colors = get_prim_attribute_array<pxr::GfVec3f>(
+      primvar, motionSampleTime, reports());
 
   if (usd_colors.empty()) {
     return;
@@ -403,9 +412,11 @@ void USDMeshReader::read_color_data_primvar(Mesh *mesh,
       (interp == pxr::UsdGeomTokens->constant && usd_colors.size() != 1) ||
       (interp == pxr::UsdGeomTokens->uniform && usd_colors.size() != mesh->faces_num))
   {
-    WM_reportf(RPT_WARNING,
-               "USD Import: color attribute value '%s' count inconsistent with interpolation type",
-               primvar.GetName().GetText());
+    BKE_reportf(
+        reports(),
+        RPT_WARNING,
+        "USD Import: color attribute value '%s' count inconsistent with interpolation type",
+        primvar.GetName().GetText());
     return;
   }
 
@@ -426,9 +437,10 @@ void USDMeshReader::read_color_data_primvar(Mesh *mesh,
   color_data = attributes.lookup_or_add_for_write_only_span<ColorGeometry4f>(primvar_name,
                                                                              color_domain);
   if (!color_data) {
-    WM_reportf(RPT_WARNING,
-               "USD Import: couldn't add color attribute '%s'",
-               primvar.GetBaseName().GetText());
+    BKE_reportf(reports(),
+                RPT_WARNING,
+                "USD Import: couldn't add color attribute '%s'",
+                primvar.GetBaseName().GetText());
     return;
   }
 
@@ -458,7 +470,7 @@ void USDMeshReader::read_color_data_primvar(Mesh *mesh,
     const OffsetIndices faces = mesh->faces();
     const Span<int> corner_verts = mesh->corner_verts();
     for (const int i : faces.index_range()) {
-      const IndexRange &face = faces[i];
+      const IndexRange face = faces[i];
       for (int j = 0; j < face.size(); ++j) {
         int loop_index = face[j];
 
@@ -502,8 +514,8 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
 {
   const StringRef primvar_name(primvar.StripPrimvarsName(primvar.GetName()).GetString());
 
-  pxr::VtArray<pxr::GfVec2f> usd_uvs = get_prim_attribute_array<pxr::GfVec2f>(primvar,
-                                                                              motionSampleTime);
+  pxr::VtArray<pxr::GfVec2f> usd_uvs = get_prim_attribute_array<pxr::GfVec2f>(
+      primvar, motionSampleTime, reports());
 
   if (usd_uvs.empty()) {
     return;
@@ -519,9 +531,10 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
       (varying_type == pxr::UsdGeomTokens->vertex && usd_uvs.size() != mesh->totvert) ||
       (varying_type == pxr::UsdGeomTokens->varying && usd_uvs.size() != mesh->totloop))
   {
-    WM_reportf(RPT_WARNING,
-               "USD Import: UV attribute value '%s' count inconsistent with interpolation type",
-               primvar.GetName().GetText());
+    BKE_reportf(reports(),
+                RPT_WARNING,
+                "USD Import: UV attribute value '%s' count inconsistent with interpolation type",
+                primvar.GetName().GetText());
     return;
   }
 
@@ -530,9 +543,10 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
       primvar_name, ATTR_DOMAIN_CORNER);
 
   if (!uv_data) {
-    WM_reportf(RPT_WARNING,
-               "USD Import: couldn't add UV attribute '%s'",
-               primvar.GetBaseName().GetText());
+    BKE_reportf(reports(),
+                RPT_WARNING,
+                "USD Import: couldn't add UV attribute '%s'",
+                primvar.GetBaseName().GetText());
     return;
   }
 
@@ -596,10 +610,13 @@ void USDMeshReader::copy_prim_array_to_blender_attribute(const Mesh *mesh,
                                                          MutableSpan<BlenderT> attribute)
 {
   const pxr::TfToken interp = primvar.GetInterpolation();
-  pxr::VtArray<USDT> primvar_array = get_prim_attribute_array<USDT>(primvar, motionSampleTime);
+  pxr::VtArray<USDT> primvar_array = get_prim_attribute_array<USDT>(
+      primvar, motionSampleTime, reports());
   if (primvar_array.empty()) {
-    WM_reportf(
-        RPT_WARNING, "Unable to get array values for primvar %s", primvar.GetName().GetText());
+    BKE_reportf(reports(),
+                RPT_WARNING,
+                "Unable to get array values for primvar %s",
+                primvar.GetName().GetText());
     return;
   }
 
@@ -650,8 +667,9 @@ void USDMeshReader::read_generic_data_primvar(Mesh *mesh,
   const pxr::TfToken varying_type = primvar.GetInterpolation();
   const pxr::TfToken name = pxr::UsdGeomPrimvar::StripPrimvarsName(primvar.GetPrimvarName());
 
-  const std::optional<eAttrDomain> domain = convert_usd_varying_to_blender(varying_type);
-  const std::optional<eCustomDataType> type = convert_usd_type_to_blender(sdf_type);
+  const std::optional<eAttrDomain> domain = convert_usd_varying_to_blender(varying_type,
+                                                                           reports());
+  const std::optional<eCustomDataType> type = convert_usd_type_to_blender(sdf_type, reports());
 
   if (!domain.has_value() || !type.has_value()) {
     return;
@@ -686,10 +704,11 @@ void USDMeshReader::read_generic_data_primvar(Mesh *mesh,
           mesh, primvar, motionSampleTime, attribute.span.typed<bool>());
       break;
     default:
-      WM_reportf(RPT_ERROR,
-                 "Generic primvar %s: invalid type %s",
-                 primvar.GetName().GetText(),
-                 sdf_type.GetAsToken().GetText());
+      BKE_reportf(reports(),
+                  RPT_ERROR,
+                  "Generic primvar %s: invalid type %s",
+                  primvar.GetName().GetText(),
+                  sdf_type.GetAsToken().GetText());
       break;
   }
   attribute.finish();
@@ -762,8 +781,6 @@ void USDMeshReader::process_normals_face_varying(Mesh *mesh)
     return;
   }
 
-  mesh->flag |= ME_AUTOSMOOTH;
-
   long int loop_count = normals_.size();
 
   float(*lnors)[3] = static_cast<float(*)[3]>(
@@ -817,7 +834,6 @@ void USDMeshReader::process_normals_uniform(Mesh *mesh)
     }
   }
 
-  mesh->flag |= ME_AUTOSMOOTH;
   BKE_mesh_set_custom_normals(mesh, lnors);
 
   MEM_freeN(lnors);
@@ -886,10 +902,11 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
   /* Convert primvars to custom layer data. */
   for (pxr::UsdGeomPrimvar &pv : primvars) {
     if (!pv.HasValue()) {
-      WM_reportf(RPT_WARNING,
-                 "Skipping primvar %s, mesh %s -- no value",
-                 pv.GetName().GetText(),
-                 &mesh->id.name[2]);
+      BKE_reportf(reports(),
+                  RPT_WARNING,
+                  "Skipping primvar %s, mesh %s -- no value",
+                  pv.GetName().GetText(),
+                  &mesh->id.name[2]);
       continue;
     }
 
@@ -916,12 +933,12 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
              pxr::SdfValueTypeNames->QuatdArray,
              pxr::SdfValueTypeNames->QuathArray))
     {
-      /* Skip creating known unsupported types, and avoid spammy error prints. */
+      /* Skip creating known unsupported types, and avoid noisy error prints. */
       continue;
     }
 
     /* Read Color primvars. */
-    if (convert_usd_type_to_blender(type) == CD_PROP_COLOR) {
+    if (convert_usd_type_to_blender(type, reports()) == CD_PROP_COLOR) {
       if ((settings->read_flag & MOD_MESHSEQ_READ_COLOR) != 0) {
         /* Set the active color name to 'displayColor', if a color primvar
          * with this name exists.  Otherwise, use the name of the first
@@ -939,7 +956,7 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
                   pxr::UsdGeomTokens->vertex,
                   pxr::UsdGeomTokens->faceVarying,
                   pxr::UsdGeomTokens->varying) &&
-             convert_usd_type_to_blender(type) == CD_PROP_FLOAT2)
+             convert_usd_type_to_blender(type, reports()) == CD_PROP_FLOAT2)
     {
       if ((settings->read_flag & MOD_MESHSEQ_READ_UV) != 0) {
         /* Set the active uv set name to 'st', if a uv set primvar
@@ -1162,10 +1179,11 @@ std::optional<XformResult> USDMeshReader::get_local_usd_xform(const float time) 
         return XformResult(pxr::GfMatrix4f(bind_xf), true);
       }
       else {
-        WM_reportf(RPT_WARNING,
-                   "%s: Couldn't compute geom bind transform for %s",
-                   __func__,
-                   prim_.GetPath().GetAsString().c_str());
+        BKE_reportf(reports(),
+                    RPT_WARNING,
+                    "%s: Couldn't compute geom bind transform for %s",
+                    __func__,
+                    prim_.GetPath().GetAsString().c_str());
       }
     }
   }

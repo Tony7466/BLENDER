@@ -24,7 +24,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_report.h"
 #include "BKE_screen.hh"
 
@@ -566,6 +566,8 @@ void UI_popup_menu_reports(bContext *C, ReportList *reports)
     return;
   }
 
+  BKE_reports_lock(reports);
+
   LISTBASE_FOREACH (Report *, report, &reports->list) {
     int icon;
     const char *msg, *msg_next;
@@ -600,6 +602,8 @@ void UI_popup_menu_reports(bContext *C, ReportList *reports)
       icon = ICON_NONE;
     } while ((msg = msg_next) && *msg);
   }
+
+  BKE_reports_unlock(reports);
 
   if (pup) {
     UI_popup_menu_end(C, pup);

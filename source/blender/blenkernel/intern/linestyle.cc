@@ -19,7 +19,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math_rotation.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -27,7 +27,7 @@
 #include "BKE_anim_data.h"
 #include "BKE_colorband.h"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_freestyle.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
@@ -35,7 +35,7 @@
 #include "BKE_linestyle.h"
 #include "BKE_main.h"
 #include "BKE_node.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_texture.h"
 
 #include "BLO_read_write.hh"

@@ -38,7 +38,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_dynstr.h"
 #include "BLI_endian_switch.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -60,7 +60,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 
 #include "BLO_read_write.hh"
 

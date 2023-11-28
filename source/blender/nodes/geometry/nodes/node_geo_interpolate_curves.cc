@@ -409,7 +409,8 @@ static void interpolate_curve_shapes(bke::CurvesGeometry &child_curves,
           const float neighbor_length = lengths.last();
 
           sample_lengths.reinitialize(points.size());
-          const float sample_length_factor = safe_divide(neighbor_length, points.size() - 1);
+          const float sample_length_factor = math::safe_divide(neighbor_length,
+                                                               float(points.size() - 1));
           for (const int i : sample_lengths.index_range()) {
             sample_lengths[i] = i * sample_length_factor;
           }
@@ -563,7 +564,8 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
                 const float neighbor_length = lengths.last();
 
                 sample_lengths.reinitialize(points.size());
-                const float sample_length_factor = safe_divide(neighbor_length, points.size() - 1);
+                const float sample_length_factor = math::safe_divide(neighbor_length,
+                                                                     float(points.size() - 1));
                 for (const int i : sample_lengths.index_range()) {
                   sample_lengths[i] = i * sample_length_factor;
                 }
@@ -863,7 +865,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                         index_attribute_id,
                                                         weight_attribute_id);
 
-  GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(guide_curves_geometry);
+  GeometryComponentEditData::remember_deformed_positions_if_necessary(guide_curves_geometry);
   if (const auto *curve_edit_data =
           guide_curves_geometry.get_component<GeometryComponentEditData>()) {
     new_curves.add(*curve_edit_data);

@@ -29,8 +29,8 @@
 #include "WM_api.hh"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_bvhutils.h"
-#include "BKE_context.h"
+#include "BKE_bvhutils.hh"
+#include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_layer.h"
@@ -1249,6 +1249,7 @@ static void CURVES_OT_delete(wmOperatorType *ot)
 void ED_operatortypes_curves()
 {
   using namespace blender::ed::curves;
+  WM_operatortype_append(CURVES_OT_attribute_set);
   WM_operatortype_append(CURVES_OT_convert_to_particle_system);
   WM_operatortype_append(CURVES_OT_convert_from_particle_system);
   WM_operatortype_append(CURVES_OT_snap_curves_to_surface);

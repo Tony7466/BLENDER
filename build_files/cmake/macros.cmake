@@ -403,6 +403,11 @@ function(blender_add_lib__impl
 
   add_library(${name} ${sources})
 
+  # On windows vcpkg goes out of its way to make its libs the preferred
+  # libs, and needs to be explicitly be told not to do that.
+  if(WIN32)
+    set_target_properties(${name} PROPERTIES VS_GLOBAL_VcpkgEnabled "false")
+  endif()
   blender_target_include_dirs(${name} ${includes})
   blender_target_include_dirs_sys(${name} ${includes_sys})
 
@@ -1131,7 +1136,7 @@ function(data_to_c
 
   set(optional_args "")
   foreach(f ${ARGN})
-    if (f STREQUAL "STRIP_LEADING_C_COMMENTS")
+    if(f STREQUAL "STRIP_LEADING_C_COMMENTS")
       set(optional_args "--options=strip_leading_c_comments")
     else()
       message(FATAL_ERROR "Unknown optional argument ${f} to \"data_to_c\"")
@@ -1168,7 +1173,7 @@ function(data_to_c_simple
 
   set(optional_args "")
   foreach(f ${ARGN})
-    if (f STREQUAL "STRIP_LEADING_C_COMMENTS")
+    if(f STREQUAL "STRIP_LEADING_C_COMMENTS")
       set(optional_args "--options=strip_leading_c_comments")
     else()
       message(FATAL_ERROR "Unknown optional argument ${f} to \"data_to_c_simple\"")
@@ -1459,7 +1464,8 @@ macro(find_python_module_file
       NO_DEFAULT_PATH
     )
     if(${out_var_abs})
-      set(_${out_var_abs}_DEPS "${_python_mod_file_deps_test}" CACHE STRING "")
+      # Internal because this is only to track changes (users never need to manipulate it).
+      set(_${out_var_abs}_DEPS "${_python_mod_file_deps_test}" CACHE INTERNAL STRING "")
     endif()
   endif()
 
@@ -1521,6 +1527,24 @@ macro(set_and_warn_dependency
       message(SEND_ERROR "${_dependency} disabled but required by ${_setting}")
     else()
       message(STATUS "${_dependency} is disabled, setting ${_setting}=${_val}")
+    endif()
+    set(${_setting} ${_val})
+  endif()
+endmacro()
+
+macro(set_and_warn_incompatible
+  _dependency _setting _val)
+  # when $_dependency is enabled, forces $_setting = $_val
+  # Both should be defined, warn if they're not.
+  if(NOT DEFINED ${_dependency})
+    message(STATUS "${_dependency} not defined!")
+  elseif(NOT DEFINED ${_setting})
+    message(STATUS "${_setting} not defined!")
+  elseif(${${_dependency}} AND ${${_setting}})
+    if(WITH_STRICT_BUILD_OPTIONS)
+      message(SEND_ERROR "${_dependency} enabled but incompatible with ${_setting}")
+    else()
+      message(STATUS "${_dependency} is enabled but incompatible, setting ${_setting}=${_val}")
     endif()
     set(${_setting} ${_val})
   endif()

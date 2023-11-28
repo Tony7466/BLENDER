@@ -27,7 +27,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
 
 namespace blender::bke {
@@ -677,7 +677,7 @@ Span<float3> CurvesGeometry::evaluated_positions() const
       });
     };
     auto evaluate_poly = [&](const IndexMask &selection) {
-      curves::copy_point_data(
+      array_utils::copy_group_to_group(
           points_by_curve, evaluated_points_by_curve, selection, positions, evaluated_positions);
     };
     auto evaluate_bezier = [&](const IndexMask &selection) {

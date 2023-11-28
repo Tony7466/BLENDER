@@ -10,11 +10,8 @@ set(INC
   ../../blenkernel
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
-  ../../functions
   ../../geometry
   ../../gpu
-  ../../imbuf
   ../../makesrna
   ../../modifiers
   ../../render
@@ -82,6 +79,7 @@ set(SRC
   nodes/node_geo_image_info.cc
   nodes/node_geo_image_texture.cc
   nodes/node_geo_index_of_nearest.cc
+  nodes/node_geo_index_switch.cc
   nodes/node_geo_input_curve_handles.cc
   nodes/node_geo_input_curve_tilt.cc
   nodes/node_geo_input_edge_smooth.cc
@@ -101,6 +99,7 @@ set(SRC
   nodes/node_geo_input_mesh_island.cc
   nodes/node_geo_input_mesh_vertex_neighbors.cc
   nodes/node_geo_input_named_attribute.cc
+  nodes/node_geo_input_named_layer_selection.cc
   nodes/node_geo_input_normal.cc
   nodes/node_geo_input_position.cc
   nodes/node_geo_input_radius.cc
@@ -182,6 +181,7 @@ set(SRC
   nodes/node_geo_set_spline_resolution.cc
   nodes/node_geo_simulation_input.cc
   nodes/node_geo_simulation_output.cc
+  nodes/node_geo_split_to_instances.cc
   nodes/node_geo_store_named_attribute.cc
   nodes/node_geo_string_join.cc
   nodes/node_geo_string_to_curves.cc
@@ -210,9 +210,11 @@ set(SRC
 set(LIB
   PRIVATE bf::blenlib
   bf_bmesh
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  bf_functions
+  PRIVATE bf::functions
   bf_geometry
+  PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
   bf_nodes
   extern_fmtlib

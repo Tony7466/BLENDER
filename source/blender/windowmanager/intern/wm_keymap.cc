@@ -21,14 +21,14 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLF_api.h"
 
 #include "UI_interface.hh"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_main.h"

@@ -27,8 +27,8 @@
 #include "BLT_translation.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_armature.h"
-#include "BKE_context.h"
+#include "BKE_armature.hh"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_screen.hh"
@@ -2064,7 +2064,8 @@ void uiItemFullR(uiLayout *layout,
                  int value,
                  eUI_Item_Flag flag,
                  const char *name,
-                 int icon)
+                 int icon,
+                 const char *placeholder)
 {
   uiBlock *block = layout->root->block;
   char namestr[UI_MAX_NAME_STR];
@@ -2477,6 +2478,10 @@ void uiItemFullR(uiLayout *layout,
     UI_but_flag_enable(but, UI_BUT_LIST_ITEM);
   }
 
+  if (but && placeholder) {
+    UI_but_placeholder_set(but, placeholder);
+  }
+
 #ifdef UI_PROP_DECORATE
   if (ui_decorate.use_prop_decorate) {
     uiBut *but_decorate = ui_decorate.but ? ui_decorate.but->next :
@@ -2813,7 +2818,7 @@ uiBut *ui_but_add_search(uiBut *but,
       search_but->rnasearchprop = searchprop;
     }
 
-    but->hardmax = MAX2(but->hardmax, 256.0f);
+    but->hardmax = std::max(but->hardmax, 256.0f);
     but->drawflag |= UI_BUT_ICON_LEFT | UI_BUT_TEXT_LEFT;
     if (RNA_property_is_unlink(prop)) {
       but->flag |= UI_BUT_VALUE_CLEAR;
@@ -3188,6 +3193,8 @@ void uiItemPopoverPanel_ptr(
   if (ok && (pt->draw_header != nullptr)) {
     layout = uiLayoutRow(layout, true);
     Panel panel{};
+    Panel_Runtime panel_runtime{};
+    panel.runtime = &panel_runtime;
     panel.type = pt;
     panel.layout = layout;
     panel.flag = PNL_POPOVER;
@@ -3766,7 +3773,7 @@ static void ui_litem_estimate_row(uiLayout *litem)
     min_size_flag = min_size_flag && (item->flag & UI_ITEM_FIXED_SIZE);
 
     litem->w += itemw;
-    litem->h = MAX2(itemh, litem->h);
+    litem->h = std::max(itemh, litem->h);
 
     if (item->next) {
       litem->w += litem->space;
@@ -3780,7 +3787,7 @@ static void ui_litem_estimate_row(uiLayout *litem)
 
 static int ui_litem_min_width(int itemw)
 {
-  return MIN2(2 * UI_UNIT_X, itemw);
+  return std::min(2 * UI_UNIT_X, itemw);
 }
 
 static void ui_litem_layout_row(uiLayout *litem)
@@ -3947,7 +3954,7 @@ static void ui_litem_estimate_column(uiLayout *litem, bool is_box)
 
     min_size_flag = min_size_flag && (item->flag & UI_ITEM_FIXED_SIZE);
 
-    litem->w = MAX2(litem->w, itemw);
+    litem->w = std::max(litem->w, itemw);
     litem->h += itemh;
 
     if (item->next && (!is_box || item != litem->items.first)) {
@@ -4685,8 +4692,8 @@ static void ui_litem_estimate_absolute(uiLayout *litem)
     minx = min_ii(minx, itemx);
     miny = min_ii(miny, itemy);
 
-    litem->w = MAX2(litem->w, itemx + itemw);
-    litem->h = MAX2(litem->h, itemy + itemh);
+    litem->w = std::max(litem->w, itemx + itemw);
+    litem->h = std::max(litem->h, itemy + itemh);
   }
 
   litem->w -= minx;
@@ -4776,7 +4783,7 @@ static void ui_litem_layout_split(uiLayout *litem)
 
   const int w = (litem->w - (tot - 1) * litem->space);
   int colw = w * percentage;
-  colw = MAX2(colw, 0);
+  colw = std::max(colw, 0);
 
   LISTBASE_FOREACH (uiItem *, item, &litem->items) {
     int itemh;
@@ -4789,7 +4796,7 @@ static void ui_litem_layout_split(uiLayout *litem)
       const float width = extra_pixel + (w - int(w * percentage)) / (float(tot) - 1);
       extra_pixel = width - int(width);
       colw = int(width);
-      colw = MAX2(colw, 0);
+      colw = std::max(colw, 0);
 
       x += litem->space;
     }
@@ -4811,8 +4818,8 @@ static void ui_litem_estimate_overlap(uiLayout *litem)
     int itemw, itemh;
     ui_item_size(item, &itemw, &itemh);
 
-    litem->w = MAX2(itemw, litem->w);
-    litem->h = MAX2(itemh, litem->h);
+    litem->w = std::max(itemw, litem->w);
+    litem->h = std::max(itemh, litem->h);
   }
 }
 
@@ -4827,7 +4834,7 @@ static void ui_litem_layout_overlap(uiLayout *litem)
     ui_item_size(item, &itemw, &itemh);
     ui_item_position(item, x, y - itemh, litem->w, itemh);
 
-    litem->h = MAX2(litem->h, itemh);
+    litem->h = std::max(litem->h, itemh);
   }
 
   litem->x = x;
@@ -6006,8 +6013,7 @@ static bool ui_layout_has_panel_label(const uiLayout *layout, const PanelType *p
 
 static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout, bool show_header)
 {
-  Panel *panel = MEM_cnew<Panel>(__func__);
-  panel->type = pt;
+  Panel *panel = BKE_panel_new(pt);
   panel->flag = PNL_POPOVER;
 
   if (pt->listener) {
@@ -6036,9 +6042,9 @@ static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout,
   panel->layout = layout;
   pt->draw(C, panel);
   panel->layout = nullptr;
-  BLI_assert(panel->runtime.custom_data_ptr == nullptr);
+  BLI_assert(panel->runtime->custom_data_ptr == nullptr);
 
-  MEM_freeN(panel);
+  BKE_panel_free(panel);
 
   /* Draw child panels. */
   LISTBASE_FOREACH (LinkData *, link, &pt->children) {

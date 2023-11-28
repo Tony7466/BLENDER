@@ -12,12 +12,12 @@
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
-#include "BKE_asset.h"
+#include "BKE_asset.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
@@ -26,7 +26,7 @@
 #include "BKE_main.h"
 #include "BKE_object.hh"
 #include "BKE_scene.h"
-#include "BKE_viewer_path.h"
+#include "BKE_viewer_path.hh"
 #include "BKE_workspace.h"
 
 #include "DNA_object_types.h"

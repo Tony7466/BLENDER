@@ -24,10 +24,10 @@
 #include "BLI_utildefines_stack.h"
 #include "BLI_vector.hh"
 
-#include "BKE_context.h"
-#include "BKE_customdata.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
@@ -60,7 +60,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "DRW_select_buffer.h"
+#include "DRW_select_buffer.hh"
 
 #include "mesh_intern.h" /* own include */
 
@@ -280,7 +280,7 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
 
     /* No after-queue (yet), so we check it now, otherwise the bm_xxxofs indices are bad. */
     {
-      DRW_select_buffer_context_create(bases, bases_len, SCE_SELECT_VERTEX);
+      DRW_select_buffer_context_create(vc->depsgraph, bases, bases_len, SCE_SELECT_VERTEX);
 
       index = DRW_select_buffer_find_nearest_to_point(
           vc->depsgraph, vc->region, vc->v3d, vc->mval, 1, UINT_MAX, &dist_px_manhattan_test);
@@ -511,7 +511,7 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
 
     /* No after-queue (yet), so we check it now, otherwise the bm_xxxofs indices are bad. */
     {
-      DRW_select_buffer_context_create(bases, bases_len, SCE_SELECT_EDGE);
+      DRW_select_buffer_context_create(vc->depsgraph, bases, bases_len, SCE_SELECT_EDGE);
 
       index = DRW_select_buffer_find_nearest_to_point(
           vc->depsgraph, vc->region, vc->v3d, vc->mval, 1, UINT_MAX, &dist_px_manhattan_test);
@@ -731,7 +731,7 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
             ED_view3d_backbuf_sample_size_clamp(vc->region, *dist_px_manhattan_p));
       }
 
-      DRW_select_buffer_context_create(bases, bases_len, SCE_SELECT_FACE);
+      DRW_select_buffer_context_create(vc->depsgraph, bases, bases_len, SCE_SELECT_FACE);
 
       if (dist_px_manhattan_test == 0) {
         index = DRW_select_buffer_sample_point(vc->depsgraph, vc->region, vc->v3d, vc->mval);
@@ -1691,14 +1691,13 @@ static bool mouse_mesh_loop(
   BMEdge *eed = nullptr;
   BMFace *efa = nullptr;
 
-  ViewContext vc;
   BMEditMesh *em;
   bool select = true;
   bool select_clear = false;
   bool select_cycle = true;
   float mvalf[2];
 
-  em_setup_viewcontext(C, &vc);
+  ViewContext vc = em_setup_viewcontext(C);
   mvalf[0] = float(vc.mval[0] = mval[0]);
   mvalf[1] = float(vc.mval[1] = mval[1]);
 
@@ -2051,15 +2050,13 @@ void MESH_OT_select_interior_faces(wmOperatorType *ot)
 
 bool EDBM_select_pick(bContext *C, const int mval[2], const SelectPick_Params *params)
 {
-  ViewContext vc;
-
   int base_index_active = -1;
   BMVert *eve = nullptr;
   BMEdge *eed = nullptr;
   BMFace *efa = nullptr;
 
   /* setup view context for argument to callbacks */
-  em_setup_viewcontext(C, &vc);
+  ViewContext vc = em_setup_viewcontext(C);
   vc.mval[0] = mval[0];
   vc.mval[1] = mval[1];
 
@@ -2739,8 +2736,7 @@ bool EDBM_mesh_deselect_all_multi_ex(Base **bases, const uint bases_len)
 bool EDBM_mesh_deselect_all_multi(bContext *C)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   uint bases_len = 0;
   Base **bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       vc.scene, vc.view_layer, vc.v3d, &bases_len);
@@ -2774,8 +2770,7 @@ bool EDBM_selectmode_disable_multi(bContext *C,
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
-  ViewContext vc;
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   uint bases_len = 0;
   Base **bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       vc.scene, vc.view_layer, nullptr, &bases_len);
@@ -3617,7 +3612,6 @@ static void edbm_select_linked_pick_ex(BMEditMesh *em, BMElem *ele, bool sel, in
 
 static int edbm_select_linked_pick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  ViewContext vc;
   Base *basact = nullptr;
   BMVert *eve;
   BMEdge *eed;
@@ -3633,7 +3627,7 @@ static int edbm_select_linked_pick_invoke(bContext *C, wmOperator *op, const wmE
   view3d_operator_needs_opengl(C);
 
   /* setup view context for argument to callbacks */
-  em_setup_viewcontext(C, &vc);
+  ViewContext vc = em_setup_viewcontext(C);
 
   uint bases_len;
   Base **bases = BKE_view_layer_array_from_bases_in_edit_mode(
@@ -4388,14 +4382,15 @@ void MESH_OT_select_nth(wmOperatorType *ot)
   WM_operator_properties_checker_interval(ot, false);
 }
 
-void em_setup_viewcontext(bContext *C, ViewContext *vc)
+ViewContext em_setup_viewcontext(bContext *C)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ED_view3d_viewcontext_init(C, vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
-  if (vc->obedit) {
-    vc->em = BKE_editmesh_from_object(vc->obedit);
+  if (vc.obedit) {
+    vc.em = BKE_editmesh_from_object(vc.obedit);
   }
+  return vc;
 }
 
 /** \} */

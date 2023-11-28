@@ -26,13 +26,13 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
@@ -1179,7 +1179,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemPointerR(layout, ptr, "particle_uv", &obj_data_ptr, "uv_layers", nullptr, ICON_NONE);
+  uiItemPointerR(layout, ptr, "particle_uv", &obj_data_ptr, "uv_layers", nullptr, ICON_GROUP_UVS);
 
   row = uiLayoutRowWithHeading(layout, true, IFACE_("Show"));
   uiItemR(row, ptr, "show_alive", toggles_flag, nullptr, ICON_NONE);
@@ -1221,7 +1221,7 @@ ModifierTypeInfo modifierType_Explode = {
     /*struct_name*/ "ExplodeModifierData",
     /*struct_size*/ sizeof(ExplodeModifierData),
     /*srna*/ &RNA_ExplodeModifier,
-    /*type*/ eModifierTypeType_Constructive,
+    /*type*/ ModifierTypeType::Constructive,
     /*flags*/ eModifierTypeFlag_AcceptsMesh,
     /*icon*/ ICON_MOD_EXPLODE,
     /*copy_data*/ copy_data,

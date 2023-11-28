@@ -43,7 +43,7 @@ const EnumPropertyItem rna_enum_node_socket_type_items[] = {
 
 #  include "BKE_node.h"
 #  include "BKE_node_runtime.hh"
-#  include "BKE_node_tree_update.h"
+#  include "BKE_node_tree_update.hh"
 
 #  include "DEG_depsgraph_build.hh"
 
@@ -406,6 +406,9 @@ static void rna_NodeSocketStandard_value_and_relation_update(bContext *C, Pointe
 
 bool rna_NodeSocketMaterial_default_value_poll(PointerRNA * /*ptr*/, PointerRNA value)
 {
+  if (U.experimental.use_grease_pencil_version3) {
+    return true;
+  }
   /* Do not show grease pencil materials for now. */
   Material *ma = static_cast<Material *>(value.data);
   return ma->gp_style == nullptr;

@@ -33,8 +33,8 @@
 #include "DNA_workspace_types.h"
 
 #include "BKE_callbacks.h"
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
@@ -479,15 +479,6 @@ bool ED_operator_editmesh_region_view3d(bContext *C)
   }
 
   CTX_wm_operator_poll_msg_set(C, "expected a view3d region & editmesh");
-  return false;
-}
-
-bool ED_operator_editmesh_auto_smooth(bContext *C)
-{
-  Object *obedit = CTX_data_edit_object(C);
-  if (obedit && obedit->type == OB_MESH && (((Mesh *)(obedit->data))->flag & ME_AUTOSMOOTH)) {
-    return nullptr != BKE_editmesh_from_object(obedit);
-  }
   return false;
 }
 
@@ -3203,10 +3194,10 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   }
 
   /* populate tree with keyframe nodes */
-  scene_to_keylist(&ads, scene, keylist, 0);
+  scene_to_keylist(&ads, scene, keylist, 0, {-FLT_MAX, FLT_MAX});
 
   if (ob) {
-    ob_to_keylist(&ads, ob, keylist, 0);
+    ob_to_keylist(&ads, ob, keylist, 0, {-FLT_MAX, FLT_MAX});
 
     if (ob->type == OB_GPENCIL_LEGACY) {
       const bool active = !(scene->flag & SCE_KEYS_NO_SELONLY);
@@ -3756,7 +3747,7 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
   uiItemFullO(layout,
               "SCREEN_OT_area_split",
               IFACE_("Vertical Split"),
-              ICON_NONE,
+              ICON_SPLIT_VERTICAL,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
               UI_ITEM_NONE,
@@ -3769,7 +3760,7 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
   uiItemFullO(layout,
               "SCREEN_OT_area_split",
               IFACE_("Horizontal Split"),
-              ICON_NONE,
+              ICON_SPLIT_HORIZONTAL,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
               UI_ITEM_NONE,
@@ -4357,7 +4348,7 @@ static void screen_area_menu_items(ScrArea *area, uiLayout *layout)
   uiItemFullO(layout,
               "SCREEN_OT_area_split",
               IFACE_("Vertical Split"),
-              ICON_NONE,
+              ICON_SPLIT_VERTICAL,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
               UI_ITEM_NONE,
@@ -4370,7 +4361,7 @@ static void screen_area_menu_items(ScrArea *area, uiLayout *layout)
   uiItemFullO(layout,
               "SCREEN_OT_area_split",
               IFACE_("Horizontal Split"),
-              ICON_NONE,
+              ICON_SPLIT_HORIZONTAL,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
               UI_ITEM_NONE,

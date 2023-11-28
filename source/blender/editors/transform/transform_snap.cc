@@ -21,8 +21,8 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
@@ -43,9 +43,9 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "SEQ_iterator.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_iterator.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -1351,21 +1351,23 @@ static void snap_source_closest_fn(TransInfo *t)
       FOREACH_TRANS_DATA_CONTAINER (t, tc) {
         TransData *td;
         for (td = tc->data, i = 0; i < tc->data_len && td->flag & TD_SELECTED; i++, td++) {
-          const BoundBox *bb = nullptr;
+          std::optional<blender::Bounds<blender::float3>> bounds;
 
           if ((t->options & CTX_OBMODE_XFORM_OBDATA) == 0) {
-            bb = BKE_object_boundbox_get(td->ob);
+            bounds = BKE_object_boundbox_get(td->ob);
           }
 
           /* use boundbox if possible */
-          if (bb) {
+          if (bounds) {
+            BoundBox bb;
+            BKE_boundbox_init_from_minmax(&bb, bounds->min, bounds->max);
             int j;
 
             for (j = 0; j < 8; j++) {
               float loc[3];
               float dist;
 
-              copy_v3_v3(loc, bb->vec[j]);
+              copy_v3_v3(loc, bb.vec[j]);
               mul_m4_v3(td->ext->obmat, loc);
 
               dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);

@@ -14,8 +14,8 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_report.h"
 
@@ -703,13 +703,12 @@ void MESH_OT_extrude_faces_indiv(wmOperatorType *ot)
 static int edbm_dupli_extrude_cursor_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
   BMVert *v1;
   BMIter iter;
   float center[3];
   uint verts_len;
 
-  em_setup_viewcontext(C, &vc);
+  ViewContext vc = em_setup_viewcontext(C);
   const Object *object_active = vc.obact;
 
   const bool rot_src = RNA_boolean_get(op->ptr, "rotate_source");

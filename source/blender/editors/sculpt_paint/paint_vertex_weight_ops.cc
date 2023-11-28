@@ -25,12 +25,12 @@
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_iterators.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
@@ -170,11 +170,10 @@ void PAINT_OT_weight_from_bones(wmOperatorType *ot)
 static int weight_sample_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
   Mesh *me;
   bool changed = false;
 
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   me = BKE_mesh_from_object(vc.obact);
   const MDeformVert *dvert = BKE_mesh_deform_verts(me);
 
@@ -317,8 +316,7 @@ static bool weight_paint_sample_mark_groups(const MDeformVert *dvert,
 static int weight_sample_group_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-  ViewContext vc;
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   BLI_assert(vc.v3d && vc.rv3d); /* Ensured by poll. */
 
   Mesh *me = BKE_mesh_from_object(vc.obact);

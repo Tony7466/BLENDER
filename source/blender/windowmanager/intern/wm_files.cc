@@ -68,14 +68,14 @@
 #include "BKE_blender_version.h"
 #include "BKE_blendfile.h"
 #include "BKE_callbacks.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_override.hh"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
-#include "BKE_main_namemap.h"
+#include "BKE_main_namemap.hh"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -4278,7 +4278,7 @@ static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, vo
     has_extra_checkboxes = true;
   }
 
-  BKE_reports_clear(&reports);
+  BKE_reports_free(&reports);
 
   uiItemS_ex(layout, has_extra_checkboxes ? 2.0f : 4.0f);
 

@@ -804,8 +804,6 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
   CustomData_free_layer_named(&mesh->vert_data, "position", 0);
   mesh->totvert = offsets.vert.last();
 
-  mesh->flag |= ME_AUTOSMOOTH;
-  mesh->smoothresh = DEG2RADF(180.0f);
   MutableSpan<int2> edges = mesh->edges_for_write();
   MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
@@ -849,6 +847,7 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
 
   build_mesh_positions(curves_info, offsets, eval_buffer, *mesh);
 
+  mesh->tag_overlapping_none();
   if (!offsets.any_single_point_main) {
     /* If there are no single point curves, every combination will have at least loose edges. */
     mesh->tag_loose_verts_none();

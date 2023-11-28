@@ -15,7 +15,6 @@
 #include "DNA_node_types.h"
 #include "DNA_screen_types.h"
 
-#include "BLI_array.h"
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -23,12 +22,12 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_interface.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -365,7 +364,7 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
     using namespace blender::nodes;
 
     r_node_decl.emplace(NodeDeclaration());
-    blender::nodes::build_node_declaration(*arg->node_type, *r_node_decl);
+    blender::nodes::build_node_declaration(*arg->node_type, *r_node_decl, nullptr, nullptr);
     Span<SocketDeclaration *> socket_decls = (in_out == SOCK_IN) ? r_node_decl->inputs :
                                                                    r_node_decl->outputs;
     int index = 0;
