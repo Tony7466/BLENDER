@@ -1202,7 +1202,7 @@ void animrecord_check_state(TransInfo *t, ID *id)
    * - the option to add new actions for each round is not enabled
    */
   if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE) == 0 &&
-      (scene->toolsettings->autokey_flag & AUTOKEY_FLAG_LAYERED_RECORD))
+      (scene->toolsettings->keying_flag & AUTOKEY_FLAG_LAYERED_RECORD))
   {
     /* if playback has just looped around,
      * we need to add a new NLA track+strip to allow a clean pass to occur */

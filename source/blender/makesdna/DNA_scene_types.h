@@ -1610,7 +1610,7 @@ typedef struct ToolSettings {
 
   /* Auto-Keying Mode. */
   /** Defines in DNA_userdef_types.h. */
-  short autokey_flag;
+  short keying_flag;
   char autokey_mode;
   /** Keyframe type (see DNA_curve_types.h). */
   char keyframe_type;

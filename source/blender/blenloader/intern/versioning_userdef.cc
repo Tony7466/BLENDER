@@ -409,7 +409,7 @@ void blo_do_versions_userdef(UserDef *userdef)
   if (!USER_VERSION_ATLEAST(257, 0)) {
     /* Clear #AUTOKEY_FLAG_ONLYKEYINGSET flag from user-preferences,
      * so that it doesn't linger around from old configurations like a ghost. */
-    userdef->autokey_flag &= ~AUTOKEY_FLAG_ONLYKEYINGSET;
+    userdef->keying_flag &= ~AUTOKEY_FLAG_ONLYKEYINGSET;
   }
 
   if (!USER_VERSION_ATLEAST(260, 3)) {

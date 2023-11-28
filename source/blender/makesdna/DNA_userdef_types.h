@@ -953,8 +953,8 @@ typedef struct UserDef {
 
   /** #eAutokey_Mode, auto-keying mode. */
   short autokey_mode;
-  /** Flags for autokeying. */
-  short autokey_flag;
+  /** Flags for inserting keyframes. */
+  short keying_flag;
   /** Flags for which channels to insert keys at. */
   short key_insert_channels;  // eKeyInsertChannels
   char _pad15[6];
@@ -1283,8 +1283,8 @@ typedef enum eZoomFrame_Mode {
 /**
  * Defines how keyframes are inserted.
  * Used for regular keying and auto-keying.
- * Not all of those flags are stored in the user preferences (U.autokey_flag).
- * Some are stored on the scene (toolsettings.autokey_flag).
+ * Not all of those flags are stored in the user preferences (U.keying_flag).
+ * Some are stored on the scene (toolsettings.keying_flag).
  */
 typedef enum eKeying_Flag {
   /* Settings used across manual and auto-keying. */

@@ -78,9 +78,9 @@ bool is_autokey_mode(const Scene *scene, const eAutokey_Mode mode)
 bool is_autokey_flag(const Scene *scene, const eKeying_Flag flag)
 {
   if (scene) {
-    return (scene->toolsettings->autokey_flag & flag) || (U.autokey_flag & flag);
+    return (scene->toolsettings->keying_flag & flag) || (U.keying_flag & flag);
   }
-  return U.autokey_flag & flag;
+  return U.keying_flag & flag;
 }
 
 bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
@@ -199,7 +199,7 @@ void autokeyframe_object(
         do_scale = true;
       }
     }
-    AnimData *adt = ob->adt;
+
     if (do_loc) {
       KeyingSet *ks = ANIM_builtin_keyingset_get_named(ANIM_KS_LOCATION_ID);
       ANIM_apply_keyingset(C, &sources, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
