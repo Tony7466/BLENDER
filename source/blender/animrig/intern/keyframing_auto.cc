@@ -82,9 +82,9 @@ bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
   return true;
 }
 
-static std::string get_object_rotation_path(Object *ob)
+static std::string get_rotation_mode_path(const eRotationModes rotmode)
 {
-  switch (ob->rotmode) {
+  switch (rotmode) {
     case ROT_MODE_QUAT:
       return "rotation_quaternion";
     case ROT_MODE_AXISANGLE:
@@ -148,7 +148,7 @@ void autokeyframe_object(bContext *C, Scene *scene, ViewLayer *view_layer, Objec
   }
 
   const float scene_frame = BKE_scene_frame_get(scene);
-  std::string rotation_rna_path = get_object_rotation_path(ob);
+  std::string rotation_rna_path = get_rotation_mode_path(eRotationModes(ob->rotmode));
   Vector<std::string> rna_paths = {"location", rotation_rna_path, "scale"};
   Main *bmain = CTX_data_main(C);
 
@@ -197,18 +197,6 @@ bool autokeyframe_pchan(bContext *C, Scene *scene, Object *ob, bPoseChannel *pch
   ANIM_apply_keyingset(C, &sources, ks, MODIFYKEY_MODE_INSERT, BKE_scene_frame_get(scene));
 
   return true;
-}
-
-static std::string get_pchan_rotation_path(bPoseChannel *pchan)
-{
-  switch (pchan->rotmode) {
-    case ROT_MODE_QUAT:
-      return "rotation_quaternion";
-    case ROT_MODE_AXISANGLE:
-      return "rotation_axis_angle";
-    default:
-      return "rotation_euler";
-  }
 }
 
 void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, short targetless_ik)
@@ -293,7 +281,7 @@ void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, short targetless_i
     }
 
     Main *bmain = CTX_data_main(C);
-    std::string rotation_rna_path = get_pchan_rotation_path(pchan);
+    std::string rotation_rna_path = get_rotation_mode_path(eRotationModes(pchan->rotmode));
     Vector<std::string> rna_paths = {"location", rotation_rna_path, "scale"};
     for (PointerRNA &ptr : sources) {
       insert_key_rna(&ptr,
