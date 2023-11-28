@@ -1963,11 +1963,11 @@ static void rna_set_raw_property(PropertyDefRNA *dp, PropertyRNA *prop)
     return;
   }
 
-  if (STREQ(dp->dnatype, "char")) {
+  if (STREQ(dp->dnatype, "char") || STREQ(dp->dnatype, "uchar") || STREQ(dp->dnatype, "int8_t")) {
     prop->rawtype = PROP_RAW_CHAR;
     prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
   }
-  else if (STREQ(dp->dnatype, "short")) {
+  else if (STREQ(dp->dnatype, "short") || STREQ(dp->dnatype, "ushort")) {
     prop->rawtype = PROP_RAW_SHORT;
     prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
   }
