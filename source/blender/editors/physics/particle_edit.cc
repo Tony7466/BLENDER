@@ -28,8 +28,8 @@
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_bvhutils.h"
-#include "BKE_context.h"
+#include "BKE_bvhutils.hh"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
@@ -206,7 +206,7 @@ int PE_minmax(
   }
 
   if (!ok) {
-    BKE_object_minmax(ob, min, max, true);
+    BKE_object_minmax(ob, min, max);
     ok = 1;
   }
 
