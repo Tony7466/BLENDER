@@ -117,43 +117,47 @@ const EnumPropertyItem *grid_type_items_fn(bContext * /*C*/,
 
 BaseSocketDeclarationBuilder &declare_grid_type_input(NodeDeclarationBuilder &b,
                                                       const eCustomDataType type,
-                                                      const StringRef name)
+                                                      const StringRef name,
+                                                      const StringRef identifier)
 {
   switch (type) {
     case CD_PROP_FLOAT:
-      return b.add_input<decl::Float>(name);
+      return b.add_input<decl::Float>(name, identifier);
     case CD_PROP_FLOAT3:
-      return b.add_input<decl::Vector>(name);
+      return b.add_input<decl::Vector>(name, identifier);
     default:
       break;
   }
   BLI_assert_unreachable();
-  return b.add_input<decl::Float>(name);
+  return b.add_input<decl::Float>(name, identifier);
 }
 
 BaseSocketDeclarationBuilder &declare_grid_type_output(NodeDeclarationBuilder &b,
                                                        const eCustomDataType type,
-                                                       const StringRef name)
+                                                       const StringRef name,
+                                                       const StringRef identifier)
 {
   switch (type) {
     case CD_PROP_FLOAT:
-      return b.add_output<decl::Float>(name);
+      return b.add_output<decl::Float>(name, identifier);
     case CD_PROP_FLOAT3:
-      return b.add_output<decl::Vector>(name);
+      return b.add_output<decl::Vector>(name, identifier);
     default:
       break;
   }
   BLI_assert_unreachable();
-  return b.add_output<decl::Float>(name);
+  return b.add_output<decl::Float>(name, identifier);
 }
 
-bke::GVolumeGridPtr extract_grid_input(GeoNodeExecParams params, StringRef name, const eCustomDataType data_type)
+bke::GVolumeGridPtr extract_grid_input(GeoNodeExecParams params,
+                                       StringRef identifier,
+                                       const eCustomDataType data_type)
 {
   switch (data_type) {
     case CD_PROP_FLOAT:
-      return params.extract_input<bke::ValueOrField<float>>(name).as_grid();
+      return params.extract_input<bke::ValueOrField<float>>(identifier).as_grid();
     case CD_PROP_FLOAT3:
-      return params.extract_input<bke::ValueOrField<float3>>(name).as_grid();
+      return params.extract_input<bke::ValueOrField<float3>>(identifier).as_grid();
     default:
       BLI_assert_unreachable();
       break;
@@ -162,16 +166,16 @@ bke::GVolumeGridPtr extract_grid_input(GeoNodeExecParams params, StringRef name,
 }
 
 void set_output_grid(GeoNodeExecParams params,
-                     StringRef name,
+                     StringRef identifier,
                      const eCustomDataType data_type,
                      const bke::GVolumeGridPtr &grid)
 {
   switch (data_type) {
     case CD_PROP_FLOAT:
-      params.set_output(name, ValueOrField<float>(grid.typed<float>()));
+      params.set_output(identifier, ValueOrField<float>(grid.typed<float>()));
       break;
     case CD_PROP_FLOAT3:
-      params.set_output(name, ValueOrField<float3>(grid.typed<float3>()));
+      params.set_output(identifier, ValueOrField<float3>(grid.typed<float3>()));
       break;
     default:
       BLI_assert_unreachable();

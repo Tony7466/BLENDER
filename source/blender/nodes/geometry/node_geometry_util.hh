@@ -150,39 +150,41 @@ const EnumPropertyItem *grid_type_items_fn(bContext *C,
 
 BaseSocketDeclarationBuilder &declare_grid_type_input(NodeDeclarationBuilder &b,
                                                       eCustomDataType type,
-                                                      StringRef name);
+                                                      StringRef name,
+                                                      StringRef identifier = "");
 BaseSocketDeclarationBuilder &declare_grid_type_output(NodeDeclarationBuilder &b,
                                                        eCustomDataType type,
-                                                       StringRef name);
+                                                       StringRef name,
+                                                       StringRef identifier = "");
 
 bke::GVolumeGridPtr extract_grid_input(GeoNodeExecParams params,
-                                       StringRef name,
+                                       StringRef identifier,
                                        const eCustomDataType data_type);
 
-template <typename T>
-bke::VolumeGridPtr<T> extract_grid_input(GeoNodeExecParams params,
-                                         StringRef name)
+template<typename T>
+bke::VolumeGridPtr<T> extract_grid_input(GeoNodeExecParams params, StringRef identifier)
 {
   const CPPType &cpp_type = CPPType::get<T>();
   const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(cpp_type);
-  return extract_grid_input(params, name, data_type).typed<T>();
+  return extract_grid_input(params, identifier, data_type).typed<T>();
 }
 
 void set_output_grid(GeoNodeExecParams params,
-                     StringRef name,
+                     StringRef identifier,
                      eCustomDataType data_type,
                      const bke::GVolumeGridPtr &grid);
 
-template <typename T>
-void set_output_grid(GeoNodeExecParams params, StringRef name, const bke::VolumeGridPtr<T> &grid)
+template<typename T>
+void set_output_grid(GeoNodeExecParams params,
+                     StringRef identifier,
+                     const bke::VolumeGridPtr<T> &grid)
 {
   const CPPType &cpp_type = CPPType::get<T>();
   const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(cpp_type);
-  set_output_grid(params, name, data_type, grid);
+  set_output_grid(params, identifier, data_type, grid);
 }
 
-template<typename OpT>
-auto apply(const eCustomDataType data_type, OpT op)
+template<typename OpT> auto apply(const eCustomDataType data_type, OpT &op)
 {
   switch (data_type) {
     case CD_PROP_FLOAT:
