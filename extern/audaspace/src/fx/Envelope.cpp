@@ -31,10 +31,9 @@ struct EnvelopeParameters
 
 sample_t Envelope::envelopeFilter(CallbackIIRFilterReader* reader, EnvelopeParameters* param)
 {
-	float in = std::fabs(reader->x(0));
+	float in = reader->x(0);
 	float out = reader->y(-1);
-	if(in < param->threshold)
-		in = 0.0f;
+
 	return (in > out ? param->attack : param->release) * (out - in) + in;
 }
 
