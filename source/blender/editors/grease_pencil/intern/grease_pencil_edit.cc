@@ -1560,7 +1560,7 @@ static int grease_pencil_duplicate_exec(bContext *C, wmOperator * /*op*/)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  bool changed = false;
+  std::atomic<bool> changed = false;
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
@@ -1573,7 +1573,7 @@ static int grease_pencil_duplicate_exec(bContext *C, wmOperator * /*op*/)
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
     curves = duplicate_points(curves, points);
     info.drawing.tag_topology_changed();
-    changed = true;
+    changed.store(true, std::memory_order_relaxed);
   });
 
   if (changed) {
