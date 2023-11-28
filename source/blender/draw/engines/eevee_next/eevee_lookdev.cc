@@ -138,29 +138,55 @@ void LookdevModule::sync()
   if (!enabled_) {
     return;
   }
-  const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
-                         DRW_STATE_DEPTH_GREATER_EQUAL;
-  ResourceHandle handle(0);
-  GPUBatch *geom = DRW_cache_sphere_get(DRW_LOD_MEDIUM);
-  {
-    ::Material *mat = inst_.materials.metallic_mat;
-    GPUMaterial *gpumat = inst_.shaders.material_shader_get(
-        mat, mat->nodetree, MAT_PIPE_FORWARD, MAT_GEOM_MESH, MAT_PROBE_NONE);
-    GPUShader *shader = GPU_material_get_shader(gpumat);
-    metallic_ps_.state_set(state);
-    metallic_ps_.shader_set(shader);
-    metallic_ps_.draw(geom, handle, 0);
-  }
 
-  {
-    ::Material *mat = inst_.materials.diffuse_mat;
-    GPUMaterial *gpumat = inst_.shaders.material_shader_get(
-        mat, mat->nodetree, MAT_PIPE_FORWARD, MAT_GEOM_MESH, MAT_PROBE_NONE);
-    GPUShader *shader = GPU_material_get_shader(gpumat);
-    diffuse_ps_.state_set(state);
-    diffuse_ps_.shader_set(shader);
-    diffuse_ps_.draw(geom, handle, 0);
-  }
+  const int2 extent(1);
+  constexpr eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE |
+                                     GPU_TEXTURE_USAGE_SHADER_READ;
+  dummy_cryptomatte_tx_.ensure_2d(GPU_RGBA32F, extent, usage);
+  dummy_renderpass_tx_.ensure_2d(GPU_RGBA16F, extent, usage);
+  dummy_aov_color_tx_.ensure_2d_array(GPU_RGBA16F, extent, 1, usage);
+  dummy_aov_value_tx_.ensure_2d_array(GPU_R16F, extent, 1, usage);
+
+  float4x4 model_m4 = float4x4::identity();
+  ResourceHandle handle = inst_.manager->resource_handle(model_m4);
+  GPUBatch *geom = DRW_cache_sphere_get(DRW_LOD_MEDIUM);
+
+  sync_pass(metallic_ps_, geom, inst_.materials.metallic_mat, handle);
+  sync_pass(diffuse_ps_, geom, inst_.materials.diffuse_mat, handle);
+}
+
+void LookdevModule::sync_pass(PassSimple &pass,
+                              GPUBatch *geom,
+                              ::Material *mat,
+                              ResourceHandle res_handle)
+{
+  const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                         DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK;
+
+  GPUMaterial *gpumat = inst_.shaders.material_shader_get(
+      mat, mat->nodetree, MAT_PIPE_FORWARD, MAT_GEOM_MESH, MAT_PROBE_NONE);
+  pass.state_set(state);
+  pass.material_set(*inst_.manager, gpumat);
+
+  pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+  pass.bind_image("rp_normal_img", dummy_renderpass_tx_);
+  pass.bind_image("rp_light_img", dummy_renderpass_tx_);
+  pass.bind_image("rp_diffuse_color_img", dummy_renderpass_tx_);
+  pass.bind_image("rp_specular_color_img", dummy_renderpass_tx_);
+  pass.bind_image("rp_emission_img", dummy_renderpass_tx_);
+  pass.bind_image("rp_cryptomatte_img", dummy_cryptomatte_tx_);
+  pass.bind_image("rp_color_img", dummy_aov_color_tx_);
+  pass.bind_image("rp_value_img", dummy_aov_value_tx_);
+  pass.bind_image("aov_color_img", dummy_aov_color_tx_);
+  pass.bind_image("aov_value_img", dummy_aov_value_tx_);
+  pass.bind_ssbo("aov_buf", &inst_.film.aovs_info);
+  /* Required by validation layers. */
+  inst_.cryptomatte.bind_resources(pass);
+  inst_.bind_uniform_data(&pass);
+  inst_.reflection_probes.bind_resources(pass);
+  inst_.irradiance_cache.bind_resources(pass);
+
+  pass.draw(geom, res_handle, 0);
 }
 
 void LookdevModule::draw_metallic(View &view)

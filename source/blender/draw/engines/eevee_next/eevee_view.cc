@@ -313,10 +313,11 @@ void LookdevView::render()
     diffuse_color_tx_.free();
     return;
   }
+  GPU_debug_capture_begin();
   GPU_debug_group_begin("Lookdev");
 
   // TODO: calculate extent from dpi and window size.
-  const int2 extent(256, 256);
+  const int2 extent(128, 128);
 
   const eGPUTextureFormat depth_format = GPU_DEPTH_COMPONENT24;
   const eGPUTextureFormat color_format = GPU_RGBA16F;
@@ -338,17 +339,19 @@ void LookdevView::render()
   // create view for rendering spheres
   View view = {"Lookdev.View"};
   float4x4 view_m4 = float4x4::identity();
-  float4x4 win_m4 = math::projection::orthographic(-1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 10.0f);
+  float4x4 win_m4 = math::projection::orthographic(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
   view.sync(view_m4, win_m4);
 
   metallic_fb_.bind();
   inst_.lookdev.draw_metallic(view);
 
-  metallic_fb_.bind();
+  diffuse_fb_.bind();
   inst_.lookdev.draw_diffuse(view);
 
-  // blit framebuffer1 and framebuffer2 to the main framebuffer color texture.
+  // TODO: blit framebuffer1 and framebuffer2 to the main framebuffer color texture.
+
   GPU_debug_group_end();
+  GPU_debug_capture_end();
 }
 
 /** \} */

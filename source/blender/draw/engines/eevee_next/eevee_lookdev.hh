@@ -85,6 +85,12 @@ class LookdevModule {
  private:
   Instance &inst_;
 
+  /* Dummy textures: required to reuse background shader and avoid another shader variation. */
+  Texture dummy_renderpass_tx_;
+  Texture dummy_cryptomatte_tx_;
+  Texture dummy_aov_color_tx_;
+  Texture dummy_aov_value_tx_;
+
   bool enabled_;
 
   PassSimple metallic_ps_ = {"Lookdev.Metallic"};
@@ -106,6 +112,9 @@ class LookdevModule {
   {
     return enabled_;
   }
+
+ private:
+  void sync_pass(PassSimple &pass, GPUBatch *geom, ::Material *mat, ResourceHandle res_handle);
 };
 
 /** \} */
