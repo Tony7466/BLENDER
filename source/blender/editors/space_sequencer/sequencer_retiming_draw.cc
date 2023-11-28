@@ -262,14 +262,11 @@ SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], 
 /** \name Retiming Key
  * \{ */
 
-constexpr int MAX_KEYS_IN_BATCH = 1024;
-
 static void retime_key_draw(const bContext *C,
                             const Sequence *seq,
                             const SeqRetimingKey *key,
                             const KeyframeShaderBindings *sh_bindings,
-                            const blender::Set<const SeqRetimingKey *> *selection,
-                            int *r_point_counter)
+                            const blender::Set<const SeqRetimingKey *> *selection)
 {
   const Scene *scene = CTX_data_scene(C);
   const float key_x = key_x_get(scene, seq, key);
@@ -303,12 +300,6 @@ static void retime_key_draw(const bContext *C,
   CLAMP(key_position, left_pos_min, right_pos_max);
   const float alpha = SEQ_retiming_data_is_editable(seq) ? 1.0f : 0.3f;
 
-  if (*r_point_counter >= MAX_KEYS_IN_BATCH) {
-    immEnd();
-    immBeginAtMost(GPU_PRIM_POINTS, MAX_KEYS_IN_BATCH);
-    *r_point_counter = 0;
-  }
-
   draw_keyframe_shape(key_position,
                       bottom,
                       size,
@@ -319,7 +310,6 @@ static void retime_key_draw(const bContext *C,
                       sh_bindings,
                       0,
                       0);
-  *r_point_counter = *r_point_counter + 1;
 }
 
 static void draw_continuity(const bContext *C,
@@ -377,8 +367,7 @@ static void draw_continuity(const bContext *C,
 static void fake_keys_draw(const bContext *C,
                            Sequence *seq,
                            const KeyframeShaderBindings *sh_bindings,
-                           const blender::Set<const SeqRetimingKey *> *selection,
-                           int *r_point_counter)
+                           const blender::Set<const SeqRetimingKey *> *selection)
 {
   if (!SEQ_retiming_is_active(seq) && !SEQ_retiming_data_is_editable(seq)) {
     return;
@@ -392,14 +381,14 @@ static void fake_keys_draw(const bContext *C,
     SeqRetimingKey fake_key;
     fake_key.strip_frame_index = left_key_frame - SEQ_time_start_frame_get(seq);
     fake_key.flag = 0;
-    retime_key_draw(C, seq, &fake_key, sh_bindings, selection, r_point_counter);
+    retime_key_draw(C, seq, &fake_key, sh_bindings, selection);
   }
 
   if (SEQ_retiming_key_get_by_timeline_frame(scene, seq, right_key_frame) == nullptr) {
     SeqRetimingKey fake_key;
     fake_key.strip_frame_index = right_key_frame - SEQ_time_start_frame_get(seq);
     fake_key.flag = 0;
-    retime_key_draw(C, seq, &fake_key, sh_bindings, selection, r_point_counter);
+    retime_key_draw(C, seq, &fake_key, sh_bindings, selection);
   }
 }
 
@@ -460,17 +449,32 @@ static void retime_keys_draw(const bContext *C, SeqQuadsBatch *quads)
   immBindBuiltinProgram(GPU_SHADER_KEYFRAME_SHAPE);
   immUniform1f("outline_scale", 1.0f);
   immUniform2f("ViewportSize", BLI_rcti_size_x(&v2d->mask) + 1, BLI_rcti_size_y(&v2d->mask) + 1);
+
+  constexpr int MAX_KEYS_IN_BATCH = 1024;
+  int point_counter = 0;
   immBeginAtMost(GPU_PRIM_POINTS, MAX_KEYS_IN_BATCH);
 
-  int point_counter = 0;
   for (Sequence *seq : strips) {
     if (!SEQ_retiming_is_allowed(seq)) {
       continue;
     }
 
-    fake_keys_draw(C, seq, &sh_bindings, &selection, &point_counter);
+    /* If batch is full, start a new one (fake keys add 2 points max). */
+    if (point_counter + 2 > MAX_KEYS_IN_BATCH) {
+      immEnd();
+      immBeginAtMost(GPU_PRIM_POINTS, MAX_KEYS_IN_BATCH);
+      point_counter = 0;
+    }
+    fake_keys_draw(C, seq, &sh_bindings, &selection);
+
     for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
-      retime_key_draw(C, seq, &key, &sh_bindings, &selection, &point_counter);
+      /* If batch is full, start a new one. */
+      if (point_counter + 1 > MAX_KEYS_IN_BATCH) {
+        immEnd();
+        immBeginAtMost(GPU_PRIM_POINTS, MAX_KEYS_IN_BATCH);
+        point_counter = 0;
+      }
+      retime_key_draw(C, seq, &key, &sh_bindings, &selection);
     }
   }
   immEnd();
