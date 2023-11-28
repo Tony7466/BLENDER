@@ -71,7 +71,7 @@ ccl_device
   }
 
   float3 N = stack_valid(data_node.x) ? stack_load_float3(stack, data_node.x) : sd->N;
-  N = safe_normal(sd, N);
+  N = safe_normalize_fallback(N, sd->N);
 
   float param1 = (stack_valid(param1_offset)) ? stack_load_float(stack, param1_offset) :
                                                 __uint_as_float(node.z);
@@ -132,7 +132,7 @@ ccl_device
       float3 coat_normal = stack_valid(coat_normal_offset) ?
                                stack_load_float3(stack, coat_normal_offset) :
                                sd->N;
-      coat_normal = safe_normal(sd, coat_normal);
+      coat_normal = safe_normalize_fallback(coat_normal, sd->N);
 
       // get the base color
       uint4 data_base_color = read_node(kg, &offset);

@@ -205,17 +205,6 @@ ccl_device float3 maybe_ensure_valid_specular_reflection(ccl_private ShaderData 
   return ensure_valid_specular_reflection(sd->Ng, sd->wi, N);
 }
 
-ccl_device_inline float3 safe_normal(ccl_private ShaderData *sd, float3 N)
-{
-  N = safe_normalize(N);
-  if (len_squared(N) < 0.5f) {
-    /* Vector was not normalized by `safe_normalize()` function. This can cause rendering issues
-     * later on. So return the default normals instead. */
-    return sd->N;
-  }
-  return N;
-}
-
 /* Principled Hair albedo and absorption coefficients. */
 ccl_device_inline float bsdf_principled_hair_albedo_roughness_scale(
     const float azimuthal_roughness)
