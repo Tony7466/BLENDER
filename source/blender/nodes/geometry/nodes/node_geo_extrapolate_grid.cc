@@ -129,7 +129,9 @@ struct ExtrapolateOp {
             *input_grid.grid(), boundary_op, vdb_background, iso_value);
         break;
     case GEO_NODE_EXTRAPOLATE_GRID_INPUT_DENSITY:
-      break;
+        vdb_result = openvdb::tools::fogToExt(
+            *input_grid.grid(), boundary_op, vdb_background, iso_value);
+        break;
     }
 
     vdb_result->print(std::cout, 3);
