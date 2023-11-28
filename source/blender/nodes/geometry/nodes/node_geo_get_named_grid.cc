@@ -54,23 +54,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   if (Volume *volume = geometry_set.get_volume_for_write()) {
     if (GVolumeGridPtr grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
-      switch (data_type) {
-        case CD_PROP_FLOAT:
-          params.set_output("Grid", ValueOrField<float>(grid.typed<float>()));
-          break;
-        case CD_PROP_FLOAT3:
-          params.set_output("Grid", ValueOrField<float3>(grid.typed<float3>()));
-          break;
-        default:
-          BLI_assert_unreachable();
-          break;
-      }
+      grids::set_output_grid(params, "Grid", data_type, grid);
+      params.set_output("Volume", geometry_set);
 
       if (remove_grid) {
         BKE_volume_grid_remove(volume, grid.get());
       }
-
-      params.set_output("Volume", geometry_set);
       return;
     }
   }

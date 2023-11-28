@@ -43,23 +43,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = CD_PROP_FLOAT;
 }
 
-template<typename T>
-static void try_store_grid(GeoNodeExecParams params, Volume *volume, StringRef name)
-{
-  const bke::ValueOrField<T> value = params.extract_input<bke::ValueOrField<T>>("Grid");
-  if (!value.is_grid()) {
-    return;
-  }
-
-  if (GVolumeGridPtr existing_grid = BKE_volume_grid_find_for_write(volume, name.data())) {
-    BKE_volume_grid_remove(volume, existing_grid.get());
-  }
-
-  if (value.grid) {
-    BKE_volume_grid_add_vdb(*volume, name, value.grid.grid_for_write());
-  }
-}
-
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
@@ -75,17 +58,17 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   if (volume) {
-    switch (data_type) {
-      case CD_PROP_FLOAT:
-        try_store_grid<float>(params, volume, grid_name);
-        break;
-      case CD_PROP_FLOAT3:
-        try_store_grid<float3>(params, volume, grid_name);
-        break;
-      default:
-        BLI_assert_unreachable();
-        break;
+    bke::GVolumeGridPtr grid = grids::extract_grid_input(params, "Grid", data_type);
+    if (!grid) {
+      return;
     }
+
+    if (bke::GVolumeGridPtr existing_grid = BKE_volume_grid_find_for_write(volume,
+                                                                           grid_name.data())) {
+      BKE_volume_grid_remove(volume, existing_grid.get());
+    }
+
+    BKE_volume_grid_add_vdb(*volume, grid_name, grid->grid_for_write());
 
     params.set_output("Volume", geometry_set);
     return;
