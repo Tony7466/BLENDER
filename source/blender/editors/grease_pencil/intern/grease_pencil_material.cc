@@ -298,12 +298,14 @@ static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator *
   /* The material lock must be done outside of the drawing loop to prevent
    * 'retrieve_editable_and_selected_strokes' from returning an incorrect IndexMask.
    */
-  for (const int material_index : materials_used) {
-    if (Material *ma = BKE_object_material_get(object, material_index + 1)) {
-      MaterialGPencilStyle &gp_style = *ma->gp_style;
-      gp_style.flag |= GP_MATERIAL_LOCKED;
-      DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
-      changed = true;
+  for (const int i : IndexRange(object->totcol)) {
+    if (!materials_used.contains(i)) {
+      if (Material *ma = BKE_object_material_get(object, i + 1)) {
+        MaterialGPencilStyle &gp_style = *ma->gp_style;
+        gp_style.flag |= GP_MATERIAL_LOCKED;
+        DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+        changed = true;
+      }
     }
   }
 
