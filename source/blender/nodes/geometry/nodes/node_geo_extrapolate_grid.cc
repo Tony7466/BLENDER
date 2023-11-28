@@ -41,7 +41,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   }
   b.add_input(data_type, "Boundary Value").supports_field();
   b.add_input(data_type, "Background");
-  b.add_input(data_type, "Iso Value");
+  b.add_input<decl::Float>("Iso Value");
   b.add_input<decl::Int>("Iterations").default_value(1).min(1);
 
   grids::declare_grid_type_output(b, data_type, "Grid");
@@ -233,7 +233,8 @@ struct ExtrapolateOp {
                                               vdb_background,
                                               iso_value,
                                               num_iter,
-                                              fast_sweeping_domain);
+                                              fast_sweeping_domain,
+                                              vdb_boundary_grid);
         break;
       case GEO_NODE_EXTRAPOLATE_GRID_INPUT_DENSITY:
         vdb_result = openvdb::tools::fogToExt(*vdb_input_grid,
@@ -241,7 +242,8 @@ struct ExtrapolateOp {
                                               vdb_background,
                                               iso_value,
                                               num_iter,
-                                              fast_sweeping_domain);
+                                              fast_sweeping_domain,
+                                              vdb_boundary_grid);
         break;
     }
     if (vdb_result) {
