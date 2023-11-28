@@ -132,7 +132,6 @@ void SyncModule::sync_mesh(Object *ob,
     return;
   }
 
-  bool is_shadow_caster = !(ob->visibility_flag & OB_HIDE_SHADOW);
   bool is_alpha_blend = false;
   float inflate_bounds = 0.0f;
   for (auto i : material_array.gpu_materials.index_range()) {
@@ -159,9 +158,7 @@ void SyncModule::sync_mesh(Object *ob,
     geometry_call(material.overlap_masking.sub_pass, geom, res_handle);
     geometry_call(material.prepass.sub_pass, geom, res_handle);
     geometry_call(material.shading.sub_pass, geom, res_handle);
-    if (is_shadow_caster) {
-      geometry_call(material.shadow.sub_pass, geom, res_handle);
-    }
+    geometry_call(material.shadow.sub_pass, geom, res_handle);
 
     geometry_call(material.planar_probe_prepass.sub_pass, geom, res_handle);
     geometry_call(material.planar_probe_shading.sub_pass, geom, res_handle);
@@ -209,7 +206,6 @@ bool SyncModule::sync_sculpt(Object *ob,
   bool has_motion = false;
   MaterialArray &material_array = inst_.materials.material_array_get(ob, has_motion);
 
-  bool is_shadow_caster = !(ob->visibility_flag & OB_HIDE_SHADOW);
   bool is_alpha_blend = false;
   float inflate_bounds = 0.0f;
   for (SculptBatch &batch :
@@ -237,9 +233,7 @@ bool SyncModule::sync_sculpt(Object *ob,
     geometry_call(material.overlap_masking.sub_pass, geom, res_handle);
     geometry_call(material.prepass.sub_pass, geom, res_handle);
     geometry_call(material.shading.sub_pass, geom, res_handle);
-    if (is_shadow_caster) {
-      geometry_call(material.shadow.sub_pass, geom, res_handle);
-    }
+    geometry_call(material.shadow.sub_pass, geom, res_handle);
 
     geometry_call(material.planar_probe_prepass.sub_pass, geom, res_handle);
     geometry_call(material.planar_probe_shading.sub_pass, geom, res_handle);
@@ -318,10 +312,7 @@ void SyncModule::sync_point_cloud(Object *ob,
   drawcall_add(material.overlap_masking);
   drawcall_add(material.prepass);
   drawcall_add(material.shading);
-  bool is_shadow_caster = !(ob->visibility_flag & OB_HIDE_SHADOW);
-  if (is_shadow_caster) {
-    drawcall_add(material.shadow);
-  }
+  drawcall_add(material.shadow);
 
   drawcall_add(material.planar_probe_prepass);
   drawcall_add(material.planar_probe_shading);
@@ -560,10 +551,7 @@ void SyncModule::sync_curves(Object *ob,
   drawcall_add(material.overlap_masking);
   drawcall_add(material.prepass);
   drawcall_add(material.shading);
-  bool is_shadow_caster = !(ob->visibility_flag & OB_HIDE_SHADOW);
-  if (is_shadow_caster) {
-    drawcall_add(material.shadow);
-  }
+  drawcall_add(material.shadow);
 
   drawcall_add(material.planar_probe_prepass);
   drawcall_add(material.planar_probe_shading);
