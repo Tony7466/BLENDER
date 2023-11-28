@@ -21,51 +21,107 @@ class Instance;
 
 /**
  * Full-screen textures containing geometric and surface data.
- * Used by deferred shading passes. Only one gbuffer is allocated per view
+ * Used by deferred shading passes. Only one g-buffer is allocated per view
  * and is reused for each deferred layer. This is why there can only be temporary
  * texture inside it.
  *
  * Everything is stored inside two array texture, one for each format. This is to fit the
  * limitation of the number of images we can bind on a single shader.
  *
- * First layer is always for reflection. All parameters to shoot a reflection ray are inside
- * this layer.
- *
- * - Layer 1 : Reflection
- *   - R : Normal packed X
- *   - G : Normal packed Y
- *   - B : Roughness
- *   - A : Unused (Could be used for anisotropic roughness)
- *
- * Second layer is either for diffuse or transmission. Material mixing both are not
- * physically based and are uncommon. So in order to save bandwidth and texture memory, we only
- * store one. We use random sampling to mix between both. All parameters to shoot a refraction
- * ray are inside this layer.
- *
- * - Layer 2 : Refraction
- *   - R : Normal packed X
- *   - G : Normal packed Y
- *   - B : Roughness (isotropic)
- *   - A : IOR
- *
- * - Layer 2 : Diffuse / Sub-Surface Scattering
- *   - R : Normal packed X
- *   - G : Normal packed Y
- *   - B : Thickness
- *   - A : Unused (Could be used for diffuse roughness)
- *
- * Layer 3 is only allocated if Sub-Surface Scattering is needed. All parameters for
- * screen-space scattering are inside this layer.
- *
- * - Layer 3 : Sub-Surface Scattering
- *   - R : Scattering radius R
- *   - G : Scattering radius G
- *   - B : Scattering radius B
- *   - A : Object ID
+ * The content of the g-buffer is polymorphic. A 8bit header specify the layout of the data.
+ * The first layer is always written to while others are written only if needed using imageStore
+ * operations reducing the bandwidth needed.
+ * Except for some special configurations, the g-buffer holds 1 or 2 closures.
  *
  * For each output closure, we also output the color to apply after the lighting computation.
  * The color is stored with a 2 exponent that allows input color with component higher than 1.
  * Color degradation is expected to happen in this case.
+ *
+ * Here are special configurations:
+ *
+ * - Opaque Dielectric: (TODO)
+ *   - 1 Diffuse lobe and 1 Reflection lobe without anisotropy.
+ *   - Share a single normal.
+ *   - Reflection is not colored.
+ *   - Layout:
+ *     - Color 1 : Diffuse color
+ *     - Closure 1 R : Normal packed X
+ *     - Closure 1 G : Normal packed Y
+ *     - Closure 1 B : Roughness (isotropic)
+ *     - Closure 1 A : Reflection intensity
+ *
+ * - Simple Car-paint: (TODO)
+ *   - 2 Reflection lobe without anisotropy.
+ *   - Share a single normal.
+ *   - Coat layer is not colored.
+ *   - Layout:
+ *     - Color 1 : Bottom layer color
+ *     - Closure 1 R : Normal packed X
+ *     - Closure 1 G : Normal packed Y
+ *     - Closure 1 B : Roughness (isotropic)
+ *     - Closure 1 A : Coat layer intensity
+ *
+ * - Simple Glass: (TODO)
+ *   - 1 Refraction lobe and 1 Reflection lobe without anisotropy.
+ *   - Share a single normal.
+ *   - Reflection intensity is derived from IOR.
+ *   - Layout:
+ *     - Color 1 : Refraction color
+ *     - Closure 1 R : Normal packed X
+ *     - Closure 1 G : Normal packed Y
+ *     - Closure 1 B : Roughness (isotropic)
+ *     - Closure 1 A : IOR
+ *
+ * Here are Closure configurations:
+ *
+ * - Reflection (Isotropic):
+ *   - Layout:
+ *     - Color : Reflection color
+ *     - Closure 1 R : Normal packed X
+ *     - Closure 1 G : Normal packed Y
+ *     - Closure 1 B : Roughness
+ *     - Closure 1 A : Unused
+ *
+ * - Reflection (Anisotropic): (TODO)
+ *   - Layout:
+ *     - Color : Reflection color
+ *     - Closure 1 R : Normal packed X
+ *     - Closure 1 G : Normal packed Y
+ *     - Closure 1 B : Tangent packed X
+ *     - Closure 1 A : Tangent packed Y
+ *     - Closure 2 R : Roughness X
+ *     - Closure 2 G : Roughness Y
+ *     - Closure 2 B : Unused
+ *     - Closure 2 A : Unused
+ *
+ * - Refraction (Isotropic):
+ *   - Layout:
+ *     - Color : Refraction color
+ *     - Closure 1 R : Normal packed X
+ *     - Closure 1 G : Normal packed Y
+ *     - Closure 1 B : Roughness
+ *     - Closure 1 A : IOR
+ *
+ * - Diffuse:
+ *   - Layout:
+ *     - Color : Diffuse color
+ *     - Closure 1 R : Normal packed X
+ *     - Closure 1 G : Normal packed Y
+ *     - Closure 1 B : Unused
+ *     - Closure 1 A : Unused (Could be used for diffuse roughness)
+ *
+ * - Sub-Surface Scattering:
+ *   - Layout:
+ *     - Color : Diffuse color
+ *     - Closure 1 R : Normal packed X
+ *     - Closure 1 G : Normal packed Y
+ *     - Closure 1 B : Thickness
+ *     - Closure 1 A : Unused (Could be used for diffuse roughness)
+ *     - Closure 2 R : Scattering radius R
+ *     - Closure 2 G : Scattering radius G
+ *     - Closure 2 B : Scattering radius B
+ *     - Closure 2 A : Object ID
+ *
  */
 struct GBuffer {
   /* TODO(fclem): Use texture from pool once they support texture array and layer views. */
@@ -75,11 +131,15 @@ struct GBuffer {
 
   void acquire(int2 extent, eClosureBits closure_bits_)
   {
-    const bool use_sss = (closure_bits_ & CLOSURE_SSS) != 0;
+    const int closure_layer_count = count_bits_i(
+        closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_REFLECTION | CLOSURE_DIFFUSE | CLOSURE_SSS));
+    const int color_layer_count = count_bits_i(
+        closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_REFLECTION | CLOSURE_DIFFUSE));
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
-    header_tx.ensure_2d(GPU_R8UI, extent, usage);
-    closure_tx.ensure_2d_array(GPU_RGBA16, extent, use_sss ? 3 : 2, usage);
-    color_tx.ensure_2d_array(GPU_RGB10_A2, extent, 2, usage);
+    header_tx.ensure_2d(GPU_R16UI, extent, usage);
+    /* Always allocating 2 layers so that the view is always valid. */
+    closure_tx.ensure_2d_array(GPU_RGBA16, extent, max_ii(2, closure_layer_count), usage);
+    color_tx.ensure_2d_array(GPU_RGB10_A2, extent, max_ii(2, color_layer_count), usage);
   }
 
   void release()

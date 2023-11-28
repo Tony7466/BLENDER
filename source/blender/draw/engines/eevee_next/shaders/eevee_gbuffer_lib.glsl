@@ -113,6 +113,47 @@ bool gbuffer_is_refraction(vec4 gbuffer)
   return gbuffer.w < 1.0;
 }
 
+uint gbuffer_header_pack(GBufferMode mode, uint layer)
+{
+  return (mode << (4u * layer));
+}
+
+GBufferMode gbuffer_header_unpack(uint data, uint layer)
+{
+  return GBufferMode((data >> (4u * layer)) & 15u);
+}
+
+/* Return true if any layer of the gbuffer match the given closure. */
+bool gbuffer_has_closure(uint data, eClosureBits closure)
+{
+  int layer = 0;
+
+  /* Since closure order in the gbuffer is static, we check them in order. */
+
+  bool has_refraction = (gbuffer_header_unpack(data, layer) == GBUF_REFRACTION);
+  layer += int(has_refraction);
+
+  if (closure == eClosureBits(CLOSURE_REFRACTION)) {
+    return has_refraction;
+  }
+
+  bool has_reflection = (gbuffer_header_unpack(data, layer) == GBUF_REFLECTION);
+  layer += int(has_reflection);
+
+  if (closure == eClosureBits(CLOSURE_REFLECTION)) {
+    return has_reflection;
+  }
+
+  bool has_diffuse = (gbuffer_header_unpack(data, layer) == GBUF_DIFFUSE);
+  layer += int(has_diffuse);
+
+  if (closure == eClosureBits(CLOSURE_DIFFUSE)) {
+    return has_diffuse;
+  }
+
+  return false;
+}
+
 struct GBufferData {
   ClosureDiffuse diffuse;
   ClosureReflection reflection;
@@ -122,6 +163,73 @@ struct GBufferData {
   bool has_reflection;
   bool has_refraction;
 };
+
+struct GBufferDataPacked {
+  uint header;
+  /* TODO(fclem): Resize arrays based on used closures. */
+  vec4 closure[4];
+  vec4 color[3];
+};
+
+GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
+                               ClosureReflection reflection,
+                               ClosureRefraction refraction,
+                               float thickness)
+{
+  GBufferDataPacked gbuf;
+  gbuf.header = 0u;
+
+  /* Check special configurations first. */
+
+  if (refraction.weight < 1e-5) {
+    /* TODO(fclem): Compute this only if needed. */
+    bool shared_normal = all(equal(diffuse.N, reflection.N));
+    bool is_reflection_colorless = all(equal(reflection.color.rgb, reflection.color.gbr));
+    if (shared_normal && is_reflection_colorless) {
+      /* Opaque Dielectric. */
+      /* TODO */
+      // return gbuf;
+    }
+  }
+
+  int layer = 0;
+
+  if (refraction.weight > 1e-5) {
+    gbuf.color[layer] = gbuffer_color_pack(refraction.color);
+    gbuf.closure[layer].xy = gbuffer_normal_pack(refraction.N);
+    gbuf.closure[layer].z = refraction.roughness;
+    gbuf.closure[layer].w = gbuffer_ior_pack(refraction.ior);
+    gbuf.header |= gbuffer_header_pack(GBUF_REFRACTION, layer);
+    layer += 1;
+  }
+
+  if (reflection.weight > 1e-5) {
+    gbuf.color[layer] = gbuffer_color_pack(reflection.color);
+    gbuf.closure[layer].xy = gbuffer_normal_pack(reflection.N);
+    gbuf.closure[layer].z = reflection.roughness;
+    gbuf.closure[layer].w = 0.0; /* Unused. */
+    gbuf.header |= gbuffer_header_pack(GBUF_REFLECTION, layer);
+    layer += 1;
+  }
+
+  if (diffuse.weight > 1e-5) {
+    gbuf.color[layer] = gbuffer_color_pack(diffuse.color);
+    gbuf.closure[layer].xy = gbuffer_normal_pack(diffuse.N);
+    gbuf.closure[layer].z = 0.0; /* Unused. */
+    gbuf.closure[layer].w = gbuffer_thickness_pack(thickness);
+    gbuf.header |= gbuffer_header_pack(GBUF_DIFFUSE, layer);
+    layer += 1;
+  }
+
+  if (diffuse.sss_id > 0) {
+    gbuf.closure[layer].xyz = gbuffer_sss_radii_pack(diffuse.sss_radius);
+    gbuf.closure[layer].w = gbuffer_object_id_unorm16_pack(diffuse.sss_id);
+    gbuf.header |= gbuffer_header_pack(GBUF_SSS, layer);
+    layer += 1;
+  }
+
+  return gbuf;
+}
 
 GBufferData gbuffer_read(usampler2D header_tx,
                          sampler2DArray closure_tx,
@@ -133,63 +241,79 @@ GBufferData gbuffer_read(usampler2D header_tx,
   uint header = texelFetch(header_tx, texel, 0).r;
 
   gbuf.thickness = 0.0;
-  gbuf.has_diffuse = flag_test(header, CLOSURE_DIFFUSE);
-  gbuf.has_reflection = flag_test(header, CLOSURE_REFLECTION);
-  gbuf.has_refraction = flag_test(header, CLOSURE_REFRACTION);
 
-  if (gbuf.has_reflection) {
-    int layer = 0;
-    vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
-    gbuf.reflection.N = gbuffer_normal_unpack(closure_packed.xy);
-    gbuf.reflection.roughness = closure_packed.z;
+  int layer = 0;
 
-    vec4 color_packed = texelFetch(color_tx, ivec3(texel, layer), 0);
-    gbuf.reflection.color = gbuffer_color_unpack(color_packed);
-  }
-  else {
-    gbuf.reflection.N = vec3(0.0, 0.0, 1.0);
-    gbuf.reflection.roughness = 0.0;
-    gbuf.reflection.color = vec3(0.0);
-  }
+  /* Since closure order in the gbuffer is static, we check them in order. */
 
-  if (gbuf.has_diffuse) {
-    int layer = 1;
-    vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
-    gbuf.diffuse.N = gbuffer_normal_unpack(closure_packed.xy);
-    gbuf.diffuse.sss_id = 0u;
-    gbuf.thickness = gbuffer_thickness_unpack(closure_packed.z);
-
-    vec4 color_packed = texelFetch(color_tx, ivec3(texel, layer), 0);
-    gbuf.diffuse.color = gbuffer_color_unpack(color_packed);
-
-    if (flag_test(header, CLOSURE_SSS)) {
-      int layer = 2;
-      vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
-      gbuf.diffuse.sss_radius = gbuffer_sss_radii_unpack(closure_packed.xyz);
-      gbuf.diffuse.sss_id = gbuffer_object_id_unorm16_unpack(closure_packed.w);
-    }
-  }
-  else {
-    gbuf.diffuse.N = vec3(0.0, 0.0, 1.0);
-    gbuf.diffuse.sss_id = 0u;
-    gbuf.diffuse.color = vec3(0.0);
-  }
+  gbuf.has_refraction = (gbuffer_header_unpack(header, layer) == GBUF_REFRACTION);
 
   if (gbuf.has_refraction) {
-    int layer = 1;
     vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
+    vec4 color_packed = texelFetch(color_tx, ivec3(texel, layer), 0);
+
+    gbuf.refraction.color = gbuffer_color_unpack(color_packed);
     gbuf.refraction.N = gbuffer_normal_unpack(closure_packed.xy);
     gbuf.refraction.roughness = closure_packed.z;
     gbuf.refraction.ior = gbuffer_ior_unpack(closure_packed.w);
-
-    vec4 color_packed = texelFetch(color_tx, ivec3(texel, layer), 0);
-    gbuf.refraction.color = gbuffer_color_unpack(color_packed);
+    layer += 1;
   }
   else {
-    gbuf.refraction.N = vec3(0.0, 0.0, 1.0);
-    gbuf.refraction.ior = 1.1;
-    gbuf.refraction.roughness = 0.0;
+    /* Default values. */
     gbuf.refraction.color = vec3(0.0);
+    gbuf.refraction.N = vec3(0.0, 0.0, 1.0);
+    gbuf.refraction.roughness = 0.0;
+    gbuf.refraction.ior = 1.1;
+  }
+
+  gbuf.has_reflection = (gbuffer_header_unpack(header, layer) == GBUF_REFLECTION);
+
+  if (gbuf.has_reflection) {
+    vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
+    vec4 color_packed = texelFetch(color_tx, ivec3(texel, layer), 0);
+
+    gbuf.reflection.color = gbuffer_color_unpack(color_packed);
+    gbuf.reflection.N = gbuffer_normal_unpack(closure_packed.xy);
+    gbuf.reflection.roughness = closure_packed.z;
+    layer += 1;
+  }
+  else {
+    /* Default values. */
+    gbuf.reflection.color = vec3(0.0);
+    gbuf.reflection.N = vec3(0.0, 0.0, 1.0);
+    gbuf.reflection.roughness = 0.0;
+  }
+
+  gbuf.has_diffuse = (gbuffer_header_unpack(header, layer) == GBUF_DIFFUSE);
+
+  if (gbuf.has_diffuse) {
+    vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
+    vec4 color_packed = texelFetch(color_tx, ivec3(texel, layer), 0);
+
+    gbuf.diffuse.color = gbuffer_color_unpack(color_packed);
+    gbuf.diffuse.N = gbuffer_normal_unpack(closure_packed.xy);
+    gbuf.thickness = gbuffer_thickness_unpack(closure_packed.w);
+    layer += 1;
+  }
+  else {
+    /* Default values. */
+    gbuf.diffuse.color = vec3(0.0);
+    gbuf.diffuse.N = vec3(0.0, 0.0, 1.0);
+    gbuf.thickness = 0.0;
+  }
+
+  bool has_sss = (gbuffer_header_unpack(header, layer) == GBUF_SSS);
+
+  if (has_sss) {
+    vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
+
+    gbuf.diffuse.sss_radius = gbuffer_sss_radii_unpack(closure_packed.xyz);
+    gbuf.diffuse.sss_id = gbuffer_object_id_unorm16_unpack(closure_packed.w);
+    layer += 1;
+  }
+  else {
+    gbuf.diffuse.sss_radius = vec3(0.0, 0.0, 0.0);
+    gbuf.diffuse.sss_id = 0u;
   }
 
   return gbuf;
