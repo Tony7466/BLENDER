@@ -820,6 +820,7 @@ Material *BKE_grease_pencil_object_material_new(Main *bmain,
                                                 const char *name,
                                                 int *r_index);
 Material *BKE_grease_pencil_object_material_from_brush_get(Object *ob, Brush *brush);
+int BKE_grease_pencil_object_material_ensure(Main *bmain, Object *ob, Material *material);
 Material *BKE_grease_pencil_object_material_ensure_by_name(Main *bmain,
                                                            Object *ob,
                                                            const char *name,

@@ -1272,6 +1272,20 @@ Material *BKE_grease_pencil_object_material_from_brush_get(Object *ob, Brush *br
   return BKE_object_material_get(ob, ob->actcol);
 }
 
+int BKE_grease_pencil_object_material_ensure(Main *bmain, Object *ob, Material *material)
+{
+  if (!material) {
+    return -1;
+  }
+  int index = BKE_grease_pencil_object_material_index_get(ob, material);
+  if (index < 0) {
+    BKE_object_material_slot_add(bmain, ob);
+    BKE_object_material_assign(bmain, ob, material, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
+    return ob->totcol - 1;
+  }
+  return index;
+}
+
 Material *BKE_grease_pencil_object_material_ensure_by_name(Main *bmain,
                                                            Object *ob,
                                                            const char *name,
