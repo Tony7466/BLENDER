@@ -227,8 +227,7 @@ static eFCU_Cycle_Type remap_cyclic_keyframe_location(FCurve *fcu, float *px, fl
 
 /**
  * This helper function determines whether a new keyframe is needed.
- * A keyframe doesn't get added when it is the same value as it's two neighboring keys,
- * or if there is already a key on the frame with the same value.
+ * A keyframe doesn't get added when the FCurve already has the proposed value.
  */
 static bool new_key_needed(FCurve *fcu, const float frame, const float value)
 {
@@ -239,33 +238,20 @@ static bool new_key_needed(FCurve *fcu, const float frame, const float value)
     return true;
   }
 
+  const int diff_ulp = 32;
+
   bool replace;
   const int bezt_index = BKE_fcurve_bezt_binarysearch_index(
       fcu->bezt, frame, fcu->totvert, &replace);
 
   if (replace) {
     /* If there is already a key, we only need to modify it if the proposed value is different. */
-    return !IS_EQF(fcu->bezt[bezt_index].vec[1][1], value);
+    return !compare_ff_relative(fcu->bezt[bezt_index].vec[1][1], value, FLT_EPSILON, diff_ulp);
   }
-
-  BezTriple *next = nullptr;
-  BezTriple *prev = nullptr;
-
-  if (bezt_index < fcu->totvert) {
-    next = &fcu->bezt[bezt_index];
-  }
-  if (bezt_index - 1 >= 0) {
-    prev = &fcu->bezt[bezt_index - 1];
-  }
-
-  /* Either next or prev might be a nullptr, but never both because we already checked if the
-   * FCurve has at least 1 key. */
-  const float next_key_y = next ? next->vec[1][1] : INFINITY;
-  const float prev_key_y = prev ? prev->vec[1][1] : INFINITY;
 
   const float fcu_eval = evaluate_fcurve(fcu, frame);
   /* No need to insert a key if the same value is already the value of the FCurve at that point. */
-  if (IS_EQF(fcu_eval, value)) {
+  if (compare_ff_relative(fcu_eval, value, FLT_EPSILON, diff_ulp)) {
     return false;
   }
 
