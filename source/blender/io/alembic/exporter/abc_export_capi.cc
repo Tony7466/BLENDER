@@ -5,7 +5,7 @@
 #include "ABC_alembic.h"
 #include "abc_archive.h"
 #include "abc_hierarchy_iterator.h"
-#include "abc_subdiv_disabler.h"
+#include "IO_subdiv_disabler.hh"
 
 #include "MEM_guardedalloc.h"
 

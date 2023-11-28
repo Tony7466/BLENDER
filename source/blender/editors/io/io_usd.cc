@@ -98,7 +98,7 @@ const EnumPropertyItem rna_enum_usd_export_subdiv_mode_items[] = {
      "Ignore",
      "SubD scheme = None, export base mesh without subdivision"},
     {USD_SUBDIV_TESSELLATE,
-     "TESSELATE",
+     "TESSELLATE",
      0,
      "Tessellate",
      "SubD scheme = None, export subdivided mesh"},
@@ -175,7 +175,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_mesh_colors = RNA_boolean_get(op->ptr, "export_mesh_colors");
   const bool export_normals = RNA_boolean_get(op->ptr, "export_normals");
   const bool export_materials = RNA_boolean_get(op->ptr, "export_materials");
-  const eSubdivExportMode export_subdiv = eSubdivExportMode(RNA_enum_get(op->ptr, "export_subdiv"));
+  const eSubdivExportMode export_subdiv = eSubdivExportMode(RNA_enum_get(op->ptr, "export_subdivision"));
   const bool use_instancing = RNA_boolean_get(op->ptr, "use_instancing");
   const bool evaluation_mode = RNA_enum_get(op->ptr, "evaluation_mode");
 
@@ -233,7 +233,7 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "export_uvmaps", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_subdiv", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_subdivision", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "root_prim_path", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(box, true);
@@ -359,10 +359,10 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "material assignments as geometry subsets");
   
   RNA_def_enum(ot->srna,
-                  "export_subdiv",
+                  "export_subdivision",
                   rna_enum_usd_export_subdiv_mode_items,
                   USD_SUBDIV_BEST_MATCH,
-                  "SubD Scheme", /* shortening "Subdivison surface" to "SubD" so this fits in the UI */
+                  "Subdivision Scheme",
                   "Choose how subdivision modifiers will be mapped to the USD subdivision scheme during export");
 
   RNA_def_boolean(ot->srna,

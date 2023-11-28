@@ -26,7 +26,7 @@
 #include "BKE_modifier.h"
 #include "BKE_object.hh"
 #include "BKE_report.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -517,7 +517,7 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh, con
     } else {
       /* "Simple" is currently the only other subdivision type provided by Blender, */
       /* and we do not yet provide a corresponding representation for USD export. */
-      WM_reportf(RPT_WARNING, "USD export: Simple subdivision not supported, exporting subdivided mesh");
+      BKE_reportf(reports(), RPT_WARNING, "USD export: Simple subdivision not supported, exporting subdivided mesh");
     }
   }
   

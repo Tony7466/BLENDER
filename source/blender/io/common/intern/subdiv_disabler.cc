@@ -1,7 +1,7 @@
 /* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
-#include "usd_modifier_disabler.h"
+#include "IO_subdiv_disabler.hh"
 
 #include <cstdio>
 
@@ -16,10 +16,17 @@
 #include "DNA_object_types.h"
 
 #include "BKE_layer.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 
-namespace blender::io::usd {
+namespace blender::io {
 
+/* Returns the last subdiv modifier associated with an object,
+ * if that modifier should be disabled.
+ * We do not disable the subdiv modifier if other modifiers are
+ * applied after it, with the sole exception of particle modifiers,
+ * which are allowed.
+ * Returns nullptr if there is not any subdiv modifier to disable.
+ */
 ModifierData *SubdivModifierDisabler::get_subsurf_modifier(Scene *scene, const Object *ob, ModifierMode mode)
 {
   ModifierData *md = static_cast<ModifierData *>(ob->modifiers.last);
@@ -38,21 +45,22 @@ ModifierData *SubdivModifierDisabler::get_subsurf_modifier(Scene *scene, const O
         return md;
       }
 
-      /* Not Catmull-Clark, so ignnore it. */
+      /* Not Catmull-Clark, so ignore it. */
       return nullptr;
     }
 
-    if ((md->type != eModifierType_Displace) && (md->type != eModifierType_ParticleSystem)) {
-      /*  */
-      return NULL;
+    /* If any modifier other than a particle system exists after the
+     * subdiv modifier, then abort. */
+    if (md->type != eModifierType_ParticleSystem) {
+      return nullptr;
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
-SubdivModifierDisabler::SubdivModifierDisabler(Depsgraph *depsgraph, const USDExportParams &export_params)
-    : depsgraph_(depsgraph), export_params_(export_params)
+SubdivModifierDisabler::SubdivModifierDisabler(Depsgraph *depsgraph)
+    : depsgraph_(depsgraph)
 {
 }
 
@@ -71,12 +79,6 @@ SubdivModifierDisabler::~SubdivModifierDisabler()
 
 void SubdivModifierDisabler::disable_modifiers()
 {
-  /* If subdivision should be applied (tessellate the mesh),
-   * then do not disable the subdiv modifiers. */
-  if (export_params_.export_subdiv == USD_SUBDIV_TESSELLATE) {
-    return;
-  }
-
   eEvaluationMode eval_mode = DEG_get_mode(depsgraph_);
   const ModifierMode mode = eval_mode == DAG_EVAL_VIEWPORT ?
                                 eModifierMode_Realtime :
@@ -93,14 +95,16 @@ void SubdivModifierDisabler::disable_modifiers()
       continue;
     }
 
+    /* Check if a subdiv modifier exists, and should be disabled. */
     ModifierData *mod = get_subsurf_modifier(scene, object, mode);
-
     if (!mod) {
       continue;
     }
 
     /* This might disable more modifiers than necessary, as it doesn't take restrictions like
-     * "export selected objects only" into account. */
+     * "export selected objects only" into account. However, with the subsurfs disabled,
+     * moving to a different frame is also going to be faster, so in the end this is probably
+     * a good thing to do. */
     disable_modifier(mod);
     modified_objects_.insert(object);
     DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
