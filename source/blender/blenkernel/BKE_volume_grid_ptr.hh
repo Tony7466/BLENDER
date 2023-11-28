@@ -227,7 +227,7 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
 
   VolumeGridPtr() = default;
   VolumeGridPtr(const VolumeGridPtr<T> &) = default;
-  VolumeGridPtr(const SharedDataPtr data) : data(data) {}
+  VolumeGridPtr(const SharedDataPtr &data) : data(data) {}
 
   GridConstPtr grid() const
   {
@@ -304,7 +304,7 @@ template<typename T> VolumeGridPtr<T> make_empty_grid(const T background_value)
     using Converter = GridConverter<T>;
     grid = GridType::create(Converter::single_value_to_grid(background_value));
   }
-  return {make_implicit_shared<GridType>(grid)};
+  return {make_implicit_shared<VolumeGrid>(grid)};
 #else
   return nullptr;
 #endif /* WITH_OPENVDB */
