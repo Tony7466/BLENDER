@@ -182,13 +182,13 @@ void set_output_grid(GeoNodeExecParams params, StringRef name, const bke::Volume
 }
 
 template<typename OpT>
-auto apply(const bke::GVolumeGridPtr &grid, const eCustomDataType data_type, OpT op)
+auto apply(const eCustomDataType data_type, OpT op)
 {
   switch (data_type) {
     case CD_PROP_FLOAT:
-      return op.template operator()<float>(grid.typed<float>());
+      return op.template operator()<float>();
     case CD_PROP_FLOAT3:
-      return op.template operator()<float3>(grid.typed<float3>());
+      return op.template operator()<float3>();
     default:
       BLI_assert_unreachable();
       break;
