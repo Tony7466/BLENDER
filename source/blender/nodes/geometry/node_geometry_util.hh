@@ -159,10 +159,27 @@ bke::GVolumeGridPtr extract_grid_input(GeoNodeExecParams params,
                                        StringRef name,
                                        const eCustomDataType data_type);
 
+template <typename T>
+bke::VolumeGridPtr<T> extract_grid_input(GeoNodeExecParams params,
+                                         StringRef name)
+{
+  const CPPType &cpp_type = CPPType::get<T>();
+  const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(cpp_type);
+  return extract_grid_input(params, name, data_type).typed<T>();
+}
+
 void set_output_grid(GeoNodeExecParams params,
                      StringRef name,
                      eCustomDataType data_type,
                      const bke::GVolumeGridPtr &grid);
+
+template <typename T>
+void set_output_grid(GeoNodeExecParams params, StringRef name, const bke::VolumeGridPtr<T> &grid)
+{
+  const CPPType &cpp_type = CPPType::get<T>();
+  const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(cpp_type);
+  set_output_grid(params, name, data_type, grid);
+}
 
 template<typename OpT>
 auto apply(const bke::GVolumeGridPtr &grid, const eCustomDataType data_type, OpT op)
