@@ -104,7 +104,7 @@ AUD_API AUD_SoundInfo AUD_getInfo(AUD_Sound* sound)
 	return info;
 }
 
-AUD_API float* AUD_readSoundBuffer(const char* filename, float low, float high,
+AUD_API float* AUD_readSoundBuffer(const char* filename,  int use_filter, float low, float high,
 						   float attack, float release, float threshold,
 						   int accumulate, int additive, int square,
 						   float sthreshold, double samplerate, int* length, int stream)
@@ -121,27 +121,38 @@ AUD_API float* AUD_readSoundBuffer(const char* filename, float low, float high,
 
 	try
 	{
+
 		std::shared_ptr<IReader> reader = file->createReader();
 
 		SampleRate rate = reader->getSpecs().rate;
 
+
 		sound = std::shared_ptr<ISound>(new ChannelMapper(file, specs));
 
-		if(high < rate)
-			sound = std::shared_ptr<ISound>(new Lowpass(sound, high));
-		if(low > 0)
-			sound = std::shared_ptr<ISound>(new Highpass(sound, low));
+		if(use_filter)
+		{
 
-		sound = std::shared_ptr<ISound>(new Envelope(sound, attack, release, threshold, 0.1f));
-		sound = std::shared_ptr<ISound>(new LinearResample(sound, specs));
+			if(high < rate)
+				sound = std::shared_ptr<ISound>(new Lowpass(sound, high));
+			if(low > 0)
+				sound = std::shared_ptr<ISound>(new Highpass(sound, low));
 
-		if(square)
-			sound = std::shared_ptr<ISound>(new Threshold(sound, sthreshold));
+			sound = std::shared_ptr<ISound>(new Envelope(sound, attack, release, threshold, 0.1f));
+			sound = std::shared_ptr<ISound>(new LinearResample(sound, specs));
 
-		if(accumulate)
-			sound = std::shared_ptr<ISound>(new Accumulator(sound, additive));
-		else if(additive)
-			sound = std::shared_ptr<ISound>(new Sum(sound));
+			if(square)
+				sound = std::shared_ptr<ISound>(new Threshold(sound, sthreshold));
+
+			if(accumulate)
+				sound = std::shared_ptr<ISound>(new Accumulator(sound, additive));
+			else if(additive)
+				sound = std::shared_ptr<ISound>(new Sum(sound));
+		}
+
+		else
+		{
+			sound = std::shared_ptr<ISound>(new LinearResample(sound, specs));
+		}
 
 		reader = sound->createReader();
 
@@ -163,12 +174,12 @@ AUD_API float* AUD_readSoundBuffer(const char* filename, float low, float high,
 		return nullptr;
 	}
 
+
 	float * result = (float *)malloc(position * sizeof(float));
 	std::memcpy(result, buffer.getBuffer(), position * sizeof(float));
 	*length = position;
 	return result;
 }
-
 static void pauseSound(AUD_Handle* handle)
 {
 	assert(handle);

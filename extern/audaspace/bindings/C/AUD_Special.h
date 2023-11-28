@@ -33,7 +33,7 @@ extern AUD_API AUD_SoundInfo AUD_getInfo(AUD_Sound* sound);
  * Reads a sound file into a newly created float buffer.
  * The sound is therefore bandpassed, rectified and resampled.
  */
-extern AUD_API float* AUD_readSoundBuffer(const char* filename, float low, float high,
+extern AUD_API float* AUD_readSoundBuffer(const char* filename, int use_filter, float low, float high,
 								  float attack, float release, float threshold,
 								  int accumulate, int additive, int square,
 								  float sthreshold, double samplerate,
