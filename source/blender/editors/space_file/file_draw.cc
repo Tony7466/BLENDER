@@ -242,6 +242,7 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
     }
     else if (file->typeflag & FILE_TYPE_MOVIE) {
       if (!thumb) {
+        /* This could possibly take a while. */
         thumb = IMB_thumb_manage(full_path, THB_LARGE, THB_SOURCE_MOVIE);
       }
       if (thumb) {
