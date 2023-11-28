@@ -4622,6 +4622,10 @@ static int rna_raw_access(ReportList *reports,
       /* Could also be faster with non-matching types,
        * for now we just do slower loop. */
     }
+    if (itemtype == PROP_ENUM && itemlen != 0) {
+      BKE_report(reports, RPT_ERROR, "Only boolean, int, and float array properties supported");
+      return 0;
+    }
   }
 
   {
@@ -4659,8 +4663,15 @@ static int rna_raw_access(ReportList *reports,
             break;
           }
 
-          if (!ELEM(itemtype, PROP_BOOLEAN, PROP_INT, PROP_FLOAT)) {
-            BKE_report(reports, RPT_ERROR, "Only boolean, int, and float properties supported");
+          if (!ELEM(itemtype, PROP_BOOLEAN, PROP_INT, PROP_FLOAT, PROP_ENUM)) {
+            BKE_report(
+                reports, RPT_ERROR, "Only boolean, int, float and enum properties supported");
+            err = 1;
+            break;
+          }
+          if (itemtype == PROP_ENUM && itemlen != 0) {
+            BKE_report(
+                reports, RPT_ERROR, "Only boolean, int, and float array properties supported");
             err = 1;
             break;
           }
@@ -4697,6 +4708,12 @@ static int rna_raw_access(ReportList *reports,
                   RNA_property_float_set(&itemptr, iprop, f);
                   break;
                 }
+                case PROP_ENUM: {
+                  int i;
+                  RAW_GET(int, i, in, a);
+                  RNA_property_enum_set(&itemptr, iprop, i);
+                  break;
+                }
                 default:
                   break;
               }
@@ -4716,6 +4733,11 @@ static int rna_raw_access(ReportList *reports,
                 case PROP_FLOAT: {
                   float f = RNA_property_float_get(&itemptr, iprop);
                   RAW_SET(float, in, a, f);
+                  break;
+                }
+                case PROP_ENUM: {
+                  int i = RNA_property_enum_get(&itemptr, iprop);
+                  RAW_SET(int, in, a, i);
                   break;
                 }
                 default:
