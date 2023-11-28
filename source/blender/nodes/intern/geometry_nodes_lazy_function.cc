@@ -4210,4 +4210,15 @@ std::optional<FoundNestedNodeID> find_nested_node_id(const GeoNodesLFUserData &u
   return found;
 }
 
+const Object *GeoNodesGlobalData::self_object() const
+{
+  if (this->modifier_data) {
+    return this->modifier_data->self_object;
+  }
+  if (this->operator_data) {
+    return this->operator_data->self_object;
+  }
+  return nullptr;
+}
+
 }  // namespace blender::nodes

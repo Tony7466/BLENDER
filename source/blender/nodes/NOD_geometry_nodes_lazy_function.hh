@@ -197,16 +197,7 @@ struct GeoNodesGlobalData {
    * Self object has slightly different semantics depending on how geometry nodes is called.
    * Therefor, it is not stored directly in the global data.
    */
-  const Object *self_object() const
-  {
-    if (this->modifier_data) {
-      return this->modifier_data->self_object;
-    }
-    if (this->operator_data) {
-      return this->operator_data->self_object;
-    }
-    return nullptr;
-  }
+  const Object *self_object() const;
 };
 
 /**
