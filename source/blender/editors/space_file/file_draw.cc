@@ -190,8 +190,7 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
                                 UI_TIP_LC_ALERT);
     }
 
-    if (file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP))
-    {
+    if (file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP)) {
       char version_st[128] = {0};
       if (!thumb) {
         /* Load the thumbnail from cache if existing, but don't create if not. */
