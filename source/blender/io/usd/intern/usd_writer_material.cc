@@ -262,13 +262,13 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
           if (!scale_attr) {
             scale_attr = usd_shader.CreateInput(usdtokens::scale, pxr::SdfValueTypeNames->Float4);
           }
-          scale_attr.Set(pxr::VtValue(scale));
+          scale_attr.Set(scale);
 
           pxr::UsdShadeInput bias_attr = usd_shader.GetInput(usdtokens::bias);
           if (!bias_attr) {
             bias_attr = usd_shader.CreateInput(usdtokens::bias, pxr::SdfValueTypeNames->Float4);
           }
-          bias_attr.Set(pxr::VtValue(bias));
+          bias_attr.Set(bias);
         }
       }
 
