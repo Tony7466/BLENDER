@@ -1004,12 +1004,7 @@ void BKE_subdiv_ccg_average_grids(SubdivCCG *subdiv_ccg)
   BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
   /* Average inner boundaries of grids (within one face), across faces
    * from different face-corners. */
-  threading::parallel_for(IndexRange(subdiv_ccg->num_faces), 1024, [&](const IndexRange range) {
-    for (const int face_index : range) {
-      SubdivCCGFace *face = &subdiv_ccg->faces[face_index];
-      subdiv_ccg_average_inner_face_grids(subdiv_ccg, &key, face);
-    }
-  });
+  BKE_subdiv_ccg_average_stitch_faces(subdiv_ccg, IndexRange(subdiv_ccg->num_faces));
   subdiv_ccg_average_all_boundaries_and_corners(subdiv_ccg, &key);
 }
 
