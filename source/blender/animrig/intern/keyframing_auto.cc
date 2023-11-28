@@ -46,11 +46,6 @@ static eInsertKeyFlags get_autokey_flags(Scene *scene)
     flag |= INSERTKEY_NEEDED;
   }
 
-  /* Default F-Curve color mode - RGB from XYZ indices. */
-  if (is_autokey_flag(scene, KEYING_FLAG_XYZ2RGB)) {
-    flag |= INSERTKEY_XYZ2RGB;
-  }
-
   /* Keyframing mode - only replace existing keyframes. */
   if (is_autokey_mode(scene, AUTOKEY_MODE_EDITKEYS)) {
     flag |= INSERTKEY_REPLACE;
