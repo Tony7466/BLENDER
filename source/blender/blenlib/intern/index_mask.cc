@@ -26,6 +26,7 @@ template<typename T> void build_reverse_map(const IndexMask &mask, MutableSpan<T
   /* Catch errors with asserts in debug builds. */
   r_map.fill(-1);
 #endif
+  BLI_assert(r_map.size() >= mask.min_array_size());
   mask.foreach_index_optimized<T>(GrainSize(4096),
                                   [&](const T src, const T dst) { r_map[src] = dst; });
 }
