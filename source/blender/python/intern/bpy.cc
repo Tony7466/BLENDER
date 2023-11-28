@@ -46,6 +46,7 @@
 #include "bpy_rna_id_collection.h"
 #include "bpy_rna_types_capi.h"
 #include "bpy_utils_previews.h"
+#include "bpy_utils_images.h"
 #include "bpy_utils_units.h"
 
 #include "../generic/py_capi_utils.h"
@@ -686,6 +687,7 @@ void BPy_init_modules(bContext *C)
   PyModule_AddObject(mod, "app", BPY_app_struct());
   PyModule_AddObject(mod, "_utils_units", BPY_utils_units());
   PyModule_AddObject(mod, "_utils_previews", BPY_utils_previews_module());
+  PyModule_AddObject(mod, "_utils_images", BPY_utils_images_module());
   PyModule_AddObject(mod, "msgbus", BPY_msgbus_module());
 
   PointerRNA ctx_ptr = RNA_pointer_create(nullptr, &RNA_Context, C);

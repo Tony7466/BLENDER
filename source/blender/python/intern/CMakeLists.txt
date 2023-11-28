@@ -67,6 +67,7 @@ set(SRC
   bpy_rna_ui.cc
   bpy_traceback.cc
   bpy_utils_previews.cc
+  bpy_utils_images.cc
   bpy_utils_units.cc
   stubs.cc
 
@@ -109,6 +110,7 @@ set(SRC
   bpy_rna_ui.h
   bpy_traceback.h
   bpy_utils_previews.h
+  bpy_utils_images.h
   bpy_utils_units.h
   ../BPY_extern.h
   ../BPY_extern_clog.h

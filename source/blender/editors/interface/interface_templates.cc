@@ -78,6 +78,9 @@
 #include "ED_render.hh"
 #include "ED_screen.hh"
 #include "ED_undo.hh"
+#include "ED_datafiles.h"
+
+#include "IMB_imbuf.h"
 
 #include "RE_engine.h"
 
@@ -92,6 +95,8 @@
 #include "UI_string_search.hh"
 #include "UI_view2d.hh"
 #include "interface_intern.hh"
+
+#include "BPY_extern.h"
 
 #include "PIL_time.h"
 
@@ -3368,6 +3373,28 @@ void uiTemplatePreview(uiLayout *layout,
 }
 
 /** \} */
+
+void uiTemplateImageUI(uiLayout* layout, int image_id,float image_scale) {
+
+  ImBuf *ibuf = IMB_dupImBuf((ImBuf *) BPY_utils_images_get(image_id));
+
+  if (ibuf) {
+    int width = ibuf->x * image_scale;
+    int height = (width * ibuf->y) / ibuf->x;
+
+    IMB_premultiply_alpha(ibuf);
+    IMB_scaleImBuf(ibuf, width, height);
+
+    bTheme *btheme = UI_GetTheme();
+    uchar *color = btheme->tui.wcol_menu_back.text_sel;
+    //color = btheme->tui.wcol_box.inner;
+
+    uiBlock *block = uiLayoutAbsoluteBlock(layout);
+
+    uiBut *but = uiDefButImage(block, ibuf, 0, U.widget_unit, width, height, color);
+
+  }
+}
 
 /* -------------------------------------------------------------------- */
 /** \name ColorRamp Template

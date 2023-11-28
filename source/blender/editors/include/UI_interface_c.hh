@@ -2433,6 +2433,9 @@ void uiTemplatePreview(uiLayout *layout,
                        MTex *slot,
                        const char *preview_id);
 void uiTemplateColorRamp(uiLayout *layout, PointerRNA *ptr, const char *propname, bool expand);
+
+void uiTemplateImageUI(uiLayout *layout, int image_id, float image_scale);
+
 /**
  * \param icon_scale: Scale of the icon, 1x == button height.
  */

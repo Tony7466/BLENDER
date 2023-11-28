@@ -133,6 +133,8 @@ bool BPY_string_is_keyword(const char *str);
 void BPY_callback_screen_free(struct ARegionType *art);
 void BPY_callback_wm_free(struct wmWindowManager *wm);
 
+void* BPY_utils_images_get(int image_id);
+
 /* I18n for addons */
 #ifdef WITH_INTERNATIONAL
 const char *BPY_app_translations_py_pgettext(const char *msgctxt, const char *msgid);
