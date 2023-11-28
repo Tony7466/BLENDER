@@ -84,6 +84,7 @@
 #include "SEQ_relations.hh"
 #include "SEQ_render.hh"
 
+#include "GPU_capabilities.h"
 #include "GPU_context.h"
 #include "WM_api.hh"
 #include "wm_window.hh"
@@ -1203,10 +1204,42 @@ static void render_compositor_stats(void *arg, const char *str)
   re->stats_draw(&i);
 }
 
+/* Identify if the compositor can run. Currently, this only checks if the compositor is set to GPU
+ * and the render size exceeds what can be allocated as a texture in it. */
+static bool is_compositing_possible(Render *render)
+{
+  /* CPU compositor can always run. */
+  if (!U.experimental.use_full_frame_compositor ||
+      render->pipeline_scene_eval->nodetree->execution_mode != NTREE_EXECUTION_MODE_REALTIME)
+  {
+    return true;
+  }
+
+  int width, height;
+  BKE_render_resolution(&render->r, false, &width, &height);
+  const int max_texture_size = GPU_max_texture_size();
+
+  /* There is no way to know if the render size is too large except if we actually allocate a test
+   * texture, which we want to avoid due its cost. So we employ a heuristic that so far has worked
+   * with all known GPU drivers. */
+  if (width * height > (max_texture_size * max_texture_size) / 4) {
+    BKE_report(render->reports,
+               RPT_ERROR_OUT_OF_MEMORY,
+               "Render size too large for GPU! Use CPU compositor instead.");
+    return false;
+  }
+
+  return true;
+}
+
 /* Render compositor nodes, along with any scenes required for them.
  * The result will be output into a compositing render layer in the render result. */
 static void do_render_compositor(Render *re)
 {
+  if (!is_compositing_possible(re)) {
+    return;
+  }
+
   bNodeTree *ntree = re->pipeline_scene_eval->nodetree;
   bool update_newframe = false;
 
