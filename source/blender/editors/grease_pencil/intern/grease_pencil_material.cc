@@ -368,7 +368,6 @@ static int grease_pencil_material_copy_to_object_exec(bContext *C, wmOperator *o
       BKE_object_material_ensure(bmain, ob, ma_src);
     }
 
-    /* notifiers */
     DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
   }
   CTX_DATA_END;
