@@ -23,6 +23,8 @@ struct Object;
 struct KeyframeEditData;
 struct wmKeyConfig;
 struct ToolSettings;
+struct RegionView3D;
+struct Scene;
 
 enum {
   LAYER_REORDER_ABOVE,
@@ -49,6 +51,21 @@ eAttrDomain ED_grease_pencil_selection_domain_get(const ToolSettings *tool_setti
 /** \} */
 
 namespace blender::ed::greasepencil {
+
+enum class DrawingPlacementDepth { ObjectOrigin, Cursor, Surface, NearestStroke };
+
+enum class DrawingPlacementPlane { View, Front, Side, Top, Cursor };
+
+struct DrawingPlacementInfo {
+  DrawingPlacementDepth depth;
+  DrawingPlacementPlane plane;
+  bke::greasepencil::DrawingTransforms transforms;
+
+  DrawingPlacementInfo() = default;
+  DrawingPlacementInfo(const Scene &scene, const Object &object);
+  float3 location(const Scene &scene) const;
+  float3 normal(const Scene &scene, const RegionView3D &rv3d) const;
+};
 
 void set_selected_frames_type(bke::greasepencil::Layer &layer,
                               const eBezTriple_KeyframeType key_type);

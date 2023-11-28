@@ -132,6 +132,8 @@ class PaintOperation : public GreasePencilStrokeOperation {
 struct PaintOperationExecutor {
   Scene *scene_;
   ARegion *region_;
+  View3D *view3d_;
+  Object *object_;
   GreasePencil *grease_pencil_;
 
   Brush *brush_;
@@ -141,14 +143,17 @@ struct PaintOperationExecutor {
 
   bke::greasepencil::Drawing *drawing_;
 
-  bke::greasepencil::DrawingTransforms transforms_;
+  ed::greasepencil::DrawingPlacementInfo placement_info_;
+  float3 placement_loc_;
+  float4 placement_plane_;
 
   PaintOperationExecutor(const bContext &C)
   {
     scene_ = CTX_data_scene(&C);
     region_ = CTX_wm_region(&C);
-    Object *object = CTX_data_active_object(&C);
-    grease_pencil_ = static_cast<GreasePencil *>(object->data);
+    view3d_ = CTX_wm_view3d(&C);
+    object_ = CTX_data_active_object(&C);
+    grease_pencil_ = static_cast<GreasePencil *>(object_->data);
 
     Paint *paint = &scene_->toolsettings->gp_paint->paint;
     brush_ = BKE_paint_brush(paint);
@@ -178,18 +183,30 @@ struct PaintOperationExecutor {
     drawing_ =
         &reinterpret_cast<GreasePencilDrawing *>(grease_pencil_->drawing(drawing_index))->wrap();
 
-    transforms_ = bke::greasepencil::DrawingTransforms(*object);
+    placement_info_ = ed::greasepencil::DrawingPlacementInfo(*scene_, *object_);
+    placement_loc_ = placement_info_.location(*scene_);
+    float3 normal = placement_info_.normal(*scene_, *CTX_wm_region_view3d(&C));
+    plane_from_point_normal_v3(placement_plane_, placement_loc_, normal);
   }
 
-  float3 screen_space_to_drawing_plane(const float2 co)
+  float3 screen_space_to_layer(const float2 co)
   {
-    /* TODO: Use correct plane/projection. */
-    float4 plane;
-    plane_from_point_normal_v3(
-        plane, transforms_.layer_space_to_world_space.location(), float3{0, -1, 0});
+    using namespace ed::greasepencil;
+
     float3 proj_point;
-    ED_view3d_win_to_3d_on_plane(region_, plane, co, false, proj_point);
-    return math::transform_point(transforms_.world_space_to_layer_space, proj_point);
+    if (ELEM(placement_info_.plane,
+                  DrawingPlacementPlane::Front,
+                  DrawingPlacementPlane::Side,
+                  DrawingPlacementPlane::Top,
+                  DrawingPlacementPlane::Cursor))
+    {
+      ED_view3d_win_to_3d_on_plane(region_, placement_plane_, co, false, proj_point);
+    }
+    else if (placement_info_.plane == DrawingPlacementPlane::View) {
+      ED_view3d_win_to_3d(view3d_, region_, placement_loc_, co, proj_point);
+    }
+    return math::transform_point(placement_info_.transforms.world_space_to_layer_space,
+                                 proj_point);
   }
 
   float radius_from_input_sample(const bContext &C, const InputSample &sample)
@@ -197,7 +214,7 @@ struct PaintOperationExecutor {
     ViewContext vc = ED_view3d_viewcontext_init(const_cast<bContext *>(&C),
                                                 CTX_data_depsgraph_pointer(&C));
     float radius = calc_brush_radius(
-        &vc, brush_, scene_, screen_space_to_drawing_plane(sample.mouse_position));
+        &vc, brush_, scene_, screen_space_to_layer(sample.mouse_position));
     if (BKE_brush_use_size_pressure(brush_)) {
       radius *= BKE_curvemapping_evaluateF(settings_->curve_sensitivity, 0, sample.pressure);
     }
@@ -233,7 +250,7 @@ struct PaintOperationExecutor {
     curves.resize(curves.points_num() + 1, curves.curves_num() + 1);
     curves.offsets_for_write().last(1) = num_old_points;
 
-    curves.positions_for_write().last() = screen_space_to_drawing_plane(start_coords);
+    curves.positions_for_write().last() = screen_space_to_layer(start_coords);
     drawing_->radii_for_write().last() = start_radius;
     drawing_->opacities_for_write().last() = start_opacity;
     drawing_->vertex_colors_for_write().last() = start_vertex_color;
@@ -349,7 +366,7 @@ struct PaintOperationExecutor {
 
       /* Update the positions in the current cache. */
       window_coords[window_i] = new_pos;
-      positions_slice[window_i] = screen_space_to_drawing_plane(new_pos);
+      positions_slice[window_i] = screen_space_to_layer(new_pos);
     }
 
     /* Remove all the converged points from the active window and shrink the window accordingly. */
@@ -378,7 +395,7 @@ struct PaintOperationExecutor {
 
     /* Overwrite last point if it's very close. */
     if (math::distance(coords, prev_coords) < POINT_OVERRIDE_THRESHOLD_PX) {
-      curves.positions_for_write().last() = screen_space_to_drawing_plane(coords);
+      curves.positions_for_write().last() = screen_space_to_layer(coords);
       drawing_->radii_for_write().last() = math::max(radius, prev_radius);
       drawing_->opacities_for_write().last() = math::max(opacity, prev_opacity);
       return;
@@ -424,7 +441,7 @@ struct PaintOperationExecutor {
         self.active_smooth_start_index_);
     if (smooth_window.size() < min_active_smoothing_points_num) {
       for (const int64_t i : new_screen_space_coords.index_range()) {
-        new_positions[i] = screen_space_to_drawing_plane(new_screen_space_coords[i]);
+        new_positions[i] = screen_space_to_layer(new_screen_space_coords[i]);
       }
     }
     else {

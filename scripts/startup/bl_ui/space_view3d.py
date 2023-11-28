@@ -910,9 +910,9 @@ class VIEW3D_HT_header(Header):
 
         layout.separator_spacer()
 
-        if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL'}:
+        if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'PAINT_GREASE_PENCIL'}:
             # Grease pencil
-            if object_mode == 'PAINT_GPENCIL':
+            if object_mode in {'PAINT_GPENCIL', 'PAINT_GREASE_PENCIL'}:
                 layout.prop_with_popover(
                     tool_settings,
                     "gpencil_stroke_placement_view3d",
@@ -920,7 +920,7 @@ class VIEW3D_HT_header(Header):
                     panel="VIEW3D_PT_gpencil_origin",
                 )
 
-            if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL'}:
+            if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'PAINT_GREASE_PENCIL'}:
                 layout.prop_with_popover(
                     tool_settings.gpencil_sculpt,
                     "lock_axis",

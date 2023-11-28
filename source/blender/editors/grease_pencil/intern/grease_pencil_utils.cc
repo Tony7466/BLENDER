@@ -10,6 +10,7 @@
 #include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
+#include "BKE_scene.h"
 
 #include "BLI_bit_span_ops.hh"
 #include "BLI_bit_vector.hh"
@@ -20,12 +21,86 @@
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_view3d_types.h"
 
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
 namespace blender::ed::greasepencil {
+
+DrawingPlacementInfo::DrawingPlacementInfo(const Scene &scene, const Object &object)
+    : transforms(object)
+{
+  switch (scene.toolsettings->gp_sculpt.lock_axis) {
+    case GP_LOCKAXIS_VIEW:
+      this->plane = DrawingPlacementPlane::View;
+      break;
+    case GP_LOCKAXIS_Y:
+      this->plane = DrawingPlacementPlane::Front;
+      break;
+    case GP_LOCKAXIS_X:
+      this->plane = DrawingPlacementPlane::Side;
+      break;
+    case GP_LOCKAXIS_Z:
+      this->plane = DrawingPlacementPlane::Top;
+      break;
+    case GP_LOCKAXIS_CURSOR:
+      this->plane = DrawingPlacementPlane::Cursor;
+      break;
+  }
+  switch (scene.toolsettings->gpencil_v3d_align) {
+    case GP_PROJECT_VIEWSPACE:
+      this->depth = DrawingPlacementDepth::ObjectOrigin;
+      break;
+    case (GP_PROJECT_VIEWSPACE | GP_PROJECT_CURSOR):
+      this->depth = DrawingPlacementDepth::Cursor;
+      break;
+    case (GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_VIEW):
+      this->depth = DrawingPlacementDepth::Surface;
+      break;
+    case (GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_STROKE):
+      this->depth = DrawingPlacementDepth::NearestStroke;
+      break;
+  }
+}
+
+float3 DrawingPlacementInfo::location(const Scene &scene) const
+{
+  switch (this->depth) {
+    case DrawingPlacementDepth::ObjectOrigin:
+      return this->transforms.layer_space_to_world_space.location();
+    case DrawingPlacementDepth::Cursor:
+      return float3(scene.cursor.location);
+    case DrawingPlacementDepth::NearestStroke:
+    case DrawingPlacementDepth::Surface:
+      /* */
+      return float3();
+    default:
+      BLI_assert_unreachable();
+  }
+  return {};
+}
+
+float3 DrawingPlacementInfo::normal(const Scene &scene, const RegionView3D &rv3d) const
+{
+  switch (this->plane) {
+    case DrawingPlacementPlane::Front:
+      return float3(0, 1, 0);
+    case DrawingPlacementPlane::Side:
+      return float3(1, 0, 0);
+    case DrawingPlacementPlane::Top:
+      return float3(0, 0, 1);
+    case DrawingPlacementPlane::Cursor: {
+      float3x3 mat;
+      BKE_scene_cursor_rot_to_mat3(&scene.cursor, mat.ptr());
+      return mat * float3(0, 0, 1);
+    }
+    case DrawingPlacementPlane::View:
+      return float4x4(rv3d.viewinv).z_axis();
+  }
+  return {};
+}
 
 static float3 drawing_origin(const Scene *scene, const Object *object, char align_flag)
 {
