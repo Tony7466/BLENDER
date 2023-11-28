@@ -1428,8 +1428,10 @@ static int sequencer_split_exec(bContext *C, wmOperator *op)
 
   const bool use_cursor_position = RNA_boolean_get(op->ptr, "use_cursor_position");
 
-  const int split_frame = use_cursor_position ? RNA_int_get(op->ptr, "frame") : scene->r.cfra;
-  const int split_channel = use_cursor_position ? RNA_int_get(op->ptr, "channel") : 0;
+  const int split_frame = RNA_struct_property_is_set(op->ptr, "frame") ?
+                              RNA_int_get(op->ptr, "frame") :
+                              scene->r.cfra;
+  const int split_channel = RNA_int_get(op->ptr, "channel");
 
   const eSeqSplitMethod method = eSeqSplitMethod(RNA_enum_get(op->ptr, "type"));
   const int split_side = sequence_split_side_for_exec_get(op);
@@ -1901,7 +1903,7 @@ static int sequencer_separate_images_exec(bContext *C, wmOperator *op)
         seq_new->start = start_ofs;
         seq_new->type = SEQ_TYPE_IMAGE;
         seq_new->len = 1;
-        seq->flag |= SEQ_SINGLE_FRAME_CONTENT;
+        seq_new->flag |= SEQ_SINGLE_FRAME_CONTENT;
         seq_new->endofs = 1 - step;
 
         /* New strip. */
