@@ -6,18 +6,14 @@ set(INC
   .
   intern
 
-  ../blenfont
   ../blenkernel
   ../blenloader
   ../blentranslation
   ../bmesh
-  ../depsgraph
   ../editors/include
   ../editors/space_view3d
-  ../functions
   ../gpu
   ../gpu/intern
-  ../imbuf
   ../makesrna
   ../nodes
   ../render
@@ -27,7 +23,6 @@ set(INC
   ../compositor/realtime_compositor/cached_resources
   ../windowmanager
 
-  ../../../intern/clog
   ../../../intern/opensubdiv
 )
 
@@ -350,9 +345,14 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::functions
+  PRIVATE bf::imbuf
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
   bf_windowmanager
