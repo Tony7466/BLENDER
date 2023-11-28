@@ -89,34 +89,29 @@ static inline void material_type_from_shader_uuid(uint64_t shader_uuid,
                                                   eMaterialPipeline &pipeline_type,
                                                   eMaterialGeometry &geometry_type,
                                                   eMaterialDisplacement &displacement_type,
-                                                  bool &transparent_shadows,
-                                                  short &visibility_flags)
+                                                  bool &transparent_shadows)
 {
   const uint64_t geometry_mask = ((1u << 4u) - 1u);
   const uint64_t pipeline_mask = ((1u << 4u) - 1u);
   const uint64_t displacement_mask = ((1u << 2u) - 1u);
-  const uint64_t visibility_mask = ((1u << 16u) - 1u);
   geometry_type = static_cast<eMaterialGeometry>(shader_uuid & geometry_mask);
   pipeline_type = static_cast<eMaterialPipeline>((shader_uuid >> 4u) & pipeline_mask);
   displacement_type = static_cast<eMaterialDisplacement>((shader_uuid >> 8u) & displacement_mask);
   transparent_shadows = (shader_uuid >> 10u) & 1u;
-  visibility_flags = (shader_uuid >> 26) & visibility_mask;
 }
 
 static inline uint64_t shader_uuid_from_material_type(
     eMaterialPipeline pipeline_type,
     eMaterialGeometry geometry_type,
     eMaterialDisplacement displacement_type = MAT_DISPLACEMENT_BUMP,
-    char blend_flags = 0,
-    short visibility_flags = 0)
+    char blend_flags = 0)
 {
   BLI_assert(displacement_type < (1 << 2));
   BLI_assert(geometry_type < (1 << 4));
   BLI_assert(pipeline_type < (1 << 4));
-  BLI_assert(visibility_flags < (1 << 16));
   uint64_t transparent_shadows = blend_flags & MA_BL_TRANSPARENT_SHADOW ? 1 : 0;
   return geometry_type | (pipeline_type << 4) | (displacement_type << 8) |
-         (transparent_shadows << 10) | (visibility_flags << 11);
+         (transparent_shadows << 10);
 }
 
 ENUM_OPERATORS(eClosureBits, CLOSURE_AMBIENT_OCCLUSION)
@@ -181,11 +176,9 @@ struct MaterialKey {
               short visibility_flags)
       : mat(mat_)
   {
-    options = shader_uuid_from_material_type(pipeline,
-                                             geometry,
-                                             to_displacement_type(mat_->displacement_method),
-                                             mat_->blend_flag,
-                                             visibility_flags);
+    options = shader_uuid_from_material_type(
+        pipeline, geometry, to_displacement_type(mat_->displacement_method), mat_->blend_flag);
+    options = (options << 1) | (visibility_flags & OB_HIDE_SHADOW ? 0 : 1);
   }
 
   uint64_t hash() const
