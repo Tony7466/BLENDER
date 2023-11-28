@@ -114,10 +114,10 @@ void ED_file_path_button(bScreen *screen,
   UI_block_func_set(block, nullptr, nullptr, nullptr);
 }
 
-typedef struct file_tooltip_data {
+struct file_tooltip_data {
   const SpaceFile *sfile;
   const FileDirEntry *file;
-} file_tooltip_data;
+};
 
 static file_tooltip_data *file_tooltip_data_create(const SpaceFile *sfile,
                                                    const FileDirEntry *file)
@@ -136,11 +136,14 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
   const FileList *files = sfile->files;
   const FileSelectParams *params = ED_fileselect_get_active_params(sfile);
   const FileDirEntry *file = file_data->file;
-  ImBuf *thumb = nullptr;
 
-  if (file->asset) {
-    return;
-  }
+  BLI_assert_msg(!file->asset, "Asset tooltip should never be overridden here.");
+
+  /* Check the FileDirEntry first to see if the preview is already loaded. */
+  ImBuf *thumb = filelist_file_getimage(file);
+
+  /* Only free if it is loaded later. */
+  bool free_imbuf = (thumb == nullptr);
 
   UI_tooltip_text_field_add(
       tip, BLI_strdup(file->name), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
@@ -190,7 +193,10 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
     if (file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP))
     {
       char version_st[128] = {0};
-      thumb = IMB_thumb_read(full_path, THB_LARGE);
+      if (!thumb) {
+        /* Load the thumbnail from cache if existing, but don't create if not. */
+        thumb = IMB_thumb_read(full_path, THB_LARGE);
+      }
       if (thumb) {
         /* Look for version in existing thumbnail if available. */
         IMB_metadata_get_field(
@@ -214,9 +220,10 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
       }
     }
     else if (file->typeflag & FILE_TYPE_IMAGE) {
-      thumb = (file->attributes & FILE_ATTR_OFFLINE) ?
-                  IMB_thumb_read(full_path, THB_LARGE) :
-                  IMB_thumb_manage(full_path, THB_LARGE, THB_SOURCE_IMAGE);
+      if (!thumb) {
+        /* Load the thumbnail from cache if existing, create if not. */
+        thumb = IMB_thumb_manage(full_path, THB_LARGE, THB_SOURCE_IMAGE);
+      }
       if (thumb) {
         char value1[128];
         char value2[128];
@@ -235,9 +242,9 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
       }
     }
     else if (file->typeflag & FILE_TYPE_MOVIE) {
-      thumb = (file->attributes & FILE_ATTR_OFFLINE) ?
-                  IMB_thumb_read(full_path, THB_LARGE) :
-                  IMB_thumb_manage(full_path, THB_LARGE, THB_SOURCE_MOVIE);
+      if (!thumb) {
+        thumb = IMB_thumb_manage(full_path, THB_LARGE, THB_SOURCE_MOVIE);
+      }
       if (thumb) {
         char value1[128];
         char value2[128];
@@ -320,7 +327,7 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
     UI_tooltip_image_field_add(tip, thumb, size);
   }
 
-  if (thumb) {
+  if (thumb && free_imbuf) {
     IMB_freeImBuf(thumb);
   }
 }
