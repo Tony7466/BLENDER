@@ -42,6 +42,7 @@
 
 /* This needs to be included after BLI_math_base.h otherwise it will redefine some math defines
  * like M_SQRT1_2 leading to warnings with MSVC */
+extern "C" {
 #  include <libavcodec/avcodec.h>
 #  include <libavformat/avformat.h>
 #  include <libavutil/channel_layout.h>
@@ -52,13 +53,14 @@
 #  include <libswscale/swscale.h>
 
 #  include "ffmpeg_compat.h"
+}
 
 struct StampData;
 
 typedef struct FFMpegContext {
   int ffmpeg_type;
-  int ffmpeg_codec;
-  int ffmpeg_audio_codec;
+  AVCodecID ffmpeg_codec;
+  AVCodecID ffmpeg_audio_codec;
   int ffmpeg_video_bitrate;
   int ffmpeg_audio_bitrate;
   int ffmpeg_gop_size;
@@ -225,7 +227,7 @@ static int write_audio_frame(FFMpegContext *context)
 #  endif /* #ifdef WITH_AUDASPACE */
 
 /* Allocate a temporary frame */
-static AVFrame *alloc_picture(int pix_fmt, int width, int height)
+static AVFrame *alloc_picture(AVPixelFormat pix_fmt, int width, int height)
 {
   AVFrame *f;
   uint8_t *buf;
@@ -238,7 +240,7 @@ static AVFrame *alloc_picture(int pix_fmt, int width, int height)
   }
   size = av_image_get_buffer_size(pix_fmt, width, height, 1);
   /* allocate the actual picture buffer */
-  buf = MEM_mallocN(size, "AVFrame buffer");
+  buf = static_cast<uint8_t*>(MEM_mallocN(size, "AVFrame buffer"));
   if (!buf) {
     free(f);
     return NULL;
@@ -671,7 +673,7 @@ static const AVCodec *get_av1_encoder(
 
 static AVStream *alloc_video_stream(FFMpegContext *context,
                                     RenderData *rd,
-                                    int codec_id,
+                                    AVCodecID codec_id,
                                     AVFormatContext *of,
                                     int rectx,
                                     int recty,
@@ -923,7 +925,7 @@ static AVStream *alloc_video_stream(FFMpegContext *context,
 
 static AVStream *alloc_audio_stream(FFMpegContext *context,
                                     RenderData *rd,
-                                    int codec_id,
+                                    AVCodecID codec_id,
                                     AVFormatContext *of,
                                     char *error,
                                     int error_size)
@@ -1083,7 +1085,7 @@ static void ffmpeg_dict_set_int(AVDictionary **dict, const char *key, int value)
 static void ffmpeg_add_metadata_callback(void *data,
                                          const char *propname,
                                          char *propvalue,
-                                         int UNUSED(propvalue_maxncpy))
+                                         int /*propvalue_maxncpy*/)
 {
   AVDictionary **metadata = (AVDictionary **)data;
   av_dict_set(metadata, propname, propvalue, 0);
@@ -1101,10 +1103,11 @@ static int start_ffmpeg_impl(FFMpegContext *context,
   const AVOutputFormat *fmt;
   char filepath[FILE_MAX], error[1024];
   const char **exts;
+  int ret = 0;
 
   context->ffmpeg_type = rd->ffcodecdata.type;
-  context->ffmpeg_codec = rd->ffcodecdata.codec;
-  context->ffmpeg_audio_codec = rd->ffcodecdata.audio_codec;
+  context->ffmpeg_codec = AVCodecID(rd->ffcodecdata.codec);
+  context->ffmpeg_audio_codec = AVCodecID(rd->ffcodecdata.audio_codec);
   context->ffmpeg_video_bitrate = rd->ffcodecdata.video_bitrate;
   context->ffmpeg_audio_bitrate = rd->ffcodecdata.audio_bitrate;
   context->ffmpeg_gop_size = rd->ffcodecdata.gop_size;
@@ -1270,7 +1273,7 @@ static int start_ffmpeg_impl(FFMpegContext *context,
         &of->metadata, context->stamp_data, ffmpeg_add_metadata_callback, false);
   }
 
-  int ret = avformat_write_header(of, NULL);
+  ret = avformat_write_header(of, NULL);
   if (ret < 0) {
     BKE_report(reports,
                RPT_ERROR,
@@ -1446,7 +1449,7 @@ int BKE_ffmpeg_start(void *context_v,
                      const char *suffix)
 {
   int success;
-  FFMpegContext *context = context_v;
+  FFMpegContext *context = static_cast<FFMpegContext *>(context_v);
 
   context->ffmpeg_autosplit_count = 0;
   context->ffmpeg_preview = preview;
@@ -1459,9 +1462,9 @@ int BKE_ffmpeg_start(void *context_v,
 
     AUD_DeviceSpecs specs;
 #    ifdef FFMPEG_USE_OLD_CHANNEL_VARS
-    specs.channels = c->channels;
+    specs.channels = AUD_Channels(c->channels);
 #    else
-    specs.channels = c->ch_layout.nb_channels;
+    specs.channels = AUD_Channels(c->ch_layout.nb_channels);
 #    endif
 
     switch (av_get_packed_sample_fmt(c->sample_fmt)) {
@@ -1519,7 +1522,7 @@ int BKE_ffmpeg_append(void *context_v,
                       const char *suffix,
                       ReportList *reports)
 {
-  FFMpegContext *context = context_v;
+  FFMpegContext *context = static_cast<FFMpegContext *>(context_v);
   AVFrame *avframe;
   int success = 1;
 
@@ -1636,7 +1639,7 @@ static void end_ffmpeg_impl(FFMpegContext *context, int is_autosplit)
 
 void BKE_ffmpeg_end(void *context_v)
 {
-  FFMpegContext *context = context_v;
+  FFMpegContext *context = static_cast<FFMpegContext *>(context_v);
   end_ffmpeg_impl(context, false);
 }
 
@@ -1808,7 +1811,7 @@ void *BKE_ffmpeg_context_create(void)
   FFMpegContext *context;
 
   /* new ffmpeg data struct */
-  context = MEM_callocN(sizeof(FFMpegContext), "new ffmpeg context");
+  context = static_cast<FFMpegContext*>(MEM_callocN(sizeof(FFMpegContext), "new ffmpeg context"));
 
   context->ffmpeg_codec = AV_CODEC_ID_MPEG4;
   context->ffmpeg_audio_codec = AV_CODEC_ID_NONE;
@@ -1826,7 +1829,7 @@ void *BKE_ffmpeg_context_create(void)
 
 void BKE_ffmpeg_context_free(void *context_v)
 {
-  FFMpegContext *context = context_v;
+  FFMpegContext *context = static_cast<FFMpegContext *>(context_v);
   if (context == NULL) {
     return;
   }
