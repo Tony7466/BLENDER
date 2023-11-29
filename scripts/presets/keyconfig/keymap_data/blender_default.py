@@ -3824,6 +3824,12 @@ def km_grease_pencil_stroke_edit_mode(params):
         *_template_items_context_menu("VIEW3D_MT_gpencil_edit_context_menu", params.context_menu_event),
     ])
 
+    if params.use_experimental_grease_pencil_version3:
+        items.extend([
+            # Active layer
+            op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+        ])
+
     if params.legacy:
         items.extend([
             # Convert to geometry
@@ -3897,6 +3903,12 @@ def km_grease_pencil_stroke_paint_mode(params):
         # Lasso erase
         ("gpencil.select_lasso", {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
     ])
+
+    if params.use_experimental_grease_pencil_version3:
+        items.extend([
+            # Active layer
+            op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+        ])
 
     return keymap
 
@@ -4072,6 +4084,12 @@ def km_grease_pencil_stroke_sculpt_mode(params):
             {"type": 'A', "shift": True, "alt": True, "value": 'PRESS'},
         ),
     ])
+
+    if params.use_experimental_grease_pencil_version3:
+        items.extend([
+            # Active layer
+            op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+        ])
 
     return keymap
 
@@ -4300,6 +4318,12 @@ def km_grease_pencil_stroke_weight_mode(params):
         ("gpencil.weight_sample", {"type": 'X', "value": 'PRESS', "shift": True}, None),
     ])
 
+    if params.use_experimental_grease_pencil_version3:
+        items.extend([
+            # Active layer
+            op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+        ])
+
     if params.select_mouse == 'LEFTMOUSE':
         # Bone selection for combined weight paint + pose mode.
         items.extend([
@@ -4428,6 +4452,12 @@ def km_grease_pencil_stroke_vertex_mode(params):
         # Vertex Paint context menu
         op_panel("VIEW3D_PT_gpencil_vertex_context_menu", params.context_menu_event),
     ])
+
+    if params.use_experimental_grease_pencil_version3:
+        items.extend([
+            # Active layer
+            op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+        ])
 
     return keymap
 
