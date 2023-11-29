@@ -2,3 +2,4 @@ Referenced by issue #111545, Regression: Crash when drawing all view layers in o
 Referenced by issue #111563, Regression: Crash in sculpt mode
 Referenced by issue #111638, Crash when sculpting mesh with edge creases
 Referenced by issue #111698, Sculpt Mode: Display glitch on first stroke
+Referenced by pull request #115580, Fix #115572: shape_key_remove operator leaves shared normals
