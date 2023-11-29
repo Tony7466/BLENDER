@@ -605,21 +605,15 @@ void DeferredLayer::render(View &main_view,
     }
   }
 
-  /* TODO(fclem): Clear at bind, selectively to avoid clearing the combined pass. */
-  inst_.gbuffer.header_tx.clear(uint4(0));
-
-#if 0 /* TODO(fclem): Use load actions to clear only the header. Needs removal of Stencil. */
   GPU_framebuffer_bind_ex(gbuffer_fb,
                           {
-                              {GPU_LOADACTION_LOAD, GPU_STOREACTION_DONT_CARE},   /* Depth */
+                              {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE},       /* Depth */
                               {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE},       /* Combined */
                               {GPU_LOADACTION_CLEAR, GPU_STOREACTION_STORE, {0}}, /* GBuf Header */
                               {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE}, /* GBuf Closure */
                               {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE}, /* GBuf Color */
                           });
-#endif
 
-  GPU_framebuffer_bind(gbuffer_fb);
   inst_.manager->submit(gbuffer_ps_, render_view);
 
   inst_.hiz_buffer.set_dirty();
@@ -641,8 +635,7 @@ void DeferredLayer::render(View &main_view,
   inst_.shadows.set_view(render_view);
 
   {
-    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
-                             GPU_TEXTURE_USAGE_ATTACHMENT;
+    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
     direct_diffuse_tx_.acquire(extent, GPU_RGBA16F, usage);
     direct_reflect_tx_.acquire(extent, GPU_RGBA16F, usage);
     direct_refract_tx_.acquire(extent, GPU_RGBA16F, usage);
