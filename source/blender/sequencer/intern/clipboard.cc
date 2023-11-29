@@ -63,16 +63,27 @@
 /* Copy Operator Helper functions
  */
 
-static void set_strip_scene_to_null_recursive(Sequence *seq)
+static int gather_strip_data_ids_to_null(LibraryIDLinkCallbackData *cb_data)
 {
-  if (seq->type == SEQ_TYPE_META) {
-    LISTBASE_FOREACH (Sequence *, meta_child, &seq->seqbase) {
-      set_strip_scene_to_null_recursive(meta_child);
+  IDRemapper *id_remapper = static_cast<IDRemapper *>(cb_data->user_data);
+  ID *id = *cb_data->id_pointer;
+
+  /* We don't care about embedded, loopback, or internal IDs. */
+  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_LOOPBACK | IDWALK_CB_INTERNAL)) {
+    return IDWALK_RET_NOP;
+  }
+
+  if (id) {
+    ID_Type id_type = GS((id)->name);
+    /* Nullify everything that is not:
+     * Sound, Movieclip, Image, Text, Vfont, Action, or Collection IDs.
+     */
+    if (!ELEM(id_type, ID_SO, ID_MC, ID_IM, ID_TXT, ID_VF, ID_AC, ID_GR)) {
+      BKE_id_remapper_add(id_remapper, id, nullptr);
+      return IDWALK_RET_NOP;
     }
   }
-  else if (seq->type == SEQ_TYPE_SCENE) {
-    seq->scene = nullptr;
-  }
+  return IDWALK_RET_NOP;
 }
 
 static void sequencer_copy_animation_listbase(Scene *scene_src,
@@ -152,10 +163,6 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
   ListBase fcurves_dst = {nullptr, nullptr};
   ListBase drivers_dst = {nullptr, nullptr};
   LISTBASE_FOREACH (Sequence *, seq_dst, &scene_dst->ed->seqbase) {
-    /* Nullify all scene pointers in scene strips. We don't want to copy whole scenes.
-     * We have to come up with a proper idea of how to copy and paste scene strips.
-     */
-    set_strip_scene_to_null_recursive(seq_dst);
     /* Copy animation curves from seq_dst (if any). */
     sequencer_copy_animation(scene_src, &fcurves_dst, &drivers_dst, seq_dst);
   }
@@ -167,7 +174,18 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
     BLI_movelisttolist(&scene_dst->adt->drivers, &drivers_dst);
   }
 
-  /* Ensure that there are no old tags around */
+  /* Nullify all ID pointers that we don't want to copy. For example, we don't want
+   * to copy whole scenes. We have to come up with a proper idea of how to copy and
+   * paste scene strips.
+   */
+  IDRemapper *id_remapper = BKE_id_remapper_create();
+  BKE_library_foreach_ID_link(
+      bmain_src, &scene_dst->id, gather_strip_data_ids_to_null, id_remapper, IDWALK_RECURSE);
+
+  BKE_libblock_remap_multiple(bmain_src, id_remapper, 0);
+  BKE_id_remapper_free(id_remapper);
+
+  /* Ensure that there are no old copy tags around */
   BKE_blendfile_write_partial_begin(bmain_src);
   /* Tag the scene copy so we can pull in all scrip deps */
   BKE_copybuffer_copy_tag_ID(&scene_dst->id);
@@ -219,6 +237,46 @@ struct SEQPasteData {
   std::vector<ID *> ids_to_copy;
 };
 
+enum {
+  ID_SIMPLE_COPY = 0,
+  ID_LIB_COPY,
+  ID_REMAP,
+};
+
+static int should_copy_id(ID *id_local, ID *id, Main *bmain)
+{
+  if (!id_local) {
+    /* No local id found, we need to copy over this id. */
+    if (id->lib == nullptr) {
+      return ID_SIMPLE_COPY;
+    }
+    return ID_LIB_COPY;
+  }
+
+  if (id_local->lib == nullptr && id->lib == nullptr) {
+    /* The local ID is the one we want to remap to, don't copy in a new one. */
+    return ID_REMAP;
+  }
+
+  if (id_local->lib == nullptr && id->lib != nullptr) {
+    /* Check that the lib id doesn't point to the current file.
+     * If this is the case, then it means that we want to simply remap as it points to the ID in
+     * this file already.
+     */
+    if (STREQ(id->lib->filepath_abs, bmain->filepath)) {
+      return ID_REMAP;
+    }
+    return ID_LIB_COPY;
+  }
+
+  /* Check if they are using the same filepath. */
+  if (STREQ(id_local->lib->filepath_abs, id->lib->filepath_abs)) {
+    return ID_REMAP;
+  }
+
+  return ID_LIB_COPY;
+}
+
 /**
  * Re-map ID's from the clipboard to ID's in `bmain`, by name.
  * If the ID name doesn't already exist, it is pasted in.
@@ -243,29 +301,38 @@ static int paste_strips_data_ids_reuse_or_add(LibraryIDLinkCallbackData *cb_data
       return IDWALK_RET_NOP;
     }
 
-    ListBase *lb = which_libbase(bmain, id_type);
-    ID *id_local = static_cast<ID *>(BLI_findstring(lb, id->name + 2, offsetof(ID, name) + 2));
+    ID *id_local = nullptr;
+    int copy_method = -1;
 
-    if (id_local) {
-      /* A data block with the same name already exists.
-       * Don't copy over any new datablocks, reuse the data block that exists.
-       */
-      if (id_local->lib != nullptr && id->lib != nullptr) {
-        /* Check if they are using the same filepath. */
-        if (STREQ(id_local->lib->filepath_abs, id->lib->filepath_abs)) {
-          BKE_id_remapper_add(paste_data->id_remapper, id, id_local);
+    ListBase *lb = which_libbase(bmain, id_type);
+    LISTBASE_FOREACH (ID *, id_iter, lb) {
+      if (STREQ(id->name, id_iter->name)) {
+        int copy_method_iter = should_copy_id(id_iter, id, bmain);
+        if (copy_method_iter > copy_method) {
+          copy_method = copy_method_iter;
+          id_local = id_iter;
         }
-        else {
-          paste_data->ids_to_copy.push_back(id);
-        }
-      }
-      else {
-        BKE_id_remapper_add(paste_data->id_remapper, id, id_local);
       }
     }
-    else {
-      /* No data block of the same name already exists, transfer it over from temp_bmain. */
-      paste_data->ids_to_copy.push_back(id);
+
+    if (id_local == nullptr) {
+      copy_method = should_copy_id(id_local, id, bmain);
+    }
+
+    switch (copy_method) {
+      case ID_SIMPLE_COPY:
+        paste_data->ids_to_copy.push_back(id);
+        break;
+      case ID_REMAP:
+        BKE_id_remapper_add(paste_data->id_remapper, id, id_local);
+        break;
+      case ID_LIB_COPY:
+        paste_data->ids_to_copy.push_back(&id->lib->id);
+        paste_data->ids_to_copy.push_back(id);
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
     }
   }
   return IDWALK_RET_NOP;
