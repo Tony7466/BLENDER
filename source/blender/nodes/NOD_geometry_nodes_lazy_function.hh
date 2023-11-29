@@ -178,6 +178,10 @@ struct GeoNodesCallData {
    */
   GeoNodesSimulationParams *simulation_params = nullptr;
   /**
+   * Optional injected behavior for bake nodes.
+   */
+  GeoNodesBakeParams *bake_params = nullptr;
+  /**
    * Some nodes should be executed even when their output is not used (e.g. active viewer nodes and
    * the node groups they are contained in).
    */

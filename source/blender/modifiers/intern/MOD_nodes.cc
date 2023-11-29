@@ -1098,6 +1098,14 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   }
 };
 
+class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
+ public:
+  nodes::BakeNodeBehavior *get(const int /*id*/) const
+  {
+    return nullptr;
+  }
+};
+
 static void modifyGeometry(ModifierData *md,
                            const ModifierEvalContext *ctx,
                            bke::GeometrySet &geometry_set)
@@ -1162,6 +1170,8 @@ static void modifyGeometry(ModifierData *md,
 
   NodesModifierSimulationParams simulation_params(*nmd, *ctx);
   call_data.simulation_params = &simulation_params;
+  NodesModifierBakeParams bake_params;
+  call_data.bake_params = &bake_params;
 
   Set<ComputeContextHash> socket_log_contexts;
   if (logging_enabled(ctx)) {
