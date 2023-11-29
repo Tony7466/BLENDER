@@ -230,32 +230,40 @@ struct ExtrapolateOp {
     /* Callback for the fast-sweeping method, samples the boundary grid. */
     BoundaryOp<GridType> boundary_op(*vdb_boundary_grid);
 
-    GridPtr vdb_result;
-    switch (this->input_type) {
-      case GEO_NODE_EXTRAPOLATE_GRID_INPUT_SDF:
-        vdb_result = openvdb::tools::sdfToExt(*vdb_input_grid,
-                                              boundary_op,
-                                              vdb_background,
-                                              iso_value,
-                                              num_iter,
-                                              fast_sweeping_domain,
-                                              vdb_boundary_grid);
-        break;
-      case GEO_NODE_EXTRAPOLATE_GRID_INPUT_DENSITY:
-        vdb_result = openvdb::tools::fogToExt(*vdb_input_grid,
-                                              boundary_op,
-                                              vdb_background,
-                                              iso_value,
-                                              num_iter,
-                                              fast_sweeping_domain,
-                                              vdb_boundary_grid);
-        break;
+    try {
+      GridPtr vdb_result;
+      switch (this->input_type) {
+        case GEO_NODE_EXTRAPOLATE_GRID_INPUT_SDF:
+          vdb_result = openvdb::tools::sdfToExt(*vdb_input_grid,
+                                                boundary_op,
+                                                vdb_background,
+                                                iso_value,
+                                                num_iter,
+                                                fast_sweeping_domain,
+                                                vdb_boundary_grid);
+          break;
+        case GEO_NODE_EXTRAPOLATE_GRID_INPUT_DENSITY:
+          vdb_result = openvdb::tools::fogToExt(*vdb_input_grid,
+                                                boundary_op,
+                                                vdb_background,
+                                                iso_value,
+                                                num_iter,
+                                                fast_sweeping_domain,
+                                                vdb_boundary_grid);
+          break;
+      }
+      if (vdb_result) {
+        vdb_result->insertMeta(*vdb_input_grid);
+        vdb_result->setTransform(vdb_input_grid->transform().copy());
+      }
+      this->result = bke::GVolumeGridPtr(
+          make_implicit_shared<bke::VolumeGrid>(std::move(vdb_result)));
     }
-    if (vdb_result) {
-      vdb_result->insertMeta(*vdb_input_grid);
-      vdb_result->setTransform(vdb_input_grid->transform().copy());
+    catch (const openvdb::ValueError &ex) {
+      /* TODO this happens when the iso value is outside a valid range, which depends on the
+       * values in the input grid. Might be worth converting exception messages to node warnings.
+       */
     }
-    this->result = bke::GVolumeGridPtr(make_implicit_shared<bke::VolumeGrid>(std::move(vdb_result)));
   }
 };
 

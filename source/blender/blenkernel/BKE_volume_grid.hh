@@ -195,7 +195,6 @@ struct VolumeGrid : public ImplicitSharingMixin {
 
  public:
   VolumeGrid(const GridBasePtr &grid);
-  VolumeGrid(bool is_loaded, int simplify_level = 0);
   VolumeGrid(const VolumeFileCacheEntry &template_entry, int simplify_level = 0);
   VolumeGrid(const char *template_file_path,
              const GridBasePtr &template_grid,
