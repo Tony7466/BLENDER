@@ -441,8 +441,6 @@ void DeferredLayer::begin_sync()
   }
   {
     gbuffer_ps_.init();
-    gbuffer_ps_.clear_stencil(0x00u);
-    gbuffer_ps_.state_stencil(0xFFu, 0xFFu, 0xFFu);
 
     {
       /* Common resources. */
@@ -465,8 +463,7 @@ void DeferredLayer::begin_sync()
       inst_.cryptomatte.bind_resources(gbuffer_ps_);
     }
 
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_WRITE_STENCIL |
-                     DRW_STATE_STENCIL_ALWAYS;
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL;
 
     gbuffer_double_sided_ps_ = &gbuffer_ps_.sub("DoubleSided");
     gbuffer_double_sided_ps_->state_set(state);
@@ -485,9 +482,9 @@ void DeferredLayer::end_sync()
     {
       PassSimple &pass = eval_light_ps_;
       pass.init();
-      /* Use stencil test to reject pixel not written by this layer. */
-      pass.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
-      pass.state_stencil(0x00u, 0x00u, evaluated_closures);
+      /* Use depth test to reject background pixels. */
+      /* WORKAROUND: Avoid rasterizer discard, but the shaders actually use no fragment output. */
+      pass.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_DEPTH_GREATER);
       pass.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHT));
       pass.bind_image("direct_diffuse_img", &direct_diffuse_tx_);
       pass.bind_image("direct_reflect_img", &direct_reflect_tx_);
@@ -507,9 +504,8 @@ void DeferredLayer::end_sync()
     {
       PassSimple &pass = combine_ps_;
       pass.init();
-      /* Use stencil test to reject pixel not written by this layer. */
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_NEQUAL | DRW_STATE_BLEND_ADD_FULL);
-      pass.state_stencil(0x00u, 0x00u, evaluated_closures);
+      /* Use depth test to reject background pixels. */
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_GREATER | DRW_STATE_BLEND_ADD_FULL);
       pass.shader_set(inst_.shaders.static_shader_get(DEFERRED_COMBINE));
       pass.bind_image("direct_diffuse_img", &direct_diffuse_tx_);
       pass.bind_image("direct_reflect_img", &direct_reflect_tx_);
@@ -548,9 +544,7 @@ PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial 
   PassMain::Sub *pass = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) ?
                             gbuffer_single_sided_ps_ :
                             gbuffer_double_sided_ps_;
-  pass = &pass->sub(GPU_material_get_name(gpumat));
-  pass->state_stencil(closure_bits, 0xFFu, 0xFFu);
-  return pass;
+  return &pass->sub(GPU_material_get_name(gpumat));
 }
 
 void DeferredLayer::render(View &main_view,
@@ -1021,9 +1015,6 @@ void DeferredProbeLayer::begin_sync()
   }
   {
     gbuffer_ps_.init();
-    gbuffer_ps_.clear_stencil(0x00u);
-    gbuffer_ps_.state_stencil(0xFFu, 0xFFu, 0xFFu);
-
     {
       /* Common resources. */
 
@@ -1046,8 +1037,7 @@ void DeferredProbeLayer::begin_sync()
       inst_.cryptomatte.bind_resources(gbuffer_ps_);
     }
 
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_WRITE_STENCIL |
-                     DRW_STATE_STENCIL_ALWAYS;
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL;
 
     gbuffer_double_sided_ps_ = &gbuffer_ps_.sub("DoubleSided");
     gbuffer_double_sided_ps_->state_set(state);
@@ -1062,9 +1052,8 @@ void DeferredProbeLayer::end_sync()
   if (closure_bits_ & (CLOSURE_DIFFUSE | CLOSURE_REFLECTION)) {
     PassSimple &pass = eval_light_ps_;
     pass.init();
-    /* Use stencil test to reject pixel not written by this layer. */
-    pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_NEQUAL);
-    pass.state_stencil(0x00u, 0x00u, (CLOSURE_DIFFUSE | CLOSURE_REFLECTION));
+    /* Use depth test to reject background pixels. */
+    pass.state_set(DRW_STATE_DEPTH_GREATER | DRW_STATE_WRITE_COLOR);
     pass.shader_set(inst_.shaders.static_shader_get(DEFERRED_CAPTURE_EVAL));
     pass.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
     pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
@@ -1098,9 +1087,7 @@ PassMain::Sub *DeferredProbeLayer::material_add(::Material *blender_mat, GPUMate
   PassMain::Sub *pass = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) ?
                             gbuffer_single_sided_ps_ :
                             gbuffer_double_sided_ps_;
-  pass = &pass->sub(GPU_material_get_name(gpumat));
-  pass->state_stencil(closure_bits, 0xFFu, 0xFFu);
-  return pass;
+  return &pass->sub(GPU_material_get_name(gpumat));
 }
 
 void DeferredProbeLayer::render(View &view,

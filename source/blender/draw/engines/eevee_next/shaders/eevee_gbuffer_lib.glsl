@@ -154,16 +154,6 @@ bool gbuffer_has_closure(uint data, eClosureBits closure)
   return false;
 }
 
-struct GBufferData {
-  ClosureDiffuse diffuse;
-  ClosureReflection reflection;
-  ClosureRefraction refraction;
-  float thickness;
-  bool has_diffuse;
-  bool has_reflection;
-  bool has_refraction;
-};
-
 struct GBufferDataPacked {
   uint header;
   /* TODO(fclem): Resize arrays based on used closures. */
@@ -231,6 +221,16 @@ GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
   return gbuf;
 }
 
+struct GBufferData {
+  ClosureDiffuse diffuse;
+  ClosureReflection reflection;
+  ClosureRefraction refraction;
+  float thickness;
+  bool has_diffuse;
+  bool has_reflection;
+  bool has_refraction;
+};
+
 GBufferData gbuffer_read(usampler2D header_tx,
                          sampler2DArray closure_tx,
                          sampler2DArray color_tx,
@@ -239,6 +239,13 @@ GBufferData gbuffer_read(usampler2D header_tx,
   GBufferData gbuf;
 
   uint header = texelFetch(header_tx, texel, 0).r;
+
+  if (header == 0u) {
+    gbuf.has_diffuse = false;
+    gbuf.has_reflection = false;
+    gbuf.has_refraction = false;
+    return gbuf;
+  }
 
   gbuf.thickness = 0.0;
 
