@@ -61,7 +61,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh" /* BKE_ST_MAXNAME */
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "BKE_idtype.h"
 
@@ -2384,8 +2384,7 @@ static void radial_control_set_tex(RadialControl *rc)
                                             ibuf->y,
                                             1,
                                             GPU_R8,
-                                            GPU_TEXTURE_USAGE_SHADER_READ |
-                                                GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
+                                            GPU_TEXTURE_USAGE_SHADER_READ,
                                             ibuf->float_buffer.data);
 
         GPU_texture_filter_mode(rc->texture, true);
