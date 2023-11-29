@@ -209,7 +209,7 @@ static void grease_pencil_edit_batch_ensure(const GreasePencil &grease_pencil, c
   const Array<ed::greasepencil::DrawingInfo> drawings =
       ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil);
 
-  Span<const Layer *> layers = grease_pencil.layers();
+  const Span<const Layer *> layers = grease_pencil.layers();
 
   static GPUVertFormat format_edit_points_pos = {0};
   if (format_edit_points_pos.attr_len == 0) {
