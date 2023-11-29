@@ -627,6 +627,7 @@ void GIZMOGROUP_OT_gizmo_tweak(wmOperatorType *ot)
 #if 0
   ot->flag = OPTYPE_UNDO;
 #endif
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY;
 }
 
 wmKeyMap *wm_gizmogroup_tweak_modal_keymap(wmKeyConfig *keyconf)
