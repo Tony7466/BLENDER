@@ -44,6 +44,10 @@ using blender::VectorSet;
 /** \name Various forward declarations
  * \{ */
 
+static void subdiv_ccg_average_inner_face_grids(SubdivCCG *subdiv_ccg,
+                                                CCGKey *key,
+                                                SubdivCCGFace *face);
+
 void subdiv_ccg_average_faces_boundaries_and_corners(SubdivCCG *subdiv_ccg,
                                                      CCGKey *key,
                                                      const IndexMask &face_mask);
@@ -720,7 +724,6 @@ static void subdiv_ccg_recalc_inner_grid_normals(SubdivCCG *subdiv_ccg, const In
   BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
 
   const int grid_size_1 = subdiv_ccg->grid_size - 1;
-
   threading::EnumerableThreadSpecific<Array<float3>> face_normals_tls(
       Array<float3>(grid_size_1 * grid_size_1));
 
@@ -1049,6 +1052,7 @@ void subdiv_ccg_average_faces_boundaries_and_corners(SubdivCCG *subdiv_ccg,
 
 void BKE_subdiv_ccg_average_stitch_faces(SubdivCCG *subdiv_ccg, const IndexMask &face_mask)
 {
+  using namespace blender;
   CCGKey key;
   BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
   face_mask.foreach_index(GrainSize(512), [&](const int face_index) {
