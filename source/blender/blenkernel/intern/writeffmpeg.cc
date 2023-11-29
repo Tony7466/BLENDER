@@ -36,7 +36,7 @@
 #  include "BKE_main.h"
 #  include "BKE_report.h"
 #  include "BKE_sound.h"
-#  include "BKE_writeffmpeg.h"
+#  include "BKE_writeffmpeg.hh"
 
 #  include "IMB_imbuf.h"
 
@@ -57,7 +57,7 @@ extern "C" {
 
 struct StampData;
 
-typedef struct FFMpegContext {
+struct FFMpegContext {
   int ffmpeg_type;
   AVCodecID ffmpeg_codec;
   AVCodecID ffmpeg_audio_codec;
@@ -82,7 +82,7 @@ typedef struct FFMpegContext {
 
   /* Image frame in Blender's own pixel format, may need conversion to the output pixel format. */
   AVFrame *img_convert_frame;
-  struct SwsContext *img_convert_ctx;
+  SwsContext *img_convert_ctx;
 
   uint8_t *audio_input_buffer;
   uint8_t *audio_deinterleave_buffer;
@@ -92,12 +92,12 @@ typedef struct FFMpegContext {
   bool audio_deinterleave;
   int audio_sample_size;
 
-  struct StampData *stamp_data;
+  StampData *stamp_data;
 
 #  ifdef WITH_AUDASPACE
   AUD_Device *audio_mixdown_device;
 #  endif
-} FFMpegContext;
+};
 
 #  define FFMPEG_AUTOSPLIT_SIZE 2000000000
 
@@ -240,7 +240,7 @@ static AVFrame *alloc_picture(AVPixelFormat pix_fmt, int width, int height)
   }
   size = av_image_get_buffer_size(pix_fmt, width, height, 1);
   /* allocate the actual picture buffer */
-  buf = static_cast<uint8_t*>(MEM_mallocN(size, "AVFrame buffer"));
+  buf = static_cast<uint8_t *>(MEM_mallocN(size, "AVFrame buffer"));
   if (!buf) {
     free(f);
     return NULL;
@@ -1808,10 +1808,9 @@ bool BKE_ffmpeg_alpha_channel_is_supported(const RenderData *rd)
 
 void *BKE_ffmpeg_context_create(void)
 {
-  FFMpegContext *context;
-
   /* new ffmpeg data struct */
-  context = static_cast<FFMpegContext*>(MEM_callocN(sizeof(FFMpegContext), "new ffmpeg context"));
+  FFMpegContext *context = static_cast<FFMpegContext *>(
+      MEM_callocN(sizeof(FFMpegContext), "new ffmpeg context"));
 
   context->ffmpeg_codec = AV_CODEC_ID_MPEG4;
   context->ffmpeg_audio_codec = AV_CODEC_ID_NONE;

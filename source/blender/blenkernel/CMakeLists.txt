@@ -639,7 +639,7 @@ endif()
 if(WITH_CODEC_FFMPEG)
   list(APPEND SRC
     intern/writeffmpeg.cc
-    BKE_writeffmpeg.h
+    BKE_writeffmpeg.hh
   )
   list(APPEND INC
     ../../../intern/ffmpeg
