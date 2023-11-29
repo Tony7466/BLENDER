@@ -139,8 +139,10 @@ static std::optional<GizmoTarget> find_local_gizmo_target(const bNodeSocket &ini
             case NODE_MATH_DIVIDE:
             case NODE_MATH_RADIANS:
             case NODE_MATH_DEGREES:
-              /* We can compute the derivate of those nodes. */
-              r_propagation_path.path.append({&node, current_elem});
+              if (!node.is_muted()) {
+                /* We can compute the derivate of those nodes. */
+                r_propagation_path.path.append({&node, current_elem});
+              }
               break;
             default:
               return std::nullopt;
@@ -162,7 +164,9 @@ static std::optional<GizmoTarget> find_local_gizmo_target(const bNodeSocket &ini
             case NODE_VECTOR_MATH_MULTIPLY:
             case NODE_VECTOR_MATH_DIVIDE:
             case NODE_VECTOR_MATH_SCALE:
-              r_propagation_path.path.append({&node, current_elem});
+              if (!node.is_muted()) {
+                r_propagation_path.path.append({&node, current_elem});
+              }
               break;
             default:
               return std::nullopt;
@@ -171,7 +175,9 @@ static std::optional<GizmoTarget> find_local_gizmo_target(const bNodeSocket &ini
           break;
         }
         case SH_NODE_MAP_RANGE: {
-          r_propagation_path.path.append({&node, current_elem});
+          if (node.is_muted()) {
+            r_propagation_path.path.append({&node, current_elem});
+          }
           const eCustomDataType data_type = eCustomDataType(
               static_cast<NodeMapRange *>(node.storage)->data_type);
           current_socket = &node.input_by_identifier(data_type == CD_PROP_FLOAT ? "Value" :
