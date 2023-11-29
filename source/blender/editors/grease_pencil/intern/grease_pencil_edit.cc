@@ -1583,6 +1583,7 @@ static int grease_pencil_duplicate_exec(bContext *C, wmOperator * /*op*/)
   }
   return OPERATOR_FINISHED;
 }
+
 static void GREASE_PENCIL_OT_duplicate(wmOperatorType *ot)
 {
   /* Identifiers. */
