@@ -118,8 +118,7 @@ static void populate_cache_for_geometry(Object &object,
         DRW_shgroup_uniform_float_copy(pd.viewer_attribute_mesh_grp, "opacity", opacity);
         DRW_shgroup_call(pd.viewer_attribute_mesh_grp, batch, &object);
 
-        const DRWContextState *draw_ctx = DRW_context_state_get();
-        DRW_text_viewer_attribute(draw_ctx->v3d, object);
+        DRW_text_viewer_attribute(object);
       }
       break;
     }
