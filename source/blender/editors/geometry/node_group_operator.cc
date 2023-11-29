@@ -385,14 +385,14 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
     operator_eval_data.self_object = DEG_get_evaluated_object(depsgraph, object);
     operator_eval_data.scene = DEG_get_evaluated_scene(depsgraph);
 
-    nodes::GeoNodesGlobalData global_data{};
-    global_data.operator_data = &operator_eval_data;
-    global_data.eval_log = eval_log.get();
+    nodes::GeoNodesCallData call_data{};
+    call_data.operator_data = &operator_eval_data;
+    call_data.eval_log = eval_log.get();
 
     bke::GeometrySet geometry_orig = get_original_geometry_eval_copy(*object);
 
     bke::GeometrySet new_geometry = nodes::execute_geometry_nodes_on_geometry(
-        *node_tree, properties, compute_context, global_data, std::move(geometry_orig));
+        *node_tree, properties, compute_context, call_data, std::move(geometry_orig));
 
     store_result_geometry(*op, *bmain, *scene, *object, std::move(new_geometry));
 

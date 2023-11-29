@@ -1152,35 +1152,35 @@ static void modifyGeometry(ModifierData *md,
     use_orig_index_faces = CustomData_has_layer(&mesh->face_data, CD_ORIGINDEX);
   }
 
-  nodes::GeoNodesGlobalData global_data;
+  nodes::GeoNodesCallData call_data;
 
   nodes::GeoNodesModifierData modifier_eval_data{};
   modifier_eval_data.depsgraph = ctx->depsgraph;
   modifier_eval_data.self_object = ctx->object;
   auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
-  global_data.modifier_data = &modifier_eval_data;
+  call_data.modifier_data = &modifier_eval_data;
 
   NodesModifierSimulationParams simulation_params(*nmd, *ctx);
-  global_data.simulation_params = &simulation_params;
+  call_data.simulation_params = &simulation_params;
 
   Set<ComputeContextHash> socket_log_contexts;
   if (logging_enabled(ctx)) {
-    global_data.eval_log = eval_log.get();
+    call_data.eval_log = eval_log.get();
 
     find_socket_log_contexts(*nmd, *ctx, socket_log_contexts);
-    global_data.socket_log_contexts = &socket_log_contexts;
+    call_data.socket_log_contexts = &socket_log_contexts;
   }
 
   nodes::GeoNodesSideEffectNodes side_effect_nodes;
   find_side_effect_nodes(*nmd, *ctx, side_effect_nodes);
-  global_data.side_effect_nodes = &side_effect_nodes;
+  call_data.side_effect_nodes = &side_effect_nodes;
 
   bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
 
   geometry_set = nodes::execute_geometry_nodes_on_geometry(tree,
                                                            nmd->settings.properties,
                                                            modifier_compute_context,
-                                                           global_data,
+                                                           call_data,
                                                            std::move(geometry_set));
 
   if (logging_enabled(ctx)) {

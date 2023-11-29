@@ -488,12 +488,12 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
   void execute_impl(lf::Params &params, const lf::Context &context) const final
   {
     GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-    if (!user_data.global_data->self_object()) {
+    if (!user_data.call_data->self_object()) {
       /* The self object is currently required for generating anonymous attribute names. */
       params.set_default_remaining_outputs();
       return;
     }
-    if (!user_data.global_data->simulation_params) {
+    if (!user_data.call_data->simulation_params) {
       params.set_default_remaining_outputs();
       return;
     }
@@ -506,7 +506,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
       params.set_default_remaining_outputs();
       return;
     }
-    SimulationZoneBehavior *zone_behavior = user_data.global_data->simulation_params->get(
+    SimulationZoneBehavior *zone_behavior = user_data.call_data->simulation_params->get(
         found_id->id);
     if (!zone_behavior) {
       params.set_default_remaining_outputs();
@@ -518,7 +518,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     }
     else if (auto *info = std::get_if<sim_output::ReadInterpolated>(&output_behavior)) {
       this->output_mixed_cached_state(params,
-                                      *user_data.global_data->self_object(),
+                                      *user_data.call_data->self_object(),
                                       *user_data.compute_context,
                                       info->prev_state,
                                       info->next_state,
@@ -545,7 +545,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     }
     copy_simulation_state_to_values(simulation_items_,
                                     state,
-                                    *user_data.global_data->self_object(),
+                                    *user_data.call_data->self_object(),
                                     *user_data.compute_context,
                                     node_,
                                     output_values);
@@ -606,7 +606,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     }
     move_simulation_state_to_values(simulation_items_,
                                     std::move(*bake_state),
-                                    *user_data.global_data->self_object(),
+                                    *user_data.call_data->self_object(),
                                     *user_data.compute_context,
                                     node_,
                                     output_values);

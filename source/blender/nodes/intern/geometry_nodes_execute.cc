@@ -683,7 +683,7 @@ static void store_output_attributes(bke::GeometrySet &geometry,
 bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
                                                     const IDProperty *properties,
                                                     const ComputeContext &base_compute_context,
-                                                    GeoNodesGlobalData &global_data,
+                                                    GeoNodesCallData &call_data,
                                                     bke::GeometrySet input_geometry)
 {
   const nodes::GeometryNodesLazyFunctionGraphInfo &lf_graph_info =
@@ -706,8 +706,8 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
       .fill(lf::ValueUsage::Unused);
 
   nodes::GeoNodesLFUserData user_data;
-  user_data.global_data = &global_data;
-  global_data.root_ntree = &btree;
+  user_data.call_data = &call_data;
+  call_data.root_ntree = &btree;
 
   user_data.compute_context = &base_compute_context;
 

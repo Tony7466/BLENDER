@@ -223,7 +223,7 @@ class GeoNodeExecParams {
   const Object *self_object() const
   {
     if (const auto *data = this->user_data()) {
-      return data->global_data->self_object();
+      return data->call_data->self_object();
     }
     return nullptr;
   }
@@ -231,11 +231,11 @@ class GeoNodeExecParams {
   Depsgraph *depsgraph() const
   {
     if (const auto *data = this->user_data()) {
-      if (data->global_data->modifier_data) {
-        return data->global_data->modifier_data->depsgraph;
+      if (data->call_data->modifier_data) {
+        return data->call_data->modifier_data->depsgraph;
       }
-      if (data->global_data->operator_data) {
-        return data->global_data->operator_data->depsgraph;
+      if (data->call_data->operator_data) {
+        return data->call_data->operator_data->depsgraph;
       }
     }
     return nullptr;

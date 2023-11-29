@@ -156,7 +156,7 @@ struct GeoNodesOperatorData {
   Scene *scene = nullptr;
 };
 
-struct GeoNodesGlobalData {
+struct GeoNodesCallData {
   /**
    * Top-level node tree of the current evaluation.
    */
@@ -207,7 +207,7 @@ struct GeoNodesLFUserData : public lf::UserData {
   /**
    * Data provided by the root caller of geometry nodes.
    */
-  const GeoNodesGlobalData *global_data = nullptr;
+  const GeoNodesCallData *call_data = nullptr;
   /**
    * Current compute context. This is different depending in the (nested) node group that is being
    * evaluated.
