@@ -1222,10 +1222,9 @@ static bool is_compositing_possible(Render *render)
   /* There is no way to know if the render size is too large except if we actually allocate a test
    * texture, which we want to avoid due its cost. So we employ a heuristic that so far has worked
    * with all known GPU drivers. */
-  if (width * height > (max_texture_size * max_texture_size) / 4) {
-    BKE_report(render->reports,
-               RPT_ERROR_OUT_OF_MEMORY,
-               "Render size too large for GPU! Use CPU compositor instead.");
+  if (size_t(width) * height > (size_t(max_texture_size) * max_texture_size) / 4) {
+    BKE_report(
+        render->reports, RPT_ERROR, "Render size too large for GPU, use CPU compositor instead");
     return false;
   }
 
