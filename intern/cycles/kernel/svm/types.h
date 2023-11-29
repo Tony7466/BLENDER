@@ -9,9 +9,9 @@ CCL_NAMESPACE_BEGIN
 /* Stack */
 
 /* SVM stack has a fixed size */
-#define SVM_STACK_SIZE 255
+#define SVM_STACK_SIZE 511
 /* SVM stack offsets with this value indicate that it's not on the stack */
-#define SVM_STACK_INVALID 255
+#define SVM_STACK_INVALID 511
 
 #define SVM_BUMP_EVAL_STATE_SIZE 10
 
