@@ -31,17 +31,22 @@ static void node_declare(NodeDeclarationBuilder &b)
       storage.input_type);
   const eCustomDataType data_type = eCustomDataType(storage.data_type);
 
+  StringRef input_grid_name;
+  float iso_value_default = 0.0f;
   switch (input_type) {
     case GEO_NODE_EXTRAPOLATE_GRID_INPUT_SDF:
-      b.add_input<decl::Float>("SDF", "InputGrid").hide_value();
+      input_grid_name = "SDF";
+      iso_value_default = 0.0f;
       break;
     case GEO_NODE_EXTRAPOLATE_GRID_INPUT_DENSITY:
-      b.add_input<decl::Float>("Density", "InputGrid").hide_value();
+      input_grid_name = "Density";
+      iso_value_default = 0.0f;
       break;
   }
+  b.add_input<decl::Float>(input_grid_name, "InputGrid").hide_value();
   b.add_input(data_type, "Boundary Value").supports_field();
   b.add_input(data_type, "Background");
-  b.add_input<decl::Float>("Iso Value");
+  b.add_input<decl::Float>("Iso Value").default_value(iso_value_default);
   b.add_input<decl::Int>("Iterations").default_value(1).min(1);
 
   grids::declare_grid_type_output(b, data_type, "Grid");
@@ -250,7 +255,7 @@ struct ExtrapolateOp {
       vdb_result->insertMeta(*vdb_input_grid);
       vdb_result->setTransform(vdb_input_grid->transform().copy());
     }
-    this->result = bke::GVolumeGridPtr(make_implicit_shared<bke::VolumeGrid>(vdb_result));
+    this->result = bke::GVolumeGridPtr(make_implicit_shared<bke::VolumeGrid>(std::move(vdb_result)));
   }
 };
 
