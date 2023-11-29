@@ -6,6 +6,8 @@
 
 #include "RNA_enum_types.hh"
 
+#include "NOD_socket_search_link.hh"
+
 #ifdef WITH_OPENVDB
 #  include <openvdb/tools/Morphology.h>
 #endif
@@ -23,6 +25,13 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Int>("Iterations").default_value(1).min(0);
 
   grids::declare_grid_type_output(b, CD_PROP_FLOAT, "Grid");
+}
+
+static void search_link_ops(GatherLinkSearchOpParams &params)
+{
+  if (U.experimental.use_new_volume_nodes) {
+    nodes::search_link_ops_for_basic_node(params);
+  }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -115,6 +124,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_ERODE_GRID, "Erode Grid", NODE_CLASS_CONVERTER);
 
   ntype.declare = node_declare;
+  ntype.gather_link_search_ops = search_link_ops;
   ntype.draw_buttons = node_layout;
   ntype.initfunc = node_init;
   ntype.geometry_node_execute = node_geo_exec;

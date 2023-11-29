@@ -12,6 +12,7 @@
 #include "node_geometry_util.hh"
 
 #include "NOD_rna_define.hh"
+#include "NOD_socket_search_link.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -27,7 +28,7 @@ NODE_STORAGE_FUNCS(NodeGeometrySampleVolume)
 static void node_declare(NodeDeclarationBuilder &b)
 {
   const bNode *node = b.node_or_null();
-  if (!node){
+  if (!node) {
     return;
   }
   const NodeGeometrySampleVolume &storage = node_storage(*node);
@@ -52,6 +53,13 @@ static void node_declare(NodeDeclarationBuilder &b)
     default:
       BLI_assert_unreachable();
       break;
+  }
+}
+
+static void search_link_ops(GatherLinkSearchOpParams &params)
+{
+  if (U.experimental.use_new_volume_nodes) {
+    nodes::search_link_ops_for_basic_node(params);
   }
 }
 
@@ -93,16 +101,15 @@ void sample_grid(const GridType &grid,
     });
   };
 
-
   /* Use to the Nearest Neighbor sampler for Bool grids (no interpolation). */
   GeometryNodeSampleVolumeInterpolationMode real_interpolation_mode = interpolation_mode;
-  if constexpr (std::is_same_v<T, bool>){
+  if constexpr (std::is_same_v<T, bool>) {
     real_interpolation_mode = GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST;
   }
   switch (real_interpolation_mode) {
     case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR: {
-      openvdb::tools::GridSampler<AccessorT, openvdb::tools::BoxSampler> sampler(
-          accessor, grid.transform());
+      openvdb::tools::GridSampler<AccessorT, openvdb::tools::BoxSampler> sampler(accessor,
+                                                                                 grid.transform());
       sample_data(sampler);
       break;
     }
@@ -122,8 +129,7 @@ void sample_grid(const GridType &grid,
   }
 }
 
-template <typename T>
-class SampleGridFunction : public mf::MultiFunction {
+template<typename T> class SampleGridFunction : public mf::MultiFunction {
   using GridType = typename bke::VolumeGridPtr<T>::GridType;
   using GridConstPtr = typename bke::VolumeGridPtr<T>::GridConstPtr;
 
@@ -156,7 +162,8 @@ struct SampleGridOp {
   GeoNodeExecParams params;
   GeometryNodeSampleVolumeInterpolationMode interpolation_mode;
 
-  template<typename T> void operator()() {
+  template<typename T> void operator()()
+  {
     const bke::VolumeGridPtr<T> volume_grid = grids::extract_grid_input<T>(this->params, "Grid");
     if (!volume_grid) {
       this->params.set_default_remaining_outputs();
@@ -179,7 +186,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 #ifdef WITH_OPENVDB
   const NodeGeometrySampleVolume &storage = node_storage(params.node());
   const eCustomDataType data_type = eCustomDataType(storage.grid_type);
-  const GeometryNodeSampleVolumeInterpolationMode interpolation_mode = GeometryNodeSampleVolumeInterpolationMode(storage.interpolation_mode);
+  const GeometryNodeSampleVolumeInterpolationMode interpolation_mode =
+      GeometryNodeSampleVolumeInterpolationMode(storage.interpolation_mode);
 
   SampleGridOp sample_op = {params, interpolation_mode};
   grids::apply(data_type, sample_op);
@@ -237,6 +245,7 @@ static void node_register()
       &ntype, "NodeGeometrySampleVolume", node_free_standard_storage, node_copy_standard_storage);
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
+  ntype.gather_link_search_ops = search_link_ops;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.geometry_node_execute = node_geo_exec;
