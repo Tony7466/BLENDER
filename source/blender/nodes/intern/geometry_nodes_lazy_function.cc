@@ -894,12 +894,12 @@ class LazyFunctionForGizmoNode : public LazyFunction {
   {
     const auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
 
-    if (!user_data.modifier_data) {
+    if (!user_data.call_data->side_effect_nodes) {
       params.set_default_remaining_outputs();
       return;
     }
     const Span<const lf::FunctionNode *> nodes_with_side_effects =
-        user_data.modifier_data->side_effect_nodes->nodes_by_context.lookup(
+        user_data.call_data->side_effect_nodes->nodes_by_context.lookup(
             user_data.compute_context->hash());
     const bool is_used = nodes_with_side_effects.contains(this->self_node);
     if (!is_used) {
