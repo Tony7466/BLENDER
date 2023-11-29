@@ -448,9 +448,8 @@ void DeferredLayer::begin_sync()
       /* Common resources. */
 
       /* G-buffer. */
-      gbuffer_ps_.bind_image(GBUF_CLOSURE_SLOT, &inst_.gbuffer.closure_tx);
-      gbuffer_ps_.bind_image(GBUF_COLOR_SLOT, &inst_.gbuffer.color_tx);
-      gbuffer_ps_.bind_image(GBUF_HEADER_SLOT, &inst_.gbuffer.header_tx);
+      gbuffer_ps_.bind_image(GBUF_CLOSURE_SLOT, &inst_.gbuffer.closure_img_tx);
+      gbuffer_ps_.bind_image(GBUF_COLOR_SLOT, &inst_.gbuffer.color_img_tx);
       /* RenderPasses & AOVs. */
       gbuffer_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
       gbuffer_ps_.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
@@ -558,6 +557,7 @@ void DeferredLayer::render(View &main_view,
                            View &render_view,
                            Framebuffer &prepass_fb,
                            Framebuffer &combined_fb,
+                           Framebuffer &gbuffer_fb,
                            int2 extent,
                            RayTraceBuffer &rt_buffer,
                            bool is_first_pass)
@@ -598,8 +598,6 @@ void DeferredLayer::render(View &main_view,
   GPU_framebuffer_bind(prepass_fb);
   inst_.manager->submit(prepass_ps_, render_view);
 
-  inst_.gbuffer.acquire(extent, closure_bits_);
-
   if (closure_bits_ & CLOSURE_AMBIENT_OCCLUSION) {
     /* If the shader needs Ambient Occlusion, we need to update the HiZ here. */
     if (do_screen_space_refraction) {
@@ -613,10 +611,21 @@ void DeferredLayer::render(View &main_view,
     }
   }
 
-  /* TODO(fclem): Clear in pass when Gbuffer will render with framebuffer. */
+  /* TODO(fclem): Clear at bind, selectively to avoid clearing the combined pass. */
   inst_.gbuffer.header_tx.clear(uint4(0));
 
-  GPU_framebuffer_bind(combined_fb);
+#if 0 /* TODO(fclem): Use load actions to clear only the header. Needs removal of Stencil. */
+  GPU_framebuffer_bind_ex(gbuffer_fb,
+                          {
+                              {GPU_LOADACTION_LOAD, GPU_STOREACTION_DONT_CARE},   /* Depth */
+                              {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE},       /* Combined */
+                              {GPU_LOADACTION_CLEAR, GPU_STOREACTION_STORE, {0}}, /* GBuf Header */
+                              {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE}, /* GBuf Closure */
+                              {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE}, /* GBuf Color */
+                          });
+#endif
+
+  GPU_framebuffer_bind(gbuffer_fb);
   inst_.manager->submit(gbuffer_ps_, render_view);
 
   inst_.hiz_buffer.set_dirty();
@@ -645,6 +654,7 @@ void DeferredLayer::render(View &main_view,
     direct_refract_tx_.acquire(extent, GPU_RGBA16F, usage);
   }
 
+  GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(eval_light_ps_, render_view);
 
   RayTraceResult diffuse_result = inst_.raytracing.trace(rt_buffer,
@@ -684,8 +694,6 @@ void DeferredLayer::render(View &main_view,
     GPU_texture_copy(radiance_feedback_tx_, rb.combined_tx);
     radiance_feedback_persmat_ = render_view.persmat();
   }
-
-  inst_.gbuffer.release();
 }
 
 /** \} */
@@ -734,18 +742,31 @@ void DeferredPipeline::render(View &main_view,
                               View &render_view,
                               Framebuffer &prepass_fb,
                               Framebuffer &combined_fb,
+                              Framebuffer &gbuffer_fb,
                               int2 extent,
                               RayTraceBuffer &rt_buffer_opaque_layer,
                               RayTraceBuffer &rt_buffer_refract_layer)
 {
   DRW_stats_group_start("Deferred.Opaque");
-  opaque_layer_.render(
-      main_view, render_view, prepass_fb, combined_fb, extent, rt_buffer_opaque_layer, true);
+  opaque_layer_.render(main_view,
+                       render_view,
+                       prepass_fb,
+                       combined_fb,
+                       gbuffer_fb,
+                       extent,
+                       rt_buffer_opaque_layer,
+                       true);
   DRW_stats_group_end();
 
   DRW_stats_group_start("Deferred.Refract");
-  refraction_layer_.render(
-      main_view, render_view, prepass_fb, combined_fb, extent, rt_buffer_refract_layer, false);
+  refraction_layer_.render(main_view,
+                           render_view,
+                           prepass_fb,
+                           combined_fb,
+                           gbuffer_fb,
+                           extent,
+                           rt_buffer_refract_layer,
+                           false);
   DRW_stats_group_end();
 }
 
@@ -1085,6 +1106,7 @@ PassMain::Sub *DeferredProbeLayer::material_add(::Material *blender_mat, GPUMate
 void DeferredProbeLayer::render(View &view,
                                 Framebuffer &prepass_fb,
                                 Framebuffer &combined_fb,
+                                Framebuffer &gbuffer_fb,
                                 int2 extent)
 {
   GPU_framebuffer_bind(prepass_fb);
@@ -1096,14 +1118,11 @@ void DeferredProbeLayer::render(View &view,
   inst_.shadows.set_view(view);
   inst_.irradiance_cache.set_view(view);
 
-  inst_.gbuffer.acquire(extent, closure_bits_);
-
-  GPU_framebuffer_bind(combined_fb);
+  GPU_framebuffer_bind(gbuffer_fb);
   inst_.manager->submit(gbuffer_ps_, view);
 
+  GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(eval_light_ps_, view);
-
-  inst_.gbuffer.release();
 }
 
 /** \} */
@@ -1137,10 +1156,11 @@ PassMain::Sub *DeferredProbePipeline::material_add(::Material *blender_mat, GPUM
 void DeferredProbePipeline::render(View &view,
                                    Framebuffer &prepass_fb,
                                    Framebuffer &combined_fb,
+                                   Framebuffer &gbuffer_fb,
                                    int2 extent)
 {
   GPU_debug_group_begin("Probe.Render");
-  opaque_layer_.render(view, prepass_fb, combined_fb, extent);
+  opaque_layer_.render(view, prepass_fb, combined_fb, gbuffer_fb, extent);
   GPU_debug_group_end();
 }
 
@@ -1237,30 +1257,30 @@ PassMain::Sub *PlanarProbePipeline::material_add(::Material *blender_mat, GPUMat
   return &pass->sub(GPU_material_get_name(gpumat));
 }
 
-void PlanarProbePipeline::render(View &view, Framebuffer &combined_fb, int layer_id, int2 extent)
+void PlanarProbePipeline::render(
+    View &view, Framebuffer &gbuffer_fb, Framebuffer &combined_fb, int layer_id, int2 extent)
 {
   GPU_debug_group_begin("Planar.Capture");
 
   inst_.hiz_buffer.set_source(&inst_.planar_probes.depth_tx_, layer_id);
   inst_.hiz_buffer.set_dirty();
 
-  GPU_framebuffer_bind(combined_fb);
-  GPU_framebuffer_clear_depth(combined_fb, 1.0f);
+  GPU_framebuffer_bind(gbuffer_fb);
+  GPU_framebuffer_clear_depth(gbuffer_fb, 1.0f);
   inst_.manager->submit(prepass_ps_, view);
 
   inst_.lights.set_view(view, extent);
   inst_.shadows.set_view(view);
   inst_.irradiance_cache.set_view(view);
 
-  inst_.gbuffer.acquire(extent, closure_bits_);
-
   inst_.hiz_buffer.update();
-  GPU_framebuffer_bind(combined_fb);
-  GPU_framebuffer_clear_color(combined_fb, float4(0.0f, 0.0f, 0.0f, 1.0f));
-  inst_.manager->submit(gbuffer_ps_, view);
-  inst_.manager->submit(eval_light_ps_, view);
 
-  inst_.gbuffer.release();
+  GPU_framebuffer_bind(gbuffer_fb);
+  GPU_framebuffer_clear_color(gbuffer_fb, float4(0.0f, 0.0f, 0.0f, 1.0f));
+  inst_.manager->submit(gbuffer_ps_, view);
+
+  GPU_framebuffer_bind(combined_fb);
+  inst_.manager->submit(eval_light_ps_, view);
 
   GPU_debug_group_end();
 }

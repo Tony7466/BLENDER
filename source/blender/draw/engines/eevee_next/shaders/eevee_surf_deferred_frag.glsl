@@ -85,28 +85,24 @@ void main()
   GBufferDataPacked gbuf = gbuffer_pack(
       g_diffuse_data, g_reflection_data, g_refraction_data, thickness);
 
-  /* TODO */
-  // out_gbuf_header = gbuf.header;
-  // out_gbuf_color = gbuf.color[0];
-  // out_gbuf_closure = gbuf.closure[0];
+  /* Output header and first closure using framebuffer attachment. */
+  out_gbuf_header = gbuf.header;
+  out_gbuf_color = gbuf.color[0];
+  out_gbuf_closure = gbuf.closure[0];
 
-  imageStore(out_gbuf_header_img, out_texel, uvec4(gbuf.header));
-
-  if (gbuffer_header_unpack(gbuf.header, 0) != GBUF_NONE) {
-    imageStore(out_gbuf_color_img, ivec3(out_texel, 0), gbuf.color[0]);
-    imageStore(out_gbuf_closure_img, ivec3(out_texel, 0), gbuf.closure[0]);
-  }
+  /* Output remaining closures using image store. */
+  /* NOTE: The image view start at layer 1 so all destination layer is `closure_index - 1`. */
   if (gbuffer_header_unpack(gbuf.header, 1) != GBUF_NONE) {
-    imageStore(out_gbuf_color_img, ivec3(out_texel, 1), gbuf.color[1]);
-    imageStore(out_gbuf_closure_img, ivec3(out_texel, 1), gbuf.closure[1]);
+    imageStore(out_gbuf_color_img, ivec3(out_texel, 1 - 1), gbuf.color[1]);
+    imageStore(out_gbuf_closure_img, ivec3(out_texel, 1 - 1), gbuf.closure[1]);
   }
   if (gbuffer_header_unpack(gbuf.header, 2) != GBUF_NONE) {
-    imageStore(out_gbuf_color_img, ivec3(out_texel, 2), gbuf.color[2]);
-    imageStore(out_gbuf_closure_img, ivec3(out_texel, 2), gbuf.closure[2]);
+    imageStore(out_gbuf_color_img, ivec3(out_texel, 2 - 1), gbuf.color[2]);
+    imageStore(out_gbuf_closure_img, ivec3(out_texel, 2 - 1), gbuf.closure[2]);
   }
   if (gbuffer_header_unpack(gbuf.header, 3) != GBUF_NONE) {
     /* No color for SSS. */
-    imageStore(out_gbuf_closure_img, ivec3(out_texel, 3), gbuf.closure[3]);
+    imageStore(out_gbuf_closure_img, ivec3(out_texel, 3 - 1), gbuf.closure[3]);
   }
 
   /* ----- Radiance output ----- */
