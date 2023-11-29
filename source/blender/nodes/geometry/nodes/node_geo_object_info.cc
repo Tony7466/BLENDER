@@ -93,6 +93,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         transform_geometry_set(params, geometry_set, transform, *params.depsgraph());
       }
     }
+    geometry_set.name = object->id.name + 2;
 
     params.set_output("Geometry", geometry_set);
   }
