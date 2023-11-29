@@ -1513,9 +1513,10 @@ static bke::CurvesGeometry duplicate_points(const bke::CurvesGeometry &curves,
       /* Join the first range to the end of the last range. */
       if (is_curve_self_joined && range_i == range_ids.last()) {
         const IndexRange first_range = ranges_to_duplicate[range_ids.first()];
-        for (const int src_point : first_range.shift(points.first())) {
-          dst_to_src_point[curr_dst_point_id++] = src_point;
-        }
+        array_utils::fill_index_range<int>(
+            dst_to_src_point.as_mutable_span().slice(curr_dst_point_id, first_range.size()),
+            first_range.start() + points.first());
+        curr_dst_point_id += first_range.size();
         count += first_range.size();
       }
 
