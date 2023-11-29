@@ -23,7 +23,7 @@
 
 namespace blender::nodes::node_geo_sample_grid_cc {
 
-NODE_STORAGE_FUNCS(NodeGeometrySampleVolume)
+NODE_STORAGE_FUNCS(NodeGeometrySampleGrid)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -31,8 +31,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   if (!node) {
     return;
   }
-  const NodeGeometrySampleVolume &storage = node_storage(*node);
-  const eCustomDataType data_type = eCustomDataType(storage.grid_type);
+  const NodeGeometrySampleGrid &storage = node_storage(*node);
+  const eCustomDataType data_type = eCustomDataType(storage.data_type);
 
   grids::declare_grid_type_input(b, data_type, "Grid");
   b.add_input<decl::Vector>("Position").implicit_field(implicit_field_inputs::position);
@@ -73,9 +73,9 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  NodeGeometrySampleVolume *data = MEM_cnew<NodeGeometrySampleVolume>(__func__);
-  data->grid_type = CD_PROP_FLOAT;
-  data->interpolation_mode = GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR;
+  NodeGeometrySampleGrid *data = MEM_cnew<NodeGeometrySampleGrid>(__func__);
+  data->data_type = CD_PROP_FLOAT;
+  data->interpolation_mode = GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRILINEAR;
   node->storage = data;
 }
 
@@ -86,7 +86,7 @@ void sample_grid(const GridType &grid,
                  const Span<float3> positions,
                  const IndexMask &mask,
                  MutableSpan<T> dst,
-                 const GeometryNodeSampleVolumeInterpolationMode interpolation_mode)
+                 const GeometryNodeSampleGridInterpolationMode interpolation_mode)
 {
   using GridValueT = typename GridType::ValueType;
   using AccessorT = typename GridType::ConstAccessor;
@@ -102,24 +102,24 @@ void sample_grid(const GridType &grid,
   };
 
   /* Use to the Nearest Neighbor sampler for Bool grids (no interpolation). */
-  GeometryNodeSampleVolumeInterpolationMode real_interpolation_mode = interpolation_mode;
+  GeometryNodeSampleGridInterpolationMode real_interpolation_mode = interpolation_mode;
   if constexpr (std::is_same_v<T, bool>) {
-    real_interpolation_mode = GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST;
+    real_interpolation_mode = GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_NEAREST;
   }
   switch (real_interpolation_mode) {
-    case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR: {
+    case GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRILINEAR: {
       openvdb::tools::GridSampler<AccessorT, openvdb::tools::BoxSampler> sampler(accessor,
                                                                                  grid.transform());
       sample_data(sampler);
       break;
     }
-    case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC: {
+    case GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRIQUADRATIC: {
       openvdb::tools::GridSampler<AccessorT, openvdb::tools::QuadraticSampler> sampler(
           accessor, grid.transform());
       sample_data(sampler);
       break;
     }
-    case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST:
+    case GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_NEAREST:
     default: {
       openvdb::tools::GridSampler<AccessorT, openvdb::tools::PointSampler> sampler(
           accessor, grid.transform());
@@ -134,12 +134,12 @@ template<typename T> class SampleGridFunction : public mf::MultiFunction {
   using GridConstPtr = typename bke::VolumeGridPtr<T>::GridConstPtr;
 
   bke::VolumeGridPtr<T> volume_grid_;
-  GeometryNodeSampleVolumeInterpolationMode interpolation_mode_;
+  GeometryNodeSampleGridInterpolationMode interpolation_mode_;
   mf::Signature signature_;
 
  public:
   SampleGridFunction(bke::VolumeGridPtr<T> volume_grid,
-                     GeometryNodeSampleVolumeInterpolationMode interpolation_mode)
+                     GeometryNodeSampleGridInterpolationMode interpolation_mode)
       : volume_grid_(std::move(volume_grid)), interpolation_mode_(interpolation_mode)
   {
     BLI_assert(volume_grid_);
@@ -162,7 +162,7 @@ template<typename T> class SampleGridFunction : public mf::MultiFunction {
 
 struct SampleGridOp {
   GeoNodeExecParams params;
-  GeometryNodeSampleVolumeInterpolationMode interpolation_mode;
+  GeometryNodeSampleGridInterpolationMode interpolation_mode;
 
   template<typename T> void operator()()
   {
@@ -186,10 +186,10 @@ struct SampleGridOp {
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
-  const NodeGeometrySampleVolume &storage = node_storage(params.node());
-  const eCustomDataType data_type = eCustomDataType(storage.grid_type);
-  const GeometryNodeSampleVolumeInterpolationMode interpolation_mode =
-      GeometryNodeSampleVolumeInterpolationMode(storage.interpolation_mode);
+  const NodeGeometrySampleGrid &storage = node_storage(params.node());
+  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+  const GeometryNodeSampleGridInterpolationMode interpolation_mode =
+      GeometryNodeSampleGridInterpolationMode(storage.interpolation_mode);
 
   SampleGridOp sample_op = {params, interpolation_mode};
   grids::apply(data_type, sample_op);
@@ -203,9 +203,9 @@ static void node_geo_exec(GeoNodeExecParams params)
 static void node_rna(StructRNA *srna)
 {
   static const EnumPropertyItem interpolation_mode_items[] = {
-      {GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST, "NEAREST", 0, "Nearest Neighbor", ""},
-      {GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR, "TRILINEAR", 0, "Trilinear", ""},
-      {GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC,
+      {GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_NEAREST, "NEAREST", 0, "Nearest Neighbor", ""},
+      {GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRILINEAR, "TRILINEAR", 0, "Trilinear", ""},
+      {GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRIQUADRATIC,
        "TRIQUADRATIC",
        0,
        "Triquadratic",
@@ -226,7 +226,7 @@ static void node_rna(StructRNA *srna)
                     "Grid Type",
                     "Type of grid to sample data from",
                     grid_type_items,
-                    NOD_storage_enum_accessors(grid_type),
+                    NOD_storage_enum_accessors(data_type),
                     CD_PROP_FLOAT);
 
   RNA_def_node_enum(srna,
@@ -235,7 +235,7 @@ static void node_rna(StructRNA *srna)
                     "How to interpolate the values from neighboring voxels",
                     interpolation_mode_items,
                     NOD_storage_enum_accessors(interpolation_mode),
-                    GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR);
+                    GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRILINEAR);
 }
 
 static void node_register()
