@@ -6568,6 +6568,7 @@ void clip_and_lock_translations(const Sculpt &sd,
     for (const int i : verts.index_range()) {
       const int vert = verts[i];
 
+      /* Transform into the space of the mirror plane, check translations, then transform back. */
       float3 co_mirror = math::transform_point(mirror, positions[vert]);
       if (math::abs(co_mirror[axis]) > cache->clip_tolerance[axis]) {
         continue;
@@ -6592,7 +6593,7 @@ MutableSpan<float3> mesh_brush_positions_for_write(SculptSession &ss, Mesh & /*m
 void flush_positions_to_shape_keys(Object &object,
                                    const Span<int> verts,
                                    const Span<float3> positions,
-                                   const MutableSpan<float3> positions_orig)
+                                   const MutableSpan<float3> positions_mesh)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   KeyBlock *active_key = BKE_keyblock_from_object(&object);
@@ -6624,7 +6625,7 @@ void flush_positions_to_shape_keys(Object &object,
     /* XXX: There are too many positions arrays getting passed around. We should have a better
      * naming system or not have to constantly update both the basis and original positions.
      * OTOH, maybe that's just a consequence of the bad design of shape keys in general. */
-    apply_translations(positions, verts, positions_orig);
+    apply_translations(positions, verts, positions_mesh);
   }
 
   /* Apply new coords on active key block, no need to re-allocate kb->data here! */

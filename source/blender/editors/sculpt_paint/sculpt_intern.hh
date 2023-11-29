@@ -1856,6 +1856,6 @@ MutableSpan<float3> mesh_brush_positions_for_write(SculptSession &ss, Mesh &mesh
 void flush_positions_to_shape_keys(Object &object,
                                    Span<int> verts,
                                    Span<float3> positions,
-                                   MutableSpan<float3> positions_orig);
+                                   MutableSpan<float3> positions_mesh);
 
 }

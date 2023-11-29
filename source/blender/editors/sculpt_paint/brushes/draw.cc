@@ -36,14 +36,28 @@ struct TLS {
   Vector<float3> translations;
 };
 
+/**
+ * Note on the various positions arrays:
+ * - positions_sculpt: The positions affected by brush strokes (maybe indirectly). Owned by the
+ *   PBVH or mesh.
+ * - positions_mesh: Positions owned by the original mesh. Not the same as `positions_sculpt` if
+ *   there are deform modifiers.
+ * - positions_eval: Positions after procedural deformation, used to build the PBVH. Translations
+ *   are built for these values, then applied to `positions_sculpt`.
+ *
+ * Only two of these arrays are actually necessary. The third comes from the fact that the PBVH
+ * currently stores its own copy of positions when there are deformations. If that was removed, the
+ * situation would be clearer.
+ */
+
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
                        const float3 &offset,
                        Object &object,
                        pbvh::mesh::Node &node,
                        TLS &tls,
-                       MutableSpan<float3> positions_orig,
-                       MutableSpan<float3> mesh_positions)
+                       const MutableSpan<float3> positions_sculpt,
+                       const MutableSpan<float3> positions_mesh)
 {
   SculptSession &ss = *object.sculpt;
   StrokeCache &cache = *ss.cache;
@@ -51,7 +65,7 @@ static void calc_faces(const Sculpt &sd,
 
   pbvh::Tree pbvh_tree(*ss.pbvh);
 
-  const Span<float3> positions = pbvh_tree.vert_positions();
+  const Span<float3> positions_eval = pbvh_tree.vert_positions();
   const Span<float3> vert_normals = pbvh_tree.vert_normals();
   const Span<int> verts = node.unique_vert_indices();
 
@@ -62,7 +76,7 @@ static void calc_faces(const Sculpt &sd,
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
-      ss, positions, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+      ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
   calc_brush_strength_factors(ss, brush, verts, distances, factors);
 
   if (brush.flag & BRUSH_FRONTFACE) {
@@ -73,7 +87,7 @@ static void calc_faces(const Sculpt &sd,
     calc_mesh_automask(object, *ss.cache->automasking, node, verts, factors);
   }
 
-  calc_brush_texture_factors(ss, brush, positions, verts, factors);
+  calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
@@ -81,14 +95,14 @@ static void calc_faces(const Sculpt &sd,
     translations[i] = offset * factors[i];
   }
 
-  clip_and_lock_translations(sd, ss, positions, verts, translations);
+  clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
 
   if (!ss.deform_imats.is_empty()) {
     apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
   }
 
-  apply_translations(translations, verts, positions_orig);
-  flush_positions_to_shape_keys(object, verts, positions_orig, mesh_positions);
+  apply_translations(translations, verts, positions_sculpt);
+  flush_positions_to_shape_keys(object, verts, positions_sculpt, positions_mesh);
 
   // XXX: Maybe try not to tag verts with factor == 0.0f
   BKE_pbvh_vert_tag_update_normals(*ss.pbvh, verts);
@@ -189,13 +203,13 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
     case PBVH_FACES: {
       threading::EnumerableThreadSpecific<TLS> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);
-      MutableSpan<float3> positions_orig = mesh_brush_positions_for_write(*object.sculpt, mesh);
-      MutableSpan<float3> mesh_positions = mesh.vert_positions_for_write();
+      MutableSpan<float3> positions_sculpt = mesh_brush_positions_for_write(*object.sculpt, mesh);
+      MutableSpan<float3> positions_mesh = mesh.vert_positions_for_write();
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         TLS &tls = all_tls.local();
         for (const int i : range) {
           pbvh::mesh::Node face_node(*nodes[i]);
-          calc_faces(sd, brush, offset, object, face_node, tls, positions_orig, mesh_positions);
+          calc_faces(sd, brush, offset, object, face_node, tls, positions_sculpt, positions_mesh);
         }
       });
       break;
