@@ -1605,9 +1605,7 @@ float *BKE_key_evaluate_object_ex(
         const int totvert = min_ii(tot, mesh->totvert);
         mesh->vert_positions_for_write().take_front(totvert).copy_from(
             {reinterpret_cast<const blender::float3 *>(out), totvert});
-        mesh->runtime->vert_normals_cache.tag_dirty();
-        mesh->runtime->face_normals_cache.tag_dirty();
-        mesh->runtime->corner_normals_cache.tag_dirty();
+        BKE_mesh_tag_positions_changed(mesh);
         break;
       }
       case ID_LT: {
