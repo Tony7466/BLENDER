@@ -662,6 +662,7 @@ class NODE_MT_geometry_node_GEO_VOLUME_SAMPLE(Menu):
 
     def draw(self, context):
         layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeSampleGrid")
         if context.preferences.experimental.use_new_volume_nodes:
             node_add_menu.add_node_type(layout, "GeometryNodeSampleVolume")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Sample")
