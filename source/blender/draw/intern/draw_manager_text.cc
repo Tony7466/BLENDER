@@ -6,6 +6,13 @@
  * \ingroup draw
  */
 
+#define DEBUG_TIME
+
+#ifdef DEBUG_TIME
+#  include "PIL_time.h"
+#  include "PIL_time_utildefines.h"
+#endif
+
 #include "BKE_mesh.h"
 #include "MEM_guardedalloc.h"
 
@@ -234,34 +241,33 @@ void DRW_text_viewer_attribute(Object &object)
 
   Mesh *me = static_cast<Mesh *>(object.data);
 
-  const BMeshCreateParams params = {};
-  BMesh *bm = BKE_mesh_to_bmesh(me, &object, true, &params);
-
-  // const int num_verts = me->totvert;
   const AttributeAccessor attributes = me->attributes();
   const VArray viewer_attributes = *attributes.lookup<float3>(".viewer");
   const VArray position_attributes = *attributes.lookup<float3>("position");
 
-  // TODO: configure from overlay UI
   UI_GetThemeColor3ubv(TH_DRAWEXTRA_FACEANG, col);
 
-  BMIter iter;
-  BMVert *v;
-  float v1[3];
-  float vi[3];
+  float pos[3];
+  float val[3];
+
+#ifdef DEBUG_TIME
+  TIMEIT_START(DRW_text_viewer_attribute);
+#endif
 
   int i;
+  for (i = 0; i < me->totvert; i++) {
+    copy_v3_v3(pos, position_attributes[i]);
+    copy_v3_v3(val, viewer_attributes[i]);
 
-  BM_mesh_elem_index_ensure(bm, BM_VERT);
-  BM_ITER_MESH_INDEX (v, &iter, bm, BM_VERTS_OF_MESH, i) {
-    copy_v3_v3(v1, position_attributes[BM_elem_index_get(v)]);
-    copy_v3_v3(vi, viewer_attributes[BM_elem_index_get(v)]);
+    mul_m4_v3(object.object_to_world, pos);
 
-    mul_m4_v3(object.object_to_world, v1);
-
-    numstr_len = SNPRINTF_RLEN(numstr, "%0.2f", vi[0]);
-    // DRW_text_cache_add(dt, v1, numstr, numstr_len, 0, 0, txt_flag, col);
+    numstr_len = SNPRINTF_RLEN(numstr, "%0.2f", val[0]);
+    DRW_text_cache_add(dt, pos, numstr, numstr_len, 0, 0, txt_flag, col);
   }
+
+#ifdef DEBUG_TIME
+  TIMEIT_END(DRW_text_viewer_attribute);
+#endif
 }
 
 void DRW_text_edit_mesh_measure_stats(ARegion *region,
