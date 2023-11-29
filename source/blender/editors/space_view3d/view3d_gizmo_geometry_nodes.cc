@@ -695,6 +695,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
               gz = WM_gizmo_new("GIZMO_GT_dial_3d", gzgroup, nullptr);
               WM_gizmo_set_flag(gz, WM_GIZMO_DRAW_VALUE, true);
               WM_gizmo_set_line_width(gz, 2.0f);
+              RNA_boolean_set(gz->ptr, "wrap_angle", false);
               break;
             }
             default: {
