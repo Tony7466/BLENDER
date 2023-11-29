@@ -105,12 +105,14 @@ static void get_voxel_positions_span(GridType &grid, const MutableSpan<float3> p
   size_t leaf_offsets_size = leaf_mgr.leafCount();
   leaf_mgr.getPrefixSum(leaf_offsets, leaf_offsets_size);
 
+  const openvdb::math::Transform &transform = grid.transform();
+
   leaf_mgr.foreach ([&](const LeafNodeType &leaf, const size_t leaf_index) {
     int64_t index = leaf_offsets[leaf_index];
     typename LeafNodeType::ValueOnCIter iter = leaf.cbeginValueOn();
     for (; iter; ++iter, ++index) {
-      const openvdb::math::Coord coord = iter.getCoord();
-      positions[index] = float3(coord.x(), coord.y(), coord.z());
+      const openvdb::Vec3d pos = transform.indexToWorld(iter.getCoord());
+      positions[index] = float3(pos.x(), pos.y(), pos.z());
     }
   });
 
