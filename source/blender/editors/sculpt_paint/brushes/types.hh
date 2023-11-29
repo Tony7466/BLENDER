@@ -14,5 +14,6 @@ namespace blender::ed::sculpt_paint {
 
 void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes);
 void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes);
+void do_smooth_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes);
 
 }  // namespace blender::ed::sculpt_paint

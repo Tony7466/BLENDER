@@ -94,6 +94,7 @@ set(SRC
 
   brushes/draw.cc
   brushes/draw_vector_displacement.cc
+  brushes/smooth.cc
 
   brushes/types.hh
 )
