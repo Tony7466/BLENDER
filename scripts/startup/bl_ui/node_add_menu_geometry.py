@@ -407,8 +407,6 @@ class NODE_MT_geometry_node_GEO_MESH_OPERATIONS(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeMeshBoolean")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshToCurve")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshToPoints")
-        if context.preferences.experimental.use_new_volume_nodes:
-            node_add_menu.add_node_type(layout, "GeometryNodeMeshToSDFVolume")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshToVolume")
         node_add_menu.add_node_type(layout, "GeometryNodeScaleElements")
         node_add_menu.add_node_type(layout, "GeometryNodeSplitEdges")
@@ -475,8 +473,6 @@ class NODE_MT_category_GEO_POINT(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodePoints")
         node_add_menu.add_node_type(layout, "GeometryNodePointsToCurves")
         node_add_menu.add_node_type(layout, "GeometryNodePointsToVertices")
-        if context.preferences.experimental.use_new_volume_nodes:
-            node_add_menu.add_node_type(layout, "GeometryNodePointsToSDFVolume")
         node_add_menu.add_node_type(layout, "GeometryNodePointsToVolume")
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeSetPointRadius")
@@ -652,7 +648,6 @@ class NODE_MT_geometry_node_GEO_VOLUME_READ(Menu):
         layout = self.layout
         if context.preferences.experimental.use_new_volume_nodes:
             node_add_menu.add_node_type(layout, "GeometryNodeGetNamedGrid")
-            node_add_menu.add_node_type(layout, "GeometryNodeInputSignedDistance")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Read")
 
 
@@ -664,7 +659,6 @@ class NODE_MT_geometry_node_GEO_VOLUME_SAMPLE(Menu):
         layout = self.layout
         if context.preferences.experimental.use_new_volume_nodes:
             node_add_menu.add_node_type(layout, "GeometryNodeSampleGrid")
-            node_add_menu.add_node_type(layout, "GeometryNodeSampleVolume")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Sample")
 
 
@@ -690,8 +684,6 @@ class NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS(Menu):
             node_add_menu.add_node_type(layout, "GeometryNodeDilateGrid")
             node_add_menu.add_node_type(layout, "GeometryNodeErodeGrid")
             node_add_menu.add_node_type(layout, "GeometryNodeExtrapolateGrid")
-            node_add_menu.add_node_type(layout, "GeometryNodeMeanFilterSDFVolume")
-            node_add_menu.add_node_type(layout, "GeometryNodeOffsetSDFVolume")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Operations")
 
 
@@ -702,8 +694,6 @@ class NODE_MT_geometry_node_GEO_VOLUME_PRIMITIVES(Menu):
     def draw(self, context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeVolumeCube")
-        if context.preferences.experimental.use_new_volume_nodes:
-            node_add_menu.add_node_type(layout, "GeometryNodeSDFVolumeSphere")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Primitives")
 
 

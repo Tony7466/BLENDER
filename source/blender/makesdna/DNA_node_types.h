@@ -1882,12 +1882,12 @@ typedef struct NodeGeometryDistributePointsInVolume {
   uint8_t mode;
 } NodeGeometryDistributePointsInVolume;
 
-typedef struct NodeGeometrySampleVolume {
+typedef struct NodeGeometrySampleGrid {
   /** #eCustomDataType. */
-  int8_t grid_type;
-  /** #GeometryNodeSampleVolumeInterpolationMode */
+  int8_t data_type;
+  /** #GeometryNodeSampleGridInterpolationMode */
   int8_t interpolation_mode;
-} NodeGeometrySampleVolume;
+} NodeGeometrySampleGrid;
 
 typedef struct NodeGeometryExtrapolateGrid {
   /** #GeometryNodeGridExtrapolationInputType. */
@@ -2791,11 +2791,11 @@ typedef enum GeometryNodeScaleElementsMode {
   GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS = 1,
 } GeometryNodeScaleElementsMode;
 
-typedef enum GeometryNodeSampleVolumeInterpolationMode {
-  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST = 0,
-  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR = 1,
-  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC = 2,
-} GeometryNodeSampleVolumeInterpolationMode;
+typedef enum GeometryNodeSampleGridInterpolationMode {
+  GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_NEAREST = 0,
+  GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRILINEAR = 1,
+  GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRIQUADRATIC = 2,
+} GeometryNodeSampleGridInterpolationMode;
 
 typedef enum GeometryNodeGridExtrapolationInputType {
   GEO_NODE_EXTRAPOLATE_GRID_INPUT_SDF = 0,
