@@ -78,6 +78,14 @@ enum eDebugMode : uint32_t {
    * Show random color for each tile. Verify distribution and LOD transitions.
    */
   DEBUG_SHADOW_TILEMAP_RANDOM_COLOR = 13u,
+  /**
+   * Show storage cost of each pixel in the gbuffer.
+   */
+  DEBUG_GBUFFER_STORAGE = 14u,
+  /**
+   * Show evaluation cost of each pixel.
+   */
+  DEBUG_GBUFFER_EVALUATION = 15u,
 };
 
 /** \} */

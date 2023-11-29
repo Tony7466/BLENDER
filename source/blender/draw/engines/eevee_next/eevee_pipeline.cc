@@ -681,6 +681,8 @@ void DeferredLayer::render(View &main_view,
     GPU_texture_copy(radiance_feedback_tx_, rb.combined_tx);
     radiance_feedback_persmat_ = render_view.persmat();
   }
+
+  inst_.pipelines.deferred.debug_draw(combined_fb);
 }
 
 /** \} */
@@ -701,6 +703,41 @@ void DeferredPipeline::end_sync()
 {
   opaque_layer_.end_sync();
   refraction_layer_.end_sync();
+
+  debug_pass_sync();
+}
+
+void DeferredPipeline::debug_pass_sync()
+{
+  Instance &inst = opaque_layer_.inst_;
+  if (!ELEM(inst.debug_mode,
+            eDebugMode::DEBUG_GBUFFER_EVALUATION,
+            eDebugMode::DEBUG_GBUFFER_STORAGE))
+  {
+    return;
+  }
+
+  PassSimple &pass = debug_draw_ps_;
+  pass.init();
+  pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
+  pass.shader_set(inst.shaders.static_shader_get(DEBUG_GBUFFER));
+  pass.push_constant("debug_mode", int(inst.debug_mode));
+  inst.gbuffer.bind_resources(pass);
+  pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+}
+
+void DeferredPipeline::debug_draw(GPUFrameBuffer *combined_fb)
+{
+  Instance &inst = opaque_layer_.inst_;
+  if (!ELEM(inst.debug_mode,
+            eDebugMode::DEBUG_GBUFFER_EVALUATION,
+            eDebugMode::DEBUG_GBUFFER_STORAGE))
+  {
+    return;
+  }
+
+  GPU_framebuffer_bind(combined_fb);
+  inst.manager->submit(debug_draw_ps_);
 }
 
 PassMain::Sub *DeferredPipeline::prepass_add(::Material *blender_mat,

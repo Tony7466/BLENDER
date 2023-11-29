@@ -258,6 +258,8 @@ class DeferredPipeline {
   DeferredLayer refraction_layer_;
   DeferredLayer volumetric_layer_;
 
+  PassSimple debug_draw_ps_ = {"debug_gbuffer"};
+
  public:
   DeferredPipeline(Instance &inst)
       : opaque_layer_(inst), refraction_layer_(inst), volumetric_layer_(inst){};
@@ -288,6 +290,11 @@ class DeferredPipeline {
   {
     return max_ii(opaque_layer_.color_layer_count(), refraction_layer_.color_layer_count());
   }
+
+  void debug_draw(GPUFrameBuffer *combined_fb);
+
+ private:
+  void debug_pass_sync();
 };
 
 /** \} */
