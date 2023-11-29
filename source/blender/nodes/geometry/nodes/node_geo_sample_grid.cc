@@ -142,6 +142,8 @@ template<typename T> class SampleGridFunction : public mf::MultiFunction {
                      GeometryNodeSampleVolumeInterpolationMode interpolation_mode)
       : volume_grid_(std::move(volume_grid)), interpolation_mode_(interpolation_mode)
   {
+    BLI_assert(volume_grid_);
+
     const CPPType &cpp_type = CPPType::get<T>();
     mf::SignatureBuilder builder{"Sample Volume", signature_};
     builder.single_input<float3>("Position");

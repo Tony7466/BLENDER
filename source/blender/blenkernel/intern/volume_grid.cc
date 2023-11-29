@@ -212,17 +212,14 @@ namespace blender::bke {
 VolumeGrid::VolumeGrid(const GridBasePtr &local_grid)
     : local_grid_(local_grid), entry_(nullptr), simplify_level_(0), is_loaded_(false)
 {
-}
-
-VolumeGrid::VolumeGrid(const bool is_loaded, const int simplify_level)
-    : local_grid_(nullptr), entry_(nullptr), simplify_level_(simplify_level), is_loaded_(is_loaded)
-{
+  BLI_assert(local_grid_);
 }
 
 VolumeGrid::VolumeGrid(const VolumeFileCacheEntry &template_entry, const int simplify_level)
     : local_grid_(nullptr), entry_(nullptr), simplify_level_(simplify_level), is_loaded_(false)
 {
   entry_ = GLOBAL_CACHE.add_metadata_user(template_entry);
+  BLI_assert(entry_->grid);
 }
 
 VolumeGrid::VolumeGrid(const char *template_file_path,
@@ -231,6 +228,7 @@ VolumeGrid::VolumeGrid(const char *template_file_path,
     : local_grid_(nullptr), entry_(nullptr), simplify_level_(simplify_level), is_loaded_(false)
 {
   entry_ = GLOBAL_CACHE.add_metadata_user(VolumeFileCacheEntry(template_file_path, template_grid));
+  BLI_assert(entry_->grid);
 }
 
 VolumeGrid::VolumeGrid(const VolumeGrid &other)
