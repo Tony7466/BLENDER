@@ -587,6 +587,11 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 {
   auto *gzgroup_data = static_cast<GeometryNodesGizmoGroup *>(gzgroup->customdata);
 
+  View3D *v3d = CTX_wm_view3d(C);
+  if (!v3d) {
+    return;
+  }
+
   Object *ob_orig = CTX_data_active_object(C);
   const NodesModifierData &nmd = *reinterpret_cast<const NodesModifierData *>(
       BKE_object_active_modifier(ob_orig));
@@ -604,7 +609,15 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     return;
   }
 
-  const bke::GeometrySet geometry = bke::object_get_evaluated_geometry_set(*ob_eval);
+  bke::GeometrySet geometry = bke::object_get_evaluated_geometry_set(*ob_eval);
+  if (v3d->flag2 & V3D_SHOW_VIEWER) {
+    const ViewerPath &viewer_path = v3d->viewer_path;
+    if (const geo_eval_log::ViewerNodeLog *viewer_log =
+            nmd.runtime->eval_log->find_viewer_node_log_for_path(viewer_path))
+    {
+      geometry = viewer_log->geometry;
+    }
+  }
 
   bNodeTree &ntree = *nmd.node_group;
   ntree.ensure_topology_cache();
