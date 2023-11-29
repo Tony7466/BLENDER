@@ -25,8 +25,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   options.keep_original_ids = false;
   options.realize_instance_attributes = true;
   options.propagation_info = params.get_output_propagation_info("Geometry");
-  geometry_set = geometry::realize_instances(geometry_set, options);
-  params.set_output("Geometry", std::move(geometry_set));
+  GeometrySet new_geometry_set = geometry::realize_instances(geometry_set, options);
+  new_geometry_set.name = geometry_set.name;
+  params.set_output("Geometry", std::move(new_geometry_set));
 }
 
 static void node_register()

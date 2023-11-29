@@ -870,6 +870,7 @@ static void node_geo_exec(GeoNodeExecParams params)
           guide_curves_geometry.get_component<GeometryComponentEditData>()) {
     new_curves.add(*curve_edit_data);
   }
+  new_curves.name = guide_curves_geometry.name;
 
   params.set_output("Curves", std::move(new_curves));
 }
