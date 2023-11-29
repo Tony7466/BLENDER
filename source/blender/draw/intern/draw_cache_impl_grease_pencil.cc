@@ -279,12 +279,12 @@ static void grease_pencil_edit_batch_ensure(const GreasePencil &grease_pencil, c
       continue;
     }
 
-    const VArray<bool> selection_bool = *attributes.lookup_or_default<bool>(
+    const VArray<bool> selection = *attributes.lookup_or_default<bool>(
         ".selection", ATTR_DOMAIN_POINT, true);
 
     for (const int curve_i : curves.curves_range()) {
       const IndexRange points = points_by_curve[curve_i];
-      if (ed::curves::has_anything_selected(selection_bool, points)) {
+      if (ed::curves::has_anything_selected(selection, points)) {
         visible_points_num += points.size();
       }
     }
