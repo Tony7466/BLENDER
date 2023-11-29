@@ -1477,7 +1477,7 @@ static bke::CurvesGeometry duplicate_points(const bke::CurvesGeometry &curves,
   Vector<bool> dst_cyclic(curves.curves_num());
   src_cyclic.materialize(dst_cyclic.as_mutable_span());
 
-  int curr_dst_point_id = curves.points_num();
+  int curr_dst_point_start = curves.points_num();
 
   /* Add the duplicated curves and points. */
   for (const int curve_i : curves.curves_range()) {
@@ -1506,17 +1506,17 @@ static bke::CurvesGeometry duplicate_points(const bke::CurvesGeometry &curves,
 
       int count = range.size();
       array_utils::fill_index_range<int>(
-          dst_to_src_point.as_mutable_span().slice(curr_dst_point_id, count),
+          dst_to_src_point.as_mutable_span().slice(curr_dst_point_start, count),
           range.start() + points.first());
-      curr_dst_point_id += range.size();
+      curr_dst_point_start += range.size();
 
       /* Join the first range to the end of the last range. */
       if (is_curve_self_joined && range_i == range_ids.last()) {
         const IndexRange first_range = ranges_to_duplicate[range_ids.first()];
         array_utils::fill_index_range<int>(
-            dst_to_src_point.as_mutable_span().slice(curr_dst_point_id, first_range.size()),
+            dst_to_src_point.as_mutable_span().slice(curr_dst_point_start, first_range.size()),
             first_range.start() + points.first());
-        curr_dst_point_id += first_range.size();
+        curr_dst_point_start += first_range.size();
         count += first_range.size();
       }
 
