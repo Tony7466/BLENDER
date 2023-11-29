@@ -30,14 +30,14 @@
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
-/** \name Draw Data
+/** \name Recalc
  *
  * \{ */
 
-static void draw_data_init_cb(DrawData *dd)
+void SyncModule::view_update()
 {
-  /* Object has just been created or was never evaluated by the engine. */
-  dd->recalc = ID_RECALC_ALL;
+  world_updated_ = DEG_id_type_updated(inst_.depsgraph, ID_WO);
+  scene_updated_ = DEG_id_type_updated(inst_.depsgraph, ID_SCE);
 }
 
 ObjectHandle &SyncModule::sync_object(const ObjectRef &ob_ref)
@@ -52,39 +52,21 @@ ObjectHandle &SyncModule::sync_object(const ObjectRef &ob_ref)
 
   handle.recalc = inst_.get_recalc_flags(ob_ref);
 
-  if (handle.recalc != 0) {
-    inst_.sampling.reset();
-  }
-
   return handle;
 }
 
-WorldHandle &SyncModule::sync_world(::World *world)
+WorldHandle SyncModule::sync_world()
 {
-  DrawEngineType *owner = (DrawEngineType *)&DRW_engine_viewport_eevee_next_type;
-  DrawData *dd = DRW_drawdata_ensure(
-      (ID *)world, owner, sizeof(eevee::WorldHandle), draw_data_init_cb, nullptr);
-  WorldHandle &eevee_dd = *reinterpret_cast<WorldHandle *>(dd);
-
-  const int recalc_flags = ID_RECALC_ALL;
-  if ((eevee_dd.recalc & recalc_flags) != 0) {
-    inst_.sampling.reset();
-  }
-  return eevee_dd;
+  WorldHandle handle;
+  handle.recalc = world_updated_ ? ID_RECALC_SHADING : 0;
+  return handle;
 }
 
-SceneHandle &SyncModule::sync_scene(::Scene *scene)
+SceneHandle SyncModule::sync_scene()
 {
-  DrawEngineType *owner = (DrawEngineType *)&DRW_engine_viewport_eevee_next_type;
-  DrawData *dd = DRW_drawdata_ensure(
-      (ID *)scene, owner, sizeof(eevee::SceneHandle), draw_data_init_cb, nullptr);
-  SceneHandle &eevee_dd = *reinterpret_cast<SceneHandle *>(dd);
-
-  const int recalc_flags = ID_RECALC_ALL;
-  if ((eevee_dd.recalc & recalc_flags) != 0) {
-    inst_.sampling.reset();
-  }
-  return eevee_dd;
+  SceneHandle handle;
+  handle.recalc = scene_updated_ ? ID_RECALC_SHADING : 0;
+  return handle;
 }
 
 /** \} */
