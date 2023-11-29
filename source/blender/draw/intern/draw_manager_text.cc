@@ -239,13 +239,13 @@ void DRW_text_viewer_attribute(Object &object)
   char numstr[32];
   size_t numstr_len;
 
+  UI_GetThemeColor4ubv(TH_DRAWEXTRA_FACEANG, col);
+
   Mesh *me = static_cast<Mesh *>(object.data);
 
   const AttributeAccessor attributes = me->attributes();
   const VArray viewer_attributes = *attributes.lookup<float3>(".viewer");
   const VArray position_attributes = *attributes.lookup<float3>("position");
-
-  UI_GetThemeColor3ubv(TH_DRAWEXTRA_FACEANG, col);
 
   float pos[3];
   float val[3];
