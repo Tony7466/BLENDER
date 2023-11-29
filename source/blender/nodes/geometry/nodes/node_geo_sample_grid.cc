@@ -244,7 +244,7 @@ static void node_register()
 
   geo_node_type_base(&ntype, GEO_NODE_SAMPLE_GRID, "Sample Grid", NODE_CLASS_CONVERTER);
   node_type_storage(
-      &ntype, "NodeGeometrySampleVolume", node_free_standard_storage, node_copy_standard_storage);
+      &ntype, "NodeGeometrySampleGrid", node_free_standard_storage, node_copy_standard_storage);
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
   ntype.gather_link_search_ops = search_link_ops;
