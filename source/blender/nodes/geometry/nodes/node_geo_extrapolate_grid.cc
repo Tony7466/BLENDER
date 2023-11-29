@@ -265,6 +265,7 @@ struct ExtrapolateOp {
       /* TODO this happens when the iso value is outside a valid range, which depends on the
        * values in the input grid. Might be worth converting exception messages to node warnings.
        */
+      UNUSED_VARS(ex);
     }
   }
 };
