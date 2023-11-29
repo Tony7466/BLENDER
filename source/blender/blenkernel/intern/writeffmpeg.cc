@@ -183,10 +183,12 @@ static int write_audio_frame(FFMpegContext *context)
 
   int success = 1;
 
+  char error_str[AV_ERROR_MAX_STRING_SIZE];
   int ret = avcodec_send_frame(c, frame);
   if (ret < 0) {
     /* Can't send frame to encoder. This shouldn't happen. */
-    fprintf(stderr, "Can't send audio frame: %s\n", av_err2str(ret));
+    av_make_error_string(error_str, AV_ERROR_MAX_STRING_SIZE, ret);
+    fprintf(stderr, "Can't send audio frame: %s\n", error_str);
     success = -1;
   }
 
@@ -199,7 +201,8 @@ static int write_audio_frame(FFMpegContext *context)
       break;
     }
     if (ret < 0) {
-      fprintf(stderr, "Error encoding audio frame: %s\n", av_err2str(ret));
+      av_make_error_string(error_str, AV_ERROR_MAX_STRING_SIZE, ret);
+      fprintf(stderr, "Error encoding audio frame: %s\n", error_str);
       success = -1;
     }
 
@@ -213,7 +216,8 @@ static int write_audio_frame(FFMpegContext *context)
 
     int write_ret = av_interleaved_write_frame(context->outfile, pkt);
     if (write_ret != 0) {
-      fprintf(stderr, "Error writing audio packet: %s\n", av_err2str(write_ret));
+      av_make_error_string(error_str, AV_ERROR_MAX_STRING_SIZE, ret);
+      fprintf(stderr, "Error writing audio packet: %s\n", error_str);
       success = -1;
       break;
     }
@@ -330,10 +334,12 @@ static int write_video_frame(FFMpegContext *context, AVFrame *frame, ReportList 
   frame->pts = context->video_time;
   context->video_time++;
 
+  char error_str[AV_ERROR_MAX_STRING_SIZE];
   ret = avcodec_send_frame(c, frame);
   if (ret < 0) {
     /* Can't send frame to encoder. This shouldn't happen. */
-    fprintf(stderr, "Can't send video frame: %s\n", av_err2str(ret));
+    av_make_error_string(error_str, AV_ERROR_MAX_STRING_SIZE, ret);
+    fprintf(stderr, "Can't send video frame: %s\n", error_str);
     success = -1;
   }
 
@@ -345,7 +351,8 @@ static int write_video_frame(FFMpegContext *context, AVFrame *frame, ReportList 
       break;
     }
     if (ret < 0) {
-      fprintf(stderr, "Error encoding frame: %s\n", av_err2str(ret));
+      av_make_error_string(error_str, AV_ERROR_MAX_STRING_SIZE, ret);
+      fprintf(stderr, "Error encoding frame: %s\n", error_str);
       break;
     }
 
@@ -363,7 +370,8 @@ static int write_video_frame(FFMpegContext *context, AVFrame *frame, ReportList 
 
   if (!success) {
     BKE_report(reports, RPT_ERROR, "Error writing frame");
-    PRINT("Error writing frame: %s\n", av_err2str(ret));
+    av_make_error_string(error_str, AV_ERROR_MAX_STRING_SIZE, ret);
+    PRINT("Error writing frame: %s\n", error_str);
   }
 
   av_packet_free(&packet);
@@ -884,7 +892,9 @@ static AVStream *alloc_video_stream(FFMpegContext *context,
   int ret = avcodec_open2(c, codec, &opts);
 
   if (ret < 0) {
-    fprintf(stderr, "Couldn't initialize video codec: %s\n", av_err2str(ret));
+    char error_str[AV_ERROR_MAX_STRING_SIZE];
+    av_make_error_string(error_str, AV_ERROR_MAX_STRING_SIZE, ret);
+    fprintf(stderr, "Couldn't initialize video codec: %s\n", error_str);
     BLI_strncpy(error, IMB_ffmpeg_last_error(), error_size);
     av_dict_free(&opts);
     avcodec_free_context(&c);
@@ -1031,7 +1041,9 @@ static AVStream *alloc_audio_stream(FFMpegContext *context,
   int ret = avcodec_open2(c, codec, NULL);
 
   if (ret < 0) {
-    fprintf(stderr, "Couldn't initialize audio codec: %s\n", av_err2str(ret));
+    char error_str[AV_ERROR_MAX_STRING_SIZE];
+    av_make_error_string(error_str, AV_ERROR_MAX_STRING_SIZE, ret);
+    fprintf(stderr, "Couldn't initialize audio codec: %s\n", error_str);
     BLI_strncpy(error, IMB_ffmpeg_last_error(), error_size);
     avcodec_free_context(&c);
     context->audio_codec = NULL;
@@ -1278,7 +1290,9 @@ static int start_ffmpeg_impl(FFMpegContext *context,
     BKE_report(reports,
                RPT_ERROR,
                "Could not initialize streams, probably unsupported codec combination");
-    PRINT("Could not write media header: %s\n", av_err2str(ret));
+    char error_str[AV_ERROR_MAX_STRING_SIZE];
+    av_make_error_string(error_str, AV_ERROR_MAX_STRING_SIZE, ret);
+    PRINT("Could not write media header: %s\n", error_str);
     goto fail;
   }
 
@@ -1323,6 +1337,7 @@ fail:
  */
 static void flush_ffmpeg(AVCodecContext *c, AVStream *stream, AVFormatContext *outfile)
 {
+  char error_str[AV_ERROR_MAX_STRING_SIZE];
   AVPacket *packet = av_packet_alloc();
 
   avcodec_send_frame(c, NULL);
@@ -1337,7 +1352,8 @@ static void flush_ffmpeg(AVCodecContext *c, AVStream *stream, AVFormatContext *o
       break;
     }
     if (ret < 0) {
-      fprintf(stderr, "Error encoding delayed frame: %s\n", av_err2str(ret));
+      av_make_error_string(error_str, AV_ERROR_MAX_STRING_SIZE, ret);
+      fprintf(stderr, "Error encoding delayed frame: %s\n", error_str);
       break;
     }
 
@@ -1349,7 +1365,8 @@ static void flush_ffmpeg(AVCodecContext *c, AVStream *stream, AVFormatContext *o
 
     int write_ret = av_interleaved_write_frame(outfile, packet);
     if (write_ret != 0) {
-      fprintf(stderr, "Error writing delayed frame: %s\n", av_err2str(write_ret));
+      av_make_error_string(error_str, AV_ERROR_MAX_STRING_SIZE, ret);
+      fprintf(stderr, "Error writing delayed frame: %s\n", error_str);
       break;
     }
   }
