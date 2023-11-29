@@ -235,7 +235,7 @@ void DRW_text_viewer_attribute(Object &object)
   DRWTextStore *dt = DRW_text_cache_ensure();
   const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
 
-  uchar col[4] = {0, 0, 0, 255}; /* color of the text to draw */
+  uchar col[4];
   char numstr[32];
   size_t numstr_len;
 
@@ -250,10 +250,6 @@ void DRW_text_viewer_attribute(Object &object)
   float pos[3];
   float val[3];
 
-#ifdef DEBUG_TIME
-  TIMEIT_START(DRW_text_viewer_attribute);
-#endif
-
   int i;
   for (i = 0; i < me->totvert; i++) {
     copy_v3_v3(pos, position_attributes[i]);
@@ -264,10 +260,6 @@ void DRW_text_viewer_attribute(Object &object)
     numstr_len = SNPRINTF_RLEN(numstr, "%0.2f", val[0]);
     DRW_text_cache_add(dt, pos, numstr, numstr_len, 0, 0, txt_flag, col);
   }
-
-#ifdef DEBUG_TIME
-  TIMEIT_END(DRW_text_viewer_attribute);
-#endif
 }
 
 void DRW_text_edit_mesh_measure_stats(ARegion *region,
