@@ -21,7 +21,7 @@ typedef struct CopyBuffer {
 } CopyBuffer;
 
 typedef struct Foo {
-  int array_size;
+  int object_count;
   int frame_count;
   CopyBuffer *buffer;
 } Foo;
@@ -60,8 +60,12 @@ static int world_space_copy_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  Foo foo;
+  foo.object_count = selected_ids;
+  foo.frame_count = frame_count;
   CopyBuffer *copy_buffer = static_cast<CopyBuffer *>(
       MEM_callocN(sizeof(CopyBuffer) * selected_ids, "World Space Copy Buffer"));
+  foo.buffer = copy_buffer;
 
   for (int i = 0; i < selected_ids; i++) {
     copy_buffer[i].name = BLI_strdup(ids[i].name);
@@ -89,7 +93,7 @@ static int world_space_copy_exec(bContext *C, wmOperator *op)
   const char *cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, nullptr);
   BLI_path_join(filepath, sizeof(filepath), cfgdir, "world_space_buffer");
   FILE *f = fopen(filepath, "wb");
-  fwrite(copy_buffer, sizeof(CopyBuffer), sizeof(copy_buffer), f);
+  fwrite(copy_buffer, sizeof(Foo), sizeof(foo), f);
   fclose(f);
 
   for (int i = 0; i < selected_ids; i++) {
