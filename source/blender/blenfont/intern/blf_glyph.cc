@@ -270,8 +270,8 @@ static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
     /* This has been rendered and we have a bitmap. */
     g->pos[0] = glyph->bitmap_left;
     g->pos[1] = glyph->bitmap_top;
-    g->dims[0] = (int)glyph->bitmap.width;
-    g->dims[1] = (int)glyph->bitmap.rows;
+    g->dims[0] = int(glyph->bitmap.width);
+    g->dims[1] = int(glyph->bitmap.rows);
     g->pitch = glyph->bitmap.pitch;
     g->depth = 1;
 
@@ -299,7 +299,7 @@ static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
              FT_PIXEL_MODE_GRAY4))
     {
       /* Scale 1, 2, 4-bit gray to 8-bit. */
-      const char scale = (char)(255 / (glyph->bitmap.num_grays - 1));
+      const char scale = char(255 / (glyph->bitmap.num_grays - 1));
       for (int i = 0; i < buffer_size; i++) {
 #ifdef BLF_GAMMA_CORRECT_GLYPHS
         /* Convert coverage amounts to perceptually-improved lightness values. */
