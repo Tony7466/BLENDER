@@ -318,7 +318,11 @@ void LookdevView::render()
                      GPU_ATTACHMENT_TEXTURE_LAYER(inst_.lookdev.color_tx_, 1));
 
   // create view for rendering spheres
-  float4x4 view_m4 = float4x4::identity();
+  float3x3 view_rotation_m3;
+  mat4_to_rot(view_rotation_m3.ptr(), inst_.camera.data_get().viewmat.ptr());
+  float4x4 view_m4(view_rotation_m3);
+  // float4x4 &view_m4 = inst_.camera.data_get().viewmat;
+
   float4x4 win_m4 = math::projection::orthographic(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
   view_.sync(view_m4, win_m4);
 
