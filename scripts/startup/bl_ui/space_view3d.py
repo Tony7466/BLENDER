@@ -8057,7 +8057,7 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
 
 
 class VIEW3D_MT_greasepencil_material_active(Menu):
-    bl_label = "Change Active Material"
+    bl_label = "Active Material"
 
     @classmethod
     def poll(cls, context):
