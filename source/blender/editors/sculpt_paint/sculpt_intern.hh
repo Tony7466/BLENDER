@@ -934,8 +934,10 @@ void SCULPT_vertex_neighbors_get(SculptSession *ss,
     neighbor_iterator.vertex = neighbor_iterator.neighbors[neighbor_iterator.i]; \
     neighbor_iterator.index = neighbor_iterator.neighbor_indices[neighbor_iterator.i];
 
-/** Iterate over neighboring and duplicate vertices (for PBVH_GRIDS). Duplicates come
- * first since they are nearest for floodfill. */
+/**
+ * Iterate over neighboring and duplicate vertices (for PBVH_GRIDS).
+ * Duplicates come first since they are nearest for flood-fill.
+ */
 #define SCULPT_VERTEX_DUPLICATES_AND_NEIGHBORS_ITER_BEGIN(ss, v_index, neighbor_iterator) \
   SCULPT_vertex_neighbors_get(ss, v_index, true, &neighbor_iterator); \
   for (neighbor_iterator.i = neighbor_iterator.size - 1; neighbor_iterator.i >= 0; \
@@ -1518,11 +1520,6 @@ void SCULPT_undo_push_end_ex(Object *ob, const bool use_nested_undo);
 /** \} */
 
 void SCULPT_vertcos_to_key(Object *ob, KeyBlock *kb, blender::Span<blender::float3> vertCos);
-
-/**
- * Copy the PBVH bounding box into the object's bounding box.
- */
-void SCULPT_update_object_bounding_box(Object *ob);
 
 /**
  * Get a screen-space rectangle of the modified area.
