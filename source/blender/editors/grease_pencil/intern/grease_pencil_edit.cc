@@ -1467,7 +1467,7 @@ static const EnumPropertyItem *material_enum_itemf(bContext *C,
   EnumPropertyItem *item = nullptr, item_tmp = {0};
   int totitem = 0;
 
-  if (ELEM(nullptr, C, ob)) {
+  if (ob == nullptr) {
     return rna_enum_dummy_DEFAULT_items;
   }
 
@@ -1492,7 +1492,7 @@ static int grease_pencil_set_material_exec(bContext *C, wmOperator *op)
 {
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  int slot = RNA_enum_get(op->ptr, "slot");
+  const int slot = RNA_enum_get(op->ptr, "slot");
 
   /* Try to get material slot. */
   if ((slot < 1) || (slot > object->totcol)) {
