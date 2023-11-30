@@ -115,6 +115,9 @@ class PaintOperation : public GreasePencilStrokeOperation {
   /* The start index of the smoothing window. */
   int active_smooth_start_index_ = 0;
 
+  /* Helper class to project screen space coordinates to 3d. */
+  ed::greasepencil::DrawingPlacement placement_;
+
   friend struct PaintOperationExecutor;
 
  public:
@@ -144,10 +147,6 @@ struct PaintOperationExecutor {
   float4 vertex_color_;
 
   bke::greasepencil::Drawing *drawing_;
-
-  ed::greasepencil::DrawingPlacementInfo placement_info_;
-  float3 placement_loc_;
-  float4 placement_plane_;
 
   PaintOperationExecutor(const bContext &C)
   {
@@ -184,39 +183,16 @@ struct PaintOperationExecutor {
     BLI_assert(drawing_index >= 0);
     drawing_ =
         &reinterpret_cast<GreasePencilDrawing *>(grease_pencil_->drawing(drawing_index))->wrap();
-
-    placement_info_ = ed::greasepencil::DrawingPlacementInfo(*scene_, *object_);
-    placement_loc_ = placement_info_.location(*scene_);
-    float3 normal = placement_info_.normal(*scene_, *CTX_wm_region_view3d(&C));
-    plane_from_point_normal_v3(placement_plane_, placement_loc_, normal);
   }
 
-  float3 screen_space_to_layer(const float2 co)
-  {
-    using namespace ed::greasepencil;
-
-    float3 proj_point;
-    if (ELEM(placement_info_.plane,
-                  DrawingPlacementPlane::Front,
-                  DrawingPlacementPlane::Side,
-                  DrawingPlacementPlane::Top,
-                  DrawingPlacementPlane::Cursor))
-    {
-      ED_view3d_win_to_3d_on_plane(region_, placement_plane_, co, false, proj_point);
-    }
-    else if (placement_info_.plane == DrawingPlacementPlane::View) {
-      ED_view3d_win_to_3d(view3d_, region_, placement_loc_, co, proj_point);
-    }
-    return math::transform_point(placement_info_.transforms.world_space_to_layer_space,
-                                 proj_point);
-  }
-
-  float radius_from_input_sample(const bContext &C, const InputSample &sample)
+  float radius_from_input_sample(PaintOperation &self,
+                                 const bContext &C,
+                                 const InputSample &sample)
   {
     ViewContext vc = ED_view3d_viewcontext_init(const_cast<bContext *>(&C),
                                                 CTX_data_depsgraph_pointer(&C));
     float radius = calc_brush_radius(
-        &vc, brush_, scene_, screen_space_to_layer(sample.mouse_position));
+        &vc, brush_, scene_, self.placement_.project(sample.mouse_position));
     if (BKE_brush_use_size_pressure(brush_)) {
       radius *= BKE_curvemapping_evaluateF(settings_->curve_sensitivity, 0, sample.pressure);
     }
@@ -238,7 +214,7 @@ struct PaintOperationExecutor {
                             const int material_index)
   {
     const float2 start_coords = start_sample.mouse_position;
-    const float start_radius = this->radius_from_input_sample(C, start_sample);
+    const float start_radius = this->radius_from_input_sample(self, C, start_sample);
     const float start_opacity = this->opacity_from_input_sample(start_sample);
     const ColorGeometry4f start_vertex_color = ColorGeometry4f(vertex_color_);
 
@@ -252,7 +228,7 @@ struct PaintOperationExecutor {
     curves.resize(curves.points_num() + 1, curves.curves_num() + 1);
     curves.offsets_for_write().last(1) = num_old_points;
 
-    curves.positions_for_write().last() = screen_space_to_layer(start_coords);
+    curves.positions_for_write().last() = self.placement_.project(start_coords);
     drawing_->radii_for_write().last() = start_radius;
     drawing_->opacities_for_write().last() = start_opacity;
     drawing_->vertex_colors_for_write().last() = start_vertex_color;
@@ -368,7 +344,7 @@ struct PaintOperationExecutor {
 
       /* Update the positions in the current cache. */
       window_coords[window_i] = new_pos;
-      positions_slice[window_i] = screen_space_to_layer(new_pos);
+      positions_slice[window_i] = self.placement_.project(new_pos);
     }
 
     /* Remove all the converged points from the active window and shrink the window accordingly. */
@@ -383,7 +359,7 @@ struct PaintOperationExecutor {
                                 const InputSample &extension_sample)
   {
     const float2 coords = extension_sample.mouse_position;
-    const float radius = this->radius_from_input_sample(C, extension_sample);
+    const float radius = this->radius_from_input_sample(self, C, extension_sample);
     const float opacity = this->opacity_from_input_sample(extension_sample);
     const ColorGeometry4f vertex_color = ColorGeometry4f(vertex_color_);
 
@@ -397,7 +373,7 @@ struct PaintOperationExecutor {
 
     /* Overwrite last point if it's very close. */
     if (math::distance(coords, prev_coords) < POINT_OVERRIDE_THRESHOLD_PX) {
-      curves.positions_for_write().last() = screen_space_to_layer(coords);
+      curves.positions_for_write().last() = self.placement_.project(coords);
       drawing_->radii_for_write().last() = math::max(radius, prev_radius);
       drawing_->opacities_for_write().last() = math::max(opacity, prev_opacity);
       return;
@@ -443,7 +419,7 @@ struct PaintOperationExecutor {
         self.active_smooth_start_index_);
     if (smooth_window.size() < min_active_smoothing_points_num) {
       for (const int64_t i : new_screen_space_coords.index_range()) {
-        new_positions[i] = screen_space_to_layer(new_screen_space_coords[i]);
+        new_positions[i] = self.placement_.project(new_screen_space_coords[i]);
       }
     }
     else {
@@ -475,6 +451,8 @@ struct PaintOperationExecutor {
 
 void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
 {
+  ARegion *region = CTX_wm_region(&C);
+  View3D *view3d = CTX_wm_view3d(&C);
   Scene *scene = CTX_data_scene(&C);
   Object *object = CTX_data_active_object(&C);
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
@@ -491,6 +469,16 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_hue);
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_saturation);
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_value);
+
+  /* Initialize helper class for projecting screen space coordinates. */
+  placement_ = ed::greasepencil::DrawingPlacement(*scene, region, view3d, *object);
+  if (placement_.use_project_to_surface()) {
+    placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(&C), region, view3d);
+  }
+  else if (placement_.use_project_to_nearest_stroke()) {
+    placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(&C), region, view3d);
+    placement_.set_origin_to_nearest_stroke(start_sample.mouse_position);
+  }
 
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
       CTX_data_main(&C), object, brush);

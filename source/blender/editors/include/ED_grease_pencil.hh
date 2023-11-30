@@ -25,6 +25,8 @@ struct wmKeyConfig;
 struct ToolSettings;
 struct RegionView3D;
 struct Scene;
+struct ViewDepths;
+struct View3D;
 
 enum {
   LAYER_REORDER_ABOVE,
@@ -56,15 +58,40 @@ enum class DrawingPlacementDepth { ObjectOrigin, Cursor, Surface, NearestStroke 
 
 enum class DrawingPlacementPlane { View, Front, Side, Top, Cursor };
 
-struct DrawingPlacementInfo {
-  DrawingPlacementDepth depth;
-  DrawingPlacementPlane plane;
-  bke::greasepencil::DrawingTransforms transforms;
+class DrawingPlacement {
+ private:
+  const ARegion *region_;
+  const View3D *view3d_;
 
-  DrawingPlacementInfo() = default;
-  DrawingPlacementInfo(const Scene &scene, const Object &object);
-  float3 location(const Scene &scene) const;
-  float3 normal(const Scene &scene, const RegionView3D &rv3d) const;
+  DrawingPlacementDepth depth_;
+  DrawingPlacementPlane plane_;
+  bke::greasepencil::DrawingTransforms transforms_;
+  ViewDepths *depth_cache_ = nullptr;
+  float surface_offset_;
+
+  float3 placement_loc_;
+  float3 placement_normal_;
+  float4 placement_plane_;
+
+ public:
+  DrawingPlacement() = default;
+  DrawingPlacement(const Scene &scene,
+                   const ARegion *region,
+                   const View3D *view3d,
+                   const Object &object);
+  ~DrawingPlacement();
+
+ public:
+  bool use_project_to_surface() const;
+  bool use_project_to_nearest_stroke() const;
+
+  void cache_viewport_depths(Depsgraph *depsgraph, ARegion *region, View3D *view3d);
+  void set_origin_to_nearest_stroke(const float2 co);
+
+  /**
+   * Projects a screen space coordinate to the local drawing space.
+   */
+  float3 project(const float2 co) const;
 };
 
 void set_selected_frames_type(bke::greasepencil::Layer &layer,
