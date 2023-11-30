@@ -157,7 +157,6 @@ void LookdevModule::sync()
 
   depth_tx_.ensure_2d(depth_format, extent);
   color_tx_.ensure_2d_array(color_format, extent, 2);
-  color_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
 
   float4x4 model_m4 = float4x4::identity();
   ResourceHandle handle = inst_.manager->resource_handle(model_m4);
@@ -221,6 +220,8 @@ void LookdevModule::draw_metallic(View &view)
   if (!enabled_) {
     return;
   }
+  // TODO: this is awkward as it clears both metallic and diffuse. Perhaps keep a flag for clarity.
+  color_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
   depth_tx_.clear(float4(1.0f));
   inst_.manager->submit(metallic_ps_, view);
 }
