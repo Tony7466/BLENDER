@@ -5,3 +5,4 @@ Referenced by issue #112761, Regression: Box select no longer works with tweak t
 Referenced by commit 883033a0969fd2a135ac3394b0388665322d557e, Curve: adjust behavior of invert selection for bezier handlers
 Referenced by issue #115188, Right click tweak don't select vert/ege/face when all selected
 Referenced by issue #115181, Right click select sometimes failed to select armature in pose mode
+Referenced by commit 09bd04697529950bce69efff2f681493b5619e3a, Fix #115181: RMB Select sometimes to enter pose mode when selected
