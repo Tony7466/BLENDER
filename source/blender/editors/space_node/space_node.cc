@@ -766,7 +766,7 @@ static void node_cursor(wmWindow *win, ScrArea *area, ARegion *region)
                            &snode->runtime->cursor[1]);
 
   /* here snode->runtime->cursor is used to detect the node edge for sizing */
-  node_set_cursor(*win, *snode, snode->runtime->cursor);
+  node_set_cursor(*win, *region, *snode, snode->runtime->cursor);
 
   /* XXX snode->runtime->cursor is in placing new nodes space */
   snode->runtime->cursor[0] /= UI_SCALE_FAC;
@@ -1155,6 +1155,11 @@ static void node_id_remap_cb(ID *old_id, ID *new_id, void *user_data)
     }
   }
   else if (GS(old_id->name) == ID_NT) {
+
+    if (&snode->geometry_nodes_tool_tree->id == old_id) {
+      snode->geometry_nodes_tool_tree = reinterpret_cast<bNodeTree *>(new_id);
+    }
+
     bNodeTreePath *path, *path_next;
 
     for (path = (bNodeTreePath *)snode->treepath.first; path; path = path->next) {

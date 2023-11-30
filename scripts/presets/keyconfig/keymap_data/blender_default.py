@@ -4575,8 +4575,14 @@ def km_grease_pencil_paint(_params):
          {"properties": [("mode", 'INVERT')]}),
         ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SMOOTH')]}),
+<<<<<<< HEAD
         # Active material
         op_menu("VIEW3D_MT_greasepencil_material_active", {"type": 'U', "value": 'PRESS'}),
+=======
+
+        # Active layer
+        op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+>>>>>>> main
     ])
 
     return keymap
@@ -4624,6 +4630,9 @@ def km_grease_pencil_edit(params):
         ("grease_pencil.cyclical_set", {"type": 'F', "value": 'PRESS'}, {"properties": [("type", "CLOSE")]}),
         ("grease_pencil.cyclical_set", {"type": 'C', "value": 'PRESS',
          "alt": True}, {"properties": [("type", "TOGGLE")]}),
+
+        # Active layer
+        op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
 
         # Context menu
         *_template_items_context_menu("VIEW3D_MT_greasepencil_edit_context_menu", params.context_menu_event),

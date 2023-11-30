@@ -8,15 +8,11 @@ set(INC
   ../intern
   ../../blenkernel
   ../../blentranslation
-  ../../depsgraph
   ../../editors/include
-  ../../functions
   ../../gpu
-  ../../imbuf
   ../../makesrna
   ../../render
   ../../windowmanager
-  ../../../../intern/clog
   ../../../../intern/sky/include
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -129,8 +125,11 @@ set(SRC
 
 set(LIB
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  bf_functions
+  PRIVATE bf::functions
+  PRIVATE bf::imbuf
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_intern_sky
   bf_nodes
