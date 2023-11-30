@@ -361,6 +361,7 @@ void Instance::render_sample()
 {
   if (sampling.finished_viewport()) {
     film.display();
+    lookdev.display();
     return;
   }
 

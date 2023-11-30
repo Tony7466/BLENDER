@@ -190,12 +190,10 @@ class CapturePlanarView {
 class LookdevView {
  private:
   Instance &inst_;
-  Texture metallic_depth_tx_ = {"Lookdev.Metallic.Depth"};
-  Texture metallic_color_tx_ = {"Lookdev.Metallic.Color"};
-  Framebuffer metallic_fb_ = {"Lookdev.Metallic"};
 
-  Texture diffuse_depth_tx_ = {"Lookdev.Diffuse.Depth"};
-  Texture diffuse_color_tx_ = {"Lookdev.Diffuse.Color"};
+  View view_ = {"Lookdev.View"};
+
+  Framebuffer metallic_fb_ = {"Lookdev.Metallic"};
   Framebuffer diffuse_fb_ = {"Lookdev.Diffuse"};
 
  public:

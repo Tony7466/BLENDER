@@ -306,49 +306,29 @@ void CaptureView::render_probes()
 
 void LookdevView::render()
 {
-  if (!inst_.lookdev.is_enabled()) {
-    metallic_depth_tx_.free();
-    metallic_color_tx_.free();
-    diffuse_depth_tx_.free();
-    diffuse_color_tx_.free();
+  if (!inst_.lookdev.enabled_) {
     return;
   }
   GPU_debug_capture_begin();
   GPU_debug_group_begin("Lookdev");
 
-  // TODO: calculate extent from dpi and window size.
-  const int2 extent(128, 128);
-
-  const eGPUTextureFormat depth_format = GPU_DEPTH_COMPONENT24;
-  const eGPUTextureFormat color_format = GPU_RGBA16F;
-
-  metallic_depth_tx_.ensure_2d(depth_format, extent);
-  metallic_color_tx_.ensure_2d(color_format, extent);
-  metallic_fb_.ensure(GPU_ATTACHMENT_TEXTURE(metallic_depth_tx_),
-                      GPU_ATTACHMENT_TEXTURE(metallic_color_tx_));
-  metallic_depth_tx_.clear(float4(1.0f));
-  metallic_color_tx_.clear(float4(0.0f));
-
-  diffuse_depth_tx_.ensure_2d(depth_format, extent);
-  diffuse_color_tx_.ensure_2d(color_format, extent);
-  diffuse_fb_.ensure(GPU_ATTACHMENT_TEXTURE(diffuse_depth_tx_),
-                     GPU_ATTACHMENT_TEXTURE(diffuse_color_tx_));
-  diffuse_depth_tx_.clear(float4(1.0f));
-  diffuse_color_tx_.clear(float4(0.0f));
+  metallic_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.lookdev.depth_tx_),
+                      GPU_ATTACHMENT_TEXTURE(inst_.lookdev.metallic_color_tx_));
+  diffuse_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.lookdev.depth_tx_),
+                     GPU_ATTACHMENT_TEXTURE(inst_.lookdev.diffuse_color_tx_));
 
   // create view for rendering spheres
-  View view = {"Lookdev.View"};
   float4x4 view_m4 = float4x4::identity();
   float4x4 win_m4 = math::projection::orthographic(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
-  view.sync(view_m4, win_m4);
+  view_.sync(view_m4, win_m4);
 
   metallic_fb_.bind();
-  inst_.lookdev.draw_metallic(view);
+  inst_.lookdev.draw_metallic(view_);
 
   diffuse_fb_.bind();
-  inst_.lookdev.draw_diffuse(view);
+  inst_.lookdev.draw_diffuse(view_);
 
-  // TODO: blit framebuffer1 and framebuffer2 to the main framebuffer color texture.
+  inst_.lookdev.display();
 
   GPU_debug_group_end();
   GPU_debug_capture_end();

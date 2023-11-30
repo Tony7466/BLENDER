@@ -128,24 +128,36 @@ LookdevModule::~LookdevModule() {}
 void LookdevModule::init()
 {
   enabled_ = inst_.is_viewport() && inst_.overlays_enabled() && inst_.use_lookdev_overlay();
+
+  if (enabled_) {
+    const int2 extent_dummy(1);
+    constexpr eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE |
+                                       GPU_TEXTURE_USAGE_SHADER_READ;
+    dummy_cryptomatte_tx_.ensure_2d(GPU_RGBA32F, extent_dummy, usage);
+    dummy_renderpass_tx_.ensure_2d(GPU_RGBA16F, extent_dummy, usage);
+    dummy_aov_color_tx_.ensure_2d_array(GPU_RGBA16F, extent_dummy, 1, usage);
+    dummy_aov_value_tx_.ensure_2d_array(GPU_R16F, extent_dummy, 1, usage);
+  }
 }
 
 void LookdevModule::sync()
 {
   metallic_ps_.init();
   diffuse_ps_.init();
+  display_ps_.init();
 
   if (!enabled_) {
     return;
   }
 
-  const int2 extent(1);
-  constexpr eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE |
-                                     GPU_TEXTURE_USAGE_SHADER_READ;
-  dummy_cryptomatte_tx_.ensure_2d(GPU_RGBA32F, extent, usage);
-  dummy_renderpass_tx_.ensure_2d(GPU_RGBA16F, extent, usage);
-  dummy_aov_color_tx_.ensure_2d_array(GPU_RGBA16F, extent, 1, usage);
-  dummy_aov_value_tx_.ensure_2d_array(GPU_R16F, extent, 1, usage);
+  const int2 extent(128, 128);
+
+  const eGPUTextureFormat depth_format = GPU_DEPTH_COMPONENT24;
+  const eGPUTextureFormat color_format = GPU_RGBA16F;
+
+  depth_tx_.ensure_2d(depth_format, extent);
+  metallic_color_tx_.ensure_2d(color_format, extent);
+  diffuse_color_tx_.ensure_2d(color_format, extent);
 
   float4x4 model_m4 = float4x4::identity();
   ResourceHandle handle = inst_.manager->resource_handle(model_m4);
@@ -153,6 +165,8 @@ void LookdevModule::sync()
 
   sync_pass(metallic_ps_, geom, inst_.materials.metallic_mat, handle);
   sync_pass(diffuse_ps_, geom, inst_.materials.diffuse_mat, handle);
+
+  sync_display();
 }
 
 void LookdevModule::sync_pass(PassSimple &pass,
@@ -189,11 +203,26 @@ void LookdevModule::sync_pass(PassSimple &pass,
   pass.draw(geom, res_handle, 0);
 }
 
+void LookdevModule::sync_display()
+{
+  PassSimple &pass = display_ps_;
+
+  const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
+  pass.state_set(state);
+  pass.shader_set(inst_.shaders.static_shader_get(LOOKDEV_DISPLAY));
+  pass.bind_texture("metallic_tx", &metallic_color_tx_);
+  pass.bind_texture("diffuse_tx", &diffuse_color_tx_);
+
+  pass.draw_procedural(GPU_PRIM_TRIS, 2, 4);
+}
+
 void LookdevModule::draw_metallic(View &view)
 {
   if (!enabled_) {
     return;
   }
+  depth_tx_.clear(float4(1.0f));
+  metallic_color_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
   inst_.manager->submit(metallic_ps_, view);
 }
 
@@ -202,7 +231,22 @@ void LookdevModule::draw_diffuse(View &view)
   if (!enabled_) {
     return;
   }
+  depth_tx_.clear(float4(1.0f));
+  diffuse_color_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
   inst_.manager->submit(diffuse_ps_, view);
+}
+
+void LookdevModule::display()
+{
+  if (!enabled_) {
+    return;
+  }
+
+  BLI_assert(inst_.is_viewport());
+
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+  GPU_framebuffer_bind(dfbl->default_fb);
+  inst_.manager->submit(display_ps_);
 }
 
 /** \} */

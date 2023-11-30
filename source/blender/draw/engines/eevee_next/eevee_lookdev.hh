@@ -16,6 +16,7 @@
 namespace blender::eevee {
 
 class Instance;
+class LookdevView;
 
 /* -------------------------------------------------------------------- */
 /** \name Parameters
@@ -91,10 +92,15 @@ class LookdevModule {
   Texture dummy_aov_color_tx_;
   Texture dummy_aov_value_tx_;
 
+  Texture depth_tx_ = {"Lookdev.Depth"};
+  Texture metallic_color_tx_ = {"Lookdev.Metallic.Color"};
+  Texture diffuse_color_tx_ = {"Lookdev.Diffuse.Color"};
+
   bool enabled_;
 
   PassSimple metallic_ps_ = {"Lookdev.Metallic"};
   PassSimple diffuse_ps_ = {"Lookdev.Diffuse"};
+  PassSimple display_ps_ = {"Lookdev.Display"};
 
  public:
   LookdevModule(Instance &inst);
@@ -102,19 +108,17 @@ class LookdevModule {
 
   void init();
   void sync();
+
   void draw_metallic(View &view);
   void draw_diffuse(View &view);
 
-  /**
-   * Check if the lookdev spheres should be draw.
-   */
-  bool is_enabled() const
-  {
-    return enabled_;
-  }
+  void display();
 
  private:
   void sync_pass(PassSimple &pass, GPUBatch *geom, ::Material *mat, ResourceHandle res_handle);
+  void sync_display();
+
+  friend class LookdevView;
 };
 
 /** \} */
