@@ -1198,6 +1198,9 @@ enum GBufferMode : uint32_t {
   GBUF_DIFFUSE = 3u,
   GBUF_SSS = 4u,
 
+  /** Special configurations. Packs multiple closures into 1 layer. */
+  GBUF_OPAQUE_DIELECTRIC = 4u,
+
   /** Set for surfaces without lit closures. This stores only the normal to the surface. */
   GBUF_UNLIT = 15u,
 

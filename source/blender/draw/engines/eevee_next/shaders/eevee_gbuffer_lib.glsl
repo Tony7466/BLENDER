@@ -124,27 +124,39 @@ GBufferMode gbuffer_header_unpack(uint data, uint layer)
 }
 
 /* Return true if any layer of the gbuffer match the given closure. */
-bool gbuffer_has_closure(uint data, eClosureBits closure)
+bool gbuffer_has_closure(uint header, eClosureBits closure)
 {
   int layer = 0;
 
+  /* Check special configurations first. */
+
+  if (gbuffer_header_unpack(header, layer) == GBUF_OPAQUE_DIELECTRIC) {
+    if (closure == eClosureBits(CLOSURE_DIFFUSE)) {
+      return true;
+    }
+    if (closure == eClosureBits(CLOSURE_REFLECTION)) {
+      return true;
+    }
+    return false;
+  }
+
   /* Since closure order in the gbuffer is static, we check them in order. */
 
-  bool has_refraction = (gbuffer_header_unpack(data, layer) == GBUF_REFRACTION);
+  bool has_refraction = (gbuffer_header_unpack(header, layer) == GBUF_REFRACTION);
   layer += int(has_refraction);
 
   if (closure == eClosureBits(CLOSURE_REFRACTION)) {
     return has_refraction;
   }
 
-  bool has_reflection = (gbuffer_header_unpack(data, layer) == GBUF_REFLECTION);
+  bool has_reflection = (gbuffer_header_unpack(header, layer) == GBUF_REFLECTION);
   layer += int(has_reflection);
 
   if (closure == eClosureBits(CLOSURE_REFLECTION)) {
     return has_reflection;
   }
 
-  bool has_diffuse = (gbuffer_header_unpack(data, layer) == GBUF_DIFFUSE);
+  bool has_diffuse = (gbuffer_header_unpack(header, layer) == GBUF_DIFFUSE);
   layer += int(has_diffuse);
 
   if (closure == eClosureBits(CLOSURE_DIFFUSE)) {
@@ -170,22 +182,32 @@ GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
   GBufferDataPacked gbuf;
   gbuf.header = 0u;
 
-  /* Check special configurations first. */
-
-  if (refraction.weight < 1e-5) {
-    /* TODO(fclem): Compute this only if needed. */
-    bool shared_normal = all(equal(diffuse.N, reflection.N));
-    bool is_reflection_colorless = all(equal(reflection.color.rgb, reflection.color.gbr));
-    if (shared_normal && is_reflection_colorless) {
-      /* Opaque Dielectric. */
-      /* TODO */
-      // return gbuf;
-    }
-  }
+  bool has_refraction = refraction.weight > 1e-5;
+  bool has_reflection = reflection.weight > 1e-5;
+  bool has_diffuse = diffuse.weight > 1e-5;
+  bool has_sss = diffuse.sss_id > 0;
 
   int layer = 0;
 
-  if (refraction.weight > 1e-5) {
+  /* Check special configurations first. */
+
+  /* Opaque Dielectric. */
+  if (!has_refraction && !has_sss && has_reflection && has_diffuse) {
+    /* TODO(fclem): Compute this only if needed (guarded under ifdefs). */
+    bool has_shared_normal = all(equal(diffuse.N, reflection.N));
+    bool has_colorless_reflection = all(equal(reflection.color.rgb, reflection.color.gbr));
+    if (has_shared_normal && has_colorless_reflection) {
+      gbuf.color[layer] = gbuffer_color_pack(diffuse.color);
+      gbuf.closure[layer].xy = gbuffer_normal_pack(diffuse.N);
+      gbuf.closure[layer].z = reflection.roughness;
+      /* Supports weight > 1.0. Same precision as 10bit. */
+      gbuf.closure[layer].w = reflection.color.r * (1.0 / 16.0);
+      gbuf.header = gbuffer_header_pack(GBUF_OPAQUE_DIELECTRIC, layer);
+      return gbuf;
+    }
+  }
+
+  if (has_refraction) {
     gbuf.color[layer] = gbuffer_color_pack(refraction.color);
     gbuf.closure[layer].xy = gbuffer_normal_pack(refraction.N);
     gbuf.closure[layer].z = refraction.roughness;
@@ -194,7 +216,7 @@ GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
     layer += 1;
   }
 
-  if (reflection.weight > 1e-5) {
+  if (has_reflection) {
     gbuf.color[layer] = gbuffer_color_pack(reflection.color);
     gbuf.closure[layer].xy = gbuffer_normal_pack(reflection.N);
     gbuf.closure[layer].z = reflection.roughness;
@@ -203,7 +225,7 @@ GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
     layer += 1;
   }
 
-  if (diffuse.weight > 1e-5) {
+  if (has_diffuse) {
     gbuf.color[layer] = gbuffer_color_pack(diffuse.color);
     gbuf.closure[layer].xy = gbuffer_normal_pack(diffuse.N);
     gbuf.closure[layer].z = 0.0; /* Unused. */
@@ -212,7 +234,7 @@ GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
     layer += 1;
   }
 
-  if (diffuse.sss_id > 0) {
+  if (has_sss) {
     gbuf.closure[layer].xyz = gbuffer_sss_radii_pack(diffuse.sss_radius);
     gbuf.closure[layer].w = gbuffer_object_id_unorm16_pack(diffuse.sss_id);
     gbuf.header |= gbuffer_header_pack(GBUF_SSS, layer);
@@ -270,6 +292,34 @@ GBufferData gbuffer_read(usampler2D header_tx,
   gbuf.surface_N = gbuffer_normal_unpack(texelFetch(closure_tx, ivec3(texel, 0), 0).xy);
 
   int layer = 0;
+
+  /* Check special configurations first. */
+
+  if (gbuffer_header_unpack(gbuf.header, layer) == GBUF_OPAQUE_DIELECTRIC) {
+    vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
+    vec4 color_packed = texelFetch(color_tx, ivec3(texel, layer), 0);
+
+    gbuf.diffuse.color = gbuffer_color_unpack(color_packed);
+    gbuf.has_diffuse = true;
+
+    gbuf.reflection.color = vec3(closure_packed.w * 16.0);
+    gbuf.reflection.N = gbuf.diffuse.N = gbuffer_normal_unpack(closure_packed.xy);
+    gbuf.reflection.roughness = closure_packed.z;
+    gbuf.has_reflection = true;
+
+    /* Default values. */
+    gbuf.refraction.color = vec3(0.0);
+    gbuf.refraction.N = vec3(0.0, 0.0, 1.0);
+    gbuf.refraction.roughness = 0.0;
+    gbuf.refraction.ior = 1.1;
+    gbuf.has_refraction = false;
+
+    /* Default values. */
+    gbuf.diffuse.sss_radius = vec3(0.0, 0.0, 0.0);
+    gbuf.diffuse.sss_id = 0u;
+
+    return gbuf;
+  }
 
   /* Since closure order in the gbuffer is static, we check them in order. */
 

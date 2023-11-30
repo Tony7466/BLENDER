@@ -39,7 +39,7 @@ class Instance;
  *
  * Here are special configurations:
  *
- * - Opaque Dielectric: (TODO)
+ * - Opaque Dielectric:
  *   - 1 Diffuse lobe and 1 Reflection lobe without anisotropy.
  *   - Share a single normal.
  *   - Reflection is not colored.
