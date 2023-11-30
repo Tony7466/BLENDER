@@ -23,8 +23,8 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_mesh.hh"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
@@ -188,7 +188,7 @@ static Mesh *subdiv_as_ccg(SubsurfModifierData *smd,
   if (ccg_settings.resolution < 3) {
     return result;
   }
-  result = BKE_subdiv_to_ccg_mesh(subdiv, &ccg_settings, mesh);
+  result = BKE_subdiv_to_ccg_mesh(*subdiv, ccg_settings, *mesh);
   return result;
 }
 

@@ -78,21 +78,6 @@ void ensure_id_properties_freed(const Object *dupli_object, Object *temp_dupli_o
   temp_dupli_object->id.properties = nullptr;
 }
 
-void ensure_boundbox_freed(const Object *dupli_object, Object *temp_dupli_object)
-{
-  if (temp_dupli_object->runtime->bb == nullptr) {
-    /* No Bounding Box in temp data-block -- no leak is possible. */
-    return;
-  }
-  if (temp_dupli_object->runtime->bb == dupli_object->runtime->bb) {
-    /* Temp copy of object did not modify Bounding Box. */
-    return;
-  }
-  /* Free memory which is owned by temporary storage which is about to get overwritten. */
-  MEM_freeN(temp_dupli_object->runtime->bb);
-  temp_dupli_object->runtime->bb = nullptr;
-}
-
 void free_owned_memory(DEGObjectIterData *data)
 {
   if (data->dupli_object_current == nullptr) {
@@ -104,7 +89,6 @@ void free_owned_memory(DEGObjectIterData *data)
   Object *temp_dupli_object = &data->temp_dupli_object;
 
   ensure_id_properties_freed(dupli_object, temp_dupli_object);
-  ensure_boundbox_freed(dupli_object, temp_dupli_object);
 }
 
 bool deg_object_hide_original(eEvaluationMode eval_mode, Object *ob, DupliObject *dob)
@@ -180,8 +164,6 @@ bool deg_iterator_duplis_step(DEGObjectIterData *data)
     copy_v4_v4(temp_dupli_object->color, dupli_parent->color);
     temp_dupli_object->runtime->select_id = dupli_parent->runtime->select_id;
     if (dob->ob->data != dob->ob_data) {
-      /* Do not modify the original boundbox. */
-      temp_dupli_object->runtime->bb = nullptr;
       BKE_object_replace_data_on_shallow_copy(temp_dupli_object, dob->ob_data);
     }
 
@@ -295,6 +277,29 @@ bool deg_iterator_objects_step(DEGObjectIterData *data)
 }
 
 }  // namespace
+
+DEGObjectIterData &DEGObjectIterData::operator=(const DEGObjectIterData &other)
+{
+  if (this != &other) {
+    this->settings = other.settings;
+    this->graph = other.graph;
+    this->flag = other.flag;
+    this->scene = other.scene;
+    this->eval_mode = other.eval_mode;
+    this->object_orig_with_preview = other.object_orig_with_preview;
+    this->next_object = other.next_object;
+    this->dupli_parent = other.dupli_parent;
+    this->dupli_list = other.dupli_list;
+    this->dupli_object_next = other.dupli_object_next;
+    this->dupli_object_current = other.dupli_object_current;
+    this->temp_dupli_object = blender::dna::shallow_copy(other.temp_dupli_object);
+    this->temp_dupli_object_runtime = other.temp_dupli_object_runtime;
+    this->temp_dupli_object.runtime = &temp_dupli_object_runtime;
+    this->id_node_index = other.id_node_index;
+    this->num_id_nodes = other.num_id_nodes;
+  }
+  return *this;
+}
 
 void DEG_iterator_objects_begin(BLI_Iterator *iter, DEGObjectIterData *data)
 {

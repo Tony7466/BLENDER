@@ -28,8 +28,8 @@
 
 #include "BKE_anim_path.h"
 #include "BKE_attribute.hh"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_displist.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
@@ -599,7 +599,9 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   Vector<float3> dst_vert_normals;
   if (!use_recalc_normals) {
     src_vert_normals = mesh->vert_normals();
-    dst_vert_normals.reinitialize(result->totvert);
+    dst_vert_normals.as_mutable_span()
+        .take_front(src_vert_normals.size())
+        .copy_from(src_vert_normals);
   }
 
   for (c = 1; c < count; c++) {

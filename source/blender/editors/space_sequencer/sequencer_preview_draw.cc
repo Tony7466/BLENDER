@@ -18,7 +18,7 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_scene.h"
 
@@ -75,9 +75,8 @@ void ED_sequencer_special_preview_set(bContext *C, const int mval[2])
 {
   Scene *scene = CTX_data_scene(C);
   ARegion *region = CTX_wm_region(C);
-  int hand;
-  Sequence *seq;
-  seq = find_nearest_seq(scene, &region->v2d, &hand, mval);
+  int hand_dummy;
+  Sequence *seq = find_nearest_seq(scene, &region->v2d, mval, &hand_dummy);
   sequencer_special_update_set(seq);
 }
 
@@ -135,8 +134,9 @@ ImBuf *sequencer_ibuf_get(Main *bmain,
     GPU_framebuffer_restore();
   }
 
-  if (special_seq_update) {
-    ibuf = SEQ_render_give_ibuf_direct(&context, timeline_frame + frame_ofs, special_seq_update);
+  if (ED_sequencer_special_preview_get()) {
+    ibuf = SEQ_render_give_ibuf_direct(
+        &context, timeline_frame + frame_ofs, ED_sequencer_special_preview_get());
   }
   else {
     ibuf = SEQ_render_give_ibuf(&context, timeline_frame + frame_ofs, sseq->chanshown);

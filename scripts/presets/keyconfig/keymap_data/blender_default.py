@@ -2615,10 +2615,10 @@ def km_nla_generic(params):
     return keymap
 
 
-def km_nla_channels(params):
+def km_nla_tracks(params):
     items = []
     keymap = (
-        "NLA Channels",
+        "NLA Tracks",
         {"space_type": 'NLA_EDITOR', "region_type": 'WINDOW'},
         {"items": items},
     )
@@ -4575,6 +4575,9 @@ def km_grease_pencil_paint(_params):
          {"properties": [("mode", 'INVERT')]}),
         ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SMOOTH')]}),
+
+        # Active layer
+        op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
     ])
 
     return keymap
@@ -4622,6 +4625,9 @@ def km_grease_pencil_edit(params):
         ("grease_pencil.cyclical_set", {"type": 'F', "value": 'PRESS'}, {"properties": [("type", "CLOSE")]}),
         ("grease_pencil.cyclical_set", {"type": 'C', "value": 'PRESS',
          "alt": True}, {"properties": [("type", "TOGGLE")]}),
+
+        # Active layer
+        op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
 
         # Context menu
         *_template_items_context_menu("VIEW3D_MT_greasepencil_edit_context_menu", params.context_menu_event),
@@ -4684,7 +4690,7 @@ def km_object_mode(params):
         ("object.join", {"type": 'J', "value": 'PRESS', "ctrl": True}, None),
         ("wm.context_toggle", {"type": 'PERIOD', "value": 'PRESS', "ctrl": True},
          {"properties": [("data_path", 'tool_settings.use_transform_data_origin')]}),
-        ("anim.keyframe_insert_menu", {"type": 'I', "value": 'PRESS'}, None),
+        ("anim.keyframe_insert", {"type": 'I', "value": 'PRESS'}, None),
         ("anim.keyframe_delete_v3d", {"type": 'I', "value": 'PRESS', "alt": True}, None),
         ("anim.keying_set_active_set", {"type": 'I', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
         ("collection.create", {"type": 'G', "value": 'PRESS', "ctrl": True}, None),
@@ -4823,7 +4829,7 @@ def km_pose(params):
         op_menu("VIEW3D_MT_bone_collections", {"type": 'M', "value": 'PRESS', "shift": True}),
         ("armature.move_to_collection", {"type": 'M', "value": 'PRESS'}, None),
         ("transform.bbone_resize", {"type": 'S', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
-        ("anim.keyframe_insert_menu", {"type": 'I', "value": 'PRESS'}, None),
+        ("anim.keyframe_insert", {"type": 'I', "value": 'PRESS'}, None),
         ("anim.keyframe_delete_v3d", {"type": 'I', "value": 'PRESS', "alt": True}, None),
         ("anim.keying_set_active_set", {"type": 'I', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
         ("pose.push", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
@@ -5873,6 +5879,7 @@ def km_edit_particle(params):
         *_template_items_proportional_editing(
             params, connected=False, toggle_data_path='tool_settings.use_proportional_edit'),
         *_template_items_context_menu("VIEW3D_MT_particle_context_menu", params.context_menu_event),
+        *_template_items_transform_actions(params),
     ])
 
     return keymap
@@ -8459,7 +8466,7 @@ def generate_keymaps(params=None):
         km_dopesheet_generic(params),
         km_dopesheet(params),
         km_nla_generic(params),
-        km_nla_channels(params),
+        km_nla_tracks(params),
         km_nla_editor(params),
         km_text_generic(params),
         km_text(params),

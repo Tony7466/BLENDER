@@ -15,7 +15,7 @@
 #include "BLI_color.hh"
 
 #include "BKE_attribute.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.h"
@@ -376,8 +376,8 @@ static int geometry_color_attribute_add_invoke(bContext *C, wmOperator *op, cons
 }
 
 enum class ConvertAttributeMode {
-  Generic,
-  VertexGroup,
+  Generic = 0,
+  VertexGroup = 1,
 };
 
 static bool geometry_attribute_convert_poll(bContext *C)

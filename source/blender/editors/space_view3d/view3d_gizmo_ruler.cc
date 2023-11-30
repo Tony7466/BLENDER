@@ -17,7 +17,7 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
@@ -26,7 +26,7 @@
 #include "BKE_material.h"
 #include "BKE_object.hh"
 #include "BKE_scene.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_meshdata_types.h"

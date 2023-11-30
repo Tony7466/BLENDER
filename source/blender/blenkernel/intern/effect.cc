@@ -38,10 +38,10 @@
 #include "PIL_time.h"
 
 #include "BKE_anim_path.h" /* needed for where_on_path */
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BKE_collection.h"
 #include "BKE_collision.h"
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_displist.h"
 #include "BKE_effect.h"
 #include "BKE_fluid.h"
@@ -670,8 +670,8 @@ bool closest_point_on_surface(SurfaceModifierData *surmd,
     }
 
     if (surface_vel) {
-      const int *corner_verts = bvhtree->corner_verts;
-      const MLoopTri *lt = &bvhtree->looptri[nearest.index];
+      const int *corner_verts = bvhtree->corner_verts.data();
+      const MLoopTri *lt = &bvhtree->looptris[nearest.index];
 
       copy_v3_v3(surface_vel, surmd->runtime.vert_velocities[corner_verts[lt->tri[0]]]);
       add_v3_v3(surface_vel, surmd->runtime.vert_velocities[corner_verts[lt->tri[1]]]);

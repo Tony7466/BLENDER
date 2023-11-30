@@ -41,7 +41,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_compute_contexts.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_global.h"
@@ -52,7 +52,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_object.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_screen.hh"
@@ -90,7 +90,6 @@
 #include "NOD_node_declaration.hh"
 
 #include "FN_field.hh"
-#include "FN_field_cpp_type.hh"
 #include "FN_lazy_function_execute.hh"
 #include "FN_lazy_function_graph_executor.hh"
 #include "FN_multi_function.hh"
@@ -512,7 +511,7 @@ static void try_add_side_effect_node(const ComputeContext &final_compute_context
           compute_context->iteration());
       current_zone = repeat_zone;
     }
-    else if (const auto *compute_context = dynamic_cast<const bke::NodeGroupComputeContext *>(
+    else if (const auto *compute_context = dynamic_cast<const bke::GroupNodeComputeContext *>(
                  compute_context_generic))
     {
       const bNode *group_node = current_tree->node_by_id(compute_context->node_id());
@@ -1153,36 +1152,36 @@ static void modifyGeometry(ModifierData *md,
     use_orig_index_faces = CustomData_has_layer(&mesh->face_data, CD_ORIGINDEX);
   }
 
+  nodes::GeoNodesCallData call_data;
+
   nodes::GeoNodesModifierData modifier_eval_data{};
   modifier_eval_data.depsgraph = ctx->depsgraph;
   modifier_eval_data.self_object = ctx->object;
   auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
+  call_data.modifier_data = &modifier_eval_data;
 
   NodesModifierSimulationParams simulation_params(*nmd, *ctx);
-  modifier_eval_data.simulation_params = &simulation_params;
+  call_data.simulation_params = &simulation_params;
 
   Set<ComputeContextHash> socket_log_contexts;
   if (logging_enabled(ctx)) {
-    modifier_eval_data.eval_log = eval_log.get();
+    call_data.eval_log = eval_log.get();
 
     find_socket_log_contexts(*nmd, *ctx, socket_log_contexts);
-    modifier_eval_data.socket_log_contexts = &socket_log_contexts;
+    call_data.socket_log_contexts = &socket_log_contexts;
   }
 
   nodes::GeoNodesSideEffectNodes side_effect_nodes;
   find_side_effect_nodes(*nmd, *ctx, side_effect_nodes);
-  modifier_eval_data.side_effect_nodes = &side_effect_nodes;
+  call_data.side_effect_nodes = &side_effect_nodes;
 
   bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
 
-  geometry_set = nodes::execute_geometry_nodes_on_geometry(
-      tree,
-      nmd->settings.properties,
-      modifier_compute_context,
-      std::move(geometry_set),
-      [&](nodes::GeoNodesLFUserData &user_data) {
-        user_data.modifier_data = &modifier_eval_data;
-      });
+  geometry_set = nodes::execute_geometry_nodes_on_geometry(tree,
+                                                           nmd->settings.properties,
+                                                           modifier_compute_context,
+                                                           call_data,
+                                                           std::move(geometry_set));
 
   if (logging_enabled(ctx)) {
     nmd_orig->runtime->eval_log = std::move(eval_log);

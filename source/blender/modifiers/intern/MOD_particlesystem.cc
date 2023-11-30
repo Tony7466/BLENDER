@@ -18,8 +18,8 @@
 #include "DNA_mesh_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
@@ -147,7 +147,8 @@ static void deform_verts(ModifierData *md,
 
   /* make new mesh */
   psmd->mesh_final = BKE_mesh_copy_for_eval(mesh);
-  BKE_mesh_vert_coords_apply(psmd->mesh_final, reinterpret_cast<float(*)[3]>(positions.data()));
+  psmd->mesh_final->vert_positions_for_write().copy_from(positions);
+  BKE_mesh_tag_positions_changed(psmd->mesh_final);
 
   BKE_mesh_tessface_ensure(psmd->mesh_final);
 

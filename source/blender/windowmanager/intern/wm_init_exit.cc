@@ -36,7 +36,7 @@
 #include "BKE_blender.h"
 #include "BKE_blendfile.h"
 #include "BKE_callbacks.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_icons.h"
 #include "BKE_image.h"
@@ -50,7 +50,7 @@
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
-#include "BKE_vfont.h"
+#include "BKE_vfont.hh"
 
 #include "BKE_addon.h"
 #include "BKE_appdir.h"

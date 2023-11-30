@@ -21,12 +21,12 @@
 
 #include "DNA_curve_types.h"
 
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_curves.hh"
 #include "BKE_displist.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_object_types.hh"
-#include "BKE_vfont.h"
+#include "BKE_vfont.hh"
 
 #include "GPU_batch.h"
 #include "GPU_capabilities.h"

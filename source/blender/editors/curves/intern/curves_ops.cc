@@ -29,8 +29,8 @@
 #include "WM_api.hh"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_bvhutils.h"
-#include "BKE_context.h"
+#include "BKE_bvhutils.hh"
+#include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_layer.h"
@@ -572,8 +572,8 @@ static void CURVES_OT_convert_from_particle_system(wmOperatorType *ot)
 namespace snap_curves_to_surface {
 
 enum class AttachMode {
-  Nearest,
-  Deform,
+  Nearest = 0,
+  Deform = 1,
 };
 
 static void snap_curves_to_surface_exec_object(Object &curves_ob,

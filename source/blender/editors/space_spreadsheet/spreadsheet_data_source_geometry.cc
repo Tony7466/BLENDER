@@ -7,9 +7,9 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_compute_contexts.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_curves.hh"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_global.h"
@@ -19,8 +19,9 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.hh"
+#include "BKE_node_socket_value_cpp_type.hh"
 #include "BKE_object_types.hh"
-#include "BKE_volume.h"
+#include "BKE_volume.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "DNA_ID.h"
@@ -42,8 +43,6 @@
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
-
-#include "FN_field_cpp_type.hh"
 
 #include "bmesh.h"
 
