@@ -93,7 +93,13 @@ static int world_space_copy_exec(bContext *C, wmOperator *op)
   const char *cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, nullptr);
   BLI_path_join(filepath, sizeof(filepath), cfgdir, "world_space_buffer");
   FILE *f = fopen(filepath, "wb");
-  fwrite(copy_buffer, sizeof(Foo), sizeof(foo), f);
+  fwrite(&foo, sizeof(Foo), 1, f);
+  for (int id_index = 0; id_index < selected_ids; id_index++) {
+    CopyBuffer buffer = copy_buffer[id_index];
+    fwrite(&copy_buffer, sizeof(CopyBuffer), 1, f);
+    fwrite(copy_buffer->name, sizeof(char), strlen(copy_buffer->name) + 1, f);
+    fwrite(copy_buffer->matrices, sizeof(float), frame_count * 16, f);
+  }
   fclose(f);
 
   for (int i = 0; i < selected_ids; i++) {
@@ -103,6 +109,7 @@ static int world_space_copy_exec(bContext *C, wmOperator *op)
 
   MEM_freeN(copy_buffer);
   DEG_graph_free(depsgraph);
+
   return OPERATOR_FINISHED;
 }
 
