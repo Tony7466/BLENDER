@@ -48,9 +48,12 @@ class USDShapeReader : public USDGeomReader {
 
   void create_object(Main *bmain, double /*motionSampleTime*/) override;
   void read_object_data(Main *bmain, double motionSampleTime) override;
-  Mesh *read_mesh(Mesh *existing_mesh,
-                  USDMeshReadParams params,
-                  const char ** /*err_str*/) override;
+  void read_geometry(bke::GeometrySet & /*geometry_set*/,
+                     USDMeshReadParams /*params*/,
+                     const char ** /*err_str*/) override
+  {
+  }
+  Mesh *read_mesh(Mesh *existing_mesh, USDMeshReadParams params, const char ** /*err_str*/);
   bool is_time_varying();
 
   virtual bool topology_changed(const Mesh * /*existing_mesh*/,

@@ -14,6 +14,7 @@ extern "C" {
 
 struct CacheArchiveHandle;
 struct CacheReader;
+struct Mesh;
 struct Object;
 struct bContext;
 struct wmJobWorkerStatus;
@@ -145,12 +146,17 @@ void USD_free_handle(struct CacheArchiveHandle *handle);
 
 void USD_get_transform(struct CacheReader *reader, float r_mat[4][4], float time, float scale);
 
-/* Either modifies current_mesh in-place or constructs a new mesh. */
-struct Mesh *USD_read_mesh(struct CacheReader *reader,
-                           struct Object *ob,
-                           struct Mesh *existing_mesh,
-                           USDMeshReadParams params,
-                           const char **err_str);
+#ifdef __cplusplus
+namespace blender::bke {
+struct GeometrySet;
+}
+
+void USD_read_geometry(CacheReader *reader,
+                       Object *ob,
+                       blender::bke::GeometrySet &geometry_set,
+                       USDMeshReadParams params,
+                       const char **err_str);
+#endif
 
 bool USD_mesh_topology_changed(struct CacheReader *reader,
                                const struct Object *ob,
