@@ -136,9 +136,6 @@ class PaintOperation : public GreasePencilStrokeOperation {
  */
 struct PaintOperationExecutor {
   Scene *scene_;
-  ARegion *region_;
-  View3D *view3d_;
-  Object *object_;
   GreasePencil *grease_pencil_;
 
   Brush *brush_;
@@ -151,10 +148,8 @@ struct PaintOperationExecutor {
   PaintOperationExecutor(const bContext &C)
   {
     scene_ = CTX_data_scene(&C);
-    region_ = CTX_wm_region(&C);
-    view3d_ = CTX_wm_view3d(&C);
-    object_ = CTX_data_active_object(&C);
-    grease_pencil_ = static_cast<GreasePencil *>(object_->data);
+    Object *object = CTX_data_active_object(&C);
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
 
     Paint *paint = &scene_->toolsettings->gp_paint->paint;
     brush_ = BKE_paint_brush(paint);
@@ -174,15 +169,10 @@ struct PaintOperationExecutor {
     // const bool use_vertex_color_fill = use_vertex_color && ELEM(
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
 
-    /* The object should have an active layer. */
-    BLI_assert(grease_pencil_->has_active_layer());
-    bke::greasepencil::Layer &active_layer = *grease_pencil_->get_active_layer_for_write();
-    const int drawing_index = active_layer.drawing_index_at(scene_->r.cfra);
-
-    /* Drawing should exist. */
-    BLI_assert(drawing_index >= 0);
-    drawing_ =
-        &reinterpret_cast<GreasePencilDrawing *>(grease_pencil_->drawing(drawing_index))->wrap();
+    BLI_assert(grease_pencil->has_active_layer());
+    drawing_ = grease_pencil->get_editable_drawing_at(grease_pencil->get_active_layer(),
+                                                      scene_->r.cfra);
+    BLI_assert(drawing_ != nullptr);
   }
 
   float radius_from_input_sample(PaintOperation &self,

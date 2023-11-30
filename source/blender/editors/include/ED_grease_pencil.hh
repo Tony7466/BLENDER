@@ -23,7 +23,6 @@ struct Object;
 struct KeyframeEditData;
 struct wmKeyConfig;
 struct ToolSettings;
-struct RegionView3D;
 struct Scene;
 struct ViewDepths;
 struct View3D;
