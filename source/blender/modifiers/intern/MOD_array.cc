@@ -598,8 +598,8 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   blender::Span<blender::float3> src_vert_normals;
   Vector<float3> dst_vert_normals;
   if (!use_recalc_normals) {
-    src_vert_normals = mesh->vert_normals();
-    dst_vert_normals.reinitialize(result->totvert);
+    src_vert_normals = dst_vert_normals = mesh->vert_normals();
+    dst_vert_normals.resize(result->totvert);
   }
 
   for (c = 1; c < count; c++) {
