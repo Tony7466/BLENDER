@@ -198,6 +198,7 @@ void LookdevModule::sync_pass(PassSimple &pass,
   inst_.bind_uniform_data(&pass);
   inst_.reflection_probes.bind_resources(pass);
   inst_.irradiance_cache.bind_resources(pass);
+  inst_.shadows.bind_resources(pass);
 
   pass.draw(geom, res_handle, 0);
 }
