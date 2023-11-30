@@ -93,8 +93,7 @@ class LookdevModule {
   Texture dummy_aov_value_tx_;
 
   Texture depth_tx_ = {"Lookdev.Depth"};
-  Texture metallic_color_tx_ = {"Lookdev.Metallic.Color"};
-  Texture diffuse_color_tx_ = {"Lookdev.Diffuse.Color"};
+  Texture color_tx_ = {"Lookdev.Color"};
 
   bool enabled_;
 

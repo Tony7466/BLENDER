@@ -156,8 +156,8 @@ void LookdevModule::sync()
   const eGPUTextureFormat color_format = GPU_RGBA16F;
 
   depth_tx_.ensure_2d(depth_format, extent);
-  metallic_color_tx_.ensure_2d(color_format, extent);
-  diffuse_color_tx_.ensure_2d(color_format, extent);
+  color_tx_.ensure_2d_array(color_format, extent, 2);
+  color_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
 
   float4x4 model_m4 = float4x4::identity();
   ResourceHandle handle = inst_.manager->resource_handle(model_m4);
@@ -210,10 +210,10 @@ void LookdevModule::sync_display()
   const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
   pass.state_set(state);
   pass.shader_set(inst_.shaders.static_shader_get(LOOKDEV_DISPLAY));
-  pass.bind_texture("metallic_tx", &metallic_color_tx_);
-  pass.bind_texture("diffuse_tx", &diffuse_color_tx_);
+  pass.push_constant("invertedViewportSize", float2(DRW_viewport_invert_size_get()));
+  pass.bind_texture("color_tx", &color_tx_);
 
-  pass.draw_procedural(GPU_PRIM_TRIS, 2, 4);
+  pass.draw_procedural(GPU_PRIM_TRIS, 2, 6);
 }
 
 void LookdevModule::draw_metallic(View &view)
@@ -222,7 +222,6 @@ void LookdevModule::draw_metallic(View &view)
     return;
   }
   depth_tx_.clear(float4(1.0f));
-  metallic_color_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
   inst_.manager->submit(metallic_ps_, view);
 }
 
@@ -232,7 +231,6 @@ void LookdevModule::draw_diffuse(View &view)
     return;
   }
   depth_tx_.clear(float4(1.0f));
-  diffuse_color_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
   inst_.manager->submit(diffuse_ps_, view);
 }
 

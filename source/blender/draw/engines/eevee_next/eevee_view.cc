@@ -313,9 +313,9 @@ void LookdevView::render()
   GPU_debug_group_begin("Lookdev");
 
   metallic_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.lookdev.depth_tx_),
-                      GPU_ATTACHMENT_TEXTURE(inst_.lookdev.metallic_color_tx_));
+                      GPU_ATTACHMENT_TEXTURE_LAYER(inst_.lookdev.color_tx_, 0));
   diffuse_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.lookdev.depth_tx_),
-                     GPU_ATTACHMENT_TEXTURE(inst_.lookdev.diffuse_color_tx_));
+                     GPU_ATTACHMENT_TEXTURE_LAYER(inst_.lookdev.color_tx_, 1));
 
   // create view for rendering spheres
   float4x4 view_m4 = float4x4::identity();
