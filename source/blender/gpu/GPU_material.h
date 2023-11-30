@@ -69,6 +69,7 @@ typedef enum eGPUType {
 } eGPUType;
 
 typedef enum eGPUMaterialFlag {
+  GPU_MATFLAG_NONE = 0,
   GPU_MATFLAG_DIFFUSE = (1 << 0),
   GPU_MATFLAG_SUBSURFACE = (1 << 1),
   GPU_MATFLAG_GLOSSY = (1 << 2),
@@ -94,9 +95,6 @@ typedef enum eGPUMaterialFlag {
   GPU_MATFLAG_PRINCIPLED_DIELECTRIC = (1 << 23),
   GPU_MATFLAG_PRINCIPLED_GLASS = (1 << 24),
   GPU_MATFLAG_PRINCIPLED_ANY = (1 << 25),
-
-  /* Tells the render engine the material was just compiled or updated. */
-  GPU_MATFLAG_UPDATED = (1 << 29),
 
   /* HACK(fclem) Tells the environment texture node to not bail out if empty. */
   GPU_MATFLAG_LOOKDEV_HACK = (1 << 30),
@@ -328,7 +326,6 @@ bool GPU_material_has_displacement_output(GPUMaterial *mat);
 void GPU_material_flag_set(GPUMaterial *mat, eGPUMaterialFlag flag);
 bool GPU_material_flag_get(const GPUMaterial *mat, eGPUMaterialFlag flag);
 eGPUMaterialFlag GPU_material_flag(const GPUMaterial *mat);
-bool GPU_material_recalc_flag_get(GPUMaterial *mat);
 uint64_t GPU_material_uuid_get(GPUMaterial *mat);
 
 void GPU_pass_cache_init(void);

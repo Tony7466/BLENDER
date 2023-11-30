@@ -56,6 +56,9 @@ struct DRWShaderCompiler {
   ListBase queue; /* GPUMaterial */
   SpinLock list_lock;
 
+  /** Compiled materials to be released and tagged by the update callback. */
+  blender::Vector<GPUMaterial *> compiled_materials;
+
   /** Optimization queue. */
   ListBase optimize_queue; /* GPUMaterial */
 
@@ -105,7 +108,9 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     if (mat) {
       /* Do the compilation. */
       GPU_material_compile(mat);
-      GPU_material_release(mat);
+      BLI_spin_lock(&comp->list_lock);
+      comp->compiled_materials.append(mat);
+      BLI_spin_unlock(&comp->list_lock);
       MEM_freeN(link);
     }
     else {
@@ -147,6 +152,24 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
   GPU_render_end();
 }
 
+static void drw_deferred_shader_compilation_update(void *custom_data)
+{
+  DRWShaderCompiler *comp = (DRWShaderCompiler *)custom_data;
+
+  BLI_spin_lock(&comp->list_lock);
+
+  for (GPUMaterial *mat : comp->compiled_materials) {
+    if (Material *bl_mat = GPU_material_get_material(mat)) {
+      DEG_id_tag_update(&bl_mat->id, ID_RECALC_SHADING);
+    }
+    GPU_material_release(mat);
+  }
+
+  comp->compiled_materials.clear();
+
+  BLI_spin_unlock(&comp->list_lock);
+}
+
 static void drw_deferred_shader_compilation_free(void *custom_data)
 {
   DRWShaderCompiler *comp = (DRWShaderCompiler *)custom_data;
@@ -166,7 +189,7 @@ static void drw_deferred_shader_compilation_free(void *custom_data)
     wm_window_reset_drawable();
   }
 
-  MEM_freeN(comp);
+  MEM_delete(comp);
 }
 
 /**
@@ -190,8 +213,7 @@ static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job
 
   DRWShaderCompiler *old_comp = (DRWShaderCompiler *)WM_jobs_customdata_get(wm_job);
 
-  DRWShaderCompiler *comp = static_cast<DRWShaderCompiler *>(
-      MEM_callocN(sizeof(DRWShaderCompiler), "DRWShaderCompiler"));
+  DRWShaderCompiler *comp = MEM_new<DRWShaderCompiler>("DRWShaderCompiler");
   BLI_spin_init(&comp->list_lock);
 
   if (old_comp) {
@@ -241,7 +263,11 @@ static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job
   WM_jobs_customdata_set(wm_job, comp, drw_deferred_shader_compilation_free);
   WM_jobs_timer(wm_job, 0.1, NC_MATERIAL | ND_SHADING_DRAW, 0);
   WM_jobs_delay_start(wm_job, 0.1);
-  WM_jobs_callbacks(wm_job, drw_deferred_shader_compilation_exec, nullptr, nullptr, nullptr);
+  WM_jobs_callbacks(wm_job,
+                    drw_deferred_shader_compilation_exec,
+                    nullptr,
+                    is_optimization_job ? nullptr : drw_deferred_shader_compilation_update,
+                    nullptr);
 
   G.is_break = false;
 

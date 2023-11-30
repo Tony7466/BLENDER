@@ -802,15 +802,6 @@ eGPUMaterialFlag GPU_material_flag(const GPUMaterial *mat)
   return mat->flag;
 }
 
-bool GPU_material_recalc_flag_get(GPUMaterial *mat)
-{
-  /* NOTE: Consumes the flags. */
-
-  bool updated = (mat->flag & GPU_MATFLAG_UPDATED) != 0;
-  mat->flag &= ~GPU_MATFLAG_UPDATED;
-  return updated;
-}
-
 uint64_t GPU_material_uuid_get(GPUMaterial *mat)
 {
   return mat->uuid;
@@ -839,7 +830,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   mat->ma = ma;
   mat->scene = scene;
   mat->uuid = shader_uuid;
-  mat->flag = GPU_MATFLAG_UPDATED;
+  mat->flag = GPU_MATFLAG_NONE;
   mat->status = GPU_MAT_CREATED;
   mat->default_mat = nullptr;
   mat->is_volume_shader = is_volume_shader;
@@ -949,8 +940,6 @@ void GPU_material_compile(GPUMaterial *mat)
 #else
   success = GPU_pass_compile(mat->pass, __func__);
 #endif
-
-  mat->flag |= GPU_MATFLAG_UPDATED;
 
   if (success) {
     GPUShader *sh = GPU_pass_shader_get(mat->pass);

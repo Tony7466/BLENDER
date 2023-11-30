@@ -199,10 +199,6 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
 
   inst_.manager->register_layer_attributes(matpass.gpumat);
 
-  if (GPU_material_recalc_flag_get(matpass.gpumat)) {
-    inst_.sampling.reset();
-  }
-
   const bool is_transparent = GPU_material_flag_get(matpass.gpumat, GPU_MATFLAG_TRANSPARENT);
   if (is_volume || (is_forward && is_transparent)) {
     /* Sub pass is generated later. */
