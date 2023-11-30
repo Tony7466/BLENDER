@@ -6,3 +6,4 @@ Referenced by pull request #115580, Fix #115572: shape_key_remove operator leave
 Referenced by issue #115572, Regression: Removing shape keys via python iteration messes up normals
 Referenced by commit d3ff658b66d0381cad9e6f899bbb79145f64ea68, Fix #115572: shape_key_remove operator leaves shared normals
 Referenced by issue #115526, Black mesh after using array modifier (On smoothed meshes only)
+Referenced by pull request #115612, Fix #115526: missing normals on first chunk of array modifier
