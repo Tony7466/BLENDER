@@ -43,10 +43,9 @@ static float calc_brush_radius(ViewContext *vc,
 template<typename T>
 static inline void linear_interpolation(const T &a, const T &b, MutableSpan<T> dst)
 {
-  dst.first() = a;
-  const float step = 1.0f / dst.size();
-  for (const int i : dst.index_range().drop_front(1)) {
-    dst[i] = bke::attribute_math::mix2(i * step, a, b);
+  const float step = 1.0f / float(dst.size());
+  for (const int i : dst.index_range()) {
+    dst[i] = bke::attribute_math::mix2(float(i + 1) * step, a, b);
   }
 }
 
@@ -81,8 +80,10 @@ static Array<float2> sample_curve_2d(Span<float2> positions, const int64_t resol
   return points;
 }
 
-/** Morph \a src onto \a target such that the points have the same spacing as in \a src and
- *  write the result to \a dst. */
+/**
+ * Morph \a src onto \a target such that the points have the same spacing as in \a src and
+ * write the result to \a dst.
+ */
 static void morph_points_to_curve(Span<float2> src, Span<float2> target, MutableSpan<float2> dst)
 {
   BLI_assert(src.size() == dst.size());

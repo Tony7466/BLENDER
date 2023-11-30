@@ -41,7 +41,6 @@ struct PBVH_GPU_Args {
   blender::OffsetIndices<int> faces;
   blender::Span<int> corner_verts;
   blender::Span<int> corner_edges;
-  int mesh_grids_num;
   const CustomData *vert_data;
   const CustomData *loop_data;
   const CustomData *face_data;
@@ -52,14 +51,13 @@ struct PBVH_GPU_Args {
   const char *render_color;
 
   int face_sets_color_seed, face_sets_color_default;
-  const int *face_sets; /* for PBVH_FACES and PBVH_GRIDS */
 
   SubdivCCG *subdiv_ccg;
-  const DMFlagMat *grid_flag_mats;
+  blender::Span<DMFlagMat> grid_flag_mats;
   blender::Span<int> grid_indices;
   CCGKey ccg_key;
-  CCGElem **grids;
-  BLI_bitmap **grid_hidden;
+  blender::Span<CCGElem *> grids;
+  blender::Span<const BLI_bitmap *> grid_hidden;
 
   blender::Span<int> prim_indices;
 

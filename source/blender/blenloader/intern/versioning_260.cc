@@ -72,7 +72,7 @@
 #include "SEQ_utils.hh"
 
 #ifdef WITH_FFMPEG
-#  include "BKE_writeffmpeg.h"
+#  include "BKE_writeffmpeg.hh"
 #endif
 
 #include "IMB_imbuf.h" /* for proxy / time-code versioning stuff. */
@@ -614,7 +614,7 @@ static const char *node_get_static_idname(int type, int treetype)
         return "ShaderNodeTexMagic";
       case SH_NODE_TEX_WAVE:
         return "ShaderNodeTexWave";
-      case SH_NODE_TEX_MUSGRAVE:
+      case SH_NODE_TEX_MUSGRAVE_DEPRECATED:
         return "ShaderNodeTexMusgrave";
       case SH_NODE_TEX_VORONOI:
         return "ShaderNodeTexVoronoi";

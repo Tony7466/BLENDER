@@ -1460,7 +1460,7 @@ static void sculptsession_free_pbvh(Object *object)
   MEM_SAFE_FREE(ss->preview_vert_list);
   ss->preview_vert_count = 0;
 
-  MEM_SAFE_FREE(ss->vertex_info.boundary);
+  ss->vertex_info.boundary.clear_and_shrink();
 
   MEM_SAFE_FREE(ss->fake_neighbors.fake_neighbor_index);
 }
@@ -1708,7 +1708,6 @@ static void sculpt_update_object(
     ss->multires.active = false;
     ss->multires.modifier = nullptr;
     ss->multires.level = 0;
-    ss->vmask = static_cast<const float *>(CustomData_get_layer(&me->vert_data, CD_PAINT_MASK));
 
     CustomDataLayer *layer;
     eAttrDomain domain;
@@ -1999,28 +1998,26 @@ bool *BKE_sculpt_hide_poly_ensure(Mesh *mesh)
       &mesh->face_data, CD_PROP_BOOL, CD_SET_DEFAULT, mesh->faces_num, ".hide_poly"));
 }
 
-int BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
-                                  Main *bmain,
-                                  Object *ob,
-                                  MultiresModifierData *mmd)
+void BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
+                                   Main *bmain,
+                                   Object *ob,
+                                   MultiresModifierData *mmd)
 {
+  using namespace blender;
+  using namespace blender::bke;
   Mesh *me = static_cast<Mesh *>(ob->data);
-  const blender::OffsetIndices faces = me->faces();
+  const OffsetIndices faces = me->faces();
   const Span<int> corner_verts = me->corner_verts();
-  int ret = 0;
-
-  const float *paint_mask = static_cast<const float *>(
-      CustomData_get_layer(&me->vert_data, CD_PAINT_MASK));
+  MutableAttributeAccessor attributes = me->attributes_for_write();
 
   /* if multires is active, create a grid paint mask layer if there
    * isn't one already */
   if (mmd && !CustomData_has_layer(&me->loop_data, CD_GRID_PAINT_MASK)) {
-    GridPaintMask *gmask;
     int level = max_ii(1, mmd->sculptlvl);
     int gridsize = BKE_ccg_gridsize(level);
     int gridarea = gridsize * gridsize;
 
-    gmask = static_cast<GridPaintMask *>(
+    GridPaintMask *gmask = static_cast<GridPaintMask *>(
         CustomData_add_layer(&me->loop_data, CD_GRID_PAINT_MASK, CD_SET_DEFAULT, me->totloop));
 
     for (int i = 0; i < me->totloop; i++) {
@@ -2032,14 +2029,15 @@ int BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
     }
 
     /* If vertices already have mask, copy into multires data. */
-    if (paint_mask) {
+    if (const VArray<float> mask = *attributes.lookup<float>(".sculpt_mask", ATTR_DOMAIN_POINT)) {
+      const VArraySpan<float> mask_span(mask);
       for (const int i : faces.index_range()) {
-        const blender::IndexRange face = faces[i];
+        const IndexRange face = faces[i];
 
         /* Mask center. */
         float avg = 0.0f;
         for (const int vert : corner_verts.slice(face)) {
-          avg += paint_mask[vert];
+          avg += mask_span[vert];
         }
         avg /= float(face.size());
 
@@ -2047,13 +2045,13 @@ int BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
         for (const int corner : face) {
           GridPaintMask *gpm = &gmask[corner];
           const int vert = corner_verts[corner];
-          const int prev = corner_verts[blender::bke::mesh::face_corner_prev(face, vert)];
-          const int next = corner_verts[blender::bke::mesh::face_corner_next(face, vert)];
+          const int prev = corner_verts[mesh::face_corner_prev(face, vert)];
+          const int next = corner_verts[mesh::face_corner_next(face, vert)];
 
           gpm->data[0] = avg;
-          gpm->data[1] = (paint_mask[vert] + paint_mask[next]) * 0.5f;
-          gpm->data[2] = (paint_mask[vert] + paint_mask[prev]) * 0.5f;
-          gpm->data[3] = paint_mask[vert];
+          gpm->data[1] = (mask_span[vert] + mask_span[next]) * 0.5f;
+          gpm->data[2] = (mask_span[vert] + mask_span[prev]) * 0.5f;
+          gpm->data[3] = mask_span[vert];
         }
       }
     }
@@ -2062,19 +2060,13 @@ int BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
     if (depsgraph) {
       BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
     }
-
-    ret |= SCULPT_MASK_LAYER_CALC_LOOP;
   }
 
   /* Create vertex paint mask layer if there isn't one already. */
-  if (!paint_mask) {
-    CustomData_add_layer(&me->vert_data, CD_PAINT_MASK, CD_SET_DEFAULT, me->totvert);
+  if (attributes.add<float>(".sculpt_mask", ATTR_DOMAIN_POINT, AttributeInitDefaultValue())) {
     /* The evaluated mesh must be updated to contain the new data. */
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-    ret |= SCULPT_MASK_LAYER_CALC_VERT;
   }
-
-  return ret;
 }
 
 void BKE_sculpt_toolsettings_data_ensure(Scene *scene)
@@ -2158,24 +2150,24 @@ void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg)
       ".hide_poly", ATTR_DOMAIN_FACE, false);
   if (hide_poly.is_single() && !hide_poly.get_internal_single()) {
     /* Nothing is hidden, so we can just remove all visibility bitmaps. */
-    for (const int i : IndexRange(subdiv_ccg->num_grids)) {
-      BKE_subdiv_ccg_grid_hidden_free(subdiv_ccg, i);
+    for (const int i : subdiv_ccg->grid_hidden.index_range()) {
+      BKE_subdiv_ccg_grid_hidden_free(*subdiv_ccg, i);
     }
     return;
   }
 
   const VArraySpan<bool> hide_poly_span(hide_poly);
   CCGKey key;
-  BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
+  BKE_subdiv_ccg_key_top_level(key, *subdiv_ccg);
   for (int i = 0; i < mesh->totloop; i++) {
-    const int face_index = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, i);
+    const int face_index = BKE_subdiv_ccg_grid_to_face_index(*subdiv_ccg, i);
     const bool is_hidden = hide_poly_span[face_index];
 
     /* Avoid creating and modifying the grid_hidden bitmap if the base mesh face is visible and
      * there is not bitmap for the grid. This is because missing grid_hidden implies grid is fully
      * visible. */
     if (is_hidden) {
-      BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg, i);
+      BKE_subdiv_ccg_grid_hidden_ensure(*subdiv_ccg, i);
     }
 
     BLI_bitmap *gh = subdiv_ccg->grid_hidden[i];
@@ -2217,7 +2209,7 @@ static PBVH *build_pbvh_from_regular_mesh(Object *ob, Mesh *me_eval_deform)
 static PBVH *build_pbvh_from_ccg(Object *ob, SubdivCCG *subdiv_ccg)
 {
   CCGKey key;
-  BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
+  BKE_subdiv_ccg_key_top_level(key, *subdiv_ccg);
   PBVH *pbvh = BKE_pbvh_new(PBVH_GRIDS);
 
   Mesh *base_mesh = BKE_mesh_from_object(ob);
@@ -2225,7 +2217,6 @@ static PBVH *build_pbvh_from_ccg(Object *ob, SubdivCCG *subdiv_ccg)
 
   BKE_pbvh_build_grids(pbvh,
                        subdiv_ccg->grids,
-                       subdiv_ccg->num_grids,
                        &key,
                        subdiv_ccg->grid_to_face_map,
                        subdiv_ccg->grid_flag_mats,
@@ -2312,7 +2303,7 @@ bool BKE_object_sculpt_use_dyntopo(const Object *object)
 void BKE_sculpt_bvh_update_from_ccg(PBVH *pbvh, SubdivCCG *subdiv_ccg)
 {
   CCGKey key;
-  BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
+  BKE_subdiv_ccg_key_top_level(key, *subdiv_ccg);
 
   BKE_pbvh_grids_update(pbvh,
                         subdiv_ccg->grids,

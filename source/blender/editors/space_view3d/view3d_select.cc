@@ -1200,10 +1200,17 @@ static bool do_lasso_select_grease_pencil(ViewContext *vc,
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
 
+    IndexMaskMemory memory;
+    const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+        *vc->obedit, info.drawing, selection_domain, memory);
+    if (elements.is_empty()) {
+      continue;
+    }
     changed = ed::curves::select_lasso(
         *vc,
         info.drawing.strokes_for_write(),
         deformation.positions,
+        elements,
         selection_domain,
         Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
         sel_op);
@@ -1421,11 +1428,14 @@ static bool view3d_lasso_select(bContext *C,
           bke::CurvesGeometry &curves = curves_id.geometry.wrap();
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_curves_deformation(*vc->depsgraph, *vc->obedit);
+          const eAttrDomain selection_domain = eAttrDomain(curves_id.selection_domain);
+          const IndexRange elements(curves.attributes().domain_size(selection_domain));
           changed = ed::curves::select_lasso(
               *vc,
               curves,
               deformation.positions,
-              eAttrDomain(curves_id.selection_domain),
+              elements,
+              selection_domain,
               Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
               sel_op);
           if (changed) {
@@ -2837,6 +2847,8 @@ static bool ed_object_select_pick(bContext *C,
     }
   }
 
+  bool changed_object_mode = false;
+
   if (handled == false) {
     if (scene->toolsettings->object_flag & SCE_OBJECT_MODE_LOCK) {
       /* No special logic in edit-mode. */
@@ -2862,17 +2874,55 @@ static bool ed_object_select_pick(bContext *C,
         }
       }
     }
+    else {
+      if (basact) {
+        if (!BKE_object_is_mode_compat(basact->object, object_mode)) {
+          changed_object_mode = true;
+        }
+      }
+      else if (object_mode != OB_MODE_OBJECT) {
+        changed_object_mode = true;
+      }
+    }
   }
 
   /* Ensure code above doesn't change the active base. This code is already fairly involved,
    * it's best if changing the active object is localized to a single place. */
   BLI_assert(oldbasact == (vc.obact ? BKE_view_layer_active_base_get(view_layer) : nullptr));
 
-  bool found = (basact != nullptr);
-  if ((handled == false) && (vc.obedit == nullptr)) {
-    /* Object-mode (pose mode will have been handled already). */
+  if (handled) {
+    /* Pass. */
+  }
+  else if (basact && vc.obedit) {
+    /* Only do the select (use for setting vertex parents & hooks).
+     * In edit-mode do not activate. */
+    object_deselect_all_except(scene, view_layer, basact);
+    ED_object_base_select(basact, BA_SELECT);
+
+    changed_object = true;
+  }
+  else {
+    /* Object-mode (pose mode will have been handled already)
+     * unless entering pose-mode from object selection (handled by `changed_object_mode`). */
+
+    /* NOTE(@ideasman42): When select changes object-mode it doesn't make sense to use
+     * pass-through.
+     *
+     * - When object-mode locking is disabled:
+     *   Selecting another already selected object does not need to make it active,
+     *   allowing a cursor-drag to move this objects as well as other selected objects.
+     * - When object-mode locking is enabled:
+     *   Selecting an object in a different mode (typically pose-mode) must prioritize
+     *   entering that mode which requires making the object active, further, the selection
+     *   before switching modes wont make sense in the newly entered mode,
+     *   so it makes sense to disable pass-through logic in this case.
+     *
+     * See: #115181 for details. */
+    const bool select_passthrough = params->select_passthrough && (changed_object_mode == false);
+
+    bool found = (basact != nullptr) && BASE_SELECTABLE(v3d, basact);
     if (params->sel_op == SEL_OP_SET) {
-      if ((found && params->select_passthrough) && (basact->flag & BASE_SELECTED)) {
+      if ((found && select_passthrough) && (basact->flag & BASE_SELECTED)) {
         found = false;
       }
       else if (found || params->deselect_all) {
@@ -2883,20 +2933,8 @@ static bool ed_object_select_pick(bContext *C,
         }
       }
     }
-  }
 
-  if ((handled == false) && found) {
-
-    if (vc.obedit) {
-      /* Only do the select (use for setting vertex parents & hooks).
-       * In edit-mode do not activate. */
-      object_deselect_all_except(scene, view_layer, basact);
-      ED_object_base_select(basact, BA_SELECT);
-
-      changed_object = true;
-    }
-    /* Also prevent making it active on mouse selection. */
-    else if (BASE_SELECTABLE(v3d, basact)) {
+    if (found) {
       use_activate_selected_base |= (oldbasact != basact) && (is_obedit == false);
 
       switch (params->sel_op) {
@@ -2921,7 +2959,7 @@ static bool ed_object_select_pick(bContext *C,
           break;
         }
         case SEL_OP_SET: {
-          object_deselect_all_except(scene, view_layer, basact);
+          /* Deselect has already been performed. */
           ED_object_base_select(basact, BA_SELECT);
           break;
         }
@@ -3084,11 +3122,14 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
           Curves &curves_id = *static_cast<Curves *>(curves_ob.data);
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obedit);
+          const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+          const IndexRange elements(curves.attributes().domain_size(selection_domain));
           std::optional<ed::curves::FindClosestData> new_closest_elem =
               ed::curves::closest_elem_find_screen_space(vc,
                                                          curves_ob,
-                                                         curves_id.geometry.wrap(),
+                                                         curves.points_by_curve(),
                                                          deformation.positions,
+                                                         elements,
                                                          selection_domain,
                                                          mval,
                                                          new_closest.elem);
@@ -3188,11 +3229,19 @@ static bool ed_grease_pencil_select_pick(bContext *C,
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                   ob_eval, *vc.obedit, info.layer_index, info.frame_number);
+
+          IndexMaskMemory memory;
+          const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+              *vc.obedit, info.drawing, selection_domain, memory);
+          if (elements.is_empty()) {
+            continue;
+          }
           std::optional<ed::curves::FindClosestData> new_closest_elem =
               ed::curves::closest_elem_find_screen_space(vc,
                                                          *vc.obedit,
-                                                         info.drawing.strokes_for_write(),
+                                                         info.drawing.strokes().points_by_curve(),
                                                          deformation.positions,
+                                                         elements,
                                                          selection_domain,
                                                          mval,
                                                          new_closest.elem);
@@ -3212,13 +3261,19 @@ static bool ed_grease_pencil_select_pick(bContext *C,
     threading::parallel_for(drawings.index_range(), 1L, [&](const IndexRange range) {
       for (const int i : range) {
         ed::greasepencil::MutableDrawingInfo info = drawings[i];
+        IndexMaskMemory memory;
+        const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+            *vc.obedit, info.drawing, selection_domain, memory);
+        if (elements.is_empty()) {
+          continue;
+        }
         bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-        if (!ed::curves::has_anything_selected(curves)) {
+        if (!ed::curves::has_anything_selected(curves, elements)) {
           continue;
         }
         bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
             curves, selection_domain, CD_PROP_BOOL);
-        ed::curves::fill_selection_false(selection.span);
+        ed::curves::fill_selection_false(selection.span, elements);
         selection.finish();
 
         deselected = true;
@@ -4196,9 +4251,16 @@ static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const
     bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
+    IndexMaskMemory memory;
+    const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+        *vc->obedit, info.drawing, selection_domain, memory);
+    if (elements.is_empty()) {
+      continue;
+    }
     changed |= ed::curves::select_box(*vc,
                                       info.drawing.strokes_for_write(),
                                       deformation.positions,
+                                      elements,
                                       selection_domain,
                                       *rect,
                                       sel_op);
@@ -4282,12 +4344,10 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
           bke::CurvesGeometry &curves = curves_id.geometry.wrap();
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obedit);
-          changed = ed::curves::select_box(vc,
-                                           curves,
-                                           deformation.positions,
-                                           eAttrDomain(curves_id.selection_domain),
-                                           rect,
-                                           sel_op);
+          const eAttrDomain selection_domain = eAttrDomain(curves_id.selection_domain);
+          const IndexRange elements(curves.attributes().domain_size(selection_domain));
+          changed = ed::curves::select_box(
+              vc, curves, deformation.positions, elements, selection_domain, rect, sel_op);
           if (changed) {
             /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
              * generic attribute for now. */
@@ -5045,10 +5105,16 @@ static bool grease_pencil_circle_select(ViewContext *vc,
     bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
-
+    IndexMaskMemory memory;
+    const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+        *vc->obedit, info.drawing, selection_domain, memory);
+    if (elements.is_empty()) {
+      continue;
+    }
     changed = ed::curves::select_circle(*vc,
                                         info.drawing.strokes_for_write(),
                                         deformation.positions,
+                                        elements,
                                         selection_domain,
                                         int2(mval),
                                         rad,
@@ -5103,13 +5169,10 @@ static bool obedit_circle_select(bContext *C,
       bke::CurvesGeometry &curves = curves_id.geometry.wrap();
       bke::crazyspace::GeometryDeformation deformation =
           bke::crazyspace::get_evaluated_curves_deformation(*vc->depsgraph, *vc->obedit);
-      changed = ed::curves::select_circle(*vc,
-                                          curves,
-                                          deformation.positions,
-                                          eAttrDomain(curves_id.selection_domain),
-                                          mval,
-                                          rad,
-                                          sel_op);
+      const eAttrDomain selection_domain = eAttrDomain(curves_id.selection_domain);
+      const IndexRange elements(curves.attributes().domain_size(selection_domain));
+      changed = ed::curves::select_circle(
+          *vc, curves, deformation.positions, elements, selection_domain, mval, rad, sel_op);
       if (changed) {
         /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
          * generic attribute for now. */
