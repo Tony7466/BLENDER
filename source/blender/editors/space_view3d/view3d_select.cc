@@ -1677,7 +1677,7 @@ void VIEW3D_OT_select_menu(wmOperatorType *ot)
  */
 static bool object_mouse_select_menu(bContext *C,
                                      ViewContext *vc,
-                                     blender::Span<GPUSelectResult> hit_results,
+                                     const blender::Span<GPUSelectResult> hit_results,
                                      const int mval[2],
                                      const SelectPick_Params *params,
                                      Base **r_basact)
@@ -1890,7 +1890,7 @@ void VIEW3D_OT_bone_select_menu(wmOperatorType *ot)
  * \return True when a menu was activated.
  */
 static bool bone_mouse_select_menu(bContext *C,
-                                   blender::Span<GPUSelectResult> hit_results,
+                                   const blender::Span<GPUSelectResult> hit_results,
                                    const bool is_editmode,
                                    const SelectPick_Params *params)
 {
@@ -2035,7 +2035,7 @@ static bool bone_mouse_select_menu(bContext *C,
   return true;
 }
 
-static bool selectbuffer_has_bones(blender::Span<GPUSelectResult> hit_results)
+static bool selectbuffer_has_bones(const blender::Span<GPUSelectResult> hit_results)
 {
   for (const GPUSelectResult &result : hit_results) {
     if (result.id & 0xFFFF0000) {
@@ -2644,7 +2644,7 @@ static bool ed_object_select_pick(bContext *C,
     }
     else {
       if (gpu->hits != 0) {
-        blender::Span<GPUSelectResult> hit_results = gpu->buffer.storage.as_span().slice(
+        const blender::Span<GPUSelectResult> hit_results = gpu->buffer.storage.as_span().slice(
             0, gpu->hits);
         if (gpu->has_bones && bone_mouse_select_menu(C, hit_results, false, params)) {
           has_menu = true;
@@ -4138,7 +4138,7 @@ static bool do_pose_box_select(bContext *C,
 {
   blender::Vector<Base *> bases = do_pose_tag_select_op_prepare(vc);
 
-  /* Selection buffer has bones potentially too, so add #MAXPICKELEMS. */
+  /* Selection buffer has bones potentially too. */
   GPUSelectBuffer buffer;
   const eV3DSelectObjectFilter select_filter = ED_view3d_select_filter_from_mode(vc->scene,
                                                                                  vc->obact);

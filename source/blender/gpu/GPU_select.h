@@ -93,7 +93,7 @@ void GPU_select_cache_end(void);
  *
  * Note that comparing depth as uint is fine.
  */
-const GPUSelectResult *GPU_select_buffer_near(blender::Span<GPUSelectResult> hit_results);
+const GPUSelectResult *GPU_select_buffer_near(const blender::Span<GPUSelectResult> hit_results);
 uint GPU_select_buffer_remove_by_id(blender::MutableSpan<GPUSelectResult> hit_results,
                                     uint select_id);
 /**

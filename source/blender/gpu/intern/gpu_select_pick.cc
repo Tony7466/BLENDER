@@ -659,11 +659,12 @@ uint gpu_select_pick_end()
   /* Leave sorting up to the caller. */
   qsort(depth_data, depth_data_len, sizeof(DepthID), depth_cmp);
 
+  g_pick_state.buffer->storage.reserve(g_pick_state.buffer->storage.size() + depth_data_len);
   for (uint i = 0; i < depth_data_len; i++) {
 #ifdef DEBUG_PRINT
     printf("  hit: %u: depth %u\n", depth_data[i].id, depth_data[i].depth);
 #endif
-    g_pick_state.buffer->storage.append({depth_data[i].id, depth_data[i].depth});
+    g_pick_state.buffer->storage.append_unchecked({depth_data[i].id, depth_data[i].depth});
     hits++;
   }
 

@@ -52,7 +52,7 @@ void gpu_select_next_set_result(GPUSelectResult *hit_buf, uint hit_len)
 {
   g_state.buffer->storage.resize(hit_len);
   blender::MutableSpan<GPUSelectResult> result = g_state.buffer->storage.as_mutable_span();
-  blender::Span<GPUSelectResult> hits(hit_buf, hit_len);
+  const blender::Span<GPUSelectResult> hits(hit_buf, hit_len);
 
   /* TODO(fclem): There might be some conversion to do to align to the other APIs output. */
   switch (g_state.mode) {

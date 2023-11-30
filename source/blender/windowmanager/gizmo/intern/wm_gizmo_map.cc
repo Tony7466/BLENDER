@@ -597,7 +597,7 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
   ED_view3d_draw_setup_view(
       wm, CTX_wm_window(C), depsgraph, CTX_data_scene(C), region, v3d, nullptr, nullptr, nullptr);
 
-  blender::Span<GPUSelectResult> hit_results = buffer.storage.as_span().take_front(hits);
+  const blender::Span<GPUSelectResult> hit_results = buffer.storage.as_span().take_front(hits);
   if (use_select_bias && (hits > 1)) {
     float co_direction[3];
     float co_screen[3] = {float(co[0]), float(co[1]), 0.0f};

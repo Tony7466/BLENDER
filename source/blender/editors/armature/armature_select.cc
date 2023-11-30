@@ -159,7 +159,7 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(
     const bool is_editmode,
     Base **bases,
     uint bases_len,
-    blender::Span<GPUSelectResult> hit_results,
+    const blender::Span<GPUSelectResult> hit_results,
     bool findunsel,
     bool do_nearest,
     Base **r_base)

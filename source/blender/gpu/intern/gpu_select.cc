@@ -242,7 +242,7 @@ bool GPU_select_is_cached()
 /** \name Utilities
  * \{ */
 
-const GPUSelectResult *GPU_select_buffer_near(blender::Span<GPUSelectResult> hit_results)
+const GPUSelectResult *GPU_select_buffer_near(const blender::Span<GPUSelectResult> hit_results)
 {
   const GPUSelectResult *buffer_near = nullptr;
   uint depth_min = uint(-1);
@@ -259,8 +259,8 @@ const GPUSelectResult *GPU_select_buffer_near(blender::Span<GPUSelectResult> hit
 uint GPU_select_buffer_remove_by_id(blender::MutableSpan<GPUSelectResult> hit_results,
                                     uint select_id)
 {
-  int64_t index_src = 0;
-  int64_t index_dst = 0;
+  uint index_src = 0;
+  uint index_dst = 0;
   uint hits_final = 0;
   for (const GPUSelectResult &result : hit_results) {
     if (result.id != select_id) {
