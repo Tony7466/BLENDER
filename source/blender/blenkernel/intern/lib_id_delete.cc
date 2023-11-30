@@ -314,6 +314,7 @@ static size_t id_delete(Main *bmain,
                                  id_remapper,
                                  ID_REMAP_FORCE_INTERNAL_RUNTIME_POINTERS |
                                      ID_REMAP_SKIP_USER_CLEAR);
+    cleanup_ids.clear();
     BKE_id_remapper_free(id_remapper);
 
     BKE_layer_collection_resync_allow();
