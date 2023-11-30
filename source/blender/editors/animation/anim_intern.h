@@ -97,6 +97,14 @@ void ANIM_OT_paste_driver_button(struct wmOperatorType *ot);
 
 /** \} */
 
+/** \name World space copy and paste
+ * \{ */
+
+void ANIM_OT_world_space_copy(wmOperatorType *ot);
+void ANIM_OT_world_space_paste(wmOperatorType *ot);
+
+/** \} */
+
 #ifdef __cplusplus
 }
 #endif

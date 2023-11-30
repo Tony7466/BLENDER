@@ -36,6 +36,7 @@ set(SRC
   keyframing.cc
   keyingsets.cc
   time_scrub_ui.cc
+  world_space_copy.cc
 
   anim_intern.h
 )

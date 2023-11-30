@@ -1,0 +1,137 @@
+#include "BKE_appdir.h"
+#include "BKE_context.hh"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector_types.hh"
+#include "BLI_path_util.h"
+#include "BLI_string.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
+#include "DNA_scene_types.h"
+#include "DNA_space_types.h"
+#include "DNA_windowmanager_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "WM_types.hh"
+#include "anim_intern.h"
+
+typedef struct CopyBuffer {
+  char *name;      /* Object/Bone name. */
+  float *matrices; /* Array of 4x4 matrices. */
+} CopyBuffer;
+
+typedef struct Foo {
+  int array_size;
+  int frame_count;
+  CopyBuffer *buffer;
+} Foo;
+
+/* Copy matrix to flat array. */
+static void copy_matrix(float source[4][4], float *target)
+{
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      target[i * 4 + j] = source[i][j];
+    }
+  }
+}
+
+static int world_space_copy_exec(bContext *C, wmOperator *op)
+{
+
+  Object *ob = CTX_data_active_object(C);
+  if (ob == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  /* TODO copy selection instead of hardcoding active. */
+  ID *ids = &ob->id;
+  const int selected_ids = 1;
+
+  int range[2];
+  RNA_int_get_array(op->ptr, "range", range);
+
+  Scene *scene = CTX_data_scene(C);
+  if (range[0] == 0 && range[1] == 0) {
+    range[0] = scene->r.sfra;
+    range[1] = scene->r.efra;
+  }
+  const int frame_count = range[1] - range[0];
+  if (frame_count <= 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  CopyBuffer *copy_buffer = static_cast<CopyBuffer *>(
+      MEM_callocN(sizeof(CopyBuffer) * selected_ids, "World Space Copy Buffer"));
+
+  for (int i = 0; i < selected_ids; i++) {
+    copy_buffer[i].name = BLI_strdup(ids[i].name);
+    copy_buffer[i].matrices = static_cast<float *>(
+        MEM_callocN(sizeof(float) * frame_count * 16, "Copy Buffer Frame Values"));
+  }
+
+  Depsgraph *depsgraph = DEG_graph_new(
+      CTX_data_main(C), scene, CTX_data_view_layer(C), DAG_EVAL_VIEWPORT);
+  DEG_graph_build_from_ids(depsgraph, &ids, selected_ids);
+
+  for (int frame_index = 0; frame_index < frame_count; frame_index++) {
+    const int frame = range[0] + frame_index;
+    DEG_evaluate_on_framechange(depsgraph, frame);
+
+    for (int id_index = 0; id_index < selected_ids; id_index++) {
+      CopyBuffer buffer = copy_buffer[id_index];
+      float *matrix = &buffer.matrices[frame_index * 16];
+      Object *eval_object = DEG_get_evaluated_object(depsgraph, ob);
+      copy_matrix(eval_object->object_to_world, matrix);
+    }
+  }
+
+  char filepath[FILE_MAX];
+  const char *cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, nullptr);
+  BLI_path_join(filepath, sizeof(filepath), cfgdir, "world_space_buffer");
+  FILE *f = fopen(filepath, "wb");
+  fwrite(copy_buffer, sizeof(CopyBuffer), sizeof(copy_buffer), f);
+  fclose(f);
+
+  for (int i = 0; i < selected_ids; i++) {
+    MEM_freeN(&copy_buffer[i].name);
+    MEM_freeN(&copy_buffer[i].matrices);
+  }
+
+  MEM_freeN(copy_buffer);
+  DEG_graph_free(depsgraph);
+  return OPERATOR_FINISHED;
+}
+
+void ANIM_OT_world_space_copy(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Copy World Space";
+  ot->idname = "ANIM_OT_world_space_copy";
+  ot->description = "foo";
+
+  ot->exec = world_space_copy_exec;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_int_array(
+      ot->srna, "range", 2, nullptr, -INT_MAX, INT_MAX, "Frame Range", "", 0, INT_MAX);
+}
+
+static int world_space_paste_exec(bContext *C, wmOperator *op)
+{
+  return OPERATOR_CANCELLED;
+}
+
+void ANIM_OT_world_space_paste(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Paste World Space";
+  ot->idname = "ANIM_OT_world_space_paste";
+  ot->description = "foo";
+
+  ot->exec = world_space_paste_exec;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
