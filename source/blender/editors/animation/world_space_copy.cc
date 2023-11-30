@@ -37,6 +37,81 @@ static void copy_matrix(float source[4][4], float *target)
   }
 }
 
+static void free_foo(Foo *foo)
+{
+  for (int id_index = 0; id_index < foo->object_count; id_index++) {
+    CopyBuffer buffer = foo->buffer[id_index];
+    if (buffer.matrices != nullptr) {
+      MEM_freeN(buffer.matrices);
+    }
+    if (buffer.name != nullptr) {
+      MEM_freeN(buffer.name);
+    }
+  }
+  if (foo->buffer != nullptr) {
+    MEM_freeN(foo->buffer);
+  }
+}
+
+static bool write_foo(Foo *foo)
+{
+  char filepath[FILE_MAX];
+  const char *cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, nullptr);
+  BLI_path_join(filepath, sizeof(filepath), cfgdir, "world_space_buffer");
+  FILE *f = fopen(filepath, "wb");
+  fwrite(&foo->frame_count, sizeof(int), 1, f);
+  fwrite(&foo->object_count, sizeof(int), 1, f);
+  for (int id_index = 0; id_index < foo->object_count; id_index++) {
+    CopyBuffer *buffer = &foo->buffer[id_index];
+    fwrite(&buffer->name_length, sizeof(int), 1, f);
+    fwrite(buffer->name, sizeof(char), buffer->name_length + 1, f);
+    fwrite(buffer->matrices, sizeof(float), foo->frame_count * 16, f);
+  }
+  fclose(f);
+  return true;
+}
+
+static bool read_foo(Foo *foo)
+{
+  char filepath[FILE_MAX];
+  const char *cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, nullptr);
+  BLI_path_join(filepath, sizeof(filepath), cfgdir, "world_space_buffer");
+
+  FILE *f = fopen(filepath, "rb");
+  if (!f) {
+    return false;
+  }
+  fread(&foo->frame_count, sizeof(int), 1, f);
+  fread(&foo->object_count, sizeof(int), 1, f);
+
+  CopyBuffer *copy_buffer = static_cast<CopyBuffer *>(
+      MEM_callocN(sizeof(CopyBuffer) * foo->object_count, "World Space Copy Buffer"));
+  foo->buffer = copy_buffer;
+
+  for (int id_index = 0; id_index < foo->object_count; id_index++) {
+    CopyBuffer *buffer = &foo->buffer[id_index];
+    size_t read_size;
+    read_size = fread(&buffer->name_length, sizeof(int), 1, f);
+    if (read_size != 1) {
+      return false;
+    }
+    buffer->name = static_cast<char *>(
+        MEM_callocN(sizeof(char) * buffer->name_length + 1, "World Space name"));
+    read_size = fread(buffer->name, sizeof(char), buffer->name_length + 1, f);
+    if (read_size != buffer->name_length + 1) {
+      return false;
+    }
+    buffer->matrices = static_cast<float *>(
+        MEM_callocN(sizeof(float) * foo->frame_count * 16, "Copy Buffer Frame Values"));
+    read_size = fread(buffer->matrices, sizeof(float), foo->frame_count * 16, f);
+    if (read_size != foo->frame_count * 16) {
+      return false;
+    }
+  }
+  fclose(f);
+  return true;
+}
+
 static int world_space_copy_exec(bContext *C, wmOperator *op)
 {
 
@@ -91,26 +166,9 @@ static int world_space_copy_exec(bContext *C, wmOperator *op)
     }
   }
 
-  char filepath[FILE_MAX];
-  const char *cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, nullptr);
-  BLI_path_join(filepath, sizeof(filepath), cfgdir, "world_space_buffer");
-  FILE *f = fopen(filepath, "wb");
-  fwrite(&foo.frame_count, sizeof(int), 1, f);
-  fwrite(&foo.object_count, sizeof(int), 1, f);
-  for (int id_index = 0; id_index < selected_ids; id_index++) {
-    CopyBuffer buffer = copy_buffer[id_index];
-    fwrite(&copy_buffer->name_length, sizeof(int), 1, f);
-    fwrite(copy_buffer->name, sizeof(char), buffer.name_length + 1, f);
-    fwrite(copy_buffer->matrices, sizeof(float), frame_count * 16, f);
-  }
-  fclose(f);
+  write_foo(&foo);
+  free_foo(&foo);
 
-  for (int i = 0; i < selected_ids; i++) {
-    MEM_freeN(&copy_buffer[i].name);
-    MEM_freeN(&copy_buffer[i].matrices);
-  }
-
-  MEM_freeN(copy_buffer);
   DEG_graph_free(depsgraph);
 
   return OPERATOR_FINISHED;
@@ -134,49 +192,14 @@ void ANIM_OT_world_space_copy(wmOperatorType *ot)
 
 static int world_space_paste_exec(bContext *C, wmOperator *op)
 {
-  char filepath[FILE_MAX];
-  const char *cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, nullptr);
-  BLI_path_join(filepath, sizeof(filepath), cfgdir, "world_space_buffer");
-
-  FILE *f = fopen(filepath, "rb");
-  if (!f) {
+  Foo foo;
+  const bool read_success = read_foo(&foo);
+  if (!read_success) {
+    free_foo(&foo);
     return OPERATOR_CANCELLED;
   }
-  Foo foo;
-  fread(&foo.frame_count, sizeof(int), 1, f);
-  fread(&foo.object_count, sizeof(int), 1, f);
 
-  CopyBuffer *copy_buffer = static_cast<CopyBuffer *>(
-      MEM_callocN(sizeof(CopyBuffer) * foo.object_count, "World Space Copy Buffer"));
-  foo.buffer = copy_buffer;
-
-  for (int id_index = 0; id_index < foo.object_count; id_index++) {
-    CopyBuffer *buffer = &foo.buffer[id_index];
-    size_t read_size;
-    read_size = fread(&buffer->name_length, sizeof(int), 1, f);
-    if (read_size != 1) {
-      break;
-    }
-    buffer->name = static_cast<char *>(
-        MEM_callocN(sizeof(char) * buffer->name_length + 1, "World Space name"));
-    read_size = fread(buffer->name, sizeof(char), buffer->name_length + 1, f);
-    if (read_size != buffer->name_length + 1) {
-      break;
-    }
-    buffer->matrices = static_cast<float *>(
-        MEM_callocN(sizeof(float) * foo.frame_count * 16, "Copy Buffer Frame Values"));
-    read_size = fread(buffer->matrices, sizeof(float), foo.frame_count * 16, f);
-    if (read_size != foo.frame_count * 16) {
-      break;
-    }
-  }
-  fclose(f);
-  for (int id_index = 0; id_index < foo.object_count; id_index++) {
-    CopyBuffer buffer = foo.buffer[id_index];
-    MEM_freeN(buffer.matrices);
-    MEM_freeN(buffer.name);
-  }
-  MEM_freeN(foo.buffer);
+  free_foo(&foo);
   return OPERATOR_FINISHED;
 }
 
