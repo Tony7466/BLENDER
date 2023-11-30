@@ -181,7 +181,7 @@ struct PBVH {
   blender::Span<CCGElem *> grids;
   blender::Span<int> grid_to_face_map;
   blender::Span<DMFlagMat> grid_flag_mats;
-  blender::Span<BLI_bitmap *> grid_hidden;
+  const blender::BitGroupVector<> *grid_hidden;
 
   /* Used during BVH build and later to mark that a vertex needs to update
    * (its normal must be recalculated). */

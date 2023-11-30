@@ -1170,11 +1170,12 @@ struct PBVHBatches {
 
     for (const int grid_index : args.grid_indices) {
       bool smooth = !args.grid_flag_mats[grid_index].sharp;
-      const BLI_bitmap *gh = args.grid_hidden[grid_index];
+      const blender::BoundedBitSpan gh = args.grid_hidden ? (*args.grid_hidden)[grid_index] :
+                                                            blender::BoundedBitSpan();
 
       for (int y = 0; y < gridsize - 1; y += skip) {
         for (int x = 0; x < gridsize - 1; x += skip) {
-          if (gh && paint_is_grid_face_hidden(gh, gridsize, x, y)) {
+          if (!gh.is_empty() && paint_is_grid_face_hidden(gh, gridsize, x, y)) {
             /* Skip hidden faces by just setting smooth to true. */
             smooth = true;
             goto outer_loop_break;
@@ -1210,12 +1211,14 @@ struct PBVHBatches {
         uint v0, v1, v2, v3;
         bool grid_visible = false;
 
-        const BLI_bitmap *gh = args.grid_hidden[args.grid_indices[i]];
+        const blender::BoundedBitSpan gh = args.grid_hidden ?
+                                               (*args.grid_hidden)[args.grid_indices[i]] :
+                                               blender::BoundedBitSpan();
 
         for (int j = 0; j < gridsize - skip; j += skip) {
           for (int k = 0; k < gridsize - skip; k += skip) {
             /* Skip hidden grid face */
-            if (gh && paint_is_grid_face_hidden(gh, gridsize, k, j)) {
+            if (!gh.is_empty() && paint_is_grid_face_hidden(gh, gridsize, k, j)) {
               continue;
             }
             /* Indices in a Clockwise QUAD disposition. */
@@ -1248,13 +1251,15 @@ struct PBVHBatches {
 
       for (int i = 0; i < totgrid; i++, offset += grid_vert_len) {
         bool grid_visible = false;
-        const BLI_bitmap *gh = args.grid_hidden[args.grid_indices[i]];
+        const blender::BoundedBitSpan gh = args.grid_hidden ?
+                                               (*args.grid_hidden)[args.grid_indices[i]] :
+                                               blender::BoundedBitSpan();
 
         uint v0, v1, v2, v3;
         for (int j = 0; j < gridsize - skip; j += skip) {
           for (int k = 0; k < gridsize - skip; k += skip) {
             /* Skip hidden grid face */
-            if (gh && paint_is_grid_face_hidden(gh, gridsize, k, j)) {
+            if (!gh.is_empty() && paint_is_grid_face_hidden(gh, gridsize, k, j)) {
               continue;
             }
 

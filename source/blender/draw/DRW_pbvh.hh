@@ -10,7 +10,7 @@
 
 /* Needed for BKE_ccg.h. */
 #include "BLI_assert.h"
-#include "BLI_bitmap.h"
+#include "BLI_bit_group_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
@@ -57,7 +57,7 @@ struct PBVH_GPU_Args {
   blender::Span<int> grid_indices;
   CCGKey ccg_key;
   blender::Span<CCGElem *> grids;
-  blender::Span<const BLI_bitmap *> grid_hidden;
+  const blender::BitGroupVector<> *grid_hidden;
 
   blender::Span<int> prim_indices;
 

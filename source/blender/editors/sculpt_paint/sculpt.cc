@@ -415,9 +415,9 @@ bool SCULPT_vertex_visible_get(const SculptSession *ss, PBVHVertRef vertex)
       const CCGKey *key = BKE_pbvh_get_grid_key(ss->pbvh);
       const int grid_index = vertex.i / key->grid_area;
       const int vertex_index = vertex.i - grid_index * key->grid_area;
-      const blender::Span<const BLI_bitmap *> grid_hidden = BKE_pbvh_get_grid_visibility(ss->pbvh);
-      if (grid_hidden[grid_index]) {
-        return !BLI_BITMAP_TEST(grid_hidden[grid_index], vertex_index);
+      const blender::BitGroupVector<> *grid_hidden = BKE_pbvh_get_grid_visibility(ss->pbvh);
+      if (grid_hidden) {
+        return !(*grid_hidden)[grid_index][vertex_index];
       }
     }
   }

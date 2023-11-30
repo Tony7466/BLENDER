@@ -9,7 +9,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_bitmap.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
@@ -116,86 +115,89 @@ static void partialvis_update_mesh(Object *ob,
 static void partialvis_update_grids(Depsgraph *depsgraph,
                                     Object *ob,
                                     PBVH *pbvh,
-                                    PBVHNode *node,
                                     PartialVisAction action,
                                     PartialVisArea area,
-                                    float planes[4][4])
+                                    float planes[4][4],
+                                    const Span<PBVHNode *> nodes)
 {
-  CCGElem *const *grids;
-  const int *grid_indices;
-  int totgrid;
-  bool any_changed = false, any_visible = false;
-
-  /* Get PBVH data. */
-  BKE_pbvh_node_get_grids(pbvh, node, &grid_indices, &totgrid, nullptr, nullptr, &grids);
-
   SculptSession *ss = ob->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
-  blender::MutableSpan<BLI_bitmap *> grid_hidden = subdiv_ccg->grid_hidden;
-  CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
+  if (action == PARTIALVIS_SHOW && !subdiv_ccg->grid_hidden) {
+    return;
+  }
+  if (action == PARTIALVIS_SHOW && area == PARTIALVIS_ALL) {
+    if (subdiv_ccg->grid_hidden) {
+      for (PBVHNode *node : nodes) {
+        BKE_pbvh_node_mark_rebuild_draw(node);
+        BKE_pbvh_node_fully_hidden_set(node, false);
+      }
+      BKE_subdiv_ccg_grid_hidden_free(*subdiv_ccg);
+      multires_mark_as_modified(depsgraph, ob, MULTIRES_HIDDEN_MODIFIED);
+    }
+    return;
+  }
 
-  SCULPT_undo_push_node(ob, node, SCULPT_UNDO_HIDDEN);
+  BKE_subdiv_ccg_grid_hidden_ensure(*subdiv_ccg);
+  blender::BitGroupVector<> &grid_hidden = *subdiv_ccg->grid_hidden;
 
-  for (int i = 0; i < totgrid; i++) {
-    int any_hidden = 0;
-    int g = grid_indices[i];
-    BLI_bitmap *gh = grid_hidden[g];
+  bool any_changed = false;
+  bool any_hidden = false;
+  for (PBVHNode *node : nodes) {
+    CCGElem *const *grids;
+    const int *grid_indices;
+    int totgrid;
+    bool node_changed = false;
+    bool any_visible = false;
 
-    if (!gh) {
-      switch (action) {
-        case PARTIALVIS_HIDE:
-          /* Create grid flags data. */
-          gh = grid_hidden[g] = BLI_BITMAP_NEW(key.grid_area, "partialvis_update_grids");
-          break;
-        case PARTIALVIS_SHOW:
-          /* Entire grid is visible, nothing to show. */
-          continue;
+    /* Get PBVH data. */
+    BKE_pbvh_node_get_grids(pbvh, node, &grid_indices, &totgrid, nullptr, nullptr, &grids);
+
+    CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
+
+    SCULPT_undo_push_node(ob, node, SCULPT_UNDO_HIDDEN);
+
+    for (int i = 0; i < totgrid; i++) {
+      int g = grid_indices[i];
+      blender::MutableBoundedBitSpan gh = grid_hidden[g];
+
+      for (int y = 0; y < key.grid_size; y++) {
+        for (int x = 0; x < key.grid_size; x++) {
+          CCGElem *elem = CCG_grid_elem(&key, grids[g], x, y);
+          const float *co = CCG_elem_co(&key, elem);
+          float mask = key.has_mask ? *CCG_elem_mask(&key, elem) : 0.0f;
+
+          /* Skip grid element if not in the effected area. */
+          if (is_effected(area, planes, co, mask)) {
+            /* Set or clear the hide flag. */
+            gh[y * key.grid_size + x].set(action == PARTIALVIS_HIDE);
+
+            node_changed = true;
+          }
+
+          /* Keep track of whether any elements are still hidden. */
+          if (gh[y * key.grid_size + x]) {
+            any_hidden = true;
+          }
+          else {
+            any_visible = true;
+          }
+        }
       }
     }
-    else if (action == PARTIALVIS_SHOW && area == PARTIALVIS_ALL) {
-      /* Special case if we're showing all, just free the grid. */
-      MEM_freeN(gh);
-      grid_hidden[g] = nullptr;
+
+    /* Mark updates if anything was hidden/shown. */
+    if (node_changed) {
       any_changed = true;
-      any_visible = true;
-      continue;
-    }
-
-    for (int y = 0; y < key.grid_size; y++) {
-      for (int x = 0; x < key.grid_size; x++) {
-        CCGElem *elem = CCG_grid_elem(&key, grids[g], x, y);
-        const float *co = CCG_elem_co(&key, elem);
-        float mask = key.has_mask ? *CCG_elem_mask(&key, elem) : 0.0f;
-
-        /* Skip grid element if not in the effected area. */
-        if (is_effected(area, planes, co, mask)) {
-          /* Set or clear the hide flag. */
-          BLI_BITMAP_SET(gh, y * key.grid_size + x, action == PARTIALVIS_HIDE);
-
-          any_changed = true;
-        }
-
-        /* Keep track of whether any elements are still hidden. */
-        if (BLI_BITMAP_TEST(gh, y * key.grid_size + x)) {
-          any_hidden = true;
-        }
-        else {
-          any_visible = true;
-        }
-      }
-    }
-
-    /* If everything in the grid is now visible, free the grid flags. */
-    if (!any_hidden) {
-      MEM_freeN(gh);
-      grid_hidden[g] = nullptr;
+      BKE_pbvh_node_mark_rebuild_draw(node);
+      BKE_pbvh_node_fully_hidden_set(node, !any_visible);
     }
   }
 
-  /* Mark updates if anything was hidden/shown. */
+  if (!any_hidden) {
+    BKE_subdiv_ccg_grid_hidden_free(*subdiv_ccg);
+  }
+
   if (any_changed) {
-    BKE_pbvh_node_mark_rebuild_draw(node);
-    BKE_pbvh_node_fully_hidden_set(node, !any_visible);
     multires_mark_as_modified(depsgraph, ob, MULTIRES_HIDDEN_MODIFIED);
   }
 }
@@ -357,18 +359,20 @@ static int hide_show_exec(bContext *C, wmOperator *op)
       break;
   }
 
-  for (PBVHNode *node : nodes) {
-    switch (pbvh_type) {
-      case PBVH_FACES:
+  switch (pbvh_type) {
+    case PBVH_FACES:
+      for (PBVHNode *node : nodes) {
         partialvis_update_mesh(ob, pbvh, node, action, area, clip_planes);
-        break;
-      case PBVH_GRIDS:
-        partialvis_update_grids(depsgraph, ob, pbvh, node, action, area, clip_planes);
-        break;
-      case PBVH_BMESH:
+      }
+      break;
+    case PBVH_GRIDS:
+      partialvis_update_grids(depsgraph, ob, pbvh, action, area, clip_planes, nodes);
+      break;
+    case PBVH_BMESH:
+      for (PBVHNode *node : nodes) {
         partialvis_update_bmesh(ob, pbvh, node, action, area, clip_planes);
-        break;
-    }
+      }
+      break;
   }
 
   /* End undo. */

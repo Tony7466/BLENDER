@@ -143,6 +143,24 @@ class BitVector {
     this->resize(size_in_bits, value);
   }
 
+  BitVector(const BoundedBitSpan span) : BitVector(NoExceptConstructor())
+  {
+    const int64_t ints_to_copy = required_ints_for_bits(span.size());
+    if (span.size() <= BitsInInlineBuffer) {
+      /* The data is copied into the owned inline buffer. */
+      data_ = inline_buffer_;
+      capacity_in_bits_ = BitsInInlineBuffer;
+    }
+    else {
+      /* Allocate a new array because the inline buffer is too small. */
+      data_ = static_cast<BitInt *>(
+          allocator_.allocate(ints_to_copy * sizeof(BitInt), AllocationAlignment, __func__));
+      capacity_in_bits_ = ints_to_copy * BitsPerInt;
+    }
+    size_in_bits_ = span.size();
+    uninitialized_copy_n(span.data(), ints_to_copy, data_);
+  }
+
   /**
    * Create a bit vector based on an array of bools. Each byte of the input array maps to one bit.
    */
