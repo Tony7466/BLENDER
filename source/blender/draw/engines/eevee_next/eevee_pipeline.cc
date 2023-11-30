@@ -417,7 +417,7 @@ void DeferredLayer::begin_sync()
       /* Textures. */
       prepass_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
 
-      inst_.pipelines.data.alpha_hash_scale = 1.0f;
+      inst_.pipelines.data.alpha_hash_scale = 0.1f;
       if (inst_.is_viewport() && inst_.velocity.camera_has_motion()) {
         inst_.pipelines.data.alpha_hash_scale = 1.0f;
       }
