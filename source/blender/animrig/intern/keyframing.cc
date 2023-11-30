@@ -238,17 +238,16 @@ static bool new_key_needed(FCurve *fcu, const float frame, const float value)
     return true;
   }
 
-  const int diff_ulp = 32;
-
   bool replace;
   const int bezt_index = BKE_fcurve_bezt_binarysearch_index(
       fcu->bezt, frame, fcu->totvert, &replace);
 
   if (replace) {
     /* If there is already a key, we only need to modify it if the proposed value is different. */
-    return !compare_ff_relative(fcu->bezt[bezt_index].vec[1][1], value, FLT_EPSILON, diff_ulp);
+    return fcu->bezt[bezt_index].vec[1][1] != value;
   }
 
+  const int diff_ulp = 32;
   const float fcu_eval = evaluate_fcurve(fcu, frame);
   /* No need to insert a key if the same value is already the value of the FCurve at that point. */
   if (compare_ff_relative(fcu_eval, value, FLT_EPSILON, diff_ulp)) {
@@ -312,9 +311,7 @@ static bool insert_keyframe_value(
   }
 
   if (flag & INSERTKEY_NEEDED) {
-    const bool key_needed = new_key_needed(fcu, cfra, curval);
-
-    if (!key_needed) {
+    if (!new_key_needed(fcu, cfra, curval)) {
       return false;
     }
 
