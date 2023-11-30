@@ -36,8 +36,12 @@ namespace blender::eevee {
 
 void SyncModule::view_update()
 {
-  world_updated_ = DEG_id_type_updated(inst_.depsgraph, ID_WO);
-  scene_updated_ = DEG_id_type_updated(inst_.depsgraph, ID_SCE);
+  if (DEG_id_type_updated(inst_.depsgraph, ID_WO)) {
+    world_updated_ = true;
+  }
+  if (DEG_id_type_updated(inst_.depsgraph, ID_SCE)) {
+    scene_updated_ = true;
+  }
 }
 
 ObjectHandle &SyncModule::sync_object(const ObjectRef &ob_ref)
@@ -59,6 +63,7 @@ WorldHandle SyncModule::sync_world()
 {
   WorldHandle handle;
   handle.recalc = world_updated_ ? ID_RECALC_SHADING : 0;
+  world_updated_ = false;
   return handle;
 }
 
@@ -66,6 +71,7 @@ SceneHandle SyncModule::sync_scene()
 {
   SceneHandle handle;
   handle.recalc = scene_updated_ ? ID_RECALC_SHADING : 0;
+  scene_updated_ = false;
   return handle;
 }
 
