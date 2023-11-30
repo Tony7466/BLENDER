@@ -61,7 +61,6 @@ static const pxr::TfToken varname("varname", pxr::TfToken::Immortal);
 static const pxr::TfToken auto_("auto", pxr::TfToken::Immortal);
 static const pxr::TfToken sRGB("sRGB", pxr::TfToken::Immortal);
 static const pxr::TfToken raw("raw", pxr::TfToken::Immortal);
-static const pxr::TfToken Raw("Raw", pxr::TfToken::Immortal);
 static const pxr::TfToken RAW("RAW", pxr::TfToken::Immortal);
 
 /* USD shader names. */
@@ -469,7 +468,7 @@ void USDMaterialReader::set_principled_node_inputs(bNode *principled,
 
   float emission_strength = 0.0f;
   if (pxr::UsdShadeInput emissive_input = usd_shader.GetInput(usdtokens::emissiveColor)) {
-    if (set_node_input(emissive_input, principled, "Emission Color", ntree, column, &context)) {
+    if (set_node_input(emissive_input, principled, "Emission Color", ntree, column, &context, true)) {
       emission_strength = 1.0f;
     }
   }
@@ -831,7 +830,12 @@ void USDMaterialReader::load_tex_image(const pxr::UsdShadeShader &usd_shader,
     STRNCPY(image->colorspace_settings.name, "sRGB");
   }
 
-  else if (ELEM(color_space, usdtokens::RAW, usdtokens::Raw, usdtokens::raw)) {
+  /*
+   * Due to there being a lot of non-compliant USD assets out there, this is
+   * a special case where we need to check for different spellings here.
+   * On write, we are *only* using the correct, lower-case "raw" token.
+   */
+  else if (ELEM(color_space, usdtokens::RAW, usdtokens::raw)) {
     STRNCPY(image->colorspace_settings.name, "Non-Color");
   }
 
