@@ -1856,17 +1856,31 @@ typedef struct NodeGeometryRepeatOutput {
 #endif
 } NodeGeometryRepeatOutput;
 
+typedef struct IndexSwitchItem {
+  /** Generated unique identifier which stays the same even when the item order or names change. */
+  int identifier;
+} IndexSwitchItem;
+
+typedef struct NodeIndexSwitch {
+  IndexSwitchItem *items;
+  int items_num;
+
+  /* #eNodeSocketDataType. */
+  int data_type;
+  /** Identifier to give to the next item. */
+  int next_identifier;
+
+  char _pad[4];
+#ifdef __cplusplus
+  blender::Span<IndexSwitchItem> items_span() const;
+  blender::MutableSpan<IndexSwitchItem> items_span();
+#endif
+} NodeIndexSwitch;
+
 typedef struct NodeGeometryDistributePointsInVolume {
   /** #GeometryNodePointDistributeVolumeMode. */
   uint8_t mode;
 } NodeGeometryDistributePointsInVolume;
-
-typedef struct NodeGeometrySampleVolume {
-  /** #eCustomDataType. */
-  int8_t grid_type;
-  /** #GeometryNodeSampleVolumeInterpolationMode */
-  int8_t interpolation_mode;
-} NodeGeometrySampleVolume;
 
 typedef struct NodeFunctionCompare {
   /** #NodeCompareOperation */
@@ -2759,12 +2773,6 @@ typedef enum GeometryNodeScaleElementsMode {
   GEO_NODE_SCALE_ELEMENTS_UNIFORM = 0,
   GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS = 1,
 } GeometryNodeScaleElementsMode;
-
-typedef enum GeometryNodeSampleVolumeInterpolationMode {
-  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST = 0,
-  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR = 1,
-  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC = 2,
-} GeometryNodeSampleVolumeInterpolationMode;
 
 typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_RGB = 0,
