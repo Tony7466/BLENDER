@@ -257,14 +257,9 @@ static int grease_pencil_layer_hide_exec(bContext *C, wmOperator *op)
 
   if (unselected) {
     /* hide unselected */
-    for (Layer *layer : grease_pencil.layers_for_write()) {
-      if (layer != grease_pencil.active_layer) {        
-        layer->set_visible(false);
-      }
-      else {
-        /* Be sure the active layer is unhidden. */    
-        layer->set_visible(true);
-      }
+    for (Layer *layer : grease_pencil.layers_for_write()) {      
+      const bool is_active = grease_pencil.is_layer_active(layer);
+      layer->set_visible(is_active);
     }
   }
   else {
