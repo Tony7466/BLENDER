@@ -300,10 +300,7 @@ void CaptureView::render_probes()
 
       combined_fb_.ensure(
           GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
-          GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.reflection_probes.cubemap_tx_, face),
-          GPU_ATTACHMENT_TEXTURE(inst_.gbuffer.header_tx),
-          GPU_ATTACHMENT_TEXTURE_LAYER(inst_.gbuffer.color_tx.layer_view(0), 0),
-          GPU_ATTACHMENT_TEXTURE_LAYER(inst_.gbuffer.closure_tx.layer_view(0), 0));
+          GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.reflection_probes.cubemap_tx_, face));
 
       gbuffer_fb_.ensure(
           GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
