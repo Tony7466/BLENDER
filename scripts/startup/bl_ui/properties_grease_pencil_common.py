@@ -280,20 +280,22 @@ class GREASE_PENCIL_MT_layer_active(Menu):
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_WIN'
         obd = context.active_object.data
-        if obd.layers:
-            nlop = layout.operator("grease_pencil.layer_add", text="New Layer", icon='ADD')
-            nlop.new_layer_name = "New Layer"
-            layout.separator()
-            tot_layers = len(obd.layers)
-            i = tot_layers - 1
-            while i >= 0:
-                layer = obd.layers[i]
-                if layer == obd.layers.active:
-                    icon = 'GREASEPENCIL'
-                else:
-                    icon = 'NONE'
-                layout.operator("grease_pencil.layer_active", text=layer.name, icon=icon).layer = i
-                i -= 1
+        if not obd.layers:
+            return
+
+        nlop = layout.operator("grease_pencil.layer_add", text="New Layer", icon='ADD')
+        nlop.new_layer_name = "New Layer"
+
+        layout.separator()
+
+        for i in range(len(obd.layers) - 1,  -1,  -1):
+            layer = obd.layers[i]
+            if layer == obd.layers.active:
+                icon = 'GREASEPENCIL'
+            else:
+                icon = 'NONE'
+            layout.operator("grease_pencil.layer_active", text=layer.name, icon=icon).layer = i
+            i -= 1
 
 class GPENCIL_MT_material_active(Menu):
     bl_label = "Change Active Material"
