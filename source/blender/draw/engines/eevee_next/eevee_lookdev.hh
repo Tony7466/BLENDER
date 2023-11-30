@@ -134,7 +134,9 @@ class LookdevModule {
   void sync_pass(PassSimple &pass, GPUBatch *geom, ::Material *mat, ResourceHandle res_handle);
   void sync_display();
 
-  int calc_sphere_size();
+  float calc_viewport_scale();
+  int calc_sphere_size(float viewport_scale);
+  eDRWLevelOfDetail calc_level_of_detail(float viewport_scale);
 
   friend class LookdevView;
 };

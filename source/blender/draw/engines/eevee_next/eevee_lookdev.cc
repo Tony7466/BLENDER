@@ -150,8 +150,8 @@ void LookdevModule::sync()
   if (!enabled_) {
     return;
   }
-
-  const int sphere_size = calc_sphere_size();
+  const float viewport_scale = calc_viewport_scale();
+  const int sphere_size = calc_sphere_size(viewport_scale);
   const int2 extent(sphere_size, sphere_size);
 
   const eGPUTextureFormat depth_format = GPU_DEPTH_COMPONENT24;
@@ -168,7 +168,7 @@ void LookdevModule::sync()
   model_m4 = math::scale(model_m4, float3(sphere_scale));
 
   ResourceHandle handle = inst_.manager->resource_handle(model_m4);
-  GPUBatch *geom = DRW_cache_sphere_get(DRW_LOD_MEDIUM);
+  GPUBatch *geom = DRW_cache_sphere_get(calc_level_of_detail(viewport_scale));
 
   sync_pass(metallic_ps_, geom, inst_.materials.metallic_mat, handle);
   sync_pass(diffuse_ps_, geom, inst_.materials.diffuse_mat, handle);
@@ -176,7 +176,7 @@ void LookdevModule::sync()
   sync_display();
 }
 
-int LookdevModule::calc_sphere_size()
+float LookdevModule::calc_viewport_scale()
 {
   /* TODO: calculation of visible rect should move to `eevee_engine_init`. */
   rcti visible_rect;
@@ -193,9 +193,27 @@ int LookdevModule::calc_sphere_size()
 
   const float viewport_scale = clamp_f(
       BLI_rcti_size_x(&visible_rect) / (2000.0f * UI_SCALE_FAC), 0.5f, 1.0f);
+  return viewport_scale;
+}
+
+eDRWLevelOfDetail LookdevModule::calc_level_of_detail(const float viewport_scale)
+{
+  float res_scale = clamp_f(
+      (U.lookdev_sphere_size / 400.0f) * viewport_scale * UI_SCALE_FAC, 0.1f, 1.0f);
+
+  if (res_scale > 0.7f) {
+    return DRW_LOD_HIGH;
+  }
+  else if (res_scale > 0.25f) {
+    return DRW_LOD_MEDIUM;
+  }
+  return DRW_LOD_LOW;
+}
+
+int LookdevModule::calc_sphere_size(const float viewport_scale)
+{
   const int sphere_radius = U.lookdev_sphere_size * UI_SCALE_FAC * viewport_scale;
   const int sphere_size = sphere_radius * 2;
-
   return sphere_size;
 }
 
