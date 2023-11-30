@@ -134,7 +134,6 @@ void LookdevModule::init()
     constexpr eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE |
                                        GPU_TEXTURE_USAGE_SHADER_READ;
     dummy_cryptomatte_tx_.ensure_2d(GPU_RGBA32F, extent_dummy, usage);
-    dummy_renderpass_tx_.ensure_2d(GPU_RGBA16F, extent_dummy, usage);
     dummy_aov_color_tx_.ensure_2d_array(GPU_RGBA16F, extent_dummy, 1, usage);
     dummy_aov_value_tx_.ensure_2d_array(GPU_R16F, extent_dummy, 1, usage);
   }
@@ -167,7 +166,7 @@ void LookdevModule::sync()
   model_m4 = math::scale(model_m4, float3(sphere_scale));
 
   ResourceHandle handle = inst_.manager->resource_handle(model_m4);
-  GPUBatch *geom = DRW_cache_sphere_get(DRW_LOD_LOW);
+  GPUBatch *geom = DRW_cache_sphere_get(DRW_LOD_MEDIUM);
 
   sync_pass(metallic_ps_, geom, inst_.materials.metallic_mat, handle);
   sync_pass(diffuse_ps_, geom, inst_.materials.diffuse_mat, handle);
@@ -189,23 +188,18 @@ void LookdevModule::sync_pass(PassSimple &pass,
   pass.material_set(*inst_.manager, gpumat);
 
   pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-  pass.bind_image("rp_normal_img", dummy_renderpass_tx_);
-  pass.bind_image("rp_light_img", dummy_renderpass_tx_);
-  pass.bind_image("rp_diffuse_color_img", dummy_renderpass_tx_);
-  pass.bind_image("rp_specular_color_img", dummy_renderpass_tx_);
-  pass.bind_image("rp_emission_img", dummy_renderpass_tx_);
   pass.bind_image("rp_cryptomatte_img", dummy_cryptomatte_tx_);
   pass.bind_image("rp_color_img", dummy_aov_color_tx_);
   pass.bind_image("rp_value_img", dummy_aov_value_tx_);
   pass.bind_image("aov_color_img", dummy_aov_color_tx_);
   pass.bind_image("aov_value_img", dummy_aov_value_tx_);
-  pass.bind_ssbo("aov_buf", &inst_.film.aovs_info);
-  /* Required by validation layers. */
-  inst_.cryptomatte.bind_resources(pass);
   inst_.bind_uniform_data(&pass);
+  inst_.hiz_buffer.bind_resources(pass);
   inst_.reflection_probes.bind_resources(pass);
   inst_.irradiance_cache.bind_resources(pass);
   inst_.shadows.bind_resources(pass);
+  inst_.volume.bind_resources(pass);
+  inst_.cryptomatte.bind_resources(pass);
 
   pass.draw(geom, res_handle, 0);
 }

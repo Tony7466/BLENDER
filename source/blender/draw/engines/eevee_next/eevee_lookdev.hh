@@ -94,8 +94,7 @@ class LookdevModule {
  private:
   Instance &inst_;
 
-  /* Dummy textures: required to reuse background shader and avoid another shader variation. */
-  Texture dummy_renderpass_tx_;
+  /* Dummy textures: required to reuse forward mesh shader and avoid another shader variation. */
   Texture dummy_cryptomatte_tx_;
   Texture dummy_aov_color_tx_;
   Texture dummy_aov_value_tx_;
@@ -107,7 +106,7 @@ class LookdevModule {
    * Color TX should only be cleared when actually drawing and should only be cleared once as it
    * contains both the metallic and diffuse sphere. This flag keeps track if the texture needs to
    * be cleared (true) or has already been cleared (false).
-   * When not drawing any sample color_tx_ the last results are used to update the display.
+   * When not drawing any sample color_tx_ last results are used to update the display.
    *
    * Flag is only valid when lookdev is enabled and after sync.
    */
