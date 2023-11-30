@@ -118,7 +118,6 @@ class SyncModule {
   Map<ObjectKey, ObjectHandle> ob_handles = {};
 
   bool world_updated_;
-  bool scene_updated_;
 
  public:
   SyncModule(Instance &inst) : inst_(inst){};
@@ -128,7 +127,6 @@ class SyncModule {
 
   ObjectHandle &sync_object(const ObjectRef &ob_ref);
   WorldHandle sync_world();
-  SceneHandle sync_scene();
 
   void sync_mesh(Object *ob,
                  ObjectHandle &ob_handle,
