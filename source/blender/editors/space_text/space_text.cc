@@ -376,10 +376,7 @@ static void text_properties_region_init(wmWindowManager *wm, ARegion *region)
 
 static void text_properties_region_draw(const bContext *C, ARegion *region)
 {
-  SpaceText *st = CTX_wm_space_text(C);
-
   ED_region_panels(C, region);
-
 }
 
 static void text_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)

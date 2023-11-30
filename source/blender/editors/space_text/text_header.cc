@@ -72,7 +72,7 @@ static int text_text_search_exec(bContext *C, wmOperator * /*op*/)
     ARegion *active_region = CTX_wm_region(C);
     Text *text = st->text;
 
-    /* Use active text selection as a search query. */
+    /* Use active text selection as search query, if selection is on a single line. */
     if (active_region->regiontype == RGN_TYPE_WINDOW && text && text->curl == text->sell &&
         text->curc != text->selc)
     {
@@ -93,12 +93,12 @@ static int text_text_search_exec(bContext *C, wmOperator * /*op*/)
     }
 
     const char *active_category = UI_panel_category_active_get(region, false);
-    if (active_category && STREQ(active_category, "Text") != 0) {
+    if (active_category && !STREQ(active_category, "Text")) {
       UI_panel_category_active_set(region, "Text");
       draw = true;
     }
 
-    /* Build the layout and draw so `find_text` button can be activated. */
+    /* Build the layout and draw so `find_text` text button can be activated. */
     if (draw) {
       ED_region_do_layout(C, region);
       ED_region_do_draw(C, region);
