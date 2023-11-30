@@ -150,17 +150,24 @@ void LookdevModule::sync()
     return;
   }
 
-  const int2 extent(128, 128);
+  /* TODO: calculate correct extent. */
+  const int2 extent(256, 256);
 
   const eGPUTextureFormat depth_format = GPU_DEPTH_COMPONENT24;
   const eGPUTextureFormat color_format = GPU_RGBA16F;
 
   depth_tx_.ensure_2d(depth_format, extent);
   color_tx_.ensure_2d_array(color_format, extent, 2);
+  color_tx_dirty_ = true;
 
+  float4 position = inst_.camera.data_get().viewinv *
+                    float4(0.0, 0.0, -inst_.camera.data_get().clip_near, 1.0);
   float4x4 model_m4 = float4x4::identity();
+  model_m4 = math::translate(model_m4, float3(position));
+  model_m4 = math::scale(model_m4, float3(sphere_scale));
+
   ResourceHandle handle = inst_.manager->resource_handle(model_m4);
-  GPUBatch *geom = DRW_cache_sphere_get(DRW_LOD_MEDIUM);
+  GPUBatch *geom = DRW_cache_sphere_get(DRW_LOD_LOW);
 
   sync_pass(metallic_ps_, geom, inst_.materials.metallic_mat, handle);
   sync_pass(diffuse_ps_, geom, inst_.materials.diffuse_mat, handle);
@@ -207,7 +214,8 @@ void LookdevModule::sync_display()
 {
   PassSimple &pass = display_ps_;
 
-  const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
+  const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS |
+                         DRW_STATE_BLEND_ALPHA;
   pass.state_set(state);
   pass.shader_set(inst_.shaders.static_shader_get(LOOKDEV_DISPLAY));
   pass.push_constant("invertedViewportSize", float2(DRW_viewport_invert_size_get()));
@@ -221,8 +229,10 @@ void LookdevModule::draw_metallic(View &view)
   if (!enabled_) {
     return;
   }
-  // TODO: this is awkward as it clears both metallic and diffuse. Perhaps keep a flag for clarity.
-  color_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
+  if (color_tx_dirty_) {
+    color_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
+    color_tx_dirty_ = false;
+  }
   depth_tx_.clear(float4(1.0f));
   inst_.manager->submit(metallic_ps_, view);
 }
@@ -231,6 +241,10 @@ void LookdevModule::draw_diffuse(View &view)
 {
   if (!enabled_) {
     return;
+  }
+  if (color_tx_dirty_) {
+    color_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
+    color_tx_dirty_ = false;
   }
   depth_tx_.clear(float4(1.0f));
   inst_.manager->submit(diffuse_ps_, view);

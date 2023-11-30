@@ -313,17 +313,19 @@ void LookdevView::render()
   GPU_debug_group_begin("Lookdev");
 
   metallic_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.lookdev.depth_tx_),
-                      GPU_ATTACHMENT_TEXTURE_LAYER(inst_.lookdev.color_tx_, 0));
+                      GPU_ATTACHMENT_TEXTURE_LAYER(inst_.lookdev.color_tx_, 1));
   diffuse_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.lookdev.depth_tx_),
-                     GPU_ATTACHMENT_TEXTURE_LAYER(inst_.lookdev.color_tx_, 1));
+                     GPU_ATTACHMENT_TEXTURE_LAYER(inst_.lookdev.color_tx_, 0));
 
-  // create view for rendering spheres
-  float3x3 view_rotation_m3;
-  mat4_to_rot(view_rotation_m3.ptr(), inst_.camera.data_get().viewmat.ptr());
-  float4x4 view_m4(view_rotation_m3);
-  // float4x4 &view_m4 = inst_.camera.data_get().viewmat;
-
-  float4x4 win_m4 = math::projection::orthographic(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
+  const float4x4 &view_m4 = inst_.camera.data_get().viewmat;
+  const float sphere_scale = inst_.lookdev.sphere_scale;
+  const float clip_near = inst_.camera.data_get().clip_near;
+  float4x4 win_m4 = math::projection::orthographic(-sphere_scale,
+                                                   sphere_scale,
+                                                   -sphere_scale,
+                                                   sphere_scale,
+                                                   clip_near - sphere_scale,
+                                                   clip_near + sphere_scale);
   view_.sync(view_m4, win_m4);
 
   metallic_fb_.bind();

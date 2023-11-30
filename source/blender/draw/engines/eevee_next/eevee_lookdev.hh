@@ -83,6 +83,14 @@ class LookdevWorld {
 
 class LookdevModule {
  public:
+  /**
+   * The scale of the lookdev spheres.
+   *
+   * The lookdev spheres are resized to a small scale. This would reduce shadow artifacts as they
+   * would most likely be inside or outside shadow.
+   */
+  const float sphere_scale = 0.01f;
+
  private:
   Instance &inst_;
 
@@ -94,6 +102,16 @@ class LookdevModule {
 
   Texture depth_tx_ = {"Lookdev.Depth"};
   Texture color_tx_ = {"Lookdev.Color"};
+
+  /**
+   * Color TX should only be cleared when actually drawing and should only be cleared once as it
+   * contains both the metallic and diffuse sphere. This flag keeps track if the texture needs to
+   * be cleared (true) or has already been cleared (false).
+   * When not drawing any sample color_tx_ the last results are used to update the display.
+   *
+   * Flag is only valid when lookdev is enabled and after sync.
+   */
+  bool color_tx_dirty_;
 
   bool enabled_;
 
