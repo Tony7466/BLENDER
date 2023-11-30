@@ -177,7 +177,7 @@ typedef struct GlyphBLF {
   int pitch;
   int depth;
 
-	/** Render mode (FT_Render_Mode). */
+  /** Render mode (FT_Render_Mode). */
   int render_mode;
 
   /**

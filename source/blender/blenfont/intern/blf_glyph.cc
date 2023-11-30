@@ -296,8 +296,7 @@ static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
     if (ELEM(glyph->bitmap.pixel_mode,
              FT_PIXEL_MODE_GRAY,
              FT_PIXEL_MODE_GRAY2,
-             FT_PIXEL_MODE_GRAY4))
-    {
+             FT_PIXEL_MODE_GRAY4)) {
       /* Scale 1, 2, 4-bit gray to 8-bit. */
       const char scale = char(255 / (glyph->bitmap.num_grays - 1));
       for (int i = 0; i < buffer_size; i++) {
