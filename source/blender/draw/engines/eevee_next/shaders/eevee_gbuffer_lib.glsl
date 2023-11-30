@@ -164,6 +164,7 @@ struct GBufferDataPacked {
 GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
                                ClosureReflection reflection,
                                ClosureRefraction refraction,
+                               vec3 default_N,
                                float thickness)
 {
   GBufferDataPacked gbuf;
@@ -216,6 +217,16 @@ GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
     gbuf.closure[layer].w = gbuffer_object_id_unorm16_pack(diffuse.sss_id);
     gbuf.header |= gbuffer_header_pack(GBUF_SSS, layer);
     layer += 1;
+  }
+
+  if (layer == 0) {
+    /* If no lit BDSF is outputed, still output the surface normal in the first layer.
+     * This is needed by some algorithms. */
+    gbuf.color[layer] = vec4(0.0);
+    gbuf.closure[layer].xy = gbuffer_normal_pack(default_N);
+    gbuf.closure[layer].z = 0.0; /* Unused. */
+    gbuf.closure[layer].w = 0.0; /* Unused. */
+    gbuf.header |= gbuffer_header_pack(GBUF_UNLIT, layer);
   }
 
   return gbuf;

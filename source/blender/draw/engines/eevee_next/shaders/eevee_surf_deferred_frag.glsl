@@ -83,7 +83,7 @@ void main()
   /* ----- GBuffer output ----- */
 
   GBufferDataPacked gbuf = gbuffer_pack(
-      g_diffuse_data, g_reflection_data, g_refraction_data, thickness);
+      g_diffuse_data, g_reflection_data, g_refraction_data, out_normal, thickness);
 
   /* Output header and first closure using framebuffer attachment. */
   out_gbuf_header = gbuf.header;
