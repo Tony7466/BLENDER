@@ -20,7 +20,7 @@ void main()
   float depth = texelFetch(hiz_tx, texel, 0).r;
   GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
 
-  if (!gbuf.has_reflection && !gbuf.has_reflection) {
+  if (!gbuf.has_reflection && !gbuf.has_diffuse /* TODO(fclem) && !gbuf.has_refraction */) {
     return;
   }
 
@@ -95,8 +95,12 @@ void main()
   vec3 shadows = radiance_shadowed * safe_rcp(radiance_unshadowed);
   output_renderpass_value(uniform_buf.render_pass.shadow_id, average(shadows));
 
-  imageStore(direct_diffuse_img, texel, vec4(radiance_diffuse, 1.0));
-  imageStore(direct_reflect_img, texel, vec4(radiance_specular, 1.0));
+  if (gbuf.has_diffuse) {
+    imageStore(direct_diffuse_img, texel, vec4(radiance_diffuse, 1.0));
+  }
+  if (gbuf.has_reflection) {
+    imageStore(direct_reflect_img, texel, vec4(radiance_specular, 1.0));
+  }
   /* TODO(fclem): Support LTC for refraction. */
   // imageStore(direct_refract_img, texel, vec4(cl_refr.light_shadowed, 1.0));
 }
