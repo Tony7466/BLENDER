@@ -682,7 +682,7 @@ void DeferredLayer::render(View &main_view,
     radiance_feedback_persmat_ = render_view.persmat();
   }
 
-  inst_.pipelines.deferred.debug_draw(combined_fb);
+  inst_.pipelines.deferred.debug_draw(render_view, combined_fb);
 }
 
 /** \} */
@@ -726,7 +726,7 @@ void DeferredPipeline::debug_pass_sync()
   pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
 
-void DeferredPipeline::debug_draw(GPUFrameBuffer *combined_fb)
+void DeferredPipeline::debug_draw(draw::View &view, GPUFrameBuffer *combined_fb)
 {
   Instance &inst = opaque_layer_.inst_;
   if (!ELEM(inst.debug_mode,
@@ -736,8 +736,20 @@ void DeferredPipeline::debug_draw(GPUFrameBuffer *combined_fb)
     return;
   }
 
+  switch (inst.debug_mode) {
+    case eDebugMode::DEBUG_GBUFFER_EVALUATION:
+      inst.info = "Debug Mode: Deferred Lighting Cost";
+      break;
+    case eDebugMode::DEBUG_GBUFFER_STORAGE:
+      inst.info = "Debug Mode: Gbuffer Storage Cost";
+      break;
+    default:
+      /* Nothing to display. */
+      return;
+  }
+
   GPU_framebuffer_bind(combined_fb);
-  inst.manager->submit(debug_draw_ps_);
+  inst.manager->submit(debug_draw_ps_, view);
 }
 
 PassMain::Sub *DeferredPipeline::prepass_add(::Material *blender_mat,

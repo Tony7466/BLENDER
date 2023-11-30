@@ -222,13 +222,18 @@ GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
 }
 
 struct GBufferData {
+  /* Only valid (or null) if `has_diffuse`, `has_reflection` or `has_refraction` is true. */
   ClosureDiffuse diffuse;
   ClosureReflection reflection;
   ClosureRefraction refraction;
+  /* First world normal stored in the gbuffer. Only valid if `has_any_surface` is true. */
+  vec3 surface_N;
   float thickness;
   bool has_diffuse;
   bool has_reflection;
   bool has_refraction;
+  bool has_any_surface;
+  uint header;
 };
 
 GBufferData gbuffer_read(usampler2D header_tx,
@@ -238,9 +243,10 @@ GBufferData gbuffer_read(usampler2D header_tx,
 {
   GBufferData gbuf;
 
-  uint header = texelFetch(header_tx, texel, 0).r;
+  gbuf.header = texelFetch(header_tx, texel, 0).r;
+  gbuf.has_any_surface = (gbuf.header != 0u);
 
-  if (header == 0u) {
+  if (!gbuf.has_any_surface) {
     gbuf.has_diffuse = false;
     gbuf.has_reflection = false;
     gbuf.has_refraction = false;
@@ -249,11 +255,14 @@ GBufferData gbuffer_read(usampler2D header_tx,
 
   gbuf.thickness = 0.0;
 
+  /* First closure is always written. */
+  gbuf.surface_N = gbuffer_normal_unpack(texelFetch(closure_tx, ivec3(texel, 0), 0).xy);
+
   int layer = 0;
 
   /* Since closure order in the gbuffer is static, we check them in order. */
 
-  gbuf.has_refraction = (gbuffer_header_unpack(header, layer) == GBUF_REFRACTION);
+  gbuf.has_refraction = (gbuffer_header_unpack(gbuf.header, layer) == GBUF_REFRACTION);
 
   if (gbuf.has_refraction) {
     vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
@@ -273,7 +282,7 @@ GBufferData gbuffer_read(usampler2D header_tx,
     gbuf.refraction.ior = 1.1;
   }
 
-  gbuf.has_reflection = (gbuffer_header_unpack(header, layer) == GBUF_REFLECTION);
+  gbuf.has_reflection = (gbuffer_header_unpack(gbuf.header, layer) == GBUF_REFLECTION);
 
   if (gbuf.has_reflection) {
     vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
@@ -291,7 +300,7 @@ GBufferData gbuffer_read(usampler2D header_tx,
     gbuf.reflection.roughness = 0.0;
   }
 
-  gbuf.has_diffuse = (gbuffer_header_unpack(header, layer) == GBUF_DIFFUSE);
+  gbuf.has_diffuse = (gbuffer_header_unpack(gbuf.header, layer) == GBUF_DIFFUSE);
 
   if (gbuf.has_diffuse) {
     vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
@@ -309,7 +318,7 @@ GBufferData gbuffer_read(usampler2D header_tx,
     gbuf.thickness = 0.0;
   }
 
-  bool has_sss = (gbuffer_header_unpack(header, layer) == GBUF_SSS);
+  bool has_sss = (gbuffer_header_unpack(gbuf.header, layer) == GBUF_SSS);
 
   if (has_sss) {
     vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
@@ -319,6 +328,7 @@ GBufferData gbuffer_read(usampler2D header_tx,
     layer += 1;
   }
   else {
+    /* Default values. */
     gbuf.diffuse.sss_radius = vec3(0.0, 0.0, 0.0);
     gbuf.diffuse.sss_id = 0u;
   }

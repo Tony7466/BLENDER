@@ -291,7 +291,7 @@ class DeferredPipeline {
     return max_ii(opaque_layer_.color_layer_count(), refraction_layer_.color_layer_count());
   }
 
-  void debug_draw(GPUFrameBuffer *combined_fb);
+  void debug_draw(draw::View &view, GPUFrameBuffer *combined_fb);
 
  private:
   void debug_pass_sync();
