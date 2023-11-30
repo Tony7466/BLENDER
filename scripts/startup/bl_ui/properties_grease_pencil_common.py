@@ -284,7 +284,7 @@ class GREASE_PENCIL_MT_layer_active(Menu):
             return
 
         nlop = layout.operator("grease_pencil.layer_add", text="New Layer", icon='ADD')
-        nlop.new_layer_name = "New Layer"
+        nlop.new_layer_name = "Layer"
 
         layout.separator()
 
