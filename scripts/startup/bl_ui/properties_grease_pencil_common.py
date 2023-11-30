@@ -295,7 +295,6 @@ class GREASE_PENCIL_MT_layer_active(Menu):
             else:
                 icon = 'NONE'
             layout.operator("grease_pencil.layer_active", text=layer.name, icon=icon).layer = i
-            i -= 1
 
 class GPENCIL_MT_material_active(Menu):
     bl_label = "Change Active Material"
