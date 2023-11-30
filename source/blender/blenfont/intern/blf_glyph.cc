@@ -310,10 +310,10 @@ static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
     }
     else if (glyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD) {
       /* RGB (BGR) in successive columns. */
-      for (size_t y = 0; y < g->dims[1]; y++) {
-        for (size_t x = 0; x < g->dims[0]; x++) {
-          size_t offs_in = (y * glyph->bitmap.pitch) + (x * g->depth);
-          size_t offs_out = (y * g->dims[0] * g->depth) + (x * g->depth);
+      for (size_t y = 0; y < size_t(g->dims[1]); y++) {
+        for (size_t x = 0; x < size_t(g->dims[0]); x++) {
+          size_t offs_in = (y * size_t(glyph->bitmap.pitch)) + (x * size_t(g->depth));
+          size_t offs_out = (y * size_t(g->dims[0]) * size_t(g->depth)) + (x * size_t(g->depth));
           g->bitmap[offs_out + 0] = glyph->bitmap.buffer[offs_in + 2];
           g->bitmap[offs_out + 1] = glyph->bitmap.buffer[offs_in + 1];
           g->bitmap[offs_out + 2] = glyph->bitmap.buffer[offs_in + 0];
@@ -322,23 +322,23 @@ static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
     }
     else if (glyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD_V) {
       /* RGB (BGR) in successive ROWS. */
-      for (size_t y = 0; y < g->dims[1]; y++) {
-        for (size_t x = 0; x < g->dims[0]; x++) {
-          size_t offs_in = (y * glyph->bitmap.pitch * g->depth) + x;
-          size_t offs_out = (y * g->dims[0] * g->depth) + (x * g->depth);
+      for (size_t y = 0; y < size_t(g->dims[1]); y++) {
+        for (size_t x = 0; x < size_t(g->dims[0]); x++) {
+          size_t offs_in = (y * size_t(glyph->bitmap.pitch) * size_t(g->depth)) + x;
+          size_t offs_out = (y * size_t(g->dims[0]) * size_t(g->depth)) + (x * size_t(g->depth));
           g->bitmap[offs_out + 2] = glyph->bitmap.buffer[offs_in];
-          g->bitmap[offs_out + 1] = glyph->bitmap.buffer[offs_in + glyph->bitmap.pitch];
-          g->bitmap[offs_out + 0] =
-              glyph->bitmap.buffer[offs_in + glyph->bitmap.pitch + glyph->bitmap.pitch];
+          g->bitmap[offs_out + 1] = glyph->bitmap.buffer[offs_in + size_t(glyph->bitmap.pitch)];
+          g->bitmap[offs_out + 0] = glyph->bitmap.buffer[offs_in + size_t(glyph->bitmap.pitch) +
+                                                         size_t(glyph->bitmap.pitch)];
         }
       }
     }
     else if (glyph->bitmap.pixel_mode == FT_PIXEL_MODE_BGRA) {
       /* Convert from BGRA to RGBA. */
-      for (size_t y = 0; y < g->dims[1]; y++) {
-        for (size_t x = 0; x < g->dims[0]; x++) {
-          size_t offs_in = (y * g->pitch) + (x * g->depth);
-          size_t offs_out = (y * g->dims[0] * g->depth) + (x * g->depth);
+      for (size_t y = 0; y < size_t(g->dims[1]); y++) {
+        for (size_t x = 0; x < size_t(g->dims[0]); x++) {
+          size_t offs_in = (y * size_t(g->pitch)) + (x * size_t(g->depth));
+          size_t offs_out = (y * size_t(g->dims[0]) * size_t(g->depth)) + (x * size_t(g->depth));
           g->bitmap[offs_out + 0] = glyph->bitmap.buffer[offs_in + 2];
           g->bitmap[offs_out + 1] = glyph->bitmap.buffer[offs_in + 1];
           g->bitmap[offs_out + 2] = glyph->bitmap.buffer[offs_in + 0];
