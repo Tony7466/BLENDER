@@ -1452,8 +1452,7 @@ static void GREASE_PENCIL_OT_caps_set(wmOperatorType *ot)
 /** \name Duplicate Operator
  * \{ */
 
-static bke::CurvesGeometry duplicate_points(const bke::CurvesGeometry &curves,
-                                            const IndexMask &mask)
+static void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const VArray<bool> src_cyclic = curves.cyclic();
@@ -1462,22 +1461,11 @@ static bke::CurvesGeometry duplicate_points(const bke::CurvesGeometry &curves,
   mask.to_bools(points_to_duplicate.as_mutable_span());
   const int num_points_to_add = mask.size();
 
-  /* Add all of the orignal curves and points. */
-  Array<int> dst_to_src_point(curves.points_num() + num_points_to_add);
-  array_utils::fill_index_range<int>(
-      dst_to_src_point.as_mutable_span().drop_back(num_points_to_add));
-
-  Vector<int> dst_curve_counts(curves.curves_num());
-  offset_indices::copy_group_sizes(
-      points_by_curve, curves.curves_range(), dst_curve_counts.as_mutable_span());
-
-  Vector<int> dst_to_src_curve(curves.curves_num());
-  array_utils::fill_index_range<int>(dst_to_src_curve.as_mutable_span());
-
-  Vector<bool> dst_cyclic(curves.curves_num());
-  src_cyclic.materialize(dst_cyclic.as_mutable_span());
-
-  int curr_dst_point_start = curves.points_num();
+  int curr_dst_point_start = 0;
+  Array<int> dst_to_src_point(num_points_to_add);
+  Vector<int> dst_curve_counts;
+  Vector<int> dst_to_src_curve;
+  Vector<bool> dst_cyclic;
 
   /* Add the duplicated curves and points. */
   for (const int curve_i : curves.curves_range()) {
@@ -1525,33 +1513,58 @@ static bke::CurvesGeometry duplicate_points(const bke::CurvesGeometry &curves,
     }
   }
 
-  bke::CurvesGeometry dst_curves(dst_to_src_point.size(), dst_to_src_curve.size());
+  const int old_curves_num = curves.curves_num();
+  const int old_points_num = curves.points_num();
+  const int num_curves_to_add = dst_to_src_curve.size();
 
-  MutableSpan<int> new_curve_offsets = dst_curves.offsets_for_write();
-  array_utils::copy(dst_curve_counts.as_span(), new_curve_offsets.drop_back(1));
-  offset_indices::accumulate_counts_to_offsets(new_curve_offsets);
+  curves.resize(old_points_num + num_points_to_add, old_curves_num + num_curves_to_add);
 
-  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+  MutableSpan<int> new_curve_offsets = curves.offsets_for_write();
+  array_utils::copy(dst_curve_counts.as_span(),
+                    new_curve_offsets.drop_front(old_curves_num).drop_back(1));
+  offset_indices::accumulate_counts_to_offsets(new_curve_offsets.drop_front(old_curves_num),
+                                               old_points_num);
+
+  bke::MutableAttributeAccessor dst_attributes = curves.attributes_for_write();
   const bke::AttributeAccessor src_attributes = curves.attributes();
 
-  /* Transfer curve attributes. */
-  gather_attributes(
-      src_attributes, ATTR_DOMAIN_CURVE, {}, {"cyclic"}, dst_to_src_curve, dst_attributes);
-  array_utils::copy(dst_cyclic.as_span(), dst_curves.cyclic_for_write());
+  /* Transfer curve and point attributes. */
+  src_attributes.for_all([&](const bke::AttributeIDRef &id,
+                             const bke::AttributeMetaData meta_data) {
+    if (!(meta_data.domain == ATTR_DOMAIN_CURVE || meta_data.domain == ATTR_DOMAIN_POINT)) {
+      return true;
+    }
+    if (meta_data.domain == ATTR_DOMAIN_CURVE && id.name() == "cyclic") {
+      return true;
+    }
+    const bke::GAttributeReader src = src_attributes.lookup(id, meta_data.domain);
+    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+        id, meta_data.domain, meta_data.data_type);
+    if (!dst) {
+      return true;
+    }
 
-  /* Transfer point attributes. */
-  gather_attributes(src_attributes, ATTR_DOMAIN_POINT, {}, {}, dst_to_src_point, dst_attributes);
+    if (meta_data.domain == ATTR_DOMAIN_CURVE) {
+      bke::attribute_math::gather(src.varray,
+                                  dst_to_src_curve,
+                                  dst.span.slice(IndexRange(old_curves_num, num_curves_to_add)));
+    }
+    else if (meta_data.domain == ATTR_DOMAIN_POINT) {
+      bke::attribute_math::gather(src.varray,
+                                  dst_to_src_point,
+                                  dst.span.slice(IndexRange(old_points_num, num_points_to_add)));
+    }
+
+    dst.finish();
+    return true;
+  });
+  array_utils::copy(dst_cyclic.as_span(), curves.cyclic_for_write().drop_front(old_curves_num));
 
   /* Deselect the original curves. */
   bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
-      dst_curves, ATTR_DOMAIN_CURVE, CD_PROP_BOOL);
-  curves::fill_selection_false(selection.span, IndexMask(curves.curves_range()));
+      curves, ATTR_DOMAIN_CURVE, CD_PROP_BOOL);
+  curves::fill_selection_false(selection.span, IndexMask(IndexRange(old_curves_num)));
   selection.finish();
-
-  dst_curves.update_curve_types();
-  dst_curves.remove_attributes_based_on_types();
-
-  return dst_curves;
 }
 
 static int grease_pencil_duplicate_exec(bContext *C, wmOperator * /*op*/)
@@ -1572,7 +1585,7 @@ static int grease_pencil_duplicate_exec(bContext *C, wmOperator * /*op*/)
     }
 
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-    curves = duplicate_points(curves, points);
+    duplicate_points(curves, points);
     info.drawing.tag_topology_changed();
     changed.store(true, std::memory_order_relaxed);
   });
