@@ -134,6 +134,8 @@ class LookdevModule {
   void sync_pass(PassSimple &pass, GPUBatch *geom, ::Material *mat, ResourceHandle res_handle);
   void sync_display();
 
+  int calc_sphere_size();
+
   friend class LookdevView;
 };
 

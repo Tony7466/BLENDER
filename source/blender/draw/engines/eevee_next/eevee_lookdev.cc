@@ -13,6 +13,8 @@
 
 #include "NOD_shader.h"
 
+#include "ED_screen.hh"
+
 #include "GPU_material.h"
 
 #include "eevee_instance.hh"
@@ -149,8 +151,8 @@ void LookdevModule::sync()
     return;
   }
 
-  /* TODO: calculate correct extent. */
-  const int2 extent(256, 256);
+  const int sphere_size = calc_sphere_size();
+  const int2 extent(sphere_size, sphere_size);
 
   const eGPUTextureFormat depth_format = GPU_DEPTH_COMPONENT24;
   const eGPUTextureFormat color_format = GPU_RGBA16F;
@@ -172,6 +174,29 @@ void LookdevModule::sync()
   sync_pass(diffuse_ps_, geom, inst_.materials.diffuse_mat, handle);
 
   sync_display();
+}
+
+int LookdevModule::calc_sphere_size()
+{
+  /* TODO: calculation of visible rect should move to `eevee_engine_init`. */
+  rcti visible_rect;
+  if (DRW_state_is_viewport_image_render()) {
+    const float *vp_size = DRW_viewport_size_get();
+    visible_rect.xmax = vp_size[0];
+    visible_rect.ymax = vp_size[1];
+    visible_rect.xmin = visible_rect.ymin = 0;
+  }
+  else {
+    const DRWContextState *draw_ctx = DRW_context_state_get();
+    visible_rect = *ED_region_visible_rect(draw_ctx->region);
+  }
+
+  const float viewport_scale = clamp_f(
+      BLI_rcti_size_x(&visible_rect) / (2000.0f * UI_SCALE_FAC), 0.5f, 1.0f);
+  const int sphere_radius = U.lookdev_sphere_size * UI_SCALE_FAC * viewport_scale;
+  const int sphere_size = sphere_radius * 2;
+
+  return sphere_size;
 }
 
 void LookdevModule::sync_pass(PassSimple &pass,
