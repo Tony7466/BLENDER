@@ -54,16 +54,50 @@ bool operator==(const CachedImageKey &a, const CachedImageKey &b)
  * Cached Image.
  */
 
-/* Get a suitable texture format for the output of the premultiplication shader, for 8-bit
- * formats, we use half float textures to avoid data loss. This only needs to handles color
- * formats. */
-static eGPUTextureFormat get_compatible_texture_format(GPUTexture *texture)
+/* Returns a new texture of the given format and precision preprocessed using the given shader. The
+ * input texture is freed. */
+static GPUTexture *preprocess_texture(Context &context,
+                                      GPUTexture *input_texture,
+                                      eGPUTextureFormat target_format,
+                                      ResultPrecision precision,
+                                      const char *shader_name)
 {
-  const eGPUTextureFormat original_format = GPU_texture_format(texture);
+  const int2 size = int2(GPU_texture_width(input_texture), GPU_texture_height(input_texture));
+
+  GPUTexture *preprocessed_texture = GPU_texture_create_2d(
+      "Cached Image", size.x, size.y, 1, target_format, GPU_TEXTURE_USAGE_GENERAL, nullptr);
+
+  GPUShader *shader = context.get_shader(shader_name, precision);
+  GPU_shader_bind(shader);
+
+  const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
+  GPU_texture_bind(input_texture, input_unit);
+
+  const int image_unit = GPU_shader_get_sampler_binding(shader, "output_img");
+  GPU_texture_image_bind(preprocessed_texture, image_unit);
+
+  compute_dispatch_threads_at_least(shader, size);
+
+  GPU_shader_unbind();
+  GPU_texture_unbind(input_texture);
+  GPU_texture_image_unbind(preprocessed_texture);
+  GPU_texture_free(input_texture);
+
+  return preprocessed_texture;
+}
+
+/* Get a suitable texture format supported by the compositor given the format of the texture
+ * returned by the IMB module. See imb_gpu_get_format for the formats that needs to be handled. */
+static eGPUTextureFormat get_compatible_texture_format(eGPUTextureFormat original_format)
+{
   switch (original_format) {
+    case GPU_R16F:
+    case GPU_R32F:
     case GPU_RGBA16F:
     case GPU_RGBA32F:
       return original_format;
+    case GPU_R8:
+      return GPU_R16F;
     case GPU_RGBA8:
     case GPU_SRGB8_A8:
       return GPU_RGBA16F;
@@ -75,40 +109,40 @@ static eGPUTextureFormat get_compatible_texture_format(GPUTexture *texture)
   return original_format;
 }
 
-/* Returns a new texture with the alpha of the input premultiplied. The original input is freed. */
-static GPUTexture *premultiply_alpha(Context &context, GPUTexture *input)
+/* Returns the result type corresponding to the given texture format. */
+static ResultType get_result_type(eGPUTextureFormat texture_format)
 {
-  const eGPUTextureFormat texture_format = get_compatible_texture_format(input);
-  const int2 size = int2(GPU_texture_width(input), GPU_texture_height(input));
+  switch (texture_format) {
+    case GPU_R16F:
+    case GPU_R32F:
+      return ResultType::Float;
+    case GPU_RGBA16F:
+    case GPU_RGBA32F:
+      return ResultType::Color;
+    default:
+      break;
+  }
 
-  GPUTexture *premultiplied_texture = GPU_texture_create_2d(
-      "Cached Image", size.x, size.y, 1, texture_format, GPU_TEXTURE_USAGE_GENERAL, nullptr);
-
-  GPUShader *shader = context.get_shader("compositor_premultiply_alpha",
-                                         texture_format == GPU_RGBA16F ? ResultPrecision::Half :
-                                                                         ResultPrecision::Full);
-  GPU_shader_bind(shader);
-
-  const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
-  GPU_texture_bind(input, input_unit);
-
-  const int image_unit = GPU_shader_get_sampler_binding(shader, "output_img");
-  GPU_texture_image_bind(premultiplied_texture, image_unit);
-
-  compute_dispatch_threads_at_least(shader, size);
-
-  GPU_shader_unbind();
-  GPU_texture_unbind(input);
-  GPU_texture_image_unbind(premultiplied_texture);
-  GPU_texture_free(input);
-
-  return premultiplied_texture;
+  BLI_assert_unreachable();
+  return ResultType::Color;
 }
 
-/* Returns true if the image buffer is a color buffer, that is, has more than 8 planes. */
-static bool is_color(ImBuf *image_buffer)
+/* Returns the precision of the given texture format. */
+static ResultPrecision get_result_precision(eGPUTextureFormat texture_format)
 {
-  return image_buffer->planes > 8;
+  switch (texture_format) {
+    case GPU_R16F:
+    case GPU_RGBA16F:
+      return ResultPrecision::Half;
+    case GPU_R32F:
+    case GPU_RGBA32F:
+      return ResultPrecision::Full;
+    default:
+      break;
+  }
+
+  BLI_assert_unreachable();
+  return ResultPrecision::Full;
 }
 
 CachedImage::CachedImage(Context &context, Image *image, ImageUser &image_user)
@@ -124,17 +158,28 @@ CachedImage::CachedImage(Context &context, Image *image, ImageUser &image_user)
 
   texture_ = IMB_create_gpu_texture("Image Texture", image_buffer, true, false);
 
-  /* Compositor images should always be premultiplied, so premultiply the alpha of the texture if
-   * it was straight, and set it to 1 using swizzling if it is ignored. */
-  if (is_color(image_buffer)) {
-    switch (original_alpha_mode) {
-      case IMA_ALPHA_STRAIGHT:
-        texture_ = premultiply_alpha(context, texture_);
-        break;
-      case IMA_ALPHA_IGNORE:
-        GPU_texture_swizzle_set(texture_, "rgb1");
-        break;
-    }
+  const eGPUTextureFormat original_format = GPU_texture_format(texture_);
+  const eGPUTextureFormat target_format = get_compatible_texture_format(original_format);
+  const ResultType result_type = get_result_type(target_format);
+  const ResultPrecision precision = get_result_precision(target_format);
+
+  /* The GPU image returned by the IMB module can be in a format not supported by the compositor,
+   * or it might need premultiplication, so preprocess them first. */
+  if (result_type == ResultType::Color && original_alpha_mode == IMA_ALPHA_STRAIGHT) {
+    texture_ = preprocess_texture(
+        context, texture_, target_format, precision, "compositor_premultiply_alpha");
+  }
+  else if (original_format != target_format) {
+    const char *conversion_shader_name = result_type == ResultType::Float ?
+                                             "compositor_convert_float_to_float" :
+                                             "compositor_convert_color_to_color";
+    texture_ = preprocess_texture(
+        context, texture_, target_format, precision, conversion_shader_name);
+  }
+
+  /* Set the alpha to 1 using swizzling if alpha is ignored. */
+  if (result_type == ResultType::Color && original_alpha_mode == IMA_ALPHA_IGNORE) {
+    GPU_texture_swizzle_set(texture_, "rgb1");
   }
 
   /* Release image buffer and restore the original alpha mode of the image. */
