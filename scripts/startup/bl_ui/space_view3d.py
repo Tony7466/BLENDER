@@ -913,7 +913,8 @@ class VIEW3D_HT_header(Header):
         if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'PAINT_GREASE_PENCIL'}:
             # Grease pencil
             if object_mode in {'PAINT_GPENCIL', 'PAINT_GREASE_PENCIL'}:
-                layout.prop_with_popover(
+                sub = layout.row(align=True)
+                sub.prop_with_popover(
                     tool_settings,
                     "gpencil_stroke_placement_view3d",
                     text="",
@@ -921,7 +922,9 @@ class VIEW3D_HT_header(Header):
                 )
 
             if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'PAINT_GREASE_PENCIL'}:
-                layout.prop_with_popover(
+                sub = layout.row(align=True)
+                sub.active = tool_settings.gpencil_stroke_placement_view3d != 'SURFACE'
+                sub.prop_with_popover(
                     tool_settings.gpencil_sculpt,
                     "lock_axis",
                     text="",
@@ -7611,7 +7614,10 @@ class VIEW3D_PT_gpencil_origin(Panel):
             row = layout.row()
             row.label(text="Offset")
             row = layout.row()
-            row.prop(gpd, "zdepth_offset", text="")
+            if context.preferences.experimental.use_grease_pencil_version3:
+                row.prop(tool_settings, "gpencil_surface_offset", text="")
+            else:
+                row.prop(gpd, "zdepth_offset", text="")
 
         if tool_settings.gpencil_stroke_placement_view3d == 'STROKE':
             row = layout.row()
