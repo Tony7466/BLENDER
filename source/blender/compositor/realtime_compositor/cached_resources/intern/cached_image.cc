@@ -197,10 +197,6 @@ CachedImage::CachedImage(Context &context,
                          ImageUser *image_user,
                          const char *pass_name)
 {
-  if (!image || !image_user) {
-    return;
-  }
-
   /* Image buffer loaders do redundant alpha premultiplication/unpremultiplication, causing data
    * loss for zero alpha colored regions, so we employ a trick where we free any cached buffers,
    * change the alpha mode to packed to avoid any alpha handling, acquire the buffer, then finally
@@ -295,6 +291,10 @@ GPUTexture *CachedImageContainer::get(Context &context,
                                       const ImageUser *image_user,
                                       const char *pass_name)
 {
+  if (!image || !image_user) {
+    return nullptr;
+  }
+
   /* Compute the effective frame number of the image if it was animated. */
   ImageUser image_user_for_frame = *image_user;
   BKE_image_user_frame_calc(image, &image_user_for_frame, context.get_frame_number());
