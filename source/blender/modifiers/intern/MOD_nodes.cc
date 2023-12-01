@@ -41,18 +41,18 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_compute_contexts.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.hh"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_object.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_screen.hh"
@@ -90,7 +90,6 @@
 #include "NOD_node_declaration.hh"
 
 #include "FN_field.hh"
-#include "FN_field_cpp_type.hh"
 #include "FN_lazy_function_execute.hh"
 #include "FN_lazy_function_graph_executor.hh"
 #include "FN_multi_function.hh"
@@ -110,98 +109,6 @@ static void init_data(ModifierData *md)
   MEMCPY_STRUCT_AFTER(nmd, DNA_struct_default_get(NodesModifierData), modifier);
   nmd->runtime = MEM_new<NodesModifierRuntime>(__func__);
   nmd->runtime->cache = std::make_shared<bake::ModifierCache>();
-}
-
-static void add_used_ids_from_sockets(const ListBase &sockets, Set<ID *> &ids)
-{
-  LISTBASE_FOREACH (const bNodeSocket *, socket, &sockets) {
-    switch (socket->type) {
-      case SOCK_OBJECT: {
-        if (Object *object = ((bNodeSocketValueObject *)socket->default_value)->value) {
-          ids.add(&object->id);
-        }
-        break;
-      }
-      case SOCK_COLLECTION: {
-        if (Collection *collection = ((bNodeSocketValueCollection *)socket->default_value)->value)
-        {
-          ids.add(&collection->id);
-        }
-        break;
-      }
-      case SOCK_MATERIAL: {
-        if (Material *material = ((bNodeSocketValueMaterial *)socket->default_value)->value) {
-          ids.add(&material->id);
-        }
-        break;
-      }
-      case SOCK_TEXTURE: {
-        if (Tex *texture = ((bNodeSocketValueTexture *)socket->default_value)->value) {
-          ids.add(&texture->id);
-        }
-        break;
-      }
-      case SOCK_IMAGE: {
-        if (Image *image = ((bNodeSocketValueImage *)socket->default_value)->value) {
-          ids.add(&image->id);
-        }
-        break;
-      }
-    }
-  }
-}
-
-/**
- * \note We can only check properties here that cause the dependency graph to update relations when
- * they are changed, otherwise there may be a missing relation after editing. So this could check
- * more properties like whether the node is muted, but we would have to accept the cost of updating
- * relations when those properties are changed.
- */
-static bool node_needs_own_transform_relation(const bNode &node)
-{
-  if (node.type == GEO_NODE_COLLECTION_INFO) {
-    const NodeGeometryCollectionInfo &storage = *static_cast<const NodeGeometryCollectionInfo *>(
-        node.storage);
-    return storage.transform_space == GEO_NODE_TRANSFORM_SPACE_RELATIVE;
-  }
-
-  if (node.type == GEO_NODE_OBJECT_INFO) {
-    const NodeGeometryObjectInfo &storage = *static_cast<const NodeGeometryObjectInfo *>(
-        node.storage);
-    return storage.transform_space == GEO_NODE_TRANSFORM_SPACE_RELATIVE;
-  }
-
-  if (node.type == GEO_NODE_SELF_OBJECT) {
-    return true;
-  }
-  if (node.type == GEO_NODE_DEFORM_CURVES_ON_SURFACE) {
-    return true;
-  }
-
-  return false;
-}
-
-static void process_nodes_for_depsgraph(const bNodeTree &tree,
-                                        Set<ID *> &ids,
-                                        bool &r_needs_own_transform_relation,
-                                        Set<const bNodeTree *> &checked_groups)
-{
-  if (!checked_groups.add(&tree)) {
-    return;
-  }
-
-  tree.ensure_topology_cache();
-  for (const bNode *node : tree.all_nodes()) {
-    add_used_ids_from_sockets(node->inputs, ids);
-    add_used_ids_from_sockets(node->outputs, ids);
-    r_needs_own_transform_relation |= node_needs_own_transform_relation(*node);
-  }
-
-  for (const bNode *node : tree.group_nodes()) {
-    if (const bNodeTree *sub_tree = reinterpret_cast<const bNodeTree *>(node->id)) {
-      process_nodes_for_depsgraph(*sub_tree, ids, r_needs_own_transform_relation, checked_groups);
-    }
-  }
 }
 
 static void find_used_ids_from_settings(const NodesModifierSettings &settings, Set<ID *> &ids)
@@ -259,9 +166,7 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   bool needs_own_transform_relation = false;
   Set<ID *> used_ids;
   find_used_ids_from_settings(nmd->settings, used_ids);
-  Set<const bNodeTree *> checked_groups;
-  process_nodes_for_depsgraph(
-      *nmd->node_group, used_ids, needs_own_transform_relation, checked_groups);
+  nodes::find_node_tree_dependencies(*nmd->node_group, used_ids, needs_own_transform_relation);
 
   if (ctx->object->type == OB_CURVES) {
     Curves *curves_id = static_cast<Curves *>(ctx->object->data);
@@ -420,20 +325,22 @@ static void update_existing_bake_caches(NodesModifierData &nmd)
   bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
   std::lock_guard lock{modifier_cache.mutex};
 
-  Map<int, std::unique_ptr<bake::NodeCache>> &old_cache_by_id = modifier_cache.cache_by_id;
-  Map<int, std::unique_ptr<bake::NodeCache>> new_cache_by_id;
+  Map<int, std::unique_ptr<bake::SimulationNodeCache>> &old_cache_by_id =
+      modifier_cache.simulation_cache_by_id;
+  Map<int, std::unique_ptr<bake::SimulationNodeCache>> new_cache_by_id;
   for (const NodesModifierBake &bake : Span{nmd.bakes, nmd.bakes_num}) {
-    std::unique_ptr<bake::NodeCache> node_cache;
-    std::unique_ptr<bake::NodeCache> *old_node_cache_ptr = old_cache_by_id.lookup_ptr(bake.id);
+    std::unique_ptr<bake::SimulationNodeCache> node_cache;
+    std::unique_ptr<bake::SimulationNodeCache> *old_node_cache_ptr = old_cache_by_id.lookup_ptr(
+        bake.id);
     if (old_node_cache_ptr == nullptr) {
-      node_cache = std::make_unique<bake::NodeCache>();
+      node_cache = std::make_unique<bake::SimulationNodeCache>();
     }
     else {
       node_cache = std::move(*old_node_cache_ptr);
     }
     new_cache_by_id.add(bake.id, std::move(node_cache));
   }
-  modifier_cache.cache_by_id = std::move(new_cache_by_id);
+  modifier_cache.simulation_cache_by_id = std::move(new_cache_by_id);
 }
 
 static void update_bakes_from_node_group(NodesModifierData &nmd)
@@ -606,7 +513,7 @@ static void try_add_side_effect_node(const ComputeContext &final_compute_context
           compute_context->iteration());
       current_zone = repeat_zone;
     }
-    else if (const auto *compute_context = dynamic_cast<const bke::NodeGroupComputeContext *>(
+    else if (const auto *compute_context = dynamic_cast<const bke::GroupNodeComputeContext *>(
                  compute_context_generic))
     {
       const bNode *group_node = current_tree->node_by_id(compute_context->node_id());
@@ -847,7 +754,8 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     if (depsgraph_is_active_) {
       /* Invalidate data on user edits. */
       if (nmd.modifier.flag & eModifierFlag_UserModified) {
-        for (std::unique_ptr<bake::NodeCache> &node_cache : modifier_cache_->cache_by_id.values())
+        for (std::unique_ptr<bake::SimulationNodeCache> &node_cache :
+             modifier_cache_->simulation_cache_by_id.values())
         {
           if (node_cache->cache_status != bake::CacheStatus::Baked) {
             node_cache->cache_status = bake::CacheStatus::Invalid;
@@ -856,10 +764,10 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       }
       this->reset_invalid_node_bakes();
     }
-    for (const std::unique_ptr<bake::NodeCache> &node_cache_ptr :
-         modifier_cache_->cache_by_id.values())
+    for (const std::unique_ptr<bake::SimulationNodeCache> &node_cache_ptr :
+         modifier_cache_->simulation_cache_by_id.values())
     {
-      const bake::NodeCache &node_cache = *node_cache_ptr;
+      const bake::SimulationNodeCache &node_cache = *node_cache_ptr;
       if (node_cache.cache_status == bake::CacheStatus::Invalid) {
         has_invalid_simulation_ = true;
         break;
@@ -869,9 +777,9 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
 
   void reset_invalid_node_bakes()
   {
-    for (auto item : modifier_cache_->cache_by_id.items()) {
+    for (auto item : modifier_cache_->simulation_cache_by_id.items()) {
       const int id = item.key;
-      bake::NodeCache &node_cache = *item.value;
+      bake::SimulationNodeCache &node_cache = *item.value;
       if (node_cache.cache_status != bake::CacheStatus::Invalid) {
         continue;
       }
@@ -915,11 +823,12 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
 
   void init_simulation_info(const int zone_id, nodes::SimulationZoneBehavior &zone_behavior) const
   {
-    if (!modifier_cache_->cache_by_id.contains(zone_id)) {
+    if (!modifier_cache_->simulation_cache_by_id.contains(zone_id)) {
       /* Should have been created in #update_existing_bake_caches. */
       return;
     }
-    bake::NodeCache &node_cache = *modifier_cache_->cache_by_id.lookup(zone_id);
+    bake::SimulationNodeCache &node_cache = *modifier_cache_->simulation_cache_by_id.lookup(
+        zone_id);
     const IndexRange sim_frame_range = *bake::get_node_bake_frame_range(
         *scene_, *ctx_.object, nmd_, zone_id);
     const SubFrame sim_start_frame{int(sim_frame_range.first())};
@@ -1040,7 +949,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     }
   }
 
-  FrameIndices get_frame_indices(const bake::NodeCache &node_cache) const
+  FrameIndices get_frame_indices(const bake::SimulationNodeCache &node_cache) const
   {
     FrameIndices frame_indices;
     if (!node_cache.frame_caches.is_empty()) {
@@ -1078,7 +987,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     zone_behavior.output.emplace<sim_output::PassThrough>();
   }
 
-  void output_store_frame_cache(bake::NodeCache &node_cache,
+  void output_store_frame_cache(bake::SimulationNodeCache &node_cache,
                                 nodes::SimulationZoneBehavior &zone_behavior) const
   {
     auto &store_new_state_info = zone_behavior.output.emplace<sim_output::StoreNewState>();
@@ -1093,7 +1002,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     };
   }
 
-  void store_as_prev_items(bake::NodeCache &node_cache,
+  void store_as_prev_items(bake::SimulationNodeCache &node_cache,
                            nodes::SimulationZoneBehavior &zone_behavior) const
   {
     auto &store_new_state_info = zone_behavior.output.emplace<sim_output::StoreNewState>();
@@ -1110,7 +1019,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   }
 
   void read_from_cache(const FrameIndices &frame_indices,
-                       bake::NodeCache &node_cache,
+                       bake::SimulationNodeCache &node_cache,
                        nodes::SimulationZoneBehavior &zone_behavior) const
   {
     if (frame_indices.prev) {
@@ -1145,7 +1054,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   }
 
   void read_single(const int frame_index,
-                   bake::NodeCache &node_cache,
+                   bake::SimulationNodeCache &node_cache,
                    nodes::SimulationZoneBehavior &zone_behavior) const
   {
     bake::FrameCache &frame_cache = *node_cache.frame_caches[frame_index];
@@ -1156,7 +1065,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
 
   void read_interpolated(const int prev_frame_index,
                          const int next_frame_index,
-                         bake::NodeCache &node_cache,
+                         bake::SimulationNodeCache &node_cache,
                          nodes::SimulationZoneBehavior &zone_behavior) const
   {
     bake::FrameCache &prev_frame_cache = *node_cache.frame_caches[prev_frame_index];
@@ -1171,7 +1080,8 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     read_interpolated_info.next_state = next_frame_cache.state;
   }
 
-  void ensure_bake_loaded(bake::NodeCache &node_cache, bake::FrameCache &frame_cache) const
+  void ensure_bake_loaded(bake::SimulationNodeCache &node_cache,
+                          bake::FrameCache &frame_cache) const
   {
     if (!frame_cache.state.items_by_id.is_empty()) {
       return;
@@ -1247,36 +1157,36 @@ static void modifyGeometry(ModifierData *md,
     use_orig_index_faces = CustomData_has_layer(&mesh->face_data, CD_ORIGINDEX);
   }
 
+  nodes::GeoNodesCallData call_data;
+
   nodes::GeoNodesModifierData modifier_eval_data{};
   modifier_eval_data.depsgraph = ctx->depsgraph;
   modifier_eval_data.self_object = ctx->object;
   auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
+  call_data.modifier_data = &modifier_eval_data;
 
   NodesModifierSimulationParams simulation_params(*nmd, *ctx);
-  modifier_eval_data.simulation_params = &simulation_params;
+  call_data.simulation_params = &simulation_params;
 
   Set<ComputeContextHash> socket_log_contexts;
   if (logging_enabled(ctx)) {
-    modifier_eval_data.eval_log = eval_log.get();
+    call_data.eval_log = eval_log.get();
 
     find_socket_log_contexts(*nmd, *ctx, socket_log_contexts);
-    modifier_eval_data.socket_log_contexts = &socket_log_contexts;
+    call_data.socket_log_contexts = &socket_log_contexts;
   }
 
   nodes::GeoNodesSideEffectNodes side_effect_nodes;
   find_side_effect_nodes(*nmd, *ctx, side_effect_nodes);
-  modifier_eval_data.side_effect_nodes = &side_effect_nodes;
+  call_data.side_effect_nodes = &side_effect_nodes;
 
   bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
 
-  geometry_set = nodes::execute_geometry_nodes_on_geometry(
-      tree,
-      nmd->settings.properties,
-      modifier_compute_context,
-      std::move(geometry_set),
-      [&](nodes::GeoNodesLFUserData &user_data) {
-        user_data.modifier_data = &modifier_eval_data;
-      });
+  geometry_set = nodes::execute_geometry_nodes_on_geometry(tree,
+                                                           nmd->settings.properties,
+                                                           modifier_compute_context,
+                                                           call_data,
+                                                           std::move(geometry_set));
 
   if (logging_enabled(ctx)) {
     nmd_orig->runtime->eval_log = std::move(eval_log);
@@ -1531,7 +1441,7 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
     uiItemL(name_row, "", ICON_NONE);
   }
   else {
-    uiItemL(name_row, socket.name ? socket.name : "", ICON_NONE);
+    uiItemL(name_row, socket.name ? IFACE_(socket.name) : "", ICON_NONE);
   }
 
   uiLayout *prop_row = uiLayoutRow(split, true);
@@ -1545,7 +1455,7 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
     uiItemL(layout, "", ICON_BLANK1);
   }
   else {
-    const char *name = type == SOCK_BOOLEAN ? (socket.name ? socket.name : "") : "";
+    const char *name = type == SOCK_BOOLEAN ? (socket.name ? IFACE_(socket.name) : "") : "";
     uiItemR(prop_row, md_ptr, rna_path.c_str(), UI_ITEM_NONE, name, ICON_NONE);
     uiItemDecoratorR(layout, md_ptr, rna_path.c_str(), -1);
   }
@@ -1598,7 +1508,7 @@ static void draw_property_for_socket(const bContext &C,
    * pointer IDProperties contain no information about their type. */
   const bNodeSocketType *typeinfo = socket.socket_typeinfo();
   const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
-  const char *name = socket.name ? socket.name : "";
+  const char *name = socket.name ? IFACE_(socket.name) : "";
   switch (type) {
     case SOCK_OBJECT: {
       uiItemPointerR(row, md_ptr, rna_path, bmain_ptr, "objects", name, ICON_OBJECT_DATA);
@@ -1979,7 +1889,7 @@ ModifierTypeInfo modifierType_Nodes = {
     /*struct_name*/ "NodesModifierData",
     /*struct_size*/ sizeof(NodesModifierData),
     /*srna*/ &RNA_NodesModifier,
-    /*type*/ eModifierTypeType_Constructive,
+    /*type*/ ModifierTypeType::Constructive,
     /*flags*/
     static_cast<ModifierTypeFlag>(
         eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs |

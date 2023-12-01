@@ -35,8 +35,8 @@
 #include "BKE_attribute.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
-#include "BKE_customdata.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_fair.hh"
 #include "BKE_mesh_mapping.hh"
@@ -66,14 +66,16 @@ using blender::Vector;
 
 int ED_sculpt_face_sets_find_next_available_id(Mesh *mesh)
 {
-  const int *face_sets = static_cast<const int *>(
-      CustomData_get_layer_named(&mesh->face_data, CD_PROP_INT32, ".sculpt_face_set"));
-  if (!face_sets) {
+  using namespace blender;
+  const VArray<int> attribute = *mesh->attributes().lookup<int>(".sculpt_face_set",
+                                                                ATTR_DOMAIN_FACE);
+  if (!attribute) {
     return SCULPT_FACE_SET_NONE;
   }
+  const VArraySpan<int> face_sets(attribute);
 
   int next_face_set_id = 0;
-  for (int i = 0; i < mesh->faces_num; i++) {
+  for (const int i : face_sets.index_range()) {
     next_face_set_id = max_ii(next_face_set_id, face_sets[i]);
   }
   next_face_set_id++;
@@ -83,15 +85,17 @@ int ED_sculpt_face_sets_find_next_available_id(Mesh *mesh)
 
 void ED_sculpt_face_sets_initialize_none_to_id(Mesh *mesh, const int new_id)
 {
-  int *face_sets = static_cast<int *>(CustomData_get_layer_named_for_write(
-      &mesh->face_data, CD_PROP_INT32, ".sculpt_face_set", mesh->faces_num));
+  using namespace blender;
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  bke::SpanAttributeWriter<int> face_sets = attributes.lookup_for_write_span<int>(
+      ".sculpt_face_set");
   if (!face_sets) {
     return;
   }
 
-  for (int i = 0; i < mesh->faces_num; i++) {
-    if (face_sets[i] == SCULPT_FACE_SET_NONE) {
-      face_sets[i] = new_id;
+  for (const int i : face_sets.span.index_range()) {
+    if (face_sets.span[i] == SCULPT_FACE_SET_NONE) {
+      face_sets.span[i] = new_id;
     }
   }
 }
@@ -130,18 +134,16 @@ static void do_draw_face_sets_brush_faces(Object *ob, const Brush *brush, PBVHNo
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
 
-  const Span<float3> positions(
-      reinterpret_cast<const float3 *>(SCULPT_mesh_deformed_positions_get(ss)),
-      SCULPT_vertex_count_get(ss));
+  const Span<float3> positions = SCULPT_mesh_deformed_positions_get(ss);
 
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->cache->automasking, &automask_data, node);
 
   bool changed = false;
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     for (const int face_i : ss->pmap[vd.index]) {
       const blender::IndexRange face = ss->faces[face_i];
@@ -196,13 +198,13 @@ static void do_draw_face_sets_brush_grids(Object *ob, const Brush *brush, PBVHNo
       ss, &test, brush->falloff_shape);
 
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->cache->automasking, &automask_data, node);
 
   bool changed = false;
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
@@ -256,7 +258,7 @@ static void do_draw_face_sets_brush_bmesh(Object *ob, const Brush *brush, PBVHNo
    * Do it locally here for the Draw Face Set brush here, to mimic the behavior of the other
    * brushes but without marking the brush as supporting dynamic topology. */
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, nullptr, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, nullptr, &automask_data, node);
 
   bool changed = false;
 
@@ -268,16 +270,13 @@ static void do_draw_face_sets_brush_bmesh(Object *ob, const Brush *brush, PBVHNo
       continue;
     }
 
-    bool is_face_fully_covered = true;
-
     float3 face_center;
     BM_face_calc_center_median(f, face_center);
 
     const BMLoop *l_iter = f->l_first = BM_FACE_FIRST_LOOP(f);
     do {
       if (!sculpt_brush_test_sq_fn(&test, l_iter->v->co)) {
-        is_face_fully_covered = false;
-        break;
+        continue;
       }
 
       BMVert *vert = l_iter->v;
@@ -289,7 +288,7 @@ static void do_draw_face_sets_brush_bmesh(Object *ob, const Brush *brush, PBVHNo
        * typical code flow for it here for the reference, and ease of looking at what needs to be
        * done for such integration.
        *
-       * SCULPT_automasking_node_update(ss, &automask_data, &vd); */
+       * SCULPT_automasking_node_update(&automask_data, &vd); */
 
       const float fade = bstrength *
                          SCULPT_brush_strength_factor(ss,
@@ -304,17 +303,15 @@ static void do_draw_face_sets_brush_bmesh(Object *ob, const Brush *brush, PBVHNo
                                                       &automask_data);
 
       if (fade <= FACE_SET_BRUSH_MIN_FADE) {
-        is_face_fully_covered = false;
-        break;
+        continue;
       }
 
-    } while ((l_iter = l_iter->next) != f->l_first);
-
-    if (is_face_fully_covered) {
       int &fset = *static_cast<int *>(POINTER_OFFSET(f->head.data, cd_offset));
       fset = ss->cache->paint_face_set;
       changed = true;
-    }
+      break;
+
+    } while ((l_iter = l_iter->next) != f->l_first);
   }
 
   if (changed) {
@@ -363,10 +360,10 @@ static void do_relax_face_sets_brush_task(Object *ob,
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  SCULPT_automasking_node_begin(ob, ss->cache->automasking, &automask_data, node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    SCULPT_automasking_node_update(&automask_data, &vd);
 
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
@@ -394,17 +391,11 @@ static void do_relax_face_sets_brush_task(Object *ob,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_draw_face_sets_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
+void SCULPT_do_draw_face_sets_brush(Sculpt *sd, Object *ob, blender::Span<PBVHNode *> nodes)
 {
   using namespace blender;
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
-
-  if (ss->pbvh) {
-    Mesh *mesh = BKE_mesh_from_object(ob);
-    BKE_pbvh_face_sets_color_set(
-        ss->pbvh, mesh->face_sets_color_seed, mesh->face_sets_color_default);
-  }
 
   BKE_curvemapping_init(brush->curve);
 
@@ -534,8 +525,6 @@ static int sculpt_face_set_create_exec(bContext *C, wmOperator *op)
 
     if (all_visible) {
       mesh->face_sets_color_default = next_face_set;
-      BKE_pbvh_face_sets_color_set(
-          ss->pbvh, mesh->face_sets_color_seed, mesh->face_sets_color_default);
     }
 
     for (int i = 0; i < tot_vert; i++) {
@@ -1110,7 +1099,6 @@ static int sculpt_face_sets_randomize_colors_exec(bContext *C, wmOperator * /*op
                                      max_ii(0, ss->totfaces - 1));
     mesh->face_sets_color_default = ss->face_sets[random_index];
   }
-  BKE_pbvh_face_sets_color_set(pbvh, mesh->face_sets_color_seed, mesh->face_sets_color_default);
 
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, {});
   for (PBVHNode *node : nodes) {
@@ -1343,7 +1331,7 @@ static void sculpt_face_set_edit_fair_face_set(Object *ob,
                     SCULPT_vertex_has_unique_face_set(ss, vertex);
   }
 
-  float(*positions)[3] = SCULPT_mesh_deformed_positions_get(ss);
+  blender::MutableSpan<float3> positions = SCULPT_mesh_deformed_positions_get(ss);
   BKE_mesh_prefair_and_fair_verts(mesh, positions, fair_verts.data(), fair_order);
 
   for (int i = 0; i < totvert; i++) {
@@ -1441,7 +1429,7 @@ static void sculpt_face_set_edit_modify_geometry(bContext *C,
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, mesh);
 }
 
-static void face_set_edit_do_post_visibility_updates(Object *ob, Span<PBVHNode *> nodes)
+static void face_set_edit_do_post_visibility_updates(Object *ob, blender::Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
 

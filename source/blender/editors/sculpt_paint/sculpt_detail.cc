@@ -16,7 +16,7 @@
 
 #include "DNA_mesh_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_screen.hh"
@@ -91,7 +91,7 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   float size;
   float bb_min[3], bb_max[3], center[3], dim[3];
 
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
+  blender::Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
   if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;
