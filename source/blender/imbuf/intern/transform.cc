@@ -340,12 +340,8 @@ class Sampler {
                                            true);
       }
       else {
-        BLI_bilinear_interpolation_fl(source->float_buffer.data,
-                                      r_sample.data(),
-                                      source->x,
-                                      source->y,
-                                      NumChannels,
-                                      u, v);
+        BLI_bilinear_interpolation_fl(
+            source->float_buffer.data, r_sample.data(), source->x, source->y, NumChannels, u, v);
       }
     }
     else if constexpr (Filter == IMB_FILTER_NEAREST && std::is_same_v<StorageType, float>) {
@@ -358,7 +354,10 @@ class Sampler {
   }
 
  private:
-  void sample_nearest_float(const ImBuf *source, const float u, const float v, SampleType &r_sample)
+  void sample_nearest_float(const ImBuf *source,
+                            const float u,
+                            const float v,
+                            SampleType &r_sample)
   {
     BLI_STATIC_ASSERT(std::is_same_v<StorageType, float>);
 

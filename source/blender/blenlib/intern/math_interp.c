@@ -7,6 +7,7 @@
  */
 
 #include <math.h>
+#include <string.h>
 
 #include "BLI_math_base.h"
 #include "BLI_math_interp.h"
@@ -17,7 +18,6 @@
 #if defined(_MSC_VER)
 #  include <intrin.h>
 #endif
-
 
 /**************************************************************************
  *                            INTERPOLATIONS
@@ -389,7 +389,7 @@ static void simd_to_rgba_uchar(__m128 rgba, uchar dst[4])
   /* Pack to 8 bit values. */
   __m128i rgba8 = _mm_packus_epi16(rgba16, _mm_setzero_si128());
   /* Store the packed bits into destination. */
-  _mm_store_ss((float*)dst, _mm_castsi128_ps(rgba8));
+  _mm_store_ss((float *)dst, _mm_castsi128_ps(rgba8));
 }
 #endif
 
@@ -483,8 +483,7 @@ void BLI_bilinear_interpolation_char(
 void BLI_bilinear_interpolation_fl(
     const float *buffer, float *output, int width, int height, int components, float u, float v)
 {
-  bilinear_interpolation_fl(
-      buffer, output, width, height, components, u, v, false, false);
+  bilinear_interpolation_fl(buffer, output, width, height, components, u, v, false, false);
 }
 
 void BLI_bilinear_interpolation_wrap_fl(const float *buffer,
@@ -497,8 +496,7 @@ void BLI_bilinear_interpolation_wrap_fl(const float *buffer,
                                         bool wrap_x,
                                         bool wrap_y)
 {
-  bilinear_interpolation_fl(
-      buffer, output, width, height, components, u, v, wrap_x, wrap_y);
+  bilinear_interpolation_fl(buffer, output, width, height, components, u, v, wrap_x, wrap_y);
 }
 
 /**************************************************************************
