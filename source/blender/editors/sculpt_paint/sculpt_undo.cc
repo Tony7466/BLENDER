@@ -80,6 +80,9 @@
 #include "bmesh.h"
 #include "sculpt_intern.hh"
 
+using blender::Span;
+using blender::Vector;
+
 /* Uncomment to print the undo stack in the console on push/undo/redo. */
 //#define SCULPT_UNDO_DEBUG
 
@@ -491,6 +494,7 @@ static bool sculpt_undo_restore_coords(bContext *C, Depsgraph *depsgraph, Sculpt
 
 static bool sculpt_undo_restore_hidden(bContext *C, SculptUndoNode *unode, bool *modified_vertices)
 {
+  using namespace blender;
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(scene, view_layer);
@@ -499,15 +503,19 @@ static bool sculpt_undo_restore_hidden(bContext *C, SculptUndoNode *unode, bool 
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
 
   if (unode->maxvert) {
-    bool *hide_vert = BKE_pbvh_get_vert_hide_for_write(ss->pbvh);
-    for (int i = 0; i < unode->totvert; i++) {
-      const int vert_index = unode->index[i];
-      if (unode->vert_hidden[i].test() != hide_vert[vert_index]) {
+    Mesh &mesh = *static_cast<Mesh *>(ob->data);
+    bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+    bke::SpanAttributeWriter<bool> hide_vert = attributes.lookup_or_add_for_write_span<bool>(
+        ".hide_vert", ATTR_DOMAIN_POINT);
+    for (const int i : unode->index.index_range()) {
+      const int vert = unode->index[i];
+      if (unode->vert_hidden[i].test() != hide_vert.span[vert]) {
         unode->vert_hidden[i].set(!unode->vert_hidden[i].test());
-        hide_vert[vert_index] = !hide_vert[vert_index];
-        modified_vertices[vert_index] = true;
+        hide_vert.span[vert] = !hide_vert.span[vert];
+        modified_vertices[vert] = true;
       }
     }
+    hide_vert.finish();
   }
   else if (unode->maxgrid && subdiv_ccg != nullptr) {
     if (!unode->grid_hidden) {
@@ -1162,24 +1170,16 @@ SculptUndoNode *SCULPT_undo_get_first_node()
   return static_cast<SculptUndoNode *>(usculpt->nodes.first);
 }
 
-static size_t sculpt_undo_alloc_and_store_hidden(PBVH *pbvh, SculptUndoNode *unode)
+static size_t sculpt_undo_alloc_and_store_hidden(SculptSession *ss, SculptUndoNode *unode)
 {
+  PBVH *pbvh = ss->pbvh;
   PBVHNode *node = static_cast<PBVHNode *>(unode->node);
-  if (BKE_pbvh_type(pbvh) == PBVH_FACES) {
-    const bool *hide_vert = BKE_pbvh_get_vert_hide(pbvh);
-    if (!hide_vert) {
-      return 0;
-    }
-    const blender::Span<int> verts = BKE_pbvh_node_get_vert_indices(node);
-    for (const int i : verts.index_range()) {
-      unode->vert_hidden[i].set(hide_vert[verts[i]]);
-    }
-    return unode->vert_hidden.size() / 8;
+  // TODO
+  if (!ss->subdiv_ccg) {
+    return;
   }
-
-  const blender::BitGroupVector<> *grid_hidden = BKE_pbvh_get_grid_visibility(pbvh);
-  if (grid_hidden) {
-    return 0;
+  if (!ss->subdiv_ccg->grid_hidden) {
+    return;
   }
 
   const int *grid_indices;
@@ -1190,10 +1190,8 @@ static size_t sculpt_undo_alloc_and_store_hidden(PBVH *pbvh, SculptUndoNode *uno
   const int grid_area = grid_size * grid_size;
   unode->grid_hidden = blender::BitGroupVector<>(totgrid, grid_area, false);
 
-  if (grid_hidden) {
-    for (int i = 0; i < totgrid; i++) {
-      (*unode->grid_hidden)[i].copy_from((*grid_hidden)[grid_indices[i]]);
-    }
+  for (int i = 0; i < totgrid; i++) {
+    (*unode->grid_hidden)[i].copy_from((*ss->subdiv_ccg->grid_hidden)[grid_indices[i]]);
   }
 
   return unode->grid_hidden->all_bits().full_ints_num() / blender::bits::BitsPerInt;
@@ -1284,7 +1282,7 @@ static SculptUndoNode *sculpt_undo_alloc_node(Object *ob, PBVHNode *node, Sculpt
     }
     case SCULPT_UNDO_HIDDEN: {
       if (maxgrid) {
-        usculpt->undo_size += sculpt_undo_alloc_and_store_hidden(ss->pbvh, unode);
+        usculpt->undo_size += sculpt_undo_alloc_and_store_hidden(ss, unode);
       }
       else {
         unode->vert_hidden.resize(allvert);
@@ -1368,6 +1366,27 @@ static void sculpt_undo_store_coords(Object *ob, SculptUndoNode *unode)
     }
   }
   BKE_pbvh_vertex_iter_end;
+}
+
+static void sculpt_undo_store_hidden(Object *ob, SculptUndoNode *unode)
+{
+  using namespace blender;
+  using namespace blender::bke;
+  if (!unode->grids.is_empty()) {
+    /* Already stored during allocation. */
+  }
+
+  const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
+  const AttributeAccessor attributes = mesh.attributes();
+  const VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT);
+  if (hide_vert.is_empty()) {
+    return;
+  }
+
+  PBVHNode *node = static_cast<PBVHNode *>(unode->node);
+  const blender::Span<int> verts = BKE_pbvh_node_get_vert_indices(node);
+  for (const int i : verts.index_range())
+    unode->vert_hidden[i].set(hide_vert[verts[i]]);
 }
 
 static void sculpt_undo_store_mask(Object *ob, SculptUndoNode *unode)
@@ -1549,8 +1568,7 @@ SculptUndoNode *SCULPT_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
       const int *loop_indices;
       int allloop;
       BKE_pbvh_node_num_loops(ss->pbvh, static_cast<PBVHNode *>(unode->node), &allloop);
-      BKE_pbvh_node_get_loops(
-          ss->pbvh, static_cast<PBVHNode *>(unode->node), &loop_indices, nullptr);
+      BKE_pbvh_node_get_loops(static_cast<PBVHNode *>(unode->node), &loop_indices);
 
       if (allloop) {
         unode->loop_index.as_mutable_span().copy_from({loop_indices, allloop});

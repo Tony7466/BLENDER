@@ -1134,9 +1134,6 @@ struct GWL_Display {
   GWL_LibDecor_System *libdecor = nullptr;
   bool libdecor_required = false;
 #endif
-#ifdef USE_XDG_INIT_WINDOW_SIZE_HACK
-  bool xdg_decor_ignore_initial_window_size = false;
-#endif
   GWL_XDG_Decor_System *xdg_decor = nullptr;
 
   /**
@@ -3643,7 +3640,7 @@ static void tablet_tool_handle_proximity_in(void *data,
   /* In case pressure isn't supported. */
   td.Pressure = 1.0f;
 
-  GHOST_WindowWayland *win = ghost_wl_surface_user_data(seat->tablet.wl.surface_window);
+  const GHOST_WindowWayland *win = ghost_wl_surface_user_data(seat->tablet.wl.surface_window);
 
   seat->system->cursor_shape_set(win->getCursorShape());
 }
@@ -4177,6 +4174,8 @@ static bool xkb_compose_state_feed_and_get_utf8(
         break;
       }
       case XKB_COMPOSE_COMPOSING: {
+        r_utf8_buf[0] = '\0';
+        handled = true;
         break;
       }
       case XKB_COMPOSE_COMPOSED: {
@@ -4190,6 +4189,13 @@ static bool xkb_compose_state_feed_and_get_utf8(
         break;
       }
       case XKB_COMPOSE_CANCELLED: {
+        /* NOTE(@ideasman42): QT & GTK ignore these events as well as not inputting any text
+         * so `<Compose><Backspace>` for e.g. causes a cancel and *not* back-space.
+         * This isn't supported under GHOST at the moment.
+         * The key-event could also be ignored but this means tracking held state of
+         * keys wont work properly, so don't do any input and pass in the key-symbol. */
+        r_utf8_buf[0] = '\0';
+        handled = true;
         break;
       }
     }
@@ -4903,7 +4909,7 @@ static void gwl_seat_capability_pointer_disable(GWL_Seat *seat)
     return;
   }
 
-  zwp_pointer_gestures_v1 *pointer_gestures = seat->system->wp_pointer_gestures_get();
+  const zwp_pointer_gestures_v1 *pointer_gestures = seat->system->wp_pointer_gestures_get();
   if (pointer_gestures) {
 #ifdef ZWP_POINTER_GESTURE_HOLD_V1_INTERFACE
     { /* Hold gesture. */
@@ -6022,17 +6028,10 @@ static void global_handle_add(void *data,
   else {
     /* Not found. */
 #ifdef USE_GNOME_NEEDS_LIBDECOR_HACK
-    /* `gtk_shell1` at time of writing. */
-    if (STRPREFIX(interface, "gtk_shell")) {
+    if (STRPREFIX(interface, "gtk_shell")) { /* `gtk_shell1` at time of writing. */
       /* Only require `libdecor` when built with X11 support,
        * otherwise there is nothing to fall back on. */
       display->libdecor_required = true;
-    }
-#endif
-#ifdef USE_XDG_INIT_WINDOW_SIZE_HACK
-    /* `org_kde_plasma_shell` at time of writing. */
-    if (STRPREFIX(interface, "org_kde_plasma_shell")) {
-      display->xdg_decor_ignore_initial_window_size = true;
     }
 #endif
   }
@@ -6495,7 +6494,7 @@ GHOST_TSuccess GHOST_SystemWayland::getButtons(GHOST_Buttons &buttons) const
   if (UNLIKELY(!seat)) {
     return GHOST_kFailure;
   }
-  GWL_SeatStatePointer *seat_state_pointer = gwl_seat_state_pointer_active(seat);
+  const GWL_SeatStatePointer *seat_state_pointer = gwl_seat_state_pointer_active(seat);
   if (!seat_state_pointer) {
     return GHOST_kFailure;
   }
@@ -7468,7 +7467,7 @@ GHOST_TCapabilityFlag GHOST_SystemWayland::getCapabilities() const
 bool GHOST_SystemWayland::cursor_grab_use_software_display_get(const GHOST_TGrabCursorMode mode)
 {
   /* Caller must lock `server_mutex`. */
-  GWL_Seat *seat = gwl_display_seat_active_get(display_);
+  const GWL_Seat *seat = gwl_display_seat_active_get(display_);
   if (UNLIKELY(!seat)) {
     return false;
   }
@@ -7665,32 +7664,11 @@ zxdg_decoration_manager_v1 *GHOST_SystemWayland::xdg_decor_manager_get()
   return display_->xdg_decor->manager;
 }
 
-#ifdef USE_XDG_INIT_WINDOW_SIZE_HACK
-bool GHOST_SystemWayland::xdg_decor_needs_window_size_hack() const
-{
-  return display_->xdg_decor_ignore_initial_window_size;
-}
-#endif
-
 /* End `xdg_decor`. */
 
 const std::vector<GWL_Output *> &GHOST_SystemWayland::outputs_get() const
 {
   return display_->outputs;
-}
-
-const GWL_Output *GHOST_SystemWayland::outputs_get_max_native_size() const
-{
-  uint64_t area_best = 0;
-  const GWL_Output *output_best = nullptr;
-  for (const GWL_Output *output : display_->outputs) {
-    const uint64_t area_test = (uint64_t)output->size_native[0] * (uint64_t)output->size_native[1];
-    if (output_best == nullptr || area_best < area_test) {
-      output_best = output;
-      area_best = area_test;
-    }
-  }
-  return output_best;
 }
 
 wl_shm *GHOST_SystemWayland::wl_shm_get() const
@@ -7834,7 +7812,7 @@ GHOST_WindowWayland *ghost_wl_surface_user_data(wl_surface *wl_surface)
  * Functionality only used for the WAYLAND implementation.
  * \{ */
 
-GHOST_TSuccess GHOST_SystemWayland::pushEvent_maybe_pending(GHOST_IEvent *event)
+GHOST_TSuccess GHOST_SystemWayland::pushEvent_maybe_pending(const GHOST_IEvent *event)
 {
 #ifdef USE_EVENT_BACKGROUND_THREAD
   if (main_thread_id != std::this_thread::get_id()) {
