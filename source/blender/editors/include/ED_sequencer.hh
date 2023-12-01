@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BLI_vector_set.hh"
+
 struct Scene;
 struct Sequence;
 struct SpaceSeq;
@@ -60,3 +62,13 @@ bool ED_sequencer_handle_selection_refine(const struct Scene *scene,
                                           struct Sequence **r_seq1,
                                           struct Sequence **r_seq2,
                                           int *r_side);
+
+/**
+ * Returns collection with selected strips presented to user. If operation is done in preview,
+ * collection is limited to selected presented strips, that can produce image output at current
+ * frame.
+ *
+ * \param C: context
+ * \return collection of strips (`Sequence`)
+ */
+blender::VectorSet<Sequence *> ED_sequencer_selected_strips_from_context(bContext *C);

@@ -70,7 +70,7 @@ blender::VectorSet<Sequence *> all_strips_from_context(bContext *C)
   return SEQ_query_all_strips(seqbase);
 }
 
-blender::VectorSet<Sequence *> selected_strips_from_context(bContext *C)
+blender::VectorSet<Sequence *> ED_sequencer_selected_strips_from_context(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
@@ -276,15 +276,13 @@ Sequence *find_neighboring_sequence(Scene *scene, Sequence *test, int lr, int se
       switch (lr) {
         case SEQ_SIDE_LEFT:
           if (SEQ_time_left_handle_frame_get(scene, test) ==
-              SEQ_time_right_handle_frame_get(scene, seq))
-          {
+              SEQ_time_right_handle_frame_get(scene, seq)) {
             return seq;
           }
           break;
         case SEQ_SIDE_RIGHT:
           if (SEQ_time_right_handle_frame_get(scene, test) ==
-              SEQ_time_left_handle_frame_get(scene, seq))
-          {
+              SEQ_time_left_handle_frame_get(scene, seq)) {
             return seq;
           }
           break;
@@ -824,23 +822,13 @@ static Sequence *seq_select_seq_from_preview(
   return seq_select;
 }
 
-static bool element_already_selected(const Sequence *seq1,
-                                     const Sequence *seq2,
-                                     const int handle_clicked)
+static bool element_already_selected(const Sequence *seq1, const Sequence *seq2)
 {
-  const int handle1_already_selected = seq1->flag & (SEQ_LEFTSEL | SEQ_RIGHTSEL);
-  bool seq1_already_selected = ((seq1->flag & SELECT) != 0) &&
-                               handle_clicked == handle1_already_selected;
+  bool seq1_already_selected = ((seq1->flag & SELECT) != 0);
   if (seq2 == nullptr) {
     return seq1_already_selected;
   }
-  /* Invert handle selection for second strip */
-  int seq2_handle_clicked = (handle_clicked == SEQ_LEFTSEL) ? SEQ_RIGHTSEL : SEQ_LEFTSEL;
-
-  const int handle2_already_selected = seq2->flag & (SEQ_LEFTSEL | SEQ_RIGHTSEL);
-  bool seq2_already_selected = ((seq2->flag & SELECT) != 0) &&
-                               seq2_handle_clicked == handle2_already_selected;
-
+  bool seq2_already_selected = ((seq2->flag & SELECT) != 0);
   return seq1_already_selected && seq2_already_selected;
 }
 
@@ -1075,8 +1063,8 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
 
   /* Clicking on already selected element falls on modal operation.
    * All strips are deselected on mouse button release unless extend mode is used. */
-  if (seq && element_already_selected(seq, seq2, handle_clicked) && wait_to_deselect_others &&
-      !toggle && !RNA_boolean_get(op->ptr, "handles_only"))
+  if (handle_clicked == SEQ_SIDE_NONE && seq && element_already_selected(seq, seq2) &&
+      wait_to_deselect_others && !toggle && !RNA_boolean_get(op->ptr, "handles_only"))
   {
     return OPERATOR_RUNNING_MODAL;
   }

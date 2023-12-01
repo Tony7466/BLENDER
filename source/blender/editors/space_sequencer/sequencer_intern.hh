@@ -155,16 +155,6 @@ bool sequencer_view_strips_poll(bContext *C);
  */
 blender::VectorSet<Sequence *> all_strips_from_context(bContext *C);
 
-/**
- * Returns collection with selected strips presented to user. If operation is done in preview,
- * collection is limited to selected presented strips, that can produce image output at current
- * frame.
- *
- * \param C: context
- * \return collection of strips (`Sequence`)
- */
-blender::VectorSet<Sequence *> selected_strips_from_context(bContext *C);
-
 /* Externals. */
 
 extern EnumPropertyItem sequencer_prop_effect_types[];

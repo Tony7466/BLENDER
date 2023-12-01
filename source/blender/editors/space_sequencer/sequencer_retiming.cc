@@ -266,7 +266,7 @@ static int sequencer_retiming_key_add_exec(bContext *C, wmOperator *op)
   }
 
   int ret_val;
-  blender::VectorSet<Sequence *> strips = selected_strips_from_context(C);
+  blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
   if (!strips.is_empty()) {
     ret_val = retiming_key_add_from_selection(C, op, strips, timeline_frame);
   }
@@ -349,7 +349,7 @@ static bool freeze_frame_add_from_strip_selection(bContext *C,
                                                   const int duration)
 {
   Scene *scene = CTX_data_scene(C);
-  blender::VectorSet<Sequence *> strips = selected_strips_from_context(C);
+  blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
   const int timeline_frame = BKE_scene_frame_get(scene);
   bool success = false;
 
@@ -543,7 +543,7 @@ static SeqRetimingKey *ensure_left_and_right_keys(const bContext *C, Sequence *s
 static int strip_speed_set_exec(bContext *C, const wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  blender::VectorSet<Sequence *> strips = selected_strips_from_context(C);
+  blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
 
   for (Sequence *seq : strips) {
     SEQ_retiming_data_ensure(seq);
