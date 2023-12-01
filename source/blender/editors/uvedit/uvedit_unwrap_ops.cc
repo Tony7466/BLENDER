@@ -261,24 +261,17 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.slim_options.allow_flips = ts->uvcalc_allow_flips;
   }
   else {
-    /* We use the properties from the last unwrap operator for subsequent
-     * live unwrap and minize stretch operators. */
-    PointerRNA ptr;
-    WM_operator_current_or_default_properties_alloc(op, "UV_OT_unwrap", &ptr);
+    options.method = RNA_enum_get(op->ptr, "method");
+    options.correct_aspect = RNA_boolean_get(op->ptr, "correct_aspect");
+    options.fill_holes = RNA_boolean_get(op->ptr, "fill_holes");
+    options.use_subsurf = RNA_boolean_get(op->ptr, "use_subsurf_data");
 
-    options.method = RNA_enum_get(&ptr, "method");
-    options.correct_aspect = RNA_boolean_get(&ptr, "correct_aspect");
-    options.fill_holes = RNA_boolean_get(&ptr, "fill_holes");
-    options.use_subsurf = RNA_boolean_get(&ptr, "use_subsurf_data");
-
-    RNA_string_get(&ptr, "vertex_group", options.slim_vertex_group);
+    RNA_string_get(op->ptr, "vertex_group", options.slim_vertex_group);
     options.slim_options.weight_influence = strlen(options.slim_vertex_group) ?
-                                                RNA_float_get(&ptr, "vertex_group_factor") :
+                                                RNA_float_get(op->ptr, "vertex_group_factor") :
                                                 0.0f;
-    options.slim_options.iterations = RNA_int_get(&ptr, "iterations");
-    options.slim_options.allow_flips = RNA_boolean_get(&ptr, "allow_flips");
-
-    WM_operator_properties_free(&ptr);
+    options.slim_options.iterations = RNA_int_get(op->ptr, "iterations");
+    options.slim_options.allow_flips = RNA_boolean_get(op->ptr, "allow_flips");
   }
 
   options.use_abf = options.method == 0;

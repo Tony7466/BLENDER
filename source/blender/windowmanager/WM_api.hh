@@ -862,9 +862,6 @@ ID *WM_operator_drop_load_path(bContext *C, wmOperator *op, short idcode);
 
 bool WM_operator_last_properties_init(wmOperator *op);
 bool WM_operator_last_properties_store(wmOperator *op);
-void WM_operator_current_or_default_properties_alloc(wmOperator *op,
-                                                     const char *idname,
-                                                     PointerRNA *ptr);
 
 /* `wm_operator_props.cc` */
 
