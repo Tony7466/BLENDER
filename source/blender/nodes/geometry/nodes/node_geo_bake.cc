@@ -176,7 +176,12 @@ class LazyFunctionForBakeNode final : public LazyFunction {
       this->output_cached_state(params, user_data, info->state);
     }
     else if (auto *info = std::get_if<sim_output::ReadInterpolated>(behavior)) {
-      params.set_default_remaining_outputs();
+      this->output_mixed_cached_state(params,
+                                      *user_data.call_data->self_object(),
+                                      *user_data.compute_context,
+                                      info->prev_state,
+                                      info->next_state,
+                                      info->mix_factor);
     }
     else if (std::get_if<sim_output::PassThrough>(behavior)) {
       this->pass_through(params, user_data);
@@ -234,6 +239,44 @@ class LazyFunctionForBakeNode final : public LazyFunction {
                                     *user_data.call_data->self_object(),
                                     *user_data.compute_context,
                                     output_values);
+    for (const int i : bake_items_.index_range()) {
+      params.output_set(i);
+    }
+  }
+
+  void output_mixed_cached_state(lf::Params &params,
+                                 const Object &self_object,
+                                 const ComputeContext &compute_context,
+                                 const bke::bake::BakeStateRef &prev_state,
+                                 const bke::bake::BakeStateRef &next_state,
+                                 const float mix_factor) const
+  {
+    Array<void *> output_values(bake_items_.size());
+    for (const int i : bake_items_.index_range()) {
+      output_values[i] = params.get_output_data_ptr(i);
+    }
+    this->copy_bake_state_to_values(prev_state, self_object, compute_context, output_values);
+
+    Array<void *> next_values(bake_items_.size());
+    LinearAllocator<> allocator;
+    for (const int i : bake_items_.index_range()) {
+      const CPPType &type = *outputs_[i].type;
+      next_values[i] = allocator.allocate(type.size(), type.alignment());
+    }
+    this->copy_bake_state_to_values(next_state, self_object, compute_context, next_values);
+
+    for (const int i : bake_items_.index_range()) {
+      mix_baked_data_item(eNodeSocketDatatype(bake_items_[i].socket_type),
+                          output_values[i],
+                          next_values[i],
+                          mix_factor);
+    }
+
+    for (const int i : bake_items_.index_range()) {
+      const CPPType &type = *outputs_[i].type;
+      type.destruct(next_values[i]);
+    }
+
     for (const int i : bake_items_.index_range()) {
       params.output_set(i);
     }
