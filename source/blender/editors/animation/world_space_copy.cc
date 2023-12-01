@@ -179,7 +179,7 @@ static int world_space_copy_exec(bContext *C, wmOperator *op)
       CopyBuffer buffer = copy_buffer[id_index];
       float *matrix = &buffer.matrices[frame_index * 16];
       Object *eval_object = DEG_get_evaluated_object(depsgraph, ob);
-      flatten_matrix(eval_object->object_to_world, matrix);
+      flatten_matrix(eval_object->world_to_object, matrix);
     }
   }
 
@@ -223,12 +223,23 @@ static void paste_to_object(Foo *foo, Object *ob, Depsgraph *depsgraph, Main *bm
     DEG_evaluate_on_framechange(depsgraph, frame);
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
     float matrix_world[4][4];
+    float matrix_world_inv[4][4];
     compose_matrix(&buffer.matrices[frame_index * 16], matrix_world);
+    invert_m4_m4(matrix_world_inv, matrix_world);
     float matrix_local[4][4];
-    // invert_m4_m4(matrix_local_to_world, matrix_world);
-    float matrix_w_inv[4][4];
-    invert_m4_m4(matrix_w_inv, matrix_world);
-    mul_m4_m4m4(matrix_local, matrix_world, ob_eval->object_to_world);
+    Object *parent = ob->parent;
+    float parent_matrix[4][4];
+    if (parent != nullptr) {
+      Object *parent_eval = DEG_get_evaluated_object(depsgraph, parent);
+      copy_m4_m4(parent_matrix, parent_eval->world_to_object);
+    }
+    else {
+      copy_m4_m4(parent_matrix, ob_eval->world_to_object);
+    }
+    float m_inv[4][4];
+    invert_m4_m4(m_inv, parent_matrix);
+    mul_m4_m4m4(matrix_local, matrix_world_inv, ob_eval->parentinv);
+
     blender::Array<float> location = {0, 0, 0};
     float rot[3][3];
     blender::Array<float> scale = {1, 1, 1};
