@@ -7,6 +7,7 @@
  */
 
 #include <vector>
+#include <functional>
 
 #include "GEO_uv_parametrizer.hh"
 
@@ -5027,7 +5028,8 @@ void uv_parametrizer_slim_solve(ParamHandle *phandle,
   slim_free_matrix_transfer(phandle);
 }
 
-void uv_parametrizer_slim_begin(ParamHandle *phandle, const ParamSlimOptions *slim_options)
+void uv_parametrizer_slim_live_begin(ParamHandle *phandle,
+                                const ParamSlimOptions *slim_options)
 {
   slim_transfer_data_to_slim(phandle, slim_options);
   slim::MatrixTransfer *mt = phandle->slim_mt;
@@ -5043,18 +5045,22 @@ void uv_parametrizer_slim_begin(ParamHandle *phandle, const ParamSlimOptions *sl
     slim::MatrixTransferChart &mt_chart = mt->charts[i];
 
     bool select = false, deselect = false;
-    int npins = 0;
 
     /* give vertices matrix indices and count pins */
     for (PVert *v = chart->verts; v; v = v->nextlink) {
       if (v->flag & PVERT_PIN) {
-        npins++;
         if (v->flag & PVERT_SELECT)
           select = true;
       }
 
       if (!(v->flag & PVERT_SELECT))
         deselect = true;
+    }
+
+    if (!select || !deselect) {
+      chart->skip_flush = true;
+      mt_chart.succeeded = false;
+      continue;
     }
 
     mt->setup_slim_data(mt_chart);
@@ -5075,7 +5081,7 @@ void uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blend)
   slim_flush_uvs(phandle, mt, nullptr, nullptr);
 }
 
-void uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
+void uv_parametrizer_slim_live_solve_iteration(ParamHandle *phandle)
 {
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
@@ -5117,7 +5123,7 @@ void uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
   slim_flush_uvs(phandle, mt, nullptr, nullptr);
 }
 
-void uv_parametrizer_slim_end(ParamHandle *phandle)
+void uv_parametrizer_slim_live_end(ParamHandle *phandle)
 {
   slim::MatrixTransfer *mt = phandle->slim_mt;
 

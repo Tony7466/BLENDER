@@ -2022,7 +2022,7 @@ void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit)
   if (options.use_slim) {
     options.slim_options.reflection_mode = 0;
     options.slim_options.skip_initialization = true;
-    uv_parametrizer_slim_begin(handle, &options.slim_options);
+    uv_parametrizer_slim_live_begin(handle, &options.slim_options);
 
     if (C) {
       BLI_assert(!g_live_unwrap.timer);
@@ -2055,7 +2055,7 @@ void ED_uvedit_live_unwrap_re_solve()
     for (int i = 0; i < g_live_unwrap.len; i++) {
       if (uv_parametrizer_is_slim(g_live_unwrap.handles[i])) {
         uv_parametrizer_slim_reload_all_uvs(g_live_unwrap.handles[i]);
-        uv_parametrizer_slim_solve_iteration(g_live_unwrap.handles[i]);
+        uv_parametrizer_slim_live_solve_iteration(g_live_unwrap.handles[i]);
       }
       else {
         blender::geometry::uv_parametrizer_lscm_solve(g_live_unwrap.handles[i], nullptr, nullptr);
@@ -2076,13 +2076,12 @@ void ED_uvedit_live_unwrap_end(bContext *C, short cancel)
   if (g_live_unwrap.handles) {
     for (int i = 0; i < g_live_unwrap.len; i++) {
       if (uv_parametrizer_is_slim(g_live_unwrap.handles[i])) {
-        uv_parametrizer_slim_end(g_live_unwrap.handles[i]);
+        uv_parametrizer_slim_live_end(g_live_unwrap.handles[i]);
       }
       else {
         blender::geometry::uv_parametrizer_lscm_end(g_live_unwrap.handles[i]);
       }
 
-      blender::geometry::uv_parametrizer_lscm_end(g_live_unwrap.handles[i]);
       if (cancel) {
         blender::geometry::uv_parametrizer_flush_restore(g_live_unwrap.handles[i]);
       }

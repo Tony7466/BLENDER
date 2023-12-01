@@ -127,10 +127,10 @@ void uv_parametrizer_slim_solve(ParamHandle *handle,
                                 int *count_changed,
                                 int *count_failed);
 
-void uv_parametrizer_slim_begin(ParamHandle *handle, const ParamSlimOptions *mt_options);
-void uv_parametrizer_slim_solve_iteration(ParamHandle *handle);
+void uv_parametrizer_slim_live_begin(ParamHandle *handle, const ParamSlimOptions *mt_options);
+void uv_parametrizer_slim_live_solve_iteration(ParamHandle *handle);
+void uv_parametrizer_slim_live_end(ParamHandle *handle);
 void uv_parametrizer_slim_stretch_iteration(ParamHandle *handle, float blend);
-void uv_parametrizer_slim_end(ParamHandle *handle);
 bool uv_parametrizer_is_slim(ParamHandle *handle);
 
 /** \} */
