@@ -605,6 +605,14 @@ void DeferredLayer::render(View &main_view,
     }
   }
 
+  if (/* FIXME(fclem): Metal doesn't clear the whole framebuffer correctly. */
+      GPU_backend_get_type() == GPU_BACKEND_METAL ||
+      /* FIXME(fclem): Vulkan doesn't implement load / store config yet. */
+      GPU_backend_get_type() == GPU_BACKEND_VULKAN)
+  {
+    inst_.gbuffer.header_tx.clear(int4(0));
+  }
+
   GPU_framebuffer_bind_ex(gbuffer_fb,
                           {
                               {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE},       /* Depth */
