@@ -15,10 +15,6 @@
 #include "BLI_simd.h"
 #include "BLI_strict_flags.h"
 
-#if defined(_MSC_VER)
-#  include <intrin.h>
-#endif
-
 /**************************************************************************
  *                            INTERPOLATIONS
  *
@@ -383,9 +379,9 @@ static __m128 rgba_uchar_to_simd(const uchar ptr[4])
 static void simd_to_rgba_uchar(__m128 rgba, uchar dst[4])
 {
   /* Four RGBA integers in each lane of SSE. */
-  __m128i val = _mm_cvtps_epi32(rgba);
-  /* Pack to 16 bit values. */
-  __m128i rgba16 = _mm_packus_epi32(val, _mm_setzero_si128()); /* SSE 4.1 */
+  __m128i val = _mm_cvttps_epi32(rgba);
+  /* Pack to 16 bit signed values. */
+  __m128i rgba16 = _mm_packs_epi32(val, _mm_setzero_si128());
   /* Pack to 8 bit values. */
   __m128i rgba8 = _mm_packus_epi16(rgba16, _mm_setzero_si128());
   /* Store the packed bits into destination. */
@@ -470,7 +466,7 @@ void BLI_bilinear_interpolation_char(
   __m128 rgba13 = _mm_add_ps(rgba1, rgba3);
   __m128 rgba24 = _mm_add_ps(rgba2, rgba4);
   __m128 rgba = _mm_add_ps(rgba13, rgba24);
-  rgba = _mm_round_ps(rgba, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC); /* SSE 4.1 */
+  rgba = _mm_add_ps(rgba, _mm_set1_ps(0.5f));
   simd_to_rgba_uchar(rgba, output);
 #else
   output[0] = (uchar)(ma_mb * row1[0] + a_mb * row3[0] + ma_b * row2[0] + a_b * row4[0] + 0.5f);
