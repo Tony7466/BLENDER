@@ -1,1 +1,2 @@
 Referenced by issue #114706, 4.0: Candidates for corrective releases
+Referenced by commit 36351f37964fdd4332a7d95c15aa778fbcadcddc, Fix missing NULL check from fix for #113059 on Wayland/LIBDECOR
