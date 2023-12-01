@@ -1525,37 +1525,36 @@ static void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
   offset_indices::accumulate_counts_to_offsets(new_curve_offsets.drop_front(old_curves_num),
                                                old_points_num);
 
-  bke::MutableAttributeAccessor dst_attributes = curves.attributes_for_write();
-  const bke::AttributeAccessor src_attributes = curves.attributes();
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
   /* Transfer curve and point attributes. */
-  src_attributes.for_all([&](const bke::AttributeIDRef &id,
-                             const bke::AttributeMetaData meta_data) {
+  attributes.for_all([&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
     if (!(meta_data.domain == ATTR_DOMAIN_CURVE || meta_data.domain == ATTR_DOMAIN_POINT)) {
       return true;
     }
     if (meta_data.domain == ATTR_DOMAIN_CURVE && id.name() == "cyclic") {
       return true;
     }
-    const bke::GAttributeReader src = src_attributes.lookup(id, meta_data.domain);
-    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, meta_data.domain, meta_data.data_type);
-    if (!dst) {
+
+    bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
+    if (!attribute) {
       return true;
     }
 
     if (meta_data.domain == ATTR_DOMAIN_CURVE) {
-      bke::attribute_math::gather(src.varray,
-                                  dst_to_src_curve,
-                                  dst.span.slice(IndexRange(old_curves_num, num_curves_to_add)));
+      bke::attribute_math::gather(
+          attribute.span,
+          dst_to_src_curve,
+          attribute.span.slice(IndexRange(old_curves_num, num_curves_to_add)));
     }
     else if (meta_data.domain == ATTR_DOMAIN_POINT) {
-      bke::attribute_math::gather(src.varray,
-                                  dst_to_src_point,
-                                  dst.span.slice(IndexRange(old_points_num, num_points_to_add)));
+      bke::attribute_math::gather(
+          attribute.span,
+          dst_to_src_point,
+          attribute.span.slice(IndexRange(old_points_num, num_points_to_add)));
     }
 
-    dst.finish();
+    attribute.finish();
     return true;
   });
   array_utils::copy(dst_cyclic.as_span(), curves.cyclic_for_write().drop_front(old_curves_num));
