@@ -1529,32 +1529,42 @@ static void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
 
   /* Transfer curve and point attributes. */
   attributes.for_all([&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
-    if (!(meta_data.domain == ATTR_DOMAIN_CURVE || meta_data.domain == ATTR_DOMAIN_POINT)) {
-      return true;
-    }
-    if (meta_data.domain == ATTR_DOMAIN_CURVE && id.name() == "cyclic") {
-      return true;
-    }
-
     bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
     if (!attribute) {
       return true;
     }
 
-    if (meta_data.domain == ATTR_DOMAIN_CURVE) {
-      bke::attribute_math::gather(
-          attribute.span,
-          dst_to_src_curve,
-          attribute.span.slice(IndexRange(old_curves_num, num_curves_to_add)));
-    }
-    else if (meta_data.domain == ATTR_DOMAIN_POINT) {
-      bke::attribute_math::gather(
-          attribute.span,
-          dst_to_src_point,
-          attribute.span.slice(IndexRange(old_points_num, num_points_to_add)));
+    switch (meta_data.domain) {
+      case ATTR_DOMAIN_CURVE: {
+        if (id.name() == "cyclic") {
+          return true;
+        }
+
+        bke::attribute_math::gather(
+            attribute.span,
+            dst_to_src_curve,
+            attribute.span.slice(IndexRange(old_curves_num, num_curves_to_add)));
+
+        break;
+      }
+      case ATTR_DOMAIN_POINT: {
+        bke::attribute_math::gather(
+            attribute.span,
+            dst_to_src_point,
+            attribute.span.slice(IndexRange(old_points_num, num_points_to_add)));
+
+        break;
+      }
+      default: {
+        attribute.finish();
+        BLI_assert_unreachable();
+        return;
+        break;
+      };
     }
 
     attribute.finish();
+
     return true;
   });
   array_utils::copy(dst_cyclic.as_span(), curves.cyclic_for_write().drop_front(old_curves_num));
