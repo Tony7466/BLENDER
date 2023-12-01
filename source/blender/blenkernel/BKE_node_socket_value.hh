@@ -71,9 +71,8 @@ template<typename T> struct ValueOrField {
     }
     if (this->grid) {
       /* Returns the grid background value. */
-      T value;
-      if (grid_utils::get_background_value(this->grid, value)) {
-        return value;
+      if (std::optional<T> value = grid_utils::get_background_value(this->grid)) {
+        return *value;
       }
     }
     return this->value;

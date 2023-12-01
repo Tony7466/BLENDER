@@ -275,18 +275,17 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
 
 namespace grid_utils {
 
-template<typename T> bool get_background_value(const VolumeGridPtr<T> &grid, T &r_value)
+template<typename T> std::optional<T> get_background_value(const VolumeGridPtr<T> &grid)
 {
 #ifdef WITH_OPENVDB
   if constexpr (std::is_same_v<T, std::string>) {
-    return false;
+    return std::nullopt;
   }
   else {
-    r_value = grids::GridConverter<T>::convert(grid.grid()->background());
-    return true;
+    return grids::GridConverter<T>::convert(grid.grid()->background());
   }
 #else
-  return false;
+  return std::nullopt;
 #endif /* WITH_OPENVDB */
 }
 
