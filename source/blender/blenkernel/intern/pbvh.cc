@@ -1667,6 +1667,7 @@ static void pbvh_grids_node_visibility_update(PBVH *pbvh, const Span<PBVHNode *>
     }
     return;
   }
+
   CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (PBVHNode *node : nodes.slice(range)) {

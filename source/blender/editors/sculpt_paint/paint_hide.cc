@@ -220,15 +220,15 @@ static void grids_show_all(Object &object, const Span<PBVHNode *> nodes)
   PBVH &pbvh = *object.sculpt->pbvh;
   SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
-  bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
-  if (const VArray<bool> attribute = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT)) {
-    const VArraySpan hide_vert(attribute);
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
+  if (!grid_hidden.is_empty()) {
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       for (PBVHNode *node : nodes.slice(range)) {
-        const int *grid_indices;
-        int totgrid;
-        BKE_pbvh_node_get_grids(&pbvh, node, &grid_indices, &totgrid, nullptr, nullptr, nullptr);
-        if (std::any_of(verts.begin(), verts.end(), [&](const int i) { return hide_vert[i]; })) {
+        const Span<int> grids = BKE_pbvh_node_get_grid_indices(*node);
+        if (std::any_of(grids.begin(), grids.end(), [&](const int i) {
+              return bits::any_bit_set(grid_hidden[i]);
+            }))
+        {
           SCULPT_undo_push_node(&object, node, SCULPT_UNDO_HIDDEN);
           BKE_pbvh_node_mark_rebuild_draw(node);
         }
@@ -258,7 +258,7 @@ static void partialvis_update_grids(Depsgraph *depsgraph,
     return;
   }
 
-  blender::BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg);
+  BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg);
   const Span<CCGElem *> grids = subdiv_ccg.grids;
   const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
 

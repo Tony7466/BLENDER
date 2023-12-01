@@ -2153,15 +2153,20 @@ void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg)
     return;
   }
 
+  const OffsetIndices<int> faces = mesh->faces();
+
   const VArraySpan<bool> hide_poly_span(hide_poly);
   CCGKey key;
   BKE_subdiv_ccg_key_top_level(key, *subdiv_ccg);
   BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(*subdiv_ccg);
-
-  for (int i = 0; i < mesh->totloop; i++) {
-    const int face_index = BKE_subdiv_ccg_grid_to_face_index(*subdiv_ccg, i);
-    grid_hidden[i].set_all(hide_poly_span[face_index]);
-  }
+  threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      const bool face_hidden = hide_poly_span[i];
+      for (const int corner : faces[i]) {
+        grid_hidden[corner].set_all(face_hidden);
+      }
+    }
+  });
 }
 
 static PBVH *build_pbvh_for_dynamic_topology(Object *ob)
