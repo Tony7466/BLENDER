@@ -1611,7 +1611,7 @@ static void GREASE_PENCIL_OT_duplicate(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Duplicate";
   ot->idname = "GREASE_PENCIL_OT_duplicate";
-  ot->description = "Duplicate the selected strokes";
+  ot->description = "Duplicate the selected points";
 
   /* Callbacks. */
   ot->exec = grease_pencil_duplicate_exec;
