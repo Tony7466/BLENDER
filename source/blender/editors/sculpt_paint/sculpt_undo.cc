@@ -518,19 +518,19 @@ static bool sculpt_undo_restore_hidden(bContext *C, SculptUndoNode *unode, bool 
     hide_vert.finish();
   }
   else if (unode->maxgrid && subdiv_ccg != nullptr) {
-    if (!unode->grid_hidden) {
+    if (unode->grid_hidden.is_empty()) {
       BKE_subdiv_ccg_grid_hidden_free(*subdiv_ccg);
       return true;
     }
 
-    BKE_subdiv_ccg_grid_hidden_ensure(*subdiv_ccg);
-    blender::BitGroupVector<> &grid_hidden = *subdiv_ccg->grid_hidden;
+    blender::BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(*subdiv_ccg);
 
     for (int i = 0; i < unode->totgrid; i++) {
       const int grid_index = unode->grids[i];
+      /* Swap the two bit spans. */
       blender::BitVector<512> tmp(grid_hidden[grid_index]);
-      grid_hidden[grid_index].copy_from(blender::BoundedBitSpan((*unode->grid_hidden)[i]));
-      (*unode->grid_hidden)[i].copy_from(tmp);
+      grid_hidden[grid_index].copy_from(blender::BoundedBitSpan(unode->grid_hidden[i]));
+      unode->grid_hidden[i].copy_from(tmp);
     }
   }
 
@@ -1174,12 +1174,12 @@ static size_t sculpt_undo_alloc_and_store_hidden(SculptSession *ss, SculptUndoNo
 {
   PBVH *pbvh = ss->pbvh;
   PBVHNode *node = static_cast<PBVHNode *>(unode->node);
-  // TODO
   if (!ss->subdiv_ccg) {
-    return;
+    return 0;
   }
-  if (!ss->subdiv_ccg->grid_hidden) {
-    return;
+  const blender::BitGroupVector<> grid_hidden = ss->subdiv_ccg->grid_hidden;
+  if (grid_hidden.is_empty()) {
+    return 0;
   }
 
   const int *grid_indices;
@@ -1191,10 +1191,10 @@ static size_t sculpt_undo_alloc_and_store_hidden(SculptSession *ss, SculptUndoNo
   unode->grid_hidden = blender::BitGroupVector<>(totgrid, grid_area, false);
 
   for (int i = 0; i < totgrid; i++) {
-    (*unode->grid_hidden)[i].copy_from((*ss->subdiv_ccg->grid_hidden)[grid_indices[i]]);
+    unode->grid_hidden[i].copy_from(grid_hidden[grid_indices[i]]);
   }
 
-  return unode->grid_hidden->all_bits().full_ints_num() / blender::bits::BitsPerInt;
+  return unode->grid_hidden.all_bits().full_ints_num() / blender::bits::BitsPerInt;
 }
 
 /* Allocate node and initialize its default fields specific for the given undo type.
@@ -1583,6 +1583,7 @@ SculptUndoNode *SCULPT_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
       sculpt_undo_store_coords(ob, unode);
       break;
     case SCULPT_UNDO_HIDDEN:
+      sculpt_undo_store_hidden(ob, unode);
       break;
     case SCULPT_UNDO_MASK:
       if (pbvh_has_mask(ss->pbvh)) {

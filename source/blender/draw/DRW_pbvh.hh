@@ -10,7 +10,6 @@
 
 /* Needed for BKE_ccg.h. */
 #include "BLI_assert.h"
-#include "BLI_bit_group_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
@@ -80,7 +79,6 @@ struct PBVH_GPU_Args {
   Span<int> grid_indices;
   CCGKey ccg_key;
   Span<CCGElem *> grids;
-  const BitGroupVector<> *grid_hidden;
 
   Span<int> prim_indices;
 

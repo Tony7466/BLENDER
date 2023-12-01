@@ -171,7 +171,9 @@ struct SubdivCCG {
   blender::Array<SubdivCCGAdjacentVertex> adjacent_verts;
 
   blender::Array<DMFlagMat> grid_flag_mats;
-  std::optional<blender::BitGroupVector<>> grid_hidden;
+
+  /** Store the visibility of the items in each grid. If empty, everything is visible. */
+  blender::BitGroupVector<> grid_hidden;
 
   /* TODO(sergey): Consider adding some accessors to a "decoded" geometry,
    * to make integration with draw manager and such easy.
@@ -315,5 +317,5 @@ SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
 const int *BKE_subdiv_ccg_start_face_grid_index_ensure(SubdivCCG &subdiv_ccg);
 const int *BKE_subdiv_ccg_start_face_grid_index_get(const SubdivCCG &subdiv_ccg);
 
-void BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG &subdiv_ccg);
+blender::BitGroupVector<> &BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG &subdiv_ccg);
 void BKE_subdiv_ccg_grid_hidden_free(SubdivCCG &subdiv_ccg);

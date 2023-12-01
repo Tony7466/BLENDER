@@ -320,7 +320,7 @@ void BKE_pbvh_sync_visibility_from_verts(PBVH *pbvh, Mesh *me);
 /**
  * Returns the number of visible quads in the nodes' grids.
  */
-int BKE_pbvh_count_grid_quads(const blender::BitGroupVector<> *grid_visibility,
+int BKE_pbvh_count_grid_quads(const blender::BitGroupVector<> &grid_visibility,
                               const int *grid_indices,
                               int totgrid,
                               int gridsize,

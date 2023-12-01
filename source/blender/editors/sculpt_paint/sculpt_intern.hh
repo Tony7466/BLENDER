@@ -201,7 +201,7 @@ struct SculptUndoNode {
   int gridsize;              /* same for grid */
   int totgrid;               /* to restore into right location */
   blender::Array<int> grids; /* to restore into right location */
-  std::optional<blender::BitGroupVector<>> grid_hidden;
+  blender::BitGroupVector<> grid_hidden;
 
   /* bmesh */
   BMLogEntry *bm_entry;

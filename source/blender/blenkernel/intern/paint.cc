@@ -1282,7 +1282,10 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
   BKE_paint_runtime_init(scene->toolsettings, p);
 }
 
-bool paint_is_grid_face_hidden(blender::BoundedBitSpan grid_hidden, int gridsize, int x, int y)
+bool paint_is_grid_face_hidden(const blender::BoundedBitSpan grid_hidden,
+                               int gridsize,
+                               int x,
+                               int y)
 {
   /* Skip face if any of its corners are hidden. */
   return grid_hidden[y * gridsize + x] || grid_hidden[y * gridsize + x + 1] ||
@@ -2153,11 +2156,11 @@ void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg)
   const VArraySpan<bool> hide_poly_span(hide_poly);
   CCGKey key;
   BKE_subdiv_ccg_key_top_level(key, *subdiv_ccg);
-  BKE_subdiv_ccg_grid_hidden_ensure(*subdiv_ccg);
+  BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(*subdiv_ccg);
 
   for (int i = 0; i < mesh->totloop; i++) {
     const int face_index = BKE_subdiv_ccg_grid_to_face_index(*subdiv_ccg, i);
-    subdiv_ccg->grid_hidden.value()[i].set_all(hide_poly_span[face_index]);
+    grid_hidden[i].set_all(hide_poly_span[face_index]);
   }
 }
 

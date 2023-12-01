@@ -1676,17 +1676,18 @@ SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
   return SUBDIV_CCG_ADJACENT_NONE;
 }
 
-void BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG &subdiv_ccg)
+blender::BitGroupVector<> &BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG &subdiv_ccg)
 {
-  if (!subdiv_ccg.grid_hidden) {
+  if (subdiv_ccg.grid_hidden.is_empty()) {
     const int grid_area = subdiv_ccg.grid_size * subdiv_ccg.grid_size;
-    subdiv_ccg.grid_hidden.emplace(subdiv_ccg.grids.size(), grid_area, false);
+    subdiv_ccg.grid_hidden = blender::BitGroupVector<>(subdiv_ccg.grids.size(), grid_area, false);
   }
+  return subdiv_ccg.grid_hidden;
 }
 
 void BKE_subdiv_ccg_grid_hidden_free(SubdivCCG &subdiv_ccg)
 {
-  subdiv_ccg.grid_hidden.reset();
+  subdiv_ccg.grid_hidden = {};
 }
 
 static void subdiv_ccg_coord_to_ptex_coord(const SubdivCCG &subdiv_ccg,

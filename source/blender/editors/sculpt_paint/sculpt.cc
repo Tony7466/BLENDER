@@ -417,8 +417,8 @@ bool SCULPT_vertex_visible_get(const SculptSession *ss, PBVHVertRef vertex)
       const CCGKey *key = BKE_pbvh_get_grid_key(ss->pbvh);
       const int grid_index = vertex.i / key->grid_area;
       const int vertex_index = vertex.i - grid_index * key->grid_area;
-      if (ss->subdiv_ccg->grid_hidden) {
-        return !(*ss->subdiv_ccg->grid_hidden)[grid_index][vertex_index];
+      if (!ss->subdiv_ccg->grid_hidden.is_empty()) {
+        return !ss->subdiv_ccg->grid_hidden[grid_index][vertex_index];
       }
     }
   }
