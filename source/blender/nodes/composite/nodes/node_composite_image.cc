@@ -445,50 +445,8 @@ class ImageOperation : public NodeOperation {
 
   void execute() override
   {
-    if (!is_valid()) {
-      allocate_invalid();
-      return;
-    }
-
     for (const bNodeSocket *output : this->node()->output_sockets()) {
       compute_output(output->identifier);
-    }
-  }
-
-  /* Returns true if the node results can be computed, otherwise, returns false. */
-  bool is_valid()
-  {
-    Image *image = get_image();
-    ImageUser *image_user = get_image_user();
-    if (!image || !image_user) {
-      return false;
-    }
-
-    if (!BKE_image_is_multilayer(image)) {
-      return true;
-    }
-
-    if (!image->rr) {
-      return false;
-    }
-
-    if (!get_render_layer()) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /* Allocate all needed outputs as invalid. This should be called when is_valid returns false. */
-  void allocate_invalid()
-  {
-    for (const bNodeSocket *output : this->node()->output_sockets()) {
-      if (!should_compute_output(output->identifier)) {
-        continue;
-      }
-
-      Result &result = get_result(output->identifier);
-      result.allocate_invalid();
     }
   }
 
@@ -501,24 +459,28 @@ class ImageOperation : public NodeOperation {
     GPUTexture *image_texture = context().cache_manager().cached_images.get(
         context(), get_image(), get_image_user(), get_pass_name(identifier));
 
+    Result &result = get_result(identifier);
     if (!image_texture) {
-      Result &result = get_result(identifier);
       result.allocate_invalid();
       return;
     }
 
-    const int2 size = int2(GPU_texture_width(image_texture), GPU_texture_height(image_texture));
-    Result &result = get_result(identifier);
-    result.allocate_texture(Domain(size));
+    /* Alpha is mot an actual pass, but one that is extracted from the combined pass. So we need to
+     * extract it using a shader. */
+    if (identifier != "Alpha") {
+      result.wrap_external(image_texture);
+      return;
+    }
 
-    GPUShader *shader = context().get_shader(get_shader_name(identifier));
+    GPUShader *shader = context().get_shader("compositor_convert_color_to_alpha",
+                                             Result::precision(GPU_texture_format(image_texture)));
     GPU_shader_bind(shader);
-
-    const int2 lower_bound = int2(0);
-    GPU_shader_uniform_2iv(shader, "lower_bound", lower_bound);
 
     const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
     GPU_texture_bind(image_texture, input_unit);
+
+    const int2 size = int2(GPU_texture_width(image_texture), GPU_texture_height(image_texture));
+    result.allocate_texture(Domain(size));
 
     result.bind_as_image(shader, "output_img");
 
@@ -529,35 +491,11 @@ class ImageOperation : public NodeOperation {
     result.unbind_as_image();
   }
 
-  /* Get the shader that should be used to compute the output with the given identifier. The
-   * shaders just copy the retrieved image textures into the results except for the alpha output,
-   * which extracts the alpha and writes it to the result instead. Note that a call to a host
-   * texture copy doesn't work because results are stored in a different half float formats. */
-  const char *get_shader_name(StringRef identifier)
-  {
-    if (identifier == "Alpha") {
-      return "compositor_read_input_alpha";
-    }
-    else if (get_result(identifier).type() == ResultType::Color) {
-      return "compositor_read_input_color";
-    }
-    else {
-      return "compositor_read_input_float";
-    }
-  }
-
   /* Get the name of the pass corresponding to the output with the given identifier. */
   const char *get_pass_name(StringRef identifier)
   {
     DOutputSocket output = node().output_by_identifier(identifier);
     return static_cast<NodeImageLayer *>(output->storage)->pass_name;
-  }
-
-  /* Get the selected render layer selected assuming the image is a multilayer image. */
-  RenderLayer *get_render_layer()
-  {
-    const ListBase *layers = &get_image()->rr->layers;
-    return static_cast<RenderLayer *>(BLI_findlink(layers, get_image_user()->layer));
   }
 
   Image *get_image()

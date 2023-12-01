@@ -35,19 +35,21 @@ namespace blender::realtime_compositor {
  * Cached Image Key.
  */
 
-CachedImageKey::CachedImageKey(ImageUser image_user) : image_user(image_user) {}
+CachedImageKey::CachedImageKey(ImageUser image_user, std::string pass_name)
+    : image_user(image_user), pass_name(pass_name)
+{
+}
 
 uint64_t CachedImageKey::hash() const
 {
-  return get_default_hash_4(
-      image_user.framenr, image_user.layer, image_user.pass, image_user.multi_index);
+  return get_default_hash_4(image_user.framenr, image_user.layer, image_user.view, pass_name);
 }
 
 bool operator==(const CachedImageKey &a, const CachedImageKey &b)
 {
   return a.image_user.framenr == b.image_user.framenr &&
-         a.image_user.layer == b.image_user.layer && a.image_user.pass == b.image_user.pass &&
-         a.image_user.multi_index == b.image_user.multi_index;
+         a.image_user.layer == b.image_user.layer && a.image_user.view == b.image_user.view &&
+         a.pass_name == b.pass_name;
 }
 
 /* --------------------------------------------------------------------
@@ -107,116 +109,6 @@ static eGPUTextureFormat get_compatible_texture_format(eGPUTextureFormat origina
 
   BLI_assert_unreachable();
   return original_format;
-}
-
-/* Returns the result type corresponding to the given texture format. */
-static ResultType get_result_type(eGPUTextureFormat texture_format)
-{
-  switch (texture_format) {
-    case GPU_R16F:
-    case GPU_R32F:
-      return ResultType::Float;
-    case GPU_RGBA16F:
-    case GPU_RGBA32F:
-      return ResultType::Color;
-    default:
-      break;
-  }
-
-  BLI_assert_unreachable();
-  return ResultType::Color;
-}
-
-/* Returns the precision of the given texture format. */
-static ResultPrecision get_result_precision(eGPUTextureFormat texture_format)
-{
-  switch (texture_format) {
-    case GPU_R16F:
-    case GPU_RGBA16F:
-      return ResultPrecision::Half;
-    case GPU_R32F:
-    case GPU_RGBA32F:
-      return ResultPrecision::Full;
-    default:
-      break;
-  }
-
-  BLI_assert_unreachable();
-  return ResultPrecision::Full;
-}
-
-CachedImage::CachedImage(Context &context, Image *image, ImageUser &image_user)
-{
-  /* Image buffer loaders do redundant alpha premultiplication/unpremultiplication, causing data
-   * loss for zero alpha colored regions, so we employ a trick where we free any cached buffers,
-   * change the alpha mode to packed to avoid any alpha handling, acquire the buffer, then finally
-   * restore the original alpha mode and free the cached buffers once again. */
-  BKE_image_free_buffers_ex(image, true);
-  const char original_alpha_mode = image->alpha_mode;
-  image->alpha_mode = IMA_ALPHA_CHANNEL_PACKED;
-  ImBuf *image_buffer = BKE_image_acquire_ibuf(image, &image_user, nullptr);
-
-  texture_ = IMB_create_gpu_texture("Image Texture", image_buffer, true, false);
-
-  const eGPUTextureFormat original_format = GPU_texture_format(texture_);
-  const eGPUTextureFormat target_format = get_compatible_texture_format(original_format);
-  const ResultType result_type = get_result_type(target_format);
-  const ResultPrecision precision = get_result_precision(target_format);
-
-  /* The GPU image returned by the IMB module can be in a format not supported by the compositor,
-   * or it might need premultiplication, so preprocess them first. */
-  if (result_type == ResultType::Color && original_alpha_mode == IMA_ALPHA_STRAIGHT) {
-    texture_ = preprocess_texture(
-        context, texture_, target_format, precision, "compositor_premultiply_alpha");
-  }
-  else if (original_format != target_format) {
-    const char *conversion_shader_name = result_type == ResultType::Float ?
-                                             "compositor_convert_float_to_float" :
-                                             "compositor_convert_color_to_color";
-    texture_ = preprocess_texture(
-        context, texture_, target_format, precision, conversion_shader_name);
-  }
-
-  /* Set the alpha to 1 using swizzling if alpha is ignored. */
-  if (result_type == ResultType::Color && original_alpha_mode == IMA_ALPHA_IGNORE) {
-    GPU_texture_swizzle_set(texture_, "rgb1");
-  }
-
-  /* Release image buffer and restore the original alpha mode of the image. */
-  BKE_image_release_ibuf(image, image_buffer, nullptr);
-  image->alpha_mode = original_alpha_mode;
-  BKE_image_free_buffers(image);
-}
-
-CachedImage::~CachedImage()
-{
-  GPU_texture_free(texture_);
-}
-
-GPUTexture *CachedImage::texture()
-{
-  return texture_;
-}
-
-/* --------------------------------------------------------------------
- * Cached Image Container.
- */
-
-void CachedImageContainer::reset()
-{
-  /* First, delete all cached images that are no longer needed. */
-  for (auto &cached_images_for_id : map_.values()) {
-    cached_images_for_id.remove_if([](auto item) { return !item.value->needed; });
-  }
-  map_.remove_if([](auto item) { return item.value.is_empty(); });
-
-  /* Second, reset the needed status of the remaining cached images to false to ready them to
-   * track their needed status for the next evaluation. */
-  for (auto &cached_images_for_id : map_.values()) {
-    for (auto &value : cached_images_for_id.values()) {
-      value->needed = false;
-    }
-  }
 }
 
 /* Get the selected render layer selected assuming the image is a multilayer image. */
@@ -285,9 +177,6 @@ static ImageUser compute_image_user_for_pass(Context &context,
 {
   ImageUser image_user_for_pass = *image_user;
 
-  /* Compute the effective frame number of the image if it was animated. */
-  BKE_image_user_frame_calc(image, &image_user_for_pass, context.get_frame_number());
-
   /* Set the needed view. */
   image_user_for_pass.view = get_view_index(context, image, image_user_for_pass);
 
@@ -303,15 +192,114 @@ static ImageUser compute_image_user_for_pass(Context &context,
   return image_user_for_pass;
 }
 
+CachedImage::CachedImage(Context &context,
+                         Image *image,
+                         ImageUser *image_user,
+                         const char *pass_name)
+{
+  if (!image || !image_user) {
+    return;
+  }
+
+  /* Image buffer loaders do redundant alpha premultiplication/unpremultiplication, causing data
+   * loss for zero alpha colored regions, so we employ a trick where we free any cached buffers,
+   * change the alpha mode to packed to avoid any alpha handling, acquire the buffer, then finally
+   * restore the original alpha mode and free the cached buffers once again. This is expensive, but
+   * its result is cached, so it should be fine. */
+  BKE_image_free_buffers_ex(image, true);
+  const char original_alpha_mode = image->alpha_mode;
+  image->alpha_mode = IMA_ALPHA_CHANNEL_PACKED;
+
+  /* We can't retrieve the needed image buffer yet, because we still need to assign the pass index
+   * to the image user in order to acquire the image buffer corresponding to the given pass name.
+   * However, in order to compute the pass index, we need the render result structure of the image
+   * to be initialized. So we first acquire a dummy image buffer since it initializes the image
+   * render result as a side effect. We also use that as mean of validation, since we can early
+   * exist if the returned image buffer is nullptr. This image buffer can be immodestly released.
+   * Since it carries no important information. */
+  ImBuf *initial_image_buffer = BKE_image_acquire_ibuf(image, image_user, nullptr);
+  BKE_image_release_ibuf(image, initial_image_buffer, nullptr);
+  if (!initial_image_buffer) {
+    return;
+  }
+
+  ImageUser image_user_for_pass = compute_image_user_for_pass(
+      context, image, image_user, pass_name);
+
+  ImBuf *image_buffer = BKE_image_acquire_ibuf(image, &image_user_for_pass, nullptr);
+  texture_ = IMB_create_gpu_texture("Image Texture", image_buffer, true, false);
+
+  const eGPUTextureFormat original_format = GPU_texture_format(texture_);
+  const eGPUTextureFormat target_format = get_compatible_texture_format(original_format);
+  const ResultType result_type = Result::type(target_format);
+  const ResultPrecision precision = Result::precision(target_format);
+
+  /* The GPU image returned by the IMB module can be in a format not supported by the compositor,
+   * or it might need premultiplication, so preprocess them first. */
+  if (result_type == ResultType::Color && original_alpha_mode == IMA_ALPHA_STRAIGHT) {
+    texture_ = preprocess_texture(
+        context, texture_, target_format, precision, "compositor_premultiply_alpha");
+  }
+  else if (original_format != target_format) {
+    const char *conversion_shader_name = result_type == ResultType::Float ?
+                                             "compositor_convert_float_to_float" :
+                                             "compositor_convert_color_to_color";
+    texture_ = preprocess_texture(
+        context, texture_, target_format, precision, conversion_shader_name);
+  }
+
+  /* Set the alpha to 1 using swizzling if alpha is ignored. */
+  if (result_type == ResultType::Color && original_alpha_mode == IMA_ALPHA_IGNORE) {
+    GPU_texture_swizzle_set(texture_, "rgb1");
+  }
+
+  /* Release image buffer and restore the original alpha mode of the image. */
+  BKE_image_release_ibuf(image, image_buffer, nullptr);
+  image->alpha_mode = original_alpha_mode;
+  BKE_image_free_buffers_ex(image, true);
+}
+
+CachedImage::~CachedImage()
+{
+  GPU_texture_free(texture_);
+}
+
+GPUTexture *CachedImage::texture()
+{
+  return texture_;
+}
+
+/* --------------------------------------------------------------------
+ * Cached Image Container.
+ */
+
+void CachedImageContainer::reset()
+{
+  /* First, delete all cached images that are no longer needed. */
+  for (auto &cached_images_for_id : map_.values()) {
+    cached_images_for_id.remove_if([](auto item) { return !item.value->needed; });
+  }
+  map_.remove_if([](auto item) { return item.value.is_empty(); });
+
+  /* Second, reset the needed status of the remaining cached images to false to ready them to
+   * track their needed status for the next evaluation. */
+  for (auto &cached_images_for_id : map_.values()) {
+    for (auto &value : cached_images_for_id.values()) {
+      value->needed = false;
+    }
+  }
+}
+
 GPUTexture *CachedImageContainer::get(Context &context,
                                       Image *image,
                                       const ImageUser *image_user,
                                       const char *pass_name)
 {
-  ImageUser image_user_for_pass = compute_image_user_for_pass(
-      context, image, image_user, pass_name);
+  /* Compute the effective frame number of the image if it was animated. */
+  ImageUser image_user_for_frame = *image_user;
+  BKE_image_user_frame_calc(image, &image_user_for_frame, context.get_frame_number());
 
-  const CachedImageKey key(image_user_for_pass);
+  const CachedImageKey key(image_user_for_frame, pass_name);
 
   auto &cached_images_for_id = map_.lookup_or_add_default(image->id.name);
 
@@ -320,8 +308,9 @@ GPUTexture *CachedImageContainer::get(Context &context,
     cached_images_for_id.clear();
   }
 
-  auto &cached_image = *cached_images_for_id.lookup_or_add_cb(
-      key, [&]() { return std::make_unique<CachedImage>(context, image, image_user_for_pass); });
+  auto &cached_image = *cached_images_for_id.lookup_or_add_cb(key, [&]() {
+    return std::make_unique<CachedImage>(context, image, &image_user_for_frame, pass_name);
+  });
 
   cached_image.needed = true;
   return cached_image.texture();

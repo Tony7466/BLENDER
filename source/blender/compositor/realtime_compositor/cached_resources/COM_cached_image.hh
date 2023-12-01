@@ -26,8 +26,9 @@ class Context;
 class CachedImageKey {
  public:
   ImageUser image_user;
+  std::string pass_name;
 
-  CachedImageKey(ImageUser image_user);
+  CachedImageKey(ImageUser image_user, std::string pass_name);
 
   uint64_t hash() const;
 };
@@ -44,7 +45,7 @@ class CachedImage : public CachedResource {
   GPUTexture *texture_ = nullptr;
 
  public:
-  CachedImage(Context &context, Image *image, ImageUser &image_user);
+  CachedImage(Context &context, Image *image, ImageUser *image_user, const char *pass_name);
 
   ~CachedImage();
 
