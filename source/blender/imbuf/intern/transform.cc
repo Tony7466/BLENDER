@@ -369,7 +369,7 @@ class Sampler {
                   NumChannels == 4)
     {
       const double2 wrapped_uv = uv_wrapper.modify_uv(source, uv);
-      bilinear_interpolation_color_fl(source, nullptr, r_sample.data(), UNPACK2(wrapped_uv));
+      bilinear_interpolation_color_fl(source, r_sample.data(), UNPACK2(wrapped_uv));
     }
     else if constexpr (Filter == IMB_FILTER_NEAREST && std::is_same_v<StorageType, uchar> &&
                        NumChannels == 4)
@@ -381,7 +381,7 @@ class Sampler {
                        NumChannels == 4)
     {
       const double2 wrapped_uv = uv_wrapper.modify_uv(source, uv);
-      bilinear_interpolation_color_char(source, r_sample.data(), nullptr, UNPACK2(wrapped_uv));
+      bilinear_interpolation_color_char(source, r_sample.data(), UNPACK2(wrapped_uv));
     }
     else if constexpr (Filter == IMB_FILTER_BILINEAR && std::is_same_v<StorageType, float>) {
       if constexpr (std::is_same_v<UVWrapping, WrapRepeatUV>) {
