@@ -330,16 +330,6 @@ static void export_startjob(void *customdata, wmJobWorkerStatus *worker_status)
   }
   G.is_break = false;
 
-<<<<<<< HEAD
-  /* Construct the depsgraph for exporting. */
-  if (data->params.visible_objects_only) {
-    DEG_graph_build_from_view_layer(data->depsgraph);
-  }
-  else {
-    DEG_graph_build_for_all_objects(data->depsgraph);
-  }
-
-=======
   worker_status->progress = 0.01f;
   worker_status->do_update = true;
 
@@ -350,7 +340,6 @@ static void export_startjob(void *customdata, wmJobWorkerStatus *worker_status)
    * original data concurrently done from the main thread at this point. All necessary (deferred)
    * changes are expected to have been triggered and processed during depsgraph building in
    * #USD_export. */
->>>>>>> main
   BKE_scene_graph_update_tagged(data->depsgraph, data->bmain);
 
   worker_status->progress = 0.1f;

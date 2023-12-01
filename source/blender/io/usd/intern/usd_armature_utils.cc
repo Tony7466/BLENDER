@@ -4,10 +4,10 @@
 
 #include "usd_armature_utils.h"
 
-#include "BKE_armature.h"
-#include "BKE_modifier.h"
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "BKE_armature.hh"
+#include "BKE_modifier.hh"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 #include "DNA_armature_types.h"
 #include "ED_armature.hh"
 
