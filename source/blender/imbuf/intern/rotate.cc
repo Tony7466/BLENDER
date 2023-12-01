@@ -109,45 +109,8 @@ void IMB_flipx(ImBuf *ibuf)
   }
 }
 
-<<<<<<< Updated upstream
-/*
-void IMB_rotate90(ImBuf *ibuf){
-  int width, height;
-
-  width = ibuf->x;
-  height = ibuf->y;
-
-  uint * dest = (uint *) malloc(sizeof(uint) * width * height);
-  //uint8_t * dest = nullptr;
-  //memcpy(dest, ibuf->byte_buffer.data, 1920*1080*4);
-
-  if (ibuf == nullptr) {
-    return;
-  }
-
-  if (ibuf->byte_buffer.data) {
-
-    uint *rect = (uint *)ibuf->byte_buffer.data;
-
-    for (int h = 0, dest_col = height - 1; h < height; ++h, --dest_col)
-    {
-      for (int w = 0; w < width; w++)
-      {
-        dest[(w * height) + dest_col] = rect[h*width + w];
-      }
-    }
-  }
 
 
-
-
-
-  ibuf->byte_buffer.data = (uint8_t *) dest;
-
-  //todo: free old image?? no?
-}
-*/
-=======
 void IMB_rotate90(ImBuf * ibuf)
 {
  	ImBuf * tbuf;
@@ -184,4 +147,3 @@ void IMB_rotate90(ImBuf * ibuf)
 
   IMB_freeImBuf(tbuf);
 }
->>>>>>> Stashed changes

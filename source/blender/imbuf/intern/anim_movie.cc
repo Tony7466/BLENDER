@@ -928,203 +928,6 @@ static void ffmpeg_postprocess(anim *anim, AVFrame *input, ImBuf *ibuf)
     IMB_filtery(ibuf);
   }
 
-<<<<<<< Updated upstream
-  //TESTA FLIPPA X
-  //IMB_flipx(ibuf);
-
-  //Also testa lägga in massa nollor!
-  //woop ger fint mönster :)
-  //for(int i = 0; i < 1920*1080*4; i+=1)
-  //  ibuf->byte_buffer.data[i] = i % 100;
-
-    //IMB_rotate90(ibuf);
-    /*
-    void IMB_transform(const struct ImBuf *src,
-                   struct ImBuf *dst,
-                   eIMBTransformMode mode,
-                   eIMBInterpolationFilterMode filter,
-                   const int num_subsamples,
-                   const float transform_matrix[4][4],
-                   const struct rctf *src_crop);
-    */
-    //ImBuf *dst = nullptr;
-
-    //IMB_transform(ibuf, 0, 0, 0, matrix);
-
-
-  //ImBuf * dst = (ImBuf *) malloc(sizeof(uint) * 1920 * 1080);
-
-
-
-
-
-	ImBuf * tbuf;
-	int x, y;
-	uint * rect, *frect, *ibufrect;
-	int skip;
-
-
-  ibufrect = (uint *) ibuf->byte_buffer.data;
-
-
-	if (ibuf == 0) return;
-	//if (ibuf->rect == 0) return;
-
-	tbuf = IMB_allocImBuf(ibuf->y, ibuf->x, 32, IB_rect);
-	if (tbuf == 0) return;
-
-	frect = (uint *) tbuf->byte_buffer.data;
-
-	skip = tbuf->y;
-
-	for (y = tbuf->y - 1; y >= 0; y--){
-		rect = ibufrect + y;
-		for (x = tbuf->x; x > 0; x--){
-			*frect++ = *rect;
-			rect += skip;
-		}
-	}
-
-	memcpy(ibufrect, tbuf->byte_buffer.data, ibuf->x * ibuf->y * sizeof(uint));
-	x = ibuf->x;
-	ibuf->x = ibuf->y;
-	ibuf->y = x;
-
-IMB_freeImBuf(tbuf);
-
-
-
-
-/*
-  int width, height;
-
-  width = ibuf->x;
-  height = ibuf->y;
-
-  //new imbuf
-  //ImBuf * dest = IMB_allocImBuf(1080, 1920, 32, IB_rect);
-
-  uint8_t * dest = (uint8_t *) malloc(sizeof(uint) * width * height);
-
-  //uint8_t * dest = nullptr;
-  //memcpy(dest, ibuf->byte_buffer.data, 1920*1080*4);
-
-  if (ibuf == nullptr) {
-    return;
-  }
-
-  if (ibuf->byte_buffer.data) {
-
-    uint8_t *rect = (uint8_t *)ibuf->byte_buffer.data;
-
-    for (int h = 0, dest_col = height*4 - 1; h < height; h++, --dest_col)
-    {
-      for (int w = 0; w < width; w++)
-      {
-        dest[(w * height) + dest_col] = rect[h*width + w];
-        dest[((w+1) * height) + dest_col] = rect[h*width + w+1];
-        dest[((w+2) * height) + dest_col] = rect[h*width + w+2];
-        dest[((w+3) * height) + dest_col] = rect[h*width + w+3];
-      }
-    }
-  */
-
-/*
-    for(int xi = 0, hi=height-1; xi < width*4; xi++, --hi)
-    {
-      for(int yi = 0; yi < height*4; yi++)
-      {
-        //
-        dest[xi + width*yi] = rect[hi*4 + yi*4];
-      }
-    }
-
-    */
-
-
-    //int i;
-    //for (i = 0; i < width*4; i++)
-    //  dest[i*width + 0 + 1] = rect[i + 1];
-  //}
-
-
-
-
-
-  //ibuf->byte_buffer.data = dest;
-
-
-
-
-
-
-
-  //ImBuf * newibuf = IMB_allocImBuf(1920, 1920, 32, IB_rect);
-
-  //copy image to larger one
-  //memcpy(newibuf->byte_buffer.data, ibuf->byte_buffer.data, 1920*1080*4);
-
-  //ImBuf * dst = IMB_dupImBuf(ibuf);
-
-  //for(int i = 0; i < 1920*1920*4; i+=1)
-  //  dst->byte_buffer.data[i] = i % 100;
-
-  //float rotation_matrix[4][4] =  {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, .707, .707}, {0, 0, .707, .707} };
-  //float rotation_matrix[4][4] =  {{1, 0, 0, -1}, {0, 0, 1, 0}, {0, 0, 1, 0}, {0, 0, 0, 1} };
-  //float rotation_matrix[4][4] =  {{0, -1, 0, 0}, {1, 0, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1} };
-  //float rotation_matrix[4][4] =  {{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1} };
-  /*
-  float rotation_matrix[4][4] =  {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1} };
-
-  //unit_m3(rotation_matrix);
-
-  //ImBuf * dst = nullptr;
-
-  //dst = IMB_allocImBuf(1080, 1920, 32, IB_rect);
-  //transform_pivot_set_m4(transform_matrix, pivot);
-  //invert_m4(transform_matrix);
-//void rotate_m4(float mat[4][4], char axis, float angle);
-  rotate_m4(rotation_matrix, 'Z', 1.570796327);
-  //rotate_m4(rotation_matrix, 'Z', .2);
-  //mat4_to_rot(rot, rotation_matrix);
-
-
-  //void loc_axisangle_size_to_mat4(
-  // float R[4][4], const float loc[3], const float axis[3], float angle, const float size[3]);
-
-
-  float loc[3] = {float (1080 + anim->cur_position*10), float (-400 + anim->cur_position*10), 0};
-  float axis[3] = {0, 0, 1};
-  float rot[3][3];
-  float size[3] = {1, 1, 1};
-
-  mat4_to_rot(rot, rotation_matrix);
-
-  loc_rot_size_to_mat4(rotation_matrix, loc, rot, size);
-
-  //loc_axisangle_size_to_mat4(rotation_matrix, loc, axis, 15, size);
-
-
-
-  IMB_transform(ibuf,
-                dst,
-                IMB_TRANSFORM_MODE_REGULAR,
-                IMB_FILTER_NEAREST,
-                1,
-                rotation_matrix,
-                nullptr);
-*/
-
-  //ibuf = IMB_dupImBuf(dst);
-  //ibuf->x = 1920;
-  //ibuf->y = 1920;
-  //memcpy(ibuf->byte_buffer.data, dst->byte_buffer.data, 1920*1080*4);
-  //memcpy(ibuf->byte_buffer.data, dst->byte_buffer.data, 1920*1920*4);
-  //ibuf = dst;
-  //dst = ibuf;
-  //IMB_freeImBuf(dst);
-=======
-
   //auto rotate video
 
   //get display matrix rotation to see if a rotation is in order:
@@ -1142,14 +945,17 @@ IMB_freeImBuf(tbuf);
   theta = av_display_rotation_get((int32_t*) displaymatrix);
 
   //perform rotation
-  if(theta != 0)
+  if(theta == -90)
   {
     IMB_rotate90(ibuf);
 
   }
+  else if(theta == 180 || theta == -180)
+  {
+    IMB_flipx(ibuf);
+    IMB_flipy(ibuf);
+  }
 
-
->>>>>>> Stashed changes
 }
 
 static void final_frame_log(anim *anim,
