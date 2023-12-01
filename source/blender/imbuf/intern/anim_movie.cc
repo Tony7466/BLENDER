@@ -71,7 +71,7 @@ extern "C" {
 #  include <libavutil/rational.h>
 #  include <libswscale/swscale.h>
 
-#include <libavutil/display.h>
+#  include <libavutil/display.h>
 
 #  include "ffmpeg_compat.h"
 }
@@ -524,7 +524,6 @@ static int startffmpeg(anim *anim)
     pCodecCtx->thread_type = FF_THREAD_SLICE;
   }
 
-
   if (avcodec_open2(pCodecCtx, pCodec, nullptr) < 0) {
     avformat_close_input(&pFormatCtx);
     return -1;
@@ -708,20 +707,18 @@ static int startffmpeg(anim *anim)
                                          nullptr,
                                          nullptr);
 
-
-
-/*
-  anim->img_convert_ctx = sws_getContext(anim->x,
-                                         anim->y,
-                                         anim->pCodecCtx->pix_fmt,
-                                         anim->y,
-                                         anim->x,
-                                         AV_PIX_FMT_ABGR,
-                                         SWS_BILINEAR | SWS_PRINT_INFO | SWS_FULL_CHR_H_INT,
-                                         nullptr,
-                                         nullptr,
-                                         nullptr);
-*/
+  /*
+    anim->img_convert_ctx = sws_getContext(anim->x,
+                                           anim->y,
+                                           anim->pCodecCtx->pix_fmt,
+                                           anim->y,
+                                           anim->x,
+                                           AV_PIX_FMT_ABGR,
+                                           SWS_BILINEAR | SWS_PRINT_INFO | SWS_FULL_CHR_H_INT,
+                                           nullptr,
+                                           nullptr,
+                                           nullptr);
+  */
 
   if (!anim->img_convert_ctx) {
     fprintf(stderr, "Can't transform color space??? Bailing out...\n");
@@ -898,30 +895,24 @@ static void ffmpeg_postprocess(anim *anim, AVFrame *input, ImBuf *ibuf)
 
   /* get display matrix rotation to see if a rotation is in order: */
 
-  uint8_t* displaymatrix = av_stream_get_side_data(anim->pFormatCtx->streams[anim->videoStream],
-                                                   AV_PKT_DATA_DISPLAYMATRIX, NULL);
+  uint8_t *displaymatrix = av_stream_get_side_data(
+      anim->pFormatCtx->streams[anim->videoStream], AV_PKT_DATA_DISPLAYMATRIX, NULL);
 
-  if(displaymatrix == nullptr)
+  if (displaymatrix == nullptr)
     return;
-
 
   double theta = 0;
 
-
-  theta = av_display_rotation_get((int32_t*) displaymatrix);
+  theta = av_display_rotation_get((int32_t *)displaymatrix);
 
   /* perform rotation */
-  if(theta == -90)
-  {
+  if (theta == -90) {
     IMB_rotate90(ibuf);
-
   }
-  else if(theta == 180 || theta == -180)
-  {
+  else if (theta == 180 || theta == -180) {
     IMB_flipx(ibuf);
     IMB_flipy(ibuf);
   }
-
 }
 
 static void final_frame_log(anim *anim,
@@ -1434,10 +1425,8 @@ static ImBuf *ffmpeg_fetchibuf(anim *anim, int position, IMB_Timecode_Type tc)
 
   /* Update resolution as it can change per-frame with WebM. See #100741 & #100081. */
 
-
   anim->x = anim->pCodecCtx->width;
   anim->y = anim->pCodecCtx->height;
-
 
   /* Certain versions of FFmpeg have a bug in libswscale which ends up in crash
    * when destination buffer is not properly aligned. For example, this happens

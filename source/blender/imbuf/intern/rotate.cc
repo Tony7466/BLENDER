@@ -109,41 +109,40 @@ void IMB_flipx(ImBuf *ibuf)
   }
 }
 
-
-
-void IMB_rotate90(ImBuf * ibuf)
+void IMB_rotate90(ImBuf *ibuf)
 {
- 	ImBuf * tbuf;
-	int x, y;
-	uint * rect, *frect, *ibufrect;
-	int skip;
+  ImBuf *tbuf;
+  int x, y;
+  uint *rect, *frect, *ibufrect;
+  int skip;
 
+  ibufrect = (uint *)ibuf->byte_buffer.data;
 
-  ibufrect = (uint *) ibuf->byte_buffer.data;
+  if (ibuf == 0)
+    return;
+  if (ibufrect == 0)
+    return;
 
+  tbuf = IMB_allocImBuf(ibuf->y, ibuf->x, 32, IB_rect);
+  if (tbuf == 0)
+    return;
 
-	if (ibuf == 0) return;
-	if (ibufrect == 0) return;
+  frect = (uint *)tbuf->byte_buffer.data;
 
-	tbuf = IMB_allocImBuf(ibuf->y, ibuf->x, 32, IB_rect);
-	if (tbuf == 0) return;
+  skip = tbuf->y;
 
-	frect = (uint *) tbuf->byte_buffer.data;
+  for (y = tbuf->y - 1; y >= 0; y--) {
+    rect = ibufrect + y;
+    for (x = tbuf->x; x > 0; x--) {
+      *frect++ = *rect;
+      rect += skip;
+    }
+  }
 
-	skip = tbuf->y;
-
-	for (y = tbuf->y - 1; y >= 0; y--){
-		rect = ibufrect + y;
-		for (x = tbuf->x; x > 0; x--){
-			*frect++ = *rect;
-			rect += skip;
-		}
-	}
-
-	memcpy(ibufrect, tbuf->byte_buffer.data, ibuf->x * ibuf->y * sizeof(uint));
-	x = ibuf->x;
-	ibuf->x = ibuf->y;
-	ibuf->y = x;
+  memcpy(ibufrect, tbuf->byte_buffer.data, ibuf->x * ibuf->y * sizeof(uint));
+  x = ibuf->x;
+  ibuf->x = ibuf->y;
+  ibuf->y = x;
 
   IMB_freeImBuf(tbuf);
 }
