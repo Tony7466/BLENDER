@@ -1517,6 +1517,11 @@ static void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
   const int old_points_num = curves.points_num();
   const int num_curves_to_add = dst_to_src_curve.size();
 
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+
+  /* Delete selection attribute so that it will not have to be resized. */
+  attributes.remove(".selection");
+
   curves.resize(old_points_num + num_points_to_add, old_curves_num + num_curves_to_add);
 
   MutableSpan<int> new_curve_offsets = curves.offsets_for_write();
@@ -1525,15 +1530,10 @@ static void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
   offset_indices::accumulate_counts_to_offsets(new_curve_offsets.drop_front(old_curves_num),
                                                old_points_num);
 
-  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-
   /* Transfer curve and point attributes. */
   attributes.for_all([&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
     bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
     if (!attribute) {
-      return true;
-    }
-    if (id.name() == ".selection") {
       return true;
     }
 
