@@ -707,19 +707,6 @@ static int startffmpeg(anim *anim)
                                          nullptr,
                                          nullptr);
 
-  /*
-    anim->img_convert_ctx = sws_getContext(anim->x,
-                                           anim->y,
-                                           anim->pCodecCtx->pix_fmt,
-                                           anim->y,
-                                           anim->x,
-                                           AV_PIX_FMT_ABGR,
-                                           SWS_BILINEAR | SWS_PRINT_INFO | SWS_FULL_CHR_H_INT,
-                                           nullptr,
-                                           nullptr,
-                                           nullptr);
-  */
-
   if (!anim->img_convert_ctx) {
     fprintf(stderr, "Can't transform color space??? Bailing out...\n");
     avcodec_free_context(&anim->pCodecCtx);
@@ -892,9 +879,7 @@ static void ffmpeg_postprocess(anim *anim, AVFrame *input, ImBuf *ibuf)
   }
 
   /* auto rotate video */
-
   /* get display matrix rotation to see if a rotation is in order: */
-
   uint8_t *displaymatrix = av_stream_get_side_data(
       anim->pFormatCtx->streams[anim->videoStream], AV_PKT_DATA_DISPLAYMATRIX, NULL);
 
