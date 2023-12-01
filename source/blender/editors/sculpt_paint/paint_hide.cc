@@ -54,15 +54,15 @@
 namespace blender::ed::sculpt_paint::hide {
 
 enum class VisAction {
-  Hide,
-  Show,
+  Hide = 0,
+  Show = 1,
 };
 
 enum VisArea {
-  Inside,
-  Outside,
-  All,
-  Masked,
+  Inside = 0,
+  Outside = 1,
+  All = 2,
+  Masked = 3,
 };
 
 static bool action_to_hide(const VisAction action)
@@ -211,7 +211,6 @@ static void partialvis_update_mesh(Object &object,
   }
 
   BKE_mesh_flush_hidden_from_verts(&mesh);
-  BKE_pbvh_update_hide_attributes_from_mesh(&pbvh);
 }
 
 /* Hide or show elements in multires grids with a special GridFlags
