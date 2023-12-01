@@ -180,7 +180,7 @@ static PointerRNA rna_Volume_grids_get(CollectionPropertyIterator *iter)
 {
   Volume *volume = static_cast<Volume *>(iter->internal.count.ptr);
   const GVolumeGridPtr grid = BKE_volume_grid_get_for_read(volume, iter->internal.count.item);
-  return rna_pointer_inherit_refine(&iter->parent, &RNA_VolumeGrid, (void *)grid.data.get());
+  return rna_pointer_inherit_refine(&iter->parent, &RNA_VolumeGrid, (void *)grid.get());
 }
 
 static int rna_Volume_grids_length(PointerRNA *ptr)

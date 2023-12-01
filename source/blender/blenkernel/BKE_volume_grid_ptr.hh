@@ -26,12 +26,20 @@ template<typename T> struct VolumeGridPtr;
  * Base class for both generic and typed grid wrapper classes.
  * \{ */
 
-struct VolumeGridPtrCommon {
+struct VolumeGridPtrCommon : ImplicitSharingPtr<VolumeGrid> {
 #ifdef WITH_OPENVDB
   using GridPtr = std::shared_ptr<openvdb::GridBase>;
   using GridConstPtr = std::shared_ptr<const openvdb::GridBase>;
 #endif
 
+  VolumeGridPtrCommon() = default;
+  VolumeGridPtrCommon(const VolumeGridPtrCommon &other) = default;
+  explicit VolumeGridPtrCommon(const ImplicitSharingPtr<VolumeGrid> &other)
+      : ImplicitSharingPtr(other)
+  {
+  }
+  /* Enable implicit conversion from nullptr. */
+  VolumeGridPtrCommon(std::nullptr_t) : ImplicitSharingPtr<VolumeGrid>(nullptr) {}
   virtual ~VolumeGridPtrCommon();
 };
 
@@ -46,93 +54,30 @@ struct VolumeGridPtrCommon {
  * \{ */
 
 struct GVolumeGridPtr : public VolumeGridPtrCommon {
-  using SharedDataPtr = ImplicitSharingPtr<VolumeGrid>;
 #ifdef WITH_OPENVDB
   using GridType = openvdb::GridBase;
   using GridPtr = std::shared_ptr<GridType>;
   using GridConstPtr = std::shared_ptr<const GridType>;
 #endif
 
-  /* OpenVDB grid. */
-  SharedDataPtr data;
-
-  GVolumeGridPtr() = default;
-  GVolumeGridPtr(const GVolumeGridPtr &) = default;
-  GVolumeGridPtr(const SharedDataPtr data) : data(data) {}
-  template<typename T> GVolumeGridPtr(const VolumeGridPtr<T> &typed_grid) : data(typed_grid.data)
+  template<typename T>
+  GVolumeGridPtr(const VolumeGridPtr<T> &typed_grid) : VolumeGridPtrCommon(typed_grid)
   {
   }
-  GVolumeGridPtr(std::nullptr_t) : data(nullptr) {}
-
-  inline const VolumeGrid *get() const
-  {
-    return data.get();
-  }
+  using VolumeGridPtrCommon::VolumeGridPtrCommon;
 
   template<typename T> VolumeGridPtr<T> typed() const
   {
     // TODO type check
     //    using GridType = typename VolumeGridPtr<T>::GridType;
-
-    if (!*this) {
-      return {};
-    }
     //    BLI_assert(openvdb::GridBase::grid<GridType>(data->grid));
-    return VolumeGridPtr<T>(data);
+    return VolumeGridPtr<T>(*this);
   }
 
 #ifdef WITH_OPENVDB
   GridConstPtr grid() const;
   GridPtr grid_for_write();
 #endif
-
-  const VolumeGrid *operator->() const
-  {
-    BLI_assert(data);
-    return data.get();
-  }
-  VolumeGrid *operator->()
-  {
-    BLI_assert(data && data->is_mutable());
-    return const_cast<VolumeGrid *>(data.get());
-  }
-
-  const VolumeGrid &operator*() const
-  {
-    BLI_assert(data);
-    return *data;
-  }
-  VolumeGrid &operator*()
-  {
-    BLI_assert(data && data->is_mutable());
-    return const_cast<VolumeGrid &>(*data);
-  }
-
-  bool operator==(const GVolumeGridPtr &other) const
-  {
-    return data == other.data;
-  }
-  bool operator!=(const GVolumeGridPtr &other) const
-  {
-    return data != other.data;
-  }
-  bool operator==(const std::nullptr_t &) const
-  {
-    return data == nullptr;
-  }
-  bool operator!=(const std::nullptr_t &) const
-  {
-    return data != nullptr;
-  }
-  template<typename U> bool operator==(const VolumeGridPtr<U> &other) const
-  {
-    return data == other.data;
-  }
-  template<typename U> bool operator!=(const VolumeGridPtr<U> &other) const
-  {
-    return data != other.data;
-  }
-  operator bool() const;
 };
 
 /** \} */
@@ -214,51 +159,21 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
   using GridType = detail::VolumeGridType<T>;
   using GridPtr = std::shared_ptr<GridType>;
   using GridConstPtr = std::shared_ptr<const GridType>;
-  using SharedDataPtr = ImplicitSharingPtr<VolumeGrid>;
 
-  /* OpenVDB grid. */
-  SharedDataPtr data;
-
-  VolumeGridPtr() = default;
-  VolumeGridPtr(const VolumeGridPtr<T> &) = default;
-  VolumeGridPtr(const SharedDataPtr &data) : data(data) {}
+  using VolumeGridPtrCommon::VolumeGridPtrCommon;
 
   GridConstPtr grid() const
   {
-    return data ? openvdb::GridBase::grid<GridType>(data->grid()) : nullptr;
+    return openvdb::GridBase::grid<GridType>(this->get()->grid());
   }
 
   GridPtr grid_for_write() const
   {
-    if (!data) {
-      return nullptr;
-    }
+    const VolumeGrid *data = this->get();
     if (data->is_mutable()) {
-      return openvdb::GridBase::grid<GridType>(const_cast<VolumeGrid &>(*data).grid_for_write());
+      return openvdb::GridBase::grid<GridType>(const_cast<VolumeGrid *>(data)->grid_for_write());
     }
-    return openvdb::GridBase::grid<GridType>(data->grid())->deepCopy();
-  }
-
-  bool operator==(const GVolumeGridPtr &other) const
-  {
-    return data == other.data;
-  }
-  bool operator!=(const GVolumeGridPtr &other) const
-  {
-    return data != other.data;
-  }
-  template<typename U> bool operator==(const VolumeGridPtr<U> &other) const
-  {
-    return data == other.data;
-  }
-  template<typename U> bool operator!=(const VolumeGridPtr<U> &other) const
-  {
-    return data != other.data;
-  }
-
-  operator bool() const
-  {
-    return bool(data);
+    return openvdb::GridBase::grid<GridType>(data->grid()->deepCopyGrid());
   }
 };
 #else
@@ -300,7 +215,7 @@ template<typename T> VolumeGridPtr<T> make_empty_grid(const T background_value)
   else {
     grid = GridType::create(grids::AttributeConverter<T>::convert(background_value));
   }
-  return {make_implicit_shared<VolumeGrid>(grid)};
+  return VolumeGridPtr<T>(grid);
 #else
   return nullptr;
 #endif /* WITH_OPENVDB */

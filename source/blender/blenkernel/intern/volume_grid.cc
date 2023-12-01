@@ -407,15 +407,10 @@ void VolumeGrid::delete_data_only()
 
 VolumeGridPtrCommon::~VolumeGridPtrCommon() {}
 
-GVolumeGridPtr::operator bool() const
-{
-  return bool(data);
-}
-
 GVolumeGridPtr::GridConstPtr GVolumeGridPtr::grid() const
 {
 #ifdef WITH_OPENVDB
-  return data ? data->grid() : nullptr;
+  return this->get()->grid();
 #else
   return nullptr;
 #endif
@@ -424,11 +419,9 @@ GVolumeGridPtr::GridConstPtr GVolumeGridPtr::grid() const
 GVolumeGridPtr::GridPtr GVolumeGridPtr::grid_for_write()
 {
 #ifdef WITH_OPENVDB
-  if (!data) {
-    return nullptr;
-  }
+  const VolumeGrid *data = this->get();
   if (data->is_mutable()) {
-    return const_cast<VolumeGrid &>(*data).grid_for_write();
+    return const_cast<VolumeGrid *>(data)->grid_for_write();
   }
   return data->grid()->deepCopyGrid();
 #else

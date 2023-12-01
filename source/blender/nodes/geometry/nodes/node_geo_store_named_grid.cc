@@ -76,7 +76,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       BKE_volume_grid_remove(volume, existing_grid.get());
     }
 
-    BKE_volume_grid_add_vdb(*volume, grid_name, grid->grid_for_write());
+    BKE_volume_grid_add_vdb(*volume, grid_name, const_cast<VolumeGrid &>(*grid).grid_for_write());
 
     params.set_output("Volume", geometry_set);
     return;

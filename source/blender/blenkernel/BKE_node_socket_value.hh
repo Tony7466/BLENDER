@@ -22,12 +22,12 @@ namespace blender::bke {
 
 template<typename T> struct ValueOrField {
   using Field = fn::Field<T>;
-  using Grid = VolumeGridPtr<T>;
+  using GridPtr = VolumeGridPtr<T>;
 
   /** Value that is used when the field is empty. */
   T value{};
   Field field;
-  Grid grid;
+  GridPtr grid;
 
   ValueOrField() = default;
 
@@ -35,7 +35,7 @@ template<typename T> struct ValueOrField {
 
   ValueOrField(Field field) : field(std::move(field)) {}
 
-  ValueOrField(Grid grid) : grid(std::move(grid)) {}
+  ValueOrField(GridPtr grid) : grid(std::move(grid)) {}
 
   bool is_field() const
   {
@@ -55,7 +55,7 @@ template<typename T> struct ValueOrField {
     return fn::make_constant_field(this->value);
   }
 
-  Grid as_grid() const
+  GridPtr as_grid() const
   {
     if (this->grid) {
       return this->grid;
