@@ -75,6 +75,7 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::functions
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::intern::atomic
 )
 
 if(WITH_OPENVDB)
