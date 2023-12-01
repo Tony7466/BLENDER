@@ -210,7 +210,7 @@ def bake_action_iter(
         return clean_props
 
     def bake_custom_properties(obj, custom_props={}, frame=None, name=""):
-        if (f is None or custom_props is None):
+        if (frame is None or custom_props is None):
             return
         for key, value in custom_props.items():
             obj[key] = value
