@@ -251,30 +251,24 @@ static void partialvis_update_grids(Depsgraph *depsgraph,
                                     const float planes[4][4],
                                     const Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
-  SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *ob->sculpt->subdiv_ccg;
   if (action == VisAction::Show && area == VisArea::All) {
-    BKE_subdiv_ccg_grid_hidden_free(*subdiv_ccg);
+    BKE_subdiv_ccg_grid_hidden_free(subdiv_ccg);
     BKE_pbvh_sync_visibility_from_verts(pbvh, static_cast<Mesh *>(ob->data));
     return;
   }
 
-  blender::BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(*subdiv_ccg);
+  blender::BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg);
+  const Span<CCGElem *> grids = subdiv_ccg.grids;
   const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
 
   for (PBVHNode *node : nodes) {
-    CCGElem *const *grids;
-    const int *grid_indices;
-    int totgrid;
-    bool any_changed = false, any_visible = false;
-
-    /* Get PBVH data. */
-    BKE_pbvh_node_get_grids(pbvh, node, &grid_indices, &totgrid, nullptr, nullptr, &grids);
+    bool any_changed = false;
+    bool any_visible = false;
 
     SCULPT_undo_push_node(ob, node, SCULPT_UNDO_HIDDEN);
 
-    for (int i = 0; i < totgrid; i++) {
-      const int grid_index = grid_indices[i];
+    for (const int grid_index : BKE_pbvh_node_get_grid_indices(*node)) {
       MutableBoundedBitSpan gh = grid_hidden[grid_index];
       if (area == VisArea::All) {
         gh.set_all(action_to_hide(action));
