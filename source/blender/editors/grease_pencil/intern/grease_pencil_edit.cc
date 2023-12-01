@@ -1533,6 +1533,9 @@ static void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
     if (!attribute) {
       return true;
     }
+    if (id.name() == ".selection") {
+      return true;
+    }
 
     switch (meta_data.domain) {
       case ATTR_DOMAIN_CURVE: {
@@ -1565,9 +1568,11 @@ static void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
   });
   array_utils::copy(dst_cyclic.as_span(), curves.cyclic_for_write().drop_front(old_curves_num));
 
-  /* Deselect the original curves. */
+  /* Deselect the original and select the new curves. */
   bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
       curves, ATTR_DOMAIN_CURVE, CD_PROP_BOOL);
+  curves::fill_selection_true(selection.span,
+                              IndexMask(IndexRange(old_curves_num, num_curves_to_add)));
   curves::fill_selection_false(selection.span, IndexMask(old_curves_num));
   selection.finish();
 }
