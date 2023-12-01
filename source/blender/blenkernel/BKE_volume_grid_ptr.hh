@@ -282,8 +282,7 @@ template<typename T> bool get_background_value(const VolumeGridPtr<T> &grid, T &
     return false;
   }
   else {
-    using Converter = GridConverter<T>;
-    r_value = Converter::single_value_to_attribute(grid.grid()->background());
+    r_value = grids::GridConverter<T>::convert(grid.grid()->background());
     return true;
   }
 #else
@@ -301,8 +300,7 @@ template<typename T> VolumeGridPtr<T> make_empty_grid(const T background_value)
     grid = nullptr;
   }
   else {
-    using Converter = GridConverter<T>;
-    grid = GridType::create(Converter::single_value_to_grid(background_value));
+    grid = GridType::create(grids::AttributeConverter<T>::convert(background_value));
   }
   return {make_implicit_shared<VolumeGrid>(grid)};
 #else
