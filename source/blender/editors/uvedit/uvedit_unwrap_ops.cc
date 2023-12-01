@@ -2877,13 +2877,12 @@ void UV_OT_unwrap(wmOperatorType *ot)
       ot->srna, "margin", 0.001f, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
 
   /* SLIM only */
-  RNA_def_boolean(
-      ot->srna,
-      "allow_flips",
-      _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips,
-      "Allow Flips",
-      "Allowing flips means that depending on the position of pins, the map may be "
-      "flipped to lower distortion");
+  RNA_def_boolean(ot->srna,
+                  "allow_flips",
+                  _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips,
+                  "Allow Flips",
+                  "Allowing flips means that depending on the position of pins, the map may be "
+                  "flipped to lower distortion");
 
   RNA_def_int(ot->srna,
               "iterations",

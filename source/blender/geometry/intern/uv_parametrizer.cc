@@ -6,8 +6,8 @@
  * \ingroup eduv
  */
 
-#include <vector>
 #include <functional>
+#include <vector>
 
 #include "GEO_uv_parametrizer.hh"
 
@@ -5028,8 +5028,7 @@ void uv_parametrizer_slim_solve(ParamHandle *phandle,
   slim_free_matrix_transfer(phandle);
 }
 
-void uv_parametrizer_slim_live_begin(ParamHandle *phandle,
-                                const ParamSlimOptions *slim_options)
+void uv_parametrizer_slim_live_begin(ParamHandle *phandle, const ParamSlimOptions *slim_options)
 {
   slim_transfer_data_to_slim(phandle, slim_options);
   slim::MatrixTransfer *mt = phandle->slim_mt;
