@@ -1539,12 +1539,10 @@ static void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
         if (id.name() == "cyclic") {
           return true;
         }
-
         bke::attribute_math::gather(
             attribute.span,
             dst_to_src_curve,
             attribute.span.slice(IndexRange(old_curves_num, num_curves_to_add)));
-
         break;
       }
       case ATTR_DOMAIN_POINT: {
@@ -1552,7 +1550,6 @@ static void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
             attribute.span,
             dst_to_src_point,
             attribute.span.slice(IndexRange(old_points_num, num_points_to_add)));
-
         break;
       }
       default: {
