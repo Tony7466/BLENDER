@@ -331,6 +331,7 @@ set(SRC
   BLI_rand.hh
   BLI_range.h
   BLI_rect.h
+  BLI_rect.hh
   BLI_resource_scope.hh
   BLI_scanfill.h
   BLI_serialize.hh
@@ -540,6 +541,7 @@ if(WITH_GTESTS)
     tests/BLI_path_util_test.cc
     tests/BLI_polyfill_2d_test.cc
     tests/BLI_pool_test.cc
+    tests/BLI_rect_test.cc
     tests/BLI_ressource_strings.h
     tests/BLI_serialize_test.cc
     tests/BLI_session_uuid_test.cc
