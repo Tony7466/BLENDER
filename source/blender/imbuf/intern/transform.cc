@@ -146,33 +146,15 @@ struct TransformUserData {
 };
 
 /**
- * \brief Base class for source discarding.
- *
- * The class decides if a specific uv coordinate from the source buffer should be ignored.
- * This is used to mix multiple images over a single output buffer. Discarded pixels will
- * not change the output buffer.
- */
-class BaseDiscard {
- public:
-  virtual ~BaseDiscard() = default;
-
-  /**
-   * \brief Should the source pixel at the given uv coordinate be discarded.
-   */
-  virtual bool should_discard(const TransformUserData &user_data, const double2 &uv) = 0;
-};
-
-/**
  * \brief Crop uv-coordinates that are outside the user data src_crop rect.
  */
-class CropSource : public BaseDiscard {
- public:
+struct CropSource {
   /**
    * \brief Should the source pixel at the given uv coordinate be discarded.
    *
    * Uses user_data.src_crop to determine if the uv coordinate should be skipped.
    */
-  bool should_discard(const TransformUserData &user_data, const double2 &uv) override
+  static bool should_discard(const TransformUserData &user_data, const double2 &uv)
   {
     return uv.x < user_data.src_crop.xmin || uv.x >= user_data.src_crop.xmax ||
            uv.y < user_data.src_crop.ymin || uv.y >= user_data.src_crop.ymax;
@@ -182,14 +164,13 @@ class CropSource : public BaseDiscard {
 /**
  * \brief Discard that does not discard anything.
  */
-class NoDiscard : public BaseDiscard {
- public:
+struct NoDiscard {
   /**
    * \brief Should the source pixel at the given uv coordinate be discarded.
    *
    * Will never discard any pixels.
    */
-  bool should_discard(const TransformUserData & /*user_data*/, const double2 & /*uv*/) override
+  static bool should_discard(const TransformUserData & /*user_data*/, const double2 & /*uv*/)
   {
     return false;
   }
@@ -537,9 +518,7 @@ class ChannelConverter {
  */
 template<
     /**
-     * \brief Discard function to use.
-     *
-     * \attention Should be a subclass of BaseDiscard.
+     * \brief Discard functor that implements `should_discard`.
      */
     typename Discard,
 
