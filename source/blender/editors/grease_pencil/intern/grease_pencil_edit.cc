@@ -1572,7 +1572,7 @@ static void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
   /* Deselect the original curves. */
   bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
       curves, ATTR_DOMAIN_CURVE, CD_PROP_BOOL);
-  curves::fill_selection_false(selection.span, IndexMask(IndexRange(old_curves_num)));
+  curves::fill_selection_false(selection.span, IndexMask(old_curves_num));
   selection.finish();
 }
 
