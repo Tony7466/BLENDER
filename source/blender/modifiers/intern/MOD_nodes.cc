@@ -1099,9 +1099,19 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
 };
 
 class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
+ private:
+  mutable Map<int, std::unique_ptr<nodes::BakeNodeBehavior>> behavior_by_node_id_;
+
  public:
-  nodes::BakeNodeBehavior *get(const int /*id*/) const
+  nodes::BakeNodeBehavior *get(const int id) const
   {
+    return behavior_by_node_id_
+        .lookup_or_add_cb(id,
+                          [&]() {
+                            auto info = std::make_unique<nodes::BakeNodeBehavior>();
+                            return info;
+                          })
+        .get();
     return nullptr;
   }
 };

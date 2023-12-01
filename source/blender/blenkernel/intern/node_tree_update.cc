@@ -1145,9 +1145,11 @@ class NodeTreeMainUpdater {
       }
     }
     if (ntree.type == NTREE_GEOMETRY) {
-      /* Create references for simulations in geometry nodes. */
-      for (const bNode *node : ntree.nodes_by_type("GeometryNodeSimulationOutput")) {
-        nested_node_paths.append({node->identifier, -1});
+      /* Create references for simulations and bake nodes in geometry nodes. */
+      for (StringRefNull idname : {"GeometryNodeSimulationOutput", "GeometryNodeBake"}) {
+        for (const bNode *node : ntree.nodes_by_type(idname)) {
+          nested_node_paths.append({node->identifier, -1});
+        }
       }
     }
     /* Propagate references to nested nodes in group nodes. */

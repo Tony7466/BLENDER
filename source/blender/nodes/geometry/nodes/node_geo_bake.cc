@@ -100,6 +100,8 @@ class LazyFunctionForBakeNode final : public LazyFunction {
       : node_(node)
   {
     debug_name_ = "Bake";
+    /* Allows for a better pass-through mode. */
+    allow_missing_requested_inputs_ = true;
     const NodeGeometryBake &storage = node_storage(node);
     bake_items_ = {storage.items, storage.items_num};
 
@@ -120,8 +122,65 @@ class LazyFunctionForBakeNode final : public LazyFunction {
   void execute_impl(lf::Params &params, const lf::Context &context) const final
   {
     GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-    UNUSED_VARS(user_data);
-    params.set_default_remaining_outputs();
+    if (!user_data.call_data->self_object()) {
+      /* The self object is currently required for generating anonymous attribute names. */
+      params.set_default_remaining_outputs();
+      return;
+    }
+    if (!user_data.call_data->bake_params) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    std::optional<FoundNestedNodeID> found_id = find_nested_node_id(user_data, node_.identifier);
+    if (!found_id) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    if (found_id->is_in_loop) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    BakeNodeBehavior *behavior = user_data.call_data->bake_params->get(found_id->id);
+    if (!behavior) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    if (auto *info = std::get_if<sim_output::ReadSingle>(behavior)) {
+      params.set_default_remaining_outputs();
+    }
+    else if (auto *info = std::get_if<sim_output::ReadInterpolated>(behavior)) {
+      params.set_default_remaining_outputs();
+    }
+    else if (std::get_if<sim_output::PassThrough>(behavior)) {
+      this->pass_through(params);
+    }
+    else if (auto *info = std::get_if<sim_output::StoreNewState>(behavior)) {
+      params.set_default_remaining_outputs();
+    }
+    else {
+      BLI_assert_unreachable();
+    }
+  }
+
+  void pass_through(lf::Params &params) const
+  {
+    for (const int i : bake_items_.index_range()) {
+      if (params.get_output_usage(i) != lf::ValueUsage::Used) {
+        continue;
+      }
+      if (params.output_was_set(i)) {
+        continue;
+      }
+      void *input_value = params.try_get_input_data_ptr_or_request(i);
+      if (input_value == nullptr) {
+        /* Will try again when the value is available. */
+        continue;
+      }
+      const CPPType &type = *inputs_[i].type;
+      void *output_value = params.get_output_data_ptr(i);
+      type.move_construct(input_value, output_value);
+      params.output_set(i);
+    }
   }
 };
 
