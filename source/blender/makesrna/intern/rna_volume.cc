@@ -18,7 +18,7 @@
 #include "DNA_volume_types.h"
 
 #include "BKE_volume.hh"
-#include "BKE_volume_types.hh"
+#include "BKE_volume_enums.hh"
 
 #include "BLI_math_base.h"
 #include "BLI_string_utf8_symbols.h"

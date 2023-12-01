@@ -13,7 +13,7 @@
 
 #include "DNA_volume_types.h"
 
-#include "BKE_volume_types.hh"
+#include "BKE_volume_enums.hh"
 
 struct Volume;
 

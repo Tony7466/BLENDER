@@ -512,7 +512,7 @@ set(SRC
   BKE_volume_openvdb.hh
   BKE_volume_render.hh
   BKE_volume_to_mesh.hh
-  BKE_volume_types.hh
+  BKE_volume_enums.hh
   BKE_workspace.h
   BKE_world.h
   BKE_writeavi.h

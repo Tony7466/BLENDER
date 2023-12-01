@@ -14,7 +14,7 @@
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_string_ref.hh"
 
-#  include "BKE_volume_types.hh"
+#  include "BKE_volume_enums.hh"
 
 struct Volume;
 namespace blender::bke {

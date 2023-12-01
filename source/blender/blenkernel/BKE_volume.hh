@@ -15,7 +15,7 @@
 #include "BLI_math_vector_types.hh"
 
 #include "BKE_volume_grid_ptr.hh"
-#include "BKE_volume_types.hh"
+#include "BKE_volume_enums.hh"
 
 struct Depsgraph;
 struct Main;

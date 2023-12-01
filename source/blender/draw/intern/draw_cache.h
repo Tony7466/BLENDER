@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "BKE_volume_types.hh"
+#include "BKE_volume_enums.hh"
 
 #ifdef __cplusplus
 extern "C" {
