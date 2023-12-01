@@ -366,7 +366,7 @@ BLI_INLINE void bilinear_interpolation_fl(const float *float_buffer,
 #if BLI_HAVE_SSE2
 static __m128 rgba_uchar_to_simd(const uchar ptr[4])
 {
-  uint packed;
+  int packed;
   memcpy(&packed, ptr, 4);
   /* Packed 8 bit values. */
   __m128i rgba8 = _mm_cvtsi32_si128(packed);
