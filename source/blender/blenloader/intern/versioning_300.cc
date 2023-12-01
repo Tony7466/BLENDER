@@ -4575,8 +4575,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       scene->toolsettings->uvcalc_vertex_group_factor =
           _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor;
       scene->toolsettings->uvcalc_relative_scale = _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale;
-      scene->toolsettings->uvcalc_reflection_mode =
-          _DNA_DEFAULT_ToolSettings_UVCalc_ReflectionMode;
+      scene->toolsettings->uvcalc_allow_flips = _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips;
       memset(scene->toolsettings->uvcalc_vertex_group,
              0,
              sizeof(scene->toolsettings->uvcalc_vertex_group));

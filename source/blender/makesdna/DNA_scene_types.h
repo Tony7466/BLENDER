@@ -1561,7 +1561,7 @@ typedef struct ToolSettings {
   char uv_sticky;
 
   float uvcalc_margin;
-  char uvcalc_reflection_mode;
+  char uvcalc_allow_flips;
   char _pad0[3];
 
   int uvcalc_iterations;

@@ -363,7 +363,7 @@
 #define _DNA_DEFAULT_ToolSettings_UVCalc_Iterations           (10)
 #define _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor    (1.0)
 #define _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale        (1.0)
-#define _DNA_DEFAULT_ToolSettings_UVCalc_ReflectionMode       (0)
+#define _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips       (1)
 
 #define _DNA_DEFAULT_ToolSettings \
   { \
@@ -378,7 +378,7 @@
     .uvcalc_vertex_group = { 0 }, \
     .uvcalc_vertex_group_factor = _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor, \
     .uvcalc_relative_scale = _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale, \
-    .uvcalc_reflection_mode = _DNA_DEFAULT_ToolSettings_UVCalc_ReflectionMode, \
+    .uvcalc_allow_flips = _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips, \
  \
     .select_thresh = 0.01f, \
  \

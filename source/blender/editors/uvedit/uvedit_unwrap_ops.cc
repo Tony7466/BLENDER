@@ -258,7 +258,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
                                                 ts->uvcalc_vertex_group_factor :
                                                 0.0f;
     options.slim_options.iterations = ts->uvcalc_iterations;
-    options.slim_options.reflection_mode = ts->uvcalc_reflection_mode;
+    options.slim_options.allow_flips = ts->uvcalc_allow_flips;
   }
   else {
     /* We use the properties from the last unwrap operator for subsequent
@@ -276,7 +276,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
                                                 RNA_float_get(&ptr, "vertex_group_factor") :
                                                 0.0f;
     options.slim_options.iterations = RNA_int_get(&ptr, "iterations");
-    options.slim_options.reflection_mode = RNA_enum_get(&ptr, "reflection_mode");
+    options.slim_options.allow_flips = RNA_boolean_get(&ptr, "allow_flips");
 
     WM_operator_properties_free(&ptr);
   }
@@ -332,11 +332,11 @@ static void unwrap_options_sync_toolsettings(wmOperator *op, ToolSettings *ts)
     RNA_float_set(op->ptr, "margin", ts->uvcalc_margin);
   }
 
-  if (RNA_struct_property_is_set(op->ptr, "reflection_mode")) {
-    ts->uvcalc_reflection_mode = RNA_enum_get(op->ptr, "reflection_mode");
+  if (RNA_struct_property_is_set(op->ptr, "allow_flips")) {
+    ts->uvcalc_allow_flips = RNA_boolean_get(op->ptr, "allow_flips");
   }
   else {
-    RNA_enum_set(op->ptr, "reflection_mode", ts->uvcalc_reflection_mode);
+    RNA_boolean_set(op->ptr, "allow_flips", ts->uvcalc_allow_flips);
   }
 
   if (RNA_struct_property_is_set(op->ptr, "iterations")) {
@@ -2020,7 +2020,7 @@ void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit)
   }
 
   if (options.use_slim) {
-    options.slim_options.reflection_mode = 0;
+    options.slim_options.allow_flips = true;
     options.slim_options.skip_initialization = true;
     uv_parametrizer_slim_live_begin(handle, &options.slim_options);
 
@@ -2807,7 +2807,7 @@ static void unwrap_draw(bContext * /*C*/, wmOperator *op)
 
   if (is_slim) {
     uiItemR(col, &ptr, "iterations", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(col, &ptr, "reflection_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, &ptr, "allow_flips", UI_ITEM_NONE, nullptr, ICON_NONE);
 
     col = uiLayoutColumn(layout, true);
     uiItemR(col, &ptr, "vertex_group", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -2835,10 +2835,6 @@ void UV_OT_unwrap(wmOperatorType *ot)
       {2, "SLIM", 0, "SLIM", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
-
-  static const EnumPropertyItem reflection_items[] = {{0, "ALLOW", 0, "Allow Flips", ""},
-                                                      {1, "DISALLOW", 0, "Don't Allow Flips", ""},
-                                                      {0, NULL, 0, NULL, NULL}};
 
   /* identifiers */
   ot->name = "Unwrap";
@@ -2888,13 +2884,14 @@ void UV_OT_unwrap(wmOperatorType *ot)
       ot->srna, "margin", 0.001f, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
 
   /* SLIM only */
-  RNA_def_enum(ot->srna,
-               "reflection_mode",
-               reflection_items,
-               _DNA_DEFAULT_ToolSettings_UVCalc_ReflectionMode,
-               "Reflection Mode",
-               "Allowing reflections means that depending on the position of pins, the map may be "
-               "flipped. Lower distortion");
+  RNA_def_boolean(
+      ot->srna,
+      "allow_flips",
+      _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips,
+      "Allow Flips",
+      "Allowing flips means that depending on the position of pins, the map may be "
+      "flipped to lower distortion");
+
   RNA_def_int(ot->srna,
               "iterations",
               _DNA_DEFAULT_ToolSettings_UVCalc_Iterations,

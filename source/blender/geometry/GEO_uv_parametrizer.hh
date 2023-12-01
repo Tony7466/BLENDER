@@ -117,7 +117,7 @@ struct ParamSlimOptions {
  public:
   float weight_influence = 0.0f;
   int iterations = 0;
-  int reflection_mode = 0;
+  bool allow_flips = true;
   bool skip_initialization = false;
 };
 
