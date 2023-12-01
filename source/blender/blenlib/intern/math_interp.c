@@ -256,10 +256,13 @@ BLI_INLINE void bilinear_interpolation_fl(const float *float_buffer,
   float a_b, ma_b, a_mb, ma_mb;
   int y1, y2, x1, x2;
 
-  x1 = (int)floor(u);
-  x2 = (int)ceil(u);
-  y1 = (int)floor(v);
-  y2 = (int)ceil(v);
+  float uf = floorf(u);
+  float vf = floorf(v);
+
+  x1 = (int)uf;
+  x2 = x1 + 1;
+  y1 = (int)vf;
+  y2 = y1 + 1;
 
   const float *row1, *row2, *row3, *row4;
   const float empty[4] = {0.0f, 0.0f, 0.0f, 0.0f};
@@ -320,8 +323,8 @@ BLI_INLINE void bilinear_interpolation_fl(const float *float_buffer,
     row4 = float_buffer + width * y2 * components + components * x2;
   }
 
-  a = u - floorf(u);
-  b = v - floorf(v);
+  a = u - uf;
+  b = v - vf;
   a_b = a * b;
   ma_b = (1.0f - a) * b;
   a_mb = a * (1.0f - b);
@@ -350,10 +353,13 @@ void BLI_bilinear_interpolation_char(
   float a_b, ma_b, a_mb, ma_mb;
   int y1, y2, x1, x2;
 
-  x1 = (int)floor(u);
-  x2 = (int)ceil(u);
-  y1 = (int)floor(v);
-  y2 = (int)ceil(v);
+  float uf = floorf(u);
+  float vf = floorf(v);
+
+  x1 = (int)uf;
+  x2 = x1 + 1;
+  y1 = (int)vf;
+  y2 = y1 + 1;
 
   const uchar *row1, *row2, *row3, *row4;
   uchar empty[4] = {0, 0, 0, 0};
@@ -398,8 +404,8 @@ void BLI_bilinear_interpolation_char(
     row4 = buffer + width * y2 * 4 + 4 * x2;
   }
 
-  a = u - floorf(u);
-  b = v - floorf(v);
+  a = u - uf;
+  b = v - vf;
   a_b = a * b;
   ma_b = (1.0f - a) * b;
   a_mb = a * (1.0f - b);
