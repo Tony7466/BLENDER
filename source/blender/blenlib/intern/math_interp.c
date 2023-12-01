@@ -11,7 +11,13 @@
 #include "BLI_math_base.h"
 #include "BLI_math_interp.h"
 #include "BLI_math_vector.h"
+#include "BLI_simd.h"
 #include "BLI_strict_flags.h"
+
+#if defined(_MSC_VER)
+#  include <intrin.h>
+#endif
+
 
 /**************************************************************************
  *                            INTERPOLATIONS
@@ -339,12 +345,53 @@ BLI_INLINE void bilinear_interpolation_fl(const float *float_buffer,
     float_output[2] = ma_mb * row1[2] + a_mb * row3[2] + ma_b * row2[2] + a_b * row4[2];
   }
   else {
+#if BLI_HAVE_SSE2
+    __m128 rgba1 = _mm_loadu_ps(row1);
+    __m128 rgba2 = _mm_loadu_ps(row2);
+    __m128 rgba3 = _mm_loadu_ps(row3);
+    __m128 rgba4 = _mm_loadu_ps(row4);
+    rgba1 = _mm_mul_ps(_mm_set1_ps(ma_mb), rgba1);
+    rgba2 = _mm_mul_ps(_mm_set1_ps(ma_b), rgba2);
+    rgba3 = _mm_mul_ps(_mm_set1_ps(a_mb), rgba3);
+    rgba4 = _mm_mul_ps(_mm_set1_ps(a_b), rgba4);
+    __m128 rgba13 = _mm_add_ps(rgba1, rgba3);
+    __m128 rgba24 = _mm_add_ps(rgba2, rgba4);
+    __m128 rgba = _mm_add_ps(rgba13, rgba24);
+    _mm_storeu_ps(float_output, rgba);
+#else
     float_output[0] = ma_mb * row1[0] + a_mb * row3[0] + ma_b * row2[0] + a_b * row4[0];
     float_output[1] = ma_mb * row1[1] + a_mb * row3[1] + ma_b * row2[1] + a_b * row4[1];
     float_output[2] = ma_mb * row1[2] + a_mb * row3[2] + ma_b * row2[2] + a_b * row4[2];
     float_output[3] = ma_mb * row1[3] + a_mb * row3[3] + ma_b * row2[3] + a_b * row4[3];
+#endif
   }
 }
+
+#if BLI_HAVE_SSE2
+static __m128 rgba_uchar_to_simd(const uchar ptr[4])
+{
+  uint packed;
+  memcpy(&packed, ptr, 4);
+  /* Packed 8 bit values. */
+  __m128i rgba8 = _mm_cvtsi32_si128(packed);
+  /* Spread to 16 bit values. */
+  __m128i rgba16 = _mm_unpacklo_epi8(rgba8, _mm_setzero_si128());
+  /* Spread to 32 bit values, now each SSE lane has the RGBA value. */
+  __m128i rgba32 = _mm_unpacklo_epi16(rgba16, _mm_setzero_si128());
+  return _mm_cvtepi32_ps(rgba32);
+}
+static void simd_to_rgba_uchar(__m128 rgba, uchar dst[4])
+{
+  /* Four RGBA integers in each lane of SSE. */
+  __m128i val = _mm_cvtps_epi32(rgba);
+  /* Pack to 16 bit values. */
+  __m128i rgba16 = _mm_packus_epi32(val, _mm_setzero_si128()); /* SSE 4.1 */
+  /* Pack to 8 bit values. */
+  __m128i rgba8 = _mm_packus_epi16(rgba16, _mm_setzero_si128());
+  /* Store the packed bits into destination. */
+  _mm_store_ss((float*)dst, _mm_castsi128_ps(rgba8));
+}
+#endif
 
 void BLI_bilinear_interpolation_char(
     const uchar *buffer, uchar *output, int width, int height, float u, float v)
@@ -411,10 +458,26 @@ void BLI_bilinear_interpolation_char(
   a_mb = a * (1.0f - b);
   ma_mb = (1.0f - a) * (1.0f - b);
 
+#if BLI_HAVE_SSE2
+  __m128 rgba1 = rgba_uchar_to_simd(row1);
+  __m128 rgba2 = rgba_uchar_to_simd(row2);
+  __m128 rgba3 = rgba_uchar_to_simd(row3);
+  __m128 rgba4 = rgba_uchar_to_simd(row4);
+  rgba1 = _mm_mul_ps(_mm_set1_ps(ma_mb), rgba1);
+  rgba2 = _mm_mul_ps(_mm_set1_ps(ma_b), rgba2);
+  rgba3 = _mm_mul_ps(_mm_set1_ps(a_mb), rgba3);
+  rgba4 = _mm_mul_ps(_mm_set1_ps(a_b), rgba4);
+  __m128 rgba13 = _mm_add_ps(rgba1, rgba3);
+  __m128 rgba24 = _mm_add_ps(rgba2, rgba4);
+  __m128 rgba = _mm_add_ps(rgba13, rgba24);
+  rgba = _mm_round_ps(rgba, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC); /* SSE 4.1 */
+  simd_to_rgba_uchar(rgba, output);
+#else
   output[0] = (uchar)(ma_mb * row1[0] + a_mb * row3[0] + ma_b * row2[0] + a_b * row4[0] + 0.5f);
   output[1] = (uchar)(ma_mb * row1[1] + a_mb * row3[1] + ma_b * row2[1] + a_b * row4[1] + 0.5f);
   output[2] = (uchar)(ma_mb * row1[2] + a_mb * row3[2] + ma_b * row2[2] + a_b * row4[2] + 0.5f);
   output[3] = (uchar)(ma_mb * row1[3] + a_mb * row3[3] + ma_b * row2[3] + a_b * row4[3] + 0.5f);
+#endif
 }
 
 void BLI_bilinear_interpolation_fl(
