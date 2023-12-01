@@ -1,5 +1,7 @@
+#include "ANIM_keyframing.hh"
 #include "BKE_appdir.h"
 #include "BKE_context.hh"
+#include "BKE_layer.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_path_util.h"
@@ -23,16 +25,26 @@ typedef struct CopyBuffer {
 
 typedef struct Foo {
   int object_count;
+  int start_frame;
   int frame_count;
   CopyBuffer *buffer;
 } Foo;
 
 /* Copy matrix to flat array. */
-static void copy_matrix(float source[4][4], float *target)
+static void flatten_matrix(float source[4][4], float *target)
 {
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
       target[i * 4 + j] = source[i][j];
+    }
+  }
+}
+
+static void compose_matrix(float *source, float target[4][4])
+{
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      target[i][j] = source[i * 4 + j];
     }
   }
 }
@@ -59,6 +71,7 @@ static bool write_foo(Foo *foo)
   const char *cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, nullptr);
   BLI_path_join(filepath, sizeof(filepath), cfgdir, "world_space_buffer");
   FILE *f = fopen(filepath, "wb");
+  fwrite(&foo->start_frame, sizeof(int), 1, f);
   fwrite(&foo->frame_count, sizeof(int), 1, f);
   fwrite(&foo->object_count, sizeof(int), 1, f);
   for (int id_index = 0; id_index < foo->object_count; id_index++) {
@@ -81,6 +94,7 @@ static bool read_foo(Foo *foo)
   if (!f) {
     return false;
   }
+  fread(&foo->start_frame, sizeof(int), 1, f);
   fread(&foo->frame_count, sizeof(int), 1, f);
   fread(&foo->object_count, sizeof(int), 1, f);
 
@@ -139,6 +153,7 @@ static int world_space_copy_exec(bContext *C, wmOperator *op)
   Foo foo;
   foo.object_count = selected_ids;
   foo.frame_count = frame_count;
+  foo.start_frame = range[0];
   CopyBuffer *copy_buffer = static_cast<CopyBuffer *>(
       MEM_callocN(sizeof(CopyBuffer) * selected_ids, "World Space Copy Buffer"));
   foo.buffer = copy_buffer;
@@ -162,7 +177,7 @@ static int world_space_copy_exec(bContext *C, wmOperator *op)
       CopyBuffer buffer = copy_buffer[id_index];
       float *matrix = &buffer.matrices[frame_index * 16];
       Object *eval_object = DEG_get_evaluated_object(depsgraph, ob);
-      copy_matrix(eval_object->object_to_world, matrix);
+      flatten_matrix(eval_object->object_to_world, matrix);
     }
   }
 
@@ -190,6 +205,25 @@ void ANIM_OT_world_space_copy(wmOperatorType *ot)
       ot->srna, "range", 2, nullptr, -INT_MAX, INT_MAX, "Frame Range", "", 0, INT_MAX);
 }
 
+static void paste_to_object(Foo *foo, Object *ob, Depsgraph *depsgraph)
+{
+  ID *id = &ob->id;
+  DEG_graph_build_from_ids(depsgraph, &id, 1);
+  CopyBuffer buffer = foo->buffer[0];
+  for (int frame_index = 0; frame_index < foo->frame_count; frame_index++) {
+    const int frame = foo->start_frame + frame_index;
+    DEG_evaluate_on_framechange(depsgraph, frame);
+    Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+    float matrix_world[4][4];
+    compose_matrix(&buffer.matrices[frame_index * 16], matrix_world);
+    float matrix_local_to_world[4][4];
+
+    /* TODO: this can be faster by building a BezTriple array and merging it with existing keys. */
+    /* blender::animrig::insert_key_rna(); */
+    /* mat4_decompose */
+  }
+}
+
 static int world_space_paste_exec(bContext *C, wmOperator *op)
 {
   Foo foo;
@@ -199,7 +233,20 @@ static int world_space_paste_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  Depsgraph *depsgraph = DEG_graph_new(
+      CTX_data_main(C), CTX_data_scene(C), CTX_data_view_layer(C), DAG_EVAL_VIEWPORT);
+  if (foo.object_count == 1) {
+    Object *ob = CTX_data_active_object(C);
+    if (ob == nullptr) {
+      free_foo(&foo);
+      DEG_graph_free(depsgraph);
+      return OPERATOR_CANCELLED;
+    }
+    paste_to_object(&foo, ob, depsgraph);
+  }
+
   free_foo(&foo);
+  DEG_graph_free(depsgraph);
   return OPERATOR_FINISHED;
 }
 
