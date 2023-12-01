@@ -10,6 +10,8 @@
 
 #include "BLI_string.h"
 
+#include "BKE_bake_items_socket.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_bake_cc {
@@ -91,17 +93,40 @@ const CPPType &get_item_cpp_type(const eNodeSocketDatatype socket_type)
   return *typeinfo->geometry_nodes_cpp_type;
 }
 
+static bke::bake::BakeSocketConfig make_bake_socket_config(
+    const Span<NodeGeometryBakeItem> bake_items)
+{
+  bke::bake::BakeSocketConfig config;
+  const int items_num = bake_items.size();
+  config.domains.resize(items_num);
+  config.types.resize(items_num);
+  config.geometries_by_attribute.resize(items_num);
+
+  int last_geometry_index = -1;
+  for (const int item_i : bake_items.index_range()) {
+    const NodeGeometryBakeItem &item = bake_items[item_i];
+    config.types[item_i] = eNodeSocketDatatype(item.socket_type);
+    config.domains[item_i] = eAttrDomain(item.attribute_domain);
+    if (item.socket_type == SOCK_GEOMETRY) {
+      last_geometry_index = item_i;
+    }
+    else if (last_geometry_index != -1) {
+      config.geometries_by_attribute[item_i].append(last_geometry_index);
+    }
+  }
+  return config;
+}
+
 class LazyFunctionForBakeNode final : public LazyFunction {
   const bNode &node_;
   Span<NodeGeometryBakeItem> bake_items_;
+  bke::bake::BakeSocketConfig bake_socket_config_;
 
  public:
   LazyFunctionForBakeNode(const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
       : node_(node)
   {
     debug_name_ = "Bake";
-    /* Allows for a better pass-through mode. */
-    allow_missing_requested_inputs_ = true;
     const NodeGeometryBake &storage = node_storage(node);
     bake_items_ = {storage.items, storage.items_num};
 
@@ -117,6 +142,8 @@ class LazyFunctionForBakeNode final : public LazyFunction {
       lf_index_by_bsocket[output_bsocket.index_in_tree()] = outputs_.append_and_get_index_as(
           item.name, type);
     }
+
+    bake_socket_config_ = make_bake_socket_config(bake_items_);
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const final
@@ -146,41 +173,152 @@ class LazyFunctionForBakeNode final : public LazyFunction {
       return;
     }
     if (auto *info = std::get_if<sim_output::ReadSingle>(behavior)) {
-      params.set_default_remaining_outputs();
+      this->output_cached_state(params, user_data, info->state);
     }
     else if (auto *info = std::get_if<sim_output::ReadInterpolated>(behavior)) {
       params.set_default_remaining_outputs();
     }
     else if (std::get_if<sim_output::PassThrough>(behavior)) {
-      this->pass_through(params);
+      this->pass_through(params, user_data);
     }
     else if (auto *info = std::get_if<sim_output::StoreNewState>(behavior)) {
-      params.set_default_remaining_outputs();
+      this->store(params, user_data, *info);
     }
     else {
       BLI_assert_unreachable();
     }
   }
 
-  void pass_through(lf::Params &params) const
+  void pass_through(lf::Params &params, GeoNodesLFUserData &user_data) const
   {
+    std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params);
+    if (!bake_state) {
+      /* Wait for inputs to be computed. */
+      return;
+    }
+    Array<void *> output_values(bake_items_.size());
     for (const int i : bake_items_.index_range()) {
-      if (params.get_output_usage(i) != lf::ValueUsage::Used) {
-        continue;
-      }
-      if (params.output_was_set(i)) {
-        continue;
-      }
-      void *input_value = params.try_get_input_data_ptr_or_request(i);
-      if (input_value == nullptr) {
-        /* Will try again when the value is available. */
-        continue;
-      }
-      const CPPType &type = *inputs_[i].type;
-      void *output_value = params.get_output_data_ptr(i);
-      type.move_construct(input_value, output_value);
+      output_values[i] = params.get_output_data_ptr(i);
+    }
+    this->move_bake_state_to_values(std::move(*bake_state),
+                                    *user_data.call_data->self_object(),
+                                    *user_data.compute_context,
+                                    output_values);
+    for (const int i : bake_items_.index_range()) {
       params.output_set(i);
     }
+  }
+
+  void store(lf::Params &params,
+             GeoNodesLFUserData &user_data,
+             const sim_output::StoreNewState &info) const
+  {
+    std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params);
+    if (!bake_state) {
+      /* Wait for inputs to be computed. */
+      return;
+    }
+    this->output_cached_state(params, user_data, *bake_state);
+    info.store_fn(std::move(*bake_state));
+  }
+
+  void output_cached_state(lf::Params &params,
+                           GeoNodesLFUserData &user_data,
+                           const bke::bake::BakeStateRef &bake_state) const
+  {
+    Array<void *> output_values(bake_items_.size());
+    for (const int i : bake_items_.index_range()) {
+      output_values[i] = params.get_output_data_ptr(i);
+    }
+    this->copy_bake_state_to_values(bake_state,
+                                    *user_data.call_data->self_object(),
+                                    *user_data.compute_context,
+                                    output_values);
+    for (const int i : bake_items_.index_range()) {
+      params.output_set(i);
+    }
+  }
+
+  std::optional<bke::bake::BakeState> get_bake_state_from_inputs(lf::Params &params) const
+  {
+    Array<void *> input_values(bake_items_.size());
+    for (const int i : bake_items_.index_range()) {
+      input_values[i] = params.try_get_input_data_ptr_or_request(i);
+    }
+    if (input_values.as_span().contains(nullptr)) {
+      /* Wait for inputs to be computed. */
+      return std::nullopt;
+    }
+
+    Array<std::unique_ptr<bke::bake::BakeItem>> bake_items =
+        bke::bake::move_socket_values_to_bake_items(input_values, bake_socket_config_);
+
+    bke::bake::BakeState bake_state;
+    for (const int i : bake_items_.index_range()) {
+      const NodeGeometryBakeItem &item = bake_items_[i];
+      std::unique_ptr<bke::bake::BakeItem> &bake_item = bake_items[i];
+      if (bake_item) {
+        bake_state.items_by_id.add_new(item.identifier, std::move(bake_item));
+      }
+    }
+    return bake_state;
+  }
+
+  void move_bake_state_to_values(bke::bake::BakeState bake_state,
+                                 const Object &self_object,
+                                 const ComputeContext &compute_context,
+                                 Span<void *> r_output_values) const
+  {
+    Vector<bke::bake::BakeItem *> bake_items;
+    for (const NodeGeometryBakeItem &item : bake_items_) {
+      std::unique_ptr<bke::bake::BakeItem> *bake_item = bake_state.items_by_id.lookup_ptr(
+          item.identifier);
+      bake_items.append(bake_item ? bake_item->get() : nullptr);
+    }
+    bke::bake::move_bake_items_to_socket_values(
+        bake_items,
+        bake_socket_config_,
+        [&](const int i, const CPPType &type) {
+          return this->make_attribute_field(self_object, compute_context, bake_items_[i], type);
+        },
+        r_output_values);
+  }
+
+  void copy_bake_state_to_values(const bke::bake::BakeStateRef &bake_state,
+                                 const Object &self_object,
+                                 const ComputeContext &compute_context,
+                                 Span<void *> r_output_values) const
+  {
+    Vector<const bke::bake::BakeItem *> bake_items;
+    for (const NodeGeometryBakeItem &item : bake_items_) {
+      const bke::bake::BakeItem *const *bake_item = bake_state.items_by_id.lookup_ptr(
+          item.identifier);
+      bake_items.append(bake_item ? *bake_item : nullptr);
+    }
+    bke::bake::copy_bake_items_to_socket_values(
+        bake_items,
+        bake_socket_config_,
+        [&](const int i, const CPPType &type) {
+          return this->make_attribute_field(self_object, compute_context, bake_items_[i], type);
+        },
+        r_output_values);
+  }
+
+  std::shared_ptr<AnonymousAttributeFieldInput> make_attribute_field(
+      const Object &self_object,
+      const ComputeContext &compute_context,
+      const NodeGeometryBakeItem &item,
+      const CPPType &type) const
+  {
+    AnonymousAttributeIDPtr attribute_id = AnonymousAttributeIDPtr(
+        MEM_new<NodeAnonymousAttributeID>(__func__,
+                                          self_object,
+                                          compute_context,
+                                          node_,
+                                          std::to_string(item.identifier),
+                                          item.name));
+    return std::make_shared<AnonymousAttributeFieldInput>(
+        attribute_id, type, node_.label_or_name());
   }
 };
 
