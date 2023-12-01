@@ -65,7 +65,8 @@ static void try_dilate_grid(GeoNodeExecParams params,
   openvdb::tools::dilateActiveValues(
       grid->tree(), iterations, grids::get_vdb_neighbors_mode(neighbors_mode));
 
-  params.set_output("Grid", bke::ValueOrField<T>(value.grid));
+  params.set_output(
+      "Grid", bke::ValueOrField<T>(bke::VolumeGridPtr<T>(make_implicit_shared<VolumeGrid>(grid))));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

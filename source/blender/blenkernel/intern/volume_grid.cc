@@ -424,7 +424,13 @@ GVolumeGridPtr::GridConstPtr GVolumeGridPtr::grid() const
 GVolumeGridPtr::GridPtr GVolumeGridPtr::grid_for_write() const
 {
 #ifdef WITH_OPENVDB
-  return data && data->is_mutable() ? data->grid_for_write() : nullptr;
+  if (!data) {
+    return nullptr;
+  }
+  if (data->is_mutable()) {
+    return data->grid_for_write();
+  }
+  return data->grid()->deepCopyGrid();
 #else
   return nullptr;
 #endif
