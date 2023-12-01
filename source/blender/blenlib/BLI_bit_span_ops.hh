@@ -257,7 +257,7 @@ template<typename BitSpanT> inline bool any_bit_set(const BitSpanT &arg)
 
 template<typename... BitSpanT> inline bool has_common_unset_bits(const BitSpanT &...args)
 {
-  return !any_set_expr([](const auto... x) { return ~(x | ...); }, args...);
+  return any_set_expr([](const auto... x) { return ~(x | ...); }, args...);
 }
 
 template<typename BitSpanT> inline bool any_bit_unset(const BitSpanT &arg)
