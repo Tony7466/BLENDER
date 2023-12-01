@@ -51,7 +51,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
+#include "BKE_lib_remap.hh"
 #include "BKE_main.h"
 #include "BKE_object.hh"
 #include "BKE_report.h"
@@ -475,8 +475,7 @@ static void unlink_object_fn(bContext *C,
       else if (GS(tsep->id->name) == ID_SCE) {
         /* Following execution is expected to happen exclusively in the Outliner scene view. */
 #ifdef NDEBUG
-        SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
-        BLI_assert(space_outliner->outlinevis == SO_SCENES);
+        BLI_assert(CTX_wm_space_outliner(C)->outlinevis == SO_SCENES);
 #endif
 
         Scene *scene = (Scene *)tsep->id;
