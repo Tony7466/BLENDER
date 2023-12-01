@@ -5,8 +5,16 @@ void main()
   vec2 uv = vec2(vert_index / 2, vert_index % 2);
   uv_coord = vec3(uv, gpu_InstanceIndex);
 
-  vec2 scale = textureSize(color_tx, 0).xy * invertedViewportSize;
-  vec2 offset = vec2(0.8, -0.9) - vec2(1.5, 0.0) * scale * gpu_InstanceIndex;
-  vec2 co = uv * scale + offset;
+  vec2 sphere_size = textureSize(color_tx, 0).xy * invertedViewportSize;
+  vec2 margin = vec2(0.125, -0.125) * sphere_size;
+  vec2 anchor_point = vec2(1.0, -1.0) -
+                      vec2(viewportSize.x - anchor.x, anchor.y) * invertedViewportSize *
+                          vec2(2.0) -
+                      margin;
+
+  vec2 offset = anchor_point -
+                vec2(sphere_size.x * (gpu_InstanceIndex + 1) + margin.x * 2.0 * gpu_InstanceIndex,
+                     0.0);
+  vec2 co = uv * sphere_size + offset;
   gl_Position = vec4(co, 0.0, 1.0);
 }

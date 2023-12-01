@@ -241,7 +241,9 @@ void LookdevModule::sync_display()
                          DRW_STATE_BLEND_ALPHA;
   pass.state_set(state);
   pass.shader_set(inst_.shaders.static_shader_get(LOOKDEV_DISPLAY));
+  pass.push_constant("viewportSize", float2(DRW_viewport_size_get()));
   pass.push_constant("invertedViewportSize", float2(DRW_viewport_invert_size_get()));
+  pass.push_constant("anchor", int2(visible_rect_.xmax, visible_rect_.ymin));
   pass.bind_texture("color_tx", &color_tx_);
 
   pass.draw_procedural(GPU_PRIM_TRIS, 2, 6);
