@@ -94,7 +94,7 @@ static std::string get_rotation_mode_path(const eRotationModes rotmode)
   }
 }
 
-void autokeyframe_object(bContext *C, Scene *scene, ViewLayer *view_layer, Object *ob)
+void autokeyframe_object(bContext *C, Scene *scene, Object *ob)
 {
   ID *id = &ob->id;
   if (!autokeyframe_cfra_can_key(scene, id)) {
