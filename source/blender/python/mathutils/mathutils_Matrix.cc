@@ -3698,7 +3698,7 @@ static PyObject *MatrixAccess_slice(MatrixAccessObject *self, Py_ssize_t begin, 
     end = (matrix_access_len + 1) + end;
   }
   CLAMP(end, 0, matrix_access_len);
-  begin = MIN2(begin, end);
+  begin = std::min(begin, end);
 
   tuple = PyTuple_New(end - begin);
   for (count = begin; count < end; count++) {
@@ -3824,7 +3824,7 @@ PyTypeObject matrix_access_Type = {
     /*tp_as_async*/ nullptr,
     /*tp_repr*/ nullptr,
     /*tp_as_number*/ nullptr,
-    /*tp_as_sequence*/ nullptr /* &MatrixAccess_SeqMethods */ /* TODO */,
+    /*tp_as_sequence*/ nullptr /* &MatrixAccess_SeqMethods */ /* TODO. */,
     /*tp_as_mapping*/ &MatrixAccess_AsMapping,
     /*tp_hash*/ nullptr,
     /*tp_call*/ nullptr,
@@ -3836,7 +3836,7 @@ PyTypeObject matrix_access_Type = {
     /*tp_doc*/ nullptr,
     /*tp_traverse*/ (traverseproc)MatrixAccess_traverse,
     /*tp_clear*/ (inquiry)MatrixAccess_clear,
-    /*tp_richcompare*/ nullptr /* MatrixAccess_richcmpr */ /* TODO */,
+    /*tp_richcompare*/ nullptr /* MatrixAccess_richcmpr */ /* TODO. */,
     /*tp_weaklistoffset*/ 0,
     /*tp_iter*/ (getiterfunc)MatrixAccess_iter,
     /*tp_iternext*/ nullptr,

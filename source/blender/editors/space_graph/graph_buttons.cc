@@ -26,17 +26,17 @@
 #include "BLT_translation.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
 #include "BKE_main.h"
-#include "BKE_screen.h"
-#include "BKE_unit.h"
+#include "BKE_screen.hh"
+#include "BKE_unit.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

@@ -14,21 +14,25 @@
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
+#include "DNA_object_types.h"
 #include "DNA_world_types.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_asset.h"
-#include "BKE_context.h"
+#include "BKE_asset.hh"
+#include "BKE_compute_contexts.hh"
+#include "BKE_context.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_idprop.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
+#include "BKE_lib_remap.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_screen.h"
+#include "BKE_node_tree_zones.hh"
+#include "BKE_screen.hh"
 
 #include "ED_node.hh"
 #include "ED_node_preview.hh"
@@ -39,7 +43,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "BLO_read_write.hh"
 
@@ -241,6 +245,137 @@ float2 space_node_group_offset(const SpaceNode &snode)
   return float2(0);
 }
 
+static const bNode *group_node_by_name(const bNodeTree &ntree, StringRef name)
+{
+  for (const bNode *node : ntree.group_nodes()) {
+    if (node->name == name) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
+std::optional<int32_t> find_nested_node_id_in_root(const SpaceNode &snode, const bNode &query_node)
+{
+  BLI_assert(snode.edittree->runtime->nodes_by_id.contains(const_cast<bNode *>(&query_node)));
+
+  std::optional<int32_t> id_in_node;
+  const char *group_node_name = nullptr;
+  const bNode *node = &query_node;
+  LISTBASE_FOREACH_BACKWARD (const bNodeTreePath *, path, &snode.treepath) {
+    const bNodeTree *ntree = path->nodetree;
+    if (group_node_name) {
+      node = group_node_by_name(*ntree, group_node_name);
+    }
+    bool found = false;
+    for (const bNestedNodeRef &ref : ntree->nested_node_refs_span()) {
+      if (node->is_group()) {
+        if (ref.path.node_id == node->identifier && ref.path.id_in_node == id_in_node) {
+          group_node_name = path->node_name;
+          id_in_node = ref.id;
+          found = true;
+          break;
+        }
+      }
+      else if (ref.path.node_id == node->identifier) {
+        group_node_name = path->node_name;
+        id_in_node = ref.id;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return std::nullopt;
+    }
+  }
+  return id_in_node;
+}
+
+std::optional<ObjectAndModifier> get_modifier_for_node_editor(const SpaceNode &snode)
+{
+  if (snode.id == nullptr) {
+    return std::nullopt;
+  }
+  if (GS(snode.id->name) != ID_OB) {
+    return std::nullopt;
+  }
+  const Object *object = reinterpret_cast<Object *>(snode.id);
+  const NodesModifierData *used_modifier = nullptr;
+  if (snode.flag & SNODE_PIN) {
+    LISTBASE_FOREACH (const ModifierData *, md, &object->modifiers) {
+      if (md->type == eModifierType_Nodes) {
+        const NodesModifierData *nmd = reinterpret_cast<const NodesModifierData *>(md);
+        /* Would be good to store the name of the pinned modifier in the node editor. */
+        if (nmd->node_group == snode.nodetree) {
+          used_modifier = nmd;
+          break;
+        }
+      }
+    }
+  }
+  else {
+    LISTBASE_FOREACH (const ModifierData *, md, &object->modifiers) {
+      if (md->type == eModifierType_Nodes) {
+        const NodesModifierData *nmd = reinterpret_cast<const NodesModifierData *>(md);
+        if (nmd->node_group == snode.nodetree) {
+          if (md->flag & eModifierFlag_Active) {
+            used_modifier = nmd;
+            break;
+          }
+        }
+      }
+    }
+  }
+  if (used_modifier == nullptr) {
+    return std::nullopt;
+  }
+  return ObjectAndModifier{object, used_modifier};
+}
+
+bool push_compute_context_for_tree_path(const SpaceNode &snode,
+                                        ComputeContextBuilder &compute_context_builder)
+{
+  Vector<const bNodeTreePath *> tree_path;
+  LISTBASE_FOREACH (const bNodeTreePath *, item, &snode.treepath) {
+    tree_path.append(item);
+  }
+  if (tree_path.is_empty()) {
+    return true;
+  }
+
+  for (const int i : tree_path.index_range().drop_back(1)) {
+    bNodeTree *tree = tree_path[i]->nodetree;
+    const char *group_node_name = tree_path[i + 1]->node_name;
+    const bNode *group_node = nodeFindNodebyName(tree, group_node_name);
+    if (group_node == nullptr) {
+      return false;
+    }
+    const bke::bNodeTreeZones *tree_zones = tree->zones();
+    if (tree_zones == nullptr) {
+      return false;
+    }
+    const Vector<const bke::bNodeTreeZone *> zone_stack = tree_zones->get_zone_stack_for_node(
+        group_node->identifier);
+    for (const bke::bNodeTreeZone *zone : zone_stack) {
+      switch (zone->output_node->type) {
+        case GEO_NODE_SIMULATION_OUTPUT: {
+          compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone->output_node);
+          break;
+        }
+        case GEO_NODE_REPEAT_OUTPUT: {
+          const auto &storage = *static_cast<const NodeGeometryRepeatOutput *>(
+              zone->output_node->storage);
+          compute_context_builder.push<bke::RepeatZoneComputeContext>(*zone->output_node,
+                                                                      storage.inspection_index);
+          break;
+        }
+      }
+    }
+    compute_context_builder.push<bke::GroupNodeComputeContext>(*group_node, *tree);
+  }
+  return true;
+}
+
 /* ******************** default callbacks for node space ***************** */
 
 static SpaceLink *node_create(const ScrArea * /*area*/, const Scene * /*scene*/)
@@ -317,15 +452,8 @@ static SpaceLink *node_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 static void node_free(SpaceLink *sl)
 {
   SpaceNode *snode = (SpaceNode *)sl;
-
-  LISTBASE_FOREACH_MUTABLE (bNodeTreePath *, path, &snode->treepath) {
-    MEM_freeN(path);
-  }
-
-  if (snode->runtime) {
-    snode->runtime->linkdrag.reset();
-    MEM_delete(snode->runtime);
-  }
+  BLI_freelistN(&snode->treepath);
+  MEM_delete(snode->runtime);
 }
 
 /* spacetype; init callback */
@@ -434,9 +562,6 @@ static void node_area_listener(const wmSpaceTypeListenerParams *params)
         case ND_TRANSFORM_DONE:
           node_area_tag_recalc_auto_compositing(snode, area);
           break;
-        case ND_LAYER_CONTENT:
-          node_area_tag_tree_recalc(snode, area);
-          break;
       }
       break;
 
@@ -491,7 +616,9 @@ static void node_area_listener(const wmSpaceTypeListenerParams *params)
       break;
     case NC_NODE:
       if (wmn->action == NA_EDITED) {
-        node_area_tag_tree_recalc(snode, area);
+        if (ELEM(wmn->reference, snode->nodetree, snode->id, nullptr) || snode->id == nullptr) {
+          node_area_tag_tree_recalc(snode, area);
+        }
       }
       else if (wmn->action == NA_SELECTED) {
         ED_area_tag_redraw(area);
@@ -639,7 +766,7 @@ static void node_cursor(wmWindow *win, ScrArea *area, ARegion *region)
                            &snode->runtime->cursor[1]);
 
   /* here snode->runtime->cursor is used to detect the node edge for sizing */
-  node_set_cursor(*win, *snode, snode->runtime->cursor);
+  node_set_cursor(*win, *region, *snode, snode->runtime->cursor);
 
   /* XXX snode->runtime->cursor is in placing new nodes space */
   snode->runtime->cursor[0] /= UI_SCALE_FAC;
@@ -936,7 +1063,7 @@ static int /*eContextResult*/ node_context(const bContext *C,
   }
   if (CTX_data_equals(member, "selected_nodes")) {
     if (snode->edittree) {
-      LISTBASE_FOREACH_BACKWARD (bNode *, node, &snode->edittree->nodes) {
+      for (bNode *node : snode->edittree->all_nodes()) {
         if (node->flag & NODE_SELECT) {
           CTX_data_list_add(result, &snode->edittree->id, &RNA_Node, node);
         }
@@ -1028,6 +1155,11 @@ static void node_id_remap_cb(ID *old_id, ID *new_id, void *user_data)
     }
   }
   else if (GS(old_id->name) == ID_NT) {
+
+    if (&snode->geometry_nodes_tool_tree->id == old_id) {
+      snode->geometry_nodes_tool_tree = reinterpret_cast<bNodeTree *>(new_id);
+    }
+
     bNodeTreePath *path, *path_next;
 
     for (path = (bNodeTreePath *)snode->treepath.first; path; path = path->next) {
@@ -1117,6 +1249,8 @@ static void node_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
       BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, path->nodetree, IDWALK_CB_USER_ONE);
     }
   }
+
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, snode->geometry_nodes_tool_tree, IDWALK_CB_USER_ONE);
 
   /* Both `snode->id` and `snode->nodetree` have been remapped now, so their data can be
    * accessed. */
@@ -1311,6 +1445,7 @@ void ED_spacetype_node()
   BLI_addhead(&st->regiontypes, art);
 
   WM_menutype_add(MEM_new<MenuType>(__func__, add_catalog_assets_menu_type()));
+  WM_menutype_add(MEM_new<MenuType>(__func__, add_unassigned_assets_menu_type()));
   WM_menutype_add(MEM_new<MenuType>(__func__, add_root_catalogs_menu_type()));
 
   BKE_spacetype_register(st);

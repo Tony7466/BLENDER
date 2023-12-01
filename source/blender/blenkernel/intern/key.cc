@@ -16,7 +16,7 @@
 #include "BLI_endian_switch.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -34,13 +34,13 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_curve.h"
-#include "BKE_customdata.h"
+#include "BKE_curve.hh"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
@@ -193,7 +193,7 @@ IDTypeInfo IDType_ID_KE = {
     /*main_listbase_index*/ INDEX_ID_KE,
     /*struct_size*/ sizeof(Key),
     /*name*/ "Key",
-    /*name_plural*/ "shape_keys",
+    /*name_plural*/ N_("shape_keys"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_SHAPEKEY,
     /*flags*/ IDTYPE_FLAGS_NO_LIBLINKING,
     /*asset_type_info*/ nullptr,
@@ -461,7 +461,11 @@ static int setkeys(float fac, ListBase *lb, KeyBlock *k[], float t[4], int cycl)
   k1 = k[0] = k[1] = k[2] = k[3] = firstkey;
   t[0] = t[1] = t[2] = t[3] = k1->pos;
 
-  /* if (fac < 0.0 || fac > 1.0) return 1; */
+#if 0
+  if (fac < 0.0 || fac > 1.0) {
+    return 1;
+  }
+#endif
 
   if (k1->next == nullptr) {
     return 1;
@@ -479,7 +483,7 @@ static int setkeys(float fac, ListBase *lb, KeyBlock *k[], float t[4], int cycl)
       }
       k1 = k1->next;
     }
-    /* k1 = k[1]; */ /* UNUSED */
+    // k1 = k[1]; /* UNUSED */
     t[0] = k[0]->pos;
     t[1] += dpos;
     t[2] = k[2]->pos + dpos;
@@ -637,34 +641,35 @@ static char *key_block_get_data(Key *key, KeyBlock *actkb, KeyBlock *kb, char **
   return static_cast<char *>(kb->data);
 }
 
-/* currently only the first value of 'ofs' may be set. */
-static bool key_pointer_size(const Key *key, const int mode, int *poinsize, int *ofs, int *step)
+/* currently only the first value of 'r_ofs' may be set. */
+static bool key_pointer_size(
+    const Key *key, const int mode, int *r_poinsize, int *r_ofs, int *r_step)
 {
   if (key->from == nullptr) {
     return false;
   }
 
-  *step = 1;
+  *r_step = 1;
 
   switch (GS(key->from->name)) {
     case ID_ME:
-      *ofs = sizeof(float[KEYELEM_FLOAT_LEN_COORD]);
-      *poinsize = *ofs;
+      *r_ofs = sizeof(float[KEYELEM_FLOAT_LEN_COORD]);
+      *r_poinsize = *r_ofs;
       break;
     case ID_LT:
-      *ofs = sizeof(float[KEYELEM_FLOAT_LEN_COORD]);
-      *poinsize = *ofs;
+      *r_ofs = sizeof(float[KEYELEM_FLOAT_LEN_COORD]);
+      *r_poinsize = *r_ofs;
       break;
     case ID_CU_LEGACY:
       if (mode == KEY_MODE_BPOINT) {
-        *ofs = sizeof(float[KEYELEM_FLOAT_LEN_BPOINT]);
-        *step = KEYELEM_ELEM_LEN_BPOINT;
+        *r_ofs = sizeof(float[KEYELEM_FLOAT_LEN_BPOINT]);
+        *r_step = KEYELEM_ELEM_LEN_BPOINT;
       }
       else {
-        *ofs = sizeof(float[KEYELEM_FLOAT_LEN_BEZTRIPLE]);
-        *step = KEYELEM_ELEM_LEN_BEZTRIPLE;
+        *r_ofs = sizeof(float[KEYELEM_FLOAT_LEN_BEZTRIPLE]);
+        *r_step = KEYELEM_ELEM_LEN_BEZTRIPLE;
       }
-      *poinsize = sizeof(float[KEYELEM_ELEM_SIZE_CURVE]);
+      *r_poinsize = sizeof(float[KEYELEM_ELEM_SIZE_CURVE]);
       break;
     default:
       BLI_assert_msg(0, "invalid 'key->from' ID type");
@@ -1601,6 +1606,7 @@ float *BKE_key_evaluate_object_ex(
         const int totvert = min_ii(tot, mesh->totvert);
         mesh->vert_positions_for_write().take_front(totvert).copy_from(
             {reinterpret_cast<const blender::float3 *>(out), totvert});
+        BKE_mesh_tag_positions_changed(mesh);
         break;
       }
       case ID_LT: {
@@ -2261,6 +2267,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         positions,
         faces,
         corner_verts,
+        mesh->vert_to_face_map(),
         {reinterpret_cast<const blender::float3 *>(face_normals), faces.size()},
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
   }
@@ -2283,8 +2290,6 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         sharp_edges,
         sharp_faces,
         clnors,
-        (mesh->flag & ME_AUTOSMOOTH) != 0,
-        mesh->smoothresh,
         nullptr,
         {reinterpret_cast<blender::float3 *>(r_loop_normals), corner_verts.size()});
   }

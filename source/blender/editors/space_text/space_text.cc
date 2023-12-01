@@ -14,12 +14,12 @@
 
 #include "BLI_blenlib.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_screen.h"
+#include "BKE_lib_remap.hh"
+#include "BKE_screen.hh"
 
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
@@ -206,7 +206,7 @@ static void text_operatortypes()
   WM_operatortype_append(TEXT_OT_replace_set_selected);
 
   WM_operatortype_append(TEXT_OT_start_find);
-  WM_operatortype_append(TEXT_OT_jump_to_file_at_point_internal);
+  WM_operatortype_append(TEXT_OT_jump_to_file_at_point);
 
   WM_operatortype_append(TEXT_OT_to_3d_object);
 
@@ -376,19 +376,7 @@ static void text_properties_region_init(wmWindowManager *wm, ARegion *region)
 
 static void text_properties_region_draw(const bContext *C, ARegion *region)
 {
-  SpaceText *st = CTX_wm_space_text(C);
-
   ED_region_panels(C, region);
-
-  /* this flag trick is make sure buttons have been added already */
-  if (st->flags & ST_FIND_ACTIVATE) {
-    if (UI_textbutton_activate_rna(C, region, st, "find_text")) {
-      /* if the panel was already open we need to do another redraw */
-      ScrArea *area = CTX_wm_area(C);
-      WM_event_add_notifier(C, NC_SPACE | ND_SPACE_TEXT, area);
-    }
-    st->flags &= ~ST_FIND_ACTIVATE;
-  }
 }
 
 static void text_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)

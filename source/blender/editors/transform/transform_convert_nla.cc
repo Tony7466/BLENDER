@@ -18,7 +18,7 @@
 #include "BLI_math_vector.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_nla.h"
 
 #include "ED_anim_api.hh"
@@ -333,10 +333,12 @@ static void nlastrip_overlap_reorder(TransDataNla *tdn, NlaStrip *strip)
   }
 }
 
-/** Flag overlaps with adjacent strips.
+/**
+ * Flag overlaps with adjacent strips.
  *
  * Since the strips are re-ordered as they're transformed, we only have to check adjacent
- * strips for overlap instead of all of them. */
+ * strips for overlap instead of all of them.
+ */
 static void nlastrip_flag_overlaps(NlaStrip *strip)
 {
 
@@ -559,7 +561,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
         tdn->trackIndex = BLI_findindex(&adt->nla_tracks, nlt);
         tdn->signed_track_index = tdn->trackIndex;
 
-        yval = float(tdn->trackIndex * NLACHANNEL_STEP(snla));
+        yval = float(tdn->trackIndex * NLATRACK_STEP(snla));
 
         tdn->h1[0] = strip->start;
         tdn->h1[1] = yval;
@@ -621,49 +623,17 @@ static void createTransNlaData(bContext *C, TransInfo *t)
         if (tdn->handle == 2) {
           tdn += 2;
         }
-        else {
+        else if (tdn->handle) {
           tdn++;
         }
       }
     }
   }
 
+  BLI_assert(tdn <= (((TransDataNla *)tc->custom.type.data) + tc->data_len));
+
   /* cleanup temp list */
   ANIM_animdata_freelist(&anim_data);
-}
-
-static void invert_snap(eSnapMode &snap_mode)
-{
-  if (snap_mode & SCE_SNAP_TO_FRAME) {
-    snap_mode &= ~SCE_SNAP_TO_FRAME;
-    snap_mode |= SCE_SNAP_TO_SECOND;
-  }
-  else if (snap_mode & SCE_SNAP_TO_SECOND) {
-    snap_mode &= ~SCE_SNAP_TO_SECOND;
-    snap_mode |= SCE_SNAP_TO_FRAME;
-  }
-}
-
-static void snap_transform_data(TransInfo *t, TransDataContainer *tc)
-{
-  /* handle auto-snapping
-   * NOTE: only do this when transform is still running, or we can't restore
-   */
-  if (t->state == TRANS_CANCEL) {
-    return;
-  }
-  if ((t->tsnap.flag & SCE_SNAP) == 0) {
-    return;
-  }
-
-  eSnapMode snap_mode = t->tsnap.mode;
-  if (t->modifiers & MOD_SNAP_INVERT) {
-    invert_snap(snap_mode);
-  }
-  TransData *td = tc->data;
-  for (int i = 0; i < tc->data_len; i++, td++) {
-    transform_snap_anim_flush_data(t, td, snap_mode, td->loc);
-  }
 }
 
 static void recalcData_nla(TransInfo *t)
@@ -671,8 +641,6 @@ static void recalcData_nla(TransInfo *t)
   SpaceNla *snla = (SpaceNla *)t->area->spacedata.first;
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-
-  snap_transform_data(t, tc);
 
   /* For each strip we've got, perform some additional validation of the values
    * that got set before using RNA to set the value (which does some special
@@ -760,11 +728,14 @@ static void recalcData_nla(TransInfo *t)
       continue;
     }
 
-    delta_y1 = (int(tdn->h1[1]) / NLACHANNEL_STEP(snla) - tdn->signed_track_index);
-    delta_y2 = (int(tdn->h2[1]) / NLACHANNEL_STEP(snla) - tdn->signed_track_index);
+    delta_y1 = (int(tdn->h1[1]) / NLATRACK_STEP(snla) - tdn->signed_track_index);
+    delta_y2 = (int(tdn->h2[1]) / NLATRACK_STEP(snla) - tdn->signed_track_index);
 
     /* Move strip into track in the requested direction. */
-    if (delta_y1 || delta_y2) {
+    /* If we cannot find the strip in the track, this strip has moved tracks already (if multiple
+     * strips using the same action from equal IDs such as meshes or shape-keys are selected)
+     * so can be skipped. */
+    if ((delta_y1 || delta_y2) && BLI_findindex(&tdn->nlt->strips, strip) != -1) {
       int delta = (delta_y2) ? delta_y2 : delta_y1;
 
       AnimData *anim_data = BKE_animdata_from_id(tdn->id);
@@ -990,7 +961,7 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
   ListBase anim_data = {nullptr, nullptr};
   short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_FCURVESONLY);
 
-  /* get channels to work on */
+  /* get tracks to work on */
   ANIM_animdata_filter(
       &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 

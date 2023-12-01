@@ -9,7 +9,7 @@
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 
 #include "DNA_collection_types.h"
@@ -22,8 +22,8 @@
 #include "BLI_memory_utils.hh"
 #include "BLI_string.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "ply_data.hh"
 #include "ply_import.hh"

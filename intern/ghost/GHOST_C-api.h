@@ -130,25 +130,26 @@ extern uint8_t GHOST_GetNumDisplays(GHOST_SystemHandle systemhandle);
 /**
  * Returns the dimensions of the main display on this system.
  * \param systemhandle: The handle to the system.
- * \param width: A pointer the width gets put in.
- * \param height: A pointer the height gets put in.
+ * \param r_width: A pointer the width gets put in.
+ * \param r_height: A pointer the height gets put in.
+ * \return success.
  */
-extern void GHOST_GetMainDisplayDimensions(GHOST_SystemHandle systemhandle,
-                                           uint32_t *width,
-                                           uint32_t *height);
+extern GHOST_TSuccess GHOST_GetMainDisplayDimensions(GHOST_SystemHandle systemhandle,
+                                                     uint32_t *r_width,
+                                                     uint32_t *r_height);
 
 /**
  * Returns the dimensions of all displays combine
  * (the current workspace).
  * No need to worry about overlapping monitors.
  * \param systemhandle: The handle to the system.
- * \param width: A pointer the width gets put in.
- * \param height: A pointer the height gets put in.
+ * \param r_width: A pointer the width gets put in.
+ * \param r_height: A pointer the height gets put in.
+ * \return success.
  */
-extern void GHOST_GetAllDisplayDimensions(GHOST_SystemHandle systemhandle,
-                                          uint32_t *width,
-                                          uint32_t *height);
-
+extern GHOST_TSuccess GHOST_GetAllDisplayDimensions(GHOST_SystemHandle systemhandle,
+                                                    uint32_t *r_width,
+                                                    uint32_t *r_height);
 /**
  * Create a new window.
  * The new window is added to the list of windows managed.
@@ -588,6 +589,13 @@ extern void GHOST_SetTitle(GHOST_WindowHandle windowhandle, const char *title);
 extern char *GHOST_GetTitle(GHOST_WindowHandle windowhandle);
 
 /**
+ * Sets the file name represented by this window.
+ * \param filepath: The file directory.
+ * \return Indication if the backend implements file associated with window.
+ */
+extern GHOST_TSuccess GHOST_SetPath(GHOST_WindowHandle windowhandle, const char *filepath);
+
+/**
  * Returns the window rectangle dimensions.
  * These are screen coordinates.
  * \param windowhandle: The handle to the window.
@@ -709,11 +717,11 @@ extern GHOST_TSuccess GHOST_SetSwapInterval(GHOST_WindowHandle windowhandle, int
 /**
  * Gets the current swap interval for #swapBuffers.
  * \param windowhandle: The handle to the window
- * \param intervalOut: pointer to location to return swap interval
+ * \param r_interval: pointer to location to return swap interval
  * (left untouched if there is an error)
  * \return A boolean success indicator of if swap interval was successfully read.
  */
-extern GHOST_TSuccess GHOST_GetSwapInterval(GHOST_WindowHandle windowhandle, int *intervalOut);
+extern GHOST_TSuccess GHOST_GetSwapInterval(GHOST_WindowHandle windowhandle, int *r_interval);
 
 /**
  * Activates the drawing context of this window.
