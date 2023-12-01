@@ -1558,7 +1558,7 @@ static void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
       default: {
         attribute.finish();
         BLI_assert_unreachable();
-        return;
+        return true;
         break;
       };
     }
