@@ -3295,7 +3295,7 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
 
   /* cursor */
   float y = rect->ymin + v * BLI_rcti_size_y(rect);
-  CLAMP(y, rect->ymin + (2.0f * UI_SCALE_FAC), rect->ymax - (2.0f * UI_SCALE_FAC));
+  CLAMP(y, float(rect->ymin) + (2.0f * UI_SCALE_FAC), float(rect->ymax) - (2.0f * UI_SCALE_FAC));
   rectf.ymin = y - (4.0f * UI_SCALE_FAC) - U.pixelsize;
   rectf.ymax = y + (4.0f * UI_SCALE_FAC) + U.pixelsize;
   float col[4] = {0.0f, 0.0f, 0.0f, 1.0f};
