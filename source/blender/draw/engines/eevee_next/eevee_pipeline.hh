@@ -208,7 +208,14 @@ class DeferredLayer : DeferredLayerBase {
   PassSimple eval_light_ps_ = {"EvalLights"};
   /* Combine direct and indirect light contributions and apply BSDF color. */
   PassSimple combine_ps_ = {"Combine"};
+  /* Fill tile mask texture with the collected closure present in a tile. */
+  PassSimple tile_classify_ps_ = {"TileClassify"};
 
+  /**
+   * Tile texture containing a eClosureBits per tile. It is read by the light evaluation to
+   * dispatch specialized shader for each tile.
+   */
+  TextureFromPool tile_mask_tx_ = {"tile_mask_tx_"};
   /**
    * Accumulation textures for all stages of lighting evaluation (Light, SSR, SSSS, SSGI ...).
    * These are split and separate from the main radiance buffer in order to accumulate light for

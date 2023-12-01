@@ -484,12 +484,27 @@ void DeferredLayer::end_sync()
   eClosureBits evaluated_closures = CLOSURE_DIFFUSE | CLOSURE_REFLECTION | CLOSURE_REFRACTION;
   if (closure_bits_ & evaluated_closures) {
     {
+      PassSimple &pass = tile_classify_ps_;
+      pass.init();
+      /* Use depth test to reject background pixels. */
+      /* WORKAROUND: Avoid rasterizer discard, but the shaders actually use no fragment output. */
+      pass.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_DEPTH_GREATER);
+      pass.shader_set(inst_.shaders.static_shader_get(DEFERRED_TILE_CLASSIFY));
+      pass.bind_image("tile_mask_img", &tile_mask_tx_);
+      pass.bind_ssbo("light_draw_buf", &light_draw_buf_);
+      inst_.bind_uniform_data(&pass);
+      inst_.gbuffer.bind_resources(pass);
+      pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+      pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_SHADER_STORAGE);
+    }
+    {
       PassSimple &pass = eval_light_ps_;
       pass.init();
       /* Use depth test to reject background pixels. */
       /* WORKAROUND: Avoid rasterizer discard, but the shaders actually use no fragment output. */
       pass.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_DEPTH_GREATER);
       pass.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHT));
+      pass.bind_image("tile_mask_img", &tile_mask_tx_);
       pass.bind_image("direct_diffuse_img", &direct_diffuse_tx_);
       pass.bind_image("direct_reflect_img", &direct_reflect_tx_);
       pass.bind_image("direct_refract_img", &direct_refract_tx_);
@@ -503,7 +518,7 @@ void DeferredLayer::end_sync()
       inst_.sampling.bind_resources(pass);
       inst_.hiz_buffer.bind_resources(pass);
       pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
-      pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+      pass.draw_procedural_indirect(GPU_PRIM_TRIS, light_draw_buf);
     }
     {
       PassSimple &pass = combine_ps_;
