@@ -185,7 +185,11 @@ void LookdevModule::sync()
   const eGPUTextureFormat color_format = GPU_RGBA16F;
 
   depth_tx_.ensure_2d(depth_format, extent);
-  color_tx_.ensure_2d_array(color_format, extent, 2);
+  if (color_tx_.ensure_2d_array(color_format, extent, 2)) {
+    if (inst_.sampling.finished_viewport()) {
+      inst_.sampling.reset();
+    }
+  }
   color_tx_dirty_ = true;
 
   float4 position = inst_.camera.data_get().viewinv *
