@@ -465,15 +465,17 @@ class ImageOperation : public NodeOperation {
       return;
     }
 
+    const ResultPrecision precision = Result::precision(GPU_texture_format(image_texture));
+
     /* Alpha is mot an actual pass, but one that is extracted from the combined pass. So we need to
      * extract it using a shader. */
     if (identifier != "Alpha") {
+      result.set_precision(precision);
       result.wrap_external(image_texture);
       return;
     }
 
-    GPUShader *shader = context().get_shader("compositor_convert_color_to_alpha",
-                                             Result::precision(GPU_texture_format(image_texture)));
+    GPUShader *shader = context().get_shader("compositor_convert_color_to_alpha", precision);
     GPU_shader_bind(shader);
 
     const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
