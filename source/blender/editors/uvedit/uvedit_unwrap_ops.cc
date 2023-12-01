@@ -2789,25 +2789,6 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool unwrap_draw_check_prop_slim(PointerRNA * /*ptr*/,
-                                        PropertyRNA *prop,
-                                        void * /*user_data*/)
-{
-  const char *prop_id = RNA_property_identifier(prop);
-
-  return !(STREQ(prop_id, "fill_holes"));
-}
-
-static bool unwrap_draw_check_prop_abf(PointerRNA * /*ptr*/,
-                                       PropertyRNA *prop,
-                                       void * /*user_data*/)
-{
-  const char *prop_id = RNA_property_identifier(prop);
-
-  return !(STREQ(prop_id, "reflection_mode") || STREQ(prop_id, "iterations") ||
-           STREQ(prop_id, "vertex_group") || STREQ(prop_id, "vertex_group_factor"));
-}
-
 static void unwrap_draw(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
@@ -2818,14 +2799,32 @@ static void unwrap_draw(bContext * /*C*/, wmOperator *op)
   /* Main draw call */
   PointerRNA ptr = RNA_pointer_create(NULL, op->type->srna, op->properties);
 
-  if (RNA_enum_get(op->ptr, "method") == 2) {
-    uiDefAutoButsRNA(
-        layout, &ptr, unwrap_draw_check_prop_slim, NULL, NULL, UI_BUT_LABEL_ALIGN_NONE, false);
+  uiLayout *col;
+
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "method", UI_ITEM_NONE, nullptr, ICON_NONE);
+  bool is_slim = RNA_enum_get(op->ptr, "method") == 2;
+
+  if (is_slim) {
+    uiItemR(col, &ptr, "iterations", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, &ptr, "reflection_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+    col = uiLayoutColumn(layout, true);
+    uiItemR(col, &ptr, "vertex_group", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, &ptr, "vertex_group_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else {
-    uiDefAutoButsRNA(
-        layout, &ptr, unwrap_draw_check_prop_abf, NULL, NULL, UI_BUT_LABEL_ALIGN_NONE, false);
+    col = uiLayoutColumn(layout, true);
+    uiItemR(col, &ptr, "fill_holes", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
+
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "use_subsurf_data", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "correct_aspect", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, &ptr, "margin_method", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, &ptr, "margin", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 void UV_OT_unwrap(wmOperatorType *ot)
