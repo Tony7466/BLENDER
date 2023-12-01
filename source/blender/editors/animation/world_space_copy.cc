@@ -3,6 +3,7 @@
 #include "BKE_context.hh"
 #include "BKE_layer.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -12,6 +13,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
+#include "ED_keyframing.hh"
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "WM_types.hh"
@@ -205,9 +207,15 @@ void ANIM_OT_world_space_copy(wmOperatorType *ot)
       ot->srna, "range", 2, nullptr, -INT_MAX, INT_MAX, "Frame Range", "", 0, INT_MAX);
 }
 
-static void paste_to_object(Foo *foo, Object *ob, Depsgraph *depsgraph)
+static void paste_to_object(Foo *foo, Object *ob, Depsgraph *depsgraph, Main *bmain)
 {
   ID *id = &ob->id;
+  PointerRNA ptr = RNA_id_pointer_create(id);
+  bAction *action = ED_id_action_ensure(bmain, id);
+  if (action == nullptr) {
+    return;
+  }
+
   DEG_graph_build_from_ids(depsgraph, &id, 1);
   CopyBuffer buffer = foo->buffer[0];
   for (int frame_index = 0; frame_index < foo->frame_count; frame_index++) {
@@ -216,11 +224,59 @@ static void paste_to_object(Foo *foo, Object *ob, Depsgraph *depsgraph)
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
     float matrix_world[4][4];
     compose_matrix(&buffer.matrices[frame_index * 16], matrix_world);
-    float matrix_local_to_world[4][4];
+    float matrix_local[4][4];
+    // invert_m4_m4(matrix_local_to_world, matrix_world);
+    float matrix_w_inv[4][4];
+    invert_m4_m4(matrix_w_inv, matrix_world);
+    mul_m4_m4m4(matrix_local, matrix_world, ob_eval->object_to_world);
+    blender::Array<float> location = {0, 0, 0};
+    float rot[3][3];
+    blender::Array<float> scale = {1, 1, 1};
+    mat4_to_loc_rot_size(location.data(), rot, scale.data(), matrix_local);
 
+    std::string rotation_path;
+    blender::Array<float> rotation;
+
+    if (ob->rotmode == ROT_MODE_QUAT) {
+      rotation_path = "rotation_quaternion";
+      rotation.reinitialize(4);
+      mat3_normalized_to_quat_fast(rotation.data(), rot);
+    }
+    else if (ob->rotmode == ROT_MODE_AXISANGLE) {
+      rotation_path = "rotation_axis_angle";
+      rotation.reinitialize(4);
+      mat3_normalized_to_axis_angle(rotation.data(), &rotation[3], rot);
+    }
+    else {
+      rotation_path = "rotation_euler";
+      rotation.reinitialize(3);
+      mat3_normalized_to_eulO(rotation.data(), ob->rotmode, rot);
+    }
     /* TODO: this can be faster by building a BezTriple array and merging it with existing keys. */
-    /* blender::animrig::insert_key_rna(); */
-    /* mat4_decompose */
+    blender::animrig::insert_key_action(bmain,
+                                        action,
+                                        &ptr,
+                                        "location",
+                                        frame,
+                                        location.as_span(),
+                                        INSERTKEY_NOFLAGS,
+                                        BEZT_KEYTYPE_KEYFRAME);
+    blender::animrig::insert_key_action(bmain,
+                                        action,
+                                        &ptr,
+                                        rotation_path,
+                                        frame,
+                                        rotation.as_span(),
+                                        INSERTKEY_NOFLAGS,
+                                        BEZT_KEYTYPE_KEYFRAME);
+    blender::animrig::insert_key_action(bmain,
+                                        action,
+                                        &ptr,
+                                        "scale",
+                                        frame,
+                                        scale.as_span(),
+                                        INSERTKEY_NOFLAGS,
+                                        BEZT_KEYTYPE_KEYFRAME);
   }
 }
 
@@ -242,7 +298,7 @@ static int world_space_paste_exec(bContext *C, wmOperator *op)
       DEG_graph_free(depsgraph);
       return OPERATOR_CANCELLED;
     }
-    paste_to_object(&foo, ob, depsgraph);
+    paste_to_object(&foo, ob, depsgraph, CTX_data_main(C));
   }
 
   free_foo(&foo);
