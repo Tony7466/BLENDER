@@ -671,6 +671,10 @@ static void sequencer_main_region_message_subscribe(const wmRegionMessageSubscri
 
 static void sequencer_cursor(wmWindow *win, ScrArea * /* area */, ARegion *region)
 {
+  if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
+    return;
+  }
+
   Scene *scene = win->scene;
   Editing *ed = SEQ_editing_get(scene);
   int wmcursor = WM_CURSOR_DEFAULT;

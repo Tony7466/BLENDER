@@ -935,6 +935,10 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
     return false;
   }
 
+  if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
+    return true;
+  }
+
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
     if (SEQ_transform_is_locked(ed->displayed_channels, seq)) {
       break;
