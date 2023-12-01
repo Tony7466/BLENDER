@@ -80,6 +80,9 @@
 #include "bmesh.h"
 #include "sculpt_intern.hh"
 
+using blender::Span;
+using blender::Vector;
+
 /* Uncomment to print the undo stack in the console on push/undo/redo. */
 //#define SCULPT_UNDO_DEBUG
 
@@ -470,9 +473,9 @@ static bool sculpt_undo_restore_coords(bContext *C, Depsgraph *depsgraph, Sculpt
     CCGKey key;
     int gridsize;
 
-    grids = subdiv_ccg->grids;
+    grids = subdiv_ccg->grids.data();
     gridsize = subdiv_ccg->grid_size;
-    BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
+    BKE_subdiv_ccg_key_top_level(key, *subdiv_ccg);
 
     blender::MutableSpan<blender::float3> co = unode->co;
     int index = 0;
@@ -511,7 +514,7 @@ static bool sculpt_undo_restore_hidden(bContext *C, SculptUndoNode *unode, bool 
     }
   }
   else if (unode->maxgrid && subdiv_ccg != nullptr) {
-    BLI_bitmap **grid_hidden = subdiv_ccg->grid_hidden;
+    blender::MutableSpan<BLI_bitmap *> grid_hidden = subdiv_ccg->grid_hidden;
 
     for (int i = 0; i < unode->totgrid; i++) {
       SWAP(BLI_bitmap *, unode->grid_hidden[i], grid_hidden[unode->grids[i]]);
@@ -588,9 +591,9 @@ static bool sculpt_undo_restore_mask(bContext *C, SculptUndoNode *unode, bool *m
     CCGKey key;
     int gridsize;
 
-    grids = subdiv_ccg->grids;
+    grids = subdiv_ccg->grids.data();
     gridsize = subdiv_ccg->grid_size;
-    BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
+    BKE_subdiv_ccg_key_top_level(key, *subdiv_ccg);
 
     blender::MutableSpan<float> mask = unode->mask;
     int index = 0;
@@ -842,13 +845,12 @@ static void sculpt_undo_refine_subdiv(Depsgraph *depsgraph,
                                       Object *object,
                                       Subdiv *subdiv)
 {
-  float(*deformed_verts)[3] = BKE_multires_create_deformed_base_mesh_vert_coords(
-      depsgraph, object, ss->multires.modifier, nullptr);
+  blender::Array<blender::float3> deformed_verts =
+      BKE_multires_create_deformed_base_mesh_vert_coords(depsgraph, object, ss->multires.modifier);
 
-  BKE_subdiv_eval_refine_from_mesh(
-      subdiv, static_cast<const Mesh *>(object->data), deformed_verts);
-
-  MEM_freeN(deformed_verts);
+  BKE_subdiv_eval_refine_from_mesh(subdiv,
+                                   static_cast<const Mesh *>(object->data),
+                                   reinterpret_cast<float(*)[3]>(deformed_verts.data()));
 }
 
 static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase *lb)
@@ -928,8 +930,8 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
       }
     }
     else if (unode->maxgrid && subdiv_ccg != nullptr) {
-      if ((subdiv_ccg->num_grids != unode->maxgrid) || (subdiv_ccg->grid_size != unode->gridsize))
-      {
+      if ((subdiv_ccg->grids.size() != unode->maxgrid) ||
+          (subdiv_ccg->grid_size != unode->gridsize)) {
         continue;
       }
 
@@ -1075,9 +1077,6 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
     if (tag_update) {
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     }
-    else {
-      SCULPT_update_object_bounding_box(ob);
-    }
   }
 
   MEM_SAFE_FREE(modified_hidden_verts);
@@ -1167,10 +1166,11 @@ SculptUndoNode *SCULPT_undo_get_first_node()
   return static_cast<SculptUndoNode *>(usculpt->nodes.first);
 }
 
-static size_t sculpt_undo_alloc_and_store_hidden(PBVH *pbvh, SculptUndoNode *unode)
+static size_t sculpt_undo_alloc_and_store_hidden(SculptSession *ss, SculptUndoNode *unode)
 {
+  PBVH *pbvh = ss->pbvh;
   PBVHNode *node = static_cast<PBVHNode *>(unode->node);
-  BLI_bitmap **grid_hidden = BKE_pbvh_grid_hidden(pbvh);
+  const blender::Span<const BLI_bitmap *> grid_hidden = ss->subdiv_ccg->grid_hidden;
 
   const int *grid_indices;
   int totgrid;
@@ -1278,7 +1278,7 @@ static SculptUndoNode *sculpt_undo_alloc_node(Object *ob, PBVHNode *node, Sculpt
     }
     case SCULPT_UNDO_HIDDEN: {
       if (maxgrid) {
-        usculpt->undo_size += sculpt_undo_alloc_and_store_hidden(ss->pbvh, unode);
+        usculpt->undo_size += sculpt_undo_alloc_and_store_hidden(ss, unode);
       }
       else {
         unode->vert_hidden.resize(allvert);

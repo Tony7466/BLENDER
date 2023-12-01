@@ -41,7 +41,7 @@
 #include "BKE_icons.h"
 #include "BKE_image.h"
 #include "BKE_keyconfig.h"
-#include "BKE_lib_remap.h"
+#include "BKE_lib_remap.hh"
 #include "BKE_main.h"
 #include "BKE_mball_tessellate.h"
 #include "BKE_node.hh"
@@ -50,7 +50,7 @@
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
-#include "BKE_vfont.h"
+#include "BKE_vfont.hh"
 
 #include "BKE_addon.h"
 #include "BKE_appdir.h"
