@@ -417,6 +417,10 @@ void DeferredLayer::begin_sync()
       /* Textures. */
       prepass_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
 
+      inst_.pipelines.data.alpha_hash_scale = 0.1f;
+      if (inst_.is_viewport() && inst_.velocity.camera_has_motion()) {
+        inst_.pipelines.data.alpha_hash_scale = 1.0f;
+      }
       inst_.bind_uniform_data(&prepass_ps_);
       inst_.velocity.bind_resources(prepass_ps_);
       inst_.sampling.bind_resources(prepass_ps_);
@@ -879,11 +883,13 @@ GridAABB VolumePipeline::grid_aabb_from_object(Object *ob)
     return int3(grid_coords * float3(data.tex_size) + 0.5);
   };
 
-  const BoundBox bbox = *BKE_object_boundbox_get(ob);
+  const Bounds<float3> bounds = *BKE_object_boundbox_get(ob);
   int3 min = int3(INT32_MAX);
   int3 max = int3(INT32_MIN);
 
-  for (float3 l_corner : bbox.vec) {
+  BoundBox bb;
+  BKE_boundbox_init_from_minmax(&bb, bounds.min, bounds.max);
+  for (float3 l_corner : bb.vec) {
     float3 w_corner = math::transform_point(float4x4(ob->object_to_world), l_corner);
     /* Note that this returns the nearest cell corner coordinate.
      * So sub-froxel AABB will effectively return the same coordinate

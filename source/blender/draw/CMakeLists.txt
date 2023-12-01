@@ -10,13 +10,10 @@ set(INC
   ../blenloader
   ../blentranslation
   ../bmesh
-  ../depsgraph
   ../editors/include
   ../editors/space_view3d
-  ../functions
   ../gpu
   ../gpu/intern
-  ../imbuf
   ../makesrna
   ../nodes
   ../render
@@ -253,7 +250,7 @@ set(SRC
   intern/draw_manager_testing.h
   intern/draw_manager_text.h
   intern/draw_pass.hh
-  intern/draw_pbvh.h
+  intern/draw_pbvh.hh
   intern/draw_resource.hh
   intern/draw_sculpt.hh
   intern/draw_shader.h
@@ -351,7 +348,10 @@ set(LIB
   PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::functions
+  PRIVATE bf::imbuf
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
