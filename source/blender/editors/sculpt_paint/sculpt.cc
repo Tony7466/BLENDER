@@ -171,7 +171,7 @@ const float *SCULPT_vertex_co_get(const SculptSession *ss, PBVHVertRef vertex)
       const CCGKey *key = BKE_pbvh_get_grid_key(ss->pbvh);
       const int grid_index = vertex.i / key->grid_area;
       const int vertex_index = vertex.i - grid_index * key->grid_area;
-      CCGElem *elem = BKE_pbvh_get_grids(ss->pbvh)[grid_index];
+      CCGElem *elem = ss->subdiv_ccg->grids[grid_index];
       return CCG_elem_co(key, CCG_elem_offset(key, elem, vertex_index));
     }
   }
@@ -228,7 +228,7 @@ void SCULPT_vertex_normal_get(const SculptSession *ss, PBVHVertRef vertex, float
       const CCGKey *key = BKE_pbvh_get_grid_key(ss->pbvh);
       const int grid_index = vertex.i / key->grid_area;
       const int vertex_index = vertex.i - grid_index * key->grid_area;
-      CCGElem *elem = BKE_pbvh_get_grids(ss->pbvh)[grid_index];
+      CCGElem *elem = ss->subdiv_ccg->grids[grid_index];
       copy_v3_v3(no, CCG_elem_no(key, CCG_elem_offset(key, elem, vertex_index)));
       break;
     }
@@ -317,7 +317,7 @@ float SCULPT_vertex_mask_get(SculptSession *ss, PBVHVertRef vertex)
 
       const int grid_index = vertex.i / key->grid_area;
       const int vertex_index = vertex.i - grid_index * key->grid_area;
-      CCGElem *elem = BKE_pbvh_get_grids(ss->pbvh)[grid_index];
+      CCGElem *elem = ss->subdiv_ccg->grids[grid_index];
       return *CCG_elem_mask(key, CCG_elem_offset(key, elem, vertex_index));
     }
   }
@@ -406,7 +406,9 @@ bool SCULPT_vertex_visible_get(const SculptSession *ss, PBVHVertRef vertex)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES: {
-      const bool *hide_vert = BKE_pbvh_get_vert_hide(ss->pbvh);
+      const Mesh *mesh = BKE_pbvh_get_mesh(ss->pbvh);
+      const bool *hide_vert = static_cast<const bool *>(
+          CustomData_get_layer_named(&mesh->vert_data, CD_PROP_BOOL, ".hide_vert"));
       return hide_vert == nullptr || !hide_vert[vertex.i];
     }
     case PBVH_BMESH:
@@ -415,7 +417,7 @@ bool SCULPT_vertex_visible_get(const SculptSession *ss, PBVHVertRef vertex)
       const CCGKey *key = BKE_pbvh_get_grid_key(ss->pbvh);
       const int grid_index = vertex.i / key->grid_area;
       const int vertex_index = vertex.i - grid_index * key->grid_area;
-      const blender::Span<const BLI_bitmap *> grid_hidden = BKE_pbvh_get_grid_visibility(ss->pbvh);
+      const blender::Span<const BLI_bitmap *> grid_hidden = ss->subdiv_ccg->grid_hidden;
       if (grid_hidden[grid_index]) {
         return !BLI_BITMAP_TEST(grid_hidden[grid_index], vertex_index);
       }
@@ -659,7 +661,6 @@ void SCULPT_visibility_sync_all_from_faces(Object *ob)
       /* We may have adjusted the ".hide_poly" attribute, now make the hide status attributes for
        * vertices and edges consistent. */
       BKE_mesh_flush_hidden_from_faces(mesh);
-      BKE_pbvh_update_hide_attributes_from_mesh(ss->pbvh);
       break;
     }
     case PBVH_GRIDS: {
@@ -3103,6 +3104,8 @@ struct SculptRaycastData {
   bool hit;
   float depth;
   bool original;
+  Span<int> corner_verts;
+  const bool *hide_poly;
 
   PBVHVertRef active_vertex;
   float *face_normal;
@@ -3119,6 +3122,8 @@ struct SculptFindNearestToRayData {
   float depth;
   float dist_sq_to_ray;
   bool original;
+  Span<int> corner_verts;
+  const bool *hide_poly;
 };
 
 ePaintSymmetryAreas SCULPT_get_vertex_symm_area(const float co[3])
@@ -4978,6 +4983,8 @@ static void sculpt_raycast_cb(PBVHNode *node, void *data_v, float *tmin)
                             node,
                             origco,
                             use_origco,
+                            srd->corner_verts,
+                            srd->hide_poly,
                             srd->ray_start,
                             srd->ray_normal,
                             &srd->isect_precalc,
@@ -5016,6 +5023,8 @@ static void sculpt_find_nearest_to_ray_cb(PBVHNode *node, void *data_v, float *t
                                         node,
                                         origco,
                                         use_origco,
+                                        srd->corner_verts,
+                                        srd->hide_poly,
                                         srd->ray_start,
                                         srd->ray_normal,
                                         &srd->depth,
@@ -5104,6 +5113,12 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
   srd.original = original;
   srd.ss = ob->sculpt;
   srd.hit = false;
+  if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
+    const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
+    srd.corner_verts = mesh.corner_verts();
+    srd.hide_poly = static_cast<const bool *>(
+        CustomData_get_layer_named(&mesh.face_data, CD_PROP_BOOL, ".hide_poly"));
+  }
   srd.ray_start = ray_start;
   srd.ray_normal = ray_normal;
   srd.depth = depth;
@@ -5244,6 +5259,12 @@ bool SCULPT_stroke_get_location_ex(bContext *C,
     srd.ray_start = ray_start;
     srd.ray_normal = ray_normal;
     srd.hit = false;
+    if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
+      const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
+      srd.corner_verts = mesh.corner_verts();
+      srd.hide_poly = static_cast<const bool *>(
+          CustomData_get_layer_named(&mesh.face_data, CD_PROP_BOOL, ".hide_poly"));
+    }
     srd.depth = depth;
     srd.original = original;
     srd.face_normal = face_normal;
@@ -5266,6 +5287,12 @@ bool SCULPT_stroke_get_location_ex(bContext *C,
   srd.original = original;
   srd.ss = ob->sculpt;
   srd.hit = false;
+  if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
+    const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
+    srd.corner_verts = mesh.corner_verts();
+    srd.hide_poly = static_cast<const bool *>(
+        CustomData_get_layer_named(&mesh.face_data, CD_PROP_BOOL, ".hide_poly"));
+  }
   srd.ray_start = ray_start;
   srd.ray_normal = ray_normal;
   srd.depth = FLT_MAX;
