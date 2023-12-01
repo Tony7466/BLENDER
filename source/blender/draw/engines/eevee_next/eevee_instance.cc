@@ -41,6 +41,7 @@ namespace blender::eevee {
 
 void Instance::init(const int2 &output_res,
                     const rcti *output_rect,
+                    const rcti *visible_rect,
                     RenderEngine *render_,
                     Depsgraph *depsgraph_,
                     Object *camera_object_,
@@ -81,7 +82,7 @@ void Instance::init(const int2 &output_res,
   reflection_probes.init();
   irradiance_cache.init();
   volume.init();
-  lookdev.init();
+  lookdev.init(visible_rect);
 }
 
 void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
@@ -115,7 +116,7 @@ void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
   reflection_probes.init();
   irradiance_cache.init();
   volume.init();
-  lookdev.init();
+  lookdev.init(&empty_rect);
 }
 
 void Instance::set_time(float time)

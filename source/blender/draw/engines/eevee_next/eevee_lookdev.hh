@@ -94,6 +94,8 @@ class LookdevModule {
  private:
   Instance &inst_;
 
+  rcti visible_rect_;
+
   /* Dummy textures: required to reuse forward mesh shader and avoid another shader variation. */
   Texture dummy_cryptomatte_tx_;
   Texture dummy_aov_color_tx_;
@@ -122,7 +124,7 @@ class LookdevModule {
   LookdevModule(Instance &inst);
   ~LookdevModule();
 
-  void init();
+  void init(const rcti *visible_rect);
   void sync();
 
   void draw_metallic(View &view);
@@ -135,8 +137,6 @@ class LookdevModule {
   void sync_display();
 
   float calc_viewport_scale();
-  int calc_sphere_size(float viewport_scale);
-  eDRWLevelOfDetail calc_level_of_detail(float viewport_scale);
 
   friend class LookdevView;
 };

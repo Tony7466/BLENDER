@@ -150,6 +150,7 @@ class Instance {
   /* TODO(fclem): Split for clarity. */
   void init(const int2 &output_res,
             const rcti *output_rect,
+            const rcti *visible_rect,
             RenderEngine *render,
             Depsgraph *depsgraph,
             Object *camera_object = nullptr,

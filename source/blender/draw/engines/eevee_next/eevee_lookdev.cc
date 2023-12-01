@@ -13,8 +13,6 @@
 
 #include "NOD_shader.h"
 
-#include "ED_screen.hh"
-
 #include "GPU_material.h"
 
 #include "eevee_instance.hh"
@@ -127,8 +125,9 @@ LookdevModule::LookdevModule(Instance &inst) : inst_(inst) {}
 
 LookdevModule::~LookdevModule() {}
 
-void LookdevModule::init()
+void LookdevModule::init(const rcti *visible_rect)
 {
+  visible_rect_ = *visible_rect;
   enabled_ = inst_.is_viewport() && inst_.overlays_enabled() && inst_.use_lookdev_overlay();
 
   if (enabled_) {
@@ -139,6 +138,34 @@ void LookdevModule::init()
     dummy_aov_color_tx_.ensure_2d_array(GPU_RGBA16F, extent_dummy, 1, usage);
     dummy_aov_value_tx_.ensure_2d_array(GPU_R16F, extent_dummy, 1, usage);
   }
+}
+
+float LookdevModule::calc_viewport_scale()
+{
+  const float viewport_scale = clamp_f(
+      BLI_rcti_size_x(&visible_rect_) / (2000.0f * UI_SCALE_FAC), 0.5f, 1.0f);
+  return viewport_scale;
+}
+
+static eDRWLevelOfDetail calc_level_of_detail(const float viewport_scale)
+{
+  float res_scale = clamp_f(
+      (U.lookdev_sphere_size / 400.0f) * viewport_scale * UI_SCALE_FAC, 0.1f, 1.0f);
+
+  if (res_scale > 0.7f) {
+    return DRW_LOD_HIGH;
+  }
+  else if (res_scale > 0.25f) {
+    return DRW_LOD_MEDIUM;
+  }
+  return DRW_LOD_LOW;
+}
+
+static int calc_sphere_size(const float viewport_scale)
+{
+  const int sphere_radius = U.lookdev_sphere_size * UI_SCALE_FAC * viewport_scale;
+  const int sphere_size = sphere_radius * 2;
+  return sphere_size;
 }
 
 void LookdevModule::sync()
@@ -174,47 +201,6 @@ void LookdevModule::sync()
   sync_pass(diffuse_ps_, geom, inst_.materials.diffuse_mat, handle);
 
   sync_display();
-}
-
-float LookdevModule::calc_viewport_scale()
-{
-  /* TODO: calculation of visible rect should move to `eevee_engine_init`. */
-  rcti visible_rect;
-  if (DRW_state_is_viewport_image_render()) {
-    const float *vp_size = DRW_viewport_size_get();
-    visible_rect.xmax = vp_size[0];
-    visible_rect.ymax = vp_size[1];
-    visible_rect.xmin = visible_rect.ymin = 0;
-  }
-  else {
-    const DRWContextState *draw_ctx = DRW_context_state_get();
-    visible_rect = *ED_region_visible_rect(draw_ctx->region);
-  }
-
-  const float viewport_scale = clamp_f(
-      BLI_rcti_size_x(&visible_rect) / (2000.0f * UI_SCALE_FAC), 0.5f, 1.0f);
-  return viewport_scale;
-}
-
-eDRWLevelOfDetail LookdevModule::calc_level_of_detail(const float viewport_scale)
-{
-  float res_scale = clamp_f(
-      (U.lookdev_sphere_size / 400.0f) * viewport_scale * UI_SCALE_FAC, 0.1f, 1.0f);
-
-  if (res_scale > 0.7f) {
-    return DRW_LOD_HIGH;
-  }
-  else if (res_scale > 0.25f) {
-    return DRW_LOD_MEDIUM;
-  }
-  return DRW_LOD_LOW;
-}
-
-int LookdevModule::calc_sphere_size(const float viewport_scale)
-{
-  const int sphere_radius = U.lookdev_sphere_size * UI_SCALE_FAC * viewport_scale;
-  const int sphere_size = sphere_radius * 2;
-  return sphere_size;
 }
 
 void LookdevModule::sync_pass(PassSimple &pass,
