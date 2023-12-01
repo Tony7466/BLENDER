@@ -187,15 +187,6 @@ inline void parallel_transform(MutableSpan<T> data,
   });
 }
 
-static void reverse_mask(const IndexMask &mask, MutableSpan<int> r_map)
-{
-#ifdef DEBUG
-  r_map.fill(-1);
-#endif
-  mask.foreach_index_optimized<int>(GrainSize(4096),
-                                    [&](const int index, const int pos) { r_map[index] = pos; });
-}
-
 template<typename T> static T accumulate(const VArray<T> &values, const Span<int> indices)
 {
   if (const std::optional<T> value = values.get_if_single()) {
@@ -332,7 +323,7 @@ static int face_to_vert_islands(const Mesh &mesh,
                                 MutableSpan<int> vert_island_indices)
 {
   Array<int> verts_pos(vert_mask.min_array_size());
-  reverse_mask(vert_mask, verts_pos);
+  index_mask::build_reverse_map<int>(vert_mask, verts_pos);
 
   AtomicDisjointSet disjoint_set(vert_mask.size());
   const GroupedSpan<int> face_verts(mesh.face_offsets(), mesh.corner_verts());
@@ -394,7 +385,7 @@ static int edge_to_vert_islands(const Mesh &mesh,
                                 MutableSpan<int> vert_island_indices)
 {
   Array<int> verts_pos(vert_mask.min_array_size());
-  reverse_mask(vert_mask, verts_pos);
+  index_mask::build_reverse_map<int>(vert_mask, verts_pos);
 
   AtomicDisjointSet disjoint_set(vert_mask.size());
   const Span<int2> edges = mesh.edges();
