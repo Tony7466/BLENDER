@@ -749,6 +749,12 @@ struct ImBuf *IMB_double_y(struct ImBuf *ibuf1);
  */
 void IMB_flipx(struct ImBuf *ibuf);
 void IMB_flipy(struct ImBuf *ibuf);
+void IMB_rotate90(struct ImBuf *ibuf);
+
+/*
+void IMB_rotate90(struct ImBuf *ibuf);
+void IMB_rotate270(struct ImBuf *ibuf);
+*/
 
 /* Pre-multiply alpha. */
 

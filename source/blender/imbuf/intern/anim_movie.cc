@@ -71,6 +71,8 @@ extern "C" {
 #  include <libavutil/rational.h>
 #  include <libswscale/swscale.h>
 
+#include <libavutil/display.h>
+
 #  include "ffmpeg_compat.h"
 }
 
@@ -497,6 +499,17 @@ static int startffmpeg(anim *anim)
 
   video_stream = pFormatCtx->streams[video_stream_index];
 
+
+  //TESTA ??
+  //video_stream->codecpar->height = 1920;
+  //video_stream->codecpar->width = 1080;
+  //video_stream->codecpar->height = 1920;
+  //video_stream->codecpar->width = 1920;
+
+  //pekar till samma som ovan!!
+  //pFormatCtx->streams[video_stream_index]->codecpar->height = 1920;
+  //pFormatCtx->streams[video_stream_index]->codecpar->width = 1080;
+
   /* Find the decoder for the video stream */
   pCodec = avcodec_find_decoder(video_stream->codecpar->codec_id);
   if (pCodec == nullptr) {
@@ -507,6 +520,15 @@ static int startffmpeg(anim *anim)
   pCodecCtx = avcodec_alloc_context3(nullptr);
   avcodec_parameters_to_context(pCodecCtx, video_stream->codecpar);
   pCodecCtx->workaround_bugs = FF_BUG_AUTODETECT;
+
+
+  //TESTA !
+  //pCodecCtx->width = 1080;
+  //pCodecCtx->height = 1920;
+
+  //pCodecCtx->width = 1920;
+  //pCodecCtx->height = 1920;
+
 
   if (pCodec->capabilities & AV_CODEC_CAP_OTHER_THREADS) {
     pCodecCtx->thread_count = 0;
@@ -522,6 +544,7 @@ static int startffmpeg(anim *anim)
     pCodecCtx->thread_type = FF_THREAD_SLICE;
   }
 
+
   if (avcodec_open2(pCodecCtx, pCodec, nullptr) < 0) {
     avformat_close_input(&pFormatCtx);
     return -1;
@@ -531,6 +554,20 @@ static int startffmpeg(anim *anim)
     avformat_close_input(&pFormatCtx);
     return -1;
   }
+
+
+
+  //TESTA ?? width och height sattes tillbaka!!
+  //pCodecCtx->height = 1920;
+  //pCodecCtx->width = 1080;
+
+  //pCodecCtx->coded_height = 1920;
+  //pCodecCtx->coded_width = 1088;
+  //pCodecCtx->coded_width = 1088;
+
+  //video_stream->codecpar->height = 1920;
+  //video_stream->codecpar->width = 1080;
+
 
   double video_start = 0;
   double pts_time_base = av_q2d(video_stream->time_base);
@@ -705,6 +742,21 @@ static int startffmpeg(anim *anim)
                                          nullptr,
                                          nullptr);
 
+
+
+/*
+  anim->img_convert_ctx = sws_getContext(anim->x,
+                                         anim->y,
+                                         anim->pCodecCtx->pix_fmt,
+                                         anim->y,
+                                         anim->x,
+                                         AV_PIX_FMT_ABGR,
+                                         SWS_BILINEAR | SWS_PRINT_INFO | SWS_FULL_CHR_H_INT,
+                                         nullptr,
+                                         nullptr,
+                                         nullptr);
+*/
+
   if (!anim->img_convert_ctx) {
     fprintf(stderr, "Can't transform color space??? Bailing out...\n");
     avcodec_free_context(&anim->pCodecCtx);
@@ -875,6 +927,229 @@ static void ffmpeg_postprocess(anim *anim, AVFrame *input, ImBuf *ibuf)
   if (filter_y) {
     IMB_filtery(ibuf);
   }
+
+<<<<<<< Updated upstream
+  //TESTA FLIPPA X
+  //IMB_flipx(ibuf);
+
+  //Also testa lägga in massa nollor!
+  //woop ger fint mönster :)
+  //for(int i = 0; i < 1920*1080*4; i+=1)
+  //  ibuf->byte_buffer.data[i] = i % 100;
+
+    //IMB_rotate90(ibuf);
+    /*
+    void IMB_transform(const struct ImBuf *src,
+                   struct ImBuf *dst,
+                   eIMBTransformMode mode,
+                   eIMBInterpolationFilterMode filter,
+                   const int num_subsamples,
+                   const float transform_matrix[4][4],
+                   const struct rctf *src_crop);
+    */
+    //ImBuf *dst = nullptr;
+
+    //IMB_transform(ibuf, 0, 0, 0, matrix);
+
+
+  //ImBuf * dst = (ImBuf *) malloc(sizeof(uint) * 1920 * 1080);
+
+
+
+
+
+	ImBuf * tbuf;
+	int x, y;
+	uint * rect, *frect, *ibufrect;
+	int skip;
+
+
+  ibufrect = (uint *) ibuf->byte_buffer.data;
+
+
+	if (ibuf == 0) return;
+	//if (ibuf->rect == 0) return;
+
+	tbuf = IMB_allocImBuf(ibuf->y, ibuf->x, 32, IB_rect);
+	if (tbuf == 0) return;
+
+	frect = (uint *) tbuf->byte_buffer.data;
+
+	skip = tbuf->y;
+
+	for (y = tbuf->y - 1; y >= 0; y--){
+		rect = ibufrect + y;
+		for (x = tbuf->x; x > 0; x--){
+			*frect++ = *rect;
+			rect += skip;
+		}
+	}
+
+	memcpy(ibufrect, tbuf->byte_buffer.data, ibuf->x * ibuf->y * sizeof(uint));
+	x = ibuf->x;
+	ibuf->x = ibuf->y;
+	ibuf->y = x;
+
+IMB_freeImBuf(tbuf);
+
+
+
+
+/*
+  int width, height;
+
+  width = ibuf->x;
+  height = ibuf->y;
+
+  //new imbuf
+  //ImBuf * dest = IMB_allocImBuf(1080, 1920, 32, IB_rect);
+
+  uint8_t * dest = (uint8_t *) malloc(sizeof(uint) * width * height);
+
+  //uint8_t * dest = nullptr;
+  //memcpy(dest, ibuf->byte_buffer.data, 1920*1080*4);
+
+  if (ibuf == nullptr) {
+    return;
+  }
+
+  if (ibuf->byte_buffer.data) {
+
+    uint8_t *rect = (uint8_t *)ibuf->byte_buffer.data;
+
+    for (int h = 0, dest_col = height*4 - 1; h < height; h++, --dest_col)
+    {
+      for (int w = 0; w < width; w++)
+      {
+        dest[(w * height) + dest_col] = rect[h*width + w];
+        dest[((w+1) * height) + dest_col] = rect[h*width + w+1];
+        dest[((w+2) * height) + dest_col] = rect[h*width + w+2];
+        dest[((w+3) * height) + dest_col] = rect[h*width + w+3];
+      }
+    }
+  */
+
+/*
+    for(int xi = 0, hi=height-1; xi < width*4; xi++, --hi)
+    {
+      for(int yi = 0; yi < height*4; yi++)
+      {
+        //
+        dest[xi + width*yi] = rect[hi*4 + yi*4];
+      }
+    }
+
+    */
+
+
+    //int i;
+    //for (i = 0; i < width*4; i++)
+    //  dest[i*width + 0 + 1] = rect[i + 1];
+  //}
+
+
+
+
+
+  //ibuf->byte_buffer.data = dest;
+
+
+
+
+
+
+
+  //ImBuf * newibuf = IMB_allocImBuf(1920, 1920, 32, IB_rect);
+
+  //copy image to larger one
+  //memcpy(newibuf->byte_buffer.data, ibuf->byte_buffer.data, 1920*1080*4);
+
+  //ImBuf * dst = IMB_dupImBuf(ibuf);
+
+  //for(int i = 0; i < 1920*1920*4; i+=1)
+  //  dst->byte_buffer.data[i] = i % 100;
+
+  //float rotation_matrix[4][4] =  {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, .707, .707}, {0, 0, .707, .707} };
+  //float rotation_matrix[4][4] =  {{1, 0, 0, -1}, {0, 0, 1, 0}, {0, 0, 1, 0}, {0, 0, 0, 1} };
+  //float rotation_matrix[4][4] =  {{0, -1, 0, 0}, {1, 0, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1} };
+  //float rotation_matrix[4][4] =  {{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1} };
+  /*
+  float rotation_matrix[4][4] =  {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1} };
+
+  //unit_m3(rotation_matrix);
+
+  //ImBuf * dst = nullptr;
+
+  //dst = IMB_allocImBuf(1080, 1920, 32, IB_rect);
+  //transform_pivot_set_m4(transform_matrix, pivot);
+  //invert_m4(transform_matrix);
+//void rotate_m4(float mat[4][4], char axis, float angle);
+  rotate_m4(rotation_matrix, 'Z', 1.570796327);
+  //rotate_m4(rotation_matrix, 'Z', .2);
+  //mat4_to_rot(rot, rotation_matrix);
+
+
+  //void loc_axisangle_size_to_mat4(
+  // float R[4][4], const float loc[3], const float axis[3], float angle, const float size[3]);
+
+
+  float loc[3] = {float (1080 + anim->cur_position*10), float (-400 + anim->cur_position*10), 0};
+  float axis[3] = {0, 0, 1};
+  float rot[3][3];
+  float size[3] = {1, 1, 1};
+
+  mat4_to_rot(rot, rotation_matrix);
+
+  loc_rot_size_to_mat4(rotation_matrix, loc, rot, size);
+
+  //loc_axisangle_size_to_mat4(rotation_matrix, loc, axis, 15, size);
+
+
+
+  IMB_transform(ibuf,
+                dst,
+                IMB_TRANSFORM_MODE_REGULAR,
+                IMB_FILTER_NEAREST,
+                1,
+                rotation_matrix,
+                nullptr);
+*/
+
+  //ibuf = IMB_dupImBuf(dst);
+  //ibuf->x = 1920;
+  //ibuf->y = 1920;
+  //memcpy(ibuf->byte_buffer.data, dst->byte_buffer.data, 1920*1080*4);
+  //memcpy(ibuf->byte_buffer.data, dst->byte_buffer.data, 1920*1920*4);
+  //ibuf = dst;
+  //dst = ibuf;
+  //IMB_freeImBuf(dst);
+=======
+
+  //auto rotate video
+
+  //get display matrix rotation to see if a rotation is in order:
+
+  uint8_t* displaymatrix = av_stream_get_side_data(anim->pFormatCtx->streams[anim->videoStream],
+                                                   AV_PKT_DATA_DISPLAYMATRIX, NULL);
+
+  if(displaymatrix == nullptr)
+    return;
+
+
+  double theta = 0;
+
+
+  theta = av_display_rotation_get((int32_t*) displaymatrix);
+
+  //perform rotation
+  if(theta != 0)
+  {
+    IMB_rotate90(ibuf);
+
+  }
+
+
+>>>>>>> Stashed changes
 }
 
 static void final_frame_log(anim *anim,
@@ -1386,8 +1661,17 @@ static ImBuf *ffmpeg_fetchibuf(anim *anim, int position, IMB_Timecode_Type tc)
   ffmpeg_decode_video_frame_scan(anim, pts_to_search);
 
   /* Update resolution as it can change per-frame with WebM. See #100741 & #100081. */
-  anim->x = anim->pCodecCtx->width;
-  anim->y = anim->pCodecCtx->height;
+
+
+  //anim->x = anim->pCodecCtx->width;
+  //anim->y = anim->pCodecCtx->height;
+
+  //TESTA flippa här!
+  //anim->x = anim->pCodecCtx->height;
+  //anim->y = anim->pCodecCtx->width;
+  //anim->x = 1080;
+  //anim->y = 1920;
+
 
   /* Certain versions of FFmpeg have a bug in libswscale which ends up in crash
    * when destination buffer is not properly aligned. For example, this happens
@@ -1433,9 +1717,11 @@ static ImBuf *ffmpeg_fetchibuf(anim *anim, int position, IMB_Timecode_Type tc)
 
   /* Even with the fallback from above it is possible that the current decode frame is nullptr. In
    * this case skip post-processing and return current image buffer. */
-  if (final_frame != nullptr) {
-    ffmpeg_postprocess(anim, final_frame, cur_frame_final);
-  }
+  //if (final_frame != nullptr) {
+  //  ffmpeg_postprocess(anim, final_frame, cur_frame_final);
+  //}
+
+  ffmpeg_postprocess(anim, final_frame, cur_frame_final);
 
   anim->cur_position = position;
 
