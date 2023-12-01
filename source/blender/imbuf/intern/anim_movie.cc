@@ -499,17 +499,6 @@ static int startffmpeg(anim *anim)
 
   video_stream = pFormatCtx->streams[video_stream_index];
 
-
-  //TESTA ??
-  //video_stream->codecpar->height = 1920;
-  //video_stream->codecpar->width = 1080;
-  //video_stream->codecpar->height = 1920;
-  //video_stream->codecpar->width = 1920;
-
-  //pekar till samma som ovan!!
-  //pFormatCtx->streams[video_stream_index]->codecpar->height = 1920;
-  //pFormatCtx->streams[video_stream_index]->codecpar->width = 1080;
-
   /* Find the decoder for the video stream */
   pCodec = avcodec_find_decoder(video_stream->codecpar->codec_id);
   if (pCodec == nullptr) {
@@ -520,15 +509,6 @@ static int startffmpeg(anim *anim)
   pCodecCtx = avcodec_alloc_context3(nullptr);
   avcodec_parameters_to_context(pCodecCtx, video_stream->codecpar);
   pCodecCtx->workaround_bugs = FF_BUG_AUTODETECT;
-
-
-  //TESTA !
-  //pCodecCtx->width = 1080;
-  //pCodecCtx->height = 1920;
-
-  //pCodecCtx->width = 1920;
-  //pCodecCtx->height = 1920;
-
 
   if (pCodec->capabilities & AV_CODEC_CAP_OTHER_THREADS) {
     pCodecCtx->thread_count = 0;
@@ -554,20 +534,6 @@ static int startffmpeg(anim *anim)
     avformat_close_input(&pFormatCtx);
     return -1;
   }
-
-
-
-  //TESTA ?? width och height sattes tillbaka!!
-  //pCodecCtx->height = 1920;
-  //pCodecCtx->width = 1080;
-
-  //pCodecCtx->coded_height = 1920;
-  //pCodecCtx->coded_width = 1088;
-  //pCodecCtx->coded_width = 1088;
-
-  //video_stream->codecpar->height = 1920;
-  //video_stream->codecpar->width = 1080;
-
 
   double video_start = 0;
   double pts_time_base = av_q2d(video_stream->time_base);
@@ -928,9 +894,9 @@ static void ffmpeg_postprocess(anim *anim, AVFrame *input, ImBuf *ibuf)
     IMB_filtery(ibuf);
   }
 
-  //auto rotate video
+  /* auto rotate video */
 
-  //get display matrix rotation to see if a rotation is in order:
+  /* get display matrix rotation to see if a rotation is in order: */
 
   uint8_t* displaymatrix = av_stream_get_side_data(anim->pFormatCtx->streams[anim->videoStream],
                                                    AV_PKT_DATA_DISPLAYMATRIX, NULL);
@@ -944,7 +910,7 @@ static void ffmpeg_postprocess(anim *anim, AVFrame *input, ImBuf *ibuf)
 
   theta = av_display_rotation_get((int32_t*) displaymatrix);
 
-  //perform rotation
+  /* perform rotation */
   if(theta == -90)
   {
     IMB_rotate90(ibuf);
@@ -1469,14 +1435,8 @@ static ImBuf *ffmpeg_fetchibuf(anim *anim, int position, IMB_Timecode_Type tc)
   /* Update resolution as it can change per-frame with WebM. See #100741 & #100081. */
 
 
-  //anim->x = anim->pCodecCtx->width;
-  //anim->y = anim->pCodecCtx->height;
-
-  //TESTA flippa här!
-  //anim->x = anim->pCodecCtx->height;
-  //anim->y = anim->pCodecCtx->width;
-  //anim->x = 1080;
-  //anim->y = 1920;
+  anim->x = anim->pCodecCtx->width;
+  anim->y = anim->pCodecCtx->height;
 
 
   /* Certain versions of FFmpeg have a bug in libswscale which ends up in crash
@@ -1523,11 +1483,9 @@ static ImBuf *ffmpeg_fetchibuf(anim *anim, int position, IMB_Timecode_Type tc)
 
   /* Even with the fallback from above it is possible that the current decode frame is nullptr. In
    * this case skip post-processing and return current image buffer. */
-  //if (final_frame != nullptr) {
-  //  ffmpeg_postprocess(anim, final_frame, cur_frame_final);
-  //}
-
-  ffmpeg_postprocess(anim, final_frame, cur_frame_final);
+  if (final_frame != nullptr) {
+    ffmpeg_postprocess(anim, final_frame, cur_frame_final);
+  }
 
   anim->cur_position = position;
 
