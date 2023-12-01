@@ -375,7 +375,7 @@ VolumeGrid::GridBaseConstPtr VolumeGrid::grid() const
   return (entry_) ? entry_->simplified_grid(simplify_level_) : local_grid_;
 }
 
-VolumeGrid::GridBasePtr VolumeGrid::grid_for_write() const
+VolumeGrid::GridBasePtr VolumeGrid::grid_for_write()
 {
   return (entry_) ? entry_->simplified_grid(simplify_level_) : local_grid_;
 }
@@ -421,14 +421,14 @@ GVolumeGridPtr::GridConstPtr GVolumeGridPtr::grid() const
 #endif
 }
 
-GVolumeGridPtr::GridPtr GVolumeGridPtr::grid_for_write() const
+GVolumeGridPtr::GridPtr GVolumeGridPtr::grid_for_write()
 {
 #ifdef WITH_OPENVDB
   if (!data) {
     return nullptr;
   }
   if (data->is_mutable()) {
-    return data->grid_for_write();
+    return const_cast<VolumeGrid &>(*data).grid_for_write();
   }
   return data->grid()->deepCopyGrid();
 #else

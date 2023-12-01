@@ -648,7 +648,10 @@ static void volume_update_simplify_level(Volume *volume, const Depsgraph *depsgr
   const int simplify_level = BKE_volume_simplify_level(depsgraph);
   if (volume->runtime.grids) {
     for (GVolumeGridPtr &grid : *volume->runtime.grids) {
-      grid->set_simplify_level(simplify_level);
+      if (grid->is_mutable()) {
+        blender::bke::VolumeGrid *data = const_cast<blender::bke::VolumeGrid *>(&*grid);
+        data->set_simplify_level(simplify_level);
+      }
     }
   }
   volume->runtime.default_simplify_level = simplify_level;
@@ -1014,7 +1017,7 @@ VolumeGridType BKE_volume_grid_type_openvdb(const openvdb::GridBase &grid)
 VolumeGridType BKE_volume_grid_type(const VolumeGrid *volume_grid)
 {
 #ifdef WITH_OPENVDB
-  const openvdb::GridBase::Ptr grid = volume_grid->grid_for_write();
+  const openvdb::GridBase::ConstPtr grid = volume_grid->grid();
   return BKE_volume_grid_type_openvdb(*grid);
 #else
   UNUSED_VARS(volume_grid);
@@ -1047,7 +1050,7 @@ int BKE_volume_grid_channels(const VolumeGrid *grid)
 void BKE_volume_grid_transform_matrix(const VolumeGrid *volume_grid, float mat[4][4])
 {
 #ifdef WITH_OPENVDB
-  const openvdb::GridBase::Ptr grid = volume_grid->grid_for_write();
+  const openvdb::GridBase::ConstPtr grid = volume_grid->grid();
   const openvdb::math::Transform &transform = grid->transform();
 
   /* Perspective not supported for now, getAffineMap() will leave out the
@@ -1157,7 +1160,7 @@ GVolumeGridPtr BKE_volume_grid_add_vdb(Volume &volume,
 }
 #endif
 
-void BKE_volume_grid_remove(Volume *volume, VolumeGrid *grid)
+void BKE_volume_grid_remove(Volume *volume, const VolumeGrid *grid)
 {
 #ifdef WITH_OPENVDB
   VolumeGridVector &grids = *volume->runtime.grids;

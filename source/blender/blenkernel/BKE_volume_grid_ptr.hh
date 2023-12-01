@@ -64,10 +64,6 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
   }
   GVolumeGridPtr(std::nullptr_t) : data(nullptr) {}
 
-  inline VolumeGrid *get()
-  {
-    return data.get();
-  }
   inline const VolumeGrid *get() const
   {
     return data.get();
@@ -87,31 +83,29 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
 
 #ifdef WITH_OPENVDB
   GridConstPtr grid() const;
-  GridPtr grid_for_write() const;
+  GridPtr grid_for_write();
 #endif
-
-  VolumeGrid *operator->()
-  {
-    BLI_assert(data);
-    return data.get();
-  }
 
   const VolumeGrid *operator->() const
   {
     BLI_assert(data);
     return data.get();
   }
-
-  VolumeGrid &operator*()
+  VolumeGrid *operator->()
   {
-    BLI_assert(data);
-    return *data;
+    BLI_assert(data && data->is_mutable());
+    return const_cast<VolumeGrid *>(data.get());
   }
 
   const VolumeGrid &operator*() const
   {
     BLI_assert(data);
     return *data;
+  }
+  VolumeGrid &operator*()
+  {
+    BLI_assert(data && data->is_mutable());
+    return const_cast<VolumeGrid &>(*data);
   }
 
   bool operator==(const GVolumeGridPtr &other) const
@@ -240,7 +234,7 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
       return nullptr;
     }
     if (data->is_mutable()) {
-      return openvdb::GridBase::grid<GridType>(data->grid_for_write());
+      return openvdb::GridBase::grid<GridType>(const_cast<VolumeGrid &>(*data).grid_for_write());
     }
     return openvdb::GridBase::grid<GridType>(data->grid())->deepCopy();
   }

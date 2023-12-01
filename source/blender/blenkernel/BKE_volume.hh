@@ -14,8 +14,8 @@
 #include "BLI_bounds_types.hh"
 #include "BLI_math_vector_types.hh"
 
-#include "BKE_volume_grid_ptr.hh"
 #include "BKE_volume_enums.hh"
+#include "BKE_volume_grid_ptr.hh"
 
 struct Depsgraph;
 struct Main;
@@ -125,7 +125,7 @@ Volume *BKE_volume_new_for_eval(const Volume *volume_src);
 Volume *BKE_volume_copy_for_eval(const Volume *volume_src);
 
 GVolumeGridPtr BKE_volume_grid_add(Volume *volume, const char *name, VolumeGridType type);
-void BKE_volume_grid_remove(Volume *volume, VolumeGrid *grid);
+void BKE_volume_grid_remove(Volume *volume, const VolumeGrid *grid);
 
 /**
  * OpenVDB crashes when the determinant of the transform matrix becomes too small.

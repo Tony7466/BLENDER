@@ -165,7 +165,7 @@ struct VolumeGrid : public ImplicitSharingMixin {
   void duplicate_reference(const char *volume_name, const char *filepath);
 
   GridBaseConstPtr grid() const;
-  GridBasePtr grid_for_write() const;
+  GridBasePtr grid_for_write();
 
  protected:
   GridBasePtr main_grid() const;
