@@ -179,7 +179,7 @@ static int world_space_copy_exec(bContext *C, wmOperator *op)
       CopyBuffer buffer = copy_buffer[id_index];
       float *matrix = &buffer.matrices[frame_index * 16];
       Object *eval_object = DEG_get_evaluated_object(depsgraph, ob);
-      flatten_matrix(eval_object->world_to_object, matrix);
+      flatten_matrix(eval_object->object_to_world, matrix);
     }
   }
 
@@ -216,6 +216,9 @@ static void paste_to_object(Foo *foo, Object *ob, Depsgraph *depsgraph, Main *bm
     return;
   }
 
+  /* Need to reset this or we'll have an offset. */
+  // unit_m4(ob->parentinv);
+
   DEG_graph_build_from_ids(depsgraph, &id, 1);
   CopyBuffer buffer = foo->buffer[0];
   for (int frame_index = 0; frame_index < foo->frame_count; frame_index++) {
@@ -223,10 +226,7 @@ static void paste_to_object(Foo *foo, Object *ob, Depsgraph *depsgraph, Main *bm
     DEG_evaluate_on_framechange(depsgraph, frame);
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
     float matrix_world[4][4];
-    float matrix_world_inv[4][4];
     compose_matrix(&buffer.matrices[frame_index * 16], matrix_world);
-    invert_m4_m4(matrix_world_inv, matrix_world);
-    float matrix_local[4][4];
     Object *parent = ob->parent;
     float parent_matrix[4][4];
     if (parent != nullptr) {
@@ -236,9 +236,10 @@ static void paste_to_object(Foo *foo, Object *ob, Depsgraph *depsgraph, Main *bm
     else {
       copy_m4_m4(parent_matrix, ob_eval->world_to_object);
     }
-    float m_inv[4][4];
-    invert_m4_m4(m_inv, parent_matrix);
-    mul_m4_m4m4(matrix_local, matrix_world_inv, ob_eval->parentinv);
+    float matrix_local[4][4];
+    float fff[4][4];
+    mul_m4_m4m4(fff, parent_matrix, ob_eval->parentinv);
+    mul_m4_m4m4(matrix_local, parent_matrix, matrix_world);
 
     blender::Array<float> location = {0, 0, 0};
     float rot[3][3];
@@ -289,6 +290,9 @@ static void paste_to_object(Foo *foo, Object *ob, Depsgraph *depsgraph, Main *bm
                                         INSERTKEY_NOFLAGS,
                                         BEZT_KEYTYPE_KEYFRAME);
   }
+  uint flags = ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION;
+  DEG_id_tag_update(id, flags);
+  // unit_m4(ob->parentinv);
 }
 
 static int world_space_paste_exec(bContext *C, wmOperator *op)
