@@ -236,10 +236,13 @@ static void paste_to_object(Foo *foo, Object *ob, Depsgraph *depsgraph, Main *bm
     else {
       copy_m4_m4(parent_matrix, ob_eval->world_to_object);
     }
+    /* I assume all this parentinv stuff can be simplified. */
+    float inv_parentinv[4][4];
+    invert_m4_m4(inv_parentinv, ob_eval->parentinv);
+    float whatever_that_matrix_is[4][4];
+    mul_m4_m4m4(whatever_that_matrix_is, inv_parentinv, parent_matrix);
     float matrix_local[4][4];
-    float fff[4][4];
-    mul_m4_m4m4(fff, parent_matrix, ob_eval->parentinv);
-    mul_m4_m4m4(matrix_local, parent_matrix, matrix_world);
+    mul_m4_m4m4(matrix_local, whatever_that_matrix_is, matrix_world);
 
     blender::Array<float> location = {0, 0, 0};
     float rot[3][3];
