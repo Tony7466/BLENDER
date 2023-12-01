@@ -347,12 +347,19 @@ class NLA_MT_context_menu(Menu):
 
 
 class NLA_MT_channel_context_menu(Menu):
-    bl_label = "NLA Channel"
+    bl_label = "NLA Tracks"
 
     def draw(self, _context):
         layout = self.layout
 
         layout.operator_menu_enum("anim.channels_move", "direction", text="Track Ordering...")
+
+        layout.separator()
+
+        layout.operator("nla.tracks_add", text="Add Track").above_selected = False
+        layout.operator("nla.tracks_add", text="Add Track Above Selected").above_selected = True
+        layout.separator()
+        layout.operator("nla.tracks_delete")
         layout.operator("anim.channels_clean_empty")
 
 

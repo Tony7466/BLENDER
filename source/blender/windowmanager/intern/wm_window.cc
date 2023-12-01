@@ -31,7 +31,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_blender_version.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_icons.h"
 #include "BKE_layer.h"
@@ -500,7 +500,10 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
                                 (GHOST_SetPath(handle, filepath) == GHOST_kFailure);
 
   std::string str;
-  str += wm->file_saved ? " " : "* ";
+  if (!wm->file_saved) {
+    str += "* ";
+  }
+
   if (has_filepath) {
     const size_t filename_no_ext_len = BLI_path_extension_or_end(filename) - filename;
     str.append(filename, filename_no_ext_len);
@@ -1704,7 +1707,7 @@ static bool wm_window_timers_process(const bContext *C, int *sleep_us_p)
      * Even though using `floor` or `round` is more responsive,
      * it causes CPU intensive loops that may run until the timer is reached, see: #111579. */
     const double microseconds = 1000000.0;
-    const double sleep_sec = (double(sleep_us) / microseconds);
+    const double sleep_sec = double(sleep_us) / microseconds;
     const double sleep_sec_next = ntime_min - time;
 
     if (sleep_sec_next < sleep_sec) {
@@ -2411,9 +2414,9 @@ void wm_window_set_swap_interval(wmWindow *win, int interval)
   GHOST_SetSwapInterval(static_cast<GHOST_WindowHandle>(win->ghostwin), interval);
 }
 
-bool wm_window_get_swap_interval(wmWindow *win, int *intervalOut)
+bool wm_window_get_swap_interval(wmWindow *win, int *r_interval)
 {
-  return GHOST_GetSwapInterval(static_cast<GHOST_WindowHandle>(win->ghostwin), intervalOut);
+  return GHOST_GetSwapInterval(static_cast<GHOST_WindowHandle>(win->ghostwin), r_interval);
 }
 
 /** \} */

@@ -28,7 +28,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
@@ -1548,7 +1548,7 @@ void ED_operatortypes_paint()
   WM_operatortype_append(PAINT_OT_face_vert_reveal);
 
   /* partial visibility */
-  WM_operatortype_append(PAINT_OT_hide_show);
+  WM_operatortype_append(blender::ed::sculpt_paint::hide::PAINT_OT_hide_show);
 
   /* paint masking */
   WM_operatortype_append(PAINT_OT_mask_flood_fill);

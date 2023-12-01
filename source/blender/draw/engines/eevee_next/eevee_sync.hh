@@ -140,7 +140,7 @@ class SyncModule {
   SyncModule(Instance &inst) : inst_(inst){};
   ~SyncModule(){};
 
-  ObjectHandle &sync_object(Object *ob);
+  ObjectHandle &sync_object(const ObjectRef &ob_ref);
   WorldHandle &sync_world(::World *world);
   SceneHandle &sync_scene(::Scene *scene);
 
@@ -161,6 +161,7 @@ class SyncModule {
   void sync_curves(Object *ob,
                    ObjectHandle &ob_handle,
                    ResourceHandle res_handle,
+                   const ObjectRef &ob_ref,
                    ModifierData *modifier_data = nullptr,
                    ParticleSystem *particle_sys = nullptr);
   void sync_light_probe(Object *ob, ObjectHandle &ob_handle);
