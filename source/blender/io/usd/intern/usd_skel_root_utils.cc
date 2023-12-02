@@ -117,7 +117,7 @@ void create_skel_roots(pxr::UsdStageRefPtr stage, const USDExportParams &params)
                  "This can be addressed by setting a root primitive in the export options.\n",
                  __func__,
                  prim.GetPath().GetAsString().c_str(),
-                 skel.GetPath().GetAsString());
+                 skel.GetPath().GetAsString().c_str());
     }
   }
 
