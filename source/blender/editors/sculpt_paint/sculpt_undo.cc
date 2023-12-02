@@ -521,7 +521,7 @@ static bool sculpt_undo_restore_hidden(bContext *C, SculptUndoNode *unode, bool 
       const int grid_index = grids[i];
       /* Swap the two bit spans. */
       blender::BitVector<512> tmp(grid_hidden[grid_index]);
-      grid_hidden[grid_index].copy_from(blender::BoundedBitSpan(unode->grid_hidden[i]));
+      grid_hidden[grid_index].copy_from(unode->grid_hidden[i].as_span());
       unode->grid_hidden[i].copy_from(tmp);
     }
   }
