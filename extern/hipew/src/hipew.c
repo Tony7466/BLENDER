@@ -416,8 +416,8 @@ hipMemoryType get_hip_memory_type(hipMemoryType mem_type, int runtime_version) {
   /** Convert hipMemoryType for backwards compatibility with rocm5/6. 
     This can be removed when support for ROCM5 is removed.
   */
-  // If version is 5 we need to use the old enum vals
-  if (runtime_version > 5)
+  // If version is 5 we need to use the old enum vals (60000000 is start of ROCm 6)
+  if (runtime_version > 60000000)
     return mem_type;
   switch (mem_type) {
     case hipMemoryTypeHost:
