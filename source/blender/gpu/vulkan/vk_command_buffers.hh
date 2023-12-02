@@ -139,7 +139,8 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
                              VkDeviceSize offset,
                              uint32_t draw_count,
                              uint32_t stride);
-
+                             
+  void next_subpass();
   void submit();
   void finish();
 

@@ -591,6 +591,11 @@ void VKCommandBuffers::draw_indexed_indirect(const VKStorageBuffer &buffer,
   command_buffer.command_recorded();
 }
 
+void VKCommandBuffers::next_subpass()
+{
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+  vkCmdNextSubpass(command_buffer.vk_command_buffer(), VK_SUBPASS_CONTENTS_INLINE);
+}
 /** \} */
 
 }  // namespace blender::gpu

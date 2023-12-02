@@ -65,7 +65,12 @@ void VKBatch::draw(int vertex_first, int vertex_count, int instance_first, int i
     command_buffers.draw(vertex_first, vertex_count, instance_first, instance_count);
   }
 
-  command_buffers.submit();
+  if (context.active_framebuffer_get()->is_subpass_continue()) {
+    context.active_framebuffer_get()->next_subpass(command_buffers);
+  }
+  else {
+    command_buffers.submit();
+  }
 }
 
 void VKBatch::draw_indirect(GPUStorageBuf *indirect_buf, intptr_t offset)
