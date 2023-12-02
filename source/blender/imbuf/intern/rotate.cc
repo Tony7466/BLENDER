@@ -111,38 +111,29 @@ void IMB_flipx(ImBuf *ibuf)
 
 void IMB_rotate90(ImBuf *ibuf)
 {
-  ImBuf *tbuf;
-  int x, y;
-  uint *rect, *frect, *ibufrect;
-  int skip;
-
-  ibufrect = (uint *)ibuf->byte_buffer.data;
-
-  if (ibuf == 0)
-    return;
-  if (ibufrect == 0)
+  if (ibuf == nullptr)
     return;
 
-  tbuf = IMB_allocImBuf(ibuf->y, ibuf->x, 32, IB_rect);
-  if (tbuf == 0)
-    return;
+  /* create a temporary copy of the image */
+  uint8_t *imgdata = (uint8_t *)malloc(ibuf->x * ibuf->y * sizeof(uint));
+  memcpy(imgdata, ibuf->byte_buffer.data, ibuf->x * ibuf->y * sizeof(uint));
 
-  frect = (uint *)tbuf->byte_buffer.data;
+  uint *imgdatarect = (uint *)imgdata;
+  uint *ibufrect = (uint *)ibuf->byte_buffer.data;
+  int skip = ibuf->x;
 
-  skip = tbuf->y;
-
-  for (y = tbuf->y - 1; y >= 0; y--) {
-    rect = ibufrect + y;
-    for (x = tbuf->x; x > 0; x--) {
-      *frect++ = *rect;
+  uint *rect;
+  for (int y = ibuf->x - 1; y >= 0; y--) {
+    rect = imgdatarect + y;
+    for (int x = ibuf->y; x > 0; x--) {
+      *ibufrect++ = *rect;
       rect += skip;
     }
   }
 
-  memcpy(ibufrect, tbuf->byte_buffer.data, ibuf->x * ibuf->y * sizeof(uint));
-  x = ibuf->x;
-  ibuf->x = ibuf->y;
-  ibuf->y = x;
+  /* swap width and height of ibuf */
+  SWAP(int, ibuf->x, ibuf->y);
 
-  IMB_freeImBuf(tbuf);
+  /* free temporary copy of image */
+  free(imgdata);
 }

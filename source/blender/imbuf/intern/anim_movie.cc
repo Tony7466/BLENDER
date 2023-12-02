@@ -886,9 +886,7 @@ static void ffmpeg_postprocess(anim *anim, AVFrame *input, ImBuf *ibuf)
   if (displaymatrix == nullptr)
     return;
 
-  double theta = 0;
-
-  theta = av_display_rotation_get((int32_t *)displaymatrix);
+  const double theta = av_display_rotation_get((int32_t *)displaymatrix);
 
   /* perform rotation */
   if (theta == -90) {
