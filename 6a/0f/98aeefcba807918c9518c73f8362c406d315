@@ -1,3 +1,4 @@
 Referenced by commit 75748f9d7a68f59e1f27741a3b75934bbea4667f, Fix error displaying exceptions in some cases
 Referenced by issue #115090, Impossible to get errors from sys.stderr when script executed from the Text Editor area
 Referenced by commit 2e1486da6089b349908b50305d0c8a71073df789, PyAPI: call 'sys.excepthook' for text editor exceptions
+Referenced by pull request #115702, PyAPI: call 'sys.excepthook' for text editor exceptions
