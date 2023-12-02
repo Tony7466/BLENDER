@@ -84,9 +84,11 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
       case ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
         ssbo_len_++;
         break;
+      case ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT:
+        break;
     }
   }
-
+  uniform_len_ += info.subpass_inputs_.size();
   /* Reserve 1 uniform buffer for push constants fallback. */
   size_t names_size = info.interface_names_size_;
   const VKDevice &device = VKBackend::get().device_get();
@@ -133,6 +135,13 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
       input->location = input->binding = res.slot;
       input++;
     }
+  }
+
+  /* Input attachments */
+  for (const ShaderCreateInfo::FragOut &res : info.subpass_inputs_) {
+    copy_input_name(input, res.name, name_buffer_, name_buffer_offset);
+    input->location = input->binding = res.index;
+    input++;
   }
   /* Add push constant when using uniform buffer as fallback. */
   int32_t push_constants_fallback_location = -1;
@@ -201,7 +210,12 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     BLI_assert(input);
     descriptor_set_location_update(input, descriptor_set_location++);
   }
-
+  for (const ShaderCreateInfo::FragOut &res : info.subpass_inputs_) {
+    const ShaderInput *input = shader_input_get(
+        ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT, res.index);
+    BLI_assert(input);
+    descriptor_set_location_update(input, descriptor_set_location++);
+  }
   /* Post initializing push constants. */
   /* Determine the binding location of push constants fallback buffer. */
   int32_t push_constant_descriptor_set_location = -1;
@@ -270,6 +284,7 @@ const ShaderInput *VKShaderInterface::shader_input_get(
        * TODO: we might want to introduce a different API to fix this.  */
       return texture_get((binding >= image_offset_) ? binding : binding + image_offset_);
     case shader::ShaderCreateInfo::Resource::BindType::SAMPLER:
+    case shader::ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT:
       return texture_get(binding);
     case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
       return ssbo_get(binding);

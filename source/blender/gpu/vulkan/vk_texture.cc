@@ -436,6 +436,9 @@ static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
       }
       else {
         result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+        if (usage & GPU_TEXTURE_USAGE_INPUT_ATTACHMENT) {
+          result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+        }
         render_pass_type = eRenderpassType::Attachment;
       }
     }
@@ -449,7 +452,7 @@ static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
         (!(format_flag & (GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL))))
     {
       result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_STORAGE_BIT);
-      // render_pass_type = eRenderpassType::Storage;
+      render_pass_type = eRenderpassType::ShaderBinding;
     }
   }
   return result;
@@ -553,6 +556,9 @@ void VKTexture::bind(int binding,
     VKDescriptorSetTracker &descriptor_set = context.descriptor_set_get();
     if (bind_type == shader::ShaderCreateInfo::Resource::BindType::IMAGE) {
       descriptor_set.image_bind(*this, *location);
+    }
+    else if (bind_type == shader::ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT) {
+      descriptor_set.input_attachment_bind(*this, *location);
     }
     else {
       VKDevice &device = VKBackend::get().device_get();

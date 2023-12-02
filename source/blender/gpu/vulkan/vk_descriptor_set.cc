@@ -92,6 +92,14 @@ void VKDescriptorSetTracker::image_bind(VKTexture &texture,
   binding.texture = &texture;
 }
 
+void VKDescriptorSetTracker::input_attachment_bind(VKTexture &texture,
+                                                   const VKDescriptorSet::Location location)
+{
+  Binding &binding = ensure_location(location);
+  binding.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+  binding.texture = &texture;
+}
+
 void VKDescriptorSetTracker::bind(VKTexture &texture,
                                   const VKDescriptorSet::Location location,
                                   const VKSampler &sampler)
@@ -191,7 +199,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
     VkDescriptorImageInfo image_info = {};
     image_info.sampler = binding.vk_sampler;
     image_info.imageView = binding.texture->image_view_get().lock()->vk_handle();
-    image_info.imageLayout = binding.texture->current_layout_get();
+    image_info.imageLayout =  layout;
     image_infos.append(image_info);
 
     VkWriteDescriptorSet write_descriptor = {};

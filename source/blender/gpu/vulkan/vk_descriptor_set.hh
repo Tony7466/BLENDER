@@ -145,7 +145,8 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
     {
       return ELEM(type,
                   VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
+                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                  VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) &&
              texture != nullptr;
     }
 
@@ -169,6 +170,7 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   /* TODO: bind as image */
   void image_bind(VKTexture &texture, VKDescriptorSet::Location location);
   void bind(VKTexture &texture, VKDescriptorSet::Location location, const VKSampler &sampler);
+  void input_attachment_bind(VKTexture &texture, const VKDescriptorSet::Location location);
   /* Bind as uniform texel buffer. */
   void bind(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
 

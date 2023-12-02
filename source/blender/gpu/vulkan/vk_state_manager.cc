@@ -37,6 +37,7 @@ void VKStateManager::apply_bindings()
     images_.apply_bindings();
     uniform_buffers_.apply_bindings();
     storage_buffers_.apply_bindings();
+     input_attachments_.apply_bindings();
   }
 }
 
@@ -73,6 +74,18 @@ void VKStateManager::texture_unbind_all()
 {
   textures_.unbind_all();
 }
+
+void VKStateManager::input_attachment_bind(Texture *tex, int unit)
+{
+  VKTexture *texture = unwrap(tex);
+  input_attachments_.bind(unit, *texture);
+};
+
+void VKStateManager::input_attachment_unbind(Texture *tex)
+{
+  VKTexture *texture = unwrap(tex);
+  input_attachments_.unbind(*texture);
+};
 
 void VKStateManager::image_bind(Texture *tex, int binding)
 {

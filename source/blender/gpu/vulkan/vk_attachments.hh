@@ -80,7 +80,7 @@ class VKAttachments {
 
   VkAttachmentReference2 *reference_get(int attachemnt_id, int id)
   {
-    if (attachemnt_id == -1) {
+    if (attachemnt_id < 0) {
       return &depth_references_[id];
     }
     return &references_[id][attachemnt_id];

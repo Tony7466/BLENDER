@@ -20,6 +20,10 @@ namespace blender::gpu {
 /* -------------------------------------------------------------------- */
 /** \name Creation & Deletion
  * \{ */
+static bool is_current_attachment(SubpassBits subpass_flag, int pass)
+{
+  return subpass_flag.bits.write[pass] != 0;
+}
 
 VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
 {
@@ -914,6 +918,12 @@ VkRenderPass VKFrameBuffer::vk_render_pass_get()
   renderpass_->ensure();
   return renderpass_->vk_render_pass_;
 }
+
+void VKFrameBuffer::next_subpass(VKCommandBuffers &command_buffers)
+{
+  command_buffers.next_subpass();
+  subpass_current_++;
+};
 /** \} */
 
 }  // namespace blender::gpu

@@ -550,6 +550,8 @@ static void print_resource(std::ostream &os,
       os << name_no_array << " { " << res.storagebuf.type_name << " _" << res.storagebuf.name
          << "; };\n";
       break;
+    case ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT:
+      break;
   }
 }
 

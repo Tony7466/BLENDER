@@ -511,6 +511,7 @@ struct ShaderCreateInfo {
       STORAGE_BUFFER,
       SAMPLER,
       IMAGE,
+      INPUT_ATTACHMENT
     };
 
     BindType bind_type;
@@ -548,6 +549,8 @@ struct ShaderCreateInfo {
           TEST_EQUAL(*this, b, image.type);
           TEST_EQUAL(*this, b, image.qualifiers);
           TEST_EQUAL(*this, b, image.name);
+          break;
+        case INPUT_ATTACHMENT:
           break;
       }
       return true;
@@ -694,6 +697,7 @@ struct ShaderCreateInfo {
   Self &subpass_in(int slot, Type type, StringRefNull name, int raster_order_group = -1)
   {
     subpass_inputs_.append({slot, type, DualBlend::NONE, name, raster_order_group});
+    interface_names_size_ += name.size() + 1;
     return *(Self *)this;
   }
 
@@ -1003,6 +1007,8 @@ struct ShaderCreateInfo {
           break;
         case Resource::BindType::IMAGE:
           stream << "IMAGE(" << res.slot << ", " << res.image.name << ")" << std::endl;
+          break;
+        case Resource::BindType::INPUT_ATTACHMENT:
           break;
       }
     };

@@ -206,6 +206,9 @@ void ShaderCreateInfo::finalize()
         case Resource::BindType::IMAGE:
           res.slot = images++;
           break;
+        case Resource::BindType::INPUT_ATTACHMENT:
+          res.slot = samplers++;
+          break;
       }
     };
 

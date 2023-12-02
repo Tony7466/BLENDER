@@ -134,7 +134,7 @@ void VKPipeline::finalize(VKContext &context,
   pipeline_create_info.pStages = pipeline_stages.data();
   pipeline_create_info.layout = pipeline_layout;
   pipeline_create_info.renderPass = framebuffer.vk_render_pass_get();
-  pipeline_create_info.subpass = 0;
+  pipeline_create_info.subpass = framebuffer.subpass_current_get();
 
   /* Vertex input state. */
   VkPipelineVertexInputStateCreateInfo vertex_input_state = {};

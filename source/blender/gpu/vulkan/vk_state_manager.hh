@@ -29,7 +29,7 @@ class VKStateManager : public StateManager {
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::IMAGE> images_;
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER> uniform_buffers_;
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER> storage_buffers_;
-
+  VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT> input_attachments_;
  public:
   void apply_state() override;
   void force_state() override;
@@ -46,6 +46,9 @@ class VKStateManager : public StateManager {
   void image_bind(Texture *tex, int unit) override;
   void image_unbind(Texture *tex) override;
   void image_unbind_all() override;
+
+  void input_attachment_bind(Texture *tex, int unit);
+  void input_attachment_unbind(Texture *tex);
 
   void uniform_buffer_bind(VKUniformBuffer *uniform_buffer, int slot);
   void uniform_buffer_unbind(VKUniformBuffer *uniform_buffer);

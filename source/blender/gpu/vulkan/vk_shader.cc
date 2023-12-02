@@ -379,6 +379,8 @@ static void print_resource(std::ostream &os,
       os << name_no_array << " { " << res.storagebuf.type_name << " " << res.storagebuf.name
          << "; };\n";
       break;
+    case ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT:
+      break;
   }
 }
 
@@ -851,21 +853,32 @@ static VkDescriptorType descriptor_type(const shader::ShaderCreateInfo::Resource
       return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     case shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER:
       return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    case shader::ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT:
+      break;
   }
   BLI_assert_unreachable();
   return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 }
 
+static VkDescriptorType descriptor_type(const shader::ShaderCreateInfo::FragOut &resource)
+{
+  BLI_assert(resource.raster_order_group >= 0);
+  return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+}
+
+template<typename Resource>
 static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
     const VKDescriptorSet::Location location,
-    const shader::ShaderCreateInfo::Resource &resource,
+    const Resource &resource,
     VkShaderStageFlags vk_shader_stages)
 {
   VkDescriptorSetLayoutBinding binding = {};
   binding.binding = location;
   binding.descriptorType = descriptor_type(resource);
   binding.descriptorCount = 1;
-  binding.stageFlags = vk_shader_stages;
+  binding.stageFlags = (binding.descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) ?
+                           VK_SHADER_STAGE_FRAGMENT_BIT :
+                           vk_shader_stages;
   binding.pImmutableSamplers = nullptr;
 
   return binding;
@@ -889,6 +902,7 @@ static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
 static void add_descriptor_set_layout_bindings(
     const VKShaderInterface &interface,
     const Vector<shader::ShaderCreateInfo::Resource> &resources,
+    const Vector<shader::ShaderCreateInfo::FragOut> &resources2,
     Vector<VkDescriptorSetLayoutBinding> &r_bindings,
     VkShaderStageFlags vk_shader_stages)
 {
@@ -896,7 +910,11 @@ static void add_descriptor_set_layout_bindings(
     const VKDescriptorSet::Location location = interface.descriptor_set_location(resource);
     r_bindings.append(create_descriptor_set_layout_binding(location, resource, vk_shader_stages));
   }
-
+  for (const shader::ShaderCreateInfo::FragOut &resource : resources2) {
+    const VKDescriptorSet::Location location = interface.descriptor_set_location(
+        shader::ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT,resource.index).value();
+    r_bindings.append(create_descriptor_set_layout_binding(location, resource, vk_shader_stages));
+  }
   /* Add push constants to the descriptor when push constants are stored in an uniform buffer. */
   const VKPushConstants::Layout &push_constants_layout = interface.push_constants_layout_get();
   if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::UNIFORM_BUFFER) {
@@ -908,10 +926,12 @@ static void add_descriptor_set_layout_bindings(
 static VkDescriptorSetLayoutCreateInfo create_descriptor_set_layout(
     const VKShaderInterface &interface,
     const Vector<shader::ShaderCreateInfo::Resource> &resources,
+    const Vector<shader::ShaderCreateInfo::FragOut> &resources2,
     Vector<VkDescriptorSetLayoutBinding> &r_bindings,
     VkShaderStageFlags vk_shader_stages)
 {
-  add_descriptor_set_layout_bindings(interface, resources, r_bindings, vk_shader_stages);
+  add_descriptor_set_layout_bindings(
+      interface, resources, resources2, r_bindings, vk_shader_stages);
   VkDescriptorSetLayoutCreateInfo set_info = {};
   set_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
   set_info.flags = 0;
@@ -925,6 +945,7 @@ static bool descriptor_sets_needed(const VKShaderInterface &shader_interface,
                                    const shader::ShaderCreateInfo &info)
 {
   return !info.pass_resources_.is_empty() || !info.batch_resources_.is_empty() ||
+         !info.subpass_inputs_.is_empty() ||
          shader_interface.push_constants_layout_get().storage_type_get() ==
              VKPushConstants::StorageType::UNIFORM_BUFFER;
 }
@@ -951,7 +972,7 @@ bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
   const VkShaderStageFlags vk_shader_stages = is_graphics_shader() ? VK_SHADER_STAGE_ALL_GRAPHICS :
                                                                      VK_SHADER_STAGE_COMPUTE_BIT;
   VkDescriptorSetLayoutCreateInfo layout_info = create_descriptor_set_layout(
-      shader_interface, all_resources, bindings, vk_shader_stages);
+     shader_interface, all_resources, info.subpass_inputs_, bindings, vk_shader_stages);
   if (vkCreateDescriptorSetLayout(
           vk_device, &layout_info, vk_allocation_callbacks, &vk_descriptor_set_layout_) !=
       VK_SUCCESS)
@@ -1165,19 +1186,28 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
 
   ss << "\n/* Sub-pass Inputs. */\n";
   for (const ShaderCreateInfo::SubpassIn &input : info.subpass_inputs_) {
+    std::string image_name = "gpu_subpass_img_";
+    image_name += std::to_string(input.index);
     /* Declare global for input. */
     ss << to_string(input.type) << " " << input.name << ";\n";
-
+    ss << "layout(input_attachment_index = " << std::to_string(input.raster_order_group)
+    << ",binding = " << std::to_string(input.index) << " ) uniform "
+    << print_subpass_qualifier(input.type) << " " << image_name << ";\n ";
     std::stringstream ss_pre;
-    /* Populate the global before main. */
-    ss_pre << "  " << input.name << " = " << to_string(input.type) << "(0);\n";
-
+    char swizzle[] = "xyzw";
+    swizzle[to_component_count(input.type)] = '\0';
+    ss_pre << "  " << input.name << " = subpassLoad(" << image_name << " )." << swizzle << ";\n";
     pre_main += ss_pre.str();
   }
 
   ss << "\n/* Outputs. */\n";
   for (const ShaderCreateInfo::FragOut &output : info.fragment_outputs_) {
-    ss << "layout(location = " << output.index;
+    if (output.raster_order_group >= 0) {
+      ss << "layout(location = " << output.raster_order_group;
+    }
+    else {
+      ss << "layout(location = " << output.index;
+    }
     switch (output.blend) {
       case DualBlend::SRC_0:
         ss << ", index = 0";
