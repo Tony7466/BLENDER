@@ -9,6 +9,7 @@
 
 struct Key;
 struct Main;
+struct Mesh;
 struct Object;
 struct Scene;
 struct USDExportParams;

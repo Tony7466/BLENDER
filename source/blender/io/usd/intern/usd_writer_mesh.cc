@@ -958,6 +958,7 @@ void USDMeshWriter::add_shape_key_weights_sample(const Object *obj)
     WM_reportf(RPT_WARNING,
                "%s: couldn't create primvar %s on prim %s\n",
                __func__,
+               TempBlendShapeWeightsPrimvarName.GetText(),
                mesh_prim.GetPath().GetAsString().c_str());
     return;
   }

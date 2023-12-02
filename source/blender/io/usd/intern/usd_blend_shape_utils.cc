@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "usd_blend_shape_utils.h"
 #include "usd_skel_convert.h"
 
 #include "usd.h"
