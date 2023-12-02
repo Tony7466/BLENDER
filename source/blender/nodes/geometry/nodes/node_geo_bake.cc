@@ -84,7 +84,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
       *ntree, *node, *node, *link);
 }
 
-const CPPType &get_item_cpp_type(const eNodeSocketDatatype socket_type)
+static const CPPType &get_item_cpp_type(const eNodeSocketDatatype socket_type)
 {
   const char *socket_idname = nodeStaticSocketType(socket_type, 0);
   const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
