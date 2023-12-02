@@ -971,6 +971,14 @@ if(WITH_GTESTS)
     )
     set(TEST_LIB
     )
+
+    if(WITH_VULKAN_BACKEND)
+      list(APPEND INC_SYS
+        ../../../extern/vulkan_memory_allocator
+        ${VULKAN_INCLUDE_DIRS}
+      )
+    endif()
+
     include(GTestTesting)
     blender_add_test_lib(bf_draw_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
   endif()

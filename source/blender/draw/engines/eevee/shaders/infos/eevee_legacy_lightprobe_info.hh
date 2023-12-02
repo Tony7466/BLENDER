@@ -206,6 +206,7 @@ GPU_SHADER_CREATE_INFO(eevee_legacy_studiolight_probe)
 
 #ifdef WITH_VULKAN_BACKEND
 GPU_SHADER_CREATE_INFO(eevee_legacy_studiolight_probe_vulkan)
+    .define("GPU_VULKAN")
     .additional_info("draw_resource_id_varying")
     .additional_info("eevee_legacy_lightprobe_lib")
     .additional_info("eevee_legacy_surface_lib_lookdev")
