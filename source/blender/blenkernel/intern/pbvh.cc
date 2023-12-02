@@ -250,45 +250,51 @@ static int partition_indices_grids(blender::MutableSpan<int> prim_indices,
 }
 
 /* Returns the index of the first element on the right of the partition */
-static int partition_indices_material(PBVH *pbvh,
-                                      const Span<int> looptri_faces,
-                                      const int *material_indices,
-                                      const bool *sharp_faces,
-                                      int lo,
-                                      int hi)
+static int partition_indices_material_faces(MutableSpan<int> indices,
+                                            const Span<int> looptri_faces,
+                                            const int *material_indices,
+                                            const bool *sharp_faces,
+                                            const int lo,
+                                            const int hi)
 {
-  const Span<DMFlagMat> flagmats = pbvh->subdiv_ccg->grid_flag_mats;
-  MutableSpan<int> indices = pbvh->prim_indices;
   int i = lo, j = hi;
-
   for (;;) {
-    if (!looptri_faces.is_empty()) {
-      const int first = looptri_faces[pbvh->prim_indices[lo]];
-      for (; face_materials_match(material_indices, sharp_faces, first, looptri_faces[indices[i]]);
-           i++) {
-        /* pass */
-      }
-      for (;
-           !face_materials_match(material_indices, sharp_faces, first, looptri_faces[indices[j]]);
-           j--) {
-        /* pass */
-      }
+    const int first = looptri_faces[indices[lo]];
+    for (; face_materials_match(material_indices, sharp_faces, first, looptri_faces[indices[i]]);
+         i++) {
+      /* pass */
     }
-    else {
-      const DMFlagMat *first = &flagmats[pbvh->prim_indices[lo]];
-      for (; grid_materials_match(first, &flagmats[indices[i]]); i++) {
-        /* pass */
-      }
-      for (; !grid_materials_match(first, &flagmats[indices[j]]); j--) {
-        /* pass */
-      }
+    for (; !face_materials_match(material_indices, sharp_faces, first, looptri_faces[indices[j]]);
+         j--) {
+      /* pass */
     }
-
     if (!(i < j)) {
       return i;
     }
+    std::swap(indices[i], indices[j]);
+    i++;
+  }
+}
 
-    std::swap(pbvh->prim_indices[i], pbvh->prim_indices[j]);
+/* Returns the index of the first element on the right of the partition */
+static int partition_indices_material_grids(MutableSpan<int> indices,
+                                            const Span<DMFlagMat> flagmats,
+                                            const int lo,
+                                            const int hi)
+{
+  int i = lo, j = hi;
+  for (;;) {
+    const DMFlagMat *first = &flagmats[indices[lo]];
+    for (; grid_materials_match(first, &flagmats[indices[i]]); i++) {
+      /* pass */
+    }
+    for (; !grid_materials_match(first, &flagmats[indices[j]]); j--) {
+      /* pass */
+    }
+    if (!(i < j)) {
+      return i;
+    }
+    std::swap(indices[i], indices[j]);
     i++;
   }
 }
@@ -642,8 +648,18 @@ static void build_sub(PBVH *pbvh,
   }
   else {
     /* Partition primitives by material */
-    end = partition_indices_material(
-        pbvh, looptri_faces, material_indices, sharp_faces, offset, offset + count - 1);
+    if (pbvh->header.type == PBVH_FACES) {
+      end = partition_indices_material_faces(pbvh->prim_indices,
+                                             looptri_faces,
+                                             material_indices,
+                                             sharp_faces,
+                                             offset,
+                                             offset + count - 1);
+    }
+    else {
+      end = partition_indices_material_grids(
+          pbvh->prim_indices, pbvh->subdiv_ccg->grid_flag_mats, offset, offset + count - 1);
+    }
   }
 
   /* Build children */
@@ -1433,8 +1449,10 @@ static blender::draw::pbvh::PBVH_GPU_Args pbvh_draw_args_init(const Mesh &mesh,
       args.mlooptri = pbvh.looptri;
       args.vert_normals = pbvh.vert_normals;
       args.face_normals = pbvh.face_normals;
+      /* Retrieve data from the original mesh. Ideally that would be passed to this function to
+       * make it clearer when each is used. */
       args.hide_poly = static_cast<const bool *>(
-          CustomData_get_layer_named(&mesh.face_data, CD_PROP_BOOL, ".hide_poly"));
+          CustomData_get_layer_named(&pbvh.mesh->face_data, CD_PROP_BOOL, ".hide_poly"));
 
       args.prim_indices = node.prim_indices;
       args.looptri_faces = mesh.looptri_faces();
@@ -1644,27 +1662,19 @@ static void pbvh_faces_node_visibility_update(const Mesh &mesh, const Span<PBVHN
 static void pbvh_grids_node_visibility_update(PBVH *pbvh, const Span<PBVHNode *> nodes)
 {
   using namespace blender;
+  CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
+  const Span<const BLI_bitmap *> grid_hidden = pbvh->subdiv_ccg->grid_hidden;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (PBVHNode *node : nodes.slice(range)) {
-      CCGElem *const *grids;
-      const int *grid_indices;
-      int totgrid, i;
-
-      BKE_pbvh_node_get_grids(pbvh, node, &grid_indices, &totgrid, nullptr, nullptr, &grids);
-      const Span<const BLI_bitmap *> grid_hidden = pbvh->subdiv_ccg->grid_hidden;
-      CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
-
-      for (i = 0; i < totgrid; i++) {
-        int g = grid_indices[i], x, y;
-        const BLI_bitmap *gh = grid_hidden[g];
-
+      for (const int grid_index : BKE_pbvh_node_get_grid_indices(*node)) {
+        const BLI_bitmap *gh = grid_hidden[grid_index];
         if (!gh) {
           BKE_pbvh_node_fully_hidden_set(node, false);
           return;
         }
 
-        for (y = 0; y < key.grid_size; y++) {
-          for (x = 0; x < key.grid_size; x++) {
+        for (int y = 0; y < key.grid_size; y++) {
+          for (int x = 0; x < key.grid_size; x++) {
             if (!BLI_BITMAP_TEST(gh, y * key.grid_size + x)) {
               BKE_pbvh_node_fully_hidden_set(node, false);
               return;
@@ -2036,51 +2046,9 @@ int BKE_pbvh_node_num_unique_verts(const PBVH &pbvh, const PBVHNode &node)
   return 0;
 }
 
-void BKE_pbvh_node_get_grids(PBVH *pbvh,
-                             PBVHNode *node,
-                             const int **r_grid_indices,
-                             int *r_totgrid,
-                             int *r_maxgrid,
-                             int *r_gridsize,
-                             CCGElem *const **r_griddata)
+Span<int> BKE_pbvh_node_get_grid_indices(const PBVHNode &node)
 {
-  switch (pbvh->header.type) {
-    case PBVH_GRIDS:
-      if (r_grid_indices) {
-        *r_grid_indices = node->prim_indices.data();
-      }
-      if (r_totgrid) {
-        *r_totgrid = node->prim_indices.size();
-      }
-      if (r_maxgrid) {
-        *r_maxgrid = pbvh->subdiv_ccg->grids.size();
-      }
-      if (r_gridsize) {
-        *r_gridsize = pbvh->gridkey.grid_size;
-      }
-      if (r_griddata) {
-        *r_griddata = pbvh->subdiv_ccg->grids.data();
-      }
-      break;
-    case PBVH_FACES:
-    case PBVH_BMESH:
-      if (r_grid_indices) {
-        *r_grid_indices = nullptr;
-      }
-      if (r_totgrid) {
-        *r_totgrid = 0;
-      }
-      if (r_maxgrid) {
-        *r_maxgrid = 0;
-      }
-      if (r_gridsize) {
-        *r_gridsize = 0;
-      }
-      if (r_griddata) {
-        *r_griddata = nullptr;
-      }
-      break;
-  }
+  return node.prim_indices;
 }
 
 void BKE_pbvh_node_get_BB(PBVHNode *node, float bb_min[3], float bb_max[3])
@@ -3066,24 +3034,29 @@ void BKE_pbvh_node_color_buffer_free(PBVH *pbvh)
 
 void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int mode)
 {
-  CCGElem *const *grids;
-  const int *grid_indices;
-  int totgrid, gridsize, uniq_verts, totvert;
-
   vi->grid = nullptr;
   vi->no = nullptr;
   vi->fno = nullptr;
   vi->vert_positions = {};
   vi->vertex.i = 0LL;
 
-  BKE_pbvh_node_get_grids(pbvh, node, &grid_indices, &totgrid, nullptr, &gridsize, &grids);
+  int uniq_verts, totvert;
   BKE_pbvh_node_num_verts(pbvh, node, &uniq_verts, &totvert);
-  vi->key = pbvh->gridkey;
 
-  vi->grids = grids;
-  vi->grid_indices = grid_indices;
-  vi->totgrid = (grids) ? totgrid : 1;
-  vi->gridsize = gridsize;
+  if (pbvh->header.type == PBVH_GRIDS) {
+    vi->key = pbvh->gridkey;
+    vi->grids = pbvh->subdiv_ccg->grids.data();
+    vi->grid_indices = node->prim_indices.data();
+    vi->totgrid = node->prim_indices.size();
+    vi->gridsize = pbvh->gridkey.grid_size;
+  }
+  else {
+    vi->key = {};
+    vi->grids = nullptr;
+    vi->grid_indices = nullptr;
+    vi->totgrid = 1;
+    vi->gridsize = 0;
+  }
 
   if (mode == PBVH_ITER_ALL) {
     vi->totvert = totvert;
