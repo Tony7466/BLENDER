@@ -337,10 +337,14 @@ static void test_framebuffer_subpass_input()
   const int2 size(1, 1);
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
   GPUTexture *texture_a = GPU_texture_create_2d(
-      __func__, UNPACK2(size), 1, GPU_R32I, usage, nullptr);
+      __func__, UNPACK2(size), 1, GPU_R32I, usage| GPU_TEXTURE_USAGE_INPUT_ATTACHMENT, nullptr);
   GPUTexture *texture_b = GPU_texture_create_2d(
       __func__, UNPACK2(size), 1, GPU_R32I, usage, nullptr);
-
+  
+  GPU_texture_subpass_write_bits(texture_a, 0, 0);
+  GPU_texture_subpass_read_bits(texture_a, 0b10);
+  GPU_texture_subpass_write_bits(texture_b, 1, 0);
+  
   GPUFrameBuffer *framebuffer = GPU_framebuffer_create(__func__);
   GPU_framebuffer_ensure_config(
       &framebuffer,
@@ -364,7 +368,7 @@ static void test_framebuffer_subpass_input()
   create_info_read.vertex_source("gpu_framebuffer_subpass_input_test.glsl");
   create_info_read.fragment_source("gpu_framebuffer_subpass_input_test.glsl");
   create_info_read.subpass_in(0, Type::INT, "in_value", 0);
-  create_info_read.fragment_out(1, Type::INT, "out_value");
+  create_info_read.fragment_out(1, Type::INT, "out_value", DualBlend::NONE, 0);
 
   GPUShader *shader_read = GPU_shader_create_from_info(
       reinterpret_cast<GPUShaderCreateInfo *>(&create_info_read));

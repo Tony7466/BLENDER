@@ -275,6 +275,7 @@ set(VULKAN_SRC
   vulkan/vk_staging_buffer.hh
   vulkan/vk_state_manager.hh
   vulkan/vk_storage_buffer.hh
+  vulkan/vk_subpass.hh
   vulkan/vk_texture.hh
   vulkan/vk_timeline_semaphore.hh
   vulkan/vk_uniform_buffer.hh

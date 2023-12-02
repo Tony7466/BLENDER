@@ -980,6 +980,16 @@ void GPU_texture_get_mipmap_size(GPUTexture *tex, int lvl, int *r_size)
   return reinterpret_cast<Texture *>(tex)->mip_size_get(lvl, r_size);
 }
 
+void GPU_texture_subpass_write_bits(GPUTexture *tex, int write_pass, int write_attachment)
+{
+  return reinterpret_cast<Texture *>(tex)->subpass_bits_set(write_pass, write_attachment);
+};
+
+void GPU_texture_subpass_read_bits(GPUTexture *tex, uint8_t read_pass)
+{
+  return reinterpret_cast<Texture *>(tex)->subpass_bits_set(read_pass);
+};
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

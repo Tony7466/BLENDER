@@ -544,11 +544,13 @@ typedef enum eGPUTextureUsage {
   GPU_TEXTURE_USAGE_FORMAT_VIEW = (1 << 3),
   /* Whether the texture needs to be read from by the CPU. */
   GPU_TEXTURE_USAGE_HOST_READ = (1 << 4),
+  /* Whether a texture is used as an input attachment in a frame-buffer. */
+  GPU_TEXTURE_USAGE_INPUT_ATTACHMENT = (1 << 5),
   /* When used, the texture will not have any backing storage and can solely exist as a virtual
    * frame-buffer attachment. */
-  GPU_TEXTURE_USAGE_MEMORYLESS = (1 << 5),
+  GPU_TEXTURE_USAGE_MEMORYLESS = (1 << 6),
   /* Whether a texture can support atomic operations. */
-  GPU_TEXTURE_USAGE_ATOMIC = (1 << 6),
+  GPU_TEXTURE_USAGE_ATOMIC = (1 << 7),
   /* Create a texture whose usage cannot be defined prematurely.
    * This is unoptimized and should not be used. */
   GPU_TEXTURE_USAGE_GENERAL = (0xFF &
@@ -1011,6 +1013,10 @@ bool GPU_texture_has_signed_format(const GPUTexture *tex);
  * (including the array dimension).
  */
 void GPU_texture_get_mipmap_size(GPUTexture *texture, int mip_level, int *r_size);
+
+void GPU_texture_subpass_write_bits(GPUTexture *texture, int write_pass, int write_attachment);
+
+void GPU_texture_subpass_read_bits(GPUTexture *texture, uint8_t read_pass);
 
 /** \} */
 

@@ -76,7 +76,24 @@ ENUM_OPERATORS(eGPUSamplerFormat, GPU_SAMPLER_TYPE_UINT)
 
 /* Maximum number of FBOs a texture can be attached to. */
 #define GPU_TEX_MAX_FBO_ATTACHED 32
+#define GPU_TEX_MAX_SUBPASS 3
 
+/**
+ * Add a flag to set the Vulkan subpass. Assume that each subpass has eight color attachments , and
+ * represent them as an array of `char`. In addition, 8 bits are requested as flags for reading. If
+ * the maximum number of pass is 3, the total is 32 bits. (Extensible) e.g. write[0] 0000001
+ * write[1]  0000000
+ * read  00000010
+ * i.d.
+ * This Texture is subpass-0, written in attachment-0, and read in subpass-1.
+ */
+union SubpassBits {
+  int disable;
+  struct {
+    uint8_t write[GPU_TEX_MAX_SUBPASS];
+    uint8_t read_pass;
+  } bits;
+};
 /**
  * Implementation of Textures.
  * Base class which is then specialized for each implementation (GL, VK, ...).
@@ -122,6 +139,7 @@ class Texture {
   /** Frame-buffer references to update on deletion. */
   GPUAttachmentType fb_attachment_[GPU_TEX_MAX_FBO_ATTACHED];
   FrameBuffer *fb_[GPU_TEX_MAX_FBO_ATTACHED];
+  SubpassBits subpass_ = {0};
 
  public:
   Texture(const char *name);
@@ -310,7 +328,23 @@ class Texture {
         return GPU_FB_COLOR_ATTACHMENT0;
     }
   }
-
+  void subpass_bits_set(int pass, int attachment)
+  {
+    BLI_assert(pass < GPU_TEX_MAX_SUBPASS);
+    BLI_assert(attachment < static_cast<int>(GPU_FB_MAX_ATTACHMENT - GPU_FB_COLOR_ATTACHMENT0));
+    subpass_.bits.write[pass] = 1 << attachment;
+  }
+  void subpass_bits_set(uint8_t read_pass)
+  {
+    /** Inside the fragment, we read a fixed pixel from the previous raster, so we flag the passes
+     * that uses it. max 110 **/
+    BLI_assert(read_pass < static_cast<uint8_t>(pow(2, GPU_TEX_MAX_SUBPASS) - 1));
+    subpass_.bits.read_pass = read_pass;
+  }
+  SubpassBits &subpass_bits_get()
+  {
+    return subpass_;
+  }
  protected:
   virtual bool init_internal() = 0;
   virtual bool init_internal(GPUVertBuf *vbo) = 0;
