@@ -182,15 +182,39 @@ class CycleJoint {
 
   void join(const int a, const int b)
   {
-    std::swap(nodes[a], nodes[b]);
-    for (const int &v : nodes) {
-      printf("%d%s", v, (&v == &nodes.last() ? "\n" : "\t"));
+    const int prev_a = this->prev_for(a);
+    const int prev_b = this->prev_for(b);
+
+    const bool a_is_loose = prev_a == a;
+    const bool b_is_loose = prev_b == b;
+
+    if (a_is_loose && b_is_loose) {
+      std::swap(nodes[a], nodes[b]);
+    }
+    else if (!a_is_loose && !b_is_loose) {
+      std::swap(nodes[a], nodes[prev_b]);
+      std::swap(nodes[b], nodes[prev_a]);
+    }
+    else {
+      const int loose_i = a_is_loose ? a : b;
+      const int end_i = a_is_loose ? b : a;
+      std::swap(nodes[loose_i], nodes[end_i]);
     }
   }
 
   int next_for(const int i) const
   {
     return nodes[i];
+  }
+
+ private:
+  int prev_for(const int i) const
+  {
+    int iter_i = i;
+    while (i != this->next_for(iter_i)) {
+      iter_i = this->next_for(iter_i);
+    }
+    return iter_i;
   }
 };
 
