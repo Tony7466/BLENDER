@@ -13,7 +13,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_scene.h"
@@ -225,7 +225,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
 void SCULPT_mask_filter_smooth_apply(Sculpt * /*sd*/,
                                      Object *ob,
-                                     Span<PBVHNode *> nodes,
+                                     blender::Span<PBVHNode *> nodes,
                                      const int smooth_iterations)
 {
   using namespace blender;

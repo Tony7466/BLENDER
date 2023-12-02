@@ -57,16 +57,16 @@
 #include "BKE_effect.h"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
@@ -199,7 +199,7 @@ static void particle_settings_foreach_id(ID *id, LibraryForeachIDData *data)
   if (psett->boids) {
     LISTBASE_FOREACH (BoidState *, state, &psett->boids->states) {
       LISTBASE_FOREACH (BoidRule *, rule, &state->rules) {
-        if (rule->type == eBoidRuleType_Avoid) {
+        if (ELEM(rule->type, eBoidRuleType_Avoid, eBoidRuleType_Goal)) {
           BoidRuleGoalAvoid *gabr = (BoidRuleGoalAvoid *)rule;
           BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, gabr->ob, IDWALK_CB_NOP);
         }

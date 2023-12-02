@@ -17,7 +17,7 @@
 #include "DNA_object_types.h"
 
 #include "BKE_ccg.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -191,7 +191,7 @@ static void do_multiplane_scrape_brush_task(Object *ob,
 
 /* Public functions. */
 
-void SCULPT_do_multiplane_scrape_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
+void SCULPT_do_multiplane_scrape_brush(Sculpt *sd, Object *ob, blender::Span<PBVHNode *> nodes)
 {
   using namespace blender;
   SculptSession *ss = ob->sculpt;

@@ -17,7 +17,7 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_kelvinlet.h"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
@@ -420,7 +420,7 @@ static int sculpt_set_pivot_position_exec(bContext *C, wmOperator *op)
     }
   }
   else {
-    Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
+    blender::Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
     float avg[3];
     int total = 0;
