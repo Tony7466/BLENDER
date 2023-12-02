@@ -170,53 +170,46 @@ inline void parallel_transform(MutableSpan<T> data,
   });
 }
 
-class CycleJoint {
- private:
-  Array<int> nodes;
-
- public:
-  CycleJoint(const int size) : nodes(size)
-  {
-    array_utils::fill_index_range<int>(nodes);
-  }
-
-  void join(const int a, const int b)
-  {
-    const int prev_a = this->prev_for(a);
-    const int prev_b = this->prev_for(b);
-
-    const bool a_is_loose = prev_a == a;
-    const bool b_is_loose = prev_b == b;
-
-    if (a_is_loose && b_is_loose) {
-      std::swap(nodes[a], nodes[b]);
+static void sort_pairs(const OffsetIndices<int> offset, MutableSpan<int2> r_pairs)
+{
+  static const auto ensure_order = [](const int2 current, int2 &next) {
+    if (ELEM(next[1], current[0], current[1])) {
+      std::swap(next[0], next[1]);
     }
-    else if (!a_is_loose && !b_is_loose) {
-      std::swap(nodes[a], nodes[prev_b]);
-      std::swap(nodes[b], nodes[prev_a]);
-    }
-    else {
-      const int loose_i = a_is_loose ? a : b;
-      const int end_i = a_is_loose ? b : a;
-      std::swap(nodes[loose_i], nodes[end_i]);
-    }
-  }
+    BLI_assert(current[1] == next[0]);
+  };
 
-  int next_for(const int i) const
-  {
-    return nodes[i];
-  }
-
- private:
-  int prev_for(const int i) const
-  {
-    int iter_i = i;
-    while (i != this->next_for(iter_i)) {
-      iter_i = this->next_for(iter_i);
+  threading::parallel_for(offset.index_range(), 1024, [&](const IndexRange range) {
+    for (const int64_t group_i : range) {
+      MutableSpan<int2> next_segment = r_pairs.slice(offset[group_i]);
+      for (const int index : offset[group_i].index_range().drop_back(1)) {
+        int2 &current = next_segment.first();
+        next_segment = next_segment.drop_front(1);
+        int2 *next = std::find_if(next_segment.begin(), next_segment.end(), [&](const int2 next) {
+          return ELEM(current[1], next[0], next[1]);
+        });
+        if (next != next_segment.end()) {
+          ensure_order(current, *next);
+          std::swap(next_segment.first(), *next);
+          continue;
+        }
+        /* This is the first element a non-cyclic star and looking for unconnected edge was
+         * failure. Try again in other direction. */
+        int2 *other_next = std::find_if(
+            next_segment.begin(), next_segment.end(), [&](const int2 next) {
+              return ELEM(current[0], next[0], next[1]);
+            });
+        if (other_next != next_segment.end()) {
+          std::swap(current[0], current[1]);
+          ensure_order(current, *other_next);
+          std::swap(next_segment.first(), *other_next);
+          continue;
+        }
+        BLI_assert_unreachable();
+      }
     }
-    return iter_i;
-  }
-};
+  });
+}
 
 static int edges_to_curve_point_indices(const int verts_num,
                                         const Span<int2> edges,
@@ -304,15 +297,22 @@ static int edges_to_curve_point_indices(const int verts_num,
   MutableSpan<int> cyclic_curves = curve_offsets.slice(cyclic_curves_range);
   MutableSpan<int> non_cyclic_curves = curve_offsets.slice(non_cyclic_curves_range);
   curve_offsets.slice(short_curves_range).fill(2);
-  printf(">> %d, %d, %d;\n",
-         int(cyclic_curves_range.size()),
-         int(non_cyclic_curves_range.size()),
-         int(short_curves_range.size()));
 
-  Array<int> long_curves_offsets;
-  Array<int> long_curves_indices;
-  gather_groups(vert_curve_index, long_curves_total, long_curves_offsets, long_curves_indices);
-  OffsetIndices<int> long_curves(long_curves_offsets);
+  Array<int> body_edges_curve_index(body_edges_mask.size());
+  body_edges_mask.foreach_index_optimized<int>(
+      GrainSize(2098), [&](const int edge_i, const int edge_pos) {
+        const int2 edge = edges[edge_i];
+        const int vert_pos = reverse_vert_pos[edge[0]];
+        body_edges_curve_index[edge_pos] = vert_curve_index[vert_pos];
+      });
+
+  Array<int> body_edges_curves_offsets;
+  Array<int> body_edges_curves_indices;
+  gather_groups(body_edges_curve_index,
+                long_curves_total,
+                body_edges_curves_offsets,
+                body_edges_curves_indices);
+  OffsetIndices<int> long_curves(body_edges_curves_offsets);
 
   cyclic_curves_mask.foreach_index_optimized<int>(
       GrainSize(4098), [&](const int curve_i, const int curve_pos) {
@@ -334,25 +334,22 @@ static int edges_to_curve_point_indices(const int verts_num,
         r_curve_indices[short_curves[edge_pos][1]] = edge[1];
       });
 
-  CycleJoint cycles(verts_mask.size());
-  body_edges_mask.foreach_index_optimized<int>([&](const int edge_i) {
-    const int2 edge = edges[edge_i];
-    cycles.join(reverse_vert_pos[edge[0]], reverse_vert_pos[edge[1]]);
-  });
-
   const OffsetIndices<int> cyclic_curves_offsets = curves.slice(cyclic_curves_range);
+
+  Array<int2> curve_body_edges(body_edges_curves_indices.size());
+  parallel_transform(body_edges_curves_indices, 4098, [&](const int edge_pos) {
+    return body_edges_mask[edge_pos];
+  });
+  array_utils::gather(
+      edges, body_edges_curves_indices.as_span(), curve_body_edges.as_mutable_span());
+  sort_pairs(cyclic_curves_offsets, curve_body_edges);
+
   cyclic_curves_mask.foreach_index_optimized<int>(
       GrainSize(4098), [&](const int curve_i, const int curve_pos) {
-        MutableSpan<int> dst_curve_indices = r_curve_indices.as_mutable_span().slice(
+        MutableSpan<int> curve_vert_indices = r_curve_indices.as_mutable_span().slice(
             cyclic_curves_offsets[curve_pos]);
-        const Span<int> src_curve_indices = long_curves_indices.as_span().slice(
+        MutableSpan<int2> curve_edge_indices = curve_body_edges.as_mutable_span().slice(
             long_curves[curve_i]);
-        int vert_iter_pos = src_curve_indices.first();
-        for (int &vert_i : dst_curve_indices) {
-          printf(">> %d;\n", vert_iter_pos);
-          vert_i = reverse_vert_pos[vert_iter_pos];
-          vert_iter_pos = cycles.next_for(vert_iter_pos);
-        }
       });
 
   /*
