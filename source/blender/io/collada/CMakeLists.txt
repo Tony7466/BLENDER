@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -21,13 +21,12 @@ unset(OPENCOLLADA_ANIMATION_CLIP CACHE)
 
 set(INC
   .
+  ../../blenkernel
   ../../blentranslation
-  ../../depsgraph
   ../../editors/include
-  ../../imbuf
+  ../../ikplugin
   ../../makesrna
   ../../windowmanager
-  ../../ikplugin
   ../../../../intern/iksolver/extern
   ../../bmesh
 )
@@ -113,9 +112,11 @@ set(LIB
   ${OPENCOLLADA_LIBRARIES}
   ${PCRE_LIBRARIES}
   ${XML2_LIBRARIES}
-  PRIVATE bf::blenkernel
+  PRIVATE bf::animrig
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
 )
 
@@ -123,4 +124,4 @@ if(WITH_BUILDINFO)
   add_definitions(-DWITH_BUILDINFO)
 endif()
 
-blender_add_lib(bf_collada "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+blender_add_lib(bf_io_collada "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

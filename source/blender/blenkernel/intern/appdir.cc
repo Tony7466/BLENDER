@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,9 +8,9 @@
  * Access to application level directories.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "BLI_fileops.h"
 #include "BLI_fileops_types.h"
@@ -18,7 +18,7 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_tempfile.h"
 #include "BLI_utildefines.h"
 
@@ -34,8 +34,8 @@
 #include "CLG_log.h"
 
 #ifdef WIN32
-#  include "utf_winfunc.h"
-#  include "utfconv.h"
+#  include "utf_winfunc.hh"
+#  include "utfconv.hh"
 #  include <io.h>
 #  ifdef _WIN32_IE
 #    undef _WIN32_IE
@@ -1076,7 +1076,7 @@ void BKE_appdir_app_templates(ListBase *templates)
       continue;
     }
 
-    struct direntry *dirs;
+    direntry *dirs;
     const uint dir_num = BLI_filelist_dir_contents(subdir, &dirs);
     for (int f = 0; f < dir_num; f++) {
       if (!FILENAME_IS_CURRPAR(dirs[f].relname) && S_ISDIR(dirs[f].type)) {

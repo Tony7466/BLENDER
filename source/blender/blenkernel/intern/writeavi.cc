@@ -8,7 +8,7 @@
  * \ingroup bke
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -20,7 +20,7 @@
 #ifdef WITH_AVI
 #  include "BLI_blenlib.h"
 
-#  include "BKE_main.h"
+#  include "BKE_main.hh"
 #endif
 
 #include "BKE_writeavi.h"
@@ -92,7 +92,7 @@ static void context_free_avi(void *context_v);
 #endif /* WITH_AVI */
 
 #ifdef WITH_FFMPEG
-#  include "BKE_writeffmpeg.h"
+#  include "BKE_writeffmpeg.hh"
 #endif
 
 bMovieHandle *BKE_movie_handle_get(const char imtype)
@@ -251,11 +251,11 @@ static int append_avi(void *context_v,
     return 0;
   }
 
-  /* note that libavi free's the buffer... stupid interface - zr */
+  /* NOTE(@zr): that LIBAVI free's the buffer (stupid interface). */
   rectot = static_cast<uint *>(MEM_mallocN(rectx * recty * sizeof(int), "rectot"));
   rt1 = rectot;
   rt2 = (uint *)pixels + (recty - 1) * rectx;
-  /* flip y and convert to abgr */
+  /* Flip Y and convert to ABGR. */
   for (y = 0; y < recty; y++, rt1 += rectx, rt2 -= rectx) {
     memcpy(rt1, rt2, rectx * sizeof(int));
 

@@ -1,22 +1,19 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   .
-  ../blenfont
+  ../blenkernel
   ../blentranslation
-  ../depsgraph
   ../draw
   ../editors/include
   ../gpu
-  ../imbuf
   ../makesrna
   ../nodes
   ../render
   ../sequencer
   ../windowmanager
-  ../../../intern/clog
   ../bmesh
 
   # RNA_prototypes.h
@@ -34,7 +31,7 @@ set(SRC
   intern/readfile.cc
   intern/readfile_tempload.cc
   intern/undofile.cc
-  intern/versioning_250.c
+  intern/versioning_250.cc
   intern/versioning_260.cc
   intern/versioning_270.cc
   intern/versioning_280.cc
@@ -43,25 +40,30 @@ set(SRC
   intern/versioning_400.cc
   intern/versioning_common.cc
   intern/versioning_defaults.cc
-  intern/versioning_dna.c
-  intern/versioning_legacy.c
-  intern/versioning_userdef.c
+  intern/versioning_dna.cc
+  intern/versioning_legacy.cc
+  intern/versioning_userdef.cc
   intern/writefile.cc
 
-  BLO_blend_defs.h
-  BLO_blend_validate.h
-  BLO_read_write.h
+  BLO_blend_defs.hh
+  BLO_blend_validate.hh
+  BLO_read_write.hh
   BLO_readfile.h
-  BLO_undofile.h
-  BLO_writefile.h
-  intern/readfile.h
-  intern/versioning_common.h
+  BLO_undofile.hh
+  BLO_writefile.hh
+  intern/readfile.hh
+  intern/versioning_common.hh
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  PRIVATE bf::animrig
+  PRIVATE bf::blenfont
+  bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::imbuf
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
 

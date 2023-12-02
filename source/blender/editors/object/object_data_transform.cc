@@ -26,29 +26,31 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_armature.h"
-#include "BKE_curve.h"
-#include "BKE_editmesh.h"
+#include "BKE_armature.hh"
+#include "BKE_curve.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_key.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
 #include "BKE_scene.h"
 
 #include "bmesh.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "ED_armature.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
+#include "ED_armature.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -344,8 +346,9 @@ XFormObjectData *ED_object_data_xform_create_ex(ID *id, bool is_edit_mode)
         XFormObjectData_Mesh *xod = static_cast<XFormObjectData_Mesh *>(
             MEM_mallocN(sizeof(*xod) + (sizeof(*xod->elem_array) * elem_array_len), __func__));
         memset(xod, 0x0, sizeof(*xod));
+        blender::MutableSpan(reinterpret_cast<blender::float3 *>(xod->elem_array), me->totvert)
+            .copy_from(me->vert_positions());
 
-        BKE_mesh_vert_coords_get(me, xod->elem_array);
         xod_base = &xod->base;
 
         if (key != nullptr) {
@@ -529,6 +532,7 @@ void ED_object_data_xform_destroy(XFormObjectData *xod_base)
 
 void ED_object_data_xform_by_mat4(XFormObjectData *xod_base, const float mat[4][4])
 {
+  using namespace blender;
   switch (GS(xod_base->id->name)) {
     case ID_ME: {
       Mesh *me = (Mesh *)xod_base->id;
@@ -544,7 +548,11 @@ void ED_object_data_xform_by_mat4(XFormObjectData *xod_base, const float mat[4][
         // key_index = bm->shapenr - 1;
       }
       else {
-        BKE_mesh_vert_coords_apply_with_mat4(me, xod->elem_array, mat);
+        MutableSpan<float3> positions = me->vert_positions_for_write();
+        for (const int i : positions.index_range()) {
+          mul_v3_m4v3(positions[i], mat, xod->elem_array[i]);
+        }
+        BKE_mesh_tag_positions_changed(me);
       }
 
       if (key != nullptr) {
@@ -651,7 +659,9 @@ void ED_object_data_xform_restore(XFormObjectData *xod_base)
         // key_index = bm->shapenr - 1;
       }
       else {
-        BKE_mesh_vert_coords_apply(me, xod->elem_array);
+        me->vert_positions_for_write().copy_from(
+            {reinterpret_cast<const blender::float3 *>(xod->elem_array), me->totvert});
+        BKE_mesh_tag_positions_changed(me);
       }
 
       if ((key != nullptr) && (xod->key_data != nullptr)) {

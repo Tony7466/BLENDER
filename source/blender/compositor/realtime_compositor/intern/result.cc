@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,17 +16,167 @@
 
 namespace blender::realtime_compositor {
 
-Result::Result(ResultType type, TexturePool &texture_pool)
-    : type_(type), texture_pool_(&texture_pool)
+Result::Result(ResultType type, TexturePool &texture_pool, ResultPrecision precision)
+    : type_(type), precision_(precision), texture_pool_(&texture_pool)
 {
 }
 
-Result Result::Temporary(ResultType type, TexturePool &texture_pool)
+Result Result::Temporary(ResultType type, TexturePool &texture_pool, ResultPrecision precision)
 {
-  Result result = Result(type, texture_pool);
+  Result result = Result(type, texture_pool, precision);
   result.set_initial_reference_count(1);
   result.reset();
   return result;
+}
+
+eGPUTextureFormat Result::texture_format(ResultType type, ResultPrecision precision)
+{
+  switch (precision) {
+    case ResultPrecision::Half:
+      switch (type) {
+        case ResultType::Float:
+          return GPU_R16F;
+        case ResultType::Vector:
+        case ResultType::Color:
+          return GPU_RGBA16F;
+        case ResultType::Float2:
+          return GPU_RG16F;
+        case ResultType::Float3:
+          return GPU_RGB16F;
+        case ResultType::Int2:
+          return GPU_RG16I;
+      }
+      break;
+    case ResultPrecision::Full:
+      switch (type) {
+        case ResultType::Float:
+          return GPU_R32F;
+        case ResultType::Vector:
+        case ResultType::Color:
+          return GPU_RGBA32F;
+        case ResultType::Float2:
+          return GPU_RG32F;
+        case ResultType::Float3:
+          return GPU_RGB32F;
+        case ResultType::Int2:
+          return GPU_RG32I;
+      }
+      break;
+  }
+
+  BLI_assert_unreachable();
+  return GPU_RGBA32F;
+}
+
+eGPUTextureFormat Result::texture_format(eGPUTextureFormat format, ResultPrecision precision)
+{
+  switch (precision) {
+    case ResultPrecision::Half:
+      switch (format) {
+        /* Already half precision, return the input format. */
+        case GPU_R16F:
+        case GPU_RG16F:
+        case GPU_RGB16F:
+        case GPU_RGBA16F:
+        case GPU_RG16I:
+          return format;
+
+        case GPU_R32F:
+          return GPU_R16F;
+        case GPU_RG32F:
+          return GPU_RG16F;
+        case GPU_RGB32F:
+          return GPU_RGB16F;
+        case GPU_RGBA32F:
+          return GPU_RGBA16F;
+        case GPU_RG32I:
+          return GPU_RG16I;
+        default:
+          break;
+      }
+      break;
+    case ResultPrecision::Full:
+      switch (format) {
+        /* Already full precision, return the input format. */
+        case GPU_R32F:
+        case GPU_RG32F:
+        case GPU_RGB32F:
+        case GPU_RGBA32F:
+        case GPU_RG32I:
+          return format;
+
+        case GPU_R16F:
+          return GPU_R32F;
+        case GPU_RG16F:
+          return GPU_RG32F;
+        case GPU_RGB16F:
+          return GPU_RGB32F;
+        case GPU_RGBA16F:
+          return GPU_RGBA32F;
+        case GPU_RG16I:
+          return GPU_RG32I;
+        default:
+          break;
+      }
+      break;
+  }
+
+  BLI_assert_unreachable();
+  return format;
+}
+
+ResultPrecision Result::precision(eGPUTextureFormat format)
+{
+  switch (format) {
+    case GPU_R16F:
+    case GPU_RG16F:
+    case GPU_RGB16F:
+    case GPU_RGBA16F:
+    case GPU_RG16I:
+      return ResultPrecision::Half;
+    case GPU_R32F:
+    case GPU_RG32F:
+    case GPU_RGB32F:
+    case GPU_RGBA32F:
+    case GPU_RG32I:
+      return ResultPrecision::Full;
+    default:
+      break;
+  }
+
+  BLI_assert_unreachable();
+  return ResultPrecision::Full;
+}
+
+ResultType Result::type(eGPUTextureFormat format)
+{
+  switch (format) {
+    case GPU_R16F:
+    case GPU_R32F:
+      return ResultType::Float;
+    case GPU_RG16F:
+    case GPU_RG32F:
+      return ResultType::Float2;
+    case GPU_RGB16F:
+    case GPU_RGB32F:
+      return ResultType::Float3;
+    case GPU_RGBA16F:
+    case GPU_RGBA32F:
+      return ResultType::Color;
+    case GPU_RG16I:
+    case GPU_RG32I:
+      return ResultType::Int2;
+    default:
+      break;
+  }
+
+  BLI_assert_unreachable();
+  return ResultType::Color;
+}
+
+eGPUTextureFormat Result::get_texture_format() const
+{
+  return Result::texture_format(type_, precision_);
 }
 
 void Result::allocate_texture(Domain domain)
@@ -40,17 +190,7 @@ void Result::allocate_texture(Domain domain)
   }
 
   is_single_value_ = false;
-  switch (type_) {
-    case ResultType::Float:
-      texture_ = texture_pool_->acquire_float(domain.size);
-      break;
-    case ResultType::Vector:
-      texture_ = texture_pool_->acquire_vector(domain.size);
-      break;
-    case ResultType::Color:
-      texture_ = texture_pool_->acquire_color(domain.size);
-      break;
-  }
+  texture_ = texture_pool_->acquire(domain.size, get_texture_format());
   domain_ = domain;
 }
 
@@ -59,17 +199,7 @@ void Result::allocate_single_value()
   is_single_value_ = true;
   /* Single values are stored in 1x1 textures as well as the single value members. */
   const int2 texture_size{1, 1};
-  switch (type_) {
-    case ResultType::Float:
-      texture_ = texture_pool_->acquire_float(texture_size);
-      break;
-    case ResultType::Vector:
-      texture_ = texture_pool_->acquire_vector(texture_size);
-      break;
-    case ResultType::Color:
-      texture_ = texture_pool_->acquire_color(texture_size);
-      break;
-  }
+  texture_ = texture_pool_->acquire(texture_size, get_texture_format());
   domain_ = Domain::identity();
 }
 
@@ -85,6 +215,10 @@ void Result::allocate_invalid()
       break;
     case ResultType::Color:
       set_color_value(float4(0.0f));
+      break;
+    default:
+      /* Other types are internal and do not support single values. */
+      BLI_assert_unreachable();
       break;
   }
 }
@@ -155,10 +289,30 @@ void Result::steal_data(Result &source)
     case ResultType::Color:
       color_value_ = source.color_value_;
       break;
+    default:
+      /* Other types are internal and do not support single values. */
+      break;
   }
 
   source.texture_ = nullptr;
   source.texture_pool_ = nullptr;
+}
+
+void Result::wrap_external(GPUTexture *texture)
+{
+  BLI_assert(GPU_texture_format(texture) == get_texture_format());
+  BLI_assert(!is_allocated());
+  BLI_assert(!master_);
+
+  texture_ = texture;
+  is_external_ = true;
+  is_single_value_ = false;
+  domain_ = Domain(int2(GPU_texture_width(texture), GPU_texture_height(texture)));
+}
+
+void Result::set_transformation(const float3x3 &transformation)
+{
+  domain_.transformation = transformation;
 }
 
 void Result::transform(const float3x3 &transformation)
@@ -262,7 +416,9 @@ void Result::release()
    * texture pool. */
   reference_count_--;
   if (reference_count_ == 0) {
-    texture_pool_->release(texture_);
+    if (!is_external_) {
+      texture_pool_->release(texture_);
+    }
     texture_ = nullptr;
   }
 }

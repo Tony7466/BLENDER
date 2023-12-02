@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,36 +10,37 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
-#include "BLI_math.h"
-
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_attribute.hh"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
-#include "BKE_paint.h"
+#include "BKE_modifier.hh"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
-#include "BKE_screen.h"
-#include "BKE_shrinkwrap.h"
+#include "BKE_screen.hh"
+#include "BKE_shrinkwrap.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "BLI_math_vector.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_sculpt.h"
-#include "ED_undo.h"
-#include "ED_view3d.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
+
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_sculpt.hh"
+#include "ED_undo.hh"
+#include "ED_view3d.hh"
 
 #include "bmesh_tools.h"
 
@@ -205,13 +206,14 @@ static int geometry_extract_apply(bContext *C,
       C, OB_MESH, nullptr, ob->loc, ob->rot, false, local_view_bits);
   BKE_mesh_nomain_to_mesh(new_mesh, static_cast<Mesh *>(new_ob->data), new_ob);
 
+  Mesh *new_ob_mesh = static_cast<Mesh *>(new_ob->data);
+
   /* Remove the Face Sets as they need to be recreated when entering Sculpt Mode in the new object.
    * TODO(pablodobarro): In the future we can try to preserve them from the original mesh. */
-  Mesh *new_ob_mesh = static_cast<Mesh *>(new_ob->data);
-  CustomData_free_layer_named(&new_ob_mesh->pdata, ".sculpt_face_set", new_ob_mesh->totpoly);
+  new_ob_mesh->attributes_for_write().remove(".sculpt_face_set");
 
   /* Remove the mask from the new object so it can be sculpted directly after extracting. */
-  CustomData_free_layers(&new_ob_mesh->vdata, CD_PAINT_MASK, new_ob_mesh->totvert);
+  new_ob_mesh->attributes_for_write().remove(".sculpt_mask");
 
   BKE_mesh_copy_parameters_for_eval(new_ob_mesh, mesh);
 
@@ -243,7 +245,8 @@ static void geometry_extract_tag_masked_faces(BMesh *bm, GeometryExtractParams *
   const float threshold = params->mask_threshold;
 
   BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG, false);
-  const int cd_vert_mask_offset = CustomData_get_offset(&bm->vdata, CD_PAINT_MASK);
+  const int cd_vert_mask_offset = CustomData_get_offset_named(
+      &bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
 
   BMFace *f;
   BMIter iter;
@@ -410,7 +413,8 @@ static void slice_paint_mask(BMesh *bm, bool invert, bool fill_holes, float mask
   BMIter face_iter;
 
   /* Delete all masked faces */
-  const int cd_vert_mask_offset = CustomData_get_offset(&bm->vdata, CD_PAINT_MASK);
+  const int cd_vert_mask_offset = CustomData_get_offset_named(
+      &bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
   BLI_assert(cd_vert_mask_offset != -1);
   BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG, false);
 
@@ -507,7 +511,7 @@ static int paint_mask_slice_exec(bContext *C, wmOperator *op)
     BM_mesh_free(bm);
 
     /* Remove the mask from the new object so it can be sculpted directly after slicing. */
-    CustomData_free_layers(&new_ob_mesh->vdata, CD_PAINT_MASK, new_ob_mesh->totvert);
+    new_ob_mesh->attributes_for_write().remove(".sculpt_mask");
 
     Mesh *new_mesh = static_cast<Mesh *>(new_ob->data);
     BKE_mesh_nomain_to_mesh(new_ob_mesh, new_mesh, new_ob);
@@ -524,7 +528,7 @@ static int paint_mask_slice_exec(bContext *C, wmOperator *op)
   if (ob->mode == OB_MODE_SCULPT) {
     SculptSession *ss = ob->sculpt;
     ss->face_sets = static_cast<int *>(CustomData_get_layer_named_for_write(
-        &mesh->pdata, CD_PROP_INT32, ".sculpt_face_set", mesh->totpoly));
+        &mesh->face_data, CD_PROP_INT32, ".sculpt_face_set", mesh->faces_num));
     if (ss->face_sets) {
       /* Assign a new Face Set ID to the new faces created by the slice operation. */
       const int next_face_set_id = ED_sculpt_face_sets_find_next_available_id(mesh);

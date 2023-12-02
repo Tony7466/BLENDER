@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup bke
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_anim_types.h"
 
@@ -20,7 +20,7 @@
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.h"
 
 /* status */
@@ -148,7 +148,7 @@ void BKE_lib_query_idpropertiesForeachIDLink_callback(IDProperty *id_prop, void 
 
 void BKE_library_foreach_ID_embedded(LibraryForeachIDData *data, ID **id_pp)
 {
-  /* Needed e.g. for callbacks handling relationships. This call shall be absolutely read-only. */
+  /* Needed e.g. for callbacks handling relationships. This call should be absolutely read-only. */
   ID *id = *id_pp;
   const int flag = data->flag;
 
@@ -205,10 +205,7 @@ static bool library_foreach_ID_link(Main *bmain,
   data.bmain = bmain;
 
   BLI_assert(inherit_data == nullptr || data.bmain == inherit_data->bmain);
-  /* `IDWALK_NO_ORIG_POINTERS_ACCESS` is mutually exclusive with both `IDWALK_READONLY` and
-   * `IDWALK_RECURSE`. */
-  BLI_assert((flag & (IDWALK_NO_ORIG_POINTERS_ACCESS | IDWALK_READONLY)) !=
-             (IDWALK_NO_ORIG_POINTERS_ACCESS | IDWALK_READONLY));
+  /* `IDWALK_NO_ORIG_POINTERS_ACCESS` is mutually exclusive with `IDWALK_RECURSE`. */
   BLI_assert((flag & (IDWALK_NO_ORIG_POINTERS_ACCESS | IDWALK_RECURSE)) !=
              (IDWALK_NO_ORIG_POINTERS_ACCESS | IDWALK_RECURSE));
 
@@ -282,11 +279,23 @@ static bool library_foreach_ID_link(Main *bmain,
       data.cb_flag_clear = inherit_data->cb_flag_clear;
     }
 
-    if (bmain != nullptr && bmain->relations != nullptr && (flag & IDWALK_READONLY) &&
-        (flag & (IDWALK_DO_INTERNAL_RUNTIME_POINTERS | IDWALK_DO_LIBRARY_POINTER)) == 0 &&
-        (((bmain->relations->flag & MAINIDRELATIONS_INCLUDE_UI) == 0) ==
-         ((data.flag & IDWALK_INCLUDE_UI) == 0)))
+    bool use_bmain_relations = bmain != nullptr && bmain->relations != nullptr &&
+                               (flag & IDWALK_READONLY);
+    /* Including UI-related ID pointers should match with the relevant setting in Main relations
+     * cache. */
+    if (use_bmain_relations && (((bmain->relations->flag & MAINIDRELATIONS_INCLUDE_UI) == 0) !=
+                                ((data.flag & IDWALK_INCLUDE_UI) == 0)))
     {
+      use_bmain_relations = false;
+    }
+    /* No special 'internal' handling of ID pointers is covered by Main relations cache. */
+    if (use_bmain_relations &&
+        (flag & (IDWALK_DO_INTERNAL_RUNTIME_POINTERS | IDWALK_DO_LIBRARY_POINTER |
+                 IDWALK_DO_DEPRECATED_POINTERS)))
+    {
+      use_bmain_relations = false;
+    }
+    if (use_bmain_relations) {
       /* Note that this is minor optimization, even in worst cases (like id being an object with
        * lots of drivers and constraints and modifiers, or material etc. with huge node tree),
        * but we might as well use it (Main->relations is always assumed valid,
@@ -323,6 +332,14 @@ static bool library_foreach_ID_link(Main *bmain,
                          IDWALK_CB_USER | IDWALK_CB_OVERRIDE_LIBRARY_REFERENCE);
 
       CALLBACK_INVOKE_ID(id->override_library->hierarchy_root, IDWALK_CB_LOOPBACK);
+      LISTBASE_FOREACH (IDOverrideLibraryProperty *, op, &id->override_library->properties) {
+        LISTBASE_FOREACH (IDOverrideLibraryPropertyOperation *, opop, &op->operations) {
+          CALLBACK_INVOKE_ID(opop->subitem_reference_id,
+                             IDWALK_CB_DIRECT_WEAK_LINK | IDWALK_CB_OVERRIDE_LIBRARY_REFERENCE);
+          CALLBACK_INVOKE_ID(opop->subitem_local_id,
+                             IDWALK_CB_DIRECT_WEAK_LINK | IDWALK_CB_OVERRIDE_LIBRARY_REFERENCE);
+        }
+      }
     }
 
     IDP_foreach_property(id->properties,
@@ -636,7 +653,10 @@ bool BKE_library_ID_is_indirectly_used(Main *bmain, void *idv)
   return library_ID_is_used(bmain, idv, true);
 }
 
-void BKE_library_ID_test_usages(Main *bmain, void *idv, bool *is_used_local, bool *is_used_linked)
+void BKE_library_ID_test_usages(Main *bmain,
+                                void *idv,
+                                bool *r_is_used_local,
+                                bool *r_is_used_linked)
 {
   IDUsersIter iter;
   ListBase *lb_array[INDEX_ID_MAX];
@@ -666,8 +686,8 @@ void BKE_library_ID_test_usages(Main *bmain, void *idv, bool *is_used_local, boo
     }
   }
 
-  *is_used_local = (iter.count_direct != 0);
-  *is_used_linked = (iter.count_indirect != 0);
+  *r_is_used_local = (iter.count_direct != 0);
+  *r_is_used_linked = (iter.count_indirect != 0);
 }
 
 /* ***** IDs usages.checking/tagging. ***** */
@@ -763,7 +783,7 @@ static bool lib_query_unused_ids_tag_recurse(Main *bmain,
             bmain, tag, do_local_ids, do_linked_ids, id_from, r_num_tagged))
     {
       /* Dependency loop case, ignore the `id_from` tag value here (as it should not be considered
-       * as valid yet), and presume that this is a 'valid user' case for now. . */
+       * as valid yet), and presume that this is a 'valid user' case for now. */
       is_part_of_dependency_loop = true;
       continue;
     }

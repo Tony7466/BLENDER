@@ -40,12 +40,16 @@ set(SRC_KERNEL_DEVICE_OPTIX
   device/optix/kernel_shader_raytrace.cu
 )
 
-if(WITH_CYCLES_OSL AND (OSL_LIBRARY_VERSION_MINOR GREATER_EQUAL 13 OR OSL_LIBRARY_VERSION_MAJOR GREATER 1))
-  set(SRC_KERNEL_DEVICE_OPTIX
-    ${SRC_KERNEL_DEVICE_OPTIX}
-    osl/services_optix.cu
-    device/optix/kernel_osl.cu
-  )
+if(WITH_CYCLES_OSL)
+  math(EXPR OSL_LIBRARY_VERSION_CODE "${OSL_LIBRARY_VERSION_MAJOR} * 10000 + ${OSL_LIBRARY_VERSION_MINOR} * 100 + ${OSL_LIBRARY_VERSION_PATCH}")
+
+  if(OSL_LIBRARY_VERSION_CODE GREATER_EQUAL 11300)
+    set(SRC_KERNEL_DEVICE_OPTIX
+      ${SRC_KERNEL_DEVICE_OPTIX}
+      osl/services_optix.cu
+      device/optix/kernel_osl.cu
+    )
+  endif()
 endif()
 
 set(SRC_KERNEL_DEVICE_ONEAPI
@@ -126,6 +130,7 @@ set(SRC_KERNEL_CLOSURE_HEADERS
   closure/bsdf_microfacet.h
   closure/bsdf_oren_nayar.h
   closure/bsdf_phong_ramp.h
+  closure/bsdf_sheen.h
   closure/bsdf_toon.h
   closure/bsdf_transparent.h
   closure/bsdf_util.h
@@ -134,9 +139,8 @@ set(SRC_KERNEL_CLOSURE_HEADERS
   closure/bssrdf.h
   closure/emissive.h
   closure/volume.h
-  closure/bsdf_principled_diffuse.h
-  closure/bsdf_principled_sheen.h
-  closure/bsdf_hair_principled.h
+  closure/bsdf_principled_hair_chiang.h
+  closure/bsdf_principled_hair_huang.h
 )
 
 set(SRC_KERNEL_SVM_HEADERS
@@ -174,7 +178,6 @@ set(SRC_KERNEL_SVM_HEADERS
   svm/math.h
   svm/math_util.h
   svm/mix.h
-  svm/musgrave.h
   svm/node_types_template.h
   svm/noise.h
   svm/noisetex.h
@@ -739,7 +742,7 @@ endif()
 # OptiX PTX modules
 
 if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
-  macro(CYCLES_OPTIX_KERNEL_ADD name input flags)
+  macro(cycles_optix_kernel_add name input flags)
     set(output "${CMAKE_CURRENT_BINARY_DIR}/${name}.ptx")
 
     set(cuda_flags ${flags}
@@ -754,6 +757,10 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
       set(cuda_flags ${cuda_flags}
         -D WITH_NANOVDB
         -I "${NANOVDB_INCLUDE_DIR}")
+    endif()
+    if(WITH_CYCLES_OSL)
+      set(cuda_flags ${cuda_flags}
+        -D OSL_LIBRARY_VERSION_CODE=${OSL_LIBRARY_VERSION_CODE})
     endif()
 
     if(WITH_CYCLES_DEBUG)
@@ -792,12 +799,12 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
     kernel_optix_shader_raytrace
     "device/optix/kernel_shader_raytrace.cu"
     "--keep-device-functions")
-  if(WITH_CYCLES_OSL AND (OSL_LIBRARY_VERSION_MINOR GREATER_EQUAL 13 OR OSL_LIBRARY_VERSION_MAJOR GREATER 1))
-    CYCLES_OPTIX_KERNEL_ADD(
+  if(WITH_CYCLES_OSL AND OSL_LIBRARY_VERSION_CODE GREATER_EQUAL 11300)
+    cycles_optix_kernel_add(
       kernel_optix_osl
       "device/optix/kernel_osl.cu"
       "--relocatable-device-code=true")
-    CYCLES_OPTIX_KERNEL_ADD(
+    cycles_optix_kernel_add(
       kernel_optix_osl_services
       "osl/services_optix.cu"
       "--relocatable-device-code=true")
@@ -849,8 +856,13 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
     -fsycl-max-parallel-link-jobs=${SYCL_OFFLINE_COMPILER_PARALLEL_JOBS}
     -shared
     -DWITH_ONEAPI
-    -ffast-math
     -O2
+    -fno-fast-math
+    -ffp-contract=fast
+    -fassociative-math
+    -freciprocal-math
+    -fno-signed-zeros
+    -ffinite-math-only
     -D__KERNEL_LOCAL_ATOMIC_SORT__
     -o"${cycles_kernel_oneapi_lib}"
     -I"${CMAKE_CURRENT_SOURCE_DIR}/.."
@@ -871,7 +883,37 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
   endif()
   # Enable zebin, a graphics binary format with improved compatibility.
   string(PREPEND CYCLES_ONEAPI_SYCL_OPTIONS_spir64_gen "--format zebin ")
-  string(PREPEND CYCLES_ONEAPI_SYCL_OPTIONS_spir64_gen "-device ${CYCLES_ONEAPI_SPIR64_GEN_DEVICES} ")
+
+  # Add the list of Intel devices to build binaries for.
+  foreach(device ${CYCLES_ONEAPI_INTEL_BINARIES_ARCH})
+    # Run ocloc ids to test if the device is supported.
+    if(WIN32)
+      execute_process(
+        COMMAND ${OCLOC_INSTALL_DIR}/ocloc.exe ids ${device}
+        RESULT_VARIABLE oclocids_ret
+        OUTPUT_QUIET
+        ERROR_QUIET
+      )
+    else()
+      execute_process(
+        COMMAND ${CMAKE_COMMAND}
+        -E env "LD_LIBRARY_PATH=${OCLOC_INSTALL_DIR}/lib:${IGC_INSTALL_DIR}/lib"
+        ${OCLOC_INSTALL_DIR}/bin/ocloc ids ${device}
+
+        RESULT_VARIABLE oclocids_ret
+        OUTPUT_QUIET
+        ERROR_QUIET
+      )
+    endif()
+    if(NOT oclocids_ret EQUAL 0)
+      list(REMOVE_ITEM CYCLES_ONEAPI_INTEL_BINARIES_ARCH ${device})
+      message(STATUS "binaries for ${device} not supported by Intel Graphics Compiler/ocloc, skipped.")
+    endif()
+  endforeach()
+  list(JOIN CYCLES_ONEAPI_INTEL_BINARIES_ARCH "," gen_devices_string)
+  if(NOT "${gen_devices_string}" STREQUAL "")
+    string(PREPEND CYCLES_ONEAPI_SYCL_OPTIONS_spir64_gen "-device ${gen_devices_string} ")
+  endif()
 
   # Host execution won't use GPU binaries, no need to compile them.
   if(WITH_CYCLES_ONEAPI_BINARIES AND NOT WITH_CYCLES_ONEAPI_HOST_TASK_EXECUTION)
@@ -880,7 +922,9 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
     list(APPEND sycl_compiler_flags -fsycl-targets=${targets_string})
     foreach(target ${CYCLES_ONEAPI_SYCL_TARGETS})
       if(DEFINED CYCLES_ONEAPI_SYCL_OPTIONS_${target})
-        list(APPEND sycl_compiler_flags "-Xsycl-target-backend=${target} \"${CYCLES_ONEAPI_SYCL_OPTIONS_${target}}\"")
+        list(APPEND sycl_compiler_flags
+          "-Xsycl-target-backend=${target} \"${CYCLES_ONEAPI_SYCL_OPTIONS_${target}}\""
+        )
       endif()
     endforeach()
   else()
@@ -941,12 +985,12 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
         set(next_library_mode "")
       endif()
     endforeach()
-      list(APPEND sycl_compiler_flags
-        "$<$<CONFIG:Release>:${EMBREE_TBB_LIBRARIES_optimized}>"
-        "$<$<CONFIG:RelWithDebInfo>:${EMBREE_TBB_LIBRARIES_optimized}>"
-        "$<$<CONFIG:MinSizeRel>:${EMBREE_TBB_LIBRARIES_optimized}>"
-        "$<$<CONFIG:Debug>:${EMBREE_TBB_LIBRARIES_debug}>"
-      )
+    list(APPEND sycl_compiler_flags
+      "$<$<CONFIG:Release>:${EMBREE_TBB_LIBRARIES_optimized}>"
+      "$<$<CONFIG:RelWithDebInfo>:${EMBREE_TBB_LIBRARIES_optimized}>"
+      "$<$<CONFIG:MinSizeRel>:${EMBREE_TBB_LIBRARIES_optimized}>"
+      "$<$<CONFIG:Debug>:${EMBREE_TBB_LIBRARIES_debug}>"
+    )
   endif()
 
   if(WITH_CYCLES_DEBUG)
@@ -957,16 +1001,17 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
 
   if(WIN32) # Add Windows specific compiler flags.
     list(APPEND sycl_compiler_flags
-    -fuse-ld=link
-    -fms-extensions
-    -fms-compatibility
-    -D_WINDLL
-    -D_MBCS
-    -DWIN32
-    -D_WINDOWS
-    -D_CRT_NONSTDC_NO_DEPRECATE
-    -D_CRT_SECURE_NO_DEPRECATE
-    -DONEAPI_EXPORT)
+      -fuse-ld=link
+      -fms-extensions
+      -fms-compatibility
+      -D_WINDLL
+      -D_MBCS
+      -DWIN32
+      -D_WINDOWS
+      -D_CRT_NONSTDC_NO_DEPRECATE
+      -D_CRT_SECURE_NO_DEPRECATE
+      -DONEAPI_EXPORT
+    )
 
     string(REPLACE /Redist/ /Tools/ MSVC_TOOLS_DIR ${MSVC_REDIST_DIR})
     # Version Folder between Redist and Tools can mismatch sometimes
@@ -982,11 +1027,13 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
       get_filename_component(WINDOWS_KIT_DIR "${WINDOWS_KIT_DIR}/../" ABSOLUTE)
     endif()
     list(APPEND sycl_compiler_flags
-                -L"${MSVC_TOOLS_DIR}/lib/x64"
-                -L"${WINDOWS_KIT_DIR}/um/x64"
-                -L"${WINDOWS_KIT_DIR}/ucrt/x64")
+      -L"${MSVC_TOOLS_DIR}/lib/x64"
+      -L"${WINDOWS_KIT_DIR}/um/x64"
+      -L"${WINDOWS_KIT_DIR}/ucrt/x64"
+    )
   else() # Add Linux specific compiler flags.
     list(APPEND sycl_compiler_flags -fPIC)
+    list(APPEND sycl_compiler_flags -fvisibility=hidden)
 
     # We avoid getting __FAST_MATH__ to be defined when building on CentOS-7 and Rocky-8
     # until the compilation issues it triggers at either AoT or JIT stages gets fixed.
@@ -1003,22 +1050,22 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
   set(sycl_compiler_flags_RelWithDebInfo ${sycl_compiler_flags})
 
   list(APPEND sycl_compiler_flags_Release
-              -DNDEBUG
-              )
+    -DNDEBUG
+  )
   list(APPEND sycl_compiler_flags_RelWithDebInfo
-              -DNDEBUG
-              -g
-              )
+    -DNDEBUG
+    -g
+  )
   list(APPEND sycl_compiler_flags_Debug
-              -g
-              )
+    -g
+  )
 
   if(WIN32)
     list(APPEND sycl_compiler_flags_Debug
-                -D_DEBUG
-                -nostdlib
-                -Xclang --dependent-lib=msvcrtd
-                )
+      -D_DEBUG
+      -nostdlib
+      -Xclang --dependent-lib=msvcrtd
+    )
     add_custom_command(
       OUTPUT ${cycles_kernel_oneapi_lib} ${cycles_kernel_oneapi_linker_lib}
       COMMAND ${CMAKE_COMMAND} -E env
@@ -1120,8 +1167,11 @@ endif()
 
 # Warnings to avoid using doubles in the kernel.
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_C_COMPILER_ID MATCHES "Clang")
-  add_check_cxx_compiler_flag(CMAKE_CXX_FLAGS _has_cxxflag_float_conversion "-Werror=float-conversion")
-  add_check_cxx_compiler_flag(CMAKE_CXX_FLAGS _has_cxxflag_double_promotion "-Werror=double-promotion")
+  add_check_cxx_compiler_flags(
+    CMAKE_CXX_FLAGS
+    _has_cxxflag_float_conversion "-Werror=float-conversion"
+    _has_cxxflag_double_promotion "-Werror=double-promotion"
+  )
   unset(_has_cxxflag_float_conversion)
   unset(_has_cxxflag_double_promotion)
 endif()

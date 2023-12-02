@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,12 +14,13 @@
 #include "DNA_scene_types.h"
 #include "DNA_volume_types.h"
 
+#include "BLI_bounds.hh"
 #include "BLI_compiler_compat.h"
 #include "BLI_fileops.h"
 #include "BLI_ghash.h"
 #include "BLI_index_range.hh"
 #include "BLI_map.hh"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_path_util.h"
@@ -35,21 +36,22 @@
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_main.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_lib_remap.hh"
+#include "BKE_main.hh"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_volume.h"
+#include "BKE_volume.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "CLG_log.h"
 
@@ -608,9 +610,6 @@ static void volume_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 
   /* direct data */
   BLO_write_pointer_array(writer, volume->totcol, volume->mat);
-  if (volume->adt) {
-    BKE_animdata_blend_write(writer, volume->adt);
-  }
 
   BKE_packedfile_blend_write(writer, volume->packedfile);
 }
@@ -618,8 +617,6 @@ static void volume_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 static void volume_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Volume *volume = (Volume *)id;
-  BLO_read_data_address(reader, &volume->adt);
-  BKE_animdata_blend_read_data(reader, volume->adt);
 
   BKE_packedfile_blend_read(reader, &volume->packedfile);
   volume->runtime.frame = 0;
@@ -628,25 +625,14 @@ static void volume_blend_read_data(BlendDataReader *reader, ID *id)
   BLO_read_pointer_array(reader, (void **)&volume->mat);
 }
 
-static void volume_blend_read_lib(BlendLibReader *reader, ID *id)
+static void volume_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *id)
 {
-  Volume *volume = (Volume *)id;
+  Volume *volume = reinterpret_cast<Volume *>(id);
+
   /* Needs to be done *after* cache pointers are restored (call to
    * `foreach_cache`/`blo_cache_storage_entry_restore_in_new`), easier for now to do it in
    * lib_link... */
   BKE_volume_init_grids(volume);
-
-  for (int a = 0; a < volume->totcol; a++) {
-    BLO_read_id_address(reader, id, &volume->mat[a]);
-  }
-}
-
-static void volume_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Volume *volume = (Volume *)id;
-  for (int a = 0; a < volume->totcol; a++) {
-    BLO_expand(expander, volume->mat[a]);
-  }
 }
 
 IDTypeInfo IDType_ID_VO = {
@@ -655,7 +641,7 @@ IDTypeInfo IDType_ID_VO = {
     /*main_listbase_index*/ INDEX_ID_VO,
     /*struct_size*/ sizeof(Volume),
     /*name*/ "Volume",
-    /*name_plural*/ "volumes",
+    /*name_plural*/ N_("volumes"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_VOLUME,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -671,8 +657,7 @@ IDTypeInfo IDType_ID_VO = {
 
     /*blend_write*/ volume_blend_write,
     /*blend_read_data*/ volume_blend_read_data,
-    /*blend_read_lib*/ volume_blend_read_lib,
-    /*blend_read_expand*/ volume_blend_read_expand,
+    /*blend_read_after_liblink*/ volume_blend_read_after_liblink,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -981,56 +966,25 @@ bool BKE_volume_save(const Volume *volume,
 #endif
 }
 
-bool BKE_volume_min_max(const Volume *volume, float3 &r_min, float3 &r_max)
+std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume *volume)
 {
-  bool have_minmax = false;
 #ifdef WITH_OPENVDB
   /* TODO: if we know the volume is going to be displayed, it may be good to
    * load it as part of dependency graph evaluation for better threading. We
    * could also share the bounding box computation in the global volume cache. */
   if (BKE_volume_load(const_cast<Volume *>(volume), G.main)) {
+    std::optional<blender::Bounds<blender::float3>> result;
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
       const VolumeGrid *volume_grid = BKE_volume_grid_get_for_read(volume, i);
       openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
-      float3 grid_min;
-      float3 grid_max;
-      if (BKE_volume_grid_bounds(grid, grid_min, grid_max)) {
-        DO_MIN(grid_min, r_min);
-        DO_MAX(grid_max, r_max);
-        have_minmax = true;
-      }
+      result = blender::bounds::merge(result, BKE_volume_grid_bounds(grid));
     }
+    return result;
   }
 #else
-  UNUSED_VARS(volume, r_min, r_max);
+  UNUSED_VARS(volume);
 #endif
-  return have_minmax;
-}
-
-BoundBox *BKE_volume_boundbox_get(Object *ob)
-{
-  BLI_assert(ob->type == OB_VOLUME);
-
-  if (ob->runtime.bb != nullptr && (ob->runtime.bb->flag & BOUNDBOX_DIRTY) == 0) {
-    return ob->runtime.bb;
-  }
-
-  if (ob->runtime.bb == nullptr) {
-    ob->runtime.bb = MEM_cnew<BoundBox>(__func__);
-  }
-
-  const Volume *volume = (Volume *)ob->data;
-
-  float3 min, max;
-  INIT_MINMAX(min, max);
-  if (!BKE_volume_min_max(volume, min, max)) {
-    min = float3(-1);
-    max = float3(1);
-  }
-
-  BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
-
-  return ob->runtime.bb;
+  return std::nullopt;
 }
 
 bool BKE_volume_is_y_up(const Volume *volume)
@@ -1102,8 +1056,8 @@ static void volume_evaluate_modifiers(Depsgraph *depsgraph,
 
   /* Get effective list of modifiers to execute. Some effects like shape keys
    * are added as virtual modifiers before the user created modifiers. */
-  VirtualModifierData virtualModifierData;
-  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(object, &virtualModifierData);
+  VirtualModifierData virtual_modifier_data;
+  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(object, &virtual_modifier_data);
 
   /* Evaluate modifiers. */
   for (; md; md = md->next) {
@@ -1116,8 +1070,8 @@ static void volume_evaluate_modifiers(Depsgraph *depsgraph,
 
     blender::bke::ScopedModifierTimer modifier_timer{*md};
 
-    if (mti->modifyGeometrySet) {
-      mti->modifyGeometrySet(md, &mectx, &geometry_set);
+    if (mti->modify_geometry_set) {
+      mti->modify_geometry_set(md, &mectx, &geometry_set);
     }
   }
 }
@@ -1182,7 +1136,7 @@ void BKE_volume_data_update(Depsgraph *depsgraph, Scene *scene, Object *object)
   /* Assign evaluated object. */
   const bool eval_is_owned = (volume != volume_eval);
   BKE_object_eval_assign_data(object, &volume_eval->id, eval_is_owned);
-  object->runtime.geometry_set_eval = new blender::bke::GeometrySet(std::move(geometry_set));
+  object->runtime->geometry_set_eval = new blender::bke::GeometrySet(std::move(geometry_set));
 }
 
 void BKE_volume_grids_backup_restore(Volume *volume, VolumeGridVector *grids, const char *filepath)
@@ -1644,20 +1598,17 @@ float BKE_volume_simplify_factor(const Depsgraph *depsgraph)
 
 #ifdef WITH_OPENVDB
 
-bool BKE_volume_grid_bounds(openvdb::GridBase::ConstPtr grid, float3 &r_min, float3 &r_max)
+std::optional<blender::Bounds<float3>> BKE_volume_grid_bounds(openvdb::GridBase::ConstPtr grid)
 {
   /* TODO: we can get this from grid metadata in some cases? */
   openvdb::CoordBBox coordbbox;
   if (!grid->baseTree().evalLeafBoundingBox(coordbbox)) {
-    return false;
+    return std::nullopt;
   }
 
   openvdb::BBoxd bbox = grid->transform().indexToWorld(coordbbox);
 
-  r_min = float3(float(bbox.min().x()), float(bbox.min().y()), float(bbox.min().z()));
-  r_max = float3(float(bbox.max().x()), float(bbox.max().y()), float(bbox.max().z()));
-
-  return true;
+  return blender::Bounds<float3>{float3(bbox.min().asPointer()), float3(bbox.max().asPointer())};
 }
 
 openvdb::GridBase::ConstPtr BKE_volume_grid_shallow_transform(openvdb::GridBase::ConstPtr grid,

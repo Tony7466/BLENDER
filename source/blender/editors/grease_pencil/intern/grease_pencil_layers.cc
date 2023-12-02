@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,21 +6,35 @@
  * \ingroup edgreasepencil
  */
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "ED_grease_pencil.h"
+#include "ED_grease_pencil.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "DNA_scene_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
+
+void select_layer_channel(GreasePencil &grease_pencil, bke::greasepencil::Layer *layer)
+{
+  using namespace blender::bke::greasepencil;
+
+  if (layer != nullptr) {
+    layer->set_selected(true);
+  }
+
+  if (grease_pencil.active_layer != layer) {
+    grease_pencil.set_active_layer(layer);
+    WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, &grease_pencil);
+  }
+}
 
 static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
 {
@@ -34,9 +48,9 @@ static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
       op->ptr, "new_layer_name", nullptr, 0, &new_layer_name_length);
 
   if (grease_pencil.has_active_layer()) {
-    LayerGroup &active_group = grease_pencil.get_active_layer()->parent_group();
-    Layer &new_layer = grease_pencil.add_layer_after(
-        active_group, &grease_pencil.get_active_layer_for_write()->as_node(), new_layer_name);
+    Layer &new_layer = grease_pencil.add_layer(new_layer_name);
+    grease_pencil.move_node_after(new_layer.as_node(),
+                                  grease_pencil.get_active_layer_for_write()->as_node());
     grease_pencil.set_active_layer(&new_layer);
     grease_pencil.insert_blank_frame(new_layer, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
   }
@@ -49,7 +63,7 @@ static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
   MEM_SAFE_FREE(new_layer_name);
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, &grease_pencil);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);
 
   return OPERATOR_FINISHED;
 }
@@ -68,7 +82,7 @@ static void GREASE_PENCIL_OT_layer_add(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   PropertyRNA *prop = RNA_def_string(
-      ot->srna, "new_layer_name", "GP_Layer", INT16_MAX, "Name", "Name of the new layer");
+      ot->srna, "new_layer_name", nullptr, INT16_MAX, "Name", "Name of the new layer");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   ot->prop = prop;
 }
@@ -86,7 +100,7 @@ static int grease_pencil_layer_remove_exec(bContext *C, wmOperator * /*op*/)
   grease_pencil.remove_layer(*grease_pencil.get_active_layer_for_write());
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, &grease_pencil);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);
 
   return OPERATOR_FINISHED;
 }
@@ -126,26 +140,24 @@ static int grease_pencil_layer_reorder_exec(bContext *C, wmOperator *op)
       op->ptr, "target_layer_name", nullptr, 0, &target_layer_name_length);
   const int reorder_location = RNA_enum_get(op->ptr, "location");
 
-  Layer *target_layer = grease_pencil.find_layer_by_name(target_layer_name);
-  if (!target_layer) {
+  TreeNode *target_node = grease_pencil.find_node_by_name(target_layer_name);
+  if (!target_node || !target_node->is_layer()) {
     MEM_SAFE_FREE(target_layer_name);
     return OPERATOR_CANCELLED;
   }
 
-  Layer *active_layer = grease_pencil.get_active_layer_for_write();
-  active_layer->parent_group().unlink_node(&active_layer->as_node());
-
+  Layer &active_layer = *grease_pencil.get_active_layer_for_write();
   switch (reorder_location) {
     case LAYER_REORDER_ABOVE: {
-      /* Note: The layers are stored from bottom to top, so inserting above (visually), means
+      /* NOTE: The layers are stored from bottom to top, so inserting above (visually), means
        * inserting the link after the target. */
-      target_layer->parent_group().add_layer_after(active_layer, &target_layer->as_node());
+      grease_pencil.move_node_after(active_layer.as_node(), *target_node);
       break;
     }
     case LAYER_REORDER_BELOW: {
-      /* Note: The layers are stored from bottom to top, so inserting below (visually), means
+      /* NOTE: The layers are stored from bottom to top, so inserting below (visually), means
        * inserting the link before the target. */
-      target_layer->parent_group().add_layer_before(active_layer, &target_layer->as_node());
+      grease_pencil.move_node_before(active_layer.as_node(), *target_node);
       break;
     }
     default:
@@ -175,7 +187,7 @@ static void GREASE_PENCIL_OT_layer_reorder(wmOperatorType *ot)
 
   PropertyRNA *prop = RNA_def_string(ot->srna,
                                      "target_layer_name",
-                                     "GP_Layer",
+                                     "Layer",
                                      INT16_MAX,
                                      "Target Name",
                                      "Name of the target layer");
@@ -183,6 +195,43 @@ static void GREASE_PENCIL_OT_layer_reorder(wmOperatorType *ot)
 
   RNA_def_enum(
       ot->srna, "location", prop_layer_reorder_location, LAYER_REORDER_ABOVE, "Location", "");
+}
+
+static int grease_pencil_layer_active_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender::bke::greasepencil;
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  int layer_index = RNA_int_get(op->ptr, "layer");
+
+  const Layer &layer = *grease_pencil.layers()[layer_index];
+
+  if (grease_pencil.is_layer_active(&layer)) {
+    return OPERATOR_CANCELLED;
+  }
+  grease_pencil.set_active_layer(&layer);
+
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_layer_active(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Set Active Layer";
+  ot->idname = "GREASE_PENCIL_OT_layer_active";
+  ot->description = "Set the active Grease Pencil layer";
+
+  /* callbacks */
+  ot->exec = grease_pencil_layer_active_exec;
+  ot->poll = active_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  PropertyRNA *prop = RNA_def_int(
+      ot->srna, "layer", 0, 0, INT_MAX, "Grease Pencil Layer", "", 0, INT_MAX);
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
 static int grease_pencil_layer_group_add_exec(bContext *C, wmOperator *op)
@@ -196,13 +245,13 @@ static int grease_pencil_layer_group_add_exec(bContext *C, wmOperator *op)
       op->ptr, "new_layer_group_name", nullptr, 0, &new_layer_group_name_length);
 
   if (grease_pencil.has_active_layer()) {
-    LayerGroup &active_group = grease_pencil.get_active_layer()->parent_group();
-    grease_pencil.add_layer_group_after(active_group,
-                                        &grease_pencil.get_active_layer_for_write()->as_node(),
-                                        new_layer_group_name);
+    LayerGroup &new_group = grease_pencil.add_layer_group(
+        grease_pencil.get_active_layer()->parent_group(), new_layer_group_name);
+    grease_pencil.move_node_after(new_group.as_node(),
+                                  grease_pencil.get_active_layer_for_write()->as_node());
   }
   else {
-    grease_pencil.add_layer_group(new_layer_group_name);
+    grease_pencil.add_layer_group(grease_pencil.root_group(), new_layer_group_name);
   }
 
   MEM_SAFE_FREE(new_layer_group_name);
@@ -226,14 +275,98 @@ static void GREASE_PENCIL_OT_layer_group_add(wmOperatorType *ot)
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  PropertyRNA *prop = RNA_def_string(ot->srna,
-                                     "new_layer_group_name",
-                                     "GP_Group",
-                                     INT16_MAX,
-                                     "Name",
-                                     "Name of the new layer group");
+  PropertyRNA *prop = RNA_def_string(
+      ot->srna, "new_layer_group_name", nullptr, INT16_MAX, "Name", "Name of the new layer group");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   ot->prop = prop;
+}
+
+static int grease_pencil_layer_hide_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender::bke::greasepencil;
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  const bool unselected = RNA_boolean_get(op->ptr, "unselected");
+
+  if (!grease_pencil.has_active_layer()) {
+    return OPERATOR_CANCELLED;
+  }
+
+  if (unselected) {
+    /* hide unselected */
+    for (Layer *layer : grease_pencil.layers_for_write()) {
+      const bool is_active = grease_pencil.is_layer_active(layer);
+      layer->set_visible(is_active);
+    }
+  }
+  else {
+    /* hide selected/active */
+    Layer &active_layer = *grease_pencil.get_active_layer_for_write();
+    active_layer.set_visible(false);
+  }
+
+  /* notifiers */
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_layer_hide(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Hide Layer(s)";
+  ot->idname = "GREASE_PENCIL_OT_layer_hide";
+  ot->description = "Hide selected/unselected Grease Pencil layers";
+
+  /* callbacks */
+  ot->exec = grease_pencil_layer_hide_exec;
+  ot->poll = active_grease_pencil_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* props */
+  PropertyRNA *prop = RNA_def_boolean(
+      ot->srna, "unselected", false, "Unselected", "Hide unselected rather than selected layers");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  ot->prop = prop;
+}
+
+static int grease_pencil_layer_reveal_exec(bContext *C, wmOperator * /*op*/)
+{
+  using namespace blender::bke::greasepencil;
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  if (!grease_pencil.has_active_layer()) {
+    return OPERATOR_CANCELLED;
+  }
+
+  for (Layer *layer : grease_pencil.layers_for_write()) {
+    layer->set_visible(true);
+  }
+
+  /* notifiers */
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_layer_reveal(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Show All Layers";
+  ot->idname = "GREASE_PENCIL_OT_layer_reveal";
+  ot->description = "Show all Grease Pencil layers";
+
+  /* callbacks */
+  ot->exec = grease_pencil_layer_reveal_exec;
+  ot->poll = active_grease_pencil_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 }  // namespace blender::ed::greasepencil
@@ -244,6 +377,9 @@ void ED_operatortypes_grease_pencil_layers()
   WM_operatortype_append(GREASE_PENCIL_OT_layer_add);
   WM_operatortype_append(GREASE_PENCIL_OT_layer_remove);
   WM_operatortype_append(GREASE_PENCIL_OT_layer_reorder);
+  WM_operatortype_append(GREASE_PENCIL_OT_layer_active);
+  WM_operatortype_append(GREASE_PENCIL_OT_layer_hide);
+  WM_operatortype_append(GREASE_PENCIL_OT_layer_reveal);
 
   WM_operatortype_append(GREASE_PENCIL_OT_layer_group_add);
 }

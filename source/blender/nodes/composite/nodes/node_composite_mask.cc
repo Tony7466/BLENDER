@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,8 +10,8 @@
 
 #include "DNA_mask_types.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "COM_cached_mask.hh"
 #include "COM_node_operation.hh"
@@ -101,8 +101,7 @@ class MaskOperation : public NodeOperation {
         get_motion_blur_samples(),
         get_motion_blur_shutter());
 
-    output_mask.allocate_texture(domain);
-    GPU_texture_copy(output_mask.texture(), cached_mask.texture());
+    output_mask.wrap_external(cached_mask.texture());
   }
 
   Domain compute_domain() override

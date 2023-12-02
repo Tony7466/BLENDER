@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -161,7 +161,6 @@ using IndexMaskSegment = OffsetSpan<int64_t, int16_t>;
  *
  * Extraction:
  *   An #IndexMask can be converted into various other forms using the `to_*` methods.
- *
  */
 class IndexMask : private IndexMaskData {
  public:
@@ -187,6 +186,10 @@ class IndexMask : private IndexMaskData {
                               IndexMaskMemory &memory);
   static IndexMask from_bools(const IndexMask &universe,
                               const VArray<bool> &bools,
+                              IndexMaskMemory &memory);
+  /** Construct a mask from the union of two other masks. */
+  static IndexMask from_union(const IndexMask &mask_a,
+                              const IndexMask &mask_b,
                               IndexMaskMemory &memory);
   /** Construct a mask from all the indices for which the predicate is true. */
   template<typename Fn>
@@ -420,7 +423,7 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size);
 std::ostream &operator<<(std::ostream &stream, const IndexMask &mask);
 
 /* -------------------------------------------------------------------- */
-/** \name Inline Utilities
+/** \name Utilities
  * \{ */
 
 inline const std::array<int16_t, max_segment_size> &get_static_indices_array()
@@ -435,6 +438,13 @@ inline void masked_fill(MutableSpan<T> data, const T &value, const IndexMask &ma
 {
   mask.foreach_index_optimized<int64_t>([&](const int64_t i) { data[i] = value; });
 }
+
+/**
+ * Fill masked indices of \a r_mask with the index of that item in the mask such that
+ * `r_map[mask[i]] == i` for the whole mask. The size of `r_map` needs to be at least
+ * `mask.min_array_size()`.
+ */
+template<typename T> void build_reverse_map(const IndexMask &mask, MutableSpan<T> r_map);
 
 /* -------------------------------------------------------------------- */
 /** \name #RawMaskIterator Inline Methods
@@ -848,6 +858,9 @@ inline IndexMask IndexMask::from_predicate(const IndexMask &universe,
           const int64_t global_index = int64_t(local_index) + offset;
           const bool condition = predicate(global_index);
           *r_current = local_index;
+          /* This expects the boolean to be either 0 or 1 which is generally the case but may not
+           * be if the values are uninitialized. */
+          BLI_assert(ELEM(int8_t(condition), 0, 1));
           /* Branchless conditional increment. */
           r_current += condition;
         }

@@ -56,12 +56,6 @@ static VolumeInterpolation get_volume_interpolation(PointerRNA &ptr)
       ptr, "volume_interpolation", VOLUME_NUM_INTERPOLATION, VOLUME_INTERPOLATION_LINEAR);
 }
 
-static DisplacementMethod get_displacement_method(PointerRNA &ptr)
-{
-  return (DisplacementMethod)get_enum(
-      ptr, "displacement_method", DISPLACE_NUM_METHODS, DISPLACE_BUMP);
-}
-
 static EmissionSampling get_emission_sampling(PointerRNA &ptr)
 {
   return (EmissionSampling)get_enum(
@@ -74,6 +68,12 @@ static int validate_enum_value(int value, int num_values, int default_value)
     return default_value;
   }
   return value;
+}
+
+static DisplacementMethod get_displacement_method(BL::Material &b_mat)
+{
+  int value = b_mat.displacement_method();
+  return (DisplacementMethod)validate_enum_value(value, DISPLACE_NUM_METHODS, DISPLACE_BUMP);
 }
 
 template<typename NodeType> static InterpolationType get_image_interpolation(NodeType &b_node)
@@ -190,6 +190,7 @@ static SocketType::Type convert_socket_type(BL::NodeSocket &b_socket)
   switch (b_socket.type()) {
     case BL::NodeSocket::type_VALUE:
       return SocketType::FLOAT;
+    case BL::NodeSocket::type_BOOLEAN:
     case BL::NodeSocket::type_INT:
       return SocketType::INT;
     case BL::NodeSocket::type_VECTOR:
@@ -254,8 +255,9 @@ static void set_default_value(ShaderInput *input,
 
 static void get_tex_mapping(TextureNode *mapping, BL::TexMapping &b_mapping)
 {
-  if (!b_mapping)
+  if (!b_mapping) {
     return;
+  }
 
   mapping->set_tex_mapping_translation(get_float3(b_mapping.translation()));
   mapping->set_tex_mapping_rotation(get_float3(b_mapping.rotation()));
@@ -536,11 +538,11 @@ static ShaderNode *add_node(Scene *scene,
       case BL::ShaderNodeSubsurfaceScattering::falloff_BURLEY:
         subsurface->set_method(CLOSURE_BSSRDF_BURLEY_ID);
         break;
-      case BL::ShaderNodeSubsurfaceScattering::falloff_RANDOM_WALK_FIXED_RADIUS:
-        subsurface->set_method(CLOSURE_BSSRDF_RANDOM_WALK_FIXED_RADIUS_ID);
-        break;
       case BL::ShaderNodeSubsurfaceScattering::falloff_RANDOM_WALK:
         subsurface->set_method(CLOSURE_BSSRDF_RANDOM_WALK_ID);
+        break;
+      case BL::ShaderNodeSubsurfaceScattering::falloff_RANDOM_WALK_SKIN:
+        subsurface->set_method(CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID);
         break;
     }
 
@@ -624,10 +626,14 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeBsdfHairPrincipled)) {
     BL::ShaderNodeBsdfHairPrincipled b_principled_hair_node(b_node);
     PrincipledHairBsdfNode *principled_hair = graph->create_node<PrincipledHairBsdfNode>();
+    principled_hair->set_model((NodePrincipledHairModel)get_enum(b_principled_hair_node.ptr,
+                                                                 "model",
+                                                                 NODE_PRINCIPLED_HAIR_MODEL_NUM,
+                                                                 NODE_PRINCIPLED_HAIR_HUANG));
     principled_hair->set_parametrization(
         (NodePrincipledHairParametrization)get_enum(b_principled_hair_node.ptr,
                                                     "parametrization",
-                                                    NODE_PRINCIPLED_HAIR_NUM,
+                                                    NODE_PRINCIPLED_HAIR_PARAMETRIZATION_NUM,
                                                     NODE_PRINCIPLED_HAIR_REFLECTANCE));
     node = principled_hair;
   }
@@ -646,11 +652,11 @@ static ShaderNode *add_node(Scene *scene,
       case BL::ShaderNodeBsdfPrincipled::subsurface_method_BURLEY:
         principled->set_subsurface_method(CLOSURE_BSSRDF_BURLEY_ID);
         break;
-      case BL::ShaderNodeBsdfPrincipled::subsurface_method_RANDOM_WALK_FIXED_RADIUS:
-        principled->set_subsurface_method(CLOSURE_BSSRDF_RANDOM_WALK_FIXED_RADIUS_ID);
-        break;
       case BL::ShaderNodeBsdfPrincipled::subsurface_method_RANDOM_WALK:
         principled->set_subsurface_method(CLOSURE_BSSRDF_RANDOM_WALK_ID);
+        break;
+      case BL::ShaderNodeBsdfPrincipled::subsurface_method_RANDOM_WALK_SKIN:
+        principled->set_subsurface_method(CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID);
         break;
     }
     node = principled;
@@ -661,8 +667,18 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeBsdfTransparent)) {
     node = graph->create_node<TransparentBsdfNode>();
   }
-  else if (b_node.is_a(&RNA_ShaderNodeBsdfVelvet)) {
-    node = graph->create_node<VelvetBsdfNode>();
+  else if (b_node.is_a(&RNA_ShaderNodeBsdfSheen)) {
+    BL::ShaderNodeBsdfSheen b_sheen_node(b_node);
+    SheenBsdfNode *sheen = graph->create_node<SheenBsdfNode>();
+    switch (b_sheen_node.distribution()) {
+      case BL::ShaderNodeBsdfSheen::distribution_ASHIKHMIN:
+        sheen->set_distribution(CLOSURE_BSDF_ASHIKHMIN_VELVET_ID);
+        break;
+      case BL::ShaderNodeBsdfSheen::distribution_MICROFIBER:
+        sheen->set_distribution(CLOSURE_BSDF_SHEEN_ID);
+        break;
+    }
+    node = sheen;
   }
   else if (b_node.is_a(&RNA_ShaderNodeEmission)) {
     node = graph->create_node<EmissionNode>();
@@ -920,18 +936,11 @@ static ShaderNode *add_node(Scene *scene,
     BL::ShaderNodeTexNoise b_noise_node(b_node);
     NoiseTextureNode *noise = graph->create_node<NoiseTextureNode>();
     noise->set_dimensions(b_noise_node.noise_dimensions());
+    noise->set_type((NodeNoiseType)b_noise_node.type());
+    noise->set_use_normalize(b_noise_node.normalize());
     BL::TexMapping b_texture_mapping(b_noise_node.texture_mapping());
     get_tex_mapping(noise, b_texture_mapping);
     node = noise;
-  }
-  else if (b_node.is_a(&RNA_ShaderNodeTexMusgrave)) {
-    BL::ShaderNodeTexMusgrave b_musgrave_node(b_node);
-    MusgraveTextureNode *musgrave_node = graph->create_node<MusgraveTextureNode>();
-    musgrave_node->set_musgrave_type((NodeMusgraveType)b_musgrave_node.musgrave_type());
-    musgrave_node->set_dimensions(b_musgrave_node.musgrave_dimensions());
-    BL::TexMapping b_texture_mapping(b_musgrave_node.texture_mapping());
-    get_tex_mapping(musgrave_node, b_texture_mapping);
-    node = musgrave_node;
   }
   else if (b_node.is_a(&RNA_ShaderNodeTexCoord)) {
     BL::ShaderNodeTexCoord b_tex_coord_node(b_node);
@@ -1069,8 +1078,9 @@ static ShaderNode *add_node(Scene *scene,
 
 static bool node_use_modified_socket_name(ShaderNode *node)
 {
-  if (node->special_type == SHADER_SPECIAL_TYPE_OSL)
+  if (node->special_type == SHADER_SPECIAL_TYPE_OSL) {
     return false;
+  }
 
   return true;
 }
@@ -1532,12 +1542,13 @@ void BlenderSync::sync_materials(BL::Depsgraph &b_depsgraph, bool update_all)
       /* settings */
       PointerRNA cmat = RNA_pointer_get(&b_mat.ptr, "cycles");
       shader->set_emission_sampling_method(get_emission_sampling(cmat));
-      shader->set_use_transparent_shadow(get_boolean(cmat, "use_transparent_shadow"));
+      shader->set_use_transparent_shadow(b_mat.use_transparent_shadow());
+      shader->set_use_bump_map_correction(get_boolean(cmat, "use_bump_map_correction"));
       shader->set_heterogeneous_volume(!get_boolean(cmat, "homogeneous_volume"));
       shader->set_volume_sampling_method(get_volume_sampling(cmat));
       shader->set_volume_interpolation_method(get_volume_interpolation(cmat));
       shader->set_volume_step_rate(get_float(cmat, "volume_step_rate"));
-      shader->set_displacement_method(get_displacement_method(cmat));
+      shader->set_displacement_method(get_displacement_method(b_mat));
 
       shader->set_graph(graph);
 

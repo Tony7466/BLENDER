@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,15 +26,15 @@
 
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_remap.h"
+#include "BKE_lib_remap.hh"
 #include "BKE_library.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
-#include "BLO_blend_validate.h"
+#include "BLO_blend_validate.hh"
 #include "BLO_readfile.h"
 
-#include "readfile.h"
+#include "readfile.hh"
 
 bool BLO_main_validate_libraries(Main *bmain, ReportList *reports)
 {

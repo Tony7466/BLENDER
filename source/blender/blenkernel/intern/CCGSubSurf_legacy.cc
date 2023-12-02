@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,6 @@
 #include "BLI_sys_types.h" /* for intptr_t support */
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h" /* for BLI_assert */
 
@@ -1230,20 +1229,20 @@ void ccgSubSurf__sync_legacy(CCGSubSurf *ss)
   if (ss->useAgeCounts) {
     for (i = 0; i < numEffectedV; i++) {
       CCGVert *v = effectedV[i];
-      byte *userData = static_cast<byte *>(ccgSubSurf_getVertUserData(ss, v));
-      *((int *)&userData[ss->vertUserAgeOffset]) = ss->currentAge;
+      byte *user_data = static_cast<byte *>(ccgSubSurf_getVertUserData(ss, v));
+      *((int *)&user_data[ss->vertUserAgeOffset]) = ss->currentAge;
     }
 
     for (i = 0; i < numEffectedE; i++) {
       CCGEdge *e = effectedE[i];
-      byte *userData = static_cast<byte *>(ccgSubSurf_getEdgeUserData(ss, e));
-      *((int *)&userData[ss->edgeUserAgeOffset]) = ss->currentAge;
+      byte *user_data = static_cast<byte *>(ccgSubSurf_getEdgeUserData(ss, e));
+      *((int *)&user_data[ss->edgeUserAgeOffset]) = ss->currentAge;
     }
 
     for (i = 0; i < numEffectedF; i++) {
       CCGFace *f = effectedF[i];
-      byte *userData = static_cast<byte *>(ccgSubSurf_getFaceUserData(ss, f));
-      *((int *)&userData[ss->faceUserAgeOffset]) = ss->currentAge;
+      byte *user_data = static_cast<byte *>(ccgSubSurf_getFaceUserData(ss, f));
+      *((int *)&user_data[ss->faceUserAgeOffset]) = ss->currentAge;
     }
   }
 

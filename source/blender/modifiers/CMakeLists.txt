@@ -1,17 +1,15 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   .
   intern
-  ../blenfont
+  ../blenkernel
   ../blenloader
   ../blentranslation
   ../bmesh
-  ../depsgraph
   ../editors/include
-  ../functions
   ../geometry
   ../makesrna
   ../nodes
@@ -106,9 +104,12 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  PRIVATE bf::blenfont
+  bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PUBLIC bf::dna
+  PRIVATE bf::functions
   PRIVATE bf::intern::guardedalloc
 )
 
@@ -118,7 +119,7 @@ if(WITH_ALEMBIC)
     ../io/alembic
   )
   list(APPEND LIB
-    bf_alembic
+    bf_io_alembic
   )
 endif()
 
@@ -128,7 +129,7 @@ if(WITH_USD)
     ../io/usd
   )
   list(APPEND LIB
-    bf_usd
+    bf_io_usd
   )
 endif()
 

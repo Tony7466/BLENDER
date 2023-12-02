@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -32,7 +32,9 @@ class Sampling {
   static constexpr uint64_t infinite_sample_count_ = 0xFFFFFFu;
   /* During interactive rendering, loop over the first few samples. */
   static constexpr uint64_t interactive_sample_aa_ = 8;
-  static constexpr uint64_t interactive_sample_max_ = interactive_sample_aa_;
+  static constexpr uint64_t interactive_sample_raytrace_ = 32;
+  static constexpr uint64_t interactive_sample_max_ = interactive_sample_aa_ *
+                                                      interactive_sample_raytrace_;
 
   /** 0 based current sample. Might not increase sequentially in viewport. */
   uint64_t sample_ = 0;
@@ -84,9 +86,9 @@ class Sampling {
     return reset_;
   }
 
-  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
+  template<typename PassType> void bind_resources(PassType &pass)
   {
-    pass->bind_ssbo(SAMPLING_BUF_SLOT, &data_);
+    pass.bind_ssbo(SAMPLING_BUF_SLOT, &data_);
   }
 
   /* Returns a pseudo random number in [0..1] range. Each dimension are de-correlated.

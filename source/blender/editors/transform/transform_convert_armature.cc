@@ -13,27 +13,32 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
-#include "BLI_string.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_constraint.h"
-#include "BKE_context.h"
-#include "BKE_main.h"
+#include "BKE_context.hh"
+#include "BKE_main.hh"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 
 #include "BIK_api.h"
 
-#include "ED_armature.h"
-#include "ED_keyframing.h"
+#include "ED_armature.hh"
+#include "ED_keyframing.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
+
+#include "ANIM_bone_collections.h"
+#include "ANIM_keyframing.hh"
 
 #include "transform.hh"
 #include "transform_orientations.hh"
@@ -58,168 +63,11 @@ struct BoneInitData {
  * and we will insert a keyframe at the end of transform. */
 static bool motionpath_need_update_pose(Scene *scene, Object *ob)
 {
-  if (autokeyframe_cfra_can_key(scene, &ob->id)) {
+  if (blender::animrig::autokeyframe_cfra_can_key(scene, &ob->id)) {
     return (ob->pose->avs.path_bakeflag & MOTIONPATH_BAKE_HAS_PATHS) != 0;
   }
 
   return false;
-}
-
-/**
- * Auto-keyframing feature - for poses/pose-channels
- *
- * \param tmode: A transform mode.
- *
- * targetless_ik: has targetless ik been done on any channels?
- *
- * \note Context may not always be available,
- * so must check before using it as it's a luxury for a few cases.
- */
-static void autokeyframe_pose(
-    bContext *C, Scene *scene, Object *ob, int tmode, short targetless_ik)
-{
-  Main *bmain = CTX_data_main(C);
-  ID *id = &ob->id;
-  AnimData *adt = ob->adt;
-  bAction *act = (adt) ? adt->action : nullptr;
-  bPose *pose = ob->pose;
-  bPoseChannel *pchan;
-  FCurve *fcu;
-
-  if (!autokeyframe_cfra_can_key(scene, id)) {
-    return;
-  }
-
-  ReportList *reports = CTX_wm_reports(C);
-  ToolSettings *ts = scene->toolsettings;
-  KeyingSet *active_ks = ANIM_scene_get_active_keyingset(scene);
-  ListBase nla_cache = {nullptr, nullptr};
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-  const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-      depsgraph, float(scene->r.cfra));
-  eInsertKeyFlags flag = eInsertKeyFlags(0);
-
-  /* flag is initialized from UserPref keyframing settings
-   * - special exception for targetless IK - INSERTKEY_MATRIX keyframes should get
-   *   visual keyframes even if flag not set, as it's not that useful otherwise
-   *   (for quick animation recording)
-   */
-  flag = ANIM_get_keyframing_flags(scene, true);
-
-  if (targetless_ik) {
-    flag |= INSERTKEY_MATRIX;
-  }
-
-  for (pchan = static_cast<bPoseChannel *>(pose->chanbase.first); pchan; pchan = pchan->next) {
-    if ((pchan->bone->flag & BONE_TRANSFORM) == 0 &&
-        !((pose->flag & POSE_MIRROR_EDIT) && (pchan->bone->flag & BONE_TRANSFORM_MIRROR)))
-    {
-      continue;
-    }
-
-    ListBase dsources = {nullptr, nullptr};
-
-    /* Add data-source override for the camera object. */
-    ANIM_relative_keyingset_add_source(&dsources, id, &RNA_PoseBone, pchan);
-
-    /* only insert into active keyingset? */
-    if (IS_AUTOKEY_FLAG(scene, ONLYKEYINGSET) && (active_ks)) {
-      /* Run the active Keying Set on the current data-source. */
-      ANIM_apply_keyingset(
-          C, &dsources, nullptr, active_ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
-    }
-    /* only insert into available channels? */
-    else if (IS_AUTOKEY_FLAG(scene, INSERTAVAIL)) {
-      if (act) {
-        for (fcu = static_cast<FCurve *>(act->curves.first); fcu; fcu = fcu->next) {
-          /* only insert keyframes for this F-Curve if it affects the current bone */
-          char pchan_name[sizeof(pchan->name)];
-          if (!BLI_str_quoted_substr(fcu->rna_path, "bones[", pchan_name, sizeof(pchan_name))) {
-            continue;
-          }
-
-          /* only if bone name matches too...
-           * NOTE: this will do constraints too, but those are ok to do here too?
-           */
-          if (STREQ(pchan_name, pchan->name)) {
-            insert_keyframe(bmain,
-                            reports,
-                            id,
-                            act,
-                            ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
-                            fcu->rna_path,
-                            fcu->array_index,
-                            &anim_eval_context,
-                            eBezTriple_KeyframeType(ts->keyframe_type),
-                            &nla_cache,
-                            flag);
-          }
-        }
-      }
-    }
-    /* only insert keyframe if needed? */
-    else if (IS_AUTOKEY_FLAG(scene, INSERTNEEDED)) {
-      bool do_loc = false, do_rot = false, do_scale = false;
-
-      /* Filter the conditions when this happens
-       * (assume that 'curarea->spacetype == SPACE_VIEW3D'). */
-      if (tmode == TFM_TRANSLATION) {
-        if (targetless_ik) {
-          do_rot = true;
-        }
-        else {
-          do_loc = true;
-        }
-      }
-      else if (ELEM(tmode, TFM_ROTATION, TFM_TRACKBALL)) {
-        if (ELEM(scene->toolsettings->transform_pivot_point, V3D_AROUND_CURSOR, V3D_AROUND_ACTIVE))
-        {
-          do_loc = true;
-        }
-
-        if ((scene->toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) == 0) {
-          do_rot = true;
-        }
-      }
-      else if (tmode == TFM_RESIZE) {
-        if (ELEM(scene->toolsettings->transform_pivot_point, V3D_AROUND_CURSOR, V3D_AROUND_ACTIVE))
-        {
-          do_loc = true;
-        }
-
-        if ((scene->toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) == 0) {
-          do_scale = true;
-        }
-      }
-
-      if (do_loc) {
-        KeyingSet *ks = ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_LOCATION_ID);
-        ANIM_apply_keyingset(
-            C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
-      }
-      if (do_rot) {
-        KeyingSet *ks = ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_ROTATION_ID);
-        ANIM_apply_keyingset(
-            C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
-      }
-      if (do_scale) {
-        KeyingSet *ks = ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_SCALING_ID);
-        ANIM_apply_keyingset(
-            C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
-      }
-    }
-    /* insert keyframe in all (transform) channels */
-    else {
-      KeyingSet *ks = ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_LOC_ROT_SCALE_ID);
-      ANIM_apply_keyingset(
-          C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
-    }
-
-    /* free temp info */
-    BLI_freelistN(&dsources);
-  }
-
-  BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
 }
 
 static bConstraint *add_temporary_ik_constraint(bPoseChannel *pchan,
@@ -229,7 +77,7 @@ static bConstraint *add_temporary_ik_constraint(bPoseChannel *pchan,
       nullptr, pchan, "TempConstraint", CONSTRAINT_TYPE_KINEMATIC);
 
   /* for draw, but also for detecting while pose solving */
-  pchan->constflag |= (PCHAN_HAS_IK | PCHAN_HAS_TARGET);
+  pchan->constflag |= (PCHAN_HAS_IK | PCHAN_HAS_NO_TARGET);
 
   bKinematicConstraint *temp_con_data = static_cast<bKinematicConstraint *>(con->data);
 
@@ -283,7 +131,6 @@ static short pose_grab_with_ik_add(bPoseChannel *pchan)
 {
   bKinematicConstraint *targetless = nullptr;
   bKinematicConstraint *data;
-  bConstraint *con;
 
   /* Sanity check */
   if (pchan == nullptr) {
@@ -291,7 +138,7 @@ static short pose_grab_with_ik_add(bPoseChannel *pchan)
   }
 
   /* Rule: not if there's already an IK on this channel */
-  for (con = static_cast<bConstraint *>(pchan->constraints.first); con; con = con->next) {
+  LISTBASE_FOREACH (bConstraint *, con, &pchan->constraints) {
     if (con->type == CONSTRAINT_TYPE_KINEMATIC && (con->flag & CONSTRAINT_OFF) == 0) {
       data = static_cast<bKinematicConstraint *>(con->data);
 
@@ -378,11 +225,10 @@ static short pose_grab_with_ik_add(bPoseChannel *pchan)
 /* bone is a candidate to get IK, but we don't do it if it has children connected */
 static short pose_grab_with_ik_children(bPose *pose, Bone *bone)
 {
-  Bone *bonec;
   short wentdeeper = 0, added = 0;
 
   /* go deeper if children & children are connected */
-  for (bonec = static_cast<Bone *>(bone->childbase.first); bonec; bonec = bonec->next) {
+  LISTBASE_FOREACH (Bone *, bonec, &bone->childbase) {
     if (bonec->flag & BONE_CONNECTED) {
       wentdeeper = 1;
       added += pose_grab_with_ik_children(pose, bonec);
@@ -402,7 +248,6 @@ static short pose_grab_with_ik_children(bPose *pose, Bone *bone)
 static short pose_grab_with_ik(Main *bmain, Object *ob)
 {
   bArmature *arm;
-  bPoseChannel *pchan, *parent;
   Bone *bonec;
   short tot_ik = 0;
 
@@ -414,8 +259,8 @@ static short pose_grab_with_ik(Main *bmain, Object *ob)
 
   /* Rule: allow multiple Bones
    * (but they must be selected, and only one ik-solver per chain should get added) */
-  for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next) {
-    if (BKE_pose_is_layer_visible(arm, pchan)) {
+  LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+    if (BKE_pose_is_bonecoll_visible(arm, pchan)) {
       if (pchan->bone->flag & (BONE_SELECTED | BONE_TRANSFORM_MIRROR)) {
         /* Rule: no IK for solitary (unconnected) bones. */
         for (bonec = static_cast<Bone *>(pchan->bone->childbase.first); bonec; bonec = bonec->next)
@@ -431,6 +276,7 @@ static short pose_grab_with_ik(Main *bmain, Object *ob)
         /* rule: if selected Bone is not a root bone, it gets a temporal IK */
         if (pchan->parent) {
           /* only adds if there's no IK yet (and no parent bone was selected) */
+          bPoseChannel *parent;
           for (parent = pchan->parent; parent; parent = parent->parent) {
             if (parent->bone->flag & (BONE_SELECTED | BONE_TRANSFORM_MIRROR)) {
               break;
@@ -821,7 +667,8 @@ static void createTransPose(bContext * /*C*/, TransInfo *t)
     const bool mirror = ((pose->flag & POSE_MIRROR_EDIT) != 0);
     const bool is_mirror_relative = ((pose->flag & POSE_MIRROR_RELATIVE) != 0);
 
-    tc->poseobj = ob; /* we also allow non-active objects to be transformed, in weightpaint */
+    /* We also allow non-active objects to be transformed, in weight-paint. */
+    tc->poseobj = ob;
 
     /* init trans data */
     td = tc->data = static_cast<TransData *>(
@@ -889,14 +736,13 @@ static void createTransArmatureVerts(bContext * /*C*/, TransInfo *t)
   t->data_len_all = 0;
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    EditBone *ebo, *eboflip;
     bArmature *arm = static_cast<bArmature *>(tc->obedit->data);
     ListBase *edbo = arm->edbo;
     bool mirror = ((arm->flag & ARM_MIRROR_EDIT) != 0);
     int total_mirrored = 0;
 
     tc->data_len = 0;
-    for (ebo = static_cast<EditBone *>(edbo->first); ebo; ebo = ebo->next) {
+    LISTBASE_FOREACH (EditBone *, ebo, edbo) {
       const int data_len_prev = tc->data_len;
 
       if (EBONE_VISIBLE(arm, ebo) && !(ebo->flag & BONE_EDITMODE_LOCKED)) {
@@ -921,7 +767,7 @@ static void createTransArmatureVerts(bContext * /*C*/, TransInfo *t)
       }
 
       if (mirror && (data_len_prev < tc->data_len)) {
-        eboflip = ED_armature_ebone_get_mirrored(arm->edbo, ebo);
+        EditBone *eboflip = ED_armature_ebone_get_mirrored(arm->edbo, ebo);
         if (eboflip) {
           total_mirrored++;
         }
@@ -952,7 +798,6 @@ static void createTransArmatureVerts(bContext * /*C*/, TransInfo *t)
       continue;
     }
 
-    EditBone *ebo, *eboflip;
     bArmature *arm = static_cast<bArmature *>(tc->obedit->data);
     ListBase *edbo = arm->edbo;
     TransData *td, *td_old;
@@ -967,7 +812,7 @@ static void createTransArmatureVerts(bContext * /*C*/, TransInfo *t)
         MEM_callocN(tc->data_len * sizeof(TransData), "TransEditBone"));
     int i = 0;
 
-    for (ebo = static_cast<EditBone *>(edbo->first); ebo; ebo = ebo->next) {
+    LISTBASE_FOREACH (EditBone *, ebo, edbo) {
       td_old = td;
 
       /* (length == 0.0) on extrude, used for scaling radius of bone points. */
@@ -1118,7 +963,7 @@ static void createTransArmatureVerts(bContext * /*C*/, TransInfo *t)
       }
 
       if (mirror && (td_old != td)) {
-        eboflip = ED_armature_ebone_get_mirrored(arm->edbo, ebo);
+        EditBone *eboflip = ED_armature_ebone_get_mirrored(arm->edbo, ebo);
         if (eboflip) {
           bid[i].bone = eboflip;
           bid[i].dist = eboflip->dist;
@@ -1175,11 +1020,8 @@ static void restoreBones(TransDataContainer *tc)
     copy_v3_v3(ebo->tail, bid->tail);
 
     if (arm->flag & ARM_MIRROR_EDIT) {
-      EditBone *ebo_child;
-
       /* Also move connected ebo_child, in case ebo_child's name aren't mirrored properly */
-      for (ebo_child = static_cast<EditBone *>(arm->edbo->first); ebo_child;
-           ebo_child = ebo_child->next) {
+      LISTBASE_FOREACH (EditBone *, ebo_child, arm->edbo) {
         if ((ebo_child->flag & BONE_CONNECTED) && (ebo_child->parent == ebo)) {
           copy_v3_v3(ebo_child->head, ebo->tail);
           ebo_child->rad_head = ebo->rad_tail;
@@ -1212,7 +1054,7 @@ static void recalcData_edit_armature(TransInfo *t)
     int i;
 
     /* Ensure all bones are correctly adjusted */
-    for (ebo = static_cast<EditBone *>(edbo->first); ebo; ebo = ebo->next) {
+    LISTBASE_FOREACH (EditBone *, ebo, edbo) {
       ebo_parent = (ebo->flag & BONE_CONNECTED) ? ebo->parent : nullptr;
 
       if (ebo_parent) {
@@ -1306,7 +1148,7 @@ static void recalcData_edit_armature(TransInfo *t)
 
 /**
  * if pose bone (partial) selected, copy data.
- * context; posemode armature, with mirror editing enabled.
+ * context; pose-mode armature, with mirror editing enabled.
  */
 static void pose_transform_mirror_update(TransInfo *t, TransDataContainer *tc, Object *ob)
 {
@@ -1444,7 +1286,7 @@ static void recalcData_pose(TransInfo *t)
         }
       }
       else if (ob->mode == OB_MODE_POSE) {
-        /* actually support TFM_BONESIZE in posemode as well */
+        /* Actually support #TFM_BONESIZE in pose-mode as well. */
         DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
         bPose *pose = ob->pose;
         if (arm->flag & ARM_MIRROR_EDIT || pose->flag & POSE_MIRROR_EDIT) {
@@ -1478,13 +1320,13 @@ static void recalcData_pose(TransInfo *t)
 
       /* TODO: autokeyframe calls need some setting to specify to add samples
        * (FPoints) instead of keyframes? */
-      if ((t->animtimer) && (t->context) && IS_AUTOKEY_ON(t->scene)) {
+      if ((t->animtimer) && (t->context) && blender::animrig::is_autokey_on(t->scene)) {
 
         /* XXX: this currently doesn't work, since flags aren't set yet! */
         int targetless_ik = (t->flag & T_AUTOIK);
 
         animrecord_check_state(t, &ob->id);
-        autokeyframe_pose(t->context, t->scene, ob, t->mode, targetless_ik);
+        blender::animrig::autokeyframe_pose(t->context, t->scene, ob, t->mode, targetless_ik);
       }
 
       if (motionpath_need_update_pose(t->scene, ob)) {
@@ -1534,10 +1376,9 @@ static void bone_children_clear_transflag(int mode, short around, ListBase *lb)
 void transform_convert_pose_transflags_update(Object *ob, const int mode, const short around)
 {
   bArmature *arm = static_cast<bArmature *>(ob->data);
-  bPoseChannel *pchan;
   Bone *bone;
 
-  for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next) {
+  LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
     bone = pchan->bone;
     if (PBONE_VISIBLE(arm, bone)) {
       if (bone->flag & BONE_SELECTED) {
@@ -1558,8 +1399,7 @@ void transform_convert_pose_transflags_update(Object *ob, const int mode, const 
   /* make sure no bone can be transformed when a parent is transformed */
   /* since pchans are depsgraph sorted, the parents are in beginning of list */
   if (!ELEM(mode, TFM_BONESIZE, TFM_BONE_ENVELOPE_DIST)) {
-    for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next)
-    {
+    LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
       bone = pchan->bone;
       if (bone->flag & BONE_TRANSFORM) {
         bone_children_clear_transflag(mode, around, &bone->childbase);
@@ -1570,7 +1410,7 @@ void transform_convert_pose_transflags_update(Object *ob, const int mode, const 
 
 static short apply_targetless_ik(Object *ob)
 {
-  bPoseChannel *pchan, *parchan, *chanlist[256];
+  bPoseChannel *chanlist[256];
   bKinematicConstraint *data;
   int segcount, apply = 0;
 
@@ -1578,20 +1418,15 @@ static short apply_targetless_ik(Object *ob)
    * target-less IK pchans, and apply transformation to the all
    * pchans that were in the chain */
 
-  for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next) {
+  LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
     data = has_targetless_ik(pchan);
     if (data && (data->flag & CONSTRAINT_IK_AUTO)) {
 
-      /* fill the array with the bones of the chain (armature.c does same, keep it synced) */
+      /* Fill the array with the bones of the chain (`armature.cc` does same, keep it synced). */
       segcount = 0;
 
       /* exclude tip from chain? */
-      if (!(data->flag & CONSTRAINT_IK_TIP)) {
-        parchan = pchan->parent;
-      }
-      else {
-        parchan = pchan;
-      }
+      bPoseChannel *parchan = (data->flag & CONSTRAINT_IK_TIP) ? pchan : pchan->parent;
 
       /* Find the chain's root & count the segments needed */
       for (; parchan; parchan = parchan->parent) {
@@ -1640,9 +1475,9 @@ static short apply_targetless_ik(Object *ob)
             mat3_to_size(parchan->size, smat);
           }
 
-          /* causes problems with some constraints (e.g. childof), so disable this */
-          /* as it is IK shouldn't affect location directly */
-          /* copy_v3_v3(parchan->loc, mat[3]); */
+          /* Causes problems with some constraints (e.g. child-of), so disable this
+           * as it is IK shouldn't affect location directly. */
+          // copy_v3_v3(parchan->loc, mat[3]);
         }
       }
 
@@ -1658,15 +1493,14 @@ static short apply_targetless_ik(Object *ob)
 static void pose_grab_with_ik_clear(Main *bmain, Object *ob)
 {
   bKinematicConstraint *data;
-  bPoseChannel *pchan;
   bConstraint *con, *next;
   bool relations_changed = false;
 
-  for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next) {
+  LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
     /* clear all temporary lock flags */
     pchan->ikflag &= ~(BONE_IK_NO_XDOF_TEMP | BONE_IK_NO_YDOF_TEMP | BONE_IK_NO_ZDOF_TEMP);
 
-    pchan->constflag &= ~(PCHAN_HAS_IK | PCHAN_HAS_TARGET);
+    pchan->constflag &= ~(PCHAN_HAS_IK | PCHAN_HAS_NO_TARGET);
 
     /* remove all temporary IK-constraints added */
     for (con = static_cast<bConstraint *>(pchan->constraints.first); con; con = next) {
@@ -1686,7 +1520,7 @@ static void pose_grab_with_ik_clear(Main *bmain, Object *ob)
         }
         pchan->constflag |= PCHAN_HAS_IK;
         if (data->tar == nullptr || (data->tar->type == OB_ARMATURE && data->subtarget[0] == 0)) {
-          pchan->constflag |= PCHAN_HAS_TARGET;
+          pchan->constflag |= PCHAN_HAS_NO_TARGET;
         }
       }
     }
@@ -1716,8 +1550,6 @@ static void special_aftertrans_update__pose(bContext *C, TransInfo *t)
     GSet *motionpath_updates = BLI_gset_ptr_new("motionpath updates");
 
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-
-      bPoseChannel *pchan;
       short targetless_ik = 0;
 
       ob = tc->poseobj;
@@ -1741,8 +1573,7 @@ static void special_aftertrans_update__pose(bContext *C, TransInfo *t)
       }
       else {
         /* not forget to clear the auto flag */
-        for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan;
-             pchan = pchan->next) {
+        LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
           bKinematicConstraint *data = has_targetless_ik(pchan);
           if (data) {
             data->flag &= ~CONSTRAINT_IK_AUTO;
@@ -1758,7 +1589,7 @@ static void special_aftertrans_update__pose(bContext *C, TransInfo *t)
       /* automatic inserting of keys and unkeyed tagging -
        * only if transform wasn't canceled (or TFM_DUMMY) */
       if (!canceled && (t->mode != TFM_DUMMY)) {
-        autokeyframe_pose(C, t->scene, ob, t->mode, targetless_ik);
+        blender::animrig::autokeyframe_pose(C, t->scene, ob, t->mode, targetless_ik);
         DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
       }
       else {
@@ -1786,14 +1617,14 @@ static void special_aftertrans_update__pose(bContext *C, TransInfo *t)
 
 TransConvertTypeInfo TransConvertType_EditArmature = {
     /*flags*/ (T_EDIT | T_POINTS),
-    /*createTransData*/ createTransArmatureVerts,
-    /*recalcData*/ recalcData_edit_armature,
+    /*create_trans_data*/ createTransArmatureVerts,
+    /*recalc_data*/ recalcData_edit_armature,
     /*special_aftertrans_update*/ nullptr,
 };
 
 TransConvertTypeInfo TransConvertType_Pose = {
     /*flags*/ 0,
-    /*createTransData*/ createTransPose,
-    /*recalcData*/ recalcData_pose,
+    /*create_trans_data*/ createTransPose,
+    /*recalc_data*/ recalcData_pose,
     /*special_aftertrans_update*/ special_aftertrans_update__pose,
 };

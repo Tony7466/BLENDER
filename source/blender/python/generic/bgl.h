@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,6 +7,10 @@
  */
 
 #pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 PyObject *BPyInit_bgl(void);
 
@@ -17,7 +21,10 @@ PyObject *BPyInit_bgl(void);
  * \param initbuffer: When not NULL holds a contiguous buffer
  * with the correct format from which the buffer will be initialized
  */
-struct _Buffer *BGL_MakeBuffer(int type, int ndimensions, int *dimensions, void *initbuffer);
+struct _Buffer *BGL_MakeBuffer(int type,
+                               int ndimensions,
+                               const int *dimensions,
+                               const void *initbuffer);
 
 int BGL_typeSize(int type);
 
@@ -47,3 +54,7 @@ typedef struct _Buffer {
 
 /** The type object. */
 extern PyTypeObject BGL_bufferType;
+
+#ifdef __cplusplus
+}
+#endif

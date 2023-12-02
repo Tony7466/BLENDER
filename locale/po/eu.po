@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'5aff5bc0e72b')\n"
+"Project-Id-Version: Blender 4.1.0 Alpha (b'd293f72ab6e7')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-17 12:39:59\n"
+"POT-Creation-Date: 2023-11-27 10:28:34\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Ainhize & Miriam <agoenaga006@ikasle.ehu.eus>\n"
 "Language-Team: Euskara <agoenaga006@ikasle.ehu.eus>\n"
@@ -241,6 +241,10 @@ msgid "Point"
 msgstr "Puntu"
 
 
+msgid "Layer"
+msgstr "Geruza"
+
+
 msgid "+X"
 msgstr "+X"
 
@@ -417,10 +421,6 @@ msgid "Onion Skinning"
 msgstr "Tipula-azapa"
 
 
-msgid "Layer"
-msgstr "Geruza"
-
-
 msgid "Grid"
 msgstr "Sarea"
 
@@ -447,12 +447,24 @@ msgid "Sphere"
 msgstr "Esfera"
 
 
+msgid "Sound"
+msgstr "Soinua"
+
+
+msgid "Speaker"
+msgstr "Bozgorailua"
+
+
+msgid "Text"
+msgstr "Testua"
+
+
+msgid "World"
+msgstr "Mundua"
+
+
 msgid "Groups"
 msgstr "Taldeak"
-
-
-msgid "Visible Layers"
-msgstr "Ikusgai Dauden Geruzak"
 
 
 msgid "Local"
@@ -479,6 +491,10 @@ msgid "Cube"
 msgstr "Kuboa"
 
 
+msgid "Edit"
+msgstr "Editatu"
+
+
 msgid "Cylinder"
 msgstr "Zilindroa"
 
@@ -489,10 +505,6 @@ msgstr "Zirkulua"
 
 msgid "Angular Velocity"
 msgstr "Abiadura-angeluarra"
-
-
-msgid "Sound"
-msgstr "Soinua"
 
 
 msgid "Image Texture"
@@ -572,12 +584,8 @@ msgid "Show/Hide Faces"
 msgstr "Aurpegiak erakutsi/ezkutatu"
 
 
-msgid "Edit"
-msgstr "Editatu"
-
-
-msgid "Text"
-msgstr "Testua"
+msgid "Physics"
+msgstr "Fisikak"
 
 
 msgid "File"
@@ -608,10 +616,6 @@ msgid "New"
 msgstr "Berria"
 
 
-msgid "World"
-msgstr "Mundua"
-
-
 msgctxt "Curve"
 msgid "Random"
 msgstr "Ausaz"
@@ -639,6 +643,10 @@ msgstr "Y Ardatza"
 
 msgid "Original"
 msgstr "Jatorrizkoa"
+
+
+msgid "Selection"
+msgstr "Hautaketa"
 
 
 msgid "Reflection"
@@ -787,10 +795,6 @@ msgid "Console Language"
 msgstr "Kontsolaren Hizkuntza"
 
 
-msgid "Language"
-msgstr "Hizkuntza"
-
-
 msgctxt "Operator"
 msgid "Move Cursor"
 msgstr "Kurtsorea Mugitu"
@@ -819,10 +823,6 @@ msgstr "Arbeletik itsatsi"
 
 msgid "Paste text from clipboard"
 msgstr "Arbeletik testua itsatsi"
-
-
-msgid "Selection"
-msgstr "Hautaketa"
 
 
 msgid "Console output type"
@@ -945,15 +945,6 @@ msgstr "-Z ardatza"
 
 msgid "Use Metadata"
 msgstr "Metadata erabili"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Esportatu OBJ"
-
-
-msgid "Include UVs"
-msgstr "Gehitu UVs"
 
 
 msgid "Hierarchy"
@@ -1613,6 +1604,36 @@ msgid "Save Screenshot"
 msgstr "Pantaila-irudia Gorde"
 
 
+msgctxt "Sequence"
+msgid "Type"
+msgstr "Mota"
+
+
+msgctxt "Sequence"
+msgid "Add"
+msgstr "Gehitu"
+
+
+msgctxt "Sequence"
+msgid "Subtract"
+msgstr "Kendu"
+
+
+msgctxt "Sequence"
+msgid "Color"
+msgstr "Kolorea"
+
+
+msgctxt "Sequence"
+msgid "Speed"
+msgstr "Abiadura"
+
+
+msgctxt "Sequence"
+msgid "Text"
+msgstr "Testua"
+
+
 msgid "Property"
 msgstr "Ezaugarria"
 
@@ -1685,13 +1706,13 @@ msgid "Save System Info"
 msgstr "Sistemaren Informazioa Gorde"
 
 
+msgid "Refraction"
+msgstr "Errefrakzioa"
+
+
 msgctxt "Operator"
 msgid "Scale"
 msgstr "Eskalatu"
-
-
-msgid "Physics"
-msgstr "Fisikak"
 
 
 msgid "Dynamics"
@@ -1719,13 +1740,12 @@ msgid "Continue"
 msgstr "Jarraitu"
 
 
+msgid "Language"
+msgstr "Hizkuntza"
+
+
 msgid "Temperature"
 msgstr "Tenperatura"
-
-
-msgctxt "Sequence"
-msgid "Type"
-msgstr "Mota"
 
 
 msgctxt "Sequence"
@@ -1758,31 +1778,6 @@ msgid "Cross"
 msgstr "Gurutzatu"
 
 
-msgctxt "Sequence"
-msgid "Add"
-msgstr "Gehitu"
-
-
-msgctxt "Sequence"
-msgid "Subtract"
-msgstr "Kendu"
-
-
-msgctxt "Sequence"
-msgid "Color"
-msgstr "Kolorea"
-
-
-msgctxt "Sequence"
-msgid "Speed"
-msgstr "Abiadura"
-
-
-msgctxt "Sequence"
-msgid "Text"
-msgstr "Testua"
-
-
 msgid "Gray Scale"
 msgstr "Gris-eskala"
 
@@ -1797,10 +1792,6 @@ msgstr "Blender Fitxategia"
 
 msgid "Sort Alphabetically"
 msgstr "Alfabetikoki Ordenatu"
-
-
-msgid "Speaker"
-msgstr "Bozgorailua"
 
 
 msgid "3D"
@@ -1917,10 +1908,6 @@ msgid "Upper"
 msgstr "Altua"
 
 
-msgid "Refraction"
-msgstr "Errefrakzioa"
-
-
 msgctxt "Image"
 msgid "New"
 msgstr "Berria"
@@ -1990,13 +1977,13 @@ msgstr "Irudia Renderizatu"
 
 
 msgctxt "Operator"
-msgid "Developer Community"
-msgstr "Garatzaileen Komunitatea"
+msgid "Report a Bug"
+msgstr "Akats baten berri eman"
 
 
 msgctxt "Operator"
-msgid "Report a Bug"
-msgstr "Akats baten berri eman"
+msgid "Developer Community"
+msgstr "Garatzaileen Komunitatea"
 
 
 msgctxt "Operator"
@@ -2189,11 +2176,6 @@ msgstr "Esfera"
 
 msgid "normal"
 msgstr "Normala"
-
-
-msgctxt "Armature"
-msgid "Group"
-msgstr "Taldea"
 
 
 msgid "Sound not packed"
@@ -2428,10 +2410,6 @@ msgid "Catalan (Català)"
 msgstr "Katalana (Català)"
 
 
-msgid "Czech (Český)"
-msgstr "Txekiarra (Český)"
-
-
 msgid "Portuguese (Português)"
 msgstr "Portugesa (Português)"
 
@@ -2510,10 +2488,6 @@ msgstr "Hebreera (תירִבְעִ)"
 
 msgid "Esperanto (Esperanto)"
 msgstr "Esperantoa (Esperanto)"
-
-
-msgid "Spanish from Spain (Español de España)"
-msgstr "Espainiako gaztelera (Español de España)"
 
 
 msgid "Amharic (አማርኛ)"

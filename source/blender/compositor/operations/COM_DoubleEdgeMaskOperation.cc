@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -1293,6 +1293,7 @@ DoubleEdgeMaskOperation::DoubleEdgeMaskOperation()
   adjacent_only_ = false;
   keep_inside_ = false;
   flags_.complex = true;
+  flags_.can_be_constant = true;
   is_output_rendered_ = false;
 }
 

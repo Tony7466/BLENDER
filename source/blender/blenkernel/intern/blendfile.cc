@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,8 +9,8 @@
  * and functions for writing *partial* files (only selected data-blocks).
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -37,31 +37,31 @@
 #include "BKE_blendfile.h"
 #include "BKE_bpath.h"
 #include "BKE_colorband.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
 #include "BKE_ipo.h"
 #include "BKE_keyconfig.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_main.h"
-#include "BKE_main_idmap.h"
-#include "BKE_main_namemap.h"
+#include "BKE_lib_remap.hh"
+#include "BKE_main.hh"
+#include "BKE_main_idmap.hh"
+#include "BKE_main_namemap.hh"
 #include "BKE_preferences.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_studiolight.h"
 #include "BKE_undo_system.h"
 #include "BKE_workspace.h"
 
 #include "BLO_readfile.h"
-#include "BLO_writefile.h"
+#include "BLO_writefile.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "RE_pipeline.h"
 
@@ -142,28 +142,23 @@ bool BKE_blendfile_library_path_explode(const char *path,
   return true;
 }
 
+bool BKE_blendfile_is_readable(const char *path, ReportList *reports)
+{
+  BlendFileReadReport readfile_reports;
+  readfile_reports.reports = reports;
+  BlendHandle *bh = BLO_blendhandle_from_file(path, &readfile_reports);
+  if (bh != nullptr) {
+    BLO_blendhandle_close(bh);
+    return true;
+  }
+  return false;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Blend File IO (High Level)
  * \{ */
-
-static bool blendfile_or_libraries_versions_atleast(Main *bmain,
-                                                    const short versionfile,
-                                                    const short subversionfile)
-{
-  if (!MAIN_VERSION_ATLEAST(bmain, versionfile, subversionfile)) {
-    return false;
-  }
-
-  LISTBASE_FOREACH (Library *, library, &bmain->libraries) {
-    if (!MAIN_VERSION_ATLEAST(library, versionfile, subversionfile)) {
-      return false;
-    }
-  }
-
-  return true;
-}
 
 static bool foreach_path_clean_cb(BPathForeachPathData * /*bpath_data*/,
                                   char *path_dst,
@@ -193,8 +188,7 @@ static void clean_paths(Main *bmain)
 
 static bool wm_scene_is_visible(wmWindowManager *wm, Scene *scene)
 {
-  wmWindow *win;
-  for (win = static_cast<wmWindow *>(wm->windows.first); win; win = win->next) {
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     if (win->scene == scene) {
       return true;
     }
@@ -272,7 +266,7 @@ static IDRemapper *reuse_bmain_data_remapper_ensure(ReuseOldBMainData *reuse_dat
   IDRemapper *remapper = reuse_data->remapper;
 
   LISTBASE_FOREACH (Library *, old_lib_iter, &old_bmain->libraries) {
-    /* In case newly opened `new_bmain` is a library of the `old_bmain`, remap it to NULL, since a
+    /* In case newly opened `new_bmain` is a library of the `old_bmain`, remap it to null, since a
      * file should never ever have linked data from itself. */
     if (STREQ(old_lib_iter->filepath_abs, new_bmain->filepath)) {
       BKE_id_remapper_add(remapper, &old_lib_iter->id, nullptr);
@@ -302,24 +296,26 @@ static bool reuse_bmain_data_remapper_is_id_remapped(IDRemapper *remapper, ID *i
   IDRemapperApplyResult result = BKE_id_remapper_get_mapping_result(
       remapper, id, ID_REMAP_APPLY_DEFAULT, nullptr);
   if (ELEM(result, ID_REMAP_RESULT_SOURCE_REMAPPED, ID_REMAP_RESULT_SOURCE_UNASSIGNED)) {
-    /* ID is already remapped to its matching ID in the new main, or explicitly remapped to NULL,
+    /* ID is already remapped to its matching ID in the new main, or explicitly remapped to null,
      * nothing else to do here. */
     return true;
   }
   BLI_assert_msg(result != ID_REMAP_RESULT_SOURCE_NOT_MAPPABLE,
-                 "There should never be a non-mappable (i.e. NULL) input here.");
+                 "There should never be a non-mappable (i.e. null) input here.");
   BLI_assert(result == ID_REMAP_RESULT_SOURCE_UNAVAILABLE);
   return false;
 }
 
-/** Does a complete replacement of data in `new_bmain` by data from `old_bmain. Original new data
+/**
+ * Does a complete replacement of data in `new_bmain` by data from `old_bmain. Original new data
  * are moved to the `old_bmain`, and will be freed together with it.
  *
  * WARNING: Currently only expects to work on local data, won't work properly if some of the IDs of
  * given type are linked.
  *
  * NOTE: There is no support at all for potential dependencies of the IDs moved around. This is not
- * expected to be necessary for the current use cases (UI-related IDs). */
+ * expected to be necessary for the current use cases (UI-related IDs).
+ */
 static void swap_old_bmain_data_for_blendfile(ReuseOldBMainData *reuse_data, const short id_code)
 {
   Main *new_bmain = reuse_data->new_bmain;
@@ -388,9 +384,11 @@ static void swap_old_bmain_data_for_blendfile(ReuseOldBMainData *reuse_data, con
   FOREACH_MAIN_LISTBASE_ID_END;
 }
 
-/** Similar to #swap_old_bmain_data_for_blendfile, but with special handling for WM ID. Tightly
+/**
+ * Similar to #swap_old_bmain_data_for_blendfile, but with special handling for WM ID. Tightly
  * related to further WM post-processing from calling WM code (see #WM_file_read and
- * #wm_homefile_read_ex). */
+ * #wm_homefile_read_ex).
+ */
 static void swap_wm_data_for_blendfile(ReuseOldBMainData *reuse_data, const bool load_ui)
 {
   Main *old_bmain = reuse_data->old_bmain;
@@ -536,7 +534,8 @@ static int reuse_bmain_data_invalid_local_usages_fix_cb(LibraryIDLinkCallbackDat
   return IDWALK_RET_NOP;
 }
 
-/** Detect and fix invalid usages of locale IDs by linked ones (or as reference of liboverrides).
+/**
+ * Detect and fix invalid usages of locale IDs by linked ones (or as reference of liboverrides).
  */
 static void reuse_bmain_data_invalid_local_usages_fix(ReuseOldBMainData *reuse_data)
 {
@@ -770,7 +769,7 @@ static void setup_app_data(bContext *C,
 
     if (track_undo_scene) {
       /* Keep the old (to-be-freed) scene, remapping below will ensure it's remapped to the
-       * matching new scene if available, or NULL otherwise, in which case
+       * matching new scene if available, or null otherwise, in which case
        * #wm_data_consistency_ensure will define `curscene` as the active one. */
     }
     /* Enforce curscene to be in current screen. */
@@ -803,6 +802,19 @@ static void setup_app_data(bContext *C,
     reuse_data.remapper = nullptr;
 
     wm_data_consistency_ensure(CTX_wm_manager(C), curscene, cur_view_layer);
+  }
+
+  if (mode == LOAD_UNDO) {
+    /* It's possible to undo into a time before the scene existed, in this case the window's scene
+     * will be null. Since it doesn't make sense to remove the window, set it to the current scene.
+     * NOTE: Redo will restore the active scene to the window so a reasonably consistent state
+     * is maintained. We could do better by keeping a window/scene map for each undo step. */
+    wmWindowManager *wm = static_cast<wmWindowManager *>(bfd->main->wm.first);
+    LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+      if (win->scene == nullptr) {
+        win->scene = curscene;
+      }
+    }
   }
 
   BLI_assert(BKE_main_namemap_validate(bfd->main));
@@ -875,25 +887,11 @@ static void setup_app_data(bContext *C,
   }
 #endif
 
-  /* FIXME: this version patching should really be part of the file-reading code,
-   * but we still get too many unrelated data-corruption crashes otherwise... */
-  if (bmain->versionfile < 250) {
-    do_versions_ipos_to_animato(bmain);
-  }
-
-  /* NOTE: readfile's `do_versions` does not allow to create new IDs, and only operates on a single
-   * library at a time. This code needs to operate on the whole Main at once. */
-  /* NOTE: Check Main version (i.e. current blend file version), AND the versions of all the
-   * linked libraries. */
-  if (mode != LOAD_UNDO && !blendfile_or_libraries_versions_atleast(bmain, 302, 1)) {
-    BKE_lib_override_library_main_proxy_convert(bmain, reports);
-    /* Currently liboverride code can generate invalid namemap. This is a known issue, requires
-     * #107847 to be properly fixed. */
-    BKE_main_namemap_validate_and_fix(bmain);
-  }
-
-  if (mode != LOAD_UNDO && !blendfile_or_libraries_versions_atleast(bmain, 302, 3)) {
-    BKE_lib_override_library_main_hierarchy_root_ensure(bmain);
+  if (mode != LOAD_UNDO) {
+    /* Perform complex versioning that involves adding or removing IDs, and/or needs to operate
+     * over the whole Main data-base (versioning done in readfile code only operates on a
+     * per-library basis). */
+    BLO_read_do_version_after_setup(bmain, reports);
   }
 
   bmain->recovered = false;
@@ -976,15 +974,14 @@ static void setup_app_blend_file_data(bContext *C,
 
 static void handle_subversion_warning(Main *main, BlendFileReadReport *reports)
 {
-  if (main->minversionfile > BLENDER_FILE_VERSION ||
-      (main->minversionfile == BLENDER_FILE_VERSION &&
-       main->minsubversionfile > BLENDER_FILE_SUBVERSION))
+  if (main->versionfile > BLENDER_FILE_VERSION || (main->versionfile == BLENDER_FILE_VERSION &&
+                                                   main->subversionfile > BLENDER_FILE_SUBVERSION))
   {
     BKE_reportf(reports->reports,
                 RPT_WARNING,
                 "File written by newer Blender binary (%d.%d), expect loss of data!",
-                main->minversionfile,
-                main->minsubversionfile);
+                main->versionfile,
+                main->subversionfile);
   }
 }
 
@@ -1513,10 +1510,8 @@ bool BKE_blendfile_write_partial(Main *bmain_src,
   set_listbasepointers(bmain_src, lbarray_dst);
   a = set_listbasepointers(bmain_dst, lbarray_src);
   while (a--) {
-    ID *id;
     ListBase *lb_dst = lbarray_dst[a], *lb_src = lbarray_src[a];
-
-    while ((id = static_cast<ID *>(BLI_pophead(lb_src)))) {
+    while (ID *id = static_cast<ID *>(BLI_pophead(lb_src))) {
       BLI_addtail(lb_dst, id);
       id_sort_by_name(lb_dst, id, nullptr);
     }

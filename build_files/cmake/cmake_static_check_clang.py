@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -46,9 +46,6 @@ ClangSourceLocation = Any
 
 
 USE_VERBOSE = os.environ.get("VERBOSE", None) is not None
-
-# Turn off for debugging.
-USE_MULTIPROCESS = True
 
 CLANG_BIND_DIR = os.environ.get("CLANG_BIND_DIR")
 CLANG_LIB_DIR = os.environ.get("CLANG_LIB_DIR")
@@ -167,16 +164,18 @@ class clang_checkers:
             #     IPython.embed()
 
             if node.kind == CursorKind.STRUCT_DECL:
-                struct_type = node.spelling.strip()
-                if not struct_type:
-                    # The parent may be a `typedef [..] TypeID` where `[..]` is `struct { a; b; c; }`.
-                    # Inspect the parent.
-                    if node_parent is not None and (node_parent.kind == CursorKind.TYPEDEF_DECL):
-                        tokens = list(node_parent.get_tokens())
-                        if tokens[0].spelling == "typedef":
-                            struct_type = tokens[-1].spelling
+                # Ignore forward declarations.
+                if next(node.get_children(), None) is not None:
+                    struct_type = node.spelling.strip()
+                    if not struct_type:
+                        # The parent may be a `typedef [..] TypeID` where `[..]` is `struct { a; b; c; }`.
+                        # Inspect the parent.
+                        if node_parent is not None and (node_parent.kind == CursorKind.TYPEDEF_DECL):
+                            tokens = list(node_parent.get_tokens())
+                            if tokens[0].spelling == "typedef":
+                                struct_type = tokens[-1].spelling
 
-                struct_decl_map[struct_type] = node
+                    struct_decl_map[struct_type] = node
 
             # Ignore declarations for anything defined outside this file.
             if str(node.location.file) == filepath:
@@ -241,8 +240,31 @@ class clang_checkers:
                                     break
 
                             beg = end - 1
-                            while beg != 0 and bytes((file_data[beg],)) != b"\n":
+                            while beg != 0 and bytes((file_data[beg],)) not in {
+                                    b"\n",
+                                    # Needed so declarations on a single line don't detect a comment
+                                    # from an outer comment, e.g.
+                                    #    SomeStruct x = {
+                                    #      /*list*/ {nullptr, nullptr},
+                                    #    };
+                                    # Would start inside the first `nullptr` and walk backwards to find `/*list*/`.
+                                    b"{"
+                            }:
                                 beg -= 1
+
+                            # Seek back until the comment end (in some cases this includes code).
+                            # This occurs when the body of the declaration includes code, e.g.
+                            #    rcti x = {
+                            #      /*xmin*/ foo->bar.baz,
+                            #      ... snip ...
+                            #    };
+                            # Where `"xmin*/ foo->bar."` would be extracted were it not for this check.
+                            # There might be a more elegant way to handle this, for how snipping off the last
+                            # comment characters is sufficient.
+                            end_test = file_data.rfind(b"*/", end + 1, beg)
+                            if end_test != -1:
+                                end = end_test
+
                             text = file_data[beg:end]
                             if text.lstrip().startswith(b"/*"):
                                 if not has_newline:
@@ -425,6 +447,10 @@ def source_info_filter(
                     has_match = True
             if not has_match:
                 continue
+        else:
+            # Skip files not in source (generated files from the build directory),
+            # these could be check but it's not all that useful (preview blend ... etc).
+            continue
 
         source_info_result.append(item)
 
@@ -440,6 +466,7 @@ def source_info_filter(
 def run_checks_on_project(
         check_ids: Sequence[str],
         regex_list: Sequence[re.Pattern[str]],
+        jobs: int,
 ) -> None:
     source_info = project_source_info.build_info(ignore_prefix_list=CHECKER_IGNORE_PREFIX)
     source_defines = project_source_info.build_defines_as_args()
@@ -464,9 +491,11 @@ def run_checks_on_project(
 
     import multiprocessing
 
-    if USE_MULTIPROCESS:
-        job_total = multiprocessing.cpu_count() + 1
-        with multiprocessing.Pool(processes=job_total) as pool:
+    if jobs <= 0:
+        jobs = multiprocessing.cpu_count()
+
+    if jobs > 1:
+        with multiprocessing.Pool(processes=jobs) as pool:
             # No `istarmap`, use an intermediate function.
             for result in pool.imap(check_source_file_for_imap, all_args):
                 if result:
@@ -515,6 +544,17 @@ def create_parser(checkers_all: Sequence[str]) -> argparse.ArgumentParser:
             "Multiple checkers may be passed at once (comma separated, no spaces)."),
         required=True,
     )
+    parser.add_argument(
+        "--jobs",
+        dest="jobs",
+        type=int,
+        default=0,
+        help=(
+            "The number of processes to use. "
+            "Defaults to zero which detects the available cores, 1 is single threaded (useful for debugging)."
+        ),
+        required=False,
+    )
 
     return parser
 
@@ -536,7 +576,12 @@ def main() -> int:
             print("Error in expression: \"{:s}\"\n  {!r}".format(expr, ex))
             return 1
 
-    run_checks_on_project(args.checks.split(','), regex_list)
+    run_checks_on_project(
+        args.checks.split(','),
+        regex_list,
+        args.jobs,
+    )
+
     return 0
 
 

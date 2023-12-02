@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,11 +6,11 @@
  * \ingroup bke
  */
 
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
@@ -145,7 +145,7 @@ static void keymap_diff_item_free(wmKeyMapDiffItem *kmdi)
 }
 
 void BKE_keyconfig_keymap_filter_item(wmKeyMap *keymap,
-                                      const struct wmKeyConfigFilterItemParams *params,
+                                      const wmKeyConfigFilterItemParams *params,
                                       bool (*filter_fn)(wmKeyMapItem *kmi, void *user_data),
                                       void *user_data)
 {
@@ -195,7 +195,7 @@ void BKE_keyconfig_keymap_filter_item(wmKeyMap *keymap,
 }
 
 void BKE_keyconfig_pref_filter_items(UserDef *userdef,
-                                     const struct wmKeyConfigFilterItemParams *params,
+                                     const wmKeyConfigFilterItemParams *params,
                                      bool (*filter_fn)(wmKeyMapItem *kmi, void *user_data),
                                      void *user_data)
 {

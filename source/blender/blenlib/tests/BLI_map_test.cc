@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
@@ -692,6 +692,22 @@ TEST(map, VectorKey)
 
   map.remove_as(Vector<int>({1, 2, 3}).as_mutable_span());
   EXPECT_EQ(map.size(), 1);
+}
+
+TEST(map, Equality)
+{
+  Map<int, int> a;
+  Map<int, int> b;
+
+  EXPECT_EQ(a, b);
+  a.add(3, 4);
+  EXPECT_NE(a, b);
+  b.add(3, 4);
+  EXPECT_EQ(a, b);
+
+  a.add(4, 10);
+  b.add(4, 11);
+  EXPECT_NE(a, b);
 }
 
 /**

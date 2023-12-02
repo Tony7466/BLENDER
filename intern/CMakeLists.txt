@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -43,10 +43,7 @@ if(WITH_BULLET)
   add_subdirectory(rigidbody)
 endif()
 
-# only windows needs utf16 converter
-if(WIN32)
-  add_subdirectory(utfconv)
-endif()
+add_subdirectory(utfconv)
 
 if(WITH_MOD_FLUID)
   add_subdirectory(mantaflow)

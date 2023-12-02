@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,9 +16,12 @@
 #include "BLI_alloca.h"
 #include "BLI_expr_pylike_eval.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_base_safe.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utf8.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
@@ -26,25 +29,27 @@
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_constraint.h"
 #include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "atomic_ops.h"
 
 #include "CLG_log.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
 #endif
+
+#include <cstring>
 
 #ifdef WITH_PYTHON
 static ThreadMutex python_driver_lock = BLI_MUTEX_INITIALIZER;
@@ -100,14 +105,12 @@ static bool driver_get_target_context_property(const DriverTargetContext *driver
 {
   switch (dtar->context_property) {
     case DTAR_CONTEXT_PROPERTY_ACTIVE_SCENE:
-      RNA_id_pointer_create(&driver_target_context->scene->id, r_property_ptr);
+      *r_property_ptr = RNA_id_pointer_create(&driver_target_context->scene->id);
       return true;
 
     case DTAR_CONTEXT_PROPERTY_ACTIVE_VIEW_LAYER: {
-      RNA_pointer_create(&driver_target_context->scene->id,
-                         &RNA_ViewLayer,
-                         driver_target_context->view_layer,
-                         r_property_ptr);
+      *r_property_ptr = RNA_pointer_create(
+          &driver_target_context->scene->id, &RNA_ViewLayer, driver_target_context->view_layer);
       return true;
     }
   }
@@ -138,7 +141,7 @@ bool driver_get_target_property(const DriverTargetContext *driver_target_context
     return false;
   }
 
-  RNA_id_pointer_create(dtar->id, r_prop);
+  *r_prop = RNA_id_pointer_create(dtar->id);
 
   return true;
 }
@@ -408,7 +411,7 @@ static float dvar_eval_rotDiff(const AnimationEvalContext * /*anim_eval_context*
 
   invert_qt_normalized(q1);
   mul_qt_qtqt(quat, q1, q2);
-  angle = 2.0f * saacos(quat[0]);
+  angle = 2.0f * safe_acosf(quat[0]);
   angle = fabsf(angle);
 
   return (angle > float(M_PI)) ? float((2.0f * float(M_PI)) - angle) : float(angle);
@@ -670,17 +673,17 @@ static float dvar_eval_contextProp(const AnimationEvalContext *anim_eval_context
 static void quaternion_to_angles(float quat[4], int channel)
 {
   if (channel < 0) {
-    quat[0] = 2.0f * saacosf(quat[0]);
+    quat[0] = 2.0f * safe_acosf(quat[0]);
 
     for (int i = 1; i < 4; i++) {
-      quat[i] = 2.0f * saasinf(quat[i]);
+      quat[i] = 2.0f * safe_asinf(quat[i]);
     }
   }
   else if (channel == 0) {
-    quat[0] = 2.0f * saacosf(quat[0]);
+    quat[0] = 2.0f * safe_acosf(quat[0]);
   }
   else {
-    quat[channel] = 2.0f * saasinf(quat[channel]);
+    quat[channel] = 2.0f * safe_asinf(quat[channel]);
   }
 }
 
@@ -1264,7 +1267,7 @@ static void evaluate_driver_sum(const AnimationEvalContext *anim_eval_context,
   int tot = 0;
 
   /* Loop through targets, adding (hopefully we don't get any overflow!). */
-  for (dvar = static_cast<DriverVar *>(driver->variables.first); dvar; dvar = dvar->next) {
+  LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
     value += driver_get_variable_value(anim_eval_context, driver, dvar);
     tot++;
   }
@@ -1281,11 +1284,10 @@ static void evaluate_driver_sum(const AnimationEvalContext *anim_eval_context,
 static void evaluate_driver_min_max(const AnimationEvalContext *anim_eval_context,
                                     ChannelDriver *driver)
 {
-  DriverVar *dvar;
   float value = 0.0f;
 
   /* Loop through the variables, getting the values and comparing them to existing ones. */
-  for (dvar = static_cast<DriverVar *>(driver->variables.first); dvar; dvar = dvar->next) {
+  LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
     /* Get value. */
     float tmp_val = driver_get_variable_value(anim_eval_context, driver, dvar);
 

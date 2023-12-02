@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
 
 #include "io_ops.hh" /* own include */
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #ifdef WITH_COLLADA
 #  include "io_collada.hh"
@@ -72,5 +72,6 @@ void ED_operatortypes_io()
 
 #ifdef WITH_IO_STL
   WM_operatortype_append(WM_OT_stl_import);
+  WM_operatortype_append(WM_OT_stl_export);
 #endif
 }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006-2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2006-2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,11 +16,12 @@
 #include "BLI_fileops_types.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_math_color.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "DNA_listBase.h"
 
@@ -31,6 +32,8 @@
 #include "GPU_texture.h"
 
 #include "MEM_guardedalloc.h"
+
+#include <cstring>
 
 /* Statics */
 static ListBase studiolights;
@@ -1071,7 +1074,7 @@ static float blinn_specular(const float L[3],
   return spec_light * (1.0 - w2) + spec_env * w2;
 }
 
-/* Keep in sync with the glsl shader function get_world_lighting() */
+/* Keep in sync with the GLSL shader function `get_world_lighting()`. */
 static void studiolight_lights_eval(StudioLight *sl, float color[3], const float normal[3])
 {
   float R[3], I[3] = {0.0f, 0.0f, 1.0f}, N[3] = {normal[0], normal[2], -normal[1]};
@@ -1213,7 +1216,7 @@ static void studiolight_add_files_from_datafolder(const int folder_id,
     return;
   }
 
-  struct direntry *dirs;
+  direntry *dirs;
   const uint dirs_num = BLI_filelist_dir_contents(folder, &dirs);
   int i;
   for (i = 0; i < dirs_num; i++) {
@@ -1472,8 +1475,7 @@ void BKE_studiolight_init()
 
 void BKE_studiolight_free()
 {
-  StudioLight *sl;
-  while ((sl = static_cast<StudioLight *>(BLI_pophead(&studiolights)))) {
+  while (StudioLight *sl = static_cast<StudioLight *>(BLI_pophead(&studiolights))) {
     studiolight_free(sl);
   }
 }
@@ -1636,7 +1638,7 @@ StudioLight *BKE_studiolight_create(const char *filepath,
 
 StudioLight *BKE_studiolight_studio_edit_get()
 {
-  static StudioLight sl = {0};
+  static StudioLight sl = {nullptr};
   sl.flag = STUDIOLIGHT_TYPE_STUDIO | STUDIOLIGHT_SPECULAR_HIGHLIGHT_PASS;
 
   memcpy(sl.light, U.light_param, sizeof(*sl.light) * 4);

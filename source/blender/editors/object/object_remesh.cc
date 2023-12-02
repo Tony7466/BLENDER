@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,7 +14,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
@@ -27,49 +27,49 @@
 #include "BLT_translation.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_context.h"
-#include "BKE_customdata.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mirror.h"
-#include "BKE_mesh_remesh_voxel.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_mesh_mirror.hh"
+#include "BKE_mesh_remesh_voxel.hh"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_shrinkwrap.h"
-#include "BKE_unit.h"
+#include "BKE_shrinkwrap.hh"
+#include "BKE_unit.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_sculpt.h"
-#include "ED_space_api.h"
-#include "ED_undo.h"
-#include "ED_view3d.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_sculpt.hh"
+#include "ED_space_api.hh"
+#include "ED_undo.hh"
+#include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "BLF_api.h"
 
@@ -130,15 +130,9 @@ static int voxel_remesh_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (mesh->totpoly == 0) {
+  if (mesh->faces_num == 0) {
     return OPERATOR_CANCELLED;
   }
-
-  /* Output mesh will be all smooth or all flat shading. */
-  const bke::AttributeAccessor attributes = mesh->attributes();
-  const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
-      "sharp_face", ATTR_DOMAIN_FACE, false);
-  const bool smooth_normals = !sharp_faces[0];
 
   float isovalue = 0.0f;
   if (mesh->flag & ME_REMESH_REPROJECT_VOLUME) {
@@ -167,21 +161,16 @@ static int voxel_remesh_exec(bContext *C, wmOperator *op)
     BKE_shrinkwrap_remesh_target_project(new_mesh, mesh, ob);
   }
 
-  if (mesh->flag & ME_REMESH_REPROJECT_PAINT_MASK) {
-    BKE_mesh_remesh_reproject_paint_mask(new_mesh, mesh);
+  if (mesh->flag & ME_REMESH_REPROJECT_ATTRIBUTES) {
+    bke::mesh_remesh_reproject_attributes(*mesh, *new_mesh);
   }
-
-  if (mesh->flag & ME_REMESH_REPROJECT_SCULPT_FACE_SETS) {
-    BKE_remesh_reproject_sculpt_face_sets(new_mesh, mesh);
-  }
-
-  if (mesh->flag & ME_REMESH_REPROJECT_VERTEX_COLORS) {
-    BKE_remesh_reproject_vertex_paint(new_mesh, mesh);
+  else {
+    const VArray<bool> sharp_face = *mesh->attributes().lookup_or_default<bool>(
+        "sharp_face", ATTR_DOMAIN_FACE, false);
+    BKE_mesh_smooth_flag_set(new_mesh, !sharp_face[0]);
   }
 
   BKE_mesh_nomain_to_mesh(new_mesh, mesh, ob);
-
-  BKE_mesh_smooth_flag_set(static_cast<Mesh *>(ob->data), smooth_normals);
 
   if (ob->mode == OB_MODE_SCULPT) {
     ED_sculpt_undo_geometry_end(ob);
@@ -470,7 +459,9 @@ static int voxel_size_edit_invoke(bContext *C, wmOperator *op, const wmEvent *ev
   op->customdata = cd;
 
   /* Select the front facing face of the mesh bounding box. */
-  const BoundBox *bb = BKE_mesh_boundbox_get(cd->active_object);
+  const blender::Bounds<float3> bounds = *mesh->bounds_min_max();
+  BoundBox bb;
+  BKE_boundbox_init_from_minmax(&bb, bounds.min, bounds.max);
 
   /* Indices of the Bounding Box faces. */
   const int BB_faces[6][4] = {
@@ -482,10 +473,10 @@ static int voxel_size_edit_invoke(bContext *C, wmOperator *op, const wmEvent *ev
       {2, 3, 7, 6},
   };
 
-  copy_v3_v3(cd->preview_plane[0], bb->vec[BB_faces[0][0]]);
-  copy_v3_v3(cd->preview_plane[1], bb->vec[BB_faces[0][1]]);
-  copy_v3_v3(cd->preview_plane[2], bb->vec[BB_faces[0][2]]);
-  copy_v3_v3(cd->preview_plane[3], bb->vec[BB_faces[0][3]]);
+  copy_v3_v3(cd->preview_plane[0], bb.vec[BB_faces[0][0]]);
+  copy_v3_v3(cd->preview_plane[1], bb.vec[BB_faces[0][1]]);
+  copy_v3_v3(cd->preview_plane[2], bb.vec[BB_faces[0][2]]);
+  copy_v3_v3(cd->preview_plane[3], bb.vec[BB_faces[0][3]]);
 
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
 
@@ -509,15 +500,15 @@ static int voxel_size_edit_invoke(bContext *C, wmOperator *op, const wmEvent *ev
   /* Check if there is a face that is more aligned towards the view. */
   for (int i = 0; i < 6; i++) {
     normal_tri_v3(
-        current_normal, bb->vec[BB_faces[i][0]], bb->vec[BB_faces[i][1]], bb->vec[BB_faces[i][2]]);
+        current_normal, bb.vec[BB_faces[i][0]], bb.vec[BB_faces[i][1]], bb.vec[BB_faces[i][2]]);
     current_dot = dot_v3v3(current_normal, view_normal);
 
     if (current_dot < min_dot) {
       min_dot = current_dot;
-      copy_v3_v3(cd->preview_plane[0], bb->vec[BB_faces[i][0]]);
-      copy_v3_v3(cd->preview_plane[1], bb->vec[BB_faces[i][1]]);
-      copy_v3_v3(cd->preview_plane[2], bb->vec[BB_faces[i][2]]);
-      copy_v3_v3(cd->preview_plane[3], bb->vec[BB_faces[i][3]]);
+      copy_v3_v3(cd->preview_plane[0], bb.vec[BB_faces[i][0]]);
+      copy_v3_v3(cd->preview_plane[1], bb.vec[BB_faces[i][1]]);
+      copy_v3_v3(cd->preview_plane[2], bb.vec[BB_faces[i][2]]);
+      copy_v3_v3(cd->preview_plane[3], bb.vec[BB_faces[i][3]]);
     }
   }
 
@@ -668,7 +659,7 @@ struct QuadriFlowJob {
   bool use_preserve_boundary;
   bool use_mesh_curvature;
 
-  bool preserve_paint_mask;
+  bool preserve_attributes;
   bool smooth_normals;
 
   int success;
@@ -837,13 +828,13 @@ static Mesh *remesh_symmetry_mirror(Object *ob, Mesh *mesh, eSymmetryAxes symmet
   return mesh_mirror;
 }
 
-static void quadriflow_start_job(void *customdata, bool *stop, bool *do_update, float *progress)
+static void quadriflow_start_job(void *customdata, wmJobWorkerStatus *worker_status)
 {
   QuadriFlowJob *qj = static_cast<QuadriFlowJob *>(customdata);
 
-  qj->stop = stop;
-  qj->do_update = do_update;
-  qj->progress = progress;
+  qj->stop = &worker_status->stop;
+  qj->do_update = &worker_status->do_update;
+  qj->progress = &worker_status->progress;
   qj->success = 1;
 
   if (qj->is_nonblocking_job) {
@@ -884,8 +875,8 @@ static void quadriflow_start_job(void *customdata, bool *stop, bool *do_update, 
   BKE_id_free(nullptr, bisect_mesh);
 
   if (new_mesh == nullptr) {
-    *do_update = true;
-    *stop = false;
+    worker_status->do_update = true;
+    worker_status->stop = false;
     if (qj->success == 1) {
       /* This is not a user cancellation event. */
       qj->success = 0;
@@ -900,8 +891,8 @@ static void quadriflow_start_job(void *customdata, bool *stop, bool *do_update, 
     ED_sculpt_undo_geometry_begin(ob, qj->op);
   }
 
-  if (qj->preserve_paint_mask) {
-    BKE_mesh_remesh_reproject_paint_mask(new_mesh, mesh);
+  if (qj->preserve_attributes) {
+    blender::bke::mesh_remesh_reproject_attributes(*mesh, *new_mesh);
   }
 
   BKE_mesh_nomain_to_mesh(new_mesh, mesh, ob);
@@ -914,8 +905,8 @@ static void quadriflow_start_job(void *customdata, bool *stop, bool *do_update, 
 
   BKE_mesh_batch_cache_dirty_tag(static_cast<Mesh *>(ob->data), BKE_MESH_BATCH_DIRTY_ALL);
 
-  *do_update = true;
-  *stop = false;
+  worker_status->do_update = true;
+  worker_status->stop = false;
 }
 
 static void quadriflow_end_job(void *customdata)
@@ -967,7 +958,7 @@ static int quadriflow_remesh_exec(bContext *C, wmOperator *op)
   job->use_mesh_curvature = RNA_boolean_get(op->ptr, "use_mesh_curvature");
 #endif
 
-  job->preserve_paint_mask = RNA_boolean_get(op->ptr, "preserve_paint_mask");
+  job->preserve_attributes = RNA_boolean_get(op->ptr, "preserve_attributes");
   job->smooth_normals = RNA_boolean_get(op->ptr, "smooth_normals");
 
   /* Update the target face count if symmetry is enabled */
@@ -990,9 +981,8 @@ static int quadriflow_remesh_exec(bContext *C, wmOperator *op)
   if (op->flag == 0) {
     /* This is called directly from the exec operator, this operation is now blocking */
     job->is_nonblocking_job = false;
-    bool stop = false, do_update = true;
-    float progress;
-    quadriflow_start_job(job, &stop, &do_update, &progress);
+    wmJobWorkerStatus worker_status = {};
+    quadriflow_start_job(job, &worker_status);
     quadriflow_end_job(job);
     quadriflow_free_job(job);
   }
@@ -1042,7 +1032,7 @@ static bool quadriflow_check(bContext *C, wmOperator *op)
     int num_faces;
     float ratio = RNA_float_get(op->ptr, "target_ratio");
 
-    num_faces = mesh->totpoly * ratio;
+    num_faces = mesh->faces_num * ratio;
 
     RNA_int_set(op->ptr, "target_faces", num_faces);
   }
@@ -1148,10 +1138,10 @@ void OBJECT_OT_quadriflow_remesh(wmOperatorType *ot)
                   "Take the mesh curvature into account when remeshing");
 #endif
   RNA_def_boolean(ot->srna,
-                  "preserve_paint_mask",
+                  "preserve_attributes",
                   false,
-                  "Preserve Paint Mask",
-                  "Reproject the paint mask onto the new mesh");
+                  "Preserve Attributes",
+                  "Reproject attributes onto the new mesh");
 
   RNA_def_boolean(ot->srna,
                   "smooth_normals",

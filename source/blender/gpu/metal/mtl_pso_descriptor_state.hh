@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,8 +13,10 @@
 
 namespace blender::gpu {
 
-/** Vertex attribute and buffer descriptor wrappers
- * for use in PSO construction and caching. */
+/**
+ * Vertex attribute and buffer descriptor wrappers
+ * for use in PSO construction and caching.
+ */
 struct MTLVertexAttributeDescriptorPSO {
   MTLVertexFormat format;
   int offset;

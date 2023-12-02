@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,11 +6,11 @@
  * \ingroup bke
  */
 
-#include <float.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -21,14 +21,14 @@
 #include "BLI_blenlib.h"
 #include "BLI_easing.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_sort_utils.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
@@ -36,10 +36,10 @@
 #include "BKE_lib_query.h"
 #include "BKE_nla.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 
 #include "CLG_log.h"
 
@@ -171,21 +171,10 @@ void BKE_fmodifier_name_set(FModifier *fcm, const char *name)
   BLI_uniquename(&list, fcm, fmi->name, '.', offsetof(FModifier, name), sizeof(fcm->name));
 }
 
-void BKE_fcurve_foreach_id(FCurve *fcu, LibraryForeachIDData *data)
+void BKE_fmodifiers_foreach_id(ListBase *fmodifiers, LibraryForeachIDData *data)
 {
-  ChannelDriver *driver = fcu->driver;
-
-  if (driver != nullptr) {
-    LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
-      /* only used targets */
-      DRIVER_TARGETS_USED_LOOPER_BEGIN (dvar) {
-        BKE_LIB_FOREACHID_PROCESS_ID(data, dtar->id, IDWALK_CB_NOP);
-      }
-      DRIVER_TARGETS_LOOPER_END;
-    }
-  }
-
-  LISTBASE_FOREACH (FModifier *, fcm, &fcu->modifiers) {
+  LISTBASE_FOREACH (FModifier *, fcm, fmodifiers) {
+    /* library data for specific F-Modifier types */
     switch (fcm->type) {
       case FMODIFIER_TYPE_PYTHON: {
         FMod_Python *fcm_py = (FMod_Python *)fcm->data;
@@ -205,6 +194,23 @@ void BKE_fcurve_foreach_id(FCurve *fcu, LibraryForeachIDData *data)
   }
 }
 
+void BKE_fcurve_foreach_id(FCurve *fcu, LibraryForeachIDData *data)
+{
+  ChannelDriver *driver = fcu->driver;
+
+  if (driver != nullptr) {
+    LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
+      /* only used targets */
+      DRIVER_TARGETS_USED_LOOPER_BEGIN (dvar) {
+        BKE_LIB_FOREACHID_PROCESS_ID(data, dtar->id, IDWALK_CB_NOP);
+      }
+      DRIVER_TARGETS_LOOPER_END;
+    }
+  }
+
+  BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_fmodifiers_foreach_id(&fcu->modifiers, data));
+}
+
 /* ----------------- Finding F-Curves -------------------------- */
 
 FCurve *id_data_find_fcurve(
@@ -214,7 +220,6 @@ FCurve *id_data_find_fcurve(
   AnimData *adt = BKE_animdata_from_id(id);
 
   /* Rna vars */
-  PointerRNA ptr;
   PropertyRNA *prop;
 
   if (r_driven) {
@@ -226,7 +231,7 @@ FCurve *id_data_find_fcurve(
     return nullptr;
   }
 
-  RNA_pointer_create(id, type, data, &ptr);
+  PointerRNA ptr = RNA_pointer_create(id, type, data);
   prop = RNA_struct_find_property(&ptr, prop_name);
   if (prop == nullptr) {
     return nullptr;
@@ -1012,43 +1017,6 @@ bool BKE_fcurve_is_keyframable(const FCurve *fcu)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Keyframe Column Tools
- * \{ */
-
-static void UNUSED_FUNCTION(bezt_add_to_cfra_elem)(ListBase *lb, BezTriple *bezt)
-{
-  CfraElem *ce, *cen;
-
-  for (ce = static_cast<CfraElem *>(lb->first); ce; ce = ce->next) {
-    /* Double key? */
-    if (IS_EQT(ce->cfra, bezt->vec[1][0], BEZT_BINARYSEARCH_THRESH)) {
-      if (bezt->f2 & SELECT) {
-        ce->sel = bezt->f2;
-      }
-      return;
-    }
-    /* Should key be inserted before this column? */
-    if (ce->cfra > bezt->vec[1][0]) {
-      break;
-    }
-  }
-
-  /* Create a new column */
-  cen = static_cast<CfraElem *>(MEM_callocN(sizeof(CfraElem), "add_to_cfra_elem"));
-  if (ce) {
-    BLI_insertlinkbefore(lb, ce, cen);
-  }
-  else {
-    BLI_addtail(lb, cen);
-  }
-
-  cen->cfra = bezt->vec[1][0];
-  cen->sel = bezt->f2;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Samples Utilities
  * \{ */
 
@@ -1248,15 +1216,14 @@ static BezTriple *cycle_offset_triple(
 
 void BKE_fcurve_handles_recalc_ex(FCurve *fcu, eBezTriple_Flag handle_sel_flag)
 {
-  int a = fcu->totvert;
-
   /* Error checking:
    * - Need at least two points.
    * - Need bezier keys.
    * - Only bezier-interpolation has handles (for now).
    */
   if (ELEM(nullptr, fcu, fcu->bezt) ||
-      (a < 2) /*|| ELEM(fcu->ipo, BEZT_IPO_CONST, BEZT_IPO_LIN) */) {
+      (fcu->totvert < 2) /*|| ELEM(fcu->ipo, BEZT_IPO_CONST, BEZT_IPO_LIN) */)
+  {
     return;
   }
 
@@ -1272,6 +1239,7 @@ void BKE_fcurve_handles_recalc_ex(FCurve *fcu, eBezTriple_Flag handle_sel_flag)
   BezTriple *next = (bezt + 1);
 
   /* Loop over all beztriples, adjusting handles. */
+  int a = fcu->totvert;
   while (a--) {
     /* Clamp timing of handles to be on either side of beztriple. */
     if (bezt->vec[0][0] > bezt->vec[1][0]) {
@@ -1346,7 +1314,8 @@ void testhandles_fcurve(FCurve *fcu, eBezTriple_Flag sel_flag, const bool use_ha
   BezTriple *bezt;
   uint a;
   for (a = 0, bezt = fcu->bezt; a < fcu->totvert; a++, bezt++) {
-    BKE_nurb_bezt_handle_test(bezt, sel_flag, use_handle, false);
+    BKE_nurb_bezt_handle_test(
+        bezt, sel_flag, use_handle ? NURB_HANDLE_TEST_EACH : NURB_HANDLE_TEST_KNOT_ONLY, false);
   }
 
   /* Recalculate handles. */
@@ -1365,17 +1334,17 @@ void sort_time_fcurve(FCurve *fcu)
 
   bool ok = true;
   while (ok) {
-    ok = 0;
+    ok = false;
     /* Currently, will only be needed when there are beztriples. */
 
     /* Loop over ALL points to adjust position in array and recalculate handles. */
     for (a = 0, bezt = fcu->bezt; a < fcu->totvert; a++, bezt++) {
-      /* Check if thee's a next beztriple which we could try to swap with current. */
+      /* Check if there's a next beztriple which we could try to swap with current. */
       if (a < (fcu->totvert - 1)) {
         /* Swap if one is after the other (and indicate that order has changed). */
         if (bezt->vec[1][0] > (bezt + 1)->vec[1][0]) {
           SWAP(BezTriple, *bezt, *(bezt + 1));
-          ok = 1;
+          ok = true;
         }
       }
     }
@@ -1772,7 +1741,7 @@ void BKE_fcurve_delete_keys_all(FCurve *fcu)
 
 /* Time + Average value */
 struct tRetainedKeyframe {
-  struct tRetainedKeyframe *next, *prev;
+  tRetainedKeyframe *next, *prev;
   float frame; /* frame to cluster around */
   float val;   /* average value */
 
@@ -1803,9 +1772,7 @@ void BKE_fcurve_merge_duplicate_keys(FCurve *fcu, const int sel_flag, const bool
       bool found = false;
 
       /* If there's another selected frame here, merge it */
-      for (tRetainedKeyframe *rk = static_cast<tRetainedKeyframe *>(retained_keys.last); rk;
-           rk = rk->prev)
-      {
+      LISTBASE_FOREACH_BACKWARD (tRetainedKeyframe *, rk, &retained_keys) {
         if (IS_EQT(rk->frame, bezt->vec[1][0], BEZT_BINARYSEARCH_THRESH)) {
           rk->val += bezt->vec[1][1];
           rk->tot_count++;
@@ -1856,9 +1823,7 @@ void BKE_fcurve_merge_duplicate_keys(FCurve *fcu, const int sel_flag, const bool
 
     /* Is this keyframe a candidate for deletion? */
     /* TODO: Replace loop with an O(1) lookup instead */
-    for (tRetainedKeyframe *rk = static_cast<tRetainedKeyframe *>(retained_keys.last); rk;
-         rk = rk->prev)
-    {
+    LISTBASE_FOREACH_BACKWARD (tRetainedKeyframe *, rk, &retained_keys) {
       if (IS_EQT(bezt->vec[1][0], rk->frame, BEZT_BINARYSEARCH_THRESH)) {
         /* Selected keys are treated with greater care than unselected ones... */
         if (BEZT_ISSEL_ANY(bezt)) {
@@ -2010,7 +1975,7 @@ static float fcurve_eval_keyframes_interpolate(const FCurve *fcu,
   const float eps = 1.e-8f;
   uint a;
 
-  /* Evaltime occurs somewhere in the middle of the curve. */
+  /* Evaluation-time occurs somewhere in the middle of the curve. */
   bool exact = false;
 
   /* Use binary search to find appropriate keyframes...
@@ -2055,7 +2020,7 @@ static float fcurve_eval_keyframes_interpolate(const FCurve *fcu,
     return 0.0f;
   }
 
-  /* Evaltime occurs within the interval defined by these two keyframes. */
+  /* Evaluation-time occurs within the interval defined by these two keyframes. */
   const float begin = prevbezt->vec[1][1];
   const float change = bezt->vec[1][1] - prevbezt->vec[1][1];
   const float duration = bezt->vec[1][0] - prevbezt->vec[1][0];
@@ -2386,10 +2351,10 @@ float evaluate_fcurve_driver(PathResolvedRNA *anim_rna,
   float evaltime = anim_eval_context->eval_time;
 
   /* If there is a driver (only if this F-Curve is acting as 'driver'),
-   * evaluate it to find value to use as "evaltime" since drivers essentially act as alternative
+   * evaluate it to find value to use as `evaltime` since drivers essentially act as alternative
    * input (i.e. in place of 'time') for F-Curves. */
   if (fcu->driver) {
-    /* Evaltime now serves as input for the curve. */
+    /* Evaluation-time now serves as input for the curve. */
     evaltime = evaluate_driver(anim_rna, fcu->driver, driver_orig, anim_eval_context);
 
     /* Only do a default 1-1 mapping if it's unlikely that anything else will set a value... */
@@ -2471,7 +2436,7 @@ void BKE_fmodifiers_blend_write(BlendWriter *writer, ListBase *fmodifiers)
     /* Write the specific data */
     if (fmi && fcm->data) {
       /* firstly, just write the plain fmi->data struct */
-      BLO_write_struct_by_name(writer, fmi->structName, fcm->data);
+      BLO_write_struct_by_name(writer, fmi->struct_name, fcm->data);
 
       /* do any modifier specific stuff */
       switch (fcm->type) {
@@ -2536,34 +2501,6 @@ void BKE_fmodifiers_blend_read_data(BlendDataReader *reader, ListBase *fmodifier
         BLO_read_data_address(reader, &data->prop);
         IDP_BlendDataRead(reader, &data->prop);
 
-        break;
-      }
-    }
-  }
-}
-
-void BKE_fmodifiers_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *fmodifiers)
-{
-  LISTBASE_FOREACH (FModifier *, fcm, fmodifiers) {
-    /* data for specific modifiers */
-    switch (fcm->type) {
-      case FMODIFIER_TYPE_PYTHON: {
-        FMod_Python *data = (FMod_Python *)fcm->data;
-        BLO_read_id_address(reader, id, &data->script);
-        break;
-      }
-    }
-  }
-}
-
-void BKE_fmodifiers_blend_read_expand(BlendExpander *expander, ListBase *fmodifiers)
-{
-  LISTBASE_FOREACH (FModifier *, fcm, fmodifiers) {
-    /* library data for specific F-Modifier types */
-    switch (fcm->type) {
-      case FMODIFIER_TYPE_PYTHON: {
-        FMod_Python *data = (FMod_Python *)fcm->data;
-        BLO_expand(expander, data->script);
         break;
       }
     }
@@ -2652,6 +2589,7 @@ void BKE_fcurve_blend_read_data(BlendDataReader *reader, ListBase *fcurves)
           }
           else {
             dtar->rna_path = nullptr;
+            dtar->id = nullptr;
           }
         }
         DRIVER_TARGETS_LOOPER_END;
@@ -2661,57 +2599,6 @@ void BKE_fcurve_blend_read_data(BlendDataReader *reader, ListBase *fcurves)
     /* modifiers */
     BLO_read_list(reader, &fcu->modifiers);
     BKE_fmodifiers_blend_read_data(reader, &fcu->modifiers, fcu);
-  }
-}
-
-void BKE_fcurve_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *fcurves)
-{
-  if (fcurves == nullptr) {
-    return;
-  }
-
-  /* relink ID-block references... */
-  LISTBASE_FOREACH (FCurve *, fcu, fcurves) {
-    /* driver data */
-    if (fcu->driver) {
-      ChannelDriver *driver = fcu->driver;
-      LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
-        DRIVER_TARGETS_LOOPER_BEGIN (dvar) {
-          /* only relink if still used */
-          if (tarIndex < dvar->num_targets) {
-            BLO_read_id_address(reader, id, &dtar->id);
-          }
-          else {
-            dtar->id = nullptr;
-          }
-        }
-        DRIVER_TARGETS_LOOPER_END;
-      }
-    }
-
-    /* modifiers */
-    BKE_fmodifiers_blend_read_lib(reader, id, &fcu->modifiers);
-  }
-}
-
-void BKE_fcurve_blend_read_expand(BlendExpander *expander, ListBase *fcurves)
-{
-  LISTBASE_FOREACH (FCurve *, fcu, fcurves) {
-    /* Driver targets if there is a driver */
-    if (fcu->driver) {
-      ChannelDriver *driver = fcu->driver;
-
-      LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
-        DRIVER_TARGETS_LOOPER_BEGIN (dvar) {
-          /* TODO: only expand those that are going to get used? */
-          BLO_expand(expander, dtar->id);
-        }
-        DRIVER_TARGETS_LOOPER_END;
-      }
-    }
-
-    /* F-Curve Modifiers */
-    BKE_fmodifiers_blend_read_expand(expander, &fcu->modifiers);
   }
 }
 

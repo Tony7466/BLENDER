@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -7,14 +7,13 @@ set(INC
   ..
   ../intern
   ../../editors/include
+  ../../blenkernel
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
-  ../../functions
   ../../geometry
   ../../gpu
-  ../../imbuf
   ../../makesrna
+  ../../modifiers
   ../../render
   ../../windowmanager
   ../../../../extern/fmtlib/include
@@ -22,6 +21,8 @@ set(INC
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
+set(INC_SYS
+)
 
 set(SRC
   nodes/node_geo_accumulate_field.cc
@@ -78,8 +79,11 @@ set(SRC
   nodes/node_geo_image_info.cc
   nodes/node_geo_image_texture.cc
   nodes/node_geo_index_of_nearest.cc
+  nodes/node_geo_index_switch.cc
   nodes/node_geo_input_curve_handles.cc
   nodes/node_geo_input_curve_tilt.cc
+  nodes/node_geo_input_edge_smooth.cc
+  nodes/node_geo_input_face_smooth.cc
   nodes/node_geo_input_id.cc
   nodes/node_geo_input_index.cc
   nodes/node_geo_input_instance_rotation.cc
@@ -95,13 +99,12 @@ set(SRC
   nodes/node_geo_input_mesh_island.cc
   nodes/node_geo_input_mesh_vertex_neighbors.cc
   nodes/node_geo_input_named_attribute.cc
+  nodes/node_geo_input_named_layer_selection.cc
   nodes/node_geo_input_normal.cc
   nodes/node_geo_input_position.cc
   nodes/node_geo_input_radius.cc
   nodes/node_geo_input_scene_time.cc
-  nodes/node_geo_input_shade_smooth.cc
   nodes/node_geo_input_shortest_edge_paths.cc
-  nodes/node_geo_input_signed_distance.cc
   nodes/node_geo_input_spline_cyclic.cc
   nodes/node_geo_input_spline_length.cc
   nodes/node_geo_input_spline_resolution.cc
@@ -113,7 +116,6 @@ set(SRC
   nodes/node_geo_join_geometry.cc
   nodes/node_geo_material_replace.cc
   nodes/node_geo_material_selection.cc
-  nodes/node_geo_mean_filter_sdf_volume.cc
   nodes/node_geo_merge_by_distance.cc
   nodes/node_geo_mesh_face_group_boundaries.cc
   nodes/node_geo_mesh_primitive_circle.cc
@@ -127,7 +129,6 @@ set(SRC
   nodes/node_geo_mesh_subdivide.cc
   nodes/node_geo_mesh_to_curve.cc
   nodes/node_geo_mesh_to_points.cc
-  nodes/node_geo_mesh_to_sdf_volume.cc
   nodes/node_geo_mesh_to_volume.cc
   nodes/node_geo_mesh_topology_corners_of_edge.cc
   nodes/node_geo_mesh_topology_corners_of_face.cc
@@ -139,9 +140,8 @@ set(SRC
   nodes/node_geo_mesh_topology_vertex_of_corner.cc
   nodes/node_geo_object_info.cc
   nodes/node_geo_offset_point_in_curve.cc
-  nodes/node_geo_offset_sdf_volume.cc
   nodes/node_geo_points.cc
-  nodes/node_geo_points_to_sdf_volume.cc
+  nodes/node_geo_points_to_curves.cc
   nodes/node_geo_points_to_vertices.cc
   nodes/node_geo_points_to_volume.cc
   nodes/node_geo_proximity.cc
@@ -155,10 +155,8 @@ set(SRC
   nodes/node_geo_sample_nearest.cc
   nodes/node_geo_sample_nearest_surface.cc
   nodes/node_geo_sample_uv_surface.cc
-  nodes/node_geo_sample_volume.cc
   nodes/node_geo_scale_elements.cc
   nodes/node_geo_scale_instances.cc
-  nodes/node_geo_sdf_volume_sphere.cc
   nodes/node_geo_self_object.cc
   nodes/node_geo_separate_components.cc
   nodes/node_geo_separate_geometry.cc
@@ -176,11 +174,17 @@ set(SRC
   nodes/node_geo_set_spline_resolution.cc
   nodes/node_geo_simulation_input.cc
   nodes/node_geo_simulation_output.cc
+  nodes/node_geo_split_to_instances.cc
   nodes/node_geo_store_named_attribute.cc
   nodes/node_geo_string_join.cc
   nodes/node_geo_string_to_curves.cc
   nodes/node_geo_subdivision_surface.cc
   nodes/node_geo_switch.cc
+  nodes/node_geo_tool_3d_cursor.cc
+  nodes/node_geo_tool_face_set.cc
+  nodes/node_geo_tool_selection.cc
+  nodes/node_geo_tool_set_face_set.cc
+  nodes/node_geo_tool_set_selection.cc
   nodes/node_geo_transform_geometry.cc
   nodes/node_geo_translate_instances.cc
   nodes/node_geo_triangulate.cc
@@ -190,21 +194,20 @@ set(SRC
   nodes/node_geo_volume_cube.cc
   nodes/node_geo_volume_to_mesh.cc
 
-  node_geometry_register.cc
   node_geometry_tree.cc
   node_geometry_util.cc
 
-  node_geometry_register.hh
   node_geometry_util.hh
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
   bf_bmesh
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  bf_functions
+  PRIVATE bf::functions
   bf_geometry
+  PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
   bf_nodes
   extern_fmtlib
@@ -260,7 +263,19 @@ if(WITH_OPENVDB)
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
 endif()
 
+add_node_discovery(
+  bf_nodes_geometry_generated
+  "${SRC}"
+  ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
+  register_geometry_nodes
+)
+
+list(APPEND LIB
+  bf_nodes_geometry_generated
+)
+
 blender_add_lib(bf_nodes_geometry "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+target_link_libraries(bf_nodes_geometry_generated bf_nodes_geometry)
 
 if(WITH_UNITY_BUILD)
   set_target_properties(bf_nodes_geometry PROPERTIES UNITY_BUILD ON)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,7 @@
 
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_scene.h"
 
 #include "DNA_color_types.h"
@@ -107,10 +107,8 @@ void free_exr_channels(void *exrhandle,
                        const char *layer_name,
                        const DataType datatype)
 {
-  SceneRenderView *srv;
-
   /* check renderdata for amount of views */
-  for (srv = (SceneRenderView *)rd->views.first; srv; srv = srv->next) {
+  LISTBASE_FOREACH (SceneRenderView *, srv, &rd->views) {
     float *rect = nullptr;
 
     if (BKE_scene_multiview_is_render_view_active(rd, srv) == false) {

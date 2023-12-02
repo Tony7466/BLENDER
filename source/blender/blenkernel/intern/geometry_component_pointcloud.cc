@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,14 +23,14 @@ PointCloudComponent::~PointCloudComponent()
   this->clear();
 }
 
-GeometryComponent *PointCloudComponent::copy() const
+GeometryComponentPtr PointCloudComponent::copy() const
 {
   PointCloudComponent *new_component = new PointCloudComponent();
   if (pointcloud_ != nullptr) {
     new_component->pointcloud_ = BKE_pointcloud_copy_for_eval(pointcloud_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
-  return new_component;
+  return GeometryComponentPtr(new_component);
 }
 
 void PointCloudComponent::clear()
@@ -65,7 +65,7 @@ PointCloud *PointCloudComponent::release()
   return pointcloud;
 }
 
-const PointCloud *PointCloudComponent::get_for_read() const
+const PointCloud *PointCloudComponent::get() const
 {
   return pointcloud_;
 }

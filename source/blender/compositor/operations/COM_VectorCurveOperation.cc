@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,6 +14,8 @@ VectorCurveOperation::VectorCurveOperation()
   this->add_output_socket(DataType::Vector);
 
   input_program_ = nullptr;
+
+  this->flags_.can_be_constant = true;
 }
 void VectorCurveOperation::init_execution()
 {

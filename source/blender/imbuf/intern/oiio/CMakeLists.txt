@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2013 Blender Foundation
+# SPDX-FileCopyrightText: 2013 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -6,7 +6,7 @@ set(INC
   .
   ..
   ../..
-  ../../../../../intern/utfconv
+  ../../../blenkernel
 )
 
 set(INC_SYS
@@ -23,12 +23,17 @@ set(SRC
 
 set(LIB
   ${OPENIMAGEIO_LIBRARIES}
-  ${PUGIXML_LIBRARIES}
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::intern::utfconv
 )
+
+if(WITH_PUGIXML)
+  list(APPEND LIB
+    ${PUGIXML_LIBRARIES}
+  )
+endif()
 
 if(WITH_IMAGE_OPENEXR)
   list(APPEND INC_SYS
