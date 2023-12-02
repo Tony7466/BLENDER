@@ -363,32 +363,6 @@ BLI_INLINE void bilinear_interpolation_fl(const float *float_buffer,
   }
 }
 
-#if BLI_HAVE_SSE2
-static __m128 rgba_uchar_to_simd(const uchar ptr[4])
-{
-  int packed;
-  memcpy(&packed, ptr, 4);
-  /* Packed 8 bit values. */
-  __m128i rgba8 = _mm_cvtsi32_si128(packed);
-  /* Spread to 16 bit values. */
-  __m128i rgba16 = _mm_unpacklo_epi8(rgba8, _mm_setzero_si128());
-  /* Spread to 32 bit values, now each SSE lane has the RGBA value. */
-  __m128i rgba32 = _mm_unpacklo_epi16(rgba16, _mm_setzero_si128());
-  return _mm_cvtepi32_ps(rgba32);
-}
-static void simd_to_rgba_uchar(__m128 rgba, uchar dst[4])
-{
-  /* Four RGBA integers in each lane of SSE. */
-  __m128i val = _mm_cvttps_epi32(rgba);
-  /* Pack to 16 bit signed values. */
-  __m128i rgba16 = _mm_packs_epi32(val, _mm_setzero_si128());
-  /* Pack to 8 bit values. */
-  __m128i rgba8 = _mm_packus_epi16(rgba16, _mm_setzero_si128());
-  /* Store the packed bits into destination. */
-  _mm_store_ss((float *)dst, _mm_castsi128_ps(rgba8));
-}
-#endif
-
 void BLI_bilinear_interpolation_char(
     const uchar *buffer, uchar *output, int width, int height, float u, float v)
 {
@@ -468,8 +442,13 @@ void BLI_bilinear_interpolation_char(
   __m128 rgba24 = _mm_add_ps(rgba2, rgba4);
   __m128 rgba = _mm_add_ps(rgba13, rgba24);
   rgba = _mm_add_ps(rgba, _mm_set1_ps(0.5f));
-  /* Pack and write to destination. */
-  simd_to_rgba_uchar(rgba, output);
+  /* Pack and write to destination: pack to 16 bit signed, then to 8 bit
+   * unsigned, then write resulting 32-bit value. */
+  __m128i rgba32 = _mm_cvttps_epi32(rgba);
+  __m128i rgba16 = _mm_packs_epi32(rgba32, _mm_setzero_si128());
+  __m128i rgba8 = _mm_packus_epi16(rgba16, _mm_setzero_si128());
+  _mm_store_ss((float *)output, _mm_castsi128_ps(rgba8));
+
 #else
 
   float a, b;
