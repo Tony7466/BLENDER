@@ -29,6 +29,7 @@ static void test_framebuffer_clear_color_single_attachment()
 
   const float4 clear_color(0.1f, 0.2f, 0.5f, 1.0f);
   GPU_framebuffer_clear_color(framebuffer, clear_color);
+  GPU_flush();
   GPU_finish();
 
   float4 *read_data = static_cast<float4 *>(GPU_texture_read(texture, GPU_DATA_FLOAT, 0));
@@ -59,6 +60,7 @@ static void test_framebuffer_clear_color_multiple_attachments()
 
   const float4 clear_color(0.1f, 0.2f, 0.5f, 1.0f);
   GPU_framebuffer_clear_color(framebuffer, clear_color);
+  GPU_flush();
   GPU_finish();
 
   float4 *read_data1 = static_cast<float4 *>(GPU_texture_read(texture1, GPU_DATA_FLOAT, 0));
@@ -98,6 +100,7 @@ static void test_framebuffer_clear_multiple_color_multiple_attachments()
   const float4 clear_color[2] = {float4(0.1f, 0.2f, 0.5f, 1.0f), float4(0.5f, 0.2f, 0.1f, 1.0f)};
   GPU_framebuffer_multi_clear(
       framebuffer, static_cast<const float(*)[4]>(static_cast<const void *>(clear_color)));
+  GPU_flush();
   GPU_finish();
 
   float4 *read_data1 = static_cast<float4 *>(GPU_texture_read(texture1, GPU_DATA_FLOAT, 0));
@@ -107,7 +110,7 @@ static void test_framebuffer_clear_multiple_color_multiple_attachments()
   MEM_freeN(read_data1);
 
   float4 *read_data2 = static_cast<float4 *>(GPU_texture_read(texture2, GPU_DATA_FLOAT, 0));
-  for (float4 pixel_color : Span<float4>(read_data1, size.x * size.y)) {
+  for (float4 pixel_color : Span<float4>(read_data2, size.x * size.y)) {
     EXPECT_EQ(pixel_color, clear_color[1]);
   }
   MEM_freeN(read_data2);
@@ -131,6 +134,7 @@ static void test_framebuffer_clear_depth()
 
   const float clear_depth = 0.5f;
   GPU_framebuffer_clear_depth(framebuffer, clear_depth);
+  GPU_flush();
   GPU_finish();
 
   float *read_data = static_cast<float *>(GPU_texture_read(texture, GPU_DATA_FLOAT, 0));
@@ -172,6 +176,7 @@ static void test_framebuffer_scissor_test()
     GPU_framebuffer_clear_color(framebuffer, color3);
   }
   GPU_scissor_test(false);
+  GPU_flush();
   GPU_finish();
 
   float4 *read_data = static_cast<float4 *>(GPU_texture_read(texture, GPU_DATA_FLOAT, 0));
@@ -231,7 +236,8 @@ static void test_framebuffer_cube()
     GPU_framebuffer_bind(framebuffers[i]);
     GPU_framebuffer_clear_color(framebuffers[i], clear_colors[i]);
   };
-
+  GPU_flush();
+  GPU_finish();
   float4 *data = (float4 *)GPU_texture_read(tex, GPU_DATA_FLOAT, 0);
   for (int side : IndexRange(6)) {
     for (int pixel_index : IndexRange(SIZE * SIZE)) {

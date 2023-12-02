@@ -783,9 +783,10 @@ void VKFrameBuffer::create()
   vk_framebuffer_create_info_.width = width_;
   vk_framebuffer_create_info_.height = height_;
   vk_framebuffer_create_info_.pAttachments = data.data();
-  /* TODO:Multilayered rendering*/
-  viewport_reset();
-  scissor_reset();
+  if (!multi_viewport_) {
+    viewport_reset();
+    scissor_reset();
+  }
   free();
   VK_ALLOCATION_CALLBACKS
   const VKDevice &device = VKBackend::get().device_get();
@@ -943,7 +944,7 @@ int VKFrameBuffer::color_attachments_resource_size() const
   if (renderpass_->vk_create_info_[renderpass_->info_id_].subpassCount > 1) {
     return renderpass_->subpass_multi_attachments[subpass_current_];
   }
-  return -1;
+  return renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount;
 }
 
 const int VKFrameBuffer::is_subpass_continue() const
