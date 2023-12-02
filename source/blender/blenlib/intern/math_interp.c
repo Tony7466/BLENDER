@@ -15,6 +15,10 @@
 #include "BLI_simd.h"
 #include "BLI_strict_flags.h"
 
+#if BLI_HAVE_SSE2 && defined(__SSE4_1__)
+#  include <smmintrin.h> /* _mm_floor_ps */
+#endif
+
 /**************************************************************************
  *                            INTERPOLATIONS
  *
