@@ -1,2 +1,3 @@
 Referenced by commit 380b7c5dc39dd7994c7780d5919d5e60932e9d16, Sculpt: Multithread mesh "show all" operation
 Referenced by pull request #115687, Subdiv: Store multires sculpt grid visibility in BitGroupVector
+Referenced by commit ccab01f97ffd56a2774c66c95c2d58b7f57f0bbf, Subdiv: Store multires sculpt grid visibility in BitGroupVector
