@@ -1,2 +1,3 @@
 Referenced by issue #102487, Select Box Tool: Selecting more than 2500 objects when 2500 is selected changes the tool's behavior, deselecting everything
 Referenced by issue #43785, crash with border select (many objects)
+Referenced by issue blender/blender-manual#102485, Box selection, tool or B key, doesn't select more than 5K objects
