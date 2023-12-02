@@ -1,20 +1,20 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'3d6713e0867a')\n"
+"Project-Id-Version: Blender 4.1.0 Alpha (b'd293f72ab6e7')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-03 09:29:22\n"
-"PO-Revision-Date: 2021-12-25 23:57-0800\n"
-"Last-Translator: Adriel Tristanputra <ultimexport@gmail.com>\n"
-"Language-Team: Indonesian <>\n"
+"POT-Creation-Date: 2023-11-27 10:28:34\n"
+"PO-Revision-Date: 2023-10-25 09:54+0000\n"
+"Last-Translator: Yassir Amry Priyono <yassir_a_p@protonmail.com>\n"
+"Language-Team: Indonesian <https://translate.blender.org/projects/blender-ui/ui/id/>\n"
 "Language: id\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n!=1);\n"
+"X-Generator: Weblate 5.0.1\n"
 "X-Poedit-SourceCharset: utf-8\n"
-"X-Poedit-Bookmarks: -1,-1,-1,-1,-1,-1,-1,-1,-1,4\n"
-"X-Generator: Poedit 2.4.3"
+"X-Poedit-Bookmarks: -1,-1,-1,-1,-1,-1,-1,-1,-1,4"
 
 
 msgid "Shader AOV"
@@ -201,6 +201,14 @@ msgid "Action group is locked"
 msgstr "Kelompok aksi terkunci"
 
 
+msgid "Mute"
+msgstr "Bungkam"
+
+
+msgid "Action group is muted"
+msgstr "Kelompok aksi dibungkam"
+
+
 msgid "Select"
 msgstr "Seleksi"
 
@@ -297,6 +305,10 @@ msgid "Message"
 msgstr "Pesan"
 
 
+msgid "Compute Device Type"
+msgstr "Tipe Perangkat Komputasi"
+
+
 msgid "Device to use for computation (rendering with Cycles)"
 msgstr "Perangkat digunakan untuk komputasi (rendering dengan Cycles)"
 
@@ -309,6 +321,10 @@ msgid "Full"
 msgstr "Penuh"
 
 
+msgid "Auto"
+msgstr "Otomatis"
+
+
 msgid "Distribute memory across devices"
 msgstr "Distribusikan memori antar perangkat"
 
@@ -317,12 +333,24 @@ msgid "Fribidi Library"
 msgstr "Perpustakaan Fribidi"
 
 
+msgid "Translation Root"
+msgstr "Direktori untuk Terjemahan"
+
+
 msgid "The bf-translation repository"
 msgstr "Repositori bf-translation"
 
 
 msgid "Import Paths"
 msgstr "Impor Jalur"
+
+
+msgid "Source Root"
+msgstr "Direktori Sumber"
+
+
+msgid "The Blender source root path"
+msgstr "Direktori Sumber Blender"
 
 
 msgid "Spell Cache"
@@ -485,6 +513,14 @@ msgid "NLA stack is evaluated when evaluating this block"
 msgstr "Tumpukan NLA dievaluasi ketika mengevaluasi blok ini"
 
 
+msgid "Use NLA Tweak Mode"
+msgstr "Gunakan Mode Tweak NLA"
+
+
+msgid "Whether to enable or disable tweak mode in NLA"
+msgstr "Apakah akan mengaktifkan atau menonaktifkan mode tweak di NLA"
+
+
 msgid "Collection of Driver F-Curves"
 msgstr "Koleksi Driver F-Kurva"
 
@@ -517,6 +553,10 @@ msgid "Bake Location"
 msgstr "Lokasi Bake"
 
 
+msgid "When calculating Bone Paths, use Head or Tips"
+msgstr "Saat menghitung Jalur Tulang, gunakan Kepala atau Ujung"
+
+
 msgid "Heads"
 msgstr "Kepala"
 
@@ -537,16 +577,32 @@ msgid "After Current"
 msgstr "Setelah sekarang"
 
 
+msgid "Number of frames to show after the current frame (only for 'Around Current Frame' Onion-skinning method)"
+msgstr "Jumlah frame untuk ditampilkan setelah frame saat ini (hanya untuk metode onion-skinning 'Sekitar Frame Saat Ini')"
+
+
 msgid "Before Current"
 msgstr "Sebelum sekarang"
+
+
+msgid "Number of frames to show before the current frame (only for 'Around Current Frame' Onion-skinning method)"
+msgstr "Jumlah frame untuk ditampilkan sebelum frame saat ini (hanya untuk metode Onion-skinning 'Sekitar Frame Saat Ini')"
 
 
 msgid "End Frame"
 msgstr "Akhir Frame"
 
 
+msgid "End frame of range of paths to display/calculate (not for 'Around Current Frame' Onion-skinning method)"
+msgstr "Frame akhir dari rentang jalur untuk ditampilkan/dihitung (bukan untuk metode Onion-skinning 'Sekitar Frame Saat Ini)"
+
+
 msgid "Start Frame"
 msgstr "Mulai frame"
+
+
+msgid "Starting frame of range of paths to display/calculate (not for 'Around Current Frame' Onion-skinning method)"
+msgstr "Frame awal dari rentang jalur untuk ditampilkan/dihitung (bukan untuk metode Onion-skinning 'Sekitar Frame Saat Ini')"
 
 
 msgid "Frame Step"
@@ -559,6 +615,14 @@ msgstr "Nomor frame diantara jalur yang ditampilkan (bukan untuk 'Di Keyframe' m
 
 msgid "Has Motion Paths"
 msgstr "Ada Jalur Gerakan"
+
+
+msgid "Type of range to calculate for Motion Paths"
+msgstr "Tipe rentang yang akan dihitung untuk Jalur Gerakan"
+
+
+msgid "Selected Keys"
+msgstr "Key yang Terpilih"
 
 
 msgid "Show Frame Numbers"
@@ -705,6 +769,10 @@ msgid "Motion tracking tools"
 msgstr "Alat lacak gerakan"
 
 
+msgid "Dope Sheet"
+msgstr "Dope Sheet"
+
+
 msgid "Adjust timing of keyframes"
 msgstr "Sesuaikan waktu keyframe"
 
@@ -766,7 +834,7 @@ msgstr "Bar global di bawah layar untuk informasi status umum"
 
 
 msgid "Outliner"
-msgstr "Outliner"
+msgstr "Penggarisan Luar"
 
 
 msgid "Overview of scene graph and all available data-blocks"
@@ -790,7 +858,7 @@ msgstr "Telurusi dokumen dan aset"
 
 
 msgid "Spreadsheet"
-msgstr "Spreadsheet"
+msgstr "Lembar Sebar"
 
 
 msgid "Explore geometry data in a table"
@@ -1079,6 +1147,14 @@ msgid "World"
 msgstr "Dunia"
 
 
+msgid "All"
+msgstr "Semua"
+
+
+msgid "Custom"
+msgstr "Kustom"
+
+
 msgid "ID Name"
 msgstr "Nama ID"
 
@@ -1171,6 +1247,10 @@ msgid "2D vector with floating-point values"
 msgstr "Vektor 2D dengan nilai floating-point"
 
 
+msgid "Quaternion"
+msgstr "Kuaternion"
+
+
 msgid "Domain"
 msgstr "Domain"
 
@@ -1197,6 +1277,10 @@ msgstr "Wajah"
 
 msgid "Face Corner"
 msgstr "Ujung Wajah"
+
+
+msgid "Layer"
+msgstr "Layer"
 
 
 msgid "Name of the Attribute"
@@ -1493,10 +1577,6 @@ msgstr "Bebas"
 
 msgid "Aligned"
 msgstr "Selaras"
-
-
-msgid "Auto"
-msgstr "Otomatis"
 
 
 msgid "Handle 2"
@@ -2312,11 +2392,11 @@ msgstr "Hindari tabrakan dengan boid lainnya"
 
 
 msgid "Deflectors"
-msgstr "Seleksi"
+msgstr "Pembelok"
 
 
 msgid "Avoid collision with deflector objects"
-msgstr "Hindari tabrakan dengan objek defektor"
+msgstr "Hindari tabrakan dengan objek pembelok"
 
 
 msgid "Fight Distance"
@@ -2324,7 +2404,7 @@ msgstr "Jarak Bertengkar"
 
 
 msgid "Attack boids at max this distance"
-msgstr "Serang boid di jarak maks ini"
+msgstr "Serang boid maksimal di jarak ini"
 
 
 msgid "Flee Distance"
@@ -2951,10 +3031,6 @@ msgid "Active Collection"
 msgstr "Koleksi Aktif"
 
 
-msgid "Custom"
-msgstr "Kustom"
-
-
 msgid "Bool Attribute Value"
 msgstr "Nilai Atribut Bool"
 
@@ -3269,10 +3345,6 @@ msgstr "Isi area terbalik"
 
 msgid "Mode to draw boundary limits"
 msgstr "Mode ke menggambar batas batasan"
-
-
-msgid "All"
-msgstr "Semua"
 
 
 msgid "Use both visible strokes and edit lines as fill boundary limits"
@@ -8417,10 +8489,6 @@ msgid "Invert mask"
 msgstr "Membalikkan masker"
 
 
-msgid "Layer"
-msgstr "Layer"
-
-
 msgid "Mask layer name"
 msgstr "Nama layer masker"
 
@@ -8945,12 +9013,52 @@ msgid "Show Line"
 msgstr "Tampilkan Garis"
 
 
-msgid "Is Indirect"
-msgstr "Orientasi Transformasi"
+msgid "Brush"
+msgstr "Kuas"
+
+
+msgid "Font"
+msgstr "Font"
+
+
+msgid "Key"
+msgstr "Kunci"
 
 
 msgid "Library"
 msgstr "Perpustakaan"
+
+
+msgid "Light"
+msgstr "Cahaya"
+
+
+msgid "Node Tree"
+msgstr "Pohon Node"
+
+
+msgid "Paint Curve"
+msgstr "Kurva Cat"
+
+
+msgid "Palette"
+msgstr "Palet"
+
+
+msgid "Sound"
+msgstr "Suara"
+
+
+msgid "Text"
+msgstr "Teks"
+
+
+msgid "Workspace"
+msgstr "Spasi kerja"
+
+
+msgid "Is Indirect"
+msgstr "Orientasi Transformasi"
 
 
 msgid "Full Name"
@@ -9130,10 +9238,6 @@ msgid "Brush Height"
 msgstr "Tinggi Kuas"
 
 
-msgid "Brush"
-msgstr "Kuas"
-
-
 msgid "Mask Texture"
 msgstr "Masker Tekstur"
 
@@ -9144,10 +9248,6 @@ msgstr "Slot Masker Tekstur"
 
 msgid "Normal Radius"
 msgstr "Radius Biasa"
-
-
-msgid "Paint Curve"
-msgstr "Kurva Cat"
 
 
 msgid "Active paint curve"
@@ -9402,10 +9502,6 @@ msgid "Text on Curve"
 msgstr "Tekstur"
 
 
-msgid "Font"
-msgstr "Font"
-
-
 msgid "Font Bold"
 msgstr "Font Bold"
 
@@ -9540,10 +9636,6 @@ msgstr "Panjang 2D Maks"
 
 msgid "Min 2D Length"
 msgstr "Panjang 2D Min"
-
-
-msgid "Node Tree"
-msgstr "Pohon Node"
 
 
 msgid "Panel"
@@ -10130,10 +10222,6 @@ msgid "Attenuation"
 msgstr "Atenuasi"
 
 
-msgid "Sound"
-msgstr "Suara"
-
-
 msgid "Filename of the text file"
 msgstr "Tidak dapat membuka dokumen"
 
@@ -10344,10 +10432,6 @@ msgstr "Pengaturan Sesi XR"
 
 msgid "XR Session State"
 msgstr "Keadaan Sesi XR"
-
-
-msgid "Workspace"
-msgstr "Spasi kerja"
 
 
 msgid "Workspace data-block, defining the working environment for the user"
@@ -11076,10 +11160,6 @@ msgid "Insert keyframes based on 'visual transforms'"
 msgstr "Masukkan keyframe berdasarkan 'transformasi visual'"
 
 
-msgid "F-Curve Colors - XYZ to RGB"
-msgstr "Warna F-Kurva - XYZ ke RGB"
-
-
 msgid "Available"
 msgstr "Tersedia"
 
@@ -11505,10 +11585,6 @@ msgid "Channel"
 msgstr "Saluran"
 
 
-msgid "Key"
-msgstr "Kunci"
-
-
 msgid "Snap"
 msgstr "Jepret"
 
@@ -11552,10 +11628,6 @@ msgstr "Spesial Kunci Bentuk"
 
 msgid "Vertex Group Specials"
 msgstr "Spesial Kelompok Vertex"
-
-
-msgid "Text"
-msgstr "Teks"
 
 
 msgid "Utilities"
@@ -11735,10 +11807,6 @@ msgid "Add Image"
 msgstr "Tambah Gambar"
 
 
-msgid "Light"
-msgstr "Cahaya"
-
-
 msgid "Edge index"
 msgstr "Hanya Garis"
 
@@ -11753,10 +11821,6 @@ msgstr "Warna Standar"
 
 msgid "Polygon"
 msgstr "Poligon"
-
-
-msgid "Floating-point paint mask value"
-msgstr "Nilai masker cat floating-point"
 
 
 msgid "Polygon Normal"
@@ -14210,10 +14274,6 @@ msgid "Projection Blend"
 msgstr "Objek"
 
 
-msgid "Musgrave Texture"
-msgstr "Tekstur"
-
-
 msgid "Sky Type"
 msgstr "Tipe Langit"
 
@@ -15727,6 +15787,10 @@ msgstr "Balikkan aksi kuas untuk durasi garis luar"
 
 msgid "Switch brush to smooth mode for duration of stroke"
 msgstr "Gantikan kuas ke mode halus untuk durasi garis luar"
+
+
+msgid "Flat"
+msgstr "Datar"
 
 
 msgctxt "Operator"
@@ -17713,10 +17777,6 @@ msgstr "Modus Pahat"
 msgctxt "Operator"
 msgid "Set Weight"
 msgstr "Orientasi Transformasi"
-
-
-msgid "Palette"
-msgstr "Palet"
 
 
 msgid "Name of the Palette"
@@ -21076,10 +21136,6 @@ msgid "3D"
 msgstr "3D"
 
 
-msgid "Flat"
-msgstr "Datar"
-
-
 msgid "Brush Texture Slot"
 msgstr "Tekstur"
 
@@ -21218,10 +21274,6 @@ msgstr "Buat"
 
 msgid "Changed"
 msgstr "Saluran"
-
-
-msgid "Second"
-msgstr "Kedua"
 
 
 msgid "Snap Node Element"
@@ -21575,11 +21627,6 @@ msgstr "Dopesheet Generik"
 msgctxt "WindowManager"
 msgid "NLA Editor"
 msgstr "Editor NLA"
-
-
-msgctxt "WindowManager"
-msgid "NLA Channels"
-msgstr "Saluran NLA"
 
 
 msgctxt "WindowManager"
@@ -22028,10 +22075,6 @@ msgstr "Tambahan '{}' tidak ditemukan!"
 
 msgid "Message extraction process failed!"
 msgstr "Proses ekstraksi pesan gagal!"
-
-
-msgid "Info written to {} text datablock!"
-msgstr "Info tertulis ke {} teks datablok!"
 
 
 msgctxt "Operator"
@@ -22708,13 +22751,13 @@ msgstr "Balikkan"
 
 
 msgctxt "Operator"
-msgid "Lock Unselected"
-msgstr "Kunci yang Tidak Terseleksi"
+msgid "Lock Unused"
+msgstr "Kunci yang Tidak Terpakai"
 
 
 msgctxt "Operator"
-msgid "Lock Unused"
-msgstr "Kunci yang Tidak Terpakai"
+msgid "Lock Unselected"
+msgstr "Kunci yang Tidak Terseleksi"
 
 
 msgctxt "Operator"
@@ -23028,6 +23071,10 @@ msgstr "Bahan Bakar"
 
 msgid "Guide Mode"
 msgstr "Mode Panduan"
+
+
+msgid "Second"
+msgstr "Kedua"
 
 
 msgid "X Stiffness"
@@ -23350,13 +23397,13 @@ msgstr "Seleksi Box (Jarak Sumbu)"
 
 
 msgctxt "Operator"
-msgid "Paste Flipped"
-msgstr "Tempel yang Terbalik"
+msgid "Clean Channels"
+msgstr "Bersihkan Saluran"
 
 
 msgctxt "Operator"
-msgid "Clean Channels"
-msgstr "Bersihkan Saluran"
+msgid "Paste Flipped"
+msgstr "Tempel yang Terbalik"
 
 
 msgctxt "Operator"
@@ -24299,11 +24346,6 @@ msgstr "Tambah Gambar"
 
 
 msgctxt "Operator"
-msgid "Insert Keyframe..."
-msgstr "Tambahkan Keyframe..."
-
-
-msgctxt "Operator"
 msgid "Delete Keyframes..."
 msgstr "Hapus Keyframe..."
 
@@ -24600,6 +24642,10 @@ msgid "Loops are not connected by wire/boundary edges"
 msgstr "Loop tidak terkoneksi oleh tepi kabel/batas"
 
 
+msgid "Nothing selected"
+msgstr "Tidak ada yang terseleksi"
+
+
 msgid "Cannot re-link markers into the same scene"
 msgstr "Adegan"
 
@@ -24710,10 +24756,6 @@ msgstr "Tidak ada frame aktif untuk dihapus"
 
 msgid "No active frame(s) to delete"
 msgstr "Tidak ada frame-frame aktif untuk dihapus"
-
-
-msgid "Nothing selected"
-msgstr "Tidak ada yang terseleksi"
 
 
 msgid "Active layer is locked or hidden"

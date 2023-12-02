@@ -58,11 +58,8 @@ set(INC
   ../blenloader
   ../blentranslation
   ../bmesh
-  ../depsgraph
-  ../functions
   ../geometry
   ../gpu
-  ../imbuf
   ../makesrna
   ../modifiers
   ../render
@@ -96,7 +93,7 @@ set(SRC
   intern/socket_search_link.cc
 
   NOD_common.h
-  NOD_composite.h
+  NOD_composite.hh
   NOD_derived_node_tree.hh
   NOD_geometry.hh
   NOD_geometry_exec.hh
@@ -125,8 +122,10 @@ set(SRC
 set(LIB
   PRIVATE bf::blenlib
   bf_bmesh
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  bf_functions
+  PRIVATE bf::functions
+  PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
   bf_nodes_composite
   bf_nodes_function

@@ -29,6 +29,7 @@ class ComponentAttributeProviders;
 class CurvesEditHints;
 class Instances;
 class GeometryComponent;
+class GreasePencilEditHints;
 }  // namespace blender::bke
 
 namespace blender::bke {
@@ -86,8 +87,10 @@ class GeometryComponent : public ImplicitSharingMixin {
   virtual std::optional<AttributeAccessor> attributes() const;
   virtual std::optional<MutableAttributeAccessor> attributes_for_write();
 
-  /* The returned component should be of the same type as the type this is called on. */
-  virtual GeometryComponent *copy() const = 0;
+  /**
+   * Copies the component. The returned component only has a single user and is therefor mutable.
+   */
+  virtual GeometryComponentPtr copy() const = 0;
 
   /** Remove referenced data from the geometry component. */
   virtual void clear() = 0;
@@ -227,6 +230,11 @@ struct GeometrySet {
   void attribute_foreach(Span<GeometryComponent::Type> component_types,
                          bool include_instances,
                          AttributeForeachCallback callback) const;
+
+  static void propagate_attributes_from_layer_to_instances(
+      const AttributeAccessor src_attributes,
+      MutableAttributeAccessor dst_attributes,
+      const AnonymousAttributePropagationInfo &propagation_info);
 
   void gather_attributes_for_propagation(Span<GeometryComponent::Type> component_types,
                                          GeometryComponent::Type dst_component_type,
@@ -400,6 +408,12 @@ struct GeometrySet {
   void replace_grease_pencil(GreasePencil *grease_pencil,
                              GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
+  friend bool operator==(const GeometrySet &a, const GeometrySet &b)
+  {
+    /* This compares only the component pointers, not the actual geometry data. */
+    return Span(a.components_) == Span(b.components_);
+  }
+
  private:
   /**
    * Retrieve the pointer to a component without creating it if it does not exist,
@@ -425,7 +439,7 @@ class MeshComponent : public GeometryComponent {
  public:
   MeshComponent();
   ~MeshComponent();
-  GeometryComponent *copy() const override;
+  GeometryComponentPtr copy() const override;
 
   void clear() override;
   bool has_mesh() const;
@@ -479,7 +493,7 @@ class PointCloudComponent : public GeometryComponent {
  public:
   PointCloudComponent();
   ~PointCloudComponent();
-  GeometryComponent *copy() const override;
+  GeometryComponentPtr copy() const override;
 
   void clear() override;
   bool has_pointcloud() const;
@@ -539,7 +553,7 @@ class CurveComponent : public GeometryComponent {
  public:
   CurveComponent();
   ~CurveComponent();
-  GeometryComponent *copy() const override;
+  GeometryComponentPtr copy() const override;
 
   void clear() override;
   bool has_curves() const;
@@ -580,7 +594,7 @@ class InstancesComponent : public GeometryComponent {
  public:
   InstancesComponent();
   ~InstancesComponent();
-  GeometryComponent *copy() const override;
+  GeometryComponentPtr copy() const override;
 
   void clear() override;
 
@@ -614,7 +628,7 @@ class VolumeComponent : public GeometryComponent {
  public:
   VolumeComponent();
   ~VolumeComponent();
-  GeometryComponent *copy() const override;
+  GeometryComponentPtr copy() const override;
 
   void clear() override;
   bool has_volume() const;
@@ -662,10 +676,14 @@ class GeometryComponentEditData final : public GeometryComponent {
    * example, when the curves have been converted to a mesh.
    */
   std::unique_ptr<CurvesEditHints> curves_edit_hints_;
+  /**
+   * Information about how drawings on the grease pencil layers are manipulated during evaluation.
+   */
+  std::unique_ptr<GreasePencilEditHints> grease_pencil_edit_hints_;
 
   GeometryComponentEditData();
 
-  GeometryComponent *copy() const final;
+  GeometryComponentPtr copy() const final;
   bool owns_direct_data() const final;
   void ensure_owns_direct_data() final;
 
@@ -677,15 +695,15 @@ class GeometryComponentEditData final : public GeometryComponent {
    * lost, which would make curves sculpt mode fall back to using original curve positions instead
    * of deformed ones.
    */
-  static void remember_deformed_curve_positions_if_necessary(GeometrySet &geometry);
+  static void remember_deformed_positions_if_necessary(GeometrySet &geometry);
 
   static constexpr inline GeometryComponent::Type static_type = GeometryComponent::Type::Edit;
 };
 
 /**
  * A geometry component that stores #GreasePencil data.
- * This component does not implement an attribute API, because the #GreasePencil data itself does
- * not store any attributes, only the individual drawings within it.
+ * The attributes on this component are only on the layer domain. Each individual layer represents
+ * a #CurvesGeometry with its own curve and point domain. See #CurveComponent.
  */
 class GreasePencilComponent : public GeometryComponent {
  private:
@@ -695,7 +713,7 @@ class GreasePencilComponent : public GeometryComponent {
  public:
   GreasePencilComponent();
   ~GreasePencilComponent();
-  GeometryComponent *copy() const override;
+  GeometryComponentPtr copy() const override;
 
   void clear() override;
   bool has_grease_pencil() const;
@@ -719,6 +737,9 @@ class GreasePencilComponent : public GeometryComponent {
   void ensure_owns_direct_data() override;
 
   static constexpr inline GeometryComponent::Type static_type = Type::GreasePencil;
+
+  std::optional<AttributeAccessor> attributes() const final;
+  std::optional<MutableAttributeAccessor> attributes_for_write() final;
 };
 
 }  // namespace blender::bke

@@ -52,6 +52,7 @@ struct wmGizmo;
 struct wmGizmoMap;
 struct wmGizmoMapType;
 struct wmJob;
+struct wmJobWorkerStatus;
 struct wmOperator;
 struct wmOperatorType;
 struct wmPaintCursor;
@@ -171,6 +172,8 @@ enum eWM_CapabilitiesFlag {
   WM_CAPABILITY_CLIPBOARD_IMAGES = (1 << 4),
   /** Ability to sample a color outside of Blender windows. */
   WM_CAPABILITY_DESKTOP_SAMPLE = (1 << 5),
+  /** Support for IME input methods. */
+  WM_CAPABILITY_INPUT_IME = (1 << 6),
   /** The initial value, indicates the value needs to be set by inspecting GHOST. */
   WM_CAPABILITY_INITIALIZED = (1 << 31),
 };
@@ -590,6 +593,21 @@ void WM_report_banner_show(wmWindowManager *wm, wmWindow *win) ATTR_NONNULL(1);
  * Hide all currently displayed banners and abort their timer.
  */
 void WM_report_banners_cancel(Main *bmain);
+/**
+ * Move a whole list of reports to the WM ReportList, and show the banner.
+ *
+ * \note In case the given \a reports is a `nullptr`, or has its #RPT_OP_HOLD flag set, this
+ * function does nothing.
+ *
+ * \note The list of reports from given \a reports is moved into the list of WM's reports, so the
+ * given \a reports will be empty after calling this function. The \a reports #ReportList data
+ * itself is not freed or cleared though, and remains fully usable after this call.
+ *
+ * \params reports The #ReportList from which to move reports to the WM one, may be `nullptr`.
+ * \params wm the WindowManager to add given \a reports to. If `nullptr`, the first WM of current
+ * #G_MAIN will be used.
+ */
+void WM_reports_from_reports_move(wmWindowManager *wm, ReportList *reports);
 void WM_report(eReportType type, const char *message);
 void WM_reportf(eReportType type, const char *format, ...) ATTR_PRINTF_FORMAT(2, 3);
 
@@ -616,8 +634,10 @@ void WM_event_timer_free_data(wmTimer *timer);
  */
 void WM_event_timers_free_all(wmWindowManager *wm);
 
-/** Mark the given `timer` to be removed, actual removal and deletion is deferred and handled
- * internally by the window manager code. */
+/**
+ * Mark the given `timer` to be removed, actual removal and deletion is deferred and handled
+ * internally by the window manager code.
+ */
 void WM_event_timer_remove(wmWindowManager *wm, wmWindow *win, wmTimer *timer);
 void WM_event_timer_remove_notifier(wmWindowManager *wm, wmWindow *win, wmTimer *timer);
 /**
@@ -1514,10 +1534,7 @@ void WM_jobs_customdata_set(wmJob *, void *customdata, void (*free)(void *));
 void WM_jobs_timer(wmJob *, double timestep, unsigned int note, unsigned int endnote);
 void WM_jobs_delay_start(wmJob *, double delay_time);
 
-using wm_jobs_start_callback = void (*)(void *custom_data,
-                                        bool *stop,
-                                        bool *do_update,
-                                        float *progress);
+using wm_jobs_start_callback = void (*)(void *custom_data, wmJobWorkerStatus *worker_status);
 void WM_jobs_callbacks(wmJob *,
                        wm_jobs_start_callback startjob,
                        void (*initjob)(void *),
@@ -1624,7 +1641,7 @@ void WM_draw_region_viewport_unbind(ARegion *region);
 
 /* Region drawing */
 
-void WM_draw_region_free(ARegion *region, bool hide);
+void WM_draw_region_free(ARegion *region);
 GPUViewport *WM_draw_region_get_viewport(ARegion *region);
 GPUViewport *WM_draw_region_get_bound_viewport(ARegion *region);
 
@@ -1741,7 +1758,7 @@ bool WM_event_is_xr(const wmEvent *event);
  * If this is a tablet event, return tablet pressure and set `*pen_flip`
  * to 1 if the eraser tool is being used, 0 otherwise.
  */
-float WM_event_tablet_data(const wmEvent *event, int *pen_flip, float tilt[2]);
+float WM_event_tablet_data(const wmEvent *event, bool *r_pen_flip, float r_tilt[2]);
 bool WM_event_is_tablet(const wmEvent *event);
 
 int WM_event_absolute_delta_x(const wmEvent *event);

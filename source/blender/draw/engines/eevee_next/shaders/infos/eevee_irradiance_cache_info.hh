@@ -73,9 +73,11 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_common)
 
 GPU_SHADER_CREATE_INFO(eevee_surfel_light)
     .define("SURFEL_LIGHT")
+    .define("LIGHT_ITER_FORCE_NO_CULLING")
     .local_group_size(SURFEL_GROUP_SIZE)
     .additional_info("eevee_shared",
                      "draw_view",
+                     "eevee_global_ubo",
                      "eevee_utility_texture",
                      "eevee_surfel_common",
                      "eevee_light_data",
@@ -206,5 +208,11 @@ GPU_SHADER_CREATE_INFO(eevee_volume_probe_data)
 
 GPU_SHADER_CREATE_INFO(eevee_lightprobe_data)
     .additional_info("eevee_reflection_probe_data", "eevee_volume_probe_data");
+
+GPU_SHADER_CREATE_INFO(eevee_lightprobe_planar_data)
+    .define("REFLECTION_PROBE")
+    .uniform_buf(PLANAR_PROBE_BUF_SLOT, "ProbePlanarData", "probe_planar_buf[PLANAR_PROBES_MAX]")
+    .sampler(PLANAR_PROBE_RADIANCE_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "planar_radiance_tx")
+    .sampler(PLANAR_PROBE_DEPTH_TEX_SLOT, ImageType::DEPTH_2D_ARRAY, "planar_depth_tx");
 
 /** \} */

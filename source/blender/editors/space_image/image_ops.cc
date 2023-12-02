@@ -34,7 +34,7 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_icons.h"
 #include "BKE_image.h"
@@ -42,7 +42,7 @@
 #include "BKE_image_save.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -2305,9 +2305,9 @@ static bool image_should_be_saved_when_modified(Image *ima)
   return !ELEM(ima->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE);
 }
 
-static bool image_should_be_saved(Image *ima, bool *is_format_writable)
+static bool image_should_be_saved(Image *ima, bool *r_is_format_writable)
 {
-  if (BKE_image_is_dirty_writable(ima, is_format_writable) &&
+  if (BKE_image_is_dirty_writable(ima, r_is_format_writable) &&
       ELEM(ima->source, IMA_SRC_FILE, IMA_SRC_GENERATED, IMA_SRC_TILED))
   {
     return image_should_be_saved_when_modified(ima);
@@ -2336,7 +2336,7 @@ bool ED_image_should_save_modified(const Main *bmain)
   uint modified_images_count = ED_image_save_all_modified_info(bmain, &reports);
   bool should_save = modified_images_count || !BLI_listbase_is_empty(&reports.list);
 
-  BKE_reports_clear(&reports);
+  BKE_reports_free(&reports);
 
   return should_save;
 }
@@ -3334,7 +3334,10 @@ void IMAGE_OT_unpack(wmOperatorType *ot)
 /** \name Sample Image Operator
  * \{ */
 
-bool ED_space_image_get_position(SpaceImage *sima, ARegion *region, int mval[2], float fpos[2])
+bool ED_space_image_get_position(SpaceImage *sima,
+                                 ARegion *region,
+                                 const int mval[2],
+                                 float r_fpos[2])
 {
   void *lock;
   ImBuf *ibuf = ED_space_image_acquire_buffer(sima, &lock, 0);
@@ -3344,7 +3347,7 @@ bool ED_space_image_get_position(SpaceImage *sima, ARegion *region, int mval[2],
     return false;
   }
 
-  UI_view2d_region_to_view(&region->v2d, mval[0], mval[1], &fpos[0], &fpos[1]);
+  UI_view2d_region_to_view(&region->v2d, mval[0], mval[1], &r_fpos[0], &r_fpos[1]);
 
   ED_space_image_release_buffer(sima, ibuf, lock);
   return true;

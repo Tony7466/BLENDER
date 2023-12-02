@@ -23,9 +23,9 @@
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
-#include "BKE_main_idmap.h"
-#include "BKE_main_namemap.h"
+#include "BKE_main.hh"
+#include "BKE_main_idmap.hh"
+#include "BKE_main_namemap.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
