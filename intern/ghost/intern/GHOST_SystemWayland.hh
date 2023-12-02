@@ -228,6 +228,10 @@ class GHOST_SystemWayland : public GHOST_System {
 #ifdef WITH_GHOST_WAYLAND_LIBDECOR
   libdecor *libdecor_context_get();
 #endif
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+  struct wp_cursor_shape_manager_v1 *wp_cursor_shape_manager_get();
+#endif
+
   struct xdg_wm_base *xdg_decor_shell_get();
   struct zxdg_decoration_manager_v1 *xdg_decor_manager_get();
   /* End `xdg_decor`. */

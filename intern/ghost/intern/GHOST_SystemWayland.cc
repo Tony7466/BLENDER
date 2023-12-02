@@ -69,6 +69,9 @@
 #include <viewporter-client-protocol.h>
 #include <xdg-activation-v1-client-protocol.h>
 #include <xdg-output-unstable-v1-client-protocol.h>
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+#  include <cursor-shape-v1-client-protocol.h>
+#endif
 #ifdef WITH_INPUT_IME
 #  include <text-input-unstable-v3-client-protocol.h>
 #endif
@@ -380,6 +383,9 @@ struct GWL_Cursor {
     wl_buffer *buffer = nullptr;
     wl_cursor_image image = {0};
     wl_cursor_theme *theme = nullptr;
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+    int32_t shape = -1;
+#endif
   } wl;
 
   bool visible = false;
@@ -463,6 +469,9 @@ struct GWL_TabletTool {
      * this surface is used for cursor drawing.
      */
     wl_surface *surface_cursor = nullptr;
+
+    /** The serial, set on `proximity_in`. */
+    uint32_t proximity_serial = 0;
   } wl;
 
   GWL_Seat *seat = nullptr;
@@ -1209,6 +1218,9 @@ struct GWL_Display {
     wp_viewporter *viewporter = nullptr;
     zwp_pointer_constraints_v1 *pointer_constraints = nullptr;
     zwp_pointer_gestures_v1 *pointer_gestures = nullptr;
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+    wp_cursor_shape_manager_v1 *cursor_shape_manager = nullptr;
+#endif
 #ifdef WITH_INPUT_IME
     zwp_text_input_manager_v3 *text_input_manager = nullptr;
 #endif
@@ -1950,6 +1962,49 @@ static const std::unordered_map<GHOST_TStandardCursor, const char *> ghost_wl_cu
     {GHOST_kStandardCursorBottomLeftCorner, "bottom_left_corner"},
     {GHOST_kStandardCursorCopy, "copy"},
 };
+
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+static const std::unordered_map<GHOST_TStandardCursor, int> ghost_wl_cursor_shape_ids = {
+    {GHOST_kStandardCursorDefault, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT},
+    {GHOST_kStandardCursorRightArrow, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT},
+    {GHOST_kStandardCursorLeftArrow, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT},
+    {GHOST_kStandardCursorInfo, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CONTEXT_MENU},
+    {GHOST_kStandardCursorDestroy, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NOT_ALLOWED},
+    {GHOST_kStandardCursorHelp, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_HELP},
+    {GHOST_kStandardCursorWait, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_WAIT},
+    {GHOST_kStandardCursorText, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT},
+    {GHOST_kStandardCursorCrosshair, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR},
+    {GHOST_kStandardCursorCrosshairA, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR},
+    {GHOST_kStandardCursorCrosshairB, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR},
+    {GHOST_kStandardCursorCrosshairC, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR},
+    {GHOST_kStandardCursorPencil, -1},
+    {GHOST_kStandardCursorUpArrow, -1},
+    {GHOST_kStandardCursorDownArrow, -1},
+    {GHOST_kStandardCursorVerticalSplit, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_COL_RESIZE},
+    {GHOST_kStandardCursorHorizontalSplit, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ROW_RESIZE},
+    {GHOST_kStandardCursorEraser, -1},
+    {GHOST_kStandardCursorKnife, -1},
+    {GHOST_kStandardCursorEyedropper, -1},
+    {GHOST_kStandardCursorZoomIn, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ZOOM_IN},
+    {GHOST_kStandardCursorZoomOut, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ZOOM_OUT},
+    {GHOST_kStandardCursorMove, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_GRAB},
+    {GHOST_kStandardCursorNSEWScroll, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_MOVE},
+    {GHOST_kStandardCursorNSScroll, -1},
+    {GHOST_kStandardCursorEWScroll, -1},
+    {GHOST_kStandardCursorStop, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NOT_ALLOWED},
+    {GHOST_kStandardCursorUpDown, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NS_RESIZE},
+    {GHOST_kStandardCursorLeftRight, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_EW_RESIZE},
+    {GHOST_kStandardCursorTopSide, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_N_RESIZE},
+    {GHOST_kStandardCursorBottomSide, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_S_RESIZE},
+    {GHOST_kStandardCursorLeftSide, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_W_RESIZE},
+    {GHOST_kStandardCursorRightSide, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_E_RESIZE},
+    {GHOST_kStandardCursorTopLeftCorner, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NW_RESIZE},
+    {GHOST_kStandardCursorTopRightCorner, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NE_RESIZE},
+    {GHOST_kStandardCursorBottomRightCorner, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_SE_RESIZE},
+    {GHOST_kStandardCursorBottomLeftCorner, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_SW_RESIZE},
+    {GHOST_kStandardCursorCopy, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_COPY},
+};
+#endif /* WITH_GHOST_WAYLAND_CURSOR_SHAPE */
 
 static constexpr const char *ghost_wl_mime_text_plain = "text/plain";
 static constexpr const char *ghost_wl_mime_text_utf8 = "text/plain;charset=utf-8";
@@ -3763,6 +3818,7 @@ static void tablet_tool_handle_proximity_in(void *data,
 
   GWL_TabletTool *tablet_tool = static_cast<GWL_TabletTool *>(data);
   tablet_tool->proximity = true;
+  tablet_tool->wl.proximity_serial = serial;
 
   GWL_Seat *seat = tablet_tool->seat;
   seat->cursor_source_serial = serial;
@@ -3793,6 +3849,7 @@ static void tablet_tool_handle_proximity_out(void *data,
   /* Defer clearing the wl_surface until the frame is handled.
    * Without this, the frame can not access the wl_surface. */
   tablet_tool->proximity = false;
+  tablet_tool->wl.proximity_serial = 0;
 }
 
 static void tablet_tool_handle_down(void *data,
@@ -5998,6 +6055,28 @@ static void gwl_registry_wp_primary_selection_device_manager_remove(GWL_Display 
   *value_p = nullptr;
 }
 
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+
+/* #GWL_Display.cursor_shape_manager */
+
+static void gwl_registry_wp_cursor_shape_manager_add(GWL_Display *display,
+                                                     const GWL_RegisteryAdd_Params *params)
+{
+  display->wp.cursor_shape_manager = static_cast<wp_cursor_shape_manager_v1 *>(wl_registry_bind(
+      display->wl.registry, params->name, &wp_cursor_shape_manager_v1_interface, 1));
+  gwl_registry_entry_add(display, params, nullptr);
+}
+static void gwl_registry_wp_cursor_shape_manager_remove(GWL_Display *display,
+                                                        void * /*user_data*/,
+                                                        const bool /*on_exit*/)
+{
+  wp_cursor_shape_manager_v1 **value_p = &display->wp.cursor_shape_manager;
+  wp_cursor_shape_manager_v1_destroy(*value_p);
+  *value_p = nullptr;
+}
+
+#endif /* WITH_GHOST_WAYLAND_CURSOR_SHAPE */
+
 #ifdef WITH_INPUT_IME
 
 /* #GWL_Display.wp_text_input_manager */
@@ -6087,6 +6166,14 @@ static const GWL_RegistryHandler gwl_registry_handlers[] = {
         /*update_fn*/ nullptr,
         /*remove_fn*/ gwl_registry_wp_relative_pointer_manager_remove,
     },
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+    {
+        /*interface_p*/ &wp_cursor_shape_manager_v1_interface.name,
+        /*add_fn*/ gwl_registry_wp_cursor_shape_manager_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_wp_cursor_shape_manager_remove,
+    },
+#endif
 #ifdef WITH_INPUT_IME
     {
         /*interface_p*/ &zwp_text_input_manager_v3_interface.name,
@@ -7381,6 +7468,35 @@ static void cursor_buffer_set(const GWL_Seat *seat, wl_buffer *buffer)
   }
 }
 
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+static void cursor_buffer_set_by_id(const GWL_Seat *seat, int wl_shape)
+{
+  wp_cursor_shape_manager_v1 *cursor_shape_manager = seat->system->wp_cursor_shape_manager_get();
+  if (seat->wl.pointer) {
+    wp_cursor_shape_device_v1 *cursor_shape_device = wp_cursor_shape_manager_v1_get_pointer(
+        cursor_shape_manager, seat->wl.pointer);
+    wp_cursor_shape_device_v1_set_shape(cursor_shape_device, seat->pointer.serial, wl_shape);
+    wp_cursor_shape_device_v1_destroy(cursor_shape_device);
+  }
+
+  if (!seat->wp.tablet_tools.empty()) {
+    for (zwp_tablet_tool_v2 *zwp_tablet_tool_v2 : seat->wp.tablet_tools) {
+      GWL_TabletTool *tablet_tool = static_cast<GWL_TabletTool *>(
+          zwp_tablet_tool_v2_get_user_data(zwp_tablet_tool_v2));
+      /* Cannot set cursors when out of proximity, proximity in will refresh them anyway. */
+      if (!tablet_tool->proximity) {
+        continue;
+      }
+      wp_cursor_shape_device_v1 *cursor_shape_device =
+          wp_cursor_shape_manager_v1_get_tablet_tool_v2(cursor_shape_manager, zwp_tablet_tool_v2);
+      wp_cursor_shape_device_v1_set_shape(
+          cursor_shape_device, tablet_tool->wl.proximity_serial, wl_shape);
+      wp_cursor_shape_device_v1_destroy(cursor_shape_device);
+    }
+  }
+}
+#endif
+
 enum eCursorSetMode {
   CURSOR_VISIBLE_ALWAYS_SET = 1,
   CURSOR_VISIBLE_ONLY_HIDE,
@@ -7412,7 +7528,15 @@ static void cursor_visible_set(GWL_Seat *seat,
 
   if (use_visible) {
     if (!was_visible) {
-      cursor_buffer_show(seat);
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+      if (cursor->wl.shape != -1) {
+        cursor_buffer_set_by_id(seat, cursor->wl.shape);
+      }
+      else
+#endif
+      {
+        cursor_buffer_show(seat);
+      }
     }
   }
   else {
@@ -7441,14 +7565,29 @@ static bool cursor_is_software(const GHOST_TGrabCursorMode mode, const bool use_
   return false;
 }
 
-GHOST_TSuccess GHOST_SystemWayland::cursor_shape_set(const GHOST_TStandardCursor shape)
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+static GHOST_TSuccess cursor_shape_set_by_id(GWL_Seat *seat, const GHOST_TStandardCursor shape)
 {
-  /* Caller must lock `server_mutex`. */
-
-  GWL_Seat *seat = gwl_display_seat_active_get(display_);
-  if (UNLIKELY(!seat)) {
+  auto cursor_find = ghost_wl_cursor_shape_ids.find(shape);
+  const int wl_shape = (cursor_find == ghost_wl_cursor_shape_ids.end()) ? -1 :
+                                                                          (*cursor_find).second;
+  if (wl_shape == -1) {
     return GHOST_kFailure;
   }
+
+  cursor_buffer_set_by_id(seat, wl_shape);
+
+  GWL_Cursor *cursor = &seat->cursor;
+  cursor->visible = true;
+  cursor->is_custom = false;
+  cursor->wl.shape = wl_shape;
+
+  return GHOST_kSuccess;
+}
+#endif /* WITH_GHOST_WAYLAND_CURSOR_SHAPE */
+
+static GHOST_TSuccess cursor_shape_set_by_theme(GWL_Seat *seat, const GHOST_TStandardCursor shape)
+{
   auto cursor_find = ghost_wl_cursors.find(shape);
   const char *cursor_name = (cursor_find == ghost_wl_cursors.end()) ?
                                 ghost_wl_cursors.at(GHOST_kStandardCursorDefault) :
@@ -7459,7 +7598,7 @@ GHOST_TSuccess GHOST_SystemWayland::cursor_shape_set(const GHOST_TStandardCursor
   if (!cursor->wl.theme) {
     /* The cursor wl_surface hasn't entered an output yet. Initialize theme with scale 1. */
     cursor->wl.theme = wl_cursor_theme_load(
-        cursor->theme_name.c_str(), cursor->theme_size, wl_shm_get());
+        cursor->theme_name.c_str(), cursor->theme_size, seat->system->wl_shm_get());
   }
 
   wl_cursor *wl_cursor = wl_cursor_theme_get_cursor(cursor->wl.theme, cursor_name);
@@ -7476,6 +7615,7 @@ GHOST_TSuccess GHOST_SystemWayland::cursor_shape_set(const GHOST_TStandardCursor
   }
 
   cursor->visible = true;
+
   cursor->is_custom = false;
   cursor->wl.buffer = buffer;
   cursor->wl.image = *image;
@@ -7485,9 +7625,41 @@ GHOST_TSuccess GHOST_SystemWayland::cursor_shape_set(const GHOST_TStandardCursor
   return GHOST_kSuccess;
 }
 
+GHOST_TSuccess GHOST_SystemWayland::cursor_shape_set(const GHOST_TStandardCursor shape)
+{
+  /* Caller must lock `server_mutex`. */
+  GWL_Seat *seat = gwl_display_seat_active_get(display_);
+  if (UNLIKELY(!seat)) {
+    return GHOST_kFailure;
+  }
+
+  /* Not ideal, set both the buffer and the shape,
+   * this is done because some shapes don't exist in cursor shape presets. */
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+  if (seat->system->wp_cursor_shape_manager_get()) {
+    return cursor_shape_set_by_id(seat, shape);
+  }
+#endif
+  return cursor_shape_set_by_theme(seat, shape);
+}
+
 GHOST_TSuccess GHOST_SystemWayland::cursor_shape_check(const GHOST_TStandardCursor cursorShape)
 {
   /* No need to lock `server_mutex`. */
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+  if (wp_cursor_shape_manager_get()) {
+    auto cursor_find = ghost_wl_cursor_shape_ids.find(cursorShape);
+    if (cursor_find == ghost_wl_cursor_shape_ids.end()) {
+      return GHOST_kFailure;
+    }
+    const int value = (*cursor_find).second;
+    if (value == -1) {
+      return GHOST_kFailure;
+    }
+    return GHOST_kSuccess;
+  }
+#endif /* WITH_GHOST_WAYLAND_CURSOR_SHAPE */
+
   auto cursor_find = ghost_wl_cursors.find(cursorShape);
   if (cursor_find == ghost_wl_cursors.end()) {
     return GHOST_kFailure;
@@ -7569,6 +7741,10 @@ GHOST_TSuccess GHOST_SystemWayland::cursor_shape_custom_set(const uint8_t *bitma
   cursor->wl.image.height = uint32_t(sizey);
   cursor->wl.image.hotspot_x = uint32_t(hotX);
   cursor->wl.image.hotspot_y = uint32_t(hotY);
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+  /* Ensure we don't restore to this cursor shape. */
+  cursor->wl.shape = -1;
+#endif
 
   cursor_buffer_set(seat, buffer);
 
@@ -7831,6 +8007,13 @@ libdecor *GHOST_SystemWayland::libdecor_context_get()
 }
 
 #endif /* !WITH_GHOST_WAYLAND_LIBDECOR */
+
+#ifdef WITH_GHOST_WAYLAND_CURSOR_SHAPE
+wp_cursor_shape_manager_v1 *GHOST_SystemWayland::wp_cursor_shape_manager_get()
+{
+  return display_->wp.cursor_shape_manager;
+}
+#endif /* WITH_GHOST_WAYLAND_CURSOR_SHAPE */
 
 xdg_wm_base *GHOST_SystemWayland::xdg_decor_shell_get()
 {

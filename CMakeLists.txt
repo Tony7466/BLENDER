@@ -335,6 +335,9 @@ if(UNIX AND NOT (APPLE OR HAIKU))
     option(WITH_GHOST_WAYLAND_LIBDECOR "Optionally build with LibDecor window decorations" ON)
     mark_as_advanced(WITH_GHOST_WAYLAND_LIBDECOR)
 
+    option(WITH_GHOST_WAYLAND_CURSOR_SHAPE "Enable cursors using \"cursor-shape-v1\" protocols" ON)
+    mark_as_advanced(WITH_GHOST_WAYLAND_CURSOR_SHAPE)
+
     option(WITH_GHOST_WAYLAND_DYNLOAD "Enable runtime dynamic WAYLAND libraries loading" ON)
     mark_as_advanced(WITH_GHOST_WAYLAND_DYNLOAD)
 

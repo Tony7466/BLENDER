@@ -389,6 +389,16 @@ elseif(WITH_GHOST_X11 OR WITH_GHOST_WAYLAND)
       unset(_name)
     endmacro()
 
+    # Use for new protocols some Linux distributions may not support.
+    macro(generate_protocol_bindings_with_check PROT_DEF EXISTS_VAR)
+      if(EXISTS ${PROT_DEF})
+        generate_protocol_bindings(${PROT_DEF})
+        set(${EXISTS_VAR} TRUE)
+      else()
+        set(${EXISTS_VAR} FALSE)
+      endif()
+    endmacro()
+
     list(APPEND INC_SYS
       ${INC_DST}
     )
@@ -440,6 +450,22 @@ elseif(WITH_GHOST_X11 OR WITH_GHOST_WAYLAND)
     generate_protocol_bindings(
       "${WAYLAND_PROTOCOLS_DIR}/unstable/primary-selection/primary-selection-unstable-v1.xml"
     )
+    if(WITH_GHOST_WAYLAND_CURSOR_SHAPE)
+      # Cursor shape (depends on v1.32).
+      generate_protocol_bindings_with_check(
+        "${WAYLAND_PROTOCOLS_DIR}/staging/cursor-shape/cursor-shape-v1.xml"
+        WITH_GHOST_WAYLAND_CURSOR_SHAPE
+      )
+      if(NOT WITH_GHOST_WAYLAND_CURSOR_SHAPE)
+        message(WARNING
+          "Disabling WITH_GHOST_WAYLAND_CURSOR_SHAPE, \"cursor-shape-v1\" not found, "
+          "requires wayland-protocols v1.32"
+        )
+      endif()
+    endif()
+    if(WITH_GHOST_WAYLAND_CURSOR_SHAPE)
+      add_definitions(-DWITH_GHOST_WAYLAND_CURSOR_SHAPE)
+    endif()
     if(WITH_INPUT_IME)
       generate_protocol_bindings(
         "${WAYLAND_PROTOCOLS_DIR}/unstable/text-input/text-input-unstable-v3.xml"
