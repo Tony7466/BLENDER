@@ -551,7 +551,7 @@ static void grease_pencil_geom_batch_ensure(const GreasePencil &grease_pencil, c
         /* Write all the point attributes to the vertex buffers. Create a quad for each point. */
         for (const int i : IndexRange(points.size())) {
           const int idx = i + 1;
-          const float length = lengths[i - 1];
+          const float length = (i >= 1) ? lengths[i - 1] : 0.0f;
           populate_point(verts_range,
                          curve_i,
                          start_caps[curve_i],
