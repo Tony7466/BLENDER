@@ -264,6 +264,7 @@ void create_blend_shapes(pxr::UsdStageRefPtr stage,
 
     pxr::VtVec3fArray offsets(kb->totelem);
     pxr::VtIntArray indices(kb->totelem);
+    std::iota(indices.begin(), indices.end(), 0);
 
     const float(*fp)[3] = static_cast<float(*)[3]>(kb->data);
 
@@ -273,7 +274,6 @@ void create_blend_shapes(pxr::UsdStageRefPtr stage,
       /* Subtract the key positions from the
        * basis positions to get the offsets. */
       sub_v3_v3v3(offsets[i].data(), fp[i], basis_fp[i]);
-      indices[i] = i;
     }
 
     offsets_attr.Set(offsets);
@@ -407,7 +407,7 @@ void remap_blend_shape_anim(pxr::UsdStageRefPtr stage,
 
   Vector<BlendShapeMergeInfo> merge_info;
 
-  /* We are merging blend shape names and weighs from multiple
+  /* We are merging blend shape names and weights from multiple
    * meshes to a single animation. In case of name collisions,
    * we must generate unique blend shape names for the merged
    * result.  This set keeps track of the unique names that will
@@ -521,7 +521,7 @@ Mesh *get_shape_key_basis_mesh(Object *obj)
 
   /* If we're exporting blend shapes, we export the unmodified mesh with
    * the verts in the basis key positions. */
-  Mesh *mesh = BKE_object_get_pre_modified_mesh(obj);
+  const Mesh *mesh = BKE_object_get_pre_modified_mesh(obj);
 
   if (!mesh || !mesh->key || !mesh->key->block.first) {
     return nullptr;

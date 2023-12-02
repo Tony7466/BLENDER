@@ -138,7 +138,7 @@ void USDGenericMeshWriter::write_custom_data(const Object *obj,
 
         if (usd_export_context_.export_params.export_armatures &&
             is_armature_modifier_bone_name(
-                obj, attribute_id.name().data(), usd_export_context_.depsgraph))
+                *obj, attribute_id.name().data(), usd_export_context_.depsgraph))
         {
           /* This attribute is likely a vertex group for the armature modifier,
            * and it may conflict with skinning data that will be written to
@@ -759,8 +759,8 @@ void USDMeshWriter::set_skel_export_flags(const HierarchyContext &context)
   write_skinned_mesh_ = false;
   write_blend_shapes_ = false;
 
-  Vector<ModifierData *> mods = get_enabled_modifiers(context.object,
-                                                      usd_export_context_.depsgraph);
+  Vector<const ModifierData *> mods = get_enabled_modifiers(*context.object,
+                                                            usd_export_context_.depsgraph);
 
   const USDExportParams &params = usd_export_context_.export_params;
 
@@ -799,7 +799,7 @@ void USDMeshWriter::init_skinned_mesh(const HierarchyContext &context)
     return;
   }
 
-  const Object *arm_obj = get_armature_modifier_obj(context.object, usd_export_context_.depsgraph);
+  const Object *arm_obj = get_armature_modifier_obj(*context.object, usd_export_context_.depsgraph);
 
   if (!arm_obj) {
     WM_reportf(RPT_WARNING,

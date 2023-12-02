@@ -5,9 +5,6 @@
 
 #include "usd_writer_abstract.h"
 
-#include <string>
-#include <vector>
-
 struct Object;
 
 namespace blender::io::usd {

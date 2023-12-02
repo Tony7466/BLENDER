@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_function_ref.hh"
+#include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
 #include <pxr/base/tf/token.h>
@@ -64,7 +65,7 @@ void create_pose_joints(pxr::UsdSkelAnimation &skel_anim, const Object *obj);
  * \return: The list of modifiers
  *
  */
-Vector<ModifierData *> get_enabled_modifiers(const Object *obj, const Depsgraph *depsgraph);
+Vector<const ModifierData *> get_enabled_modifiers(const Object &obj, const Depsgraph *depsgraph);
 /**
  * If the given object has an enabled armature modifier, return the
  * armature object bound to the modifier.
@@ -73,7 +74,7 @@ Vector<ModifierData *> get_enabled_modifiers(const Object *obj, const Depsgraph 
  * \param depsgraph: The dependency graph where the object was evaluated
  * \return: The armature object
  */
-const Object *get_armature_modifier_obj(const Object *obj, const Depsgraph *depsgraph);
+const Object *get_armature_modifier_obj(const Object &obj, const Depsgraph *depsgraph);
 
 /**
  * If the given object has an armature modifier, query whether the given
@@ -85,8 +86,8 @@ const Object *get_armature_modifier_obj(const Object *obj, const Depsgraph *deps
  * \return: True if the name matches a bone name.  Return false if no matching
  *          bone name is found or if the object does not have an armature modifier
  */
-bool is_armature_modifier_bone_name(const Object *obj,
-                                    const char *name,
+bool is_armature_modifier_bone_name(const Object &obj,
+                                    const StringRefNull name,
                                     const Depsgraph *depsgraph);
 
 /**
@@ -98,6 +99,6 @@ bool is_armature_modifier_bone_name(const Object *obj,
  * \param depsgraph: The dependency graph where the object was evaluated
  * \return: True if skinned mesh export is supported, false otherwise
  */
-bool can_export_skinned_mesh(const Object *obj, const Depsgraph *depsgraph);
+bool can_export_skinned_mesh(const Object &obj, const Depsgraph *depsgraph);
 
 }  // namespace blender::io::usd

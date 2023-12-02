@@ -8,7 +8,6 @@
 #include "usd_exporter_context.h"
 #include "usd_skel_convert.h"
 
-#include <map>
 #include <string>
 
 #include <pxr/usd/usd/common.h>

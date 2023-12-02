@@ -7,6 +7,7 @@
 #include "usd.h"
 #include "usd_armature_utils.h"
 #include "usd_blend_shape_utils.h"
+#include "usd_hash_types.h"
 
 #include <pxr/usd/sdf/namespaceEdit.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
@@ -1177,7 +1178,7 @@ void skinned_mesh_export_chaser(pxr::UsdStageRefPtr stage,
     }
 
     /* Get the armature bound to the mesh's armature modifier. */
-    const Object *arm_obj = get_armature_modifier_obj(mesh_obj, depsgraph);
+    const Object *arm_obj = get_armature_modifier_obj(*mesh_obj, depsgraph);
     if (!arm_obj) {
       WM_reportf(RPT_WARNING,
                  "%s: Invalid armature modifier for skinned mesh %s",
@@ -1212,11 +1213,11 @@ void skinned_mesh_export_chaser(pxr::UsdStageRefPtr stage,
 void shape_key_export_chaser(pxr::UsdStageRefPtr stage,
                              const ObjExportMap &shape_key_mesh_export_map)
 {
-  std::map<pxr::SdfPath, pxr::SdfPathSet> skel_to_mesh;
+  Map<pxr::SdfPath, pxr::SdfPathSet> skel_to_mesh;
 
   /* We will keep track of the mesh prims to clean up the temporary
    * weights attribute at the end. */
-  std::vector<pxr::UsdPrim> mesh_prims;
+  Vector<pxr::UsdPrim> mesh_prims;
 
   /* Finish creating blend shape bindings. */
   for (const auto &item : shape_key_mesh_export_map.items()) {
@@ -1235,7 +1236,7 @@ void shape_key_export_chaser(pxr::UsdStageRefPtr stage,
     }
 
     /* Keep track of all the mesh prims with blend shapes, for cleanup below. */
-    mesh_prims.push_back(mesh_prim);
+    mesh_prims.append(mesh_prim);
 
     pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(mesh_prim);
 
@@ -1250,12 +1251,13 @@ void shape_key_export_chaser(pxr::UsdStageRefPtr stage,
     pxr::UsdSkelSkeleton skel;
     if (skel_api.GetSkeleton(&skel)) {
       /* We have a bound skeleton, so we add it to the map. */
-      auto it = skel_to_mesh.find(skel.GetPath());
-      if (it == skel_to_mesh.end()) {
-        it = skel_to_mesh.insert(std::make_pair(skel.GetPath(), pxr::SdfPathSet())).first;
+      pxr::SdfPathSet *mesh_paths = skel_to_mesh.lookup_ptr(skel.GetPath());
+      if (!mesh_paths) {
+        skel_to_mesh.add_new(skel.GetPath(), pxr::SdfPathSet());
+        mesh_paths = skel_to_mesh.lookup_ptr(skel.GetPath());
       }
-      if (it != skel_to_mesh.end()) {
-        it->second.insert(mesh_prim.GetPath());
+      if (mesh_paths) {
+        mesh_paths->insert(mesh_prim.GetPath());
       }
       continue;
     }
@@ -1264,12 +1266,12 @@ void shape_key_export_chaser(pxr::UsdStageRefPtr stage,
     ensure_blend_shape_skeleton(stage, mesh_prim);
   }
 
-  if (skel_to_mesh.empty()) {
+  if (skel_to_mesh.is_empty()) {
     return;
   }
 
-  for (const auto &kv : skel_to_mesh) {
-    remap_blend_shape_anim(stage, kv.first, kv.second);
+  for (const auto &item : skel_to_mesh.items()) {
+    remap_blend_shape_anim(stage, item.key, item.value);
   }
 
   /* Finally, delete the temp blendshape weights attributes. */

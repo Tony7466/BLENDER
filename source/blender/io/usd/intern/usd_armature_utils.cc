@@ -16,7 +16,7 @@
 namespace blender::io::usd {
 
 /* Recursively invoke the 'visitor' function on the given bone and its children. */
-static void visit_bones(const Bone *bone, blender::FunctionRef<void(const Bone *)> visitor)
+static void visit_bones(const Bone *bone, FunctionRef<void(const Bone *)> visitor)
 {
   if (!(bone && visitor)) {
     return;
@@ -33,17 +33,16 @@ static void visit_bones(const Bone *bone, blender::FunctionRef<void(const Bone *
  * Return the modifier of the given type enabled for the given dependency graph's
  * evaluation mode (viewport or render).
  */
-static const ModifierData *get_enabled_modifier(const Object *obj,
+static const ModifierData *get_enabled_modifier(const Object &obj,
                                                 ModifierType type,
                                                 const Depsgraph *depsgraph)
 {
-  BLI_assert(obj);
   BLI_assert(depsgraph);
 
   Scene *scene = DEG_get_input_scene(depsgraph);
   eEvaluationMode mode = DEG_get_mode(depsgraph);
 
-  LISTBASE_FOREACH (ModifierData *, md, &obj->modifiers) {
+  LISTBASE_FOREACH (ModifierData *, md, &obj.modifiers) {
 
     if (!BKE_modifier_is_enabled(scene, md, mode)) {
       continue;
@@ -59,10 +58,9 @@ static const ModifierData *get_enabled_modifier(const Object *obj,
 
 /* Return the armature modifier on the given object.  Return null if no armature modifier
  * can be found. */
-static const ArmatureModifierData *get_armature_modifier(const Object *obj,
+static const ArmatureModifierData *get_armature_modifier(const Object &obj,
                                                          const Depsgraph *depsgraph)
 {
-  BLI_assert(obj);
   const ArmatureModifierData *mod = reinterpret_cast<const ArmatureModifierData *>(
       get_enabled_modifier(obj, eModifierType_Armature, depsgraph));
   return mod;
@@ -120,19 +118,16 @@ void create_pose_joints(pxr::UsdSkelAnimation &skel_anim, const Object *obj)
   skel_anim.GetJointsAttr().Set(joints);
 }
 
-const Object *get_armature_modifier_obj(const Object *obj, const Depsgraph *depsgraph)
+const Object *get_armature_modifier_obj(const Object &obj, const Depsgraph *depsgraph)
 {
   const ArmatureModifierData *mod = get_armature_modifier(obj, depsgraph);
   return mod ? mod->object : nullptr;
 }
 
-bool is_armature_modifier_bone_name(const Object *obj,
-                                    const char *name,
+bool is_armature_modifier_bone_name(const Object &obj,
+                                    const StringRefNull name,
                                     const Depsgraph *depsgraph)
 {
-  if (!obj || !name) {
-    return false;
-  }
   const ArmatureModifierData *arm_mod = get_armature_modifier(obj, depsgraph);
 
   if (!arm_mod || !arm_mod->object || !arm_mod->object->data) {
@@ -141,29 +136,28 @@ bool is_armature_modifier_bone_name(const Object *obj,
 
   bArmature *arm = static_cast<bArmature *>(arm_mod->object->data);
 
-  return BKE_armature_find_bone_name(arm, name);
+  return BKE_armature_find_bone_name(arm, name.c_str());
 }
 
-bool can_export_skinned_mesh(const Object *obj, const Depsgraph *depsgraph)
+bool can_export_skinned_mesh(const Object &obj, const Depsgraph *depsgraph)
 {
-  Vector<ModifierData *> mods = get_enabled_modifiers(obj, depsgraph);
+  Vector<const ModifierData *> mods = get_enabled_modifiers(obj, depsgraph);
 
   /* We can export a skinned mesh if the object has an enabled
    * armature modifier and no other enabled modifiers. */
   return mods.size() == 1 && mods.first()->type == eModifierType_Armature;
 }
 
-Vector<ModifierData *> get_enabled_modifiers(const Object *obj, const Depsgraph *depsgraph)
+Vector<const ModifierData *> get_enabled_modifiers(const Object &obj, const Depsgraph *depsgraph)
 {
-  BLI_assert(obj);
   BLI_assert(depsgraph);
 
-  blender::Vector<ModifierData *> result;
+  blender::Vector<const ModifierData *> result;
 
   Scene *scene = DEG_get_input_scene(depsgraph);
   eEvaluationMode mode = DEG_get_mode(depsgraph);
 
-  LISTBASE_FOREACH (ModifierData *, md, &obj->modifiers) {
+  LISTBASE_FOREACH (ModifierData *, md, &obj.modifiers) {
 
     if (!BKE_modifier_is_enabled(scene, md, mode)) {
       continue;
