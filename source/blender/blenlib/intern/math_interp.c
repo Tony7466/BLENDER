@@ -414,10 +414,10 @@ void BLI_bilinear_interpolation_char(
   int ycoord[4];
   _mm_storeu_ps((float *)xcoord, _mm_castsi128_ps(x1234));
   _mm_storeu_ps((float *)ycoord, _mm_castsi128_ps(y1234));
-  int sample1 = ((const int *)buffer)[ycoord[0] * (size_t)width + xcoord[0]];
-  int sample2 = ((const int *)buffer)[ycoord[1] * (size_t)width + xcoord[1]];
-  int sample3 = ((const int *)buffer)[ycoord[2] * (size_t)width + xcoord[2]];
-  int sample4 = ((const int *)buffer)[ycoord[3] * (size_t)width + xcoord[3]];
+  int sample1 = ((const int *)buffer)[ycoord[0] * (int64_t)width + xcoord[0]];
+  int sample2 = ((const int *)buffer)[ycoord[1] * (int64_t)width + xcoord[1]];
+  int sample3 = ((const int *)buffer)[ycoord[2] * (int64_t)width + xcoord[2]];
+  int sample4 = ((const int *)buffer)[ycoord[3] * (int64_t)width + xcoord[3]];
   __m128i samples1234 = _mm_set_epi32(sample4, sample3, sample2, sample1);
   /* Set samples to black for the ones that were actually invalid. */
   samples1234 = _mm_andnot_si128(invalid_1234, samples1234);
