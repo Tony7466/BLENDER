@@ -59,7 +59,8 @@ class VKFrameBuffer : public FrameBuffer {
   /** Is the first attachment an SRGB texture. */
   bool srgb_;
   bool enabled_srgb_;
-
+  bool dirty_subpass_ = false;
+  int subpass_current_ = 0;
  public:
   /**
    * Create a conventional framebuffer to attach texture to.
@@ -147,7 +148,12 @@ class VKFrameBuffer : public FrameBuffer {
   int color_attachments_resource_size() const;
 
   void renderpass_ensure();
-
+  const int subpass_current_get() const
+  {
+    return subpass_current_;
+  }
+  const int is_subpass_continue() const;
+  void next_subpass(VKCommandBuffers &command_buffers);
  private:
   void update_attachments();
   void create();

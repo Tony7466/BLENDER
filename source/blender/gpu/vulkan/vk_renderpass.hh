@@ -9,6 +9,7 @@
 #pragma once
 #include "vk_attachments.hh"
 #include "vk_common.hh"
+#include "vk_subpass.hh"
 
 #include <memory>
 
@@ -71,7 +72,9 @@ class VKRenderPass {
                                                    vk_subpass::descriptions_default};
 
   VKAttachments attachments_;
-
+  Vector<int> subpass_multi_attachments;
+  Vector<int> subpass_input_orders_[GPU_TEX_MAX_SUBPASS];
+  
  public:
   VKRenderPass(){};
   ~VKRenderPass()
@@ -81,8 +84,12 @@ class VKRenderPass {
   void create();
   void free();
   bool ensure();
+  void ensure_subpass_multiple(VKFrameBuffer &frame_buffer);
   void cache_init();
-  void dependency_set(bool use_depth);
+  void dependency_static_set(bool use_depth);
+  VkSubpassDependency2 dependency_get(int srcpass,
+                                      int dstpass,
+                                      SubpassTransitionPattern transition_pattern);
   void multiview_set();
   friend class VKFrameBuffer;
 };

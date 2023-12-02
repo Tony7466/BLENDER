@@ -131,6 +131,12 @@ void VKFrameBuffer::build_clear_attachments_color(const float (*clear_colors)[4]
     if (attachment.tex == nullptr) {
       continue;
     }
+    Texture *tex = reinterpret_cast<Texture *>(attachment.tex);
+    if (tex->subpass_bits_get().disable != 0) {
+      if (!is_current_attachment(tex->subpass_bits_get(), subpass_current_)) {
+        continue;
+      }
+    }
     VkClearAttachment clear_attachment = {};
     clear_attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     clear_attachment.colorAttachment = color_slot;
@@ -268,9 +274,26 @@ void VKFrameBuffer::config(const GPUAttachment *config, int config_len)
  * \{ */
 
 void VKFrameBuffer::subpass_transition(const GPUAttachmentState /*depth_attachment_state*/,
-                                       Span<GPUAttachmentState> /*color_attachment_states*/)
+                                       Span<GPUAttachmentState> color_attachment_states)
 {
-  NOT_YET_IMPLEMENTED;
+  for (int i : color_attachment_states.index_range()) {
+    GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0 + i;
+    if (color_attachment_states[i] == GPU_ATTACHEMENT_READ) {
+        BLI_assert(attachments_[type].tex);
+        int input_order = 0;
+        for (auto type_index : renderpass_->subpass_input_orders_[subpass_current_]) {
+            if (type_index == i) {
+                reinterpret_cast<VKStateManager *>(VKContext::get()->state_manager)
+                                ->input_attachment_bind(reinterpret_cast<Texture *>(attachments_[type].tex),
+                                    input_order);
+                break;
+            }
+            input_order++;
+        }
+        BLI_assert(renderpass_->subpass_input_orders_[subpass_current_].size() > input_order);
+    }
+  }
+  return;
 }
 
 /** \} */
@@ -446,7 +469,7 @@ void VKFrameBuffer::cache_init()
   vk_framebuffer_create_info_.attachmentCount = 0;
   width_ = 0;
   height_ = 0;
-
+  dirty_subpass_ = false;
   default_attachments_ = dirty_attachments_8_ = 0;
   renderpass_->cache_init();
 };
@@ -521,6 +544,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
 
       /* Whether to increment the number of attachments actually used. */
       if (tex) {
+        dirty_subpass_ = reinterpret_cast<Texture *>(tex)->subpass_bits_get().disable != 0;
         attachment_reference->attachment =
             renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount++;
       }
@@ -647,7 +671,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
     {
       /* The number of attachments is changed. */
       dirty_flag = true;
-      renderpass_->dependency_set(
+      renderpass_->dependency_static_set(
           renderpass_->subpass_[renderpass_->info_id_].pDepthStencilAttachment != nullptr);
     }
     if (!dirty_flag) {
@@ -678,6 +702,12 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
 
 void VKFrameBuffer::renderpass_ensure()
 {
+  if (dirty_subpass_) {
+    renderpass_->ensure_subpass_multiple(*this);
+    dirty_subpass_ = false;
+    ensure();
+    return;
+  }
   if (dirty_attachments_) {
     dirty_attachments_8_ = default_attachments_;
     if (default_attachments_ == 0) {
@@ -910,7 +940,15 @@ void VKFrameBuffer::update_srgb()
 
 int VKFrameBuffer::color_attachments_resource_size() const
 {
-  return renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount;
+  if (renderpass_->vk_create_info_[renderpass_->info_id_].subpassCount > 1) {
+    return renderpass_->subpass_multi_attachments[subpass_current_];
+  }
+  return -1;
+}
+
+const int VKFrameBuffer::is_subpass_continue() const
+{
+  return subpass_current_ < (renderpass_->vk_create_info_[renderpass_->info_id_].subpassCount - 1);
 }
 
 VkRenderPass VKFrameBuffer::vk_render_pass_get()

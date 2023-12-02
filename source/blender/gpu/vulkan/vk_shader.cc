@@ -202,6 +202,90 @@ static const char *to_string(const DepthWrite &value)
   }
 }
 
+static const int to_component_count(const Type &type)
+{
+  switch (type) {
+    case Type::FLOAT:
+    case Type::UINT:
+    case Type::INT:
+    case Type::BOOL:
+      return 1;
+    case Type::VEC2:
+    case Type::UVEC2:
+    case Type::IVEC2:
+      return 2;
+    case Type::VEC3:
+    case Type::UVEC3:
+    case Type::IVEC3:
+      return 3;
+    case Type::VEC4:
+    case Type::UVEC4:
+    case Type::IVEC4:
+      return 4;
+    case Type::MAT3:
+      return 9;
+    case Type::MAT4:
+      return 16;
+    /* Alias special types. */
+    case Type::UCHAR:
+    case Type::USHORT:
+      return 1;
+    case Type::UCHAR2:
+    case Type::USHORT2:
+      return 2;
+    case Type::UCHAR3:
+    case Type::USHORT3:
+      return 3;
+    case Type::UCHAR4:
+    case Type::USHORT4:
+      return 4;
+    case Type::CHAR:
+    case Type::SHORT:
+      return 1;
+    case Type::CHAR2:
+    case Type::SHORT2:
+      return 2;
+    case Type::CHAR3:
+    case Type::SHORT3:
+      return 3;
+    case Type::CHAR4:
+    case Type::SHORT4:
+      return 4;
+    case Type::VEC3_101010I2:
+      return 3;
+  }
+  BLI_assert_unreachable();
+  return -1;
+}
+
+static const char *print_subpass_qualifier(const Type &type)
+{
+  switch (type) {
+    case Type::FLOAT:
+    case Type::VEC2:
+    case Type::VEC3:
+    case Type::VEC3_101010I2:
+    case Type::VEC4:
+      return "subpassInput";
+    case Type::UINT:
+    case Type::UVEC2:
+    case Type::UVEC3:
+    case Type::UVEC4:
+      return "usubpassInput";
+    case Type::INT:
+    case Type::IVEC2:
+    case Type::IVEC3:
+    case Type::IVEC4:
+    case Type::BOOL:
+      return "isubpassInput";
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+  BLI_assert_unreachable();
+  return "subpassInput";
+}
+
 static void print_image_type(std::ostream &os,
                              const ImageType &type,
                              const ShaderCreateInfo::Resource::BindType bind_type)

@@ -47,7 +47,7 @@ void VKSampler::create(const GPUSamplerState &sampler_state)
         sampler_state.filtering & GPU_SAMPLER_FILTERING_ANISOTROPIC)
     {
       sampler_info.anisotropyEnable = VK_TRUE;
-      sampler_info.maxAnisotropy = min_ff(1.0f, U.anisotropic_filter);
+      sampler_info.maxAnisotropy = min_ff(16.0f, max_ff(1.0f, U.anisotropic_filter));
     }
   }
   else if (sampler_state.type == GPU_SAMPLER_STATE_TYPE_CUSTOM) {
