@@ -24,7 +24,7 @@ template<> struct DefaultHash<pxr::TfToken> {
   }
 };
 
-template<> struct blender::DefaultHash<pxr::SdfPath> {
+template<> struct DefaultHash<pxr::SdfPath> {
   uint64_t operator()(const pxr::SdfPath &value) const
   {
     return (uint64_t)value.GetHash();
