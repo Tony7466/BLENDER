@@ -29,6 +29,13 @@ void SimulationNodeCache::reset()
   std::destroy_at(this);
   new (this) SimulationNodeCache();
 }
+
+void BakeNodeCache::reset()
+{
+  std::destroy_at(this);
+  new (this) BakeNodeCache();
+}
+
 void scene_simulation_states_reset(Scene &scene)
 {
   FOREACH_SCENE_OBJECT_BEGIN (&scene, ob) {

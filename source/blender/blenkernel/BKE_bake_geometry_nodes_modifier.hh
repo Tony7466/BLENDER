@@ -69,9 +69,17 @@ struct SimulationNodeCache {
   void reset();
 };
 
+struct BakeNodeCache {
+  bool do_bake = false;
+  Vector<std::unique_ptr<FrameCache>> frame_caches;
+
+  void reset();
+};
+
 struct ModifierCache {
   mutable std::mutex mutex;
   Map<int, std::unique_ptr<SimulationNodeCache>> simulation_cache_by_id;
+  Map<int, std::unique_ptr<BakeNodeCache>> bake_cache_by_id;
 };
 
 /**
