@@ -477,7 +477,7 @@ static void grease_pencil_geom_batch_ensure(const GreasePencil &grease_pencil, c
     const VArray<float> stroke_hardnesses = *attributes.lookup_or_default<float>(
         "hardness", ATTR_DOMAIN_CURVE, 1.0f);
     const VArray<float> stroke_point_aspect_ratios = *attributes.lookup_or_default<float>(
-        "point_aspect_ratio", ATTR_DOMAIN_CURVE, 1.0f);
+        "aspect_ratio", ATTR_DOMAIN_CURVE, 1.0f);
     const VArray<ColorGeometry4f> stroke_fill_colors =
         *attributes.lookup_or_default<ColorGeometry4f>(
             "fill_color", ATTR_DOMAIN_CURVE, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
