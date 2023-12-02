@@ -10,11 +10,26 @@
 
 #include "BLI_string.h"
 
+#include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_bake_items_socket.hh"
+#include "BKE_context.hh"
+
+#include "ED_node.hh"
+
+#include "DNA_modifier_types.h"
+
+#include "RNA_access.hh"
+#include "RNA_prototypes.h"
+
+#include "MOD_nodes.hh"
+
+#include "WM_api.hh"
 
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_bake_cc {
+
+namespace bake = bke::bake;
 
 NODE_STORAGE_FUNCS(NodeGeometryBake)
 
@@ -93,10 +108,9 @@ static const CPPType &get_item_cpp_type(const eNodeSocketDatatype socket_type)
   return *typeinfo->geometry_nodes_cpp_type;
 }
 
-static bke::bake::BakeSocketConfig make_bake_socket_config(
-    const Span<NodeGeometryBakeItem> bake_items)
+static bake::BakeSocketConfig make_bake_socket_config(const Span<NodeGeometryBakeItem> bake_items)
 {
-  bke::bake::BakeSocketConfig config;
+  bake::BakeSocketConfig config;
   const int items_num = bake_items.size();
   config.domains.resize(items_num);
   config.types.resize(items_num);
@@ -120,7 +134,7 @@ static bke::bake::BakeSocketConfig make_bake_socket_config(
 class LazyFunctionForBakeNode final : public LazyFunction {
   const bNode &node_;
   Span<NodeGeometryBakeItem> bake_items_;
-  bke::bake::BakeSocketConfig bake_socket_config_;
+  bake::BakeSocketConfig bake_socket_config_;
 
  public:
   LazyFunctionForBakeNode(const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
@@ -196,7 +210,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
 
   void pass_through(lf::Params &params, GeoNodesLFUserData &user_data) const
   {
-    std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params);
+    std::optional<bake::BakeState> bake_state = this->get_bake_state_from_inputs(params);
     if (!bake_state) {
       /* Wait for inputs to be computed. */
       return;
@@ -218,7 +232,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
              GeoNodesLFUserData &user_data,
              const sim_output::StoreNewState &info) const
   {
-    std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params);
+    std::optional<bake::BakeState> bake_state = this->get_bake_state_from_inputs(params);
     if (!bake_state) {
       /* Wait for inputs to be computed. */
       return;
@@ -229,7 +243,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
 
   void output_cached_state(lf::Params &params,
                            GeoNodesLFUserData &user_data,
-                           const bke::bake::BakeStateRef &bake_state) const
+                           const bake::BakeStateRef &bake_state) const
   {
     Array<void *> output_values(bake_items_.size());
     for (const int i : bake_items_.index_range()) {
@@ -247,8 +261,8 @@ class LazyFunctionForBakeNode final : public LazyFunction {
   void output_mixed_cached_state(lf::Params &params,
                                  const Object &self_object,
                                  const ComputeContext &compute_context,
-                                 const bke::bake::BakeStateRef &prev_state,
-                                 const bke::bake::BakeStateRef &next_state,
+                                 const bake::BakeStateRef &prev_state,
+                                 const bake::BakeStateRef &next_state,
                                  const float mix_factor) const
   {
     Array<void *> output_values(bake_items_.size());
@@ -282,7 +296,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
     }
   }
 
-  std::optional<bke::bake::BakeState> get_bake_state_from_inputs(lf::Params &params) const
+  std::optional<bake::BakeState> get_bake_state_from_inputs(lf::Params &params) const
   {
     Array<void *> input_values(bake_items_.size());
     for (const int i : bake_items_.index_range()) {
@@ -293,13 +307,13 @@ class LazyFunctionForBakeNode final : public LazyFunction {
       return std::nullopt;
     }
 
-    Array<std::unique_ptr<bke::bake::BakeItem>> bake_items =
-        bke::bake::move_socket_values_to_bake_items(input_values, bake_socket_config_);
+    Array<std::unique_ptr<bake::BakeItem>> bake_items = bake::move_socket_values_to_bake_items(
+        input_values, bake_socket_config_);
 
-    bke::bake::BakeState bake_state;
+    bake::BakeState bake_state;
     for (const int i : bake_items_.index_range()) {
       const NodeGeometryBakeItem &item = bake_items_[i];
-      std::unique_ptr<bke::bake::BakeItem> &bake_item = bake_items[i];
+      std::unique_ptr<bake::BakeItem> &bake_item = bake_items[i];
       if (bake_item) {
         bake_state.items_by_id.add_new(item.identifier, std::move(bake_item));
       }
@@ -307,18 +321,18 @@ class LazyFunctionForBakeNode final : public LazyFunction {
     return bake_state;
   }
 
-  void move_bake_state_to_values(bke::bake::BakeState bake_state,
+  void move_bake_state_to_values(bake::BakeState bake_state,
                                  const Object &self_object,
                                  const ComputeContext &compute_context,
                                  Span<void *> r_output_values) const
   {
-    Vector<bke::bake::BakeItem *> bake_items;
+    Vector<bake::BakeItem *> bake_items;
     for (const NodeGeometryBakeItem &item : bake_items_) {
-      std::unique_ptr<bke::bake::BakeItem> *bake_item = bake_state.items_by_id.lookup_ptr(
+      std::unique_ptr<bake::BakeItem> *bake_item = bake_state.items_by_id.lookup_ptr(
           item.identifier);
       bake_items.append(bake_item ? bake_item->get() : nullptr);
     }
-    bke::bake::move_bake_items_to_socket_values(
+    bake::move_bake_items_to_socket_values(
         bake_items,
         bake_socket_config_,
         [&](const int i, const CPPType &type) {
@@ -327,18 +341,17 @@ class LazyFunctionForBakeNode final : public LazyFunction {
         r_output_values);
   }
 
-  void copy_bake_state_to_values(const bke::bake::BakeStateRef &bake_state,
+  void copy_bake_state_to_values(const bake::BakeStateRef &bake_state,
                                  const Object &self_object,
                                  const ComputeContext &compute_context,
                                  Span<void *> r_output_values) const
   {
-    Vector<const bke::bake::BakeItem *> bake_items;
+    Vector<const bake::BakeItem *> bake_items;
     for (const NodeGeometryBakeItem &item : bake_items_) {
-      const bke::bake::BakeItem *const *bake_item = bake_state.items_by_id.lookup_ptr(
-          item.identifier);
+      const bake::BakeItem *const *bake_item = bake_state.items_by_id.lookup_ptr(item.identifier);
       bake_items.append(bake_item ? *bake_item : nullptr);
     }
-    bke::bake::copy_bake_items_to_socket_values(
+    bake::copy_bake_items_to_socket_values(
         bake_items,
         bake_socket_config_,
         [&](const int i, const CPPType &type) {
@@ -365,6 +378,100 @@ class LazyFunctionForBakeNode final : public LazyFunction {
   }
 };
 
+static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  const bNode *node = static_cast<bNode *>(ptr->data);
+  SpaceNode *snode = CTX_wm_space_node(C);
+  if (!snode) {
+    return;
+  }
+  std::optional<ed::space_node::ObjectAndModifier> object_and_modifier =
+      ed::space_node::get_modifier_for_node_editor(*snode);
+  if (!object_and_modifier) {
+    return;
+  }
+  const Object &object = *object_and_modifier->object;
+  const NodesModifierData &nmd = *object_and_modifier->nmd;
+  const std::optional<int32_t> bake_id = ed::space_node::find_nested_node_id_in_root(*snode,
+                                                                                     *node);
+  if (!bake_id) {
+    return;
+  }
+  const NodesModifierBake *bake = nullptr;
+  for (const NodesModifierBake &iter_bake : Span{nmd.bakes, nmd.bakes_num}) {
+    if (iter_bake.id == *bake_id) {
+      bake = &iter_bake;
+      break;
+    }
+  }
+  if (!bake) {
+    return;
+  }
+
+  PointerRNA bake_rna = RNA_pointer_create(
+      const_cast<ID *>(&object.id), &RNA_NodesModifierBake, (void *)bake);
+  std::optional<IndexRange> baked_range;
+  if (nmd.runtime->cache) {
+    const bake::ModifierCache &cache = *nmd.runtime->cache;
+    std::lock_guard lock{cache.mutex};
+    if (const std::unique_ptr<bake::BakeNodeCache> *node_cache_ptr =
+            cache.bake_cache_by_id.lookup_ptr(*bake_id))
+    {
+      const bake::BakeNodeCache &node_cache = **node_cache_ptr;
+      if (!node_cache.frame_caches.is_empty()) {
+        const int first_frame = node_cache.frame_caches.first()->frame.frame();
+        const int last_frame = node_cache.frame_caches.last()->frame.frame();
+        baked_range = IndexRange(first_frame, last_frame - first_frame + 1);
+      }
+    }
+  }
+  const bool is_baked = baked_range.has_value();
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+  {
+    uiLayout *col = uiLayoutColumn(layout, false);
+    uiLayout *row = uiLayoutRow(col, true);
+    {
+      char bake_label[1024] = N_("Bake");
+
+      PointerRNA ptr;
+      uiItemFullO(row,
+                  "OBJECT_OT_simulation_nodes_cache_bake_single",
+                  bake_label,
+                  ICON_NONE,
+                  nullptr,
+                  WM_OP_INVOKE_DEFAULT,
+                  UI_ITEM_NONE,
+                  &ptr);
+      WM_operator_properties_id_lookup_set_from_id(&ptr, &object.id);
+      RNA_string_set(&ptr, "modifier_name", nmd.modifier.name);
+      RNA_int_set(&ptr, "bake_id", bake->id);
+    }
+    {
+      PointerRNA ptr;
+      uiItemFullO(row,
+                  "OBJECT_OT_simulation_nodes_cache_delete_single",
+                  "",
+                  ICON_TRASH,
+                  nullptr,
+                  WM_OP_INVOKE_DEFAULT,
+                  UI_ITEM_NONE,
+                  &ptr);
+      WM_operator_properties_id_lookup_set_from_id(&ptr, &object.id);
+      RNA_string_set(&ptr, "modifier_name", nmd.modifier.name);
+      RNA_int_set(&ptr, "bake_id", bake->id);
+    }
+    if (is_baked) {
+      char baked_range_label[64];
+      SNPRINTF(baked_range_label,
+               N_("Baked %d - %d"),
+               int(baked_range->first()),
+               int(baked_range->last()));
+      uiItemL(layout, baked_range_label, ICON_NONE);
+    }
+  }
+}
+
 static void node_rna(StructRNA *srna)
 {
   UNUSED_VARS(srna);
@@ -379,6 +486,7 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   ntype.initfunc = node_init;
   ntype.insert_link = node_insert_link;
+  ntype.draw_buttons_ex = node_layout_ex;
   node_type_storage(&ntype, "NodeGeometryBake", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
 
