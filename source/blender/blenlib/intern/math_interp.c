@@ -377,12 +377,18 @@ void BLI_bilinear_interpolation_char(
    * later making sure that the result is set to zero for that sample. */
 
   __m128 uvuv = _mm_set_ps(v, u, v, u);
-  /* No easy way to do floor() without SSE4, so do it the hard way: truncate,
-   * for negative inputs this will round towards zero. Then compare with input
-   * UV, and subtract 1 for the inputs that were negative. */
+
+#  if defined(__SSE4_1__) || defined(__ARM_NEON) && defined(WITH_SSE2NEON)
+  /* If we're on SSE4 or ARM NEON, just use the simple floor() way. */
+  __m128 uvuv_floor = _mm_floor_ps(uvuv);
+#  else
+  /* The hard way: truncate, for negative inputs this will round towards zero.
+   * Then compare with input UV, and subtract 1 for the inputs that were
+   * negative. */
   __m128 uv_trunc = _mm_cvtepi32_ps(_mm_cvttps_epi32(uvuv));
   __m128 uv_neg = _mm_cmplt_ps(uvuv, uv_trunc);
   __m128 uvuv_floor = _mm_sub_ps(uv_trunc, _mm_and_ps(uv_neg, _mm_set1_ps(1.0f)));
+#  endif
 
   /* x1, y1, x2, y2 */
   __m128i xy12 = _mm_add_epi32(_mm_cvttps_epi32(uvuv_floor), _mm_set_epi32(1, 1, 0, 0));
