@@ -392,6 +392,86 @@ static void simd_to_rgba_uchar(__m128 rgba, uchar dst[4])
 void BLI_bilinear_interpolation_char(
     const uchar *buffer, uchar *output, int width, int height, float u, float v)
 {
+#if BLI_HAVE_SSE2
+  /* Bilinear interpolation needs to read and blend four image pixels, while
+   * also handling conditions of sample coordinate being outside of the
+   * image, in which case black (all zeroes) should be used as the sample
+   * contribution.
+   *
+   * Code below does all that without any branches, by making outside the
+   * image sample locations still read the first pixel of the image, but
+   * later making sure that the result is set to zero for that sample. */
+
+  __m128 uvuv = _mm_set_ps(v, u, v, u);
+  /* No easy way to do floor() without SSE4, so do it the hard way: truncate,
+   * for negative inputs this will round towards zero. Then compare with input
+   * UV, and subtract 1 for the inputs that were negative. */
+  __m128 uv_trunc = _mm_cvtepi32_ps(_mm_cvttps_epi32(uvuv));
+  __m128 uv_neg = _mm_cmplt_ps(uvuv, uv_trunc);
+  __m128 uvuv_floor = _mm_sub_ps(uv_trunc, _mm_and_ps(uv_neg, _mm_set1_ps(1.0f)));
+
+  /* x1, y1, x2, y2 */
+  __m128i xy12 = _mm_add_epi32(_mm_cvttps_epi32(uvuv_floor), _mm_set_epi32(1, 1, 0, 0));
+  /* Check whether any of the coordinates are outside of the image. */
+  __m128i size_minus_1 = _mm_sub_epi32(_mm_set_epi32(height, width, height, width),
+                                       _mm_set1_epi32(1));
+  __m128i too_lo_xy12 = _mm_cmplt_epi32(xy12, _mm_setzero_si128());
+  __m128i too_hi_xy12 = _mm_cmplt_epi32(size_minus_1, xy12);
+  __m128i invalid_xy12 = _mm_or_si128(too_lo_xy12, too_hi_xy12);
+
+  /* Samples 1,2,3,4 are in this order: x1y1, x1y2, x2y1, x2y2 */
+  __m128i x1234 = _mm_shuffle_epi32(xy12, _MM_SHUFFLE(2, 2, 0, 0));
+  __m128i y1234 = _mm_shuffle_epi32(xy12, _MM_SHUFFLE(3, 1, 3, 1));
+  __m128i invalid_1234 = _mm_or_si128(_mm_shuffle_epi32(invalid_xy12, _MM_SHUFFLE(2, 2, 0, 0)),
+                                      _mm_shuffle_epi32(invalid_xy12, _MM_SHUFFLE(3, 1, 3, 1)));
+  /* Set x & y to zero for invalid samples. */
+  x1234 = _mm_andnot_si128(invalid_1234, x1234);
+  y1234 = _mm_andnot_si128(invalid_1234, y1234);
+
+  /* Read the four sample values. Do address calculations in C, since SSE
+   * before 4.1 makes it very cumbersome to do full integer multiplies. */
+  int xcoord[4];
+  int ycoord[4];
+  _mm_storeu_ps((float *)xcoord, _mm_castsi128_ps(x1234));
+  _mm_storeu_ps((float *)ycoord, _mm_castsi128_ps(y1234));
+  int sample1 = ((const int *)buffer)[ycoord[0] * (size_t)width + xcoord[0]];
+  int sample2 = ((const int *)buffer)[ycoord[1] * (size_t)width + xcoord[1]];
+  int sample3 = ((const int *)buffer)[ycoord[2] * (size_t)width + xcoord[2]];
+  int sample4 = ((const int *)buffer)[ycoord[3] * (size_t)width + xcoord[3]];
+  __m128i samples1234 = _mm_set_epi32(sample4, sample3, sample2, sample1);
+  /* Set samples to black for the ones that were actually invalid. */
+  samples1234 = _mm_andnot_si128(invalid_1234, samples1234);
+
+  /* Expand samples from packed 8-bit RGBA to full floats:
+   * spread to 16 bit values. */
+  __m128i rgba16_12 = _mm_unpacklo_epi8(samples1234, _mm_setzero_si128());
+  __m128i rgba16_34 = _mm_unpackhi_epi8(samples1234, _mm_setzero_si128());
+  /* Spread to 32 bit values and convert to float. */
+  __m128 rgba1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(rgba16_12, _mm_setzero_si128()));
+  __m128 rgba2 = _mm_cvtepi32_ps(_mm_unpackhi_epi16(rgba16_12, _mm_setzero_si128()));
+  __m128 rgba3 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(rgba16_34, _mm_setzero_si128()));
+  __m128 rgba4 = _mm_cvtepi32_ps(_mm_unpackhi_epi16(rgba16_34, _mm_setzero_si128()));
+
+  /* Calculate interpolation factors: (1-a)*(1-b), (1-a)*b, a*(1-b), a*b */
+  __m128 abab = _mm_sub_ps(uvuv, uvuv_floor);
+  __m128 m_abab = _mm_sub_ps(_mm_set1_ps(1.0f), abab);
+  __m128 ab_mab = _mm_shuffle_ps(abab, m_abab, _MM_SHUFFLE(3, 2, 1, 0));
+  __m128 factors = _mm_mul_ps(_mm_shuffle_ps(ab_mab, ab_mab, _MM_SHUFFLE(0, 0, 2, 2)),
+                              _mm_shuffle_ps(ab_mab, ab_mab, _MM_SHUFFLE(1, 3, 1, 3)));
+
+  /* Blend the samples. */
+  rgba1 = _mm_mul_ps(_mm_shuffle_ps(factors, factors, _MM_SHUFFLE(0, 0, 0, 0)), rgba1);
+  rgba2 = _mm_mul_ps(_mm_shuffle_ps(factors, factors, _MM_SHUFFLE(1, 1, 1, 1)), rgba2);
+  rgba3 = _mm_mul_ps(_mm_shuffle_ps(factors, factors, _MM_SHUFFLE(2, 2, 2, 2)), rgba3);
+  rgba4 = _mm_mul_ps(_mm_shuffle_ps(factors, factors, _MM_SHUFFLE(3, 3, 3, 3)), rgba4);
+  __m128 rgba13 = _mm_add_ps(rgba1, rgba3);
+  __m128 rgba24 = _mm_add_ps(rgba2, rgba4);
+  __m128 rgba = _mm_add_ps(rgba13, rgba24);
+  rgba = _mm_add_ps(rgba, _mm_set1_ps(0.5f));
+  /* Pack and write to destination. */
+  simd_to_rgba_uchar(rgba, output);
+#else
+
   float a, b;
   float a_b, ma_b, a_mb, ma_mb;
   int y1, y2, x1, x2;
@@ -454,21 +534,6 @@ void BLI_bilinear_interpolation_char(
   a_mb = a * (1.0f - b);
   ma_mb = (1.0f - a) * (1.0f - b);
 
-#if BLI_HAVE_SSE2
-  __m128 rgba1 = rgba_uchar_to_simd(row1);
-  __m128 rgba2 = rgba_uchar_to_simd(row2);
-  __m128 rgba3 = rgba_uchar_to_simd(row3);
-  __m128 rgba4 = rgba_uchar_to_simd(row4);
-  rgba1 = _mm_mul_ps(_mm_set1_ps(ma_mb), rgba1);
-  rgba2 = _mm_mul_ps(_mm_set1_ps(ma_b), rgba2);
-  rgba3 = _mm_mul_ps(_mm_set1_ps(a_mb), rgba3);
-  rgba4 = _mm_mul_ps(_mm_set1_ps(a_b), rgba4);
-  __m128 rgba13 = _mm_add_ps(rgba1, rgba3);
-  __m128 rgba24 = _mm_add_ps(rgba2, rgba4);
-  __m128 rgba = _mm_add_ps(rgba13, rgba24);
-  rgba = _mm_add_ps(rgba, _mm_set1_ps(0.5f));
-  simd_to_rgba_uchar(rgba, output);
-#else
   output[0] = (uchar)(ma_mb * row1[0] + a_mb * row3[0] + ma_b * row2[0] + a_b * row4[0] + 0.5f);
   output[1] = (uchar)(ma_mb * row1[1] + a_mb * row3[1] + ma_b * row2[1] + a_b * row4[1] + 0.5f);
   output[2] = (uchar)(ma_mb * row1[2] + a_mb * row3[2] + ma_b * row2[2] + a_b * row4[2] + 0.5f);
