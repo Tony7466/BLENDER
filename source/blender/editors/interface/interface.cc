@@ -35,11 +35,11 @@
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
 #include "BKE_idprop.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "ED_asset.hh"
 
@@ -4355,12 +4355,24 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
     }
     if (item->name && item->name[0]) {
       float item_width = BLF_width(BLF_default(), item->name, BLF_DRAW_STR_DUMMY_MAX);
-      col_width = MAX2(col_width, item_width + (120.0f * UI_SCALE_FAC));
+      col_width = std::max(col_width, item_width + (100.0f * UI_SCALE_FAC));
     }
-    rows = MAX2(rows, col_rows);
+    rows = std::max(rows, col_rows);
   }
   text_width += col_width;
   text_width /= but->block->aspect;
+
+  /* Wrap long single-column lists. */
+  if (categories == 0) {
+    columns = std::max((totitems + 20) / 20, 1);
+    if (columns > 8) {
+      columns = (totitems + 25) / 25;
+    }
+    rows = std::max(totitems / columns, 1);
+    while (rows * columns < totitems) {
+      rows++;
+    }
+  }
 
   /* If the estimated width is greater than available size, collapse to one column. */
   if (columns > 1 && text_width > win->sizex) {
@@ -4374,7 +4386,7 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
   const bool prior_label = but->prev && but->prev->type == UI_BTYPE_LABEL && but->prev->str[0] &&
                            but->prev->alignnr == but->alignnr;
 
-  if (title[0] && (categories == 0) && (!but->str[0] || !prior_label)) {
+  if (title && title[0] && (categories == 0) && (!but->str[0] || !prior_label)) {
     /* Show title when no categories and calling button has no text or prior label. */
     uiDefBut(block,
              UI_BTYPE_LABEL,
@@ -4434,7 +4446,7 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
         if (item->icon) {
           uiItemL(column, item->name, item->icon);
         }
-        else {
+        else if (item->name) {
           /* Do not use uiItemL here, as our root layout is a menu one,
            * it will add a fake blank icon! */
           uiDefBut(block,
