@@ -6,6 +6,7 @@
  * \ingroup draw
  */
 
+#include "BLI_math_matrix.hh"
 #define DEBUG_TIME
 
 #ifdef DEBUG_TIME
@@ -245,17 +246,16 @@ void DRW_text_viewer_attribute(Object &object)
   const VArray viewer_attributes = *attributes.lookup<float3>(".viewer");
   const VArray position_attributes = *attributes.lookup<float3>("position");
 
-  float pos[3];
-  float val[3];
+  float4x4 object_to_world = float4x4(object.object_to_world);
 
-  int i;
-  for (i = 0; i < me->totvert; i++) {
-    copy_v3_v3(pos, position_attributes[i]);
-    copy_v3_v3(val, viewer_attributes[i]);
+  for (int i = 0; i < me->totvert; i++) {
 
-    mul_m4_v3(object.object_to_world, pos);
+    float3 pos = position_attributes[i];
+    float3 val = viewer_attributes[i];
 
-    numstr_len = SNPRINTF_RLEN(numstr, "%0.2f", val[0]);
+    pos = math::transform_point(object_to_world, pos);
+
+    numstr_len = SNPRINTF_RLEN(numstr, "%g", val[0]);
     DRW_text_cache_add(dt, pos, numstr, numstr_len, 0, 0, txt_flag, col);
   }
 }

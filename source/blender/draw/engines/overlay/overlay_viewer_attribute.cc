@@ -117,8 +117,6 @@ static void populate_cache_for_geometry(Object &object,
         GPUBatch *batch = DRW_cache_mesh_surface_viewer_attribute_get(&object);
         DRW_shgroup_uniform_float_copy(pd.viewer_attribute_mesh_grp, "opacity", opacity);
         DRW_shgroup_call(pd.viewer_attribute_mesh_grp, batch, &object);
-
-        DRW_text_viewer_attribute(object);
       }
       break;
     }

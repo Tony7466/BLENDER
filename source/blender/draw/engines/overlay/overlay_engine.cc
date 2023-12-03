@@ -8,6 +8,7 @@
  * Engine for drawing a selection map where the pixels indicate the selection indices.
  */
 
+#include "DNA_view3d_types.h"
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
@@ -26,6 +27,7 @@
 #include "DNA_space_types.h"
 
 #include "draw_manager.hh"
+#include "draw_manager_text.h"
 #include "overlay_next_instance.hh"
 
 #include "overlay_engine.h"
@@ -401,6 +403,11 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   if (pd->overlay.flag & V3D_OVERLAY_VIEWER_ATTRIBUTE) {
     if (is_preview) {
       OVERLAY_viewer_attribute_cache_populate(data, ob);
+
+      if (V3D_OVERLAY_VIEWER_ATTRIBUTE_TEXT) {
+        DRW_text_viewer_attribute(*ob);
+        // overlay viewer add to cache (maybe though cache manager)
+      }
     }
   }
 

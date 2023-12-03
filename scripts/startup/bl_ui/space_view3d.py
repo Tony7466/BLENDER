@@ -6971,6 +6971,10 @@ class VIEW3D_PT_overlay_geometry(Panel):
         subrow.prop(overlay, "viewer_attribute_opacity", text="Viewer Node")
 
         row = col.row(align=True)
+        row.active = view.show_viewer
+        row.prop(overlay, "show_viewer_text", text="Viewer node text")
+
+        row = col.row(align=True)
 
         # These properties should be always available in the UI for all modes
         # other than Object.
