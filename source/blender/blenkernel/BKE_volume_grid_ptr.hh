@@ -34,12 +34,9 @@ struct VolumeGridPtrCommon : ImplicitSharingPtr<VolumeGrid> {
 
   VolumeGridPtrCommon() = default;
   VolumeGridPtrCommon(const VolumeGridPtrCommon &other) = default;
-  explicit VolumeGridPtrCommon(const ImplicitSharingPtr<VolumeGrid> &other)
-      : ImplicitSharingPtr(other)
-  {
-  }
   /* Enable implicit conversion from nullptr. */
   VolumeGridPtrCommon(std::nullptr_t) : ImplicitSharingPtr<VolumeGrid>(nullptr) {}
+  using ImplicitSharingPtr<VolumeGrid>::ImplicitSharingPtr;
   virtual ~VolumeGridPtrCommon();
 };
 
@@ -160,6 +157,7 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
   using GridPtr = std::shared_ptr<GridType>;
   using GridConstPtr = std::shared_ptr<const GridType>;
 
+  VolumeGridPtr(const GVolumeGridPtr &other) : VolumeGridPtrCommon(other.get()) {}
   using VolumeGridPtrCommon::VolumeGridPtrCommon;
 
   GridConstPtr grid() const

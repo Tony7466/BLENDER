@@ -61,12 +61,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   const bool remove_grid = params.extract_input<bool>("Remove");
 
   if (Volume *volume = geometry_set.get_volume_for_write()) {
-    if (GVolumeGridPtr grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
-      grids::set_output_grid(params, "Grid", data_type, grid);
+    if (VolumeGrid *grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
+      /* Increment user count, pointer does not own the data. */
+      grid->add_user();
+      bke::GVolumeGridPtr grid_ptr = bke::GVolumeGridPtr(grid);
+      grids::set_output_grid(params, "Grid", data_type, grid_ptr);
       params.set_output("Volume", geometry_set);
 
       if (remove_grid) {
-        BKE_volume_grid_remove(volume, grid.get());
+        BKE_volume_grid_remove(volume, grid);
       }
       return;
     }

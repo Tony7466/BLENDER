@@ -287,7 +287,7 @@ static void displace_volume(ModifierData *md, const ModifierEvalContext *ctx, Vo
   const int grid_amount = BKE_volume_num_grids(volume);
   for (int grid_index = 0; grid_index < grid_amount; grid_index++) {
     VolumeGrid *volume_grid = const_cast<VolumeGrid *>(
-        BKE_volume_grid_get_for_write(volume, grid_index).get());
+        BKE_volume_grid_get_for_write(volume, grid_index));
     BLI_assert(volume_grid);
 
     openvdb::GridBase::Ptr grid = BKE_volume_grid_openvdb_for_write(volume, volume_grid, false);

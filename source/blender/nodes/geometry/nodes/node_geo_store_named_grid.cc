@@ -71,9 +71,9 @@ static void node_geo_exec(GeoNodeExecParams params)
       return;
     }
 
-    if (bke::GVolumeGridPtr existing_grid = BKE_volume_grid_find_for_write(volume,
+    if (bke::VolumeGrid *existing_grid = BKE_volume_grid_find_for_write(volume,
                                                                            grid_name.data())) {
-      BKE_volume_grid_remove(volume, existing_grid.get());
+      BKE_volume_grid_remove(volume, existing_grid);
     }
 
     BKE_volume_grid_add_vdb(*volume, grid_name, const_cast<VolumeGrid &>(*grid).grid_for_write());

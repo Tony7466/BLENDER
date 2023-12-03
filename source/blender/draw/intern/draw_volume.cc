@@ -137,9 +137,9 @@ static DRWShadingGroup *drw_volume_object_grids_init(Object *ob,
   /* Bind volume grid textures. */
   int grid_id = 0, grids_len = 0;
   LISTBASE_FOREACH (GPUMaterialAttribute *, attr, attrs) {
-    const GVolumeGridPtr volume_grid = BKE_volume_grid_find_for_read(volume, attr->name);
+    const VolumeGrid *volume_grid = BKE_volume_grid_find_for_read(volume, attr->name);
     const DRWVolumeGrid *drw_grid = (volume_grid) ? DRW_volume_batch_cache_get_grid(
-                                                        volume, volume_grid.get()) :
+                                                        volume, volume_grid) :
                                                     nullptr;
     /* Count number of valid attributes. */
     grids_len += int(volume_grid != nullptr);
@@ -328,9 +328,9 @@ PassType *volume_object_grids_init(PassType &ps,
   /* Bind volume grid textures. */
   int grid_id = 0;
   for (const GPUMaterialAttribute *attr : attrs) {
-    const GVolumeGridPtr volume_grid = BKE_volume_grid_find_for_read(volume, attr->name);
+    const VolumeGrid *volume_grid = BKE_volume_grid_find_for_read(volume, attr->name);
     const DRWVolumeGrid *drw_grid = (volume_grid) ? DRW_volume_batch_cache_get_grid(
-                                                        volume, volume_grid.get()) :
+                                                        volume, volume_grid) :
                                                     nullptr;
     /* Handle 3 cases here:
      * - Grid exists and texture was loaded -> use texture.

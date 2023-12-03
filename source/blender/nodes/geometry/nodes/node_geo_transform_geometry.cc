@@ -157,20 +157,19 @@ static void transform_volume(GeoNodeExecParams &params,
   bool found_too_small_scale = false;
   const int grids_num = BKE_volume_num_grids(&volume);
   for (const int i : IndexRange(grids_num)) {
-    GVolumeGridPtr volume_grid = BKE_volume_grid_get_for_write(&volume, i);
+    VolumeGrid *volume_grid = BKE_volume_grid_get_for_write(&volume, i);
     if (!volume_grid->is_mutable()) {
       continue;
     }
-    blender::bke::VolumeGrid *data = const_cast<blender::bke::VolumeGrid *>(&*volume_grid);
 
     float4x4 grid_matrix;
-    BKE_volume_grid_transform_matrix(data, grid_matrix.ptr());
+    BKE_volume_grid_transform_matrix(volume_grid, grid_matrix.ptr());
     grid_matrix = transform * grid_matrix;
     const float determinant = math::determinant(grid_matrix);
     if (!BKE_volume_grid_determinant_valid(determinant)) {
       found_too_small_scale = true;
       /* Clear the tree because it is too small. */
-      BKE_volume_grid_clear_tree(volume, *data);
+      BKE_volume_grid_clear_tree(volume, *volume_grid);
       if (determinant == 0) {
         /* Reset rotation and scale. */
         grid_matrix.x_axis() = float3(1, 0, 0);
@@ -184,7 +183,7 @@ static void transform_volume(GeoNodeExecParams &params,
         grid_matrix.z_axis() = math::normalize(grid_matrix.z_axis());
       }
     }
-    BKE_volume_grid_transform_matrix_set(&volume, data, grid_matrix.ptr());
+    BKE_volume_grid_transform_matrix_set(&volume, volume_grid, grid_matrix.ptr());
   }
   if (found_too_small_scale) {
     params.error_message_add(NodeWarningType::Warning,

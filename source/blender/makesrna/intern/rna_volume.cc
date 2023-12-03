@@ -63,7 +63,6 @@ struct DummyVolumeGrid;
 #  include "WM_types.hh"
 
 using VolumeGrid = blender::bke::VolumeGrid;
-using GVolumeGridPtr = blender::bke::GVolumeGridPtr;
 
 static char *rna_VolumeRender_path(const PointerRNA * /*ptr*/)
 {
@@ -179,8 +178,8 @@ static void rna_Volume_grids_end(CollectionPropertyIterator * /*iter*/) {}
 static PointerRNA rna_Volume_grids_get(CollectionPropertyIterator *iter)
 {
   Volume *volume = static_cast<Volume *>(iter->internal.count.ptr);
-  const GVolumeGridPtr grid = BKE_volume_grid_get_for_read(volume, iter->internal.count.item);
-  return rna_pointer_inherit_refine(&iter->parent, &RNA_VolumeGrid, (void *)grid.get());
+  const VolumeGrid *grid = BKE_volume_grid_get_for_read(volume, iter->internal.count.item);
+  return rna_pointer_inherit_refine(&iter->parent, &RNA_VolumeGrid, (void *)grid);
 }
 
 static int rna_Volume_grids_length(PointerRNA *ptr)
