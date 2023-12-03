@@ -215,7 +215,7 @@ template<typename T> VolumeGridPtr<T> make_empty_grid(const T background_value)
   else {
     grid = GridType::create(grids::AttributeConverter<T>::convert(background_value));
   }
-  return VolumeGridPtr<T>(grid);
+  return VolumeGridPtr<T>(make_implicit_shared<VolumeGrid>(grid));
 #else
   return nullptr;
 #endif /* WITH_OPENVDB */
