@@ -240,22 +240,22 @@ void DRW_text_viewer_attribute(Object &object)
 
   UI_GetThemeColor4ubv(TH_DRAWEXTRA_FACEANG, col);
 
-  Mesh *me = static_cast<Mesh *>(object.data);
+  const Mesh *mesh = static_cast<Mesh *>(object.data);
 
-  const AttributeAccessor attributes = me->attributes();
-  const VArray viewer_attributes = *attributes.lookup<float3>(".viewer");
-  const VArray position_attributes = *attributes.lookup<float3>("position");
+  const AttributeAccessor attributes = mesh->attributes();
+  const VArray viewer_attributes = *attributes.lookup<float>(".viewer");
+  const Span<float3> positions = mesh->vert_positions();
 
-  float4x4 object_to_world = float4x4(object.object_to_world);
+  const float4x4 object_to_world = float4x4(object.object_to_world);
 
-  for (int i = 0; i < me->totvert; i++) {
+  for (const int i : positions.index_range()) {
 
-    float3 pos = position_attributes[i];
-    float3 val = viewer_attributes[i];
+    float3 pos = positions[i];
+    float val = viewer_attributes[i];
 
     pos = math::transform_point(object_to_world, pos);
 
-    numstr_len = SNPRINTF_RLEN(numstr, "%g", val[0]);
+    numstr_len = SNPRINTF_RLEN(numstr, "%g", val);
     DRW_text_cache_add(dt, pos, numstr, numstr_len, 0, 0, txt_flag, col);
   }
 }
