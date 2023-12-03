@@ -1748,7 +1748,10 @@ static void rigidbody_update_sim_world(Scene *scene, RigidBodyWorld *rbw)
   rigidbody_update_ob_array(rbw);
 }
 
-static void rigidbody_update_sim_ob(Depsgraph *depsgraph, Object *ob, RigidBodyOb *rbo)
+static void rigidbody_update_sim_ob(Depsgraph *depsgraph,
+                                    Object *ob,
+                                    RigidBodyOb *rbo,
+                                    bool rescale)
 {
   /* only update if rigid body exists */
   if (rbo->shared->physics_object == nullptr) {
@@ -1778,7 +1781,7 @@ static void rigidbody_update_sim_ob(Depsgraph *depsgraph, Object *ob, RigidBodyO
     }
   }
 
-  if (!(rbo->flag & RBO_FLAG_KINEMATIC)) {
+  if (rescale || !(rbo->flag & RBO_FLAG_KINEMATIC)) {
     /* update scale for all non kinematic objects */
     float new_scale[3], old_scale[3];
     mat4_to_size(new_scale, ob->object_to_world);
@@ -1852,7 +1855,7 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph,
     if (ob->type == OB_MESH) {
       /* validate that we've got valid object set up here... */
       RigidBodyOb *rbo = ob->rigidbody_object;
-
+      bool rescale = true;
       /* TODO: remove this whole block once we are sure we never get nullptr rbo here anymore. */
       /* This cannot be done in CoW evaluation context anymore... */
       if (rbo == nullptr) {
@@ -1882,6 +1885,9 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph,
         else if (rbo->flag & RBO_FLAG_NEEDS_VALIDATE) {
           rigidbody_validate_sim_object(rbw, ob, false);
         }
+        else {
+          rescale = false;
+        }
         /* refresh shape... */
         if (rbo->flag & RBO_FLAG_NEEDS_RESHAPE) {
           /* mesh/shape data changed, so force shape refresh */
@@ -1899,7 +1905,7 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph,
       rbo->flag &= ~(RBO_FLAG_NEEDS_VALIDATE | RBO_FLAG_NEEDS_RESHAPE);
 
       /* update simulation object... */
-      rigidbody_update_sim_ob(depsgraph, ob, rbo);
+      rigidbody_update_sim_ob(depsgraph, ob, rbo, rescale);
     }
   }
   FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
