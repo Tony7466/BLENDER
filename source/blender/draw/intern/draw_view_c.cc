@@ -13,6 +13,7 @@
 #include "DNA_userdef_types.h"
 #include "DNA_view3d_types.h"
 
+#include "ED_gpencil_legacy.hh"
 #include "ED_screen.hh"
 #include "ED_util.hh"
 #include "ED_view3d.hh"
@@ -66,8 +67,15 @@ static bool is_cursor_visible(const DRWContextState *draw_ctx, Scene *scene, Vie
 
   /* don't draw cursor in paint modes, but with a few exceptions */
   if ((draw_ctx->object_mode & (OB_MODE_ALL_PAINT | OB_MODE_SCULPT_CURVES)) != 0) {
+    /* exception: object is in sculpt mode and there is some annotation */
+    if ((draw_ctx->object_mode & OB_MODE_SCULPT) != 0) {
+      const bGPdata *gpd = ED_annotation_data_get_active(draw_ctx->evil_C);
+      if (gpd) {
+        return true;
+      }
+    }
     /* exception: object is in weight paint and has deforming armature in pose mode */
-    if (draw_ctx->object_mode & OB_MODE_WEIGHT_PAINT) {
+    else if (draw_ctx->object_mode & OB_MODE_WEIGHT_PAINT) {
       if (BKE_object_pose_armature_get(draw_ctx->obact) != nullptr) {
         return true;
       }

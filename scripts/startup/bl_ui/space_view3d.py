@@ -6874,6 +6874,15 @@ class VIEW3D_PT_overlay_guides(Panel):
     bl_parent_id = "VIEW3D_PT_overlay"
     bl_label = "Guides"
 
+    @staticmethod
+    def _cursor_is_active(context):
+        mode = context.mode
+        if "PAINT" in mode:
+            return False
+        elif mode == "SCULPT":
+            return context.active_annotation_layer is not None
+        return True
+
     def draw(self, context):
         layout = self.layout
 
@@ -6926,7 +6935,10 @@ class VIEW3D_PT_overlay_guides(Panel):
         sub.prop(overlay, "show_stats", text="Statistics")
 
         sub = split.column()
-        sub.prop(overlay, "show_cursor", text="3D Cursor")
+        subrow = sub.row()
+        subrow.prop(overlay, "show_cursor", text="3D Cursor")
+        subrow.active = VIEW3D_PT_overlay_guides._cursor_is_active(context)
+
         sub.prop(overlay, "show_annotation", text="Annotations")
 
         if shading.type == 'MATERIAL':
