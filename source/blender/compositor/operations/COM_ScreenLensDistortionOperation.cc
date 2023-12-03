@@ -481,11 +481,24 @@ void ScreenLensDistortionOperation::get_area_of_interest(const int input_idx,
 #endif
 }
 
+void ScreenLensDistortionOperation::update_memory_buffer_started(MemoryBuffer *output,
+                                                                 const rcti & /* area */,
+                                                                 Span<MemoryBuffer *> inputs)
+{
+  const MemoryBuffer *input_image = inputs[0];
+  if (input_image->is_a_single_elem()) {
+    copy_v4_v4(output->get_elem(0, 0), input_image->get_elem(0, 0));
+  }
+}
+
 void ScreenLensDistortionOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                                  const rcti &area,
                                                                  Span<MemoryBuffer *> inputs)
 {
   const MemoryBuffer *input_image = inputs[0];
+  if (input_image->is_a_single_elem()) {
+    return;
+  }
   for (BuffersIterator<float> it = output->iterate_with({}, area); !it.is_end(); ++it) {
     float xy[2] = {float(it.x), float(it.y)};
     float uv[2];
