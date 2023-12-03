@@ -72,7 +72,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
   }
 
-  params.set_default_remaining_outputs();
+  grids::set_output_grid(params, "Grid", data_type, nullptr);
+  params.set_output("Volume", geometry_set);
 #else
   params.set_default_remaining_outputs();
   params.error_message_add(NodeWarningType::Error,
