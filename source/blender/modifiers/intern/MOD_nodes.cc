@@ -1268,7 +1268,8 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
           auto frame_cache = std::make_unique<bake::FrameCache>();
           frame_cache->frame = current_frame;
           frame_cache->state = std::move(state);
-          /* TODO: Make sure the vector is sorted. */
+          BLI_assert(node_cache->bake.frames.is_empty() ||
+                     node_cache->bake.frames.last()->frame < current_frame);
           node_cache->bake.frames.append(std::move(frame_cache));
         };
         return;
