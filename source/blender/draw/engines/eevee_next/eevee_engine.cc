@@ -92,7 +92,6 @@ static void eevee_engine_init(void *vedata)
       visible_rect.xmin = visible_rect.ymin = 0;
     }
     else {
-      const DRWContextState *draw_ctx = DRW_context_state_get();
       visible_rect = *ED_region_visible_rect(region);
     }
   }
