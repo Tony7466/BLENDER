@@ -143,7 +143,6 @@ struct VolumeGrid : public ImplicitSharingMixin {
   VolumeGrid(const char *template_file_path,
              const GridBasePtr &template_grid,
              int simplify_level = 0);
-  VolumeGrid(const VolumeGrid &other);
   ~VolumeGrid();
 
   const char *name() const;

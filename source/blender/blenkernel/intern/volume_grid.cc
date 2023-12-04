@@ -233,17 +233,6 @@ VolumeGrid::VolumeGrid(const char *template_file_path,
   BLI_assert(entry_->grid);
 }
 
-VolumeGrid::VolumeGrid(const VolumeGrid &other)
-    : local_grid_(nullptr),
-      entry_(other.entry_),
-      simplify_level_(other.simplify_level_),
-      is_loaded_(other.is_loaded_)
-{
-  if (entry_) {
-    GLOBAL_CACHE.copy_user(*entry_, is_loaded_);
-  }
-}
-
 VolumeGrid::~VolumeGrid()
 {
   if (entry_) {
