@@ -393,9 +393,9 @@ static int start_bake_job(bContext *C, Vector<ObjectBakeData> objects_to_bake, w
   return OPERATOR_RUNNING_MODAL;
 }
 
-static Vector<ObjectBakeData> collect_nodes_to_bake(Main &bmain,
-                                                    Scene &scene,
-                                                    const Span<Object *> objects)
+static Vector<ObjectBakeData> collect_simulations_to_bake(Main &bmain,
+                                                          Scene &scene,
+                                                          const Span<Object *> objects)
 {
   Vector<ObjectBakeData> objects_to_bake;
   for (Object *object : objects) {
@@ -424,16 +424,20 @@ static Vector<ObjectBakeData> collect_nodes_to_bake(Main &bmain,
       }
 
       for (const bNestedNodeRef &nested_node_ref : nmd->node_group->nested_node_refs_span()) {
+        const int id = nested_node_ref.id;
+        const bNode *node = nmd->node_group->find_nested_node(id);
+        if (node->type != GEO_NODE_SIMULATION_OUTPUT) {
+          continue;
+        }
         NodeBakeData node_bake_data;
-        node_bake_data.id = nested_node_ref.id;
+        node_bake_data.id = id;
         node_bake_data.blob_sharing = std::make_unique<bake::BlobSharing>();
-        std::optional<bake::BakePath> path = bake::get_node_bake_path(
-            bmain, *object, *nmd, nested_node_ref.id);
+        std::optional<bake::BakePath> path = bake::get_node_bake_path(bmain, *object, *nmd, id);
         if (!path) {
           continue;
         }
         std::optional<IndexRange> frame_range = bake::get_node_bake_frame_range(
-            scene, *object, *nmd, nested_node_ref.id);
+            scene, *object, *nmd, id);
         if (!frame_range) {
           continue;
         }
@@ -474,7 +478,7 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
     }
   }
 
-  Vector<ObjectBakeData> objects_to_bake = collect_nodes_to_bake(*bmain, *scene, objects);
+  Vector<ObjectBakeData> objects_to_bake = collect_simulations_to_bake(*bmain, *scene, objects);
   return start_bake_job(C, std::move(objects_to_bake), op);
 }
 
