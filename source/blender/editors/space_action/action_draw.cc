@@ -879,7 +879,7 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
       if (!nmd->runtime->cache) {
         continue;
       }
-      if ((nmd->node_group->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE) == 0) {
+      if (nmd->node_group->nested_node_refs_num == 0) {
         continue;
       }
       const blender::bke::bake::ModifierCache &modifier_cache = *nmd->runtime->cache;
