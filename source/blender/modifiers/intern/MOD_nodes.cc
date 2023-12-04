@@ -775,6 +775,27 @@ static BakeFrameIndices get_bake_frame_indices(
   return frame_indices;
 }
 
+void ensure_bake_loaded(bake::NodeBakeCache &bake_cache, bake::FrameCache &frame_cache)
+{
+  if (!frame_cache.state.items_by_id.is_empty()) {
+    return;
+  }
+  if (!bake_cache.blobs_dir) {
+    return;
+  }
+  if (!frame_cache.meta_path) {
+    return;
+  }
+  bke::bake::DiskBlobReader blob_reader{*bake_cache.blobs_dir};
+  fstream meta_file{*frame_cache.meta_path};
+  std::optional<bke::bake::BakeState> bake_state = bke::bake::deserialize_bake(
+      meta_file, blob_reader, *bake_cache.blob_sharing);
+  if (!bake_state.has_value()) {
+    return;
+  }
+  frame_cache.state = std::move(*bake_state);
+}
+
 class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
  private:
   static constexpr float max_delta_frames = 1.0f;
@@ -1083,7 +1104,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
                    nodes::SimulationZoneBehavior &zone_behavior) const
   {
     bake::FrameCache &frame_cache = *node_cache.bake.frames[frame_index];
-    this->ensure_bake_loaded(node_cache, frame_cache);
+    ensure_bake_loaded(node_cache.bake, frame_cache);
     auto &read_single_info = zone_behavior.output.emplace<sim_output::ReadSingle>();
     read_single_info.state = frame_cache.state;
   }
@@ -1095,36 +1116,14 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   {
     bake::FrameCache &prev_frame_cache = *node_cache.bake.frames[prev_frame_index];
     bake::FrameCache &next_frame_cache = *node_cache.bake.frames[next_frame_index];
-    this->ensure_bake_loaded(node_cache, prev_frame_cache);
-    this->ensure_bake_loaded(node_cache, next_frame_cache);
+    ensure_bake_loaded(node_cache.bake, prev_frame_cache);
+    ensure_bake_loaded(node_cache.bake, next_frame_cache);
     auto &read_interpolated_info = zone_behavior.output.emplace<sim_output::ReadInterpolated>();
     read_interpolated_info.mix_factor = (float(current_frame_) - float(prev_frame_cache.frame)) /
                                         (float(next_frame_cache.frame) -
                                          float(prev_frame_cache.frame));
     read_interpolated_info.prev_state = prev_frame_cache.state;
     read_interpolated_info.next_state = next_frame_cache.state;
-  }
-
-  void ensure_bake_loaded(bake::SimulationNodeCache &node_cache,
-                          bake::FrameCache &frame_cache) const
-  {
-    if (!frame_cache.state.items_by_id.is_empty()) {
-      return;
-    }
-    if (!node_cache.bake.blobs_dir) {
-      return;
-    }
-    if (!frame_cache.meta_path) {
-      return;
-    }
-    bke::bake::DiskBlobReader blob_reader{*node_cache.bake.blobs_dir};
-    fstream meta_file{*frame_cache.meta_path};
-    std::optional<bke::bake::BakeState> bake_state = bke::bake::deserialize_bake(
-        meta_file, blob_reader, *node_cache.bake.blob_sharing);
-    if (!bake_state.has_value()) {
-      return;
-    }
-    frame_cache.state = std::move(*bake_state);
   }
 };
 
@@ -1218,7 +1217,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
                    nodes::BakeNodeBehavior &behavior) const
   {
     bake::FrameCache &frame_cache = *node_cache.bake.frames[frame_index];
-    this->ensure_bake_loaded(node_cache, frame_cache);
+    ensure_bake_loaded(node_cache.bake, frame_cache);
     auto &read_single_info = behavior.emplace<sim_output::ReadSingle>();
     read_single_info.state = frame_cache.state;
   }
@@ -1230,19 +1229,14 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
   {
     bake::FrameCache &prev_frame_cache = *node_cache.bake.frames[prev_frame_index];
     bake::FrameCache &next_frame_cache = *node_cache.bake.frames[next_frame_index];
-    this->ensure_bake_loaded(node_cache, prev_frame_cache);
-    this->ensure_bake_loaded(node_cache, next_frame_cache);
+    ensure_bake_loaded(node_cache.bake, prev_frame_cache);
+    ensure_bake_loaded(node_cache.bake, next_frame_cache);
     auto &read_interpolated_info = behavior.emplace<sim_output::ReadInterpolated>();
     read_interpolated_info.mix_factor = (float(current_frame_) - float(prev_frame_cache.frame)) /
                                         (float(next_frame_cache.frame) -
                                          float(prev_frame_cache.frame));
     read_interpolated_info.prev_state = prev_frame_cache.state;
     read_interpolated_info.next_state = next_frame_cache.state;
-  }
-
-  void ensure_bake_loaded(bake::BakeNodeCache &node_cache, bake::FrameCache &frame_cache) const
-  {
-    UNUSED_VARS(node_cache, frame_cache);
   }
 };
 
