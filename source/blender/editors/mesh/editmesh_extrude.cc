@@ -578,7 +578,7 @@ void MESH_OT_extrude_verts_indiv(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = edbm_extrude_verts_exec;
-  ot->poll = ED_operator_editmesh;
+  ot->poll = ED_operator_editmesh_extrude_vertices;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -631,7 +631,7 @@ void MESH_OT_extrude_edges_indiv(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = edbm_extrude_edges_exec;
-  ot->poll = ED_operator_editmesh;
+  ot->poll = ED_operator_editmesh_extrude_edges;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -684,7 +684,7 @@ void MESH_OT_extrude_faces_indiv(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = edbm_extrude_faces_exec;
-  ot->poll = ED_operator_editmesh;
+  ot->poll = ED_operator_editmesh_extrude_faces;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

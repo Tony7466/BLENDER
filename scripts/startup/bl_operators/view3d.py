@@ -80,7 +80,8 @@ class VIEW3D_OT_edit_mesh_extrude_move(Operator):
     @classmethod
     def poll(cls, context):
         obj = context.active_object
-        return (obj is not None and obj.mode == 'EDIT')
+        mesh = context.object.data
+        return (obj is not None and obj.mode == 'EDIT' and mesh.total_face_sel>=1)
 
     @staticmethod
     def extrude_region(context, use_vert_normals, dissolve_and_intersect):
@@ -160,7 +161,8 @@ class VIEW3D_OT_edit_mesh_extrude_shrink_fatten(Operator):
     @classmethod
     def poll(cls, context):
         obj = context.active_object
-        return (obj is not None and obj.mode == 'EDIT')
+        mesh = context.object.data
+        return (obj is not None and obj.mode == 'EDIT' and mesh.total_face_sel>=1)
 
     def execute(self, context):
         return VIEW3D_OT_edit_mesh_extrude_move.extrude_region(context, True, False)
@@ -177,7 +179,8 @@ class VIEW3D_OT_edit_mesh_extrude_manifold_normal(Operator):
     @classmethod
     def poll(cls, context):
         obj = context.active_object
-        return (obj is not None and obj.mode == 'EDIT')
+        mesh = context.object.data
+        return (obj is not None and obj.mode == 'EDIT' and mesh.total_face_sel>=1)
 
     def execute(self, _context):
         bpy.ops.mesh.extrude_manifold(

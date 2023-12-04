@@ -467,6 +467,48 @@ bool ED_operator_editmesh(bContext *C)
   return false;
 }
 
+bool ED_operator_editmesh_extrude_vertices(bContext *C)
+{
+  Object *obedit = CTX_data_edit_object(C);
+  if (obedit && obedit->type == OB_MESH) {
+    BMEditMesh *mesh = BKE_editmesh_from_object(obedit);
+    if (mesh->bm->totvertsel == 0 && mesh->bm->selectmode != 0) {
+      CTX_wm_operator_poll_msg_set(C, "Object has no vertex selected");
+      return false;
+    }
+    return nullptr != BKE_editmesh_from_object(obedit);
+  }
+  return false;
+}
+
+bool ED_operator_editmesh_extrude_edges(bContext *C)
+{
+  Object *obedit = CTX_data_edit_object(C);
+  if (obedit && obedit->type == OB_MESH) {
+    BMEditMesh *mesh = BKE_editmesh_from_object(obedit);
+    if (mesh->bm->totedgesel == 0 && (mesh->bm->selectmode != 0 || mesh->bm->selectmode != 1)) {
+      CTX_wm_operator_poll_msg_set(C, "Object has no edge selected");
+      return false;
+    }
+    return nullptr != BKE_editmesh_from_object(obedit);
+  }
+  return false;
+}
+
+bool ED_operator_editmesh_extrude_faces(bContext *C)
+{
+  Object *obedit = CTX_data_edit_object(C);
+  if (obedit && obedit->type == OB_MESH) {
+    BMEditMesh *mesh = BKE_editmesh_from_object(obedit);
+    if (mesh->bm->totfacesel == 0) {
+      CTX_wm_operator_poll_msg_set(C, "Object has no face selected");
+      return false;
+    }
+    return nullptr != BKE_editmesh_from_object(obedit);
+  }
+  return false;
+}
+
 bool ED_operator_editmesh_view3d(bContext *C)
 {
   return ED_operator_editmesh(C) && ED_operator_view3d_active(C);
