@@ -58,6 +58,16 @@ struct NodeBakeCache {
   std::unique_ptr<BlobSharing> blob_sharing;
   /** Used to avoid checking if a bake exists many times. */
   bool failed_finding_bake = false;
+
+  IndexRange frame_range() const
+  {
+    if (this->frames.is_empty()) {
+      return {};
+    }
+    const int start_frame = this->frames.first()->frame.frame();
+    const int end_frame = this->frames.last()->frame.frame();
+    return {start_frame, end_frame - start_frame + 1};
+  }
 };
 
 struct SimulationNodeCache {
