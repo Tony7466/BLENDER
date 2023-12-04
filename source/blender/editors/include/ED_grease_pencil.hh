@@ -85,12 +85,12 @@ class DrawingPlacement {
   bool use_project_to_nearest_stroke() const;
 
   void cache_viewport_depths(Depsgraph *depsgraph, ARegion *region, View3D *view3d);
-  void set_origin_to_nearest_stroke(const float2 co);
+  void set_origin_to_nearest_stroke(float2 co);
 
   /**
    * Projects a screen space coordinate to the local drawing space.
    */
-  float3 project(const float2 co) const;
+  float3 project(float2 co) const;
   void project(Span<float2> src, MutableSpan<float3> dst) const;
 };
 
