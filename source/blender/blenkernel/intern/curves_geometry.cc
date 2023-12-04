@@ -828,6 +828,13 @@ static void evaluate_generic_data_for_curve(
   }
 }
 
+static void normalize_span(MutableSpan<float3> data)
+{
+  for (const int i : data.index_range()) {
+    data[i] = math::normalize(data[i]);
+  }
+}
+
 Span<float3> CurvesGeometry::evaluated_normals() const
 {
   const bke::CurvesGeometryRuntime &runtime = *this->runtime;
@@ -854,6 +861,17 @@ Span<float3> CurvesGeometry::evaluated_normals() const
 
     r_data.resize(this->evaluated_points_num());
     MutableSpan<float3> evaluated_normals = r_data;
+
+    if (const VArray<float3> custom_normals = *this->attributes().lookup<float3>(
+            "custom_normal", ATTR_DOMAIN_POINT))
+    {
+      const VArraySpan custom_normals_span(custom_normals);
+      this->interpolate_to_evaluated(custom_normals_span, evaluated_normals);
+      threading::parallel_for(r_data.index_range(), 1024, [&](const IndexRange range) {
+        normalize_span(evaluated_normals.slice(range));
+      });
+      return;
+    }
 
     threading::parallel_for(this->curves_range(), 128, [&](IndexRange curves_range) {
       /* Reuse a buffer for the evaluated tilts. */
