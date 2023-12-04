@@ -2,7 +2,7 @@
 
 void main()
 {
-  vec2 texture_size = vec2(textureSize(SPHERE_TEXTURE, 0));
+  vec2 texture_size = vec2(textureSize(metallic_tx, 0));
   vec2 texel_size = vec2(1.0) / texture_size;
 
   float distance_from_center = distance(uv_coord.xy, vec2(0.5));
@@ -15,7 +15,14 @@ void main()
   float factor = (distance_from_center - 0.5 + smooth_offset + smooth_size) * (1.0 / smooth_size);
   float alpha = clamp(1.0 - factor, 0.0, 1.0);
 
-  vec4 color = vec4(texture(SPHERE_TEXTURE, uv_coord.xy, 0).rgb, alpha);
+  vec4 color;
+  if (sphere_id == 0) {
+    color = texture(metallic_tx, uv_coord.xy, 0);
+  }
+  else {
+    color = texture(diffuse_tx, uv_coord.xy, 0);
+  }
+  color.a = alpha;
   out_color = color;
 
   /* Ensure balls are on top of overlays. */

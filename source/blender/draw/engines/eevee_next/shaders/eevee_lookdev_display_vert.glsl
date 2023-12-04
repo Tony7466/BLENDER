@@ -1,5 +1,3 @@
-#define SPHERE_TEXTURE (sphere_id == 0 ? metallic_tx : diffuse_tx)
-
 void main()
 {
   uint vert_index = gl_VertexID < 3 ? gl_VertexID : gl_VertexID - 2;
@@ -8,7 +6,7 @@ void main()
   uv_coord = uv;
   sphere_id = gpu_InstanceIndex;
 
-  vec2 sphere_size = vec2(textureSize(SPHERE_TEXTURE, 0)) * invertedViewportSize;
+  vec2 sphere_size = vec2(textureSize(metallic_tx, 0)) * invertedViewportSize;
   vec2 margin = vec2(0.125, -0.125) * sphere_size;
   vec2 anchor_point = vec2(1.0, -1.0) -
                       vec2(viewportSize.x - anchor.x, anchor.y) * invertedViewportSize *

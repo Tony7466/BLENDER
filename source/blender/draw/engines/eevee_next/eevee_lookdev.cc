@@ -267,6 +267,7 @@ void LookdevModule::draw(View &view)
     return;
   }
   for (Sphere &sphere : spheres_) {
+    sphere.framebuffer.bind();
     inst_.manager->submit(sphere.pass, view);
   }
 }
