@@ -653,11 +653,12 @@ static void try_delete_bake(
   }
   bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
   std::lock_guard lock{modifier_cache.mutex};
-  if (!modifier_cache.simulation_cache_by_id.contains(bake_id)) {
-    return;
+  if (auto *node_cache = modifier_cache.simulation_cache_by_id.lookup_ptr(bake_id)) {
+    (*node_cache)->reset();
   }
-  bake::SimulationNodeCache &node_cache = *modifier_cache.simulation_cache_by_id.lookup(bake_id);
-  node_cache.reset();
+  else if (auto *node_cache = modifier_cache.bake_cache_by_id.lookup_ptr(bake_id)) {
+    (*node_cache)->reset();
+  }
   const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
       *bmain, object, nmd, bake_id);
   if (!bake_path) {
