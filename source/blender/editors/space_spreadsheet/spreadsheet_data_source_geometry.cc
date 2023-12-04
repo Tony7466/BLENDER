@@ -505,8 +505,7 @@ std::unique_ptr<ColumnValues> VolumeDataSource::get_column_values(
     return std::make_unique<ColumnValues>(
         IFACE_("Class"), VArray<std::string>::ForFunc(size, [volume](int64_t index) {
           const VolumeGrid *volume_grid = BKE_volume_grid_get_for_read(volume, index);
-          openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume,
-                                                                              volume_grid);
+          openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
           openvdb::GridClass grid_class = grid->getGridClass();
           if (grid_class == openvdb::GridClass::GRID_FOG_VOLUME) {
             return IFACE_("Fog Volume");
