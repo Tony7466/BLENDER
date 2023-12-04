@@ -396,8 +396,6 @@ void VolumeGrid::delete_data_only()
   local_grid_.reset();
 }
 
-VolumeGridPtrCommon::~VolumeGridPtrCommon() {}
-
 GVolumeGridPtr::GridConstPtr GVolumeGridPtr::grid() const
 {
 #ifdef WITH_OPENVDB

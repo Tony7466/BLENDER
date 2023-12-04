@@ -27,17 +27,11 @@ template<typename T> struct VolumeGridPtr;
  * \{ */
 
 struct VolumeGridPtrCommon : ImplicitSharingPtr<VolumeGrid> {
-#ifdef WITH_OPENVDB
-  using GridPtr = std::shared_ptr<openvdb::GridBase>;
-  using GridConstPtr = std::shared_ptr<const openvdb::GridBase>;
-#endif
-
   VolumeGridPtrCommon() = default;
   VolumeGridPtrCommon(const VolumeGridPtrCommon &other) = default;
   /* Enable implicit conversion from nullptr. */
   VolumeGridPtrCommon(std::nullptr_t) : ImplicitSharingPtr<VolumeGrid>(nullptr) {}
   using ImplicitSharingPtr<VolumeGrid>::ImplicitSharingPtr;
-  virtual ~VolumeGridPtrCommon();
 };
 
 /** \} */
