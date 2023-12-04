@@ -233,11 +233,27 @@ VolumeGrid::VolumeGrid(const char *template_file_path,
   BLI_assert(entry_->grid);
 }
 
+VolumeGrid::VolumeGrid(const GridBasePtr &local_grid,
+                       VolumeFileCacheEntry *entry,
+                       const int simplify_level,
+                       const bool is_loaded)
+    : local_grid_(local_grid),
+      entry_(entry),
+      simplify_level_(simplify_level),
+      is_loaded_(is_loaded)
+{
+}
+
 VolumeGrid::~VolumeGrid()
 {
   if (entry_) {
     GLOBAL_CACHE.remove_user(*entry_, is_loaded_);
   }
+}
+
+VolumeGrid *VolumeGrid::copy() const
+{
+  return new VolumeGrid(local_grid_, entry_, simplify_level_, is_loaded_);
 }
 
 const char *VolumeGrid::name() const
@@ -368,6 +384,7 @@ VolumeGrid::GridBaseConstPtr VolumeGrid::grid() const
 
 VolumeGrid::GridBasePtr VolumeGrid::grid_for_write()
 {
+  BLI_assert(this->is_mutable());
   return (entry_) ? entry_->simplified_grid(simplify_level_) : local_grid_;
 }
 

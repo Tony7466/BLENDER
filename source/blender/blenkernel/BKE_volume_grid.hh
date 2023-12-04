@@ -151,6 +151,8 @@ struct VolumeGrid : public ImplicitSharingMixin {
              int simplify_level = 0);
   ~VolumeGrid();
 
+  VolumeGrid *copy() const;
+
   const char *name() const;
 
   const char *error_message() const;
@@ -169,6 +171,12 @@ struct VolumeGrid : public ImplicitSharingMixin {
   GridBasePtr grid_for_write();
 
  protected:
+  /* Used by #copy function */
+  VolumeGrid(const GridBasePtr &local_grid,
+             VolumeFileCacheEntry *entry,
+             int simplify_level,
+             bool is_loaded);
+
   GridBasePtr main_grid() const;
   void clear_cache_entry();
 #endif
