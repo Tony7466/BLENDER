@@ -23,21 +23,15 @@ template<typename T> struct VolumeGridPtr;
 /* -------------------------------------------------------------------- */
 /** \name Common Grid Wrapper
  *
- * Base class for both generic and typed grid wrapper classes.
+ * Base class for #GVolumeGridPtr and #VolumeGridPtr.
  * \{ */
 
 struct VolumeGridPtrCommon : ImplicitSharingPtr<VolumeGrid> {
-#ifdef WITH_OPENVDB
-  using GridPtr = std::shared_ptr<openvdb::GridBase>;
-  using GridConstPtr = std::shared_ptr<const openvdb::GridBase>;
-#endif
-
   VolumeGridPtrCommon() = default;
   VolumeGridPtrCommon(const VolumeGridPtrCommon &other) = default;
   /* Enable implicit conversion from nullptr. */
   VolumeGridPtrCommon(std::nullptr_t) : ImplicitSharingPtr<VolumeGrid>(nullptr) {}
   using ImplicitSharingPtr<VolumeGrid>::ImplicitSharingPtr;
-  virtual ~VolumeGridPtrCommon();
 };
 
 /** \} */
@@ -45,9 +39,7 @@ struct VolumeGridPtrCommon : ImplicitSharingPtr<VolumeGrid> {
 /* -------------------------------------------------------------------- */
 /** \name Generic Volume Grid
  *
- * Wrapper around a generic OpenVDB grid.
- * Grids loaded from OpenVDB files are always stored in the global cache.
- * Procedurally generated grids are not.
+ * Owning pointer to a #VolumeGrid.
  * \{ */
 
 struct GVolumeGridPtr : public VolumeGridPtrCommon {
@@ -69,7 +61,9 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
     //    using GridType = typename VolumeGridPtr<T>::GridType;
     //    BLI_assert(openvdb::GridBase::grid<GridType>(data->grid));
     /* Points to same data, increment user count. */
-    this->get()->add_user();
+    if (*this) {
+      this->get()->add_user();
+    }
     return VolumeGridPtr<T>(*this);
   }
 
@@ -84,7 +78,7 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
 /* -------------------------------------------------------------------- */
 /** \name Volume Grid
  *
- * Wrapper around OpenVDB grids using a Blender type parameter.
+ * Owning pointer to a #VolumeGrid of a known type.
  * \{ */
 
 namespace detail {
@@ -142,7 +136,7 @@ template<> struct VolumeGridTraits<math::Quaternion> {
 };
 /* Stub class for string attributes, not supported. */
 template<> struct VolumeGridTraits<std::string> {
-  using TreeType = openvdb::MaskTree;
+  using TreeType = void;
 };
 
 template<typename T> using VolumeGridType = openvdb::Grid<typename VolumeGridTraits<T>::TreeType>;
@@ -171,6 +165,7 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
   {
     const VolumeGrid *data = this->get();
     if (data->is_mutable()) {
+      data->tag_ensured_mutable();
       return openvdb::GridBase::grid<GridType>(const_cast<VolumeGrid *>(data)->grid_for_write());
     }
     return openvdb::GridBase::grid<GridType>(data->grid()->deepCopyGrid());
@@ -203,12 +198,7 @@ namespace grid_utils {
 template<typename T> std::optional<T> get_background_value(const VolumeGridPtr<T> &grid)
 {
 #ifdef WITH_OPENVDB
-  if constexpr (std::is_same_v<T, std::string>) {
-    return std::nullopt;
-  }
-  else {
-    return grids::GridConverter<T>::convert(grid.grid()->background());
-  }
+  return grids::Converter<T>::to_blender(grid.grid()->background());
 #else
   return std::nullopt;
 #endif /* WITH_OPENVDB */
@@ -224,7 +214,7 @@ template<typename T> VolumeGridPtr<T> make_empty_grid(const T background_value)
     grid = nullptr;
   }
   else {
-    grid = GridType::create(grids::AttributeConverter<T>::convert(background_value));
+    grid = GridType::create(grids::Converter<T>::to_openvdb(background_value));
   }
   return make_volume_grid_ptr(grid).template typed<T>();
 #else

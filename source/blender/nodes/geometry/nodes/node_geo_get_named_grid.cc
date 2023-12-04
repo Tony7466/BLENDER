@@ -62,15 +62,14 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   if (Volume *volume = geometry_set.get_volume_for_write()) {
     if (VolumeGrid *grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
-      /* Increment user count, pointer does not own the data. */
+      /* Increment user count before removing from volume. */
       grid->add_user();
-      bke::GVolumeGridPtr grid_ptr = bke::GVolumeGridPtr(grid);
-      grids::set_output_grid(params, "Grid", data_type, grid_ptr);
-      params.set_output("Volume", geometry_set);
-
       if (remove_grid) {
         BKE_volume_grid_remove(volume, grid);
       }
+
+      grids::set_output_grid(params, "Grid", data_type, bke::GVolumeGridPtr(grid));
+      params.set_output("Volume", geometry_set);
       return;
     }
   }

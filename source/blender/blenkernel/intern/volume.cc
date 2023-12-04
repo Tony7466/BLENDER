@@ -857,9 +857,19 @@ VolumeGrid *BKE_volume_grid_get_for_write(Volume *volume, int grid_index)
 {
 #ifdef WITH_OPENVDB
   VolumeGridVector &grids = *volume->runtime.grids;
-  for (GVolumeGridPtr &grid : grids) {
+  for (const GVolumeGridPtr &grid_ptr : grids) {
     if (grid_index-- == 0) {
-      return const_cast<VolumeGrid *>(grid.get());
+      VolumeGrid *grid = const_cast<VolumeGrid *>(grid_ptr.get());
+      if (grid->is_mutable()) {
+        /* If the grid is mutable, return it directly. */
+        grid->tag_ensured_mutable();
+      }
+      else {
+        /* If the grid is shared, make a copy. The copy is not shared and is
+         * therefore mutable. */
+        grid = grid->copy();
+      }
+      return grid;
     }
   }
   return nullptr;
@@ -897,9 +907,18 @@ VolumeGrid *BKE_volume_grid_find_for_write(Volume *volume, const char *name)
 {
   int num_grids = BKE_volume_num_grids(volume);
   for (int i = 0; i < num_grids; i++) {
-    VolumeGrid *grid = BKE_volume_grid_get_for_write(volume, i);
+    const VolumeGrid *grid = BKE_volume_grid_get_for_read(volume, i);
     if (STREQ(BKE_volume_grid_name(grid), name)) {
-      return grid;
+      if (grid->is_mutable()) {
+        /* If the grid is mutable, return it directly. */
+        grid->tag_ensured_mutable();
+      }
+      else {
+        /* If the grid is shared, make a copy. The copy is not shared and is
+         * therefore mutable. */
+        grid = grid->copy();
+      }
+      return const_cast<VolumeGrid *>(grid);
     }
   }
 

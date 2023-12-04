@@ -158,9 +158,6 @@ static void transform_volume(GeoNodeExecParams &params,
   const int grids_num = BKE_volume_num_grids(&volume);
   for (const int i : IndexRange(grids_num)) {
     VolumeGrid *volume_grid = BKE_volume_grid_get_for_write(&volume, i);
-    if (!volume_grid->is_mutable()) {
-      continue;
-    }
 
     float4x4 grid_matrix;
     BKE_volume_grid_transform_matrix(volume_grid, grid_matrix.ptr());
