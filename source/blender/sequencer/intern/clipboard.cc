@@ -232,7 +232,7 @@ int SEQ_clipboard_copy_exec(bContext *C, wmOperator *op)
  */
 
 struct SEQPasteData {
-  Main *bmain;
+  Main *bmain_dst;
   IDRemapper *id_remapper;
   std::vector<ID *> ids_to_copy;
 };
@@ -243,34 +243,35 @@ enum {
   ID_REMAP,
 };
 
-static int should_copy_id(ID *id_local, ID *id, Main *bmain)
+static int should_copy_id(ID *id_dst, ID *id_src, Main *bmain_dst)
 {
-  if (!id_local) {
+  if (!id_dst) {
     /* No local id found, we need to copy over this id. */
-    if (id->lib == nullptr) {
+    if (id_src->lib == nullptr) {
       return ID_SIMPLE_COPY;
     }
+    /* We will remap the pointer to null in this case. */
     return ID_LIB_COPY;
   }
 
-  if (id_local->lib == nullptr && id->lib == nullptr) {
+  if (id_dst->lib == nullptr && id_src->lib == nullptr) {
     /* The local ID is the one we want to remap to, don't copy in a new one. */
     return ID_REMAP;
   }
 
-  if (id_local->lib == nullptr && id->lib != nullptr) {
+  if (id_dst->lib == nullptr && id_src->lib != nullptr) {
     /* Check that the lib id doesn't point to the current file.
      * If this is the case, then it means that we want to simply remap as it points to the ID in
      * this file already.
      */
-    if (STREQ(id->lib->filepath_abs, bmain->filepath)) {
+    if (STREQ(id_src->lib->filepath_abs, bmain_dst->filepath)) {
       return ID_REMAP;
     }
     return ID_LIB_COPY;
   }
 
   /* Check if they are using the same filepath. */
-  if (STREQ(id_local->lib->filepath_abs, id->lib->filepath_abs)) {
+  if (STREQ(id_dst->lib->filepath_abs, id_src->lib->filepath_abs)) {
     return ID_REMAP;
   }
 
@@ -284,51 +285,51 @@ static int should_copy_id(ID *id_local, ID *id, Main *bmain)
 static int paste_strips_data_ids_reuse_or_add(LibraryIDLinkCallbackData *cb_data)
 {
   SEQPasteData *paste_data = static_cast<SEQPasteData *>(cb_data->user_data);
-  Main *bmain = paste_data->bmain;
-  ID *id = *cb_data->id_pointer;
+  Main *bmain_dst = paste_data->bmain_dst;
+  ID *id_src = *cb_data->id_pointer;
 
   /* We don't care about embedded, loopback, or internal IDs. */
   if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_LOOPBACK | IDWALK_CB_INTERNAL)) {
     return IDWALK_RET_NOP;
   }
 
-  if (id) {
-    ID_Type id_type = GS((id)->name);
-    if (id_type == ID_AC || id_type == ID_GR) {
+  if (id_src) {
+    ID_Type id_src_type = GS((id_src)->name);
+    if (id_src_type == ID_AC || id_src_type == ID_GR) {
       /* Don't copy in actions here as we already handle these in "sequencer_paste_animation".
        * We don't copy Collections (ID_GR) here either as we don't care about scene collections.
        */
       return IDWALK_RET_NOP;
     }
 
-    ID *id_local = nullptr;
+    ID *id_dst = nullptr;
     int copy_method = -1;
 
-    ListBase *lb = which_libbase(bmain, id_type);
+    ListBase *lb = which_libbase(bmain_dst, id_src_type);
     LISTBASE_FOREACH (ID *, id_iter, lb) {
-      if (STREQ(id->name, id_iter->name)) {
-        int copy_method_iter = should_copy_id(id_iter, id, bmain);
+      if (STREQ(id_src->name, id_iter->name)) {
+        int copy_method_iter = should_copy_id(id_iter, id_src, bmain_dst);
         if (copy_method_iter > copy_method) {
           copy_method = copy_method_iter;
-          id_local = id_iter;
+          id_dst = id_iter;
         }
       }
     }
 
-    if (id_local == nullptr) {
-      copy_method = should_copy_id(id_local, id, bmain);
+    if (id_dst == nullptr) {
+      copy_method = should_copy_id(id_dst, id_src, bmain_dst);
     }
 
     switch (copy_method) {
       case ID_SIMPLE_COPY:
-        paste_data->ids_to_copy.push_back(id);
+        paste_data->ids_to_copy.push_back(id_src);
         break;
       case ID_REMAP:
-        BKE_id_remapper_add(paste_data->id_remapper, id, id_local);
+        BKE_id_remapper_add(paste_data->id_remapper, id_src, id_dst);
         break;
       case ID_LIB_COPY:
-        paste_data->ids_to_copy.push_back(&id->lib->id);
-        paste_data->ids_to_copy.push_back(id);
+        paste_data->ids_to_copy.push_back(&id_src->lib->id);
+        paste_data->ids_to_copy.push_back(id_src);
         break;
       default:
         BLI_assert_unreachable();
@@ -399,9 +400,9 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  Main *bmain = CTX_data_main(C);
+  Main *bmain_dst = CTX_data_main(C);
   SEQPasteData paste_data;
-  paste_data.bmain = bmain;
+  paste_data.bmain_dst = bmain_dst;
   paste_data.id_remapper = BKE_id_remapper_create();
   BKE_library_foreach_ID_link(temp_bmain,
                               &paste_scene->id,
@@ -414,7 +415,7 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
    */
   for (ID *id_to_copy : paste_data.ids_to_copy) {
     BKE_libblock_management_main_remove(temp_bmain, id_to_copy);
-    BKE_libblock_management_main_add(bmain, id_to_copy);
+    BKE_libblock_management_main_add(bmain_dst, id_to_copy);
   }
 
   Scene *scene = CTX_data_scene(C);
@@ -479,7 +480,7 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
     }
   }
 
-  BKE_libblock_remap_multiple(bmain, paste_data.id_remapper, 0);
+  BKE_libblock_remap_multiple(bmain_dst, paste_data.id_remapper, 0);
   BKE_id_remapper_free(paste_data.id_remapper);
 
   BKE_main_free(temp_bmain);
@@ -487,7 +488,7 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
   SEQ_animation_restore_original(scene, &animation_backup);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
-  DEG_relations_tag_update(bmain);
+  DEG_relations_tag_update(bmain_dst);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   ED_outliner_select_sync_from_sequence_tag(C);
 
