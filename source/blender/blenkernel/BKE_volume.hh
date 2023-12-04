@@ -123,6 +123,7 @@ Volume *BKE_volume_new_for_eval(const Volume *volume_src);
 Volume *BKE_volume_copy_for_eval(const Volume *volume_src);
 
 VolumeGrid *BKE_volume_grid_add(Volume *volume, const char *name, VolumeGridType type);
+void BKE_volume_grid_move(Volume *volume, const char *name, VolumeGrid *grid);
 void BKE_volume_grid_remove(Volume *volume, const VolumeGrid *grid);
 
 /**
