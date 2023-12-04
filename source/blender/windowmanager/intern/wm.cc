@@ -28,13 +28,13 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 #include "BKE_screen.hh"
 #include "BKE_workspace.h"
@@ -448,7 +448,7 @@ void WM_keyconfig_init(bContext *C)
     if (!G.background) {
       WM_keyconfig_update_tag(nullptr, nullptr);
     }
-    WM_keyconfig_update(wm);
+    /* Don't call #WM_keyconfig_update here because add-ons have not yet been registered yet. */
 
     wm->init_flag |= WM_INIT_FLAG_KEYCONFIG;
   }

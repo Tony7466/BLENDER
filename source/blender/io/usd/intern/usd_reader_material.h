@@ -91,7 +91,7 @@ class USDMaterialReader {
   /** Get the wmJobWorkerStatus-provided `reports` list pointer, to use with the BKE_report API. */
   ReportList *reports() const
   {
-    return params_.worker_status->reports;
+    return params_.worker_status ? params_.worker_status->reports : nullptr;
   }
 
  protected:
@@ -128,6 +128,13 @@ class USDMaterialReader {
                               bNodeTree *ntree,
                               int column,
                               NodePlacementContext *r_ctx) const;
+
+  void convert_usd_transform_2d(const pxr::UsdShadeShader &usd_shader,
+                                bNode *dest_node,
+                                const char *dest_socket_name,
+                                bNodeTree *ntree,
+                                int column,
+                                NodePlacementContext *r_ctx) const;
 
   /**
    * Load the texture image node's texture from the path given by the USD shader's

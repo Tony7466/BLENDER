@@ -14,6 +14,7 @@ set(INC
 set(INC_SYS
   ../../../extern/wcwidth
   ../../../extern/json/include
+  ../../../extern/fmtlib/include
 
   ${EIGEN3_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
@@ -101,7 +102,7 @@ set(SRC
   intern/math_color.c
   intern/math_color_blend_inline.c
   intern/math_color_inline.c
-  intern/math_geom.c
+  intern/math_geom.cc
   intern/math_geom_inline.c
   intern/math_interp.c
   intern/math_matrix.c
@@ -120,6 +121,7 @@ set(SRC
   intern/noise.c
   intern/noise.cc
   intern/offset_indices.cc
+  intern/ordered_edge.cc
   intern/path_util.cc
   intern/polyfill_2d.c
   intern/polyfill_2d_beautify.c
@@ -132,7 +134,6 @@ set(SRC
   intern/serialize.cc
   intern/session_uuid.c
   intern/smaa_textures.c
-  intern/smallhash.c
   intern/sort.c
   intern/sort_utils.c
   intern/stack.c
@@ -158,11 +159,10 @@ set(SRC
   intern/uvproject.c
   intern/vector.cc
   intern/virtual_array.cc
-  intern/voronoi_2d.c
   intern/voxel.c
   intern/winstuff.cc
   intern/winstuff_dir.cc
-
+  intern/winstuff_registration.cc
   # Private headers.
   intern/BLI_mempool_private.h
 
@@ -340,7 +340,6 @@ set(SRC
   BLI_shared_cache.hh
   BLI_simd.h
   BLI_smaa_textures.h
-  BLI_smallhash.h
   BLI_sort.h
   BLI_sort.hh
   BLI_sort_utils.h
@@ -355,6 +354,7 @@ set(SRC
   BLI_string_utf8.h
   BLI_string_utf8_symbols.h
   BLI_string_utils.hh
+  BLI_struct_equality_utils.hh
   BLI_sub_frame.hh
   BLI_sys_types.h
   BLI_system.h
@@ -379,9 +379,9 @@ set(SRC
   BLI_vector_set_slots.hh
   BLI_virtual_array.hh
   BLI_virtual_vector_array.hh
-  BLI_voronoi_2d.h
   BLI_voxel.h
   BLI_winstuff.h
+  BLI_winstuff_com.hh
   PIL_time.h
   PIL_time_utildefines.h
 
@@ -395,6 +395,7 @@ set(LIB
   PRIVATE bf::intern::guardedalloc
   extern_wcwidth
   PRIVATE bf::intern::atomic
+  PRIVATE extern_fmtlib
   ${ZLIB_LIBRARIES}
   ${ZSTD_LIBRARIES}
 )
@@ -550,6 +551,7 @@ if(WITH_GTESTS)
     tests/BLI_string_search_test.cc
     tests/BLI_string_test.cc
     tests/BLI_string_utf8_test.cc
+    tests/BLI_string_utils_test.cc
     tests/BLI_task_graph_test.cc
     tests/BLI_task_test.cc
     tests/BLI_tempfile_test.cc

@@ -18,15 +18,14 @@
 #include "BLI_math_vector_types.hh"
 
 #include "BKE_attribute.h"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_report.h"
-#include "BKE_modifier.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -90,10 +89,11 @@ void USDGenericMeshWriter::do_write(HierarchyContext &context)
   Object *object_eval = context.object;
   bool needsfree = false;
   Mesh *mesh = get_export_mesh(object_eval, needsfree);
-  
+
   /* Only fetch the subdiv modifier if it is the last modifier, */
   /* and is enabled for the selected evaluation mode. */
-  const SubsurfModifierData *subsurfData = get_subsurf_modifier(usd_export_context_.export_params.evaluation_mode, object_eval);
+  const SubsurfModifierData *subsurfData = get_subsurf_modifier(
+      usd_export_context_.export_params.evaluation_mode, object_eval);
 
   if (mesh == nullptr) {
     return;
@@ -409,7 +409,9 @@ struct USDMeshData {
   pxr::VtFloatArray corner_sharpnesses;
 };
 
-void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh, const SubsurfModifierData *subsurfData)
+void USDGenericMeshWriter::write_mesh(HierarchyContext &context,
+                                      Mesh *mesh,
+                                      const SubsurfModifierData *subsurfData)
 {
   pxr::UsdTimeCode timecode = get_export_time_code();
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
@@ -507,24 +509,30 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh, con
 
   /* Default to setting the subdivision scheme to None. */
   pxr::TfToken subdiv_scheme = pxr::UsdGeomTokens->none;
-  
+
   if (subsurfData) {
     if (subsurfData->subdivType == SUBSURF_TYPE_CATMULL_CLARK) {
       if (usd_export_context_.export_params.export_subdiv == USD_SUBDIV_BEST_MATCH) {
-        /* If a subdivision modifier exists, and it uses Catmull-Clark, then apply Catmull-Clark SubD scheme. */
+        /* If a subdivision modifier exists, and it uses Catmull-Clark, then apply Catmull-Clark
+         * SubD scheme. */
         subdiv_scheme = pxr::UsdGeomTokens->catmullClark;
       }
-    } else {
+    }
+    else {
       /* "Simple" is currently the only other subdivision type provided by Blender, */
       /* and we do not yet provide a corresponding representation for USD export. */
-      BKE_reportf(reports(), RPT_WARNING, "USD export: Simple subdivision not supported, exporting subdivided mesh");
+      BKE_reportf(reports(),
+                  RPT_WARNING,
+                  "USD export: Simple subdivision not supported, exporting subdivided mesh");
     }
   }
-  
+
   usd_mesh.CreateSubdivisionSchemeAttr().Set(subdiv_scheme);
   if (subdiv_scheme == pxr::UsdGeomTokens->catmullClark) {
     /* For Catmull-Clark, also consider the various interpolation modes. */
-    /* For reference, see https://graphics.pixar.com/opensubdiv/docs/subdivision_surfaces.html#face-varying-interpolation-rules */
+    /* For reference, see
+     * https://graphics.pixar.com/opensubdiv/docs/subdivision_surfaces.html#face-varying-interpolation-rules
+     */
     switch (subsurfData->uv_smooth) {
       case SUBSURF_UV_SMOOTH_NONE:
         usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->all);
@@ -547,8 +555,10 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh, con
       default:
         BLI_assert_msg(0, "Unsupported UV smoothing mode.");
     }
-    
-    /* For reference, see https://graphics.pixar.com/opensubdiv/docs/subdivision_surfaces.html#boundary-interpolation-rules */
+
+    /* For reference, see
+     * https://graphics.pixar.com/opensubdiv/docs/subdivision_surfaces.html#boundary-interpolation-rules
+     */
     switch (subsurfData->boundary_smooth) {
       case SUBSURF_BOUNDARY_SMOOTH_ALL:
         usd_mesh.CreateInterpolateBoundaryAttr().Set(pxr::UsdGeomTokens->edgeOnly);
@@ -560,12 +570,12 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh, con
         BLI_assert_msg(0, "Unsupported boundary smoothing mode.");
     }
   }
-  
+
   if (usd_export_context_.export_params.export_normals &&
       subdiv_scheme == pxr::UsdGeomTokens->none) {
     write_normals(mesh, usd_mesh);
   }
-    
+
   if (usd_export_context_.export_params.export_materials) {
     assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
   }

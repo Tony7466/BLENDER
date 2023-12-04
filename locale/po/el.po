@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'd2b86610f058')\n"
+"Project-Id-Version: Blender 4.1.0 Alpha (b'72b6c44e759b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-23 09:18:46\n"
+"POT-Creation-Date: 2023-12-04 11:06:00\n"
 "PO-Revision-Date: 2008-03-23 12:20+0200\n"
 "Last-Translator: Kostas Karvouniaris <neogen556@yahoo.gr>\n"
 "Language-Team: \n"
@@ -35,6 +35,10 @@ msgstr "Επιλογή"
 
 msgid "Message"
 msgstr "Μήνυμα"
+
+
+msgid "On"
+msgstr "Ενεργό"
 
 
 msgid "Action"
@@ -73,12 +77,20 @@ msgid "Active Bone"
 msgstr "Ενεργό Οστό"
 
 
+msgid "All"
+msgstr "Όλα"
+
+
 msgid "Point"
 msgstr "Σημείο"
 
 
 msgid "Edge"
 msgstr "Ακμές"
+
+
+msgid "Layer"
+msgstr "Στρώμα"
 
 
 msgid "Extend"
@@ -131,10 +143,6 @@ msgstr "Remove"
 
 msgid "Mode"
 msgstr "Κατάσταση"
-
-
-msgid "All"
-msgstr "Όλα"
 
 
 msgid "Fill"
@@ -349,10 +357,6 @@ msgid "Border"
 msgstr "Πλαίσιο"
 
 
-msgid "Layer"
-msgstr "Στρώμα"
-
-
 msgid "Grid"
 msgstr "Πλέγμα"
 
@@ -389,8 +393,40 @@ msgid "Blue"
 msgstr "Μπλε"
 
 
+msgid "Font"
+msgstr "Γραμματοσειρά"
+
+
+msgid "Key"
+msgstr "Κλειδί"
+
+
 msgid "Library"
 msgstr "Βιβλιοθήκη"
+
+
+msgid "Light"
+msgstr "Φως"
+
+
+msgid "Mesh"
+msgstr "Πολύγωνα"
+
+
+msgid "Metaball"
+msgstr "Μετα-σφαίρα"
+
+
+msgid "Sound"
+msgstr "Ήχος"
+
+
+msgid "Text"
+msgstr "Κείμενο"
+
+
+msgid "World"
+msgstr "Κόσμος"
 
 
 msgid "Wire"
@@ -419,10 +455,6 @@ msgstr "Προεξοχή"
 
 msgid "Path"
 msgstr "Μονοπάτι"
-
-
-msgid "Font"
-msgstr "Γραμματοσειρά"
 
 
 msgid "Shear"
@@ -473,10 +505,6 @@ msgid "Edit"
 msgstr "Επεξεργασία"
 
 
-msgid "Mesh"
-msgstr "Πολύγωνα"
-
-
 msgid "Bounding Box"
 msgstr "Κουτί Ορίων"
 
@@ -507,10 +535,6 @@ msgstr "Χρωματισμός κορυφών"
 
 msgid "Weight Paint"
 msgstr "Χρωματισμός Βάρους"
-
-
-msgid "Sound"
-msgstr "Ήχος"
 
 
 msgid "Blend"
@@ -557,20 +581,12 @@ msgid "Keyboard"
 msgstr "Πληκτρολόγιο"
 
 
-msgid "Key"
-msgstr "Κλειδί"
-
-
 msgid "Snap"
 msgstr "Προσκόλληση"
 
 
 msgid "Select Linked"
 msgstr "Επιλογή Συνδεδεμένων"
-
-
-msgid "Text"
-msgstr "Κείμενο"
 
 
 msgid "Apply"
@@ -599,14 +615,6 @@ msgstr "Εισαγωγή"
 
 msgid "Help"
 msgstr "Βοήθεια"
-
-
-msgid "Metaball"
-msgstr "Μετα-σφαίρα"
-
-
-msgid "Light"
-msgstr "Φως"
 
 
 msgid "Make Single User"
@@ -639,10 +647,6 @@ msgstr "Κύμα"
 
 msgid "New"
 msgstr "Νέο"
-
-
-msgid "World"
-msgstr "Κόσμος"
 
 
 msgid "Lines"
@@ -760,6 +764,10 @@ msgstr "Ένωσε"
 
 msgid "Next Keyframe"
 msgstr "Επόμενο Καρέ με Κλειδί"
+
+
+msgid "Flat"
+msgstr "Επίπεδο"
 
 
 msgctxt "Operator"
@@ -1015,10 +1023,6 @@ msgid "Lens"
 msgstr "Φακός"
 
 
-msgid "Flat"
-msgstr "Επίπεδο"
-
-
 msgid "Bezier U"
 msgstr "Bezier U"
 
@@ -1058,10 +1062,6 @@ msgstr "Ακύρωση"
 
 msgid "Life"
 msgstr "Ζωή"
-
-
-msgid "On"
-msgstr "Ενεργό"
 
 
 msgid "Esc"

@@ -21,15 +21,15 @@
 #include "BLI_string.h"
 
 #include "BKE_fcurve.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_movieclip.h"
 #include "BKE_scene.h"
 #include "BKE_sound.h"
 
-#include "SEQ_clipboard.h"
-#include "SEQ_select.h"
+#include "SEQ_clipboard.hh"
+#include "SEQ_select.hh"
 
-#include "sequencer.h"
+#include "sequencer.hh"
 
 #ifdef WITH_AUDASPACE
 #  include <AUD_Special.h>
