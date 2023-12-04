@@ -90,6 +90,31 @@ static void armature_init_data(ID *id)
 }
 
 /**
+ * Copies the bone collection in `bcoll_src` to `bcoll_dst`, re-hooking up all
+ * of the bone relationships to the bones in `armature_dst`.
+ *
+ * Note: this function's use case is narrow in scope, intended only for use in
+ * `armature_copy_data()` below.  You probably don't want to use this otherwise.
+ */
+static void copy_bone_collection(bArmature *armature_dst,
+                          BoneCollection *&bcoll_dst,
+                          const BoneCollection *bcoll_src)
+{
+  bcoll_dst = static_cast<BoneCollection *>(MEM_dupallocN(bcoll_src));
+
+  /* ID properties. */
+  if (bcoll_dst->prop) {
+    bcoll_dst->prop = IDP_CopyProperty(bcoll_dst->prop);
+  }
+
+  /* Bone references. */
+  BLI_duplicatelist(&bcoll_dst->bones, &bcoll_dst->bones);
+  LISTBASE_FOREACH (BoneCollectionMember *, member, &bcoll_dst->bones) {
+    member->bone = BKE_armature_find_bone_name(armature_dst, member->bone->name);
+  }
+}
+
+/**
  * Only copy internal data of Armature ID from source
  * to already allocated/initialized destination.
  * You probably never want to use that directly,
@@ -143,21 +168,9 @@ static void armature_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, c
     armature_dst->collection_array = static_cast<BoneCollection **>(
         MEM_dupallocN(armature_src->collection_array));
     armature_dst->collection_array_num = armature_src->collection_array_num;
-    for (int i = 0; i < armature_dst->collection_array_num; i++) {
-      armature_dst->collection_array[i] = static_cast<BoneCollection *>(
-          MEM_dupallocN(armature_dst->collection_array[i]));
-      BoneCollection *bcoll = armature_dst->collection_array[i];
-
-      /* ID properties. */
-      if (bcoll->prop) {
-        bcoll->prop = IDP_CopyProperty(bcoll->prop);
-      }
-
-      /* Bone references. */
-      BLI_duplicatelist(&bcoll->bones, &bcoll->bones);
-      LISTBASE_FOREACH (BoneCollectionMember *, member, &bcoll->bones) {
-        member->bone = BKE_armature_find_bone_name(armature_dst, member->bone->name);
-      }
+    for (int i = 0; i < armature_src->collection_array_num; i++) {
+      copy_bone_collection(
+          armature_dst, armature_dst->collection_array[i], armature_src->collection_array[i]);
     }
   }
   else {
@@ -179,16 +192,8 @@ static void armature_free_data(ID *id)
   /* Free all BoneCollectionMembership objects. */
   if (armature->collection_array) {
     for (BoneCollection *bcoll : armature->collections_span()) {
-      /* ID properties. */
-      if (bcoll->prop) {
-        IDP_FreeProperty(bcoll->prop);
-        bcoll->prop = nullptr;
-      }
-
-      /* Bone references. */
       BLI_freelistN(&bcoll->bones);
-
-      MEM_freeN(bcoll);
+      ANIM_bonecoll_free(bcoll);
     }
     MEM_freeN(armature->collection_array);
   }
@@ -334,13 +339,11 @@ static void armature_blend_write(BlendWriter *writer, ID *id, const void *id_add
 
   /* Restore the BoneCollection array and clear the listbase. */
   arm->collection_array = collection_array_backup;
-  if (arm->collection_array_num > 0) {
-    for (int i = 0; i < arm->collection_array_num - 1; i++) {
-      arm->collection_array[i]->next = nullptr;
-      arm->collection_array[i + 1]->prev = nullptr;
-    }
-    BLI_listbase_clear(&arm->collections);
+  for (int i = 0; i < arm->collection_array_num - 1; i++) {
+    arm->collection_array[i]->next = nullptr;
+    arm->collection_array[i + 1]->prev = nullptr;
   }
+  BLI_listbase_clear(&arm->collections);
 
   arm->runtime = runtime_backup;
 }
@@ -384,10 +387,9 @@ static void read_bone_collections(BlendDataReader *reader, bArmature *arm)
   arm->collection_array = (BoneCollection **)MEM_malloc_arrayN(
       arm->collection_array_num, sizeof(BoneCollection *), __func__);
   {
-    int i = 0;
-    LISTBASE_FOREACH (BoneCollection *, bcoll, &arm->collections) {
+    int i;
+    LISTBASE_FOREACH_INDEX (BoneCollection *, bcoll, &arm->collections, i) {
       arm->collection_array[i] = bcoll;
-      i++;
     }
   }
 
@@ -3118,17 +3120,11 @@ bPoseChannel *BKE_armature_splineik_solver_find_root(bPoseChannel *pchan,
 
 blender::Span<const BoneCollection *> bArmature::collections_span() const
 {
-  if (collection_array == nullptr || collection_array_num <= 0) {
-    return blender::Span<const BoneCollection *>();
-  }
   return blender::Span(collection_array, collection_array_num);
 }
 
 blender::Span<BoneCollection *> bArmature::collections_span()
 {
-  if (collection_array == nullptr || collection_array_num <= 0) {
-    return blender::Span<BoneCollection *>();
-  }
   return blender::Span(collection_array, collection_array_num);
 }
 

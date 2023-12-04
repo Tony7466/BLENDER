@@ -63,7 +63,7 @@ class ANIM_armature_bone_collections : public testing::Test {
   void TearDown() override
   {
     while (arm.collection_array_num > 0) {
-      ANIM_armature_bonecoll_remove(&arm, arm.collection_array[arm.collection_array_num - 1]);
+      ANIM_armature_bonecoll_remove_from_index(&arm, arm.collection_array_num - 1);
     }
     if (arm.collection_array) {
       MEM_freeN(arm.collection_array);
