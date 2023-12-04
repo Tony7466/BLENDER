@@ -207,7 +207,7 @@ template<typename T> std::optional<T> get_background_value(const VolumeGridPtr<T
     return std::nullopt;
   }
   else {
-    return grids::GridConverter<T>::convert(grid.grid()->background());
+    return grids::Converter<T>::to_blender(grid.grid()->background());
   }
 #else
   return std::nullopt;
@@ -224,7 +224,7 @@ template<typename T> VolumeGridPtr<T> make_empty_grid(const T background_value)
     grid = nullptr;
   }
   else {
-    grid = GridType::create(grids::AttributeConverter<T>::convert(background_value));
+    grid = GridType::create(grids::Converter<T>::to_openvdb(background_value));
   }
   return make_volume_grid_ptr(grid).template typed<T>();
 #else

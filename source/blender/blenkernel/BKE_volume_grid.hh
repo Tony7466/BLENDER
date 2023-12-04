@@ -36,67 +36,66 @@ namespace blender::bke {
 #ifdef WITH_OPENVDB
 namespace grids {
 
-template<typename T> struct AttributeConverter {
-  using Type = T;
+template<typename T> struct Converter {
+  using AttributeValueType = T;
   using GridValueType = void;
 };
-template<> struct AttributeConverter<float> {
-  using Type = float;
-  using GridValueType = float;
-  static GridValueType convert(const Type &value)
+template<> struct Converter<bool> {
+  using AttributeValueType = bool;
+  using GridValueType = bool;
+  static GridValueType to_openvdb(const AttributeValueType &value)
+  {
+    return value;
+  }
+  static AttributeValueType to_blender(const GridValueType &value)
   {
     return value;
   }
 };
-template<> struct AttributeConverter<float3> {
-  using Type = float3;
+template<> struct Converter<int> {
+  using AttributeValueType = int;
+  using GridValueType = int;
+  static GridValueType to_openvdb(const AttributeValueType &value)
+  {
+    return value;
+  }
+  static AttributeValueType to_blender(const GridValueType &value)
+  {
+    return value;
+  }
+};
+template<> struct Converter<float> {
+  using AttributeValueType = float;
+  using GridValueType = float;
+  static GridValueType to_openvdb(const AttributeValueType &value)
+  {
+    return value;
+  }
+  static AttributeValueType to_blender(const GridValueType &value)
+  {
+    return value;
+  }
+};
+template<> struct Converter<float3> {
+  using AttributeValueType = float3;
   using GridValueType = openvdb::Vec3f;
-  static GridValueType convert(const Type &value)
+  static GridValueType to_openvdb(const AttributeValueType &value)
   {
     return openvdb::Vec3f(*value);
   }
-};
-
-template<typename T> struct GridConverter {
-  using Type = T;
-  using AttributeValueType = void;
-};
-template<> struct GridConverter<bool> {
-  using Type = bool;
-  using GridValueType = bool;
-  static Type convert(const GridValueType &value)
-  {
-    return value;
-  }
-};
-template<> struct GridConverter<int> {
-  using Type = int;
-  using GridValueType = int;
-  static Type convert(const GridValueType &value)
-  {
-    return value;
-  }
-};
-template<> struct GridConverter<float> {
-  using Type = float;
-  using GridValueType = float;
-  static Type convert(const GridValueType &value)
-  {
-    return value;
-  }
-};
-template<> struct GridConverter<float3> {
-  using Type = float3;
-  using GridValueType = openvdb::Vec3f;
-  static Type convert(const GridValueType &value)
+  static AttributeValueType to_blender(const GridValueType &value)
   {
     return float3(value.asV());
   }
 };
-template<> struct GridConverter<math::Quaternion> {
-  using Type = math::Quaternion;
+template<> struct Converter<math::Quaternion> {
+  using AttributeValueType = math::Quaternion;
   using GridValueType = openvdb::Vec4f;
-  static Type convert(const GridValueType &value)
+  static GridValueType to_openvdb(const AttributeValueType &value)
+  {
+    return openvdb::Vec4f(value.w, value.x, value.y, value.z);
+  }
+  static AttributeValueType to_blender(const GridValueType &value)
   {
     return math::Quaternion(value.asV());
   }
