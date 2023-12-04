@@ -684,6 +684,7 @@ class NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS(Menu):
             node_add_menu.add_node_type(layout, "GeometryNodeDilateGrid")
             node_add_menu.add_node_type(layout, "GeometryNodeErodeGrid")
             node_add_menu.add_node_type(layout, "GeometryNodeExtrapolateGrid")
+            node_add_menu.add_node_type(layout, "GeometryNodeGridPoissonSolver")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Operations")
 
 
