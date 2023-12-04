@@ -794,7 +794,8 @@ void USDMeshWriter::init_skinned_mesh(const HierarchyContext &context)
     return;
   }
 
-  const Object *arm_obj = get_armature_modifier_obj(*context.object, usd_export_context_.depsgraph);
+  const Object *arm_obj = get_armature_modifier_obj(*context.object,
+                                                    usd_export_context_.depsgraph);
 
   if (!arm_obj) {
     WM_reportf(RPT_WARNING,
