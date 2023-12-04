@@ -824,26 +824,24 @@ endif()
 
 if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
   # TODO(@fclem) Fix this mess.
-  if(APPLE)
-    add_executable(shader_builder
-      intern/gpu_shader_builder.cc
-      intern/gpu_shader_builder_stubs.cc
-      ${shader_create_info_list_file}
-      )
-    target_link_libraries(shader_builder PUBLIC buildinfoobj)
-  else()
-    if(WIN32)
-      # We can re-use the manifest from tests.exe here since it's
-      # rather generic and just selects the appropriate common
-      # controls version.
-      set(MANIFEST "${CMAKE_BINARY_DIR}/tests.exe.manifest")
-    endif()
+  if(WIN32)
+    # We can re-use the manifest from tests.exe here since it's
+    # rather generic and just selects the appropriate common
+    # controls version.
+    set(MANIFEST "${CMAKE_BINARY_DIR}/tests.exe.manifest")
     add_executable(shader_builder
       intern/gpu_shader_builder.cc
       intern/gpu_shader_builder_stubs.cc
       ${shader_create_info_list_file}
       ${MANIFEST}
     )
+  else()
+    add_executable(shader_builder
+      intern/gpu_shader_builder.cc
+      intern/gpu_shader_builder_stubs.cc
+      ${shader_create_info_list_file}
+    )
+    target_link_libraries(shader_builder PUBLIC buildinfoobj)
   endif()
   setup_platform_linker_flags(shader_builder)
 
@@ -853,9 +851,17 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     bf_blenlib
     bf_intern_ghost
     ${PLATFORM_LINKLIBS}
+    ${SYCL_LIBRARY}
     PRIVATE bf::intern::guardedalloc
     PRIVATE bf::imbuf
   )
+
+  add_custom_command(
+    OUTPUT COPY_LIBS
+    COMMAND ${CMAKE_COMMAND} -E copy ${PLATFORM_BUNDLED_LIBRARIES} ${CMAKE_INSTALL_PREFIX}
+  )
+
+
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 
   set(SRC_BAKED_CREATE_INFOS_FILE ${CMAKE_CURRENT_BINARY_DIR}/shader_baked.hh)
@@ -864,7 +870,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     OUTPUT
     ${SRC_BAKED_CREATE_INFOS_FILE}
     COMMAND ${CMAKE_COMMAND} -E env ${PLATFORM_ENV_BUILD} $<TARGET_FILE:shader_builder> ${SRC_BAKED_CREATE_INFOS_FILE}
-    DEPENDS shader_builder
+    DEPENDS shader_builder COPY_LIBS
   )
   set(GPU_SHADER_INFO_SRC
     intern/gpu_shader_info_baked.cc
