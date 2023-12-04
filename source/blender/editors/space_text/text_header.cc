@@ -18,7 +18,9 @@
 #include "DNA_text_types.h"
 
 #include "ED_screen.hh"
+#include "ED_text.hh"
 
+#include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "UI_interface.hh"
@@ -73,11 +75,13 @@ static int text_text_search_exec(bContext *C, wmOperator * /*op*/)
 
     /* Use active text selection as search query, if selection is on a single line. */
     if (text && (text->curl == text->sell) && (text->curc != text->selc)) {
-      const ARegion *active_region = CTX_wm_region(C);
+      ARegion *active_region = CTX_wm_region(C);
       if (active_region && active_region->regiontype == RGN_TYPE_WINDOW) {
         const char *sel_start = text->curl->line + std::min(text->curc, text->selc);
         const int sel_len = std::abs(text->curc - text->selc);
         BLI_strncpy(st->findstr, sel_start, std::min(sel_len + 1, ST_MAX_FIND_STR));
+        ED_text_update_search(C, st);
+        ED_region_tag_redraw(active_region);
       }
     }
 

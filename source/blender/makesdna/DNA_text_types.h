@@ -12,7 +12,9 @@
 
 #include "DNA_ID.h"
 #include "DNA_listBase.h"
-
+#ifdef __cplusplus
+#  include "BLI_vector.hh"
+#endif
 typedef struct TextLine {
   struct TextLine *next, *prev;
 
@@ -67,4 +69,67 @@ enum {
 
   /** Use space instead of tabs. */
   TXT_TABSTOSPACES = 1 << 10,
+};
+
+struct StringMatch {
+  /** Line where a match was found. */
+  struct TextLine *text_line;
+  /** Index of the line in the Text. */
+  int line_index;
+  /** Start and end position in #tex_line where the `SpaceText.findstr` string was found. */
+  int start, end;
+
+  int flags;
+
+#ifdef __cplusplus
+  bool operator==(const StringMatch &other) const
+  {
+    return text_line == other.text_line && line_index == other.line_index &&
+           start == other.start && end == other.end;
+  }
+#endif
+};
+
+typedef struct TextSearch {
+  /** Text data block. */
+  struct Text *text;
+  /* Pointer to `blender::Vector<StringMatch>` match vector. */
+  void *_string_matches;
+#ifdef __cplusplus
+  TextSearch(Text *text) : text(text)
+  {
+    _string_matches = MEM_new<blender::Vector<StringMatch>>(__func__);
+  };
+
+  TextSearch(TextSearch &&other)
+  {
+    text = other.text;
+    _string_matches = other._string_matches;
+    other._string_matches = nullptr;
+  };
+
+  TextSearch &operator=(TextSearch &&other)
+  {
+    text = other.text;
+    _string_matches = other._string_matches;
+    other._string_matches = nullptr;
+    return *this;
+  };
+
+  ~TextSearch()
+  {
+    MEM_delete(static_cast<blender::Vector<StringMatch> *>(_string_matches));
+  }
+
+  blender::Vector<StringMatch> &string_matches() const
+  {
+    return *(static_cast<blender::Vector<StringMatch> *>(_string_matches));
+  }
+#endif
+} TextMatch;
+
+/** #StringMatch.flags */
+enum {
+  /** Set if the occurrence is selected for replace. */
+  TXT_SM_SELECTED = 1 << 0,
 };

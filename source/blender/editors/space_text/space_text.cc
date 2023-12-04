@@ -13,16 +13,19 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_task.hh"
 
 #include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.hh"
+#include "BKE_main.hh"
 #include "BKE_screen.hh"
 
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
+#include "ED_text.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -40,7 +43,6 @@
 #include "text_intern.hh" /* own include */
 
 /* ******************** default callbacks for text space ***************** */
-
 static SpaceLink *text_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 {
   ARegion *region;
@@ -54,6 +56,8 @@ static SpaceLink *text_create(const ScrArea * /*area*/, const Scene * /*scene*/)
   stext->margin_column = 80;
   stext->showsyntax = true;
   stext->showlinenrs = true;
+
+  stext->runtime = MEM_new<SpaceText_Runtime>(__func__);
 
   /* header */
   region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "header for text"));
@@ -89,7 +93,7 @@ static SpaceLink *text_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 static void text_free(SpaceLink *sl)
 {
   SpaceText *stext = (SpaceText *)sl;
-
+  MEM_delete(stext->runtime);
   stext->text = nullptr;
   text_free_caches(stext);
 }
@@ -102,11 +106,16 @@ static SpaceLink *text_duplicate(SpaceLink *sl)
   SpaceText *stextn = static_cast<SpaceText *>(MEM_dupallocN(sl));
 
   /* clear or remove stuff from old */
+  stextn->runtime = MEM_new<SpaceText_Runtime>(__func__);
 
-  stextn->runtime.drawcache = nullptr; /* space need its own cache */
+  stextn->runtime->drawcache = nullptr; /* space need its own cache */
+
+  stextn->findstr[0] = '\0';
 
   return (SpaceLink *)stextn;
 }
+
+void text_update_text_search(SpaceText *st, Text *Text);
 
 static void text_listener(const wmSpaceTypeListenerParams *params)
 {
@@ -143,6 +152,7 @@ static void text_listener(const wmSpaceTypeListenerParams *params)
         case NA_ADDED:
         case NA_REMOVED:
         case NA_SELECTED:
+          text_update_text_search(st, static_cast<Text *>(wmn->reference));
           ED_area_tag_redraw(area);
           break;
       }
@@ -213,6 +223,8 @@ static void text_operatortypes()
   WM_operatortype_append(TEXT_OT_resolve_conflict);
 
   WM_operatortype_append(TEXT_OT_autocomplete);
+
+  WM_operatortype_append(TEXT_OT_open_text_with_selection);
 }
 
 static void text_keymap(wmKeyConfig *keyconf)
@@ -269,6 +281,7 @@ static void text_main_region_draw(const bContext *C, ARegion *region)
 {
   /* draw entirely, view changes should be handled here */
   SpaceText *st = CTX_wm_space_text(C);
+
   // View2D *v2d = &region->v2d;
 
   /* clear and setup matrix */
@@ -277,7 +290,7 @@ static void text_main_region_draw(const bContext *C, ARegion *region)
   // UI_view2d_view_ortho(v2d);
 
   /* data... */
-  draw_text_main(st, region);
+  draw_text_main(C, st, region);
 
   /* reset view matrix */
   // UI_view2d_view_restore(C);
@@ -290,9 +303,9 @@ static void text_cursor(wmWindow *win, ScrArea *area, ARegion *region)
   SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
   int wmcursor = WM_CURSOR_TEXT_EDIT;
 
-  if (st->text && BLI_rcti_isect_pt(&st->runtime.scroll_region_handle,
+  if (st->text && BLI_rcti_isect_pt(&st->runtime->scroll_region_handle,
                                     win->eventstate->xy[0] - region->winrct.xmin,
-                                    st->runtime.scroll_region_handle.ymin))
+                                    st->runtime->scroll_region_handle.ymin))
   {
     wmcursor = WM_CURSOR_DEFAULT;
   }
@@ -383,6 +396,12 @@ static void text_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper
 {
   SpaceText *stext = (SpaceText *)slink;
   BKE_id_remapper_apply(mappings, (ID **)&stext->text, ID_REMAP_APPLY_ENSURE_REAL);
+
+  auto &texts_search = stext->runtime->texts_search;
+  texts_search.remove_if([mappings](const TextSearch &ts) {
+    BKE_id_remapper_apply(mappings, (ID **)&ts.text, ID_REMAP_APPLY_ENSURE_REAL);
+    return ts.text == nullptr;
+  });
 }
 
 static void text_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
@@ -394,7 +413,8 @@ static void text_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
 static void text_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *sl)
 {
   SpaceText *st = (SpaceText *)sl;
-  memset(&st->runtime, 0x0, sizeof(st->runtime));
+  st->runtime = MEM_new<SpaceText_Runtime>(__func__);
+  st->findstr[0] = '\0';
 }
 
 static void text_space_blend_write(BlendWriter *writer, SpaceLink *sl)
@@ -402,6 +422,12 @@ static void text_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   BLO_write_struct(writer, SpaceText, sl);
 }
 
+static void text_space_exit(wmWindowManager * /*wm*/, ScrArea *area)
+{
+  SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
+  st->runtime->texts_search.clear();
+  st->findstr[0] = '\0';
+}
 /********************* registration ********************/
 
 void ED_spacetype_text()
@@ -426,6 +452,7 @@ void ED_spacetype_text()
   st->blend_read_data = text_space_blend_read_data;
   st->blend_read_after_liblink = nullptr;
   st->blend_write = text_space_blend_write;
+  st->exit = text_space_exit;
 
   /* regions: main window */
   art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype text region"));
@@ -473,4 +500,213 @@ void ED_spacetype_text()
   ED_text_format_register_osl();
   ED_text_format_register_pov();
   ED_text_format_register_pov_ini();
+}
+
+static void text_init_text_search(const SpaceText *st, Text *text)
+{
+  auto &texts_search = st->runtime->texts_search;
+  texts_search.append(TextSearch(text));
+}
+
+const TextSearch *ED_text_get_text_search(const SpaceText *st, const Text *text)
+{
+  auto &texts_search = st->runtime->texts_search;
+
+  auto itr = std::find_if(texts_search.begin(), texts_search.end(), [text](const TextSearch &tm) {
+    return tm.text == text;
+  });
+
+  if (itr != texts_search.end()) {
+    return itr;
+  }
+  else {
+    return nullptr;
+  }
+}
+
+int equal_case(const char *s1, const char *s2, const size_t len)
+{
+  for (int i = 0; i < len; i++) {
+    const char c1 = (char)tolower(s1[i]);
+    const char c2 = (char)tolower(s2[i]);
+    if (c1 != c2) {
+      return false;
+    }
+  }
+  return true;
+}
+
+const char *strstr_case(const char *s, const char *find, const int find_lend)
+{
+  BLI_assert(s && find && strlen(find) == find_lend);
+  for (; s[0] != '\0'; s++) {
+    if (equal_case(s, find, find_lend)) {
+      return s;
+    }
+  }
+  return nullptr;
+}
+
+static const char *find_match(const char *src,
+                              const char *find,
+                              const int find_lend,
+                              bool match_case)
+{
+  if (match_case) {
+    return strstr(src, find);
+  }
+  else {
+    return strstr_case(src, find, find_lend);
+  }
+}
+
+static blender::Vector<StringMatch> text_find_string_matches(const Text *text,
+                                                             const char *findstr,
+                                                             const bool match_case)
+{
+  blender::Vector<StringMatch> string_matches;
+  const int findstr_len = strlen(findstr);
+  int line_index = 0;
+  TextLine *text_line = static_cast<TextLine *>(text->lines.first);
+  const char *text_line_str = text_line ? text_line->line : nullptr;
+  while (text_line) {
+    const char *s = find_match(text_line_str, findstr, findstr_len, match_case);
+    if (s) {
+      const int start = int(s - text_line->line);
+      const int end = start + findstr_len;
+      string_matches.append({text_line, line_index, start, end});
+      text_line_str = s + findstr_len;
+    }
+    else {
+      text_line = text_line->next;
+      line_index++;
+      if (text_line) {
+        text_line_str = text_line->line;
+      }
+    }
+  }
+  return string_matches;
+}
+
+void remove_texts_search_but_active(const SpaceText *st)
+{
+  auto &texts_search = st->runtime->texts_search;
+  texts_search.remove_if([st](const TextSearch &ts) { return ts.text != st->text; });
+}
+
+void text_add_missing_texts_search(const bContext *C, const SpaceText *st, const bool all)
+{
+  Main *bmain = CTX_data_main(C);
+
+  LISTBASE_FOREACH (Text *, text, &bmain->texts) {
+    if (!(all || st->text == text)) {
+      continue;
+    }
+    if (ED_text_get_text_search(st, text)) {
+      continue;
+    }
+    text_init_text_search(st, text);
+  }
+}
+
+void ED_text_update_search(const bContext *C, const SpaceText *st)
+{
+  auto &texts_search = st->runtime->texts_search;
+
+  const char *findstr = st->findstr;
+
+  if (findstr[0] == '\0') {
+    texts_search.clear();
+    return;
+  }
+
+  const bool find_all = bool(st->flags & ST_FIND_ALL);
+
+  if (!find_all) {
+    remove_texts_search_but_active(st);
+  }
+
+  text_add_missing_texts_search(C, st, find_all);
+
+  const bool match_case = bool(st->flags & ST_MATCH_CASE);
+
+  using namespace blender;
+  threading::parallel_for_each(texts_search, [st, findstr, match_case](TextSearch &ts) {
+    auto search_result = text_find_string_matches(ts.text, findstr, match_case);
+    auto &string_matches = ts.string_matches();
+    if (search_result != string_matches) {
+      string_matches = search_result;
+    }
+  });
+}
+
+int ED_text_get_active_text_search(const SpaceText *st)
+{
+  auto &texts_search = st->runtime->texts_search;
+  auto it = std::find_if(texts_search.begin(), texts_search.end(), [st](const TextSearch &ts) {
+    return ts.text == st->text;
+  });
+  if (it == texts_search.end()) {
+    return -1;
+  }
+  return it - texts_search.begin();
+}
+
+int ED_text_get_active_string_match(const SpaceText *st)
+{
+  Text *text = st->text;
+
+  auto *text_search = ED_text_get_text_search(st, text);
+  if (!text_search) {
+    return -1;
+  }
+  const int line_index = BLI_findindex(&text->lines, text->curl);
+  const int curc = text->selc;
+
+  const auto &string_matches = text_search->string_matches();
+
+  auto string_match_itr = std::lower_bound(
+      string_matches.begin(),
+      string_matches.end(),
+      nullptr,
+      [line_index, curc](const StringMatch &sm, void * /*dummy*/) {
+        return sm.line_index < line_index || (sm.line_index == line_index && sm.end < curc);
+      });
+
+  if (string_match_itr == string_matches.end()) {
+    return -1;
+  }
+  if (string_match_itr->text_line != st->text->curl ||
+      string_match_itr->text_line != st->text->sell) {
+    return -1;
+  }
+  if (string_match_itr->start <= st->text->selc && st->text->selc <= string_match_itr->end &&
+      (string_match_itr->start <= st->text->curc && st->text->curc <= string_match_itr->end))
+  {
+    return string_match_itr - string_matches.begin();
+  }
+  return -1;
+}
+
+void text_update_text_search(SpaceText *st, Text *text)
+{
+  const char *findstr = st->findstr;
+  if (findstr[0] == '\0') {
+    return;
+  }
+  const bool match_case = bool(st->flags & ST_MATCH_CASE);
+  const bool find_all = bool(st->flags & ST_FIND_ALL);
+  auto *text_search = ED_text_get_text_search(st, text);
+  if (!text_search && (find_all || st->text == text)) {
+    text_init_text_search(st, text);
+    text_search = ED_text_get_text_search(st, text);
+  }
+  if (!text_search) {
+    return;
+  }
+  auto search_result = text_find_string_matches(text, findstr, match_case);
+  auto &string_matches = text_search->string_matches();
+  if (search_result != string_matches) {
+    string_matches = search_result;
+  }
 }

@@ -139,6 +139,98 @@ class TEXT_PT_properties(Panel):
             layout.prop(text, "indentation")
 
 
+class TEX_UL_texts_search(bpy.types.UIList):
+    @staticmethod
+    def _filter_texts_search(pattern, bitflag, texts_search, reverse=False):
+        """
+        Set FILTER_ITEM for texts search which text name matches filter_name one (case-insensitive).
+        pattern is the filtering pattern.
+        return a list of flags based on given bit flag, or an empty list if no pattern is given
+        or texts search list is empty.
+        """
+
+        if not pattern or not texts_search:  # Empty pattern or list = no filtering!
+            return []
+
+        import fnmatch
+        import re
+
+        # Implicitly add heading/trailing wildcards.
+        pattern_regex = re.compile(fnmatch.translate("*" + pattern + "*"), re.IGNORECASE)
+
+        flags = [0] * len(texts_search)
+        for i, text_search in enumerate(texts_search):
+            name = text_search.text.name
+            # This is similar to a logical XOR.
+            if bool(name and pattern_regex.match(name)) is not reverse:
+                flags[i] |= bitflag
+        return flags
+
+    @staticmethod
+    def _sort_texts_search(texts_search):
+        """
+        Re-order text matches using the text name (case-insensitive).
+        return a list mapping org_idx -> new_idx, or an empty list if no sorting has been done.
+        """
+        _sort = [(idx, text_search.text.name) for idx, text_search in enumerate(texts_search)]
+        return bpy.types.UI_UL_list.sort_items_helper(_sort, lambda e: e[1].lower())
+
+    def filter_items(self, context, data, property):
+        texts_search = getattr(data, property)
+        flags = []
+        indices = []
+
+        # Filtering by text name
+        if self.filter_name:
+            flags = self._filter_texts_search(
+                self.filter_name, self.bitflag_filter_item, texts_search, reverse=self.use_filter_invert)
+        if not flags:
+            flags = [self.bitflag_filter_item] * len(texts_search)
+
+        for idx, text_search in enumerate(texts_search):
+            # Filter text with no matches
+            if len(text_search.string_matches) == 0:
+                flags[idx] = 0
+        if self.use_filter_sort_alpha:
+            indices = self._sort_texts_search(texts_search)
+        return flags, indices
+
+    def draw_item(self, context, layout, _data, text_search, icon, _active_data, _active_propname, _index):
+        row = layout.row()
+        row.emboss = 'NONE'
+        text_label = text_search.text.name
+        if text_search.text == context.space_data.text:
+            text_label = iface_("%s (current)") % text_label
+
+        row.prop(text_search.text, "name", text="")
+        row.label(text=str(len(text_search.string_matches)))
+        if len(text_search.string_matches) == 0:
+            return
+        op = row.operator("text.open_text_with_selection", icon='ANIM', text="")
+        op.text = text_search.text.name
+        string_match = text_search.string_matches[0]
+        op.start_line = string_match.line_index
+        op.end_line = string_match.line_index
+        op.start_sel = string_match.start
+        op.end_sel = string_match.end
+
+
+class TEX_UL_find_text_string_matches(bpy.types.UIList):
+    def draw_item(self, context, layout, _data, string_match, icon, _active_data, _active_propname, _index):
+        row = layout.row()
+        row.prop(string_match, "select", text=str(string_match.line_index))
+        print(string_match.text_line.body[string_match.start:])
+        row.label(text="..." + string_match.text_line.body.encode("utf8")[string_match.start:].decode('utf8'))
+        row.emboss = 'NONE'
+        op = row.operator("text.open_text_with_selection", icon='ANIM', text="")
+        st = context.space_data
+        op.text = st.text.name
+        op.start_line = string_match.line_index
+        op.end_line = string_match.line_index
+        op.start_sel = string_match.start
+        op.end_sel = string_match.end
+
+
 class TEXT_PT_find(Panel):
     bl_space_type = 'TEXT_EDITOR'
     bl_region_type = 'UI'
@@ -152,33 +244,43 @@ class TEXT_PT_find(Panel):
         # find
         col = layout.column()
         row = col.row(align=True)
-        row.prop(st, "find_text", icon='VIEWZOOM', text="")
-        row.operator("text.find_set_selected", text="", icon='EYEDROPPER')
-        col.operator("text.find")
+        row.prop(st, "find_text", text="", placeholder="Search", )
+        row.prop(st, "use_match_case", icon='SORTALPHA', text="", text_ctxt=i18n_contexts.id_text)
 
-        layout.separator()
+        row.operator("text.find", icon='TRIA_UP', text="").previous = True
+        row.operator("text.find", icon='TRIA_DOWN', text="")
 
         # replace
         col = layout.column()
         row = col.row(align=True)
-        row.prop(st, "replace_text", icon='DECORATE_OVERRIDE', text="")
-        row.operator("text.replace_set_selected", text="", icon='EYEDROPPER')
+        row.prop(st, "replace_text", placeholder="Replace", text="")
 
+        row.operator("text.replace", icon='UV_SYNC_SELECT', text="")
+        row.operator("text.replace", icon='CON_ROTLIKE', text="", text_ctxt="Replace all").all = True
+
+        col = layout.column()
         row = col.row(align=True)
-        row.operator("text.replace")
-        row.operator("text.replace", text="Replace All").all = True
-
-        layout.separator()
-
-        # settings
-        row = layout.row(align=True)
-        if not st.text:
-            row.active = False
-        row.prop(st, "use_match_case", text="Case",
-                 text_ctxt=i18n_contexts.id_text, toggle=True)
-        row.prop(st, "use_find_wrap", text="Wrap",
-                 text_ctxt=i18n_contexts.id_text, toggle=True)
-        row.prop(st, "use_find_all", text="All", toggle=True)
+        row.prop(st, "use_find_all", text="Search in all text data-blocks")
+        if st.use_find_all:
+            layout.template_list(
+                "TEX_UL_texts_search",
+                "",
+                st,
+                "texts_search",
+                st,
+                "active_text_search",
+                rows=4,
+            )
+        if st.active_text_search != -1:
+            layout.template_list(
+                "TEX_UL_find_text_string_matches",
+                "",
+                st.texts_search[st.active_text_search],
+                "string_matches",
+                st,
+                "active_string_match",
+                rows=8,
+            )
 
 
 class TEXT_MT_view_navigation(Menu):
@@ -469,6 +571,8 @@ classes = (
     TEXT_MT_format,
     TEXT_MT_edit_to3d,
     TEXT_MT_context_menu,
+    TEX_UL_find_text_string_matches,
+    TEX_UL_texts_search,
 )
 
 if __name__ == "__main__":  # only for live edit.

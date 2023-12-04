@@ -4285,4 +4285,13 @@ const EnumPropertyItem *RNA_mask_local_itemf(bContext *C,
       r_free, C ? (ID *)CTX_data_main(C)->masks.first : nullptr, true, nullptr, nullptr);
 }
 
+const EnumPropertyItem *RNA_text_itemf(bContext *C,
+                                       PointerRNA * /*ptr*/,
+                                       PropertyRNA * /*prop*/,
+                                       bool *r_free)
+{
+  return rna_id_itemf(
+      r_free, C ? (ID *)CTX_data_main(C)->texts.first : nullptr, false, nullptr, nullptr);
+}
+
 /** \} */
