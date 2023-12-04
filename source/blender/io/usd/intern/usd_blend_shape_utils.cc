@@ -177,10 +177,19 @@ void ensure_blend_shape_skeleton(pxr::UsdStageRefPtr stage, pxr::UsdPrim &mesh_p
     }
   }
 
-  if (!pxr::UsdSkelBindingAPI(skel.GetPrim())
-           .CreateAnimationSourceRel()
-           .AddTarget(pxr::SdfPath(usdtokens::Anim)))
-  {
+  /* Next, set the animation source on the skeleton. */
+
+  skel_api = pxr::UsdSkelBindingAPI::Apply(skel.GetPrim());
+
+  if (!skel_api) {
+    CLOG_WARN(&LOG,
+              "%s: Couldn't apply UsdSkelBindingAPI to skeleton prim %s",
+              __func__,
+              skel.GetPath().GetAsString().c_str());
+    return;
+  }
+
+  if (!skel_api.CreateAnimationSourceRel().AddTarget(pxr::SdfPath(usdtokens::Anim))) {
     CLOG_WARN(&LOG,
               "%s: Couldn't set animation source on skeleton %s",
               __func__,
