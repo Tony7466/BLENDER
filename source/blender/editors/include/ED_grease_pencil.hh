@@ -59,7 +59,6 @@ enum class DrawingPlacementDepth { ObjectOrigin, Cursor, Surface, NearestStroke 
 enum class DrawingPlacementPlane { View, Front, Side, Top, Cursor };
 
 class DrawingPlacement {
- private:
   const ARegion *region_;
   const View3D *view3d_;
 
@@ -76,8 +75,8 @@ class DrawingPlacement {
  public:
   DrawingPlacement() = default;
   DrawingPlacement(const Scene &scene,
-                   const ARegion *region,
-                   const View3D *view3d,
+                   const ARegion &region,
+                   const View3D &view3d,
                    const Object &object);
   ~DrawingPlacement();
 
@@ -92,7 +91,7 @@ class DrawingPlacement {
    * Projects a screen space coordinate to the local drawing space.
    */
   float3 project(const float2 co) const;
-  void project(const Span<float2> src, MutableSpan<float3> dst) const;
+  void project(Span<float2> src, MutableSpan<float3> dst) const;
 };
 
 void set_selected_frames_type(bke::greasepencil::Layer &layer,

@@ -460,7 +460,7 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_value);
 
   /* Initialize helper class for projecting screen space coordinates. */
-  placement_ = ed::greasepencil::DrawingPlacement(*scene, region, view3d, *object);
+  placement_ = ed::greasepencil::DrawingPlacement(*scene, *region, *view3d, *object);
   if (placement_.use_project_to_surface()) {
     placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(&C), region, view3d);
   }

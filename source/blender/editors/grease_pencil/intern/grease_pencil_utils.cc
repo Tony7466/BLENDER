@@ -31,10 +31,10 @@
 namespace blender::ed::greasepencil {
 
 DrawingPlacement::DrawingPlacement(const Scene &scene,
-                                   const ARegion *region,
-                                   const View3D *view3d,
+                                   const ARegion &region,
+                                   const View3D &view3d,
                                    const Object &object)
-    : region_(region), view3d_(view3d), transforms_(object)
+    : region_(&region), view3d_(&view3d), transforms_(object)
 {
   /* Initialize DrawingPlacementPlane from toolsettings. */
   switch (scene.toolsettings->gp_sculpt.lock_axis) {
