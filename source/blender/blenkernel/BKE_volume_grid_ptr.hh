@@ -196,12 +196,7 @@ namespace grid_utils {
 template<typename T> std::optional<T> get_background_value(const VolumeGridPtr<T> &grid)
 {
 #ifdef WITH_OPENVDB
-  if constexpr (std::is_same_v<T, std::string>) {
-    return std::nullopt;
-  }
-  else {
-    return grids::Converter<T>::to_blender(grid.grid()->background());
-  }
+  return grids::Converter<T>::to_blender(grid.grid()->background());
 #else
   return std::nullopt;
 #endif /* WITH_OPENVDB */
