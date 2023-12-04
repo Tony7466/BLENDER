@@ -29,13 +29,9 @@ static void visit_bones(const Bone *bone, FunctionRef<void(const Bone *)> visito
   }
 }
 
-/**
- * Return the modifier of the given type enabled for the given dependency graph's
- * evaluation mode (viewport or render).
- */
-static const ModifierData *get_enabled_modifier(const Object &obj,
-                                                ModifierType type,
-                                                const Depsgraph *depsgraph)
+const ModifierData *get_enabled_modifier(const Object &obj,
+                                         ModifierType type,
+                                         const Depsgraph *depsgraph)
 {
   BLI_assert(depsgraph);
 
@@ -141,32 +137,7 @@ bool is_armature_modifier_bone_name(const Object &obj,
 
 bool can_export_skinned_mesh(const Object &obj, const Depsgraph *depsgraph)
 {
-  Vector<const ModifierData *> mods = get_enabled_modifiers(obj, depsgraph);
-
-  /* We can export a skinned mesh if the object has an enabled
-   * armature modifier and no other enabled modifiers. */
-  return mods.size() == 1 && mods.first()->type == eModifierType_Armature;
-}
-
-Vector<const ModifierData *> get_enabled_modifiers(const Object &obj, const Depsgraph *depsgraph)
-{
-  BLI_assert(depsgraph);
-
-  blender::Vector<const ModifierData *> result;
-
-  Scene *scene = DEG_get_input_scene(depsgraph);
-  eEvaluationMode mode = DEG_get_mode(depsgraph);
-
-  LISTBASE_FOREACH (ModifierData *, md, &obj.modifiers) {
-
-    if (!BKE_modifier_is_enabled(scene, md, mode)) {
-      continue;
-    }
-
-    result.append(md);
-  }
-
-  return result;
+  return get_enabled_modifier(obj, eModifierType_Armature, depsgraph) != nullptr;
 }
 
 }  // namespace blender::io::usd

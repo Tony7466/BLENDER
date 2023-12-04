@@ -6,6 +6,8 @@
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
+#include "DNA_modifier_types.h"
+
 #include <pxr/base/tf/token.h>
 #include <pxr/usd/usdSkel/animation.h>
 
@@ -57,15 +59,17 @@ pxr::TfToken build_usd_joint_path(const Bone *bone);
 void create_pose_joints(pxr::UsdSkelAnimation &skel_anim, const Object *obj);
 
 /**
- * Return a list of all the modifiers on the given object enabled for the
- * given dependency graph's evaluation mode (viewport or render).
+ * Return the modifier of the given type enabled for the given dependency graph's
+ * evaluation mode (viewport or render).
  *
- * \param obj: Object to query for the modifiers
+ * \param obj: Object to query for the modifier
  * \param depsgraph: The dependency graph where the object was evaluated
- * \return: The list of modifiers
- *
+ * \return: The modifier
  */
-Vector<const ModifierData *> get_enabled_modifiers(const Object &obj, const Depsgraph *depsgraph);
+const ModifierData *get_enabled_modifier(const Object &obj,
+                                         ModifierType type,
+                                         const Depsgraph *depsgraph);
+
 /**
  * If the given object has an enabled armature modifier, return the
  * armature object bound to the modifier.
