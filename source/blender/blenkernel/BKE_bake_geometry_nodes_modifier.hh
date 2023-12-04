@@ -83,6 +83,18 @@ struct ModifierCache {
   mutable std::mutex mutex;
   Map<int, std::unique_ptr<SimulationNodeCache>> simulation_cache_by_id;
   Map<int, std::unique_ptr<BakeNodeCache>> bake_cache_by_id;
+
+  SimulationNodeCache *get_simulation_node_cache(const int id)
+  {
+    std::unique_ptr<SimulationNodeCache> *ptr = this->simulation_cache_by_id.lookup_ptr(id);
+    return ptr ? (*ptr).get() : nullptr;
+  }
+
+  BakeNodeCache *get_bake_node_cache(const int id)
+  {
+    std::unique_ptr<BakeNodeCache> *ptr = this->bake_cache_by_id.lookup_ptr(id);
+    return ptr ? (*ptr).get() : nullptr;
+  }
 };
 
 /**
