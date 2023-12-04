@@ -75,9 +75,22 @@ void visit_bones(const Object *ob_arm, FunctionRef<void(const Bone *)> visitor)
   }
 }
 
-void get_armature_bone_names(const Object *ob_arm, Vector<std::string> &r_names)
+void get_armature_bone_names(const Object *ob_arm,
+                             const bool use_deform,
+                             Vector<std::string> &r_names)
 {
-  auto visitor = [&r_names](const Bone *bone) { r_names.append(bone->name); };
+  std::unordered_map<const char *, const Bone *> deform_map;
+  if (use_deform) {
+    init_deform_bones_map(ob_arm, &deform_map);
+  }
+
+  auto visitor = [&](const Bone *bone) {
+    if (use_deform && deform_map.find(bone->name) == deform_map.end()) {
+      return;
+    }
+
+    r_names.append(bone->name);
+  };
 
   visit_bones(ob_arm, visitor);
 }
@@ -95,7 +108,9 @@ pxr::TfToken build_usd_joint_path(const Bone *bone)
   return pxr::TfToken(path);
 }
 
-void create_pose_joints(pxr::UsdSkelAnimation &skel_anim, const Object *obj)
+void create_pose_joints(pxr::UsdSkelAnimation &skel_anim,
+                        const Object *obj,
+                        const std::unordered_map<const char *, const Bone *> *deform_map)
 {
   if (!(skel_anim && obj && obj->pose)) {
     return;
@@ -107,6 +122,12 @@ void create_pose_joints(pxr::UsdSkelAnimation &skel_anim, const Object *obj)
 
   LISTBASE_FOREACH (const bPoseChannel *, pchan, &pose->chanbase) {
     if (pchan->bone) {
+      if (deform_map && deform_map->find(pchan->bone->name) == deform_map->end()) {
+        /* If deform_map is passed in, assume we're going deform-only.
+         * Bones not found in the map should be skipped. */
+        continue;
+      }
+
       joints.push_back(build_usd_joint_path(pchan->bone));
     }
   }
@@ -138,6 +159,44 @@ bool is_armature_modifier_bone_name(const Object &obj,
 bool can_export_skinned_mesh(const Object &obj, const Depsgraph *depsgraph)
 {
   return get_enabled_modifier(obj, eModifierType_Armature, depsgraph) != nullptr;
+}
+
+void init_deform_bones_map(const Object *obj,
+                           std::unordered_map<const char *, const Bone *> *deform_map)
+{
+  if (!deform_map) {
+    return;
+  }
+
+  deform_map->clear();
+
+  auto deform_visitor = [&](const Bone *bone) {
+    if (!bone) {
+      return;
+    }
+
+    const bool deform = !(bone->flag & BONE_NO_DEFORM);
+    if (deform && deform_map) {
+      deform_map->insert_or_assign(bone->name, bone);
+    }
+  };
+
+  visit_bones(obj, deform_visitor);
+
+  /* Get deform parents */
+  std::unordered_map<const char *, const Bone *> deform_parent_bones;
+
+  for (auto pair : *deform_map) {
+    if (pair.second) {
+      Bone *parent = const_cast<Bone *>(pair.second)->parent;
+      while (parent) {
+        deform_parent_bones.insert_or_assign(parent->name, parent);
+        parent = parent->parent;
+      }
+    }
+
+    deform_map->merge(deform_parent_bones);
+  }
 }
 
 }  // namespace blender::io::usd

@@ -5,6 +5,9 @@
 
 #include "usd_writer_abstract.h"
 
+#include <unordered_map>
+
+struct Bone;
 struct Object;
 
 namespace blender::io::usd {
@@ -17,6 +20,9 @@ class USDArmatureWriter : public USDAbstractWriter {
   virtual void do_write(HierarchyContext &context) override;
 
   virtual bool check_is_animated(const HierarchyContext &context) const override;
+
+ private:
+  std::unordered_map<const char *, const Bone *> deform_map_;
 };
 
 }  // namespace blender::io::usd

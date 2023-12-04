@@ -809,7 +809,7 @@ void USDMeshWriter::init_skinned_mesh(const HierarchyContext &context)
   }
 
   Vector<std::string> bone_names;
-  get_armature_bone_names(arm_obj, bone_names);
+  get_armature_bone_names(arm_obj, usd_export_context_.export_params.use_deform, bone_names);
 
   if (bone_names.is_empty()) {
     CLOG_WARN(&LOG,

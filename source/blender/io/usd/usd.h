@@ -49,6 +49,7 @@ struct USDExportParams {
   bool export_materials = true;
   bool export_armatures;
   bool export_shapekeys;
+  bool use_deform;
   bool selected_objects_only = false;
   bool visible_objects_only = true;
   bool use_instancing = false;
