@@ -166,9 +166,9 @@ class CaptureView {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Capture Planar View
+/** \name Lookdev View
  *
- * View for capturing planar probes outside a ShadingView.
+ * View for rendering the lookdev HDRI spheres.
  * \{ */
 
 class LookdevView {
