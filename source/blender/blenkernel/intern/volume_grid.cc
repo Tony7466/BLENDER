@@ -12,7 +12,9 @@
 #include "CLG_log.h"
 
 #ifdef WITH_OPENVDB
+#  include <mutex>
 #  include <openvdb/openvdb.h>
+#  include <unordered_set>
 #endif
 
 static CLG_LogRef LOG = {"bke.volume"};

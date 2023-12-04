@@ -8,9 +8,6 @@
  * \ingroup bke
  */
 
-#include <mutex>
-#include <unordered_set>
-
 #include "BLI_color.hh"
 #include "BLI_cpp_type.hh"
 #include "BLI_implicit_sharing.hh"
