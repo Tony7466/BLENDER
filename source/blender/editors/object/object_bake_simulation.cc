@@ -829,7 +829,7 @@ static int bake_single_node_modal(bContext *C, wmOperator * /*op*/, const wmEven
   return OPERATOR_PASS_THROUGH;
 }
 
-static int delete_baked_simulation_single_exec(bContext *C, wmOperator *op)
+static int delete_single_bake_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Object *object = reinterpret_cast<Object *>(
@@ -906,46 +906,8 @@ void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "selected", false, "Selected", "Delete cache on all selected objects");
 }
 
-void OBJECT_OT_simulation_nodes_cache_bake_single(wmOperatorType *ot)
+static void single_bake_operator_props(wmOperatorType *ot)
 {
-  using namespace blender::ed::object::bake_simulation;
-
-  ot->name = "Bake Single Simulation Zone";
-  ot->description = "Bake a single simulation zone";
-  ot->idname = "OBJECT_OT_simulation_nodes_cache_bake_single";
-
-  ot->exec = bake_single_node_exec;
-  ot->modal = bake_single_node_modal;
-
-  WM_operator_properties_id_lookup(ot, false);
-
-  RNA_def_string(ot->srna,
-                 "modifier_name",
-                 nullptr,
-                 0,
-                 "Modifier Name",
-                 "Name of the modifier that contains the node to bake");
-  RNA_def_int(ot->srna,
-              "bake_id",
-              0,
-              0,
-              INT32_MAX,
-              "Bake ID",
-              "Nested node id of the node to bake",
-              0,
-              INT32_MAX);
-}
-
-void OBJECT_OT_simulation_nodes_cache_delete_single(wmOperatorType *ot)
-{
-  using namespace blender::ed::object::bake_simulation;
-
-  ot->name = "Delete Single Cached Simulation";
-  ot->description = "Delete simulation data of a single simulation zone";
-  ot->idname = "OBJECT_OT_simulation_nodes_cache_delete_single";
-
-  ot->exec = delete_baked_simulation_single_exec;
-
   WM_operator_properties_id_lookup(ot, false);
 
   RNA_def_string(ot->srna,
@@ -954,13 +916,33 @@ void OBJECT_OT_simulation_nodes_cache_delete_single(wmOperatorType *ot)
                  0,
                  "Modifier Name",
                  "Name of the modifier that contains the node");
-  RNA_def_int(ot->srna,
-              "bake_id",
-              0,
-              0,
-              INT32_MAX,
-              "Bake ID",
-              "Nested node id of the bake to delete",
-              0,
-              INT32_MAX);
+  RNA_def_int(
+      ot->srna, "bake_id", 0, 0, INT32_MAX, "Bake ID", "Nested node id of the node", 0, INT32_MAX);
+}
+
+void OBJECT_OT_geometry_node_bake_single(wmOperatorType *ot)
+{
+  using namespace blender::ed::object::bake_simulation;
+
+  ot->name = "Bake Geometry Node";
+  ot->description = "Bake a single bake node or simulation";
+  ot->idname = "OBJECT_OT_geometry_node_bake_single";
+
+  ot->exec = bake_single_node_exec;
+  ot->modal = bake_single_node_modal;
+
+  single_bake_operator_props(ot);
+}
+
+void OBJECT_OT_geometry_node_bake_delete_single(wmOperatorType *ot)
+{
+  using namespace blender::ed::object::bake_simulation;
+
+  ot->name = "Delete Geometry Node Bake";
+  ot->description = "Delete baked data of a single bake node or simulation";
+  ot->idname = "OBJECT_OT_geometry_node_bake_delete_single";
+
+  ot->exec = delete_single_bake_exec;
+
+  single_bake_operator_props(ot);
 }
