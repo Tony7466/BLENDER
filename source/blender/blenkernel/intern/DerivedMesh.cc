@@ -60,7 +60,7 @@
 
 #include "BLI_sys_types.h" /* for intptr_t support */
 
-#include "BKE_shrinkwrap.h"
+#include "BKE_shrinkwrap.hh"
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
@@ -391,7 +391,9 @@ static Mesh *create_orco_mesh(Object *ob, Mesh *me, BMEditMesh *em, int layer)
   orco = get_orco_coords(ob, em, layer, &free);
 
   if (orco) {
-    BKE_mesh_vert_coords_apply(mesh, orco);
+    mesh->vert_positions_for_write().copy_from(
+        {reinterpret_cast<const float3 *>(orco), mesh->totvert});
+    BKE_mesh_tag_positions_changed(mesh);
     if (free) {
       MEM_freeN(orco);
     }
@@ -1033,9 +1035,9 @@ static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final)
     case ME_WRAPPER_TYPE_MDATA:
       break;
     case ME_WRAPPER_TYPE_BMESH: {
-      BMEditMesh *em = mesh_final->edit_mesh;
-      blender::bke::EditMeshData *emd = mesh_final->runtime->edit_data;
-      if (!emd->vertexCos.is_empty()) {
+      BMEditMesh &em = *mesh_final->edit_mesh;
+      blender::bke::EditMeshData &emd = *mesh_final->runtime->edit_data;
+      if (!emd.vertexCos.is_empty()) {
         BKE_editmesh_cache_ensure_vert_normals(em, emd);
         BKE_editmesh_cache_ensure_face_normals(em, emd);
       }
@@ -1336,8 +1338,6 @@ static void mesh_build_data(Depsgraph *depsgraph,
   ob->runtime->last_data_mask = *dataMask;
   ob->runtime->last_need_mapping = need_mapping;
 
-  BKE_object_boundbox_calc_from_mesh(ob, mesh_eval);
-
   /* Make sure that drivers can target shapekey properties.
    * Note that this causes a potential inconsistency, as the shapekey may have a
    * different topology than the evaluated mesh. */
@@ -1396,8 +1396,6 @@ static void editbmesh_build_data(Depsgraph *depsgraph,
   obedit->runtime->editmesh_eval_cage = me_cage;
 
   obedit->runtime->geometry_set_eval = non_mesh_components;
-
-  BKE_object_boundbox_calc_from_mesh(obedit, me_final);
 
   obedit->runtime->last_data_mask = *dataMask;
 }
