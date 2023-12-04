@@ -7,31 +7,32 @@
  *
  * Stubs to reduce linking time for shader_builder.
  */
+#if 0
 
-#include "BLI_utildefines.h"
+#  include "BLI_utildefines.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#  include "IMB_imbuf.h"
+#  include "IMB_imbuf_types.h"
 
-#include "BKE_attribute.h"
-#include "BKE_customdata.hh"
-#include "BKE_global.h"
-#include "BKE_material.h"
-#include "BKE_mesh.hh"
-#include "BKE_node.hh"
-#include "BKE_paint.hh"
-#include "BKE_pbvh_api.hh"
-#include "BKE_subdiv_ccg.hh"
+#  include "BKE_attribute.h"
+#  include "BKE_customdata.hh"
+#  include "BKE_global.h"
+#  include "BKE_material.h"
+#  include "BKE_mesh.hh"
+#  include "BKE_node.hh"
+#  include "BKE_paint.hh"
+#  include "BKE_pbvh_api.hh"
+#  include "BKE_subdiv_ccg.hh"
 
-#include "DNA_userdef_types.h"
+#  include "DNA_userdef_types.h"
 
-#include "NOD_shader.h"
+#  include "NOD_shader.h"
 
-#include "DRW_engine.h"
+#  include "DRW_engine.h"
 
-#include "bmesh.h"
+#  include "bmesh.h"
 
-#include "UI_resources.hh"
+#  include "UI_resources.hh"
 
 extern "C" {
 Global G;
@@ -253,3 +254,4 @@ extern "C" bool IMB_saveiff(struct ImBuf * /*ibuf*/, const char * /*filepath*/, 
 }
 
 /** \} */
+#endif
