@@ -253,7 +253,7 @@ VolumeGrid::~VolumeGrid()
 
 VolumeGrid *VolumeGrid::copy() const
 {
-  return new VolumeGrid(local_grid_, entry_, simplify_level_, is_loaded_);
+  return new VolumeGrid(local_grid_ ? local_grid_->deepCopyGrid() : nullptr, entry_, simplify_level_, is_loaded_);
 }
 
 const char *VolumeGrid::name() const
