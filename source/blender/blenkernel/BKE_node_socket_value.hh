@@ -66,12 +66,6 @@ template<typename T> struct ValueOrField {
       /* This returns a default value when the field is not constant. */
       return fn::evaluate_constant_field(this->field);
     }
-    if (this->grid) {
-      /* Returns the grid background value. */
-      if (std::optional<T> value = grid_utils::get_background_value(this->grid)) {
-        return *value;
-      }
-    }
     return this->value;
   }
 
