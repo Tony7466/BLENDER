@@ -74,13 +74,12 @@ struct SimulationNodeCache {
 struct BakeNodeCache {
   NodeBakeCache bake;
 
-  bool do_bake = false;
-
   void reset();
 };
 
 struct ModifierCache {
   mutable std::mutex mutex;
+  Set<int> requested_bakes;
   Map<int, std::unique_ptr<SimulationNodeCache>> simulation_cache_by_id;
   Map<int, std::unique_ptr<BakeNodeCache>> bake_cache_by_id;
 

@@ -775,7 +775,7 @@ static BakeFrameIndices get_bake_frame_indices(
   return frame_indices;
 }
 
-void ensure_bake_loaded(bake::NodeBakeCache &bake_cache, bake::FrameCache &frame_cache)
+static void ensure_bake_loaded(bake::NodeBakeCache &bake_cache, bake::FrameCache &frame_cache)
 {
   if (!frame_cache.state.items_by_id.is_empty()) {
     return;
@@ -1172,7 +1172,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
     }
     bake::BakeNodeCache &node_cache = *modifier_cache_->bake_cache_by_id.lookup(id);
     if (depsgraph_is_active_) {
-      if (node_cache.do_bake) {
+      if (modifier_cache_->requested_bakes.contains(id)) {
         auto &store_info = behavior.emplace<sim_output::StoreNewState>();
         store_info.store_fn = [modifier_cache = modifier_cache_,
                                node_cache = &node_cache,

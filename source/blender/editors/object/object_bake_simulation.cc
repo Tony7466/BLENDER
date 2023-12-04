@@ -238,6 +238,20 @@ struct BakeGeometryNodesJob {
   Vector<NodeBakeRequest> bake_requests;
 };
 
+static void request_bakes_in_modifier_cache(BakeGeometryNodesJob &job)
+{
+  for (NodeBakeRequest &request : job.bake_requests) {
+    request.nmd->runtime->cache->requested_bakes.add(request.bake_id);
+  }
+}
+
+static void clear_requested_bakes_in_modifier_cache(BakeGeometryNodesJob &job)
+{
+  for (NodeBakeRequest &request : job.bake_requests) {
+    request.nmd->runtime->cache->requested_bakes.clear();
+  }
+}
+
 static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *worker_status)
 {
   BakeGeometryNodesJob &job = *static_cast<BakeGeometryNodesJob *>(customdata);
@@ -274,7 +288,11 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
     job.scene->r.cfra = frame.frame();
     job.scene->r.subframe = frame.subframe();
 
+    request_bakes_in_modifier_cache(job);
+
     BKE_scene_graph_update_for_newframe(job.depsgraph);
+
+    clear_requested_bakes_in_modifier_cache(job);
 
     const std::string frame_file_name = bake::frame_to_file_name(frame);
 
