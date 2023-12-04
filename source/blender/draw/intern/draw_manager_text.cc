@@ -6,7 +6,9 @@
  * \ingroup draw
  */
 
-#include "BLI_math_matrix.hh"
+#include "DNA_curve_types.h"
+#include "DNA_pointcloud_types.h"
+
 #define DEBUG_TIME
 
 #ifdef DEBUG_TIME
@@ -14,11 +16,11 @@
 #  include "PIL_time_utildefines.h"
 #endif
 
-#include "BKE_mesh.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_memiter.h"
@@ -26,12 +28,15 @@
 #include "BLI_string.h"
 
 #include "BKE_attribute.hh"
+#include "BKE_curves.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
 #include "BKE_global.h"
+#include "BKE_mesh.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_object.hh"
+#include "BKE_pointcloud.h"
 #include "BKE_unit.h"
 
 #include "DNA_mesh_types.h"
@@ -226,6 +231,57 @@ void DRW_text_cache_draw(DRWTextStore *dt, ARegion *region, View3D *v3d)
   }
 }
 
+std::tuple<blender::VArray<float>, blender::Span<blender::float3>> get_object_information(
+    const Object &object)
+{
+  using namespace blender;
+  using namespace blender::bke;
+
+  const short type = object.type;
+
+  VArray<float> viewer_attributes;
+  Span<float3> positions;
+
+  switch (type) {
+    case OB_MESH: {
+      Mesh *mesh = static_cast<Mesh *>(object.data);
+      if (mesh->attributes().contains(".viewer")) {
+        viewer_attributes = *mesh->attributes().lookup<float>(".viewer");
+        positions = mesh->vert_positions();
+      }
+      break;
+    }
+    case OB_POINTCLOUD: {
+      PointCloud *pointcloud = static_cast<PointCloud *>(object.data);
+      if (pointcloud->attributes().contains(".viewer")) {
+        viewer_attributes = *pointcloud->attributes().lookup<float>(".viewer");
+        positions = pointcloud->positions();
+      }
+      break;
+    }
+    case OB_CURVES_LEGACY: {
+      Curve *curve = static_cast<Curve *>(object.data);
+      if (curve->curve_eval) {
+        const bke::CurvesGeometry &curves = curve->curve_eval->geometry.wrap();
+        if (curves.attributes().contains(".viewer")) {
+          viewer_attributes = *curves.attributes().lookup<float>(".viewer");
+          positions = curves.positions();
+        }
+      }
+      break;
+    }
+    case OB_CURVES: {
+      Curves *curves_id = static_cast<Curves *>(object.data);
+      const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+      if (curves.attributes().contains(".viewer")) {
+        viewer_attributes = *curves.attributes().lookup<float>(".viewer");
+        positions = curves.positions();
+      }
+    }
+  }
+  return std::make_tuple(viewer_attributes, positions);
+}
+
 void DRW_text_viewer_attribute(Object &object)
 {
   using namespace blender;
@@ -240,11 +296,7 @@ void DRW_text_viewer_attribute(Object &object)
 
   UI_GetThemeColor4ubv(TH_DRAWEXTRA_FACEANG, col);
 
-  const Mesh *mesh = static_cast<Mesh *>(object.data);
-
-  const AttributeAccessor attributes = mesh->attributes();
-  const VArray viewer_attributes = *attributes.lookup<float>(".viewer");
-  const Span<float3> positions = mesh->vert_positions();
+  const auto [viewer_attributes, positions] = get_object_information(object);
 
   const float4x4 object_to_world = float4x4(object.object_to_world);
 

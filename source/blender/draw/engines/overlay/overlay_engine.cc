@@ -404,7 +404,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
     if (is_preview) {
       OVERLAY_viewer_attribute_cache_populate(data, ob);
 
-      if (V3D_OVERLAY_VIEWER_ATTRIBUTE_TEXT) {
+      if (pd->overlay.flag & V3D_OVERLAY_VIEWER_ATTRIBUTE_TEXT) {
         DRW_text_viewer_attribute(*ob);
         // overlay viewer add to cache (maybe though cache manager)
       }
