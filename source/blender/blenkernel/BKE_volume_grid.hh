@@ -120,7 +120,13 @@ struct VolumeGrid : public ImplicitSharingMixin {
   using GridBaseConstPtr = std::shared_ptr<const GridBase>;
 
  protected:
-  /* OpenVDB grid used when there is no file cache entry. */
+  /**
+   * OpenVDB grid that is used when there is no file cache entry.
+   * #std::shared_ptr is used here to allow using this grid in all OpenVDB API functions that may
+   * require a grid pointer instead of a reference. This shared_ptr should have exactly 1 user
+   * since it is owned by the implicit sharing data. Sharing the #VolumeGrid will not increment the
+   * user count of this pointer.
+   */
   GridBasePtr local_grid_;
   /* File cache entry when grid comes directly from a file and may be shared
    * with other volume datablocks. */
