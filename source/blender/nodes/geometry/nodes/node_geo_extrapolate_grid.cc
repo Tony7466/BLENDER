@@ -125,7 +125,7 @@ static void store_voxel_values(GridType &grid, const Span<T> values)
   using TreeType = typename GridType::TreeType;
   using LeafManager = openvdb::tree::LeafManager<TreeType>;
   using LeafNodeType = typename TreeType::LeafNodeType;
-  using Converter = bke::GridConverter<T>;
+  using Converter = bke::grids::AttributeConverter<T>;
 
   LeafManager leaf_mgr(grid.tree());
   size_t *leaf_offsets = static_cast<size_t *>(
@@ -137,7 +137,7 @@ static void store_voxel_values(GridType &grid, const Span<T> values)
     int64_t index = leaf_offsets[leaf_index];
     typename LeafNodeType::ValueOnIter iter = leaf.beginValueOn();
     for (; iter; ++iter, ++index) {
-      iter.setValue(Converter::single_value_to_grid(values[index]));
+      iter.setValue(Converter::convert(values[index]));
     }
   });
 
@@ -196,7 +196,7 @@ struct ExtrapolateOp {
   {
     using GridType = typename bke::VolumeGridPtr<T>::GridType;
     using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
-    using Converter = bke::GridConverter<T>;
+    using Converter = bke::grids::AttributeConverter<T>;
 
     if (!this->input_grid) {
       return;
@@ -207,8 +207,7 @@ struct ExtrapolateOp {
     const T background = this->params.extract_input<T>("Background");
     const float iso_value = this->params.extract_input<float>("Iso Value");
     const int num_iter = this->params.extract_input<int>("Iterations");
-    const typename GridType::ValueType vdb_background = Converter::single_value_to_grid(
-        background);
+    const typename GridType::ValueType vdb_background = Converter::convert(background);
 
     /* Compute boundary values on the SDF grid voxels.
      * In theory the boundary could also be evaluated as a VArray, if the boundary callback was
@@ -258,8 +257,7 @@ struct ExtrapolateOp {
         vdb_result->insertMeta(*vdb_input_grid);
         vdb_result->setTransform(vdb_input_grid->transform().copy());
       }
-      this->result = bke::GVolumeGridPtr(
-          make_implicit_shared<bke::VolumeGrid>(std::move(vdb_result)));
+      this->result = bke::make_volume_grid_ptr(std::move(vdb_result));
     }
     catch (const openvdb::ValueError &ex) {
       /* TODO this happens when the iso value is outside a valid range, which depends on the

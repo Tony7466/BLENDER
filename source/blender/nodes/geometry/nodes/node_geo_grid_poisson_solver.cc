@@ -23,10 +23,11 @@ static void node_declare(NodeDeclarationBuilder &b)
   if (!node) {
     return;
   }
-  //const NodeGeometryExtrapolateGrid &storage = node_storage(*node);
-  //const GeometryNodeGridExtrapolationInputType input_type = GeometryNodeGridExtrapolationInputType(
+  // const NodeGeometryExtrapolateGrid &storage = node_storage(*node);
+  // const GeometryNodeGridExtrapolationInputType input_type =
+  // GeometryNodeGridExtrapolationInputType(
   //    storage.input_type);
-  //const eCustomDataType data_type = eCustomDataType(storage.data_type);
+  // const eCustomDataType data_type = eCustomDataType(storage.data_type);
 
   b.add_input<decl::Float>("Grid").hide_value();
 
@@ -37,24 +38,24 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  //uiItemR(layout, ptr, "input_type", UI_ITEM_NONE, "", ICON_NONE);
-  //uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
-  //uiItemR(layout, ptr, "fast_sweeping_region", UI_ITEM_NONE, "", ICON_NONE);
+  // uiItemR(layout, ptr, "input_type", UI_ITEM_NONE, "", ICON_NONE);
+  // uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
+  // uiItemR(layout, ptr, "fast_sweeping_region", UI_ITEM_NONE, "", ICON_NONE);
 }
 
-static void node_init(bNodeTree * /*tree*/, bNode */*node*/)
-{
-}
+static void node_init(bNodeTree * /*tree*/, bNode * /*node*/) {}
 
 struct BoundaryOp {
   using ValueType = openvdb::tools::poisson::LaplacianMatrix::ValueType;
 
-  void operator()(const openvdb::Coord &ijk,          // coordinates of a boundary voxel
-                  const openvdb::Coord &ijkNeighbor,  // coordinates of an exterior neighbor of ijk
-                  ValueType &source,                  // element of b corresponding to ijk
-                  ValueType &diagonal  // element of Laplacian matrix corresponding to ijk
+  void operator()(
+      const openvdb::Coord &ijk,           // coordinates of a boundary voxel
+      const openvdb::Coord &ijk_neighbor,  // coordinates of an exterior neighbor of ijk
+      ValueType &source,                   // element of b corresponding to ijk
+      ValueType &diagonal                  // element of Laplacian matrix corresponding to ijk
   ) const
   {
+    UNUSED_VARS(ijk, ijk_neighbor, source, diagonal);
   }
 };
 
@@ -76,12 +77,12 @@ static void node_geo_exec(GeoNodeExecParams params)
       openvdb::tools::poisson::LaplacianMatrix>;
   openvdb::FloatTree::Ptr output_tree = openvdb::tools::poisson::solve(
       input_tree, pcg_state, interrupter, staggered);
-  //openvdb::FloatTree::Ptr output_tree =
+  // openvdb::FloatTree::Ptr output_tree =
   //    openvdb::tools::poisson::solveWithBoundaryConditionsAndPreconditioner<PreconditionerType>(
   //        input_tree, boundary_op, pcg_state, interrupter, staggered);
   openvdb::FloatGrid::Ptr output_grid_vdb = input_grid.grid()->copyWithNewTree();
   output_grid_vdb->setTree(output_tree);
-  bke::GVolumeGridPtr output_grid = make_implicit_shared<VolumeGrid>(output_grid_vdb);
+  bke::GVolumeGridPtr output_grid = bke::make_volume_grid_ptr(output_grid_vdb);
 
   grids::set_output_grid(params, "Grid", CD_PROP_FLOAT, output_grid);
 #else
@@ -91,15 +92,14 @@ static void node_geo_exec(GeoNodeExecParams params)
 #endif
 }
 
-static void node_rna(StructRNA *srna)
-{
-}
+static void node_rna(StructRNA * /*srna*/) {}
 
 static void node_register()
 {
   static bNodeType ntype;
 
-  geo_node_type_base(&ntype, GEO_NODE_GRID_POISSON_SOLVER, "Grid Poisson Solver", NODE_CLASS_GEOMETRY);
+  geo_node_type_base(
+      &ntype, GEO_NODE_GRID_POISSON_SOLVER, "Grid Poisson Solver", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.geometry_node_execute = node_geo_exec;
