@@ -1,2 +1,3 @@
 Referenced by issue #115704, Crash when using switch mode (transfer mode) on empty space
 Referenced by pull request #115753, Fix #115704: Crash when using transfer mode on empty space
+Referenced by commit 1020a7f6ee8a286d1940296ee22e85d0f8037b68, Fix #115704: Crash when using transfer mode on empty space
