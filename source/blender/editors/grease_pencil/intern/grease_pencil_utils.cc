@@ -167,6 +167,21 @@ static VectorSet<int> get_locked_material_indices(Object &object)
   return locked_material_indices;
 }
 
+static VectorSet<int> get_hidden_material_indices(Object &object)
+{
+  BLI_assert(object.type == OB_GREASE_PENCIL);
+  VectorSet<int> hidden_material_indices;
+  for (const int mat_i : IndexRange(object.totcol)) {
+    Material *material = BKE_object_material_get(&object, mat_i + 1);
+    if (material != nullptr && material->gp_style != nullptr &&
+        (material->gp_style->flag & GP_MATERIAL_HIDE) != 0)
+    {
+      hidden_material_indices.add(mat_i);
+    }
+  }
+  return hidden_material_indices;
+}
+
 IndexMask retrieve_editable_strokes(Object &object,
                                     const bke::greasepencil::Drawing &drawing,
                                     IndexMaskMemory &memory)
@@ -224,6 +239,29 @@ IndexMask retrieve_editable_elements(Object &object,
     return ed::greasepencil::retrieve_editable_points(object, drawing, memory);
   }
   return {};
+}
+
+IndexMask retrieve_visible_strokes(Object &object,
+                                   const bke::greasepencil::Drawing &drawing,
+                                   IndexMaskMemory &memory)
+{
+  using namespace blender;
+
+  /* Get all the hidden material indices. */
+  VectorSet<int> hidden_material_indices = get_hidden_material_indices(object);
+
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const IndexRange curves_range = drawing.strokes().curves_range();
+  const bke::AttributeAccessor attributes = curves.attributes();
+
+  /* Get all the strokes that have their material visible. */
+  const VArray<int> materials = *attributes.lookup_or_default<int>(
+      "material_index", ATTR_DOMAIN_CURVE, -1);
+  return IndexMask::from_predicate(
+      curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
+        const int material_index = materials[curve_i];
+        return !hidden_material_indices.contains(material_index);
+      });
 }
 
 IndexMask retrieve_editable_and_selected_strokes(Object &object,
