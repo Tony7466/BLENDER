@@ -507,7 +507,7 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
   /* Add grids read from file to own vector, filtering out any null pointers. */
   for (const openvdb::GridBase::Ptr &vdb_grid : vdb_grids) {
     if (vdb_grid) {
-      grids.emplace_back(blender::make_implicit_shared<VolumeGrid>(
+      grids.emplace_back(blender::bke::make_volume_grid_ptr(
           filepath, vdb_grid, volume->runtime.default_simplify_level));
     }
   }
@@ -1138,7 +1138,7 @@ VolumeGrid *BKE_volume_grid_add(Volume *volume, const char *name, VolumeGridType
   }
 
   vdb_grid->setName(name);
-  grids.emplace_back(blender::make_implicit_shared<VolumeGrid>(vdb_grid));
+  grids.emplace_back(blender::bke::make_volume_grid_ptr(vdb_grid));
   return const_cast<VolumeGrid *>(grids.back().get());
 #else
   UNUSED_VARS(volume, name, type);
@@ -1156,7 +1156,7 @@ VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
   BLI_assert(BKE_volume_grid_type_openvdb(*vdb_grid) != VOLUME_GRID_UNKNOWN);
 
   vdb_grid->setName(name);
-  grids.emplace_back(blender::make_implicit_shared<VolumeGrid>(vdb_grid));
+  grids.emplace_back(blender::bke::make_volume_grid_ptr(vdb_grid));
   return const_cast<VolumeGrid *>(grids.back().get());
 }
 #endif

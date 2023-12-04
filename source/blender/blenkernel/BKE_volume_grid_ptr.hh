@@ -182,6 +182,17 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Implicit Sharing Pointer Constructors
+ * \{ */
+
+template<typename... Args> inline GVolumeGridPtr make_volume_grid_ptr(Args &&...args)
+{
+  return GVolumeGridPtr(new VolumeGrid(std::forward<Args>(args)...));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Grid Utility Functions
  * \{ */
 
@@ -213,7 +224,7 @@ template<typename T> VolumeGridPtr<T> make_empty_grid(const T background_value)
   else {
     grid = GridType::create(grids::AttributeConverter<T>::convert(background_value));
   }
-  return VolumeGridPtr<T>(make_implicit_shared<VolumeGrid>(grid));
+  return make_volume_grid_ptr(grid).template typed<T>();
 #else
   return nullptr;
 #endif /* WITH_OPENVDB */
