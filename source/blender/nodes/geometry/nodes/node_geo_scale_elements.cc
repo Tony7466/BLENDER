@@ -418,8 +418,8 @@ static void gather_edge_islands(const Mesh &mesh,
                                 Array<int> &r_vert_indices)
 {
   IndexMaskMemory memory;
-  const IndexMask vert_mask = geometry::edge_selection_from_face(
-      mesh.face_offsets(), edge_mask, mesh.corner_edges(), mesh.totvert, memory);
+  const IndexMask vert_mask = geometry::vert_selection_from_edge(
+      mesh.edges(), edge_mask, mesh.totvert, memory);
 
   Array<int> edge_island_indices(edge_mask.size());
   Array<int> vert_island_indices(vert_mask.size());
