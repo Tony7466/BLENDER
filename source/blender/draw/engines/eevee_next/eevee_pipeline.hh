@@ -212,11 +212,6 @@ class DeferredLayer : DeferredLayerBase {
   PassSimple tile_classify_ps_ = {"TileClassify"};
 
   /**
-   * Tile texture containing a eClosureBits per tile. It is read by the light evaluation to
-   * dispatch specialized shader for each tile.
-   */
-  TextureFromPool tile_mask_tx_ = {"tile_mask_tx_"};
-  /**
    * Accumulation textures for all stages of lighting evaluation (Light, SSR, SSSS, SSGI ...).
    * These are split and separate from the main radiance buffer in order to accumulate light for
    * the render passes and avoid too much bandwidth waste. Otherwise, we would have to load the
@@ -231,6 +226,19 @@ class DeferredLayer : DeferredLayerBase {
   GPUTexture *indirect_diffuse_tx_ = nullptr;
   GPUTexture *indirect_reflect_tx_ = nullptr;
   GPUTexture *indirect_refract_tx_ = nullptr;
+
+  /* Parameters for the light evaluation pass. */
+  int closure_tile_size_shift_ = 0;
+  int closure_tile_per_row_ = 0;
+  struct {
+    DrawIndirectBuf draw_buf_ = {"DrawIndirectBuf"};
+    LightTileBuf tile_buf_ = {"LightTileBuf"};
+  } closure_diffuse, closure_reflection;
+  /**
+   * Tile texture containing a eClosureBits per tile. It is used to
+   * select specialized shader for each tile.
+   */
+  LightMaskBuf tile_mask_buf_ = {"tile_mask_buf_"};
 
   /* TODO(fclem): This should be a TextureFromPool. */
   Texture radiance_behind_tx_ = {"radiance_behind_tx"};

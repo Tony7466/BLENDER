@@ -27,8 +27,8 @@ void main()
   }
 
   if (gbuf.has_reflection) {
-    reflect_light = imageLoad(direct_reflect_img, texel).rgb +
-                    imageLoad(indirect_reflect_img, texel).rgb;
+    // reflect_light = imageLoad(direct_reflect_img, texel).rgb +
+    //                 imageLoad(indirect_reflect_img, texel).rgb;
   }
 
   if (gbuf.has_refraction) {

@@ -17,15 +17,31 @@ GPU_SHADER_CREATE_INFO(eevee_gbuffer_data)
     .sampler(9, ImageType::FLOAT_2D_ARRAY, "gbuf_closure_tx")
     .sampler(10, ImageType::FLOAT_2D_ARRAY, "gbuf_color_tx");
 
+GPU_SHADER_CREATE_INFO(eevee_deferred_tile_classify)
+    .fragment_source("eevee_deferred_tile_classify_frag.glsl")
+    /* Early fragment test is needed to avoid processing background fragments. */
+    .early_fragment_test(true)
+    .additional_info("eevee_shared", "eevee_gbuffer_data", "eevee_global_ubo", "draw_fullscreen")
+    .typedef_source("draw_shader_shared.h")
+    .storage_buf(0, Qualifier::READ_WRITE, "DrawCommand", "closure_diffuse_draw_buf")
+    .storage_buf(1, Qualifier::WRITE, "uint", "closure_diffuse_tile_buf[]")
+    .storage_buf(2, Qualifier::READ_WRITE, "uint", "tile_mask_buf[]")
+    .push_constant(Type::INT, "closure_tile_size_shift")
+    .push_constant(Type::INT, "closure_tile_per_row")
+    .do_static_compilation(true);
+
+GPU_SHADER_INTERFACE_INFO(eevee_deferred_light_iface, "interp").smooth(Type::VEC2, "uv");
+
 GPU_SHADER_CREATE_INFO(eevee_deferred_light)
+    .vertex_source("eevee_deferred_light_vert.glsl")
+    .vertex_out(eevee_deferred_light_iface)
     .fragment_source("eevee_deferred_light_frag.glsl")
-    /* Early fragment test is needed to avoid processing fragments without correct GBuffer data. */
+    /* Early fragment test is needed to avoid processing background fragments. */
     .early_fragment_test(true)
     /* Chaining to next pass. */
-    /* TODO(@fclem): These could use the sub-pass feature. */
-    .image_out(2, GPU_RGBA16F, "direct_diffuse_img")
-    .image_out(3, GPU_RGBA16F, "direct_reflect_img")
-    .image_out(4, GPU_RGBA16F, "direct_refract_img")
+    .image_out(2, GPU_RGBA16F, "out_direct_radiance_img")
+    .storage_buf(4, Qualifier::READ, "uint", "closure_tile_buf[]")
+    .push_constant(Type::INT, "closure_tile_size_shift")
     .define("SSS_TRANSMITTANCE")
     .define("LIGHT_CLOSURE_EVAL_COUNT", "3")
     .additional_info("eevee_shared",
@@ -36,12 +52,11 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
                      "eevee_shadow_data",
                      "eevee_hiz_data",
                      "eevee_render_pass_out",
-                     "draw_view",
-                     "draw_fullscreen")
+                     "draw_view")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
-    /* Early fragment test is needed to avoid processing fragments without correct GBuffer data. */
+    /* Early fragment test is needed to avoid processing fragments background fragments. */
     .early_fragment_test(true)
     /* Inputs. */
     .image_in(2, GPU_RGBA16F, "direct_diffuse_img")
@@ -98,6 +113,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_planar_eval)
     .fragment_source("eevee_deferred_planar_frag.glsl")
     .do_static_compilation(true);
 
+#undef image_array_out
 #undef image_out
 #undef image_in
 

@@ -1423,10 +1423,10 @@ BLI_STATIC_ASSERT_ALIGN(ProbePlanarDisplayData, 16)
  * \{ */
 
 struct PipelineInfoData {
+  int closure_tile_size_shift;
+  int closure_tile_per_row;
   float alpha_hash_scale;
   float _pad0;
-  float _pad1;
-  float _pad3;
 };
 BLI_STATIC_ASSERT_ALIGN(PipelineInfoData, 16)
 
@@ -1541,6 +1541,8 @@ using LightCullingTileBuf = draw::StorageArrayBuffer<uint, LIGHT_CHUNK, true>;
 using LightCullingZbinBuf = draw::StorageArrayBuffer<uint, CULLING_ZBIN_COUNT, true>;
 using LightCullingZdistBuf = draw::StorageArrayBuffer<float, LIGHT_CHUNK, true>;
 using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
+using LightTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;
+using LightMaskBuf = draw::StorageArrayBuffer<uint, 1024, true>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
 using RayTraceTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;

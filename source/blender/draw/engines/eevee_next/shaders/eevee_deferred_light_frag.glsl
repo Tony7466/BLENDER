@@ -24,7 +24,7 @@ void main()
     return;
   }
 
-  vec3 P = drw_point_screen_to_world(vec3(uvcoordsvar.xy, depth));
+  vec3 P = drw_point_screen_to_world(vec3(interp.uv, depth));
   /* Assume reflection closure normal is always somewhat representative of the geometric normal.
    * Ng is only used for shadow biases and subsurface check in this case. */
   vec3 Ng = gbuf.has_reflection ? gbuf.reflection.N : gbuf.diffuse.N;
@@ -96,11 +96,11 @@ void main()
   output_renderpass_value(uniform_buf.render_pass.shadow_id, average(shadows));
 
   if (gbuf.has_diffuse) {
-    imageStore(direct_diffuse_img, texel, vec4(radiance_diffuse, 1.0));
+    imageStore(out_direct_radiance_img, texel, vec4(radiance_diffuse, 1.0));
   }
-  if (gbuf.has_reflection) {
-    imageStore(direct_reflect_img, texel, vec4(radiance_specular, 1.0));
-  }
+  // if (gbuf.has_reflection) {
+  //   imageStore(direct_reflect_img, texel, vec4(radiance_specular, 1.0));
+  // }
   /* TODO(fclem): Support LTC for refraction. */
   // imageStore(direct_refract_img, texel, vec4(cl_refr.light_shadowed, 1.0));
 }
