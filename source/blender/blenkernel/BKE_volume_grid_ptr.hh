@@ -32,6 +32,7 @@ struct VolumeGridPtrCommon : ImplicitSharingPtr<VolumeGrid> {
   /* Enable implicit conversion from nullptr. */
   VolumeGridPtrCommon(std::nullptr_t) : ImplicitSharingPtr<VolumeGrid>(nullptr) {}
   using ImplicitSharingPtr<VolumeGrid>::ImplicitSharingPtr;
+  ~VolumeGridPtrCommon() = default;
 };
 
 /** \} */
