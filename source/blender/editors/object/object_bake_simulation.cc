@@ -298,16 +298,32 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
 
     for (NodeBakeRequest &request : job.bake_requests) {
       NodesModifierData &nmd = *request.nmd;
-      const bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
-      if (!modifier_cache.simulation_cache_by_id.contains(request.bake_id)) {
+      bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
+      const bake::NodeBakeCache *bake_cache = nullptr;
+      switch (request.node_type) {
+        case GEO_NODE_SIMULATION_OUTPUT: {
+          if (bake::SimulationNodeCache *node_cache = modifier_cache.get_simulation_node_cache(
+                  request.bake_id))
+          {
+            bake_cache = &node_cache->bake;
+          }
+          break;
+        }
+        case GEO_NODE_BAKE: {
+          if (bake::BakeNodeCache *node_cache = modifier_cache.get_bake_node_cache(
+                  request.bake_id)) {
+            bake_cache = &node_cache->bake;
+          }
+          break;
+        }
+      }
+      if (bake_cache == nullptr) {
         continue;
       }
-      const bake::SimulationNodeCache &node_cache = *modifier_cache.simulation_cache_by_id.lookup(
-          request.bake_id);
-      if (node_cache.bake.frames.is_empty()) {
+      if (bake_cache->frames.is_empty()) {
         continue;
       }
-      const bake::FrameCache &frame_cache = *node_cache.bake.frames.last();
+      const bake::FrameCache &frame_cache = *bake_cache->frames.last();
       if (frame_cache.frame != frame) {
         continue;
       }
@@ -335,15 +351,18 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
     worker_status->do_update = true;
   }
 
+  /* Tag simulations as being baked. */
   for (NodeBakeRequest &request : job.bake_requests) {
+    if (request.node_type != GEO_NODE_SIMULATION_OUTPUT) {
+      continue;
+    }
     NodesModifierData &nmd = *request.nmd;
-    if (std::unique_ptr<bake::SimulationNodeCache> *node_cache_ptr =
-            nmd.runtime->cache->simulation_cache_by_id.lookup_ptr(request.bake_id))
+    if (bake::SimulationNodeCache *node_cache = nmd.runtime->cache->get_simulation_node_cache(
+            request.bake_id))
     {
-      bake::SimulationNodeCache &node_cache = **node_cache_ptr;
-      if (!node_cache.bake.frames.is_empty()) {
+      if (!node_cache->bake.frames.is_empty()) {
         /* Tag the caches as being baked so that they are not changed anymore. */
-        node_cache.cache_status = bake::CacheStatus::Baked;
+        node_cache->cache_status = bake::CacheStatus::Baked;
       }
     }
     DEG_id_tag_update(&request.object->id, ID_RECALC_GEOMETRY);
