@@ -8,8 +8,8 @@
 
 #include "DNA_modifier_types.h"
 
+#include "BKE_volume_enums.hh"
 #include "BKE_volume_grid_ptr.hh"
-#include "BKE_volume_types.hh"
 
 #pragma once
 
@@ -30,19 +30,19 @@ namespace blender::geometry {
 /**
  * Add a new fog VolumeGrid to the Volume by converting the supplied points.
  */
-bke::GVolumeGridPtr fog_volume_grid_add_from_points(Volume *volume,
-                                                    StringRefNull name,
-                                                    Span<float3> positions,
-                                                    Span<float> radii,
-                                                    float voxel_size,
-                                                    float density);
+bke::VolumeGrid *fog_volume_grid_add_from_points(Volume *volume,
+                                                 StringRefNull name,
+                                                 Span<float3> positions,
+                                                 Span<float> radii,
+                                                 float voxel_size,
+                                                 float density);
 /**
  * Add a new SDF VolumeGrid to the Volume by converting the supplied points.
  */
-bke::GVolumeGridPtr sdf_volume_grid_add_from_points(Volume *volume,
-                                                    StringRefNull name,
-                                                    Span<float3> positions,
-                                                    Span<float> radii,
-                                                    float voxel_size);
+bke::VolumeGrid *sdf_volume_grid_add_from_points(Volume *volume,
+                                                 StringRefNull name,
+                                                 Span<float3> positions,
+                                                 Span<float> radii,
+                                                 float voxel_size);
 #endif
 }  // namespace blender::geometry

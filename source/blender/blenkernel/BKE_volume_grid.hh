@@ -20,7 +20,7 @@
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
 
-#include "BKE_volume_types.hh"
+#include "BKE_volume_enums.hh"
 
 #ifdef WITH_OPENVDB
 #  include "openvdb_fwd.hh"
@@ -37,127 +37,75 @@ namespace blender::bke {
  * \{ */
 
 #ifdef WITH_OPENVDB
-namespace detail {
+namespace grids {
 
-template<typename FieldValueType, typename GridValueType, typename LeafBufferValueType>
-struct GridConverter_ReinterpretCast {
-  static GridValueType single_value_to_grid(const FieldValueType &value)
+template<typename T> struct AttributeConverter {
+  using Type = T;
+  using GridValueType = void;
+};
+template<> struct AttributeConverter<float> {
+  using Type = float;
+  using GridValueType = float;
+  static GridValueType convert(const Type &value)
   {
-    return reinterpret_cast<const GridValueType &>(value);
+    return value;
   }
-
-  static FieldValueType single_value_to_attribute(const GridValueType &value)
+};
+template<> struct AttributeConverter<float3> {
+  using Type = float3;
+  using GridValueType = openvdb::Vec3f;
+  static GridValueType convert(const Type &value)
   {
-    return reinterpret_cast<const FieldValueType &>(value);
-  }
-
-  static MutableSpan<FieldValueType> leaf_buffer_to_varray(
-      const MutableSpan<LeafBufferValueType> values)
-  {
-    return {reinterpret_cast<FieldValueType *>(values.begin()), values.size()};
+    return openvdb::Vec3f(*value);
   }
 };
 
-template<typename FieldValueType, typename GridValueType, typename LeafBufferValueType>
-struct GridConverter_CopyConstruct {
-  static GridValueType single_value_to_grid(const FieldValueType &value)
-  {
-    return GridValueType(value);
-  }
-
-  static FieldValueType single_value_to_attribute(const GridValueType &value)
-  {
-    return FieldValueType(value);
-  }
-
-  // XXX can't do this, will only work as a DerivedSpan varray.
-  //  static MutableSpan<FieldValueType> leaf_buffer_to_varray(
-  //      const MutableSpan<LeafBufferValueType> values)
-  //  {
-  //    return {reinterpret_cast<FieldValueType *>(values.begin()), values.size()};
-  //  }
+template<typename T> struct GridConverter {
+  using Type = T;
+  using AttributeValueType = void;
 };
-
-template<typename FieldValueType, typename GridValueType, typename LeafBufferValueType>
-struct GridConverter_Vector3CopyConstruct {
-  using GridBaseType = typename GridValueType::ValueType;
-  using FieldBaseType = typename FieldValueType::base_type;
-
-  static GridValueType single_value_to_grid(const FieldValueType &value)
+template<> struct GridConverter<bool> {
+  using Type = bool;
+  using GridValueType = bool;
+  static Type convert(const GridValueType &value)
   {
-    return GridValueType(GridBaseType(value[0]), GridBaseType(value[1]), GridBaseType(value[2]));
+    return value;
   }
-
-  static FieldValueType single_value_to_attribute(const GridValueType &value)
-  {
-    return FieldValueType(
-        FieldBaseType(value[0]), FieldBaseType(value[1]), FieldBaseType(value[2]));
-  }
-
-  // XXX can't do this, will only work as a DerivedSpan varray.
-  //  static MutableSpan<FieldValueType> leaf_buffer_to_varray(
-  //      const MutableSpan<LeafBufferValueType> values)
-  //  {
-  //    return {reinterpret_cast<FieldValueType *>(values.begin()), values.size()};
-  //  }
 };
-
-/* Return default values without trying to convert. */
-template<typename FieldValueType, typename GridValueType, typename LeafBufferValueType>
-struct GridConverter_Dummy {
-  static GridValueType single_value_to_grid(const FieldValueType & /*value*/)
+template<> struct GridConverter<int> {
+  using Type = int;
+  using GridValueType = int;
+  static Type convert(const GridValueType &value)
   {
-    return GridValueType();
+    return value;
   }
-
-  static FieldValueType single_value_to_attribute(const GridValueType & /*value*/)
+};
+template<> struct GridConverter<float> {
+  using Type = float;
+  using GridValueType = float;
+  static Type convert(const GridValueType &value)
   {
-    return FieldValueType();
+    return value;
   }
-
-  static MutableSpan<FieldValueType> leaf_buffer_to_varray(
-      const MutableSpan<LeafBufferValueType> /*values*/)
+};
+template<> struct GridConverter<float3> {
+  using Type = float3;
+  using GridValueType = openvdb::Vec3f;
+  static Type convert(const GridValueType &value)
   {
-    return {};
+    return float3(value.asV());
+  }
+};
+template<> struct GridConverter<math::Quaternion> {
+  using Type = math::Quaternion;
+  using GridValueType = openvdb::Vec4f;
+  static Type convert(const GridValueType &value)
+  {
+    return math::Quaternion(value.asV());
   }
 };
 
-}  // namespace detail
-
-/* Default implementation, only used when grid and attribute types are exactly the same. */
-template<typename T> struct GridConverter : public detail::GridConverter_ReinterpretCast<T, T, T> {
-  using FieldValueType = T;
-};
-
-/* TODO Some base types (double, int3, ...) don't have a CPPType registered yet, and even then
- * there are other layers like attributes, customdata, node sockets, which need to support these
- * types. In the meantime the converters will use smaller base types for fields and attributes. */
-
-template<>
-struct GridConverter<float3>
-    : public detail::GridConverter_ReinterpretCast<float3, openvdb::Vec3f, openvdb::Vec3f> {
-  using FieldValueType = float3;
-};
-
-template<>
-struct GridConverter<math::Quaternion>
-    : public detail::
-          GridConverter_ReinterpretCast<math::Quaternion, openvdb::Vec4f, openvdb::Vec4f> {
-  using FieldValueType = math::Quaternion;
-};
-
-template<>
-struct GridConverter<blender::ColorGeometry4f>
-    : public detail::
-          GridConverter_ReinterpretCast<blender::ColorGeometry4f, openvdb::Vec4f, openvdb::Vec4f> {
-  using FieldValueType = blender::ColorGeometry4f;
-};
-
-template<>
-struct GridConverter<std::string>
-    : public detail::GridConverter_Dummy<std::string, openvdb::ValueMask, uint64_t> {
-  using FieldValueType = std::string;
-};
+}  // namespace grids
 #endif /* WITH_OPENVDB */
 
 /** \} */
@@ -217,7 +165,7 @@ struct VolumeGrid : public ImplicitSharingMixin {
   void duplicate_reference(const char *volume_name, const char *filepath);
 
   GridBaseConstPtr grid() const;
-  GridBasePtr grid_for_write() const;
+  GridBasePtr grid_for_write();
 
  protected:
   GridBasePtr main_grid() const;

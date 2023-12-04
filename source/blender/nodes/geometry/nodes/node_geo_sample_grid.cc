@@ -90,14 +90,14 @@ void sample_grid(const GridType &grid,
 {
   using GridValueT = typename GridType::ValueType;
   using AccessorT = typename GridType::ConstAccessor;
-  using ConverterT = bke::GridConverter<T>;
+  using ConverterT = bke::grids::GridConverter<T>;
   AccessorT accessor = grid.getConstAccessor();
 
   auto sample_data = [&](auto sampler) {
     mask.foreach_index([&](const int64_t i) {
       const float3 &pos = positions[i];
       GridValueT value = sampler.wsSample(openvdb::Vec3R(pos.x, pos.y, pos.z));
-      dst[i] = ConverterT::single_value_to_attribute(value);
+      dst[i] = ConverterT::convert(value);
     });
   };
 

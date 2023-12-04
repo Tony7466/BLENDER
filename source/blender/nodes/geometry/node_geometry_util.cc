@@ -122,9 +122,9 @@ BaseSocketDeclarationBuilder &declare_grid_type_input(NodeDeclarationBuilder &b,
 {
   switch (type) {
     case CD_PROP_FLOAT:
-      return b.add_input<decl::Float>(name, identifier);
+      return b.add_input<decl::Float>(name, identifier).hide_value();
     case CD_PROP_FLOAT3:
-      return b.add_input<decl::Vector>(name, identifier);
+      return b.add_input<decl::Vector>(name, identifier).hide_value();
     default:
       break;
   }

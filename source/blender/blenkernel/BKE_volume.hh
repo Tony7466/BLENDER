@@ -14,8 +14,8 @@
 #include "BLI_bounds_types.hh"
 #include "BLI_math_vector_types.hh"
 
-#include "BKE_volume_grid_ptr.hh"
-#include "BKE_volume_types.hh"
+#include "BKE_volume_enums.hh"
+#include "BKE_volume_grid.hh"
 
 struct Depsgraph;
 struct Main;
@@ -26,9 +26,7 @@ struct Volume;
 struct VolumeGridVector;
 namespace blender::bke {
 struct VolumeGrid;
-struct GVolumeGridPtr;
 }  // namespace blender::bke
-using GVolumeGridPtr = blender::bke::GVolumeGridPtr;
 using VolumeGrid = blender::bke::VolumeGrid;
 
 /* Module */
@@ -77,12 +75,12 @@ bool BKE_volume_is_loaded(const Volume *volume);
 int BKE_volume_num_grids(const Volume *volume);
 const char *BKE_volume_grids_error_msg(const Volume *volume);
 const char *BKE_volume_grids_frame_filepath(const Volume *volume);
-GVolumeGridPtr BKE_volume_grid_get_for_read(const Volume *volume, int grid_index);
-GVolumeGridPtr BKE_volume_grid_get_for_write(Volume *volume, int grid_index);
-GVolumeGridPtr BKE_volume_grid_active_get_for_read(const Volume *volume);
+const VolumeGrid *BKE_volume_grid_get_for_read(const Volume *volume, int grid_index);
+VolumeGrid *BKE_volume_grid_get_for_write(Volume *volume, int grid_index);
+const VolumeGrid *BKE_volume_grid_active_get_for_read(const Volume *volume);
 /* Tries to find a grid with the given name. Make sure that the volume has been loaded. */
-GVolumeGridPtr BKE_volume_grid_find_for_read(const Volume *volume, const char *name);
-GVolumeGridPtr BKE_volume_grid_find_for_write(Volume *volume, const char *name);
+const VolumeGrid *BKE_volume_grid_find_for_read(const Volume *volume, const char *name);
+VolumeGrid *BKE_volume_grid_find_for_write(Volume *volume, const char *name);
 
 /* Tries to set the name of the velocity field. If no such grid exists with the given base name,
  * this will try common post-fixes in order to detect velocity fields split into multiple grids.
@@ -124,8 +122,8 @@ void BKE_volume_grid_transform_matrix_set(const Volume *volume,
 Volume *BKE_volume_new_for_eval(const Volume *volume_src);
 Volume *BKE_volume_copy_for_eval(const Volume *volume_src);
 
-GVolumeGridPtr BKE_volume_grid_add(Volume *volume, const char *name, VolumeGridType type);
-void BKE_volume_grid_remove(Volume *volume, VolumeGrid *grid);
+VolumeGrid *BKE_volume_grid_add(Volume *volume, const char *name, VolumeGridType type);
+void BKE_volume_grid_remove(Volume *volume, const VolumeGrid *grid);
 
 /**
  * OpenVDB crashes when the determinant of the transform matrix becomes too small.

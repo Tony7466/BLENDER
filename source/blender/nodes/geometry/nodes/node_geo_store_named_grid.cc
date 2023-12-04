@@ -51,38 +51,39 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = CD_PROP_FLOAT;
 }
 
+static void try_store_grid(GeoNodeExecParams params, Volume *volume)
+{
+  BLI_assert(volume);
+
+  const eCustomDataType data_type = eCustomDataType(params.node().custom1);
+  BLI_assert(grids::grid_type_supported(data_type));
+  const std::string grid_name = params.extract_input<std::string>("Name");
+
+  bke::GVolumeGridPtr grid = grids::extract_grid_input(params, "Grid", data_type);
+  if (!grid) {
+    return;
+  }
+
+  if (bke::VolumeGrid *existing_grid = BKE_volume_grid_find_for_write(volume, grid_name.data())) {
+    BKE_volume_grid_remove(volume, existing_grid);
+  }
+
+  BKE_volume_grid_add_vdb(*volume, grid_name, const_cast<VolumeGrid &>(*grid).grid_for_write());
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
-  const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  BLI_assert(grids::grid_type_supported(data_type));
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");
-  const std::string grid_name = params.extract_input<std::string>("Name");
-
   Volume *volume = geometry_set.get_volume_for_write();
   if (!volume) {
     volume = static_cast<Volume *>(BKE_id_new_nomain(ID_VO, "Store Named Grid Output"));
     geometry_set.replace_volume(volume);
   }
 
-  if (volume) {
-    bke::GVolumeGridPtr grid = grids::extract_grid_input(params, "Grid", data_type);
-    if (!grid) {
-      return;
-    }
+  try_store_grid(params, volume);
 
-    if (bke::GVolumeGridPtr existing_grid = BKE_volume_grid_find_for_write(volume,
-                                                                           grid_name.data())) {
-      BKE_volume_grid_remove(volume, existing_grid.get());
-    }
-
-    BKE_volume_grid_add_vdb(*volume, grid_name, grid->grid_for_write());
-
-    params.set_output("Volume", geometry_set);
-    return;
-  }
-
-  params.set_default_remaining_outputs();
+  params.set_output("Volume", geometry_set);
 #else
   params.set_default_remaining_outputs();
   params.error_message_add(NodeWarningType::Error,

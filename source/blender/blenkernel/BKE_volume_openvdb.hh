@@ -14,19 +14,17 @@
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_string_ref.hh"
 
-#  include "BKE_volume_types.hh"
+#  include "BKE_volume_enums.hh"
 
 struct Volume;
 namespace blender::bke {
 struct VolumeGrid;
-struct GVolumeGridPtr;
 }  // namespace blender::bke
 using VolumeGrid = blender::bke::VolumeGrid;
-using GVolumeGridPtr = blender::bke::GVolumeGridPtr;
 
-GVolumeGridPtr BKE_volume_grid_add_vdb(Volume &volume,
-                                       blender::StringRef name,
-                                       openvdb::GridBase::Ptr vdb_grid);
+VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
+                                    blender::StringRef name,
+                                    openvdb::GridBase::Ptr vdb_grid);
 
 std::optional<blender::Bounds<blender::float3>> BKE_volume_grid_bounds(
     openvdb::GridBase::ConstPtr grid);

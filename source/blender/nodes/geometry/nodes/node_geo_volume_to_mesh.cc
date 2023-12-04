@@ -185,8 +185,8 @@ static Mesh *create_mesh_from_volume(GeometrySet &geometry_set, GeoNodeExecParam
 
   Vector<openvdb::GridBase::ConstPtr> grids;
   for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
-    const GVolumeGridPtr volume_grid = BKE_volume_grid_get_for_read(volume, i);
-    grids.append(volume_grid.grid());
+    const VolumeGrid *volume_grid = BKE_volume_grid_get_for_read(volume, i);
+    grids.append(volume_grid->grid());
   }
 
   if (grids.is_empty()) {

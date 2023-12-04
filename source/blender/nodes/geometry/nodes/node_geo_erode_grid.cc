@@ -65,7 +65,8 @@ static void try_erode_grid(GeoNodeExecParams params,
   openvdb::tools::erodeActiveValues(
       grid->tree(), iterations, grids::get_vdb_neighbors_mode(neighbors_mode));
 
-  params.set_output("Grid", bke::ValueOrField<T>(value.grid));
+  params.set_output("Grid",
+                    bke::ValueOrField<T>(bke::make_volume_grid_ptr(grid).template typed<T>()));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
