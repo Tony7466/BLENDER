@@ -861,6 +861,35 @@ static void ensure_bake_loaded(bake::NodeBakeCache &bake_cache, bake::FrameCache
   frame_cache.state = std::move(*bake_state);
 }
 
+static bool try_find_baked_data(bake::NodeBakeCache &bake,
+                                const Main &bmain,
+                                const Object &object,
+                                const NodesModifierData &nmd,
+                                const int id)
+{
+  std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(bmain, object, nmd, id);
+  if (!bake_path) {
+    return false;
+  }
+  Vector<bake::MetaFile> meta_files = bake::find_sorted_meta_files(bake_path->meta_dir);
+  if (meta_files.is_empty()) {
+    return false;
+  }
+  /* Reset bake. */
+  std::destroy_at(&bake);
+  new (&bake) bake::NodeBakeCache();
+
+  for (const bake::MetaFile &meta_file : meta_files) {
+    auto frame_cache = std::make_unique<bake::FrameCache>();
+    frame_cache->frame = meta_file.frame;
+    frame_cache->meta_path = meta_file.path;
+    bake.frames.append(std::move(frame_cache));
+  }
+  bake.blobs_dir = bake_path->blobs_dir;
+  bake.blob_sharing = std::make_unique<bake::BlobSharing>();
+  return true;
+}
+
 class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
  private:
   static constexpr float max_delta_frames = 1.0f;
@@ -975,29 +1004,12 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     /* Try load baked data. */
     if (!node_cache.bake.failed_finding_bake) {
       if (node_cache.cache_status != bake::CacheStatus::Baked) {
-        if (std::optional<bake::BakePath> zone_bake_path = bake::get_node_bake_path(
-                *bmain_, *ctx_.object, nmd_, zone_id))
-        {
-
-          Vector<bake::MetaFile> meta_files = bake::find_sorted_meta_files(
-              zone_bake_path->meta_dir);
-          if (!meta_files.is_empty()) {
-            node_cache.reset();
-
-            for (const bake::MetaFile &meta_file : meta_files) {
-              auto frame_cache = std::make_unique<bake::FrameCache>();
-              frame_cache->frame = meta_file.frame;
-              frame_cache->meta_path = meta_file.path;
-              node_cache.bake.frames.append(std::move(frame_cache));
-            }
-            node_cache.bake.blobs_dir = zone_bake_path->blobs_dir;
-            node_cache.bake.blob_sharing = std::make_unique<bke::bake::BlobSharing>();
-            node_cache.cache_status = bake::CacheStatus::Baked;
-          }
+        if (try_find_baked_data(node_cache.bake, *bmain_, *ctx_.object, nmd_, zone_id)) {
+          node_cache.cache_status = bake::CacheStatus::Baked;
         }
-      }
-      if (node_cache.cache_status != bake::CacheStatus::Baked) {
-        node_cache.bake.failed_finding_bake = true;
+        else {
+          node_cache.bake.failed_finding_bake = true;
+        }
       }
     }
 
@@ -1197,6 +1209,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
   mutable Map<int, std::unique_ptr<nodes::BakeNodeBehavior>> behavior_by_node_id_;
   const NodesModifierData &nmd_;
   const ModifierEvalContext &ctx_;
+  Main *bmain_;
   SubFrame current_frame_;
   bake::ModifierCache *modifier_cache_;
   bool depsgraph_is_active_;
@@ -1209,6 +1222,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
     current_frame_ = DEG_get_ctime(depsgraph);
     modifier_cache_ = nmd.runtime->cache.get();
     depsgraph_is_active_ = DEG_is_active(depsgraph);
+    bmain_ = DEG_get_bmain(depsgraph);
   }
 
   nodes::BakeNodeBehavior *get(const int id) const
@@ -1236,6 +1250,14 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
       return;
     }
     bake::BakeNodeCache &node_cache = *modifier_cache_->bake_cache_by_id.lookup(id);
+
+    /* Try load baked data. */
+    if (!node_cache.bake.failed_finding_bake) {
+      if (!try_find_baked_data(node_cache.bake, *bmain_, *ctx_.object, nmd_, id)) {
+        node_cache.bake.failed_finding_bake = true;
+      }
+    }
+
     if (depsgraph_is_active_) {
       if (modifier_cache_->requested_bakes.contains(id)) {
         auto &store_info = behavior.emplace<sim_output::StoreNewState>();
