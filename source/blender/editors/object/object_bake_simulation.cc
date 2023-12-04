@@ -298,10 +298,10 @@ static void bake_simulation_job_startjob(void *customdata, wmJobWorkerStatus *wo
           }
           const bake::SimulationNodeCache &node_cache =
               *modifier_cache.simulation_cache_by_id.lookup(node_bake_data.id);
-          if (node_cache.frame_caches.is_empty()) {
+          if (node_cache.bake.frames.is_empty()) {
             continue;
           }
-          const bake::FrameCache &frame_cache = *node_cache.frame_caches.last();
+          const bake::FrameCache &frame_cache = *node_cache.bake.frames.last();
           if (frame_cache.frame != frame) {
             continue;
           }
@@ -341,7 +341,7 @@ static void bake_simulation_job_startjob(void *customdata, wmJobWorkerStatus *wo
                 nmd.runtime->cache->simulation_cache_by_id.lookup_ptr(node_bake_data.id))
         {
           bake::SimulationNodeCache &node_cache = **node_cache_ptr;
-          if (!node_cache.frame_caches.is_empty()) {
+          if (!node_cache.bake.frames.is_empty()) {
             /* Tag the caches as being baked so that they are not changed anymore. */
             node_cache.cache_status = bake::CacheStatus::Baked;
           }

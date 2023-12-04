@@ -418,9 +418,9 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
             cache.bake_cache_by_id.lookup_ptr(*bake_id))
     {
       const bake::BakeNodeCache &node_cache = **node_cache_ptr;
-      if (!node_cache.frame_caches.is_empty()) {
-        const int first_frame = node_cache.frame_caches.first()->frame.frame();
-        const int last_frame = node_cache.frame_caches.last()->frame.frame();
+      if (!node_cache.bake.frames.is_empty()) {
+        const int first_frame = node_cache.bake.frames.first()->frame.frame();
+        const int last_frame = node_cache.bake.frames.last()->frame.frame();
         baked_range = IndexRange(first_frame, last_frame - first_frame + 1);
       }
     }

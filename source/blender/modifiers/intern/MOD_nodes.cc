@@ -850,8 +850,8 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       if (current_frame_ <= start_frame) {
         node_cache.reset();
       }
-      if (!node_cache.frame_caches.is_empty() &&
-          current_frame_ < node_cache.frame_caches.first()->frame) {
+      if (!node_cache.bake.frames.is_empty() &&
+          current_frame_ < node_cache.bake.frames.first()->frame) {
         node_cache.reset();
       }
     }
@@ -887,7 +887,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     const SubFrame sim_end_frame{int(sim_frame_range.last())};
 
     /* Try load baked data. */
-    if (!node_cache.failed_finding_bake) {
+    if (!node_cache.bake.failed_finding_bake) {
       if (node_cache.cache_status != bake::CacheStatus::Baked) {
         if (std::optional<bake::BakePath> zone_bake_path = bake::get_node_bake_path(
                 *bmain_, *ctx_.object, nmd_, zone_id))
@@ -902,20 +902,20 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
               auto frame_cache = std::make_unique<bake::FrameCache>();
               frame_cache->frame = meta_file.frame;
               frame_cache->meta_path = meta_file.path;
-              node_cache.frame_caches.append(std::move(frame_cache));
+              node_cache.bake.frames.append(std::move(frame_cache));
             }
-            node_cache.blobs_dir = zone_bake_path->blobs_dir;
-            node_cache.blob_sharing = std::make_unique<bke::bake::BlobSharing>();
+            node_cache.bake.blobs_dir = zone_bake_path->blobs_dir;
+            node_cache.bake.blob_sharing = std::make_unique<bke::bake::BlobSharing>();
             node_cache.cache_status = bake::CacheStatus::Baked;
           }
         }
       }
       if (node_cache.cache_status != bake::CacheStatus::Baked) {
-        node_cache.failed_finding_bake = true;
+        node_cache.bake.failed_finding_bake = true;
       }
     }
 
-    const BakeFrameIndices frame_indices = get_bake_frame_indices(node_cache.frame_caches,
+    const BakeFrameIndices frame_indices = get_bake_frame_indices(node_cache.bake.frames,
                                                                   current_frame_);
     if (node_cache.cache_status == bake::CacheStatus::Baked) {
       this->read_from_cache(frame_indices, node_cache, zone_behavior);
@@ -925,7 +925,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       /* If the depsgraph is active, we allow creating new simulation states. Otherwise, the access
        * is read-only. */
       if (depsgraph_is_active_) {
-        if (node_cache.frame_caches.is_empty()) {
+        if (node_cache.bake.frames.is_empty()) {
           if (current_frame_ < sim_start_frame || current_frame_ > sim_end_frame) {
             /* Outside of simulation frame range, so ignore the simulation if there is no cache. */
             this->input_pass_through(zone_behavior);
@@ -945,7 +945,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
         {
           /* Read the previous frame's data and store the newly computed simulation state. */
           auto &output_copy_info = zone_behavior.input.emplace<sim_input::OutputCopy>();
-          const bake::FrameCache &prev_frame_cache = *node_cache.frame_caches[*frame_indices.prev];
+          const bake::FrameCache &prev_frame_cache = *node_cache.bake.frames[*frame_indices.prev];
           const float real_delta_frames = float(current_frame_) - float(prev_frame_cache.frame);
           if (real_delta_frames != 1) {
             node_cache.cache_status = bake::CacheStatus::Invalid;
@@ -1023,7 +1023,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       auto frame_cache = std::make_unique<bake::FrameCache>();
       frame_cache->frame = current_frame;
       frame_cache->state = std::move(state);
-      node_cache->frame_caches.append(std::move(frame_cache));
+      node_cache->bake.frames.append(std::move(frame_cache));
     };
   }
 
@@ -1049,7 +1049,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   {
     if (frame_indices.prev) {
       auto &output_copy_info = zone_behavior.input.emplace<sim_input::OutputCopy>();
-      bake::FrameCache &frame_cache = *node_cache.frame_caches[*frame_indices.prev];
+      bake::FrameCache &frame_cache = *node_cache.bake.frames[*frame_indices.prev];
       const float delta_frames = std::min(max_delta_frames,
                                           float(current_frame_) - float(frame_cache.frame));
       output_copy_info.delta_time = delta_frames / fps_;
@@ -1082,7 +1082,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
                    bake::SimulationNodeCache &node_cache,
                    nodes::SimulationZoneBehavior &zone_behavior) const
   {
-    bake::FrameCache &frame_cache = *node_cache.frame_caches[frame_index];
+    bake::FrameCache &frame_cache = *node_cache.bake.frames[frame_index];
     this->ensure_bake_loaded(node_cache, frame_cache);
     auto &read_single_info = zone_behavior.output.emplace<sim_output::ReadSingle>();
     read_single_info.state = frame_cache.state;
@@ -1093,8 +1093,8 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
                          bake::SimulationNodeCache &node_cache,
                          nodes::SimulationZoneBehavior &zone_behavior) const
   {
-    bake::FrameCache &prev_frame_cache = *node_cache.frame_caches[prev_frame_index];
-    bake::FrameCache &next_frame_cache = *node_cache.frame_caches[next_frame_index];
+    bake::FrameCache &prev_frame_cache = *node_cache.bake.frames[prev_frame_index];
+    bake::FrameCache &next_frame_cache = *node_cache.bake.frames[next_frame_index];
     this->ensure_bake_loaded(node_cache, prev_frame_cache);
     this->ensure_bake_loaded(node_cache, next_frame_cache);
     auto &read_interpolated_info = zone_behavior.output.emplace<sim_output::ReadInterpolated>();
@@ -1111,16 +1111,16 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     if (!frame_cache.state.items_by_id.is_empty()) {
       return;
     }
-    if (!node_cache.blobs_dir) {
+    if (!node_cache.bake.blobs_dir) {
       return;
     }
     if (!frame_cache.meta_path) {
       return;
     }
-    bke::bake::DiskBlobReader blob_reader{*node_cache.blobs_dir};
+    bke::bake::DiskBlobReader blob_reader{*node_cache.bake.blobs_dir};
     fstream meta_file{*frame_cache.meta_path};
     std::optional<bke::bake::BakeState> bake_state = bke::bake::deserialize_bake(
-        meta_file, blob_reader, *node_cache.blob_sharing);
+        meta_file, blob_reader, *node_cache.bake.blob_sharing);
     if (!bake_state.has_value()) {
       return;
     }
@@ -1183,16 +1183,16 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
           frame_cache->frame = current_frame;
           frame_cache->state = std::move(state);
           /* TODO: Make sure the vector is sorted. */
-          node_cache->frame_caches.append(std::move(frame_cache));
+          node_cache->bake.frames.append(std::move(frame_cache));
         };
         return;
       }
     }
-    if (node_cache.frame_caches.is_empty()) {
+    if (node_cache.bake.frames.is_empty()) {
       behavior.emplace<sim_output::PassThrough>();
       return;
     }
-    const BakeFrameIndices frame_indices = get_bake_frame_indices(node_cache.frame_caches,
+    const BakeFrameIndices frame_indices = get_bake_frame_indices(node_cache.bake.frames,
                                                                   current_frame_);
     if (frame_indices.current) {
       this->read_single(*frame_indices.current, node_cache, behavior);
@@ -1217,7 +1217,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
                    bake::BakeNodeCache &node_cache,
                    nodes::BakeNodeBehavior &behavior) const
   {
-    bake::FrameCache &frame_cache = *node_cache.frame_caches[frame_index];
+    bake::FrameCache &frame_cache = *node_cache.bake.frames[frame_index];
     this->ensure_bake_loaded(node_cache, frame_cache);
     auto &read_single_info = behavior.emplace<sim_output::ReadSingle>();
     read_single_info.state = frame_cache.state;
@@ -1228,8 +1228,8 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
                          bake::BakeNodeCache &node_cache,
                          nodes::BakeNodeBehavior &behavior) const
   {
-    bake::FrameCache &prev_frame_cache = *node_cache.frame_caches[prev_frame_index];
-    bake::FrameCache &next_frame_cache = *node_cache.frame_caches[next_frame_index];
+    bake::FrameCache &prev_frame_cache = *node_cache.bake.frames[prev_frame_index];
+    bake::FrameCache &next_frame_cache = *node_cache.bake.frames[next_frame_index];
     this->ensure_bake_loaded(node_cache, prev_frame_cache);
     this->ensure_bake_loaded(node_cache, next_frame_cache);
     auto &read_interpolated_info = behavior.emplace<sim_output::ReadInterpolated>();

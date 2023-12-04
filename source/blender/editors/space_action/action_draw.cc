@@ -890,15 +890,15 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
              modifier_cache.simulation_cache_by_id.values())
         {
           const blender::bke::bake::SimulationNodeCache &node_cache = *node_cache_ptr;
-          if (node_cache.frame_caches.is_empty()) {
+          if (node_cache.bake.frames.is_empty()) {
             all_simulations_baked = false;
             continue;
           }
           if (node_cache.cache_status != blender::bke::bake::CacheStatus::Baked) {
             all_simulations_baked = false;
           }
-          const int start_frame = node_cache.frame_caches.first()->frame.frame();
-          const int end_frame = node_cache.frame_caches.last()->frame.frame();
+          const int start_frame = node_cache.bake.frames.first()->frame.frame();
+          const int end_frame = node_cache.bake.frames.last()->frame.frame();
           const blender::IndexRange frame_range{start_frame, end_frame - start_frame + 1};
           simulation_ranges.append({frame_range, node_cache.cache_status});
         }

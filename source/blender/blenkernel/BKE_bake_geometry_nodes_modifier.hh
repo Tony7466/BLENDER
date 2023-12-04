@@ -48,16 +48,9 @@ struct PrevCache {
   SubFrame frame;
 };
 
-/**
- * Stores the cached/baked data for simulation nodes in geometry nodes.
- */
-struct SimulationNodeCache {
-  CacheStatus cache_status = CacheStatus::Valid;
-
+struct NodeBakeCache {
   /** All cached frames. */
-  Vector<std::unique_ptr<FrameCache>> frame_caches;
-  /** Previous simulation state when only that is stored (instead of the state for every frame). */
-  std::optional<PrevCache> prev_cache;
+  Vector<std::unique_ptr<FrameCache>> frames;
 
   /** Where to load blobs from disk when loading the baked data lazily. */
   std::optional<std::string> blobs_dir;
@@ -65,13 +58,23 @@ struct SimulationNodeCache {
   std::unique_ptr<BlobSharing> blob_sharing;
   /** Used to avoid checking if a bake exists many times. */
   bool failed_finding_bake = false;
+};
+
+struct SimulationNodeCache {
+  NodeBakeCache bake;
+
+  CacheStatus cache_status = CacheStatus::Valid;
+
+  /** Previous simulation state when only that is stored (instead of the state for every frame). */
+  std::optional<PrevCache> prev_cache;
 
   void reset();
 };
 
 struct BakeNodeCache {
+  NodeBakeCache bake;
+
   bool do_bake = false;
-  Vector<std::unique_ptr<FrameCache>> frame_caches;
 
   void reset();
 };
