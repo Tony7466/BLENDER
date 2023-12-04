@@ -23,7 +23,7 @@ template<typename T> struct VolumeGridPtr;
 /* -------------------------------------------------------------------- */
 /** \name Common Grid Wrapper
  *
- * Base class for both generic and typed grid wrapper classes.
+ * Base class for #GVolumeGridPtr and #VolumeGridPtr.
  * \{ */
 
 struct VolumeGridPtrCommon : ImplicitSharingPtr<VolumeGrid> {
