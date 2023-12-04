@@ -167,6 +167,15 @@ float3 DrawingPlacement::project(const float2 co) const
   return math::transform_point(transforms_.world_space_to_layer_space, proj_point);
 }
 
+void DrawingPlacement::project(const Span<float2> src, MutableSpan<float3> dst) const
+{
+  threading::parallel_for(src.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      dst[i] = this->project(src[i]);
+    }
+  });
+}
+
 static float3 drawing_origin(const Scene *scene, const Object *object, char align_flag)
 {
   BLI_assert(object != nullptr && object->type == OB_GREASE_PENCIL);

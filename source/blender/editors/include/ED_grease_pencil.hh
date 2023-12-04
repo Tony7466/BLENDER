@@ -92,6 +92,7 @@ class DrawingPlacement {
    * Projects a screen space coordinate to the local drawing space.
    */
   float3 project(const float2 co) const;
+  void project(const Span<float2> src, MutableSpan<float3> dst) const;
 };
 
 void set_selected_frames_type(bke::greasepencil::Layer &layer,

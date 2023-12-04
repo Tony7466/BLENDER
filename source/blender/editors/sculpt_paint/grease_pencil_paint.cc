@@ -409,9 +409,7 @@ struct PaintOperationExecutor {
     const IndexRange smooth_window = self.screen_space_coords_orig_.index_range().drop_front(
         self.active_smooth_start_index_);
     if (smooth_window.size() < min_active_smoothing_points_num) {
-      for (const int64_t i : new_screen_space_coords.index_range()) {
-        new_positions[i] = self.placement_.project(new_screen_space_coords[i]);
-      }
+      self.placement_.project(new_screen_space_coords, new_positions);
     }
     else {
       /* Active smoothing is done in a window at the end of the new stroke. */
