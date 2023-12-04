@@ -46,11 +46,12 @@
 #include "ED_keyframing.hh"
 #include "ED_mesh.hh"
 
-#include "WM_api.hh"
-
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include "CLG_log.h"
+static CLG_LogRef LOG = {"io.usd"};
 
 namespace usdtokens {
 static const pxr::TfToken Anim("Anim", pxr::TfToken::Immortal);
@@ -107,10 +108,10 @@ void ensure_blend_shape_skeleton(pxr::UsdStageRefPtr stage, pxr::UsdPrim &mesh_p
   pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(mesh_prim);
 
   if (!skel_api) {
-    WM_reportf(RPT_WARNING,
-               "%s: Couldn't apply UsdSkelBindingAPI to mesh prim %s",
-               __func__,
-               mesh_prim.GetPath().GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: Couldn't apply UsdSkelBindingAPI to mesh prim %s",
+              __func__,
+              mesh_prim.GetPath().GetAsString().c_str());
     return;
   }
 
@@ -120,10 +121,10 @@ void ensure_blend_shape_skeleton(pxr::UsdStageRefPtr stage, pxr::UsdPrim &mesh_p
     skel = pxr::UsdSkelSkeleton::Define(stage, skel_path);
 
     if (!skel) {
-      WM_reportf(RPT_WARNING,
-                 "%s: Couldn't find or create skeleton bound to mesh prim %s",
-                 __func__,
-                 mesh_prim.GetPath().GetAsString().c_str());
+      CLOG_WARN(&LOG,
+                "%s: Couldn't find or create skeleton bound to mesh prim %s",
+                __func__,
+                mesh_prim.GetPath().GetAsString().c_str());
       return;
     }
 
@@ -153,10 +154,10 @@ void ensure_blend_shape_skeleton(pxr::UsdStageRefPtr stage, pxr::UsdPrim &mesh_p
   pxr::UsdSkelAnimation anim = pxr::UsdSkelAnimation::Define(stage, anim_path);
 
   if (!anim) {
-    WM_reportf(RPT_WARNING,
-               "%s: Couldn't define animation at path %s",
-               __func__,
-               anim_path.GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: Couldn't define animation at path %s",
+              __func__,
+              anim_path.GetAsString().c_str());
     return;
   }
 
@@ -180,10 +181,10 @@ void ensure_blend_shape_skeleton(pxr::UsdStageRefPtr stage, pxr::UsdPrim &mesh_p
            .CreateAnimationSourceRel()
            .AddTarget(pxr::SdfPath(usdtokens::Anim)))
   {
-    WM_reportf(RPT_WARNING,
-               "%s: Couldn't set animation source on skeleton %s",
-               __func__,
-               skel.GetPath().GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: Couldn't set animation source on skeleton %s",
+              __func__,
+              skel.GetPath().GetAsString().c_str());
   }
 
   pxr::UsdGeomPrimvarsAPI(mesh_prim).RemovePrimvar(TempBlendShapeWeightsPrimvarName);
@@ -357,10 +358,10 @@ pxr::VtTokenArray get_blend_shapes_attr_value(const pxr::UsdPrim &mesh_prim)
   pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(mesh_prim);
 
   if (!skel_api) {
-    WM_reportf(RPT_WARNING,
-               "%s: Couldn't apply UsdSkelBindingAPI to blend shape prim %s",
-               __func__,
-               mesh_prim.GetPath().GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: Couldn't apply UsdSkelBindingAPI to blend shape prim %s",
+              __func__,
+              mesh_prim.GetPath().GetAsString().c_str());
     return pxr::VtTokenArray();
   }
 
@@ -371,10 +372,10 @@ pxr::VtTokenArray get_blend_shapes_attr_value(const pxr::UsdPrim &mesh_prim)
   }
 
   if (!skel_api.GetBlendShapesAttr().Get(&blend_shape_names)) {
-    WM_reportf(RPT_WARNING,
-               "%s: Couldn't get blend shapes attribute value for prim %s",
-               __func__,
-               mesh_prim.GetPath().GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: Couldn't get blend shapes attribute value for prim %s",
+              __func__,
+              mesh_prim.GetPath().GetAsString().c_str());
   }
 
   return blend_shape_names;
@@ -387,10 +388,8 @@ void remap_blend_shape_anim(pxr::UsdStageRefPtr stage,
   pxr::UsdSkelSkeleton skel = pxr::UsdSkelSkeleton::Get(stage, skel_path);
 
   if (!skel) {
-    WM_reportf(RPT_WARNING,
-               "%s: Couldn't get skeleton from path %s",
-               __func__,
-               skel_path.GetAsString().c_str());
+    CLOG_WARN(
+        &LOG, "%s: Couldn't get skeleton from path %s", __func__, skel_path.GetAsString().c_str());
     return;
   }
 
@@ -399,10 +398,10 @@ void remap_blend_shape_anim(pxr::UsdStageRefPtr stage,
   const pxr::UsdSkelAnimation anim = pxr::UsdSkelAnimation::Define(stage, anim_path);
 
   if (!anim) {
-    WM_reportf(RPT_WARNING,
-               "%s: Couldn't define animation at path %s",
-               __func__,
-               anim_path.GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: Couldn't define animation at path %s",
+              __func__,
+              anim_path.GetAsString().c_str());
     return;
   }
 
@@ -422,10 +421,10 @@ void remap_blend_shape_anim(pxr::UsdStageRefPtr stage,
     pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(mesh_path);
     pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(mesh_prim);
     if (!skel_api) {
-      WM_reportf(RPT_WARNING,
-                 "%s: Couldn't apply UsdSkelBindingAPI to mesh prim %s",
-                 __func__,
-                 mesh_path.GetAsString().c_str());
+      CLOG_WARN(&LOG,
+                "%s: Couldn't apply UsdSkelBindingAPI to mesh prim %s",
+                __func__,
+                mesh_path.GetAsString().c_str());
       continue;
     }
 
@@ -531,10 +530,10 @@ Mesh *get_shape_key_basis_mesh(Object *obj)
   KeyBlock *basis = reinterpret_cast<KeyBlock *>(mesh->key->block.first);
 
   if (mesh->totvert != basis->totelem) {
-    WM_reportf(RPT_WARNING,
-               "%s: vertex and shape key element count mismatch for mesh %s\n",
-               __func__,
-               obj->id.name + 2);
+    CLOG_WARN(&LOG,
+              "%s: vertex and shape key element count mismatch for mesh %s\n",
+              __func__,
+              obj->id.name + 2);
     return nullptr;
   }
 

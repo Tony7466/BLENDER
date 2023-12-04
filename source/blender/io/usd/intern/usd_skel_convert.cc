@@ -50,11 +50,12 @@
 
 #include "ANIM_fcurve.hh"
 
-#include "WM_api.hh"
-
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include "CLG_log.h"
+static CLG_LogRef LOG = {"io.usd"};
 
 namespace usdtokens {
 static const pxr::TfToken Anim("Anim", pxr::TfToken::Immortal);
@@ -356,10 +357,10 @@ void add_skinned_mesh_bindings(const pxr::UsdSkelSkeleton &skel,
   pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(mesh_prim);
 
   if (!skel_api) {
-    WM_reportf(RPT_WARNING,
-               "%s: couldn't apply UsdSkelBindingAPI to skinned mesh prim %s\n",
-               __func__,
-               mesh_prim.GetPath().GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: couldn't apply UsdSkelBindingAPI to skinned mesh prim %s\n",
+              __func__,
+              mesh_prim.GetPath().GetAsString().c_str());
     return;
   }
 
@@ -376,10 +377,10 @@ void add_skinned_mesh_bindings(const pxr::UsdSkelSkeleton &skel,
     geom_bind_attr.Set(bind_xf);
   }
   else {
-    WM_reportf(RPT_WARNING,
-               "%s: couldn't create geom bind transform attribute for skinned mesh %s\n",
-               __func__,
-               mesh_prim.GetPath().GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: couldn't create geom bind transform attribute for skinned mesh %s\n",
+              __func__,
+              mesh_prim.GetPath().GetAsString().c_str());
   }
 }
 
@@ -1103,8 +1104,8 @@ void import_mesh_skel_bindings(Main *bmain,
       /* If there is an attribute with the same name, remove it. */
       bke::AttributeIDRef attr_id(joint_name);
       if (attributes.contains(attr_id)) {
-        WM_reportf(
-            RPT_WARNING,
+        CLOG_WARN(
+            &LOG,
             "%s: Removing attribute '%s' from mesh '%s', as it conflicts with a deform group "
             "for a bone with the same name",
             __func__,
@@ -1169,40 +1170,36 @@ void skinned_mesh_export_chaser(pxr::UsdStageRefPtr stage,
     /* Get the mesh prim from the stage. */
     pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(mesh_path);
     if (!mesh_prim) {
-      WM_reportf(RPT_WARNING,
-                 "%s: Invalid export map prim path %s for mesh object %s",
-                 __func__,
-                 mesh_path.GetAsString().c_str(),
-                 mesh_obj->id.name + 2);
+      CLOG_WARN(&LOG,
+                "%s: Invalid export map prim path %s for mesh object %s",
+                __func__,
+                mesh_path.GetAsString().c_str(),
+                mesh_obj->id.name + 2);
       continue;
     }
 
     /* Get the armature bound to the mesh's armature modifier. */
     const Object *arm_obj = get_armature_modifier_obj(*mesh_obj, depsgraph);
     if (!arm_obj) {
-      WM_reportf(RPT_WARNING,
-                 "%s: Invalid armature modifier for skinned mesh %s",
-                 __func__,
-                 mesh_obj->id.name + 2);
+      CLOG_WARN(&LOG,
+                "%s: Invalid armature modifier for skinned mesh %s",
+                __func__,
+                mesh_obj->id.name + 2);
       continue;
     }
     /* Look up the USD skeleton correpsoning to the armature object. */
     const pxr::SdfPath *path = armature_export_map.lookup_ptr(arm_obj);
     if (!path) {
-      WM_reportf(RPT_WARNING,
-                 "%s: No export map entry for armature object %s",
-                 __func__,
-                 mesh_obj->id.name + 2);
+      CLOG_WARN(
+          &LOG, "%s: No export map entry for armature object %s", __func__, mesh_obj->id.name + 2);
       continue;
     }
     /* Get the skeleton prim. */
     pxr::UsdPrim skel_prim = stage->GetPrimAtPath(*path);
     pxr::UsdSkelSkeleton skel(skel_prim);
     if (!skel) {
-      WM_reportf(RPT_WARNING,
-                 "%s: Invalid USD skeleton for armature object %s",
-                 __func__,
-                 arm_obj->id.name + 2);
+      CLOG_WARN(
+          &LOG, "%s: Invalid USD skeleton for armature object %s", __func__, arm_obj->id.name + 2);
       continue;
     }
 
@@ -1227,11 +1224,11 @@ void shape_key_export_chaser(pxr::UsdStageRefPtr stage,
     /* Get the mesh prim from the stage. */
     pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(mesh_path);
     if (!mesh_prim) {
-      WM_reportf(RPT_WARNING,
-                 "%s: Invalid export map prim path %s for mesh object %s",
-                 __func__,
-                 mesh_path.GetAsString().c_str(),
-                 mesh_obj->id.name + 2);
+      CLOG_WARN(&LOG,
+                "%s: Invalid export map prim path %s for mesh object %s",
+                __func__,
+                mesh_path.GetAsString().c_str(),
+                mesh_obj->id.name + 2);
       continue;
     }
 
@@ -1241,10 +1238,10 @@ void shape_key_export_chaser(pxr::UsdStageRefPtr stage,
     pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(mesh_prim);
 
     if (!skel_api) {
-      WM_reportf(RPT_WARNING,
-                 "%s: Couldn't apply UsdSkelBindingAPI to prim %s",
-                 __func__,
-                 mesh_prim.GetPath().GetAsString().c_str());
+      CLOG_WARN(&LOG,
+                "%s: Couldn't apply UsdSkelBindingAPI to prim %s",
+                __func__,
+                mesh_prim.GetPath().GetAsString().c_str());
       return;
     }
 

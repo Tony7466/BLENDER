@@ -54,6 +54,9 @@
 
 #include <iostream>
 
+#include "CLG_log.h"
+static CLG_LogRef LOG = {"io.usd"};
+
 namespace usdtokens {
 static const pxr::TfToken Anim("Anim", pxr::TfToken::Immortal);
 }  // namespace usdtokens
@@ -777,20 +780,20 @@ void USDMeshWriter::init_skinned_mesh(const HierarchyContext &context)
   pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(usd_export_context_.usd_path);
 
   if (!mesh_prim.IsValid()) {
-    WM_reportf(RPT_WARNING,
-               "%s: couldn't get valid mesh prim for mesh %s\n",
-               __func__,
-               usd_export_context_.usd_path.GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: couldn't get valid mesh prim for mesh %s\n",
+              __func__,
+              usd_export_context_.usd_path.GetAsString().c_str());
     return;
   }
 
   pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(mesh_prim);
 
   if (!skel_api) {
-    WM_reportf(RPT_WARNING,
-               "%s: couldn't apply UsdSkelBindingAPI to mesh prim %s\n",
-               __func__,
-               usd_export_context_.usd_path.GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: couldn't apply UsdSkelBindingAPI to mesh prim %s\n",
+              __func__,
+              usd_export_context_.usd_path.GetAsString().c_str());
     return;
   }
 
@@ -798,10 +801,10 @@ void USDMeshWriter::init_skinned_mesh(const HierarchyContext &context)
                                                     usd_export_context_.depsgraph);
 
   if (!arm_obj) {
-    WM_reportf(RPT_WARNING,
-               "%s: couldn't get armature modifier object for skinned mesh %s\n",
-               __func__,
-               usd_export_context_.usd_path.GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: couldn't get armature modifier object for skinned mesh %s\n",
+              __func__,
+              usd_export_context_.usd_path.GetAsString().c_str());
     return;
   }
 
@@ -809,10 +812,10 @@ void USDMeshWriter::init_skinned_mesh(const HierarchyContext &context)
   get_armature_bone_names(arm_obj, bone_names);
 
   if (bone_names.is_empty()) {
-    WM_reportf(RPT_WARNING,
-               "%s: no armature bones for skinned mesh %s\n",
-               __func__,
-               usd_export_context_.usd_path.GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: no armature bones for skinned mesh %s\n",
+              __func__,
+              usd_export_context_.usd_path.GetAsString().c_str());
     return;
   }
 
@@ -845,10 +848,10 @@ void USDMeshWriter::init_blend_shapes(const HierarchyContext &context)
   pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(usd_export_context_.usd_path);
 
   if (!mesh_prim.IsValid()) {
-    WM_reportf(RPT_WARNING,
-               "%s: couldn't get valid mesh prim for mesh %s\n",
-               __func__,
-               mesh_prim.GetPath().GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: couldn't get valid mesh prim for mesh %s\n",
+              __func__,
+              mesh_prim.GetPath().GetAsString().c_str());
     return;
   }
 
@@ -935,10 +938,10 @@ void USDMeshWriter::add_shape_key_weights_sample(const Object *obj)
   pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(usd_export_context_.usd_path);
 
   if (!mesh_prim.IsValid()) {
-    WM_reportf(RPT_WARNING,
-               "%s: couldn't get valid mesh prim for mesh %s\n",
-               __func__,
-               usd_export_context_.usd_path.GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: couldn't get valid mesh prim for mesh %s\n",
+              __func__,
+              usd_export_context_.usd_path.GetAsString().c_str());
     return;
   }
 
@@ -951,11 +954,11 @@ void USDMeshWriter::add_shape_key_weights_sample(const Object *obj)
       TempBlendShapeWeightsPrimvarName, pxr::SdfValueTypeNames->FloatArray);
 
   if (!temp_weights_attr) {
-    WM_reportf(RPT_WARNING,
-               "%s: couldn't create primvar %s on prim %s\n",
-               __func__,
-               TempBlendShapeWeightsPrimvarName.GetText(),
-               mesh_prim.GetPath().GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: couldn't create primvar %s on prim %s\n",
+              __func__,
+              TempBlendShapeWeightsPrimvarName.GetText(),
+              mesh_prim.GetPath().GetAsString().c_str());
     return;
   }
 

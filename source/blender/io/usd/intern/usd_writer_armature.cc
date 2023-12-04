@@ -12,8 +12,6 @@
 
 #include "ED_armature.hh"
 
-#include "WM_api.hh"
-
 #include <pxr/base/gf/matrix4d.h>
 #include <pxr/base/gf/matrix4f.h>
 #include <pxr/usd/usdSkel/animation.h>
@@ -23,6 +21,9 @@
 
 #include <functional>
 #include <iostream>
+
+#include "CLG_log.h"
+static CLG_LogRef LOG = {"io.usd"};
 
 namespace usdtokens {
 static const pxr::TfToken Anim("Anim", pxr::TfToken::Immortal);
@@ -138,10 +139,10 @@ void USDArmatureWriter::do_write(HierarchyContext &context)
   pxr::UsdSkelSkeleton skel = pxr::UsdSkelSkeleton::Define(stage, usd_export_context_.usd_path);
 
   if (!skel) {
-    WM_reportf(RPT_WARNING,
-               "%s: couldn't define UsdSkelSkeleton %s\n",
-               __func__,
-               usd_export_context_.usd_path.GetString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: couldn't define UsdSkelSkeleton %s\n",
+              __func__,
+              usd_export_context_.usd_path.GetString().c_str());
     return;
   }
 
@@ -150,10 +151,10 @@ void USDArmatureWriter::do_write(HierarchyContext &context)
   pxr::UsdSkelAnimation skel_anim = pxr::UsdSkelAnimation::Define(stage, anim_path);
 
   if (!skel_anim) {
-    WM_reportf(RPT_WARNING,
-               "%s: couldn't define UsdSkelAnimation %s\n",
-               __func__,
-               anim_path.GetString().c_str());
+    CLOG_WARN(&LOG,
+              "%s: couldn't define UsdSkelAnimation %s\n",
+              __func__,
+              anim_path.GetString().c_str());
     return;
   }
 
