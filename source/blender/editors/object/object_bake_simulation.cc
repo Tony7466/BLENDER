@@ -538,14 +538,14 @@ static void bake_simulation_validate_paths(bContext *C,
       }
 
       NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-      if (StringRef(nmd->simulation_bake_directory).is_empty()) {
+      if (StringRef(nmd->bake_directory).is_empty()) {
         BKE_reportf(op->reports,
                     RPT_INFO,
                     "Bake directory of object %s, modifier %s is empty, setting default path",
                     object->id.name + 2,
                     md->name);
 
-        nmd->simulation_bake_directory = BLI_strdup(
+        nmd->bake_directory = BLI_strdup(
             bake::get_default_modifier_bake_directory(*bmain, *object, *nmd).c_str());
       }
     }
@@ -573,12 +573,12 @@ static PathUsersMap bake_simulation_get_path_users(bContext *C, const Span<Objec
         continue;
       }
       const NodesModifierData *nmd = reinterpret_cast<const NodesModifierData *>(md);
-      if (StringRef(nmd->simulation_bake_directory).is_empty()) {
+      if (StringRef(nmd->bake_directory).is_empty()) {
         continue;
       }
 
       char absolute_bake_dir[FILE_MAX];
-      STRNCPY(absolute_bake_dir, nmd->simulation_bake_directory);
+      STRNCPY(absolute_bake_dir, nmd->bake_directory);
       BLI_path_abs(absolute_bake_dir, base_path);
       path_users.add_or_modify(
           absolute_bake_dir, [](int *value) { *value = 1; }, [](int *value) { ++(*value); });
@@ -726,7 +726,7 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int bake_single_simulation_exec(bContext *C, wmOperator *op)
+static int bake_single_node_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -747,9 +747,9 @@ static int bake_single_simulation_exec(bContext *C, wmOperator *op)
   }
   NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
 
-  if (StringRef(nmd.simulation_bake_directory).is_empty()) {
+  if (StringRef(nmd.bake_directory).is_empty()) {
     const std::string directory = bake::get_default_modifier_bake_directory(*bmain, *object, nmd);
-    nmd.simulation_bake_directory = BLI_strdup(directory.c_str());
+    nmd.bake_directory = BLI_strdup(directory.c_str());
   }
 
   const int bake_id = RNA_int_get(op->ptr, "bake_id");
@@ -787,9 +787,7 @@ static int bake_single_simulation_exec(bContext *C, wmOperator *op)
   return start_bake_job(C, std::move(objects_to_bake), op);
 }
 
-static int bake_single_simulation_modal(bContext *C,
-                                        wmOperator * /*op*/,
-                                        const wmEvent * /*event*/)
+static int bake_single_node_modal(bContext *C, wmOperator * /*op*/, const wmEvent * /*event*/)
 {
   if (!WM_jobs_test(CTX_wm_manager(C), CTX_data_scene(C), WM_JOB_TYPE_BAKE_SIMULATION_NODES)) {
     return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
@@ -882,8 +880,8 @@ void OBJECT_OT_simulation_nodes_cache_bake_single(wmOperatorType *ot)
   ot->description = "Bake a single simulation zone";
   ot->idname = "OBJECT_OT_simulation_nodes_cache_bake_single";
 
-  ot->exec = bake_single_simulation_exec;
-  ot->modal = bake_single_simulation_modal;
+  ot->exec = bake_single_node_exec;
+  ot->modal = bake_single_node_modal;
 
   WM_operator_properties_id_lookup(ot, false);
 

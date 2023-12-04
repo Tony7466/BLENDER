@@ -63,12 +63,12 @@ std::optional<std::string> get_modifier_bake_path(const Main &bmain,
   if (bmain_path.is_empty()) {
     return std::nullopt;
   }
-  if (StringRef(nmd.simulation_bake_directory).is_empty()) {
+  if (StringRef(nmd.bake_directory).is_empty()) {
     return std::nullopt;
   }
   const char *base_path = ID_BLEND_PATH(&bmain, &object.id);
   char absolute_bake_dir[FILE_MAX];
-  STRNCPY(absolute_bake_dir, nmd.simulation_bake_directory);
+  STRNCPY(absolute_bake_dir, nmd.bake_directory);
   BLI_path_abs(absolute_bake_dir, base_path);
   return absolute_bake_dir;
 }

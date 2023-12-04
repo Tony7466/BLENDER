@@ -1803,7 +1803,7 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
   uiLayout *col = uiLayoutColumn(layout, false);
   uiLayoutSetPropSep(col, true);
   uiLayoutSetPropDecorate(col, false);
-  uiItemR(col, ptr, "simulation_bake_directory", UI_ITEM_NONE, IFACE_("Bake"), ICON_NONE);
+  uiItemR(col, ptr, "bake_directory", UI_ITEM_NONE, IFACE_("Bake"), ICON_NONE);
 
   geo_log::GeoTreeLog *tree_log = get_root_tree_log(*nmd);
   if (tree_log == nullptr) {
@@ -1893,7 +1893,7 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
 
   BLO_write_struct(writer, NodesModifierData, nmd);
 
-  BLO_write_string(writer, nmd->simulation_bake_directory);
+  BLO_write_string(writer, nmd->bake_directory);
 
   if (nmd->settings.properties != nullptr) {
     Map<IDProperty *, IDPropertyUIDataBool *> boolean_props;
@@ -1938,7 +1938,7 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
 static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
   NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-  BLO_read_data_address(reader, &nmd->simulation_bake_directory);
+  BLO_read_data_address(reader, &nmd->bake_directory);
   if (nmd->node_group == nullptr) {
     nmd->settings.properties = nullptr;
   }
@@ -1979,15 +1979,13 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
     /* Share the simulation cache between the original and evaluated modifier. */
     tnmd->runtime->cache = nmd->runtime->cache;
     /* Keep bake path in the evaluated modifier. */
-    tnmd->simulation_bake_directory = nmd->simulation_bake_directory ?
-                                          BLI_strdup(nmd->simulation_bake_directory) :
-                                          nullptr;
+    tnmd->bake_directory = nmd->bake_directory ? BLI_strdup(nmd->bake_directory) : nullptr;
   }
   else {
     tnmd->runtime->cache = std::make_shared<bake::ModifierCache>();
     update_existing_bake_caches(*tnmd);
     /* Clear the bake path when duplicating. */
-    tnmd->simulation_bake_directory = nullptr;
+    tnmd->bake_directory = nullptr;
   }
 
   if (nmd->settings.properties != nullptr) {
@@ -2008,7 +2006,7 @@ static void free_data(ModifierData *md)
   }
   MEM_SAFE_FREE(nmd->bakes);
 
-  MEM_SAFE_FREE(nmd->simulation_bake_directory);
+  MEM_SAFE_FREE(nmd->bake_directory);
   MEM_delete(nmd->runtime);
 }
 
