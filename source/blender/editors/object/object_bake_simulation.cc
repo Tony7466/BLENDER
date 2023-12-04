@@ -236,7 +236,7 @@ struct ObjectBakeData {
   Vector<ModifierBakeData> modifiers;
 };
 
-struct BakeSimulationJob {
+struct BakeGeometryNodesJob {
   wmWindowManager *wm;
   Main *bmain;
   Depsgraph *depsgraph;
@@ -244,9 +244,9 @@ struct BakeSimulationJob {
   Vector<ObjectBakeData> objects;
 };
 
-static void bake_simulation_job_startjob(void *customdata, wmJobWorkerStatus *worker_status)
+static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *worker_status)
 {
-  BakeSimulationJob &job = *static_cast<BakeSimulationJob *>(customdata);
+  BakeGeometryNodesJob &job = *static_cast<BakeGeometryNodesJob *>(customdata);
   G.is_rendering = true;
   G.is_break = false;
   WM_set_locked_interface(job.wm, true);
@@ -358,9 +358,9 @@ static void bake_simulation_job_startjob(void *customdata, wmJobWorkerStatus *wo
   worker_status->do_update = true;
 }
 
-static void bake_simulation_job_endjob(void *customdata)
+static void bake_geometry_nodes_endjob(void *customdata)
 {
-  BakeSimulationJob &job = *static_cast<BakeSimulationJob *>(customdata);
+  BakeGeometryNodesJob &job = *static_cast<BakeGeometryNodesJob *>(customdata);
   WM_set_locked_interface(job.wm, false);
   G.is_rendering = false;
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
@@ -368,7 +368,7 @@ static void bake_simulation_job_endjob(void *customdata)
 
 static int start_bake_job(bContext *C, Vector<ObjectBakeData> objects_to_bake, wmOperator *op)
 {
-  BakeSimulationJob *job = MEM_new<BakeSimulationJob>(__func__);
+  BakeGeometryNodesJob *job = MEM_new<BakeGeometryNodesJob>(__func__);
   job->wm = CTX_wm_manager(C);
   job->bmain = CTX_data_main(C);
   job->depsgraph = CTX_data_depsgraph_pointer(C);
@@ -378,15 +378,15 @@ static int start_bake_job(bContext *C, Vector<ObjectBakeData> objects_to_bake, w
   wmJob *wm_job = WM_jobs_get(job->wm,
                               CTX_wm_window(C),
                               job->scene,
-                              "Bake Simulation Nodes",
+                              "Bake Nodes",
                               WM_JOB_PROGRESS,
-                              WM_JOB_TYPE_BAKE_SIMULATION_NODES);
+                              WM_JOB_TYPE_BAKE_GEOMETRY_NODES);
 
   WM_jobs_customdata_set(
-      wm_job, job, [](void *job) { MEM_delete(static_cast<BakeSimulationJob *>(job)); });
+      wm_job, job, [](void *job) { MEM_delete(static_cast<BakeGeometryNodesJob *>(job)); });
   WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
   WM_jobs_callbacks(
-      wm_job, bake_simulation_job_startjob, nullptr, nullptr, bake_simulation_job_endjob);
+      wm_job, bake_geometry_nodes_startjob, nullptr, nullptr, bake_geometry_nodes_endjob);
 
   WM_jobs_start(CTX_wm_manager(C), wm_job);
   WM_event_add_modal_handler(C, op);
@@ -638,7 +638,7 @@ static int bake_simulation_invoke(bContext *C, wmOperator *op, const wmEvent * /
 
 static int bake_simulation_modal(bContext *C, wmOperator * /*op*/, const wmEvent * /*event*/)
 {
-  if (!WM_jobs_test(CTX_wm_manager(C), CTX_data_scene(C), WM_JOB_TYPE_BAKE_SIMULATION_NODES)) {
+  if (!WM_jobs_test(CTX_wm_manager(C), CTX_data_scene(C), WM_JOB_TYPE_BAKE_GEOMETRY_NODES)) {
     return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
   }
   return OPERATOR_PASS_THROUGH;
@@ -789,7 +789,7 @@ static int bake_single_node_exec(bContext *C, wmOperator *op)
 
 static int bake_single_node_modal(bContext *C, wmOperator * /*op*/, const wmEvent * /*event*/)
 {
-  if (!WM_jobs_test(CTX_wm_manager(C), CTX_data_scene(C), WM_JOB_TYPE_BAKE_SIMULATION_NODES)) {
+  if (!WM_jobs_test(CTX_wm_manager(C), CTX_data_scene(C), WM_JOB_TYPE_BAKE_GEOMETRY_NODES)) {
     return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
   }
   return OPERATOR_PASS_THROUGH;
