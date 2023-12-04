@@ -12,7 +12,7 @@
 #include <optional>
 #include <string>
 
-#include "BLI_bitmap.h"
+#include "BLI_bit_group_vector.hh"
 #include "BLI_compiler_compat.h"
 #include "BLI_function_ref.hh"
 #include "BLI_index_mask.hh"
@@ -320,7 +320,7 @@ void BKE_pbvh_sync_visibility_from_verts(PBVH *pbvh, Mesh *me);
 /**
  * Returns the number of visible quads in the nodes' grids.
  */
-int BKE_pbvh_count_grid_quads(blender::Span<const BLI_bitmap *> grid_hidden,
+int BKE_pbvh_count_grid_quads(const blender::BitGroupVector<> &grid_visibility,
                               const int *grid_indices,
                               int totgrid,
                               int gridsize,
@@ -377,13 +377,8 @@ bool BKE_pbvh_node_fully_unmasked_get(PBVHNode *node);
 void BKE_pbvh_mark_rebuild_pixels(PBVH *pbvh);
 void BKE_pbvh_vert_tag_update_normal(PBVH *pbvh, PBVHVertRef vertex);
 
-void BKE_pbvh_node_get_grids(PBVH *pbvh,
-                             PBVHNode *node,
-                             const int **grid_indices,
-                             int *totgrid,
-                             int *maxgrid,
-                             int *gridsize,
-                             CCGElem *const **r_griddata);
+blender::Span<int> BKE_pbvh_node_get_grid_indices(const PBVHNode &node);
+
 void BKE_pbvh_node_num_verts(const PBVH *pbvh,
                              const PBVHNode *node,
                              int *r_uniquevert,
@@ -469,7 +464,8 @@ struct PBVHVertexIter {
   CCGKey key;
   CCGElem *const *grids;
   CCGElem *grid;
-  BLI_bitmap *const *grid_hidden, *gh;
+  const blender::BitGroupVector<> *grid_hidden;
+  std::optional<blender::BoundedBitSpan> gh;
   const int *grid_indices;
   int totgrid;
   int gridsize;
@@ -513,7 +509,12 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
       vi.index = vi.vertex.i = vi.grid_indices[vi.g] * vi.key.grid_area - 1; \
       vi.grid = CCG_elem_offset(&vi.key, vi.grids[vi.grid_indices[vi.g]], -1); \
       if (mode == PBVH_ITER_UNIQUE) { \
-        vi.gh = vi.grid_hidden[vi.grid_indices[vi.g]]; \
+        if (vi.grid_hidden) { \
+          vi.gh.emplace((*vi.grid_hidden)[vi.grid_indices[vi.g]]); \
+        } \
+        else { \
+          vi.gh.reset(); \
+        } \
       } \
     } \
     else { \
@@ -532,7 +533,7 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
           vi.vertex.i++; \
           vi.visible = true; \
           if (vi.gh) { \
-            if (BLI_BITMAP_TEST(vi.gh, vi.gy * vi.gridsize + vi.gx)) { \
+            if ((*vi.gh)[vi.gy * vi.gridsize + vi.gx]) { \
               continue; \
             } \
           } \

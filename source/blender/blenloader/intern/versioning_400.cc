@@ -53,7 +53,7 @@
 #include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_node.hh"
@@ -323,6 +323,33 @@ static void versioning_eevee_shadow_settings(Object *object)
 
   /* Enable the hide_shadow flag only if there's not any shadow casting material. */
   SET_FLAG_FROM_TEST(object->visibility_flag, hide_shadows, OB_HIDE_SHADOW);
+}
+
+static void versioning_replace_splitviewer(bNodeTree *ntree)
+{
+  /* Split viewer was replaced with a regular split node, so add a viewer node,
+   * and link it to the new split node to achive the same behavior of the split viewer node. */
+
+  LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
+    if (node->type != CMP_NODE_SPLITVIEWER__DEPRECATED) {
+      continue;
+    }
+
+    STRNCPY(node->idname, "CompositorNodeSplit");
+    node->type = CMP_NODE_SPLIT;
+    MEM_freeN(node->storage);
+
+    bNode *viewer_node = nodeAddStaticNode(nullptr, ntree, CMP_NODE_VIEWER);
+    /* Nodes are created stacked on top of each other, so separate them a bit. */
+    viewer_node->locx = node->locx + node->width + viewer_node->width / 4.0f;
+    viewer_node->locy = node->locy;
+
+    bNodeSocket *split_out_socket = nodeAddStaticSocket(
+        ntree, node, SOCK_OUT, SOCK_IMAGE, PROP_NONE, "Image", "Image");
+    bNodeSocket *viewer_in_socket = nodeFindSocket(viewer_node, SOCK_IN, "Image");
+
+    nodeAddLink(ntree, node, split_out_socket, viewer_node, viewer_in_socket);
+  }
 }
 
 void do_versions_after_linking_400(FileData *fd, Main *bmain)
@@ -2431,6 +2458,13 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadow, MA_BL_TRANSPARENT_SHADOW);
       }
     }
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_COMPOSIT) {
+        versioning_replace_splitviewer(ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 
   /* 401 6 did not require any do_version here. */
