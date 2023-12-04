@@ -4,6 +4,7 @@
 
 #ifdef WITH_ONEAPI
 
+#  include <algorithm>
 #  include <sycl/sycl.hpp>
 
 #  include "device/oneapi/device_impl.h"
