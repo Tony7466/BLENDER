@@ -11,6 +11,7 @@
 #include <climits>
 
 #include "BLI_array_utils.hh"
+#include "BLI_bit_span_ops.hh"
 #include "BLI_bitmap.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
@@ -45,6 +46,7 @@
 
 #include "pbvh_intern.hh"
 
+using blender::BitGroupVector;
 using blender::float3;
 using blender::MutableSpan;
 using blender::Span;
@@ -131,27 +133,69 @@ void BBC_update_centroid(BBC *bbc)
   }
 }
 
+namespace blender::bke::pbvh {
+
+void update_node_bounds_mesh(const Span<float3> positions, PBVHNode &node)
+{
+  BB vb;
+  BB_reset(&vb);
+  for (const int vert : node.vert_indices) {
+    BB_expand(&vb, positions[vert]);
+  }
+  node.vb = vb;
+}
+
+void update_node_bounds_grids(const CCGKey &key, const Span<CCGElem *> grids, PBVHNode &node)
+{
+  BB vb;
+  BB_reset(&vb);
+  for (const int grid : node.prim_indices) {
+    for (const int i : IndexRange(key.grid_area)) {
+      BB_expand(&vb, CCG_elem_offset_co(&key, grids[grid], i));
+    }
+  }
+  node.vb = vb;
+}
+
+void update_node_bounds_bmesh(PBVHNode &node)
+{
+  BB vb;
+  BB_reset(&vb);
+  for (const BMVert *vert : node.bm_unique_verts) {
+    BB_expand(&vb, vert->co);
+  }
+  for (const BMVert *vert : node.bm_other_verts) {
+    BB_expand(&vb, vert->co);
+  }
+  node.vb = vb;
+}
+
+}  // namespace blender::bke::pbvh
+
 /* Not recursive */
 static void update_node_vb(PBVH *pbvh, PBVHNode *node)
 {
-  BB vb;
-
-  BB_reset(&vb);
-
+  using namespace blender::bke::pbvh;
   if (node->flag & PBVH_Leaf) {
-    PBVHVertexIter vd;
-
-    BKE_pbvh_vertex_iter_begin (pbvh, node, vd, PBVH_ITER_ALL) {
-      BB_expand(&vb, vd.co);
+    switch (pbvh->header.type) {
+      case PBVH_FACES:
+        update_node_bounds_mesh(pbvh->vert_positions, *node);
+        break;
+      case PBVH_GRIDS:
+        update_node_bounds_grids(pbvh->gridkey, pbvh->subdiv_ccg->grids, *node);
+        break;
+      case PBVH_BMESH:
+        update_node_bounds_bmesh(*node);
+        break;
     }
-    BKE_pbvh_vertex_iter_end;
   }
   else {
+    BB vb;
+    BB_reset(&vb);
     BB_expand_with_bb(&vb, &pbvh->nodes[node->children_offset].vb);
     BB_expand_with_bb(&vb, &pbvh->nodes[node->children_offset + 1].vb);
+    node->vb = vb;
   }
-
-  node->vb = vb;
 }
 
 // void BKE_pbvh_node_BB_reset(PBVHNode *node)
@@ -182,21 +226,16 @@ static bool face_materials_match(const int *material_indices,
   return true;
 }
 
-static bool grid_materials_match(const DMFlagMat *f1, const DMFlagMat *f2)
-{
-  return (f1->sharp == f2->sharp) && (f1->mat_nr == f2->mat_nr);
-}
-
 /* Adapted from BLI_kdopbvh.c */
 /* Returns the index of the first element on the right of the partition */
-static int partition_indices_faces(blender::MutableSpan<int> prim_indices,
-                                   int *prim_scratch,
-                                   int lo,
-                                   int hi,
-                                   int axis,
-                                   float mid,
-                                   const Span<BBC> prim_bbc,
-                                   const Span<int> looptri_faces)
+static int partition_prim_indices(blender::MutableSpan<int> prim_indices,
+                                  int *prim_scratch,
+                                  int lo,
+                                  int hi,
+                                  int axis,
+                                  float mid,
+                                  const Span<BBC> prim_bbc,
+                                  const Span<int> prim_to_face_map)
 {
   for (int i = lo; i < hi; i++) {
     prim_scratch[i - lo] = prim_indices[i];
@@ -206,40 +245,10 @@ static int partition_indices_faces(blender::MutableSpan<int> prim_indices,
   int i1 = lo, i2 = 0;
 
   while (i1 < hi) {
-    const int face_i = looptri_faces[prim_scratch[i2]];
+    const int face_i = prim_to_face_map[prim_scratch[i2]];
     bool side = prim_bbc[prim_scratch[i2]].bcentroid[axis] >= mid;
 
-    while (i1 < hi && looptri_faces[prim_scratch[i2]] == face_i) {
-      prim_indices[side ? hi2-- : lo2++] = prim_scratch[i2];
-      i1++;
-      i2++;
-    }
-  }
-
-  return lo2;
-}
-
-static int partition_indices_grids(blender::MutableSpan<int> prim_indices,
-                                   int *prim_scratch,
-                                   int lo,
-                                   int hi,
-                                   int axis,
-                                   float mid,
-                                   const Span<BBC> prim_bbc,
-                                   SubdivCCG *subdiv_ccg)
-{
-  for (int i = lo; i < hi; i++) {
-    prim_scratch[i - lo] = prim_indices[i];
-  }
-
-  int lo2 = lo, hi2 = hi - 1;
-  int i1 = lo, i2 = 0;
-
-  while (i1 < hi) {
-    int face_i = BKE_subdiv_ccg_grid_to_face_index(*subdiv_ccg, prim_scratch[i2]);
-    bool side = prim_bbc[prim_scratch[i2]].bcentroid[axis] >= mid;
-
-    while (i1 < hi && BKE_subdiv_ccg_grid_to_face_index(*subdiv_ccg, prim_scratch[i2]) == face_i) {
+    while (i1 < hi && prim_to_face_map[prim_scratch[i2]] == face_i) {
       prim_indices[side ? hi2-- : lo2++] = prim_scratch[i2];
       i1++;
       i2++;
@@ -250,45 +259,32 @@ static int partition_indices_grids(blender::MutableSpan<int> prim_indices,
 }
 
 /* Returns the index of the first element on the right of the partition */
-static int partition_indices_material(PBVH *pbvh,
-                                      const Span<int> looptri_faces,
-                                      const int *material_indices,
-                                      const bool *sharp_faces,
-                                      int lo,
-                                      int hi)
+static int partition_indices_material_faces(MutableSpan<int> indices,
+                                            const Span<int> prim_to_face_map,
+                                            const int *material_indices,
+                                            const bool *sharp_faces,
+                                            const int lo,
+                                            const int hi)
 {
-  const Span<DMFlagMat> flagmats = pbvh->subdiv_ccg->grid_flag_mats;
-  MutableSpan<int> indices = pbvh->prim_indices;
   int i = lo, j = hi;
-
   for (;;) {
-    if (!looptri_faces.is_empty()) {
-      const int first = looptri_faces[pbvh->prim_indices[lo]];
-      for (; face_materials_match(material_indices, sharp_faces, first, looptri_faces[indices[i]]);
-           i++) {
-        /* pass */
-      }
-      for (;
-           !face_materials_match(material_indices, sharp_faces, first, looptri_faces[indices[j]]);
-           j--) {
-        /* pass */
-      }
+    const int first = prim_to_face_map[indices[lo]];
+    for (;
+         face_materials_match(material_indices, sharp_faces, first, prim_to_face_map[indices[i]]);
+         i++)
+    {
+      /* pass */
     }
-    else {
-      const DMFlagMat *first = &flagmats[pbvh->prim_indices[lo]];
-      for (; grid_materials_match(first, &flagmats[indices[i]]); i++) {
-        /* pass */
-      }
-      for (; !grid_materials_match(first, &flagmats[indices[j]]); j--) {
-        /* pass */
-      }
+    for (;
+         !face_materials_match(material_indices, sharp_faces, first, prim_to_face_map[indices[j]]);
+         j--)
+    {
+      /* pass */
     }
-
     if (!(i < j)) {
       return i;
     }
-
-    std::swap(pbvh->prim_indices[i], pbvh->prim_indices[j]);
+    std::swap(indices[i], indices[j]);
     i++;
   }
 }
@@ -384,14 +380,16 @@ static void update_vb(PBVH *pbvh, PBVHNode *node, const Span<BBC> prim_bbc, int 
   node->orig_vb = node->vb;
 }
 
-int BKE_pbvh_count_grid_quads(const Span<const BLI_bitmap *> grid_hidden,
+int BKE_pbvh_count_grid_quads(const BitGroupVector<> &grid_hidden,
                               const int *grid_indices,
                               int totgrid,
                               int gridsize,
                               int display_gridsize)
 {
   const int gridarea = (gridsize - 1) * (gridsize - 1);
-  int totquad = 0;
+  if (grid_hidden.is_empty()) {
+    return gridarea * totgrid;
+  }
 
   /* grid hidden layer is present, so have to check each grid for
    * visibility */
@@ -401,21 +399,16 @@ int BKE_pbvh_count_grid_quads(const Span<const BLI_bitmap *> grid_hidden,
 
   int skip = depth2 < depth1 ? 1 << (depth1 - depth2 - 1) : 1;
 
+  int totquad = 0;
   for (int i = 0; i < totgrid; i++) {
-    const BLI_bitmap *gh = grid_hidden[grid_indices[i]];
-
-    if (gh) {
-      /* grid hidden are present, have to check each element */
-      for (int y = 0; y < gridsize - skip; y += skip) {
-        for (int x = 0; x < gridsize - skip; x += skip) {
-          if (!paint_is_grid_face_hidden(gh, gridsize, x, y)) {
-            totquad++;
-          }
+    const blender::BoundedBitSpan gh = grid_hidden[grid_indices[i]];
+    /* grid hidden are present, have to check each element */
+    for (int y = 0; y < gridsize - skip; y += skip) {
+      for (int x = 0; x < gridsize - skip; x += skip) {
+        if (!paint_is_grid_face_hidden(gh, gridsize, x, y)) {
+          totquad++;
         }
       }
-    }
-    else {
-      totquad += gridarea;
     }
   }
 
@@ -463,7 +456,7 @@ static void build_leaf(PBVH *pbvh,
 /* Return zero if all primitives in the node can be drawn with the
  * same material (including flat/smooth shading), non-zero otherwise */
 static bool leaf_needs_material_split(PBVH *pbvh,
-                                      const Span<int> looptri_faces,
+                                      const Span<int> prim_to_face_map,
                                       const int *material_indices,
                                       const bool *sharp_faces,
                                       int offset,
@@ -473,23 +466,11 @@ static bool leaf_needs_material_split(PBVH *pbvh,
     return false;
   }
 
-  if (!pbvh->looptri.is_empty()) {
-    const int first = looptri_faces[pbvh->prim_indices[offset]];
-    for (int i = offset + count - 1; i > offset; i--) {
-      int prim = pbvh->prim_indices[i];
-      if (!face_materials_match(material_indices, sharp_faces, first, looptri_faces[prim])) {
-        return true;
-      }
-    }
-  }
-  else {
-    const DMFlagMat *first = &pbvh->subdiv_ccg->grid_flag_mats[pbvh->prim_indices[offset]];
-
-    for (int i = offset + count - 1; i > offset; i--) {
-      int prim = pbvh->prim_indices[i];
-      if (!grid_materials_match(first, &pbvh->subdiv_ccg->grid_flag_mats[prim])) {
-        return true;
-      }
+  const int first = prim_to_face_map[pbvh->prim_indices[offset]];
+  for (int i = offset + count - 1; i > offset; i--) {
+    int prim = pbvh->prim_indices[i];
+    if (!face_materials_match(material_indices, sharp_faces, first, prim_to_face_map[prim])) {
+      return true;
     }
   }
 
@@ -570,6 +551,9 @@ static void build_sub(PBVH *pbvh,
                       int *prim_scratch,
                       int depth)
 {
+  const Span<int> prim_to_face_map = pbvh->header.type == PBVH_FACES ?
+                                         looptri_faces :
+                                         pbvh->subdiv_ccg->grid_to_face_map;
   int end;
   BB cb_backing;
 
@@ -581,7 +565,8 @@ static void build_sub(PBVH *pbvh,
   const bool below_leaf_limit = count <= pbvh->leaf_limit || depth >= STACK_FIXED_DEPTH - 1;
   if (below_leaf_limit) {
     if (!leaf_needs_material_split(
-            pbvh, looptri_faces, material_indices, sharp_faces, offset, count)) {
+            pbvh, prim_to_face_map, material_indices, sharp_faces, offset, count))
+    {
       build_leaf(pbvh,
                  corner_verts,
                  looptris,
@@ -619,31 +604,23 @@ static void build_sub(PBVH *pbvh,
     const int axis = BB_widest_axis(cb);
 
     /* Partition primitives along that axis */
-    if (pbvh->header.type == PBVH_FACES) {
-      end = partition_indices_faces(pbvh->prim_indices,
-                                    prim_scratch,
-                                    offset,
-                                    offset + count,
-                                    axis,
-                                    (cb->bmax[axis] + cb->bmin[axis]) * 0.5f,
-                                    prim_bbc,
-                                    looptri_faces);
-    }
-    else {
-      end = partition_indices_grids(pbvh->prim_indices,
-                                    prim_scratch,
-                                    offset,
-                                    offset + count,
-                                    axis,
-                                    (cb->bmax[axis] + cb->bmin[axis]) * 0.5f,
-                                    prim_bbc,
-                                    pbvh->subdiv_ccg);
-    }
+    end = partition_prim_indices(pbvh->prim_indices,
+                                 prim_scratch,
+                                 offset,
+                                 offset + count,
+                                 axis,
+                                 (cb->bmax[axis] + cb->bmin[axis]) * 0.5f,
+                                 prim_bbc,
+                                 prim_to_face_map);
   }
   else {
     /* Partition primitives by material */
-    end = partition_indices_material(
-        pbvh, looptri_faces, material_indices, sharp_faces, offset, offset + count - 1);
+    end = partition_indices_material_faces(pbvh->prim_indices,
+                                           prim_to_face_map,
+                                           material_indices,
+                                           sharp_faces,
+                                           offset,
+                                           offset + count - 1);
   }
 
   /* Build children */
@@ -894,7 +871,7 @@ void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
 #endif
 }
 
-void BKE_pbvh_build_grids(PBVH *pbvh, CCGKey *key, Mesh *me, SubdivCCG *subdiv_ccg)
+void BKE_pbvh_build_grids(PBVH *pbvh, const CCGKey *key, Mesh *me, SubdivCCG *subdiv_ccg)
 {
   const int gridsize = key->grid_size;
   const Span<CCGElem *> grids = subdiv_ccg->grids;
@@ -1168,7 +1145,7 @@ static void free_tree(node_tree *tree)
   free(tree);
 }
 
-float BKE_pbvh_node_get_tmin(PBVHNode *node)
+float BKE_pbvh_node_get_tmin(const PBVHNode *node)
 {
   return node->tmin;
 }
@@ -1342,36 +1319,6 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes, Mesh &
   }
 }
 
-static void node_update_mask_redraw(PBVH &pbvh, PBVHNode &node)
-{
-  if (!(node.flag & PBVH_UpdateMask)) {
-    return;
-  }
-  node.flag &= ~PBVH_UpdateMask;
-
-  bool has_unmasked = false;
-  bool has_masked = true;
-  if (node.flag & PBVH_Leaf) {
-    PBVHVertexIter vd;
-
-    BKE_pbvh_vertex_iter_begin (&pbvh, &node, vd, PBVH_ITER_ALL) {
-      if (vd.mask < 1.0f) {
-        has_unmasked = true;
-      }
-      if (vd.mask > 0.0f) {
-        has_masked = false;
-      }
-    }
-    BKE_pbvh_vertex_iter_end;
-  }
-  else {
-    has_unmasked = true;
-    has_masked = true;
-  }
-  BKE_pbvh_node_fully_masked_set(&node, !has_unmasked);
-  BKE_pbvh_node_fully_unmasked_set(&node, has_masked);
-}
-
 static void node_update_bounds(PBVH &pbvh, PBVHNode &node, const PBVHNodeFlags flag)
 {
   if ((flag & PBVH_UpdateBB) && (node.flag & PBVH_UpdateBB)) {
@@ -1433,23 +1380,23 @@ static blender::draw::pbvh::PBVH_GPU_Args pbvh_draw_args_init(const Mesh &mesh,
       args.mlooptri = pbvh.looptri;
       args.vert_normals = pbvh.vert_normals;
       args.face_normals = pbvh.face_normals;
+      /* Retrieve data from the original mesh. Ideally that would be passed to this function to
+       * make it clearer when each is used. */
       args.hide_poly = static_cast<const bool *>(
-          CustomData_get_layer_named(&mesh.face_data, CD_PROP_BOOL, ".hide_poly"));
+          CustomData_get_layer_named(&pbvh.mesh->face_data, CD_PROP_BOOL, ".hide_poly"));
 
       args.prim_indices = node.prim_indices;
       args.looptri_faces = mesh.looptri_faces();
       break;
     case PBVH_GRIDS:
-      args.vert_data = &mesh.vert_data;
-      args.loop_data = &mesh.loop_data;
-      args.face_data = &mesh.face_data;
+      args.vert_data = &pbvh.mesh->vert_data;
+      args.loop_data = &pbvh.mesh->loop_data;
+      args.face_data = &pbvh.mesh->face_data;
       args.ccg_key = pbvh.gridkey;
       args.me = pbvh.mesh;
       args.grid_indices = node.prim_indices;
       args.subdiv_ccg = pbvh.subdiv_ccg;
       args.grids = pbvh.subdiv_ccg->grids;
-      args.grid_hidden = pbvh.subdiv_ccg->grid_hidden;
-      args.grid_flag_mats = pbvh.subdiv_ccg->grid_flag_mats;
       args.vert_normals = pbvh.vert_normals;
       break;
     case PBVH_BMESH:
@@ -1590,19 +1537,6 @@ void BKE_pbvh_update_bounds(PBVH *pbvh, int flag)
   }
 }
 
-void BKE_pbvh_update_mask(PBVH *pbvh)
-{
-  using namespace blender;
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(
-      pbvh, [&](PBVHNode &node) { return update_search(&node, PBVH_UpdateMask); });
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (PBVHNode *node : nodes.as_span().slice(range)) {
-      node_update_mask_redraw(*pbvh, *node);
-    }
-  });
-}
-
 void BKE_pbvh_update_vertex_data(PBVH *pbvh, int flag)
 {
   using namespace blender;
@@ -1616,15 +1550,155 @@ void BKE_pbvh_update_vertex_data(PBVH *pbvh, int flag)
   }
 }
 
+namespace blender::bke::pbvh {
+
+void node_update_mask_mesh(const Span<float> mask, PBVHNode &node)
+{
+  const bool fully_masked = std::all_of(node.vert_indices.begin(),
+                                        node.vert_indices.end(),
+                                        [&](const int vert) { return mask[vert] == 1.0f; });
+  const bool fully_unmasked = std::all_of(node.vert_indices.begin(),
+                                          node.vert_indices.end(),
+                                          [&](const int vert) { return mask[vert] <= 0.0f; });
+  SET_FLAG_FROM_TEST(node.flag, fully_masked, PBVH_FullyMasked);
+  SET_FLAG_FROM_TEST(node.flag, fully_unmasked, PBVH_FullyUnmasked);
+  node.flag &= ~PBVH_UpdateMask;
+}
+
+static void update_mask_mesh(const Mesh &mesh, const Span<PBVHNode *> nodes)
+{
+  const AttributeAccessor attributes = mesh.attributes();
+  const VArraySpan<float> mask = *attributes.lookup<float>(".sculpt_mask", ATTR_DOMAIN_POINT);
+  if (mask.is_empty()) {
+    for (PBVHNode *node : nodes) {
+      node->flag &= ~PBVH_FullyMasked;
+      node->flag |= PBVH_FullyUnmasked;
+      node->flag &= ~PBVH_UpdateMask;
+    }
+    return;
+  }
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      node_update_mask_mesh(mask, *node);
+    }
+  });
+}
+
+void node_update_mask_grids(const CCGKey &key, const Span<CCGElem *> grids, PBVHNode &node)
+{
+  BLI_assert(key.has_mask);
+  bool fully_masked = true;
+  bool fully_unmasked = true;
+  for (const int grid : node.prim_indices) {
+    CCGElem *elem = grids[grid];
+    for (const int i : IndexRange(key.grid_area)) {
+      const float mask = *CCG_elem_offset_mask(&key, elem, i);
+      fully_masked &= mask == 1.0f;
+      fully_unmasked &= mask <= 0.0f;
+    }
+  }
+  SET_FLAG_FROM_TEST(node.flag, fully_masked, PBVH_FullyMasked);
+  SET_FLAG_FROM_TEST(node.flag, fully_unmasked, PBVH_FullyUnmasked);
+  node.flag &= ~PBVH_UpdateMask;
+}
+
+static void update_mask_grids(const SubdivCCG &subdiv_ccg, const Span<PBVHNode *> nodes)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  if (!key.has_mask) {
+    for (PBVHNode *node : nodes) {
+      node->flag &= ~PBVH_FullyMasked;
+      node->flag |= PBVH_FullyUnmasked;
+      node->flag &= ~PBVH_UpdateMask;
+    }
+    return;
+  }
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      node_update_mask_grids(key, subdiv_ccg.grids, *node);
+    }
+  });
+}
+
+void node_update_mask_bmesh(const int mask_offset, PBVHNode &node)
+{
+  BLI_assert(mask_offset != -1);
+  bool fully_masked = true;
+  bool fully_unmasked = true;
+  for (const BMVert *vert : node.bm_unique_verts) {
+    fully_masked &= BM_ELEM_CD_GET_FLOAT(vert, mask_offset) == 1.0f;
+    fully_unmasked &= BM_ELEM_CD_GET_FLOAT(vert, mask_offset) <= 0.0f;
+  }
+  for (const BMVert *vert : node.bm_other_verts) {
+    fully_masked &= BM_ELEM_CD_GET_FLOAT(vert, mask_offset) == 1.0f;
+    fully_unmasked &= BM_ELEM_CD_GET_FLOAT(vert, mask_offset) <= 0.0f;
+  }
+  SET_FLAG_FROM_TEST(node.flag, fully_masked, PBVH_FullyMasked);
+  SET_FLAG_FROM_TEST(node.flag, fully_unmasked, PBVH_FullyUnmasked);
+  node.flag &= ~PBVH_UpdateMask;
+}
+
+static void update_mask_bmesh(const BMesh &bm, const Span<PBVHNode *> nodes)
+{
+  const int offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
+  if (offset == -1) {
+    for (PBVHNode *node : nodes) {
+      node->flag &= ~PBVH_FullyMasked;
+      node->flag |= PBVH_FullyUnmasked;
+      node->flag &= ~PBVH_UpdateMask;
+    }
+    return;
+  }
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      node_update_mask_bmesh(offset, *node);
+    }
+  });
+}
+
+}  // namespace blender::bke::pbvh
+
+void BKE_pbvh_update_mask(PBVH *pbvh)
+{
+  using namespace blender::bke::pbvh;
+  Vector<PBVHNode *> nodes = search_gather(
+      pbvh, [&](PBVHNode &node) { return update_search(&node, PBVH_UpdateMask); });
+
+  switch (BKE_pbvh_type(pbvh)) {
+    case PBVH_FACES:
+      update_mask_mesh(*pbvh->mesh, nodes);
+      break;
+    case PBVH_GRIDS:
+      update_mask_grids(*pbvh->subdiv_ccg, nodes);
+      break;
+    case PBVH_BMESH:
+      update_mask_bmesh(*pbvh->header.bm, nodes);
+      break;
+  }
+}
+
+namespace blender::bke::pbvh {
+
+void node_update_visibility_mesh(const Span<bool> hide_vert, PBVHNode &node)
+{
+  BLI_assert(!hide_vert.is_empty());
+  const bool fully_hidden = std::all_of(node.vert_indices.begin(),
+                                        node.vert_indices.end(),
+                                        [&](const int vert) { return hide_vert[vert]; });
+  SET_FLAG_FROM_TEST(node.flag, fully_hidden, PBVH_FullyHidden);
+  node.flag &= ~PBVH_UpdateVisibility;
+}
+
 static void pbvh_faces_node_visibility_update(const Mesh &mesh, const Span<PBVHNode *> nodes)
 {
-  using namespace blender;
-  using namespace blender::bke;
   const AttributeAccessor attributes = mesh.attributes();
   const VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT);
   if (hide_vert.is_empty()) {
     for (PBVHNode *node : nodes) {
-      BKE_pbvh_node_fully_hidden_set(node, false);
+      node->flag &= ~PBVH_FullyHidden;
       node->flag &= ~PBVH_UpdateVisibility;
     }
     return;
@@ -1632,80 +1706,69 @@ static void pbvh_faces_node_visibility_update(const Mesh &mesh, const Span<PBVHN
 
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (PBVHNode *node : nodes.slice(range)) {
-      const bool hidden = std::all_of(node->vert_indices.begin(),
-                                      node->vert_indices.end(),
-                                      [&](const int i) { return hide_vert[i]; });
-      BKE_pbvh_node_fully_hidden_set(node, hidden);
-      node->flag &= ~PBVH_UpdateVisibility;
+      node_update_visibility_mesh(hide_vert, *node);
     }
   });
+}
+
+void node_update_visibility_grids(const BitGroupVector<> &grid_hidden, PBVHNode &node)
+{
+  BLI_assert(!grid_hidden.is_empty());
+  const bool fully_hidden = std::none_of(
+      node.prim_indices.begin(), node.prim_indices.end(), [&](const int grid) {
+        return bits::any_bit_unset(grid_hidden[grid]);
+      });
+  SET_FLAG_FROM_TEST(node.flag, fully_hidden, PBVH_FullyHidden);
+  node.flag &= ~PBVH_UpdateVisibility;
 }
 
 static void pbvh_grids_node_visibility_update(PBVH *pbvh, const Span<PBVHNode *> nodes)
 {
-  using namespace blender;
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (PBVHNode *node : nodes.slice(range)) {
-      CCGElem *const *grids;
-      const int *grid_indices;
-      int totgrid, i;
-
-      BKE_pbvh_node_get_grids(pbvh, node, &grid_indices, &totgrid, nullptr, nullptr, &grids);
-      const Span<const BLI_bitmap *> grid_hidden = pbvh->subdiv_ccg->grid_hidden;
-      CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
-
-      for (i = 0; i < totgrid; i++) {
-        int g = grid_indices[i], x, y;
-        const BLI_bitmap *gh = grid_hidden[g];
-
-        if (!gh) {
-          BKE_pbvh_node_fully_hidden_set(node, false);
-          return;
-        }
-
-        for (y = 0; y < key.grid_size; y++) {
-          for (x = 0; x < key.grid_size; x++) {
-            if (!BLI_BITMAP_TEST(gh, y * key.grid_size + x)) {
-              BKE_pbvh_node_fully_hidden_set(node, false);
-              return;
-            }
-          }
-        }
-      }
-      BKE_pbvh_node_fully_hidden_set(node, true);
+  const BitGroupVector<> &grid_hidden = pbvh->subdiv_ccg->grid_hidden;
+  if (grid_hidden.is_empty()) {
+    for (PBVHNode *node : nodes) {
+      node->flag &= ~PBVH_FullyHidden;
       node->flag &= ~PBVH_UpdateVisibility;
     }
+    return;
+  }
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      node_update_visibility_grids(grid_hidden, *node);
+    }
   });
+}
+
+void node_update_visibility_bmesh(PBVHNode &node)
+{
+  const bool unique_hidden = std::all_of(
+      node.bm_unique_verts.begin(), node.bm_unique_verts.end(), [&](const BMVert *vert) {
+        return BM_elem_flag_test(vert, BM_ELEM_HIDDEN);
+      });
+  const bool other_hidden = std::all_of(
+      node.bm_other_verts.begin(), node.bm_other_verts.end(), [&](const BMVert *vert) {
+        return BM_elem_flag_test(vert, BM_ELEM_HIDDEN);
+      });
+  SET_FLAG_FROM_TEST(node.flag, unique_hidden && other_hidden, PBVH_FullyHidden);
+  node.flag &= ~PBVH_UpdateVisibility;
 }
 
 static void pbvh_bmesh_node_visibility_update(const Span<PBVHNode *> nodes)
 {
-  using namespace blender;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (PBVHNode *node : nodes.slice(range)) {
-      for (const BMVert *v : node->bm_unique_verts) {
-        if (!BM_elem_flag_test(v, BM_ELEM_HIDDEN)) {
-          BKE_pbvh_node_fully_hidden_set(node, false);
-          return;
-        }
-      }
-
-      for (const BMVert *v : node->bm_other_verts) {
-        if (!BM_elem_flag_test(v, BM_ELEM_HIDDEN)) {
-          BKE_pbvh_node_fully_hidden_set(node, false);
-          return;
-        }
-      }
-
-      BKE_pbvh_node_fully_hidden_set(node, true);
-      node->flag &= ~PBVH_UpdateVisibility;
+      node_update_visibility_bmesh(*node);
     }
   });
 }
 
+}  // namespace blender::bke::pbvh
+
 void BKE_pbvh_update_visibility(PBVH *pbvh)
 {
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(
+  using namespace blender::bke::pbvh;
+  Vector<PBVHNode *> nodes = search_gather(
       pbvh, [&](PBVHNode &node) { return update_search(&node, PBVH_UpdateVisibility); });
 
   switch (BKE_pbvh_type(pbvh)) {
@@ -1873,7 +1936,7 @@ void BKE_pbvh_node_fully_hidden_set(PBVHNode *node, int fully_hidden)
   }
 }
 
-bool BKE_pbvh_node_fully_hidden_get(PBVHNode *node)
+bool BKE_pbvh_node_fully_hidden_get(const PBVHNode *node)
 {
   return (node->flag & PBVH_Leaf) && (node->flag & PBVH_FullyHidden);
 }
@@ -1890,7 +1953,7 @@ void BKE_pbvh_node_fully_masked_set(PBVHNode *node, int fully_masked)
   }
 }
 
-bool BKE_pbvh_node_fully_masked_get(PBVHNode *node)
+bool BKE_pbvh_node_fully_masked_get(const PBVHNode *node)
 {
   return (node->flag & PBVH_Leaf) && (node->flag & PBVH_FullyMasked);
 }
@@ -1907,7 +1970,7 @@ void BKE_pbvh_node_fully_unmasked_set(PBVHNode *node, int fully_masked)
   }
 }
 
-bool BKE_pbvh_node_fully_unmasked_get(PBVHNode *node)
+bool BKE_pbvh_node_fully_unmasked_get(const PBVHNode *node)
 {
   return (node->flag & PBVH_Leaf) && (node->flag & PBVH_FullyUnmasked);
 }
@@ -1918,7 +1981,7 @@ void BKE_pbvh_vert_tag_update_normal(PBVH *pbvh, PBVHVertRef vertex)
   pbvh->vert_bitmap[vertex.i] = true;
 }
 
-void BKE_pbvh_node_get_loops(PBVHNode *node, const int **r_loop_indices)
+void BKE_pbvh_node_get_loops(const PBVHNode *node, const int **r_loop_indices)
 {
   if (r_loop_indices) {
     *r_loop_indices = node->loop_indices.data();
@@ -2036,60 +2099,18 @@ int BKE_pbvh_node_num_unique_verts(const PBVH &pbvh, const PBVHNode &node)
   return 0;
 }
 
-void BKE_pbvh_node_get_grids(PBVH *pbvh,
-                             PBVHNode *node,
-                             const int **r_grid_indices,
-                             int *r_totgrid,
-                             int *r_maxgrid,
-                             int *r_gridsize,
-                             CCGElem *const **r_griddata)
+Span<int> BKE_pbvh_node_get_grid_indices(const PBVHNode &node)
 {
-  switch (pbvh->header.type) {
-    case PBVH_GRIDS:
-      if (r_grid_indices) {
-        *r_grid_indices = node->prim_indices.data();
-      }
-      if (r_totgrid) {
-        *r_totgrid = node->prim_indices.size();
-      }
-      if (r_maxgrid) {
-        *r_maxgrid = pbvh->subdiv_ccg->grids.size();
-      }
-      if (r_gridsize) {
-        *r_gridsize = pbvh->gridkey.grid_size;
-      }
-      if (r_griddata) {
-        *r_griddata = pbvh->subdiv_ccg->grids.data();
-      }
-      break;
-    case PBVH_FACES:
-    case PBVH_BMESH:
-      if (r_grid_indices) {
-        *r_grid_indices = nullptr;
-      }
-      if (r_totgrid) {
-        *r_totgrid = 0;
-      }
-      if (r_maxgrid) {
-        *r_maxgrid = 0;
-      }
-      if (r_gridsize) {
-        *r_gridsize = 0;
-      }
-      if (r_griddata) {
-        *r_griddata = nullptr;
-      }
-      break;
-  }
+  return node.prim_indices;
 }
 
-void BKE_pbvh_node_get_BB(PBVHNode *node, float bb_min[3], float bb_max[3])
+void BKE_pbvh_node_get_BB(const PBVHNode *node, float bb_min[3], float bb_max[3])
 {
   copy_v3_v3(bb_min, node->vb.bmin);
   copy_v3_v3(bb_max, node->vb.bmax);
 }
 
-void BKE_pbvh_node_get_original_BB(PBVHNode *node, float bb_min[3], float bb_max[3])
+void BKE_pbvh_node_get_original_BB(const PBVHNode *node, float bb_min[3], float bb_max[3])
 {
   copy_v3_v3(bb_min, node->orig_vb.bmin);
   copy_v3_v3(bb_max, node->orig_vb.bmax);
@@ -2367,7 +2388,7 @@ static bool pbvh_grids_node_raycast(PBVH *pbvh,
   bool hit = false;
   float nearest_vertex_co[3] = {0.0};
   const CCGKey *gridkey = &pbvh->gridkey;
-  const Span<BLI_bitmap *> grid_hidden = pbvh->subdiv_ccg->grid_hidden;
+  const BitGroupVector<> &grid_hidden = pbvh->subdiv_ccg->grid_hidden;
   const Span<CCGElem *> grids = pbvh->subdiv_ccg->grids;
 
   for (int i = 0; i < totgrid; i++) {
@@ -2377,13 +2398,11 @@ static bool pbvh_grids_node_raycast(PBVH *pbvh,
       continue;
     }
 
-    const BLI_bitmap *gh = grid_hidden[grid_index];
-
     for (int y = 0; y < gridsize - 1; y++) {
       for (int x = 0; x < gridsize - 1; x++) {
         /* check if grid face is hidden */
-        if (gh) {
-          if (paint_is_grid_face_hidden(gh, gridsize, x, y)) {
+        if (!grid_hidden.is_empty()) {
+          if (paint_is_grid_face_hidden(grid_hidden[grid_index], gridsize, x, y)) {
             continue;
           }
         }
@@ -2697,7 +2716,7 @@ static bool pbvh_grids_node_nearest_to_ray(PBVH *pbvh,
   const int totgrid = node->prim_indices.size();
   const int gridsize = pbvh->gridkey.grid_size;
   bool hit = false;
-  const Span<BLI_bitmap *> grid_hidden = pbvh->subdiv_ccg->grid_hidden;
+  const BitGroupVector<> &grid_hidden = pbvh->subdiv_ccg->grid_hidden;
   const Span<CCGElem *> grids = pbvh->subdiv_ccg->grids;
 
   for (int i = 0; i < totgrid; i++) {
@@ -2706,13 +2725,11 @@ static bool pbvh_grids_node_nearest_to_ray(PBVH *pbvh,
       continue;
     }
 
-    const BLI_bitmap *gh = grid_hidden[node->prim_indices[i]];
-
     for (int y = 0; y < gridsize - 1; y++) {
       for (int x = 0; x < gridsize - 1; x++) {
         /* check if grid face is hidden */
-        if (gh) {
-          if (paint_is_grid_face_hidden(gh, gridsize, x, y)) {
+        if (!grid_hidden.is_empty()) {
+          if (paint_is_grid_face_hidden(grid_hidden[node->prim_indices[i]], gridsize, x, y)) {
             continue;
           }
         }
@@ -2796,10 +2813,10 @@ enum PlaneAABBIsect {
  */
 static PlaneAABBIsect test_frustum_aabb(const float bb_min[3],
                                         const float bb_max[3],
-                                        PBVHFrustumPlanes *frustum)
+                                        const PBVHFrustumPlanes *frustum)
 {
   PlaneAABBIsect ret = ISECT_INSIDE;
-  float(*planes)[4] = frustum->planes;
+  const float(*planes)[4] = frustum->planes;
 
   for (int i = 0; i < frustum->num_planes; i++) {
     float vmin[3], vmax[3];
@@ -2826,7 +2843,7 @@ static PlaneAABBIsect test_frustum_aabb(const float bb_min[3],
   return ret;
 }
 
-bool BKE_pbvh_node_frustum_contain_AABB(PBVHNode *node, PBVHFrustumPlanes *data)
+bool BKE_pbvh_node_frustum_contain_AABB(const PBVHNode *node, const PBVHFrustumPlanes *data)
 {
   const float *bb_min, *bb_max;
   /* BKE_pbvh_node_get_BB */
@@ -2836,7 +2853,7 @@ bool BKE_pbvh_node_frustum_contain_AABB(PBVHNode *node, PBVHFrustumPlanes *data)
   return test_frustum_aabb(bb_min, bb_max, data) != ISECT_OUTSIDE;
 }
 
-bool BKE_pbvh_node_frustum_exclude_AABB(PBVHNode *node, PBVHFrustumPlanes *data)
+bool BKE_pbvh_node_frustum_exclude_AABB(const PBVHNode *node, const PBVHFrustumPlanes *data)
 {
   const float *bb_min, *bb_max;
   /* BKE_pbvh_node_get_BB */
@@ -2966,7 +2983,7 @@ void BKE_pbvh_draw_debug_cb(PBVH *pbvh,
   }
 }
 
-void BKE_pbvh_grids_update(PBVH *pbvh, CCGKey *key)
+void BKE_pbvh_grids_update(PBVH *pbvh, const CCGKey *key)
 {
   pbvh->gridkey = *key;
 }
@@ -3016,7 +3033,7 @@ void BKE_pbvh_vert_coords_apply(PBVH *pbvh, const Span<float3> vert_positions)
   }
 }
 
-bool BKE_pbvh_is_deformed(PBVH *pbvh)
+bool BKE_pbvh_is_deformed(const PBVH *pbvh)
 {
   return pbvh->deformed;
 }
@@ -3066,24 +3083,29 @@ void BKE_pbvh_node_color_buffer_free(PBVH *pbvh)
 
 void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int mode)
 {
-  CCGElem *const *grids;
-  const int *grid_indices;
-  int totgrid, gridsize, uniq_verts, totvert;
-
   vi->grid = nullptr;
   vi->no = nullptr;
   vi->fno = nullptr;
   vi->vert_positions = {};
   vi->vertex.i = 0LL;
 
-  BKE_pbvh_node_get_grids(pbvh, node, &grid_indices, &totgrid, nullptr, &gridsize, &grids);
+  int uniq_verts, totvert;
   BKE_pbvh_node_num_verts(pbvh, node, &uniq_verts, &totvert);
-  vi->key = pbvh->gridkey;
 
-  vi->grids = grids;
-  vi->grid_indices = grid_indices;
-  vi->totgrid = (grids) ? totgrid : 1;
-  vi->gridsize = gridsize;
+  if (pbvh->header.type == PBVH_GRIDS) {
+    vi->key = pbvh->gridkey;
+    vi->grids = pbvh->subdiv_ccg->grids.data();
+    vi->grid_indices = node->prim_indices.data();
+    vi->totgrid = node->prim_indices.size();
+    vi->gridsize = pbvh->gridkey.grid_size;
+  }
+  else {
+    vi->key = {};
+    vi->grids = nullptr;
+    vi->grid_indices = nullptr;
+    vi->totgrid = 1;
+    vi->gridsize = 0;
+  }
 
   if (mode == PBVH_ITER_ALL) {
     vi->totvert = totvert;
@@ -3105,9 +3127,10 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
         vi->bm_vdata, CD_PROP_FLOAT, ".sculpt_mask");
   }
 
-  vi->gh = nullptr;
+  vi->gh.reset();
   if (vi->grids && mode == PBVH_ITER_UNIQUE) {
-    vi->grid_hidden = pbvh->subdiv_ccg->grid_hidden.data();
+    vi->grid_hidden = pbvh->subdiv_ccg->grid_hidden.is_empty() ? nullptr :
+                                                                 &pbvh->subdiv_ccg->grid_hidden;
   }
 
   vi->mask = 0.0f;
@@ -3177,16 +3200,22 @@ Mesh *BKE_pbvh_get_mesh(PBVH *pbvh)
   return pbvh->mesh;
 }
 
-MutableSpan<float3> BKE_pbvh_get_vert_positions(const PBVH *pbvh)
+Span<float3> BKE_pbvh_get_vert_positions(const PBVH *pbvh)
 {
   BLI_assert(pbvh->header.type == PBVH_FACES);
   return pbvh->vert_positions;
 }
 
-const float (*BKE_pbvh_get_vert_normals(const PBVH *pbvh))[3]
+MutableSpan<float3> BKE_pbvh_get_vert_positions(PBVH *pbvh)
 {
   BLI_assert(pbvh->header.type == PBVH_FACES);
-  return reinterpret_cast<const float(*)[3]>(pbvh->vert_normals.data());
+  return pbvh->vert_positions;
+}
+
+Span<float3> BKE_pbvh_get_vert_normals(const PBVH *pbvh)
+{
+  BLI_assert(pbvh->header.type == PBVH_FACES);
+  return pbvh->vert_normals;
 }
 
 void BKE_pbvh_subdiv_cgg_set(PBVH *pbvh, SubdivCCG *subdiv_ccg)
@@ -3321,20 +3350,23 @@ void BKE_pbvh_sync_visibility_from_verts(PBVH *pbvh, Mesh *mesh)
     }
     case PBVH_GRIDS: {
       const OffsetIndices faces = mesh->faces();
-      const Span<BLI_bitmap *> grid_hidden = pbvh->subdiv_ccg->grid_hidden;
+      const BitGroupVector<> &grid_hidden = pbvh->subdiv_ccg->grid_hidden;
       CCGKey key = pbvh->gridkey;
 
       IndexMaskMemory memory;
-      const IndexMask hidden_faces = IndexMask::from_predicate(
-          faces.index_range(), GrainSize(1024), memory, [&](const int i) {
-            const IndexRange face = faces[i];
-            return std::any_of(face.begin(), face.end(), [&](const int corner) {
-              if (!grid_hidden[corner]) {
-                return false;
-              }
-              return BLI_BITMAP_TEST_BOOL(grid_hidden[corner], key.grid_area - 1);
-            });
-          });
+      const IndexMask hidden_faces =
+          grid_hidden.is_empty() ?
+              IndexMask::from_predicate(faces.index_range(),
+                                        GrainSize(1024),
+                                        memory,
+                                        [&](const int i) {
+                                          const IndexRange face = faces[i];
+                                          return std::any_of(
+                                              face.begin(), face.end(), [&](const int corner) {
+                                                return grid_hidden[corner][key.grid_area - 1];
+                                              });
+                                        }) :
+              IndexMask();
 
       MutableAttributeAccessor attributes = mesh->attributes_for_write();
       if (hidden_faces.is_empty()) {

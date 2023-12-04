@@ -276,7 +276,6 @@ set(SRC
   intern/subdiv.cc
   intern/subdiv_ccg.cc
   intern/subdiv_ccg_mask.cc
-  intern/subdiv_ccg_material.cc
   intern/subdiv_converter.cc
   intern/subdiv_converter_mesh.cc
   intern/subdiv_deform.cc
@@ -422,7 +421,7 @@ set(SRC
   BKE_light_linking.h
   BKE_lightprobe.h
   BKE_linestyle.h
-  BKE_main.h
+  BKE_main.hh
   BKE_main_idmap.hh
   BKE_main_namemap.hh
   BKE_mask.h
@@ -847,6 +846,7 @@ if(WITH_GTESTS)
     intern/lib_id_remapper_test.cc
     intern/lib_id_test.cc
     intern/lib_remap_test.cc
+    intern/main_test.cc
     intern/nla_test.cc
     intern/tracking_test.cc
   )
