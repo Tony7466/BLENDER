@@ -46,7 +46,7 @@
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_modifier.hh"
@@ -417,9 +417,8 @@ bool SCULPT_vertex_visible_get(const SculptSession *ss, PBVHVertRef vertex)
       const CCGKey *key = BKE_pbvh_get_grid_key(ss->pbvh);
       const int grid_index = vertex.i / key->grid_area;
       const int vertex_index = vertex.i - grid_index * key->grid_area;
-      const blender::Span<const BLI_bitmap *> grid_hidden = ss->subdiv_ccg->grid_hidden;
-      if (grid_hidden[grid_index]) {
-        return !BLI_BITMAP_TEST(grid_hidden[grid_index], vertex_index);
+      if (!ss->subdiv_ccg->grid_hidden.is_empty()) {
+        return !ss->subdiv_ccg->grid_hidden[grid_index][vertex_index];
       }
     }
   }
