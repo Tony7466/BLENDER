@@ -211,7 +211,7 @@ std::string AbstractHierarchyIterator::get_id_name(const ID *id) const
   return make_valid_name(std::string(id->name + 2));
 }
 
-std::string AbstractHierarchyIterator::get_object_data_path(const HierarchyContext *context) const
+std::string AbstractHierarchyIterator::get_object_data_path(const HierarchyContext *context)
 {
   BLI_assert(!context->export_path.empty());
   BLI_assert(context->object->data);
@@ -425,6 +425,11 @@ void AbstractHierarchyIterator::export_graph_clear()
   export_graph_.clear();
 }
 
+void AbstractHierarchyIterator::precompute_material_names(Object *object,
+                                                          Map<Material *, std::string> &names_map)
+{
+}
+
 void AbstractHierarchyIterator::visit_object(Object *object,
                                              Object *export_parent,
                                              bool weak_export)
@@ -432,6 +437,9 @@ void AbstractHierarchyIterator::visit_object(Object *object,
   HierarchyContext *context = new HierarchyContext();
   context->object = object;
   context->export_name = get_object_name(object);
+
+  context->display_name = get_display_name(static_cast<const void*>(object));
+  context->data_display_name = get_object_data_name(object);
   context->export_parent = export_parent;
   context->duplicator = nullptr;
   context->weak_export = weak_export;
@@ -439,6 +447,8 @@ void AbstractHierarchyIterator::visit_object(Object *object,
   context->export_path = "";
   context->original_export_path = "";
   context->higher_up_export_path = "";
+
+  precompute_material_names(object, context->material_names);
 
   copy_m4_m4(context->matrix_world, object->object_to_world);
 
@@ -695,7 +705,7 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext *parent_cont
 }
 
 HierarchyContext AbstractHierarchyIterator::context_for_object_data(
-    const HierarchyContext *object_context) const
+    const HierarchyContext *object_context)
 {
   HierarchyContext data_context = *object_context;
   data_context.higher_up_export_path = object_context->export_path;
@@ -779,15 +789,21 @@ void AbstractHierarchyIterator::make_writers_particle_systems(
   }
 }
 
-std::string AbstractHierarchyIterator::get_object_name(const Object *object) const
+std::string AbstractHierarchyIterator::get_object_name(const Object *object)
 {
   return get_id_name(&object->id);
 }
 
-std::string AbstractHierarchyIterator::get_object_data_name(const Object *object) const
+std::string AbstractHierarchyIterator::get_object_data_name(const Object *object)
 {
   ID *object_data = static_cast<ID *>(object->data);
   return get_id_name(object_data);
+}
+
+std::optional<std::string> AbstractHierarchyIterator::get_display_name(const void *object)
+{
+  (void)object;
+  return std::nullopt;
 }
 
 AbstractHierarchyWriter *AbstractHierarchyIterator::get_writer(

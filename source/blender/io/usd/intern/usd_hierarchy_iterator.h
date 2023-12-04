@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
+#include "BLI_set.hh"
+
 #include "IO_abstract_hierarchy_iterator.h"
 #include "usd.h"
 #include "usd_exporter_context.h"
@@ -33,6 +35,9 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
   ObjExportMap armature_export_map_;
   ObjExportMap skinned_mesh_export_map_;
   ObjExportMap shape_key_mesh_export_map_;
+
+  Map<const void *, const std::string> computed_names_map_;
+  Set<const std::string> computed_names_;
 
  public:
   USDHierarchyIterator(Main *bmain,
@@ -65,6 +70,18 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
   USDExporterContext create_usd_export_context(const HierarchyContext *context);
 
   void add_usd_skel_export_mapping(const Object *obj, const pxr::SdfPath &usd_path);
+
+  std::string get_computed_name(const Object *object, const bool is_data = false);
+  virtual void precompute_material_names(Object *object,
+                                         Map<Material *, std::string> &names_map) override;
+
+  virtual std::string get_object_name(const Object *object) override;
+  virtual std::string get_object_data_name(const Object *object) override;
+  virtual std::optional<std::string> get_display_name(const void *object) override;
+
+  std::string find_unique_name(const char *token);
+  std::string find_unique_object_name(const Object *object, const bool is_data);
+  std::string find_unique_material_name();
 };
 
 }  // namespace blender::io::usd

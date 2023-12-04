@@ -12,6 +12,7 @@
 
 #include "BKE_customdata.h"
 #include "BLI_assert.h"
+#include "BLI_string_utf8.h"
 #include "DNA_mesh_types.h"
 
 #include "WM_api.hh"
@@ -212,7 +213,6 @@ bool USDAbstractWriter::is_prototype(const Object *obj) const
   return false;
 }
 
-
 pxr::SdfPath USDAbstractWriter::get_material_library_path(const HierarchyContext &context) const
 {
   std::string material_library_path;
@@ -243,8 +243,11 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(const HierarchyCont
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
 
   /* Construct the material. */
-  pxr::TfToken material_name(pxr::TfMakeValidIdentifier(material->id.name + 2));
-  pxr::SdfPath usd_path = get_material_library_path(context).AppendChild(material_name);
+  std::string computed_name = context.material_names.lookup(material);
+  std::string material_name = pxr::TfMakeValidIdentifier(
+      !computed_name.empty() ? computed_name : std::string(material->id.name + 2));
+  pxr::SdfPath usd_path = get_material_library_path(context).AppendChild(
+      pxr::TfToken(material_name));
 
   pxr::UsdShadeMaterial usd_material = pxr::UsdShadeMaterial::Get(stage, usd_path);
   if (usd_material) {
@@ -337,13 +340,15 @@ void USDAbstractWriter::write_id_properties(pxr::UsdPrim &prim,
   }
 
   if (id.properties)
-    write_user_properties(prim, (IDProperty *)id.properties, timecode);
+    write_user_properties(prim, id, timecode);
 }
 
 void USDAbstractWriter::write_user_properties(pxr::UsdPrim &prim,
-                                              IDProperty *properties,
+                                              const ID &id,
                                               pxr::UsdTimeCode timecode)
 {
+  IDProperty *properties = id.properties;
+
   if (properties == nullptr) {
     return;
   }
@@ -354,6 +359,8 @@ void USDAbstractWriter::write_user_properties(pxr::UsdPrim &prim,
 
   const StringRef kind_identifier = "usdkind";
   const StringRef displayName_identifier = "displayName";
+
+  bool found_display_name = false;
 
   IDProperty *prop;
   for (prop = (IDProperty *)properties->data.group.first; prop; prop = prop->next) {
@@ -367,10 +374,10 @@ void USDAbstractWriter::write_user_properties(pxr::UsdPrim &prim,
     }
 
     if (displayName_identifier == prop->name) {
-      if (prop->type == IDP_STRING && prop->data.pointer)
-      {
-        prim.SetDisplayName(static_cast<char*>(prop->data.pointer));
+      if (prop->type == IDP_STRING && prop->data.pointer) {
+        prim.SetDisplayName(static_cast<char *>(prop->data.pointer));
       }
+      found_display_name = true;
       continue;
     }
 

@@ -30,6 +30,7 @@
 #include "BLI_memory_utils.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_string_utf8.h"
 #include "BLI_string_utils.h"
 
 #include "DNA_material_types.h"
@@ -152,7 +153,10 @@ static InputSpecMap &preview_surface_input_map();
 static bNodeLink *traverse_channel(bNodeSocket *input, short target_type);
 
 template<typename T1, typename T2>
-void create_input(pxr::UsdShadeShader &shader, const InputSpec &spec, const void *value, float scale);
+void create_input(pxr::UsdShadeShader &shader,
+                  const InputSpec &spec,
+                  const void *value,
+                  float scale);
 
 void set_normal_texture_range(pxr::UsdShadeShader &usd_shader, const InputSpec &input_spec);
 static void create_usd_preview_surface_material(const USDExporterContext &usd_export_context,
@@ -201,8 +205,7 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
       /* Don't export emission color if strength is zero. */
       bNodeSocket *emission_strength_sock = nodeFindSocket(node, SOCK_IN, "Emission Strength");
 
-      if (!emission_strength_sock)
-      {
+      if (!emission_strength_sock) {
         continue;
       }
 
@@ -372,7 +375,10 @@ static InputSpecMap &preview_surface_input_map()
  * input.  Parameters T1 and T2 indicate the Blender and USD
  * value types, respectively. */
 template<typename T1, typename T2>
-void create_input(pxr::UsdShadeShader &shader, const InputSpec &spec, const void *value, float scale)
+void create_input(pxr::UsdShadeShader &shader,
+                  const InputSpec &spec,
+                  const void *value,
+                  float scale)
 {
   const T1 *cast_value = static_cast<const T1 *>(value);
   shader.CreateInput(spec.input_name, spec.input_type).Set(scale * T2(cast_value->value));
@@ -2646,6 +2652,11 @@ pxr::UsdShadeMaterial create_usd_material(const USDExporterContext &usd_export_c
   }
 
   call_material_export_hooks(usd_export_context.stage, material, usd_material);
+
+  if (BLI_strlen_utf8(material->id.name) != strlen(material->id.name)) {
+    pxr::UsdPrim prim = usd_material.GetPrim();
+    prim.SetDisplayName(&material->id.name[2]);
+  }
 
   return usd_material;
 }

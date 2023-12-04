@@ -26,8 +26,10 @@
 #include <pxr/base/tf/stringUtils.h>
 
 #include "BKE_duplilist.h"
+#include "BKE_material.h"
 
 #include "BLI_assert.h"
+#include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
 
 #include "DEG_depsgraph_query.hh"
@@ -138,7 +140,7 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
 
   switch (context->object->type) {
     case OB_MESH:
-      if (usd_export_context.export_params.export_meshes) {      
+      if (usd_export_context.export_params.export_meshes) {
         data_writer = new USDMeshWriter(usd_export_context);
       }
       else
@@ -274,6 +276,121 @@ void USDHierarchyIterator::add_usd_skel_export_mapping(const Object *obj, const 
   if (params_.export_armatures && obj->type == OB_MESH && can_export_skinned_mesh(obj, depsgraph_))
   {
     skinned_mesh_export_map_.add(obj, path);
+  }
+}
+
+std::string USDHierarchyIterator::find_unique_name(const char *token)
+{
+  char result[66];
+  strncpy(result, token, 66);
+  int count = 1;
+  while (computed_names_.contains(result)) {
+    sprintf(result, "%s_%03i", token, count);
+    count += 1;
+  }
+
+  return result;
+}
+
+std::string USDHierarchyIterator::find_unique_object_name(const Object *object,
+                                                          const bool is_data = false)
+{
+  const char *type_as_string = [](int type) {
+    switch (type) {
+      case OB_EMPTY:
+        return "Empty";
+      case OB_MESH:
+        return "Mesh";
+      case OB_CURVES:
+      case OB_CURVES_LEGACY:
+        return "Curves";
+      case OB_LAMP:
+        return "Light";
+      case OB_CAMERA:
+        return "Camera";
+      case OB_ARMATURE:
+        return "Armature";
+      case OB_POINTCLOUD:
+        return "PointCloud";
+      case OB_VOLUME:
+        return "Volume";
+      case OB_GREASE_PENCIL:
+        return "GreasePencil";
+      default:
+        return "";
+    }
+  }(object->type);
+
+  return find_unique_name(type_as_string);
+}
+
+std::string USDHierarchyIterator::find_unique_material_name()
+{
+  return find_unique_name("Material");
+}
+
+std::string USDHierarchyIterator::get_computed_name(const Object *object, const bool is_data)
+{
+  std::string result;
+
+  size_t length_in_bytes = 0;
+  const char *original_name = is_data ? static_cast<ID *>(object->data)->name + 2 :
+                                        object->id.name + 2;
+  const size_t length_in_characters = BLI_strlen_utf8_ex(original_name, &length_in_bytes);
+  if (length_in_bytes != length_in_characters) {
+    result = find_unique_object_name(object, is_data);
+  }
+  else {
+    result = pxr::TfMakeValidIdentifier(original_name);
+  }
+
+  computed_names_map_.add(object, result);
+  computed_names_.add(result);
+  return result;
+}
+
+std::string USDHierarchyIterator::get_object_name(const Object *object)
+{
+  return get_computed_name(object);
+}
+
+std::string USDHierarchyIterator::get_object_data_name(const Object *object)
+{
+  return get_computed_name(object, true);
+}
+
+std::optional<std::string> USDHierarchyIterator::get_display_name(const void *object)
+{
+  const std::string result = computed_names_map_.lookup(object);
+  if (result.size()) {
+    return {static_cast<const ID*>(object)->name + 2};
+  }
+  return std::nullopt;
+}
+
+void USDHierarchyIterator::precompute_material_names(Object *object,
+                                                     Map<Material *, std::string> &names_map)
+{
+  for (int mat_num = 0; mat_num < object->totcol; mat_num++) {
+    Material *material = BKE_object_material_get(object, mat_num + 1);
+    if (material == nullptr) {
+      continue;
+    }
+
+    std::string result;
+
+    size_t length_in_bytes = 0;
+    const char *material_name = material->id.name + 2;
+    const size_t length_in_characters = BLI_strlen_utf8_ex(material_name, &length_in_bytes);
+    if (length_in_bytes != length_in_characters) {
+      result = find_unique_material_name();
+    }
+    else {
+      result = pxr::TfMakeValidIdentifier(material_name);
+    }
+
+    names_map.add(material, result);
+    computed_names_.add(result);
   }
 }
 

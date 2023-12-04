@@ -22,11 +22,13 @@
 
 #include "IO_dupli_persistent_id.hh"
 
+#include "BLI_map.hh"
 #include "DEG_depsgraph.hh"
 
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
 
 struct Depsgraph;
 struct DupliObject;
@@ -50,6 +52,7 @@ struct HierarchyContext {
   PersistentID persistent_id;
   float matrix_world[4][4];
   std::string export_name;
+  Map<Material *, std::string> material_names;
 
   /* When weak_export=true, the object will be exported only as transform, and only if is an
    * ancestor of an object with weak_export=false.
@@ -85,6 +88,12 @@ struct HierarchyContext {
    * "parent" is not used here to avoid confusion with Blender's meaning of the word (which always
    * refers to a different object). */
   std::string higher_up_export_path;
+
+  /*
+   * When the Object contains non-ASCII characters, store the original name for display purposes.
+   */
+  std::optional<std::string> display_name;
+  std::optional<std::string> data_display_name;
 
   bool operator<(const HierarchyContext &other) const;
 
@@ -246,7 +255,7 @@ class AbstractHierarchyIterator {
   /* Given a HierarchyContext of some Object *, return an export path that is valid for its
    * object->data. Overriding is necessary when the exported format does NOT expect the object's
    * data to be a child of the object. */
-  virtual std::string get_object_data_path(const HierarchyContext *context) const;
+  virtual std::string get_object_data_path(const HierarchyContext *context);
 
   /* Returns the export path computed for the object with the given ID.
    * This should be called after only all writers have been created for the
@@ -269,6 +278,8 @@ class AbstractHierarchyIterator {
   void export_graph_prune();
   void export_graph_clear();
 
+  virtual void precompute_material_names(Object *object, Map<Material *, std::string> &names_map);
+
   void visit_object(Object *object, Object *export_parent, bool weak_export);
   void visit_dupli_object(DupliObject *dupli_object,
                           Object *duplicator,
@@ -288,11 +299,12 @@ class AbstractHierarchyIterator {
 
   /* Return the appropriate HierarchyContext for the data of the object represented by
    * object_context. */
-  HierarchyContext context_for_object_data(const HierarchyContext *object_context) const;
+  HierarchyContext context_for_object_data(const HierarchyContext *object_context);
 
   /* Convenience wrappers around get_id_name(). */
-  std::string get_object_name(const Object *object) const;
-  std::string get_object_data_name(const Object *object) const;
+  virtual std::string get_object_name(const Object *object);
+  virtual std::string get_object_data_name(const Object *object);
+  virtual std::optional<std::string> get_display_name(const void *object);
 
   typedef AbstractHierarchyWriter *(AbstractHierarchyIterator::*create_writer_func)(
       const HierarchyContext *);
