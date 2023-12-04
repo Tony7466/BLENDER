@@ -6,18 +6,6 @@
  * \ingroup draw
  */
 
-#include "DNA_curve_types.h"
-#include "DNA_pointcloud_types.h"
-
-#define DEBUG_TIME
-
-#ifdef DEBUG_TIME
-#  include "PIL_time.h"
-#  include "PIL_time_utildefines.h"
-#endif
-
-#include "MEM_guardedalloc.h"
-
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
@@ -25,30 +13,22 @@
 #include "BLI_math_vector.h"
 #include "BLI_memiter.h"
 #include "BLI_rect.h"
+#include "BLI_span.hh"
 #include "BLI_string.h"
+#include "BLI_virtual_array.hh"
 
-#include "BKE_attribute.hh"
-#include "BKE_curves.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
 #include "BKE_global.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_object.hh"
-#include "BKE_pointcloud.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "DNA_mesh_types.h"
-#include "DNA_object_types.h"
-#include "DNA_scene_types.h"
-#include "DNA_screen_types.h"
-#include "DNA_view3d_types.h"
 
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "ED_screen.hh"
 #include "ED_view3d.hh"
 
 #include "UI_interface.hh"
@@ -232,62 +212,10 @@ void DRW_text_cache_draw(DRWTextStore *dt, ARegion *region, View3D *v3d)
   }
 }
 
-std::tuple<blender::VArray<float>, blender::Span<blender::float3>> get_object_information(
-    const Object &object)
+void DRW_text_viewer_attribute(blender::VArray<float> attributes,
+                               blender::Span<blender::float3> positions,
+                               blender::float4x4 modelMatrix)
 {
-  using namespace blender;
-  using namespace blender::bke;
-
-  const short type = object.type;
-
-  VArray<float> viewer_attributes;
-  Span<float3> positions;
-
-  switch (type) {
-    case OB_MESH: {
-      Mesh *mesh = static_cast<Mesh *>(object.data);
-      if (mesh->attributes().contains(".viewer")) {
-        viewer_attributes = *mesh->attributes().lookup<float>(".viewer");
-        positions = mesh->vert_positions();
-      }
-      break;
-    }
-    case OB_POINTCLOUD: {
-      PointCloud *pointcloud = static_cast<PointCloud *>(object.data);
-      if (pointcloud->attributes().contains(".viewer")) {
-        viewer_attributes = *pointcloud->attributes().lookup<float>(".viewer");
-        positions = pointcloud->positions();
-      }
-      break;
-    }
-    case OB_CURVES_LEGACY: {
-      Curve *curve = static_cast<Curve *>(object.data);
-      if (curve->curve_eval) {
-        const bke::CurvesGeometry &curves = curve->curve_eval->geometry.wrap();
-        if (curves.attributes().contains(".viewer")) {
-          viewer_attributes = *curves.attributes().lookup<float>(".viewer");
-          positions = curves.positions();
-        }
-      }
-      break;
-    }
-    case OB_CURVES: {
-      Curves *curves_id = static_cast<Curves *>(object.data);
-      const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-      if (curves.attributes().contains(".viewer")) {
-        viewer_attributes = *curves.attributes().lookup<float>(".viewer");
-        positions = curves.positions();
-      }
-    }
-  }
-  return std::make_tuple(viewer_attributes, positions);
-}
-
-void DRW_text_viewer_attribute(Object &object)
-{
-  using namespace blender;
-  using namespace blender::bke;
-
   DRWTextStore *dt = DRW_text_cache_ensure();
   const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
 
@@ -297,18 +225,10 @@ void DRW_text_viewer_attribute(Object &object)
 
   UI_GetThemeColor4ubv(TH_DRAWEXTRA_FACEANG, col);
 
-  const auto [viewer_attributes, positions] = get_object_information(object);
-
-  const float4x4 object_to_world = float4x4(object.object_to_world);
-
   for (const int i : positions.index_range()) {
+    float3 pos = blender::math::transform_point(modelMatrix, positions[i]);
 
-    float3 pos = positions[i];
-    float val = viewer_attributes[i];
-
-    pos = math::transform_point(object_to_world, pos);
-
-    numstr_len = SNPRINTF_RLEN(numstr, "%g", val);
+    numstr_len = SNPRINTF_RLEN(numstr, "%g", attributes[i]);
     DRW_text_cache_add(dt, pos, numstr, numstr_len, 0, 0, txt_flag, col);
   }
 }

@@ -406,10 +406,8 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
     }
   }
 
-  if (pd->overlay.flag & V3D_OVERLAY_VIEWER_ATTRIBUTE_TEXT) {
-    if (is_preview) {
-      DRW_text_viewer_attribute(*ob);
-    }
+  if (is_preview && (pd->overlay.flag & V3D_OVERLAY_VIEWER_ATTRIBUTE_TEXT) != 0) {
+    OVERLAY_viewer_attribute_text(*ob);
   }
 
   if (ob->type == OB_VOLUME) {
