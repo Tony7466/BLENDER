@@ -69,7 +69,9 @@ static int gather_strip_data_ids_to_null(LibraryIDLinkCallbackData *cb_data)
   ID *id = *cb_data->id_pointer;
 
   /* We don't care about embedded, loopback, or internal IDs. */
-  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_LOOPBACK | IDWALK_CB_INTERNAL)) {
+  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_EMBEDDED_NOT_OWNING | IDWALK_CB_LOOPBACK |
+                          IDWALK_CB_INTERNAL))
+  {
     return IDWALK_RET_NOP;
   }
 
@@ -78,7 +80,7 @@ static int gather_strip_data_ids_to_null(LibraryIDLinkCallbackData *cb_data)
     /* Nullify everything that is not:
      * Sound, Movieclip, Image, Text, Vfont, Action, or Collection IDs.
      */
-    if (!ELEM(id_type, ID_SO, ID_MC, ID_IM, ID_TXT, ID_VF, ID_AC, ID_GR)) {
+    if (!ELEM(id_type, ID_SO, ID_MC, ID_IM, ID_TXT, ID_VF, ID_AC)) {
       BKE_id_remapper_add(id_remapper, id, nullptr);
       return IDWALK_RET_NOP;
     }
@@ -289,15 +291,16 @@ static int paste_strips_data_ids_reuse_or_add(LibraryIDLinkCallbackData *cb_data
   ID *id_src = *cb_data->id_pointer;
 
   /* We don't care about embedded, loopback, or internal IDs. */
-  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_LOOPBACK | IDWALK_CB_INTERNAL)) {
+  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_EMBEDDED_NOT_OWNING | IDWALK_CB_LOOPBACK |
+                          IDWALK_CB_INTERNAL))
+  {
     return IDWALK_RET_NOP;
   }
 
   if (id_src) {
     ID_Type id_src_type = GS((id_src)->name);
-    if (id_src_type == ID_AC || id_src_type == ID_GR) {
+    if (id_src_type == ID_AC) {
       /* Don't copy in actions here as we already handle these in "sequencer_paste_animation".
-       * We don't copy Collections (ID_GR) here either as we don't care about scene collections.
        */
       return IDWALK_RET_NOP;
     }
