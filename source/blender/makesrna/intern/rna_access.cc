@@ -4622,10 +4622,8 @@ static int rna_raw_access(ReportList *reports,
       /* Could also be faster with non-matching types,
        * for now we just do slower loop. */
     }
-    if (itemtype == PROP_ENUM && itemlen != 0) {
-      BKE_report(reports, RPT_ERROR, "Only boolean, int, and float array properties supported");
-      return 0;
-    }
+    BLI_assert_msg(itemlen == 0 || itemtype != PROP_ENUM,
+                   "Enum array properties should not exist");
   }
 
   {
@@ -4669,12 +4667,8 @@ static int rna_raw_access(ReportList *reports,
             err = 1;
             break;
           }
-          if (itemtype == PROP_ENUM && itemlen != 0) {
-            BKE_report(
-                reports, RPT_ERROR, "Only boolean, int, and float array properties supported");
-            err = 1;
-            break;
-          }
+          BLI_assert_msg(itemlen == 0 || itemtype != PROP_ENUM,
+                         "Enum array properties should not exist");
         }
 
         /* editable check */
