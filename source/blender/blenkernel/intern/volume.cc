@@ -1165,6 +1165,22 @@ VolumeGrid *BKE_volume_grid_add(Volume *volume, const char *name, VolumeGridType
 #endif
 }
 
+void BKE_volume_grid_move(Volume *volume, const char *name, VolumeGrid *grid)
+{
+#ifdef WITH_OPENVDB
+  BLI_assert(grid != nullptr);
+  BLI_assert(grid->is_mutable());
+  VolumeGridVector &grids = *volume->runtime.grids;
+  BLI_assert(BKE_volume_grid_find_for_read(volume, name) == nullptr);
+
+  openvdb::GridBase::Ptr vdb_grid = grid->grid_for_write();
+  vdb_grid->setName(name);
+  grids.emplace_back(blender::bke::make_volume_grid_ptr(vdb_grid));
+#else
+  UNUSED_VARS(volume, name, grid);
+#endif
+}
+
 #ifdef WITH_OPENVDB
 VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
                                     const StringRef name,

@@ -68,7 +68,9 @@ static void try_store_grid(GeoNodeExecParams params, Volume *volume)
     BKE_volume_grid_remove(volume, existing_grid);
   }
 
-  BKE_volume_grid_add_vdb(*volume, grid_name, const_cast<VolumeGrid &>(*grid).grid_for_write());
+  VolumeGrid *output_grid = grid->is_mutable() ? const_cast<VolumeGrid *>(grid.get()) : grid->copy();
+  output_grid->tag_ensured_mutable();
+  BKE_volume_grid_move(volume, grid_name.data(), output_grid);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
