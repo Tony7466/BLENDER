@@ -75,11 +75,10 @@ enum {
  * \endcode
  *
  * #MLoopTri is stored in an array, where each faces's triangles are stored contiguously.
- * The number of triangles for each polygon is guaranteed to be the corner count - 2,
- * even for degenerate geometry (see #bke::mesh::face_triangles_num).
+ * The number of triangles for each polygon is guaranteed to be the corner count - 2, even for
+ * degenerate geometry (see #bke::mesh::face_triangles_num).
  *
- * It's also possible to perform a reverse lookup (find all #MLoopTri's for any given face).
- *
+ * It's also possible to perform a reverse lookup (find all triangles for any given face): *
  * \code{.cc}
  * // Access all triangles in a given face.
  * const IndexRange face = faces[i];
@@ -87,31 +86,9 @@ enum {
  *                                                 bke::mesh::face_triangles_num(face.size()));
  * \endcode
  *
- * It may also be useful to check whether or not two vertices of a triangle
- * form an edge in the underlying mesh.
- *
- * This can be done by checking the edge of the referenced corner,
- * the winding of the #MLoopTri and the corners's will always match,
- * however the order of vertices in the edge is undefined.
- *
- * \code{.c}
- * // print real edges from an MLoopTri: lt
- * int j, j_next;
- * for (j = 2, j_next = 0; j_next < 3; j = j_next++) {
- *     const int2 &edge = &medge[corner_edges[tri.tri[j]]];
- *     unsigned int tri_edge[2]  = {corner_verts[tri.tri[j]], corner_verts[tri.tri[j_next]]};
- *
- *     if (((edge[0] == tri_edge[0]) && (edge[1] == tri_edge[1])) ||
- *         ((edge[0] == tri_edge[1]) && (edge[1] == tri_edge[0])))
- *     {
- *         printf("real edge found %u %u\n", tri_edge[0], tri_edge[1]);
- *     }
- * }
- * \endcode
- *
- * See #bke::mesh::looptri_get_real_edges for a utility that does this.
- *
- * \note A #MLoopTri may be in the middle of an ngon and not reference **any** edges.
+ * It may also be useful to check whether or not two vertices of a triangle form an edge in the
+ * underlying mesh. See #bke::mesh::looptri_get_real_edges for a utility that does this. Note that
+ * a #MLoopTri may be in the middle of an ngon and not reference **any** edges.
  */
 typedef struct MLoopTri {
   unsigned int tri[3];

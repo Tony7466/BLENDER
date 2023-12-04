@@ -791,23 +791,27 @@ static void rotate_directions_around_axes(MutableSpan<float3> directions,
   }
 }
 
-static void evaluate_generic_data_for_curve(
-    const int curve_index,
-    const IndexRange points,
-    const VArray<int8_t> &types,
-    const VArray<bool> &cyclic,
-    const VArray<int> &resolution,
-    const Span<int> all_bezier_evaluated_offsets,
-    const Span<curves::nurbs::BasisCache> nurbs_basis_cache,
-    const VArray<int8_t> &nurbs_orders,
-    const Span<float> nurbs_weights,
-    const GSpan src,
-    GMutableSpan dst)
+/** Data needed to interpolate generic data from control points to evaluated points. */
+struct EvalData {
+  const VArray<int8_t> &types;
+  const VArray<bool> &cyclic;
+  const VArray<int> &resolution;
+  const Span<int> all_bezier_evaluated_offsets;
+  const Span<curves::nurbs::BasisCache> nurbs_basis_cache;
+  const VArray<int8_t> &nurbs_orders;
+  const Span<float> nurbs_weights;
+};
+
+static void evaluate_generic_data_for_curve(const EvalData &eval_data,
+                                            const int curve_index,
+                                            const IndexRange points,
+                                            const GSpan src,
+                                            GMutableSpan dst)
 {
-  switch (types[curve_index]) {
+  switch (eval_data.types[curve_index]) {
     case CURVE_TYPE_CATMULL_ROM:
       curves::catmull_rom::interpolate_to_evaluated(
-          src, cyclic[curve_index], resolution[curve_index], dst);
+          src, eval_data.cyclic[curve_index], eval_data.resolution[curve_index], dst);
       break;
     case CURVE_TYPE_POLY:
       dst.copy_from(src);
@@ -815,24 +819,76 @@ static void evaluate_generic_data_for_curve(
     case CURVE_TYPE_BEZIER: {
       const IndexRange offsets = curves::per_curve_point_offsets_range(points, curve_index);
       curves::bezier::interpolate_to_evaluated(
-          src, all_bezier_evaluated_offsets.slice(offsets), dst);
+          src, eval_data.all_bezier_evaluated_offsets.slice(offsets), dst);
       break;
     }
     case CURVE_TYPE_NURBS:
-      curves::nurbs::interpolate_to_evaluated(nurbs_basis_cache[curve_index],
-                                              nurbs_orders[curve_index],
-                                              nurbs_weights.slice_safe(points),
+      curves::nurbs::interpolate_to_evaluated(eval_data.nurbs_basis_cache[curve_index],
+                                              eval_data.nurbs_orders[curve_index],
+                                              eval_data.nurbs_weights.slice_safe(points),
                                               src,
                                               dst);
       break;
   }
 }
 
+static void tilt_normals(const OffsetIndices<int> points_by_curve,
+                         const OffsetIndices<int> evaluated_points_by_curve,
+                         const EvalData &eval_data,
+                         const Span<float3> evaluated_tangents,
+                         const VArraySpan<float> &tilt,
+                         MutableSpan<float3> evaluated_normals)
+{
+  if (tilt.is_empty()) {
+    return;
+  }
+  const IndexRange points = points_by_curve[curve_index];
+  if (eval_data.types[curve_index] == CURVE_TYPE_POLY) {
+    rotate_directions_around_axes(evaluated_normals.slice(evaluated_points),
+                                  evaluated_tangents.slice(evaluated_points),
+                                  tilt.slice(points));
+  }
+  else {
+    evaluated_tilts.reinitialize(evaluated_points.size());
+    evaluate_generic_data_for_curve(
+        eval_data, curve_index, points, tilt.slice(points), evaluated_tilts.as_mutable_span());
+    rotate_directions_around_axes(evaluated_normals.slice(evaluated_points),
+                                  evaluated_tangents.slice(evaluated_points),
+                                  evaluated_tilts.as_span());
+  }
+}
+
+static void calc_normals_z_up() {}
+
+static void calc_normals_minimum_twist() {}
+
 static void normalize_span(MutableSpan<float3> data)
 {
   for (const int i : data.index_range()) {
     data[i] = math::normalize(data[i]);
   }
+}
+
+static void calc_normals_custom(const CurvesGeometry &curves,
+                                const EvalData &eval_data,
+                                const IndexMask &mask,
+                                MutableSpan<float3> result)
+{
+  const AttributeAccessor attributes = curves.attributes();
+  const VArraySpan normals = *attributes.lookup<float3>("custom_normal", ATTR_DOMAIN_POINT);
+  if (normals.is_empty()) {
+    calc_normals_z_up();
+    return;
+  }
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const OffsetIndices<int> evaluated_points_by_curve = curves.points_by_curve();
+  curves.interpolate_to_evaluated(normals, result);
+  mask.foreach_index(GrainSize(512), [&](const int i) {
+    const Span<float3> src = result.slice(points_by_curve[i]);
+    MutableSpan<float3> dst = result.slice(evaluated_points_by_curve[i]);
+    evaluate_generic_data_for_curve(eval_data, i, points_by_curve[i], src, dst);
+    normalize_span(dst);
+  });
 }
 
 Span<float3> CurvesGeometry::evaluated_normals() const
@@ -845,13 +901,16 @@ Span<float3> CurvesGeometry::evaluated_normals() const
     const VArray<int8_t> types = this->curve_types();
     const VArray<bool> cyclic = this->cyclic();
     const VArray<int8_t> normal_mode = this->normal_mode();
-    const VArray<int> resolution = this->resolution();
-    const VArray<int8_t> nurbs_orders = this->nurbs_orders();
-    const Span<float> nurbs_weights = this->nurbs_weights();
-    const Span<int> all_bezier_offsets = runtime.evaluated_offsets_cache.data().all_bezier_offsets;
-    const Span<curves::nurbs::BasisCache> nurbs_basis_cache = runtime.nurbs_basis_cache.data();
-
     const Span<float3> evaluated_tangents = this->evaluated_tangents();
+    const EvalData eval_data{
+        types,
+        cyclic,
+        this->resolution(),
+        runtime.evaluated_offsets_cache.data().all_bezier_offsets,
+        runtime.nurbs_basis_cache.data(),
+        this->nurbs_orders(),
+        this->nurbs_weights(),
+    };
     const VArray<float> tilt = this->tilt();
     VArraySpan<float> tilt_span;
     const bool use_tilt = !(tilt.is_single() && tilt.get_internal_single() == 0.0f);
@@ -862,64 +921,31 @@ Span<float3> CurvesGeometry::evaluated_normals() const
     r_data.resize(this->evaluated_points_num());
     MutableSpan<float3> evaluated_normals = r_data;
 
-    if (const VArray<float3> custom_normals = *this->attributes().lookup<float3>(
-            "custom_normal", ATTR_DOMAIN_POINT))
-    {
-      const VArraySpan custom_normals_span(custom_normals);
-      this->interpolate_to_evaluated(custom_normals_span, evaluated_normals);
-      threading::parallel_for(r_data.index_range(), 1024, [&](const IndexRange range) {
-        normalize_span(evaluated_normals.slice(range));
-      });
-      return;
+    if (const std::optional<int8_t> single = normal_mode.get_if_single()) {
+      switch (*single) {
+        case NORMAL_MODE_Z_UP:
+          calc_normals_z_up();
+          break;
+        case NORMAL_MODE_MINIMUM_TWIST:
+          calc_normals_minimum_twist();
+          break;
+        case NORMAL_MODE_CUSTOM:
+          calc_normals_custom();
+          break;
+      }
     }
 
-    threading::parallel_for(this->curves_range(), 128, [&](IndexRange curves_range) {
-      /* Reuse a buffer for the evaluated tilts. */
-      Vector<float> evaluated_tilts;
+    IndexMaskMemory memory;
+    Array<IndexMask> masks;
+    IndexMask::from_groups(
+        this->curves_range(),
+        memory,
+        [&](const int i) { return normal_mode[i]; },
+        masks.as_mutable_span());
 
-      for (const int curve_index : curves_range) {
-        const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
-        switch (normal_mode[curve_index]) {
-          case NORMAL_MODE_Z_UP:
-            curves::poly::calculate_normals_z_up(evaluated_tangents.slice(evaluated_points),
-                                                 evaluated_normals.slice(evaluated_points));
-            break;
-          case NORMAL_MODE_MINIMUM_TWIST:
-            curves::poly::calculate_normals_minimum(evaluated_tangents.slice(evaluated_points),
-                                                    cyclic[curve_index],
-                                                    evaluated_normals.slice(evaluated_points));
-            break;
-        }
-
-        /* If the "tilt" attribute exists, rotate the normals around the tangents by the
-         * evaluated angles. We can avoid copying the tilts to evaluate them for poly curves. */
-        if (use_tilt) {
-          const IndexRange points = points_by_curve[curve_index];
-          if (types[curve_index] == CURVE_TYPE_POLY) {
-            rotate_directions_around_axes(evaluated_normals.slice(evaluated_points),
-                                          evaluated_tangents.slice(evaluated_points),
-                                          tilt_span.slice(points));
-          }
-          else {
-            evaluated_tilts.reinitialize(evaluated_points.size());
-            evaluate_generic_data_for_curve(curve_index,
-                                            points,
-                                            types,
-                                            cyclic,
-                                            resolution,
-                                            all_bezier_offsets,
-                                            nurbs_basis_cache,
-                                            nurbs_orders,
-                                            nurbs_weights,
-                                            tilt_span.slice(points),
-                                            evaluated_tilts.as_mutable_span());
-            rotate_directions_around_axes(evaluated_normals.slice(evaluated_points),
-                                          evaluated_tangents.slice(evaluated_points),
-                                          evaluated_tilts.as_span());
-          }
-        }
-      }
-    });
+    calc_normals_z_up(masks[NORMAL_MODE_Z_UP]);
+    calc_normals_minimum_twist(masks[NORMAL_MODE_MINIMUM_TWIST]);
+    calc_normals_custom(masks[NORMAL_MODE_CUSTOM]);
   });
   return this->runtime->evaluated_normal_cache.data();
 }
@@ -929,51 +955,43 @@ void CurvesGeometry::interpolate_to_evaluated(const int curve_index,
                                               GMutableSpan dst) const
 {
   const bke::CurvesGeometryRuntime &runtime = *this->runtime;
+  const EvalData eval_data{
+      this->curve_types(),
+      this->cyclic(),
+      this->resolution(),
+      runtime.evaluated_offsets_cache.data().all_bezier_offsets,
+      runtime.nurbs_basis_cache.data(),
+      this->nurbs_orders(),
+      this->nurbs_weights(),
+  };
   const OffsetIndices points_by_curve = this->points_by_curve();
   const IndexRange points = points_by_curve[curve_index];
   BLI_assert(src.size() == points.size());
   BLI_assert(dst.size() == this->evaluated_points_by_curve()[curve_index].size());
-  evaluate_generic_data_for_curve(curve_index,
-                                  points,
-                                  this->curve_types(),
-                                  this->cyclic(),
-                                  this->resolution(),
-                                  runtime.evaluated_offsets_cache.data().all_bezier_offsets,
-                                  runtime.nurbs_basis_cache.data(),
-                                  this->nurbs_orders(),
-                                  this->nurbs_weights(),
-                                  src,
-                                  dst);
+  evaluate_generic_data_for_curve(eval_data, curve_index, points, src, dst);
 }
 
 void CurvesGeometry::interpolate_to_evaluated(const GSpan src, GMutableSpan dst) const
 {
   const bke::CurvesGeometryRuntime &runtime = *this->runtime;
+  const EvalData eval_data{
+      this->curve_types(),
+      this->cyclic(),
+      this->resolution(),
+      runtime.evaluated_offsets_cache.data().all_bezier_offsets,
+      runtime.nurbs_basis_cache.data(),
+      this->nurbs_orders(),
+      this->nurbs_weights(),
+  };
   const OffsetIndices points_by_curve = this->points_by_curve();
   const OffsetIndices evaluated_points_by_curve = this->evaluated_points_by_curve();
-  const VArray<int8_t> types = this->curve_types();
-  const VArray<int> resolution = this->resolution();
-  const VArray<bool> cyclic = this->cyclic();
-  const VArray<int8_t> nurbs_orders = this->nurbs_orders();
-  const Span<float> nurbs_weights = this->nurbs_weights();
-  const Span<int> all_bezier_offsets = runtime.evaluated_offsets_cache.data().all_bezier_offsets;
-  const Span<curves::nurbs::BasisCache> nurbs_basis_cache = runtime.nurbs_basis_cache.data();
 
   threading::parallel_for(this->curves_range(), 512, [&](IndexRange curves_range) {
     for (const int curve_index : curves_range) {
       const IndexRange points = points_by_curve[curve_index];
       const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
-      evaluate_generic_data_for_curve(curve_index,
-                                      points,
-                                      types,
-                                      cyclic,
-                                      resolution,
-                                      all_bezier_offsets,
-                                      nurbs_basis_cache,
-                                      nurbs_orders,
-                                      nurbs_weights,
-                                      src.slice(points),
-                                      dst.slice(evaluated_points));
+      evaluate_generic_data_for_curve(
+          eval_data, curve_index, points, src.slice(points), dst.slice(evaluated_points));
     }
   });
 }
