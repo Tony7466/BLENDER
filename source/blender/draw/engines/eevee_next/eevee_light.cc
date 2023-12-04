@@ -264,7 +264,14 @@ void LightModule::begin_sync()
   use_sun_lights_ = (inst_.world.has_volume_absorption() == false);
 
   /* In begin_sync so it can be animated. */
-  light_threshold_ = max_ff(1e-16f, inst_.scene->eevee.light_threshold);
+  if (assign_if_different(light_threshold_, max_ff(1e-16f, inst_.scene->eevee.light_threshold))) {
+    /* All local lights need to be re-sync. */
+    for (Light &light : light_map_.values()) {
+      if (!ELEM(light.type, LIGHT_SUN, LIGHT_SUN_ORTHO)) {
+        light.initialized = false;
+      }
+    }
+  }
 
   sun_lights_len_ = 0;
   local_lights_len_ = 0;
