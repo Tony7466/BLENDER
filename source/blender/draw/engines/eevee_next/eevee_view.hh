@@ -165,7 +165,6 @@ class CaptureView {
 
 /** \} */
 
-
 /* -------------------------------------------------------------------- */
 /** \name Capture Planar View
  *
@@ -177,9 +176,6 @@ class LookdevView {
   Instance &inst_;
 
   View view_ = {"Lookdev.View"};
-
-  Framebuffer metallic_fb_ = {"Lookdev.Metallic"};
-  Framebuffer diffuse_fb_ = {"Lookdev.Diffuse"};
 
  public:
   LookdevView(Instance &inst) : inst_(inst) {}

@@ -170,8 +170,9 @@ static int calc_sphere_size(const float viewport_scale)
 
 void LookdevModule::sync()
 {
-  metallic_ps_.init();
-  diffuse_ps_.init();
+  for (Sphere &sphere : spheres_) {
+    sphere.pass.init();
+  }
   display_ps_.init();
 
   if (!enabled_) {
@@ -185,12 +186,16 @@ void LookdevModule::sync()
   const eGPUTextureFormat color_format = GPU_RGBA16F;
 
   depth_tx_.ensure_2d(depth_format, extent);
-  if (color_tx_.ensure_2d_array(color_format, extent, 2)) {
-    if (inst_.sampling.finished_viewport()) {
-      inst_.sampling.reset();
+  for (int index : IndexRange(num_spheres)) {
+    if (spheres_[index].color_tx_.ensure_2d(color_format, extent)) {
+      if (inst_.sampling.finished_viewport()) {
+        inst_.sampling.reset();
+      }
     }
+
+    spheres_[index].framebuffer.ensure(GPU_ATTACHMENT_TEXTURE(depth_tx_),
+                                       GPU_ATTACHMENT_TEXTURE(spheres_[index].color_tx_));
   }
-  color_tx_dirty_ = true;
 
   float4 position = inst_.camera.data_get().viewinv *
                     float4(0.0, 0.0, -inst_.camera.data_get().clip_near, 1.0);
@@ -201,9 +206,8 @@ void LookdevModule::sync()
   ResourceHandle handle = inst_.manager->resource_handle(model_m4);
   GPUBatch *geom = DRW_cache_sphere_get(calc_level_of_detail(viewport_scale));
 
-  sync_pass(metallic_ps_, geom, inst_.materials.metallic_mat, handle);
-  sync_pass(diffuse_ps_, geom, inst_.materials.diffuse_mat, handle);
-
+  sync_pass(spheres_[0].pass, geom, inst_.materials.metallic_mat, handle);
+  sync_pass(spheres_[1].pass, geom, inst_.materials.diffuse_mat, handle);
   sync_display();
 }
 
@@ -212,6 +216,9 @@ void LookdevModule::sync_pass(PassSimple &pass,
                               ::Material *mat,
                               ResourceHandle res_handle)
 {
+  pass.clear_depth(1.0f);
+  pass.clear_color(float4(0.0, 0.0, 0.0, 1.0));
+
   const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
                          DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK;
 
@@ -248,35 +255,20 @@ void LookdevModule::sync_display()
   pass.push_constant("viewportSize", float2(DRW_viewport_size_get()));
   pass.push_constant("invertedViewportSize", float2(DRW_viewport_invert_size_get()));
   pass.push_constant("anchor", int2(visible_rect_.xmax, visible_rect_.ymin));
-  pass.bind_texture("color_tx", &color_tx_);
+  pass.bind_texture("metallic_tx", &spheres_[0].color_tx_);
+  pass.bind_texture("diffuse_tx", &spheres_[1].color_tx_);
 
   pass.draw_procedural(GPU_PRIM_TRIS, 2, 6);
 }
 
-void LookdevModule::draw_metallic(View &view)
+void LookdevModule::draw(View &view)
 {
   if (!enabled_) {
     return;
   }
-  if (color_tx_dirty_) {
-    color_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
-    color_tx_dirty_ = false;
+  for (Sphere &sphere : spheres_) {
+    inst_.manager->submit(sphere.pass, view);
   }
-  depth_tx_.clear(float4(1.0f));
-  inst_.manager->submit(metallic_ps_, view);
-}
-
-void LookdevModule::draw_diffuse(View &view)
-{
-  if (!enabled_) {
-    return;
-  }
-  if (color_tx_dirty_) {
-    color_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
-    color_tx_dirty_ = false;
-  }
-  depth_tx_.clear(float4(1.0f));
-  inst_.manager->submit(diffuse_ps_, view);
 }
 
 void LookdevModule::display()

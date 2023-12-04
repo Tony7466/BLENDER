@@ -337,13 +337,7 @@ void LookdevView::render()
   if (!inst_.lookdev.enabled_) {
     return;
   }
-  GPU_debug_capture_begin();
   GPU_debug_group_begin("Lookdev");
-
-  metallic_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.lookdev.depth_tx_),
-                      GPU_ATTACHMENT_TEXTURE_LAYER(inst_.lookdev.color_tx_, 1));
-  diffuse_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.lookdev.depth_tx_),
-                     GPU_ATTACHMENT_TEXTURE_LAYER(inst_.lookdev.color_tx_, 0));
 
   const float4x4 &view_m4 = inst_.camera.data_get().viewmat;
   const float sphere_scale = inst_.lookdev.sphere_scale;
@@ -356,16 +350,10 @@ void LookdevView::render()
                                                    clip_near + sphere_scale);
   view_.sync(view_m4, win_m4);
 
-  metallic_fb_.bind();
-  inst_.lookdev.draw_metallic(view_);
-
-  diffuse_fb_.bind();
-  inst_.lookdev.draw_diffuse(view_);
-
+  inst_.lookdev.draw(view_);
   inst_.lookdev.display();
 
   GPU_debug_group_end();
-  GPU_debug_capture_end();
 }
 
 /** \} */

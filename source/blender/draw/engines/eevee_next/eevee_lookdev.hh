@@ -82,17 +82,19 @@ class LookdevWorld {
  * \{ */
 
 class LookdevModule {
- public:
+ private:
+  Instance &inst_;
+
+  bool enabled_;
+
+  static constexpr int num_spheres = 2;
   /**
    * The scale of the lookdev spheres.
    *
    * The lookdev spheres are resized to a small scale. This would reduce shadow artifacts as they
    * would most likely be inside or outside shadow.
    */
-  const float sphere_scale = 0.01f;
-
- private:
-  Instance &inst_;
+  static constexpr float sphere_scale = 0.01f;
 
   rcti visible_rect_;
 
@@ -102,22 +104,14 @@ class LookdevModule {
   Texture dummy_aov_value_tx_;
 
   Texture depth_tx_ = {"Lookdev.Depth"};
-  Texture color_tx_ = {"Lookdev.Color"};
 
-  /**
-   * Color TX should only be cleared when actually drawing and should only be cleared once as it
-   * contains both the metallic and diffuse sphere. This flag keeps track if the texture needs to
-   * be cleared (true) or has already been cleared (false).
-   * When not drawing any sample color_tx_ last results are used to update the display.
-   *
-   * Flag is only valid when lookdev is enabled and after sync.
-   */
-  bool color_tx_dirty_;
+  struct Sphere {
+    Framebuffer framebuffer = {"Lookdev.Framebuffer"};
+    Texture color_tx_ = {"Lookdev.Color"};
+    PassSimple pass = {"Lookdev.Sphere"};
+  };
 
-  bool enabled_;
-
-  PassSimple metallic_ps_ = {"Lookdev.Metallic"};
-  PassSimple diffuse_ps_ = {"Lookdev.Diffuse"};
+  Sphere spheres_[num_spheres];
   PassSimple display_ps_ = {"Lookdev.Display"};
 
  public:
@@ -127,8 +121,7 @@ class LookdevModule {
   void init(const rcti *visible_rect);
   void sync();
 
-  void draw_metallic(View &view);
-  void draw_diffuse(View &view);
+  void draw(View &view);
 
   void display();
 
