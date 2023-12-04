@@ -68,6 +68,8 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
     // TODO type check
     //    using GridType = typename VolumeGridPtr<T>::GridType;
     //    BLI_assert(openvdb::GridBase::grid<GridType>(data->grid));
+    /* Points to same data, increment user count. */
+    this->get()->add_user();
     return VolumeGridPtr<T>(*this);
   }
 
