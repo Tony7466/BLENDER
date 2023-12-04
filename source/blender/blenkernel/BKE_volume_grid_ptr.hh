@@ -39,9 +39,7 @@ struct VolumeGridPtrCommon : ImplicitSharingPtr<VolumeGrid> {
 /* -------------------------------------------------------------------- */
 /** \name Generic Volume Grid
  *
- * Wrapper around a generic OpenVDB grid.
- * Grids loaded from OpenVDB files are always stored in the global cache.
- * Procedurally generated grids are not.
+ * Owning pointer to a #VolumeGrid.
  * \{ */
 
 struct GVolumeGridPtr : public VolumeGridPtrCommon {
@@ -78,7 +76,7 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
 /* -------------------------------------------------------------------- */
 /** \name Volume Grid
  *
- * Wrapper around OpenVDB grids using a Blender type parameter.
+ * Owning pointer to a #VolumeGrid of a known type.
  * \{ */
 
 namespace detail {
