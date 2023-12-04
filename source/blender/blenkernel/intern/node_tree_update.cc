@@ -657,7 +657,11 @@ class NodeTreeMainUpdater {
     const bNodeSocket *selected_socket = nullptr;
     int selected_priority = -1;
     bool selected_is_linked = false;
-    for (const bNodeSocket *input_socket : output_socket->owner_node().input_sockets()) {
+    const bNode &node = output_socket->owner_node();
+    if (node.type == GEO_NODE_BAKE) {
+      return &node.input_by_identifier(output_socket->identifier);
+    }
+    for (const bNodeSocket *input_socket : node.input_sockets()) {
       if (!input_socket->is_available()) {
         continue;
       }
