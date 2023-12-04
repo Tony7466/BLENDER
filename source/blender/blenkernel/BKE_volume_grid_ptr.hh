@@ -134,7 +134,7 @@ template<> struct VolumeGridTraits<math::Quaternion> {
 };
 /* Stub class for string attributes, not supported. */
 template<> struct VolumeGridTraits<std::string> {
-  using TreeType = openvdb::MaskTree;
+  using TreeType = void;
 };
 
 template<typename T> using VolumeGridType = openvdb::Grid<typename VolumeGridTraits<T>::TreeType>;
