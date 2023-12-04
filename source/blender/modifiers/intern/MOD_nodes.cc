@@ -629,6 +629,69 @@ static void find_side_effect_nodes_for_viewer_path(
       *compute_context_builder.current(), parsed_path->viewer_node_id, nmd, r_side_effect_nodes);
 }
 
+static void find_side_effect_nodes_for_nested_node(
+    const NodesModifierData &nmd,
+    const int root_nested_node_id,
+    nodes::GeoNodesSideEffectNodes &r_side_effect_nodes)
+{
+  ComputeContextBuilder compute_context_builder;
+  compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
+
+  int nested_node_id = root_nested_node_id;
+  const bNodeTree *tree = nmd.node_group;
+  while (true) {
+    const bNestedNodeRef *ref = tree->find_nested_node_ref(nested_node_id);
+    if (!ref) {
+      return;
+    }
+    const bNode *node = tree->node_by_id(ref->path.node_id);
+    if (!node) {
+      return;
+    }
+    const bke::bNodeTreeZones *zones = tree->zones();
+    if (!zones) {
+      return;
+    }
+    if (zones->get_zone_by_node(node->identifier) != nullptr) {
+      /* Only top level nodes are allowed here. */
+      return;
+    }
+    if (node->is_group()) {
+      if (!node->id) {
+        return;
+      }
+      compute_context_builder.push<bke::GroupNodeComputeContext>(*node, *tree);
+      tree = reinterpret_cast<const bNodeTree *>(node->id);
+      nested_node_id = ref->path.id_in_node;
+    }
+    else {
+      try_add_side_effect_node(
+          *compute_context_builder.current(), ref->path.node_id, nmd, r_side_effect_nodes);
+      return;
+    }
+  }
+}
+
+static void find_side_effect_nodes_for_baking(const NodesModifierData &nmd,
+                                              const ModifierEvalContext &ctx,
+                                              nodes::GeoNodesSideEffectNodes &r_side_effect_nodes)
+{
+  if (!nmd.runtime->cache) {
+    return;
+  }
+  if (!DEG_is_active(ctx.depsgraph)) {
+    /* Only the active depsgraph can bake. */
+    return;
+  }
+  bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
+  for (const bNestedNodeRef &ref : nmd.node_group->nested_node_refs_span()) {
+    if (!modifier_cache.requested_bakes.contains(ref.id)) {
+      continue;
+    }
+    find_side_effect_nodes_for_nested_node(nmd, ref.id, r_side_effect_nodes);
+  }
+}
+
 static void find_side_effect_nodes(const NodesModifierData &nmd,
                                    const ModifierEvalContext &ctx,
                                    nodes::GeoNodesSideEffectNodes &r_side_effect_nodes)
@@ -655,6 +718,8 @@ static void find_side_effect_nodes(const NodesModifierData &nmd,
       }
     }
   }
+
+  find_side_effect_nodes_for_baking(nmd, ctx, r_side_effect_nodes);
 }
 
 static void find_socket_log_contexts(const NodesModifierData &nmd,

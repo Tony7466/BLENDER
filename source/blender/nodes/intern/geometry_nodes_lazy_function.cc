@@ -3539,6 +3539,10 @@ struct GeometryNodesLazyFunctionBuilder {
       graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
+
+    mapping_->possible_side_effect_node_map.add(&bnode, &lf_node);
+
+    /* TODO: Socket Usages. */
   }
 
   void build_switch_node(const bNode &bnode, BuildGraphParams &graph_params)
