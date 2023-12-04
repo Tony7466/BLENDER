@@ -58,6 +58,7 @@
 #include "WM_api.hh"
 
 #include "draw_manager_text.h"
+#include "intern/bmesh_polygon.h"
 
 struct ViewCachedString {
   float vec[3];
