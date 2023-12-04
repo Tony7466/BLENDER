@@ -66,6 +66,9 @@ void Instance::init(const int2 &output_res,
   if (output_res != film.display_extent_get()) {
     sampling.reset();
   }
+  if (assign_if_different(overlays_enabled_, v3d && !(v3d->flag2 & V3D_HIDE_OVERLAYS))) {
+    sampling.reset();
+  }
 
   update_eval_members();
 

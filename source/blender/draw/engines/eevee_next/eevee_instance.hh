@@ -55,6 +55,7 @@ class Instance {
   UniformDataBuf global_ubo_;
 
   uint64_t depsgraph_last_update_ = 0;
+  bool overlays_enabled_;
 
  public:
   ShaderModule &shaders;
@@ -202,7 +203,7 @@ class Instance {
 
   bool overlays_enabled() const
   {
-    return v3d && ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0);
+    return overlays_enabled_;
   }
 
   bool use_scene_lights() const
