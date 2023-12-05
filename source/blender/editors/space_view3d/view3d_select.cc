@@ -468,9 +468,14 @@ static bool view3d_selectable_data(bContext *C)
       }
     }
     else {
-      if ((ob->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT | OB_MODE_TEXTURE_PAINT)) &&
-          !BKE_paint_select_elem_test(ob))
-      {
+      if ((ob->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_TEXTURE_PAINT)) &&
+          !BKE_paint_select_elem_test(ob)) {
+        return false;
+      }
+
+      Object *ob_armature = BKE_object_pose_armature_get(ob);
+      if (ob->mode & OB_MODE_WEIGHT_PAINT && !BKE_paint_select_elem_test(ob) && !ob_armature) {
+
         return false;
       }
     }
