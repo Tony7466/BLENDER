@@ -383,6 +383,7 @@ if(DEFINED LIBDIR)
   list(FILTER _sycl_runtime_libraries EXCLUDE REGEX ".*\.py")
   list(REMOVE_ITEM _sycl_runtime_libraries "${SYCL_ROOT_DIR}/lib/libpi_opencl.so")
   list(APPEND PLATFORM_BUNDLED_LIBRARIES ${_sycl_runtime_libraries})
+  list(APPEND PLATFORM_BUNDLED_LIBRARY_DIRS ${SYCL_ROOT_DIR}/lib/)
   unset(_sycl_runtime_libraries)
 endif()
 
