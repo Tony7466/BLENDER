@@ -246,6 +246,7 @@ GPUMaterial *GPU_material_from_nodetree(struct Scene *scene,
                                         struct bNodeTree *ntree,
                                         struct ListBase *gpumaterials,
                                         const char *name,
+                                        const struct DrawEngineType *engine,
                                         uint64_t shader_uuid,
                                         bool is_volume_shader,
                                         bool is_lookdev,
@@ -421,7 +422,8 @@ typedef void (*ConstructGPUMaterialFn)(void *thunk, GPUMaterial *material);
 
 /* Construct a GPU material from a set of callbacks. See the callback types for more information.
  * The given thunk will be passed as the first parameter of each callback. */
-GPUMaterial *GPU_material_from_callbacks(ConstructGPUMaterialFn construct_function_cb,
+GPUMaterial *GPU_material_from_callbacks(const DrawEngineType *engine,
+                                         ConstructGPUMaterialFn construct_function_cb,
                                          GPUCodegenCallbackFn generate_code_function_cb,
                                          void *thunk);
 
