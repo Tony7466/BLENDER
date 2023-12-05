@@ -364,16 +364,31 @@ struct alignas(Alignment) MatBase : public vec_struct_base<VecBase<T, NumRow>, N
     return *this;
   }
 
-  /** Multiply two matrices using matrix multiplication. */
+  /** Multiply two equal size matrices using matrix multiplication. */
   MatBase<T, NumRow, NumRow> operator*(const MatBase<T, NumRow, NumCol> &b) const
   {
     const MatBase &a = *this;
     /* This is the reference implementation.
      * Might be overloaded with vectorized / optimized code. */
-    /* TODO(fclem): It should be possible to return non-square matrices when multiplying against
-     * MatBase<T, NumRow, OtherNumRow>. */
     MatBase<T, NumRow, NumRow> result{};
     unroll<NumRow>([&](auto j) {
+      unroll<NumRow>([&](auto i) {
+        /* Same as dot product, but avoid dependency on vector math. */
+        unroll<NumCol>([&](auto k) { result[j][i] += a[k][i] * b[j][k]; });
+      });
+    });
+    return result;
+  }
+
+  /** Multiply two compatible matrices using matrix multiplication. */
+  template<int OtherNumRow>
+  MatBase<T, OtherNumRow, NumRow> operator*(const MatBase<T, OtherNumRow, NumCol> &b) const
+  {
+    const MatBase &a = *this;
+    /* This is the reference implementation.
+     * Might be overloaded with vectorized / optimized code. */
+    MatBase<T, OtherNumRow, NumRow> result{};
+    unroll<OtherNumRow>([&](auto j) {
       unroll<NumRow>([&](auto i) {
         /* Same as dot product, but avoid dependency on vector math. */
         unroll<NumCol>([&](auto k) { result[j][i] += a[k][i] * b[j][k]; });
@@ -455,6 +470,13 @@ struct alignas(Alignment) MatBase : public vec_struct_base<VecBase<T, NumRow>, N
   {
     MatBase result{};
     unroll<min_dim>([&](auto i) { result[i][i] = value; });
+    return result;
+  }
+
+  static MatBase diagonal(const VecBase<T, min_dim> value)
+  {
+    MatBase result{};
+    unroll<min_dim>([&](auto i) { result[i][i] = value[i]; });
     return result;
   }
 

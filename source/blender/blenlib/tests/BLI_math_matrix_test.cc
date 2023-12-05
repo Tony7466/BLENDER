@@ -367,6 +367,35 @@ TEST(math_matrix, MatrixMultiply)
   }
 }
 
+TEST(math_matrix, RectangularMatrixMultiply)
+{
+
+  {
+    const float3x4 matrix_a = {
+        {1.0, 0.0, 1.0},
+        {2.0, 1.0, 1.0},
+        {0.0, 1.0, 1.0},
+        {0.0, 1.0, 2.0},
+    };
+    const float3x3 matrix_b = {
+        {1.0f, 2.0f, 1.0f},
+        {2.0f, 3.0f, 1.0f},
+        {4.0f, 2.0f, 2.0f},
+    };
+
+    const float3x4 expected = {
+        {5.0f, 4.0f, 3.0f},
+        {8.0f, 9.0f, 5.0f},
+        {6.0f, 5.0f, 3.0f},
+        {11.0f, 9.0f, 6.0f},
+    };
+
+    const float3x4 result = matrix_a * matrix_b;
+
+    EXPECT_MATRIX_NEAR(result, expected, 1e-5f);
+  }
+}
+
 TEST(math_matrix, MatrixToNearestEuler)
 {
   EulerXYZ eul1 = EulerXYZ(225.08542, -1.12485, -121.23738);
