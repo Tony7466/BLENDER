@@ -2156,19 +2156,7 @@ static void do_glow_effect_byte(Sequence *seq,
       MEM_mallocN(sizeof(float[4]) * x * y, "glow effect output"));
 
   using namespace blender;
-  threading::parallel_for(IndexRange(y), 64, [&](const IndexRange y_range) {
-    size_t offset = y_range.first() * x * 4;
-    IMB_buffer_float_from_byte(inbuf + offset,
-                               rect1 + offset,
-                               IB_PROFILE_SRGB,
-                               IB_PROFILE_SRGB,
-                               false,
-                               x,
-                               y_range.size(),
-                               x,
-                               x);
-    IMB_buffer_float_premultiply(inbuf + offset, x, y_range.size());
-  });
+  IMB_colormanagement_transform_from_byte_threaded(inbuf, rect1, x, y, 4, "sRGB", "sRGB");
 
   blur_isolate_highlights(
       inbuf, outbuf, x, y, glow->fMini * 3.0f, glow->fBoost * fac, glow->fClamp);
@@ -2183,14 +2171,13 @@ static void do_glow_effect_byte(Sequence *seq,
 
   threading::parallel_for(IndexRange(y), 64, [&](const IndexRange y_range) {
     size_t offset = y_range.first() * x * 4;
-    IMB_buffer_float_unpremultiply(outbuf + offset, x, y_range.size());
     IMB_buffer_byte_from_float(out + offset,
                                outbuf + offset,
                                4,
                                0.0f,
                                IB_PROFILE_SRGB,
                                IB_PROFILE_SRGB,
-                               false,
+                               true,
                                x,
                                y_range.size(),
                                x,
