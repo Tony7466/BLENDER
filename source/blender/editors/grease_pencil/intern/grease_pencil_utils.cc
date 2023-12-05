@@ -167,14 +167,30 @@ static VectorSet<int> get_locked_material_indices(Object &object)
   return locked_material_indices;
 }
 
+static VectorSet<int> get_editable_material_indices(Object &object)
+{
+  BLI_assert(object.type == OB_GREASE_PENCIL);
+  VectorSet<int> locked_material_indices;
+  for (const int mat_i : IndexRange(object.totcol)) {
+    Material *material = BKE_object_material_get(&object, mat_i + 1);
+    if (material != nullptr && material->gp_style != nullptr &&
+        (material->gp_style->flag & GP_MATERIAL_LOCKED) == 0 &&
+        (material->gp_style->flag & GP_MATERIAL_HIDE) == 0)
+    {
+      locked_material_indices.add(mat_i);
+    }
+  }
+  return locked_material_indices;
+}
+
 IndexMask retrieve_editable_strokes(Object &object,
                                     const bke::greasepencil::Drawing &drawing,
                                     IndexMaskMemory &memory)
 {
   using namespace blender;
 
-  /* Get all the locked material indices */
-  VectorSet<int> locked_material_indices = get_locked_material_indices(object);
+  /* Get all the editable material indices */
+  VectorSet<int> editable_material_indices = get_editable_material_indices(object);
 
   const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexRange curves_range = drawing.strokes().curves_range();
@@ -186,7 +202,7 @@ IndexMask retrieve_editable_strokes(Object &object,
   return IndexMask::from_predicate(
       curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
         const int material_index = materials[curve_i];
-        return !locked_material_indices.contains(material_index);
+        return editable_material_indices.contains(material_index);
       });
 }
 
@@ -194,8 +210,8 @@ IndexMask retrieve_editable_points(Object &object,
                                    const bke::greasepencil::Drawing &drawing,
                                    IndexMaskMemory &memory)
 {
-  /* Get all the locked material indices */
-  VectorSet<int> locked_material_indices = get_locked_material_indices(object);
+  /* Get all the editable material indices */
+  VectorSet<int> editable_material_indices = get_editable_material_indices(object);
 
   const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexRange points_range = drawing.strokes().points_range();
@@ -208,7 +224,7 @@ IndexMask retrieve_editable_points(Object &object,
   return IndexMask::from_predicate(
       points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
         const int material_index = materials[point_i];
-        return !locked_material_indices.contains(material_index);
+        return editable_material_indices.contains(material_index);
       });
 }
 
@@ -232,9 +248,6 @@ IndexMask retrieve_editable_and_selected_strokes(Object &object,
 {
   using namespace blender;
 
-  /* Get all the locked material indices */
-  VectorSet<int> locked_material_indices = get_locked_material_indices(object);
-
   const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexRange curves_range = drawing.strokes().curves_range();
 
@@ -254,9 +267,6 @@ IndexMask retrieve_editable_and_selected_points(Object &object,
                                                 const bke::greasepencil::Drawing &drawing,
                                                 IndexMaskMemory &memory)
 {
-  /* Get all the locked material indices */
-  VectorSet<int> locked_material_indices = get_locked_material_indices(object);
-
   const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexRange points_range = drawing.strokes().points_range();
 
