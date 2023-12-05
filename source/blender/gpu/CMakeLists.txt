@@ -851,16 +851,9 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     bf_blenlib
     bf_intern_ghost
     ${PLATFORM_LINKLIBS}
-    ${SYCL_LIBRARY}
     PRIVATE bf::intern::guardedalloc
     PRIVATE bf::imbuf
   )
-
-  add_custom_command(
-    OUTPUT COPY_LIBS
-    COMMAND ${CMAKE_COMMAND} -E copy ${PLATFORM_BUNDLED_LIBRARIES} ${CMAKE_INSTALL_PREFIX}
-  )
-
 
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -870,7 +863,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     OUTPUT
     ${SRC_BAKED_CREATE_INFOS_FILE}
     COMMAND ${CMAKE_COMMAND} -E env ${PLATFORM_ENV_BUILD} $<TARGET_FILE:shader_builder> ${SRC_BAKED_CREATE_INFOS_FILE}
-    DEPENDS shader_builder COPY_LIBS
+    DEPENDS shader_builder
   )
   set(GPU_SHADER_INFO_SRC
     intern/gpu_shader_info_baked.cc
