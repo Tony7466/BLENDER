@@ -150,9 +150,9 @@ static void text_listener(const wmSpaceTypeListenerParams *params)
           ED_area_tag_redraw(area);
           ATTR_FALLTHROUGH; /* fall down to tag redraw */
         case NA_ADDED:
-        case NA_REMOVED:
         case NA_SELECTED:
           text_update_text_search(st, static_cast<Text *>(wmn->reference));
+        case NA_REMOVED:
           ED_area_tag_redraw(area);
           break;
       }
@@ -398,10 +398,13 @@ static void text_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper
   BKE_id_remapper_apply(mappings, (ID **)&stext->text, ID_REMAP_APPLY_ENSURE_REAL);
 
   auto &texts_search = stext->runtime->texts_search;
-  texts_search.remove_if([mappings](const TextSearch &ts) {
+  for (auto &ts : texts_search) {
     BKE_id_remapper_apply(mappings, (ID **)&ts.text, ID_REMAP_APPLY_ENSURE_REAL);
-    return ts.text == nullptr;
-  });
+  }
+  auto test_removed = [](const TextSearch &ts) { return ts.text == nullptr; };
+  const auto itr = std::remove_if(texts_search.begin(), texts_search.end(), test_removed);
+  const int64_t removed = texts_search.end() - itr;
+  texts_search.remove(texts_search.size() - removed, removed);
 }
 
 static void text_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
@@ -505,7 +508,7 @@ void ED_spacetype_text()
 static void text_init_text_search(const SpaceText *st, Text *text)
 {
   auto &texts_search = st->runtime->texts_search;
-  texts_search.append(TextSearch(text));
+  texts_search.append({text});
 }
 
 const TextSearch *ED_text_get_text_search(const SpaceText *st, const Text *text)
@@ -591,7 +594,10 @@ static blender::Vector<StringMatch> text_find_string_matches(const Text *text,
 void remove_texts_search_but_active(const SpaceText *st)
 {
   auto &texts_search = st->runtime->texts_search;
-  texts_search.remove_if([st](const TextSearch &ts) { return ts.text != st->text; });
+  auto test_not_active = [st](const TextSearch &ts) { return ts.text != st->text; };
+  auto itr = std::remove_if(texts_search.begin(), texts_search.end(), test_not_active);
+  const int64_t removed = texts_search.end() - itr;
+  texts_search.remove(texts_search.size() - removed, removed);
 }
 
 void text_add_missing_texts_search(const bContext *C, const SpaceText *st, const bool all)

@@ -169,7 +169,7 @@ class TEX_UL_texts_search(bpy.types.UIList):
     @staticmethod
     def _sort_texts_search(texts_search):
         """
-        Re-order text matches using the text name (case-insensitive).
+        Re-order text search using the text name (case-insensitive).
         return a list mapping org_idx -> new_idx, or an empty list if no sorting has been done.
         """
         _sort = [(idx, text_search.text.name) for idx, text_search in enumerate(texts_search)]
@@ -215,11 +215,10 @@ class TEX_UL_texts_search(bpy.types.UIList):
         op.end_sel = string_match.end
 
 
-class TEX_UL_find_text_string_matches(bpy.types.UIList):
+class TEX_UL_string_matches(bpy.types.UIList):
     def draw_item(self, context, layout, _data, string_match, icon, _active_data, _active_propname, _index):
         row = layout.row()
         row.prop(string_match, "select", text=str(string_match.line_index))
-        print(string_match.text_line.body[string_match.start:])
         row.label(text="..." + string_match.text_line.body.encode("utf8")[string_match.start:].decode('utf8'))
         row.emboss = 'NONE'
         op = row.operator("text.open_text_with_selection", icon='ANIM', text="")
@@ -261,19 +260,19 @@ class TEXT_PT_find(Panel):
         col = layout.column()
         row = col.row(align=True)
         row.prop(st, "use_find_all", text="Search in all text data-blocks")
-        if st.use_find_all:
-            layout.template_list(
-                "TEX_UL_texts_search",
-                "",
-                st,
-                "texts_search",
-                st,
-                "active_text_search",
-                rows=4,
-            )
+        #if st.use_find_all:
+        layout.template_list(
+            "TEX_UL_texts_search",
+            "",
+            st,
+            "texts_search",
+            st,
+            "active_text_search",
+            rows=4,
+        )
         if st.active_text_search != -1:
             layout.template_list(
-                "TEX_UL_find_text_string_matches",
+                "TEX_UL_string_matches",
                 "",
                 st.texts_search[st.active_text_search],
                 "string_matches",
@@ -571,8 +570,8 @@ classes = (
     TEXT_MT_format,
     TEXT_MT_edit_to3d,
     TEXT_MT_context_menu,
-    TEX_UL_find_text_string_matches,
     TEX_UL_texts_search,
+    TEX_UL_string_matches,
 )
 
 if __name__ == "__main__":  # only for live edit.

@@ -49,16 +49,16 @@ const char *ED_text_format_comment_line_prefix(Text *text);
 
 bool ED_text_is_syntax_highlight_supported(Text *text);
 
-/* Get the position of the active text search, of the active text in the #space_text. */
+/* Get the index of the active Text data-block in the Space Text search list. */
 int ED_text_get_active_text_search(const SpaceText *st);
 
-/* Get the index of the string match selected by the cursor.  */
+/* Get the index of the string match selected by the cursor. */
 int ED_text_get_active_string_match(const SpaceText *st);
 
-/* Updates the search result done in the #space_text. */
+/* Updates the search result done in the space text. */
 void ED_text_update_search(const bContext *C, const SpaceText *st);
 
-/* Get the #text search result int the space. */
+/* Get the #text search result from the space text. */
 const TextSearch *ED_text_get_text_search(const SpaceText *st, const Text *text);
 
 struct SpaceText_Runtime {

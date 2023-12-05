@@ -6205,7 +6205,6 @@ static void rna_def_space_text(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Find All", "Search in all text data-blocks, instead of only the active one");
   RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
-
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_TEXT, "rna_SpaceText_update_search");
 
   prop = RNA_def_property(srna, "use_find_wrap", PROP_BOOLEAN, PROP_NONE);
@@ -6219,7 +6218,7 @@ static void rna_def_space_text(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Match Case", "Search string is sensitive to uppercase and lowercase letters");
   RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_TEXT, nullptr);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_TEXT, "rna_SpaceText_update_search");
 
   prop = RNA_def_property(srna, "find_text", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "findstr");
@@ -6251,12 +6250,15 @@ static void rna_def_space_text(BlenderRNA *brna)
   prop = RNA_def_property(srna, "active_text_search", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
-      prop, "Active Text Match", "Index of the active text data-block in the texts match list");
+      prop,
+      "Active Text Search",
+      "Get the index of the active Text data-block in the Space Text search list");
   RNA_def_property_int_funcs(prop, "rna_SpaceText_active_text_search_get", nullptr, nullptr);
 
   prop = RNA_def_property(srna, "active_string_match", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Active string Match", "Index of the active string match selected by the cursor");
+  RNA_def_property_ui_text(
+      prop, "Active string Match", "Index of the active string match selected by the cursor");
   RNA_def_property_int_funcs(prop, "rna_SpaceText_active_string_match_get", nullptr, nullptr);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_TEXT, nullptr);
 
@@ -6620,37 +6622,42 @@ static void rna_def_string_match(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "StringMatch", nullptr);
-  RNA_def_struct_ui_text(srna, "String Match", "Range in the text where a ocurrence was found.");
+  RNA_def_struct_ui_text(srna, "String Match", "Range in the text where a match was found");
 
   prop = RNA_def_property(srna, "text_line", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "TextLine", "");
+  RNA_def_property_ui_text(prop, "TextLine", "Line of text in the Text data-block");
 
   prop = RNA_def_property(srna, "line_index", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_int_sdna(prop, nullptr, "line_index");
+  RNA_def_property_ui_text(prop, "Line Index", "Index of the line in the Text data block");
 
   prop = RNA_def_property(srna, "start", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_int_sdna(prop, nullptr, "start");
+  RNA_def_property_ui_text(
+      prop, "Start", "Start byte position in text_line string body where a match were found");
 
   prop = RNA_def_property(srna, "end", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_int_sdna(prop, nullptr, "end");
+  RNA_def_property_ui_text(
+      prop, "End", "End byte position in text_line string body where a match were found");
 
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flags", TXT_SM_SELECTED);
 }
 
-static void rna_def_text_match(BlenderRNA *brna)
+static void rna_def_text_search(BlenderRNA *brna)
 {
 
   StructRNA *srna;
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "TextSearch", nullptr);
-  RNA_def_struct_ui_text(srna, "Text search", "Search result in thex data block.");
+  RNA_def_struct_ui_text(srna, "Text Search", "Search result of the Text data block");
 
   prop = RNA_def_property(srna, "text", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
@@ -6658,7 +6665,8 @@ static void rna_def_text_match(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "string_matches", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Text Matches", "Text where search text string was found.");
+  RNA_def_property_ui_text(
+      prop, "String Matches", "List of all search string matches in the Text data block");
   RNA_def_property_struct_type(prop, "StringMatch");
   RNA_def_property_collection_funcs(prop,
                                     "rna_SpaceText_text_string_matches_begin",
@@ -8442,7 +8450,7 @@ void RNA_def_space(BlenderRNA *brna)
   rna_def_space_image(brna);
   rna_def_space_sequencer(brna);
   rna_def_string_match(brna);
-  rna_def_text_match(brna);
+  rna_def_text_search(brna);
   rna_def_space_text(brna);
   rna_def_fileselect_entry(brna);
   rna_def_fileselect_params(brna);

@@ -106,23 +106,32 @@ typedef struct TextSearch {
     text = other.text;
     _string_matches = other._string_matches;
     other._string_matches = nullptr;
+    other.text = nullptr;
   };
 
   TextSearch &operator=(TextSearch &&other)
   {
     text = other.text;
+    string_matches_free();
     _string_matches = other._string_matches;
     other._string_matches = nullptr;
+    other.text = nullptr;
     return *this;
   };
 
-  ~TextSearch()
+  void string_matches_free()
   {
     MEM_delete(static_cast<blender::Vector<StringMatch> *>(_string_matches));
+    _string_matches = nullptr;
+  }
+  ~TextSearch()
+  {
+    string_matches_free();
   }
 
   blender::Vector<StringMatch> &string_matches() const
   {
+    BLI_assert(_string_matches != nullptr);
     return *(static_cast<blender::Vector<StringMatch> *>(_string_matches));
   }
 #endif

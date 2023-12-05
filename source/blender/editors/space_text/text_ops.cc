@@ -3832,7 +3832,7 @@ static int text_find_exec(bContext *C, wmOperator *op)
   if (!text_search || text_search->string_matches().size() == 0) {
     return OPERATOR_CANCELLED;
   }
-  
+
   const auto &string_matches = text_search->string_matches();
   const int line_index = BLI_findindex(&text->lines, text->curl);
   const int curc = text->curc;
@@ -4370,7 +4370,7 @@ void TEXT_OT_to_3d_object(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name
+/** \name Open text with Selection
  * \{ */
 
 static int open_text_with_selection_exec(bContext *C, wmOperator *op)
@@ -4419,7 +4419,7 @@ void TEXT_OT_open_text_with_selection(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Open to File at Point";
+  ot->name = "Open text with selection";
   ot->idname = "TEXT_OT_open_text_with_selection";
   ot->description = "Set Text as active with a selection";
 
