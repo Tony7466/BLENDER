@@ -259,7 +259,6 @@ extern "C" bool IMB_saveiff(struct ImBuf * /*ibuf*/, const char * /*filepath*/, 
 
 #  include "DNA_asset_types.h"
 
-extern "C" {
 
 AssetWeakReference::AssetWeakReference() {}
 AssetWeakReference::AssetWeakReference(AssetWeakReference &&) {}
@@ -269,7 +268,6 @@ AssetWeakReference *AssetWeakReference::make_reference(
     const blender::asset_system::AssetIdentifier & /*asset_identifier*/)
 {
   return nullptr;
-}
 }
 void BKE_asset_weak_reference_free(AssetWeakReference ** /*weak_ref*/) {}
 

@@ -847,12 +847,11 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
 
   target_link_libraries(shader_builder PUBLIC
     bf_gpu
-    bf_intern_clog
+    bf_blenkernel
     bf_blenlib
-    bf_intern_ghost
+    bf_intern_clog
     ${PLATFORM_LINKLIBS}
     PRIVATE bf::intern::guardedalloc
-    PRIVATE bf::imbuf
   )
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 
