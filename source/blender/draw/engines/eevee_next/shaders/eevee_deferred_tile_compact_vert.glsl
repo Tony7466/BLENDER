@@ -13,7 +13,8 @@ void main()
   /* Doesn't matter. Doesn't get rasterized. */
   gl_Position = vec4(0.0);
 
-  ivec2 tile_coord = ivec2(gl_VertexID / 128, gl_VertexID % 128);
+  int tile_per_row = textureSize(tile_mask_tx, 0).x;
+  ivec2 tile_coord = ivec2(gl_VertexID % tile_per_row, gl_VertexID / tile_per_row);
 
   if (gl_VertexID == 0) {
     closure_diffuse_draw_buf.instance_len = 1u;

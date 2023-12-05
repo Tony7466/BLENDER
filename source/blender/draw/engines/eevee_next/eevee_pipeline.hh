@@ -204,6 +204,8 @@ class DeferredLayer : DeferredLayerBase {
  private:
   Instance &inst_;
 
+  static constexpr int max_lighting_tile_count_ = 128 * 128;
+
   /* Evaluate all light objects contribution. */
   PassSimple eval_light_ps_ = {"EvalLights"};
   /* Combine direct and indirect light contributions and apply BSDF color. */

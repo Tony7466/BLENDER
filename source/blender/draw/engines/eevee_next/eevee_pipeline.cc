@@ -506,7 +506,7 @@ void DeferredLayer::end_sync()
       pass.bind_texture("tile_mask_tx", &tile_mask_tx_);
       pass.bind_ssbo("closure_diffuse_tile_buf", &closure_diffuse.tile_buf_);
       pass.bind_ssbo("closure_diffuse_draw_buf", &closure_diffuse.draw_buf_);
-      pass.draw_procedural(GPU_PRIM_POINTS, 1, 128 * 128);
+      pass.draw_procedural(GPU_PRIM_POINTS, 1, max_lighting_tile_count_);
     }
     {
       PassSimple &pass = eval_light_ps_;
@@ -688,16 +688,22 @@ void DeferredLayer::render(View &main_view,
     direct_refract_tx_.acquire(extent, GPU_RGBA16F, usage);
   }
 
-  /* TODO(fclem): Adjust size depending on device. */
+  int2 tile_mask_size;
+  int tile_count;
   closure_tile_size_shift_ = 4;
-  int2 tile_mask_size = math::divide_ceil(extent, int2(1u << closure_tile_size_shift_));
-  int tile_count = tile_mask_size.x * tile_mask_size.y;
-  int target_count = power_of_2_max_u(tile_count);
+  for (int i = 0; i < 4; i++, closure_tile_size_shift_++) {
+    tile_mask_size = math::divide_ceil(extent, int2(1u << closure_tile_size_shift_));
+    tile_count = tile_mask_size.x * tile_mask_size.y;
+    if (tile_count <= max_lighting_tile_count_) {
+      break;
+    }
+  }
 
   eGPUTextureUsage usage_rw = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
   tile_mask_tx_.ensure_2d_array(GPU_R8UI, tile_mask_size, 3, usage_rw);
   tile_mask_tx_.clear(uint4(0));
 
+  int target_count = power_of_2_max_u(tile_count);
   closure_diffuse.tile_buf_.resize(target_count);
   closure_reflection.tile_buf_.resize(target_count);
   closure_diffuse.draw_buf_.clear_to_zero();
