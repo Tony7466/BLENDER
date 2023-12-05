@@ -240,14 +240,6 @@ typedef enum eGPUMaterialEngine {
   GPU_MAT_COMPOSITOR,
 } eGPUMaterialEngine;
 
-GPUMaterial *GPU_material_from_nodetree_find(struct ListBase *gpumaterials,
-                                             const void *engine_type,
-                                             int options);
-/**
- * \note Caller must use #GPU_material_from_nodetree_find to re-use existing materials,
- * This is enforced since constructing other arguments to this function may be expensive
- * so only do this when they are needed.
- */
 GPUMaterial *GPU_material_from_nodetree(struct Scene *scene,
                                         struct Material *ma,
                                         struct bNodeTree *ntree,
