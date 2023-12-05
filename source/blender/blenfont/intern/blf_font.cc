@@ -23,6 +23,11 @@
 #include FT_MULTIPLE_MASTERS_H /* Variable font support. */
 #include FT_TRUETYPE_IDS_H     /* Code-point coverage constants. */
 #include FT_TRUETYPE_TABLES_H  /* For TT_OS2 */
+#include FT_OTSVG_H            /* For SVG fonts */
+#include FT_MODULE_H           /* To change driver settings. */
+
+#include "nanosvg.h"
+#include "nanosvgrast.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -1297,6 +1302,144 @@ char *blf_display_name(FontBLF *font)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name OpenType SVG Processing
+ * \{ */
+
+typedef struct Rsvg_Port_StateRec_ {
+  uint glyph_id;
+  NSVGimage *image;
+  NSVGrasterizer *rast;
+  float x;
+  float y;
+  float scale;
+} Rsvg_Port_StateRec;
+
+typedef struct Rsvg_Port_StateRec_ *Rsvg_Port_State;
+
+/* Called just once, the first time an SVG is encountered. */
+FT_Error rsvg_port_init(FT_Pointer *state)
+{
+  *state = (FT_Pointer *)MEM_mallocN(sizeof(Rsvg_Port_StateRec), __func__);
+  if (*state) {
+    Rsvg_Port_State _state = *(Rsvg_Port_State *)state;
+    _state->glyph_id = 0;
+    _state->image = nullptr;
+    _state->rast = nsvgCreateRasterizer();
+    _state->x = 0;
+    _state->y = 0;
+    _state->scale = 0;
+    return FT_Err_Ok;
+  }
+  return FT_Err_Cannot_Open_Resource;
+}
+
+/* Only called once at shutdown. */
+void rsvg_port_free(FT_Pointer *state)
+{
+  Rsvg_Port_State _state = *(Rsvg_Port_State *)state;
+  if (_state->image) {
+    nsvgDelete(_state->image);
+    _state->image = nullptr;
+  }
+  if (_state->rast) {
+    nsvgDeleteRasterizer(_state->rast);
+  }
+  MEM_SAFE_FREE(*state);
+}
+
+/* Called twice. On Load and just before Render. */
+FT_Error rsvg_port_preset_slot(FT_GlyphSlot slot, FT_Bool cache, FT_Pointer *_state)
+{
+  if (cache) {
+    /* We can do everything in the earlier of the two calls. */
+    return FT_Err_Ok;
+  }
+
+  Rsvg_Port_State state = *(Rsvg_Port_State *)_state;
+  state->glyph_id = slot->glyph_index;
+
+  //FT_Face face = slot->face;
+  //FontBLF *font = (FontBLF *)face->generic.data;
+
+  FT_SVG_Document document = (FT_SVG_Document)slot->other;
+  if (!document || !document->svg_document) {
+    return FT_Err_Invalid_SVG_Document;
+  }
+
+  if (state->image) {
+    return FT_Err_Invalid_SVG_Document;
+  }
+
+  try {
+    state->image = nsvgParse((char *)document->svg_document, "px", 96.0f);
+  }
+  catch (...) {
+    state->image = nullptr;
+  }
+
+  if (state->image && state->image->width && state->image->height) {
+
+    const float ratio = state->image->width / state->image->height;
+    const int height_64 = document->metrics.ascender - document->metrics.descender;
+    const int width_64 = int(ceil(height_64 / ratio));
+
+    state->scale = float(height_64) / 64.0f / state->image->height * 0.8f;
+    state->x = 0.0f;
+    state->y = float(document->metrics.ascender / 64.0f);
+
+    slot->bitmap_left = 0;
+    slot->bitmap_top = int(state->y);
+    slot->bitmap.width = int(ceil(width_64 / 64.0f));
+    slot->bitmap.rows = int(ceil(height_64 / 64.0f));
+    slot->bitmap.pitch = int(slot->bitmap.width * 4);
+    slot->bitmap.pixel_mode = FT_PIXEL_MODE_BGRA;
+    slot->metrics.width = height_64;
+    slot->metrics.height = height_64;
+    slot->advance.x = width_64;
+    slot->metrics.horiAdvance = slot->advance.x * 1024;
+
+    return FT_Err_Ok;
+  }
+
+  return FT_Err_Invalid_SVG_Document;
+}
+
+FT_Error rsvg_port_render(FT_GlyphSlot slot, FT_Pointer *_state)
+{
+  Rsvg_Port_State state = *(Rsvg_Port_State *)_state;
+  if (!state->image || state->image->width == 0 || state->image->height == 0) {
+    return FT_Err_Invalid_SVG_Document;
+  }
+
+  if (state->glyph_id != slot->glyph_index) {
+    return FT_Err_Invalid_SVG_Document;
+  }
+
+  //FT_Face face = slot->face;
+  //FontBLF *font = (FontBLF *)face->generic.data;
+
+  nsvgRasterize(state->rast,
+                state->image,
+                state->x,
+                state->y,
+                state->scale,
+                slot->bitmap.buffer,
+                slot->bitmap.width,
+                slot->bitmap.rows,
+                slot->bitmap.pitch);
+
+  slot->bitmap.num_grays = 256;
+  slot->format = FT_GLYPH_FORMAT_BITMAP;
+
+  nsvgDelete(state->image);
+  state->image = nullptr;
+
+  return FT_Err_Ok;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Font Subsystem Init/Exit
  * \{ */
 
@@ -1318,6 +1461,18 @@ int blf_font_init()
       /* Create a character-map cache to speed up glyph index lookups. */
       err = FTC_CMapCache_New(ftc_manager, &ftc_charmap_cache);
     }
+#ifdef FT_CONFIG_OPTION_SVG
+    if (err == FT_Err_Ok) {
+      SVG_RendererHooks hooks = {(SVG_Lib_Init_Func)rsvg_port_init,
+                                 (SVG_Lib_Free_Func)rsvg_port_free,
+                                 (SVG_Lib_Render_Func)rsvg_port_render,
+                                 (SVG_Lib_Preset_Slot_Func)rsvg_port_preset_slot};
+      err = FT_Property_Set(ft_lib, "ot-svg", "svg-hooks", &hooks);
+      if (err != FT_Err_Ok) {
+        printf("Error setting up SVG hooks \n");
+      }
+    }
+#endif
   }
   return err;
 }

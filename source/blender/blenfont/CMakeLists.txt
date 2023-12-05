@@ -35,6 +35,7 @@ set(LIB
   bf_gpu
   PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::extern::nanosvg
 
   ${FREETYPE_LIBRARIES} ${BROTLI_LIBRARIES}
 )

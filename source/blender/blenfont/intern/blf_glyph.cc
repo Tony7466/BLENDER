@@ -333,7 +333,7 @@ static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
         }
       }
     }
-    else if (glyph->bitmap.pixel_mode == FT_PIXEL_MODE_BGRA) {
+    else if (glyph->bitmap.pixel_mode == FT_PIXEL_MODE_BGRA && !FT_HAS_SVG(font->face)){
       /* Convert from BGRA to RGBA. */
       for (size_t y = 0; y < size_t(g->dims[1]); y++) {
         for (size_t x = 0; x < size_t(g->dims[0]); x++) {
