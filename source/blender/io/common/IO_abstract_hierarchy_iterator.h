@@ -93,7 +93,7 @@ struct HierarchyContext {
    * When the Object contains non-ASCII characters, store the original name for display purposes.
    */
   std::optional<std::string> display_name;
-  std::optional<std::string> data_display_name;
+  std::optional<std::string> data_computed_name;
 
   bool operator<(const HierarchyContext &other) const;
 

@@ -19,6 +19,7 @@
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
+#include "BLI_string_utf8.h"
 
 #include "DNA_ID.h"
 #include "DNA_layer_types.h"
@@ -428,6 +429,8 @@ void AbstractHierarchyIterator::export_graph_clear()
 void AbstractHierarchyIterator::precompute_material_names(Object *object,
                                                           Map<Material *, std::string> &names_map)
 {
+  (void)object;
+  (void)names_map;
 }
 
 void AbstractHierarchyIterator::visit_object(Object *object,
@@ -439,7 +442,7 @@ void AbstractHierarchyIterator::visit_object(Object *object,
   context->export_name = get_object_name(object);
 
   context->display_name = get_display_name(static_cast<const void*>(object));
-  context->data_display_name = get_object_data_name(object);
+  context->data_computed_name = std::nullopt;
   context->export_parent = export_parent;
   context->duplicator = nullptr;
   context->weak_export = weak_export;
@@ -447,6 +450,15 @@ void AbstractHierarchyIterator::visit_object(Object *object,
   context->export_path = "";
   context->original_export_path = "";
   context->higher_up_export_path = "";
+
+  if (object->data) {
+    ID* id_data = static_cast<ID*>(object->data);
+    size_t length_in_bytes = 0;
+    const size_t length_in_characters = BLI_strlen_utf8_ex(id_data->name + 2, &length_in_bytes);
+    if (length_in_bytes != length_in_characters) {
+      context->data_computed_name = get_object_data_name(object);
+    }
+  }
 
   precompute_material_names(object, context->material_names);
 
