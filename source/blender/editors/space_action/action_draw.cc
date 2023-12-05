@@ -885,10 +885,8 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
       const blender::bke::bake::ModifierCache &modifier_cache = *nmd->runtime->cache;
       {
         std::lock_guard lock{modifier_cache.mutex};
-        for (const std::unique_ptr<blender::bke::bake::SimulationNodeCache> &node_cache_ptr :
-             modifier_cache.simulation_cache_by_id.values())
-        {
-          const blender::bke::bake::SimulationNodeCache &node_cache = *node_cache_ptr;
+        for (const auto item : modifier_cache.simulation_cache_by_id.items()) {
+          const blender::bke::bake::SimulationNodeCache &node_cache = *item.value;
           if (node_cache.bake.frames.is_empty()) {
             all_simulations_baked = false;
             continue;
@@ -898,10 +896,15 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
           }
           cache_ranges.append({node_cache.bake.frame_range(), node_cache.cache_status});
         }
-        for (const std::unique_ptr<blender::bke::bake::BakeNodeCache> &node_cache_ptr :
-             modifier_cache.bake_cache_by_id.values())
-        {
-          const blender::bke::bake::BakeNodeCache &node_cache = *node_cache_ptr;
+        for (const auto item : modifier_cache.bake_cache_by_id.items()) {
+          const NodesModifierBake *bake = nmd->find_bake(item.key);
+          if (!bake) {
+            continue;
+          }
+          if (bake->flag & NODES_MODIFIER_BAKE_STILL) {
+            continue;
+          }
+          const blender::bke::bake::BakeNodeCache &node_cache = *item.value;
           if (node_cache.bake.frames.is_empty()) {
             continue;
           }
