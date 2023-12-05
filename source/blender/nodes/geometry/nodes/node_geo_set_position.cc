@@ -13,8 +13,6 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_mesh.hh"
 
-#include "NOD_node_extra_info.hh"
-
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_set_position_cc {
