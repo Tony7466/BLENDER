@@ -835,6 +835,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     intern/gpu_shader_builder_stubs.cc
     ${shader_create_info_list_file}
     ${_manifest}
+    ${INC_SYS}
   )
   unset(_manifest)
   if(WITH_BUILDINFO)
