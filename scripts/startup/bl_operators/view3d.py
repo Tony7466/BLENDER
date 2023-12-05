@@ -81,6 +81,7 @@ class VIEW3D_OT_edit_mesh_extrude_move(Operator):
     def poll(cls, context):
         obj = context.active_object
         mesh = context.object.data
+        cls.poll_message_set("Object has no face selected")
         return (obj is not None and obj.mode == 'EDIT' and mesh.total_face_sel>=1)
 
     @staticmethod
@@ -162,6 +163,7 @@ class VIEW3D_OT_edit_mesh_extrude_shrink_fatten(Operator):
     def poll(cls, context):
         obj = context.active_object
         mesh = context.object.data
+        cls.poll_message_set("Object has no face selected")
         return (obj is not None and obj.mode == 'EDIT' and mesh.total_face_sel>=1)
 
     def execute(self, context):
@@ -180,6 +182,7 @@ class VIEW3D_OT_edit_mesh_extrude_manifold_normal(Operator):
     def poll(cls, context):
         obj = context.active_object
         mesh = context.object.data
+        cls.poll_message_set("Object has no face selected")
         return (obj is not None and obj.mode == 'EDIT' and mesh.total_face_sel>=1)
 
     def execute(self, _context):
