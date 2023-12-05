@@ -92,9 +92,9 @@ static SpaceLink *text_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 static void text_free(SpaceLink *sl)
 {
   SpaceText *stext = (SpaceText *)sl;
+  text_free_caches(stext);
   MEM_delete(stext->runtime);
   stext->text = nullptr;
-  text_free_caches(stext);
 }
 
 /* spacetype; init callback */
