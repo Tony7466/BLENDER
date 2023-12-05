@@ -474,7 +474,6 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_debug_irradiance_grid_vert.glsl
   engines/eevee_next/shaders/eevee_debug_irradiance_grid_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_light_frag.glsl
-  engines/eevee_next/shaders/eevee_deferred_light_vert.glsl
   engines/eevee_next/shaders/eevee_deferred_capture_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_combine_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_planar_frag.glsl
