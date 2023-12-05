@@ -13,6 +13,8 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_mesh.hh"
 
+#include "NOD_node_extra_info.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_set_position_cc {
@@ -24,6 +26,13 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Vector>("Position").implicit_field_on_all(implicit_field_inputs::position);
   b.add_input<decl::Vector>("Offset").subtype(PROP_TRANSLATION).field_on_all();
   b.add_output<decl::Geometry>("Geometry").propagate_all();
+}
+
+static void node_extra_info(NodeExtraInfoParams &params)
+{
+  NodeExtraInfoRow row;
+  row.text = "Hello World";
+  params.rows.append(std::move(row));
 }
 
 static void set_computed_position_and_offset(GeometryComponent &component,
@@ -213,6 +222,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_SET_POSITION, "Set Position", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
+  ntype.get_extra_info = node_extra_info;
   nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
