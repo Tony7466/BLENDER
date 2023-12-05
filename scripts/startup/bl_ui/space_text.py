@@ -198,10 +198,6 @@ class TEX_UL_texts_search(bpy.types.UIList):
     def draw_item(self, context, layout, _data, text_search, icon, _active_data, _active_propname, _index):
         row = layout.row()
         row.emboss = 'NONE'
-        text_label = text_search.text.name
-        if text_search.text == context.space_data.text:
-            text_label = iface_("%s (current)") % text_label
-
         row.prop(text_search.text, "name", text="")
         row.label(text=str(len(text_search.string_matches)))
         if len(text_search.string_matches) == 0:
@@ -260,16 +256,16 @@ class TEXT_PT_find(Panel):
         col = layout.column()
         row = col.row(align=True)
         row.prop(st, "use_find_all", text="Search in all text data-blocks")
-        #if st.use_find_all:
-        layout.template_list(
-            "TEX_UL_texts_search",
-            "",
-            st,
-            "texts_search",
-            st,
-            "active_text_search",
-            rows=4,
-        )
+        if st.use_find_all:
+            layout.template_list(
+                "TEX_UL_texts_search",
+                "",
+                st,
+                "texts_search",
+                st,
+                "active_text_search",
+                rows=4,
+            )
         if st.active_text_search != -1:
             layout.template_list(
                 "TEX_UL_string_matches",
