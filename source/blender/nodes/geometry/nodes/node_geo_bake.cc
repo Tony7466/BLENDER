@@ -57,11 +57,6 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Extend>("", "__extend__");
 }
 
-static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
-{
-  UNUSED_VARS(layout, C, ptr);
-}
-
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryBake *data = MEM_cnew<NodeGeometryBake>(__func__);
@@ -378,41 +373,54 @@ class LazyFunctionForBakeNode final : public LazyFunction {
   }
 };
 
-static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
+struct BakeDrawContext {
+  const bNode *node;
+  SpaceNode *snode;
+  const Object *object;
+  const NodesModifierData *nmd;
+  const NodesModifierBake *bake;
+  PointerRNA bake_rna;
+  std::optional<IndexRange> baked_range;
+  bool bake_still;
+  bool is_baked;
+};
+
+[[nodiscard]] static bool get_bake_draw_context(bContext *C,
+                                                PointerRNA *ptr,
+                                                BakeDrawContext &r_ctx)
 {
-  const bNode *node = static_cast<bNode *>(ptr->data);
-  SpaceNode *snode = CTX_wm_space_node(C);
-  if (!snode) {
-    return;
+  r_ctx.node = static_cast<bNode *>(ptr->data);
+  r_ctx.snode = CTX_wm_space_node(C);
+  if (!r_ctx.snode) {
+    return false;
   }
   std::optional<ed::space_node::ObjectAndModifier> object_and_modifier =
-      ed::space_node::get_modifier_for_node_editor(*snode);
+      ed::space_node::get_modifier_for_node_editor(*r_ctx.snode);
   if (!object_and_modifier) {
-    return;
+    return false;
   }
-  const Object &object = *object_and_modifier->object;
-  const NodesModifierData &nmd = *object_and_modifier->nmd;
-  const std::optional<int32_t> bake_id = ed::space_node::find_nested_node_id_in_root(*snode,
-                                                                                     *node);
+  r_ctx.object = object_and_modifier->object;
+  r_ctx.nmd = object_and_modifier->nmd;
+  const std::optional<int32_t> bake_id = ed::space_node::find_nested_node_id_in_root(*r_ctx.snode,
+                                                                                     *r_ctx.node);
   if (!bake_id) {
-    return;
+    return false;
   }
-  const NodesModifierBake *bake = nullptr;
-  for (const NodesModifierBake &iter_bake : Span{nmd.bakes, nmd.bakes_num}) {
+  r_ctx.bake = nullptr;
+  for (const NodesModifierBake &iter_bake : Span{r_ctx.nmd->bakes, r_ctx.nmd->bakes_num}) {
     if (iter_bake.id == *bake_id) {
-      bake = &iter_bake;
+      r_ctx.bake = &iter_bake;
       break;
     }
   }
-  if (!bake) {
-    return;
+  if (!r_ctx.bake) {
+    return false;
   }
 
-  PointerRNA bake_rna = RNA_pointer_create(
-      const_cast<ID *>(&object.id), &RNA_NodesModifierBake, (void *)bake);
-  std::optional<IndexRange> baked_range;
-  if (nmd.runtime->cache) {
-    const bake::ModifierCache &cache = *nmd.runtime->cache;
+  r_ctx.bake_rna = RNA_pointer_create(
+      const_cast<ID *>(&r_ctx.object->id), &RNA_NodesModifierBake, (void *)r_ctx.bake);
+  if (r_ctx.nmd->runtime->cache) {
+    const bake::ModifierCache &cache = *r_ctx.nmd->runtime->cache;
     std::lock_guard lock{cache.mutex};
     if (const std::unique_ptr<bake::BakeNodeCache> *node_cache_ptr =
             cache.bake_cache_by_id.lookup_ptr(*bake_id))
@@ -421,60 +429,85 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
       if (!node_cache.bake.frames.is_empty()) {
         const int first_frame = node_cache.bake.frames.first()->frame.frame();
         const int last_frame = node_cache.bake.frames.last()->frame.frame();
-        baked_range = IndexRange(first_frame, last_frame - first_frame + 1);
+        r_ctx.baked_range = IndexRange(first_frame, last_frame - first_frame + 1);
       }
     }
   }
-  const bool bake_still = bake->flag & NODES_MODIFIER_BAKE_STILL;
-  const bool is_baked = baked_range.has_value();
+
+  r_ctx.bake_still = r_ctx.bake->flag & NODES_MODIFIER_BAKE_STILL;
+  r_ctx.is_baked = r_ctx.baked_range.has_value();
+
+  return true;
+}
+
+static void draw_bake_button(uiLayout *layout, const BakeDrawContext &ctx)
+{
+  uiLayout *col = uiLayoutColumn(layout, true);
+  uiLayout *row = uiLayoutRow(col, true);
+  {
+    PointerRNA ptr;
+    uiItemFullO(row,
+                "OBJECT_OT_geometry_node_bake_single",
+                ctx.bake_still ? N_("Bake Still") : N_("Bake"),
+                ICON_NONE,
+                nullptr,
+                WM_OP_INVOKE_DEFAULT,
+                UI_ITEM_NONE,
+                &ptr);
+    WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
+    RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
+    RNA_int_set(&ptr, "bake_id", ctx.bake->id);
+  }
+  {
+    PointerRNA ptr;
+    uiItemFullO(row,
+                "OBJECT_OT_geometry_node_bake_delete_single",
+                "",
+                ICON_TRASH,
+                nullptr,
+                WM_OP_INVOKE_DEFAULT,
+                UI_ITEM_NONE,
+                &ptr);
+    WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
+    RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
+    RNA_int_set(&ptr, "bake_id", ctx.bake->id);
+  }
+  if (ctx.is_baked) {
+    char baked_label[64];
+    if (ctx.bake_still && ctx.baked_range->size() == 1) {
+      STRNCPY(baked_label, N_("Baked Still"));
+    }
+    else {
+      SNPRINTF(baked_label,
+               N_("Baked %d - %d"),
+               int(ctx.baked_range->first()),
+               int(ctx.baked_range->last()));
+    }
+    uiItemL(layout, baked_label, ICON_NONE);
+  }
+}
+
+static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  BakeDrawContext ctx;
+  if (!get_bake_draw_context(C, ptr, ctx)) {
+    return;
+  }
+
+  draw_bake_button(layout, ctx);
+}
+
+static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  BakeDrawContext ctx;
+  if (!get_bake_draw_context(C, ptr, ctx)) {
+    return;
+  }
+
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  {
-    uiLayout *col = uiLayoutColumn(layout, false);
-
-    uiItemR(col, &bake_rna, "bake_still", UI_ITEM_NONE, nullptr, ICON_NONE);
-
-    uiLayout *row = uiLayoutRow(col, true);
-    {
-      PointerRNA ptr;
-      uiItemFullO(row,
-                  "OBJECT_OT_geometry_node_bake_single",
-                  bake_still ? N_("Bake Still") : N_("Bake"),
-                  ICON_NONE,
-                  nullptr,
-                  WM_OP_INVOKE_DEFAULT,
-                  UI_ITEM_NONE,
-                  &ptr);
-      WM_operator_properties_id_lookup_set_from_id(&ptr, &object.id);
-      RNA_string_set(&ptr, "modifier_name", nmd.modifier.name);
-      RNA_int_set(&ptr, "bake_id", bake->id);
-    }
-    {
-      PointerRNA ptr;
-      uiItemFullO(row,
-                  "OBJECT_OT_geometry_node_bake_delete_single",
-                  "",
-                  ICON_TRASH,
-                  nullptr,
-                  WM_OP_INVOKE_DEFAULT,
-                  UI_ITEM_NONE,
-                  &ptr);
-      WM_operator_properties_id_lookup_set_from_id(&ptr, &object.id);
-      RNA_string_set(&ptr, "modifier_name", nmd.modifier.name);
-      RNA_int_set(&ptr, "bake_id", bake->id);
-    }
-    if (is_baked) {
-      char baked_label[64];
-      if (bake_still) {
-        STRNCPY(baked_label, N_("Baked Still"));
-      }
-      else {
-        SNPRINTF(
-            baked_label, N_("Baked %d - %d"), int(baked_range->first()), int(baked_range->last()));
-      }
-      uiItemL(layout, baked_label, ICON_NONE);
-    }
-  }
+  uiItemR(layout, &ctx.bake_rna, "bake_still", UI_ITEM_NONE, nullptr, ICON_NONE);
+  draw_bake_button(layout, ctx);
 }
 
 static void node_rna(StructRNA *srna)
