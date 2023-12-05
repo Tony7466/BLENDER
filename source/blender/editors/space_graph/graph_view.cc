@@ -80,6 +80,7 @@ void get_graph_keyframe_extents(bAnimContext *ac,
   /* Check if any channels to set range with. */
   if (anim_data.first) {
     bool foundBounds = false;
+    short mapping_flag = ANIM_get_normalization_flags(ac->sl);
 
     /* Go through channels, finding max extents. */
     LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
@@ -90,7 +91,6 @@ void get_graph_keyframe_extents(bAnimContext *ac,
 
       /* Get range. */
       if (BKE_fcurve_calc_bounds(fcu, do_sel_only, include_handles, nullptr, &bounds)) {
-        short mapping_flag = ANIM_get_normalization_flags(ac->sl);
 
         /* Apply NLA scaling. */
         if (adt) {
@@ -131,7 +131,7 @@ void get_graph_keyframe_extents(bAnimContext *ac,
         *xmax += 0.0005f;
       }
       if ((ymin && ymax) && (fabsf(*ymax - *ymin) < 0.001f)) {
-        *ymax -= 0.0005f;
+        *ymin -= 0.0005f;
         *ymax += 0.0005f;
       }
     }
