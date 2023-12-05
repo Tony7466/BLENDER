@@ -34,7 +34,7 @@ static const pxr::TfToken Anim("Anim", pxr::TfToken::Immortal);
 static void initialize(const Object *obj,
                        pxr::UsdSkelSkeleton &skel,
                        pxr::UsdSkelAnimation &skel_anim,
-                       const std::unordered_map<const char *, const Bone *> *deform_bones)
+                       const blender::Map<const char *, const Bone *> *deform_bones)
 {
   using namespace blender::io::usd;
 
@@ -47,7 +47,7 @@ static void initialize(const Object *obj,
       return;
     }
 
-    if (deform_bones && deform_bones->find(bone->name) == deform_bones->end()) {
+    if (deform_bones && !deform_bones->contains(bone->name)) {
       /* If deform_map is passed in, assume we're going deform-only.
        * Bones not found in the map should be skipped. */
       return;
@@ -100,7 +100,7 @@ static const bPoseChannel *get_parent_pose_chan(const bPose *pose, const bPoseCh
 static void add_anim_sample(pxr::UsdSkelAnimation &skel_anim,
                             const Object *obj,
                             const pxr::UsdTimeCode time,
-                            const std::unordered_map<const char *, const Bone *> *deform_map)
+                            const blender::Map<const char *, const Bone *> *deform_map)
 {
   if (!(skel_anim && obj && obj->pose)) {
     return;
@@ -117,7 +117,7 @@ static void add_anim_sample(pxr::UsdSkelAnimation &skel_anim,
       continue;
     }
 
-    if (deform_map && deform_map->find(pchan->bone->name) == deform_map->end()) {
+    if (deform_map && !deform_map->contains(pchan->bone->name)) {
       /* If deform_map is passed in, assume we're going deform-only.
        * Bones not found in the map should be skipped. */
       continue;
@@ -173,8 +173,9 @@ void USDArmatureWriter::do_write(HierarchyContext &context)
     return;
   }
 
-  std::unordered_map<const char *, const Bone *> *use_deform =
-      usd_export_context_.export_params.use_deform ? &deform_map_ : nullptr;
+  Map<const char *, const Bone *> *use_deform = usd_export_context_.export_params.use_deform ?
+                                                    &deform_map_ :
+                                                    nullptr;
 
   if (!this->frame_has_been_written_) {
     init_deform_bones_map(context.object, use_deform);

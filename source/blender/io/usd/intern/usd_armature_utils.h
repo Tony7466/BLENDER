@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_function_ref.hh"
+#include "BLI_map.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
@@ -65,7 +66,7 @@ pxr::TfToken build_usd_joint_path(const Bone *bone);
  */
 void create_pose_joints(pxr::UsdSkelAnimation &skel_anim,
                         const Object *obj,
-                        const std::unordered_map<const char *, const Bone *> *deform_map);
+                        const Map<const char *, const Bone *> *deform_map);
 
 /**
  * Return the modifier of the given type enabled for the given dependency graph's
@@ -123,7 +124,6 @@ bool can_export_skinned_mesh(const Object &obj, const Depsgraph *depsgraph);
  * \param deform_map: A pointer to the deform_map to fill with deform bones and
  *                    their parents found on the object
  */
-void init_deform_bones_map(const Object *obj,
-                           std::unordered_map<const char *, const Bone *> *deform_map);
+void init_deform_bones_map(const Object *obj, Map<const char *, const Bone *> *deform_map);
 
 }  // namespace blender::io::usd
