@@ -448,7 +448,7 @@ static void draw_bake_button(uiLayout *layout, const BakeDrawContext &ctx)
     PointerRNA ptr;
     uiItemFullO(row,
                 "OBJECT_OT_geometry_node_bake_single",
-                ctx.bake_still ? N_("Bake Still") : N_("Bake"),
+                ctx.bake_still ? N_("Bake Still") : N_("Bake Animation"),
                 ICON_NONE,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
