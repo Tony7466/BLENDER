@@ -425,6 +425,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
       }
     }
   }
+  const bool bake_still = bake->flag & NODES_MODIFIER_BAKE_STILL;
   const bool is_baked = baked_range.has_value();
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
@@ -435,12 +436,10 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 
     uiLayout *row = uiLayoutRow(col, true);
     {
-      char bake_label[1024] = N_("Bake");
-
       PointerRNA ptr;
       uiItemFullO(row,
                   "OBJECT_OT_geometry_node_bake_single",
-                  bake_label,
+                  bake_still ? N_("Bake Still") : N_("Bake"),
                   ICON_NONE,
                   nullptr,
                   WM_OP_INVOKE_DEFAULT,
@@ -465,12 +464,15 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
       RNA_int_set(&ptr, "bake_id", bake->id);
     }
     if (is_baked) {
-      char baked_range_label[64];
-      SNPRINTF(baked_range_label,
-               N_("Baked %d - %d"),
-               int(baked_range->first()),
-               int(baked_range->last()));
-      uiItemL(layout, baked_range_label, ICON_NONE);
+      char baked_label[64];
+      if (bake_still) {
+        STRNCPY(baked_label, N_("Baked Still"));
+      }
+      else {
+        SNPRINTF(
+            baked_label, N_("Baked %d - %d"), int(baked_range->first()), int(baked_range->last()));
+      }
+      uiItemL(layout, baked_label, ICON_NONE);
     }
   }
 }
