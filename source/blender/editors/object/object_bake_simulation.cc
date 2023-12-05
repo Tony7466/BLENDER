@@ -811,7 +811,7 @@ static int bake_single_node_exec(bContext *C, wmOperator *op)
   }
   request.path = std::move(*bake_path);
 
-  if (bake->flag & NODES_MODIFIER_BAKE_STILL) {
+  if (bake->bake_mode == NODES_MODIFIER_BAKE_MODE_STILL) {
     const int current_frame = scene->r.cfra;
     request.frame_start = current_frame;
     request.frame_end = current_frame;

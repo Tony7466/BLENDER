@@ -2330,6 +2330,9 @@ typedef struct NodesModifierBake {
   int id;
   /** #NodesModifierBakeFlag. */
   uint32_t flag;
+  /** #NodesModifierBakeMode. */
+  uint8_t bake_mode;
+  char _pad[7];
   /**
    * Directory where the baked data should be stored. This is only used when
    * `NODES_MODIFIER_BAKE_CUSTOM_PATH` is set.
@@ -2346,8 +2349,12 @@ typedef struct NodesModifierBake {
 typedef enum NodesModifierBakeFlag {
   NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE = 1 << 0,
   NODES_MODIFIER_BAKE_CUSTOM_PATH = 1 << 1,
-  NODES_MODIFIER_BAKE_STILL = 1 << 2,
 } NodesModifierBakeFlag;
+
+typedef enum NodesModifierBakeMode {
+  NODES_MODIFIER_BAKE_MODE_ANIMATED = 0,
+  NODES_MODIFIER_BAKE_MODE_STILL = 1,
+} NodesModifierBakeMode;
 
 typedef struct NodesModifierData {
   ModifierData modifier;

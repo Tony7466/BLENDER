@@ -434,7 +434,7 @@ struct BakeDrawContext {
     }
   }
 
-  r_ctx.bake_still = r_ctx.bake->flag & NODES_MODIFIER_BAKE_STILL;
+  r_ctx.bake_still = r_ctx.bake->bake_mode == NODES_MODIFIER_BAKE_MODE_STILL;
   r_ctx.is_baked = r_ctx.baked_range.has_value();
 
   return true;
@@ -506,7 +506,10 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  uiItemR(layout, &ctx.bake_rna, "bake_still", UI_ITEM_NONE, nullptr, ICON_NONE);
+  {
+    uiLayout *row = uiLayoutRow(layout, true);
+    uiItemR(row, &ctx.bake_rna, "bake_mode", UI_ITEM_R_EXPAND, "Mode", ICON_NONE);
+  }
   draw_bake_button(layout, ctx);
 
   {

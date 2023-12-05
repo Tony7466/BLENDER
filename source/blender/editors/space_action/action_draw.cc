@@ -901,7 +901,7 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
           if (!bake) {
             continue;
           }
-          if (bake->flag & NODES_MODIFIER_BAKE_STILL) {
+          if (bake->bake_mode == NODES_MODIFIER_BAKE_MODE_STILL) {
             continue;
           }
           const blender::bke::bake::BakeNodeCache &node_cache = *item.value;
