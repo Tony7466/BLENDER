@@ -6,7 +6,7 @@ from __future__ import annotations
 
 
 import bpy
-from bpy.types import Operator
+from bpy.types import Operator, Menu
 from bpy.props import (
     IntProperty,
     BoolProperty,
@@ -554,6 +554,26 @@ class ARMATURE_OT_collection_show_all(Operator):
         return {'FINISHED'}
 
 
+class ANIM_MT_keyframe_insert_pie(Menu):
+    bl_label = "Keyframe Insert Pie"
+
+    def draw(self, context):
+        layout = self.layout
+        pie = layout.menu_pie()
+
+        prop = pie.operator("anim.keyframe_insert_by_name", text="Location")
+        prop.type = "Location"
+
+        prop = pie.operator("anim.keyframe_insert_by_name", text="Scale")
+        prop.type = "Scaling"
+
+        prop = pie.operator("anim.keyframe_insert_by_name", text="All")
+        prop.type = "LocRotScaleCProp"
+
+        prop = pie.operator("anim.keyframe_insert_by_name", text="Rotation")
+        prop.type = "Rotation"
+
+
 classes = (
     ANIM_OT_keying_set_export,
     NLA_OT_bake,
@@ -562,4 +582,5 @@ classes = (
     ARMATURE_OT_copy_bone_color_to_selected,
     ARMATURE_OT_collection_solo_visibility,
     ARMATURE_OT_collection_show_all,
+    ANIM_MT_keyframe_insert_pie,
 )

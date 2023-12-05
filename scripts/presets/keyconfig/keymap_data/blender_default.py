@@ -4839,6 +4839,7 @@ def km_pose(params):
         ("armature.move_to_collection", {"type": 'M', "value": 'PRESS'}, None),
         ("transform.bbone_resize", {"type": 'S', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
         ("anim.keyframe_insert", {"type": 'I', "value": 'PRESS'}, None),
+        op_menu_pie("ANIM_MT_keyframe_insert_pie", {"type": 'U', "value": 'PRESS'}),
         ("anim.keyframe_delete_v3d", {"type": 'I', "value": 'PRESS', "alt": True}, None),
         ("anim.keying_set_active_set", {"type": 'I', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
         ("pose.push", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
