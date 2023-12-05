@@ -218,10 +218,15 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "export_uvmaps", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_armatures", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "use_deform", UI_ITEM_NONE, "Only Deform Bones", ICON_NONE);
 
+  col = uiLayoutColumnWithHeading(box, true, IFACE_("Rigging"));
+  uiItemR(col, ptr, "export_armatures", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiLayout *row = uiLayoutRow(col, true);
+  uiItemR(row, ptr, "use_deform", UI_ITEM_NONE, "Only Deform Bones", ICON_NONE);
+  uiLayoutSetActive(row, RNA_boolean_get(ptr, "export_armatures"));
   uiItemR(col, ptr, "export_shapekeys", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "root_prim_path", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(box, true);
@@ -233,7 +238,7 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
   const bool export_mtl = RNA_boolean_get(ptr, "export_materials");
   uiLayoutSetActive(col, export_mtl);
 
-  uiLayout *row = uiLayoutRow(col, true);
+  row = uiLayoutRow(col, true);
   uiItemR(row, ptr, "export_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
   const bool preview = RNA_boolean_get(ptr, "generate_preview_surface");
   uiLayoutSetActive(row, export_mtl && preview);
