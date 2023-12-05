@@ -2916,6 +2916,14 @@ static bool ed_object_select_pick(bContext *C,
       if ((found && select_passthrough) && (basact->flag & BASE_SELECTED)) {
         found = false;
       }
+      else if (BKE_paint_select_bone_test(vc.obact)) {
+        /* pass  */
+
+        /* During weight paint mode, when there are multiple armatures deforming a single mesh,
+         * object_deselect_all_except might switch the active armature away from pose mode, making
+         * selection of bones with the select tools not possible afterwards.
+         * Passing here makes sure armatures stay in pose mode. */
+      }
       else if (found || params->deselect_all) {
         /* Deselect everything. */
         /* `basact` may be nullptr. */
