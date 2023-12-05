@@ -235,10 +235,10 @@ class DeferredLayer : DeferredLayerBase {
     LightTileBuf tile_buf_ = {"LightTileBuf"};
   } closure_diffuse, closure_reflection;
   /**
-   * Tile texture containing a eClosureBits per tile. It is used to
-   * select specialized shader for each tile.
+   * Tile texture containing several bool per tile indicating presence of feature.
+   * It is used to select specialized shader for each tile.
    */
-  LightMaskBuf tile_mask_buf_ = {"tile_mask_buf_"};
+  Texture tile_mask_tx_ = {"tile_mask_tx_"};
 
   /* TODO(fclem): This should be a TextureFromPool. */
   Texture radiance_behind_tx_ = {"radiance_behind_tx"};

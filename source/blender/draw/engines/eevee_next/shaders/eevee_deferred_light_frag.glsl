@@ -24,7 +24,7 @@ void main()
     return;
   }
 
-  vec3 P = drw_point_screen_to_world(vec3(interp.uv, depth));
+  vec3 P = drw_point_screen_to_world(vec3(uvcoordsvar.xy, depth));
   /* Assume reflection closure normal is always somewhat representative of the geometric normal.
    * Ng is only used for shadow biases and subsurface check in this case. */
   vec3 Ng = gbuf.has_reflection ? gbuf.reflection.N : gbuf.diffuse.N;

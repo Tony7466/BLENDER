@@ -490,9 +490,9 @@ void DeferredLayer::end_sync()
       /* WORKAROUND: Avoid rasterizer discard, but the shaders actually use no fragment output. */
       pass.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_DEPTH_GREATER);
       pass.shader_set(inst_.shaders.static_shader_get(DEFERRED_TILE_CLASSIFY));
-      pass.bind_ssbo("tile_mask_buf", &tile_mask_buf_);
       pass.bind_ssbo("closure_diffuse_draw_buf", &closure_diffuse.draw_buf_);
       pass.bind_ssbo("closure_diffuse_tile_buf", &closure_diffuse.tile_buf_);
+      pass.bind_image("tile_mask_img", &tile_mask_tx_);
       pass.push_constant("closure_tile_size_shift", &closure_tile_size_shift_);
       pass.push_constant("closure_tile_per_row", &closure_tile_per_row_);
       inst_.bind_uniform_data(&pass);
@@ -503,13 +503,22 @@ void DeferredLayer::end_sync()
     {
       PassSimple &pass = eval_light_ps_;
       pass.init();
-      /* Use depth test to reject background pixels. */
-      /* WORKAROUND: Avoid rasterizer discard, but the shaders actually use no fragment output. */
-      pass.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_DEPTH_GREATER);
+      pass.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS | DRW_STATE_DEPTH_GREATER);
+      pass.state_stencil(0xFFu, 0xFFu, 0xFFu);
+      pass.shader_set(inst_.shaders.static_shader_get(DEFERRED_TILE_STENCIL));
+      pass.bind_texture("tile_mask_tx", &tile_mask_tx_);
+      pass.bind_image("out_direct_radiance_img", &direct_diffuse_tx_);
+      pass.push_constant("closure_tile_size_shift", &closure_tile_size_shift_);
+      pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
+      pass.draw_procedural(GPU_PRIM_TRIS, 1, 3 * 2 * 128 * 128);
+      /* Use depth test to reject background pixels which have not been stencil cleared. */
+      /* WORKAROUND: Avoid rasterizer discard by enabling stencil write, but the shaders actually
+       * use no fragment output. */
+      pass.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_EQUAL | DRW_STATE_DEPTH_GREATER);
+      pass.state_stencil(0xFFu, 0xFFu, 0xFFu);
       pass.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHT));
       pass.bind_image("out_direct_radiance_img", &direct_diffuse_tx_);
       pass.bind_ssbo("closure_tile_buf", &closure_diffuse.tile_buf_);
-      pass.push_constant("closure_tile_size_shift", &closure_tile_size_shift_);
       pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
       pass.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
       pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
@@ -520,7 +529,7 @@ void DeferredLayer::end_sync()
       inst_.sampling.bind_resources(pass);
       inst_.hiz_buffer.bind_resources(pass);
       pass.barrier(GPU_BARRIER_SHADER_STORAGE);
-      pass.draw_procedural_indirect(GPU_PRIM_TRIS, closure_diffuse.draw_buf_);
+      pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
     }
     {
       PassSimple &pass = combine_ps_;
@@ -677,10 +686,12 @@ void DeferredLayer::render(View &main_view,
   int tile_count = tile_mask_size.x * tile_mask_size.y;
   int target_count = power_of_2_max_u(tile_count);
 
-  tile_mask_buf_.resize(target_count);
+  eGPUTextureUsage usage_rw = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
+  tile_mask_tx_.ensure_2d_array(GPU_R8UI, tile_mask_size, 3, usage_rw);
+  tile_mask_tx_.clear(uint4(0));
+
   closure_diffuse.tile_buf_.resize(target_count);
   closure_reflection.tile_buf_.resize(target_count);
-  tile_mask_buf_.clear_to_zero();
   closure_diffuse.draw_buf_.clear_to_zero();
   closure_reflection.draw_buf_.clear_to_zero();
 
