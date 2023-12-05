@@ -129,6 +129,30 @@ template<typename GridType> class CaptureFieldContext : public FieldContext {
   }
 };
 
+template <typename OutputGridPtr>
+struct TopologyInitOp {
+  GeoNodeExecParams params;
+  OutputGridPtr output_grid;
+
+  template<typename T> void operator()()
+  {
+    using GridType = typename bke::VolumeGridPtr<T>::GridType;
+    using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
+
+    const bke::VolumeGridPtr<T> topo_grid = grids::extract_grid_input<T>(this->params,
+                                                                         "Topology Grid");
+    if (!topo_grid) {
+      /* TODO should use topology union of inputs in this case. */
+      return;
+    }
+    typename bke::VolumeGridPtr<T>::GridConstPtr vdb_grid = topo_grid.grid();
+
+    output_grid->setTransform(vdb_grid->transform().copy());
+    output_grid->insertMeta(*vdb_grid);
+    output_grid->topologyUnion(*vdb_grid);
+  }
+};
+
 struct CaptureGridOp {
   GeoNodeExecParams params;
 
@@ -146,17 +170,10 @@ struct CaptureGridOp {
 
     /* Evaluate value field and fill in the grid. */
     const eCustomDataType topo_data_type = eCustomDataType(params.node().custom2);
-    const bke::GVolumeGridPtr topo_grid = grids::extract_grid_input(
-        params, "Topology Grid", topo_data_type);
-    if (!topo_grid) {
-      /* TODO should use topology union of inputs in this case. */
-      return;
-    }
 
     const GridPtr output_grid = GridType::create(vdb_background);
-    output_grid->setTransform(topo_grid->grid()->transform().copy());
-    output_grid->insertMeta(*topo_grid->grid());
-    output_grid->topologyUnion(*topo_grid->grid());
+    TopologyInitOp<GridPtr> topology_op{params, output_grid};
+    grids::apply(topo_data_type, topology_op);
 
     const int64_t voxels_num = get_voxel_count(*output_grid);
     CaptureFieldContext<GridType> context(output_grid);
