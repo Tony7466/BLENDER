@@ -83,6 +83,8 @@ const EnumPropertyItem rna_enum_color_sets_items[] = {
 
 #  include "WM_api.hh"
 
+#  include "ANIM_keyframing.hh"
+
 #  include "RNA_access.hh"
 
 static void rna_Pose_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
@@ -447,6 +449,40 @@ static bConstraint *rna_PoseChannel_constraints_copy(ID *id,
   WM_main_add_notifier(NC_OBJECT | ND_CONSTRAINT | NA_ADDED, id);
 
   return new_con;
+}
+
+static int rna_PoseChannel_insert_keyframe(ID *id,
+                                           bPoseChannel *pchan,
+                                           Main *bmain,
+                                           ReportList *reports,
+                                           const char *channel,
+                                           const char *rna_path,
+                                           const float frame)
+{
+  using namespace blender;
+  if (channel == nullptr && rna_path == nullptr) {
+    BKE_report(reports, RPT_ERROR, "No channel or rna-path specified to insert keyframes in");
+    return 0;
+  }
+
+  if (!BKE_id_is_editable(bmain, id)) {
+    BKE_reportf(reports, RPT_ERROR, "'%s' is not editable", pchan->name);
+    return 0;
+  }
+
+  PointerRNA ptr = RNA_pointer_create(id, &RNA_PoseBone, pchan);
+  Vector<std::string> rna_paths;
+  rna_paths.append(rna_path);
+  animrig::insert_key_rna(&ptr,
+                          rna_paths.as_span(),
+                          frame,
+                          eInsertKeyFlags(0),
+                          eBezTriple_KeyframeType(0),
+                          bmain,
+                          reports);
+
+  DEG_id_tag_update(id, ID_RECALC_ANIMATION);
+  return 0;
 }
 
 bool rna_PoseChannel_constraints_override_apply(Main *bmain,
@@ -1210,6 +1246,29 @@ static void rna_def_pose_channel(BlenderRNA *brna)
   RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
   RNA_def_property_editable_func(prop, "rna_PoseChannel_proxy_editable");
   RNA_def_property_update(prop, NC_OBJECT | ND_POSE, "rna_Pose_update");
+
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  func = RNA_def_function(srna, "insert_keyframe", "rna_PoseChannel_insert_keyframe");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_MAIN);
+  parm = RNA_def_string(func, "channel", nullptr, 0, "Channel", "Define which channel to key");
+  parm = RNA_def_string(
+      func, "rna_path", nullptr, 0, "RNA path", "Define the rna path explicitly");
+  parm = RNA_def_float(func,
+                       "frame",
+                       0,
+                       -FLT_MAX,
+                       FLT_MAX,
+                       "Frame",
+                       "At which frame to insert the key",
+                       -FLT_MAX,
+                       FLT_MAX);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_int(
+      func, "key_count", 0, 0, INT_MAX, "Key Count", "How many keys were inserted", 0, INT_MAX);
+  RNA_def_function_return(func, parm);
 
   RNA_api_pose_channel(srna);
 }
