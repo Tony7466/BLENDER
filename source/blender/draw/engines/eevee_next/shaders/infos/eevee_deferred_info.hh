@@ -27,15 +27,28 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_tile_classify)
     .push_constant(Type::INT, "closure_tile_size_shift")
     .do_static_compilation(true);
 
+GPU_SHADER_CREATE_INFO(eevee_deferred_tile_compact)
+    .additional_info("eevee_shared")
+    .typedef_source("draw_shader_shared.h")
+    .vertex_source("eevee_deferred_tile_compact_vert.glsl")
+    /* Reuse dummy stencil frag. */
+    .fragment_source("eevee_deferred_tile_stencil_frag.glsl")
+    /* Early fragment test is needed to avoid processing background fragments. */
+    .early_fragment_test(true)
+    .storage_buf(0, Qualifier::READ_WRITE, "DrawCommand", "closure_diffuse_draw_buf")
+    .storage_buf(1, Qualifier::WRITE, "uint", "closure_diffuse_tile_buf[]")
+    .sampler(0, ImageType::UINT_2D_ARRAY, "tile_mask_tx")
+    .do_static_compilation(true);
+
 GPU_SHADER_CREATE_INFO(eevee_deferred_tile_stencil)
     .vertex_source("eevee_deferred_tile_stencil_vert.glsl")
     .fragment_source("eevee_deferred_tile_stencil_frag.glsl")
     .additional_info("eevee_shared")
     /* Only for texture size. */
     .image_out(2, GPU_RGBA16F, "out_direct_radiance_img")
+    .storage_buf(4, Qualifier::READ, "uint", "closure_tile_buf[]")
     .push_constant(Type::INT, "closure_tile_size_shift")
     .typedef_source("draw_shader_shared.h")
-    .sampler(0, ImageType::UINT_2D_ARRAY, "tile_mask_tx")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_light)
@@ -44,7 +57,6 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .early_fragment_test(true)
     /* Chaining to next pass. */
     .image_out(2, GPU_RGBA16F, "out_direct_radiance_img")
-    .storage_buf(4, Qualifier::READ, "uint", "closure_tile_buf[]")
     .define("SSS_TRANSMITTANCE")
     .define("LIGHT_CLOSURE_EVAL_COUNT", "3")
     .additional_info("eevee_shared",

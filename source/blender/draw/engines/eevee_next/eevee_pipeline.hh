@@ -229,10 +229,9 @@ class DeferredLayer : DeferredLayerBase {
 
   /* Parameters for the light evaluation pass. */
   int closure_tile_size_shift_ = 0;
-  int closure_tile_per_row_ = 0;
   struct {
     DrawIndirectBuf draw_buf_ = {"DrawIndirectBuf"};
-    LightTileBuf tile_buf_ = {"LightTileBuf"};
+    ClosureTileBuf tile_buf_ = {"ClosureTileBuf"};
   } closure_diffuse, closure_reflection;
   /**
    * Tile texture containing several bool per tile indicating presence of feature.
