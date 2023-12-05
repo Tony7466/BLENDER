@@ -4700,6 +4700,7 @@ def km_object_mode(params):
         ("wm.context_toggle", {"type": 'PERIOD', "value": 'PRESS', "ctrl": True},
          {"properties": [("data_path", 'tool_settings.use_transform_data_origin')]}),
         ("anim.keyframe_insert", {"type": 'I', "value": 'PRESS'}, None),
+        op_menu_pie("ANIM_MT_keyframe_insert_pie", {"type": 'U', "value": 'PRESS'}),
         ("anim.keyframe_delete_v3d", {"type": 'I', "value": 'PRESS', "alt": True}, None),
         ("anim.keying_set_active_set", {"type": 'I', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
         ("collection.create", {"type": 'G', "value": 'PRESS', "ctrl": True}, None),
