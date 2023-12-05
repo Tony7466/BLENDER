@@ -508,6 +508,33 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
   uiLayoutSetPropDecorate(layout, false);
   uiItemR(layout, &ctx.bake_rna, "bake_still", UI_ITEM_NONE, nullptr, ICON_NONE);
   draw_bake_button(layout, ctx);
+
+  {
+    uiLayout *settings_col = uiLayoutColumn(layout, false);
+    uiLayoutSetActive(settings_col, !ctx.is_baked);
+    {
+      uiLayout *col = uiLayoutColumn(settings_col, true);
+      uiLayoutSetActive(col, !ctx.is_baked);
+      uiItemR(col, &ctx.bake_rna, "use_custom_path", UI_ITEM_NONE, "Custom Path", ICON_NONE);
+      uiLayout *subcol = uiLayoutColumn(col, true);
+      uiLayoutSetActive(subcol, ctx.bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH);
+      uiItemR(subcol, &ctx.bake_rna, "directory", UI_ITEM_NONE, "Path", ICON_NONE);
+    }
+    {
+      uiLayout *col = uiLayoutColumn(settings_col, true);
+      uiItemR(col,
+              &ctx.bake_rna,
+              "use_custom_simulation_frame_range",
+              UI_ITEM_NONE,
+              "Custom Range",
+              ICON_NONE);
+      uiLayout *subcol = uiLayoutColumn(col, true);
+      uiLayoutSetActive(subcol,
+                        ctx.bake->flag & NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE);
+      uiItemR(subcol, &ctx.bake_rna, "frame_start", UI_ITEM_NONE, "Start", ICON_NONE);
+      uiItemR(subcol, &ctx.bake_rna, "frame_end", UI_ITEM_NONE, "End", ICON_NONE);
+    }
+  }
 }
 
 static void node_rna(StructRNA *srna)
