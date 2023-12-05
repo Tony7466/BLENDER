@@ -62,9 +62,6 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
     //    using GridType = typename VolumeGridPtr<T>::GridType;
     //    BLI_assert(openvdb::GridBase::grid<GridType>(data->grid));
     /* Points to same data, increment user count. */
-    if (*this) {
-      this->get()->add_user();
-    }
     return VolumeGridPtr<T>(*this);
   }
 
@@ -154,7 +151,6 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
   using GridPtr = std::shared_ptr<GridType>;
   using GridConstPtr = std::shared_ptr<const GridType>;
 
-  VolumeGridPtr(const GVolumeGridPtr &other) : VolumeGridPtrCommon(other.get()) {}
   using VolumeGridPtrCommon::VolumeGridPtrCommon;
 
   GridConstPtr grid() const
@@ -171,6 +167,16 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
     }
     return openvdb::GridBase::grid<GridType>(data->grid()->deepCopyGrid());
   }
+
+ private:
+  VolumeGridPtr(const GVolumeGridPtr &other) : VolumeGridPtrCommon(other.get())
+  {
+    if (*this) {
+      this->get()->add_user();
+    }
+  }
+
+  friend class GVolumeGridPtr;
 };
 #else
 template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
