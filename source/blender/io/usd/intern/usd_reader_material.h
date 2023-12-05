@@ -101,7 +101,7 @@ class USDMaterialReader {
                       bNodeTree *ntree,
                       int column,
                       NodePlacementContext *r_ctx,
-                      bool is_color_corrected = false) const;
+                      bool is_color_corrected) const;
 
   /**
    * Follow the connected source of the USD input to create corresponding inputs
