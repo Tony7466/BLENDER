@@ -823,24 +823,21 @@ endif()
 
 
 if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
-  # TODO(@fclem) Fix this mess.
+  set(_manifest)
   if(WIN32)
     # We can re-use the manifest from tests.exe here since it's
     # rather generic and just selects the appropriate common
     # controls version.
-    set(MANIFEST "${CMAKE_BINARY_DIR}/tests.exe.manifest")
-    add_executable(shader_builder
-      intern/gpu_shader_builder.cc
-      intern/gpu_shader_builder_stubs.cc
-      ${shader_create_info_list_file}
-      ${MANIFEST}
-    )
-  else()
-    add_executable(shader_builder
-      intern/gpu_shader_builder.cc
-      intern/gpu_shader_builder_stubs.cc
-      ${shader_create_info_list_file}
-    )
+    set(_manifest "${CMAKE_BINARY_DIR}/tests.exe.manifest")
+  endif()
+  add_executable(shader_builder
+    intern/gpu_shader_builder.cc
+    intern/gpu_shader_builder_stubs.cc
+    ${shader_create_info_list_file}
+    ${_manifest}
+  )
+  unset(_manifest)
+  if(WITH_BUILDINFO)
     target_link_libraries(shader_builder PUBLIC buildinfoobj)
   endif()
   setup_platform_linker_flags(shader_builder)
