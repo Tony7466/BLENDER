@@ -1660,10 +1660,9 @@ class _defs_weight_paint:
         ob = context.active_object
         if (ob and ob.type == 'MESH' and
             (ob.data.use_paint_mask or
-             ob.data.use_paint_mask_vertex)):
+             ob.data.use_paint_mask_vertex or
+             context.pose_object)):
             return VIEW3D_PT_tools_active._tools_select
-        elif context.pose_object:
-            return (_defs_view3d_select.select,)
         return ()
 
     @staticmethod
