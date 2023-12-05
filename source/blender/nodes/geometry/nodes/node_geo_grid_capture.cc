@@ -156,34 +156,22 @@ struct TopologyInitOp {
 struct CaptureGridOp {
   GeoNodeExecParams params;
 
-  bke::GVolumeGridPtr result;
-
-  template<typename T> void operator()()
+  template<typename T> bke::GVolumeGridPtr operator()()
   {
     using GridType = typename bke::VolumeGridPtr<T>::GridType;
     using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
     using Converter = bke::grids::Converter<T>;
 
+    const eCustomDataType data_type = eCustomDataType(params.node().custom1);
+    const eCustomDataType topo_data_type = eCustomDataType(params.node().custom2);
+    BLI_assert(grids::grid_type_supported(topo_data_type));
+    const bke::GVolumeGridPtr topo_grid = grids::extract_grid_input(
+        this->params, "Topology Grid", topo_data_type);
     const fn::Field<T> value_field = this->params.extract_input<fn::Field<T>>("Value");
     const T background = this->params.extract_input<T>("Background");
-    const typename GridType::ValueType vdb_background = Converter::to_openvdb(background);
 
-    /* Evaluate value field and fill in the grid. */
-    const eCustomDataType topo_data_type = eCustomDataType(params.node().custom2);
-
-    const GridPtr output_grid = GridType::create(vdb_background);
-    TopologyInitOp<GridPtr> topology_op{params, output_grid};
-    grids::apply(topo_data_type, topology_op);
-
-    const int64_t voxels_num = get_voxel_count(*output_grid);
-    CaptureFieldContext<GridType> context(output_grid);
-    fn::FieldEvaluator evaluator(context, voxels_num);
-    Array<T> values(voxels_num);
-    evaluator.add_with_destination(std::move(value_field), values.as_mutable_span());
-    evaluator.evaluate();
-    store_voxel_values(*output_grid, values.as_span());
-
-    this->result = bke::make_volume_grid_ptr(std::move(output_grid));
+    return grids::try_capture_field_as_grid(
+        data_type, topo_data_type, topo_grid, value_field, &background);
   }
 };
 
@@ -191,14 +179,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  const eCustomDataType topo_data_type = eCustomDataType(params.node().custom2);
   BLI_assert(grids::grid_type_supported(data_type));
-  BLI_assert(grids::grid_type_supported(topo_data_type));
 
   CaptureGridOp capture_op = {params};
-  grids::apply(data_type, capture_op);
+  bke::GVolumeGridPtr grid = grids::apply(data_type, capture_op);
 
-  grids::set_output_grid(params, "Grid", data_type, capture_op.result);
+  grids::set_output_grid(params, "Grid", data_type, grid);
 #else
   params.set_default_remaining_outputs();
   params.error_message_add(NodeWarningType::Error,

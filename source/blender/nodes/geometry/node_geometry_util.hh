@@ -207,6 +207,12 @@ openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
     GeometryNodeGridNeighborTopology neighbors_mode);
 #endif
 
+bke::GVolumeGridPtr try_capture_field_as_grid(const eCustomDataType data_type,
+                                              eCustomDataType topology_data_type,
+                                              const bke::GVolumeGridPtr &topology_grid,
+                                              fn::GField value_field,
+                                              GPointer background);
+
 }  // namespace grids
 
 }  // namespace blender::nodes

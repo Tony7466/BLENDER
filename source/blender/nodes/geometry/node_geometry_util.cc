@@ -198,6 +198,152 @@ openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
   return openvdb::tools::NearestNeighbors::NN_FACE;
 }
 
+template<typename GridType> static int64_t get_voxel_count(const GridType &grid)
+{
+  return grid.tree().activeLeafVoxelCount();
+}
+
+template<typename GridType>
+static void get_voxel_positions_span(GridType &grid, const MutableSpan<float3> positions)
+{
+  using TreeType = typename GridType::TreeType;
+  using LeafManager = openvdb::tree::LeafManager<TreeType>;
+  using LeafNodeType = typename TreeType::LeafNodeType;
+
+  LeafManager leaf_mgr(grid.tree());
+  /* XXX calculated twice (see store_voxel_values), can be done externally. */
+  size_t *leaf_offsets = static_cast<size_t *>(
+      MEM_malloc_arrayN(leaf_mgr.leafCount(), sizeof(size_t), __func__));
+  size_t leaf_offsets_size = leaf_mgr.leafCount();
+  leaf_mgr.getPrefixSum(leaf_offsets, leaf_offsets_size);
+
+  const openvdb::math::Transform &transform = grid.transform();
+
+  leaf_mgr.foreach ([&](const LeafNodeType &leaf, const size_t leaf_index) {
+    int64_t index = leaf_offsets[leaf_index];
+    typename LeafNodeType::ValueOnCIter iter = leaf.cbeginValueOn();
+    for (; iter; ++iter, ++index) {
+      const openvdb::Vec3d pos = transform.indexToWorld(iter.getCoord());
+      positions[index] = float3(pos.x(), pos.y(), pos.z());
+    }
+  });
+
+  MEM_delete(leaf_offsets);
+}
+
+template<typename T, typename GridType>
+static void store_voxel_values(GridType &grid, const Span<T> values)
+{
+  using TreeType = typename GridType::TreeType;
+  using LeafManager = openvdb::tree::LeafManager<TreeType>;
+  using LeafNodeType = typename TreeType::LeafNodeType;
+  using Converter = bke::grids::Converter<T>;
+
+  LeafManager leaf_mgr(grid.tree());
+  size_t *leaf_offsets = static_cast<size_t *>(
+      MEM_malloc_arrayN(leaf_mgr.leafCount(), sizeof(size_t), __func__));
+  size_t leaf_offsets_size = leaf_mgr.leafCount();
+  leaf_mgr.getPrefixSum(leaf_offsets, leaf_offsets_size);
+
+  leaf_mgr.foreach ([&](LeafNodeType &leaf, const size_t leaf_index) {
+    int64_t index = leaf_offsets[leaf_index];
+    typename LeafNodeType::ValueOnIter iter = leaf.beginValueOn();
+    for (; iter; ++iter, ++index) {
+      iter.setValue(Converter::to_openvdb(values[index]));
+    }
+  });
+
+  MEM_delete(leaf_offsets);
+}
+
+template<typename GridType> class CaptureFieldContext : public FieldContext {
+ private:
+  typename GridType::Ptr grid_;
+
+ public:
+  CaptureFieldContext(typename GridType::Ptr grid) : grid_(std::move(grid)) {}
+
+  GVArray get_varray_for_input(const fn::FieldInput &field_input,
+                               const IndexMask & /*mask*/,
+                               ResourceScope & /*scope*/) const override
+  {
+    const bke::AttributeFieldInput *attribute_field_input =
+        dynamic_cast<const bke::AttributeFieldInput *>(&field_input);
+    if (attribute_field_input == nullptr) {
+      return {};
+    }
+    if (attribute_field_input->attribute_name() != "position") {
+      return {};
+    }
+
+    Array<float3> positions(get_voxel_count(*grid_));
+    get_voxel_positions_span(*grid_, positions);
+    return VArray<float3>::ForContainer(std::move(positions));
+  }
+};
+
+template<typename OutputGridPtr> struct TopologyInitOp {
+  bke::GVolumeGridPtr topology_grid;
+  OutputGridPtr output_grid;
+
+  template<typename T> void operator()()
+  {
+    using GridType = typename bke::VolumeGridPtr<T>::GridType;
+    using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
+
+    if (!this->topology_grid) {
+      /* TODO should use topology union of inputs in this case. */
+      return;
+    }
+    typename bke::VolumeGridPtr<T>::GridConstPtr vdb_grid = this->topology_grid.typed<T>().grid();
+
+    output_grid->setTransform(vdb_grid->transform().copy());
+    output_grid->insertMeta(*vdb_grid);
+    output_grid->topologyUnion(*vdb_grid);
+  }
+};
+
+struct CaptureGridOp {
+  const eCustomDataType topology_data_type;
+  bke::GVolumeGridPtr topology_grid;
+  fn::GField value_field;
+  GPointer background;
+
+  template<typename T> bke::GVolumeGridPtr operator()()
+  {
+    using GridType = typename bke::VolumeGridPtr<T>::GridType;
+    using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
+    using Converter = bke::grids::Converter<T>;
+
+    const typename GridType::ValueType vdb_background = Converter::to_openvdb(*this->background.get<T>());
+
+    /* Evaluate value field and fill in the grid. */
+    const GridPtr output_grid = GridType::create(vdb_background);
+    TopologyInitOp<GridPtr> topology_op{topology_grid, output_grid};
+    grids::apply(this->topology_data_type, topology_op);
+
+    const int64_t voxels_num = get_voxel_count(*output_grid);
+    CaptureFieldContext<GridType> context(output_grid);
+    fn::FieldEvaluator evaluator(context, voxels_num);
+    Array<T> values(voxels_num);
+    evaluator.add_with_destination(this->value_field, values.as_mutable_span());
+    evaluator.evaluate();
+    store_voxel_values(*output_grid, values.as_span());
+
+    return bke::make_volume_grid_ptr(std::move(output_grid));
+  }
+};
+
+bke::GVolumeGridPtr try_capture_field_as_grid(const eCustomDataType data_type,
+                                              const eCustomDataType topology_data_type,
+                                              const bke::GVolumeGridPtr &topology_grid,
+                                              const fn::GField value_field,
+                                              const GPointer background)
+{
+  CaptureGridOp capture_op = {topology_data_type, topology_grid, value_field, background};
+  return grids::apply(data_type, capture_op);
+}
+
 }  // namespace grids
 
 }  // namespace blender::nodes
