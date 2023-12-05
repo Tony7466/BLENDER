@@ -17,6 +17,7 @@
 #include "BLI_array.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_rotation.h"
+#include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
@@ -2061,45 +2062,48 @@ static void glow_blur_bitmap(blender::float4 *map, int width, int height, float 
   });
 }
 
-static void blur_add_bitmap(const float *src, float *dst, int width, int height)
+static void blur_add_bitmap(const blender::float4 *src,
+                            blender::float4 *dst,
+                            int width,
+                            int height)
 {
   using namespace blender;
   threading::parallel_for(IndexRange(height), 64, [&](const IndexRange y_range) {
+    const float4 v1 = float4(1.0f);
     for (const int y : y_range) {
-      int index = y * width * 4;
-      for (int x = 0; x < width; x++, index += 4) {
-        dst[index + 0] = min_ff(1.0f, src[index + 0] + dst[index + 0]);
-        dst[index + 1] = min_ff(1.0f, src[index + 1] + dst[index + 1]);
-        dst[index + 2] = min_ff(1.0f, src[index + 2] + dst[index + 2]);
-        dst[index + 3] = min_ff(1.0f, src[index + 3] + dst[index + 3]);
+      int index = y * width;
+      for (int x = 0; x < width; x++, index++) {
+        dst[index] = math::min(v1, src[index] + dst[index]);
       }
     }
   });
 }
 
-static void blur_isolate_highlights(
-    const float *in, float *out, int width, int height, float threshold, float boost, float clamp)
+static void blur_isolate_highlights(const blender::float4 *in,
+                                    blender::float4 *out,
+                                    int width,
+                                    int height,
+                                    float threshold,
+                                    float boost,
+                                    float clamp)
 {
   using namespace blender;
   threading::parallel_for(IndexRange(height), 64, [&](const IndexRange y_range) {
+    const float4 clampv = float4(clamp);
     for (const int y : y_range) {
-      int index = y * width * 4;
-      for (int x = 0; x < width; x++, index += 4) {
+      int index = y * width;
+      for (int x = 0; x < width; x++, index++) {
 
         /* Isolate the intensity */
-        float intensity = (in[index + 0] + in[index + 1] + in[index + 2] - threshold);
+        float intensity = (in[index].x + in[index].y + in[index].z - threshold);
+        float4 val;
         if (intensity > 0) {
-          out[index + 0] = min_ff(clamp, (in[index + 0] * boost * intensity));
-          out[index + 1] = min_ff(clamp, (in[index + 1] * boost * intensity));
-          out[index + 2] = min_ff(clamp, (in[index + 2] * boost * intensity));
-          out[index + 3] = min_ff(clamp, (in[index + 3] * boost * intensity));
+          val = math::min(clampv, in[index] * (boost * intensity));
         }
         else {
-          out[index + 0] = 0;
-          out[index + 1] = 0;
-          out[index + 2] = 0;
-          out[index + 3] = 0;
+          val = float4(0.0f);
         }
+        out[index] = val;
       }
     }
   });
@@ -2148,31 +2152,27 @@ static void do_glow_effect_byte(Sequence *seq,
                                 uchar * /*rect2*/,
                                 uchar *out)
 {
+  using namespace blender;
   SCOPED_TIMER(__func__);
   GlowVars *glow = (GlowVars *)seq->effectdata;
 
-  float *inbuf = static_cast<float *>(MEM_mallocN(sizeof(float[4]) * x * y, "glow effect input"));
-  float *outbuf = static_cast<float *>(
-      MEM_mallocN(sizeof(float[4]) * x * y, "glow effect output"));
+  Array<float4> inbuf(x * y);
+  Array<float4> outbuf(x * y);
 
   using namespace blender;
-  IMB_colormanagement_transform_from_byte_threaded(inbuf, rect1, x, y, 4, "sRGB", "sRGB");
+  IMB_colormanagement_transform_from_byte_threaded(*inbuf.data(), rect1, x, y, 4, "sRGB", "sRGB");
 
   blur_isolate_highlights(
-      inbuf, outbuf, x, y, glow->fMini * 3.0f, glow->fBoost * fac, glow->fClamp);
-  glow_blur_bitmap(reinterpret_cast<blender::float4 *>(outbuf),
-                   x,
-                   y,
-                   glow->dDist * (render_size / 100.0f),
-                   glow->dQuality);
+      inbuf.data(), outbuf.data(), x, y, glow->fMini * 3.0f, glow->fBoost * fac, glow->fClamp);
+  glow_blur_bitmap(outbuf.data(), x, y, glow->dDist * (render_size / 100.0f), glow->dQuality);
   if (!glow->bNoComp) {
-    blur_add_bitmap(inbuf, outbuf, x, y);
+    blur_add_bitmap(inbuf.data(), outbuf.data(), x, y);
   }
 
   threading::parallel_for(IndexRange(y), 64, [&](const IndexRange y_range) {
-    size_t offset = y_range.first() * x * 4;
-    IMB_buffer_byte_from_float(out + offset,
-                               outbuf + offset,
+    size_t offset = y_range.first() * x;
+    IMB_buffer_byte_from_float(out + offset * 4,
+                               *(outbuf.data() + offset),
                                4,
                                0.0f,
                                IB_PROFILE_SRGB,
@@ -2183,9 +2183,6 @@ static void do_glow_effect_byte(Sequence *seq,
                                x,
                                x);
   });
-
-  MEM_freeN(inbuf);
-  MEM_freeN(outbuf);
 }
 
 static void do_glow_effect_float(Sequence *seq,
@@ -2197,9 +2194,10 @@ static void do_glow_effect_float(Sequence *seq,
                                  float * /*rect2*/,
                                  float *out)
 {
+  using namespace blender;
   SCOPED_TIMER(__func__);
-  float *outbuf = out;
-  float *inbuf = rect1;
+  float4 *outbuf = reinterpret_cast<float4 *>(out);
+  float4 *inbuf = reinterpret_cast<float4 *>(rect1);
   GlowVars *glow = (GlowVars *)seq->effectdata;
 
   blur_isolate_highlights(
