@@ -854,7 +854,6 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     PRIVATE bf::intern::guardedalloc
     PRIVATE bf::imbuf
   )
-
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 
   set(SRC_BAKED_CREATE_INFOS_FILE ${CMAKE_CURRENT_BINARY_DIR}/shader_baked.hh)
