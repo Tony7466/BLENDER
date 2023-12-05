@@ -58,10 +58,12 @@ class VKFrameBuffer : public FrameBuffer {
                         const void *clear_value) override;
 
   void attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore /*ls*/) override;
-
+  void config(const GPUAttachment *config, int config_len) override;
   void subpass_transition(const GPUAttachmentState depth_attachment_state,
                           Span<GPUAttachmentState> color_attachment_states) override;
-
+  void attachment_set(GPUAttachmentType type,
+                      const GPUAttachment &new_attachment,
+                      bool config = true) override;
   void read(eGPUFrameBufferBits planes,
             eGPUDataFormat format,
             const int area[4],
