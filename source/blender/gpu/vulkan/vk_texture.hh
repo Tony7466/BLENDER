@@ -43,6 +43,7 @@ class VKTexture : public Texture, public VKBindableResource {
 
   int layer_offset_ = 0;
   bool use_stencil_ = false;
+  eImageViewUsage render_pass_type_;
 
   VkComponentMapping vk_component_mapping_ = {VK_COMPONENT_SWIZZLE_IDENTITY,
                                               VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -104,6 +105,11 @@ class VKTexture : public Texture, public VKBindableResource {
   {
     return device_format_;
   }
+  /**
+   * Make sure that this `VkImage` is always with this layout when it is free from other
+   * operations.
+   **/
+  VkImageLayout best_layout_get();
 
  protected:
   bool init_internal() override;

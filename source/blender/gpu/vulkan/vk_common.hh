@@ -32,10 +32,13 @@ namespace blender::gpu {
  * a shader resource the cube-map will be used.
  */
 enum class eImageViewUsage {
-  /** Image View will be used as a bindable shader resource. */
-  ShaderBinding,
   /** Image View will be used as an frame-buffer attachment. */
   Attachment,
+  /** Image View will be used as a bindable shader resource for read.*/
+  ShaderBinding,
+  /** Image View will be used as a bindable shader resource for write. */
+  ShaderBindingWrite,
+  ImageViewUsageAll
 };
 
 VkImageAspectFlags to_vk_image_aspect_flag_bits(const eGPUTextureFormat format);

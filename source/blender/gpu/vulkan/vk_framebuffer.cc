@@ -369,6 +369,8 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
                   dst_offset_x,
                   dst_offset_y,
                   VK_IMAGE_ASPECT_COLOR_BIT);
+      color_attachment_layout_ensure(context, src_slot, VK_IMAGE_LAYOUT_MAX_ENUM);
+      dst_framebuffer.color_attachment_layout_ensure(context, dst_slot, VK_IMAGE_LAYOUT_MAX_ENUM);
     }
   }
 
@@ -394,6 +396,8 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
                   dst_offset_x,
                   dst_offset_y,
                   VK_IMAGE_ASPECT_DEPTH_BIT);
+      depth_attachment_layout_ensure(context, VK_IMAGE_LAYOUT_MAX_ENUM);
+      dst_framebuffer.depth_attachment_layout_ensure(context, VK_IMAGE_LAYOUT_MAX_ENUM);
     }
   }
 }
@@ -488,8 +492,8 @@ void VKFrameBuffer::render_pass_create()
       attachment_description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachment_description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       attachment_description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-      attachment_description.initialLayout = texture.current_layout_get();
-      attachment_description.finalLayout = texture.current_layout_get();
+      attachment_description.initialLayout = texture.best_layout_get();
+      attachment_description.finalLayout = texture.best_layout_get();
 
       /* Create the attachment reference. */
       VkAttachmentReference &attachment_reference = attachment_references[attachment_location];
@@ -595,7 +599,9 @@ void VKFrameBuffer::color_attachment_layout_ensure(VKContext &context,
   if (color_texture == nullptr) {
     return;
   }
-
+  if (requested_layout == VK_IMAGE_LAYOUT_MAX_ENUM) {
+    requested_layout = color_texture->best_layout_get();
+  }
   if (color_texture->current_layout_get() == requested_layout) {
     return;
   }
@@ -611,7 +617,9 @@ void VKFrameBuffer::depth_attachment_layout_ensure(VKContext &context,
   if (depth_texture == nullptr) {
     return;
   }
-
+  if (requested_layout == VK_IMAGE_LAYOUT_MAX_ENUM) {
+    requested_layout = depth_texture->best_layout_get();
+  }
   if (depth_texture->current_layout_get() == requested_layout) {
     return;
   }

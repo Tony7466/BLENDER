@@ -154,8 +154,14 @@ void VKDevice::init_dummy_color_attachment()
     return;
   }
 
-  GPUTexture *texture = GPU_texture_create_2d(
-      "dummy_attachment", 1, 1, 1, GPU_R32F, GPU_TEXTURE_USAGE_ATTACHMENT, nullptr);
+  GPUTexture *texture = GPU_texture_create_2d("dummy_attachment",
+                                              1,
+                                              1,
+                                              1,
+                                              GPU_R32F,
+                                              GPU_TEXTURE_USAGE_ATTACHMENT |
+                                                  GPU_TEXTURE_USAGE_SHADER_WRITE,
+                                              nullptr);
   BLI_assert(texture);
   VKTexture &vk_texture = *unwrap(unwrap(texture));
   dummy_color_attachment_ = std::make_optional(std::reference_wrapper(vk_texture));
