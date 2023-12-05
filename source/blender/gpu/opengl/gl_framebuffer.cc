@@ -357,8 +357,7 @@ void GLFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType type, GPULoadS
 }
 
 void GLFrameBuffer::attachment_set(GPUAttachmentType type,
-                                   const GPUAttachment &new_attachment,
-                                   bool /*config*/)
+                                   const GPUAttachment &new_attachment)
 {
   if (new_attachment.mip == -1) {
     return; /* GPU_ATTACHMENT_LEAVE */

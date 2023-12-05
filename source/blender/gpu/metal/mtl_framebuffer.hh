@@ -139,8 +139,7 @@ class MTLFrameBuffer : public FrameBuffer {
   void config(const GPUAttachment *config, int config_len) override;
   void attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore ls) override;
   void attachment_set(GPUAttachmentType type,
-                      const GPUAttachment &new_attachment,
-                      bool config = true) override;
+                      const GPUAttachment &new_attachment) override;
 
   void read(eGPUFrameBufferBits planes,
             eGPUDataFormat format,

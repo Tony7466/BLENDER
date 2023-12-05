@@ -271,8 +271,7 @@ void VKFrameBuffer::subpass_transition(const GPUAttachmentState /*depth_attachme
 /** \} */
 
 void VKFrameBuffer::attachment_set(GPUAttachmentType type,
-                                   const GPUAttachment &new_attachment,
-                                   bool /*config*/)
+                                   const GPUAttachment &new_attachment)
 {
   if (new_attachment.mip == -1) {
     return; /* GPU_ATTACHMENT_LEAVE */

@@ -84,8 +84,7 @@ class GLFrameBuffer : public FrameBuffer {
   void subpass_transition(const GPUAttachmentState depth_attachment_state,
                           Span<GPUAttachmentState> color_attachment_states) override;
   void attachment_set(GPUAttachmentType type,
-                      const GPUAttachment &new_attachment,
-                      bool config = true) override;
+                      const GPUAttachment &new_attachment) override;
 
   void read(eGPUFrameBufferBits planes,
             eGPUDataFormat format,
