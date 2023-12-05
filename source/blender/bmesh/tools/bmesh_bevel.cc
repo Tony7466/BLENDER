@@ -31,10 +31,10 @@
 
 #include "eigen_capi.h"
 
-#include "bmesh.h"
-#include "bmesh_bevel.h" /* own include */
+#include "bmesh.hh"
+#include "bmesh_bevel.hh" /* own include */
 
-#include "./intern/bmesh_private.h"
+#include "./intern/bmesh_private.hh"
 
 using blender::Vector;
 
@@ -331,7 +331,7 @@ struct BevelParams {
   BMesh *bm;
   /** Blender units to offset each side of a beveled edge. */
   float offset;
-  /** How offset is measured; enum defined in bmesh_operators.h. */
+  /** How offset is measured; enum defined in bmesh_operators.hh. */
   int offset_type;
   /** Profile type: radius, superellipse, or custom */
   int profile_type;
@@ -1972,8 +1972,8 @@ static bool make_unit_square_map(const float va[3],
   normalize_v3(vddir);
   add_v3_v3v3(vd, vo, vddir);
 
-  /* The cols of m are: {vmid - va, vmid - vb, vmid + vd - va -vb, va + vb - vmid;
-   * Blender transform matrices are stored such that m[i][*] is ith column;
+  /* The cols of m are: `vmid - va, vmid - vb, vmid + vd - va -vb, va + vb - vmid`;
+   * Blender transform matrices are stored such that `m[i][*]` is `i-th` column;
    * the last elements of each col remain as they are in unity matrix. */
   sub_v3_v3v3(&r_mat[0][0], vmid, va);
   r_mat[0][3] = 0.0f;
