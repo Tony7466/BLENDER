@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "NOD_node_extra_info.hh"
 #include "NOD_rna_define.hh"
 #include "NOD_zone_socket_items.hh"
 
@@ -385,11 +386,11 @@ struct BakeDrawContext {
   bool is_baked;
 };
 
-[[nodiscard]] static bool get_bake_draw_context(bContext *C,
-                                                PointerRNA *ptr,
+[[nodiscard]] static bool get_bake_draw_context(const bContext *C,
+                                                const bNode &node,
                                                 BakeDrawContext &r_ctx)
 {
-  r_ctx.node = static_cast<bNode *>(ptr->data);
+  r_ctx.node = &node;
   r_ctx.snode = CTX_wm_space_node(C);
   if (!r_ctx.snode) {
     return false;
@@ -440,6 +441,19 @@ struct BakeDrawContext {
   return true;
 }
 
+static std::string get_baked_string(const BakeDrawContext &ctx)
+{
+  char str[64];
+  if (ctx.bake_still && ctx.baked_range->size() == 1) {
+    STRNCPY(str, N_("Baked Still"));
+  }
+  else {
+    SNPRINTF(
+        str, N_("Baked %d - %d"), int(ctx.baked_range->first()), int(ctx.baked_range->last()));
+  }
+  return str;
+}
+
 static void draw_bake_button(uiLayout *layout, const BakeDrawContext &ctx)
 {
   uiLayout *col = uiLayoutColumn(layout, true);
@@ -472,25 +486,26 @@ static void draw_bake_button(uiLayout *layout, const BakeDrawContext &ctx)
     RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
     RNA_int_set(&ptr, "bake_id", ctx.bake->id);
   }
+}
+
+static void node_extra_info(NodeExtraInfoParams &params)
+{
+  BakeDrawContext ctx;
+  if (!get_bake_draw_context(&params.C, params.node, ctx)) {
+    return;
+  }
   if (ctx.is_baked) {
-    char baked_label[64];
-    if (ctx.bake_still && ctx.baked_range->size() == 1) {
-      STRNCPY(baked_label, N_("Baked Still"));
-    }
-    else {
-      SNPRINTF(baked_label,
-               N_("Baked %d - %d"),
-               int(ctx.baked_range->first()),
-               int(ctx.baked_range->last()));
-    }
-    uiItemL(layout, baked_label, ICON_NONE);
+    NodeExtraInfoRow row;
+    row.text = get_baked_string(ctx);
+    params.rows.append(std::move(row));
   }
 }
 
 static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   BakeDrawContext ctx;
-  if (!get_bake_draw_context(C, ptr, ctx)) {
+  const bNode &node = *static_cast<const bNode *>(ptr->data);
+  if (!get_bake_draw_context(C, node, ctx)) {
     return;
   }
 
@@ -500,7 +515,8 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
 static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   BakeDrawContext ctx;
-  if (!get_bake_draw_context(C, ptr, ctx)) {
+  const bNode &node = *static_cast<const bNode *>(ptr->data);
+  if (!get_bake_draw_context(C, node, ctx)) {
     return;
   }
 
@@ -511,6 +527,10 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     uiItemR(row, &ctx.bake_rna, "bake_mode", UI_ITEM_R_EXPAND, "Mode", ICON_NONE);
   }
   draw_bake_button(layout, ctx);
+  if (ctx.is_baked) {
+    const std::string label = get_baked_string(ctx);
+    uiItemL(layout, label.c_str(), ICON_NONE);
+  }
 
   {
     uiLayout *settings_col = uiLayoutColumn(layout, false);
@@ -555,6 +575,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.insert_link = node_insert_link;
   ntype.draw_buttons_ex = node_layout_ex;
+  ntype.get_extra_info = node_extra_info;
   node_type_storage(&ntype, "NodeGeometryBake", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
 
