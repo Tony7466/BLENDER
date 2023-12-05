@@ -527,7 +527,9 @@ void DeferredLayer::end_sync()
       pass.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_EQUAL | DRW_STATE_DEPTH_GREATER);
       pass.state_stencil(0xFFu, 0xFFu, 0xFFu);
       pass.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHT));
-      pass.bind_image("out_direct_radiance_img", &direct_diffuse_tx_);
+      pass.bind_image("direct_diffuse_img", &direct_diffuse_tx_);
+      pass.bind_image("direct_reflect_img", &direct_reflect_tx_);
+      pass.bind_image("direct_refract_img", &direct_refract_tx_);
       pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
       pass.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
       pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);

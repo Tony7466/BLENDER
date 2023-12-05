@@ -96,11 +96,11 @@ void main()
   output_renderpass_value(uniform_buf.render_pass.shadow_id, average(shadows));
 
   if (gbuf.has_diffuse) {
-    imageStore(out_direct_radiance_img, texel, vec4(radiance_diffuse, 1.0));
+    imageStore(direct_diffuse_img, texel, vec4(radiance_diffuse, 1.0));
   }
-  // if (gbuf.has_reflection) {
-  //   imageStore(direct_reflect_img, texel, vec4(radiance_specular, 1.0));
-  // }
+  if (gbuf.has_reflection) {
+    imageStore(direct_reflect_img, texel, vec4(radiance_specular, 1.0));
+  }
   /* TODO(fclem): Support LTC for refraction. */
   // imageStore(direct_refract_img, texel, vec4(cl_refr.light_shadowed, 1.0));
 }

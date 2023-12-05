@@ -56,7 +56,9 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     /* Early fragment test is needed to avoid processing background fragments. */
     .early_fragment_test(true)
     /* Chaining to next pass. */
-    .image_out(2, GPU_RGBA16F, "out_direct_radiance_img")
+    .image_out(2, GPU_RGBA16F, "direct_diffuse_img")
+    .image_out(3, GPU_RGBA16F, "direct_reflect_img")
+    .image_out(4, GPU_RGBA16F, "direct_refract_img")
     .define("SSS_TRANSMITTANCE")
     .define("LIGHT_CLOSURE_EVAL_COUNT", "3")
     .additional_info("eevee_shared",
