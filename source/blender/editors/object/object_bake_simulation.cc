@@ -792,29 +792,45 @@ static int bake_single_node_exec(bContext *C, wmOperator *op)
   if (!ELEM(node->type, GEO_NODE_SIMULATION_OUTPUT, GEO_NODE_BAKE)) {
     return OPERATOR_CANCELLED;
   }
-  const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
-      *bmain, *object, nmd, bake_id);
-  if (!bake_path.has_value()) {
-    return OPERATOR_CANCELLED;
-  }
-  const std::optional<IndexRange> frame_range = bake::get_node_bake_frame_range(
-      *scene, *object, nmd, bake_id);
-  if (!frame_range.has_value()) {
-    return OPERATOR_CANCELLED;
-  }
-  if (frame_range->is_empty()) {
-    return OPERATOR_CANCELLED;
-  }
 
   NodeBakeRequest request;
   request.object = object;
   request.nmd = &nmd;
   request.bake_id = bake_id;
   request.node_type = node->type;
-  request.path = std::move(*bake_path);
-  request.frame_start = frame_range->first();
-  request.frame_end = frame_range->last();
   request.blob_sharing = std::make_unique<bake::BlobSharing>();
+
+  const NodesModifierBake *bake = nmd.find_bake(bake_id);
+  if (!bake) {
+    return OPERATOR_CANCELLED;
+  }
+  const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
+      *bmain, *object, nmd, bake_id);
+  if (!bake_path.has_value()) {
+    return OPERATOR_CANCELLED;
+  }
+  request.path = std::move(*bake_path);
+
+  if (bake->flag & NODES_MODIFIER_BAKE_STILL) {
+    const int current_frame = scene->r.cfra;
+    request.frame_start = current_frame;
+    request.frame_end = current_frame;
+    /* Delete old bake because otherwise this wouldn't be a still frame bake. This is not done for
+     * other bakes to avoid loosing data when starting a bake. */
+    try_delete_bake(C, *object, nmd, bake_id, op->reports);
+  }
+  else {
+    const std::optional<IndexRange> frame_range = bake::get_node_bake_frame_range(
+        *scene, *object, nmd, bake_id);
+    if (!frame_range.has_value()) {
+      return OPERATOR_CANCELLED;
+    }
+    if (frame_range->is_empty()) {
+      return OPERATOR_CANCELLED;
+    }
+    request.frame_start = frame_range->first();
+    request.frame_end = frame_range->last();
+  }
 
   Vector<NodeBakeRequest> requests;
   requests.append(std::move(request));

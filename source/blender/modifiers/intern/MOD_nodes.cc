@@ -1251,13 +1251,6 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
     }
     bake::BakeNodeCache &node_cache = *modifier_cache_->bake_cache_by_id.lookup(id);
 
-    /* Try load baked data. */
-    if (!node_cache.bake.failed_finding_bake) {
-      if (!try_find_baked_data(node_cache.bake, *bmain_, *ctx_.object, nmd_, id)) {
-        node_cache.bake.failed_finding_bake = true;
-      }
-    }
-
     if (depsgraph_is_active_) {
       if (modifier_cache_->requested_bakes.contains(id)) {
         auto &store_info = behavior.emplace<sim_output::StoreNewState>();
@@ -1268,13 +1261,24 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
           auto frame_cache = std::make_unique<bake::FrameCache>();
           frame_cache->frame = current_frame;
           frame_cache->state = std::move(state);
-          BLI_assert(node_cache->bake.frames.is_empty() ||
-                     node_cache->bake.frames.last()->frame < current_frame);
-          node_cache->bake.frames.append(std::move(frame_cache));
+          auto &frames = node_cache->bake.frames;
+          const int insert_index = binary_search::find_predicate_begin(
+              frames, [&](const std::unique_ptr<bake::FrameCache> &frame_cache) {
+                return frame_cache->frame > current_frame;
+              });
+          frames.insert(insert_index, std::move(frame_cache));
         };
         return;
       }
     }
+
+    /* Try load baked data. */
+    if (!node_cache.bake.failed_finding_bake) {
+      if (!try_find_baked_data(node_cache.bake, *bmain_, *ctx_.object, nmd_, id)) {
+        node_cache.bake.failed_finding_bake = true;
+      }
+    }
+
     if (node_cache.bake.frames.is_empty()) {
       behavior.emplace<sim_output::PassThrough>();
       return;
