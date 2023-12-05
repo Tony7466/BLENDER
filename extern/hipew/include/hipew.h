@@ -437,6 +437,8 @@ typedef enum hipDeviceAttribute_t {
   // Extended attributes for vendors
 } hipDeviceAttribute_t;
 
+hipDeviceAttribute_t get_hip_device_attr(hipDeviceAttribute_t device_att, int runtime_version);
+
 typedef struct HIPdevprop_st {
   int maxThreadsPerBlock;
   int maxThreadsDim[3];

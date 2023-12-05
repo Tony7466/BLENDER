@@ -433,6 +433,17 @@ hipMemoryType get_hip_memory_type(hipMemoryType mem_type, int runtime_version) {
   }
 }
 
+hipDeviceAttribute_t get_hip_device_attr(hipDeviceAttribute_t device_attr, int runtime_version) {
+  /** Convert hipMemoryType for backwards compatibility with rocm5/6. 
+    This can be removed when support for ROCM5 is removed.
+  */
+  // If version is 5 we need to use the old enum vals (60000000 is start of ROCm 6)
+  if (runtime_version > 60000000 && device_attr > 11 && device_attr < 9999)
+    return device_attr + 1;
+  else
+    return device_attr;
+}
+
 int hipewInit(hipuint32_t flags) {
   int result = HIPEW_SUCCESS;
 

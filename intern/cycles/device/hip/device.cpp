@@ -178,10 +178,13 @@ void device_hip_info(vector<DeviceInfo> &devices)
 
     info.use_hardware_raytracing = has_hardware_raytracing;
 
+    int hipRuntimeVersion;
+    hipRuntimeGetVersion(&hipRuntimeVersion);
+
     int pci_location[3] = {0, 0, 0};
-    hipDeviceGetAttribute(&pci_location[0], hipDeviceAttributePciDomainID, num);
-    hipDeviceGetAttribute(&pci_location[1], hipDeviceAttributePciBusId, num);
-    hipDeviceGetAttribute(&pci_location[2], hipDeviceAttributePciDeviceId, num);
+    hipDeviceGetAttribute(&pci_location[0], get_hip_device_attr(hipDeviceAttributePciDomainID, hipRuntimeVersion), num);
+    hipDeviceGetAttribute(&pci_location[1], get_hip_device_attr(hipDeviceAttributePciBusId, hipRuntimeVersion), num);
+    hipDeviceGetAttribute(&pci_location[2], get_hip_device_attr(hipDeviceAttributePciDeviceId, hipRuntimeVersion), num);
     info.id = string_printf("HIP_%s_%04x:%02x:%02x",
                             name,
                             (unsigned int)pci_location[0],
@@ -192,7 +195,7 @@ void device_hip_info(vector<DeviceInfo> &devices)
      * it is connected to a display and will freeze the display while doing
      * computations. */
     int timeout_attr = 0;
-    hipDeviceGetAttribute(&timeout_attr, hipDeviceAttributeKernelExecTimeout, num);
+    hipDeviceGetAttribute(&timeout_attr, get_hip_device_attr(hipDeviceAttributeKernelExecTimeout, hipRuntimeVersion), num);
 
     if (timeout_attr) {
       VLOG_INFO << "Device is recognized as display.";
@@ -240,9 +243,12 @@ string device_hip_capabilities()
     }
     capabilities += string("\t") + name + "\n";
     int value;
+    int hipRuntimeVersion;
+    hipRuntimeGetVersion(&hipRuntimeVersion);
+
 #  define GET_ATTR(attr) \
     { \
-      if (hipDeviceGetAttribute(&value, hipDeviceAttribute##attr, num) == hipSuccess) { \
+      if (hipDeviceGetAttribute(&value, get_hip_device_attr(hipDeviceAttribute##attr, hipRuntimeVersion), num) == hipSuccess) { \
         capabilities += string_printf("\t\thipDeviceAttribute" #attr "\t\t\t%d\n", value); \
       } \
     } \
