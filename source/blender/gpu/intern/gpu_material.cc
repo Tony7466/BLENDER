@@ -99,8 +99,8 @@ struct GPUMaterial {
   eGPUMaterialStatus status;
   /** Some flags about the nodetree & the needed resources. */
   eGPUMaterialFlag flag;
-  /** Pointer to the engine type this material is compiled for. */
-  const struct DrawEngineType *engine;
+  /** The engine type this material is compiled for. */
+  eGPUMaterialEngine engine;
   /* Identify shader variations (shadow, probe, world background...) */
   uint64_t uuid;
   /* Number of generated function. */
@@ -822,7 +822,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
                                         bNodeTree *ntree,
                                         ListBase *gpumaterials,
                                         const char *name,
-                                        const struct DrawEngineType *engine,
+                                        eGPUMaterialEngine engine,
                                         uint64_t shader_uuid,
                                         bool is_volume_shader,
                                         bool is_lookdev,
@@ -1104,7 +1104,7 @@ void GPU_materials_free(Main *bmain)
   BKE_material_defaults_free_gpu();
 }
 
-GPUMaterial *GPU_material_from_callbacks(const struct DrawEngineType *engine,
+GPUMaterial *GPU_material_from_callbacks(eGPUMaterialEngine engine,
                                          ConstructGPUMaterialFn construct_function_cb,
                                          GPUCodegenCallbackFn generate_code_function_cb,
                                          void *thunk)

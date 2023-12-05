@@ -19,8 +19,6 @@
 
 #include "BLI_assert.h"
 
-#include "eevee_engine.h"
-
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
@@ -670,7 +668,7 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
 
   return DRW_shader_from_material(blender_mat,
                                   nodetree,
-                                  &draw_engine_eevee_next_type,
+                                  GPU_MAT_EEVEE,
                                   shader_uuid,
                                   is_volume,
                                   deferred_compilation,
@@ -691,7 +689,7 @@ GPUMaterial *ShaderModule::world_shader_get(::World *blender_world,
 
   return DRW_shader_from_world(blender_world,
                                nodetree,
-                               &draw_engine_eevee_next_type,
+                               GPU_MAT_EEVEE,
                                shader_uuid,
                                is_volume,
                                defer_compilation,
@@ -716,7 +714,7 @@ GPUMaterial *ShaderModule::material_shader_get(const char *name,
                                                    nodetree,
                                                    &materials,
                                                    name,
-                                                   &draw_engine_eevee_next_type,
+                                                   GPU_MAT_EEVEE,
                                                    shader_uuid,
                                                    is_volume,
                                                    false,

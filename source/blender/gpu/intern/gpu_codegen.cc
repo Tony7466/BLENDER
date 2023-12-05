@@ -97,8 +97,8 @@ struct GPUPass {
   uint refcount;
   /** The last time the refcount was greater than 0. */
   int gc_timestamp;
-  /** Pointer to the engine type this pass is compiled for. */
-  const struct DrawEngineType *engine;
+  /** The engine type this pass is compiled for. */
+  eGPUMaterialEngine engine;
   /** Identity hash generated from all GLSL code. */
   uint32_t hash;
   /** Did we already tried to compile the attached GPUShader. */
@@ -124,7 +124,7 @@ static SpinLock pass_cache_spin;
 
 /* Search by hash only. Return first pass with the same hash.
  * There is hash collision if (pass->next && pass->next->hash == hash) */
-static GPUPass *gpu_pass_cache_lookup(const struct DrawEngineType *engine, uint32_t hash)
+static GPUPass *gpu_pass_cache_lookup(eGPUMaterialEngine engine, uint32_t hash)
 {
   BLI_spin_lock(&pass_cache_spin);
   /* Could be optimized with a Lookup table. */
@@ -159,7 +159,7 @@ static GPUPass *gpu_pass_cache_resolve_collision(GPUPass *pass,
                                                  GPUShaderCreateInfo *info,
                                                  uint32_t hash)
 {
-  const struct DrawEngineType *engine = pass->engine;
+  eGPUMaterialEngine engine = pass->engine;
   BLI_spin_lock(&pass_cache_spin);
   for (; pass && (pass->hash == hash); pass = pass->next) {
     if (*reinterpret_cast<ShaderCreateInfo *>(info) ==
@@ -736,7 +736,7 @@ void GPUCodegen::generate_graphs()
 
 GPUPass *GPU_generate_pass(GPUMaterial *material,
                            GPUNodeGraph *graph,
-                           const struct DrawEngineType *engine,
+                           eGPUMaterialEngine engine,
                            GPUCodegenCallbackFn finalize_source_cb,
                            void *thunk,
                            bool optimize_graph)
