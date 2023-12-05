@@ -6235,7 +6235,7 @@ static void rna_def_space_text(BlenderRNA *brna)
   prop = RNA_def_property(srna, "texts_search", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_collection_sdna(prop, nullptr, "runtime->texts_search", nullptr);
-  RNA_def_property_ui_text(prop, "Text Matches", "Runtime result of text search.");
+  RNA_def_property_ui_text(prop, "Text Matches", "Runtime result of text search");
   RNA_def_property_struct_type(prop, "TextSearch");
   RNA_def_property_collection_funcs(prop,
                                     "rna_SpaceText_texts_search_begin",

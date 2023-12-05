@@ -93,9 +93,9 @@ static SpaceLink *text_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 static void text_free(SpaceLink *sl)
 {
   SpaceText *stext = (SpaceText *)sl;
+  text_free_caches(stext);
   MEM_delete(stext->runtime);
   stext->text = nullptr;
-  text_free_caches(stext);
 }
 
 /* spacetype; init callback */
@@ -115,7 +115,7 @@ static SpaceLink *text_duplicate(SpaceLink *sl)
   return (SpaceLink *)stextn;
 }
 
-void text_update_text_search(SpaceText *st, Text *Text);
+static void text_update_text_search(SpaceText *st, Text *Text);
 
 static void text_listener(const wmSpaceTypeListenerParams *params)
 {
@@ -148,10 +148,11 @@ static void text_listener(const wmSpaceTypeListenerParams *params)
           }
 
           ED_area_tag_redraw(area);
-          ATTR_FALLTHROUGH; /* fall down to tag redraw */
+          ATTR_FALLTHROUGH; /* fall down to update text search */
         case NA_ADDED:
         case NA_SELECTED:
           text_update_text_search(st, static_cast<Text *>(wmn->reference));
+          ATTR_FALLTHROUGH; /* fall down to tag redraw */
         case NA_REMOVED:
           ED_area_tag_redraw(area);
           break;
@@ -527,7 +528,7 @@ const TextSearch *ED_text_get_text_search(const SpaceText *st, const Text *text)
   }
 }
 
-int equal_case(const char *s1, const char *s2, const size_t len)
+static bool equal_case(const char *s1, const char *s2, const size_t len)
 {
   for (int i = 0; i < len; i++) {
     const char c1 = (char)tolower(s1[i]);
@@ -539,7 +540,7 @@ int equal_case(const char *s1, const char *s2, const size_t len)
   return true;
 }
 
-const char *strstr_case(const char *s, const char *find, const int find_lend)
+static const char *strstr_case(const char *s, const char *find, const int find_lend)
 {
   BLI_assert(s && find && strlen(find) == find_lend);
   for (; s[0] != '\0'; s++) {
@@ -591,7 +592,7 @@ static blender::Vector<StringMatch> text_find_string_matches(const Text *text,
   return string_matches;
 }
 
-void remove_texts_search_but_active(const SpaceText *st)
+static void remove_texts_search_but_active(const SpaceText *st)
 {
   auto &texts_search = st->runtime->texts_search;
   auto test_not_active = [st](const TextSearch &ts) { return ts.text != st->text; };
@@ -600,7 +601,7 @@ void remove_texts_search_but_active(const SpaceText *st)
   texts_search.remove(texts_search.size() - removed, removed);
 }
 
-void text_add_missing_texts_search(const bContext *C, const SpaceText *st, const bool all)
+static void text_add_missing_texts_search(const bContext *C, const SpaceText *st, const bool all)
 {
   Main *bmain = CTX_data_main(C);
 
@@ -694,7 +695,7 @@ int ED_text_get_active_string_match(const SpaceText *st)
   return -1;
 }
 
-void text_update_text_search(SpaceText *st, Text *text)
+static void text_update_text_search(SpaceText *st, Text *text)
 {
   const char *findstr = st->findstr;
   if (findstr[0] == '\0') {

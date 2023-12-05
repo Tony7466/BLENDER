@@ -1250,14 +1250,23 @@ static void draw_text_decoration(const bContext *C, SpaceText *st, ARegion *regi
 
     for (; string_match_itr < string_matches.end(); string_match_itr++) {
       const StringMatch &sm = *string_match_itr;
-      if (st->top + st->runtime->viewlines < sm.line_index) {
+      if (st->top + st->runtime->viewlines < string_match_itr->line_index) {
         break;
       }
       int start_line, start_char;
-      get_coords(sm.text_line, sm.start, start_line, start_char);
+      get_coords(string_match_itr->text_line, string_match_itr->start, start_line, start_char);
+      /* Draw only one box for all contiguous occurrences. */
+      auto string_match_itr_next = string_match_itr + 1;
+      while (string_match_itr_next != string_matches.end() &&
+             string_match_itr_next->text_line == string_match_itr->text_line &&
+             string_match_itr_next->start == string_match_itr->end)
+      {
+        string_match_itr = string_match_itr_next;
 
+        string_match_itr_next = string_match_itr + 1;
+      }
       int end_line, end_char;
-      get_coords(sm.text_line, sm.end, end_line, end_char);
+      get_coords(string_match_itr->text_line, string_match_itr->end, end_line, end_char);
 
       highlight_text(start_line, start_char, end_line, end_char);
     }
@@ -1273,7 +1282,7 @@ static void draw_text_decoration(const bContext *C, SpaceText *st, ARegion *regi
     get_coords(text->curl, text->curc, cursor_line, cursor_char);
 
     set_alpha_color(TH_SHADE2, 0.7f);
-    if (select_line < cursor_line || select_line == cursor_line && select_char < cursor_char) {
+    if (select_line < cursor_line || (select_line == cursor_line && select_char < cursor_char)) {
       highlight_text(select_line, select_char, cursor_line, cursor_char);
     }
     else {
