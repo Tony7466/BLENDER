@@ -13,7 +13,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_ordered_edge.hh"
 
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BKE_editmesh_bvh.h"
 #include "BKE_editmesh_cache.hh"
 
@@ -397,7 +397,7 @@ static void statvis_calc_distort(const MeshRenderData &mr, float *r_distort)
     BMFace *f;
 
     if (!mr.bm_vert_coords.is_empty()) {
-      BKE_editmesh_cache_ensure_face_normals(em, mr.edit_data);
+      BKE_editmesh_cache_ensure_face_normals(*em, *mr.edit_data);
 
       /* Most likely this is already valid, ensure just in case.
        * Needed for #BM_loop_calc_face_normal_safe_vcos. */

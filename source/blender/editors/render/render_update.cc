@@ -27,15 +27,15 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_icons.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_node.hh"
 #include "BKE_paint.hh"
 #include "BKE_scene.h"
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"

@@ -28,10 +28,10 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 
@@ -804,10 +804,9 @@ static Brush *brush_tool_cycle(Main *bmain, Paint *paint, Brush *brush_orig, con
     }
   }
   else {
-    /* If user wants to switch to brush with the same  tool as
+    /* If user wants to switch to brush with the same tool as
      * currently active brush do a cycling via all possible
-     * brushes with requested tool.
-     */
+     * brushes with requested tool. */
     first_brush = brush_orig->id.next ? static_cast<Brush *>(brush_orig->id.next) :
                                         static_cast<Brush *>(bmain->brushes.first);
   }
@@ -1549,13 +1548,13 @@ void ED_operatortypes_paint()
   WM_operatortype_append(PAINT_OT_face_vert_reveal);
 
   /* partial visibility */
-  WM_operatortype_append(PAINT_OT_hide_show);
+  WM_operatortype_append(blender::ed::sculpt_paint::hide::PAINT_OT_hide_show);
 
   /* paint masking */
-  WM_operatortype_append(PAINT_OT_mask_flood_fill);
-  WM_operatortype_append(PAINT_OT_mask_lasso_gesture);
-  WM_operatortype_append(PAINT_OT_mask_box_gesture);
-  WM_operatortype_append(PAINT_OT_mask_line_gesture);
+  WM_operatortype_append(blender::ed::sculpt_paint::mask::PAINT_OT_mask_flood_fill);
+  WM_operatortype_append(blender::ed::sculpt_paint::mask::PAINT_OT_mask_lasso_gesture);
+  WM_operatortype_append(blender::ed::sculpt_paint::mask::PAINT_OT_mask_box_gesture);
+  WM_operatortype_append(blender::ed::sculpt_paint::mask::PAINT_OT_mask_line_gesture);
 }
 
 void ED_keymap_paint(wmKeyConfig *keyconf)

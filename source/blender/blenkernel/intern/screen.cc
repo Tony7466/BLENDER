@@ -49,7 +49,7 @@
 #include "BKE_node.h"
 #include "BKE_preview_image.hh"
 #include "BKE_screen.hh"
-#include "BKE_viewer_path.h"
+#include "BKE_viewer_path.hh"
 #include "BKE_workspace.h"
 
 #include "BLO_read_write.hh"
@@ -169,7 +169,7 @@ IDTypeInfo IDType_ID_SCR = {
     /*main_listbase_index*/ INDEX_ID_SCR,
     /*struct_size*/ sizeof(bScreen),
     /*name*/ "Screen",
-    /*name_plural*/ "screens",
+    /*name_plural*/ N_("screens"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_SCREEN,
     /*flags*/ IDTYPE_FLAGS_NO_COPY | IDTYPE_FLAGS_ONLY_APPEND | IDTYPE_FLAGS_NO_ANIMDATA |
         IDTYPE_FLAGS_NO_MEMFILE_UNDO,
@@ -318,7 +318,9 @@ static void panel_list_copy(ListBase *newlb, const ListBase *lb)
 
   LISTBASE_FOREACH (const Panel *, old_panel, lb) {
     Panel *new_panel = BKE_panel_new(old_panel->type);
+    Panel_Runtime *new_runtime = new_panel->runtime;
     *new_panel = *old_panel;
+    new_panel->runtime = new_runtime;
     new_panel->activedata = nullptr;
     new_panel->drawname = nullptr;
     BLI_addtail(newlb, new_panel);
@@ -360,9 +362,6 @@ ARegion *BKE_area_region_copy(const SpaceType *st, const ARegion *region)
   }
 
   panel_list_copy(&newar->panels, &region->panels);
-  LISTBASE_FOREACH (Panel *, p, &newar->panels) {
-    BLI_assert(p->runtime);
-  }
 
   BLI_listbase_clear(&newar->ui_previews);
   BLI_duplicatelist(&newar->ui_previews, &region->ui_previews);
@@ -493,7 +492,9 @@ Panel *BKE_panel_new(PanelType *panel_type)
   Panel *panel = MEM_cnew<Panel>(__func__);
   panel->runtime = MEM_new<Panel_Runtime>(__func__);
   panel->type = panel_type;
-  STRNCPY(panel->panelname, panel_type->idname);
+  if (panel_type) {
+    STRNCPY(panel->panelname, panel_type->idname);
+  }
   return panel;
 }
 

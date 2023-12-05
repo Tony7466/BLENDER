@@ -5,6 +5,8 @@
 
 #include "usd.h"
 
+#include "WM_types.hh"
+
 #include "BLI_map.hh"
 
 #include <pxr/usd/usdShade/material.h>
@@ -86,6 +88,12 @@ class USDMaterialReader {
 
   Material *add_material(const pxr::UsdShadeMaterial &usd_material) const;
 
+  /** Get the wmJobWorkerStatus-provided `reports` list pointer, to use with the BKE_report API. */
+  ReportList *reports() const
+  {
+    return params_.worker_status ? params_.worker_status->reports : nullptr;
+  }
+
  protected:
   /** Create the Principled BSDF shader node network. */
   void import_usd_preview(Material *mtl, const pxr::UsdShadeShader &usd_shader) const;
@@ -123,6 +131,13 @@ class USDMaterialReader {
                               int column,
                               NodePlacementContext *r_ctx,
                               bool is_color_corrected = false) const;
+
+  void convert_usd_transform_2d(const pxr::UsdShadeShader &usd_shader,
+                                bNode *dest_node,
+                                const char *dest_socket_name,
+                                bNodeTree *ntree,
+                                int column,
+                                NodePlacementContext *r_ctx) const;
 
   /**
    * Load the texture image node's texture from the path given by the USD shader's

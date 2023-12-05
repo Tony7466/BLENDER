@@ -130,7 +130,7 @@ class LightBake {
         bake_result_[i] = nullptr;
       }
       /* Propagate the cache to evaluated object. */
-      DEG_id_tag_update(&orig_ob->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&orig_ob->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_SHADING);
     }
   }
 
@@ -178,6 +178,11 @@ class LightBake {
               *progress = (i + grid_progress) / original_probes_.size();
             }
           });
+
+      if (instance_->info != "") {
+        /** TODO: Print to the Status Bar UI. */
+        printf("%s\n", instance_->info.c_str());
+      }
 
       if ((G.is_break == true) || (stop != nullptr && *stop == true)) {
         break;

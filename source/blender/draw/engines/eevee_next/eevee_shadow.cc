@@ -321,7 +321,7 @@ void ShadowPunctual::compute_projection_boundaries(float light_radius,
    * TODO(fclem): Explain derivation.
    */
   float cos_alpha = shadow_radius / max_lit_distance;
-  float sin_alpha = sqrt((1.0f - math::square(cos_alpha)));
+  float sin_alpha = sqrt(1.0f - math::square(cos_alpha));
   float near_shift = M_SQRT2 * shadow_radius * 0.5f * (sin_alpha - cos_alpha);
   float side_shift = M_SQRT2 * shadow_radius * 0.5f * (sin_alpha + cos_alpha);
   float origin_shift = M_SQRT2 * shadow_radius / (sin_alpha - cos_alpha);
@@ -345,7 +345,7 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias)
       light_radius_, light_radius_ * softness_factor_, max_distance_, near, far, side);
 
   /* Shift shadow map origin for area light to avoid clipping nearby geometry. */
-  float shift = (is_area_light(light.type)) ? near : 0.0f;
+  float shift = is_area_light(light.type) ? near : 0.0f;
 
   float4x4 obmat_tmp = light.object_mat;
 
@@ -735,7 +735,6 @@ void ShadowModule::init()
   ::Scene &scene = *inst_.scene;
   bool enabled = (scene.eevee.flag & SCE_EEVEE_SHADOW_ENABLED) != 0;
   if (assign_if_different(enabled_, enabled)) {
-    inst_.sampling.reset();
     /* Force light reset. */
     for (Light &light : inst_.lights.light_map_.values()) {
       light.initialized = false;
@@ -849,7 +848,7 @@ void ShadowModule::begin_sync()
       sub.bind_ssbo("capture_info_buf", &capture_info_buf);
       sub.push_constant("directional_level", directional_level);
       sub.push_constant("tilemap_projection_ratio", projection_ratio);
-      inst_.lights.bind_resources(&sub);
+      inst_.lights.bind_resources(sub);
       sub.dispatch(&inst_.irradiance_cache.bake.dispatch_per_surfel_);
 
       /* Skip opaque and transparent tagging for light baking. */
@@ -864,7 +863,7 @@ void ShadowModule::begin_sync()
       sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
       sub.bind_texture("depth_tx", &render_buffers.depth_tx);
       sub.push_constant("tilemap_projection_ratio", &tilemap_projection_ratio_);
-      inst_.lights.bind_resources(&sub);
+      inst_.lights.bind_resources(sub);
       sub.dispatch(&dispatch_depth_scan_size_);
     }
     {
@@ -884,8 +883,8 @@ void ShadowModule::begin_sync()
       sub.push_constant("fb_resolution", &usage_tag_fb_resolution_);
       sub.push_constant("fb_lod", &usage_tag_fb_lod_);
       inst_.bind_uniform_data(&sub);
-      inst_.hiz_buffer.bind_resources(&sub);
-      inst_.lights.bind_resources(&sub);
+      inst_.hiz_buffer.bind_resources(sub);
+      inst_.lights.bind_resources(sub);
 
       box_batch_ = DRW_cache_cube_get();
       tilemap_usage_transparent_ps_ = &sub;
@@ -893,11 +892,12 @@ void ShadowModule::begin_sync()
   }
 }
 
-void ShadowModule::sync_object(const ObjectHandle &handle,
+void ShadowModule::sync_object(const Object *ob,
+                               const ObjectHandle &handle,
                                const ResourceHandle &resource_handle,
-                               bool is_shadow_caster,
                                bool is_alpha_blend)
 {
+  bool is_shadow_caster = !(ob->visibility_flag & OB_HIDE_SHADOW);
   if (!is_shadow_caster && !is_alpha_blend) {
     return;
   }
@@ -966,9 +966,6 @@ void ShadowModule::end_sync()
       shadow_ob.used = false;
     }
   }
-  if (!past_casters_updated_.is_empty() || !curr_casters_updated_.is_empty()) {
-    inst_.sampling.reset();
-  }
   past_casters_updated_.push_update();
   curr_casters_updated_.push_update();
 
@@ -1031,7 +1028,7 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("casters_id_buf", curr_casters_);
         sub.bind_ssbo("bounds_buf", &manager.bounds_buf.current());
         sub.push_constant("resource_len", int(curr_casters_.size()));
-        inst_.lights.bind_resources(&sub);
+        inst_.lights.bind_resources(sub);
         sub.dispatch(int3(
             divide_ceil_u(std::max(curr_casters_.size(), int64_t(1)), SHADOW_BOUNDS_GROUP_SIZE),
             1,
@@ -1086,9 +1083,9 @@ void ShadowModule::end_sync()
       sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
       sub.push_constant("tilemap_projection_ratio", &tilemap_projection_ratio_);
       inst_.bind_uniform_data(&sub);
-      inst_.hiz_buffer.bind_resources(&sub);
-      inst_.sampling.bind_resources(&sub);
-      inst_.lights.bind_resources(&sub);
+      inst_.hiz_buffer.bind_resources(sub);
+      inst_.sampling.bind_resources(sub);
+      inst_.lights.bind_resources(sub);
       inst_.volume.bind_resources(sub);
       inst_.volume.bind_properties_buffers(sub);
       sub.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -1233,9 +1230,9 @@ void ShadowModule::debug_end_sync()
   debug_draw_ps_.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
   debug_draw_ps_.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
   inst_.bind_uniform_data(&debug_draw_ps_);
-  inst_.hiz_buffer.bind_resources(&debug_draw_ps_);
-  inst_.lights.bind_resources(&debug_draw_ps_);
-  inst_.shadows.bind_resources(&debug_draw_ps_);
+  inst_.hiz_buffer.bind_resources(debug_draw_ps_);
+  inst_.lights.bind_resources(debug_draw_ps_);
+  inst_.shadows.bind_resources(debug_draw_ps_);
   debug_draw_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
 
@@ -1327,6 +1324,8 @@ void ShadowModule::set_view(View &view)
       inst_.manager->submit(tilemap_update_ps_, view);
 
       shadow_multi_view_.compute_procedural_bounds();
+
+      statistics_buf_.current().async_flush_to_host();
 
       /* Isolate shadow update into own command buffer.
        * If parameter buffer exceeds limits, then other work will not be impacted.  */

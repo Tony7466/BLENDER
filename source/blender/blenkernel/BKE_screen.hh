@@ -11,7 +11,7 @@
 
 #include "RNA_types.hh"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 namespace blender::asset_system {
 class AssetRepresentation;
@@ -340,7 +340,7 @@ enum {
   PANEL_TYPE_NO_SEARCH = (1 << 7),
 };
 
-typedef struct Panel_Runtime {
+struct Panel_Runtime {
   /* Applied to Panel.ofsx, but saved separately so we can track changes between redraws. */
   int region_ofsx = 0;
 
@@ -359,7 +359,7 @@ typedef struct Panel_Runtime {
 
   /* Non-owning pointer. The context is stored in the block. */
   bContextStore *context = nullptr;
-} Panel_Runtime;
+};
 
 /* #uiList types. */
 
@@ -433,6 +433,10 @@ enum class MenuTypeFlag {
    * dependent, menu search has to scan it in different contexts.
    */
   ContextDependent = (1 << 0),
+  /**
+   * Automatically start searching in the menu when pressing a key.
+   */
+  SearchOnKeyPress = (1 << 1),
 };
 ENUM_OPERATORS(MenuTypeFlag, MenuTypeFlag::ContextDependent)
 

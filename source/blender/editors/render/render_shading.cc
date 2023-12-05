@@ -27,7 +27,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -37,29 +37,29 @@
 #include "BKE_appdir.h"
 #include "BKE_blender_copybuffer.h"
 #include "BKE_brush.hh"
-#include "BKE_context.h"
-#include "BKE_curve.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
+#include "BKE_lib_remap.hh"
 #include "BKE_lightprobe.h"
 #include "BKE_linestyle.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_texture.h"
-#include "BKE_vfont.h"
+#include "BKE_vfont.hh"
 #include "BKE_workspace.h"
 #include "BKE_world.h"
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -1525,7 +1525,7 @@ static blender::Vector<Object *> lightprobe_cache_irradiance_volume_subset_get(b
 
   auto is_irradiance_volume = [](Object *ob) -> bool {
     return ob->type == OB_LIGHTPROBE &&
-           static_cast<LightProbe *>(ob->data)->type == LIGHTPROBE_TYPE_GRID;
+           static_cast<LightProbe *>(ob->data)->type == LIGHTPROBE_TYPE_VOLUME;
   };
 
   blender::Vector<Object *> probes;
@@ -1533,7 +1533,7 @@ static blender::Vector<Object *> lightprobe_cache_irradiance_volume_subset_get(b
   auto irradiance_volume_setup = [&](Object *ob) {
     BKE_lightprobe_cache_free(ob);
     BKE_lightprobe_cache_create(ob);
-    DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_SHADING);
     probes.append(ob);
   };
 
@@ -1668,18 +1668,17 @@ static int lightprobe_cache_bake_exec(bContext *C, wmOperator *op)
 void OBJECT_OT_lightprobe_cache_bake(wmOperatorType *ot)
 {
   static const EnumPropertyItem light_cache_subset_items[] = {
-      {LIGHTCACHE_SUBSET_ALL, "ALL", 0, "All Light Probes", "Bake all light probes"},
-      {LIGHTCACHE_SUBSET_DIRTY,
-       "DIRTY",
-       0,
-       "Dirty Only",
-       "Only bake light probes that are marked as dirty"},
+      {LIGHTCACHE_SUBSET_ALL, "ALL", 0, "All Volumes", "Bake all light probe volumes"},
       {LIGHTCACHE_SUBSET_SELECTED,
        "SELECTED",
        0,
        "Selected Only",
-       "Only bake selected light probes"},
-      {LIGHTCACHE_SUBSET_ACTIVE, "ACTIVE", 0, "Active Only", "Only bake the active light probe"},
+       "Only bake selected light probe volumes"},
+      {LIGHTCACHE_SUBSET_ACTIVE,
+       "ACTIVE",
+       0,
+       "Active Only",
+       "Only bake the active light probe volume"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -1776,7 +1775,7 @@ static int lightprobe_cache_free_exec(bContext *C, wmOperator *op)
       continue;
     }
     BKE_lightprobe_cache_free(object);
-    DEG_id_tag_update(&object->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&object->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_SHADING);
   }
 
   WM_event_add_notifier(C, NC_OBJECT | ND_OB_SHADING, scene);

@@ -9,6 +9,7 @@
 
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_renderpass_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 
 void main()
 {
@@ -31,7 +32,7 @@ void main()
   }
 
   if (gbuf.has_refraction) {
-    refract_light = imageLoad(direct_refract_img, texel).rgb +
+    refract_light = /* imageLoad(direct_refract_img, texel).rgb + */ /* TODO: Not implemented. */
                     imageLoad(indirect_refract_img, texel).rgb;
   }
 
@@ -44,4 +45,10 @@ void main()
   out_combined.xyz += diffuse_light * gbuf.diffuse.color;
   out_combined.xyz += reflect_light * gbuf.reflection.color;
   out_combined.xyz += refract_light * gbuf.refraction.color;
+
+  if (any(isnan(out_combined))) {
+    out_combined = vec4(1.0, 0.0, 1.0, 0.0);
+  }
+
+  out_combined = colorspace_safe_color(out_combined);
 }

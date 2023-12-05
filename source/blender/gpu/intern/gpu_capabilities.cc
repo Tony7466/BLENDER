@@ -207,6 +207,11 @@ bool GPU_transform_feedback_support()
   return GCaps.transform_feedback_support;
 }
 
+size_t GPU_max_storage_buffer_size()
+{
+  return GCaps.max_storage_buffer_size;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -218,9 +223,9 @@ bool GPU_mem_stats_supported()
   return GCaps.mem_stats_support;
 }
 
-void GPU_mem_stats_get(int *totalmem, int *freemem)
+void GPU_mem_stats_get(int *r_totalmem, int *r_freemem)
 {
-  Context::get()->memory_statistics_get(totalmem, freemem);
+  Context::get()->memory_statistics_get(r_totalmem, r_freemem);
 }
 
 bool GPU_stereo_quadbuffer_support()

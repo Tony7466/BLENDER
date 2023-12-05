@@ -61,12 +61,12 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
   {
     const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
         context.user_data);
-    if (!user_data.modifier_data) {
+    if (!user_data.call_data->simulation_params) {
       params.set_default_remaining_outputs();
       return;
     }
-    const GeoNodesModifierData &modifier_data = *user_data.modifier_data;
-    if (!modifier_data.simulation_params) {
+    if (!user_data.call_data->self_object()) {
+      /* Self object is currently required for creating anonymous attribute names. */
       params.set_default_remaining_outputs();
       return;
     }
@@ -79,7 +79,8 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
       params.set_default_remaining_outputs();
       return;
     }
-    SimulationZoneBehavior *zone_behavior = modifier_data.simulation_params->get(found_id->id);
+    SimulationZoneBehavior *zone_behavior = user_data.call_data->simulation_params->get(
+        found_id->id);
     if (!zone_behavior) {
       params.set_default_remaining_outputs();
       return;
@@ -102,7 +103,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
       BLI_assert_unreachable();
     }
     if (!params.output_was_set(0)) {
-      params.set_output(0, fn::ValueOrField<float>(delta_time));
+      params.set_output(0, bke::ValueOrField<float>(delta_time));
     }
   }
 
@@ -116,7 +117,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     }
     copy_simulation_state_to_values(simulation_items_,
                                     zone_state,
-                                    *user_data.modifier_data->self_object,
+                                    *user_data.call_data->self_object(),
                                     *user_data.compute_context,
                                     node_,
                                     outputs);
@@ -135,7 +136,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     }
     move_simulation_state_to_values(simulation_items_,
                                     std::move(zone_state),
-                                    *user_data.modifier_data->self_object,
+                                    *user_data.call_data->self_object(),
                                     *user_data.compute_context,
                                     node_,
                                     outputs);
@@ -182,18 +183,22 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
 
 namespace blender::nodes::node_geo_simulation_input_cc {
 
-static void node_declare_dynamic(const bNodeTree &node_tree,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const bNode *output_node = node_tree.node_by_id(node_storage(node).output_node_id);
+  b.add_output<decl::Float>("Delta Time");
+
+  const bNode *node = b.node_or_null();
+  const bNodeTree *node_tree = b.tree_or_null();
+  if (ELEM(nullptr, node, node_tree)) {
+    return;
+  }
+
+  const bNode *output_node = node_tree->node_by_id(node_storage(*node).output_node_id);
   if (!output_node) {
     return;
   }
   const auto &output_storage = *static_cast<const NodeGeometrySimulationOutput *>(
       output_node->storage);
-
-  b.add_output<decl::Float>("Delta Time");
 
   for (const int i : IndexRange(output_storage.items_num)) {
     const NodeSimulationItem &item = output_storage.items[i];
@@ -234,9 +239,10 @@ static void node_register()
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_SIMULATION_INPUT, "Simulation Input", NODE_CLASS_INTERFACE);
   ntype.initfunc = node_init;
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.insert_link = node_insert_link;
   ntype.gather_link_search_ops = nullptr;
+  ntype.no_muting = true;
   node_type_storage(&ntype,
                     "NodeGeometrySimulationInput",
                     node_free_standard_storage,

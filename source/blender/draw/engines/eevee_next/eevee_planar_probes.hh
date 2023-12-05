@@ -36,9 +36,14 @@ struct PlanarProbe : ProbePlanarData {
   int resource_index;
   /* Pruning flag. */
   bool is_probe_used = false;
+  /** Display a debug plane in the viewport. */
+  bool viewport_display = false;
 
  public:
-  void sync(const float4x4 &world_to_object, float clipping_offset, float influence_distance);
+  void sync(const float4x4 &world_to_object,
+            float clipping_offset,
+            float influence_distance,
+            bool viewport_display);
 
   /**
    * Update the ProbePlanarData part of the struct.
@@ -64,6 +69,7 @@ struct PlanarProbe : ProbePlanarData {
 
 struct PlanarProbeResources : NonCopyable {
   Framebuffer combined_fb = {"planar.combined_fb"};
+  Framebuffer gbuffer_fb = {"planar.gbuffer_fb"};
   draw::View view = {"planar.view"};
 };
 
@@ -90,6 +96,11 @@ class PlanarProbeModule {
 
   bool update_probes_ = false;
 
+  /** Viewport data display drawing. */
+  bool do_display_draw_ = false;
+  ProbePlanarDisplayDataBuf display_data_buf_;
+  PassSimple viewport_display_ps_ = {"PlanarProbeModule.Viewport Display"};
+
  public:
   PlanarProbeModule(Instance &instance) : instance_(instance) {}
 
@@ -100,13 +111,15 @@ class PlanarProbeModule {
 
   void set_view(const draw::View &main_view, int2 main_view_extent);
 
-  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
+  void viewport_draw(View &view, GPUFrameBuffer *view_fb);
+
+  template<typename PassType> void bind_resources(PassType &pass)
   {
     /* Disable filter to avoid interpolation with missing background. */
     GPUSamplerState no_filter = GPUSamplerState::default_sampler();
-    pass->bind_ubo(PLANAR_PROBE_BUF_SLOT, &probe_planar_buf_);
-    pass->bind_texture(PLANAR_PROBE_RADIANCE_TEX_SLOT, &radiance_tx_, no_filter);
-    pass->bind_texture(PLANAR_PROBE_DEPTH_TEX_SLOT, &depth_tx_);
+    pass.bind_ubo(PLANAR_PROBE_BUF_SLOT, &probe_planar_buf_);
+    pass.bind_texture(PLANAR_PROBE_RADIANCE_TEX_SLOT, &radiance_tx_, no_filter);
+    pass.bind_texture(PLANAR_PROBE_DEPTH_TEX_SLOT, &depth_tx_);
   }
 
   bool enabled() const

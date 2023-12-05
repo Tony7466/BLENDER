@@ -159,7 +159,7 @@ static void gpu_viewport_textures_create(GPUViewport *viewport)
     }
   }
 
-  /* Can be shared with GPUOffscreen. */
+  /* Can be shared with #GPUOffscreen. */
   if (viewport->depth_tx == nullptr) {
     /* Depth texture can be read back by gizmos #view3d_depths_create. */
     /* Swizzle flag is needed by Workbench Volumes to read the stencil view. */
@@ -168,7 +168,7 @@ static void gpu_viewport_textures_create(GPUViewport *viewport)
                                                1,
                                                GPU_DEPTH24_STENCIL8,
                                                usage | GPU_TEXTURE_USAGE_HOST_READ |
-                                                   GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
+                                                   GPU_TEXTURE_USAGE_FORMAT_VIEW,
                                                nullptr);
     if (GPU_clear_viewport_workaround()) {
       static int depth_clear = 0;

@@ -77,13 +77,17 @@ typedef struct LightProbe {
 
   /** Object visibility group, inclusive or exclusive. */
   struct Collection *visibility_grp;
+
+  /** LIGHTPROBE_FLAG_SHOW_DATA display size. */
+  float data_display_size;
+  char _pad1[4];
 } LightProbe;
 
 /* Probe->type */
 enum {
-  LIGHTPROBE_TYPE_CUBE = 0,
-  LIGHTPROBE_TYPE_PLANAR = 1,
-  LIGHTPROBE_TYPE_GRID = 2,
+  LIGHTPROBE_TYPE_SPHERE = 0,
+  LIGHTPROBE_TYPE_PLANE = 1,
+  LIGHTPROBE_TYPE_VOLUME = 2,
 };
 
 /* Probe->flag */

@@ -22,8 +22,7 @@ void HiZBuffer::sync()
   int2 hiz_extent = math::ceil_to_multiple(render_extent, int2(1u << (HIZ_MIP_COUNT - 1)));
   int2 dispatch_size = math::divide_ceil(hiz_extent, int2(HIZ_GROUP_SIZE));
 
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
-                           GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW;
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
   hiz_tx_.ensure_2d(GPU_R32F, hiz_extent, usage, nullptr, HIZ_MIP_COUNT);
   hiz_tx_.ensure_mip_views();
   GPU_texture_mipmap_mode(hiz_tx_, true, false);
@@ -76,7 +75,7 @@ void HiZBuffer::sync()
     debug_draw_ps_.init();
     debug_draw_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
     debug_draw_ps_.shader_set(inst_.shaders.static_shader_get(HIZ_DEBUG));
-    this->bind_resources(&debug_draw_ps_);
+    this->bind_resources(debug_draw_ps_);
     debug_draw_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   }
 }
@@ -95,6 +94,8 @@ void HiZBuffer::update()
   else {
     inst_.manager->submit(hiz_update_layer_ps_);
   }
+
+  is_dirty_ = false;
 }
 
 void HiZBuffer::debug_draw(View &view, GPUFrameBuffer *view_fb)

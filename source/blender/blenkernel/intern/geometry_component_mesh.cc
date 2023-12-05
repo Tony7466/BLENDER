@@ -34,14 +34,14 @@ MeshComponent::~MeshComponent()
   this->clear();
 }
 
-GeometryComponent *MeshComponent::copy() const
+GeometryComponentPtr MeshComponent::copy() const
 {
   MeshComponent *new_component = new MeshComponent();
   if (mesh_ != nullptr) {
     new_component->mesh_ = BKE_mesh_copy_for_eval(mesh_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
-  return new_component;
+  return GeometryComponentPtr(new_component);
 }
 
 void MeshComponent::clear()
@@ -858,6 +858,13 @@ static void tag_component_positions_changed(void *owner)
   }
 }
 
+static void tag_component_sharpness_changed(void *owner)
+{
+  if (Mesh *mesh = static_cast<Mesh *>(owner)) {
+    BKE_mesh_tag_sharpness_changed(mesh);
+  }
+}
+
 /**
  * This provider makes vertex groups available as float attributes.
  */
@@ -1075,7 +1082,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                    BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    face_access,
-                                                   nullptr);
+                                                   tag_component_sharpness_changed);
 
   static BuiltinCustomDataLayerProvider sharp_edge("sharp_edge",
                                                    ATTR_DOMAIN_EDGE,
@@ -1084,7 +1091,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                    BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    edge_access,
-                                                   nullptr);
+                                                   tag_component_sharpness_changed);
 
   static MeshVertexGroupsAttributeProvider vertex_groups;
   static CustomDataAttributeProvider corner_custom_data(ATTR_DOMAIN_CORNER, corner_access);

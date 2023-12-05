@@ -43,11 +43,11 @@ const EnumPropertyItem rna_enum_keyblock_type_items[] = {
 #  include "DNA_object_types.h"
 
 #  include "BLI_listbase.h"
-#  include "BLI_string_utils.h"
+#  include "BLI_string_utils.hh"
 
 #  include "BKE_animsys.h"
 #  include "BKE_key.h"
-#  include "BKE_main.h"
+#  include "BKE_main.hh"
 
 #  include "DEG_depsgraph.hh"
 
