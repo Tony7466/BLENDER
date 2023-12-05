@@ -1,2 +1,3 @@
 Referenced by issue #114948, Parenting crash blender since ObjectRuntime refactor
 Referenced by commit d46d1bbe6a69a1a621189552d8e2a0811aae5df0, Fix #114948: Parenting crash blender since ObjectRuntime refactor
+Referenced by commit ce81bdc2840ef96d209c4452e4be95ced5fd7d83, Fix #115775: Curve object to mesh conversion crash
