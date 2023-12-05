@@ -1383,18 +1383,18 @@ static bool view3d_lasso_select(bContext *C,
     else if (BKE_paint_select_vert_test(ob)) {
       changed_multi |= do_lasso_select_paintvert(vc, wm_userdata, mcoords, mcoords_len, sel_op);
     }
+    else if (ob && (ob->mode & OB_MODE_POSE || BKE_paint_select_bone_test(ob))) {
+      changed_multi |= do_lasso_select_pose(vc, mcoords, mcoords_len, sel_op);
+      if (changed_multi) {
+        ED_outliner_select_sync_from_pose_bone_tag(C);
+      }
+    }
     else if (ob &&
              (ob->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT | OB_MODE_TEXTURE_PAINT))) {
       /* pass */
     }
     else if (ob && (ob->mode & OB_MODE_PARTICLE_EDIT)) {
       changed_multi |= PE_lasso_select(C, mcoords, mcoords_len, sel_op) != OPERATOR_CANCELLED;
-    }
-    else if (ob && (ob->mode & OB_MODE_POSE)) {
-      changed_multi |= do_lasso_select_pose(vc, mcoords, mcoords_len, sel_op);
-      if (changed_multi) {
-        ED_outliner_select_sync_from_pose_bone_tag(C);
-      }
     }
     else {
       changed_multi |= do_lasso_select_objects(vc, mcoords, mcoords_len, sel_op);
@@ -4358,7 +4358,7 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
     else if (vc.obact && vc.obact->mode & OB_MODE_PARTICLE_EDIT) {
       changed_multi = PE_box_select(C, &rect, sel_op);
     }
-    else if (vc.obact && vc.obact->mode & OB_MODE_POSE) {
+    else if (vc.obact && (vc.obact->mode & OB_MODE_POSE || BKE_paint_select_bone_test(vc.obact))) {
       changed_multi = do_pose_box_select(C, &vc, &rect, sel_op);
       if (changed_multi) {
         ED_outliner_select_sync_from_pose_bone_tag(C);
@@ -5309,6 +5309,21 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
       else {
         BLI_assert(0);
       }
+    }
+    FOREACH_OBJECT_IN_MODE_END;
+  }
+  /* Select bones from pose mode armature in weight paint + bone-select mode */
+  else if (BKE_paint_select_bone_test(obact)) {
+    view3d_operator_needs_opengl(C);
+    BKE_object_update_select_id(CTX_data_main(C));
+
+    ViewContext vc_tmp;
+    FOREACH_OBJECT_IN_MODE_BEGIN (
+        vc.scene, vc.view_layer, vc.v3d, OB_ARMATURE, OB_MODE_POSE, ob_iter) {
+      vc_tmp = vc;
+      vc_tmp.obact = ob_iter;
+      pose_circle_select(&vc_tmp, sel_op, mval, float(radius));
+      ED_outliner_select_sync_from_pose_bone_tag(C);
     }
     FOREACH_OBJECT_IN_MODE_END;
   }
