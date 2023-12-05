@@ -11,7 +11,7 @@
 
 #include "RNA_enum_types.hh"
 
-namespace blender::nodes::node_geo_grid_poisson_solver_cc {
+namespace blender::nodes::node_geo_grid_capture_grid_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -225,4 +225,4 @@ static void node_register()
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_geo_grid_poisson_solver_cc
+}  // namespace blender::nodes::node_geo_grid_capture_grid_cc
