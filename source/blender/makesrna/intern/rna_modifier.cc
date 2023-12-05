@@ -7091,6 +7091,12 @@ static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Custom Path", "Specify a path where the baked data should be stored manually");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "bake_still", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODES_MODIFIER_BAKE_STILL);
+  RNA_def_property_ui_text(
+      prop, "Bake Still", "Only bake a single frame that is used on all frames");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
 static void rna_def_modifier_nodes_bakes(BlenderRNA *brna)

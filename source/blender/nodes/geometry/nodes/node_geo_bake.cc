@@ -430,6 +430,9 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
   uiLayoutSetPropDecorate(layout, false);
   {
     uiLayout *col = uiLayoutColumn(layout, false);
+
+    uiItemR(col, &bake_rna, "bake_still", UI_ITEM_NONE, nullptr, ICON_NONE);
+
     uiLayout *row = uiLayoutRow(col, true);
     {
       char bake_label[1024] = N_("Bake");

@@ -2346,6 +2346,7 @@ typedef struct NodesModifierBake {
 typedef enum NodesModifierBakeFlag {
   NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE = 1 << 0,
   NODES_MODIFIER_BAKE_CUSTOM_PATH = 1 << 1,
+  NODES_MODIFIER_BAKE_STILL = 1 << 2,
 } NodesModifierBakeFlag;
 
 typedef struct NodesModifierData {
