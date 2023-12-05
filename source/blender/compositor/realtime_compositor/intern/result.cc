@@ -440,7 +440,7 @@ ResultPrecision Result::precision() const
 
 void Result::set_precision(ResultPrecision precision)
 {
-  /* Changing the precision can only be done if have't allocated yet. */
+  /* Changing the precision can only be done if it wasn't allocated yet. */
   BLI_assert(!is_allocated());
   precision_ = precision;
 }

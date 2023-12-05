@@ -210,8 +210,8 @@ CachedImage::CachedImage(Context &context,
    * to the image user in order to acquire the image buffer corresponding to the given pass name.
    * However, in order to compute the pass index, we need the render result structure of the image
    * to be initialized. So we first acquire a dummy image buffer since it initializes the image
-   * render result as a side effect. We also use that as mean of validation, since we can early
-   * exist if the returned image buffer is nullptr. This image buffer can be immodestly released.
+   * render result as a side effect. We also use that as a mean of validation, since we can early
+   * exit if the returned image buffer is nullptr. This image buffer can be immediately released.
    * Since it carries no important information. */
   ImBuf *initial_image_buffer = BKE_image_acquire_ibuf(image, image_user, nullptr);
   BKE_image_release_ibuf(image, initial_image_buffer, nullptr);
