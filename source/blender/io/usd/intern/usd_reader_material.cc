@@ -880,7 +880,7 @@ void USDMaterialReader::convert_usd_transform_2d(const pxr::UsdShadeShader &usd_
 
   /* Connect the mapping node "Vector" input. */
   if (pxr::UsdShadeInput in_input = usd_shader.GetInput(usdtokens::in)) {
-    set_node_input(in_input, mapping, "Vector", ntree, column, r_ctx);
+    set_node_input(in_input, mapping, "Vector", ntree, column, r_ctx, false);
   }
 }
 
