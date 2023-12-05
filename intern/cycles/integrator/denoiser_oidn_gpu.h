@@ -34,7 +34,6 @@ class OIDNDenoiserGPU : public DenoiserGPU {
                               bool allow_inplace_modification) override;
 
   static bool is_device_supported(const DeviceInfo &device);
-  static bool is_device_type_supported(const DeviceType &type);
 
  protected:
   virtual uint get_device_type_mask() const override;

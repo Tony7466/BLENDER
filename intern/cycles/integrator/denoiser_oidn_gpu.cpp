@@ -31,23 +31,30 @@ CCL_NAMESPACE_BEGIN
 constexpr int prefilter_max_mem = 1024;
 
 thread_mutex OIDNDenoiserGPU::mutex_;
-bool OIDNDenoiserGPU::is_device_type_supported(const DeviceType &type)
+
+bool OIDNDenoiserGPU::is_device_supported(const DeviceInfo &device)
 {
-  switch (type) {
+  switch (device.type) {
 #  ifdef OIDN_DEVICE_SYCL
     /* Assume all devices with Cycles support are also supported by OIDN2. */
     case DEVICE_ONEAPI:
       return true;
 #  endif
+#  ifdef OIDN_DEVICE_HIP
+    case DEVICE_HIP: {
+      /* Test if OIDN can use the given HIP device. */
+      hipStream_t stream = nullptr;
+      OIDNDevice test_device = oidnNewHIPDevice(&device.num, &stream, 1);
+      if (test_device) {
+        oidnReleaseDevice(test_device);
+        return true;
+      }
+      return false;
+    }
+#  endif
     default:
       return false;
   }
-}
-
-bool OIDNDenoiserGPU::is_device_supported(const DeviceInfo &device)
-{
-  /* Currently falls back to checking just the device type, can be improved. */
-  return is_device_type_supported(device.type);
 }
 
 OIDNDenoiserGPU::OIDNDenoiserGPU(Device *path_trace_device, const DenoiseParams &params)
@@ -86,6 +93,9 @@ uint OIDNDenoiserGPU::get_device_type_mask() const
   uint device_mask = 0;
 #  ifdef OIDN_DEVICE_SYCL
   device_mask |= DEVICE_MASK_ONEAPI;
+#  endif
+#  ifdef OIDN_DEVICE_HIP
+  device_mask |= DEVICE_MASK_HIP;
 #  endif
   return device_mask;
 }
@@ -126,15 +136,26 @@ bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
 #  if defined(OIDN_DEVICE_SYCL)
     case DEVICE_ONEAPI:
       oidn_device_ = oidnNewDevice(OIDN_DEVICE_TYPE_SYCL);
-      denoiser_queue_->init_execution();
       break;
+#  endif
+#  if defined(OIDN_DEVICE_HIP) && defined(WITH_HIP)
+    case DEVICE_HIP:
+      hipStream_t stream = nullptr;
+      oidn_device_ = oidnNewHIPDevice(&denoiser_device_->info.num, &stream, 1);
+      break;
+    }
 #  endif
     default:
       break;
   }
+
   if (!oidn_device_) {
     denoiser_device_->set_error("Failed to create OIDN device");
     return false;
+  }
+
+  if (denoiser_queue_) {
+    denoiser_queue_->init_execution();
   }
 
   oidnCommitDevice(oidn_device_);
