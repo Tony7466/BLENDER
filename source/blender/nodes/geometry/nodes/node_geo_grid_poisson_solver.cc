@@ -15,7 +15,7 @@
 #  include <openvdb/tools/PoissonSolver.h>
 #endif
 
-namespace blender::nodes::node_geo_grid_poisson_solver_cc {
+namespace blender::nodes::node_geo_grid_capture_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -34,7 +34,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Float>("Grid");
 }
 
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA */*ptr*/)
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA * /*ptr*/)
 {
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
@@ -84,7 +84,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const bool staggered = false;
   using PreconditionerType = openvdb::math::pcg::IncompleteCholeskyPreconditioner<
       openvdb::tools::poisson::LaplacianMatrix>;
-  //openvdb::FloatTree::Ptr output_tree = openvdb::tools::poisson::solve(
+  // openvdb::FloatTree::Ptr output_tree = openvdb::tools::poisson::solve(
   //    input_tree, pcg_state, interrupter, staggered);
   openvdb::FloatTree::Ptr output_tree =
       openvdb::tools::poisson::solveWithBoundaryConditionsAndPreconditioner<PreconditionerType>(
@@ -120,4 +120,4 @@ static void node_register()
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_geo_grid_poisson_solver_cc
+}  // namespace blender::nodes::node_geo_grid_capture_cc
