@@ -1194,8 +1194,8 @@ if(WITH_CYCLES AND (WITH_CYCLES_DEVICE_ONEAPI OR (WITH_CYCLES_EMBREE AND EMBREE_
   list(APPEND _sycl_runtime_libraries ${_sycl_pi_runtime_libraries_glob})
   unset(_sycl_pi_runtime_libraries_glob)
 
-  list(APPEND PLATFORM_BUNDLED_LIBRARY_DIRS ${SYCL_ROOT_DIR/bin/})
   list(APPEND PLATFORM_BUNDLED_LIBRARIES ${_sycl_runtime_libraries})
+  list(APPEND PLATFORM_BUNDLED_LIBRARY_DIRS ${SYCL_ROOT_DIR/bin/})
   unset(_sycl_runtime_libraries)
 
   set(SYCL_LIBRARIES optimized ${SYCL_LIBRARY} debug ${SYCL_LIBRARY_DEBUG})
