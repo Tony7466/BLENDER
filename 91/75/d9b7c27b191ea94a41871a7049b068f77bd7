@@ -1,1 +1,1 @@
-Referenced by issue #115776, bmesh becomes extremelly slow (x100) compared to blender 3.6
+Referenced by issue #115776, BMesh data copy with many layers is extremelly slow (100x slower) compared to blender 3.6
