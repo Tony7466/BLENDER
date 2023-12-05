@@ -455,12 +455,11 @@ static int rna_PoseChannel_insert_keyframe(ID *id,
                                            bPoseChannel *pchan,
                                            Main *bmain,
                                            ReportList *reports,
-                                           const char *channel,
-                                           const char *rna_path,
-                                           const float frame)
+                                           const float frame,
+                                           const char *rna_path)
 {
   using namespace blender;
-  if (channel == nullptr && rna_path == nullptr) {
+  if (rna_path == nullptr) {
     BKE_report(reports, RPT_ERROR, "No channel or rna-path specified to insert keyframes in");
     return 0;
   }
@@ -1252,9 +1251,7 @@ static void rna_def_pose_channel(BlenderRNA *brna)
 
   func = RNA_def_function(srna, "insert_keyframe", "rna_PoseChannel_insert_keyframe");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_MAIN);
-  parm = RNA_def_string(func, "channel", nullptr, 0, "Channel", "Define which channel to key");
-  parm = RNA_def_string(
-      func, "rna_path", nullptr, 0, "RNA path", "Define the rna path explicitly");
+
   parm = RNA_def_float(func,
                        "frame",
                        0,
@@ -1264,6 +1261,10 @@ static void rna_def_pose_channel(BlenderRNA *brna)
                        "At which frame to insert the key",
                        -FLT_MAX,
                        FLT_MAX);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_string(
+      func, "rna_path", nullptr, 0, "RNA path", "Define for which rna path to insert keyframes");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   parm = RNA_def_int(
