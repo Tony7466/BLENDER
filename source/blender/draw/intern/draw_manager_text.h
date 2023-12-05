@@ -8,9 +8,12 @@
 
 #pragma once
 
-#include "BLI_math_vector_types.hh"
-#include "BLI_virtual_array.hh"
+#ifdef __cplusplus
+#  include "BLI_virtual_array.hh"
+#endif
+
 #include "GPU_shader_shared_utils.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,10 +38,6 @@ void DRW_text_cache_add(struct DRWTextStore *dt,
 
 void DRW_text_cache_draw(struct DRWTextStore *dt, struct ARegion *region, struct View3D *v3d);
 
-void DRW_text_viewer_attribute(blender::VArray<float> attributes,
-                               blender::Span<blender::float3> positions,
-                               float4x4 modelMatrix);
-
 void DRW_text_edit_mesh_measure_stats(struct ARegion *region,
                                       struct View3D *v3d,
                                       struct Object *ob,
@@ -58,4 +57,10 @@ struct DRWTextStore *DRW_text_cache_ensure(void);
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
+void DRW_text_viewer_attribute(blender::VArray<float> attributes,
+                               blender::Span<blender::float3> positions,
+                               float4x4 modelMatrix);
 #endif
