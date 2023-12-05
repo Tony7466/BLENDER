@@ -34,7 +34,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Float>("Grid");
 }
 
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA */*ptr*/)
 {
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
@@ -55,7 +55,11 @@ struct BoundaryOp {
       ValueType &diagonal                  // element of Laplacian matrix corresponding to ijk
   ) const
   {
-    UNUSED_VARS(ijk, ijk_neighbor, source, diagonal);
+    // Dirichlet boundary condition:
+    // Exterior neighbors are empty, so decrement the weighting coefficient
+    // as for interior neighbors but leave the source vector unchanged.
+    diagonal -= 1;
+    UNUSED_VARS(ijk, ijk_neighbor, source);
   }
 };
 
@@ -68,18 +72,24 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   const openvdb::FloatTree &input_tree = input_grid.grid()->tree();
+
   BoundaryOp boundary_op;
-  openvdb::math::pcg::State pcg_state;
+
+  const double epsilon = openvdb::math::Delta<float>::value();
+  openvdb::math::pcg::State pcg_state = openvdb::math::pcg::terminationDefaults<float>();
+  pcg_state.iterations = 200;
+  pcg_state.relativeError = pcg_state.absoluteError = epsilon;
+
   openvdb::util::NullInterrupter interrupter;
   const bool staggered = false;
-
   using PreconditionerType = openvdb::math::pcg::IncompleteCholeskyPreconditioner<
       openvdb::tools::poisson::LaplacianMatrix>;
-  openvdb::FloatTree::Ptr output_tree = openvdb::tools::poisson::solve(
-      input_tree, pcg_state, interrupter, staggered);
-  // openvdb::FloatTree::Ptr output_tree =
-  //    openvdb::tools::poisson::solveWithBoundaryConditionsAndPreconditioner<PreconditionerType>(
-  //        input_tree, boundary_op, pcg_state, interrupter, staggered);
+  //openvdb::FloatTree::Ptr output_tree = openvdb::tools::poisson::solve(
+  //    input_tree, pcg_state, interrupter, staggered);
+  openvdb::FloatTree::Ptr output_tree =
+      openvdb::tools::poisson::solveWithBoundaryConditionsAndPreconditioner<PreconditionerType>(
+          input_tree, boundary_op, pcg_state, interrupter, staggered);
+
   openvdb::FloatGrid::Ptr output_grid_vdb = input_grid.grid()->copyWithNewTree();
   output_grid_vdb->setTree(output_tree);
   bke::GVolumeGridPtr output_grid = bke::make_volume_grid_ptr(output_grid_vdb);
