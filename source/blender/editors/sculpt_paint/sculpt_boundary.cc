@@ -17,7 +17,7 @@
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -947,7 +947,7 @@ static void do_boundary_brush_smooth_task(Object *ob, const Brush *brush, PBVHNo
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_boundary_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
+void SCULPT_do_boundary_brush(Sculpt *sd, Object *ob, blender::Span<PBVHNode *> nodes)
 {
   using namespace blender;
   SculptSession *ss = ob->sculpt;

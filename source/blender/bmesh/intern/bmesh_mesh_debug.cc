@@ -19,11 +19,11 @@
 
 #  include "BLI_utildefines.h"
 
-#  include "BKE_customdata.h"
+#  include "BKE_customdata.hh"
 
-#  include "bmesh.h"
+#  include "bmesh.hh"
 
-#  include "bmesh_mesh_debug.h"
+#  include "bmesh_mesh_debug.hh"
 
 #  include "BLI_dynstr.h"
 

@@ -14,14 +14,14 @@
 #include "COLLADAFWUniqueId.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_object.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_string.h"
 #include "ED_armature.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include "DEG_depsgraph.hh"
 

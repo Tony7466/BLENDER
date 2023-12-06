@@ -28,7 +28,7 @@
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_kelvinlet.h"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
@@ -38,7 +38,7 @@
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include <cmath>
 #include <cstdlib>
