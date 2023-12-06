@@ -163,6 +163,8 @@ class BlenderProject {
   [[nodiscard]] bool owns_path(StringRef new_path) const;
 
   [[nodiscard]] StringRefNull root_path() const;
+  /** Returns the path of the `.blender_project/` directory. */
+  [[nodiscard]] std::string settings_directory_path() const;
   [[nodiscard]] ProjectSettings &get_settings() const;
 
   void set_project_name(StringRef new_name);

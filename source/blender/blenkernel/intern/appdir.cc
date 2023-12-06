@@ -531,7 +531,7 @@ static bool get_path_project_ex(char *targetpath,
   return test_path(targetpath,
                    targetpath_maxncpy,
                    check_is_dir,
-                   project->root_path().c_str(),
+                   project->settings_directory_path().c_str(),
                    folder_name,
                    subfolder_name);
 }

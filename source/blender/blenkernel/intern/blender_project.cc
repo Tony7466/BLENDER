@@ -143,6 +143,11 @@ StringRefNull BlenderProject::root_path() const
   return root_path_;
 }
 
+std::string BlenderProject::settings_directory_path() const
+{
+  return project_root_path_to_settings_path(root_path());
+}
+
 ProjectSettings &BlenderProject::get_settings() const
 {
   BLI_assert(settings_ != nullptr);
