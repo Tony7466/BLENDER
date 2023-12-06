@@ -64,8 +64,6 @@
 #include "strip_time.hh"
 #include "utils.hh"
 
-#include "BLI_timeit.hh"
-
 static SeqEffectHandle get_sequence_effect_impl(int seq_type);
 
 /* -------------------------------------------------------------------- */
@@ -2109,7 +2107,6 @@ static void do_glow_effect_byte(Sequence *seq,
                                 uchar *out)
 {
   using namespace blender;
-  SCOPED_TIMER(__func__);
   GlowVars *glow = (GlowVars *)seq->effectdata;
 
   Array<float4> inbuf(x * y);
@@ -2153,7 +2150,6 @@ static void do_glow_effect_float(Sequence *seq,
                                  float *out)
 {
   using namespace blender;
-  SCOPED_TIMER(__func__);
   float4 *outbuf = reinterpret_cast<float4 *>(out);
   float4 *inbuf = reinterpret_cast<float4 *>(rect1);
   GlowVars *glow = (GlowVars *)seq->effectdata;
