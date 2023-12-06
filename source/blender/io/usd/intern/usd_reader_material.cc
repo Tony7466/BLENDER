@@ -555,7 +555,8 @@ void USDMaterialReader::set_principled_node_inputs(bNode *principled,
 
   float emission_strength = 0.0f;
   if (pxr::UsdShadeInput emissive_input = usd_shader.GetInput(usdtokens::emissiveColor)) {
-    if (set_node_input(emissive_input, principled, "Emission Color", ntree, column, &context, true)) {
+    if (set_node_input(
+            emissive_input, principled, "Emission Color", ntree, column, &context, true)) {
       emission_strength = 1.0f;
     }
   }
@@ -582,7 +583,8 @@ void USDMaterialReader::set_principled_node_inputs(bNode *principled,
 
   if (pxr::UsdShadeInput coat_roughness_input = usd_shader.GetInput(usdtokens::clearcoatRoughness))
   {
-    set_node_input(coat_roughness_input, principled, "Coat Roughness", ntree, column, &context, false);
+    set_node_input(
+        coat_roughness_input, principled, "Coat Roughness", ntree, column, &context, false);
   }
 
   if (pxr::UsdShadeInput opacity_input = usd_shader.GetInput(usdtokens::opacity)) {
