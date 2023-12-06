@@ -767,7 +767,6 @@ static void GREASE_PENCIL_OT_stroke_split(wmOperatorType* ot)
   ot->description = "Split selected points as new stroke on same frame";
 
   /* callbacks */
-  //ot->invoke = WM_menu_invoke;
   ot->exec = grease_pencil_stroke_split_exec;
   ot->poll = editable_grease_pencil_poll;
 
