@@ -49,6 +49,7 @@ bool OIDNDenoiserGPU::is_device_supported(const DeviceInfo &device)
         oidnReleaseDevice(test_device);
         return true;
       }
+      oidnGetDeviceError(nullptr, nullptr);
       return false;
     }
 #  endif
