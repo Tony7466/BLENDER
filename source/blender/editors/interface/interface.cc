@@ -2612,7 +2612,6 @@ double ui_but_value_get(uiBut *but)
 
 bool ui_but_value_set(uiBut *but, double value)
 {
-
   if (ui_but_value_get(but) == value) {
     /* Value did not change. */
     return false;
