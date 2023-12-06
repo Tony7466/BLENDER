@@ -182,15 +182,16 @@ int64_t count_booleans(const VArray<bool> &varray, const IndexMask &mask)
   if (varray.is_empty() || mask.is_empty()) {
     return 0;
   }
+  /* Check if mask is full. */
+  if (varray.size() == mask.size()) {
+    return count_booleans(varray);
+  }
   const CommonVArrayInfo info = varray.common_info();
   if (info.type == CommonVArrayInfo::Type::Single) {
     return *static_cast<const bool *>(info.data) ? mask.size() : 0;
   }
   int64_t value = 0;
-  mask.foreach_index([&](const int64_t init) {
-    const bool is_cyclic = varray[init];
-    value += (is_cyclic ? 1 : 0);
-  });
+  mask.foreach_index([&](const int64_t init) { value += int64_t(varray[init]); });
   return value;
 }
 
