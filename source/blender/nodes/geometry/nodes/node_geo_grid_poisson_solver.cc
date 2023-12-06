@@ -30,6 +30,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   // const eCustomDataType data_type = eCustomDataType(storage.data_type);
 
   b.add_input<decl::Float>("Grid").hide_value();
+  b.add_input<decl::Float>("Boundary").hide_value();
 
   b.add_output<decl::Float>("Grid");
 }
@@ -48,6 +49,8 @@ static void node_init(bNodeTree * /*tree*/, bNode * /*node*/) {}
 struct BoundaryOp {
   using ValueType = openvdb::tools::poisson::LaplacianMatrix::ValueType;
 
+  typename openvdb::FloatGrid::ConstAccessor accessor;
+
   void operator()(
       const openvdb::Coord &ijk,           // coordinates of a boundary voxel
       const openvdb::Coord &ijk_neighbor,  // coordinates of an exterior neighbor of ijk
@@ -55,11 +58,15 @@ struct BoundaryOp {
       ValueType &diagonal                  // element of Laplacian matrix corresponding to ijk
   ) const
   {
-    // Dirichlet boundary condition:
-    // Exterior neighbors are empty, so decrement the weighting coefficient
-    // as for interior neighbors but leave the source vector unchanged.
-    diagonal -= 1;
-    UNUSED_VARS(ijk, ijk_neighbor, source);
+    if (accessor.isValueOn(ijk_neighbor)) {
+      /* Solid boundary, add source values. */
+      source += accessor.getValue(ijk_neighbor);
+    }
+    else {
+      /* Open boundary, remove interaction with neighbor voxel. */
+      diagonal -= 1;
+    }
+    UNUSED_VARS(ijk);
   }
 };
 
@@ -67,13 +74,14 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const bke::VolumeGridPtr<float> input_grid = grids::extract_grid_input<float>(params, "Grid");
+  const bke::VolumeGridPtr<float> boundary_grid = grids::extract_grid_input<float>(params, "Boundary");
   if (!input_grid) {
     params.set_default_remaining_outputs();
   }
 
   const openvdb::FloatTree &input_tree = input_grid.grid()->tree();
 
-  BoundaryOp boundary_op;
+  BoundaryOp boundary_op{boundary_grid.grid()->getAccessor()};
 
   const double epsilon = openvdb::math::Delta<float>::value();
   openvdb::math::pcg::State pcg_state = openvdb::math::pcg::terminationDefaults<float>();
