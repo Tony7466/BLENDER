@@ -37,7 +37,6 @@
 
 #include "DNA_action_types.h"
 #include "DNA_gpencil_legacy_types.h"
-#include "DNA_grease_pencil_types.h"
 #include "DNA_key_types.h"
 #include "DNA_mask_types.h"
 #include "DNA_material_types.h"
@@ -4907,14 +4906,6 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Opacity", "Vertex Paint mix factor");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_GPencil_update");
-
-#  ifdef WITH_GREASE_PENCIL_V3
-  /* show edit lines */
-  prop = RNA_def_property(srna, "use_grease_pencil_edit_lines", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "gp_flag", V3D_GP_SHOW_EDIT_LINES);
-  RNA_def_property_ui_text(prop, "Show Edit Lines", "Show Edit Lines when editing strokes");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
-#  endif
 
   /* Developer Debug overlay */
 

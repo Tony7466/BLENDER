@@ -7816,7 +7816,7 @@ class VIEW3D_PT_overlay_grease_pencil_options(Panel):
         if context.object.mode in {'EDIT'}:
             split = layout.split()
             col = split.column()
-            col.prop(overlay, "use_grease_pencil_edit_lines", text="Edit Lines")
+            col.prop(overlay, "use_gpencil_edit_lines", text="Edit Lines")
 
 
 class VIEW3D_PT_quad_view(Panel):
