@@ -173,6 +173,7 @@ static VectorSet<int> get_editable_material_indices(Object &object)
   VectorSet<int> locked_material_indices;
   for (const int mat_i : IndexRange(object.totcol)) {
     Material *material = BKE_object_material_get(&object, mat_i + 1);
+    /* The editable materials are unlocked and not hidden. */
     if (material != nullptr && material->gp_style != nullptr &&
         (material->gp_style->flag & GP_MATERIAL_LOCKED) == 0 &&
         (material->gp_style->flag & GP_MATERIAL_HIDE) == 0)
