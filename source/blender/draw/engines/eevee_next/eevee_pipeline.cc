@@ -542,7 +542,9 @@ void DeferredLayer::end_sync()
          * use no fragment output. */
         sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_EQUAL | DRW_STATE_DEPTH_GREATER);
         sub.barrier(GPU_BARRIER_SHADER_STORAGE);
-        for (int i = 0; i < ARRAY_SIZE(closure_bufs_); i++) {
+        /* Submit the more costly ones first to avoid long tail in occupancy.
+         * See page 78 of "Siggraph 2023: Unreal Engine Substrate" by Hillaire & de Rousiers. */
+        for (int i = ARRAY_SIZE(closure_bufs_) - 1; i >= 0; i--) {
           sub.shader_set(inst_.shaders.static_shader_get(eShaderType(DEFERRED_LIGHT_SINGLE + i)));
           sub.bind_image("direct_radiance_1_img", &direct_radiance_txs_[0]);
           sub.bind_image("direct_radiance_2_img", &direct_radiance_txs_[1]);
