@@ -728,6 +728,9 @@ mark_as_advanced(WITH_CXX_GUARDEDALLOC)
 option(WITH_ASSERT_ABORT "Call abort() when raising an assertion through BLI_assert()" ON)
 mark_as_advanced(WITH_ASSERT_ABORT)
 
+option(WITH_ASSERT_RELEASE "Build with asserts enabled even for non-debug configurations" OFF)
+mark_as_advanced(WITH_ASSERT_RELEASE)
+
 if((UNIX AND NOT APPLE) OR (CMAKE_GENERATOR MATCHES "^Visual Studio.+"))
   option(WITH_CLANG_TIDY "\
 Use Clang Tidy to analyze the source code \
@@ -845,11 +848,6 @@ Ensure string operations on fixed size buffers \
 (works well with with \"WITH_COMPILER_ASAN\" & valgrind to detect incorrect buffer size arguments)"
   OFF)
 mark_as_advanced(WITH_STRSIZE_DEBUG)
-
-
-# for testing on the bots this is currently on by default, when landing this *NEEDS* to be off
-option(WITH_ASSERT_RELEASE "Build with asserts enabled even for non-debug configurations" ON)
-mark_as_advanced(WITH_ASSERT_RELEASE)
 
 # Compiler tool-chain.
 if(UNIX)
