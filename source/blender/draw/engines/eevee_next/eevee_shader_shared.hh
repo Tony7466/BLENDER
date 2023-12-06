@@ -1423,10 +1423,10 @@ BLI_STATIC_ASSERT_ALIGN(ProbePlanarDisplayData, 16)
  * \{ */
 
 struct PipelineInfoData {
-  int closure_tile_size_shift;
-  int closure_tile_per_row;
   float alpha_hash_scale;
   float _pad0;
+  float _pad1;
+  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(PipelineInfoData, 16)
 

@@ -48,7 +48,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_tile_stencil)
     .fragment_source("eevee_deferred_tile_stencil_frag.glsl")
     .additional_info("eevee_shared")
     /* Only for texture size. */
-    .image_out(2, DEFERRED_RADIANCE_FORMAT, "direct_radiance_img")
+    .sampler(0, ImageType::FLOAT_2D, "direct_radiance_tx")
     .storage_buf(4, Qualifier::READ, "uint", "closure_tile_buf[]")
     .push_constant(Type::INT, "closure_tile_size_shift")
     .typedef_source("draw_shader_shared.h")

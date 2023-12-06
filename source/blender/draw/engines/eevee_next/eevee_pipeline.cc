@@ -526,10 +526,10 @@ void DeferredLayer::end_sync()
         sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS |
                       DRW_STATE_DEPTH_GREATER);
         sub.shader_set(inst_.shaders.static_shader_get(DEFERRED_TILE_STENCIL));
+        sub.push_constant("closure_tile_size_shift", &closure_tile_size_shift_);
+        sub.bind_texture("direct_radiance_tx", &direct_radiance_txs_[0]);
         /* Set stencil value for each tile complexity level. */
         for (int i = 0; i < ARRAY_SIZE(closure_bufs_); i++) {
-          sub.push_constant("closure_tile_size_shift", &closure_tile_size_shift_);
-          sub.bind_image("direct_radiance_img", &direct_radiance_txs_[0]);
           sub.bind_ssbo("closure_tile_buf", &closure_bufs_[i].tile_buf_);
           sub.state_stencil(0xFFu, 1u << i, 0xFFu);
           sub.draw_procedural_indirect(GPU_PRIM_TRIS, closure_bufs_[i].draw_buf_);
@@ -542,6 +542,9 @@ void DeferredLayer::end_sync()
          * use no fragment output. */
         sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_EQUAL | DRW_STATE_DEPTH_GREATER);
         sub.barrier(GPU_BARRIER_SHADER_STORAGE);
+        sub.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+        sub.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
+        sub.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
         /* Submit the more costly ones first to avoid long tail in occupancy.
          * See page 78 of "Siggraph 2023: Unreal Engine Substrate" by Hillaire & de Rousiers. */
         for (int i = ARRAY_SIZE(closure_bufs_) - 1; i >= 0; i--) {
@@ -549,9 +552,6 @@ void DeferredLayer::end_sync()
           sub.bind_image("direct_radiance_1_img", &direct_radiance_txs_[0]);
           sub.bind_image("direct_radiance_2_img", &direct_radiance_txs_[1]);
           sub.bind_image("direct_radiance_3_img", &direct_radiance_txs_[2]);
-          sub.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-          sub.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
-          sub.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
           inst_.bind_uniform_data(&sub);
           inst_.gbuffer.bind_resources(sub);
           inst_.lights.bind_resources(sub);
@@ -668,9 +668,7 @@ void DeferredLayer::render(View &main_view,
     }
   }
 
-  if (/* FIXME(fclem): Metal doesn't clear the whole framebuffer correctly. */
-      GPU_backend_get_type() == GPU_BACKEND_METAL ||
-      /* FIXME(fclem): Vulkan doesn't implement load / store config yet. */
+  if (/* FIXME(fclem): Vulkan doesn't implement load / store config yet. */
       GPU_backend_get_type() == GPU_BACKEND_VULKAN)
   {
     inst_.gbuffer.header_tx.clear(int4(0));
