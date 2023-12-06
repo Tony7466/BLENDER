@@ -20,14 +20,14 @@ void main()
   float depth = texelFetch(hiz_tx, texel, 0).r;
   GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
 
-  if (!gbuf.has_reflection && !gbuf.has_diffuse /* TODO(fclem) && !gbuf.has_refraction */) {
+  if (gbuf.closure_count == 0) {
     return;
   }
 
   vec3 P = drw_point_screen_to_world(vec3(uvcoordsvar.xy, depth));
   /* Assume reflection closure normal is always somewhat representative of the geometric normal.
    * Ng is only used for shadow biases and subsurface check in this case. */
-  vec3 Ng = gbuf.has_reflection ? gbuf.reflection.N : gbuf.diffuse.N;
+  vec3 Ng = gbuf.surface_N;
   vec3 V = drw_world_incident_vector(P);
   float vPz = dot(drw_view_forward(), P) - dot(drw_view_forward(), drw_view_position());
 
@@ -39,13 +39,15 @@ void main()
   cl_diff.type = LIGHT_DIFFUSE;
   stack.cl[0] = cl_diff;
 
+#if LIGHT_CLOSURE_EVAL_COUNT > 1
   ClosureLight cl_refl;
   cl_refl.N = gbuf.reflection.N;
   cl_refl.ltc_mat = LTC_GGX_MAT(dot(gbuf.reflection.N, V), gbuf.reflection.roughness);
   cl_refl.type = LIGHT_SPECULAR;
   stack.cl[1] = cl_refl;
+#endif
 
-#ifdef SSS_TRANSMITTANCE
+#if LIGHT_CLOSURE_EVAL_COUNT > 2
   ClosureLight cl_sss;
   cl_sss.N = -gbuf.diffuse.N;
   cl_sss.ltc_mat = LTC_LAMBERT_MAT;
@@ -76,17 +78,13 @@ void main()
   }
 #endif
 
-  vec3 radiance_diffuse = stack.cl[0].light_shadowed;
-  vec3 radiance_specular = stack.cl[1].light_shadowed;
-#ifdef SSS_TRANSMITTANCE
-  radiance_diffuse += stack.cl[2].light_shadowed;
-#endif
-
   vec3 radiance_shadowed = stack.cl[0].light_shadowed;
   vec3 radiance_unshadowed = stack.cl[0].light_unshadowed;
+#if LIGHT_CLOSURE_EVAL_COUNT > 1
   radiance_shadowed += stack.cl[1].light_shadowed;
   radiance_unshadowed += stack.cl[1].light_unshadowed;
-#ifdef SSS_TRANSMITTANCE
+#endif
+#if LIGHT_CLOSURE_EVAL_COUNT > 2
   radiance_shadowed += stack.cl[2].light_shadowed;
   radiance_unshadowed += stack.cl[2].light_unshadowed;
 #endif
@@ -95,12 +93,19 @@ void main()
   vec3 shadows = radiance_shadowed * safe_rcp(radiance_unshadowed);
   output_renderpass_value(uniform_buf.render_pass.shadow_id, average(shadows));
 
-  if (gbuf.has_diffuse) {
-    imageStore(direct_diffuse_img, texel, vec4(radiance_diffuse, 1.0));
+  if (gbuf.closure_count > 0) {
+    imageStore(direct_radiance_1_img, texel, vec4(stack.cl[0].light_shadowed, 1.0));
   }
-  if (gbuf.has_reflection) {
-    imageStore(direct_reflect_img, texel, vec4(radiance_specular, 1.0));
+
+#if LIGHT_CLOSURE_EVAL_COUNT > 1
+  if (gbuf.closure_count > 1) {
+    imageStore(direct_radiance_2_img, texel, vec4(stack.cl[1].light_shadowed, 1.0));
   }
-  /* TODO(fclem): Support LTC for refraction. */
-  // imageStore(direct_refract_img, texel, vec4(cl_refr.light_shadowed, 1.0));
+#endif
+
+#if LIGHT_CLOSURE_EVAL_COUNT > 2
+  if (gbuf.closure_count > 1) {
+    imageStore(direct_radiance_3_img, texel, vec4(stack.cl[1].light_shadowed, 1.0));
+  }
+#endif
 }

@@ -98,6 +98,9 @@
 #define SHADOW_MAX_RAY 4
 #define SHADOW_ROG_ID 0
 
+/* Deferred Lighting. */
+#define DEFERRED_RADIANCE_FORMAT GPU_R11F_G11F_B10F
+
 /* Ray-tracing. */
 #define RAYTRACE_GROUP_SIZE 8
 /* Keep this as a define to avoid shader variations. */

@@ -33,10 +33,12 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_tile_compact)
     .vertex_source("eevee_deferred_tile_compact_vert.glsl")
     /* Reuse dummy stencil frag. */
     .fragment_source("eevee_deferred_tile_stencil_frag.glsl")
-    /* Early fragment test is needed to avoid processing background fragments. */
-    .early_fragment_test(true)
-    .storage_buf(0, Qualifier::READ_WRITE, "DrawCommand", "closure_diffuse_draw_buf")
-    .storage_buf(1, Qualifier::WRITE, "uint", "closure_diffuse_tile_buf[]")
+    .storage_buf(0, Qualifier::READ_WRITE, "DrawCommand", "closure_single_draw_buf")
+    .storage_buf(1, Qualifier::READ_WRITE, "DrawCommand", "closure_double_draw_buf")
+    .storage_buf(2, Qualifier::READ_WRITE, "DrawCommand", "closure_triple_draw_buf")
+    .storage_buf(3, Qualifier::WRITE, "uint", "closure_single_tile_buf[]")
+    .storage_buf(4, Qualifier::WRITE, "uint", "closure_double_tile_buf[]")
+    .storage_buf(5, Qualifier::WRITE, "uint", "closure_triple_tile_buf[]")
     .sampler(0, ImageType::UINT_2D_ARRAY, "tile_mask_tx")
     .do_static_compilation(true);
 
@@ -45,7 +47,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_tile_stencil)
     .fragment_source("eevee_deferred_tile_stencil_frag.glsl")
     .additional_info("eevee_shared")
     /* Only for texture size. */
-    .image_out(2, GPU_RGBA16F, "out_direct_radiance_img")
+    .image_out(2, GPU_RGBA16F, "radiance_img")
     .storage_buf(4, Qualifier::READ, "uint", "closure_tile_buf[]")
     .push_constant(Type::INT, "closure_tile_size_shift")
     .typedef_source("draw_shader_shared.h")
@@ -56,11 +58,9 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     /* Early fragment test is needed to avoid processing background fragments. */
     .early_fragment_test(true)
     /* Chaining to next pass. */
-    .image_out(2, GPU_RGBA16F, "direct_diffuse_img")
-    .image_out(3, GPU_RGBA16F, "direct_reflect_img")
-    .image_out(4, GPU_RGBA16F, "direct_refract_img")
-    .define("SSS_TRANSMITTANCE")
-    .define("LIGHT_CLOSURE_EVAL_COUNT", "3")
+    .image_out(2, DEFERRED_RADIANCE_FORMAT, "direct_radiance_1_img")
+    .image_out(3, DEFERRED_RADIANCE_FORMAT, "direct_radiance_2_img")
+    .image_out(4, DEFERRED_RADIANCE_FORMAT, "direct_radiance_3_img")
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
                      "eevee_utility_texture",
@@ -70,16 +70,31 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
                      "eevee_hiz_data",
                      "eevee_render_pass_out",
                      "draw_fullscreen",
-                     "draw_view")
+                     "draw_view");
+
+GPU_SHADER_CREATE_INFO(eevee_deferred_light_single)
+    .additional_info("eevee_deferred_light")
+    .define("LIGHT_CLOSURE_EVAL_COUNT", "1")
+    .do_static_compilation(true);
+
+GPU_SHADER_CREATE_INFO(eevee_deferred_light_double)
+    .additional_info("eevee_deferred_light")
+    .define("LIGHT_CLOSURE_EVAL_COUNT", "2")
+    .do_static_compilation(true);
+
+GPU_SHADER_CREATE_INFO(eevee_deferred_light_triple)
+    .additional_info("eevee_deferred_light")
+    .define("SSS_TRANSMITTANCE")
+    .define("LIGHT_CLOSURE_EVAL_COUNT", "3")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
     /* Early fragment test is needed to avoid processing fragments background fragments. */
     .early_fragment_test(true)
     /* Inputs. */
-    .image_in(2, GPU_RGBA16F, "direct_diffuse_img")
-    .image_in(3, GPU_RGBA16F, "direct_reflect_img")
-    .image_in(4, GPU_RGBA16F, "direct_refract_img")
+    .image_in(2, DEFERRED_RADIANCE_FORMAT, "direct_radiance_1_img")
+    .image_in(3, DEFERRED_RADIANCE_FORMAT, "direct_radiance_2_img")
+    .image_in(4, DEFERRED_RADIANCE_FORMAT, "direct_radiance_3_img")
     .image_in(5, RAYTRACE_RADIANCE_FORMAT, "indirect_diffuse_img")
     .image_in(6, RAYTRACE_RADIANCE_FORMAT, "indirect_reflect_img")
     .image_in(7, RAYTRACE_RADIANCE_FORMAT, "indirect_refract_img")

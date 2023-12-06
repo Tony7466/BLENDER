@@ -210,8 +210,6 @@ class DeferredLayer : DeferredLayerBase {
   PassSimple eval_light_ps_ = {"EvalLights"};
   /* Combine direct and indirect light contributions and apply BSDF color. */
   PassSimple combine_ps_ = {"Combine"};
-  /* Fill tile mask texture with the collected closure present in a tile. */
-  PassSimple tile_classify_ps_ = {"TileClassify"};
 
   /**
    * Accumulation textures for all stages of lighting evaluation (Light, SSR, SSSS, SSGI ...).
@@ -220,10 +218,10 @@ class DeferredLayer : DeferredLayerBase {
    * BSDF color and do additive blending for each of the lighting step.
    *
    * NOTE: Not to be confused with the render passes.
+   * NOTE: Using array of texture instead of texture array to allow to use TextureFromPool.
    */
-  TextureFromPool direct_diffuse_tx_ = {"direct_diffuse_tx"};
-  TextureFromPool direct_reflect_tx_ = {"direct_reflect_tx"};
-  TextureFromPool direct_refract_tx_ = {"direct_refract_tx"};
+  TextureFromPool direct_radiance_txs_[3] = {
+      {"direct_radiance_1"}, {"direct_radiance_2"}, {"direct_radiance_3"}};
   /* Reference to ray-tracing result. */
   GPUTexture *indirect_diffuse_tx_ = nullptr;
   GPUTexture *indirect_reflect_tx_ = nullptr;
@@ -231,10 +229,11 @@ class DeferredLayer : DeferredLayerBase {
 
   /* Parameters for the light evaluation pass. */
   int closure_tile_size_shift_ = 0;
+  /* Tile buffers for different lighting complexity levels. */
   struct {
     DrawIndirectBuf draw_buf_ = {"DrawIndirectBuf"};
     ClosureTileBuf tile_buf_ = {"ClosureTileBuf"};
-  } closure_diffuse, closure_reflection;
+  } closure_bufs_[3];
   /**
    * Tile texture containing several bool per tile indicating presence of feature.
    * It is used to select specialized shader for each tile.
