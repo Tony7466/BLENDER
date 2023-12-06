@@ -5841,6 +5841,7 @@ class VIEW3D_MT_edit_greasepencil(Menu):
         layout.separator()
 
         layout.operator("grease_pencil.duplicate_move")
+        layout.operator("grease_pencil.stroke_split", text="Split")
 
         layout.separator()
 
@@ -5857,7 +5858,6 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
     def draw(self, _context):
         layout = self.layout
         layout.operator("grease_pencil.stroke_simplify", text="Simplify")
-        layout.operator("grease_pencil.stroke_split", text="Split")
 
         layout.separator()
 
