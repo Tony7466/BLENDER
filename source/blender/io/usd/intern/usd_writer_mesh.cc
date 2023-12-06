@@ -56,7 +56,8 @@ bool USDGenericMeshWriter::is_supported(const HierarchyContext *context) const
   return true;
 }
 
-static const SubsurfModifierData *get_subsurf_modifier(eEvaluationMode eval_mode, Object *obj)
+/* Get the last subdiv modifier, regardless of enable/disable status */
+static const SubsurfModifierData *get_last_subdiv_modifier(eEvaluationMode eval_mode, Object *obj)
 {
   BLI_assert(obj);
 
@@ -90,16 +91,15 @@ void USDGenericMeshWriter::do_write(HierarchyContext &context)
   bool needsfree = false;
   Mesh *mesh = get_export_mesh(object_eval, needsfree);
 
-  /* Only fetch the subdiv modifier if it is the last modifier, */
-  /* and is enabled for the selected evaluation mode. */
-  const SubsurfModifierData *subsurfData = get_subsurf_modifier(
-      usd_export_context_.export_params.evaluation_mode, object_eval);
-
   if (mesh == nullptr) {
     return;
   }
 
   try {
+    /* Fetch the subdiv modifier, if one exists and it is the last modifier. */
+    const SubsurfModifierData *subsurfData = get_last_subdiv_modifier(
+        usd_export_context_.export_params.evaluation_mode, object_eval);
+    
     write_mesh(context, mesh, subsurfData);
 
     if (needsfree) {
@@ -507,6 +507,23 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context,
     return;
   }
 
+  write_subdiv_and_normals(mesh, usd_mesh, subsurfData);
+
+  if (usd_export_context_.export_params.export_materials) {
+    assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
+  }
+
+  /* Blender grows its bounds cache to cover animated meshes, so only author once. */
+  if (const std::optional<Bounds<float3>> bounds = mesh->bounds_min_max()) {
+    pxr::VtArray<pxr::GfVec3f> extent{
+        pxr::GfVec3f{bounds->min[0], bounds->min[1], bounds->min[2]},
+        pxr::GfVec3f{bounds->max[0], bounds->max[1], bounds->max[2]}};
+    usd_mesh.CreateExtentAttr().Set(extent);
+  }
+}
+
+void USDGenericMeshWriter::write_subdiv_and_normals(Mesh *mesh, pxr::UsdGeomMesh& usd_mesh, const SubsurfModifierData* subsurfData)
+{
   /* Default to setting the subdivision scheme to None. */
   pxr::TfToken subdiv_scheme = pxr::UsdGeomTokens->none;
 
@@ -574,18 +591,6 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context,
   if (usd_export_context_.export_params.export_normals &&
       subdiv_scheme == pxr::UsdGeomTokens->none) {
     write_normals(mesh, usd_mesh);
-  }
-
-  if (usd_export_context_.export_params.export_materials) {
-    assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
-  }
-
-  /* Blender grows its bounds cache to cover animated meshes, so only author once. */
-  if (const std::optional<Bounds<float3>> bounds = mesh->bounds_min_max()) {
-    pxr::VtArray<pxr::GfVec3f> extent{
-        pxr::GfVec3f{bounds->min[0], bounds->min[1], bounds->min[2]},
-        pxr::GfVec3f{bounds->max[0], bounds->max[1], bounds->max[2]}};
-    usd_mesh.CreateExtentAttr().Set(extent);
   }
 }
 

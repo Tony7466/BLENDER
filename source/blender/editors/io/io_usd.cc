@@ -96,18 +96,18 @@ const EnumPropertyItem rna_enum_usd_export_subdiv_mode_items[] = {
      "IGNORE",
      0,
      "Ignore",
-     "SubD scheme = None, export base mesh without subdivision"},
+     "Subdivision scheme = None, export base mesh without subdivision"},
     {USD_SUBDIV_TESSELLATE,
      "TESSELLATE",
      0,
      "Tessellate",
-     "SubD scheme = None, export subdivided mesh"},
+     "Subdivision scheme = None, export subdivided mesh"},
     {USD_SUBDIV_BEST_MATCH,
      "BEST_MATCH",
      0,
      "Best Match",
-     "Export base mesh with Catmull-Clark subdivision scheme when possible.  "
-     "Reverts to exporting the subdivided mesh for the Simple subdivision type. "},
+     "Subdivision scheme = Catmull-Clark, when possible. "
+     "Reverts to exporting the subdivided mesh for the Simple subdivision type"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

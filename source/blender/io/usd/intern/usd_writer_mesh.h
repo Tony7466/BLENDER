@@ -33,6 +33,7 @@ class USDGenericMeshWriter : public USDAbstractWriter {
   using MaterialFaceGroups = Map<short, pxr::VtIntArray>;
 
   void write_mesh(HierarchyContext &context, Mesh *mesh, const SubsurfModifierData* subsurfData);
+  void write_subdiv_and_normals(Mesh *mesh, pxr::UsdGeomMesh& usd_mesh, const SubsurfModifierData* subsurfData);
   void get_geometry_data(const Mesh *mesh, struct USDMeshData &usd_mesh_data);
   void assign_materials(const HierarchyContext &context,
                         pxr::UsdGeomMesh usd_mesh,

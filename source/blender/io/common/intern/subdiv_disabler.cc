@@ -27,7 +27,7 @@ namespace blender::io {
  * which are allowed.
  * Returns nullptr if there is not any subdiv modifier to disable.
  */
-ModifierData *SubdivModifierDisabler::get_subsurf_modifier(Scene *scene, const Object *ob, ModifierMode mode)
+ModifierData *SubdivModifierDisabler::get_subdiv_modifier(Scene *scene, const Object *ob, ModifierMode mode)
 {
   ModifierData *md = static_cast<ModifierData *>(ob->modifiers.last);
 
@@ -96,13 +96,13 @@ void SubdivModifierDisabler::disable_modifiers()
     }
 
     /* Check if a subdiv modifier exists, and should be disabled. */
-    ModifierData *mod = get_subsurf_modifier(scene, object, mode);
+    ModifierData *mod = get_subdiv_modifier(scene, object, mode);
     if (!mod) {
       continue;
     }
 
     /* This might disable more modifiers than necessary, as it doesn't take restrictions like
-     * "export selected objects only" into account. However, with the subsurfs disabled,
+     * "export selected objects only" into account. However, with the subdivs disabled,
      * moving to a different frame is also going to be faster, so in the end this is probably
      * a good thing to do. */
     disable_modifier(mod);

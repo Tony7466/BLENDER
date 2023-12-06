@@ -41,11 +41,11 @@ class SubdivModifierDisabler final {
   void disable_modifiers();
 
   /**
-   * Return the Catmull-Clark subsurf modifier on the mesh, if it's the last modifier
+   * Return the Catmull-Clark subdiv modifier on the mesh, if it's the last modifier
    * in the list or if it's the last modifier preceding any particle system modifiers.
-   * This function ignores Simple subsurf modifiers.
+   * This function ignores Simple subdiv modifiers.
    */
-  static ModifierData *get_subsurf_modifier(Scene *scene, const Object *ob, ModifierMode mode);
+  static ModifierData *get_subdiv_modifier(Scene *scene, const Object *ob, ModifierMode mode);
 
   /* Disallow copying. */
   SubdivModifierDisabler(const SubdivModifierDisabler &) = delete;
