@@ -288,9 +288,6 @@ template<typename OutputGridPtr> struct TopologyInitOp {
 
   template<typename T> void operator()()
   {
-    using GridType = typename bke::VolumeGridPtr<T>::GridType;
-    using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
-
     if (!this->topology_grid) {
       /* TODO should use topology union of inputs in this case. */
       return;
@@ -315,7 +312,8 @@ struct CaptureGridOp {
     using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
     using Converter = bke::grids::Converter<T>;
 
-    const typename GridType::ValueType vdb_background = Converter::to_openvdb(*this->background.get<T>());
+    const typename GridType::ValueType vdb_background = Converter::to_openvdb(
+        *this->background.get<T>());
 
     /* Evaluate value field and fill in the grid. */
     const GridPtr output_grid = GridType::create(vdb_background);

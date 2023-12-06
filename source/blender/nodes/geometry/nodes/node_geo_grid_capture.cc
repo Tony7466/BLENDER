@@ -129,16 +129,12 @@ template<typename GridType> class CaptureFieldContext : public FieldContext {
   }
 };
 
-template <typename OutputGridPtr>
-struct TopologyInitOp {
+template<typename OutputGridPtr> struct TopologyInitOp {
   GeoNodeExecParams params;
   OutputGridPtr output_grid;
 
   template<typename T> void operator()()
   {
-    using GridType = typename bke::VolumeGridPtr<T>::GridType;
-    using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
-
     const bke::VolumeGridPtr<T> topo_grid = grids::extract_grid_input<T>(this->params,
                                                                          "Topology Grid");
     if (!topo_grid) {

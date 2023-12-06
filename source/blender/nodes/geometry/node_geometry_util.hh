@@ -200,6 +200,9 @@ template<typename OpT> auto apply(const eCustomDataType data_type, OpT &op)
       BLI_assert_unreachable();
       break;
   }
+  BLI_assert_unreachable();
+  /* Dummy output value for compiler, should never get here. */
+  return op.template operator()<float>();
 }
 
 #ifdef WITH_OPENVDB
