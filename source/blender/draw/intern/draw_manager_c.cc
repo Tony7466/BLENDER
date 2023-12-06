@@ -28,7 +28,7 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.h"
 #include "BKE_lattice.hh"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
@@ -82,7 +82,7 @@
 #include "draw_manager_testing.h"
 #include "draw_manager_text.h"
 #include "draw_shader.h"
-#include "draw_subdivision.h"
+#include "draw_subdivision.hh"
 #include "draw_texture_pool.h"
 
 /* only for callbacks */
@@ -123,7 +123,7 @@ static void drw_state_prepare_clean_for_draw(DRWManager *dst)
  * where we don't re-use data by accident across different
  * draw calls.
  */
-#ifdef DEBUG
+#ifndef NDEBUG
 static void drw_state_ensure_not_reused(DRWManager *dst)
 {
   memset(dst, 0xff, offsetof(DRWManager, system_gpu_context));
@@ -645,7 +645,7 @@ static void drw_manager_exit(DRWManager *dst)
   }
   dst->vmempool = nullptr;
   dst->viewport = nullptr;
-#ifdef DEBUG
+#ifndef NDEBUG
   /* Avoid accidental reuse. */
   drw_state_ensure_not_reused(dst);
 #endif
@@ -746,10 +746,8 @@ static void duplidata_key_free(void *key)
     temp_object.runtime = &runtime;
 
     /* Do not modify the original bound-box. */
-    temp_object.runtime->bb = nullptr;
     BKE_object_replace_data_on_shallow_copy(&temp_object, dupli_key->ob_data);
     drw_batch_cache_generate_requested(&temp_object);
-    MEM_SAFE_FREE(temp_object.runtime->bb);
   }
   MEM_freeN(key);
 }
