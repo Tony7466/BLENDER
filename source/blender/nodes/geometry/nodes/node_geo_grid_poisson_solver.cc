@@ -84,6 +84,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const bool staggered = false;
   using PreconditionerType = openvdb::math::pcg::IncompleteCholeskyPreconditioner<
       openvdb::tools::poisson::LaplacianMatrix>;
+
   openvdb::FloatTree::Ptr output_tree =
       openvdb::tools::poisson::solveWithBoundaryConditionsAndPreconditioner<PreconditionerType>(
           input_tree, boundary_op, pcg_state, interrupter, staggered);

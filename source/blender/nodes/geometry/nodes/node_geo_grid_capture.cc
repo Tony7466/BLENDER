@@ -158,10 +158,6 @@ struct CaptureGridOp {
 
   template<typename T> bke::GVolumeGridPtr operator()()
   {
-    using GridType = typename bke::VolumeGridPtr<T>::GridType;
-    using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
-    using Converter = bke::grids::Converter<T>;
-
     const eCustomDataType data_type = eCustomDataType(params.node().custom1);
     const eCustomDataType topo_data_type = eCustomDataType(params.node().custom2);
     BLI_assert(grids::grid_type_supported(topo_data_type));
