@@ -10,6 +10,7 @@
 
 struct Object;
 struct bConstraint;
+struct TransData;
 
 #define TRANSDATABASIC \
   /** Extra data (mirrored element pointer, in edit-mode mesh to #BMVert) \
@@ -37,6 +38,8 @@ struct TransDataMirror {
   // int pad;
   /** Location of the data to transform. */
   float *loc_src;
+  /** The mirrored TransData. Useful to check values such as #td->factor. */
+  TransData *td_src;
 };
 
 struct TransDataExtension {

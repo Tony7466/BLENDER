@@ -1679,6 +1679,22 @@ static void createTransEditVerts(bContext * /*C*/, TransInfo *t)
       }
     }
 
+    if (prop_mode && mirror_data.vert_map) {
+      /* When Mirror and Proportional Influence are activated, it is convenient to check whether
+       * the influence affects the mirrored element before mirroring. This avoids unpredictable
+       * vertex movements in regions that are not expected to have transformation. */
+      bm->elem_index_dirty |= BM_VERT;
+      for (a = 0, tob = tc->data; a < tc->data_len; a++, tob++) {
+        eve = static_cast<BMVert *>(tob->extra);
+        BM_elem_index_set(eve, a);
+      }
+
+      for (a = 0, td_mirror = tc->data_mirror; a < tc->data_mirror_len; a++, td_mirror++) {
+        eve = static_cast<BMVert *>(td_mirror->extra);
+        td_mirror->td_src = &tc->data[BM_elem_index_get(eve)];
+      }
+    }
+
     transform_convert_mesh_islanddata_free(&island_data);
     transform_convert_mesh_mirrordata_free(&mirror_data);
     transform_convert_mesh_crazyspace_free(&crazyspace_data);
@@ -2020,6 +2036,11 @@ static void mesh_transdata_mirror_apply(TransDataContainer *tc)
 
     TransDataMirror *td_mirror = tc->data_mirror;
     for (i = 0; i < tc->data_mirror_len; i++, td_mirror++) {
+      if (td_mirror->td_src && td_mirror->td_src->factor == 0.0f) {
+        /* Ensure original position. */
+        copy_v3_v3(td_mirror->loc, td_mirror->iloc);
+        continue;
+      }
       copy_v3_v3(td_mirror->loc, td_mirror->loc_src);
       if (td_mirror->flag & TD_MIRROR_X) {
         td_mirror->loc[0] *= -1;
