@@ -425,15 +425,12 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       IndexRange points = points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
 
-      /* If the last curve is not the previous curve then loop through the missed curves and add to
-       * the offset. */
-      if (curve_i != last_curve_i + 1) {
-        for (const int in_between_curve_i :
-             IndexRange(last_curve_i + 1, (curve_i - last_curve_i) - 1)) {
-          IndexRange in_between_points = points_by_curve[in_between_curve_i];
-          if (in_between_points.size() >= 3) {
-            t_offset += in_between_points.size() - 2;
-          }
+      /* loop through the missed curves and add them to the offset. */
+      for (const int in_between_curve_i :
+           IndexRange(last_curve_i + 1, (curve_i - last_curve_i) - 1)) {
+        IndexRange in_between_points = points_by_curve[in_between_curve_i];
+        if (in_between_points.size() >= 3) {
+          t_offset += in_between_points.size() - 2;
         }
       }
 
