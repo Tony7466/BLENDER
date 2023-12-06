@@ -53,9 +53,10 @@ endif()
 # quiet output for Makefiles, 'make -s' helps too
 # set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 
-# global compile definitions since add_definitions() adds for all.
+# Global compile definitions since add_definitions() adds for all.
+# _DEBUG is a Visual Studio define, enabled for all platforms.
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
-  $<$<CONFIG:Debug>:DEBUG;_DEBUG>
+  $<$<CONFIG:Debug>:_DEBUG>
 )
 # -----------------------------------------------------------------------------
 # Set policy
@@ -843,8 +844,8 @@ mark_as_advanced(WITH_STRSIZE_DEBUG)
 
 
 # for testing on the bots this is currently on by default, when landing this *NEEDS* to be off
-option(WITH_RELEASE_ASSERTS "Build with asserts enabled even for non-debug configurations" ON)
-mark_as_advanced(WITH_RELEASE_ASSERTS)
+option(WITH_ASSERT_RELEASE "Build with asserts enabled even for non-debug configurations" ON)
+mark_as_advanced(WITH_ASSERT_RELEASE)
 
 # Compiler tool-chain.
 if(UNIX)
@@ -2160,7 +2161,8 @@ if(WITH_ASSERT_ABORT)
   add_definitions(-DWITH_ASSERT_ABORT)
 endif()
 
-if(WITH_RELEASE_ASSERTS)
+# NDEBUG is the standard C define to disable asserts.
+if(WITH_ASSERT_RELEASE)
   # CMake seemingly be setting the NDEBUG flag on its own already on some configurations
   # therefore we need to remove the flags if they happen to be set.
   remove_cc_flag("-DNDEBUG") # GCC/CLang
