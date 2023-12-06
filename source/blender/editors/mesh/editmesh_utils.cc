@@ -27,7 +27,7 @@
 #include "BKE_editmesh_bvh.h"
 #include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_report.h"
@@ -1689,7 +1689,7 @@ void EDBM_update(Mesh *mesh, const EDBMUpdate_Params *params)
     em->bm->spacearr_dirty &= ~BM_SPACEARR_BMO_SET;
   }
 
-#ifdef DEBUG
+#ifndef NDEBUG
   {
     LISTBASE_FOREACH (BMEditSelection *, ese, &em->bm->selected) {
       BLI_assert(BM_elem_flag_test(ese->ele, BM_ELEM_SELECT));
