@@ -152,21 +152,6 @@ Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene, const GreasePen
   return visible_drawings.as_span();
 }
 
-static VectorSet<int> get_locked_material_indices(Object &object)
-{
-  BLI_assert(object.type == OB_GREASE_PENCIL);
-  VectorSet<int> locked_material_indices;
-  for (const int mat_i : IndexRange(object.totcol)) {
-    Material *material = BKE_object_material_get(&object, mat_i + 1);
-    if (material != nullptr && material->gp_style != nullptr &&
-        (material->gp_style->flag & GP_MATERIAL_LOCKED) != 0)
-    {
-      locked_material_indices.add(mat_i);
-    }
-  }
-  return locked_material_indices;
-}
-
 static VectorSet<int> get_editable_material_indices(Object &object)
 {
   BLI_assert(object.type == OB_GREASE_PENCIL);
