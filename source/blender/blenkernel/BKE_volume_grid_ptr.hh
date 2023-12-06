@@ -67,7 +67,7 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
 
 #ifdef WITH_OPENVDB
   GridConstPtr grid() const;
-  GridPtr grid_for_write();
+  GridPtr grid_for_write() const;
 #endif
 };
 

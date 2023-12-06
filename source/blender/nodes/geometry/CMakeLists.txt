@@ -33,6 +33,7 @@ set(SRC
   nodes/node_geo_boolean.cc
   nodes/node_geo_bounding_box.cc
   nodes/node_geo_collection_info.cc
+  nodes/node_geo_combine_grid_topology.cc
   nodes/node_geo_common.cc
   nodes/node_geo_convex_hull.cc
   nodes/node_geo_curve_endpoint_selection.cc

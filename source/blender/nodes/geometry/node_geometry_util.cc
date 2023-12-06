@@ -165,6 +165,38 @@ bke::GVolumeGridPtr extract_grid_input(GeoNodeExecParams params,
   return nullptr;
 }
 
+#if 0
+template<typename T>
+static Vector<bke::GVolumeGridPtr> collect_volume_grids(
+    const Vector<bke::ValueOrField<T>> &values_or_fields)
+{
+  Vector<bke::GVolumeGridPtr> result;
+  result.reserve(values_or_fields.size());
+  for (const bke::ValueOrField<T> &value_or_field : values_or_fields) {
+    result.append(value_or_field.as_grid());
+  }
+  return result;
+}
+
+Vector<bke::GVolumeGridPtr> extract_grid_multi_input(GeoNodeExecParams params,
+                                                     StringRef identifier,
+                                                     const eCustomDataType data_type)
+{
+  switch (data_type) {
+    case CD_PROP_FLOAT:
+      return collect_volume_grids(
+          params.extract_input<Vector<bke::ValueOrField<float>>>(identifier));
+    case CD_PROP_FLOAT3:
+      return collect_volume_grids(
+          params.extract_input<Vector<bke::ValueOrField<float3>>>(identifier));
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+  return {};
+}
+#endif
+
 void set_output_grid(GeoNodeExecParams params,
                      StringRef identifier,
                      const eCustomDataType data_type,

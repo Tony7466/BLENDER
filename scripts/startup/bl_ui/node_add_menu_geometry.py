@@ -682,6 +682,7 @@ class NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeVolumeToMesh")
         if context.preferences.experimental.use_new_volume_nodes:
+            node_add_menu.add_node_type(layout, "GeometryNodeCombineGridTopology")
             node_add_menu.add_node_type(layout, "GeometryNodeDilateGrid")
             node_add_menu.add_node_type(layout, "GeometryNodeErodeGrid")
             node_add_menu.add_node_type(layout, "GeometryNodeExtrapolateGrid")

@@ -147,6 +147,8 @@ const EnumPropertyItem *domain_without_corner_experimental_grease_pencil_version
 
 namespace grids {
 
+using SupportedVDBGridTypes = openvdb::TypeList<openvdb::FloatGrid, openvdb::Vec3fGrid>;
+
 bool grid_type_supported(eCustomDataType data_type);
 const EnumPropertyItem *grid_type_items_fn(bContext *C,
                                            PointerRNA *ptr,
@@ -173,6 +175,13 @@ bke::VolumeGridPtr<T> extract_grid_input(GeoNodeExecParams params, StringRef ide
   const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(cpp_type);
   return extract_grid_input(params, identifier, data_type).typed<T>();
 }
+
+/* Does not currently work, requires a CPPType for Vector<ValueOrField<T>>. */
+#if 0
+Vector<bke::GVolumeGridPtr> extract_grid_multi_input(GeoNodeExecParams params,
+                                                     StringRef identifier,
+                                                     eCustomDataType data_type);
+#endif
 
 void set_output_grid(GeoNodeExecParams params,
                      StringRef identifier,
