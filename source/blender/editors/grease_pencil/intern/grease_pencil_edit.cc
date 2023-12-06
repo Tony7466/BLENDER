@@ -583,6 +583,201 @@ static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Split Stroke Operator
+ * \{ */
+
+static bke::CurvesGeometry split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
+{
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const VArray<bool> src_cyclic = curves.cyclic();
+
+  Array<bool> points_to_split(curves.points_num());
+  mask.to_bools(points_to_split.as_mutable_span());
+  const int num_points_selected = mask.size();
+  const int num_points_unselected = points_to_split.as_span().count(false);
+
+  if (num_points_unselected == 0 || num_points_selected == 0) {
+    return curves;
+  }
+
+  int unselected_point_start = 0;
+  Vector<int> unselected_point_map(num_points_unselected);
+  Vector<int> unselected_curve_counts;
+  Vector<int> unselected_curve_map;
+  Vector<bool> unselected_cyclic;
+
+  int selected_point_start = 0;
+  Array<int> selected_point_map(num_points_selected);
+  Vector<int> selected_curve_counts;
+  Vector<int> selected_curve_map;
+  Vector<bool> selected_cyclic;
+
+  /* Add the duplicated curves and points. */
+  for (const int curve_i : curves.curves_range()) {
+    const IndexRange points = points_by_curve[curve_i];
+    const Span<bool> curve_points = points_to_split.as_span().slice(points);
+    const bool curve_cyclic = src_cyclic[curve_i];
+
+    /* Note, these ranges start at zero and needed to be shifted by `points.first()` */
+    const Vector<IndexRange> ranges_selected = array_utils::find_all_ranges(
+        curve_points, true);
+    const Vector<IndexRange> ranges_unselected = array_utils::find_all_ranges(curve_points, false);
+
+    const bool is_last_segment_unselected = curve_cyclic &&
+                                          ranges_unselected.first().first() == 0 &&
+                                          ranges_unselected.last().last() == points.size() - 1;
+    const bool is_curve_self_joined_unselected = is_last_segment_unselected && ranges_unselected.size() != 1;
+    const bool is_cyclic_unselected = ranges_unselected.size() == 1 && is_last_segment_unselected;
+
+    const IndexRange unselected_range_ids = ranges_unselected.index_range();
+    /* Skip the first range because it is joined to the end of the last range. */
+    for (const int range_i : ranges_unselected.index_range().drop_front(is_curve_self_joined_unselected)) {
+      const IndexRange range = ranges_unselected[range_i];
+
+      array_utils::fill_index_range<int>(
+          unselected_point_map.as_mutable_span().slice(unselected_point_start, range.size()),
+          range.start() + points.first());
+      unselected_point_start += range.size();
+
+      unselected_curve_counts.append(range.size());
+      unselected_curve_map.append(curve_i);
+      unselected_cyclic.append(is_cyclic_unselected);
+    }
+
+    /* Join the first range to the end of the last range. */
+    if (is_curve_self_joined_unselected) {
+      const IndexRange first_range = ranges_unselected[unselected_range_ids.first()];
+      array_utils::fill_index_range<int>(
+          unselected_point_map.as_mutable_span().slice(unselected_point_start, first_range.size()),
+          first_range.start() + points.first());
+      unselected_point_start += first_range.size();
+      unselected_curve_counts[unselected_curve_counts.size() - 1] += first_range.size();
+    }
+
+    const bool is_last_segment_selected = curve_cyclic && ranges_selected.first().first() == 0 &&
+                                          ranges_selected.last().last() == points.size() - 1;
+    const bool is_curve_self_joined_selected = is_last_segment_selected && ranges_selected.size() != 1;
+    const bool is_cyclic_selected = ranges_selected.size() == 1 && is_last_segment_selected;
+
+    const IndexRange selected_range_ids = ranges_selected.index_range();
+    /* Skip the first range because it is joined to the end of the last range. */
+    for (const int range_i : ranges_selected.index_range().drop_front(is_curve_self_joined_selected)) {
+      const IndexRange range = ranges_selected[range_i];
+
+      array_utils::fill_index_range<int>(
+          selected_point_map.as_mutable_span().slice(selected_point_start, range.size()),
+          range.start() + points.first());
+      selected_point_start += range.size();
+
+      selected_curve_counts.append(range.size());
+      selected_curve_map.append(curve_i);
+      selected_cyclic.append(is_cyclic_selected);
+    }
+
+    /* Join the first range to the end of the last range. */
+    if (is_curve_self_joined_selected) {
+      const IndexRange first_range = ranges_selected[selected_range_ids.first()];
+      array_utils::fill_index_range<int>(
+          selected_point_map.as_mutable_span().slice(selected_point_start, first_range.size()),
+          first_range.start() + points.first());
+      selected_point_start += first_range.size();
+      selected_curve_counts[selected_curve_counts.size() - 1] += first_range.size();
+    }
+  }
+
+  const int num_curves_unselected = unselected_curve_map.size();
+  const int num_curves_selected = selected_curve_map.size();
+
+  bke::CurvesGeometry dst_curves(curves.points_num(), num_curves_unselected + num_curves_selected);
+  MutableSpan<int> dst_curve_offsets = dst_curves.offsets_for_write();
+  array_utils::copy(unselected_curve_counts.as_span(),
+                    dst_curve_offsets.drop_back(num_curves_selected + 1));
+  array_utils::copy(selected_curve_counts.as_span(),
+                    dst_curve_offsets.drop_front(num_curves_unselected).drop_back(1));
+  offset_indices::accumulate_counts_to_offsets(dst_curve_offsets);
+
+  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+  const bke::AttributeAccessor src_attributes = curves.attributes();
+
+  unselected_curve_map.insert(
+      unselected_curve_map.end(), selected_curve_map.begin(), selected_curve_map.end());
+  unselected_cyclic.insert(
+      unselected_cyclic.end(), selected_cyclic.begin(), selected_cyclic.end());
+  unselected_point_map.insert(
+      unselected_point_map.end(), selected_point_map.begin(), selected_point_map.end());
+
+  /* Transfer curve attributes. */
+  gather_attributes(
+      src_attributes, ATTR_DOMAIN_CURVE, {}, {"cyclic"}, unselected_curve_map, dst_attributes);
+  array_utils::copy(unselected_cyclic.as_span(), dst_curves.cyclic_for_write());
+
+  /* Transfer point attributes. */
+  gather_attributes(src_attributes, ATTR_DOMAIN_POINT, {}, {}, unselected_point_map, dst_attributes);
+
+  dst_curves.remove_attributes_based_on_types();
+
+  /* Deselect the original and select the new curves. */
+  bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
+      dst_curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+  curves::fill_selection_true(selection.span,
+                              IndexMask(IndexRange(num_points_unselected, num_points_selected)));
+  curves::fill_selection_false(selection.span, IndexMask(num_points_unselected));
+  selection.finish();
+
+  return dst_curves;
+}
+
+static int grease_pencil_stroke_split_exec(bContext *C, wmOperator * /*op*/)
+{
+  using namespace blender;
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
+
+  std::atomic<bool> changed = false;
+  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    IndexMaskMemory memory;
+    const IndexMask mask = ed::greasepencil::retrieve_editable_and_selected_elements(
+        *object, info.drawing, ATTR_DOMAIN_POINT, memory);
+    if (mask.is_empty()) {
+      return;
+    }
+
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    curves = split_points(curves, mask);
+    info.drawing.tag_topology_changed();
+    changed.store(true, std::memory_order_relaxed);
+  });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_stroke_split(wmOperatorType* ot)
+{
+  /* identifiers */
+  ot->name = "Split Strokes";
+  ot->idname = "GREASE_PENCIL_OT_stroke_split";
+  ot->description = "Split selected points as new stroke on same frame";
+
+  /* callbacks */
+  //ot->invoke = WM_menu_invoke;
+  ot->exec = grease_pencil_stroke_split_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Delete Operator
  * \{ */
 
@@ -1711,6 +1906,7 @@ void ED_operatortypes_grease_pencil_edit()
   using namespace blender::ed::greasepencil;
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_smooth);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_simplify);
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_split);
   WM_operatortype_append(GREASE_PENCIL_OT_delete);
   WM_operatortype_append(GREASE_PENCIL_OT_dissolve);
   WM_operatortype_append(GREASE_PENCIL_OT_delete_frame);

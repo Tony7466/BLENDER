@@ -4634,6 +4634,8 @@ def km_grease_pencil_edit(params):
          "alt": True}, {"properties": [("type", "TOGGLE")]}),
 
         ("grease_pencil.duplicate_move", {"type": 'D', "value": 'PRESS', "shift": True}, None),
+        
+        ("grease_pencil.stroke_split", {"type": 'V', "value": 'PRESS'}, None),
 
         # Active layer
         op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),

@@ -5857,6 +5857,7 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
     def draw(self, _context):
         layout = self.layout
         layout.operator("grease_pencil.stroke_simplify", text="Simplify")
+        layout.operator("grease_pencil.stroke_split", text="Split")
 
         layout.separator()
 
@@ -8138,6 +8139,7 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
 
             # Main Strokes Operators
             col.operator("grease_pencil.stroke_simplify", text="Simplify")
+            col.operator("grease_pencil.stroke_split", text="Split")
 
             col.separator()
 
@@ -8164,6 +8166,7 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
 
             # Main Strokes Operators
             col.operator("grease_pencil.stroke_simplify", text="Simplify")
+            col.operator("grease_pencil.stroke_split", text="Split")
 
             col.separator()
 
