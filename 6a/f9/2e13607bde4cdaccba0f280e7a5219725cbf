@@ -1,0 +1,1 @@
+Referenced by issue #108763, bpy.context.temp_override - TypeError: Area not found in screen
