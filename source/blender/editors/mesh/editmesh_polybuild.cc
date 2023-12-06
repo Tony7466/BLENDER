@@ -13,8 +13,8 @@
 
 #include "DNA_object_types.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_mesh.hh"
 #include "BKE_report.h"
@@ -32,7 +32,7 @@
 #include "ED_transform.hh"
 #include "ED_view3d.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include "mesh_intern.h" /* own include */
 

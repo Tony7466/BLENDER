@@ -19,7 +19,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_mesh.hh"
 #include "BKE_screen.hh"
@@ -34,8 +34,8 @@
 
 #include "GEO_randomize.hh"
 
-#include "bmesh.h"
-#include "bmesh_tools.h"
+#include "bmesh.hh"
+#include "bmesh_tools.hh"
 
 // #define USE_TIMEIT
 
@@ -279,7 +279,7 @@ ModifierTypeInfo modifierType_Decimate = {
     /*struct_name*/ "DecimateModifierData",
     /*struct_size*/ sizeof(DecimateModifierData),
     /*srna*/ &RNA_DecimateModifier,
-    /*type*/ eModifierTypeType_Nonconstructive,
+    /*type*/ ModifierTypeType::Nonconstructive,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs,
     /*icon*/ ICON_MOD_DECIM,
 
