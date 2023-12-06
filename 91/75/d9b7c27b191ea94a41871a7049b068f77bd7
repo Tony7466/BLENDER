@@ -1,1 +1,2 @@
 Referenced by issue #115776, BMesh data copy with many layers is extremelly slow (100x slower) compared to blender 3.6
+Referenced by pull request #115824, BMesh: Optimize copying attributes from many elements at once
