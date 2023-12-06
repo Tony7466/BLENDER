@@ -61,6 +61,7 @@ set(SRC
   nodes/node_geo_curve_topology_curve_of_point.cc
   nodes/node_geo_curve_topology_points_of_curve.cc
   nodes/node_geo_curve_trim.cc
+  nodes/node_geo_deactivate_voxels.cc
   nodes/node_geo_deform_curves_on_surface.cc
   nodes/node_geo_delete_geometry.cc
   nodes/node_geo_dilate_grid.cc

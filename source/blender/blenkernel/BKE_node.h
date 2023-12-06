@@ -1328,6 +1328,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_GRID_POISSON_SOLVER 2125
 #define GEO_NODE_GRID_CAPTURE 2126
 #define GEO_NODE_COMBINE_GRID_TOPOLOGY 2127
+#define GEO_NODE_DEACTIVATE_VOXELS 2128
 
 /** \} */
 

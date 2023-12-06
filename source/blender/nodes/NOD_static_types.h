@@ -316,6 +316,7 @@ DefNode(GeometryNode, GEO_NODE_CURVE_TO_MESH, 0, "CURVE_TO_MESH", CurveToMesh, "
 DefNode(GeometryNode, GEO_NODE_CURVE_TO_POINTS, 0, "CURVE_TO_POINTS", CurveToPoints, "Curve to Points", "Generate a point cloud by sampling positions along curves")
 DefNode(GeometryNode, GEO_NODE_CURVE_TOPOLOGY_CURVE_OF_POINT, 0, "CURVE_OF_POINT", CurveOfPoint, "Curve of Point", "Retrieve the curve a control point is part of")
 DefNode(GeometryNode, GEO_NODE_CURVE_TOPOLOGY_POINTS_OF_CURVE, 0, "POINTS_OF_CURVE", PointsOfCurve, "Points of Curve", "Retrieve a point index within a curve")
+DefNode(GeometryNode, GEO_NODE_DEACTIVATE_VOXELS, 0, "DEACTIVATE_VOXELS", DeactivateVoxels, "Deactivate Voxels", "Deactivate grid voxels whose values are close to the threshold")
 DefNode(GeometryNode, GEO_NODE_DEFORM_CURVES_ON_SURFACE, 0, "DEFORM_CURVES_ON_SURFACE", DeformCurvesOnSurface, "Deform Curves on Surface", "Translate and rotate curves based on changes between the object's original and evaluated surface mesh")
 DefNode(GeometryNode, GEO_NODE_DELETE_GEOMETRY, 0, "DELETE_GEOMETRY", DeleteGeometry, "Delete Geometry", "Remove selected elements of a geometry")
 DefNode(GeometryNode, GEO_NODE_DILATE_GRID, 0, "DILATE_GRID", DilateGrid, "Dilate Grid", "Dilate active values to neighboring voxels")

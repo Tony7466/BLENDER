@@ -11,7 +11,7 @@
 
 #include "RNA_enum_types.hh"
 
-namespace blender::nodes::node_geo_grid_capture_grid_cc {
+namespace blender::nodes::node_geo_grid_deactivate_voxels_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -21,12 +21,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   }
 
   eCustomDataType data_type = eCustomDataType(node->custom1);
-  eCustomDataType topo_data_type = eCustomDataType(node->custom2);
 
-  b.add_input(data_type, "Value").supports_field();
-  b.add_input(data_type, "Background");
-
-  b.add_input(topo_data_type, "Topology Grid").hide_value();
+  grids::declare_grid_type_input(b, data_type, "Grid");
+  b.add_input(data_type, "Value");
+  b.add_input(data_type, "Tolerance");
 
   grids::declare_grid_type_output(b, data_type, "Grid");
 }
@@ -36,30 +34,36 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
-  uiItemR(layout, ptr, "topology_data_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   node->custom1 = CD_PROP_FLOAT;
-  node->custom2 = CD_PROP_FLOAT;
 }
 
-struct CaptureGridOp {
+struct DeactivateVoxelsOp {
   GeoNodeExecParams params;
 
   template<typename T> bke::GVolumeGridPtr operator()()
   {
-    const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-    const eCustomDataType topo_data_type = eCustomDataType(params.node().custom2);
-    BLI_assert(grids::grid_type_supported(topo_data_type));
-    const bke::GVolumeGridPtr topo_grid = grids::extract_grid_input(
-        this->params, "Topology Grid", topo_data_type);
-    const fn::Field<T> value_field = this->params.extract_input<fn::Field<T>>("Value");
-    const T background = this->params.extract_input<T>("Background");
+    using Converter = bke::grids::Converter<T>;
 
-    return grids::try_capture_field_as_grid(
-        data_type, topo_data_type, topo_grid, value_field, &background);
+    const bke::VolumeGridPtr<T> grid = grids::extract_grid_input<T>(this->params, "Grid");
+    if (!grid) {
+      return nullptr;
+    }
+    const T value = params.extract_input<T>("Value");
+    const T tolerance = params.extract_input<T>("Tolerance");
+
+    bke::VolumeGridPtr<T> output_grid = grid->is_mutable() ? grid :
+                                                             bke::VolumeGridPtr<T>{grid->copy()};
+    output_grid->tag_ensured_mutable();
+
+    openvdb::tools::deactivate(*output_grid.grid_for_write(),
+                               Converter::to_openvdb(value),
+                               Converter::to_openvdb(tolerance));
+
+    return output_grid;
   }
 };
 
@@ -69,8 +73,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
   BLI_assert(grids::grid_type_supported(data_type));
 
-  CaptureGridOp capture_op = {params};
-  bke::GVolumeGridPtr grid = grids::apply(data_type, capture_op);
+  DeactivateVoxelsOp deactivate_voxels_op = {params};
+  bke::GVolumeGridPtr grid = grids::apply(data_type, deactivate_voxels_op);
 
   grids::set_output_grid(params, "Grid", data_type, grid);
 #else
@@ -90,22 +94,13 @@ static void node_rna(StructRNA *srna)
                     NOD_inline_enum_accessors(custom1),
                     CD_PROP_FLOAT,
                     grids::grid_type_items_fn);
-
-  RNA_def_node_enum(srna,
-                    "topology_data_type",
-                    "Topology Data Type",
-                    "Type of the topology grid",
-                    rna_enum_attribute_type_items,
-                    NOD_inline_enum_accessors(custom2),
-                    CD_PROP_FLOAT,
-                    grids::grid_type_items_fn);
 }
 
 static void node_register()
 {
   static bNodeType ntype;
 
-  geo_node_type_base(&ntype, GEO_NODE_GRID_CAPTURE, "Capture Grid", NODE_CLASS_GEOMETRY);
+  geo_node_type_base(&ntype, GEO_NODE_DEACTIVATE_VOXELS, "Deactivate Voxels", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.geometry_node_execute = node_geo_exec;
@@ -116,4 +111,4 @@ static void node_register()
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_geo_grid_capture_grid_cc
+}  // namespace blender::nodes::node_geo_grid_deactivate_voxels_cc
