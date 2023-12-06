@@ -6,3 +6,4 @@ Referenced by issue #89996, Resetting multi-button value does not work when acti
 Referenced by issue #87688, Crash when current frame is used as driver
 Referenced by issue #87637, Escaping editing a button does not reset change from dragging
 Referenced by issue #87448, Blender re-evaluates modifiers unnecessarily when parameters are not changed
+Referenced by pull request #115831, UI: dont run update functions if button values did not change
