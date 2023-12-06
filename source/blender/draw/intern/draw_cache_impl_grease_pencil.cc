@@ -292,7 +292,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     const VArray<bool> selection = *attributes.lookup_or_default<bool>(
         ".selection", ATTR_DOMAIN_POINT, true);
 
-    editable_strokes.foreach_index(GrainSize(512), [&](const int curve_i) {
+    editable_strokes.foreach_index([&](const int curve_i) {
       const IndexRange points = points_by_curve[curve_i];
       if (ed::curves::has_anything_selected(selection, points)) {
         visible_points_num += points.size();
@@ -324,7 +324,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
         object, info.drawing, memory);
 
     /* Fill line indices. */
-    editable_strokes.foreach_index(GrainSize(512), [&](const int curve_i) {
+    editable_strokes.foreach_index([&](const int curve_i) {
       const IndexRange points = points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
 
@@ -345,7 +345,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
 
     /* Fill point indices. */
     if (!layer->is_locked()) {
-      editable_strokes.foreach_index(GrainSize(512), [&](const int curve_i) {
+      editable_strokes.foreach_index([&](const int curve_i) {
         const IndexRange points = points_by_curve[curve_i];
         if (!ed::curves::has_anything_selected(selection, points)) {
           return;
@@ -434,7 +434,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     /* Calculate the vertex offsets for all the visible curves. */
     int num_cyclic = 0;
     int num_points = 0;
-    visible_strokes.foreach_index(GrainSize(512), [&](const int curve_i, const int pos) {
+    visible_strokes.foreach_index([&](const int curve_i, const int pos) {
       IndexRange points = points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
 
@@ -536,7 +536,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
     };
 
-    visible_strokes.foreach_index(GrainSize(512), [&](const int curve_i, const int pos) {
+    visible_strokes.foreach_index([&](const int curve_i, const int pos) {
       IndexRange points = points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
       const int verts_start_offset = verts_start_offsets[pos];
