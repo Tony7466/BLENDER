@@ -337,7 +337,6 @@ void LookdevView::render()
   if (!inst_.lookdev.enabled_) {
     return;
   }
-  GPU_debug_capture_begin();
   GPU_debug_group_begin("Lookdev");
 
   const float4x4 &view_m4 = inst_.camera.data_get().viewmat;
@@ -355,7 +354,6 @@ void LookdevView::render()
   inst_.lookdev.display();
 
   GPU_debug_group_end();
-  GPU_debug_capture_end();
 }
 
 /** \} */
