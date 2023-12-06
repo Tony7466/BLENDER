@@ -88,6 +88,19 @@ static GPUTexture *preprocess_texture(Context &context,
   return preprocessed_texture;
 }
 
+/* Compositor images are expected to be always pre-multiplied, so identify if the GPU texture
+ * returned by the IMB module is straight and needs to be pre-multiplied. An exception is when
+ * the image has an alpha mode of channel packed or alpha ignore, in which case, we always ignore
+ * pre-multiplication. */
+static bool should_premultiply_alpha(Image *image, ImBuf *image_buffer)
+{
+  if (ELEM(image->alpha_mode, IMA_ALPHA_CHANNEL_PACKED, IMA_ALPHA_IGNORE)) {
+    return false;
+  }
+
+  return !BKE_image_has_gpu_texture_premultiplied_alpha(image, image_buffer);
+}
+
 /* Get a suitable texture format supported by the compositor given the format of the texture
  * returned by the IMB module. See imb_gpu_get_format for the formats that needs to be handled. */
 static eGPUTextureFormat get_compatible_texture_format(eGPUTextureFormat original_format)
@@ -197,15 +210,6 @@ CachedImage::CachedImage(Context &context,
                          ImageUser *image_user,
                          const char *pass_name)
 {
-  /* Image buffer loaders do redundant alpha premultiplication/unpremultiplication, causing data
-   * loss for zero alpha colored regions, so we employ a trick where we free any cached buffers,
-   * change the alpha mode to packed to avoid any alpha handling, acquire the buffer, then finally
-   * restore the original alpha mode and free the cached buffers once again. This is expensive, but
-   * its result is cached, so it should be fine. */
-  BKE_image_free_buffers_ex(image, true);
-  const char original_alpha_mode = image->alpha_mode;
-  image->alpha_mode = IMA_ALPHA_CHANNEL_PACKED;
-
   /* We can't retrieve the needed image buffer yet, because we still need to assign the pass index
    * to the image user in order to acquire the image buffer corresponding to the given pass name.
    * However, in order to compute the pass index, we need the render result structure of the image
@@ -223,7 +227,8 @@ CachedImage::CachedImage(Context &context,
       context, image, image_user, pass_name);
 
   ImBuf *image_buffer = BKE_image_acquire_ibuf(image, &image_user_for_pass, nullptr);
-  texture_ = IMB_create_gpu_texture("Image Texture", image_buffer, true, false);
+  const bool is_premultiplied = BKE_image_has_gpu_texture_premultiplied_alpha(image, image_buffer);
+  texture_ = IMB_create_gpu_texture("Image Texture", image_buffer, true, is_premultiplied);
 
   const eGPUTextureFormat original_format = GPU_texture_format(texture_);
   const eGPUTextureFormat target_format = get_compatible_texture_format(original_format);
@@ -232,7 +237,7 @@ CachedImage::CachedImage(Context &context,
 
   /* The GPU image returned by the IMB module can be in a format not supported by the compositor,
    * or it might need premultiplication, so preprocess them first. */
-  if (result_type == ResultType::Color && original_alpha_mode == IMA_ALPHA_STRAIGHT) {
+  if (result_type == ResultType::Color && should_premultiply_alpha(image, image_buffer)) {
     texture_ = preprocess_texture(
         context, texture_, target_format, precision, "compositor_premultiply_alpha");
   }
@@ -245,14 +250,11 @@ CachedImage::CachedImage(Context &context,
   }
 
   /* Set the alpha to 1 using swizzling if alpha is ignored. */
-  if (result_type == ResultType::Color && original_alpha_mode == IMA_ALPHA_IGNORE) {
+  if (result_type == ResultType::Color && image->alpha_mode == IMA_ALPHA_IGNORE) {
     GPU_texture_swizzle_set(texture_, "rgb1");
   }
 
-  /* Release image buffer and restore the original alpha mode of the image. */
   BKE_image_release_ibuf(image, image_buffer, nullptr);
-  image->alpha_mode = original_alpha_mode;
-  BKE_image_free_buffers_ex(image, true);
 }
 
 CachedImage::~CachedImage()
