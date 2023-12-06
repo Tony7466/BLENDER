@@ -272,17 +272,16 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     }
     drawing_start_offset += curves.points_num();
 
-    editable_strokes.foreach_index(GrainSize(512), [&](const int curve_i) {
-      IndexRange points = points_by_curve[curve_i];
-      const bool is_cyclic = cyclic[curve_i];
-
-      /* Add one id for the restart after every curve. */
-      total_line_ids_num++;
-      /* Add one id for every non-cyclic segment. */
-      total_line_ids_num += points.size();
-      /* Add one id for the last segment of every cyclic curve. */
-      total_line_ids_num += (is_cyclic ? 1 : 0);
-    });
+    /* Add one id for the restart after every curve. */
+    total_line_ids_num += editable_strokes.size();
+    Array<int> size_per_editable_stroke(editable_strokes.size());
+    offset_indices::gather_group_sizes(
+        points_by_curve, editable_strokes, size_per_editable_stroke);
+    /* Add one id for every non-cyclic segment. */
+    total_line_ids_num += std::accumulate(
+        size_per_editable_stroke.begin(), size_per_editable_stroke.end(), 0);
+    /* Add one id for the last segment of every cyclic curve. */
+    total_line_ids_num += array_utils::count_booleans(curves.cyclic(), editable_strokes);
 
     /* Do not show points for locked layers. */
     if (layer->is_locked()) {
