@@ -1959,7 +1959,12 @@ static void do_transform_effect(const SeqRenderData *context,
 /** \name Glow Effect
  * \{ */
 
-static void glow_blur_bitmap(blender::float4 *map, int width, int height, float blur, int quality)
+static void glow_blur_bitmap(const blender::float4 *src,
+                             blender::float4 *map,
+                             int width,
+                             int height,
+                             float blur,
+                             int quality)
 {
   using namespace blender;
 
@@ -1995,85 +2000,36 @@ static void glow_blur_bitmap(blender::float4 *map, int width, int height, float 
     filter[ix] /= fval;
   }
 
-  /* Blur the rows */
+  /* Blur the rows: read map, write temp */
   threading::parallel_for(IndexRange(height), 32, [&](const IndexRange y_range) {
     for (const int y : y_range) {
-      /* Do the left & right strips */
-      for (int x = 0; x < halfWidth; x++) {
+      for (int x = 0; x < width; x++) {
         float4 curColor = float4(0.0f);
-        float4 curColor2 = float4(0.0f);
-
-        int fx = 0;
-        for (int i = x - halfWidth; i < x + halfWidth; i++) {
-          if ((i >= 0) && (i < width)) {
-            curColor += map[i + y * width] * filter[fx];
-            curColor2 += map[width - 1 - i + y * width] * filter[fx];
-          }
-          fx++;
-        }
-        temp[x + y * width] = curColor;
-        temp[width - 1 - x + y * width] = curColor2;
-      }
-
-      /* Do the main body */
-      for (int x = halfWidth; x < width - halfWidth; x++) {
-        int fx = 0;
-        float4 curColor = float4(0.0f);
-        for (int i = x - halfWidth; i < x + halfWidth; i++) {
-          curColor += map[i + y * width] * filter[fx];
-          fx++;
+        int xmin = math::max(x - halfWidth, 0);
+        int xmax = math::min(x + halfWidth, width);
+        for (int nx = xmin, index = (xmin - x) + halfWidth; nx < xmax; nx++, index++) {
+          curColor += map[nx + y * width] * filter[index];
         }
         temp[x + y * width] = curColor;
       }
     }
   });
 
-  /* Blur the columns */
+  /* Blur the columns: read temp, write map */
   threading::parallel_for(IndexRange(width), 32, [&](const IndexRange x_range) {
+    const float4 one = float4(1.0f);
     for (const int x : x_range) {
-      /* Do the top & bottom strips */
-      for (int y = 0; y < halfWidth; y++) {
+      for (int y = 0; y < height; y++) {
         float4 curColor = float4(0.0f);
-        float4 curColor2 = float4(0.0f);
-        int fy = 0;
-        for (int i = y - halfWidth; i < y + halfWidth; i++) {
-          if ((i >= 0) && (i < height)) {
-            curColor += temp[x + i * width] * filter[fy];
-            curColor2 += temp[x + (height - 1 - i) * width] * filter[fy];
-          }
-          fy++;
+        int ymin = math::max(y - halfWidth, 0);
+        int ymax = math::min(y + halfWidth, height);
+        for (int ny = ymin, index = (ymin - y) + halfWidth; ny < ymax; ny++, index++) {
+          curColor += temp[x + ny * width] * filter[index];
         }
-
-        map[x + y * width] = curColor;
-        map[x + (height - 1 - y) * width] = curColor2;
-      }
-
-      /* Do the main body */
-      for (int y = halfWidth; y < height - halfWidth; y++) {
-        float4 curColor = float4(0.0f);
-        int fy = 0;
-        for (int i = y - halfWidth; i < y + halfWidth; i++) {
-          curColor += temp[x + i * width] * filter[fy];
-          fy++;
+        if (src != nullptr) {
+          curColor = math::min(one, src[x + y * width] + curColor);
         }
         map[x + y * width] = curColor;
-      }
-    }
-  });
-}
-
-static void blur_add_bitmap(const blender::float4 *src,
-                            blender::float4 *dst,
-                            int width,
-                            int height)
-{
-  using namespace blender;
-  threading::parallel_for(IndexRange(height), 64, [&](const IndexRange y_range) {
-    const float4 v1 = float4(1.0f);
-    for (const int y : y_range) {
-      int index = y * width;
-      for (int x = 0; x < width; x++, index++) {
-        dst[index] = math::min(v1, src[index] + dst[index]);
       }
     }
   });
@@ -2164,10 +2120,12 @@ static void do_glow_effect_byte(Sequence *seq,
 
   blur_isolate_highlights(
       inbuf.data(), outbuf.data(), x, y, glow->fMini * 3.0f, glow->fBoost * fac, glow->fClamp);
-  glow_blur_bitmap(outbuf.data(), x, y, glow->dDist * (render_size / 100.0f), glow->dQuality);
-  if (!glow->bNoComp) {
-    blur_add_bitmap(inbuf.data(), outbuf.data(), x, y);
-  }
+  glow_blur_bitmap(glow->bNoComp ? nullptr : inbuf.data(),
+                   outbuf.data(),
+                   x,
+                   y,
+                   glow->dDist * (render_size / 100.0f),
+                   glow->dQuality);
 
   threading::parallel_for(IndexRange(y), 64, [&](const IndexRange y_range) {
     size_t offset = y_range.first() * x;
@@ -2202,14 +2160,12 @@ static void do_glow_effect_float(Sequence *seq,
 
   blur_isolate_highlights(
       inbuf, outbuf, x, y, glow->fMini * 3.0f, glow->fBoost * fac, glow->fClamp);
-  glow_blur_bitmap(reinterpret_cast<blender::float4 *>(outbuf),
+  glow_blur_bitmap(glow->bNoComp ? nullptr : inbuf,
+                   outbuf,
                    x,
                    y,
                    glow->dDist * (render_size / 100.0f),
                    glow->dQuality);
-  if (!glow->bNoComp) {
-    blur_add_bitmap(inbuf, outbuf, x, y);
-  }
 }
 
 static ImBuf *do_glow_effect(const SeqRenderData *context,
