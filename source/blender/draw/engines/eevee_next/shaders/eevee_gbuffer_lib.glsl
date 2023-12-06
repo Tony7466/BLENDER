@@ -163,6 +163,13 @@ bool gbuffer_has_closure(uint header, eClosureBits closure)
     return has_diffuse;
   }
 
+  bool has_sss = (gbuffer_header_unpack(header, layer) == GBUF_SSS);
+  layer += int(has_sss);
+
+  if (closure == eClosureBits(CLOSURE_SSS)) {
+    return has_sss;
+  }
+
   return false;
 }
 

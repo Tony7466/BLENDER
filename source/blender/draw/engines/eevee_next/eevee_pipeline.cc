@@ -694,7 +694,7 @@ void DeferredLayer::render(View &main_view,
     closure_bufs_[i].draw_buf_.clear_to_zero();
   }
 
-  tile_mask_tx_.ensure_2d_array(GPU_R8UI, tile_mask_size, 3, usage_rw);
+  tile_mask_tx_.ensure_2d_array(GPU_R8UI, tile_mask_size, 4, usage_rw);
   tile_mask_tx_.clear(uint4(0));
 
   GPU_framebuffer_bind_ex(gbuffer_fb,

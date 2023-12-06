@@ -27,15 +27,20 @@ void main()
     return;
   }
 
-  bool has_diffuse = (texelFetch(tile_mask_tx, ivec3(tile_coord, 0), 0).r != 0u);
-  bool has_reflection = (texelFetch(tile_mask_tx, ivec3(tile_coord, 1), 0).r != 0u);
-  bool has_refraction = (texelFetch(tile_mask_tx, ivec3(tile_coord, 2), 0).r != 0u);
+  uint closure_count = texelFetch(tile_mask_tx, ivec3(tile_coord, 0), 0).r +
+                       texelFetch(tile_mask_tx, ivec3(tile_coord, 1), 0).r +
+                       texelFetch(tile_mask_tx, ivec3(tile_coord, 2), 0).r +
+                       texelFetch(tile_mask_tx, ivec3(tile_coord, 3), 0).r;
 
-  if (has_diffuse && has_reflection) {
+  if (closure_count == 3) {
+    uint tile_index = atomicAdd(closure_triple_draw_buf.vertex_len, 6u) / 6u;
+    closure_triple_tile_buf[tile_index] = packUvec2x16(uvec2(tile_coord));
+  }
+  else if (closure_count == 2) {
     uint tile_index = atomicAdd(closure_double_draw_buf.vertex_len, 6u) / 6u;
     closure_double_tile_buf[tile_index] = packUvec2x16(uvec2(tile_coord));
   }
-  else if (has_diffuse || has_reflection) {
+  else if (closure_count == 1) {
     uint tile_index = atomicAdd(closure_single_draw_buf.vertex_len, 6u) / 6u;
     closure_single_tile_buf[tile_index] = packUvec2x16(uvec2(tile_coord));
   }

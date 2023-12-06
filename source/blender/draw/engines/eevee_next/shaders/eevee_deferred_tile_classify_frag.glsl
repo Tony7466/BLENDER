@@ -27,4 +27,7 @@ void main()
   if (gbuffer_has_closure(in_gbuffer_header, eClosureBits(CLOSURE_REFRACTION))) {
     imageStore(tile_mask_img, ivec3(tile_co, 2), uvec4(1u));
   }
+  if (gbuffer_has_closure(in_gbuffer_header, eClosureBits(CLOSURE_SSS))) {
+    imageStore(tile_mask_img, ivec3(tile_co, 3), uvec4(1u));
+  }
 }
