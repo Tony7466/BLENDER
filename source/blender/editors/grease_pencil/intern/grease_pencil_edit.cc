@@ -600,17 +600,11 @@ static bke::CurvesGeometry split_points(bke::CurvesGeometry &curves, const Index
     return curves;
   }
 
-  int unselected_point_start = 0;
-  Vector<int> unselected_point_map(num_points_unselected);
-  Vector<int> unselected_curve_counts;
-  Vector<int> unselected_curve_map;
-  Vector<bool> unselected_cyclic;
-
-  int selected_point_start = 0;
-  Array<int> selected_point_map(num_points_selected);
-  Vector<int> selected_curve_counts;
-  Vector<int> selected_curve_map;
-  Vector<bool> selected_cyclic;
+  int point_start = 0;
+  Array<int> point_map(num_points_unselected + num_points_selected);
+  Vector<int> curve_counts;
+  Vector<int> curve_map;
+  Vector<bool> cyclic;
 
   /* Add the duplicated curves and points. */
   for (const int curve_i : curves.curves_range()) {
@@ -635,23 +629,23 @@ static bke::CurvesGeometry split_points(bke::CurvesGeometry &curves, const Index
       const IndexRange range = ranges_unselected[range_i];
 
       array_utils::fill_index_range<int>(
-          unselected_point_map.as_mutable_span().slice(unselected_point_start, range.size()),
+          point_map.as_mutable_span().slice(point_start, range.size()),
           range.start() + points.first());
-      unselected_point_start += range.size();
+      point_start += range.size();
 
-      unselected_curve_counts.append(range.size());
-      unselected_curve_map.append(curve_i);
-      unselected_cyclic.append(is_cyclic_unselected);
+      curve_counts.append(range.size());
+      curve_map.append(curve_i);
+      cyclic.append(is_cyclic_unselected);
     }
 
     /* Join the first range to the end of the last range. */
     if (is_curve_self_joined_unselected) {
       const IndexRange first_range = ranges_unselected[unselected_range_ids.first()];
       array_utils::fill_index_range<int>(
-          unselected_point_map.as_mutable_span().slice(unselected_point_start, first_range.size()),
+          point_map.as_mutable_span().slice(point_start, first_range.size()),
           first_range.start() + points.first());
-      unselected_point_start += first_range.size();
-      unselected_curve_counts[unselected_curve_counts.size() - 1] += first_range.size();
+      point_start += first_range.size();
+      curve_counts[curve_counts.size() - 1] += first_range.size();
     }
 
     const bool is_last_segment_selected = curve_cyclic && ranges_selected.first().first() == 0 &&
@@ -665,65 +659,46 @@ static bke::CurvesGeometry split_points(bke::CurvesGeometry &curves, const Index
       const IndexRange range = ranges_selected[range_i];
 
       array_utils::fill_index_range<int>(
-          selected_point_map.as_mutable_span().slice(selected_point_start, range.size()),
+          point_map.as_mutable_span().slice(point_start, range.size()),
           range.start() + points.first());
-      selected_point_start += range.size();
+      point_start += range.size();
 
-      selected_curve_counts.append(range.size());
-      selected_curve_map.append(curve_i);
-      selected_cyclic.append(is_cyclic_selected);
+      curve_counts.append(range.size());
+      curve_map.append(curve_i);
+      cyclic.append(is_cyclic_selected);
     }
 
     /* Join the first range to the end of the last range. */
     if (is_curve_self_joined_selected) {
       const IndexRange first_range = ranges_selected[selected_range_ids.first()];
       array_utils::fill_index_range<int>(
-          selected_point_map.as_mutable_span().slice(selected_point_start, first_range.size()),
+          point_map.as_mutable_span().slice(point_start, first_range.size()),
           first_range.start() + points.first());
-      selected_point_start += first_range.size();
-      selected_curve_counts[selected_curve_counts.size() - 1] += first_range.size();
+      point_start += first_range.size();
+      curve_counts[curve_counts.size() - 1] += first_range.size();
     }
   }
 
-  const int num_curves_unselected = unselected_curve_map.size();
-  const int num_curves_selected = selected_curve_map.size();
+  const int num_curves = curve_map.size();
 
-  bke::CurvesGeometry dst_curves(curves.points_num(), num_curves_unselected + num_curves_selected);
+  bke::CurvesGeometry dst_curves(curves.points_num(), num_curves);
   MutableSpan<int> dst_curve_offsets = dst_curves.offsets_for_write();
-  array_utils::copy(unselected_curve_counts.as_span(),
-                    dst_curve_offsets.drop_back(num_curves_selected + 1));
-  array_utils::copy(selected_curve_counts.as_span(),
-                    dst_curve_offsets.drop_front(num_curves_unselected).drop_back(1));
+  array_utils::copy(curve_counts.as_span(),
+                    dst_curve_offsets.drop_back(1));
   offset_indices::accumulate_counts_to_offsets(dst_curve_offsets);
 
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   const bke::AttributeAccessor src_attributes = curves.attributes();
 
-  /* Combine maps so attributes can be transferred in one go. */
-  unselected_curve_map.insert(
-      unselected_curve_map.end(), selected_curve_map.begin(), selected_curve_map.end());
-  unselected_cyclic.insert(
-      unselected_cyclic.end(), selected_cyclic.begin(), selected_cyclic.end());
-  unselected_point_map.insert(
-      unselected_point_map.end(), selected_point_map.begin(), selected_point_map.end());
-
   /* Transfer curve attributes. */
   gather_attributes(
-      src_attributes, ATTR_DOMAIN_CURVE, {}, {"cyclic"}, unselected_curve_map, dst_attributes);
-  array_utils::copy(unselected_cyclic.as_span(), dst_curves.cyclic_for_write());
+      src_attributes, ATTR_DOMAIN_CURVE, {}, {"cyclic"}, curve_map, dst_attributes);
+  array_utils::copy(cyclic.as_span(), dst_curves.cyclic_for_write());
 
   /* Transfer point attributes. */
-  gather_attributes(src_attributes, ATTR_DOMAIN_POINT, {}, {}, unselected_point_map, dst_attributes);
+  gather_attributes(src_attributes, ATTR_DOMAIN_POINT, {}, {}, point_map, dst_attributes);
 
   dst_curves.remove_attributes_based_on_types();
-
-  /* Reselect split curves. */
-  bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
-      dst_curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
-  curves::fill_selection_true(selection.span,
-                              IndexMask(IndexRange(num_points_unselected, num_points_selected)));
-  curves::fill_selection_false(selection.span, IndexMask(num_points_unselected));
-  selection.finish();
 
   return dst_curves;
 }
