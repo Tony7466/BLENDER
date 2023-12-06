@@ -15,74 +15,48 @@
 
 namespace blender::gpu {
 
-static VkFormat to_non_srgb_format(const VkFormat format)
-{
-  switch (format) {
-    case VK_FORMAT_R8G8B8_SRGB:
-      return VK_FORMAT_R8G8B8_UNORM;
-    case VK_FORMAT_R8G8B8A8_SRGB:
-      return VK_FORMAT_R8G8B8A8_UNORM;
-
-    default:
-      break;
-  }
-  return format;
-}
-
-VKImageView::VKImageView(VKTexture &texture,
-                         eImageViewUsage usage,
-                         IndexRange layer_range,
-                         IndexRange mip_range,
+VKImageView::VKImageView(VkImageViewCreateInfo &vk_image_view_info,
                          bool use_stencil,
-                         bool use_srgb,
-                         StringRefNull name)
+                         IndexRange mip_range,
+                         IndexRange layer_range)
 {
   const VkImageAspectFlags allowed_bits = VK_IMAGE_ASPECT_COLOR_BIT |
                                           (use_stencil ? VK_IMAGE_ASPECT_STENCIL_BIT :
                                                          VK_IMAGE_ASPECT_DEPTH_BIT);
-  eGPUTextureFormat device_format = texture.device_format_get();
-  VkImageAspectFlags image_aspect = to_vk_image_aspect_flag_bits(device_format) & allowed_bits;
+  vk_format_ = vk_image_view_info.format;
+  use_stencil_ = use_stencil;
+  view_type_ = vk_image_view_info.viewType;
+  mip_range_ = mip_range;
+  layer_range_ = layer_range;
 
-  vk_format_ = to_vk_format(device_format);
-  if (texture.format_flag_get() & GPU_FORMAT_SRGB && !use_srgb) {
-    vk_format_ = to_non_srgb_format(vk_format_);
-  }
+  vk_image_view_info.subresourceRange.aspectMask = vk_image_view_info.subresourceRange.aspectMask &
+                                                   allowed_bits;
+  vk_image_view_info.subresourceRange.baseMipLevel = mip_range.first();
+  vk_image_view_info.subresourceRange.levelCount = mip_range.size();
 
+  auto layer_size = layer_range.size();
+  vk_image_view_info.subresourceRange.baseArrayLayer = (layer_size == 0) ? 0 : layer_range.first();
+  vk_image_view_info.subresourceRange.layerCount = (layer_size == 0) ? VK_REMAINING_ARRAY_LAYERS :
+                                                                       layer_size;
   VK_ALLOCATION_CALLBACKS
-  VkImageViewCreateInfo image_view_info = {};
-  image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-  image_view_info.image = texture.vk_image_handle();
-  image_view_info.viewType = to_vk_image_view_type(texture.type_get(), usage);
-  image_view_info.format = vk_format_;
-  image_view_info.components = texture.vk_component_mapping_get();
-  image_view_info.subresourceRange.aspectMask = image_aspect;
-  image_view_info.subresourceRange.baseMipLevel = mip_range.first();
-  image_view_info.subresourceRange.levelCount = mip_range.size();
-  image_view_info.subresourceRange.baseArrayLayer = layer_range.first();
-  image_view_info.subresourceRange.layerCount = layer_range.size();
-
   const VKDevice &device = VKBackend::get().device_get();
   vkCreateImageView(
-      device.device_get(), &image_view_info, vk_allocation_callbacks, &vk_image_view_);
-  debug::object_label(vk_image_view_, name.c_str());
-}
-
-VKImageView::VKImageView(VKImageView &&other)
-{
-  vk_image_view_ = other.vk_image_view_;
-  other.vk_image_view_ = VK_NULL_HANDLE;
-  vk_format_ = other.vk_format_;
-  other.vk_format_ = VK_FORMAT_UNDEFINED;
+      device.device_get(), &vk_image_view_info, vk_allocation_callbacks, &vk_image_view_);
 }
 
 VKImageView::~VKImageView()
 {
+  VK_ALLOCATION_CALLBACKS
   if (vk_image_view_ != VK_NULL_HANDLE) {
     VKDevice &device = VKBackend::get().device_get();
     device.discard_image_view(vk_image_view_);
     vk_image_view_ = VK_NULL_HANDLE;
   }
-  vk_format_ = VK_FORMAT_UNDEFINED;
+}
+
+bool vk_image_view_equal(std::weak_ptr<VKImageView> a, std::weak_ptr<VKImageView> b)
+{
+  return a.lock()->vk_handle() == b.lock()->vk_handle();
 }
 
 }  // namespace blender::gpu

@@ -17,17 +17,20 @@ namespace blender::gpu {
 class VKTexture;
 
 class VKImageView : NonCopyable {
+  friend class VKImageViews;
+ private:
   VkImageView vk_image_view_ = VK_NULL_HANDLE;
-  VkFormat vk_format_ = VK_FORMAT_UNDEFINED;
+  VkFormat vk_format_;
+  bool use_stencil_;
+  VkImageViewType view_type_;
+  IndexRange mip_range_;
+  IndexRange layer_range_;
 
  public:
-  VKImageView(VKTexture &texture,
-              eImageViewUsage usage,
-              IndexRange layer_range,
-              IndexRange mip_range,
+  VKImageView(VkImageViewCreateInfo &vk_image_view_info_,
               bool use_stencil,
-              bool use_srgb,
-              StringRefNull name);
+              IndexRange mip_range,
+              IndexRange layer_range);
 
   VKImageView(VKImageView &&other);
   ~VKImageView();
@@ -37,10 +40,30 @@ class VKImageView : NonCopyable {
     BLI_assert(vk_image_view_ != VK_NULL_HANDLE);
     return vk_image_view_;
   }
-
   VkFormat vk_format() const
   {
     return vk_format_;
+  }
+
+ protected:
+  bool check_srgb(VkFormat vk_format) const
+  {
+    return vk_format_ == vk_format;
+  }
+  bool check_eq(bool use_stencil) const
+  {
+    return use_stencil == use_stencil_;
+  }
+  bool check_eq(VkImageViewType view_type) const
+  {
+    return view_type == view_type_;
+  }
+  bool check_eq(IndexRange range, bool layer) const
+  {
+    if (layer) {
+      return layer_range_ == range;
+    }
+    return mip_range_ == range;
   }
 };
 

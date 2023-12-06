@@ -32,7 +32,7 @@ class VKFrameBuffer : public FrameBuffer {
   /* Number of layers if the attachments are layered textures. */
   int depth_ = 1;
 
-  Vector<VKImageView, GPU_FB_MAX_ATTACHMENT> image_views_;
+  std::array<std::weak_ptr<VKImageView>, GPU_FB_MAX_ATTACHMENT> image_views_;
 
   /** Is the first attachment an SRGB texture. */
   bool srgb_;
@@ -128,7 +128,7 @@ class VKFrameBuffer : public FrameBuffer {
   void update_attachments();
   void render_pass_free();
   void render_pass_create();
-
+  bool image_view_ensure(GPUAttachment &attachment, int view_order);
   /* Clearing attachments */
   void build_clear_attachments_depth_stencil(eGPUFrameBufferBits buffers,
                                              float clear_depth,

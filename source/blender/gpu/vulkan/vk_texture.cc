@@ -11,6 +11,7 @@
 #include "vk_buffer.hh"
 #include "vk_context.hh"
 #include "vk_data_conversion.hh"
+#include "vk_image_views.hh"
 #include "vk_memory.hh"
 #include "vk_shader.hh"
 #include "vk_shader_interface.hh"
@@ -25,6 +26,9 @@ namespace blender::gpu {
 
 VKTexture::~VKTexture()
 {
+  if (image_views_) {
+    delete image_views_;
+  }
   if (vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE) {
     VKDevice &device = VKBackend::get().device_get();
     device.discard_image(vk_image_, allocation_);
@@ -198,20 +202,13 @@ void VKTexture::clear_depth_stencil(const eGPUFrameBufferBits buffers,
 
 void VKTexture::swizzle_set(const char swizzle_mask[4])
 {
-  vk_component_mapping_.r = to_vk_component_swizzle(swizzle_mask[0]);
-  vk_component_mapping_.g = to_vk_component_swizzle(swizzle_mask[1]);
-  vk_component_mapping_.b = to_vk_component_swizzle(swizzle_mask[2]);
-  vk_component_mapping_.a = to_vk_component_swizzle(swizzle_mask[3]);
-
-  flags_ |= IMAGE_VIEW_DIRTY;
+  image_views_->swizzle_set(swizzle_mask);
 }
 
 void VKTexture::mip_range_set(int min, int max)
 {
   mip_min_ = min;
   mip_max_ = max;
-
-  flags_ |= IMAGE_VIEW_DIRTY;
 }
 
 void VKTexture::read_sub(
@@ -384,7 +381,6 @@ bool VKTexture::init_internal(GPUTexture *src, int mip_offset, int layer_offset,
   mip_max_ = mip_offset;
   layer_offset_ = layer_offset;
   use_stencil_ = use_stencil;
-  flags_ |= IMAGE_VIEW_DIRTY;
 
   return true;
 }
@@ -511,7 +507,11 @@ bool VKTexture::allocate()
 
   /* Promote image to the correct layout. */
   layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
-
+  /** VKTexture and VKImageviews share a life cycle via VkImage. **/
+  if (image_views_) {
+    delete image_views_;
+  }
+  image_views_ = new VKImageViews(vk_image_, image_info);
   return result == VK_SUCCESS;
 }
 
@@ -612,25 +612,36 @@ void VKTexture::layout_ensure(VKContext &context,
 /* -------------------------------------------------------------------- */
 /** \name Image Views
  * \{ */
-
-void VKTexture::image_view_ensure()
+std::weak_ptr<VKImageView> VKTexture::image_view_get(bool use_srgb, int mip, int layer)
 {
-  if (flags_ & IMAGE_VIEW_DIRTY) {
-    image_view_update();
-    flags_ &= ~IMAGE_VIEW_DIRTY;
+  BLI_assert(mip > -1);
+  int layer_offset = 0;
+  int layer_size = 1;
+  if (layer == -1) {
+    layer_size = vk_layer_count(1);
   }
-}
+  else {
+    layer_offset = layer;
+  }
+  return image_views_->lookup_vk_handle(*this,
+                                        eImageViewUsage::Attachment,
+                                        IndexRange(layer_offset, layer_size),
+                                        IndexRange(mip, 1),
+                                        use_stencil_,
+                                        use_srgb,
+                                        name_);
+};
 
-void VKTexture::image_view_update()
+std::weak_ptr<VKImageView> VKTexture::image_view_get()
 {
-  image_view_.emplace(VKImageView(*this,
-                                  eImageViewUsage::ShaderBinding,
-                                  layer_range(),
-                                  mip_map_range(),
-                                  use_stencil_,
-                                  true,
-                                  name_));
-}
+  return image_views_->lookup_vk_handle(*this,
+                                        eImageViewUsage::ShaderBinding,
+                                        layer_range(),
+                                        mip_map_range(),
+                                        use_stencil_,
+                                        true,
+                                        name_);
+};
 
 IndexRange VKTexture::mip_map_range() const
 {

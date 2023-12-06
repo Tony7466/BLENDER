@@ -12,7 +12,7 @@
 
 #include "vk_bindable_resource.hh"
 #include "vk_context.hh"
-#include "vk_image_view.hh"
+#include "vk_image_views.hh"
 
 namespace blender::gpu {
 
@@ -32,9 +32,8 @@ class VKTexture : public Texture, public VKBindableResource {
   VkImage vk_image_ = VK_NULL_HANDLE;
   VmaAllocation allocation_ = VK_NULL_HANDLE;
 
-  /* Image view when used in a shader. */
-  std::optional<VKImageView> image_view_;
-
+  /** To manage the dependencies of VkImage and multiple VkImageViews. **/
+  VKImageViews *image_views_ = nullptr;
   /* Last image layout of the texture. Frame-buffer and barriers can alter/require the actual
    * layout to be changed. During this it requires to set the current layout in order to know which
    * conversion should happen. #current_layout_ keep track of the layout so the correct conversion
@@ -48,12 +47,6 @@ class VKTexture : public Texture, public VKBindableResource {
                                               VK_COMPONENT_SWIZZLE_IDENTITY,
                                               VK_COMPONENT_SWIZZLE_IDENTITY,
                                               VK_COMPONENT_SWIZZLE_IDENTITY};
-
-  enum eDirtyFlags {
-    IMAGE_VIEW_DIRTY = (1 << 0),
-  };
-
-  int flags_ = IMAGE_VIEW_DIRTY;
 
  public:
   VKTexture(const char *name) : Texture(name) {}
@@ -120,8 +113,6 @@ class VKTexture : public Texture, public VKBindableResource {
    */
   bool allocate();
 
-  VkImageViewType vk_image_view_type() const;
-
   /**
    * Determine the layerCount for vulkan based on the texture type. Will pass the
    * #non_layered_value for non layered textures.
@@ -187,11 +178,10 @@ class VKTexture : public Texture, public VKBindableResource {
   /** \name Image Views
    * \{ */
  public:
-  VKImageView &image_view_get()
-  {
-    image_view_ensure();
-    return *image_view_;
-  }
+  /** Attchment type does not make multiple mips into views. **/
+  std::weak_ptr<VKImageView> image_view_get(bool use_srgb, int mip, int layer);
+  /** Types other than Attchment **/
+  std::weak_ptr<VKImageView> image_view_get();
 
   const VkComponentMapping &vk_component_mapping_get() const
   {
@@ -201,9 +191,6 @@ class VKTexture : public Texture, public VKBindableResource {
  private:
   IndexRange mip_map_range() const;
   IndexRange layer_range() const;
-  void image_view_ensure();
-  void image_view_update();
-
   /** \} */
 };
 

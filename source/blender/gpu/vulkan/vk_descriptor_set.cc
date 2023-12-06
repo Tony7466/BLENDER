@@ -8,6 +8,7 @@
 
 #include "vk_descriptor_set.hh"
 #include "vk_index_buffer.hh"
+#include "vk_image_view.hh"
 #include "vk_sampler.hh"
 #include "vk_shader.hh"
 #include "vk_storage_buffer.hh"
@@ -185,7 +186,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
     binding.texture->layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
     VkDescriptorImageInfo image_info = {};
     image_info.sampler = binding.vk_sampler;
-    image_info.imageView = binding.texture->image_view_get().vk_handle();
+    image_info.imageView = binding.texture->image_view_get().lock()->vk_handle();
     image_info.imageLayout = binding.texture->current_layout_get();
     image_infos.append(image_info);
 
