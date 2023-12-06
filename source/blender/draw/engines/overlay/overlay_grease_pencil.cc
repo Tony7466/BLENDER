@@ -31,7 +31,7 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
   DRW_PASS_CREATE(psl->edit_grease_pencil_ps, (state | pd->clipping_state));
 
   const bool show_points = selection_domain == ATTR_DOMAIN_POINT;
-  const bool show_lines = v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES;
+  const bool show_lines = (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES) != 0;
 
   if (show_lines) {
     sh = OVERLAY_shader_edit_particle_strand();
