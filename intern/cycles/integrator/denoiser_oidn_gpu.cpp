@@ -124,7 +124,7 @@ bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
   }
 
   switch (denoiser_device_->info.type) {
-#  if defined(OIDN_DEVICE_SYCL)
+#  if defined(OIDN_DEVICE_SYCL) && defined(WITH_ONEAPI)
     case DEVICE_ONEAPI:
       oidn_device_ = oidnNewSYCLDevice(
           (const sycl::queue *)reinterpret_cast<OneapiDevice *>(denoiser_device_)->sycl_queue(),

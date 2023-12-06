@@ -4,6 +4,7 @@
 
 #ifdef WITH_ONEAPI
 
+/* <algorithm> is needed until included upstream in sycl/detail/property_list_base.hpp */
 #  include <algorithm>
 #  include <sycl/sycl.hpp>
 
