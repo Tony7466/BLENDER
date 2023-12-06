@@ -319,6 +319,8 @@ struct CaptureGridOp {
     const GridPtr output_grid = GridType::create(vdb_background);
     TopologyInitOp<GridPtr> topology_op{topology_grid, output_grid};
     grids::apply(this->topology_data_type, topology_op);
+    /* All leaf nodes must be allocated for writing voxel values. */
+    output_grid->tree().voxelizeActiveTiles();
 
     const int64_t voxels_num = get_voxel_count(*output_grid);
     CaptureFieldContext<GridType> context(output_grid);
