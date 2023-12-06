@@ -1419,8 +1419,6 @@ static float in_band(float width, float dist, int side, int dir)
 static float check_zone(const WipeZone *wipezone, int x, int y, float fac)
 {
   float posx, posy, hyp, hyp2, angle, hwidth, b1, b2, b3, pointdist;
-  /* some future stuff */
-  /* float hyp3, hyp4, b4, b5 */
   float temp1, temp2, temp3, temp4; /* some placeholder variables */
   int xo = wipezone->xo;
   int yo = wipezone->yo;
@@ -1549,15 +1547,9 @@ static float check_zone(const WipeZone *wipezone, int x, int y, float fac)
       x = x - halfx;
       y = y - halfy;
 
-      temp2 = asin(abs(y) / hypot(x, y));
-      if (x <= 0 && y >= 0) {
-        temp2 = float(M_PI) - temp2;
-      }
-      else if (x <= 0 && y <= 0) {
-        temp2 += float(M_PI);
-      }
-      else if (x >= 0 && y <= 0) {
-        temp2 = 2.0f * float(M_PI) - temp2;
+      temp2 = atan2f(y, x);
+      if (temp2 < 0.0f) {
+        temp2 += 2.0f * float(M_PI);
       }
 
       if (wipezone->forward) {
