@@ -3261,7 +3261,7 @@ void MESH_OT_colors_rotate(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Rotate Colors";
   ot->idname = "MESH_OT_colors_rotate";
-  ot->description = "Rotate color attributes inside faces";
+  ot->description = "Rotate vertex colors inside faces";
 
   /* api callbacks */
   ot->exec = edbm_rotate_colors_exec;

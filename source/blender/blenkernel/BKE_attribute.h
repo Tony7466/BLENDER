@@ -115,8 +115,7 @@ CustomDataLayer *BKE_id_attribute_from_index(struct ID *id,
 int BKE_id_attribute_to_index(const struct ID *id,
                               const CustomDataLayer *layer,
                               eAttrDomainMask domain_mask,
-                              eCustomDataMask layer_mask,
-                              bool swap_domains = true);
+                              eCustomDataMask layer_mask);
 
 const char *BKE_id_attributes_active_color_name(const struct ID *id);
 const char *BKE_id_attributes_default_color_name(const struct ID *id);

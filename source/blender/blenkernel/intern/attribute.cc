@@ -724,8 +724,7 @@ void BKE_id_attributes_active_set(ID *id, const char *name)
       id, name, CD_MASK_PROP_ALL, ATTR_DOMAIN_MASK_ALL);
   BLI_assert(layer != nullptr);
 
-  const int index = BKE_id_attribute_to_index(
-      id, layer, ATTR_DOMAIN_MASK_ALL, CD_MASK_PROP_ALL, false);
+  const int index = BKE_id_attribute_to_index(id, layer, ATTR_DOMAIN_MASK_ALL, CD_MASK_PROP_ALL);
   *BKE_id_attributes_active_index_p(id) = index;
 }
 
@@ -808,48 +807,29 @@ CustomDataLayer *BKE_id_attribute_from_index(ID *id,
   return nullptr;
 }
 
-/**
- * Get list of domain types - optionally with ATTR_DOMAIN_FACE and
- * ATTR_DOMAIN_CORNER swapped.
- */
-static void get_domains_types(eAttrDomain domains[ATTR_DOMAIN_NUM], const bool swap)
-{
-  for (const int i : IndexRange(ATTR_DOMAIN_NUM)) {
-    domains[i] = static_cast<eAttrDomain>(i);
-  }
-
-  if (swap) {
-    /* Swap corner and face. */
-    std::swap(domains[ATTR_DOMAIN_FACE], domains[ATTR_DOMAIN_CORNER]);
-  }
-}
-
 int BKE_id_attribute_to_index(const ID *id,
                               const CustomDataLayer *layer,
                               eAttrDomainMask domain_mask,
-                              eCustomDataMask layer_mask,
-                              bool swap_domains)
+                              eCustomDataMask layer_mask)
 {
   if (!layer) {
     return -1;
   }
 
   DomainInfo info[ATTR_DOMAIN_NUM];
-  eAttrDomain domains[ATTR_DOMAIN_NUM];
-  get_domains_types(domains, swap_domains);
   get_domains(id, info);
 
   int index = 0;
-  for (int i = 0; i < ATTR_DOMAIN_NUM; i++) {
-    if (!(domain_mask & (1 << domains[i])) || !info[domains[i]].customdata) {
+  for (const int domain : IndexRange(ATTR_DOMAIN_NUM)) {
+    CustomData *customdata = info[domain].customdata;
+
+    if (!customdata || !((1 << int(domain)) & domain_mask)) {
       continue;
     }
 
-    const CustomData *cdata = info[domains[i]].customdata;
-    for (int j = 0; j < cdata->totlayer; j++) {
-      const CustomDataLayer *layer_iter = cdata->layers + j;
-
-      if (!(CD_TYPE_AS_MASK(layer_iter->type) & layer_mask) ||
+    for (int i = 0; i < customdata->totlayer; i++) {
+      const CustomDataLayer *layer_iter = customdata->layers + i;
+      if (!(layer_mask & CD_TYPE_AS_MASK(layer_iter->type)) ||
           (layer_iter->flag & CD_FLAG_TEMPORARY)) {
         continue;
       }
