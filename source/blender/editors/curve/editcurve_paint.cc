@@ -18,6 +18,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
+#include "BKE_curves.hh"
 #include "BKE_fcurve.h"
 #include "BKE_report.h"
 
@@ -55,6 +56,8 @@ extern "C" {
 #  include "curve_fit_nd.h"
 }
 #endif
+
+#include "BLI_offset_indices.hh"
 
 /* Distance between input samples */
 #define STROKE_SAMPLE_DIST_MIN_PX 1
@@ -132,12 +135,25 @@ struct CurveDrawData {
   BLI_mempool *stroke_elem_pool;
 
   void *draw_handle_view;
+
+  void (*curve_draw)(const CurvePaintSettings *cps,
+                     const CurveDrawData *cdd,
+                     const int fit_method,
+                     const float error_threshold,
+                     const float corner_angle,
+                     const bool use_cyclic,
+                     bContext *C,
+                     int stroke_len,
+                     Object *obedit);
+
+  float (*curve_bevel_radius)(void *curve_data);
+  bool (*is_curve_2d)(void *curve_data);
 };
 
 static float stroke_elem_radius_from_pressure(const CurveDrawData *cdd, const float pressure)
 {
-  const Curve *cu = static_cast<const Curve *>(cdd->vc.obedit->data);
-  return ((pressure * cdd->radius.range) + cdd->radius.min) * cu->bevel_radius;
+  float bevel_radius = cdd->curve_bevel_radius(cdd->vc.obedit->data);
+  return ((pressure * cdd->radius.range) + cdd->radius.min) * bevel_radius;
 }
 
 static float stroke_elem_radius(const CurveDrawData *cdd, const StrokeElem *selem)
@@ -354,9 +370,8 @@ static void curve_draw_stroke_3d(const bContext * /*C*/, ARegion * /*region*/, v
   }
 
   Object *obedit = cdd->vc.obedit;
-  Curve *cu = static_cast<Curve *>(obedit->data);
 
-  if (cu->bevel_radius > 0.0f) {
+  if (cdd->curve_bevel_radius(obedit->data) > 0.0f) {
     BLI_mempool_iter iter;
     const StrokeElem *selem;
 
@@ -566,11 +581,32 @@ static void curve_draw_event_add_first(wmOperator *op, const wmEvent *event)
   cdd->state = CURVE_DRAW_PAINTING;
 }
 
+static void curve_legacy_draw(const CurvePaintSettings *cps,
+                              const CurveDrawData *cdd,
+                              const int fit_method,
+                              const float error_threshold,
+                              const float corner_angle,
+                              const bool use_cyclic,
+                              bContext *C,
+                              int stroke_len,
+                              Object *obedit);
+
+static void curves_draw(const CurvePaintSettings *cps,
+                        const CurveDrawData *cdd,
+                        const int fit_method,
+                        const float error_threshold,
+                        const float corner_angle,
+                        const bool use_cyclic,
+                        bContext *C,
+                        int stroke_len,
+                        Object *obedit);
+
 static bool curve_draw_init(bContext *C, wmOperator *op, bool is_invoke)
 {
   BLI_assert(op->customdata == nullptr);
 
   CurveDrawData *cdd = static_cast<CurveDrawData *>(MEM_callocN(sizeof(*cdd), __func__));
+
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
   if (is_invoke) {
@@ -595,6 +631,25 @@ static bool curve_draw_init(bContext *C, wmOperator *op, bool is_invoke)
       BKE_report(op->reports, RPT_ERROR, "The \"stroke\" cannot be empty");
       return false;
     }
+  }
+  if (cdd->vc.obedit->type == OB_CURVES_LEGACY) {
+    cdd->curve_draw = curve_legacy_draw;
+    cdd->curve_bevel_radius = [](void *data) {
+      const Curve *cu = static_cast<Curve *>(data);
+      return cu->bevel_radius;
+    };
+    cdd->is_curve_2d = [](void *data) {
+      Curve *cu = static_cast<Curve *>(data);
+      return CU_IS_2D(cu);
+    };
+  }
+  else {
+    cdd->curve_draw = curves_draw;
+    cdd->curve_bevel_radius = [](void *data) {
+      // TODO:
+      return 0.0f;
+    };
+    cdd->is_curve_2d = [](void *data) { return false; };
   }
 
   op->customdata = cdd;
@@ -759,38 +814,321 @@ static void curve_draw_exec_precalc(wmOperator *op)
   }
 }
 
-static int curve_draw_exec(bContext *C, wmOperator *op)
+using namespace blender;
+
+void curves_draw(const CurvePaintSettings *cps,
+                 const CurveDrawData *cdd,
+                 const int fit_method,
+                 const float error_threshold,
+                 const float corner_angle,
+                 const bool use_cyclic,
+                 bContext *C,
+                 int stroke_len,
+                 Object *obedit)
 {
-  if (op->customdata == nullptr) {
-    if (!curve_draw_init(C, op, false)) {
-      return OPERATOR_CANCELLED;
-    }
-  }
-
-  CurveDrawData *cdd = static_cast<CurveDrawData *>(op->customdata);
-
-  const CurvePaintSettings *cps = &cdd->vc.scene->toolsettings->curve_paint_settings;
-  Object *obedit = cdd->vc.obedit;
-  Curve *cu = static_cast<Curve *>(obedit->data);
-  ListBase *nurblist = object_editcurve_get(obedit);
-
-  int stroke_len = BLI_mempool_len(cdd->stroke_elem_pool);
-
-  const bool is_3d = (cu->flag & CU_3D) != 0;
-  invert_m4_m4(obedit->world_to_object, obedit->object_to_world);
-
-  if (BLI_mempool_len(cdd->stroke_elem_pool) == 0) {
-    curve_draw_stroke_from_operator(op);
-    stroke_len = BLI_mempool_len(cdd->stroke_elem_pool);
-  }
-
-  /* Deselect all existing curves. */
-  ED_curve_deselect_all_multi(C);
-
   const float radius_min = cps->radius_min;
   const float radius_max = cps->radius_max;
   const float radius_range = cps->radius_max - cps->radius_min;
 
+  Curves *curves_id = static_cast<Curves *>(obedit->data);
+  blender::bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+  const int curve_index = curves.curves_num();
+
+  // // nu->resolu = cu->resolu;
+  // nu->flag |= CU_SMOOTH;
+
+  const bool use_pressure_radius = (cps->flag & CURVE_PAINT_FLAG_PRESSURE_RADIUS) ||
+                                   ((cps->radius_taper_start != 0.0f) ||
+                                    (cps->radius_taper_end != 0.0f));
+
+  if (cdd->curve_type == CU_BEZIER) {
+
+#ifdef USE_SPLINE_FIT
+
+    /* Allow to interpolate multiple channels */
+    int dims = 3;
+    struct {
+      int radius;
+    } coords_indices;
+    coords_indices.radius = use_pressure_radius ? dims++ : -1;
+
+    float *coords = static_cast<float *>(
+        MEM_mallocN(sizeof(*coords) * stroke_len * dims, __func__));
+
+    float *cubic_spline = nullptr;
+    uint cubic_spline_len = 0;
+
+    {
+      BLI_mempool_iter iter;
+      const StrokeElem *selem;
+      float *co = coords;
+
+      BLI_mempool_iternew(cdd->stroke_elem_pool, &iter);
+      for (selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)); selem;
+           selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)), co += dims)
+      {
+        copy_v3_v3(co, selem->location_local);
+        if (coords_indices.radius != -1) {
+          co[coords_indices.radius] = selem->pressure;
+        }
+
+        /* remove doubles */
+        if ((co != coords) && UNLIKELY(memcmp(co, co - dims, sizeof(float) * dims) == 0)) {
+          co -= dims;
+          stroke_len--;
+        }
+      }
+    }
+
+    uint *corners = nullptr;
+    uint corners_len = 0;
+
+    if ((fit_method == CURVE_PAINT_FIT_METHOD_SPLIT) && (corner_angle < float(M_PI))) {
+      /* this could be configurable... */
+      const float corner_radius_min = error_threshold / 8;
+      const float corner_radius_max = error_threshold * 2;
+      const uint samples_max = 16;
+
+      curve_fit_corners_detect_fl(coords,
+                                  stroke_len,
+                                  dims,
+                                  corner_radius_min,
+                                  corner_radius_max,
+                                  samples_max,
+                                  corner_angle,
+                                  &corners,
+                                  &corners_len);
+    }
+
+    uint *corners_index = nullptr;
+    uint corners_index_len = 0;
+    uint calc_flag = CURVE_FIT_CALC_HIGH_QUALIY;
+
+    if ((stroke_len > 2) && use_cyclic) {
+      calc_flag |= CURVE_FIT_CALC_CYCLIC;
+    }
+
+    int result;
+    if (fit_method == CURVE_PAINT_FIT_METHOD_REFIT) {
+      result = curve_fit_cubic_to_points_refit_fl(coords,
+                                                  stroke_len,
+                                                  dims,
+                                                  error_threshold,
+                                                  calc_flag,
+                                                  nullptr,
+                                                  0,
+                                                  corner_angle,
+                                                  &cubic_spline,
+                                                  &cubic_spline_len,
+                                                  nullptr,
+                                                  &corners_index,
+                                                  &corners_index_len);
+    }
+    else {
+      result = curve_fit_cubic_to_points_fl(coords,
+                                            stroke_len,
+                                            dims,
+                                            error_threshold,
+                                            calc_flag,
+                                            corners,
+                                            corners_len,
+                                            &cubic_spline,
+                                            &cubic_spline_len,
+                                            nullptr,
+                                            &corners_index,
+                                            &corners_index_len);
+    }
+
+    MEM_freeN(coords);
+    if (corners) {
+      free(corners);
+    }
+
+    if (result == 0) {
+      curves.resize(curves.points_num() + cubic_spline_len, curve_index + 1);
+      auto curve_types = curves.curve_types_for_write();
+      curve_types[curve_index] = CURVE_TYPE_BEZIER;
+      curves.update_curve_types();
+
+      MutableSpan<float3> handle_positions_l = curves.handle_positions_left_for_write();
+      MutableSpan<float3> handle_positions_r = curves.handle_positions_right_for_write();
+      MutableSpan<int8_t> handle_types_l = curves.handle_types_left_for_write();
+      MutableSpan<int8_t> handle_types_r = curves.handle_types_right_for_write();
+      MutableSpan<bool> cyclic = curves.cyclic_for_write();
+      MutableSpan<int> resolution = curves.resolution_for_write();
+
+      resolution[curve_index] = 12;
+      auto points_of_curve = curves.points_by_curve()[curve_index];
+      auto positions = curves.positions_for_write();
+
+      auto curves_attributes = curves.attributes_for_write();
+      auto radius_attribute = curves_attributes.lookup_or_add_for_write_only_span<float>(
+          "radius", ATTR_DOMAIN_POINT);
+      auto selection_attribute = curves_attributes.lookup_or_add_for_write_span<bool>(
+          ".selection", ATTR_DOMAIN_POINT);
+
+      MutableSpan<float> radii = radius_attribute.span;
+      MutableSpan<bool> selections = selection_attribute.span;
+
+      selections.fill(false);
+
+      auto iter = points_of_curve.begin();
+
+      float *co = cubic_spline;
+
+      for (int j = 0; j < cubic_spline_len; j++, iter++, co += (dims * 3)) {
+        const float *handle_l = co + (dims * 0);
+        const float *pt = co + (dims * 1);
+        const float *handle_r = co + (dims * 2);
+
+        const auto i = *iter;
+        copy_v3_v3(handle_positions_l[i], handle_l);
+        copy_v3_v3(positions[i], pt);
+        copy_v3_v3(handle_positions_r[i], handle_r);
+
+        const float radius = (coords_indices.radius != -1) ?
+                                 (pt[coords_indices.radius] * cdd->radius.range) +
+                                     cdd->radius.min :
+                                 radius_max;
+        radii[i] = radius;
+
+        handle_types_l[i] = BEZIER_HANDLE_ALIGN;
+        handle_types_r[i] = BEZIER_HANDLE_ALIGN;
+        selections[i] = true;
+        //         bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
+      }
+
+      if (corners_index) {
+        /* ignore the first and last */
+        uint i_start = 0, i_end = corners_index_len;
+
+        if ((corners_index_len >= 2) && (calc_flag & CURVE_FIT_CALC_CYCLIC) == 0) {
+          i_start += 1;
+          i_end -= 1;
+        }
+
+        for (uint i = i_start; i < i_end; i++) {
+          const auto corner_i = points_of_curve[corners_index[i]];
+          handle_types_l[i] = BEZIER_HANDLE_FREE;
+          handle_types_r[i] = BEZIER_HANDLE_FREE;
+        }
+      }
+
+      cyclic[curve_index] = bool(calc_flag & CURVE_FIT_CALC_CYCLIC);
+
+      radius_attribute.finish();
+      selection_attribute.finish();
+    }
+
+    if (corners_index) {
+      free(corners_index);
+    }
+
+    if (cubic_spline) {
+      free(cubic_spline);
+    }
+
+#else
+//     nu->pntsu = stroke_len;
+//     nu->bezt = MEM_callocN(nu->pntsu * sizeof(BezTriple), __func__);
+
+//     BezTriple *bezt = nu->bezt;
+
+//     {
+//       BLI_mempool_iter iter;
+//       const struct StrokeElem *selem;
+
+//       BLI_mempool_iternew(cdd->stroke_elem_pool, &iter);
+//       for (selem = BLI_mempool_iterstep(&iter); selem; selem =
+//       BLI_mempool_iterstep(&iter))
+//       {
+//         copy_v3_v3(bezt->vec[1], selem->location_local);
+//         if (!is_3d) {
+//           bezt->vec[1][2] = 0.0f;
+//         }
+
+//         if (use_pressure_radius) {
+//           bezt->radius = selem->pressure;
+//         }
+//         else {
+//           bezt->radius = radius_max;
+//         }
+
+//         bezt->h1 = bezt->h2 = HD_AUTO;
+
+//         bezt->f1 |= SELECT;
+//         bezt->f2 |= SELECT;
+//         bezt->f3 |= SELECT;
+
+//         bezt++;
+//       }
+//     }
+#endif
+  }
+  else { /* CU_POLY */
+    BLI_mempool_iter iter;
+    const StrokeElem *selem;
+
+    curves.resize(curves.points_num() + stroke_len, curve_index + 1);
+    auto curve_types = curves.curve_types_for_write();
+    curve_types[curve_index] = CURVE_TYPE_POLY;
+    curves.update_curve_types();
+
+    auto points_of_curve = curves.points_by_curve()[curve_index];
+    auto positions = curves.positions_for_write();
+    auto curves_attributes = curves.attributes_for_write();
+    auto radius_attribute = curves_attributes.lookup_or_add_for_write_only_span<float>(
+        "radius", ATTR_DOMAIN_POINT);
+    auto selection_attribute = curves_attributes.lookup_or_add_for_write_span<bool>(
+        ".selection", ATTR_DOMAIN_POINT);
+
+    MutableSpan<float> radii = radius_attribute.span;
+    MutableSpan<bool> selections = selection_attribute.span;
+
+    selections.fill(false);
+
+    auto points_iter = points_of_curve.begin();
+
+    BLI_mempool_iternew(cdd->stroke_elem_pool, &iter);
+    for (selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)); selem;
+         selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)), points_iter++)
+    {
+      const auto i = *points_iter;
+      copy_v3_v3(positions[i], selem->location_local);
+      if (cdd->is_curve_2d(curves_id)) {
+        positions[i][2] = 0.0f;
+      }
+
+      const float radius = use_pressure_radius ? (selem->pressure * radius_range) + radius_min :
+                                                 cps->radius_max;
+      radii[i] = radius;
+      selections[i] = true;
+    }
+
+    radius_attribute.finish();
+    selection_attribute.finish();
+  }
+}
+
+static void curve_legacy_draw(const CurvePaintSettings *cps,
+                              const CurveDrawData *cdd,
+                              const int fit_method,
+                              const float error_threshold,
+                              const float corner_angle,
+                              const bool use_cyclic,
+                              bContext *C,
+                              int stroke_len,
+                              Object *obedit)
+{
+  const float radius_min = cps->radius_min;
+  const float radius_max = cps->radius_max;
+  const float radius_range = cps->radius_max - cps->radius_min;
+
+  /* Deselect all existing curves. */
+  ED_curve_deselect_all_multi(C);
+
+  Curve *cu = static_cast<Curve *>(obedit->data);
+  ListBase *nurblist = object_editcurve_get(obedit);
   Nurb *nu = static_cast<Nurb *>(MEM_callocN(sizeof(Nurb), __func__));
   nu->pntsv = 0;
   nu->resolu = cu->resolu;
@@ -818,12 +1156,6 @@ static int curve_draw_exec(bContext *C, wmOperator *op)
 
     float *cubic_spline = nullptr;
     uint cubic_spline_len = 0;
-
-    /* error in object local space */
-    const int fit_method = RNA_enum_get(op->ptr, "fit_method");
-    const float error_threshold = RNA_float_get(op->ptr, "error_threshold");
-    const float corner_angle = RNA_float_get(op->ptr, "corner_angle");
-    const bool use_cyclic = RNA_boolean_get(op->ptr, "use_cyclic");
 
     {
       BLI_mempool_iter iter;
@@ -1024,7 +1356,7 @@ static int curve_draw_exec(bContext *C, wmOperator *op)
          selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)))
     {
       copy_v3_v3(bp->vec, selem->location_local);
-      if (!is_3d) {
+      if (CU_IS_2D(cu)) {
         bp->vec[2] = 0.0f;
       }
 
@@ -1047,6 +1379,38 @@ static int curve_draw_exec(bContext *C, wmOperator *op)
 
   BKE_curve_nurb_active_set(cu, nu);
   cu->actvert = nu->pntsu - 1;
+}
+
+static int curve_draw_exec(bContext *C, wmOperator *op)
+{
+  if (op->customdata == nullptr) {
+    if (!curve_draw_init(C, op, false)) {
+      return OPERATOR_CANCELLED;
+    }
+  }
+
+  CurveDrawData *cdd = static_cast<CurveDrawData *>(op->customdata);
+
+  const CurvePaintSettings *cps = &cdd->vc.scene->toolsettings->curve_paint_settings;
+  Object *obedit = cdd->vc.obedit;
+
+  int stroke_len = BLI_mempool_len(cdd->stroke_elem_pool);
+
+  invert_m4_m4(obedit->world_to_object, obedit->object_to_world);
+
+  if (BLI_mempool_len(cdd->stroke_elem_pool) == 0) {
+    curve_draw_stroke_from_operator(op);
+    stroke_len = BLI_mempool_len(cdd->stroke_elem_pool);
+  }
+
+  /* error in object local space */
+  const int fit_method = RNA_enum_get(op->ptr, "fit_method");
+  const float error_threshold = RNA_float_get(op->ptr, "error_threshold");
+  const float corner_angle = RNA_float_get(op->ptr, "corner_angle");
+  const bool use_cyclic = RNA_boolean_get(op->ptr, "use_cyclic");
+
+  cdd->curve_draw(
+      cps, cdd, fit_method, error_threshold, corner_angle, use_cyclic, C, stroke_len, obedit);
 
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
   DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
@@ -1089,12 +1453,11 @@ static int curve_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     View3D *v3d = cdd->vc.v3d;
     RegionView3D *rv3d = cdd->vc.rv3d;
     Object *obedit = cdd->vc.obedit;
-    Curve *cu = static_cast<Curve *>(obedit->data);
 
     const float *plane_no = nullptr;
     const float *plane_co = nullptr;
 
-    if (CU_IS_2D(cu)) {
+    if (cdd->is_curve_2d(obedit->data)) {
       /* 2D overrides other options */
       plane_co = obedit->object_to_world[3];
       plane_no = obedit->object_to_world[2];
@@ -1197,6 +1560,20 @@ static int curve_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
   return ret;
 }
 
+static bool ED_operator_editallcurves(bContext *C)
+{
+  Object *obedit = CTX_data_edit_object(C);
+  if (obedit) {
+    if (obedit->type == OB_CURVES_LEGACY) {
+      return nullptr != ((Curve *)obedit->data)->editnurb;
+    }
+    else if (obedit->type == OB_CURVES) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void CURVE_OT_draw(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1209,7 +1586,7 @@ void CURVE_OT_draw(wmOperatorType *ot)
   ot->invoke = curve_draw_invoke;
   ot->cancel = curve_draw_cancel;
   ot->modal = curve_draw_modal;
-  ot->poll = ED_operator_editcurve;
+  ot->poll = ED_operator_editallcurves;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
