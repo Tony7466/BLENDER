@@ -32,7 +32,7 @@ __all__ = (
     "previews",
     "resource_path",
     "script_path_user",
-    "script_path_project",
+    "script_paths_project",
     "script_paths",
     "smpte_from_frame",
     "smpte_from_seconds",
@@ -370,10 +370,10 @@ def script_path_user():
     return _os.path.normpath(path) if path else None
 
 
-def script_path_project():
+def script_paths_project():
     """Returns the active project's script directory, or none if no active project is set."""
     path = _project_resource('SCRIPTS')
-    return _os.path.normpath(path) if path else None
+    return [_os.path.normpath(path) if path else None]
 
 
 def script_paths_pref():
@@ -430,9 +430,7 @@ def script_paths(*, subdir=None, include_base_dir=True, include_project=True, in
             base_paths.append(path_user)
 
     if include_project:
-        project_script_paths = script_path_project()
-        if project_script_paths:
-            base_paths.append(project_script_paths)
+        base_paths.extend(script_paths_project())
 
     if include_prefs:
         base_paths.extend(script_paths_pref())
