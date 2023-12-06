@@ -1855,7 +1855,7 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph,
     if (ob->type == OB_MESH) {
       /* validate that we've got valid object set up here... */
       RigidBodyOb *rbo = ob->rigidbody_object;
-      bool rescale = true;
+      bool rescale = false;
       /* TODO: remove this whole block once we are sure we never get nullptr rbo here anymore. */
       /* This cannot be done in CoW evaluation context anymore... */
       if (rbo == nullptr) {
@@ -1868,6 +1868,7 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph,
          */
         ob->rigidbody_object = BKE_rigidbody_create_object(scene, ob, RBO_TYPE_ACTIVE);
         rigidbody_validate_sim_object(rbw, ob, true);
+        rescale = true;
 
         rbo = ob->rigidbody_object;
       }
@@ -1881,17 +1882,18 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph,
            * calls RB_body_set_collision_shape().
            * This results in the collision shape being created twice, which is unnecessary. */
           rigidbody_validate_sim_object(rbw, ob, true);
+          rescale = true;
         }
         else if (rbo->flag & RBO_FLAG_NEEDS_VALIDATE) {
           rigidbody_validate_sim_object(rbw, ob, false);
+          rescale = true;
         }
-        else {
-          rescale = false;
-        }
+
         /* refresh shape... */
         if (rbo->flag & RBO_FLAG_NEEDS_RESHAPE) {
           /* mesh/shape data changed, so force shape refresh */
           rigidbody_validate_sim_shape(rbw, ob, true);
+          rescale = true;
           /* now tell RB sim about it */
           /* XXX: we assume that this can only get applied for active/passive shapes
            * that will be included as rigid-bodies. */
