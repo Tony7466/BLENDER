@@ -199,9 +199,8 @@ struct SculptUndoNode {
   /* multires */
   int maxgrid;               /* same for grid */
   int gridsize;              /* same for grid */
-  int totgrid;               /* to restore into right location */
   blender::Array<int> grids; /* to restore into right location */
-  BLI_bitmap **grid_hidden;
+  blender::BitGroupVector<> grid_hidden;
 
   /* bmesh */
   BMLogEntry *bm_entry;
@@ -1553,6 +1552,8 @@ void sculpt_expand_modal_keymap(wmKeyConfig *keyconf);
 /** \name Gesture Operators
  * \{ */
 
+namespace blender::ed::sculpt_paint::mask {
+
 void SCULPT_OT_face_set_lasso_gesture(wmOperatorType *ot);
 void SCULPT_OT_face_set_box_gesture(wmOperatorType *ot);
 
@@ -1560,6 +1561,9 @@ void SCULPT_OT_trim_lasso_gesture(wmOperatorType *ot);
 void SCULPT_OT_trim_box_gesture(wmOperatorType *ot);
 
 void SCULPT_OT_project_line_gesture(wmOperatorType *ot);
+
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
