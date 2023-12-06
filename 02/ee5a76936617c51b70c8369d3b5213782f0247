@@ -1,1 +1,2 @@
 Referenced by issue #115830, Poly Build causes a crash at blender 4.0.2
+Referenced by pull request #115840, Fix #115830: Poly Build tool crash with clipping borders
