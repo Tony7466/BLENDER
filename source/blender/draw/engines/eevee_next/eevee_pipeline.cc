@@ -486,7 +486,7 @@ void DeferredLayer::end_sync()
     /* First add the tile classification step at the end of the GBuffer pass. */
     {
       /* Fill tile mask texture with the collected closure present in a tile. */
-      PassMain::Sub &sub = gbuffer_ps_.sub("");
+      PassMain::Sub &sub = gbuffer_ps_.sub("TileClassify");
       sub.subpass_transition(GPU_ATTACHEMENT_WRITE, /* Needed for depth test. */
                              {GPU_ATTACHEMENT_IGNORE,
                               GPU_ATTACHEMENT_READ, /* Header. */
@@ -502,7 +502,7 @@ void DeferredLayer::end_sync()
       sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
     }
     {
-      PassMain::Sub &sub = gbuffer_ps_.sub("");
+      PassMain::Sub &sub = gbuffer_ps_.sub("TileCompaction");
       /* Use rasterizer discard. This processes the tile data to create tile command lists. */
       sub.state_set(DRW_STATE_NO_DRAW);
       sub.shader_set(inst_.shaders.static_shader_get(DEFERRED_TILE_COMPACT));
@@ -531,7 +531,7 @@ void DeferredLayer::end_sync()
           sub.push_constant("closure_tile_size_shift", &closure_tile_size_shift_);
           sub.bind_image("direct_radiance_img", &direct_radiance_txs_[0]);
           sub.bind_ssbo("closure_tile_buf", &closure_bufs_[i].tile_buf_);
-          sub.state_stencil(0xFFu, 0xFFu, 1u << i);
+          sub.state_stencil(0xFFu, 1u << i, 0xFFu);
           sub.draw_procedural_indirect(GPU_PRIM_TRIS, closure_bufs_[i].draw_buf_);
         }
       }
@@ -556,7 +556,7 @@ void DeferredLayer::end_sync()
           inst_.shadows.bind_resources(sub);
           inst_.sampling.bind_resources(sub);
           inst_.hiz_buffer.bind_resources(sub);
-          sub.state_stencil(0xFFu, 0xFFu, 1u << i);
+          sub.state_stencil(0xFFu, 1u << i, 0xFFu);
           sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
         }
       }

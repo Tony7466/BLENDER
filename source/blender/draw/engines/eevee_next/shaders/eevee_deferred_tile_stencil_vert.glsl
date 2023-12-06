@@ -20,7 +20,8 @@ void main()
   ivec2 tile_corner = ivec2(v & 1, v >> 1);
 
   int tile_size = (1 << closure_tile_size_shift);
-  vec2 ss_coord = vec2((tile_coord + tile_corner) * tile_size) / vec2(imageSize(radiance_img));
+  vec2 ss_coord = vec2((tile_coord + tile_corner) * tile_size) /
+                  vec2(imageSize(direct_radiance_img));
   vec2 ndc_coord = ss_coord * 2.0 - 1.0;
 
   /* gl_Position expects Homogenous space coord. But this is the same thing as NDC in 2D mode. */

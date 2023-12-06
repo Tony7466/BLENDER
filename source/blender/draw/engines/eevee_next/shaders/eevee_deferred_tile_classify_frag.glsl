@@ -16,17 +16,15 @@ void main()
 {
   ivec2 texel = ivec2(gl_FragCoord.xy);
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
-
   ivec2 tile_co = texel >> closure_tile_size_shift;
 
-  if (gbuf.has_diffuse) {
+  if (gbuffer_has_closure(in_gbuffer_header, eClosureBits(CLOSURE_DIFFUSE))) {
     imageStore(tile_mask_img, ivec3(tile_co, 0), uvec4(1u));
   }
-  if (gbuf.has_reflection) {
+  if (gbuffer_has_closure(in_gbuffer_header, eClosureBits(CLOSURE_REFLECTION))) {
     imageStore(tile_mask_img, ivec3(tile_co, 1), uvec4(1u));
   }
-  if (gbuf.has_refraction) {
+  if (gbuffer_has_closure(in_gbuffer_header, eClosureBits(CLOSURE_REFRACTION))) {
     imageStore(tile_mask_img, ivec3(tile_co, 2), uvec4(1u));
   }
 }

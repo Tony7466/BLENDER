@@ -100,6 +100,7 @@
 
 /* Deferred Lighting. */
 #define DEFERRED_RADIANCE_FORMAT GPU_R11F_G11F_B10F
+#define DEFERRED_GBUFFER_ROG_ID 0
 
 /* Ray-tracing. */
 #define RAYTRACE_GROUP_SIZE 8
