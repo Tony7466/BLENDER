@@ -139,7 +139,7 @@ bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
       break;
 #  endif
 #  if defined(OIDN_DEVICE_HIP) && defined(WITH_HIP)
-    case DEVICE_HIP:
+    case DEVICE_HIP: {
       hipStream_t stream = nullptr;
       oidn_device_ = oidnNewHIPDevice(&denoiser_device_->info.num, &stream, 1);
       break;
