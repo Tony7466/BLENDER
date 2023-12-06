@@ -69,10 +69,11 @@ static int gather_strip_data_ids_to_null(LibraryIDLinkCallbackData *cb_data)
   ID *id = *cb_data->id_pointer;
 
   /* We don't care about embedded, loopback, or internal IDs. */
-  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_EMBEDDED_NOT_OWNING | IDWALK_CB_LOOPBACK |
-                          IDWALK_CB_INTERNAL))
-  {
+  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_EMBEDDED_NOT_OWNING)) {
     return IDWALK_RET_NOP;
+  }
+  if (cb_data->cb_flag & (IDWALK_CB_LOOPBACK | IDWALK_CB_INTERNAL)) {
+    return IDWALK_RET_STOP_RECURSION;
   }
 
   if (id) {
@@ -82,7 +83,7 @@ static int gather_strip_data_ids_to_null(LibraryIDLinkCallbackData *cb_data)
      */
     if (!ELEM(id_type, ID_SO, ID_MC, ID_IM, ID_TXT, ID_VF, ID_AC)) {
       BKE_id_remapper_add(id_remapper, id, nullptr);
-      return IDWALK_RET_NOP;
+      return IDWALK_RET_STOP_RECURSION;
     }
   }
   return IDWALK_RET_NOP;
@@ -138,6 +139,8 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
                                             ReportList *reports)
 
 {
+  /* Ideally, scene should not be added to the global Main. There currently is no good
+   * solution to avoid it if we want to properly pull in all strip dependecies. */
   Scene *scene_dst = BKE_scene_add(bmain_src, "copybuffer_vse_scene");
 
   /* Create a temporary scene that we will copy from.
@@ -239,6 +242,9 @@ struct SEQPasteData {
   std::vector<ID *> ids_to_copy;
 };
 
+/* These enums are used as a prioty level. IE if an ID is marked as both ID_SIMPLE_COPY and
+ * ID_REMAP, then it will only be remapped.
+ */
 enum {
   ID_SIMPLE_COPY = 0,
   ID_LIB_COPY,
@@ -291,10 +297,11 @@ static int paste_strips_data_ids_reuse_or_add(LibraryIDLinkCallbackData *cb_data
   ID *id_src = *cb_data->id_pointer;
 
   /* We don't care about embedded, loopback, or internal IDs. */
-  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_EMBEDDED_NOT_OWNING | IDWALK_CB_LOOPBACK |
-                          IDWALK_CB_INTERNAL))
-  {
+  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_EMBEDDED_NOT_OWNING)) {
     return IDWALK_RET_NOP;
+  }
+  if (cb_data->cb_flag & (IDWALK_CB_LOOPBACK | IDWALK_CB_INTERNAL)) {
+    return IDWALK_RET_STOP_RECURSION;
   }
 
   if (id_src) {
@@ -302,7 +309,7 @@ static int paste_strips_data_ids_reuse_or_add(LibraryIDLinkCallbackData *cb_data
     if (id_src_type == ID_AC) {
       /* Don't copy in actions here as we already handle these in "sequencer_paste_animation".
        */
-      return IDWALK_RET_NOP;
+      return IDWALK_RET_STOP_RECURSION;
     }
 
     ID *id_dst = nullptr;
@@ -414,7 +421,7 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
                               IDWALK_RECURSE);
 
   /* Copy over all new ID data, save remapping for after we have moved over all the strips into
-   * bmain.
+   * bmain. This is to avoid having to fix naming and ordering of IDs afterwards.
    */
   for (ID *id_to_copy : paste_data.ids_to_copy) {
     BKE_libblock_management_main_remove(temp_bmain, id_to_copy);
