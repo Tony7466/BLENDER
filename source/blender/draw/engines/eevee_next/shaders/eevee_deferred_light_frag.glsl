@@ -33,11 +33,22 @@ void main()
 
   ClosureLightStack stack;
 
-  ClosureLight cl_diff;
-  cl_diff.N = gbuf.diffuse.N;
-  cl_diff.ltc_mat = LTC_LAMBERT_MAT;
-  cl_diff.type = LIGHT_DIFFUSE;
-  stack.cl[0] = cl_diff;
+  /* TODO(fclem): This is waiting for fully flexible evaluation pipeline. We need to refactor the
+   * raytracing pipeline first. */
+  if (gbuf.has_diffuse) {
+    ClosureLight cl_diff;
+    cl_diff.N = gbuf.diffuse.N;
+    cl_diff.ltc_mat = LTC_LAMBERT_MAT;
+    cl_diff.type = LIGHT_DIFFUSE;
+    stack.cl[0] = cl_diff;
+  }
+  else {
+    ClosureLight cl_refl;
+    cl_refl.N = gbuf.reflection.N;
+    cl_refl.ltc_mat = LTC_GGX_MAT(dot(gbuf.reflection.N, V), gbuf.reflection.roughness);
+    cl_refl.type = LIGHT_SPECULAR;
+    stack.cl[0] = cl_refl;
+  }
 
 #if LIGHT_CLOSURE_EVAL_COUNT > 1
   ClosureLight cl_refl;
@@ -55,28 +66,16 @@ void main()
   stack.cl[2] = cl_sss;
 #endif
 
-#ifdef SSS_TRANSMITTANCE
-  float shadow_thickness = thickness_from_shadow(P, Ng, vPz);
-  float thickness = (shadow_thickness != THICKNESS_NO_VALUE) ?
-                        max(shadow_thickness, gbuf.thickness) :
-                        gbuf.thickness;
-#else
   float thickness = 0.0;
+#ifdef SSS_TRANSMITTANCE
+  if (gbuf.has_sss) {
+    float shadow_thickness = thickness_from_shadow(P, Ng, vPz);
+    thickness = (shadow_thickness != THICKNESS_NO_VALUE) ? max(shadow_thickness, gbuf.thickness) :
+                                                           gbuf.thickness;
+  }
 #endif
 
   light_eval(stack, P, Ng, V, vPz, thickness);
-
-#ifdef SSS_TRANSMITTANCE
-  if (gbuf.diffuse.sss_id != 0u) {
-    vec3 sss_profile = subsurface_transmission(gbuf.diffuse.sss_radius, thickness);
-    stack.cl[2].light_shadowed *= sss_profile;
-    stack.cl[2].light_unshadowed *= sss_profile;
-  }
-  else {
-    stack.cl[2].light_shadowed = vec3(0.0);
-    stack.cl[2].light_unshadowed = vec3(0.0);
-  }
-#endif
 
   vec3 radiance_shadowed = stack.cl[0].light_shadowed;
   vec3 radiance_unshadowed = stack.cl[0].light_unshadowed;
@@ -89,12 +88,30 @@ void main()
   radiance_unshadowed += stack.cl[2].light_unshadowed;
 #endif
 
+#ifdef SSS_TRANSMITTANCE
+  if (gbuf.has_sss) {
+    vec3 sss_profile = subsurface_transmission(gbuf.diffuse.sss_radius, thickness);
+    stack.cl[2].light_shadowed *= sss_profile;
+    stack.cl[2].light_unshadowed *= sss_profile;
+    /* Add to diffuse light for processing inside the Screen Space SSS pass. */
+    stack.cl[0].light_shadowed += stack.cl[2].light_shadowed;
+    stack.cl[0].light_unshadowed += stack.cl[2].light_unshadowed;
+  }
+#endif
+
   /* TODO(fclem): Change shadow pass to be colored. */
   vec3 shadows = radiance_shadowed * safe_rcp(radiance_unshadowed);
   output_renderpass_value(uniform_buf.render_pass.shadow_id, average(shadows));
 
   if (gbuf.closure_count > 0) {
-    imageStore(direct_radiance_1_img, texel, vec4(stack.cl[0].light_shadowed, 1.0));
+    /* TODO(fclem): This is waiting for fully flexible evaluation pipeline. We need to refactor the
+     * raytracing pipeline first. */
+    if (gbuf.has_diffuse) {
+      imageStore(direct_radiance_1_img, texel, vec4(stack.cl[0].light_shadowed, 1.0));
+    }
+    else {
+      imageStore(direct_radiance_2_img, texel, vec4(stack.cl[0].light_shadowed, 1.0));
+    }
   }
 
 #if LIGHT_CLOSURE_EVAL_COUNT > 1
@@ -104,8 +121,10 @@ void main()
 #endif
 
 #if LIGHT_CLOSURE_EVAL_COUNT > 2
-  if (gbuf.closure_count > 1) {
-    imageStore(direct_radiance_3_img, texel, vec4(stack.cl[1].light_shadowed, 1.0));
+#  if 0 /* Will work when we have fully flexible evaluation. */
+  if (gbuf.closure_count > 2) {
+    imageStore(direct_radiance_3_img, texel, vec4(stack.cl[2].light_shadowed, 1.0));
   }
+#  endif
 #endif
 }

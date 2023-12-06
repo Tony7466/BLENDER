@@ -272,6 +272,7 @@ struct GBufferData {
   bool has_diffuse;
   bool has_reflection;
   bool has_refraction;
+  bool has_sss;
   bool has_any_surface;
   uint header;
   uint closure_count;
@@ -393,9 +394,9 @@ GBufferData gbuffer_read(usampler2D header_tx,
     gbuf.thickness = 0.0;
   }
 
-  bool has_sss = (gbuffer_header_unpack(gbuf.header, layer) == GBUF_SSS);
+  gbuf.has_sss = (gbuffer_header_unpack(gbuf.header, layer) == GBUF_SSS);
 
-  if (has_sss) {
+  if (gbuf.has_sss) {
     vec4 closure_packed = texelFetch(closure_tx, ivec3(texel, layer), 0);
 
     gbuf.diffuse.sss_radius = gbuffer_sss_radii_unpack(closure_packed.xyz);
