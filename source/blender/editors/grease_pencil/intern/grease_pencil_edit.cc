@@ -699,6 +699,7 @@ static bke::CurvesGeometry split_points(bke::CurvesGeometry &curves, const Index
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   const bke::AttributeAccessor src_attributes = curves.attributes();
 
+  /* Combine maps so attributes can be transferred in one go. */
   unselected_curve_map.insert(
       unselected_curve_map.end(), selected_curve_map.begin(), selected_curve_map.end());
   unselected_cyclic.insert(
@@ -716,7 +717,7 @@ static bke::CurvesGeometry split_points(bke::CurvesGeometry &curves, const Index
 
   dst_curves.remove_attributes_based_on_types();
 
-  /* Deselect the original and select the new curves. */
+  /* Reselect split curves. */
   bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
       dst_curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
   curves::fill_selection_true(selection.span,
