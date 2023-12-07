@@ -266,15 +266,57 @@ void RayTraceModule::debug_pass_sync() {}
 
 void RayTraceModule::debug_draw(View & /*view*/, GPUFrameBuffer * /*view_fb*/) {}
 
-RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
-                                     GPUTexture *screen_radiance_tx,
-                                     const float4x4 &screen_radiance_persmat,
-                                     eClosureBits active_closures,
-                                     eClosureBits raytrace_closure,
-                                     /* TODO(fclem): Maybe wrap these two in some other class. */
-                                     View &main_view,
-                                     View &render_view,
-                                     bool force_no_tracing)
+RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
+                                      GPUTexture *screen_radiance_back_tx,
+                                      GPUTexture *screen_radiance_front_tx,
+                                      const float4x4 &screen_radiance_persmat,
+                                      eClosureBits active_closures,
+                                      /* TODO(fclem): Maybe wrap these two in some other class. */
+                                      View &main_view,
+                                      View &render_view,
+                                      bool do_refraction_tracing)
+{
+  RayTraceResult result;
+
+  result.diffuse = trace(rt_buffer,
+                         screen_radiance_front_tx,
+                         screen_radiance_persmat,
+                         active_closures,
+                         CLOSURE_DIFFUSE,
+                         main_view,
+                         render_view,
+                         false);
+
+  result.reflect = trace(rt_buffer,
+                         screen_radiance_front_tx,
+                         screen_radiance_persmat,
+                         active_closures,
+                         CLOSURE_REFLECTION,
+                         main_view,
+                         render_view,
+                         false);
+
+  result.refract = trace(rt_buffer,
+                         screen_radiance_back_tx,
+                         render_view.persmat(),
+                         active_closures,
+                         CLOSURE_REFRACTION,
+                         main_view,
+                         render_view,
+                         do_refraction_tracing);
+  return result;
+}
+
+RayTraceResultTexture RayTraceModule::trace(
+    RayTraceBuffer &rt_buffer,
+    GPUTexture *screen_radiance_tx,
+    const float4x4 &screen_radiance_persmat,
+    eClosureBits active_closures,
+    eClosureBits raytrace_closure,
+    /* TODO(fclem): Maybe wrap these two in some other class. */
+    View &main_view,
+    View &render_view,
+    bool force_no_tracing)
 {
   BLI_assert_msg(count_bits_i(raytrace_closure) == 1,
                  "Only one closure type can be raytraced at a time.");
@@ -401,7 +443,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     inst_.manager->submit(*trace_ray_ps, render_view);
   }
 
-  RayTraceResult result;
+  RayTraceResultTexture result;
 
   /* Spatial denoise pass is required to resolve at least one ray per pixel. */
   {

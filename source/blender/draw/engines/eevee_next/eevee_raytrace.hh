@@ -28,7 +28,7 @@ class Instance;
  * \{ */
 
 /**
- * Contain persistent buffer that need to be stored per view.
+ * Contain persistent buffer that need to be stored per view, per layer.
  */
 struct RayTraceBuffer {
   /** Set of buffers that need to be allocated for each ray type. */
@@ -62,7 +62,7 @@ struct RayTraceBuffer {
  * The result buffer is usually short lived and is kept in a TextureFromPool managed by the mode.
  * This structure contains a reference to it so that it can be freed after use by the caller.
  */
-class RayTraceResult {
+class RayTraceResultTexture {
  private:
   /** Result is in a temporary texture that needs to be released. */
   TextureFromPool *result_ = nullptr;
@@ -70,9 +70,9 @@ class RayTraceResult {
   Texture *history_ = nullptr;
 
  public:
-  RayTraceResult() = default;
-  RayTraceResult(TextureFromPool &result) : result_(result.ptr()){};
-  RayTraceResult(TextureFromPool &result, Texture &history)
+  RayTraceResultTexture() = default;
+  RayTraceResultTexture(TextureFromPool &result) : result_(result.ptr()){};
+  RayTraceResultTexture(TextureFromPool &result, Texture &history)
       : result_(result.ptr()), history_(history.ptr()){};
 
   GPUTexture *get()
@@ -88,6 +88,19 @@ class RayTraceResult {
     }
     /* NOTE: This releases the previous history. */
     result_->release();
+  }
+};
+
+struct RayTraceResult {
+  RayTraceResultTexture diffuse;
+  RayTraceResultTexture reflect;
+  RayTraceResultTexture refract;
+
+  void release()
+  {
+    diffuse.release();
+    reflect.release();
+    refract.release();
   }
 };
 
@@ -199,31 +212,44 @@ class RayTraceModule {
   void sync();
 
   /**
-   * RayTrace the scene and resolve a radiance buffer for the corresponding `closure_bit` into the
-   * given `out_radiance_tx`.
+   * RayTrace the scene and resolve radiance buffer for the corresponding `closure_bit`.
    *
    * IMPORTANT: Should not be conditionally executed as it manages the RayTraceResult.
-   * IMPORTANT: The screen tracing will use the Hierarchical-Z Buffer in its current state.
+   * IMPORTANT: The screen tracing will be using the front and back Hierarchical-Z Buffer in its
+   * current state.
    *
-   * \arg screen_radiance_tx is the texture used for screen space rays.
-   * \arg screen_radiance_persmat is the view projection matrix used to render screen_radiance_tx.
+   * \arg rt_buffer is the layer's permanent storage.
+   * \arg screen_radiance_back_tx is the texture used for screen space transmission rays.
+   * \arg screen_radiance_front_tx is the texture used for screen space reflection rays.
+   * \arg screen_radiance_persmat is the view projection matrix used for screen_radiance_front_tx.
    * \arg active_closures is a mask of all active closures in a deferred layer.
-   * \arg raytrace_closure is type of closure the rays are to be casted for.
    * \arg main_view is the un-jittered view.
    * \arg render_view is the TAA jittered view.
    * \arg force_no_tracing will run the pipeline without any tracing, relying only on local probes.
    */
-  RayTraceResult trace(RayTraceBuffer &rt_buffer,
-                       GPUTexture *screen_radiance_tx,
-                       const float4x4 &screen_radiance_persmat,
-                       eClosureBits active_closures,
-                       eClosureBits raytrace_closure,
-                       View &main_view,
-                       View &render_view,
-                       bool force_no_tracing = false);
+  RayTraceResult render(RayTraceBuffer &rt_buffer,
+                        GPUTexture *screen_radiance_back_tx,
+                        GPUTexture *screen_radiance_front_tx,
+                        const float4x4 &screen_radiance_persmat,
+                        eClosureBits active_closures,
+                        /* TODO(fclem): Maybe wrap these two in some other class. */
+                        View &main_view,
+                        View &render_view,
+                        bool do_refraction_tracing);
 
   void debug_pass_sync();
   void debug_draw(View &view, GPUFrameBuffer *view_fb);
+
+ private:
+  RayTraceResultTexture trace(RayTraceBuffer &rt_buffer,
+                              GPUTexture *screen_radiance_tx,
+                              const float4x4 &screen_radiance_persmat,
+                              eClosureBits active_closures,
+                              eClosureBits raytrace_closure,
+                              /* TODO(fclem): Maybe wrap these two in some other class. */
+                              View &main_view,
+                              View &render_view,
+                              bool force_no_tracing);
 };
 
 /** \} */

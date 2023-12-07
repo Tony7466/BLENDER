@@ -705,34 +705,18 @@ void DeferredLayer::render(View &main_view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(eval_light_ps_, render_view);
 
-  RayTraceResult refract_result = inst_.raytracing.trace(rt_buffer,
-                                                         radiance_behind_tx_,
-                                                         render_view.persmat(),
-                                                         closure_bits_,
-                                                         CLOSURE_REFRACTION,
-                                                         main_view,
-                                                         render_view,
-                                                         !do_screen_space_refraction);
+  RayTraceResult indirect_result = inst_.raytracing.render(rt_buffer,
+                                                           radiance_behind_tx_,
+                                                           radiance_feedback_tx_,
+                                                           radiance_feedback_persmat_,
+                                                           closure_bits_,
+                                                           main_view,
+                                                           render_view,
+                                                           do_screen_space_refraction);
 
-  RayTraceResult diffuse_result = inst_.raytracing.trace(rt_buffer,
-                                                         radiance_feedback_tx_,
-                                                         radiance_feedback_persmat_,
-                                                         closure_bits_,
-                                                         CLOSURE_DIFFUSE,
-                                                         main_view,
-                                                         render_view);
-
-  RayTraceResult reflect_result = inst_.raytracing.trace(rt_buffer,
-                                                         radiance_feedback_tx_,
-                                                         radiance_feedback_persmat_,
-                                                         closure_bits_,
-                                                         CLOSURE_REFLECTION,
-                                                         main_view,
-                                                         render_view);
-
-  indirect_diffuse_tx_ = diffuse_result.get();
-  indirect_reflect_tx_ = reflect_result.get();
-  indirect_refract_tx_ = refract_result.get();
+  indirect_diffuse_tx_ = indirect_result.diffuse.get();
+  indirect_reflect_tx_ = indirect_result.reflect.get();
+  indirect_refract_tx_ = indirect_result.refract.get();
 
   inst_.subsurface.render(
       direct_radiance_txs_[0], indirect_diffuse_tx_, closure_bits_, render_view);
@@ -740,9 +724,7 @@ void DeferredLayer::render(View &main_view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(combine_ps_);
 
-  diffuse_result.release();
-  refract_result.release();
-  reflect_result.release();
+  indirect_result.release();
 
   for (int i = 0; i < ARRAY_SIZE(direct_radiance_txs_); i++) {
     direct_radiance_txs_[i].release();
