@@ -21,6 +21,11 @@ typedef struct KeyframeSettings {
   eBezTriple_Interpolation interpolation;
 } KeyframeSettings;
 
+/**
+ * Helper function to generate the KeyframeSettings struct.
+ */
+KeyframeSettings get_keyframe_settings(bool from_userprefs);
+
 /** Initialize the given BezTriple with default values. */
 void initialize_bezt(BezTriple *beztr,
                      float2 position,

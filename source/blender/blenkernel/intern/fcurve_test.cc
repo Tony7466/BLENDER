@@ -8,7 +8,6 @@
 #include "BKE_fcurve.h"
 
 #include "ANIM_fcurve.hh"
-#include "ANIM_keyframing.hh"
 
 #include "ED_keyframing.hh"
 

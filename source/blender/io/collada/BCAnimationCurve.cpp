@@ -4,8 +4,6 @@
 
 #include "RNA_path.hh"
 
-#include "ANIM_keyframing.hh"
-
 #include "BCAnimationCurve.h"
 
 BCAnimationCurve::BCAnimationCurve()

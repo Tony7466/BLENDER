@@ -19,6 +19,18 @@
 
 namespace blender::animrig {
 
+KeyframeSettings get_keyframe_settings(const bool from_userprefs)
+{
+  KeyframeSettings settings = {.keyframe_type = BEZT_KEYTYPE_KEYFRAME,
+                               .handle = HD_AUTO_ANIM,
+                               .interpolation = BEZT_IPO_BEZ};
+  if (from_userprefs) {
+    settings.interpolation = eBezTriple_Interpolation(U.ipo_new);
+    settings.handle = eBezTriple_Handle(U.keyhandles_new);
+  }
+  return settings;
+}
+
 bool delete_keyframe_fcurve(AnimData *adt, FCurve *fcu, float cfra)
 {
   bool found;
@@ -215,9 +227,7 @@ void initialize_bezt(BezTriple *beztr,
   beztr->vec[2][1] = position.y;
   beztr->f1 = beztr->f2 = beztr->f3 = SELECT;
 
-  /* For UI usage - defaults should come from the user-preferences and/or tool-settings. */
   beztr->h1 = beztr->h2 = settings.handle;
-  /* Use default interpolation mode, with exceptions for int/discrete values. */
   beztr->ipo = settings.interpolation;
 
   /* Interpolation type used is constrained by the type of values the curve can take. */

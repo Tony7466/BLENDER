@@ -74,7 +74,6 @@
 #include "ED_util.hh"
 
 #include "ANIM_fcurve.hh"
-#include "ANIM_keyframing.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"

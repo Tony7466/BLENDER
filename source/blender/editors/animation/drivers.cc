@@ -44,7 +44,6 @@
 #include "RNA_prototypes.h"
 
 #include "ANIM_fcurve.hh"
-#include "ANIM_keyframing.hh"
 
 #include "anim_intern.h"
 

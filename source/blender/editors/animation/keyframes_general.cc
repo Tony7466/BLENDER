@@ -38,7 +38,6 @@
 
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
-#include "ANIM_keyframing.hh"
 
 /* This file contains code for various keyframe-editing tools which are 'destructive'
  * (i.e. they will modify the order of the keyframes, and change the size of the array).

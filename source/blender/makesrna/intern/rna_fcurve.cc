@@ -32,7 +32,6 @@
 
 #ifdef RNA_RUNTIME
 #  include "ANIM_fcurve.hh"
-#  include "ANIM_keyframing.hh"
 #endif
 
 const EnumPropertyItem rna_enum_fmodifier_type_items[] = {
