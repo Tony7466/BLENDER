@@ -422,7 +422,7 @@ GVolumeGridPtr::GridConstPtr GVolumeGridPtr::grid() const
 #endif
 }
 
-GVolumeGridPtr::GridPtr GVolumeGridPtr::grid_for_write()
+GVolumeGridPtr::GridPtr GVolumeGridPtr::grid_for_write() const
 {
 #ifdef WITH_OPENVDB
   const VolumeGrid *data = this->get();
