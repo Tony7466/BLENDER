@@ -98,11 +98,11 @@ static blender::bke::cryptomatte::CryptomatteSessionPtr cryptomatte_init_from_no
   }
 
   switch (node.custom1) {
-    case CMP_CRYPTOMATTE_SRC_RENDER: {
+    case CMP_NODE_CRYPTOMATTE_SOURCE_RENDER: {
       return cryptomatte_init_from_node_render(node, use_meta_data);
     }
 
-    case CMP_CRYPTOMATTE_SRC_IMAGE: {
+    case CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE: {
       return cryptomatte_init_from_node_image(scene, node);
     }
   }
@@ -228,6 +228,8 @@ CryptomatteSession *ntreeCompositCryptomatteSession(const Scene *scene, bNode *n
 
 namespace blender::nodes::node_composite_cryptomatte_cc {
 
+NODE_STORAGE_FUNCS(NodeCryptomatte)
+
 static bNodeSocketTemplate cmp_node_cryptomatte_out[] = {
     {SOCK_RGBA, N_("Image")},
     {SOCK_FLOAT, N_("Matte")},
@@ -237,7 +239,9 @@ static bNodeSocketTemplate cmp_node_cryptomatte_out[] = {
 
 static void cmp_node_cryptomatte_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Image").default_value({0.0f, 0.0f, 0.0f, 1.0f});
+  b.add_input<decl::Color>("Image")
+      .default_value({0.0f, 0.0f, 0.0f, 1.0f})
+      .compositor_domain_priority(0);
   b.add_output<decl::Color>("Image");
   b.add_output<decl::Float>("Matte");
   b.add_output<decl::Color>("Pick");
@@ -318,10 +322,258 @@ class CryptoMatteOperation : public NodeOperation {
 
   void execute() override
   {
-    get_input("Image").pass_through(get_result("Image"));
-    get_result("Matte").allocate_invalid();
-    get_result("Pick").allocate_invalid();
-    context().set_info_message("Viewport compositor setup not fully supported");
+    Vector<GPUTexture *> layers = get_layers();
+    if (layers.is_empty()) {
+      allocate_invalid();
+      return;
+    }
+
+    compute_pick_image(layers);
+
+    Vector<float> ids = get_ids();
+
+    compute_matte_image(layers, ids);
+  }
+
+  void allocate_invalid()
+  {
+    Result &pick = get_result("Pick");
+    if (pick.should_compute()) {
+      pick.allocate_invalid();
+    }
+
+    Result &matte = get_result("Matte");
+    if (matte.should_compute()) {
+      matte.allocate_invalid();
+    }
+
+    Result &image = get_result("Image");
+    if (image.should_compute()) {
+      image.allocate_invalid();
+    }
+  }
+
+  void compute_pick_image(Vector<GPUTexture *> &layers)
+  {
+    Result &output_pick = get_result("Pick");
+    if (!output_pick.should_compute()) {
+      return;
+    }
+
+    GPUShader *shader = context().get_shader("compositor_cryptomatte_pick");
+    GPU_shader_bind(shader);
+
+    GPUTexture *first_layer = layers[0];
+    const int input_unit = GPU_shader_get_sampler_binding(shader, "first_layer_tx");
+    GPU_texture_bind(first_layer, input_unit);
+
+    const Domain domain = compute_domain();
+    output_pick.allocate_texture(domain);
+    output_pick.bind_as_image(shader, "output_img");
+
+    compute_dispatch_threads_at_least(shader, domain.size);
+
+    GPU_shader_unbind();
+    GPU_texture_unbind(first_layer);
+    output_pick.unbind_as_image();
+  }
+
+  void compute_matte_image(Vector<GPUTexture *> &layers, Vector<float> &ids)
+  {
+    Result &output_matte = get_result("Matte");
+    Result &output_image = get_result("Image");
+    if (!output_matte.should_compute() && !output_image.should_compute()) {
+      return;
+    }
+
+    const Domain domain = compute_domain();
+    output_matte.allocate_texture(domain);
+    const float4 zero_color = float4(0.0f);
+    GPU_texture_clear(output_matte.texture(), GPU_DATA_FLOAT, zero_color);
+
+    if (ids.is_empty()) {
+      return;
+    }
+
+    GPUShader *shader = context().get_shader("compositor_cryptomatte_matte");
+    GPU_shader_bind(shader);
+
+    GPU_shader_uniform_1i(shader, "ids_count", ids.size());
+    GPU_shader_uniform_1fv_array(shader, "ids", ids.size(), ids.data());
+
+    output_matte.bind_as_image(shader, "matte_img");
+
+    for (GPUTexture *layer : layers) {
+      const int input_unit = GPU_shader_get_sampler_binding(shader, "layer_tx");
+      GPU_texture_bind(layer, input_unit);
+
+      compute_dispatch_threads_at_least(shader, domain.size);
+
+      GPU_texture_unbind(layer);
+    }
+
+    output_matte.unbind_as_image();
+    GPU_shader_unbind();
+  }
+
+  Vector<GPUTexture *> get_layers()
+  {
+    switch (get_source()) {
+      case CMP_NODE_CRYPTOMATTE_SOURCE_RENDER:
+        return get_layers_from_render();
+      case CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE:
+        return get_layers_from_image();
+    }
+
+    BLI_assert_unreachable();
+    return Vector<GPUTexture *>();
+  }
+
+  Vector<GPUTexture *> get_layers_from_render()
+  {
+    Vector<GPUTexture *> layers;
+
+    Scene *scene = get_scene();
+    if (!scene) {
+      return layers;
+    }
+
+    Render *render = RE_GetSceneRender(scene);
+    if (!render) {
+      return layers;
+    }
+
+    RenderResult *render_result = RE_AcquireResultRead(render);
+    if (!render_result) {
+      RE_ReleaseResult(render);
+      return layers;
+    }
+
+    int view_layer_index;
+    const std::string prefix = get_prefix();
+    LISTBASE_FOREACH_INDEX (ViewLayer *, view_layer, &scene->view_layers, view_layer_index) {
+      RenderLayer *render_layer = RE_GetRenderLayer(render_result, view_layer->name);
+      if (!render_layer) {
+        continue;
+      }
+
+      LISTBASE_FOREACH (RenderPass *, render_pass, &render_layer->passes) {
+        if (context().get_view_name()[0] && context().get_view_name() != render_pass->view) {
+          continue;
+        }
+
+        const std::string combined_name = get_combined_layer_pass_name(render_layer, render_pass);
+        if (combined_name == prefix || !StringRef(combined_name).startswith(prefix)) {
+          continue;
+        }
+
+        GPUTexture *pass_texture = context().get_input_texture(
+            scene, view_layer_index, render_pass->name);
+        layers.append(pass_texture);
+      }
+
+      if (!layers.is_empty()) {
+        break;
+      }
+    }
+
+    RE_ReleaseResult(render);
+
+    return layers;
+  }
+
+  Vector<GPUTexture *> get_layers_from_image()
+  {
+    Vector<GPUTexture *> layers;
+
+    Image *image = get_image();
+    if (!image || image->type != IMA_TYPE_MULTILAYER) {
+      return layers;
+    }
+
+    ImageUser image_user_for_layer = *get_image_user();
+    ImBuf *image_buffer = BKE_image_acquire_ibuf(image, &image_user_for_layer, nullptr);
+    BKE_image_release_ibuf(image, image_buffer, nullptr);
+    if (!image_buffer || !image->rr) {
+      return layers;
+    }
+
+    int layer_index;
+    const std::string prefix = get_prefix();
+    LISTBASE_FOREACH_INDEX (RenderLayer *, render_layer, &image->rr->layers, layer_index) {
+      const bool is_unnamed_layer = render_layer->name[0] == '\0';
+      if (!is_unnamed_layer && !StringRefNull(render_layer->name).startswith(prefix)) {
+        continue;
+      }
+
+      image_user_for_layer.layer = layer_index;
+      LISTBASE_FOREACH (RenderPass *, render_pass, &render_layer->passes) {
+        const std::string combined_name = get_combined_layer_pass_name(render_layer, render_pass);
+        if (combined_name == prefix || !StringRef(combined_name).startswith(prefix)) {
+          continue;
+        }
+
+        GPUTexture *pass_texture = context().cache_manager().cached_images.get(
+            context(), image, &image_user_for_layer, render_pass->name);
+        layers.append(pass_texture);
+      }
+
+      if (!layers.is_empty()) {
+        return layers;
+      }
+    }
+
+    return layers;
+  }
+
+  std::string get_combined_layer_pass_name(RenderLayer *render_layer, RenderPass *render_pass)
+  {
+    if (render_layer->name[0] == '\0') {
+      return std::string(render_pass->name);
+    }
+    return std::string(render_layer->name) + "." + std::string(render_pass->name);
+  }
+
+  Vector<float> get_ids()
+  {
+    Vector<float> ids;
+    LISTBASE_FOREACH (CryptomatteEntry *, cryptomatte_entry, &node_storage(bnode()).entries) {
+      if (cryptomatte_entry->encoded_hash != 0.0f) {
+        ids.append(cryptomatte_entry->encoded_hash);
+      }
+    }
+    return ids;
+  }
+
+  std::string get_prefix()
+  {
+    char prefix[MAX_NAME];
+    ntreeCompositCryptomatteLayerPrefix(&context().get_scene(), &bnode(), prefix, sizeof(prefix));
+    return std::string(prefix, BLI_strnlen(prefix, sizeof(prefix)));
+  }
+
+  const ImageUser *get_image_user()
+  {
+    BLI_assert(get_source() == CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE);
+
+    return &node_storage(bnode()).iuser;
+  }
+
+  Scene *get_scene()
+  {
+    BLI_assert(get_source() == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER);
+    return reinterpret_cast<Scene *>(bnode().id);
+  }
+
+  Image *get_image()
+  {
+    BLI_assert(get_source() == CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE);
+    return reinterpret_cast<Image *>(bnode().id);
+  }
+
+  CMPNodeCryptomatteSource get_source()
+  {
+    return static_cast<CMPNodeCryptomatteSource>(bnode().custom1);
   }
 };
 
@@ -347,8 +599,6 @@ void register_node_type_cmp_cryptomatte()
   node_type_storage(
       &ntype, "NodeCryptomatte", file_ns::node_free_cryptomatte, file_ns::node_copy_cryptomatte);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
-  ntype.realtime_compositor_unsupported_message = N_(
-      "Node not supported in the Viewport compositor");
 
   nodeRegisterType(&ntype);
 }
