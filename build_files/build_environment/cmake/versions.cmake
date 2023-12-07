@@ -204,12 +204,12 @@ set(TIFF_FILE tiff-${TIFF_VERSION}.tar.gz)
 set(TIFF_CPE "cpe:2.3:a:libtiff:libtiff:${TIFF_VERSION}:*:*:*:*:*:*:*")
 set(TIFF_HOMEPAGE http://www.simplesystems.org/libtiff/)
 
-# Recent commit from 1.13.0.2 under development, which includes string table
+# Recent commit from 1.13.5.0 under development, which includes string table
 # changes that make the Cycles OptiX implementation work. Official 1.12 OSL
 # releases should also build but without OptiX support.
-set(OSL_VERSION 8d1d9f0cf6336ad20a4ed148b8696117258c2b40)
+set(OSL_VERSION 3d52f3906b12d38ad0f4b991a8f9ea678171bd28)
 set(OSL_URI https://github.com/AcademySoftwareFoundation/OpenShadingLanguage/archive/${OSL_VERSION}.tar.gz)
-set(OSL_HASH 2c20e3c5ce1259b2359c9f6b8dcea31c)
+set(OSL_HASH dfe5d69f48930badc1ad39a4e11e2e98)
 set(OSL_HASH_TYPE MD5)
 set(OSL_FILE OpenShadingLanguage-${OSL_VERSION}.tar.gz)
 
