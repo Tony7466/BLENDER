@@ -205,10 +205,13 @@ uint64_t GHOST_SystemWin32::getMilliSeconds() const
 
 uint64_t GHOST_SystemWin32::getMessageTime() const
 {
-  int64_t t_now = getMilliSeconds();
-  /* Handles timer rollover. https://devblogs.microsoft.com/oldnewthing/20220107-00/?p=106130 */
-  int32_t diff = static_cast<uint32_t>(t_now) - GetMessageTime();
-  return t_now - diff;
+  /* Get difference between last message time and now. */
+  int64_t t_now = GetTickCount();
+  int64_t t_msg = GetMessageTime();
+  int64_t t_delta = (t_now > t_msg) ? t_msg - t_now : 0;
+
+  /* Return message time as 64-bit milliseconds since system start. */
+  return getMilliSeconds() + t_delta;
 }
 
 uint8_t GHOST_SystemWin32::getNumDisplays() const
