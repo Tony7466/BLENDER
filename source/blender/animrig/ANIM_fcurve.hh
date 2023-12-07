@@ -15,11 +15,16 @@ struct FCurve;
 
 namespace blender::animrig {
 
+typedef struct KeyframeSettings {
+  eBezTriple_KeyframeType keyframe_type;
+  eBezTriple_Handle handle;
+  eBezTriple_Interpolation interpolation;
+} KeyframeSettings;
+
 /** Initialize the given BezTriple with default values. */
 void initialize_bezt(BezTriple *beztr,
                      float2 position,
-                     eBezTriple_KeyframeType keyframe_type,
-                     eInsertKeyFlags flag,
+                     const KeyframeSettings &settings,
                      eFCurve_Flags fcu_flags);
 
 /**
@@ -63,7 +68,7 @@ int insert_bezt_fcurve(FCurve *fcu, const BezTriple *bezt, eInsertKeyFlags flag)
  */
 int insert_vert_fcurve(FCurve *fcu,
                        const float2 position,
-                       eBezTriple_KeyframeType keyframe_type,
+                       const KeyframeSettings &settings,
                        eInsertKeyFlags flag);
 
 }  // namespace blender::animrig

@@ -45,6 +45,18 @@
 
 namespace blender::animrig {
 
+KeyframeSettings get_keyframe_settings(const bool from_userprefs)
+{
+  KeyframeSettings settings = {.keyframe_type = BEZT_KEYTYPE_KEYFRAME,
+                               .handle = HD_AUTO_ANIM,
+                               .interpolation = BEZT_IPO_BEZ};
+  if (from_userprefs) {
+    settings.interpolation = eBezTriple_Interpolation(U.ipo_new);
+    settings.handle = eBezTriple_Handle(U.keyhandles_new);
+  }
+  return settings;
+}
+
 /** Used to make curves newly added to a cyclic Action cycle with the correct period. */
 static void make_new_fcurve_cyclic(const bAction *act, FCurve *fcu)
 {
@@ -310,19 +322,22 @@ static bool insert_keyframe_value(
     }
   }
 
+  KeyframeSettings settings = get_keyframe_settings((flag & INSERTKEY_NO_USERPREF) == 0);
+  settings.keyframe_type = keytype;
+
   if (flag & INSERTKEY_NEEDED) {
     if (!new_key_needed(fcu, cfra, curval)) {
       return false;
     }
 
-    if (insert_vert_fcurve(fcu, {cfra, curval}, keytype, flag) < 0) {
+    if (insert_vert_fcurve(fcu, {cfra, curval}, settings, flag) < 0) {
       return false;
     }
 
     return true;
   }
 
-  return insert_vert_fcurve(fcu, {cfra, curval}, keytype, flag) >= 0;
+  return insert_vert_fcurve(fcu, {cfra, curval}, settings, flag) >= 0;
 }
 
 bool insert_keyframe_direct(ReportList *reports,

@@ -28,9 +28,16 @@ struct NlaKeyframingContext;
 
 namespace blender::animrig {
 
+struct KeyframeSettings;
+
 /* -------------------------------------------------------------------- */
 /** \name Key-Framing Management
  * \{ */
+
+/**
+ * Helper function to generate the KeyframeSettings struct.
+ */
+KeyframeSettings get_keyframe_settings(bool from_userprefs);
 
 /**
  * \brief Main Insert Key-framing API call.
