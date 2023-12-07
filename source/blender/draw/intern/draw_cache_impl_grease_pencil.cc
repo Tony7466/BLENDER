@@ -416,29 +416,26 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     Array<int> verts_start_offsets(verts_start_offsets_size);
     Array<int> tris_start_offsets(tris_start_offsets_size);
 
-    /* Calculate the triangle and vertex offsets for all the visible curves. */
+    /* Calculate the triangle offsets for all the visible curves. */
     int t_offset = 0;
-    int num_cyclic = 0;
-    int num_points = 0;
-    int last_curve_i = -1;
-    visible_strokes.foreach_index([&](const int curve_i, const int pos) {
+    int pos = 0;
+    for (const int curve_i : curves.curves_range()) {
       IndexRange points = points_by_curve[curve_i];
-      const bool is_cyclic = cyclic[curve_i];
-
-      /* loop through the missed curves and add them to the offset. */
-      for (const int in_between_curve_i :
-           IndexRange(last_curve_i + 1, (curve_i - last_curve_i) - 1)) {
-        IndexRange in_between_points = points_by_curve[in_between_curve_i];
-        if (in_between_points.size() >= 3) {
-          t_offset += in_between_points.size() - 2;
-        }
+      if (visible_strokes.contains(curve_i)) {
+        tris_start_offsets[pos] = t_offset;
+        pos++;
       }
-
-      tris_start_offsets[pos] = t_offset;
-
       if (points.size() >= 3) {
         t_offset += points.size() - 2;
       }
+    }
+
+    /* Calculate the vertex offsets for all the visible curves. */
+    int num_cyclic = 0;
+    int num_points = 0;
+    visible_strokes.foreach_index([&](const int curve_i, const int pos) {
+      IndexRange points = points_by_curve[curve_i];
+      const bool is_cyclic = cyclic[curve_i];
 
       if (is_cyclic) {
         num_cyclic++;
@@ -447,7 +444,6 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       verts_start_offsets[pos] = v_offset;
       v_offset += 1 + points.size() + (is_cyclic ? 1 : 0) + 1;
       num_points += points.size();
-      last_curve_i = curve_i;
     });
 
     /* One vertex is stored before and after as padding. Cyclic strokes have one extra vertex. */
