@@ -1,0 +1,37 @@
+name: Python API Documentation
+about: File a bug report for the python API documentation
+labels:
+  - "Type/Report"
+  - "Status/Needs Triage"
+  - "Priority/Normal"
+body:
+  - type: markdown
+    attributes:
+      value: |
+                ### Instructions
+                Thank you for reporting an issue with Blender's Python API documentation.
+                If you meant to file an issue with the software please create a normal [bug report](https://projects.blender.org/blender/blender/issues/new?template=.gitea%2fissue_template%2fbug.yaml).
+
+                Please add to the description below explain the issue at hand.
+                Details, examples, or suggested fixes are appreated and will help resolve the issue as soon as possible.
+
+  - type: textarea
+    id: body
+    attributes:
+      label: "Description"
+      hide_label: true
+      value: |
+               **Page Information**
+               Blender Version: `4.1`
+               [Permanent Link]()
+
+               **Short description of error**
+               [Please fill out a short description of the error here]
+
+
+  - type: markdown
+    attributes:
+      value: |
+                ### Help the developers
+
+                Bug fixing is important, the developers will handle reports swiftly. For that reason, carefully provide exact steps and a **small and simple Python scipt** if neccesarry to reproduce the problem. You do your half of the work, then we do our half!
