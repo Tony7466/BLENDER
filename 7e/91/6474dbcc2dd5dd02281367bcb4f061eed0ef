@@ -1,2 +1,3 @@
 Referenced by pull request #115911, Revert "CMake/MSVC: Remove stale OIIO sse flag"
 Referenced by pull request #115916, Fix: Build error with MSVC
+Referenced by commit df94b2ef1bdf10ef7d7c2d63fa1d9742bc92e9d8, Fix: Build error with MSVC
