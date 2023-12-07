@@ -412,20 +412,17 @@ void DeferredLayer::begin_sync()
 {
   {
     prepass_ps_.init();
-    {
-      /* Common resources. */
+    /* Textures. */
+    prepass_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
 
-      /* Textures. */
-      prepass_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+    /* Make alpha hash scale sub-pixel so that it converges to a noise free image.
+     * If there is motion, use pixel scale for stability. */
+    bool alpha_hash_subpixel_scale = !inst_.is_viewport() || !inst_.velocity.camera_has_motion();
+    inst_.pipelines.data.alpha_hash_scale = alpha_hash_subpixel_scale ? 0.1f : 1.0f;
 
-      inst_.pipelines.data.alpha_hash_scale = 0.1f;
-      if (inst_.is_viewport() && inst_.velocity.camera_has_motion()) {
-        inst_.pipelines.data.alpha_hash_scale = 1.0f;
-      }
-      inst_.bind_uniform_data(&prepass_ps_);
-      inst_.velocity.bind_resources(prepass_ps_);
-      inst_.sampling.bind_resources(prepass_ps_);
-    }
+    inst_.bind_uniform_data(&prepass_ps_);
+    inst_.velocity.bind_resources(prepass_ps_);
+    inst_.sampling.bind_resources(prepass_ps_);
 
     DRWState state_depth_only = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
     DRWState state_depth_color = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS |
@@ -483,7 +480,7 @@ void DeferredLayer::end_sync()
 {
   eClosureBits evaluated_closures = CLOSURE_DIFFUSE | CLOSURE_REFLECTION | CLOSURE_REFRACTION;
   if (closure_bits_ & evaluated_closures) {
-    /* First add the tile classification step at the end of the GBuffer pass. */
+    /* Add the tile classification step at the end of the GBuffer pass. */
     {
       /* Fill tile mask texture with the collected closure present in a tile. */
       PassMain::Sub &sub = gbuffer_ps_.sub("TileClassify");
@@ -658,6 +655,9 @@ void DeferredLayer::render(View &main_view,
   inst_.hiz_buffer.swap_layer();
   inst_.hiz_buffer.update();
 
+  inst_.irradiance_cache.set_view(render_view);
+  inst_.shadows.set_view(render_view);
+
   if (/* FIXME(fclem): Vulkan doesn't implement load / store config yet. */
       GPU_backend_get_type() == GPU_BACKEND_VULKAN)
   {
@@ -695,15 +695,6 @@ void DeferredLayer::render(View &main_view,
                           });
 
   inst_.manager->submit(gbuffer_ps_, render_view);
-
-  inst_.hiz_buffer.set_dirty();
-
-  inst_.irradiance_cache.set_view(render_view);
-
-  /* Only update the HiZ after refraction tracing. */
-  inst_.hiz_buffer.update();
-
-  inst_.shadows.set_view(render_view);
 
   int closure_count = count_bits_i(closure_bits_ & (CLOSURE_REFLECTION | CLOSURE_DIFFUSE));
   for (int i = 0; i < ARRAY_SIZE(direct_radiance_txs_); i++) {
