@@ -766,6 +766,7 @@ class ASSETBROWSER_PT_metadata(asset_utils.AssetBrowserPanel, Panel):
         row.operator("asset.open_containing_blend_file", text="", icon='TOOL_SETTINGS')
 
         metadata = asset.metadata
+        self.metadata_prop(layout, metadata, "label")
         self.metadata_prop(layout, metadata, "description")
         self.metadata_prop(layout, metadata, "license")
         self.metadata_prop(layout, metadata, "copyright")

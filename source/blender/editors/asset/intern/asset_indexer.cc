@@ -59,6 +59,7 @@ using namespace blender::bke::idprop;
  *     "name": "<asset name>",
  *     "catalog_id": "<catalog_id>",
  *     "catalog_name": "<catalog_name>",
+ *     "label": "<label>",
  *     "description": "<description>",
  *     "author": "<author>",
  *     "copyright": "<copyright>",
@@ -81,6 +82,7 @@ constexpr StringRef ATTRIBUTE_ENTRIES("entries");
 constexpr StringRef ATTRIBUTE_ENTRIES_NAME("name");
 constexpr StringRef ATTRIBUTE_ENTRIES_CATALOG_ID("catalog_id");
 constexpr StringRef ATTRIBUTE_ENTRIES_CATALOG_NAME("catalog_name");
+constexpr StringRef ATTRIBUTE_ENTRIES_LABEL("label");
 constexpr StringRef ATTRIBUTE_ENTRIES_DESCRIPTION("description");
 constexpr StringRef ATTRIBUTE_ENTRIES_AUTHOR("author");
 constexpr StringRef ATTRIBUTE_ENTRIES_COPYRIGHT("copyright");
@@ -162,6 +164,16 @@ struct AssetEntryReader {
   {
     const StringRefNull name_with_idcode = get_name_with_idcode();
     return name_with_idcode.substr(2);
+  }
+
+  bool has_label() const
+  {
+    return lookup.contains(ATTRIBUTE_ENTRIES_LABEL);
+  }
+
+  StringRefNull get_label() const
+  {
+    return lookup.lookup(ATTRIBUTE_ENTRIES_LABEL)->as_string_value()->value();
   }
 
   bool has_description() const
@@ -281,6 +293,11 @@ struct AssetEntryWriter {
     attributes.append_as(std::pair(ATTRIBUTE_ENTRIES_CATALOG_NAME, new StringValue(catalog_name)));
   }
 
+  void add_label(const StringRefNull label)
+  {
+    attributes.append_as(std::pair(ATTRIBUTE_ENTRIES_LABEL, new StringValue(label)));
+  }
+
   void add_description(const StringRefNull description)
   {
     attributes.append_as(std::pair(ATTRIBUTE_ENTRIES_DESCRIPTION, new StringValue(description)));
@@ -333,6 +350,9 @@ static void init_value_from_file_indexer_entry(AssetEntryWriter &result,
   result.add_catalog_id(asset_data.catalog_id);
   result.add_catalog_name(asset_data.catalog_simple_name);
 
+  if (asset_data.label != nullptr) {
+    result.add_label(asset_data.label);
+  }
   if (asset_data.description != nullptr) {
     result.add_description(asset_data.description);
   }
@@ -399,6 +419,13 @@ static void init_indexer_entry_from_value(FileIndexerEntry &indexer_entry,
   indexer_entry.datablock_info.asset_data = asset_data;
   indexer_entry.datablock_info.free_asset_data = true;
 
+  if (entry.has_label()) {
+    const StringRefNull label = entry.get_label();
+    const size_t c_str_size = label.size() + 1;
+    char *label_c_str = static_cast<char *>(MEM_mallocN(c_str_size, __func__));
+    memcpy(label_c_str, label.c_str(), c_str_size);
+    asset_data->label = label_c_str;
+  }
   if (entry.has_description()) {
     const StringRefNull description = entry.get_description();
     const size_t c_str_size = description.size() + 1;

@@ -81,6 +81,11 @@ AssetWeakReference *AssetRepresentation::make_weak_reference() const
 
 StringRefNull AssetRepresentation::get_name() const
 {
+  AssetMetaData &meta_data = get_metadata();
+  if (meta_data.label) {
+    return meta_data.label;
+  }
+
   if (is_local_id_) {
     return local_asset_id_->name + 2;
   }

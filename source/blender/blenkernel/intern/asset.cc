@@ -55,6 +55,9 @@ AssetMetaData *BKE_asset_metadata_copy(const AssetMetaData *source)
   if (source->author) {
     copy->author = BLI_strdup(source->author);
   }
+  if (source->label) {
+    copy->label = BLI_strdup(source->label);
+  }
   if (source->description) {
     copy->description = BLI_strdup(source->description);
   }
@@ -78,6 +81,7 @@ AssetMetaData::~AssetMetaData()
     IDP_FreeProperty(properties);
   }
   MEM_SAFE_FREE(author);
+  MEM_SAFE_FREE(label);
   MEM_SAFE_FREE(description);
   MEM_SAFE_FREE(copyright);
   MEM_SAFE_FREE(license);
@@ -200,6 +204,9 @@ void BKE_asset_metadata_write(BlendWriter *writer, AssetMetaData *asset_data)
   if (asset_data->author) {
     BLO_write_string(writer, asset_data->author);
   }
+  if (asset_data->label) {
+    BLO_write_string(writer, asset_data->label);
+  }
   if (asset_data->description) {
     BLO_write_string(writer, asset_data->description);
   }
@@ -226,6 +233,7 @@ void BKE_asset_metadata_read(BlendDataReader *reader, AssetMetaData *asset_data)
   }
 
   BLO_read_data_address(reader, &asset_data->author);
+  BLO_read_data_address(reader, &asset_data->label);
   BLO_read_data_address(reader, &asset_data->description);
   BLO_read_data_address(reader, &asset_data->copyright);
   BLO_read_data_address(reader, &asset_data->license);
