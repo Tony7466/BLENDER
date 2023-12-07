@@ -276,7 +276,6 @@ set(SRC
   intern/subdiv.cc
   intern/subdiv_ccg.cc
   intern/subdiv_ccg_mask.cc
-  intern/subdiv_ccg_material.cc
   intern/subdiv_converter.cc
   intern/subdiv_converter_mesh.cc
   intern/subdiv_deform.cc
@@ -417,7 +416,7 @@ set(SRC
   BKE_lib_override.hh
   BKE_lib_query.h
   BKE_lib_remap.hh
-  BKE_library.h
+  BKE_library.hh
   BKE_light.h
   BKE_light_linking.h
   BKE_lightprobe.h
