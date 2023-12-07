@@ -1,32 +1,18 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+#include "DNA_curve_types.h"
 
-/** \file
- * \ingroup edcurve
- */
-
-#include "DNA_object_types.h"
-#include "DNA_scene_types.h"
-
-#include "MEM_guardedalloc.h"
-
-#include "BLI_blenlib.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_mempool.h"
 
 #include "BKE_context.hh"
-#include "BKE_curve.hh"
-#include "BKE_fcurve.h"
+#include "BKE_curves.hh"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
-#include "WM_types.hh"
 
-#include "ED_curve.hh"
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 #include "ED_view3d.hh"
@@ -36,25 +22,19 @@
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
-#include "GPU_state.h"
-
-#include "curve_intern.h"
 
 #include "UI_resources.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "RNA_enum_types.hh"
-
-#define USE_SPLINE_FIT
-
-#ifdef USE_SPLINE_FIT
 extern "C" {
-#  include "curve_fit_nd.h"
+#include "curve_fit_nd.h"
 }
-#endif
+
+namespace blender::ed::curves {
 
 /* Distance between input samples */
 #define STROKE_SAMPLE_DIST_MIN_PX 1
@@ -134,10 +114,20 @@ struct CurveDrawData {
   void *draw_handle_view;
 };
 
+float curve_bevel_radius(void *curve_data)
+{
+  return 0.0f;
+}
+
+bool is_curve_2d(void *curve_data)
+{
+  return false;
+}
+
 static float stroke_elem_radius_from_pressure(const CurveDrawData *cdd, const float pressure)
 {
-  const Curve *cu = static_cast<const Curve *>(cdd->vc.obedit->data);
-  return ((pressure * cdd->radius.range) + cdd->radius.min) * cu->bevel_radius;
+  float bevel_radius = curve_bevel_radius(cdd->vc.obedit->data);
+  return ((pressure * cdd->radius.range) + cdd->radius.min) * bevel_radius;
 }
 
 static float stroke_elem_radius(const CurveDrawData *cdd, const StrokeElem *selem)
@@ -338,10 +328,6 @@ static void curve_draw_stroke_from_operator(wmOperator *op)
 
 /** \} */
 
-/* -------------------------------------------------------------------- */
-/** \name Operator Callbacks & Helpers
- * \{ */
-
 static void curve_draw_stroke_3d(const bContext * /*C*/, ARegion * /*region*/, void *arg)
 {
   wmOperator *op = static_cast<wmOperator *>(arg);
@@ -354,9 +340,8 @@ static void curve_draw_stroke_3d(const bContext * /*C*/, ARegion * /*region*/, v
   }
 
   Object *obedit = cdd->vc.obedit;
-  Curve *cu = static_cast<Curve *>(obedit->data);
 
-  if (cu->bevel_radius > 0.0f) {
+  if (curve_bevel_radius(obedit->data) > 0.0f) {
     BLI_mempool_iter iter;
     const StrokeElem *selem;
 
@@ -566,11 +551,33 @@ static void curve_draw_event_add_first(wmOperator *op, const wmEvent *event)
   cdd->state = CURVE_DRAW_PAINTING;
 }
 
+static void curve_draw_exit(wmOperator *op)
+{
+  CurveDrawData *cdd = static_cast<CurveDrawData *>(op->customdata);
+  if (cdd) {
+    if (cdd->draw_handle_view) {
+      ED_region_draw_cb_exit(cdd->vc.region->type, cdd->draw_handle_view);
+      WM_cursor_modal_restore(cdd->vc.win);
+    }
+
+    if (cdd->stroke_elem_pool) {
+      BLI_mempool_destroy(cdd->stroke_elem_pool);
+    }
+
+    if (cdd->depths) {
+      ED_view3d_depths_free(cdd->depths);
+    }
+    MEM_freeN(cdd);
+    op->customdata = nullptr;
+  }
+}
+
 static bool curve_draw_init(bContext *C, wmOperator *op, bool is_invoke)
 {
   BLI_assert(op->customdata == nullptr);
 
   CurveDrawData *cdd = static_cast<CurveDrawData *>(MEM_callocN(sizeof(*cdd), __func__));
+
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
   if (is_invoke) {
@@ -615,25 +622,376 @@ static bool curve_draw_init(bContext *C, wmOperator *op, bool is_invoke)
   return true;
 }
 
-static void curve_draw_exit(wmOperator *op)
+static int curves_draw_exec(bContext *C, wmOperator *op)
 {
-  CurveDrawData *cdd = static_cast<CurveDrawData *>(op->customdata);
-  if (cdd) {
-    if (cdd->draw_handle_view) {
-      ED_region_draw_cb_exit(cdd->vc.region->type, cdd->draw_handle_view);
-      WM_cursor_modal_restore(cdd->vc.win);
+  if (op->customdata == nullptr) {
+    if (!curve_draw_init(C, op, false)) {
+      return OPERATOR_CANCELLED;
     }
-
-    if (cdd->stroke_elem_pool) {
-      BLI_mempool_destroy(cdd->stroke_elem_pool);
-    }
-
-    if (cdd->depths) {
-      ED_view3d_depths_free(cdd->depths);
-    }
-    MEM_freeN(cdd);
-    op->customdata = nullptr;
   }
+
+  CurveDrawData *cdd = static_cast<CurveDrawData *>(op->customdata);
+
+  const CurvePaintSettings *cps = &cdd->vc.scene->toolsettings->curve_paint_settings;
+  Object *obedit = cdd->vc.obedit;
+
+  int stroke_len = BLI_mempool_len(cdd->stroke_elem_pool);
+
+  invert_m4_m4(obedit->world_to_object, obedit->object_to_world);
+
+  if (BLI_mempool_len(cdd->stroke_elem_pool) == 0) {
+    curve_draw_stroke_from_operator(op);
+    stroke_len = BLI_mempool_len(cdd->stroke_elem_pool);
+  }
+
+  /* error in object local space */
+  const int fit_method = RNA_enum_get(op->ptr, "fit_method");
+  const float error_threshold = RNA_float_get(op->ptr, "error_threshold");
+  const float corner_angle = RNA_float_get(op->ptr, "corner_angle");
+  const bool use_cyclic = RNA_boolean_get(op->ptr, "use_cyclic");
+
+  const float radius_min = cps->radius_min;
+  const float radius_max = cps->radius_max;
+  const float radius_range = cps->radius_max - cps->radius_min;
+
+  Curves *curves_id = static_cast<Curves *>(obedit->data);
+  blender::bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+  const int curve_index = curves.curves_num();
+
+  // // nu->resolu = cu->resolu;
+  // nu->flag |= CU_SMOOTH;
+
+  const bool use_pressure_radius = (cps->flag & CURVE_PAINT_FLAG_PRESSURE_RADIUS) ||
+                                   ((cps->radius_taper_start != 0.0f) ||
+                                    (cps->radius_taper_end != 0.0f));
+
+  if (cdd->curve_type == CU_BEZIER) {
+    /* Allow to interpolate multiple channels */
+    int dims = 3;
+    const int radius_index = use_pressure_radius ? dims++ : -1;
+
+    float *coords = static_cast<float *>(
+        MEM_mallocN(sizeof(*coords) * stroke_len * dims, __func__));
+
+    float *cubic_spline = nullptr;
+    uint cubic_spline_len = 0;
+
+    {
+      BLI_mempool_iter iter;
+      const StrokeElem *selem;
+      float *co = coords;
+
+      BLI_mempool_iternew(cdd->stroke_elem_pool, &iter);
+      for (selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)); selem;
+           selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)), co += dims)
+      {
+        copy_v3_v3(co, selem->location_local);
+        if (radius_index != -1) {
+          co[radius_index] = selem->pressure;
+        }
+
+        /* remove doubles */
+        if ((co != coords) && UNLIKELY(memcmp(co, co - dims, sizeof(float) * dims) == 0)) {
+          co -= dims;
+          stroke_len--;
+        }
+      }
+    }
+
+    uint *corners = nullptr;
+    uint corners_len = 0;
+
+    if ((fit_method == CURVE_PAINT_FIT_METHOD_SPLIT) && (corner_angle < float(M_PI))) {
+      /* this could be configurable... */
+      const float corner_radius_min = error_threshold / 8;
+      const float corner_radius_max = error_threshold * 2;
+      const uint samples_max = 16;
+
+      curve_fit_corners_detect_fl(coords,
+                                  stroke_len,
+                                  dims,
+                                  corner_radius_min,
+                                  corner_radius_max,
+                                  samples_max,
+                                  corner_angle,
+                                  &corners,
+                                  &corners_len);
+    }
+
+    uint *corners_index = nullptr;
+    uint corners_index_len = 0;
+    uint calc_flag = CURVE_FIT_CALC_HIGH_QUALIY;
+
+    if ((stroke_len > 2) && use_cyclic) {
+      calc_flag |= CURVE_FIT_CALC_CYCLIC;
+    }
+
+    int result;
+    if (fit_method == CURVE_PAINT_FIT_METHOD_REFIT) {
+      result = curve_fit_cubic_to_points_refit_fl(coords,
+                                                  stroke_len,
+                                                  dims,
+                                                  error_threshold,
+                                                  calc_flag,
+                                                  nullptr,
+                                                  0,
+                                                  corner_angle,
+                                                  &cubic_spline,
+                                                  &cubic_spline_len,
+                                                  nullptr,
+                                                  &corners_index,
+                                                  &corners_index_len);
+    }
+    else {
+      result = curve_fit_cubic_to_points_fl(coords,
+                                            stroke_len,
+                                            dims,
+                                            error_threshold,
+                                            calc_flag,
+                                            corners,
+                                            corners_len,
+                                            &cubic_spline,
+                                            &cubic_spline_len,
+                                            nullptr,
+                                            &corners_index,
+                                            &corners_index_len);
+    }
+
+    MEM_freeN(coords);
+    if (corners) {
+      free(corners);
+    }
+
+    if (result == 0) {
+      curves.resize(curves.points_num() + cubic_spline_len, curve_index + 1);
+      auto curve_types = curves.curve_types_for_write();
+      curve_types[curve_index] = CURVE_TYPE_BEZIER;
+      curves.update_curve_types();
+
+      MutableSpan<float3> handle_positions_l = curves.handle_positions_left_for_write();
+      MutableSpan<float3> handle_positions_r = curves.handle_positions_right_for_write();
+      MutableSpan<int8_t> handle_types_l = curves.handle_types_left_for_write();
+      MutableSpan<int8_t> handle_types_r = curves.handle_types_right_for_write();
+      MutableSpan<bool> cyclic = curves.cyclic_for_write();
+      MutableSpan<int> resolution = curves.resolution_for_write();
+
+      resolution[curve_index] = 12;
+      auto points_of_curve = curves.points_by_curve()[curve_index];
+      auto positions = curves.positions_for_write();
+
+      auto curves_attributes = curves.attributes_for_write();
+      auto radius_attribute = curves_attributes.lookup_or_add_for_write_only_span<float>(
+          "radius", ATTR_DOMAIN_POINT);
+      auto selection_attribute = curves_attributes.lookup_or_add_for_write_span<bool>(
+          ".selection", ATTR_DOMAIN_POINT);
+
+      MutableSpan<float> radii = radius_attribute.span;
+      MutableSpan<bool> selections = selection_attribute.span;
+
+      selections.fill(false);
+
+      auto iter = points_of_curve.begin();
+
+      float *co = cubic_spline;
+
+      for (int j = 0; j < cubic_spline_len; j++, iter++, co += (dims * 3)) {
+        const float *handle_l = co + (dims * 0);
+        const float *pt = co + (dims * 1);
+        const float *handle_r = co + (dims * 2);
+
+        const auto i = *iter;
+        copy_v3_v3(handle_positions_l[i], handle_l);
+        copy_v3_v3(positions[i], pt);
+        copy_v3_v3(handle_positions_r[i], handle_r);
+
+        const float radius = (radius_index != -1) ?
+                                 (pt[radius_index] * cdd->radius.range) + cdd->radius.min :
+                                 radius_max;
+        radii[i] = radius;
+
+        handle_types_l[i] = BEZIER_HANDLE_ALIGN;
+        handle_types_r[i] = BEZIER_HANDLE_ALIGN;
+        selections[i] = true;
+        //         bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
+      }
+
+      if (corners_index) {
+        /* ignore the first and last */
+        uint i_start = 0, i_end = corners_index_len;
+
+        if ((corners_index_len >= 2) && (calc_flag & CURVE_FIT_CALC_CYCLIC) == 0) {
+          i_start += 1;
+          i_end -= 1;
+        }
+
+        for (uint i = i_start; i < i_end; i++) {
+          const auto corner_i = points_of_curve[corners_index[i]];
+          handle_types_l[i] = BEZIER_HANDLE_FREE;
+          handle_types_r[i] = BEZIER_HANDLE_FREE;
+        }
+      }
+
+      cyclic[curve_index] = bool(calc_flag & CURVE_FIT_CALC_CYCLIC);
+
+      radius_attribute.finish();
+      selection_attribute.finish();
+    }
+
+    if (corners_index) {
+      free(corners_index);
+    }
+
+    if (cubic_spline) {
+      free(cubic_spline);
+    }
+  }
+  else { /* CU_POLY */
+    BLI_mempool_iter iter;
+    const StrokeElem *selem;
+
+    curves.resize(curves.points_num() + stroke_len, curve_index + 1);
+    auto curve_types = curves.curve_types_for_write();
+    curve_types[curve_index] = CURVE_TYPE_POLY;
+    curves.update_curve_types();
+
+    auto points_of_curve = curves.points_by_curve()[curve_index];
+    auto positions = curves.positions_for_write();
+    auto curves_attributes = curves.attributes_for_write();
+    auto radius_attribute = curves_attributes.lookup_or_add_for_write_only_span<float>(
+        "radius", ATTR_DOMAIN_POINT);
+    auto selection_attribute = curves_attributes.lookup_or_add_for_write_span<bool>(
+        ".selection", ATTR_DOMAIN_POINT);
+
+    MutableSpan<float> radii = radius_attribute.span;
+    MutableSpan<bool> selections = selection_attribute.span;
+
+    selections.fill(false);
+
+    auto points_iter = points_of_curve.begin();
+
+    BLI_mempool_iternew(cdd->stroke_elem_pool, &iter);
+    for (selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)); selem;
+         selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)), points_iter++)
+    {
+      const auto i = *points_iter;
+      copy_v3_v3(positions[i], selem->location_local);
+      if (is_curve_2d(curves_id)) {
+        positions[i][2] = 0.0f;
+      }
+
+      const float radius = use_pressure_radius ? (selem->pressure * radius_range) + radius_min :
+                                                 cps->radius_max;
+      radii[i] = radius;
+      selections[i] = true;
+    }
+
+    radius_attribute.finish();
+    selection_attribute.finish();
+  }
+
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+  DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
+
+  curve_draw_exit(op);
+
+  return OPERATOR_FINISHED;
+}
+
+static int curves_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  if (RNA_struct_property_is_set(op->ptr, "stroke")) {
+    return curves_draw_exec(C, op);
+  }
+
+  if (!curve_draw_init(C, op, true)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  CurveDrawData *cdd = static_cast<CurveDrawData *>(op->customdata);
+
+  const CurvePaintSettings *cps = &cdd->vc.scene->toolsettings->curve_paint_settings;
+
+  const bool is_modal = RNA_boolean_get(op->ptr, "wait_for_input");
+
+  /* Fallback (in case we can't find the depth on first test). */
+  {
+    const float mval_fl[2] = {float(event->mval[0]), float(event->mval[1])};
+    float center[3];
+    negate_v3_v3(center, cdd->vc.rv3d->ofs);
+    ED_view3d_win_to_3d(cdd->vc.v3d, cdd->vc.region, center, mval_fl, cdd->prev.location_world);
+    copy_v3_v3(cdd->prev.location_world_valid, cdd->prev.location_world);
+  }
+
+  cdd->draw_handle_view = ED_region_draw_cb_activate(
+      cdd->vc.region->type, curve_draw_stroke_3d, op, REGION_DRAW_POST_VIEW);
+  WM_cursor_modal_set(cdd->vc.win, WM_CURSOR_PAINT_BRUSH);
+
+  {
+    View3D *v3d = cdd->vc.v3d;
+    RegionView3D *rv3d = cdd->vc.rv3d;
+    Object *obedit = cdd->vc.obedit;
+
+    const float *plane_no = nullptr;
+    const float *plane_co = nullptr;
+
+    if (is_curve_2d(obedit->data)) {
+      /* 2D overrides other options */
+      plane_co = obedit->object_to_world[3];
+      plane_no = obedit->object_to_world[2];
+      cdd->project.use_plane = true;
+    }
+    else {
+      if ((cps->depth_mode == CURVE_PAINT_PROJECT_SURFACE) && (v3d->shading.type > OB_WIRE)) {
+        /* needed or else the draw matrix can be incorrect */
+        view3d_operator_needs_opengl(C);
+
+        ED_view3d_depth_override(cdd->vc.depsgraph,
+                                 cdd->vc.region,
+                                 cdd->vc.v3d,
+                                 nullptr,
+                                 V3D_DEPTH_NO_GPENCIL,
+                                 &cdd->depths);
+
+        if (cdd->depths != nullptr) {
+          cdd->project.use_depth = true;
+        }
+        else {
+          BKE_report(op->reports, RPT_WARNING, "Unable to access depth buffer, using view plane");
+          cdd->project.use_depth = false;
+        }
+      }
+
+      /* use view plane (when set or as fallback when surface can't be found) */
+      if (cdd->project.use_depth == false) {
+        plane_co = cdd->vc.scene->cursor.location;
+        plane_no = rv3d->viewinv[2];
+        cdd->project.use_plane = true;
+      }
+
+      if (cdd->project.use_depth && (cdd->curve_type != CU_POLY)) {
+        cdd->sample.use_substeps = true;
+      }
+    }
+
+    if (cdd->project.use_plane) {
+      normalize_v3_v3(cdd->project.plane, plane_no);
+      cdd->project.plane[3] = -dot_v3v3(cdd->project.plane, plane_co);
+    }
+  }
+
+  if (is_modal == false) {
+    curve_draw_event_add_first(op, event);
+  }
+
+  /* add temp handler */
+  WM_event_add_modal_handler(C, op);
+
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static void curve_draw_cancel(bContext * /*C*/, wmOperator *op)
+{
+  curve_draw_exit(op);
 }
 
 /**
@@ -759,403 +1117,7 @@ static void curve_draw_exec_precalc(wmOperator *op)
   }
 }
 
-static int curve_draw_exec(bContext *C, wmOperator *op)
-{
-  if (op->customdata == nullptr) {
-    if (!curve_draw_init(C, op, false)) {
-      return OPERATOR_CANCELLED;
-    }
-  }
-
-  CurveDrawData *cdd = static_cast<CurveDrawData *>(op->customdata);
-
-  const CurvePaintSettings *cps = &cdd->vc.scene->toolsettings->curve_paint_settings;
-  Object *obedit = cdd->vc.obedit;
-  Curve *cu = static_cast<Curve *>(obedit->data);
-  ListBase *nurblist = object_editcurve_get(obedit);
-
-  int stroke_len = BLI_mempool_len(cdd->stroke_elem_pool);
-
-  const bool is_3d = (cu->flag & CU_3D) != 0;
-  invert_m4_m4(obedit->world_to_object, obedit->object_to_world);
-
-  if (BLI_mempool_len(cdd->stroke_elem_pool) == 0) {
-    curve_draw_stroke_from_operator(op);
-    stroke_len = BLI_mempool_len(cdd->stroke_elem_pool);
-  }
-
-  /* Deselect all existing curves. */
-  ED_curve_deselect_all_multi(C);
-
-  const float radius_min = cps->radius_min;
-  const float radius_max = cps->radius_max;
-  const float radius_range = cps->radius_max - cps->radius_min;
-
-  Nurb *nu = static_cast<Nurb *>(MEM_callocN(sizeof(Nurb), __func__));
-  nu->pntsv = 0;
-  nu->resolu = cu->resolu;
-  nu->resolv = cu->resolv;
-  nu->flag |= CU_SMOOTH;
-
-  const bool use_pressure_radius = (cps->flag & CURVE_PAINT_FLAG_PRESSURE_RADIUS) ||
-                                   ((cps->radius_taper_start != 0.0f) ||
-                                    (cps->radius_taper_end != 0.0f));
-
-  if (cdd->curve_type == CU_BEZIER) {
-    nu->type = CU_BEZIER;
-
-#ifdef USE_SPLINE_FIT
-
-    /* Allow to interpolate multiple channels */
-    int dims = 3;
-    struct {
-      int radius;
-    } coords_indices;
-    coords_indices.radius = use_pressure_radius ? dims++ : -1;
-
-    float *coords = static_cast<float *>(
-        MEM_mallocN(sizeof(*coords) * stroke_len * dims, __func__));
-
-    float *cubic_spline = nullptr;
-    uint cubic_spline_len = 0;
-
-    /* error in object local space */
-    const int fit_method = RNA_enum_get(op->ptr, "fit_method");
-    const float error_threshold = RNA_float_get(op->ptr, "error_threshold");
-    const float corner_angle = RNA_float_get(op->ptr, "corner_angle");
-    const bool use_cyclic = RNA_boolean_get(op->ptr, "use_cyclic");
-
-    {
-      BLI_mempool_iter iter;
-      const StrokeElem *selem;
-      float *co = coords;
-
-      BLI_mempool_iternew(cdd->stroke_elem_pool, &iter);
-      for (selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)); selem;
-           selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)), co += dims)
-      {
-        copy_v3_v3(co, selem->location_local);
-        if (coords_indices.radius != -1) {
-          co[coords_indices.radius] = selem->pressure;
-        }
-
-        /* remove doubles */
-        if ((co != coords) && UNLIKELY(memcmp(co, co - dims, sizeof(float) * dims) == 0)) {
-          co -= dims;
-          stroke_len--;
-        }
-      }
-    }
-
-    uint *corners = nullptr;
-    uint corners_len = 0;
-
-    if ((fit_method == CURVE_PAINT_FIT_METHOD_SPLIT) && (corner_angle < float(M_PI))) {
-      /* this could be configurable... */
-      const float corner_radius_min = error_threshold / 8;
-      const float corner_radius_max = error_threshold * 2;
-      const uint samples_max = 16;
-
-      curve_fit_corners_detect_fl(coords,
-                                  stroke_len,
-                                  dims,
-                                  corner_radius_min,
-                                  corner_radius_max,
-                                  samples_max,
-                                  corner_angle,
-                                  &corners,
-                                  &corners_len);
-    }
-
-    uint *corners_index = nullptr;
-    uint corners_index_len = 0;
-    uint calc_flag = CURVE_FIT_CALC_HIGH_QUALIY;
-
-    if ((stroke_len > 2) && use_cyclic) {
-      calc_flag |= CURVE_FIT_CALC_CYCLIC;
-    }
-
-    int result;
-    if (fit_method == CURVE_PAINT_FIT_METHOD_REFIT) {
-      result = curve_fit_cubic_to_points_refit_fl(coords,
-                                                  stroke_len,
-                                                  dims,
-                                                  error_threshold,
-                                                  calc_flag,
-                                                  nullptr,
-                                                  0,
-                                                  corner_angle,
-                                                  &cubic_spline,
-                                                  &cubic_spline_len,
-                                                  nullptr,
-                                                  &corners_index,
-                                                  &corners_index_len);
-    }
-    else {
-      result = curve_fit_cubic_to_points_fl(coords,
-                                            stroke_len,
-                                            dims,
-                                            error_threshold,
-                                            calc_flag,
-                                            corners,
-                                            corners_len,
-                                            &cubic_spline,
-                                            &cubic_spline_len,
-                                            nullptr,
-                                            &corners_index,
-                                            &corners_index_len);
-    }
-
-    MEM_freeN(coords);
-    if (corners) {
-      free(corners);
-    }
-
-    if (result == 0) {
-      nu->pntsu = cubic_spline_len;
-      nu->bezt = static_cast<BezTriple *>(MEM_callocN(sizeof(BezTriple) * nu->pntsu, __func__));
-
-      float *co = cubic_spline;
-      BezTriple *bezt = nu->bezt;
-      for (int j = 0; j < cubic_spline_len; j++, bezt++, co += (dims * 3)) {
-        const float *handle_l = co + (dims * 0);
-        const float *pt = co + (dims * 1);
-        const float *handle_r = co + (dims * 2);
-
-        copy_v3_v3(bezt->vec[0], handle_l);
-        copy_v3_v3(bezt->vec[1], pt);
-        copy_v3_v3(bezt->vec[2], handle_r);
-
-        if (coords_indices.radius != -1) {
-          bezt->radius = (pt[coords_indices.radius] * cdd->radius.range) + cdd->radius.min;
-        }
-        else {
-          bezt->radius = radius_max;
-        }
-
-        bezt->h1 = bezt->h2 = HD_ALIGN; /* will set to free in second pass */
-        bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
-      }
-
-      if (corners_index) {
-        /* ignore the first and last */
-        uint i_start = 0, i_end = corners_index_len;
-
-        if ((corners_index_len >= 2) && (calc_flag & CURVE_FIT_CALC_CYCLIC) == 0) {
-          i_start += 1;
-          i_end -= 1;
-        }
-
-        for (uint i = i_start; i < i_end; i++) {
-          bezt = &nu->bezt[corners_index[i]];
-          bezt->h1 = bezt->h2 = HD_FREE;
-        }
-      }
-
-      if (calc_flag & CURVE_FIT_CALC_CYCLIC) {
-        nu->flagu |= CU_NURB_CYCLIC;
-      }
-    }
-
-    if (corners_index) {
-      free(corners_index);
-    }
-
-    if (cubic_spline) {
-      free(cubic_spline);
-    }
-
-#else
-    nu->pntsu = stroke_len;
-    nu->bezt = MEM_callocN(nu->pntsu * sizeof(BezTriple), __func__);
-
-    BezTriple *bezt = nu->bezt;
-
-    {
-      BLI_mempool_iter iter;
-      const struct StrokeElem *selem;
-
-      BLI_mempool_iternew(cdd->stroke_elem_pool, &iter);
-      for (selem = BLI_mempool_iterstep(&iter); selem; selem = BLI_mempool_iterstep(&iter)) {
-        copy_v3_v3(bezt->vec[1], selem->location_local);
-        if (!is_3d) {
-          bezt->vec[1][2] = 0.0f;
-        }
-
-        if (use_pressure_radius) {
-          bezt->radius = selem->pressure;
-        }
-        else {
-          bezt->radius = radius_max;
-        }
-
-        bezt->h1 = bezt->h2 = HD_AUTO;
-
-        bezt->f1 |= SELECT;
-        bezt->f2 |= SELECT;
-        bezt->f3 |= SELECT;
-
-        bezt++;
-      }
-    }
-#endif
-
-    BKE_nurb_handles_calc(nu);
-  }
-  else { /* CU_POLY */
-    BLI_mempool_iter iter;
-    const StrokeElem *selem;
-
-    nu->pntsu = stroke_len;
-    nu->pntsv = 1;
-    nu->type = CU_POLY;
-    nu->bp = static_cast<BPoint *>(MEM_callocN(nu->pntsu * sizeof(BPoint), __func__));
-
-    /* Misc settings. */
-    nu->resolu = cu->resolu;
-    nu->resolv = 1;
-    nu->orderu = 4;
-    nu->orderv = 1;
-
-    BPoint *bp = nu->bp;
-
-    BLI_mempool_iternew(cdd->stroke_elem_pool, &iter);
-    for (selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)); selem;
-         selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)))
-    {
-      copy_v3_v3(bp->vec, selem->location_local);
-      if (!is_3d) {
-        bp->vec[2] = 0.0f;
-      }
-
-      if (use_pressure_radius) {
-        bp->radius = (selem->pressure * radius_range) + radius_min;
-      }
-      else {
-        bp->radius = cps->radius_max;
-      }
-      bp->f1 = SELECT;
-      bp->vec[3] = 1.0f;
-
-      bp++;
-    }
-
-    BKE_nurb_knot_calc_u(nu);
-  }
-
-  BLI_addtail(nurblist, nu);
-
-  BKE_curve_nurb_active_set(cu, nu);
-  cu->actvert = nu->pntsu - 1;
-
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
-  DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
-
-  curve_draw_exit(op);
-
-  return OPERATOR_FINISHED;
-}
-
-static int curve_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  if (RNA_struct_property_is_set(op->ptr, "stroke")) {
-    return curve_draw_exec(C, op);
-  }
-
-  if (!curve_draw_init(C, op, true)) {
-    return OPERATOR_CANCELLED;
-  }
-
-  CurveDrawData *cdd = static_cast<CurveDrawData *>(op->customdata);
-
-  const CurvePaintSettings *cps = &cdd->vc.scene->toolsettings->curve_paint_settings;
-
-  const bool is_modal = RNA_boolean_get(op->ptr, "wait_for_input");
-
-  /* Fallback (in case we can't find the depth on first test). */
-  {
-    const float mval_fl[2] = {float(event->mval[0]), float(event->mval[1])};
-    float center[3];
-    negate_v3_v3(center, cdd->vc.rv3d->ofs);
-    ED_view3d_win_to_3d(cdd->vc.v3d, cdd->vc.region, center, mval_fl, cdd->prev.location_world);
-    copy_v3_v3(cdd->prev.location_world_valid, cdd->prev.location_world);
-  }
-
-  cdd->draw_handle_view = ED_region_draw_cb_activate(
-      cdd->vc.region->type, curve_draw_stroke_3d, op, REGION_DRAW_POST_VIEW);
-  WM_cursor_modal_set(cdd->vc.win, WM_CURSOR_PAINT_BRUSH);
-
-  {
-    View3D *v3d = cdd->vc.v3d;
-    RegionView3D *rv3d = cdd->vc.rv3d;
-    Object *obedit = cdd->vc.obedit;
-    Curve *cu = static_cast<Curve *>(obedit->data);
-
-    const float *plane_no = nullptr;
-    const float *plane_co = nullptr;
-
-    if (CU_IS_2D(cu)) {
-      /* 2D overrides other options */
-      plane_co = obedit->object_to_world[3];
-      plane_no = obedit->object_to_world[2];
-      cdd->project.use_plane = true;
-    }
-    else {
-      if ((cps->depth_mode == CURVE_PAINT_PROJECT_SURFACE) && (v3d->shading.type > OB_WIRE)) {
-        /* needed or else the draw matrix can be incorrect */
-        view3d_operator_needs_opengl(C);
-
-        ED_view3d_depth_override(cdd->vc.depsgraph,
-                                 cdd->vc.region,
-                                 cdd->vc.v3d,
-                                 nullptr,
-                                 V3D_DEPTH_NO_GPENCIL,
-                                 &cdd->depths);
-
-        if (cdd->depths != nullptr) {
-          cdd->project.use_depth = true;
-        }
-        else {
-          BKE_report(op->reports, RPT_WARNING, "Unable to access depth buffer, using view plane");
-          cdd->project.use_depth = false;
-        }
-      }
-
-      /* use view plane (when set or as fallback when surface can't be found) */
-      if (cdd->project.use_depth == false) {
-        plane_co = cdd->vc.scene->cursor.location;
-        plane_no = rv3d->viewinv[2];
-        cdd->project.use_plane = true;
-      }
-
-      if (cdd->project.use_depth && (cdd->curve_type != CU_POLY)) {
-        cdd->sample.use_substeps = true;
-      }
-    }
-
-    if (cdd->project.use_plane) {
-      normalize_v3_v3(cdd->project.plane, plane_no);
-      cdd->project.plane[3] = -dot_v3v3(cdd->project.plane, plane_co);
-    }
-  }
-
-  if (is_modal == false) {
-    curve_draw_event_add_first(op, event);
-  }
-
-  /* add temp handler */
-  WM_event_add_modal_handler(C, op);
-
-  return OPERATOR_RUNNING_MODAL;
-}
-
-static void curve_draw_cancel(bContext * /*C*/, wmOperator *op)
-{
-  curve_draw_exit(op);
-}
-
-/* Modal event handling of frame changing */
-static int curve_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
+static int curves_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   int ret = OPERATOR_RUNNING_MODAL;
   CurveDrawData *cdd = static_cast<CurveDrawData *>(op->customdata);
@@ -1170,7 +1132,7 @@ static int curve_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
       curve_draw_stroke_to_operator(op);
 
-      curve_draw_exec(C, op);
+      curves_draw_exec(C, op);
 
       return OPERATOR_FINISHED;
     }
@@ -1197,19 +1159,19 @@ static int curve_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
   return ret;
 }
 
-void CURVE_OT_draw(wmOperatorType *ot)
+bool editable_curves_in_edit_mode_poll(bContext *C);
+
+void CURVES_OT_draw(wmOperatorType *ot)
 {
-  /* identifiers */
-  ot->name = "Draw Curve";
-  ot->idname = "CURVE_OT_draw";
+  using namespace blender::ed::curves;
+  ot->name = "Draw Curves";
+  ot->idname = __func__;
   ot->description = "Draw a freehand spline";
 
-  /* api callbacks */
-  ot->exec = curve_draw_exec;
-  ot->invoke = curve_draw_invoke;
-  ot->cancel = curve_draw_cancel;
-  ot->modal = curve_draw_modal;
-  ot->poll = ED_operator_editcurve;
+  ot->exec = curves_draw_exec;
+  ot->invoke = curves_draw_invoke;
+  ot->modal = curves_draw_modal;
+  ot->poll = editable_curves_in_edit_mode_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1249,4 +1211,4 @@ void CURVE_OT_draw(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
-/** \} */
+}  // namespace blender::ed::curves

@@ -1244,6 +1244,8 @@ static void CURVES_OT_delete(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+void CURVES_OT_draw(wmOperatorType *ot);
+
 }  // namespace blender::ed::curves
 
 void ED_operatortypes_curves()
@@ -1252,6 +1254,7 @@ void ED_operatortypes_curves()
   WM_operatortype_append(CURVES_OT_attribute_set);
   WM_operatortype_append(CURVES_OT_convert_to_particle_system);
   WM_operatortype_append(CURVES_OT_convert_from_particle_system);
+  WM_operatortype_append(CURVES_OT_draw);
   WM_operatortype_append(CURVES_OT_snap_curves_to_surface);
   WM_operatortype_append(CURVES_OT_set_selection_domain);
   WM_operatortype_append(CURVES_OT_select_all);

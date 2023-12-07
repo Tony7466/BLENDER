@@ -7726,7 +7726,7 @@ def km_3d_view_tool_edit_curves_draw(params):
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
             # No need for `tool_modifier` since this takes all input.
-            ("curve.draw", {"type": params.tool_mouse, "value": 'PRESS'},
+            ("curves.draw", {"type": params.tool_mouse, "value": 'PRESS'},
              {"properties": [("wait_for_input", False)]}),
         ]},
     )

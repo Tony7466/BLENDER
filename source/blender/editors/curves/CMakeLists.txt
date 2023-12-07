@@ -23,6 +23,7 @@ set(SRC
   intern/curves_add.cc
   intern/curves_attribute_set.cc
   intern/curves_data.cc
+  intern/curves_draw.cc
   intern/curves_edit.cc
   intern/curves_masks.cc
   intern/curves_ops.cc
@@ -35,6 +36,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::extern::curve_fit_nd
   PRIVATE bf::functions
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
