@@ -4309,10 +4309,8 @@ static void ANIM_OT_channel_view_pick(wmOperatorType *ot)
                              "Use Preview Range",
                              "Ignore frames outside of the preview range");
 }
-#define CHANNEL_BAKE_KEEP 255
 
 static const EnumPropertyItem channel_bake_key_options[] = {
-    {CHANNEL_BAKE_KEEP, "KEEP", 0, "Keep", "Keep the current key types"},
     {BEZT_IPO_BEZ, "BEZIER", 0, "Bezier", "New keys will be beziers"},
     {BEZT_IPO_LIN, "LIN", 0, "Linear", "New keys will be linear"},
     {BEZT_IPO_CONST, "CONST", 0, "Constant", "New keys will be constant"},
@@ -4412,9 +4410,6 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
       }
     }
 
-    if (interpolation_type == CHANNEL_BAKE_KEEP) {
-      continue;
-    }
     for (int i = 0; i < fcu->totvert; i++) {
       BezTriple *key = &fcu->bezt[i];
       if (key->vec[1][0] < nla_mapped_range[0]) {
@@ -4477,7 +4472,7 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "interpolation_type",
                channel_bake_key_options,
-               CHANNEL_BAKE_KEEP,
+               BEZT_IPO_BEZ,
                "Interpolation Type",
                "Choose the interpolation type with which new keys will be added");
 
