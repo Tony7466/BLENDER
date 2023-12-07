@@ -237,29 +237,27 @@ int SEQ_clipboard_copy_exec(bContext *C, wmOperator *op)
 /* Paste Operator Helper functions
  */
 
-static bool sequencer_paste_animation(bContext *C, Scene *scene_src)
+static bool sequencer_paste_animation(Main *bmain_dst, Scene *scene_dst, Scene *scene_src)
 {
   if (!SEQ_animation_curves_exist(scene_src) && !SEQ_animation_drivers_exist(scene_src)) {
     return false;
   }
 
-  Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
-  bAction *act;
+  bAction *act_dst;
 
-  if (scene->adt != nullptr && scene->adt->action != nullptr) {
-    act = scene->adt->action;
+  if (scene_dst->adt != nullptr && scene_dst->adt->action != nullptr) {
+    act_dst = scene_dst->adt->action;
   }
   else {
     /* get action to add F-Curve+keyframe to */
-    act = ED_id_action_ensure(bmain, &scene->id);
+    act_dst = ED_id_action_ensure(bmain_dst, &scene_dst->id);
   }
 
   LISTBASE_FOREACH (FCurve *, fcu, &scene_src->adt->action->curves) {
-    BLI_addtail(&act->curves, BKE_fcurve_copy(fcu));
+    BLI_addtail(&act_dst->curves, BKE_fcurve_copy(fcu));
   }
   LISTBASE_FOREACH (FCurve *, fcu, &scene_src->adt->drivers) {
-    BLI_addtail(&scene->adt->drivers, BKE_fcurve_copy(fcu));
+    BLI_addtail(&scene_dst->adt->drivers, BKE_fcurve_copy(fcu));
   }
 
   return true;
@@ -329,21 +327,23 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
     active_seq_name.assign(prev_active_seq->name);
   }
 
-  /* Make sure we have all data IDs we need in bmain_dst. Remap the IDs if we already have them. */
+  /* Make sure we have all data IDs we need in bmain_dst. Remap the IDs if we already have them.
+   * This has to happen BEFORE we move the strip over to scene_dst. their ID mapping will not be
+   * correct otherwise. */
   Main *bmain_dst = CTX_data_main(C);
   MainMergeReport merge_reports = {};
   /* NOTE: BKE_main_merge will free bmain_src! */
   BKE_main_merge(bmain_dst, &bmain_src, merge_reports);
 
   /* Paste animation.
-   * NOTE: Only fcurves are copied. Drivers and NLA action strips are not copied.
+   * NOTE: Only fcurves and drivers are copied. NLA action strips are not copied.
    * First backup original curves from scene and move curves from clipboard into scene. This way,
    * when pasted strips are renamed, pasted fcurves are renamed with them. Finally restore original
    * curves from backup.
    */
   SeqAnimationBackup animation_backup = {{nullptr}};
   SEQ_animation_backup_original(scene_dst, &animation_backup);
-  bool has_animation = sequencer_paste_animation(C, scene_src);
+  bool has_animation = sequencer_paste_animation(bmain_dst, scene_dst, scene_src);
 
   ListBase nseqbase = {nullptr, nullptr};
   /* NOTE: SEQ_sequence_base_dupli_recursive() takes care of generating
@@ -352,7 +352,7 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
       scene_src, scene_dst, &nseqbase, &scene_src->ed->seqbase, 0, 0);
 
   /* BKE_main_merge will copy the scene_src and its action into bmain_dst. Remove them as
-   * we merge the data from these these manually.
+   * we merge the data from these manually.
    */
   if (has_animation) {
     BKE_id_delete(bmain_dst, scene_src->adt->action);
