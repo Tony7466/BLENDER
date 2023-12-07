@@ -134,6 +134,9 @@ void BM_elem_attrs_copy(BMesh *bm, const BMCustomDataCopyMap &map, const BMLoop 
 /**
  * Copy attributes between elements in two BMeshes. These functions are often called with both
  * pointing to the same BMesh though, so they check for that and use a simpler copy in that case.
+ *
+ * \note For better performance when copying more than one block, use the overload with a
+ * #BMCustomDataCopyMap precalculated map argument.
  */
 void BM_elem_attrs_copy(const BMesh *bm_src, BMesh *bm_dst, const BMVert *src, BMVert *dst);
 void BM_elem_attrs_copy(const BMesh *bm_src, BMesh *bm_dst, const BMEdge *src, BMEdge *dst);
