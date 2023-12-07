@@ -431,6 +431,66 @@ TEST(vector, RemoveIf)
   EXPECT_EQ_ARRAY(vec.data(), expected_vec.data(), size_t(vec.size()));
 }
 
+TEST(vector, RemoveIfNonTrivialDestructible)
+{
+  struct TestStruct {
+    int x;
+    bool *destroyed_flag;
+    TestStruct(int x, bool *destroyed_flag) : x(x), destroyed_flag(destroyed_flag) {}
+    TestStruct(TestStruct &&other)
+    {
+      x = other.x;
+      destroyed_flag = other.destroyed_flag;
+      other.x = 0;
+      other.destroyed_flag = nullptr;
+    };
+    TestStruct &operator=(TestStruct &&other)
+    {
+      /* Swap so we can keep track what is being destroyed in the vector. */
+      std::swap(x, other.x);
+      std::swap(destroyed_flag, other.destroyed_flag);
+      return *this;
+    };
+    ~TestStruct()
+    {
+      if (!destroyed_flag) {
+        return;
+      }
+      *destroyed_flag = true;
+    }
+  };
+
+  EXPECT_FALSE(std::is_trivially_destructible_v<TestStruct>);
+
+  bool destroyed_flag[8]{false, false, false, false, false, false, false, false};
+  {
+    Vector<TestStruct> vec;
+    vec.append(TestStruct(0, destroyed_flag + 0));
+    vec.append(TestStruct(1, destroyed_flag + 1));
+    vec.append(TestStruct(2, destroyed_flag + 2));
+    vec.append(TestStruct(3, destroyed_flag + 3));
+    vec.append(TestStruct(4, destroyed_flag + 4));
+    vec.append(TestStruct(5, destroyed_flag + 5));
+    vec.append(TestStruct(6, destroyed_flag + 6));
+    vec.append(TestStruct(7, destroyed_flag + 7));
+
+    {
+      bool expected_destroyed[8]{false, false, false, false, false, false, false, false};
+      EXPECT_EQ_ARRAY(expected_destroyed + 0, destroyed_flag + 0, 8);
+    }
+
+    const int64_t removed = vec.remove_if([](const TestStruct &x) { return x.x % 2 == 0; });
+    EXPECT_EQ(vec.size() + removed, 8);
+
+    {
+      bool expected_destroyed[8]{true, false, true, false, true, false, true, false};
+      EXPECT_EQ_ARRAY(expected_destroyed + 0, destroyed_flag + 0, 8);
+    }
+  }
+  bool expected_destroyed[8]{true, true, true, true, true, true, true, true};
+  EXPECT_EQ_ARRAY(expected_destroyed + 0, destroyed_flag + 0, 8);
+}
+
 TEST(vector, ExtendSmallVector)
 {
   Vector<int> a = {2, 3, 4};
