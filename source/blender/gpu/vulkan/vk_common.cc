@@ -683,7 +683,6 @@ VkFormat to_non_srgb_format(const VkFormat format)
   return format;
 }
 
-
 VkImageType to_vk_image_type(const eGPUTextureType type)
 {
   /* See

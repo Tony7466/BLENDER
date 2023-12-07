@@ -18,6 +18,7 @@ class VKTexture;
 
 class VKImageView : NonCopyable {
   friend class VKImageViews;
+
  private:
   VkImageView vk_image_view_ = VK_NULL_HANDLE;
   VkFormat vk_format_;
