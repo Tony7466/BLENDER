@@ -366,8 +366,8 @@ MLoopNorSpace *BKE_lnor_space_create(MLoopNorSpaceArray *lnors_spacearr);
  */
 void BKE_lnor_space_define(MLoopNorSpace *lnor_space,
                            const float lnor[3],
-                           float vec_ref[3],
-                           float vec_other[3],
+                           const float vec_ref[3],
+                           const float vec_other[3],
                            blender::Span<blender::float3> edge_vectors);
 
 #endif
@@ -472,16 +472,6 @@ void BKE_mesh_mdisp_flip(struct MDisps *md, bool use_loop_mdisp_flip);
 void BKE_mesh_merge_customdata_for_apply_modifier(struct Mesh *me);
 
 /* Flush flags. */
-
-/**
- * Update the hide flag for edges and faces from the corresponding flag in verts.
- */
-void BKE_mesh_flush_hidden_from_verts(struct Mesh *me);
-void BKE_mesh_flush_hidden_from_faces(struct Mesh *me);
-
-void BKE_mesh_flush_select_from_faces(struct Mesh *me);
-void BKE_mesh_flush_select_from_verts(struct Mesh *me);
-void BKE_mesh_flush_select_from_edges(struct Mesh *me);
 
 /* spatial evaluation */
 /**
