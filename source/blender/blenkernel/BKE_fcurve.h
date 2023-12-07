@@ -503,7 +503,9 @@ void BKE_fcurve_delete_key(struct FCurve *fcu, int index);
 
 /** Delete an index range of keyframes from an F-curve. This is more performant than individually
  * removing keys.
- * \param index_range: is exclusive.
+ * Has a complexity of O(N) with respect to the amount of keys removed.
+ *
+ * \param index_range is exclusive.
  */
 void BKE_fcurve_delete_keys(FCurve *fcu, blender::uint2 index_range);
 
