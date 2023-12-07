@@ -4417,10 +4417,10 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
     }
     for (int i = 0; i < fcu->totvert; i++) {
       BezTriple *key = &fcu->bezt[i];
-      if (key->vec[1][0] < frame_range[0]) {
+      if (key->vec[1][0] < nla_mapped_range[0]) {
         continue;
       }
-      if (key->vec[1][0] > frame_range[1]) {
+      if (key->vec[1][0] > nla_mapped_range[1]) {
         break;
       }
       key->ipo = interpolation_type;
