@@ -4,6 +4,7 @@
 
 
 set(DEFLATE_EXTRA_ARGS
+  -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 )
 
 ExternalProject_Add(external_deflate

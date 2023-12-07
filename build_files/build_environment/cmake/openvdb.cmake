@@ -51,12 +51,6 @@ set(OPENVDB_PATCH
   ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/openvdb/src/openvdb < ${PATCH_DIR}/openvdb.diff &&
   ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/openvdb/src/openvdb < ${PATCH_DIR}/openvdb_1706.diff
 )
-if(APPLE)
-  set(OPENVDB_PATCH
-    ${OPENVDB_PATCH} &&
-    ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/openvdb/src/openvdb < ${PATCH_DIR}/openvdb_metal.diff
-  )
-endif()
 
 ExternalProject_Add(openvdb
   URL file://${PACKAGE_DIR}/${OPENVDB_FILE}

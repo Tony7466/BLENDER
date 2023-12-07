@@ -30,14 +30,10 @@ set(OPENCOLORIO_EXTRA_ARGS
 )
 
 if(APPLE)
+  # Work around issue where minizip-ng_LIBRARY assumes -ng in file name.
   set(OPENCOLORIO_EXTRA_ARGS
     ${OPENCOLORIO_EXTRA_ARGS}
-    "-DCMAKE_SHARED_LINKER_FLAGS=-liconv ${LIBDIR}/bzip2/lib/${LIBPREFIX}bz2${LIBEXT}"
-  )
-elseif(UNIX)
-  set(OPENCOLORIO_EXTRA_ARGS
-    ${OPENCOLORIO_EXTRA_ARGS}
-    "-DCMAKE_SHARED_LINKER_FLAGS=${LIBDIR}/bzip2/lib/${LIBPREFIX}bz2${LIBEXT}"
+    -Dminizip_LIBRARY=${LIBDIR}/minizipng/lib/libminizip${LIBEXT}
   )
 endif()
 

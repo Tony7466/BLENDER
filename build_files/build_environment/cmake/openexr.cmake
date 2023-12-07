@@ -51,4 +51,5 @@ endif()
 add_dependencies(
   external_openexr
   external_imath
+  external_deflate
 )
