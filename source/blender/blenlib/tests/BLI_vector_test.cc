@@ -452,6 +452,7 @@ TEST(vector, RemoveIfNonTrivialDestructible)
       if (released_flag) {
         *released_flag = true;
       }
+      x = other.x;
       released_flag = other.released_flag;
       other.released_flag = nullptr;
       return *this;
