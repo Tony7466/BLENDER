@@ -191,6 +191,10 @@ IndexMask retrieve_editable_strokes(Object &object,
   /* Get all the locked material indices */
   VectorSet<int> locked_material_indices = get_locked_material_indices(object);
 
+  if (locked_material_indices.is_empty()) {
+    return drawing.strokes().curves_range();
+  }
+
   const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexRange curves_range = drawing.strokes().curves_range();
   const bke::AttributeAccessor attributes = curves.attributes();
@@ -211,6 +215,10 @@ IndexMask retrieve_editable_points(Object &object,
 {
   /* Get all the locked material indices */
   VectorSet<int> locked_material_indices = get_locked_material_indices(object);
+
+  if (locked_material_indices.is_empty()) {
+    return drawing.strokes().points_range();
+  }
 
   const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexRange points_range = drawing.strokes().points_range();
@@ -249,6 +257,10 @@ IndexMask retrieve_visible_strokes(Object &object,
 
   /* Get all the hidden material indices. */
   VectorSet<int> hidden_material_indices = get_hidden_material_indices(object);
+
+  if (hidden_material_indices.is_empty()) {
+    return drawing.strokes().curves_range();
+  }
 
   const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexRange curves_range = drawing.strokes().curves_range();
