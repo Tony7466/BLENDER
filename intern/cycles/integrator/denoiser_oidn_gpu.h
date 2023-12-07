@@ -38,10 +38,6 @@ class OIDNDenoiserGPU : public DenoiserGPU {
  protected:
   virtual uint get_device_type_mask() const override;
 
-  /* We only perform one denoising at a time, since OpenImageDenoise itself is multithreaded.
-   * Use this mutex whenever images are passed to the OIDN and needs to be denoised. */
-  static thread_mutex mutex_;
-
   /* Create OIDN denoiser descriptor if needed.
    * Will do nothing if the current OIDN descriptor is usable for the given parameters.
    * If the OIDN denoiser descriptor did re-allocate here it is left unconfigured. */

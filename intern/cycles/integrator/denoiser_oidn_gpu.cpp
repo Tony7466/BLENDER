@@ -27,11 +27,6 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* Ideally, this would be dynamic and adaptively change when the runtime runs out of memory.  */
-constexpr int prefilter_max_mem = 1024;
-
-thread_mutex OIDNDenoiserGPU::mutex_;
-
 bool OIDNDenoiserGPU::is_device_supported(const DeviceInfo &device)
 {
   switch (device.type) {
@@ -178,7 +173,6 @@ bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
   if (context.use_pass_albedo) {
     albedo_filter_ = create_filter();
     if (albedo_filter_ == nullptr) {
-      oidnSetFilterInt(oidn_filter_, "maxMemoryMB", prefilter_max_mem);
       return false;
     }
   }
@@ -186,7 +180,6 @@ bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
   if (context.use_pass_normal) {
     normal_filter_ = create_filter();
     if (normal_filter_ == nullptr) {
-      oidnSetFilterInt(oidn_filter_, "maxMemoryMB", prefilter_max_mem);
       return false;
     }
   }
