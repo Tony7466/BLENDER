@@ -15,6 +15,51 @@
 #include "BLI_math_vector_types.hh"
 
 namespace blender::gpu {
+static VkFormat to_vk_dummy_format(const shader::Type type)
+{
+  switch (type) {
+    case shader::Type::FLOAT:
+    case shader::Type::VEC2:
+    case shader::Type::VEC3:
+    case shader::Type::VEC4:
+    case shader::Type::MAT3:
+    case shader::Type::MAT4:
+      return VK_FORMAT_R32_SFLOAT;
+    case shader::Type::UINT:
+    case shader::Type::UVEC2:
+    case shader::Type::UVEC3:
+    case shader::Type::UVEC4:
+      return VK_FORMAT_R32_UINT;
+    case shader::Type::INT:
+    case shader::Type::IVEC2:
+    case shader::Type::IVEC3:
+    case shader::Type::IVEC4:
+      return VK_FORMAT_R32_SINT;
+    /* Since we are not going to use it, we will make it an assert. */
+    case shader::Type::VEC3_101010I2:
+    case shader::Type::BOOL:
+    case shader::Type::UCHAR:
+    case shader::Type::UCHAR2:
+    case shader::Type::UCHAR3:
+    case shader::Type::UCHAR4:
+    case shader::Type::USHORT:
+    case shader::Type::USHORT2:
+    case shader::Type::USHORT3:
+    case shader::Type::USHORT4:
+    case shader::Type::CHAR:
+    case shader::Type::CHAR2:
+    case shader::Type::CHAR3:
+    case shader::Type::CHAR4:
+    case shader::Type::SHORT:
+    case shader::Type::SHORT2:
+    case shader::Type::SHORT3:
+    case shader::Type::SHORT4:
+    default:
+      BLI_assert_unreachable();
+  }
+  return VK_FORMAT_MAX_ENUM;
+}
+
 VKVertexAttributeObject::VKVertexAttributeObject()
 {
   clear();
@@ -190,6 +235,12 @@ static uint32_t to_binding_location_len(const shader::Type type)
     case shader::Type::IVEC2:
     case shader::Type::IVEC3:
     case shader::Type::IVEC4:
+      return 1;
+    case shader::Type::MAT3:
+      return 3;
+    case shader::Type::MAT4:
+      return 4;
+    /* Since we are not going to use it, we will make it an assert. */
     case shader::Type::BOOL:
     case shader::Type::VEC3_101010I2:
     case shader::Type::UCHAR:
@@ -208,13 +259,10 @@ static uint32_t to_binding_location_len(const shader::Type type)
     case shader::Type::USHORT2:
     case shader::Type::USHORT3:
     case shader::Type::USHORT4:
-      return 1;
-    case shader::Type::MAT3:
-      return 3;
-    case shader::Type::MAT4:
-      return 4;
+    default:
+      break;
   }
-
+  BLI_assert_unreachable();
   return 1;
 }
 
@@ -241,7 +289,7 @@ void VKVertexAttributeObject::fill_unused_bindings(const VKShaderInterface &inte
       attribute_description.binding = binding;
       attribute_description.location = location + location_offset;
       attribute_description.offset = 0;
-      attribute_description.format = to_vk_format(attribute_type);
+      attribute_description.format = to_vk_dummy_format(attribute_type);
       attributes.append(attribute_description);
 
       VkVertexInputBindingDescription vk_binding_descriptor = {};
