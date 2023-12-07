@@ -586,7 +586,7 @@ static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
 /** \name Split Stroke Operator
  * \{ */
 
-static bke::CurvesGeometry split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
+static void split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const VArray<bool> src_cyclic = curves.cyclic();
@@ -597,7 +597,7 @@ static bke::CurvesGeometry split_points(bke::CurvesGeometry &curves, const Index
   const int num_points_unselected = points_to_split.as_span().count(false);
 
   if (num_points_unselected == 0 || num_points_selected == 0) {
-    return curves;
+    return;
   }
 
   int point_start = 0;
@@ -681,26 +681,62 @@ static bke::CurvesGeometry split_points(bke::CurvesGeometry &curves, const Index
 
   const int num_curves = curve_map.size();
 
-  bke::CurvesGeometry dst_curves(curves.points_num(), num_curves);
-  MutableSpan<int> dst_curve_offsets = dst_curves.offsets_for_write();
+  curves.resize(curves.points_num(), num_curves);
+  MutableSpan<int> curve_offsets = curves.offsets_for_write();
   array_utils::copy(curve_counts.as_span(),
-                    dst_curve_offsets.drop_back(1));
-  offset_indices::accumulate_counts_to_offsets(dst_curve_offsets);
+                    curve_offsets.drop_back(1));
+  offset_indices::accumulate_counts_to_offsets(curve_offsets);
 
-  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
-  const bke::AttributeAccessor src_attributes = curves.attributes();
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
-  /* Transfer curve attributes. */
-  gather_attributes(
-      src_attributes, ATTR_DOMAIN_CURVE, {}, {"cyclic"}, curve_map, dst_attributes);
-  array_utils::copy(cyclic.as_span(), dst_curves.cyclic_for_write());
+  Vector<std::byte> orig_data;
 
-  /* Transfer point attributes. */
-  gather_attributes(src_attributes, ATTR_DOMAIN_POINT, {}, {}, point_map, dst_attributes);
+  /* Transfer curve and point attributes. */
+  attributes.for_all([&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
+    bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
+    if (!attribute) {
+      return true;
+    }
 
-  dst_curves.remove_attributes_based_on_types();
+    /* Copy original attribute data since it will be overwritten */
+    orig_data.resize(attribute.span.size_in_bytes());
+    attribute.span.type().copy_assign_n(attribute.span.data(), orig_data.data(), attribute.span.size());
+    const GSpan src_data(attribute.span.type(), orig_data.data(), attribute.span.size());
 
-  return dst_curves;
+    switch (meta_data.domain) {
+      case ATTR_DOMAIN_CURVE: {
+        if (id.name() == "cyclic") {
+          return true;
+        }
+        bke::attribute_math::gather(
+            src_data,
+            curve_map,
+            attribute.span);
+        break;
+      }
+      case ATTR_DOMAIN_POINT: {
+        bke::attribute_math::gather(
+            src_data,
+            point_map,
+            attribute.span);
+        break;
+      }
+      default: {
+        attribute.finish();
+        BLI_assert_unreachable();
+        return true;
+      }
+    }
+
+    attribute.finish();
+
+    return true;
+  });
+  array_utils::copy(cyclic.as_span(), curves.cyclic_for_write());
+
+  curves.remove_attributes_based_on_types();
+
+  return;
 }
 
 static int grease_pencil_stroke_split_exec(bContext *C, wmOperator * /*op*/)
@@ -723,7 +759,7 @@ static int grease_pencil_stroke_split_exec(bContext *C, wmOperator * /*op*/)
     }
 
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-    curves = split_points(curves, mask);
+    split_points(curves, mask);
     info.drawing.tag_topology_changed();
     changed.store(true, std::memory_order_relaxed);
   });
