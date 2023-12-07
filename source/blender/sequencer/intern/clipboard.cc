@@ -10,6 +10,7 @@
 
 #include <cstring>
 
+#include "BLO_readfile.h"
 #include "MEM_guardedalloc.h"
 
 #include "ED_keyframing.hh"
@@ -268,14 +269,18 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
 {
   char filepath[FILE_MAX];
   sequencer_copybuffer_filepath_get(filepath, sizeof(filepath));
-  Main *bmain_src = BKE_main_new();
-  STRNCPY(bmain_src->filepath, BKE_main_blendfile_path_from_global());
+  const BlendFileReadParams params{};
+  BlendFileReadReport bf_reports{};
+  BlendFileData *bfd = BKE_blendfile_read(filepath, &params, &bf_reports);
 
-  if (!BKE_copybuffer_read(bmain_src, filepath, op->reports, 0)) {
+  if (bfd == nullptr) {
     BKE_report(op->reports, RPT_INFO, "No data to paste");
-    BKE_main_free(bmain_src);
     return OPERATOR_CANCELLED;
   }
+
+  Main *bmain_src = bfd->main;
+  bfd->main = nullptr;
+  BLO_blendfiledata_free(bfd);
 
   Scene *scene_src = nullptr;
   /* Find the scene we pasted that contains the strips. It should be tagged. */
@@ -327,6 +332,7 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
   /* Make sure we have all data IDs we need in bmain_dst. Remap the IDs if we already have them. */
   Main *bmain_dst = CTX_data_main(C);
   MainMergeReport merge_reports = {};
+  /* NOTE: BKE_main_merge will free bmain_src! */
   BKE_main_merge(bmain_dst, &bmain_src, merge_reports);
 
   /* Paste animation.
