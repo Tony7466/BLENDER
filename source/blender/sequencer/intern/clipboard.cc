@@ -300,7 +300,7 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
   }
 
   Scene *scene_dst = CTX_data_scene(C);
-  Editing *ed_dst = SEQ_editing_ensure(scene_dst); /* Create if needed. */
+  Editing *ed_dst = SEQ_editing_ensure(scene_dst); /* Creates "ed" if it's missing. */
   int ofs;
 
   ED_sequencer_deselect_all(scene_dst);
@@ -318,13 +318,23 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
     ofs = scene_dst->r.cfra - min_seq_startdisp;
   }
 
+  Sequence *prev_active_seq = SEQ_select_active_get(scene_src);
+  std::string active_seq_name;
+  if (prev_active_seq) {
+    active_seq_name.assign(prev_active_seq->name);
+  }
+
+  /* Make sure we have all data IDs we need in bmain_dst. Remap the IDs if we already have them. */
+  Main *bmain_dst = CTX_data_main(C);
+  MainMergeReport merge_reports = {};
+  BKE_main_merge(bmain_dst, &bmain_src, merge_reports);
+
   /* Paste animation.
    * NOTE: Only fcurves are copied. Drivers and NLA action strips are not copied.
    * First backup original curves from scene and move curves from clipboard into scene. This way,
    * when pasted strips are renamed, pasted fcurves are renamed with them. Finally restore original
    * curves from backup.
    */
-
   SeqAnimationBackup animation_backup = {{nullptr}};
   SEQ_animation_backup_original(scene_dst, &animation_backup);
   bool has_animation = sequencer_paste_animation(C, scene_src);
@@ -333,20 +343,10 @@ int SEQ_clipboard_paste_exec(bContext *C, wmOperator *op)
   /* NOTE: SEQ_sequence_base_dupli_recursive() takes care of generating
    * new UUIDs for sequences in the new list. */
   SEQ_sequence_base_dupli_recursive(
-      scene_src, scene_dst, &nseqbase, &scene_src->ed->seqbase, 0, LIB_ID_CREATE_NO_USER_REFCOUNT);
+      scene_src, scene_dst, &nseqbase, &scene_src->ed->seqbase, 0, 0);
 
-  Sequence *prev_active_seq = SEQ_select_active_get(scene_src);
-  std::string active_seq_name;
-  if (prev_active_seq) {
-    active_seq_name.assign(prev_active_seq->name);
-  }
-
-  Main *bmain_dst = CTX_data_main(C);
-  MainMergeReport merge_reports = {};
-  BKE_main_merge(bmain_dst, &bmain_src, merge_reports);
-
-  /* BKE_main_merge will copy the paste scene and its action. Remove them as
-   * we handle these manually.
+  /* BKE_main_merge will copy the scene_src and its action into bmain_dst. Remove them as
+   * we merge the data from these these manually.
    */
   if (has_animation) {
     BKE_id_delete(bmain_dst, scene_src->adt->action);
