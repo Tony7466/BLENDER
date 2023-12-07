@@ -187,25 +187,34 @@ inline void parallel_transform(MutableSpan<T> data,
   });
 }
 
-template<typename T> static T accumulate(const VArray<T> &values, const Span<int> indices)
+template<typename T> static T gather_mean(const VArray<T> &values, const Span<int> indices)
 {
+  BLI_assert(!indices.is_empty());
   if (const std::optional<T> value = values.get_if_single()) {
-    return T(indices.size()) * *value;
+    return *value;
   }
+
+  using MeanAccumulator = std::pair<T, int>;
+  const auto join_accumulators = [](const MeanAccumulator a,
+                                    const MeanAccumulator b) -> MeanAccumulator {
+    return {(a.first + b.first) / (a.second + b.second), 1};
+  };
 
   T value;
   devirtualize_varray(values, [&](const auto values) {
-    value = threading::parallel_reduce(
+    const auto accumulator = threading::parallel_reduce<MeanAccumulator>(
         indices.index_range(),
         2048,
-        T(),
-        [&](const IndexRange range, T other_value) {
+        MeanAccumulator(T(), 0),
+        [&](const IndexRange range, MeanAccumulator other) -> MeanAccumulator {
+          T value(0);
           for (const int i : indices.slice(range)) {
-            other_value += values[i];
+            value += values[i];
           }
-          return other_value;
+          return join_accumulators({value / float(indices.size()), 1}, other);
         },
-        std::plus{});
+        join_accumulators);
+    value = accumulator.first / accumulator.second;
   });
   return value;
 }
@@ -232,10 +241,8 @@ static void scale_uniformly(const GroupedSpan<int> elem_islands,
       const Span<int> vert_island = vert_islands[island_index];
       const Span<int> elem_island = elem_islands[island_index];
 
-      const float total = elem_island.size();
-      BLI_assert(total > 0.0f);
-      const float scale = accumulate<float>(scale_varray, elem_island) / total;
-      const float3 center = accumulate<float3>(center_varray, elem_island) / total;
+      const float scale = gather_mean<float>(scale_varray, elem_island);
+      const float3 center = gather_mean<float3>(center_varray, elem_island);
 
       threading::parallel_for(vert_island.index_range(), 2048, [&](const IndexRange range) {
         for (const int vert_i : vert_island.slice(range)) {
@@ -299,11 +306,9 @@ static void scale_on_axis(const GroupedSpan<int> elem_islands,
       const Span<int> vert_island = vert_islands[island_index];
       const Span<int> elem_island = elem_islands[island_index];
 
-      const float total = elem_island.size();
-      BLI_assert(total > 0.0f);
-      const float scale = accumulate<float>(scale_varray, elem_island) / total;
-      const float3 center = accumulate<float3>(center_varray, elem_island) / total;
-      const float3 axis = accumulate<float3>(axis_varray, elem_island) / total;
+      const float scale = gather_mean<float>(scale_varray, elem_island);
+      const float3 center = gather_mean<float3>(center_varray, elem_island);
+      const float3 axis = gather_mean<float3>(axis_varray, elem_island);
       const float3 fixed_axis = math::is_zero(axis) ? float3(1.0f, 0.0f, 0.0f) : axis;
 
       const float4x4 transform = create_single_axis_transform(center, fixed_axis, scale);
