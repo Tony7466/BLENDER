@@ -317,10 +317,10 @@ class ZoneOperator:
     @classmethod
     def get_output_node(cls, context):
         node = context.active_node
-        if node.bl_idname == cls.input_node_type:
-            return node.paired_output
         if node.bl_idname == cls.output_node_type:
             return node
+        if node.bl_idname == cls.input_node_type:
+            return node.paired_output
 
     @classmethod
     def poll(cls, context):
@@ -460,6 +460,35 @@ class RepeatZoneItemMoveOperator(RepeatZoneOperator, ZoneMoveItemOperator, Opera
     bl_options = {'REGISTER', 'UNDO'}
 
 
+class BakeNodeOperator(ZoneOperator):
+    input_node_type = 'GeometryNodeBake'
+    output_node_type = 'GeometryNodeBake'
+
+    items_name = "bake_items"
+    active_index_name = "active_index"
+
+
+class BakeNodeItemAddOperator(BakeNodeOperator, ZoneItemAddOperator, Operator):
+    """Add a bake item to the bake node"""
+    bl_idname = "node.bake_node_item_add"
+    bl_label = "Add Bake Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
+class BakeNodeItemRemoveOperator(BakeNodeOperator, ZoneItemRemoveOperator, Operator):
+    """Remove a bake item from the bake node"""
+    bl_idname = "node.bake_node_item_remove"
+    bl_label = "Remove Bake Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
+class BakeNodeItemMoveOperator(BakeNodeOperator, ZoneMoveItemOperator, Operator):
+    """Move a bake item up or down in the list"""
+    bl_idname = "node.bake_node_item_move"
+    bl_label = "Move Bake Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
 def _editable_tree_with_active_node_type(context, node_type):
     space = context.space_data
     # Needs active node editor and a tree.
@@ -520,6 +549,9 @@ classes = (
     RepeatZoneItemAddOperator,
     RepeatZoneItemRemoveOperator,
     RepeatZoneItemMoveOperator,
+    BakeNodeItemAddOperator,
+    BakeNodeItemRemoveOperator,
+    BakeNodeItemMoveOperator,
     IndexSwitchItemAddOperator,
     IndexSwitchItemRemoveOperator,
 )
