@@ -176,7 +176,7 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
     }
   }
 
-  friend class GVolumeGridPtr;
+  friend struct GVolumeGridPtr;
 };
 #else
 template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
