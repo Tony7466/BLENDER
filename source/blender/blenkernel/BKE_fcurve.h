@@ -489,6 +489,7 @@ void BKE_fcurve_bezt_shrink(struct FCurve *fcu, int new_totvert);
  * `r_merged_size`. In case of keys on identical frames, `a` takes precedence.
  * Does not free `a` or `b`.
  * Assumes that both arrays are sorted for the x-position.
+ * Has a complexity of O(N) with respect to the length of `size_a` + `size_b`.
  *
  * \return The merged BezTriple array of length `r_merged_size`.
  */
