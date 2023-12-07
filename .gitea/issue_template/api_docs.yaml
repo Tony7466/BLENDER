@@ -13,7 +13,9 @@ body:
                 If you meant to file an issue with the software please create a normal [bug report](https://projects.blender.org/blender/blender/issues/new?template=.gitea%2fissue_template%2fbug.yaml).
 
                 Please add to the description below explain the issue at hand.
-                Details, examples, or suggested fixes are appreated and will help resolve the issue as soon as possible.
+                Use **Report issue on this page** at the bottom of the page with an issue to autofill some information.
+
+                Including details, examples, or suggested fixes are appreated and will help resolve the issue as soon as possible.
 
   - type: textarea
     id: body
@@ -22,11 +24,11 @@ body:
       hide_label: true
       value: |
                **Page Information**
-               Blender Version: `4.1`
-               [Permanent Link]()
+               Blender Version: (example: 4.0, edbf15d3c044, main)
+               [Permanent Link](https://docs.blender.org/api/current/) (Update me to the URL of the page with an issue)
 
-               **Short description of error**
-               [Please fill out a short description of the error here]
+               **Short description of issue**
+               [Please fill out a short description of the issue here]
 
 
   - type: markdown
