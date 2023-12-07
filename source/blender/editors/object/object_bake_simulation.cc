@@ -867,6 +867,9 @@ static int delete_single_bake_exec(bContext *C, wmOperator *op)
   const int bake_id = RNA_int_get(op->ptr, "bake_id");
 
   try_delete_bake(C, *object, nmd, bake_id, op->reports);
+
+  DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
   return OPERATOR_FINISHED;
 }
 
