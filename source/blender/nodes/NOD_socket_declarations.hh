@@ -10,6 +10,7 @@
 
 #include "BLI_color.hh"
 #include "BLI_math_euler_types.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 
 namespace blender::nodes::decl {
@@ -156,6 +157,27 @@ class Rotation : public SocketDeclaration {
 class RotationBuilder : public SocketDeclarationBuilder<Rotation> {
  public:
   RotationBuilder &default_value(const math::EulerXYZ &value);
+};
+
+class MatrixBuilder;
+
+class Matrix : public SocketDeclaration {
+ public:
+  float4x4 default_value;
+
+  friend MatrixBuilder;
+
+  using Builder = MatrixBuilder;
+
+  bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
+  bool matches(const bNodeSocket &socket) const override;
+  bNodeSocket &update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const override;
+  bool can_connect(const bNodeSocket &socket) const override;
+};
+
+class MatrixBuilder : public SocketDeclarationBuilder<Matrix> {
+ public:
+  MatrixBuilder &default_value(const float4x4 &value);
 };
 
 class StringBuilder;

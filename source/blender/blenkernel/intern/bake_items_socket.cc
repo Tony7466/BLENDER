@@ -53,6 +53,9 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
         bake_items[i] = std::make_unique<StringBakeItem>(value.as_value());
         break;
       }
+      case SOCK_MATRIX:
+        BLI_assert_unreachable();
+        break;
       case SOCK_FLOAT:
       case SOCK_VECTOR:
       case SOCK_INT:
@@ -138,6 +141,9 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
       }
       return false;
     }
+    case SOCK_MATRIX:
+      BLI_assert_unreachable();
+      break;
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_INT:

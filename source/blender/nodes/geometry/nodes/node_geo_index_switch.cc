@@ -293,6 +293,7 @@ static void node_rna(StructRNA *srna)
                                                SOCK_INT,
                                                SOCK_BOOLEAN,
                                                SOCK_ROTATION,
+                                               SOCK_MATRIX,
                                                SOCK_VECTOR,
                                                SOCK_STRING,
                                                SOCK_RGBA,

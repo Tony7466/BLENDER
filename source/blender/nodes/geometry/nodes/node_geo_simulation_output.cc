@@ -403,6 +403,7 @@ void mix_baked_data_item(const eNodeSocketDatatype socket_type,
     case SOCK_INT:
     case SOCK_BOOLEAN:
     case SOCK_ROTATION:
+    case SOCK_MATRIX:
     case SOCK_RGBA: {
       const CPPType &type = get_simulation_item_cpp_type(socket_type);
       const bke::ValueOrFieldCPPType &value_or_field_type =

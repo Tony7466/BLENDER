@@ -25,6 +25,7 @@ const EnumPropertyItem rna_enum_node_socket_type_items[] = {
     {SOCK_BOOLEAN, "BOOLEAN", 0, "Boolean", ""},
     {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
     {SOCK_ROTATION, "ROTATION", 0, "Rotation", ""},
+    {SOCK_MATRIX, "MATRIX", 0, "Matrix", ""},
     {SOCK_STRING, "STRING", 0, "String", ""},
     {SOCK_RGBA, "RGBA", 0, "RGBA", ""},
     {SOCK_SHADER, "SHADER", 0, "Shader", ""},
@@ -959,6 +960,50 @@ static void rna_def_node_socket_interface_rotation(BlenderRNA *brna, const char 
   rna_def_node_tree_interface_socket_builtin(srna);
 }
 
+static void rna_def_node_socket_matrix(BlenderRNA *brna, const char *identifier)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, identifier, "NodeSocketStandard");
+  RNA_def_struct_ui_text(srna, "Matrix Node Socket", "Matrix value socket of a node");
+  RNA_def_struct_sdna(srna, "bNodeSocket");
+
+  RNA_def_struct_sdna_from(srna, "bNodeSocketValueMatrix", "default_value");
+
+  prop = RNA_def_property(srna, "default_value", PROP_FLOAT, PROP_MATRIX);
+  RNA_def_property_float_sdna(prop, nullptr, "value");
+  RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
+  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketStandard_value_update");
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+
+  RNA_def_struct_sdna_from(srna, "bNodeSocket", nullptr);
+}
+
+static void rna_def_node_socket_interface_matrix(BlenderRNA *brna, const char *identifier)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, identifier, "NodeTreeInterfaceSocket");
+  RNA_def_struct_ui_text(srna, "Matrix Node Socket Interface", "Matrix value socket of a node");
+  RNA_def_struct_sdna(srna, "bNodeTreeInterfaceSocket");
+
+  RNA_def_struct_sdna_from(srna, "bNodeSocketValueMatrix", "socket_data");
+
+  prop = RNA_def_property(srna, "default_value", PROP_FLOAT, PROP_MATRIX);
+  RNA_def_property_float_sdna(prop, nullptr, "value");
+  RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
+
+  RNA_def_struct_sdna_from(srna, "bNodeTreeInterfaceSocket", nullptr);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
+}
+
 static void rna_def_node_socket_vector(BlenderRNA *brna,
                                        const char *identifier,
                                        PropertySubType subtype)
@@ -1430,6 +1475,7 @@ static const bNodeSocketStaticTypeInfo node_socket_subtypes[] = {
     {"NodeSocketIntFactor", "NodeTreeInterfaceSocketIntFactor", SOCK_INT, PROP_FACTOR},
     {"NodeSocketBool", "NodeTreeInterfaceSocketBool", SOCK_BOOLEAN, PROP_NONE},
     {"NodeSocketRotation", "NodeTreeInterfaceSocketRotation", SOCK_ROTATION, PROP_NONE},
+    {"NodeSocketMatrix", "NodeTreeInterfaceSocketMatrix", SOCK_MATRIX, PROP_NONE},
     {"NodeSocketVector", "NodeTreeInterfaceSocketVector", SOCK_VECTOR, PROP_NONE},
     {"NodeSocketVectorTranslation",
      "NodeTreeInterfaceSocketVectorTranslation",
@@ -1477,6 +1523,9 @@ static void rna_def_node_socket_subtypes(BlenderRNA *brna)
         break;
       case SOCK_ROTATION:
         rna_def_node_socket_rotation(brna, identifier);
+        break;
+      case SOCK_MATRIX:
+        rna_def_node_socket_matrix(brna, identifier);
         break;
       case SOCK_VECTOR:
         rna_def_node_socket_vector(brna, identifier, info.subtype);
@@ -1537,6 +1586,9 @@ void rna_def_node_socket_interface_subtypes(BlenderRNA *brna)
         break;
       case SOCK_ROTATION:
         rna_def_node_socket_interface_rotation(brna, identifier);
+        break;
+      case SOCK_MATRIX:
+        rna_def_node_socket_interface_matrix(brna, identifier);
         break;
       case SOCK_VECTOR:
         rna_def_node_socket_interface_vector(brna, identifier, info.subtype);

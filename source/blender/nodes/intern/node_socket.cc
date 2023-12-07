@@ -13,6 +13,8 @@
 #include "BLI_color.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_euler.hh"
+#include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
@@ -299,6 +301,9 @@ static std::optional<eNodeSocketDatatype> decl_to_data_type(const SocketDeclarat
   else if (dynamic_cast<const decl::Rotation *>(&socket_decl)) {
     return SOCK_ROTATION;
   }
+  else if (dynamic_cast<const decl::Matrix *>(&socket_decl)) {
+    return SOCK_MATRIX;
+  }
   else if (dynamic_cast<const decl::String *>(&socket_decl)) {
     return SOCK_STRING;
   }
@@ -380,7 +385,8 @@ static const char *get_current_socket_identifier_for_future_socket(
                                          SOCK_VECTOR,
                                          SOCK_RGBA,
                                          SOCK_STRING,
-                                         SOCK_ROTATION);
+                                         SOCK_ROTATION,
+                                         SOCK_MATRIX);
       if (BLI_str_startswith(socket.identifier, "Switch")) {
         if (use_field_socket) {
           return "Switch";
@@ -569,8 +575,14 @@ void update_node_declaration_and_sockets(bNodeTree &ntree, bNode &node)
 
 bool socket_type_supports_fields(const eNodeSocketDatatype socket_type)
 {
-  return ELEM(
-      socket_type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_BOOLEAN, SOCK_INT, SOCK_ROTATION);
+  return ELEM(socket_type,
+              SOCK_FLOAT,
+              SOCK_VECTOR,
+              SOCK_RGBA,
+              SOCK_BOOLEAN,
+              SOCK_INT,
+              SOCK_ROTATION,
+              SOCK_MATRIX);
 }
 
 }  // namespace blender::nodes
@@ -637,6 +649,12 @@ void node_socket_init_default_value_data(eNodeSocketDatatype datatype, int subty
     }
     case SOCK_ROTATION: {
       bNodeSocketValueRotation *dval = MEM_cnew<bNodeSocketValueRotation>(__func__);
+      *data = dval;
+      break;
+    }
+    case SOCK_MATRIX: {
+      bNodeSocketValueMatrix *dval = MEM_cnew<bNodeSocketValueMatrix>(__func__);
+      unit_m4(dval->value);
       *data = dval;
       break;
     }
@@ -753,6 +771,12 @@ void node_socket_copy_default_value_data(eNodeSocketDatatype datatype, void *to,
     case SOCK_ROTATION: {
       bNodeSocketValueRotation *toval = (bNodeSocketValueRotation *)to;
       bNodeSocketValueRotation *fromval = (bNodeSocketValueRotation *)from;
+      *toval = *fromval;
+      break;
+    }
+    case SOCK_MATRIX: {
+      bNodeSocketValueMatrix *toval = (bNodeSocketValueMatrix *)to;
+      bNodeSocketValueMatrix *fromval = (bNodeSocketValueMatrix *)from;
       *toval = *fromval;
       break;
     }
@@ -977,6 +1001,22 @@ static bNodeSocketType *make_socket_type_rotation()
   return socktype;
 }
 
+static bNodeSocketType *make_socket_type_matrix()
+{
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_MATRIX, PROP_NONE);
+  socktype->base_cpp_type = &blender::CPPType::get<float4x4>();
+  socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
+    const auto &typed_value = *static_cast<const bNodeSocketValueMatrix *>(socket_value);
+    *static_cast<float4x4 *>(r_value) = float4x4(typed_value.value);
+  };
+  socktype->geometry_nodes_cpp_type = &blender::CPPType::get<ValueOrField<float4x4>>();
+  socktype->get_geometry_nodes_cpp_value = [](const void *socket_value, void *r_value) {
+    const auto &typed_value = *static_cast<const bNodeSocketValueMatrix *>(socket_value);
+    new (r_value) ValueOrField<float4x4>(float4x4(typed_value.value));
+  };
+  return socktype;
+}
+
 static bNodeSocketType *make_socket_type_float(PropertySubType subtype)
 {
   bNodeSocketType *socktype = make_standard_socket_type(SOCK_FLOAT, subtype);
@@ -1147,6 +1187,7 @@ void register_standard_node_socket_types()
 
   nodeRegisterSocketType(make_socket_type_bool());
   nodeRegisterSocketType(make_socket_type_rotation());
+  nodeRegisterSocketType(make_socket_type_matrix());
 
   nodeRegisterSocketType(make_socket_type_vector(PROP_NONE));
   nodeRegisterSocketType(make_socket_type_vector(PROP_TRANSLATION));

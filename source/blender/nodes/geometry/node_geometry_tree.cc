@@ -97,6 +97,15 @@ static bool geometry_node_tree_validate_link(eNodeSocketDatatype type_a,
     /* Floats and vectors implicitly convert to rotations. */
     return true;
   }
+
+  /* Support implicit conversions between matrices and rotations. */
+  if (type_a == SOCK_MATRIX && type_b == SOCK_ROTATION) {
+    return true;
+  }
+  if (type_a == SOCK_ROTATION && type_b == SOCK_MATRIX) {
+    return true;
+  }
+
   if (type_a == SOCK_ROTATION && type_b == SOCK_VECTOR) {
     /* Rotations implicitly convert to vectors. */
     return true;
@@ -113,6 +122,7 @@ static bool geometry_node_tree_socket_type_valid(bNodeTreeType * /*treetype*/,
                                                                    SOCK_RGBA,
                                                                    SOCK_BOOLEAN,
                                                                    SOCK_ROTATION,
+                                                                   SOCK_MATRIX,
                                                                    SOCK_INT,
                                                                    SOCK_STRING,
                                                                    SOCK_OBJECT,

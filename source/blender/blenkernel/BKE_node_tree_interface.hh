@@ -130,6 +130,7 @@ static const bNodeSocketStaticTypeInfo node_socket_subtypes[] = {
     {"NodeSocketIntFactor", "NodeTreeInterfaceSocketIntFactor", SOCK_INT, PROP_FACTOR},
     {"NodeSocketBool", "NodeTreeInterfaceSocketBool", SOCK_BOOLEAN, PROP_NONE},
     {"NodeSocketRotation", "NodeTreeInterfaceSocketRotation", SOCK_ROTATION, PROP_NONE},
+    {"NodeSocketMatrix", "NodeTreeInterfaceSocketMatrix", SOCK_MATRIX, PROP_NONE},
     {"NodeSocketVector", "NodeTreeInterfaceSocketVector", SOCK_VECTOR, PROP_NONE},
     {"NodeSocketVectorTranslation",
      "NodeTreeInterfaceSocketVectorTranslation",
@@ -174,6 +175,9 @@ template<typename Fn> bool socket_data_to_static_type(const eNodeSocketDatatype 
       return true;
     case SOCK_ROTATION:
       fn.template operator()<bNodeSocketValueRotation>();
+      return true;
+    case SOCK_MATRIX:
+      fn.template operator()<bNodeSocketValueMatrix>();
       return true;
     case SOCK_VECTOR:
       fn.template operator()<bNodeSocketValueVector>();

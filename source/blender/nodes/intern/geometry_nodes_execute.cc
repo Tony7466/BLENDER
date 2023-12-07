@@ -242,6 +242,10 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
       ui_data->base.rna_subtype = PROP_EULER;
       return property;
     }
+    case SOCK_MATRIX: {
+      BLI_assert_unreachable();
+      break;
+    }
     case SOCK_STRING: {
       const bNodeSocketValueString *value = static_cast<const bNodeSocketValueString *>(
           socket.socket_data);
@@ -301,6 +305,10 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
     case SOCK_ROTATION:
       return property.type == IDP_ARRAY &&
              ELEM(property.subtype, IDP_INT, IDP_FLOAT, IDP_DOUBLE) && property.len == 3;
+    case SOCK_MATRIX: {
+      BLI_assert_unreachable();
+      break;
+    }
     case SOCK_RGBA:
       return property.type == IDP_ARRAY &&
              ELEM(property.subtype, IDP_INT, IDP_FLOAT, IDP_DOUBLE) && property.len == 4;
@@ -400,6 +408,10 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       }
       const math::EulerXYZ euler_value = math::EulerXYZ(vec);
       new (r_value) bke::ValueOrField<math::Quaternion>(math::to_quaternion(euler_value));
+      break;
+    }
+    case SOCK_MATRIX: {
+      BLI_assert_unreachable();
       break;
     }
     case SOCK_STRING: {

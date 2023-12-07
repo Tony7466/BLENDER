@@ -304,6 +304,10 @@ inline void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueMaterial
 {
   BLO_write_struct(writer, bNodeSocketValueMaterial, &data);
 }
+inline void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueMatrix &data)
+{
+  BLO_write_struct(writer, bNodeSocketValueMatrix, &data);
+}
 
 static void socket_data_write(BlendWriter *writer, bNodeTreeInterfaceSocket &socket)
 {

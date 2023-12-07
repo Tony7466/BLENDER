@@ -96,7 +96,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
                                 SOCK_VECTOR,
                                 SOCK_RGBA,
                                 SOCK_STRING,
-                                SOCK_ROTATION);
+                                SOCK_ROTATION,
+                                SOCK_MATRIX);
 
   bke::nodeSetSocketAvailability(ntree, field_switch, fields_type);
   bke::nodeSetSocketAvailability(ntree, non_field_switch, !fields_type);
@@ -291,6 +292,7 @@ static void node_rna(StructRNA *srna)
                                                SOCK_INT,
                                                SOCK_BOOLEAN,
                                                SOCK_ROTATION,
+                                               SOCK_MATRIX,
                                                SOCK_VECTOR,
                                                SOCK_STRING,
                                                SOCK_RGBA,
