@@ -36,6 +36,34 @@ void BakeNodeCache::reset()
   new (this) BakeNodeCache();
 }
 
+void NodeBakeCache::reset()
+{
+  std::destroy_at(this);
+  new (this) NodeBakeCache();
+}
+
+IndexRange NodeBakeCache::frame_range() const
+{
+  if (this->frames.is_empty()) {
+    return {};
+  }
+  const int start_frame = this->frames.first()->frame.frame();
+  const int end_frame = this->frames.last()->frame.frame();
+  return {start_frame, end_frame - start_frame + 1};
+}
+
+SimulationNodeCache *ModifierCache::get_simulation_node_cache(const int id)
+{
+  std::unique_ptr<SimulationNodeCache> *ptr = this->simulation_cache_by_id.lookup_ptr(id);
+  return ptr ? (*ptr).get() : nullptr;
+}
+
+BakeNodeCache *ModifierCache::get_bake_node_cache(const int id)
+{
+  std::unique_ptr<BakeNodeCache> *ptr = this->bake_cache_by_id.lookup_ptr(id);
+  return ptr ? (*ptr).get() : nullptr;
+}
+
 void scene_simulation_states_reset(Scene &scene)
 {
   FOREACH_SCENE_OBJECT_BEGIN (&scene, ob) {

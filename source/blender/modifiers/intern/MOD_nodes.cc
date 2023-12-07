@@ -875,10 +875,7 @@ static bool try_find_baked_data(bake::NodeBakeCache &bake,
   if (meta_files.is_empty()) {
     return false;
   }
-  /* Reset bake. */
-  std::destroy_at(&bake);
-  new (&bake) bake::NodeBakeCache();
-
+  bake.reset();
   for (const bake::MetaFile &meta_file : meta_files) {
     auto frame_cache = std::make_unique<bake::FrameCache>();
     frame_cache->frame = meta_file.frame;
@@ -1253,6 +1250,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
 
     if (depsgraph_is_active_) {
       if (modifier_cache_->requested_bakes.contains(id)) {
+        /* This node is baked during the current evaluation. */
         auto &store_info = behavior.emplace<sim_output::StoreNewState>();
         store_info.store_fn = [modifier_cache = modifier_cache_,
                                node_cache = &node_cache,

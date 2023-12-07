@@ -880,6 +880,7 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
         continue;
       }
       if (nmd->node_group->nested_node_refs_num == 0) {
+        /* Skip when there are no bake nodes or simulations. */
         continue;
       }
       const blender::bke::bake::ModifierCache &modifier_cache = *nmd->runtime->cache;

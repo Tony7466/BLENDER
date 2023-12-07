@@ -48,8 +48,11 @@ struct PrevCache {
   SubFrame frame;
 };
 
+/**
+ * Baked data that corresponds to either a Simulation Output or Bake node.
+ */
 struct NodeBakeCache {
-  /** All cached frames. */
+  /** All cached frames sorted by frame. */
   Vector<std::unique_ptr<FrameCache>> frames;
 
   /** Where to load blobs from disk when loading the baked data lazily. */
@@ -59,15 +62,10 @@ struct NodeBakeCache {
   /** Used to avoid checking if a bake exists many times. */
   bool failed_finding_bake = false;
 
-  IndexRange frame_range() const
-  {
-    if (this->frames.is_empty()) {
-      return {};
-    }
-    const int start_frame = this->frames.first()->frame.frame();
-    const int end_frame = this->frames.last()->frame.frame();
-    return {start_frame, end_frame - start_frame + 1};
-  }
+  /** Range spanning from the first to the last baked frame. */
+  IndexRange frame_range() const;
+
+  void reset();
 };
 
 struct SimulationNodeCache {
@@ -89,21 +87,16 @@ struct BakeNodeCache {
 
 struct ModifierCache {
   mutable std::mutex mutex;
+  /**
+   * Set of nested node IDs (see #bNestedNodeRef) that is expected to be baked in the next
+   * evaluation. This is filled and cleared by the bake operator.
+   */
   Set<int> requested_bakes;
   Map<int, std::unique_ptr<SimulationNodeCache>> simulation_cache_by_id;
   Map<int, std::unique_ptr<BakeNodeCache>> bake_cache_by_id;
 
-  SimulationNodeCache *get_simulation_node_cache(const int id)
-  {
-    std::unique_ptr<SimulationNodeCache> *ptr = this->simulation_cache_by_id.lookup_ptr(id);
-    return ptr ? (*ptr).get() : nullptr;
-  }
-
-  BakeNodeCache *get_bake_node_cache(const int id)
-  {
-    std::unique_ptr<BakeNodeCache> *ptr = this->bake_cache_by_id.lookup_ptr(id);
-    return ptr ? (*ptr).get() : nullptr;
-  }
+  SimulationNodeCache *get_simulation_node_cache(const int id);
+  BakeNodeCache *get_bake_node_cache(const int id);
 };
 
 /**
