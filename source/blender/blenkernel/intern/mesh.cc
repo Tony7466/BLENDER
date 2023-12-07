@@ -52,7 +52,7 @@
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
@@ -278,7 +278,9 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
     CustomData_blend_write_prepare(mesh->edge_data, edge_layers, {});
     CustomData_blend_write_prepare(mesh->loop_data, loop_layers, {});
     CustomData_blend_write_prepare(mesh->face_data, face_layers, {});
-    mesh_sculpt_mask_to_legacy(vert_layers);
+    if (!is_undo) {
+      mesh_sculpt_mask_to_legacy(vert_layers);
+    }
   }
 
   mesh->runtime = nullptr;
@@ -533,7 +535,7 @@ void BKE_mesh_face_offsets_ensure_alloc(Mesh *mesh)
   mesh->runtime->face_offsets_sharing_info = blender::implicit_sharing::info_for_mem_free(
       mesh->face_offset_indices);
 
-#ifdef DEBUG
+#ifndef NDEBUG
   /* Fill offsets with obviously bad values to simplify finding missing initialization. */
   mesh->face_offsets_for_write().fill(-1);
 #endif
@@ -788,7 +790,7 @@ void BKE_mesh_texspace_calc(Mesh *me)
   using namespace blender;
   if (me->texspace_flag & ME_TEXSPACE_FLAG_AUTO) {
     const Bounds<float3> bounds = me->bounds_min_max().value_or(
-        Bounds<float3>{float3(-1.0f), float3(1.0f)});
+        Bounds(float3(-1.0f), float3(1.0f)));
 
     float texspace_location[3], texspace_size[3];
     mid_v3_v3v3(texspace_location, bounds.min, bounds.max);
@@ -1078,27 +1080,6 @@ void BKE_mesh_sharp_edges_set_from_angle(Mesh *me, const float angle)
   sharp_edges.finish();
 }
 
-void BKE_mesh_looptri_get_real_edges(const blender::int2 *edges,
-                                     const int *corner_verts,
-                                     const int *corner_edges,
-                                     const MLoopTri *tri,
-                                     int r_edges[3])
-{
-  for (int i = 2, i_next = 0; i_next < 3; i = i_next++) {
-    const int corner_1 = tri->tri[i];
-    const int corner_2 = tri->tri[i_next];
-    const int vert_1 = corner_verts[corner_1];
-    const int vert_2 = corner_verts[corner_2];
-    const int edge_i = corner_edges[corner_1];
-    const blender::int2 &edge = edges[edge_i];
-
-    bool is_real = (vert_1 == edge[0] && vert_2 == edge[1]) ||
-                   (vert_1 == edge[1] && vert_2 == edge[0]);
-
-    r_edges[i] = is_real ? edge_i : -1;
-  }
-}
-
 std::optional<blender::Bounds<blender::float3>> Mesh::bounds_min_max() const
 {
   using namespace blender;
@@ -1109,7 +1090,7 @@ std::optional<blender::Bounds<blender::float3>> Mesh::bounds_min_max() const
   this->runtime->bounds_cache.ensure([&](Bounds<float3> &r_bounds) {
     switch (this->runtime->wrapper_type) {
       case ME_WRAPPER_TYPE_BMESH:
-        r_bounds = *BKE_editmesh_cache_calc_minmax(this->edit_mesh, this->runtime->edit_data);
+        r_bounds = *BKE_editmesh_cache_calc_minmax(*this->edit_mesh, *this->runtime->edit_data);
         break;
       case ME_WRAPPER_TYPE_MDATA:
       case ME_WRAPPER_TYPE_SUBD:

@@ -115,19 +115,6 @@ void BKE_mesh_ensure_default_orig_index_customdata(struct Mesh *mesh);
  */
 void BKE_mesh_ensure_default_orig_index_customdata_no_check(struct Mesh *mesh);
 
-#ifdef __cplusplus
-
-/**
- * Sets each output array element to the edge index if it is a real edge, or -1.
- */
-void BKE_mesh_looptri_get_real_edges(const blender::int2 *edges,
-                                     const int *corner_verts,
-                                     const int *corner_edges,
-                                     const struct MLoopTri *tri,
-                                     int r_edges[3]);
-
-#endif
-
 /**
  * Free (or release) any data used by this mesh (does not free the mesh itself).
  * Only use for undo, in most cases `BKE_id_free(nullptr, me)` should be used.
@@ -379,8 +366,8 @@ MLoopNorSpace *BKE_lnor_space_create(MLoopNorSpaceArray *lnors_spacearr);
  */
 void BKE_lnor_space_define(MLoopNorSpace *lnor_space,
                            const float lnor[3],
-                           float vec_ref[3],
-                           float vec_other[3],
+                           const float vec_ref[3],
+                           const float vec_other[3],
                            blender::Span<blender::float3> edge_vectors);
 
 #endif
@@ -486,16 +473,6 @@ void BKE_mesh_merge_customdata_for_apply_modifier(struct Mesh *me);
 
 /* Flush flags. */
 
-/**
- * Update the hide flag for edges and faces from the corresponding flag in verts.
- */
-void BKE_mesh_flush_hidden_from_verts(struct Mesh *me);
-void BKE_mesh_flush_hidden_from_faces(struct Mesh *me);
-
-void BKE_mesh_flush_select_from_faces(struct Mesh *me);
-void BKE_mesh_flush_select_from_verts(struct Mesh *me);
-void BKE_mesh_flush_select_from_edges(struct Mesh *me);
-
 /* spatial evaluation */
 /**
  * This function takes the difference between 2 vertex-coord-arrays
@@ -544,16 +521,6 @@ bool BKE_mesh_validate_material_indices(struct Mesh *me);
  * Validate the mesh, \a do_fixes requires \a mesh to be non-null.
  *
  * \return false if no changes needed to be made.
- *
- * Vertex Normals
- * ==============
- *
- * While zeroed normals are checked, these checks aren't comprehensive.
- * Technically, to detect errors here a normal recalculation and comparison is necessary.
- * However this function is mainly to prevent severe errors in geometry
- * (invalid data that will crash Blender, or cause some features to behave incorrectly),
- * not to detect subtle differences in the resulting normals which could be caused
- * by importers that load normals (for example).
  */
 bool BKE_mesh_validate_arrays(struct Mesh *me,
                               float (*vert_positions)[3],

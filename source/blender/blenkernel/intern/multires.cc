@@ -389,7 +389,7 @@ void multires_mark_as_modified(Depsgraph *depsgraph, Object *object, MultiresMod
    * In a longer term maybe special dependency graph tag can help sanitizing this a bit. */
   Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
   Mesh *mesh = static_cast<Mesh *>(object_eval->data);
-  SubdivCCG *subdiv_ccg = mesh->runtime->subdiv_ccg;
+  SubdivCCG *subdiv_ccg = mesh->runtime->subdiv_ccg.get();
   if (subdiv_ccg == nullptr) {
     return;
   }
@@ -1216,12 +1216,11 @@ void multires_stitch_grids(Object *ob)
   /* NOTE: Currently CCG does not keep track of faces, making it impossible
    * to use BKE_pbvh_get_grid_updates().
    */
-  CCGFace **faces;
-  int num_faces;
-  BKE_pbvh_get_grid_updates(pbvh, false, (void ***)&faces, &num_faces);
-  if (num_faces) {
-    BKE_subdiv_ccg_average_stitch_faces(subdiv_ccg, faces, num_faces);
-    MEM_freeN(faces);
+  blender::IndexMaskMemory memory;
+  blender::Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, {});
+  const blender::IndexMask mask = BKE_pbvh_get_grid_updates(pbvh, nodes, memory);
+  if (!mask.is_empty()) {
+    BKE_subdiv_ccg_average_stitch_faces(*subdiv_ccg, mask);
   }
 }
 
