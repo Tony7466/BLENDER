@@ -199,9 +199,17 @@ IndexMask retrieve_editable_strokes(Object &object,
   const IndexRange curves_range = drawing.strokes().curves_range();
   const bke::AttributeAccessor attributes = curves.attributes();
 
+  const VArray<int> materials = *attributes.lookup<int>("material_index", ATTR_DOMAIN_CURVE);
+  if (!materials) {
+    /* if the attribute does not exist then the default is the first material. */
+    if (locked_material_indices.contains(0)) {
+      return curves_range;
+    }
+    else {
+      return IndexMask();
+    }
+  }
   /* Get all the strokes that have their material unlocked. */
-  const VArray<int> materials = *attributes.lookup_or_default<int>(
-      "material_index", ATTR_DOMAIN_CURVE, -1);
   return IndexMask::from_predicate(
       curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
         const int material_index = materials[curve_i];
@@ -225,8 +233,16 @@ IndexMask retrieve_editable_points(Object &object,
   const bke::AttributeAccessor attributes = curves.attributes();
 
   /* Propagate the material index to the points. */
-  const VArray<int> materials = *attributes.lookup_or_default<int>(
-      "material_index", ATTR_DOMAIN_POINT, -1);
+  const VArray<int> materials = *attributes.lookup<int>("material_index", ATTR_DOMAIN_POINT);
+  if (!materials) {
+    /* if the attribute does not exist then the default is the first material. */
+    if (locked_material_indices.contains(0)) {
+      return points_range;
+    }
+    else {
+      return IndexMask();
+    }
+  }
   /* Get all the points that are part of a stroke with an unlocked material. */
   return IndexMask::from_predicate(
       points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
