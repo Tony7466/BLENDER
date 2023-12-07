@@ -52,7 +52,7 @@ ShaderModule::ShaderModule()
     shader = nullptr;
   }
 
-#ifdef DEBUG
+#ifndef NDEBUG
   /* Ensure all shader are described. */
   for (auto i : IndexRange(MAX_SHADER_TYPE)) {
     const char *name = static_shader_create_info_name_get(eShaderType(i));
@@ -116,6 +116,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_horizon_scan_refract";
     case HORIZON_SETUP:
       return "eevee_horizon_setup";
+    case LOOKDEV_DISPLAY:
+      return "eevee_lookdev_display";
     case MOTION_BLUR_GATHER:
       return "eevee_motion_blur_gather";
     case MOTION_BLUR_TILE_DILATE:
@@ -523,7 +525,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     info.vertex_source_generated = vert_gen.str();
   }
 
-  if (!is_compute) {
+  if (!is_compute && pipeline_type != MAT_PIPE_VOLUME_OCCUPANCY) {
     frag_gen << ((codegen.material_functions) ? codegen.material_functions : "\n");
 
     if (codegen.displacement) {
