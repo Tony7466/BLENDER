@@ -218,7 +218,7 @@ static uint64_t getMessageTime(GHOST_SystemWin32 *system)
     t_delta -= int64_t(UINT32_MAX);
   }
 
-  /* Return message time as 64-bit milliseconds since system start. */
+  /* Return message time as 64-bit milliseconds since Blender start. */
   return system->getMilliSeconds() + t_delta;
 }
 
