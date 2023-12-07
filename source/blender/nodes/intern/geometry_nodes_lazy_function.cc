@@ -918,6 +918,45 @@ class LazyFunctionForSimulationInputsUsage : public LazyFunction {
   }
 };
 
+class LazyFunctionForBakeInputsUsage : public LazyFunction {
+ private:
+  const bNode *bnode_;
+
+ public:
+  LazyFunctionForBakeInputsUsage(const bNode &bnode) : bnode_(&bnode)
+  {
+    debug_name_ = "Bake Inputs Usage";
+    outputs_.append_as("Used", CPPType::get<bool>());
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context &context) const override
+  {
+    const GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    if (!user_data.call_data->bake_params) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    const std::optional<FoundNestedNodeID> found_id = find_nested_node_id(user_data,
+                                                                          bnode_->identifier);
+    if (!found_id) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    if (found_id->is_in_loop || found_id->is_in_simulation) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    BakeNodeBehavior *behavior = user_data.call_data->bake_params->get(found_id->id);
+    if (!behavior) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    const bool need_inputs = std::holds_alternative<sim_output::PassThrough>(*behavior) ||
+                             std::holds_alternative<sim_output::StoreNewState>(*behavior);
+    params.set_output(0, need_inputs);
+  }
+};
+
 static bool should_log_socket_values_for_context(const GeoNodesLFUserData &user_data,
                                                  const ComputeContextHash hash)
 {
@@ -3542,7 +3581,17 @@ struct GeometryNodesLazyFunctionBuilder {
 
     mapping_->possible_side_effect_node_map.add(&bnode, &lf_node);
 
-    /* TODO: Socket Usages. */
+    this->build_bake_node_socket_usage(bnode, graph_params);
+  }
+
+  void build_bake_node_socket_usage(const bNode &bnode, BuildGraphParams &graph_params)
+  {
+    const LazyFunction &usage_fn = scope_.construct<LazyFunctionForBakeInputsUsage>(bnode);
+    lf::FunctionNode &lf_usage_node = graph_params.lf_graph.add_function(usage_fn);
+    const int items_num = bnode.input_sockets().size() - 1;
+    for (const int i : IndexRange(items_num)) {
+      graph_params.usage_by_bsocket.add(&bnode.input_socket(i), &lf_usage_node.output(0));
+    }
   }
 
   void build_switch_node(const bNode &bnode, BuildGraphParams &graph_params)
