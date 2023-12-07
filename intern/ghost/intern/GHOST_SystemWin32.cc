@@ -215,7 +215,7 @@ static uint64_t getMessageTime(GHOST_SystemWin32 *system)
 
   /* Handle 32-bit rollover. */
   if (t_delta > 0) {
-    t_delta -= int64_t(UINT32_MAX);
+    t_delta -= int64_t(UINT32_MAX) + 1;
   }
 
   /* Return message time as 64-bit milliseconds since Blender start. */
