@@ -835,7 +835,6 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     intern/gpu_shader_builder_stubs.cc
     ${shader_create_info_list_file}
     ${_manifest}
-    ${INC_SYS}
   )
   unset(_manifest)
   if(WITH_BUILDINFO)
@@ -851,10 +850,12 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     ${PLATFORM_LINKLIBS}
     PRIVATE bf::intern::guardedalloc
   )
+  target_include_directories(shader_builder SYSTEM PRIVATE ${INC_SYS} ${CMAKE_CURRENT_BINARY_DIR})
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 
   set(SRC_BAKED_CREATE_INFOS_FILE ${CMAKE_CURRENT_BINARY_DIR}/shader_baked.hh)
 
+  message(PLATFORM_ENV_BUILD=${PLATFORM_ENV_BUILD})
   add_custom_command(
     OUTPUT
     ${SRC_BAKED_CREATE_INFOS_FILE}
