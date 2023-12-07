@@ -81,7 +81,7 @@ static void color_filter_task(Object *ob,
   SculptSession *ss = ob->sculpt;
 
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COLOR);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, SculptUndoType::Color);
 
   AutomaskingNodeData automask_data;
   SCULPT_automasking_node_begin(ob, ss->filter_cache->automasking, &automask_data, node);
@@ -357,12 +357,12 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
   /* CTX_data_ensure_evaluated_depsgraph should be used at the end to include the updates of
    * earlier steps modifying the data. */
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, true);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, true);
 
   SCULPT_filter_cache_init(C,
                            ob,
                            sd,
-                           SCULPT_UNDO_COLOR,
+                           SculptUndoType::Color,
                            mval_fl,
                            RNA_float_get(op->ptr, "area_normal_radius"),
                            RNA_float_get(op->ptr, "strength"));

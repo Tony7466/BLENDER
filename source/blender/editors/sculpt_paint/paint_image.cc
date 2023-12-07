@@ -36,7 +36,7 @@
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_image.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_node_runtime.hh"
@@ -823,8 +823,11 @@ static blender::float3 paint_init_pivot_grease_pencil(Object *ob, const int fram
 {
   using namespace blender;
   const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(ob->data);
-  const blender::Bounds<blender::float3> bounds = *grease_pencil.bounds_min_max(frame);
-  return blender::math::midpoint(bounds.min, bounds.max);
+  const std::optional<Bounds<float3>> bounds = grease_pencil.bounds_min_max(frame);
+  if (bounds.has_value()) {
+    return blender::math::midpoint(bounds->min, bounds->max);
+  }
+  return float3(0.0f);
 }
 
 void paint_init_pivot(Object *ob, Scene *scene)

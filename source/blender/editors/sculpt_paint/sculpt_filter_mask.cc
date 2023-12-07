@@ -28,7 +28,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include <cmath>
 #include <cstdlib>
@@ -167,7 +167,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
   MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, ob);
   BKE_sculpt_mask_layers_ensure(CTX_data_depsgraph_pointer(C), CTX_data_main(C), ob, mmd);
 
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
   SculptSession *ss = ob->sculpt;
   PBVH *pbvh = ob->sculpt->pbvh;
@@ -180,7 +180,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
   SCULPT_undo_push_begin(ob, op);
 
   for (PBVHNode *node : nodes) {
-    SCULPT_undo_push_node(ob, node, SCULPT_UNDO_MASK);
+    SCULPT_undo_push_node(ob, node, SculptUndoType::Mask);
   }
 
   float *prev_mask = nullptr;
@@ -221,22 +221,6 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
   SCULPT_tag_update_overlays(C);
 
   return OPERATOR_FINISHED;
-}
-
-void SCULPT_mask_filter_smooth_apply(Sculpt * /*sd*/,
-                                     Object *ob,
-                                     blender::Span<PBVHNode *> nodes,
-                                     const int smooth_iterations)
-{
-  using namespace blender;
-  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ob->sculpt);
-  for (int i = 0; i < smooth_iterations; i++) {
-    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-      for (const int i : range) {
-        mask_filter_task(ob->sculpt, MASK_FILTER_SMOOTH, nullptr, mask_write, nodes[i]);
-      }
-    });
-  }
 }
 
 void SCULPT_OT_mask_filter(wmOperatorType *ot)

@@ -49,7 +49,7 @@
 #include "BKE_idprop.h"
 #include "BKE_instances.hh"
 #include "BKE_lattice.hh"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_iterators.hh"
 #include "BKE_mesh_runtime.hh"
@@ -478,7 +478,7 @@ static const Mesh *mesh_data_from_duplicator_object(Object *ob,
      * We could change this but it matches 2.7x behavior. */
     me_eval = BKE_object_get_editmesh_eval_cage(ob);
     if ((me_eval == nullptr) || (me_eval->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH)) {
-      blender::bke::EditMeshData *emd = me_eval ? me_eval->runtime->edit_data : nullptr;
+      blender::bke::EditMeshData *emd = me_eval ? me_eval->runtime->edit_data.get() : nullptr;
 
       /* Only assign edit-mesh in the case we can't use `me_eval`. */
       *r_em = em;
@@ -487,7 +487,7 @@ static const Mesh *mesh_data_from_duplicator_object(Object *ob,
       if ((emd != nullptr) && !emd->vertexCos.is_empty()) {
         *r_vert_coords = reinterpret_cast<const float(*)[3]>(emd->vertexCos.data());
         if (r_vert_normals != nullptr) {
-          BKE_editmesh_cache_ensure_vert_normals(em, emd);
+          BKE_editmesh_cache_ensure_vert_normals(*em, *emd);
           *r_vert_normals = reinterpret_cast<const float(*)[3]>(emd->vertexNos.data());
         }
       }
