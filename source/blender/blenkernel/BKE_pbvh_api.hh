@@ -29,7 +29,7 @@
 #include "BKE_ccg.h"
 #include "BKE_pbvh.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 struct BMLog;
 struct BMesh;
@@ -294,15 +294,14 @@ bool BKE_pbvh_node_find_nearest_to_ray(PBVH *pbvh,
 void BKE_pbvh_set_frustum_planes(PBVH *pbvh, PBVHFrustumPlanes *planes);
 void BKE_pbvh_get_frustum_planes(const PBVH *pbvh, PBVHFrustumPlanes *planes);
 
-void BKE_pbvh_draw_cb(const Mesh &mesh,
-                      PBVH *pbvh,
-                      bool update_only_visible,
-                      PBVHFrustumPlanes *update_frustum,
-                      PBVHFrustumPlanes *draw_frustum,
-                      void (*draw_fn)(void *user_data,
-                                      blender::draw::pbvh::PBVHBatches *batches,
-                                      const blender::draw::pbvh::PBVH_GPU_Args &args),
-                      void *user_data);
+void BKE_pbvh_draw_cb(
+    const Mesh &mesh,
+    PBVH *pbvh,
+    bool update_only_visible,
+    const PBVHFrustumPlanes &update_frustum,
+    const PBVHFrustumPlanes &draw_frustum,
+    blender::FunctionRef<void(blender::draw::pbvh::PBVHBatches *batches,
+                              const blender::draw::pbvh::PBVH_GPU_Args &args)> draw_fn);
 
 /* PBVH Access */
 
@@ -385,6 +384,10 @@ int BKE_pbvh_node_num_unique_verts(const PBVH &pbvh, const PBVHNode &node);
 blender::Span<int> BKE_pbvh_node_get_vert_indices(const PBVHNode *node);
 blender::Span<int> BKE_pbvh_node_get_unique_vert_indices(const PBVHNode *node);
 void BKE_pbvh_node_get_loops(const PBVHNode *node, const int **r_loop_indices);
+
+void BKE_pbvh_node_calc_face_indices(const PBVH &pbvh,
+                                     const PBVHNode &node,
+                                     blender::Vector<int> &faces);
 blender::Vector<int> BKE_pbvh_node_calc_face_indices(const PBVH &pbvh, const PBVHNode &node);
 
 /* Get number of faces in the mesh; for PBVH_GRIDS the
