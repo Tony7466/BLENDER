@@ -64,6 +64,10 @@ class Instance {
   TextureFromPool reveal_tx_ = {"gp_reveal_tx"};
   Framebuffer main_fb_ = {"gp_main_fb"};
 
+  /** Underlying scene pixel. Used to composite the output of the grease pencil render onto the
+   * scene (including merging the depth buffers). */
+  Framebuffer scene_fb_ = {"gp_scene_fb"};
+
   /** Texture format for all intermediate buffers. */
   eGPUTextureFormat texture_format_ = GPU_RGBA16F;
 
@@ -86,7 +90,7 @@ class Instance {
   Depsgraph *depsgraph_ = nullptr;
   Object *camera_ = nullptr;
   Manager *manager_ = nullptr;
-  const DRWView *main_view_ = nullptr;
+  draw::View view_ = {"MainView"};
 
   /** \note Needs not to be temporary variable since it is dereferenced later. */
   std::array<float4, 2> clear_colors_ = {float4(0.0f, 0.0f, 0.0f, 0.0f),
@@ -101,13 +105,15 @@ class Instance {
 
   void init(Depsgraph *depsgraph,
             Manager *manager,
-            const DRWView *main_view,
+            const DRWView *viewport_draw_view,
             const View3D *v3d,
             const RegionView3D *rv3d)
   {
     depsgraph_ = depsgraph;
     manager_ = manager;
-    main_view_ = main_view;
+    if (viewport_draw_view != nullptr) {
+      view_.sync(viewport_draw_view);
+    }
 
     const Scene *scene = DEG_get_evaluated_scene(depsgraph_);
 
@@ -128,8 +134,7 @@ class Instance {
 
   void begin_sync()
   {
-    draw::View view("gpencil_view", main_view_);
-    objects.begin_sync(depsgraph_, view);
+    objects.begin_sync(depsgraph_, view_);
     layers.begin_sync();
     materials.begin_sync();
     lights.begin_sync(depsgraph_);
@@ -149,14 +154,15 @@ class Instance {
     materials.bind_resources(sub);
     lights.bind_resources(sub);
 
-    anti_aliasing.begin_sync(color_tx_, reveal_tx_);
+    anti_aliasing.begin_sync(color_tx_, scene_fb_, reveal_tx_);
   }
 
   void object_sync(ObjectRef &object_ref)
   {
     switch (object_ref.object->type) {
       case OB_GREASE_PENCIL:
-        objects.sync_grease_pencil(*manager_, object_ref, main_fb_, depth_tx_, main_ps_);
+        objects.sync_grease_pencil(
+            *manager_, object_ref, main_fb_, scene_fb_, depth_tx_, main_ps_);
         break;
       case OB_LAMP:
         lights.sync(object_ref);
@@ -190,6 +196,7 @@ class Instance {
           inst.object_sync(ob_ref);
         };
 
+    /* HACK: We pass `this` here so we have access to the `Instance` in `object_sync_render`. */
     DRW_render_object_iter(this, engine, depsgraph, object_sync_render);
 
     end_sync();
@@ -200,35 +207,40 @@ class Instance {
     DRW_render_instance_buffer_finish();
   }
 
-  void draw_viewport(View &view, GPUTexture *dst_depth_tx, GPUTexture *dst_color_tx)
+  void draw(GPUTexture *dst_color_tx, GPUTexture *dst_depth_tx, const int2 render_resolution)
   {
     if (!objects.scene_has_visible_gpencil_object()) {
       return;
     }
 
-    int2 render_size = {GPU_texture_width(dst_depth_tx), GPU_texture_height(dst_depth_tx)};
+    scene_fb_.ensure(GPU_ATTACHMENT_TEXTURE(dst_depth_tx), GPU_ATTACHMENT_TEXTURE(dst_color_tx));
 
-    depth_tx_.acquire(render_size, GPU_DEPTH24_STENCIL8);
-    color_tx_.acquire(render_size, texture_format_);
-    reveal_tx_.acquire(render_size, texture_format_);
+    depth_tx_.acquire(render_resolution, GPU_DEPTH24_STENCIL8);
+    color_tx_.acquire(render_resolution, texture_format_);
+    reveal_tx_.acquire(render_resolution, texture_format_);
     main_fb_.ensure(GPU_ATTACHMENT_TEXTURE(depth_tx_),
                     GPU_ATTACHMENT_TEXTURE(color_tx_),
                     GPU_ATTACHMENT_TEXTURE(reveal_tx_));
 
-    scene_buf_.render_size = float2(render_size);
+    scene_buf_.render_size = float2(render_resolution);
     scene_buf_.push_update();
 
-    objects.acquire_temporary_buffers(render_size, texture_format_);
+    objects.acquire_temporary_buffers(render_resolution, texture_format_);
 
-    manager_->submit(main_ps_, view);
+    manager_->submit(main_ps_, view_);
 
     objects.release_temporary_buffers();
 
-    anti_aliasing.draw(*manager_, dst_color_tx);
+    anti_aliasing.draw(*manager_, render_resolution);
 
     depth_tx_.release();
     color_tx_.release();
     reveal_tx_.release();
+  }
+
+  draw::View &view()
+  {
+    return view_;
   }
 };
 
@@ -274,8 +286,9 @@ static void gpencil_draw_scene(void *vedata)
   }
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   const DRWView *default_view = DRW_view_default_get();
-  draw::View view("DefaultView", default_view);
-  ved->instance->draw_viewport(view, dtxl->depth, dtxl->color);
+  const float2 viewport_size = DRW_viewport_size_get();
+  ved->instance->view().sync(default_view);
+  ved->instance->draw(dtxl->color, dtxl->depth, int2(viewport_size));
 }
 
 static void gpencil_cache_init(void *vedata)
@@ -308,6 +321,75 @@ static void gpencil_engine_free()
   blender::draw::greasepencil::ShaderModule::module_free();
 }
 
+/** Get the color and depth textures of the render result in the render layer. */
+static void get_render_result_textures(RenderEngine *engine,
+                                       RenderLayer *render_layer,
+                                       const draw::View &view,
+                                       const int2 render_resolution,
+                                       const bool do_region,
+                                       draw::Texture &r_color_tx,
+                                       draw::Texture &r_depth_tx)
+{
+  /* Create depth texture & color texture from render result. */
+  const char *viewname = RE_GetActiveRenderView(engine->re);
+  RenderPass *rpass_z_src = RE_pass_find_by_name(render_layer, RE_PASSNAME_Z, viewname);
+  RenderPass *rpass_col_src = RE_pass_find_by_name(render_layer, RE_PASSNAME_COMBINED, viewname);
+
+  float *pix_z = (rpass_z_src) ? rpass_z_src->ibuf->float_buffer.data : nullptr;
+  float *pix_col = (rpass_col_src) ? rpass_col_src->ibuf->float_buffer.data : nullptr;
+
+  if (!pix_z || !pix_col) {
+    RE_engine_set_error_message(engine,
+                                "Warning: To render grease pencil, enable Combined and Z passes.");
+  }
+
+  if (pix_z) {
+    /* Depth need to be remapped to [0..1] range. */
+    pix_z = static_cast<float *>(MEM_dupallocN(pix_z));
+
+    int pix_num = rpass_z_src->rectx * rpass_z_src->recty;
+
+    if (view.is_persp()) {
+      for (int i = 0; i < pix_num; i++) {
+        pix_z[i] = (-view.winmat()[3][2] / -pix_z[i]) - view.winmat()[2][2];
+        pix_z[i] = clamp_f(pix_z[i] * 0.5f + 0.5f, 0.0f, 1.0f);
+      }
+    }
+    else {
+      /* Keep in mind, near and far distance are negatives. */
+      float near = view.near_clip();
+      float far = view.far_clip();
+      float range_inv = 1.0f / fabsf(far - near);
+      for (int i = 0; i < pix_num; i++) {
+        pix_z[i] = (pix_z[i] + near) * range_inv;
+        pix_z[i] = clamp_f(pix_z[i], 0.0f, 1.0f);
+      }
+    }
+  }
+
+  const bool do_clear_z = !pix_z || do_region;
+  const bool do_clear_col = !pix_col || do_region;
+
+  const eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
+
+  /* FIXME(fclem): we have a precision loss in the depth buffer because of this re-upload.
+   * Find where it comes from! */
+  /* In multi view render the textures can be reused. */
+  if (r_depth_tx.is_valid() && !do_clear_z) {
+    GPU_texture_update(r_depth_tx, GPU_DATA_FLOAT, pix_z);
+  }
+  else {
+    r_depth_tx.ensure_2d(
+        GPU_DEPTH_COMPONENT24, render_resolution, usage, do_region ? nullptr : pix_z);
+  }
+  if (r_color_tx.is_valid() && !do_clear_col) {
+    GPU_texture_update(r_color_tx, GPU_DATA_FLOAT, pix_col);
+  }
+  else {
+    r_color_tx.ensure_2d(GPU_RGBA16F, render_resolution, usage, do_region ? nullptr : pix_col);
+  }
+}
+
 static void gpencil_render_to_image(void * /*vedata*/,
                                     RenderEngine *engine,
                                     RenderLayer *render_layer,
@@ -318,36 +400,29 @@ static void gpencil_render_to_image(void * /*vedata*/,
 
   Render *render = engine->re;
   Depsgraph *depsgraph = DRW_context_state_get()->depsgraph;
-  Object *camera_original_ob = RE_GetCamera(engine->re);
-  const char *viewname = RE_GetActiveRenderView(engine->re);
-  int2 size(engine->resolution_x, engine->resolution_y);
+  Scene *scene = DRW_context_state_get()->scene;
+  Object *camera_original_ob = RE_GetCamera(render);
+  const char *viewname = RE_GetActiveRenderView(render);
+  const int2 render_resolution = int2(engine->resolution_x, engine->resolution_y);
+  const bool do_region = (scene->r.mode & R_BORDER) != 0;
 
+  instance.init(depsgraph, &manager, nullptr, nullptr, nullptr);
+
+  float4x4 viewinv, winmat;
   Object *camera_eval = DEG_get_evaluated_object(depsgraph, camera_original_ob);
+  RE_GetCameraModelMatrix(render, camera_eval, viewinv.ptr());
+  float4x4 viewmat = math::invert(viewinv);
+  RE_GetCameraWindow(render, camera_eval, winmat.ptr());
 
-  const DRWView *default_view = DRW_view_default_get();
-  DRW_view_get_active()
-
-  instance.init(depsgraph, &manager, default_view, nullptr, nullptr);
+  instance.view().sync(viewmat, winmat);
   instance.render_sync(engine, depsgraph);
 
-  rctf view_rect;
-  rcti rect;
-  RE_GetViewPlane(render, &view_rect, &rect);
-
-  float4x4 viewinv;
-  RE_GetCameraModelMatrix(engine->re, camera_eval, viewinv.ptr());
-  float4x4 viewmat = math::invert(viewinv);
-  float4x4 winmat;
-  RE_GetCameraWindow(engine->re, camera_eval, winmat.ptr());
-
-  draw::View view("gpencil_view");
-  view.sync(viewmat, winmat);
-
   draw::Texture color_tx;
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
-  color_tx.ensure_2d(GPU_RGBA16F, size, usage);
-  color_tx.clear(float4(0.0f));
-  instance.draw_viewport(view, color_tx, color_tx);
+  draw::Texture depth_tx;
+  get_render_result_textures(
+      engine, render_layer, instance.view(), render_resolution, do_region, color_tx, depth_tx);
+
+  instance.draw(color_tx, depth_tx, render_resolution);
 
   RenderPass *rp = RE_pass_find_by_name(render_layer, RE_PASSNAME_COMBINED, viewname);
   if (!rp) {
