@@ -29,9 +29,11 @@ class ShaderBuilder {
   GPUContext *gpu_context_ = nullptr;
 
  public:
-  void init();
+  void init_system();
+  bool init_context();
   bool bake_create_infos();
-  void exit();
+  void exit_context();
+  void exit_system();
 };
 
 bool ShaderBuilder::bake_create_infos()
@@ -39,9 +41,16 @@ bool ShaderBuilder::bake_create_infos()
   return gpu_shader_create_info_compile_all();
 }
 
-void ShaderBuilder::init()
+void ShaderBuilder::init_system()
 {
   CLG_init();
+  ghost_system_ = GHOST_CreateSystemBackground();
+}
+
+bool ShaderBuilder::init_context()
+{
+  BLI_assert(ghost_system_);
+  BLI_assert(ghost_context_ == nullptr);
 
   GHOST_GPUSettings gpuSettings = {0};
   switch (GPU_backend_type_selection_get()) {
@@ -68,23 +77,31 @@ void ShaderBuilder::init()
       break;
   }
 
-  ghost_system_ = GHOST_CreateSystemBackground();
   ghost_context_ = GHOST_CreateGPUContext(ghost_system_, gpuSettings);
+  if (ghost_context_ == nullptr) {
+    GHOST_DisposeSystem(ghost_system_);
+    return false;
+  }
+
   GHOST_ActivateGPUContext(ghost_context_);
 
   gpu_context_ = GPU_context_create(nullptr, ghost_context_);
   GPU_init();
+  return true;
 }
 
-void ShaderBuilder::exit()
+void ShaderBuilder::exit_context()
 {
+  BLI_assert(ghost_context_);
+  BLI_assert(gpu_context_);
   GPU_exit();
-
   GPU_context_discard(gpu_context_);
-
   GHOST_DisposeGPUContext(ghost_system_, ghost_context_);
-  GHOST_DisposeSystem(ghost_system_);
+}
 
+void ShaderBuilder::exit_system()
+{
+  GHOST_DisposeSystem(ghost_system_);
   CLG_exit();
 }
 
@@ -99,6 +116,9 @@ int main(int argc, const char *argv[])
   }
 
   int exit_code = 0;
+
+  blender::gpu::shader_builder::ShaderBuilder builder;
+  builder.init_system();
 
   struct NamedBackend {
     std::string name;
@@ -115,6 +135,7 @@ int main(int argc, const char *argv[])
 #ifdef WITH_VULKAN_BACKEND
   backends_to_validate.append({"Vulkan", GPU_BACKEND_VULKAN});
 #endif
+
   for (NamedBackend &backend : backends_to_validate) {
     GPU_backend_type_selection_set(backend.backend);
     if (!GPU_backend_supported()) {
@@ -122,17 +143,23 @@ int main(int argc, const char *argv[])
              backend.name.c_str());
       continue;
     }
-    blender::gpu::shader_builder::ShaderBuilder builder;
-    builder.init();
-    if (!builder.bake_create_infos()) {
-      printf("Shader compilation failed for %s backend\n", backend.name.c_str());
-      exit_code = 1;
+    if (builder.init_context()) {
+      if (!builder.bake_create_infos()) {
+        printf("Shader compilation failed for %s backend\n", backend.name.c_str());
+        exit_code = 0;
+      }
+      else {
+        printf("%s backend shader compilation succeeded.\n", backend.name.c_str());
+      }
+      builder.exit_context();
     }
     else {
-      printf("%s backend shader compilation succeeded.\n", backend.name.c_str());
+      printf("Shader compilation skipped for %s. Context could not be created.\n",
+             backend.name.c_str());
     }
-    builder.exit();
   }
+
+  builder.exit_system();
 
   exit(exit_code);
   return exit_code;
