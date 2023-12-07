@@ -76,26 +76,11 @@ static void copybuffer_append(BlendfileLinkAppendContext *lapp_context,
   /* Tag existing IDs in given `bmain_dst` as already existing. */
   BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, true);
 
-  std::string bmain_file_path = bmain->filepath;
-  if (!bmain->is_global_main) {
-    /* To allow us to process libraries that are pasted in that are refering to the current file,
-     * we check if we are reading in the information into the current bmain.
-     * If we are not adding data to the current bmain, then it should be safe to temporary erase
-     * the current bmain filepath to side step the library linking sanity checks. (As the data we
-     * are reading in will not interfere with the current file's bmain)
-     */
-    bmain->filepath[0] = '\0';
-  }
   BKE_blendfile_link(lapp_context, reports);
 
   /* Mark all library linked objects to be updated. */
   BKE_main_lib_objects_recalc_all(bmain);
   IMB_colormanagement_check_file_config(bmain);
-
-  if (!bmain->is_global_main) {
-    /* Restore the filepath here so that all relative paths can properly be remapped. */
-    BLI_strncpy(bmain->filepath, bmain_file_path.c_str(), sizeof(bmain->filepath));
-  }
 
   /* Append, rather than linking */
   BKE_blendfile_append(lapp_context, reports);
