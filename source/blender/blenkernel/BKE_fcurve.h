@@ -503,7 +503,7 @@ void BKE_fcurve_delete_key(struct FCurve *fcu, int index);
 
 /** Delete an index range of keyframes from an F-curve. This is more performant than individually
  * removing keys.
- * Has a complexity of O(N) with respect to the amount of keys removed.
+ * Has a complexity of O(N) with respect to number of keys in `fcu`.
  *
  * \param index_range is exclusive.
  */
