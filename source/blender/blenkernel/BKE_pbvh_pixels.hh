@@ -18,6 +18,9 @@
 
 #include "IMB_imbuf_types.h"
 
+#include "GPU_sculpt_shader_shared.h"
+#include "GPU_storage_buffer.h"
+
 namespace blender::bke::pbvh::pixels {
 
 /**
@@ -29,11 +32,17 @@ namespace blender::bke::pbvh::pixels {
 struct PaintGeometryPrimitives {
   /** Data accessed by the inner loop of the painting brush. */
   Vector<int3> vert_indices;
+  GPUStorageBuf *gpu_buffer = nullptr;
 
  public:
   void append(const int3 vert_indices)
   {
     this->vert_indices.append(vert_indices);
+
+    TrianglePaintInput triangle;
+    triangle.vert_indices = int3(vert_indices.x, vert_indices.y, vert_indices.z);
+    triangle.delta_barycentric_coord = float2(0.0f);
+    // this->paint_input.append(triangle);
   }
 
   const int3 &get_vert_indices(const int index) const
@@ -41,10 +50,14 @@ struct PaintGeometryPrimitives {
     return vert_indices[index];
   }
 
-  void clear()
+  ~PaintGeometryPrimitives()
   {
-    vert_indices.clear();
+    clear();
   }
+
+  /** Clear data associated with self. */
+  void clear();
+  void ensure_gpu_buffer();
 
   int64_t size() const
   {
@@ -82,6 +95,7 @@ struct UVPrimitivePaintInput {
 struct PaintUVPrimitives {
   /** Data accessed by the inner loop of the painting brush. */
   Vector<UVPrimitivePaintInput> paint_input;
+  GPUStorageBuf *gpu_buffer = nullptr;
 
   void append(int64_t geometry_primitive_index)
   {
@@ -98,10 +112,14 @@ struct PaintUVPrimitives {
     return paint_input[index];
   }
 
-  void clear()
+  ~PaintUVPrimitives()
   {
-    paint_input.clear();
+    clear();
   }
+
+  /** Clear data associated with self. */
+  void clear();
+  void ensure_gpu_buffer();
 
   int64_t size() const
   {
@@ -143,6 +161,7 @@ struct UDIMTilePixels {
   rcti dirty_region;
 
   Vector<PackedPixelRow> pixel_rows;
+  int64_t gpu_buffer_offset;
 
   UDIMTilePixels()
   {
@@ -181,9 +200,20 @@ struct NodeData {
   Vector<UDIMTileUndo> undo_regions;
   PaintUVPrimitives uv_primitives;
 
+  struct {
+    /** Contains GPU buffer for all associated pixels. Tiles have a range inside this buffer
+     * (#UDIMTilePixels.start_index, #UDIMTilePixels.end_index). */
+    GPUStorageBuf *pixels = nullptr;
+  } gpu_buffers;
+
   NodeData()
   {
     flags.dirty = false;
+  }
+
+  ~NodeData()
+  {
+    clear_data();
   }
 
   UDIMTilePixels *find_tile_data(const image::ImageTileWrapper &image_tile)
@@ -246,6 +276,18 @@ struct NodeData {
   {
     tiles.clear();
     uv_primitives.clear();
+    if (gpu_buffers.pixels) {
+      GPU_storagebuf_free(gpu_buffers.pixels);
+      gpu_buffers.pixels = nullptr;
+    }
+  }
+
+  void ensure_gpu_buffers()
+  {
+    uv_primitives.ensure_gpu_buffer();
+    if (gpu_buffers.pixels == nullptr) {
+      build_pixels_gpu_buffer();
+    }
   }
 
   static void free_func(void *instance)
@@ -253,6 +295,9 @@ struct NodeData {
     NodeData *node_data = static_cast<NodeData *>(instance);
     MEM_delete(node_data);
   }
+
+ private:
+  void build_pixels_gpu_buffer();
 };
 
 /* -------------------------------------------------------------------- */

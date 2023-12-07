@@ -534,3 +534,17 @@ void SCULPT_do_smear_brush(Sculpt *sd, Object *ob, blender::Span<PBVHNode *> nod
     });
   }
 }
+
+void SCULPT_paint_batches_flush(PaintModeSettings *paint_mode_settings,
+                                Sculpt *sd,
+                                Object *ob,
+                                const bool is_final)
+{
+  if (!SCULPT_use_image_paint_brush(paint_mode_settings, ob)) {
+    return;
+  }
+  SCULPT_paint_image_batches_flush(paint_mode_settings, sd, ob);
+  if (is_final) {
+    SCULPT_paint_image_batches_finalize(paint_mode_settings, sd, ob);
+  }
+}

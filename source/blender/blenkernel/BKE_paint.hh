@@ -711,6 +711,10 @@ struct SculptSession {
       MDeformVert *dvert_prev;
     } wpaint;
 
+    struct {
+      void *gpu_data;
+    } texture_paint;
+
     /* TODO: identify sculpt-only fields */
     // struct { ... } sculpt;
   } mode;

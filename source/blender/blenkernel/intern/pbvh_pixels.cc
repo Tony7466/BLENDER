@@ -30,6 +30,60 @@
 
 namespace blender::bke::pbvh::pixels {
 
+void PaintGeometryPrimitives::clear()
+{
+  // paint_input.clear();
+  if (gpu_buffer) {
+    GPU_storagebuf_free(gpu_buffer);
+    gpu_buffer = nullptr;
+  }
+}
+
+void PaintGeometryPrimitives::ensure_gpu_buffer()
+{
+  if (gpu_buffer) {
+    return;
+  }
+  gpu_buffer = GPU_storagebuf_create_ex(
+      mem_size(), nullptr /* paint_input.data()*/, GPU_USAGE_STATIC, __func__);
+}
+
+/**
+ * Update the gpu buffer offsets of the given tiles.
+ * \return the total needed buffer length.
+ */
+static int64_t update_gpu_buffer_offsets(MutableSpan<UDIMTilePixels> tiles)
+{
+  int64_t elem_len = 0;
+  for (UDIMTilePixels &tile : tiles) {
+    tile.gpu_buffer_offset = elem_len;
+    elem_len += tile.pixel_rows.size();
+  }
+  return elem_len;
+}
+
+static void flatten_pixel_rows(Vector<PackedPixelRow> &elements, Span<UDIMTilePixels> tiles)
+{
+  for (const UDIMTilePixels &tile : tiles) {
+    BLI_assert(elements.size() == tile.gpu_buffer_offset);
+    elements.extend(tile.pixel_rows);
+  }
+}
+
+void NodeData::build_pixels_gpu_buffer()
+{
+  BLI_assert(gpu_buffers.pixels == nullptr);
+
+  int64_t elem_len = update_gpu_buffer_offsets(tiles);
+  /* TODO(jbakker): we should store the packed pixels in a single vector per node to reduce
+   * copying. */
+  Vector<PackedPixelRow> elements;
+  elements.reserve(elem_len);
+  flatten_pixel_rows(elements, tiles);
+  gpu_buffers.pixels = GPU_storagebuf_create_ex(
+      elem_len * sizeof(PackedPixelRow), elements.data(), GPU_USAGE_STATIC, __func__);
+}
+
 /**
  * Calculate the delta of two neighbor UV coordinates in the given image buffer.
  */

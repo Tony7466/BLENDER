@@ -1702,6 +1702,18 @@ void BKE_pbvh_mark_rebuild_pixels(PBVH *pbvh)
   }
 }
 
+void BKE_pbvh_frame_selection_clear(PBVH *pbvh)
+{
+  for (PBVHNode &node : pbvh->nodes) {
+    node.flag &= ~PBVH_FrameSelection;
+  }
+}
+
+void BKE_pbvh_node_frame_selection_mark(PBVHNode *node)
+{
+  node->flag |= PBVH_FrameSelection;
+}
+
 void BKE_pbvh_node_mark_update_visibility(PBVHNode *node)
 {
   node->flag |= PBVH_UpdateVisibility | PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers |

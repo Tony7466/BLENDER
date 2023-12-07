@@ -1692,6 +1692,10 @@ void SCULPT_do_paint_brush(PaintModeSettings *paint_mode_settings,
                            Object *ob,
                            blender::Span<PBVHNode *> nodes,
                            blender::Span<PBVHNode *> texnodes);
+void SCULPT_paint_batches_flush(struct PaintModeSettings *paint_mode_settings,
+                                struct Sculpt *sd,
+                                struct Object *ob,
+                                const bool is_final);
 
 /**
  * \brief Get the image canvas for painting on the given object.
@@ -1709,6 +1713,12 @@ void SCULPT_do_paint_brush_image(PaintModeSettings *paint_mode_settings,
                                  Object *ob,
                                  blender::Span<PBVHNode *> texnodes);
 bool SCULPT_use_image_paint_brush(PaintModeSettings *settings, Object *ob) ATTR_NONNULL();
+void SCULPT_paint_image_batches_flush(struct PaintModeSettings *paint_mode_settings,
+                                      struct Sculpt *sd,
+                                      struct Object *ob);
+void SCULPT_paint_image_batches_finalize(struct PaintModeSettings *paint_mode_settings,
+                                         struct Sculpt *sd,
+                                         struct Object *ob);
 
 /* Smear Brush. */
 void SCULPT_do_smear_brush(Sculpt *sd, Object *ob, blender::Span<PBVHNode *> nodes);
@@ -1748,6 +1758,20 @@ void SCULPT_bmesh_topology_rake(Sculpt *sd,
                                 float bstrength);
 
 /* end sculpt_brush_types.cc */
+
+/* sculpt_shaders.cc */
+typedef enum BrushVariationFlags {
+  BRUSH_TEST_SPHERE = (0 << 0),
+  BRUSH_TEST_CIRCLE = (1 << 1),
+  BRUSH_TEST_CLIPPING = (1 << 2),
+  BRUSH_MAX_VARIATIONS = (1 << 3),
+} BrushVariationFlags;
+struct GPUShader *SCULPT_shader_paint_image_get(BrushVariationFlags variation_flags);
+struct GPUShader *SCULPT_shader_paint_image_merge_get(void);
+
+void SCULPT_shader_free(void);
+
+/* end sculpt_shadders.cc */
 
 /* sculpt_ops.cc */
 

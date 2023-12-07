@@ -45,6 +45,7 @@ enum PBVHNodeFlags {
   PBVH_TexLeaf = 1 << 16,
   /** Used internally by `pbvh_bmesh.cc`. */
   PBVH_TopologyUpdated = 1 << 17,
+  PBVH_FrameSelection = 1 << 18,
 };
 ENUM_OPERATORS(PBVHNodeFlags, PBVH_TopologyUpdated);
 
