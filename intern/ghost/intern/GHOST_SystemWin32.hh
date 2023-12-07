@@ -75,6 +75,14 @@ class GHOST_SystemWin32 : public GHOST_System {
    */
   uint64_t getMilliSeconds() const;
 
+    /**
+   * Returns the system time of the last message.
+   * Returns the number of milliseconds since the start of the system process
+   * to the time of the message. This uses the high frequency timer if available.
+   * \return The number of milliseconds.
+   */
+  uint64_t getMessageTime() const;
+
   /***************************************************************************************
    ** Display/window management functionality
    ***************************************************************************************/
