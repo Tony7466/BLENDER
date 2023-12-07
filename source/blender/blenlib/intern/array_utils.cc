@@ -183,7 +183,11 @@ int64_t count_booleans(const VArray<bool> &varray, const IndexMask &mask)
     return *static_cast<const bool *>(info.data) ? mask.size() : 0;
   }
   int64_t value = 0;
-  mask.foreach_index([&](const int64_t i) { value += int64_t(varray[i]); });
+  mask.foreach_segment([&](const IndexMaskSegment segment) {
+    for (const int64_t i : segment) {
+      value += int64_t(varray[i]);
+    }
+  });
   return value;
 }
 
