@@ -161,7 +161,7 @@ static VectorSet<int> get_locked_material_indices(Object &object)
     if (material != nullptr && material->gp_style != nullptr &&
         (material->gp_style->flag & GP_MATERIAL_LOCKED) != 0)
     {
-      locked_material_indices.add(mat_i);
+      locked_material_indices.add_new(mat_i);
     }
   }
   return locked_material_indices;
@@ -176,7 +176,7 @@ static VectorSet<int> get_hidden_material_indices(Object &object)
     if (material != nullptr && material->gp_style != nullptr &&
         (material->gp_style->flag & GP_MATERIAL_HIDE) != 0)
     {
-      hidden_material_indices.add(mat_i);
+      hidden_material_indices.add_new(mat_i);
     }
   }
   return hidden_material_indices;
