@@ -21,7 +21,7 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
       draw_ctx->scene->toolsettings);
-  View3D *v3d = draw_ctx->v3d;
+  const View3D *v3d = draw_ctx->v3d;
 
   GPUShader *sh;
   DRWShadingGroup *grp;
