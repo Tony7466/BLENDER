@@ -242,7 +242,8 @@ static void request_bakes_in_modifier_cache(BakeGeometryNodesJob &job)
 {
   for (NodeBakeRequest &request : job.bake_requests) {
     request.nmd->runtime->cache->requested_bakes.add(request.bake_id);
-    DEG_id_tag_update(&request.object->id, ID_RECALC_GEOMETRY);
+    DEG_id_tag_update_for_side_effect_request(
+        job.depsgraph, &request.object->id, ID_RECALC_GEOMETRY);
   }
 }
 
