@@ -1493,45 +1493,36 @@ static PyObject *bpy_bm_elem_copy_from(BPy_BMElem *self, BPy_BMElem *value)
     return nullptr;
   }
 
-  if (value->ele == self->ele) {
-    Py_RETURN_NONE;
-  }
-
-  switch (self->ele->head.htype) {
-    case BM_VERT: {
-      const BMVert *src = reinterpret_cast<const BMVert *>(value->ele);
-      BMVert *dst = reinterpret_cast<BMVert *>(self->ele);
-      CustomData_bmesh_copy_block(
-          &value->bm->vdata, &self->bm->vdata, src->head.data, &dst->head.data);
-      copy_v3_v3(dst->no, src->no);
-      break;
+  if (value->ele != self->ele) {
+    switch (self->ele->head.htype) {
+      case BM_VERT:
+        BM_elem_attrs_copy(value->bm,
+                           self->bm,
+                           CD_MASK_BM_ELEM_PYPTR,
+                           reinterpret_cast<const BMVert *>(value->ele),
+                           reinterpret_cast<BMVert *>(self->ele));
+        break;
+      case BM_EDGE:
+        BM_elem_attrs_copy(value->bm,
+                           self->bm,
+                           CD_MASK_BM_ELEM_PYPTR,
+                           reinterpret_cast<const BMVert *>(value->ele),
+                           reinterpret_cast<BMVert *>(self->ele));
+        break;
+      case BM_FACE:
+        BM_elem_attrs_copy(value->bm,
+                           self->bm,
+                           CD_MASK_BM_ELEM_PYPTR,
+                           reinterpret_cast<const BMVert *>(value->ele),
+                           reinterpret_cast<BMVert *>(self->ele));
+        break;
+      case BM_LOOP:
+        BM_elem_attrs_copy(value->bm,
+                           self->bm,
+                           CD_MASK_BM_ELEM_PYPTR,
+                           reinterpret_cast<const BMVert *>(value->ele),
+                           reinterpret_cast<BMVert *>(self->ele));
     }
-    case BM_EDGE: {
-      const BMEdge *src = reinterpret_cast<const BMEdge *>(value->ele);
-      BMEdge *dst = reinterpret_cast<BMEdge *>(self->ele);
-      CustomData_bmesh_copy_block(
-          &value->bm->edata, &self->bm->edata, src->head.data, &dst->head.data);
-      break;
-    }
-    case BM_FACE: {
-      const BMFace *src = reinterpret_cast<const BMFace *>(value->ele);
-      BMFace *dst = reinterpret_cast<BMFace *>(self->ele);
-      CustomData_bmesh_copy_block(
-          &value->bm->pdata, &self->bm->pdata, src->head.data, &dst->head.data);
-      copy_v3_v3(dst->no, src->no);
-      dst->mat_nr = src->mat_nr;
-      break;
-    }
-    case BM_LOOP: {
-      const BMLoop *src = reinterpret_cast<const BMLoop *>(value->ele);
-      BMLoop *dst = reinterpret_cast<BMLoop *>(self->ele);
-      CustomData_bmesh_copy_block(
-          &value->bm->ldata, &self->bm->ldata, src->head.data, &dst->head.data);
-      break;
-    }
-    default:
-      BLI_assert_unreachable();
-      break;
   }
 
   Py_RETURN_NONE;

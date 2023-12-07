@@ -382,6 +382,45 @@ void BM_elem_attrs_copy(const BMesh *bm_src, BMesh *bm_dst, const BMLoop *src, B
   }
 }
 
+void BM_elem_attrs_copy(const BMesh *bm_src,
+                        BMesh *bm_dst,
+                        const eCustomDataMask exclude,
+                        const BMVert *src,
+                        BMVert *dst)
+{
+  const BMCustomDataCopyMap map = CustomData_bmesh_copy_map_calc(
+      bm_src->vdata, bm_dst->vdata, exclude);
+  BM_elem_attrs_copy(bm_dst, map, src, dst);
+}
+void BM_elem_attrs_copy(const BMesh *bm_src,
+                        BMesh *bm_dst,
+                        const eCustomDataMask exclude,
+                        const BMEdge *src,
+                        BMEdge *dst)
+{
+  const BMCustomDataCopyMap map = CustomData_bmesh_copy_map_calc(
+      bm_src->edata, bm_dst->edata, exclude);
+  BM_elem_attrs_copy(bm_dst, map, src, dst);
+}
+void BM_elem_attrs_copy(const BMesh *bm_src,
+                        BMesh *bm_dst,
+                        const eCustomDataMask exclude,
+                        const BMFace *src,
+                        BMFace *dst)
+{
+  const BMCustomDataCopyMap map = CustomData_bmesh_copy_map_calc(
+      bm_src->pdata, bm_dst->pdata, exclude);
+  BM_elem_attrs_copy(bm_dst, map, src, dst);
+}
+void BM_elem_attrs_copy(const BMesh *bm_src,
+                        BMesh *bm_dst,
+                        const eCustomDataMask exclude,
+                        const BMLoop *src,
+                        BMLoop *dst)
+{
+  const BMCustomDataCopyMap map = CustomData_bmesh_copy_map_calc(
+      bm_src->ldata, bm_dst->ldata, exclude);
+  BM_elem_attrs_copy(bm_dst, map, src, dst);
 }
 
 void BM_elem_attrs_copy(BMesh &bm, const BMVert *src, BMVert *dst)
