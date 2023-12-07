@@ -179,8 +179,6 @@ class RayTraceModule {
 
   /** Dummy texture when the tracing is disabled. */
   TextureFromPool dummy_result_tx_ = {"dummy_result_tx"};
-  /** Pointer to `inst_.render_buffers.depth_tx.stencil_view()` updated before submission. */
-  GPUTexture *renderbuf_stencil_view_ = nullptr;
   /** Pointer to `inst_.render_buffers.depth_tx` updated before submission. */
   GPUTexture *renderbuf_depth_view_ = nullptr;
 

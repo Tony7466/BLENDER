@@ -349,7 +349,6 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   const int ray_tile_count = ray_tiles.x * ray_tiles.y;
   tile_compact_dispatch_size_ = int3(math::divide_ceil(ray_tiles, int2(RAYTRACE_GROUP_SIZE)), 1);
 
-  renderbuf_stencil_view_ = inst_.render_buffers.depth_tx.stencil_view();
   renderbuf_depth_view_ = inst_.render_buffers.depth_tx;
 
   const bool use_denoise = (options.flag & RAYTRACE_EEVEE_USE_DENOISE);
