@@ -126,10 +126,10 @@ BMFace *BM_face_create_ngon_verts(BMesh *bm,
  * improves performance when copying, since all the work of finding common layers doesn't have to
  * be done for every element.
  */
-void BM_elem_attrs_copy(const BMCustomDataCopyMap &map, BMesh *bm, const BMVert *src, BMVert *dst);
-void BM_elem_attrs_copy(const BMCustomDataCopyMap &map, BMesh *bm, const BMEdge *src, BMEdge *dst);
-void BM_elem_attrs_copy(const BMCustomDataCopyMap &map, BMesh *bm, const BMFace *src, BMFace *dst);
-void BM_elem_attrs_copy(const BMCustomDataCopyMap &map, BMesh *bm, const BMLoop *src, BMLoop *dst);
+void BM_elem_attrs_copy(BMesh *bm, const BMCustomDataCopyMap &map, const BMVert *src, BMVert *dst);
+void BM_elem_attrs_copy(BMesh *bm, const BMCustomDataCopyMap &map, const BMEdge *src, BMEdge *dst);
+void BM_elem_attrs_copy(BMesh *bm, const BMCustomDataCopyMap &map, const BMFace *src, BMFace *dst);
+void BM_elem_attrs_copy(BMesh *bm, const BMCustomDataCopyMap &map, const BMLoop *src, BMLoop *dst);
 
 /**
  * Copy attributes between elements in two BMeshes. These functions are often called with both

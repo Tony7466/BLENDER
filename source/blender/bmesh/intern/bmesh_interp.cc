@@ -781,7 +781,7 @@ static void update_data_blocks(BMesh *bm, CustomData *olddata, CustomData *data)
 
     BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
       block = nullptr;
-      CustomData_bmesh_copy_block_with_map(cd_map, *data, eve->head.data, &block);
+      CustomData_bmesh_copy_block_with_map(*data, cd_map, eve->head.data, &block);
       CustomData_bmesh_free_block(olddata, &eve->head.data);
       eve->head.data = block;
     }
@@ -793,7 +793,7 @@ static void update_data_blocks(BMesh *bm, CustomData *olddata, CustomData *data)
 
     BM_ITER_MESH (eed, &iter, bm, BM_EDGES_OF_MESH) {
       block = nullptr;
-      CustomData_bmesh_copy_block_with_map(cd_map, *data, eed->head.data, &block);
+      CustomData_bmesh_copy_block_with_map(*data, cd_map, eed->head.data, &block);
       CustomData_bmesh_free_block(olddata, &eed->head.data);
       eed->head.data = block;
     }
@@ -807,7 +807,7 @@ static void update_data_blocks(BMesh *bm, CustomData *olddata, CustomData *data)
     BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
       BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
         block = nullptr;
-        CustomData_bmesh_copy_block_with_map(cd_map, *data, l->head.data, &block);
+        CustomData_bmesh_copy_block_with_map(*data, cd_map, l->head.data, &block);
         CustomData_bmesh_free_block(olddata, &l->head.data);
         l->head.data = block;
       }
@@ -820,7 +820,7 @@ static void update_data_blocks(BMesh *bm, CustomData *olddata, CustomData *data)
 
     BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
       block = nullptr;
-      CustomData_bmesh_copy_block_with_map(cd_map, *data, efa->head.data, &block);
+      CustomData_bmesh_copy_block_with_map(*data, cd_map, efa->head.data, &block);
       CustomData_bmesh_free_block(olddata, &efa->head.data);
       efa->head.data = block;
     }

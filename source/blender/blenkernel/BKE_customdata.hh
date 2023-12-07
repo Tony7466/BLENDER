@@ -391,8 +391,8 @@ BMCustomDataCopyMap CustomData_bmesh_copy_map_calc(const CustomData &src,
                                                    const CustomData &dst,
                                                    eCustomDataMask mask_exclude = 0);
 
-void CustomData_bmesh_copy_block_with_map(const BMCustomDataCopyMap &map,
-                                          CustomData &dst_data,
+void CustomData_bmesh_copy_block_with_map(CustomData &dst_data,
+                                          const BMCustomDataCopyMap &map,
                                           const void *src_block,
                                           void **dest_block);
 

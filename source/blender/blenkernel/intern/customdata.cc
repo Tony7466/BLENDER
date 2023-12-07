@@ -3706,7 +3706,7 @@ bool CustomData_bmesh_merge_layout(const CustomData *source,
     /* Ensure all current elements follow new customdata layout. */
     BM_ITER_MESH (h, &iter, bm, iter_type) {
       void *tmp = nullptr;
-      CustomData_bmesh_copy_block_with_map(map, *dest, h->data, &tmp);
+      CustomData_bmesh_copy_block_with_map(*dest, map, h->data, &tmp);
       CustomData_bmesh_free_block(&destold, &h->data);
       h->data = tmp;
     }
@@ -3721,7 +3721,7 @@ bool CustomData_bmesh_merge_layout(const CustomData *source,
     BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
       BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
         void *tmp = nullptr;
-        CustomData_bmesh_copy_block_with_map(map, *dest, l->head.data, &tmp);
+        CustomData_bmesh_copy_block_with_map(*dest, map, l->head.data, &tmp);
         CustomData_bmesh_free_block(&destold, &l->head.data);
         l->head.data = tmp;
       }
@@ -3875,8 +3875,8 @@ BMCustomDataCopyMap CustomData_bmesh_copy_map_calc(const CustomData &src,
   return map;
 }
 
-void CustomData_bmesh_copy_block_with_map(const BMCustomDataCopyMap &copy_map,
-                                          CustomData &dst_data,
+void CustomData_bmesh_copy_block_with_map(CustomData &dst_data,
+                                          const BMCustomDataCopyMap &copy_map,
                                           const void *src_block,
                                           void **dst_block)
 {
@@ -3916,7 +3916,7 @@ void CustomData_bmesh_copy_block(const CustomData *source,
                                  void **dest_block)
 {
   const BMCustomDataCopyMap map = CustomData_bmesh_copy_map_calc(*source, *dest);
-  CustomData_bmesh_copy_block_with_map(map, *dest, src_block, dest_block);
+  CustomData_bmesh_copy_block_with_map(*dest, map, src_block, dest_block);
 }
 
 void CustomData_bmesh_copy_block(CustomData &data, void *src_block, void **dst_block)
