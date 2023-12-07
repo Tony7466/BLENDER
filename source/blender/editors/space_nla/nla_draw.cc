@@ -240,9 +240,10 @@ static void nla_strip_draw_markers(NlaStrip *strip, float yminc, float ymaxc)
 
 /* Strips (Proper) ---------------------- */
 
-/* get colors for drawing NLA Strips. */
+/* Get colors for drawing NLA Strips. */
 static void nla_strip_get_color_inside(AnimData *adt, NlaStrip *strip, float color[3])
 {
+  const bool is_selected = strip->flag & NLASTRIP_FLAG_SELECT;
   switch (strip->type) {
     case NLASTRIP_TYPE_CLIP:
       /* Action Strip. */
@@ -262,7 +263,7 @@ static void nla_strip_get_color_inside(AnimData *adt, NlaStrip *strip, float col
         break;
       }
       if (strip->flag & NLASTRIP_FLAG_SELECT) {
-        /* selected - use selected theme. */
+        /* selected. */
         UI_GetThemeColor3fv(TH_STRIP_SELECT, color);
         break;
       }
@@ -272,29 +273,17 @@ static void nla_strip_get_color_inside(AnimData *adt, NlaStrip *strip, float col
       break;
 
     case NLASTRIP_TYPE_META:
-      /* Meta Strip.
-       * selected - use a bold purple color.
-       * unselected - use (hardly noticeable) dark purple tinge.
-       */
-      UI_GetThemeColor3fv(strip->flag & NLASTRIP_FLAG_SELECT ? TH_NLA_META_SEL : TH_NLA_META,
-                          color);
+      /* Meta Strip. */
+      UI_GetThemeColor3fv(is_selected ? TH_NLA_META_SEL : TH_NLA_META, color);
       break;
     case NLASTRIP_TYPE_TRANSITION: {
-      /* Transition Strip.
-       * selected - use a bright blue color.
-       * unselected - use (hardly noticeable) blue tinge.
-       */
-      UI_GetThemeColor3fv(
-          strip->flag & NLASTRIP_FLAG_SELECT ? TH_NLA_TRANSITION_SEL : TH_NLA_TRANSITION, color);
+      /* Transition Strip. */
+      UI_GetThemeColor3fv(is_selected ? TH_NLA_TRANSITION_SEL : TH_NLA_TRANSITION, color);
       break;
     }
     case NLASTRIP_TYPE_SOUND:
-      /* Sound Strip.
-       * selected - use a bright teal color.
-       * unselected - use (hardly noticeable) teal tinge.
-       */
-      UI_GetThemeColor3fv(strip->flag & NLASTRIP_FLAG_SELECT ? TH_NLA_SOUND_SEL : TH_NLA_SOUND,
-                          color);
+      /* Sound Strip. */
+      UI_GetThemeColor3fv(is_selected ? TH_NLA_SOUND_SEL : TH_NLA_SOUND, color);
       break;
     default: {
       /* default to unselected theme. */
