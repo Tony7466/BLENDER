@@ -821,7 +821,7 @@ int BKE_id_attribute_to_index(const ID *id,
 
   int index = 0;
   for (const int domain : IndexRange(ATTR_DOMAIN_NUM)) {
-    CustomData *customdata = info[domain].customdata;
+    const CustomData *customdata = info[domain].customdata;
 
     if (!customdata || !((1 << int(domain)) & domain_mask)) {
       continue;
