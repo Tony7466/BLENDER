@@ -327,8 +327,8 @@ static void grease_pencil_edit_batch_ensure(Object &object,
       const IndexRange points = points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
 
-      for (const int point : points) {
-        GPU_indexbuf_add_generic_vert(&elb, point + drawing_start_offset);
+      for (const int point_i : points) {
+        GPU_indexbuf_add_generic_vert(&elb, point_i + drawing_start_offset);
       }
 
       if (is_cyclic) {
