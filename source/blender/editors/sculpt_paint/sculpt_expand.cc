@@ -21,6 +21,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
@@ -50,7 +51,10 @@
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
 
-#include "bmesh.h"
+#include "bmesh.hh"
+
+using blender::Span;
+using blender::Vector;
 
 /* Sculpt Expand. */
 /* Operator for creating selections and patterns in Sculpt Mode. Expand can create masks, face sets
@@ -271,7 +275,10 @@ static bool sculpt_expand_state_get(SculptSession *ss,
  * Main function to get the state of a face for the current state and settings of a #ExpandCache.
  * Returns true when the target data should be modified by expand.
  */
-static bool sculpt_expand_face_state_get(SculptSession *ss, ExpandCache *expand_cache, const int f)
+static bool sculpt_expand_face_state_get(SculptSession *ss,
+                                         const Span<int> face_sets,
+                                         ExpandCache *expand_cache,
+                                         const int f)
 {
   if (ss->hide_poly && ss->hide_poly[f]) {
     return false;
@@ -304,7 +311,7 @@ static bool sculpt_expand_face_state_get(SculptSession *ss, ExpandCache *expand_
   }
 
   if (expand_cache->falloff_type == SCULPT_EXPAND_FALLOFF_ACTIVE_FACE_SET) {
-    if (ss->face_sets[f] == expand_cache->initial_active_face_set) {
+    if (face_sets[f] == expand_cache->initial_active_face_set) {
       enabled = false;
     }
   }
@@ -1151,8 +1158,6 @@ static void sculpt_expand_cache_data_free(ExpandCache *expand_cache)
   MEM_SAFE_FREE(expand_cache->vert_falloff);
   MEM_SAFE_FREE(expand_cache->face_falloff);
   MEM_SAFE_FREE(expand_cache->original_mask);
-  MEM_SAFE_FREE(expand_cache->original_face_sets);
-  MEM_SAFE_FREE(expand_cache->initial_face_sets);
   MEM_SAFE_FREE(expand_cache->original_colors);
   MEM_delete<ExpandCache>(expand_cache);
 }
@@ -1168,15 +1173,17 @@ static void sculpt_expand_cache_free(SculptSession *ss)
 /**
  * Functions to restore the original state from the #ExpandCache when canceling the operator.
  */
-static void sculpt_expand_restore_face_set_data(SculptSession *ss, ExpandCache *expand_cache)
+static void sculpt_expand_restore_face_set_data(Object &object, ExpandCache *expand_cache)
 {
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
-  for (PBVHNode *node : nodes) {
-    BKE_pbvh_node_mark_redraw(node);
-  }
+  using namespace blender;
+  using namespace blender::ed::sculpt_paint;
+  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
+  face_sets.span.copy_from(expand_cache->original_face_sets);
+  face_sets.finish();
 
-  for (int i = 0; i < ss->totfaces; i++) {
-    ss->face_sets[i] = expand_cache->original_face_sets[i];
+  Vector<PBVHNode *> nodes = bke::pbvh::search_gather(object.sculpt->pbvh, {});
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_update_face_sets(node);
   }
 }
 
@@ -1196,17 +1203,19 @@ static void sculpt_expand_restore_color_data(SculptSession *ss, ExpandCache *exp
 
 static void write_mask_data(SculptSession *ss, const Span<float> mask)
 {
+  using namespace blender;
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES: {
       Mesh *mesh = BKE_pbvh_get_mesh(ss->pbvh);
-      float *layer = static_cast<float *>(
-          CustomData_get_layer_for_write(&mesh->vert_data, CD_PAINT_MASK, mesh->totvert));
+      bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+      bke::SpanAttributeWriter<float> attribute = attributes.lookup_or_add_for_write_span<float>(
+          ".sculpt_mask", ATTR_DOMAIN_POINT);
       for (PBVHNode *node : nodes) {
         PBVHVertexIter vd;
         BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-          layer[vd.index] = mask[vd.index];
+          attribute.span[vd.index] = mask[vd.index];
         }
         BKE_pbvh_vertex_iter_end;
         BKE_pbvh_node_mark_redraw(node);
@@ -1214,8 +1223,8 @@ static void write_mask_data(SculptSession *ss, const Span<float> mask)
       break;
     }
     case PBVH_BMESH: {
-      const int offset = CustomData_get_offset(&BKE_pbvh_get_bmesh(ss->pbvh)->vdata,
-                                               CD_PAINT_MASK);
+      const int offset = CustomData_get_offset_named(
+          &BKE_pbvh_get_bmesh(ss->pbvh)->vdata, CD_PROP_FLOAT, ".sculpt_mask");
       for (PBVHNode *node : nodes) {
         PBVHVertexIter vd;
         BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
@@ -1256,7 +1265,7 @@ static void sculpt_expand_restore_original_state(bContext *C,
       SCULPT_tag_update_overlays(C);
       break;
     case SCULPT_EXPAND_TARGET_FACE_SETS:
-      sculpt_expand_restore_face_set_data(ss, expand_cache);
+      sculpt_expand_restore_face_set_data(*ob, expand_cache);
       SCULPT_flush_update_step(C, SCULPT_UPDATE_FACE_SET);
       SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_FACE_SET);
       SCULPT_tag_update_overlays(C);
@@ -1342,24 +1351,29 @@ static void sculpt_expand_mask_update_task(SculptSession *ss,
 /**
  * Update Face Set data. Not multi-threaded per node as nodes don't contain face arrays.
  */
-static void sculpt_expand_face_sets_update(SculptSession *ss, ExpandCache *expand_cache)
+static void sculpt_expand_face_sets_update(Object &object, ExpandCache *expand_cache)
 {
-  const int totface = ss->totfaces;
-  for (int f = 0; f < totface; f++) {
-    const bool enabled = sculpt_expand_face_state_get(ss, expand_cache, f);
+  using namespace blender;
+  using namespace blender::ed::sculpt_paint;
+  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
+  for (const int f : face_sets.span.index_range()) {
+    const bool enabled = sculpt_expand_face_state_get(
+        object.sculpt, face_sets.span, expand_cache, f);
     if (!enabled) {
       continue;
     }
     if (expand_cache->preserve) {
-      ss->face_sets[f] += expand_cache->next_face_set;
+      face_sets.span[f] += expand_cache->next_face_set;
     }
     else {
-      ss->face_sets[f] = expand_cache->next_face_set;
+      face_sets.span[f] = expand_cache->next_face_set;
     }
   }
 
-  for (PBVHNode *node : ss->expand_cache->nodes) {
-    BKE_pbvh_node_mark_redraw(node);
+  face_sets.finish();
+
+  for (PBVHNode *node : expand_cache->nodes) {
+    BKE_pbvh_node_mark_update_face_sets(node);
   }
 }
 
@@ -1434,25 +1448,14 @@ static void sculpt_expand_flush_updates(bContext *C)
 /* Store the original mesh data state in the expand cache. */
 static void sculpt_expand_original_state_store(Object *ob, ExpandCache *expand_cache)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
+  Mesh &mesh = *static_cast<Mesh *>(ob->data);
   const int totvert = SCULPT_vertex_count_get(ss);
-  const int totface = ss->totfaces;
 
   /* Face Sets are always stored as they are needed for snapping. */
-  expand_cache->initial_face_sets = static_cast<int *>(
-      MEM_malloc_arrayN(totface, sizeof(int), "initial face set"));
-  expand_cache->original_face_sets = static_cast<int *>(
-      MEM_malloc_arrayN(totface, sizeof(int), "original face set"));
-  if (ss->face_sets) {
-    for (int i = 0; i < totface; i++) {
-      expand_cache->initial_face_sets[i] = ss->face_sets[i];
-      expand_cache->original_face_sets[i] = ss->face_sets[i];
-    }
-  }
-  else {
-    memset(expand_cache->initial_face_sets, SCULPT_FACE_SET_NONE, sizeof(int) * totface);
-    memset(expand_cache->original_face_sets, SCULPT_FACE_SET_NONE, sizeof(int) * totface);
-  }
+  expand_cache->initial_face_sets = face_set::duplicate_face_sets(mesh);
+  expand_cache->original_face_sets = face_set::duplicate_face_sets(mesh);
 
   if (expand_cache->target == SCULPT_EXPAND_TARGET_MASK) {
     expand_cache->original_mask = static_cast<float *>(
@@ -1478,19 +1481,24 @@ static void sculpt_expand_original_state_store(Object *ob, ExpandCache *expand_c
 /**
  * Restore the state of the Face Sets before a new update.
  */
-static void sculpt_expand_face_sets_restore(SculptSession *ss, ExpandCache *expand_cache)
+static void sculpt_expand_face_sets_restore(Object &object, ExpandCache *expand_cache)
 {
-  const int totfaces = ss->totfaces;
+  using namespace blender;
+  using namespace blender::ed::sculpt_paint;
+  SculptSession &ss = *object.sculpt;
+  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
+  const int totfaces = ss.totfaces;
   for (int i = 0; i < totfaces; i++) {
     if (expand_cache->original_face_sets[i] <= 0) {
       /* Do not modify hidden Face Sets, even when restoring the IDs state. */
       continue;
     }
-    if (!sculpt_expand_is_face_in_active_component(ss, expand_cache, i)) {
+    if (!sculpt_expand_is_face_in_active_component(&ss, expand_cache, i)) {
       continue;
     }
-    ss->face_sets[i] = expand_cache->initial_face_sets[i];
+    face_sets.span[i] = expand_cache->initial_face_sets[i];
   }
+  face_sets.finish();
 }
 
 static void sculpt_expand_update_for_vertex(bContext *C, Object *ob, const PBVHVertRef vertex)
@@ -1517,7 +1525,7 @@ static void sculpt_expand_update_for_vertex(bContext *C, Object *ob, const PBVHV
   if (expand_cache->target == SCULPT_EXPAND_TARGET_FACE_SETS) {
     /* Face sets needs to be restored their initial state on each iteration as the overwrite
      * existing data. */
-    sculpt_expand_face_sets_restore(ss, expand_cache);
+    sculpt_expand_face_sets_restore(*ob, expand_cache);
   }
 
   switch (expand_cache->target) {
@@ -1531,7 +1539,7 @@ static void sculpt_expand_update_for_vertex(bContext *C, Object *ob, const PBVHV
       break;
     }
     case SCULPT_EXPAND_TARGET_FACE_SETS:
-      sculpt_expand_face_sets_update(ss, expand_cache);
+      sculpt_expand_face_sets_update(*ob, expand_cache);
       break;
     case SCULPT_EXPAND_TARGET_COLORS:
       threading::parallel_for(expand_cache->nodes.index_range(), 1, [&](const IndexRange range) {
@@ -1684,6 +1692,7 @@ static void sculpt_expand_set_initial_components_for_mouse(bContext *C,
                                                            ExpandCache *expand_cache,
                                                            const float mval[2])
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertRef initial_vertex = sculpt_expand_target_vertex_update_and_get(C, ob, mval);
@@ -1709,8 +1718,7 @@ static void sculpt_expand_set_initial_components_for_mouse(bContext *C,
       expand_cache->next_face_set = SCULPT_active_face_set_get(ss);
     }
     else {
-      expand_cache->next_face_set = ED_sculpt_face_sets_find_next_available_id(
-          static_cast<Mesh *>(ob->data));
+      expand_cache->next_face_set = face_set::find_next_available_id(*ob);
     }
   }
 
@@ -1769,7 +1777,7 @@ static int sculpt_expand_active_face_set_id_get(SculptSession *ss, ExpandCache *
     case PBVH_FACES:
       return expand_cache->original_face_sets[ss->active_face_index];
     case PBVH_GRIDS: {
-      const int face_index = BKE_subdiv_ccg_grid_to_face_index(ss->subdiv_ccg,
+      const int face_index = BKE_subdiv_ccg_grid_to_face_index(*ss->subdiv_ccg,
                                                                ss->active_grid_index);
       return expand_cache->original_face_sets[face_index];
     }
@@ -1794,7 +1802,7 @@ static int sculpt_expand_modal(bContext *C, wmOperator *op, const wmEvent *event
 
   /* Update SculptSession data. */
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
   sculpt_expand_ensure_sculptsession_data(ob);
 
   /* Update and get the active vertex (and face) from the cursor. */
@@ -2109,22 +2117,22 @@ static void sculpt_expand_cache_initial_config_set(bContext *C,
 static void sculpt_expand_undo_push(Object *ob, ExpandCache *expand_cache)
 {
   SculptSession *ss = ob->sculpt;
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
+  blender::Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
   switch (expand_cache->target) {
     case SCULPT_EXPAND_TARGET_MASK:
       for (PBVHNode *node : nodes) {
-        SCULPT_undo_push_node(ob, node, SCULPT_UNDO_MASK);
+        SCULPT_undo_push_node(ob, node, SculptUndoType::Mask);
       }
       break;
     case SCULPT_EXPAND_TARGET_FACE_SETS:
       for (PBVHNode *node : nodes) {
-        SCULPT_undo_push_node(ob, node, SCULPT_UNDO_FACE_SETS);
+        SCULPT_undo_push_node(ob, node, SculptUndoType::FaceSet);
       }
       break;
     case SCULPT_EXPAND_TARGET_COLORS:
       for (PBVHNode *node : nodes) {
-        SCULPT_undo_push_node(ob, node, SCULPT_UNDO_COLOR);
+        SCULPT_undo_push_node(ob, node, SculptUndoType::Color);
       }
       break;
   }
@@ -2177,17 +2185,13 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
     }
   }
 
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, needs_colors);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, needs_colors);
 
   /* Do nothing when the mesh has 0 vertices. */
   const int totvert = SCULPT_vertex_count_get(ss);
   if (totvert == 0) {
     sculpt_expand_cache_free(ss);
     return OPERATOR_CANCELLED;
-  }
-
-  if (ss->expand_cache->target == SCULPT_EXPAND_TARGET_FACE_SETS) {
-    ss->face_sets = BKE_sculpt_face_sets_ensure(ob);
   }
 
   /* Face Set operations are not supported in dyntopo. */
@@ -2215,7 +2219,7 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   sculpt_expand_original_state_store(ob, ss->expand_cache);
 
   if (ss->expand_cache->modify_active_face_set) {
-    sculpt_expand_delete_face_set_id(ss->expand_cache->initial_face_sets,
+    sculpt_expand_delete_face_set_id(ss->expand_cache->initial_face_sets.data(),
                                      ss,
                                      ss->expand_cache,
                                      mesh,

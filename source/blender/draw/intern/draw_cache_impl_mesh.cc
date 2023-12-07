@@ -47,7 +47,7 @@
 
 #include "atomic_ops.h"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include "GPU_batch.h"
 #include "GPU_material.h"
@@ -59,7 +59,7 @@
 
 #include "draw_cache_extract.hh"
 #include "draw_cache_inline.h"
-#include "draw_subdivision.h"
+#include "draw_subdivision.hh"
 
 #include "draw_cache_impl.hh" /* own include */
 #include "draw_manager.h"
@@ -272,7 +272,7 @@ static void mesh_cd_calc_active_mask_uv_layer(const Object *object,
 
 static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Object *object,
                                                    const Mesh *me,
-                                                   GPUMaterial **gpumat_array,
+                                                   const GPUMaterial *const *gpumat_array,
                                                    int gpumat_array_len,
                                                    DRW_Attributes *attributes)
 {
@@ -291,7 +291,7 @@ static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Object *object,
                                                "";
 
   for (int i = 0; i < gpumat_array_len; i++) {
-    GPUMaterial *gpumat = gpumat_array[i];
+    const GPUMaterial *gpumat = gpumat_array[i];
     if (gpumat == nullptr) {
       continue;
     }
@@ -953,9 +953,9 @@ GPUBatch *DRW_mesh_batch_cache_get_edit_mesh_analysis(Mesh *me)
   return DRW_batch_request(&cache.batch.edit_mesh_analysis);
 }
 
-void DRW_mesh_get_attributes(Object *object,
-                             Mesh *me,
-                             GPUMaterial **gpumat_array,
+void DRW_mesh_get_attributes(const Object *object,
+                             const Mesh *me,
+                             const GPUMaterial *const *gpumat_array,
                              int gpumat_array_len,
                              DRW_Attributes *r_attrs,
                              DRW_MeshCDMask *r_cd_needed)
@@ -1299,7 +1299,7 @@ static void drw_add_attributes_vbo(GPUBatch *batch,
   }
 }
 
-#ifdef DEBUG
+#ifndef NDEBUG
 /* Sanity check function to test if all requested batches are available. */
 static void drw_mesh_batch_cache_check_available(TaskGraph *task_graph, Mesh *me)
 {
@@ -1350,13 +1350,13 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
 
   /* Early out */
   if (cache.batch_requested == 0) {
-#ifdef DEBUG
+#ifndef NDEBUG
     drw_mesh_batch_cache_check_available(task_graph, me);
 #endif
     return;
   }
 
-#ifdef DEBUG
+#ifndef NDEBUG
   /* Map the index of a buffer to a flag containing all batches that use it. */
   Map<int, DRWBatchFlag> batches_that_use_buffer_local;
 
@@ -1492,7 +1492,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
 
   /* Second chance to early out */
   if ((batch_requested & ~cache.batch_ready) == 0) {
-#ifdef DEBUG
+#ifndef NDEBUG
     drw_mesh_batch_cache_check_available(task_graph, me);
 #endif
     return;
@@ -1506,7 +1506,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
   const bool do_update_sculpt_normals = ob->sculpt && ob->sculpt->pbvh;
   if (do_update_sculpt_normals) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
-    BKE_pbvh_update_normals(ob->sculpt->pbvh, mesh->runtime->subdiv_ccg);
+    BKE_pbvh_update_normals(ob->sculpt->pbvh, mesh->runtime->subdiv_ccg.get());
   }
 
   cache.batch_ready |= batch_requested;
@@ -1815,7 +1815,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     DRW_vbo_request(cache.batch.surface_viewer_attribute, &mbuflist->vbo.attr_viewer);
   }
 
-#ifdef DEBUG
+#ifndef NDEBUG
   auto assert_final_deps_valid = [&](const int buffer_index) {
     BLI_assert(batches_that_use_buffer(buffer_index) ==
                batches_that_use_buffer_local.lookup(buffer_index));
@@ -1940,7 +1940,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
    * based on the mode the correct one will be updated. Other option is to look into using
    * drw_batch_cache_generate_requested_delayed. */
   BLI_task_graph_work_and_wait(task_graph);
-#ifdef DEBUG
+#ifndef NDEBUG
   drw_mesh_batch_cache_check_available(task_graph, me);
 #endif
 }
