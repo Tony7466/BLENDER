@@ -9074,10 +9074,24 @@ static void def_geo_repeat_output(StructRNA *srna)
 
 static void rna_def_geo_bake_item(BlenderRNA *brna)
 {
+  PropertyRNA *prop;
+
   StructRNA *srna = RNA_def_struct(brna, "NodeGeometryBakeItem", nullptr);
   RNA_def_struct_ui_text(srna, "Bake Item", "");
 
   rna_def_node_item_array_socket_item_common(srna, "BakeItemsAccessor");
+
+  prop = RNA_def_property(srna, "attribute_domain", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
+  RNA_def_property_enum_funcs(
+      prop, nullptr, nullptr, "rna_GeometryNodeAttributeDomain_attribute_domain_itemf");
+  RNA_def_property_ui_text(
+      prop,
+      "Attribute Domain",
+      "Attribute domain where the attribute is stored in the baked data");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(
+      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<BakeItemsAccessor>");
 }
 
 static void rna_def_bake_items(BlenderRNA *brna)
