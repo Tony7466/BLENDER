@@ -16,6 +16,7 @@
 #include "GPU_init_exit.h"
 #include "gpu_shader_create_info_private.hh"
 
+#include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
 #include "CLG_log.h"
@@ -31,14 +32,14 @@ class ShaderBuilder {
  public:
   void init_system();
   bool init_context();
-  bool bake_create_infos();
+  bool bake_create_infos(std::string name_starts_with_filter);
   void exit_context();
   void exit_system();
 };
 
-bool ShaderBuilder::bake_create_infos()
+bool ShaderBuilder::bake_create_infos(std::string name_starts_with_filter)
 {
-  return gpu_shader_create_info_compile_all();
+  return gpu_shader_create_info_compile(name_starts_with_filter);
 }
 
 void ShaderBuilder::init_system()
@@ -110,8 +111,40 @@ void ShaderBuilder::exit_system()
 /** \brief Entry point for the shader_builder. */
 int main(int argc, const char *argv[])
 {
-  if (argc < 2) {
-    printf("Usage: %s <data_file_to>\n", argv[0]);
+  std::string gpu_backend_arg;
+  std::string shader_name_starts_with_filter_arg;
+  std::string result_file_arg;
+
+  int arg = 1;
+  while (arg < argc) {
+    if (arg < argc - 2) {
+      blender::StringRefNull argument = argv[arg];
+      if (argument == "--gpu-backend") {
+        gpu_backend_arg = std::string(argv[arg + 1]);
+        arg += 2;
+      }
+      else if (argument == "--gpu-shader-filter") {
+        shader_name_starts_with_filter_arg = std::string(argv[arg + 1]);
+        arg += 2;
+      }
+      else {
+        break;
+      }
+    }
+    else if (arg == argc - 1) {
+      result_file_arg = argv[arg];
+      arg += 1;
+    }
+    else {
+      break;
+    }
+  }
+
+  if (result_file_arg.empty() || (!ELEM(gpu_backend_arg, "", "vulkan", "metal", "opengl"))) {
+    printf(
+        "Usage: %s [--gpu-backend vulkan,opengl,metal] [--gpu-shader-filter <shader-name>] "
+        "<data_file_to>\n",
+        argv[0]);
     exit(1);
   }
 
@@ -127,13 +160,19 @@ int main(int argc, const char *argv[])
 
   blender::Vector<NamedBackend> backends_to_validate;
 #ifdef WITH_OPENGL_BACKEND
-  backends_to_validate.append({"OpenGL", GPU_BACKEND_OPENGL});
+  if (ELEM(gpu_backend_arg, "", "opengl")) {
+    backends_to_validate.append({"OpenGL", GPU_BACKEND_OPENGL});
+  }
 #endif
 #ifdef WITH_METAL_BACKEND
-  backends_to_validate.append({"Metal", GPU_BACKEND_METAL});
+  if (ELEM(gpu_backend_arg, "", "metal")) {
+    backends_to_validate.append({"Metal", GPU_BACKEND_METAL});
+  }
 #endif
 #ifdef WITH_VULKAN_BACKEND
-  backends_to_validate.append({"Vulkan", GPU_BACKEND_VULKAN});
+  if (ELEM(gpu_backend_arg, "", "vulkan")) {
+    backends_to_validate.append({"Vulkan", GPU_BACKEND_VULKAN});
+  }
 #endif
 
   for (NamedBackend &backend : backends_to_validate) {
@@ -144,9 +183,9 @@ int main(int argc, const char *argv[])
       continue;
     }
     if (builder.init_context()) {
-      if (!builder.bake_create_infos()) {
+      if (!builder.bake_create_infos(shader_name_starts_with_filter_arg)) {
         printf("Shader compilation failed for %s backend\n", backend.name.c_str());
-        exit_code = 0;
+        exit_code = 1;
       }
       else {
         printf("%s backend shader compilation succeeded.\n", backend.name.c_str());
@@ -154,7 +193,7 @@ int main(int argc, const char *argv[])
       builder.exit_context();
     }
     else {
-      printf("Shader compilation skipped for %s. Context could not be created.\n",
+      printf("Shader compilation skipped for %s backend. Context could not be created.\n",
              backend.name.c_str());
     }
   }
