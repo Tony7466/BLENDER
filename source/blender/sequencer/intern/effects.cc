@@ -21,6 +21,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
+#include "BLI_simd.h"
 #include "BLI_string.h"
 #include "BLI_task.hh"
 #include "BLI_threads.h"
@@ -203,37 +204,122 @@ static void init_alpha_over_or_under(Sequence *seq)
   seq->seq1 = seq2;
 }
 
-static void do_alphaover_effect_byte(
-    float fac, int x, int y, uchar *rect1, uchar *rect2, uchar *out)
+#if BLI_HAVE_SSE2
+
+static __m128 straight_uchar_to_premul_float_simd(const unsigned char color[4])
 {
-  uchar *cp1 = rect1;
-  uchar *cp2 = rect2;
+  int packed;
+  memcpy(&packed, color, 4);
+  /* Packed 8 bit values. */
+  __m128i rgba8 = _mm_cvtsi32_si128(packed);
+  /* Spread to 16 bit values. */
+  __m128i rgba16 = _mm_unpacklo_epi8(rgba8, _mm_setzero_si128());
+  /* Spread to 32 bit values, now each SSE lane has the RGBA value. */
+  __m128i rgba32 = _mm_unpacklo_epi16(rgba16, _mm_setzero_si128());
+
+  /* Premultiply. */
+  __m128 inv_255 = _mm_set1_ps(1.0f / 255.0f);
+  __m128 col = _mm_cvtepi32_ps(rgba32);
+  __m128 alpha = _mm_mul_ps(_mm_shuffle_ps(col, col, _MM_SHUFFLE(3, 3, 3, 3)), inv_255);
+  __m128 fac = _mm_mul_ps(alpha, inv_255);
+  __m128 premul = _mm_mul_ps(col, fac);
+
+  /* Select RGB from premultiplied color, and alpha as is.
+   * With SSE4 this could use _mm_blendv_ps. */
+  __m128 mask = _mm_castsi128_ps(_mm_set_epi32(~0, 0, 0, 0));
+  __m128 res = _mm_or_ps(_mm_and_ps(mask, alpha), _mm_andnot_ps(mask, premul));
+  return res;
+}
+
+static void premul_float_to_straight_uchar_simd(unsigned char *result, __m128 color)
+{
+  __m128 alpha = _mm_shuffle_ps(color, color, _MM_SHUFFLE(3, 3, 3, 3));
+  __m128 one = _mm_set1_ps(1.0f);
+  __m128 is_one = _mm_cmpeq_ps(alpha, one);
+  __m128 is_zero = _mm_cmpeq_ps(alpha, _mm_setzero_ps());
+
+  __m128 straight = _mm_div_ps(color, alpha);
+
+  __m128 mask = _mm_castsi128_ps(_mm_set_epi32(~0, 0, 0, 0));
+  mask = _mm_or_ps(mask, _mm_or_ps(is_zero, is_one));
+  /* With SSE4 this could use _mm_blendv_ps. */
+  color = _mm_or_ps(_mm_and_ps(mask, color), _mm_andnot_ps(mask, straight));
+
+  /* Convert to 0..255. */
+  color = _mm_max_ps(color, _mm_setzero_ps());
+  color = _mm_min_ps(color, one);
+  color = _mm_mul_ps(color, _mm_set1_ps(255.0f));
+  color = _mm_add_ps(color, _mm_set1_ps(0.5f));
+
+  /* Pack and write to destination: pack to 16 bit signed, then to 8 bit
+   * unsigned, then write resulting 32-bit value. */
+  __m128i rgba32 = _mm_cvttps_epi32(color);
+  __m128i rgba16 = _mm_packs_epi32(rgba32, _mm_setzero_si128());
+  __m128i rgba8 = _mm_packus_epi16(rgba16, _mm_setzero_si128());
+  _mm_store_ss((float *)result, _mm_castsi128_ps(rgba8));
+}
+
+#endif /* BLI_HAVE_SSE2 */
+
+/* Blend a pixel: cp1 over cp2, using factor combined with alpha from cp1. */
+static void blend_pixel_alphaover_byte(const uchar *cp1, const uchar *cp2, uchar *out, float fac)
+{
+#if !BLI_HAVE_SSE2
+  /* Scalar implementation as a fallback and reference. */
+  float col[4], rt1[4], rt2[4];
+  straight_uchar_to_premul_float(rt1, cp1);
+
+  float mfac = 1.0f - fac * rt1[3];
+
+  if (mfac <= 0.0f) {
+    *((uint *)out) = *((uint *)cp1);
+  }
+  else {
+    straight_uchar_to_premul_float(rt2, cp2);
+    col[0] = fac * rt1[0] + mfac * rt2[0];
+    col[1] = fac * rt1[1] + mfac * rt2[1];
+    col[2] = fac * rt1[2] + mfac * rt2[2];
+    col[3] = fac * rt1[3] + mfac * rt2[3];
+    premul_float_to_straight_uchar(out, col);
+  }
+
+#else
+  /* Same as above, but with SIMD. */
+  __m128 rt1 = straight_uchar_to_premul_float_simd(cp1);
+
+  __m128 a = _mm_shuffle_ps(rt1, rt1, _MM_SHUFFLE(3, 3, 3, 3));
+  __m128 fac4 = _mm_set1_ps(fac);
+  __m128 mfac = _mm_sub_ps(_mm_set1_ps(1.0f), _mm_mul_ps(fac4, a));
+  float mfac1 = _mm_cvtss_f32(mfac);
+
+  if (mfac1 <= 0.0f) {
+    *((uint *)out) = *((uint *)cp1);
+  }
+  else {
+    __m128 rt2 = straight_uchar_to_premul_float_simd(cp2);
+    __m128 col1 = _mm_mul_ps(fac4, rt1);
+    __m128 col2 = _mm_mul_ps(mfac, rt2);
+    __m128 col = _mm_add_ps(col1, col2);
+    premul_float_to_straight_uchar_simd(out, col);
+  }
+#endif
+}
+
+static void do_alphaover_effect_byte(
+    float fac, int width, int height, const uchar *rect1, const uchar *rect2, uchar *out)
+{
+  if (fac <= 0.0f) {
+    memcpy(out, rect2, width * height * 4);
+    return;
+  }
+
+  const uchar *cp1 = rect1;
+  const uchar *cp2 = rect2;
   uchar *rt = out;
 
-  for (int i = 0; i < y; i++) {
-    for (int j = 0; j < x; j++) {
-      /* rt = rt1 over rt2  (alpha from rt1) */
-
-      float tempc[4], rt1[4], rt2[4];
-      straight_uchar_to_premul_float(rt1, cp1);
-      straight_uchar_to_premul_float(rt2, cp2);
-
-      float mfac = 1.0f - fac * rt1[3];
-
-      if (fac <= 0.0f) {
-        *((uint *)rt) = *((uint *)cp2);
-      }
-      else if (mfac <= 0.0f) {
-        *((uint *)rt) = *((uint *)cp1);
-      }
-      else {
-        tempc[0] = fac * rt1[0] + mfac * rt2[0];
-        tempc[1] = fac * rt1[1] + mfac * rt2[1];
-        tempc[2] = fac * rt1[2] + mfac * rt2[2];
-        tempc[3] = fac * rt1[3] + mfac * rt2[3];
-
-        premul_float_to_straight_uchar(rt, tempc);
-      }
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      blend_pixel_alphaover_byte(cp1, cp2, rt, fac);
       cp1 += 4;
       cp2 += 4;
       rt += 4;
