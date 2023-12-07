@@ -1037,7 +1037,8 @@ void GHOST_SystemWin32::processWintabEvent(GHOST_WindowWin32 *window)
     int y = GET_Y_LPARAM(pos);
     GHOST_TabletData td = wt->getLastTabletData();
 
-    system->pushEvent(new GHOST_EventCursor(system->getMessageTime(), GHOST_kEventCursorMove, window, x, y, td));
+    system->pushEvent(
+        new GHOST_EventCursor(system->getMessageTime(), GHOST_kEventCursorMove, window, x, y, td));
   }
 }
 
