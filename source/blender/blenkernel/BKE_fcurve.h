@@ -484,11 +484,16 @@ bool BKE_fcurve_bezt_subdivide_handles(struct BezTriple *bezt,
  */
 void BKE_fcurve_bezt_shrink(struct FCurve *fcu, int new_totvert);
 
-/** In case of keys on identical frames, "a" takes precedence. Allocates a new array of BezTriple.
- * Caller is expected to free data.
- * Assumes that both arrays are sorted for the x-position. */
+/**
+ * Merge the two given BezTriple arrays `a` and `b` into a newly allocated BezTriple array of size
+ * `r_merged_size`. In case of keys on identical frames, `a` takes precedence.
+ * Does not free `a` or `b`.
+ * Assumes that both arrays are sorted for the x-position.
+ *
+ * \return The merged BezTriple array of length `r_merged_size`.
+ */
 BezTriple *BKE_bezier_array_merge(
-    BezTriple *a, int size_a, BezTriple *b, int size_b, int *merged_size);
+    const BezTriple *a, int size_a, const BezTriple *b, int size_b, int *r_merged_size);
 
 /**
  * Delete a keyframe from an F-curve at a specific index.
