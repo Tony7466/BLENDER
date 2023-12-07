@@ -15,11 +15,11 @@ struct FCurve;
 
 namespace blender::animrig {
 
-typedef struct KeyframeSettings {
+struct KeyframeSettings {
   eBezTriple_KeyframeType keyframe_type;
   eBezTriple_Handle handle;
   eBezTriple_Interpolation interpolation;
-} KeyframeSettings;
+};
 
 /**
  * Helper function to generate the KeyframeSettings struct.

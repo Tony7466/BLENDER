@@ -21,9 +21,11 @@ namespace blender::animrig {
 
 KeyframeSettings get_keyframe_settings(const bool from_userprefs)
 {
-  KeyframeSettings settings = {.keyframe_type = BEZT_KEYTYPE_KEYFRAME,
-                               .handle = HD_AUTO_ANIM,
-                               .interpolation = BEZT_IPO_BEZ};
+  KeyframeSettings settings = {};
+  settings.keyframe_type = BEZT_KEYTYPE_KEYFRAME;
+  settings.handle = HD_AUTO_ANIM;
+  settings.interpolation = BEZT_IPO_BEZ;
+
   if (from_userprefs) {
     settings.interpolation = eBezTriple_Interpolation(U.ipo_new);
     settings.handle = eBezTriple_Handle(U.keyhandles_new);
