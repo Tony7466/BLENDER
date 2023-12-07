@@ -1734,16 +1734,26 @@ BezTriple *BKE_bezier_array_merge(
   int iterator_b = 0;
   *r_merged_size = 0;
 
+  /* For comparing if keyframes are at the same x-value. */
+  const int max_ulps = 32;
+
   while (iterator_a < size_a || iterator_b < size_b) {
     if (iterator_a >= size_a) {
-      memcpy(&large_array[*r_merged_size], &b[iterator_b], sizeof(BezTriple));
-      iterator_b++;
+      const int remaining_keys = size_b - iterator_b;
+      memcpy(&large_array[*r_merged_size], &b[iterator_b], sizeof(BezTriple) * remaining_keys);
+      (*r_merged_size) += remaining_keys;
+      break;
     }
-    else if (iterator_b >= size_b) {
-      memcpy(&large_array[*r_merged_size], &a[iterator_a], sizeof(BezTriple));
-      iterator_a++;
+    if (iterator_b >= size_b) {
+      const int remaining_keys = size_a - iterator_a;
+      memcpy(&large_array[*r_merged_size], &a[iterator_a], sizeof(BezTriple) * remaining_keys);
+      (*r_merged_size) += remaining_keys;
+      break;
     }
-    else if (a[iterator_a].vec[1][0] == b[iterator_b].vec[1][0]) {
+
+    if (compare_ff_relative(
+            a[iterator_a].vec[1][0], b[iterator_b].vec[1][0], BEZT_BINARYSEARCH_THRESH, max_ulps))
+    {
       memcpy(&large_array[*r_merged_size], &a[iterator_a], sizeof(BezTriple));
       iterator_a++;
       iterator_b++;
