@@ -167,7 +167,7 @@ void horizon_scan_context_sample_finish(
   vec3 sample_radiance = horizon_scan_sample_radiance(sample_uv);
   /* Take emitter surface normal into consideration. */
   vec3 sample_normal = horizon_scan_sample_normal(sample_uv);
-  /* Discard backfacing samples.
+  /* Discard back-facing samples.
    * The paper suggests a smooth test which is not physically correct since we
    * already consider the sample reflected radiance.
    * Set the weight to allow energy conservation. If we modulate the radiance, we loose energy. */
@@ -207,9 +207,8 @@ void horizon_scan_context_slice_finish(inout HorizonScanContext context)
 {
 #ifdef HORIZON_OCCLUSION
   float occlusion = horizon_scan_bitmask_to_occlusion_cosine(context.occlusion_common.bitmask);
-  /* Replace light by occlusion. Should eliminate any reference to the radiance texture fetch */
-  context.occlusion_common.light_slice = vec3(occlusion);
-  horizon_scan_context_slice_finish(context.occlusion_common);
+  context.occlusion_common.light_accum += vec4(occlusion) * context.occlusion_common.N_length;
+  context.occlusion_common.weight_accum += context.occlusion_common.N_length;
 #endif
 #ifdef HORIZON_DIFFUSE
   horizon_scan_context_slice_finish(context.diffuse_common);

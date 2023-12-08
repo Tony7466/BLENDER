@@ -14,6 +14,7 @@ MapUVOperation::MapUVOperation()
   alpha_ = 0.0f;
   nearest_neighbour_ = false;
   flags_.complex = true;
+  flags_.can_be_constant = true;
   set_canvas_input_index(UV_INPUT_INDEX);
 
   inputUVProgram_ = nullptr;
