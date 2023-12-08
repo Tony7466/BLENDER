@@ -1,1 +1,2 @@
 Referenced by issue #108763, bpy.context.temp_override - TypeError: Area not found in screen
+Referenced by commit 328d5bcc3cad55f0c871d503fa53a9cdd29358a3, Fix Context.temp_override(..) use with temporary screens
