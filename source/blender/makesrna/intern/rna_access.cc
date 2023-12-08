@@ -4709,6 +4709,7 @@ static int rna_raw_access(ReportList *reports,
                   break;
                 }
                 default:
+                  BLI_assert_unreachable();
                   break;
               }
             }
@@ -4735,6 +4736,7 @@ static int rna_raw_access(ReportList *reports,
                   break;
                 }
                 default:
+                  BLI_assert_unreachable();
                   break;
               }
             }
@@ -4779,6 +4781,7 @@ static int rna_raw_access(ReportList *reports,
                   break;
                 }
                 default:
+                  BLI_assert_unreachable();
                   break;
               }
             }
@@ -4809,6 +4812,7 @@ static int rna_raw_access(ReportList *reports,
                   break;
                 }
                 default:
+                  BLI_assert_unreachable();
                   break;
               }
             }
@@ -4832,6 +4836,7 @@ static int rna_raw_access(ReportList *reports,
                   break;
                 }
                 default:
+                  BLI_assert_unreachable();
                   break;
               }
             }
@@ -4853,6 +4858,7 @@ static int rna_raw_access(ReportList *reports,
                   break;
                 }
                 default:
+                  BLI_assert_unreachable();
                   break;
               }
             }
