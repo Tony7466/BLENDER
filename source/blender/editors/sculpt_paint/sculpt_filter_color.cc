@@ -81,7 +81,7 @@ static void color_filter_task(Object *ob,
   SculptSession *ss = ob->sculpt;
 
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COLOR);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, SculptUndoType::Color);
 
   AutomaskingNodeData automask_data;
   SCULPT_automasking_node_begin(ob, ss->filter_cache->automasking, &automask_data, node);
@@ -292,9 +292,10 @@ static void sculpt_color_filter_apply(bContext *C, wmOperator *op, Object *ob)
 
 static void sculpt_color_filter_end(bContext *C, Object *ob)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
-  SCULPT_undo_push_end(ob);
+  undo::push_end(ob);
   SCULPT_filter_cache_free(ss);
   SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COLOR);
 }
@@ -324,6 +325,7 @@ static int sculpt_color_filter_modal(bContext *C, wmOperator *op, const wmEvent 
 
 static int sculpt_color_filter_init(bContext *C, wmOperator *op)
 {
+  using namespace blender::ed::sculpt_paint;
   Object *ob = CTX_data_active_object(C);
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   SculptSession *ss = ob->sculpt;
@@ -351,7 +353,7 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  SCULPT_undo_push_begin(ob, op);
+  undo::push_begin(ob, op);
   BKE_sculpt_color_layer_create_if_needed(ob);
 
   /* CTX_data_ensure_evaluated_depsgraph should be used at the end to include the updates of
@@ -362,7 +364,7 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
   SCULPT_filter_cache_init(C,
                            ob,
                            sd,
-                           SCULPT_UNDO_COLOR,
+                           SculptUndoType::Color,
                            mval_fl,
                            RNA_float_get(op->ptr, "area_normal_radius"),
                            RNA_float_get(op->ptr, "strength"));

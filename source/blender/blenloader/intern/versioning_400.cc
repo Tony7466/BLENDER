@@ -65,7 +65,7 @@
 #include "SEQ_sequencer.hh"
 
 #include "ANIM_armature_iter.hh"
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include "ED_armature.hh"
 
@@ -328,7 +328,7 @@ static void versioning_eevee_shadow_settings(Object *object)
 static void versioning_replace_splitviewer(bNodeTree *ntree)
 {
   /* Split viewer was replaced with a regular split node, so add a viewer node,
-   * and link it to the new split node to achive the same behavior of the split viewer node. */
+   * and link it to the new split node to achieve the same behavior of the split viewer node. */
 
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
     if (node->type != CMP_NODE_SPLITVIEWER__DEPRECATED) {
@@ -1001,7 +1001,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
           *version_cycles_node_socket_float_value(mul_socket_B) = *detail;
 
           if (noise_type == SHD_NOISE_MULTIFRACTAL) {
-            /* Add Add Math node after Multiply Math node. */
+            /* Add an Add Math node after Multiply Math node. */
 
             bNode *add_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
             add_node->parent = node->parent;
@@ -1788,16 +1788,6 @@ static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_p
   }
 }
 
-static void version_ensure_opaque_bone_colors_recursive(Bone *bone)
-{
-  bone->color.custom.solid[3] = 255;
-  bone->color.custom.select[3] = 255;
-  bone->color.custom.active[3] = 255;
-  LISTBASE_FOREACH (Bone *, child_bone, &bone->childbase) {
-    version_ensure_opaque_bone_colors_recursive(child_bone);
-  }
-}
-
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -2564,9 +2554,11 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Prevent custom bone colors from having alpha zero.
      * Part of the fix for issue #115434. */
     LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
-      LISTBASE_FOREACH (Bone *, bone, &arm->bonebase) {
-        version_ensure_opaque_bone_colors_recursive(bone);
-      }
+      blender::animrig::ANIM_armature_foreach_bone(&arm->bonebase, [](Bone *bone) {
+        bone->color.custom.solid[3] = 255;
+        bone->color.custom.select[3] = 255;
+        bone->color.custom.active[3] = 255;
+      });
       if (arm->edbo) {
         LISTBASE_FOREACH (EditBone *, ebone, arm->edbo) {
           ebone->color.custom.solid[3] = 255;

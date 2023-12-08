@@ -24,6 +24,7 @@
 #include "BLI_utildefines_stack.h"
 #include "BLI_vector.hh"
 
+#include "BKE_attribute.h"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_deform.h"
@@ -55,7 +56,7 @@
 
 #include "UI_resources.hh"
 
-#include "bmesh_tools.h"
+#include "bmesh_tools.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"

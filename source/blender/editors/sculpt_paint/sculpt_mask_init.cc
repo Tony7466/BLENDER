@@ -34,7 +34,7 @@
 
 #include "sculpt_intern.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include <cmath>
 #include <cstdlib>
@@ -48,40 +48,16 @@ enum eSculptMaskInitMode {
   SCULPT_MASK_INIT_RANDOM_PER_LOOSE_PART,
 };
 
-static EnumPropertyItem prop_sculpt_mask_init_mode_types[] = {
-    {
-        SCULPT_MASK_INIT_RANDOM_PER_VERTEX,
-        "RANDOM_PER_VERTEX",
-        0,
-        "Random per Vertex",
-        "",
-    },
-    {
-        SCULPT_MASK_INIT_RANDOM_PER_FACE_SET,
-        "RANDOM_PER_FACE_SET",
-        0,
-        "Random per Face Set",
-        "",
-    },
-    {
-        SCULPT_MASK_INIT_RANDOM_PER_LOOSE_PART,
-        "RANDOM_PER_LOOSE_PART",
-        0,
-        "Random per Loose Part",
-        "",
-    },
-    {0, nullptr, 0, nullptr, nullptr},
-};
-
 static void mask_init_task(Object *ob,
                            const int mode,
                            const int seed,
                            const SculptMaskWriteInfo mask_write,
                            PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   PBVHVertexIter vd;
-  SCULPT_undo_push_node(ob, node, SCULPT_UNDO_MASK);
+  undo::push_node(ob, node, SculptUndoType::Mask);
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     float mask;
     switch (mode) {
@@ -106,6 +82,7 @@ static void mask_init_task(Object *ob,
 static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
 {
   using namespace blender;
+  using namespace blender::ed::sculpt_paint;
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -124,7 +101,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  SCULPT_undo_push_begin(ob, op);
+  undo::push_begin(ob, op);
 
   if (mode == SCULPT_MASK_INIT_RANDOM_PER_LOOSE_PART) {
     SCULPT_topology_islands_ensure(ob);
@@ -141,7 +118,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
 
   multires_stitch_grids(ob);
 
-  SCULPT_undo_push_end(ob);
+  undo::push_end(ob);
 
   BKE_pbvh_update_mask(ss->pbvh);
   SCULPT_tag_update_overlays(C);
@@ -160,10 +137,16 @@ void SCULPT_OT_mask_init(wmOperatorType *ot)
   ot->poll = SCULPT_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-  RNA_def_enum(ot->srna,
-               "mode",
-               prop_sculpt_mask_init_mode_types,
-               SCULPT_MASK_INIT_RANDOM_PER_VERTEX,
-               "Mode",
-               "");
+
+  static EnumPropertyItem modes[] = {
+      {SCULPT_MASK_INIT_RANDOM_PER_VERTEX, "RANDOM_PER_VERTEX", 0, "Random per Vertex", ""},
+      {SCULPT_MASK_INIT_RANDOM_PER_FACE_SET, "RANDOM_PER_FACE_SET", 0, "Random per Face Set", ""},
+      {SCULPT_MASK_INIT_RANDOM_PER_LOOSE_PART,
+       "RANDOM_PER_LOOSE_PART",
+       0,
+       "Random per Loose Part",
+       ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  RNA_def_enum(ot->srna, "mode", modes, SCULPT_MASK_INIT_RANDOM_PER_VERTEX, "Mode", "");
 }
