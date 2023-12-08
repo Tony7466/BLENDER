@@ -8,11 +8,20 @@
  * \brief Functions to modify FCurves.
  */
 
+#include "BLI_math_vector_types.hh"
 #include "DNA_anim_types.h"
 struct AnimData;
 struct FCurve;
 
 namespace blender::animrig {
+
+/** Initialize the given BezTriple with default values. */
+void initialize_bezt(BezTriple *beztr,
+                     float2 position,
+                     eBezTriple_KeyframeType keyframe_type,
+                     eInsertKeyFlags flag,
+                     eFCurve_Flags fcu_flags);
+
 /**
  * \note The caller needs to run #BKE_nla_tweakedit_remap to get NLA relative frame.
  *       The caller should also check #BKE_fcurve_is_protected before keying.
@@ -52,7 +61,9 @@ int insert_bezt_fcurve(FCurve *fcu, const BezTriple *bezt, eInsertKeyFlags flag)
  * \param flag: Optional flags (#eInsertKeyFlags) for controlling how keys get added
  * and/or whether updates get done.
  */
-int insert_vert_fcurve(
-    FCurve *fcu, float x, float y, eBezTriple_KeyframeType keyframe_type, eInsertKeyFlags flag);
+int insert_vert_fcurve(FCurve *fcu,
+                       const float2 position,
+                       eBezTriple_KeyframeType keyframe_type,
+                       eInsertKeyFlags flag);
 
 }  // namespace blender::animrig

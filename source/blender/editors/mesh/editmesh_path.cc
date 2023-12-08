@@ -14,16 +14,16 @@
 #include "DNA_windowmanager_types.h"
 
 #ifdef WITH_FREESTYLE
-#  include "BKE_customdata.h"
+#  include "BKE_customdata.hh"
 #  include "DNA_meshdata_types.h"
 #endif
 
 #include "BLI_linklist.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_context.h"
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_report.h"
 
@@ -40,8 +40,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "bmesh.h"
-#include "bmesh_tools.h"
+#include "bmesh.hh"
+#include "bmesh_tools.hh"
 
 #include "DEG_depsgraph.hh"
 

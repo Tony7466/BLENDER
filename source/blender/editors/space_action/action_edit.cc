@@ -32,7 +32,7 @@
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
@@ -862,7 +862,7 @@ static void insert_fcurve_key(bAnimContext *ac,
 
     const float curval = evaluate_fcurve(fcu, cfra);
     blender::animrig::insert_vert_fcurve(
-        fcu, cfra, curval, eBezTriple_KeyframeType(ts->keyframe_type), eInsertKeyFlags(0));
+        fcu, {cfra, curval}, eBezTriple_KeyframeType(ts->keyframe_type), eInsertKeyFlags(0));
   }
 
   ale->update |= ANIM_UPDATE_DEFAULT;

@@ -16,15 +16,15 @@
 
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 
-#include "bmesh.h"
-#include "bmesh_tools.h"
+#include "bmesh.hh"
+#include "bmesh_tools.hh"
 
 #include "DEG_depsgraph.hh"
 

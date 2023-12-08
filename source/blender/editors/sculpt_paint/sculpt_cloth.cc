@@ -22,12 +22,12 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BKE_ccg.h"
 #include "BKE_collision.h"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
-#include "BKE_modifier.h"
+#include "BKE_context.hh"
+#include "BKE_modifier.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -49,12 +49,13 @@
 
 #include "UI_interface.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
 
+using blender::Span;
 using blender::Vector;
 
 static void cloth_brush_simulation_location_get(SculptSession *ss,
@@ -1470,7 +1471,7 @@ static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent 
 
   SCULPT_vertex_random_access_ensure(ss);
 
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
   const int totverts = SCULPT_vertex_count_get(ss);
 
@@ -1521,7 +1522,7 @@ static int sculpt_cloth_filter_invoke(bContext *C, wmOperator *op, const wmEvent
   SCULPT_vertex_random_access_ensure(ss);
 
   /* Needs mask data to be available as it is used when solving the constraints. */
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
   SCULPT_stroke_id_next(ob);
 
@@ -1529,7 +1530,7 @@ static int sculpt_cloth_filter_invoke(bContext *C, wmOperator *op, const wmEvent
   SCULPT_filter_cache_init(C,
                            ob,
                            sd,
-                           SCULPT_UNDO_COORDS,
+                           SculptUndoType::Position,
                            mval_fl,
                            RNA_float_get(op->ptr, "area_normal_radius"),
                            RNA_float_get(op->ptr, "strength"));

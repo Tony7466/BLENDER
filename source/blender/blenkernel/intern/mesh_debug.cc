@@ -23,7 +23,7 @@
 
 #  include "BLI_utildefines.h"
 
-#  include "BKE_customdata.h"
+#  include "BKE_customdata.hh"
 
 #  include "BKE_mesh.hh"
 
@@ -82,4 +82,4 @@ void BKE_mesh_debug_print(const Mesh *me)
   MEM_freeN(str);
 }
 
-#endif /* NDEBUG */
+#endif /* !NDEBUG */

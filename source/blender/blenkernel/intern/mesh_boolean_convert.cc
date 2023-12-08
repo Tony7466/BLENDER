@@ -6,12 +6,14 @@
  * \ingroup bke
  */
 
+#include <iostream>
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_boolean_convert.hh"
@@ -314,8 +316,8 @@ static IMesh meshes_to_imesh(Span<const Mesh *> meshes,
     /* Allocate verts
      * Skip the matrix multiplication for each point when there is no transform for a mesh,
      * for example when the first mesh is already in the target space. (Note the logic
-     * directly above, which uses an identity matrix with a null input transform). */
-    if (obmats.is_empty() || obmats[mi] == float4x4::identity()) {
+     * directly above, which uses an identity matrix with an empty input transform). */
+    if (obmats.is_empty() || r_info->to_target_transform[mi] == float4x4::identity()) {
       threading::parallel_for(vert_positions.index_range(), 2048, [&](IndexRange range) {
         for (int i : range) {
           float3 co = vert_positions[i];

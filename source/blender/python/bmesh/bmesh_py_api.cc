@@ -12,7 +12,7 @@
 
 #include "BLI_utildefines.h"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include "bmesh_py_types.h"
 #include "bmesh_py_types_customdata.h"
@@ -23,7 +23,7 @@
 #include "bmesh_py_ops.h"
 #include "bmesh_py_utils.h"
 
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 
 #include "DNA_mesh_types.h"
 
