@@ -2814,6 +2814,15 @@ typedef enum GeometryNodeGridNeighborTopology {
   GEO_NODE_GRID_NEIGHBOR_FACE_EDGE_VERTEX = 2,
 } GeometryNodeGridNeighborTopology;
 
+typedef enum GeometryNodeGridFilterOperation {
+  GEO_NODE_GRID_FILTER_MEAN = 0,
+  GEO_NODE_GRID_FILTER_GAUSSIAN = 1,
+  GEO_NODE_GRID_FILTER_MEDIAN = 2,
+  GEO_NODE_GRID_FILTER_OFFSET = 3,
+  GEO_NODE_GRID_FILTER_LAPLACIAN = 4,
+  GEO_NODE_GRID_FILTER_MEAN_CURVATURE = 5,
+} GeometryNodeGridFilterOperation;
+
 typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_RGB = 0,
   NODE_COMBSEP_COLOR_HSV = 1,

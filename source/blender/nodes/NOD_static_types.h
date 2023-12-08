@@ -338,6 +338,8 @@ DefNode(GeometryNode, GEO_NODE_FLIP_FACES, 0, "FLIP_FACES", FlipFaces, "Flip Fac
 DefNode(GeometryNode, GEO_NODE_GEOMETRY_TO_INSTANCE, 0, "GEOMETRY_TO_INSTANCE", GeometryToInstance, "Geometry to Instance", "Convert each input geometry into an instance, which can be much faster than the Join Geometry node when the inputs are large")
 DefNode(GeometryNode, GEO_NODE_GET_NAMED_GRID, 0, "GET_NAMED_GRID", GetNamedGrid, "Get Named Grid", "Get grid data from a volume geometry with the specified name")
 DefNode(GeometryNode, GEO_NODE_GRID_CAPTURE, 0, "GRID_CAPTURE", GridCapture, "Capture Grid", "Evaluate the input field for every voxel of the topology grid and store values in a new grid")
+DefNode(GeometryNode, GEO_NODE_GRID_FILTER, 0, "GRID_FILTER", GridFilter, "Filter", "Perform a filtering operation on a grid")
+DefNode(GeometryNode, GEO_NODE_GRID_LEVEL_SET_FILTER, 0, "GRID_LEVEL_SET_FILTER", GridLevelSetFilter, "Level Set Filter", "Perform a filtering operation on a level set grid with surface tracking")
 DefNode(GeometryNode, GEO_NODE_GRID_POISSON_SOLVER, 0, "GRID_POISSON_SOLVER", GridPoissonSolver, "Grid Poisson Solver", "Solve a Poisson equation on a grid")
 DefNode(GeometryNode, GEO_NODE_IMAGE_INFO, 0, "IMAGE_INFO", ImageInfo, "Image Info", "Retrieve information about an image")
 DefNode(GeometryNode, GEO_NODE_IMAGE_TEXTURE, def_geo_image_texture, "IMAGE_TEXTURE", ImageTexture, "Image Texture", "Sample values from an image texture")
