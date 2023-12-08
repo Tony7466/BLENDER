@@ -4397,6 +4397,15 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
       }
     }
 
+    bool replace;
+    const int last_index = BKE_fcurve_bezt_binarysearch_index(
+        fcu->bezt, nla_mapped_range[1], fcu->totvert, &replace);
+
+    /* Since the interpolation of a key defines the curve following it, the last key in the baked
+     * segment needs to keep the interpolation mode that existed previously so the curve isn't
+     * changed. */
+    const char segment_end_interpolation = fcu->bezt[min_ii(last_index, fcu->totvert - 1)].ipo;
+
     bake_fcurve(fcu, nla_mapped_range, step, remove_existing);
 
     if (bake_modifiers) {
@@ -4416,6 +4425,7 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
         continue;
       }
       if (key->vec[1][0] > nla_mapped_range[1]) {
+        fcu->bezt[max_ii(i - 1, 0)].ipo = segment_end_interpolation;
         break;
       }
       key->ipo = interpolation_type;
