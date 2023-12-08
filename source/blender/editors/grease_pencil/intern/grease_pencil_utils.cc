@@ -205,9 +205,7 @@ IndexMask retrieve_editable_strokes(Object &object,
     if (locked_material_indices.contains(0)) {
       return curves_range;
     }
-    else {
-      return IndexMask();
-    }
+    return IndexMask();
   }
   /* Get all the strokes that have their material unlocked. */
   return IndexMask::from_predicate(
@@ -239,9 +237,7 @@ IndexMask retrieve_editable_points(Object &object,
     if (locked_material_indices.contains(0)) {
       return points_range;
     }
-    else {
-      return IndexMask();
-    }
+    return IndexMask();
   }
   /* Get all the points that are part of a stroke with an unlocked material. */
   return IndexMask::from_predicate(
