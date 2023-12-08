@@ -803,6 +803,11 @@ mark_as_advanced(
   WITH_RENDERDOC
 )
 
+# Shader Validation
+if(APPLE)
+  set(WITH_GPU_BUILDTIME_SHADER_BUILDER ON)
+endif()
+
 # OpenGL
 if(NOT APPLE)
   option(WITH_OPENGL_BACKEND "Enable OpenGL support as graphic backend" ON)
