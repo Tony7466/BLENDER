@@ -326,7 +326,6 @@ static void get_render_result_textures(RenderEngine *engine,
                                        RenderLayer *render_layer,
                                        const draw::View &view,
                                        const int2 render_resolution,
-                                       const bool do_region,
                                        draw::Texture &r_color_tx,
                                        draw::Texture &r_depth_tx)
 {
@@ -367,27 +366,12 @@ static void get_render_result_textures(RenderEngine *engine,
     }
   }
 
-  const bool do_clear_z = !pix_z || do_region;
-  const bool do_clear_col = !pix_col || do_region;
-
-  const eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
-
   /* FIXME(fclem): we have a precision loss in the depth buffer because of this re-upload.
    * Find where it comes from! */
-  /* In multi view render the textures can be reused. */
-  if (r_depth_tx.is_valid() && !do_clear_z) {
-    GPU_texture_update(r_depth_tx, GPU_DATA_FLOAT, pix_z);
-  }
-  else {
-    r_depth_tx.ensure_2d(
-        GPU_DEPTH_COMPONENT24, render_resolution, usage, do_region ? nullptr : pix_z);
-  }
-  if (r_color_tx.is_valid() && !do_clear_col) {
-    GPU_texture_update(r_color_tx, GPU_DATA_FLOAT, pix_col);
-  }
-  else {
-    r_color_tx.ensure_2d(GPU_RGBA16F, render_resolution, usage, do_region ? nullptr : pix_col);
-  }
+  /* TODO: In multi view render the textures can be reused. */
+  const eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
+  r_depth_tx.ensure_2d(GPU_DEPTH_COMPONENT24, render_resolution, usage, pix_z);
+  r_color_tx.ensure_2d(GPU_RGBA16F, render_resolution, usage, pix_col);
 }
 
 static void gpencil_render_to_image(void * /*vedata*/,
@@ -404,7 +388,6 @@ static void gpencil_render_to_image(void * /*vedata*/,
   Object *camera_original_ob = RE_GetCamera(render);
   const char *viewname = RE_GetActiveRenderView(render);
   const int2 render_resolution = int2(engine->resolution_x, engine->resolution_y);
-  const bool do_region = (scene->r.mode & R_BORDER) != 0;
 
   instance.init(depsgraph, &manager, nullptr, nullptr, nullptr);
 
@@ -419,8 +402,9 @@ static void gpencil_render_to_image(void * /*vedata*/,
 
   draw::Texture color_tx;
   draw::Texture depth_tx;
+  /* TODO: Support `R_BORDER` render mode. */
   get_render_result_textures(
-      engine, render_layer, instance.view(), render_resolution, do_region, color_tx, depth_tx);
+      engine, render_layer, instance.view(), render_resolution, color_tx, depth_tx);
 
   instance.draw(color_tx, depth_tx, render_resolution);
 
