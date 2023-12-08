@@ -527,7 +527,9 @@ class CryptoMatteOperation : public NodeOperation {
         /* We are only interested in passes of the current view. Except if the current view is
          * unnamed, that is, in the case of mono rendering, in which case we just return the first
          * view. */
-        if (context().get_view_name()[0] && context().get_view_name() != render_pass->view) {
+        if (!context().get_view_name().is_empty() &&
+            context().get_view_name() != render_pass->view)
+        {
           continue;
         }
 
