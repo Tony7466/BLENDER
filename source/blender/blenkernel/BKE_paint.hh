@@ -200,16 +200,16 @@ void BKE_paint_curve_set(Brush *br, PaintCurve *pc);
 void BKE_paint_curve_clamp_endpoint_add_index(PaintCurve *pc, int add_index);
 
 /**
- * Return true when in vertex/weight/texture paint + face-select mode?
+ * Return true when in vertex/weight/texture paint + face-select mode.
  */
 bool BKE_paint_select_face_test(const Object *ob);
 /**
- * Return true when in vertex/weight paint + vertex-select mode?
+ * Return true when in vertex/weight paint + vertex-select mode.
  */
 bool BKE_paint_select_vert_test(const Object *ob);
-// /**
-//  * Return true when in weight paint + bone-select mode?
-//  */
+/**
+ * Return true when in weight paint + bone-select mode.
+ */
 bool BKE_paint_select_bone_test(const Object *ob);
 
 /**
