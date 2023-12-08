@@ -77,6 +77,8 @@ void ED_screen_draw_edges(wmWindow *win)
     GPU_flush();
   }
 
+  GPU_blend(GPU_BLEND_ALPHA);
+
   float color[4];
   UI_GetThemeColor4fv(TH_EDITOR_OUTLINE, color);
 
@@ -89,9 +91,29 @@ void ED_screen_draw_edges(wmWindow *win)
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
     drawscredge_area_edges(pos, area);
   }
+
+  int topbar_padding = int(ceilf(6.0 * UI_SCALE_FAC));
+  int topbar_tab_pad = topbar_padding - U.pixelsize;
+
+  bTheme *btheme = UI_GetTheme();
+  immUniformColor4ubv(btheme->tui.wcol_tab.inner_sel);
+
+  LISTBASE_FOREACH (ScrArea *, area, &win->global_areas.areabase) {
+    if (area->spacetype == SPACE_TOPBAR) {
+      immRecti(pos,
+               area->totrct.xmin,
+               area->totrct.ymin + U.pixelsize + 1,
+               area->totrct.xmax,
+               area->totrct.ymin + U.pixelsize + U.pixelsize + topbar_tab_pad);
+      break;
+    }
+  }
+
+  immUniformColor4f(1.0f, 1.0f, 1.0f, 0.1f);
+  immRecti(pos, 0, 0, 1, win->sizey);
+
   immUnbindProgram();
 
-  GPU_blend(GPU_BLEND_ALPHA);
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
   int corners;
 
