@@ -212,10 +212,11 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
 
       if (version_st[0]) {
         UI_tooltip_text_field_add(tip,
-                                  BLI_sprintfN("Blender: %s", version_st),
+                                  BLI_sprintfN("Blender %s", version_st),
                                   nullptr,
                                   UI_TIP_STYLE_NORMAL,
                                   UI_TIP_LC_NORMAL);
+        UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
       }
     }
     else if (file->typeflag & FILE_TYPE_IMAGE) {
@@ -233,10 +234,11 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
         {
           UI_tooltip_text_field_add(
               tip,
-              BLI_sprintfN("%s: %s \u00D7 %s", N_("Dimensions"), value1, value2),
+              BLI_sprintfN("%s \u00D7 %s", value1, value2),
               nullptr,
               UI_TIP_STYLE_NORMAL,
               UI_TIP_LC_NORMAL);
+          UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
         }
       }
     }
@@ -256,7 +258,7 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
         {
           UI_tooltip_text_field_add(
               tip,
-              BLI_sprintfN("%s: %s \u00D7 %s", N_("Dimensions"), value1, value2),
+              BLI_sprintfN("%s \u00D7 %s", value1, value2),
               nullptr,
               UI_TIP_STYLE_NORMAL,
               UI_TIP_LC_NORMAL);
@@ -267,25 +269,18 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
             IMB_metadata_get_field(
                 thumb->metadata, "Thumb::Video::Duration", value3, sizeof(value3)))
         {
+          UI_tooltip_text_field_add(
+              tip,
+              BLI_sprintfN("%s %s @ %s %s", value1, N_("Frames"), value2, N_("FPS")),
+              nullptr,
+              UI_TIP_STYLE_NORMAL,
+              UI_TIP_LC_NORMAL);
           UI_tooltip_text_field_add(tip,
-                                    BLI_sprintfN("%s: %s @ %s %s (%s %s)",
-                                                 N_("Frames"),
-                                                 value1,
-                                                 value2,
-                                                 N_("FPS"),
-                                                 value3,
-                                                 N_("seconds")),
+                                    BLI_sprintfN("%s %s", value3, N_("seconds")),
                                     nullptr,
                                     UI_TIP_STYLE_NORMAL,
                                     UI_TIP_LC_NORMAL);
-        }
-        if (IMB_metadata_get_field(thumb->metadata, "Thumb::Video::Codec", value1, sizeof(value1)))
-        {
-          UI_tooltip_text_field_add(tip,
-                                    BLI_sprintfN("%s: %s", N_("Codec"), value1),
-                                    nullptr,
-                                    UI_TIP_STYLE_NORMAL,
-                                    UI_TIP_LC_NORMAL);
+          UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
         }
       }
     }
@@ -298,24 +293,36 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
     if (is_today || is_yesterday) {
       day_string = (is_today ? N_("Today") : N_("Yesterday")) + std::string(" ");
     }
-    UI_tooltip_text_field_add(
-        tip,
-        BLI_sprintfN("%s: %s%s %s", N_("Modified"), day_string.c_str(), date_st, time_st),
-        nullptr,
-        UI_TIP_STYLE_NORMAL,
-        UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(tip,
+                              BLI_sprintfN("%s: %s%s%s",
+                                           N_("Modified"),
+                                           day_string.c_str(),
+                                           (is_today || is_yesterday) ? "" : date_st,
+                                           (is_today || is_yesterday) ? time_st : ""),
+                              nullptr,
+                              UI_TIP_STYLE_NORMAL,
+                              UI_TIP_LC_NORMAL);
 
     if (!(file->typeflag & FILE_TYPE_DIR) && file->size > 0) {
       char size[16];
-      char size_full[16];
       BLI_filelist_entry_size_to_string(NULL, file->size, false, size);
-      BLI_str_format_uint64_grouped(size_full, file->size);
-      UI_tooltip_text_field_add(
-          tip,
-          BLI_sprintfN("%s: %s (%s %s)", N_("Size"), size, size_full, N_("bytes")),
-          nullptr,
-          UI_TIP_STYLE_NORMAL,
-          UI_TIP_LC_NORMAL);
+      if (file->size < 10000) {
+        char size_full[16];
+        BLI_str_format_uint64_grouped(size_full, file->size);
+        UI_tooltip_text_field_add(
+            tip,
+            BLI_sprintfN("%s: %s (%s %s)", N_("Size"), size, size_full, N_("bytes")),
+            nullptr,
+            UI_TIP_STYLE_NORMAL,
+            UI_TIP_LC_NORMAL);
+      }
+      else {
+        UI_tooltip_text_field_add(tip,
+                                  BLI_sprintfN("%s: %s", N_("Size"), size),
+                                  nullptr,
+                                  UI_TIP_STYLE_NORMAL,
+                                  UI_TIP_LC_NORMAL);
+      }
     }
   }
 
