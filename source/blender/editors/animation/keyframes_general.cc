@@ -1281,6 +1281,7 @@ void bake_fcurve(FCurve *fcu,
                  const float step,
                  const BakeCurveRemove remove_existing)
 {
+  using namespace blender::animrig;
   BLI_assert(step > 0);
   const int sample_count = (range[1] - range[0]) / step + 1;
   float *samples = static_cast<float *>(
@@ -1295,11 +1296,12 @@ void bake_fcurve(FCurve *fcu,
   BezTriple *baked_keys = static_cast<BezTriple *>(
       MEM_callocN(sample_count * sizeof(BezTriple), "beztriple"));
 
+  const KeyframeSettings settings = get_keyframe_settings(true);
+
   for (int i = 0; i < sample_count; i++) {
     BezTriple *key = &baked_keys[i];
     blender::float2 key_position = {range[0] + i * step, samples[i]};
-    blender::animrig::initialize_bezt(
-        key, key_position, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST, eFCurve_Flags(fcu->flag));
+    initialize_bezt(key, key_position, settings, eFCurve_Flags(fcu->flag));
   }
 
   int merged_size;
