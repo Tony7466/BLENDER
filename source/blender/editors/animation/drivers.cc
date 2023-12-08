@@ -125,7 +125,7 @@ FCurve *alloc_driver_fcurve(const char rna_path[],
        * - These are configured to 0,0 and 1,1 to give a 1-1 mapping
        *   which can be easily tweaked from there.
        */
-      KeyframeSettings settings = get_keyframe_settings(false);
+      const KeyframeSettings settings = get_keyframe_settings(false);
       insert_vert_fcurve(fcu, {0.0f, 0.0f}, settings, INSERTKEY_FAST);
       insert_vert_fcurve(fcu, {1.0f, 1.0f}, settings, INSERTKEY_FAST);
       fcu->extend = FCURVE_EXTRAPOLATE_LINEAR;

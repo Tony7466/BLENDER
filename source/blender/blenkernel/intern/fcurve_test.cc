@@ -32,8 +32,7 @@ TEST(evaluate_fcurve, OnKeys)
 {
   FCurve *fcu = BKE_fcurve_create();
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   insert_vert_fcurve(fcu, {1.0f, 7.0f}, settings, INSERTKEY_NOFLAGS);
   insert_vert_fcurve(fcu, {2.0f, 13.0f}, settings, INSERTKEY_NOFLAGS);
   insert_vert_fcurve(fcu, {3.0f, 19.0f}, settings, INSERTKEY_NOFLAGS);
@@ -57,8 +56,7 @@ TEST(evaluate_fcurve, InterpolationConstant)
 {
   FCurve *fcu = BKE_fcurve_create();
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   EXPECT_EQ(insert_vert_fcurve(fcu, {1.0f, 7.0f}, settings, INSERTKEY_NOFLAGS), 0);
   EXPECT_EQ(insert_vert_fcurve(fcu, {2.0f, 13.0f}, settings, INSERTKEY_NOFLAGS), 1);
 
@@ -75,8 +73,7 @@ TEST(evaluate_fcurve, InterpolationLinear)
 {
   FCurve *fcu = BKE_fcurve_create();
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   EXPECT_EQ(insert_vert_fcurve(fcu, {1.0f, 7.0f}, settings, INSERTKEY_NOFLAGS), 0);
   EXPECT_EQ(insert_vert_fcurve(fcu, {2.0f, 13.0f}, settings, INSERTKEY_NOFLAGS), 1);
 
@@ -94,8 +91,7 @@ TEST(evaluate_fcurve, InterpolationBezier)
 {
   FCurve *fcu = BKE_fcurve_create();
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   EXPECT_EQ(insert_vert_fcurve(fcu, {1.0f, 7.0f}, settings, INSERTKEY_NOFLAGS), 0);
   EXPECT_EQ(insert_vert_fcurve(fcu, {2.0f, 13.0f}, settings, INSERTKEY_NOFLAGS), 1);
 
@@ -129,8 +125,7 @@ TEST(evaluate_fcurve, InterpolationBounce)
 {
   FCurve *fcu = BKE_fcurve_create();
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   EXPECT_EQ(insert_vert_fcurve(fcu, {1.0f, 7.0f}, settings, INSERTKEY_NOFLAGS), 0);
   EXPECT_EQ(insert_vert_fcurve(fcu, {2.0f, 13.0f}, settings, INSERTKEY_NOFLAGS), 1);
 
@@ -151,8 +146,7 @@ TEST(evaluate_fcurve, ExtrapolationLinearKeys)
 {
   FCurve *fcu = BKE_fcurve_create();
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   EXPECT_EQ(insert_vert_fcurve(fcu, {1.0f, 7.0f}, settings, INSERTKEY_NOFLAGS), 0);
   EXPECT_EQ(insert_vert_fcurve(fcu, {2.0f, 13.0f}, settings, INSERTKEY_NOFLAGS), 1);
   fcu->bezt[0].ipo = BEZT_IPO_LIN;
@@ -182,8 +176,7 @@ TEST(evaluate_fcurve, ExtrapolationBezierKeys)
 {
   FCurve *fcu = BKE_fcurve_create();
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   EXPECT_EQ(insert_vert_fcurve(fcu, {1.0f, 7.0f}, settings, INSERTKEY_NOFLAGS), 0);
   EXPECT_EQ(insert_vert_fcurve(fcu, {2.0f, 13.0f}, settings, INSERTKEY_NOFLAGS), 1);
 
@@ -220,8 +213,7 @@ TEST(fcurve_subdivide, BKE_fcurve_bezt_subdivide_handles)
 {
   FCurve *fcu = BKE_fcurve_create();
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   /* Insert two keyframes and set handles to something non-default. */
   EXPECT_EQ(insert_vert_fcurve(fcu, {1.0f, 0.0f}, settings, INSERTKEY_NOFLAGS), 0);
   EXPECT_EQ(insert_vert_fcurve(fcu, {13.0f, 2.0f}, settings, INSERTKEY_NOFLAGS), 1);
@@ -288,8 +280,7 @@ TEST(fcurve_active_keyframe, ActiveKeyframe)
   /* There should be no active keyframe with no points. */
   EXPECT_EQ(BKE_fcurve_active_keyframe_index(fcu), FCURVE_ACTIVE_KEYFRAME_NONE);
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   /* Check that adding new points sets the active index. */
   EXPECT_EQ(insert_vert_fcurve(fcu, {1.0f, 7.5f}, settings, INSERTKEY_NOFLAGS), 0);
   EXPECT_EQ(BKE_fcurve_active_keyframe_index(fcu), 0);
@@ -343,8 +334,7 @@ TEST(BKE_fcurve, BKE_fcurve_keyframe_move_value_with_handles)
 {
   FCurve *fcu = BKE_fcurve_create();
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   insert_vert_fcurve(fcu, {1.0f, 7.5f}, settings, INSERTKEY_NOFLAGS);
   insert_vert_fcurve(fcu, {8.0f, 15.0f}, settings, INSERTKEY_NOFLAGS);
   insert_vert_fcurve(fcu, {14.0f, 8.2f}, settings, INSERTKEY_NOFLAGS);
@@ -376,8 +366,7 @@ TEST(BKE_fcurve, BKE_fcurve_keyframe_move_time_with_handles)
 {
   FCurve *fcu = BKE_fcurve_create();
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   insert_vert_fcurve(fcu, {1.0f, 7.5f}, settings, INSERTKEY_NOFLAGS);
   insert_vert_fcurve(fcu, {8.0f, 15.0f}, settings, INSERTKEY_NOFLAGS);
   insert_vert_fcurve(fcu, {14.0f, 8.2f}, settings, INSERTKEY_NOFLAGS);
@@ -409,8 +398,7 @@ TEST(BKE_fcurve, BKE_fcurve_calc_range)
 {
   FCurve *fcu = BKE_fcurve_create();
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   insert_vert_fcurve(fcu, {1.0f, 7.5f}, settings, INSERTKEY_NOFLAGS);
   insert_vert_fcurve(fcu, {4.0f, -15.0f}, settings, INSERTKEY_NOFLAGS);
   insert_vert_fcurve(fcu, {8.0f, 15.0f}, settings, INSERTKEY_NOFLAGS);
@@ -463,8 +451,7 @@ TEST(BKE_fcurve, BKE_fcurve_calc_bounds)
 {
   FCurve *fcu = BKE_fcurve_create();
 
-  KeyframeSettings settings = get_keyframe_settings(false);
-
+  const KeyframeSettings settings = get_keyframe_settings(false);
   insert_vert_fcurve(fcu, {1.0f, 7.5f}, settings, INSERTKEY_NOFLAGS);
   insert_vert_fcurve(fcu, {4.0f, -15.0f}, settings, INSERTKEY_NOFLAGS);
   insert_vert_fcurve(fcu, {8.0f, 15.0f}, settings, INSERTKEY_NOFLAGS);

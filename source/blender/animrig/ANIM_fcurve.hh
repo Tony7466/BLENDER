@@ -15,6 +15,7 @@ struct FCurve;
 
 namespace blender::animrig {
 
+/* This is used to pass in the settings for a keyframe into a function. */
 struct KeyframeSettings {
   eBezTriple_KeyframeType keyframe_type;
   eBezTriple_Handle handle;
@@ -23,6 +24,9 @@ struct KeyframeSettings {
 
 /**
  * Helper function to generate the KeyframeSettings struct.
+ *
+ * \param from_userprefs if true read the user preferences for the settings, else return static
+ * defaults.
  */
 KeyframeSettings get_keyframe_settings(bool from_userprefs);
 

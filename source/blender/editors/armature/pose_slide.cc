@@ -1735,7 +1735,7 @@ static void propagate_curve_values(ListBase /*tPChanFCurveLink*/ *pflinks,
                                    ListBase /*FrameLink*/ *target_frames)
 {
   using namespace blender::animrig;
-  KeyframeSettings settings = get_keyframe_settings(true);
+  const KeyframeSettings settings = get_keyframe_settings(true);
   LISTBASE_FOREACH (tPChanFCurveLink *, pfl, pflinks) {
     LISTBASE_FOREACH (LinkData *, ld, &pfl->fcurves) {
       FCurve *fcu = (FCurve *)ld->data;

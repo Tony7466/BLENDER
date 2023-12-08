@@ -306,7 +306,7 @@ void BCAnimationCurve::clean_handles()
     fcurve = get_edit_fcurve();
   }
 
-  KeyframeSettings settings = get_keyframe_settings(true);
+  const KeyframeSettings settings = get_keyframe_settings(true);
 
   /* Keep old bezt data for copy). */
   BezTriple *old_bezts = fcurve->bezt;
@@ -382,7 +382,7 @@ void BCAnimationCurve::adjust_range(const int frame_index)
 void BCAnimationCurve::add_value(const float val, const int frame_index)
 {
   using namespace blender::animrig;
-  KeyframeSettings settings = get_keyframe_settings(true);
+  const KeyframeSettings settings = get_keyframe_settings(true);
   FCurve *fcu = get_edit_fcurve();
   fcu->auto_smoothing = U.auto_smoothing_new;
   insert_vert_fcurve(fcu, {(float)frame_index, val}, settings, INSERTKEY_NOFLAGS);
