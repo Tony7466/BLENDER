@@ -1711,22 +1711,18 @@ static int grease_pencil_clean_loose_exec(bContext* C, wmOperator* op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(scene, grease_pencil);
 
-  threading::parallel_for_each(
-      drawings, [&](MutableDrawingInfo &info) {
-        bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-        if (curves.curves_num() == 0) {
-          return;
-        }
+  threading::parallel_for_each(drawings, [&](MutableDrawingInfo &info) {
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
 
-        IndexMaskMemory memory;
-        const IndexMask curves_to_delete = IndexMask::from_predicate(
-            curves.curves_range(), GrainSize(4096), memory, [&](const int i) {
-              const OffsetIndices<int> points_by_curve =  curves.points_by_curve();
-              return points_by_curve[i].size() <= limit;
-            });
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    IndexMaskMemory memory;
+    const IndexMask curves_to_delete = IndexMask::from_predicate(
+        curves.curves_range(), GrainSize(4096), memory, [&](const int i) {
+          return points_by_curve[i].size() <= limit;
+        });
 
     curves.remove_curves(curves_to_delete);
-    });
+  });
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
