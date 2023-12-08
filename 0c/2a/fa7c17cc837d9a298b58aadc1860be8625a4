@@ -1,4 +1,4 @@
 Referenced by issue #115683, Crash while IK posing
 Referenced by pull request #115788, Fix #115683: Crash with IK constraint
 Referenced by commit f489b843169e2d1aa421011cc341d32d8814edf0, Fix #115683: Crash with IK constraint
-Referenced by issue #115915, Very strange constraint jiggling not present in blender 3.6.3
+Referenced by issue #115915, Very strange constraint jiggling not present in blender 3.6.3 (overlapping IK)
