@@ -80,11 +80,9 @@ class GLFrameBuffer : public FrameBuffer {
 
   /* Attachment load-stores are currently no-op's in OpenGL. */
   void attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore ls) override;
-  void config(const GPUAttachment *config, int config_len) override;
+  void config(const GPUAttachment * /* config*/, int /*config_len*/) override{};
   void subpass_transition(const GPUAttachmentState depth_attachment_state,
                           Span<GPUAttachmentState> color_attachment_states) override;
-  void attachment_set(GPUAttachmentType type,
-                      const GPUAttachment &new_attachment) override;
 
   void read(eGPUFrameBufferBits planes,
             eGPUDataFormat format,

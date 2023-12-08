@@ -133,8 +133,7 @@ class FrameBuffer {
 
   virtual void subpass_transition(const GPUAttachmentState depth_attachment_state,
                                   Span<GPUAttachmentState> color_attachment_states) = 0;
-  virtual void attachment_set(GPUAttachmentType type,
-                              const GPUAttachment &new_attachment) = 0;
+  void attachment_set(GPUAttachmentType type, const GPUAttachment &new_attachment);
   void load_store_config_array(const GPULoadStore *load_store_actions, uint actions_len);
 
   void attachment_remove(GPUAttachmentType type);

@@ -236,23 +236,23 @@ void VKFrameBuffer::config(const GPUAttachment *config, int config_len)
 
   GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0;
   for (const GPUAttachment &attachment : color_attachments) {
-    attachment_set(type, attachment);
+    config_attachment_set(type, attachment);
     ++type;
   }
 
   if (depth_attachment.mip == -1) {
     /* GPU_ATTACHMENT_LEAVE */
-    attachment_set(GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_attachment);
+    config_attachment_set(GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_attachment);
   }
   else if (depth_attachment.tex == nullptr) {
     /* GPU_ATTACHMENT_NONE: Need to clear both targets. */
-    attachment_set(GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_attachment);
+    config_attachment_set(GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_attachment);
   }
   else {
     GPUAttachmentType type = GPU_texture_has_stencil_format(depth_attachment.tex) ?
                                  GPU_FB_DEPTH_STENCIL_ATTACHMENT :
                                  GPU_FB_DEPTH_ATTACHMENT;
-    attachment_set(type, depth_attachment);
+    config_attachment_set(type, depth_attachment);
   }
 }
 
@@ -270,8 +270,8 @@ void VKFrameBuffer::subpass_transition(const GPUAttachmentState /*depth_attachme
 
 /** \} */
 
-void VKFrameBuffer::attachment_set(GPUAttachmentType type,
-                                   const GPUAttachment &new_attachment)
+void VKFrameBuffer::config_attachment_set(GPUAttachmentType type,
+                                          const GPUAttachment &new_attachment)
 {
   if (new_attachment.mip == -1) {
     return; /* GPU_ATTACHMENT_LEAVE */
