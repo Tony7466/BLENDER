@@ -347,16 +347,6 @@ void CustomData_copy_elements(eCustomDataType type,
                               int count);
 
 /**
- * Copy one custom data block to another, accounting for differing layer
- * layouts between the two.
- * \note For better performance when copying more than one block,
- * #CustomData_bmesh_copy_block_with_map can be used with a precalculated map.
- * */
-void CustomData_bmesh_copy_block(const CustomData *source,
-                                 CustomData *dest,
-                                 void *src_block,
-                                 void **dest_block);
-/**
  * Copy all layers from the source to the destination block.
  * Allocate the result block if necessary, otherwise free its existing layer data.
  */
@@ -398,10 +388,14 @@ BMCustomDataCopyMap CustomData_bmesh_copy_map_calc(const CustomData &src,
                                                    const CustomData &dst,
                                                    eCustomDataMask mask_exclude = 0);
 
-void CustomData_bmesh_copy_block_with_map(CustomData &dst_data,
-                                          const BMCustomDataCopyMap &map,
-                                          const void *src_block,
-                                          void **dest_block);
+/**
+ * Copy custom data layers for one element between two potentially different formats with a
+ * precalculated map.
+ */
+void CustomData_bmesh_copy_block(CustomData &dst_data,
+                                 const BMCustomDataCopyMap &map,
+                                 const void *src_block,
+                                 void **dest_block);
 
 /**
  * Copies data of a single layer of a given type.
