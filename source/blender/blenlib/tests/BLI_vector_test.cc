@@ -481,20 +481,20 @@ TEST(vector, RemoveIfNonTrivialDestructible)
     vec.append(TestStruct(0, released_flag + 7));
 
     {
-      bool expected_releaded[8]{false, false, false, false, false, false, false, false};
-      EXPECT_EQ_ARRAY(expected_releaded + 0, released_flag + 0, 8);
+      bool expected_released[8]{false, false, false, false, false, false, false, false};
+      EXPECT_EQ_ARRAY(expected_released + 0, released_flag + 0, 8);
     }
 
-    const int64_t removed = vec.remove_if([](const TestStruct &x) { return x.x % 2 == 0; });
+    const int64_t removed = vec.remove_if([](const TestStruct &ts) { return ts.x % 2 == 0; });
     EXPECT_EQ(vec.size() + removed, 8);
 
     {
-      bool expected_releaded[8]{true, false, true, false, true, true, true, true};
-      EXPECT_EQ_ARRAY(expected_releaded + 0, released_flag + 0, 8);
+      bool expected_released[8]{true, false, true, false, true, true, true, true};
+      EXPECT_EQ_ARRAY(expected_released + 0, released_flag + 0, 8);
     }
   }
-  bool expected_releaded[8]{true, true, true, true, true, true, true, true};
-  EXPECT_EQ_ARRAY(expected_releaded + 0, released_flag + 0, 8);
+  bool expected_released[8]{true, true, true, true, true, true, true, true};
+  EXPECT_EQ_ARRAY(expected_released + 0, released_flag + 0, 8);
 }
 
 TEST(vector, ExtendSmallVector)
