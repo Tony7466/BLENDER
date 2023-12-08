@@ -40,7 +40,7 @@
 #include "BKE_key.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
@@ -76,7 +76,7 @@
 
 #include "mesh_intern.h" /* own include */
 
-#include "bmesh_tools.h"
+#include "bmesh_tools.hh"
 
 #define USE_FACE_CREATE_SEL_EXTEND
 
@@ -3261,7 +3261,7 @@ void MESH_OT_colors_rotate(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Rotate Colors";
   ot->idname = "MESH_OT_colors_rotate";
-  ot->description = "Rotate color attributes inside faces";
+  ot->description = "Rotate face corner color attribute inside faces";
 
   /* api callbacks */
   ot->exec = edbm_rotate_colors_exec;
@@ -3279,7 +3279,7 @@ void MESH_OT_colors_reverse(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Reverse Colors";
   ot->idname = "MESH_OT_colors_reverse";
-  ot->description = "Flip direction of vertex colors inside faces";
+  ot->description = "Flip direction of face corner color attribute inside faces";
 
   /* api callbacks */
   ot->exec = edbm_reverse_colors_exec;

@@ -29,7 +29,6 @@ set(INC
   # For node muting stuff.
   ../nodes
 
-  ../../../intern/clog
   ../../../intern/ghost
   ../../../intern/mantaflow/extern
 )
@@ -102,7 +101,7 @@ set(SRC
   GPU_matrix.h
   GPU_platform.h
   GPU_primitive.h
-  GPU_select.h
+  GPU_select.hh
   GPU_shader.h
   GPU_shader_builtin.h
   GPU_shader_shared.h
@@ -227,9 +226,11 @@ set(VULKAN_SRC
   vulkan/vk_shader.cc
   vulkan/vk_shader_interface.cc
   vulkan/vk_shader_log.cc
+  vulkan/vk_staging_buffer.cc
   vulkan/vk_state_manager.cc
   vulkan/vk_storage_buffer.cc
   vulkan/vk_texture.cc
+  vulkan/vk_timeline_semaphore.cc
   vulkan/vk_uniform_buffer.cc
   vulkan/vk_vertex_attribute_object.cc
   vulkan/vk_vertex_buffer.cc
@@ -266,9 +267,11 @@ set(VULKAN_SRC
   vulkan/vk_shader.hh
   vulkan/vk_shader_interface.hh
   vulkan/vk_shader_log.hh
+  vulkan/vk_staging_buffer.hh
   vulkan/vk_state_manager.hh
   vulkan/vk_storage_buffer.hh
   vulkan/vk_texture.hh
+  vulkan/vk_timeline_semaphore.hh
   vulkan/vk_uniform_buffer.hh
   vulkan/vk_vertex_attribute_object.hh
   vulkan/vk_vertex_buffer.hh
@@ -328,6 +331,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::atomic
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
 
@@ -674,6 +678,7 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/eevee_next/shaders/infos/eevee_hiz_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_irradiance_cache_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_light_culling_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_lookdev_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_lut_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_material_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_motion_blur_info.hh
@@ -875,8 +880,12 @@ endif()
 
 
 if(WITH_GTESTS)
+  set(TEST_SRC)
+  set(TEST_INC)
+  set(TEST_LIB)
+
   if(WITH_OPENGL_DRAW_TESTS)
-    set(TEST_SRC
+    list(APPEND TEST_SRC
       tests/gpu_testing.cc
 
       tests/buffer_texture_test.cc
@@ -893,17 +902,16 @@ if(WITH_GTESTS)
 
       tests/gpu_testing.hh
     )
-    if(WITH_VULKAN_BACKEND)
-      list(APPEND TEST_SRC
-        tests/memory_layout_test.cc
-        vulkan/vk_data_conversion_test.cc
-      )
-    endif()
+  endif()
 
-    set(TEST_INC
+  if(WITH_VULKAN_BACKEND)
+    list(APPEND TEST_SRC
+      vulkan/vk_memory_layout_test.cc
+      vulkan/vk_data_conversion_test.cc
     )
-    set(TEST_LIB
-    )
+  endif()
+
+  if (TEST_SRC)
     include(GTestTesting)
     blender_add_test_lib(bf_gpu_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
   endif()
