@@ -265,6 +265,14 @@ enum class ImageType {
   DEPTH_2D_ARRAY,
   DEPTH_CUBE,
   DEPTH_CUBE_ARRAY,
+  /** Atomic texture type wrappers.
+   * For OpenGL, these map to the equivalent (U)INT_* types. */
+  UINT_ATOMIC_2D,
+  UINT_ATOMIC_2D_ARRAY,
+  UINT_ATOMIC_3D,
+  INT_ATOMIC_2D,
+  INT_ATOMIC_2D_ARRAY,
+  INT_ATOMIC_3D
 };
 
 /* Storage qualifiers. */
