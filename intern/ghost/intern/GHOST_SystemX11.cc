@@ -188,7 +188,7 @@ GHOST_SystemX11::GHOST_SystemX11()
     if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
       GHOST_ASSERT(false, "Could not instantiate monotonic timer!");
     }
-    m_start_time_monotonic = ((uint64_t(ts.tv_sec) * 1000) + (ts.tv_nsec / 1000000));
+    m_start_time_monotonic = (uint64_t(ts.tv_sec) * 1000) + uint64_t(ts.tv_nsec / 1000000);
   }
 
   /* Use detectable auto-repeat, mac and windows also do this. */
@@ -291,7 +291,7 @@ uint64_t GHOST_SystemX11::getMilliSeconds() const
 
 uint64_t GHOST_SystemX11::ms_from_input_time(const Time timestamp) const
 {
-  GHOST_ASSERT(timestamp >= m_start_time_monotonic, "Invalid time-stemp");
+  GHOST_ASSERT(timestamp >= m_start_time_monotonic, "Invalid time-stamp");
   /* NOTE(@ideasman42): Return a time compatible with `getMilliSeconds()`,
    * this is needed as X11 time-stamps use monotonic time.
    * The X11 implementation *could* use any basis, in practice though we are supporting
