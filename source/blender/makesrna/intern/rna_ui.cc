@@ -2341,7 +2341,7 @@ static void rna_def_file_handler(BlenderRNA *brna)
       prop,
       "ID Name",
       "If this is set, the file handler gets a custom ID, otherwise it takes the "
-      "name of the class used to define the file handler  (for example, if the "
+      "name of the class used to define the file handler (for example, if the "
       "class name is \"OBJECT_FH_hello\", and bl_idname is not set by the "
       "script, then bl_idname = \"OBJECT_FH_hello\")");
 
