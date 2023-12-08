@@ -7198,10 +7198,11 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
   char root[FILE_MAX];
   BLI_path_split_dir_part(path, root, FILE_MAX);
   UI_tooltip_text_field_add(tip, BLI_strdup(root), nullptr, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
-   UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+  UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
 
   /* Blender version. */
   char version_st[128] = {0};
+  /* Load the thumbnail from cache if existing, but don't create if not. */
   ImBuf *thumb = IMB_thumb_read(path, THB_LARGE);
   if (thumb) {
     /* Look for version in existing thumbnail if available. */
@@ -7220,10 +7221,11 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
 
   if (version_st[0]) {
     UI_tooltip_text_field_add(tip,
-                              BLI_sprintfN("Blender: %s", version_st),
+                              BLI_sprintfN("Blender %s", version_st),
                               nullptr,
                               UI_TIP_STYLE_NORMAL,
                               UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
   }
 
   BLI_stat_t status;
@@ -7236,24 +7238,24 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
     if (is_today || is_yesterday) {
       day_string = (is_today ? N_("Today") : N_("Yesterday")) + std::string(" ");
     }
-    UI_tooltip_text_field_add(
-        tip,
-        BLI_sprintfN("%s: %s%s %s", N_("Modified"), day_string.c_str(), date_st, time_st),
-        nullptr,
-        UI_TIP_STYLE_NORMAL,
-        UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(tip,
+                              BLI_sprintfN("%s: %s%s%s",
+                                           N_("Modified"),
+                                           day_string.c_str(),
+                                           (is_today || is_yesterday) ? "" : date_st,
+                                           (is_today || is_yesterday) ? time_st : ""),
+                              nullptr,
+                              UI_TIP_STYLE_NORMAL,
+                              UI_TIP_LC_NORMAL);
 
     if (status.st_size > 0) {
       char size[16];
-      char size_full[16];
       BLI_filelist_entry_size_to_string(NULL, status.st_size, false, size);
-      BLI_str_format_uint64_grouped(size_full, status.st_size);
-      UI_tooltip_text_field_add(
-          tip,
-          BLI_sprintfN("%s: %s (%s %s)", N_("Size"), size, size_full, N_("bytes")),
-          nullptr,
-          UI_TIP_STYLE_NORMAL,
-          UI_TIP_LC_NORMAL);
+      UI_tooltip_text_field_add(tip,
+                                BLI_sprintfN("%s: %s", N_("Size"), size),
+                                nullptr,
+                                UI_TIP_STYLE_NORMAL,
+                                UI_TIP_LC_NORMAL);
     }
   }
 
