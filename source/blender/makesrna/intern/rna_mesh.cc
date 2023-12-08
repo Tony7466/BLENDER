@@ -56,7 +56,7 @@ static const EnumPropertyItem rna_enum_mesh_remesh_mode_items[] = {
 #  include "BLI_math_vector.h"
 
 #  include "BKE_customdata.hh"
-#  include "BKE_main.h"
+#  include "BKE_main.hh"
 #  include "BKE_mesh.hh"
 #  include "BKE_mesh_runtime.hh"
 #  include "BKE_report.h"
@@ -226,6 +226,17 @@ void rna_Mesh_update_draw(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
   }
 
   WM_main_add_notifier(NC_GEOM | ND_DATA, id);
+}
+
+static void rna_Mesh_update_bone_selection_mode(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  Mesh *me = static_cast<Mesh *>(ptr->data);
+  me->editflag &= ~ME_EDIT_PAINT_VERT_SEL;
+  me->editflag &= ~ME_EDIT_PAINT_FACE_SEL;
+
+  BKE_mesh_batch_cache_dirty_tag(me, BKE_MESH_BATCH_DIRTY_ALL);
+
+  rna_Mesh_update_draw(bmain, scene, ptr);
 }
 
 static void rna_Mesh_update_vertmask(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -3148,7 +3159,7 @@ static void rna_def_mesh(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_remesh_fix_poles", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", ME_REMESH_FIX_POLES);
-  RNA_def_property_ui_text(prop, "Fix Poles", "Produces less poles and a better topology flow");
+  RNA_def_property_ui_text(prop, "Fix Poles", "Produces fewer poles and a better topology flow");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
 
@@ -3161,23 +3172,9 @@ static void rna_def_mesh(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
 
-  prop = RNA_def_property(srna, "use_remesh_preserve_paint_mask", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", ME_REMESH_REPROJECT_PAINT_MASK);
-  RNA_def_property_ui_text(prop, "Preserve Paint Mask", "Keep the current mask on the new mesh");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
-  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-
-  prop = RNA_def_property(srna, "use_remesh_preserve_sculpt_face_sets", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", ME_REMESH_REPROJECT_SCULPT_FACE_SETS);
-  RNA_def_property_ui_text(
-      prop, "Preserve Face Sets", "Keep the current Face Sets on the new mesh");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
-  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-
-  prop = RNA_def_property(srna, "use_remesh_preserve_vertex_colors", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", ME_REMESH_REPROJECT_VERTEX_COLORS);
-  RNA_def_property_ui_text(
-      prop, "Preserve Vertex Colors", "Keep the current vertex colors on the new mesh");
+  prop = RNA_def_property(srna, "use_remesh_preserve_attributes", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", ME_REMESH_REPROJECT_ATTRIBUTES);
+  RNA_def_property_ui_text(prop, "Preserve Attributes", "Transfer all attributes to the new mesh");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
 
@@ -3263,6 +3260,13 @@ static void rna_def_mesh(BlenderRNA *brna)
                            "Topology Mirror",
                            "Use topology based mirroring "
                            "(for when both sides of mesh have matching, unique topology)");
+
+  prop = RNA_def_property(srna, "use_paint_bone_selection", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(
+      prop, nullptr, "editflag", ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL);
+  RNA_def_property_ui_text(prop, "Bone Selection", "Bone selection during painting");
+  RNA_def_property_ui_icon(prop, ICON_BONE_DATA, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_Mesh_update_bone_selection_mode");
 
   prop = RNA_def_property(srna, "use_paint_mask", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "editflag", ME_EDIT_PAINT_FACE_SEL);
