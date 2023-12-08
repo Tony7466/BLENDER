@@ -1,0 +1,1 @@
+Referenced by issue #115937, `context.temp_override` doesn't switch back screen if both `window` and `screen` are overridden
