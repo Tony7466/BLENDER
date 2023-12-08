@@ -835,7 +835,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     intern/gpu_shader_builder.cc
     intern/gpu_shader_builder_stubs.cc
     ${shader_create_info_list_file}
-    ${_manifest`}
+    ${_manifest}
   )
   unset(_manifest)
   setup_platform_linker_flags(shader_builder)
