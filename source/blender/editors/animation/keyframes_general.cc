@@ -1320,6 +1320,7 @@ void bake_fcurve(FCurve *fcu,
 
 void bake_fcurve_segments(FCurve *fcu)
 {
+  using namespace blender::animrig;
   BezTriple *bezt, *start = nullptr, *end = nullptr;
   TempFrameValCache *value_cache, *fp;
   int sfra, range;
@@ -1328,6 +1329,9 @@ void bake_fcurve_segments(FCurve *fcu)
   if (fcu->bezt == nullptr) { /* ignore baked */
     return;
   }
+
+  KeyframeSettings settings = get_keyframe_settings(true);
+  settings.keyframe_type = BEZT_KEYTYPE_BREAKDOWN;
 
   /* Find selected keyframes... once pair has been found, add keyframes. */
   for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
@@ -1369,7 +1373,7 @@ void bake_fcurve_segments(FCurve *fcu)
           /* add keyframes with these, tagging as 'breakdowns' */
           for (n = 1, fp = value_cache; n < range && fp; n++, fp++) {
             blender::animrig::insert_vert_fcurve(
-                fcu, {fp->frame, fp->val}, BEZT_KEYTYPE_BREAKDOWN, eInsertKeyFlags(1));
+                fcu, {fp->frame, fp->val}, settings, eInsertKeyFlags(1));
           }
 
           /* free temp cache */

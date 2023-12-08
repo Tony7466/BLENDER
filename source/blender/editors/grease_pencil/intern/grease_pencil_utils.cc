@@ -74,9 +74,13 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
     case (GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_VIEW):
       depth_ = DrawingPlacementDepth::Surface;
       surface_offset_ = scene.toolsettings->gpencil_surface_offset;
+      /* Default to view placement with the object origin if we don't hit a surface. */
+      placement_loc_ = transforms_.layer_space_to_world_space.location();
       break;
     case (GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_STROKE):
       depth_ = DrawingPlacementDepth::NearestStroke;
+      /* Default to view placement with the object origin if we don't hit a stroke. */
+      placement_loc_ = transforms_.layer_space_to_world_space.location();
       break;
   }
 
@@ -341,6 +345,9 @@ IndexMask retrieve_editable_strokes(Object &object,
 
   /* Get all the editable material indices */
   VectorSet<int> editable_material_indices = get_editable_material_indices(object);
+  if (editable_material_indices.is_empty()) {
+    return {};
+  }
 
   const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexRange curves_range = drawing.strokes().curves_range();
@@ -348,7 +355,7 @@ IndexMask retrieve_editable_strokes(Object &object,
 
   const VArray<int> materials = *attributes.lookup<int>("material_index", ATTR_DOMAIN_CURVE);
   if (!materials) {
-    /* if the attribute does not exist then the default is the first material. */
+    /* If the attribute does not exist then the default is the first material. */
     if (editable_material_indices.contains(0)) {
       return curves_range;
     }
@@ -368,6 +375,9 @@ IndexMask retrieve_editable_points(Object &object,
 {
   /* Get all the editable material indices */
   VectorSet<int> editable_material_indices = get_editable_material_indices(object);
+  if (editable_material_indices.is_empty()) {
+    return {};
+  }
 
   const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexRange points_range = drawing.strokes().points_range();
@@ -376,7 +386,7 @@ IndexMask retrieve_editable_points(Object &object,
   /* Propagate the material index to the points. */
   const VArray<int> materials = *attributes.lookup<int>("material_index", ATTR_DOMAIN_POINT);
   if (!materials) {
-    /* if the attribute does not exist then the default is the first material. */
+    /* If the attribute does not exist then the default is the first material. */
     if (editable_material_indices.contains(0)) {
       return points_range;
     }
