@@ -1371,6 +1371,14 @@ GHOST_TSuccess GHOST_SystemWin32::pushDragDropEvent(GHOST_TEventType eventType,
       getMessageTime(system), eventType, draggedObjectType, window, mouseX, mouseY, data));
 }
 
+static int access_violation_exception_filter(unsigned int code)
+{
+  if (code == EXCEPTION_ACCESS_VIOLATION) {
+    return EXCEPTION_CONTINUE_EXECUTION;
+  }
+  return EXCEPTION_CONTINUE_SEARCH;
+}
+
 void GHOST_SystemWin32::setTabletAPI(GHOST_TTabletAPI api)
 {
   GHOST_System::setTabletAPI(api);
@@ -1384,7 +1392,17 @@ void GHOST_SystemWin32::setTabletAPI(GHOST_TTabletAPI api)
   for (GHOST_IWindow *win : wm->getWindows()) {
     GHOST_WindowWin32 *windowWin32 = (GHOST_WindowWin32 *)win;
     if (loadWintab) {
-      windowWin32->loadWintab(GHOST_kWindowStateMinimized != windowWin32->getState());
+      // wintab drivers of various vendors have various levels of quality some may crash randomly,
+      // since it be nice if they didn't bring down the rest of blender with them, we catch any
+      // access violations while initalizing and carry on like nothing is wrong and hope for the
+      // best.
+      __try
+      {
+        windowWin32->loadWintab(GHOST_kWindowStateMinimized != windowWin32->getState());
+      }
+      __except (access_violation_exception_filter(GetExceptionCode()))
+      {
+      }
 
       if (windowWin32->usingTabletAPI(GHOST_kTabletWintab)) {
         windowWin32->resetPointerPenInfo();
