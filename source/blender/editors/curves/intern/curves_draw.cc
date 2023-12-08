@@ -68,6 +68,8 @@ enum CurveDrawState {
 struct CurveDrawData {
   short init_event_type;
   short curve_type;
+  float preview_radius;
+  bool is_curve_2d;
 
   /* projecting 2D into 3D space */
   struct {
@@ -115,20 +117,9 @@ struct CurveDrawData {
   void *draw_handle_view;
 };
 
-float curve_bevel_radius(void *curve_data)
-{
-  return 0.0f;
-}
-
-bool is_curve_2d(void *curve_data)
-{
-  return false;
-}
-
 static float stroke_elem_radius_from_pressure(const CurveDrawData *cdd, const float pressure)
 {
-  float bevel_radius = curve_bevel_radius(cdd->vc.obedit->data);
-  return ((pressure * cdd->radius.range) + cdd->radius.min) * bevel_radius;
+  return ((pressure * cdd->radius.range) + cdd->radius.min) * cdd->preview_radius;
 }
 
 static float stroke_elem_radius(const CurveDrawData *cdd, const StrokeElem *selem)
@@ -342,7 +333,7 @@ static void curve_draw_stroke_3d(const bContext * /*C*/, ARegion * /*region*/, v
 
   Object *obedit = cdd->vc.obedit;
 
-  if (curve_bevel_radius(obedit->data) > 0.0f) {
+  if (cdd->preview_radius > 0.0f) {
     BLI_mempool_iter iter;
     const StrokeElem *selem;
 
@@ -606,6 +597,8 @@ static bool curve_draw_init(bContext *C, wmOperator *op, bool is_invoke)
   }
 
   op->customdata = cdd;
+  cdd->preview_radius = RNA_float_get(op->ptr, "preview_radius");
+  cdd->is_curve_2d = RNA_boolean_get(op->ptr, "is_curve_2d");
 
   const CurvePaintSettings *cps = &cdd->vc.scene->toolsettings->curve_paint_settings;
 
@@ -873,7 +866,7 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
     {
       const int64_t i = *points_iter;
       copy_v3_v3(positions[i], selem->location_local);
-      if (is_curve_2d(curves_id)) {
+      if (cdd->is_curve_2d) {
         positions[i][2] = 0.0f;
       }
 
@@ -931,7 +924,7 @@ static int curves_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     const float *plane_no = nullptr;
     const float *plane_co = nullptr;
 
-    if (is_curve_2d(obedit->data)) {
+    if (cdd->is_curve_2d) {
       /* 2D overrides other options */
       plane_co = obedit->object_to_world[3];
       plane_no = obedit->object_to_world[2];
@@ -1205,6 +1198,13 @@ void CURVES_OT_draw(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_boolean(ot->srna, "wait_for_input", true, "Wait for Input", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+  prop = RNA_def_float_distance(
+      ot->srna, "preview_radius", 0.1f, 0.0f, 1.0f, "Preview Radius", "", 0.0f, 1.0f);
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(ot->srna, "is_curve_2d", false, "Curve 2D", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 

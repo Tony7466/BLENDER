@@ -1299,6 +1299,15 @@ class _defs_edit_curves:
 
     @ToolDef.from_fn
     def draw():
+        def curve_draw(context, layout, tool, *, extra=False):
+            curve_draw_settings(context, layout, tool, extra=extra)
+
+            if extra:
+                props = tool.operator_properties("curves.draw")
+                col = layout.column(align=True)
+                col.prop(props, "preview_radius", text="Pvw Radius", slider=True)
+                col.prop(props, "is_curve_2d", text="Curve 2D")
+
         return dict(
             idname="builtin.draw",
             label="Draw",
@@ -1306,7 +1315,7 @@ class _defs_edit_curves:
             icon="ops.curve.draw",
             widget=None,
             keymap=(),
-            draw_settings=curve_draw_settings,
+            draw_settings=curve_draw,
         )
 
 class _defs_edit_text:
