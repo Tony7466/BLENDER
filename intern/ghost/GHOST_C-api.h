@@ -580,8 +580,8 @@ extern GHOST_ContextHandle GHOST_GetDrawingContext(GHOST_WindowHandle windowhand
 extern void GHOST_SetTitle(GHOST_WindowHandle windowhandle, const char *title);
 
 /**
- * Returns the title displayed in the title bar. The title
- * should be free'd with free().
+ * Returns the title displayed in the title bar.
+ * The title must be freed with free().
  *
  * \param windowhandle: The handle to the window.
  * \return The title, free with free().
@@ -717,11 +717,11 @@ extern GHOST_TSuccess GHOST_SetSwapInterval(GHOST_WindowHandle windowhandle, int
 /**
  * Gets the current swap interval for #swapBuffers.
  * \param windowhandle: The handle to the window
- * \param intervalOut: pointer to location to return swap interval
+ * \param r_interval: pointer to location to return swap interval
  * (left untouched if there is an error)
  * \return A boolean success indicator of if swap interval was successfully read.
  */
-extern GHOST_TSuccess GHOST_GetSwapInterval(GHOST_WindowHandle windowhandle, int *intervalOut);
+extern GHOST_TSuccess GHOST_GetSwapInterval(GHOST_WindowHandle windowhandle, int *r_interval);
 
 /**
  * Activates the drawing context of this window.

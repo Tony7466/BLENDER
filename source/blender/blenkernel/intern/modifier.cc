@@ -5,7 +5,7 @@
 /** \file
  * \ingroup bke
  * Modifier stack implementation.
- * BKE_modifier.h contains the function prototypes for this file.
+ * BKE_modifier.hh contains the function prototypes for this file.
  */
 
 /* Allow using deprecated functionality for .blend file I/O. */
@@ -44,9 +44,9 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_DerivedMesh.h"
+#include "BKE_DerivedMesh.hh"
 #include "BKE_appdir.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
 #include "BKE_effect.h"
 #include "BKE_fluid.h"
@@ -64,7 +64,7 @@
 #include "BKE_screen.hh"
 
 /* may move these, only for BKE_modifier_path_relbase */
-#include "BKE_main.h"
+#include "BKE_main.hh"
 /* end */
 
 #include "DEG_depsgraph.hh"
@@ -246,26 +246,8 @@ bool BKE_modifier_supports_mapping(ModifierData *md)
 {
   const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
 
-  return (mti->type == eModifierTypeType_OnlyDeform ||
+  return (mti->type == ModifierTypeType::OnlyDeform ||
           (mti->flags & eModifierTypeFlag_SupportsMapping));
-}
-
-bool BKE_modifier_is_preview(ModifierData *md)
-{
-  const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
-
-  /* Constructive modifiers are highly likely to also modify data like vgroups or vertex-colors! */
-  if (!((mti->flags & eModifierTypeFlag_UsesPreview) ||
-        (mti->type == eModifierTypeType_Constructive)))
-  {
-    return false;
-  }
-
-  if (md->mode & eModifierMode_Realtime) {
-    return true;
-  }
-
-  return false;
 }
 
 ModifierData *BKE_modifiers_findby_type(const Object *ob, ModifierType type)
@@ -424,13 +406,13 @@ bool BKE_modifier_couldbe_cage(Scene *scene, ModifierData *md)
 bool BKE_modifier_is_same_topology(ModifierData *md)
 {
   const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
-  return ELEM(mti->type, eModifierTypeType_OnlyDeform, eModifierTypeType_NonGeometrical);
+  return ELEM(mti->type, ModifierTypeType::OnlyDeform, ModifierTypeType::NonGeometrical);
 }
 
 bool BKE_modifier_is_non_geometrical(ModifierData *md)
 {
   const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
-  return (mti->type == eModifierTypeType_NonGeometrical);
+  return (mti->type == ModifierTypeType::NonGeometrical);
 }
 
 void BKE_modifier_set_error(const Object *ob, ModifierData *md, const char *_format, ...)
@@ -546,34 +528,6 @@ int BKE_modifiers_get_cage_index(const Scene *scene,
   return cageIndex;
 }
 
-bool BKE_modifiers_is_softbody_enabled(Object *ob)
-{
-  ModifierData *md = BKE_modifiers_findby_type(ob, eModifierType_Softbody);
-
-  return (md && md->mode & (eModifierMode_Realtime | eModifierMode_Render));
-}
-
-bool BKE_modifiers_is_cloth_enabled(Object *ob)
-{
-  ModifierData *md = BKE_modifiers_findby_type(ob, eModifierType_Cloth);
-
-  return (md && md->mode & (eModifierMode_Realtime | eModifierMode_Render));
-}
-
-bool BKE_modifiers_is_modifier_enabled(Object *ob, int modifierType)
-{
-  ModifierData *md = BKE_modifiers_findby_type(ob, ModifierType(modifierType));
-
-  return (md && md->mode & (eModifierMode_Realtime | eModifierMode_Render));
-}
-
-bool BKE_modifiers_is_particle_enabled(Object *ob)
-{
-  ModifierData *md = BKE_modifiers_findby_type(ob, eModifierType_ParticleSystem);
-
-  return (md && md->mode & (eModifierMode_Realtime | eModifierMode_Render));
-}
-
 bool BKE_modifier_is_enabled(const Scene *scene, ModifierData *md, int required_mode)
 {
   const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
@@ -606,9 +560,7 @@ bool BKE_modifier_is_nonlocal_in_liboverride(const Object *ob, const ModifierDat
 CDMaskLink *BKE_modifier_calc_data_masks(const Scene *scene,
                                          ModifierData *md,
                                          CustomData_MeshMasks *final_datamask,
-                                         int required_mode,
-                                         ModifierData *previewmd,
-                                         const CustomData_MeshMasks *previewmask)
+                                         int required_mode)
 {
   CDMaskLink *dataMasks = nullptr;
   CDMaskLink *curr, *prev;
@@ -621,16 +573,12 @@ CDMaskLink *BKE_modifier_calc_data_masks(const Scene *scene,
     curr = MEM_cnew<CDMaskLink>(__func__);
 
     if (BKE_modifier_is_enabled(scene, md, required_mode)) {
-      if (mti->type == eModifierTypeType_OnlyDeform) {
+      if (mti->type == ModifierTypeType::OnlyDeform) {
         have_deform_modifier = true;
       }
 
       if (mti->required_data_mask) {
         mti->required_data_mask(md, &curr->mask);
-      }
-
-      if (previewmd == md && previewmask != nullptr) {
-        CustomData_MeshMasks_update(&curr->mask, previewmask);
       }
     }
 
@@ -668,25 +616,6 @@ CDMaskLink *BKE_modifier_calc_data_masks(const Scene *scene,
   BLI_linklist_reverse((LinkNode **)&dataMasks);
 
   return dataMasks;
-}
-
-ModifierData *BKE_modifier_get_last_preview(const Scene *scene,
-                                            ModifierData *md,
-                                            int required_mode)
-{
-  ModifierData *tmp_md = nullptr;
-
-  if ((required_mode & ~eModifierMode_Editmode) != eModifierMode_Realtime) {
-    return tmp_md;
-  }
-
-  /* Find the latest modifier in stack generating preview. */
-  for (; md; md = md->next) {
-    if (BKE_modifier_is_enabled(scene, md, required_mode) && BKE_modifier_is_preview(md)) {
-      tmp_md = md;
-    }
-  }
-  return tmp_md;
 }
 
 ModifierData *BKE_modifiers_get_virtual_modifierlist(const Object *ob,
@@ -965,11 +894,11 @@ static void modwrap_dependsOnNormals(Mesh *me)
 {
   switch (me->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_BMESH: {
-      blender::bke::EditMeshData *edit_data = me->runtime->edit_data;
-      if (!edit_data->vertexCos.is_empty()) {
+      blender::bke::EditMeshData &edit_data = *me->runtime->edit_data;
+      if (!edit_data.vertexCos.is_empty()) {
         /* Note that 'ensure' is acceptable here since these values aren't modified in-place.
          * If that changes we'll need to recalculate. */
-        BKE_editmesh_cache_ensure_vert_normals(me->edit_mesh, edit_data);
+        BKE_editmesh_cache_ensure_vert_normals(*me->edit_mesh, edit_data);
       }
       else {
         BM_mesh_normals_update(me->edit_mesh->bm);
@@ -1006,14 +935,13 @@ Mesh *BKE_modifier_modify_mesh(ModifierData *md, const ModifierEvalContext *ctx,
 void BKE_modifier_deform_verts(ModifierData *md,
                                const ModifierEvalContext *ctx,
                                Mesh *me,
-                               float (*vertexCos)[3],
-                               int numVerts)
+                               blender::MutableSpan<blender::float3> positions)
 {
   const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
   if (me && mti->depends_on_normals && mti->depends_on_normals(md)) {
     modwrap_dependsOnNormals(me);
   }
-  mti->deform_verts(md, ctx, me, vertexCos, numVerts);
+  mti->deform_verts(md, ctx, me, positions);
   if (me) {
     BKE_mesh_tag_positions_changed(me);
   }
@@ -1023,14 +951,13 @@ void BKE_modifier_deform_vertsEM(ModifierData *md,
                                  const ModifierEvalContext *ctx,
                                  BMEditMesh *em,
                                  Mesh *me,
-                                 float (*vertexCos)[3],
-                                 int numVerts)
+                                 blender::MutableSpan<blender::float3> positions)
 {
   const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
   if (me && mti->depends_on_normals && mti->depends_on_normals(md)) {
     modwrap_dependsOnNormals(me);
   }
-  mti->deform_verts_EM(md, ctx, em, me, vertexCos, numVerts);
+  mti->deform_verts_EM(md, ctx, em, me, positions);
 }
 
 /* end modifier callback wrappers */
