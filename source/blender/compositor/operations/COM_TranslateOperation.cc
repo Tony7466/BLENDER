@@ -18,8 +18,7 @@ TranslateOperation::TranslateOperation(DataType data_type, ResizeMode resize_mod
   input_xoperation_ = nullptr;
   input_yoperation_ = nullptr;
   is_delta_set_ = false;
-  factor_x_ = 1.0f;
-  factor_y_ = 1.0f;
+  is_relative_ = false;
   this->x_extend_mode_ = MemoryBufferExtend::Clip;
   this->y_extend_mode_ = MemoryBufferExtend::Clip;
 
@@ -67,12 +66,6 @@ bool TranslateOperation::determine_depending_area_of_interest(rcti *input,
   new_input.ymax = input->ymax - this->getDeltaY();
 
   return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
-}
-
-void TranslateOperation::setFactorXY(float factorX, float factorY)
-{
-  factor_x_ = factorX;
-  factor_y_ = factorY;
 }
 
 void TranslateOperation::set_wrapping(int wrapping_type)
