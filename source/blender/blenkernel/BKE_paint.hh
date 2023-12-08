@@ -44,6 +44,7 @@ namespace filter {
 struct Cache;
 }
 struct StrokeCache;
+struct TopologyIslandCache;
 }  // namespace blender::ed::sculpt_paint
 struct GHash;
 struct GridPaintMask;
@@ -557,8 +558,6 @@ struct SculptAttributePointers {
   SculptAttribute *automasking_stroke_id;
   SculptAttribute *automasking_cavity;
 
-  SculptAttribute *topology_island_key; /* CD_PROP_INT8 */
-
   /* BMesh */
   SculptAttribute *dyntopo_node_id_vertex;
   SculptAttribute *dyntopo_node_id_face;
@@ -757,7 +756,8 @@ struct SculptSession {
 
   int last_automasking_settings_hash;
   uchar last_automask_stroke_id;
-  bool islands_valid; /* Is attrs.topology_island_key valid? */
+
+  std::unique_ptr<blender::ed::sculpt_paint::TopologyIslandCache> topology_island_cache;
 };
 
 void BKE_sculptsession_free(Object *ob);

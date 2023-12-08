@@ -138,7 +138,7 @@ static bool sculpt_expand_is_vert_in_active_component(const SculptSession *ss,
                                                       const PBVHVertRef v)
 {
   for (int i = 0; i < EXPAND_SYMM_AREAS; i++) {
-    if (SCULPT_vertex_island_get(ss, v) == expand_cache->active_connected_islands[i]) {
+    if (islands::vert_id_get(*ss, v) == expand_cache->active_connected_islands[i]) {
       return true;
     }
   }
@@ -427,7 +427,7 @@ static void sculpt_expand_check_topology_islands(Object *ob, eSculptExpandFallof
                                          SCULPT_EXPAND_FALLOFF_NORMALS);
 
   if (ss->expand_cache->check_islands) {
-    SCULPT_topology_islands_ensure(ob);
+    islands::ensure_cache(*ob);
   }
 }
 
@@ -1663,8 +1663,7 @@ static void sculpt_expand_find_active_connected_components_from_vert(
     const PBVHVertRef symm_vertex = sculpt_expand_get_vertex_index_for_symmetry_pass(
         ob, symm_it, initial_vertex);
 
-    expand_cache->active_connected_islands[int(symm_it)] = SCULPT_vertex_island_get(ss,
-                                                                                    symm_vertex);
+    expand_cache->active_connected_islands[int(symm_it)] = islands::vert_id_get(*ss, symm_vertex);
   }
 }
 
@@ -1744,7 +1743,7 @@ static void sculpt_expand_move_propagation_origin(bContext *C,
 static void sculpt_expand_ensure_sculptsession_data(Object *ob)
 {
   SculptSession *ss = ob->sculpt;
-  SCULPT_topology_islands_ensure(ob);
+  islands::ensure_cache(*ob);
   SCULPT_vertex_random_access_ensure(ss);
   SCULPT_boundary_info_ensure(ob);
   if (!ss->tex_pool) {

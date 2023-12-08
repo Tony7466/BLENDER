@@ -58,7 +58,7 @@ void sync_all_from_faces(Object &object)
   SculptSession &ss = *object.sculpt;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  SCULPT_topology_islands_invalidate(&ss);
+  islands::invalidate(ss);
 
   switch (BKE_pbvh_type(ss.pbvh)) {
     case PBVH_FACES: {
@@ -604,7 +604,7 @@ static int hide_show_exec(bContext *C, wmOperator *op)
   /* End undo. */
   undo::push_end(ob);
 
-  SCULPT_topology_islands_invalidate(ob->sculpt);
+  islands::invalidate(*ob->sculpt);
   tag_update_visibility(*C);
 
   return OPERATOR_FINISHED;
@@ -757,7 +757,7 @@ static int visibility_invert_exec(bContext *C, wmOperator *op)
 
   undo::push_end(&object);
 
-  SCULPT_topology_islands_invalidate(object.sculpt);
+  islands::invalidate(*object.sculpt);
   tag_update_visibility(*C);
 
   return OPERATOR_FINISHED;

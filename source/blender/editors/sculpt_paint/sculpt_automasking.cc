@@ -560,7 +560,7 @@ float factor_get(Cache *automasking,
 
   if (!automasking->settings.topology_use_brush_limit &&
       automasking->settings.flags & BRUSH_AUTOMASKING_TOPOLOGY &&
-      SCULPT_vertex_island_get(ss, vert) != automasking->settings.initial_island_nr)
+      islands::vert_id_get(*ss, vert) != automasking->settings.initial_island_nr)
   {
     return 0.0f;
   }
@@ -825,8 +825,8 @@ Cache *cache_init(Sculpt *sd, Brush *brush, Object *ob)
   int mode = sculpt_automasking_mode_effective_bits(sd, brush);
 
   if (mode & BRUSH_AUTOMASKING_TOPOLOGY && ss->active_vertex.i != PBVH_REF_NONE) {
-    SCULPT_topology_islands_ensure(ob);
-    automasking->settings.initial_island_nr = SCULPT_vertex_island_get(ss, ss->active_vertex);
+    islands::ensure_cache(*ob);
+    automasking->settings.initial_island_nr = islands::vert_id_get(*ss, ss->active_vertex);
   }
 
   if ((mode & BRUSH_AUTOMASKING_VIEW_OCCLUSION) && (mode & BRUSH_AUTOMASKING_VIEW_NORMAL)) {

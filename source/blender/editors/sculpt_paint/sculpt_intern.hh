@@ -1861,22 +1861,26 @@ void ensure_valid_pivot(const Object *ob, Scene *scene);
 /* -------------------------------------------------------------------- */
 /** \name Topology island API
  * \{
- * Each mesh island shell gets its own integer
- * key; these are temporary and internally limited to 8 bits.
- * Uses the `ss->topology_island_key` attribute.
  */
 
-/* Ensures vertex island keys exist and are valid. */
-void SCULPT_topology_islands_ensure(Object *ob);
+namespace blender::ed::sculpt_paint::islands {
 
-/**
- * Mark vertex island keys as invalid.
- * Call when adding or hiding geometry.
- */
-void SCULPT_topology_islands_invalidate(SculptSession *ss);
+struct Cache {
+  int islands_num;
+  Array<int> vert_island_ids;
+  Array<int8_t> small_vert_island_ids;
+};
+
+/* Ensure vertex island keys exist and are valid. */
+void ensure_cache(Object &object);
+
+/** Mark vertex island keys as invalid. Call when adding or hiding geometry. */
+void invalidate(SculptSession &ss);
 
 /** Get vertex island key. */
-int SCULPT_vertex_island_get(const SculptSession *ss, PBVHVertRef vertex);
+int vert_id_get(const SculptSession &ss, PBVHVertRef vertex);
+
+}
 
 /** \} */
 

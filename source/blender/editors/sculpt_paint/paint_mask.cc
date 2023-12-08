@@ -1767,7 +1767,7 @@ static void sculpt_gesture_trim_begin(bContext *C, SculptGestureContext *sgconte
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   sculpt_gesture_trim_calculate_depth(sgcontext);
   sculpt_gesture_trim_geometry_generate(sgcontext);
-  SCULPT_topology_islands_invalidate(ss);
+  islands::invalidate(*ss);
   BKE_sculpt_update_object_for_edit(depsgraph, sgcontext->vc.obact, false);
   undo::push_node(sgcontext->vc.obact, nullptr, undo::Type::Geometry);
 }

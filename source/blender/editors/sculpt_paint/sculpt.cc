@@ -16,6 +16,7 @@
 #include "CLG_log.h"
 
 #include "BLI_array_utils.hh"
+#include "BLI_atomic_disjoint_set.hh"
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
 #include "BLI_ghash.h"
@@ -5828,9 +5829,10 @@ static void do_fake_neighbor_search_task(SculptSession *ss,
                                          PBVHNode *node,
                                          NearestVertexFakeNeighborData *nvtd)
 {
+  using namespace blender::ed::sculpt_paint;
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    int vd_topology_id = SCULPT_vertex_island_get(ss, vd.vertex);
+    int vd_topology_id = islands::vert_id_get(*ss, vd.vertex);
     if (vd_topology_id != nvtd->current_topology_id &&
         ss->fake_neighbors.fake_neighbor_index[vd.index] == FAKE_NEIGHBOR_NONE)
     {
@@ -5851,6 +5853,7 @@ static PBVHVertRef SCULPT_fake_neighbor_search(Sculpt *sd,
                                                float max_distance)
 {
   using namespace blender;
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   SculptSearchSphereData data{};
@@ -5872,7 +5875,7 @@ static PBVHVertRef SCULPT_fake_neighbor_search(Sculpt *sd,
   NearestVertexFakeNeighborData nvtd;
   nvtd.nearest_vertex.i = -1;
   nvtd.nearest_vertex_distance_sq = FLT_MAX;
-  nvtd.current_topology_id = SCULPT_vertex_island_get(ss, vertex);
+  nvtd.current_topology_id = islands::vert_id_get(*ss, vertex);
 
   nvtd = threading::parallel_reduce(
       nodes.index_range(),
@@ -5931,6 +5934,7 @@ void SCULPT_boundary_info_ensure(Object *object)
 
 void SCULPT_fake_neighbors_ensure(Sculpt *sd, Object *ob, const float max_dist)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
 
@@ -5942,7 +5946,7 @@ void SCULPT_fake_neighbors_ensure(Sculpt *sd, Object *ob, const float max_dist)
     return;
   }
 
-  SCULPT_topology_islands_ensure(ob);
+  islands::ensure_cache(*ob);
   SCULPT_fake_neighbor_init(ss, max_dist);
 
   for (int i = 0; i < totvert; i++) {
@@ -6066,44 +6070,97 @@ void SCULPT_stroke_id_ensure(Object *ob)
   }
 }
 
-int SCULPT_vertex_island_get(const SculptSession *ss, PBVHVertRef vertex)
+namespace blender::ed::sculpt_paint::islands {
+
+int vert_id_get(const SculptSession &ss, PBVHVertRef vertex)
 {
-  if (ss->attrs.topology_island_key) {
-    return *static_cast<uint8_t *>(SCULPT_vertex_attr_get(vertex, ss->attrs.topology_island_key));
+  BLI_assert(ss.topology_island_cache);
+  if (ss.topology_island_cache) {
+    return ss.topology_island_cache->vert_island_ids[vertex.i];
   }
 
   return -1;
 }
 
-void SCULPT_topology_islands_invalidate(SculptSession *ss)
+void invalidate(SculptSession &ss)
 {
-  ss->islands_valid = false;
+  ss.topology_island_cache.reset();
 }
 
-void SCULPT_topology_islands_ensure(Object *ob)
+static Cache calc_topology_islands_mesh(const Mesh &mesh)
 {
-  using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  const OffsetIndices<int> faces = mesh.faces();
+  const Span<int> corner_verts = mesh.corner_verts();
+  const bke::AttributeAccessor attributes = mesh.attributes();
+  const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", ATTR_DOMAIN_FACE);
+  AtomicDisjointSet disjoint_set(mesh.totvert);
+  threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+    for (const int face : range) {
+      if (!hide_poly.is_empty() && hide_poly[face]) {
+        continue;
+      }
+      const Span<int> face_verts = corner_verts.slice(faces[face]);
+      for (const int i : face_verts.index_range().drop_front(1)) {
+        disjoint_set.join(face_verts.first(), face_verts[i]);
+      }
+    }
+  });
 
-  if (ss->attrs.topology_island_key && ss->islands_valid && BKE_pbvh_type(ss->pbvh) != PBVH_BMESH)
-  {
+  Cache cache;
+
+  Array<int> island_ids(mesh.totvert);
+  cache.islands_num = disjoint_set.calc_reduced_ids(island_ids);
+  if (cache.islands_num == 1) {
+  }
+  else if (cache.islands_num > std::numeric_limits<int8_t>::max()) {
+    Array<int8_t> small_island_ids(island_ids.size());
+    threading::parallel_for(island_ids.index_range(), 4096, [&](const IndexRange range) {
+      for (const int i : range) {
+        small_island_ids[i] = island_ids[i];
+      }
+    });
+    cache.small_vert_island_ids = std::move(small_island_ids);
+  }
+  else {
+    cache.vert_island_ids = std::move(island_ids);
+  }
+
+  return cache;
+}
+
+Cache calculate(Object &object)
+{
+  SculptSession &ss = *object.sculpt;
+  switch (BKE_pbvh_type(ss.pbvh)) {
+    case PBVH_FACES:
+      return calc_topology_islands_mesh(*static_cast<const Mesh *>(object.data));
+    case PBVH_GRIDS:
+      break;
+    case PBVH_BMESH:
+      break;
+  }
+}
+
+void ensure_cache(Object &object)
+{
+  SculptSession &ss = *object.sculpt;
+
+  if (ss.topology_island_cache) {
     return;
   }
 
   SculptAttributeParams params;
   params.permanent = params.stroke_only = params.simple_array = false;
 
-  ss->attrs.topology_island_key = BKE_sculpt_attribute_ensure(
-      ob, ATTR_DOMAIN_POINT, CD_PROP_INT8, SCULPT_ATTRIBUTE_NAME(topology_island_key), &params);
-  SCULPT_vertex_random_access_ensure(ss);
+  SCULPT_vertex_random_access_ensure(&ss);
 
-  int totvert = SCULPT_vertex_count_get(ss);
+  int totvert = SCULPT_vertex_count_get(*ss);
   Set<PBVHVertRef> visit;
   Vector<PBVHVertRef> stack;
   uint8_t island_nr = 0;
 
   for (int i = 0; i < totvert; i++) {
-    PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
+    PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss.pbvh, i);
 
     if (visit.contains(vertex)) {
       continue;
@@ -6118,7 +6175,7 @@ void SCULPT_topology_islands_ensure(Object *ob)
       SculptVertexNeighborIter ni;
 
       *static_cast<uint8_t *>(
-          SCULPT_vertex_attr_get(vertex2, ss->attrs.topology_island_key)) = island_nr;
+          SCULPT_vertex_attr_get(vertex2, ss.attrs.topology_island_key)) = island_nr;
 
       SCULPT_VERTEX_DUPLICATES_AND_NEIGHBORS_ITER_BEGIN (ss, vertex2, ni) {
         if (visit.add(ni.vertex) && hide::vert_any_face_visible_get(ss, ni.vertex)) {
@@ -6130,9 +6187,9 @@ void SCULPT_topology_islands_ensure(Object *ob)
 
     island_nr++;
   }
-
-  ss->islands_valid = true;
 }
+
+}  // namespace blender::ed::sculpt_paint::islands
 
 void SCULPT_cube_tip_init(Sculpt * /*sd*/, Object *ob, Brush *brush, float mat[4][4])
 {

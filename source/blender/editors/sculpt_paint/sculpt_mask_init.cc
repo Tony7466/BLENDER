@@ -71,7 +71,7 @@ static void mask_init_task(Object *ob,
         break;
       }
       case SCULPT_MASK_INIT_RANDOM_PER_LOOSE_PART:
-        mask = BLI_hash_int_01(SCULPT_vertex_island_get(ss, vd.vertex) + seed);
+        mask = BLI_hash_int_01(islands::vert_id_get(*ss, vd.vertex) + seed);
         break;
     }
     SCULPT_mask_vert_set(BKE_pbvh_type(ss->pbvh), mask_write, mask, vd);
@@ -103,7 +103,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
   undo::push_begin(ob, op);
 
   if (mode == SCULPT_MASK_INIT_RANDOM_PER_LOOSE_PART) {
-    SCULPT_topology_islands_ensure(ob);
+    islands::ensure_cache(*ob);
   }
 
   const int mask_init_seed = PIL_check_seconds_timer();
