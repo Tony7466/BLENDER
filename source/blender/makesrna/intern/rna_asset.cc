@@ -200,37 +200,37 @@ static void rna_AssetMetaData_author_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static void rna_AssetMetaData_label_get(PointerRNA *ptr, char *value)
+static void rna_AssetMetaData_display_name_get(PointerRNA *ptr, char *value)
 {
   AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
 
-  if (asset_data->label) {
-    strcpy(value, asset_data->label);
+  if (asset_data->display_name) {
+    strcpy(value, asset_data->display_name);
   }
   else {
     value[0] = '\0';
   }
 }
 
-static int rna_AssetMetaData_label_length(PointerRNA *ptr)
+static int rna_AssetMetaData_display_name_length(PointerRNA *ptr)
 {
   AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
-  return asset_data->label ? strlen(asset_data->label) : 0;
+  return asset_data->display_name ? strlen(asset_data->display_name) : 0;
 }
 
-static void rna_AssetMetaData_label_set(PointerRNA *ptr, const char *value)
+static void rna_AssetMetaData_display_name_set(PointerRNA *ptr, const char *value)
 {
   AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
 
-  if (asset_data->label) {
-    MEM_freeN(asset_data->label);
+  if (asset_data->display_name) {
+    MEM_freeN(asset_data->display_name);
   }
 
   if (value[0]) {
-    asset_data->label = BLI_strdup(value);
+    asset_data->display_name = BLI_strdup(value);
   }
   else {
-    asset_data->label = nullptr;
+    asset_data->display_name = nullptr;
   }
 }
 
@@ -574,14 +574,14 @@ static void rna_def_asset_data(BlenderRNA *brna)
                                 "rna_AssetMetaData_author_set");
   RNA_def_property_ui_text(prop, "Author", "Name of the creator of the asset");
 
-  prop = RNA_def_property(srna, "label", PROP_STRING, PROP_NONE);
+  prop = RNA_def_property(srna, "display_name", PROP_STRING, PROP_NONE);
   RNA_def_property_editable_func(prop, "rna_AssetMetaData_editable");
   RNA_def_property_string_funcs(prop,
-                                "rna_AssetMetaData_label_get",
-                                "rna_AssetMetaData_label_length",
-                                "rna_AssetMetaData_label_set");
+                                "rna_AssetMetaData_display_name_get",
+                                "rna_AssetMetaData_display_name_length",
+                                "rna_AssetMetaData_display_name_set");
   RNA_def_property_ui_text(
-      prop, "Label", "A UI name, if set it will replace the data-block namein the user interface");
+      prop, "Display Name", "Show this name instead of the unique data-block name when displaying it as an asset. Note that this name will not be used for imported instances of an asset");
 
   prop = RNA_def_property(srna, "description", PROP_STRING, PROP_NONE);
   RNA_def_property_editable_func(prop, "rna_AssetMetaData_editable");

@@ -75,7 +75,7 @@ typedef struct AssetMetaData {
   char catalog_simple_name[64]; /* MAX_NAME */
 
   /** Optional name of the asset for display in the UI. Dynamic length. */
-  char *label;
+  char *display_name;
 
   /** Optional name of the author for display in the UI. Dynamic length. */
   char *author;

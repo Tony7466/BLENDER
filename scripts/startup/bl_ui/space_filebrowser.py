@@ -718,13 +718,13 @@ class ASSETBROWSER_PT_metadata(asset_utils.AssetBrowserPanel, Panel):
     bl_options = {'HIDE_HEADER'}
 
     @staticmethod
-    def metadata_prop(layout, asset_metadata, propname):
+    def metadata_prop(layout, asset_metadata, propname, **kwargs):
         """
         Only display properties that are either set or can be modified (i.e. the
         asset is in the current file). Empty, non-editable fields are not really useful.
         """
         if getattr(asset_metadata, propname) or not asset_metadata.is_property_readonly(propname):
-            layout.prop(asset_metadata, propname)
+            layout.prop(asset_metadata, propname, **kwargs)
 
     def draw(self, context):
         layout = self.layout
@@ -742,7 +742,9 @@ class ASSETBROWSER_PT_metadata(asset_utils.AssetBrowserPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
 
+        metadata = asset.metadata
         if is_local_asset:
+            self.metadata_prop(layout, metadata, "display_name", placeholder="Use data-block name")
             # If the active file is an ID, use its name directly so renaming is possible from right here.
             layout.prop(asset.local_id, "name")
 
@@ -752,6 +754,7 @@ class ASSETBROWSER_PT_metadata(asset_utils.AssetBrowserPanel, Panel):
                 col.prop(asset.local_id.asset_data, "catalog_id", text="UUID")
                 col.prop(asset.local_id.asset_data, "catalog_simple_name", text="Simple Name")
         else:
+            self.metadata_prop(layout, metadata, "display_name")
             layout.prop(asset, "name")
 
             if show_asset_debug_info:
@@ -765,8 +768,6 @@ class ASSETBROWSER_PT_metadata(asset_utils.AssetBrowserPanel, Panel):
         row.prop(wm, "asset_path_dummy", text="Source", icon='CURRENT_FILE' if is_local_asset else 'NONE')
         row.operator("asset.open_containing_blend_file", text="", icon='TOOL_SETTINGS')
 
-        metadata = asset.metadata
-        self.metadata_prop(layout, metadata, "label")
         self.metadata_prop(layout, metadata, "description")
         self.metadata_prop(layout, metadata, "license")
         self.metadata_prop(layout, metadata, "copyright")
