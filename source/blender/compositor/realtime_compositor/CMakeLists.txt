@@ -128,6 +128,8 @@ set(GLSL_SRC
   shaders/compositor_box_mask.glsl
   shaders/compositor_compute_preview.glsl
   shaders/compositor_convert.glsl
+  shaders/compositor_cryptomatte_image.glsl
+  shaders/compositor_cryptomatte_matte.glsl
   shaders/compositor_cryptomatte_pick.glsl
   shaders/compositor_despeckle.glsl
   shaders/compositor_directional_blur.glsl

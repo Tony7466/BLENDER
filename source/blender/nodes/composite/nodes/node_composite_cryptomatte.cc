@@ -16,6 +16,8 @@
 #include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
+#include "IMB_imbuf_types.h"
+
 #include "BKE_context.hh"
 #include "BKE_cryptomatte.hh"
 #include "BKE_global.h"
@@ -328,11 +330,29 @@ class CryptoMatteOperation : public NodeOperation {
       return;
     }
 
-    compute_pick_image(layers);
+    Result &output_pick = get_result("Pick");
+    if (output_pick.should_compute()) {
+      compute_pick(layers);
+    }
 
-    Vector<float> ids = get_ids();
+    Result &matte_output = get_result("Matte");
+    Result &image_output = get_result("Image");
+    if (!matte_output.should_compute() && !image_output.should_compute()) {
+      return;
+    }
 
-    compute_matte_image(layers, ids);
+    Result matte = compute_matte(layers);
+
+    if (image_output.should_compute()) {
+      compute_image(matte);
+    }
+
+    if (matte_output.should_compute()) {
+      matte_output.steal_data(matte);
+    }
+    else {
+      matte.release();
+    }
   }
 
   void allocate_invalid()
@@ -353,14 +373,9 @@ class CryptoMatteOperation : public NodeOperation {
     }
   }
 
-  void compute_pick_image(Vector<GPUTexture *> &layers)
+  void compute_pick(Vector<GPUTexture *> &layers)
   {
-    Result &output_pick = get_result("Pick");
-    if (!output_pick.should_compute()) {
-      return;
-    }
-
-    GPUShader *shader = context().get_shader("compositor_cryptomatte_pick");
+    GPUShader *shader = context().get_shader("compositor_cryptomatte_pick", ResultPrecision::Full);
     GPU_shader_bind(shader);
 
     GPUTexture *first_layer = layers[0];
@@ -368,6 +383,8 @@ class CryptoMatteOperation : public NodeOperation {
     GPU_texture_bind(first_layer, input_unit);
 
     const Domain domain = compute_domain();
+    Result &output_pick = get_result("Pick");
+    output_pick.set_precision(ResultPrecision::Full);
     output_pick.allocate_texture(domain);
     output_pick.bind_as_image(shader, "output_img");
 
@@ -378,42 +395,63 @@ class CryptoMatteOperation : public NodeOperation {
     output_pick.unbind_as_image();
   }
 
-  void compute_matte_image(Vector<GPUTexture *> &layers, Vector<float> &ids)
+  Result compute_matte(Vector<GPUTexture *> &layers)
   {
-    Result &output_matte = get_result("Matte");
-    Result &output_image = get_result("Image");
-    if (!output_matte.should_compute() && !output_image.should_compute()) {
-      return;
-    }
-
     const Domain domain = compute_domain();
+    Result output_matte = context().create_temporary_result(ResultType::Float);
     output_matte.allocate_texture(domain);
     const float4 zero_color = float4(0.0f);
     GPU_texture_clear(output_matte.texture(), GPU_DATA_FLOAT, zero_color);
 
-    if (ids.is_empty()) {
-      return;
+    Vector<float> identifiers = get_identifiers();
+    if (identifiers.is_empty()) {
+      return output_matte;
     }
 
     GPUShader *shader = context().get_shader("compositor_cryptomatte_matte");
     GPU_shader_bind(shader);
 
-    GPU_shader_uniform_1i(shader, "ids_count", ids.size());
-    GPU_shader_uniform_1fv_array(shader, "ids", ids.size(), ids.data());
-
-    output_matte.bind_as_image(shader, "matte_img");
+    GPU_shader_uniform_1i(shader, "identifiers_count", identifiers.size());
+    GPU_shader_uniform_1fv_array(shader, "identifiers", identifiers.size(), identifiers.data());
 
     for (GPUTexture *layer : layers) {
       const int input_unit = GPU_shader_get_sampler_binding(shader, "layer_tx");
       GPU_texture_bind(layer, input_unit);
 
+      output_matte.bind_as_image(shader, "matte_img", true);
+
       compute_dispatch_threads_at_least(shader, domain.size);
 
       GPU_texture_unbind(layer);
+      output_matte.unbind_as_image();
     }
 
-    output_matte.unbind_as_image();
     GPU_shader_unbind();
+
+    return output_matte;
+  }
+
+  void compute_image(Result &matte)
+  {
+    GPUShader *shader = context().get_shader("compositor_cryptomatte_image");
+    GPU_shader_bind(shader);
+
+    Result &input_image = get_input("Image");
+    input_image.bind_as_texture(shader, "input_tx");
+
+    matte.bind_as_texture(shader, "matte_tx");
+
+    const Domain domain = compute_domain();
+    Result &image_output = get_result("Image");
+    image_output.allocate_texture(domain);
+    image_output.bind_as_image(shader, "output_img");
+
+    compute_dispatch_threads_at_least(shader, domain.size);
+
+    GPU_shader_unbind();
+    input_image.unbind_as_texture();
+    matte.unbind_as_texture();
+    image_output.unbind_as_image();
   }
 
   Vector<GPUTexture *> get_layers()
@@ -534,15 +572,15 @@ class CryptoMatteOperation : public NodeOperation {
     return std::string(render_layer->name) + "." + std::string(render_pass->name);
   }
 
-  Vector<float> get_ids()
+  Vector<float> get_identifiers()
   {
-    Vector<float> ids;
+    Vector<float> identifiers;
     LISTBASE_FOREACH (CryptomatteEntry *, cryptomatte_entry, &node_storage(bnode()).entries) {
       if (cryptomatte_entry->encoded_hash != 0.0f) {
-        ids.append(cryptomatte_entry->encoded_hash);
+        identifiers.append(cryptomatte_entry->encoded_hash);
       }
     }
-    return ids;
+    return identifiers;
   }
 
   std::string get_prefix()
@@ -550,6 +588,39 @@ class CryptoMatteOperation : public NodeOperation {
     char prefix[MAX_NAME];
     ntreeCompositCryptomatteLayerPrefix(&context().get_scene(), &bnode(), prefix, sizeof(prefix));
     return std::string(prefix, BLI_strnlen(prefix, sizeof(prefix)));
+  }
+
+  Domain compute_domain() override
+  {
+    switch (get_source()) {
+      case CMP_NODE_CRYPTOMATTE_SOURCE_RENDER:
+        return Domain(context().get_render_size());
+      case CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE:
+        return compute_image_domain();
+    }
+
+    BLI_assert_unreachable();
+    return Domain::identity();
+  }
+
+  Domain compute_image_domain()
+  {
+    BLI_assert(get_source() == CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE);
+
+    Image *image = get_image();
+    if (!image) {
+      return NodeOperation::compute_domain();
+    }
+
+    ImageUser image_user = *get_image_user();
+    ImBuf *image_buffer = BKE_image_acquire_ibuf(image, &image_user, nullptr);
+    if (!image_buffer) {
+      return NodeOperation::compute_domain();
+    }
+
+    const int2 image_size = int2(image_buffer->x, image_buffer->y);
+    BKE_image_release_ibuf(image, image_buffer, nullptr);
+    return Domain(image_size);
   }
 
   const ImageUser *get_image_user()
