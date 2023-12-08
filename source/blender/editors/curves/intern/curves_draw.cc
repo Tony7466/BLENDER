@@ -5,6 +5,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_mempool.h"
 
+#include "BKE_attribute.h"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_report.h"
@@ -624,6 +625,7 @@ static bool curve_draw_init(bContext *C, wmOperator *op, bool is_invoke)
 
 static int curves_draw_exec(bContext *C, wmOperator *op)
 {
+  using namespace bke;
   if (op->customdata == nullptr) {
     if (!curve_draw_init(C, op, false)) {
       return OPERATOR_CANCELLED;
@@ -764,7 +766,7 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
 
     if (result == 0) {
       curves.resize(curves.points_num() + cubic_spline_len, curve_index + 1);
-      auto curve_types = curves.curve_types_for_write();
+      MutableSpan<int8_t> curve_types = curves.curve_types_for_write();
       curve_types[curve_index] = CURVE_TYPE_BEZIER;
       curves.update_curve_types();
 
@@ -776,30 +778,27 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
       MutableSpan<int> resolution = curves.resolution_for_write();
 
       resolution[curve_index] = 12;
-      auto points_of_curve = curves.points_by_curve()[curve_index];
-      auto positions = curves.positions_for_write();
+      IndexRange points_of_curve = curves.points_by_curve()[curve_index];
+      MutableSpan<float3> positions = curves.positions_for_write();
 
-      auto curves_attributes = curves.attributes_for_write();
-      auto radius_attribute = curves_attributes.lookup_or_add_for_write_only_span<float>(
-          "radius", ATTR_DOMAIN_POINT);
-      auto selection_attribute = curves_attributes.lookup_or_add_for_write_span<bool>(
-          ".selection", ATTR_DOMAIN_POINT);
+      MutableAttributeAccessor curves_attributes = curves.attributes_for_write();
+      SpanAttributeWriter<float> radius_attribute =
+          curves_attributes.lookup_or_add_for_write_only_span<float>("radius", ATTR_DOMAIN_POINT);
+      SpanAttributeWriter<bool> selection_attribute =
+          curves_attributes.lookup_or_add_for_write_span<bool>(".selection", ATTR_DOMAIN_POINT);
 
       MutableSpan<float> radii = radius_attribute.span;
       MutableSpan<bool> selections = selection_attribute.span;
 
       selections.fill(false);
 
-      auto iter = points_of_curve.begin();
-
       float *co = cubic_spline;
 
-      for (int j = 0; j < cubic_spline_len; j++, iter++, co += (dims * 3)) {
+      for (const int64_t i : points_of_curve) {
         const float *handle_l = co + (dims * 0);
         const float *pt = co + (dims * 1);
         const float *handle_r = co + (dims * 2);
 
-        const auto i = *iter;
         copy_v3_v3(handle_positions_l[i], handle_l);
         copy_v3_v3(positions[i], pt);
         copy_v3_v3(handle_positions_r[i], handle_r);
@@ -813,6 +812,7 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
         handle_types_r[i] = BEZIER_HANDLE_ALIGN;
         selections[i] = true;
         //         bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
+        co += (dims * 3);
       }
 
       if (corners_index) {
@@ -824,8 +824,8 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
           i_end -= 1;
         }
 
-        for (uint i = i_start; i < i_end; i++) {
-          const auto corner_i = points_of_curve[corners_index[i]];
+        for (const auto i : IndexRange(i_start, i_end - i_start)) {
+          const int64_t corner_i = points_of_curve[corners_index[i]];
           handle_types_l[i] = BEZIER_HANDLE_FREE;
           handle_types_r[i] = BEZIER_HANDLE_FREE;
         }
@@ -846,42 +846,39 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
     }
   }
   else { /* CU_POLY */
-    BLI_mempool_iter iter;
-    const StrokeElem *selem;
-
     curves.resize(curves.points_num() + stroke_len, curve_index + 1);
-    auto curve_types = curves.curve_types_for_write();
+    MutableSpan<int8_t> curve_types = curves.curve_types_for_write();
     curve_types[curve_index] = CURVE_TYPE_POLY;
     curves.update_curve_types();
 
-    auto points_of_curve = curves.points_by_curve()[curve_index];
-    auto positions = curves.positions_for_write();
-    auto curves_attributes = curves.attributes_for_write();
-    auto radius_attribute = curves_attributes.lookup_or_add_for_write_only_span<float>(
-        "radius", ATTR_DOMAIN_POINT);
-    auto selection_attribute = curves_attributes.lookup_or_add_for_write_span<bool>(
-        ".selection", ATTR_DOMAIN_POINT);
+    IndexRange points_of_curve = curves.points_by_curve()[curve_index];
+    MutableSpan<float3> positions = curves.positions_for_write();
+    MutableAttributeAccessor curves_attributes = curves.attributes_for_write();
+    SpanAttributeWriter<float> radius_attribute =
+        curves_attributes.lookup_or_add_for_write_only_span<float>("radius", ATTR_DOMAIN_POINT);
+    SpanAttributeWriter<bool> selection_attribute =
+        curves_attributes.lookup_or_add_for_write_span<bool>(".selection", ATTR_DOMAIN_POINT);
 
     MutableSpan<float> radii = radius_attribute.span;
     MutableSpan<bool> selections = selection_attribute.span;
 
     selections.fill(false);
 
-    auto points_iter = points_of_curve.begin();
+    IndexRange::Iterator points_iter = points_of_curve.begin();
 
+    BLI_mempool_iter iter;
     BLI_mempool_iternew(cdd->stroke_elem_pool, &iter);
-    for (selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)); selem;
+    for (auto *selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)); selem;
          selem = static_cast<const StrokeElem *>(BLI_mempool_iterstep(&iter)), points_iter++)
     {
-      const auto i = *points_iter;
+      const int64_t i = *points_iter;
       copy_v3_v3(positions[i], selem->location_local);
       if (is_curve_2d(curves_id)) {
         positions[i][2] = 0.0f;
       }
 
-      const float radius = use_pressure_radius ? (selem->pressure * radius_range) + radius_min :
-                                                 cps->radius_max;
-      radii[i] = radius;
+      radii[i] = use_pressure_radius ? (selem->pressure * radius_range) + radius_min :
+                                       cps->radius_max;
       selections[i] = true;
     }
 
