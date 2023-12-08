@@ -1701,8 +1701,8 @@ static void ui_text_clip_right_label(const uiFontStyle *fstyle, uiBut *but, cons
 
   but->strwidth = BLF_width(fstyle->uifont_id, but->drawstr, sizeof(but->drawstr));
 
-  /* It already fits, do nothing. */
-  if (but->strwidth < okwidth) {
+  /* The string already fits, so do nothing. */
+  if (but->strwidth <= okwidth) {
     return;
   }
 
@@ -1710,6 +1710,7 @@ static void ui_text_clip_right_label(const uiFontStyle *fstyle, uiBut *but, cons
   const int sep_len = sizeof(sep) - 1;
   const float sep_strwidth = BLF_width(fstyle->uifont_id, sep, sep_len + 1);
 
+  /* Assume the string will have an ellipsis for initial tests. */
   but->strwidth += sep_strwidth;
 
   but->ofs = 0;
@@ -1775,7 +1776,7 @@ static void ui_text_clip_right_label(const uiFontStyle *fstyle, uiBut *but, cons
 
   cpoin = strrchr(but->drawstr, ':');
   if (cpoin && (cpoin - but->drawstr > 0) && (drawstr_len < (sizeof(but->drawstr) - sep_len))) {
-    /* We shortened the string but still have a colon, so insert ellipsis. */
+    /* We shortened the string and still have a colon, so insert ellipsis. */
     memmove(cpoin + sep_len, cpoin, cpend - cpoin);
     memcpy(cpoin, sep, sep_len);
     but->strwidth = BLF_width(
