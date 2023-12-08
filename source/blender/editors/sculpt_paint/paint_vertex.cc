@@ -67,7 +67,7 @@
 #include "IMB_imbuf.h"
 
 #include "BKE_ccg.h"
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include "paint_intern.hh" /* own include */
 #include "sculpt_intern.hh"
@@ -219,7 +219,7 @@ void init_session(Depsgraph *depsgraph, Scene *scene, Object *ob, eObjectMode ob
   ob->sculpt->mode_type = object_mode;
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true);
 
-  SCULPT_ensure_valid_pivot(ob, scene);
+  ensure_valid_pivot(ob, scene);
 }
 
 void init_session_data(const ToolSettings *ts, Object *ob)
@@ -374,23 +374,24 @@ void mode_enter_generic(
 
 void mode_exit_generic(Object *ob, const eObjectMode mode_flag)
 {
+  using namespace blender;
   Mesh *me = BKE_mesh_from_object(ob);
   ob->mode &= ~mode_flag;
 
   if (mode_flag == OB_MODE_VERTEX_PAINT) {
     if (me->editflag & ME_EDIT_PAINT_FACE_SEL) {
-      BKE_mesh_flush_select_from_faces(me);
+      bke::mesh_select_face_flush(*me);
     }
     else if (me->editflag & ME_EDIT_PAINT_VERT_SEL) {
-      BKE_mesh_flush_select_from_verts(me);
+      bke::mesh_select_vert_flush(*me);
     }
   }
   else if (mode_flag == OB_MODE_WEIGHT_PAINT) {
     if (me->editflag & ME_EDIT_PAINT_VERT_SEL) {
-      BKE_mesh_flush_select_from_verts(me);
+      bke::mesh_select_vert_flush(*me);
     }
     else if (me->editflag & ME_EDIT_PAINT_FACE_SEL) {
-      BKE_mesh_flush_select_from_faces(me);
+      bke::mesh_select_face_flush(*me);
     }
   }
   else {
@@ -502,7 +503,7 @@ void update_cache_invariants(
   cache->first_time = true;
 
   /* cache projection matrix */
-  ED_view3d_ob_project_mat_get(cache->vc->rv3d, ob, cache->projection_mat);
+  cache->projection_mat = ED_view3d_ob_project_mat_get(cache->vc->rv3d, ob);
 
   invert_m4_m4(ob->world_to_object, ob->object_to_world);
   copy_m3_m4(mat, cache->vc->rv3d->viewinv);
@@ -1102,7 +1103,7 @@ static void do_vpaint_brush_blur_loops(bContext *C,
           using T = decltype(dummy);
           using Color =
               std::conditional_t<std::is_same_v<T, ColorGeometry4f>, ColorPaint4f, ColorPaint4b>;
-          using Traits = color::Traits<Color>;
+          using Traits = blender::color::Traits<Color>;
           using Blend = typename Traits::BlendType;
           MutableSpan<Color> previous_color = g_previous_color.typed<T>().template cast<Color>();
           MutableSpan<Color> colors = attribute.typed<T>().template cast<Color>();
@@ -1253,7 +1254,7 @@ static void do_vpaint_brush_blur_verts(bContext *C,
           using T = decltype(dummy);
           using Color =
               std::conditional_t<std::is_same_v<T, ColorGeometry4f>, ColorPaint4f, ColorPaint4b>;
-          using Traits = color::Traits<Color>;
+          using Traits = blender::color::Traits<Color>;
           using Blend = typename Traits::BlendType;
           MutableSpan<Color> previous_color = g_previous_color.typed<T>().template cast<Color>();
           MutableSpan<Color> colors = attribute.typed<T>().template cast<Color>();
@@ -1411,7 +1412,7 @@ static void do_vpaint_brush_smear(bContext *C,
           using T = decltype(dummy);
           using Color =
               std::conditional_t<std::is_same_v<T, ColorGeometry4f>, ColorPaint4f, ColorPaint4b>;
-          using Traits = color::Traits<Color>;
+          using Traits = blender::color::Traits<Color>;
           MutableSpan<Color> color_curr = g_color_curr.typed<T>().template cast<Color>();
           MutableSpan<Color> color_prev_smear =
               g_color_prev_smear.typed<T>().template cast<Color>();
@@ -1540,7 +1541,7 @@ static void calculate_average_color(VPaintData *vpd,
     using T = decltype(dummy);
     using Color =
         std::conditional_t<std::is_same_v<T, ColorGeometry4f>, ColorPaint4f, ColorPaint4b>;
-    using Traits = color::Traits<Color>;
+    using Traits = blender::color::Traits<Color>;
     using Blend = typename Traits::BlendType;
     const Span<Color> colors = attribute.typed<T>().template cast<Color>();
 
@@ -1709,7 +1710,7 @@ static void vpaint_do_draw(bContext *C,
           using T = decltype(dummy);
           using Color =
               std::conditional_t<std::is_same_v<T, ColorGeometry4f>, ColorPaint4f, ColorPaint4b>;
-          using Traits = color::Traits<Color>;
+          using Traits = blender::color::Traits<Color>;
           MutableSpan<Color> colors = attribute.typed<T>().template cast<Color>();
           MutableSpan<Color> previous_color = g_previous_color.typed<T>().template cast<Color>();
           Color color_final = fromFloat<Color>(vpd->paintcol);
@@ -1808,7 +1809,7 @@ static void vpaint_paint_leaves(bContext *C,
                                 Span<PBVHNode *> nodes)
 {
   for (PBVHNode *node : nodes) {
-    SCULPT_undo_push_node(ob, node, SCULPT_UNDO_COLOR);
+    undo::push_node(ob, node, undo::Type::Color);
   }
 
   const Brush *brush = ob->sculpt->cache->brush;
@@ -1993,7 +1994,7 @@ static void vpaint_stroke_done(const bContext *C, PaintStroke *stroke)
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 
-  SCULPT_undo_push_end(ob);
+  undo::push_end(ob);
 
   SCULPT_cache_free(ob->sculpt->cache);
   ob->sculpt->cache = nullptr;
@@ -2018,7 +2019,7 @@ static int vpaint_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     BKE_pbvh_ensure_node_loops(ob->sculpt->pbvh);
   }
 
-  SCULPT_undo_push_begin_ex(ob, "Vertex Paint");
+  undo::push_begin_ex(ob, "Vertex Paint");
 
   if ((retval = op->type->modal(C, op, event)) == OPERATOR_FINISHED) {
     paint_stroke_free(C, op, (PaintStroke *)op->customdata);
@@ -2239,6 +2240,7 @@ bool BKE_object_attributes_active_color_fill(Object *ob,
 
 static int vertex_color_set_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender::ed::sculpt_paint;
   Scene *scene = CTX_data_scene(C);
   Object *obact = CTX_data_active_object(C);
 
@@ -2252,10 +2254,10 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
   /* Ensure valid sculpt state. */
   BKE_sculpt_update_object_for_edit(CTX_data_ensure_evaluated_depsgraph(C), obact, true);
 
-  SCULPT_undo_push_begin(obact, op);
+  undo::push_begin(obact, op);
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(obact->sculpt->pbvh, {});
   for (PBVHNode *node : nodes) {
-    SCULPT_undo_push_node(obact, node, SCULPT_UNDO_COLOR);
+    undo::push_node(obact, node, undo::Type::Color);
   }
 
   paint_object_attributes_active_color_fill_ex(obact, paintcol, true, affect_alpha);
@@ -2263,7 +2265,7 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
   for (PBVHNode *node : nodes) {
     BKE_pbvh_node_mark_update_color(node);
   }
-  SCULPT_undo_push_end(obact);
+  undo::push_end(obact);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
   return OPERATOR_FINISHED;
