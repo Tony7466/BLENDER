@@ -29,6 +29,7 @@
 #include "BLI_generic_array.hh"
 #include "BLI_gsqueue.h"
 #include "BLI_implicit_sharing.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
@@ -172,8 +173,6 @@ struct SculptUndoNodeGeometry {
 };
 
 struct SculptUndoNode {
-  SculptUndoNode *next, *prev;
-
   SculptUndoType type;
 
   char idname[MAX_ID_NAME]; /* Name instead of pointer. */
@@ -352,10 +351,10 @@ struct FilterCache {
 
   /* Filter orientation. */
   SculptFilterOrientation orientation;
-  float obmat[4][4];
-  float obmat_inv[4][4];
-  float viewmat[4][4];
-  float viewmat_inv[4][4];
+  blender::float4x4 obmat;
+  blender::float4x4 obmat_inv;
+  blender::float4x4 viewmat;
+  blender::float4x4 viewmat_inv;
 
   /* Displacement eraser. */
   float (*limit_surface_co)[3];
@@ -453,7 +452,7 @@ struct StrokeCache {
   bool first_time; /* Beginning of stroke may do some things special */
 
   /* from ED_view3d_ob_project_mat_get() */
-  float projection_mat[4][4];
+  blender::float4x4 projection_mat;
 
   /* Clean this up! */
   ViewContext *vc;
@@ -1492,23 +1491,27 @@ void SCULPT_cache_free(StrokeCache *cache);
 /** \name Sculpt Undo
  * \{ */
 
-SculptUndoNode *SCULPT_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType type);
-SculptUndoNode *SCULPT_undo_get_node(PBVHNode *node, SculptUndoType type);
+namespace blender::ed::sculpt_paint::undo {
+
+SculptUndoNode *push_node(Object *ob, PBVHNode *node, SculptUndoType type);
+SculptUndoNode *get_node(PBVHNode *node, SculptUndoType type);
 
 /**
  * Pushes an undo step using the operator name. This is necessary for
  * redo panels to work; operators that do not support that may use
- * #SCULPT_undo_push_begin_ex instead if so desired.
+ * #push_begin_ex instead if so desired.
  */
-void SCULPT_undo_push_begin(Object *ob, const wmOperator *op);
+void push_begin(Object *ob, const wmOperator *op);
 
 /**
- * NOTE: #SCULPT_undo_push_begin is preferred since `name`
+ * NOTE: #push_begin is preferred since `name`
  * must match operator name for redo panels to work.
  */
-void SCULPT_undo_push_begin_ex(Object *ob, const char *name);
-void SCULPT_undo_push_end(Object *ob);
-void SCULPT_undo_push_end_ex(Object *ob, const bool use_nested_undo);
+void push_begin_ex(Object *ob, const char *name);
+void push_end(Object *ob);
+void push_end_ex(Object *ob, const bool use_nested_undo);
+
+}
 
 /** \} */
 
