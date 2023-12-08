@@ -1702,7 +1702,7 @@ static void GREASE_PENCIL_OT_duplicate(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int grease_pencil_clean_loose_exec(bContext* C, wmOperator* op)
+static int grease_pencil_clean_loose_exec(bContext *C, wmOperator *op)
 {
   Object *object = CTX_data_active_object(C);
   Scene &scene = *CTX_data_scene(C);
@@ -1733,7 +1733,7 @@ static int grease_pencil_clean_loose_exec(bContext* C, wmOperator* op)
   return OPERATOR_FINISHED;
 }
 
-static void GREASE_PENCIL_OT_clean_loose(wmOperatorType* ot)
+static void GREASE_PENCIL_OT_clean_loose(wmOperatorType *ot)
 {
   ot->name = "Clean Loose Points";
   ot->idname = "GREASE_PENCIL_OT_clean_loose";
