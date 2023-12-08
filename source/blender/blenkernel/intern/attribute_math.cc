@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_quaternion.hh"
 
 #include "BKE_attribute_math.hh"
@@ -34,6 +35,29 @@ math::Quaternion mix4(const float4 &weights,
 {
   const float3 expmap_mixed = mix4(weights, v0.expmap(), v1.expmap(), v2.expmap(), v3.expmap());
   return math::Quaternion::expmap(expmap_mixed);
+}
+
+template<> float4x4 mix2(const float factor, const float4x4 &a, const float4x4 &b)
+{
+  return math::interpolate(a, b, factor);
+}
+
+template<>
+float4x4 mix3(const float3 &weights, const float4x4 &v0, const float4x4 &v1, const float4x4 &v2)
+{
+  const float3 expmap_mixed = mix3(weights, v0.expmap(), v1.expmap(), v2.expmap());
+  return float4x4::expmap(expmap_mixed);
+}
+
+template<>
+float4x4 mix4(const float4 &weights,
+              const float4x4 &v0,
+              const float4x4 &v1,
+              const float4x4 &v2,
+              const float4x4 &v3)
+{
+  const float3 expmap_mixed = mix4(weights, v0.expmap(), v1.expmap(), v2.expmap(), v3.expmap());
+  return float4x4::expmap(expmap_mixed);
 }
 
 ColorGeometry4fMixer::ColorGeometry4fMixer(MutableSpan<ColorGeometry4f> buffer,

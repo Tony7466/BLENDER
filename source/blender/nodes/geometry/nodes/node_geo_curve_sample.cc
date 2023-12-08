@@ -89,8 +89,9 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *in_socket_color4f = in_socket_vector->next;
   bNodeSocket *in_socket_bool = in_socket_color4f->next;
   bNodeSocket *in_socket_quat = in_socket_bool->next;
+  bNodeSocket *in_socket_matrix = in_socket_quat->next;
 
-  bNodeSocket *factor = in_socket_quat->next;
+  bNodeSocket *factor = in_socket_matrix->next;
   bNodeSocket *length = factor->next;
   bNodeSocket *curve_index = length->next;
 
@@ -104,6 +105,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bke::nodeSetSocketAvailability(ntree, in_socket_bool, data_type == CD_PROP_BOOL);
   bke::nodeSetSocketAvailability(ntree, in_socket_int32, data_type == CD_PROP_INT32);
   bke::nodeSetSocketAvailability(ntree, in_socket_quat, data_type == CD_PROP_QUATERNION);
+  bke::nodeSetSocketAvailability(ntree, in_socket_matrix, data_type == CD_PROP_FLOAT4X4);
 
   bNodeSocket *out_socket_float = static_cast<bNodeSocket *>(node->outputs.first);
   bNodeSocket *out_socket_int32 = out_socket_float->next;
@@ -111,6 +113,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *out_socket_color4f = out_socket_vector->next;
   bNodeSocket *out_socket_bool = out_socket_color4f->next;
   bNodeSocket *out_socket_quat = out_socket_bool->next;
+  bNodeSocket *out_socket_matrix = out_socket_quat->next;
 
   bke::nodeSetSocketAvailability(ntree, out_socket_vector, data_type == CD_PROP_FLOAT3);
   bke::nodeSetSocketAvailability(ntree, out_socket_float, data_type == CD_PROP_FLOAT);
@@ -118,6 +121,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bke::nodeSetSocketAvailability(ntree, out_socket_bool, data_type == CD_PROP_BOOL);
   bke::nodeSetSocketAvailability(ntree, out_socket_int32, data_type == CD_PROP_INT32);
   bke::nodeSetSocketAvailability(ntree, out_socket_quat, data_type == CD_PROP_QUATERNION);
+  bke::nodeSetSocketAvailability(ntree, out_socket_matrix, data_type == CD_PROP_FLOAT4X4);
 }
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
@@ -482,6 +486,8 @@ static GField get_input_attribute_field(GeoNodeExecParams &params, const eCustom
       return params.extract_input<GField>("Value_Int");
     case CD_PROP_QUATERNION:
       return params.extract_input<GField>("Value_Rotation");
+    case CD_PROP_FLOAT4X4:
+      return params.extract_input<GField>("Value_Matrix");
     default:
       BLI_assert_unreachable();
   }
@@ -513,6 +519,10 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
     }
     case CD_PROP_QUATERNION: {
       params.set_output("Value_Rotation", field);
+      break;
+    }
+    case CD_PROP_FLOAT4X4: {
+      params.set_output("Value_Matrix", field);
       break;
     }
     default:

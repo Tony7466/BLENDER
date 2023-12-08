@@ -24,6 +24,7 @@
 #include "BLI_endian_switch.h"
 #include "BLI_index_range.hh"
 #include "BLI_math_color_blend.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_mempool.h"
@@ -1524,6 +1525,16 @@ static void layerDefault_propquaternion(void *data, const int count)
   MutableSpan(static_cast<math::Quaternion *>(data), count).fill(math::Quaternion::identity());
 }
 
+/* -------------------------------------------------------------------- */
+/** \name Callbacks for (#math::Quaternion, #CD_PROP_FLOAT4X4)
+ * \{ */
+
+static void layerDefault_propfloat4x4(void *data, const int count)
+{
+  using namespace blender;
+  MutableSpan(static_cast<float4x4 *>(data), count).fill(float4x4::identity());
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1698,7 +1709,15 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
      layerWrite_mdisps,
      layerFilesize_mdisps},
     /* 20: CD_PREVIEW_MCOL */
-    {},
+    {sizeof(float[4][4]),
+     "mat4x4f",
+     1,
+     N_("4 by 4 Float Matrix"),
+     nullptr,
+     nullptr,
+     nullptr,
+     nullptr,
+     layerDefault_propfloat4x4},
     /* 21: CD_ID_MCOL */ /* DEPRECATED */
     {sizeof(MCol[4]), "", 0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     /* 22: CD_TEXTURE_MCOL */
@@ -5306,6 +5325,8 @@ const blender::CPPType *custom_data_type_to_cpp_type(const eCustomDataType type)
       return &CPPType::get<ColorGeometry4b>();
     case CD_PROP_QUATERNION:
       return &CPPType::get<math::Quaternion>();
+    case CD_PROP_FLOAT4X4:
+      return &CPPType::get<float4x4>();
     case CD_PROP_STRING:
       return &CPPType::get<MStringProperty>();
     default:
@@ -5344,6 +5365,9 @@ eCustomDataType cpp_type_to_custom_data_type(const blender::CPPType &type)
   }
   if (type.is<math::Quaternion>()) {
     return CD_PROP_QUATERNION;
+  }
+  if (type.is<float4x4>()) {
+    return CD_PROP_FLOAT4X4;
   }
   if (type.is<MStringProperty>()) {
     return CD_PROP_STRING;

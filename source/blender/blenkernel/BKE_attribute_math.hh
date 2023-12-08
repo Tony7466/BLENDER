@@ -35,7 +35,8 @@ inline void convert_to_static_type(const CPPType &cpp_type, const Func &func)
                               int8_t,
                               ColorGeometry4f,
                               ColorGeometry4b,
-                              math::Quaternion>([&](auto type_tag) {
+                              math::Quaternion,
+                              float4x4>([&](auto type_tag) {
     using T = typename decltype(type_tag)::type;
     if constexpr (std::is_same_v<T, void>) {
       /* It's expected that the given cpp type is one of the supported ones. */

@@ -53,14 +53,12 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
         bake_items[i] = std::make_unique<StringBakeItem>(value.as_value());
         break;
       }
-      case SOCK_MATRIX:
-        BLI_assert_unreachable();
-        break;
       case SOCK_FLOAT:
       case SOCK_VECTOR:
       case SOCK_INT:
       case SOCK_BOOLEAN:
       case SOCK_ROTATION:
+      case SOCK_MATRIX:
       case SOCK_RGBA: {
         const CPPType &type = get_socket_cpp_type(socket_type);
         const ValueOrFieldCPPType &value_or_field_type = *ValueOrFieldCPPType::get_from_self(type);
@@ -141,14 +139,12 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
       }
       return false;
     }
-    case SOCK_MATRIX:
-      BLI_assert_unreachable();
-      break;
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_INT:
     case SOCK_BOOLEAN:
     case SOCK_ROTATION:
+    case SOCK_MATRIX:
     case SOCK_RGBA: {
       const ValueOrFieldCPPType &value_or_field_type = *ValueOrFieldCPPType::get_from_self(type);
       const CPPType &base_type = value_or_field_type.value;

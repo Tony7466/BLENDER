@@ -111,6 +111,8 @@ static int attribute_data_type_complexity(const eCustomDataType data_type)
       return 8;
     case CD_PROP_COLOR:
       return 9;
+    case CD_PROP_FLOAT4X4:
+      return 10;
 #if 0 /* These attribute types are not supported yet. */
     case CD_PROP_STRING:
       return 10;
