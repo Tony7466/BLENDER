@@ -11,7 +11,7 @@
 #  include "GPU_shader_shared_utils.h"
 #endif
 
-struct UVPrimitivePaintInputGPU {
+struct TrianglePaintInput {
   int3 vert_indices;
   float _pad0;
   /**
@@ -22,7 +22,7 @@ struct UVPrimitivePaintInputGPU {
   float2 delta_barycentric_coord;
   float2 _pad1;
 };
-BLI_STATIC_ASSERT_ALIGN(UVPrimitivePaintInputGPU, 16)
+BLI_STATIC_ASSERT_ALIGN(TrianglePaintInput, 16)
 
 struct PackedPixelRow {
   /** Barycentric coordinate of the first pixel. */
@@ -54,7 +54,6 @@ struct PaintBrushData {
   PaintBrushTestData test;
   float alpha;
   int falloff_shape;
-  float _pad0[2];
 };
 BLI_STATIC_ASSERT_ALIGN(PaintBrushData, 16)
 

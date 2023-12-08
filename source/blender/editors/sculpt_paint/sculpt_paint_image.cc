@@ -958,7 +958,7 @@ bool SCULPT_use_image_paint_brush(PaintModeSettings *settings, Object *ob)
 /** Can the sculpt paint be performed on the GPU? */
 static bool SCULPT_use_image_paint_compute()
 {
-#if 1
+#if 0
   return false;
 #else
   return GPU_compute_shader_support() && GPU_shader_image_load_store_support();
@@ -1035,9 +1035,11 @@ void SCULPT_paint_image_batches_flush(PaintModeSettings *paint_mode_settings,
 
   if (ImageData::init_active_image(ob, &data.image_data, paint_mode_settings)) {
     TIMEIT_START(paint_image_gpu);
+    GPU_debug_capture_begin();
     GPU_debug_group_begin("SCULPT_paint_brush");
     dispatch_gpu_batches(data);
     GPU_debug_group_end();
+    GPU_debug_capture_end();
     TIMEIT_END(paint_image_gpu);
   }
 }

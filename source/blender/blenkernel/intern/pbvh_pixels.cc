@@ -46,10 +46,10 @@ void PaintUVPrimitives::ensure_gpu_buffer(const PaintGeometryPrimitives &paint_g
   }
   /* Convert to GPU optimized data structure. On CPU the indices and delta barycentric coordinates
    * are stored on two arrays. On the GPU they recite in the same structure. */
-  Vector<UVPrimitivePaintInputGPU> gpu_primitives;
+  Vector<TrianglePaintInput> gpu_primitives;
   gpu_primitives.reserve(paint_input.size());
   for (const UVPrimitivePaintInput uv_primitive : paint_input) {
-    UVPrimitivePaintInputGPU gpu_primitive = {};
+    TrianglePaintInput gpu_primitive = {};
     gpu_primitive.vert_indices = paint_geometry_primitives.get_vert_indices(
         uv_primitive.geometry_primitive_index);
     gpu_primitive.delta_barycentric_coord = uv_primitive.delta_barycentric_coord_u;

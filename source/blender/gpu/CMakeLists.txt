@@ -766,6 +766,8 @@ set(SRC_SHADER_CREATE_INFOS
   shaders/infos/gpu_shader_simple_lighting_info.hh
   shaders/infos/gpu_shader_text_info.hh
   shaders/infos/gpu_srgb_to_framebuffer_space_info.hh
+
+  shaders/sculpt_paint/infos/sculpt_paint_image_info.hh
 )
 
 set(SRC_SHADER_CREATE_INFOS_TEST
