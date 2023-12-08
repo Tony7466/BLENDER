@@ -33,6 +33,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Float>("Boundary").hide_value();
 
   b.add_output<decl::Float>("Grid");
+  b.add_output<decl::Bool>("Success");
+  b.add_output<decl::Int>("Iterations");
+  b.add_output<decl::Float>("Absolute Error");
+  b.add_output<decl::Float>("Relative Error");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA * /*ptr*/)
@@ -74,8 +78,10 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const bke::VolumeGridPtr<float> input_grid = grids::extract_grid_input<float>(params, "Grid");
-  const bke::VolumeGridPtr<float> boundary_grid = grids::extract_grid_input<float>(params, "Boundary");
+  const bke::VolumeGridPtr<float> boundary_grid = grids::extract_grid_input<float>(params,
+                                                                                   "Boundary");
   if (!input_grid) {
+    grids::set_output_grid(params, "Grid", CD_PROP_FLOAT, input_grid);
     params.set_default_remaining_outputs();
   }
 
@@ -102,6 +108,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   bke::GVolumeGridPtr output_grid = bke::make_volume_grid_ptr(output_grid_vdb);
 
   grids::set_output_grid(params, "Grid", CD_PROP_FLOAT, output_grid);
+  params.set_output<bool>("Success", std::move(pcg_state.success));
+  params.set_output<int>("Iterations", std::move(pcg_state.iterations));
+  params.set_output<float>("Absolute Error", float(pcg_state.absoluteError));
+  params.set_output<float>("Relative Error", float(pcg_state.relativeError));
 #else
   params.set_default_remaining_outputs();
   params.error_message_add(NodeWarningType::Error,
