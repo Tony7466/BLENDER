@@ -32,17 +32,11 @@ namespace blender::bke::pbvh::pixels {
 struct PaintGeometryPrimitives {
   /** Data accessed by the inner loop of the painting brush. */
   Vector<int3> vert_indices;
-  GPUStorageBuf *gpu_buffer = nullptr;
 
  public:
   void append(const int3 vert_indices)
   {
     this->vert_indices.append(vert_indices);
-
-    TrianglePaintInput triangle;
-    triangle.vert_indices = int3(vert_indices.x, vert_indices.y, vert_indices.z);
-    triangle.delta_barycentric_coord = float2(0.0f);
-    // this->paint_input.append(triangle);
   }
 
   const int3 &get_vert_indices(const int index) const
@@ -50,14 +44,10 @@ struct PaintGeometryPrimitives {
     return vert_indices[index];
   }
 
-  ~PaintGeometryPrimitives()
+  void clear()
   {
-    clear();
+    vert_indices.clear();
   }
-
-  /** Clear data associated with self. */
-  void clear();
-  void ensure_gpu_buffer();
 
   int64_t size() const
   {
@@ -119,7 +109,7 @@ struct PaintUVPrimitives {
 
   /** Clear data associated with self. */
   void clear();
-  void ensure_gpu_buffer();
+  void ensure_gpu_buffer(const PaintGeometryPrimitives &paint_geometry_primitives);
 
   int64_t size() const
   {
@@ -282,9 +272,9 @@ struct NodeData {
     }
   }
 
-  void ensure_gpu_buffers()
+  void ensure_gpu_buffers(const PaintGeometryPrimitives &paint_geometry_primitives)
   {
-    uv_primitives.ensure_gpu_buffer();
+    uv_primitives.ensure_gpu_buffer(paint_geometry_primitives);
     if (gpu_buffers.pixels == nullptr) {
       build_pixels_gpu_buffer();
     }

@@ -30,22 +30,33 @@
 
 namespace blender::bke::pbvh::pixels {
 
-void PaintGeometryPrimitives::clear()
+void PaintUVPrimitives::clear()
 {
-  // paint_input.clear();
+  paint_input.clear();
   if (gpu_buffer) {
     GPU_storagebuf_free(gpu_buffer);
     gpu_buffer = nullptr;
   }
 }
 
-void PaintGeometryPrimitives::ensure_gpu_buffer()
+void PaintUVPrimitives::ensure_gpu_buffer(const PaintGeometryPrimitives &paint_geometry_primitives)
 {
   if (gpu_buffer) {
     return;
   }
+  /* Convert to GPU optimized data structure. On CPU the indices and delta barycentric coordinates
+   * are stored on two arrays. On the GPU they recite in the same structure. */
+  Vector<UVPrimitivePaintInputGPU> gpu_primitives;
+  gpu_primitives.reserve(paint_input.size());
+  for (const UVPrimitivePaintInput uv_primitive : paint_input) {
+    UVPrimitivePaintInputGPU gpu_primitive = {};
+    gpu_primitive.vert_indices = paint_geometry_primitives.get_vert_indices(
+        uv_primitive.geometry_primitive_index);
+    gpu_primitive.delta_barycentric_coord = uv_primitive.delta_barycentric_coord_u;
+    gpu_primitives.append(gpu_primitive);
+  }
   gpu_buffer = GPU_storagebuf_create_ex(
-      mem_size(), nullptr /* paint_input.data()*/, GPU_USAGE_STATIC, __func__);
+      mem_size(), gpu_primitives.data(), GPU_USAGE_STATIC, __func__);
 }
 
 /**

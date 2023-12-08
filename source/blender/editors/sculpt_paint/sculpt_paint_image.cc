@@ -718,18 +718,19 @@ static void ensure_gpu_buffers(TexturePaintingUserData &data)
     ss.mode.texture_paint.gpu_data = MEM_new<GPUSculptPaintData>(__func__);
   }
 
+  PBVH *pbvh = ss.pbvh;
+  const PBVHData &pbvh_data = BKE_pbvh_pixels_data_get(*pbvh);
   GPUSculptPaintData &paint_data = *static_cast<GPUSculptPaintData *>(
       ss.mode.texture_paint.gpu_data);
   if (paint_data.steps.is_empty()) {
-    PBVH *pbvh = ss.pbvh;
-    BKE_pbvh_frame_selection_clear(pbvh);
+    BKE_pbvh_clear_frame_selection(pbvh);
   }
   // TODO(jbakker): move to local data structs as data.nodes is readonly.
   for (PBVHNode *node :
        MutableSpan<PBVHNode *>(const_cast<PBVHNode **>(data.nodes.data()), data.nodes_len))
   {
     NodeData &node_data = BKE_pbvh_pixels_node_data_get(*node);
-    node_data.ensure_gpu_buffers();
+    node_data.ensure_gpu_buffers(pbvh_data.geom_primitives);
   }
 }
 
@@ -747,6 +748,7 @@ static BrushVariationFlags determine_shader_variation_flags(const Brush &brush)
 // TODO: Currently only working on a copy of the actual data. In most use cases this isn't needed
 // and can we paint directly on the target gpu target.
 static void gpu_painting_paint_step(TexturePaintingUserData &data,
+                                    const PBVHData &pbvh_data,
                                     GPUSculptPaintData &batches,
                                     TileNumber tile_number,
                                     ImBuf *image_buffer,
@@ -801,7 +803,7 @@ static void gpu_painting_paint_step(TexturePaintingUserData &data,
         GPU_compute_dispatch(shader, batch_size, 1, 1);
       }
     }
-    node_data.ensure_gpu_buffers();
+    node_data.ensure_gpu_buffers(pbvh_data.geom_primitives);
   }
 }
 
@@ -854,7 +856,7 @@ static void update_frame_selection(TexturePaintingUserData &data)
   for (PBVHNode *node :
        MutableSpan<PBVHNode *>(const_cast<PBVHNode **>(data.nodes.data()), data.nodes_len))
   {
-    BKE_pbvh_node_frame_selection_mark(node);
+    BKE_pbvh_node_mark_frame_selection(node);
   }
 }
 
@@ -888,6 +890,9 @@ static void dispatch_gpu_batches(TexturePaintingUserData &data)
   batches.ensure_vert_coord_buf(ss);
   batches.ensure_paint_brush_buf(ss, *data.brush);
 
+  PBVH *pbvh = ss.pbvh;
+  const PBVHData &pbvh_data = BKE_pbvh_pixels_data_get(*pbvh);
+
   Image &image = *data.image_data.image;
   ImageUser local_image_user = *data.image_data.image_user;
 
@@ -901,7 +906,7 @@ static void dispatch_gpu_batches(TexturePaintingUserData &data)
     }
 
     GPU_debug_group_begin("Paint tile");
-    gpu_painting_paint_step(data, batches, tile_number, image_buffer, paint_step_range);
+    gpu_painting_paint_step(data, pbvh_data, batches, tile_number, image_buffer, paint_step_range);
     gpu_painting_image_merge(
         data, *data.image_data.image, local_image_user, *image_buffer, batches.tile_texture);
     GPU_debug_group_end();
@@ -953,8 +958,8 @@ bool SCULPT_use_image_paint_brush(PaintModeSettings *settings, Object *ob)
 /** Can the sculpt paint be performed on the GPU? */
 static bool SCULPT_use_image_paint_compute()
 {
-#if 0
-				  return false;
+#if 1
+  return false;
 #else
   return GPU_compute_shader_support() && GPU_shader_image_load_store_support();
 #endif
@@ -996,6 +1001,12 @@ void SCULPT_do_paint_brush_image(PaintModeSettings *paint_mode_settings,
   }
 }
 
+static void collect_framed_node_cb(PBVHNode *node, void *data)
+{
+  blender::Vector<PBVHNode *> *nodes = static_cast<blender::Vector<PBVHNode *> *>(data);
+  nodes->append(node);
+}
+
 void SCULPT_paint_image_batches_flush(PaintModeSettings *paint_mode_settings,
                                       Sculpt *sd,
                                       Object *ob)
@@ -1008,8 +1019,16 @@ void SCULPT_paint_image_batches_flush(PaintModeSettings *paint_mode_settings,
   TexturePaintingUserData data = {nullptr};
   data.ob = ob;
   data.brush = brush;
-  PBVHNode **nodes = const_cast<PBVHNode **>(data.nodes.data());
-  BKE_pbvh_search_gather_frame_selected(ob->sculpt->pbvh, &nodes, &data.nodes_len);
+  PBVH *pbvh = ob->sculpt->pbvh;
+  blender::Vector<PBVHNode *> found_nodes;
+  BKE_pbvh_search_callback(
+      pbvh,
+      [&](PBVHNode &node) { return BKE_pbvh_node_get_frame_selection(node); },
+      collect_framed_node_cb,
+      &found_nodes);
+  data.nodes = blender::Span<PBVHNode *>(found_nodes);
+  data.nodes_len = found_nodes.size();
+
   if (data.nodes_len == 0) {
     return;
   }

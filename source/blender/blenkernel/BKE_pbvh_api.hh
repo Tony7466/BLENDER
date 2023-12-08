@@ -226,9 +226,6 @@ void BKE_pbvh_search_callback(PBVH *pbvh,
                               blender::FunctionRef<bool(PBVHNode &)> scb,
                               BKE_pbvh_HitCallback hcb,
                               void *hit_data);
-void BKE_pbvh_search_gather_frame_selected(PBVH *pbvh,
-                                           PBVHNode ***r_found_nodes,
-                                           int *r_found_nodes_len);
 
 /* Ray-cast
  * the hit callback is called for all leaf nodes intersecting the ray;
@@ -375,8 +372,9 @@ void BKE_pbvh_node_fully_unmasked_set(PBVHNode *node, int fully_masked);
 bool BKE_pbvh_node_fully_unmasked_get(const PBVHNode *node);
 
 void BKE_pbvh_mark_rebuild_pixels(PBVH *pbvh);
-void BKE_pbvh_frame_selection_clear(PBVH *pbvh);
-void BKE_pbvh_node_frame_selection_mark(PBVHNode *node);
+void BKE_pbvh_clear_frame_selection(PBVH *pbvh);
+void BKE_pbvh_node_mark_frame_selection(PBVHNode *node);
+bool BKE_pbvh_node_get_frame_selection(const PBVHNode &node);
 
 void BKE_pbvh_vert_tag_update_normal(PBVH *pbvh, PBVHVertRef vertex);
 

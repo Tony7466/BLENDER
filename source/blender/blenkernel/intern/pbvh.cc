@@ -1702,16 +1702,21 @@ void BKE_pbvh_mark_rebuild_pixels(PBVH *pbvh)
   }
 }
 
-void BKE_pbvh_frame_selection_clear(PBVH *pbvh)
+void BKE_pbvh_clear_frame_selection(PBVH *pbvh)
 {
   for (PBVHNode &node : pbvh->nodes) {
     node.flag &= ~PBVH_FrameSelection;
   }
 }
 
-void BKE_pbvh_node_frame_selection_mark(PBVHNode *node)
+void BKE_pbvh_node_mark_frame_selection(PBVHNode *node)
 {
   node->flag |= PBVH_FrameSelection;
+}
+
+bool BKE_pbvh_node_get_frame_selection(const PBVHNode &node)
+{
+  return bool(node.flag & PBVH_FrameSelection);
 }
 
 void BKE_pbvh_node_mark_update_visibility(PBVHNode *node)
