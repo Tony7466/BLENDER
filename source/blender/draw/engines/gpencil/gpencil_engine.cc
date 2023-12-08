@@ -368,7 +368,6 @@ static void get_render_result_textures(RenderEngine *engine,
 
   /* FIXME(fclem): we have a precision loss in the depth buffer because of this re-upload.
    * Find where it comes from! */
-  /* TODO: In multi view render the textures can be reused. */
   const eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
   r_depth_tx.ensure_2d(GPU_DEPTH_COMPONENT24, render_resolution, usage, pix_z);
   r_color_tx.ensure_2d(GPU_RGBA16F, render_resolution, usage, pix_col);
