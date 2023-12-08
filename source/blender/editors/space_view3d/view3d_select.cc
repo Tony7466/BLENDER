@@ -5320,7 +5320,7 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
     }
     FOREACH_OBJECT_IN_MODE_END;
   }
-  /* Select bones from pose mode armature in weight paint + bone-select mode */
+  /* Select bones from pose mode armature in weight paint + bone-select mode. */
   else if (BKE_paint_select_bone_test(obact)) {
     view3d_operator_needs_opengl(C);
     BKE_object_update_select_id(CTX_data_main(C));
