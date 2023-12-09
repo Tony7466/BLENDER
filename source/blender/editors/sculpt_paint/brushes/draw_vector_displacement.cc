@@ -106,15 +106,14 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
       &ss, &test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(&object, ss.cache->automasking, &automask_data, &node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(object, ss.cache->automasking, node);
 
   BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
 
-    SCULPT_automasking_node_update(&automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     float r_rgba[4];
     SCULPT_brush_strength_color(&ss,
@@ -144,15 +143,14 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
       &ss, &test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(&object, ss.cache->automasking, &automask_data, &node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(object, ss.cache->automasking, node);
 
   BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
 
-    SCULPT_automasking_node_update(&automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     float r_rgba[4];
     SCULPT_brush_strength_color(&ss,

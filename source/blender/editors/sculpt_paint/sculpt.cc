@@ -6184,8 +6184,6 @@ void SCULPT_cube_tip_init(Sculpt * /*sd*/, Object *ob, Brush *brush, float mat[4
 
 namespace blender::ed::sculpt_paint {
 
-namespace pbvh = bke::pbvh;
-
 void calc_mesh_hide_and_mask(const Mesh &mesh,
                              const Span<int> verts,
                              const MutableSpan<float> r_factors)
@@ -6320,22 +6318,20 @@ void calc_front_face(const float3 &view_normal,
 }
 
 void calc_mesh_automask(Object &object,
-                        AutomaskingCache &automasking,
-                        pbvh::mesh::Node &node,
+                        auto_mask::Cache &cache,
+                        bke::pbvh::mesh::Node &node,
                         const Span<int> verts,
                         const MutableSpan<float> factors)
 {
   SculptSession &ss = *object.sculpt;
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(&object, &automasking, &automask_data, &node.pbvh_node());
+  auto_mask::NodeData data = auto_mask::node_begin(object, &cache, node.pbvh_node());
 
   for (const int i : verts.index_range()) {
-    if (automask_data.have_orig_data) {
-      sculpt_orig_mesh_vert_data_update(automask_data.orig_data, i);
+    if (data.have_orig_data) {
+      sculpt_orig_mesh_vert_data_update(data.orig_data, i);
     }
-    factors[i] *= SCULPT_automasking_factor_get(
-        &automasking, &ss, BKE_pbvh_make_vref(verts[i]), &automask_data);
+    factors[i] *= auto_mask::factor_get(&cache, &ss, BKE_pbvh_make_vref(verts[i]), &data);
   }
 }
 
@@ -6349,9 +6345,9 @@ void apply_translations(const Span<float3> translations,
   }
 }
 
-void apply_crazyspace_to_translations(Span<float3x3> deform_imats,
-                                      Span<int> verts,
-                                      MutableSpan<float3> translations)
+void apply_crazyspace_to_translations(const Span<float3x3> deform_imats,
+                                      const Span<int> verts,
+                                      const MutableSpan<float3> translations)
 {
   for (const int i : verts.index_range()) {
     translations[i] = math::transform_point(deform_imats[verts[i]], translations[i]);

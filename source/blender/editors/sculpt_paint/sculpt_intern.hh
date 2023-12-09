@@ -1925,7 +1925,7 @@ void calc_front_face(const float3 &view_normal,
                      MutableSpan<float> factors);
 
 void calc_mesh_automask(Object &object,
-                        AutomaskingCache &automasking,
+                        auto_mask::Cache &automasking,
                         bke::pbvh::mesh::Node &node,
                         Span<int> vert_indices,
                         MutableSpan<float> factors);
