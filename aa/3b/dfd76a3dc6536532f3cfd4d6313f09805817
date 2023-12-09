@@ -5,3 +5,4 @@ Referenced by pull request #109063, Fix #109045: Allow images with more than 4 c
 Referenced by commit 66a6ef01636c9eb44325be335a4b96ba444665a4, Fix #109045: Allow images with more than 4 channels to load
 Referenced by issue #85097, uint16 mipmap tif files are not showing in EEVEE but work in cycles
 Referenced by issue #53969, Cycles is not rendering .dds file format correctly
+Referenced by pull request #115987, Creator: update image formats shown in the CLI help
