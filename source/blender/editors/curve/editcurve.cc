@@ -3937,7 +3937,7 @@ void CURVE_OT_spline_type_set(wmOperatorType *ot)
 {
   static const EnumPropertyItem type_items[] = {
       {CU_POLY, "POLY", 0, "Poly", ""},
-      {CU_BEZIER, "BEZIER", 0, "Bezier", ""},
+      {CU_BEZIER, "BEZIER", 0, "Bézier", ""},
       {CU_NURBS, "NURBS", 0, "NURBS", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };

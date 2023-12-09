@@ -4562,7 +4562,7 @@ static void rna_def_userdef_studiolight(BlenderRNA *brna)
                                     nullptr,
                                     nullptr);
   RNA_def_property_ui_text(
-      prop, "Solid Lights", "Lights user to display objects in solid draw mode");
+      prop, "Solid Lights", "Lights used to display objects in solid draw mode");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "light_ambient", PROP_FLOAT, PROP_COLOR);
