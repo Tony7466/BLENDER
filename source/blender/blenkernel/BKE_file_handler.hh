@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_vector.hh"
 
@@ -6,37 +8,44 @@
 
 #include "RNA_types.hh"
 
-struct bFileExtension {
-  char extension[64];
-};
+#define FH_MAX_FILE_EXTENSIONS_STR 512
 
 struct FileHandlerType {
+  /** Unique name. */
+  char idname[OP_MAX_TYPENAME];
+  /** For UI text. */
+  char label[OP_MAX_TYPENAME];
+  /** Import operator name. */
+  char import_operator[OP_MAX_TYPENAME];
+  /** Formatted string of file extensions supported by the file handler, each extension should
+   * start with a `.` and be separated by `;`. For Example: `".blend;.ble"`. */
+  char file_extensions_str[FH_MAX_FILE_EXTENSIONS_STR];
 
-  char idname[OP_MAX_TYPENAME]; /* Unique name. */
-
-  char label[OP_MAX_TYPENAME]; /* For UI text. */
-
-  char import_operator[OP_MAX_TYPENAME]; /* Import operator name. */
-
-  /* String list of file extensions supported by the file handler. */
-  char file_extensions_str[OP_MAX_TYPENAME];
-
-  /* Check if file handler can be used. */
+  /** Check if file handler can be used on file drop. */
   bool (*poll_drop)(const struct bContext *C, FileHandlerType *file_handle_type);
 
-  /* List of file extensions supported by the file handler. */
-  blender::Vector<bFileExtension> file_extensions;
+  /** List of file extensions supported by the file handler. */
+  blender::Vector<std::string> file_extensions;
 
-  /* RNA integration */
+  /** RNA integration. */
   ExtensionRNA rna_ext;
 };
 
-void BKE_file_handlers_init();
+/**
+ * Adds a new `file_handler` to the `file_handlers` list, also loads all the file extensions from
+ * the formatted `FileHandlerType.file_extensions_str` string to `FileHandlerType.file_extensions`
+ * list.
+ *
+ * The new  `file_handler` is expected to have a unique `FileHandlerType.idname`.
+ */
+void BKE_file_handler_add(std::unique_ptr<FileHandlerType> file_handler);
 
-void BKE_file_handlers_free();
+/** Returns a `file_handler` that have a specific `idname`, otherwise return `nullptr`. */
+FileHandlerType *BKE_file_handler_find(const char *idname);
 
-blender::Span<FileHandlerType *> BKE_file_handlers();
-
-void BKE_file_handler_add(FileHandlerType *file_handler);
-
+/** Removes and frees a specific `file_handler` from the `file_handlers` list, the `file_handler`
+ * pointer will be not longer valid for use. */
 void BKE_file_handler_remove(FileHandlerType *file_handler);
+
+/** Return a reference of the #RawVector with all `file_handlers` registered. */
+const blender::RawVector<std::unique_ptr<FileHandlerType>> &BKE_file_handlers();

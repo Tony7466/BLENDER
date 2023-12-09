@@ -28,7 +28,7 @@
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_kelvinlet.h"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
@@ -38,12 +38,14 @@
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
 
+using blender::float3;
+using blender::MutableSpan;
 using blender::Span;
 
 /* -------------------------------------------------------------------- */
@@ -246,26 +248,24 @@ static void sculpt_project_v3_normal_align(SculptSession *ss,
 
 static void do_draw_brush_task(Object *ob, const Brush *brush, const float *offset, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   PBVHVertexIter vd;
-  float(*proxy)[3];
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     /* Offset vertex. */
     if (ss->cache->brush->flag2 & BRUSH_USE_COLOR_AS_DISPLACEMENT &&
@@ -341,13 +341,12 @@ void SCULPT_do_draw_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 static void do_fill_brush_task(
     Object *ob, const Brush *brush, const float *area_no, const float *area_co, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const float bstrength = ss->cache->bstrength;
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -356,8 +355,7 @@ static void do_fill_brush_task(
 
   plane_from_point_normal_v3(test.plane_tool, area_co, area_no);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -377,7 +375,7 @@ static void do_fill_brush_task(
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -435,13 +433,12 @@ void SCULPT_do_fill_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 static void do_scrape_brush_task(
     Object *ob, const Brush *brush, const float *area_no, const float *area_co, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const float bstrength = ss->cache->bstrength;
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -449,8 +446,7 @@ static void do_scrape_brush_task(
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
   plane_from_point_normal_v3(test.plane_tool, area_co, area_no);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -470,7 +466,7 @@ static void do_scrape_brush_task(
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -539,12 +535,11 @@ static void do_clay_thumb_brush_task(Object *ob,
                                      const float bstrength,
                                      PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
-  float(*proxy)[3];
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -563,8 +558,7 @@ static void do_clay_thumb_brush_task(Object *ob,
   /* Tilted plane (front part of the brush). */
   plane_from_point_normal_v3(plane_tilt, area_co, normal_tilt);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -586,7 +580,7 @@ static void do_clay_thumb_brush_task(Object *ob,
     interp_v3_v3v3(intr, intr, intr_tilt, tilt_mix);
     sub_v3_v3v3(val, intr_tilt, vd.co);
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -608,7 +602,7 @@ static void do_clay_thumb_brush_task(Object *ob,
   BKE_pbvh_vertex_iter_end;
 }
 
-float SCULPT_clay_thumb_get_stabilized_pressure(StrokeCache *cache)
+float SCULPT_clay_thumb_get_stabilized_pressure(blender::ed::sculpt_paint::StrokeCache *cache)
 {
   float final_pressure = 0.0f;
   for (int i = 0; i < SCULPT_CLAY_STABILIZER_LEN; i++) {
@@ -704,13 +698,12 @@ void SCULPT_do_clay_thumb_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 static void do_flatten_brush_task(
     Object *ob, const Brush *brush, const float *area_no, const float *area_co, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const float bstrength = ss->cache->bstrength;
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -719,8 +712,7 @@ static void do_flatten_brush_task(
 
   plane_from_point_normal_v3(test.plane_tool, area_co, area_no);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -734,7 +726,7 @@ static void do_flatten_brush_task(
     sub_v3_v3v3(val, intr, vd.co);
 
     if (SCULPT_plane_trim(ss->cache, brush, val)) {
-      SCULPT_automasking_node_update(ss, &automask_data, &vd);
+      auto_mask::node_update(automask_data, vd);
 
       const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                   brush,
@@ -845,13 +837,12 @@ static void calc_clay_surface_task_cb(Object *ob,
 static void do_clay_brush_task(
     Object *ob, const Brush *brush, const float *area_no, const float *area_co, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const float bstrength = fabsf(ss->cache->bstrength);
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -860,8 +851,7 @@ static void do_clay_brush_task(
 
   plane_from_point_normal_v3(test.plane_tool, area_co, area_no);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -874,7 +864,7 @@ static void do_clay_brush_task(
 
     sub_v3_v3v3(val, intr, vd.co);
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -957,22 +947,20 @@ static void do_clay_strips_brush_task(Object *ob,
                                       const float *area_co,
                                       PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
   SculptBrushTest test;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const bool flip = (ss->cache->bstrength < 0.0f);
   const float bstrength = flip ? -ss->cache->bstrength : ss->cache->bstrength;
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
 
   SCULPT_brush_test_init(ss, &test);
   plane_from_point_normal_v3(test.plane_tool, area_co, area_no_sp);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!SCULPT_brush_test_cube(&test, vd.co, mat, brush->tip_roundness, brush->tip_scale_x)) {
@@ -992,7 +980,7 @@ static void do_clay_strips_brush_task(Object *ob,
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     /* The normal from the vertices is ignored, it causes glitch with planes, see: #44390. */
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
@@ -1103,10 +1091,11 @@ static void do_snake_hook_brush_task(Object *ob,
                                      const float *grab_delta,
                                      PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const float bstrength = ss->cache->bstrength;
   const bool do_rake_rotation = ss->cache->is_rake_rotation_valid;
   const bool do_pinch = (brush->crease_pinch_factor != 0.5f);
@@ -1116,8 +1105,6 @@ static void do_snake_hook_brush_task(Object *ob,
 
   const bool do_elastic = brush->snake_hook_deform_type == BRUSH_SNAKE_HOOK_DEFORM_ELASTIC;
 
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
-
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
@@ -1126,8 +1113,7 @@ static void do_snake_hook_brush_task(Object *ob,
   KelvinletParams params;
   BKE_kelvinlet_init_params(&params, ss->cache->radius, bstrength, 1.0f, 0.4f);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!do_elastic && !sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -1139,7 +1125,7 @@ static void do_snake_hook_brush_task(Object *ob,
       fade = 1.0f;
     }
     else {
-      SCULPT_automasking_node_update(ss, &automask_data, &vd);
+      auto_mask::node_update(automask_data, vd);
 
       fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                       brush,
@@ -1195,9 +1181,8 @@ static void do_snake_hook_brush_task(Object *ob,
       BKE_kelvinlet_grab_triscale(disp, &params, vd.co, ss->cache->location, proxy[vd.i]);
       mul_v3_fl(disp, bstrength * 20.0f);
       mul_v3_fl(disp, 1.0f - vd.mask);
-      mul_v3_fl(
-          disp,
-          SCULPT_automasking_factor_get(ss->cache->automasking, ss, vd.vertex, &automask_data));
+      mul_v3_fl(disp,
+                auto_mask::factor_get(ss->cache->automasking, ss, vd.vertex, &automask_data));
       copy_v3_v3(proxy[vd.i], disp);
     }
 
@@ -1242,24 +1227,22 @@ void SCULPT_do_snake_hook_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 
 static void do_thumb_brush_task(Object *ob, const Brush *brush, const float *cono, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const float bstrength = ss->cache->bstrength;
 
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
@@ -1267,7 +1250,7 @@ static void do_thumb_brush_task(Object *ob, const Brush *brush, const float *con
     if (!sculpt_brush_test_sq_fn(&test, orig_data.co)) {
       continue;
     }
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -1311,24 +1294,22 @@ void SCULPT_do_thumb_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 
 static void do_rotate_brush_task(Object *ob, const Brush *brush, const float angle, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const float bstrength = ss->cache->bstrength;
 
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
@@ -1337,7 +1318,7 @@ static void do_rotate_brush_task(Object *ob, const Brush *brush, const float ang
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     float vec[3], rot[3][3];
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
@@ -1382,6 +1363,7 @@ void SCULPT_do_rotate_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 
 static void do_layer_brush_task(Object *ob, Sculpt *sd, const Brush *brush, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   const bool use_persistent_base = !ss->bm && ss->attrs.persistent_co &&
@@ -1390,15 +1372,14 @@ static void do_layer_brush_task(Object *ob, Sculpt *sd, const Brush *brush, PBVH
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
   const float bstrength = ss->cache->bstrength;
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
@@ -1406,7 +1387,7 @@ static void do_layer_brush_task(Object *ob, Sculpt *sd, const Brush *brush, PBVH
     if (!sculpt_brush_test_sq_fn(&test, orig_data.co)) {
       continue;
     }
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
@@ -1492,27 +1473,25 @@ void SCULPT_do_layer_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 
 static void do_inflate_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const float bstrength = ss->cache->bstrength;
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -1557,27 +1536,25 @@ void SCULPT_do_inflate_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 
 static void do_nudge_brush_task(Object *ob, const Brush *brush, const float *cono, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const float bstrength = ss->cache->bstrength;
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -1635,27 +1612,25 @@ static void do_crease_brush_task(Object *ob,
                                  const float *offset,
                                  PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
-  float(*proxy)[3];
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
     /* Offset vertex. */
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
@@ -1742,13 +1717,12 @@ static void do_pinch_brush_task(Object *ob,
                                 const float (*stroke_xz)[3],
                                 PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const float bstrength = ss->cache->bstrength;
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -1760,14 +1734,13 @@ static void do_pinch_brush_task(Object *ob,
   copy_v3_v3(x_object_space, stroke_xz[0]);
   copy_v3_v3(z_object_space, stroke_xz[1]);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -1855,16 +1828,15 @@ static void do_grab_brush_task(Object *ob,
                                const float *grab_delta,
                                PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const float bstrength = ss->cache->bstrength;
 
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -1873,8 +1845,7 @@ static void do_grab_brush_task(Object *ob,
 
   const bool grab_silhouette = brush->flag2 & BRUSH_GRAB_SILHOUETTE;
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
@@ -1882,7 +1853,7 @@ static void do_grab_brush_task(Object *ob,
     if (!sculpt_brush_test_sq_fn(&test, orig_data.co)) {
       continue;
     }
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                           brush,
@@ -1940,20 +1911,18 @@ static void do_elastic_deform_brush_task(Object *ob,
                                          const float *grab_delta,
                                          PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   const float *location = ss->cache->location;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
   const float bstrength = ss->cache->bstrength;
 
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   float dir;
   if (ss->cache->mouse[0] > ss->cache->initial_mouse[0]) {
@@ -1977,7 +1946,7 @@ static void do_elastic_deform_brush_task(Object *ob,
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     float final_disp[3];
     switch (brush->elastic_deform_type) {
@@ -2007,9 +1976,8 @@ static void do_elastic_deform_brush_task(Object *ob,
 
     mul_v3_fl(final_disp, 1.0f - vd.mask);
 
-    mul_v3_fl(
-        final_disp,
-        SCULPT_automasking_factor_get(ss->cache->automasking, ss, vd.vertex, &automask_data));
+    mul_v3_fl(final_disp,
+              auto_mask::factor_get(ss->cache->automasking, ss, vd.vertex, &automask_data));
 
     copy_v3_v3(proxy[vd.i], final_disp);
 
@@ -2051,23 +2019,21 @@ static void do_draw_sharp_brush_task(Object *ob,
                                      const float *offset,
                                      PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
@@ -2075,7 +2041,7 @@ static void do_draw_sharp_brush_task(Object *ob,
       continue;
     }
     /* Offset vertex. */
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
@@ -2131,30 +2097,28 @@ void SCULPT_do_draw_sharp_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 
 static void do_topology_slide_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
     if (!sculpt_brush_test_sq_fn(&test, orig_data.co)) {
       continue;
     }
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
@@ -2206,11 +2170,13 @@ static void do_topology_slide_task(Object *ob, const Brush *brush, PBVHNode *nod
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_relax_vertex(SculptSession *ss,
-                         PBVHVertexIter *vd,
-                         float factor,
-                         bool filter_boundary_face_sets,
-                         float *r_final_pos)
+namespace blender::ed::sculpt_paint::smooth {
+
+void relax_vertex(SculptSession *ss,
+                  PBVHVertexIter *vd,
+                  float factor,
+                  bool filter_boundary_face_sets,
+                  float *r_final_pos)
 {
   float smooth_pos[3];
   float final_disp[3];
@@ -2225,7 +2191,7 @@ void SCULPT_relax_vertex(SculptSession *ss,
   SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vd->vertex, ni) {
     neighbor_count++;
     if (!filter_boundary_face_sets ||
-        (filter_boundary_face_sets && !SCULPT_vertex_has_unique_face_set(ss, ni.vertex)))
+        (filter_boundary_face_sets && !face_set::vert_has_unique_face_set(ss, ni.vertex)))
     {
 
       /* When the vertex to relax is boundary, use only connected boundary vertices for the average
@@ -2289,32 +2255,37 @@ void SCULPT_relax_vertex(SculptSession *ss,
   add_v3_v3v3(r_final_pos, vd->co, final_disp);
 }
 
+}  // namespace blender::ed::sculpt_paint::smooth
+
 static void do_topology_relax_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   const float bstrength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
 
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
 
-  BKE_pbvh_node_add_proxy(ss->pbvh, node);
+  /* TODO(@sergey): This looks very suspicious: proxy is added but is never written.
+   * Either this needs to be documented better why it is needed, or removed. The removal is likely
+   * to lead to performance improvements as well. */
+  BKE_pbvh_node_add_proxy(*ss->pbvh, *node);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
     if (!sculpt_brush_test_sq_fn(&test, orig_data.co)) {
       continue;
     }
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
@@ -2327,7 +2298,7 @@ static void do_topology_relax_task(Object *ob, const Brush *brush, PBVHNode *nod
                                                     thread_id,
                                                     &automask_data);
 
-    SCULPT_relax_vertex(ss, &vd, fade * bstrength, false, vd.co);
+    smooth::relax_vertex(ss, &vd, fade * bstrength, false, vd.co);
     if (vd.is_mesh) {
       BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
     }
@@ -2376,25 +2347,25 @@ void SCULPT_do_slide_relax_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 
 static void do_displacement_eraser_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   const float bstrength = clamp_f(ss->cache->bstrength, 0.0f, 1.0f);
 
-  float(*proxy)[3] = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -2441,6 +2412,7 @@ void SCULPT_do_displacement_eraser_brush(Sculpt *sd, Object *ob, Span<PBVHNode *
 
 static void do_displacement_smear_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   const float bstrength = clamp_f(ss->cache->bstrength, 0.0f, 1.0f);
 
@@ -2449,15 +2421,14 @@ static void do_displacement_smear_brush_task(Object *ob, const Brush *brush, PBV
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
@@ -2585,6 +2556,7 @@ void SCULPT_do_displacement_smear_brush(Sculpt *sd, Object *ob, Span<PBVHNode *>
 static void do_topology_rake_bmesh_task(
     Object *ob, Sculpt *sd, const Brush *brush, const float strength, PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   float direction[3];
@@ -2608,15 +2580,14 @@ static void do_topology_rake_bmesh_task(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     const float fade = bstrength *
                        SCULPT_brush_strength_factor(ss,
@@ -2633,7 +2604,7 @@ static void do_topology_rake_bmesh_task(
 
     float avg[3], val[3];
 
-    SCULPT_bmesh_four_neighbor_average(avg, direction, vd.bm_vert);
+    smooth::bmesh_four_neighbor_average(avg, direction, vd.bm_vert);
 
     sub_v3_v3v3(val, avg, vd.co);
 
@@ -2681,6 +2652,7 @@ static void do_mask_brush_draw_task(Object *ob,
                                     const SculptMaskWriteInfo mask_write,
                                     PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   const float bstrength = ss->cache->bstrength;
 
@@ -2691,15 +2663,14 @@ static void do_mask_brush_draw_task(Object *ob,
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
     const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
                                                     vd.co,
@@ -2738,6 +2709,7 @@ void SCULPT_do_mask_brush_draw(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 
 void SCULPT_do_mask_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
@@ -2746,7 +2718,7 @@ void SCULPT_do_mask_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
       SCULPT_do_mask_brush_draw(sd, ob, nodes);
       break;
     case BRUSH_MASK_SMOOTH:
-      SCULPT_smooth(sd, ob, nodes, ss->cache->bstrength, true);
+      smooth::do_smooth_brush(sd, ob, nodes, ss->cache->bstrength, true);
       break;
   }
 }

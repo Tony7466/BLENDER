@@ -1,37 +1,59 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_file_handler.hh"
 
-static blender::Vector<FileHandlerType *> *file_handlers = nullptr;
+#include "BLI_string.h"
 
-void BKE_file_handlers_init()
+static blender::RawVector<std::unique_ptr<FileHandlerType>> &file_handlers()
 {
-  file_handlers = MEM_new<blender::Vector<FileHandlerType *>>(__func__);
+  static blender::RawVector<std::unique_ptr<FileHandlerType>> file_handlers;
+  return file_handlers;
 }
 
-void BKE_file_handlers_free()
+const blender::RawVector<std::unique_ptr<FileHandlerType>> &BKE_file_handlers()
 {
-  for (auto *file_handler : *file_handlers) {
-    if (file_handler->rna_ext.free) {
-      file_handler->rna_ext.free(file_handler->rna_ext.data);
-    }
-    MEM_delete(file_handler);
+  return file_handlers();
+}
+
+FileHandlerType *BKE_file_handler_find(const char *name)
+{
+  auto itr = std::find_if(file_handlers().begin(),
+                          file_handlers().end(),
+                          [name](const std::unique_ptr<FileHandlerType> &file_handler) {
+                            return STREQ(name, file_handler->idname);
+                          });
+  if (itr != file_handlers().end()) {
+    return itr->get();
   }
-  MEM_delete(file_handlers);
+  return nullptr;
 }
 
-blender::Span<FileHandlerType *> BKE_file_handlers()
+void BKE_file_handler_add(std::unique_ptr<FileHandlerType> file_handler)
 {
-  return file_handlers->as_span();
-}
+  BLI_assert(BKE_file_handler_find(file_handler->idname) != nullptr);
 
-void BKE_file_handler_add(FileHandlerType *file_handler)
-{
-  file_handlers->append(file_handler);
+  /** Load all extensions from the string list into the list. */
+  const char char_separator = ';';
+  const char *char_begin = file_handler->file_extensions_str;
+  const char *char_end = BLI_strchr_or_end(char_begin, char_separator);
+  while (char_begin[0]) {
+    if (char_end - char_begin > 1) {
+      std::string file_extension(char_begin, char_end - char_begin);
+      file_handler->file_extensions.append(file_extension);
+    }
+    char_begin = char_end[0] ? char_end + 1 : char_end;
+    char_end = BLI_strchr_or_end(char_begin, char_separator);
+  }
+
+  file_handlers().append(std::move(file_handler));
 }
 
 void BKE_file_handler_remove(FileHandlerType *file_handler)
 {
-  file_handlers->remove(file_handlers->first_index_of(file_handler));
-  MEM_delete(file_handler);
+  file_handlers().remove_if(
+      [file_handler](const std::unique_ptr<FileHandlerType> &test_file_handler) {
+        return test_file_handler.get() == file_handler;
+      });
 }

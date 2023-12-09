@@ -33,22 +33,23 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "BKE_armature.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_armature.hh"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_curves.hh"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_idtype.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
 #include "BKE_multires.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -902,14 +903,14 @@ static int apply_objects_internal(bContext *C,
       id_us_plus((ID *)ob->data);
     }
     else if (ob->type == OB_MESH) {
-      Mesh *me = static_cast<Mesh *>(ob->data);
+      Mesh *mesh = static_cast<Mesh *>(ob->data);
 
       if (apply_scale) {
         multiresModifier_scale_disp(depsgraph, scene, ob);
       }
 
       /* adjust data */
-      BKE_mesh_transform(me, mat, true);
+      BKE_mesh_transform(mesh, mat, true);
     }
     else if (ob->type == OB_ARMATURE) {
       bArmature *arm = static_cast<bArmature *>(ob->data);
@@ -1322,8 +1323,8 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 
   if (obedit) {
     if (obedit->type == OB_MESH) {
-      Mesh *me = static_cast<Mesh *>(obedit->data);
-      BMEditMesh *em = me->edit_mesh;
+      Mesh *mesh = static_cast<Mesh *>(obedit->data);
+      BMEditMesh *em = mesh->edit_mesh;
       BMVert *eve;
       BMIter iter;
 
@@ -1436,31 +1437,31 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
     }
     else if (ob->type == OB_MESH) {
       if (obedit == nullptr) {
-        Mesh *me = static_cast<Mesh *>(ob->data);
+        Mesh *mesh = static_cast<Mesh *>(ob->data);
 
         if (centermode == ORIGIN_TO_CURSOR) {
           /* done */
         }
         else if (centermode == ORIGIN_TO_CENTER_OF_MASS_SURFACE) {
-          BKE_mesh_center_of_surface(me, cent);
+          BKE_mesh_center_of_surface(mesh, cent);
         }
         else if (centermode == ORIGIN_TO_CENTER_OF_MASS_VOLUME) {
-          BKE_mesh_center_of_volume(me, cent);
+          BKE_mesh_center_of_volume(mesh, cent);
         }
         else if (around == V3D_AROUND_CENTER_BOUNDS) {
-          if (const std::optional<Bounds<float3>> bounds = me->bounds_min_max()) {
+          if (const std::optional<Bounds<float3>> bounds = mesh->bounds_min_max()) {
             cent = math::midpoint(bounds->min, bounds->max);
           }
         }
         else { /* #V3D_AROUND_CENTER_MEDIAN. */
-          BKE_mesh_center_median(me, cent);
+          BKE_mesh_center_median(mesh, cent);
         }
 
         negate_v3_v3(cent_neg, cent);
-        BKE_mesh_translate(me, cent_neg, true);
+        BKE_mesh_translate(mesh, cent_neg, true);
 
         tot_change++;
-        me->id.tag |= LIB_TAG_DOIT;
+        mesh->id.tag |= LIB_TAG_DOIT;
         do_inverse_offset = true;
       }
     }
@@ -1471,7 +1472,9 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         /* done */
       }
       else if (around == V3D_AROUND_CENTER_BOUNDS) {
-        BKE_curve_center_bounds(cu, cent);
+        if (std::optional<blender::Bounds<blender::float3>> bounds = BKE_curve_minmax(cu, true)) {
+          cent = math::midpoint(bounds->min, bounds->max);
+        }
       }
       else { /* #V3D_AROUND_CENTER_MEDIAN. */
         BKE_curve_center_median(cu, cent);
@@ -1500,8 +1503,9 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
       /* Get from bounding-box. */
 
       Curve *cu = static_cast<Curve *>(ob->data);
+      std::optional<blender::Bounds<blender::float3>> bounds = BKE_curve_minmax(cu, true);
 
-      if (ob->runtime.bb == nullptr && (centermode != ORIGIN_TO_CURSOR)) {
+      if (!bounds && (centermode != ORIGIN_TO_CURSOR)) {
         /* Do nothing. */
       }
       else {
@@ -1510,8 +1514,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         }
         else {
           /* extra 0.5 is the height o above line */
-          cent[0] = 0.5f * (ob->runtime.bb->vec[4][0] + ob->runtime.bb->vec[0][0]);
-          cent[1] = 0.5f * (ob->runtime.bb->vec[0][1] + ob->runtime.bb->vec[2][1]);
+          cent = math::midpoint(bounds->min, bounds->max);
         }
 
         cent[2] = 0.0f;
@@ -1592,7 +1595,9 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         /* done */
       }
       else if (around == V3D_AROUND_CENTER_BOUNDS) {
-        BKE_lattice_center_bounds(lt, cent);
+        if (std::optional<blender::Bounds<blender::float3>> bounds = BKE_lattice_minmax(lt)) {
+          cent = math::midpoint(bounds->min, bounds->max);
+        }
       }
       else { /* #V3D_AROUND_CENTER_MEDIAN. */
         BKE_lattice_center_median(lt, cent);

@@ -34,16 +34,16 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_curve.h"
-#include "BKE_customdata.h"
+#include "BKE_curve.hh"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_scene.h"
 
@@ -613,20 +613,20 @@ static char *key_block_get_data(Key *key, KeyBlock *actkb, KeyBlock *kb, char **
     /* this hack makes it possible to edit shape keys in
      * edit mode with shape keys blending applied */
     if (GS(key->from->name) == ID_ME) {
-      Mesh *me;
+      Mesh *mesh;
       BMVert *eve;
       BMIter iter;
       float(*co)[3];
       int a;
 
-      me = (Mesh *)key->from;
+      mesh = (Mesh *)key->from;
 
-      if (me->edit_mesh && me->edit_mesh->bm->totvert == kb->totelem) {
+      if (mesh->edit_mesh && mesh->edit_mesh->bm->totvert == kb->totelem) {
         a = 0;
         co = static_cast<float(*)[3]>(
-            MEM_mallocN(sizeof(float[3]) * me->edit_mesh->bm->totvert, "key_block_get_data"));
+            MEM_mallocN(sizeof(float[3]) * mesh->edit_mesh->bm->totvert, "key_block_get_data"));
 
-        BM_ITER_MESH (eve, &iter, me->edit_mesh->bm, BM_VERTS_OF_MESH) {
+        BM_ITER_MESH (eve, &iter, mesh->edit_mesh->bm, BM_VERTS_OF_MESH) {
           copy_v3_v3(co[a], eve->co);
           a++;
         }
@@ -641,34 +641,35 @@ static char *key_block_get_data(Key *key, KeyBlock *actkb, KeyBlock *kb, char **
   return static_cast<char *>(kb->data);
 }
 
-/* currently only the first value of 'ofs' may be set. */
-static bool key_pointer_size(const Key *key, const int mode, int *poinsize, int *ofs, int *step)
+/* currently only the first value of 'r_ofs' may be set. */
+static bool key_pointer_size(
+    const Key *key, const int mode, int *r_poinsize, int *r_ofs, int *r_step)
 {
   if (key->from == nullptr) {
     return false;
   }
 
-  *step = 1;
+  *r_step = 1;
 
   switch (GS(key->from->name)) {
     case ID_ME:
-      *ofs = sizeof(float[KEYELEM_FLOAT_LEN_COORD]);
-      *poinsize = *ofs;
+      *r_ofs = sizeof(float[KEYELEM_FLOAT_LEN_COORD]);
+      *r_poinsize = *r_ofs;
       break;
     case ID_LT:
-      *ofs = sizeof(float[KEYELEM_FLOAT_LEN_COORD]);
-      *poinsize = *ofs;
+      *r_ofs = sizeof(float[KEYELEM_FLOAT_LEN_COORD]);
+      *r_poinsize = *r_ofs;
       break;
     case ID_CU_LEGACY:
       if (mode == KEY_MODE_BPOINT) {
-        *ofs = sizeof(float[KEYELEM_FLOAT_LEN_BPOINT]);
-        *step = KEYELEM_ELEM_LEN_BPOINT;
+        *r_ofs = sizeof(float[KEYELEM_FLOAT_LEN_BPOINT]);
+        *r_step = KEYELEM_ELEM_LEN_BPOINT;
       }
       else {
-        *ofs = sizeof(float[KEYELEM_FLOAT_LEN_BEZTRIPLE]);
-        *step = KEYELEM_ELEM_LEN_BEZTRIPLE;
+        *r_ofs = sizeof(float[KEYELEM_FLOAT_LEN_BEZTRIPLE]);
+        *r_step = KEYELEM_ELEM_LEN_BEZTRIPLE;
       }
-      *poinsize = sizeof(float[KEYELEM_ELEM_SIZE_CURVE]);
+      *r_poinsize = sizeof(float[KEYELEM_ELEM_SIZE_CURVE]);
       break;
     default:
       BLI_assert_msg(0, "invalid 'key->from' ID type");
@@ -1271,12 +1272,12 @@ static float *get_weights_array(Object *ob, char *vgroup, WeightsArrayCache *cac
 
   /* gather dvert and totvert */
   if (ob->type == OB_MESH) {
-    Mesh *me = static_cast<Mesh *>(ob->data);
-    dvert = BKE_mesh_deform_verts(me);
-    totvert = me->totvert;
+    Mesh *mesh = static_cast<Mesh *>(ob->data);
+    dvert = BKE_mesh_deform_verts(mesh);
+    totvert = mesh->totvert;
 
-    if (me->edit_mesh && me->edit_mesh->bm->totvert == totvert) {
-      em = me->edit_mesh;
+    if (mesh->edit_mesh && mesh->edit_mesh->bm->totvert == totvert) {
+      em = mesh->edit_mesh;
     }
   }
   else if (ob->type == OB_LATTICE) {
@@ -1522,9 +1523,9 @@ float *BKE_key_evaluate_object_ex(
 
   /* compute size of output array */
   if (ob->type == OB_MESH) {
-    Mesh *me = static_cast<Mesh *>(ob->data);
+    Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-    tot = me->totvert;
+    tot = mesh->totvert;
     size = tot * sizeof(float[KEYELEM_FLOAT_LEN_COORD]);
   }
   else if (ob->type == OB_LATTICE) {
@@ -1605,6 +1606,7 @@ float *BKE_key_evaluate_object_ex(
         const int totvert = min_ii(tot, mesh->totvert);
         mesh->vert_positions_for_write().take_front(totvert).copy_from(
             {reinterpret_cast<const blender::float3 *>(out), totvert});
+        BKE_mesh_tag_positions_changed(mesh);
         break;
       }
       case ID_LT: {
@@ -1764,8 +1766,8 @@ Key **BKE_key_from_id_p(ID *id)
 {
   switch (GS(id->name)) {
     case ID_ME: {
-      Mesh *me = (Mesh *)id;
-      return &me->key;
+      Mesh *mesh = (Mesh *)id;
+      return &mesh->key;
     }
     case ID_CU_LEGACY: {
       Curve *cu = (Curve *)id;
@@ -2179,24 +2181,24 @@ void BKE_keyblock_convert_to_curve(KeyBlock *kb, Curve * /*cu*/, ListBase *nurb)
 
 /************************* Mesh ************************/
 
-void BKE_keyblock_update_from_mesh(const Mesh *me, KeyBlock *kb)
+void BKE_keyblock_update_from_mesh(const Mesh *mesh, KeyBlock *kb)
 {
-  BLI_assert(me->totvert == kb->totelem);
+  BLI_assert(mesh->totvert == kb->totelem);
 
-  const int tot = me->totvert;
+  const int tot = mesh->totvert;
   if (tot == 0) {
     return;
   }
 
-  const blender::Span<blender::float3> positions = me->vert_positions();
+  const blender::Span<blender::float3> positions = mesh->vert_positions();
   memcpy(kb->data, positions.data(), sizeof(float[3]) * tot);
 }
 
-void BKE_keyblock_convert_from_mesh(const Mesh *me, const Key *key, KeyBlock *kb)
+void BKE_keyblock_convert_from_mesh(const Mesh *mesh, const Key *key, KeyBlock *kb)
 {
-  const int len = me->totvert;
+  const int len = mesh->totvert;
 
-  if (me->totvert == 0) {
+  if (mesh->totvert == 0) {
     return;
   }
 
@@ -2205,7 +2207,7 @@ void BKE_keyblock_convert_from_mesh(const Mesh *me, const Key *key, KeyBlock *kb
   kb->data = MEM_malloc_arrayN(size_t(len), size_t(key->elemsize), __func__);
   kb->totelem = len;
 
-  BKE_keyblock_update_from_mesh(me, kb);
+  BKE_keyblock_update_from_mesh(mesh, kb);
 }
 
 void BKE_keyblock_convert_to_mesh(const KeyBlock *kb,
@@ -2265,6 +2267,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         positions,
         faces,
         corner_verts,
+        mesh->vert_to_face_map(),
         {reinterpret_cast<const blender::float3 *>(face_normals), faces.size()},
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
   }
@@ -2317,8 +2320,8 @@ void BKE_keyblock_update_from_vertcos(const Object *ob, KeyBlock *kb, const floa
     BLI_assert(BKE_keyblock_curve_element_count(&cu->nurb) == kb->totelem);
   }
   else if (ob->type == OB_MESH) {
-    Mesh *me = static_cast<Mesh *>(ob->data);
-    BLI_assert(me->totvert == kb->totelem);
+    Mesh *mesh = static_cast<Mesh *>(ob->data);
+    BLI_assert(mesh->totvert == kb->totelem);
   }
   else {
     BLI_assert(0 == kb->totelem);
@@ -2368,9 +2371,9 @@ void BKE_keyblock_convert_from_vertcos(const Object *ob, KeyBlock *kb, const flo
 
   /* Count of vertex coords in array */
   if (ob->type == OB_MESH) {
-    const Mesh *me = (const Mesh *)ob->data;
-    tot = me->totvert;
-    elemsize = me->key->elemsize;
+    const Mesh *mesh = (const Mesh *)ob->data;
+    tot = mesh->totvert;
+    elemsize = mesh->key->elemsize;
   }
   else if (ob->type == OB_LATTICE) {
     const Lattice *lt = (const Lattice *)ob->data;
@@ -2401,8 +2404,8 @@ float (*BKE_keyblock_convert_to_vertcos(const Object *ob, const KeyBlock *kb))[3
 
   /* Count of vertex coords in array */
   if (ob->type == OB_MESH) {
-    const Mesh *me = (const Mesh *)ob->data;
-    tot = me->totvert;
+    const Mesh *mesh = (const Mesh *)ob->data;
+    tot = mesh->totvert;
   }
   else if (ob->type == OB_LATTICE) {
     const Lattice *lt = (const Lattice *)ob->data;
