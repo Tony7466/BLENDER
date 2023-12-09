@@ -691,6 +691,32 @@ class NODE_PT_active_node_color(Panel):
         row.menu("NODE_MT_node_color_context_menu", text="", icon='DOWNARROW_HLT')
 
 
+class NODE_PT_active_node_position(Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Node"
+    bl_label = "Position & Width"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = "NODE_PT_active_node_generic"
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_node is not None and context.preferences.view.show_developer_ui
+    
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        node = context.active_node
+        
+        col = layout.column(align=True)
+        col.prop(node, "location", index=0, text="Position X")
+        col.prop(node, "location", index=1, text="Y")
+        
+        col = layout.column(align=False)
+        col.prop(node, "width", text="Width")
+
+
 class NODE_PT_active_node_properties(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
@@ -1231,6 +1257,7 @@ classes = (
     NODE_PT_node_tree_properties,
     NODE_PT_active_node_generic,
     NODE_PT_active_node_color,
+    NODE_PT_active_node_position,
     NODE_PT_texture_mapping,
     NODE_PT_active_tool,
     NODE_PT_backdrop,
