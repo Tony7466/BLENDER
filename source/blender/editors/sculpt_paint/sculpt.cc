@@ -6193,21 +6193,20 @@ void calc_mesh_hide_and_mask(const Mesh &mesh,
   BLI_assert(verts.size() == r_factors.size());
 
   const bke::AttributeAccessor attributes = mesh.attributes();
-  if (const VArray<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT)) {
-    const VArraySpan span(hide_vert);
+  if (const VArray<float> mask = *attributes.lookup<float>(".sculpt_mask", ATTR_DOMAIN_POINT)) {
+    const VArraySpan span(mask);
     for (const int i : verts.index_range()) {
-      r_factors[i] = span[verts[i]] ? 0.0f : 1.0f;
+      r_factors[i] = 1.0f - mask[verts[i]];
     }
   }
   else {
     r_factors.fill(1.0f);
   }
 
-  if (const float *mask = static_cast<const float *>(
-          CustomData_get_layer(&mesh.vert_data, CD_PAINT_MASK)))
-  {
+  if (const VArray<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT)) {
+    const VArraySpan span(hide_vert);
     for (const int i : verts.index_range()) {
-      r_factors[i] *= (1.0f - mask[verts[i]]);
+      r_factors[i] = span[verts[i]] ? 0.0f : r_factors[i];
     }
   }
 }
