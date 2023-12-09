@@ -142,22 +142,26 @@ class RayTraceModule {
   int3 tile_compact_dispatch_size_ = int3(1);
   /** Dispatch with enough tiles for the tracing resolution. */
   int3 tracing_dispatch_size_ = int3(1);
-  /** 2D tile mask to check which unused adjacent tile we need to clear. */
-  TextureFromPool tile_mask_tx_ = {"tile_mask_tx"};
+  /** 2D tile mask to check which unused adjacent tile we need to clear and which tile we need to
+   * dispatch for each work type. */
+  Texture tile_raytrace_denoise_tx_ = {"tile_raytrace_denoise_tx_"};
+  Texture tile_raytrace_tracing_tx_ = {"tile_raytrace_tracing_tx_"};
+  Texture tile_horizon_denoise_tx_ = {"tile_horizon_denoise_tx_"};
+  Texture tile_horizon_tracing_tx_ = {"tile_horizon_tracing_tx_"};
   /** Indirect dispatch rays. Avoid dispatching work-groups that will not trace anything.*/
-  DispatchIndirectBuf ray_dispatch_buf_ = {"ray_dispatch_buf_"};
+  DispatchIndirectBuf raytrace_tracing_dispatch_buf_ = {"raytrace_tracing_dispatch_buf_"};
   /** Indirect dispatch denoise full-resolution tiles. */
-  DispatchIndirectBuf ray_denoise_dispatch_buf_ = {"ray_denoise_dispatch_buf_"};
+  DispatchIndirectBuf raytrace_denoise_dispatch_buf_ = {"raytrace_denoise_dispatch_buf_"};
   /** Indirect dispatch horizon scan. Avoid dispatching work-groups that will not scan anything.*/
-  DispatchIndirectBuf horizon_dispatch_buf_ = {"horizon_dispatch_buf_"};
+  DispatchIndirectBuf horizon_tracing_dispatch_buf_ = {"horizon_tracing_dispatch_buf_"};
   /** Indirect dispatch denoise full-resolution tiles. */
   DispatchIndirectBuf horizon_denoise_dispatch_buf_ = {"horizon_denoise_dispatch_buf_"};
   /** Pointer to the texture to store the result of horizon scan in. */
   GPUTexture *horizon_scan_output_tx_ = nullptr;
   /** Tile buffer that contains tile coordinates. */
-  RayTraceTileBuf ray_tiles_buf_ = {"ray_tiles_buf_"};
-  RayTraceTileBuf ray_denoise_tiles_buf_ = {"ray_denoise_tiles_buf_"};
-  RayTraceTileBuf horizon_tiles_buf_ = {"horizon_tiles_buf_"};
+  RayTraceTileBuf raytrace_tracing_tiles_buf_ = {"raytrace_tracing_tiles_buf_"};
+  RayTraceTileBuf raytrace_denoise_tiles_buf_ = {"raytrace_denoise_tiles_buf_"};
+  RayTraceTileBuf horizon_tracing_tiles_buf_ = {"horizon_tracing_tiles_buf_"};
   RayTraceTileBuf horizon_denoise_tiles_buf_ = {"horizon_denoise_tiles_buf_"};
   /** Texture containing the ray direction and PDF. */
   TextureFromPool ray_data_tx_ = {"ray_data_tx"};
@@ -241,7 +245,9 @@ class RayTraceModule {
   void debug_draw(View &view, GPUFrameBuffer *view_fb);
 
  private:
-  RayTraceResultTexture trace(RayTraceBuffer &rt_buffer,
+  RayTraceResultTexture trace(const char *debug_pass_name,
+                              RaytraceEEVEE options,
+                              RayTraceBuffer &rt_buffer,
                               GPUTexture *screen_radiance_tx,
                               const float4x4 &screen_radiance_persmat,
                               eClosureBits active_closures,
