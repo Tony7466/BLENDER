@@ -4551,7 +4551,7 @@ static int rna_raw_access(ReportList *reports,
   PropertyRNA *itemprop, *iprop;
   PropertyType itemtype = PropertyType(0);
   RawArray in;
-  int itemlen = 0;
+  int itemlen = 0, arraylen = 0;
 
   /* initialize in array, stride assumed 0 in following code */
   in.array = inarray;
@@ -4578,7 +4578,8 @@ static int rna_raw_access(ReportList *reports,
     }
 
     /* check item array */
-    itemlen = RNA_property_array_length(&itemptr_base, itemprop);
+    arraylen = RNA_property_array_length(&itemptr_base, itemprop);
+    itemlen = (arraylen == 0) ? 1 : arraylen;
 
     /* dynamic array? need to get length per item */
     if (itemprop->getlength) {
@@ -4586,8 +4587,7 @@ static int rna_raw_access(ReportList *reports,
     }
     /* try to access as raw array */
     else if (RNA_property_collection_raw_array(ptr, prop, itemprop, set, &out)) {
-      int arraylen = (itemlen == 0) ? 1 : itemlen;
-      if (in.len != arraylen * out.len) {
+      if (in.len != itemlen * out.len) {
         BKE_reportf(reports,
                     RPT_ERROR,
                     "Array length mismatch (expected %d, got %d)",
@@ -4650,7 +4650,8 @@ static int rna_raw_access(ReportList *reports,
           iprop = RNA_struct_find_property(&itemptr, propname);
 
           if (iprop) {
-            itemlen = rna_property_array_length_all_dimensions(&itemptr, iprop);
+            arraylen = rna_property_array_length_all_dimensions(&itemptr, iprop);
+            itemlen = (arraylen == 0) ? 1 : arraylen;
             itemtype = RNA_property_type(iprop);
           }
           else {
@@ -4675,7 +4676,7 @@ static int rna_raw_access(ReportList *reports,
             break;
           }
 
-          if (itemlen == 0) {
+          if (arraylen == 0) {
             /* handle conversions */
             if (set) {
               switch (itemtype) {
