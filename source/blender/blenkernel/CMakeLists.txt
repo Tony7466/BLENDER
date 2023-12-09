@@ -9,9 +9,11 @@ set(INC
   ../blentranslation
   ../bmesh
   ../draw
+  ../functions
   ../gpencil_modifiers_legacy
   ../gpu
   ../ikplugin
+  ../imbuf
   ../makesrna
   ../modifiers
   ../nodes
@@ -127,6 +129,7 @@ set(SRC
   intern/fcurve.cc
   intern/fcurve_cache.cc
   intern/fcurve_driver.cc
+  intern/file_handler.cc
   intern/fluid.cc
   intern/fmodifier.cc
   intern/freestyle.cc
@@ -384,6 +387,7 @@ set(SRC
   BKE_effect.h
   BKE_fcurve.h
   BKE_fcurve_driver.h
+  BKE_file_handler.hh
   BKE_fluid.h
   BKE_freestyle.h
   BKE_geometry_fields.hh
@@ -549,11 +553,11 @@ set(LIB
   PRIVATE bf::dna
   bf_draw
   PRIVATE bf::extern::curve_fit_nd
-  PRIVATE bf::functions
+  bf_functions
   bf_gpencil_modifiers_legacy
   bf_gpu
   bf_ikplugin
-  PRIVATE bf::imbuf
+  bf_imbuf
   PRIVATE bf::intern::clog
   bf_intern_ghost
   PRIVATE bf::intern::guardedalloc
@@ -853,6 +857,7 @@ if(WITH_GTESTS)
     intern/main_test.cc
     intern/nla_test.cc
     intern/tracking_test.cc
+    intern/file_handler_test.cc
     intern/volume_test.cc
   )
   set(TEST_INC
