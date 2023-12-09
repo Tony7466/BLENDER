@@ -16,7 +16,7 @@
 #include "NOD_socket.hh"
 #include "NOD_zone_socket_items.hh"
 
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "node_geometry_util.hh"
 
@@ -90,6 +90,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
   ntype.insert_link = node_insert_link;
+  ntype.no_muting = true;
   node_type_storage(&ntype, "NodeGeometryRepeatOutput", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
 }

@@ -89,11 +89,6 @@ class WorldVolumePipeline {
 
   void sync(GPUMaterial *gpumat);
   void render(View &view);
-
-  bool is_valid()
-  {
-    return is_valid_;
-  }
 };
 
 /** \} */
@@ -109,13 +104,14 @@ class ShadowPipeline {
 
   /* Shadow update pass. */
   PassMain render_ps_ = {"Shadow.Surface"};
-  /* Shadow surface render sub-pass. */
-  PassMain::Sub *surface_ps_ = nullptr;
+  /* Shadow surface render sub-passes. */
+  PassMain::Sub *surface_double_sided_ps_ = nullptr;
+  PassMain::Sub *surface_single_sided_ps_ = nullptr;
 
  public:
   ShadowPipeline(Instance &inst) : inst_(inst){};
 
-  PassMain::Sub *surface_material_add(GPUMaterial *gpumat);
+  PassMain::Sub *surface_material_add(::Material *material, GPUMaterial *gpumat);
 
   void sync();
 
@@ -147,8 +143,6 @@ class ForwardPipeline {
   PassSortable transparent_ps_ = {"Forward.Transparent"};
   float3 camera_forward_;
 
-  // GPUTexture *input_screen_radiance_tx_ = nullptr;
-
  public:
   ForwardPipeline(Instance &inst) : inst_(inst){};
 
@@ -164,10 +158,7 @@ class ForwardPipeline {
                                           ::Material *blender_mat,
                                           GPUMaterial *gpumat);
 
-  void render(View &view,
-              Framebuffer &prepass_fb,
-              Framebuffer &combined_fb,
-              GPUTexture *combined_tx);
+  void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb);
 };
 
 /** \} */
@@ -189,11 +180,31 @@ struct DeferredLayerBase {
 
   /* Closures bits from the materials in this pass. */
   eClosureBits closure_bits_ = CLOSURE_NONE;
+
+  /* Return the amount of gbuffer layer needed. */
+  int closure_layer_count() const
+  {
+    return count_bits_i(closure_bits_ &
+                        (CLOSURE_REFRACTION | CLOSURE_REFLECTION | CLOSURE_DIFFUSE | CLOSURE_SSS));
+  }
+
+  /* Return the amount of gbuffer layer needed. */
+  int color_layer_count() const
+  {
+    return count_bits_i(closure_bits_ &
+                        (CLOSURE_REFRACTION | CLOSURE_REFLECTION | CLOSURE_DIFFUSE));
+  }
 };
 
-class DeferredLayer : private DeferredLayerBase {
+class DeferredPipeline;
+
+class DeferredLayer : DeferredLayerBase {
+  friend DeferredPipeline;
+
  private:
   Instance &inst_;
+
+  static constexpr int max_lighting_tile_count_ = 128 * 128;
 
   /* Evaluate all light objects contribution. */
   PassSimple eval_light_ps_ = {"EvalLights"};
@@ -207,14 +218,27 @@ class DeferredLayer : private DeferredLayerBase {
    * BSDF color and do additive blending for each of the lighting step.
    *
    * NOTE: Not to be confused with the render passes.
+   * NOTE: Using array of texture instead of texture array to allow to use TextureFromPool.
    */
-  TextureFromPool direct_diffuse_tx_ = {"direct_diffuse_tx"};
-  TextureFromPool direct_reflect_tx_ = {"direct_reflect_tx"};
-  TextureFromPool direct_refract_tx_ = {"direct_refract_tx"};
+  TextureFromPool direct_radiance_txs_[3] = {
+      {"direct_radiance_1"}, {"direct_radiance_2"}, {"direct_radiance_3"}};
   /* Reference to ray-tracing result. */
   GPUTexture *indirect_diffuse_tx_ = nullptr;
   GPUTexture *indirect_reflect_tx_ = nullptr;
   GPUTexture *indirect_refract_tx_ = nullptr;
+
+  /* Parameters for the light evaluation pass. */
+  int closure_tile_size_shift_ = 0;
+  /* Tile buffers for different lighting complexity levels. */
+  struct {
+    DrawIndirectBuf draw_buf_ = {"DrawIndirectBuf"};
+    ClosureTileBuf tile_buf_ = {"ClosureTileBuf"};
+  } closure_bufs_[3];
+  /**
+   * Tile texture containing several bool per tile indicating presence of feature.
+   * It is used to select specialized shader for each tile.
+   */
+  Texture tile_mask_tx_ = {"tile_mask_tx_"};
 
   /* TODO(fclem): This should be a TextureFromPool. */
   Texture radiance_behind_tx_ = {"radiance_behind_tx"};
@@ -234,6 +258,7 @@ class DeferredLayer : private DeferredLayerBase {
   void render(View &main_view,
               View &render_view,
               Framebuffer &prepass_fb,
+              Framebuffer &gbuffer_fb,
               Framebuffer &combined_fb,
               int2 extent,
               RayTraceBuffer &rt_buffer,
@@ -247,6 +272,8 @@ class DeferredPipeline {
   DeferredLayer opaque_layer_;
   DeferredLayer refraction_layer_;
   DeferredLayer volumetric_layer_;
+
+  PassSimple debug_draw_ps_ = {"debug_gbuffer"};
 
  public:
   DeferredPipeline(Instance &inst)
@@ -262,9 +289,27 @@ class DeferredPipeline {
               View &render_view,
               Framebuffer &prepass_fb,
               Framebuffer &combined_fb,
+              Framebuffer &gbuffer_fb,
               int2 extent,
               RayTraceBuffer &rt_buffer_opaque_layer,
               RayTraceBuffer &rt_buffer_refract_layer);
+
+  /* Return the maximum amount of gbuffer layer needed. */
+  int closure_layer_count() const
+  {
+    return max_ii(opaque_layer_.closure_layer_count(), refraction_layer_.closure_layer_count());
+  }
+
+  /* Return the maximum amount of gbuffer layer needed. */
+  int color_layer_count() const
+  {
+    return max_ii(opaque_layer_.color_layer_count(), refraction_layer_.color_layer_count());
+  }
+
+  void debug_draw(draw::View &view, GPUFrameBuffer *combined_fb);
+
+ private:
+  void debug_pass_sync();
 };
 
 /** \} */
@@ -274,19 +319,144 @@ class DeferredPipeline {
  *
  * \{ */
 
+struct GridAABB {
+  int3 min, max;
+
+  GridAABB(int3 min_, int3 max_) : min(min_), max(max_){};
+
+  /** Returns the intersection between this AABB and the \a other AABB. */
+  GridAABB intersection(const GridAABB &other) const
+  {
+    return {math::max(this->min, other.min), math::min(this->max, other.max)};
+  }
+
+  /** Returns the extent of the volume. Undefined if AABB is empty. */
+  int3 extent() const
+  {
+    return max - min;
+  }
+
+  /** Returns true if volume covers nothing or is negative. */
+  bool is_empty() const
+  {
+    return math::reduce_min(max - min) <= 0;
+  }
+};
+
+/**
+ * A volume layer contains a list of non-overlapping volume objects.
+ */
+class VolumeLayer {
+ public:
+  bool use_hit_list = false;
+  bool is_empty = true;
+  bool finalized = false;
+
+ private:
+  Instance &inst_;
+
+  PassMain volume_layer_ps_ = {"Volume.Layer"};
+  /* Sub-passes of volume_layer_ps. */
+  PassMain::Sub *occupancy_ps_;
+  PassMain::Sub *material_ps_;
+  /* List of bounds from all objects contained inside this pass. */
+  Vector<GridAABB> object_bounds_;
+
+ public:
+  VolumeLayer(Instance &inst) : inst_(inst)
+  {
+    this->sync();
+  }
+
+  PassMain::Sub *occupancy_add(const Object *ob,
+                               const ::Material *blender_mat,
+                               GPUMaterial *gpumat);
+  PassMain::Sub *material_add(const Object *ob,
+                              const ::Material *blender_mat,
+                              GPUMaterial *gpumat);
+
+  /* Return true if the given bounds overlaps any of the contained object in this layer. */
+  bool bounds_overlaps(const GridAABB &object_aabb) const
+  {
+    for (const GridAABB &other_aabb : object_bounds_) {
+      if (object_aabb.intersection(other_aabb).is_empty() == false) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void add_object_bound(const GridAABB &object_aabb)
+  {
+    object_bounds_.append(object_aabb);
+  }
+
+  void sync();
+  void render(View &view, Texture &occupancy_tx);
+};
+
 class VolumePipeline {
  private:
   Instance &inst_;
 
-  PassMain volume_ps_ = {"Volume.Objects"};
+  Vector<std::unique_ptr<VolumeLayer>> layers_;
+
+  /* True if any volume (any object type) creates a volume draw-call. Enables the volume module. */
+  bool enabled_ = false;
+  /* Aggregated properties of all volume objects. */
+  bool has_scatter_ = false;
+  bool has_absorption_ = false;
 
  public:
   VolumePipeline(Instance &inst) : inst_(inst){};
 
-  PassMain::Sub *volume_material_add(GPUMaterial *gpumat);
-
   void sync();
-  void render(View &view);
+  void render(View &view, Texture &occupancy_tx);
+
+  /**
+   * Returns correct volume layer for a given object and add the object to the layer.
+   * Returns nullptr if the object is not visible at all.
+   */
+  VolumeLayer *register_and_get_layer(Object *ob);
+
+  /**
+   * Creates a volume material call.
+   * If any call to this function result in a valid draw-call, then the volume module will be
+   * enabled.
+   */
+  void material_call(MaterialPass &volume_material_pass, Object *ob, ResourceHandle res_handle);
+
+  bool is_enabled() const
+  {
+    return enabled_;
+  }
+  bool has_scatter() const
+  {
+    return has_scatter_;
+  }
+  bool has_absorption() const
+  {
+    return has_absorption_;
+  }
+
+  /* Returns true if any volume layer uses the hist list. */
+  bool use_hit_list() const;
+
+ private:
+  /**
+   * Returns Axis aligned bounding box in the volume grid.
+   * Used for frustum culling and volumes overlapping detection.
+   * Represents min and max grid corners covered by a volume.
+   * So a volume covering the first froxel will have min={0,0,0} and max={1,1,1}.
+   * A volume with min={0,0,0} and max={0,0,0} covers nothing.
+   */
+  GridAABB grid_aabb_from_object(Object *ob);
+
+  /**
+   * Returns the view entire AABB. Used for clipping object bounds.
+   * Remember that these are cells corners, so this extents to `tex_size`.
+   */
+  GridAABB grid_aabb_from_view();
 };
 
 /** \} */
@@ -294,7 +464,12 @@ class VolumePipeline {
 /* -------------------------------------------------------------------- */
 /** \name Deferred Probe Capture.
  * \{ */
+
+class DeferredProbePipeline;
+
 class DeferredProbeLayer : DeferredLayerBase {
+  friend DeferredProbePipeline;
+
  private:
   Instance &inst_;
 
@@ -309,7 +484,11 @@ class DeferredProbeLayer : DeferredLayerBase {
   PassMain::Sub *prepass_add(::Material *blender_mat, GPUMaterial *gpumat);
   PassMain::Sub *material_add(::Material *blender_mat, GPUMaterial *gpumat);
 
-  void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb, int2 extent);
+  void render(View &view,
+              Framebuffer &prepass_fb,
+              Framebuffer &combined_fb,
+              Framebuffer &gbuffer_fb,
+              int2 extent);
 };
 
 class DeferredProbePipeline {
@@ -325,7 +504,23 @@ class DeferredProbePipeline {
   PassMain::Sub *prepass_add(::Material *material, GPUMaterial *gpumat);
   PassMain::Sub *material_add(::Material *material, GPUMaterial *gpumat);
 
-  void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb, int2 extent);
+  void render(View &view,
+              Framebuffer &prepass_fb,
+              Framebuffer &combined_fb,
+              Framebuffer &gbuffer_fb,
+              int2 extent);
+
+  /* Return the maximum amount of gbuffer layer needed. */
+  int closure_layer_count() const
+  {
+    return opaque_layer_.closure_layer_count();
+  }
+
+  /* Return the maximum amount of gbuffer layer needed. */
+  int color_layer_count() const
+  {
+    return opaque_layer_.color_layer_count();
+  }
 };
 
 /** \} */
@@ -340,9 +535,6 @@ class PlanarProbePipeline : DeferredLayerBase {
 
   PassSimple eval_light_ps_ = {"EvalLights"};
 
-  /* Closures bits from the materials in this pass. */
-  eClosureBits closure_bits_ = CLOSURE_NONE;
-
  public:
   PlanarProbePipeline(Instance &inst) : inst_(inst){};
 
@@ -352,7 +544,8 @@ class PlanarProbePipeline : DeferredLayerBase {
   PassMain::Sub *prepass_add(::Material *material, GPUMaterial *gpumat);
   PassMain::Sub *material_add(::Material *material, GPUMaterial *gpumat);
 
-  void render(View &view, Framebuffer &combined_fb, int layer_id, int2 extent);
+  void render(
+      View &view, Framebuffer &gbuffer, Framebuffer &combined_fb, int layer_id, int2 extent);
 };
 
 /** \} */
@@ -392,7 +585,7 @@ class UtilityTexture : public Texture {
 
   static constexpr int lut_size = UTIL_TEX_SIZE;
   static constexpr int lut_size_sqr = lut_size * lut_size;
-  static constexpr int layer_count = UTIL_BTDF_LAYER + 1 + UTIL_BTDF_LAYER_COUNT;
+  static constexpr int layer_count = UTIL_BTDF_LAYER + UTIL_BTDF_LAYER_COUNT;
 
  public:
   UtilityTexture()
@@ -477,9 +670,10 @@ class PipelineModule {
   CapturePipeline capture;
 
   UtilityTexture utility_tx;
+  PipelineInfoData &data;
 
  public:
-  PipelineModule(Instance &inst)
+  PipelineModule(Instance &inst, PipelineInfoData &data)
       : background(inst),
         world(inst),
         world_volume(inst),
@@ -489,7 +683,8 @@ class PipelineModule {
         forward(inst),
         shadow(inst),
         volume(inst),
-        capture(inst){};
+        capture(inst),
+        data(data){};
 
   void begin_sync()
   {
@@ -509,7 +704,7 @@ class PipelineModule {
     deferred.end_sync();
   }
 
-  PassMain::Sub *material_add(Object *ob,
+  PassMain::Sub *material_add(Object * /*ob*/ /* TODO remove. */,
                               ::Material *blender_mat,
                               GPUMaterial *gpumat,
                               eMaterialPipeline pipeline_type,
@@ -517,7 +712,7 @@ class PipelineModule {
   {
     if (probe_capture == MAT_PROBE_REFLECTION) {
       switch (pipeline_type) {
-        case MAT_PIPE_DEFERRED_PREPASS:
+        case MAT_PIPE_PREPASS_DEFERRED:
           return probe.prepass_add(blender_mat, gpumat);
         case MAT_PIPE_DEFERRED:
           return probe.material_add(blender_mat, gpumat);
@@ -528,7 +723,7 @@ class PipelineModule {
     }
     if (probe_capture == MAT_PROBE_PLANAR) {
       switch (pipeline_type) {
-        case MAT_PIPE_PLANAR_PREPASS:
+        case MAT_PIPE_PREPASS_PLANAR:
           return planar.prepass_add(blender_mat, gpumat);
         case MAT_PIPE_DEFERRED:
           return planar.material_add(blender_mat, gpumat);
@@ -539,36 +734,35 @@ class PipelineModule {
     }
 
     switch (pipeline_type) {
-      case MAT_PIPE_DEFERRED_PREPASS:
+      case MAT_PIPE_PREPASS_DEFERRED:
         return deferred.prepass_add(blender_mat, gpumat, false);
-      case MAT_PIPE_FORWARD_PREPASS:
-        if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
-          return forward.prepass_transparent_add(ob, blender_mat, gpumat);
-        }
+      case MAT_PIPE_PREPASS_FORWARD:
         return forward.prepass_opaque_add(blender_mat, gpumat, false);
+      case MAT_PIPE_PREPASS_OVERLAP:
+        BLI_assert_msg(0, "Overlap prepass should register to the forward pipeline directly.");
+        return nullptr;
 
-      case MAT_PIPE_DEFERRED_PREPASS_VELOCITY:
+      case MAT_PIPE_PREPASS_DEFERRED_VELOCITY:
         return deferred.prepass_add(blender_mat, gpumat, true);
-      case MAT_PIPE_FORWARD_PREPASS_VELOCITY:
-        if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
-          return forward.prepass_transparent_add(ob, blender_mat, gpumat);
-        }
+      case MAT_PIPE_PREPASS_FORWARD_VELOCITY:
         return forward.prepass_opaque_add(blender_mat, gpumat, true);
 
       case MAT_PIPE_DEFERRED:
         return deferred.material_add(blender_mat, gpumat);
       case MAT_PIPE_FORWARD:
-        if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
-          return forward.material_transparent_add(ob, blender_mat, gpumat);
-        }
         return forward.material_opaque_add(blender_mat, gpumat);
-      case MAT_PIPE_VOLUME:
-        return volume.volume_material_add(gpumat);
       case MAT_PIPE_SHADOW:
-        return shadow.surface_material_add(gpumat);
+        return shadow.surface_material_add(blender_mat, gpumat);
       case MAT_PIPE_CAPTURE:
         return capture.surface_material_add(blender_mat, gpumat);
-      case MAT_PIPE_PLANAR_PREPASS:
+
+      case MAT_PIPE_VOLUME_OCCUPANCY:
+      case MAT_PIPE_VOLUME_MATERIAL:
+        BLI_assert_msg(0, "Volume shaders must register to the volume pipeline directly.");
+        return nullptr;
+
+      case MAT_PIPE_PREPASS_PLANAR:
+        /* Should be handled by the `probe_capture == MAT_PROBE_PLANAR` case. */
         BLI_assert_unreachable();
         return nullptr;
     }

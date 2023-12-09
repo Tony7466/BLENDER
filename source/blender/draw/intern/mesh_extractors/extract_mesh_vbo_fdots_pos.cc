@@ -10,7 +10,7 @@
 
 #include "extract_mesh.hh"
 
-#include "draw_subdivision.h"
+#include "draw_subdivision.hh"
 
 namespace blender::draw {
 
@@ -75,7 +75,7 @@ static void extract_fdots_pos_iter_face_mesh(const MeshRenderData &mr,
   float *co = center[face_index];
   zero_v3(co);
 
-  const BitSpan facedot_tags = mr.me->runtime->subsurf_face_dot_tags;
+  const BitSpan facedot_tags = mr.mesh->runtime->subsurf_face_dot_tags;
 
   for (const int ml_index : mr.faces[face_index]) {
     const int vert = mr.corner_verts[ml_index];

@@ -19,9 +19,9 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_brush.hh"
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
@@ -210,8 +210,7 @@ struct CombOperationExecutor {
         bke::crazyspace::get_evaluated_curves_deformation(*ctx_.depsgraph, *curves_ob_orig_);
     const OffsetIndices points_by_curve = curves_orig_->points_by_curve();
 
-    float4x4 projection;
-    ED_view3d_ob_project_mat_get(ctx_.rv3d, curves_ob_orig_, projection.ptr());
+    const float4x4 projection = ED_view3d_ob_project_mat_get(ctx_.rv3d, curves_ob_orig_);
 
     const float brush_radius_re = brush_radius_base_re_ * brush_radius_factor_;
     const float brush_radius_sq_re = pow2f(brush_radius_re);
@@ -228,7 +227,7 @@ struct CombOperationExecutor {
         const IndexRange points = points_by_curve[curve_i];
 
         const float total_length = self_->curve_lengths_[curve_i];
-        const float total_length_inv = safe_divide(1.0f, total_length);
+        const float total_length_inv = math::safe_rcp(total_length);
         float current_length = 0.0f;
         for (const int point_i : points.drop_front(1)) {
           current_length += segment_lengths[point_i - 1];
@@ -237,9 +236,8 @@ struct CombOperationExecutor {
           const float3 old_symm_pos_cu = math::transform_point(brush_transform_inv, old_pos_cu);
 
           /* Find the position of the point in screen space. */
-          float2 old_symm_pos_re;
-          ED_view3d_project_float_v2_m4(
-              ctx_.region, old_symm_pos_cu, old_symm_pos_re, projection.ptr());
+          const float2 old_symm_pos_re = ED_view3d_project_float_v2_m4(
+              ctx_.region, old_symm_pos_cu, projection);
 
           const float distance_to_brush_sq_re = dist_squared_to_line_segment_v2(
               old_symm_pos_re, brush_pos_prev_re_, brush_pos_re_);
@@ -291,9 +289,6 @@ struct CombOperationExecutor {
    */
   void comb_spherical_with_symmetry(MutableSpan<bool> r_changed_curves)
   {
-    float4x4 projection;
-    ED_view3d_ob_project_mat_get(ctx_.rv3d, curves_ob_orig_, projection.ptr());
-
     float3 brush_start_wo, brush_end_wo;
     ED_view3d_win_to_3d(
         ctx_.v3d,
@@ -347,7 +342,7 @@ struct CombOperationExecutor {
         const IndexRange points = points_by_curve[curve_i];
 
         const float total_length = self_->curve_lengths_[curve_i];
-        const float total_length_inv = safe_divide(1.0f, total_length);
+        const float total_length_inv = math::safe_rcp(total_length);
         float current_length = 0.0f;
         for (const int point_i : points.drop_front(1)) {
           current_length += segment_lengths[point_i - 1];

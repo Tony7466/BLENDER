@@ -16,13 +16,13 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
 #include "BKE_global.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_object.hh"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
@@ -43,7 +43,7 @@
 #include "WM_api.hh"
 
 #include "draw_manager_text.h"
-#include "intern/bmesh_polygon.h"
+#include "intern/bmesh_polygon.hh"
 
 struct ViewCachedString {
   float vec[3];
@@ -227,8 +227,8 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
    */
   DRWTextStore *dt = DRW_text_cache_ensure();
   const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
-  Mesh *me = BKE_object_get_editmesh_eval_cage(ob);
-  BMEditMesh *em = me->edit_mesh;
+  Mesh *mesh = BKE_object_get_editmesh_eval_cage(ob);
+  BMEditMesh *em = mesh->edit_mesh;
   float v1[3], v2[3], v3[3], vmid[3], fvec[3];
   char numstr[32]; /* Stores the measurement display text here */
   size_t numstr_len;
@@ -241,7 +241,7 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
   float clip_planes[4][4];
   /* allow for displaying shape keys and deform mods */
   BMIter iter;
-  const float(*vert_coords)[3] = BKE_mesh_wrapper_vert_coords(me);
+  const float(*vert_coords)[3] = BKE_mesh_wrapper_vert_coords(mesh);
   const bool use_coords = (vert_coords != nullptr);
 
   /* when 2 or more edge-info options are enabled, space apart */
@@ -348,7 +348,7 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
     const float(*face_normals)[3] = nullptr;
     if (use_coords) {
       BM_mesh_elem_index_ensure(em->bm, BM_VERT | BM_FACE);
-      face_normals = BKE_mesh_wrapper_face_normals(me);
+      face_normals = BKE_mesh_wrapper_face_normals(mesh);
     }
 
     BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {

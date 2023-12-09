@@ -403,6 +403,11 @@ function(blender_add_lib__impl
 
   add_library(${name} ${sources})
 
+  # On windows vcpkg goes out of its way to make its libs the preferred
+  # libs, and needs to be explicitly be told not to do that.
+  if(WIN32)
+    set_target_properties(${name} PROPERTIES VS_GLOBAL_VcpkgEnabled "false")
+  endif()
   blender_target_include_dirs(${name} ${includes})
   blender_target_include_dirs_sys(${name} ${includes_sys})
 
@@ -745,11 +750,11 @@ macro(remove_c_flag
   _flag)
 
   foreach(f ${ARGV})
-    string(REGEX REPLACE ${f} "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
-    string(REGEX REPLACE ${f} "" CMAKE_C_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
-    string(REGEX REPLACE ${f} "" CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
-    string(REGEX REPLACE ${f} "" CMAKE_C_FLAGS_MINSIZEREL ${CMAKE_C_FLAGS_MINSIZEREL})
-    string(REGEX REPLACE ${f} "" CMAKE_C_FLAGS_RELWITHDEBINFO ${CMAKE_C_FLAGS_RELWITHDEBINFO})
+    string(REGEX REPLACE ${f} "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    string(REGEX REPLACE ${f} "" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+    string(REGEX REPLACE ${f} "" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+    string(REGEX REPLACE ${f} "" CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL}")
+    string(REGEX REPLACE ${f} "" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
   endforeach()
   unset(f)
 endmacro()
@@ -758,11 +763,11 @@ macro(remove_cxx_flag
   _flag)
 
   foreach(f ${ARGV})
-    string(REGEX REPLACE ${f} "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-    string(REGEX REPLACE ${f} "" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
-    string(REGEX REPLACE ${f} "" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
-    string(REGEX REPLACE ${f} "" CMAKE_CXX_FLAGS_MINSIZEREL ${CMAKE_CXX_FLAGS_MINSIZEREL})
-    string(REGEX REPLACE ${f} "" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+    string(REGEX REPLACE ${f} "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    string(REGEX REPLACE ${f} "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    string(REGEX REPLACE ${f} "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+    string(REGEX REPLACE ${f} "" CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL}")
+    string(REGEX REPLACE ${f} "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
   endforeach()
   unset(f)
 endmacro()
@@ -1459,11 +1464,15 @@ macro(find_python_module_file
       NO_DEFAULT_PATH
     )
     if(${out_var_abs})
-      set(_${out_var_abs}_DEPS "${_python_mod_file_deps_test}" CACHE STRING "")
-      string(LENGTH "${_python_root}" _python_root_len)
-      string(SUBSTRING ${${out_var_abs}} ${_python_root_len} -1 ${out_var_rel})
-      unset(_python_root_len)
+      # Internal because this is only to track changes (users never need to manipulate it).
+      set(_${out_var_abs}_DEPS "${_python_mod_file_deps_test}" CACHE INTERNAL STRING "")
     endif()
+  endif()
+
+  if(${out_var_abs})
+    string(LENGTH "${_python_root}" _python_root_len)
+    string(SUBSTRING ${${out_var_abs}} ${_python_root_len} -1 ${out_var_rel})
+    unset(_python_root_len)
   endif()
 
   unset(_python_mod_file_deps_test)

@@ -18,7 +18,7 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_tempfile.h"
 #include "BLI_utildefines.h"
 
@@ -34,8 +34,8 @@
 #include "CLG_log.h"
 
 #ifdef WIN32
-#  include "utf_winfunc.h"
-#  include "utfconv.h"
+#  include "utf_winfunc.hh"
+#  include "utfconv.hh"
 #  include <io.h>
 #  ifdef _WIN32_IE
 #    undef _WIN32_IE
@@ -84,7 +84,7 @@ static bool is_appdir_init = false;
 #  define ASSERT_IS_INIT() BLI_assert(is_appdir_init)
 #else
 #  define ASSERT_IS_INIT() ((void)0)
-#endif
+#endif /* NDEBUG */
 
 void BKE_appdir_init()
 {
@@ -882,7 +882,7 @@ static void where_am_i(char *program_filepath,
     /* Remove "/./" and "/../" so string comparisons can be used on the path. */
     BLI_path_normalize_native(program_filepath);
 
-#  if defined(DEBUG)
+#  ifndef NDEBUG
     if (!STREQ(program_name, program_filepath)) {
       CLOG_INFO(&LOG, 2, "guessing '%s' == '%s'", program_name, program_filepath);
     }

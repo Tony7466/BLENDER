@@ -44,10 +44,10 @@
 
 #include "BKE_animsys.h"
 #include "BKE_appdir.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_brush.hh"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_icons.h"
 #include "BKE_idprop.h"
@@ -55,7 +55,7 @@
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_light.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
@@ -304,11 +304,11 @@ static const char *preview_floor_material_name(const Scene *scene,
 }
 
 static void switch_preview_floor_material(Main *pr_main,
-                                          Mesh *me,
+                                          Mesh *mesh,
                                           const Scene *scene,
                                           const ePreviewRenderMethod pr_method)
 {
-  if (me->totcol == 0) {
+  if (mesh->totcol == 0) {
     return;
   }
 
@@ -316,7 +316,7 @@ static void switch_preview_floor_material(Main *pr_main,
   Material *mat = static_cast<Material *>(
       BLI_findstring(&pr_main->materials, material_name, offsetof(ID, name) + 2));
   if (mat) {
-    me->mat[0] = mat;
+    mesh->mat[0] = mat;
   }
 }
 
