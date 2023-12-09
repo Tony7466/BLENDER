@@ -973,7 +973,7 @@ bool BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, flo
     return false;
   }
 
-  /* Copied without change from vfontdata_freetype.cc to ensure consistant sizing. */
+  /* Copied without change from vfontdata_freetype.cc to ensure consistent sizing. */
 
   /* Blender default BFont is not "complete". */
   const bool complete_font = (font->face->ascender != 0) && (font->face->descender != 0) &&
@@ -1017,7 +1017,7 @@ float BLF_character_to_curves(int fontid,
   return blf_character_to_curves(font, unicode, nurbsbase, scale);
 }
 
-#ifdef DEBUG
+#ifndef NDEBUG
 void BLF_state_print(int fontid)
 {
   FontBLF *font = blf_get(fontid);
