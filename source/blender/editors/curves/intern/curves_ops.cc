@@ -1244,8 +1244,6 @@ static void CURVES_OT_delete(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-void CURVES_OT_draw(wmOperatorType *ot);
-
 }  // namespace blender::ed::curves
 
 void ED_operatortypes_curves()

@@ -1305,7 +1305,7 @@ class _defs_edit_curves:
             if extra:
                 props = tool.operator_properties("curves.draw")
                 col = layout.column(align=True)
-                col.prop(props, "preview_radius", text="Pvw Radius", slider=True)
+                col.prop(props, "preview_radius", text="Preview", slider=True)
                 col.prop(props, "is_curve_2d", text="Curve 2D")
 
         return dict(

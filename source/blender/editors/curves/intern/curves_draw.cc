@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 #include "DNA_curve_types.h"
 
 #include "BLI_math_matrix.h"
@@ -14,6 +18,7 @@
 
 #include "WM_api.hh"
 
+#include "ED_curves.hh"
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 #include "ED_view3d.hh"
@@ -618,7 +623,6 @@ static bool curve_draw_init(bContext *C, wmOperator *op, bool is_invoke)
 
 static int curves_draw_exec(bContext *C, wmOperator *op)
 {
-  using namespace bke;
   if (op->customdata == nullptr) {
     if (!curve_draw_init(C, op, false)) {
       return OPERATOR_CANCELLED;
@@ -650,11 +654,9 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
   const float radius_range = cps->radius_max - cps->radius_min;
 
   Curves *curves_id = static_cast<Curves *>(obedit->data);
-  blender::bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+  bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+  const eAttrDomain selection_domain = eAttrDomain(curves_id->selection_domain);
   const int curve_index = curves.curves_num();
-
-  // // nu->resolu = cu->resolu;
-  // nu->flag |= CU_SMOOTH;
 
   const bool use_pressure_radius = (cps->flag & CURVE_PAINT_FLAG_PRESSURE_RADIUS) ||
                                    ((cps->radius_taper_start != 0.0f) ||
@@ -771,23 +773,22 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
       MutableSpan<int> resolution = curves.resolution_for_write();
 
       resolution[curve_index] = 12;
-      IndexRange points_of_curve = curves.points_by_curve()[curve_index];
+      IndexRange new_points = curves.points_by_curve()[curve_index];
       MutableSpan<float3> positions = curves.positions_for_write();
 
-      MutableAttributeAccessor curves_attributes = curves.attributes_for_write();
-      SpanAttributeWriter<float> radius_attribute =
+      bke::MutableAttributeAccessor curves_attributes = curves.attributes_for_write();
+      bke::SpanAttributeWriter<float> radius_attribute =
           curves_attributes.lookup_or_add_for_write_only_span<float>("radius", ATTR_DOMAIN_POINT);
-      SpanAttributeWriter<bool> selection_attribute =
-          curves_attributes.lookup_or_add_for_write_span<bool>(".selection", ATTR_DOMAIN_POINT);
-
       MutableSpan<float> radii = radius_attribute.span;
-      MutableSpan<bool> selections = selection_attribute.span;
 
-      selections.fill(false);
+      bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+          curves, selection_domain, CD_PROP_BOOL);
+
+      curves::fill_selection_false(selection.span);
 
       float *co = cubic_spline;
 
-      for (const int64_t i : points_of_curve) {
+      for (const int64_t i : new_points) {
         const float *handle_l = co + (dims * 0);
         const float *pt = co + (dims * 1);
         const float *handle_r = co + (dims * 2);
@@ -803,10 +804,13 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
 
         handle_types_l[i] = BEZIER_HANDLE_ALIGN;
         handle_types_r[i] = BEZIER_HANDLE_ALIGN;
-        selections[i] = true;
-        //         bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
         co += (dims * 3);
       }
+
+      curves::fill_selection_true(
+          selection.span,
+          selection.domain == ATTR_DOMAIN_POINT ? new_points : IndexRange(curve_index, 1));
+      //         bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
 
       if (corners_index) {
         /* ignore the first and last */
@@ -818,16 +822,15 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
         }
 
         for (const auto i : IndexRange(i_start, i_end - i_start)) {
-          const int64_t corner_i = points_of_curve[corners_index[i]];
-          handle_types_l[i] = BEZIER_HANDLE_FREE;
-          handle_types_r[i] = BEZIER_HANDLE_FREE;
+          const int64_t corner_i = new_points[corners_index[i]];
+          handle_types_l[corner_i] = BEZIER_HANDLE_FREE;
+          handle_types_r[corner_i] = BEZIER_HANDLE_FREE;
         }
       }
 
       cyclic[curve_index] = bool(calc_flag & CURVE_FIT_CALC_CYCLIC);
 
       radius_attribute.finish();
-      selection_attribute.finish();
     }
 
     if (corners_index) {
@@ -844,20 +847,18 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
     curve_types[curve_index] = CURVE_TYPE_POLY;
     curves.update_curve_types();
 
-    IndexRange points_of_curve = curves.points_by_curve()[curve_index];
+    IndexRange new_points = curves.points_by_curve()[curve_index];
     MutableSpan<float3> positions = curves.positions_for_write();
-    MutableAttributeAccessor curves_attributes = curves.attributes_for_write();
-    SpanAttributeWriter<float> radius_attribute =
+    bke::MutableAttributeAccessor curves_attributes = curves.attributes_for_write();
+    bke::SpanAttributeWriter<float> radius_attribute =
         curves_attributes.lookup_or_add_for_write_only_span<float>("radius", ATTR_DOMAIN_POINT);
-    SpanAttributeWriter<bool> selection_attribute =
-        curves_attributes.lookup_or_add_for_write_span<bool>(".selection", ATTR_DOMAIN_POINT);
-
     MutableSpan<float> radii = radius_attribute.span;
-    MutableSpan<bool> selections = selection_attribute.span;
 
-    selections.fill(false);
+    bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+        curves, selection_domain, CD_PROP_BOOL);
+    curves::fill_selection_false(selection.span);
 
-    IndexRange::Iterator points_iter = points_of_curve.begin();
+    IndexRange::Iterator points_iter = new_points.begin();
 
     BLI_mempool_iter iter;
     BLI_mempool_iternew(cdd->stroke_elem_pool, &iter);
@@ -872,11 +873,11 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
 
       radii[i] = use_pressure_radius ? (selem->pressure * radius_range) + radius_min :
                                        cps->radius_max;
-      selections[i] = true;
     }
-
+    curves::fill_selection_true(
+        selection.span,
+        selection.domain == ATTR_DOMAIN_POINT ? new_points : IndexRange(curve_index, 1));
     radius_attribute.finish();
-    selection_attribute.finish();
   }
 
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
@@ -1149,14 +1150,11 @@ static int curves_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
   return ret;
 }
 
-bool editable_curves_in_edit_mode_poll(bContext *C);
-
 void CURVES_OT_draw(wmOperatorType *ot)
 {
-  using namespace blender::ed::curves;
   ot->name = "Draw Curves";
   ot->idname = __func__;
-  ot->description = "Draw a freehand spline";
+  ot->description = "Draw a freehand curve";
 
   ot->exec = curves_draw_exec;
   ot->invoke = curves_draw_invoke;
