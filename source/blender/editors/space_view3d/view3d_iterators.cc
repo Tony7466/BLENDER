@@ -19,25 +19,26 @@
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_DerivedMesh.h"
+#include "BKE_DerivedMesh.hh"
 #include "BKE_action.h"
-#include "BKE_armature.h"
-#include "BKE_curve.h"
+#include "BKE_armature.hh"
+#include "BKE_curve.hh"
 #include "BKE_displist.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_iterators.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include "ED_armature.hh"
 #include "ED_screen.hh"
@@ -90,9 +91,9 @@ static int content_planes_from_clip_flag(const ARegion *region,
   BLI_assert(planes_len <= 6);
   if (planes_len != 0) {
     RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
-    float projmat[4][4];
-    ED_view3d_ob_project_mat_get(rv3d, ob, projmat);
-    planes_from_projmat(projmat, clip_xmin, clip_xmax, clip_ymin, clip_ymax, clip_zmin, clip_zmax);
+    const blender::float4x4 projection = ED_view3d_ob_project_mat_get(rv3d, ob);
+    planes_from_projmat(
+        projection.ptr(), clip_xmin, clip_xmax, clip_ymin, clip_ymax, clip_zmin, clip_zmax);
   }
   return planes_len;
 }
@@ -297,7 +298,7 @@ void meshobject_foreachScreenVert(ViewContext *vc,
   foreachScreenObjectVert_userData data;
 
   const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph, vc->obact);
-  const Mesh *me = BKE_object_get_evaluated_mesh(ob_eval);
+  const Mesh *mesh = BKE_object_get_evaluated_mesh(ob_eval);
 
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
@@ -306,13 +307,14 @@ void meshobject_foreachScreenVert(ViewContext *vc,
   data.user_data = user_data;
   data.clip_flag = clip_flag;
   data.hide_vert = (const bool *)CustomData_get_layer_named(
-      &me->vert_data, CD_PROP_BOOL, ".hide_vert");
+      &mesh->vert_data, CD_PROP_BOOL, ".hide_vert");
 
   if (clip_flag & V3D_PROJ_TEST_CLIP_BB) {
     ED_view3d_clipping_local(vc->rv3d, vc->obact->object_to_world);
   }
 
-  BKE_mesh_foreach_mapped_vert(me, meshobject_foreachScreenVert__mapFunc, &data, MESH_FOREACH_NOP);
+  BKE_mesh_foreach_mapped_vert(
+      mesh, meshobject_foreachScreenVert__mapFunc, &data, MESH_FOREACH_NOP);
 }
 
 static void mesh_foreachScreenVert__mapFunc(void *user_data,
@@ -344,9 +346,9 @@ void mesh_foreachScreenVert(
 {
   foreachScreenVert_userData data;
 
-  Mesh *me = editbmesh_get_eval_cage_from_orig(
+  Mesh *mesh = editbmesh_get_eval_cage_from_orig(
       vc->depsgraph, vc->scene, vc->obedit, &CD_MASK_BAREMESH);
-  me = BKE_mesh_wrapper_ensure_subdivision(me);
+  mesh = BKE_mesh_wrapper_ensure_subdivision(mesh);
 
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
@@ -361,7 +363,7 @@ void mesh_foreachScreenVert(
   }
 
   BM_mesh_elem_table_ensure(vc->em->bm, BM_VERT);
-  BKE_mesh_foreach_mapped_vert(me, mesh_foreachScreenVert__mapFunc, &data, MESH_FOREACH_NOP);
+  BKE_mesh_foreach_mapped_vert(mesh, mesh_foreachScreenVert__mapFunc, &data, MESH_FOREACH_NOP);
 }
 
 /** \} */
@@ -409,9 +411,9 @@ void mesh_foreachScreenEdge(ViewContext *vc,
 {
   foreachScreenEdge_userData data;
 
-  Mesh *me = editbmesh_get_eval_cage_from_orig(
+  Mesh *mesh = editbmesh_get_eval_cage_from_orig(
       vc->depsgraph, vc->scene, vc->obedit, &CD_MASK_BAREMESH);
-  me = BKE_mesh_wrapper_ensure_subdivision(me);
+  mesh = BKE_mesh_wrapper_ensure_subdivision(mesh);
 
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
@@ -440,7 +442,7 @@ void mesh_foreachScreenEdge(ViewContext *vc,
   }
 
   BM_mesh_elem_table_ensure(vc->em->bm, BM_EDGE);
-  BKE_mesh_foreach_mapped_edge(me, vc->em->bm->totedge, mesh_foreachScreenEdge__mapFunc, &data);
+  BKE_mesh_foreach_mapped_edge(mesh, vc->em->bm->totedge, mesh_foreachScreenEdge__mapFunc, &data);
 }
 
 /** \} */
@@ -499,9 +501,9 @@ void mesh_foreachScreenEdge_clip_bb_segment(ViewContext *vc,
 {
   foreachScreenEdge_userData data;
 
-  Mesh *me = editbmesh_get_eval_cage_from_orig(
+  Mesh *mesh = editbmesh_get_eval_cage_from_orig(
       vc->depsgraph, vc->scene, vc->obedit, &CD_MASK_BAREMESH);
-  me = BKE_mesh_wrapper_ensure_subdivision(me);
+  mesh = BKE_mesh_wrapper_ensure_subdivision(mesh);
 
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
@@ -530,10 +532,11 @@ void mesh_foreachScreenEdge_clip_bb_segment(ViewContext *vc,
     ED_view3d_clipping_local(vc->rv3d,
                              vc->obedit->object_to_world); /* for local clipping lookups. */
     BKE_mesh_foreach_mapped_edge(
-        me, vc->em->bm->totedge, mesh_foreachScreenEdge_clip_bb_segment__mapFunc, &data);
+        mesh, vc->em->bm->totedge, mesh_foreachScreenEdge_clip_bb_segment__mapFunc, &data);
   }
   else {
-    BKE_mesh_foreach_mapped_edge(me, vc->em->bm->totedge, mesh_foreachScreenEdge__mapFunc, &data);
+    BKE_mesh_foreach_mapped_edge(
+        mesh, vc->em->bm->totedge, mesh_foreachScreenEdge__mapFunc, &data);
   }
 }
 
@@ -573,9 +576,9 @@ void mesh_foreachScreenFace(
   BLI_assert((clip_flag & V3D_PROJ_TEST_CLIP_CONTENT) == 0);
   foreachScreenFace_userData data;
 
-  Mesh *me = editbmesh_get_eval_cage_from_orig(
+  Mesh *mesh = editbmesh_get_eval_cage_from_orig(
       vc->depsgraph, vc->scene, vc->obedit, &CD_MASK_BAREMESH);
-  me = BKE_mesh_wrapper_ensure_subdivision(me);
+  mesh = BKE_mesh_wrapper_ensure_subdivision(mesh);
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
   data.vc = *vc;
@@ -585,14 +588,14 @@ void mesh_foreachScreenFace(
 
   BM_mesh_elem_table_ensure(vc->em->bm, BM_FACE);
 
-  const int face_dot_tags_num = me->runtime->subsurf_face_dot_tags.size();
-  if (face_dot_tags_num && (face_dot_tags_num != me->totvert)) {
+  const int face_dot_tags_num = mesh->runtime->subsurf_face_dot_tags.size();
+  if (face_dot_tags_num && (face_dot_tags_num != mesh->totvert)) {
     BKE_mesh_foreach_mapped_subdiv_face_center(
-        me, mesh_foreachScreenFace__mapFunc, &data, MESH_FOREACH_NOP);
+        mesh, mesh_foreachScreenFace__mapFunc, &data, MESH_FOREACH_NOP);
   }
   else {
     BKE_mesh_foreach_mapped_face_center(
-        me, mesh_foreachScreenFace__mapFunc, &data, MESH_FOREACH_NOP);
+        mesh, mesh_foreachScreenFace__mapFunc, &data, MESH_FOREACH_NOP);
   }
 }
 
@@ -735,8 +738,8 @@ void lattice_foreachScreenVert(ViewContext *vc,
   Object *obedit = vc->obedit;
   Lattice *lt = static_cast<Lattice *>(obedit->data);
   BPoint *bp = lt->editlatt->latt->def;
-  DispList *dl = obedit->runtime.curve_cache ?
-                     BKE_displist_find(&obedit->runtime.curve_cache->disp, DL_VERTS) :
+  DispList *dl = obedit->runtime->curve_cache ?
+                     BKE_displist_find(&obedit->runtime->curve_cache->disp, DL_VERTS) :
                      nullptr;
   const float *co = dl ? dl->verts : nullptr;
   int i, N = lt->editlatt->latt->pntsu * lt->editlatt->latt->pntsv * lt->editlatt->latt->pntsw;

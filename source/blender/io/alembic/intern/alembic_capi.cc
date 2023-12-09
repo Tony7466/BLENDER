@@ -31,8 +31,8 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_cachefile.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
@@ -664,7 +664,7 @@ static void import_endjob(void *user_data)
       break;
   }
 
-  WM_main_add_notifier(NC_SCENE | ND_FRAME, data->scene);
+  WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
   report_job_duration(data);
 }
 

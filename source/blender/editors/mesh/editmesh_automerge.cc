@@ -11,13 +11,13 @@
  * - #EDBM_automerge_and_split
  */
 
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 
 #include "DNA_object_types.h"
 
 #include "ED_mesh.hh"
 
-#include "tools/bmesh_intersect_edges.h"
+#include "tools/bmesh_intersect_edges.hh"
 
 //#define DEBUG_TIME
 #ifdef DEBUG_TIME

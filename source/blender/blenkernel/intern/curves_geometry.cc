@@ -27,7 +27,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
 #include "BKE_grease_pencil.hh"
 
@@ -73,7 +73,7 @@ CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
         MEM_malloc_arrayN(this->curve_num + 1, sizeof(int), __func__));
     this->runtime->curve_offsets_sharing_info = implicit_sharing::info_for_mem_free(
         this->curve_offsets);
-#ifdef DEBUG
+#ifndef NDEBUG
     this->offsets_for_write().fill(-1);
 #endif
     /* Set common values for convenience. */
