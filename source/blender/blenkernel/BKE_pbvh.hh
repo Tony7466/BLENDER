@@ -16,7 +16,6 @@
 #include "BLI_utildefines.h"
 
 struct PBVHNode;
-struct PBVHBatches;
 struct BMesh;
 
 enum PBVHType {
