@@ -26,8 +26,8 @@ static void node_declare(NodeDeclarationBuilder &b)
     return;
   }
 
-  const eCustomDataType data_type = eCustomDataType(node->custom1);
-  const GeometryNodeGridFilterOperation operation = GeometryNodeGridFilterOperation(node->custom2);
+  const GeometryNodeGridFilterOperation operation = GeometryNodeGridFilterOperation(node->custom1);
+  const eCustomDataType data_type = eCustomDataType(node->custom2);
 
   grids::declare_grid_type_input(b, data_type, "Grid");
   grids::declare_grid_type_input(b, DummyMaskType, "Mask");
@@ -55,14 +55,14 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
   uiItemR(layout, ptr, "operation", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = CD_PROP_FLOAT;
-  node->custom2 = GEO_NODE_GRID_FILTER_MEAN;
+  node->custom1 = GEO_NODE_GRID_FILTER_MEAN;
+  node->custom2 = CD_PROP_FLOAT;
 }
 
 struct GridFilterOp {
@@ -74,11 +74,13 @@ struct GridFilterOp {
     using MaskType = typename bke::VolumeGridPtr<float>::GridType;
     using Converter = bke::grids::Converter<T>;
 
-    const GeometryNodeGridFilterOperation operation = GeometryNodeGridFilterOperation(params.node().custom2);
+    const GeometryNodeGridFilterOperation operation = GeometryNodeGridFilterOperation(params.node().custom1);
 
     const bke::VolumeGridPtr<T> grid = grids::extract_grid_input<T>(this->params, "Grid");
     const bke::VolumeGridPtr<float> mask = grids::extract_grid_input<float>(this->params, "Mask");
-
+    if (!grid) {
+      return nullptr;
+    }
     const bke::VolumeGridPtr<T> output_grid = grid->is_mutable() ?
                                                   grid :
                                                   bke::VolumeGridPtr<T>{grid->copy()};
@@ -123,12 +125,11 @@ struct GridFilterOp {
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
-  const eCustomDataType data_type = eCustomDataType(params.node().custom1);
+  const eCustomDataType data_type = eCustomDataType(params.node().custom2);
   BLI_assert(grids::grid_type_supported(data_type));
 
   GridFilterOp filter_op = {params};
   bke::GVolumeGridPtr grid = grids::apply(data_type, filter_op);
-  grid.grid()->print(std::cout, 3);
 
   grids::set_output_grid(params, "Grid", data_type, grid);
 #else
@@ -140,22 +141,13 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  RNA_def_node_enum(srna,
-                    "data_type",
-                    "Data Type",
-                    "Type of grid data",
-                    rna_enum_attribute_type_items,
-                    NOD_inline_enum_accessors(custom1),
-                    CD_PROP_FLOAT,
-                    grids::grid_type_items_fn);
-
   RNA_def_node_enum(
       srna,
       "operation",
       "Operation",
       "Type of filtering operation",
       rna_enum_grid_filter_operation_items,
-      NOD_inline_enum_accessors(custom2),
+      NOD_inline_enum_accessors(custom1),
       GEO_NODE_GRID_FILTER_MEAN,
       [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
         *r_free = true;
@@ -168,6 +160,15 @@ static void node_rna(StructRNA *srna)
                                                GEO_NODE_GRID_FILTER_OFFSET);
                                  });
       });
+
+  RNA_def_node_enum(srna,
+                    "data_type",
+                    "Data Type",
+                    "Type of grid data",
+                    rna_enum_attribute_type_items,
+                    NOD_inline_enum_accessors(custom2),
+                    CD_PROP_FLOAT,
+                    grids::grid_type_items_fn);
 }
 
 static void node_register()
