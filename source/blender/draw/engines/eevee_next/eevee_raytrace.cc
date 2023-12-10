@@ -282,6 +282,8 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
   RaytraceEEVEE options = reflection_options_;
 
+  const bool use_horizon_scan = options.screen_trace_max_roughness < 1.0f;
+
   const int resolution_scale = max_ii(1, power_of_2_max_i(options.resolution_scale));
 
   const int2 extent = inst_.film.render_extent_get();
@@ -337,6 +339,12 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
   DRW_stats_group_start("Raytracing");
 
+  downsampled_in_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT, usage_rw);
+  downsampled_in_normal_tx_.acquire(tracing_res, GPU_RGBA8, usage_rw);
+
+  screen_radiance_tx_ = screen_radiance_front_tx;
+  inst_.manager->submit(horizon_setup_ps_, render_view);
+
   inst_.manager->submit(tile_classify_ps_);
 
   result.diffuse = trace("Diffuse",
@@ -348,6 +356,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
                          CLOSURE_DIFFUSE,
                          main_view,
                          render_view,
+                         use_horizon_scan,
                          false);
 
   result.reflect = trace("Reflection",
@@ -359,6 +368,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
                          CLOSURE_REFLECTION,
                          main_view,
                          render_view,
+                         use_horizon_scan,
                          false);
 
   result.refract = trace("Refraction",
@@ -370,7 +380,11 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
                          CLOSURE_REFRACTION,
                          main_view,
                          render_view,
+                         false, /* Not yet supported */
                          !do_refraction_tracing);
+
+  downsampled_in_radiance_tx_.release();
+  downsampled_in_normal_tx_.release();
 
   DRW_stats_group_end();
 
@@ -388,6 +402,7 @@ RayTraceResultTexture RayTraceModule::trace(
     /* TODO(fclem): Maybe wrap these two in some other class. */
     View &main_view,
     View &render_view,
+    bool use_horizon_scan,
     bool force_no_tracing)
 {
   BLI_assert_msg(count_bits_i(raytrace_closure) == 1,
@@ -461,7 +476,6 @@ RayTraceResultTexture RayTraceModule::trace(
                                     use_spatial_denoise;
   const bool use_bilateral_denoise = (options.denoise_stages & RAYTRACE_EEVEE_DENOISE_BILATERAL) &&
                                      use_temporal_denoise;
-  const bool use_horizon_scan = (raytrace_closure != CLOSURE_REFRACTION);
 
   eGPUTextureUsage usage_rw = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
 
@@ -583,18 +597,10 @@ RayTraceResultTexture RayTraceModule::trace(
   denoise_variance_tx_.release();
 
   if (use_horizon_scan) {
-    downsampled_in_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT, usage_rw);
-    downsampled_in_normal_tx_.acquire(tracing_res, GPU_RGBA8, usage_rw);
-
-    inst_.manager->submit(horizon_setup_ps_, render_view);
-
     horizon_occlusion_tx_.acquire(tracing_res, GPU_R8, usage_rw);
     horizon_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT, usage_rw);
 
     inst_.manager->submit(*horizon_scan_ps, render_view);
-
-    downsampled_in_radiance_tx_.release();
-    downsampled_in_normal_tx_.release();
 
     horizon_scan_output_tx_ = result.get();
 

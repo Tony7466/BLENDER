@@ -255,6 +255,7 @@ class RayTraceModule {
                               /* TODO(fclem): Maybe wrap these two in some other class. */
                               View &main_view,
                               View &render_view,
+                              bool use_horizon_scan,
                               bool force_no_tracing);
 };
 
