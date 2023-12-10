@@ -573,7 +573,7 @@ class RENDER_PT_eevee_next_raytracing(RenderButtonsPanel, Panel):
 
         layout.prop(props, "ray_tracing_method", text="Method")
 
-        options  = context.scene.eevee.ray_tracing_options
+        options = context.scene.eevee.ray_tracing_options
 
         layout.prop(options, "resolution_scale")
         layout.prop(options, "sample_clamp")
@@ -593,7 +593,7 @@ class RENDER_PT_eevee_next_screen_trace(RenderButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
-        props  = context.scene.eevee.ray_tracing_options
+        props = context.scene.eevee.ray_tracing_options
 
         layout.prop(props, "screen_trace_quality", text="Precision")
         layout.prop(props, "screen_trace_thickness", text="Thickness")
@@ -611,13 +611,13 @@ class RENDER_PT_eevee_next_denoise(RenderButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw_header(self, context):
-        props  = context.scene.eevee.ray_tracing_options
+        props = context.scene.eevee.ray_tracing_options
         self.layout.prop(props, "use_denoise", text="")
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
-        props  = context.scene.eevee.ray_tracing_options
+        props = context.scene.eevee.ray_tracing_options
 
         col = layout.column()
         col.active = props.use_denoise
