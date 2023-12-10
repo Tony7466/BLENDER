@@ -351,7 +351,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
     inst_.manager->submit(horizon_setup_ps_, render_view);
   }
 
-  if (active_closures == CLOSURE_NONE) {
+  if (active_closures != CLOSURE_NONE) {
     inst_.manager->submit(tile_classify_ps_);
   }
 
