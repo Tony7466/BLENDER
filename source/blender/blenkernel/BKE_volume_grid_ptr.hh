@@ -160,12 +160,8 @@ template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
 
   GridPtr grid_for_write() const
   {
-    const VolumeGrid *data = this->get();
-    if (data->is_mutable()) {
-      data->tag_ensured_mutable();
-      return openvdb::GridBase::grid<GridType>(const_cast<VolumeGrid *>(data)->grid_for_write());
-    }
-    return openvdb::GridBase::grid<GridType>(data->grid()->deepCopyGrid());
+    openvdb::GridBase::Ptr base_grid = const_cast<VolumeGrid *>(this->get())->grid_for_write();
+    return openvdb::GridBase::grid<GridType>(base_grid);
   }
 
  private:
