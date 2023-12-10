@@ -563,6 +563,12 @@ struct SculptAttributePointers {
   SculptAttribute *dyntopo_node_id_face;
 };
 
+struct SculptTopologyIslandCache {
+  blender::Array<int> vert_island_ids;
+  blender::Array<int8_t> small_vert_island_ids;
+  bool is_multires_face;
+};
+
 struct SculptSession {
   /* Mesh data (not copied) can come either directly from a Mesh, or from a MultiresDM */
   struct { /* Special handling for multires meshes */
@@ -757,7 +763,7 @@ struct SculptSession {
   int last_automasking_settings_hash;
   uchar last_automask_stroke_id;
 
-  std::unique_ptr<blender::ed::sculpt_paint::TopologyIslandCache> topology_island_cache;
+  std::unique_ptr<SculptTopologyIslandCache> topology_island_cache;
 };
 
 void BKE_sculptsession_free(Object *ob);

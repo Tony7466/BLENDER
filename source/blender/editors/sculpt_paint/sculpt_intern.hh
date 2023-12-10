@@ -1865,12 +1865,6 @@ void ensure_valid_pivot(const Object *ob, Scene *scene);
 
 namespace blender::ed::sculpt_paint::islands {
 
-struct Cache {
-  int islands_num;
-  Array<int> vert_island_ids;
-  Array<int8_t> small_vert_island_ids;
-};
-
 /* Ensure vertex island keys exist and are valid. */
 void ensure_cache(Object &object);
 
