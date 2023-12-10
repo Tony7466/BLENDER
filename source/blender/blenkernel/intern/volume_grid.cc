@@ -426,11 +426,7 @@ GVolumeGridPtr::GridConstPtr GVolumeGridPtr::grid() const
 GVolumeGridPtr::GridPtr GVolumeGridPtr::grid_for_write() const
 {
 #ifdef WITH_OPENVDB
-  const VolumeGrid *data = this->get();
-  if (data->is_mutable()) {
-    return const_cast<VolumeGrid *>(data)->grid_for_write();
-  }
-  return data->grid()->deepCopyGrid();
+  return const_cast<VolumeGrid *>(this->get())->grid_for_write();
 #else
   return nullptr;
 #endif
