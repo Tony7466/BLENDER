@@ -580,6 +580,16 @@ const EnumPropertyItem rna_enum_fast_sweeping_region_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_grid_filter_operation_items[] = {
+    {GEO_NODE_GRID_FILTER_MEAN, "MEAN", 0, "Mean", "Average of surrounding values (box filter)"},
+    {GEO_NODE_GRID_FILTER_MEAN_CURVATURE, "MEAN_CURVATURE", 0, "Mean Curvature", "Average of curvature flow"},
+    {GEO_NODE_GRID_FILTER_MEDIAN, "MEDIAN", 0, "Median", "Median of surrounding values"},
+    {GEO_NODE_GRID_FILTER_GAUSSIAN, "GAUSSIAN", 0, "Gaussian", "Gaussian blurring filter"},
+    {GEO_NODE_GRID_FILTER_OFFSET, "OFFSET", 0, "Offset", "Offset values by a fixed amount"},
+    {GEO_NODE_GRID_FILTER_LAPLACIAN, "LAPLACIAN", 0, "Laplacian", "Laplacian smoothing filter"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifndef RNA_RUNTIME
 static const EnumPropertyItem node_sampler_type_items[] = {
     {0, "NEAREST", 0, "Nearest", ""},

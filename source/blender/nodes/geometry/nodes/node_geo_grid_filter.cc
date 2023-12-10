@@ -27,9 +27,26 @@ static void node_declare(NodeDeclarationBuilder &b)
   }
 
   const eCustomDataType data_type = eCustomDataType(node->custom1);
+  const GeometryNodeGridFilterOperation operation = GeometryNodeGridFilterOperation(node->custom2);
 
   grids::declare_grid_type_input(b, data_type, "Grid");
   grids::declare_grid_type_input(b, DummyMaskType, "Mask");
+  switch (operation) {
+    case GEO_NODE_GRID_FILTER_MEAN:
+    case GEO_NODE_GRID_FILTER_MEDIAN:
+    case GEO_NODE_GRID_FILTER_GAUSSIAN:
+      b.add_input<decl::Int>("Iterations").min(0).default_value(1);
+      b.add_input<decl::Int>("Width").min(1).max(3).default_value(1);
+      break;
+    case GEO_NODE_GRID_FILTER_OFFSET:
+      b.add_input(data_type, "Offset");
+      break;
+    case GEO_NODE_GRID_FILTER_MEAN_CURVATURE:
+    case GEO_NODE_GRID_FILTER_LAPLACIAN:
+      /* Only supported in SDF filtering. */
+      BLI_assert_unreachable();
+      break;
+  }
 
   grids::declare_grid_type_output(b, data_type, "Grid");
 }
@@ -39,62 +56,67 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "operation", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   node->custom1 = CD_PROP_FLOAT;
+  node->custom2 = GEO_NODE_GRID_FILTER_MEAN;
 }
-
-template<typename T> struct GridMaskedFilterOp {
-  GeoNodeExecParams params;
-
-  template<typename U> bke::GVolumeGridPtr operator()()
-  {
-    using GridType = typename bke::VolumeGridPtr<T>::GridType;
-    using MaskType = typename bke::VolumeGridPtr<U>::GridType;
-
-    const GeometryNodeGridFilterOperation operation = GEO_NODE_GRID_FILTER_MEAN;
-    const int width = 1;
-    const int iterations = 1;
-
-    const bke::VolumeGridPtr<T> grid = grids::extract_grid_input<T>(this->params, "Grid");
-    const bke::VolumeGridPtr<U> mask = grids::extract_grid_input<U>(this->params, "Mask");
-
-    const bke::VolumeGridPtr<T> output_grid = grid->is_mutable() ?
-                                                  grid :
-                                                  bke::VolumeGridPtr<T>{grid->copy()};
-
-    openvdb::tools::Filter<GridType, MaskType> filter(
-        *const_cast<VolumeGrid *>(output_grid.get())->grid_for_write());
-
-    switch (operation) {
-      case GEO_NODE_GRID_FILTER_MEAN:
-        filter.mean(width, iterations, mask ? &*mask->grid() : nullptr);
-        break;
-      case GEO_NODE_GRID_FILTER_MEDIAN:
-        break;
-      case GEO_NODE_GRID_FILTER_GAUSSIAN:
-        break;
-      case GEO_NODE_GRID_FILTER_OFFSET:
-        break;
-      case GEO_NODE_GRID_FILTER_MEAN_CURVATURE:
-        break;
-      case GEO_NODE_GRID_FILTER_LAPLACIAN:
-        break;
-    }
-
-    return output_grid;
-  }
-};
 
 struct GridFilterOp {
   GeoNodeExecParams params;
 
   template<typename T> bke::GVolumeGridPtr operator()()
   {
-    GridMaskedFilterOp<T> masked_filter_op = {params};
-    return grids::apply(DummyMaskType, masked_filter_op);
+    using GridType = typename bke::VolumeGridPtr<T>::GridType;
+    using MaskType = typename bke::VolumeGridPtr<float>::GridType;
+    using Converter = bke::grids::Converter<T>;
+
+    const GeometryNodeGridFilterOperation operation = GeometryNodeGridFilterOperation(params.node().custom2);
+
+    const bke::VolumeGridPtr<T> grid = grids::extract_grid_input<T>(this->params, "Grid");
+    const bke::VolumeGridPtr<float> mask = grids::extract_grid_input<float>(this->params, "Mask");
+
+    const bke::VolumeGridPtr<T> output_grid = grid->is_mutable() ?
+                                                  grid :
+                                                  bke::VolumeGridPtr<T>{grid->copy()};
+
+    openvdb::tools::Filter<GridType, MaskType> filter(*output_grid.grid_for_write());
+
+    switch (operation) {
+      case GEO_NODE_GRID_FILTER_MEAN: {
+        const int width = params.extract_input<int>("Width");
+        const int iterations = params.extract_input<int>("Iterations");
+        filter.mean(width, iterations, mask ? mask.grid().get() : nullptr);
+        break;
+      }
+      case GEO_NODE_GRID_FILTER_MEDIAN: {
+        const int width = params.extract_input<int>("Width");
+        const int iterations = params.extract_input<int>("Iterations");
+        filter.median(width, iterations, mask ? mask.grid().get() : nullptr);
+        break;
+      }
+      case GEO_NODE_GRID_FILTER_GAUSSIAN: {
+        const int width = params.extract_input<int>("Width");
+        const int iterations = params.extract_input<int>("Iterations");
+        filter.gaussian(width, iterations, mask ? mask.grid().get() : nullptr);
+        break;
+      }
+      case GEO_NODE_GRID_FILTER_OFFSET: {
+        const T offset = params.extract_input<T>("Offset");
+        filter.offset(Converter::to_openvdb(offset), mask ? mask.grid().get() : nullptr);
+        break;
+      }
+      case GEO_NODE_GRID_FILTER_MEAN_CURVATURE:
+      case GEO_NODE_GRID_FILTER_LAPLACIAN:
+        /* Only supported in SDF filtering. */
+        BLI_assert_unreachable();
+        break;
+    }
+
+    return output_grid;
   }
 };
 
@@ -106,6 +128,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   GridFilterOp filter_op = {params};
   bke::GVolumeGridPtr grid = grids::apply(data_type, filter_op);
+  grid.grid()->print(std::cout, 3);
 
   grids::set_output_grid(params, "Grid", data_type, grid);
 #else
@@ -125,6 +148,26 @@ static void node_rna(StructRNA *srna)
                     NOD_inline_enum_accessors(custom1),
                     CD_PROP_FLOAT,
                     grids::grid_type_items_fn);
+
+  RNA_def_node_enum(
+      srna,
+      "operation",
+      "Operation",
+      "Type of filtering operation",
+      rna_enum_grid_filter_operation_items,
+      NOD_inline_enum_accessors(custom2),
+      GEO_NODE_GRID_FILTER_MEAN,
+      [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
+        *r_free = true;
+        return enum_items_filter(rna_enum_grid_filter_operation_items,
+                                 [](const EnumPropertyItem &item) -> bool {
+                                   return ELEM(item.value,
+                                               GEO_NODE_GRID_FILTER_MEAN,
+                                               GEO_NODE_GRID_FILTER_MEDIAN,
+                                               GEO_NODE_GRID_FILTER_GAUSSIAN,
+                                               GEO_NODE_GRID_FILTER_OFFSET);
+                                 });
+      });
 }
 
 static void node_register()
