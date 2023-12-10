@@ -314,6 +314,8 @@ static int transform_seq_slide_cursor_get(TransInfo *t)
   blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(t->context);
 
   if (strips.size() == 1) {
+    bool drag = t->is_launch_event_drag;
+    t->flag |= T_HANDLE_TWEAK;
     return transform_seq_slide_strip_cursor_get(strips[0]);
   }
   if (strips.size() == 2) {
@@ -338,6 +340,8 @@ static int transform_seq_slide_cursor_get(TransInfo *t)
     int cursor2 = transform_seq_slide_strip_cursor_get(strips[1]);
 
     if (cursor1 == WM_CURSOR_RIGHT_HANDLE && cursor2 == WM_CURSOR_LEFT_HANDLE) {
+      bool drag = t->is_launch_event_drag;
+      t->flag |= T_HANDLE_TWEAK;
       return WM_CURSOR_BOTH_HANDLES;
     }
   }
