@@ -155,9 +155,9 @@ bke::GVolumeGridPtr extract_grid_input(GeoNodeExecParams params,
 {
   switch (data_type) {
     case CD_PROP_FLOAT:
-      return params.extract_input<bke::ValueOrField<float>>(identifier).as_grid();
+      return params.extract_input<bke::ValueOrField<float>>(identifier).grid;
     case CD_PROP_FLOAT3:
-      return params.extract_input<bke::ValueOrField<float3>>(identifier).as_grid();
+      return params.extract_input<bke::ValueOrField<float3>>(identifier).grid;
     default:
       BLI_assert_unreachable();
       break;
