@@ -401,7 +401,6 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   int total_triangles_num = 0;
   int v_offset = 0;
   Vector<Array<int>> verts_start_offsets_per_visible_drawing;
-  Vector<Array<int>> tris_start_offsets_per_visible_drawing;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -412,23 +411,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
     const int num_curves = visible_strokes.size();
     const int verts_start_offsets_size = num_curves;
-    const int tris_start_offsets_size = num_curves;
     Array<int> verts_start_offsets(verts_start_offsets_size);
-    Array<int> tris_start_offsets(tris_start_offsets_size);
-
-    /* Calculate the triangle offsets for all the visible curves. */
-    int t_offset = 0;
-    int pos = 0;
-    for (const int curve_i : curves.curves_range()) {
-      IndexRange points = points_by_curve[curve_i];
-      if (visible_strokes.contains(curve_i)) {
-        tris_start_offsets[pos] = t_offset;
-        pos++;
-      }
-      if (points.size() >= 3) {
-        t_offset += points.size() - 2;
-      }
-    }
 
     /* Calculate the vertex offsets for all the visible curves. */
     int num_cyclic = 0;
@@ -452,7 +435,6 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     total_triangles_num += info.drawing.triangles().size();
 
     verts_start_offsets_per_visible_drawing.append(std::move(verts_start_offsets));
-    tris_start_offsets_per_visible_drawing.append(std::move(tris_start_offsets));
   }
 
   GPUUsageType vbo_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
@@ -498,7 +480,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
         "material_index", ATTR_DOMAIN_CURVE, 0);
     const Span<uint3> triangles = info.drawing.triangles();
     const Span<int> verts_start_offsets = verts_start_offsets_per_visible_drawing[drawing_i];
-    const Span<int> tris_start_offsets = tris_start_offsets_per_visible_drawing[drawing_i];
+    const Span<uint32_t> triangles_offsets = info.drawing.triangles_offsets();
     IndexMaskMemory memory;
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
         object, info.drawing, memory);
@@ -539,7 +521,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       IndexRange points = points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
       const int verts_start_offset = verts_start_offsets[pos];
-      const int tris_start_offset = tris_start_offsets[pos];
+      const int tris_start_offset = triangles_offsets[curve_i];
       const int num_verts = 1 + points.size() + (is_cyclic ? 1 : 0) + 1;
       IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
       MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);

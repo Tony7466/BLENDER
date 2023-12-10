@@ -49,6 +49,8 @@ class DrawingRuntime {
    */
   mutable SharedCache<Vector<uint3>> triangles_cache;
 
+  mutable SharedCache<Vector<uint32_t>> triangles_offsets_cache;
+
   /**
    * Number of users for this drawing. The users are the frames in the Grease Pencil layers.
    * Different frames can refer to the same drawing, so we need to make sure we count these users
@@ -69,6 +71,7 @@ class Drawing : public ::GreasePencilDrawing {
    * The triangles for all the fills in the geometry.
    */
   Span<uint3> triangles() const;
+  Span<uint32_t> triangles_offsets() const;
   void tag_positions_changed();
   void tag_topology_changed();
 

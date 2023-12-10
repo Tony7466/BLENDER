@@ -293,6 +293,7 @@ Drawing::Drawing(const Drawing &other)
   this->runtime = MEM_new<bke::greasepencil::DrawingRuntime>(__func__);
 
   this->runtime->triangles_cache = other.runtime->triangles_cache;
+  this->runtime->triangles_offsets_cache = other.runtime->triangles_offsets_cache;
 }
 
 Drawing::~Drawing()
@@ -302,8 +303,47 @@ Drawing::~Drawing()
   this->runtime = nullptr;
 }
 
+Span<uint32_t> Drawing::triangles_offsets() const
+{
+  // this->runtime->triangles_offsets_cache.ensure([&](Vector<uint32_t> &r_data) {
+  //   const CurvesGeometry &curves = this->strokes();
+  //   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+
+  //   r_data.resize(2);
+  //   r_data[0] = 0;
+
+  //   IndexRange points = points_by_curve[0];
+  //   r_data[1] = points.size();
+  // });
+  //
+  this->runtime->triangles_offsets_cache.ensure([&](Vector<uint32_t> &r_data) {
+    const CurvesGeometry &curves = this->strokes();
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+
+    int total_triangles = 0;
+    r_data.resize(curves.curves_num() + 1);
+    for (int curve_i : curves.curves_range()) {
+      r_data[curve_i] = total_triangles;
+
+      // if (curve_i != 0) {
+      //   continue;
+      // }
+
+      IndexRange points = points_by_curve[curve_i];
+      if (points.size() > 2) {
+        total_triangles += points.size() - 2;
+      }
+    }
+    r_data[curves.curves_num()] = total_triangles;
+  });
+
+  return this->runtime->triangles_offsets_cache.data().as_span();
+}
+
 Span<uint3> Drawing::triangles() const
 {
+  Span<uint32_t> triangles_offsets = this->triangles_offsets();
+
   this->runtime->triangles_cache.ensure([&](Vector<uint3> &r_data) {
     MemArena *pf_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
 
@@ -311,28 +351,23 @@ Span<uint3> Drawing::triangles() const
     const Span<float3> positions = curves.positions();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
-    int total_triangles = 0;
-    Array<int> tris_offests(curves.curves_num());
-    for (int curve_i : curves.curves_range()) {
-      IndexRange points = points_by_curve[curve_i];
-      if (points.size() > 2) {
-        tris_offests[curve_i] = total_triangles;
-        total_triangles += points.size() - 2;
-      }
-    }
-
+    int total_triangles = triangles_offsets[triangles_offsets.size() - 1];
     r_data.resize(total_triangles);
 
     /* TODO: use threading. */
     for (const int curve_i : curves.curves_range()) {
       const IndexRange points = points_by_curve[curve_i];
 
+      // if (curve_i != 0) {
+      //   continue;
+      // }
+
       if (points.size() < 3) {
         continue;
       }
 
       const int num_triangles = points.size() - 2;
-      MutableSpan<uint3> r_tris = r_data.as_mutable_span().slice(tris_offests[curve_i],
+      MutableSpan<uint3> r_tris = r_data.as_mutable_span().slice(triangles_offsets[curve_i],
                                                                  num_triangles);
 
       float(*projverts)[2] = static_cast<float(*)[2]>(
@@ -353,6 +388,47 @@ Span<uint3> Drawing::triangles() const
 
     BLI_memarena_free(pf_arena);
   });
+
+  // this->runtime->triangles_cache.ensure([&](Vector<uint3> &r_data) {
+  //   MemArena *pf_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
+
+  //   const CurvesGeometry &curves = this->strokes();
+  //   const Span<float3> positions = curves.positions();
+  //   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+
+  //   int total_triangles = triangles_offsets[triangles_offsets.size() - 1];
+  //   r_data.resize(total_triangles);
+
+  //   const int curve_i = 0;
+  //   const IndexRange points = points_by_curve[curve_i];
+
+  //   if (points.size() < 3) {
+  //     return;
+  //   }
+
+  //   // normal_poly_v3
+
+  //   const int num_triangles = points.size() - 2;
+  //   MutableSpan<uint3> r_tris = r_data.as_mutable_span().slice(triangles_offsets[curve_i],
+  //                                                              num_triangles);
+
+  //   float(*projverts)[2] = static_cast<float(*)[2]>(
+  //       BLI_memarena_alloc(pf_arena, sizeof(*projverts) * size_t(points.size())));
+
+  //   /* TODO: calculate axis_mat properly. */
+  //   float3x3 axis_mat;
+  //   axis_dominant_v3_to_m3(axis_mat.ptr(), float3(0.0f, -1.0f, 0.0f));
+
+  //   for (const int i : IndexRange(points.size())) {
+  //     mul_v2_m3v3(projverts[i], axis_mat.ptr(), positions[points[i]]);
+  //   }
+
+  //   BLI_polyfill_calc_arena(
+  //       projverts, points.size(), 0, reinterpret_cast<uint32_t(*)[3]>(r_tris.data()), pf_arena);
+  //   BLI_memarena_clear(pf_arena);
+
+  //   BLI_memarena_free(pf_arena);
+  // });
 
   return this->runtime->triangles_cache.data().as_span();
 }
@@ -414,6 +490,7 @@ void Drawing::tag_positions_changed()
 void Drawing::tag_topology_changed()
 {
   this->tag_positions_changed();
+  this->runtime->triangles_offsets_cache.tag_dirty();
 }
 
 DrawingReference::DrawingReference()
