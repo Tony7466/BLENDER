@@ -28,15 +28,8 @@ void RayTraceModule::init()
 {
   const SceneEEVEE &sce_eevee = inst_.scene->eevee;
 
-  reflection_options_ = sce_eevee.reflection_options;
-  refraction_options_ = sce_eevee.refraction_options;
-  diffuse_options_ = sce_eevee.diffuse_options;
+  ray_tracing_options_ = sce_eevee.ray_tracing_options;
   tracing_method_ = RaytraceEEVEE_Method(sce_eevee.ray_tracing_method);
-
-  if (sce_eevee.ray_split_settings == 0) {
-    refraction_options_ = reflection_options_;
-    diffuse_options_ = reflection_options_;
-  }
 }
 
 void RayTraceModule::sync()
@@ -280,7 +273,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 {
   using namespace blender::math;
 
-  RaytraceEEVEE options = reflection_options_;
+  RaytraceEEVEE options = ray_tracing_options_;
 
   bool use_horizon_scan = options.screen_trace_max_roughness < 1.0f;
   if ((active_closures == CLOSURE_REFRACTION) || (active_closures == CLOSURE_NONE)) {
