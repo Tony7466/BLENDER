@@ -1295,7 +1295,6 @@ void UI_panel_category_draw_all(ARegion *region, const char *category_id_active)
   const float tab_curve_radius = wcol->roundness * U.widget_unit * zoom;
   const int roundboxtype = is_left ? (UI_CNR_TOP_LEFT | UI_CNR_BOTTOM_LEFT) :
                                      (UI_CNR_TOP_RIGHT | UI_CNR_BOTTOM_RIGHT);
-
   bool is_alpha;
 #ifdef USE_FLAT_INACTIVE
   bool is_active_prev = false;

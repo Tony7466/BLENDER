@@ -1697,7 +1697,6 @@ static void area_calc_totrct(const bScreen *screen, ScrArea *area, const rcti *w
     area->totrct.ymin += half2;
     area->totrct.ymax -= (half1 + 1);
   }
-
   /* Although the following asserts are correct they lead to a very unstable Blender.
    * And the asserts would fail even in 2.7x
    * (they were added in 2.8x as part of the top-bar commit).
@@ -2007,7 +2006,6 @@ void ED_area_update_region_sizes(wmWindowManager *wm, wmWindow *win, ScrArea *ar
   area_calc_totrct(screen, area, &window_rect);
 
   /* region rect sizes */
-
   rcti rect = area->totrct;
   rcti overlap_rect = rect;
   region_rect_recursive(
