@@ -6,11 +6,12 @@ set(INC
   ../include
   ../../blenkernel
   ../../blentranslation
+  ../../bmesh
+  ../../functions
   ../../geometry
   ../../gpu
   ../../makesrna
   ../../windowmanager
-  ../../bmesh
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -35,7 +36,6 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  PRIVATE bf::functions
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )

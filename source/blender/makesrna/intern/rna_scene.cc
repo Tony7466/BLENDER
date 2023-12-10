@@ -1973,10 +1973,10 @@ static void rna_Scene_editmesh_select_mode_set(PointerRNA *ptr, const bool *valu
         BKE_view_layer_synced_ensure(scene, view_layer);
         Object *object = BKE_view_layer_active_object_get(view_layer);
         if (object) {
-          Mesh *me = BKE_mesh_from_object(object);
-          if (me && me->edit_mesh && me->edit_mesh->selectmode != flag) {
-            me->edit_mesh->selectmode = flag;
-            EDBM_selectmode_set(me->edit_mesh);
+          Mesh *mesh = BKE_mesh_from_object(object);
+          if (mesh && mesh->edit_mesh && mesh->edit_mesh->selectmode != flag) {
+            mesh->edit_mesh->selectmode = flag;
+            EDBM_selectmode_set(mesh->edit_mesh);
           }
         }
       }
@@ -1988,19 +1988,19 @@ static void rna_Scene_editmesh_select_mode_update(bContext *C, PointerRNA * /*pt
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  Mesh *me = nullptr;
+  Mesh *mesh = nullptr;
 
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *object = BKE_view_layer_active_object_get(view_layer);
   if (object) {
-    me = BKE_mesh_from_object(object);
-    if (me && me->edit_mesh == nullptr) {
-      me = nullptr;
+    mesh = BKE_mesh_from_object(object);
+    if (mesh && mesh->edit_mesh == nullptr) {
+      mesh = nullptr;
     }
   }
 
-  if (me) {
-    DEG_id_tag_update(&me->id, ID_RECALC_SELECT);
+  if (mesh) {
+    DEG_id_tag_update(&mesh->id, ID_RECALC_SELECT);
     WM_main_add_notifier(NC_SCENE | ND_TOOLSETTINGS, nullptr);
   }
 }
@@ -2341,10 +2341,10 @@ static void rna_EditMesh_update(bContext *C, PointerRNA * /*ptr*/)
       scene, view_layer, CTX_wm_view3d(C), &objects_len);
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
-    Mesh *me = BKE_mesh_from_object(obedit);
+    Mesh *mesh = BKE_mesh_from_object(obedit);
 
-    DEG_id_tag_update(&me->id, ID_RECALC_GEOMETRY);
-    WM_main_add_notifier(NC_GEOM | ND_DATA, me);
+    DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY);
+    WM_main_add_notifier(NC_GEOM | ND_DATA, mesh);
   }
 
   MEM_freeN(objects);
@@ -3678,6 +3678,13 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Only Endpoints", "Only use the first and last parts of the stroke for snapping");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
+
+  prop = RNA_def_property(srna, "gpencil_surface_offset", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, nullptr, "gpencil_surface_offset");
+  RNA_def_property_ui_text(prop, "Surface Offset", "Offset along normal when drawing on surfaces");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 3);
+  RNA_def_property_float_default(prop, 0.150f);
 
   /* Grease Pencil - Select mode Edit */
   prop = RNA_def_property(srna, "gpencil_selectmode_edit", PROP_ENUM, PROP_NONE);
