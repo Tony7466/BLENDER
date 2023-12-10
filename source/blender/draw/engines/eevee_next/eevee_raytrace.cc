@@ -282,7 +282,11 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
   RaytraceEEVEE options = reflection_options_;
 
-  const bool use_horizon_scan = options.screen_trace_max_roughness < 1.0f;
+  bool use_horizon_scan = options.screen_trace_max_roughness < 1.0f;
+  if ((active_closures == CLOSURE_REFRACTION) || (active_closures == CLOSURE_NONE)) {
+    /* Disable horizon scan if there is only a refraction closure. Avoid the setup cost. */
+    use_horizon_scan = false;
+  }
 
   const int resolution_scale = max_ii(1, power_of_2_max_i(options.resolution_scale));
 
@@ -339,13 +343,17 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
   DRW_stats_group_start("Raytracing");
 
-  downsampled_in_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT, usage_rw);
-  downsampled_in_normal_tx_.acquire(tracing_res, GPU_RGBA8, usage_rw);
+  if (use_horizon_scan) {
+    downsampled_in_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT, usage_rw);
+    downsampled_in_normal_tx_.acquire(tracing_res, GPU_RGBA8, usage_rw);
 
-  screen_radiance_tx_ = screen_radiance_front_tx;
-  inst_.manager->submit(horizon_setup_ps_, render_view);
+    screen_radiance_tx_ = screen_radiance_front_tx;
+    inst_.manager->submit(horizon_setup_ps_, render_view);
+  }
 
-  inst_.manager->submit(tile_classify_ps_);
+  if (active_closures == CLOSURE_NONE) {
+    inst_.manager->submit(tile_classify_ps_);
+  }
 
   result.diffuse = trace("Diffuse",
                          options,
