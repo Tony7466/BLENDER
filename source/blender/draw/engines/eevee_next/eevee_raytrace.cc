@@ -315,6 +315,24 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
   raytrace_tracing_tiles_buf_.resize(ceil_to_multiple_u(raytrace_tile_count, 512));
   raytrace_denoise_tiles_buf_.resize(ceil_to_multiple_u(denoise_tile_count, 512));
 
+  /* Data for tile classification. */
+  float roughness_mask_start = options.screen_trace_max_roughness;
+  float roughness_mask_fade = 0.2f;
+  data_.roughness_mask_scale = 1.0 / roughness_mask_fade;
+  data_.roughness_mask_bias = data_.roughness_mask_scale * roughness_mask_start;
+
+  /* Data for the radiance setup. */
+  data_.brightness_clamp = (options.sample_clamp > 0.0) ? options.sample_clamp : 1e20;
+  data_.resolution_scale = resolution_scale;
+  data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) * resolution_scale);
+  data_.radiance_persmat = screen_radiance_persmat;
+  data_.full_resolution = extent;
+  data_.full_resolution_inv = 1.0f / float2(extent);
+
+  /* TODO(fclem): Eventually all uniform data is setup here. */
+
+  inst_.push_uniform_data();
+
   RayTraceResult result;
 
   DRW_stats_group_start("Raytracing");
@@ -352,7 +370,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
                          CLOSURE_REFRACTION,
                          main_view,
                          render_view,
-                         do_refraction_tracing);
+                         !do_refraction_tracing);
 
   DRW_stats_group_end();
 

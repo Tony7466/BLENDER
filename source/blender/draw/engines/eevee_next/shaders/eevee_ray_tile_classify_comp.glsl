@@ -46,7 +46,7 @@ void main()
 
       if (i == 0 && gbuf.has_diffuse) {
         /* Diffuse. */
-        ray_roughness_fac = ray_roughness_factor(uniform_buf.raytrace, 0.0);
+        ray_roughness_fac = ray_roughness_factor(uniform_buf.raytrace, 1.0);
       }
       else if (i == 1 && gbuf.has_reflection) {
         /* Reflection. */
