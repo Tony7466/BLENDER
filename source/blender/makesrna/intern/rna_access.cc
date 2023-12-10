@@ -4591,7 +4591,7 @@ static int rna_raw_access(ReportList *reports,
         BKE_reportf(reports,
                     RPT_ERROR,
                     "Array length mismatch (expected %d, got %d)",
-                    out.len * arraylen,
+                    out.len * itemlen,
                     in.len);
         return 0;
       }
@@ -4602,7 +4602,7 @@ static int rna_raw_access(ReportList *reports,
         void *outp = out.array;
         int a, size;
 
-        size = RNA_raw_type_sizeof(out.type) * arraylen;
+        size = RNA_raw_type_sizeof(out.type) * itemlen;
 
         for (a = 0; a < out.len; a++) {
           if (set) {
