@@ -31,6 +31,8 @@ set(INC
   ../../../intern/opensubdiv
   ../../../extern/fmtlib/include
 
+  ../windowmanager
+
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )

@@ -4,5 +4,5 @@
 
 struct wmOperatorType;
 
-void WM_OT_drop_file_import(wmOperatorType *ot);
-void ED_dropbox_drop_file_import();
+void WM_OT_drop_import_file(wmOperatorType *ot);
+void ED_dropbox_drop_import_file();

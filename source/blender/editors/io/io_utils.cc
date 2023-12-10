@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "BLI_path_util.h"
 #include "BLI_string.h"

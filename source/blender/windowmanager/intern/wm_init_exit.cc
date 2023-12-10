@@ -214,8 +214,6 @@ void WM_init(bContext *C, int argc, const char **argv)
   wm_operatortype_init();
   wm_operatortypes_register();
 
-  BKE_file_handlers_init();
-
   WM_paneltype_init(); /* Lookup table only. */
   WM_menutype_init();
   WM_uilisttype_init();

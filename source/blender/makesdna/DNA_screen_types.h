@@ -796,11 +796,6 @@ typedef struct AssetShelf {
   char _pad[6];
 } AssetShelf;
 
-typedef struct FileHandler {
-  DNA_DEFINE_CXX_METHODS(FileHandler)
-  struct FileHandlerType *type; /* runtime */
-} FileHandler;
-
 /**
  * Region-data for the main asset shelf region (#RGN_TYPE_ASSET_SHELF). Managed by the asset shelf
  * internals.

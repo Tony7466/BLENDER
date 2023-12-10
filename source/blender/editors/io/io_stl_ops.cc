@@ -7,9 +7,8 @@
  */
 
 #ifdef WITH_IO_STL
-#  include "BLT_translation.h"
 
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
 #  include "BKE_report.h"
 
 #  include "WM_api.hh"
@@ -23,11 +22,14 @@
 #  include "RNA_access.hh"
 #  include "RNA_define.hh"
 
+#  include "BLT_translation.h"
+
 #  include "UI_interface.hh"
 #  include "UI_resources.hh"
 
 #  include "IO_stl.hh"
 #  include "io_stl_ops.hh"
+#  include "io_utils.hh"
 
 static int wm_stl_export_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
@@ -174,6 +176,10 @@ void WM_OT_stl_export(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
+static int wm_stl_import_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  return WM_operator_filesel(C, op, event);
+}
 
 static int wm_stl_import_exec(bContext *C, wmOperator *op)
 {
@@ -231,6 +237,7 @@ static bool wm_stl_import_check(bContext * /*C*/, wmOperator *op)
   }
   return false;
 }
+
 static void ui_stl_import_settings(uiLayout *layout, PointerRNA *imfptr)
 {
   uiLayoutSetPropSep(layout, true);
@@ -262,7 +269,7 @@ void WM_OT_stl_import(wmOperatorType *ot)
   ot->description = "Import an STL file as an object";
   ot->idname = "WM_OT_stl_import";
 
-  ot->invoke = io_util_import_invoke;
+  ot->invoke = wm_stl_import_invoke;
   ot->exec = wm_stl_import_exec;
   ot->poll = WM_operator_winactive;
   ot->check = wm_stl_import_check;

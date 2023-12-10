@@ -17,6 +17,8 @@ set(INC
   ../../io/wavefront_obj
   ../../makesrna
   ../../windowmanager
+
+  ../../../../extern/fmtlib/include
 )
 
 set(INC_SYS
@@ -36,7 +38,7 @@ set(SRC
   io_stl_ops.cc
   io_usd.cc
   io_utils.cc
-  io_drop_file_import.cc
+  io_drop_import_file.cc
 
   io_alembic.hh
   io_cache.hh
@@ -48,7 +50,7 @@ set(SRC
   io_stl_ops.hh
   io_usd.hh
   io_utils.hh
-  io_drop_file_import.hh
+  io_drop_import_file.hh
 )
 
 set(LIB
@@ -57,6 +59,7 @@ set(LIB
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  extern_fmtlib
 )
 
 if(WITH_OPENCOLLADA)

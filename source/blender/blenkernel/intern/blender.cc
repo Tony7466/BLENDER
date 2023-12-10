@@ -83,8 +83,6 @@ void BKE_blender_free()
   IMB_moviecache_destruct();
 
   BKE_node_system_exit();
-
-  BKE_file_handlers_free();
 }
 
 /** \} */
