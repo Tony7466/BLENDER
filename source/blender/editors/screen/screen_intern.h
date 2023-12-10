@@ -53,7 +53,7 @@ typedef enum eScreenAxis {
 /**
  * Gutter space between areas.
  */
-#define BORDERWIDTH ((int)((3.0f * UI_SCALE_FAC) + (2.0f * U.pixelsize)))
+#define BORDERWIDTH ((int)((2.0f * UI_SCALE_FAC) + (2.0f * U.pixelsize)))
 
 /**
  * Expanded interaction influence of area borders.

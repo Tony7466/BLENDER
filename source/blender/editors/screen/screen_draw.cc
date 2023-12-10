@@ -36,7 +36,7 @@ static void drawscredge_area_edges(int pos, ScrArea *area)
     immRecti(pos, area->v1->vec.x, area->v1->vec.y, area->totrct.xmin, area->v2->vec.y);
   }
   if (area->totrct.xmax != area->v4->vec.x) {
-    immRecti(pos, area->totrct.xmax + 1, area->v1->vec.y, area->v4->vec.x, area->v2->vec.y);
+    immRecti(pos, area->totrct.xmax + 1, area->v1->vec.y, area->v4->vec.x + 1, area->v2->vec.y);
   }
   if (area->totrct.ymin != area->v1->vec.y) {
     immRecti(pos, area->v1->vec.x, area->v1->vec.y, area->v4->vec.x + 1, area->totrct.ymin);
@@ -59,16 +59,15 @@ void ED_screen_draw_edges(wmWindow *win)
     return;
   }
 
-  const int winsize_x = WM_window_pixels_x(win);
-  const int winsize_y = WM_window_pixels_y(win);
-  float col[4], corner_scale, edge_thickness;
-  int verts_per_corner = 0;
-
-  rcti scissor_rect;
-  BLI_rcti_init_minmax(&scissor_rect);
+  ARegion *region = screen->active_region;
+  ScrArea *active_area = nullptr;
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-    BLI_rcti_do_minmax_v(&scissor_rect, blender::int2{area->v1->vec.x, area->v1->vec.y});
-    BLI_rcti_do_minmax_v(&scissor_rect, blender::int2{area->v3->vec.x, area->v3->vec.y});
+    LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+      if (region == screen->active_region) {
+        active_area = area;
+        break;
+      }
+    }
   }
 
   if (GPU_type_matches_ex(GPU_DEVICE_INTEL_UHD, GPU_OS_UNIX, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
@@ -82,63 +81,59 @@ void ED_screen_draw_edges(wmWindow *win)
   float color[4];
   UI_GetThemeColor4fv(TH_EDITOR_OUTLINE, color);
 
+  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+    /* ui_draw_rounded_corners_inverted is off by one on two edges. */
+    rcti rect = {
+        area->totrct.xmin, area->totrct.xmax + 1, area->totrct.ymin, area->totrct.ymax + 1};
+    ui_draw_rounded_corners_inverted(rect, 5.0f * UI_SCALE_FAC, color);
+  }
+
   GPUVertFormat *format = immVertexFormat();
   const uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   immUniformThemeColor(TH_EDITOR_OUTLINE);
   immUniformColor4fv(color);
 
+  float border_highlight[4] = {1.0f, 1.0f, 1.0f, 0.06f};
+  float border_lowlight[4] = {0.0f, 0.0f, 0.0f, 0.2f};
+
+  float border_highlight2[4] = {1.0f, 1.0f, 1.0f, 0.12f};
+  float border_lowlight2[4] = {0.0f, 0.0f, 0.0f, 0.4f};
+
+  float half_line = U.pixelsize / 2.0f;
+
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+
+     rctf rectf = {float(area->totrct.xmin) - 2.0f,
+                  float(area->totrct.xmax) + half_line,
+                  float(area->totrct.ymin) - half_line,
+                  float(area->totrct.ymax) + 2.0f};
+     UI_draw_roundbox_4fv_ex(&rectf,
+                             nullptr,
+                             nullptr,
+                             1.0f,
+                             (area == active_area) ? border_lowlight2 : border_lowlight,
+                             U.pixelsize,
+                             5.0f * UI_SCALE_FAC);
+
+     rctf rectf2 = {float(area->totrct.xmin) - half_line,
+                   float(area->totrct.xmax) + 2.0f,
+                   float(area->totrct.ymin) - 2.0f,
+                    float(area->totrct.ymax) + half_line};
+     UI_draw_roundbox_4fv_ex(&rectf2,
+                             nullptr,
+                             nullptr,
+                             1.0f,
+                             (area == active_area) ? border_highlight2 :
+                                                     border_highlight,
+                             U.pixelsize,
+                             5.0f * UI_SCALE_FAC);
+
     drawscredge_area_edges(pos, area);
   }
 
-  int topbar_padding = int(ceilf(6.0 * UI_SCALE_FAC));
-  int topbar_tab_pad = topbar_padding - U.pixelsize;
-
-  bTheme *btheme = UI_GetTheme();
-  immUniformColor4ubv(btheme->tui.wcol_tab.inner_sel);
-
-  LISTBASE_FOREACH (ScrArea *, area, &win->global_areas.areabase) {
-    if (area->spacetype == SPACE_TOPBAR) {
-      immRecti(pos,
-               area->totrct.xmin,
-               area->totrct.ymin + U.pixelsize + 1,
-               area->totrct.xmax,
-               area->totrct.ymin + U.pixelsize + U.pixelsize + topbar_tab_pad);
-      break;
-    }
-  }
-
-  immUniformColor4f(1.0f, 1.0f, 1.0f, 0.1f);
-  immRecti(pos, 0, 0, 1, win->sizey);
-
   immUnbindProgram();
-
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  int corners;
-
-  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-    corners = UI_CNR_NONE;
-
-    if (area->totrct.xmin != area->v1->vec.x && area->totrct.ymax != area->v2->vec.y) {
-      corners |= UI_CNR_TOP_LEFT;
-    }
-    if (area->totrct.xmin != area->v1->vec.x && area->totrct.ymin != area->v1->vec.y) {
-      corners |= UI_CNR_BOTTOM_LEFT;
-    }
-    if (area->totrct.xmax != area->v4->vec.x && area->totrct.ymax != area->v2->vec.y) {
-      corners |= UI_CNR_TOP_RIGHT;
-    }
-    if (area->totrct.xmax != area->v4->vec.x && area->totrct.ymin != area->v1->vec.y) {
-      corners |= UI_CNR_BOTTOM_RIGHT;
-    }
-
-    /* ui_draw_rounded_corners_inverted is off by one on two edges. */
-    rcti rect = {
-        area->totrct.xmin, area->totrct.xmax + 1, area->totrct.ymin, area->totrct.ymax + 1};
-    UI_draw_roundbox_corner_set(corners);
-    ui_draw_rounded_corners_inverted(rect, 6.0f * UI_SCALE_FAC, color);
-  }
 
   GPU_blend(GPU_BLEND_NONE);
 }

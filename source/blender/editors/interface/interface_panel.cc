@@ -1291,9 +1291,11 @@ void UI_panel_category_draw_all(ARegion *region, const char *category_id_active)
   /* Padding between tabs. */
   const int tab_v_pad = round_fl_to_int(TABS_PADDING_BETWEEN_FACTOR * dpi_fac * zoom);
   bTheme *btheme = UI_GetTheme();
-  const float tab_curve_radius = btheme->tui.wcol_tab.roundness * U.widget_unit * zoom;
+  uiWidgetColors *wcol = &btheme->tui.wcol_tab;
+  const float tab_curve_radius = wcol->roundness * U.widget_unit * zoom;
   const int roundboxtype = is_left ? (UI_CNR_TOP_LEFT | UI_CNR_BOTTOM_LEFT) :
                                      (UI_CNR_TOP_RIGHT | UI_CNR_BOTTOM_RIGHT);
+
   bool is_alpha;
 #ifdef USE_FLAT_INACTIVE
   bool is_active_prev = false;
@@ -1448,18 +1450,28 @@ void UI_panel_category_draw_all(ARegion *region, const char *category_id_active)
                            is_active ? theme_col_tab_active : theme_col_tab_inactive);
       UI_draw_roundbox_4fv(&box_rect, false, tab_curve_radius, theme_col_tab_outline);
 
-      /* Disguise the outline on one side to join the tab to the panel. */
-      pos = GPU_vertformat_attr_add(
-          immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
-      immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-      immUniformColor4fv(is_active ? theme_col_tab_active : theme_col_tab_inactive);
-      immRecti(pos,
-               is_left ? rct->xmax - px : rct->xmin,
-               rct->ymin + px,
-               is_left ? rct->xmax : rct->xmin + px,
-               rct->ymax - px);
-      immUnbindProgram();
+      if (is_active) {
+        pos = GPU_vertformat_attr_add(
+            immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
+        immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+        immUniformColor4ubv(wcol->item);
+        int height = MAX2(int(3.0f * UI_SCALE_FAC * zoom), U.pixelsize);
+        if (is_left) {
+          immRecti(pos,
+                   rct->xmax - height,
+                   rct->ymin + px,
+                   rct->xmax,
+                   rct->ymax - px);
+        }
+        else {
+          immRecti(pos,
+                   rct->xmin,
+                   rct->ymin + px,
+                   rct->xmin + height,
+                   rct->ymax - px);
+        }
+        immUnbindProgram();
+      }
     }
 
     /* Tab titles. */

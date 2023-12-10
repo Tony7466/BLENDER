@@ -1692,22 +1692,10 @@ static void area_calc_totrct(const bScreen *screen, ScrArea *area, const rcti *w
     int half2 = BORDERWIDTH - half1;
 
     /* scale down window borders. */
-
-    if (area->totrct.xmin > window_rect->xmin) {
-      area->totrct.xmin += half2;
-    }
-
-    if (area->totrct.xmax < (window_rect->xmax - 1)) {
-      area->totrct.xmax -= (half1 + 1);
-    }
-
-    if (area->totrct.ymin > window_rect->ymin) {
-      area->totrct.ymin += half2;
-    }
-
-    if (area->totrct.ymax < (window_rect->ymax - 1)) {
-      area->totrct.ymax -= (half1 + 1);
-    }
+    area->totrct.xmin += half2;
+    area->totrct.xmax -= (half1 + 1);
+    area->totrct.ymin += half2;
+    area->totrct.ymax -= (half1 + 1);
   }
 
   /* Although the following asserts are correct they lead to a very unstable Blender.
@@ -2019,6 +2007,7 @@ void ED_area_update_region_sizes(wmWindowManager *wm, wmWindow *win, ScrArea *ar
   area_calc_totrct(screen, area, &window_rect);
 
   /* region rect sizes */
+
   rcti rect = area->totrct;
   rcti overlap_rect = rect;
   region_rect_recursive(

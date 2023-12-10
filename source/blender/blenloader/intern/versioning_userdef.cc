@@ -151,6 +151,15 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
+    FROM_DEFAULT_V4_UCHAR(tui.wcol_tab.item);
+    FROM_DEFAULT_V4_UCHAR(tui.wcol_tab.inner);
+    FROM_DEFAULT_V4_UCHAR(tui.wcol_tab.inner_sel);
+    FROM_DEFAULT_V4_UCHAR(tui.wcol_tab.outline);
+    FROM_DEFAULT_V4_UCHAR(space_properties.navigation_bar);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.tab_back);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.tab_active);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.tab_inactive);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.tab_outline);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR

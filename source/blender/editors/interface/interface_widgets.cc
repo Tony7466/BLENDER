@@ -4452,6 +4452,7 @@ static void widget_tab(uiWidgetColors *wcol,
 {
   const float rad = widget_radius_from_zoom(zoom, wcol);
   const bool is_active = (state->but_flag & UI_SELECT);
+  const bool is_hover = (state->but_flag & UI_HOVER);
 
   /* Draw shaded outline - Disabled for now,
    * seems incorrect and also looks nicer without it IMHO ;). */
@@ -4484,6 +4485,48 @@ static void widget_tab(uiWidgetColors *wcol,
   /* We are drawing on top of widget bases. Flush cache. */
   GPU_blend(GPU_BLEND_ALPHA);
   UI_widgetbase_draw_cache_flush();
+
+  if (is_active || is_hover) {
+    GPUVertFormat *format = immVertexFormat();
+    const uint pos = GPU_vertformat_attr_add(
+        format, "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
+    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+
+    if (is_hover && !is_active) {
+      immUniformColor3ubvAlpha(wcol->item, wcol->item[3] / 2);
+    }
+    else {
+      immUniformColor4ubv(wcol->item);
+    }
+
+    if (roundboxalign & UI_CNR_BOTTOM_LEFT) {
+      int height = int(3.0f * UI_SCALE_FAC);
+      immRecti(pos,
+               rect->xmax - height - 1,
+               rect->ymin + U.pixelsize,
+               rect->xmax,
+               rect->ymax - U.pixelsize);
+    }
+    else if (roundboxalign & UI_CNR_BOTTOM_RIGHT) {
+      int height = int(3.0f * UI_SCALE_FAC);
+      immRecti(pos,
+               rect->xmin,
+               rect->ymin + U.pixelsize,
+               rect->xmin + height + 1,
+               rect->ymax - U.pixelsize);
+    }
+    else {
+      int height = int(2.0f * UI_SCALE_FAC);
+      immRecti(pos,
+               rect->xmin + U.pixelsize,
+               rect->ymin,
+               rect->xmax - U.pixelsize,
+               rect->ymin + height + 1);
+    }
+
+    immUnbindProgram();
+  }
+
   GPU_blend(GPU_BLEND_NONE);
 
 #ifdef USE_TAB_SHADED_HIGHLIGHT
