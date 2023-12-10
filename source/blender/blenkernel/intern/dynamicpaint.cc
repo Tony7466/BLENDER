@@ -51,7 +51,7 @@
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
@@ -340,8 +340,8 @@ bool dynamicPaint_outputLayerExists(DynamicPaintSurface *surface, Object *ob, in
 
   if (surface->format == MOD_DPAINT_SURFACE_F_VERTEX) {
     if (surface->type == MOD_DPAINT_SURFACE_T_PAINT) {
-      Mesh *me = static_cast<Mesh *>(ob->data);
-      return (CustomData_get_named_layer_index(&me->loop_data, CD_PROP_BYTE_COLOR, name) != -1);
+      Mesh *mesh = static_cast<Mesh *>(ob->data);
+      return (CustomData_get_named_layer_index(&mesh->loop_data, CD_PROP_BYTE_COLOR, name) != -1);
     }
     if (surface->type == MOD_DPAINT_SURFACE_T_WEIGHT) {
       return (BKE_object_defgroup_name_index(ob, name) != -1);
