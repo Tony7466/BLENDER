@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -32,7 +32,7 @@ static const EnumPropertyItem node_tree_interface_socket_in_out_items[] = {
 #  include "BKE_node.h"
 #  include "BKE_node_runtime.hh"
 #  include "BKE_node_tree_interface.hh"
-#  include "BKE_node_tree_update.h"
+#  include "BKE_node_tree_update.hh"
 
 #  include "BLI_set.hh"
 
@@ -194,15 +194,13 @@ static void rna_NodeTreeInterfaceSocket_init_socket_custom(
 
   PointerRNA ptr = RNA_pointer_create(
       id, &RNA_NodeTreeInterfaceSocket, const_cast<bNodeTreeInterfaceSocket *>(interface_socket));
-  PointerRNA node_ptr = RNA_pointer_create(id, &RNA_Node, node);
-  PointerRNA socket_ptr = RNA_pointer_create(id, &RNA_NodeSocket, socket);
 
   FunctionRNA *func = &rna_NodeTreeInterfaceSocket_init_socket_func;
 
   ParameterList list;
   RNA_parameter_list_create(&list, &ptr, func);
-  RNA_parameter_set_lookup(&list, "node", &node_ptr);
-  RNA_parameter_set_lookup(&list, "socket", &socket_ptr);
+  RNA_parameter_set_lookup(&list, "node", node);
+  RNA_parameter_set_lookup(&list, "socket", socket);
   RNA_parameter_set_lookup(&list, "data_path", &data_path);
   typeinfo->ext_interface.call(nullptr, &ptr, func, &list);
 
@@ -230,16 +228,13 @@ static void rna_NodeTreeInterfaceSocket_from_socket_custom(
   }
 
   PointerRNA ptr = RNA_pointer_create(id, &RNA_NodeTreeInterfaceSocket, interface_socket);
-  PointerRNA node_ptr = RNA_pointer_create(id, &RNA_Node, const_cast<bNode *>(node));
-  PointerRNA socket_ptr = RNA_pointer_create(
-      id, &RNA_NodeSocket, const_cast<bNodeSocket *>(socket));
 
   FunctionRNA *func = &rna_NodeTreeInterfaceSocket_from_socket_func;
 
   ParameterList list;
   RNA_parameter_list_create(&list, &ptr, func);
-  RNA_parameter_set_lookup(&list, "node", &node_ptr);
-  RNA_parameter_set_lookup(&list, "socket", &socket_ptr);
+  RNA_parameter_set_lookup(&list, "node", node);
+  RNA_parameter_set_lookup(&list, "socket", socket);
   typeinfo->ext_interface.call(nullptr, &ptr, func, &list);
 
   RNA_parameter_list_free(&list);
@@ -998,6 +993,13 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(
       prop, "Single Value", "Only allow single value inputs rather than fields");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
+
+  prop = RNA_def_property(srna, "layer_selection_field", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODE_INTERFACE_SOCKET_LAYER_SELECTION);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop, "Layer Selection", "Take Grease Pencil Layer or Layer Group as selection field");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
 
   prop = RNA_def_property(srna, "attribute_domain", PROP_ENUM, PROP_NONE);

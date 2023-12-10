@@ -470,8 +470,15 @@ typedef struct GreasePencil {
   bool is_layer_active(const blender::bke::greasepencil::Layer *layer) const;
 
   /* Adding layers and layer groups. */
+  /** Adds a new layer with the given name to the top of root group. */
+  blender::bke::greasepencil::Layer &add_layer(blender::StringRefNull name);
+  /** Adds a new layer with the given name to the top of the given group. */
   blender::bke::greasepencil::Layer &add_layer(
       blender::bke::greasepencil::LayerGroup &parent_group, blender::StringRefNull name);
+  /** Duplicates the given layer to the top of the root group. */
+  blender::bke::greasepencil::Layer &add_layer(
+      const blender::bke::greasepencil::Layer &duplicate_layer);
+  /** Duplicates the given layer to the top of the given group. */
   blender::bke::greasepencil::Layer &add_layer(
       blender::bke::greasepencil::LayerGroup &parent_group,
       const blender::bke::greasepencil::Layer &duplicate_layer);
@@ -494,6 +501,8 @@ typedef struct GreasePencil {
   /* Search functions. */
   const blender::bke::greasepencil::TreeNode *find_node_by_name(blender::StringRefNull name) const;
   blender::bke::greasepencil::TreeNode *find_node_by_name(blender::StringRefNull name);
+  blender::IndexMask layer_selection_by_name(const blender::StringRefNull name,
+                                             blender::IndexMaskMemory &memory) const;
 
   void rename_node(blender::bke::greasepencil::TreeNode &node, blender::StringRefNull new_name);
 
@@ -568,21 +577,8 @@ typedef struct GreasePencil {
   blender::bke::greasepencil::Drawing *get_editable_drawing_at(
       const blender::bke::greasepencil::Layer *layer, int frame_number);
 
-  void foreach_visible_drawing(
-      const int frame,
-      blender::FunctionRef<void(const int /*layer_index*/,
-                                blender::bke::greasepencil::Drawing & /*drawing*/)> function);
-  void foreach_visible_drawing(
-      const int frame,
-      blender::FunctionRef<void(const int /*layer_index*/,
-                                const blender::bke::greasepencil::Drawing & /*drawing*/)> function)
-      const;
-  void foreach_editable_drawing(
-      const int frame,
-      blender::FunctionRef<void(const int /*layer_index*/,
-                                blender::bke::greasepencil::Drawing & /*drawing*/)> function);
-
-  std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
+  std::optional<blender::Bounds<blender::float3>> bounds_min_max(int frame) const;
+  std::optional<blender::Bounds<blender::float3>> bounds_min_max_eval() const;
 
   blender::bke::AttributeAccessor attributes() const;
   blender::bke::MutableAttributeAccessor attributes_for_write();

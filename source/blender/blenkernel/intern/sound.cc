@@ -45,7 +45,7 @@
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_packedFile.h"
 #include "BKE_scene.h"
 #include "BKE_sound.h"
@@ -55,9 +55,9 @@
 
 #include "BLO_read_write.hh"
 
-#include "SEQ_sequencer.h"
-#include "SEQ_sound.h"
-#include "SEQ_time.h"
+#include "SEQ_sequencer.hh"
+#include "SEQ_sound.hh"
+#include "SEQ_time.hh"
 
 static void sound_free_audio(bSound *sound);
 

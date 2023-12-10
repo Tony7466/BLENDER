@@ -35,15 +35,15 @@
 #include "BLT_translation.h"
 
 #include "BKE_compute_contexts.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_object.hh"
 #include "BKE_scene.h"
@@ -85,14 +85,12 @@
 #include "NOD_geometry_exec.hh"
 #include "NOD_geometry_nodes_log.hh"
 #include "NOD_node_declaration.hh"
+#include "NOD_node_extra_info.hh"
 #include "NOD_socket_declarations_geometry.hh"
 
 #include "FN_field.hh"
-#include "FN_field_cpp_type.hh"
 
 #include "GEO_fillet_curves.hh"
-
-#include "../interface/interface_intern.hh" /* TODO: Remove */
 
 #include "node_intern.hh" /* own include */
 
@@ -103,6 +101,7 @@ namespace geo_log = blender::nodes::geo_eval_log;
 using blender::bke::bNodeTreeZone;
 using blender::bke::bNodeTreeZones;
 using blender::ed::space_node::NestedTreePreviews;
+using blender::nodes::NodeExtraInfoRow;
 
 /**
  * This is passed to many functions which draw the node editor.
@@ -1090,13 +1089,16 @@ static int node_get_colorid(TreeDrawContext &tree_draw_ctx, const bNode &node)
   }
 }
 
-static void node_draw_mute_line(const View2D &v2d, const SpaceNode &snode, const bNode &node)
+static void node_draw_mute_line(const bContext &C,
+                                const View2D &v2d,
+                                const SpaceNode &snode,
+                                const bNode &node)
 {
   GPU_blend(GPU_BLEND_ALPHA);
 
   for (const bNodeLink &link : node.internal_links()) {
     if (!nodeLinkIsHidden(&link)) {
-      node_draw_link_bezier(v2d, snode, link, TH_WIRE_INNER, TH_WIRE_INNER, TH_WIRE, false);
+      node_draw_link_bezier(C, v2d, snode, link, TH_WIRE_INNER, TH_WIRE_INNER, TH_WIRE, false);
     }
   }
 
@@ -1106,9 +1108,9 @@ static void node_draw_mute_line(const View2D &v2d, const SpaceNode &snode, const
 static void node_socket_draw(const bNodeSocket &sock,
                              const float color[4],
                              const float color_outline[4],
-                             float size,
-                             int locx,
-                             int locy,
+                             const float size,
+                             const float locx,
+                             const float locy,
                              uint pos_id,
                              uint col_id,
                              uint shape_id,
@@ -1195,14 +1197,27 @@ static void node_socket_outline_color_get(const bool selected,
   }
 }
 
-void node_socket_color_get(const bNodeSocketType &type, float r_color[4])
+void node_socket_color_get(const bContext &C,
+                           const bNodeTree &ntree,
+                           PointerRNA &node_ptr,
+                           const bNodeSocket &sock,
+                           float r_color[4])
 {
-  if (type.draw_color_simple) {
-    type.draw_color_simple(&type, r_color);
+  if (!sock.typeinfo->draw_color) {
+    /* Fallback to the simple variant. If not defined either, fallback to a magenta color. */
+    if (sock.typeinfo->draw_color_simple) {
+      sock.typeinfo->draw_color_simple(sock.typeinfo, r_color);
+    }
+    else {
+      copy_v4_v4(r_color, float4(1.0f, 0.0f, 1.0f, 1.0f));
+    }
+    return;
   }
-  else {
-    copy_v4_v4(r_color, float4(1.0f, 0.0f, 1.0f, 1.0f));
-  }
+
+  BLI_assert(RNA_struct_is_a(node_ptr.type, &RNA_Node));
+  PointerRNA ptr = RNA_pointer_create(
+      &const_cast<ID &>(ntree.id), &RNA_NodeSocket, &const_cast<bNodeSocket &>(sock));
+  sock.typeinfo->draw_color((bContext *)&C, &ptr, &node_ptr, r_color);
 }
 
 static void create_inspection_string_for_generic_value(const bNodeSocket &socket,
@@ -1634,7 +1649,9 @@ void node_socket_add_tooltip(const bNodeTree &ntree, const bNodeSocket &sock, ui
       MEM_freeN);
 }
 
-static void node_socket_draw_nested(const bNodeTree &ntree,
+static void node_socket_draw_nested(const bContext &C,
+                                    const bNodeTree &ntree,
+                                    PointerRNA &node_ptr,
                                     uiBlock &block,
                                     const bNodeSocket &sock,
                                     const uint pos_id,
@@ -1649,7 +1666,7 @@ static void node_socket_draw_nested(const bNodeTree &ntree,
 
   float color[4];
   float outline_color[4];
-  node_socket_color_get(*sock.typeinfo, color);
+  node_socket_color_get(C, ntree, node_ptr, sock, color);
   node_socket_outline_color_get(selected, sock.type, outline_color);
 
   node_socket_draw(sock,
@@ -1840,10 +1857,24 @@ static void node_draw_shadow(const SpaceNode &snode,
 {
   const rctf &rct = node.runtime->totr;
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  ui_draw_dropshadow(&rct, radius, snode.runtime->aspect, alpha, node.flag & SELECT);
+
+  const float shadow_width = 0.6f * U.widget_unit;
+  const float shadow_alpha = 0.5f * alpha;
+
+  ui_draw_dropshadow(&rct, radius, shadow_width, snode.runtime->aspect, shadow_alpha);
+
+  /* Outline emphasis. Slight darkening _inside_ the outline. */
+  const float color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
+  rctf rect{};
+  rect.xmin = rct.xmin - 0.5f;
+  rect.xmax = rct.xmax + 0.5f;
+  rect.ymin = rct.ymin - 0.5f;
+  rect.ymax = rct.ymax + 0.5f;
+  UI_draw_roundbox_4fv(&rect, false, radius + 0.5f, color);
 }
 
 static void node_draw_sockets(const View2D &v2d,
+                              const bContext &C,
                               const bNodeTree &ntree,
                               const bNode &node,
                               uiBlock &block,
@@ -1880,6 +1911,9 @@ static void node_draw_sockets(const View2D &v2d,
     immBeginAtMost(GPU_PRIM_POINTS, node.input_sockets().size() + node.output_sockets().size());
   }
 
+  PointerRNA node_ptr = RNA_pointer_create(
+      &const_cast<ID &>(ntree.id), &RNA_Node, &const_cast<bNode &>(node));
+
   /* Socket inputs. */
   int selected_input_len = 0;
   for (const bNodeSocket *sock : node.input_sockets()) {
@@ -1899,8 +1933,18 @@ static void node_draw_sockets(const View2D &v2d,
       continue;
     }
 
-    node_socket_draw_nested(
-        ntree, block, *sock, pos_id, col_id, shape_id, size_id, outline_col_id, scale, selected);
+    node_socket_draw_nested(C,
+                            ntree,
+                            node_ptr,
+                            block,
+                            *sock,
+                            pos_id,
+                            col_id,
+                            shape_id,
+                            size_id,
+                            outline_col_id,
+                            scale,
+                            selected);
   }
 
   /* Socket outputs. */
@@ -1916,8 +1960,18 @@ static void node_draw_sockets(const View2D &v2d,
         continue;
       }
 
-      node_socket_draw_nested(
-          ntree, block, *sock, pos_id, col_id, shape_id, size_id, outline_col_id, scale, selected);
+      node_socket_draw_nested(C,
+                              ntree,
+                              node_ptr,
+                              block,
+                              *sock,
+                              pos_id,
+                              col_id,
+                              shape_id,
+                              size_id,
+                              outline_col_id,
+                              scale,
+                              selected);
     }
   }
 
@@ -1944,7 +1998,9 @@ static void node_draw_sockets(const View2D &v2d,
           continue;
         }
         if (select_all || (sock->flag & SELECT)) {
-          node_socket_draw_nested(ntree,
+          node_socket_draw_nested(C,
+                                  ntree,
+                                  node_ptr,
                                   block,
                                   *sock,
                                   pos_id,
@@ -1969,7 +2025,9 @@ static void node_draw_sockets(const View2D &v2d,
           continue;
         }
         if (select_all || (sock->flag & SELECT)) {
-          node_socket_draw_nested(ntree,
+          node_socket_draw_nested(C,
+                                  ntree,
+                                  node_ptr,
                                   block,
                                   *sock,
                                   pos_id,
@@ -2011,7 +2069,7 @@ static void node_draw_sockets(const View2D &v2d,
 
     float color[4];
     float outline_color[4];
-    node_socket_color_get(*socket->typeinfo, color);
+    node_socket_color_get(C, ntree, node_ptr, *socket, color);
     node_socket_outline_color_get(socket->flag & SELECT, socket->type, outline_color);
 
     const float2 location = socket->runtime->location;
@@ -2182,6 +2240,7 @@ static void node_draw_panels(bNodeTree &ntree, const bNode &node, uiBlock &block
                        0.0f,
                        0.0f,
                        "");
+    UI_but_func_pushed_state_set(but, [&state](const uiBut &) { return state.is_collapsed(); });
     UI_but_func_set(
         but, node_panel_toggle_button_cb, const_cast<bNodePanelState *>(&state), &ntree);
 
@@ -2434,16 +2493,6 @@ static std::string node_get_execution_time_label(TreeDrawContext &tree_draw_ctx,
   return stream.str() + " ms";
 }
 
-struct NodeExtraInfoRow {
-  std::string text;
-  int icon;
-  const char *tooltip = nullptr;
-
-  uiButToolTipFunc tooltip_fn = nullptr;
-  void *tooltip_fn_arg = nullptr;
-  void (*tooltip_fn_free_arg)(void *) = nullptr;
-};
-
 struct NamedAttributeTooltipArg {
   Map<StringRefNull, geo_log::NamedAttributeUsage> usage_by_attribute;
 };
@@ -2552,11 +2601,18 @@ static std::optional<NodeExtraInfoRow> node_get_accessed_attributes_row(
   return row_from_used_named_attribute(node_log->used_named_attributes);
 }
 
-static Vector<NodeExtraInfoRow> node_get_extra_info(TreeDrawContext &tree_draw_ctx,
+static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
+                                                    TreeDrawContext &tree_draw_ctx,
                                                     const SpaceNode &snode,
                                                     const bNode &node)
 {
   Vector<NodeExtraInfoRow> rows;
+
+  if (node.typeinfo->get_extra_info) {
+    nodes::NodeExtraInfoParams params{rows, node, C};
+    node.typeinfo->get_extra_info(params);
+  }
+
   if (!(snode.edittree->type == NTREE_GEOMETRY)) {
     /* Currently geometry nodes are the only nodes to have extra infos per nodes. */
     return rows;
@@ -2697,13 +2753,14 @@ static void node_draw_extra_info_panel_back(const bNode &node, const rctf &extra
       &panel_back_rect, color, nullptr, 0.0f, color_outline, outline_width, BASIS_RAD);
 }
 
-static void node_draw_extra_info_panel(const Scene *scene,
+static void node_draw_extra_info_panel(const bContext &C,
                                        TreeDrawContext &tree_draw_ctx,
                                        const SpaceNode &snode,
                                        const bNode &node,
                                        ImBuf *preview,
                                        uiBlock &block)
 {
+  const Scene *scene = CTX_data_scene(&C);
   if (!(snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS)) {
     return;
   }
@@ -2711,7 +2768,7 @@ static void node_draw_extra_info_panel(const Scene *scene,
     /* If the preview has an non-drawable size, just don't draw it. */
     preview = nullptr;
   }
-  Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(tree_draw_ctx, snode, node);
+  Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(C, tree_draw_ctx, snode, node);
   if (extra_info_rows.size() == 0 && !preview) {
     return;
   }
@@ -2822,7 +2879,7 @@ static void node_draw_basis(const bContext &C,
 
       if (previews_shader) {
         ImBuf *preview = node_preview_acquire_ibuf(ntree, *previews_shader, node);
-        node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, preview, block);
+        node_draw_extra_info_panel(C, tree_draw_ctx, snode, node, preview, block);
         node_release_preview_ibuf(*previews_shader);
         drawn_with_previews = true;
       }
@@ -2831,14 +2888,14 @@ static void node_draw_basis(const bContext &C,
             BKE_node_instance_hash_lookup(previews_compo, key));
         if (preview_compositor) {
           node_draw_extra_info_panel(
-              CTX_data_scene(&C), tree_draw_ctx, snode, node, preview_compositor->ibuf, block);
+              C, tree_draw_ctx, snode, node, preview_compositor->ibuf, block);
           drawn_with_previews = true;
         }
       }
     }
 
     if (drawn_with_previews == false) {
-      node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, nullptr, block);
+      node_draw_extra_info_panel(C, tree_draw_ctx, snode, node, nullptr, block);
     }
   }
 
@@ -3023,7 +3080,7 @@ static void node_draw_basis(const bContext &C,
 
   /* Wire across the node when muted/disabled. */
   if (node.flag & NODE_MUTED) {
-    node_draw_mute_line(v2d, snode, node);
+    node_draw_mute_line(C, v2d, snode, node);
   }
 
   /* Body. */
@@ -3127,7 +3184,7 @@ static void node_draw_basis(const bContext &C,
 
   /* Skip slow socket drawing if zoom is small. */
   if (scale > 0.2f) {
-    node_draw_sockets(v2d, ntree, node, block, true, false);
+    node_draw_sockets(v2d, C, ntree, node, block, true, false);
   }
 
   if (is_node_panels_supported(node)) {
@@ -3155,14 +3212,14 @@ static void node_draw_hidden(const bContext &C,
 
   const int color_id = node_get_colorid(tree_draw_ctx, node);
 
-  node_draw_extra_info_panel(nullptr, tree_draw_ctx, snode, node, nullptr, block);
+  node_draw_extra_info_panel(C, tree_draw_ctx, snode, node, nullptr, block);
 
   /* Shadow. */
   node_draw_shadow(snode, node, hiddenrad, 1.0f);
 
   /* Wire across the node when muted/disabled. */
   if (node.flag & NODE_MUTED) {
-    node_draw_mute_line(v2d, snode, node);
+    node_draw_mute_line(C, v2d, snode, node);
   }
 
   /* Body. */
@@ -3312,7 +3369,7 @@ static void node_draw_hidden(const bContext &C,
   immUnbindProgram();
   GPU_blend(GPU_BLEND_NONE);
 
-  node_draw_sockets(v2d, ntree, node, block, true, false);
+  node_draw_sockets(v2d, C, ntree, node, block, true, false);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
@@ -3342,14 +3399,14 @@ static const bNode *find_node_under_cursor(SpaceNode &snode, const float2 &curso
   return nullptr;
 }
 
-void node_set_cursor(wmWindow &win, SpaceNode &snode, const float2 &cursor)
+void node_set_cursor(wmWindow &win, ARegion &region, SpaceNode &snode, const float2 &cursor)
 {
   const bNodeTree *ntree = snode.edittree;
   if (ntree == nullptr) {
     WM_cursor_set(&win, WM_CURSOR_DEFAULT);
     return;
   }
-  if (node_find_indicated_socket(snode, cursor, SOCK_IN | SOCK_OUT)) {
+  if (node_find_indicated_socket(snode, region, cursor, SOCK_IN | SOCK_OUT)) {
     WM_cursor_set(&win, WM_CURSOR_DEFAULT);
     return;
   }
@@ -3637,7 +3694,7 @@ static void frame_node_draw(const bContext &C,
   /* Label and text. */
   frame_node_draw_label(tree_draw_ctx, ntree, node, snode);
 
-  node_draw_extra_info_panel(nullptr, tree_draw_ctx, snode, node, nullptr, block);
+  node_draw_extra_info_panel(C, tree_draw_ctx, snode, node, nullptr, block);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
@@ -3683,7 +3740,7 @@ static void reroute_node_draw(
 
   /* Only draw input socket as they all are placed on the same position highlight
    * if node itself is selected, since we don't display the node body separately. */
-  node_draw_sockets(region.v2d, ntree, node, block, false, node.flag & SELECT);
+  node_draw_sockets(region.v2d, C, ntree, node, block, false, node.flag & SELECT);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
@@ -3941,14 +3998,14 @@ static void node_draw_nodetree(const bContext &C,
 
   for (const bNodeLink *link : ntree.all_links()) {
     if (!nodeLinkIsHidden(link) && !bke::nodeLinkIsSelected(link)) {
-      node_draw_link(region.v2d, snode, *link, false);
+      node_draw_link(C, region.v2d, snode, *link, false);
     }
   }
 
   /* Draw selected node links after the unselected ones, so they are shown on top. */
   for (const bNodeLink *link : ntree.all_links()) {
     if (!nodeLinkIsHidden(link) && bke::nodeLinkIsSelected(link)) {
-      node_draw_link(region.v2d, snode, *link, true);
+      node_draw_link(C, region.v2d, snode, *link, true);
     }
   }
 
@@ -4199,7 +4256,7 @@ void node_draw_space(const bContext &C, ARegion &region)
     GPU_line_smooth(true);
     if (snode.runtime->linkdrag) {
       for (const bNodeLink &link : snode.runtime->linkdrag->links) {
-        node_draw_link_dragged(v2d, snode, link);
+        node_draw_link_dragged(C, v2d, snode, link);
       }
     }
     GPU_line_smooth(false);

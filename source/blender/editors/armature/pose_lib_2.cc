@@ -22,8 +22,8 @@
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_armature.h"
-#include "BKE_context.h"
+#include "BKE_armature.hh"
+#include "BKE_context.hh"
 #include "BKE_lib_id.h"
 #include "BKE_object.hh"
 #include "BKE_pose_backup.h"
@@ -45,7 +45,7 @@
 #include "ED_screen.hh"
 #include "ED_util.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 #include "ANIM_keyframing.hh"
 
 #include "armature_intern.h"

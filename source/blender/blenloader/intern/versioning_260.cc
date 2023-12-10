@@ -53,12 +53,12 @@
 
 #include "BKE_anim_visualization.h"
 #include "BKE_image.h"
-#include "BKE_main.h"  /* for Main */
+#include "BKE_main.hh" /* for Main */
 #include "BKE_mesh.hh" /* for ME_ defines (patching) */
 #include "BKE_mesh_legacy_convert.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
@@ -67,12 +67,12 @@
 #include "BKE_texture.h"
 #include "BKE_tracking.h"
 
-#include "SEQ_iterator.h"
-#include "SEQ_modifier.h"
-#include "SEQ_utils.h"
+#include "SEQ_iterator.hh"
+#include "SEQ_modifier.hh"
+#include "SEQ_utils.hh"
 
 #ifdef WITH_FFMPEG
-#  include "BKE_writeffmpeg.h"
+#  include "BKE_writeffmpeg.hh"
 #endif
 
 #include "IMB_imbuf.h" /* for proxy / time-code versioning stuff. */
@@ -350,14 +350,14 @@ static void do_versions_nodetree_multi_file_output_format_2_62_1(Scene *sce, bNo
 }
 
 /* blue and red are swapped pre 2.62.1, be sane (red == red) now! */
-static void do_versions_mesh_mloopcol_swap_2_62_1(Mesh *me)
+static void do_versions_mesh_mloopcol_swap_2_62_1(Mesh *mesh)
 {
-  for (int a = 0; a < me->loop_data.totlayer; a++) {
-    CustomDataLayer *layer = &me->loop_data.layers[a];
+  for (int a = 0; a < mesh->loop_data.totlayer; a++) {
+    CustomDataLayer *layer = &mesh->loop_data.layers[a];
 
     if (layer->type == CD_PROP_BYTE_COLOR) {
       MLoopCol *mloopcol = static_cast<MLoopCol *>(layer->data);
-      for (int i = 0; i < me->totloop; i++, mloopcol++) {
+      for (int i = 0; i < mesh->totloop; i++, mloopcol++) {
         SWAP(uchar, mloopcol->r, mloopcol->b);
       }
     }
@@ -614,7 +614,7 @@ static const char *node_get_static_idname(int type, int treetype)
         return "ShaderNodeTexMagic";
       case SH_NODE_TEX_WAVE:
         return "ShaderNodeTexWave";
-      case SH_NODE_TEX_MUSGRAVE:
+      case SH_NODE_TEX_MUSGRAVE_DEPRECATED:
         return "ShaderNodeTexMusgrave";
       case SH_NODE_TEX_VORONOI:
         return "ShaderNodeTexVoronoi";
@@ -708,7 +708,7 @@ static const char *node_get_static_idname(int type, int treetype)
         return "CompositorNodeChannelMatte";
       case CMP_NODE_FLIP:
         return "CompositorNodeFlip";
-      case CMP_NODE_SPLITVIEWER:
+      case CMP_NODE_SPLITVIEWER__DEPRECATED:
         return "CompositorNodeSplitViewer";
       case CMP_NODE_MAP_UV:
         return "CompositorNodeMapUV";
@@ -2557,7 +2557,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 268, 1)) {
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
-      brush->spacing = MAX2(1, brush->spacing);
+      brush->spacing = std::max(1, brush->spacing);
     }
   }
 

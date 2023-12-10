@@ -262,12 +262,12 @@ bool BLI_file_magic_is_gzip(const char header[4])
 
 bool BLI_file_magic_is_zstd(const char header[4])
 {
-  /* ZSTD files consist of concatenated frames, each either a Zstd frame or a skippable frame.
-   * Both types of frames start with a magic number: 0xFD2FB528 for Zstd frames and 0x184D2A5*
+  /* ZSTD files consist of concatenated frames, each either a ZSTD frame or a skippable frame.
+   * Both types of frames start with a magic number: `0xFD2FB528` for ZSTD frames and `0x184D2A5`
    * for skippable frames, with the * being anything from 0 to F.
    *
-   * To check whether a file is Zstd-compressed, we just check whether the first frame matches
-   * either. Seeking through the file until a Zstd frame is found would make things more
+   * To check whether a file is ZSTD-compressed, we just check whether the first frame matches
+   * either. Seeking through the file until a ZSTD frame is found would make things more
    * complicated and the probability of a false positive is rather low anyways.
    *
    * Note that LZ4 uses a compatible format, so even though its compressed frames have a
@@ -316,7 +316,7 @@ bool BLI_file_touch(const char *filepath)
 {
   FILE *f = BLI_fopen(filepath, "r+b");
 
-  if (f != NULL) {
+  if (f != nullptr) {
     int c = getc(f);
 
     if (c == EOF) {
@@ -436,15 +436,6 @@ bool BLI_file_ensure_parent_dir_exists(const char *filepath)
 
 int BLI_rename(const char *from, const char *to)
 {
-#ifdef WIN32
-  return urename(from, to);
-#else
-  return rename(from, to);
-#endif
-}
-
-int BLI_rename_overwrite(const char *from, const char *to)
-{
   if (!BLI_exists(from)) {
     return 1;
   }
@@ -462,13 +453,62 @@ int BLI_rename_overwrite(const char *from, const char *to)
    * In this particular case we would not want to follow symbolic-links as well.
    * Since this functionality isn't required at the moment, leave this as-is.
    * Noting it as a potential improvement. */
+
+  /* NOTE: To avoid the concurrency 'time of check/time of use' (TOC/TOU) issue, this code attempts
+   * to use available solutions for an 'atomic' (file-system wise) rename operation, instead of
+   * first checking for an existing `to` target path, and then doing the rename operation if it
+   * does not exists at the time of check.
+   *
+   * Windows (through `MoveFileExW`) by default does not allow replacing an existing path. It is
+   * however not clear whether its API is exposed to the TOC/TOU issue or not.
+   *
+   * On Linux or OSX, to keep operations atomic, special non-standardized variants of `rename` must
+   * be used, depending on the OS. Note that there may also be failure due to file system not
+   * supporting this operation, although in practice this should not be a problem in modern
+   * systems.
+   *   - https://man7.org/linux/man-pages/man2/rename.2.html
+   *   - https://www.unix.com/man-page/mojave/2/renameatx_np/
+   *
+   * BSD systems do not have any such thing currently, and are therefore exposed to the TOC/TOU
+   * issue. */
+
+#ifdef WIN32
+  return urename(from, to, false);
+#elif defined(__APPLE__)
+  return renamex_np(from, to, RENAME_EXCL);
+#elif defined(__GLIBC_PREREQ)
+#  if __GLIBC_PREREQ(2, 28)
+  /* Most common Linux cases. */
+  return renameat2(AT_FDCWD, from, AT_FDCWD, to, RENAME_NOREPLACE);
+#  endif
+#else
+  /* At least all BSD's currently. */
   if (BLI_exists(to)) {
-    if (BLI_delete(to, false, false)) {
+    return 1;
+  }
+  return rename(from, to);
+#endif
+}
+
+int BLI_rename_overwrite(const char *from, const char *to)
+{
+  if (!BLI_exists(from)) {
+    return 1;
+  }
+
+#ifdef WIN32
+  /* `urename` from `utfconv` intern utils uses `MoveFileExW`, which allows to replace an existing
+   * file, but not an existing directory, even if empty. This will only delete empty directories.
+   */
+  if (BLI_is_dir(to)) {
+    if (BLI_delete(to, true, false)) {
       return 1;
     }
   }
-
-  return BLI_rename(from, to);
+  return urename(from, to, true);
+#else
+  return rename(from, to);
+#endif
 }
 
 #ifdef WIN32
@@ -822,7 +862,7 @@ static void join_dirfile_alloc(char **dst, size_t *alloc_len, const char *dir, c
 {
   size_t len = strlen(dir) + strlen(file) + 1;
 
-  if (*dst == NULL) {
+  if (*dst == nullptr) {
     *dst = MEM_cnew_array<char>(len + 1, "join_dirfile_alloc path");
   }
   else if (*alloc_len < len) {
@@ -862,9 +902,9 @@ static int recursive_operation(const char *startfrom,
                                RecursiveOp_Callback callback_dir_post)
 {
   struct stat st;
-  char *from = NULL, *to = NULL;
-  char *from_path = NULL, *to_path = NULL;
-  struct dirent **dirlist = NULL;
+  char *from = nullptr, *to = nullptr;
+  char *from_path = nullptr, *to_path = nullptr;
+  dirent **dirlist = nullptr;
   size_t from_alloc_len = -1, to_alloc_len = -1;
   int i, n = 0, ret = 0;
 
@@ -884,7 +924,7 @@ static int recursive_operation(const char *startfrom,
     if (!S_ISDIR(st.st_mode)) {
       /* source isn't a directory, can't do recursive walking for it,
        * so just call file callback and leave */
-      if (callback_file != NULL) {
+      if (callback_file != nullptr) {
         ret = callback_file(from, to);
         if (ret != RecursiveOp_Callback_OK) {
           ret = -1;
@@ -893,7 +933,7 @@ static int recursive_operation(const char *startfrom,
       break;
     }
 
-    n = scandir(startfrom, &dirlist, NULL, alphasort);
+    n = scandir(startfrom, &dirlist, nullptr, alphasort);
     if (n < 0) {
       /* error opening directory for listing */
       perror("scandir");
@@ -901,7 +941,7 @@ static int recursive_operation(const char *startfrom,
       break;
     }
 
-    if (callback_dir_pre != NULL) {
+    if (callback_dir_pre != nullptr) {
       ret = callback_dir_pre(from, to);
       if (ret != RecursiveOp_Callback_OK) {
         if (ret == RecursiveOp_Callback_StopRecurs) {
@@ -916,7 +956,7 @@ static int recursive_operation(const char *startfrom,
     }
 
     for (i = 0; i < n; i++) {
-      const struct dirent *const dirent = dirlist[i];
+      const dirent *const dirent = dirlist[i];
 
       if (FILENAME_IS_CURRPAR(dirent->d_name)) {
         continue;
@@ -946,7 +986,7 @@ static int recursive_operation(const char *startfrom,
         ret = recursive_operation(
             from_path, to_path, callback_dir_pre, callback_file, callback_dir_post);
       }
-      else if (callback_file != NULL) {
+      else if (callback_file != nullptr) {
         ret = callback_file(from_path, to_path);
         if (ret != RecursiveOp_Callback_OK) {
           ret = -1;
@@ -961,7 +1001,7 @@ static int recursive_operation(const char *startfrom,
       break;
     }
 
-    if (callback_dir_post != NULL) {
+    if (callback_dir_post != nullptr) {
       ret = callback_dir_post(from, to);
       if (ret != RecursiveOp_Callback_OK) {
         ret = -1;
@@ -969,22 +1009,22 @@ static int recursive_operation(const char *startfrom,
     }
   } while (false);
 
-  if (dirlist != NULL) {
+  if (dirlist != nullptr) {
     for (i = 0; i < n; i++) {
       free(dirlist[i]);
     }
     free(dirlist);
   }
-  if (from_path != NULL) {
+  if (from_path != nullptr) {
     MEM_freeN(from_path);
   }
-  if (to_path != NULL) {
+  if (to_path != nullptr) {
     MEM_freeN(to_path);
   }
-  if (from != NULL) {
+  if (from != nullptr) {
     MEM_freeN(from);
   }
-  if (to != NULL) {
+  if (to != nullptr) {
     MEM_freeN(to);
   }
 
@@ -1062,21 +1102,21 @@ static int delete_soft(const char *file, const char **error_message)
   char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
   char *xdg_session_desktop = getenv("XDG_SESSION_DESKTOP");
 
-  if ((xdg_current_desktop != NULL && STREQ(xdg_current_desktop, "KDE")) ||
-      (xdg_session_desktop != NULL && STREQ(xdg_session_desktop, "KDE")))
+  if ((xdg_current_desktop != nullptr && STREQ(xdg_current_desktop, "KDE")) ||
+      (xdg_session_desktop != nullptr && STREQ(xdg_session_desktop, "KDE")))
   {
     args[0] = "kioclient5";
     args[1] = "move";
     args[2] = file;
     args[3] = "trash:/";
-    args[4] = NULL;
+    args[4] = nullptr;
     process_failed = "kioclient5 reported failure";
   }
   else {
     args[0] = "gio";
     args[1] = "trash";
     args[2] = file;
-    args[3] = NULL;
+    args[3] = nullptr;
     process_failed = "gio reported failure";
   }
 
@@ -1141,7 +1181,7 @@ int BLI_delete(const char *path, bool dir, bool recursive)
   BLI_assert(!BLI_path_is_rel(path));
 
   if (recursive) {
-    return recursive_operation(path, NULL, NULL, delete_single_file, delete_callback_post);
+    return recursive_operation(path, nullptr, nullptr, delete_single_file, delete_callback_post);
   }
   if (dir) {
     return rmdir(path);
@@ -1352,10 +1392,11 @@ static int move_single_file(const char *from, const char *to)
 
 int BLI_path_move(const char *path_src, const char *path_dst)
 {
-  int ret = recursive_operation(path_src, path_dst, move_callback_pre, move_single_file, NULL);
+  int ret = recursive_operation(path_src, path_dst, move_callback_pre, move_single_file, nullptr);
 
   if (ret && ret != -1) {
-    return recursive_operation(path_src, NULL, NULL, delete_single_file, delete_callback_post);
+    return recursive_operation(
+        path_src, nullptr, nullptr, delete_single_file, delete_callback_post);
   }
 
   return ret;
@@ -1390,7 +1431,7 @@ int BLI_copy(const char *path_src, const char *path_dst)
   int ret;
 
   ret = recursive_operation(
-      path_src, path_dst_with_filename, copy_callback_pre, copy_single_file, NULL);
+      path_src, path_dst_with_filename, copy_callback_pre, copy_single_file, nullptr);
 
   if (!ELEM(path_dst_with_filename, path_dst_buf, path_dst)) {
     MEM_freeN((void *)path_dst_with_filename);

@@ -218,7 +218,7 @@ void DRW_stats_draw(const rcti *rect)
   int fontid = BLF_default();
   UI_FontThemeColor(fontid, TH_TEXT_HI);
   BLF_enable(fontid, BLF_SHADOW);
-  const float rgba[]{0.0f, 0.0f, 0.0f, 0.75f};
+  const float rgba[] = {0.0f, 0.0f, 0.0f, 0.75f};
   BLF_shadow(fontid, 5, rgba);
   BLF_shadow_offset(fontid, 0, -1);
 
@@ -337,8 +337,8 @@ void DRW_stats_draw(const rcti *rect)
     }
 
     /* avoid very long number */
-    time_ms = MIN2(time_ms, 999.0);
-    time_percent = MIN2(time_percent, 100.0);
+    time_ms = std::min(time_ms, 999.0);
+    time_percent = std::min(time_percent, 100.0);
 
     SNPRINTF(stat_string, "%s", timer->name);
     draw_stat(rect, 0 + timer->lvl, v, stat_string, sizeof(stat_string));

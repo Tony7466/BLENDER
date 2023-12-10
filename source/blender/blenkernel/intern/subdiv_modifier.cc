@@ -14,7 +14,7 @@
 #include "DNA_userdef_types.h"
 
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_subdiv.hh"
 
 #include "GPU_capabilities.h"
@@ -97,7 +97,7 @@ static bool is_subdivision_evaluation_possible_on_gpu()
     return false;
   }
 
-  if (!(GPU_compute_shader_support())) {
+  if (!GPU_compute_shader_support()) {
     return false;
   }
 
@@ -134,7 +134,7 @@ bool BKE_subsurf_modifier_can_do_gpu_subdiv(const Scene *scene,
     return false;
   }
 
-  /* Deactivate GPU subdivision if autosmooth or custom split normals are used as those are
+  /* Deactivate GPU subdivision if auto-smooth or custom split normals are used as those are
    * complicated to support on GPU, and should really be separate workflows. */
   if (BKE_subsurf_modifier_use_custom_loop_normals(smd, mesh)) {
     return false;

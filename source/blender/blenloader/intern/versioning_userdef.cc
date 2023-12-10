@@ -31,7 +31,7 @@
 #include "BKE_colorband.h"
 #include "BKE_idprop.h"
 #include "BKE_keyconfig.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_preferences.h"
 
 #include "BLO_readfile.h"
@@ -127,6 +127,17 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder_select);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 35)) {
+    FROM_DEFAULT_V4_UCHAR(tui.wcol_list_item.item);
+  }
+
+  if (!USER_VERSION_ATLEAST(401, 4)) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.edge_select);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.edge_mode_select);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.face_select);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.face_mode_select);
   }
 
   /**
@@ -892,6 +903,12 @@ void blo_do_versions_userdef(UserDef *userdef)
       style->widgetlabel.character_weight = 400;
       style->widget.character_weight = 400;
     }
+  }
+
+  if (!USER_VERSION_ATLEAST(401, 9)) {
+    userdef->key_insert_channels = (USER_ANIM_KEY_CHANNEL_LOCATION |
+                                    USER_ANIM_KEY_CHANNEL_ROTATION | USER_ANIM_KEY_CHANNEL_SCALE |
+                                    USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES);
   }
 
   /**

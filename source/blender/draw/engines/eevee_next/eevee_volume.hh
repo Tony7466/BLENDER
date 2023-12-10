@@ -41,21 +41,24 @@ namespace blender::eevee {
 
 class Instance;
 class VolumePipeline;
+class WorldVolumePipeline;
 
 class VolumeModule {
   friend VolumePipeline;
+  friend WorldVolumePipeline;
 
  private:
   Instance &inst_;
 
   bool enabled_;
+  bool use_lights_;
 
   VolumesInfoData &data_;
 
   /**
    * Occupancy map that allows to fill froxels that are inside the geometry.
    * It is filled during a pre-pass using atomic operations.
-   * Using a 3D bitfield, we only allocate one bit per froxel.
+   * Using a 3D bit-field, we only allocate one bit per froxel.
    */
   Texture occupancy_tx_ = {"occupancy_tx"};
   /**
@@ -65,7 +68,7 @@ class VolumeModule {
    */
   Texture hit_count_tx_ = {"hit_count_tx"};
   Texture hit_depth_tx_ = {"hit_depth_tx"};
-  /** Empty framebuffer for occupancy pass. */
+  /** Empty frame-buffer for occupancy pass. */
   Framebuffer occupancy_fb_ = {"occupancy_fb"};
 
   /* Material Parameters */
@@ -130,7 +133,7 @@ class VolumeModule {
 
   bool needs_shadow_tagging()
   {
-    return enabled_ && data_.use_lights;
+    return enabled_ && use_lights_;
   }
 
   int3 grid_size()
@@ -141,10 +144,6 @@ class VolumeModule {
   void init();
 
   void begin_sync();
-
-  void sync_world();
-
-  void material_call(MaterialPass &material_pass, Object *ob, ResourceHandle res_handle);
 
   void end_sync();
 
