@@ -68,9 +68,14 @@ void ANIM_armature_runtime_free(struct bArmature *armature);
 /**
  * Add a new bone collection to the given armature.
  *
+ * \param parent_index Index into the Armature's `collections_array`. -1 adds it
+ * as a root (i.e. parentless) collection.
+ *
  * The Armature owns the returned pointer.
  */
-BoneCollection *ANIM_armature_bonecoll_new(bArmature *armature, const char *name);
+BoneCollection *ANIM_armature_bonecoll_new(bArmature *armature,
+                                           const char *name,
+                                           int parent_index = -1);
 
 /**
  * Add a bone collection to the Armature.
@@ -132,11 +137,23 @@ bool ANIM_armature_bonecoll_is_editable(const struct bArmature *armature,
                                         const struct BoneCollection *bcoll);
 
 /**
- * Moves the bone collection at from_index to to_index.
+ * Move the bone collection at from_index to to_index.
+ *
+ * The element at `to_index` is shifted to make space; it is not overwritten.
+ * This shift happens towards `from_index`.
+ *
+ * This operation does not change the total number of elements in the array.
  *
  * \return true if the collection was successfully moved, false otherwise.
  * The latter happens if either index is out of bounds, or if the indices
  * are equal.
+ *
+ * \note This function only updates the `child_index` fields of shifted array
+ * elements, such that after the shift they still point to the same
+ * BoneCollections. It does NOT change the `child_count` of the old and new
+ * parent; this is the responsibility of the caller.
+ *
+ * TODO: move into 'internal' namespace.
  */
 bool ANIM_armature_bonecoll_move_to_index(bArmature *armature, int from_index, int to_index);
 
@@ -144,6 +161,8 @@ bool ANIM_armature_bonecoll_move_to_index(bArmature *armature, int from_index, i
  * Move the bone collection by \a step places up/down.
  *
  * \return whether the move actually happened.
+ *
+ * TODO: limit to moving between siblings.
  */
 bool ANIM_armature_bonecoll_move(struct bArmature *armature,
                                  struct BoneCollection *bcoll,
@@ -240,6 +259,30 @@ void ANIM_armature_bonecoll_show_from_pchan(struct bArmature *armature,
                                             const struct bPoseChannel *pchan);
 
 namespace blender::animrig {
+
+/**
+ * Return the index of the given collection in the armature's collection array,
+ * or -1 if not found.
+ */
+int bonecoll_find_index(const bArmature *armature, const ::BoneCollection *bcoll);
+
+/**
+ * Return the index of the given bone collection's parent, or -1 if it has no parent.
+ */
+int armature_bonecoll_find_parent_index(const bArmature *armature, int bcoll_index);
+
+/**
+ * Move a bone collection from one parent to another.
+ *
+ * \param bcoll_index index of the bone collection to move.
+ * \param from_parent_index index of its current parent (-1 if it is a root collection).
+ * \param to_parent_index index of the new parent (-1 if it is to become a root collection).
+ * \return the collection's new index in the collections_array.
+ */
+int armature_bonecoll_move_to_parent(bArmature *armature,
+                                     int bcoll_index,
+                                     int from_parent_index,
+                                     int to_parent_index);
 
 /* --------------------------------------------------------------------
  * The following functions are only used by edit-mode Armature undo:

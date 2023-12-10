@@ -236,6 +236,27 @@ static void rna_BoneCollections_active_index_range(
   *max = max_ii(0, arm->collection_array_num - 1);
 }
 
+static BoneCollection *rna_BoneCollections_new(bArmature *armature,
+                                               ReportList *reports,
+                                               const char *name,
+                                               BoneCollection *parent)
+{
+  if (parent == nullptr) {
+    return ANIM_armature_bonecoll_new(armature, name);
+  }
+
+  const int32_t parent_index = blender::animrig::bonecoll_find_index(armature, parent);
+  if (parent_index < 0) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Bone collection '%s' not found in Armature '%s'",
+                parent->name,
+                armature->id.name + 2);
+  }
+
+  return ANIM_armature_bonecoll_new(armature, name, parent_index);
+}
+
 static void rna_BoneCollections_active_name_set(PointerRNA *ptr, const char *name)
 {
   bArmature *arm = (bArmature *)ptr->data;
@@ -1848,8 +1869,9 @@ static void rna_def_armature_collections(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_BoneCollections_active_name_set");
 
   /* Armature.collections.new(...) */
-  func = RNA_def_function(srna, "new", "ANIM_armature_bonecoll_new");
+  func = RNA_def_function(srna, "new", "rna_BoneCollections_new");
   RNA_def_function_ui_description(func, "Add a new empty bone collection to the armature");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_string(func,
                         "name",
                         nullptr,
@@ -1858,6 +1880,12 @@ static void rna_def_armature_collections(BlenderRNA *brna, PropertyRNA *cprop)
                         "Name of the new collection. Blender will ensure it is unique within the "
                         "collections of the Armature");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_pointer(
+      func,
+      "parent",
+      "BoneCollection",
+      "Parent Collection",
+      "If not None, the new bone collection becomes a child of this collection");
   /* Return value. */
   parm = RNA_def_pointer(
       func, "bonecollection", "BoneCollection", "", "Newly created bone collection");

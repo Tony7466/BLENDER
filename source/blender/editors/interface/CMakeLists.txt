@@ -67,6 +67,7 @@ set(SRC
   interface_style.cc
   interface_template_asset_view.cc
   interface_template_attribute_search.cc
+  interface_template_bone_collection_tree.cc
   interface_template_light_linking.cc
   interface_template_list.cc
   interface_template_node_tree_interface.cc
@@ -127,7 +128,6 @@ if(WITH_EXPERIMENTAL_FEATURES)
     interface_template_grease_pencil_layer_tree.cc
   )
 endif()
-
 
 blender_add_lib(bf_editor_interface "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 

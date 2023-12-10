@@ -104,7 +104,7 @@ class DATA_UL_bone_collections(UIList):
 
 
 class DATA_PT_bone_collections(ArmatureButtonsPanel, Panel):
-    bl_label = "Bone Collections"
+    bl_label = "Bone Collections Nate"
 
     def draw(self, context):
         layout = self.layout
@@ -118,15 +118,16 @@ class DATA_PT_bone_collections(ArmatureButtonsPanel, Panel):
         if active_bcoll:
             rows = 4
 
-        row.template_list(
-            "DATA_UL_bone_collections",
-            "collections",
-            arm,
-            "collections",
-            arm.collections,
-            "active_index",
-            rows=rows,
-        )
+        # row.template_list(
+        #     "DATA_UL_bone_collections",
+        #     "collections",
+        #     arm,
+        #     "collections",
+        #     arm.collections,
+        #     "active_index",
+        #     rows=rows,
+        # )
+        row.template_bone_collection_tree()
 
         col = row.column(align=True)
         col.operator("armature.collection_add", icon='ADD', text="")

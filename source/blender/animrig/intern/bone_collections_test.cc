@@ -6,7 +6,13 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_idtype.h"
+#include "BKE_lib_id.h"
+
 #include "ANIM_bone_collections.hh"
+#include "intern/bone_collections_internal.hh"
+
+#include "intern/bone_collections_internal.hh"
 
 #include "testing/testing.h"
 
@@ -49,6 +55,7 @@ class ANIM_armature_bone_collections : public testing::Test {
     memset(&bone2, 0, sizeof(Bone));
     memset(&bone3, 0, sizeof(Bone));
 
+    STRNCPY(arm.id.name, "ARArmature");
     STRNCPY(bone1.name, "bone1");
     STRNCPY(bone2.name, "bone2");
     STRNCPY(bone3.name, "bone3");
@@ -62,13 +69,12 @@ class ANIM_armature_bone_collections : public testing::Test {
 
   void TearDown() override
   {
-    while (arm.collection_array_num > 0) {
-      ANIM_armature_bonecoll_remove_from_index(&arm, arm.collection_array_num - 1);
-    }
-    if (arm.collection_array) {
-      MEM_freeN(arm.collection_array);
-    }
-    BKE_armature_bone_hash_free(&arm);
+    /* Avoid freeing the bones, as they are part of this struct and not owned by
+     * the armature. */
+    BLI_listbase_clear(&arm.bonebase);
+
+    BKE_idtype_init();
+    BKE_libblock_free_datablock(&arm.id, 0);
   }
 };
 
@@ -82,6 +88,371 @@ TEST_F(ANIM_armature_bone_collections, armature_owned_collections)
 
   ANIM_armature_bonecoll_remove(&arm, bcoll1);
   ANIM_armature_bonecoll_remove(&arm, bcoll2);
+}
+
+TEST_F(ANIM_armature_bone_collections, collection_hierarchy_creation)
+{
+  /* Implicit root: */
+  BoneCollection *bcoll_root_0 = ANIM_armature_bonecoll_new(&arm, "wortel");
+  /* Explicit root: */
+  BoneCollection *bcoll_root_1 = ANIM_armature_bonecoll_new(&arm, "wortel", -1);
+
+  ASSERT_EQ(0, bonecoll_find_index(&arm, bcoll_root_0));
+  ASSERT_EQ(1, bonecoll_find_index(&arm, bcoll_root_1));
+
+  /* Child of bcoll at index 0: */
+  BoneCollection *bcoll_child_of_0 = ANIM_armature_bonecoll_new(&arm, "koter", 0);
+  /* Child of bcoll at index 1: */
+  BoneCollection *bcoll_child_of_1 = ANIM_armature_bonecoll_new(&arm, "koter", 1);
+
+  ASSERT_EQ(4, arm.collection_array_num);
+  EXPECT_EQ(0, bonecoll_find_index(&arm, bcoll_root_0));
+  EXPECT_EQ(1, bonecoll_find_index(&arm, bcoll_root_1));
+  EXPECT_EQ(2, bonecoll_find_index(&arm, bcoll_child_of_0));
+  EXPECT_EQ(3, bonecoll_find_index(&arm, bcoll_child_of_1));
+
+  /* Add another child of bcoll_root_0, which should push bcoll_child_of_1 further down the array.
+   */
+  BoneCollection *bcoll_another_child_of_0 = ANIM_armature_bonecoll_new(&arm, "koter", 0);
+  ASSERT_EQ(5, arm.collection_array_num);
+  EXPECT_EQ(0, bonecoll_find_index(&arm, bcoll_root_0));
+  EXPECT_EQ(1, bonecoll_find_index(&arm, bcoll_root_1));
+  EXPECT_EQ(2, bonecoll_find_index(&arm, bcoll_child_of_0));
+  EXPECT_EQ(3, bonecoll_find_index(&arm, bcoll_another_child_of_0));
+  EXPECT_EQ(4, bonecoll_find_index(&arm, bcoll_child_of_1));
+
+  /* Make sure the names remain unique within the entire Armature, and not just between siblings
+   * (i.e. a unique 'path' is not strong enough). */
+  EXPECT_EQ(std::string("wortel"), std::string(bcoll_root_0->name));
+  EXPECT_EQ(std::string("wortel.001"), std::string(bcoll_root_1->name));
+  EXPECT_EQ(std::string("koter"), std::string(bcoll_child_of_0->name));
+  EXPECT_EQ(std::string("koter.001"), std::string(bcoll_child_of_1->name));
+  EXPECT_EQ(std::string("koter.002"), std::string(bcoll_another_child_of_0->name));
+
+  /* Test the internal hierarchy bookkeeping. */
+  EXPECT_EQ(2, arm.collection_root_count);
+  EXPECT_EQ(2, bcoll_root_0->child_count);
+  EXPECT_EQ(1, bcoll_root_1->child_count);
+  EXPECT_EQ(0, bcoll_child_of_0->child_count);
+  EXPECT_EQ(0, bcoll_another_child_of_0->child_count);
+  EXPECT_EQ(0, bcoll_child_of_1->child_count);
+
+  EXPECT_EQ(2, bcoll_root_0->child_index);
+  EXPECT_EQ(4, bcoll_root_1->child_index);
+  EXPECT_EQ(0, bcoll_child_of_0->child_index);
+  EXPECT_EQ(0, bcoll_another_child_of_0->child_index);
+  EXPECT_EQ(0, bcoll_child_of_1->child_index);
+
+  /* TODO: test with deeper hierarchy. */
+}
+
+TEST_F(ANIM_armature_bone_collections, collection_hierarchy_removal)
+{
+  /* Set up a small hierarchy. */
+  BoneCollection *bcoll_root_0 = ANIM_armature_bonecoll_new(&arm, "root_0");
+  BoneCollection *bcoll_root_1 = ANIM_armature_bonecoll_new(&arm, "root_1");
+  BoneCollection *bcoll_r0_child0 = ANIM_armature_bonecoll_new(&arm, "r0_child0", 0);
+  BoneCollection *bcoll_r1_child0 = ANIM_armature_bonecoll_new(&arm, "r1_child0", 1);
+  BoneCollection *bcoll_r0_child1 = ANIM_armature_bonecoll_new(&arm, "r0_child1", 0);
+  BoneCollection *bcoll_r0_child2 = ANIM_armature_bonecoll_new(&arm, "r0_child2", 0);
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(6, arm.collection_array_num);
+  ASSERT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  ASSERT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  ASSERT_STREQ(bcoll_r0_child0->name, arm.collection_array[2]->name);
+  ASSERT_STREQ(bcoll_r0_child1->name, arm.collection_array[3]->name);
+  ASSERT_STREQ(bcoll_r0_child2->name, arm.collection_array[4]->name);
+  ASSERT_STREQ(bcoll_r1_child0->name, arm.collection_array[5]->name);
+
+  ASSERT_EQ(2, arm.collection_array[0]->child_index);
+  ASSERT_EQ(5, arm.collection_array[1]->child_index);
+  ASSERT_EQ(0, arm.collection_array[2]->child_index);
+  ASSERT_EQ(0, arm.collection_array[3]->child_index);
+  ASSERT_EQ(0, arm.collection_array[4]->child_index);
+  ASSERT_EQ(0, arm.collection_array[5]->child_index);
+
+  ASSERT_EQ(3, arm.collection_array[0]->child_count);
+  ASSERT_EQ(1, arm.collection_array[1]->child_count);
+  ASSERT_EQ(0, arm.collection_array[2]->child_count);
+  ASSERT_EQ(0, arm.collection_array[3]->child_count);
+  ASSERT_EQ(0, arm.collection_array[4]->child_count);
+  ASSERT_EQ(0, arm.collection_array[5]->child_count);
+
+  /* Remove the middle child of root_0. */
+  ANIM_armature_bonecoll_remove(&arm, bcoll_r0_child1);
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(5, arm.collection_array_num);
+  EXPECT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_r0_child0->name, arm.collection_array[2]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[3]->name);
+  EXPECT_STREQ(bcoll_r1_child0->name, arm.collection_array[4]->name);
+
+  EXPECT_EQ(2, arm.collection_array[0]->child_index);
+  EXPECT_EQ(4, arm.collection_array[1]->child_index);
+  EXPECT_EQ(0, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+  EXPECT_EQ(0, arm.collection_array[4]->child_index);
+
+  EXPECT_EQ(2, arm.collection_array[0]->child_count);
+  EXPECT_EQ(1, arm.collection_array[1]->child_count);
+  EXPECT_EQ(0, arm.collection_array[2]->child_count);
+  EXPECT_EQ(0, arm.collection_array[3]->child_count);
+  EXPECT_EQ(0, arm.collection_array[4]->child_count);
+
+  /* Remove the first child of root_0. */
+  ANIM_armature_bonecoll_remove(&arm, bcoll_r0_child0);
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(4, arm.collection_array_num);
+  EXPECT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[2]->name);
+  EXPECT_STREQ(bcoll_r1_child0->name, arm.collection_array[3]->name);
+
+  EXPECT_EQ(2, arm.collection_array[0]->child_index);
+  EXPECT_EQ(3, arm.collection_array[1]->child_index);
+  EXPECT_EQ(0, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+
+  EXPECT_EQ(1, arm.collection_array[0]->child_count);
+  EXPECT_EQ(1, arm.collection_array[1]->child_count);
+  EXPECT_EQ(0, arm.collection_array[2]->child_count);
+  EXPECT_EQ(0, arm.collection_array[3]->child_count);
+
+  /* Remove root_1 itself, which should make its only child a new root. */
+  ANIM_armature_bonecoll_remove(&arm, bcoll_root_1);
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(3, arm.collection_array_num);
+  EXPECT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_r1_child0->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[2]->name);
+
+  EXPECT_EQ(2, arm.collection_array[0]->child_index);
+  EXPECT_EQ(0, arm.collection_array[1]->child_index);
+  EXPECT_EQ(0, arm.collection_array[2]->child_index);
+
+  EXPECT_EQ(1, arm.collection_array[0]->child_count);
+  EXPECT_EQ(0, arm.collection_array[1]->child_count);
+  EXPECT_EQ(0, arm.collection_array[2]->child_count);
+}
+
+TEST_F(ANIM_armature_bone_collections,
+       collection_hierarchy_removal__more_complex_remove_inner_child)
+{
+  /* Set up a slightly bigger hierarchy. Contrary to the other tests these are
+   * actually declared in array order. */
+  BoneCollection *bcoll_root_0 = ANIM_armature_bonecoll_new(&arm, "root_0");
+  BoneCollection *bcoll_root_1 = ANIM_armature_bonecoll_new(&arm, "root_1");
+  BoneCollection *bcoll_r0_child0 = ANIM_armature_bonecoll_new(&arm, "r0_child0", 0);
+  BoneCollection *bcoll_r0_child1 = ANIM_armature_bonecoll_new(&arm, "r0_child1", 0);
+  BoneCollection *bcoll_r0_child2 = ANIM_armature_bonecoll_new(&arm, "r0_child2", 0);
+  BoneCollection *bcoll_r0c0_child0 = ANIM_armature_bonecoll_new(&arm, "r0c0_child0", 2);
+  BoneCollection *bcoll_r0c0_child1 = ANIM_armature_bonecoll_new(&arm, "r0c0_child1", 2);
+  BoneCollection *bcoll_r0c0_child2 = ANIM_armature_bonecoll_new(&arm, "r0c0_child2", 2);
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(8, arm.collection_array_num);
+  ASSERT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  ASSERT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  ASSERT_STREQ(bcoll_r0_child0->name, arm.collection_array[2]->name);
+  ASSERT_STREQ(bcoll_r0_child1->name, arm.collection_array[3]->name);
+  ASSERT_STREQ(bcoll_r0_child2->name, arm.collection_array[4]->name);
+  ASSERT_STREQ(bcoll_r0c0_child0->name, arm.collection_array[5]->name);
+  ASSERT_STREQ(bcoll_r0c0_child1->name, arm.collection_array[6]->name);
+  ASSERT_STREQ(bcoll_r0c0_child2->name, arm.collection_array[7]->name);
+
+  ASSERT_EQ(2, arm.collection_array[0]->child_index);
+  ASSERT_EQ(0, arm.collection_array[1]->child_index);
+  ASSERT_EQ(5, arm.collection_array[2]->child_index);
+  ASSERT_EQ(0, arm.collection_array[3]->child_index);
+  ASSERT_EQ(0, arm.collection_array[4]->child_index);
+  ASSERT_EQ(0, arm.collection_array[5]->child_index);
+  ASSERT_EQ(0, arm.collection_array[6]->child_index);
+  ASSERT_EQ(0, arm.collection_array[7]->child_index);
+
+  ASSERT_EQ(3, arm.collection_array[0]->child_count);
+  ASSERT_EQ(0, arm.collection_array[1]->child_count);
+  ASSERT_EQ(3, arm.collection_array[2]->child_count);
+  ASSERT_EQ(0, arm.collection_array[3]->child_count);
+  ASSERT_EQ(0, arm.collection_array[4]->child_count);
+  ASSERT_EQ(0, arm.collection_array[5]->child_count);
+  ASSERT_EQ(0, arm.collection_array[6]->child_count);
+  ASSERT_EQ(0, arm.collection_array[7]->child_count);
+
+  /* Remove bcoll_r0_child0, which should make all of its children a child of root_0. */
+  ANIM_armature_bonecoll_remove(&arm, bcoll_r0_child0);
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(7, arm.collection_array_num);
+  EXPECT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_r0_child1->name, arm.collection_array[2]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[3]->name);
+  EXPECT_STREQ(bcoll_r0c0_child0->name, arm.collection_array[4]->name);
+  EXPECT_STREQ(bcoll_r0c0_child1->name, arm.collection_array[5]->name);
+  EXPECT_STREQ(bcoll_r0c0_child2->name, arm.collection_array[6]->name);
+
+  EXPECT_EQ(2, arm.collection_array[0]->child_index);
+  EXPECT_EQ(0, arm.collection_array[1]->child_index);
+  EXPECT_EQ(0, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+  EXPECT_EQ(0, arm.collection_array[4]->child_index);
+  EXPECT_EQ(0, arm.collection_array[5]->child_index);
+  EXPECT_EQ(0, arm.collection_array[6]->child_count);
+
+  EXPECT_EQ(5, arm.collection_array[0]->child_count);
+  EXPECT_EQ(0, arm.collection_array[1]->child_count);
+  EXPECT_EQ(0, arm.collection_array[2]->child_count);
+  EXPECT_EQ(0, arm.collection_array[3]->child_count);
+  EXPECT_EQ(0, arm.collection_array[4]->child_count);
+  EXPECT_EQ(0, arm.collection_array[5]->child_count);
+  EXPECT_EQ(0, arm.collection_array[6]->child_count);
+
+  /* Remove root_0, which should make all of its children new roots. */
+  ANIM_armature_bonecoll_remove(&arm, bcoll_root_0);
+
+  ASSERT_EQ(6, arm.collection_root_count);
+  ASSERT_EQ(6, arm.collection_array_num);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_r0_child1->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[2]->name);
+  EXPECT_STREQ(bcoll_r0c0_child0->name, arm.collection_array[3]->name);
+  EXPECT_STREQ(bcoll_r0c0_child1->name, arm.collection_array[4]->name);
+  EXPECT_STREQ(bcoll_r0c0_child2->name, arm.collection_array[5]->name);
+
+  EXPECT_EQ(0, arm.collection_array[0]->child_index);
+  EXPECT_EQ(0, arm.collection_array[1]->child_index);
+  EXPECT_EQ(0, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+  EXPECT_EQ(0, arm.collection_array[4]->child_index);
+  EXPECT_EQ(0, arm.collection_array[5]->child_index);
+
+  EXPECT_EQ(0, arm.collection_array[0]->child_count);
+  EXPECT_EQ(0, arm.collection_array[1]->child_count);
+  EXPECT_EQ(0, arm.collection_array[2]->child_count);
+  EXPECT_EQ(0, arm.collection_array[3]->child_count);
+  EXPECT_EQ(0, arm.collection_array[4]->child_count);
+  EXPECT_EQ(0, arm.collection_array[5]->child_count);
+}
+
+TEST_F(ANIM_armature_bone_collections, collection_hierarchy_removal__more_complex_remove_root)
+{
+  /* Set up a slightly bigger hierarchy. Contrary to the other tests these are
+   * actually declared in array order. */
+  BoneCollection *bcoll_root_0 = ANIM_armature_bonecoll_new(&arm, "root_0");
+  BoneCollection *bcoll_root_1 = ANIM_armature_bonecoll_new(&arm, "root_1");
+  BoneCollection *bcoll_r0_child0 = ANIM_armature_bonecoll_new(&arm, "r0_child0", 0);
+  BoneCollection *bcoll_r0_child1 = ANIM_armature_bonecoll_new(&arm, "r0_child1", 0);
+  BoneCollection *bcoll_r0_child2 = ANIM_armature_bonecoll_new(&arm, "r0_child2", 0);
+  BoneCollection *bcoll_r0c0_child0 = ANIM_armature_bonecoll_new(&arm, "r0c0_child0", 2);
+  BoneCollection *bcoll_r0c0_child1 = ANIM_armature_bonecoll_new(&arm, "r0c0_child1", 2);
+  BoneCollection *bcoll_r0c0_child2 = ANIM_armature_bonecoll_new(&arm, "r0c0_child2", 2);
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(8, arm.collection_array_num);
+  ASSERT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  ASSERT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  ASSERT_STREQ(bcoll_r0_child0->name, arm.collection_array[2]->name);
+  ASSERT_STREQ(bcoll_r0_child1->name, arm.collection_array[3]->name);
+  ASSERT_STREQ(bcoll_r0_child2->name, arm.collection_array[4]->name);
+  ASSERT_STREQ(bcoll_r0c0_child0->name, arm.collection_array[5]->name);
+  ASSERT_STREQ(bcoll_r0c0_child1->name, arm.collection_array[6]->name);
+  ASSERT_STREQ(bcoll_r0c0_child2->name, arm.collection_array[7]->name);
+
+  ASSERT_EQ(2, arm.collection_array[0]->child_index);
+  ASSERT_EQ(0, arm.collection_array[1]->child_index);
+  ASSERT_EQ(5, arm.collection_array[2]->child_index);
+  ASSERT_EQ(0, arm.collection_array[3]->child_index);
+  ASSERT_EQ(0, arm.collection_array[4]->child_index);
+  ASSERT_EQ(0, arm.collection_array[5]->child_index);
+  ASSERT_EQ(0, arm.collection_array[6]->child_index);
+  ASSERT_EQ(0, arm.collection_array[7]->child_index);
+
+  ASSERT_EQ(3, arm.collection_array[0]->child_count);
+  ASSERT_EQ(0, arm.collection_array[1]->child_count);
+  ASSERT_EQ(3, arm.collection_array[2]->child_count);
+  ASSERT_EQ(0, arm.collection_array[3]->child_count);
+  ASSERT_EQ(0, arm.collection_array[4]->child_count);
+  ASSERT_EQ(0, arm.collection_array[5]->child_count);
+  ASSERT_EQ(0, arm.collection_array[6]->child_count);
+  ASSERT_EQ(0, arm.collection_array[7]->child_count);
+
+  /* Remove root_0, which should make all of its children new roots. */
+  ANIM_armature_bonecoll_remove(&arm, bcoll_root_0);
+
+  ASSERT_EQ(4, arm.collection_root_count);
+  ASSERT_EQ(7, arm.collection_array_num);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_r0_child0->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_r0_child1->name, arm.collection_array[2]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[3]->name);
+  EXPECT_STREQ(bcoll_r0c0_child0->name, arm.collection_array[4]->name);
+  EXPECT_STREQ(bcoll_r0c0_child1->name, arm.collection_array[5]->name);
+  EXPECT_STREQ(bcoll_r0c0_child2->name, arm.collection_array[6]->name);
+
+  EXPECT_EQ(0, arm.collection_array[0]->child_index);
+  EXPECT_EQ(4, arm.collection_array[1]->child_index);
+  EXPECT_EQ(0, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+  EXPECT_EQ(0, arm.collection_array[4]->child_index);
+  EXPECT_EQ(0, arm.collection_array[5]->child_index);
+  EXPECT_EQ(0, arm.collection_array[6]->child_count);
+
+  EXPECT_EQ(0, arm.collection_array[0]->child_count);
+  EXPECT_EQ(3, arm.collection_array[1]->child_count);
+  EXPECT_EQ(0, arm.collection_array[2]->child_count);
+  EXPECT_EQ(0, arm.collection_array[3]->child_count);
+  EXPECT_EQ(0, arm.collection_array[4]->child_count);
+  EXPECT_EQ(0, arm.collection_array[5]->child_count);
+  EXPECT_EQ(0, arm.collection_array[6]->child_count);
+}
+
+TEST_F(ANIM_armature_bone_collections, find_parent_index)
+{
+  /* Set up a small hierarchy. */
+  BoneCollection *bcoll_root_0 = ANIM_armature_bonecoll_new(&arm, "root_0");
+  BoneCollection *bcoll_root_1 = ANIM_armature_bonecoll_new(&arm, "root_1");
+  BoneCollection *bcoll_r0_child0 = ANIM_armature_bonecoll_new(&arm, "r0_child0", 0);
+  BoneCollection *bcoll_r1_child0 = ANIM_armature_bonecoll_new(&arm, "r1_child0", 1);
+  BoneCollection *bcoll_r0_child1 = ANIM_armature_bonecoll_new(&arm, "r0_child1", 0);
+  BoneCollection *bcoll_r0c0_child0 = ANIM_armature_bonecoll_new(&arm, "r0c0_child0", 2);
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(6, arm.collection_array_num);
+  ASSERT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  ASSERT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  ASSERT_STREQ(bcoll_r0_child0->name, arm.collection_array[2]->name);
+  ASSERT_STREQ(bcoll_r0_child1->name, arm.collection_array[3]->name);
+  ASSERT_STREQ(bcoll_r1_child0->name, arm.collection_array[4]->name);
+  ASSERT_STREQ(bcoll_r0c0_child0->name, arm.collection_array[5]->name);
+
+  ASSERT_EQ(2, arm.collection_array[0]->child_index);
+  ASSERT_EQ(4, arm.collection_array[1]->child_index);
+  ASSERT_EQ(5, arm.collection_array[2]->child_index);
+  ASSERT_EQ(0, arm.collection_array[3]->child_index);
+  ASSERT_EQ(0, arm.collection_array[4]->child_index);
+  ASSERT_EQ(0, arm.collection_array[5]->child_index);
+
+  ASSERT_EQ(2, arm.collection_array[0]->child_count);
+  ASSERT_EQ(1, arm.collection_array[1]->child_count);
+  ASSERT_EQ(1, arm.collection_array[2]->child_count);
+  ASSERT_EQ(0, arm.collection_array[3]->child_count);
+  ASSERT_EQ(0, arm.collection_array[4]->child_count);
+  ASSERT_EQ(0, arm.collection_array[5]->child_count);
+
+  EXPECT_EQ(-1, armature_bonecoll_find_parent_index(&arm, -1));
+  EXPECT_EQ(-1, armature_bonecoll_find_parent_index(&arm, 500000));
+
+  EXPECT_EQ(-1, armature_bonecoll_find_parent_index(&arm, 0));
+  EXPECT_EQ(-1, armature_bonecoll_find_parent_index(&arm, 1));
+  EXPECT_EQ(0, armature_bonecoll_find_parent_index(&arm, 2));
+  EXPECT_EQ(0, armature_bonecoll_find_parent_index(&arm, 3));
+  EXPECT_EQ(1, armature_bonecoll_find_parent_index(&arm, 4));
+  EXPECT_EQ(2, armature_bonecoll_find_parent_index(&arm, 5));
 }
 
 TEST_F(ANIM_armature_bone_collections, bones_assign_unassign)
@@ -259,6 +630,298 @@ TEST_F(ANIM_armature_bone_collections, bcoll_move_to_index)
   EXPECT_EQ(arm.collection_array[1], bcoll2);
   EXPECT_EQ(arm.collection_array[2], bcoll4);
   EXPECT_EQ(arm.collection_array[3], bcoll1);
+}
+
+TEST_F(ANIM_armature_bone_collections, bcoll_move_to_parent)
+{
+  /* Set up a small hierarchy. */
+  BoneCollection *bcoll_root_0 = ANIM_armature_bonecoll_new(&arm, "root_0");
+  BoneCollection *bcoll_root_1 = ANIM_armature_bonecoll_new(&arm, "root_1");
+  BoneCollection *bcoll_r0_child0 = ANIM_armature_bonecoll_new(&arm, "r0_child0", 0);
+  BoneCollection *bcoll_r1_child0 = ANIM_armature_bonecoll_new(&arm, "r1_child0", 1);
+  BoneCollection *bcoll_r0_child1 = ANIM_armature_bonecoll_new(&arm, "r0_child1", 0);
+  BoneCollection *bcoll_r0_child2 = ANIM_armature_bonecoll_new(&arm, "r0_child2", 0);
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(6, arm.collection_array_num);
+  ASSERT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  ASSERT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  ASSERT_STREQ(bcoll_r0_child0->name, arm.collection_array[2]->name);
+  ASSERT_STREQ(bcoll_r0_child1->name, arm.collection_array[3]->name);
+  ASSERT_STREQ(bcoll_r0_child2->name, arm.collection_array[4]->name);
+  ASSERT_STREQ(bcoll_r1_child0->name, arm.collection_array[5]->name);
+
+  ASSERT_EQ(2, arm.collection_array[0]->child_index);
+  ASSERT_EQ(5, arm.collection_array[1]->child_index);
+  ASSERT_EQ(0, arm.collection_array[2]->child_index);
+  ASSERT_EQ(0, arm.collection_array[3]->child_index);
+  ASSERT_EQ(0, arm.collection_array[4]->child_index);
+  ASSERT_EQ(0, arm.collection_array[5]->child_index);
+
+  ASSERT_EQ(3, arm.collection_array[0]->child_count);
+  ASSERT_EQ(1, arm.collection_array[1]->child_count);
+  ASSERT_EQ(0, arm.collection_array[2]->child_count);
+  ASSERT_EQ(0, arm.collection_array[3]->child_count);
+  ASSERT_EQ(0, arm.collection_array[4]->child_count);
+  ASSERT_EQ(0, arm.collection_array[5]->child_count);
+
+  /* Move the middle child of root_0 to root_1. */
+  EXPECT_EQ(5, armature_bonecoll_move_to_parent(&arm, 3, 0, 1));
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(6, arm.collection_array_num);
+  EXPECT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_r0_child0->name, arm.collection_array[2]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[3]->name);
+  EXPECT_STREQ(bcoll_r1_child0->name, arm.collection_array[4]->name);
+  EXPECT_STREQ(bcoll_r0_child1->name, arm.collection_array[5]->name);
+
+  EXPECT_EQ(2, arm.collection_array[0]->child_index);
+  EXPECT_EQ(4, arm.collection_array[1]->child_index);
+  EXPECT_EQ(0, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+  EXPECT_EQ(0, arm.collection_array[4]->child_index);
+  EXPECT_EQ(0, arm.collection_array[5]->child_index);
+
+  EXPECT_EQ(2, arm.collection_array[0]->child_count);
+  EXPECT_EQ(2, arm.collection_array[1]->child_count);
+  EXPECT_EQ(0, arm.collection_array[2]->child_count);
+  EXPECT_EQ(0, arm.collection_array[3]->child_count);
+  EXPECT_EQ(0, arm.collection_array[4]->child_count);
+  EXPECT_EQ(0, arm.collection_array[5]->child_count);
+
+  /* Move the first child of root_1 to root_0. This shouldn't change its index. */
+  EXPECT_EQ(4, armature_bonecoll_move_to_parent(&arm, 4, 1, 0));
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(6, arm.collection_array_num);
+  EXPECT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_r0_child0->name, arm.collection_array[2]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[3]->name);
+  EXPECT_STREQ(bcoll_r1_child0->name, arm.collection_array[4]->name);
+  EXPECT_STREQ(bcoll_r0_child1->name, arm.collection_array[5]->name);
+
+  EXPECT_EQ(2, arm.collection_array[0]->child_index);
+  EXPECT_EQ(5, arm.collection_array[1]->child_index);
+  EXPECT_EQ(0, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+  EXPECT_EQ(0, arm.collection_array[4]->child_index);
+  EXPECT_EQ(0, arm.collection_array[5]->child_index);
+
+  EXPECT_EQ(3, arm.collection_array[0]->child_count);
+  EXPECT_EQ(1, arm.collection_array[1]->child_count);
+  EXPECT_EQ(0, arm.collection_array[2]->child_count);
+  EXPECT_EQ(0, arm.collection_array[3]->child_count);
+  EXPECT_EQ(0, arm.collection_array[4]->child_count);
+  EXPECT_EQ(0, arm.collection_array[5]->child_count);
+
+  /* Move the final child of root_1 to root_0. This shouldn't change its index
+   * again, but leave root_1 without children. */
+  EXPECT_EQ(5, armature_bonecoll_move_to_parent(&arm, 5, 1, 0));
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(6, arm.collection_array_num);
+  EXPECT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_r0_child0->name, arm.collection_array[2]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[3]->name);
+  EXPECT_STREQ(bcoll_r1_child0->name, arm.collection_array[4]->name);
+  EXPECT_STREQ(bcoll_r0_child1->name, arm.collection_array[5]->name);
+
+  EXPECT_EQ(2, arm.collection_array[0]->child_index);
+  EXPECT_EQ(0, arm.collection_array[1]->child_index);
+  EXPECT_EQ(0, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+  EXPECT_EQ(0, arm.collection_array[4]->child_index);
+  EXPECT_EQ(0, arm.collection_array[5]->child_index);
+
+  EXPECT_EQ(4, arm.collection_array[0]->child_count);
+  EXPECT_EQ(0, arm.collection_array[1]->child_count);
+  EXPECT_EQ(0, arm.collection_array[2]->child_count);
+  EXPECT_EQ(0, arm.collection_array[3]->child_count);
+  EXPECT_EQ(0, arm.collection_array[4]->child_count);
+  EXPECT_EQ(0, arm.collection_array[5]->child_count);
+
+  /* Move the first child of root_0 (bcoll_r0_child0) to bcoll_r0_child2. */
+  EXPECT_EQ(5, armature_bonecoll_move_to_parent(&arm, 2, 0, 3));
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(6, arm.collection_array_num);
+  EXPECT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[2]->name);
+  EXPECT_STREQ(bcoll_r1_child0->name, arm.collection_array[3]->name);
+  EXPECT_STREQ(bcoll_r0_child1->name, arm.collection_array[4]->name);
+  EXPECT_STREQ(bcoll_r0_child0->name, arm.collection_array[5]->name);
+
+  EXPECT_EQ(2, arm.collection_array[0]->child_index);
+  EXPECT_EQ(0, arm.collection_array[1]->child_index);
+  EXPECT_EQ(5, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+  EXPECT_EQ(0, arm.collection_array[4]->child_index);
+  EXPECT_EQ(0, arm.collection_array[5]->child_index);
+
+  EXPECT_EQ(3, arm.collection_array[0]->child_count);
+  EXPECT_EQ(0, arm.collection_array[1]->child_count);
+  EXPECT_EQ(1, arm.collection_array[2]->child_count);
+  EXPECT_EQ(0, arm.collection_array[3]->child_count);
+  EXPECT_EQ(0, arm.collection_array[4]->child_count);
+  EXPECT_EQ(0, arm.collection_array[5]->child_count);
+}
+
+TEST_F(ANIM_armature_bone_collections, bcoll_move_to_parent__root_unroot)
+{
+  /* Set up a small hierarchy. */
+  BoneCollection *bcoll_root_0 = ANIM_armature_bonecoll_new(&arm, "root_0");
+  BoneCollection *bcoll_root_1 = ANIM_armature_bonecoll_new(&arm, "root_1");
+  BoneCollection *bcoll_r0_child0 = ANIM_armature_bonecoll_new(&arm, "r0_child0", 0);
+  BoneCollection *bcoll_r1_child0 = ANIM_armature_bonecoll_new(&arm, "r1_child0", 1);
+  BoneCollection *bcoll_r0_child1 = ANIM_armature_bonecoll_new(&arm, "r0_child1", 0);
+  BoneCollection *bcoll_r0_child2 = ANIM_armature_bonecoll_new(&arm, "r0_child2", 0);
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(6, arm.collection_array_num);
+  ASSERT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  ASSERT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  ASSERT_STREQ(bcoll_r0_child0->name, arm.collection_array[2]->name);
+  ASSERT_STREQ(bcoll_r0_child1->name, arm.collection_array[3]->name);
+  ASSERT_STREQ(bcoll_r0_child2->name, arm.collection_array[4]->name);
+  ASSERT_STREQ(bcoll_r1_child0->name, arm.collection_array[5]->name);
+
+  ASSERT_EQ(2, arm.collection_array[0]->child_index);
+  ASSERT_EQ(5, arm.collection_array[1]->child_index);
+  ASSERT_EQ(0, arm.collection_array[2]->child_index);
+  ASSERT_EQ(0, arm.collection_array[3]->child_index);
+  ASSERT_EQ(0, arm.collection_array[4]->child_index);
+  ASSERT_EQ(0, arm.collection_array[5]->child_index);
+
+  ASSERT_EQ(3, arm.collection_array[0]->child_count);
+  ASSERT_EQ(1, arm.collection_array[1]->child_count);
+  ASSERT_EQ(0, arm.collection_array[2]->child_count);
+  ASSERT_EQ(0, arm.collection_array[3]->child_count);
+  ASSERT_EQ(0, arm.collection_array[4]->child_count);
+  ASSERT_EQ(0, arm.collection_array[5]->child_count);
+
+  /* Make a leaf node (bcoll_r0_child1) a root. */
+  EXPECT_EQ(2, armature_bonecoll_move_to_parent(&arm, 3, 0, -1));
+
+  ASSERT_EQ(3, arm.collection_root_count);
+  ASSERT_EQ(6, arm.collection_array_num);
+  EXPECT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_r0_child1->name, arm.collection_array[2]->name);  // Became a root.
+  EXPECT_STREQ(bcoll_r0_child0->name, arm.collection_array[3]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[4]->name);
+  EXPECT_STREQ(bcoll_r1_child0->name, arm.collection_array[5]->name);
+
+  EXPECT_EQ(3, arm.collection_array[0]->child_index);
+  EXPECT_EQ(5, arm.collection_array[1]->child_index);
+  EXPECT_EQ(0, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+  EXPECT_EQ(0, arm.collection_array[4]->child_index);
+  EXPECT_EQ(0, arm.collection_array[5]->child_index);
+
+  EXPECT_EQ(2, arm.collection_array[0]->child_count);
+  EXPECT_EQ(1, arm.collection_array[1]->child_count);
+  EXPECT_EQ(0, arm.collection_array[2]->child_count);
+  EXPECT_EQ(0, arm.collection_array[3]->child_count);
+  EXPECT_EQ(0, arm.collection_array[4]->child_count);
+  EXPECT_EQ(0, arm.collection_array[5]->child_count);
+
+  /* Make a root node (root_1) a child of root_0. */
+  EXPECT_EQ(4, armature_bonecoll_move_to_parent(&arm, 1, -1, 0));
+
+  ASSERT_EQ(2, arm.collection_root_count);
+  ASSERT_EQ(6, arm.collection_array_num);
+  EXPECT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_r0_child1->name, arm.collection_array[1]->name);  // Actually a root.
+  EXPECT_STREQ(bcoll_r0_child0->name, arm.collection_array[2]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[3]->name);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[4]->name);  // Became a child.
+  EXPECT_STREQ(bcoll_r1_child0->name, arm.collection_array[5]->name);
+
+  EXPECT_EQ(2, arm.collection_array[0]->child_index);
+  EXPECT_EQ(0, arm.collection_array[1]->child_index);
+  EXPECT_EQ(0, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+  EXPECT_EQ(5, arm.collection_array[4]->child_index);
+  EXPECT_EQ(0, arm.collection_array[5]->child_index);
+
+  EXPECT_EQ(3, arm.collection_array[0]->child_count);
+  EXPECT_EQ(0, arm.collection_array[1]->child_count);
+  EXPECT_EQ(0, arm.collection_array[2]->child_count);
+  EXPECT_EQ(0, arm.collection_array[3]->child_count);
+  EXPECT_EQ(1, arm.collection_array[4]->child_count);
+  EXPECT_EQ(0, arm.collection_array[5]->child_count);
+
+  // TODO: test with circular parenthood.
+}
+
+TEST_F(ANIM_armature_bone_collections, internal__bonecolls_rotate_block)
+{
+  /* Set up a small hierarchy. */
+  BoneCollection *bcoll_root_0 = ANIM_armature_bonecoll_new(&arm, "root_0");
+  BoneCollection *bcoll_root_1 = ANIM_armature_bonecoll_new(&arm, "root_1");
+  BoneCollection *bcoll_r0_child0 = ANIM_armature_bonecoll_new(&arm, "r0_child0", 0);
+  BoneCollection *bcoll_r1_child0 = ANIM_armature_bonecoll_new(&arm, "r1_child0", 1);
+  BoneCollection *bcoll_r0_child1 = ANIM_armature_bonecoll_new(&arm, "r0_child1", 0);
+  BoneCollection *bcoll_r0_child2 = ANIM_armature_bonecoll_new(&arm, "r0_child2", 0);
+
+  /* The tests below compare the collection names, instead of their pointers, so
+   * that we get human-readable messages on failure. */
+
+  /* Unnecessary assertions, just to make it easier to understand in which order
+   * the array starts out. */
+  ASSERT_EQ(6, arm.collection_array_num);
+  ASSERT_STREQ(bcoll_root_0->name, arm.collection_array[0]->name);
+  ASSERT_STREQ(bcoll_root_1->name, arm.collection_array[1]->name);
+  ASSERT_STREQ(bcoll_r0_child0->name, arm.collection_array[2]->name);
+  ASSERT_STREQ(bcoll_r0_child1->name, arm.collection_array[3]->name);
+  ASSERT_STREQ(bcoll_r0_child2->name, arm.collection_array[4]->name);
+  ASSERT_STREQ(bcoll_r1_child0->name, arm.collection_array[5]->name);
+
+  ASSERT_EQ(2, arm.collection_array[0]->child_index);
+  ASSERT_EQ(5, arm.collection_array[1]->child_index);
+  ASSERT_EQ(0, arm.collection_array[2]->child_index);
+  ASSERT_EQ(0, arm.collection_array[3]->child_index);
+  ASSERT_EQ(0, arm.collection_array[4]->child_index);
+  ASSERT_EQ(0, arm.collection_array[5]->child_index);
+
+  /* Move [0,1,2] to [1,2,3]. */
+  internal::bonecolls_rotate_block(&arm, 0, 3, 1);
+  ASSERT_EQ(6, arm.collection_array_num) << "array size should not change";
+  EXPECT_STREQ(bcoll_r0_child1->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_root_0->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[2]->name);
+  EXPECT_STREQ(bcoll_r0_child0->name, arm.collection_array[3]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[4]->name);
+  EXPECT_STREQ(bcoll_r1_child0->name, arm.collection_array[5]->name);
+
+  EXPECT_EQ(0, arm.collection_array[0]->child_index);
+  EXPECT_EQ(3, arm.collection_array[1]->child_index);
+  EXPECT_EQ(5, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+  EXPECT_EQ(0, arm.collection_array[4]->child_index);
+  EXPECT_EQ(0, arm.collection_array[5]->child_index);
+
+  /* Move [4,5] to [3,4]. */
+  internal::bonecolls_rotate_block(&arm, 4, 2, -1);
+  ASSERT_EQ(6, arm.collection_array_num) << "array size should not change";
+  EXPECT_STREQ(bcoll_r0_child1->name, arm.collection_array[0]->name);
+  EXPECT_STREQ(bcoll_root_0->name, arm.collection_array[1]->name);
+  EXPECT_STREQ(bcoll_root_1->name, arm.collection_array[2]->name);
+  EXPECT_STREQ(bcoll_r0_child2->name, arm.collection_array[3]->name);
+  EXPECT_STREQ(bcoll_r1_child0->name, arm.collection_array[4]->name);
+  EXPECT_STREQ(bcoll_r0_child0->name, arm.collection_array[5]->name);
+
+  EXPECT_EQ(0, arm.collection_array[0]->child_index);
+  EXPECT_EQ(3, arm.collection_array[1]->child_index);
+  EXPECT_EQ(4, arm.collection_array[2]->child_index);
+  EXPECT_EQ(0, arm.collection_array[3]->child_index);
+  EXPECT_EQ(0, arm.collection_array[4]->child_index);
+  EXPECT_EQ(0, arm.collection_array[5]->child_index);
 }
 
 }  // namespace blender::animrig::tests
