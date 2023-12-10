@@ -44,6 +44,12 @@ void looptris_calc_with_normals(Span<float3> vert_positions,
 
 void looptris_calc_face_indices(OffsetIndices<int> faces, MutableSpan<int> looptri_faces);
 
+/** Return the triangle's three edge indices they are real edges, otherwise -1. */
+int3 looptri_get_real_edges(Span<int2> edges,
+                            Span<int> corner_verts,
+                            Span<int> corner_edges,
+                            const MLoopTri &tri);
+
 /** Calculate the average position of the vertices in the face. */
 float3 face_center_calc(Span<float3> vert_positions, Span<int> face_verts);
 
@@ -290,6 +296,18 @@ void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals);
 
 /** Set mesh vertex normals to known-correct values, avoiding future lazy computation. */
 void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals);
+
+/** Make edge and face visibility consistent with vertices. */
+void mesh_hide_vert_flush(Mesh &mesh);
+/** Make vertex and edge visibility consistent with faces. */
+void mesh_hide_face_flush(Mesh &mesh);
+
+/** Make edge and face visibility consistent with vertices. */
+void mesh_select_vert_flush(Mesh &mesh);
+/** Make vertex and face visibility consistent with edges. */
+void mesh_select_edge_flush(Mesh &mesh);
+/** Make vertex and edge visibility consistent with faces. */
+void mesh_select_face_flush(Mesh &mesh);
 
 }  // namespace blender::bke
 

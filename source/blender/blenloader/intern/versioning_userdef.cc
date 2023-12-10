@@ -31,7 +31,7 @@
 #include "BKE_colorband.h"
 #include "BKE_idprop.h"
 #include "BKE_keyconfig.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_preferences.h"
 
 #include "BLO_readfile.h"
@@ -142,7 +142,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
 
   /**
    * Versioning code until next subversion bump goes here.
-   *git
+   *
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_userdef in this file.
    * - "versioning_{BLENDER_VERSION}.c"
@@ -905,6 +905,12 @@ void blo_do_versions_userdef(UserDef *userdef)
     }
   }
 
+  if (!USER_VERSION_ATLEAST(401, 9)) {
+    userdef->key_insert_channels = (USER_ANIM_KEY_CHANNEL_LOCATION |
+                                    USER_ANIM_KEY_CHANNEL_ROTATION | USER_ANIM_KEY_CHANNEL_SCALE |
+                                    USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES);
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -916,10 +922,6 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
-    userdef->key_insert_channels = (USER_ANIM_KEY_CHANNEL_LOCATION |
-                                    USER_ANIM_KEY_CHANNEL_ROTATION | USER_ANIM_KEY_CHANNEL_SCALE |
-                                    USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES);
-
     userdef->sequencer_editor_flag |= USER_SEQ_ED_SIMPLE_TWEAKING;
   }
 

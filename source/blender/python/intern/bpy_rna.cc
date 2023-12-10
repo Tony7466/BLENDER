@@ -54,7 +54,7 @@
 #include "BKE_global.h" /* evil G.* */
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
 /* Only for types. */
@@ -8829,7 +8829,7 @@ void pyrna_alloc_types()
    * But keep running in debug mode so we get immediate notification of bad class hierarchy
    * or any errors in "bpy_types.py" at load time, so errors don't go unnoticed. */
 
-#ifdef DEBUG
+#ifndef NDEBUG
   PyGILState_STATE gilstate;
 
   PropertyRNA *prop;
@@ -8855,7 +8855,7 @@ void pyrna_alloc_types()
   RNA_PROP_END;
 
   PyGILState_Release(gilstate);
-#endif /* DEBUG */
+#endif /* !NDEBUG */
 }
 
 void pyrna_free_types()
@@ -8900,7 +8900,8 @@ PyDoc_STRVAR(pyrna_register_class_doc,
              "      :class:`bpy.types.Panel`, :class:`bpy.types.UIList`,\n"
              "      :class:`bpy.types.Menu`, :class:`bpy.types.Header`,\n"
              "      :class:`bpy.types.Operator`, :class:`bpy.types.KeyingSetInfo`,\n"
-             "      :class:`bpy.types.RenderEngine`, :class:`bpy.types.AssetShelf`\n"
+             "      :class:`bpy.types.RenderEngine`, :class:`bpy.types.AssetShelf`,\n"
+             "      :class:`bpy.types.FileHandler`\n"
              "   :type cls: class\n"
              "   :raises ValueError:\n"
              "      if the class is not a subclass of a registerable blender class.\n"

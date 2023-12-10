@@ -26,7 +26,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
 #include "BLT_translation.h"
@@ -110,7 +110,7 @@ enum eWalkDirectionFlag {
   WALK_BIT_GLOBAL_UP = 1 << 6,
   WALK_BIT_GLOBAL_DOWN = 1 << 7,
 };
-ENUM_OPERATORS(eWalkDirectionFlag, WALK_BIT_LOCAL_DOWN)
+ENUM_OPERATORS(eWalkDirectionFlag, WALK_BIT_GLOBAL_DOWN)
 
 enum eWalkTeleportState {
   WALK_TELEPORT_STATE_OFF = 0,
