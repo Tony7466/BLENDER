@@ -114,7 +114,7 @@ class PaintOperation : public GreasePencilStrokeOperation {
   Vector<float2> screen_space_smoothed_coords_;
   /* The start index of the smoothing window. */
   int active_smooth_start_index_ = 0;
-  blender::float4x2 texture_space_ = float4x2::identity();
+  float3x3 texture_points_;
 
   /* Helper class to project screen space coordinates to 3d. */
   ed::greasepencil::DrawingPlacement placement_;
@@ -143,7 +143,7 @@ struct PaintOperationExecutor {
 
   BrushGpencilSettings *settings_;
   float4 vertex_color_;
-  blender::float4x2 texture_space_;
+  blender::float3x3 texture_points_;
 
   bke::greasepencil::Drawing *drawing_;
 
@@ -172,8 +172,9 @@ struct PaintOperationExecutor {
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
 
     /* TODO: Align with the view or drawing plane. */
-    texture_space_ = math::transpose(
-        float2x4(float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f)));
+    /* Default is the front draw plane. */
+    texture_points_ = float3x3(
+        float3(1.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 1.0f), float3(0.0f, 0.0f, 0.0f));
 
     BLI_assert(grease_pencil->has_active_layer());
     drawing_ = grease_pencil->get_editable_drawing_at(grease_pencil->get_active_layer(),
@@ -214,7 +215,7 @@ struct PaintOperationExecutor {
     const float start_opacity = this->opacity_from_input_sample(start_sample);
     const ColorGeometry4f start_vertex_color = ColorGeometry4f(vertex_color_);
 
-    self.texture_space_ = texture_space_;
+    self.texture_points_ = texture_points_;
 
     self.screen_space_coords_orig_.append(start_coords);
     self.screen_space_curve_fitted_coords_.append(Vector<float2>({start_coords}));
@@ -425,7 +426,13 @@ struct PaintOperationExecutor {
     }
 
     /* Initialize the rest of the attributes with default values. */
-    Set<std::string> attributes_to_skip{{"position", "radius", "opacity", "vertex_color"}};
+    Set<std::string> attributes_to_skip{{"position",
+                                         "radius",
+                                         "opacity",
+                                         "vertex_color",
+                                         "texture_u",
+                                         "texture_v",
+                                         "texture_origin"}};
     attributes.for_all([&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
       if (attributes_to_skip.contains(id.name()) || meta_data.domain != ATTR_DOMAIN_POINT) {
         return true;
@@ -438,7 +445,7 @@ struct PaintOperationExecutor {
       return true;
     });
 
-    set_texture_matrix(curves, curves.curves_num() - 1, texture_space_);
+    set_texture_points(curves, curves.curves_num() - 1, texture_points_);
   }
 
   void execute(PaintOperation &self, const bContext &C, const InputSample &extension_sample)
@@ -571,7 +578,7 @@ void PaintOperation::process_stroke_end(bke::greasepencil::Drawing &drawing)
     curves.offsets_for_write().last() = curves.points_num();
   }
 
-  set_texture_matrix(curves, curves.curves_num() - 1, this->texture_space_);
+  set_texture_points(curves, curves.curves_num() - 1, this->texture_points_);
 }
 
 void PaintOperation::on_stroke_done(const bContext &C)

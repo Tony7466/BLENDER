@@ -604,9 +604,6 @@ struct EraseOperationExecutor {
       });
     }
 
-    /* Copy fill texture space. */
-    transfer_texture_matrics(src, dst, dst_to_src_curve.as_span());
-
     return dst_transfer_data;
   }
 

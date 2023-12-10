@@ -29,7 +29,6 @@
 #include "BKE_curves_utils.hh"
 #include "BKE_customdata.hh"
 #include "BKE_deform.h"
-#include "BKE_grease_pencil.hh"
 
 namespace blender::bke {
 
@@ -1179,11 +1178,6 @@ CurvesGeometry curves_copy_point_selection(
                           curves_to_copy,
                           dst_curves.attributes_for_write());
       });
-
-  /* Copy fill texture space (only for grease pencil). */
-  if (curves.attributes().contains("fill_matrixA")) {
-    transfer_texture_matrics(curves, dst_curves, curves_to_copy);
-  }
 
   if (dst_curves.curves_num() == curves.curves_num()) {
     dst_curves.runtime->type_counts = curves.runtime->type_counts;
