@@ -232,12 +232,11 @@ class GHOST_DeviceVK {
     device_features.logicOp = VK_TRUE;
     device_features.imageCubeArray = VK_TRUE;
     device_features.multiViewport = VK_TRUE;
-    device_features.shaderClipDistance = VK_TRUE;
 #endif
     device_features.drawIndirectFirstInstance = VK_TRUE;
     device_features.fragmentStoresAndAtomics = VK_TRUE;
     device_features.samplerAnisotropy = features.features.samplerAnisotropy;
-    device_features.shaderClipDistance = VK_TRUE;
+    device_features.shaderClipDistance = features.features.shaderClipDistance;
     VkDeviceCreateInfo device_create_info = {};
     device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     device_create_info.queueCreateInfoCount = uint32_t(queue_create_infos.size());

@@ -107,40 +107,41 @@ void VKCommandBuffers::init_command_buffers(const VKDevice &device)
 void VKCommandBuffers::submit_command_buffers(VKDevice &device,
                                               MutableSpan<VKCommandBuffer *> command_buffers)
 {
-  VKTimelineSemaphore &timeline_semaphore = device.timeline_semaphore_get();
-  VkSemaphore timeline_handle = timeline_semaphore.vk_handle();
-  VKTimelineSemaphore::Value wait_value = timeline_semaphore.value_get();
-  last_signal_value_ = timeline_semaphore.value_increase();
-
-  BLI_assert(ELEM(command_buffers.size(), 1, 2));
-  VkCommandBuffer handles[2];
-  int num_command_buffers = 0;
-
-  for (VKCommandBuffer *command_buffer : command_buffers) {
-    command_buffer->end_recording();
-    handles[num_command_buffers++] = command_buffer->vk_command_buffer();
-  }
-
-  VkTimelineSemaphoreSubmitInfo timelineInfo;
-  timelineInfo.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-  timelineInfo.pNext = nullptr;
-  timelineInfo.waitSemaphoreValueCount = 1;
-  timelineInfo.pWaitSemaphoreValues = wait_value;
-  timelineInfo.signalSemaphoreValueCount = 1;
-  timelineInfo.pSignalSemaphoreValues = last_signal_value_;
-  VkPipelineStageFlags wait_stages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-  VkSubmitInfo submit_info = {};
-  submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submit_info.commandBufferCount = num_command_buffers;
-  submit_info.pCommandBuffers = handles;
-  submit_info.pNext = &timelineInfo;
-  submit_info.waitSemaphoreCount = 1;
-  submit_info.pWaitSemaphores = &timeline_handle;
-  submit_info.pWaitDstStageMask = &wait_stages;
-  submit_info.signalSemaphoreCount = 1;
-  submit_info.pSignalSemaphores = &timeline_handle;
   {
     std::scoped_lock submit_lock(mutex_submit_global);
+    VKTimelineSemaphore &timeline_semaphore = device.timeline_semaphore_get();
+    VkSemaphore timeline_handle = timeline_semaphore.vk_handle();
+    VKTimelineSemaphore::Value wait_value = timeline_semaphore.value_get();
+    last_signal_value_ = timeline_semaphore.value_increase();
+
+    BLI_assert(ELEM(command_buffers.size(), 1, 2));
+    VkCommandBuffer handles[2];
+    int num_command_buffers = 0;
+
+    for (VKCommandBuffer *command_buffer : command_buffers) {
+      command_buffer->end_recording();
+      handles[num_command_buffers++] = command_buffer->vk_command_buffer();
+    }
+
+    VkTimelineSemaphoreSubmitInfo timelineInfo;
+    timelineInfo.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+    timelineInfo.pNext = nullptr;
+    timelineInfo.waitSemaphoreValueCount = 1;
+    timelineInfo.pWaitSemaphoreValues = wait_value;
+    timelineInfo.signalSemaphoreValueCount = 1;
+    timelineInfo.pSignalSemaphoreValues = last_signal_value_;
+    VkPipelineStageFlags wait_stages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    VkSubmitInfo submit_info = {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = num_command_buffers;
+    submit_info.pCommandBuffers = handles;
+    submit_info.pNext = &timelineInfo;
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = &timeline_handle;
+    submit_info.pWaitDstStageMask = &wait_stages;
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = &timeline_handle;
+
     vkQueueSubmit(device.queue_get(), 1, &submit_info, VK_NULL_HANDLE);
     finish();
   }
