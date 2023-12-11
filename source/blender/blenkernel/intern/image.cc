@@ -3824,7 +3824,7 @@ bool BKE_image_is_openexr(Image *ima)
   return false;
 }
 
-void BKE_image_backup_render(Scene *scene, Image *ima, bool free_current_slot)
+void BKE_image_backup_render(Scene *scene, Image *ima, bool free_current_slot, bool bump_slot)
 {
   /* called right before rendering, ima->renderslots contains render
    * result pointers for everything but the current render */
@@ -3842,6 +3842,17 @@ void BKE_image_backup_render(Scene *scene, Image *ima, bool free_current_slot)
   }
 
   RenderSlot *last_slot = BKE_image_get_renderslot(ima, ima->last_render_slot);
+
+  /* if the user did not change the slot manually, and this is not the first render
+   * and bump_slot is set, pick the next slot */
+  if (re && bump_slot && ima->last_render_slot == ima->render_slot) {
+    int slot = ima->render_slot+1;
+    slot %= BLI_listbase_count(&ima->renderslots);
+
+    ima->render_slot = slot;
+  }
+
+
   RenderSlot *cur_slot = BKE_image_get_renderslot(ima, ima->render_slot);
 
   if (last_slot && ima->render_slot != ima->last_render_slot) {

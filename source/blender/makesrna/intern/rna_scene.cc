@@ -8754,6 +8754,14 @@ void RNA_def_scene(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "SceneHydra");
   RNA_def_property_ui_text(prop, "Hydra", "Hydra settings for the scene");
 
+
+  /* Renderslots */
+  prop = RNA_def_property(srna, "autocycle_renderslot", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "autocycle_renderslot", 0);
+  RNA_def_property_ui_text(prop,
+                           "Autocycle Renderslot",
+                           "Automatically pick the next renderslot on each render");
+
   /* Nestled Data. */
   /* *** Non-Animated *** */
   RNA_define_animate_sdna(false);

@@ -1969,7 +1969,11 @@ typedef struct Scene {
   unsigned int lay DNA_DEPRECATED;
   /** Active layer (deprecated). */
   int layact DNA_DEPRECATED;
-  char _pad2[4];
+
+  /* Render slot autcycling */
+  char autocycle_renderslot;
+  char _pad2[3];
+
 
   /** Various settings. */
   short flag;

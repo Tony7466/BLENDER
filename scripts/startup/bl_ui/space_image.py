@@ -65,6 +65,7 @@ class IMAGE_MT_view(Menu):
         layout = self.layout
 
         sima = context.space_data
+        scene = context.scene
         uv = sima.uv_editor
         tool_settings = context.tool_settings
         paint = tool_settings.image_paint
@@ -115,6 +116,7 @@ class IMAGE_MT_view(Menu):
 
             layout.operator("image.cycle_render_slot", text="Render Slot Cycle Next")
             layout.operator("image.cycle_render_slot", text="Render Slot Cycle Previous").reverse = True
+            layout.prop(scene, "autocycle_renderslot")
             layout.separator()
 
         layout.menu("INFO_MT_area")

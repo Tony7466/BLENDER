@@ -386,7 +386,7 @@ void ED_node_composite_job(const bContext *C, bNodeTree *nodetree, Scene *scene_
 #endif
 
   BKE_image_backup_render(
-      scene, BKE_image_ensure_viewer(bmain, IMA_TYPE_R_RESULT, "Render Result"), false);
+      scene, BKE_image_ensure_viewer(bmain, IMA_TYPE_R_RESULT, "Render Result"), false, false);
 
   wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C),
                               CTX_wm_window(C),

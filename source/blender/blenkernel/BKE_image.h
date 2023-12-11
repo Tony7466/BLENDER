@@ -287,7 +287,7 @@ bool BKE_image_is_openexr(struct Image *ima);
 /**
  * For multiple slot render, call this before render.
  */
-void BKE_image_backup_render(struct Scene *scene, struct Image *ima, bool free_current_slot);
+void BKE_image_backup_render(struct Scene *scene, struct Image *ima, bool free_current_slot, bool bump_slot);
 
 /**
  * Goes over all textures that use images.
