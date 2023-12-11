@@ -403,65 +403,76 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         else:
             raise TypeError("Unsupported type '%s'" % type(seq))
 
-    def do_foreach_getset_subtests(self, *prop_names, is_set, do_buffer_byteorder_subtests=True):
+    def do_getset_subtest(self, prop_name, sequence_type, is_set):
+        match sequence_type:
+            case 'LIST':
+                assert_buffer_usage = False
+                dtype_modifier = None
+            case 'IMPLICIT_NATIVE_ARRAYS':
+                assert_buffer_usage = True
+                dtype_modifier = None
+            case 'EXPLICIT_NATIVE_ARRAYS':
+                assert_buffer_usage = True
+                dtype_modifier = dtype_explicit_endian_standard_size
+            case 'NON_NATIVE_ARRAYS':
+                assert_buffer_usage = False
+                dtype_modifier = dtype_byteorder_swap_standard_size
+            case _:
+                raise RuntimeError("Unrecognised sequence type '%s'" % sequence_type)
+
+        sequences = self.make_subtest_sequences(prop_name, is_set, dtype_modifier)
+
         subtest_func = self.do_set_subtest if is_set else self.do_get_subtest
-        buffer_prefix_subtests = [("native buffers + extra sequences", None, True)]
-        if do_buffer_byteorder_subtests:
-            buffer_prefix_subtests.extend([
-                ("native, '<' or '>', byteorder", dtype_explicit_endian_standard_size, True),
-                ("non-native, '>' or '<', byteorder", dtype_byteorder_swap_standard_size, False)
-            ])
+        with self.subTest(prop_name=prop_name, sequence_type=sequence_type):
+            # Due to varying itemsizes of C types depending on the current system, and the itemsize of a
+            # property not being exposed to Blender's Python API, we only check that at least one sequence
+            # was considered a compatible buffer.
+            at_least_one_accessed_as_buffer = False
+            for seq in sequences:
+                with self.subTest(subsequence=self.get_sequence_description(seq)):
+                    accessed_as_buffer = subtest_func(prop_name, seq)
+                    at_least_one_accessed_as_buffer |= accessed_as_buffer
+            if assert_buffer_usage:
+                self.assertTrue(at_least_one_accessed_as_buffer, "at least one sequence should be accessed as a buffer")
+
+    def check_getset(self, *prop_names, is_set):
         for prop_name in prop_names:
-            with self.subTest(prop_name=prop_name):
-                for buffer_prefix_subtest_description, dtype_modifier, assert_buffer_usage in buffer_prefix_subtests:
-                    with self.subTest(buffer_byteorder=buffer_prefix_subtest_description):
-                        sequences = self.make_subtest_sequences(prop_name, is_set=is_set, dtype_modifier=dtype_modifier)
-                        # Due to varying itemsizes of C types depending on the current system, and the itemsize of a
-                        # property not being exposed to Blender's Python API, we only check that at least one sequence
-                        # was considered a compatible buffer.
-                        at_least_one_accessed_as_buffer = False
+            for sequence_type in self.SEQUENCE_TYPES:
+                self.do_getset_subtest(prop_name, sequence_type, is_set=is_set)
 
-                        for seq in sequences:
-                            with self.subTest(seq_type=self.get_sequence_description(seq)):
-                                accessed_as_buffer = subtest_func(prop_name, seq)
-                                at_least_one_accessed_as_buffer |= accessed_as_buffer
-                        if assert_buffer_usage:
-                            self.assertTrue(at_least_one_accessed_as_buffer, "at least one sequence should be accessed"
-                                                                             " as a buffer")
+    def check_get(self, *prop_names):
+        self.check_getset(*prop_names, is_set=False)
 
-    def do_foreach_get_subtests(self, *prop_names, **kwargs):
-        self.do_foreach_getset_subtests(*prop_names, is_set=False, **kwargs)
-
-    def do_foreach_set_subtests(self, *prop_names, **kwargs):
-        self.do_foreach_getset_subtests(*prop_names, is_set=True, **kwargs)
+    def check_set(self, *prop_names):
+        self.check_getset(*prop_names, is_set=True)
 
     # Test methods
 
-    def test_foreach_get_bool(self):
-        self.do_foreach_get_subtests("test_bool", "test_bool_vector")
+    def test_get_bool(self):
+        self.check_get("test_bool", "test_bool_vector")
 
     def test_foreach_set_bool(self):
-        self.do_foreach_set_subtests("test_bool", "test_bool_vector")
+        self.check_set("test_bool", "test_bool_vector")
 
     def test_foreach_get_float(self):
-        self.do_foreach_get_subtests("test_float", "test_float_vector")
+        self.check_get("test_float", "test_float_vector")
 
     def test_foreach_set_float(self):
-        self.do_foreach_set_subtests("test_float", "test_float_vector")
+        self.check_set("test_float", "test_float_vector")
 
     def test_foreach_get_int(self):
-        self.do_foreach_get_subtests("test_int", "test_int_vector", "test_unsigned_int")
+        self.check_get("test_int", "test_int_vector", "test_unsigned_int")
 
     def test_foreach_set_int(self):
-        self.do_foreach_set_subtests("test_int", "test_int_vector", "test_unsigned_int")
+        self.check_set("test_int", "test_int_vector", "test_unsigned_int")
 
     @unittest.expectedFailure  # See #92621
     def test_foreach_get_enum(self):
-        self.do_foreach_get_subtests("test_enum")
+        self.check_get("test_enum")
 
     @unittest.expectedFailure  # See #92621
     def test_foreach_set_enum(self):
-        self.do_foreach_set_subtests("test_enum")
+        self.check_set("test_enum")
 
 
 if __name__ == '__main__':
