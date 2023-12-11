@@ -1146,7 +1146,7 @@ class _defs_edit_mesh:
             keymap=(),
             draw_settings=draw_settings,
         )
-    
+
 
 def curve_draw_settings(context, layout, _tool, *, extra=False):
         # Tool settings initialize operator options.
