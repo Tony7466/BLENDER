@@ -126,38 +126,28 @@ BMFace *BM_face_create_ngon_verts(BMesh *bm,
  * improves performance when copying, since all the work of finding common layers doesn't have to
  * be done for every element.
  */
-void BM_elem_attrs_copy(BMesh *bm, const BMCustomDataCopyMap &map, const BMVert *src, BMVert *dst);
-void BM_elem_attrs_copy(BMesh *bm, const BMCustomDataCopyMap &map, const BMEdge *src, BMEdge *dst);
-void BM_elem_attrs_copy(BMesh *bm, const BMCustomDataCopyMap &map, const BMFace *src, BMFace *dst);
-void BM_elem_attrs_copy(BMesh *bm, const BMCustomDataCopyMap &map, const BMLoop *src, BMLoop *dst);
-
-/**
- * Copy attributes between elements in two BMeshes. These functions are often called with both
- * pointing to the same BMesh though, so they check for that and use a simpler copy in that case.
- *
- * \note For better performance when copying more than one block, use the overload with a
- * #BMCustomDataCopyMap precalculated map argument.
- */
-void BM_elem_attrs_copy(const BMesh *bm_src, BMesh *bm_dst, const BMVert *src, BMVert *dst);
-void BM_elem_attrs_copy(const BMesh *bm_src, BMesh *bm_dst, const BMEdge *src, BMEdge *dst);
-void BM_elem_attrs_copy(const BMesh *bm_src, BMesh *bm_dst, const BMFace *src, BMFace *dst);
-void BM_elem_attrs_copy(const BMesh *bm_src, BMesh *bm_dst, const BMLoop *src, BMLoop *dst);
+void BM_elem_attrs_copy(BMesh *bm,
+                        const BMCustomDataCopyMap &cd_map,
+                        const BMVert *src,
+                        BMVert *dst);
+void BM_elem_attrs_copy(BMesh *bm,
+                        const BMCustomDataCopyMap &cd_map,
+                        const BMEdge *src,
+                        BMEdge *dst);
+void BM_elem_attrs_copy(BMesh *bm,
+                        const BMCustomDataCopyMap &cd_map,
+                        const BMFace *src,
+                        BMFace *dst);
+void BM_elem_attrs_copy(BMesh *bm,
+                        const BMCustomDataCopyMap &cd_map,
+                        const BMLoop *src,
+                        BMLoop *dst);
 
 /** Copy attributes between elements in the same BMesh. */
-void BM_elem_attrs_copy(BMesh &bm, const BMVert *src, BMVert *dst);
-void BM_elem_attrs_copy(BMesh &bm, const BMEdge *src, BMEdge *dst);
-void BM_elem_attrs_copy(BMesh &bm, const BMFace *src, BMFace *dst);
-void BM_elem_attrs_copy(BMesh &bm, const BMLoop *src, BMLoop *dst);
-
-/** Copy attributes between two BMesh elements, excluding certain custom data types. */
-void BM_elem_attrs_copy(
-    const BMesh *bm_src, BMesh *bm_dst, eCustomDataMask exclude, const BMVert *src, BMVert *dst);
-void BM_elem_attrs_copy(
-    const BMesh *bm_src, BMesh *bm_dst, eCustomDataMask exclude, const BMEdge *src, BMEdge *dst);
-void BM_elem_attrs_copy(
-    const BMesh *bm_src, BMesh *bm_dst, eCustomDataMask exclude, const BMFace *src, BMFace *dst);
-void BM_elem_attrs_copy(
-    const BMesh *bm_src, BMesh *bm_dst, eCustomDataMask exclude, const BMLoop *src, BMLoop *dst);
+void BM_elem_attrs_copy(BMesh *bm, const BMVert *src, BMVert *dst);
+void BM_elem_attrs_copy(BMesh *bm, const BMEdge *src, BMEdge *dst);
+void BM_elem_attrs_copy(BMesh *bm, const BMFace *src, BMFace *dst);
+void BM_elem_attrs_copy(BMesh *bm, const BMLoop *src, BMLoop *dst);
 
 void BM_elem_select_copy(BMesh *bm_dst, void *ele_dst_v, const void *ele_src_v);
 
