@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include "BLI_string_ref.hh"
 #include "GPU_shader.h"
 
 #ifdef __cplusplus

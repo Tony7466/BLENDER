@@ -141,10 +141,20 @@ int main(int argc, const char *argv[])
   }
 
   if (result_file_arg.empty() || (!ELEM(gpu_backend_arg, "", "vulkan", "metal", "opengl"))) {
-    printf(
-        "Usage: %s [--gpu-backend vulkan,opengl,metal] [--gpu-shader-filter <shader-name>] "
-        "<data_file_to>\n",
-        argv[0]);
+    std::cout << "Usage: " << argv[0];
+    std::cout << " [--gpu-backend ";
+#ifdef WITH_METAL_BACKEND
+    std::cout << "metal";
+#endif
+#ifdef WITH_OPENGL_BACKEND
+    std::cout << "opengl";
+#endif
+#ifdef WITH_VULKAN_BACKEND
+    std::cout << ",vulkan";
+#endif
+    std::cout << "]";
+    std::cout << " [--gpu-shader-filter <shader-name>]";
+    std::cout << " <data_file_out>\n";
     exit(1);
   }
 
