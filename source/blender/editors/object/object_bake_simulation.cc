@@ -45,6 +45,8 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
+#include "BLT_translation.h"
+
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
@@ -877,6 +879,16 @@ static int delete_single_bake_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static bool bake_poll(bContext *C)
+{
+  Main *bmain = CTX_data_main(C);
+  if (BKE_main_blendfile_path(bmain)[0] == '\0') {
+    CTX_wm_operator_poll_msg_set(C, TIP_("Save file before baking"));
+    return false;
+  }
+  return true;
+}
+
 }  // namespace blender::ed::object::bake_simulation
 
 void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot)
@@ -907,6 +919,7 @@ void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot)
   ot->description = "Bake simulations in geometry nodes modifiers";
   ot->idname = __func__;
 
+  ot->poll = bake_poll;
   ot->exec = bake_simulation_exec;
   ot->invoke = bake_simulation_invoke;
   ot->modal = bake_simulation_modal;
@@ -951,6 +964,7 @@ void OBJECT_OT_geometry_node_bake_single(wmOperatorType *ot)
   ot->description = "Bake a single bake node or simulation";
   ot->idname = "OBJECT_OT_geometry_node_bake_single";
 
+  ot->poll = bake_poll;
   ot->exec = bake_single_node_exec;
   ot->modal = bake_single_node_modal;
 
