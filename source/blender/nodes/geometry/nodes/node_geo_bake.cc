@@ -520,18 +520,22 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     return;
   }
 
-  uiLayoutSetPropSep(layout, true);
-  uiLayoutSetPropDecorate(layout, false);
   {
-    uiLayout *row = uiLayoutRow(layout, true);
-    uiItemR(row, &ctx.bake_rna, "bake_mode", UI_ITEM_R_EXPAND, "Mode", ICON_NONE);
-  }
-  draw_bake_button(layout, ctx);
-  if (ctx.is_baked) {
-    const std::string label = get_baked_string(ctx);
-    uiItemL(layout, label.c_str(), ICON_NONE);
+    uiLayout *col = uiLayoutColumn(layout, false);
+    {
+      uiLayout *row = uiLayoutRow(col, true);
+      uiItemR(row, &ctx.bake_rna, "bake_mode", UI_ITEM_R_EXPAND, "Mode", ICON_NONE);
+    }
+
+    draw_bake_button(col, ctx);
+    if (ctx.is_baked) {
+      const std::string label = get_baked_string(ctx);
+      uiItemL(col, label.c_str(), ICON_NONE);
+    }
   }
 
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
   {
     uiLayout *settings_col = uiLayoutColumn(layout, false);
     uiLayoutSetActive(settings_col, !ctx.is_baked);
