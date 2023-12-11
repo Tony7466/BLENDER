@@ -26,7 +26,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
@@ -208,7 +208,7 @@ static void store_result_geometry(
       Mesh &mesh = *static_cast<Mesh *>(object.data);
 
       if (object.mode == OB_MODE_SCULPT) {
-        ED_sculpt_undo_geometry_begin(&object, &op);
+        sculpt_paint::undo::geometry_begin(&object, &op);
       }
 
       Mesh *new_mesh = geometry.get_component_for_write<bke::MeshComponent>().release();
@@ -228,7 +228,7 @@ static void store_result_geometry(
         BKE_editmesh_looptri_and_normals_calc(mesh.edit_mesh);
       }
       else if (object.mode == OB_MODE_SCULPT) {
-        ED_sculpt_undo_geometry_end(&object);
+        sculpt_paint::undo::geometry_end(&object);
       }
       break;
     }

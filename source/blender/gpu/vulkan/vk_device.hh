@@ -97,6 +97,8 @@ class VKDevice : public NonCopyable {
   /** Buffer to bind to unbound resource locations. */
   VKBuffer dummy_buffer_;
 
+  std::string glsl_patch_;
+
  public:
   VkPhysicalDevice physical_device_get() const
   {
@@ -188,6 +190,9 @@ class VKDevice : public NonCopyable {
   {
     return workarounds_;
   }
+
+  const char *glsl_patch_get() const;
+  void init_glsl_patch();
 
   /* -------------------------------------------------------------------- */
   /** \name Resource management
