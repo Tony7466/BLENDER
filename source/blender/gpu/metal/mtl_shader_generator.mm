@@ -1955,12 +1955,12 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
     uint atomic_fallback_buffer_count = 0;
     for (MSLTextureResource &tex : texture_samplers) {
       if (ELEM(tex.type,
-               ImageType::UINT_ATOMIC_2D,
-               ImageType::UINT_ATOMIC_2D_ARRAY,
-               ImageType::UINT_ATOMIC_3D,
-               ImageType::INT_ATOMIC_2D,
-               ImageType::INT_ATOMIC_2D_ARRAY,
-               ImageType::INT_ATOMIC_3D))
+               ImageType::UINT_2D_ATOMIC,
+               ImageType::UINT_2D_ARRAY_ATOMIC,
+               ImageType::UINT_3D_ATOMIC,
+               ImageType::INT_2D_ATOMIC,
+               ImageType::INT_2D_ARRAY_ATOMIC,
+               ImageType::INT_3D_ATOMIC))
       {
         /* Add storagebuffer bindpoint. */
         MSLBufferBlock ssbo;
@@ -3457,10 +3457,10 @@ std::string MSLGeneratorInterface::generate_msl_texture_vars(ShaderStage shader_
         /* Buffer-backed 2D Array and 3D texture types are not natively supported so texture size
          * is passed in as uniform metadata for 3D to 2D coordinate remapping. */
         if (ELEM(this->texture_samplers[i].type,
-                 ImageType::UINT_ATOMIC_2D_ARRAY,
-                 ImageType::UINT_ATOMIC_3D,
-                 ImageType::INT_ATOMIC_2D_ARRAY,
-                 ImageType::INT_ATOMIC_3D))
+                 ImageType::UINT_2D_ARRAY_ATOMIC,
+                 ImageType::UINT_3D_ATOMIC,
+                 ImageType::INT_2D_ARRAY_ATOMIC,
+                 ImageType::INT_3D_ATOMIC))
         {
           out << "\t" << get_shader_stage_instance_name(shader_stage) << "."
               << this->texture_samplers[i].name << ".texture_size = ushort3(uniforms->"
@@ -3843,12 +3843,12 @@ std::string MSLTextureResource::get_msl_texture_type_str() const
     }
     /* If texture atomics are natively supported, we use the native texture type, otherwise all
      * other formats are implemented via texture2d. */
-    case ImageType::INT_ATOMIC_2D:
-    case ImageType::UINT_ATOMIC_2D: {
+    case ImageType::INT_2D_ATOMIC:
+    case ImageType::UINT_2D_ATOMIC: {
       return "texture2d";
     }
-    case ImageType::INT_ATOMIC_2D_ARRAY:
-    case ImageType::UINT_ATOMIC_2D_ARRAY: {
+    case ImageType::INT_2D_ARRAY_ATOMIC:
+    case ImageType::UINT_2D_ARRAY_ATOMIC: {
       if (supports_native_atomics) {
         return "texture2d_array";
       }
@@ -3856,8 +3856,8 @@ std::string MSLTextureResource::get_msl_texture_type_str() const
         return "texture2d";
       }
     }
-    case ImageType::INT_ATOMIC_3D:
-    case ImageType::UINT_ATOMIC_3D: {
+    case ImageType::INT_3D_ATOMIC:
+    case ImageType::UINT_3D_ATOMIC: {
       if (supports_native_atomics) {
         return "texture3d";
       }
@@ -3977,8 +3977,8 @@ std::string MSLTextureResource::get_msl_wrapper_type_str() const
     }
     /* If native texture atomics are unsupported, map types to fallback atomic structures which
      * contain a buffer pointer and metadata members for size and alignment. */
-    case ImageType::INT_ATOMIC_2D:
-    case ImageType::UINT_ATOMIC_2D: {
+    case ImageType::INT_2D_ATOMIC:
+    case ImageType::UINT_2D_ATOMIC: {
       if (supports_native_atomics) {
         return "_mtl_combined_image_sampler_2d";
       }
@@ -3986,8 +3986,8 @@ std::string MSLTextureResource::get_msl_wrapper_type_str() const
         return "_mtl_combined_image_sampler_2d_atomic_fallback";
       }
     }
-    case ImageType::INT_ATOMIC_3D:
-    case ImageType::UINT_ATOMIC_3D: {
+    case ImageType::INT_3D_ATOMIC:
+    case ImageType::UINT_3D_ATOMIC: {
       if (supports_native_atomics) {
         return "_mtl_combined_image_sampler_3d";
       }
@@ -3995,8 +3995,8 @@ std::string MSLTextureResource::get_msl_wrapper_type_str() const
         return "_mtl_combined_image_sampler_3d_atomic_fallback";
       }
     }
-    case ImageType::INT_ATOMIC_2D_ARRAY:
-    case ImageType::UINT_ATOMIC_2D_ARRAY: {
+    case ImageType::INT_2D_ARRAY_ATOMIC:
+    case ImageType::UINT_2D_ARRAY_ATOMIC: {
       if (supports_native_atomics) {
         return "_mtl_combined_image_sampler_2d";
       }
@@ -4044,9 +4044,9 @@ std::string MSLTextureResource::get_msl_return_type_str() const
     case ImageType::INT_2D_ARRAY:
     case ImageType::INT_CUBE_ARRAY:
     case ImageType::INT_BUFFER:
-    case ImageType::INT_ATOMIC_2D:
-    case ImageType::INT_ATOMIC_2D_ARRAY:
-    case ImageType::INT_ATOMIC_3D: {
+    case ImageType::INT_2D_ATOMIC:
+    case ImageType::INT_2D_ARRAY_ATOMIC:
+    case ImageType::INT_3D_ATOMIC: {
       return "int";
     }
 
@@ -4059,9 +4059,9 @@ std::string MSLTextureResource::get_msl_return_type_str() const
     case ImageType::UINT_2D_ARRAY:
     case ImageType::UINT_CUBE_ARRAY:
     case ImageType::UINT_BUFFER:
-    case ImageType::UINT_ATOMIC_2D:
-    case ImageType::UINT_ATOMIC_2D_ARRAY:
-    case ImageType::UINT_ATOMIC_3D: {
+    case ImageType::UINT_2D_ATOMIC:
+    case ImageType::UINT_2D_ARRAY_ATOMIC:
+    case ImageType::UINT_3D_ATOMIC: {
       return "uint32_t";
     }
 
@@ -4153,13 +4153,13 @@ eGPUTextureType MSLTextureResource::get_texture_binding_type() const
       return GPU_TEXTURE_1D;
     }
     case ImageType::UINT_2D:
-    case ImageType::UINT_ATOMIC_2D:
-    case ImageType::INT_ATOMIC_2D: {
+    case ImageType::UINT_2D_ATOMIC:
+    case ImageType::INT_2D_ATOMIC: {
       return GPU_TEXTURE_2D;
     }
     case ImageType::UINT_3D:
-    case ImageType::UINT_ATOMIC_3D:
-    case ImageType::INT_ATOMIC_3D: {
+    case ImageType::UINT_3D_ATOMIC:
+    case ImageType::INT_3D_ATOMIC: {
       return GPU_TEXTURE_3D;
     }
     case ImageType::UINT_CUBE: {
@@ -4169,8 +4169,8 @@ eGPUTextureType MSLTextureResource::get_texture_binding_type() const
       return GPU_TEXTURE_1D_ARRAY;
     }
     case ImageType::UINT_2D_ARRAY:
-    case ImageType::UINT_ATOMIC_2D_ARRAY:
-    case ImageType::INT_ATOMIC_2D_ARRAY: {
+    case ImageType::UINT_2D_ARRAY_ATOMIC:
+    case ImageType::INT_2D_ARRAY_ATOMIC: {
       return GPU_TEXTURE_2D_ARRAY;
     }
     case ImageType::UINT_CUBE_ARRAY: {
@@ -4206,9 +4206,9 @@ eGPUSamplerFormat MSLTextureResource::get_sampler_format() const
     case ImageType::INT_3D:
     case ImageType::INT_CUBE:
     case ImageType::INT_CUBE_ARRAY:
-    case ImageType::INT_ATOMIC_2D:
-    case ImageType::INT_ATOMIC_3D:
-    case ImageType::INT_ATOMIC_2D_ARRAY:
+    case ImageType::INT_2D_ATOMIC:
+    case ImageType::INT_3D_ATOMIC:
+    case ImageType::INT_2D_ARRAY_ATOMIC:
       return GPU_SAMPLER_TYPE_INT;
     case ImageType::UINT_BUFFER:
     case ImageType::UINT_1D:
@@ -4218,9 +4218,9 @@ eGPUSamplerFormat MSLTextureResource::get_sampler_format() const
     case ImageType::UINT_3D:
     case ImageType::UINT_CUBE:
     case ImageType::UINT_CUBE_ARRAY:
-    case ImageType::UINT_ATOMIC_2D:
-    case ImageType::UINT_ATOMIC_3D:
-    case ImageType::UINT_ATOMIC_2D_ARRAY:
+    case ImageType::UINT_2D_ATOMIC:
+    case ImageType::UINT_3D_ATOMIC:
+    case ImageType::UINT_2D_ARRAY_ATOMIC:
       return GPU_SAMPLER_TYPE_UINT;
     case ImageType::SHADOW_2D:
     case ImageType::SHADOW_2D_ARRAY:

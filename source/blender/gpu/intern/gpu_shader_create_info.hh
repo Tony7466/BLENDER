@@ -266,13 +266,19 @@ enum class ImageType {
   DEPTH_CUBE,
   DEPTH_CUBE_ARRAY,
   /** Atomic texture type wrappers.
-   * For OpenGL, these map to the equivalent (U)INT_* types. */
-  UINT_ATOMIC_2D,
-  UINT_ATOMIC_2D_ARRAY,
-  UINT_ATOMIC_3D,
-  INT_ATOMIC_2D,
-  INT_ATOMIC_2D_ARRAY,
-  INT_ATOMIC_3D
+   * For OpenGL, these map to the equivalent (U)INT_* types.
+   * NOTE: Atomic variants MUST be used if the texture bound to this resource has usage flag:
+   * `GPU_TEXTURE_USAGE_ATOMIC`, even if atomic texture operations are not used in the given
+   * shader.
+   * The shader source MUST also utilise the correct atomic sampler handle e.g.
+   * `usampler2DAtomic` in conjunction with these types, for passing texture/image resources into
+   * functions. */
+  UINT_2D_ATOMIC,
+  UINT_2D_ARRAY_ATOMIC,
+  UINT_3D_ATOMIC,
+  INT_2D_ATOMIC,
+  INT_2D_ARRAY_ATOMIC,
+  INT_3D_ATOMIC
 };
 
 /* Storage qualifiers. */
