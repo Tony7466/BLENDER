@@ -1723,12 +1723,13 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   modifier_panel_end(layout, ptr);
 
-  if (uiLayout *panel_layout = uiLayoutPanel(C, layout, "Output Attributes", "output_attributes"))
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, "Output Attributes", ptr, "show_subpanel_expanded_1"))
   {
     output_attribute_panel_draw(C, panel_layout, ptr, nmd);
   }
   if (uiLayout *panel_layout = uiLayoutPanel(
-          C, layout, "Internal Dependencies", "internal_dependencies"))
+          C, layout, "Internal Dependencies", ptr, "show_subpanel_expanded_2"))
   {
     internal_dependencies_panel_draw(panel_layout, ptr, nmd);
   }

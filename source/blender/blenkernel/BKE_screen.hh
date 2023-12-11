@@ -22,7 +22,6 @@ struct ARegion;
 struct BlendDataReader;
 struct BlendLibReader;
 struct BlendWriter;
-struct CollapsibleLayoutState;
 struct Header;
 struct ID;
 struct IDRemapper;
@@ -350,7 +349,8 @@ struct LayoutPanelBodyExtend {
 struct LayoutPanelHeaderInfo {
   float start_y;
   float end_y;
-  std::string id;
+  PointerRNA open_owner_ptr;
+  std::string open_prop_name;
 };
 
 struct Panel_Runtime {
@@ -574,9 +574,6 @@ void BKE_area_region_panels_free(ListBase *panels);
  */
 Panel *BKE_panel_new(PanelType *panel_type);
 void BKE_panel_free(Panel *panel);
-
-CollapsibleLayoutState &BKE_panel_collapsible_ensure(Panel &panel, const char *id);
-
 /**
  * Doesn't free the area itself.
  */

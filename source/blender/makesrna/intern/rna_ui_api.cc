@@ -782,13 +782,14 @@ static uiLayout *rna_uiLayoutColumnWithHeading(
 
 struct uiLayout *rna_uiLayoutPanel(uiLayout *layout,
                                    bContext *C,
-                                   const char *id,
+                                   PointerRNA *data,
+                                   const char *property,
                                    const char *text,
                                    const char *text_ctxt,
                                    const bool translate)
 {
   text = rna_translate_ui_text(text, text_ctxt, nullptr, nullptr, translate);
-  return uiLayoutPanel(C, layout, text, id);
+  return uiLayoutPanel(C, layout, text, data, property);
 }
 
 static void rna_uiLayout_template_node_asset_menu_items(uiLayout *layout,
@@ -1063,13 +1064,7 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   RNA_def_function_ui_description(
       func, "Sub-layout. Items placed in this sublayout are placed into a collapsable panel");
-  parm = RNA_def_string(
-      func,
-      "id",
-      NULL,
-      0,
-      "ID",
-      "Identifier for the panel that is used to remember whether it is open or closed");
+  api_ui_item_rna_common(func);
   api_ui_item_common_text(func);
   parm = RNA_def_pointer(
       func,

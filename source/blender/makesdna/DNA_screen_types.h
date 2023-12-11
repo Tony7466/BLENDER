@@ -121,14 +121,6 @@ typedef struct ScrAreaMap {
   ListBase areabase;
 } ScrAreaMap;
 
-typedef struct CollapsibleLayoutState {
-  const char *id;
-  uint8_t flag;
-  char _pad[7];
-} CollapsibleLayoutState;
-
-#define COLLAPSIBLE_LAYOUT_OPEN (1 << 0)
-
 /** The part from uiBlock that needs saved in file. */
 typedef struct Panel {
   struct Panel *next, *prev;
@@ -150,12 +142,9 @@ typedef struct Panel {
   int blocksizex, blocksizey;
   short labelofs;
   short flag, runtime_flag;
-  char _pad[2];
+  char _pad[6];
   /** Panels are aligned according to increasing sort-order. */
   int sortorder;
-  /** Collapsible sub-layout states. */
-  int collapsibles_num;
-  CollapsibleLayoutState *collapsibles;
   /** Runtime for panel manipulation. */
   void *activedata;
   /** Sub panels. */

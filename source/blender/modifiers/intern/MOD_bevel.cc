@@ -372,13 +372,16 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   modifier_panel_end(layout, ptr);
 
-  if (uiLayout *panel_layout = uiLayoutPanel(C, layout, "Profile", "profile")) {
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, "Profile", ptr, "show_subpanel_expanded_1")) {
     profile_panel_draw(panel_layout, ptr);
   }
-  if (uiLayout *panel_layout = uiLayoutPanel(C, layout, "Geometry", "geometry")) {
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, "Geometry", ptr, "show_subpanel_expanded_2")) {
     geometry_panel_draw(panel_layout, ptr);
   }
-  if (uiLayout *panel_layout = uiLayoutPanel(C, layout, "Shading", "shading")) {
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, "Shading", ptr, "show_subpanel_expanded_3")) {
     shading_panel_draw(panel_layout, ptr);
   }
 }
