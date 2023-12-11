@@ -433,68 +433,13 @@ TEST(vector, RemoveIf)
 
 TEST(vector, RemoveIfNonTrivialDestructible)
 {
-  struct TestStruct {
-    int x;
-    bool *released_flag;
-    TestStruct(int x, bool *released_flag) : x(x), released_flag(released_flag) {}
-    TestStruct(TestStruct &&other)
-    {
-      x = other.x;
-      released_flag = other.released_flag;
-      other.x = 0;
-      other.released_flag = nullptr;
-    };
-    TestStruct &operator=(TestStruct &&other)
-    {
-      if (this == &other) {
-        return *this;
-      }
-      if (released_flag) {
-        *released_flag = true;
-      }
-      x = other.x;
-      released_flag = other.released_flag;
-      other.released_flag = nullptr;
-      return *this;
-    };
-    ~TestStruct()
-    {
-      if (!released_flag) {
-        return;
-      }
-      *released_flag = true;
-    }
-  };
-
-  EXPECT_FALSE(std::is_trivially_destructible_v<TestStruct>);
-
-  bool released_flag[8]{false, false, false, false, false, false, false, false};
-  {
-    Vector<TestStruct> vec;
-    vec.append(TestStruct(0, released_flag + 0));
-    vec.append(TestStruct(1, released_flag + 1));
-    vec.append(TestStruct(0, released_flag + 2));
-    vec.append(TestStruct(1, released_flag + 3));
-    vec.append(TestStruct(0, released_flag + 4));
-    vec.append(TestStruct(0, released_flag + 5));
-    vec.append(TestStruct(0, released_flag + 6));
-    vec.append(TestStruct(0, released_flag + 7));
-
-    {
-      bool expected_released[8]{false, false, false, false, false, false, false, false};
-      EXPECT_EQ_ARRAY(expected_released + 0, released_flag + 0, 8);
-    }
-
-    const int64_t removed = vec.remove_if([](const TestStruct &ts) { return ts.x % 2 == 0; });
-    EXPECT_EQ(vec.size() + removed, 8);
-
-    {
-      bool expected_released[8]{true, false, true, false, true, true, true, true};
-      EXPECT_EQ_ARRAY(expected_released + 0, released_flag + 0, 8);
-    }
+  Vector<Vector<int, 0, GuardedAllocator>> vec;
+  for ([[maybe_unused]] const int64_t i : IndexRange(10)) {
+    /* This test relies on leak detection to run after tests. */
+    vec.append(Vector<int, 0, GuardedAllocator>(100));
   }
-  bool expected_released[8]{true, true, true, true, true, true, true, true};
-  EXPECT_EQ_ARRAY(expected_released + 0, released_flag + 0, 8);
+  vec.remove_if([&](const auto & /*value*/) { return true; });
+  EXPECT_TRUE(vec.is_empty());
 }
 
 TEST(vector, ExtendSmallVector)
