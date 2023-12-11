@@ -52,6 +52,7 @@ bool ShaderBuilder::init_context()
 {
   BLI_assert(ghost_system_);
   BLI_assert(ghost_context_ == nullptr);
+  BLI_assert(gpu_context_ == nullptr);
 
   GHOST_GPUSettings gpuSettings = {0};
   switch (GPU_backend_type_selection_get()) {
@@ -98,6 +99,8 @@ void ShaderBuilder::exit_context()
   GPU_exit();
   GPU_context_discard(gpu_context_);
   GHOST_DisposeGPUContext(ghost_system_, ghost_context_);
+  gpu_context_ = nullptr;
+  ghost_context_ = nullptr;
 }
 
 void ShaderBuilder::exit_system()
