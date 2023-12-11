@@ -810,6 +810,7 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
       curves::fill_selection_true(
           selection.span,
           selection.domain == ATTR_DOMAIN_POINT ? new_points : IndexRange(curve_index, 1));
+      selection.finish();
       //         bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
 
       if (corners_index) {
@@ -877,6 +878,7 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
     curves::fill_selection_true(
         selection.span,
         selection.domain == ATTR_DOMAIN_POINT ? new_points : IndexRange(curve_index, 1));
+    selection.finish();
     radius_attribute.finish();
   }
 
