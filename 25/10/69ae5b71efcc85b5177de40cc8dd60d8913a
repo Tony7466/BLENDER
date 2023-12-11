@@ -1,0 +1,1 @@
+Referenced by issue #116000, 'toggle visibility' mode of sculpt.face_set_change_visibility no longer works.   hard crash when attempting to emulate with new paint.hide_show operator
