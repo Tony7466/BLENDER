@@ -660,6 +660,7 @@ class NodeTreeMainUpdater {
     bool selected_is_linked = false;
     const bNode &node = output_socket->owner_node();
     if (node.type == GEO_NODE_BAKE) {
+      /* Internal links should always map corresponding input and output sockets. */
       return &node.input_by_identifier(output_socket->identifier);
     }
     for (const bNodeSocket *input_socket : node.input_sockets()) {
@@ -1167,7 +1168,8 @@ class NodeTreeMainUpdater {
       }
     }
     if (ntree.type == NTREE_GEOMETRY) {
-      /* Create references for simulations and bake nodes in geometry nodes. */
+      /* Create references for simulations and bake nodes in geometry nodes.
+       * Those are the nodes that we want to store settings for at a higher level. */
       for (StringRefNull idname : {"GeometryNodeSimulationOutput", "GeometryNodeBake"}) {
         for (const bNode *node : ntree.nodes_by_type(idname)) {
           nested_node_paths.append({node->identifier, -1});

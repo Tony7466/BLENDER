@@ -128,6 +128,7 @@ class GeoNodesSimulationParams {
   virtual SimulationZoneBehavior *get(const int zone_id) const = 0;
 };
 
+/** The set of possible behaviors are the same for both of these nodes currently. */
 using BakeNodeBehavior = sim_output::Behavior;
 
 class GeoNodesBakeParams {

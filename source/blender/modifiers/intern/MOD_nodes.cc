@@ -672,6 +672,10 @@ static void find_side_effect_nodes_for_nested_node(
   }
 }
 
+/**
+ * This ensures that nodes that the user wants to bake are actually evaluated. Otherwise they might
+ * not be if they are not connected to the output.
+ */
 static void find_side_effect_nodes_for_baking(const NodesModifierData &nmd,
                                               const ModifierEvalContext &ctx,
                                               nodes::GeoNodesSideEffectNodes &r_side_effect_nodes)
