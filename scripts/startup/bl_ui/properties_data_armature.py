@@ -104,7 +104,7 @@ class DATA_UL_bone_collections(UIList):
 
 
 class DATA_PT_bone_collections(ArmatureButtonsPanel, Panel):
-    bl_label = "Bone Collections Nate"
+    bl_label = "Bone Collections"
 
     def draw(self, context):
         layout = self.layout
