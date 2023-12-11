@@ -49,13 +49,19 @@ enum {
  * - Physics/collision detection.
  *
  * A mesh's triangulation data is generally accessed via #Mesh::looptris(), which uses a cache that
- * is lazily calculated from faces, corner vert, and position arrays. In rare cases its calculated
- * directly, with #bke::mesh::looptris_calc. When this underlying data changes, the array is
- * recalculated; there is no extra attempt to maintain the validity over time.
+ * is lazily calculated from faces, corner vert, and position arrays. In rare cases it is
+ * calculated directly too, with #bke::mesh::looptris_calc. When the underlying mesh data changes,
+ * the array is recalculated from scratch; there is no extra attempt to maintain the validity over
+ * time.
+ *
+ * #MLoopTri is stored in an array, where each faces's triangles are stored contiguously.
+ * The number of triangles for each polygon is guaranteed to be the corner count - 2, even for
+ * degenerate geometry (see #bke::mesh::face_triangles_num).
  *
  * Storing corner indices (instead of vertex indices) gives more flexibility for accessing mesh
  * data stored per-corner, though it does often add an extra level of indirection. The index of the
- * corresponding face is stored in a separate array, accessed with #Mesh::looptri_faces().
+ * corresponding face for each triangle is stored in a separate array, accessed with
+ * #Mesh::looptri_faces().
  *
  * Examples:
  * \code{.cc}
@@ -72,14 +78,7 @@ enum {
  *   uv_map[tri.tri[1]],
  *   uv_map[tri.tri[2]],
  * };
- * \endcode
  *
- * #MLoopTri is stored in an array, where each faces's triangles are stored contiguously.
- * The number of triangles for each polygon is guaranteed to be the corner count - 2, even for
- * degenerate geometry (see #bke::mesh::face_triangles_num).
- *
- * It's also possible to perform a reverse lookup (find all triangles for any given face): *
- * \code{.cc}
  * // Access all triangles in a given face.
  * const IndexRange face = faces[i];
  * const Span<MLoopTri> face_tris = looptris.slice(poly_to_tri_count(i, face.start()),
@@ -88,7 +87,7 @@ enum {
  *
  * It may also be useful to check whether or not two vertices of a triangle form an edge in the
  * underlying mesh. See #bke::mesh::looptri_get_real_edges for a utility that does this. Note that
- * a #MLoopTri may be in the middle of an ngon and not reference **any** edges.
+ * a #MLoopTri may be in the middle of an ngon and not reference **any** real edges.
  */
 typedef struct MLoopTri {
   unsigned int tri[3];
