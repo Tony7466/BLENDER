@@ -1201,6 +1201,7 @@ class NODE_PT_bake_node_items(bpy.types.Panel):
             layout.prop(active_item, "socket_type")
             if active_item.socket_type in {'VECTOR', 'INT', 'BOOLEAN', 'FLOAT', 'RGBA'}:
                 layout.prop(active_item, "attribute_domain")
+                layout.prop(active_item, "is_attribute")
 
 
 class NODE_PT_index_switch_node_items(Panel):

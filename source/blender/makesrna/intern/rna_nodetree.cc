@@ -9085,11 +9085,16 @@ static void rna_def_geo_bake_item(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
   RNA_def_property_enum_funcs(
       prop, nullptr, nullptr, "rna_GeometryNodeAttributeDomain_attribute_domain_itemf");
-  RNA_def_property_ui_text(
-      prop,
-      "Attribute Domain",
-      "Attribute domain where the attribute is stored in the baked data");
+  RNA_def_property_ui_text(prop,
+                           "Attribute Domain",
+                           "Attribute domain where the attribute is stored in the baked data");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(
+      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<BakeItemsAccessor>");
+
+  prop = RNA_def_property(srna, "is_attribute", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_BAKE_ITEM_IS_ATTRIBUTE);
+  RNA_def_property_ui_text(prop, "Is Attribute", "Bake item is an attribute stored on a geometry");
   RNA_def_property_update(
       prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<BakeItemsAccessor>");
 }

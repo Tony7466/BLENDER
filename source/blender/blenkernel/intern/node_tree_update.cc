@@ -490,6 +490,7 @@ class NodeTreeMainUpdater {
       if (node_field_inferencing::update_field_inferencing(ntree)) {
         result.interface_changed = true;
       }
+      this->update_from_field_inference(ntree);
       if (anonymous_attribute_inferencing::update_anonymous_attribute_relations(ntree)) {
         result.interface_changed = true;
       }
@@ -778,6 +779,23 @@ class NodeTreeMainUpdater {
       /* Check if there is a simulation zone. */
       if (!ntree.nodes_by_type("GeometryNodeSimulationOutput").is_empty()) {
         ntree.runtime->runtime_flag |= NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE;
+      }
+    }
+  }
+
+  void update_from_field_inference(bNodeTree &ntree)
+  {
+    /* Automatically tag a bake item as attribute when the input is a field. The flag should not be
+     * removed automatically even when the field input is disconnected because the baked data may
+     * still contain attribute data instead of a single value. */
+    for (bNode *node : ntree.nodes_by_type("GeometryNodeBake")) {
+      NodeGeometryBake &storage = *static_cast<NodeGeometryBake *>(node->storage);
+      for (const int i : IndexRange(storage.items_num)) {
+        const bNodeSocket &socket = node->input_socket(i);
+        NodeGeometryBakeItem &item = storage.items[i];
+        if (socket.display_shape == SOCK_DISPLAY_SHAPE_DIAMOND) {
+          item.flag |= GEO_NODE_BAKE_ITEM_IS_ATTRIBUTE;
+        }
       }
     }
   }

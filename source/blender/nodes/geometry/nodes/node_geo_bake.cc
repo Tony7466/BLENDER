@@ -51,7 +51,12 @@ static void node_declare(NodeDeclarationBuilder &b)
     auto &output_decl = b.add_output(socket_type, name, identifier);
     if (socket_type_supports_fields(socket_type)) {
       input_decl.supports_field();
-      output_decl.dependent_field({input_decl.input_index()});
+      if (item.flag & GEO_NODE_BAKE_ITEM_IS_ATTRIBUTE) {
+        output_decl.field_source();
+      }
+      else {
+        output_decl.dependent_field({input_decl.input_index()});
+      }
     }
   }
   b.add_input<decl::Extend>("", "__extend__");
