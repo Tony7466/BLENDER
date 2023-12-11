@@ -1583,7 +1583,7 @@ typedef struct ToolSettings {
 
   /** Normal offset used when drawing on surfaces. */
   float gpencil_surface_offset;
-  
+
   /** Stroke selection mode for Edit. */
   char gpencil_selectmode_edit;
   /** Stroke selection mode for Sculpt. */
@@ -1891,12 +1891,10 @@ typedef struct SceneEEVEE {
   int shadow_step_count;
   float shadow_normal_bias;
 
-  int ray_split_settings;
+  char _pad[4];
   int ray_tracing_method;
 
-  struct RaytraceEEVEE reflection_options;
-  struct RaytraceEEVEE refraction_options;
-  struct RaytraceEEVEE diffuse_options;
+  struct RaytraceEEVEE ray_tracing_options;
 
   struct LightCache *light_cache DNA_DEPRECATED;
   struct LightCache *light_cache_data;

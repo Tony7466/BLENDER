@@ -9,7 +9,7 @@
 
 #include <cstring>
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include "DNA_ID.h"
 #include "DNA_object_types.h"
@@ -593,7 +593,7 @@ static int bone_collection_unassign_named_exec(bContext *C, wmOperator *op)
 void ARMATURE_OT_collection_unassign_named(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Remove Bone from Bone collections";
+  ot->name = "Remove Bone from Bone Collection";
   ot->idname = "ARMATURE_OT_collection_unassign_named";
   ot->description = "Unassign the bone from this bone collection";
 
