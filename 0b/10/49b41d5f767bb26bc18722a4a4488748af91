@@ -1,2 +1,2 @@
-Referenced by issue #115994, Blender 4.1.0 Alpha crash on loop cut
+Referenced by issue #115994, Blender 4.1.0 Alpha crash on interactive loop cut, bevel
 Referenced by commit fb5d03b5baae96d3cea78273702940f4765a9f48, Fix: Typo in recent commit to BMesh copy function
