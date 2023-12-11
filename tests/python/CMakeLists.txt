@@ -21,6 +21,19 @@ file(MAKE_DIRECTORY ${TEST_OUT_DIR}/blendfile_io)
 #   message(FATAL_ERROR "CMake test directory not found!")
 # endif()
 
+function(add_sanitizer_options testname)
+  set(_lsan_options "print_suppressions=false:suppressions=${CMAKE_SOURCE_DIR}/tools/config/analysis/lsan.supp")
+  set(_asan_options "allocator_may_return_null=true")
+  if(DEFINED ENV{LSAN_OPTIONS})
+    set(_lsan_options "${_lsan_options}:$ENV{LSAN_OPTIONS}")
+  endif()
+  if(DEFINED ENV{ASAN_OPTIONS})
+    set(_asan_options "${_asan_options}:$ENV{ASAN_OPTIONS}")
+  endif()
+  set_tests_properties(${testname} PROPERTIES ENVIRONMENT "LSAN_OPTIONS=${_lsan_options}")
+  set_tests_properties(${testname} PROPERTIES ENVIRONMENT "ASAN_OPTIONS=${_asan_options}")
+endfunction()
+
 # Run Blender command with parameters.
 function(add_blender_test_impl testname exe)
   add_test(
@@ -28,13 +41,7 @@ function(add_blender_test_impl testname exe)
     COMMAND ${exe} ${ARGN}
   )
 
-  # Don't fail tests on leaks since these often happen in external libraries that we can't fix.
-  set(_lsan_options "exitcode=0")
-  if(DEFINED ENV{LSAN_OPTIONS})
-    set(_lsan_options "${_lsan_options}:$ENV{LSAN_OPTIONS}")
-  endif()
-  set_tests_properties(${testname} PROPERTIES ENVIRONMENT "LSAN_OPTIONS=${_lsan_options}")
-  unset(_lsan_options)
+  add_sanitizer_options(${testname})
 
   if(PLATFORM_ENV_INSTALL)
     set_tests_properties(${testname} PROPERTIES ENVIRONMENT "${PLATFORM_ENV_INSTALL}")
@@ -115,12 +122,7 @@ function(add_python_test testname testscript)
     WORKING_DIRECTORY $<TARGET_FILE_DIR:blender>
   )
 
-  set(_lsan_options "exitcode=0")
-  if(DEFINED ENV{LSAN_OPTIONS})
-    set(_lsan_options "${_lsan_options}:$ENV{LSAN_OPTIONS}")
-  endif()
-  set_tests_properties(${testname} PROPERTIES ENVIRONMENT "LSAN_OPTIONS=${_lsan_options}")
-  unset(_lsan_options)
+  add_sanitizer_options(${testname})
 
   if(PLATFORM_ENV_INSTALL)
     set_tests_properties(${testname} PROPERTIES ENVIRONMENT "${PLATFORM_ENV_INSTALL}")
