@@ -626,7 +626,7 @@ set(MSL_SRC
 )
 
 if(WITH_GTESTS)
-  if(WITH_OPENGL_DRAW_TESTS)
+  if(WITH_GPU_DRAW_TESTS)
     list(APPEND GLSL_SRC ${GLSL_SRC_TEST})
   endif()
 endif()
@@ -775,7 +775,7 @@ set(SRC_SHADER_CREATE_INFOS_MTL
 )
 
 if(WITH_GTESTS)
-  if(WITH_OPENGL_DRAW_TESTS)
+  if(WITH_GPU_DRAW_TESTS)
     list(APPEND SRC_SHADER_CREATE_INFOS ${SRC_SHADER_CREATE_INFOS_TEST})
   endif()
 endif()
@@ -884,7 +884,7 @@ if(WITH_GTESTS)
   set(TEST_INC)
   set(TEST_LIB)
 
-  if(WITH_OPENGL_DRAW_TESTS)
+  if(WITH_GPU_DRAW_TESTS)
     list(APPEND TEST_SRC
       tests/gpu_testing.cc
 
