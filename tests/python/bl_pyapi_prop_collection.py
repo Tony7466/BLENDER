@@ -77,6 +77,29 @@ def ctypes_void_p_array_as_forced_numeric(cls):
     return ForcedNumericCVoidPArray
 
 
+def dtype_byteorder_swap_standard_size(dtype):
+    """
+    Return a copy of the input NumPy dtype, but with the byteorder swapped and in standard size.
+
+    Used to help test buffer formats with "<" or ">" prefixes that do not match native byteorder.
+    """
+    dtype = np.dtype(dtype)  # Allow passing in anything that can be coerced into a dtype.
+    # assert dtype.byteorder != '|', "Byteorder is not applicable to %s" % dtype
+    return dtype.newbyteorder('S')
+
+
+def dtype_explicit_endian_standard_size(dtype):
+    """
+    Return a copy of the input NumPy dtype, but with native byteorder replaced with explicit little-endian/big-endian
+    byteorder that matches the native byteorder and uses standard sizes.
+    Normally when a "<" or ">" dtype is created that matches native byteorder, NumPy will replace it with implicit
+    native byteorder instead, but this function forces "<" or ">" to be used.
+
+    Used to help test buffer formats with "<" or ">" prefixes that match native byteorder.
+    """
+    return dtype_byteorder_swap_standard_size(dtype_byteorder_swap_standard_size(dtype))
+
+
 class TestPropertyGroup(bpy.types.PropertyGroup):
     VECTOR_SIZE = 3
     _ENUM_ITEMS = (("0", "Item 0", ""), ("1", "Item 1", ""))
@@ -154,16 +177,42 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         bpy.utils.unregister_class(TestPropertyGroup)
 
     @staticmethod
-    def make_boolean_test_sequences(next_ndarray, next_list):
-        return [
-            list(map(bool, next_list())),
-            next_ndarray(bool),  # "?", bool
-        ]
+    def make_int_test_sequences(next_ndarray, next_list, ndarray_only, skip_list=False):
+        sequences = []
 
-    @staticmethod
-    def make_int_test_sequences(next_ndarray, next_list):
-        sequences = [
-            next_list(),
+        if not ndarray_only:
+            if not skip_list:
+                sequences.append(next_list())
+
+            # ssize_t ("n") format buffers are not supported by NumPy or ctypes.
+            ssize_t_initializer = next_list()
+            ssize_t_array = (ctypes.c_ssize_t * len(ssize_t_initializer))(*ssize_t_initializer)
+            # ctypes exposed its ssize_t arrays as buffers with format set to one of the other integer types with
+            # the same itemsize instead of the "n" format. A memoryview using the "n" format can be created by
+            # casting.
+            ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
+            sequences.append(ssize_t_array_as_n)
+
+            # size_t ("N") format buffers are not supported by NumPy or ctypes.
+            size_t_initializer = next_list()
+            size_t_array = (ctypes.c_size_t * len(size_t_initializer))(*size_t_initializer)
+            # ctypes exposed its size_t arrays as buffers with format set to one of the other integer types with the
+            # same itemsize instead of the "N" format. A memoryview using the "N" format can be created by casting.
+            size_t_array_as_n = memoryview(size_t_array).cast("b").cast("N")
+            sequences.append(size_t_array_as_n)
+
+            # void* ("P") format buffers are not supported by NumPy but are supported by ctypes.
+            void_p_initializer = next_list()
+            # ctypes void_p arrays return None instead of `0` when read as a sequence, which breaks foreach_set and
+            # breaks comparing results with `self.assertSequenceEqual()`. We create a subclass which always returns
+            # `0` whenever the c_void_p array superclass would return `None`.
+            void_p_array_type = ctypes_void_p_array_as_forced_numeric(ctypes.c_void_p * len(void_p_initializer))
+            void_p_array = void_p_array_type(*void_p_initializer)
+            # Likely has a byteorder/size/alignment prefix so only check for "P" in the format string.
+            assert "P" in memoryview(void_p_array).format
+            sequences.append(void_p_array)
+
+        return sequences + [
             next_ndarray(np.byte),       # "b", signed char
             next_ndarray(np.short),      # "h", short
             next_ndarray(np.intc),       # "i", int
@@ -176,47 +225,40 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
             next_ndarray(np.ulonglong),  # "Q", unsigned long long
         ]
 
-        # ssize_t ("n") format buffers are not supported by NumPy or ctypes.
-        ssize_t_initializer = next_list()
-        ssize_t_array = (ctypes.c_ssize_t * len(ssize_t_initializer))(*ssize_t_initializer)
-        # ctypes exposed its ssize_t arrays as buffers with format set to one of the other integer types with
-        # the same itemsize instead of the "n" format. A memoryview using the "n" format can be created by
-        # casting.
-        ssize_t_array_as_n = memoryview(ssize_t_array).cast("b").cast("n")
-        sequences.append(ssize_t_array_as_n)
-
-        # size_t ("N") format buffers are not supported by NumPy or ctypes.
-        size_t_initializer = next_list()
-        size_t_array = (ctypes.c_size_t * len(size_t_initializer))(*size_t_initializer)
-        # ctypes exposed its size_t arrays as buffers with format set to one of the other integer types with the
-        # same itemsize instead of the "N" format. A memoryview using the "N" format can be created by casting.
-        size_t_array_as_n = memoryview(size_t_array).cast("b").cast("N")
-        sequences.append(size_t_array_as_n)
-
-        # void* ("P") format buffers are not supported by NumPy but are supported by ctypes.
-        void_p_initializer = next_list()
-        # ctypes void_p arrays return None instead of `0` when read as a sequence, which breaks foreach_set and
-        # breaks comparing results with `self.assertSequenceEqual()`. We create a subclass which always returns
-        # `0` whenever the c_void_p array superclass would return `None`.
-        void_p_array_type = ctypes_void_p_array_as_forced_numeric(ctypes.c_void_p * len(void_p_initializer))
-        void_p_array = void_p_array_type(*void_p_initializer)
-        # Likely has a byteorder/size/alignment prefix so only check for "P" in the format string.
-        assert "P" in memoryview(void_p_array).format
-        sequences.append(void_p_array)
-
+    @staticmethod
+    def make_boolean_test_sequences(next_ndarray, next_list, ndarray_only):
+        sequences = []
+        if not ndarray_only:
+            sequences.append(list(map(bool, next_list())))
+        # BOOLEAN properties that have no raw array access (e.g. they use a bitmask), are considered compatible with
+        # bool buffers.
+        sequences = [
+            next_ndarray(bool)  # "?", bool
+        ]
+        if not ndarray_only:
+            sequences.append(list(map(bool, next_list())))
+        # However, BOOLEAN properties that do have raw array access are only considered compatible with buffers that
+        # match the property's raw type, which is likely to be a single byte numeric/char type.
+        sequences.extend(TestPropCollectionForeachGetSet.make_int_test_sequences(next_ndarray, next_list, ndarray_only,
+                                                                                 skip_list=True))
         return sequences
 
     @staticmethod
-    def make_float_test_sequences(next_ndarray, next_list):
-        return [
-            list(map(float, next_list())),
+    def make_float_test_sequences(next_ndarray, next_list, ndarray_only):
+        sequences = []
+
+        if not ndarray_only:
+            float_list = list(map(float, next_list()))
+            sequences.append(float_list)
+
+        return sequences + [
             next_ndarray(np.half),        # "e", 16-bit-precision floating-point (no corresponding C type)
             next_ndarray(np.single),      # "f", float
             next_ndarray(np.double),      # "d", double
             next_ndarray(np.longdouble),  # "g", long double
         ]
 
-    def make_subtest_sequences(self, prop_name, is_set):
+    def make_subtest_sequences(self, prop_name, is_set, dtype_modifier=None):
         # To correctly handle all properties with the same test setup ('BOOLEAN' and 'ENUM' being the most restrictive),
         # we can only use `0` and `1` as fill values.
         default_int = TestPropertyGroup.DEFAULT_INT
@@ -245,19 +287,23 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
 
         # Helper to create NumPy ndarrays filled with `next_fill_value()`
         def next_ndarray(dtype):
+            if dtype_modifier is not None:
+                dtype = dtype_modifier(dtype)
             return np.full(sequence_length, next_fill_value(), dtype=dtype)
 
         # Helper to create lists filled with `next_fill_value()`
         def next_list():
             return [next_fill_value()] * sequence_length
 
+        ndarray_only = dtype_modifier is not None
+
         match prop.type:
             case 'BOOLEAN':
-                return self.make_boolean_test_sequences(next_ndarray, next_list)
+                return self.make_boolean_test_sequences(next_ndarray, next_list, ndarray_only)
             case 'INT' | 'ENUM':
-                return self.make_int_test_sequences(next_ndarray, next_list)
+                return self.make_int_test_sequences(next_ndarray, next_list, ndarray_only)
             case 'FLOAT':
-                return self.make_float_test_sequences(next_ndarray, next_list)
+                return self.make_float_test_sequences(next_ndarray, next_list, ndarray_only)
             case _:
                 raise TypeError("Unsupported property type '%s'" % prop.type)
 
@@ -344,37 +390,50 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
             return "list ('%s')" % (type(seq[0]).__name__ if seq else "None")
         elif isinstance(seq, np.ndarray):
             element_type = seq.dtype
-            return "%s ('%s')" % (element_type, seq.data.format)
+            # Numpy cannot represent non-native long double ("g") arrays as a buffer. Getting `.data` will fail in that
+            # case.
+            buffer_format = seq.data.format if element_type.char != "g" else None
+            return "%s ('%s')" % (element_type, buffer_format)
         elif isinstance(seq, ctypes.Array):
             element_type_name = seq._type_.__name__
-            return "%s ('%s')" % (element_type_name, memoryview(seq).format)
+            buffer_format = memoryview(seq).format
+            return "%s ('%s')" % (element_type_name, buffer_format)
         elif isinstance(seq, memoryview):
             return "memoryview ('%s')" % seq.format
         else:
             raise TypeError("Unsupported type '%s'" % type(seq))
 
-    def do_foreach_getset_subtests(self, *prop_names, is_set):
+    def do_foreach_getset_subtests(self, *prop_names, is_set, do_buffer_byteorder_subtests=True):
         subtest_func = self.do_set_subtest if is_set else self.do_get_subtest
+        buffer_prefix_subtests = [("native buffers + extra sequences", None, True)]
+        if do_buffer_byteorder_subtests:
+            buffer_prefix_subtests.extend([
+                ("native, '<' or '>', byteorder", dtype_explicit_endian_standard_size, True),
+                ("non-native, '>' or '<', byteorder", dtype_byteorder_swap_standard_size, False)
+            ])
         for prop_name in prop_names:
             with self.subTest(prop_name=prop_name):
-                sequences = self.make_subtest_sequences(prop_name, is_set=is_set)
-                # Due to varying itemsizes of C types depending on the current system, and the itemsize of a property
-                # not being exposed to Blender's Python API, we only check that at least one sequence was considered a
-                # compatible buffer.
-                at_least_one_accessed_as_buffer = False
+                for buffer_prefix_subtest_description, dtype_modifier, assert_buffer_usage in buffer_prefix_subtests:
+                    with self.subTest(buffer_byteorder=buffer_prefix_subtest_description):
+                        sequences = self.make_subtest_sequences(prop_name, is_set=is_set, dtype_modifier=dtype_modifier)
+                        # Due to varying itemsizes of C types depending on the current system, and the itemsize of a
+                        # property not being exposed to Blender's Python API, we only check that at least one sequence
+                        # was considered a compatible buffer.
+                        at_least_one_accessed_as_buffer = False
 
-                for seq in sequences:
-                    with self.subTest(seq_type=self.get_sequence_description(seq)):
-                        accessed_as_buffer = subtest_func(prop_name, seq)
-                        at_least_one_accessed_as_buffer |= accessed_as_buffer
+                        for seq in sequences:
+                            with self.subTest(seq_type=self.get_sequence_description(seq)):
+                                accessed_as_buffer = subtest_func(prop_name, seq)
+                                at_least_one_accessed_as_buffer |= accessed_as_buffer
+                        if assert_buffer_usage:
+                            self.assertTrue(at_least_one_accessed_as_buffer, "at least one sequence should be accessed"
+                                                                             " as a buffer")
 
-                self.assertTrue(at_least_one_accessed_as_buffer, "at least one sequence should be accessed as a buffer")
+    def do_foreach_get_subtests(self, *prop_names, **kwargs):
+        self.do_foreach_getset_subtests(*prop_names, is_set=False, **kwargs)
 
-    def do_foreach_get_subtests(self, *prop_names):
-        self.do_foreach_getset_subtests(*prop_names, is_set=False)
-
-    def do_foreach_set_subtests(self, *prop_names):
-        self.do_foreach_getset_subtests(*prop_names, is_set=True)
+    def do_foreach_set_subtests(self, *prop_names, **kwargs):
+        self.do_foreach_getset_subtests(*prop_names, is_set=True, **kwargs)
 
     # Test methods
 
