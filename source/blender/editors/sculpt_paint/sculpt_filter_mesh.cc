@@ -47,7 +47,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include <cmath>
 #include <cstdlib>
@@ -63,11 +63,11 @@ void SCULPT_filter_to_orientation_space(float r_v[3], FilterCache *filter_cache)
       /* Do nothing, Sculpt Mode already works in object space. */
       break;
     case SCULPT_FILTER_ORIENTATION_WORLD:
-      mul_mat3_m4_v3(filter_cache->obmat, r_v);
+      mul_mat3_m4_v3(filter_cache->obmat.ptr(), r_v);
       break;
     case SCULPT_FILTER_ORIENTATION_VIEW:
-      mul_mat3_m4_v3(filter_cache->obmat, r_v);
-      mul_mat3_m4_v3(filter_cache->viewmat, r_v);
+      mul_mat3_m4_v3(filter_cache->obmat.ptr(), r_v);
+      mul_mat3_m4_v3(filter_cache->viewmat.ptr(), r_v);
       break;
   }
 }
@@ -79,11 +79,11 @@ void SCULPT_filter_to_object_space(float r_v[3], FilterCache *filter_cache)
       /* Do nothing, Sculpt Mode already works in object space. */
       break;
     case SCULPT_FILTER_ORIENTATION_WORLD:
-      mul_mat3_m4_v3(filter_cache->obmat_inv, r_v);
+      mul_mat3_m4_v3(filter_cache->obmat_inv.ptr(), r_v);
       break;
     case SCULPT_FILTER_ORIENTATION_VIEW:
-      mul_mat3_m4_v3(filter_cache->viewmat_inv, r_v);
-      mul_mat3_m4_v3(filter_cache->obmat_inv, r_v);
+      mul_mat3_m4_v3(filter_cache->viewmat_inv.ptr(), r_v);
+      mul_mat3_m4_v3(filter_cache->obmat_inv.ptr(), r_v);
       break;
   }
 }
@@ -102,12 +102,13 @@ void SCULPT_filter_zero_disabled_axis_components(float r_v[3], FilterCache *filt
 void SCULPT_filter_cache_init(bContext *C,
                               Object *ob,
                               Sculpt *sd,
-                              const int undo_type,
+                              const SculptUndoType undo_type,
                               const float mval_fl[2],
                               float area_normal_radius,
                               float start_strength)
 {
   using namespace blender;
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   PBVH *pbvh = ob->sculpt->pbvh;
 
@@ -115,7 +116,7 @@ void SCULPT_filter_cache_init(bContext *C,
   ss->filter_cache->start_filter_strength = start_strength;
   ss->filter_cache->random_seed = rand();
 
-  if (undo_type == SCULPT_UNDO_COLOR) {
+  if (undo_type == SculptUndoType::Color) {
     BKE_pbvh_ensure_node_loops(ss->pbvh);
   }
 
@@ -140,20 +141,20 @@ void SCULPT_filter_cache_init(bContext *C,
   }
 
   for (const int i : ss->filter_cache->nodes.index_range()) {
-    SCULPT_undo_push_node(ob, ss->filter_cache->nodes[i], SculptUndoType(undo_type));
+    undo::push_node(ob, ss->filter_cache->nodes[i], undo_type);
   }
 
   /* Setup orientation matrices. */
-  copy_m4_m4(ss->filter_cache->obmat, ob->object_to_world);
-  invert_m4_m4(ss->filter_cache->obmat_inv, ob->object_to_world);
+  copy_m4_m4(ss->filter_cache->obmat.ptr(), ob->object_to_world);
+  invert_m4_m4(ss->filter_cache->obmat_inv.ptr(), ob->object_to_world);
 
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
   ss->filter_cache->vc = vc;
   if (vc.rv3d) {
-    copy_m4_m4(ss->filter_cache->viewmat, vc.rv3d->viewmat);
-    copy_m4_m4(ss->filter_cache->viewmat_inv, vc.rv3d->viewinv);
+    copy_m4_m4(ss->filter_cache->viewmat.ptr(), vc.rv3d->viewmat);
+    copy_m4_m4(ss->filter_cache->viewmat_inv.ptr(), vc.rv3d->viewinv);
   }
 
   Scene *scene = CTX_data_scene(C);
@@ -213,13 +214,9 @@ void SCULPT_filter_cache_init(bContext *C,
   }
 
   /* Update view normal */
-  float projection_mat[4][4];
   float mat[3][3];
   float viewDir[3] = {0.0f, 0.0f, 1.0f};
-
   if (vc.rv3d) {
-    ED_view3d_ob_project_mat_get(vc.rv3d, ob, projection_mat);
-
     invert_m4_m4(ob->world_to_object, ob->object_to_world);
     copy_m3_m4(mat, vc.rv3d->viewinv);
     mul_m3_v3(mat, viewDir);
@@ -355,7 +352,7 @@ static void mesh_filter_task(Object *ob,
   SculptSession *ss = ob->sculpt;
 
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, SculptUndoType::Position);
 
   /* When using the relax face sets meshes filter,
    * each 3 iterations, do a whole mesh relax to smooth the contents of the Face Set. */
@@ -857,7 +854,7 @@ static void sculpt_mesh_filter_cancel(bContext *C, wmOperator * /*op*/)
     PBVHVertexIter vd;
 
     SculptOrigVertData orig_data;
-    SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
+    SCULPT_orig_vert_data_init(&orig_data, ob, node, SculptUndoType::Position);
 
     BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
       SCULPT_orig_vert_data_update(&orig_data, &vd);
@@ -874,6 +871,7 @@ static void sculpt_mesh_filter_cancel(bContext *C, wmOperator * /*op*/)
 
 static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  using namespace blender::ed::sculpt_paint;
   Object *ob = CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   SculptSession *ss = ob->sculpt;
@@ -887,13 +885,13 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
     switch (event->val) {
       case FILTER_MESH_MODAL_CANCEL:
         sculpt_mesh_filter_cancel(C, op);
-        SCULPT_undo_push_end_ex(ob, true);
+        undo::push_end_ex(ob, true);
         ret = OPERATOR_CANCELLED;
         break;
 
       case FILTER_MESH_MODAL_CONFIRM:
         ret = sculpt_mesh_filter_confirm(ss, op, filter_type);
-        SCULPT_undo_push_end_ex(ob, false);
+        undo::push_end_ex(ob, false);
         break;
     }
 
@@ -935,8 +933,7 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
 
   sculpt_mesh_update_strength(op, ss, prev_mval, mval);
 
-  bool needs_pmap = sculpt_mesh_filter_needs_pmap(filter_type);
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, needs_pmap, false, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
   sculpt_mesh_filter_apply(C, op);
 
@@ -981,6 +978,7 @@ static void sculpt_filter_specific_init(const eSculptMeshFilterType filter_type,
 /* Returns OPERATOR_PASS_THROUGH on success. */
 static int sculpt_mesh_filter_start(bContext *C, wmOperator *op)
 {
+  using namespace blender::ed::sculpt_paint;
   Object *ob = CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
@@ -991,7 +989,7 @@ static int sculpt_mesh_filter_start(bContext *C, wmOperator *op)
   const bool use_automasking = SCULPT_is_automasking_enabled(sd, nullptr, nullptr);
   const bool needs_topology_info = sculpt_mesh_filter_needs_pmap(filter_type) || use_automasking;
 
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, needs_topology_info, false, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
   SculptSession *ss = ob->sculpt;
 
   const eMeshFilterDeformAxis deform_axis = eMeshFilterDeformAxis(
@@ -1018,12 +1016,12 @@ static int sculpt_mesh_filter_start(bContext *C, wmOperator *op)
     SCULPT_boundary_info_ensure(ob);
   }
 
-  SCULPT_undo_push_begin(ob, op);
+  undo::push_begin(ob, op);
 
   SCULPT_filter_cache_init(C,
                            ob,
                            sd,
-                           SCULPT_UNDO_COORDS,
+                           SculptUndoType::Position,
                            mval_fl,
                            RNA_float_get(op->ptr, "area_normal_radius"),
                            RNA_float_get(op->ptr, "strength"));

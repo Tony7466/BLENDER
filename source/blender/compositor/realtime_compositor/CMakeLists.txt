@@ -10,6 +10,7 @@ set(INC
   ../../blentranslation
   ../../draw
   ../../gpu
+  ../../imbuf
   ../../makesrna
   ../../nodes
   ../../render
@@ -111,7 +112,7 @@ set(LIB
   bf_gpu
   PRIVATE bf::intern::guardedalloc
   bf_nodes
-  PRIVATE bf::imbuf
+  bf_imbuf
   bf_render
   PRIVATE bf::blenlib
   bf_blenkernel
@@ -179,7 +180,7 @@ set(GLSL_SRC
   shaders/compositor_smaa_blending_weight_calculation.glsl
   shaders/compositor_smaa_edge_detection.glsl
   shaders/compositor_smaa_neighborhood_blending.glsl
-  shaders/compositor_split_viewer.glsl
+  shaders/compositor_split.glsl
   shaders/compositor_summed_area_table_compute_complete_blocks.glsl
   shaders/compositor_summed_area_table_compute_complete_x_prologues.glsl
   shaders/compositor_summed_area_table_compute_complete_y_prologues.glsl
@@ -294,7 +295,7 @@ set(SRC_SHADER_CREATE_INFOS
   shaders/infos/compositor_realize_on_domain_info.hh
   shaders/infos/compositor_screen_lens_distortion_info.hh
   shaders/infos/compositor_smaa_info.hh
-  shaders/infos/compositor_split_viewer_info.hh
+  shaders/infos/compositor_split_info.hh
   shaders/infos/compositor_summed_area_table_info.hh
   shaders/infos/compositor_sun_beams_info.hh
   shaders/infos/compositor_symmetric_blur_info.hh

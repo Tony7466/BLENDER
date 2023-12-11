@@ -9,9 +9,11 @@ set(INC
   ../blentranslation
   ../bmesh
   ../draw
+  ../functions
   ../gpencil_modifiers_legacy
   ../gpu
   ../ikplugin
+  ../imbuf
   ../makesrna
   ../modifiers
   ../nodes
@@ -276,7 +278,6 @@ set(SRC
   intern/subdiv.cc
   intern/subdiv_ccg.cc
   intern/subdiv_ccg_mask.cc
-  intern/subdiv_ccg_material.cc
   intern/subdiv_converter.cc
   intern/subdiv_converter_mesh.cc
   intern/subdiv_deform.cc
@@ -417,7 +418,7 @@ set(SRC
   BKE_lib_override.hh
   BKE_lib_query.h
   BKE_lib_remap.hh
-  BKE_library.h
+  BKE_library.hh
   BKE_light.h
   BKE_light_linking.h
   BKE_lightprobe.h
@@ -546,11 +547,11 @@ set(LIB
   PRIVATE bf::dna
   bf_draw
   PRIVATE bf::extern::curve_fit_nd
-  PRIVATE bf::functions
+  bf_functions
   bf_gpencil_modifiers_legacy
   bf_gpu
   bf_ikplugin
-  PRIVATE bf::imbuf
+  bf_imbuf
   PRIVATE bf::intern::clog
   bf_intern_ghost
   PRIVATE bf::intern::guardedalloc
@@ -847,6 +848,7 @@ if(WITH_GTESTS)
     intern/lib_id_remapper_test.cc
     intern/lib_id_test.cc
     intern/lib_remap_test.cc
+    intern/main_test.cc
     intern/nla_test.cc
     intern/tracking_test.cc
   )

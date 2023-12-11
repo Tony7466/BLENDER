@@ -535,7 +535,7 @@ void BKE_mesh_face_offsets_ensure_alloc(Mesh *mesh)
   mesh->runtime->face_offsets_sharing_info = blender::implicit_sharing::info_for_mem_free(
       mesh->face_offset_indices);
 
-#ifdef DEBUG
+#ifndef NDEBUG
   /* Fill offsets with obviously bad values to simplify finding missing initialization. */
   mesh->face_offsets_for_write().fill(-1);
 #endif
@@ -790,7 +790,7 @@ void BKE_mesh_texspace_calc(Mesh *me)
   using namespace blender;
   if (me->texspace_flag & ME_TEXSPACE_FLAG_AUTO) {
     const Bounds<float3> bounds = me->bounds_min_max().value_or(
-        Bounds<float3>{float3(-1.0f), float3(1.0f)});
+        Bounds(float3(-1.0f), float3(1.0f)));
 
     float texspace_location[3], texspace_size[3];
     mid_v3_v3v3(texspace_location, bounds.min, bounds.max);
@@ -1090,7 +1090,7 @@ std::optional<blender::Bounds<blender::float3>> Mesh::bounds_min_max() const
   this->runtime->bounds_cache.ensure([&](Bounds<float3> &r_bounds) {
     switch (this->runtime->wrapper_type) {
       case ME_WRAPPER_TYPE_BMESH:
-        r_bounds = *BKE_editmesh_cache_calc_minmax(this->edit_mesh, this->runtime->edit_data);
+        r_bounds = *BKE_editmesh_cache_calc_minmax(*this->edit_mesh, *this->runtime->edit_data);
         break;
       case ME_WRAPPER_TYPE_MDATA:
       case ME_WRAPPER_TYPE_SUBD:

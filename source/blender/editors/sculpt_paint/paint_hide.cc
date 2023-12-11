@@ -10,7 +10,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array_utils.hh"
-#include "BLI_bitmap.h"
+#include "BLI_bit_span_ops.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
@@ -44,7 +44,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include "paint_intern.hh"
 
@@ -52,6 +52,73 @@
 #include "sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint::hide {
+
+void sync_all_from_faces(Object &object)
+{
+  SculptSession &ss = *object.sculpt;
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+
+  SCULPT_topology_islands_invalidate(&ss);
+
+  switch (BKE_pbvh_type(ss.pbvh)) {
+    case PBVH_FACES: {
+      /* We may have adjusted the ".hide_poly" attribute, now make the hide status attributes for
+       * vertices and edges consistent. */
+      bke::mesh_hide_face_flush(mesh);
+      break;
+    }
+    case PBVH_GRIDS: {
+      /* In addition to making the hide status of the base mesh consistent, we also have to
+       * propagate the status to the Multires grids. */
+      bke::mesh_hide_face_flush(mesh);
+      BKE_sculpt_sync_face_visibility_to_grids(&mesh, ss.subdiv_ccg);
+      break;
+    }
+    case PBVH_BMESH: {
+      BMesh &bm = *ss.bm;
+      BMIter iter;
+      BMFace *f;
+
+      /* Hide all verts and edges attached to faces. */
+      BM_ITER_MESH (f, &iter, &bm, BM_FACES_OF_MESH) {
+        BMLoop *l = f->l_first;
+        do {
+          BM_elem_flag_enable(l->v, BM_ELEM_HIDDEN);
+          BM_elem_flag_enable(l->e, BM_ELEM_HIDDEN);
+        } while ((l = l->next) != f->l_first);
+      }
+
+      /* Unhide verts and edges attached to visible faces. */
+      BM_ITER_MESH (f, &iter, &bm, BM_FACES_OF_MESH) {
+        if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
+          continue;
+        }
+
+        BMLoop *l = f->l_first;
+        do {
+          BM_elem_flag_disable(l->v, BM_ELEM_HIDDEN);
+          BM_elem_flag_disable(l->e, BM_ELEM_HIDDEN);
+        } while ((l = l->next) != f->l_first);
+      }
+      break;
+    }
+  }
+}
+
+void tag_update_visibility(const bContext &C)
+{
+  ARegion *region = CTX_wm_region(&C);
+  ED_region_tag_redraw(region);
+
+  Object *ob = CTX_data_active_object(&C);
+  WM_event_add_notifier(&C, NC_OBJECT | ND_DRAW, ob);
+
+  DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
+  const RegionView3D *rv3d = CTX_wm_region_view3d(&C);
+  if (!BKE_sculptsession_use_pbvh_draw(ob, rv3d)) {
+    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  }
+}
 
 enum class VisAction {
   Hide = 0,
@@ -87,7 +154,7 @@ static bool is_effected(const VisArea area,
   return ((inside && area == VisArea::Inside) || (!inside && area == VisArea::Outside));
 }
 
-static void vert_show_all(Object &object, const Span<PBVHNode *> nodes)
+void mesh_show_all(Object &object, const Span<PBVHNode *> nodes)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
@@ -97,7 +164,7 @@ static void vert_show_all(Object &object, const Span<PBVHNode *> nodes)
       for (PBVHNode *node : nodes.slice(range)) {
         const Span<int> verts = BKE_pbvh_node_get_vert_indices(node);
         if (std::any_of(verts.begin(), verts.end(), [&](const int i) { return hide_vert[i]; })) {
-          SCULPT_undo_push_node(&object, node, SCULPT_UNDO_HIDDEN);
+          undo::push_node(&object, node, SculptUndoType::HideVert);
           BKE_pbvh_node_mark_rebuild_draw(node);
         }
       }
@@ -107,61 +174,54 @@ static void vert_show_all(Object &object, const Span<PBVHNode *> nodes)
     BKE_pbvh_node_fully_hidden_set(node, false);
   }
   attributes.remove(".hide_vert");
-}
-
-static bool vert_hide_is_changed(const Span<int> verts,
-                                 const Span<bool> orig_hide,
-                                 const Span<bool> new_hide)
-{
-  for (const int i : verts.index_range()) {
-    if (orig_hide[verts[i]] != new_hide[i]) {
-      return true;
-    }
-  }
-  return false;
+  bke::mesh_hide_vert_flush(mesh);
 }
 
 static void vert_hide_update(Object &object,
                              const Span<PBVHNode *> nodes,
-                             FunctionRef<void(Span<int>, MutableSpan<bool>)> calc_hide)
+                             const FunctionRef<void(Span<int>, MutableSpan<bool>)> calc_hide)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   bke::SpanAttributeWriter<bool> hide_vert = attributes.lookup_or_add_for_write_span<bool>(
       ".hide_vert", ATTR_DOMAIN_POINT);
 
+  bool any_changed = false;
   threading::EnumerableThreadSpecific<Vector<bool>> all_new_hide;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     Vector<bool> &new_hide = all_new_hide.local();
     for (PBVHNode *node : nodes.slice(range)) {
-      const Span<int> verts = BKE_pbvh_node_get_vert_indices(node);
+      const Span<int> verts = BKE_pbvh_node_get_unique_vert_indices(node);
 
       new_hide.reinitialize(verts.size());
       array_utils::gather(hide_vert.span.as_span(), verts, new_hide.as_mutable_span());
       calc_hide(verts, new_hide);
-      if (!vert_hide_is_changed(verts, hide_vert.span, new_hide)) {
+      if (!array_utils::indexed_data_equal<bool>(hide_vert.span, verts, new_hide)) {
         continue;
       }
 
-      SCULPT_undo_push_node(&object, node, SCULPT_UNDO_HIDDEN);
-
-      /* Don't tag a visibility update, we handle updating the fully hidden status here. */
-      BKE_pbvh_node_mark_rebuild_draw(node);
-      BKE_pbvh_node_fully_hidden_set(node, !new_hide.contains(false));
-
+      any_changed = true;
+      undo::push_node(&object, node, SculptUndoType::HideVert);
       array_utils::scatter(new_hide.as_span(), verts, hide_vert.span);
+
+      BKE_pbvh_node_mark_update_visibility(node);
+      bke::pbvh::node_update_visibility_mesh(hide_vert.span, *node);
     }
   });
+
   hide_vert.finish();
+  if (any_changed) {
+    bke::mesh_hide_vert_flush(mesh);
+  }
 }
 
 static void partialvis_update_mesh(Object &object,
-                                   PBVH &pbvh,
                                    const VisAction action,
                                    const VisArea area,
                                    const float planes[4][4],
                                    const Span<PBVHNode *> nodes)
 {
+  PBVH &pbvh = *object.sculpt->pbvh;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   if (action == VisAction::Show && !attributes.contains(".hide_vert")) {
@@ -191,14 +251,14 @@ static void partialvis_update_mesh(Object &object,
           });
           break;
         case VisAction::Show:
-          vert_show_all(object, nodes);
+          mesh_show_all(object, nodes);
           break;
       }
       break;
-    case VisArea::Masked:
+    case VisArea::Masked: {
       const VArraySpan<float> mask = *attributes.lookup<float>(".sculpt_mask", ATTR_DOMAIN_POINT);
       if (action == VisAction::Show && mask.is_empty()) {
-        vert_show_all(object, nodes);
+        mesh_show_all(object, nodes);
       }
       else {
         vert_hide_update(object, nodes, [&](const Span<int> verts, MutableSpan<bool> hide) {
@@ -210,96 +270,164 @@ static void partialvis_update_mesh(Object &object,
         });
       }
       break;
+    }
   }
-
-  BKE_mesh_flush_hidden_from_verts(&mesh);
 }
 
-/* Hide or show elements in multires grids with a special GridFlags
- * customdata layer. */
-static void partialvis_update_grids(Depsgraph *depsgraph,
-                                    Object *ob,
-                                    PBVH *pbvh,
+void grids_show_all(Depsgraph &depsgraph, Object &object, const Span<PBVHNode *> nodes)
+{
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  PBVH &pbvh = *object.sculpt->pbvh;
+  SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
+  bool any_changed = false;
+  if (!grid_hidden.is_empty()) {
+    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+      for (PBVHNode *node : nodes.slice(range)) {
+        const Span<int> grids = BKE_pbvh_node_get_grid_indices(*node);
+        if (std::any_of(grids.begin(), grids.end(), [&](const int i) {
+              return bits::any_bit_set(grid_hidden[i]);
+            }))
+        {
+          any_changed = true;
+          undo::push_node(&object, node, SculptUndoType::HideVert);
+          BKE_pbvh_node_mark_rebuild_draw(node);
+        }
+      }
+    });
+  }
+  if (!any_changed) {
+    return;
+  }
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_fully_hidden_set(node, false);
+  }
+  BKE_subdiv_ccg_grid_hidden_free(subdiv_ccg);
+  BKE_pbvh_sync_visibility_from_verts(&pbvh, &mesh);
+  multires_mark_as_modified(&depsgraph, &object, MULTIRES_HIDDEN_MODIFIED);
+}
+
+static void grid_hide_update(Depsgraph &depsgraph,
+                             Object &object,
+                             const Span<PBVHNode *> nodes,
+                             const FunctionRef<void(const int, MutableBoundedBitSpan)> calc_hide)
+{
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  PBVH &pbvh = *object.sculpt->pbvh;
+  SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+  BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg);
+
+  bool any_changed = false;
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      const Span<int> grids = BKE_pbvh_node_get_grid_indices(*node);
+      BitGroupVector<> new_hide(grids.size(), grid_hidden.group_size());
+      for (const int i : grids.index_range()) {
+        new_hide[i].copy_from(grid_hidden[grids[i]].as_span());
+      }
+
+      for (const int i : grids.index_range()) {
+        calc_hide(grids[i], new_hide[i]);
+      }
+
+      if (std::all_of(grids.index_range().begin(), grids.index_range().end(), [&](const int i) {
+            return bits::spans_equal(grid_hidden[grids[i]], new_hide[i]);
+          }))
+      {
+        continue;
+      }
+
+      any_changed = true;
+      undo::push_node(&object, node, SculptUndoType::HideVert);
+
+      for (const int i : grids.index_range()) {
+        grid_hidden[grids[i]].copy_from(new_hide[i].as_span());
+      }
+
+      BKE_pbvh_node_mark_update_visibility(node);
+      bke::pbvh::node_update_visibility_grids(grid_hidden, *node);
+    }
+  });
+
+  if (any_changed) {
+    multires_mark_as_modified(&depsgraph, &object, MULTIRES_HIDDEN_MODIFIED);
+    BKE_pbvh_sync_visibility_from_verts(&pbvh, &mesh);
+  }
+}
+
+static void partialvis_update_grids(Depsgraph &depsgraph,
+                                    Object &object,
                                     const VisAction action,
                                     const VisArea area,
                                     const float planes[4][4],
                                     const Span<PBVHNode *> nodes)
 {
-  SubdivCCG &subdiv_ccg = *ob->sculpt->subdiv_ccg;
-  const Span<CCGElem *> grids = subdiv_ccg.grids;
-  const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
-  MutableSpan<BLI_bitmap *> grid_hidden = subdiv_ccg.grid_hidden;
-
-  for (PBVHNode *node : nodes) {
-    bool any_changed = false;
-    bool any_visible = false;
-
-    SCULPT_undo_push_node(ob, node, SCULPT_UNDO_HIDDEN);
-
-    for (const int grid_index : BKE_pbvh_node_get_grid_indices(*node)) {
-      int any_hidden = 0;
-      BLI_bitmap *gh = grid_hidden[grid_index];
-      if (!gh) {
-        switch (action) {
-          case VisAction::Hide:
-            /* Create grid flags data. */
-            gh = grid_hidden[grid_index] = BLI_BITMAP_NEW(key.grid_area,
-                                                          "partialvis_update_grids");
-            break;
-          case VisAction::Show:
-            /* Entire grid is visible, nothing to show. */
-            continue;
-        }
-      }
-      else if (action == VisAction::Show && area == VisArea::All) {
-        /* Special case if we're showing all, just free the grid. */
-        MEM_freeN(gh);
-        grid_hidden[grid_index] = nullptr;
-        any_changed = true;
-        any_visible = true;
-        continue;
-      }
-
-      for (int y = 0; y < key.grid_size; y++) {
-        for (int x = 0; x < key.grid_size; x++) {
-          CCGElem *elem = CCG_grid_elem(&key, grids[grid_index], x, y);
-          const float *co = CCG_elem_co(&key, elem);
-          float mask = key.has_mask ? *CCG_elem_mask(&key, elem) : 0.0f;
-
-          /* Skip grid element if not in the effected area. */
-          if (is_effected(area, planes, co, mask)) {
-            /* Set or clear the hide flag. */
-            BLI_BITMAP_SET(gh, y * key.grid_size + x, action == VisAction::Hide);
-
-            any_changed = true;
-          }
-
-          /* Keep track of whether any elements are still hidden. */
-          if (BLI_BITMAP_TEST(gh, y * key.grid_size + x)) {
-            any_hidden = true;
-          }
-          else {
-            any_visible = true;
-          }
-        }
-      }
-
-      /* If everything in the grid is now visible, free the grid flags. */
-      if (!any_hidden) {
-        MEM_freeN(gh);
-        grid_hidden[grid_index] = nullptr;
-      }
-    }
-
-    /* Mark updates if anything was hidden/shown. */
-    if (any_changed) {
-      BKE_pbvh_node_mark_rebuild_draw(node);
-      BKE_pbvh_node_fully_hidden_set(node, !any_visible);
-      multires_mark_as_modified(depsgraph, ob, MULTIRES_HIDDEN_MODIFIED);
-    }
+  PBVH &pbvh = *object.sculpt->pbvh;
+  SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+  if (action == VisAction::Show && area == VisArea::All) {
+    grids_show_all(depsgraph, object, nodes);
+    return;
   }
 
-  BKE_pbvh_sync_visibility_from_verts(pbvh, static_cast<Mesh *>(ob->data));
+  const bool value = action_to_hide(action);
+  switch (area) {
+    case VisArea::Inside:
+    case VisArea::Outside: {
+      const CCGKey key = *BKE_pbvh_get_grid_key(&pbvh);
+      const Span<CCGElem *> grids = subdiv_ccg.grids;
+      grid_hide_update(
+          depsgraph, object, nodes, [&](const int grid_index, MutableBoundedBitSpan hide) {
+            CCGElem *grid = grids[grid_index];
+            for (const int y : IndexRange(key.grid_size)) {
+              for (const int x : IndexRange(key.grid_size)) {
+                CCGElem *elem = CCG_grid_elem(&key, grid, x, y);
+                if (isect_point_planes_v3(planes, 4, CCG_elem_co(&key, elem))) {
+                  hide[y * key.grid_size + x].set(value);
+                }
+              }
+            }
+          });
+      break;
+    }
+    case VisArea::All:
+      switch (action) {
+        case VisAction::Hide:
+          grid_hide_update(
+              depsgraph, object, nodes, [&](const int /*verts*/, MutableBoundedBitSpan hide) {
+                hide.fill(true);
+              });
+          break;
+        case VisAction::Show:
+          grids_show_all(depsgraph, object, nodes);
+          break;
+      }
+      break;
+    case VisArea::Masked: {
+      const CCGKey key = *BKE_pbvh_get_grid_key(&pbvh);
+      const Span<CCGElem *> grids = subdiv_ccg.grids;
+      if (!key.has_mask) {
+        grid_hide_update(
+            depsgraph, object, nodes, [&](const int /*verts*/, MutableBoundedBitSpan hide) {
+              hide.fill(value);
+            });
+      }
+      else {
+        grid_hide_update(
+            depsgraph, object, nodes, [&](const int grid_index, MutableBoundedBitSpan hide) {
+              CCGElem *grid = grids[grid_index];
+              for (const int y : IndexRange(key.grid_size)) {
+                for (const int x : IndexRange(key.grid_size)) {
+                  CCGElem *elem = CCG_grid_elem(&key, grid, x, y);
+                  if (*CCG_elem_mask(&key, elem) > 0.5f) {
+                    hide[y * key.grid_size + x].set(value);
+                  }
+                }
+              }
+            });
+      }
+      break;
+    }
+  }
 }
 
 static void partialvis_update_bmesh_verts(BMesh *bm,
@@ -355,7 +483,7 @@ static void partialvis_update_bmesh(Object *ob,
     bool any_changed = false;
     bool any_visible = false;
 
-    SCULPT_undo_push_node(ob, node, SCULPT_UNDO_HIDDEN);
+    undo::push_node(ob, node, SculptUndoType::HideVert);
 
     partialvis_update_bmesh_verts(bm,
                                   BKE_pbvh_bmesh_node_unique_verts(node),
@@ -430,7 +558,6 @@ static Vector<PBVHNode *> get_pbvh_nodes(PBVH *pbvh,
 
 static int hide_show_exec(bContext *C, wmOperator *op)
 {
-  ARegion *region = CTX_wm_region(C);
   Object *ob = CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
@@ -455,19 +582,19 @@ static int hide_show_exec(bContext *C, wmOperator *op)
   /* Start undo. */
   switch (action) {
     case VisAction::Hide:
-      SCULPT_undo_push_begin_ex(ob, "Hide area");
+      undo::push_begin_ex(ob, "Hide area");
       break;
     case VisAction::Show:
-      SCULPT_undo_push_begin_ex(ob, "Show area");
+      undo::push_begin_ex(ob, "Show area");
       break;
   }
 
   switch (pbvh_type) {
     case PBVH_FACES:
-      partialvis_update_mesh(*ob, *pbvh, action, area, clip_planes, nodes);
+      partialvis_update_mesh(*ob, action, area, clip_planes, nodes);
       break;
     case PBVH_GRIDS:
-      partialvis_update_grids(depsgraph, ob, pbvh, action, area, clip_planes, nodes);
+      partialvis_update_grids(*depsgraph, *ob, action, area, clip_planes, nodes);
       break;
     case PBVH_BMESH:
       partialvis_update_bmesh(ob, pbvh, action, area, clip_planes, nodes);
@@ -475,17 +602,10 @@ static int hide_show_exec(bContext *C, wmOperator *op)
   }
 
   /* End undo. */
-  SCULPT_undo_push_end(ob);
+  undo::push_end(ob);
 
   SCULPT_topology_islands_invalidate(ob->sculpt);
-
-  RegionView3D *rv3d = CTX_wm_region_view3d(C);
-  if (!BKE_sculptsession_use_pbvh_draw(ob, rv3d)) {
-    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-  }
-
-  DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
-  ED_region_tag_redraw(region);
+  tag_update_visibility(*C);
 
   return OPERATOR_FINISHED;
 }
@@ -544,6 +664,116 @@ void PAINT_OT_hide_show(wmOperatorType *ot)
   RNA_def_enum(
       ot->srna, "area", area_items, VisArea::Inside, "VisArea", "Which vertices to hide or show");
   WM_operator_properties_border(ot);
+}
+
+static void invert_visibility_mesh(Object &object, const Span<PBVHNode *> nodes)
+{
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+  bke::SpanAttributeWriter<bool> hide_vert = attributes.lookup_or_add_for_write_span<bool>(
+      ".hide_vert", ATTR_DOMAIN_POINT);
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      undo::push_node(&object, node, SculptUndoType::HideVert);
+      for (const int vert : BKE_pbvh_node_get_unique_vert_indices(node)) {
+        hide_vert.span[vert] = !hide_vert.span[vert];
+      }
+      BKE_pbvh_node_mark_update_visibility(node);
+      bke::pbvh::node_update_visibility_mesh(hide_vert.span, *node);
+    }
+  });
+
+  hide_vert.finish();
+  bke::mesh_hide_vert_flush(mesh);
+}
+
+static void invert_visibility_grids(Depsgraph &depsgraph,
+                                    Object &object,
+                                    const Span<PBVHNode *> nodes)
+{
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  PBVH &pbvh = *object.sculpt->pbvh;
+  SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+  BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg);
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      undo::push_node(&object, node, SculptUndoType::HideVert);
+      for (const int i : BKE_pbvh_node_get_grid_indices(*node)) {
+        bits::invert(grid_hidden[i]);
+      }
+      BKE_pbvh_node_mark_update_visibility(node);
+      bke::pbvh::node_update_visibility_grids(grid_hidden, *node);
+    }
+  });
+
+  multires_mark_as_modified(&depsgraph, &object, MULTIRES_HIDDEN_MODIFIED);
+  BKE_pbvh_sync_visibility_from_verts(&pbvh, &mesh);
+}
+
+static void invert_visibility_bmesh(Object &object, const Span<PBVHNode *> nodes)
+{
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      undo::push_node(&object, node, SculptUndoType::HideVert);
+      bool fully_hidden = true;
+      for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(node)) {
+        BM_elem_flag_toggle(vert, BM_ELEM_HIDDEN);
+        fully_hidden &= BM_elem_flag_test_bool(vert, BM_ELEM_HIDDEN);
+      }
+      BKE_pbvh_node_fully_hidden_set(node, fully_hidden);
+      BKE_pbvh_node_mark_rebuild_draw(node);
+    }
+  });
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      partialvis_update_bmesh_faces(BKE_pbvh_bmesh_node_faces(node));
+    }
+  });
+}
+
+static int visibility_invert_exec(bContext *C, wmOperator *op)
+{
+  Object &object = *CTX_data_active_object(C);
+  Depsgraph &depsgraph = *CTX_data_ensure_evaluated_depsgraph(C);
+
+  PBVH *pbvh = BKE_sculpt_object_pbvh_ensure(&depsgraph, &object);
+  BLI_assert(BKE_object_sculpt_pbvh_get(&object) == pbvh);
+
+  Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
+  undo::push_begin(&object, op);
+  switch (BKE_pbvh_type(pbvh)) {
+    case PBVH_FACES:
+      invert_visibility_mesh(object, nodes);
+      break;
+    case PBVH_GRIDS:
+      invert_visibility_grids(depsgraph, object, nodes);
+      break;
+    case PBVH_BMESH:
+      invert_visibility_bmesh(object, nodes);
+      break;
+  }
+
+  undo::push_end(&object);
+
+  SCULPT_topology_islands_invalidate(object.sculpt);
+  tag_update_visibility(*C);
+
+  return OPERATOR_FINISHED;
+}
+
+void PAINT_OT_visibility_invert(wmOperatorType *ot)
+{
+  ot->name = "Invert Visibility";
+  ot->idname = "PAINT_OT_visibility_invert";
+  ot->description = "Invert the visibility of all vertices";
+
+  ot->modal = WM_gesture_box_modal;
+  ot->exec = visibility_invert_exec;
+  ot->poll = SCULPT_mode_poll_view3d;
+
+  ot->flag = OPTYPE_REGISTER;
 }
 
 }  // namespace blender::ed::sculpt_paint::hide
