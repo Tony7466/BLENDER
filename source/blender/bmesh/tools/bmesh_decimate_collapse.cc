@@ -23,12 +23,12 @@
 #include "BLI_quadric.h"
 #include "BLI_utildefines_stack.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 
-#include "bmesh.h"
-#include "bmesh_decimate.h" /* own include */
+#include "bmesh.hh"
+#include "bmesh_decimate.hh" /* own include */
 
-#include "../intern/bmesh_structure.h"
+#include "../intern/bmesh_structure.hh"
 
 #define USE_SYMMETRY
 #ifdef USE_SYMMETRY

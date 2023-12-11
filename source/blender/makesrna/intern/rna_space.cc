@@ -14,14 +14,14 @@
 #include "BLT_translation.h"
 
 #include "BKE_attribute.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_movieclip.h"
 #include "BKE_node.h"
 #include "BKE_studiolight.h"
-#include "BKE_viewer_path.h"
+#include "BKE_viewer_path.hh"
 
 #include "ED_asset.hh"
 #include "ED_spreadsheet.hh"
@@ -552,7 +552,7 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "BKE_anim_data.h"
 #  include "BKE_brush.hh"
 #  include "BKE_colortools.h"
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
 #  include "BKE_global.h"
 #  include "BKE_icons.h"
 #  include "BKE_idprop.h"
@@ -4664,7 +4664,8 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "show_statvis", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "overlay.edit_flag", V3D_OVERLAY_EDIT_STATVIS);
-  RNA_def_property_ui_text(prop, "Stat Vis", "Display statistical information about the mesh");
+  RNA_def_property_ui_text(
+      prop, "Mesh Analysis", "Display statistical information about the mesh");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
   prop = RNA_def_property(srna, "show_extra_edge_length", PROP_BOOLEAN, PROP_NONE);

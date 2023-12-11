@@ -16,7 +16,7 @@
 #include "DNA_modifier_types.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_global.h"
 #include "BKE_mesh.hh"
 
@@ -114,8 +114,8 @@ bool ArmatureExporter::add_instance_controller(Object *ob)
   COLLADASW::InstanceController ins(mSW);
   ins.setUrl(COLLADASW::URI(COLLADABU::Utils::EMPTY_STRING, controller_id));
 
-  Mesh *me = (Mesh *)ob->data;
-  if (BKE_mesh_deform_verts(me) == nullptr) {
+  Mesh *mesh = (Mesh *)ob->data;
+  if (BKE_mesh_deform_verts(mesh) == nullptr) {
     return false;
   }
 

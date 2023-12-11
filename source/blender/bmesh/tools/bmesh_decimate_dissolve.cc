@@ -15,10 +15,10 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 
-#include "bmesh.h"
-#include "bmesh_decimate.h" /* own include */
+#include "bmesh.hh"
+#include "bmesh_decimate.hh" /* own include */
 
 /* check that collapsing a vertex between 2 edges doesn't cause a degenerate face. */
 #define USE_DEGENERATE_CHECK
