@@ -455,6 +455,9 @@ static Vector<NodeBakeRequest> collect_simulations_to_bake(Main &bmain,
       if (md->type != eModifierType_Nodes) {
         continue;
       }
+      if (!BKE_modifier_is_enabled(&scene, md, eModifierMode_Realtime)) {
+        continue;
+      }
       NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
       if (!nmd->node_group) {
         continue;
@@ -781,6 +784,10 @@ static int bake_single_node_exec(bContext *C, wmOperator *op)
   }
   NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
   if (nmd.node_group == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  if (!BKE_modifier_is_enabled(scene, md, eModifierMode_Realtime)) {
+    BKE_report(op->reports, RPT_ERROR, "Modifier containing the node is disabled");
     return OPERATOR_CANCELLED;
   }
 
