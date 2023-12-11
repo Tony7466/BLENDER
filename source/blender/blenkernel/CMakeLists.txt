@@ -21,6 +21,7 @@ set(INC
   ../sequencer
   ../shader_fx
   ../simulation
+  ../windowmanager
   ../../../intern/eigen
   ../../../intern/ghost
   ../../../intern/iksolver/extern
