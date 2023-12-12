@@ -24,7 +24,8 @@ using VolumeGrid = blender::bke::VolumeGrid;
 
 VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
                                     blender::StringRef name,
-                                    openvdb::GridBase::Ptr vdb_grid);
+                                    openvdb::GridBase::Ptr vdb_grid,
+                                    VolumeTreeSource tree_source);
 
 std::optional<blender::Bounds<blender::float3>> BKE_volume_grid_bounds(
     openvdb::GridBase::ConstPtr grid);
@@ -40,9 +41,7 @@ openvdb::GridBase::ConstPtr BKE_volume_grid_shallow_transform(openvdb::GridBase:
 openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_metadata(const VolumeGrid *grid);
 openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_read(const Volume *volume,
                                                              const VolumeGrid *grid);
-openvdb::GridBase::Ptr BKE_volume_grid_openvdb_for_write(const Volume *volume,
-                                                         VolumeGrid *grid,
-                                                         bool clear);
+openvdb::GridBase::Ptr BKE_volume_grid_openvdb_for_write(const Volume *volume, VolumeGrid *grid);
 
 void BKE_volume_grid_clear_tree(Volume &volume, VolumeGrid &volume_grid);
 void BKE_volume_grid_clear_tree(openvdb::GridBase &grid);

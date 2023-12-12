@@ -25,8 +25,10 @@ struct Scene;
 struct Volume;
 struct VolumeGridVector;
 namespace blender::bke {
+struct VolumeFileCacheKey;
 struct VolumeGrid;
 }  // namespace blender::bke
+using VolumeFileCacheKey = blender::bke::VolumeFileCacheKey;
 using VolumeGrid = blender::bke::VolumeGrid;
 
 /* Module */
@@ -87,14 +89,11 @@ VolumeGrid *BKE_volume_grid_find_for_write(Volume *volume, const char *name);
  * Return false if neither finding with the base name nor with the post-fixes succeeded. */
 bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name);
 
-/* Grid
- *
- * By default only grid metadata is loaded, for access to the tree and voxels
- * BKE_volume_grid_load must be called first. */
+/* Grid */
 
 bool BKE_volume_grid_load(const Volume *volume, const VolumeGrid *grid);
 void BKE_volume_grid_unload(const Volume *volume, const VolumeGrid *grid);
-bool BKE_volume_grid_is_loaded(const VolumeGrid *grid);
+VolumeTreeSource BKE_volume_grid_tree_source(const VolumeGrid *grid);
 
 /* Metadata */
 

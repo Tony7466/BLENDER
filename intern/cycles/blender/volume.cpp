@@ -236,13 +236,14 @@ class BlenderVolumeLoader : public VDBImageLoader {
 #ifdef WITH_OPENVDB
     for (BL::VolumeGrid &b_volume_grid : b_volume.grids) {
       if (b_volume_grid.name() == grid_name) {
-        const bool unload = !b_volume_grid.is_loaded();
+        const bool is_placeholder = (b_volume_grid.tree_source() ==
+                                     BL::VolumeGrid::tree_source_FILE_PLACEHOLDER);
 
         ::Volume *volume = (::Volume *)b_volume.ptr.data;
         const VolumeGrid *volume_grid = (VolumeGrid *)b_volume_grid.ptr.data;
         grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
 
-        if (unload) {
+        if (is_placeholder) {
           b_volume_grid.unload();
         }
 

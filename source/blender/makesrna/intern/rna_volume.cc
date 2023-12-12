@@ -137,10 +137,10 @@ static void rna_VolumeGrid_matrix_object_get(PointerRNA *ptr, float *value)
   BKE_volume_grid_transform_matrix(grid, (float(*)[4])value);
 }
 
-static bool rna_VolumeGrid_is_loaded_get(PointerRNA *ptr)
+static int rna_VolumeGrid_tree_source_get(PointerRNA *ptr)
 {
   VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
-  return BKE_volume_grid_is_loaded(grid);
+  return BKE_volume_grid_tree_source(grid);
 }
 
 static bool rna_VolumeGrid_load(ID *id, DummyVolumeGrid *grid)
@@ -262,6 +262,30 @@ static bool rna_Volume_save(Volume *volume, Main *bmain, ReportList *reports, co
 
 static void rna_def_volume_grid(BlenderRNA *brna)
 {
+  static const EnumPropertyItem tree_source_items[] = {
+      {VOLUME_TREE_SOURCE_GENERATED,
+       "GENERATED",
+       0,
+       "Generated",
+       "Tree data has been generated at runtime"},
+      {VOLUME_TREE_SOURCE_FILE_PLACEHOLDER,
+       "FILE_PLACEHOLDER",
+       0,
+       "File Placeholder",
+       "Tree is an empty placeholder for lazily loaded file data"},
+      {VOLUME_TREE_SOURCE_FILE_LOADED,
+       "FILE_LOADED",
+       0,
+       "File Loaded",
+       "Tree data has been loaded from file"},
+      {VOLUME_TREE_SOURCE_FILE_SIMPLIFIED,
+       "FILE_SIMPLIFIED",
+       0,
+       "File Simplified",
+       "Tree is a simplified version of file data"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   StructRNA *srna;
   PropertyRNA *prop;
 
@@ -296,10 +320,11 @@ static void rna_def_volume_grid(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Matrix Object", "Transformation matrix from voxel index to object space");
 
-  prop = RNA_def_property(srna, "is_loaded", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "tree_source", PROP_ENUM, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_boolean_funcs(prop, "rna_VolumeGrid_is_loaded_get", nullptr);
-  RNA_def_property_ui_text(prop, "Is Loaded", "Grid tree is loaded in memory");
+  RNA_def_property_enum_items(prop, tree_source_items);
+  RNA_def_property_enum_funcs(prop, "rna_VolumeGrid_tree_source_get", nullptr, nullptr);
+  RNA_def_property_ui_text(prop, "Tree Source", "Source of the tree data in the grid");
 
   /* API */
   FunctionRNA *func;
