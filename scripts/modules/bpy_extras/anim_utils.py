@@ -204,18 +204,19 @@ def bake_action_iter(
 
     # Convert rna_prop types (IDPropertyArray, etc) to python types.
     def clean_custom_properties(obj):
-        clean_props = {}
-        for key, value in obj.items():
-            clean_props.update({key: rna_idprop_value_to_python(value)})
+        clean_props = {
+            key: rna_idprop_value_to_python(value)
+            for key, value in obj.items()
+        }
         return clean_props
 
-    def bake_custom_properties(obj, custom_props={}, frame=None, name=""):
-        if (frame is None or custom_props is None):
+    def bake_custom_properties(obj, *, custom_props, frame, group_name=""):
+        if frame is None or not custom_props:
             return
         for key, value in custom_props.items():
             obj[key] = value
             try:
-                obj.keyframe_insert(f'["{bpy.utils.escape_identifier(key)}"]', frame=frame, group=name)
+                obj.keyframe_insert(f'["{bpy.utils.escape_identifier(key)}"]', frame=frame, group=group_name)
             except TypeError:
                 # Non animatable properties (datablocks, etc) cannot be keyed.
                 continue
@@ -242,10 +243,9 @@ def bake_action_iter(
         return matrix, bbones, custom_props
 
     def armature_frame_info(obj):
-        custom_props = {}
-        if obj.type == 'ARMATURE':
-            custom_props.update(clean_custom_properties(obj))
-        return custom_props
+        if obj.type != 'ARMATURE':
+            return {}
+        return clean_custom_properties(obj)
 
     if bake_options.do_parents_clear:
         if bake_options.do_visual_keying:
@@ -336,7 +336,7 @@ def bake_action_iter(
     lookup_fcurves = {(fcurve.data_path, fcurve.array_index): fcurve for fcurve in action.fcurves}
     if bake_options.do_pose:
         for f, armature_custom_properties in armature_info:
-            bake_custom_properties(obj, armature_custom_properties, f)
+            bake_custom_properties(obj, custom_props = armature_custom_properties, frame = f)
 
         for name, pbone in obj.pose.bones.items():
             if bake_options.only_selected and not pbone.bone.select:
@@ -420,7 +420,7 @@ def bake_action_iter(
                             )
                 # Custom Properties
                 if bake_options.do_custom_props:
-                    bake_custom_properties(pbone, custom_props[name], f, name)
+                    bake_custom_properties(pbone, custom_props = custom_props[name], frame = f, group_name = name)
 
             if is_new_action:
                 keyframes.insert_keyframes_into_new_action(total_new_keys, action, name)
@@ -486,7 +486,7 @@ def bake_action_iter(
                 keyframes.extend_co_values(path_scale, 3, f, obj.scale)
 
             if bake_options.do_custom_props:
-                bake_custom_properties(obj, custom_props, f, name)
+                bake_custom_properties(obj, custom_props = custom_props, frame = f, group_name = name)
 
         if is_new_action:
             keyframes.insert_keyframes_into_new_action(total_new_keys, action, name)
