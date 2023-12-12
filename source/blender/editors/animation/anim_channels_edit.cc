@@ -4476,7 +4476,7 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
   RNA_def_boolean(ot->srna,
                   "remove_outside_range",
                   false,
-                  "Remove All Keys",
+                  "Remove Existing Keys",
                   "Removes all keys leaving only the newly baked");
 
   RNA_def_enum(ot->srna,
