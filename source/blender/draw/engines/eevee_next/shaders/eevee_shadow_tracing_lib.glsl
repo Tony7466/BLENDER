@@ -312,10 +312,8 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
 
 #ifdef SSS_TRANSMITTANCE
     if (!r_is_above_surface) {
-      float dir_len;
-      vec3 L = normalize_and_get_length(direction, dir_len);
       /* Skip the object volume. Do not push behind the light. */
-      float offset_len = saturate(thickness / dir_len);
+      float offset_len = saturate(thickness / length(direction));
       lP += direction * offset_len;
       direction *= 1.0 - offset_len;
     }
@@ -343,10 +341,8 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
 
 #ifdef SSS_TRANSMITTANCE
     if (!r_is_above_surface) {
-      float dir_len;
-      vec3 L = normalize_and_get_length(direction, dir_len);
       /* Skip the object volume. Do not push behind the light. */
-      float offset_len = saturate(thickness / dir_len);
+      float offset_len = saturate(thickness / length(direction));
       lP += direction * offset_len;
       direction *= 1.0 - offset_len;
     }
