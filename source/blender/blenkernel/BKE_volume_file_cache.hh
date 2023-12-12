@@ -56,7 +56,8 @@ struct VolumeFileCacheKey {
 
   inline bool is_valid() const
   {
-    return !this->filepath.empty() && !this->name.empty();
+    /* Note: empty grid name is allowed. */
+    return !this->filepath.empty();
   }
 
   inline operator bool() const
