@@ -1707,12 +1707,12 @@ static IDProperty **rna_NodesModifier_properties(PointerRNA *ptr)
 static void rna_def_modifier_panel_open_prop(StructRNA *srna, const char *identifier, const int id)
 {
   BLI_assert(id >= 0);
-  BLI_assert(id < sizeof(ModifierData::ui_expand_flag2) * 8);
+  BLI_assert(id < sizeof(ModifierData::layout_panel_open_flag) * 8);
 
   PropertyRNA *prop;
   prop = RNA_def_property(srna, identifier, PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "modifier.ui_expand_flag2", (1 << id));
+  RNA_def_property_boolean_sdna(prop, nullptr, "modifier.layout_panel_open_flag", (1 << id));
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
 }
 
