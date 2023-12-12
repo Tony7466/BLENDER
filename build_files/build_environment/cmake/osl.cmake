@@ -39,6 +39,8 @@ set(OSL_EXTRA_ARGS
   -DUSE_PYTHON=OFF
   -DImath_ROOT=${LIBDIR}/imath
   -DCMAKE_DEBUG_POSTFIX=_d
+  -DPython_ROOT=${LIBDIR}/python
+  -DPython_EXECUTABLE=${PYTHON_BINARY}
 )
 
 ExternalProject_Add(external_osl
