@@ -936,8 +936,12 @@ void GHOST_SystemWin32::processWintabEvent(GHOST_WindowWin32 *window)
         }
 
         wt->mapWintabToSysCoordinates(info.x, info.y, info.x, info.y);
-        system->pushEvent(new GHOST_EventCursor(
-            info.time, GHOST_kEventCursorMove, window, info.x, info.y, info.tabletData));
+        system->pushEvent(new GHOST_EventCursor(getMessageTime(system),
+                                                GHOST_kEventCursorMove,
+                                                window,
+                                                info.x,
+                                                info.y,
+                                                info.tabletData));
 
         break;
       }
@@ -981,12 +985,16 @@ void GHOST_SystemWin32::processWintabEvent(GHOST_WindowWin32 *window)
           /* Move cursor to button location, to prevent incorrect cursor position when
            * transitioning from unsynchronized Win32 to Wintab cursor control. */
           wt->mapWintabToSysCoordinates(info.x, info.y, info.x, info.y);
-          system->pushEvent(new GHOST_EventCursor(
-              info.time, GHOST_kEventCursorMove, window, info.x, info.y, info.tabletData));
+          system->pushEvent(new GHOST_EventCursor(getMessageTime(system),
+                                                  GHOST_kEventCursorMove,
+                                                  window,
+                                                  info.x,
+                                                  info.y,
+                                                  info.tabletData));
 
           window->updateMouseCapture(MousePressed);
-          system->pushEvent(
-              new GHOST_EventButton(info.time, info.type, window, info.button, info.tabletData));
+          system->pushEvent(new GHOST_EventButton(
+              getMessageTime(system), info.type, window, info.button, info.tabletData));
 
           mouseMoveHandled = true;
         }
@@ -1027,8 +1035,8 @@ void GHOST_SystemWin32::processWintabEvent(GHOST_WindowWin32 *window)
 
           WINTAB_PRINTF(" ... associated to system button\n");
           window->updateMouseCapture(MouseReleased);
-          system->pushEvent(
-              new GHOST_EventButton(info.time, info.type, window, info.button, info.tabletData));
+          system->pushEvent(new GHOST_EventButton(
+              getMessageTime(system), info.type, window, info.button, info.tabletData));
         }
         else {
           WINTAB_PRINTF(" ... but no system button\n");
@@ -1073,7 +1081,7 @@ void GHOST_SystemWin32::processPointerEvent(
       /* Coalesced pointer events are reverse chronological order, reorder chronologically.
        * Only contiguous move events are coalesced. */
       for (uint32_t i = pointerInfo.size(); i-- > 0;) {
-        system->pushEvent(new GHOST_EventCursor(pointerInfo[i].time,
+        system->pushEvent(new GHOST_EventCursor(getMessageTime(system),
                                                 GHOST_kEventCursorMove,
                                                 window,
                                                 pointerInfo[i].pixelLocation.x,
@@ -1087,13 +1095,13 @@ void GHOST_SystemWin32::processPointerEvent(
     }
     case WM_POINTERDOWN: {
       /* Move cursor to point of contact because GHOST_EventButton does not include position. */
-      system->pushEvent(new GHOST_EventCursor(pointerInfo[0].time,
+      system->pushEvent(new GHOST_EventCursor(getMessageTime(system),
                                               GHOST_kEventCursorMove,
                                               window,
                                               pointerInfo[0].pixelLocation.x,
                                               pointerInfo[0].pixelLocation.y,
                                               pointerInfo[0].tabletData));
-      system->pushEvent(new GHOST_EventButton(pointerInfo[0].time,
+      system->pushEvent(new GHOST_EventButton(getMessageTime(system),
                                               GHOST_kEventButtonDown,
                                               window,
                                               pointerInfo[0].buttonMask,
@@ -1106,7 +1114,7 @@ void GHOST_SystemWin32::processPointerEvent(
       break;
     }
     case WM_POINTERUP: {
-      system->pushEvent(new GHOST_EventButton(pointerInfo[0].time,
+      system->pushEvent(new GHOST_EventButton(getMessageTime(system),
                                               GHOST_kEventButtonUp,
                                               window,
                                               pointerInfo[0].buttonMask,
