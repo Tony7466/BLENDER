@@ -9,10 +9,8 @@
 #pragma once
 
 #ifdef __cplusplus
-#  include "BLI_virtual_array.hh"
+#  include "BLI_math_vector_types.hh"
 #endif
-
-#include "GPU_shader_shared_utils.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -60,7 +58,5 @@ struct DRWTextStore *DRW_text_cache_ensure(void);
 #endif
 
 #ifdef __cplusplus
-void DRW_text_viewer_attribute(blender::VArray<float> attributes,
-                               blender::Span<blender::float3> positions,
-                               float4x4 modelMatrix);
+void DRW_text_viewer_attribute(float attribute, blender::float3 positions);
 #endif

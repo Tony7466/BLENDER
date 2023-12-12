@@ -6,16 +6,15 @@
  * \ingroup draw
  */
 
+#include "BLF_api.h"
+
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
-#include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_memiter.h"
 #include "BLI_rect.h"
-#include "BLI_span.hh"
 #include "BLI_string.h"
-#include "BLI_virtual_array.hh"
 
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
@@ -31,10 +30,9 @@
 
 #include "ED_view3d.hh"
 
-#include "UI_interface.hh"
+#include "UI_interface_c.hh"
 #include "UI_resources.hh"
 
-#include "BLF_api.h"
 #include "WM_api.hh"
 
 #include "draw_manager_text.h"
@@ -212,9 +210,7 @@ void DRW_text_cache_draw(DRWTextStore *dt, ARegion *region, View3D *v3d)
   }
 }
 
-void DRW_text_viewer_attribute(blender::VArray<float> attributes,
-                               blender::Span<blender::float3> positions,
-                               blender::float4x4 modelMatrix)
+void DRW_text_viewer_attribute(float attribute_value, blender::float3 position)
 {
   DRWTextStore *dt = DRW_text_cache_ensure();
   const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
@@ -225,12 +221,8 @@ void DRW_text_viewer_attribute(blender::VArray<float> attributes,
 
   UI_GetThemeColor4ubv(TH_DRAWEXTRA_FACEANG, col);
 
-  for (const int i : positions.index_range()) {
-    float3 pos = blender::math::transform_point(modelMatrix, positions[i]);
-
-    numstr_len = SNPRINTF_RLEN(numstr, "%g", attributes[i]);
-    DRW_text_cache_add(dt, pos, numstr, numstr_len, 0, 0, txt_flag, col);
-  }
+  numstr_len = SNPRINTF_RLEN(numstr, "%g", attribute_value);
+  DRW_text_cache_add(dt, position, numstr, numstr_len, 0, 0, txt_flag, col);
 }
 
 void DRW_text_edit_mesh_measure_stats(ARegion *region,
