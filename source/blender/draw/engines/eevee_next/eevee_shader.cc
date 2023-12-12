@@ -422,12 +422,15 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     }
     if (GPU_material_flag_get(gpumat, GPU_MATFLAG_SUBSURFACE)) {
       info.define("MAT_SUBSURFACE");
-      info.define("SSS_TRANSMITTANCE");
       lit_closure_count++;
     }
     if (GPU_material_flag_get(gpumat, GPU_MATFLAG_REFRACT)) {
       info.define("MAT_REFRACTION");
       /* TODO(fclem): Support refracted lights. */
+    }
+
+    if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSLUCENT | GPU_MATFLAG_SUBSURFACE)) {
+      info.define("SHADOW_SUBSURFACE");
     }
 
     switch (lit_closure_count) {

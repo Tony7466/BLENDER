@@ -66,7 +66,7 @@ void main()
 #endif
 
   float thickness = (gbuf.has_translucent) ? gbuf.thickness : 0.0;
-#ifdef SSS_TRANSMITTANCE
+#ifdef MAT_SUBSURFACE
   if (gbuf.has_sss) {
     float shadow_thickness = thickness_from_shadow(P, Ng, vPz);
     thickness = (shadow_thickness != THICKNESS_NO_VALUE) ? max(shadow_thickness, gbuf.thickness) :
@@ -87,7 +87,7 @@ void main()
   radiance_unshadowed += stack.cl[2].light_unshadowed;
 #endif
 
-#ifdef SSS_TRANSMITTANCE
+#ifdef MAT_SUBSURFACE
   if (gbuf.has_sss) {
     vec3 sss_profile = subsurface_transmission(gbuf.diffuse.sss_radius, thickness);
     stack.cl[2].light_shadowed *= sss_profile;
