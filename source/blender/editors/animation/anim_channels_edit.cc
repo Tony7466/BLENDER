@@ -4374,8 +4374,9 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
     RNA_int_set_array(op->ptr, "range", frame_range);
   }
 
-  const BakeCurveRemove remove_existing = BakeCurveRemove(
-      RNA_enum_get(op->ptr, "remove_existing"));
+  const bool remove_outside_range = RNA_boolean_get(op->ptr, "remove_outside_range");
+  const BakeCurveRemove remove_existing = remove_outside_range ? BakeCurveRemove::REMOVE_ALL :
+                                                                 BakeCurveRemove::REMOVE_IN_RANGE;
   const int interpolation_type = RNA_enum_get(op->ptr, "interpolation_type");
   const bool bake_modifiers = RNA_boolean_get(op->ptr, "bake_modifiers");
 
@@ -4472,12 +4473,11 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
                 1.0f,
                 16.0f);
 
-  RNA_def_enum(ot->srna,
-               "remove_existing",
-               channel_bake_remove_options,
-               int(BakeCurveRemove::REMOVE_IN_RANGE),
-               "Remove Existing Keys",
-               "Removes keys in relation to the given frame range");
+  RNA_def_boolean(ot->srna,
+                  "remove_outside_range",
+                  false,
+                  "Remove All Keys",
+                  "Removes all keys leaving only the newly baked");
 
   RNA_def_enum(ot->srna,
                "interpolation_type",
