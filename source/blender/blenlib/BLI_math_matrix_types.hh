@@ -458,6 +458,13 @@ struct alignas(Alignment) MatBase : public vec_struct_base<VecBase<T, NumRow>, N
     return result;
   }
 
+  static MatBase diagonal(const VecBase<T, min_dim> value)
+  {
+    MatBase result{};
+    unroll<min_dim>([&](auto i) { result[i][i] = value[i]; });
+    return result;
+  }
+
   static MatBase all(T value)
   {
     MatBase result;
