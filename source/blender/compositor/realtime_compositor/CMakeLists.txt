@@ -10,6 +10,7 @@ set(INC
   ../../blentranslation
   ../../draw
   ../../gpu
+  ../../imbuf
   ../../makesrna
   ../../nodes
   ../../render
@@ -82,6 +83,7 @@ set(SRC
   algorithms/COM_algorithm_symmetric_separable_blur_variable_size.hh
   algorithms/COM_algorithm_transform.hh
 
+  cached_resources/intern/bokeh_kernel.cc
   cached_resources/intern/cached_image.cc
   cached_resources/intern/cached_mask.cc
   cached_resources/intern/cached_shader.cc
@@ -94,6 +96,7 @@ set(SRC
   cached_resources/intern/symmetric_blur_weights.cc
   cached_resources/intern/symmetric_separable_blur_weights.cc
 
+  cached_resources/COM_bokeh_kernel.hh
   cached_resources/COM_cached_image.hh
   cached_resources/COM_cached_mask.hh
   cached_resources/COM_cached_resource.hh
@@ -113,7 +116,7 @@ set(LIB
   bf_gpu
   PRIVATE bf::intern::guardedalloc
   bf_nodes
-  PRIVATE bf::imbuf
+  bf_imbuf
   bf_render
   PRIVATE bf::blenlib
   bf_blenkernel
