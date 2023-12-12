@@ -598,7 +598,13 @@ std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume 
     std::optional<blender::Bounds<blender::float3>> result;
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
       const VolumeGrid *volume_grid = BKE_volume_grid_get_for_read(volume, i);
+      const bool unload = (BKE_volume_grid_tree_source(volume_grid) ==
+                           VOLUME_TREE_SOURCE_FILE_PLACEHOLDER);
+      BKE_volume_grid_load(volume, volume_grid);
       result = blender::bounds::merge(result, BKE_volume_grid_bounds(volume_grid->grid()));
+      if (unload) {
+        BKE_volume_grid_unload(volume, volume_grid);
+      }
     }
     return result;
   }
