@@ -9,6 +9,7 @@
 
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_renderpass_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 
 void main()
 {
@@ -21,18 +22,19 @@ void main()
   vec3 refract_light = vec3(0.0);
 
   if (gbuf.has_diffuse) {
-    diffuse_light = imageLoad(direct_diffuse_img, texel).rgb +
+    diffuse_light = imageLoad(direct_radiance_1_img, texel).rgb +
                     imageLoad(indirect_diffuse_img, texel).rgb;
   }
 
   if (gbuf.has_reflection) {
-    reflect_light = imageLoad(direct_reflect_img, texel).rgb +
+    reflect_light = imageLoad(direct_radiance_2_img, texel).rgb +
                     imageLoad(indirect_reflect_img, texel).rgb;
   }
 
   if (gbuf.has_refraction) {
-    refract_light = /* imageLoad(direct_refract_img, texel).rgb + */ /* TODO: Not implemented. */
-                    imageLoad(indirect_refract_img, texel).rgb;
+    refract_light =
+        /* imageLoad(direct_radiance_3_img, texel).rgb + */ /* TODO: Not implemented. */
+        imageLoad(indirect_refract_img, texel).rgb;
   }
 
   /* Light passes. */
@@ -44,4 +46,10 @@ void main()
   out_combined.xyz += diffuse_light * gbuf.diffuse.color;
   out_combined.xyz += reflect_light * gbuf.reflection.color;
   out_combined.xyz += refract_light * gbuf.refraction.color;
+
+  if (any(isnan(out_combined))) {
+    out_combined = vec4(1.0, 0.0, 1.0, 0.0);
+  }
+
+  out_combined = colorspace_safe_color(out_combined);
 }

@@ -12,6 +12,7 @@ set(INC
   ../blenkernel
   ../bmesh
   ../draw
+  ../imbuf
   ../makesrna
 
   # For theme color access.
@@ -100,7 +101,7 @@ set(SRC
   GPU_matrix.h
   GPU_platform.h
   GPU_primitive.h
-  GPU_select.h
+  GPU_select.hh
   GPU_shader.h
   GPU_shader_builtin.h
   GPU_shader_shared.h
@@ -329,7 +330,6 @@ set(METAL_SRC
 set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
-  PRIVATE bf::imbuf
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
@@ -678,6 +678,7 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/eevee_next/shaders/infos/eevee_hiz_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_irradiance_cache_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_light_culling_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_lookdev_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_lut_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_material_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_motion_blur_info.hh
@@ -854,7 +855,6 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     bf_intern_ghost
     ${PLATFORM_LINKLIBS}
     PRIVATE bf::intern::guardedalloc
-    PRIVATE bf::imbuf
   )
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -886,8 +886,6 @@ if(WITH_GTESTS)
 
   if(WITH_OPENGL_DRAW_TESTS)
     list(APPEND TEST_SRC
-      tests/gpu_testing.cc
-
       tests/buffer_texture_test.cc
       tests/compute_test.cc
       tests/framebuffer_test.cc
@@ -899,19 +897,30 @@ if(WITH_GTESTS)
       tests/storage_buffer_test.cc
       tests/texture_test.cc
       tests/vertex_buffer_test.cc
-
-      tests/gpu_testing.hh
+      tests/shader_create_info_test.cc
     )
   endif()
 
   if(WITH_VULKAN_BACKEND)
     list(APPEND TEST_SRC
-      vulkan/vk_memory_layout_test.cc
       vulkan/vk_data_conversion_test.cc
+      vulkan/vk_memory_layout_test.cc
+    )
+  endif()
+
+  # Enable shader validation on buildbot for Metal
+  if(WITH_METAL_BACKEND AND NOT WITH_OPENGL_DRAW_TESTS)
+    list(APPEND TEST_SRC
+      tests/shader_create_info_test.cc
     )
   endif()
 
   if (TEST_SRC)
+    list(APPEND TEST_SRC
+      tests/gpu_testing.cc
+      tests/gpu_testing.hh
+    )
+
     include(GTestTesting)
     blender_add_test_lib(bf_gpu_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
   endif()
