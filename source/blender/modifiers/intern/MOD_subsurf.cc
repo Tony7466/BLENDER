@@ -430,8 +430,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   modifier_panel_end(layout, ptr);
 
-  if (uiLayout *panel_layout = uiLayoutPanel(
-          C, layout, "Advanced", ptr, "show_subpanel_expanded_1")) {
+  if (uiLayout *panel_layout = uiLayoutPanel(C, layout, "Advanced", ptr, "open_advanced_panel")) {
     bool ob_use_adaptive_subdivision = false;
     bool show_adaptive_options = false;
 #ifdef WITH_CYCLES

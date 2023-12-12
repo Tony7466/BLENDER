@@ -1704,6 +1704,18 @@ static IDProperty **rna_NodesModifier_properties(PointerRNA *ptr)
 }
 #else
 
+static void rna_def_modifier_panel_open_prop(StructRNA *srna, const char *identifier, const int id)
+{
+  BLI_assert(id >= 0);
+  BLI_assert(id < sizeof(ModifierData::ui_expand_flag2) * 8);
+
+  PropertyRNA *prop;
+  prop = RNA_def_property(srna, identifier, PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "modifier.ui_expand_flag2", (1 << id));
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
+}
+
 static void rna_def_property_subdivision_common(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -1798,6 +1810,8 @@ static void rna_def_modifier_subsurf(BlenderRNA *brna)
                            "Place vertices at the surface that would be produced with infinite "
                            "levels of subdivision (smoothest possible shape)");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  rna_def_modifier_panel_open_prop(srna, "open_advanced_panel", 0);
 
   RNA_define_lib_overridable(false);
 }
@@ -4291,6 +4305,10 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Vertex Mesh Method", "The method to use to create the mesh at intersections");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  rna_def_modifier_panel_open_prop(srna, "open_profile_panel", 0);
+  rna_def_modifier_panel_open_prop(srna, "open_geometry_panel", 1);
+  rna_def_modifier_panel_open_prop(srna, "open_shading_panel", 2);
 
   RNA_define_lib_overridable(false);
 }
@@ -7142,6 +7160,9 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
 
+  rna_def_modifier_panel_open_prop(srna, "open_output_attributes_panel", 0);
+  rna_def_modifier_panel_open_prop(srna, "open_internal_dependencies_panel", 1);
+
   RNA_define_lib_overridable(false);
 }
 
@@ -7424,21 +7445,6 @@ void RNA_def_modifier(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Expanded", "Set modifier expanded in the user interface");
   RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
-
-  prop = RNA_def_property(srna, "show_subpanel_expanded_1", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "ui_expand_flag2", (1 << 0));
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
-
-  prop = RNA_def_property(srna, "show_subpanel_expanded_2", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "ui_expand_flag2", (1 << 1));
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
-
-  prop = RNA_def_property(srna, "show_subpanel_expanded_3", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "ui_expand_flag2", (1 << 2));
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
 
   prop = RNA_def_property(srna, "is_active", PROP_BOOLEAN, PROP_NONE);
