@@ -39,11 +39,11 @@ class TranslateOperation : public MultiThreadedOperation {
   void init_execution() override;
   void deinit_execution() override;
 
-  float getDeltaX()
+  float get_delta_x()
   {
     return delta_x_;
   }
-  float getDeltaY()
+  float get_delta_y()
   {
     return delta_y_;
   }
