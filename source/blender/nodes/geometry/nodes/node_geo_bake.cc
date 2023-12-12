@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <fmt/format.h>
+
 #include "NOD_node_extra_info.hh"
 #include "NOD_rna_define.hh"
 #include "NOD_zone_socket_items.hh"
@@ -448,15 +450,10 @@ struct BakeDrawContext {
 
 static std::string get_baked_string(const BakeDrawContext &ctx)
 {
-  char str[64];
   if (ctx.bake_still && ctx.baked_range->size() == 1) {
-    STRNCPY(str, N_("Baked Still"));
+    return TIP_("Baked Still");
   }
-  else {
-    SNPRINTF(
-        str, N_("Baked %d - %d"), int(ctx.baked_range->first()), int(ctx.baked_range->last()));
-  }
-  return str;
+  return fmt::format(TIP_("Baked {} - {}"), ctx.baked_range->first(), ctx.baked_range->last());
 }
 
 static void draw_bake_button(uiLayout *layout, const BakeDrawContext &ctx)
