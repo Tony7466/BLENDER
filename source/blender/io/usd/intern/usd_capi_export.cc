@@ -755,8 +755,6 @@ static void export_endjob(void *customdata)
 
   DEG_graph_free(data->depsgraph);
 
-  MEM_freeN(data->params.default_prim_custom_kind);
-
   if (data->targets_usdz()) {
     /* NOTE: call to #perform_usdz_conversion has to be done here instead of the main threaded
      * worker callback (#export_startjob) because USDZ conversion requires changing the current
