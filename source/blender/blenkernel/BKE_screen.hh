@@ -348,19 +348,19 @@ struct LayoutPanelHeader {
   std::string open_prop_name;
 };
 
-struct LayoutPanelBodyExtend {
+struct LayoutPanelBody {
   float start_y;
   float end_y;
 };
 
 struct LayoutPanels {
   blender::Vector<LayoutPanelHeader> headers;
-  blender::Vector<LayoutPanelBodyExtend> body_extends;
+  blender::Vector<LayoutPanelBody> bodies;
 
   void clear()
   {
     this->headers.clear();
-    this->body_extends.clear();
+    this->bodies.clear();
   }
 };
 

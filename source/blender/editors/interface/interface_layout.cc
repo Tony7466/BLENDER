@@ -4187,7 +4187,7 @@ static void ui_litem_layout_panel_body(uiLayout *litem)
 {
   Panel *panel = litem->root->block->panel;
   ui_litem_layout_column(litem, false, false);
-  panel->runtime->layout_panels.body_extends.append({float(litem->y), float(litem->y + litem->h)});
+  panel->runtime->layout_panels.bodies.append({float(litem->y), float(litem->y + litem->h)});
 }
 
 /* box layout */

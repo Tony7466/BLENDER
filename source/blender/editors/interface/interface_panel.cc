@@ -1190,13 +1190,13 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
     box_rect.ymax = rect->ymax;
     UI_draw_roundbox_4fv(&box_rect, true, radius, panel_backcolor);
 
-    for (const LayoutPanelBodyExtend &body_extend : panel->runtime->layout_panels.body_extends) {
+    for (const LayoutPanelBody &body : panel->runtime->layout_panels.bodies) {
       float subpanel_backcolor[4];
       UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, subpanel_backcolor);
       rctf panel_blockspace = panel->runtime->block->rect;
       /* TODO: Figure out where the offset comes from. */
-      panel_blockspace.ymax = panel->runtime->block->rect.ymax + body_extend.end_y - 8;
-      panel_blockspace.ymin = panel->runtime->block->rect.ymax + body_extend.start_y - 8;
+      panel_blockspace.ymax = panel->runtime->block->rect.ymax + body.end_y - 8;
+      panel_blockspace.ymin = panel->runtime->block->rect.ymax + body.start_y - 8;
 
       /* If the layout panel is at the end of the root panel, it's bottom corners are rounded. */
       const bool is_main_panel_end = panel_blockspace.ymin - panel->runtime->block->rect.ymin < 10;
