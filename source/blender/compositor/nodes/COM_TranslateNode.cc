@@ -30,7 +30,7 @@ void TranslateNode::convert_to_operations(NodeConverter &converter,
                                       new TranslateOperation() :
                                       new TranslateCanvasOperation();
   operation->set_wrapping(data->wrap_axis);
-  operation->setIsRelative(data->relative);
+  operation->set_is_relative(data->relative);
 
   converter.add_operation(operation);
   converter.map_input_socket(input_xsocket, operation->get_input_socket(1));
