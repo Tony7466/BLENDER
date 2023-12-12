@@ -1023,16 +1023,26 @@ bool BKE_palette_from_hash(Main *bmain, GHash *color_table, const char *name, co
 
 bool BKE_paint_select_face_test(const Object *ob)
 {
-  return ((ob != nullptr) && (ob->type == OB_MESH) && (ob->data != nullptr) &&
-          (((Mesh *)ob->data)->editflag & ME_EDIT_PAINT_FACE_SEL) &&
-          (ob->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT | OB_MODE_TEXTURE_PAINT)));
+  if (ob == nullptr || ob->type != OB_MESH ||
+      (ob->mode & (OB_MODE_WEIGHT_PAINT | OB_MODE_VERTEX_PAINT | OB_MODE_TEXTURE_PAINT)) == 0)
+  {
+    return false;
+  }
+
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
+  return (mesh->editflag & ME_EDIT_PAINT_FACE_SEL);
 }
 
 bool BKE_paint_select_vert_test(const Object *ob)
 {
-  return ((ob != nullptr) && (ob->type == OB_MESH) && (ob->data != nullptr) &&
-          (((Mesh *)ob->data)->editflag & ME_EDIT_PAINT_VERT_SEL) &&
-          (ob->mode & OB_MODE_WEIGHT_PAINT || ob->mode & OB_MODE_VERTEX_PAINT));
+  if (ob == nullptr || ob->type != OB_MESH ||
+      (ob->mode & (OB_MODE_WEIGHT_PAINT | OB_MODE_VERTEX_PAINT)) == 0)
+  {
+    return false;
+  }
+
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
+  return (mesh->editflag & ME_EDIT_PAINT_VERT_SEL);
 }
 
 bool BKE_paint_select_bone_test(const Object *ob)
