@@ -58,5 +58,10 @@ struct DRWTextStore *DRW_text_cache_ensure(void);
 #endif
 
 #ifdef __cplusplus
-void DRW_text_viewer_attribute(float attribute, blender::float3 positions);
+void DRW_text_viewer_attribute(float attribute_value, blender::float3 position);
+void DRW_text_viewer_attribute(blender::float2 attribute_value, blender::float3 position);
+void DRW_text_viewer_attribute(blender::float3 attribute_value, blender::float3 position);
+void DRW_text_viewer_attribute(blender::float4 attribute_value, blender::float3 position);
+void DRW_text_viewer_attribute(bool attribute_value, blender::float3 position);
+void DRW_text_viewer_attribute(int attribute_value, blender::float3 position);
 #endif

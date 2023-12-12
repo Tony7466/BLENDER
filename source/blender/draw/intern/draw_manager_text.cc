@@ -217,19 +217,81 @@ void DRW_text_cache_draw(DRWTextStore *dt, ARegion *region, View3D *v3d)
   }
 }
 
-void DRW_text_viewer_attribute(float attribute_value, blender::float3 position)
+static void DRW_text_viewer_attribute_ex(char *numstr, size_t numstr_len, blender::float3 position)
 {
   DRWTextStore *dt = DRW_text_cache_ensure();
   const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
 
   uchar col[4];
+  UI_GetThemeColor4ubv(TH_DRAWEXTRA_FACEANG, col);
+
+  DRW_text_cache_add(dt, position, numstr, numstr_len, 0, 0, txt_flag, col);
+}
+
+void DRW_text_viewer_attribute(float attribute_value, blender::float3 position)
+{
   char numstr[32];
   size_t numstr_len;
 
-  UI_GetThemeColor4ubv(TH_DRAWEXTRA_FACEANG, col);
-
   numstr_len = SNPRINTF_RLEN(numstr, "%g", attribute_value);
-  DRW_text_cache_add(dt, position, numstr, numstr_len, 0, 0, txt_flag, col);
+
+  DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+}
+
+void DRW_text_viewer_attribute(blender::float2 attribute_value, blender::float3 position)
+{
+  char numstr[32 * 2];
+  size_t numstr_len;
+
+  numstr_len = SNPRINTF_RLEN(numstr, "(%g, %g)", attribute_value.x, attribute_value.y);
+
+  DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+}
+
+void DRW_text_viewer_attribute(blender::float3 attribute_value, blender::float3 position)
+{
+  char numstr[32 * 3];
+  size_t numstr_len;
+
+  numstr_len = SNPRINTF_RLEN(
+      numstr, "(%g, %g, %g)", attribute_value.x, attribute_value.y, attribute_value.z);
+
+  DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+}
+
+void DRW_text_viewer_attribute(blender::float4 attribute_value, blender::float3 position)
+{
+  char numstr[32 * 4];
+  size_t numstr_len;
+
+  numstr_len = SNPRINTF_RLEN(numstr,
+                             "(%.3f, %.3f, %.3f, %.3f)",
+                             attribute_value.x,
+                             attribute_value.y,
+                             attribute_value.z,
+                             attribute_value.w);
+
+  DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+}
+
+void DRW_text_viewer_attribute(bool attribute_value, blender::float3 position)
+{
+  char numstr[32];
+  size_t numstr_len;
+
+  numstr_len = SNPRINTF_RLEN(numstr, "%s", attribute_value ? "True" : "False");
+
+  DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+}
+
+void DRW_text_viewer_attribute(int attribute_value, blender::float3 position)
+{
+  char numstr[32];
+  size_t numstr_len;
+
+  numstr_len = SNPRINTF_RLEN(numstr, "%d", attribute_value);
+
+  DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
 }
 
 void DRW_text_edit_mesh_measure_stats(ARegion *region,
