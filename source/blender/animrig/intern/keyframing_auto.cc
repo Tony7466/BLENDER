@@ -108,7 +108,7 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob)
       depsgraph, BKE_scene_frame_get(scene));
 
   /* Get flags used for inserting keyframes. */
-  eInsertKeyFlags flag = ANIM_get_keyframing_flags(scene, true);
+  const eInsertKeyFlags flag = ANIM_get_keyframing_flags(scene, true);
 
   /* Add data-source override for the object. */
   blender::Vector<PointerRNA> sources;
@@ -154,7 +154,7 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob)
 
   for (PointerRNA ptr : sources) {
     insert_key_rna(&ptr,
-                   rna_paths,
+                   rna_paths.as_span(),
                    scene_frame,
                    flag,
                    eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
