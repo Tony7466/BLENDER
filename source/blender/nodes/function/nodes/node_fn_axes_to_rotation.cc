@@ -1,43 +1,38 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "RNA_enum_types.h"
-
-#include "UI_interface.h"
-#include "UI_resources.h"
-
 #include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.h"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+
+#include "NOD_rna_define.hh"
 
 #include "node_function_util.hh"
 
 namespace blender::nodes::node_fn_axis_to_euler_cc {
-
-NODE_STORAGE_FUNCS(NodeFunctionAxisToEuler)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
   b.add_input<decl::Vector>(N_("Primary Axis")).hide_value();
   b.add_input<decl::Vector>(N_("Secondary Axis")).hide_value();
-  b.add_output<decl::Vector>(N_("Rotation"));
+  b.add_output<decl::Rotation>(N_("Rotation"));
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  auto *storage = MEM_cnew<NodeFunctionAxisToEuler>(__func__);
-  storage->primary_axis = 2;
-  storage->secondary_axis = 0;
-  node->storage = storage;
+  node->custom1 = int(math::Axis::Z);
+  node->custom2 = int(math::Axis::X);
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   const bNode &node = *static_cast<const bNode *>(ptr->data);
-  const NodeFunctionAxisToEuler &storage = node_storage(node);
   uiItemR(layout, ptr, "primary_axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "secondary_axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 
-  if (storage.primary_axis == storage.secondary_axis) {
+  if (node.custom1 == node.custom1) {
     uiItemL(layout, N_("Must not be equal"), ICON_ERROR);
   }
 }
@@ -56,16 +51,14 @@ static float3 get_orthogonal_of_non_zero_vector(const float3 &v)
 
 class AxisToEulerFunction : public mf::MultiFunction {
  private:
-  int primary_axis_;
-  int secondary_axis_;
-  int tertiary_axis_;
+  math::Axis primary_axis_;
+  math::Axis secondary_axis_;
+  math::Axis tertiary_axis_;
 
  public:
-  AxisToEulerFunction(const int primary_axis, const int secondary_axis)
+  AxisToEulerFunction(const math::Axis primary_axis, const math::Axis secondary_axis)
       : primary_axis_(primary_axis), secondary_axis_(secondary_axis)
   {
-    BLI_assert(primary_axis_ >= 0 && primary_axis_ <= 2);
-    BLI_assert(secondary_axis_ >= 0 && secondary_axis_ <= 2);
     BLI_assert(primary_axis_ != secondary_axis_);
 
     /* Through cancellation this will set the last axis to be the one that's neither the primary
@@ -77,23 +70,23 @@ class AxisToEulerFunction : public mf::MultiFunction {
       mf::SignatureBuilder builder{"Euler from Axis", signature};
       builder.single_input<float3>("Primary");
       builder.single_input<float3>("Secondary");
-      builder.single_output<float3>("Rotation");
+      builder.single_output<math::Quaternion>("Rotation");
       return signature;
     }();
     this->set_signature(&signature);
   }
 
-  void call(const IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float3> primaries = params.readonly_single_input<float3>(0, "Primary");
     const VArray<float3> secondaries = params.readonly_single_input<float3>(1, "Secondary");
-    MutableSpan<float3> r_rotations = params.uninitialized_single_output<float3>(2, "Rotation");
+    MutableSpan r_rotations = params.uninitialized_single_output<math::Quaternion>(2, "Rotation");
 
     /* Might have to invert the axis to make sure that the created matrix has determinant 1. */
     const bool invert_tertiary = (secondary_axis_ + 1) % 3 == primary_axis_;
     const float tertiary_factor = invert_tertiary ? -1.0f : 1.0f;
 
-    for (const int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       float3 primary = math::normalize(primaries[i]);
       float3 secondary = secondaries[i];
       float3 tertiary;
@@ -120,8 +113,8 @@ class AxisToEulerFunction : public mf::MultiFunction {
         tertiary = math::cross(primary, secondary);
       }
       else {
-        r_rotations[i] = {0.0f, 0.0f, 0.0f};
-        continue;
+        r_rotations[i] = math::Quaternion::identity();
+        return;
       }
 
       float3x3 mat;
@@ -131,37 +124,55 @@ class AxisToEulerFunction : public mf::MultiFunction {
       BLI_assert(math::is_orthonormal(mat));
       BLI_assert(std::abs(math::determinant(mat) - 1.0f) < 0.0001f);
 
-      const math::EulerXYZ euler = math::to_euler<float, true>(mat);
-      r_rotations[i] = float3(euler);
-    }
-  }
-};
+      r_rotations[i] = math::to_quaternion(mat);
+    });
+  };
 
-static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
-{
-  const bNode &node = builder.node();
-  const NodeFunctionAxisToEuler &storage = node_storage(node);
-  if (storage.primary_axis == storage.secondary_axis) {
-    return;
+  static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
+  {
+    const bNode &node = builder.node();
+    if (node.custom1 == node.custom2) {
+      return;
+    }
+    builder.construct_and_set_matching_fn<AxisToEulerFunction>(math::Axis(node.custom1),
+                                                               math::Axis(node.custom2));
   }
-  builder.construct_and_set_matching_fn<AxisToEulerFunction>(storage.primary_axis,
-                                                             storage.secondary_axis);
-}
+
+  static void node_rna(StructRNA *srna)
+  {
+    static const EnumPropertyItem axis_items[] = {
+        {int(math::Axis::X), "X", ICON_NONE, "X", ""},
+        {int(math::Axis::Y), "Y", ICON_NONE, "Y", ""},
+        {int(math::Axis::Z), "Z", ICON_NONE, "Z", ""},
+        {0, nullptr, 0, nullptr, nullptr},
+    };
+
+    RNA_def_node_enum(srna,
+                      "primary_axis",
+                      "Primary Axis",
+                      "Axis that is aligned exactly to the provided primary direction",
+                      axis_items,
+                      NOD_inline_enum_accessors(custom1));
+    RNA_def_node_enum(
+        srna,
+        "secondary_axis",
+        "Secondary Axis",
+        "Axis that is aligned as well as possible given the alignment of the primary axis",
+        axis_items,
+        NOD_inline_enum_accessors(custom2));
+  }
+
+  void node_register()
+  {
+    static bNodeType ntype;
+    fn_node_type_base(&ntype, FN_NODE_AXES_TO_ROTATION, "Axis to Euler", NODE_CLASS_CONVERTER);
+    ntype.declare = node_declare;
+    ntype.initfunc = node_init;
+    ntype.build_multi_function = node_build_multi_function;
+    ntype.draw_buttons = node_layout;
+    node_rna(ntype.rna_ext.srna);
+    nodeRegisterType(&ntype);
+  }
+  NOD_REGISTER_NODE(node_register)
 
 }  // namespace blender::nodes::node_fn_axis_to_euler_cc
-
-void register_node_type_fn_axis_to_euler()
-{
-  namespace file_ns = blender::nodes::node_fn_axis_to_euler_cc;
-
-  static bNodeType ntype;
-
-  fn_node_type_base(&ntype, FN_NODE_AXIS_TO_EULER, "Axis to Euler", NODE_CLASS_CONVERTER);
-  ntype.declare = file_ns::node_declare;
-  ntype.initfunc = file_ns::node_init;
-  ntype.build_multi_function = file_ns::node_build_multi_function;
-  ntype.draw_buttons = file_ns::node_layout;
-  node_type_storage(
-      &ntype, "NodeFunctionAxisToEuler", node_free_standard_storage, node_copy_standard_storage);
-  nodeRegisterType(&ntype);
-}

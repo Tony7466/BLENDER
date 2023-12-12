@@ -1908,11 +1908,6 @@ typedef struct NodeShaderMix {
   char _pad[3];
 } NodeShaderMix;
 
-typedef struct NodeFunctionAxisToEuler {
-  int8_t primary_axis;
-  int8_t secondary_axis;
-} NodeFunctionAxisToEuler;
-
 /* script node mode */
 enum {
   NODE_SCRIPT_INTERNAL = 0,
