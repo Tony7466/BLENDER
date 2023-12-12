@@ -179,7 +179,7 @@ enum PropertySubType {
 
 /* Make sure enums are updated with these */
 /* HIGHEST FLAG IN USE: 1 << 31
- * FREE FLAGS: 9, 11, 13, 14, 15. */
+ * FREE FLAGS: 11, 13, 14, 15. */
 enum PropertyFlag {
   /**
    * Editable means the property is editable in the user
