@@ -61,6 +61,10 @@ struct wmTimer;
 #define UI_MENU_SCROLL_MOUSE (UI_MENU_SCROLL_ARROW + 2 * UI_SCALE_FAC)
 #define UI_MENU_SCROLL_PAD (4 * UI_SCALE_FAC)
 
+/* Panels. */
+#define layout_panel_y_offset (4.0f * UI_SCALE_FAC)
+#define layout_panel_y_padding (8.0f * UI_SCALE_FAC)
+
 /** Popover width (multiplied by #U.widget_unit) */
 #define UI_POPOVER_WIDTH_UNITS 10
 
