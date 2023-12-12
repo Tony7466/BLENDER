@@ -22,6 +22,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
+#include "BKE_unit.hh"
 
 #include "RNA_access.hh"
 
@@ -2176,6 +2177,33 @@ static void widget_draw_text(const uiFontStyle *fstyle,
             BLF_draw(fstyle->uifont_id, "_", 2);
           }
         }
+      }
+
+      const char *completion = ui_but_completion_get(but);
+      if (ui_but_is_editing(but) && completion && completion[0]) {
+        rcti text_bounds;
+        BLF_boundbox(fstyle->uifont_id, drawstr + but->ofs, drawlen, &text_bounds);
+
+        uiFontStyle style = *fstyle;
+        style.shadow = 0;
+        uchar col[4];
+        copy_v4_v4_uchar(col, wcol->text);
+        col[3] *= 0.33f;
+
+        rcti completion_rect;
+        completion_rect.xmin = rect->xmin + text_bounds.xmax;
+        completion_rect.ymin = rect->ymin;
+        completion_rect.xmax = rect->xmax;
+        completion_rect.ymax = rect->ymax;
+        UI_fontstyle_draw_ex(&style,
+                             &completion_rect,
+                             completion,
+                             strlen(completion),
+                             col,
+                             &params,
+                             nullptr,
+                             nullptr,
+                             nullptr);
       }
     }
   }

@@ -946,6 +946,11 @@ void UI_but_type_set_menu_from_pulldown(uiBut *but);
 void UI_but_placeholder_set(uiBut *but, const char *placeholder_text) ATTR_NONNULL(1);
 
 /**
+ * Set a completion text that will be displayed while editing.
+ */
+void UI_but_completion_set(uiBut *but, const char *completion_text) ATTR_NONNULL(1);
+
+/**
  * Special button case, only draw it when used actively, for outliner etc.
  *
  * Needed for temporarily rename buttons, such as in outliner or file-select,

@@ -181,6 +181,7 @@ struct uiBut {
   char *str = nullptr;
   char strdata[UI_MAX_NAME_STR] = "";
   char drawstr[UI_MAX_DRAW_STR] = "";
+  char *completion = nullptr;
 
   char *placeholder = nullptr;
 
@@ -758,6 +759,11 @@ uiBut *ui_but_drag_multi_edit_get(uiBut *but);
  * Get the hint that describes the expected value when empty.
  */
 const char *ui_but_placeholder_get(uiBut *but);
+
+/**
+ * Get the completion string while editing.
+ */
+const char *ui_but_completion_get(uiBut *but);
 
 void ui_def_but_icon(uiBut *but, int icon, int flag);
 /**

@@ -52,6 +52,7 @@
 
 #include "IMB_colormanagement.h"
 
+#include "ED_numinput.hh"
 #include "ED_screen.hh"
 #include "ED_undo.hh"
 
@@ -4050,6 +4051,26 @@ static void ui_do_but_textedit(
     /* The undo stack may be nullptr if an event exits editing. */
     if ((skip_undo_push == false) && (data->undo_stack_text != nullptr)) {
       ui_textedit_undo_push(data->undo_stack_text, data->str, but->pos);
+    }
+
+    /* If the button is a unit button, add text completion for the unit that will be used. */
+    if (ui_but_is_unit(but)) {
+      const Scene *scene = CTX_data_scene(C);
+      const int unit_type = RNA_SUBTYPE_UNIT_VALUE(UI_but_unit_type_get(but));
+      double value;
+      if (user_string_to_number(C, data->str, &scene->unit, unit_type, &value, false, nullptr) &&
+          !BKE_unit_string_contains_unit(data->str, unit_type))
+      {
+        const void *usys;
+        int len;
+        BKE_unit_system_get(scene->unit.system, unit_type, &usys, &len);
+        std::string text_completion = " " + std::string(BKE_unit_display_name_short_get(
+                                                usys, BKE_unit_base_get(usys)));
+        UI_but_completion_set(but, text_completion.c_str());
+      }
+      else {
+        UI_but_completion_set(but, nullptr);
+      }
     }
 
     /* only do live update when but flag request it (UI_BUT_TEXTEDIT_UPDATE). */

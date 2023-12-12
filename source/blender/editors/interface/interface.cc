@@ -3486,6 +3486,10 @@ static void ui_but_free(const bContext *C, uiBut *but)
     MEM_freeN(but->placeholder);
   }
 
+  if (but->completion) {
+    MEM_freeN(but->completion);
+  }
+
   ui_but_free_type_specific(but);
 
   if (but->active) {
@@ -5965,6 +5969,17 @@ const char *ui_but_placeholder_get(uiBut *but)
   }
 
   return placeholder;
+}
+
+void UI_but_completion_set(uiBut *but, const char *completion_text)
+{
+  MEM_SAFE_FREE(but->completion);
+  but->completion = BLI_strdup_null(completion_text);
+}
+
+const char *ui_but_completion_get(uiBut *but)
+{
+  return but->completion;
 }
 
 void UI_but_type_set_menu_from_pulldown(uiBut *but)

@@ -2359,6 +2359,12 @@ const char *BKE_unit_display_name_get(const void *usys_pt, int index)
   BLI_assert(uint(index) < uint(usys->length));
   return usys->units[index].name_display;
 }
+const char *BKE_unit_display_name_short_get(const void *usys_pt, int index)
+{
+  const bUnitCollection *usys = static_cast<const bUnitCollection *>(usys_pt);
+  BLI_assert(uint(index) < uint(usys->length));
+  return usys->units[index].name_short;
+}
 const char *BKE_unit_identifier_get(const void *usys_pt, int index)
 {
   const bUnitCollection *usys = static_cast<const bUnitCollection *>(usys_pt);
