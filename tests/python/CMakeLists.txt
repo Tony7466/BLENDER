@@ -607,7 +607,7 @@ if(TRUE)
   endif()
 endif()
 
-if(WITH_CYCLES OR WITH_OPENGL_RENDER_TESTS)
+if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
   if(NOT OPENIMAGEIO_IDIFF)
     message(WARNING "Disabling render tests because OIIO idiff does not exist")
   elseif(NOT EXISTS "${TEST_SRC_DIR}/render/shader")
@@ -662,7 +662,7 @@ if(WITH_CYCLES OR WITH_OPENGL_RENDER_TESTS)
     #  list(APPEND render_tests guiding)
     #endif()
 
-    if(WITH_OPENGL_RENDER_TESTS)
+    if(WITH_GPU_RENDER_TESTS)
       list(APPEND render_tests grease_pencil)
     endif()
 
@@ -698,7 +698,7 @@ if(WITH_CYCLES OR WITH_OPENGL_RENDER_TESTS)
       unset(_cycles_blacklist)
     endif()
 
-    if(WITH_OPENGL_RENDER_TESTS)
+    if(WITH_GPU_RENDER_TESTS)
       # Eevee
       foreach(render_test ${render_tests})
         add_render_test(
@@ -879,7 +879,7 @@ else()
 endif()
 
 
-if(WITH_OPENGL_DRAW_TESTS)
+if(WITH_GPU_DRAW_TESTS)
   if(NOT OPENIMAGEIO_IDIFF)
     message(STATUS "Disabling OpenGL draw tests because OIIO idiff does not exist")
   elseif(NOT EXISTS "${TEST_SRC_DIR}/opengl")

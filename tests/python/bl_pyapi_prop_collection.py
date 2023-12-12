@@ -110,7 +110,7 @@ def prop_as_sequence(collection, prop_rna):
     Helper to get a flat sequence of a specific property through iteration instead of foreach_get.
     """
     prop_name = prop_rna.identifier
-    if prop_rna.is_array:
+    if getattr(prop_rna, "is_array", False):
         # Only 1D arrays are currently supported.
         assert prop_rna.array_dimensions[1] == 0
         assert prop_rna.array_dimensions[2] == 0

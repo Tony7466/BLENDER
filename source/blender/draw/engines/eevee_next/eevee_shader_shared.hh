@@ -1187,6 +1187,7 @@ enum eClosureBits : uint32_t {
   CLOSURE_HOLDOUT = (1u << 10u),
   CLOSURE_VOLUME = (1u << 11u),
   CLOSURE_AMBIENT_OCCLUSION = (1u << 12u),
+  CLOSURE_SHADER_TO_RGBA = (1u << 13u),
 };
 
 enum GBufferMode : uint32_t {
@@ -1199,7 +1200,7 @@ enum GBufferMode : uint32_t {
   GBUF_SSS = 4u,
 
   /** Special configurations. Packs multiple closures into 1 layer. */
-  GBUF_OPAQUE_DIELECTRIC = 4u,
+  GBUF_OPAQUE_DIELECTRIC = 14u,
 
   /** Set for surfaces without lit closures. This stores only the normal to the surface. */
   GBUF_UNLIT = 15u,
@@ -1424,7 +1425,7 @@ BLI_STATIC_ASSERT_ALIGN(ProbePlanarDisplayData, 16)
 
 struct PipelineInfoData {
   float alpha_hash_scale;
-  float _pad0;
+  bool1 is_probe_reflection;
   float _pad1;
   float _pad2;
 };
