@@ -127,52 +127,54 @@ class AxisToEulerFunction : public mf::MultiFunction {
       r_rotations[i] = math::to_quaternion(mat);
     });
   };
+}
 
-  static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
-  {
-    const bNode &node = builder.node();
-    if (node.custom1 == node.custom2) {
-      return;
-    }
-    builder.construct_and_set_matching_fn<AxisToEulerFunction>(math::Axis(node.custom1),
-                                                               math::Axis(node.custom2));
+static void
+node_build_multi_function(NodeMultiFunctionBuilder &builder)
+{
+  const bNode &node = builder.node();
+  if (node.custom1 == node.custom2) {
+    return;
   }
+  builder.construct_and_set_matching_fn<AxisToEulerFunction>(math::Axis(node.custom1),
+                                                             math::Axis(node.custom2));
+}
 
-  static void node_rna(StructRNA *srna)
-  {
-    static const EnumPropertyItem axis_items[] = {
-        {int(math::Axis::X), "X", ICON_NONE, "X", ""},
-        {int(math::Axis::Y), "Y", ICON_NONE, "Y", ""},
-        {int(math::Axis::Z), "Z", ICON_NONE, "Z", ""},
-        {0, nullptr, 0, nullptr, nullptr},
-    };
+static void node_rna(StructRNA *srna)
+{
+  static const EnumPropertyItem axis_items[] = {
+      {int(math::Axis::X), "X", ICON_NONE, "X", ""},
+      {int(math::Axis::Y), "Y", ICON_NONE, "Y", ""},
+      {int(math::Axis::Z), "Z", ICON_NONE, "Z", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
 
-    RNA_def_node_enum(srna,
-                      "primary_axis",
-                      "Primary Axis",
-                      "Axis that is aligned exactly to the provided primary direction",
-                      axis_items,
-                      NOD_inline_enum_accessors(custom1));
-    RNA_def_node_enum(
-        srna,
-        "secondary_axis",
-        "Secondary Axis",
-        "Axis that is aligned as well as possible given the alignment of the primary axis",
-        axis_items,
-        NOD_inline_enum_accessors(custom2));
-  }
+  RNA_def_node_enum(srna,
+                    "primary_axis",
+                    "Primary Axis",
+                    "Axis that is aligned exactly to the provided primary direction",
+                    axis_items,
+                    NOD_inline_enum_accessors(custom1));
+  RNA_def_node_enum(
+      srna,
+      "secondary_axis",
+      "Secondary Axis",
+      "Axis that is aligned as well as possible given the alignment of the primary axis",
+      axis_items,
+      NOD_inline_enum_accessors(custom2));
+}
 
-  void node_register()
-  {
-    static bNodeType ntype;
-    fn_node_type_base(&ntype, FN_NODE_AXES_TO_ROTATION, "Axis to Euler", NODE_CLASS_CONVERTER);
-    ntype.declare = node_declare;
-    ntype.initfunc = node_init;
-    ntype.build_multi_function = node_build_multi_function;
-    ntype.draw_buttons = node_layout;
-    node_rna(ntype.rna_ext.srna);
-    nodeRegisterType(&ntype);
-  }
-  NOD_REGISTER_NODE(node_register)
+void node_register()
+{
+  static bNodeType ntype;
+  fn_node_type_base(&ntype, FN_NODE_AXES_TO_ROTATION, "Axis to Euler", NODE_CLASS_CONVERTER);
+  ntype.declare = node_declare;
+  ntype.initfunc = node_init;
+  ntype.build_multi_function = node_build_multi_function;
+  ntype.draw_buttons = node_layout;
+  node_rna(ntype.rna_ext.srna);
+  nodeRegisterType(&ntype);
+}
+NOD_REGISTER_NODE(node_register)
 
 }  // namespace blender::nodes::node_fn_axis_to_euler_cc
