@@ -106,7 +106,6 @@ enum uiWidgetTypeEnum {
   UI_WTYPE_PROGRESS,
   UI_WTYPE_NODESOCKET,
   UI_WTYPE_VIEW_ITEM,
-  UI_WTYPE_PANEL,
 };
 
 /**
@@ -4685,11 +4684,6 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
       break;
 
     case UI_WTYPE_BOX:
-      wt.custom = widget_box;
-      wt.wcol_theme = &btheme->tui.wcol_box;
-      break;
-
-    case UI_WTYPE_PANEL:
       wt.custom = widget_box;
       wt.wcol_theme = &btheme->tui.wcol_box;
       break;
