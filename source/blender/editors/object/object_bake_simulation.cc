@@ -214,7 +214,7 @@ static bool bake_simulation_poll(bContext *C)
   Main *bmain = CTX_data_main(C);
   const StringRefNull path = BKE_main_blendfile_path(bmain);
   if (path.is_empty()) {
-    CTX_wm_operator_poll_msg_set(C, "File has to be saved");
+    CTX_wm_operator_poll_msg_set(C, "File must be saved before baking");
     return false;
   }
   return true;
@@ -875,7 +875,7 @@ static bool bake_poll(bContext *C)
   if (BKE_main_blendfile_path(bmain)[0] == '\0') {
     /* Saving the .blend file is not technically necessary in all cases but only when the bake path
      * depends on the .blend file path (which is the case by default). */
-    CTX_wm_operator_poll_msg_set(C, TIP_("Save file before baking"));
+    CTX_wm_operator_poll_msg_set(C, "File must be saved before baking");
     return false;
   }
   return true;
@@ -911,7 +911,6 @@ void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot)
   ot->description = "Bake simulations in geometry nodes modifiers";
   ot->idname = __func__;
 
-  ot->poll = bake_poll;
   ot->exec = bake_simulation_exec;
   ot->invoke = bake_simulation_invoke;
   ot->modal = bake_simulation_modal;
