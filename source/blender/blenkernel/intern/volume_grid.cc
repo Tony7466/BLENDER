@@ -109,11 +109,13 @@ void VolumeGrid::unload_tree() const
 
   CLOG_INFO(&LOG, 1, "Unload grid '%s'", name());
 
-  /* Indicate we no longer have a tree. */
-  std::atomic_thread_fence(std::memory_order_release);
   /* Grid pointer should never be null, replace with an empty tree. */
   BLI_assert(grid_);
-  grid_->newTree();
+  /* Note we replace the grid rather than clearing, so that if there is
+   * any other shared pointer to the grid it will keep the tree. */
+  grid_ = grid_->copyGridWithNewTree();
+  /* Indicate we no longer have a tree. */
+  std::atomic_thread_fence(std::memory_order_release);
   tree_source_ = VOLUME_TREE_SOURCE_FILE_PLACEHOLDER;
 }
 
