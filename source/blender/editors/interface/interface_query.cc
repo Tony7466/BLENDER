@@ -40,7 +40,7 @@ bool ui_but_is_editable(const uiBut *but)
                UI_BTYPE_ROUNDBOX,
                UI_BTYPE_LISTBOX,
                UI_BTYPE_PROGRESS,
-               UI_BTYPE_PANEL_HEADER);
+               UI_BTYPE_LAYOUT_PANEL_HEADER);
 }
 
 bool ui_but_is_editable_as_text(const uiBut *but)
@@ -83,7 +83,7 @@ bool ui_but_is_interactive_ex(const uiBut *but, const bool labeledit, const bool
            UI_BTYPE_SEPR,
            UI_BTYPE_SEPR_LINE,
            UI_BTYPE_LISTBOX,
-           UI_BTYPE_PANEL_HEADER))
+           UI_BTYPE_LAYOUT_PANEL_HEADER))
   {
     return false;
   }

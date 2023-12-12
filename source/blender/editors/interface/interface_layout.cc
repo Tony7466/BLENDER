@@ -89,8 +89,8 @@ enum uiItemType {
   ITEM_BUTTON,
 
   ITEM_LAYOUT_ROW,
-  ITEM_LAYOUT_PANEL_BODY,
   ITEM_LAYOUT_PANEL_HEADER,
+  ITEM_LAYOUT_PANEL_BODY,
   ITEM_LAYOUT_COLUMN,
   ITEM_LAYOUT_COLUMN_FLOW,
   ITEM_LAYOUT_ROW_FLOW,
@@ -4160,22 +4160,6 @@ static void ui_litem_layout_root(uiLayout *litem)
   }
 }
 
-/* panel body layout */
-static void ui_litem_estimate_panel_body(uiLayout *litem)
-{
-  ui_litem_estimate_column(litem, false);
-}
-
-static void ui_litem_layout_panel_body(uiLayout *litem)
-{
-  // uiLayoutItemPanelBody *body_litem = reinterpret_cast<uiLayoutItemPanelBody *>(litem);
-  Panel *panel = litem->root->block->panel;
-
-  ui_litem_layout_column(litem, false, false);
-
-  panel->runtime->sub_panel_body_extends.append({float(litem->y), float(litem->y + litem->h)});
-}
-
 /* panel header layout */
 static void ui_litem_estimate_panel_header(uiLayout *litem)
 {
@@ -4186,13 +4170,24 @@ static void ui_litem_layout_panel_header(uiLayout *litem)
 {
   uiLayoutItemPanelHeader *header_litem = reinterpret_cast<uiLayoutItemPanelHeader *>(litem);
   Panel *panel = litem->root->block->panel;
-
   ui_litem_layout_column(litem, false, false);
+  panel->runtime->layout_panels.headers.append({float(litem->y),
+                                                float(litem->y + litem->h),
+                                                header_litem->open_prop_owner,
+                                                header_litem->open_prop_name});
+}
 
-  panel->runtime->sub_panel_headers.append({float(litem->y),
-                                            float(litem->y + litem->h),
-                                            header_litem->open_prop_owner,
-                                            header_litem->open_prop_name});
+/* panel body layout */
+static void ui_litem_estimate_panel_body(uiLayout *litem)
+{
+  ui_litem_estimate_column(litem, false);
+}
+
+static void ui_litem_layout_panel_body(uiLayout *litem)
+{
+  Panel *panel = litem->root->block->panel;
+  ui_litem_layout_column(litem, false, false);
+  panel->runtime->layout_panels.body_extends.append({float(litem->y), float(litem->y + litem->h)});
 }
 
 /* box layout */
@@ -5540,11 +5535,11 @@ static void ui_item_estimate(uiItem *item)
       case ITEM_LAYOUT_ROW:
         ui_litem_estimate_row(litem);
         break;
-      case ITEM_LAYOUT_PANEL_BODY:
-        ui_litem_estimate_panel_body(litem);
-        break;
       case ITEM_LAYOUT_PANEL_HEADER:
         ui_litem_estimate_panel_header(litem);
+        break;
+      case ITEM_LAYOUT_PANEL_BODY:
+        ui_litem_estimate_panel_body(litem);
         break;
       case ITEM_LAYOUT_BOX:
         ui_litem_estimate_box(litem);
@@ -5652,11 +5647,11 @@ static void ui_item_layout(uiItem *item)
       case ITEM_LAYOUT_ROW:
         ui_litem_layout_row(litem);
         break;
-      case ITEM_LAYOUT_PANEL_BODY:
-        ui_litem_layout_panel_body(litem);
-        break;
       case ITEM_LAYOUT_PANEL_HEADER:
         ui_litem_layout_panel_header(litem);
+        break;
+      case ITEM_LAYOUT_PANEL_BODY:
+        ui_litem_layout_panel_body(litem);
         break;
       case ITEM_LAYOUT_BOX:
         ui_litem_layout_box(litem);
@@ -6265,8 +6260,8 @@ static void ui_layout_introspect_items(DynStr *ds, ListBase *lb)
     switch (item->type) {
       CASE_ITEM(ITEM_BUTTON);
       CASE_ITEM(ITEM_LAYOUT_ROW);
-      CASE_ITEM(ITEM_LAYOUT_PANEL_BODY);
       CASE_ITEM(ITEM_LAYOUT_PANEL_HEADER);
+      CASE_ITEM(ITEM_LAYOUT_PANEL_BODY);
       CASE_ITEM(ITEM_LAYOUT_COLUMN);
       CASE_ITEM(ITEM_LAYOUT_COLUMN_FLOW);
       CASE_ITEM(ITEM_LAYOUT_ROW_FLOW);

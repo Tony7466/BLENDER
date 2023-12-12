@@ -4259,7 +4259,7 @@ static uiBut *ui_def_but(uiBlock *block,
            UI_BTYPE_SEPR,
            UI_BTYPE_SEPR_LINE,
            UI_BTYPE_SEPR_SPACER,
-           UI_BTYPE_PANEL_HEADER) ||
+           UI_BTYPE_LAYOUT_PANEL_HEADER) ||
       (but->type >= UI_BTYPE_SEARCH_MENU))
   {
     /* pass */

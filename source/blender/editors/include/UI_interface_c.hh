@@ -451,7 +451,7 @@ enum eButType {
   UI_BTYPE_DECORATOR = 58 << 9,
   /** An item a view (see #ui::AbstractViewItem). */
   UI_BTYPE_VIEW_ITEM = 59 << 9,
-  UI_BTYPE_PANEL_HEADER = 60 << 9,
+  UI_BTYPE_LAYOUT_PANEL_HEADER = 60 << 9,
 };
 
 #define BUTTYPE (63 << 9)

@@ -3623,7 +3623,7 @@ static void ui_textedit_next_but(uiBlock *block, uiBut *actbut, uiHandleButtonDa
            UI_BTYPE_SEPR_LINE,
            UI_BTYPE_ROUNDBOX,
            UI_BTYPE_LISTBOX,
-           UI_BTYPE_PANEL_HEADER))
+           UI_BTYPE_LAYOUT_PANEL_HEADER))
   {
     return;
   }
@@ -3657,7 +3657,7 @@ static void ui_textedit_prev_but(uiBlock *block, uiBut *actbut, uiHandleButtonDa
            UI_BTYPE_SEPR_LINE,
            UI_BTYPE_ROUNDBOX,
            UI_BTYPE_LISTBOX,
-           UI_BTYPE_PANEL_HEADER))
+           UI_BTYPE_LAYOUT_PANEL_HEADER))
   {
     return;
   }
@@ -8229,7 +8229,7 @@ static int ui_do_button(bContext *C, uiBlock *block, uiBut *but, const wmEvent *
     case UI_BTYPE_SEPR_LINE:
     case UI_BTYPE_SEPR_SPACER:
     case UI_BTYPE_EXTRA:
-    case UI_BTYPE_PANEL_HEADER:
+    case UI_BTYPE_LAYOUT_PANEL_HEADER:
       break;
   }
 

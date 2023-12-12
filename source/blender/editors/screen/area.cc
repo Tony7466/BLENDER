@@ -2883,8 +2883,7 @@ static void ed_panel_draw(const bContext *C,
 
   bool open;
   panel = UI_panel_begin(region, lb, block, pt, panel, &open);
-  panel->runtime->sub_panel_body_extends.clear();
-  panel->runtime->sub_panel_headers.clear();
+  panel->runtime->layout_panels.clear();
 
   const bool search_filter_active = search_filter != nullptr && search_filter[0] != '\0';
 
