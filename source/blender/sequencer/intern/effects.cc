@@ -2341,14 +2341,6 @@ static void do_overdrop_effect(const SeqRenderData *context,
 /** \name Gaussian Blur
  * \{ */
 
-/* NOTE: This gaussian blur implementation accumulates values in the square
- * kernel rather that doing X direction and then Y direction because of the
- * lack of using multiple-staged filters.
- *
- * Once we can we'll implement a way to apply filter as multiple stages we
- * can optimize hell of a lot in here.
- */
-
 static void init_gaussian_blur_effect(Sequence *seq)
 {
   if (seq->effectdata) {
@@ -2382,346 +2374,92 @@ static int early_out_gaussian_blur(Sequence *seq, float /*fac*/)
   return EARLY_DO_EFFECT;
 }
 
-/* TODO(sergey): De-duplicate with compositor. */
-static float *make_gaussian_blur_kernel(float rad, int size)
+static blender::Array<float> make_gaussian_blur_kernel(float rad, int size)
 {
-  float *gausstab, sum, val;
-  float fac;
-  int i, n;
+  int n = 2 * size + 1;
+  blender::Array<float> gausstab(n);
 
-  n = 2 * size + 1;
-
-  gausstab = (float *)MEM_mallocN(sizeof(float) * n, __func__);
-
-  sum = 0.0f;
-  fac = (rad > 0.0f ? 1.0f / rad : 0.0f);
-  for (i = -size; i <= size; i++) {
-    val = RE_filter_value(R_FILTER_GAUSS, float(i) * fac);
+  float sum = 0.0f;
+  float fac = (rad > 0.0f ? 1.0f / rad : 0.0f);
+  for (int i = -size; i <= size; i++) {
+    float val = RE_filter_value(R_FILTER_GAUSS, float(i) * fac);
     sum += val;
     gausstab[i + size] = val;
   }
 
-  sum = 1.0f / sum;
-  for (i = 0; i < n; i++) {
-    gausstab[i] *= sum;
+  float inv_sum = 1.0f / sum;
+  for (int i = 0; i < n; i++) {
+    gausstab[i] *= inv_sum;
   }
 
   return gausstab;
 }
 
-static void do_gaussian_blur_effect_byte_x(Sequence *seq,
-                                           int start_line,
-                                           int x,
-                                           int y,
-                                           int frame_width,
-                                           int /*frame_height*/,
-                                           const uchar *rect,
-                                           uchar *out)
+template<typename T>
+static void gaussian_blur_x(const blender::Array<float> &gausstab,
+                            int half_size,
+                            int start_line,
+                            int width,
+                            int height,
+                            int /*frame_height*/,
+                            const T *rect,
+                            T *dst)
 {
-#define INDEX(_x, _y) (((_y) * (x) + (_x)) * 4)
-  GaussianBlurVars *data = static_cast<GaussianBlurVars *>(seq->effectdata);
-  const int size_x = int(data->size_x + 0.5f);
-  int i, j;
-
-  /* Make gaussian weight table. */
-  float *gausstab_x;
-  gausstab_x = make_gaussian_blur_kernel(data->size_x, size_x);
-
-  for (i = 0; i < y; i++) {
-    for (j = 0; j < x; j++) {
-      int out_index = INDEX(j, i);
-      float accum[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+  dst += start_line * width * 4;
+  for (int y = start_line; y < start_line + height; y++) {
+    for (int x = 0; x < width; x++) {
+      float4 accum(0.0f);
       float accum_weight = 0.0f;
 
-      for (int current_x = j - size_x; current_x <= j + size_x; current_x++) {
-        if (current_x < 0 || current_x >= frame_width) {
-          /* Out of bounds. */
-          continue;
-        }
-        int index = INDEX(current_x, i + start_line);
-        float weight = gausstab_x[current_x - j + size_x];
-        accum[0] += rect[index] * weight;
-        accum[1] += rect[index + 1] * weight;
-        accum[2] += rect[index + 2] * weight;
-        accum[3] += rect[index + 3] * weight;
+      int xmin = blender::math::max(x - half_size, 0);
+      int xmax = blender::math::min(x + half_size, width - 1);
+      for (int nx = xmin, index = (xmin - x) + half_size; nx <= xmax; nx++, index++) {
+        float weight = gausstab[index];
+        int offset = (y * width + nx) * 4;
+        accum += float4(rect + offset) * weight;
         accum_weight += weight;
       }
-
-      float inv_accum_weight = 1.0f / accum_weight;
-      out[out_index + 0] = accum[0] * inv_accum_weight;
-      out[out_index + 1] = accum[1] * inv_accum_weight;
-      out[out_index + 2] = accum[2] * inv_accum_weight;
-      out[out_index + 3] = accum[3] * inv_accum_weight;
+      accum *= (1.0f / accum_weight);
+      dst[0] = accum[0];
+      dst[1] = accum[1];
+      dst[2] = accum[2];
+      dst[3] = accum[3];
+      dst += 4;
     }
   }
-
-  MEM_freeN(gausstab_x);
-#undef INDEX
 }
 
-static void do_gaussian_blur_effect_byte_y(Sequence *seq,
-                                           int start_line,
-                                           int x,
-                                           int y,
-                                           int /*frame_width*/,
-                                           int frame_height,
-                                           const uchar *rect,
-                                           uchar *out)
+template<typename T>
+static void gaussian_blur_y(const blender::Array<float> &gausstab,
+                            int half_size,
+                            int start_line,
+                            int width,
+                            int height,
+                            int frame_height,
+                            const T *rect,
+                            T *dst)
 {
-#define INDEX(_x, _y) (((_y) * (x) + (_x)) * 4)
-  GaussianBlurVars *data = static_cast<GaussianBlurVars *>(seq->effectdata);
-  const int size_y = int(data->size_y + 0.5f);
-  int i, j;
-
-  /* Make gaussian weight table. */
-  float *gausstab_y;
-  gausstab_y = make_gaussian_blur_kernel(data->size_y, size_y);
-
-  for (i = 0; i < y; i++) {
-    for (j = 0; j < x; j++) {
-      int out_index = INDEX(j, i);
-      float accum[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+  dst += start_line * width * 4;
+  for (int y = start_line; y < start_line + height; y++) {
+    for (int x = 0; x < width; x++) {
+      float4 accum(0.0f);
       float accum_weight = 0.0f;
-      for (int current_y = i - size_y; current_y <= i + size_y; current_y++) {
-        if (current_y < -start_line || current_y + start_line >= frame_height) {
-          /* Out of bounds. */
-          continue;
-        }
-        int index = INDEX(j, current_y + start_line);
-        float weight = gausstab_y[current_y - i + size_y];
-        accum[0] += rect[index] * weight;
-        accum[1] += rect[index + 1] * weight;
-        accum[2] += rect[index + 2] * weight;
-        accum[3] += rect[index + 3] * weight;
+      int ymin = blender::math::max(y - half_size, 0);
+      int ymax = blender::math::min(y + half_size, frame_height - 1);
+      for (int ny = ymin, index = (ymin - y) + half_size; ny <= ymax; ny++, index++) {
+        float weight = gausstab[index];
+        int offset = (ny * width + x) * 4;
+        accum += float4(rect + offset) * weight;
         accum_weight += weight;
       }
-      float inv_accum_weight = 1.0f / accum_weight;
-      out[out_index + 0] = accum[0] * inv_accum_weight;
-      out[out_index + 1] = accum[1] * inv_accum_weight;
-      out[out_index + 2] = accum[2] * inv_accum_weight;
-      out[out_index + 3] = accum[3] * inv_accum_weight;
+      accum *= (1.0f / accum_weight);
+      dst[0] = accum[0];
+      dst[1] = accum[1];
+      dst[2] = accum[2];
+      dst[3] = accum[3];
+      dst += 4;
     }
   }
-
-  MEM_freeN(gausstab_y);
-#undef INDEX
-}
-
-static void do_gaussian_blur_effect_float_x(Sequence *seq,
-                                            int start_line,
-                                            int x,
-                                            int y,
-                                            int frame_width,
-                                            int /*frame_height*/,
-                                            float *rect,
-                                            float *out)
-{
-#define INDEX(_x, _y) (((_y) * (x) + (_x)) * 4)
-  GaussianBlurVars *data = static_cast<GaussianBlurVars *>(seq->effectdata);
-  const int size_x = int(data->size_x + 0.5f);
-  int i, j;
-
-  /* Make gaussian weight table. */
-  float *gausstab_x;
-  gausstab_x = make_gaussian_blur_kernel(data->size_x, size_x);
-
-  for (i = 0; i < y; i++) {
-    for (j = 0; j < x; j++) {
-      int out_index = INDEX(j, i);
-      float accum[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-      float accum_weight = 0.0f;
-      for (int current_x = j - size_x; current_x <= j + size_x; current_x++) {
-        if (current_x < 0 || current_x >= frame_width) {
-          /* Out of bounds. */
-          continue;
-        }
-        int index = INDEX(current_x, i + start_line);
-        float weight = gausstab_x[current_x - j + size_x];
-        madd_v4_v4fl(accum, &rect[index], weight);
-        accum_weight += weight;
-      }
-      mul_v4_v4fl(&out[out_index], accum, 1.0f / accum_weight);
-    }
-  }
-
-  MEM_freeN(gausstab_x);
-#undef INDEX
-}
-
-static void do_gaussian_blur_effect_float_y(Sequence *seq,
-                                            int start_line,
-                                            int x,
-                                            int y,
-                                            int /*frame_width*/,
-                                            int frame_height,
-                                            float *rect,
-                                            float *out)
-{
-#define INDEX(_x, _y) (((_y) * (x) + (_x)) * 4)
-  GaussianBlurVars *data = static_cast<GaussianBlurVars *>(seq->effectdata);
-  const int size_y = int(data->size_y + 0.5f);
-  int i, j;
-
-  /* Make gaussian weight table. */
-  float *gausstab_y;
-  gausstab_y = make_gaussian_blur_kernel(data->size_y, size_y);
-
-  for (i = 0; i < y; i++) {
-    for (j = 0; j < x; j++) {
-      int out_index = INDEX(j, i);
-      float accum[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-      float accum_weight = 0.0f;
-      for (int current_y = i - size_y; current_y <= i + size_y; current_y++) {
-        if (current_y < -start_line || current_y + start_line >= frame_height) {
-          /* Out of bounds. */
-          continue;
-        }
-        int index = INDEX(j, current_y + start_line);
-        float weight = gausstab_y[current_y - i + size_y];
-        madd_v4_v4fl(accum, &rect[index], weight);
-        accum_weight += weight;
-      }
-      mul_v4_v4fl(&out[out_index], accum, 1.0f / accum_weight);
-    }
-  }
-
-  MEM_freeN(gausstab_y);
-#undef INDEX
-}
-
-static void do_gaussian_blur_effect_x_cb(const SeqRenderData *context,
-                                         Sequence *seq,
-                                         ImBuf *ibuf,
-                                         int start_line,
-                                         int total_lines,
-                                         ImBuf *out)
-{
-  if (out->float_buffer.data) {
-    float *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
-
-    slice_get_float_buffers(
-        context, ibuf, nullptr, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
-
-    do_gaussian_blur_effect_float_x(seq,
-                                    start_line,
-                                    context->rectx,
-                                    total_lines,
-                                    context->rectx,
-                                    context->recty,
-                                    ibuf->float_buffer.data,
-                                    rect_out);
-  }
-  else {
-    uchar *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
-
-    slice_get_byte_buffers(
-        context, ibuf, nullptr, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
-
-    do_gaussian_blur_effect_byte_x(seq,
-                                   start_line,
-                                   context->rectx,
-                                   total_lines,
-                                   context->rectx,
-                                   context->recty,
-                                   ibuf->byte_buffer.data,
-                                   rect_out);
-  }
-}
-
-static void do_gaussian_blur_effect_y_cb(const SeqRenderData *context,
-                                         Sequence *seq,
-                                         ImBuf *ibuf,
-                                         int start_line,
-                                         int total_lines,
-                                         ImBuf *out)
-{
-  if (out->float_buffer.data) {
-    float *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
-
-    slice_get_float_buffers(
-        context, ibuf, nullptr, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
-
-    do_gaussian_blur_effect_float_y(seq,
-                                    start_line,
-                                    context->rectx,
-                                    total_lines,
-                                    context->rectx,
-                                    context->recty,
-                                    ibuf->float_buffer.data,
-                                    rect_out);
-  }
-  else {
-    uchar *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
-
-    slice_get_byte_buffers(
-        context, ibuf, nullptr, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
-
-    do_gaussian_blur_effect_byte_y(seq,
-                                   start_line,
-                                   context->rectx,
-                                   total_lines,
-                                   context->rectx,
-                                   context->recty,
-                                   ibuf->byte_buffer.data,
-                                   rect_out);
-  }
-}
-
-struct RenderGaussianBlurEffectInitData {
-  const SeqRenderData *context;
-  Sequence *seq;
-  ImBuf *ibuf;
-  ImBuf *out;
-};
-
-struct RenderGaussianBlurEffectThread {
-  const SeqRenderData *context;
-  Sequence *seq;
-  ImBuf *ibuf;
-  ImBuf *out;
-  int start_line, tot_line;
-};
-
-static void render_effect_execute_init_handle(void *handle_v,
-                                              int start_line,
-                                              int tot_line,
-                                              void *init_data_v)
-{
-  RenderGaussianBlurEffectThread *handle = (RenderGaussianBlurEffectThread *)handle_v;
-  RenderGaussianBlurEffectInitData *init_data = (RenderGaussianBlurEffectInitData *)init_data_v;
-
-  handle->context = init_data->context;
-  handle->seq = init_data->seq;
-  handle->ibuf = init_data->ibuf;
-  handle->out = init_data->out;
-
-  handle->start_line = start_line;
-  handle->tot_line = tot_line;
-}
-
-static void *render_effect_execute_do_x_thread(void *thread_data_v)
-{
-  RenderGaussianBlurEffectThread *thread_data = (RenderGaussianBlurEffectThread *)thread_data_v;
-  do_gaussian_blur_effect_x_cb(thread_data->context,
-                               thread_data->seq,
-                               thread_data->ibuf,
-                               thread_data->start_line,
-                               thread_data->tot_line,
-                               thread_data->out);
-  return nullptr;
-}
-
-static void *render_effect_execute_do_y_thread(void *thread_data_v)
-{
-  RenderGaussianBlurEffectThread *thread_data = (RenderGaussianBlurEffectThread *)thread_data_v;
-  do_gaussian_blur_effect_y_cb(thread_data->context,
-                               thread_data->seq,
-                               thread_data->ibuf,
-                               thread_data->start_line,
-                               thread_data->tot_line,
-                               thread_data->out);
-
-  return nullptr;
 }
 
 static ImBuf *do_gaussian_blur_effect(const SeqRenderData *context,
@@ -2732,32 +2470,75 @@ static ImBuf *do_gaussian_blur_effect(const SeqRenderData *context,
                                       ImBuf * /*ibuf2*/,
                                       ImBuf * /*ibuf3*/)
 {
+  using namespace blender;
+
+  /* Create blur kernel weights. */
+  const GaussianBlurVars *data = static_cast<const GaussianBlurVars *>(seq->effectdata);
+  const int half_size_x = int(data->size_x + 0.5f);
+  const int half_size_y = int(data->size_y + 0.5f);
+  Array<float> gausstab_x = make_gaussian_blur_kernel(data->size_x, half_size_x);
+  Array<float> gausstab_y = make_gaussian_blur_kernel(data->size_y, half_size_y);
+
+  const int width = context->rectx;
+  const int height = context->recty;
+  const bool is_float = ibuf1->float_buffer.data;
+
+  /* Horizontal blur: create output, blur ibuf1 into it. */
   ImBuf *out = prepare_effect_imbufs(context, ibuf1, nullptr, nullptr);
+  threading::parallel_for(IndexRange(context->recty), 32, [&](const IndexRange y_range) {
+    const int y_first = y_range.first();
+    const int y_size = y_range.size();
+    if (is_float) {
+      gaussian_blur_x(gausstab_x,
+                      half_size_x,
+                      y_first,
+                      width,
+                      y_size,
+                      height,
+                      ibuf1->float_buffer.data,
+                      out->float_buffer.data);
+    }
+    else {
+      gaussian_blur_x(gausstab_x,
+                      half_size_x,
+                      y_first,
+                      width,
+                      y_size,
+                      height,
+                      ibuf1->byte_buffer.data,
+                      out->byte_buffer.data);
+    }
+  });
 
-  RenderGaussianBlurEffectInitData init_data;
-
-  init_data.context = context;
-  init_data.seq = seq;
-  init_data.ibuf = ibuf1;
-  init_data.out = out;
-
-  IMB_processor_apply_threaded(out->y,
-                               sizeof(RenderGaussianBlurEffectThread),
-                               &init_data,
-                               render_effect_execute_init_handle,
-                               render_effect_execute_do_x_thread);
-
+  /* Vertical blur: create output, blur previous output into it. */
   ibuf1 = out;
-  init_data.ibuf = ibuf1;
   out = prepare_effect_imbufs(context, ibuf1, nullptr, nullptr);
-  init_data.out = out;
+  threading::parallel_for(IndexRange(context->recty), 32, [&](const IndexRange y_range) {
+    const int y_first = y_range.first();
+    const int y_size = y_range.size();
+    if (is_float) {
+      gaussian_blur_y(gausstab_y,
+                      half_size_y,
+                      y_first,
+                      width,
+                      y_size,
+                      height,
+                      ibuf1->float_buffer.data,
+                      out->float_buffer.data);
+    }
+    else {
+      gaussian_blur_y(gausstab_y,
+                      half_size_y,
+                      y_first,
+                      width,
+                      y_size,
+                      height,
+                      ibuf1->byte_buffer.data,
+                      out->byte_buffer.data);
+    }
+  });
 
-  IMB_processor_apply_threaded(out->y,
-                               sizeof(RenderGaussianBlurEffectThread),
-                               &init_data,
-                               render_effect_execute_init_handle,
-                               render_effect_execute_do_y_thread);
-
+  /* Free the first output. */
   IMB_freeImBuf(ibuf1);
 
   return out;
