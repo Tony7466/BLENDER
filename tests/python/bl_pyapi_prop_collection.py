@@ -124,29 +124,10 @@ def prop_as_sequence(collection, prop_rna):
         return [getattr(group, prop_name) for group in collection]
 
 
-class TestPropertyGroup(bpy.types.PropertyGroup):
-    VECTOR_SIZE = 3
-    _ENUM_ITEMS = (("0", "Item 0", ""), ("1", "Item 1", ""))
-    _ENUM_IDENTIFIER_TO_INDEX = {item[0]: i for i, item in enumerate(_ENUM_ITEMS)}
-
-    DEFAULT_INT = 0  # Must be either 0 or 1 so that bool and enum tests can work properly.
-    DEFAULT_BOOL = bool(DEFAULT_INT)
-    DEFAULT_FLOAT = float(DEFAULT_INT)
-
-    test_bool: BoolProperty(default=DEFAULT_BOOL)
-    test_bool_vector: BoolVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_BOOL] * VECTOR_SIZE)
-    test_float: FloatProperty(default=DEFAULT_FLOAT)
-    test_float_vector: FloatVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_FLOAT] * VECTOR_SIZE)
-    test_int: IntProperty(default=DEFAULT_INT)
-    test_int_vector: IntVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_INT] * VECTOR_SIZE)
-    test_unsigned_int: IntProperty(subtype='UNSIGNED', default=DEFAULT_INT)
-    test_enum: EnumProperty(items=_ENUM_ITEMS, default=_ENUM_ITEMS[DEFAULT_INT][0])
-
-
 # -----------------------------------------------------------------------------
 # Tests
 
-class TestPropCollectionForeachGetSet(unittest.TestCase):
+class BaseTestForeachGetSet(unittest.TestCase):
     SEQUENCE_TYPES = ('LIST', 'IMPLICIT_NATIVE_ARRAY', 'EXPLICIT_NATIVE_ARRAY', 'NON_NATIVE_ARRAY')
 
     def assertSequenceEqual(self, seq1, seq2, msg=None, seq_type=None):
@@ -175,72 +156,8 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
             for v1, v2 in zip(seq1, seq2):
                 self.assertAlmostEqual(v1, v2, places=places, msg=msg, delta=delta)
 
-    def setUp(self):
-        bpy.utils.register_class(TestPropertyGroup)
-        id_type.test_collection = CollectionProperty(type=TestPropertyGroup)
-        self.collection = id_inst.test_collection
-        num_items = 5
-        for _ in range(num_items):
-            id_inst.test_collection.add()
-
-        self.mesh = bpy.data.meshes.new("")
-        self.mesh.vertices.add(num_items)
-        mesh_attributes = self.mesh.attributes
-        # Attribute data types and the name of the property to use with foreach_get/foreach_set.
-        self.attribute_type_to_prop_name = {
-            'FLOAT': "value",
-            'INT': "value",
-            'FLOAT_VECTOR': "vector",
-            'FLOAT_COLOR': "color",
-            'BYTE_COLOR': "color",
-            # 'STRING': "value",  # Does not support foreach_get/foreach_set
-            'BOOLEAN': "value",
-            'FLOAT2': "vector",
-            'INT8': "value",
-            'INT32_2D': "value",
-            'QUATERNION': "value",
-        }
-        # Attribute pointers are not stable when adding additional attributes, so get the names first. See #107500.
-        int_attribute_names = []
-        float_attribute_names = []
-        bool_attribute_names = []
-        for data_type, prop_name in self.attribute_type_to_prop_name.items():
-            attr = mesh_attributes.new("test_%s" % data_type.lower(), data_type, 'POINT')
-            collection_rna = attr.bl_rna.properties["data"]
-            collection_element_rna = collection_rna.fixed_type
-            prop_rna = collection_element_rna.properties[prop_name]
-            match prop_rna.type:
-                case 'INT':
-                    int_attribute_names.append(attr.name)
-                case 'FLOAT':
-                    float_attribute_names.append(attr.name)
-                case 'BOOLEAN':
-                    bool_attribute_names.append(attr.name)
-        # Now that all the attributes have been added, the pointers should be stable.
-        self.int_attributes = [mesh_attributes[name] for name in int_attribute_names]
-        self.float_attributes = [mesh_attributes[name] for name in float_attribute_names]
-        self.bool_attributes = [mesh_attributes[name] for name in bool_attribute_names]
-        # There should always be at least one of each property type.
-        assert self.int_attributes
-        assert self.float_attributes
-        assert self.bool_attributes
-
-    def tearDown(self):
-        bpy.data.meshes.remove(self.mesh)
-        # Custom Properties save their data in ID properties by default. Deleting the Custom Property registration will
-        # leave the ID properties behind, so ensure the ID properties are removed by clearing the collection before
-        # deleting its registration.
-        id_inst.test_collection.clear()
-        del id_type.test_collection
-        bpy.utils.unregister_class(TestPropertyGroup)
-
     @staticmethod
-    def sequence_generator(sequence_length, is_set, dtype_modifier=None):
-        # To correctly handle all properties with the same test setup ('BOOLEAN' and 'ENUM' being the most restrictive),
-        # we can only use `0` and `1` as fill values.
-        default_int = TestPropertyGroup.DEFAULT_INT
-        assert default_int in {0, 1}
-
+    def sequence_generator(prop_rna, sequence_length, is_set, dtype_modifier=None):
         def next_sequence(next_fill_value, dtype):
             if dtype == list:
                 return [next_fill_value] * sequence_length
@@ -248,8 +165,14 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
                 return np.full(sequence_length, next_fill_value,
                                dtype=dtype_modifier(dtype) if dtype_modifier else dtype)
 
+        default_value = prop_rna.default_array[0] if getattr(prop_rna, "is_array", False) else prop_rna.default
+        if prop_rna.type == 'ENUM':
+            # Get the index of the default item identifier
+            default_value = prop_rna.enum_items.find(default_value)
+        # To correctly handle all properties with the same test setup ('BOOLEAN' and 'ENUM' being the most restrictive),
+        # we can only use `0` and `1` as fill values.
         if is_set:
-            last_fill_value = default_int
+            last_fill_value = default_value
             # When setting values, each time we set, we need to set to different values from before so that we can check
             # that setting the values worked.
 
@@ -265,7 +188,7 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         else:
             # When getting values, the initial values in the sequence must differ from the default values of the
             # properties, so that we can check that getting the values worked.
-            fill_value = 1 if default_int == 0 else 0
+            fill_value = 1 if default_value == 0 else 0
             return lambda dtype: next_sequence(fill_value, dtype)
 
     @staticmethod
@@ -323,7 +246,7 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         sequences = []
 
         if not ndarray_only:
-            sequences.extend(TestPropCollectionForeachGetSet.make_sequences_buffer_int_extra_native_mv(next_sequence))
+            sequences.extend(BaseTestForeachGetSet.make_sequences_buffer_int_extra_native_mv(next_sequence))
 
         return sequences + [
             next_sequence(np.byte),       # "b", signed char
@@ -345,14 +268,14 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         sequences = [next_sequence(np.bool_)]  # "?", bool
         # However, BOOLEAN properties that do have raw array access are only considered compatible with buffers that
         # match the property's raw type, which is likely to be a single byte numeric/char type.
-        sequences.extend(TestPropCollectionForeachGetSet.make_sequences_buffer_int(next_sequence, ndarray_only))
+        sequences.extend(BaseTestForeachGetSet.make_sequences_buffer_int(next_sequence, ndarray_only))
         return sequences
 
     def make_subtest_sequences(self, collection, prop_rna, is_set, is_arrays, dtype_modifier):
         item_length = prop_rna.array_length if getattr(prop_rna, "is_array", False) else 1
         sequence_length = len(collection) * item_length
 
-        generate_sequence = self.sequence_generator(sequence_length, is_set, dtype_modifier)
+        generate_sequence = self.sequence_generator(prop_rna, sequence_length, is_set, dtype_modifier)
 
         ndarray_only = dtype_modifier is not None
 
@@ -503,57 +426,165 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
             if assert_buffer_usage:
                 self.assertTrue(at_least_one_accessed_as_buffer, "at least one sequence should be accessed as a buffer")
 
-    def check_getset(self, *tests, is_set):
-        for test in tests:
-            if isinstance(test, str):
-                collection = self.collection
-                prop_name = test
-                prop_rna = TestPropertyGroup.bl_rna.properties[prop_name]
-                collection_type_str = "idprop"
-            elif isinstance(test, bpy.types.Attribute):
-                collection = test.data
-                prop_name = self.attribute_type_to_prop_name[test.data_type]
-                prop_rna = test.bl_rna.properties["data"].fixed_type.properties[prop_name]
-                collection_type_str = "'%s' attribute" % test.data_type
-            else:
-                raise AssertionError("Unexpected type %s" % type(test))
-            for sequence_type in self.SEQUENCE_TYPES:
-                with self.subTest(collection_type=collection_type_str):
-                    self.do_getset_subtest(collection, prop_rna, sequence_type, is_set=is_set)
+    def check_foreach_getset(self, collection, prop_rna, is_set):
+        for sequence_type in self.SEQUENCE_TYPES:
+            self.do_getset_subtest(collection, prop_rna, sequence_type, is_set=is_set)
 
-    def check_get(self, *tests):
-        self.check_getset(*tests, is_set=False)
 
-    def check_set(self, *tests):
-        self.check_getset(*tests, is_set=True)
+class TestPropCollectionForeachGetSetIDProp(BaseTestForeachGetSet):
+    def setUp(self):
+        class TestPropertyGroup(bpy.types.PropertyGroup):
+            VECTOR_SIZE = 3
+            _ENUM_ITEMS = (("0", "Item 0", ""), ("1", "Item 1", ""))
+            _ENUM_IDENTIFIER_TO_INDEX = {item[0]: i for i, item in enumerate(_ENUM_ITEMS)}
+
+            DEFAULT_INT = 0  # Must be either 0 or 1 so that bool and enum tests can work properly.
+            DEFAULT_BOOL = bool(DEFAULT_INT)
+            DEFAULT_FLOAT = float(DEFAULT_INT)
+
+            test_bool: BoolProperty(default=DEFAULT_BOOL)
+            test_bool_vector: BoolVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_BOOL] * VECTOR_SIZE)
+            test_float: FloatProperty(default=DEFAULT_FLOAT)
+            test_float_vector: FloatVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_FLOAT] * VECTOR_SIZE)
+            test_int: IntProperty(default=DEFAULT_INT)
+            test_int_vector: IntVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_INT] * VECTOR_SIZE)
+            test_unsigned_int: IntProperty(subtype='UNSIGNED', default=DEFAULT_INT)
+            test_enum: EnumProperty(items=_ENUM_ITEMS, default=_ENUM_ITEMS[DEFAULT_INT][0])
+
+        self.property_group_class = TestPropertyGroup
+
+        bpy.utils.register_class(TestPropertyGroup)
+        id_type.test_collection = CollectionProperty(type=TestPropertyGroup)
+        for _ in range(5):
+            id_inst.test_collection.add()
+
+    def tearDown(self):
+        # Custom Properties save their data in ID properties by default. Deleting the Custom Property registration will
+        # leave the ID properties behind, so ensure the ID properties are removed by clearing the collection before
+        # deleting its registration.
+        id_inst.test_collection.clear()
+        del id_type.test_collection
+        bpy.utils.unregister_class(self.property_group_class)
+
+    def check_getset(self, prop_names, is_set):
+        for prop_name in prop_names:
+            prop_rna = self.property_group_class.bl_rna.properties[prop_name]
+            self.check_foreach_getset(id_inst.test_collection, prop_rna, is_set)
+
+    def check_get(self, *prop_names):
+        self.check_getset(prop_names, is_set=False)
+
+    def check_set(self, *prop_names):
+        self.check_getset(prop_names, is_set=True)
 
     # Test methods
 
-    def test_get_bool(self):
-        self.check_get("test_bool", "test_bool_vector", *self.bool_attributes)
+    def test_foreach_get_bool(self):
+        self.check_get("test_bool", "test_bool_vector")
 
     def test_foreach_set_bool(self):
-        self.check_set("test_bool", "test_bool_vector", *self.bool_attributes)
+        self.check_set("test_bool", "test_bool_vector")
 
     def test_foreach_get_float(self):
-        self.check_get("test_float", "test_float_vector", *self.float_attributes)
+        self.check_get("test_float", "test_float_vector")
 
     def test_foreach_set_float(self):
-        self.check_set("test_float", "test_float_vector", *self.float_attributes)
+        self.check_set("test_float", "test_float_vector")
 
     def test_foreach_get_int(self):
-        self.check_get("test_int", "test_int_vector", "test_unsigned_int", *self.int_attributes)
+        self.check_get("test_int", "test_int_vector", "test_unsigned_int")
 
     def test_foreach_set_int(self):
-        self.check_set("test_int", "test_int_vector", "test_unsigned_int", *self.int_attributes)
+        self.check_set("test_int", "test_int_vector", "test_unsigned_int")
 
-    @unittest.expectedFailure  # See #92621
     def test_foreach_get_enum(self):
         self.check_get("test_enum")
 
-    @unittest.expectedFailure  # See #92621
     def test_foreach_set_enum(self):
         self.check_set("test_enum")
+
+
+class TestPropCollectionForeachGetSetAttribute(BaseTestForeachGetSet):
+    def setUp(self):
+        self.mesh = bpy.data.meshes.new("")
+        self.mesh.vertices.add(5)
+        mesh_attributes = self.mesh.attributes
+        # Attribute data types and the name of the property to use with foreach_get/foreach_set.
+        self.attribute_type_to_prop_name = {
+            'FLOAT': "value",
+            'INT': "value",
+            'FLOAT_VECTOR': "vector",
+            'FLOAT_COLOR': "color",
+            'BYTE_COLOR': "color",
+            # 'STRING': "value",  # Does not support foreach_get/foreach_set
+            'BOOLEAN': "value",
+            'FLOAT2': "vector",
+            'INT8': "value",
+            'INT32_2D': "value",
+            'QUATERNION': "value",
+        }
+        # Attribute pointers are not stable when adding additional attributes, so get the names first. See #107500.
+        int_attribute_names = []
+        float_attribute_names = []
+        bool_attribute_names = []
+        for data_type, prop_name in self.attribute_type_to_prop_name.items():
+            attr = mesh_attributes.new("test_%s" % data_type.lower(), data_type, 'POINT')
+            collection_rna = attr.bl_rna.properties["data"]
+            collection_element_rna = collection_rna.fixed_type
+            prop_rna = collection_element_rna.properties[prop_name]
+            match prop_rna.type:
+                case 'INT':
+                    int_attribute_names.append(attr.name)
+                case 'FLOAT':
+                    float_attribute_names.append(attr.name)
+                case 'BOOLEAN':
+                    bool_attribute_names.append(attr.name)
+        # Now that all the attributes have been added, the pointers should be stable.
+        self.int_attributes = [mesh_attributes[name] for name in int_attribute_names]
+        self.float_attributes = [mesh_attributes[name] for name in float_attribute_names]
+        self.bool_attributes = [mesh_attributes[name] for name in bool_attribute_names]
+        # There should always be at least one of each property type.
+        assert self.int_attributes
+        assert self.float_attributes
+        assert self.bool_attributes
+
+    def tearDown(self):
+        bpy.data.meshes.remove(self.mesh)
+
+    def check_getset(self, attributes, is_set):
+        for attribute in attributes:
+            prop_name = self.attribute_type_to_prop_name[attribute.data_type]
+            collection = attribute.data
+            collection_rna = attribute.bl_rna.properties["data"]
+            collection_element_rna = collection_rna.fixed_type
+            prop_rna = collection_element_rna.properties[prop_name]
+            self.check_foreach_getset(collection, prop_rna, is_set)
+
+    def check_get(self, attributes):
+        self.check_getset(attributes, is_set=False)
+
+    def check_set(self, attributes):
+        self.check_getset(attributes, is_set=True)
+
+    # Test methods
+
+    def test_foreach_get_bool(self):
+        self.check_get(self.bool_attributes)
+
+    def test_foreach_set_bool(self):
+        self.check_set(self.bool_attributes)
+
+    def test_foreach_get_float(self):
+        self.check_get(self.float_attributes)
+
+    def test_foreach_set_float(self):
+        self.check_set(self.float_attributes)
+
+    def test_foreach_get_int(self):
+        self.check_get(self.int_attributes)
+
+    def test_foreach_set_int(self):
+        self.check_set(self.int_attributes)
 
 
 if __name__ == '__main__':
