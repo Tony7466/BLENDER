@@ -1071,7 +1071,7 @@ class NODE_PT_simulation_zone_items(Panel):
             layout.use_property_split = True
             layout.use_property_decorate = False
             layout.prop(active_item, "socket_type")
-            if active_item.socket_type in {'VECTOR', 'INT', 'BOOLEAN', 'FLOAT', 'RGBA'}:
+            if active_item.socket_type in {'VECTOR', 'INT', 'BOOLEAN', 'FLOAT', 'RGBA', 'ROTATION'}:
                 layout.prop(active_item, "attribute_domain")
 
 
@@ -1199,7 +1199,7 @@ class NODE_PT_bake_node_items(bpy.types.Panel):
             layout.use_property_split = True
             layout.use_property_decorate = False
             layout.prop(active_item, "socket_type")
-            if active_item.socket_type in {'VECTOR', 'INT', 'BOOLEAN', 'FLOAT', 'RGBA'}:
+            if active_item.socket_type in {'VECTOR', 'INT', 'BOOLEAN', 'FLOAT', 'RGBA', 'ROTATION'}:
                 layout.prop(active_item, "attribute_domain")
                 layout.prop(active_item, "is_attribute")
 
