@@ -897,6 +897,7 @@ if(WITH_GTESTS)
       tests/storage_buffer_test.cc
       tests/texture_test.cc
       tests/vertex_buffer_test.cc
+      tests/shader_create_info_test.cc
     )
   endif()
 
@@ -904,11 +905,11 @@ if(WITH_GTESTS)
     list(APPEND TEST_SRC
       vulkan/vk_data_conversion_test.cc
       vulkan/vk_memory_layout_test.cc
-      tests/shader_create_info_test.cc
     )
   endif()
 
-  if(WITH_METAL_BACKEND)
+  # Enable shader validation on buildbot for Metal
+  if(WITH_METAL_BACKEND AND NOT WITH_OPENGL_DRAW_TESTS)
     list(APPEND TEST_SRC
       tests/shader_create_info_test.cc
     )
