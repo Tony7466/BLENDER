@@ -1037,9 +1037,12 @@ bool BKE_paint_select_vert_test(const Object *ob)
 
 bool BKE_paint_select_bone_test(const Object *ob)
 {
-  return ((ob != nullptr) && (ob->type == OB_MESH) && (ob->data != nullptr) &&
-          (((Mesh *)ob->data)->editflag & ~(ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL)) &&
-          (ob->mode & OB_MODE_WEIGHT_PAINT));
+  if (ob == nullptr || ob->type != OB_MESH || (ob->mode & OB_MODE_WEIGHT_PAINT) == 0) {
+    return false;
+  }
+
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
+  return (mesh->editflag & (ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL)) == 0;
 }
 
 bool BKE_paint_select_elem_test(const Object *ob)
