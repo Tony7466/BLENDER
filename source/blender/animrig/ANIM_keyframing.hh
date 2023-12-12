@@ -143,8 +143,6 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob);
 /**
  * Auto-keyframing feature - for objects
  *
- * \param tmode: A transform mode.
- *
  * \note Context may not always be available,
  * so must check before using it as it's a luxury for a few cases.
  */
@@ -152,8 +150,6 @@ bool autokeyframe_object(bContext *C, Scene *scene, Object *ob, KeyingSet *ks);
 bool autokeyframe_pchan(bContext *C, Scene *scene, Object *ob, bPoseChannel *pchan, KeyingSet *ks);
 /**
  * Auto-keyframing feature - for poses/pose-channels
- *
- * \param tmode: A transform mode.
  *
  * targetless_ik: has targetless ik been done on any channels?
  *
