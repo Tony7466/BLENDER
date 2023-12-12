@@ -30,28 +30,48 @@ CCL_NAMESPACE_BEGIN
 
 bool OIDNDenoiserGPU::is_device_supported(const DeviceInfo &device)
 {
+  int device_type = OIDN_DEVICE_TYPE_DEFAULT;
   switch (device.type) {
 #  ifdef OIDN_DEVICE_SYCL
-    /* Assume all devices with Cycles support are also supported by OIDN2. */
     case DEVICE_ONEAPI:
-      return true;
+      device_type = OIDN_DEVICE_TYPE_SYCL;
+      break;
 #  endif
 #  ifdef OIDN_DEVICE_HIP
-    case DEVICE_HIP: {
-      /* Test if OIDN can use the given HIP device. */
-      hipStream_t stream = nullptr;
-      OIDNDevice test_device = oidnNewHIPDevice(&device.num, &stream, 1);
-      if (test_device) {
-        oidnReleaseDevice(test_device);
-        return true;
-      }
-      oidnGetDeviceError(nullptr, nullptr);
-      return false;
-    }
+    case DEVICE_HIP:
+      device_type = OIDN_DEVICE_TYPE_HIP;
+      break;
 #  endif
+#  ifdef OIDN_DEVICE_CUDA
+    case DEVICE_CUDA:
+    case DEVICE_OPTIX:
+      device_type = OIDN_DEVICE_TYPE_CUDA;
+      break;
+#  endif
+    case DEVICE_CPU:
+      /* This is the GPU denoiser - CPU devices shouldn't end up here. */
+      assert(0);
     default:
       return false;
   }
+
+  /* Match GPUs by their PCI ID. */
+  const int num_devices = oidnGetNumPhysicalDevices();
+  for (int i = 0; i < num_devices; i++) {
+    if (oidnGetPhysicalDeviceInt(i, "type") == device_type) {
+      if (oidnGetPhysicalDeviceBool(i, "pciAddressSupported")) {
+        unsigned int pci_domain = oidnGetPhysicalDeviceInt(i, "pciDomain");
+        unsigned int pci_bus = oidnGetPhysicalDeviceInt(i, "pciBus");
+        unsigned int pci_device = oidnGetPhysicalDeviceInt(i, "pciDevice");
+        string pci_id = string_printf("%04x:%02x:%02x", pci_domain, pci_bus, pci_device);
+        if (device.id.find(pci_id) != string::npos) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
 }
 
 OIDNDenoiserGPU::OIDNDenoiserGPU(Device *path_trace_device, const DenoiseParams &params)
