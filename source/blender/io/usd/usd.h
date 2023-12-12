@@ -168,8 +168,8 @@ struct USDExportParams {
   bool export_usd_kind = true;
   eUSDDefaultPrimKind default_prim_kind = eUSDDefaultPrimKind::USD_KIND_NONE;
   char default_prim_custom_kind[128] = "";
-  char root_prim_path[1024] = "/root";     /* FILE_MAX */
-  char default_prim_path[1024] = "/root";  /* FILE_MAX */
+  char root_prim_path[1024] = "/root";               /* FILE_MAX */
+  char default_prim_path[1024] = "/root";            /* FILE_MAX */
   char material_prim_path[1024] = "/root/materials"; /* FILE_MAX */
 
   /** Communication structure between the wmJob management code and the worker code. Currently used
