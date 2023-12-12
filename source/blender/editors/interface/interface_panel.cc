@@ -1158,7 +1158,7 @@ static void panel_draw_aligned_widgets(const uiStyle *style,
 }
 
 /* Not entirely sure why this offset is necessary. */
-static constexpr layout_panel_y_offset = 8;
+static constexpr float layout_panel_y_offset = 8;
 
 static void panel_draw_aligned_backdrop(const ARegion *region,
                                         const Panel *panel,
