@@ -305,24 +305,7 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
     for (NodeBakeRequest &request : job.bake_requests) {
       NodesModifierData &nmd = *request.nmd;
       bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
-      const bake::NodeBakeCache *bake_cache = nullptr;
-      switch (request.node_type) {
-        case GEO_NODE_SIMULATION_OUTPUT: {
-          if (bake::SimulationNodeCache *node_cache = modifier_cache.get_simulation_node_cache(
-                  request.bake_id))
-          {
-            bake_cache = &node_cache->bake;
-          }
-          break;
-        }
-        case GEO_NODE_BAKE: {
-          if (bake::BakeNodeCache *node_cache = modifier_cache.get_bake_node_cache(
-                  request.bake_id)) {
-            bake_cache = &node_cache->bake;
-          }
-          break;
-        }
-      }
+      const bake::NodeBakeCache *bake_cache = modifier_cache.get_node_bake_cache(request.bake_id);
       if (bake_cache == nullptr) {
         continue;
       }

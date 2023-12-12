@@ -97,6 +97,7 @@ struct ModifierCache {
 
   SimulationNodeCache *get_simulation_node_cache(const int id);
   BakeNodeCache *get_bake_node_cache(const int id);
+  NodeBakeCache *get_node_bake_cache(const int id);
 };
 
 /**
