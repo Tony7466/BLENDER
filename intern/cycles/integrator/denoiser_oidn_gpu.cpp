@@ -37,6 +37,20 @@ bool OIDNDenoiserGPU::is_device_supported(const DeviceInfo &device)
     case DEVICE_ONEAPI:
       return true;
 #  endif
+#  ifdef OIDN_DEVICE_METAL
+    case DEVICE_METAL: {
+      int num_devices = oidnGetNumPhysicalDevices();
+      for (int i = 0; i < num_devices; i++) {
+        if (oidnGetPhysicalDeviceUInt(i, "type") == OIDN_DEVICE_TYPE_METAL) {
+          const char *name = oidnGetPhysicalDeviceString(i, "name");
+          if (device.id.find(name) != std::string::npos) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+#  endif
     default:
       return false;
   }
@@ -78,6 +92,9 @@ uint OIDNDenoiserGPU::get_device_type_mask() const
   uint device_mask = 0;
 #  ifdef OIDN_DEVICE_SYCL
   device_mask |= DEVICE_MASK_ONEAPI;
+#  endif
+#  ifdef OIDN_DEVICE_SYCL
+  device_mask |= DEVICE_MASK_METAL;
 #  endif
   return device_mask;
 }
@@ -122,6 +139,13 @@ bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
           1);
       denoiser_queue_->init_execution();
       break;
+#  endif
+#  if defined(OIDN_DEVICE_METAL) && defined(WITH_METAL)
+    case DEVICE_METAL: {
+      denoiser_queue_->init_execution();
+      const MTLCommandQueue_id queue = (const MTLCommandQueue_id)denoiser_queue_->native_queue();
+      oidn_device_ = oidnNewMetalDevice(&queue, 1);
+    } break;
 #  endif
     default:
       break;
