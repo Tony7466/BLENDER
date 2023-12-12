@@ -566,11 +566,6 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
   }
 }
 
-static void node_rna(StructRNA *srna)
-{
-  UNUSED_VARS(srna);
-}
-
 static void node_register()
 {
   static bNodeType ntype;
@@ -584,8 +579,6 @@ static void node_register()
   ntype.get_extra_info = node_extra_info;
   node_type_storage(&ntype, "NodeGeometryBake", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
-
-  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 
