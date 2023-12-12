@@ -48,11 +48,9 @@ int hipewCompilerVersion();
 
 static inline bool hipSupportsDevice(const int hipDevId)
 {
-  int hipRuntimeVersion;
-  hipRuntimeGetVersion(&hipRuntimeVersion);
   int major, minor;
-  hipDeviceGetAttribute(&major, get_hip_device_attr(hipDeviceAttributeComputeCapabilityMajor, hipRuntimeVersion), hipDevId);
-  hipDeviceGetAttribute(&minor, get_hip_device_attr(hipDeviceAttributeComputeCapabilityMinor, hipRuntimeVersion), hipDevId);
+  hipDeviceGetAttribute(&major, hipDeviceAttributeComputeCapabilityMajor, hipDevId);
+  hipDeviceGetAttribute(&minor, hipDeviceAttributeComputeCapabilityMinor, hipDevId);
 
   return (major >= 9);
 }

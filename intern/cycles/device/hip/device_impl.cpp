@@ -87,17 +87,15 @@ HIPDevice::HIPDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
     return;
   }
 
-  // get hip Runtime Version needed for memory types
-  hip_assert(hipRuntimeGetVersion(&hipRuntimeVersion));
   /* hipDeviceMapHost for mapping host memory when out of device memory.
    * hipDeviceLmemResizeToMax for reserving local memory ahead of render,
    * so we can predict which memory to map to host. */
   int value;
-  hip_assert(hipDeviceGetAttribute(&value, get_hip_device_attr(hipDeviceAttributeCanMapHostMemory, hipRuntimeVersion), hipDevice));
+  hip_assert(hipDeviceGetAttribute(&value, hipDeviceAttributeCanMapHostMemory, hipDevice));
   can_map_host = value != 0;
 
   hip_assert(
-      hipDeviceGetAttribute(&pitch_alignment, get_hip_device_attr(hipDeviceAttributeTexturePitchAlignment, hipRuntimeVersion), hipDevice));
+      hipDeviceGetAttribute(&pitch_alignment, hipDeviceAttributeTexturePitchAlignment, hipDevice));
 
   unsigned int ctx_flags = hipDeviceLmemResizeToMax;
   if (can_map_host) {
@@ -113,13 +111,13 @@ HIPDevice::HIPDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
     return;
   }
 
-
   int major, minor;
-  hipDeviceGetAttribute(&major, get_hip_device_attr(hipDeviceAttributeComputeCapabilityMajor, hipRuntimeVersion), hipDevId);
-  hipDeviceGetAttribute(&minor, get_hip_device_attr(hipDeviceAttributeComputeCapabilityMinor, hipRuntimeVersion), hipDevId);
+  hipDeviceGetAttribute(&major, hipDeviceAttributeComputeCapabilityMajor, hipDevId);
+  hipDeviceGetAttribute(&minor, hipDeviceAttributeComputeCapabilityMinor, hipDevId);
   hipDevArchitecture = major * 100 + minor * 10;
 
-  
+  // get hip Runtime Version needed for memory types
+  hip_assert(hipRuntimeGetVersion(&hipRuntimeVersion));
 
   /* Pop context set by hipCtxCreate. */
   hipCtxPopCurrent(NULL);
@@ -225,8 +223,8 @@ string HIPDevice::compile_kernel(const uint kernel_features, const char *name, c
 {
   /* Compute kernel name. */
   int major, minor;
-  hipDeviceGetAttribute(&major, get_hip_device_attr(hipDeviceAttributeComputeCapabilityMajor, hipRuntimeVersion), hipDevId);
-  hipDeviceGetAttribute(&minor, get_hip_device_attr(hipDeviceAttributeComputeCapabilityMinor, hipRuntimeVersion), hipDevId);
+  hipDeviceGetAttribute(&major, hipDeviceAttributeComputeCapabilityMajor, hipDevId);
+  hipDeviceGetAttribute(&minor, hipDeviceAttributeComputeCapabilityMinor, hipDevId);
   hipDeviceProp_t props;
   hipGetDeviceProperties(&props, hipDevId);
 
@@ -951,7 +949,7 @@ bool HIPDevice::get_device_attribute(hipDeviceAttribute_t attribute, int *value)
 {
   HIPContextScope scope(this);
 
-  return hipDeviceGetAttribute(value, get_hip_device_attr(attribute, hipRuntimeVersion), hipDevice) == hipSuccess;
+  return hipDeviceGetAttribute(value, attribute, hipDevice) == hipSuccess;
 }
 
 int HIPDevice::get_device_default_attribute(hipDeviceAttribute_t attribute, int default_value)

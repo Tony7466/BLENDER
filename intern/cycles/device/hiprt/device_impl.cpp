@@ -136,11 +136,8 @@ string HIPRTDevice::compile_kernel_get_common_cflags(const uint kernel_features)
 string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name, const char *base)
 {
   int major, minor;
-  int hipRuntimeVersion;
-  hipRuntimeGetVersion(&hipRuntimeVersion);
-
-  hipDeviceGetAttribute(&major, get_hip_device_attr(hipDeviceAttributeComputeCapabilityMajor, hipRuntimeVersion), hipDevId);
-  hipDeviceGetAttribute(&minor, get_hip_device_attr(hipDeviceAttributeComputeCapabilityMinor, hipRuntimeVersion), hipDevId);
+  hipDeviceGetAttribute(&major, hipDeviceAttributeComputeCapabilityMajor, hipDevId);
+  hipDeviceGetAttribute(&minor, hipDeviceAttributeComputeCapabilityMinor, hipDevId);
   hipDeviceProp_t props;
   hipGetDeviceProperties(&props, hipDevId);
 
