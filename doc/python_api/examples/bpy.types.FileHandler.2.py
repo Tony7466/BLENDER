@@ -42,7 +42,8 @@ class ShaderScriptImport(bpy.types.Operator):
                 node_tree = context.material.node_tree
                 text_node = node_tree.nodes.new(type="ShaderNodeScript")
                 text_node.mode = 'EXTERNAL'
-                filepath = self.directory + '\\' + file.name
+                import os
+                filepath = os.path.join(self.directory, file.name)
                 text_node.filepath = filepath
                 text_node.location = Vector((x, y))
                 x += 20.0
