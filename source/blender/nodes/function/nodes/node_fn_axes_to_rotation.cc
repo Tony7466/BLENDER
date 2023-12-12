@@ -127,10 +127,9 @@ class AxisToEulerFunction : public mf::MultiFunction {
       r_rotations[i] = math::to_quaternion(mat);
     });
   };
-}
+};
 
-static void
-node_build_multi_function(NodeMultiFunctionBuilder &builder)
+static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const bNode &node = builder.node();
   if (node.custom1 == node.custom2) {
