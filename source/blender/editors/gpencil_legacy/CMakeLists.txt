@@ -4,7 +4,6 @@
 
 set(INC
   ../include
-  ../sculpt_paint
   ../../blenkernel
   ../../blentranslation
   ../../bmesh

@@ -53,7 +53,6 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "gpencil_intern.h"
-#include "paint_intern.hh"
 
 /* ************************************************ */
 /* General Brush Editing Context */
@@ -1711,17 +1710,16 @@ enum tGPWeightGradient_flag {
   GP_WEIGHT_GRADIENT_VERTEX_IS_MODIFIED = (1 << 1),
 };
 
+enum tGPWeightGradient_type {
+  WPAINT_GRADIENT_TYPE_LINEAR,
+  WPAINT_GRADIENT_TYPE_RADIAL,
+};
+
 struct tGPWeightGradient_data {
   /* Number of cached vertex weights. */
   int vertex_tot;
   /* Array of cached vertex weights. */
   tGPWeightGradient_vertex *vertex_cache;
-  /* Vector of interactively drawn gradient line. */
-  float line_segment[2];
-  /* Squared length of gradient line segment. */
-  float line_segment_len_sq;
-  /* Radius of radial gradient line. */
-  float radius;
   /* Number of vertex groups in active object. */
   int vgroup_tot;
   /* Boolean array of vertex groups deformed by bones. */
@@ -2016,10 +2014,11 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
   const int direction = (gso->brush->gpencil_settings->sculpt_flag & BRUSH_DIR_IN) ? -1 : 1;
 
   /* Get length of interactive line segment. */
-  sub_v2_v2v2(tool_data->line_segment, sco_end, sco_start);
-  tool_data->line_segment_len_sq = dot_v2v2(tool_data->line_segment, tool_data->line_segment);
-  tool_data->radius = sqrtf(tool_data->line_segment_len_sq);
-  if (tool_data->line_segment_len_sq == 0.0f) {
+  float line_segment[2];
+  sub_v2_v2v2(line_segment, sco_end, sco_start);
+  const float line_segment_len_sq = dot_v2v2(line_segment, line_segment);
+  const float line_segment_radius = sqrtf(line_segment_len_sq);
+  if (line_segment_len_sq == 0.0f) {
     goto finally;
   }
 
@@ -2042,10 +2041,10 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
     /* Linear gradient. */
     if (gradient_type == WPAINT_GRADIENT_TYPE_LINEAR) {
       /* Get orthogonal position of vertex relative to the gradient line segment. */
-      const float dist_on_line = MAX2(0.0f, dot_v2v2(vec_p_to_line, tool_data->line_segment));
+      const float dist_on_line = MAX2(0.0f, dot_v2v2(vec_p_to_line, line_segment));
 
       /* When vertex is within reach of the line segment, add the gradient weight. */
-      if (dist_on_line <= tool_data->line_segment_len_sq) {
+      if (dist_on_line <= line_segment_len_sq) {
         if (vertex->dw == nullptr) {
           BKE_gpencil_dvert_ensure(vertex->gps);
           dvert = &vertex->gps->dvert[vertex->point_index];
@@ -2057,9 +2056,9 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
 
         /* Calculate new weight, with gradient tool weight, strength and falloff, and multi-frame
          * falloff. */
-        const float distance_factor = dist_on_line / tool_data->line_segment_len_sq;
+        const float distance_factor = dist_on_line / line_segment_len_sq;
         const float gradient_falloff = BKE_brush_curve_strength(
-            gso->brush, distance_factor * tool_data->radius, tool_data->radius);
+            gso->brush, distance_factor * line_segment_radius, line_segment_radius);
         const float add_weight = gso->brush->weight * gso->brush->alpha * gradient_falloff *
                                  vertex->mf_falloff * direction;
         vertex->dw->weight += add_weight;
@@ -2074,7 +2073,7 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
       const float p_dist_to_center = len_v2(vec_p_to_line);
 
       /* When vertex is within the radius, add the gradient weight. */
-      if (p_dist_to_center <= tool_data->radius) {
+      if (p_dist_to_center <= line_segment_radius) {
         if (vertex->dw == nullptr) {
           BKE_gpencil_dvert_ensure(vertex->gps);
           dvert = &vertex->gps->dvert[vertex->point_index];
@@ -2087,7 +2086,7 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
         /* Calculate new weight, with gradient tool weight, strength and falloff, and multi-frame
          * falloff. */
         const float gradient_falloff = BKE_brush_curve_strength(
-            gso->brush, p_dist_to_center, tool_data->radius);
+            gso->brush, p_dist_to_center, line_segment_radius);
         const float add_weight = gso->brush->weight * gso->brush->alpha * gradient_falloff *
                                  vertex->mf_falloff * direction;
         vertex->dw->weight += add_weight;
