@@ -119,12 +119,7 @@ void WM_OT_drop_import_file(wmOperatorType *ot)
 
 void drop_import_file_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
-#if 0
   const auto paths = WM_drag_get_paths(drag);
-#else
-  std::string file_path(WM_drag_get_path(drag));
-  const auto paths = blender::Span<std::string>(&file_path, 1);
-#endif
 
   char dir[FILE_MAX];
   BLI_path_split_dir_part(paths[0].c_str(), dir, sizeof(dir));
@@ -146,12 +141,8 @@ static bool drop_import_file_poll(bContext *C, wmDrag *drag, const wmEvent * /*e
   if (drag->type != WM_DRAG_PATH) {
     return false;
   }
-#if 0
+
   const auto paths = WM_drag_get_paths(drag);
-#else
-  std::string file_path(WM_drag_get_path(drag));
-  const auto paths = blender::Span<std::string>(&file_path, 1);
-#endif
 
   return BKE_file_handlers_poll_file_drop(C, paths, true).size() > 0;
 }
@@ -161,12 +152,7 @@ static char *drop_import_file_tooltip(bContext *C,
                                       const int /*xy*/[2],
                                       wmDropBox * /*drop*/)
 {
-#if 0
-const auto paths = WM_drag_get_paths(drag);
-#else
-  std::string file_path(WM_drag_get_path(drag));
-  const auto paths = blender::Span<std::string>(&file_path, 1);
-#endif
+  const auto paths = WM_drag_get_paths(drag);
 
   const auto file_handlers = BKE_file_handlers_poll_file_drop(C, paths, true);
 

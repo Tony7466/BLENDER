@@ -280,7 +280,7 @@ PointerRNA FileHandlerType::import_operator_create_ptr(
         TIP_("{}: import operator '{}' requires file path properties:\n"
              "- For single files: 'filepath : StringProperty()'\n"
              "- For multiple files: 'directory : StringProperty()' and"
-             "'files : CollectionProperty(type = OperatorFileListElement)'"),
+             "' files : CollectionProperty(type = OperatorFileListElement)'"),
         idname,
         op->idname);
     CLOG_WARN(&FH_LOG, message.c_str());
