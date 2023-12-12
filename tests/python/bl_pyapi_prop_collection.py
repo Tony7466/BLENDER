@@ -281,7 +281,8 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
     @staticmethod
     def make_sequences_buffer_int_extra_native_mv(next_sequence):
         """
-        Extra buffers that cannot be represented by NumPy, but can be constructed with ctypes and casting memoryviews.
+        Extra integer type buffers that cannot be represented by NumPy, but can be constructed with ctypes and cast to
+        a memoryview with the expected native buffer format.
         """
         sequences = []
 
@@ -310,7 +311,7 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         # ctypes adds a native byteorder, standard size and no alignment prefix to the buffer format, e.g. "<P", so
         # create a memoryview and cast away the prefix.
         # ctypes.c_void_p arrays also return `None` when accessed as a sequence and the value at the accessed index is
-        # zero, which would break `foreach_get` whenever the array contains a zero.
+        # zero, which would break the tests whenever the array contains a zero. A "P" memoryview just returns zero.
         size_t_array_as_p = memoryview(void_p_array).cast("b").cast("P")
         assert len(size_t_array_as_p) == len(void_p_array)
         sequences.append(size_t_array_as_p)
