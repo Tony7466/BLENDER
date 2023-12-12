@@ -413,7 +413,7 @@ struct BakeDrawContext {
     return false;
   }
   r_ctx.bake = nullptr;
-  for (const NodesModifierBake &iter_bake : Span{r_ctx.nmd->bakes, r_ctx.nmd->bakes_num}) {
+  for (const NodesModifierBake &iter_bake : Span(r_ctx.nmd->bakes, r_ctx.nmd->bakes_num)) {
     if (iter_bake.id == *bake_id) {
       r_ctx.bake = &iter_bake;
       break;
