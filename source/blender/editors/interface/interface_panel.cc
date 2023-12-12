@@ -1194,9 +1194,10 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
       float subpanel_backcolor[4];
       UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, subpanel_backcolor);
       rctf panel_blockspace = panel->runtime->block->rect;
-      /* TODO: Figure out where the offset comes from. */
-      panel_blockspace.ymax = panel->runtime->block->rect.ymax + body.end_y - 8;
-      panel_blockspace.ymin = panel->runtime->block->rect.ymax + body.start_y - 8;
+      /* Not entirely sure why this offset is necessary. */
+      const float offset = 8;
+      panel_blockspace.ymax = panel->runtime->block->rect.ymax + body.end_y - offset;
+      panel_blockspace.ymin = panel->runtime->block->rect.ymax + body.start_y - offset;
 
       /* If the layout panel is at the end of the root panel, it's bottom corners are rounded. */
       const bool is_main_panel_end = panel_blockspace.ymin - panel->runtime->block->rect.ymin < 10;
@@ -1920,8 +1921,15 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
 
 static LayoutPanelHeader *get_layout_panel_header_under_mouse(const Panel &panel, const int my)
 {
+  /* Not entirely sure where the offset comes from. */
+  const float offset = 8;
+  /* Expand clickable area a bit because there is some padding around the header. */
+  const float padding = 4;
   for (LayoutPanelHeader &header : panel.runtime->layout_panels.headers) {
-    if (IN_RANGE(float(my - panel.runtime->block->rect.ymax + 8), header.start_y, header.end_y)) {
+    if (IN_RANGE(float(my - panel.runtime->block->rect.ymax + offset),
+                 header.start_y - padding,
+                 header.end_y + padding))
+    {
       return &header;
     }
   }

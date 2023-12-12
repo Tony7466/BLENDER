@@ -780,18 +780,6 @@ static uiLayout *rna_uiLayoutColumnWithHeading(
   return uiLayoutColumnWithHeading(layout, align, heading);
 }
 
-struct uiLayout *rna_uiLayoutPanel(uiLayout *layout,
-                                   bContext *C,
-                                   PointerRNA *data,
-                                   const char *property,
-                                   const char *text,
-                                   const char *text_ctxt,
-                                   const bool translate)
-{
-  text = rna_translate_ui_text(text, text_ctxt, nullptr, nullptr, translate);
-  return uiLayoutPanel(C, layout, text, data, property);
-}
-
 static void rna_uiLayout_template_node_asset_menu_items(uiLayout *layout,
                                                         bContext *C,
                                                         const char *catalog_path)
@@ -1059,20 +1047,6 @@ void RNA_api_ui_layout(StructRNA *srna)
       "in a column");
   RNA_def_boolean(func, "align", false, "", "Align buttons to each other");
   api_ui_item_common_heading(func);
-
-  func = RNA_def_function(srna, "panel", "rna_uiLayoutPanel");
-  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
-  RNA_def_function_ui_description(
-      func, "Sub-layout. Items placed in this sublayout are placed into a collapsable panel");
-  api_ui_item_rna_common(func);
-  api_ui_item_common_text(func);
-  parm = RNA_def_pointer(
-      func,
-      "layout",
-      "UILayout",
-      "",
-      "Sub-layout to put items in. May be none in which case the panel collapsed");
-  RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "column_flow", "uiLayoutColumnFlow");
   RNA_def_int(func, "columns", 0, 0, INT_MAX, "", "Number of columns, 0 is automatic", 0, INT_MAX);

@@ -120,6 +120,11 @@ typedef struct ModifierData {
   short flag;
   /** An "expand" bit for each of the modifier's (sub)panels (#uiPanelDataExpansion). */
   short ui_expand_flag;
+  /**
+   * Bits that can be used for open-states of layout panels in the modifier. This can replace
+   * `ui_expand_flag` once all modifiers use layout panels. Currently, trying to reuse the same
+   * flags easily leads to issues because of the way `ui_expand_flag` is used.
+   */
   uint16_t layout_panel_open_flag;
   char _pad[6];
   /** MAX_NAME. */
