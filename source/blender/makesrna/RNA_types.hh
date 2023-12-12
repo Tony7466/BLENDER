@@ -305,6 +305,12 @@ enum PropertyFlag {
    * as having the +/- operators available in the file browser.
    **/
   PROP_PATH_OUTPUT = (1 << 2),
+
+  /**
+   * For properties that are units. See `ui_but_is_unit`.
+   * Display this property using adaptive units.
+   */
+  PROP_UNIT_ADAPTIVE = (1 << 9),
 };
 ENUM_OPERATORS(PropertyFlag, PROP_TEXTEDIT_UPDATE)
 

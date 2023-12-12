@@ -2790,13 +2790,26 @@ static void ui_get_but_string_unit(
     precision = float_precision;
   }
 
-  BKE_unit_value_as_string(str,
-                           str_maxncpy,
-                           ui_get_but_scale_unit(but, value),
-                           precision,
-                           RNA_SUBTYPE_UNIT_VALUE(unit_type),
-                           unit,
-                           pad);
+  if (UI_but_unit_use_adaptive(but)) {
+    const bool do_split = (unit->flag & USER_UNIT_OPT_SPLIT) != 0;
+    BKE_unit_value_as_string_adaptive(str,
+                                      str_maxncpy,
+                                      ui_get_but_scale_unit(but, value),
+                                      precision,
+                                      unit->system,
+                                      RNA_SUBTYPE_UNIT_VALUE(unit_type),
+                                      do_split,
+                                      pad);
+  }
+  else {
+    BKE_unit_value_as_string(str,
+                             str_maxncpy,
+                             ui_get_but_scale_unit(but, value),
+                             precision,
+                             RNA_SUBTYPE_UNIT_VALUE(unit_type),
+                             unit,
+                             pad);
+  }
 }
 
 static float ui_get_but_step_unit(uiBut *but, float step_default)
@@ -6024,6 +6037,11 @@ int UI_but_unit_type_get(const uiBut *but)
     return ownUnit << 16;
   }
   return RNA_SUBTYPE_UNIT(RNA_property_subtype(but->rnaprop));
+}
+
+bool UI_but_unit_use_adaptive(const uiBut *but)
+{
+  return (but->rnaprop != nullptr) && (RNA_property_flag(but->rnaprop) & PROP_UNIT_ADAPTIVE) != 0;
 }
 
 void UI_block_func_handle_set(uiBlock *block, uiBlockHandleFunc func, void *arg)

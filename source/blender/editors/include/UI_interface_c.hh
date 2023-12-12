@@ -1412,6 +1412,8 @@ const bContextStore *UI_but_context_get(const uiBut *but);
 void UI_but_unit_type_set(uiBut *but, int unit_type);
 int UI_but_unit_type_get(const uiBut *but);
 
+bool UI_but_unit_use_adaptive(const uiBut *but);
+
 enum uiStringInfoType {
   BUT_GET_RNAPROP_IDENTIFIER = 1,
   BUT_GET_RNASTRUCT_IDENTIFIER,

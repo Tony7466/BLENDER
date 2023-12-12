@@ -4067,7 +4067,7 @@ static void rna_def_unified_paint_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "unprojected_radius", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_float_funcs(
       prop, nullptr, "rna_UnifiedPaintSettings_unprojected_radius_set", nullptr);
-  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE | PROP_UNIT_ADAPTIVE);
   RNA_def_property_range(prop, 0.001, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.001, 1, 1, -1);
   RNA_def_property_ui_text(prop, "Unprojected Radius", "Radius of brush in Blender units");
