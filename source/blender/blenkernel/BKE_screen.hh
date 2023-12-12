@@ -353,6 +353,14 @@ struct LayoutPanelBody {
   float end_y;
 };
 
+/**
+ * "Layout Panels" are panels which are defined as part of the `uiLayout`. As such they have a
+ * specific place in the layout and can not be freely dragged around like top level panels.
+ *
+ * This struct gathers information about the layout panels created by layouting code. This is then
+ * used for e.g. drawing the backdrop of nested panels and to support opening and closing multiple
+ * panels with a single mouse gesture.
+ */
 struct LayoutPanels {
   blender::Vector<LayoutPanelHeader> headers;
   blender::Vector<LayoutPanelBody> bodies;
@@ -384,6 +392,7 @@ struct Panel_Runtime {
   /* Non-owning pointer. The context is stored in the block. */
   bContextStore *context = nullptr;
 
+  /** Information about nested layout panels generated in layouting code. */
   LayoutPanels layout_panels;
 };
 
