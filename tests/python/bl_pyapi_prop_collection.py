@@ -105,6 +105,25 @@ def dtype_explicit_endian_standard_size(dtype):
     return dtype_byteorder_swap_standard_size(dtype_byteorder_swap_standard_size(dtype))
 
 
+def prop_as_sequence(collection, prop_rna):
+    """
+    Helper to get a flat sequence of a specific property through iteration instead of foreach_get.
+    """
+    prop_name = prop_rna.identifier
+    if prop_rna.is_array:
+        # Only 1D arrays are currently supported.
+        assert prop_rna.array_dimensions[1] == 0
+        assert prop_rna.array_dimensions[2] == 0
+        return [x for group in collection for x in getattr(group, prop_name)]
+    elif prop_rna.type == 'ENUM':
+        # Enum properties are a special case where foreach_get/set access the enum as an index, but accessing the
+        # enum property directly is done using the string identifiers of the enum's items.
+        index_lookup = {item.identifier: i for i, item in enumerate(prop_rna.enum_items)}
+        return [index_lookup.get(getattr(group, prop_name), -1) for group in collection]
+    else:
+        return [getattr(group, prop_name) for group in collection]
+
+
 class TestPropertyGroup(bpy.types.PropertyGroup):
     VECTOR_SIZE = 3
     _ENUM_ITEMS = (("0", "Item 0", ""), ("1", "Item 1", ""))
@@ -122,16 +141,6 @@ class TestPropertyGroup(bpy.types.PropertyGroup):
     test_int_vector: IntVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_INT] * VECTOR_SIZE)
     test_unsigned_int: IntProperty(subtype='UNSIGNED', default=DEFAULT_INT)
     test_enum: EnumProperty(items=_ENUM_ITEMS, default=_ENUM_ITEMS[DEFAULT_INT][0])
-
-    @property
-    def test_enum_value(self):
-        """
-        Helper that gets the index of the current `self.test_enum` item or -1 if the current item is undefined (when the
-        actual index of `self.test_enum` has been set out of bounds of the enum's items).
-
-        This avoids any assumptions about how the default setter for enum properties stores the current index.
-        """
-        return self._ENUM_IDENTIFIER_TO_INDEX.get(self.test_enum, -1)
 
 
 # -----------------------------------------------------------------------------
@@ -170,12 +179,54 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         bpy.utils.register_class(TestPropertyGroup)
         id_type.test_collection = CollectionProperty(type=TestPropertyGroup)
         self.collection = id_inst.test_collection
-        self.num_items = 5
-        self.num_vector_items = self.num_items * TestPropertyGroup.VECTOR_SIZE
-        for _ in range(self.num_items):
+        num_items = 5
+        for _ in range(num_items):
             id_inst.test_collection.add()
 
+        self.mesh = bpy.data.meshes.new("")
+        self.mesh.vertices.add(num_items)
+        mesh_attributes = self.mesh.attributes
+        # Attribute data types and the name of the property to use with foreach_get/foreach_set.
+        self.attribute_type_to_prop_name = {
+            'FLOAT': "value",
+            'INT': "value",
+            'FLOAT_VECTOR': "vector",
+            'FLOAT_COLOR': "color",
+            'BYTE_COLOR': "color",
+            # 'STRING': "value",  # Does not support foreach_get/foreach_set
+            'BOOLEAN': "value",
+            'FLOAT2': "vector",
+            'INT8': "value",
+            'INT32_2D': "value",
+            'QUATERNION': "value",
+        }
+        # Attribute pointers are not stable when adding additional attributes, so get the names first. See #107500.
+        int_attribute_names = []
+        float_attribute_names = []
+        bool_attribute_names = []
+        for data_type, prop_name in self.attribute_type_to_prop_name.items():
+            attr = mesh_attributes.new("test_%s" % data_type.lower(), data_type, 'POINT')
+            collection_rna = attr.bl_rna.properties["data"]
+            collection_element_rna = collection_rna.fixed_type
+            prop_rna = collection_element_rna.properties[prop_name]
+            match prop_rna.type:
+                case 'INT':
+                    int_attribute_names.append(attr.name)
+                case 'FLOAT':
+                    float_attribute_names.append(attr.name)
+                case 'BOOLEAN':
+                    bool_attribute_names.append(attr.name)
+        # Now that all the attributes have been added, the pointers should be stable.
+        self.int_attributes = [mesh_attributes[name] for name in int_attribute_names]
+        self.float_attributes = [mesh_attributes[name] for name in float_attribute_names]
+        self.bool_attributes = [mesh_attributes[name] for name in bool_attribute_names]
+        # There should always be at least one of each property type.
+        assert self.int_attributes
+        assert self.float_attributes
+        assert self.bool_attributes
+
     def tearDown(self):
+        bpy.data.meshes.remove(self.mesh)
         # Custom Properties save their data in ID properties by default. Deleting the Custom Property registration will
         # leave the ID properties behind, so ensure the ID properties are removed by clearing the collection before
         # deleting its registration.
@@ -296,17 +347,16 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         sequences.extend(TestPropCollectionForeachGetSet.make_sequences_buffer_int(next_sequence, ndarray_only))
         return sequences
 
-    def make_subtest_sequences(self, prop_name, is_set, is_arrays, dtype_modifier):
-        prop = TestPropertyGroup.bl_rna.properties[prop_name]
-        item_length = prop.array_length if getattr(prop, "is_array", False) else 1
-        sequence_length = self.num_items * item_length
+    def make_subtest_sequences(self, collection, prop_rna, is_set, is_arrays, dtype_modifier):
+        item_length = prop_rna.array_length if getattr(prop_rna, "is_array", False) else 1
+        sequence_length = len(collection) * item_length
 
         generate_sequence = self.sequence_generator(sequence_length, is_set, dtype_modifier)
 
         ndarray_only = dtype_modifier is not None
 
         if is_arrays:
-            match prop.type:
+            match prop_rna.type:
                 case 'BOOLEAN':
                     return self.make_sequences_buffer_bool(generate_sequence, ndarray_only)
                 case 'INT' | 'ENUM':
@@ -314,9 +364,9 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
                 case 'FLOAT':
                     return self.make_sequences_buffer_float(generate_sequence)
                 case _:
-                    raise TypeError("Unsupported property type '%s'" % prop.type)
+                    raise TypeError("Unsupported property type '%s'" % prop_rna.type)
         else:
-            match prop.type:
+            match prop_rna.type:
                 case 'BOOLEAN':
                     py_type = bool
                 case 'INT' | 'ENUM':
@@ -324,66 +374,55 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
                 case 'FLOAT':
                     py_type = float
                 case _:
-                    raise TypeError("Unsupported property type '%s'" % prop.type)
+                    raise TypeError("Unsupported property type '%s'" % prop_rna.type)
             sequences = [list(map(py_type, generate_sequence(list)))]
             if is_set:
                 sequences.append(tuple(map(py_type, generate_sequence(list))))
             return sequences
 
-    def prop_as_sequence(self, prop_name):
-        """
-        Helper to get a flat sequence of a specific property through iteration instead of foreach_get.
-        """
-        if "vector" in prop_name:
-            return [x for group in self.collection for x in getattr(group, prop_name)]
-        elif prop_name == "test_enum":
-            # Enum properties are a special case where foreach_get/set access the enum as an index, but accessing the
-            # enum property directly is done using the string identifiers of the enum's items. TestPropertyGroup has an
-            # extra `test_enum_value` property that gets the index of the current item instead of its string identifier.
-            return [getattr(group, "test_enum_value") for group in self.collection]
-        else:
-            return [getattr(group, prop_name) for group in self.collection]
-
-    def do_get_subtest(self, prop_name, seq):
-        expected_sequence = self.prop_as_sequence(prop_name)
+    def do_get_subtest(self, collection, prop_rna, seq):
+        prop_name = prop_rna.identifier
+        expected_sequence = prop_as_sequence(collection, prop_rna)
 
         accessed_as_buffer = False
         if isinstance(seq, np.ndarray):
             # View the sequence as a subtype that allows us to check whether the sequence was accessed as a sequence or
             # as a buffer.
             ndarray_with_sequence_check = seq.view(SequenceCheckNdarray)
-            self.collection.foreach_get(prop_name, ndarray_with_sequence_check)
+            collection.foreach_get(prop_name, ndarray_with_sequence_check)
             # If the sequence wasn't used at all, this can result in a false positive, but other assertions should fail
             # in that case.
             accessed_as_buffer = not ndarray_with_sequence_check.used_as_sequence
         elif isinstance(seq, memoryview):
             # memoryview objects are not writable as a sequence, only readable, so if they are not accessed as a buffer,
             # writing to them as a sequence will fail (the memoryview type only implements PyObject_SetItem and not
-            # PySequence_SetItem).
+            # PySequence_SetItem). `memoryview` cannot be subclassed, but this may be fixable once Python 3.12 is in use
+            # because it makes the buffer protocol accessible to Python.
             try:
-                self.collection.foreach_get(prop_name, seq)
+                collection.foreach_get(prop_name, seq)
             except TypeError:
                 # Most likely the memoryview was accessed as a sequence.
                 return False
             else:
                 accessed_as_buffer = True
         else:
-            self.collection.foreach_get(prop_name, seq)
+            collection.foreach_get(prop_name, seq)
 
-        if "float" in prop_name:
+        if prop_rna.type == 'FLOAT':
             self.assertSequenceAlmostEqual(seq, expected_sequence)
         else:
             self.assertSequenceEqual(seq, expected_sequence)
 
         return accessed_as_buffer
 
-    def do_set_subtest(self, prop_name, seq):
+    def do_set_subtest(self, collection, prop_rna, seq):
+        prop_name = prop_rna.identifier
         accessed_as_buffer = False
         if isinstance(seq, np.ndarray):
             # View the sequence as a subtype that allows us to check whether the sequence was accessed as a sequence or
             # as a buffer.
             ndarray_with_sequence_check = seq.view(SequenceCheckNdarray)
-            self.collection.foreach_set(prop_name, ndarray_with_sequence_check)
+            collection.foreach_set(prop_name, ndarray_with_sequence_check)
             # If the sequence wasn't used at all, this can result in a false positive, but assertions should fail in
             # that case.
             accessed_as_buffer = not ndarray_with_sequence_check.used_as_sequence
@@ -391,14 +430,14 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
             # There is currently no way to tell if a memoryview was accessed as a sequence or as a buffer. Once Python
             # 3.12 is in use, this may become possible because Python 3.12 makes the buffer protocol accessible to
             # Python.
-            self.collection.foreach_set(prop_name, seq)
+            collection.foreach_set(prop_name, seq)
         else:
-            self.collection.foreach_set(prop_name, seq)
+            collection.foreach_set(prop_name, seq)
 
-        result_sequence = self.prop_as_sequence(prop_name)
+        result_sequence = prop_as_sequence(collection, prop_rna)
         expected_sequence = seq
 
-        if "float" in prop_name:
+        if prop_rna.type == 'FLOAT':
             self.assertSequenceAlmostEqual(result_sequence, expected_sequence)
         else:
             self.assertSequenceEqual(result_sequence, expected_sequence)
@@ -427,7 +466,7 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
         else:
             raise TypeError("Unsupported type '%s'" % type(seq))
 
-    def do_getset_subtest(self, prop_name, sequence_type, is_set):
+    def do_getset_subtest(self, collection, prop_rna, sequence_type, is_set):
         match sequence_type:
             case 'LIST':
                 assert_buffer_usage = False
@@ -448,51 +487,64 @@ class TestPropCollectionForeachGetSet(unittest.TestCase):
             case _:
                 raise RuntimeError("Unrecognised sequence type '%s'" % sequence_type)
 
-        sequences = self.make_subtest_sequences(prop_name, is_set, is_arrays, dtype_modifier)
+        sequences = self.make_subtest_sequences(collection, prop_rna, is_set, is_arrays, dtype_modifier)
 
         subtest_func = self.do_set_subtest if is_set else self.do_get_subtest
-        with self.subTest(prop_name=prop_name, sequence_type=sequence_type):
+        with self.subTest(prop_name=prop_rna.identifier, sequence_type=sequence_type):
             # Due to varying itemsizes of C types depending on the current system, and the itemsize of a
             # property not being exposed to Blender's Python API, we only check that at least one sequence
             # was considered a compatible buffer.
             at_least_one_accessed_as_buffer = False
             for seq in sequences:
                 with self.subTest(subsequence=self.get_sequence_description(seq)):
-                    accessed_as_buffer = subtest_func(prop_name, seq)
+                    accessed_as_buffer = subtest_func(collection, prop_rna, seq)
                     at_least_one_accessed_as_buffer |= accessed_as_buffer
             if assert_buffer_usage:
                 self.assertTrue(at_least_one_accessed_as_buffer, "at least one sequence should be accessed as a buffer")
 
-    def check_getset(self, *prop_names, is_set):
-        for prop_name in prop_names:
+    def check_getset(self, *tests, is_set):
+        for test in tests:
+            if isinstance(test, str):
+                collection = self.collection
+                prop_name = test
+                prop_rna = TestPropertyGroup.bl_rna.properties[prop_name]
+                collection_type_str = "idprop"
+            elif isinstance(test, bpy.types.Attribute):
+                collection = test.data
+                prop_name = self.attribute_type_to_prop_name[test.data_type]
+                prop_rna = test.bl_rna.properties["data"].fixed_type.properties[prop_name]
+                collection_type_str = "'%s' attribute" % test.data_type
+            else:
+                raise AssertionError("Unexpected type %s" % type(test))
             for sequence_type in self.SEQUENCE_TYPES:
-                self.do_getset_subtest(prop_name, sequence_type, is_set=is_set)
+                with self.subTest(collection_type=collection_type_str):
+                    self.do_getset_subtest(collection, prop_rna, sequence_type, is_set=is_set)
 
-    def check_get(self, *prop_names):
-        self.check_getset(*prop_names, is_set=False)
+    def check_get(self, *tests):
+        self.check_getset(*tests, is_set=False)
 
-    def check_set(self, *prop_names):
-        self.check_getset(*prop_names, is_set=True)
+    def check_set(self, *tests):
+        self.check_getset(*tests, is_set=True)
 
     # Test methods
 
     def test_get_bool(self):
-        self.check_get("test_bool", "test_bool_vector")
+        self.check_get("test_bool", "test_bool_vector", *self.bool_attributes)
 
     def test_foreach_set_bool(self):
-        self.check_set("test_bool", "test_bool_vector")
+        self.check_set("test_bool", "test_bool_vector", *self.bool_attributes)
 
     def test_foreach_get_float(self):
-        self.check_get("test_float", "test_float_vector")
+        self.check_get("test_float", "test_float_vector", *self.float_attributes)
 
     def test_foreach_set_float(self):
-        self.check_set("test_float", "test_float_vector")
+        self.check_set("test_float", "test_float_vector", *self.float_attributes)
 
     def test_foreach_get_int(self):
-        self.check_get("test_int", "test_int_vector", "test_unsigned_int")
+        self.check_get("test_int", "test_int_vector", "test_unsigned_int", *self.int_attributes)
 
     def test_foreach_set_int(self):
-        self.check_set("test_int", "test_int_vector", "test_unsigned_int")
+        self.check_set("test_int", "test_int_vector", "test_unsigned_int", *self.int_attributes)
 
     @unittest.expectedFailure  # See #92621
     def test_foreach_get_enum(self):
