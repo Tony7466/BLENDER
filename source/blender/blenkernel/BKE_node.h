@@ -100,7 +100,7 @@ class NodeDeclaration;
 class NodeDeclarationBuilder;
 class GatherAddNodeSearchParams;
 class GatherLinkSearchOpParams;
-class NodeExtraInfoParams;
+struct NodeExtraInfoParams;
 }  // namespace nodes
 namespace realtime_compositor {
 class Context;
@@ -1325,6 +1325,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_SPLIT_TO_INSTANCES 2116
 #define GEO_NODE_INPUT_NAMED_LAYER_SELECTION 2117
 #define GEO_NODE_INDEX_SWITCH 2118
+#define GEO_NODE_INPUT_ACTIVE_CAMERA 2119
 
 /** \} */
 

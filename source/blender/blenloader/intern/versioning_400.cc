@@ -328,7 +328,7 @@ static void versioning_eevee_shadow_settings(Object *object)
 static void versioning_replace_splitviewer(bNodeTree *ntree)
 {
   /* Split viewer was replaced with a regular split node, so add a viewer node,
-   * and link it to the new split node to achive the same behavior of the split viewer node. */
+   * and link it to the new split node to achieve the same behavior of the split viewer node. */
 
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
     if (node->type != CMP_NODE_SPLITVIEWER__DEPRECATED) {
@@ -1001,7 +1001,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
           *version_cycles_node_socket_float_value(mul_socket_B) = *detail;
 
           if (noise_type == SHD_NOISE_MULTIFRACTAL) {
-            /* Add Add Math node after Multiply Math node. */
+            /* Add an Add Math node after Multiply Math node. */
 
             bNode *add_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
             add_node->parent = node->parent;
@@ -1382,7 +1382,11 @@ static void version_geometry_nodes_use_rotation_socket(bNodeTree &ntree)
       bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Rotation");
       change_input_socket_to_rotation_type(ntree, *node, *socket);
     }
-    if (STR_ELEM(node->idname, "GeometryNodeDistributePointsOnFaces", "GeometryNodeObjectInfo")) {
+    if (STR_ELEM(node->idname,
+                 "GeometryNodeDistributePointsOnFaces",
+                 "GeometryNodeObjectInfo",
+                 "GeometryNodeInputInstanceRotation"))
+    {
       bNodeSocket *socket = nodeFindSocket(node, SOCK_OUT, "Rotation");
       change_output_socket_to_rotation_type(ntree, *node, *socket);
     }
@@ -1962,21 +1966,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 14)) {
-    if (!DNA_struct_member_exists(
-            fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "reflection_options")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "int", "ray_tracing_method")) {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        scene->eevee.reflection_options.flag = RAYTRACE_EEVEE_USE_DENOISE;
-        scene->eevee.reflection_options.denoise_stages = RAYTRACE_EEVEE_DENOISE_SPATIAL |
-                                                         RAYTRACE_EEVEE_DENOISE_TEMPORAL |
-                                                         RAYTRACE_EEVEE_DENOISE_BILATERAL;
-        scene->eevee.reflection_options.screen_trace_quality = 0.25f;
-        scene->eevee.reflection_options.screen_trace_thickness = 0.2f;
-        scene->eevee.reflection_options.sample_clamp = 10.0f;
-        scene->eevee.reflection_options.resolution_scale = 2;
-
-        scene->eevee.refraction_options = scene->eevee.reflection_options;
-
-        scene->eevee.ray_split_settings = 0;
         scene->eevee.ray_tracing_method = RAYTRACE_EEVEE_METHOD_SCREEN;
       }
     }
@@ -2274,13 +2265,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         light->shadow_trace_distance = default_light.shadow_trace_distance;
       }
     }
-
-    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "diffuse_options"))
-    {
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        scene->eevee.diffuse_options = scene->eevee.reflection_options;
-      }
-    }
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 28)) {
@@ -2523,22 +2507,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 9)) {
-    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-      if (ntree->type == NTREE_GEOMETRY) {
-        version_geometry_nodes_use_rotation_socket(*ntree);
-      }
-    }
-
-    if (!DNA_struct_member_exists(
-            fd->filesdna, "RaytraceEEVEE", "float", "screen_trace_max_roughness"))
-    {
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        scene->eevee.reflection_options.screen_trace_max_roughness = 0.5f;
-        scene->eevee.refraction_options.screen_trace_max_roughness = 0.5f;
-        scene->eevee.diffuse_options.screen_trace_max_roughness = 0.5f;
-      }
-    }
-
     if (!DNA_struct_member_exists(fd->filesdna, "Material", "char", "displacement_method")) {
       /* Replace Cycles.displacement_method by Material::displacement_method. */
       LISTBASE_FOREACH (Material *, material, &bmain->materials) {
@@ -2591,6 +2559,27 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_member_exists(
+            fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "ray_tracing_options")) {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.ray_tracing_options.flag = RAYTRACE_EEVEE_USE_DENOISE;
+        scene->eevee.ray_tracing_options.denoise_stages = RAYTRACE_EEVEE_DENOISE_SPATIAL |
+                                                          RAYTRACE_EEVEE_DENOISE_TEMPORAL |
+                                                          RAYTRACE_EEVEE_DENOISE_BILATERAL;
+        scene->eevee.ray_tracing_options.screen_trace_quality = 0.25f;
+        scene->eevee.ray_tracing_options.screen_trace_thickness = 0.2f;
+        scene->eevee.ray_tracing_options.screen_trace_max_roughness = 0.5f;
+        scene->eevee.ray_tracing_options.sample_clamp = 10.0f;
+        scene->eevee.ray_tracing_options.resolution_scale = 2;
+      }
+    }
+
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        version_geometry_nodes_use_rotation_socket(*ntree);
+      }
+    }
   }
 
   /* Always run this versioning; meshes are written with the legacy format which always needs to
