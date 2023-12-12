@@ -13,7 +13,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
 
 #include "MEM_guardedalloc.h"
 
@@ -1158,6 +1157,9 @@ static void panel_draw_aligned_widgets(const uiStyle *style,
   }
 }
 
+/* Not entirely sure why this offset is necessary. */
+static constexpr layout_panel_y_offset = 8;
+
 static void panel_draw_aligned_backdrop(const ARegion *region,
                                         const Panel *panel,
                                         const rcti *rect,
@@ -1190,14 +1192,15 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
     box_rect.ymax = rect->ymax;
     UI_draw_roundbox_4fv(&box_rect, true, radius, panel_backcolor);
 
+    /* Draw backdrops for layout panels. */
     for (const LayoutPanelBody &body : panel->runtime->layout_panels.bodies) {
       float subpanel_backcolor[4];
       UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, subpanel_backcolor);
+
       rctf panel_blockspace = panel->runtime->block->rect;
-      /* Not entirely sure why this offset is necessary. */
-      const float offset = 8;
-      panel_blockspace.ymax = panel->runtime->block->rect.ymax + body.end_y - offset;
-      panel_blockspace.ymin = panel->runtime->block->rect.ymax + body.start_y - offset;
+      panel_blockspace.ymax = panel->runtime->block->rect.ymax + body.end_y;
+      panel_blockspace.ymin = panel->runtime->block->rect.ymax + body.start_y;
+      BLI_rctf_translate(&panel_blockspace, 0, -layout_panel_y_offset);
 
       /* If the layout panel is at the end of the root panel, it's bottom corners are rounded. */
       const bool is_main_panel_end = panel_blockspace.ymin - panel->runtime->block->rect.ymin < 10;
@@ -1211,10 +1214,8 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
 
       rcti panel_pixelspace;
       ui_to_pixelrect(region, panel->runtime->block, &panel_blockspace, &panel_pixelspace);
-
       rctf panel_pixelspacef;
       BLI_rctf_rcti_copy(&panel_pixelspacef, &panel_pixelspace);
-
       UI_draw_roundbox_4fv(&panel_pixelspacef, true, radius, subpanel_backcolor);
     }
   }
@@ -1921,12 +1922,10 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
 
 static LayoutPanelHeader *get_layout_panel_header_under_mouse(const Panel &panel, const int my)
 {
-  /* Not entirely sure where the offset comes from. */
-  const float offset = 8;
   /* Expand clickable area a bit because there is some padding around the header. */
   const float padding = 4;
   for (LayoutPanelHeader &header : panel.runtime->layout_panels.headers) {
-    if (IN_RANGE(float(my - panel.runtime->block->rect.ymax + offset),
+    if (IN_RANGE(float(my - panel.runtime->block->rect.ymax + layout_panel_y_offset),
                  header.start_y - padding,
                  header.end_y + padding))
     {
@@ -1996,8 +1995,8 @@ static void ui_panel_drag_collapse(const bContext *C,
 
     for (LayoutPanelHeader &header : panel->runtime->layout_panels.headers) {
       rctf rect = block->rect;
-      rect.ymin = block->rect.ymax + header.start_y + 8;
-      rect.ymax = block->rect.ymax + header.end_y + 8;
+      rect.ymin = block->rect.ymax + header.start_y + layout_panel_y_offset;
+      rect.ymax = block->rect.ymax + header.end_y + layout_panel_y_offset;
 
       if (BLI_rctf_isect_segment(&rect, xy_a_block, xy_b_block)) {
         RNA_boolean_set(
