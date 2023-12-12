@@ -25,6 +25,7 @@
 
 #if !defined(LIGHT_CLOSURE_EVAL_COUNT)
 #  define LIGHT_CLOSURE_EVAL_COUNT 1
+#  define SKIP_LIGHT_EVAL
 #endif
 
 uint shadow_pack(float visibility, uint bit_depth, uint shift)
