@@ -909,7 +909,7 @@ if(WITH_GTESTS)
   endif()
 
   # Enable shader validation on buildbot for Metal
-  if(WITH_METAL_BACKEND AND NOT WITH_OPENGL_DRAW_TESTS)
+  if(WITH_METAL_BACKEND AND NOT WITH_GPU_DRAW_TESTS)
     list(APPEND TEST_SRC
       tests/shader_create_info_test.cc
     )
