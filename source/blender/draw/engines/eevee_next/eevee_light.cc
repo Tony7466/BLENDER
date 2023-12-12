@@ -71,10 +71,10 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
 
   float shape_power = shape_radiance_get(la);
   float point_power = point_radiance_get(la);
-  this->diffuse_power = la->diff_fac * shape_power;
-  this->transmit_power = la->diff_fac * point_power;
-  this->specular_power = la->spec_fac * shape_power;
-  this->volume_power = la->volume_fac * point_power;
+  this->power[LIGHT_DIFFUSE] = la->diff_fac * shape_power;
+  this->power[LIGHT_TRANSMIT] = la->diff_fac * point_power;
+  this->power[LIGHT_SPECULAR] = la->spec_fac * shape_power;
+  this->power[LIGHT_VOLUME] = la->volume_fac * point_power;
 
   eLightType new_type = to_light_type(la->type, la->area_shape);
   if (assign_if_different(this->type, new_type)) {
@@ -84,11 +84,21 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
   if (la->mode & LA_SHADOW) {
     shadow_ensure(shadows);
     if (is_sun_light(this->type)) {
-      this->directional->sync(this->object_mat, 1.0f);
+      this->directional->sync(this->object_mat,
+                              1.0f,
+                              la->sun_angle * la->shadow_softness_factor,
+                              la->shadow_trace_distance);
     }
     else {
-      this->punctual->sync(
-          this->type, this->object_mat, la->spotsize, la->clipsta, this->influence_radius_max);
+      /* Reuse shape radius as near clip plane. */
+      /* This assumes `shape_parameters_set` has already set `radius_squared`. */
+      float radius = math::sqrt(this->radius_squared);
+      this->punctual->sync(this->type,
+                           this->object_mat,
+                           la->spotsize,
+                           radius,
+                           this->influence_radius_max,
+                           la->shadow_softness_factor);
     }
   }
   else {
@@ -227,8 +237,8 @@ float Light::point_radiance_get(const ::Light *la)
 
 void Light::debug_draw()
 {
-#ifdef DEBUG
-  drw_debug_sphere(_position, influence_radius_max, float4(0.8f, 0.3f, 0.0f, 1.0f));
+#ifndef NDEBUG
+  drw_debug_sphere(float3(_position), influence_radius_max, float4(0.8f, 0.3f, 0.0f, 1.0f));
 #endif
 }
 
@@ -249,10 +259,18 @@ LightModule::~LightModule()
 void LightModule::begin_sync()
 {
   use_scene_lights_ = inst_.use_scene_lights();
+  /* Disable sunlight if world has a volume shader as we consider the light cannot go through an
+   * infinite opaque medium. */
+  use_sun_lights_ = (inst_.world.has_volume_absorption() == false);
 
   /* In begin_sync so it can be animated. */
   if (assign_if_different(light_threshold_, max_ff(1e-16f, inst_.scene->eevee.light_threshold))) {
-    inst_.sampling.reset();
+    /* All local lights need to be re-sync. */
+    for (Light &light : light_map_.values()) {
+      if (!ELEM(light.type, LIGHT_SUN, LIGHT_SUN_ORTHO)) {
+        light.initialized = false;
+      }
+    }
   }
 
   sun_lights_len_ = 0;
@@ -264,6 +282,13 @@ void LightModule::sync_light(const Object *ob, ObjectHandle &handle)
   if (use_scene_lights_ == false) {
     return;
   }
+
+  if (use_sun_lights_ == false) {
+    if (static_cast<const ::Light *>(ob->data)->type == LA_SUN) {
+      return;
+    }
+  }
+
   Light &light = light_map_.lookup_or_add_default(handle.object_key);
   light.used = true;
   if (handle.recalc != 0 || !light.initialized) {
@@ -304,11 +329,6 @@ void LightModule::end_sync()
   }
   /* This scene data buffer is then immutable after this point. */
   light_buf_.push_update();
-
-  /* Update sampling on deletion or un-hiding (use_scene_lights). */
-  if (assign_if_different(light_map_size_, light_map_.size())) {
-    inst_.sampling.reset();
-  }
 
   /* If exceeding the limit, just trim off the excess to avoid glitchy rendering. */
   if (sun_lights_len_ + local_lights_len_ > CULLING_MAX_ITEM) {
@@ -417,7 +437,8 @@ void LightModule::debug_pass_sync()
     debug_draw_ps_.init();
     debug_draw_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
     debug_draw_ps_.shader_set(inst_.shaders.static_shader_get(LIGHT_CULLING_DEBUG));
-    inst_.hiz_buffer.bind_resources(&debug_draw_ps_);
+    inst_.bind_uniform_data(&debug_draw_ps_);
+    inst_.hiz_buffer.bind_resources(debug_draw_ps_);
     debug_draw_ps_.bind_ssbo("light_buf", &culling_light_buf_);
     debug_draw_ps_.bind_ssbo("light_cull_buf", &culling_data_buf_);
     debug_draw_ps_.bind_ssbo("light_zbin_buf", &culling_zbin_buf_);

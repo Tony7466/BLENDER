@@ -4,7 +4,7 @@
 
 #include "DNA_modifier_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "BKE_curves.hh"
 #include "BKE_type_conversions.hh"
@@ -110,7 +110,7 @@ void GeoNodeExecParams::check_input_geometry_set(StringRef identifier,
 void GeoNodeExecParams::check_output_geometry_set(const GeometrySet &geometry_set) const
 {
   UNUSED_VARS_NDEBUG(geometry_set);
-#ifdef DEBUG
+#ifndef NDEBUG
   if (const bke::CurvesEditHints *curve_edit_hints = geometry_set.get_curve_edit_hints()) {
     /* If this is not valid, it's likely that the number of stored deformed points does not match
      * the number of points in the original data. */

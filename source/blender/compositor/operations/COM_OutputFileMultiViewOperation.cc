@@ -5,10 +5,11 @@
 #include "COM_OutputFileMultiViewOperation.h"
 
 #include "BLI_fileops.h"
+#include "BLI_string.h"
 
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_scene.h"
 
 #include "IMB_colormanagement.h"

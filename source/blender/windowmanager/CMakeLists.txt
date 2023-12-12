@@ -7,12 +7,10 @@ set(INC
   gizmo
   gizmo/intern
   ../asset_system
-  ../blenfont
   ../blenkernel
   ../blenloader
   ../blentranslation
   ../compositor
-  ../depsgraph
   ../editors/include
   ../draw
   ../gpu
@@ -21,8 +19,6 @@ set(INC
   ../nodes
   ../render
   ../sequencer
-  ../../../intern/clog
-  ../../../intern/ghost
   ../../../intern/memutil
   ../../../extern/fmtlib/include
   ../bmesh
@@ -100,11 +96,16 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenfont
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_screen
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::animrig
   bf_sequencer
+  bf_intern_ghost
 )
 
 if(WIN32)
@@ -174,10 +175,8 @@ if(WITH_INPUT_NDOF)
   add_definitions(-DWITH_INPUT_NDOF)
 endif()
 
-if(WIN32 OR APPLE)
-  if(WITH_INPUT_IME)
-    add_definitions(-DWITH_INPUT_IME)
-  endif()
+if(WITH_INPUT_IME)
+  add_definitions(-DWITH_INPUT_IME)
 endif()
 
 if(WITH_COMPOSITOR_CPU)

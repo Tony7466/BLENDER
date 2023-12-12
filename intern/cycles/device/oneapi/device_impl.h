@@ -3,9 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_ONEAPI
-
-#  include <sycl/sycl.hpp>
-
 #  include "device/device.h"
 #  include "device/oneapi/device.h"
 #  include "device/oneapi/queue.h"
@@ -104,9 +101,7 @@ class OneapiDevice : public Device {
   void *usm_aligned_alloc_host(size_t memory_size, size_t alignment);
   void usm_free(void *usm_ptr);
 
-  static std::vector<sycl::device> available_devices();
   static char *device_capabilities();
-  static int parse_driver_build_version(const sycl::device &device);
   static void iterate_devices(OneAPIDeviceIteratorCallback cb, void *user_ptr);
 
   size_t get_memcapacity();
@@ -118,7 +113,15 @@ class OneapiDevice : public Device {
                          void *kernel_globals,
                          const char *memory_name,
                          void *memory_device_pointer);
-  bool enqueue_kernel(KernelContext *kernel_context, int kernel, size_t global_size, void **args);
+  bool enqueue_kernel(KernelContext *kernel_context,
+                      int kernel,
+                      size_t global_size,
+                      size_t local_size,
+                      void **args);
+  void get_adjusted_global_and_local_sizes(SyclQueue *queue,
+                                           const DeviceKernel kernel,
+                                           size_t &kernel_global_size,
+                                           size_t &kernel_local_size);
   SyclQueue *sycl_queue();
 
  protected:

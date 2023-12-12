@@ -8,8 +8,10 @@
 
 #pragma once
 
-#include "BKE_attribute.h"
+#include "BLI_math_matrix_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_utildefines.h"
+
 #include "DNA_scene_types.h"
 
 /* ********* exports for space_view3d/ module ********** */
@@ -27,7 +29,7 @@ struct Camera;
 struct CustomData_MeshMasks;
 struct Depsgraph;
 struct EditBone;
-struct GPUSelectResult;
+struct GPUSelectBuffer;
 struct ID;
 struct Main;
 struct MetaElem;
@@ -50,6 +52,7 @@ struct rctf;
 struct rcti;
 struct wmEvent;
 struct wmGizmo;
+struct wmKeyMapItem;
 struct wmWindow;
 struct wmWindowManager;
 
@@ -212,7 +215,7 @@ bool ED_view3d_depth_unproject_v3(const ARegion *region,
  *
  * \note modal map events can also be used in `ED_view3d_navigation_do`.
  */
-ViewOpsData *ED_view3d_navigation_init(bContext *C, const bool use_alt_navigation);
+ViewOpsData *ED_view3d_navigation_init(bContext *C, const wmKeyMapItem *kmi_merge);
 bool ED_view3d_navigation_do(bContext *C,
                              ViewOpsData *vod,
                              const wmEvent *event,
@@ -301,7 +304,8 @@ enum eV3DSnapCursor {
 ENUM_OPERATORS(eV3DSnapCursor, V3D_SNAPCURSOR_SNAP_EDIT_GEOM_CAGE)
 
 struct V3DSnapCursorData {
-  eSnapMode snap_elem;
+  eSnapMode type_source;
+  eSnapMode type_target;
   float loc[3];
   float nor[3];
   float obmat[4][4];
@@ -342,10 +346,10 @@ SnapObjectContext *ED_view3d_cursor_snap_context_ensure(Scene *scene);
 void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
                                      const float source_loc[3],
                                      const float target_loc[3],
-                                     const float target_normal[3],
+                                     const eSnapMode source_type,
+                                     const eSnapMode target_type,
                                      const uchar source_color[4],
-                                     const uchar target_color[4],
-                                     const eSnapMode target_type);
+                                     const uchar target_color[4]);
 
 /* view3d_iterators.cc */
 
@@ -438,10 +442,9 @@ void pose_foreachScreenBone(ViewContext *vc,
 /**
  * \note use #ED_view3d_ob_project_mat_get to get the projection matrix
  */
-void ED_view3d_project_float_v2_m4(const ARegion *region,
-                                   const float co[3],
-                                   float r_co[2],
-                                   const float mat[4][4]);
+blender::float2 ED_view3d_project_float_v2_m4(const ARegion *region,
+                                              const float co[3],
+                                              const blender::float4x4 &mat);
 /**
  * \note use #ED_view3d_ob_project_mat_get to get projecting mat
  */
@@ -560,20 +563,22 @@ bool ED_view3d_win_to_ray_clipped(Depsgraph *depsgraph,
  * \param region: The region (used for the window width and height).
  * \param v3d: The 3d viewport (used for near clipping value).
  * \param mval: The area relative 2d location (such as `event->mval`, converted into float[2]).
+ * \param do_clip_planes: Optionally clip the start of the ray by the view clipping planes.
  * \param r_ray_co: The world-space point where the ray intersects the window plane.
  * \param r_ray_normal: The normalized world-space direction of towards mval.
  * \param r_ray_start: The world-space starting point of the ray.
- * \param do_clip_planes: Optionally clip the start of the ray by the view clipping planes.
+ * \param r_ray_end: The world-space end point of the segment.
  * \return success, false if the ray is totally clipped.
  */
 bool ED_view3d_win_to_ray_clipped_ex(Depsgraph *depsgraph,
                                      const ARegion *region,
                                      const View3D *v3d,
                                      const float mval[2],
+                                     const bool do_clip_planes,
                                      float r_ray_co[3],
                                      float r_ray_normal[3],
                                      float r_ray_start[3],
-                                     bool do_clip_planes);
+                                     float r_ray_end[3]);
 /**
  * Calculate a 3d viewpoint and direction vector from 2d window coordinates.
  * This ray_start is located at the viewpoint, ray_normal is the direction towards `mval`.
@@ -700,7 +705,7 @@ bool ED_view3d_win_to_segment_clipped(const Depsgraph *depsgraph,
                                       float r_ray_start[3],
                                       float r_ray_end[3],
                                       bool do_clip_planes);
-void ED_view3d_ob_project_mat_get(const RegionView3D *rv3d, const Object *ob, float r_pmat[4][4]);
+blender::float4x4 ED_view3d_ob_project_mat_get(const RegionView3D *rv3d, const Object *ob);
 void ED_view3d_ob_project_mat_get_from_obmat(const RegionView3D *rv3d,
                                              const float obmat[4][4],
                                              float r_pmat[4][4]);
@@ -873,15 +878,6 @@ bool ED_view3d_autodist_simple(ARegion *region,
 bool ED_view3d_depth_read_cached_seg(
     const ViewDepths *vd, const int mval_sta[2], const int mval_end[2], int margin, float *depth);
 
-/**
- * The default value for the maximum number of elements that can be selected at once
- * using view-port selection.
- *
- * \note in many cases this defines the size of fixed-size stack buffers,
- * so take care increasing this value.
- */
-#define MAXPICKELEMS 2500
-
 enum eV3DSelectMode {
   /* all elements in the region, ignore depth */
   VIEW3D_SELECT_ALL = 0,
@@ -911,28 +907,21 @@ void view3d_opengl_select_cache_begin();
 void view3d_opengl_select_cache_end();
 
 /**
- * \warning be sure to account for a negative return value
- * This is an error, "Too many objects in select buffer"
- * and no action should be taken (can crash blender) if this happens
- *
  * \note (vc->obedit == NULL) can be set to explicitly skip edit-object selection.
  */
 int view3d_opengl_select_ex(ViewContext *vc,
-                            GPUSelectResult *buffer,
-                            unsigned int buffer_len,
+                            GPUSelectBuffer *buffer,
                             const rcti *input,
                             eV3DSelectMode select_mode,
                             eV3DSelectObjectFilter select_filter,
                             bool do_material_slot_selection);
 int view3d_opengl_select(ViewContext *vc,
-                         GPUSelectResult *buffer,
-                         unsigned int buffer_len,
+                         GPUSelectBuffer *buffer,
                          const rcti *input,
                          eV3DSelectMode select_mode,
                          eV3DSelectObjectFilter select_filter);
 int view3d_opengl_select_with_id_filter(ViewContext *vc,
-                                        GPUSelectResult *buffer,
-                                        unsigned int buffer_len,
+                                        GPUSelectBuffer *buffer,
                                         const rcti *input,
                                         eV3DSelectMode select_mode,
                                         eV3DSelectObjectFilter select_filter,
@@ -941,7 +930,7 @@ int view3d_opengl_select_with_id_filter(ViewContext *vc,
 /* view3d_select.cc */
 
 float ED_view3d_select_dist_px();
-void ED_view3d_viewcontext_init(bContext *C, ViewContext *vc, Depsgraph *depsgraph);
+ViewContext ED_view3d_viewcontext_init(bContext *C, Depsgraph *depsgraph);
 
 /**
  * Re-initialize `vc` with `obact` as if it's active object (with some differences).
@@ -1002,7 +991,7 @@ bool ED_operator_rv3d_user_region_poll(bContext *C);
  */
 void ED_view3d_init_mats_rv3d(const Object *ob, RegionView3D *rv3d);
 void ED_view3d_init_mats_rv3d_gl(const Object *ob, RegionView3D *rv3d);
-#ifdef DEBUG
+#ifndef NDEBUG
 /**
  * Ensure we correctly initialize.
  */
@@ -1242,7 +1231,7 @@ float ED_view3d_grid_view_scale(Scene *scene,
                                 const char **r_grid_unit);
 
 /**
- * \note The info that this uses is updated in #ED_refresh_viewport_fps,
+ * \note The info that this uses is updated in #ED_scene_fps_average_accumulate,
  * which currently gets called during #SCREEN_OT_animation_step.
  */
 void ED_scene_draw_fps(const Scene *scene, int xoffset, int *yoffset);

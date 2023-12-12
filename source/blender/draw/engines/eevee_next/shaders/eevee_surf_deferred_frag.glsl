@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Deferred lighting evaluation: Lighting is evaluated in a separate pass.
@@ -6,9 +9,8 @@
  * Some render-pass are written during this pass.
  */
 
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_hair_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ambient_occlusion_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
@@ -19,7 +21,7 @@ vec4 closure_to_rgba(Closure cl)
 {
   vec4 out_color;
   out_color.rgb = g_emission;
-  out_color.a = saturate(1.0 - avg(g_transmittance));
+  out_color.a = saturate(1.0 - average(g_transmittance));
 
   /* Reset for the next closure tree. */
   closure_weights_reset();
@@ -42,9 +44,6 @@ void main()
   nodetree_surface();
 
   g_holdout = saturate(g_holdout);
-
-  out_transmittance = vec4(1.0 - g_holdout);
-  float transmittance_mono = saturate(avg(g_transmittance));
 
   float thickness = nodetree_thickness();
 
@@ -73,63 +72,37 @@ void main()
         cryptomatte_object_buf[resource_id], node_tree.crypto_hash, 0.0);
     imageStore(rp_cryptomatte_img, out_texel, cryptomatte_output);
   }
-  output_renderpass_color(rp_buf.normal_id, vec4(out_normal, 1.0));
-  output_renderpass_color(rp_buf.diffuse_color_id, vec4(g_diffuse_data.color, 1.0));
-  output_renderpass_color(rp_buf.specular_color_id, vec4(specular_color, 1.0));
-  output_renderpass_color(rp_buf.emission_id, vec4(g_emission, 1.0));
+  output_renderpass_color(uniform_buf.render_pass.normal_id, vec4(out_normal, 1.0));
+  output_renderpass_color(uniform_buf.render_pass.position_id, vec4(g_data.P, 1.0));
+  output_renderpass_color(uniform_buf.render_pass.diffuse_color_id,
+                          vec4(g_diffuse_data.color, 1.0));
+  output_renderpass_color(uniform_buf.render_pass.specular_color_id, vec4(specular_color, 1.0));
+  output_renderpass_color(uniform_buf.render_pass.emission_id, vec4(g_emission, 1.0));
 #endif
 
   /* ----- GBuffer output ----- */
 
-  if (true) {
-    /* Reflection. */
-    vec4 out_reflect = vec4(gbuffer_normal_pack(g_reflection_data.N),
-                            g_reflection_data.roughness,
-                            g_reflection_data.roughness);
-    imageStore(out_gbuff_closure_img, ivec3(out_texel, 0), out_reflect);
+  GBufferDataPacked gbuf = gbuffer_pack(
+      g_diffuse_data, g_reflection_data, g_refraction_data, out_normal, thickness);
 
-    vec4 color = gbuffer_color_pack(g_reflection_data.color);
-    imageStore(out_gbuff_color_img, ivec3(out_texel, 0), color);
+  /* Output header and first closure using frame-buffer attachment. */
+  out_gbuf_header = gbuf.header;
+  out_gbuf_color = gbuf.color[0];
+  out_gbuf_closure = gbuf.closure[0];
+
+  /* Output remaining closures using image store. */
+  /* NOTE: The image view start at layer 1 so all destination layer is `closure_index - 1`. */
+  if (gbuffer_header_unpack(gbuf.header, 1) != GBUF_NONE) {
+    imageStore(out_gbuf_color_img, ivec3(out_texel, 1 - 1), gbuf.color[1]);
+    imageStore(out_gbuf_closure_img, ivec3(out_texel, 1 - 1), gbuf.closure[1]);
   }
-
-  /* TODO(fclem) other RNG. */
-  float refract_rand = fract(g_closure_rand * 6.1803398875);
-  float combined_weight = g_refraction_data.weight + g_diffuse_data.weight;
-  bool output_refraction = combined_weight > 0.0 &&
-                           (refract_rand * combined_weight) < g_refraction_data.weight;
-  if (output_refraction) {
-    /* Refraction. */
-    vec4 closure;
-    closure.xy = gbuffer_normal_pack(g_refraction_data.N);
-    closure.z = g_refraction_data.roughness;
-    closure.w = gbuffer_ior_pack(g_refraction_data.ior);
-    /* Clamp to just bellow 1 to be able to distinguish between refraction and diffuse.
-     * Ceiling value is chosen by the storage format (16bit UNORM). */
-    closure.w = min(closure.w, float(0xFFFFu - 1u) / float(0xFFFFu));
-    imageStore(out_gbuff_closure_img, ivec3(out_texel, 1), closure);
-
-    vec4 color = gbuffer_color_pack(g_refraction_data.color);
-    imageStore(out_gbuff_color_img, ivec3(out_texel, 1), color);
+  if (gbuffer_header_unpack(gbuf.header, 2) != GBUF_NONE) {
+    imageStore(out_gbuf_color_img, ivec3(out_texel, 2 - 1), gbuf.color[2]);
+    imageStore(out_gbuf_closure_img, ivec3(out_texel, 2 - 1), gbuf.closure[2]);
   }
-  else {
-    /* Diffuse. */
-    vec4 closure;
-    closure.xy = gbuffer_normal_pack(g_diffuse_data.N);
-    closure.z = gbuffer_thickness_pack(thickness);
-    /* Used to detect the refraction case. Could be used for roughness. */
-    closure.w = 1.0;
-    imageStore(out_gbuff_closure_img, ivec3(out_texel, 1), closure);
-
-    vec4 color = gbuffer_color_pack(g_diffuse_data.color);
-    imageStore(out_gbuff_color_img, ivec3(out_texel, 1), color);
-  }
-
-  if (true) {
-    /* SubSurface Scattering. */
-    vec4 closure;
-    closure.xyz = gbuffer_sss_radii_pack(g_diffuse_data.sss_radius);
-    closure.w = gbuffer_object_id_unorm16_pack(g_diffuse_data.sss_id > 0 ? uint(resource_id) : 0);
-    imageStore(out_gbuff_closure_img, ivec3(out_texel, 2), closure);
+  if (gbuffer_header_unpack(gbuf.header, 3) != GBUF_NONE) {
+    /* No color for SSS. */
+    imageStore(out_gbuf_closure_img, ivec3(out_texel, 3 - 1), gbuf.closure[3]);
   }
 
   /* ----- Radiance output ----- */
@@ -137,7 +110,5 @@ void main()
   /* Only output emission during the gbuffer pass. */
   out_radiance = vec4(g_emission, 0.0);
   out_radiance.rgb *= 1.0 - g_holdout;
-
-  out_transmittance.rgb = g_transmittance;
-  out_transmittance.a = saturate(avg(g_transmittance));
+  out_radiance.a = g_holdout;
 }

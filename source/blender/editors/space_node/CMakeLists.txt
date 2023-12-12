@@ -5,12 +5,10 @@
 set(INC
   ../include
   ../../asset_system
-  ../../blenfont
   ../../blenkernel
   ../../blenloader
   ../../blentranslation
   ../../compositor
-  ../../depsgraph
   ../../draw
   ../../functions
   ../../geometry
@@ -31,7 +29,6 @@ set(INC_SYS
 
 set(SRC
   add_menu_assets.cc
-  add_node_search.cc
   clipboard.cc
   drawnode.cc
   link_drag_search.cc
@@ -54,8 +51,10 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_screen
   PRIVATE bf::intern::guardedalloc

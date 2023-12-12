@@ -8,20 +8,20 @@
  */
 
 /* struct DerivedMesh is used directly */
-#include "BKE_DerivedMesh.h"
+#include "BKE_DerivedMesh.hh"
 
 /* Thread sync primitives used directly. */
+#include "BLI_ordered_edge.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
+#include "BLI_vector_set.hh"
 
 struct CCGEdge;
 struct CCGElem;
 struct CCGFace;
 struct CCGSubSurf;
 struct CCGVert;
-struct DMFlagMat;
 struct DerivedMesh;
-struct EdgeHash;
 struct Mesh;
 struct MeshElemMap;
 struct MultiresModifierData;
@@ -48,7 +48,7 @@ DerivedMesh *subsurf_make_derived_from_derived(DerivedMesh *dm,
                                                float (*vertCos)[3],
                                                SubsurfFlags flags);
 
-void subsurf_calculate_limit_positions(Mesh *me, float (*r_positions)[3]);
+void subsurf_calculate_limit_positions(Mesh *mesh, float (*r_positions)[3]);
 
 /**
  * Get grid-size from 'level', level must be greater than zero.
@@ -94,8 +94,6 @@ struct CCGDerivedMesh {
     CCGFace *face;
   } * faceMap;
 
-  DMFlagMat *faceFlags;
-
   int *reverseFaceMap;
 
   PBVH *pbvh;
@@ -106,7 +104,6 @@ struct CCGDerivedMesh {
   CCGElem **gridData;
   int *gridOffset;
   CCGFace **gridFaces;
-  DMFlagMat *gridFlagMats;
   unsigned int **gridHidden;
   /* Elements in arrays above. */
   unsigned int numGrid;
@@ -122,7 +119,7 @@ struct CCGDerivedMesh {
     MultiresModifiedFlags modified_flags;
   } multires;
 
-  EdgeHash *ehash;
+  blender::VectorSet<blender::OrderedEdge> *ehash;
 
   ThreadMutex loops_cache_lock;
   ThreadRWMutex origindex_cache_rwlock;

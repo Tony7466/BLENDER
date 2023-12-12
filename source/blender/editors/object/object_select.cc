@@ -27,28 +27,28 @@
 #include "BLI_math_bits.h"
 #include "BLI_math_vector.h"
 #include "BLI_rand.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_collection.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_workspace.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -61,7 +61,7 @@
 #include "ED_screen.hh"
 #include "ED_select_utils.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -313,7 +313,7 @@ bool ED_object_jump_to_bone(bContext *C,
       if (reveal_hidden) {
         /* Unhide the bone. */
         ebone->flag &= ~BONE_HIDDEN_A;
-        ANIM_armature_ensure_layer_enabled_from_ebone(arm, ebone);
+        ANIM_armature_bonecoll_show_from_ebone(arm, ebone);
       }
 
       /* Select it. */
@@ -337,7 +337,7 @@ bool ED_object_jump_to_bone(bContext *C,
       if (reveal_hidden) {
         /* Unhide the bone. */
         pchan->bone->flag &= ~BONE_HIDDEN_P;
-        ANIM_armature_ensure_layer_enabled_from_pchan(arm, pchan);
+        ANIM_armature_bonecoll_show_from_pchan(arm, pchan);
       }
 
       /* Select it. */

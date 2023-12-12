@@ -12,8 +12,8 @@
 
 #  include <cstring>
 
-#  include "BKE_context.h"
-#  include "BKE_main.h"
+#  include "BKE_context.hh"
+#  include "BKE_main.hh"
 #  include "BKE_report.h"
 
 #  include "BLI_blenlib.h"
@@ -39,7 +39,7 @@
 #  include "WM_api.hh"
 #  include "WM_types.hh"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "io_usd.hh"
 #  include "usd.h"
@@ -108,8 +108,15 @@ static void process_prim_path(char *prim_path)
 
   /* The absolute root "/" path indicates a no-op,
    * so clear the string. */
-  if (prim_path[0] == '/' && strlen(prim_path) == 1) {
+  if (prim_path[0] == '/' && prim_path[1] == '\0') {
     prim_path[0] = '\0';
+  }
+
+  /* If a prim path doesn't start with a "/" it
+   * is invalid when creating the prim. */
+  if (prim_path[0] != '/') {
+    const std::string prim_path_copy = std::string(prim_path);
+    BLI_snprintf(prim_path, FILE_MAX, "/%s", prim_path_copy.c_str());
   }
 }
 
@@ -179,7 +186,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
 
   STRNCPY(params.root_prim_path, root_prim_path);
 
-  bool ok = USD_export(C, filepath, &params, as_background_job);
+  bool ok = USD_export(C, filepath, &params, as_background_job, op->reports);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
@@ -371,7 +378,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
 
   RNA_def_string(ot->srna,
                  "root_prim_path",
-                 nullptr,
+                 "/root",
                  FILE_MAX,
                  "Root Prim",
                  "If set, add a transform primitive with the given path to the stage "
@@ -429,6 +436,8 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   const bool import_meshes = RNA_boolean_get(op->ptr, "import_meshes");
   const bool import_volumes = RNA_boolean_get(op->ptr, "import_volumes");
   const bool import_shapes = RNA_boolean_get(op->ptr, "import_shapes");
+  const bool import_skeletons = RNA_boolean_get(op->ptr, "import_skeletons");
+  const bool import_blendshapes = RNA_boolean_get(op->ptr, "import_blendshapes");
 
   const bool import_subdiv = RNA_boolean_get(op->ptr, "import_subdiv");
 
@@ -492,6 +501,8 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   params.import_meshes = import_meshes;
   params.import_volumes = import_volumes;
   params.import_shapes = import_shapes;
+  params.import_skeletons = import_skeletons;
+  params.import_blendshapes = import_blendshapes;
   params.prim_path_mask = prim_path_mask;
   params.import_subdiv = import_subdiv;
   params.import_instance_proxies = import_instance_proxies;
@@ -511,7 +522,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
 
   STRNCPY(params.import_textures_dir, import_textures_dir);
 
-  const bool ok = USD_import(C, filepath, &params, as_background_job);
+  const bool ok = USD_import(C, filepath, &params, as_background_job, op->reports);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
@@ -538,6 +549,8 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "import_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "import_volumes", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "import_shapes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_skeletons", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_blendshapes", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(box, ptr, "prim_path_mask", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(box, ptr, "scale", UI_ITEM_NONE, nullptr, ICON_NONE);
 
@@ -632,6 +645,8 @@ void WM_OT_usd_import(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "import_meshes", true, "Meshes", "");
   RNA_def_boolean(ot->srna, "import_volumes", true, "Volumes", "");
   RNA_def_boolean(ot->srna, "import_shapes", true, "Shapes", "");
+  RNA_def_boolean(ot->srna, "import_skeletons", true, "Skeletons", "");
+  RNA_def_boolean(ot->srna, "import_blendshapes", true, "Blend Shapes", "");
 
   RNA_def_boolean(ot->srna,
                   "import_subdiv",

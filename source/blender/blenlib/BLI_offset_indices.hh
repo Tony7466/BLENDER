@@ -85,13 +85,13 @@ template<typename T> class OffsetIndices {
    */
   OffsetIndices slice(const IndexRange range) const
   {
-    BLI_assert(offsets_.index_range().drop_back(1).contains(range.last()));
-    return OffsetIndices(offsets_.slice(range.start(), range.one_after_last()));
+    BLI_assert(range.is_empty() || offsets_.index_range().drop_back(1).contains(range.last()));
+    return OffsetIndices(offsets_.slice(range.start(), range.size() + 1));
   }
 
-  const T *data() const
+  Span<T> data() const
   {
-    return offsets_.data();
+    return offsets_;
   }
 };
 
@@ -152,7 +152,14 @@ void gather_group_sizes(OffsetIndices<int> offsets, const IndexMask &mask, Mutab
 /** Build new offsets that contains only the groups chosen by \a selection. */
 OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
+                                           int start_offset,
                                            MutableSpan<int> dst_offsets);
+inline OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
+                                                  const IndexMask &selection,
+                                                  MutableSpan<int> dst_offsets)
+{
+  return gather_selected_offsets(src_offsets, selection, 0, dst_offsets);
+}
 /**
  * Create a map from indexed elements to the source indices, in other words from the larger array
  * to the smaller array.

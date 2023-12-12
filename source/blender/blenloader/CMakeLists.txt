@@ -4,12 +4,11 @@
 
 set(INC
   .
-  ../blenfont
   ../blenkernel
   ../blentranslation
-  ../depsgraph
   ../draw
   ../editors/include
+  ../bmesh
   ../gpu
   ../imbuf
   ../makesrna
@@ -17,8 +16,6 @@ set(INC
   ../render
   ../sequencer
   ../windowmanager
-  ../../../intern/clog
-  ../bmesh
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -49,20 +46,24 @@ set(SRC
   intern/versioning_userdef.cc
   intern/writefile.cc
 
-  BLO_blend_defs.h
-  BLO_blend_validate.h
-  BLO_read_write.h
+  BLO_blend_defs.hh
+  BLO_blend_validate.hh
+  BLO_read_write.hh
   BLO_readfile.h
-  BLO_undofile.h
-  BLO_writefile.h
-  intern/readfile.h
-  intern/versioning_common.h
+  BLO_undofile.hh
+  BLO_writefile.hh
+  intern/readfile.hh
+  intern/versioning_common.hh
 )
 
 set(LIB
+  PRIVATE bf::animrig
+  PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
 

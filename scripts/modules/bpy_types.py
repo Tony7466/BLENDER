@@ -87,13 +87,21 @@ class Context(StructRNA):
         new_context = {}
         generic_attrs = (
             *StructRNA.__dict__.keys(),
-            "bl_rna", "rna_type", "copy",
+            "bl_rna",
+            "rna_type",
+            "copy",
         )
+        function_types = {BuiltinMethodType, bpy_types.bpy_func}
         for attr in dir(self):
-            if not (attr.startswith("_") or attr in generic_attrs):
-                value = getattr(self, attr)
-                if type(value) != BuiltinMethodType:
-                    new_context[attr] = value
+            if attr.startswith("_"):
+                continue
+            if attr in generic_attrs:
+                continue
+            value = getattr(self, attr)
+            if type(value) in function_types:
+                continue
+
+            new_context[attr] = value
 
         return new_context
 
@@ -669,6 +677,19 @@ class Mesh(bpy_types.ID):
     def edge_creases_remove(self):
         _name_convention_attribute_remove(self.attributes, "crease_edge")
 
+    @property
+    def vertex_paint_mask(self):
+        """
+        Mask values for sculpting and painting, corresponding to the ".sculpt_mask" attribute.
+        """
+        return _name_convention_attribute_get(self.attributes, ".sculpt_mask", 'POINT', 'FLOAT')
+
+    def vertex_paint_mask_ensure(self):
+        return _name_convention_attribute_ensure(self.attributes, ".sculpt_mask", 'POINT', 'FLOAT')
+
+    def vertex_paint_mask_remove(self):
+        _name_convention_attribute_remove(self.attributes, ".sculpt_mask")
+
     def shade_flat(self):
         """
         Render and display faces uniform, using face normals,
@@ -973,7 +994,7 @@ class _GenericUI:
                 for func in draw_ls._draw_funcs:
 
                     # Begin 'owner_id' filter.
-                    # Exclude Import/Export menus from this filtering (io addons should always show there)
+                    # Exclude Import/Export menus from this filtering (IO add-ons should always show there).
                     if not getattr(self, "bl_owner_use_filter", True):
                         pass
                     elif owner_names is not None:
@@ -1187,6 +1208,10 @@ class AssetShelf(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
 
 
+class FileHandler(StructRNA, metaclass=RNAMeta):
+    __slots__ = ()
+
+
 class NodeTree(bpy_types.ID, metaclass=RNAMetaPropGroup):
     __slots__ = ()
 
@@ -1218,7 +1243,11 @@ class NodeSocket(StructRNA, metaclass=RNAMetaPropGroup):
                 link.to_socket == self))
 
 
-class NodeSocketInterface(StructRNA, metaclass=RNAMetaPropGroup):
+class NodeTreeInterfaceItem(StructRNA):
+    __slots__ = ()
+
+
+class NodeTreeInterfaceSocket(NodeTreeInterfaceItem, metaclass=RNAMetaPropGroup):
     __slots__ = ()
 
 

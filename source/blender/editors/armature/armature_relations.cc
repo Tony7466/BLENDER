@@ -17,6 +17,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
+#include "BLI_map.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
@@ -25,16 +26,16 @@
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_constraint.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve_driver.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -49,6 +50,8 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "ANIM_bone_collections.hh"
 
 #include "armature_intern.h"
 
@@ -291,6 +294,17 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
    * See #object_join_exec for detailed comment on why the safe version is used. */
   invert_m4_m4_safe_ortho(oimat, ob_active->object_to_world);
 
+  /* Index bone collections by name.  This is also used later to keep track
+   * of collections added from other armatures. */
+  blender::Map<std::string, BoneCollection *> bone_collection_by_name;
+  for (BoneCollection *bcoll : arm->collections_span()) {
+    bone_collection_by_name.add(bcoll->name, bcoll);
+  }
+
+  /* Used to track how bone collections should be remapped after merging
+   * other armatures. */
+  blender::Map<BoneCollection *, BoneCollection *> bone_collection_remap;
+
   /* Get edit-bones of active armature to add edit-bones to */
   ED_armature_to_edit(arm);
 
@@ -313,7 +327,24 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
       afd.names_map = BLI_ghash_str_new("join_armature_adt_fix");
 
       /* Make a list of edit-bones in current armature */
-      ED_armature_to_edit(static_cast<bArmature *>(ob_iter->data));
+      ED_armature_to_edit(curarm);
+
+      /* Move new bone collections, and store their remapping info.
+       * TODO: armatures can potentially have multiple users, so these should
+       * actually be copied, not moved.  However, the armature join code is
+       * already broken in that situation.  When that gets fixed, this should
+       * also get fixed.  Note that copying the collections should include
+       * copying their custom properties. (Nathan Vegdahl) */
+      for (BoneCollection *bcoll : curarm->collections_span()) {
+        BoneCollection *mapped = bone_collection_by_name.lookup_default(bcoll->name, nullptr);
+        if (!mapped) {
+          BoneCollection *new_bcoll = ANIM_armature_bonecoll_new(arm, bcoll->name);
+          bone_collection_by_name.add(bcoll->name, new_bcoll);
+          mapped = new_bcoll;
+        }
+
+        bone_collection_remap.add(bcoll, mapped);
+      }
 
       /* Get Pose of current armature */
       opose = ob_iter->pose;
@@ -375,6 +406,11 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
         BLI_addtail(&pose->chanbase, pchan);
         BKE_pose_channels_hash_free(opose);
         BKE_pose_channels_hash_free(pose);
+
+        /* Remap collections. */
+        LISTBASE_FOREACH (BoneCollectionReference *, bcoll_ref, &curbone->bone_collections) {
+          bcoll_ref->bcoll = bone_collection_remap.lookup(bcoll_ref->bcoll);
+        }
       }
 
       /* Armature ID itself is not freed below, however it has been modified (and is now completely
@@ -676,7 +712,6 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
 
     /* 5) restore original conditions */
     ED_armature_to_edit(static_cast<bArmature *>(ob_old->data));
-    ED_armature_edit_refresh_layer_used(static_cast<bArmature *>(ob_old->data));
 
     /* parents tips remain selected when connected children are removed. */
     ED_armature_edit_deselect_all(ob_old);

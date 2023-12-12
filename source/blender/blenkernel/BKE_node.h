@@ -31,7 +31,6 @@ extern "C" {
 #define MAX_SOCKET 512
 
 struct BlendDataReader;
-struct BlendExpander;
 struct BlendLibReader;
 struct BlendWriter;
 struct FreestyleLineStyle;
@@ -101,6 +100,7 @@ class NodeDeclaration;
 class NodeDeclarationBuilder;
 class GatherAddNodeSearchParams;
 class GatherLinkSearchOpParams;
+struct NodeExtraInfoParams;
 }  // namespace nodes
 namespace realtime_compositor {
 class Context;
@@ -115,10 +115,9 @@ using NodeGeometryExecFunction = void (*)(blender::nodes::GeoNodeExecParams para
 using NodeDeclareFunction = void (*)(blender::nodes::NodeDeclarationBuilder &builder);
 using NodeDeclareDynamicFunction = void (*)(const bNodeTree &tree,
                                             const bNode &node,
-                                            blender::nodes::NodeDeclaration &r_declaration);
-using SocketGetCPPValueFunction = void (*)(const struct bNodeSocket &socket, void *r_value);
-using SocketGetGeometryNodesCPPValueFunction = void (*)(const struct bNodeSocket &socket,
-                                                        void *r_value);
+                                            blender::nodes::NodeDeclarationBuilder &builder);
+using SocketGetCPPValueFunction = void (*)(const void *socket_value, void *r_value);
+using SocketGetGeometryNodesCPPValueFunction = void (*)(const void *socket_value, void *r_value);
 
 /* Adds socket link operations that are specific to this node type. */
 using NodeGatherSocketLinkOperationsFunction =
@@ -132,6 +131,7 @@ using NodeGetCompositorOperationFunction = blender::realtime_compositor::NodeOpe
     *(*)(blender::realtime_compositor::Context &context, blender::nodes::DNode node);
 using NodeGetCompositorShaderNodeFunction =
     blender::realtime_compositor::ShaderNode *(*)(blender::nodes::DNode node);
+using NodeExtraInfoFunction = void (*)(blender::nodes::NodeExtraInfoParams &params);
 
 #else
 typedef void *NodeGetCompositorOperationFunction;
@@ -146,6 +146,7 @@ typedef void *SocketGetCPPTypeFunction;
 typedef void *SocketGetGeometryNodesCPPTypeFunction;
 typedef void *SocketGetGeometryNodesCPPValueFunction;
 typedef void *SocketGetCPPValueFunction;
+typedef void *NodeExtraInfoFunction;
 typedef struct CPPTypeHandle CPPTypeHandle;
 #endif
 
@@ -171,18 +172,21 @@ typedef struct bNodeSocketType {
                      struct PointerRNA *ptr,
                      struct PointerRNA *node_ptr,
                      float *r_color);
+  void (*draw_color_simple)(const bNodeSocketType *socket_type, float *r_color);
 
-  void (*interface_draw)(struct bContext *C, struct uiLayout *layout, struct PointerRNA *ptr);
-  void (*interface_draw_color)(struct bContext *C, struct PointerRNA *ptr, float *r_color);
-  void (*interface_init_socket)(struct bNodeTree *ntree,
-                                const struct bNodeSocket *interface_socket,
+  void (*interface_draw)(struct ID *id,
+                         struct bNodeTreeInterfaceSocket *socket,
+                         struct bContext *C,
+                         struct uiLayout *layout);
+  void (*interface_init_socket)(struct ID *id,
+                                const struct bNodeTreeInterfaceSocket *interface_socket,
                                 struct bNode *node,
-                                struct bNodeSocket *sock,
+                                struct bNodeSocket *socket,
                                 const char *data_path);
-  void (*interface_from_socket)(struct bNodeTree *ntree,
-                                struct bNodeSocket *interface_socket,
+  void (*interface_from_socket)(struct ID *id,
+                                struct bNodeTreeInterfaceSocket *interface_socket,
                                 const struct bNode *node,
-                                const struct bNodeSocket *sock);
+                                const struct bNodeSocket *socket);
 
   /* RNA integration */
   ExtensionRNA ext_socket;
@@ -224,6 +228,7 @@ typedef int (*NodeGPUExecFunction)(struct GPUMaterial *mat,
                                    struct bNodeExecData *execdata,
                                    struct GPUNodeStack *in,
                                    struct GPUNodeStack *out);
+typedef void (*NodeMaterialXFunction)(void *data, struct bNode *node, struct bNodeSocket *out);
 
 /**
  * \brief Defines a node type.
@@ -338,6 +343,8 @@ typedef struct bNodeType {
   NodeExecFunction exec_fn;
   /* gpu */
   NodeGPUExecFunction gpu_fn;
+  /* MaterialX */
+  NodeMaterialXFunction materialx_fn;
 
   /* Get an instance of this node's compositor operation. Freeing the instance is the
    * responsibility of the caller. */
@@ -358,17 +365,22 @@ typedef struct bNodeType {
   /* Execute a geometry node. */
   NodeGeometryExecFunction geometry_node_execute;
 
-  /* Declares which sockets the node has. */
-  NodeDeclareFunction declare;
   /**
-   * Declare which sockets the node has for declarations that aren't static per node type.
-   * In other words, defining this callback means that different nodes of this type can have
-   * different declarations and different sockets.
+   * Declares which sockets and panels the node has. It has to be able to generate a declaration
+   * with and without a specific node context. If the declaration depends on the node, but the node
+   * is not provided, then the declaration should be generated as much as possible and everything
+   * that depends on the node context should be skipped.
    */
-  NodeDeclareDynamicFunction declare_dynamic;
+  NodeDeclareFunction declare;
 
-  /* Declaration to be used when it is not dynamic. */
-  NodeDeclarationHandle *fixed_declaration;
+  /**
+   * Declaration of the node outside of any context. If the node declaration is never dependent on
+   * the node context, this declaration is also shared with the corresponding node instances.
+   * Otherwise, it mainly allows checking what sockets a node will have, without having to create
+   * the node. In this case, the static declaration is mostly just a hint, and does not have to
+   * match with the final node.
+   */
+  NodeDeclarationHandle *static_declaration;
 
   /**
    * Add to the list of search names and operations gathered by node link drag searching.
@@ -377,12 +389,8 @@ typedef struct bNodeType {
    */
   NodeGatherSocketLinkOperationsFunction gather_link_search_ops;
 
-  /**
-   * Add to the list of search items gathered by the add-node search. The default behavior of
-   * adding a single item with the node name is usually enough, but node types can have any number
-   * of custom search items.
-   */
-  NodeGatherAddOperationsFunction gather_add_node_search_ops;
+  /** Get extra information that is drawn next to the node. */
+  NodeExtraInfoFunction get_extra_info;
 
   /** True when the node cannot be muted. */
   bool no_muting;
@@ -440,7 +448,7 @@ typedef struct bNodeTreeType {
   void (*localize)(struct bNodeTree *localtree, struct bNodeTree *ntree);
   void (*local_merge)(struct Main *bmain, struct bNodeTree *localtree, struct bNodeTree *ntree);
 
-  /* Tree update. Overrides `nodetype->updatetreefunc` ! */
+  /* Tree update. Overrides `nodetype->updatetreefunc`. */
   void (*update)(struct bNodeTree *ntree);
 
   bool (*validate_link)(eNodeSocketDatatype from, eNodeSocketDatatype to);
@@ -541,19 +549,6 @@ void ntreeBlendWrite(struct BlendWriter *writer, struct bNodeTree *ntree);
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Node Tree Interface
- * \{ */
-
-void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock);
-
-struct bNodeSocket *ntreeAddSocketInterface(struct bNodeTree *ntree,
-                                            eNodeSocketInOut in_out,
-                                            const char *idname,
-                                            const char *name);
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Generic API, Nodes
  * \{ */
 
@@ -586,7 +581,7 @@ struct GHashIterator *nodeSocketTypeGetIterator(void);
 const char *nodeSocketTypeLabel(const bNodeSocketType *stype);
 
 const char *nodeStaticSocketType(int type, int subtype);
-const char *nodeStaticSocketInterfaceType(int type, int subtype);
+const char *nodeStaticSocketInterfaceTypeNew(int type, int subtype);
 const char *nodeStaticSocketLabel(int type, int subtype);
 
 /* Helper macros for iterating over node types. */
@@ -917,7 +912,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define SH_NODE_TEX_MAGIC 148
 #define SH_NODE_TEX_WAVE 149
 #define SH_NODE_TEX_NOISE 150
-#define SH_NODE_TEX_MUSGRAVE 152
+#define SH_NODE_TEX_MUSGRAVE_DEPRECATED 152
 #define SH_NODE_TEX_COORD 155
 #define SH_NODE_ADD_SHADER 156
 #define SH_NODE_TEX_ENVIRONMENT 157
@@ -1028,7 +1023,8 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define CMP_NODE_CHROMA_MATTE 237
 #define CMP_NODE_CHANNEL_MATTE 238
 #define CMP_NODE_FLIP 239
-#define CMP_NODE_SPLITVIEWER 240
+/* Split viewer node is now a regular split node: CMP_NODE_SPLIT. */
+#define CMP_NODE_SPLITVIEWER__DEPRECATED 240
 // #define CMP_NODE_INDEX_MASK  241
 #define CMP_NODE_MAP_UV 242
 #define CMP_NODE_ID_MASK 243
@@ -1065,6 +1061,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define CMP_NODE_DESPECKLE 273
 #define CMP_NODE_ANTIALIASING 274
 #define CMP_NODE_KUWAHARA 275
+#define CMP_NODE_SPLIT 276
 
 #define CMP_NODE_GLARE 301
 #define CMP_NODE_TONEMAP 302
@@ -1217,7 +1214,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_INPUT_RADIUS 1105
 #define GEO_NODE_INPUT_CURVE_TILT 1106
 #define GEO_NODE_INPUT_CURVE_HANDLES 1107
-#define GEO_NODE_INPUT_SHADE_SMOOTH 1108
+#define GEO_NODE_INPUT_FACE_SMOOTH 1108
 #define GEO_NODE_INPUT_SPLINE_RESOLUTION 1109
 #define GEO_NODE_INPUT_SPLINE_CYCLIC 1110
 #define GEO_NODE_SET_CURVE_RADIUS 1111
@@ -1302,17 +1299,17 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_IMAGE 1191
 #define GEO_NODE_INTERPOLATE_CURVES 1192
 #define GEO_NODE_EDGES_TO_FACE_GROUPS 1193
-#define GEO_NODE_POINTS_TO_SDF_VOLUME 1194
-#define GEO_NODE_MESH_TO_SDF_VOLUME 1195
-#define GEO_NODE_SDF_VOLUME_SPHERE 1196
-#define GEO_NODE_MEAN_FILTER_SDF_VOLUME 1197
-#define GEO_NODE_OFFSET_SDF_VOLUME 1198
+// #define GEO_NODE_POINTS_TO_SDF_VOLUME 1194
+// #define GEO_NODE_MESH_TO_SDF_VOLUME 1195
+// #define GEO_NODE_SDF_VOLUME_SPHERE 1196
+// #define GEO_NODE_MEAN_FILTER_SDF_VOLUME 1197
+// #define GEO_NODE_OFFSET_SDF_VOLUME 1198
 #define GEO_NODE_INDEX_OF_NEAREST 1199
 /* Function nodes use the range starting at 1200. */
 #define GEO_NODE_SIMULATION_INPUT 2100
 #define GEO_NODE_SIMULATION_OUTPUT 2101
-#define GEO_NODE_INPUT_SIGNED_DISTANCE 2102
-#define GEO_NODE_SAMPLE_VOLUME 2103
+// #define GEO_NODE_INPUT_SIGNED_DISTANCE 2102
+// #define GEO_NODE_SAMPLE_VOLUME 2103
 #define GEO_NODE_MESH_TOPOLOGY_CORNERS_OF_EDGE 2104
 /* Leaving out two indices to avoid crashes with files that were created during the development of
  * the repeat zone. */
@@ -1323,6 +1320,11 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_TOOL_3D_CURSOR 2111
 #define GEO_NODE_TOOL_FACE_SET 2112
 #define GEO_NODE_TOOL_SET_FACE_SET 2113
+#define GEO_NODE_POINTS_TO_CURVES 2114
+#define GEO_NODE_INPUT_EDGE_SMOOTH 2115
+#define GEO_NODE_SPLIT_TO_INSTANCES 2116
+#define GEO_NODE_INPUT_NAMED_LAYER_SELECTION 2117
+#define GEO_NODE_INDEX_SWITCH 2118
 
 /** \} */
 
@@ -1349,6 +1351,15 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define FN_NODE_INPUT_INT 1220
 #define FN_NODE_SEPARATE_COLOR 1221
 #define FN_NODE_COMBINE_COLOR 1222
+#define FN_NODE_AXIS_ANGLE_TO_ROTATION 1223
+#define FN_NODE_EULER_TO_ROTATION 1224
+#define FN_NODE_QUATERNION_TO_ROTATION 1225
+#define FN_NODE_ROTATION_TO_AXIS_ANGLE 1226
+#define FN_NODE_ROTATION_TO_EULER 1227
+#define FN_NODE_ROTATION_TO_QUATERNION 1228
+#define FN_NODE_ROTATE_VECTOR 1229
+#define FN_NODE_ROTATE_ROTATION 1230
+#define FN_NODE_INVERT_ROTATION 1231
 
 /** \} */
 

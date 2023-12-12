@@ -10,7 +10,7 @@
 
 #include "BLI_math_matrix.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_debug.h"
@@ -64,7 +64,7 @@ Shader::~Shader()
 
 static void standard_defines(Vector<const char *> &sources)
 {
-  BLI_assert(sources.size() == 0);
+  BLI_assert(sources.is_empty());
   /* Version needs to be first. Exact values will be added by implementation. */
   sources.append("version");
   /* Define to identify code usage in shading language. */
@@ -634,6 +634,16 @@ bool GPU_shader_get_attribute_info(const GPUShader *shader,
 int GPU_shader_get_program(GPUShader *shader)
 {
   return unwrap(shader)->program_handle_get();
+}
+
+int GPU_shader_get_ssbo_vertex_fetch_num_verts_per_prim(GPUShader *shader)
+{
+  return unwrap(shader)->get_ssbo_vertex_fetch_output_num_verts();
+}
+
+bool GPU_shader_uses_ssbo_vertex_fetch(GPUShader *shader)
+{
+  return unwrap(shader)->get_uses_ssbo_vertex_fetch();
 }
 
 /** \} */
