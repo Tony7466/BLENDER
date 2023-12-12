@@ -473,7 +473,7 @@ ShadowEvalResult shadow_eval(LightData light,
   ShadowEvalResult result;
   result.light_visibilty = saturate(1.0 - surface_hit * safe_rcp(surface_ray_count));
   result.light_visibilty = min(result.light_visibilty,
-                               saturate(1.0 - subsurface_hit * safe_rcp(surface_ray_count)));
+                               saturate(1.0 - subsurface_hit * safe_rcp(subsurface_ray_count)));
   result.occluder_distance = 0.0; /* Unused. Could reintroduced if needed. */
   return result;
 }
