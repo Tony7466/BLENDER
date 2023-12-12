@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "usd_writer_metaball.h"
 #include "usd_hierarchy_iterator.h"
 
@@ -12,17 +13,15 @@
 #include "BKE_displist.h"
 #include "BKE_lib_id.h"
 #include "BKE_mball.h"
-#include "BKE_mesh.h"
-#include "BKE_object.h"
+#include "BKE_mesh.hh"
+#include "BKE_object.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
 
 namespace blender::io::usd {
 
-USDMetaballWriter::USDMetaballWriter(const USDExporterContext &ctx) : USDGenericMeshWriter(ctx)
-{
-}
+USDMetaballWriter::USDMetaballWriter(const USDExporterContext &ctx) : USDGenericMeshWriter(ctx) {}
 
 bool USDMetaballWriter::is_supported(const HierarchyContext *context) const
 {

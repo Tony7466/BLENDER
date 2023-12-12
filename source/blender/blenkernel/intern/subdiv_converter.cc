@@ -1,15 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2018 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
  */
 
-#include "subdiv_converter.h"
+#include "subdiv_converter.hh"
 
 #include "BLI_utildefines.h"
 
-#include "opensubdiv_converter_capi.h"
+#include "opensubdiv_converter_capi.hh"
 
 void BKE_subdiv_converter_free(OpenSubdiv_Converter *converter)
 {

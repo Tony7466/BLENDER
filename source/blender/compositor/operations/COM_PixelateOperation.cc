@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_PixelateOperation.h"
 
@@ -11,6 +12,8 @@ PixelateOperation::PixelateOperation(DataType data_type)
   this->add_output_socket(data_type);
   this->set_canvas_input_index(0);
   input_operation_ = nullptr;
+
+  flags_.can_be_constant = true;
 }
 
 void PixelateOperation::init_execution()

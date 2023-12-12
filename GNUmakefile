@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # This Makefile does an out-of-source CMake build in ../build_`OS`_`CPU`
@@ -57,10 +59,8 @@ Static Source Code Checking
 
    * check_cppcheck:        Run blender source through cppcheck (C & C++).
    * check_clang_array:     Run blender source through clang array checking script (C & C++).
+   * check_struct_comments: Check struct member comments are correct (C & C++).
    * check_deprecated:      Check if there is any deprecated code to remove.
-   * check_splint:          Run blenders source through splint (C only).
-   * check_sparse:          Run blenders source through sparse (C only).
-   * check_smatch:          Run blenders source through smatch (C only).
    * check_descriptions:    Check for duplicate/invalid descriptions.
    * check_licenses:        Check license headers follow the SPDX license specification,
                             using one of the accepted licenses in 'doc/license/SPDX-license-identifiers.txt'
@@ -69,7 +69,7 @@ Static Source Code Checking
    * check_cmake:           Runs our own cmake file checker which detects errors in the cmake file list definitions.
    * check_pep8:            Checks all Python script are pep8 which are tagged to use the stricter formatting.
    * check_mypy:            Checks all Python scripts using mypy,
-                            see: source/tools/check_source/check_mypy_config.py scripts which are included.
+                            see: tools/check_source/check_mypy_config.py scripts which are included.
 
 Documentation Checking
 
@@ -81,11 +81,11 @@ Documentation Checking
 Spell Checkers
    This runs the spell checker from the developer tools repositor.
 
-   * check_spelling_c:      Check for spelling errors (C/C++ only),
-   * check_spelling_osl:    Check for spelling errors (OSL only).
-   * check_spelling_py:     Check for spelling errors (Python only).
+   * check_spelling_c:       Check for spelling errors (C/C++ only),
+   * check_spelling_py:      Check for spelling errors (Python only).
+   * check_spelling_shaders: Check for spelling errors (GLSL,OSL & MSL only).
 
-   Note: an additional word-list is maintained at: 'source/tools/check_source/check_spelling_c_config.py'
+   Note: an additional word-list is maintained at: 'tools/check_source/check_spelling_c_config.py'
 
    Note: that spell checkers can take a 'CHECK_SPELLING_CACHE' filepath argument,
    so re-running does not need to re-check unchanged files.
@@ -299,7 +299,11 @@ else
 	ifneq ("$(wildcard $(DEPS_BUILD_DIR)/build.ninja)","")
 		DEPS_BUILD_COMMAND:=ninja
 	else
-		DEPS_BUILD_COMMAND:=make -s
+		ifeq ($(OS), Darwin)
+			DEPS_BUILD_COMMAND:=make -s
+		else
+			DEPS_BUILD_COMMAND:="$(BLENDER_DIR)/build_files/build_environment/linux/make_deps_wrapper.sh" -s
+		endif
 	endif
 endif
 
@@ -398,7 +402,7 @@ endif
 
 deps: .FORCE
 	@echo
-	@echo Configuring dependencies in \"$(DEPS_BUILD_DIR)\"
+	@echo Configuring dependencies in \"$(DEPS_BUILD_DIR)\", install to \"$(DEPS_INSTALL_DIR)\"
 
 	@cmake -H"$(DEPS_SOURCE_DIR)" \
 	       -B"$(DEPS_BUILD_DIR)" \
@@ -465,67 +469,63 @@ check_cppcheck: .FORCE
 	    "$(BLENDER_DIR)/check_cppcheck.txt"
 	@echo "written: check_cppcheck.txt"
 
+check_struct_comments: .FORCE
+	@$(CMAKE_CONFIG)
+	@cd "$(BUILD_DIR)" ; \
+	$(PYTHON) \
+	    "$(BLENDER_DIR)/build_files/cmake/cmake_static_check_clang.py" \
+	    --checks=struct_comments --match=".*" --jobs=$(NPROCS)
+
 check_clang_array: .FORCE
 	@$(CMAKE_CONFIG)
 	@cd "$(BUILD_DIR)" ; \
 	$(PYTHON) "$(BLENDER_DIR)/build_files/cmake/cmake_static_check_clang_array.py"
 
-check_splint: .FORCE
-	@$(CMAKE_CONFIG)
-	@cd "$(BUILD_DIR)" ; \
-	$(PYTHON) "$(BLENDER_DIR)/build_files/cmake/cmake_static_check_splint.py"
-
-check_sparse: .FORCE
-	@$(CMAKE_CONFIG)
-	@cd "$(BUILD_DIR)" ; \
-	$(PYTHON) "$(BLENDER_DIR)/build_files/cmake/cmake_static_check_sparse.py"
-
-check_smatch: .FORCE
-	@$(CMAKE_CONFIG)
-	@cd "$(BUILD_DIR)" ; \
-	$(PYTHON) "$(BLENDER_DIR)/build_files/cmake/cmake_static_check_smatch.py"
-
 check_mypy: .FORCE
-	@$(PYTHON) "$(BLENDER_DIR)/source/tools/check_source/check_mypy.py"
+	@$(PYTHON) "$(BLENDER_DIR)/tools/check_source/check_mypy.py"
 
 check_wiki_file_structure: .FORCE
 	@PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    "$(BLENDER_DIR)/source/tools/check_wiki/check_wiki_file_structure.py"
+	    "$(BLENDER_DIR)/tools/check_wiki/check_wiki_file_structure.py"
 
 check_spelling_py: .FORCE
-	@cd "$(BUILD_DIR)" ; \
-	PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    "$(BLENDER_DIR)/source/tools/check_source/check_spelling.py" \
-	    "$(BLENDER_DIR)/release/scripts"
+	@PYTHONIOENCODING=utf_8 $(PYTHON) \
+	    "$(BLENDER_DIR)/tools/check_source/check_spelling.py" \
+	    --cache-file=$(CHECK_SPELLING_CACHE) \
+	    --match=".*\.(py)$$" \
+	    "$(BLENDER_DIR)/scripts" \
+	    "$(BLENDER_DIR)/source" \
+	    "$(BLENDER_DIR)/tools"
 
 check_spelling_c: .FORCE
-	@cd "$(BUILD_DIR)" ; \
-	PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    "$(BLENDER_DIR)/source/tools/check_source/check_spelling.py" \
+	@PYTHONIOENCODING=utf_8 $(PYTHON) \
+	    "$(BLENDER_DIR)/tools/check_source/check_spelling.py" \
 	    --cache-file=$(CHECK_SPELLING_CACHE) \
+	    --match=".*\.(c|cc|cpp|cxx|h|hh|hpp|hxx|inl|m|mm)$$" \
 	    "$(BLENDER_DIR)/source" \
 	    "$(BLENDER_DIR)/intern/cycles" \
 	    "$(BLENDER_DIR)/intern/guardedalloc" \
-	    "$(BLENDER_DIR)/intern/ghost" \
+	    "$(BLENDER_DIR)/intern/ghost"
 
-check_spelling_osl: .FORCE
-	@cd "$(BUILD_DIR)" ; \
-	PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    "$(BLENDER_DIR)/source/tools/check_source/check_spelling.py" \
+check_spelling_shaders: .FORCE
+	@PYTHONIOENCODING=utf_8 $(PYTHON) \
+	    "$(BLENDER_DIR)/tools/check_source/check_spelling.py" \
 	    --cache-file=$(CHECK_SPELLING_CACHE) \
-	    "$(BLENDER_DIR)/intern/cycles/kernel/shaders"
+	    --match=".*\.(osl|metal|msl|glsl)$$" \
+	    "$(BLENDER_DIR)/intern/" \
+	    "$(BLENDER_DIR)/source/"
 
 check_descriptions: .FORCE
 	@$(BLENDER_BIN) --background -noaudio --factory-startup --python \
-	    "$(BLENDER_DIR)/source/tools/check_source/check_descriptions.py"
+	    "$(BLENDER_DIR)/tools/check_source/check_descriptions.py"
 
 check_deprecated: .FORCE
 	@PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    source/tools/check_source/check_deprecated.py
+	    tools/check_source/check_deprecated.py
 
 check_licenses: .FORCE
 	@PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    "$(BLENDER_DIR)/source/tools/check_source/check_licenses.py" \
+	    "$(BLENDER_DIR)/tools/check_source/check_licenses.py" \
 	    "--show-headers=$(SHOW_HEADERS)"
 
 check_pep8: .FORCE
@@ -534,7 +534,7 @@ check_pep8: .FORCE
 
 check_cmake: .FORCE
 	@PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    source/tools/check_source/check_cmake_consistency.py
+	    tools/check_source/check_cmake_consistency.py
 
 
 # -----------------------------------------------------------------------------
@@ -550,7 +550,6 @@ source_archive_complete: .FORCE
 	    -DCMAKE_BUILD_TYPE_INIT:STRING=$(BUILD_TYPE) -DPACKAGE_USE_UPSTREAM_SOURCES=OFF
 # This assumes CMake is still using a default `PACKAGE_DIR` variable:
 	@$(PYTHON) ./build_files/utils/make_source_archive.py --include-packages "$(BUILD_DIR)/source_archive/packages"
-
 
 INKSCAPE_BIN?="inkscape"
 icons: .FORCE
@@ -572,8 +571,8 @@ update_code: .FORCE
 	@$(PYTHON) ./build_files/utils/make_update.py --no-libraries
 
 format: .FORCE
-	@PATH="${LIBDIR}/llvm/bin/:$(PATH)" $(PYTHON) source/tools/utils_maintenance/clang_format_paths.py $(PATHS)
-	@$(PYTHON) source/tools/utils_maintenance/autopep8_format_paths.py --autopep8-command="$(AUTOPEP8)" $(PATHS)
+	@PATH="${LIBDIR}/llvm/bin/:$(PATH)" $(PYTHON) tools/utils_maintenance/clang_format_paths.py $(PATHS)
+	@$(PYTHON) tools/utils_maintenance/autopep8_format_paths.py --autopep8-command="$(AUTOPEP8)" $(PATHS)
 
 
 # -----------------------------------------------------------------------------

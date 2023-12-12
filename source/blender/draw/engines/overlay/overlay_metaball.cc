@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -9,11 +10,12 @@
 
 #include "DNA_meta_types.h"
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
+#include "BKE_object_types.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "ED_mball.h"
+#include "ED_mball.hh"
 
 #include "overlay_private.hh"
 
@@ -33,8 +35,8 @@ void OVERLAY_metaball_cache_init(OVERLAY_Data *vedata)
     DRW_PASS_CREATE(psl->metaball_ps[i], state | pd->clipping_state | infront_state);
 
     /* Reuse armature shader as it's perfect to outline ellipsoids. */
-    struct GPUVertFormat *format = formats->instance_bone;
-    struct GPUShader *sh = OVERLAY_shader_armature_sphere(true);
+    GPUVertFormat *format = formats->instance_bone;
+    GPUShader *sh = OVERLAY_shader_armature_sphere(true);
     DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->metaball_ps[i]);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     pd->mball.handle[i] = BUF_INSTANCE(grp, format, DRW_cache_bone_point_wire_outline_get());
@@ -68,7 +70,7 @@ void OVERLAY_edit_metaball_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   int select_id = 0;
   if (is_select) {
-    select_id = ob->runtime.select_id;
+    select_id = ob->runtime->select_id;
   }
 
   LISTBASE_FOREACH (MetaElem *, ml, mb->editelems) {

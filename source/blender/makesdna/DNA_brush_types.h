@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -10,11 +11,8 @@
 #include "DNA_ID.h"
 #include "DNA_brush_enums.h"
 #include "DNA_curve_types.h"
+#include "DNA_defs.h"
 #include "DNA_texture_types.h" /* for MTex */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct CurveMapping;
 struct Image;
@@ -92,7 +90,7 @@ typedef struct BrushGpencilSettings {
   int flag;
 
   /** gradient control along y for color */
-  float hardeness;
+  float hardness;
   /** factor xy of shape for dots gradients */
   float aspect_ratio[2];
   /** Simplify adaptive factor */
@@ -161,10 +159,13 @@ typedef struct BrushCurvesSculptSettings {
   int density_add_attempts;
   /** #eBrushCurvesSculptDensityMode. */
   uint8_t density_mode;
-  char _pad[7];
+  char _pad[3];
+  struct CurveMapping *curve_parameter_falloff;
 } BrushCurvesSculptSettings;
 
 typedef struct Brush {
+  DNA_DEFINE_CXX_METHODS(Brush)
+
   ID id;
 
   struct BrushClone clone;
@@ -436,7 +437,3 @@ typedef struct PaintCurve {
   /** Index where next point will be added. */
   int add_index;
 } PaintCurve;
-
-#ifdef __cplusplus
-}
-#endif

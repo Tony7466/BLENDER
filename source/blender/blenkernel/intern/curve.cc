@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -15,7 +16,12 @@
 #include "BLI_endian_switch.h"
 #include "BLI_ghash.h"
 #include "BLI_index_range.hh"
-#include "BLI_math.h"
+#include "BLI_math_base_safe.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_solvers.h"
+#include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -35,23 +41,24 @@
 #include "DNA_vfont_types.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_curveprofile.h"
 #include "BKE_displist.h"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
-#include "BKE_object.h"
-#include "BKE_vfont.h"
+#include "BKE_main.hh"
+#include "BKE_object.hh"
+#include "BKE_object_types.hh"
+#include "BKE_vfont.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "CLG_log.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 using blender::float3;
 using blender::IndexRange;
@@ -129,7 +136,9 @@ static void curve_free_data(ID *id)
 
 static void curve_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Curve *curve = (Curve *)id;
+  Curve *curve = reinterpret_cast<Curve *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->bevobj, IDWALK_CB_NOP);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->taperobj, IDWALK_CB_NOP);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->textoncurve, IDWALK_CB_NOP);
@@ -141,6 +150,10 @@ static void curve_foreach_id(ID *id, LibraryForeachIDData *data)
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->vfontb, IDWALK_CB_USER);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->vfonti, IDWALK_CB_USER);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->vfontbi, IDWALK_CB_USER);
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, curve->ipo, IDWALK_CB_USER);
+  }
 }
 
 static void curve_blend_write(BlendWriter *writer, ID *id, const void *id_address)
@@ -158,9 +171,6 @@ static void curve_blend_write(BlendWriter *writer, ID *id, const void *id_addres
 
   /* direct data */
   BLO_write_pointer_array(writer, cu->totcol, cu->mat);
-  if (cu->adt) {
-    BKE_animdata_blend_write(writer, cu->adt);
-  }
 
   if (cu->vfont) {
     BLO_write_raw(writer, cu->len + 1, cu->str);
@@ -206,8 +216,6 @@ static void switch_endian_knots(Nurb *nu)
 static void curve_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Curve *cu = (Curve *)id;
-  BLO_read_data_address(reader, &cu->adt);
-  BKE_animdata_blend_read_data(reader, cu->adt);
 
   /* Protect against integer overflow vulnerability. */
   CLAMP(cu->len_char32, 0, INT_MAX - 4);
@@ -266,50 +274,13 @@ static void curve_blend_read_data(BlendDataReader *reader, ID *id)
   }
 }
 
-static void curve_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  Curve *cu = (Curve *)id;
-  for (int a = 0; a < cu->totcol; a++) {
-    BLO_read_id_address(reader, cu->id.lib, &cu->mat[a]);
-  }
-
-  BLO_read_id_address(reader, cu->id.lib, &cu->bevobj);
-  BLO_read_id_address(reader, cu->id.lib, &cu->taperobj);
-  BLO_read_id_address(reader, cu->id.lib, &cu->textoncurve);
-  BLO_read_id_address(reader, cu->id.lib, &cu->vfont);
-  BLO_read_id_address(reader, cu->id.lib, &cu->vfontb);
-  BLO_read_id_address(reader, cu->id.lib, &cu->vfonti);
-  BLO_read_id_address(reader, cu->id.lib, &cu->vfontbi);
-
-  BLO_read_id_address(reader, cu->id.lib, &cu->ipo); /* XXX deprecated - old animation system */
-  BLO_read_id_address(reader, cu->id.lib, &cu->key);
-}
-
-static void curve_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Curve *cu = (Curve *)id;
-  for (int a = 0; a < cu->totcol; a++) {
-    BLO_expand(expander, cu->mat[a]);
-  }
-
-  BLO_expand(expander, cu->vfont);
-  BLO_expand(expander, cu->vfontb);
-  BLO_expand(expander, cu->vfonti);
-  BLO_expand(expander, cu->vfontbi);
-  BLO_expand(expander, cu->key);
-  BLO_expand(expander, cu->ipo); /* XXX deprecated - old animation system */
-  BLO_expand(expander, cu->bevobj);
-  BLO_expand(expander, cu->taperobj);
-  BLO_expand(expander, cu->textoncurve);
-}
-
 IDTypeInfo IDType_ID_CU_LEGACY = {
     /*id_code*/ ID_CU_LEGACY,
     /*id_filter*/ FILTER_ID_CU_LEGACY,
     /*main_listbase_index*/ INDEX_ID_CU_LEGACY,
     /*struct_size*/ sizeof(Curve),
     /*name*/ "Curve",
-    /*name_plural*/ "curves",
+    /*name_plural*/ N_("curves"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_CURVE_LEGACY,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -325,8 +296,7 @@ IDTypeInfo IDType_ID_CU_LEGACY = {
 
     /*blend_write*/ curve_blend_write,
     /*blend_read_data*/ curve_blend_read_data,
-    /*blend_read_lib*/ curve_blend_read_lib,
-    /*blend_read_expand*/ curve_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -395,10 +365,20 @@ void BKE_curve_init(Curve *cu, const short curve_type)
     cu->flag |= CU_FRONT | CU_BACK;
     cu->vfont = cu->vfontb = cu->vfonti = cu->vfontbi = BKE_vfont_builtin_get();
     cu->vfont->id.us += 4;
-    cu->str = (char *)MEM_malloc_arrayN(12, sizeof(uchar), "str");
-    BLI_strncpy(cu->str, "Text", 12);
-    cu->len = cu->len_char32 = cu->pos = 4;
-    cu->strinfo = (CharInfo *)MEM_calloc_arrayN(12, sizeof(CharInfo), "strinfo new");
+
+    const char *str = DATA_("Text");
+    size_t len_bytes;
+    size_t len_char32 = BLI_strlen_utf8_ex(str, &len_bytes);
+
+    cu->str = static_cast<char *>(MEM_malloc_arrayN(len_bytes + 1, sizeof(char), "str"));
+    BLI_strncpy(cu->str, str, len_bytes + 1);
+
+    cu->len = len_bytes;
+    cu->len_char32 = cu->pos = len_char32;
+
+    cu->strinfo = static_cast<CharInfo *>(
+        MEM_calloc_arrayN((len_char32 + 1), sizeof(CharInfo), "strinfo new"));
+
     cu->totbox = cu->actbox = 1;
     cu->tb = (TextBox *)MEM_calloc_arrayN(MAXTEXTBOX, sizeof(TextBox), "textbox");
     cu->tb[0].w = cu->tb[0].h = 0.0;
@@ -409,6 +389,9 @@ void BKE_curve_init(Curve *cu, const short curve_type)
     cu->resolv = 4;
   }
   cu->bevel_profile = nullptr;
+  /* Initialize the offset to 1.0, to compensate for it being set to -1.0
+   * in the property getter. */
+  cu->offset = 1.0f;
 }
 
 Curve *BKE_curve_add(Main *bmain, const char *name, int type)
@@ -491,47 +474,20 @@ void BKE_curve_type_test(Object *ob)
   }
 }
 
-BoundBox *BKE_curve_boundbox_get(Object *ob)
-{
-  /* This is Object-level data access,
-   * DO NOT touch to Mesh's bb, would be totally thread-unsafe. */
-  if (ob->runtime.bb == nullptr || ob->runtime.bb->flag & BOUNDBOX_DIRTY) {
-    Curve *cu = (Curve *)ob->data;
-    float min[3], max[3];
-
-    INIT_MINMAX(min, max);
-    if (!BKE_curve_minmax(cu, true, min, max)) {
-      copy_v3_fl(min, -1.0f);
-      copy_v3_fl(max, 1.0f);
-    }
-
-    if (ob->runtime.bb == nullptr) {
-      ob->runtime.bb = (BoundBox *)MEM_mallocN(sizeof(*ob->runtime.bb), __func__);
-    }
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
-    ob->runtime.bb->flag &= ~BOUNDBOX_DIRTY;
-  }
-
-  return ob->runtime.bb;
-}
-
 void BKE_curve_texspace_calc(Curve *cu)
 {
   if (cu->texspace_flag & CU_TEXSPACE_FLAG_AUTO) {
-    float min[3], max[3];
-
-    INIT_MINMAX(min, max);
-    if (!BKE_curve_minmax(cu, true, min, max)) {
-      min[0] = min[1] = min[2] = -1.0f;
-      max[0] = max[1] = max[2] = 1.0f;
+    std::optional<blender::Bounds<blender::float3>> bounds = BKE_curve_minmax(cu, true);
+    if (!bounds) {
+      bounds = blender::Bounds<blender::float3>{float3(-FLT_MAX), -float3(FLT_MAX)};
     }
 
     float texspace_location[3], texspace_size[3];
-    mid_v3_v3v3(texspace_location, min, max);
+    mid_v3_v3v3(texspace_location, bounds->min, bounds->max);
 
-    texspace_size[0] = (max[0] - min[0]) / 2.0f;
-    texspace_size[1] = (max[1] - min[1]) / 2.0f;
-    texspace_size[2] = (max[2] - min[2]) / 2.0f;
+    texspace_size[0] = (bounds->max[0] - bounds->min[0]) / 2.0f;
+    texspace_size[1] = (bounds->max[1] - bounds->min[1]) / 2.0f;
+    texspace_size[2] = (bounds->max[2] - bounds->min[2]) / 2.0f;
 
     for (int a = 0; a < 3; a++) {
       if (texspace_size[a] == 0.0f) {
@@ -555,7 +511,8 @@ void BKE_curve_texspace_calc(Curve *cu)
 void BKE_curve_texspace_ensure(Curve *cu)
 {
   if ((cu->texspace_flag & CU_TEXSPACE_FLAG_AUTO) &&
-      (cu->texspace_flag & CU_TEXSPACE_FLAG_AUTO_EVALUATED) == 0) {
+      (cu->texspace_flag & CU_TEXSPACE_FLAG_AUTO_EVALUATED) == 0)
+  {
     BKE_curve_texspace_calc(cu);
   }
 }
@@ -760,7 +717,7 @@ void BKE_nurb_project_2d(Nurb *nu)
   }
 }
 
-void BKE_nurb_minmax(const Nurb *nu, bool use_radius, float min[3], float max[3])
+static void calc_nurb_minmax(const Nurb *nu, bool use_radius, float min[3], float max[3])
 {
   BezTriple *bezt;
   BPoint *bp;
@@ -1057,7 +1014,7 @@ BPoint *BKE_nurb_bpoint_get_prev(Nurb *nu, BPoint *bp)
   return bp_prev;
 }
 
-void BKE_nurb_bezt_calc_normal(struct Nurb * /*nu*/, BezTriple *bezt, float r_normal[3])
+void BKE_nurb_bezt_calc_normal(Nurb * /*nu*/, BezTriple *bezt, float r_normal[3])
 {
   /* calculate the axis matrix from the spline */
   float dir_prev[3], dir_next[3];
@@ -1072,7 +1029,7 @@ void BKE_nurb_bezt_calc_normal(struct Nurb * /*nu*/, BezTriple *bezt, float r_no
   normalize_v3(r_normal);
 }
 
-void BKE_nurb_bezt_calc_plane(struct Nurb *nu, BezTriple *bezt, float r_plane[3])
+void BKE_nurb_bezt_calc_plane(Nurb *nu, BezTriple *bezt, float r_plane[3])
 {
   float dir_prev[3], dir_next[3];
 
@@ -1109,7 +1066,7 @@ void BKE_nurb_bezt_calc_plane(struct Nurb *nu, BezTriple *bezt, float r_plane[3]
   normalize_v3(r_plane);
 }
 
-void BKE_nurb_bpoint_calc_normal(struct Nurb *nu, BPoint *bp, float r_normal[3])
+void BKE_nurb_bpoint_calc_normal(Nurb *nu, BPoint *bp, float r_normal[3])
 {
   BPoint *bp_prev = BKE_nurb_bpoint_get_prev(nu, bp);
   BPoint *bp_next = BKE_nurb_bpoint_get_next(nu, bp);
@@ -1132,7 +1089,7 @@ void BKE_nurb_bpoint_calc_normal(struct Nurb *nu, BPoint *bp, float r_normal[3])
   normalize_v3(r_normal);
 }
 
-void BKE_nurb_bpoint_calc_plane(struct Nurb *nu, BPoint *bp, float r_plane[3])
+void BKE_nurb_bpoint_calc_plane(Nurb *nu, BPoint *bp, float r_plane[3])
 {
   BPoint *bp_prev = BKE_nurb_bpoint_get_prev(nu, bp);
   BPoint *bp_next = BKE_nurb_bpoint_get_next(nu, bp);
@@ -1899,7 +1856,7 @@ struct BevelSort {
 
 static int vergxcobev(const void *a1, const void *a2)
 {
-  const struct BevelSort *x1 = (BevelSort *)a1, *x2 = (BevelSort *)a2;
+  const BevelSort *x1 = (BevelSort *)a1, *x2 = (BevelSort *)a2;
 
   if (x1->left > x2->left) {
     return 1;
@@ -1936,7 +1893,7 @@ static void calc_bevel_sin_cos(
     t02 = M_PI_2;
   }
   else {
-    t02 = saacos(t02) / 2.0f;
+    t02 = safe_acosf(t02) / 2.0f;
   }
 
   t02 = sinf(t02);
@@ -2097,10 +2054,10 @@ static void bevel_list_calc_bisect(BevList *bl)
   }
 
   /* In the unlikely situation that handles define a zeroed direction,
-   * calculate it from the adjacent points, see T80742.
+   * calculate it from the adjacent points, see #80742.
    *
    * Only do this as a fallback since we typically want the end-point directions
-   * to be exactly aligned with the handles at the end-point, see T83117. */
+   * to be exactly aligned with the handles at the end-point, see #83117. */
   if (is_cyclic == false) {
     bevp0 = &bl->bevpoints[0];
     bevp1 = &bl->bevpoints[1];
@@ -2161,7 +2118,10 @@ static void bevel_list_apply_tilt(BevList *bl)
     bevp2++;
   }
 }
-/* smooth quats, this function should be optimized, it can get slow with many iterations. */
+/**
+ * Smooth quaternions, this function should be optimized,
+ * it can get slow with many iterations.
+ */
 static void bevel_list_smooth(BevList *bl, int smooth_iter)
 {
   BevPoint *bevp2, *bevp1, *bevp0;
@@ -2179,8 +2139,8 @@ static void bevel_list_smooth(BevList *bl, int smooth_iter)
     nr = bl->nr;
 
     if (bl->poly == -1) { /* check its not cyclic */
-      /* skip the first point */
-      /* bevp0 = bevp1; */
+      /* Skip the first point. */
+      // bevp0 = bevp1;
       bevp1 = bevp2;
       bevp2++;
       nr--;
@@ -2194,7 +2154,7 @@ static void bevel_list_smooth(BevList *bl, int smooth_iter)
     copy_qt_qt(bevp0_quat, bevp0->quat);
 
     while (nr--) {
-      /* interpolate quats */
+      /* Interpolate quaternions. */
       float zaxis[3] = {0, 0, 1}, cross[3], q2[4];
       interp_qt_qtqt(q, bevp0_quat, bevp2->quat, 0.5);
       normalize_qt(q);
@@ -2209,7 +2169,7 @@ static void bevel_list_smooth(BevList *bl, int smooth_iter)
       interp_qt_qtqt(bevp1->quat, bevp1->quat, q, 0.5);
       normalize_qt(bevp1->quat);
 
-      /* bevp0 = bevp1; */ /* UNUSED */
+      // bevp0 = bevp1; /* UNUSED */
       bevp1 = bevp2;
       bevp2++;
     }
@@ -2251,8 +2211,8 @@ static void make_bevel_list_3D_minimum_twist(BevList *bl)
   int nr;
   float q[4];
   const bool is_cyclic = bl->poly != -1;
-  /* NOTE(@campbellbarton): For non-cyclic curves only initialize the first direction
-   * (via `vec_to_quat`), necessary for symmetry, see T71137.
+  /* NOTE(@ideasman42): For non-cyclic curves only initialize the first direction
+   * (via `vec_to_quat`), necessary for symmetry, see #71137.
    * Otherwise initialize the first and second points before propagating rotation forward.
    * This is historical as changing this can cause significantly different output.
    * Specifically: `deform_modifiers` test: (`CurveMeshDeform`).
@@ -2309,7 +2269,7 @@ static void make_bevel_list_3D_minimum_twist(BevList *bl)
     bevp_last = bevp_first;
     bevp_last--;
 
-    /* quats and vec's are normalized, should not need to re-normalize */
+    /* Quaternions and vectors are normalized, should not need to re-normalize. */
     mul_qt_v3(bevp_first->quat, vec_1);
     mul_qt_v3(bevp_last->quat, vec_2);
     normalize_v3(vec_1);
@@ -2410,7 +2370,7 @@ static void make_bevel_list_3D_tangent(BevList *bl)
     normalize_v3(cross_tmp);
     tri_to_quat(bevp1->quat, zero, cross_tmp, bevp1->tan); /* XXX: could be faster. */
 
-    /* bevp0 = bevp1; */ /* UNUSED */
+    // bevp0 = bevp1; /* UNUSED */
     bevp1 = bevp2;
     bevp2++;
   }
@@ -2480,7 +2440,7 @@ static void make_bevel_list_segment_2D(BevList *bl)
 
 static void make_bevel_list_2D(BevList *bl)
 {
-  /* NOTE(@campbellbarton): `bevp->dir` and `bevp->quat` are not needed for beveling but are
+  /* NOTE(@ideasman42): `bevp->dir` and `bevp->quat` are not needed for beveling but are
    * used when making a path from a 2D curve, therefore they need to be set. */
 
   BevPoint *bevp0, *bevp1, *bevp2;
@@ -2593,7 +2553,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
   const float threshold = 0.00001f;
   float min, inp;
   float *seglen = nullptr;
-  struct BevelSort *sortdata, *sd, *sd1;
+  BevelSort *sortdata, *sd, *sd1;
   int a, b, nr, poly, resolu = 0, len = 0, segcount;
   int *segbevcount;
   bool do_tilt, do_radius, do_weight;
@@ -2605,7 +2565,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
                                cu->bevfac1_mapping, CU_BEVFAC_MAP_SEGMENT, CU_BEVFAC_MAP_SPLINE) ||
                            ELEM(cu->bevfac2_mapping, CU_BEVFAC_MAP_SEGMENT, CU_BEVFAC_MAP_SPLINE);
 
-  bev = &ob->runtime.curve_cache->bev;
+  bev = &ob->runtime->curve_cache->bev;
 
 #if 0
   /* do we need to calculate the radius for each point? */
@@ -2615,7 +2575,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
 
   /* STEP 1: MAKE POLYS */
 
-  BKE_curve_bevelList_free(&ob->runtime.curve_cache->bev);
+  BKE_curve_bevelList_free(&ob->runtime->curve_cache->bev);
   if (cu->editnurb && ob->type != OB_FONT) {
     is_editmode = true;
   }
@@ -2906,7 +2866,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
       continue;
     }
 
-    /* Scale the threshold so high resolution shapes don't get over reduced, see: T49850. */
+    /* Scale the threshold so high resolution shapes don't get over reduced, see: #49850. */
     const float threshold_resolu = 0.00001f / resolu;
     const bool is_cyclic = bl->poly != -1;
     nr = bl->nr;
@@ -2986,7 +2946,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
 
   /* find extreme left points, also test (turning) direction */
   if (poly > 0) {
-    sd = sortdata = (BevelSort *)MEM_malloc_arrayN(poly, sizeof(struct BevelSort), __func__);
+    sd = sortdata = (BevelSort *)MEM_malloc_arrayN(poly, sizeof(BevelSort), __func__);
     LISTBASE_FOREACH (BevList *, bl, bev) {
       if (bl->poly > 0) {
         BevPoint *bevp;
@@ -3033,7 +2993,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
         sd++;
       }
     }
-    qsort(sortdata, poly, sizeof(struct BevelSort), vergxcobev);
+    qsort(sortdata, poly, sizeof(BevelSort), vergxcobev);
 
     sd = sortdata + 1;
     for (a = 1; a < poly; a++, sd++) {
@@ -3284,10 +3244,11 @@ static void calchandleNurb_intern(BezTriple *bezt,
   }
 
   if (skip_align ||
-      /* When one handle is free, aligning makes no sense, see: T35952 */
+      /* When one handle is free, aligning makes no sense, see: #35952 */
       ELEM(HD_FREE, bezt->h1, bezt->h2) ||
       /* Also when no handles are aligned, skip this step. */
-      (!ELEM(HD_ALIGN, bezt->h1, bezt->h2) && !ELEM(HD_ALIGN_DOUBLESIDE, bezt->h1, bezt->h2))) {
+      (!ELEM(HD_ALIGN, bezt->h1, bezt->h2) && !ELEM(HD_ALIGN_DOUBLESIDE, bezt->h1, bezt->h2)))
+  {
     /* Handles need to be updated during animation and applying stuff like hooks,
      * but in such situations it's quite difficult to distinguish in which order
      * align handles should be aligned so skip them for now. */
@@ -3380,7 +3341,7 @@ static void calchandlesNurb_intern(Nurb *nu, eBezTriple_Flag handle_sel_flag, bo
         next = nullptr;
       }
     }
-    else {
+    else if (next != nullptr) {
       next++;
     }
 
@@ -4056,32 +4017,49 @@ void BKE_nurb_handle_calc_simple_auto(Nurb *nu, BezTriple *bezt)
   }
 }
 
-void BKE_nurb_bezt_handle_test(BezTriple *bezt,
-                               const eBezTriple_Flag__Alias sel_flag,
-                               const bool use_handle,
-                               const bool use_around_local)
-{
-  short flag = 0;
-
 #define SEL_F1 (1 << 0)
 #define SEL_F2 (1 << 1)
 #define SEL_F3 (1 << 2)
 
-  if (use_handle) {
-    if (bezt->f1 & sel_flag) {
-      flag |= SEL_F1;
-    }
-    if (bezt->f2 & sel_flag) {
-      flag |= SEL_F2;
-    }
-    if (bezt->f3 & sel_flag) {
-      flag |= SEL_F3;
-    }
-  }
-  else {
-    flag = (bezt->f2 & sel_flag) ? (SEL_F1 | SEL_F2 | SEL_F3) : 0;
-  }
+short BKE_nurb_bezt_handle_test_calc_flag(const BezTriple *bezt,
+                                          const eBezTriple_Flag__Alias sel_flag,
+                                          const eNurbHandleTest_Mode handle_mode)
+{
+  short flag = 0;
 
+  switch (handle_mode) {
+    case NURB_HANDLE_TEST_KNOT_ONLY: {
+      flag = (bezt->f2 & sel_flag) ? (SEL_F1 | SEL_F2 | SEL_F3) : 0;
+      break;
+    }
+    case NURB_HANDLE_TEST_KNOT_OR_EACH:
+      if (bezt->f2 & sel_flag) {
+        flag = (bezt->f2 & sel_flag) ? (SEL_F1 | SEL_F2 | SEL_F3) : 0;
+        break;
+      }
+      [[fallthrough]];
+    case NURB_HANDLE_TEST_EACH: {
+      if (bezt->f1 & sel_flag) {
+        flag |= SEL_F1;
+      }
+      if (bezt->f2 & sel_flag) {
+        flag |= SEL_F2;
+      }
+      if (bezt->f3 & sel_flag) {
+        flag |= SEL_F3;
+      }
+      break;
+    }
+  }
+  return flag;
+}
+
+void BKE_nurb_bezt_handle_test(BezTriple *bezt,
+                               const eBezTriple_Flag__Alias sel_flag,
+                               const eNurbHandleTest_Mode handle_mode,
+                               const bool use_around_local)
+{
+  short flag = BKE_nurb_bezt_handle_test_calc_flag(bezt, sel_flag, handle_mode);
   if (use_around_local) {
     flag &= ~SEL_F2;
   }
@@ -4106,13 +4084,15 @@ void BKE_nurb_bezt_handle_test(BezTriple *bezt,
       }
     }
   }
+}
 
 #undef SEL_F1
 #undef SEL_F2
 #undef SEL_F3
-}
 
-void BKE_nurb_handles_test(Nurb *nu, const bool use_handle, const bool use_around_local)
+void BKE_nurb_handles_test(Nurb *nu,
+                           const eNurbHandleTest_Mode handle_mode,
+                           const bool use_around_local)
 {
   BezTriple *bezt;
   int a;
@@ -4124,7 +4104,7 @@ void BKE_nurb_handles_test(Nurb *nu, const bool use_handle, const bool use_aroun
   bezt = nu->bezt;
   a = nu->pntsu;
   while (a--) {
-    BKE_nurb_bezt_handle_test(bezt, SELECT, use_handle, use_around_local);
+    BKE_nurb_bezt_handle_test(bezt, SELECT, handle_mode, use_around_local);
     bezt++;
   }
 
@@ -4219,7 +4199,9 @@ void BKE_nurbList_handles_autocalc(ListBase *editnurb, uint8_t flag)
   }
 }
 
-void BKE_nurbList_handles_set(ListBase *editnurb, const char code)
+void BKE_nurbList_handles_set(ListBase *editnurb,
+                              eNurbHandleTest_Mode handle_mode,
+                              const char code)
 {
   BezTriple *bezt;
   int a;
@@ -4230,11 +4212,12 @@ void BKE_nurbList_handles_set(ListBase *editnurb, const char code)
         bezt = nu->bezt;
         a = nu->pntsu;
         while (a--) {
-          if ((bezt->f1 & SELECT) || (bezt->f3 & SELECT)) {
-            if (bezt->f1 & SELECT) {
+          const short flag = BKE_nurb_bezt_handle_test_calc_flag(bezt, SELECT, handle_mode);
+          if ((flag & (1 << 0)) || (flag & (1 << 2))) {
+            if (flag & (1 << 0)) {
               bezt->h1 = code;
             }
-            if (bezt->f3 & SELECT) {
+            if (flag & (1 << 2)) {
               bezt->h2 = code;
             }
             if (bezt->h1 != bezt->h2) {
@@ -4271,8 +4254,9 @@ void BKE_nurbList_handles_set(ListBase *editnurb, const char code)
           bezt = nu->bezt;
           a = nu->pntsu;
           while (a--) {
-            if (((bezt->f1 & SELECT) && bezt->h1 != HD_FREE) ||
-                ((bezt->f3 & SELECT) && bezt->h2 != HD_FREE)) {
+            const short flag = BKE_nurb_bezt_handle_test_calc_flag(bezt, SELECT, handle_mode);
+            if (((flag & (1 << 0)) && bezt->h1 != HD_FREE) ||
+                ((flag & (1 << 2)) && bezt->h2 != HD_FREE)) {
               h_new = HD_AUTO;
               break;
             }
@@ -4287,10 +4271,11 @@ void BKE_nurbList_handles_set(ListBase *editnurb, const char code)
         bezt = nu->bezt;
         a = nu->pntsu;
         while (a--) {
-          if (bezt->f1 & SELECT) {
+          const short flag = BKE_nurb_bezt_handle_test_calc_flag(bezt, SELECT, handle_mode);
+          if (flag & (1 << 0)) {
             bezt->h1 = h_new;
           }
-          if (bezt->f3 & SELECT) {
+          if (flag & (1 << 2)) {
             bezt->h2 = h_new;
           }
 
@@ -4820,7 +4805,7 @@ bool BKE_nurb_check_valid_uv(const Nurb *nu)
   return true;
 }
 
-bool BKE_nurb_order_clamp_u(struct Nurb *nu)
+bool BKE_nurb_order_clamp_u(Nurb *nu)
 {
   bool changed = false;
   if (nu->pntsu < nu->orderu) {
@@ -4830,7 +4815,7 @@ bool BKE_nurb_order_clamp_u(struct Nurb *nu)
   return changed;
 }
 
-bool BKE_nurb_order_clamp_v(struct Nurb *nu)
+bool BKE_nurb_order_clamp_v(Nurb *nu)
 {
   bool changed = false;
   if (nu->pntsv < nu->orderv) {
@@ -5108,10 +5093,23 @@ void BKE_curve_nurb_vert_active_validate(Curve *cu)
   }
 }
 
-bool BKE_curve_minmax(Curve *cu, bool use_radius, float min[3], float max[3])
+static std::optional<blender::Bounds<blender::float3>> calc_nurblist_bounds(const ListBase *nurbs,
+                                                                            const bool use_radius)
 {
-  ListBase *nurb_lb = BKE_curve_nurbs_get(cu);
-  ListBase temp_nurb_lb = {nullptr, nullptr};
+  if (BLI_listbase_is_empty(nurbs)) {
+    return std::nullopt;
+  }
+  float3 min(std::numeric_limits<float>::max());
+  float3 max(std::numeric_limits<float>::lowest());
+  LISTBASE_FOREACH (const Nurb *, nu, nurbs) {
+    calc_nurb_minmax(nu, use_radius, min, max);
+  }
+  return blender::Bounds<float3>{min, max};
+}
+
+std::optional<blender::Bounds<blender::float3>> BKE_curve_minmax(const Curve *cu, bool use_radius)
+{
+  const ListBase *nurb_lb = BKE_curve_nurbs_get_for_read(cu);
   const bool is_font = BLI_listbase_is_empty(nurb_lb) && (cu->len != 0);
   /* For font curves we generate temp list of splines.
    *
@@ -5119,18 +5117,20 @@ bool BKE_curve_minmax(Curve *cu, bool use_radius, float min[3], float max[3])
    * often, and it's the only way to get meaningful bounds for fonts.
    */
   if (is_font) {
-    nurb_lb = &temp_nurb_lb;
-    BKE_vfont_to_curve_ex(nullptr, cu, FO_EDIT, nurb_lb, nullptr, nullptr, nullptr, nullptr);
-    use_radius = false;
+    ListBase temp_nurb_lb{};
+    BKE_vfont_to_curve_ex(nullptr,
+                          const_cast<Curve *>(cu),
+                          FO_EDIT,
+                          &temp_nurb_lb,
+                          nullptr,
+                          nullptr,
+                          nullptr,
+                          nullptr);
+    BLI_SCOPED_DEFER([&]() { BKE_nurbList_free(&temp_nurb_lb); });
+    return calc_nurblist_bounds(&temp_nurb_lb, false);
   }
-  /* Do bounding box based on splines. */
-  LISTBASE_FOREACH (const Nurb *, nu, nurb_lb) {
-    BKE_nurb_minmax(nu, use_radius, min, max);
-  }
-  const bool result = (BLI_listbase_is_empty(nurb_lb) == false);
-  /* Cleanup if needed. */
-  BKE_nurbList_free(&temp_nurb_lb);
-  return result;
+
+  return calc_nurblist_bounds(nurb_lb, use_radius);
 }
 
 bool BKE_curve_center_median(Curve *cu, float cent[3])
@@ -5168,18 +5168,6 @@ bool BKE_curve_center_median(Curve *cu, float cent[3])
   }
 
   return (total != 0);
-}
-
-bool BKE_curve_center_bounds(Curve *cu, float cent[3])
-{
-  float min[3], max[3];
-  INIT_MINMAX(min, max);
-  if (BKE_curve_minmax(cu, false, min, max)) {
-    mid_v3_v3v3(cent, min, max);
-    return true;
-  }
-
-  return false;
 }
 
 void BKE_curve_transform_ex(Curve *cu,
@@ -5311,7 +5299,7 @@ void BKE_curve_material_index_remove(Curve *cu, int index)
   const int curvetype = BKE_curve_type_get(cu);
 
   if (curvetype == OB_FONT) {
-    struct CharInfo *info = cu->strinfo;
+    CharInfo *info = cu->strinfo;
     for (int i = cu->len_char32 - 1; i >= 0; i--, info++) {
       if (info->mat_nr && info->mat_nr >= index) {
         info->mat_nr--;
@@ -5332,7 +5320,7 @@ bool BKE_curve_material_index_used(const Curve *cu, int index)
   const int curvetype = BKE_curve_type_get(cu);
 
   if (curvetype == OB_FONT) {
-    const struct CharInfo *info = cu->strinfo;
+    const CharInfo *info = cu->strinfo;
     for (int i = cu->len_char32 - 1; i >= 0; i--, info++) {
       if (info->mat_nr == index) {
         return true;
@@ -5355,7 +5343,7 @@ void BKE_curve_material_index_clear(Curve *cu)
   const int curvetype = BKE_curve_type_get(cu);
 
   if (curvetype == OB_FONT) {
-    struct CharInfo *info = cu->strinfo;
+    CharInfo *info = cu->strinfo;
     for (int i = cu->len_char32 - 1; i >= 0; i--, info++) {
       info->mat_nr = 0;
     }
@@ -5413,7 +5401,7 @@ void BKE_curve_material_remap(Curve *cu, const uint *remap, uint remap_len)
   ((void)0)
 
   if (curvetype == OB_FONT) {
-    struct CharInfo *strinfo;
+    CharInfo *strinfo;
     int charinfo_len, i;
 
     if (cu->editfont) {
@@ -5427,11 +5415,7 @@ void BKE_curve_material_remap(Curve *cu, const uint *remap, uint remap_len)
     }
 
     for (i = 0; i <= charinfo_len; i++) {
-      if (strinfo[i].mat_nr > 0) {
-        strinfo[i].mat_nr -= 1;
-        MAT_NR_REMAP(strinfo[i].mat_nr);
-        strinfo[i].mat_nr += 1;
-      }
+      MAT_NR_REMAP(strinfo[i].mat_nr);
     }
   }
   else {
@@ -5461,9 +5445,7 @@ void BKE_curve_smooth_flag_set(Curve *cu, const bool use_smooth)
   }
 }
 
-void BKE_curve_rect_from_textbox(const struct Curve *cu,
-                                 const struct TextBox *tb,
-                                 struct rctf *r_rect)
+void BKE_curve_rect_from_textbox(const Curve *cu, const TextBox *tb, rctf *r_rect)
 {
   r_rect->xmin = cu->xof + tb->x;
   r_rect->ymax = cu->yof + tb->y + cu->fsize;
@@ -5528,6 +5510,7 @@ void BKE_curve_eval_geometry(Depsgraph *depsgraph, Curve *curve)
 }
 
 /* Draw Engine */
+
 void (*BKE_curve_batch_cache_dirty_tag_cb)(Curve *cu, int mode) = nullptr;
 void (*BKE_curve_batch_cache_free_cb)(Curve *cu) = nullptr;
 

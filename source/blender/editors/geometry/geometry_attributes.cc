@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgeometry
@@ -11,35 +12,172 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLI_color.hh"
+
 #include "BKE_attribute.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object_deform.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "BLI_string.h"
 
-#include "DEG_depsgraph.h"
+#include "BLT_translation.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "DEG_depsgraph.hh"
 
-#include "ED_geometry.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+
+#include "ED_geometry.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
 
 #include "geometry_intern.hh"
 
 namespace blender::ed::geometry {
+
+StringRefNull rna_property_name_for_type(const eCustomDataType type)
+{
+  switch (type) {
+    case CD_PROP_FLOAT:
+      return "value_float";
+    case CD_PROP_FLOAT2:
+      return "value_float_vector_2d";
+    case CD_PROP_FLOAT3:
+      return "value_float_vector_3d";
+    case CD_PROP_COLOR:
+    case CD_PROP_BYTE_COLOR:
+      return "value_color";
+    case CD_PROP_BOOL:
+      return "value_bool";
+    case CD_PROP_INT8:
+    case CD_PROP_INT32:
+      return "value_int";
+    default:
+      BLI_assert_unreachable();
+      return "";
+  }
+}
+
+PropertyRNA *rna_property_for_type(PointerRNA &ptr, const eCustomDataType type)
+{
+  return RNA_struct_find_property(&ptr, rna_property_name_for_type(type).c_str());
+}
+
+void register_rna_properties_for_attribute_types(StructRNA &srna)
+{
+  static blender::float4 color_default(1);
+
+  RNA_def_float(&srna, "value_float", 0.0f, -FLT_MAX, FLT_MAX, "Value", "", -FLT_MAX, FLT_MAX);
+  RNA_def_float_array(&srna,
+                      "value_float_vector_2d",
+                      2,
+                      nullptr,
+                      -FLT_MAX,
+                      FLT_MAX,
+                      "Value",
+                      "",
+                      -FLT_MAX,
+                      FLT_MAX);
+  RNA_def_float_array(&srna,
+                      "value_float_vector_3d",
+                      3,
+                      nullptr,
+                      -FLT_MAX,
+                      FLT_MAX,
+                      "Value",
+                      "",
+                      -FLT_MAX,
+                      FLT_MAX);
+  RNA_def_int(&srna, "value_int", 0, INT_MIN, INT_MAX, "Value", "", INT_MIN, INT_MAX);
+  RNA_def_float_color(
+      &srna, "value_color", 4, color_default, -FLT_MAX, FLT_MAX, "Value", "", 0.0f, 1.0f);
+  RNA_def_boolean(&srna, "value_bool", false, "Value", "");
+}
+
+GPointer rna_property_for_attribute_type_retrieve_value(PointerRNA &ptr,
+                                                        const eCustomDataType type,
+                                                        void *buffer)
+{
+  const StringRefNull prop_name = rna_property_name_for_type(type);
+  switch (type) {
+    case CD_PROP_FLOAT:
+      *static_cast<float *>(buffer) = RNA_float_get(&ptr, prop_name.c_str());
+      break;
+    case CD_PROP_FLOAT2:
+      RNA_float_get_array(&ptr, prop_name.c_str(), static_cast<float *>(buffer));
+      break;
+    case CD_PROP_FLOAT3:
+      RNA_float_get_array(&ptr, prop_name.c_str(), static_cast<float *>(buffer));
+      break;
+    case CD_PROP_COLOR:
+      RNA_float_get_array(&ptr, prop_name.c_str(), static_cast<float *>(buffer));
+      break;
+    case CD_PROP_BYTE_COLOR:
+      ColorGeometry4f value;
+      RNA_float_get_array(&ptr, prop_name.c_str(), value);
+      *static_cast<ColorGeometry4b *>(buffer) = value.encode();
+      break;
+    case CD_PROP_BOOL:
+      *static_cast<bool *>(buffer) = RNA_boolean_get(&ptr, prop_name.c_str());
+      break;
+    case CD_PROP_INT8:
+      *static_cast<int8_t *>(buffer) = RNA_int_get(&ptr, prop_name.c_str());
+      break;
+    case CD_PROP_INT32:
+      *static_cast<int32_t *>(buffer) = RNA_int_get(&ptr, prop_name.c_str());
+      break;
+    default:
+      BLI_assert_unreachable();
+  }
+  return GPointer(bke::custom_data_type_to_cpp_type(type), buffer);
+}
+
+void rna_property_for_attribute_type_set_value(PointerRNA &ptr,
+                                               PropertyRNA &prop,
+                                               const GPointer value)
+{
+  switch (bke::cpp_type_to_custom_data_type(*value.type())) {
+    case CD_PROP_FLOAT:
+      RNA_property_float_set(&ptr, &prop, *value.get<float>());
+      break;
+    case CD_PROP_FLOAT2:
+      RNA_property_float_set_array(&ptr, &prop, *value.get<float2>());
+      break;
+    case CD_PROP_FLOAT3:
+      RNA_property_float_set_array(&ptr, &prop, *value.get<float3>());
+      break;
+    case CD_PROP_BYTE_COLOR:
+      RNA_property_float_set_array(&ptr, &prop, value.get<ColorGeometry4b>()->decode());
+      break;
+    case CD_PROP_COLOR:
+      RNA_property_float_set_array(&ptr, &prop, *value.get<ColorGeometry4f>());
+      break;
+    case CD_PROP_BOOL:
+      RNA_property_boolean_set(&ptr, &prop, *value.get<bool>());
+      break;
+    case CD_PROP_INT8:
+      RNA_property_int_set(&ptr, &prop, *value.get<int8_t>());
+      break;
+    case CD_PROP_INT32:
+      RNA_property_int_set(&ptr, &prop, *value.get<int32_t>());
+      break;
+    default:
+      BLI_assert_unreachable();
+  }
+}
 
 /*********************** Attribute Operators ************************/
 
@@ -73,12 +211,12 @@ static const EnumPropertyItem *geometry_attribute_domain_itemf(bContext *C,
                                                                bool *r_free)
 {
   if (C == nullptr) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   Object *ob = ED_object_context(C);
   if (ob == nullptr) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   return rna_enum_attribute_domain_itemf(static_cast<ID *>(ob->data), false, r_free);
@@ -107,34 +245,14 @@ static int geometry_attribute_add_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void next_color_attribute(ID *id, const StringRefNull name, bool is_render)
+static int geometry_attribute_add_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  const CustomDataLayer *layer = BKE_id_attributes_color_find(id, name.c_str());
-  int index = BKE_id_attribute_to_index(id, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
-
-  index++;
-
-  layer = BKE_id_attribute_from_index(id, index, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
-
-  if (!layer) {
-    index = 0;
-    layer = BKE_id_attribute_from_index(id, index, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+  PropertyRNA *prop;
+  prop = RNA_struct_find_property(op->ptr, "name");
+  if (!RNA_property_is_set(op->ptr, prop)) {
+    RNA_property_string_set(op->ptr, prop, DATA_("Attribute"));
   }
-
-  if (layer) {
-    if (is_render) {
-      BKE_id_attributes_active_color_set(id, layer->name);
-    }
-    else {
-      BKE_id_attributes_default_color_set(id, layer->name);
-    }
-  }
-}
-
-static void next_color_attributes(ID *id, const StringRefNull name)
-{
-  next_color_attribute(id, name, false); /* active */
-  next_color_attribute(id, name, true);  /* render */
+  return WM_operator_props_popup_confirm(C, op, event);
 }
 
 void GEOMETRY_OT_attribute_add(wmOperatorType *ot)
@@ -147,7 +265,7 @@ void GEOMETRY_OT_attribute_add(wmOperatorType *ot)
   /* api callbacks */
   ot->poll = geometry_attributes_poll;
   ot->exec = geometry_attribute_add_exec;
-  ot->invoke = WM_operator_props_popup_confirm;
+  ot->invoke = geometry_attribute_add_invoke;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -155,7 +273,10 @@ void GEOMETRY_OT_attribute_add(wmOperatorType *ot)
   /* properties */
   PropertyRNA *prop;
 
-  prop = RNA_def_string(ot->srna, "name", "Attribute", MAX_NAME, "Name", "Name of new attribute");
+  /* The default name of the new attribute can be translated if new data translation is enabled,
+   * but since the user can choose it at invoke time, the translation happens in the invoke
+   * callback instead of here. */
+  prop = RNA_def_string(ot->srna, "name", nullptr, MAX_NAME, "Name", "Name of new attribute");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_enum(ot->srna,
@@ -181,8 +302,6 @@ static int geometry_attribute_remove_exec(bContext *C, wmOperator *op)
   Object *ob = ED_object_context(C);
   ID *id = static_cast<ID *>(ob->data);
   CustomDataLayer *layer = BKE_id_attributes_active_get(id);
-
-  next_color_attributes(id, layer->name);
 
   if (!BKE_id_attribute_remove(id, layer->name, op->reports)) {
     return OPERATOR_CANCELLED;
@@ -246,9 +365,19 @@ static int geometry_color_attribute_add_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int geometry_color_attribute_add_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  PropertyRNA *prop;
+  prop = RNA_struct_find_property(op->ptr, "name");
+  if (!RNA_property_is_set(op->ptr, prop)) {
+    RNA_property_string_set(op->ptr, prop, DATA_("Color"));
+  }
+  return WM_operator_props_popup_confirm(C, op, event);
+}
+
 enum class ConvertAttributeMode {
-  Generic,
-  VertexGroup,
+  Generic = 0,
+  VertexGroup = 1,
 };
 
 static bool geometry_attribute_convert_poll(bContext *C)
@@ -295,14 +424,15 @@ static int geometry_attribute_convert_exec(bContext *C, wmOperator *op)
                                          name.c_str(),
                                          eCustomDataType(RNA_enum_get(op->ptr, "data_type")),
                                          eAttrDomain(RNA_enum_get(op->ptr, "domain")),
-                                         op->reports)) {
+                                         op->reports))
+      {
         return OPERATOR_CANCELLED;
       }
       break;
     }
     case ConvertAttributeMode::VertexGroup: {
       Array<float> src_weights(mesh->totvert);
-      VArray<float> src_varray = attributes.lookup_or_default<float>(
+      VArray<float> src_varray = *attributes.lookup_or_default<float>(
           name, ATTR_DOMAIN_POINT, 0.0f);
       src_varray.materialize(src_weights);
       attributes.remove(name);
@@ -335,10 +465,10 @@ static void geometry_color_attribute_add_ui(bContext * /*C*/, wmOperator *op)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
-  uiItemR(layout, op->ptr, "name", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "name", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(layout, op->ptr, "domain", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiItemR(layout, op->ptr, "data_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "color", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "color", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 void GEOMETRY_OT_color_attribute_add(wmOperatorType *ot)
@@ -351,7 +481,7 @@ void GEOMETRY_OT_color_attribute_add(wmOperatorType *ot)
   /* api callbacks */
   ot->poll = geometry_attributes_poll;
   ot->exec = geometry_color_attribute_add_exec;
-  ot->invoke = WM_operator_props_popup_confirm;
+  ot->invoke = geometry_color_attribute_add_invoke;
   ot->ui = geometry_color_attribute_add_ui;
 
   /* flags */
@@ -360,8 +490,11 @@ void GEOMETRY_OT_color_attribute_add(wmOperatorType *ot)
   /* properties */
   PropertyRNA *prop;
 
+  /* The default name of the new attribute can be translated if new data translation is enabled,
+   * but since the user can choose it at invoke time, the translation happens in the invoke
+   * callback instead of here. */
   prop = RNA_def_string(
-      ot->srna, "name", "Color", MAX_NAME, "Name", "Name of new color attribute");
+      ot->srna, "name", nullptr, MAX_NAME, "Name", "Name of new color attribute");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_enum(ot->srna,
@@ -435,8 +568,6 @@ static int geometry_color_attribute_remove_exec(bContext *C, wmOperator *op)
   if (active_name.empty()) {
     return OPERATOR_CANCELLED;
   }
-
-  next_color_attributes(id, active_name);
 
   if (!BKE_id_attribute_remove(id, active_name.c_str(), op->reports)) {
     return OPERATOR_CANCELLED;
@@ -564,14 +695,14 @@ static void geometry_attribute_convert_ui(bContext * /*C*/, wmOperator *op)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
-  uiItemR(layout, op->ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   const ConvertAttributeMode mode = static_cast<ConvertAttributeMode>(
       RNA_enum_get(op->ptr, "mode"));
 
   if (mode == ConvertAttributeMode::Generic) {
-    uiItemR(layout, op->ptr, "domain", 0, nullptr, ICON_NONE);
-    uiItemR(layout, op->ptr, "data_type", 0, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "domain", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "data_type", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 
@@ -591,9 +722,16 @@ static bool geometry_color_attribute_convert_poll(bContext *C)
   if (GS(id->name) != ID_ME) {
     return false;
   }
-
-  CustomDataLayer *layer = BKE_id_attributes_active_color_get(id);
-  if (layer == nullptr) {
+  const Mesh *mesh = static_cast<const Mesh *>(ob->data);
+  const char *name = mesh->active_color_attribute;
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(name);
+  if (!meta_data) {
+    return false;
+  }
+  if (!(ATTR_DOMAIN_AS_MASK(meta_data->domain) & ATTR_DOMAIN_MASK_COLOR) ||
+      !(CD_TYPE_AS_MASK(meta_data->data_type) & CD_MASK_COLOR_ALL))
+  {
     return false;
   }
 
@@ -603,10 +741,10 @@ static bool geometry_color_attribute_convert_poll(bContext *C)
 static int geometry_color_attribute_convert_exec(bContext *C, wmOperator *op)
 {
   Object *ob = ED_object_context(C);
-  ID *ob_data = static_cast<ID *>(ob->data);
-  CustomDataLayer *layer = BKE_id_attributes_active_color_get(ob_data);
-  ED_geometry_attribute_convert(static_cast<Mesh *>(ob->data),
-                                layer->name,
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
+  const char *name = mesh->active_color_attribute;
+  ED_geometry_attribute_convert(mesh,
+                                name,
                                 eCustomDataType(RNA_enum_get(op->ptr, "data_type")),
                                 eAttrDomain(RNA_enum_get(op->ptr, "domain")),
                                 op->reports);
@@ -619,9 +757,8 @@ static int geometry_color_attribute_convert_invoke(bContext *C,
 {
   Object *ob = ED_object_context(C);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-
-  const bke::AttributeMetaData meta_data = *mesh->attributes().lookup_meta_data(
-      BKE_id_attributes_active_color_get(&mesh->id)->name);
+  const char *name = mesh->active_color_attribute;
+  const bke::AttributeMetaData meta_data = *mesh->attributes().lookup_meta_data(name);
 
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "domain");
   if (!RNA_property_is_set(op->ptr, prop)) {
@@ -732,13 +869,15 @@ bool ED_geometry_attribute_convert(Mesh *mesh,
   }
 
   const std::string name_copy = name;
-  const GVArray varray = attributes.lookup_or_default(name_copy, dst_domain, dst_type);
+  const GVArray varray = *attributes.lookup_or_default(name_copy, dst_domain, dst_type);
 
   const CPPType &cpp_type = varray.type();
   void *new_data = MEM_malloc_arrayN(varray.size(), cpp_type.size(), __func__);
   varray.materialize_to_uninitialized(new_data);
   attributes.remove(name_copy);
-  attributes.add(name_copy, dst_domain, dst_type, bke::AttributeInitMoveArray(new_data));
+  if (!attributes.add(name_copy, dst_domain, dst_type, bke::AttributeInitMoveArray(new_data))) {
+    MEM_freeN(new_data);
+  }
 
   return true;
 }

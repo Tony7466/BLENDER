@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -47,6 +48,7 @@ class GLShader : public Shader {
   void fragment_shader_from_glsl(MutableSpan<const char *> sources) override;
   void compute_shader_from_glsl(MutableSpan<const char *> sources) override;
   bool finalize(const shader::ShaderCreateInfo *info = nullptr) override;
+  void warm_cache(int /*limit*/) override{};
 
   std::string resources_declare(const shader::ShaderCreateInfo &info) const override;
   std::string vertex_interface_declare(const shader::ShaderCreateInfo &info) const override;
@@ -67,6 +69,16 @@ class GLShader : public Shader {
   void uniform_float(int location, int comp_len, int array_size, const float *data) override;
   void uniform_int(int location, int comp_len, int array_size, const int *data) override;
 
+  /* Unused: SSBO vertex fetch draw parameters. */
+  bool get_uses_ssbo_vertex_fetch() const override
+  {
+    return false;
+  }
+  int get_ssbo_vertex_fetch_output_num_verts() const override
+  {
+    return 0;
+  }
+
   /** DEPRECATED: Kept only because of BGL API. */
   int program_handle_get() const override;
 
@@ -76,7 +88,7 @@ class GLShader : public Shader {
   }
 
  private:
-  char *glsl_patch_get(GLenum gl_stage);
+  const char *glsl_patch_get(GLenum gl_stage);
 
   /** Create, compile and attach the shader stage to the shader program. */
   GLuint create_shader_stage(GLenum gl_stage, MutableSpan<const char *> sources);
@@ -94,11 +106,11 @@ class GLShader : public Shader {
 
 class GLLogParser : public GPULogParser {
  public:
-  char *parse_line(char *log_line, GPULogItem &log_item) override;
+  const char *parse_line(const char *log_line, GPULogItem &log_item) override;
 
  protected:
-  char *skip_severity_prefix(char *log_line, GPULogItem &log_item);
-  char *skip_severity_keyword(char *log_line, GPULogItem &log_item);
+  const char *skip_severity_prefix(const char *log_line, GPULogItem &log_item);
+  const char *skip_severity_keyword(const char *log_line, GPULogItem &log_item);
 
   MEM_CXX_CLASS_ALLOC_FUNCS("GLLogParser");
 };

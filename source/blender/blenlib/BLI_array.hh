@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -79,9 +81,7 @@ class Array {
     size_ = 0;
   }
 
-  Array(NoExceptConstructor, Allocator allocator = {}) noexcept : Array(allocator)
-  {
-  }
+  Array(NoExceptConstructor, Allocator allocator = {}) noexcept : Array(allocator) {}
 
   /**
    * Create a new array that contains copies of all values.
@@ -157,9 +157,7 @@ class Array {
     size_ = size;
   }
 
-  Array(const Array &other) : Array(other.as_span(), other.allocator_)
-  {
-  }
+  Array(const Array &other) : Array(other.as_span(), other.allocator_) {}
 
   Array(Array &&other) noexcept(std::is_nothrow_move_constructible_v<T>)
       : Array(NoExceptConstructor(), other.allocator_)
@@ -434,12 +432,5 @@ class Array {
     }
   }
 };
-
-/**
- * Same as a normal Array, but does not use Blender's guarded allocator. This is useful when
- * allocating memory with static storage duration.
- */
-template<typename T, int64_t InlineBufferCapacity = default_inline_buffer_capacity(sizeof(T))>
-using RawArray = Array<T, InlineBufferCapacity, RawAllocator>;
 
 }  // namespace blender

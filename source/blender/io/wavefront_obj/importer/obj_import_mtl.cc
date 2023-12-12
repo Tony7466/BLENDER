@@ -1,16 +1,19 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
  */
 
 #include "BKE_image.h"
-#include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_main.hh"
+#include "BKE_node.hh"
 
 #include "BLI_map.hh"
 #include "BLI_math_vector.h"
 #include "BLI_path_util.h"
+#include "BLI_string.h"
 
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
@@ -20,6 +23,8 @@
 #include "obj_export_mtl.hh"
 #include "obj_import_mtl.hh"
 #include "obj_import_string_utils.hh"
+
+#include <iostream>
 
 namespace blender::io::obj {
 
@@ -98,39 +103,33 @@ static Image *load_texture_image(Main *bmain, const MTLTexMap &tex_map, bool rel
 {
   Image *image = nullptr;
 
+  /* Remove quotes. */
+  std::string image_path{tex_map.image_path};
+  auto end_pos = std::remove(image_path.begin(), image_path.end(), '"');
+  image_path.erase(end_pos, image_path.end());
+
   /* First try treating texture path as relative. */
-  std::string tex_path{tex_map.mtl_dir_path + tex_map.image_path};
+  std::string tex_path{tex_map.mtl_dir_path + image_path};
   image = load_image_at_path(bmain, tex_path, relative_paths);
   if (image != nullptr) {
     return image;
   }
   /* Then try using it directly as absolute path. */
-  std::string raw_path{tex_map.image_path};
-  image = load_image_at_path(bmain, raw_path, relative_paths);
+  image = load_image_at_path(bmain, image_path, relative_paths);
   if (image != nullptr) {
     return image;
   }
-  /* Try removing quotes. */
-  std::string no_quote_path{tex_path};
-  auto end_pos = std::remove(no_quote_path.begin(), no_quote_path.end(), '"');
-  no_quote_path.erase(end_pos, no_quote_path.end());
-  if (no_quote_path != tex_path) {
-    image = load_image_at_path(bmain, no_quote_path, relative_paths);
-    if (image != nullptr) {
-      return image;
-    }
-  }
   /* Try replacing underscores with spaces. */
-  std::string no_underscore_path{no_quote_path};
+  std::string no_underscore_path{image_path};
   std::replace(no_underscore_path.begin(), no_underscore_path.end(), '_', ' ');
-  if (!ELEM(no_underscore_path, no_quote_path, tex_path)) {
+  if (!ELEM(no_underscore_path, image_path, tex_path)) {
     image = load_image_at_path(bmain, no_underscore_path, relative_paths);
     if (image != nullptr) {
       return image;
     }
   }
   /* Try taking just the basename from input path. */
-  std::string base_path{tex_map.mtl_dir_path + BLI_path_basename(tex_map.image_path.c_str())};
+  std::string base_path{tex_map.mtl_dir_path + BLI_path_basename(image_path.c_str())};
   if (base_path != tex_path) {
     image = load_image_at_path(bmain, base_path, relative_paths);
     if (image != nullptr) {
@@ -303,12 +302,12 @@ static void set_bsdf_socket_values(bNode *bsdf, Material *mat, const MTLMaterial
 
   float3 emission_color = mtl_mat.emission_color;
   if (emission_color.x >= 0 && emission_color.y >= 0 && emission_color.z >= 0) {
-    set_property_of_socket(SOCK_RGBA, "Emission", {emission_color, 3}, bsdf);
+    set_property_of_socket(SOCK_RGBA, "Emission Color", {emission_color, 3}, bsdf);
   }
   if (mtl_mat.tex_map_of_type(MTLTexMapType::Emission).is_valid()) {
     set_property_of_socket(SOCK_FLOAT, "Emission Strength", {1.0f}, bsdf);
   }
-  set_property_of_socket(SOCK_FLOAT, "Specular", {specular}, bsdf);
+  set_property_of_socket(SOCK_FLOAT, "Specular IOR Level", {specular}, bsdf);
   set_property_of_socket(SOCK_FLOAT, "Roughness", {roughness}, bsdf);
   mat->roughness = roughness;
   set_property_of_socket(SOCK_FLOAT, "Metallic", {metallic}, bsdf);
@@ -321,16 +320,18 @@ static void set_bsdf_socket_values(bNode *bsdf, Material *mat, const MTLMaterial
   }
   if (do_tranparency || (alpha >= 0.0f && alpha < 1.0f)) {
     mat->blend_method = MA_BM_BLEND;
+    mat->blend_flag |= MA_BL_HIDE_BACKFACE;
   }
 
   if (mtl_mat.sheen >= 0) {
-    set_property_of_socket(SOCK_FLOAT, "Sheen", {mtl_mat.sheen}, bsdf);
+    set_property_of_socket(SOCK_FLOAT, "Sheen Weight", {mtl_mat.sheen}, bsdf);
   }
   if (mtl_mat.cc_thickness >= 0) {
-    set_property_of_socket(SOCK_FLOAT, "Clearcoat", {mtl_mat.cc_thickness}, bsdf);
+    /* Clearcoat used to include an implicit 0.25 factor, so stay compatible to old versions. */
+    set_property_of_socket(SOCK_FLOAT, "Coat Weight", {0.25f * mtl_mat.cc_thickness}, bsdf);
   }
   if (mtl_mat.cc_roughness >= 0) {
-    set_property_of_socket(SOCK_FLOAT, "Clearcoat Roughness", {mtl_mat.cc_roughness}, bsdf);
+    set_property_of_socket(SOCK_FLOAT, "Coat Roughness", {mtl_mat.cc_roughness}, bsdf);
   }
   if (mtl_mat.aniso >= 0) {
     set_property_of_socket(SOCK_FLOAT, "Anisotropic", {mtl_mat.aniso}, bsdf);
@@ -344,7 +345,7 @@ static void set_bsdf_socket_values(bNode *bsdf, Material *mat, const MTLMaterial
                         mtl_mat.transmit_color[2]) /
                        3;
   if (transmission >= 0) {
-    set_property_of_socket(SOCK_FLOAT, "Transmission", {transmission}, bsdf);
+    set_property_of_socket(SOCK_FLOAT, "Transmission Weight", {transmission}, bsdf);
   }
 }
 
@@ -399,6 +400,7 @@ static void add_image_textures(Main *bmain,
     else if (key == int(MTLTexMapType::Alpha)) {
       link_sockets(ntree, image_node, "Alpha", bsdf, tex_map_type_to_socket_id[key]);
       mat->blend_method = MA_BM_BLEND;
+      mat->blend_flag |= MA_BL_HIDE_BACKFACE;
     }
     else {
       link_sockets(ntree, image_node, "Color", bsdf, tex_map_type_to_socket_id[key]);
@@ -414,7 +416,7 @@ bNodeTree *create_mtl_node_tree(Main *bmain,
                                 Material *mat,
                                 bool relative_paths)
 {
-  bNodeTree *ntree = ntreeAddTreeEmbedded(
+  bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &mat->id, "Shader Nodetree", ntreeType_Shader->idname);
 
   bNode *bsdf = add_node(ntree, SH_NODE_BSDF_PRINCIPLED, node_locx_bsdf, node_locy_top);

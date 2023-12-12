@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -31,6 +33,8 @@
  * Whenever possible, multiple fields should be evaluated together to avoid duplicate work when
  * they share common sub-fields and a common context.
  */
+
+#include <iostream>
 
 #include "BLI_function_ref.hh"
 #include "BLI_generic_virtual_array.hh"
@@ -279,7 +283,7 @@ class FieldInput : public FieldNode {
    * should live at least as long as the passed in #scope. May return null.
    */
   virtual GVArray get_varray_for_context(const FieldContext &context,
-                                         IndexMask mask,
+                                         const IndexMask &mask,
                                          ResourceScope &scope) const = 0;
 
   virtual std::string socket_inspection_name() const;
@@ -325,7 +329,7 @@ class FieldContext {
   virtual ~FieldContext() = default;
 
   virtual GVArray get_varray_for_input(const FieldInput &field_input,
-                                       IndexMask mask,
+                                       const IndexMask &mask,
                                        ResourceScope &scope) const;
 };
 
@@ -343,7 +347,7 @@ class FieldEvaluator : NonMovable, NonCopyable {
 
   ResourceScope scope_;
   const FieldContext &context_;
-  const IndexMask mask_;
+  const IndexMask &mask_;
   Vector<GField> fields_to_evaluate_;
   Vector<GVMutableArray> dst_varrays_;
   Vector<GVArray> evaluated_varrays_;
@@ -361,7 +365,8 @@ class FieldEvaluator : NonMovable, NonCopyable {
   }
 
   /** Construct a field evaluator for all indices less than #size. */
-  FieldEvaluator(const FieldContext &context, const int64_t size) : context_(context), mask_(size)
+  FieldEvaluator(const FieldContext &context, const int64_t size)
+      : context_(context), mask_(scope_.construct<IndexMask>(size))
   {
   }
 
@@ -485,7 +490,7 @@ class FieldEvaluator : NonMovable, NonCopyable {
  */
 Vector<GVArray> evaluate_fields(ResourceScope &scope,
                                 Span<GFieldRef> fields_to_evaluate,
-                                IndexMask mask,
+                                const IndexMask &mask,
                                 const FieldContext &context,
                                 Span<GVMutableArray> dst_varrays = {});
 
@@ -527,10 +532,10 @@ class IndexFieldInput final : public FieldInput {
  public:
   IndexFieldInput();
 
-  static GVArray get_index_varray(IndexMask mask);
+  static GVArray get_index_varray(const IndexMask &mask);
 
   GVArray get_varray_for_context(const FieldContext &context,
-                                 IndexMask mask,
+                                 const IndexMask &mask,
                                  ResourceScope &scope) const final;
 
   uint64_t hash() const override;
@@ -540,69 +545,10 @@ class IndexFieldInput final : public FieldInput {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Value or Field Class
- *
- * Utility class that wraps a single value and a field, to simplify accessing both of the types.
- * \{ */
-
-template<typename T> struct ValueOrField {
-  /** Value that is used when the field is empty. */
-  T value{};
-  Field<T> field;
-
-  ValueOrField() = default;
-
-  ValueOrField(T value) : value(std::move(value))
-  {
-  }
-
-  ValueOrField(Field<T> field) : field(std::move(field))
-  {
-  }
-
-  bool is_field() const
-  {
-    return bool(this->field);
-  }
-
-  Field<T> as_field() const
-  {
-    if (this->field) {
-      return this->field;
-    }
-    return make_constant_field(this->value);
-  }
-
-  T as_value() const
-  {
-    if (this->field) {
-      /* This returns a default value when the field is not constant. */
-      return evaluate_constant_field(this->field);
-    }
-    return this->value;
-  }
-
-  friend std::ostream &operator<<(std::ostream &stream, const ValueOrField<T> &value_or_field)
-  {
-    if (value_or_field.field) {
-      stream << "ValueOrField<T>";
-    }
-    else {
-      stream << value_or_field.value;
-    }
-    return stream;
-  }
-};
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name #FieldNode Inline Methods
  * \{ */
 
-inline FieldNode::FieldNode(const FieldNodeType node_type) : node_type_(node_type)
-{
-}
+inline FieldNode::FieldNode(const FieldNodeType node_type) : node_type_(node_type) {}
 
 inline FieldNodeType FieldNode::node_type() const
 {

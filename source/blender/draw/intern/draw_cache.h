@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -22,6 +23,7 @@ struct Volume;
 struct VolumeGrid;
 struct bGPDstroke;
 struct bGPdata;
+struct Scene;
 
 /**
  * Shape resolution level of detail.
@@ -70,7 +72,7 @@ struct GPUBatch **DRW_cache_object_surface_material_get(struct Object *ob,
                                                         struct GPUMaterial **gpumat_array,
                                                         uint gpumat_array_len);
 struct GPUBatch *DRW_cache_object_face_wireframe_get(struct Object *ob);
-int DRW_cache_object_material_count_get(struct Object *ob);
+int DRW_cache_object_material_count_get(const struct Object *ob);
 
 /**
  * Returns the vertbuf used by shaded surface batch.
@@ -106,6 +108,9 @@ struct GPUBatch *DRW_cache_field_sphere_limit_get(void);
 
 /* Lights */
 
+struct GPUBatch *DRW_cache_light_icon_inner_lines_get(void);
+struct GPUBatch *DRW_cache_light_icon_outer_lines_get(void);
+struct GPUBatch *DRW_cache_light_icon_sun_rays_get(void);
 struct GPUBatch *DRW_cache_light_point_lines_get(void);
 struct GPUBatch *DRW_cache_light_sun_lines_get(void);
 struct GPUBatch *DRW_cache_light_spot_lines_get(void);
@@ -250,7 +255,7 @@ DRWVolumeGrid *DRW_volume_batch_cache_get_grid(struct Volume *volume,
 struct GPUBatch *DRW_cache_volume_face_wireframe_get(struct Object *ob);
 struct GPUBatch *DRW_cache_volume_selection_surface_get(struct Object *ob);
 
-/* GPencil */
+/* GPencil (legacy) */
 
 struct GPUBatch *DRW_cache_gpencil_get(struct Object *ob, int cfra);
 struct GPUVertBuf *DRW_cache_gpencil_position_buffer_get(struct Object *ob, int cfra);
@@ -263,7 +268,7 @@ struct GPUBatch *DRW_cache_gpencil_sbuffer_get(struct Object *ob, bool show_fill
 struct GPUVertBuf *DRW_cache_gpencil_sbuffer_position_buffer_get(struct Object *ob,
                                                                  bool show_fill);
 struct GPUVertBuf *DRW_cache_gpencil_sbuffer_color_buffer_get(struct Object *ob, bool show_fill);
-int DRW_gpencil_material_count_get(struct bGPdata *gpd);
+int DRW_gpencil_material_count_get(const struct bGPdata *gpd);
 
 struct GPUBatch *DRW_cache_gpencil_face_wireframe_get(struct Object *ob);
 
@@ -272,6 +277,18 @@ struct bGPDstroke *DRW_cache_gpencil_sbuffer_stroke_data_get(struct Object *ob);
  * Sbuffer batches are temporary. We need to clear it after drawing.
  */
 void DRW_cache_gpencil_sbuffer_clear(struct Object *ob);
+
+/* Grease Pencil */
+
+struct GPUBatch *DRW_cache_grease_pencil_get(const struct Scene *scene, struct Object *ob);
+struct GPUBatch *DRW_cache_grease_pencil_edit_points_get(const struct Scene *scene,
+                                                         struct Object *ob);
+struct GPUBatch *DRW_cache_grease_pencil_edit_lines_get(const struct Scene *scene,
+                                                        struct Object *ob);
+struct GPUVertBuf *DRW_cache_grease_pencil_position_buffer_get(const struct Scene *scene,
+                                                               struct Object *ob);
+struct GPUVertBuf *DRW_cache_grease_pencil_color_buffer_get(const struct Scene *scene,
+                                                            struct Object *ob);
 
 #ifdef __cplusplus
 }

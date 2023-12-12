@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <string>
 
@@ -21,9 +23,7 @@ namespace blender::realtime_compositor {
 
 using namespace nodes::derived_node_tree_types;
 
-Evaluator::Evaluator(Context &context) : context_(context)
-{
-}
+Evaluator::Evaluator(Context &context) : context_(context) {}
 
 void Evaluator::evaluate()
 {
@@ -66,13 +66,13 @@ bool Evaluator::validate_node_tree()
 
 void Evaluator::compile_and_evaluate()
 {
-  derived_node_tree_ = std::make_unique<DerivedNodeTree>(*context_.get_scene()->nodetree);
+  derived_node_tree_ = std::make_unique<DerivedNodeTree>(context_.get_node_tree());
 
   if (!validate_node_tree()) {
     return;
   }
 
-  const Schedule schedule = compute_schedule(*derived_node_tree_);
+  const Schedule schedule = compute_schedule(context_, *derived_node_tree_);
 
   CompileState compile_state(schedule);
 
@@ -129,7 +129,8 @@ void Evaluator::map_node_operation_inputs_to_their_results(DNode node,
      * origin is the input socket itself or the input is connected to an unlinked input of a group
      * input node and the origin is the input of the group input node. So map the input to the
      * result of a newly created Input Single Value Operation. */
-    auto *input_operation = new InputSingleValueOperation(context_, DInputSocket(dorigin));
+    InputSingleValueOperation *input_operation = new InputSingleValueOperation(
+        context_, DInputSocket(dorigin));
     operation->map_input_to_result(input->identifier, &input_operation->get_result());
 
     operations_stream_.append(std::unique_ptr<InputSingleValueOperation>(input_operation));
@@ -161,7 +162,7 @@ void Evaluator::compile_and_evaluate_shader_compile_unit(CompileState &compile_s
 void Evaluator::map_shader_operation_inputs_to_their_results(ShaderOperation *operation,
                                                              CompileState &compile_state)
 {
-  for (const auto &item : operation->get_inputs_to_linked_outputs_map().items()) {
+  for (const auto item : operation->get_inputs_to_linked_outputs_map().items()) {
     Result &result = compile_state.get_result_from_output_socket(item.value);
     operation->map_input_to_result(item.key, &result);
   }

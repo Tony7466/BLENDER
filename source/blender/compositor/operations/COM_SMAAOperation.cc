@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2017 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_SMAAOperation.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "COM_SMAAAreaTexture.h"
 
 extern "C" {
@@ -154,6 +155,7 @@ SMAAEdgeDetectionOperation::SMAAEdgeDetectionOperation()
   this->add_input_socket(DataType::Value); /* Depth, material ID, etc. TODO: currently unused. */
   this->add_output_socket(DataType::Color);
   flags_.complex = true;
+  flags_.can_be_constant = true;
   image_reader_ = nullptr;
   value_reader_ = nullptr;
   this->set_threshold(CMP_DEFAULT_SMAA_THRESHOLD);
@@ -384,6 +386,7 @@ SMAABlendingWeightCalculationOperation::SMAABlendingWeightCalculationOperation()
   this->add_input_socket(DataType::Color); /* edges */
   this->add_output_socket(DataType::Color);
   flags_.complex = true;
+  flags_.can_be_constant = true;
   image_reader_ = nullptr;
   this->set_corner_rounding(CMP_DEFAULT_SMAA_CORNER_ROUNDING);
 }
@@ -647,22 +650,22 @@ void SMAABlendingWeightCalculationOperation::get_area_of_interest(const int /*in
 /*-----------------------------------------------------------------------------*/
 /* Diagonal Search Functions */
 
-int SMAABlendingWeightCalculationOperation::search_diag1(int x, int y, int dir, bool *found)
+int SMAABlendingWeightCalculationOperation::search_diag1(int x, int y, int dir, bool *r_found)
 {
   float e[4];
   int end = x + SMAA_MAX_SEARCH_STEPS_DIAG * dir;
-  *found = false;
+  *r_found = false;
 
   while (x != end) {
     x += dir;
     y -= dir;
     sample_image_fn_(x, y, e);
     if (e[1] == 0.0f) {
-      *found = true;
+      *r_found = true;
       break;
     }
     if (e[0] == 0.0f) {
-      *found = true;
+      *r_found = true;
       return (dir < 0) ? x : x - dir;
     }
   }
@@ -670,23 +673,23 @@ int SMAABlendingWeightCalculationOperation::search_diag1(int x, int y, int dir, 
   return x - dir;
 }
 
-int SMAABlendingWeightCalculationOperation::search_diag2(int x, int y, int dir, bool *found)
+int SMAABlendingWeightCalculationOperation::search_diag2(int x, int y, int dir, bool *r_found)
 {
   float e[4];
   int end = x + SMAA_MAX_SEARCH_STEPS_DIAG * dir;
-  *found = false;
+  *r_found = false;
 
   while (x != end) {
     x += dir;
     y += dir;
     sample_image_fn_(x, y, e);
     if (e[1] == 0.0f) {
-      *found = true;
+      *r_found = true;
       break;
     }
     sample_image_fn_(x + 1, y, e);
     if (e[0] == 0.0f) {
-      *found = true;
+      *r_found = true;
       return (dir > 0) ? x : x - dir;
     }
   }
@@ -861,7 +864,8 @@ int SMAABlendingWeightCalculationOperation::search_xright(int x, int y)
     x++;
     sample_image_fn_(x, y, e);
     if (e[1] == 0.0f || /* Is the edge not activated? */
-        e[0] != 0.0f) { /* Or is there a crossing edge that breaks the line? */
+        e[0] != 0.0f)   /* Or is there a crossing edge that breaks the line? */
+    {
       break;
     }
     sample_image_fn_(x, y - 1, e);
@@ -905,7 +909,8 @@ int SMAABlendingWeightCalculationOperation::search_ydown(int x, int y)
     y++;
     sample_image_fn_(x, y, e);
     if (e[0] == 0.0f || /* Is the edge not activated? */
-        e[1] != 0.0f) { /* Or is there a crossing edge that breaks the line? */
+        e[1] != 0.0f)   /* Or is there a crossing edge that breaks the line? */
+    {
       break;
     }
     sample_image_fn_(x - 1, y, e);
@@ -988,6 +993,7 @@ SMAANeighborhoodBlendingOperation::SMAANeighborhoodBlendingOperation()
   this->add_input_socket(DataType::Color); /* blend */
   this->add_output_socket(DataType::Color);
   flags_.complex = true;
+  flags_.can_be_constant = true;
   image1Reader_ = nullptr;
   image2Reader_ = nullptr;
 }

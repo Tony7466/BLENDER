@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -7,6 +8,7 @@
 
 #include "BLI_string.h"
 
+#include "GPU_capabilities.h"
 #include "gpu_backend.hh"
 #include "gpu_context_private.hh"
 
@@ -26,7 +28,7 @@ GLStorageBuf::GLStorageBuf(size_t size, GPUUsageType usage, const char *name)
 {
   usage_ = usage;
   /* Do not create UBO GL buffer here to allow allocation from any thread. */
-  BLI_assert(size <= GLContext::max_ssbo_size);
+  BLI_assert(size <= GPU_max_storage_buffer_size());
 }
 
 GLStorageBuf::~GLStorageBuf()
@@ -91,7 +93,7 @@ void GLStorageBuf::bind(int slot)
   slot_ = slot;
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, slot_, ssbo_id_);
 
-#ifdef DEBUG
+#ifndef NDEBUG
   BLI_assert(slot < 16);
   /* TODO */
   // GLContext::get()->bound_ssbo_slots |= 1 << slot;
@@ -107,7 +109,7 @@ void GLStorageBuf::bind_as(GLenum target)
 
 void GLStorageBuf::unbind()
 {
-#ifdef DEBUG
+#ifndef NDEBUG
   /* NOTE: This only unbinds the last bound slot. */
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, slot_, 0);
   /* Hope that the context did not change. */
@@ -117,27 +119,20 @@ void GLStorageBuf::unbind()
   slot_ = 0;
 }
 
-void GLStorageBuf::clear(eGPUTextureFormat internal_format, eGPUDataFormat data_format, void *data)
+void GLStorageBuf::clear(uint32_t clear_value)
 {
   if (ssbo_id_ == 0) {
     this->init();
   }
 
   if (GLContext::direct_state_access_support) {
-    glClearNamedBufferData(ssbo_id_,
-                           to_gl_internal_format(internal_format),
-                           to_gl_data_format(internal_format),
-                           to_gl(data_format),
-                           data);
+    glClearNamedBufferData(ssbo_id_, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &clear_value);
   }
   else {
     /* WATCH(@fclem): This should be ok since we only use clear outside of drawing functions. */
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_id_);
-    glClearBufferData(GL_SHADER_STORAGE_BUFFER,
-                      to_gl_internal_format(internal_format),
-                      to_gl_data_format(internal_format),
-                      to_gl(data_format),
-                      data);
+    glClearBufferData(
+        GL_SHADER_STORAGE_BUFFER, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &clear_value);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
   }
 }
@@ -164,6 +159,11 @@ void GLStorageBuf::copy_sub(VertBuf *src_, uint dst_offset, uint src_offset, uin
     glCopyBufferSubData(GL_ARRAY_BUFFER, GL_COPY_WRITE_BUFFER, src_offset, dst_offset, copy_size);
     glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
   }
+}
+
+void GLStorageBuf::async_flush_to_host()
+{
+  GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
 }
 
 void GLStorageBuf::read(void *data)

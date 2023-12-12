@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -13,7 +13,7 @@
  * under-sampling.
  * - The second one is a post-processing based one. It follows the
  * implementation described in the presentation
- * "Life of a Bokeh - Siggraph 2018" from Guillaume Abadie.
+ * "Life of a Bokeh - SIGGRAPH 2018" from Guillaume Abadie.
  * There are some difference with our actual implementation that prioritize quality.
  */
 
@@ -43,10 +43,6 @@ struct DepthOfFieldBuffer {
 class DepthOfField {
  private:
   class Instance &inst_;
-
-  /** Samplers */
-  static constexpr eGPUSamplerState gather_bilinear = GPU_SAMPLER_MIPMAP | GPU_SAMPLER_FILTER;
-  static constexpr eGPUSamplerState gather_nearest = GPU_SAMPLER_MIPMAP;
 
   /** Input/Output texture references. */
   GPUTexture *input_color_tx_ = nullptr;

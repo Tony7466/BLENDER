@@ -1,11 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
  *
- * A film is a full-screen buffer (usually at output extent)
+ * A film is a buffer (usually at display extent)
  * that will be able to accumulate sample in any distorted camera_type
  * using a pixel filter.
  *
@@ -25,8 +25,6 @@
 #include "eevee_instance.hh"
 
 namespace blender::eevee {
-
-ENUM_OPERATORS(eViewLayerEEVEEPassType, 1 << EEVEE_RENDER_PASS_MAX_BIT)
 
 /* -------------------------------------------------------------------- */
 /** \name Arbitrary Output Variables
@@ -74,8 +72,8 @@ void Film::init_aovs()
 
   for (ViewLayerAOV *aov : aovs) {
     bool is_value = (aov->type == AOV_TYPE_VALUE);
-    uint &index = is_value ? aovs_info.value_len : aovs_info.color_len;
-    uint &hash = is_value ? aovs_info.hash_value[index] : aovs_info.hash_color[index];
+    int &index = is_value ? aovs_info.value_len : aovs_info.color_len;
+    uint &hash = is_value ? aovs_info.hash_value[index].x : aovs_info.hash_color[index].x;
     hash = BLI_hash_string(aov->name);
     index++;
   }
@@ -86,14 +84,14 @@ float *Film::read_aov(ViewLayerAOV *aov)
   bool is_value = (aov->type == AOV_TYPE_VALUE);
   Texture &accum_tx = is_value ? value_accum_tx_ : color_accum_tx_;
 
-  Span<uint> aovs_hash(is_value ? aovs_info.hash_value : aovs_info.hash_color,
-                       is_value ? aovs_info.value_len : aovs_info.color_len);
+  Span<uint4> aovs_hash(is_value ? aovs_info.hash_value : aovs_info.hash_color,
+                        is_value ? aovs_info.value_len : aovs_info.color_len);
   /* Find AOV index. */
   uint hash = BLI_hash_string(aov->name);
   int aov_index = -1;
   int i = 0;
-  for (uint candidate_hash : aovs_hash) {
-    if (candidate_hash == hash) {
+  for (uint4 candidate_hash : aovs_hash) {
+    if (candidate_hash.x == hash) {
       aov_index = i;
       break;
     }
@@ -104,6 +102,8 @@ float *Film::read_aov(ViewLayerAOV *aov)
 
   int index = aov_index + (is_value ? data_.aov_value_id : data_.aov_color_id);
   GPUTexture *pass_tx = accum_tx.layer_view(index);
+
+  GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
 
   return (float *)GPU_texture_read(pass_tx, GPU_DATA_FLOAT, 0);
 }
@@ -147,6 +147,7 @@ void Film::sync_mist()
 inline bool operator==(const FilmData &a, const FilmData &b)
 {
   return (a.extent == b.extent) && (a.offset == b.offset) &&
+         (a.render_extent == b.render_extent) && (a.render_offset == b.render_offset) &&
          (a.filter_radius == b.filter_radius) && (a.scaling_factor == b.scaling_factor) &&
          (a.background_opacity == b.background_opacity);
 }
@@ -175,6 +176,7 @@ static eViewLayerEEVEEPassType enabled_passes(const ViewLayer *view_layer)
   ENABLE_FROM_LEGACY(Z, Z)
   ENABLE_FROM_LEGACY(MIST, MIST)
   ENABLE_FROM_LEGACY(NORMAL, NORMAL)
+  ENABLE_FROM_LEGACY(POSITION, POSITION)
   ENABLE_FROM_LEGACY(SHADOW, SHADOW)
   ENABLE_FROM_LEGACY(AO, AO)
   ENABLE_FROM_LEGACY(EMIT, EMIT)
@@ -211,34 +213,27 @@ void Film::init(const int2 &extent, const rcti *output_rect)
 
   {
     /* Enable passes that need to be rendered. */
-    eViewLayerEEVEEPassType render_passes = eViewLayerEEVEEPassType(0);
-
     if (inst_.is_viewport()) {
       /* Viewport Case. */
-      render_passes = eViewLayerEEVEEPassType(inst_.v3d->shading.render_pass);
+      enabled_passes_ = eViewLayerEEVEEPassType(inst_.v3d->shading.render_pass);
 
       if (inst_.overlays_enabled() || inst_.gpencil_engine_enabled) {
         /* Overlays and Grease Pencil needs the depth for correct compositing.
          * Using the render pass ensure we store the center depth. */
-        render_passes |= EEVEE_RENDER_PASS_Z;
+        enabled_passes_ |= EEVEE_RENDER_PASS_Z;
       }
     }
     else {
       /* Render Case. */
-      render_passes = enabled_passes(inst_.view_layer);
+      enabled_passes_ = enabled_passes(inst_.view_layer);
     }
 
     /* Filter obsolete passes. */
-    render_passes &= ~(EEVEE_RENDER_PASS_UNUSED_8 | EEVEE_RENDER_PASS_BLOOM);
+    enabled_passes_ &= ~(EEVEE_RENDER_PASS_UNUSED_8 | EEVEE_RENDER_PASS_BLOOM);
 
     if (scene_eevee.flag & SCE_EEVEE_MOTION_BLUR_ENABLED) {
       /* Disable motion vector pass if motion blur is enabled. */
-      render_passes &= ~EEVEE_RENDER_PASS_VECTOR;
-    }
-
-    /* TODO(@fclem): Can't we rely on depsgraph update notification? */
-    if (assign_if_different(enabled_passes_, render_passes)) {
-      sampling.reset();
+      enabled_passes_ &= ~EEVEE_RENDER_PASS_VECTOR;
     }
   }
   {
@@ -248,29 +243,35 @@ void Film::init(const int2 &extent, const rcti *output_rect)
       output_rect = &fallback_rect;
     }
 
-    FilmData data = data_;
-    data.extent = int2(BLI_rcti_size_x(output_rect), BLI_rcti_size_y(output_rect));
-    data.offset = int2(output_rect->xmin, output_rect->ymin);
-    data.extent_inv = 1.0f / float2(data.extent);
-    /* Disable filtering if sample count is 1. */
-    data.filter_radius = (sampling.sample_count() == 1) ? 0.0f :
-                                                          clamp_f(scene.r.gauss, 0.0f, 100.0f);
+    display_extent = extent;
+
+    data_.extent = int2(BLI_rcti_size_x(output_rect), BLI_rcti_size_y(output_rect));
+    data_.offset = int2(output_rect->xmin, output_rect->ymin);
+    data_.extent_inv = 1.0f / float2(data_.extent);
     /* TODO(fclem): parameter hidden in experimental.
      * We need to figure out LOD bias first in order to preserve texture crispiness. */
-    data.scaling_factor = 1;
-    data.cryptomatte_samples_len = inst_.view_layer->cryptomatte_levels;
+    data_.scaling_factor = 1;
+    data_.render_extent = math::divide_ceil(extent, int2(data_.scaling_factor));
+    data_.render_offset = data_.offset;
 
-    data.background_opacity = (scene.r.alphamode == R_ALPHAPREMUL) ? 0.0f : 1.0f;
-    if (inst_.is_viewport() && false /* TODO(fclem): StudioLight */) {
-      data.background_opacity = inst_.v3d->shading.studiolight_background;
+    if (inst_.camera.overscan() != 0.0f) {
+      int2 overscan = int2(inst_.camera.overscan() * math::max(UNPACK2(data_.render_extent)));
+      data_.render_extent += overscan * 2;
+      data_.render_offset += overscan;
     }
 
-    FilmData &data_prev_ = data_;
-    if (assign_if_different(data_prev_, data)) {
-      sampling.reset();
+    /* Disable filtering if sample count is 1. */
+    data_.filter_radius = (sampling.sample_count() == 1) ? 0.0f :
+                                                           clamp_f(scene.r.gauss, 0.0f, 100.0f);
+    data_.cryptomatte_samples_len = inst_.view_layer->cryptomatte_levels;
+
+    data_.background_opacity = (scene.r.alphamode == R_ALPHAPREMUL) ? 0.0f : 1.0f;
+    if (inst_.is_viewport() && false /* TODO(fclem): StudioLight */) {
+      data_.background_opacity = inst_.v3d->shading.studiolight_background;
     }
 
     const eViewLayerEEVEEPassType data_passes = EEVEE_RENDER_PASS_Z | EEVEE_RENDER_PASS_NORMAL |
+                                                EEVEE_RENDER_PASS_POSITION |
                                                 EEVEE_RENDER_PASS_VECTOR;
     const eViewLayerEEVEEPassType color_passes_1 = EEVEE_RENDER_PASS_DIFFUSE_LIGHT |
                                                    EEVEE_RENDER_PASS_SPECULAR_LIGHT |
@@ -281,11 +282,13 @@ void Film::init(const int2 &extent, const rcti *output_rect)
                                                    EEVEE_RENDER_PASS_ENVIRONMENT |
                                                    EEVEE_RENDER_PASS_MIST |
                                                    EEVEE_RENDER_PASS_SHADOW | EEVEE_RENDER_PASS_AO;
+    const eViewLayerEEVEEPassType color_passes_3 = EEVEE_RENDER_PASS_TRANSPARENT;
 
     data_.exposure_scale = pow2f(scene.view_settings.exposure);
     data_.has_data = (enabled_passes_ & data_passes) != 0;
     data_.any_render_pass_1 = (enabled_passes_ & color_passes_1) != 0;
     data_.any_render_pass_2 = (enabled_passes_ & color_passes_2) != 0;
+    data_.any_render_pass_3 = (enabled_passes_ & color_passes_3) != 0;
   }
   {
     /* Set pass offsets. */
@@ -316,6 +319,7 @@ void Film::init(const int2 &extent, const rcti *output_rect)
 
     data_.mist_id = pass_index_get(EEVEE_RENDER_PASS_MIST);
     data_.normal_id = pass_index_get(EEVEE_RENDER_PASS_NORMAL);
+    data_.position_id = pass_index_get(EEVEE_RENDER_PASS_POSITION);
     data_.vector_id = pass_index_get(EEVEE_RENDER_PASS_VECTOR);
     data_.diffuse_light_id = pass_index_get(EEVEE_RENDER_PASS_DIFFUSE_LIGHT);
     data_.diffuse_color_id = pass_index_get(EEVEE_RENDER_PASS_DIFFUSE_COLOR);
@@ -326,6 +330,7 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     data_.environment_id = pass_index_get(EEVEE_RENDER_PASS_ENVIRONMENT);
     data_.shadow_id = pass_index_get(EEVEE_RENDER_PASS_SHADOW);
     data_.ambient_occlusion_id = pass_index_get(EEVEE_RENDER_PASS_AO);
+    data_.transparent_id = pass_index_get(EEVEE_RENDER_PASS_TRANSPARENT);
 
     data_.aov_color_id = data_.color_len;
     data_.aov_value_id = data_.value_len;
@@ -355,9 +360,6 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     data_.cryptomatte_material_id = cryptomatte_index_get(EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL);
   }
   {
-    /* TODO(@fclem): Over-scans. */
-
-    data_.render_extent = math::divide_ceil(extent, int2(data_.scaling_factor));
     int2 weight_extent = inst_.camera.is_panoramic() ? data_.extent : int2(data_.scaling_factor);
 
     eGPUTextureFormat color_format = GPU_RGBA16F;
@@ -387,7 +389,6 @@ void Film::init(const int2 &extent, const rcti *output_rect)
                                                                            1);
 
     if (reset > 0) {
-      sampling.reset();
       data_.use_history = 0;
       data_.use_reprojection = 0;
 
@@ -416,7 +417,7 @@ void Film::sync()
   RenderBuffers &rbuffers = inst_.render_buffers;
   VelocityModule &velocity = inst_.velocity;
 
-  eGPUSamplerState filter = GPU_SAMPLER_FILTER;
+  GPUSamplerState filter = {GPU_SAMPLER_FILTERING_LINEAR};
 
   /* For viewport, only previous motion is supported.
    * Still bind previous step to avoid undefined behavior. */
@@ -425,24 +426,15 @@ void Film::sync()
   accumulate_ps_.init();
   accumulate_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
   accumulate_ps_.shader_set(inst_.shaders.static_shader_get(shader));
-  accumulate_ps_.bind_ubo("film_buf", &data_);
+  inst_.bind_uniform_data(&accumulate_ps_);
   accumulate_ps_.bind_ubo("camera_prev", &(*velocity.camera_steps[STEP_PREVIOUS]));
   accumulate_ps_.bind_ubo("camera_curr", &(*velocity.camera_steps[STEP_CURRENT]));
   accumulate_ps_.bind_ubo("camera_next", &(*velocity.camera_steps[step_next]));
   accumulate_ps_.bind_texture("depth_tx", &rbuffers.depth_tx);
   accumulate_ps_.bind_texture("combined_tx", &combined_final_tx_);
-  accumulate_ps_.bind_texture("normal_tx", &rbuffers.normal_tx);
   accumulate_ps_.bind_texture("vector_tx", &rbuffers.vector_tx);
-  accumulate_ps_.bind_texture("light_tx", &rbuffers.light_tx);
-  accumulate_ps_.bind_texture("diffuse_color_tx", &rbuffers.diffuse_color_tx);
-  accumulate_ps_.bind_texture("specular_color_tx", &rbuffers.specular_color_tx);
-  accumulate_ps_.bind_texture("volume_light_tx", &rbuffers.volume_light_tx);
-  accumulate_ps_.bind_texture("emission_tx", &rbuffers.emission_tx);
-  accumulate_ps_.bind_texture("environment_tx", &rbuffers.environment_tx);
-  accumulate_ps_.bind_texture("shadow_tx", &rbuffers.shadow_tx);
-  accumulate_ps_.bind_texture("ambient_occlusion_tx", &rbuffers.ambient_occlusion_tx);
-  accumulate_ps_.bind_texture("aov_color_tx", &rbuffers.aov_color_tx);
-  accumulate_ps_.bind_texture("aov_value_tx", &rbuffers.aov_value_tx);
+  accumulate_ps_.bind_texture("rp_color_tx", &rbuffers.rp_color_tx);
+  accumulate_ps_.bind_texture("rp_value_tx", &rbuffers.rp_value_tx);
   accumulate_ps_.bind_texture("cryptomatte_tx", &rbuffers.cryptomatte_tx);
   /* NOTE(@fclem): 16 is the max number of sampled texture in many implementations.
    * If we need more, we need to pack more of the similar passes in the same textures as arrays or
@@ -486,7 +478,7 @@ void Film::end_sync()
   data_.use_reprojection = inst_.sampling.interactive_mode();
 
   /* Just bypass the reprojection and reset the accumulation. */
-  if (force_disable_reprojection_ && inst_.sampling.is_reset()) {
+  if (inst_.is_viewport() && force_disable_reprojection_ && inst_.sampling.is_reset()) {
     data_.use_reprojection = false;
     data_.use_history = false;
   }
@@ -626,7 +618,7 @@ void Film::update_sample_table()
   }
 }
 
-void Film::accumulate(const DRWView *view, GPUTexture *combined_final_tx)
+void Film::accumulate(View &view, GPUTexture *combined_final_tx)
 {
   if (inst_.is_viewport()) {
     DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
@@ -645,11 +637,9 @@ void Film::accumulate(const DRWView *view, GPUTexture *combined_final_tx)
   combined_final_tx_ = combined_final_tx;
 
   data_.display_only = false;
-  data_.push_update();
+  inst_.push_uniform_data();
 
-  draw::View drw_view("MainView", view);
-
-  DRW_manager_get()->submit(accumulate_ps_, drw_view);
+  inst_.manager->submit(accumulate_ps_, view);
 
   combined_tx_.swap();
   weight_tx_.swap();
@@ -674,7 +664,7 @@ void Film::display()
   combined_final_tx_ = inst_.render_buffers.combined_tx;
 
   data_.display_only = true;
-  data_.push_update();
+  inst_.push_uniform_data();
 
   draw::View drw_view("MainView", DRW_view_default_get());
 

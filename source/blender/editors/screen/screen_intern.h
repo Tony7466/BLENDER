@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edscr
@@ -10,6 +11,10 @@
 struct Main;
 struct bContext;
 struct bContextDataResult;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* internal exports only */
 
@@ -42,15 +47,15 @@ typedef enum eScreenAxis {
 #define AZONEFADEOUT (6.5f * U.widget_unit) /* when we start seeing the #AZone */
 
 /* Edges must be within these to allow joining. */
-#define AREAJOINTOLERANCEX (AREAMINX * U.dpi_fac)
-#define AREAJOINTOLERANCEY (HEADERY * U.dpi_fac)
+#define AREAJOINTOLERANCEX (AREAMINX * UI_SCALE_FAC)
+#define AREAJOINTOLERANCEY (HEADERY * UI_SCALE_FAC)
 
 /**
  * Expanded interaction influence of area borders.
  */
-#define BORDERPADDING ((2.0f * U.dpi_fac) + U.pixelsize)
+#define BORDERPADDING ((2.0f * UI_SCALE_FAC) + U.pixelsize)
 
-/* area.c */
+/* area.cc */
 
 /**
  * We swap spaces for full-screen to keep all allocated data area vertices were set.
@@ -60,7 +65,7 @@ void ED_area_data_swap(ScrArea *area_dst, ScrArea *area_src);
 /* for quick toggle, can skip fades */
 void region_toggle_hidden(struct bContext *C, ARegion *region, bool do_fade);
 
-/* screen_draw.c */
+/* screen_draw.cc */
 
 /**
  * Visual indication of the two areas involved in a proposed join.
@@ -71,7 +76,7 @@ void region_toggle_hidden(struct bContext *C, ARegion *region, bool do_fade);
 void screen_draw_join_highlight(struct ScrArea *sa1, struct ScrArea *sa2);
 void screen_draw_split_preview(struct ScrArea *area, eScreenAxis dir_axis, float fac);
 
-/* screen_edit.c */
+/* screen_edit.cc */
 
 /**
  * Empty screen, with 1 dummy area without space-data. Uses window size.
@@ -116,10 +121,10 @@ void area_getoffsets(ScrArea *sa_a, ScrArea *sa_b, eScreenDir dir, int *r_offset
  * Close a screen area, allowing most-aligned neighbor to take its place.
  */
 bool screen_area_close(struct bContext *C, bScreen *screen, ScrArea *area);
-void screen_area_spacelink_add(struct Scene *scene, ScrArea *area, eSpace_Type space_type);
+void screen_area_spacelink_add(const struct Scene *scene, ScrArea *area, eSpace_Type space_type);
 struct AZone *ED_area_actionzone_find_xy(ScrArea *area, const int xy[2]);
 
-/* screen_geometry.c */
+/* screen_geometry.cc */
 
 int screen_geom_area_height(const ScrArea *area);
 int screen_geom_area_width(const ScrArea *area);
@@ -163,7 +168,7 @@ short screen_geom_find_area_split_point(const ScrArea *area,
  */
 void screen_geom_select_connected_edge(const wmWindow *win, ScrEdge *edge);
 
-/* screen_context.c */
+/* screen_context.cc */
 
 /**
  * Entry point for the screen context.
@@ -174,11 +179,15 @@ int ed_screen_context(const struct bContext *C,
 
 extern const char *screen_context_dir[]; /* doc access */
 
-/* screendump.c */
+/* screendump.cc */
 
 void SCREEN_OT_screenshot(struct wmOperatorType *ot);
 void SCREEN_OT_screenshot_area(struct wmOperatorType *ot);
 
-/* workspace_layout_edit.c */
+/* workspace_layout_edit.cc */
 
 bool workspace_layout_set_poll(const struct WorkSpaceLayout *layout);
+
+#ifdef __cplusplus
+}
+#endif

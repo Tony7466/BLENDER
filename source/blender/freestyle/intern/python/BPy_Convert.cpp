@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -42,10 +44,6 @@
 #include "Iterator/BPy_orientedViewEdgeIterator.h"
 
 #include "../stroke/StrokeRep.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 using namespace Freestyle;
 using namespace Freestyle::Geometry;
@@ -376,7 +374,7 @@ PyObject *BPy_CurvePoint_from_CurvePoint(CurvePoint &cp)
   // member whose value is mutable upon iteration over different CurvePoints.
   // It is likely that such a mutable reference is passed to this function,
   // so that a new allocated CurvePoint instance is created here to avoid
-  // nasty bugs (cf. T41464).
+  // nasty bugs (cf. #41464).
   ((BPy_CurvePoint *)py_cp)->cp = new CurvePoint(cp);
   ((BPy_CurvePoint *)py_cp)->py_if0D.if0D = ((BPy_CurvePoint *)py_cp)->cp;
   ((BPy_CurvePoint *)py_cp)->py_if0D.borrowed = false;
@@ -801,7 +799,3 @@ int convert_v2(PyObject *obj, void *v)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif

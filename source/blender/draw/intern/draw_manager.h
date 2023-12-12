@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -46,7 +47,9 @@ struct Object;
 #define DRW_DEBUG_USE_UNIFORM_NAME 0
 #define DRW_UNIFORM_BUFFER_NAME 64
 
-/* ------------ Profiling --------------- */
+/* -------------------------------------------------------------------- */
+/** \name Profiling
+ * \{ */
 
 #define USE_PROFILE
 
@@ -82,11 +85,15 @@ struct Object;
 
 #endif /* USE_PROFILE */
 
-/* ------------ Data Structure --------------- */
-/**
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Data Structure
+ *
  * Data structure to for registered draw engines that can store draw manager
  * specific data.
- */
+ * \{ */
+
 typedef struct DRWRegisteredDrawEngine {
   void /*DRWRegisteredDrawEngine*/ *next, *prev;
   DrawEngineType *draw_engine;
@@ -356,7 +363,7 @@ struct DRWUniform {
         GPUTexture *texture;
         GPUTexture **texture_ref;
       };
-      eGPUSamplerState sampler_state;
+      GPUSamplerState sampler_state;
     };
     /* DRW_UNIFORM_BLOCK */
     union {
@@ -473,15 +480,18 @@ struct DRWView {
 /* Needed to assert that alignment is the same in C++ and C. */
 BLI_STATIC_ASSERT_ALIGN(DRWView, 16);
 
-/* ------------ Data Chunks --------------- */
-/**
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Data Chunks
+ *
  * In order to keep a cache friendly data structure,
- * we alloc most of our little data into chunks of multiple item.
+ * we allocate most of our little data into chunks of multiple item.
  * Iteration, allocation and memory usage are better.
  * We lose a bit of memory by allocating more than what we need
  * but it's counterbalanced by not needing the linked-list pointers
  * for each item.
- */
+ * \{ */
 
 typedef struct DRWUniformChunk {
   struct DRWUniformChunk *next; /* single-linked list */
@@ -516,9 +526,13 @@ typedef struct DRWCommandSmallChunk {
 BLI_STATIC_ASSERT_ALIGN(DRWCommandChunk, 16);
 #endif
 
-/* ------------- Memory Pools ------------ */
+/** \} */
 
-/* Contains memory pools information */
+/* -------------------------------------------------------------------- */
+/** \name Memory Pools
+ * \{ */
+
+/** Contains memory pools information. */
 typedef struct DRWData {
   /** Instance data. */
   DRWInstanceDataList *idatalist;
@@ -558,7 +572,11 @@ typedef struct DRWData {
   struct CurvesUniformBufPool *curves_ubos;
 } DRWData;
 
-/* ------------- DRAW MANAGER ------------ */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Draw Manager
+ * \{ */
 
 typedef struct DupliKey {
   struct Object *ob;
@@ -648,13 +666,13 @@ typedef struct DRWManager {
 
   /* ---------- Nothing after this point is cleared after use ----------- */
 
-  /* gl_context serves as the offset for clearing only
+  /* system_gpu_context serves as the offset for clearing only
    * the top portion of the struct so DO NOT MOVE IT! */
   /** Unique ghost context used by the draw manager. */
-  void *gl_context;
-  GPUContext *gpu_context;
+  void *system_gpu_context;
+  GPUContext *blender_gpu_context;
   /** Mutex to lock the drw manager and avoid concurrent context usage. */
-  TicketMutex *gl_context_mutex;
+  TicketMutex *system_gpu_context_mutex;
 
   GPUDrawList *draw_list;
 
@@ -663,7 +681,11 @@ typedef struct DRWManager {
 
 extern DRWManager DST; /* TODO: get rid of this and allow multi-threaded rendering. */
 
-/* --------------- FUNCTIONS ------------- */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Functions
+ * \{ */
 
 void drw_texture_set_parameters(GPUTexture *tex, DRWTextureFlag flags);
 
@@ -699,9 +721,9 @@ GPUBatch *drw_cache_procedural_triangle_strips_get(void);
 void drw_uniform_attrs_pool_update(struct GHash *table,
                                    const struct GPUUniformAttrList *key,
                                    DRWResourceHandle *handle,
-                                   struct Object *ob,
-                                   struct Object *dupli_parent,
-                                   struct DupliObject *dupli_source);
+                                   const struct Object *ob,
+                                   const struct Object *dupli_parent,
+                                   const struct DupliObject *dupli_source);
 
 GPUUniformBuf *drw_ensure_layer_attribute_buffer(void);
 
@@ -715,15 +737,17 @@ void drw_engine_data_free(GPUViewport *viewport);
 struct DRW_Attributes;
 struct DRW_MeshCDMask;
 struct GPUMaterial;
-void DRW_mesh_get_attributes(struct Object *object,
-                             struct Mesh *me,
-                             struct GPUMaterial **gpumat_array,
+void DRW_mesh_get_attributes(const struct Object *object,
+                             const struct Mesh *mesh,
+                             const struct GPUMaterial *const *gpumat_array,
                              int gpumat_array_len,
                              struct DRW_Attributes *r_attrs,
                              struct DRW_MeshCDMask *r_cd_needed);
 
 void DRW_manager_begin_sync(void);
 void DRW_manager_end_sync(void);
+
+/** \} */
 
 #ifdef __cplusplus
 }

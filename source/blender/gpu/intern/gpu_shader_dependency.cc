@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -16,6 +17,7 @@
 
 #include "BLI_ghash.h"
 #include "BLI_map.hh"
+#include "BLI_string.h"
 #include "BLI_string_ref.hh"
 
 #include "gpu_material_library.h"
@@ -38,7 +40,7 @@ extern "C" {
 namespace blender::gpu {
 
 using GPUSourceDictionnary = Map<StringRef, struct GPUSource *>;
-using GPUFunctionDictionnary = Map<StringRef, struct GPUFunction *>;
+using GPUFunctionDictionnary = Map<StringRef, GPUFunction *>;
 
 struct GPUSource {
   StringRefNull fullpath;
@@ -107,14 +109,19 @@ struct GPUSource {
       if (source.find("'") != StringRef::not_found) {
         char_literals_preprocess();
       }
+#ifndef NDEBUG
       if (source.find("drw_print") != StringRef::not_found) {
         string_preprocess();
       }
       if ((source.find("drw_debug_") != StringRef::not_found) &&
+          /* Avoid this file as it is a false positive match (matches "drw_debug_print_buf"). */
+          filename != "draw_debug_print_display_vert.glsl" &&
           /* Avoid these two files where it makes no sense to add the dependency. */
-          !ELEM(filename, "common_debug_draw_lib.glsl", "draw_debug_draw_display_vert.glsl")) {
+          !ELEM(filename, "common_debug_draw_lib.glsl", "draw_debug_draw_display_vert.glsl"))
+      {
         builtins |= shader::BuiltinBits::USE_DEBUG_DRAW;
       }
+#endif
       check_no_quotes();
     }
 
@@ -173,16 +180,16 @@ struct GPUSource {
 
     /* TODO Use clog. */
 
-    std::cout << fullpath << ":" << line_number << ":" << char_number;
+    std::cerr << fullpath << ":" << line_number << ":" << char_number;
 
-    std::cout << " error: " << message << "\n";
-    std::cout << std::setw(5) << line_number << " | "
+    std::cerr << " error: " << message << "\n";
+    std::cerr << std::setw(5) << line_number << " | "
               << input.substr(line_start, line_end - line_start) << "\n";
-    std::cout << "      | ";
+    std::cerr << "      | ";
     for (int64_t i = 0; i < char_number - 1; i++) {
-      std::cout << " ";
+      std::cerr << " ";
     }
-    std::cout << "^\n";
+    std::cerr << "^\n";
   }
 
 #define CHECK(test_value, str, ofs, msg) \
@@ -194,11 +201,11 @@ struct GPUSource {
   /**
    * Some drivers completely forbid quote characters even in unused preprocessor directives.
    * We fix the cases where we can't manually patch in `enum_preprocess()`.
-   * This check ensure none are present in non-patched sources. (see T97545)
+   * This check ensure none are present in non-patched sources. (see #97545)
    */
   void check_no_quotes()
   {
-#ifdef DEBUG
+#ifndef NDEBUG
     int64_t pos = -1;
     do {
       pos = source.find('"', pos + 1);
@@ -214,7 +221,7 @@ struct GPUSource {
 
   /**
    * Some drivers completely forbid string characters even in unused preprocessor directives.
-   * This fixes the cases we cannot manually patch: Shared headers #includes. (see T97545)
+   * This fixes the cases we cannot manually patch: Shared headers #includes. (see #97545)
    * TODO(fclem): This could be done during the datatoc step.
    */
   void quote_preprocess()
@@ -440,6 +447,11 @@ struct GPUSource {
     int64_t cursor = -1;
     StringRef func_return_type, func_name, func_args;
     while (function_parse(input, cursor, func_return_type, func_name, func_args)) {
+      /* Main functions needn't be handled because they are the entry point of the shader. */
+      if (func_name == "main") {
+        continue;
+      }
+
       GPUFunction *func = MEM_new<GPUFunction>(__func__);
       func_name.copy(func->name, sizeof(func->name));
       func->source = reinterpret_cast<void *>(this);
@@ -563,7 +575,7 @@ struct GPUSource {
       CHECK(char_end, input, cursor, "Malformed char literal. Missing ending `'`.");
 
       StringRef input_char = input.substr(char_start, char_end - char_start);
-      if (input_char.size() == 0) {
+      if (input_char.is_empty()) {
         CHECK(-1, input, cursor, "Malformed char literal. Empty character constant");
       }
 
@@ -810,6 +822,8 @@ struct GPUSource {
       }
       dependencies.append_non_duplicates(dependency_source);
     }
+    /* Precedes an eternal loop (quiet CLANG's `unreachable-code` warning). */
+    BLI_assert_unreachable();
     return 0;
   }
 
@@ -899,7 +913,7 @@ BuiltinBits gpu_shader_dependency_get_builtins(const StringRefNull shader_source
     return shader::BuiltinBits::NONE;
   }
   if (g_sources->contains(shader_source_name) == false) {
-    std::cout << "Error: Could not find \"" << shader_source_name
+    std::cerr << "Error: Could not find \"" << shader_source_name
               << "\" in the list of registered source.\n";
     BLI_assert(0);
     return shader::BuiltinBits::NONE;
@@ -914,7 +928,7 @@ Vector<const char *> gpu_shader_dependency_get_resolved_source(
   Vector<const char *> result;
   GPUSource *src = g_sources->lookup_default(shader_source_name, nullptr);
   if (src == nullptr) {
-    std::cout << "Error source not found : " << shader_source_name << std::endl;
+    std::cerr << "Error source not found : " << shader_source_name << std::endl;
   }
   src->build(result);
   return result;
@@ -924,7 +938,7 @@ StringRefNull gpu_shader_dependency_get_source(const StringRefNull shader_source
 {
   GPUSource *src = g_sources->lookup_default(shader_source_name, nullptr);
   if (src == nullptr) {
-    std::cout << "Error source not found : " << shader_source_name << std::endl;
+    std::cerr << "Error source not found : " << shader_source_name << std::endl;
   }
   return src->source;
 }

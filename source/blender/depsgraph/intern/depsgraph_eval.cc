@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -17,18 +18,18 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "intern/eval/deg_eval.h"
 #include "intern/eval/deg_eval_flush.h"
 
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_operation.h"
-#include "intern/node/deg_node_time.h"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_operation.hh"
+#include "intern/node/deg_node_time.hh"
 
-#include "intern/depsgraph.h"
-#include "intern/depsgraph_tag.h"
+#include "intern/depsgraph.hh"
+#include "intern/depsgraph_tag.hh"
 
 namespace deg = blender::deg;
 
@@ -61,7 +62,7 @@ void DEG_evaluate_on_refresh(Depsgraph *graph)
      * since the undo state is stored before updates from the frame change have been applied.
      * In this case reading back the undo state will behave as if no updates on frame change
      * is needed as the #Depsgraph.ctime & frame will match the values in the input scene.
-     * Use #ID_RECALC_FRAME_CHANGE to detect that recalculation is necessary. see: T66913. */
+     * Use #ID_RECALC_FRAME_CHANGE to detect that recalculation is necessary. see: #66913. */
     deg_graph->tag_time_source();
   }
 

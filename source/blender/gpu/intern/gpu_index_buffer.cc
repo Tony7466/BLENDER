@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -18,6 +19,7 @@
 
 #include "GPU_platform.h"
 
+#include <algorithm> /* For `min/max`. */
 #include <cstring>
 
 #define KEEP_SINGLE_COPY 1
@@ -108,8 +110,8 @@ void GPU_indexbuf_add_generic_vert(GPUIndexBufBuilder *builder, uint v)
   assert(v <= builder->max_allowed_index);
 #endif
   builder->data[builder->index_len++] = v;
-  builder->index_min = MIN2(builder->index_min, v);
-  builder->index_max = MAX2(builder->index_max, v);
+  builder->index_min = std::min(builder->index_min, v);
+  builder->index_max = std::max(builder->index_max, v);
 }
 
 void GPU_indexbuf_add_primitive_restart(GPUIndexBufBuilder *builder)
@@ -169,9 +171,9 @@ void GPU_indexbuf_set_point_vert(GPUIndexBufBuilder *builder, uint elem, uint v1
   BLI_assert(builder->prim_type == GPU_PRIM_POINTS);
   BLI_assert(elem < builder->max_index_len);
   builder->data[elem++] = v1;
-  builder->index_min = MIN2(builder->index_min, v1);
-  builder->index_max = MAX2(builder->index_max, v1);
-  builder->index_len = MAX2(builder->index_len, elem);
+  builder->index_min = std::min(builder->index_min, v1);
+  builder->index_max = std::max(builder->index_max, v1);
+  builder->index_len = std::max(builder->index_len, elem);
 }
 
 void GPU_indexbuf_set_line_verts(GPUIndexBufBuilder *builder, uint elem, uint v1, uint v2)
@@ -186,7 +188,7 @@ void GPU_indexbuf_set_line_verts(GPUIndexBufBuilder *builder, uint elem, uint v1
   builder->data[idx++] = v2;
   builder->index_min = MIN3(builder->index_min, v1, v2);
   builder->index_max = MAX3(builder->index_max, v1, v2);
-  builder->index_len = MAX2(builder->index_len, idx);
+  builder->index_len = std::max(builder->index_len, idx);
 }
 
 void GPU_indexbuf_set_tri_verts(GPUIndexBufBuilder *builder, uint elem, uint v1, uint v2, uint v3)
@@ -204,7 +206,7 @@ void GPU_indexbuf_set_tri_verts(GPUIndexBufBuilder *builder, uint elem, uint v1,
 
   builder->index_min = MIN4(builder->index_min, v1, v2, v3);
   builder->index_max = MAX4(builder->index_max, v1, v2, v3);
-  builder->index_len = MAX2(builder->index_len, idx);
+  builder->index_len = std::max(builder->index_len, idx);
 }
 
 void GPU_indexbuf_set_point_restart(GPUIndexBufBuilder *builder, uint elem)
@@ -212,7 +214,7 @@ void GPU_indexbuf_set_point_restart(GPUIndexBufBuilder *builder, uint elem)
   BLI_assert(builder->prim_type == GPU_PRIM_POINTS);
   BLI_assert(elem < builder->max_index_len);
   builder->data[elem++] = builder->restart_index_value;
-  builder->index_len = MAX2(builder->index_len, elem);
+  builder->index_len = std::max(builder->index_len, elem);
   builder->uses_restart_indices = true;
 }
 
@@ -223,7 +225,7 @@ void GPU_indexbuf_set_line_restart(GPUIndexBufBuilder *builder, uint elem)
   uint idx = elem * 2;
   builder->data[idx++] = builder->restart_index_value;
   builder->data[idx++] = builder->restart_index_value;
-  builder->index_len = MAX2(builder->index_len, idx);
+  builder->index_len = std::max(builder->index_len, idx);
   builder->uses_restart_indices = true;
 }
 
@@ -235,7 +237,7 @@ void GPU_indexbuf_set_tri_restart(GPUIndexBufBuilder *builder, uint elem)
   builder->data[idx++] = builder->restart_index_value;
   builder->data[idx++] = builder->restart_index_value;
   builder->data[idx++] = builder->restart_index_value;
-  builder->index_len = MAX2(builder->index_len, idx);
+  builder->index_len = std::max(builder->index_len, idx);
   builder->uses_restart_indices = true;
 }
 
@@ -318,7 +320,7 @@ void IndexBuf::init_build_on_device(uint index_len)
 
 void IndexBuf::init_subrange(IndexBuf *elem_src, uint start, uint length)
 {
-  /* We don't support nested subranges. */
+  /* We don't support nested sub-ranges. */
   BLI_assert(elem_src && elem_src->is_subrange_ == false);
   BLI_assert((length == 0) || (start + length <= elem_src->index_len_));
 
@@ -399,14 +401,6 @@ void IndexBuf::squeeze_indices_short(uint min_idx,
   }
 }
 
-uint32_t *IndexBuf::unmap(const uint32_t *mapped_memory) const
-{
-  size_t size = size_get();
-  uint32_t *result = static_cast<uint32_t *>(MEM_mallocN(size, __func__));
-  memcpy(result, mapped_memory, size);
-  return result;
-}
-
 }  // namespace blender::gpu
 
 /** \} */
@@ -456,14 +450,9 @@ void GPU_indexbuf_create_subrange_in_place(GPUIndexBuf *elem,
   unwrap(elem)->init_subrange(unwrap(elem_src), start, length);
 }
 
-const uint32_t *GPU_indexbuf_read(GPUIndexBuf *elem)
+void GPU_indexbuf_read(GPUIndexBuf *elem, uint32_t *data)
 {
-  return unwrap(elem)->read();
-}
-
-uint32_t *GPU_indexbuf_unmap(const GPUIndexBuf *elem, const uint32_t *mapped_buffer)
-{
-  return unwrap(elem)->unmap(mapped_buffer);
+  return unwrap(elem)->read(data);
 }
 
 void GPU_indexbuf_discard(GPUIndexBuf *elem)

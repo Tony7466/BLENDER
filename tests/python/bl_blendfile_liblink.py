@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2020-2023 Blender Authors
+#
 # SPDX-License-Identifier: Apache-2.0
 
 # ./blender.bin --background -noaudio --python tests/python/bl_blendfile_liblink.py
@@ -212,44 +214,43 @@ class TestBlendLibLinkIndirect(TestBlendLibLinkHelper):
         material = bpy.data.materials[0]
 
         assert material.library is not None
-        assert material.use_fake_user is True
-        assert material.users == 2  # Fake user is not cleared when linking.
-        assert material.is_library_indirect
+        assert material.use_fake_user is False  # Fake user is cleared when linking.
+        assert material.users == 1
+        assert material.is_library_indirect is True
 
         assert mesh.library is not None
         assert mesh.use_fake_user is False
         assert mesh.users == 0
         # IDs explicitely linked by the user are forcefully considered directly linked.
-        assert mesh.is_library_indirect == False
+        assert mesh.is_library_indirect is False
 
         ob = bpy.data.objects.new("LocalMesh", mesh)
         coll = bpy.data.collections.new("LocalMesh")
         coll.objects.link(ob)
         bpy.context.scene.collection.children.link(coll)
 
-        assert material.users == 2
-        assert material.is_library_indirect
+        assert material.users == 1
+        assert material.is_library_indirect is True
         assert mesh.users == 1
-        assert mesh.is_library_indirect == False
+        assert mesh.is_library_indirect is False
 
         ob.material_slots[0].link = 'OBJECT'
         ob.material_slots[0].material = material
 
-        assert material.users == 3
-        assert material.is_library_indirect == False
+        assert material.users == 2
+        assert material.is_library_indirect is False
 
         ob.material_slots[0].material = None
 
-        assert material.users == 2
+        assert material.users == 1
         # This is not properly updated whene removing a local user of linked data.
-        assert material.is_library_indirect == False
+        assert material.is_library_indirect is False
 
         output_work_path = os.path.join(output_dir, self.unique_blendfile_name("blendfile"))
         bpy.ops.wm.save_as_mainfile(filepath=output_work_path, check_existing=False, compress=False)
 
-        assert material.users == 2
-        # Currently linked data which has no more local user never gets reset to indirectly linked status.
-        assert material.is_library_indirect
+        assert material.users == 1
+        assert material.is_library_indirect is True
 
         bpy.ops.wm.open_mainfile(filepath=output_work_path, load_ui=False)
 
@@ -262,16 +263,14 @@ class TestBlendLibLinkIndirect(TestBlendLibLinkHelper):
         material = bpy.data.materials[0]
 
         assert material.library is not None
-        assert material.use_fake_user is True
-        assert material.users == 2  # Fake user is not cleared when linking.
-        # Currently even re-reading the .blend file will not properly reset tag for indirectly linked data,
-        # if their reference was written in the .blend file.
-        assert material.is_library_indirect
+        assert material.use_fake_user is False  # Fake user is cleared when linking.
+        assert material.users == 1
+        assert material.is_library_indirect is True
 
         assert mesh.library is not None
         assert mesh.use_fake_user is False
         assert mesh.users == 1
-        assert mesh.is_library_indirect == False
+        assert mesh.is_library_indirect is False
 
 
 class TestBlendLibAppendBasic(TestBlendLibLinkHelper):
@@ -292,7 +291,7 @@ class TestBlendLibAppendBasic(TestBlendLibLinkHelper):
 
         assert len(bpy.data.materials) == 1
         assert bpy.data.materials[0].library is not None
-        assert bpy.data.materials[0].users == 2  # Fake user is not cleared when linking.
+        assert bpy.data.materials[0].users == 1  # Fake user is cleared when linking.
         assert len(bpy.data.meshes) == 1
         assert bpy.data.meshes[0].library is None
         assert bpy.data.meshes[0].use_fake_user is False
@@ -309,7 +308,7 @@ class TestBlendLibAppendBasic(TestBlendLibLinkHelper):
 
         assert len(bpy.data.materials) == 1
         assert bpy.data.materials[0].library is not None
-        assert bpy.data.materials[0].users == 2  # Fake user is not cleared when linking.
+        assert bpy.data.materials[0].users == 1  # Fake user is cleared when linking.
         assert len(bpy.data.meshes) == 1
         assert bpy.data.meshes[0].library is None
         assert bpy.data.meshes[0].use_fake_user is False
@@ -327,7 +326,7 @@ class TestBlendLibAppendBasic(TestBlendLibLinkHelper):
 
         assert len(bpy.data.materials) == 1
         assert bpy.data.materials[0].library is not None
-        assert bpy.data.materials[0].users == 2  # Fake user is not cleared when linking.
+        assert bpy.data.materials[0].users == 1  # Fake user is cleared when linking.
         assert len(bpy.data.meshes) == 1
         assert bpy.data.meshes[0].library is None
         assert bpy.data.meshes[0].use_fake_user is True
@@ -344,7 +343,7 @@ class TestBlendLibAppendBasic(TestBlendLibLinkHelper):
 
         assert len(bpy.data.materials) == 1
         assert bpy.data.materials[0].library is not None
-        assert bpy.data.materials[0].users == 2  # Fake user is not cleared when linking.
+        assert bpy.data.materials[0].users == 1  # Fake user is cleared when linking.
         assert len(bpy.data.meshes) == 1
         assert bpy.data.meshes[0].library is None
         assert bpy.data.meshes[0].users == 1
@@ -518,19 +517,23 @@ class TestBlendLibLibraryRelocate(TestBlendLibLinkHelper):
         assert orig_data == relocate_data
 
 
+# Python library loader context manager.
 class TestBlendLibDataLibrariesLoad(TestBlendLibLinkHelper):
 
     def __init__(self, args):
         self.args = args
 
-    def test_link_relocate(self):
+    def do_libload_init(self):
         output_dir = self.args.output_dir
         output_lib_path = self.init_lib_data_basic()
 
         # Simple link of a single Object, and reload.
         self.reset_blender()
 
-        with bpy.data.libraries.load(filepath=output_lib_path) as lib_ctx:
+        return output_lib_path
+
+    def do_libload(self, **load_kwargs):
+        with bpy.data.libraries.load(**load_kwargs) as lib_ctx:
             lib_src, lib_link = lib_ctx
 
             assert len(lib_src.meshes) == 1
@@ -543,11 +546,162 @@ class TestBlendLibDataLibrariesLoad(TestBlendLibLinkHelper):
 
             lib_link.collections.append(lib_src.collections[0])
 
-        # Linking happens when living the context manager.
+        # Linking/append/liboverride happens when living the context manager.
+
+
+class TestBlendLibDataLibrariesLoadAppend(TestBlendLibDataLibrariesLoad):
+
+    def test_libload_append(self):
+        output_lib_path = self.do_libload_init()
+        self.do_libload(filepath=output_lib_path, link=False, create_liboverrides=False)
 
         assert len(bpy.data.meshes) == 1
         assert len(bpy.data.objects) == 1  # This code does no instantiation.
         assert len(bpy.data.collections) == 1
+
+        # Append, so all data should have been made local.
+        assert bpy.data.meshes[0].library is None
+        assert bpy.data.objects[0].library is None
+        assert bpy.data.collections[0].library is None
+
+
+class TestBlendLibDataLibrariesLoadLink(TestBlendLibDataLibrariesLoad):
+
+    def test_libload_link(self):
+        output_lib_path = self.do_libload_init()
+        self.do_libload(filepath=output_lib_path, link=True, create_liboverrides=False)
+
+        assert len(bpy.data.meshes) == 1
+        assert len(bpy.data.objects) == 1  # This code does no instantiation.
+        assert len(bpy.data.collections) == 1
+
+        # Link, so all data should have remained linked.
+        assert bpy.data.meshes[0].library is not None
+        assert bpy.data.objects[0].library is not None
+        assert bpy.data.collections[0].library is not None
+
+
+class TestBlendLibDataLibrariesLoadLibOverride(TestBlendLibDataLibrariesLoad):
+
+    def test_libload_liboverride(self):
+        output_lib_path = self.do_libload_init()
+        self.do_libload(filepath=output_lib_path, link=True, create_liboverrides=True)
+
+        assert len(bpy.data.meshes) == 1
+        assert len(bpy.data.objects) == 1  # This code does no instantiation.
+        assert len(bpy.data.collections) == 2  # The linked one and its local liboverride.
+
+        # Link + LibOverride, so linked data should have remained linked.
+        assert bpy.data.meshes[-1].library is not None
+        assert bpy.data.objects[-1].library is not None
+        assert bpy.data.collections[-1].library is not None
+
+        # Only explicitely linked data gets a liboverride, without any handling of hierarchy/dependencies.
+        assert bpy.data.collections[0].library is None
+        assert bpy.data.collections[0].is_runtime_data is False
+        assert bpy.data.collections[0].override_library is not None
+        assert bpy.data.collections[0].override_library.reference == bpy.data.collections[-1]
+
+        # Should create another liboverride for the linked collection.
+        self.do_libload(filepath=output_lib_path, link=True, create_liboverrides=True, reuse_liboverrides=False)
+
+        assert len(bpy.data.meshes) == 1
+        assert len(bpy.data.objects) == 1  # This code does no instantiation.
+        assert len(bpy.data.collections) == 3  # The linked one and its two local liboverrides.
+
+        # Link + LibOverride, so linked data should have remained linked.
+        assert bpy.data.meshes[-1].library is not None
+        assert bpy.data.objects[-1].library is not None
+        assert bpy.data.collections[-1].library is not None
+
+        # Only explicitely linked data gets a liboverride, without any handling of hierarchy/dependencies.
+        assert bpy.data.collections[1].library is None
+        assert bpy.data.collections[1].is_runtime_data is False
+        assert bpy.data.collections[1].override_library is not None
+        assert bpy.data.collections[1].override_library.reference == bpy.data.collections[-1]
+
+        # This call should not change anything, first liboverrides should be found and 'reused'.
+        self.do_libload(filepath=output_lib_path, link=True, create_liboverrides=True, reuse_liboverrides=True)
+
+        assert len(bpy.data.meshes) == 1
+        assert len(bpy.data.objects) == 1  # This code does no instantiation.
+        assert len(bpy.data.collections) == 3  # The linked one and its two local liboverrides.
+
+        # Link + LibOverride, so linked data should have remained linked.
+        assert bpy.data.meshes[-1].library is not None
+        assert bpy.data.objects[-1].library is not None
+        assert bpy.data.collections[-1].library is not None
+
+        # Only explicitely linked data gets a liboverride, without any handling of hierarchy/dependencies.
+        assert bpy.data.collections[1].library is None
+        assert bpy.data.collections[1].is_runtime_data is False
+        assert bpy.data.collections[1].override_library is not None
+        assert bpy.data.collections[1].override_library.reference == bpy.data.collections[-1]
+
+    def test_libload_liboverride_runtime(self):
+        output_lib_path = self.do_libload_init()
+        self.do_libload(filepath=output_lib_path, link=True,
+                        create_liboverrides=True,
+                        create_liboverrides_runtime=True)
+
+        assert len(bpy.data.meshes) == 1
+        assert len(bpy.data.objects) == 1  # This code does no instantiation.
+        assert len(bpy.data.collections) == 2  # The linked one and its local liboverride.
+
+        # Link + LibOverride, so linked data should have remained linked.
+        assert bpy.data.meshes[-1].library is not None
+        assert bpy.data.objects[-1].library is not None
+        assert bpy.data.collections[-1].library is not None
+
+        # Only explicitely linked data gets a liboverride, without any handling of hierarchy/dependencies.
+        assert bpy.data.collections[0].library is None
+        assert bpy.data.collections[0].is_runtime_data is True
+        assert bpy.data.collections[0].override_library is not None
+        assert bpy.data.collections[0].override_library.reference == bpy.data.collections[-1]
+
+        # This call should not change anything, first liboverrides should be found and 'reused'.
+        self.do_libload(filepath=output_lib_path,
+                        link=True,
+                        create_liboverrides=True,
+                        create_liboverrides_runtime=True,
+                        reuse_liboverrides=True)
+
+        assert len(bpy.data.meshes) == 1
+        assert len(bpy.data.objects) == 1  # This code does no instantiation.
+        assert len(bpy.data.collections) == 2  # The linked one and its local liboverride.
+
+        # Link + LibOverride, so linked data should have remained linked.
+        assert bpy.data.meshes[-1].library is not None
+        assert bpy.data.objects[-1].library is not None
+        assert bpy.data.collections[-1].library is not None
+
+        # Only explicitely linked data gets a liboverride, without any handling of hierarchy/dependencies.
+        assert bpy.data.collections[0].library is None
+        assert bpy.data.collections[0].is_runtime_data is True
+        assert bpy.data.collections[0].override_library is not None
+        assert bpy.data.collections[0].override_library.reference == bpy.data.collections[-1]
+
+        # Should create another liboverride for the linked collection, since this time we request a non-runtime one.
+        self.do_libload(filepath=output_lib_path,
+                        link=True,
+                        create_liboverrides=True,
+                        create_liboverrides_runtime=False,
+                        reuse_liboverrides=True)
+
+        assert len(bpy.data.meshes) == 1
+        assert len(bpy.data.objects) == 1  # This code does no instantiation.
+        assert len(bpy.data.collections) == 3  # The linked one and its two local liboverrides.
+
+        # Link + LibOverride, so linked data should have remained linked.
+        assert bpy.data.meshes[-1].library is not None
+        assert bpy.data.objects[-1].library is not None
+        assert bpy.data.collections[-1].library is not None
+
+        # Only explicitely linked data gets a liboverride, without any handling of hierarchy/dependencies.
+        assert bpy.data.collections[1].library is None
+        assert bpy.data.collections[1].is_runtime_data is False
+        assert bpy.data.collections[1].override_library is not None
+        assert bpy.data.collections[1].override_library.reference == bpy.data.collections[-1]
 
 
 TESTS = (
@@ -559,7 +713,10 @@ TESTS = (
 
     TestBlendLibLibraryReload,
     TestBlendLibLibraryRelocate,
-    TestBlendLibDataLibrariesLoad,
+
+    TestBlendLibDataLibrariesLoadAppend,
+    TestBlendLibDataLibrariesLoadLink,
+    TestBlendLibDataLibrariesLoadLibOverride,
 )
 
 

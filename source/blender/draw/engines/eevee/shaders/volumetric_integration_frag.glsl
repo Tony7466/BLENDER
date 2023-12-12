@@ -1,11 +1,14 @@
-
-#pragma BLENDER_REQUIRE(volumetric_lib.glsl)
+/* SPDX-FileCopyrightText: 2017-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Based on Frosbite Unified Volumetric.
  * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite */
 
 /* Step 3 : Integrate for each froxel the final amount of light
  * scattered back to the viewer and the amount of transmittance. */
+
+#pragma BLENDER_REQUIRE(volumetric_lib.glsl)
 
 /* Globals when using OPTI */
 #ifdef USE_VOLUME_OPTI
@@ -52,7 +55,7 @@ void main()
     float ray_len = orig_ray_len * cell_depth;
 
     /* Emission does not work of there is no extinction because
-     * Tr evaluates to 1.0 leading to Lscat = 0.0. (See T65771) */
+     * Tr evaluates to 1.0 leading to Lscat = 0.0. (See #65771) */
     s_extinction = max(vec3(1e-7) * step(1e-5, Lscat), s_extinction);
 
     /* Evaluate Scattering */

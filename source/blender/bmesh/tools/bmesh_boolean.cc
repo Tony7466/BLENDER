@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -7,14 +9,13 @@
  */
 
 #include "BLI_array.hh"
-#include "BLI_math.h"
 #include "BLI_math_mpq.hh"
 #include "BLI_mesh_boolean.hh"
 #include "BLI_mesh_intersect.hh"
 
-#include "bmesh.h"
-#include "bmesh_boolean.h"
-#include "bmesh_edgesplit.h"
+#include "bmesh.hh"
+#include "bmesh_boolean.hh"
+#include "bmesh_edgesplit.hh"
 
 #include "PIL_time.h"
 
@@ -34,7 +35,7 @@ namespace blender::meshintersect {
  * the faces in the returned (polygonal) mesh.
  */
 static IMesh mesh_from_bm(BMesh *bm,
-                          struct BMLoop *(*looptris)[3],
+                          BMLoop *(*looptris)[3],
                           const int looptris_tot,
                           IMesh *r_triangulated,
                           IMeshArena *arena)
@@ -112,7 +113,8 @@ static bool bmvert_attached_to_hidden_face(BMVert *bmv)
   BMIter iter;
   for (BMFace *bmf = static_cast<BMFace *>(BM_iter_new(&iter, nullptr, BM_FACES_OF_VERT, bmv));
        bmf;
-       bmf = static_cast<BMFace *>(BM_iter_step(&iter))) {
+       bmf = static_cast<BMFace *>(BM_iter_step(&iter)))
+  {
     if (BM_elem_flag_test(bmf, BM_ELEM_HIDDEN)) {
       return true;
     }
@@ -155,7 +157,8 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
     BMVert *bmv = BM_vert_at_index(bm, v);
     if ((keep_hidden &&
          (BM_elem_flag_test(bmv, BM_ELEM_HIDDEN) || bmvert_attached_to_hidden_face(bmv))) ||
-        bmvert_attached_to_wire(bmv)) {
+        bmvert_attached_to_wire(bmv))
+    {
       BM_elem_flag_enable(bmv, KEEP_FLAG);
     }
     else {
@@ -213,7 +216,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
 
   /* Save the original #BMEdge's so we can use them as examples. */
   Array<BMEdge *> old_edges(bm->totedge);
-  std::copy(bm->etable, bm->etable + bm->totedge, old_edges.begin());
+  std::copy_n(bm->etable, bm->totedge, old_edges.begin());
 
   /* Reuse or make new #BMFace's, as the faces are identical to old ones or not.
    * If reusing, mark them as "keep". First find the maximum face length
@@ -297,7 +300,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
   BMIter iter;
   BMFace *bmf = static_cast<BMFace *>(BM_iter_new(&iter, bm, BM_FACES_OF_MESH, nullptr));
   while (bmf != nullptr) {
-#  ifdef DEBUG
+#  ifndef NDEBUG
     iter.count = BM_iter_mesh_count(BM_FACES_OF_MESH, bm);
 #  endif
     BMFace *bmf_next = static_cast<BMFace *>(BM_iter_step(&iter));
@@ -315,7 +318,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
   }
   BMVert *bmv = static_cast<BMVert *>(BM_iter_new(&iter, bm, BM_VERTS_OF_MESH, nullptr));
   while (bmv != nullptr) {
-#  ifdef DEBUG
+#  ifndef NDEBUG
     iter.count = BM_iter_mesh_count(BM_VERTS_OF_MESH, bm);
 #  endif
     BMVert *bmv_next = static_cast<BMVert *>(BM_iter_step(&iter));
@@ -333,7 +336,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
 }
 
 static bool bmesh_boolean(BMesh *bm,
-                          struct BMLoop *(*looptris)[3],
+                          BMLoop *(*looptris)[3],
                           const int looptris_tot,
                           int (*test_fn)(BMFace *f, void *user_data),
                           void *user_data,
@@ -399,7 +402,6 @@ static bool bmesh_boolean(BMesh *bm,
 
 }  // namespace blender::meshintersect
 
-extern "C" {
 /**
  * Perform the boolean operation specified by boolean_mode on the mesh bm.
  * The inputs to the boolean operation are either one sub-mesh (if use_self is true),
@@ -418,7 +420,7 @@ extern "C" {
  */
 #ifdef WITH_GMP
 bool BM_mesh_boolean(BMesh *bm,
-                     struct BMLoop *(*looptris)[3],
+                     BMLoop *(*looptris)[3],
                      const int looptris_tot,
                      int (*test_fn)(BMFace *f, void *user_data),
                      void *user_data,
@@ -443,7 +445,7 @@ bool BM_mesh_boolean(BMesh *bm,
 }
 
 bool BM_mesh_boolean_knife(BMesh *bm,
-                           struct BMLoop *(*looptris)[3],
+                           BMLoop *(*looptris)[3],
                            const int looptris_tot,
                            int (*test_fn)(BMFace *f, void *user_data),
                            void *user_data,
@@ -467,7 +469,7 @@ bool BM_mesh_boolean_knife(BMesh *bm,
 }
 #else
 bool BM_mesh_boolean(BMesh * /*bm*/,
-                     struct BMLoop *(*looptris)[3],
+                     BMLoop *(*looptris)[3],
                      const int /*looptris_tot*/,
                      int (*test_fn)(BMFace *, void *),
                      void * /*user_data*/,
@@ -490,7 +492,7 @@ bool BM_mesh_boolean(BMesh * /*bm*/,
  * to the intersection result faces.
  */
 bool BM_mesh_boolean_knife(BMesh * /*bm*/,
-                           struct BMLoop *(*looptris)[3],
+                           BMLoop *(*looptris)[3],
                            const int /*looptris_tot*/,
                            int (*test_fn)(BMFace *, void *),
                            void * /*user_data*/,
@@ -504,5 +506,3 @@ bool BM_mesh_boolean_knife(BMesh * /*bm*/,
   return false;
 }
 #endif
-
-} /* extern "C" */

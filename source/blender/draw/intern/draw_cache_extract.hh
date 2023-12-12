@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -16,13 +17,13 @@
 #include "DNA_view3d_enums.h"
 
 #include "BKE_attribute.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "GPU_batch.h"
 #include "GPU_index_buffer.h"
 #include "GPU_vertex_buffer.h"
 
-#include "draw_attributes.h"
+#include "draw_attributes.hh"
 
 struct DRWSubdivCache;
 struct MeshRenderData;
@@ -55,10 +56,10 @@ enum {
 enum eMRIterType {
   MR_ITER_LOOPTRI = 1 << 0,
   MR_ITER_POLY = 1 << 1,
-  MR_ITER_LEDGE = 1 << 2,
-  MR_ITER_LVERT = 1 << 3,
+  MR_ITER_LOOSE_EDGE = 1 << 2,
+  MR_ITER_LOOSE_VERT = 1 << 3,
 };
-ENUM_OPERATORS(eMRIterType, MR_ITER_LVERT)
+ENUM_OPERATORS(eMRIterType, MR_ITER_LOOSE_VERT)
 
 enum eMRDataType {
   MR_DATA_NONE = 0,
@@ -72,15 +73,15 @@ enum eMRDataType {
 };
 ENUM_OPERATORS(eMRDataType, MR_DATA_POLYS_SORTED)
 
-BLI_INLINE int mesh_render_mat_len_get(const Object *object, const Mesh *me)
+BLI_INLINE int mesh_render_mat_len_get(const Object *object, const Mesh *mesh)
 {
-  if (me->edit_mesh != NULL) {
+  if (mesh->edit_mesh != NULL) {
     const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(object);
     if (editmesh_eval_final != NULL) {
       return std::max<int>(1, editmesh_eval_final->totcol);
     }
   }
-  return std::max<int>(1, me->totcol);
+  return std::max<int>(1, mesh->totcol);
 }
 
 struct MeshBufferList {
@@ -111,7 +112,7 @@ struct MeshBufferList {
     /* Selection */
     GPUVertBuf *vert_idx; /* extend */
     GPUVertBuf *edge_idx; /* extend */
-    GPUVertBuf *poly_idx;
+    GPUVertBuf *face_idx;
     GPUVertBuf *fdot_idx;
     GPUVertBuf *attr[GPU_MAX_ATTR];
     GPUVertBuf *attr_viewer;
@@ -222,10 +223,19 @@ ENUM_OPERATORS(DRWBatchFlag, MBC_SURFACE_PER_MAT);
 BLI_STATIC_ASSERT(MBC_BATCH_LEN < 32, "Number of batches exceeded the limit of bit fields");
 
 struct MeshExtractLooseGeom {
-  int edge_len;
-  int vert_len;
-  int *verts;
-  int *edges;
+  /** Indices of all vertices not used by edges in the #Mesh or #BMesh. */
+  blender::Array<int> verts;
+  /** Indices of all edges not used by faces in the #Mesh or #BMesh. */
+  blender::Array<int> edges;
+};
+
+struct SortedFaceData {
+  /** The first triangle index for each polygon, sorted into slices by material. */
+  blender::Array<int> tri_first_index;
+  /** The number of visible triangles assigned to each material. */
+  blender::Array<int> mat_tri_len;
+  /* The total number of visible triangles (a sum of the values in #mat_tri_len). */
+  int visible_tri_len;
 };
 
 /**
@@ -238,26 +248,22 @@ struct MeshBufferCache {
 
   MeshExtractLooseGeom loose_geom;
 
-  struct {
-    int *tri_first_index;
-    int *mat_tri_len;
-    int visible_tri_len;
-  } poly_sorted;
+  SortedFaceData face_sorted;
 };
 
 #define FOREACH_MESH_BUFFER_CACHE(batch_cache, mbc) \
-  for (MeshBufferCache *mbc = &batch_cache->final; \
-       mbc == &batch_cache->final || mbc == &batch_cache->cage || mbc == &batch_cache->uv_cage; \
-       mbc = (mbc == &batch_cache->final) ? \
-                 &batch_cache->cage : \
-                 ((mbc == &batch_cache->cage) ? &batch_cache->uv_cage : NULL))
+  for (MeshBufferCache *mbc = &batch_cache.final; \
+       mbc == &batch_cache.final || mbc == &batch_cache.cage || mbc == &batch_cache.uv_cage; \
+       mbc = (mbc == &batch_cache.final) ? \
+                 &batch_cache.cage : \
+                 ((mbc == &batch_cache.cage) ? &batch_cache.uv_cage : NULL))
 
 struct MeshBatchCache {
   MeshBufferCache final, cage, uv_cage;
 
   MeshBatchList batch;
 
-  /* Index buffer per material. These are subranges of `ibo.tris` */
+  /* Index buffer per material. These are sub-ranges of `ibo.tris`. */
   GPUIndexBuf **tris_per_mat;
 
   GPUBatch **surface_per_mat;
@@ -270,7 +276,7 @@ struct MeshBatchCache {
   /* Settings to determine if cache is invalid. */
   int edge_len;
   int tri_len;
-  int poly_len;
+  int face_len;
   int vert_len;
   int mat_len;
   /* Instantly invalidates cache, skipping mesh check */
@@ -308,10 +314,10 @@ struct MeshBatchCache {
 namespace blender::draw {
 
 void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
-                                        MeshBatchCache *cache,
-                                        MeshBufferCache *mbc,
+                                        MeshBatchCache &cache,
+                                        MeshBufferCache &mbc,
                                         Object *object,
-                                        Mesh *me,
+                                        Mesh *mesh,
                                         bool is_editmode,
                                         bool is_paint_mode,
                                         bool is_mode_active,
@@ -322,9 +328,9 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
                                         const ToolSettings *ts,
                                         bool use_hide);
 
-void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache *cache,
-                                               MeshBufferCache *mbc,
-                                               DRWSubdivCache *subdiv_cache,
-                                               MeshRenderData *mr);
+void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
+                                               MeshBufferCache &mbc,
+                                               DRWSubdivCache &subdiv_cache,
+                                               MeshRenderData &mr);
 
 }  // namespace blender::draw

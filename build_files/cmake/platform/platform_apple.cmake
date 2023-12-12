@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2016 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2016 Blender Foundation. All rights reserved.
 
 # Libraries configuration for Apple.
 
@@ -53,7 +54,9 @@ if(NOT DEFINED LIBDIR)
     set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/darwin_${CMAKE_OSX_ARCHITECTURES})
   endif()
 else()
-  message(STATUS "Using pre-compiled LIBDIR: ${LIBDIR}")
+  if(FIRST_RUN)
+    message(STATUS "Using pre-compiled LIBDIR: ${LIBDIR}")
+  endif()
 endif()
 if(NOT EXISTS "${LIBDIR}/")
   message(FATAL_ERROR "Mac OSX requires pre-compiled libs at: '${LIBDIR}'")
@@ -64,8 +67,14 @@ endif()
 set(CMAKE_FIND_FRAMEWORK NEVER)
 
 # Optionally use system Python if PYTHON_ROOT_DIR is specified.
-if(WITH_PYTHON AND (WITH_PYTHON_MODULE AND PYTHON_ROOT_DIR))
-  find_package(PythonLibsUnix REQUIRED)
+if(WITH_PYTHON)
+  if(WITH_PYTHON_MODULE AND PYTHON_ROOT_DIR)
+    find_package(PythonLibsUnix REQUIRED)
+  endif()
+else()
+  # Python executable is needed as part of the build-process,
+  # note that building without Python is quite unusual.
+  find_program(PYTHON_EXECUTABLE "python3")
 endif()
 
 # Prefer lib directory paths
@@ -95,12 +104,6 @@ if(WITH_MATERIALX)
 endif()
 add_bundled_libraries(materialx/lib)
 
-if(WITH_VULKAN_BACKEND)
-  find_package(MoltenVK REQUIRED)
-  find_package(ShaderC REQUIRED)
-  find_package(Vulkan REQUIRED)
-endif()
-
 if(WITH_OPENSUBDIV)
   find_package(OpenSubdiv)
 endif()
@@ -126,8 +129,10 @@ if(WITH_CODEC_SNDFILE)
   unset(_sndfile_VORBISENC_LIBRARY)
 endif()
 
-if(WITH_PYTHON AND NOT (WITH_PYTHON_MODULE AND PYTHON_ROOT_DIR))
-  find_package(PythonLibsUnix REQUIRED)
+if(WITH_PYTHON)
+  if(NOT (WITH_PYTHON_MODULE AND PYTHON_ROOT_DIR))
+    find_package(PythonLibsUnix REQUIRED)
+  endif()
 endif()
 
 if(WITH_FFTW3)
@@ -136,9 +141,18 @@ endif()
 
 # FreeType compiled with Brotli compression for woff2.
 find_package(Freetype REQUIRED)
-list(APPEND FREETYPE_LIBRARIES
+set(BROTLI_LIBRARIES
   ${LIBDIR}/brotli/lib/libbrotlicommon-static.a
-  ${LIBDIR}/brotli/lib/libbrotlidec-static.a)
+  ${LIBDIR}/brotli/lib/libbrotlidec-static.a
+)
+
+if(WITH_HARFBUZZ)
+  find_package(Harfbuzz)
+endif()
+
+if(WITH_FRIBIDI)
+  find_package(Fribidi)
+endif()
 
 if(WITH_IMAGE_OPENEXR)
   find_package(OpenEXR)
@@ -152,9 +166,12 @@ if(WITH_CODEC_FFMPEG)
     avcodec avdevice avformat avutil
     mp3lame ogg opus swresample swscale
     theora theoradec theoraenc vorbis vorbisenc
-    vorbisfile vpx x264 xvidcore)
+    vorbisfile vpx x264)
   if(EXISTS ${LIBDIR}/ffmpeg/lib/libaom.a)
     list(APPEND FFMPEG_FIND_COMPONENTS aom)
+  endif()
+  if(EXISTS ${LIBDIR}/ffmpeg/lib/libxvidcore.a)
+    list(APPEND FFMPEG_FIND_COMPONENTS xvidcore)
   endif()
   find_package(FFmpeg)
 endif()
@@ -174,12 +191,10 @@ if(SYSTEMSTUBS_LIBRARY)
   list(APPEND PLATFORM_LINKLIBS SystemStubs)
 endif()
 
-string(APPEND PLATFORM_CFLAGS " -pipe -funsigned-char -fno-strict-aliasing")
+string(APPEND PLATFORM_CFLAGS " -pipe -funsigned-char -fno-strict-aliasing -ffp-contract=off")
 set(PLATFORM_LINKFLAGS
   "-fexceptions -framework CoreServices -framework Foundation -framework IOKit -framework AppKit -framework Cocoa -framework Carbon -framework AudioUnit -framework AudioToolbox -framework CoreAudio -framework Metal -framework QuartzCore"
 )
-
-list(APPEND PLATFORM_LINKLIBS c++)
 
 if(WITH_OPENIMAGEDENOISE)
   if("${CMAKE_OSX_ARCHITECTURES}" STREQUAL "arm64")
@@ -221,10 +236,8 @@ find_package(PNG REQUIRED)
 set(JPEG_ROOT ${LIBDIR}/jpeg)
 find_package(JPEG REQUIRED)
 
-if(WITH_IMAGE_TIFF)
-  set(TIFF_ROOT ${LIBDIR}/tiff)
-  find_package(TIFF REQUIRED)
-endif()
+set(TIFF_ROOT ${LIBDIR}/tiff)
+find_package(TIFF REQUIRED)
 
 if(WITH_IMAGE_WEBP)
   set(WEBP_ROOT_DIR ${LIBDIR}/webp)
@@ -233,7 +246,7 @@ endif()
 
 if(WITH_BOOST)
   set(Boost_NO_BOOST_CMAKE ON)
-  set(BOOST_ROOT ${LIBDIR}/boost)
+  set(Boost_ROOT ${LIBDIR}/boost)
   set(Boost_NO_SYSTEM_PATHS ON)
   set(_boost_FIND_COMPONENTS date_time filesystem regex system thread wave)
   if(WITH_INTERNATIONAL)
@@ -245,6 +258,7 @@ if(WITH_BOOST)
   if(WITH_USD AND USD_PYTHON_SUPPORT)
     list(APPEND _boost_FIND_COMPONENTS python${PYTHON_VERSION_NO_DOTS})
   endif()
+  set(Boost_NO_WARN_NEW_VERSIONS ON)
   find_package(Boost COMPONENTS ${_boost_FIND_COMPONENTS})
 
   # Boost Python is separate to avoid linking Python into tests that don't need it.
@@ -270,19 +284,7 @@ if(WITH_PUGIXML)
   find_package(PugiXML REQUIRED)
 endif()
 
-if(WITH_OPENIMAGEIO)
-  find_package(OpenImageIO)
-  list(APPEND OPENIMAGEIO_LIBRARIES
-    ${PNG_LIBRARIES}
-    ${JPEG_LIBRARIES}
-    ${TIFF_LIBRARY}
-    ${OPENEXR_LIBRARIES}
-    ${OPENJPEG_LIBRARIES}
-    ${ZLIB_LIBRARIES}
-  )
-  set(OPENIMAGEIO_DEFINITIONS "-DOIIO_STATIC_BUILD")
-  set(OPENIMAGEIO_IDIFF "${LIBDIR}/openimageio/bin/idiff")
-endif()
+find_package(OpenImageIO REQUIRED)
 add_bundled_libraries(openimageio/lib)
 
 if(WITH_OPENCOLORIO)
@@ -330,20 +332,12 @@ endif()
 
 if(WITH_CYCLES AND WITH_CYCLES_EMBREE)
   find_package(Embree 3.8.0 REQUIRED)
-
-  # Embree static library linking can mix up SSE and AVX symbols, causing
-  # crashes on macOS systems with older CPUs that don't have AVX. Using
-  # force load avoids that. The Embree shared library does not suffer from
-  # this problem, precisely because linking a shared library uses force load.
-  set(_embree_libraries_force_load)
-  foreach(_embree_library ${EMBREE_LIBRARIES})
-    list(APPEND _embree_libraries_force_load "-Wl,-force_load,${_embree_library}")
-  endforeach()
-  set(EMBREE_LIBRARIES ${_embree_libraries_force_load})
 endif()
+add_bundled_libraries(embree/lib)
 
 if(WITH_OPENIMAGEDENOISE)
   find_package(OpenImageDenoise REQUIRED)
+  add_bundled_libraries(openimagedenoise/lib)
 endif()
 
 if(WITH_TBB)
@@ -434,13 +428,15 @@ string(APPEND PLATFORM_LINKFLAGS
   " -Wl,-unexported_symbols_list,'${PLATFORM_SYMBOLS_MAP}'"
 )
 
-string(APPEND CMAKE_CXX_FLAGS " -stdlib=libc++")
-string(APPEND PLATFORM_LINKFLAGS " -stdlib=libc++")
+# Use old, slower linker for now to avoid many linker warnings.
+if(${XCODE_VERSION} VERSION_GREATER_EQUAL 15.0)
+  string(APPEND PLATFORM_LINKFLAGS " -Wl,-ld_classic")
+endif()
 
 # Make stack size more similar to Embree, required for Embree.
 string(APPEND PLATFORM_LINKFLAGS_EXECUTABLE " -Wl,-stack_size,0x100000")
 
-# Suppress ranlib "has no symbols" warnings (workaround for T48250)
+# Suppress ranlib "has no symbols" warnings (workaround for #48250).
 set(CMAKE_C_ARCHIVE_CREATE   "<CMAKE_AR> Scr <TARGET> <LINK_FLAGS> <OBJECTS>")
 set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> Scr <TARGET> <LINK_FLAGS> <OBJECTS>")
 # llvm-ranlib doesn't support this flag. Xcode's libtool does.
@@ -452,16 +448,46 @@ endif()
 if(WITH_COMPILER_CCACHE)
   if(NOT CMAKE_GENERATOR STREQUAL "Xcode")
     find_program(CCACHE_PROGRAM ccache)
+    mark_as_advanced(CCACHE_PROGRAM)
     if(CCACHE_PROGRAM)
       # Makefiles and ninja
       set(CMAKE_C_COMPILER_LAUNCHER   "${CCACHE_PROGRAM}" CACHE STRING "" FORCE)
       set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "" FORCE)
+      mark_as_advanced(
+        CMAKE_C_COMPILER_LAUNCHER
+        CMAKE_CXX_COMPILER_LAUNCHER
+      )
     else()
       message(WARNING "Ccache NOT found, disabling WITH_COMPILER_CCACHE")
       set(WITH_COMPILER_CCACHE OFF)
     endif()
   endif()
 endif()
+
+unset(_custom_LINKER_FUSE_FLAG)
+if(WITH_LINKER_LLD)
+  find_program(LLD_PROGRAM ld.lld)
+  if(LLD_PROGRAM)
+    set(_custom_LINKER_FUSE_FLAG "-fuse-ld=lld")
+  else()
+    message(WARNING "LLD linker NOT found, disabling WITH_LINKER_LLD")
+    set(WITH_LINKER_LLD OFF)
+  endif()
+endif()
+if(WITH_LINKER_MOLD)
+  find_program(MOLD_PROGRAM mold)
+  if(MOLD_PROGRAM)
+    set(_custom_LINKER_FUSE_FLAG "-fuse-ld=mold")
+  else()
+    message(WARNING "Mold linker NOT found, disabling WITH_LINKER_MOLD")
+    set(WITH_LINKER_MOLD OFF)
+  endif()
+endif()
+
+if(_custom_LINKER_FUSE_FLAG)
+  add_link_options(${_custom_LINKER_FUSE_FLAG})
+endif()
+
 
 if(WITH_COMPILER_ASAN)
   list(APPEND PLATFORM_BUNDLED_LIBRARIES ${COMPILER_ASAN_LIBRARY})
@@ -486,7 +512,7 @@ if(PLATFORM_BUNDLED_LIBRARIES)
 
   # Environment variables to run precompiled executables that needed libraries.
   list(JOIN PLATFORM_BUNDLED_LIBRARY_DIRS ":" _library_paths)
-  set(PLATFORM_ENV_BUILD "DYLD_LIBRARY_PATH=\"${_library_paths};${DYLD_LIBRARY_PATH}\"")
+  set(PLATFORM_ENV_BUILD "DYLD_LIBRARY_PATH=\"${_library_paths};$DYLD_LIBRARY_PATH\"")
   set(PLATFORM_ENV_INSTALL "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/Blender.app/Contents/Resources/lib/;$DYLD_LIBRARY_PATH")
   unset(_library_paths)
 endif()

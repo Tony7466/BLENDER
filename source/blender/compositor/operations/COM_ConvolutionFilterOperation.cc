@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ConvolutionFilterOperation.h"
 
@@ -13,6 +14,7 @@ ConvolutionFilterOperation::ConvolutionFilterOperation()
   this->set_canvas_input_index(0);
   input_operation_ = nullptr;
   flags_.complex = true;
+  flags_.can_be_constant = true;
 }
 void ConvolutionFilterOperation::init_execution()
 {

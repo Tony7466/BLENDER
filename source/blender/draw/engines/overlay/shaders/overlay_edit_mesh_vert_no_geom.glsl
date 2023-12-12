@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma USE_SSBO_VERTEX_FETCH(TriangleList, 6)
 
@@ -6,8 +9,8 @@
 #pragma BLENDER_REQUIRE(overlay_edit_mesh_common_lib.glsl)
 
 #define DISCARD_VERTEX \
-  gl_Position = geometry_out.finalColorOuter = geometry_out.finalColor = vec4(0.0); \
-  geometry_out.edgeCoord = 0.0; \
+  gl_Position = geometry_flat_out.finalColorOuter = geometry_out.finalColor = vec4(0.0); \
+  geometry_noperspective_out.edgeCoord = 0.0; \
   return;
 
 bool test_occlusion(vec4 pos)
@@ -41,7 +44,7 @@ vec3 vec3_1010102_Inorm_to_vec3(int data)
 void do_vertex(vec4 color, vec4 pos, float coord, vec2 offset)
 {
   geometry_out.finalColor = color;
-  geometry_out.edgeCoord = coord;
+  geometry_noperspective_out.edgeCoord = coord;
   gl_Position = pos;
   /* Multiply offset by 2 because gl_Position range is [-1..1]. */
   gl_Position.xy += offset * 2.0 * pos.w;
@@ -59,9 +62,9 @@ void main()
    * IF PrimType == LineList:  base_vertex_id = quad_id*2
    * IF PrimType == LineStrip: base_vertex_id = quad_id
    *
-   * Note: This is currently used as LineList.
+   * NOTE: This is currently used as LineList.
    *
-   * Note: Primitive Restart Will not work with this setup as-is. We should avoid using
+   * NOTE: Primitive Restart Will not work with this setup as-is. We should avoid using
    * input primitive types which use restart indices. */
   int base_vertex_id = quad_id * 2;
 
@@ -82,8 +85,15 @@ void main()
 
   vec3 world_pos0 = point_object_to_world(in_pos0);
   vec3 world_pos1 = point_object_to_world(in_pos1);
-  vec4 out_pos0 = point_world_to_ndc(world_pos0);
-  vec4 out_pos1 = point_world_to_ndc(world_pos1);
+  vec3 view_pos0 = point_world_to_view(world_pos0);
+  vec3 view_pos1 = point_world_to_view(world_pos1);
+  vec4 out_pos0 = point_view_to_ndc(view_pos0);
+  vec4 out_pos1 = point_view_to_ndc(view_pos1);
+
+  /* Offset Z position for retopology overlay. */
+  out_pos0.z += get_homogenous_z_offset(view_pos0.z, out_pos0.w, retopologyOffset);
+  out_pos1.z += get_homogenous_z_offset(view_pos1.z, out_pos1.w, retopologyOffset);
+
   uvec4 m_data0 = uvec4(in_data0) & uvec4(dataMask);
   uvec4 m_data1 = uvec4(in_data1) & uvec4(dataMask);
 
@@ -124,23 +134,25 @@ void main()
 
 #if !defined(FACE)
   /* Facing based color blend */
-  vec3 vpos0 = point_world_to_view(world_pos0);
   vec3 view_normal0 = normalize(normal_object_to_view(in_vnor0) + 1e-4);
-  vec3 view_vec0 = (ProjectionMatrix[3][3] == 0.0) ? normalize(vpos0) : vec3(0.0, 0.0, 1.0);
+  vec3 view_vec0 = (ProjectionMatrix[3][3] == 0.0) ? normalize(view_pos0) : vec3(0.0, 0.0, 1.0);
   float facing0 = dot(view_vec0, view_normal0);
   facing0 = 1.0 - abs(facing0) * 0.2;
 
-  vec3 vpos1 = point_world_to_view(world_pos1);
   vec3 view_normal1 = normalize(normal_object_to_view(in_vnor1) + 1e-4);
-  vec3 view_vec1 = (ProjectionMatrix[3][3] == 0.0) ? normalize(vpos1) : vec3(0.0, 0.0, 1.0);
+  vec3 view_vec1 = (ProjectionMatrix[3][3] == 0.0) ? normalize(view_pos1) : vec3(0.0, 0.0, 1.0);
   float facing1 = dot(view_vec1, view_normal1);
   facing1 = 1.0 - abs(facing1) * 0.2;
 
   /* Do interpolation in a non-linear space to have a better visual result. */
-  out_finalColor[0].rgb = non_linear_blend_color(
-      colorEditMeshMiddle.rgb, out_finalColor[0].rgb, facing0);
-  out_finalColor[1].rgb = non_linear_blend_color(
-      colorEditMeshMiddle.rgb, out_finalColor[1].rgb, facing1);
+  out_finalColor[0].rgb = mix(
+      out_finalColor[0].rgb,
+      non_linear_blend_color(colorEditMeshMiddle.rgb, out_finalColor[0].rgb, facing0),
+      fresnelMixEdit);
+  out_finalColor[1].rgb = mix(
+      out_finalColor[1].rgb,
+      non_linear_blend_color(colorEditMeshMiddle.rgb, out_finalColor[1].rgb, facing1),
+      fresnelMixEdit);
 #endif
 
   // -------- GEOM SHADER ALTERNATIVE ----------- //
@@ -171,15 +183,15 @@ void main()
   vec2 line = ss_pos[0] - ss_pos[1];
   line = abs(line) * sizeViewport.xy;
 
-  geometry_out.finalColorOuter = out_finalColorOuter[0];
+  geometry_flat_out.finalColorOuter = out_finalColorOuter[0];
   float half_size = sizeEdge;
   /* Enlarge edge for flag display. */
-  half_size += (geometry_out.finalColorOuter.a > 0.0) ? max(sizeEdge, 1.0) : 0.0;
+  half_size += (geometry_flat_out.finalColorOuter.a > 0.0) ? max(sizeEdge, 1.0) : 0.0;
 
-#ifdef USE_SMOOTH_WIRE
-  /* Add 1 px for AA */
-  half_size += 0.5;
-#endif
+  if (do_smooth_wire) {
+    /* Add 1px for AA */
+    half_size += 0.5;
+  }
 
   vec3 edge_ofs = vec3(half_size * sizeViewportInv, 0.0);
 

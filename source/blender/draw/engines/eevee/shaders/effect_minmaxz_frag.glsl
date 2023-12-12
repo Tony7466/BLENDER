@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2017-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 /**
  * Shader that down-sample depth buffer,
  * saving min and max value of each texel in the above mipmaps.
@@ -35,7 +39,7 @@ void main()
   float val = sampleLowerMip(uv);
 #else
   /* NOTE(@fclem): textureSize() does not work the same on all implementations
-   * when changing the min and max texture levels. Use uniform instead (see T87801). */
+   * when changing the min and max texture levels. Use uniform instead (see #87801). */
   vec2 uv = texel * 2.0 * texelSize;
 
   vec4 samp;

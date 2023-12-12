@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2019-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -5,16 +8,16 @@
 void do_vertex(vec4 color, vec4 pos, float coord, vec2 offset)
 {
   geometry_out.finalColor = color;
-  geometry_out.edgeCoord = coord;
+  geometry_noperspective_out.edgeCoord = coord;
   gl_Position = pos;
   /* Multiply offset by 2 because gl_Position range is [-1..1]. */
   gl_Position.xy += offset * 2.0 * pos.w;
-  /* Correct but fails due to an AMD compiler bug, see: T62792.
+  /* Correct but fails due to an AMD compiler bug, see: #62792.
    * Do inline instead. */
 #if 0
   view_clipping_distances_set(gl_in[i]);
 #endif
-  EmitVertex();
+  gpu_EmitVertex();
 }
 
 void main()
@@ -46,13 +49,13 @@ void main()
   vec2 line = ss_pos[0] - ss_pos[1];
   line = abs(line) * sizeViewport.xy;
 
-  geometry_out.finalColorOuter = geometry_in[0].finalColorOuter_;
+  geometry_flat_out.finalColorOuter = geometry_in[0].finalColorOuter_;
   float half_size = sizeEdge;
   /* Enlarge edge for flag display. */
-  half_size += (geometry_out.finalColorOuter.a > 0.0) ? max(sizeEdge, 1.0) : 0.0;
+  half_size += (geometry_flat_out.finalColorOuter.a > 0.0) ? max(sizeEdge, 1.0) : 0.0;
 
   if (do_smooth_wire) {
-    /* Add 1 px for AA */
+    /* Add 1px for AA */
     half_size += 0.5;
   }
 
@@ -62,7 +65,7 @@ void main()
   edge_ofs = (horizontal) ? edge_ofs.zyz : edge_ofs.xzz;
 
   /* Due to an AMD glitch, this line was moved out of the `do_vertex`
-   * function (see T62792). */
+   * function (see #62792). */
   view_clipping_distances_set(gl_in[0]);
   do_vertex(geometry_in[0].finalColor_, pos0, half_size, edge_ofs.xy);
   do_vertex(geometry_in[0].finalColor_, pos0, -half_size, -edge_ofs.xy);

@@ -1,10 +1,13 @@
-
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
+/* SPDX-FileCopyrightText: 2017-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Simple down-sample shader.
  * Do a gaussian filter using 4 bilinear texture samples.
  */
+
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 
 void main()
 {
@@ -19,7 +22,7 @@ void main()
 
 #else
   /* NOTE(@fclem): textureSize() does not work the same on all implementations
-   * when changing the min and max texture levels. Use uniform instead (see T87801). */
+   * when changing the min and max texture levels. Use uniform instead (see #87801). */
   vec2 uvs = gl_FragCoord.xy * texelSize;
   vec4 ofs = texelSize.xyxy * vec4(0.75, 0.75, -0.75, -0.75);
   uvs *= 2.0;

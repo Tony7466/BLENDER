@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -7,7 +9,7 @@
 #include "BLI_math_vector.hh"
 #include "BLI_span.hh"
 
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BKE_curves.hh"
 
 #include "DNA_mesh_types.h"
@@ -25,6 +27,7 @@ struct AddCurvesOnMeshInputs {
   bool interpolate_length = false;
   bool interpolate_shape = false;
   bool interpolate_point_count = false;
+  bool interpolate_resolution = false;
   float fallback_curve_length = 0.0f;
   int fallback_point_count = 0;
 

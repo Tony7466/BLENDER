@@ -1,40 +1,44 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
+
+#include "BLI_array.hh"
+#include "BLI_bounds_types.hh"
+#include "BLI_math_vector_types.hh"
+#include "BLI_set.hh"
+#include "BLI_span.hh"
+#include "BLI_vector.hh"
+
+#include "DNA_meshdata_types.h"
 
 /** \file
  * \ingroup bke
  */
 
+namespace blender::draw::pbvh {
+struct PBVHBatches;
+}
+
 struct PBVHGPUFormat;
-struct MLoop;
 struct MLoopTri;
-struct MPoly;
-struct MeshElemMap;
-
-/* Axis-aligned bounding box */
-struct BB {
-  float bmin[3], bmax[3];
-};
-
-/* Axis-aligned bounding box with centroid */
-struct BBC {
-  float bmin[3], bmax[3], bcentroid[3];
-};
+struct BMVert;
+struct BMFace;
 
 /* NOTE: this structure is getting large, might want to split it into
  * union'd structs */
 struct PBVHNode {
   /* Opaque handle for drawing code */
-  PBVHBatches *draw_batches;
+  blender::draw::pbvh::PBVHBatches *draw_batches = nullptr;
 
   /* Voxel bounds */
-  BB vb;
-  BB orig_vb;
+  blender::Bounds<blender::float3> vb = {};
+  blender::Bounds<blender::float3> orig_vb = {};
 
   /* For internal nodes, the offset of the children in the PBVH
    * 'nodes' array. */
-  int children_offset;
+  int children_offset = 0;
 
   /* List of primitives for this node. Semantics depends on
    * PBVH type:
@@ -46,8 +50,7 @@ struct PBVHNode {
    * NOTE: This is a pointer inside of PBVH.prim_indices; it
    * is not allocated separately per node.
    */
-  int *prim_indices;
-  unsigned int totprim; /* Number of primitives inside prim_indices. */
+  blender::Span<int> prim_indices;
 
   /* Array of indices into the mesh's vertex array. Contains the
    * indices of all vertices used by faces that are within this
@@ -68,14 +71,14 @@ struct PBVHNode {
    *
    * Used for leaf nodes in a mesh-based PBVH (not multires.)
    */
-  const int *vert_indices;
-  unsigned int uniq_verts, face_verts;
+  blender::Array<int, 0> vert_indices;
+  int uniq_verts = 0;
+  int face_verts = 0;
 
-  /* Array of indices into the Mesh's MLoop array.
+  /* Array of indices into the Mesh's corner array.
    * PBVH_FACES only.
    */
-  int *loop_indices;
-  unsigned int loop_indices_num;
+  blender::Array<int, 0> loop_indices;
 
   /* An array mapping face corners into the vert_indices
    * array. The array is sized to match 'totprim', and each of
@@ -85,36 +88,35 @@ struct PBVHNode {
    *
    * Used for leaf nodes in a mesh-based PBVH (not multires.)
    */
-  const int (*face_vert_indices)[3];
+  blender::Array<blender::int3, 0> face_vert_indices;
 
   /* Indicates whether this node is a leaf or not; also used for
    * marking various updates that need to be applied. */
-  PBVHNodeFlags flag;
+  PBVHNodeFlags flag = PBVHNodeFlags(0);
 
   /* Used for ray-casting: how close the bounding-box is to the ray point. */
-  float tmin;
+  float tmin = 0.0f;
 
   /* Scalar displacements for sculpt mode's layer brush. */
-  float *layer_disp;
+  float *layer_disp = nullptr;
 
-  int proxy_count;
-  PBVHProxyNode *proxies;
+  blender::Vector<PBVHProxyNode> proxies;
 
   /* Dyntopo */
 
-  /* GSet of pointers to the BMFaces used by this node.
+  /* Set of pointers to the BMFaces used by this node.
    * NOTE: PBVH_BMESH only. Faces are always triangles
    * (dynamic topology forcibly triangulates the mesh).
    */
-  GSet *bm_faces;
-  GSet *bm_unique_verts;
-  GSet *bm_other_verts;
+  blender::Set<BMFace *, 0> bm_faces;
+  blender::Set<BMVert *, 0> bm_unique_verts;
+  blender::Set<BMVert *, 0> bm_other_verts;
 
   /* Deprecated. Stores original coordinates of triangles. */
-  float (*bm_orco)[3];
-  int (*bm_ortri)[3];
-  BMVert **bm_orvert;
-  int bm_tot_ortri;
+  float (*bm_orco)[3] = nullptr;
+  int (*bm_ortri)[3] = nullptr;
+  BMVert **bm_orvert = nullptr;
+  int bm_tot_ortri = 0;
 
   /* Used to store the brush color during a stroke and composite it over the original color */
   PBVHColorBufferNode color_buffer;
@@ -123,25 +125,18 @@ struct PBVHNode {
   /* Used to flash colors of updated node bounding boxes in
    * debug draw mode (when G.debug_value / bpy.app.debug_value is 889).
    */
-  int debug_draw_gen;
+  int debug_draw_gen = 0;
 };
-
-enum PBVHFlags {
-  PBVH_DYNTOPO_SMOOTH_SHADING = 1,
-};
-ENUM_OPERATORS(PBVHFlags, PBVH_DYNTOPO_SMOOTH_SHADING);
 
 typedef struct PBVHBMeshLog PBVHBMeshLog;
 
 struct PBVH {
   PBVHPublic header;
-  PBVHFlags flags;
 
-  PBVHNode *nodes;
-  int node_mem_count, totnode;
+  blender::Vector<PBVHNode> nodes;
 
   /* Memory backing for PBVHNode.prim_indices. */
-  int *prim_indices;
+  blender::Array<int> prim_indices;
   int totprim;
   int totvert;
   int faces_num; /* Do not use directly, use BKE_pbvh_num_faces. */
@@ -150,38 +145,34 @@ struct PBVH {
   int pixel_leaf_limit;
   int depth_limit;
 
-  /* Mesh data */
+  /* Mesh data. The evaluated deform mesh for mesh sculpting, and the base mesh for grids. */
   Mesh *mesh;
 
-  /* NOTE: Normals are not `const` because they can be updated for drawing by sculpt code. */
-  float (*vert_normals)[3];
-  bool *hide_vert;
-  float (*vert_positions)[3];
-  const MPoly *mpoly;
-  bool *hide_poly;
-  /** Material indices. Only valid for polygon meshes. */
-  const int *material_indices;
-  const MLoop *mloop;
-  const MLoopTri *looptri;
-  CustomData *vdata;
-  CustomData *ldata;
-  CustomData *pdata;
+  /** Local array used when not sculpting base mesh positions directly. */
+  blender::Array<blender::float3> vert_positions_deformed;
+  /** Local array used when not sculpting base mesh positions directly. */
+  blender::Array<blender::float3> vert_normals_deformed;
+  /** Local array used when not sculpting base mesh positions directly. */
+  blender::Array<blender::float3> face_normals_deformed;
 
-  int face_sets_color_seed;
-  int face_sets_color_default;
-  int *face_sets;
+  blender::MutableSpan<blender::float3> vert_positions;
+  blender::Span<blender::float3> vert_normals;
+  blender::Span<blender::float3> face_normals;
+
+  /** Only valid for polygon meshes. */
+  blender::OffsetIndices<int> faces;
+  blender::Span<int> corner_verts;
+  /* Owned by the #PBVH, because after deformations they have to be recomputed. */
+  blender::Array<MLoopTri> looptri;
+  blender::Span<int> looptri_faces;
 
   /* Grid Data */
   CCGKey gridkey;
-  CCGElem **grids;
-  void **gridfaces;
-  const DMFlagMat *grid_flag_mats;
-  int totgrid;
-  BLI_bitmap **grid_hidden;
+  SubdivCCG *subdiv_ccg;
 
   /* Used during BVH build and later to mark that a vertex needs to update
    * (its normal must be recalculated). */
-  bool *vert_bitmap;
+  blender::Array<bool> vert_bitmap;
 
 #ifdef PERFCNTRS
   int perf_modified;
@@ -189,7 +180,6 @@ struct PBVH {
 
   /* flag are verts/faces deformed */
   bool deformed;
-  bool respect_hide;
 
   /* Dynamic topology */
   float bm_max_edge_len;
@@ -201,9 +191,8 @@ struct PBVH {
   int num_planes;
 
   BMLog *bm_log;
-  SubdivCCG *subdiv_ccg;
 
-  const MeshElemMap *pmap;
+  blender::GroupedSpan<int> pmap;
 
   CustomDataLayer *color_layer;
   eAttrDomain color_domain;
@@ -220,20 +209,6 @@ struct PBVH {
 
 /* pbvh.cc */
 
-void BB_reset(BB *bb);
-/**
- * Expand the bounding box to include a new coordinate.
- */
-void BB_expand(BB *bb, const float co[3]);
-/**
- * Expand the bounding box to include another bounding box.
- */
-void BB_expand_with_bb(BB *bb, BB *bb2);
-void BBC_update_centroid(BBC *bbc);
-/**
- * Return 0, 1, or 2 to indicate the widest axis of the bounding box.
- */
-int BB_widest_axis(const BB *bb);
 void pbvh_grow_nodes(PBVH *bvh, int totnode);
 bool ray_face_intersection_quad(const float ray_start[3],
                                 IsectRayPrecalc *isect_precalc,
@@ -265,8 +240,6 @@ bool ray_face_nearest_tri(const float ray_start[3],
                           float *r_depth,
                           float *r_dist_sq);
 
-void pbvh_update_BB_redraw(PBVH *bvh, PBVHNode **nodes, int totnode, int flag);
-
 /* pbvh_bmesh.cc */
 
 bool pbvh_bmesh_node_raycast(PBVHNode *node,
@@ -284,11 +257,10 @@ bool pbvh_bmesh_node_nearest_to_ray(PBVHNode *node,
                                     float *dist_sq,
                                     bool use_original);
 
-void pbvh_bmesh_normals_update(PBVHNode **nodes, int totnode);
+void pbvh_bmesh_normals_update(blender::Span<PBVHNode *> nodes);
 
 /* pbvh_pixels.hh */
 
 void pbvh_node_pixels_free(PBVHNode *node);
 void pbvh_pixels_free(PBVH *pbvh);
-void pbvh_pixels_free_brush_test(PBVHNode *node);
-void pbvh_free_draw_buffers(PBVH *pbvh, PBVHNode *node);
+void pbvh_free_draw_buffers(PBVH &pbvh, PBVHNode *node);

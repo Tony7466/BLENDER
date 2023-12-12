@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup render
@@ -19,9 +21,9 @@
  * - object_id: index of object to bake (to use with the pixel_array)
  * - pixel_array: list of primitive ids and barycentric coordinates to
  *   `bake(Python object, see bake_pixel)`.
- * - pixels_num: size of pixel_array, number of pixels to bake (int)
- * - depth: depth of pixels to return (int, assuming always 4 now)
- * - result: array to be populated by the engine (float array, PyLong_AsVoidPtr)
+ * - pixels_num: size of pixel_array, number of pixels to bake `int`.
+ * - depth: depth of pixels to return (`int`, assuming always 4 now).
+ * - result: array to be populated by the engine (`float` array, #PyLong_AsVoidPtr).
  *
  * \note Normals are expected to be in World Space and in the +X, +Y, +Z orientation.
  *
@@ -51,19 +53,22 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "BKE_bvhutils.h"
-#include "BKE_customdata.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
+
+#include "BKE_attribute.hh"
+#include "BKE_bvhutils.hh"
+#include "BKE_customdata.hh"
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_mesh_tangent.h"
-#include "BKE_node.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_mesh_tangent.hh"
+#include "BKE_node.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -144,14 +149,14 @@ void RE_bake_margin(ImBuf *ibuf,
                     char *mask,
                     const int margin,
                     const char margin_type,
-                    Mesh const *me,
+                    const Mesh *mesh,
                     char const *uv_layer,
                     const float uv_offset[2])
 {
   /* margin */
   switch (margin_type) {
     case R_BAKE_ADJACENT_FACES:
-      RE_generate_texturemargin_adjacentfaces(ibuf, mask, margin, me, uv_layer, uv_offset);
+      RE_generate_texturemargin_adjacentfaces(ibuf, mask, margin, mesh, uv_layer, uv_offset);
       break;
     default:
     /* fall through */
@@ -448,64 +453,67 @@ static bool cast_ray_highpoly(BVHTreeFromMesh *treeData,
  * This function populates an array of verts for the triangles of a mesh
  * Tangent and Normals are also stored
  */
-static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval)
+static TriTessFace *mesh_calc_tri_tessface(Mesh *mesh, bool tangent, Mesh *me_eval)
 {
+  using namespace blender;
   int i;
 
-  const int tottri = poly_to_tri_count(me->totpoly, me->totloop);
+  const int tottri = poly_to_tri_count(mesh->faces_num, mesh->totloop);
   MLoopTri *looptri;
   TriTessFace *triangles;
 
-  /* calculate normal for each polygon only once */
+  /* calculate normal for each face only once */
   uint mpoly_prev = UINT_MAX;
-  float no[3];
+  blender::float3 no;
 
-  const float(*positions)[3] = BKE_mesh_vert_positions(me);
-  const MPoly *polys = BKE_mesh_polys(me);
-  const MLoop *loops = BKE_mesh_loops(me);
+  const blender::Span<blender::float3> positions = mesh->vert_positions();
+  const blender::OffsetIndices faces = mesh->faces();
+  const blender::Span<int> corner_verts = mesh->corner_verts();
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const VArray<bool> sharp_faces =
+      attributes.lookup_or_default<bool>("sharp_face", ATTR_DOMAIN_FACE, false).varray;
 
   looptri = static_cast<MLoopTri *>(MEM_mallocN(sizeof(*looptri) * tottri, __func__));
   triangles = static_cast<TriTessFace *>(MEM_callocN(sizeof(TriTessFace) * tottri, __func__));
 
-  const float(*precomputed_normals)[3] = BKE_mesh_poly_normals_are_dirty(me) ?
-                                             nullptr :
-                                             BKE_mesh_poly_normals_ensure(me);
-  const bool calculate_normal = precomputed_normals ? false : true;
+  const bool calculate_normal = BKE_mesh_face_normals_are_dirty(mesh);
+  blender::Span<blender::float3> precomputed_normals;
+  if (!calculate_normal) {
+    precomputed_normals = mesh->face_normals();
+  }
 
-  if (precomputed_normals != nullptr) {
-    BKE_mesh_recalc_looptri_with_normals(
-        loops, polys, positions, me->totloop, me->totpoly, looptri, precomputed_normals);
+  if (!precomputed_normals.is_empty()) {
+    blender::bke::mesh::looptris_calc_with_normals(
+        positions, faces, corner_verts, precomputed_normals, {looptri, tottri});
   }
   else {
-    BKE_mesh_recalc_looptri(loops, polys, positions, me->totloop, me->totpoly, looptri);
+    blender::bke::mesh::looptris_calc(positions, faces, corner_verts, {looptri, tottri});
   }
 
   const TSpace *tspace = nullptr;
-  const float(*loop_normals)[3] = nullptr;
+  blender::Span<blender::float3> corner_normals;
   if (tangent) {
-    BKE_mesh_ensure_normals_for_display(me_eval);
-    BKE_mesh_calc_normals_split(me_eval);
     BKE_mesh_calc_loop_tangents(me_eval, true, nullptr, 0);
 
-    tspace = static_cast<const TSpace *>(CustomData_get_layer(&me_eval->ldata, CD_TANGENT));
+    tspace = static_cast<const TSpace *>(CustomData_get_layer(&me_eval->loop_data, CD_TANGENT));
     BLI_assert(tspace);
 
-    loop_normals = static_cast<const float(*)[3]>(
-        CustomData_get_layer(&me_eval->ldata, CD_NORMAL));
+    corner_normals = me_eval->corner_normals();
   }
 
-  const float(*vert_normals)[3] = BKE_mesh_vertex_normals_ensure(me);
+  const blender::Span<blender::float3> vert_normals = mesh->vert_normals();
+  const blender::Span<int> looptri_faces = mesh->looptri_faces();
   for (i = 0; i < tottri; i++) {
     const MLoopTri *lt = &looptri[i];
-    const MPoly *mp = &polys[lt->poly];
+    const int face_i = looptri_faces[i];
 
-    triangles[i].positions[0] = positions[loops[lt->tri[0]].v];
-    triangles[i].positions[1] = positions[loops[lt->tri[1]].v];
-    triangles[i].positions[2] = positions[loops[lt->tri[2]].v];
-    triangles[i].vert_normals[0] = vert_normals[loops[lt->tri[0]].v];
-    triangles[i].vert_normals[1] = vert_normals[loops[lt->tri[1]].v];
-    triangles[i].vert_normals[2] = vert_normals[loops[lt->tri[2]].v];
-    triangles[i].is_smooth = (mp->flag & ME_SMOOTH) != 0;
+    triangles[i].positions[0] = positions[corner_verts[lt->tri[0]]];
+    triangles[i].positions[1] = positions[corner_verts[lt->tri[1]]];
+    triangles[i].positions[2] = positions[corner_verts[lt->tri[2]]];
+    triangles[i].vert_normals[0] = vert_normals[corner_verts[lt->tri[0]]];
+    triangles[i].vert_normals[1] = vert_normals[corner_verts[lt->tri[1]]];
+    triangles[i].vert_normals[2] = vert_normals[corner_verts[lt->tri[2]]];
+    triangles[i].is_smooth = !sharp_faces[face_i];
 
     if (tangent) {
       triangles[i].tspace[0] = &tspace[lt->tri[0]];
@@ -513,21 +521,21 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval
       triangles[i].tspace[2] = &tspace[lt->tri[2]];
     }
 
-    if (loop_normals) {
-      triangles[i].loop_normal[0] = loop_normals[lt->tri[0]];
-      triangles[i].loop_normal[1] = loop_normals[lt->tri[1]];
-      triangles[i].loop_normal[2] = loop_normals[lt->tri[2]];
+    if (!corner_normals.is_empty()) {
+      triangles[i].loop_normal[0] = corner_normals[lt->tri[0]];
+      triangles[i].loop_normal[1] = corner_normals[lt->tri[1]];
+      triangles[i].loop_normal[2] = corner_normals[lt->tri[2]];
     }
 
     if (calculate_normal) {
-      if (lt->poly != mpoly_prev) {
-        BKE_mesh_calc_poly_normal(mp, &loops[mp->loopstart], positions, no);
-        mpoly_prev = lt->poly;
+      if (face_i != mpoly_prev) {
+        no = blender::bke::mesh::face_normal_calc(positions, corner_verts.slice(faces[face_i]));
+        mpoly_prev = face_i;
       }
       copy_v3_v3(triangles[i].normal, no);
     }
     else {
-      copy_v3_v3(triangles[i].normal, precomputed_normals[lt->poly]);
+      copy_v3_v3(triangles[i].normal, precomputed_normals[face_i]);
     }
   }
 
@@ -558,7 +566,6 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
 
   Mesh *me_eval_low = nullptr;
   Mesh **me_highpoly;
-  BVHTreeFromMesh *treeData;
 
   /* NOTE: all coordinates are in local space. */
   TriTessFace *tris_low = nullptr;
@@ -571,10 +578,10 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
   /* Assume all high-poly tessfaces are triangles. */
   me_highpoly = static_cast<Mesh **>(
       MEM_mallocN(sizeof(Mesh *) * tot_highpoly, "Highpoly Derived Meshes"));
-  treeData = MEM_cnew_array<BVHTreeFromMesh>(tot_highpoly, "Highpoly BVH Trees");
+  blender::Array<BVHTreeFromMesh> treeData(tot_highpoly);
 
   if (!is_cage) {
-    me_eval_low = BKE_mesh_copy_for_eval(me_low, false);
+    me_eval_low = BKE_mesh_copy_for_eval(me_low);
     tris_low = mesh_calc_tri_tessface(me_low, true, me_eval_low);
   }
   else if (is_custom_cage) {
@@ -588,10 +595,9 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
   invert_m4_m4(imat_low, mat_low);
 
   for (i = 0; i < tot_highpoly; i++) {
-    tris_high[i] = mesh_calc_tri_tessface(highpoly[i].me, false, nullptr);
+    tris_high[i] = mesh_calc_tri_tessface(highpoly[i].mesh, false, nullptr);
 
-    me_highpoly[i] = highpoly[i].me;
-    BKE_mesh_runtime_looptri_ensure(me_highpoly[i]);
+    me_highpoly[i] = highpoly[i].mesh;
 
     if (BKE_mesh_runtime_looptri_len(me_highpoly[i]) != 0) {
       /* Create a BVH-tree for each `highpoly` object. */
@@ -639,7 +645,7 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
     }
 
     /* cast ray */
-    if (!cast_ray_highpoly(treeData,
+    if (!cast_ray_highpoly(treeData.data(),
                            tri_low,
                            tris_high,
                            pixel_array_from,
@@ -650,7 +656,8 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
                            dir,
                            i,
                            tot_highpoly,
-                           max_ray_distance)) {
+                           max_ray_distance))
+    {
       /* if it fails mask out the original pixel array */
       pixel_array_from[i].primitive_id = -1;
     }
@@ -667,7 +674,6 @@ cleanup:
   }
 
   MEM_freeN(tris_high);
-  MEM_freeN(treeData);
   MEM_freeN(me_highpoly);
 
   if (me_eval_low) {
@@ -708,7 +714,7 @@ static void bake_differentials(BakeDataZSpan *bd,
   }
 }
 
-void RE_bake_pixels_populate(Mesh *me,
+void RE_bake_pixels_populate(Mesh *mesh,
                              BakePixel pixel_array[],
                              const size_t pixels_num,
                              const BakeTargets *targets,
@@ -716,12 +722,13 @@ void RE_bake_pixels_populate(Mesh *me,
 {
   const float(*mloopuv)[2];
   if ((uv_layer == nullptr) || (uv_layer[0] == '\0')) {
-    mloopuv = static_cast<const float(*)[2]>(CustomData_get_layer(&me->ldata, CD_PROP_FLOAT2));
+    mloopuv = static_cast<const float(*)[2]>(
+        CustomData_get_layer(&mesh->loop_data, CD_PROP_FLOAT2));
   }
   else {
-    int uv_id = CustomData_get_named_layer(&me->ldata, CD_PROP_FLOAT2, uv_layer);
+    int uv_id = CustomData_get_named_layer(&mesh->loop_data, CD_PROP_FLOAT2, uv_layer);
     mloopuv = static_cast<const float(*)[2]>(
-        CustomData_get_layer_n(&me->ldata, CD_PROP_FLOAT2, uv_id));
+        CustomData_get_layer_n(&mesh->loop_data, CD_PROP_FLOAT2, uv_id));
   }
 
   if (mloopuv == nullptr) {
@@ -742,25 +749,26 @@ void RE_bake_pixels_populate(Mesh *me,
     zbuf_alloc_span(&bd.zspan[i], targets->images[i].width, targets->images[i].height);
   }
 
-  const int tottri = poly_to_tri_count(me->totpoly, me->totloop);
+  const int tottri = poly_to_tri_count(mesh->faces_num, mesh->totloop);
   MLoopTri *looptri = static_cast<MLoopTri *>(MEM_mallocN(sizeof(*looptri) * tottri, __func__));
 
-  const float(*positions)[3] = BKE_mesh_vert_positions(me);
-  const MPoly *polys = BKE_mesh_polys(me);
-  const MLoop *loops = BKE_mesh_loops(me);
-  BKE_mesh_recalc_looptri(loops, polys, positions, me->totloop, me->totpoly, looptri);
+  blender::bke::mesh::looptris_calc(
+      mesh->vert_positions(), mesh->faces(), mesh->corner_verts(), {looptri, tottri});
 
-  const int *material_indices = BKE_mesh_material_indices(me);
+  const blender::Span<int> looptri_faces = mesh->looptri_faces();
+
+  const int *material_indices = BKE_mesh_material_indices(mesh);
   const int materials_num = targets->materials_num;
 
   for (int i = 0; i < tottri; i++) {
     const MLoopTri *lt = &looptri[i];
+    const int face_i = looptri_faces[i];
 
     bd.primitive_id = i;
 
     /* Find images matching this material. */
     const int material_index = (material_indices && materials_num) ?
-                                   clamp_i(material_indices[lt->poly], 0, materials_num - 1) :
+                                   clamp_i(material_indices[face_i], 0, materials_num - 1) :
                                    0;
     Image *image = targets->material_to_image[material_index];
     for (int image_id = 0; image_id < targets->images_num; image_id++) {
@@ -774,10 +782,10 @@ void RE_bake_pixels_populate(Mesh *me,
       for (int a = 0; a < 3; a++) {
         const float *uv = mloopuv[lt->tri[a]];
 
-        /* NOTE(@campbellbarton): workaround for pixel aligned UVs which are common and can screw
+        /* NOTE(@ideasman42): workaround for pixel aligned UVs which are common and can screw
          * up our intersection tests where a pixel gets in between 2 faces or the middle of a quad,
          * camera aligned quads also have this problem but they are less common.
-         * Add a small offset to the UVs, fixes bug T18685. */
+         * Add a small offset to the UVs, fixes bug #18685. */
         vec[a][0] = (uv[0] - bk_image->uv_offset[0]) * float(bk_image->width) - (0.5f + 0.001f);
         vec[a][1] = (uv[1] - bk_image->uv_offset[1]) * float(bk_image->height) - (0.5f + 0.002f);
       }
@@ -844,7 +852,7 @@ void RE_bake_normal_world_to_tangent(const BakePixel pixel_array[],
                                      const size_t pixels_num,
                                      const int depth,
                                      float result[],
-                                     Mesh *me,
+                                     Mesh *mesh,
                                      const eBakeNormalSwizzle normal_swizzle[3],
                                      float mat[4][4])
 {
@@ -852,9 +860,9 @@ void RE_bake_normal_world_to_tangent(const BakePixel pixel_array[],
 
   TriTessFace *triangles;
 
-  Mesh *me_eval = BKE_mesh_copy_for_eval(me, false);
+  Mesh *me_eval = BKE_mesh_copy_for_eval(mesh);
 
-  triangles = mesh_calc_tri_tessface(me, true, me_eval);
+  triangles = mesh_calc_tri_tessface(mesh, true, me_eval);
 
   BLI_assert(pixels_num >= 3);
 

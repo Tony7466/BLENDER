@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -11,7 +13,7 @@
 
 #ifdef WITH_GMP
 
-#  include <iostream>
+#  include <iosfwd>
 
 #  include "BLI_array.hh"
 #  include "BLI_index_range.hh"
@@ -237,7 +239,6 @@ class IMeshArena : NonCopyable, NonMovable {
  * internal structures for indexing exactly the set of needed Verts,
  * and also going from a Vert pointer to the index in that system.
  */
-
 class IMesh {
   Array<Face *> face_;                   /* Not `const` so can lazily populate planes. */
   Array<const Vert *> vert_;             /* Only valid if vert_populated_. */
@@ -246,9 +247,7 @@ class IMesh {
 
  public:
   IMesh() = default;
-  IMesh(Span<Face *> faces) : face_(faces)
-  {
-  }
+  IMesh(Span<Face *> faces) : face_(faces) {}
 
   void set_faces(Span<Face *> faces);
   Face *face(int index) const
@@ -338,9 +337,7 @@ struct BoundingBox {
   float3 max{-FLT_MAX, -FLT_MAX, -FLT_MAX};
 
   BoundingBox() = default;
-  BoundingBox(const float3 &min, const float3 &max) : min(min), max(max)
-  {
-  }
+  BoundingBox(const float3 &min, const float3 &max) : min(min), max(max) {}
 
   void combine(const float3 &p)
   {

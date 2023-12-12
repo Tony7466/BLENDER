@@ -1,14 +1,17 @@
+# SPDX-FileCopyrightText: 2006 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
 
 if(HAVE_MALLOC_STATS_H)
   add_definitions(-DHAVE_MALLOC_STATS_H)
 endif()
 
+if(WITH_MEM_VALGRIND)
+  add_definitions(-DWITH_MEM_VALGRIND)
+endif()
+
 set(INC
-  .
-  ..
-  ../atomic
+  PUBLIC .
 )
 
 set(INC_SYS
@@ -35,6 +38,7 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::intern::atomic
 )
 
 if(WIN32 AND NOT UNIX)
@@ -49,11 +53,14 @@ if(WIN32 AND NOT UNIX)
 endif()
 
 # Jemalloc 5.0.0+ needs extra configuration.
-if(WITH_MEM_JEMALLOC AND NOT ("${JEMALLOC_VERSION}" VERSION_LESS "5.0.0"))
-  add_definitions(-DWITH_JEMALLOC_CONF)
+if(WITH_MEM_JEMALLOC)
+  if(NOT ("${JEMALLOC_VERSION}" VERSION_LESS "5.0.0"))
+    add_definitions(-DWITH_JEMALLOC_CONF)
+  endif()
 endif()
 
 blender_add_lib(bf_intern_guardedalloc "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+add_library(bf::intern::guardedalloc ALIAS bf_intern_guardedalloc)
 
 # Override C++ alloc, optional.
 if(WITH_CXX_GUARDEDALLOC)

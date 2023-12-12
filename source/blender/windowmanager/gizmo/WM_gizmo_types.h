@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -7,7 +8,7 @@
  * \name Gizmo Types
  * \brief Gizmo defines for external use.
  *
- * Only included in WM_types.h and lower level files.
+ * Only included in WM_types.hh and lower level files.
  */
 
 #pragma once
@@ -41,6 +42,7 @@ typedef enum eWM_GizmoFlagState {
   WM_GIZMO_STATE_MODAL = (1 << 1),
   WM_GIZMO_STATE_SELECT = (1 << 2),
 } eWM_GizmoFlagState;
+ENUM_OPERATORS(eWM_GizmoFlagState, WM_GIZMO_STATE_SELECT)
 
 /**
  * #wmGizmo.flag
@@ -160,6 +162,7 @@ typedef enum eWM_GizmoFlagGroupInitFlag {
   WM_GIZMOGROUP_INIT_SETUP = (1 << 0),
   WM_GIZMOGROUP_INIT_REFRESH = (1 << 1),
 } eWM_GizmoFlagGroupInitFlag;
+ENUM_OPERATORS(eWM_GizmoFlagGroupInitFlag, WM_GIZMOGROUP_INIT_REFRESH)
 
 /**
  * #wmGizmoMapType.type_update_flag
@@ -174,6 +177,7 @@ typedef enum eWM_GizmoFlagMapTypeUpdateFlag {
    * So we need to keep track of keymap initialization separately. */
   WM_GIZMOMAPTYPE_KEYMAP_INIT = (1 << 2),
 } eWM_GizmoFlagMapTypeUpdateFlag;
+ENUM_OPERATORS(eWM_GizmoFlagMapTypeUpdateFlag, WM_GIZMOMAPTYPE_KEYMAP_INIT)
 
 /* -------------------------------------------------------------------- */
 /* wmGizmo */
@@ -243,15 +247,13 @@ struct wmGizmo {
    * (in world-space, scaled by the gizmo scale - when used). */
   float select_bias;
 
-  /**
-   * Transformation of the gizmo in 2d or 3d space.
+  /* Transformation of the gizmo in 2d or 3d space.
    * - Matrix axis are expected to be unit length (scale is applied after).
    * - Behavior when axis aren't orthogonal depends on each gizmo.
    * - Typically the +Z is the primary axis for gizmos to use.
    * - 'matrix[3]' must be used for location,
    *   besides this it's up to the gizmos internal code how the
-   *   rotation components are used for drawing and interaction.
-   */
+   *   rotation components are used for drawing and interaction. */
 
   /** The space this gizmo is being modified in. */
   float matrix_space[4][4];
@@ -359,7 +361,8 @@ typedef struct wmGizmoType {
   /** Gizmo-specific handler to update gizmo attributes based on the property value. */
   wmGizmoFnPropertyUpdate property_update;
 
-  /** Returns the final transformation which may be different from the 'matrix',
+  /**
+   * Returns the final transformation which may be different from the 'matrix',
    * depending on the gizmo.
    * Notes:
    * - Scale isn't applied (wmGizmo.scale/user_scale).

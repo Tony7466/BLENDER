@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup python
@@ -109,7 +111,7 @@ void BPY_context_update(struct bContext *C);
 /**
  * Use for `CTX_*_set(..)` functions need to set values which are later read back as expected.
  * In this case we don't want the Python context to override the values as it causes problems
- * see T66256.
+ * see #66256.
  *
  * \param dict_p: A pointer to #bContext.data.py_context so we can assign a new value.
  * \param dict_orig: The value of #bContext.data.py_context_orig to check if we need to copy.
@@ -126,7 +128,7 @@ void BPY_id_release(struct ID *id);
  */
 bool BPY_string_is_keyword(const char *str);
 
-/* bpy_rna_callback.c */
+/* `bpy_rna_callback.cc` */
 
 void BPY_callback_screen_free(struct ARegionType *art);
 void BPY_callback_wm_free(struct wmWindowManager *wm);

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -21,13 +23,13 @@
 
 #  include "BLI_utildefines.h"
 
-#  include "BKE_customdata.h"
+#  include "BKE_customdata.hh"
 
-#  include "BKE_mesh.h"
+#  include "BKE_mesh.hh"
 
 #  include "BLI_dynstr.h"
 
-char *BKE_mesh_debug_info(const Mesh *me)
+char *BKE_mesh_debug_info(const Mesh *mesh)
 {
   DynStr *dynstr = BLI_dynstr_new();
   char *ret;
@@ -35,34 +37,34 @@ char *BKE_mesh_debug_info(const Mesh *me)
   const char *indent8 = "        ";
 
   BLI_dynstr_append(dynstr, "{\n");
-  BLI_dynstr_appendf(dynstr, "    'ptr': '%p',\n", (void *)me);
-  BLI_dynstr_appendf(dynstr, "    'totvert': %d,\n", me->totvert);
-  BLI_dynstr_appendf(dynstr, "    'totedge': %d,\n", me->totedge);
-  BLI_dynstr_appendf(dynstr, "    'totface': %d,\n", me->totface);
-  BLI_dynstr_appendf(dynstr, "    'totpoly': %d,\n", me->totpoly);
+  BLI_dynstr_appendf(dynstr, "    'ptr': '%p',\n", (void *)mesh);
+  BLI_dynstr_appendf(dynstr, "    'totvert': %d,\n", mesh->totvert);
+  BLI_dynstr_appendf(dynstr, "    'totedge': %d,\n", mesh->totedge);
+  BLI_dynstr_appendf(dynstr, "    'totface': %d,\n", mesh->totface_legacy);
+  BLI_dynstr_appendf(dynstr, "    'faces_num': %d,\n", mesh->faces_num);
 
-  BLI_dynstr_appendf(dynstr, "    'runtime.deformed_only': %d,\n", me->runtime->deformed_only);
+  BLI_dynstr_appendf(dynstr, "    'runtime.deformed_only': %d,\n", mesh->runtime->deformed_only);
   BLI_dynstr_appendf(
-      dynstr, "    'runtime->is_original_bmesh': %d,\n", me->runtime->is_original_bmesh);
+      dynstr, "    'runtime->is_original_bmesh': %d,\n", mesh->runtime->is_original_bmesh);
 
   BLI_dynstr_append(dynstr, "    'vert_layers': (\n");
-  CustomData_debug_info_from_layers(&me->vdata, indent8, dynstr);
+  CustomData_debug_info_from_layers(&mesh->vert_data, indent8, dynstr);
   BLI_dynstr_append(dynstr, "    ),\n");
 
   BLI_dynstr_append(dynstr, "    'edge_layers': (\n");
-  CustomData_debug_info_from_layers(&me->edata, indent8, dynstr);
+  CustomData_debug_info_from_layers(&mesh->edge_data, indent8, dynstr);
   BLI_dynstr_append(dynstr, "    ),\n");
 
   BLI_dynstr_append(dynstr, "    'loop_layers': (\n");
-  CustomData_debug_info_from_layers(&me->ldata, indent8, dynstr);
+  CustomData_debug_info_from_layers(&mesh->loop_data, indent8, dynstr);
   BLI_dynstr_append(dynstr, "    ),\n");
 
   BLI_dynstr_append(dynstr, "    'poly_layers': (\n");
-  CustomData_debug_info_from_layers(&me->pdata, indent8, dynstr);
+  CustomData_debug_info_from_layers(&mesh->face_data, indent8, dynstr);
   BLI_dynstr_append(dynstr, "    ),\n");
 
   BLI_dynstr_append(dynstr, "    'tessface_layers': (\n");
-  CustomData_debug_info_from_layers(&me->fdata, indent8, dynstr);
+  CustomData_debug_info_from_layers(&mesh->fdata_legacy, indent8, dynstr);
   BLI_dynstr_append(dynstr, "    ),\n");
 
   BLI_dynstr_append(dynstr, "}\n");
@@ -72,12 +74,12 @@ char *BKE_mesh_debug_info(const Mesh *me)
   return ret;
 }
 
-void BKE_mesh_debug_print(const Mesh *me)
+void BKE_mesh_debug_print(const Mesh *mesh)
 {
-  char *str = BKE_mesh_debug_info(me);
+  char *str = BKE_mesh_debug_info(mesh);
   puts(str);
   fflush(stdout);
   MEM_freeN(str);
 }
 
-#endif /* NDEBUG */
+#endif /* !NDEBUG */

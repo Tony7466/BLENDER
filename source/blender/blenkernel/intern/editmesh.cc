@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -12,19 +13,21 @@
 #include "DNA_object_types.h"
 
 #include "BLI_bitmap.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 
-#include "BKE_DerivedMesh.h"
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
-#include "BKE_editmesh_cache.h"
+#include "BKE_DerivedMesh.hh"
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_editmesh_cache.hh"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_iterators.h"
-#include "BKE_mesh_wrapper.h"
-#include "BKE_object.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_iterators.hh"
+#include "BKE_mesh_wrapper.hh"
+#include "BKE_object.hh"
+#include "BKE_object_types.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 BMEditMesh *BKE_editmesh_create(BMesh *bm)
 {
@@ -89,8 +92,8 @@ static void editmesh_tessface_calc_intern(BMEditMesh *em,
   if ((em->looptris != nullptr) &&
       // (*em->tottri >= looptris_tot))
       /* Check against allocated size in case we over allocated a little. */
-      ((looptris_tot_prev_alloc >= looptris_tot) &&
-       (looptris_tot_prev_alloc <= looptris_tot * 2))) {
+      ((looptris_tot_prev_alloc >= looptris_tot) && (looptris_tot_prev_alloc <= looptris_tot * 2)))
+  {
     looptris = em->looptris;
   }
   else {
@@ -111,17 +114,6 @@ static void editmesh_tessface_calc_intern(BMEditMesh *em,
 void BKE_editmesh_looptri_calc_ex(BMEditMesh *em, const BMeshCalcTessellation_Params *params)
 {
   editmesh_tessface_calc_intern(em, params);
-
-  /* commented because editbmesh_build_data() ensures we get tessfaces */
-#if 0
-  if (em->mesh_eval_final && em->mesh_eval_final == em->mesh_eval_cage) {
-    BKE_mesh_runtime_looptri_ensure(em->mesh_eval_final);
-  }
-  else if (em->mesh_eval_final) {
-    BKE_mesh_runtime_looptri_ensure(em->mesh_eval_final);
-    BKE_mesh_runtime_looptri_ensure(em->mesh_eval_cage);
-  }
-#endif
 }
 
 void BKE_editmesh_looptri_calc(BMEditMesh *em)
@@ -186,12 +178,12 @@ struct CageUserData {
   BLI_bitmap *visit_bitmap;
 };
 
-static void cage_mapped_verts_callback(void *userData,
+static void cage_mapped_verts_callback(void *user_data,
                                        int index,
                                        const float co[3],
                                        const float /*no*/[3])
 {
-  CageUserData *data = static_cast<CageUserData *>(userData);
+  CageUserData *data = static_cast<CageUserData *>(user_data);
 
   if ((index >= 0 && index < data->totvert) && !BLI_BITMAP_TEST(data->visit_bitmap, index)) {
     BLI_BITMAP_ENABLE(data->visit_bitmap, index);
@@ -236,16 +228,16 @@ const float (*BKE_editmesh_vert_coords_when_deformed(Depsgraph *depsgraph,
   const float(*coords)[3] = nullptr;
   *r_is_alloc = false;
 
-  Mesh *me = static_cast<Mesh *>(ob->data);
   Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
   Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(object_eval);
 
-  if ((me->runtime->edit_data != nullptr) && (me->runtime->edit_data->vertexCos != nullptr)) {
+  if (Mesh *mesh_cage = BKE_object_get_editmesh_eval_cage(ob)) {
     /* Deformed, and we have deformed coords already. */
-    coords = me->runtime->edit_data->vertexCos;
+    coords = BKE_mesh_wrapper_vert_coords(mesh_cage);
   }
   else if ((editmesh_eval_final != nullptr) &&
-           (editmesh_eval_final->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH)) {
+           (editmesh_eval_final->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH))
+  {
     /* If this is an edit-mesh type, leave nullptr as we can use the vertex coords. */
   }
   else {
@@ -261,47 +253,7 @@ float (*BKE_editmesh_vert_coords_alloc_orco(BMEditMesh *em, int *r_vert_len))[3]
   return BM_mesh_vert_coords_alloc(em->bm, r_vert_len);
 }
 
-void BKE_editmesh_lnorspace_update(BMEditMesh *em, Mesh *me)
+void BKE_editmesh_lnorspace_update(BMEditMesh *em)
 {
-  BMesh *bm = em->bm;
-
-  /* We need to create custom-loop-normals (CLNORS) data if none exist yet,
-   * otherwise there is no way to edit them.
-   * Similar code to #MESH_OT_customdata_custom_splitnormals_add operator,
-   * we want to keep same shading in case we were using auto-smooth so far.
-   * NOTE: there is a problem here, which is that if someone starts a normal editing operation on
-   * previously auto-smooth-ed mesh, and cancel that operation, generated CLNORS data remain,
-   * with related sharp edges (and hence auto-smooth is 'lost').
-   * Not sure how critical this is, and how to fix that issue? */
-  if (!CustomData_has_layer(&bm->ldata, CD_CUSTOMLOOPNORMAL)) {
-    if (me->flag & ME_AUTOSMOOTH) {
-      BM_edges_sharp_from_angle_set(bm, me->smoothresh);
-    }
-  }
-
-  BM_lnorspace_update(bm);
-}
-
-void BKE_editmesh_ensure_autosmooth(BMEditMesh *em, Mesh *me)
-{
-  if (!(me->flag & ME_AUTOSMOOTH)) {
-    me->flag |= ME_AUTOSMOOTH;
-    BKE_editmesh_lnorspace_update(em, me);
-  }
-}
-
-BoundBox *BKE_editmesh_cage_boundbox_get(Object *object, BMEditMesh * /*em*/)
-{
-  if (object->runtime.editmesh_bb_cage == nullptr) {
-    float min[3], max[3];
-    INIT_MINMAX(min, max);
-    if (object->runtime.editmesh_eval_cage) {
-      BKE_mesh_wrapper_minmax(object->runtime.editmesh_eval_cage, min, max);
-    }
-
-    object->runtime.editmesh_bb_cage = MEM_cnew<BoundBox>("BMEditMesh.bb_cage");
-    BKE_boundbox_init_from_minmax(object->runtime.editmesh_bb_cage, min, max);
-  }
-
-  return object->runtime.editmesh_bb_cage;
+  BM_lnorspace_update(em->bm);
 }

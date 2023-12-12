@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Kévin Dietrich. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 Kévin Dietrich. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -19,8 +20,8 @@
 #include "BLI_math_base.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_customdata.h"
-#include "BKE_mesh.h"
+#include "BKE_customdata.hh"
+#include "BKE_mesh.hh"
 
 /* NOTE: for now only UVs and Vertex Colors are supported for streaming.
  * Although Alembic only allows for a single UV layer per {I|O}Schema, and does
@@ -56,9 +57,8 @@ static void get_uvs(const CDStreamConfig &config,
     return;
   }
 
-  const int num_poly = config.totpoly;
-  MPoly *mpoly = config.mpoly;
-  MLoop *mloop = config.mloop;
+  const OffsetIndices faces = config.mesh->faces();
+  int *corner_verts = config.corner_verts;
 
   if (!config.pack_uvs) {
     int count = 0;
@@ -66,11 +66,11 @@ static void get_uvs(const CDStreamConfig &config,
     uvs.resize(config.totloop);
 
     /* Iterate in reverse order to match exported polygons. */
-    for (int i = 0; i < num_poly; i++) {
-      MPoly &current_poly = mpoly[i];
-      const float2 *loopuv = mloopuv_array + current_poly.loopstart + current_poly.totloop;
+    for (const int i : faces.index_range()) {
+      const IndexRange face = faces[i];
+      const float2 *loopuv = mloopuv_array + face.start() + face.size();
 
-      for (int j = 0; j < current_poly.totloop; j++, count++) {
+      for (int j = 0; j < face.size(); j++, count++) {
         loopuv--;
 
         uvidx[count] = count;
@@ -84,20 +84,20 @@ static void get_uvs(const CDStreamConfig &config,
     std::vector<std::vector<uint32_t>> idx_map(config.totvert);
     int idx_count = 0;
 
-    for (int i = 0; i < num_poly; i++) {
-      MPoly &current_poly = mpoly[i];
-      MLoop *looppoly = mloop + current_poly.loopstart + current_poly.totloop;
-      const float2 *loopuv = mloopuv_array + current_poly.loopstart + current_poly.totloop;
+    for (const int i : faces.index_range()) {
+      const IndexRange face = faces[i];
+      int *face_verts = corner_verts + face.start() + face.size();
+      const float2 *loopuv = mloopuv_array + face.start() + face.size();
 
-      for (int j = 0; j < current_poly.totloop; j++) {
-        looppoly--;
+      for (int j = 0; j < face.size(); j++) {
+        face_verts--;
         loopuv--;
 
         Imath::V2f uv((*loopuv)[0], (*loopuv)[1]);
         bool found_same = false;
 
         /* Find UV already in uvs array. */
-        for (uint32_t uv_idx : idx_map[looppoly->v]) {
+        for (uint32_t uv_idx : idx_map[*face_verts]) {
           if (uvs[uv_idx] == uv) {
             found_same = true;
             uvidx.push_back(uv_idx);
@@ -108,7 +108,7 @@ static void get_uvs(const CDStreamConfig &config,
         /* UV doesn't exists for this vertex, add it. */
         if (!found_same) {
           uint32_t uv_idx = idx_count++;
-          idx_map[looppoly->v].push_back(uv_idx);
+          idx_map[*face_verts].push_back(uv_idx);
           uvidx.push_back(uv_idx);
           uvs.push_back(uv);
         }
@@ -172,7 +172,7 @@ static void get_cols(const CDStreamConfig &config,
                      const void *cd_data)
 {
   const float cscale = 1.0f / 255.0f;
-  const MPoly *polys = config.mpoly;
+  const OffsetIndices faces = config.mesh->faces();
   const MCol *cfaces = static_cast<const MCol *>(cd_data);
 
   buffer.reserve(config.totvert);
@@ -180,11 +180,11 @@ static void get_cols(const CDStreamConfig &config,
 
   Imath::C4f col;
 
-  for (int i = 0; i < config.totpoly; i++) {
-    const MPoly *p = &polys[i];
-    const MCol *cface = &cfaces[p->loopstart + p->totloop];
+  for (const int i : faces.index_range()) {
+    const IndexRange face = faces[i];
+    const MCol *cface = &cfaces[face.start() + face.size()];
 
-    for (int j = 0; j < p->totloop; j++) {
+    for (int j = 0; j < face.size(); j++) {
       cface--;
 
       col[0] = cface->a * cscale;
@@ -236,7 +236,7 @@ static void write_mcol(const OCompoundProperty &prop,
 void write_generated_coordinates(const OCompoundProperty &prop, CDStreamConfig &config)
 {
   Mesh *mesh = config.mesh;
-  const void *customdata = CustomData_get_layer(&mesh->vdata, CD_ORCO);
+  const void *customdata = CustomData_get_layer(&mesh->vert_data, CD_ORCO);
   if (customdata == nullptr) {
     /* Data not available, so don't even bother creating an Alembic property for it. */
     return;
@@ -315,8 +315,8 @@ static void read_uvs(const CDStreamConfig &config,
                      const Alembic::AbcGeom::V2fArraySamplePtr &uvs,
                      const UInt32ArraySamplePtr &indices)
 {
-  MPoly *mpolys = config.mpoly;
-  MLoop *mloops = config.mloop;
+  const OffsetIndices faces = config.mesh->faces();
+  const int *corner_verts = config.corner_verts;
   float2 *mloopuvs = static_cast<float2 *>(data);
 
   uint uv_index, loop_index, rev_loop_index;
@@ -324,13 +324,13 @@ static void read_uvs(const CDStreamConfig &config,
   BLI_assert(uv_scope != ABC_UV_SCOPE_NONE);
   const bool do_uvs_per_loop = (uv_scope == ABC_UV_SCOPE_LOOP);
 
-  for (int i = 0; i < config.totpoly; i++) {
-    MPoly &poly = mpolys[i];
-    uint rev_loop_offset = poly.loopstart + poly.totloop - 1;
+  for (const int i : faces.index_range()) {
+    const IndexRange face = faces[i];
+    uint rev_loop_offset = face.start() + face.size() - 1;
 
-    for (int f = 0; f < poly.totloop; f++) {
+    for (int f = 0; f < face.size(); f++) {
       rev_loop_index = rev_loop_offset - f;
-      loop_index = do_uvs_per_loop ? poly.loopstart + f : mloops[rev_loop_index].v;
+      loop_index = do_uvs_per_loop ? face.start() + f : corner_verts[rev_loop_index];
       uv_index = (*indices)[loop_index];
       const Imath::V2f &uv = (*uvs)[uv_index];
 
@@ -411,8 +411,8 @@ static void read_custom_data_mcols(const std::string &iobject_full_name,
   void *cd_data = config.add_customdata_cb(
       config.mesh, prop_header.getName().c_str(), CD_PROP_BYTE_COLOR);
   MCol *cfaces = static_cast<MCol *>(cd_data);
-  MPoly *mpolys = config.mpoly;
-  MLoop *mloops = config.mloop;
+  const OffsetIndices faces = config.mesh->faces();
+  const int *corner_verts = config.corner_verts;
 
   size_t face_index = 0;
   size_t color_index;
@@ -420,20 +420,20 @@ static void read_custom_data_mcols(const std::string &iobject_full_name,
 
   /* The colors can go through two layers of indexing. Often the 'indices'
    * array doesn't do anything (i.e. indices[n] = n), but when it does, it's
-   * important. Blender 2.79 writes indices incorrectly (see T53745), which
+   * important. Blender 2.79 writes indices incorrectly (see #53745), which
    * is why we have to check for indices->size() > 0 */
   bool use_dual_indexing = is_facevarying && indices->size() > 0;
 
-  for (int i = 0; i < config.totpoly; i++) {
-    MPoly *poly = &mpolys[i];
-    MCol *cface = &cfaces[poly->loopstart + poly->totloop];
-    MLoop *mloop = &mloops[poly->loopstart + poly->totloop];
+  for (const int i : faces.index_range()) {
+    const IndexRange face = faces[i];
+    MCol *cface = &cfaces[face.start() + face.size()];
+    const int *face_verts = &corner_verts[face.start() + face.size()];
 
-    for (int j = 0; j < poly->totloop; j++, face_index++) {
+    for (int j = 0; j < face.size(); j++, face_index++) {
       cface--;
-      mloop--;
+      face_verts--;
 
-      color_index = is_facevarying ? face_index : mloop->v;
+      color_index = is_facevarying ? face_index : *face_verts;
       if (use_dual_indexing) {
         color_index = (*indices)[color_index];
       }
@@ -534,11 +534,11 @@ void read_generated_coordinates(const ICompoundProperty &prop,
   }
 
   void *cd_data;
-  if (CustomData_has_layer(&mesh->vdata, CD_ORCO)) {
-    cd_data = CustomData_get_layer_for_write(&mesh->vdata, CD_ORCO, mesh->totvert);
+  if (CustomData_has_layer(&mesh->vert_data, CD_ORCO)) {
+    cd_data = CustomData_get_layer_for_write(&mesh->vert_data, CD_ORCO, mesh->totvert);
   }
   else {
-    cd_data = CustomData_add_layer(&mesh->vdata, CD_ORCO, CD_CONSTRUCT, nullptr, totvert);
+    cd_data = CustomData_add_layer(&mesh->vert_data, CD_ORCO, CD_CONSTRUCT, totvert);
   }
 
   float(*orcodata)[3] = static_cast<float(*)[3]>(cd_data);

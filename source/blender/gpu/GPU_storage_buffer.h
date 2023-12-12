@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -39,16 +40,32 @@ void GPU_storagebuf_bind(GPUStorageBuf *ssbo, int slot);
 void GPU_storagebuf_unbind(GPUStorageBuf *ssbo);
 void GPU_storagebuf_unbind_all(void);
 
-void GPU_storagebuf_clear(GPUStorageBuf *ssbo,
-                          eGPUTextureFormat internal_format,
-                          eGPUDataFormat data_format,
-                          void *data);
 void GPU_storagebuf_clear_to_zero(GPUStorageBuf *ssbo);
+
+/**
+ * Clear the content of the buffer using the given #clear_value. #clear_value will be used as a
+ * repeatable pattern of 32bits.
+ */
+void GPU_storagebuf_clear(GPUStorageBuf *ssbo, uint32_t clear_value);
+
+/**
+ * Explicitly sync updated storage buffer contents back to host within the GPU command stream. This
+ * ensures any changes made by the GPU are visible to the host.
+ * NOTE: This command is only valid for host-visible storage buffers.
+ */
+void GPU_storagebuf_sync_to_host(GPUStorageBuf *ssbo);
 
 /**
  * Read back content of the buffer to CPU for inspection.
  * Slow! Only use for inspection / debugging.
- * NOTE: Not synchronized. Use appropriate barrier before reading.
+ *
+ * NOTE: If GPU_storagebuf_sync_to_host is called, this command is synchronized against that call.
+ * If pending GPU updates to the storage buffer are not yet visible to the host, the command will
+ * stall until dependent GPU work has completed.
+ *
+ * Otherwise, this command is unsynchronized and will return current visible storage buffer
+ * contents immediately.
+ * Alternatively, use appropriate barrier or GPU_finish before reading.
  */
 void GPU_storagebuf_read(GPUStorageBuf *ssbo, void *data);
 

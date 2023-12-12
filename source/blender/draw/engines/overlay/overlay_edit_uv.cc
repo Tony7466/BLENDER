@@ -1,35 +1,38 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
  */
 #include "DRW_render.h"
 
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 #include "draw_manager_text.h"
 
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
+#include "BLI_math_color.h"
+
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_image.h"
 #include "BKE_layer.h"
 #include "BKE_mask.h"
-#include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_object.hh"
+#include "BKE_paint.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_mesh_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "ED_image.h"
+#include "ED_image.hh"
 
 #include "IMB_imbuf_types.h"
 
 #include "GPU_batch.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "overlay_private.hh"
 
@@ -80,7 +83,7 @@ static GPUTexture *edit_uv_mask_texture(
 
   /* Free memory. */
   BKE_maskrasterize_handle_free(handle);
-  GPUTexture *texture = GPU_texture_create_2d_ex(
+  GPUTexture *texture = GPU_texture_create_2d(
       mask->id.name, width, height, 1, GPU_R16F, GPU_TEXTURE_USAGE_SHADER_READ, buffer);
   MEM_freeN(buffer);
   return texture;
@@ -158,7 +161,7 @@ void OVERLAY_edit_uv_init(OVERLAY_Data *vedata)
   pd->edit_uv.uv_opacity = sima->uv_opacity;
   pd->edit_uv.do_tiled_image_overlay = show_overlays && is_image_type && is_tiled_image;
   pd->edit_uv.do_tiled_image_border_overlay = is_image_type && is_tiled_image;
-  pd->edit_uv.dash_length = 4.0f * UI_DPI_FAC;
+  pd->edit_uv.dash_length = 4.0f * UI_SCALE_FAC;
   pd->edit_uv.line_style = edit_uv_line_style_from_space_image(sima);
   pd->edit_uv.do_smooth_wire = ((U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) != 0);
   pd->edit_uv.do_stencil_overlay = show_overlays && do_stencil_overlay;
@@ -237,7 +240,7 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
       GPUShader *sh = OVERLAY_shader_edit_uv_verts_get();
       pd->edit_uv_verts_grp = DRW_shgroup_create(sh, psl->edit_uv_verts_ps);
 
-      const float point_size = UI_GetThemeValuef(TH_VERTEX_SIZE) * U.dpi_fac;
+      const float point_size = UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC;
 
       DRW_shgroup_uniform_block(pd->edit_uv_verts_grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_float_copy(
@@ -261,7 +264,7 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
 
     /* uv face dots */
     if (pd->edit_uv.do_face_dots) {
-      const float point_size = UI_GetThemeValuef(TH_FACEDOT_SIZE) * U.dpi_fac;
+      const float point_size = UI_GetThemeValuef(TH_FACEDOT_SIZE) * UI_SCALE_FAC;
       GPUShader *sh = OVERLAY_shader_edit_uv_face_dots_get();
       pd->edit_uv_face_dots_grp = DRW_shgroup_create(sh, psl->edit_uv_verts_ps);
       DRW_shgroup_uniform_block(pd->edit_uv_face_dots_grp, "globalsBlock", G_draw.block_ubo);
@@ -324,7 +327,7 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
         obmat[3][0] = float((active_tile->tile_number - 1001) % 10);
         obmat[3][1] = float((active_tile->tile_number - 1001) / 10);
         grp = DRW_shgroup_create(sh, psl->edit_uv_tiled_image_borders_ps);
-        DRW_shgroup_uniform_vec4_copy(grp, "color", selected_color);
+        DRW_shgroup_uniform_vec4_copy(grp, "ucolor", selected_color);
         DRW_shgroup_call_obmat(grp, geom, obmat);
       }
     }
@@ -370,7 +373,7 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_bool_copy(grp, "imgPremultiplied", true);
       DRW_shgroup_uniform_bool_copy(grp, "imgAlphaBlend", true);
       const float4 color = {1.0f, 1.0f, 1.0f, brush->clone.alpha};
-      DRW_shgroup_uniform_vec4_copy(grp, "color", color);
+      DRW_shgroup_uniform_vec4_copy(grp, "ucolor", color);
 
       float size_image[2];
       BKE_image_get_size_fl(image, nullptr, size_image);
@@ -414,9 +417,10 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
 
   /* HACK: When editing objects that share the same mesh we should only draw the
    * first one in the order that is used during uv editing. We can only trust that the first object
-   * has the correct batches with the correct selection state. See T83187. */
+   * has the correct batches with the correct selection state. See #83187. */
   if ((pd->edit_uv.do_uv_overlay || pd->edit_uv.do_uv_shadow_overlay) &&
-      draw_ctx->obact->type == OB_MESH) {
+      draw_ctx->obact->type == OB_MESH)
+  {
     uint objects_len = 0;
     Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(
         draw_ctx->scene, draw_ctx->view_layer, nullptr, &objects_len, draw_ctx->object_mode);
@@ -441,35 +445,35 @@ static void overlay_edit_uv_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const bool is_edit_object = DRW_object_is_in_edit_mode(ob);
-  Mesh *me = (Mesh *)ob->data;
-  const bool has_active_object_uvmap = CustomData_get_active_layer(&me->ldata, CD_PROP_FLOAT2) !=
-                                       -1;
+  Mesh *mesh = (Mesh *)ob->data;
+  const bool has_active_object_uvmap = CustomData_get_active_layer(&mesh->loop_data,
+                                                                   CD_PROP_FLOAT2) != -1;
   const bool has_active_edit_uvmap = is_edit_object &&
-                                     (CustomData_get_active_layer(&me->edit_mesh->bm->ldata,
+                                     (CustomData_get_active_layer(&mesh->edit_mesh->bm->ldata,
                                                                   CD_PROP_FLOAT2) != -1);
   const bool draw_shadows = (draw_ctx->object_mode != OB_MODE_OBJECT) &&
                             (ob->mode == draw_ctx->object_mode);
 
   if (has_active_edit_uvmap) {
     if (pd->edit_uv.do_uv_overlay) {
-      geom = DRW_mesh_batch_cache_get_edituv_edges(ob, me);
+      geom = DRW_mesh_batch_cache_get_edituv_edges(ob, mesh);
       if (geom) {
         DRW_shgroup_call_obmat(pd->edit_uv_edges_grp, geom, nullptr);
       }
       if (pd->edit_uv.do_verts) {
-        geom = DRW_mesh_batch_cache_get_edituv_verts(ob, me);
+        geom = DRW_mesh_batch_cache_get_edituv_verts(ob, mesh);
         if (geom) {
           DRW_shgroup_call_obmat(pd->edit_uv_verts_grp, geom, nullptr);
         }
       }
       if (pd->edit_uv.do_faces) {
-        geom = DRW_mesh_batch_cache_get_edituv_faces(ob, me);
+        geom = DRW_mesh_batch_cache_get_edituv_faces(ob, mesh);
         if (geom) {
           DRW_shgroup_call_obmat(pd->edit_uv_faces_grp, geom, nullptr);
         }
       }
       if (pd->edit_uv.do_face_dots) {
-        geom = DRW_mesh_batch_cache_get_edituv_facedots(ob, me);
+        geom = DRW_mesh_batch_cache_get_edituv_facedots(ob, mesh);
         if (geom) {
           DRW_shgroup_call_obmat(pd->edit_uv_face_dots_grp, geom, nullptr);
         }
@@ -478,14 +482,14 @@ static void overlay_edit_uv_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
     if (pd->edit_uv.do_uv_stretching_overlay) {
       if (pd->edit_uv.draw_type == SI_UVDT_STRETCH_ANGLE) {
-        geom = DRW_mesh_batch_cache_get_edituv_faces_stretch_angle(ob, me);
+        geom = DRW_mesh_batch_cache_get_edituv_faces_stretch_angle(ob, mesh);
       }
       else /* SI_UVDT_STRETCH_AREA */ {
         OVERLAY_StretchingAreaTotals *totals = static_cast<OVERLAY_StretchingAreaTotals *>(
             MEM_mallocN(sizeof(OVERLAY_StretchingAreaTotals), __func__));
         BLI_addtail(&pd->edit_uv.totals, totals);
         geom = DRW_mesh_batch_cache_get_edituv_faces_stretch_area(
-            ob, me, &totals->total_area, &totals->total_area_uv);
+            ob, mesh, &totals->total_area, &totals->total_area_uv);
       }
       if (geom) {
         DRW_shgroup_call_obmat(pd->edit_uv_stretching_grp, geom, nullptr);
@@ -495,7 +499,7 @@ static void overlay_edit_uv_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   if (draw_shadows && (has_active_object_uvmap || has_active_edit_uvmap)) {
     if (pd->edit_uv.do_uv_shadow_overlay) {
-      geom = DRW_mesh_batch_cache_get_uv_edges(ob, me);
+      geom = DRW_mesh_batch_cache_get_uv_edges(ob, mesh);
       if (geom) {
         DRW_shgroup_call_obmat(pd->edit_uv_shadow_edges_grp, geom, nullptr);
       }

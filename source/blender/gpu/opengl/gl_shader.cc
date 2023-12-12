@@ -1,9 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
  */
+
+#include <iomanip>
 
 #include "BKE_global.h"
 
@@ -18,6 +21,8 @@
 
 #include "gl_shader.hh"
 #include "gl_shader_interface.hh"
+
+#include <sstream>
 
 using namespace blender;
 using namespace blender::gpu;
@@ -107,9 +112,139 @@ static const char *to_string(const Type &type)
       return "ivec4";
     case Type::BOOL:
       return "bool";
-    default:
-      return "unknown";
+    /* Alias special types. */
+    case Type::UCHAR:
+    case Type::USHORT:
+      return "uint";
+    case Type::UCHAR2:
+    case Type::USHORT2:
+      return "uvec2";
+    case Type::UCHAR3:
+    case Type::USHORT3:
+      return "uvec3";
+    case Type::UCHAR4:
+    case Type::USHORT4:
+      return "uvec4";
+    case Type::CHAR:
+    case Type::SHORT:
+      return "int";
+    case Type::CHAR2:
+    case Type::SHORT2:
+      return "ivec2";
+    case Type::CHAR3:
+    case Type::SHORT3:
+      return "ivec3";
+    case Type::CHAR4:
+    case Type::SHORT4:
+      return "ivec4";
+    case Type::VEC3_101010I2:
+      return "vec3";
   }
+  BLI_assert_unreachable();
+  return "unknown";
+}
+
+static const int to_component_count(const Type &type)
+{
+  switch (type) {
+    case Type::FLOAT:
+    case Type::UINT:
+    case Type::INT:
+    case Type::BOOL:
+      return 1;
+    case Type::VEC2:
+    case Type::UVEC2:
+    case Type::IVEC2:
+      return 2;
+    case Type::VEC3:
+    case Type::UVEC3:
+    case Type::IVEC3:
+      return 3;
+    case Type::VEC4:
+    case Type::UVEC4:
+    case Type::IVEC4:
+      return 4;
+    case Type::MAT3:
+      return 9;
+    case Type::MAT4:
+      return 16;
+    /* Alias special types. */
+    case Type::UCHAR:
+    case Type::USHORT:
+      return 1;
+    case Type::UCHAR2:
+    case Type::USHORT2:
+      return 2;
+    case Type::UCHAR3:
+    case Type::USHORT3:
+      return 3;
+    case Type::UCHAR4:
+    case Type::USHORT4:
+      return 4;
+    case Type::CHAR:
+    case Type::SHORT:
+      return 1;
+    case Type::CHAR2:
+    case Type::SHORT2:
+      return 2;
+    case Type::CHAR3:
+    case Type::SHORT3:
+      return 3;
+    case Type::CHAR4:
+    case Type::SHORT4:
+      return 4;
+    case Type::VEC3_101010I2:
+      return 3;
+  }
+  BLI_assert_unreachable();
+  return -1;
+}
+
+static const Type to_component_type(const Type &type)
+{
+  switch (type) {
+    case Type::FLOAT:
+    case Type::VEC2:
+    case Type::VEC3:
+    case Type::VEC4:
+    case Type::MAT3:
+    case Type::MAT4:
+      return Type::FLOAT;
+    case Type::UINT:
+    case Type::UVEC2:
+    case Type::UVEC3:
+    case Type::UVEC4:
+      return Type::UINT;
+    case Type::INT:
+    case Type::IVEC2:
+    case Type::IVEC3:
+    case Type::IVEC4:
+    case Type::BOOL:
+      return Type::INT;
+    /* Alias special types. */
+    case Type::UCHAR:
+    case Type::UCHAR2:
+    case Type::UCHAR3:
+    case Type::UCHAR4:
+    case Type::USHORT:
+    case Type::USHORT2:
+    case Type::USHORT3:
+    case Type::USHORT4:
+      return Type::UINT;
+    case Type::CHAR:
+    case Type::CHAR2:
+    case Type::CHAR3:
+    case Type::CHAR4:
+    case Type::SHORT:
+    case Type::SHORT2:
+    case Type::SHORT3:
+    case Type::SHORT4:
+      return Type::INT;
+    case Type::VEC3_101010I2:
+      return Type::FLOAT;
+  }
+  BLI_assert_unreachable();
+  return Type::FLOAT;
 }
 
 static const char *to_string(const eGPUTextureFormat &type)
@@ -243,6 +378,9 @@ static void print_image_type(std::ostream &os,
     case ImageType::INT_3D:
     case ImageType::INT_CUBE:
     case ImageType::INT_CUBE_ARRAY:
+    case ImageType::INT_2D_ATOMIC:
+    case ImageType::INT_2D_ARRAY_ATOMIC:
+    case ImageType::INT_3D_ATOMIC:
       os << "i";
       break;
     case ImageType::UINT_BUFFER:
@@ -253,6 +391,9 @@ static void print_image_type(std::ostream &os,
     case ImageType::UINT_3D:
     case ImageType::UINT_CUBE:
     case ImageType::UINT_CUBE_ARRAY:
+    case ImageType::UINT_2D_ATOMIC:
+    case ImageType::UINT_2D_ARRAY_ATOMIC:
+    case ImageType::UINT_3D_ATOMIC:
       os << "u";
       break;
     default:
@@ -284,8 +425,12 @@ static void print_image_type(std::ostream &os,
     case ImageType::FLOAT_2D_ARRAY:
     case ImageType::INT_2D:
     case ImageType::INT_2D_ARRAY:
+    case ImageType::INT_2D_ATOMIC:
+    case ImageType::INT_2D_ARRAY_ATOMIC:
     case ImageType::UINT_2D:
     case ImageType::UINT_2D_ARRAY:
+    case ImageType::UINT_2D_ATOMIC:
+    case ImageType::UINT_2D_ARRAY_ATOMIC:
     case ImageType::SHADOW_2D:
     case ImageType::SHADOW_2D_ARRAY:
     case ImageType::DEPTH_2D:
@@ -295,6 +440,8 @@ static void print_image_type(std::ostream &os,
     case ImageType::FLOAT_3D:
     case ImageType::INT_3D:
     case ImageType::UINT_3D:
+    case ImageType::INT_3D_ATOMIC:
+    case ImageType::UINT_3D_ATOMIC:
       os << "3D";
       break;
     case ImageType::FLOAT_CUBE:
@@ -322,6 +469,7 @@ static void print_image_type(std::ostream &os,
     case ImageType::INT_CUBE_ARRAY:
     case ImageType::UINT_1D_ARRAY:
     case ImageType::UINT_2D_ARRAY:
+    case ImageType::UINT_2D_ARRAY_ATOMIC:
     case ImageType::UINT_CUBE_ARRAY:
     case ImageType::SHADOW_2D_ARRAY:
     case ImageType::SHADOW_CUBE_ARRAY:
@@ -360,9 +508,16 @@ static std::ostream &print_qualifier(std::ostream &os, const Qualifier &qualifie
   return os;
 }
 
-static void print_resource(std::ostream &os, const ShaderCreateInfo::Resource &res)
+static void print_resource(std::ostream &os,
+                           const ShaderCreateInfo::Resource &res,
+                           bool auto_resource_location)
 {
-  if (GLContext::explicit_location_support) {
+  if (auto_resource_location && res.bind_type == ShaderCreateInfo::Resource::BindType::SAMPLER) {
+    /* Skip explicit binding location for samplers when not needed, since drivers can usually
+     * handle more sampler declarations this way (as long as they're not actually used by the
+     * shader). See #105661. */
+  }
+  else if (GLContext::explicit_location_support) {
     os << "layout(binding = " << res.slot;
     if (res.bind_type == ShaderCreateInfo::Resource::BindType::IMAGE) {
       os << ", " << to_string(res.image.format);
@@ -466,14 +621,14 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
 
   ss << "\n/* Pass Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
-    print_resource(ss, res);
+    print_resource(ss, res, info.auto_resource_location_);
   }
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
     print_resource_alias(ss, res);
   }
   ss << "\n/* Batch Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
-    print_resource(ss, res);
+    print_resource(ss, res, info.auto_resource_location_);
   }
   for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
     print_resource_alias(ss, res);
@@ -486,9 +641,9 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
     }
     ss << ";\n";
   }
-#if 0 /* T95278: This is not be enough to prevent some compilers think it is recursive. */
+#if 0 /* #95278: This is not be enough to prevent some compilers think it is recursive. */
   for (const ShaderCreateInfo::PushConst &uniform : info.push_constants_) {
-    /* T95278: Double macro to avoid some compilers think it is recursive. */
+    /* #95278: Double macro to avoid some compilers think it is recursive. */
     ss << "#define " << uniform.name << "_ " << uniform.name << "\n";
     ss << "#define " << uniform.name << " (" << uniform.name << "_)\n";
   }
@@ -524,15 +679,11 @@ std::string GLShader::vertex_interface_declare(const ShaderCreateInfo &info) con
   for (const ShaderCreateInfo::VertIn &attr : info.vertex_inputs_) {
     if (GLContext::explicit_location_support &&
         /* Fix issue with AMDGPU-PRO + workbench_prepass_mesh_vert.glsl being quantized. */
-        GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_OFFICIAL) == false) {
+        GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_OFFICIAL) == false)
+    {
       ss << "layout(location = " << attr.index << ") ";
     }
     ss << "in " << to_string(attr.type) << " " << attr.name << ";\n";
-  }
-  /* NOTE(D4490): Fix a bug where shader without any vertex attributes do not behave correctly. */
-  if (GPU_type_matches_ex(GPU_DEVICE_APPLE, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL) &&
-      info.vertex_inputs_.is_empty()) {
-    ss << "in float gpu_dummy_workaround;\n";
   }
   ss << "\n/* Interfaces. */\n";
   for (const StageInterfaceInfo *iface : info.vertex_out_interfaces_) {
@@ -540,6 +691,10 @@ std::string GLShader::vertex_interface_declare(const ShaderCreateInfo &info) con
   }
   if (!GLContext::layered_rendering_support && bool(info.builtins_ & BuiltinBits::LAYER)) {
     ss << "out int gpu_Layer;\n";
+  }
+  if (!GLContext::layered_rendering_support && bool(info.builtins_ & BuiltinBits::VIEWPORT_INDEX))
+  {
+    ss << "out int gpu_ViewportIndex;\n";
   }
   if (bool(info.builtins_ & BuiltinBits::BARYCENTRIC_COORD)) {
     if (!GLContext::native_barycentric_support) {
@@ -565,7 +720,7 @@ std::string GLShader::vertex_interface_declare(const ShaderCreateInfo &info) con
 std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) const
 {
   std::stringstream ss;
-  std::string pre_main;
+  std::string pre_main, post_main;
 
   ss << "\n/* Interfaces. */\n";
   const Vector<StageInterfaceInfo *> &in_interfaces = info.geometry_source_.is_empty() ?
@@ -573,6 +728,13 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
                                                           info.geometry_out_interfaces_;
   for (const StageInterfaceInfo *iface : in_interfaces) {
     print_interface(ss, "in", *iface);
+  }
+  if (!GLContext::layered_rendering_support && bool(info.builtins_ & BuiltinBits::LAYER)) {
+    ss << "#define gpu_Layer gl_Layer\n";
+  }
+  if (!GLContext::layered_rendering_support && bool(info.builtins_ & BuiltinBits::VIEWPORT_INDEX))
+  {
+    ss << "#define gpu_ViewportIndex gl_ViewportIndex\n";
   }
   if (bool(info.builtins_ & BuiltinBits::BARYCENTRIC_COORD)) {
     if (!GLContext::native_barycentric_support) {
@@ -582,7 +744,6 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
       ss << "#define gpu_position_at_vertex(v) gpu_pos[v]\n";
     }
     else if (epoxy_has_gl_extension("GL_AMD_shader_explicit_vertex_parameter")) {
-      std::cout << "native" << std::endl;
       /* NOTE(fclem): This won't work with geometry shader. Hopefully, we don't need geometry
        * shader workaround if this extension/feature is detected. */
       ss << "\n/* Stable Barycentric Coordinates. */\n";
@@ -615,6 +776,64 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
   if (epoxy_has_gl_extension("GL_ARB_conservative_depth")) {
     ss << "layout(" << to_string(info.depth_write_) << ") out float gl_FragDepth;\n";
   }
+
+  ss << "\n/* Sub-pass Inputs. */\n";
+  for (const ShaderCreateInfo::SubpassIn &input : info.subpass_inputs_) {
+    if (GLContext::framebuffer_fetch_support) {
+      /* Declare as inout but do not write to it. */
+      ss << "layout(location = " << std::to_string(input.index) << ") inout "
+         << to_string(input.type) << " " << input.name << ";\n";
+    }
+    else {
+      std::string image_name = "gpu_subpass_img_";
+      image_name += std::to_string(input.index);
+
+      /* Declare global for input. */
+      ss << to_string(input.type) << " " << input.name << ";\n";
+
+      /* IMPORTANT: We assume that the frame-buffer will be layered or not based on the layer
+       * built-in flag. */
+      bool is_layered_fb = bool(info.builtins_ & BuiltinBits::LAYER);
+
+      /* Start with invalid value to detect failure cases. */
+      ImageType image_type = ImageType::FLOAT_BUFFER;
+      switch (to_component_type(input.type)) {
+        case Type::FLOAT:
+          image_type = is_layered_fb ? ImageType::FLOAT_2D_ARRAY : ImageType::FLOAT_2D;
+          break;
+        case Type::INT:
+          image_type = is_layered_fb ? ImageType::INT_2D_ARRAY : ImageType::INT_2D;
+          break;
+        case Type::UINT:
+          image_type = is_layered_fb ? ImageType::UINT_2D_ARRAY : ImageType::UINT_2D;
+          break;
+        default:
+          break;
+      }
+      /* Declare image. */
+      using Resource = ShaderCreateInfo::Resource;
+      /* NOTE(fclem): Using the attachment index as resource index might be problematic as it might
+       * collide with other resources. */
+      Resource res(Resource::BindType::SAMPLER, input.index);
+      res.sampler.type = image_type;
+      res.sampler.sampler = GPUSamplerState::default_sampler();
+      res.sampler.name = image_name;
+      print_resource(ss, res, false);
+
+      char swizzle[] = "xyzw";
+      swizzle[to_component_count(input.type)] = '\0';
+
+      std::string texel_co = (is_layered_fb) ? "ivec3(gl_FragCoord.xy, gpu_Layer)" :
+                                               "ivec2(gl_FragCoord.xy)";
+
+      std::stringstream ss_pre;
+      /* Populate the global before main using imageLoad. */
+      ss_pre << "  " << input.name << " = texelFetch(" << image_name << ", " << texel_co << ", 0)."
+             << swizzle << ";\n";
+
+      pre_main += ss_pre.str();
+    }
+  }
   ss << "\n/* Outputs. */\n";
   for (const ShaderCreateInfo::FragOut &output : info.fragment_outputs_) {
     ss << "layout(location = " << output.index;
@@ -633,8 +852,7 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
   }
   ss << "\n";
 
-  if (pre_main.empty() == false) {
-    std::string post_main;
+  if (!pre_main.empty() || !post_main.empty()) {
     ss << main_function_wrapper(pre_main, post_main);
   }
   return ss.str();
@@ -726,6 +944,8 @@ std::string GLShader::workaround_geometry_shader_source_create(
 
   const bool do_layer_workaround = !GLContext::layered_rendering_support &&
                                    bool(info.builtins_ & BuiltinBits::LAYER);
+  const bool do_viewport_workaround = !GLContext::layered_rendering_support &&
+                                      bool(info.builtins_ & BuiltinBits::VIEWPORT_INDEX);
   const bool do_barycentric_workaround = !GLContext::native_barycentric_support &&
                                          bool(info.builtins_ & BuiltinBits::BARYCENTRIC_COORD);
 
@@ -742,6 +962,9 @@ std::string GLShader::workaround_geometry_shader_source_create(
   if (do_layer_workaround) {
     ss << "in int gpu_Layer[];\n";
   }
+  if (do_viewport_workaround) {
+    ss << "in int gpu_ViewportIndex[];\n";
+  }
   if (do_barycentric_workaround) {
     ss << "flat out vec4 gpu_pos[3];\n";
     ss << "smooth out vec3 gpu_BaryCoord;\n";
@@ -753,6 +976,9 @@ std::string GLShader::workaround_geometry_shader_source_create(
   ss << "{\n";
   if (do_layer_workaround) {
     ss << "  gl_Layer = gpu_Layer[0];\n";
+  }
+  if (do_viewport_workaround) {
+    ss << "  gl_ViewportIndex = gpu_ViewportIndex[0];\n";
   }
   if (do_barycentric_workaround) {
     ss << "  gpu_pos[0] = gl_in[0].gl_Position;\n";
@@ -786,6 +1012,9 @@ bool GLShader::do_geometry_shader_injection(const shader::ShaderCreateInfo *info
   if (!GLContext::layered_rendering_support && bool(builtins & BuiltinBits::LAYER)) {
     return true;
   }
+  if (!GLContext::layered_rendering_support && bool(builtins & BuiltinBits::VIEWPORT_INDEX)) {
+    return true;
+  }
   return false;
 }
 
@@ -795,106 +1024,116 @@ bool GLShader::do_geometry_shader_injection(const shader::ShaderCreateInfo *info
 /** \name Shader stage creation
  * \{ */
 
-static char *glsl_patch_default_get()
+static const char *glsl_patch_default_get()
 {
   /** Used for shader patching. Init once. */
-  static char patch[2048] = "\0";
-  if (patch[0] != '\0') {
-    return patch;
+  static std::string patch;
+  if (!patch.empty()) {
+    return patch.c_str();
   }
 
-  size_t slen = 0;
+  std::stringstream ss;
   /* Version need to go first. */
   if (epoxy_gl_version() >= 43) {
-    STR_CONCAT(patch, slen, "#version 430\n");
+    ss << "#version 430\n";
   }
   else {
-    STR_CONCAT(patch, slen, "#version 330\n");
+    ss << "#version 330\n";
   }
 
   /* Enable extensions for features that are not part of our base GLSL version
    * don't use an extension for something already available! */
   if (GLContext::texture_gather_support) {
-    STR_CONCAT(patch, slen, "#extension GL_ARB_texture_gather: enable\n");
+    ss << "#extension GL_ARB_texture_gather: enable\n";
     /* Some drivers don't agree on epoxy_has_gl_extension("GL_ARB_texture_gather") and the actual
-     * support in the shader so double check the preprocessor define (see T56544). */
-    STR_CONCAT(patch, slen, "#ifdef GL_ARB_texture_gather\n");
-    STR_CONCAT(patch, slen, "#  define GPU_ARB_texture_gather\n");
-    STR_CONCAT(patch, slen, "#endif\n");
+     * support in the shader so double check the preprocessor define (see #56544). */
+    ss << "#ifdef GL_ARB_texture_gather\n";
+    ss << "#  define GPU_ARB_texture_gather\n";
+    ss << "#endif\n";
   }
   if (GLContext::shader_draw_parameters_support) {
-    STR_CONCAT(patch, slen, "#extension GL_ARB_shader_draw_parameters : enable\n");
-    STR_CONCAT(patch, slen, "#define GPU_ARB_shader_draw_parameters\n");
-    STR_CONCAT(patch, slen, "#define gpu_BaseInstance gl_BaseInstanceARB\n");
+    ss << "#extension GL_ARB_shader_draw_parameters : enable\n";
+    ss << "#define GPU_ARB_shader_draw_parameters\n";
+    ss << "#define gpu_BaseInstance gl_BaseInstanceARB\n";
   }
   if (GLContext::geometry_shader_invocations) {
-    STR_CONCAT(patch, slen, "#extension GL_ARB_gpu_shader5 : enable\n");
-    STR_CONCAT(patch, slen, "#define GPU_ARB_gpu_shader5\n");
+    ss << "#extension GL_ARB_gpu_shader5 : enable\n";
+    ss << "#define GPU_ARB_gpu_shader5\n";
   }
   if (GLContext::texture_cube_map_array_support) {
-    STR_CONCAT(patch, slen, "#extension GL_ARB_texture_cube_map_array : enable\n");
-    STR_CONCAT(patch, slen, "#define GPU_ARB_texture_cube_map_array\n");
+    ss << "#extension GL_ARB_texture_cube_map_array : enable\n";
+    ss << "#define GPU_ARB_texture_cube_map_array\n";
   }
   if (epoxy_has_gl_extension("GL_ARB_conservative_depth")) {
-    STR_CONCAT(patch, slen, "#extension GL_ARB_conservative_depth : enable\n");
+    ss << "#extension GL_ARB_conservative_depth : enable\n";
   }
   if (GPU_shader_image_load_store_support()) {
-    STR_CONCAT(patch, slen, "#extension GL_ARB_shader_image_load_store: enable\n");
-    STR_CONCAT(patch, slen, "#extension GL_ARB_shading_language_420pack: enable\n");
+    ss << "#extension GL_ARB_shader_image_load_store: enable\n";
+    ss << "#extension GL_ARB_shading_language_420pack: enable\n";
   }
   if (GLContext::layered_rendering_support) {
-    STR_CONCAT(patch, slen, "#extension GL_AMD_vertex_shader_layer: enable\n");
-    STR_CONCAT(patch, slen, "#define gpu_Layer gl_Layer\n");
+    ss << "#extension GL_ARB_shader_viewport_layer_array: enable\n";
+    ss << "#define gpu_Layer gl_Layer\n";
+    ss << "#define gpu_ViewportIndex gl_ViewportIndex\n";
   }
   if (GLContext::native_barycentric_support) {
-    STR_CONCAT(patch, slen, "#extension GL_AMD_shader_explicit_vertex_parameter: enable\n");
+    ss << "#extension GL_AMD_shader_explicit_vertex_parameter: enable\n";
+  }
+  if (GLContext::framebuffer_fetch_support) {
+    ss << "#extension GL_EXT_shader_framebuffer_fetch: enable\n";
   }
 
   /* Fallbacks. */
   if (!GLContext::shader_draw_parameters_support) {
-    STR_CONCAT(patch, slen, "uniform int gpu_BaseInstance;\n");
+    ss << "uniform int gpu_BaseInstance;\n";
   }
 
-  /* Vulkan GLSL compat. */
-  STR_CONCAT(patch, slen, "#define gpu_InstanceIndex (gl_InstanceID + gpu_BaseInstance)\n");
+  /* Vulkan GLSL compatibility. */
+  ss << "#define gpu_InstanceIndex (gl_InstanceID + gpu_BaseInstance)\n";
+  ss << "#define gpu_EmitVertex EmitVertex\n";
 
-  /* Array compat. */
-  STR_CONCAT(patch, slen, "#define gpu_Array(_type) _type[]\n");
+  /* Array compatibility. */
+  ss << "#define gpu_Array(_type) _type[]\n";
 
   /* Derivative sign can change depending on implementation. */
-  STR_CONCATF(patch, slen, "#define DFDX_SIGN %1.1f\n", GLContext::derivative_signs[0]);
-  STR_CONCATF(patch, slen, "#define DFDY_SIGN %1.1f\n", GLContext::derivative_signs[1]);
+  ss << "#define DFDX_SIGN " << std::setprecision(2) << GLContext::derivative_signs[0] << "\n";
+  ss << "#define DFDY_SIGN " << std::setprecision(2) << GLContext::derivative_signs[1] << "\n";
 
   /* GLSL Backend Lib. */
-  STR_CONCAT(patch, slen, datatoc_glsl_shader_defines_glsl);
+  ss << datatoc_glsl_shader_defines_glsl;
 
-  BLI_assert(slen < sizeof(patch));
-  return patch;
+  patch = ss.str();
+  return patch.c_str();
 }
 
-static char *glsl_patch_compute_get()
+static const char *glsl_patch_compute_get()
 {
   /** Used for shader patching. Init once. */
-  static char patch[2048] = "\0";
-  if (patch[0] != '\0') {
-    return patch;
+  static std::string patch;
+  if (!patch.empty()) {
+    return patch.c_str();
   }
 
-  size_t slen = 0;
+  std::stringstream ss;
   /* Version need to go first. */
-  STR_CONCAT(patch, slen, "#version 430\n");
-  STR_CONCAT(patch, slen, "#extension GL_ARB_compute_shader :enable\n");
+  ss << "#version 430\n";
+  ss << "#extension GL_ARB_compute_shader :enable\n";
 
-  /* Array compat. */
-  STR_CONCAT(patch, slen, "#define gpu_Array(_type) _type[]\n");
+  if (GLContext::texture_cube_map_array_support) {
+    ss << "#extension GL_ARB_texture_cube_map_array : enable\n";
+    ss << "#define GPU_ARB_texture_cube_map_array\n";
+  }
 
-  STR_CONCAT(patch, slen, datatoc_glsl_shader_defines_glsl);
+  /* Array compatibility. */
+  ss << "#define gpu_Array(_type) _type[]\n";
 
-  BLI_assert(slen < sizeof(patch));
-  return patch;
+  ss << datatoc_glsl_shader_defines_glsl;
+
+  patch = ss.str();
+  return patch.c_str();
 }
 
-char *GLShader::glsl_patch_get(GLenum gl_stage)
+const char *GLShader::glsl_patch_get(GLenum gl_stage)
 {
   if (gl_stage == GL_COMPUTE_SHADER) {
     return glsl_patch_compute_get();

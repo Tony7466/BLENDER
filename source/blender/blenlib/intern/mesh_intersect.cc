@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -20,6 +22,8 @@
 #  include "BLI_kdopbvh.h"
 #  include "BLI_map.hh"
 #  include "BLI_math_boolean.hh"
+#  include "BLI_math_geom.h"
+#  include "BLI_math_matrix.h"
 #  include "BLI_math_mpq.hh"
 #  include "BLI_math_vector.h"
 #  include "BLI_math_vector_mpq_types.hh"
@@ -162,9 +166,7 @@ Face::Face(
 {
 }
 
-Face::Face(Span<const Vert *> verts, int id, int orig) : vert(verts), id(id), orig(orig)
-{
-}
+Face::Face(Span<const Vert *> verts, int id, int orig) : vert(verts), id(id), orig(orig) {}
 
 void Face::populate_plane(bool need_exact)
 {
@@ -305,9 +307,7 @@ class IMeshArena::IMeshArenaImpl : NonCopyable, NonMovable {
   struct VSetKey {
     Vert *vert;
 
-    VSetKey(Vert *p) : vert(p)
-    {
-    }
+    VSetKey(Vert *p) : vert(p) {}
 
     uint64_t hash() const
     {
@@ -998,18 +998,10 @@ struct ITT_value {
   enum ITT_value_kind kind = INONE;
 
   ITT_value() = default;
-  explicit ITT_value(ITT_value_kind k) : kind(k)
-  {
-  }
-  ITT_value(ITT_value_kind k, int tsrc) : t_source(tsrc), kind(k)
-  {
-  }
-  ITT_value(ITT_value_kind k, const mpq3 &p1) : p1(p1), kind(k)
-  {
-  }
-  ITT_value(ITT_value_kind k, const mpq3 &p1, const mpq3 &p2) : p1(p1), p2(p2), kind(k)
-  {
-  }
+  explicit ITT_value(ITT_value_kind k) : kind(k) {}
+  ITT_value(ITT_value_kind k, int tsrc) : t_source(tsrc), kind(k) {}
+  ITT_value(ITT_value_kind k, const mpq3 &p1) : p1(p1), kind(k) {}
+  ITT_value(ITT_value_kind k, const mpq3 &p1, const mpq3 &p2) : p1(p1), p2(p2), kind(k) {}
 };
 
 static std::ostream &operator<<(std::ostream &os, const ITT_value &itt);
@@ -1595,7 +1587,8 @@ struct CDT_data {
   Vector<bool> is_reversed;
   /** Result of running CDT on input with (vert, edge, face). */
   CDT_result<mpq_class> cdt_out;
-  /** To speed up get_cdt_edge_orig, sometimes populate this map from vertex pair to output edge.
+  /**
+   * To speed up get_cdt_edge_orig, sometimes populate this map from vertex pair to output edge.
    */
   Map<std::pair<int, int>, int> verts_to_edge;
   int proj_axis;
@@ -1974,17 +1967,19 @@ static Face *cdt_tri_as_imesh_face(
   return facep;
 }
 
-/* Like BLI_math's is_quad_flip_v3_first_third_fast_with_normal, with const double3's. */
+/* Like BLI_math's is_quad_flip_v3_first_third_fast, with const double3's. */
 static bool is_quad_flip_first_third(const double3 &v1,
                                      const double3 &v2,
                                      const double3 &v3,
-                                     const double3 &v4,
-                                     const double3 &normal)
+                                     const double3 &v4)
 {
-  double3 dir_v3v1 = v3 - v1;
-  double3 tangent = math::cross(dir_v3v1, normal);
-  double dot = math::dot(v1, tangent);
-  return (math::dot(v4, tangent) >= dot) || (math::dot(v2, tangent) <= dot);
+  const double3 d_12 = v2 - v1;
+  const double3 d_13 = v3 - v1;
+  const double3 d_14 = v4 - v1;
+
+  const double3 cross_a = math::cross(d_12, d_13);
+  const double3 cross_b = math::cross(d_14, d_13);
+  return math::dot(cross_a, cross_b) > 0.0f;
 }
 
 /**
@@ -2020,7 +2015,7 @@ static Array<Face *> polyfill_triangulate_poly(Face *f, IMeshArena *arena)
     int eo_23 = f->edge_orig[2];
     int eo_30 = f->edge_orig[3];
     Face *f0, *f1;
-    if (UNLIKELY(is_quad_flip_first_third(v0->co, v1->co, v2->co, v3->co, f->plane->norm))) {
+    if (UNLIKELY(is_quad_flip_first_third(v0->co, v1->co, v2->co, v3->co))) {
       f0 = arena->add_face({v0, v1, v3}, f->orig, {eo_01, -1, eo_30}, {false, false, false});
       f1 = arena->add_face({v1, v2, v3}, f->orig, {eo_12, eo_23, -1}, {false, false, false});
     }
@@ -2105,7 +2100,7 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
   const double3 &poly_normal = f->plane->norm;
   int axis = math::dominant_axis(poly_normal);
   /* If project down y axis as opposed to x or z, the orientation
-   * of the polygon will be reversed.
+   * of the face will be reversed.
    * Yet another reversal happens if the poly normal in the dominant
    * direction is opposite that of the positive dominant axis. */
   bool rev1 = (axis == 1);
@@ -2131,7 +2126,7 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
     bool needs_steiner = false;
     for (int i = 0; i < 3; ++i) {
       i_v_out[i] = cdt_out.face[t][i];
-      if (cdt_out.vert_orig[i_v_out[i]].size() == 0) {
+      if (cdt_out.vert_orig[i_v_out[i]].is_empty()) {
         needs_steiner = true;
         break;
       }
@@ -2768,7 +2763,7 @@ static CoplanarClusterInfo find_clusters(const IMesh &tm,
   if (dbg_level > 0) {
     std::cout << "found " << maybe_coplanar_tris.size() << " possible coplanar tris\n";
   }
-  if (maybe_coplanar_tris.size() == 0) {
+  if (maybe_coplanar_tris.is_empty()) {
     if (dbg_level > 0) {
       std::cout << "No possible coplanar tris, so no clusters\n";
     }
@@ -2815,7 +2810,7 @@ static CoplanarClusterInfo find_clusters(const IMesh &tm,
           no_int_cls.append(&cl);
         }
       }
-      if (int_cls.size() == 0) {
+      if (int_cls.is_empty()) {
         /* t doesn't intersect any existing cluster in its plane, so make one just for it. */
         if (dbg_level > 1) {
           std::cout << "no intersecting clusters for t, make a new one\n";
@@ -3132,7 +3127,6 @@ void write_obj_mesh(IMesh &m, const std::string &objname)
     const double3 dv = v->co;
     f << "v " << dv[0] << " " << dv[1] << " " << dv[2] << "\n";
   }
-  int i = 0;
   for (const Face *face : m.faces()) {
     /* OBJ files use 1-indexing for vertices. */
     f << "f ";
@@ -3143,7 +3137,6 @@ void write_obj_mesh(IMesh &m, const std::string &objname)
       f << i + 1 << " ";
     }
     f << "\n";
-    ++i;
   }
   f.close();
 }

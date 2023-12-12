@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2020-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 vec3 calc_barycentric_distances(vec3 pos0, vec3 pos1, vec3 pos2)
 {
@@ -98,11 +101,11 @@ vec4 tangent_get(vec4 attr, mat3 normalmat)
 
 /* Assumes GPU_VEC4 is color data. So converting to luminance like cycles. */
 #define float_from_vec4(v) dot(v.rgb, vec3(0.2126, 0.7152, 0.0722))
-#define float_from_vec3(v) avg(v.rgb)
+#define float_from_vec3(v) ((v.r + v.g + v.b) * (1.0 / 3.0))
 #define float_from_vec2(v) v.r
 
-#define vec2_from_vec4(v) vec2(avg(v.rgb), v.a)
-#define vec2_from_vec3(v) vec2(avg(v.rgb), 1.0)
+#define vec2_from_vec4(v) vec2(((v.r + v.g + v.b) * (1.0 / 3.0)), v.a)
+#define vec2_from_vec3(v) vec2(((v.r + v.g + v.b) * (1.0 / 3.0)), 1.0)
 #define vec2_from_float(v) vec2(v)
 
 #define vec3_from_vec4(v) v.rgb
@@ -124,6 +127,10 @@ vec4 tangent_get(vec4 attr, mat3 normalmat)
 #else
 #  define FrontFacing true
 #endif
+
+struct ClosureOcclusion {
+  vec3 N;
+};
 
 struct ClosureDiffuse {
   float weight;
@@ -228,7 +235,12 @@ void dF_branch(float fn, out vec2 result)
   result = vec2(0.0);
 }
 
-#elif 0 /* TODO(@fclem): User Option? */
+void dF_branch_incomplete(float fn, out vec2 result)
+{
+  result = vec2(0.0);
+}
+
+#elif defined(GPU_FAST_DERIVATIVE) /* TODO(@fclem): User Option? */
 /* Fast derivatives */
 vec3 dF_impl(vec3 v)
 {
@@ -266,6 +278,15 @@ vec3 dF_impl(vec3 v)
       result -= vec2((fn)); \
     }
 
+/* Used when the non-offset value is already computed elsewhere */
+#  define dF_branch_incomplete(fn, result) \
+    if (true) { \
+      g_derivative_flag = 1; \
+      result.x = (fn); \
+      g_derivative_flag = -1; \
+      result.y = (fn); \
+      g_derivative_flag = 0; \
+    }
 #endif
 
 /* TODO(fclem): Remove. */

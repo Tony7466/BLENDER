@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Paint a color made from hash of node pointer. */
 //#define DEBUG_PIXEL_NODES
@@ -7,10 +8,10 @@
 #include "DNA_image_types.h"
 #include "DNA_object_types.h"
 
-#include "ED_paint.h"
+#include "ED_paint.hh"
 
-#include "BLI_math.h"
 #include "BLI_math_color_blend.h"
+#include "BLI_math_geom.h"
 #include "BLI_task.h"
 #ifdef DEBUG_PIXEL_NODES
 #  include "BLI_hash.h"
@@ -19,14 +20,14 @@
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_image_wrappers.hh"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_pbvh_pixels.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint::paint::image {
 
@@ -51,7 +52,7 @@ struct ImageData {
 struct TexturePaintingUserData {
   Object *ob;
   Brush *brush;
-  PBVHNode **nodes;
+  Span<PBVHNode *> nodes;
   ImageData image_data;
 };
 
@@ -73,12 +74,12 @@ class ImageBufferFloat4 {
 
   float4 read_pixel(ImBuf *image_buffer) const
   {
-    return &image_buffer->rect_float[pixel_offset * 4];
+    return &image_buffer->float_buffer.data[pixel_offset * 4];
   }
 
   void write_pixel(ImBuf *image_buffer, const float4 pixel_data) const
   {
-    copy_v4_v4(&image_buffer->rect_float[pixel_offset * 4], pixel_data);
+    copy_v4_v4(&image_buffer->float_buffer.data[pixel_offset * 4], pixel_data);
   }
 
   const char *get_colorspace_name(ImBuf *image_buffer)
@@ -107,15 +108,16 @@ class ImageBufferByte4 {
   {
     float4 result;
     rgba_uchar_to_float(result,
-                        static_cast<const uchar *>(
-                            static_cast<const void *>(&(image_buffer->rect[pixel_offset]))));
+                        static_cast<const uchar *>(static_cast<const void *>(
+                            &(image_buffer->byte_buffer.data[4 * pixel_offset]))));
     return result;
   }
 
   void write_pixel(ImBuf *image_buffer, const float4 pixel_data) const
   {
-    rgba_float_to_uchar(
-        static_cast<uchar *>(static_cast<void *>(&image_buffer->rect[pixel_offset])), pixel_data);
+    rgba_float_to_uchar(static_cast<uchar *>(static_cast<void *>(
+                            &image_buffer->byte_buffer.data[4 * pixel_offset])),
+                        pixel_data);
   }
 
   const char *get_colorspace_name(ImBuf *image_buffer)
@@ -145,11 +147,8 @@ template<typename ImageBuffer> class PaintingKernel {
   explicit PaintingKernel(SculptSession *ss,
                           const Brush *brush,
                           const int thread_id,
-                          const float (*positions)[3])
-      : ss(ss),
-        brush(brush),
-        thread_id(thread_id),
-        vert_positions_(reinterpret_cast<const float3 *>(positions))
+                          const Span<float3> positions)
+      : ss(ss), brush(brush), thread_id(thread_id), vert_positions_(positions.data())
   {
     init_brush_strength();
     init_brush_test();
@@ -159,7 +158,7 @@ template<typename ImageBuffer> class PaintingKernel {
              const PaintUVPrimitives &uv_primitives,
              const PackedPixelRow &pixel_row,
              ImBuf *image_buffer,
-             AutomaskingNodeData *automask_data)
+             auto_mask::NodeData *automask_data)
   {
     image_accessor.set_image_position(image_buffer, pixel_row.start_image_coordinate);
     const UVPrimitivePaintInput paint_input = uv_primitives.get_paint_input(
@@ -295,7 +294,7 @@ template<typename ImageBuffer> class PaintingKernel {
 static std::vector<bool> init_uv_primitives_brush_test(SculptSession *ss,
                                                        PaintGeometryPrimitives &geom_primitives,
                                                        PaintUVPrimitives &uv_primitives,
-                                                       const float (*positions)[3])
+                                                       const Span<float3> positions)
 {
   std::vector<bool> brush_test(uv_primitives.size());
   SculptBrushTest test;
@@ -341,7 +340,7 @@ static void do_paint_pixels(void *__restrict userdata,
   PBVHData &pbvh_data = BKE_pbvh_pixels_data_get(*pbvh);
   NodeData &node_data = BKE_pbvh_pixels_node_data_get(*node);
   const int thread_id = BLI_task_parallel_thread_id(tls);
-  const float(*positions)[3] = SCULPT_mesh_deformed_positions_get(ss);
+  const Span<float3> positions = SCULPT_mesh_deformed_positions_get(ss);
 
   std::vector<bool> brush_test = init_uv_primitives_brush_test(
       ss, pbvh_data.geom_primitives, node_data.uv_primitives, positions);
@@ -354,9 +353,9 @@ static void do_paint_pixels(void *__restrict userdata,
 #ifdef DEBUG_PIXEL_NODES
   uint hash = BLI_hash_int(POINTER_AS_UINT(node));
 
-  brush_color[0] = (float)(hash & 255) / 255.0f;
-  brush_color[1] = (float)((hash >> 8) & 255) / 255.0f;
-  brush_color[2] = (float)((hash >> 16) & 255) / 255.0f;
+  brush_color[0] = float(hash & 255) / 255.0f;
+  brush_color[1] = float((hash >> 8) & 255) / 255.0f;
+  brush_color[2] = float((hash >> 16) & 255) / 255.0f;
 #else
   copy_v3_v3(brush_color,
              ss->cache->invert ? BKE_brush_secondary_color_get(ss->scene, brush) :
@@ -365,8 +364,7 @@ static void do_paint_pixels(void *__restrict userdata,
 
   brush_color[3] = 1.0f;
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   ImageUser image_user = *data->image_data.image_user;
   bool pixels_updated = false;
@@ -381,7 +379,7 @@ static void do_paint_pixels(void *__restrict userdata,
           continue;
         }
 
-        if (image_buffer->rect_float != nullptr) {
+        if (image_buffer->float_buffer.data != nullptr) {
           kernel_float4.init_brush_color(image_buffer, brush_color);
         }
         else {
@@ -393,7 +391,7 @@ static void do_paint_pixels(void *__restrict userdata,
             continue;
           }
           bool pixels_painted = false;
-          if (image_buffer->rect_float != nullptr) {
+          if (image_buffer->float_buffer.data != nullptr) {
             pixels_painted = kernel_float4.paint(pbvh_data.geom_primitives,
                                                  node_data.uv_primitives,
                                                  pixel_row,
@@ -511,10 +509,38 @@ static void do_mark_dirty_regions(void *__restrict userdata,
   PBVHNode *node = data->nodes[n];
   BKE_pbvh_pixels_mark_image_dirty(*node, *data->image_data.image, *data->image_data.image_user);
 }
+/* -------------------------------------------------------------------- */
+
+/** \name Fix non-manifold edge bleeding.
+ * \{ */
+
+static Vector<image::TileNumber> collect_dirty_tiles(Span<PBVHNode *> nodes)
+{
+  Vector<image::TileNumber> dirty_tiles;
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_pixels_collect_dirty_tiles(*node, dirty_tiles);
+  }
+  return dirty_tiles;
+}
+static void fix_non_manifold_seam_bleeding(PBVH &pbvh,
+                                           TexturePaintingUserData &user_data,
+                                           Span<TileNumber> tile_numbers_to_fix)
+{
+  for (image::TileNumber tile_number : tile_numbers_to_fix) {
+    BKE_pbvh_pixels_copy_pixels(
+        pbvh, *user_data.image_data.image, *user_data.image_data.image_user, tile_number);
+  }
+}
+
+static void fix_non_manifold_seam_bleeding(Object &ob, TexturePaintingUserData &user_data)
+{
+  Vector<image::TileNumber> dirty_tiles = collect_dirty_tiles(user_data.nodes);
+  fix_non_manifold_seam_bleeding(*ob.sculpt->pbvh, user_data, dirty_tiles);
+}
+
+/** \} */
 
 }  // namespace blender::ed::sculpt_paint::paint::image
-
-extern "C" {
 
 using namespace blender::ed::sculpt_paint::paint::image;
 
@@ -552,8 +578,7 @@ bool SCULPT_use_image_paint_brush(PaintModeSettings *settings, Object *ob)
 void SCULPT_do_paint_brush_image(PaintModeSettings *paint_mode_settings,
                                  Sculpt *sd,
                                  Object *ob,
-                                 PBVHNode **texnodes,
-                                 int texnodes_num)
+                                 blender::Span<PBVHNode *> texnodes)
 {
   Brush *brush = BKE_paint_brush(&sd->paint);
 
@@ -567,13 +592,13 @@ void SCULPT_do_paint_brush_image(PaintModeSettings *paint_mode_settings,
   }
 
   TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, texnodes_num);
-  BLI_task_parallel_range(0, texnodes_num, &data, do_push_undo_tile, &settings);
-  BLI_task_parallel_range(0, texnodes_num, &data, do_paint_pixels, &settings);
+  BKE_pbvh_parallel_range_settings(&settings, true, texnodes.size());
+  BLI_task_parallel_range(0, texnodes.size(), &data, do_push_undo_tile, &settings);
+  BLI_task_parallel_range(0, texnodes.size(), &data, do_paint_pixels, &settings);
+  fix_non_manifold_seam_bleeding(*ob, data);
 
   TaskParallelSettings settings_flush;
 
-  BKE_pbvh_parallel_range_settings(&settings_flush, false, texnodes_num);
-  BLI_task_parallel_range(0, texnodes_num, &data, do_mark_dirty_regions, &settings_flush);
-}
+  BKE_pbvh_parallel_range_settings(&settings_flush, false, texnodes.size());
+  BLI_task_parallel_range(0, texnodes.size(), &data, do_mark_dirty_regions, &settings_flush);
 }

@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2021-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
 #pragma BLENDER_REQUIRE(lights_lib.glsl)
@@ -58,7 +61,7 @@ void closure_Translucent_indirect_end(ClosureInputTranslucent cl_in,
                                       ClosureEvalCommon cl_common,
                                       inout ClosureOutputTranslucent cl_out)
 {
-  /* If not enough light has been accumulated from probes, use the world specular cubemap
+  /* If not enough light has been accumulated from probes, use the world specular cube-map
    * to fill the remaining energy needed. */
   if (cl_common.diffuse_accum > 0.0) {
     vec3 probe_radiance = probe_evaluate_world_diff(cl_in.N);
@@ -73,7 +76,7 @@ void closure_Translucent_eval_end(ClosureInputTranslucent cl_in,
 {
   cl_out.radiance = render_pass_diffuse_mask(cl_out.radiance);
 #if defined(DEPTH_SHADER) || defined(WORLD_BACKGROUND)
-  /* This makes shader resources become unused and avoid issues with samplers. (see T59747) */
+  /* This makes shader resources become unused and avoid issues with samplers. (see #59747) */
   cl_out.radiance = vec3(0.0);
   return;
 #endif

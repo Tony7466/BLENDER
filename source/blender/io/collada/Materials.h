@@ -1,11 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 #include <map>
 #include <string>
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_node.h"
 #include "BLI_listbase.h"
 #include "DNA_material_types.h"

@@ -1,6 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_kdtree.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_rotation.hh"
 #include "BLI_noise.hh"
 #include "BLI_rand.hh"
 #include "BLI_task.hh"
@@ -11,14 +16,16 @@
 #include "DNA_pointcloud_types.h"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_bvhutils.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_bvhutils.hh"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_sample.hh"
 #include "BKE_pointcloud.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -33,38 +40,40 @@ static void node_declare(NodeDeclarationBuilder &b)
     node.custom1 = GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON;
   };
 
-  b.add_input<decl::Geometry>(N_("Mesh")).supported_type(GEO_COMPONENT_TYPE_MESH);
-  b.add_input<decl::Bool>(N_("Selection")).default_value(true).hide_value().field_on_all();
-  b.add_input<decl::Float>(N_("Distance Min"))
+  b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
+  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
+  b.add_input<decl::Float>("Distance Min")
       .min(0.0f)
       .subtype(PROP_DISTANCE)
       .make_available(enable_poisson);
-  b.add_input<decl::Float>(N_("Density Max"))
+  b.add_input<decl::Float>("Density Max")
       .default_value(10.0f)
       .min(0.0f)
       .make_available(enable_poisson);
-  b.add_input<decl::Float>(N_("Density"))
-      .default_value(10.0f)
-      .min(0.0f)
-      .field_on_all()
-      .make_available(enable_random);
-  b.add_input<decl::Float>(N_("Density Factor"))
+  b.add_input<decl::Float>("Density").default_value(10.0f).min(0.0f).field_on_all().make_available(
+      enable_random);
+  b.add_input<decl::Float>("Density Factor")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .field_on_all()
       .make_available(enable_poisson);
-  b.add_input<decl::Int>(N_("Seed"));
+  b.add_input<decl::Int>("Seed");
 
-  b.add_output<decl::Geometry>(N_("Points")).propagate_all();
-  b.add_output<decl::Vector>(N_("Normal")).field_on_all();
-  b.add_output<decl::Vector>(N_("Rotation")).subtype(PROP_EULER).field_on_all();
+  b.add_output<decl::Geometry>("Points").propagate_all();
+  b.add_output<decl::Vector>("Normal").field_on_all();
+  b.add_output<decl::Rotation>("Rotation").field_on_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "distribute_method", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "distribute_method", UI_ITEM_NONE, "", ICON_NONE);
+}
+
+static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  uiItemR(layout, ptr, "use_legacy_normal", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void node_point_distribute_points_on_faces_update(bNodeTree *ntree, bNode *node)
@@ -73,28 +82,28 @@ static void node_point_distribute_points_on_faces_update(bNodeTree *ntree, bNode
   bNodeSocket *sock_density_max = static_cast<bNodeSocket *>(sock_distance_min->next);
   bNodeSocket *sock_density = sock_density_max->next;
   bNodeSocket *sock_density_factor = sock_density->next;
-  nodeSetSocketAvailability(ntree,
-                            sock_distance_min,
-                            node->custom1 == GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON);
-  nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(ntree,
+                                 sock_distance_min,
+                                 node->custom1 ==
+                                     GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON);
+  bke::nodeSetSocketAvailability(
       ntree, sock_density_max, node->custom1 == GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON);
-  nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(
       ntree, sock_density, node->custom1 == GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_RANDOM);
-  nodeSetSocketAvailability(ntree,
-                            sock_density_factor,
-                            node->custom1 == GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON);
+  bke::nodeSetSocketAvailability(ntree,
+                                 sock_density_factor,
+                                 node->custom1 ==
+                                     GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON);
 }
 
 /**
  * Use an arbitrary choice of axes for a usable rotation attribute directly out of this node.
  */
-static float3 normal_to_euler_rotation(const float3 normal)
+static math::Quaternion normal_to_rotation(const float3 normal)
 {
   float quat[4];
   vec_to_quat(quat, normal, OB_NEGZ, OB_POSY);
-  float3 rotation;
-  quat_to_eul(rotation, quat);
-  return rotation;
+  return math::normalize(math::Quaternion(quat));
 }
 
 static void sample_mesh_surface(const Mesh &mesh,
@@ -106,7 +115,7 @@ static void sample_mesh_surface(const Mesh &mesh,
                                 Vector<int> &r_looptri_indices)
 {
   const Span<float3> positions = mesh.vert_positions();
-  const Span<MLoop> loops = mesh.loops();
+  const Span<int> corner_verts = mesh.corner_verts();
   const Span<MLoopTri> looptris = mesh.looptris();
 
   for (const int looptri_index : looptris.index_range()) {
@@ -114,12 +123,9 @@ static void sample_mesh_surface(const Mesh &mesh,
     const int v0_loop = looptri.tri[0];
     const int v1_loop = looptri.tri[1];
     const int v2_loop = looptri.tri[2];
-    const int v0_index = loops[v0_loop].v;
-    const int v1_index = loops[v1_loop].v;
-    const int v2_index = loops[v2_loop].v;
-    const float3 v0_pos = positions[v0_index];
-    const float3 v1_pos = positions[v1_index];
-    const float3 v2_pos = positions[v2_index];
+    const float3 &v0_pos = positions[corner_verts[v0_loop]];
+    const float3 &v1_pos = positions[corner_verts[v1_loop]];
+    const float3 &v2_pos = positions[corner_verts[v2_loop]];
 
     float looptri_density_factor = 1.0f;
     if (!density_factors.is_empty()) {
@@ -253,7 +259,8 @@ BLI_NOINLINE static void interpolate_attribute(const Mesh &mesh,
 {
   switch (source_domain) {
     case ATTR_DOMAIN_POINT: {
-      bke::mesh_surface_sample::sample_point_attribute(mesh,
+      bke::mesh_surface_sample::sample_point_attribute(mesh.corner_verts(),
+                                                       mesh.looptris(),
                                                        looptri_indices,
                                                        bary_coords,
                                                        source_data,
@@ -262,7 +269,7 @@ BLI_NOINLINE static void interpolate_attribute(const Mesh &mesh,
       break;
     }
     case ATTR_DOMAIN_CORNER: {
-      bke::mesh_surface_sample::sample_corner_attribute(mesh,
+      bke::mesh_surface_sample::sample_corner_attribute(mesh.looptris(),
                                                         looptri_indices,
                                                         bary_coords,
                                                         source_data,
@@ -271,8 +278,11 @@ BLI_NOINLINE static void interpolate_attribute(const Mesh &mesh,
       break;
     }
     case ATTR_DOMAIN_FACE: {
-      bke::mesh_surface_sample::sample_face_attribute(
-          mesh, looptri_indices, source_data, IndexMask(output_data.size()), output_data);
+      bke::mesh_surface_sample::sample_face_attribute(mesh.looptri_faces(),
+                                                      looptri_indices,
+                                                      source_data,
+                                                      IndexMask(output_data.size()),
+                                                      output_data);
       break;
     }
     default: {
@@ -292,44 +302,115 @@ BLI_NOINLINE static void propagate_existing_attributes(
   const AttributeAccessor mesh_attributes = mesh.attributes();
   MutableAttributeAccessor point_attributes = points.attributes_for_write();
 
-  for (Map<AttributeIDRef, AttributeKind>::Item entry : attributes.items()) {
+  for (MapItem<AttributeIDRef, AttributeKind> entry : attributes.items()) {
     const AttributeIDRef attribute_id = entry.key;
     const eCustomDataType output_data_type = entry.value.data_type;
 
-    GAttributeReader source_attribute = mesh_attributes.lookup(attribute_id);
-    if (!source_attribute) {
+    GAttributeReader src = mesh_attributes.lookup(attribute_id);
+    if (!src) {
+      continue;
+    }
+    if (src.domain == ATTR_DOMAIN_EDGE) {
       continue;
     }
 
-    /* The output domain is always #ATTR_DOMAIN_POINT, since we are creating a point cloud. */
-    GSpanAttributeWriter attribute_out = point_attributes.lookup_or_add_for_write_only_span(
+    GSpanAttributeWriter dst = point_attributes.lookup_or_add_for_write_only_span(
         attribute_id, ATTR_DOMAIN_POINT, output_data_type);
-    if (!attribute_out) {
+    if (!dst) {
       continue;
     }
 
-    interpolate_attribute(mesh,
-                          bary_coords,
-                          looptri_indices,
-                          source_attribute.domain,
-                          source_attribute.varray,
-                          attribute_out.span);
-    attribute_out.finish();
+    interpolate_attribute(mesh, bary_coords, looptri_indices, src.domain, src.varray, dst.span);
+    dst.finish();
   }
 }
 
 namespace {
 struct AttributeOutputs {
-  AutoAnonymousAttributeID normal_id;
-  AutoAnonymousAttributeID rotation_id;
+  AnonymousAttributeIDPtr normal_id;
+  AnonymousAttributeIDPtr rotation_id;
 };
 }  // namespace
+
+static void compute_normal_outputs(const Mesh &mesh,
+                                   const Span<float3> bary_coords,
+                                   const Span<int> looptri_indices,
+                                   MutableSpan<float3> r_normals)
+{
+  switch (mesh.normals_domain()) {
+    case bke::MeshNormalDomain::Point: {
+      const Span<int> corner_verts = mesh.corner_verts();
+      const Span<MLoopTri> looptris = mesh.looptris();
+      const Span<float3> vert_normals = mesh.vert_normals();
+      threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
+        bke::mesh_surface_sample::sample_point_normals(
+            corner_verts, looptris, looptri_indices, bary_coords, vert_normals, range, r_normals);
+      });
+      break;
+    }
+    case bke::MeshNormalDomain::Face: {
+      const Span<int> looptri_faces = mesh.looptri_faces();
+      VArray<float3> face_normals = VArray<float3>::ForSpan(mesh.face_normals());
+      threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
+        bke::mesh_surface_sample::sample_face_attribute(
+            looptri_faces, looptri_indices, face_normals, range, r_normals);
+      });
+      break;
+    }
+    case bke::MeshNormalDomain::Corner: {
+      const Span<MLoopTri> looptris = mesh.looptris();
+      const Span<float3> corner_normals = mesh.corner_normals();
+      threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
+        bke::mesh_surface_sample::sample_corner_normals(
+            looptris, looptri_indices, bary_coords, corner_normals, range, r_normals);
+      });
+      break;
+    }
+  }
+}
+
+static void compute_legacy_normal_outputs(const Mesh &mesh,
+                                          const Span<float3> bary_coords,
+                                          const Span<int> looptri_indices,
+                                          MutableSpan<float3> r_normals)
+{
+  const Span<float3> positions = mesh.vert_positions();
+  const Span<int> corner_verts = mesh.corner_verts();
+  const Span<MLoopTri> looptris = mesh.looptris();
+
+  for (const int i : bary_coords.index_range()) {
+    const int looptri_index = looptri_indices[i];
+    const MLoopTri &looptri = looptris[looptri_index];
+
+    const int v0_index = corner_verts[looptri.tri[0]];
+    const int v1_index = corner_verts[looptri.tri[1]];
+    const int v2_index = corner_verts[looptri.tri[2]];
+    const float3 v0_pos = positions[v0_index];
+    const float3 v1_pos = positions[v1_index];
+    const float3 v2_pos = positions[v2_index];
+
+    float3 normal;
+    normal_tri_v3(normal, v0_pos, v1_pos, v2_pos);
+    r_normals[i] = normal;
+  }
+}
+
+static void compute_rotation_output(const Span<float3> normals,
+                                    MutableSpan<math::Quaternion> r_rotations)
+{
+  threading::parallel_for(normals.index_range(), 512, [&](const IndexRange range) {
+    for (const int i : range) {
+      r_rotations[i] = normal_to_rotation(normals[i]);
+    }
+  });
+}
 
 BLI_NOINLINE static void compute_attribute_outputs(const Mesh &mesh,
                                                    PointCloud &points,
                                                    const Span<float3> bary_coords,
                                                    const Span<int> looptri_indices,
-                                                   const AttributeOutputs &attribute_outputs)
+                                                   const AttributeOutputs &attribute_outputs,
+                                                   const bool use_legacy_normal)
 {
   MutableAttributeAccessor point_attributes = points.attributes_for_write();
 
@@ -337,44 +418,35 @@ BLI_NOINLINE static void compute_attribute_outputs(const Mesh &mesh,
       "id", ATTR_DOMAIN_POINT);
 
   SpanAttributeWriter<float3> normals;
-  SpanAttributeWriter<float3> rotations;
+  SpanAttributeWriter<math::Quaternion> rotations;
 
   if (attribute_outputs.normal_id) {
     normals = point_attributes.lookup_or_add_for_write_only_span<float3>(
         attribute_outputs.normal_id.get(), ATTR_DOMAIN_POINT);
   }
   if (attribute_outputs.rotation_id) {
-    rotations = point_attributes.lookup_or_add_for_write_only_span<float3>(
+    rotations = point_attributes.lookup_or_add_for_write_only_span<math::Quaternion>(
         attribute_outputs.rotation_id.get(), ATTR_DOMAIN_POINT);
   }
 
-  const Span<float3> positions = mesh.vert_positions();
-  const Span<MLoop> loops = mesh.loops();
-  const Span<MLoopTri> looptris = mesh.looptris();
-
-  for (const int i : bary_coords.index_range()) {
-    const int looptri_index = looptri_indices[i];
-    const MLoopTri &looptri = looptris[looptri_index];
-    const float3 &bary_coord = bary_coords[i];
-
-    const int v0_index = loops[looptri.tri[0]].v;
-    const int v1_index = loops[looptri.tri[1]].v;
-    const int v2_index = loops[looptri.tri[2]].v;
-    const float3 v0_pos = positions[v0_index];
-    const float3 v1_pos = positions[v1_index];
-    const float3 v2_pos = positions[v2_index];
-
-    ids.span[i] = noise::hash(noise::hash_float(bary_coord), looptri_index);
-
-    float3 normal;
-    if (!normals.span.is_empty() || !rotations.span.is_empty()) {
-      normal_tri_v3(normal, v0_pos, v1_pos, v2_pos);
+  threading::parallel_for(bary_coords.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      const int looptri_index = looptri_indices[i];
+      const float3 &bary_coord = bary_coords[i];
+      ids.span[i] = noise::hash(noise::hash_float(bary_coord), looptri_index);
     }
-    if (!normals.span.is_empty()) {
-      normals.span[i] = normal;
+  });
+
+  if (normals) {
+    if (use_legacy_normal) {
+      compute_legacy_normal_outputs(mesh, bary_coords, looptri_indices, normals.span);
     }
-    if (!rotations.span.is_empty()) {
-      rotations.span[i] = normal_to_euler_rotation(normal);
+    else {
+      compute_normal_outputs(mesh, bary_coords, looptri_indices, normals.span);
+    }
+
+    if (rotations) {
+      compute_rotation_output(normals.span, rotations.span);
     }
   }
 
@@ -391,7 +463,7 @@ static Array<float> calc_full_density_factors_with_selection(const Mesh &mesh,
   const int domain_size = mesh.attributes().domain_size(domain);
   Array<float> densities(domain_size, 0.0f);
 
-  bke::MeshFieldContext field_context{mesh, domain};
+  const bke::MeshFieldContext field_context{mesh, domain};
   fn::FieldEvaluator evaluator{field_context, domain_size};
   evaluator.set_selection(selection_field);
   evaluator.add_with_destination(density_field, densities.as_mutable_span());
@@ -448,7 +520,7 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
     return;
   }
 
-  const Mesh &mesh = *geometry_set.get_mesh_for_read();
+  const Mesh &mesh = *geometry_set.get_mesh();
 
   Vector<float3> positions;
   Vector<float3> bary_coords;
@@ -484,20 +556,17 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
 
   PointCloud *pointcloud = BKE_pointcloud_new_nomain(positions.size());
   bke::MutableAttributeAccessor point_attributes = pointcloud->attributes_for_write();
-  bke::SpanAttributeWriter<float3> point_positions =
-      point_attributes.lookup_or_add_for_write_only_span<float3>("position", ATTR_DOMAIN_POINT);
   bke::SpanAttributeWriter<float> point_radii =
       point_attributes.lookup_or_add_for_write_only_span<float>("radius", ATTR_DOMAIN_POINT);
-  point_positions.span.copy_from(positions);
+  pointcloud->positions_for_write().copy_from(positions);
   point_radii.span.fill(0.05f);
-  point_positions.finish();
   point_radii.finish();
 
   geometry_set.replace_pointcloud(pointcloud);
 
   Map<AttributeIDRef, AttributeKind> attributes;
-  geometry_set.gather_attributes_for_propagation({GEO_COMPONENT_TYPE_MESH},
-                                                 GEO_COMPONENT_TYPE_POINT_CLOUD,
+  geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::Mesh},
+                                                 GeometryComponent::Type::PointCloud,
                                                  false,
                                                  params.get_output_propagation_info("Points"),
                                                  attributes);
@@ -507,7 +576,11 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
 
   propagate_existing_attributes(mesh, attributes, *pointcloud, bary_coords, looptri_indices);
 
-  compute_attribute_outputs(mesh, *pointcloud, bary_coords, looptri_indices, attribute_outputs);
+  const bool use_legacy_normal = params.node().custom2 != 0;
+  compute_attribute_outputs(
+      mesh, *pointcloud, bary_coords, looptri_indices, attribute_outputs, use_legacy_normal);
+
+  geometry::debug_randomize_point_order(pointcloud);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -521,8 +594,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
 
   AttributeOutputs attribute_outputs;
-  attribute_outputs.normal_id = params.get_output_anonymous_attribute_id_if_needed("Normal");
   attribute_outputs.rotation_id = params.get_output_anonymous_attribute_id_if_needed("Rotation");
+  attribute_outputs.normal_id = params.get_output_anonymous_attribute_id_if_needed(
+      "Normal", bool(attribute_outputs.rotation_id));
 
   lazy_threading::send_hint();
 
@@ -531,41 +605,28 @@ static void node_geo_exec(GeoNodeExecParams params)
         geometry_set, selection_field, method, seed, attribute_outputs, params);
     /* Keep instances because the original geometry set may contain instances that are processed as
      * well. */
-    geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_POINT_CLOUD});
+    geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});
   });
 
   params.set_output("Points", std::move(geometry_set));
-
-  if (attribute_outputs.normal_id) {
-    params.set_output(
-        "Normal",
-        AnonymousAttributeFieldInput::Create<float3>(std::move(attribute_outputs.normal_id),
-                                                     params.attribute_producer_name()));
-  }
-  if (attribute_outputs.rotation_id) {
-    params.set_output(
-        "Rotation",
-        AnonymousAttributeFieldInput::Create<float3>(std::move(attribute_outputs.rotation_id),
-                                                     params.attribute_producer_name()));
-  }
 }
 
-}  // namespace blender::nodes::node_geo_distribute_points_on_faces_cc
-
-void register_node_type_geo_distribute_points_on_faces()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_distribute_points_on_faces_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype,
                      GEO_NODE_DISTRIBUTE_POINTS_ON_FACES,
                      "Distribute Points on Faces",
                      NODE_CLASS_GEOMETRY);
-  ntype.updatefunc = file_ns::node_point_distribute_points_on_faces_update;
-  node_type_size(&ntype, 170, 100, 320);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
+  ntype.updatefunc = node_point_distribute_points_on_faces_update;
+  blender::bke::node_type_size(&ntype, 170, 100, 320);
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
+  ntype.draw_buttons_ex = node_layout_ex;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_distribute_points_on_faces_cc

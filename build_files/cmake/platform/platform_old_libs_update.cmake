@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2022 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2022 Blender Foundation. All rights reserved.
 
 # Auto update existing CMake caches for new libraries.
 
@@ -102,4 +103,14 @@ if(UNIX AND (NOT APPLE) AND LIBDIR AND (EXISTS ${LIBDIR}))
     "Auto clearing old ${_libdir_stale} paths from CMake configuration"
   )
   unset(_libdir_stale)
+endif()
+
+# Detect update in 4.1 to shared library OpenImageDenoise.
+if(UNIX AND
+  DEFINED OPENIMAGEDENOISE_LIBRARY AND
+  OPENIMAGEDENOISE_LIBRARY MATCHES "libOpenImageDenoise.a$" AND
+  (EXISTS ${LIBDIR}/openimagedenoise/lib/libOpenImageDenoise.so OR
+   EXISTS ${LIBDIR}/openimagedenoise/lib/libOpenImageDenoise.dylib))
+  message(STATUS "Auto updating CMake configuration for dynamic OpenImageDenoise")
+  unset_cache_variables("^OPENIMAGEDENOISE")
 endif()

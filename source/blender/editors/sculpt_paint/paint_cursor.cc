@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -7,7 +8,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rect.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
@@ -15,6 +16,7 @@
 #include "DNA_brush_types.h"
 #include "DNA_color_types.h"
 #include "DNA_customdata_types.h"
+#include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -23,26 +25,29 @@
 #include "DNA_userdef_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_image.h"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_object.hh"
+#include "BKE_paint.hh"
 
 #include "NOD_texture.h"
 
-#include "WM_api.h"
-#include "wm_cursors.h"
+#include "WM_api.hh"
+#include "wm_cursors.hh"
 
+#include "IMB_colormanagement.h"
 #include "IMB_imbuf_types.h"
 
-#include "ED_image.h"
-#include "ED_view3d.h"
+#include "ED_grease_pencil.hh"
+#include "ED_image.hh"
+#include "ED_view3d.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -50,12 +55,12 @@
 #include "GPU_state.h"
 #include "GPU_texture.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 /* still needed for sculpt_stroke_get_location, should be
  * removed eventually (TODO) */
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 /* TODOs:
  *
@@ -86,7 +91,7 @@ static TexSnapshot primary_snap = {nullptr};
 static TexSnapshot secondary_snap = {nullptr};
 static CursorSnapshot cursor_snap = {nullptr};
 
-void paint_cursor_delete_textures(void)
+void paint_cursor_delete_textures()
 {
   if (primary_snap.overlay_texture) {
     GPU_texture_free(primary_snap.overlay_texture);
@@ -163,9 +168,9 @@ static void load_tex_task_cb_ex(void *__restrict userdata,
   if (mtex->tex && mtex->tex->type == TEX_IMAGE && mtex->tex->ima) {
     ImBuf *tex_ibuf = BKE_image_pool_acquire_ibuf(mtex->tex->ima, &mtex->tex->iuser, pool);
     /* For consistency, sampling always returns color in linear space. */
-    if (tex_ibuf && tex_ibuf->rect_float == nullptr) {
+    if (tex_ibuf && tex_ibuf->float_buffer.data == nullptr) {
       convert_to_linear = true;
-      colorspace = tex_ibuf->rect_colorspace;
+      colorspace = tex_ibuf->byte_buffer.colorspace;
     }
     BKE_image_pool_release_ibuf(mtex->tex->ima, tex_ibuf, pool);
   }
@@ -200,10 +205,18 @@ static void load_tex_task_cb_ex(void *__restrict userdata,
         y = len * sinf(angle);
       }
 
-      if (col) {
-        float rgba[4];
+      float avg;
+      float rgba[4];
+      paint_get_tex_pixel(mtex, x, y, pool, thread_id, &avg, rgba);
 
-        paint_get_tex_pixel_col(mtex, x, y, rgba, pool, thread_id, convert_to_linear, colorspace);
+      if (col) {
+        if (convert_to_linear) {
+          IMB_colormanagement_colorspace_to_scene_linear_v3(rgba, colorspace);
+        }
+
+        linearrgb_to_srgb_v3_v3(rgba, rgba);
+
+        clamp_v4(rgba, 0.0f, 1.0f);
 
         buffer[index * 4] = rgba[0] * 255;
         buffer[index * 4 + 1] = rgba[1] * 255;
@@ -211,8 +224,6 @@ static void load_tex_task_cb_ex(void *__restrict userdata,
         buffer[index * 4 + 3] = rgba[3] * 255;
       }
       else {
-        float avg = paint_get_tex_pixel(mtex, x, y, pool, thread_id);
-
         avg += br->texture_sample_bias;
 
         /* Clamp to avoid precision overflow. */
@@ -334,9 +345,8 @@ static int load_tex(Brush *br, ViewContext *vc, float zoom, bool col, bool prima
 
     if (!target->overlay_texture) {
       eGPUTextureFormat format = col ? GPU_RGBA8 : GPU_R8;
-      eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT |
-                               GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW;
-      target->overlay_texture = GPU_texture_create_2d_ex(
+      eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
+      target->overlay_texture = GPU_texture_create_2d(
           "paint_cursor_overlay", size, size, 1, format, usage, nullptr);
       GPU_texture_update(target->overlay_texture, GPU_DATA_UBYTE, buffer);
 
@@ -454,9 +464,8 @@ static int load_tex_cursor(Brush *br, ViewContext *vc, float zoom)
     BLI_task_parallel_range(0, size, &data, load_tex_cursor_task_cb, &settings);
 
     if (!cursor_snap.overlay_texture) {
-      eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT |
-                               GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW;
-      cursor_snap.overlay_texture = GPU_texture_create_2d_ex(
+      eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
+      cursor_snap.overlay_texture = GPU_texture_create_2d(
           "cursor_snap_overaly", size, size, 1, GPU_R8, usage, nullptr);
       GPU_texture_update(cursor_snap.overlay_texture, GPU_DATA_UBYTE, buffer);
 
@@ -517,7 +526,8 @@ static int project_brush_radius(ViewContext *vc, float radius, const float locat
   if ((ED_view3d_project_float_global(vc->region, location, p1, V3D_PROJ_TEST_NOP) ==
        V3D_PROJ_RET_OK) &&
       (ED_view3d_project_float_global(vc->region, offset, p2, V3D_PROJ_TEST_NOP) ==
-       V3D_PROJ_RET_OK)) {
+       V3D_PROJ_RET_OK))
+  {
     /* The distance between these points is the size of the projected brush in pixels. */
     return len_v2v2(p1, p2);
   }
@@ -555,7 +565,8 @@ static bool paint_draw_tex_overlay(UnifiedPaintSettings *ups,
 
   if (!(mtex->tex) ||
       !((mtex->brush_map_mode == MTEX_MAP_MODE_STENCIL) ||
-        (valid && ELEM(mtex->brush_map_mode, MTEX_MAP_MODE_VIEW, MTEX_MAP_MODE_TILED)))) {
+        (valid && ELEM(mtex->brush_map_mode, MTEX_MAP_MODE_VIEW, MTEX_MAP_MODE_TILED))))
+  {
     return false;
   }
 
@@ -648,10 +659,11 @@ static bool paint_draw_tex_overlay(UnifiedPaintSettings *ups,
     GPUTexture *texture = (primary) ? primary_snap.overlay_texture :
                                       secondary_snap.overlay_texture;
 
-    eGPUSamplerState state = GPU_SAMPLER_FILTER;
-    state |= (mtex->brush_map_mode == MTEX_MAP_MODE_VIEW) ? GPU_SAMPLER_CLAMP_BORDER :
-                                                            GPU_SAMPLER_REPEAT;
-    immBindTextureSampler("image", texture, state);
+    GPUSamplerExtendMode extend_mode = (mtex->brush_map_mode == MTEX_MAP_MODE_VIEW) ?
+                                           GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER :
+                                           GPU_SAMPLER_EXTEND_MODE_REPEAT;
+    immBindTextureSampler(
+        "image", texture, {GPU_SAMPLER_FILTERING_LINEAR, extend_mode, extend_mode});
 
     /* Draw textured quad. */
     immBegin(GPU_PRIM_TRI_FAN, 4);
@@ -735,8 +747,11 @@ static bool paint_draw_cursor_overlay(
     immUniformColor4fv(final_color);
 
     /* Draw textured quad. */
-    immBindTextureSampler(
-        "image", cursor_snap.overlay_texture, GPU_SAMPLER_FILTER | GPU_SAMPLER_CLAMP_BORDER);
+    immBindTextureSampler("image",
+                          cursor_snap.overlay_texture,
+                          {GPU_SAMPLER_FILTERING_LINEAR,
+                           GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER,
+                           GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER});
 
     immBegin(GPU_PRIM_TRI_FAN, 4);
     immAttr2f(texCoord, 0.0f, 0.0f);
@@ -1048,21 +1063,24 @@ static void cursor_draw_tiling_preview(const uint gpuattr,
                                        Object *ob,
                                        const float radius)
 {
-  const BoundBox *bb = BKE_object_boundbox_get(ob);
+  BLI_assert(ob->type == OB_MESH);
+  const Mesh *mesh = BKE_object_get_evaluated_mesh_no_subsurf(ob);
+  if (!mesh) {
+    mesh = static_cast<const Mesh *>(ob->data);
+  }
+  const blender::Bounds<blender::float3> bounds = *mesh->bounds_min_max();
   float orgLoc[3], location[3];
   int tile_pass = 0;
   int start[3];
   int end[3];
   int cur[3];
-  const float *bbMin = bb->vec[0];
-  const float *bbMax = bb->vec[6];
   const float *step = sd->paint.tile_offset;
 
   copy_v3_v3(orgLoc, true_location);
   for (int dim = 0; dim < 3; dim++) {
     if ((sd->paint.symmetry_flags & (PAINT_TILE_X << dim)) && step[dim] > 0) {
-      start[dim] = (bbMin[dim] - orgLoc[dim] - radius) / step[dim];
-      end[dim] = (bbMax[dim] - orgLoc[dim] + radius) / step[dim];
+      start[dim] = (bounds.min[dim] - orgLoc[dim] - radius) / step[dim];
+      end[dim] = (bounds.max[dim] - orgLoc[dim] + radius) / step[dim];
     }
     else {
       start[dim] = end[dim] = 0;
@@ -1084,6 +1102,7 @@ static void cursor_draw_tiling_preview(const uint gpuattr,
       }
     }
   }
+  (void)tile_pass; /* Quiet set-but-unused warning (may be removed). */
 }
 
 static void cursor_draw_point_with_symmetry(const uint gpuattr,
@@ -1188,10 +1207,24 @@ static void SCULPT_layer_brush_height_preview_draw(const uint gpuattr,
 
 static bool paint_use_2d_cursor(ePaintMode mode)
 {
-  if (mode >= PAINT_MODE_TEXTURE_3D) {
-    return true;
+  switch (mode) {
+    case PAINT_MODE_SCULPT:
+    case PAINT_MODE_VERTEX:
+    case PAINT_MODE_WEIGHT:
+      return false;
+    case PAINT_MODE_TEXTURE_3D:
+    case PAINT_MODE_TEXTURE_2D:
+    case PAINT_MODE_SCULPT_UV:
+    case PAINT_MODE_VERTEX_GPENCIL:
+    case PAINT_MODE_SCULPT_GPENCIL:
+    case PAINT_MODE_WEIGHT_GPENCIL:
+    case PAINT_MODE_SCULPT_CURVES:
+    case PAINT_MODE_GPENCIL:
+      return true;
+    case PAINT_MODE_INVALID:
+      BLI_assert_unreachable();
   }
-  return false;
+  return true;
 }
 
 enum PaintCursorDrawingType {
@@ -1275,7 +1308,7 @@ static bool paint_cursor_context_init(bContext *C,
   }
   pcontext->mode = BKE_paintmode_get_active_from_context(C);
 
-  ED_view3d_viewcontext_init(C, &pcontext->vc, pcontext->depsgraph);
+  pcontext->vc = ED_view3d_viewcontext_init(C, pcontext->depsgraph);
 
   if (pcontext->brush->flag & BRUSH_CURVE) {
     pcontext->cursor_type = PAINT_CURSOR_CURVE;
@@ -1300,7 +1333,8 @@ static bool paint_cursor_context_init(bContext *C,
   /* There is currently no way to check if the direction is inverted before starting the stroke,
    * so this does not reflect the state of the brush in the UI. */
   if (((pcontext->ups->draw_inverted == 0) ^ ((pcontext->brush->flag & BRUSH_DIR_IN) == 0)) &&
-      BKE_brush_sculpt_has_secondary_color(pcontext->brush)) {
+      BKE_brush_sculpt_has_secondary_color(pcontext->brush))
+  {
     copy_v3_v3(pcontext->outline_col, pcontext->brush->sub_col);
   }
   else {
@@ -1403,13 +1437,18 @@ static void paint_update_mouse_cursor(PaintCursorContext *pcontext)
 {
   if (pcontext->win->grabcursor != 0) {
     /* Don't set the cursor while it's grabbed, since this will show the cursor when interacting
-     * with the UI (dragging a number button for e.g.), see: T102792. */
+     * with the UI (dragging a number button for e.g.), see: #102792. */
     return;
   }
-  WM_cursor_set(pcontext->win, WM_CURSOR_PAINT);
+  if (pcontext->mode == PAINT_MODE_GPENCIL) {
+    WM_cursor_set(pcontext->win, WM_CURSOR_DOT);
+  }
+  else {
+    WM_cursor_set(pcontext->win, WM_CURSOR_PAINT);
+  }
 }
 
-static void paint_draw_2D_view_brush_cursor(PaintCursorContext *pcontext)
+static void paint_draw_2D_view_brush_cursor_default(PaintCursorContext *pcontext)
 {
   immUniformColor3fvAlpha(pcontext->outline_col, pcontext->outline_alpha);
 
@@ -1430,6 +1469,147 @@ static void paint_draw_2D_view_brush_cursor(PaintCursorContext *pcontext)
                           pcontext->translation[1],
                           pcontext->final_radius,
                           40);
+}
+
+static void grease_pencil_eraser_draw(PaintCursorContext *pcontext)
+{
+  float radius = float(BKE_brush_size_get(pcontext->scene, pcontext->brush));
+
+  /* Red-ish color with alpha. */
+  immUniformColor4ub(255, 100, 100, 20);
+  imm_draw_circle_fill_2d(pcontext->pos, pcontext->x, pcontext->y, radius, 40);
+
+  immUnbindProgram();
+
+  immBindBuiltinProgram(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR);
+
+  float viewport_size[4];
+  GPU_viewport_size_get_f(viewport_size);
+  immUniform2f("viewport_size", viewport_size[2], viewport_size[3]);
+
+  immUniformColor4f(1.0f, 0.39f, 0.39f, 0.78f);
+  immUniform1i("colors_len", 0); /* "simple" mode */
+  immUniform1f("dash_width", 12.0f);
+  immUniform1f("udash_factor", 0.5f);
+
+  /* XXX Dashed shader gives bad results with sets of small segments
+   * currently, temp hack around the issue. :( */
+  const int nsegments = max_ii(8, radius / 2);
+  imm_draw_circle_wire_2d(pcontext->pos, pcontext->x, pcontext->y, radius, nsegments);
+}
+
+static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
+{
+  using namespace blender;
+  if ((pcontext->region) && (pcontext->region->regiontype != RGN_TYPE_WINDOW)) {
+    return;
+  }
+  if (pcontext->region && !BLI_rcti_isect_pt(&pcontext->region->winrct, pcontext->x, pcontext->y))
+  {
+    return;
+  }
+
+  Object *object = CTX_data_active_object(pcontext->C);
+  if (object->type != OB_GREASE_PENCIL) {
+    return;
+  }
+
+  /* default radius and color */
+  float color[3] = {1.0f, 1.0f, 1.0f};
+  float darkcolor[3];
+  float radius = 2.0f;
+
+  const int x = pcontext->x;
+  const int y = pcontext->y;
+
+  /* for paint use paint brush size and color */
+  if (pcontext->mode == PAINT_MODE_GPENCIL) {
+    Paint *paint = pcontext->paint;
+    Brush *brush = pcontext->brush;
+    if ((brush == nullptr) || (brush->gpencil_settings == nullptr)) {
+      return;
+    }
+
+    if ((paint->flags & PAINT_SHOW_BRUSH) == 0) {
+      return;
+    }
+
+    /* Eraser has a special shape and use a different shader program. */
+    if (brush->gpencil_tool == GPAINT_TOOL_ERASE) {
+      grease_pencil_eraser_draw(pcontext);
+      return;
+    }
+
+    /* Note: For now, there is only as screen space sized cursor. */
+    radius = BKE_brush_size_get(pcontext->scene, brush);
+
+    /* Get current drawing material. */
+    Material *ma = BKE_grease_pencil_object_material_from_brush_get(object, brush);
+    if (ma) {
+      MaterialGPencilStyle *gp_style = ma->gp_style;
+
+      /* Follow user settings for the size of the draw cursor:
+       * - Fixed size, or
+       * - Brush size (i.e. stroke thickness)
+       */
+      if ((gp_style) && ((brush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE) == 0) &&
+          ((brush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE_TEMP) == 0) &&
+          (brush->gpencil_tool == GPAINT_TOOL_DRAW))
+      {
+
+        const bool use_vertex_color = (pcontext->scene->toolsettings->gp_paint->mode ==
+                                       GPPAINT_FLAG_USE_VERTEXCOLOR);
+        const bool use_vertex_color_stroke = use_vertex_color &&
+                                             ELEM(brush->gpencil_settings->vertex_mode,
+                                                  GPPAINT_MODE_STROKE,
+                                                  GPPAINT_MODE_BOTH);
+
+        copy_v3_v3(color, use_vertex_color_stroke ? brush->rgb : gp_style->stroke_rgba);
+      }
+    }
+  }
+
+  GPU_line_width(1.0f);
+  /* Inner Ring: Color from UI panel */
+  immUniformColor4f(color[0], color[1], color[2], 0.8f);
+  imm_draw_circle_wire_2d(pcontext->pos, x, y, radius, 32);
+
+  /* Outer Ring: Dark color for contrast on light backgrounds (e.g. gray on white) */
+  mul_v3_v3fl(darkcolor, color, 0.40f);
+  immUniformColor4f(darkcolor[0], darkcolor[1], darkcolor[2], 0.8f);
+  imm_draw_circle_wire_2d(pcontext->pos, x, y, radius + 1, 32);
+
+  /* Draw line for lazy mouse */
+  /* TODO: No stabilize mode yet. */
+  // if ((last_mouse_position) &&
+  //     (pcontext->xbrush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE_TEMP))
+  // {
+  //   GPU_line_smooth(true);
+  //   GPU_blend(GPU_BLEND_ALPHA);
+
+  //   copy_v3_v3(color, pcontext->brush->add_col);
+  //   immUniformColor4f(color[0], color[1], color[2], 0.8f);
+
+  //   immBegin(GPU_PRIM_LINES, 2);
+  //   immVertex2f(pos, x, y);
+  //   immVertex2f(pos,
+  //               last_mouse_position[0] + pcontext->region->winrct.xmin,
+  //               last_mouse_position[1] + pcontext->region->winrct.ymin);
+  //   immEnd();
+  // }
+}
+
+static void paint_draw_2D_view_brush_cursor(PaintCursorContext *pcontext)
+{
+  switch (pcontext->mode) {
+    case PAINT_MODE_GPENCIL: {
+      grease_pencil_brush_cursor_draw(pcontext);
+      break;
+    }
+    default: {
+      paint_draw_2D_view_brush_cursor_default(pcontext);
+    }
+  }
 }
 
 static void paint_draw_legacy_3D_view_brush_cursor(PaintCursorContext *pcontext)
@@ -1546,6 +1726,7 @@ static void paint_cursor_preview_boundary_data_pivot_draw(PaintCursorContext *pc
 static void paint_cursor_preview_boundary_data_update(PaintCursorContext *pcontext,
                                                       const bool update_previews)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = pcontext->ss;
   if (!(update_previews || !ss->boundary_preview)) {
     return;
@@ -1553,18 +1734,19 @@ static void paint_cursor_preview_boundary_data_update(PaintCursorContext *pconte
 
   /* Needed for updating the necessary SculptSession data in order to initialize the
    * boundary data for the preview. */
-  BKE_sculpt_update_object_for_edit(pcontext->depsgraph, pcontext->vc.obact, true, false, false);
+  BKE_sculpt_update_object_for_edit(pcontext->depsgraph, pcontext->vc.obact, false);
 
   if (ss->boundary_preview) {
-    SCULPT_boundary_data_free(ss->boundary_preview);
+    boundary::data_free(ss->boundary_preview);
   }
 
-  ss->boundary_preview = SCULPT_boundary_data_init(
+  ss->boundary_preview = boundary::data_init(
       pcontext->vc.obact, pcontext->brush, ss->active_vertex, pcontext->radius);
 }
 
 static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *pcontext)
 {
+  using namespace blender::ed::sculpt_paint;
   Brush *brush = pcontext->brush;
 
   /* 2D falloff is better represented with the default 2D cursor,
@@ -1624,16 +1806,15 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
      * nullptr before drawing it. */
     SculptSession *ss = pcontext->ss;
     if (update_previews || !ss->pose_ik_chain_preview) {
-      BKE_sculpt_update_object_for_edit(
-          pcontext->depsgraph, pcontext->vc.obact, true, false, false);
+      BKE_sculpt_update_object_for_edit(pcontext->depsgraph, pcontext->vc.obact, false);
 
       /* Free the previous pose brush preview. */
       if (ss->pose_ik_chain_preview) {
-        SCULPT_pose_ik_chain_free(ss->pose_ik_chain_preview);
+        pose::ik_chain_free(ss->pose_ik_chain_preview);
       }
 
       /* Generate a new pose brush preview from the current cursor location. */
-      ss->pose_ik_chain_preview = SCULPT_pose_ik_chain_init(
+      ss->pose_ik_chain_preview = pose::ik_chain_init(
           pcontext->sd, pcontext->vc.obact, ss, brush, pcontext->location, pcontext->radius);
     }
 
@@ -1673,7 +1854,8 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
 
   /* Drawing Cursor overlays in 3D object space. */
   if (is_brush_tool && brush->sculpt_tool == SCULPT_TOOL_GRAB &&
-      (brush->flag & BRUSH_GRAB_ACTIVE_VERTEX)) {
+      (brush->flag & BRUSH_GRAB_ACTIVE_VERTEX))
+  {
     SCULPT_geometry_preview_lines_update(pcontext->C, pcontext->ss, pcontext->radius);
     sculpt_geometry_preview_lines_draw(
         pcontext->pos, pcontext->brush, pcontext->is_multires, pcontext->ss);
@@ -1684,9 +1866,9 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
   }
 
   if (is_brush_tool && brush->sculpt_tool == SCULPT_TOOL_BOUNDARY) {
-    SCULPT_boundary_edges_preview_draw(
+    boundary::edges_preview_draw(
         pcontext->pos, pcontext->ss, pcontext->outline_col, pcontext->outline_alpha);
-    SCULPT_boundary_pivot_line_preview_draw(pcontext->pos, pcontext->ss);
+    boundary::pivot_line_preview_draw(pcontext->pos, pcontext->ss);
   }
 
   GPU_matrix_pop();
@@ -1700,13 +1882,14 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
 
   /* Cloth brush local simulation areas. */
   if (is_brush_tool && brush->sculpt_tool == SCULPT_TOOL_CLOTH &&
-      brush->cloth_simulation_area_type != BRUSH_CLOTH_SIMULATION_AREA_GLOBAL) {
+      brush->cloth_simulation_area_type != BRUSH_CLOTH_SIMULATION_AREA_GLOBAL)
+  {
     const float white[3] = {1.0f, 1.0f, 1.0f};
     const float zero_v[3] = {0.0f};
     /* This functions sets its own drawing space in order to draw the simulation limits when the
      * cursor is active. When used here, this cursor overlay is already in cursor space, so its
      * position and normal should be set to 0. */
-    SCULPT_cloth_simulation_limits_draw(
+    cloth::simulation_limits_draw(
         pcontext->pos, brush, zero_v, zero_v, pcontext->radius, 1.0f, white, 0.25f);
   }
 
@@ -1729,6 +1912,7 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
 
 static void paint_cursor_cursor_draw_3d_view_brush_cursor_active(PaintCursorContext *pcontext)
 {
+  using namespace blender::ed::sculpt_paint;
   BLI_assert(pcontext->ss != nullptr);
   BLI_assert(pcontext->mode == PAINT_MODE_SCULPT);
 
@@ -1775,25 +1959,27 @@ static void paint_cursor_cursor_draw_3d_view_brush_cursor_active(PaintCursorCont
 
   if (brush->sculpt_tool == SCULPT_TOOL_CLOTH) {
     if (brush->cloth_force_falloff_type == BRUSH_CLOTH_FORCE_FALLOFF_PLANE) {
-      SCULPT_cloth_plane_falloff_preview_draw(
+      cloth::plane_falloff_preview_draw(
           pcontext->pos, ss, pcontext->outline_col, pcontext->outline_alpha);
     }
     else if (brush->cloth_force_falloff_type == BRUSH_CLOTH_FORCE_FALLOFF_RADIAL &&
-             brush->cloth_simulation_area_type == BRUSH_CLOTH_SIMULATION_AREA_LOCAL) {
+             brush->cloth_simulation_area_type == BRUSH_CLOTH_SIMULATION_AREA_LOCAL)
+    {
       /* Display the simulation limits if sculpting outside them. */
       /* This does not makes much sense of plane falloff as the falloff is infinite or global. */
 
       if (len_v3v3(ss->cache->true_location, ss->cache->true_initial_location) >
-          ss->cache->radius * (1.0f + brush->cloth_sim_limit)) {
+          ss->cache->radius * (1.0f + brush->cloth_sim_limit))
+      {
         const float red[3] = {1.0f, 0.2f, 0.2f};
-        SCULPT_cloth_simulation_limits_draw(pcontext->pos,
-                                            brush,
-                                            ss->cache->true_initial_location,
-                                            ss->cache->true_initial_normal,
-                                            ss->cache->radius,
-                                            2.0f,
-                                            red,
-                                            0.8f);
+        cloth::simulation_limits_draw(pcontext->pos,
+                                      brush,
+                                      ss->cache->true_initial_location,
+                                      ss->cache->true_initial_normal,
+                                      ss->cache->radius,
+                                      2.0f,
+                                      red,
+                                      0.8f);
       }
     }
   }
@@ -1834,7 +2020,8 @@ static bool paint_cursor_is_brush_cursor_enabled(PaintCursorContext *pcontext)
 {
   if (pcontext->paint->flags & PAINT_SHOW_BRUSH) {
     if (ELEM(pcontext->mode, PAINT_MODE_TEXTURE_2D, PAINT_MODE_TEXTURE_3D) &&
-        pcontext->brush->imagepaint_tool == PAINT_TOOL_FILL) {
+        pcontext->brush->imagepaint_tool == PAINT_TOOL_FILL)
+    {
       return false;
     }
     return true;
@@ -1848,7 +2035,8 @@ static void paint_cursor_update_rake_rotation(PaintCursorContext *pcontext)
    * and we may get interference with the stroke itself.
    * For line strokes, such interference is visible. */
   if (!pcontext->ups->stroke_active) {
-    paint_calculate_rake_rotation(pcontext->ups, pcontext->brush, pcontext->translation);
+    paint_calculate_rake_rotation(
+        pcontext->ups, pcontext->brush, pcontext->translation, pcontext->mode, true);
   }
 }
 
@@ -1920,6 +2108,8 @@ static void paint_draw_cursor(bContext *C, int x, int y, void * /*unused*/)
       paint_draw_curve_cursor(pcontext.brush, &pcontext.vc);
       break;
     case PAINT_CURSOR_2D:
+      paint_update_mouse_cursor(&pcontext);
+
       paint_cursor_update_rake_rotation(&pcontext);
       paint_cursor_check_and_draw_alpha_overlays(&pcontext);
       paint_cursor_update_anchored_location(&pcontext);

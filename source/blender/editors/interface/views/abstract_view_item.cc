@@ -1,20 +1,24 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
  */
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 #include "interface_intern.hh"
 
 #include "UI_abstract_view.hh"
+
+#include <stdexcept>
 
 namespace blender::ui {
 
@@ -31,6 +35,69 @@ void AbstractViewItem::update_from_old(const AbstractViewItem &old)
 /** \} */
 
 /* ---------------------------------------------------------------------- */
+/** \name Active Item State
+ * \{ */
+
+void AbstractViewItem::on_activate(bContext & /*C*/)
+{
+  /* Do nothing by default. */
+}
+
+std::optional<bool> AbstractViewItem::should_be_active() const
+{
+  return std::nullopt;
+}
+
+bool AbstractViewItem::set_state_active()
+{
+  BLI_assert_msg(get_view().is_reconstructed(),
+                 "Item activation can't be done until reconstruction is completed");
+
+  if (!is_activatable_) {
+    return false;
+  }
+  if (is_active()) {
+    return false;
+  }
+
+  /* Deactivate other items in the view. */
+  get_view().foreach_view_item([](auto &item) { item.deactivate(); });
+
+  is_active_ = true;
+  return true;
+}
+
+void AbstractViewItem::activate(bContext &C)
+{
+  if (set_state_active()) {
+    on_activate(C);
+  }
+}
+
+void AbstractViewItem::deactivate()
+{
+  is_active_ = false;
+}
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
+/** \name General State Management
+ * \{ */
+
+void AbstractViewItem::change_state_delayed()
+{
+  const std::optional<bool> should_be_active = this->should_be_active();
+  if (should_be_active.has_value() && *should_be_active) {
+    /* Don't call #activate() here, since this reflects an external state change and therefore
+     * shouldn't call #on_activate(). */
+    set_state_active();
+  }
+}
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
 /** \name Renaming
  * \{ */
 
@@ -39,7 +106,7 @@ bool AbstractViewItem::supports_renaming() const
   /* No renaming by default. */
   return false;
 }
-bool AbstractViewItem::rename(StringRefNull /*new_name*/)
+bool AbstractViewItem::rename(const bContext & /*C*/, StringRefNull /*new_name*/)
 {
   /* No renaming by default. */
   return false;
@@ -71,10 +138,10 @@ void AbstractViewItem::begin_renaming()
   std::copy(std::begin(initial_str), std::end(initial_str), std::begin(view.get_rename_buffer()));
 }
 
-void AbstractViewItem::rename_apply()
+void AbstractViewItem::rename_apply(const bContext &C)
 {
   const AbstractView &view = get_view();
-  rename(view.get_rename_buffer().data());
+  rename(C, view.get_rename_buffer().data());
   end_renaming();
 }
 
@@ -112,12 +179,12 @@ static AbstractViewItem *find_item_from_rename_button(const uiBut &rename_but)
   return nullptr;
 }
 
-static void rename_button_fn(bContext * /*C*/, void *arg, char * /*origstr*/)
+static void rename_button_fn(bContext *C, void *arg, char * /*origstr*/)
 {
   const uiBut *rename_but = static_cast<uiBut *>(arg);
   AbstractViewItem *item = find_item_from_rename_button(*rename_but);
   BLI_assert(item);
-  item->rename_apply();
+  item->rename_apply(*C);
 }
 
 void AbstractViewItem::add_rename_button(uiBlock &block)
@@ -165,6 +232,27 @@ void AbstractViewItem::build_context_menu(bContext & /*C*/, uiLayout & /*column*
 /** \} */
 
 /* ---------------------------------------------------------------------- */
+/** \name Filtering
+ * \{ */
+
+bool AbstractViewItem::is_filtered_visible() const
+{
+  return true;
+}
+
+bool AbstractViewItem::is_filtered_visible_cached() const
+{
+  if (is_filtered_visible_.has_value()) {
+    return *is_filtered_visible_;
+  }
+
+  is_filtered_visible_ = is_filtered_visible();
+  return *is_filtered_visible_;
+}
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
 /** \name Drag 'n Drop
  * \{ */
 
@@ -174,23 +262,17 @@ std::unique_ptr<AbstractViewItemDragController> AbstractViewItem::create_drag_co
   return nullptr;
 }
 
-std::unique_ptr<AbstractViewItemDropController> AbstractViewItem::create_drop_controller() const
+std::unique_ptr<DropTargetInterface> AbstractViewItem::create_item_drop_target()
 {
-  /* There's no drop controller (and hence no drop support) by default. */
+  /* There's no drop target (and hence no drop support) by default. */
   return nullptr;
 }
 
-AbstractViewItemDragController::AbstractViewItemDragController(AbstractView &view) : view_(view)
-{
-}
+AbstractViewItemDragController::AbstractViewItemDragController(AbstractView &view) : view_(view) {}
 
 void AbstractViewItemDragController::on_drag_start()
 {
   /* Do nothing by default. */
-}
-
-AbstractViewItemDropController::AbstractViewItemDropController(AbstractView &view) : view_(view)
-{
 }
 
 /** \} */
@@ -208,11 +290,43 @@ AbstractView &AbstractViewItem::get_view() const
   return *view_;
 }
 
+uiButViewItem *AbstractViewItem::view_item_button() const
+{
+  return view_item_but_;
+}
+
+void AbstractViewItem::disable_activatable()
+{
+  is_activatable_ = false;
+}
+
+void AbstractViewItem::disable_interaction()
+{
+  is_interactive_ = false;
+}
+
+bool AbstractViewItem::is_interactive() const
+{
+  return is_interactive_;
+}
+
 bool AbstractViewItem::is_active() const
 {
   BLI_assert_msg(get_view().is_reconstructed(),
                  "State can't be queried until reconstruction is completed");
   return is_active_;
+}
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
+/** \name General API functions
+ * \{ */
+
+std::unique_ptr<DropTargetInterface> view_item_drop_target(uiViewItemHandle *item_handle)
+{
+  AbstractViewItem &item = reinterpret_cast<AbstractViewItem &>(*item_handle);
+  return item.create_item_drop_target();
 }
 
 /** \} */
@@ -240,10 +354,20 @@ class ViewItemAPIWrapper {
     return a.matches(b);
   }
 
+  static void swap_button_pointers(AbstractViewItem &a, AbstractViewItem &b)
+  {
+    std::swap(a.view_item_but_, b.view_item_but_);
+  }
+
   static bool can_rename(const AbstractViewItem &item)
   {
     const AbstractView &view = item.get_view();
     return !view.is_renaming() && item.supports_renaming();
+  }
+
+  static bool supports_drag(const AbstractViewItem &item)
+  {
+    return item.create_drag_controller() != nullptr;
   }
 
   static bool drag_start(bContext &C, const AbstractViewItem &item)
@@ -264,50 +388,17 @@ class ViewItemAPIWrapper {
 
     return true;
   }
-
-  static bool can_drop(const AbstractViewItem &item,
-                       const wmDrag &drag,
-                       const char **r_disabled_hint)
-  {
-    const std::unique_ptr<AbstractViewItemDropController> drop_controller =
-        item.create_drop_controller();
-    if (!drop_controller) {
-      return false;
-    }
-
-    return drop_controller->can_drop(drag, r_disabled_hint);
-  }
-
-  static std::string drop_tooltip(const AbstractViewItem &item, const wmDrag &drag)
-  {
-    const std::unique_ptr<AbstractViewItemDropController> drop_controller =
-        item.create_drop_controller();
-    if (!drop_controller) {
-      return {};
-    }
-
-    return drop_controller->drop_tooltip(drag);
-  }
-
-  static bool drop_handle(bContext &C, const AbstractViewItem &item, const ListBase &drags)
-  {
-    std::unique_ptr<AbstractViewItemDropController> drop_controller =
-        item.create_drop_controller();
-
-    const char *disabled_hint_dummy = nullptr;
-    LISTBASE_FOREACH (const wmDrag *, drag, &drags) {
-      if (drop_controller->can_drop(*drag, &disabled_hint_dummy)) {
-        return drop_controller->on_drop(&C, *drag);
-      }
-    }
-
-    return false;
-  }
 };
 
 }  // namespace blender::ui
 
 using namespace blender::ui;
+
+bool UI_view_item_is_interactive(const uiViewItemHandle *item_handle)
+{
+  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_handle);
+  return item.is_interactive();
+}
 
 bool UI_view_item_is_active(const uiViewItemHandle *item_handle)
 {
@@ -320,6 +411,16 @@ bool UI_view_item_matches(const uiViewItemHandle *a_handle, const uiViewItemHand
   const AbstractViewItem &a = reinterpret_cast<const AbstractViewItem &>(*a_handle);
   const AbstractViewItem &b = reinterpret_cast<const AbstractViewItem &>(*b_handle);
   return ViewItemAPIWrapper::matches(a, b);
+}
+
+void ui_view_item_swap_button_pointers(uiViewItemHandle *a_handle, uiViewItemHandle *b_handle)
+{
+  if (!a_handle || !b_handle) {
+    return;
+  }
+  AbstractViewItem &a = reinterpret_cast<AbstractViewItem &>(*a_handle);
+  AbstractViewItem &b = reinterpret_cast<AbstractViewItem &>(*b_handle);
+  ViewItemAPIWrapper::swap_button_pointers(a, b);
 }
 
 bool UI_view_item_can_rename(const uiViewItemHandle *item_handle)
@@ -342,32 +443,16 @@ void UI_view_item_context_menu_build(bContext *C,
   item.build_context_menu(*C, *column);
 }
 
+bool UI_view_item_supports_drag(const uiViewItemHandle *item_)
+{
+  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_);
+  return ViewItemAPIWrapper::supports_drag(item);
+}
+
 bool UI_view_item_drag_start(bContext *C, const uiViewItemHandle *item_)
 {
   const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_);
   return ViewItemAPIWrapper::drag_start(*C, item);
-}
-
-bool UI_view_item_can_drop(const uiViewItemHandle *item_,
-                           const wmDrag *drag,
-                           const char **r_disabled_hint)
-{
-  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_);
-  return ViewItemAPIWrapper::can_drop(item, *drag, r_disabled_hint);
-}
-
-char *UI_view_item_drop_tooltip(const uiViewItemHandle *item_, const wmDrag *drag)
-{
-  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_);
-
-  const std::string tooltip = ViewItemAPIWrapper::drop_tooltip(item, *drag);
-  return tooltip.empty() ? nullptr : BLI_strdup(tooltip.c_str());
-}
-
-bool UI_view_item_drop_handle(bContext *C, const uiViewItemHandle *item_, const ListBase *drags)
-{
-  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_);
-  return ViewItemAPIWrapper::drop_handle(*C, item, *drags);
 }
 
 /** \} */

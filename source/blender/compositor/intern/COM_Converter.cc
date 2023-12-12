@@ -1,11 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <cstring>
 
 #include "DNA_node_types.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "COM_NodeOperationBuilder.h"
 
@@ -61,6 +62,7 @@
 #include "COM_InvertNode.h"
 #include "COM_KeyingNode.h"
 #include "COM_KeyingScreenNode.h"
+#include "COM_KuwaharaNode.h"
 #include "COM_LensDistortionNode.h"
 #include "COM_LuminanceMatteNode.h"
 #include "COM_MapRangeNode.h"
@@ -87,7 +89,7 @@
 #include "COM_SeparateXYZNode.h"
 #include "COM_SetAlphaNode.h"
 #include "COM_SetValueOperation.h"
-#include "COM_SplitViewerNode.h"
+#include "COM_SplitNode.h"
 #include "COM_Stabilize2dNode.h"
 #include "COM_SunBeamsNode.h"
 #include "COM_SwitchNode.h"
@@ -130,7 +132,7 @@ Node *COM_convert_bnode(bNode *b_node)
   Node *node = nullptr;
 
   /* ignore undefined nodes with missing or invalid node data */
-  if (nodeTypeUndefined(b_node)) {
+  if (blender::bke::node_type_is_undefined(b_node)) {
     return nullptr;
   }
 
@@ -210,8 +212,8 @@ Node *COM_convert_bnode(bNode *b_node)
     case CMP_NODE_VIEWER:
       node = new ViewerNode(b_node);
       break;
-    case CMP_NODE_SPLITVIEWER:
-      node = new SplitViewerNode(b_node);
+    case CMP_NODE_SPLIT:
+      node = new SplitNode(b_node);
       break;
     case CMP_NODE_INVERT:
       node = new InvertNode(b_node);
@@ -434,6 +436,9 @@ Node *COM_convert_bnode(bNode *b_node)
       break;
     case CMP_NODE_COMBINE_XYZ:
       node = new CombineXYZNode(b_node);
+      break;
+    case CMP_NODE_KUWAHARA:
+      node = new KuwaharaNode(b_node);
       break;
   }
   return node;

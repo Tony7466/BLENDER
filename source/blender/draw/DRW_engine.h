@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -30,6 +31,7 @@ struct GPUViewport;
 struct ID;
 struct Main;
 struct Object;
+struct RegionView3D;
 struct Render;
 struct RenderEngine;
 struct RenderEngineType;
@@ -40,11 +42,12 @@ struct bContext;
 struct rcti;
 
 void DRW_engines_register(void);
-void DRW_engines_register_experimental(void);
 void DRW_engines_free(void);
 
 bool DRW_engine_render_support(struct DrawEngineType *draw_engine_type);
 void DRW_engine_register(struct DrawEngineType *draw_engine_type);
+
+void DRW_engine_external_free(struct RegionView3D *rv3d);
 
 typedef struct DRWUpdateContext {
   struct Main *bmain;
@@ -121,7 +124,7 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
                           DRW_ObjectFilterFn object_filter_fn,
                           void *object_filter_user_data);
 /**
- * object mode select-loop, see: #ED_view3d_draw_depth_loop (legacy drawing).
+ * Object mode select-loop, see: #ED_view3d_draw_depth_loop (legacy drawing).
  */
 void DRW_draw_depth_loop(struct Depsgraph *depsgraph,
                          struct ARegion *region,
@@ -138,10 +141,7 @@ void DRW_draw_depth_object(struct Scene *scene,
                            struct View3D *v3d,
                            struct GPUViewport *viewport,
                            struct Object *object);
-void DRW_draw_select_id(struct Depsgraph *depsgraph,
-                        struct ARegion *region,
-                        struct View3D *v3d,
-                        const struct rcti *rect);
+void DRW_draw_select_id(struct Depsgraph *depsgraph, struct ARegion *region, struct View3D *v3d);
 
 /* Grease pencil render. */
 
@@ -161,15 +161,15 @@ void DRW_uniform_attrs_pool_free(struct GHash *table);
 void DRW_render_context_enable(struct Render *render);
 void DRW_render_context_disable(struct Render *render);
 
-void DRW_opengl_context_create(void);
-void DRW_opengl_context_destroy(void);
-void DRW_opengl_context_enable(void);
-void DRW_opengl_context_disable(void);
+void DRW_gpu_context_create(void);
+void DRW_gpu_context_destroy(void);
+void DRW_gpu_context_enable(void);
+void DRW_gpu_context_disable(void);
 
 #ifdef WITH_XR_OPENXR
-/* XXX see comment on DRW_xr_opengl_context_get() */
-void *DRW_xr_opengl_context_get(void);
-void *DRW_xr_gpu_context_get(void);
+/* XXX: see comment on #DRW_system_gpu_context_get() */
+void *DRW_system_gpu_context_get(void);
+void *DRW_xr_blender_gpu_context_get(void);
 void DRW_xr_drawing_begin(void);
 void DRW_xr_drawing_end(void);
 #endif
@@ -182,21 +182,19 @@ void DRW_cache_free_old_subdiv(void);
 void DRW_subdiv_free(void);
 
 /* Never use this. Only for closing blender. */
-void DRW_opengl_context_enable_ex(bool restore);
-void DRW_opengl_context_disable_ex(bool restore);
+void DRW_gpu_context_enable_ex(bool restore);
+void DRW_gpu_context_disable_ex(bool restore);
 
-void DRW_opengl_render_context_enable(void *re_gl_context);
-void DRW_opengl_render_context_disable(void *re_gl_context);
-/**
- * Needs to be called AFTER #DRW_opengl_render_context_enable().
- */
-void DRW_gpu_render_context_enable(void *re_gpu_context);
-/**
- * Needs to be called BEFORE #DRW_opengl_render_context_disable().
- */
-void DRW_gpu_render_context_disable(void *re_gpu_context);
+/* Render pipeline GPU context control.
+ * Enable system context first, then enable blender context,
+ * then disable blender context, then disable system context. */
+void DRW_system_gpu_render_context_enable(void *re_system_gpu_context);
+void DRW_system_gpu_render_context_disable(void *re_system_gpu_context);
+void DRW_blender_gpu_render_context_enable(void *re_gpu_context);
+void DRW_blender_gpu_render_context_disable(void *re_gpu_context);
 
 void DRW_deferred_shader_remove(struct GPUMaterial *mat);
+void DRW_deferred_shader_optimize_remove(struct GPUMaterial *mat);
 
 /**
  * Get DrawData from the given ID-block. In order for this to work, we assume that
@@ -208,8 +206,8 @@ void DRW_drawdata_free(struct ID *id);
 struct DRWData *DRW_viewport_data_create(void);
 void DRW_viewport_data_free(struct DRWData *drw_data);
 
-bool DRW_opengl_context_release(void);
-void DRW_opengl_context_activate(bool drw_state);
+bool DRW_gpu_context_release(void);
+void DRW_gpu_context_activate(bool drw_state);
 
 /**
  * We may want to move this into a more general location.
@@ -219,8 +217,8 @@ void DRW_draw_cursor_2d_ex(const struct ARegion *region, const float cursor[2]);
 
 void DRW_cdlayer_attr_aliases_add(struct GPUVertFormat *format,
                                   const char *base_name,
-                                  const struct CustomData *data,
-                                  const struct CustomDataLayer *cl,
+                                  int data_type,
+                                  const char *layer_name,
                                   bool is_active_render,
                                   bool is_active_layer);
 #ifdef __cplusplus

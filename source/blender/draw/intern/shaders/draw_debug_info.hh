@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "draw_defines.h"
 #include "gpu_shader_create_info.hh"
@@ -10,6 +12,7 @@
  * \{ */
 
 GPU_SHADER_CREATE_INFO(draw_debug_print)
+    .define("DRW_DEBUG_PRINT")
     .typedef_source("draw_shader_shared.h")
     .storage_buf(DRW_DEBUG_PRINT_SLOT, Qualifier::READ_WRITE, "uint", "drw_debug_print_buf[]");
 
@@ -18,7 +21,7 @@ GPU_SHADER_INTERFACE_INFO(draw_debug_print_display_iface, "").flat(Type::UINT, "
 GPU_SHADER_CREATE_INFO(draw_debug_print_display)
     .do_static_compilation(true)
     .typedef_source("draw_shader_shared.h")
-    .storage_buf(7, Qualifier::READ, "uint", "drw_debug_print_buf[]")
+    .storage_buf(DRW_DEBUG_PRINT_SLOT, Qualifier::READ, "uint", "drw_debug_print_buf[]")
     .vertex_out(draw_debug_print_display_iface)
     .fragment_out(0, Type::VEC4, "out_color")
     .push_constant(Type::VEC2, "viewport_size")
@@ -35,6 +38,7 @@ GPU_SHADER_CREATE_INFO(draw_debug_print_display)
  * \{ */
 
 GPU_SHADER_CREATE_INFO(draw_debug_draw)
+    .define("DRW_DEBUG_DRAW")
     .typedef_source("draw_shader_shared.h")
     .storage_buf(DRW_DEBUG_DRAW_SLOT,
                  Qualifier::READ_WRITE,
@@ -46,7 +50,7 @@ GPU_SHADER_INTERFACE_INFO(draw_debug_draw_display_iface, "interp").flat(Type::VE
 GPU_SHADER_CREATE_INFO(draw_debug_draw_display)
     .do_static_compilation(true)
     .typedef_source("draw_shader_shared.h")
-    .storage_buf(6, Qualifier::READ, "DRWDebugVert", "drw_debug_verts_buf[]")
+    .storage_buf(DRW_DEBUG_DRAW_SLOT, Qualifier::READ, "DRWDebugVert", "drw_debug_verts_buf[]")
     .vertex_out(draw_debug_draw_display_iface)
     .fragment_out(0, Type::VEC4, "out_color")
     .push_constant(Type::MAT4, "persmat")

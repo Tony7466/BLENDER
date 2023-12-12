@@ -1,7 +1,12 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 // clang-format off
+
+#ifdef WITH_NANOVDB
+#  include "kernel/util/nanovdb.h"
+#endif
 
 /* Open the Metal kernel context class
  * Necessary to access resource bindings */

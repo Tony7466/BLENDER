@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2016-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -25,10 +28,10 @@ void main()
   gl_Position = point_world_to_ndc(world_pos);
 
   if (useWeight) {
-    finalColor = vec4(weight_to_rgb(color), 1.0);
+    finalColor = vec4(weight_to_rgb(selection), 1.0);
   }
   else {
-    finalColor = mix(colorWire, colorVertexSelect, color);
+    finalColor = mix(colorWire, colorVertexSelect, selection);
   }
 
   view_clipping_distances(world_pos);

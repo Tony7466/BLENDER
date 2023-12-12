@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -220,11 +221,9 @@ GLShaderInterface::GLShaderInterface(GLuint program)
   uniform_len = active_uniform_len;
 
   GLint max_ssbo_name_len = 0, ssbo_len = 0;
-  if (GPU_shader_storage_buffer_objects_support()) {
-    glGetProgramInterfaceiv(program, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, &ssbo_len);
-    glGetProgramInterfaceiv(
-        program, GL_SHADER_STORAGE_BLOCK, GL_MAX_NAME_LENGTH, &max_ssbo_name_len);
-  }
+  glGetProgramInterfaceiv(program, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, &ssbo_len);
+  glGetProgramInterfaceiv(
+      program, GL_SHADER_STORAGE_BLOCK, GL_MAX_NAME_LENGTH, &max_ssbo_name_len);
 
   BLI_assert_msg(ubo_len <= 16, "enabled_ubo_mask_ is uint16_t");
 
@@ -369,13 +368,6 @@ GLShaderInterface::GLShaderInterface(GLuint program)
     GPUUniformBlockBuiltin u = static_cast<GPUUniformBlockBuiltin>(u_int);
     const ShaderInput *block = this->ubo_get(builtin_uniform_block_name(u));
     builtin_blocks_[u] = (block != nullptr) ? block->binding : -1;
-  }
-
-  /* Builtin Storage Buffers */
-  for (int32_t u_int = 0; u_int < GPU_NUM_STORAGE_BUFFERS; u_int++) {
-    GPUStorageBufferBuiltin u = static_cast<GPUStorageBufferBuiltin>(u_int);
-    const ShaderInput *block = this->ssbo_get(builtin_storage_block_name(u));
-    builtin_buffers_[u] = (block != nullptr) ? block->binding : -1;
   }
 
   MEM_freeN(uniforms_from_blocks);
@@ -536,6 +528,9 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
     }
   }
 
+  this->sort_inputs();
+
+  /* Resolving builtins must happen after the inputs have been sorted. */
   /* Builtin Uniforms */
   for (int32_t u_int = 0; u_int < GPU_NUM_UNIFORMS; u_int++) {
     GPUUniformBuiltin u = static_cast<GPUUniformBuiltin>(u_int);
@@ -549,15 +544,6 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
     const ShaderInput *block = this->ubo_get(builtin_uniform_block_name(u));
     builtin_blocks_[u] = (block != nullptr) ? block->binding : -1;
   }
-
-  /* Builtin Storage Buffers */
-  for (int32_t u_int = 0; u_int < GPU_NUM_STORAGE_BUFFERS; u_int++) {
-    GPUStorageBufferBuiltin u = static_cast<GPUStorageBufferBuiltin>(u_int);
-    const ShaderInput *block = this->ssbo_get(builtin_storage_block_name(u));
-    builtin_buffers_[u] = (block != nullptr) ? block->binding : -1;
-  }
-
-  this->sort_inputs();
 
   // this->debug_print();
 

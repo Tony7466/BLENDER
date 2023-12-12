@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -16,19 +17,19 @@
 #include "DNA_userdef_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_screen.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "interface_intern.hh"
 #include "interface_regions_intern.hh"
@@ -48,7 +49,7 @@ void ui_popup_translate(ARegion *region, const int mdiff[2])
   /* update blocks */
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     uiPopupBlockHandle *handle = block->handle;
-    /* Make empty, will be initialized on next use, see T60608. */
+    /* Make empty, will be initialized on next use, see #60608. */
     BLI_rctf_init(&handle->prev_block_rect, 0, 0, 0, 0);
 
     LISTBASE_FOREACH (uiSafetyRct *, saferct, &block->saferct) {
@@ -108,6 +109,21 @@ static void ui_popup_block_position(wmWindow *window,
     }
   }
 
+  /* Trim the popup and its contents to the width of the button if the size difference
+   * is small. This avoids cases where the rounded corner clips underneath the button. */
+  const int delta = BLI_rctf_size_x(&block->rect) - BLI_rctf_size_x(&butrct);
+  const float max_radius = (0.5f * U.widget_unit);
+
+  if (delta >= 0 && delta < max_radius) {
+    LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {
+      /* Only trim the right most buttons in multi-column popovers. */
+      if (bt->rect.xmax == block->rect.xmax) {
+        bt->rect.xmax -= delta;
+      }
+    }
+    block->rect.xmax -= delta;
+  }
+
   ui_block_to_window_rctf(butregion, but->block, &block->rect, &block->rect);
 
   /* Compute direction relative to button, based on available space. */
@@ -116,17 +132,17 @@ static void ui_popup_block_position(wmWindow *window,
   const int center_x = (block->direction & UI_DIR_CENTER_X) ? size_x / 2 : 0;
   const int center_y = (block->direction & UI_DIR_CENTER_Y) ? size_y / 2 : 0;
 
+  const int win_x = WM_window_pixels_x(window);
+  const int win_y = WM_window_pixels_y(window);
+
+  /* Take into account maximum size so we don't have to flip on refresh. */
+  const float max_size_x = max_ff(size_x, handle->max_size_x);
+  const float max_size_y = max_ff(size_y, handle->max_size_y);
+
   short dir1 = 0, dir2 = 0;
 
   if (!handle->refresh) {
     bool left = false, right = false, top = false, down = false;
-
-    const int win_x = WM_window_pixels_x(window);
-    const int win_y = WM_window_pixels_y(window);
-
-    /* Take into account maximum size so we don't have to flip on refresh. */
-    const float max_size_x = max_ff(size_x, handle->max_size_x);
-    const float max_size_y = max_ff(size_y, handle->max_size_y);
 
     /* check if there's space at all */
     if (butrct.xmin - max_size_x + center_x > 0.0f) {
@@ -214,7 +230,7 @@ static void ui_popup_block_position(wmWindow *window,
   /* Compute offset based on direction. */
   float offset_x = 0, offset_y = 0;
 
-  /* Ensure buttons don't come between the parent button and the popup, see: T63566. */
+  /* Ensure buttons don't come between the parent button and the popup, see: #63566. */
   const float offset_overlap = max_ff(U.pixelsize, 1.0f);
 
   if (dir1 == UI_DIR_LEFT) {
@@ -237,30 +253,38 @@ static void ui_popup_block_position(wmWindow *window,
   }
   else if (dir1 == UI_DIR_UP) {
     offset_y = (butrct.ymax - block->rect.ymin) - offset_overlap;
+
+    if (but->type == UI_BTYPE_COLOR && block->rect.ymax + offset_y > win_y - UI_POPUP_MENU_TOP) {
+      /* Shift this down, aligning the top edge close to the window top. */
+      offset_y = win_y - block->rect.ymax - UI_POPUP_MENU_TOP;
+      /* All four corners should be rounded since this no longer button-aligned. */
+      block->direction = UI_DIR_CENTER_Y;
+      dir1 = UI_DIR_CENTER_Y;
+    }
+
     if (dir2 == UI_DIR_RIGHT) {
       offset_x = butrct.xmax - block->rect.xmax + center_x;
     }
     else {
       offset_x = butrct.xmin - block->rect.xmin - center_x;
-    }
-    /* changed direction? */
-    if ((dir1 & block->direction) == 0) {
-      /* TODO: still do */
-      UI_block_order_flip(block);
     }
   }
   else if (dir1 == UI_DIR_DOWN) {
     offset_y = (butrct.ymin - block->rect.ymax) + offset_overlap;
+
+    if (but->type == UI_BTYPE_COLOR && block->rect.ymin + offset_y < UI_SCREEN_MARGIN) {
+      /* Shift this up, aligning the bottom edge close to the window bottom. */
+      offset_y = -block->rect.ymin + UI_SCREEN_MARGIN;
+      /* All four corners should be rounded since this no longer button-aligned. */
+      block->direction = UI_DIR_CENTER_Y;
+      dir1 = UI_DIR_CENTER_Y;
+    }
+
     if (dir2 == UI_DIR_RIGHT) {
       offset_x = butrct.xmax - block->rect.xmax + center_x;
     }
     else {
       offset_x = butrct.xmin - block->rect.xmin - center_x;
-    }
-    /* changed direction? */
-    if ((dir1 & block->direction) == 0) {
-      /* TODO: still do */
-      UI_block_order_flip(block);
     }
   }
 
@@ -288,8 +312,8 @@ static void ui_popup_block_position(wmWindow *window,
 
     /* when you are outside parent button, safety there should be smaller */
 
-    const int s1 = 40 * U.dpi_fac;
-    const int s2 = 3 * U.dpi_fac;
+    const int s1 = 40 * UI_SCALE_FAC;
+    const int s2 = 3 * UI_SCALE_FAC;
 
     /* parent button to left */
     if (midx < block->rect.xmin) {
@@ -330,7 +354,26 @@ static void ui_popup_block_position(wmWindow *window,
         block->safety.xmin = block->rect.xmin - s2;
       }
     }
-    block->direction = dir1;
+
+    const bool fully_aligned_with_button = BLI_rctf_size_x(&block->rect) <=
+                                           BLI_rctf_size_x(&butrct) + 1;
+    const bool off_screen_left = (block->rect.xmin < 0);
+    const bool off_screen_right = (block->rect.xmax > win_x);
+
+    if (fully_aligned_with_button) {
+      /* Popup is neither left or right from the button. */
+      dir2 &= ~(UI_DIR_LEFT | UI_DIR_RIGHT);
+    }
+    else if (off_screen_left || off_screen_right) {
+      /* Popup is both left and right from the button. */
+      dir2 |= (UI_DIR_LEFT | UI_DIR_RIGHT);
+    }
+
+    /* Popovers don't need secondary direction. Pull-downs to
+     * the left or right are currently not supported. */
+    const bool no_2nd_dir = (but->type == UI_BTYPE_POPOVER || ui_but_menu_draw_as_popover(but) ||
+                             dir1 & (UI_DIR_RIGHT | UI_DIR_LEFT));
+    block->direction = no_2nd_dir ? dir1 : (dir1 | dir2);
   }
 
   /* Keep a list of these, needed for pull-down menus. */
@@ -529,7 +572,7 @@ static void ui_popup_block_remove(bContext *C, uiPopupBlockHandle *handle)
   }
 
   if (handle->scrolltimer) {
-    WM_event_remove_timer(wm, win, handle->scrolltimer);
+    WM_event_timer_remove(wm, win, handle->scrolltimer);
   }
 }
 
@@ -552,7 +595,7 @@ uiBlock *ui_popup_block_refresh(bContext *C,
 
   BLI_assert(!handle->refresh || handle->can_refresh);
 
-#ifdef DEBUG
+#ifndef NDEBUG
   wmEvent *event_back = window->eventstate;
   wmEvent *event_last_back = window->event_last_handled;
 #endif
@@ -566,11 +609,16 @@ uiBlock *ui_popup_block_refresh(bContext *C,
     block = handle_create_func(C, handle, arg);
   }
 
+  /* Don't create accelerator keys if the parent menu does not have them. */
+  if (but && but->block->flag & UI_BLOCK_NO_ACCELERATOR_KEYS) {
+    block->flag |= UI_BLOCK_NO_ACCELERATOR_KEYS;
+  }
+
   /* callbacks _must_ leave this for us, otherwise we can't call UI_block_update_from_old */
   BLI_assert(!block->endblock);
 
   /* ensure we don't use mouse coords here! */
-#ifdef DEBUG
+#ifndef NDEBUG
   window->eventstate = nullptr;
 #endif
 
@@ -724,10 +772,10 @@ uiBlock *ui_popup_block_refresh(bContext *C,
   /* checks which buttons are visible, sets flags to prevent draw (do after region init) */
   ui_popup_block_scrolltest(block);
 
-  /* adds subwindow */
+  /* Adds sub-window. */
   ED_region_floating_init(region);
 
-  /* get winmat now that we actually have the subwindow */
+  /* Get `winmat` now that we actually have the sub-window. */
   wmGetProjectionMatrix(block->winmat, &region->winrct);
 
   /* notify change and redraw */
@@ -735,7 +783,7 @@ uiBlock *ui_popup_block_refresh(bContext *C,
 
   ED_region_update_rect(region);
 
-#ifdef DEBUG
+#ifndef NDEBUG
   window->eventstate = event_back;
   window->event_last_handled = event_last_back;
 #endif
@@ -806,6 +854,9 @@ uiPopupBlockHandle *ui_popup_block_create(bContext *C,
 
 void ui_popup_block_free(bContext *C, uiPopupBlockHandle *handle)
 {
+  /* This disables the status bar text that is set when opening a menu. */
+  ED_workspace_status_text(C, nullptr);
+
   /* If this popup is created from a popover which does NOT have keep-open flag set,
    * then close the popover too. We could extend this to other popup types too. */
   ARegion *region = handle->popup_create_vars.butregion;

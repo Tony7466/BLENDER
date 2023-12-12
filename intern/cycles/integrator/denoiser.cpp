@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "integrator/denoiser.h"
 
 #include "device/device.h"
 #include "integrator/denoiser_oidn.h"
+#ifdef WITH_OPENIMAGEDENOISE
+#  include "integrator/denoiser_oidn_gpu.h"
+#endif
 #include "integrator/denoiser_optix.h"
 #include "session/buffers.h"
 #include "util/log.h"
@@ -19,6 +23,12 @@ unique_ptr<Denoiser> Denoiser::create(Device *path_trace_device, const DenoisePa
 #ifdef WITH_OPTIX
   if (params.type == DENOISER_OPTIX && Device::available_devices(DEVICE_MASK_OPTIX).size()) {
     return make_unique<OptiXDenoiser>(path_trace_device, params);
+  }
+#endif
+
+#ifdef WITH_OPENIMAGEDENOISE
+  if (params.type == DENOISER_OPENIMAGEDENOISE && path_trace_device->info.type == DEVICE_ONEAPI) {
+    return make_unique<OIDNDenoiserGPU>(path_trace_device, params);
   }
 #endif
 
@@ -109,8 +119,8 @@ static Device *find_best_device(Device *device, DenoiserType type)
     }
     else {
       /* Prefer a device that can use graphics interop for faster display update. */
-      if (sub_device->should_use_graphics_interop() &&
-          !best_device->should_use_graphics_interop()) {
+      if (sub_device->should_use_graphics_interop() && !best_device->should_use_graphics_interop())
+      {
         best_device = sub_device;
       }
 
@@ -130,8 +140,8 @@ static DeviceInfo find_best_denoiser_device_info(const vector<DeviceInfo> &devic
       continue;
     }
 
-    /* TODO(sergey): Use one of the already configured devices, so that OptiX denoising can happen
-     * on a physical CUDA device which is already used for rendering. */
+    /* TODO(sergey): Use one of the already configured devices, so that GPU denoising can happen
+     * on a physical device which is already used for rendering. */
 
     /* TODO(sergey): Choose fastest device for denoising. */
 

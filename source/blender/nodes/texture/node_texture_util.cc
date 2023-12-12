@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup nodes
@@ -21,7 +22,12 @@
  * over other previous ones.
  */
 
+#include "BKE_node_runtime.hh"
+
+#include "NOD_texture.h"
+
 #include "node_texture_util.hh"
+#include "node_util.hh"
 
 bool tex_node_poll_default(const bNodeType * /*ntype*/,
                            const bNodeTree *ntree,
@@ -34,9 +40,9 @@ bool tex_node_poll_default(const bNodeType * /*ntype*/,
   return true;
 }
 
-void tex_node_type_base(struct bNodeType *ntype, int type, const char *name, short nclass)
+void tex_node_type_base(bNodeType *ntype, int type, const char *name, short nclass)
 {
-  node_type_base(ntype, type, name, nclass);
+  blender::bke::node_type_base(ntype, type, name, nclass);
 
   ntype->poll = tex_node_poll_default;
   ntype->insert_link = node_insert_link_default;
@@ -133,10 +139,9 @@ void tex_output(bNode *node,
   dg->type = out->sockettype;
 }
 
-void ntreeTexCheckCyclics(struct bNodeTree *ntree)
+void ntreeTexCheckCyclics(bNodeTree *ntree)
 {
-  bNode *node;
-  for (node = static_cast<bNode *>(ntree->nodes.first); node; node = node->next) {
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
 
     if (node->type == TEX_NODE_TEXTURE && node->id) {
       /* custom2 stops the node from rendering */

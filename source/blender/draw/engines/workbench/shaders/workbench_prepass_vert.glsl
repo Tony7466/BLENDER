@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2016-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -16,8 +19,8 @@ void main()
 
   normal_interp = normalize(normal_object_to_view(nor));
 
-  workbench_material_data_get(
-      resource_handle, ac.rgb, color_interp, alpha_interp, _roughness, metallic);
+  object_id = int(uint(resource_id) & 0xFFFFu) + 1;
 
-  object_id = int(uint(resource_handle) & 0xFFFFu) + 1;
+  workbench_material_data_get(
+      int(drw_CustomID), ac.rgb, color_interp, alpha_interp, _roughness, metallic);
 }

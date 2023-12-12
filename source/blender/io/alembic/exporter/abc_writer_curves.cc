@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Kévin Dietrich. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 Kévin Dietrich. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -11,9 +12,9 @@
 #include "DNA_curve_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_curve.h"
-#include "BKE_mesh.h"
-#include "BKE_object.h"
+#include "BKE_curve.hh"
+#include "BKE_mesh.hh"
+#include "BKE_object.hh"
 
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.alembic"};
@@ -29,9 +30,7 @@ namespace blender::io::alembic {
 
 const std::string ABC_CURVE_RESOLUTION_U_PROPNAME("blender:resolution");
 
-ABCCurveWriter::ABCCurveWriter(const ABCWriterConstructorArgs &args) : ABCAbstractWriter(args)
-{
-}
+ABCCurveWriter::ABCCurveWriter(const ABCWriterConstructorArgs &args) : ABCAbstractWriter(args) {}
 
 void ABCCurveWriter::create_alembic_objects(const HierarchyContext *context)
 {

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <cstdio>
 
@@ -193,7 +194,7 @@ const rcti &NodeOperation::get_canvas() const
 
 void NodeOperation::unset_canvas()
 {
-  BLI_assert(inputs_.size() == 0);
+  BLI_assert(inputs_.is_empty());
   flags_.is_canvas_set = false;
 }
 
@@ -216,7 +217,7 @@ bool NodeOperation::determine_depending_area_of_interest(rcti *input,
                                                          ReadBufferOperation *read_operation,
                                                          rcti *output)
 {
-  if (inputs_.size() == 0) {
+  if (inputs_.is_empty()) {
     BLI_rcti_init(output, input->xmin, input->xmax, input->ymin, input->ymax);
     return false;
   }
@@ -225,8 +226,9 @@ bool NodeOperation::determine_depending_area_of_interest(rcti *input,
   bool first = true;
   for (int i = 0; i < get_number_of_input_sockets(); i++) {
     NodeOperation *input_operation = this->get_input_operation(i);
-    if (input_operation && input_operation->determine_depending_area_of_interest(
-                               input, read_operation, &temp_output)) {
+    if (input_operation &&
+        input_operation->determine_depending_area_of_interest(input, read_operation, &temp_output))
+    {
       if (first) {
         output->xmin = temp_output.xmin;
         output->ymin = temp_output.ymin;
@@ -235,10 +237,10 @@ bool NodeOperation::determine_depending_area_of_interest(rcti *input,
         first = false;
       }
       else {
-        output->xmin = MIN2(output->xmin, temp_output.xmin);
-        output->ymin = MIN2(output->ymin, temp_output.ymin);
-        output->xmax = MAX2(output->xmax, temp_output.xmax);
-        output->ymax = MAX2(output->ymax, temp_output.ymax);
+        output->xmin = std::min(output->xmin, temp_output.xmin);
+        output->ymin = std::min(output->ymin, temp_output.ymin);
+        output->xmax = std::max(output->xmax, temp_output.xmax);
+        output->ymax = std::max(output->ymax, temp_output.ymax);
       }
     }
   }

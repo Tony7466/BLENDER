@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -34,25 +34,52 @@
 namespace blender::eevee {
 
 class Instance;
+class ShadowModule;
 
 /* -------------------------------------------------------------------- */
 /** \name Light Object
  * \{ */
 
-struct Light : public LightData {
+struct Light : public LightData, NonCopyable {
  public:
   bool initialized = false;
   bool used = false;
 
+  /** Pointers to source Shadow. Type depends on `LightData::type`. */
+  ShadowDirectional *directional = nullptr;
+  ShadowPunctual *punctual = nullptr;
+
  public:
   Light()
   {
-    shadow_id = LIGHT_NO_SHADOW;
+    /* Avoid valgrind warning. */
+    this->type = LIGHT_SUN;
   }
 
-  void sync(/* ShadowModule &shadows, */ const Object *ob, float threshold);
+  /* Only used for debugging. */
+#ifndef NDEBUG
+  Light(Light &&other)
+  {
+    *static_cast<LightData *>(this) = other;
+    this->initialized = other.initialized;
+    this->used = other.used;
+    this->directional = other.directional;
+    this->punctual = other.punctual;
+    other.directional = nullptr;
+    other.punctual = nullptr;
+  }
 
-  // void shadow_discard_safe(ShadowModule &shadows);
+  ~Light()
+  {
+    BLI_assert(directional == nullptr);
+    BLI_assert(punctual == nullptr);
+  }
+#endif
+
+  void sync(ShadowModule &shadows, const Object *ob, float threshold);
+
+  void shadow_ensure(ShadowModule &shadows);
+  void shadow_discard_safe(ShadowModule &shadows);
 
   void debug_draw();
 
@@ -73,7 +100,7 @@ struct Light : public LightData {
  * The light module manages light data buffers and light culling system.
  */
 class LightModule {
-  // friend ShadowModule;
+  friend ShadowModule;
 
  private:
   /* Keep tile count reasonable for memory usage and 2D culling performance. */
@@ -87,12 +114,12 @@ class LightModule {
   Map<ObjectKey, Light> light_map_;
   /** Flat array sent to GPU, populated from light_map_. Source buffer for light culling. */
   LightDataBuf light_buf_ = {"Lights_no_cull"};
-  /** Recorded size of light_map_ (after pruning) to detect deletion. */
-  int64_t light_map_size_ = 0;
   /** Luminous intensity to consider the light boundary at. Used for culling. */
   float light_threshold_ = 0.01f;
-  /** If false, will prevent all scene light from being synced. */
+  /** If false, will prevent all scene lights from being synced. */
   bool use_scene_lights_ = false;
+  /** If false, will prevent all sun lights from being synced. */
+  bool use_sun_lights_ = false;
   /** Number of sun lights synced during the last sync. Used as offset. */
   int sun_lights_len_ = 0;
   int local_lights_len_ = 0;
@@ -125,7 +152,7 @@ class LightModule {
 
  public:
   LightModule(Instance &inst) : inst_(inst){};
-  ~LightModule(){};
+  ~LightModule();
 
   void begin_sync();
   void sync_light(const Object *ob, ObjectHandle &handle);
@@ -138,25 +165,12 @@ class LightModule {
 
   void debug_draw(View &view, GPUFrameBuffer *view_fb);
 
-  void bind_resources(DRWShadingGroup *grp)
+  template<typename PassType> void bind_resources(PassType &pass)
   {
-    DRW_shgroup_storage_block_ref(grp, "light_buf", &culling_light_buf_);
-    DRW_shgroup_storage_block_ref(grp, "light_cull_buf", &culling_data_buf_);
-    DRW_shgroup_storage_block_ref(grp, "light_zbin_buf", &culling_zbin_buf_);
-    DRW_shgroup_storage_block_ref(grp, "light_tile_buf", &culling_tile_buf_);
-#if 0
-    DRW_shgroup_uniform_texture(grp, "shadow_atlas_tx", inst_.shadows.atlas_tx_get());
-    DRW_shgroup_uniform_texture(grp, "shadow_tilemaps_tx", inst_.shadows.tilemap_tx_get());
-#endif
-  }
-
-  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
-  {
-    /* Storage Buf. */
-    pass->bind_ssbo(LIGHT_CULL_BUF_SLOT, &culling_data_buf_);
-    pass->bind_ssbo(LIGHT_BUF_SLOT, &culling_light_buf_);
-    pass->bind_ssbo(LIGHT_ZBIN_BUF_SLOT, &culling_zbin_buf_);
-    pass->bind_ssbo(LIGHT_TILE_BUF_SLOT, &culling_tile_buf_);
+    pass.bind_ssbo(LIGHT_CULL_BUF_SLOT, &culling_data_buf_);
+    pass.bind_ssbo(LIGHT_BUF_SLOT, &culling_light_buf_);
+    pass.bind_ssbo(LIGHT_ZBIN_BUF_SLOT, &culling_zbin_buf_);
+    pass.bind_ssbo(LIGHT_TILE_BUF_SLOT, &culling_tile_buf_);
   }
 
  private:

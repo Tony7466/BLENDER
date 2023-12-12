@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ExecutionGroup.h"
 #include "COM_ChunkOrder.h"
@@ -11,6 +12,7 @@
 #include "COM_defines.h"
 
 #include "BLI_rand.hh"
+#include "BLI_string.h"
 
 #include "BLT_translation.h"
 
@@ -103,7 +105,8 @@ bool ExecutionGroup::add_operation(NodeOperation *operation)
   }
 
   if (!operation->get_flags().is_read_buffer_operation &&
-      !operation->get_flags().is_write_buffer_operation) {
+      !operation->get_flags().is_write_buffer_operation)
+  {
     flags_.complex = operation->get_flags().complex;
     flags_.open_cl = operation->get_flags().open_cl;
     flags_.single_threaded = operation->get_flags().single_threaded;
@@ -117,8 +120,8 @@ bool ExecutionGroup::add_operation(NodeOperation *operation)
 
 NodeOperation *ExecutionGroup::get_output_operation() const
 {
-  return this
-      ->operations_[0]; /* the first operation of the group is always the output operation. */
+  /* The first operation of the group is always the output operation. */
+  return this->operations_[0];
 }
 
 void ExecutionGroup::init_work_packages()
@@ -143,7 +146,7 @@ void ExecutionGroup::init_read_buffer_operations()
     if (operation->get_flags().is_read_buffer_operation) {
       ReadBufferOperation *read_operation = static_cast<ReadBufferOperation *>(operation);
       read_operations_.append(read_operation);
-      max_offset = MAX2(max_offset, read_operation->get_offset());
+      max_offset = std::max(max_offset, read_operation->get_offset());
     }
   }
   max_offset++;
@@ -251,7 +254,7 @@ blender::Array<uint> ExecutionGroup::get_execution_order() const
       uint by = my + 2 * ty;
       float addition = chunks_len_ / COM_RULE_OF_THIRDS_DIVIDER;
 
-      ChunkOrderHotspot hotspots[9]{
+      ChunkOrderHotspot hotspots[9] = {
           ChunkOrderHotspot(mx, my, addition * 0),
           ChunkOrderHotspot(tx, my, addition * 1),
           ChunkOrderHotspot(bx, my, addition * 2),
@@ -323,7 +326,8 @@ void ExecutionGroup::execute(ExecutionSystem *graph)
     int number_evaluated = 0;
 
     for (int index = start_index; index < chunks_len_ && number_evaluated < max_number_evaluated;
-         index++) {
+         index++)
+    {
       chunk_index = chunk_order[index];
       int y_chunk = chunk_index / x_chunks_len_;
       int x_chunk = chunk_index - (y_chunk * x_chunks_len_);
@@ -417,8 +421,7 @@ void ExecutionGroup::finalize_chunk_execution(int chunk_number, MemoryBuffer **m
     bTree_->runtime->progress(bTree_->runtime->prh, progress);
 
     char buf[128];
-    BLI_snprintf(
-        buf, sizeof(buf), TIP_("Compositing | Tile %u-%u"), chunks_finished_, chunks_len_);
+    SNPRINTF(buf, TIP_("Compositing | Tile %u-%u"), chunks_finished_, chunks_len_);
     bTree_->runtime->stats_draw(bTree_->runtime->sdh, buf);
   }
 }
@@ -439,10 +442,10 @@ inline void ExecutionGroup::determine_chunk_rect(rcti *r_rect,
     const uint width = MIN2(uint(viewer_border_.xmax), width_);
     const uint height = MIN2(uint(viewer_border_.ymax), height_);
     BLI_rcti_init(r_rect,
-                  MIN2(minx, width_),
-                  MIN2(minx + chunk_size_, width),
-                  MIN2(miny, height_),
-                  MIN2(miny + chunk_size_, height));
+                  std::min(minx, width_),
+                  std::min(minx + chunk_size_, width),
+                  std::min(miny, height_),
+                  std::min(miny + chunk_size_, height));
   }
 }
 

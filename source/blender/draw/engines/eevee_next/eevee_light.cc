@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -13,6 +13,8 @@
 #include "eevee_instance.hh"
 
 #include "eevee_light.hh"
+
+#include "BLI_math_rotation.h"
 
 namespace blender::eevee {
 
@@ -41,7 +43,7 @@ static eLightType to_light_type(short blender_light_type, short blender_area_typ
 /** \name Light Object
  * \{ */
 
-void Light::sync(/* ShadowModule &shadows , */ const Object *ob, float threshold)
+void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
 {
   const ::Light *la = (const ::Light *)ob->data;
   float scale[3];
@@ -69,73 +71,65 @@ void Light::sync(/* ShadowModule &shadows , */ const Object *ob, float threshold
 
   float shape_power = shape_radiance_get(la);
   float point_power = point_radiance_get(la);
-  this->diffuse_power = la->diff_fac * shape_power;
-  this->transmit_power = la->diff_fac * point_power;
-  this->specular_power = la->spec_fac * shape_power;
-  this->volume_power = la->volume_fac * point_power;
+  this->power[LIGHT_DIFFUSE] = la->diff_fac * shape_power;
+  this->power[LIGHT_TRANSMIT] = la->diff_fac * point_power;
+  this->power[LIGHT_SPECULAR] = la->spec_fac * shape_power;
+  this->power[LIGHT_VOLUME] = la->volume_fac * point_power;
 
   eLightType new_type = to_light_type(la->type, la->area_shape);
-  if (this->type != new_type) {
-    /* shadow_discard_safe(shadows); */
-    this->type = new_type;
+  if (assign_if_different(this->type, new_type)) {
+    shadow_discard_safe(shadows);
   }
 
-#if 0
   if (la->mode & LA_SHADOW) {
-    if (la->type == LA_SUN) {
-      if (this->shadow_id == LIGHT_NO_SHADOW) {
-        this->shadow_id = shadows.directionals.alloc();
-      }
-
-      ShadowDirectional &shadow = shadows.directionals[this->shadow_id];
-      shadow.sync(this->object_mat, la->bias * 0.05f, 1.0f);
+    shadow_ensure(shadows);
+    if (is_sun_light(this->type)) {
+      this->directional->sync(this->object_mat,
+                              1.0f,
+                              la->sun_angle * la->shadow_softness_factor,
+                              la->shadow_trace_distance);
     }
     else {
-      float cone_aperture = DEG2RAD(360.0);
-      if (la->type == LA_SPOT) {
-        cone_aperture = min_ff(DEG2RAD(179.9), la->spotsize);
-      }
-      else if (la->type == LA_AREA) {
-        cone_aperture = DEG2RAD(179.9);
-      }
-
-      if (this->shadow_id == LIGHT_NO_SHADOW) {
-        this->shadow_id = shadows.punctuals.alloc();
-      }
-
-      ShadowPunctual &shadow = shadows.punctuals[this->shadow_id];
-      shadow.sync(this->type,
-                  this->object_mat,
-                  cone_aperture,
-                  la->clipsta,
-                  this->influence_radius_max,
-                  la->bias * 0.05f);
+      /* Reuse shape radius as near clip plane. */
+      /* This assumes `shape_parameters_set` has already set `radius_squared`. */
+      float radius = math::sqrt(this->radius_squared);
+      this->punctual->sync(this->type,
+                           this->object_mat,
+                           la->spotsize,
+                           radius,
+                           this->influence_radius_max,
+                           la->shadow_softness_factor);
     }
   }
   else {
     shadow_discard_safe(shadows);
   }
-#endif
 
   this->initialized = true;
 }
 
-#if 0
 void Light::shadow_discard_safe(ShadowModule &shadows)
 {
-  if (shadow_id != LIGHT_NO_SHADOW) {
-    if (this->type != LIGHT_SUN) {
-      shadows.punctuals.free(shadow_id);
-    }
-    else {
-      shadows.directionals.free(shadow_id);
-    }
-    shadow_id = LIGHT_NO_SHADOW;
+  if (this->directional != nullptr) {
+    shadows.directional_pool.destruct(*directional);
+    this->directional = nullptr;
+  }
+  if (this->punctual != nullptr) {
+    shadows.punctual_pool.destruct(*punctual);
+    this->punctual = nullptr;
   }
 }
-#endif
 
-/* Returns attenuation radius inverted & squared for easy bound checking inside the shader. */
+void Light::shadow_ensure(ShadowModule &shadows)
+{
+  if (is_sun_light(this->type) && this->directional == nullptr) {
+    this->directional = &shadows.directional_pool.construct(shadows);
+  }
+  else if (this->punctual == nullptr) {
+    this->punctual = &shadows.punctual_pool.construct(shadows);
+  }
+}
+
 float Light::attenuation_radius_get(const ::Light *la, float light_threshold, float light_power)
 {
   if (la->type == LA_SUN) {
@@ -196,28 +190,21 @@ float Light::shape_radiance_get(const ::Light *la)
       if (ELEM(la->area_shape, LA_AREA_DISK, LA_AREA_ELLIPSE)) {
         area *= M_PI / 4.0f;
       }
-      /* NOTE: The 4 factor is from Cycles definition of power. */
-      /* NOTE: Missing a factor of PI here to match Cycles. */
-      return 1.0f / (4.0f * area);
+      /* Convert radiant flux to radiance. */
+      return float(M_1_PI) / area;
     }
     case LA_SPOT:
     case LA_LOCAL: {
       /* Sphere area. */
       float area = 4.0f * float(M_PI) * square_f(_radius);
-      /* NOTE: Presence of a factor of PI here to match Cycles. But it should be missing to be
-       * consistent with the other cases. */
+      /* Convert radiant flux to radiance. */
       return 1.0f / (area * float(M_PI));
     }
     default:
     case LA_SUN: {
-      /* Disk area. */
-      float area = float(M_PI) * square_f(_radius);
-      /* Make illumination power closer to cycles for bigger radii. Cycles uses a cos^3 term that
-       * we cannot reproduce so we account for that by scaling the light power. This function is
-       * the result of a rough manual fitting. */
-      float sun_scaling = 1.0f + square_f(_radius) / 2.0f;
-      /* NOTE: Missing a factor of PI here to match Cycles. */
-      return sun_scaling / area;
+      float inv_sin_sq = 1.0f + 1.0f / square_f(_radius);
+      /* Convert irradiance to radiance. */
+      return float(M_1_PI) * inv_sin_sq;
     }
   }
 }
@@ -233,20 +220,16 @@ float Light::point_radiance_get(const ::Light *la)
       float tmp = M_PI_2 / (M_PI_2 + sqrtf(area));
       /* Lerp between 1.0 and the limit (1 / pi). */
       float mrp_scaling = tmp + (1.0f - tmp) * M_1_PI;
-      /* NOTE: The 4 factor is from Cycles definition of power. */
-      /* NOTE: Missing a factor of PI here to match Cycles. */
-      return mrp_scaling / 4.0f;
+      return float(M_1_PI) * mrp_scaling;
     }
     case LA_SPOT:
     case LA_LOCAL: {
-      /* Sphere solid angle. */
-      float area = 4.0f * float(M_PI);
-      /* NOTE: Missing a factor of PI here to match Cycles. */
-      return 1.0f / area;
+      /* Convert radiant flux to intensity. */
+      /* Inverse of sphere solid angle. */
+      return 0.25f * float(M_1_PI);
     }
     default:
     case LA_SUN: {
-      /* NOTE: Missing a factor of PI here to match Cycles. */
       return 1.0f;
     }
   }
@@ -254,8 +237,8 @@ float Light::point_radiance_get(const ::Light *la)
 
 void Light::debug_draw()
 {
-#ifdef DEBUG
-  drw_debug_sphere(_position, influence_radius_max, float4(0.8f, 0.3f, 0.0f, 1.0f));
+#ifndef NDEBUG
+  drw_debug_sphere(float3(_position), influence_radius_max, float4(0.8f, 0.3f, 0.0f, 1.0f));
 #endif
 }
 
@@ -265,13 +248,29 @@ void Light::debug_draw()
 /** \name LightModule
  * \{ */
 
+LightModule::~LightModule()
+{
+  /* WATCH: Destructor order. Expect shadow module to be destructed later. */
+  for (Light &light : light_map_.values()) {
+    light.shadow_discard_safe(inst_.shadows);
+  }
+};
+
 void LightModule::begin_sync()
 {
   use_scene_lights_ = inst_.use_scene_lights();
+  /* Disable sunlight if world has a volume shader as we consider the light cannot go through an
+   * infinite opaque medium. */
+  use_sun_lights_ = (inst_.world.has_volume_absorption() == false);
 
   /* In begin_sync so it can be animated. */
   if (assign_if_different(light_threshold_, max_ff(1e-16f, inst_.scene->eevee.light_threshold))) {
-    inst_.sampling.reset();
+    /* All local lights need to be re-sync. */
+    for (Light &light : light_map_.values()) {
+      if (!ELEM(light.type, LIGHT_SUN, LIGHT_SUN_ORTHO)) {
+        light.initialized = false;
+      }
+    }
   }
 
   sun_lights_len_ = 0;
@@ -283,68 +282,53 @@ void LightModule::sync_light(const Object *ob, ObjectHandle &handle)
   if (use_scene_lights_ == false) {
     return;
   }
+
+  if (use_sun_lights_ == false) {
+    if (static_cast<const ::Light *>(ob->data)->type == LA_SUN) {
+      return;
+    }
+  }
+
   Light &light = light_map_.lookup_or_add_default(handle.object_key);
   light.used = true;
   if (handle.recalc != 0 || !light.initialized) {
-    light.sync(/* inst_.shadows, */ ob, light_threshold_);
+    light.initialized = true;
+    light.sync(inst_.shadows, ob, light_threshold_);
   }
-  sun_lights_len_ += int(light.type == LIGHT_SUN);
-  local_lights_len_ += int(light.type != LIGHT_SUN);
+  sun_lights_len_ += int(is_sun_light(light.type));
+  local_lights_len_ += int(!is_sun_light(light.type));
 }
 
 void LightModule::end_sync()
 {
-  // ShadowModule &shadows = inst_.shadows;
-
   /* NOTE: We resize this buffer before removing deleted lights. */
   int lights_allocated = ceil_to_multiple_u(max_ii(light_map_.size(), 1), LIGHT_CHUNK);
   light_buf_.resize(lights_allocated);
 
   /* Track light deletion. */
-  Vector<ObjectKey, 0> deleted_keys;
   /* Indices inside GPU data array. */
   int sun_lights_idx = 0;
   int local_lights_idx = sun_lights_len_;
 
   /* Fill GPU data with scene data. */
-  for (auto item : light_map_.items()) {
-    Light &light = item.value;
+  auto it_end = light_map_.items().end();
+  for (auto it = light_map_.items().begin(); it != it_end; ++it) {
+    Light &light = (*it).value;
 
     if (!light.used) {
-      /* Deleted light. */
-      deleted_keys.append(item.key);
-      // light.shadow_discard_safe(shadows);
+      light_map_.remove(it);
       continue;
     }
 
-    int dst_idx = (light.type == LIGHT_SUN) ? sun_lights_idx++ : local_lights_idx++;
+    int dst_idx = is_sun_light(light.type) ? sun_lights_idx++ : local_lights_idx++;
     /* Put all light data into global data SSBO. */
     light_buf_[dst_idx] = light;
 
-#if 0
-    if (light.shadow_id != LIGHT_NO_SHADOW) {
-      if (light.type == LIGHT_SUN) {
-        light_buf_[dst_idx].shadow_data = shadows.directionals[light.shadow_id];
-      }
-      else {
-        light_buf_[dst_idx].shadow_data = shadows.punctuals[light.shadow_id];
-      }
-    }
-#endif
     /* Untag for next sync. */
     light.used = false;
   }
   /* This scene data buffer is then immutable after this point. */
   light_buf_.push_update();
-
-  for (auto &key : deleted_keys) {
-    light_map_.remove(key);
-  }
-
-  /* Update sampling on deletion or un-hiding (use_scene_lights). */
-  if (assign_if_different(light_map_size_, light_map_.size())) {
-    inst_.sampling.reset();
-  }
 
   /* If exceeding the limit, just trim off the excess to avoid glitchy rendering. */
   if (sun_lights_len_ + local_lights_len_ > CULLING_MAX_ITEM) {
@@ -453,7 +437,8 @@ void LightModule::debug_pass_sync()
     debug_draw_ps_.init();
     debug_draw_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
     debug_draw_ps_.shader_set(inst_.shaders.static_shader_get(LIGHT_CULLING_DEBUG));
-    inst_.hiz_buffer.bind_resources(&debug_draw_ps_);
+    inst_.bind_uniform_data(&debug_draw_ps_);
+    inst_.hiz_buffer.bind_resources(debug_draw_ps_);
     debug_draw_ps_.bind_ssbo("light_buf", &culling_light_buf_);
     debug_draw_ps_.bind_ssbo("light_cull_buf", &culling_data_buf_);
     debug_draw_ps_.bind_ssbo("light_zbin_buf", &culling_zbin_buf_);

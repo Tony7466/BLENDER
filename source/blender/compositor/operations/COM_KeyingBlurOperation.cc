@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2012 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_KeyingBlurOperation.h"
 
@@ -14,6 +15,7 @@ KeyingBlurOperation::KeyingBlurOperation()
   axis_ = BLUR_AXIS_X;
 
   flags_.complex = true;
+  flags_.can_be_constant = true;
 }
 
 void *KeyingBlurOperation::initialize_tile_data(rcti *rect)
@@ -32,7 +34,8 @@ void KeyingBlurOperation::execute_pixel(float output[4], int x, int y, void *dat
   float average = 0.0f;
 
   if (axis_ == 0) {
-    const int start = MAX2(0, x - size_ + 1), end = MIN2(buffer_width, x + size_);
+    const int start = MAX2(0, x - size_ + 1);
+    const int end = std::min(buffer_width, x + size_);
     for (int cx = start; cx < end; cx++) {
       int buffer_index = (y * buffer_width + cx);
       average += buffer[buffer_index];
@@ -40,7 +43,8 @@ void KeyingBlurOperation::execute_pixel(float output[4], int x, int y, void *dat
     }
   }
   else {
-    const int start = MAX2(0, y - size_ + 1), end = MIN2(input_buffer->get_height(), y + size_);
+    const int start = std::max(0, y - size_ + 1);
+    const int end = std::min(input_buffer->get_height(), y + size_);
     for (int cy = start; cy < end; cy++) {
       int buffer_index = (cy * buffer_width + x);
       average += buffer[buffer_index];
@@ -123,8 +127,8 @@ void KeyingBlurOperation::update_memory_buffer_partial(MemoryBuffer *output,
 
   for (; !it.is_end(); ++it) {
     const int coord = get_current_coord();
-    const int start_coord = MAX2(0, coord - size_ + 1);
-    const int end_coord = MIN2(coord_max, coord + size_);
+    const int start_coord = std::max(0, coord - size_ + 1);
+    const int end_coord = std::min(coord_max, coord + size_);
     const int count = end_coord - start_coord;
 
     float sum = 0.0f;

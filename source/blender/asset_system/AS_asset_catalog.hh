@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup asset_system
@@ -307,9 +309,11 @@ class AssetCatalogCollection {
   static OwningAssetCatalogMap copy_catalog_map(const OwningAssetCatalogMap &orig);
 };
 
-/** Keeps track of which catalogs are defined in a certain file on disk.
+/**
+ * Keeps track of which catalogs are defined in a certain file on disk.
  * Only contains non-owning pointers to the #AssetCatalog instances, so ensure the lifetime of this
- * class is shorter than that of the #`AssetCatalog`s themselves. */
+ * class is shorter than that of the #`AssetCatalog`s themselves.
+ */
 class AssetCatalogDefinitionFile {
  protected:
   /* Catalogs stored in this file. They are mapped by ID to make it possible to query whether a

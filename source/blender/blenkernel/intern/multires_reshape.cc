@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -12,17 +13,18 @@
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_modifier.h"
-#include "BKE_multires.h"
-#include "BKE_subdiv.h"
-#include "BKE_subsurf.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_modifier.hh"
+#include "BKE_multires.hh"
+#include "BKE_object.hh"
+#include "BKE_subdiv.hh"
+#include "BKE_subsurf.hh"
 #include "BLI_math_vector.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "multires_reshape.hh"
 
@@ -43,7 +45,8 @@ bool multiresModifier_reshapeFromVertcos(Depsgraph *depsgraph,
   multires_reshape_store_original_grids(&reshape_context);
   multires_reshape_ensure_grids(static_cast<Mesh *>(object->data), reshape_context.top.level);
   if (!multires_reshape_assign_final_coords_from_vertcos(
-          &reshape_context, vert_coords, num_vert_coords)) {
+          &reshape_context, vert_coords, num_vert_coords))
+  {
     multires_reshape_context_free(&reshape_context);
     return false;
   }
@@ -58,19 +61,21 @@ bool multiresModifier_reshapeFromObject(Depsgraph *depsgraph,
                                         Object *dst,
                                         Object *src)
 {
-  Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
-  Object *src_eval = DEG_get_evaluated_object(depsgraph, src);
-  Mesh *src_mesh_eval = mesh_get_eval_final(depsgraph, scene_eval, src_eval, &CD_MASK_BAREMESH);
+  const Object *ob_eval = DEG_get_evaluated_object(depsgraph, src);
+  if (!ob_eval) {
+    return false;
+  }
+  const Mesh *src_mesh_eval = BKE_object_get_evaluated_mesh(ob_eval);
+  if (!src_mesh_eval) {
+    return false;
+  }
 
-  int num_deformed_verts;
-  float(*deformed_verts)[3] = BKE_mesh_vert_coords_alloc(src_mesh_eval, &num_deformed_verts);
-
-  const bool result = multiresModifier_reshapeFromVertcos(
-      depsgraph, dst, mmd, deformed_verts, num_deformed_verts);
-
-  MEM_freeN(deformed_verts);
-
-  return result;
+  return multiresModifier_reshapeFromVertcos(
+      depsgraph,
+      dst,
+      mmd,
+      reinterpret_cast<const float(*)[3]>(src_mesh_eval->vert_positions().data()),
+      src_mesh_eval->totvert);
 }
 
 /** \} */
@@ -84,6 +89,7 @@ bool multiresModifier_reshapeFromDeformModifier(Depsgraph *depsgraph,
                                                 MultiresModifierData *mmd,
                                                 ModifierData *deform_md)
 {
+  using namespace blender;
   MultiresModifierData highest_mmd = blender::dna::shallow_copy(*mmd);
   highest_mmd.sculptlvl = highest_mmd.totlvl;
   highest_mmd.lvl = highest_mmd.totlvl;
@@ -92,8 +98,7 @@ bool multiresModifier_reshapeFromDeformModifier(Depsgraph *depsgraph,
   /* Create mesh for the multires, ignoring any further modifiers (leading
    * deformation modifiers will be applied though). */
   Mesh *multires_mesh = BKE_multires_create_mesh(depsgraph, object, &highest_mmd);
-  int num_deformed_verts;
-  float(*deformed_verts)[3] = BKE_mesh_vert_coords_alloc(multires_mesh, &num_deformed_verts);
+  Array<float3> deformed_verts(multires_mesh->vert_positions());
 
   /* Apply deformation modifier on the multires, */
   ModifierEvalContext modifier_ctx{};
@@ -101,16 +106,16 @@ bool multiresModifier_reshapeFromDeformModifier(Depsgraph *depsgraph,
   modifier_ctx.object = object;
   modifier_ctx.flag = MOD_APPLY_USECACHE | MOD_APPLY_IGNORE_SIMPLIFY;
 
-  BKE_modifier_deform_verts(
-      deform_md, &modifier_ctx, multires_mesh, deformed_verts, multires_mesh->totvert);
+  BKE_modifier_deform_verts(deform_md, &modifier_ctx, multires_mesh, deformed_verts);
   BKE_id_free(nullptr, multires_mesh);
 
   /* Reshaping */
   bool result = multiresModifier_reshapeFromVertcos(
-      depsgraph, object, &highest_mmd, deformed_verts, num_deformed_verts);
-
-  /* Cleanup */
-  MEM_freeN(deformed_verts);
+      depsgraph,
+      object,
+      &highest_mmd,
+      reinterpret_cast<float(*)[3]>(deformed_verts.data()),
+      deformed_verts.size());
 
   return result;
 }
@@ -125,7 +130,8 @@ bool multiresModifier_reshapeFromCCG(const int tot_level, Mesh *coarse_mesh, Sub
 {
   MultiresReshapeContext reshape_context;
   if (!multires_reshape_context_create_from_ccg(
-          &reshape_context, subdiv_ccg, coarse_mesh, tot_level)) {
+          &reshape_context, subdiv_ccg, coarse_mesh, tot_level))
+  {
     return false;
   }
 
@@ -177,10 +183,9 @@ void multiresModifier_subdivide_to_level(Object *object,
 
   /* There was no multires at all, all displacement is at 0. Can simply make sure all mdisps grids
    * are allocated at a proper level and return. */
-  const bool has_mdisps = CustomData_has_layer(&coarse_mesh->ldata, CD_MDISPS);
+  const bool has_mdisps = CustomData_has_layer(&coarse_mesh->loop_data, CD_MDISPS);
   if (!has_mdisps) {
-    CustomData_add_layer(
-        &coarse_mesh->ldata, CD_MDISPS, CD_SET_DEFAULT, nullptr, coarse_mesh->totloop);
+    CustomData_add_layer(&coarse_mesh->loop_data, CD_MDISPS, CD_SET_DEFAULT, coarse_mesh->totloop);
   }
 
   /* NOTE: Subdivision happens from the top level of the existing multires modifier. If it is set

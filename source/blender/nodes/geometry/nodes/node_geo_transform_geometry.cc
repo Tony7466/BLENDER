@@ -1,35 +1,42 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
 #endif
 
+#include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
-#include "BLI_math_matrix_types.hh"
+#include "BLI_math_rotation.hh"
+#include "BLI_task.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
 #include "DNA_volume_types.h"
 
 #include "BKE_curves.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
-#include "BKE_volume.h"
+#include "BKE_volume.hh"
+#include "BKE_volume_openvdb.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
 
-static bool use_translate(const float3 rotation, const float3 scale)
+static bool use_translate(const math::Quaternion &rotation, const float3 scale)
 {
-  if (compare_ff(math::length_squared(rotation), 0.0f, 1e-9f) != 1) {
+  if (math::angle_of(rotation).radian() > 1e-7f) {
     return false;
   }
   if (compare_ff(scale.x, 1.0f, 1e-9f) != 1 || compare_ff(scale.y, 1.0f, 1e-9f) != 1 ||
-      compare_ff(scale.z, 1.0f, 1e-9f) != 1) {
+      compare_ff(scale.z, 1.0f, 1e-9f) != 1)
+  {
     return false;
   }
   return true;
@@ -53,27 +60,34 @@ static void transform_positions(MutableSpan<float3> positions, const float4x4 &m
   });
 }
 
-static void translate_mesh(Mesh &mesh, const float3 translation)
-{
-  if (!math::is_zero(translation)) {
-    translate_positions(mesh.vert_positions_for_write(), translation);
-    BKE_mesh_tag_coords_changed_uniformly(&mesh);
-  }
-}
-
 static void transform_mesh(Mesh &mesh, const float4x4 &transform)
 {
   transform_positions(mesh.vert_positions_for_write(), transform);
-  BKE_mesh_tag_coords_changed(&mesh);
+  BKE_mesh_tag_positions_changed(&mesh);
 }
 
 static void translate_pointcloud(PointCloud &pointcloud, const float3 translation)
 {
+  if (math::is_zero(translation)) {
+    return;
+  }
+
+  std::optional<Bounds<float3>> bounds;
+  if (pointcloud.runtime->bounds_cache.is_cached()) {
+    bounds = pointcloud.runtime->bounds_cache.data();
+  }
+
   MutableAttributeAccessor attributes = pointcloud.attributes_for_write();
   SpanAttributeWriter position = attributes.lookup_or_add_for_write_span<float3>(
       "position", ATTR_DOMAIN_POINT);
   translate_positions(position.span, translation);
   position.finish();
+
+  if (bounds) {
+    bounds->min += translation;
+    bounds->max += translation;
+    pointcloud.runtime->bounds_cache.ensure([&](Bounds<float3> &r_data) { r_data = *bounds; });
+  }
 }
 
 static void transform_pointcloud(PointCloud &pointcloud, const float4x4 &transform)
@@ -83,6 +97,28 @@ static void transform_pointcloud(PointCloud &pointcloud, const float4x4 &transfo
       "position", ATTR_DOMAIN_POINT);
   transform_positions(position.span, transform);
   position.finish();
+}
+
+static void translate_greasepencil(GreasePencil &grease_pencil, const float3 translation)
+{
+  using namespace blender::bke::greasepencil;
+  for (const int layer_index : grease_pencil.layers().index_range()) {
+    if (Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(grease_pencil,
+                                                                          layer_index)) {
+      drawing->strokes_for_write().translate(translation);
+    }
+  }
+}
+
+static void transform_greasepencil(GreasePencil &grease_pencil, const float4x4 &transform)
+{
+  using namespace blender::bke::greasepencil;
+  for (const int layer_index : grease_pencil.layers().index_range()) {
+    if (Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(grease_pencil,
+                                                                          layer_index)) {
+      drawing->strokes_for_write().transform(transform);
+    }
+  }
 }
 
 static void translate_instances(bke::Instances &instances, const float3 translation)
@@ -124,7 +160,7 @@ static void transform_volume(GeoNodeExecParams &params,
     VolumeGrid *volume_grid = BKE_volume_grid_get_for_write(&volume, i);
     float4x4 grid_matrix;
     BKE_volume_grid_transform_matrix(volume_grid, grid_matrix.ptr());
-    grid_matrix *= transform;
+    grid_matrix = transform * grid_matrix;
     const float determinant = math::determinant(grid_matrix);
     if (!BKE_volume_grid_determinant_valid(determinant)) {
       found_too_small_scale = true;
@@ -198,10 +234,13 @@ static void translate_geometry_set(GeoNodeExecParams &params,
     curves->geometry.wrap().translate(translation);
   }
   if (Mesh *mesh = geometry.get_mesh_for_write()) {
-    translate_mesh(*mesh, translation);
+    BKE_mesh_translate(mesh, translation, false);
   }
   if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
     translate_pointcloud(*pointcloud, translation);
+  }
+  if (GreasePencil *grease_pencil = geometry.get_grease_pencil_for_write()) {
+    translate_greasepencil(*grease_pencil, translation);
   }
   if (Volume *volume = geometry.get_volume_for_write()) {
     translate_volume(params, *volume, translation, depsgraph);
@@ -228,6 +267,9 @@ void transform_geometry_set(GeoNodeExecParams &params,
   if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
     transform_pointcloud(*pointcloud, transform);
   }
+  if (GreasePencil *grease_pencil = geometry.get_grease_pencil_for_write()) {
+    transform_greasepencil(*grease_pencil, transform);
+  }
   if (Volume *volume = geometry.get_volume_for_write()) {
     transform_volume(params, *volume, transform, depsgraph);
   }
@@ -241,7 +283,7 @@ void transform_geometry_set(GeoNodeExecParams &params,
 
 void transform_mesh(Mesh &mesh,
                     const float3 translation,
-                    const float3 rotation,
+                    const math::Quaternion rotation,
                     const float3 scale)
 {
   const float4x4 matrix = math::from_loc_rot_scale<float4x4>(translation, rotation, scale);
@@ -254,18 +296,18 @@ namespace blender::nodes::node_geo_transform_geometry_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Geometry"));
-  b.add_input<decl::Vector>(N_("Translation")).subtype(PROP_TRANSLATION);
-  b.add_input<decl::Vector>(N_("Rotation")).subtype(PROP_EULER);
-  b.add_input<decl::Vector>(N_("Scale")).default_value({1, 1, 1}).subtype(PROP_XYZ);
-  b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
+  b.add_input<decl::Geometry>("Geometry");
+  b.add_input<decl::Vector>("Translation").subtype(PROP_TRANSLATION);
+  b.add_input<decl::Rotation>("Rotation");
+  b.add_input<decl::Vector>("Scale").default_value({1, 1, 1}).subtype(PROP_XYZ);
+  b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
   const float3 translation = params.extract_input<float3>("Translation");
-  const float3 rotation = params.extract_input<float3>("Rotation");
+  const math::Quaternion rotation = params.extract_input<math::Quaternion>("Rotation");
   const float3 scale = params.extract_input<float3>("Scale");
 
   /* Use only translation if rotation and scale don't apply. */
@@ -281,17 +323,17 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   params.set_output("Geometry", std::move(geometry_set));
 }
-}  // namespace blender::nodes::node_geo_transform_geometry_cc
 
-void register_node_type_geo_transform_geometry()
+static void register_node()
 {
-  namespace file_ns = blender::nodes::node_geo_transform_geometry_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_TRANSFORM_GEOMETRY, "Transform Geometry", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node)
+
+}  // namespace blender::nodes::node_geo_transform_geometry_cc

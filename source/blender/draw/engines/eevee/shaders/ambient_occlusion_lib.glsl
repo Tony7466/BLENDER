@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2017-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
@@ -82,7 +85,25 @@ vec2 get_ao_dir(float jitter)
   return vec2(cos(jitter), sin(jitter));
 }
 
+/* Certain intel drivers on macOS lose precision, resulting in rendering artifacts,
+ * when using standard pow(A, B) function.
+ * Using logarithmic identity provides higher precision results. */
+#if defined(GPU_INTEL) && defined(OS_MAC)
+float occlusion_pow(float a, float b)
+{
+  return exp(b * log(a));
+}
+#else
+float occlusion_pow(float a, float b)
+{
+  return pow(a, b);
+}
+#endif
+
 /* Return horizon angle cosine. */
+#if (defined(GPU_METAL) && defined(GPU_ATI))
+__attribute__((noinline))
+#endif
 float search_horizon(vec3 vI,
                      vec3 vP,
                      float noise,
@@ -103,10 +124,12 @@ float search_horizon(vec3 vI,
   }
 
   float prev_time, time = 0.0;
-  for (float iter = 0.0; time < ssray.max_time && iter < sample_count; iter++) {
+  int i_sample_count = int(sample_count);
+  for (int iter = 0; time < ssray.max_time && iter < i_sample_count; iter++) {
     prev_time = time;
     /* Gives us good precision at center and ensure we cross at least one pixel per iteration. */
-    time = 1.0 + iter + sqr((iter + noise) / sample_count) * ssray.max_time;
+    float fl_iter = float(iter);
+    time = 1.0 + fl_iter + sqr((fl_iter + noise) / sample_count) * ssray.max_time;
     float stride = time - prev_time;
     float lod = (log2(stride) - noise) / (1.0 + aoQuality);
 
@@ -295,14 +318,14 @@ void occlusion_eval(OcclusionData data,
     bent_normal = N;
   }
   else {
-    /* NOTE: using pow(visibility, 6.0) produces NaN (see T87369). */
+    /* NOTE: using pow(visibility, 6.0) produces NaN (see #87369). */
     float tmp = saturate(pow6(visibility));
     bent_normal = normalize(mix(bent_normal, N, tmp));
   }
 }
 
-/* Multibounce approximation base on surface albedo.
- * Page 78 in the .pdf version. */
+/* Multi-bounce approximation base on surface albedo.
+ * Page 78 in the PDF version. */
 float gtao_multibounce(float visibility, vec3 albedo)
 {
   if (aoBounceFac == 0.0) {
@@ -327,7 +350,7 @@ float diffuse_occlusion(OcclusionData data, vec3 V, vec3 N, vec3 Ng)
   float visibility;
   occlusion_eval(data, V, N, Ng, 0.0, visibility, unused_error, unused);
   /* Scale by user factor */
-  visibility = pow(saturate(visibility), aoFactor);
+  visibility = occlusion_pow(saturate(visibility), aoFactor);
   return visibility;
 }
 
@@ -340,7 +363,7 @@ float diffuse_occlusion(
 
   visibility = gtao_multibounce(visibility, albedo);
   /* Scale by user factor */
-  visibility = pow(saturate(visibility), aoFactor);
+  visibility = occlusion_pow(saturate(visibility), aoFactor);
   return visibility;
 }
 
@@ -404,7 +427,7 @@ float specular_occlusion(
   visibility = mix(specular_occlusion, 1.0, tmp);
 
   /* Scale by user factor */
-  visibility = pow(saturate(visibility), aoFactor);
+  visibility = occlusion_pow(saturate(visibility), aoFactor);
   return visibility;
 }
 
@@ -437,7 +460,7 @@ float ambient_occlusion_eval(vec3 normal,
                              const float inverted,
                              const float sample_count)
 {
-  /* Avoid multiline define causing compiler issues. */
+  /* Avoid multi-line define causing compiler issues. */
   /* clang-format off */
 #if defined(GPU_FRAGMENT_SHADER) && (defined(MESH_SHADER) || defined(HAIR_SHADER)) && !defined(DEPTH_SHADER) && !defined(VOLUMETRICS)
   /* clang-format on */

@@ -1,6 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <cstdint>
+#include <memory>
 
 #include "BLI_array.hh"
 #include "BLI_hash.hh"
@@ -13,6 +16,8 @@
 #include "GPU_shader.h"
 #include "GPU_texture.h"
 
+#include "COM_context.hh"
+#include "COM_result.hh"
 #include "COM_symmetric_blur_weights.hh"
 
 namespace blender::realtime_compositor {
@@ -40,7 +45,7 @@ bool operator==(const SymmetricBlurWeightsKey &a, const SymmetricBlurWeightsKey 
  * Symmetric Blur Weights.
  */
 
-SymmetricBlurWeights::SymmetricBlurWeights(int type, float2 radius)
+SymmetricBlurWeights::SymmetricBlurWeights(Context &context, int type, float2 radius)
 {
   /* The full size of filter is double the radius plus 1, but since the filter is symmetric, we
    * only compute a single quadrant of it and so no doubling happens. We add 1 to make sure the
@@ -93,7 +98,14 @@ SymmetricBlurWeights::SymmetricBlurWeights(int type, float2 radius)
     }
   }
 
-  texture_ = GPU_texture_create_2d("Weights", size.x, size.y, 1, GPU_R16F, weights.data());
+  texture_ = GPU_texture_create_2d(
+      "Weights",
+      size.x,
+      size.y,
+      1,
+      Result::texture_format(ResultType::Float, context.get_precision()),
+      GPU_TEXTURE_USAGE_GENERAL,
+      weights.data());
 }
 
 SymmetricBlurWeights::~SymmetricBlurWeights()
@@ -103,13 +115,40 @@ SymmetricBlurWeights::~SymmetricBlurWeights()
 
 void SymmetricBlurWeights::bind_as_texture(GPUShader *shader, const char *texture_name) const
 {
-  const int texture_image_unit = GPU_shader_get_texture_binding(shader, texture_name);
+  const int texture_image_unit = GPU_shader_get_sampler_binding(shader, texture_name);
   GPU_texture_bind(texture_, texture_image_unit);
 }
 
 void SymmetricBlurWeights::unbind_as_texture() const
 {
   GPU_texture_unbind(texture_);
+}
+
+/* --------------------------------------------------------------------
+ * Symmetric Blur Weights Container.
+ */
+
+void SymmetricBlurWeightsContainer::reset()
+{
+  /* First, delete all resources that are no longer needed. */
+  map_.remove_if([](auto item) { return !item.value->needed; });
+
+  /* Second, reset the needed status of the remaining resources to false to ready them to track
+   * their needed status for the next evaluation. */
+  for (auto &value : map_.values()) {
+    value->needed = false;
+  }
+}
+
+SymmetricBlurWeights &SymmetricBlurWeightsContainer::get(Context &context, int type, float2 radius)
+{
+  const SymmetricBlurWeightsKey key(type, radius);
+
+  auto &weights = *map_.lookup_or_add_cb(
+      key, [&]() { return std::make_unique<SymmetricBlurWeights>(context, type, radius); });
+
+  weights.needed = true;
+  return weights;
 }
 
 }  // namespace blender::realtime_compositor

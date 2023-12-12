@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "bvh/build.h"
 #include "bvh/bvh.h"
@@ -192,9 +193,7 @@ Mesh::Mesh(const NodeType *node_type, Type geom_type_)
   patch_table = NULL;
 }
 
-Mesh::Mesh() : Mesh(get_node_type(), Geometry::MESH)
-{
-}
+Mesh::Mesh() : Mesh(get_node_type(), Geometry::MESH) {}
 
 Mesh::~Mesh()
 {
@@ -430,8 +429,9 @@ void Mesh::copy_center_to_motion_step(const int motion_step)
     size_t numverts = verts.size();
 
     memcpy(attr_mP->data_float3() + motion_step * numverts, P, sizeof(float3) * numverts);
-    if (attr_mN)
+    if (attr_mN) {
       memcpy(attr_mN->data_float3() + motion_step * numverts, N, sizeof(float3) * numverts);
+    }
   }
 }
 
@@ -462,31 +462,35 @@ void Mesh::compute_bounds()
   size_t verts_size = verts.size();
 
   if (verts_size > 0) {
-    for (size_t i = 0; i < verts_size; i++)
+    for (size_t i = 0; i < verts_size; i++) {
       bnds.grow(verts[i]);
+    }
 
     Attribute *attr = attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
     if (use_motion_blur && attr) {
       size_t steps_size = verts.size() * (motion_steps - 1);
       float3 *vert_steps = attr->data_float3();
 
-      for (size_t i = 0; i < steps_size; i++)
+      for (size_t i = 0; i < steps_size; i++) {
         bnds.grow(vert_steps[i]);
+      }
     }
 
     if (!bnds.valid()) {
       bnds = BoundBox::empty;
 
       /* skip nan or inf coordinates */
-      for (size_t i = 0; i < verts_size; i++)
+      for (size_t i = 0; i < verts_size; i++) {
         bnds.grow_safe(verts[i]);
+      }
 
       if (use_motion_blur && attr) {
         size_t steps_size = verts.size() * (motion_steps - 1);
         float3 *vert_steps = attr->data_float3();
 
-        for (size_t i = 0; i < steps_size; i++)
+        for (size_t i = 0; i < steps_size; i++) {
           bnds.grow_safe(vert_steps[i]);
+        }
       }
     }
   }
@@ -504,8 +508,9 @@ void Mesh::apply_transform(const Transform &tfm, const bool apply_to_motion)
   transform_normal = transform_transposed_inverse(tfm);
 
   /* apply to mesh vertices */
-  for (size_t i = 0; i < verts.size(); i++)
+  for (size_t i = 0; i < verts.size(); i++) {
     verts[i] = transform_point(&tfm, verts[i]);
+  }
 
   tag_verts_modified();
 
@@ -516,8 +521,9 @@ void Mesh::apply_transform(const Transform &tfm, const bool apply_to_motion)
       size_t steps_size = verts.size() * (motion_steps - 1);
       float3 *vert_steps = attr->data_float3();
 
-      for (size_t i = 0; i < steps_size; i++)
+      for (size_t i = 0; i < steps_size; i++) {
         vert_steps[i] = transform_point(&tfm, vert_steps[i]);
+      }
     }
 
     Attribute *attr_N = attributes.find(ATTR_STD_MOTION_VERTEX_NORMAL);
@@ -527,8 +533,9 @@ void Mesh::apply_transform(const Transform &tfm, const bool apply_to_motion)
       size_t steps_size = verts.size() * (motion_steps - 1);
       float3 *normal_steps = attr_N->data_float3();
 
-      for (size_t i = 0; i < steps_size; i++)
+      for (size_t i = 0; i < steps_size; i++) {
         normal_steps[i] = normalize(transform_direction(&ntfm, normal_steps[i]));
+      }
     }
   }
 }
@@ -536,8 +543,9 @@ void Mesh::apply_transform(const Transform &tfm, const bool apply_to_motion)
 void Mesh::add_face_normals()
 {
   /* don't compute if already there */
-  if (attributes.find(ATTR_STD_FACE_NORMAL))
+  if (attributes.find(ATTR_STD_FACE_NORMAL)) {
     return;
+  }
 
   /* get attributes */
   Attribute *attr_fN = attributes.add(ATTR_STD_FACE_NORMAL);
@@ -558,8 +566,9 @@ void Mesh::add_face_normals()
   if (transform_applied) {
     Transform ntfm = transform_inverse(transform_normal);
 
-    for (size_t i = 0; i < triangles_size; i++)
+    for (size_t i = 0; i < triangles_size; i++) {
       fN[i] = normalize(transform_direction(&ntfm, fN[i]));
+    }
   }
 }
 
@@ -587,10 +596,14 @@ void Mesh::add_vertex_normals()
       }
     }
 
-    for (size_t i = 0; i < verts_size; i++) {
-      vN[i] = normalize(vN[i]);
-      if (flip) {
-        vN[i] = -vN[i];
+    if (flip) {
+      for (size_t i = 0; i < verts_size; i++) {
+        vN[i] = -normalize(vN[i]);
+      }
+    }
+    else {
+      for (size_t i = 0; i < verts_size; i++) {
+        vN[i] = normalize(vN[i]);
       }
     }
   }
@@ -611,16 +624,21 @@ void Mesh::add_vertex_normals()
       memset(mN, 0, verts.size() * sizeof(float3));
 
       for (size_t i = 0; i < triangles_size; i++) {
+        Triangle tri = get_triangle(i);
+        float3 fN = tri.compute_normal(mP);
         for (size_t j = 0; j < 3; j++) {
-          float3 fN = get_triangle(i).compute_normal(mP);
-          mN[get_triangle(i).v[j]] += fN;
+          mN[tri.v[j]] += fN;
         }
       }
 
-      for (size_t i = 0; i < verts_size; i++) {
-        mN[i] = normalize(mN[i]);
-        if (flip) {
-          mN[i] = -mN[i];
+      if (flip) {
+        for (size_t i = 0; i < verts_size; i++) {
+          mN[i] = -normalize(mN[i]);
+        }
+      }
+      else {
+        for (size_t i = 0; i < verts_size; i++) {
+          mN[i] = normalize(mN[i]);
         }
       }
     }
@@ -645,10 +663,14 @@ void Mesh::add_vertex_normals()
       }
     }
 
-    for (size_t i = 0; i < verts_size; i++) {
-      vN[i] = normalize(vN[i]);
-      if (flip) {
-        vN[i] = -vN[i];
+    if (flip) {
+      for (size_t i = 0; i < verts_size; i++) {
+        vN[i] = -normalize(vN[i]);
+      }
+    }
+    else {
+      for (size_t i = 0; i < verts_size; i++) {
+        vN[i] = normalize(vN[i]);
       }
     }
   }
@@ -724,43 +746,53 @@ void Mesh::pack_normals(packed_float3 *vnormal)
   float3 *vN = attr_vN->data_float3();
   size_t verts_size = verts.size();
 
-  for (size_t i = 0; i < verts_size; i++) {
-    float3 vNi = vN[i];
-
-    if (do_transform)
-      vNi = safe_normalize(transform_direction(&ntfm, vNi));
-
-    vnormal[i] = make_float3(vNi.x, vNi.y, vNi.z);
+  if (do_transform) {
+    for (size_t i = 0; i < verts_size; i++) {
+      vnormal[i] = safe_normalize(transform_direction(&ntfm, vN[i]));
+    }
+  }
+  else {
+    for (size_t i = 0; i < verts_size; i++) {
+      vnormal[i] = vN[i];
+    }
   }
 }
 
 void Mesh::pack_verts(packed_float3 *tri_verts,
-                      uint4 *tri_vindex,
+                      packed_uint3 *tri_vindex,
                       uint *tri_patch,
                       float2 *tri_patch_uv)
 {
   size_t verts_size = verts.size();
-
+  size_t triangles_size = num_triangles();
+  const int *p_tris = triangles.data();
+  int off = 0;
   if (verts_size && get_num_subd_faces()) {
     float2 *vert_patch_uv_ptr = vert_patch_uv.data();
 
     for (size_t i = 0; i < verts_size; i++) {
+      tri_verts[i] = verts[i];
       tri_patch_uv[i] = vert_patch_uv_ptr[i];
     }
+    for (size_t i = 0; i < triangles_size; i++) {
+      tri_vindex[i] = make_packed_uint3(p_tris[off + 0] + vert_offset,
+                                        p_tris[off + 1] + vert_offset,
+                                        p_tris[off + 2] + vert_offset);
+      tri_patch[i] = triangle_patch[i] * 8 + patch_offset;
+      off += 3;
+    }
   }
-
-  size_t triangles_size = num_triangles();
-
-  for (size_t i = 0; i < triangles_size; i++) {
-    const Triangle t = get_triangle(i);
-    tri_vindex[i] = make_uint4(
-        t.v[0] + vert_offset, t.v[1] + vert_offset, t.v[2] + vert_offset, 3 * (prim_offset + i));
-
-    tri_patch[i] = (!get_num_subd_faces()) ? -1 : (triangle_patch[i] * 8 + patch_offset);
-
-    tri_verts[i * 3] = verts[t.v[0]];
-    tri_verts[i * 3 + 1] = verts[t.v[1]];
-    tri_verts[i * 3 + 2] = verts[t.v[2]];
+  else {
+    for (size_t i = 0; i < verts_size; i++) {
+      tri_verts[i] = verts[i];
+    }
+    for (size_t i = 0; i < triangles_size; i++) {
+      tri_vindex[i] = make_packed_uint3(p_tris[off + 0] + vert_offset,
+                                        p_tris[off + 1] + vert_offset,
+                                        p_tris[off + 2] + vert_offset);
+      tri_patch[i] = -1;
+      off += 3;
+    }
   }
 }
 

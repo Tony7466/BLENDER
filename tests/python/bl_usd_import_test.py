@@ -1,10 +1,19 @@
+# SPDX-FileCopyrightText: 2021-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import pathlib
 import sys
 import unittest
+import tempfile
+from pxr import Usd
+from pxr import UsdShade
+from pxr import UsdGeom
+from pxr import Sdf
 
 import bpy
+
+from mathutils import Matrix, Vector, Quaternion, Euler
 
 args = None
 
@@ -13,6 +22,8 @@ class AbstractUSDTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.testdir = args.testdir
+        cls._tempdir = tempfile.TemporaryDirectory()
+        cls.tempdir = pathlib.Path(cls._tempdir.name)
 
     def setUp(self):
         self.assertTrue(self.testdir.exists(),
@@ -20,6 +31,9 @@ class AbstractUSDTest(unittest.TestCase):
 
         # Make sure we always start with a known-empty file.
         bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "empty.blend"))
+
+    def tearDown(self):
+        self._tempdir.cleanup()
 
 
 class USDImportTest(AbstractUSDTest):
@@ -32,8 +46,12 @@ class USDImportTest(AbstractUSDTest):
         self.assertEqual({'FINISHED'}, res, f"Unable to import USD file {infile}")
 
         infile = str(self.testdir / "this_file_doesn't_exist.usda")
-        res = bpy.ops.wm.usd_import(filepath=infile)
-        self.assertEqual({'CANCELLED'}, res, "Was somehow able to import a non-existent USD file!")
+        # RPT_ERROR Reports from operators generate `RuntimeError` python exceptions.
+        try:
+            res = bpy.ops.wm.usd_import(filepath=infile)
+            self.assertEqual({'CANCELLED'}, res, "Was somehow able to import a non-existent USD file!")
+        except RuntimeError as e:
+            self.assertTrue(e.args[0].startswith("Error: USD Import: unable to open stage to read"))
 
     def test_import_prim_hierarchy(self):
         """Test importing a simple object hierarchy from a USDA file."""
@@ -169,8 +187,8 @@ class USDImportTest(AbstractUSDTest):
         self.assertAlmostEqual(43.12, test_cam.lens, 2)
         self.assertAlmostEqual(24.89, test_cam.sensor_width, 2)
         self.assertAlmostEqual(14.00, test_cam.sensor_height, 2)
-        self.assertAlmostEqual(12.34, test_cam.shift_x, 2)
-        self.assertAlmostEqual(56.78, test_cam.shift_y, 2)
+        self.assertAlmostEqual(2.281, test_cam.shift_x, 2)
+        self.assertAlmostEqual(0.496, test_cam.shift_y, 2)
 
         bpy.ops.object.select_all(action='SELECT')
         bpy.ops.object.delete()
@@ -186,8 +204,212 @@ class USDImportTest(AbstractUSDTest):
         self.assertAlmostEqual(4.312, test_cam.lens, 3)
         self.assertAlmostEqual(2.489, test_cam.sensor_width, 3)
         self.assertAlmostEqual(1.400, test_cam.sensor_height, 3)
-        self.assertAlmostEqual(1.234, test_cam.shift_x, 3)
-        self.assertAlmostEqual(5.678, test_cam.shift_y, 3)
+        self.assertAlmostEqual(2.281, test_cam.shift_x, 3)
+        self.assertAlmostEqual(0.496, test_cam.shift_y, 3)
+
+    def test_import_shader_varname_with_connection(self):
+        """Test importing USD shader where uv primvar is a connection"""
+
+        varname = "testmap"
+        texfile = str(self.testdir / "textures/test_grid_1001.png")
+
+        # Create the test USD file.
+        temp_usd_file = str(self.tempdir / "usd_varname_test.usda")
+        stage = Usd.Stage.CreateNew(temp_usd_file)
+        mesh1 = stage.DefinePrim("/mesh1", "Mesh")
+        mesh2 = stage.DefinePrim("/mesh2", "Mesh")
+
+        # Create two USD preview surface shaders in two materials.
+        m1 = UsdShade.Material.Define(stage, "/mat1")
+        s1 = UsdShade.Shader.Define(stage, "/mat1/previewshader")
+        s1.CreateIdAttr("UsdPreviewSurface")
+        m1.CreateSurfaceOutput().ConnectToSource(s1.ConnectableAPI(), "surface")
+        t1 = UsdShade.Shader.Define(stage, "/mat1/diffuseTexture")
+        t1.CreateIdAttr("UsdUVTexture")
+        t1.CreateInput('file', Sdf.ValueTypeNames.Asset).Set(texfile)
+        t1.CreateOutput("rgb", Sdf.ValueTypeNames.Float3)
+        s1.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(t1.ConnectableAPI(), "rgb")
+        t2 = UsdShade.Shader.Define(stage, "/mat1/roughnessTexture")
+        t2.CreateIdAttr("UsdUVTexture")
+        t2.CreateInput('file', Sdf.ValueTypeNames.Asset).Set(texfile)
+        t2.CreateOutput("rgb", Sdf.ValueTypeNames.Float3)
+        s1.CreateInput("roughness", Sdf.ValueTypeNames.Color3f).ConnectToSource(t2.ConnectableAPI(), "rgb")
+
+        m2 = UsdShade.Material.Define(stage, "/mat2")
+        s2 = UsdShade.Shader.Define(stage, "/mat2/previewshader")
+        s2.CreateIdAttr("UsdPreviewSurface")
+        m2.CreateSurfaceOutput().ConnectToSource(s2.ConnectableAPI(), "surface")
+        t3 = UsdShade.Shader.Define(stage, "/mat2/diffuseTexture")
+        t3.CreateIdAttr("UsdUVTexture")
+        t3.CreateInput('file', Sdf.ValueTypeNames.Asset).Set(texfile)
+        t3.CreateOutput("rgb", Sdf.ValueTypeNames.Float3)
+        s2.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(t3.ConnectableAPI(), "rgb")
+        t4 = UsdShade.Shader.Define(stage, "/mat2/roughnessTexture")
+        t4.CreateIdAttr("UsdUVTexture")
+        t4.CreateInput('file', Sdf.ValueTypeNames.Asset).Set(texfile)
+        t4.CreateOutput("rgb", Sdf.ValueTypeNames.Float3)
+        s2.CreateInput("roughness", Sdf.ValueTypeNames.Color3f).ConnectToSource(t4.ConnectableAPI(), "rgb")
+
+        # Bind mat1 to mesh1, mat2 to mesh2.
+        bindingAPI = UsdShade.MaterialBindingAPI.Apply(mesh1)
+        bindingAPI.Bind(m1)
+        bindingAPI = UsdShade.MaterialBindingAPI.Apply(mesh2)
+        bindingAPI.Bind(m2)
+
+        # Create varname defined as a token.
+        s3 = UsdShade.Shader.Define(stage, "/mat1/primvar_reader1")
+        s3.CreateIdAttr('UsdPrimvarReader_float2')
+        s3input = s3.CreateInput("varname", Sdf.ValueTypeNames.Token)
+        s3input.Set(varname)
+        t1.CreateInput("st", Sdf.ValueTypeNames.TexCoord2f).ConnectToSource(s3.ConnectableAPI(), "result")
+
+        # Create varname defined as a connection to a token.
+        varname1 = m1.CreateInput("varname", Sdf.ValueTypeNames.Token)
+        varname1.Set(varname)
+        s4 = UsdShade.Shader.Define(stage, "/mat1/primvar_reader2")
+        s4.CreateIdAttr('UsdPrimvarReader_float2')
+        s4input = s4.CreateInput("varname", Sdf.ValueTypeNames.Token)
+        UsdShade.ConnectableAPI.ConnectToSource(s4input, varname1)
+        t2.CreateInput("st", Sdf.ValueTypeNames.TexCoord2f).ConnectToSource(s4.ConnectableAPI(), "result")
+
+        # Create varname defined as a string.
+        s5 = UsdShade.Shader.Define(stage, "/mat2/primvar_reader1")
+        s5.CreateIdAttr('UsdPrimvarReader_float2')
+        s5input = s5.CreateInput("varname", Sdf.ValueTypeNames.String)
+        s5input.Set(varname)
+        t3.CreateInput("st", Sdf.ValueTypeNames.TexCoord2f).ConnectToSource(s5.ConnectableAPI(), "result")
+
+        # Create varname defined as a connection to a string.
+        varname2 = m2.CreateInput("varname", Sdf.ValueTypeNames.String)
+        varname2.Set(varname)
+        s6 = UsdShade.Shader.Define(stage, "/mat2/primvar_reader2")
+        s6.CreateIdAttr('UsdPrimvarReader_float2')
+        s6input = s6.CreateInput("varname", Sdf.ValueTypeNames.String)
+        UsdShade.ConnectableAPI.ConnectToSource(s6input, varname2)
+        t4.CreateInput("st", Sdf.ValueTypeNames.TexCoord2f).ConnectToSource(s6.ConnectableAPI(), "result")
+
+        stage.Save()
+
+        # Now import the USD file.
+        res = bpy.ops.wm.usd_import(filepath=temp_usd_file, import_all_materials=True)
+        self.assertEqual({'FINISHED'}, res)
+
+        # Ensure that we find the correct varname for all four primvar readers.
+        num_uvmaps_found = 0
+        mats_to_test = []
+        mats_to_test.append(bpy.data.materials["mat1"])
+        mats_to_test.append(bpy.data.materials["mat2"])
+        for mat in mats_to_test:
+            self.assertIsNotNone(mat.node_tree, "Material node tree is empty")
+            for node in mat.node_tree.nodes:
+                if node.type == "UVMAP":
+                    self.assertEqual(varname, node.uv_map, "Unexpected value for varname")
+                    num_uvmaps_found += 1
+
+        self.assertEqual(4, num_uvmaps_found, "One or more test materials failed to import")
+
+    def test_import_usd_blend_shapes(self):
+        """Test importing USD blend shapes with animated weights."""
+
+        infile = str(self.testdir / "usd_blend_shape_test.usda")
+        res = bpy.ops.wm.usd_import(filepath=infile)
+        self.assertEqual({'FINISHED'}, res)
+
+        obj = bpy.data.objects["Plane"]
+
+        obj.active_shape_key_index = 1
+
+        key = obj.active_shape_key
+        self.assertEqual(key.name, "Key_1", "Unexpected shape key name")
+
+        # Verify the number of shape key points.
+        self.assertEqual(len(key.data), 4, "Unexpected number of shape key point")
+
+        # Verify shape key point coordinates
+
+        # Reference point values.
+        refs = ((-2.51, -1.92, 0.20), (0.86, -1.46, -0.1),
+                (-1.33, 1.29, .84), (1.32, 2.20, -0.42))
+
+        for i in range(4):
+            co = key.data[i].co
+            ref = refs[i]
+            # Compare coordinates.
+            for j in range(3):
+                self.assertAlmostEqual(co[j], ref[j], 2)
+
+        # Verify the shape key values.
+        bpy.context.scene.frame_set(1)
+        self.assertAlmostEqual(key.value, .002, 1)
+        bpy.context.scene.frame_set(30)
+        self.assertAlmostEqual(key.value, .900, 3)
+        bpy.context.scene.frame_set(60)
+        self.assertAlmostEqual(key.value, .100, 3)
+
+    def test_import_usd_skel_joints(self):
+        """Test importing USD animated skeleton joints."""
+
+        infile = str(self.testdir / "arm.usda")
+        res = bpy.ops.wm.usd_import(filepath=infile)
+        self.assertEqual({'FINISHED'}, res)
+
+        # Verify armature was imported.
+        arm_obj = bpy.data.objects["Skel"]
+        self.assertEqual(arm_obj.type, "ARMATURE", "'Skel' object is not an armature")
+
+        arm = arm_obj.data
+        bones = arm.bones
+
+        # Verify bone parenting.
+        self.assertIsNone(bones['Shoulder'].parent, "Shoulder bone should not be parented")
+        self.assertEqual(bones['Shoulder'], bones['Elbow'].parent, "Elbow bone should be child of Shoulder bone")
+        self.assertEqual(bones['Elbow'], bones['Hand'].parent, "Hand bone should be child of Elbow bone")
+
+        # Verify armature modifier was created on the mesh.
+        mesh_obj = bpy.data.objects['Arm']
+        # Get all the armature modifiers on the mesh.
+        arm_mods = [m for m in mesh_obj.modifiers if m.type == "ARMATURE"]
+        self.assertEqual(len(arm_mods), 1, "Didn't get expected armatrue modifier")
+        self.assertEqual(arm_mods[0].object, arm_obj, "Armature modifier does not reference the imported armature")
+
+        # Verify expected deform groups.
+        # There are 4 points in each group.
+        for i in range(4):
+            self.assertAlmostEqual(mesh_obj.vertex_groups['Hand'].weight(
+                i), 1.0, 2, "Unexpected weight for Hand deform vert")
+            self.assertAlmostEqual(mesh_obj.vertex_groups['Shoulder'].weight(
+                4 + i), 1.0, 2, "Unexpected weight for Shoulder deform vert")
+            self.assertAlmostEqual(mesh_obj.vertex_groups['Elbow'].weight(
+                8 + i), 1.0, 2, "Unexpected weight for Elbow deform vert")
+
+        action = bpy.data.actions['SkelAction']
+
+        # Verify the Elbow joint rotation animation.
+        curve_path = 'pose.bones["Elbow"].rotation_quaternion'
+
+        # Quat W
+        f = action.fcurves.find(curve_path, index=0)
+        self.assertIsNotNone(f, "Couldn't find Elbow rotation quaternion W curve")
+        self.assertAlmostEqual(f.evaluate(0), 1.0, 2, "Unexpected value for rotation quaternion W curve at frame 0")
+        self.assertAlmostEqual(f.evaluate(10), 0.707, 2, "Unexpected value for rotation quaternion W curve at frame 10")
+
+        # Quat X
+        f = action.fcurves.find(curve_path, index=1)
+        self.assertIsNotNone(f, "Couldn't find Elbow rotation quaternion X curve")
+        self.assertAlmostEqual(f.evaluate(0), 0.0, 2, "Unexpected value for rotation quaternion X curve at frame 0")
+        self.assertAlmostEqual(f.evaluate(10), 0.707, 2, "Unexpected value for rotation quaternion X curve at frame 10")
+
+        # Quat Y
+        f = action.fcurves.find(curve_path, index=2)
+        self.assertIsNotNone(f, "Couldn't find Elbow rotation quaternion Y curve")
+        self.assertAlmostEqual(f.evaluate(0), 0.0, 2, "Unexpected value for rotation quaternion Y curve at frame 0")
+        self.assertAlmostEqual(f.evaluate(10), 0.0, 2, "Unexpected value for rotation quaternion Y curve at frame 10")
+
+        # Quat Z
+        f = action.fcurves.find(curve_path, index=3)
+        self.assertIsNotNone(f, "Couldn't find Elbow rotation quaternion Z curve")
+        self.assertAlmostEqual(f.evaluate(0), 0.0, 2, "Unexpected value for rotation quaternion Z curve at frame 0")
+        self.assertAlmostEqual(f.evaluate(10), 0.0, 2, "Unexpected value for rotation quaternion Z curve at frame 10")
 
 
 def main():

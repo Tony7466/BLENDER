@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -17,7 +19,6 @@
 #  include "BLI_hash.hh"
 #  include "BLI_kdopbvh.h"
 #  include "BLI_map.hh"
-#  include "BLI_math.h"
 #  include "BLI_math_boolean.hh"
 #  include "BLI_math_geom.h"
 #  include "BLI_math_mpq.hh"
@@ -50,7 +51,7 @@ namespace blender::meshintersect {
  * that yield predictable results from run-to-run and machine-to-machine.
  */
 class Edge {
-  const Vert *v_[2]{nullptr, nullptr};
+  const Vert *v_[2] = {nullptr, nullptr};
 
  public:
   Edge() = default;
@@ -205,7 +206,7 @@ TriMeshTopology::TriMeshTopology(const IMesh &tm)
       std::cout << "tris for edge " << item.key << ": " << *item.value << "\n";
       constexpr bool print_stats = false;
       if (print_stats) {
-        edge_tri_.print_stats();
+        edge_tri_.print_stats("");
       }
     }
     for (auto item : vert_edges_.items()) {
@@ -980,7 +981,7 @@ static Array<int> sort_tris_around_edge(
    * be only 3 or 4 - so OK to make copies of arrays instead of swapping
    * around in a single array. */
   const int dbg_level = 0;
-  if (tris.size() == 0) {
+  if (tris.is_empty()) {
     return Array<int>();
   }
   if (dbg_level > 0) {
@@ -1305,7 +1306,7 @@ static bool patch_cell_graph_ok(const CellsInfo &cinfo, const PatchesInfo &pinfo
     if (cell.merged_to() != NO_INDEX) {
       continue;
     }
-    if (cell.patches().size() == 0) {
+    if (cell.patches().is_empty()) {
       std::cout << "Patch/Cell graph disconnected at Cell " << c << " with no patches\n";
       return false;
     }
@@ -2131,7 +2132,7 @@ static void finish_patch_cell_graph(const IMesh &tm,
   /* For nested components, merge their ambient cell with the nearest containing cell. */
   Vector<int> outer_components;
   for (int comp : comp_cont.index_range()) {
-    if (comp_cont[comp].size() == 0) {
+    if (comp_cont[comp].is_empty()) {
       outer_components.append(comp);
     }
     else {
@@ -2252,7 +2253,7 @@ static void propagate_windings_and_in_output_volume(PatchesInfo &pinfo,
 }
 
 /**
- * Given an array of winding numbers, where the ith entry is a cell's winding
+ * Given an array of winding numbers, where the `i-th` entry is a cell's winding
  * number with respect to input shape (mesh part) i, return true if the
  * cell should be included in the output of the boolean operation.
  *   Intersection: all the winding numbers must be nonzero.
@@ -2554,7 +2555,8 @@ static void inside_shape_callback(void *userdata,
     std::cout << "  fv2=(" << fv2[0] << "," << fv2[1] << "," << fv2[2] << ")\n";
   }
   if (isect_ray_tri_epsilon_v3(
-          ray->origin, ray->direction, fv0, fv1, fv2, &dist, nullptr, FLT_EPSILON)) {
+          ray->origin, ray->direction, fv0, fv1, fv2, &dist, nullptr, FLT_EPSILON))
+  {
     /* Count parity as +1 if ray is in the same direction as tri's normal,
      * and -1 if the directions are opposite. */
     double3 o_db{double(ray->origin[0]), double(ray->origin[1]), double(ray->origin[2])};
@@ -2761,7 +2763,7 @@ static IMesh raycast_tris_boolean(const IMesh &tm,
          * For most operations, even a hint of being inside
          * gives good results, but when shape is a cutter in a Difference
          * operation, we want to be pretty sure that the point is inside other_shape.
-         * E.g., T75827.
+         * E.g., #75827.
          * Also, when the operation is intersection, we also want high confidence.
          */
         bool need_high_confidence = (op == BoolOpType::Difference && shape != 0) ||
@@ -3116,7 +3118,8 @@ static bool dissolve_leaves_valid_bmesh(FaceMergeState *fms,
   bool ok = true;
   /* Is there another edge, not me, in A's face, whose right face is B's left? */
   for (int a_e_index = (a_edge_start + 1) % alen; ok && a_e_index != a_edge_start;
-       a_e_index = (a_e_index + 1) % alen) {
+       a_e_index = (a_e_index + 1) % alen)
+  {
     const MergeEdge &a_me_cur = fms->edge[mf_left.edge[a_e_index]];
     if (a_me_cur.right_face == b_left_face) {
       ok = false;
@@ -3214,7 +3217,7 @@ static void do_dissolve(FaceMergeState *fms)
       dissolve_edges.append(e);
     }
   }
-  if (dissolve_edges.size() == 0) {
+  if (dissolve_edges.is_empty()) {
     return;
   }
   /* Things look nicer if we dissolve the longer edges first. */

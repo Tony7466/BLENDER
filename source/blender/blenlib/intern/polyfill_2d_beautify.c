@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -13,17 +15,18 @@
  * - The polygon is primitive with no holes with a continuous boundary.
  * - Triangles have consistent winding.
  * - 2d (saves some hassles projecting face pairs on an axis for every edge-rotation)
- *   also saves us having to store all previous edge-states (see #EdRotState in bmesh_beautify.c)
+ *   also saves us having to store all previous edge-states
+ *   (see #EdRotState in `bmesh_beautify.cc`).
  *
  * \note
  *
  * No globals - keep threadsafe.
  */
 
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLI_heap.h"
+#include "BLI_math_geom.h"
 #include "BLI_memarena.h"
 
 #include "BLI_polyfill_2d_beautify.h" /* own include */
@@ -99,9 +102,10 @@ float BLI_polyfill_beautify_quad_rotate_calc_ex(const float v1[2],
                (ELEM(v3, v1, v2, v4) == false) && (ELEM(v4, v1, v2, v3) == false));
 
     if (r_area) {
-      *r_area = fabsf(area_2x_234) + fabsf(area_2x_241) +
-                /* Include both pairs for predictable results. */
-                fabsf(area_2x_123) + fabsf(area_2x_134) / 8.0f;
+      *r_area = (fabsf(area_2x_234) + fabsf(area_2x_241) +
+                 /* Include both pairs for predictable results. */
+                 fabsf(area_2x_123) + fabsf(area_2x_134)) /
+                8.0f;
     }
 
     /*
@@ -205,11 +209,11 @@ static void polyedge_beauty_cost_update_single(const float (*coords)[2],
    * which leads to infinite loop. Anyway, costs above that are not worth recomputing,
    * maybe we could even optimize it to a smaller limit?
    * Actually, FLT_EPSILON is too small in some cases, 1e-6f seems to work OK hopefully?
-   * See T43578, T49478.
+   * See #43578, #49478.
    *
    * In fact a larger epsilon can still fail when the area of the face is very large,
    * now the epsilon is scaled by the face area.
-   * See T56532. */
+   * See #56532. */
   if (cost < -1e-6f * max_ff(area, 1.0f)) {
     BLI_heap_insert_or_update(eheap, &eheap_table[i], cost, e);
   }
@@ -242,7 +246,7 @@ static void polyedge_beauty_cost_update(const float (*coords)[2],
   }
 }
 
-static void polyedge_rotate(struct HalfEdge *edges, struct HalfEdge *e)
+static void polyedge_rotate(struct HalfEdge *edges, const struct HalfEdge *e)
 {
   /** CCW winding, rotate internal edge to new vertical state.
    *

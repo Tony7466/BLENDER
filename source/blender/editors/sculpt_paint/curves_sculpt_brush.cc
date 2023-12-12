@@ -1,26 +1,32 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <algorithm>
 
 #include "curves_sculpt_intern.hh"
 
+#include "BLI_math_geom.h"
+
 #include "BKE_attribute_math.hh"
-#include "BKE_bvhutils.h"
-#include "BKE_context.h"
+#include "BKE_bvhutils.hh"
+#include "BKE_context.hh"
 #include "BKE_curves.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "BLI_length_parameterize.hh"
 #include "BLI_task.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLT_translation.h"
+
+#include "GEO_curve_constraints.hh"
 
 /**
  * The code below uses a prefix naming convention to indicate the coordinate space:
@@ -57,11 +63,8 @@ static std::optional<float3> find_curves_brush_position(const CurvesGeometry &cu
   const float brush_inner_radius_re = std::min<float>(brush_radius_re, float(UI_UNIT_X) / 3.0f);
   const float brush_inner_radius_sq_re = pow2f(brush_inner_radius_re);
 
-  float4x4 projection;
-  ED_view3d_ob_project_mat_get(&rv3d, &object, projection.ptr());
-
-  float2 brush_pos_re;
-  ED_view3d_project_float_v2_m4(&region, ray_start_cu, brush_pos_re, projection.ptr());
+  const float4x4 projection = ED_view3d_ob_project_mat_get(&rv3d, &object);
+  const float2 brush_pos_re = ED_view3d_project_float_v2_m4(&region, ray_start_cu, projection);
 
   const float max_depth_sq_cu = math::distance_squared(ray_start_cu, ray_end_cu);
 
@@ -111,8 +114,7 @@ static std::optional<float3> find_curves_brush_position(const CurvesGeometry &cu
               continue;
             }
 
-            float2 pos_re;
-            ED_view3d_project_float_v2_m4(&region, pos_cu, pos_re, projection.ptr());
+            const float2 pos_re = ED_view3d_project_float_v2_m4(&region, pos_cu, projection);
 
             BrushPositionCandidate candidate;
             candidate.position_cu = pos_cu;
@@ -127,9 +129,8 @@ static std::optional<float3> find_curves_brush_position(const CurvesGeometry &cu
             const float3 &p1_cu = positions[segment_i];
             const float3 &p2_cu = positions[segment_i + 1];
 
-            float2 p1_re, p2_re;
-            ED_view3d_project_float_v2_m4(&region, p1_cu, p1_re, projection.ptr());
-            ED_view3d_project_float_v2_m4(&region, p2_cu, p2_re, projection.ptr());
+            const float2 p1_re = ED_view3d_project_float_v2_m4(&region, p1_cu, projection);
+            const float2 p2_re = ED_view3d_project_float_v2_m4(&region, p2_cu, projection);
 
             float2 closest_re;
             const float lambda = closest_to_line_segment_v2(
@@ -214,7 +215,8 @@ std::optional<CurvesBrush3D> sample_curves_3d_brush(const Depsgraph &depsgraph,
     if (center_ray_hit.index >= 0) {
       const float3 hit_position_su = center_ray_hit.co;
       if (math::distance(center_ray_start_su, center_ray_end_su) >
-          math::distance(center_ray_start_su, hit_position_su)) {
+          math::distance(center_ray_start_su, hit_position_su))
+      {
         center_ray_end_su = hit_position_su;
         center_ray_end_wo = math::transform_point(surface_to_world_mat, center_ray_end_su);
       }
@@ -369,7 +371,7 @@ void move_last_point_and_resample(MoveAndResampleBuffers &buffer,
   /* Find the factor by which the new curve is shorter or longer than the original. */
   const float new_last_segment_length = math::distance(positions.last(1), new_last_position);
   const float new_total_length = buffer.orig_lengths.last(1) + new_last_segment_length;
-  const float length_factor = safe_divide(new_total_length, orig_total_length);
+  const float length_factor = math::safe_divide(new_total_length, orig_total_length);
 
   /* Calculate the lengths to sample the original curve with by scaling the original lengths. */
   buffer.new_lengths.reinitialize(positions.size() - 1);
@@ -429,6 +431,42 @@ void report_missing_uv_map_on_evaluated_surface(ReportList *reports)
 void report_invalid_uv_map(ReportList *reports)
 {
   BKE_report(reports, RPT_WARNING, TIP_("Invalid UV map: UV islands must not overlap"));
+}
+
+void CurvesConstraintSolver::initialize(const bke::CurvesGeometry &curves,
+                                        const IndexMask &curve_selection,
+                                        const bool use_surface_collision)
+{
+  use_surface_collision_ = use_surface_collision;
+  segment_lengths_.reinitialize(curves.points_num());
+  geometry::curve_constraints::compute_segment_lengths(
+      curves.points_by_curve(), curves.positions(), curve_selection, segment_lengths_);
+  if (use_surface_collision_) {
+    start_positions_ = curves.positions();
+  }
+}
+
+void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
+                                        const IndexMask &curve_selection,
+                                        const Mesh *surface,
+                                        const CurvesSurfaceTransforms &transforms)
+{
+  if (use_surface_collision_ && surface != nullptr) {
+    geometry::curve_constraints::solve_length_and_collision_constraints(
+        curves.points_by_curve(),
+        curve_selection,
+        segment_lengths_,
+        start_positions_,
+        *surface,
+        transforms,
+        curves.positions_for_write());
+    start_positions_ = curves.positions();
+  }
+  else {
+    geometry::curve_constraints::solve_length_constraints(
+        curves.points_by_curve(), curve_selection, segment_lengths_, curves.positions_for_write());
+  }
+  curves.tag_positions_changed();
 }
 
 }  // namespace blender::ed::sculpt_paint

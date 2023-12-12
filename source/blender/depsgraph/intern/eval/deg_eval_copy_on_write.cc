@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2017 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -24,24 +25,25 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_global.h"
-#include "BKE_gpencil.h"
-#include "BKE_gpencil_update_cache.h"
+#include "BKE_gpencil_legacy.h"
+#include "BKE_gpencil_update_cache_legacy.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
+#include "BKE_object_types.hh"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include "DNA_ID.h"
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
@@ -49,7 +51,6 @@
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
-#include "DNA_simulation_types.h"
 #include "DNA_sound_types.h"
 
 #include "DRW_engine.h"
@@ -70,22 +71,22 @@
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_armature.h"
-#include "BKE_editmesh.h"
+#include "BKE_armature.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_lib_query.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_pointcache.h"
 #include "BKE_sound.h"
 
-#include "SEQ_relations.h"
+#include "SEQ_relations.hh"
 
 #include "intern/builder/deg_builder.h"
 #include "intern/builder/deg_builder_nodes.h"
-#include "intern/depsgraph.h"
+#include "intern/depsgraph.hh"
 #include "intern/eval/deg_eval_runtime_backup.h"
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_id.h"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_id.hh"
 
 namespace blender::deg {
 
@@ -106,7 +107,6 @@ union NestedIDHackTempStorage {
   Scene scene;
   Tex tex;
   World world;
-  Simulation simulation;
 };
 
 /* Set nested owned ID pointers to nullptr. */
@@ -124,7 +124,6 @@ void nested_id_hack_discard_pointers(ID *id_cow)
     SPECIAL_CASE(ID_MA, Material, nodetree)
     SPECIAL_CASE(ID_TE, Tex, nodetree)
     SPECIAL_CASE(ID_WO, World, nodetree)
-    SPECIAL_CASE(ID_SIM, Simulation, nodetree)
 
     SPECIAL_CASE(ID_CU_LEGACY, Curve, key)
     SPECIAL_CASE(ID_LT, Lattice, key)
@@ -173,7 +172,6 @@ const ID *nested_id_hack_get_discarded_pointers(NestedIDHackTempStorage *storage
     SPECIAL_CASE(ID_MA, Material, nodetree, material)
     SPECIAL_CASE(ID_TE, Tex, nodetree, tex)
     SPECIAL_CASE(ID_WO, World, nodetree, world)
-    SPECIAL_CASE(ID_SIM, Simulation, nodetree, simulation)
 
     SPECIAL_CASE(ID_CU_LEGACY, Curve, key, curve)
     SPECIAL_CASE(ID_LT, Lattice, key, lattice)
@@ -213,7 +211,6 @@ void nested_id_hack_restore_pointers(const ID *old_id, ID *new_id)
     SPECIAL_CASE(ID_SCE, Scene, nodetree)
     SPECIAL_CASE(ID_TE, Tex, nodetree)
     SPECIAL_CASE(ID_WO, World, nodetree)
-    SPECIAL_CASE(ID_SIM, Simulation, nodetree)
 
     SPECIAL_CASE(ID_CU_LEGACY, Curve, key)
     SPECIAL_CASE(ID_LT, Lattice, key)
@@ -251,7 +248,6 @@ void ntree_hack_remap_pointers(const Depsgraph *depsgraph, ID *id_cow)
     SPECIAL_CASE(ID_SCE, Scene, nodetree, bNodeTree)
     SPECIAL_CASE(ID_TE, Tex, nodetree, bNodeTree)
     SPECIAL_CASE(ID_WO, World, nodetree, bNodeTree)
-    SPECIAL_CASE(ID_SIM, Simulation, nodetree, bNodeTree)
 
     SPECIAL_CASE(ID_CU_LEGACY, Curve, key, Key)
     SPECIAL_CASE(ID_LT, Lattice, key, Key)
@@ -353,12 +349,11 @@ ViewLayer *get_original_view_layer(const Depsgraph *depsgraph, const IDNode *id_
   return nullptr;
 }
 
-/* Remove all view layers but the one which corresponds to an input one. */
-void scene_remove_unused_view_layers(const Depsgraph *depsgraph,
-                                     const IDNode *id_node,
-                                     Scene *scene_cow)
+/* Remove all bases from all view layers except the input one. */
+void scene_minimize_unused_view_layers(const Depsgraph *depsgraph,
+                                       const IDNode *id_node,
+                                       Scene *scene_cow)
 {
-  const ViewLayer *view_layer_input;
   if (depsgraph->is_render_pipeline_depsgraph) {
     /* If the dependency graph is used for post-processing (such as compositor) we do need to
      * have access to its view layer names so can not remove any view layers.
@@ -370,39 +365,35 @@ void scene_remove_unused_view_layers(const Depsgraph *depsgraph,
      * NOTE: Need to keep view layers for all scenes, even indirect ones. This is because of
      * render layer node possibly pointing to another scene. */
     LISTBASE_FOREACH (ViewLayer *, view_layer, &scene_cow->view_layers) {
-      view_layer->basact = nullptr;
+      BKE_view_layer_free_object_content(view_layer);
     }
     return;
   }
-  if (id_node->linked_state == DEG_ID_LINKED_INDIRECTLY) {
-    /* Indirectly linked scenes means it's not an input scene and not a set scene, and is pulled
-     * via some driver. Such scenes should not have view layers after copy. */
-    view_layer_input = nullptr;
-  }
-  else {
-    view_layer_input = get_original_view_layer(depsgraph, id_node);
-  }
+
+  const ViewLayer *view_layer_input = get_original_view_layer(depsgraph, id_node);
   ViewLayer *view_layer_eval = nullptr;
   /* Find evaluated view layer. At the same time we free memory used by
    * all other of the view layers. */
   for (ViewLayer *view_layer_cow = reinterpret_cast<ViewLayer *>(scene_cow->view_layers.first),
                  *view_layer_next;
        view_layer_cow != nullptr;
-       view_layer_cow = view_layer_next) {
+       view_layer_cow = view_layer_next)
+  {
     view_layer_next = view_layer_cow->next;
     if (view_layer_input != nullptr && STREQ(view_layer_input->name, view_layer_cow->name)) {
       view_layer_eval = view_layer_cow;
     }
     else {
-      BKE_view_layer_free_ex(view_layer_cow, false);
+      BKE_view_layer_free_object_content(view_layer_cow);
     }
   }
-  /* Make evaluated view layer the only one in the evaluated scene (if it exists). */
+
+  /* Make evaluated view layer the first one in the evaluated scene (if it exists). This is for
+   * legacy sake, as this used to remove all other view layers, automatically making the evaluated
+   * one the first. Some other code may still assume it is. */
   if (view_layer_eval != nullptr) {
-    view_layer_eval->prev = view_layer_eval->next = nullptr;
+    BLI_listbase_swaplinks(&scene_cow->view_layers, scene_cow->view_layers.first, view_layer_eval);
   }
-  scene_cow->view_layers.first = view_layer_eval;
-  scene_cow->view_layers.last = view_layer_eval;
 }
 
 void scene_remove_all_bases(Scene *scene_cow)
@@ -467,7 +458,7 @@ void scene_setup_view_layers_before_remap(const Depsgraph *depsgraph,
                                           const IDNode *id_node,
                                           Scene *scene_cow)
 {
-  scene_remove_unused_view_layers(depsgraph, id_node, scene_cow);
+  scene_minimize_unused_view_layers(depsgraph, id_node, scene_cow);
   /* If dependency graph is used for post-processing we don't need any bases and can free of them.
    * Do it before re-mapping to make that process faster. */
   if (depsgraph->is_render_pipeline_depsgraph) {
@@ -716,7 +707,7 @@ void update_id_after_copy(const Depsgraph *depsgraph,
       const Object *object_orig = (const Object *)id_orig;
       object_cow->mode = object_orig->mode;
       object_cow->sculpt = object_orig->sculpt;
-      object_cow->runtime.data_orig = (ID *)object_cow->data;
+      object_cow->runtime->data_orig = (ID *)object_cow->data;
       if (object_cow->type == OB_ARMATURE) {
         const bArmature *armature_orig = (bArmature *)object_orig->data;
         bArmature *armature_cow = (bArmature *)object_cow->data;
@@ -737,9 +728,9 @@ void update_id_after_copy(const Depsgraph *depsgraph,
       scene_setup_view_layers_after_remap(depsgraph, id_node, reinterpret_cast<Scene *>(id_cow));
       break;
     }
-    /* FIXME: This is a temporary fix to update the runtime pointers properly, see T96216. Should
+    /* FIXME: This is a temporary fix to update the runtime pointers properly, see #96216. Should
      * be removed at some point. */
-    case ID_GD: {
+    case ID_GD_LEGACY: {
       bGPdata *gpd_cow = (bGPdata *)id_cow;
       bGPDlayer *gpl = (bGPDlayer *)(gpd_cow->layers.first);
       if (gpl != nullptr && gpl->runtime.gpl_orig == nullptr) {
@@ -892,8 +883,9 @@ ID *deg_update_copy_on_write_datablock(const Depsgraph *depsgraph, const IDNode 
     }
     /* In case we don't need to do a copy-on-write, we can use the update cache of the grease
      * pencil data to do an update-on-write. */
-    if (id_type == ID_GD && BKE_gpencil_can_avoid_full_copy_on_write(
-                                (const ::Depsgraph *)depsgraph, (bGPdata *)id_orig)) {
+    if (id_type == ID_GD_LEGACY && BKE_gpencil_can_avoid_full_copy_on_write(
+                                       (const ::Depsgraph *)depsgraph, (bGPdata *)id_orig))
+    {
       BKE_gpencil_update_on_write((bGPdata *)id_orig, (bGPdata *)id_cow);
       return id_cow;
     }
@@ -1028,7 +1020,7 @@ void deg_free_copy_on_write_datablock(ID *id_cow)
   id_cow->name[0] = '\0';
 }
 
-void deg_evaluate_copy_on_write(struct ::Depsgraph *graph, const IDNode *id_node)
+void deg_evaluate_copy_on_write(::Depsgraph *graph, const IDNode *id_node)
 {
   const Depsgraph *depsgraph = reinterpret_cast<const Depsgraph *>(graph);
   DEG_debug_print_eval(graph, __func__, id_node->id_orig->name, id_node->id_cow);

@@ -1,12 +1,15 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup texnodes
  */
 
+#include "BLI_math_rotation.h"
 #include "NOD_texture.h"
 #include "node_texture_util.hh"
+#include "node_util.hh"
 
 /* **************** SCALAR MATH ******************** */
 static bNodeSocketTemplate inputs[] = {
@@ -174,6 +177,16 @@ static void valuefn(float *out, TexParams *p, bNode *node, bNodeStack **in, shor
       break;
     }
 
+    case NODE_MATH_FLOORED_MODULO: {
+      if (in1 == 0.0f) {
+        *out = 0.0f;
+      }
+      else {
+        *out = in0 - floorf(in0 / in1) * in1;
+      }
+      break;
+    }
+
     case NODE_MATH_ABSOLUTE: {
       *out = fabsf(in0);
       break;
@@ -272,7 +285,7 @@ static void valuefn(float *out, TexParams *p, bNode *node, bNodeStack **in, shor
 
     case NODE_MATH_COMPARE: {
       float in2 = tex_input_value(in[2], p, thread);
-      *out = (fabsf(in0 - in1) <= MAX2(in2, 1e-5f)) ? 1.0f : 0.0f;
+      *out = (fabsf(in0 - in1) <= std::max(in2, 1e-5f)) ? 1.0f : 0.0f;
       break;
     }
 
@@ -320,7 +333,7 @@ void register_node_type_tex_math()
   static bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_MATH, "Math", NODE_CLASS_CONVERTER);
-  node_type_socket_templates(&ntype, inputs, outputs);
+  blender::bke::node_type_socket_templates(&ntype, inputs, outputs);
   ntype.labelfunc = node_math_label;
   ntype.exec_fn = exec;
   ntype.updatefunc = node_math_update;
