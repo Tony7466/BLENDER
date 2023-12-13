@@ -95,6 +95,7 @@ bool BKE_unit_is_valid(int system, int type);
 void BKE_unit_system_get(int system, int type, const void **r_usys_pt, int *r_len);
 int BKE_unit_base_get(const void *usys_pt);
 int BKE_unit_base_of_type_get(int system, int type);
+int BKE_unit_of_type_or_default(const UnitSettings *settings, int type);
 const char *BKE_unit_name_get(const void *usys_pt, int index);
 const char *BKE_unit_display_name_get(const void *usys_pt, int index);
 const char *BKE_unit_display_name_short_get(const void *usys_pt, int index);

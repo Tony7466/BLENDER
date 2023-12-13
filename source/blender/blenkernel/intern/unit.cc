@@ -1658,11 +1658,11 @@ static bool is_valid_unit_collection(const bUnitCollection *usys)
   return usys != nullptr && usys->units[0].name != nullptr;
 }
 
-static const bUnitDef *get_preferred_display_unit_if_used(int type, PreferredUnits units)
+static int get_preferred_display_unit_index_if_used(int type, PreferredUnits units)
 {
   const bUnitCollection *usys = unit_get_system(units.system, type);
   if (!is_valid_unit_collection(usys)) {
-    return nullptr;
+    return -1;
   }
 
   int max_offset = usys->length - 1;
@@ -1672,36 +1672,46 @@ static const bUnitDef *get_preferred_display_unit_if_used(int type, PreferredUni
     case B_UNIT_AREA:
     case B_UNIT_VOLUME:
       if (units.length == USER_UNIT_ADAPTIVE) {
-        return nullptr;
+        return -1;
       }
-      return usys->units + std::min(units.length, max_offset);
+      return std::min(units.length, max_offset);
     case B_UNIT_MASS:
       if (units.mass == USER_UNIT_ADAPTIVE) {
-        return nullptr;
+        return -1;
       }
-      return usys->units + std::min(units.mass, max_offset);
+      return std::min(units.mass, max_offset);
     case B_UNIT_TIME:
       if (units.time == USER_UNIT_ADAPTIVE) {
-        return nullptr;
+        return -1;
       }
-      return usys->units + std::min(units.time, max_offset);
+      return std::min(units.time, max_offset);
     case B_UNIT_ROTATION:
       if (units.rotation == 0) {
-        return usys->units + 0;
+        return 0;
       }
       else if (units.rotation == USER_UNIT_ROT_RADIANS) {
-        return usys->units + 3;
+        return 3;
       }
       break;
     case B_UNIT_TEMPERATURE:
       if (units.temperature == USER_UNIT_ADAPTIVE) {
-        return nullptr;
+        return -1;
       }
-      return usys->units + std::min(units.temperature, max_offset);
+      return std::min(units.temperature, max_offset);
     default:
       break;
   }
-  return nullptr;
+  return -1;
+}
+
+static const bUnitDef *get_preferred_display_unit_if_used(int type, PreferredUnits units)
+{
+  const bUnitCollection *usys = unit_get_system(units.system, type);
+  const int index = get_preferred_display_unit_index_if_used(type, units);
+  if (index == -1) {
+    return nullptr;
+  }
+  return usys->units + index;
 }
 
 /* Return the length of the generated string. */
@@ -2345,6 +2355,16 @@ int BKE_unit_base_get(const void *usys_pt)
 int BKE_unit_base_of_type_get(int system, int type)
 {
   return unit_get_system(system, type)->base_unit;
+}
+
+int BKE_unit_of_type_or_default(const UnitSettings *settings, int type)
+{
+  PreferredUnits units = preferred_units_from_UnitSettings(settings);
+  int unit_index = get_preferred_display_unit_index_if_used(type, units);
+  if (unit_index == -1) {
+    return BKE_unit_base_of_type_get(units.system, type);
+  }
+  return unit_index;
 }
 
 const char *BKE_unit_name_get(const void *usys_pt, int index)

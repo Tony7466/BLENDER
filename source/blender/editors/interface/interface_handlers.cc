@@ -3703,6 +3703,28 @@ static eStrCursorJumpType ui_textedit_jump_type_from_event(const wmEvent *event)
   return STRCUR_JUMP_NONE;
 }
 
+static void ui_do_but_text_completion(bContext *C, uiBut *but, uiHandleButtonData *data)
+{
+  const Scene *scene = CTX_data_scene(C);
+  const int unit_type = RNA_SUBTYPE_UNIT_VALUE(UI_but_unit_type_get(but));
+  double value;
+  if (user_string_to_number(C, data->str, &scene->unit, unit_type, &value, false, nullptr) &&
+      !BKE_unit_string_contains_unit(data->str, unit_type))
+  {
+    const void *usys;
+    int len;
+    BKE_unit_system_get(scene->unit.system, unit_type, &usys, &len);
+    const int unit_index = BKE_unit_of_type_or_default(&scene->unit, unit_type);
+    const char *name_short = BKE_unit_display_name_short_get(usys, unit_index);
+    /* Add a space before the short unit name. */
+    std::string text_completion = " " + std::string(name_short);
+    UI_but_completion_set(but, text_completion.c_str());
+  }
+  else {
+    UI_but_completion_set(but, nullptr);
+  }
+}
+
 static void ui_do_but_textedit(
     bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
 {
@@ -4055,22 +4077,7 @@ static void ui_do_but_textedit(
 
     /* If the button is a unit button, add text completion for the unit that will be used. */
     if (ui_but_is_unit(but)) {
-      const Scene *scene = CTX_data_scene(C);
-      const int unit_type = RNA_SUBTYPE_UNIT_VALUE(UI_but_unit_type_get(but));
-      double value;
-      if (user_string_to_number(C, data->str, &scene->unit, unit_type, &value, false, nullptr) &&
-          !BKE_unit_string_contains_unit(data->str, unit_type))
-      {
-        const void *usys;
-        int len;
-        BKE_unit_system_get(scene->unit.system, unit_type, &usys, &len);
-        std::string text_completion = " " + std::string(BKE_unit_display_name_short_get(
-                                                usys, BKE_unit_base_get(usys)));
-        UI_but_completion_set(but, text_completion.c_str());
-      }
-      else {
-        UI_but_completion_set(but, nullptr);
-      }
+      ui_do_but_text_completion(C, but, data);
     }
 
     /* only do live update when but flag request it (UI_BUT_TEXTEDIT_UPDATE). */
