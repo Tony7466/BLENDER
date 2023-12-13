@@ -991,10 +991,10 @@ static bNodeSocketType *make_socket_type_matrix()
     const auto &typed_value = *static_cast<const bNodeSocketValueMatrix *>(socket_value);
     *static_cast<float4x4 *>(r_value) = float4x4(typed_value.value);
   };
-  socktype->geometry_nodes_cpp_type = &blender::CPPType::get<ValueOrField<float4x4>>();
+  socktype->geometry_nodes_cpp_type = &blender::CPPType::get<SocketValueVariant<float4x4>>();
   socktype->get_geometry_nodes_cpp_value = [](const void *socket_value, void *r_value) {
     const auto &typed_value = *static_cast<const bNodeSocketValueMatrix *>(socket_value);
-    new (r_value) ValueOrField<float4x4>(float4x4(typed_value.value));
+    new (r_value) SocketValueVariant<float4x4>(float4x4(typed_value.value));
   };
   return socktype;
 }

@@ -582,9 +582,11 @@ struct PBVHBatches {
         using T = decltype(dummy);
         using Converter = AttributeConverter<T>;
         using VBOType = typename Converter::VBOType;
-        std::fill_n(static_cast<VBOType *>(GPU_vertbuf_get_data(vbo.vert_buf)),
-                    GPU_vertbuf_get_vertex_len(vbo.vert_buf),
-                    VBOType());
+        if constexpr (!std::is_void_v<VBOType>) {
+          std::fill_n(static_cast<VBOType *>(GPU_vertbuf_get_data(vbo.vert_buf)),
+                      GPU_vertbuf_get_vertex_len(vbo.vert_buf),
+                      VBOType());
+        }
       });
     }
   }
@@ -752,18 +754,20 @@ struct PBVHBatches {
       const GVArraySpan attribute = *attributes.lookup_or_default(name, domain, data_type);
       bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
         using T = decltype(dummy);
-        switch (domain) {
-          case ATTR_DOMAIN_POINT:
-            extract_data_vert_faces<T>(args, attribute.typed<T>(), vert_buf);
-            break;
-          case ATTR_DOMAIN_FACE:
-            extract_data_face_faces<T>(args, attribute.typed<T>(), vert_buf);
-            break;
-          case ATTR_DOMAIN_CORNER:
-            extract_data_corner_faces<T>(args, attribute.typed<T>(), vert_buf);
-            break;
-          default:
-            BLI_assert_unreachable();
+        if constexpr (!std::is_void_v<typename AttributeConverter<T>::VBOType>) {
+          switch (domain) {
+            case ATTR_DOMAIN_POINT:
+              extract_data_vert_faces<T>(args, attribute.typed<T>(), vert_buf);
+              break;
+            case ATTR_DOMAIN_FACE:
+              extract_data_face_faces<T>(args, attribute.typed<T>(), vert_buf);
+              break;
+            case ATTR_DOMAIN_CORNER:
+              extract_data_corner_faces<T>(args, attribute.typed<T>(), vert_buf);
+              break;
+            default:
+              BLI_assert_unreachable();
+          }
         }
       });
     }
@@ -919,18 +923,20 @@ struct PBVHBatches {
       const int cd_offset = CustomData_get_offset_named(&custom_data, data_type, name.c_str());
       bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
         using T = decltype(dummy);
-        switch (domain) {
-          case ATTR_DOMAIN_POINT:
-            extract_data_vert_bmesh<T>(args, cd_offset, *vbo.vert_buf);
-            break;
-          case ATTR_DOMAIN_FACE:
-            extract_data_face_bmesh<T>(args, cd_offset, *vbo.vert_buf);
-            break;
-          case ATTR_DOMAIN_CORNER:
-            extract_data_corner_bmesh<T>(args, cd_offset, *vbo.vert_buf);
-            break;
-          default:
-            BLI_assert_unreachable();
+        if constexpr (!std::is_void_v<typename AttributeConverter<T>::VBOType>) {
+          switch (domain) {
+            case ATTR_DOMAIN_POINT:
+              extract_data_vert_bmesh<T>(args, cd_offset, *vbo.vert_buf);
+              break;
+            case ATTR_DOMAIN_FACE:
+              extract_data_face_bmesh<T>(args, cd_offset, *vbo.vert_buf);
+              break;
+            case ATTR_DOMAIN_CORNER:
+              extract_data_corner_bmesh<T>(args, cd_offset, *vbo.vert_buf);
+              break;
+            default:
+              BLI_assert_unreachable();
+          }
         }
       });
     }

@@ -518,6 +518,26 @@ class ColorGeometry4bMixer {
   void finalize(const IndexMask &mask);
 };
 
+class float4x4Mixer {
+ private:
+  MutableSpan<float4x4> buffer_;
+  Array<float> total_weights_;
+  Array<float3> location_buffer_;
+  Array<float3> expmap_buffer_;
+  Array<float3> scale_buffer_;
+
+ public:
+  float4x4Mixer(MutableSpan<float4x4> buffer);
+  /**
+   * \param mask: Only initialize these indices. Other indices in the buffer will be invalid.
+   */
+  float4x4Mixer(MutableSpan<float4x4> buffer, const IndexMask &mask);
+  void set(int64_t index, const float4x4 &value, float weight = 1.0f);
+  void mix_in(int64_t index, const float4x4 &value, float weight = 1.0f);
+  void finalize();
+  void finalize(const IndexMask &mask);
+};
+
 template<typename T> struct DefaultMixerStruct {
   /* Use void by default. This can be checked for in `if constexpr` statements. */
   using type = void;
@@ -538,6 +558,9 @@ template<> struct DefaultMixerStruct<ColorGeometry4f> {
 };
 template<> struct DefaultMixerStruct<ColorGeometry4b> {
   using type = ColorGeometry4bMixer;
+};
+template<> struct DefaultMixerStruct<float4x4> {
+  using type = float4x4Mixer;
 };
 template<> struct DefaultMixerStruct<int> {
   static double int_to_double(const int &value)
