@@ -451,7 +451,12 @@ class BaseTestForeachGetSet(unittest.TestCase):
             self.do_getset_subtest(collection, prop_rna, sequence_type, is_set=is_set)
 
 
-class TestPropCollectionForeachGetSetIDProp(BaseTestForeachGetSet):
+class TestPropCollectionIDPropForeachGetSet(BaseTestForeachGetSet):
+    """
+    Test different runtime properties on an ID property collection (`bpy_prop_collection_idprop`).
+
+    These properties are expected to not have raw array access because they are runtime properties.
+    """
     def setUp(self):
         class TestPropertyGroup(bpy.types.PropertyGroup):
             VECTOR_SIZE = 3
@@ -524,7 +529,12 @@ class TestPropCollectionForeachGetSetIDProp(BaseTestForeachGetSet):
         self.check_set("test_enum")
 
 
-class TestPropCollectionForeachGetSetAttribute(BaseTestForeachGetSet):
+class TestPropCollectionForeachGetSetMeshAttributes(BaseTestForeachGetSet):
+    """
+    Test different mesh attribute collections.
+
+    The properties of these collections' elements commonly have raw array access.
+    """
     def setUp(self):
         self.mesh = bpy.data.meshes.new("")
         self.mesh.vertices.add(5)
@@ -611,8 +621,8 @@ class TestPropCollectionForeachGetSetNoRawAccess(BaseTestForeachGetSet):
     """
     Test the bpy.types.Collection.objects collection.
 
-    This should test properties without raw array access because the Objects in the collection are not stored in
-    contiguous memory.
+    The properties of this collection's elements are expected to never have raw array access because the Objects in the
+    collection are not stored in contiguous memory.
     """
     def setUp(self):
         VECTOR_SIZE = 3
