@@ -8,7 +8,14 @@
  * \ingroup bke
  */
 
-#include "BLI_index_mask.hh"
+namespace blender {
+namespace index_mask {
+class IndexMask;
+}
+using index_mask::IndexMask;
+}  // namespace blender
+
+#include "BLI_offset_indices.hh"
 
 #include "BKE_mesh.h"
 #include "BKE_mesh_types.hh"
@@ -305,6 +312,9 @@ void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals);
 /** Set mesh vertex normals to known-correct values, avoiding future lazy computation. */
 void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals);
 
+void mesh_smooth_set(Mesh &mesh, bool use_smooth);
+void mesh_sharp_edges_set_from_angle(Mesh &mesh, float angle);
+
 /** Make edge and face visibility consistent with vertices. */
 void mesh_hide_vert_flush(Mesh &mesh);
 /** Make vertex and edge visibility consistent with faces. */
@@ -318,86 +328,3 @@ void mesh_select_edge_flush(Mesh &mesh);
 void mesh_select_face_flush(Mesh &mesh);
 
 }  // namespace blender::bke
-
-/* -------------------------------------------------------------------- */
-/** \name Inline Mesh Data Access
- * \{ */
-
-inline blender::Span<blender::float3> Mesh::vert_positions() const
-{
-  return {static_cast<const blender::float3 *>(
-              CustomData_get_layer_named(&this->vert_data, CD_PROP_FLOAT3, "position")),
-          this->totvert};
-}
-inline blender::MutableSpan<blender::float3> Mesh::vert_positions_for_write()
-{
-  return {static_cast<blender::float3 *>(CustomData_get_layer_named_for_write(
-              &this->vert_data, CD_PROP_FLOAT3, "position", this->totvert)),
-          this->totvert};
-}
-
-inline blender::Span<blender::int2> Mesh::edges() const
-{
-  return {static_cast<const blender::int2 *>(
-              CustomData_get_layer_named(&this->edge_data, CD_PROP_INT32_2D, ".edge_verts")),
-          this->totedge};
-}
-inline blender::MutableSpan<blender::int2> Mesh::edges_for_write()
-{
-  return {static_cast<blender::int2 *>(CustomData_get_layer_named_for_write(
-              &this->edge_data, CD_PROP_INT32_2D, ".edge_verts", this->totedge)),
-          this->totedge};
-}
-
-inline blender::OffsetIndices<int> Mesh::faces() const
-{
-  return blender::Span(this->face_offset_indices, this->faces_num + 1);
-}
-inline blender::Span<int> Mesh::face_offsets() const
-{
-  if (this->faces_num == 0) {
-    return {};
-  }
-  return {this->face_offset_indices, this->faces_num + 1};
-}
-
-inline blender::Span<int> Mesh::corner_verts() const
-{
-  return {static_cast<const int *>(
-              CustomData_get_layer_named(&this->loop_data, CD_PROP_INT32, ".corner_vert")),
-          this->totloop};
-}
-inline blender::MutableSpan<int> Mesh::corner_verts_for_write()
-{
-  return {static_cast<int *>(CustomData_get_layer_named_for_write(
-              &this->loop_data, CD_PROP_INT32, ".corner_vert", this->totloop)),
-          this->totloop};
-}
-
-inline blender::Span<int> Mesh::corner_edges() const
-{
-  return {static_cast<const int *>(
-              CustomData_get_layer_named(&this->loop_data, CD_PROP_INT32, ".corner_edge")),
-          this->totloop};
-}
-inline blender::MutableSpan<int> Mesh::corner_edges_for_write()
-{
-  return {static_cast<int *>(CustomData_get_layer_named_for_write(
-              &this->loop_data, CD_PROP_INT32, ".corner_edge", this->totloop)),
-          this->totloop};
-}
-
-inline blender::Span<MDeformVert> Mesh::deform_verts() const
-{
-  const MDeformVert *dverts = BKE_mesh_deform_verts(this);
-  if (!dverts) {
-    return {};
-  }
-  return {dverts, this->totvert};
-}
-inline blender::MutableSpan<MDeformVert> Mesh::deform_verts_for_write()
-{
-  return {BKE_mesh_deform_verts_for_write(this), this->totvert};
-}
-
-/** \} */
