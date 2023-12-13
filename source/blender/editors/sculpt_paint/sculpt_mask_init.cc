@@ -42,6 +42,8 @@
 /* Mask Init operator. */
 /* Initializes mask values for the entire mesh depending on the mode. */
 
+namespace blender::ed::sculpt_paint::mask {
+
 enum eSculptMaskInitMode {
   SCULPT_MASK_INIT_RANDOM_PER_VERTEX,
   SCULPT_MASK_INIT_RANDOM_PER_FACE_SET,
@@ -56,7 +58,7 @@ static void mask_init_task(Object *ob,
 {
   SculptSession *ss = ob->sculpt;
   PBVHVertexIter vd;
-  SCULPT_undo_push_node(ob, node, SculptUndoType::Mask);
+  undo::push_node(ob, node, undo::Type::Mask);
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     float mask;
     switch (mode) {
@@ -64,7 +66,7 @@ static void mask_init_task(Object *ob,
         mask = BLI_hash_int_01(vd.index + seed);
         break;
       case SCULPT_MASK_INIT_RANDOM_PER_FACE_SET: {
-        const int face_set = SCULPT_vertex_face_set_get(ss, vd.vertex);
+        const int face_set = face_set::vert_face_set_get(ss, vd.vertex);
         mask = BLI_hash_int_01(face_set + seed);
         break;
       }
@@ -80,7 +82,6 @@ static void mask_init_task(Object *ob,
 
 static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
 {
-  using namespace blender;
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -93,13 +94,13 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
   PBVH *pbvh = ob->sculpt->pbvh;
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, {});
+  Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
 
   if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;
   }
 
-  SCULPT_undo_push_begin(ob, op);
+  undo::push_begin(ob, op);
 
   if (mode == SCULPT_MASK_INIT_RANDOM_PER_LOOSE_PART) {
     SCULPT_topology_islands_ensure(ob);
@@ -116,7 +117,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
 
   multires_stitch_grids(ob);
 
-  SCULPT_undo_push_end(ob);
+  undo::push_end(ob);
 
   BKE_pbvh_update_mask(ss->pbvh);
   SCULPT_tag_update_overlays(C);
@@ -148,3 +149,5 @@ void SCULPT_OT_mask_init(wmOperatorType *ot)
   };
   RNA_def_enum(ot->srna, "mode", modes, SCULPT_MASK_INIT_RANDOM_PER_VERTEX, "Mode", "");
 }
+
+}  // namespace blender::ed::sculpt_paint::mask

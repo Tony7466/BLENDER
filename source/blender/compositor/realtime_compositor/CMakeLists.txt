@@ -10,6 +10,7 @@ set(INC
   ../../blentranslation
   ../../draw
   ../../gpu
+  ../../imbuf
   ../../makesrna
   ../../nodes
   ../../render
@@ -31,6 +32,7 @@ set(SRC
   intern/operation.cc
   intern/realize_on_domain_operation.cc
   intern/reduce_to_single_value_operation.cc
+  intern/render_context.cc
   intern/result.cc
   intern/scheduler.cc
   intern/shader_node.cc
@@ -51,6 +53,7 @@ set(SRC
   COM_operation.hh
   COM_realize_on_domain_operation.hh
   COM_reduce_to_single_value_operation.hh
+  COM_render_context.hh
   COM_result.hh
   COM_scheduler.hh
   COM_shader_node.hh
@@ -82,6 +85,7 @@ set(SRC
   algorithms/COM_algorithm_symmetric_separable_blur_variable_size.hh
   algorithms/COM_algorithm_transform.hh
 
+  cached_resources/intern/bokeh_kernel.cc
   cached_resources/intern/cached_image.cc
   cached_resources/intern/cached_mask.cc
   cached_resources/intern/cached_shader.cc
@@ -94,6 +98,7 @@ set(SRC
   cached_resources/intern/symmetric_blur_weights.cc
   cached_resources/intern/symmetric_separable_blur_weights.cc
 
+  cached_resources/COM_bokeh_kernel.hh
   cached_resources/COM_cached_image.hh
   cached_resources/COM_cached_mask.hh
   cached_resources/COM_cached_resource.hh
@@ -113,7 +118,7 @@ set(LIB
   bf_gpu
   PRIVATE bf::intern::guardedalloc
   bf_nodes
-  PRIVATE bf::imbuf
+  bf_imbuf
   bf_render
   PRIVATE bf::blenlib
   bf_blenkernel
