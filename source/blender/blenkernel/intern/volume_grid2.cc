@@ -5,6 +5,8 @@
 #include "BKE_volume_grid2.hh"
 #include "BKE_volume_openvdb.hh"
 
+#include "BLI_task.hh"
+
 #include <openvdb/Grid.h>
 
 namespace blender::bke {
@@ -112,7 +114,7 @@ void VolumeGridData::ensure_grid_loaded() const
     return;
   }
   BLI_assert(lazy_load_grid_);
-  grid_ = lazy_load_grid_();
+  threading::isolate_task([&]() { grid_ = lazy_load_grid_(); });
   BLI_assert(grid_);
   BLI_assert(grid_.unique());
   BLI_assert(grid_->isTreeUnique());
