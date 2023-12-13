@@ -555,6 +555,14 @@ endif()
 
 set(_PYTHON_VERSION "3.11")
 string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${_PYTHON_VERSION})
+if(NOT EXISTS ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS})
+  set(_PYTHON_VERSION "3.10")
+  string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${_PYTHON_VERSION})
+  if(NOT EXISTS ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS})
+    message(FATAL_ERROR "Missing python libraries! Neither 3.11 nor 3.10 are found in ${LIBDIR}/python")
+  endif()
+endif()
+
 # Python executable is needed as part of the build-process,
 # note that building without Python is quite unusual.
 set(PYTHON_EXECUTABLE ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/bin/python$<$<CONFIG:Debug>:_d>.exe)
