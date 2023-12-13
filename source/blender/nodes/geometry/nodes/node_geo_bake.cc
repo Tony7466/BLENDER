@@ -451,7 +451,7 @@ struct BakeDrawContext {
 static std::string get_baked_string(const BakeDrawContext &ctx)
 {
   if (ctx.bake_still && ctx.baked_range->size() == 1) {
-    return TIP_("Baked Still");
+    return fmt::format(TIP_("Baked Frame {}"), ctx.baked_range->first());
   }
   return fmt::format(TIP_("Baked {} - {}"), ctx.baked_range->first(), ctx.baked_range->last());
 }
