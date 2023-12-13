@@ -436,7 +436,7 @@ class CryptoMatteOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "identifiers_count", identifiers.size());
-    GPU_shader_uniform_1fv_array(shader, "identifiers", identifiers.size(), identifiers.data());
+    GPU_shader_uniform_1f_array(shader, "identifiers", identifiers.size(), identifiers.data());
 
     for (GPUTexture *layer : layers) {
       const int input_unit = GPU_shader_get_sampler_binding(shader, "layer_tx");
