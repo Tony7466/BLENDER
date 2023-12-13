@@ -39,10 +39,10 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_collection.h"
 #include "BKE_constraint.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_grease_pencil.hh"
@@ -51,9 +51,9 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_lib_remap.hh"
+#include "BKE_main.hh"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
@@ -83,8 +83,8 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "SEQ_relations.h"
-#include "SEQ_sequencer.h"
+#include "SEQ_relations.hh"
+#include "SEQ_sequencer.hh"
 
 #include "outliner_intern.hh"
 #include "tree/tree_element_grease_pencil_node.hh"
@@ -281,9 +281,9 @@ static void unlink_material_fn(bContext * /*C*/,
       break;
     }
     case ID_ME: {
-      Mesh *me = (Mesh *)tsep->id;
-      totcol = me->totcol;
-      matar = me->mat;
+      Mesh *mesh = (Mesh *)tsep->id;
+      totcol = mesh->totcol;
+      matar = mesh->mat;
       break;
     }
     case ID_CU_LEGACY: {
@@ -393,6 +393,15 @@ static void unlink_collection_fn(bContext *C,
     return;
   }
 
+  if (tsep && (ID_IS_LINKED(tsep->id) || ID_IS_OVERRIDE_LIBRARY(tsep->id))) {
+    BKE_reportf(reports,
+                RPT_WARNING,
+                "Cannot unlink collection '%s' parented to another linked collection '%s'",
+                collection->id.name + 2,
+                tsep->id->name + 2);
+    return;
+  }
+
   if (tsep) {
     if (GS(tsep->id->name) == ID_OB) {
       Object *ob = (Object *)tsep->id;
@@ -464,9 +473,18 @@ static void unlink_object_fn(bContext *C,
         DEG_relations_tag_update(bmain);
       }
       else if (GS(tsep->id->name) == ID_SCE) {
+        /* Following execution is expected to happen exclusively in the Outliner scene view. */
+#ifdef NDEBUG
+        BLI_assert(CTX_wm_space_outliner(C)->outlinevis == SO_SCENES);
+#endif
+
         Scene *scene = (Scene *)tsep->id;
-        Collection *parent = scene->master_collection;
-        BKE_collection_object_remove(bmain, parent, ob, true);
+        FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
+          if (BKE_collection_has_object(collection, ob)) {
+            BKE_collection_object_remove(bmain, collection, ob, true);
+          }
+        }
+        FOREACH_SCENE_COLLECTION_END;
         DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_HIERARCHY);
         DEG_relations_tag_update(bmain);
       }
@@ -1002,7 +1020,7 @@ static void id_local_fn(bContext *C,
     }
   }
   else if (ID_IS_OVERRIDE_LIBRARY_REAL(tselem->id)) {
-    BKE_lib_override_library_make_local(tselem->id);
+    BKE_lib_override_library_make_local(CTX_data_main(C), tselem->id);
   }
 }
 
@@ -2276,7 +2294,7 @@ static void constraint_fn(int event, TreeElement *te, TreeStoreElem * /*tselem*/
       lb = &ob->constraints;
     }
 
-    if (BKE_constraint_remove_ex(lb, ob, constraint, true)) {
+    if (BKE_constraint_remove_ex(lb, ob, constraint)) {
       /* there's no active constraint now, so make sure this is the case */
       BKE_constraints_active_set(&ob->constraints, nullptr);
 

@@ -99,6 +99,7 @@ struct bContext;
 struct bContextStore;
 struct GreasePencil;
 struct GreasePencilLayer;
+struct ReportList;
 struct wmDrag;
 struct wmDropBox;
 struct wmEvent;
@@ -110,6 +111,7 @@ struct wmWindowManager;
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
+#include "BLI_vector.hh"
 #include "DNA_listBase.h"
 #include "DNA_uuid_types.h"
 #include "DNA_vec_types.h"
@@ -917,6 +919,45 @@ struct wmTimer {
   bool sleep;
 };
 
+/**
+ * Communication/status data owned by the wmJob, and passed to the worker code when calling
+ * `startjob` callback.
+ *
+ * 'OUTPUT' members mean that they are defined by the worker thread, and read/used by the wmJob
+ * management code from the main thread. And vice-versa for `INPUT' members.
+ *
+ * \warning There is currently no thread-safety or synchronization when accessing these values.
+ * This is fine as long as:
+ *   - All members are independent of each other, value-wise.
+ *   - Each member is 'simple enough' that accessing it or setting it can be considered as atomic.
+ *   - There is no requirement of immediate synchronization of these values between the main
+ *     controlling thread (i.e. wmJob management code) and the worker thread.
+ */
+struct wmJobWorkerStatus {
+  /**
+   * OUTPUT - Set to true by the worker to request update processing from the main thread (as part
+   * of the wmJob 'event loop', see #wm_jobs_timer).
+   */
+  bool do_update;
+
+  /**
+   * INPUT - Set by the wmJob management code to request a worker to stop/abort its processing.
+   *
+   * \note Some job types (rendering or baking ones e.g.) also use the #Global.is_break flag to
+   * cancel their processing.
+   */
+  bool stop;
+
+  /** OUTPUT - Progress as reported by the worker, from `0.0f` to `1.0f`. */
+  float progress;
+
+  /**
+   * OUTPUT - Storage of reports generated during this job's run. Contains its own locking for
+   * thread-safety.
+   */
+  ReportList *reports;
+};
+
 struct wmOperatorType {
   /** Text for UI, undo (should not exceed #OP_MAX_TYPENAME). */
   const char *name;
@@ -1139,10 +1180,12 @@ struct wmDragAssetListItem {
 };
 
 struct wmDragPath {
-  char *path;
-  /* Note that even though the enum type uses bit-flags, this should never have multiple type-bits
-   * set, so `ELEM()` like comparison is possible. */
-  int file_type; /* eFileSel_File_Types */
+  blender::Vector<std::string> paths;
+  /* File type of each path in #paths. */
+  blender::Vector<int> file_types; /* eFileSel_File_Types */
+  /* Bit flag of file types in #paths. */
+  int file_types_bit_flag; /* eFileSel_File_Types */
+  std::string tooltip;
 };
 
 struct wmDragGreasePencilLayer {
@@ -1156,10 +1199,12 @@ using WMDropboxTooltipFunc = char *(*)(bContext *C,
                                        wmDropBox *drop);
 
 struct wmDragActiveDropState {
+  wmDragActiveDropState();
+  ~wmDragActiveDropState();
+
   /**
    * Informs which dropbox is activated with the drag item.
-   * When this value changes, the #draw_activate and #draw_deactivate dropbox callbacks are
-   * triggered.
+   * When this value changes, the #on_enter() and #on_exit() dropbox callbacks are triggered.
    */
   wmDropBox *active_dropbox;
 
@@ -1230,6 +1275,13 @@ struct wmDropBox {
    * So this callback is called on every dropbox that is registered in the current screen. */
   void (*on_drag_start)(bContext *C, wmDrag *drag);
 
+  /** Called when poll returns true the first time. Typically used to setup some drawing data. */
+  void (*on_enter)(wmDropBox *drop, wmDrag *drag);
+
+  /** Called when poll returns false the first time or when the drag event ends (successful drop or
+   * canceled). Typically used to cleanup resources or end drawing. */
+  void (*on_exit)(wmDropBox *drop, wmDrag *drag);
+
   /** Before exec, this copies drag info to #wmDrop properties. */
   void (*copy)(bContext *C, wmDrag *drag, wmDropBox *drop);
 
@@ -1253,12 +1305,6 @@ struct wmDropBox {
    * \param xy: Cursor location in window coordinates (#wmEvent.xy compatible).
    */
   void (*draw_in_view)(bContext *C, wmWindow *win, wmDrag *drag, const int xy[2]);
-
-  /** Called when poll returns true the first time. */
-  void (*draw_activate)(wmDropBox *drop, wmDrag *drag);
-
-  /** Called when poll returns false the first time or when the drag event ends. */
-  void (*draw_deactivate)(wmDropBox *drop, wmDrag *drag);
 
   /** Custom data for drawing. */
   void *draw_data;

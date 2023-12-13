@@ -12,7 +12,7 @@
 #include "BLI_path_util.h"
 #include "BLI_serialize.hh"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_vector.hh"
 
 #include "PIL_time.h"
@@ -31,16 +31,16 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BKE_bake_geometry_nodes_modifier.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_global.h"
 #include "BKE_instances.hh"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -64,7 +64,7 @@ namespace bake = blender::bke::bake;
 
 namespace blender::ed::object::bake_simulation {
 
-static bool calculate_to_frame_poll(bContext *C)
+static bool simulate_to_frame_poll(bContext *C)
 {
   if (!ED_operator_object_active(C)) {
     return false;
@@ -72,7 +72,7 @@ static bool calculate_to_frame_poll(bContext *C)
   return true;
 }
 
-struct CalculateSimulationJob {
+struct SimulateToFrameJob {
   wmWindowManager *wm;
   Main *bmain;
   Depsgraph *depsgraph;
@@ -82,12 +82,9 @@ struct CalculateSimulationJob {
   int end_frame;
 };
 
-static void calculate_simulation_job_startjob(void *customdata,
-                                              bool *stop,
-                                              bool *do_update,
-                                              float *progress)
+static void simulate_to_frame_startjob(void *customdata, wmJobWorkerStatus *worker_status)
 {
-  CalculateSimulationJob &job = *static_cast<CalculateSimulationJob *>(customdata);
+  SimulateToFrameJob &job = *static_cast<SimulateToFrameJob *>(customdata);
   G.is_rendering = true;
   G.is_break = false;
   WM_set_locked_interface(job.wm, true);
@@ -105,7 +102,7 @@ static void calculate_simulation_job_startjob(void *customdata,
       if (!nmd->runtime->cache) {
         continue;
       }
-      for (auto item : nmd->runtime->cache->cache_by_id.items()) {
+      for (auto item : nmd->runtime->cache->simulation_cache_by_id.items()) {
         if (item.value->cache_status != bake::CacheStatus::Baked) {
           item.value->reset();
         }
@@ -114,8 +111,8 @@ static void calculate_simulation_job_startjob(void *customdata,
     objects_to_calc.append(object);
   }
 
-  *progress = 0.0f;
-  *do_update = true;
+  worker_status->progress = 0.0f;
+  worker_status->do_update = true;
 
   const float frame_step_size = 1.0f;
   const float progress_per_frame = 1.0f /
@@ -125,7 +122,7 @@ static void calculate_simulation_job_startjob(void *customdata,
   for (float frame_f = job.start_frame; frame_f <= job.end_frame; frame_f += frame_step_size) {
     const SubFrame frame{frame_f};
 
-    if (G.is_break || (stop != nullptr && *stop)) {
+    if (G.is_break || worker_status->stop) {
       break;
     }
 
@@ -134,33 +131,33 @@ static void calculate_simulation_job_startjob(void *customdata,
 
     BKE_scene_graph_update_for_newframe(job.depsgraph);
 
-    *progress += progress_per_frame;
-    *do_update = true;
+    worker_status->progress += progress_per_frame;
+    worker_status->do_update = true;
   }
 
   job.scene->r.cfra = old_frame;
   DEG_time_tag_update(job.bmain);
 
-  *progress = 1.0f;
-  *do_update = true;
+  worker_status->progress = 1.0f;
+  worker_status->do_update = true;
 }
 
-static void calculate_simulation_job_endjob(void *customdata)
+static void simulate_to_frame_endjob(void *customdata)
 {
-  CalculateSimulationJob &job = *static_cast<CalculateSimulationJob *>(customdata);
+  SimulateToFrameJob &job = *static_cast<SimulateToFrameJob *>(customdata);
   WM_set_locked_interface(job.wm, false);
   G.is_rendering = false;
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
 }
 
-static int calculate_to_frame_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+static int simulate_to_frame_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   Scene *scene = CTX_data_scene(C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Main *bmain = CTX_data_main(C);
 
-  CalculateSimulationJob *job = MEM_new<CalculateSimulationJob>(__func__);
+  SimulateToFrameJob *job = MEM_new<SimulateToFrameJob>(__func__);
   job->wm = wm;
   job->bmain = bmain;
   job->depsgraph = depsgraph;
@@ -188,20 +185,17 @@ static int calculate_to_frame_invoke(bContext *C, wmOperator *op, const wmEvent 
                               WM_JOB_TYPE_CALCULATE_SIMULATION_NODES);
 
   WM_jobs_customdata_set(
-      wm_job, job, [](void *job) { MEM_delete(static_cast<CalculateSimulationJob *>(job)); });
+      wm_job, job, [](void *job) { MEM_delete(static_cast<SimulateToFrameJob *>(job)); });
   WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
-  WM_jobs_callbacks(wm_job,
-                    calculate_simulation_job_startjob,
-                    nullptr,
-                    nullptr,
-                    calculate_simulation_job_endjob);
+  WM_jobs_callbacks(
+      wm_job, simulate_to_frame_startjob, nullptr, nullptr, simulate_to_frame_endjob);
 
   WM_jobs_start(CTX_wm_manager(C), wm_job);
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int calculate_to_frame_modal(bContext *C, wmOperator * /*op*/, const wmEvent * /*event*/)
+static int simulate_to_frame_modal(bContext *C, wmOperator * /*op*/, const wmEvent * /*event*/)
 {
   if (!WM_jobs_test(CTX_wm_manager(C), CTX_data_scene(C), WM_JOB_TYPE_CALCULATE_SIMULATION_NODES))
   {
@@ -250,10 +244,7 @@ struct BakeSimulationJob {
   Vector<ObjectBakeData> objects;
 };
 
-static void bake_simulation_job_startjob(void *customdata,
-                                         bool *stop,
-                                         bool *do_update,
-                                         float *progress)
+static void bake_simulation_job_startjob(void *customdata, wmJobWorkerStatus *worker_status)
 {
   BakeSimulationJob &job = *static_cast<BakeSimulationJob *>(customdata);
   G.is_rendering = true;
@@ -272,8 +263,8 @@ static void bake_simulation_job_startjob(void *customdata,
     }
   }
 
-  *progress = 0.0f;
-  *do_update = true;
+  worker_status->progress = 0.0f;
+  worker_status->do_update = true;
 
   const int frames_to_bake = global_bake_end_frame - global_bake_start_frame + 1;
 
@@ -286,7 +277,7 @@ static void bake_simulation_job_startjob(void *customdata,
   {
     const SubFrame frame{frame_f};
 
-    if (G.is_break || (stop != nullptr && *stop)) {
+    if (G.is_break || worker_status->stop) {
       break;
     }
 
@@ -302,11 +293,11 @@ static void bake_simulation_job_startjob(void *customdata,
         NodesModifierData &nmd = *modifier_bake_data.nmd;
         const bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
         for (NodeBakeData &node_bake_data : modifier_bake_data.nodes) {
-          if (!modifier_cache.cache_by_id.contains(node_bake_data.id)) {
+          if (!modifier_cache.simulation_cache_by_id.contains(node_bake_data.id)) {
             continue;
           }
-          const bake::NodeCache &node_cache = *modifier_cache.cache_by_id.lookup(
-              node_bake_data.id);
+          const bake::SimulationNodeCache &node_cache =
+              *modifier_cache.simulation_cache_by_id.lookup(node_bake_data.id);
           if (node_cache.frame_caches.is_empty()) {
             continue;
           }
@@ -338,18 +329,18 @@ static void bake_simulation_job_startjob(void *customdata,
       }
     }
 
-    *progress += progress_per_frame;
-    *do_update = true;
+    worker_status->progress += progress_per_frame;
+    worker_status->do_update = true;
   }
 
   for (ObjectBakeData &object_bake_data : job.objects) {
     for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
       NodesModifierData &nmd = *modifier_bake_data.nmd;
       for (NodeBakeData &node_bake_data : modifier_bake_data.nodes) {
-        if (std::unique_ptr<bake::NodeCache> *node_cache_ptr =
-                nmd.runtime->cache->cache_by_id.lookup_ptr(node_bake_data.id))
+        if (std::unique_ptr<bake::SimulationNodeCache> *node_cache_ptr =
+                nmd.runtime->cache->simulation_cache_by_id.lookup_ptr(node_bake_data.id))
         {
-          bake::NodeCache &node_cache = **node_cache_ptr;
+          bake::SimulationNodeCache &node_cache = **node_cache_ptr;
           if (!node_cache.frame_caches.is_empty()) {
             /* Tag the caches as being baked so that they are not changed anymore. */
             node_cache.cache_status = bake::CacheStatus::Baked;
@@ -363,8 +354,8 @@ static void bake_simulation_job_startjob(void *customdata,
   job.scene->r.cfra = old_frame;
   DEG_time_tag_update(job.bmain);
 
-  *progress = 1.0f;
-  *do_update = true;
+  worker_status->progress = 1.0f;
+  worker_status->do_update = true;
 }
 
 static void bake_simulation_job_endjob(void *customdata)
@@ -428,7 +419,7 @@ static Vector<ObjectBakeData> collect_nodes_to_bake(Main &bmain,
       ModifierBakeData modifier_bake_data;
       modifier_bake_data.nmd = nmd;
 
-      for (auto item : nmd->runtime->cache->cache_by_id.items()) {
+      for (auto item : nmd->runtime->cache->simulation_cache_by_id.items()) {
         item.value->reset();
       }
 
@@ -658,10 +649,10 @@ static void try_delete_bake(
   }
   bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
   std::lock_guard lock{modifier_cache.mutex};
-  if (!modifier_cache.cache_by_id.contains(bake_id)) {
+  if (!modifier_cache.simulation_cache_by_id.contains(bake_id)) {
     return;
   }
-  bake::NodeCache &node_cache = *modifier_cache.cache_by_id.lookup(bake_id);
+  bake::SimulationNodeCache &node_cache = *modifier_cache.simulation_cache_by_id.lookup(bake_id);
   node_cache.reset();
   const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
       *bmain, object, nmd, bake_id);
@@ -837,9 +828,9 @@ void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot)
       "Calculate simulations in geometry nodes modifiers from the start to current frame";
   ot->idname = __func__;
 
-  ot->invoke = calculate_to_frame_invoke;
-  ot->modal = calculate_to_frame_modal;
-  ot->poll = calculate_to_frame_poll;
+  ot->invoke = simulate_to_frame_invoke;
+  ot->modal = simulate_to_frame_modal;
+  ot->poll = simulate_to_frame_poll;
 
   RNA_def_boolean(ot->srna,
                   "selected",

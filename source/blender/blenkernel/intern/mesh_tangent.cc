@@ -22,7 +22,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_tangent.hh"
@@ -138,20 +138,12 @@ void BKE_mesh_calc_loop_tangent_single(Mesh *mesh,
     return;
   }
 
-  const float(*loop_normals)[3] = static_cast<const float(*)[3]>(
-      CustomData_get_layer(&mesh->loop_data, CD_NORMAL));
-  if (!loop_normals) {
-    BKE_report(
-        reports, RPT_ERROR, "Tangent space computation needs loop normals, none found, aborting");
-    return;
-  }
-
   BKE_mesh_calc_loop_tangent_single_ex(
       reinterpret_cast<const float(*)[3]>(mesh->vert_positions().data()),
       mesh->totvert,
       mesh->corner_verts().data(),
       r_looptangents,
-      loop_normals,
+      reinterpret_cast<const float(*)[3]>(mesh->corner_normals().data()),
       reinterpret_cast<const float(*)[2]>(uv_map.data()),
       mesh->totloop,
       mesh->faces(),
@@ -245,7 +237,7 @@ struct SGLSLMeshToTangent {
     if (precomputedLoopNormals) {
       return mikk::float3(precomputedLoopNormals[loop_index]);
     }
-    if (sharp_faces && sharp_faces[face_index]) { /* flat */
+    if (!sharp_faces.is_empty() && sharp_faces[face_index]) { /* flat */
       if (precomputedFaceNormals) {
         return mikk::float3(precomputedFaceNormals[face_index]);
       }
@@ -292,7 +284,7 @@ struct SGLSLMeshToTangent {
   const float (*vert_normals)[3];
   const float (*orco)[3];
   float (*tangent)[4]; /* destination */
-  const bool *sharp_faces;
+  blender::Span<bool> sharp_faces;
   int numTessFaces;
 
 #ifdef USE_LOOPTRI_DETECT_QUADS
@@ -405,7 +397,7 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
                                    const MLoopTri *looptri,
                                    const int *looptri_faces,
                                    const uint looptri_len,
-                                   const bool *sharp_faces,
+                                   const blender::Span<bool> sharp_faces,
 
                                    CustomData *loopdata,
                                    bool calc_active_tangent,
@@ -589,7 +581,11 @@ void BKE_mesh_calc_loop_tangents(Mesh *me_eval,
                                  int tangent_names_len)
 {
   /* TODO(@ideasman42): store in Mesh.runtime to avoid recalculation. */
+  using namespace blender;
+  using namespace blender::bke;
   const blender::Span<MLoopTri> looptris = me_eval->looptris();
+  const bke::AttributeAccessor attributes = me_eval->attributes();
+  const VArraySpan sharp_face = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
   short tangent_mask = 0;
   BKE_mesh_calc_loop_tangent_ex(
       reinterpret_cast<const float(*)[3]>(me_eval->vert_positions().data()),
@@ -598,15 +594,14 @@ void BKE_mesh_calc_loop_tangents(Mesh *me_eval,
       looptris.data(),
       me_eval->looptri_faces().data(),
       uint(looptris.size()),
-      static_cast<const bool *>(
-          CustomData_get_layer_named(&me_eval->face_data, CD_PROP_BOOL, "sharp_face")),
+      sharp_face,
       &me_eval->loop_data,
       calc_active_tangent,
       tangent_names,
       tangent_names_len,
       reinterpret_cast<const float(*)[3]>(me_eval->vert_normals().data()),
       reinterpret_cast<const float(*)[3]>(me_eval->face_normals().data()),
-      static_cast<const float(*)[3]>(CustomData_get_layer(&me_eval->loop_data, CD_NORMAL)),
+      reinterpret_cast<const float(*)[3]>(me_eval->corner_normals().data()),
       /* may be nullptr */
       static_cast<const float(*)[3]>(CustomData_get_layer(&me_eval->vert_data, CD_ORCO)),
       /* result */

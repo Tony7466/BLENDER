@@ -223,6 +223,8 @@ class ShadowModule {
 
   PassMain::Sub *tilemap_usage_transparent_ps_ = nullptr;
   GPUBatch *box_batch_ = nullptr;
+  /* Source texture for depth buffer analysis. */
+  GPUTexture *src_depth_tx_ = nullptr;
 
   Framebuffer usage_tag_fb;
 
@@ -328,23 +330,27 @@ class ShadowModule {
 
   void begin_sync();
   /** Register a shadow caster or receiver. */
-  void sync_object(const ObjectHandle &handle,
+  void sync_object(const Object *ob,
+                   const ObjectHandle &handle,
                    const ResourceHandle &resource_handle,
-                   bool is_shadow_caster,
                    bool is_alpha_blend);
   void end_sync();
 
   void set_lights_data();
 
-  void set_view(View &view);
+  /* Update all shadow regions visible inside the view.
+   * If called multiple time for the same view, it will only do the depth buffer scanning
+   * to check any new opaque surfaces.
+   * Needs to be called after `LightModule::set_view();`. */
+  void set_view(View &view, GPUTexture *depth_tx = nullptr);
 
   void debug_end_sync();
   void debug_draw(View &view, GPUFrameBuffer *view_fb);
 
-  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
+  template<typename PassType> void bind_resources(PassType &pass)
   {
-    pass->bind_texture(SHADOW_ATLAS_TEX_SLOT, &atlas_tx_);
-    pass->bind_texture(SHADOW_TILEMAPS_TEX_SLOT, &tilemap_pool.tilemap_tx);
+    pass.bind_texture(SHADOW_ATLAS_TEX_SLOT, &atlas_tx_);
+    pass.bind_texture(SHADOW_TILEMAPS_TEX_SLOT, &tilemap_pool.tilemap_tx);
   }
 
  private:

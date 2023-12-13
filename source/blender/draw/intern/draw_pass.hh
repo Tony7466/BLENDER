@@ -40,11 +40,15 @@
  * if any of these reference becomes invalid.
  */
 
-#include "BKE_image.h"
+#include "BLI_listbase_wrapper.hh"
 #include "BLI_vector.hh"
-#include "DRW_gpu_wrapper.hh"
+
+#include "BKE_image.h"
+
 #include "GPU_debug.h"
 #include "GPU_material.h"
+
+#include "DRW_gpu_wrapper.hh"
 
 #include "draw_command.hh"
 #include "draw_handle.hh"
@@ -687,8 +691,24 @@ inline void PassBase<T>::draw(GPUBatch *batch,
     return;
   }
   BLI_assert(shader_);
-  draw_commands_buf_.append_draw(
-      headers_, commands_, batch, instance_len, vertex_len, vertex_first, handle, custom_id);
+#ifdef WITH_METAL_BACKEND
+  /* TEMP: Note, shader_ is passed as part of the draw as vertex-expansion properties for SSBO
+   * vertex fetch need extracting at command generation time. */
+  GPUShader *draw_shader = GPU_shader_uses_ssbo_vertex_fetch(shader_) ? shader_ : nullptr;
+#endif
+  draw_commands_buf_.append_draw(headers_,
+                                 commands_,
+                                 batch,
+                                 instance_len,
+                                 vertex_len,
+                                 vertex_first,
+                                 handle,
+                                 custom_id
+#ifdef WITH_METAL_BACKEND
+                                 ,
+                                 draw_shader
+#endif
+  );
 }
 
 template<class T>

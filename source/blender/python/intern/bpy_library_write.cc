@@ -18,9 +18,9 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_blendfile.h"
+#include "BKE_blendfile.hh"
 #include "BKE_global.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
 #include "BLO_writefile.hh"
@@ -187,16 +187,17 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
 
   if (retval) {
     BKE_reports_print(&reports, RPT_ERROR_ALL);
-    BKE_reports_clear(&reports);
     ret = Py_None;
     Py_INCREF(ret);
   }
   else {
-    if (BPy_reports_to_error(&reports, PyExc_IOError, true) == 0) {
+    if (BPy_reports_to_error(&reports, PyExc_IOError, false) == 0) {
       PyErr_SetString(PyExc_IOError, "Unknown error writing library data");
     }
     ret = nullptr;
   }
+
+  BKE_reports_free(&reports);
 
 finally:
 

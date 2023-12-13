@@ -28,7 +28,7 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_collection.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h" /* only to check G.debug */
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
@@ -36,7 +36,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_boolean_convert.hh"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -53,10 +53,10 @@
 
 #include "GEO_randomize.hh"
 
-#include "bmesh.h"
-#include "bmesh_tools.h"
-#include "tools/bmesh_boolean.h"
-#include "tools/bmesh_intersect.h"
+#include "bmesh.hh"
+#include "bmesh_tools.hh"
+#include "tools/bmesh_boolean.hh"
+#include "tools/bmesh_intersect.hh"
 
 // #define DEBUG_TIME
 
@@ -151,7 +151,7 @@ static Mesh *get_quick_mesh(
             mul_m4_v3(omat, positions[i]);
           }
 
-          BKE_mesh_tag_positions_changed(result);
+          result->tag_positions_changed();
         }
 
         break;
@@ -415,7 +415,7 @@ static Mesh *exact_boolean_mesh(BooleanModifierData *bmd,
                                 Mesh *mesh)
 {
   Vector<const Mesh *> meshes;
-  Vector<float4x4 *> obmats;
+  Vector<float4x4> obmats;
 
   Vector<Array<short>> material_remaps;
 
@@ -428,7 +428,7 @@ static Mesh *exact_boolean_mesh(BooleanModifierData *bmd,
   }
 
   meshes.append(mesh);
-  obmats.append((float4x4 *)&ctx->object->object_to_world);
+  obmats.append(float4x4(ctx->object->object_to_world));
   material_remaps.append({});
 
   const BooleanModifierMaterialMode material_mode = BooleanModifierMaterialMode(
@@ -451,7 +451,7 @@ static Mesh *exact_boolean_mesh(BooleanModifierData *bmd,
     }
     BKE_mesh_wrapper_ensure_mdata(mesh_operand);
     meshes.append(mesh_operand);
-    obmats.append((float4x4 *)&bmd->object->object_to_world);
+    obmats.append(float4x4(bmd->object->object_to_world));
     if (material_mode == eBooleanModifierMaterialMode_Index) {
       material_remaps.append(get_material_remap_index_based(ctx->object, bmd->object));
     }
@@ -471,7 +471,7 @@ static Mesh *exact_boolean_mesh(BooleanModifierData *bmd,
           }
           BKE_mesh_wrapper_ensure_mdata(collection_mesh);
           meshes.append(collection_mesh);
-          obmats.append((float4x4 *)&ob->object_to_world);
+          obmats.append(float4x4(ob->object_to_world));
           if (material_mode == eBooleanModifierMaterialMode_Index) {
             material_remaps.append(get_material_remap_index_based(ctx->object, ob));
           }
@@ -489,7 +489,7 @@ static Mesh *exact_boolean_mesh(BooleanModifierData *bmd,
   Mesh *result = blender::meshintersect::direct_mesh_boolean(
       meshes,
       obmats,
-      *(float4x4 *)&ctx->object->object_to_world,
+      float4x4(ctx->object->object_to_world),
       material_remaps,
       use_self,
       hole_tolerant,
@@ -675,7 +675,7 @@ ModifierTypeInfo modifierType_Boolean = {
     /*struct_name*/ "BooleanModifierData",
     /*struct_size*/ sizeof(BooleanModifierData),
     /*srna*/ &RNA_BooleanModifier,
-    /*type*/ eModifierTypeType_Nonconstructive,
+    /*type*/ ModifierTypeType::Nonconstructive,
     /*flags*/
     (ModifierTypeFlag)(eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode),
     /*icon*/ ICON_MOD_BOOLEAN,

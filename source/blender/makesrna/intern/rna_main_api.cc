@@ -26,19 +26,19 @@
 #ifdef RNA_RUNTIME
 
 #  include "BKE_action.h"
-#  include "BKE_armature.h"
+#  include "BKE_armature.hh"
 #  include "BKE_brush.hh"
 #  include "BKE_camera.h"
 #  include "BKE_collection.h"
-#  include "BKE_curve.h"
+#  include "BKE_curve.hh"
 #  include "BKE_curves.h"
 #  include "BKE_displist.h"
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_icons.h"
 #  include "BKE_idtype.h"
 #  include "BKE_image.h"
-#  include "BKE_lattice.h"
-#  include "BKE_lib_remap.h"
+#  include "BKE_lattice.hh"
+#  include "BKE_lib_remap.hh"
 #  include "BKE_light.h"
 #  include "BKE_lightprobe.h"
 #  include "BKE_linestyle.h"
@@ -48,7 +48,7 @@
 #  include "BKE_mesh.hh"
 #  include "BKE_movieclip.h"
 #  include "BKE_node.h"
-#  include "BKE_object.h"
+#  include "BKE_object.hh"
 #  include "BKE_paint.hh"
 #  include "BKE_particle.h"
 #  include "BKE_pointcloud.h"
@@ -57,8 +57,8 @@
 #  include "BKE_speaker.h"
 #  include "BKE_text.h"
 #  include "BKE_texture.h"
-#  include "BKE_vfont.h"
-#  include "BKE_volume.h"
+#  include "BKE_vfont.hh"
+#  include "BKE_volume.hh"
 #  include "BKE_workspace.h"
 #  include "BKE_world.h"
 
@@ -306,12 +306,12 @@ static Mesh *rna_Main_meshes_new(Main *bmain, const char *name)
   char safe_name[MAX_ID_NAME - 2];
   rna_idname_validate(name, safe_name);
 
-  Mesh *me = BKE_mesh_add(bmain, safe_name);
-  id_us_min(&me->id);
+  Mesh *mesh = BKE_mesh_add(bmain, safe_name);
+  id_us_min(&mesh->id);
 
   WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
 
-  return me;
+  return mesh;
 }
 
 /* copied from Mesh_getFromObject and adapted to RNA interface */

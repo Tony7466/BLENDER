@@ -343,7 +343,7 @@ static void sample_interval_linear(const Span<T> src_data,
   else {
     dst_data[dst_index] = bke::attribute_math::mix2(
         end_point.parameter, src_data[end_point.index], src_data[end_point.next_index]);
-#ifdef DEBUG
+#ifndef NDEBUG
     ++dst_index;
 #endif
   }
@@ -381,7 +381,7 @@ static void sample_interval_catmull_rom(const Span<T> src_data,
   }
   else {
     dst_data[dst_index] = interpolate_catmull_rom(src_data, end_point, src_cyclic);
-#ifdef DEBUG
+#ifndef NDEBUG
     ++dst_index;
 #endif
   }
@@ -566,9 +566,9 @@ static void sample_interval_bezier(const Span<float3> src_positions,
     dst_positions[dst_index] = end_point_insert.position;
     dst_types_l[dst_index] = src_types_l[end_point.next_index];
     dst_types_r[dst_index] = src_types_r[end_point.next_index];
-#ifdef DEBUG
+#ifndef NDEBUG
     ++dst_index;
-#endif  // DEBUG
+#endif
   }
   BLI_assert(dst_index == dst_range.one_after_last());
 }
@@ -1059,17 +1059,14 @@ bke::CurvesGeometry trim_curves(const bke::CurvesGeometry &src_curves,
       copy_point_skip.add("nurbs_weight");
     }
 
-    /* Copy point domain. */
-    for (auto &attribute : bke::retrieve_attributes_for_transfer(src_attributes,
-                                                                 dst_attributes,
-                                                                 ATTR_DOMAIN_MASK_POINT,
-                                                                 propagation_info,
-                                                                 copy_point_skip))
-    {
-      bke::curves::copy_point_data(
-          src_points_by_curve, dst_points_by_curve, unselected, attribute.src, attribute.dst.span);
-      attribute.dst.finish();
-    }
+    bke::copy_attributes_group_to_group(src_attributes,
+                                        ATTR_DOMAIN_POINT,
+                                        propagation_info,
+                                        copy_point_skip,
+                                        src_points_by_curve,
+                                        dst_points_by_curve,
+                                        unselected,
+                                        dst_attributes);
   }
 
   dst_curves.remove_attributes_based_on_types();

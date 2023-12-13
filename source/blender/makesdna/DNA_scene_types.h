@@ -1511,13 +1511,6 @@ typedef enum eSeqOverlapMode {
   SEQ_OVERLAP_SHUFFLE,
 } eSeqOverlapMode;
 
-typedef enum eSeqImageFitMethod {
-  SEQ_SCALE_TO_FIT,
-  SEQ_SCALE_TO_FILL,
-  SEQ_STRETCH_TO_FILL,
-  SEQ_USE_ORIGINAL_SIZE,
-} eSeqImageFitMethod;
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1581,18 +1574,21 @@ typedef struct ToolSettings {
   char gpencil_v3d_align;
   /** General 2D Editor. */
   char gpencil_v2d_align;
-  char _pad0[2];
 
   /* Annotations. */
   /** Stroke placement settings - 3D View. */
   char annotate_v3d_align;
-
   /** Default stroke thickness for annotation strokes. */
   short annotate_thickness;
+
+  /** Normal offset used when drawing on surfaces. */
+  float gpencil_surface_offset;
+
   /** Stroke selection mode for Edit. */
   char gpencil_selectmode_edit;
   /** Stroke selection mode for Sculpt. */
   char gpencil_selectmode_sculpt;
+  char _pad0[6];
 
   /** Grease Pencil Sculpt. */
   struct GP_Sculpt_Settings gp_sculpt;
@@ -1814,6 +1810,8 @@ typedef struct RaytraceEEVEE {
   float screen_trace_quality;
   /** Thickness in world space each surface will have during screen space tracing. */
   float screen_trace_thickness;
+  /** Maximum roughness before using horizon scan. */
+  float screen_trace_max_roughness;
   /** Resolution downscale factor. */
   int resolution_scale;
   /** Maximum intensity a ray can have. */
@@ -1822,6 +1820,8 @@ typedef struct RaytraceEEVEE {
   int flag;
   /** #RaytraceEEVEE_DenoiseStages. */
   int denoise_stages;
+
+  char _pad0[4];
 } RaytraceEEVEE;
 
 typedef struct SceneEEVEE {
@@ -1855,10 +1855,13 @@ typedef struct SceneEEVEE {
   float volumetric_sample_distribution;
   float volumetric_light_clamp;
   int volumetric_shadow_samples;
+  int volumetric_ray_depth;
 
   float gtao_distance;
   float gtao_factor;
   float gtao_quality;
+  float gtao_thickness;
+  float gtao_focus;
 
   float bokeh_overblur;
   float bokeh_max_size;
@@ -1887,14 +1890,11 @@ typedef struct SceneEEVEE {
   int shadow_ray_count;
   int shadow_step_count;
   float shadow_normal_bias;
-  char _pad[4];
 
-  int ray_split_settings;
+  char _pad[4];
   int ray_tracing_method;
 
-  struct RaytraceEEVEE reflection_options;
-  struct RaytraceEEVEE refraction_options;
-  struct RaytraceEEVEE diffuse_options;
+  struct RaytraceEEVEE ray_tracing_options;
 
   struct LightCache *light_cache DNA_DEPRECATED;
   struct LightCache *light_cache_data;
@@ -2694,6 +2694,8 @@ enum {
 
 /** #ToolSettings::gpencil_flags */
 typedef enum eGPencil_Flags {
+  /** Enables multi-frame editing. */
+  GP_USE_MULTI_FRAME_EDITING = (1 << 0),
   /** When creating new frames, the last frame gets used as the basis for the new one. */
   GP_TOOL_FLAG_RETAIN_LAST = (1 << 1),
   /** Add the strokes below all strokes in the layer. */

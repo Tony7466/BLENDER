@@ -36,20 +36,20 @@
 
 #include "BLO_readfile.h"
 
-#include "BKE_armature.h"
-#include "BKE_blendfile.h"
-#include "BKE_blendfile_link_append.h"
-#include "BKE_context.h"
+#include "BKE_armature.hh"
+#include "BKE_blendfile.hh"
+#include "BKE_blendfile_link_append.hh"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_key.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_main.h"
+#include "BKE_lib_remap.hh"
+#include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
@@ -230,7 +230,7 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
     BKE_reportf(op->reports, RPT_ERROR, "'%s': cannot use current file as library", filepath);
     return OPERATOR_CANCELLED;
   }
-  if (!group || !name) {
+  if (!group) {
     BKE_reportf(op->reports, RPT_ERROR, "'%s': nothing indicated", filepath);
     return OPERATOR_CANCELLED;
   }

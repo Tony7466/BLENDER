@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "DEG_depsgraph.hh"
 #include "DNA_lightprobe_types.h"
 #include "DRW_render.h"
@@ -29,6 +29,7 @@
 #include "eevee_material.hh"
 #include "eevee_motion_blur.hh"
 #include "eevee_pipeline.hh"
+#include "eevee_planar_probes.hh"
 #include "eevee_raytrace.hh"
 #include "eevee_reflection_probes.hh"
 #include "eevee_renderbuffers.hh"
@@ -53,6 +54,9 @@ class Instance {
 
   UniformDataBuf global_ubo_;
 
+  uint64_t depsgraph_last_update_ = 0;
+  bool overlays_enabled_;
+
  public:
   ShaderModule &shaders;
   SyncModule sync;
@@ -64,6 +68,7 @@ class Instance {
   AmbientOcclusion ambient_occlusion;
   RayTraceModule raytracing;
   ReflectionProbeModule reflection_probes;
+  PlanarProbeModule planar_probes;
   VelocityModule velocity;
   MotionBlurModule motion_blur;
   DepthOfField depth_of_field;
@@ -77,6 +82,7 @@ class Instance {
   MainView main_view;
   CaptureView capture_view;
   World world;
+  LookdevView lookdev_view;
   LookdevModule lookdev;
   LightProbeModule light_probes;
   IrradianceCache irradiance_cache;
@@ -115,12 +121,13 @@ class Instance {
         sync(*this),
         materials(*this),
         subsurface(*this, global_ubo_.subsurface),
-        pipelines(*this),
+        pipelines(*this, global_ubo_.pipeline),
         shadows(*this, global_ubo_.shadow),
         lights(*this),
         ambient_occlusion(*this, global_ubo_.ao),
         raytracing(*this, global_ubo_.raytrace),
         reflection_probes(*this),
+        planar_probes(*this),
         velocity(*this),
         motion_blur(*this),
         depth_of_field(*this),
@@ -133,6 +140,7 @@ class Instance {
         main_view(*this),
         capture_view(*this),
         world(*this),
+        lookdev_view(*this),
         lookdev(*this),
         light_probes(*this),
         irradiance_cache(*this),
@@ -143,6 +151,7 @@ class Instance {
   /* TODO(fclem): Split for clarity. */
   void init(const int2 &output_res,
             const rcti *output_rect,
+            const rcti *visible_rect,
             RenderEngine *render,
             Depsgraph *depsgraph,
             Object *camera_object = nullptr,
@@ -151,6 +160,8 @@ class Instance {
             const View3D *v3d = nullptr,
             const RegionView3D *rv3d = nullptr);
 
+  void view_update();
+
   void begin_sync();
   void object_sync(Object *ob);
   void end_sync();
@@ -158,7 +169,8 @@ class Instance {
   /**
    * Return true when probe pipeline is used during this sample.
    */
-  bool do_probe_sync() const;
+  bool do_reflection_probe_sync() const;
+  bool do_planar_probe_sync() const;
 
   /* Render. */
 
@@ -194,7 +206,7 @@ class Instance {
 
   bool overlays_enabled() const
   {
-    return v3d && ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0);
+    return overlays_enabled_;
   }
 
   bool use_scene_lights() const
@@ -215,6 +227,12 @@ class Instance {
                       ((v3d->shading.flag & V3D_SHADING_SCENE_WORLD_RENDER) == 0)));
   }
 
+  bool use_lookdev_overlay() const
+  {
+    return (v3d) &&
+           ((v3d->shading.type == OB_MATERIAL) && (v3d->overlay.flag & V3D_OVERLAY_LOOK_DEV));
+  }
+
   void push_uniform_data()
   {
     global_ubo_.push_update();
@@ -225,6 +243,27 @@ class Instance {
     pass->bind_ubo(UNIFORM_BUF_SLOT, &global_ubo_);
   }
 
+  int get_recalc_flags(const ObjectRef &ob_ref)
+  {
+    auto get_flags = [&](const ObjectRuntimeHandle &runtime) {
+      int flags = 0;
+      SET_FLAG_FROM_TEST(
+          flags, runtime.last_update_transform > depsgraph_last_update_, ID_RECALC_TRANSFORM);
+      SET_FLAG_FROM_TEST(
+          flags, runtime.last_update_geometry > depsgraph_last_update_, ID_RECALC_GEOMETRY);
+      SET_FLAG_FROM_TEST(
+          flags, runtime.last_update_shading > depsgraph_last_update_, ID_RECALC_SHADING);
+      return flags;
+    };
+
+    int flags = get_flags(*ob_ref.object->runtime);
+    if (ob_ref.dupli_parent) {
+      flags |= get_flags(*ob_ref.dupli_parent->runtime);
+    }
+
+    return flags;
+  }
+
  private:
   static void object_sync_render(void *instance_,
                                  Object *ob,
@@ -233,7 +272,6 @@ class Instance {
   void render_sample();
   void render_read_result(RenderLayer *render_layer, const char *view_name);
 
-  void scene_sync();
   void mesh_sync(Object *ob, ObjectHandle &ob_handle);
 
   void update_eval_members();

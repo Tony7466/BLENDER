@@ -9,9 +9,9 @@
 
 #include "BKE_constraint.h"
 #include "BKE_lib_id.h"
-#include "BKE_library.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_library.hh"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"

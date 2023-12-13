@@ -43,7 +43,6 @@ class GLContext : public Context {
   static GLint max_cubemap_size;
   static GLint max_ubo_size;
   static GLint max_ubo_binds;
-  static GLint max_ssbo_size;
   static GLint max_ssbo_binds;
 
   /** Extensions. */
@@ -113,7 +112,7 @@ class GLContext : public Context {
   void flush() override;
   void finish() override;
 
-  void memory_statistics_get(int *total_mem, int *free_mem) override;
+  void memory_statistics_get(int *r_total_mem, int *r_free_mem) override;
 
   static GLContext *get()
   {
