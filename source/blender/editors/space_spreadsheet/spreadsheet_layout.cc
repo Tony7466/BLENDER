@@ -211,6 +211,9 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       const float4 value = float4(data.get<math::Quaternion>(real_index));
       this->draw_float_vector(params, Span(&value.x, 4));
     }
+    else if (data.type().is<float4x4>()) {
+      this->draw_float4x4(params, data.get<float4x4>(real_index));
+    }
     else if (data.type().is<bke::InstanceReference>()) {
       const bke::InstanceReference value = data.get<bke::InstanceReference>(real_index);
       switch (value.type()) {
@@ -398,6 +401,35 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
           POINTER_FROM_UINT(*(uint32_t *)&color),
           nullptr);
     }
+  }
+
+  void draw_float4x4(const CellDrawParams &params, const float4x4 &value) const
+  {
+    uiBut *but = uiDefIconTextBut(params.block,
+                                  UI_BTYPE_LABEL,
+                                  0,
+                                  ICON_NONE,
+                                  "...",
+                                  params.xmin + params.width,
+                                  params.ymin,
+                                  params.width,
+                                  params.height,
+                                  nullptr,
+                                  0,
+                                  0,
+                                  0,
+                                  0,
+                                  nullptr);
+    UI_but_func_tooltip_set(
+        but,
+        [](bContext * /*C*/, void *argN, const char * /*tip*/) {
+          const float4x4 &value = *static_cast<const float4x4 *>(argN);
+          std::stringstream ss;
+          ss << value;
+          return BLI_strdup(ss.str().c_str());
+        },
+        MEM_new<float4x4>(__func__, value),
+        MEM_freeN);
   }
 
   int column_width(int column_index) const final
