@@ -1,3 +1,4 @@
 Referenced by commit 969dd7b98598701881873848e403a0071b6ca39b, Geometry Nodes: add forward compatibility for map range socket identifiers
 Referenced by issue #114251, Regression: Compare Node Angle gets auto disconnected on reload
 Referenced by pull request #113413, Geometry Nodes: use dynamic declaration for switch node
+Referenced by commit f7383cfe9b009c5d2e44a9aeb7d729185777086d, Geometry Nodes: use dynamic declaration for switch node
