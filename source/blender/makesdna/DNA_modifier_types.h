@@ -2352,7 +2352,7 @@ typedef enum NodesModifierBakeFlag {
 } NodesModifierBakeFlag;
 
 typedef enum NodesModifierBakeMode {
-  NODES_MODIFIER_BAKE_MODE_ANIMATED = 0,
+  NODES_MODIFIER_BAKE_MODE_RANGE = 0,
   NODES_MODIFIER_BAKE_MODE_STILL = 1,
 } NodesModifierBakeMode;
 

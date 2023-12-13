@@ -7062,7 +7062,7 @@ static void rna_def_modifier_weightednormal(BlenderRNA *brna)
 static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
 {
   static EnumPropertyItem bake_mode_items[] = {
-      {NODES_MODIFIER_BAKE_MODE_ANIMATED, "ANIMATED", 0, "Animated", "Bake a frame range"},
+      {NODES_MODIFIER_BAKE_MODE_RANGE, "RANGE", 0, "Range", "Bake a frame range"},
       {NODES_MODIFIER_BAKE_MODE_STILL, "STILL", 0, "Still", "Bake a single frame"},
       {0, nullptr, 0, nullptr, nullptr},
   };
