@@ -157,7 +157,7 @@ class BaseTestForeachGetSet(unittest.TestCase):
                 self.assertAlmostEqual(v1, v2, places=places, msg=msg, delta=delta)
 
     @staticmethod
-    def sequence_generator(prop_rna, sequence_length, is_set, dtype_modifier=None):
+    def sequence_generator(collection, prop_rna, sequence_length, is_set, dtype_modifier=None):
         def next_sequence(next_fill_value, dtype):
             if dtype == list:
                 return [next_fill_value] * sequence_length
@@ -165,14 +165,24 @@ class BaseTestForeachGetSet(unittest.TestCase):
                 return np.full(sequence_length, next_fill_value,
                                dtype=dtype_modifier(dtype) if dtype_modifier else dtype)
 
-        default_value = prop_rna.default_array[0] if getattr(prop_rna, "is_array", False) else prop_rna.default
-        if prop_rna.type == 'ENUM':
-            # Get the default item identifier's integer value
-            default_value = prop_rna.enum_items[default_value].value
+        if collection:
+            initial_value = getattr(collection[0], prop_rna.identifier)
+            if getattr(prop_rna, "is_array", False):
+                for dim_size in prop_rna.array_dimensions:
+                    if dim_size == 0:
+                        break
+                    initial_value = initial_value[0]
+            elif prop_rna.type == 'ENUM':
+                # Get the integer value of the string identifier
+                initial_value = prop_rna.enum_items[initial_value].value if initial_value in prop_rna.enum_items else -1
+        else:
+            # The collection is empty, so the initial value is irrelevant.
+            initial_value = 0
+
         # To correctly handle all properties with the same test setup ('BOOLEAN' and 'ENUM' being the most restrictive),
         # we can only use `0` and `1` as fill values.
         if is_set:
-            last_fill_value = default_value
+            last_fill_value = initial_value
             # When setting values, each time we set, we need to set to different values from before so that we can check
             # that setting the values worked.
 
@@ -188,7 +198,7 @@ class BaseTestForeachGetSet(unittest.TestCase):
         else:
             # When getting values, the initial values in the sequence must differ from the default values of the
             # properties, so that we can check that getting the values worked.
-            fill_value = 1 if default_value == 0 else 0
+            fill_value = 1 if initial_value == 0 else 0
             return lambda dtype: next_sequence(fill_value, dtype)
 
     @staticmethod
@@ -275,7 +285,7 @@ class BaseTestForeachGetSet(unittest.TestCase):
         item_length = prop_rna.array_length if getattr(prop_rna, "is_array", False) else 1
         sequence_length = len(collection) * item_length
 
-        generate_sequence = self.sequence_generator(prop_rna, sequence_length, is_set, dtype_modifier)
+        generate_sequence = self.sequence_generator(collection, prop_rna, sequence_length, is_set, dtype_modifier)
 
         ndarray_only = dtype_modifier is not None
 
