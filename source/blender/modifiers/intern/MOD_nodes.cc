@@ -1282,9 +1282,11 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
     }
 
     /* Try load baked data. */
-    if (!node_cache.bake.failed_finding_bake) {
-      if (!try_find_baked_data(node_cache.bake, *bmain_, *ctx_.object, nmd_, id)) {
-        node_cache.bake.failed_finding_bake = true;
+    if (node_cache.bake.frames.is_empty()) {
+      if (!node_cache.bake.failed_finding_bake) {
+        if (!try_find_baked_data(node_cache.bake, *bmain_, *ctx_.object, nmd_, id)) {
+          node_cache.bake.failed_finding_bake = true;
+        }
       }
     }
 
@@ -1319,6 +1321,9 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
   {
     bake::FrameCache &frame_cache = *node_cache.bake.frames[frame_index];
     ensure_bake_loaded(node_cache.bake, frame_cache);
+    if (this->check_read_error(frame_cache, behavior)) {
+      return;
+    }
     auto &read_single_info = behavior.emplace<sim_output::ReadSingle>();
     read_single_info.state = frame_cache.state;
   }
@@ -1332,12 +1337,28 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
     bake::FrameCache &next_frame_cache = *node_cache.bake.frames[next_frame_index];
     ensure_bake_loaded(node_cache.bake, prev_frame_cache);
     ensure_bake_loaded(node_cache.bake, next_frame_cache);
+    if (this->check_read_error(prev_frame_cache, behavior) ||
+        this->check_read_error(next_frame_cache, behavior))
+    {
+      return;
+    }
     auto &read_interpolated_info = behavior.emplace<sim_output::ReadInterpolated>();
     read_interpolated_info.mix_factor = (float(current_frame_) - float(prev_frame_cache.frame)) /
                                         (float(next_frame_cache.frame) -
                                          float(prev_frame_cache.frame));
     read_interpolated_info.prev_state = prev_frame_cache.state;
     read_interpolated_info.next_state = next_frame_cache.state;
+  }
+
+  [[nodiscard]] bool check_read_error(const bake::FrameCache &frame_cache,
+                                      nodes::BakeNodeBehavior &behavior) const
+  {
+    if (frame_cache.meta_path && frame_cache.state.items_by_id.is_empty()) {
+      auto &read_error_info = behavior.emplace<sim_output::ReadError>();
+      read_error_info.message = TIP_("Can not load the baked data");
+      return true;
+    }
+    return false;
   }
 };
 

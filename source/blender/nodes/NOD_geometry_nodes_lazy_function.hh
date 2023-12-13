@@ -108,7 +108,14 @@ struct ReadInterpolated {
   bke::bake::BakeStateRef next_state;
 };
 
-using Behavior = std::variant<PassThrough, StoreNewState, ReadSingle, ReadInterpolated>;
+/**
+ * Used when there was some issue loading the baked data from disk.
+ */
+struct ReadError {
+  std::string message;
+};
+
+using Behavior = std::variant<PassThrough, StoreNewState, ReadSingle, ReadInterpolated, ReadError>;
 
 }  // namespace sim_output
 
