@@ -881,6 +881,15 @@ static bool bake_poll(bContext *C)
   return true;
 }
 
+static bool bake_delete_poll(bContext *C)
+{
+  Main *bmain = CTX_data_main(C);
+  if (BKE_main_blendfile_path(bmain)[0] == '\0') {
+    return false;
+  }
+  return true;
+}
+
 }  // namespace blender::ed::object::bake_simulation
 
 void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot)
@@ -970,6 +979,7 @@ void OBJECT_OT_geometry_node_bake_delete_single(wmOperatorType *ot)
   ot->description = "Delete baked data of a single bake node or simulation";
   ot->idname = "OBJECT_OT_geometry_node_bake_delete_single";
 
+  ot->poll = bake_delete_poll;
   ot->exec = delete_single_bake_exec;
 
   single_bake_operator_props(ot);
