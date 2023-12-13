@@ -1,0 +1,1 @@
+Referenced by issue #116135, UI: BLI_assert failed: blf_font_width_to_rstrlen(), at 'i_tmp == i'
