@@ -932,7 +932,7 @@ bool BKE_image_render_write(ReportList *reports,
                             const Scene *scene,
                             const bool stamp,
                             const char *filepath_basis,
-                            const ImageFormatData *source_format,
+                            const ImageFormatData *format,
                             bool save_as_render)
 {
   bool ok = true;
@@ -942,7 +942,7 @@ bool BKE_image_render_write(ReportList *reports,
   }
 
   ImageFormatData image_format;
-  BKE_image_format_init_for_write(&image_format, scene, source_format);
+  BKE_image_format_init_for_write(&image_format, scene, format);
 
   const bool is_mono = BLI_listbase_count_at_most(&rr->views, 2) < 2;
   const bool is_exr_rr = ELEM(
