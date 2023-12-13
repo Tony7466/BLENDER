@@ -736,7 +736,7 @@ void GPU_shader_uniform_mat3_as_mat4(GPUShader *sh, const char *name, const floa
   GPU_shader_uniform_mat4(sh, name, matrix);
 }
 
-void GPU_shader_uniform_1fv_array(GPUShader *sh, const char *name, int len, const float *val)
+void GPU_shader_uniform_1f_array(GPUShader *sh, const char *name, int len, const float *val)
 {
   const int loc = GPU_shader_get_uniform(sh, name);
   GPU_shader_uniform_float_ex(sh, loc, 1, len, val);
