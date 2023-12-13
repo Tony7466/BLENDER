@@ -475,8 +475,10 @@ static void draw_bake_button(uiLayout *layout, const BakeDrawContext &ctx)
     RNA_int_set(&ptr, "bake_id", ctx.bake->id);
   }
   {
+    uiLayout *subrow = uiLayoutRow(row, true);
+    uiLayoutSetActive(subrow, ctx.is_baked);
     PointerRNA ptr;
-    uiItemFullO(row,
+    uiItemFullO(subrow,
                 "OBJECT_OT_geometry_node_bake_delete_single",
                 "",
                 ICON_TRASH,
@@ -511,7 +513,13 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
     return;
   }
 
-  draw_bake_button(layout, ctx);
+  uiLayout *col = uiLayoutColumn(layout, false);
+  {
+    uiLayout *row = uiLayoutRow(col, true);
+    uiLayoutSetActive(row, !ctx.is_baked);
+    uiItemR(row, &ctx.bake_rna, "bake_mode", UI_ITEM_R_EXPAND, "Mode", ICON_NONE);
+  }
+  draw_bake_button(col, ctx);
 }
 
 static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
@@ -526,6 +534,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     uiLayout *col = uiLayoutColumn(layout, false);
     {
       uiLayout *row = uiLayoutRow(col, true);
+      uiLayoutSetActive(row, !ctx.is_baked);
       uiItemR(row, &ctx.bake_rna, "bake_mode", UI_ITEM_R_EXPAND, "Mode", ICON_NONE);
     }
 
