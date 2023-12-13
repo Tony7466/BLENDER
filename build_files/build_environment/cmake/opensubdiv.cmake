@@ -22,19 +22,8 @@ set(OPENSUBDIV_EXTRA_ARGS
   -DNO_GLEW=ON
   -DNO_GLFW=ON
   -DNO_GLFW_X11=ON
+  -DTBB_DIR=${LIBDIR}/tbb/lib/cmake/tbb
 )
-
-if(WIN32)
-  set(OPENSUBDIV_EXTRA_ARGS
-    ${OPENSUBDIV_EXTRA_ARGS}
-    -DTBB_DIR=${LIBDIR}/tbb/lib/cmake/tbb
-  )
-else()
-  set(OPENSUBDIV_EXTRA_ARGS
-    ${OPENSUBDIV_EXTRA_ARGS}
-    -DTBB_LOCATION=${LIBDIR}/tbb
-  )
-endif()
 
 ExternalProject_Add(external_opensubdiv
   URL file://${PACKAGE_DIR}/${OPENSUBDIV_FILE}
