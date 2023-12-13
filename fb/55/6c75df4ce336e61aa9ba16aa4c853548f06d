@@ -3,3 +3,4 @@ Referenced by issue #113130, Snap settings in timeline window do not propagate t
 Referenced by commit e7ba91a6f34526adef2e935acdf705b54901cef8, Fix #113130: Versioning error in snap type in animation editors
 Referenced by issue #113505, Regresion: Scale strips in nla with snap active seems broken
 Referenced by pull request #114333, UI: Snap Menu - Match the symbols we use in the viewport
+Referenced by issue #115590, Regression: UV window menus disappearing
