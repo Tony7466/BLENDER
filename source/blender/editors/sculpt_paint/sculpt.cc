@@ -181,9 +181,9 @@ const float *SCULPT_vertex_co_get(const SculptSession *ss, PBVHVertRef vertex)
 bool SCULPT_has_loop_colors(const Object *ob)
 {
   using namespace blender;
-  Mesh *me = BKE_object_get_original_mesh(ob);
-  const std::optional<bke::AttributeMetaData> meta_data = me->attributes().lookup_meta_data(
-      me->active_color_attribute);
+  Mesh *mesh = BKE_object_get_original_mesh(ob);
+  const std::optional<bke::AttributeMetaData> meta_data = mesh->attributes().lookup_meta_data(
+      mesh->active_color_attribute);
   if (!meta_data) {
     return false;
   }
@@ -1231,8 +1231,8 @@ void SCULPT_orig_vert_data_unode_init(SculptOrigVertData *data,
     data->bm_log = ss->bm_log;
   }
   else {
-    data->coords = reinterpret_cast<float(*)[3]>(data->unode->co.data());
-    data->normals = reinterpret_cast<float(*)[3]>(data->unode->no.data());
+    data->coords = reinterpret_cast<float(*)[3]>(data->unode->position.data());
+    data->normals = reinterpret_cast<float(*)[3]>(data->unode->normal.data());
     data->vmasks = data->unode->mask.data();
     data->colors = reinterpret_cast<float(*)[4]>(data->unode->col.data());
   }
@@ -1244,8 +1244,7 @@ void SCULPT_orig_vert_data_init(SculptOrigVertData *data,
                                 blender::ed::sculpt_paint::undo::Type type)
 {
   using namespace blender::ed::sculpt_paint;
-  undo::Node *unode;
-  unode = undo::push_node(ob, node, type);
+  undo::Node *unode = undo::push_node(ob, node, type);
   SCULPT_orig_vert_data_unode_init(data, ob, unode);
 }
 
@@ -1829,7 +1828,7 @@ static void calc_area_normal_and_center_task(Object *ob,
 
   if (ss->cache && !ss->cache->accum) {
     unode = undo::push_node(ob, node, undo::Type::Position);
-    use_original = (!unode->co.is_empty() || unode->bm_entry);
+    use_original = (!unode->position.is_empty() || unode->bm_entry);
   }
 
   SculptBrushTest normal_test;
@@ -1939,8 +1938,8 @@ static void calc_area_normal_and_center_task(Object *ob,
           copy_v3_v3(no_s, temp_no_s);
         }
         else {
-          copy_v3_v3(co, unode->co[vd.i]);
-          copy_v3_v3(no_s, unode->no[vd.i]);
+          copy_v3_v3(co, unode->position[vd.i]);
+          copy_v3_v3(no_s, unode->normal[vd.i]);
         }
       }
       else {
@@ -3149,22 +3148,22 @@ static void do_gravity(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bst
 
 void SCULPT_vertcos_to_key(Object *ob, KeyBlock *kb, const Span<float3> vertCos)
 {
-  Mesh *me = (Mesh *)ob->data;
+  Mesh *mesh = (Mesh *)ob->data;
   float(*ofs)[3] = nullptr;
   int a, currkey_i;
   const int kb_act_idx = ob->shapenr - 1;
 
   /* For relative keys editing of base should update other keys. */
-  if (bool *dependent = BKE_keyblock_get_dependent_keys(me->key, kb_act_idx)) {
+  if (bool *dependent = BKE_keyblock_get_dependent_keys(mesh->key, kb_act_idx)) {
     ofs = BKE_keyblock_convert_to_vertcos(ob, kb);
 
     /* Calculate key coord offsets (from previous location). */
-    for (a = 0; a < me->totvert; a++) {
+    for (a = 0; a < mesh->totvert; a++) {
       sub_v3_v3v3(ofs[a], vertCos[a], ofs[a]);
     }
 
     /* Apply offsets on other keys. */
-    LISTBASE_FOREACH_INDEX (KeyBlock *, currkey, &me->key->block, currkey_i) {
+    LISTBASE_FOREACH_INDEX (KeyBlock *, currkey, &mesh->key->block, currkey_i) {
       if ((currkey != kb) && dependent[currkey_i]) {
         BKE_keyblock_update_from_offset(ob, currkey, ofs);
       }
@@ -3175,9 +3174,9 @@ void SCULPT_vertcos_to_key(Object *ob, KeyBlock *kb, const Span<float3> vertCos)
   }
 
   /* Modifying of basis key should update mesh. */
-  if (kb == me->key->refkey) {
-    me->vert_positions_for_write().copy_from(vertCos);
-    BKE_mesh_tag_positions_changed(me);
+  if (kb == mesh->key->refkey) {
+    mesh->vert_positions_for_write().copy_from(vertCos);
+    BKE_mesh_tag_positions_changed(mesh);
   }
 
   /* Apply new coords on active key block, no need to re-allocate kb->data here! */
@@ -3618,7 +3617,7 @@ static void sculpt_combine_proxies_node(Object &object,
   float(*orco)[3] = nullptr;
   if (use_orco && !ss->bm) {
     orco = reinterpret_cast<float(*)[3]>(
-        (undo::push_node(&object, &node, undo::Type::Position)->co.data()));
+        (undo::push_node(&object, &node, undo::Type::Position)->position.data()));
   }
 
   MutableSpan<PBVHProxyNode> proxies = BKE_pbvh_node_get_proxies(&node);
@@ -3726,7 +3725,7 @@ void SCULPT_flush_stroke_deform(Sculpt * /*sd*/, Object *ob, bool is_proxy_used)
     /* This brushes aren't using proxies, so sculpt_combine_proxies() wouldn't propagate needed
      * deformation to original base. */
 
-    Mesh *me = (Mesh *)ob->data;
+    Mesh *mesh = (Mesh *)ob->data;
     Vector<PBVHNode *> nodes;
     Array<float3> vertCos;
 
@@ -3738,7 +3737,7 @@ void SCULPT_flush_stroke_deform(Sculpt * /*sd*/, Object *ob, bool is_proxy_used)
 
     nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
-    MutableSpan<float3> positions = me->vert_positions_for_write();
+    MutableSpan<float3> positions = mesh->vert_positions_for_write();
 
     threading::parallel_for(nodes.index_range(), 1, [&](IndexRange range) {
       for (const int i : range) {
@@ -4775,7 +4774,7 @@ static void sculpt_raycast_cb(PBVHNode *node, void *data_v, float *tmin)
     else {
       /* Intersect with coordinates from before we started stroke. */
       undo::Node *unode = undo::get_node(node, undo::Type::Position);
-      origco = (unode) ? reinterpret_cast<float(*)[3]>(unode->co.data()) : nullptr;
+      origco = (unode) ? reinterpret_cast<float(*)[3]>(unode->position.data()) : nullptr;
       use_origco = origco ? true : false;
     }
   }
@@ -4816,7 +4815,7 @@ static void sculpt_find_nearest_to_ray_cb(PBVHNode *node, void *data_v, float *t
     else {
       /* Intersect with coordinates from before we started stroke. */
       undo::Node *unode = undo::get_node(node, undo::Type::Position);
-      origco = (unode) ? reinterpret_cast<float(*)[3]>(unode->co.data()) : nullptr;
+      origco = (unode) ? reinterpret_cast<float(*)[3]>(unode->position.data()) : nullptr;
       use_origco = origco ? true : false;
     }
   }

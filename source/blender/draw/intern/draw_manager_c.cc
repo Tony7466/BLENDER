@@ -2886,16 +2886,16 @@ void DRW_draw_depth_object(
     case OB_MESH: {
       GPUBatch *batch;
 
-      Mesh *me = static_cast<Mesh *>(object->data);
+      Mesh *mesh = static_cast<Mesh *>(object->data);
 
       if (object->mode & OB_MODE_EDIT) {
-        batch = DRW_mesh_batch_cache_get_edit_triangles(me);
+        batch = DRW_mesh_batch_cache_get_edit_triangles(mesh);
       }
       else {
-        batch = DRW_mesh_batch_cache_get_surface(me);
+        batch = DRW_mesh_batch_cache_get_surface(mesh);
       }
       TaskGraph *task_graph = BLI_task_graph_create();
-      DRW_mesh_batch_cache_create_requested(task_graph, object, me, scene, false, true);
+      DRW_mesh_batch_cache_create_requested(task_graph, object, mesh, scene, false, true);
       BLI_task_graph_work_and_wait(task_graph);
       BLI_task_graph_free(task_graph);
 
@@ -3374,7 +3374,7 @@ void DRW_xr_drawing_end()
 /** \name Internal testing API for gtests
  * \{ */
 
-#ifdef WITH_OPENGL_DRAW_TESTS
+#ifdef WITH_GPU_DRAW_TESTS
 
 void DRW_draw_state_init_gtests(eGPUShaderConfig sh_cfg)
 {

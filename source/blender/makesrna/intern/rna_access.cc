@@ -4622,6 +4622,8 @@ static int rna_raw_access(ReportList *reports,
       /* Could also be faster with non-matching types,
        * for now we just do slower loop. */
     }
+    BLI_assert_msg(itemlen == 0 || itemtype != PROP_ENUM,
+                   "Enum array properties should not exist");
   }
 
   {
@@ -4660,11 +4662,14 @@ static int rna_raw_access(ReportList *reports,
             break;
           }
 
-          if (!ELEM(itemtype, PROP_BOOLEAN, PROP_INT, PROP_FLOAT)) {
-            BKE_report(reports, RPT_ERROR, "Only boolean, int, and float properties supported");
+          if (!ELEM(itemtype, PROP_BOOLEAN, PROP_INT, PROP_FLOAT, PROP_ENUM)) {
+            BKE_report(
+                reports, RPT_ERROR, "Only boolean, int, float and enum properties supported");
             err = 1;
             break;
           }
+          BLI_assert_msg(itemlen == 0 || itemtype != PROP_ENUM,
+                         "Enum array properties should not exist");
         }
 
         /* editable check */
@@ -4698,7 +4703,14 @@ static int rna_raw_access(ReportList *reports,
                   RNA_property_float_set(&itemptr, iprop, f);
                   break;
                 }
+                case PROP_ENUM: {
+                  int i;
+                  RAW_GET(int, i, in, a);
+                  RNA_property_enum_set(&itemptr, iprop, i);
+                  break;
+                }
                 default:
+                  BLI_assert_unreachable();
                   break;
               }
             }
@@ -4719,7 +4731,13 @@ static int rna_raw_access(ReportList *reports,
                   RAW_SET(float, in, a, f);
                   break;
                 }
+                case PROP_ENUM: {
+                  int i = RNA_property_enum_get(&itemptr, iprop);
+                  RAW_SET(int, in, a, i);
+                  break;
+                }
                 default:
+                  BLI_assert_unreachable();
                   break;
               }
             }
@@ -4764,6 +4782,7 @@ static int rna_raw_access(ReportList *reports,
                   break;
                 }
                 default:
+                  BLI_assert_unreachable();
                   break;
               }
             }
@@ -4794,6 +4813,7 @@ static int rna_raw_access(ReportList *reports,
                   break;
                 }
                 default:
+                  BLI_assert_unreachable();
                   break;
               }
             }
@@ -4817,6 +4837,7 @@ static int rna_raw_access(ReportList *reports,
                   break;
                 }
                 default:
+                  BLI_assert_unreachable();
                   break;
               }
             }
@@ -4838,6 +4859,7 @@ static int rna_raw_access(ReportList *reports,
                   break;
                 }
                 default:
+                  BLI_assert_unreachable();
                   break;
               }
             }
