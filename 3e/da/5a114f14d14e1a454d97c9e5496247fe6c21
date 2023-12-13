@@ -1,2 +1,2 @@
-Referenced by issue #109194, Wayland: window decorations don't match window contents
+Referenced by issue #109194, Wayland: window decorations mismatch with fractional-scaling
 Referenced by commit ca32ba33ae6a5e49f0bb182d880c3091e299656f, Fix #113961: Incorrect window size for new windows on Wayland
