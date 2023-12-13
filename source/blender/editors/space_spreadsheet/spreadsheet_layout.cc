@@ -410,7 +410,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                   0,
                                   ICON_NONE,
                                   "...",
-                                  params.xmin + params.width,
+                                  params.xmin,
                                   params.ymin,
                                   params.width,
                                   params.height,
@@ -420,12 +420,17 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                   0,
                                   0,
                                   nullptr);
+    /* Center alignment. */
+    UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
     UI_but_func_tooltip_set(
         but,
         [](bContext * /*C*/, void *argN, const char * /*tip*/) {
           const float4x4 &value = *static_cast<const float4x4 *>(argN);
           std::stringstream ss;
-          ss << value;
+          ss << value[0] << ",\n";
+          ss << value[1] << ",\n";
+          ss << value[2] << ",\n";
+          ss << value[3];
           return BLI_strdup(ss.str().c_str());
         },
         MEM_new<float4x4>(__func__, value),
