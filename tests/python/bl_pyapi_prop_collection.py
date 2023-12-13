@@ -167,8 +167,8 @@ class BaseTestForeachGetSet(unittest.TestCase):
 
         default_value = prop_rna.default_array[0] if getattr(prop_rna, "is_array", False) else prop_rna.default
         if prop_rna.type == 'ENUM':
-            # Get the index of the default item identifier
-            default_value = prop_rna.enum_items.find(default_value)
+            # Get the default item identifier's integer value
+            default_value = prop_rna.enum_items[default_value].value
         # To correctly handle all properties with the same test setup ('BOOLEAN' and 'ENUM' being the most restrictive),
         # we can only use `0` and `1` as fill values.
         if is_set:
