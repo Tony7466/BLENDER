@@ -81,6 +81,7 @@ void FN_register_cpp_types()
   SOCKET_VALUE_CPP_TYPE_REGISTER(blender::ColorGeometry4f);
   SOCKET_VALUE_CPP_TYPE_REGISTER(blender::ColorGeometry4b);
   SOCKET_VALUE_CPP_TYPE_REGISTER(blender::math::Quaternion);
+  SOCKET_VALUE_CPP_TYPE_REGISTER(blender::float4x4);
   SOCKET_VALUE_CPP_TYPE_REGISTER(bool);
   SOCKET_VALUE_CPP_TYPE_REGISTER(int8_t);
   SOCKET_VALUE_CPP_TYPE_REGISTER(int32_t);
