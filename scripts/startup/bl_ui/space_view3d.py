@@ -112,6 +112,9 @@ class VIEW3D_HT_tool_header(Header):
                             layout.popover("VIEW3D_PT_tools_grease_pencil_brush_stroke")
 
                     layout.popover("VIEW3D_PT_tools_grease_pencil_paint_appearance")
+        elif tool_mode == 'PAINT_GREASE_PENCIL':
+            if is_valid_context:
+                layout.popover("VIEW3D_PT_tools_brush_settings", text="Brush")
         elif tool_mode == 'SCULPT_GPENCIL':
             if is_valid_context:
                 brush = context.tool_settings.gpencil_sculpt_paint.brush
@@ -589,6 +592,7 @@ class _draw_tool_settings_context_mode:
 
         tool_settings = context.tool_settings
         paint = tool_settings.gpencil_paint
+        ups = tool_settings.unified_paint_settings
 
         brush = paint.brush
         if brush is None:
@@ -605,11 +609,16 @@ class _draw_tool_settings_context_mode:
             )
             brush_basic__draw_color_selector(context, layout, brush, brush.gpencil_settings, None)
 
+        size = "size"
+        size_owner = ups if ups.use_unified_size else brush
+        if size_owner.use_locked_size == 'SCENE':
+            size = "unprojected_radius"
+
         UnifiedPaintPanel.prop_unified(
             layout,
             context,
             brush,
-            "size",
+            size,
             unified_name="use_unified_size",
             pressure_name="use_pressure_size",
             text="Radius",
