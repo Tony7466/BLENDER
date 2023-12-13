@@ -192,7 +192,8 @@ static void depthdropper_depth_sample_pt(bContext *C,
                                    4,
                                    B_UNIT_LENGTH,
                                    &scene->unit,
-                                   false);
+                                   false,
+                                   true);
         }
         else {
           STRNCPY(ddr->name, "Nothing under cursor");

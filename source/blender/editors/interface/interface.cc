@@ -2764,8 +2764,13 @@ void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t str_maxncpy)
 /**
  * \param float_precision: Override the button precision.
  */
-static void ui_get_but_string_unit(
-    uiBut *but, char *str, int str_maxncpy, double value, bool pad, int float_precision)
+static void ui_get_but_string_unit(uiBut *but,
+                                   char *str,
+                                   int str_maxncpy,
+                                   double value,
+                                   bool pad,
+                                   int float_precision,
+                                   const bool do_suffix)
 {
   UnitSettings *unit = but->block->unit;
   const int unit_type = UI_but_unit_type_get(but);
@@ -2796,7 +2801,8 @@ static void ui_get_but_string_unit(
                            precision,
                            RNA_SUBTYPE_UNIT_VALUE(unit_type),
                            unit,
-                           pad);
+                           pad,
+                           do_suffix);
 }
 
 static float ui_get_but_step_unit(uiBut *but, float step_default)
@@ -2928,7 +2934,7 @@ void ui_but_string_get_ex(uiBut *but,
       }
 
       if (ui_but_is_unit(but)) {
-        ui_get_but_string_unit(but, str, str_maxncpy, value, false, prec);
+        ui_get_but_string_unit(but, str, str_maxncpy, value, false, prec, false);
       }
       else if (subtype == PROP_FACTOR) {
         if (U.factor_display_type == USER_FACTOR_AS_FACTOR) {
@@ -3768,7 +3774,7 @@ static void ui_but_build_drawstr_float(uiBut *but, double value)
   }
   else if (ui_but_is_unit(but)) {
     char new_str[sizeof(but->drawstr)];
-    ui_get_but_string_unit(but, new_str, sizeof(new_str), value, true, -1);
+    ui_get_but_string_unit(but, new_str, sizeof(new_str), value, true, -1, true);
     STR_CONCAT(but->drawstr, slen, new_str);
   }
   else {

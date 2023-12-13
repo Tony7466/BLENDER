@@ -327,7 +327,8 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
                                                   3,
                                                   B_UNIT_LENGTH,
                                                   unit,
-                                                  false);
+                                                  false,
+                                                  true);
           }
           else {
             numstr_len = SNPRINTF_RLEN(numstr, conv_float, len_v3v3(v1, v2));
@@ -469,7 +470,8 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
               3,
               B_UNIT_AREA,
               unit,
-              false);
+              false,
+              true);
         }
         else {
           numstr_len = SNPRINTF_RLEN(numstr, conv_float, area);

@@ -145,6 +145,7 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
                              3,
                              B_UNIT_LENGTH,
                              &sce->unit,
+                             true,
                              true);
   }
 

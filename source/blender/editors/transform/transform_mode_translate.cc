@@ -181,7 +181,7 @@ static void translate_dist_to_str(char *r_str,
 {
   if (unit) {
     BKE_unit_value_as_string(
-        r_str, r_str_maxncpy, val * unit->scale_length, 4, B_UNIT_LENGTH, unit, false);
+        r_str, r_str_maxncpy, val * unit->scale_length, 4, B_UNIT_LENGTH, unit, false, true);
   }
   else {
     /* Check range to prevent string buffer overflow. */

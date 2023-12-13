@@ -1520,7 +1520,8 @@ static size_t unit_as_string(char *str,
                              const bUnitCollection *usys,
                              /* Non exposed options. */
                              const bUnitDef *unit,
-                             char pad)
+                             char pad,
+                             const bool do_suffix)
 {
   if (unit == nullptr) {
     if (value == 0.0) {
@@ -1572,16 +1573,18 @@ static size_t unit_as_string(char *str,
   }
 
   /* Now add a space for all units except foot, inch, degree, arcminute, arcsecond. */
-  if (!(unit->flag & B_UNIT_DEF_NO_SPACE)) {
+  if (!(unit->flag & B_UNIT_DEF_NO_SPACE) && do_suffix) {
     str[++i] = ' ';
   }
 
-  /* Now add the suffix. */
   if (i < str_maxncpy) {
-    int j = 0;
     i++;
-    while (unit->name_short[j] && (i < str_maxncpy)) {
-      str[i++] = unit->name_short[j++];
+    if (do_suffix) {
+      /* Now add the suffix. */
+      int j = 0;
+      while (unit->name_short[j] && (i < str_maxncpy)) {
+        str[i++] = unit->name_short[j++];
+      }
     }
   }
 
@@ -1634,7 +1637,7 @@ static size_t unit_as_string_split_pair(char *str,
 
   /* Check the 2 is a smaller unit. */
   if (unit_b > unit_a) {
-    size_t i = unit_as_string(str, str_maxncpy, value_a, prec, usys, unit_a, '\0');
+    size_t i = unit_as_string(str, str_maxncpy, value_a, prec, usys, unit_a, '\0', true);
 
     prec -= integer_digits_d(value_a / unit_b->scalar) -
             integer_digits_d(value_b / unit_b->scalar);
@@ -1645,7 +1648,7 @@ static size_t unit_as_string_split_pair(char *str,
       str[i++] = ' ';
 
       /* Use low precision since this is a smaller unit. */
-      i += unit_as_string(str + i, str_maxncpy - i, value_b, prec, usys, unit_b, '\0');
+      i += unit_as_string(str + i, str_maxncpy - i, value_b, prec, usys, unit_b, '\0', true);
     }
     return i;
   }
@@ -1722,6 +1725,7 @@ static size_t unit_as_string_main(char *str,
                                   int type,
                                   bool split,
                                   bool pad,
+                                  const bool do_suffix,
                                   PreferredUnits units)
 {
   const bUnitCollection *usys = unit_get_system(units.system, type);
@@ -1742,11 +1746,19 @@ static size_t unit_as_string_main(char *str,
     }
   }
 
-  return unit_as_string(str, str_maxncpy, value, prec, usys, main_unit, pad ? ' ' : '\0');
+  return unit_as_string(
+      str, str_maxncpy, value, prec, usys, main_unit, pad ? ' ' : '\0', do_suffix);
 }
 
-size_t BKE_unit_value_as_string_adaptive(
-    char *str, int str_maxncpy, double value, int prec, int system, int type, bool split, bool pad)
+size_t BKE_unit_value_as_string_adaptive(char *str,
+                                         int str_maxncpy,
+                                         double value,
+                                         int prec,
+                                         int system,
+                                         int type,
+                                         bool split,
+                                         bool pad,
+                                         const bool do_suffix)
 {
   PreferredUnits units;
   units.system = system;
@@ -1755,7 +1767,7 @@ size_t BKE_unit_value_as_string_adaptive(
   units.mass = USER_UNIT_ADAPTIVE;
   units.time = USER_UNIT_ADAPTIVE;
   units.temperature = USER_UNIT_ADAPTIVE;
-  return unit_as_string_main(str, str_maxncpy, value, prec, type, split, pad, units);
+  return unit_as_string_main(str, str_maxncpy, value, prec, type, split, pad, do_suffix, units);
 }
 
 size_t BKE_unit_value_as_string(char *str,
@@ -1764,11 +1776,12 @@ size_t BKE_unit_value_as_string(char *str,
                                 int prec,
                                 int type,
                                 const UnitSettings *settings,
-                                bool pad)
+                                bool pad,
+                                const bool do_suffix)
 {
   bool do_split = (settings->flag & USER_UNIT_OPT_SPLIT) != 0;
   PreferredUnits units = preferred_units_from_UnitSettings(settings);
-  return unit_as_string_main(str, str_maxncpy, value, prec, type, do_split, pad, units);
+  return unit_as_string_main(str, str_maxncpy, value, prec, type, do_split, pad, do_suffix, units);
 }
 
 BLI_INLINE bool isalpha_or_utf8(const int ch)

@@ -120,6 +120,7 @@ static void applyShrinkFatten(TransInfo *t)
                                       4,
                                       B_UNIT_LENGTH,
                                       unit,
+                                      true,
                                       true);
     }
     else {

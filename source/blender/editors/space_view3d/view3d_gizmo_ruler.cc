@@ -213,7 +213,7 @@ static void ruler_item_as_string(
     }
     else {
       BKE_unit_value_as_string(
-          numstr, numstr_size, double(ruler_angle), prec, B_UNIT_ROTATION, unit, false);
+          numstr, numstr_size, double(ruler_angle), prec, B_UNIT_ROTATION, unit, false, true);
     }
   }
   else {
@@ -229,7 +229,8 @@ static void ruler_item_as_string(
                                prec,
                                B_UNIT_LENGTH,
                                unit,
-                               false);
+                               false,
+                               true);
     }
   }
 }

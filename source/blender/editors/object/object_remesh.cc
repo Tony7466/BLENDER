@@ -338,6 +338,7 @@ static void voxel_size_edit_draw(const bContext *C, ARegion * /*region*/, void *
                            -3,
                            B_UNIT_LENGTH,
                            unit,
+                           true,
                            true);
   strdrawlen = BLI_strlen_utf8(str);
 

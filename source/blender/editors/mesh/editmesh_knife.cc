@@ -520,7 +520,8 @@ static void knifetool_draw_visible_distances(const KnifeTool_OpData *kcd)
                              distance_precision,
                              B_UNIT_LENGTH,
                              unit,
-                             false);
+                             false,
+                             true);
   }
 
   BLF_enable(blf_mono_font, BLF_ROTATION);
@@ -649,8 +650,14 @@ static void knifetool_draw_angle(const KnifeTool_OpData *kcd,
     SNPRINTF(numstr, "%.*f" BLI_STR_UTF8_DEGREE_SIGN, angle_precision, RAD2DEGF(angle));
   }
   else {
-    BKE_unit_value_as_string(
-        numstr, sizeof(numstr), double(angle), angle_precision, B_UNIT_ROTATION, unit, false);
+    BKE_unit_value_as_string(numstr,
+                             sizeof(numstr),
+                             double(angle),
+                             angle_precision,
+                             B_UNIT_ROTATION,
+                             unit,
+                             false,
+                             true);
   }
 
   BLF_enable(blf_mono_font, BLF_ROTATION);

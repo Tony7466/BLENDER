@@ -24,7 +24,8 @@ size_t BKE_unit_value_as_string_adaptive(char *str,
                                          int system,
                                          int type,
                                          bool split,
-                                         bool pad);
+                                         bool pad,
+                                         bool do_suffix);
 /**
  * Representation of a value in units. Negative precision is used to disable stripping of zeroes.
  * This reduces text jumping when changing values.
@@ -35,7 +36,8 @@ size_t BKE_unit_value_as_string(char *str,
                                 int prec,
                                 int type,
                                 const UnitSettings *settings,
-                                bool pad);
+                                bool pad,
+                                bool do_suffix);
 
 /**
  * Replace units with values, used before python button evaluation.
