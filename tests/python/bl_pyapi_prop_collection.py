@@ -754,6 +754,37 @@ class TestPropCollectionForeachGetSetNoRawAccess(BaseTestForeachGetSet):
         )
 
 
+class TestPropCollectionForeachGetSetNoItemPropertyPointer(BaseTestForeachGetSet):
+    """
+    Test the case where no item property pointer can be retrieved from the collection. This usually occurs when the
+    collection's item type is defined dynamically.
+
+    `ShapeKey.data` can be a collection of `ShapeKeyPoint`, `ShapeKeyCurvePoint` or `ShapeKeyBezierPoint`, with Curve
+    instances allowing a mix of both `ShapeKeyCurvePoint` and `ShapeKeyBezierPoint` in the same collection. The
+    collection's `fixed_type` is `UnknownType` until it is looked up.
+    """
+    def setUp(self):
+        self.mesh = bpy.data.meshes.new("")
+        # The only reason an Object is needed is that the API for adding shape keys requires an Object.
+        self.object = bpy.data.objects.new("", self.mesh)
+        # Add some vertices to the Mesh so that the ShapeKey's collection won't be empty.
+        self.mesh.vertices.add(5)
+        self.shape_key = self.object.shape_key_add()
+
+    def tearDown(self):
+        self.object.shape_key_clear()
+        bpy.data.objects.remove(self.object)
+        bpy.data.meshes.remove(self.mesh)
+
+    # Test methods
+
+    def test_foreach_get_no_item_property_pointer(self):
+        self.check_foreach_getset(self.shape_key.data, bpy.types.ShapeKeyPoint.bl_rna.properties["co"], is_set=False)
+
+    def test_foreach_set_no_item_property_pointer(self):
+        self.check_foreach_getset(self.shape_key.data, bpy.types.ShapeKeyPoint.bl_rna.properties["co"], is_set=True)
+
+
 if __name__ == '__main__':
     import sys
     sys.argv = [__file__] + (sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
