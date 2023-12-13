@@ -406,33 +406,35 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     info.additional_info("eevee_cryptomatte_out");
   }
 
-  if (pipeline_type == MAT_PIPE_FORWARD) {
-    int lit_closure_count = 0;
-    if (GPU_material_flag_get(gpumat, GPU_MATFLAG_DIFFUSE)) {
-      info.define("MAT_DIFFUSE");
-      lit_closure_count++;
-    }
-    if (GPU_material_flag_get(gpumat, GPU_MATFLAG_GLOSSY)) {
-      info.define("MAT_REFLECTION");
-      lit_closure_count++;
-    }
-    if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSLUCENT)) {
-      info.define("MAT_TRANSLUCENT");
-      lit_closure_count++;
-    }
-    if (GPU_material_flag_get(gpumat, GPU_MATFLAG_SUBSURFACE)) {
-      info.define("MAT_SUBSURFACE");
-      lit_closure_count++;
-    }
-    if (GPU_material_flag_get(gpumat, GPU_MATFLAG_REFRACT)) {
-      info.define("MAT_REFRACTION");
-      /* TODO(fclem): Support refracted lights. */
-    }
+  int lit_closure_count = 0;
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_DIFFUSE)) {
+    info.define("MAT_DIFFUSE");
+    lit_closure_count++;
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_GLOSSY)) {
+    info.define("MAT_REFLECTION");
+    lit_closure_count++;
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSLUCENT)) {
+    info.define("MAT_TRANSLUCENT");
+    lit_closure_count++;
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_SUBSURFACE)) {
+    info.define("MAT_SUBSURFACE");
+    lit_closure_count++;
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_REFRACT)) {
+    info.define("MAT_REFRACTION");
+    /* TODO(fclem): Support refracted lights. */
+  }
 
-    if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSLUCENT | GPU_MATFLAG_SUBSURFACE)) {
-      info.define("SHADOW_SUBSURFACE");
-    }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSLUCENT | GPU_MATFLAG_SUBSURFACE)) {
+    info.define("SHADOW_SUBSURFACE");
+  }
 
+  if ((pipeline_type == MAT_PIPE_FORWARD) ||
+      GPU_material_flag_get(gpumat, GPU_MATFLAG_SHADER_TO_RGBA))
+  {
     switch (lit_closure_count) {
       case 0:
         /* Define nothing. This will in turn define SKIP_LIGHT_EVAL. */

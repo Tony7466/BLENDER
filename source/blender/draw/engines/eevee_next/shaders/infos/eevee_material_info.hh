@@ -175,7 +175,6 @@ GPU_SHADER_CREATE_INFO(eevee_surf_deferred)
 
 GPU_SHADER_CREATE_INFO(eevee_surf_deferred_hybrid)
     .fragment_source("eevee_surf_hybrid_frag.glsl")
-    .define("LIGHT_CLOSURE_EVAL_COUNT", "2")
     .additional_info("eevee_surf_deferred_base",
                      "eevee_light_data",
                      "eevee_lightprobe_data",
