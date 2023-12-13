@@ -11,9 +11,9 @@ namespace blender::nodes::node_fn_transform_direction_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Vector>("Direction");
+  b.add_input<decl::Vector>("Direction").subtype(PROP_XYZ);
   b.add_input<decl::Matrix>("Transform");
-  b.add_output<decl::Vector>("Direction");
+  b.add_output<decl::Vector>("Direction").subtype(PROP_XYZ);
 };
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)

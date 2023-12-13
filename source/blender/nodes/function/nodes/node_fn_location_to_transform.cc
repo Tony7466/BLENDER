@@ -11,7 +11,7 @@ namespace blender::nodes::node_fn_location_to_transform_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Vector>("Location");
+  b.add_input<decl::Vector>("Location").subtype(PROP_TRANSLATION);
   b.add_output<decl::Matrix>("Transform");
 };
 

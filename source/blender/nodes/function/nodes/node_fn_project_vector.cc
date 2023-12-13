@@ -11,9 +11,9 @@ namespace blender::nodes::node_fn_project_vector_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Vector>("Vector");
+  b.add_input<decl::Vector>("Vector").subtype(PROP_XYZ);
   b.add_input<decl::Matrix>("Transform");
-  b.add_output<decl::Vector>("Vector");
+  b.add_output<decl::Vector>("Vector").subtype(PROP_XYZ);
 };
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
