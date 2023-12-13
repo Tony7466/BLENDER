@@ -866,6 +866,7 @@ static int delete_single_bake_exec(bContext *C, wmOperator *op)
 
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
+  WM_main_add_notifier(NC_NODE, nullptr);
   return OPERATOR_FINISHED;
 }
 
