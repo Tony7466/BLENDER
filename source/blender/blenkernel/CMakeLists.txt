@@ -310,9 +310,7 @@ set(SRC
   intern/viewer_path.cc
   intern/volume.cc
   intern/volume_file_cache.cc
-  intern/volume_file_cache2.cc
   intern/volume_grid.cc
-  intern/volume_grid2.cc
   intern/volume_render.cc
   intern/volume_to_mesh.cc
   intern/workspace.cc
@@ -514,10 +512,7 @@ set(SRC
   BKE_viewer_path.hh
   BKE_volume.hh
   BKE_volume_file_cache.hh
-  BKE_volume_file_cache2.hh
   BKE_volume_grid.hh
-  BKE_volume_grid2.hh
-  BKE_volume_grid_ptr.hh
   BKE_volume_openvdb.hh
   BKE_volume_render.hh
   BKE_volume_to_mesh.hh

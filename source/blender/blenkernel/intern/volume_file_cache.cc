@@ -1,79 +1,70 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_volume_file_cache.hh"
-#include "BKE_volume_grid.hh"
+#include "BKE_volume_file_cache2.hh"
 #include "BKE_volume_openvdb.hh"
 
-#include "CLG_log.h"
+#include "BLI_map.hh"
 
-// static CLG_LogRef LOG = {"bke.volume"};
+#ifdef WITH_OPENVDB
+#  include <openvdb/openvdb.h>
+#endif
 
-namespace blender::bke {
+namespace blender::bke::volume_file_cache {
 
-VolumeFileCache &VolumeFileCache::get()
+struct Cache {
+  std::mutex mutex;
+  Map<CacheKey, GVolumeGrid2> map;
+};
+
+static Cache &get_global_cache()
 {
-  static VolumeFileCache global_cache = VolumeFileCache{};
-  return global_cache;
+  static Cache cache;
+  return cache;
 }
 
-bool VolumeFileCache::has_grid(const VolumeFileCacheKey &key) const
+static std::shared_ptr<openvdb::GridBase> load_grid_from_disk(const CacheKey &key)
 {
-  return file_grids_.contains(key);
-}
+  if (key.simplify_level == 0) {
+    /* Disable delay loading and file copying, this has poor performance
+     * on network drivers. */
+    const bool delay_load = false;
 
-GVolumeGridPtr VolumeFileCache::get_grid(const VolumeFileCacheKey &key) const
-{
-  return file_grids_.lookup_default(key, nullptr);
-}
-
-bool VolumeFileCache::add_grid(const VolumeFileCacheKey &key, const GVolumeGridPtr &grid)
-{
-  BLI_assert(key.is_valid());
-  std::lock_guard<std::mutex> lock(mutex_);
-  return file_grids_.add(key, grid);
-}
-
-void VolumeFileCache::remove_grid(const VolumeFileCacheKey &key)
-{
-  std::lock_guard<std::mutex> lock(mutex_);
-  file_grids_.remove(key);
-}
-
-void VolumeFileCache::unload_unused_grids() const
-{
-  /* TODO */
-  BLI_assert_unreachable();
-}
-
-/* Returns the original grid or a simplified version depending on the given #simplify_level. */
-GVolumeGridPtr VolumeFileCache::get_simplified_grid(const VolumeFileCacheKey &key,
-                                                    const int simplify_level)
-{
-  BLI_assert(simplify_level >= 0);
-
-  std::lock_guard<std::mutex> lock(mutex_);
-  const GVolumeGridPtr grid = file_grids_.lookup(key);
-  if (key.simplify_level == simplify_level) {
-    /* No change in simplify level. */
+    openvdb::io::File file(key.file_path);
+    file.setCopyMaxBytes(0);
+    file.open(delay_load);
+    std::shared_ptr<openvdb::GridBase> grid = file.readGrid(key.grid_name);
+    BLI_assert(grid);
     return grid;
   }
 
-  GVolumeGridPtr simple_grid;
-  /* Isolate creating grid since that's multithreaded and we are
-   * holding a mutex lock. */
-  blender::threading::isolate_task([&] {
-    const VolumeFileCacheKey simplified_key(key.filepath, key.name, simplify_level);
-    simple_grid = file_grids_.lookup_or_add_cb(simplified_key, [&]() {
-      const float resolution_factor = 1.0f / (1 << simplify_level);
-      const VolumeGridType grid_type = BKE_volume_grid_type_openvdb(*grid->grid());
-      const openvdb::GridBase::Ptr vdb_grid = BKE_volume_grid_create_with_changed_resolution(
-          grid_type, *grid->grid(), resolution_factor);
-      return make_volume_grid_ptr(vdb_grid, VOLUME_TREE_SOURCE_FILE_SIMPLIFIED);
-    });
-  });
-  return simple_grid;
+  const GVolumeGrid2 main_grid = volume_file_cache::get({key.file_path, key.grid_name, 0});
+  const VolumeGridType grid_type = main_grid->grid_type();
+  const float resolution_factor = 1.0f / (1 << key.simplify_level);
+  std::shared_ptr<openvdb::GridBase> simplified_grid =
+      BKE_volume_grid_create_with_changed_resolution(
+          grid_type, main_grid->grid(), resolution_factor);
+  return simplified_grid;
 }
 
-}  // namespace blender::bke
+GVolumeGrid2 get(const CacheKey &key)
+{
+  Cache &cache = get_global_cache();
+  std::lock_guard lock{cache.mutex};
+  return cache.map.lookup_or_add_cb(key, [&]() {
+    auto lazy_load_function = [key]() { return load_grid_from_disk(key); };
+    auto *volume_grid = MEM_new<VolumeGridData>(__func__, std::move(lazy_load_function));
+    return GVolumeGrid2(volume_grid);
+  });
+}
+
+void unload_unused()
+{
+  Cache &cache = get_global_cache();
+  std::lock_guard lock{cache.mutex};
+  cache.map.remove_if(
+      [](MapItem<CacheKey, GVolumeGrid2> item) { return item.value->is_mutable(); });
+}
+
+}  // namespace blender::bke::volume_file_cache

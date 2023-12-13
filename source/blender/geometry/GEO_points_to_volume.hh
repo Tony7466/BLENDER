@@ -9,7 +9,7 @@
 #include "DNA_modifier_types.h"
 
 #include "BKE_volume_enums.hh"
-#include "BKE_volume_grid_ptr.hh"
+#include "BKE_volume_grid.hh"
 
 #pragma once
 

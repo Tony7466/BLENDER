@@ -46,7 +46,6 @@
 #include "BKE_scene.h"
 #include "BKE_volume.hh"
 #include "BKE_volume_file_cache.hh"
-#include "BKE_volume_grid_ptr.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "BLT_translation.h"

@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "BKE_volume_grid_ptr.hh"
+#include "BKE_volume_grid.hh"
 
 #include "FN_field.hh"
 
@@ -24,7 +24,7 @@ template<typename T> struct SocketValueVariant {
   /** Value that is used when the field is empty. */
   T value{};
   fn::Field<T> field;
-  VolumeGridPtr<T> grid;
+  VolumeGrid<T> grid;
 
   SocketValueVariant() = default;
 
@@ -55,7 +55,7 @@ template<typename T> struct SocketValueVariant {
     if (this->grid) {
       return this->grid;
     }
-    return grid_utils::make_empty_grid(this->value);
+    return grid_utils::make_empty_grid(this->as_value());
   }
 
   T as_value() const

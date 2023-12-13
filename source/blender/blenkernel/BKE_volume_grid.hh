@@ -8,78 +8,110 @@
  * \ingroup bke
  */
 
+#include <functional>
 #include <mutex>
 
-#include "BLI_color.hh"
-#include "BLI_cpp_type.hh"
-#include "BLI_implicit_sharing.hh"
-#include "BLI_implicit_sharing_ptr.hh"
-#include "BLI_math_base.hh"
-#include "BLI_math_matrix_types.hh"
-#include "BLI_math_quaternion_types.hh"
-#include "BLI_math_vector_types.hh"
-
 #include "BKE_volume_enums.hh"
+#include "BKE_volume_grid_type_traits.hh"
 
-#ifdef WITH_OPENVDB
-#  include "openvdb_fwd.hh"
-#endif
+#include "BLI_implicit_sharing_ptr.hh"
 
-struct VolumeFileCacheEntry;
+#include "openvdb_fwd.hh"
 
 namespace blender::bke {
 
-/* -------------------------------------------------------------------- */
-/** \name Shared Grid Data
- *
- * Wraps around an OpenVDB grid to manage it with implicit sharing.
- * \{ */
+class GVolumeGrid2;
 
-struct VolumeGrid : public ImplicitSharingMixin {
-#ifdef WITH_OPENVDB
- public:
-  using GridBase = openvdb::GridBase;
-  using GridBasePtr = std::shared_ptr<GridBase>;
-  using GridBaseConstPtr = std::shared_ptr<const GridBase>;
+class VolumeGridData : public ImplicitSharingMixin {
+ private:
+  mutable std::mutex grid_mutex_;
+  mutable std::shared_ptr<openvdb::GridBase> grid_;
+  mutable const ImplicitSharingInfo *tree_sharing_info_ = nullptr;
+  std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid_;
 
- protected:
-  mutable GridBasePtr grid_;
-  /* Tree data has been loaded from file. */
-  mutable VolumeTreeSource tree_source_;
-  /* Mutex for on-demand reading of tree. */
-  mutable std::mutex mutex_;
+  VolumeGridData() = default;
 
  public:
-  VolumeGrid(const GridBasePtr &grid, VolumeTreeSource tree_source);
-  ~VolumeGrid();
+  explicit VolumeGridData(std::shared_ptr<openvdb::GridBase> grid);
+  explicit VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid);
+  ~VolumeGridData();
 
-  VolumeGrid *copy() const;
+  GVolumeGrid2 copy() const;
 
-  const char *name() const;
+  const openvdb::GridBase &grid() const;
+  openvdb::GridBase &grid_for_write();
 
-  GridBaseConstPtr grid() const;
-  GridBasePtr grid_for_write();
+  const openvdb::math::Transform &transform() const;
+  openvdb::math::Transform &transform_for_write();
 
-  /* Source of the tree data stored in the grid. */
-  VolumeTreeSource tree_source() const;
-  /* Make sure the tree data has been loaded if the grid has a file source. */
-  bool ensure_tree_loaded(
-      StringRef filepath, FunctionRef<void(StringRef)> error_fn = [](StringRef) {}) const;
-  /* Unload the tree data but keep metadata. */
-  void unload_tree() const;
+  VolumeGridType grid_type() const;
 
- protected:
-  GridBasePtr main_grid() const;
-  void clear_cache_entry();
-#endif
-
-  void delete_self() override;
-  void delete_data_only() override;
+ private:
+  void ensure_grid_loaded() const;
+  void delete_self();
 };
 
-/** \} */
+class GVolumeGrid2 {
+ private:
+  ImplicitSharingPtr<VolumeGridData> data_;
+
+ public:
+  GVolumeGrid2() = default;
+  explicit GVolumeGrid2(const VolumeGridData *data);
+  explicit GVolumeGrid2(std::shared_ptr<openvdb::GridBase> grid);
+
+  const VolumeGridData &get() const;
+  VolumeGridData &get_for_write();
+
+  const VolumeGridData *operator->() const;
+
+  operator bool() const;
+};
+
+template<typename T> class VolumeGrid2 : public GVolumeGrid2 {
+ public:
+  VolumeGrid2() = default;
+  explicit VolumeGrid2(const VolumeGridData *data);
+  explicit VolumeGrid2(std::shared_ptr<OpenvdbGridType<T>> grid);
+
+ private:
+  void assert_correct_type() const;
+};
+
+inline GVolumeGrid2::GVolumeGrid2(const VolumeGridData *data) : data_(data) {}
+
+inline const VolumeGridData &GVolumeGrid2::get() const
+{
+  BLI_assert(*this);
+  return *data_.get();
+}
+
+inline GVolumeGrid2::operator bool() const
+{
+  return bool(data_);
+}
+
+inline const VolumeGridData *GVolumeGrid2::operator->() const
+{
+  BLI_assert(*this);
+  return data_.get();
+}
+
+template<typename T>
+inline VolumeGrid2<T>::VolumeGrid2(const VolumeGridData *data) : GVolumeGrid2(data)
+{
+  this->assert_correct_type();
+}
+
+template<typename T> inline void VolumeGrid2<T>::assert_correct_type() const
+{
+#ifndef NDEBUG
+  if (data_) {
+    const VolumeGridType expected_type = VolumeGridTraits<T>::EnumType;
+    const VolumeGridType actual_type = data_->grid_type();
+    BLI_assert(expected_type == actual_type);
+  }
+#endif
+}
 
 }  // namespace blender::bke
-
-/* Root namespace alias for older code. */
-using VolumeGrid = blender::bke::VolumeGrid;
