@@ -1030,7 +1030,7 @@ bool BKE_paint_select_face_test(const Object *ob)
   }
 
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  return (mesh->editflag & ME_EDIT_PAINT_FACE_SEL);
+  return mesh->editflag & ME_EDIT_PAINT_FACE_SEL;
 }
 
 bool BKE_paint_select_vert_test(const Object *ob)
@@ -1042,7 +1042,7 @@ bool BKE_paint_select_vert_test(const Object *ob)
   }
 
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  return (mesh->editflag & ME_EDIT_PAINT_VERT_SEL);
+  return mesh->editflag & ME_EDIT_PAINT_VERT_SEL;
 }
 
 bool BKE_paint_select_bone_test(const Object *ob)
