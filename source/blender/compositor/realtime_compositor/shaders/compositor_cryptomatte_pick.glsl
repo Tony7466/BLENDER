@@ -28,7 +28,7 @@ void main()
 {
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
 
-  /* Each layer stores two ranks, each rank contains two values, the identifier and the coverage of
+  /* Each layer stores two ranks, each rank contains a pair, the identifier and the coverage of
    * the entity identified by the identifier. */
   vec2 first_rank = texture_load(first_layer_tx, texel).xy;
   float id_of_first_rank = first_rank.x;

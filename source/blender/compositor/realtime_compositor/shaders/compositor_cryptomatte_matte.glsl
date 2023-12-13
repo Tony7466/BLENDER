@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Loops over all identifiers selected by the user, and accumulate the coverage of ranks whose
- * identifiers match that of the user selected identifier.
+ * identifiers match that of the user selected identifiers.
  *
  * This is described in section "Matte Extraction: Implementation Details" in the original
  * Cryptomatte publication:
@@ -30,7 +30,7 @@ void main()
   float identifier_of_second_rank = second_rank.x;
   float coverage_of_second_rank = second_rank.y;
 
-  /* Loop over all identifiers selected by the user, if the identified of either of the ranks match
+  /* Loop over all identifiers selected by the user, if the identifier of either of the ranks match
    * it, accumulate its coverage. */
   float total_coverage = 0.0;
   for (int i = 0; i < identifiers_count; i++) {
