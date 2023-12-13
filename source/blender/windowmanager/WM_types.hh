@@ -111,6 +111,7 @@ struct wmWindowManager;
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
+#include "BLI_vector.hh"
 #include "DNA_listBase.h"
 #include "DNA_uuid_types.h"
 #include "DNA_vec_types.h"
@@ -918,7 +919,8 @@ struct wmTimer {
   bool sleep;
 };
 
-/** Communication/status data owned by the wmJob, and passed to the worker code when calling
+/**
+ * Communication/status data owned by the wmJob, and passed to the worker code when calling
  * `startjob` callback.
  *
  * 'OUTPUT' members mean that they are defined by the worker thread, and read/used by the wmJob
@@ -932,21 +934,27 @@ struct wmTimer {
  *     controlling thread (i.e. wmJob management code) and the worker thread.
  */
 struct wmJobWorkerStatus {
-  /** OUTPUT - Set to true by the worker to request update processing from the main thread (as part
-   * of the wmJob 'event loop', see #wm_jobs_timer). */
+  /**
+   * OUTPUT - Set to true by the worker to request update processing from the main thread (as part
+   * of the wmJob 'event loop', see #wm_jobs_timer).
+   */
   bool do_update;
 
-  /** INPUT - Set by the wmJob management code to request a worker to stop/abort its processing.
+  /**
+   * INPUT - Set by the wmJob management code to request a worker to stop/abort its processing.
    *
    * \note Some job types (rendering or baking ones e.g.) also use the #Global.is_break flag to
-   * cancel their processing. */
+   * cancel their processing.
+   */
   bool stop;
 
   /** OUTPUT - Progress as reported by the worker, from `0.0f` to `1.0f`. */
   float progress;
 
-  /** OUTPUT - Storage of reports generated during this job's run. Contains its own locking for
-   * thread-safety. */
+  /**
+   * OUTPUT - Storage of reports generated during this job's run. Contains its own locking for
+   * thread-safety.
+   */
   ReportList *reports;
 };
 
@@ -1172,10 +1180,12 @@ struct wmDragAssetListItem {
 };
 
 struct wmDragPath {
-  char *path;
-  /* Note that even though the enum type uses bit-flags, this should never have multiple type-bits
-   * set, so `ELEM()` like comparison is possible. */
-  int file_type; /* eFileSel_File_Types */
+  blender::Vector<std::string> paths;
+  /* File type of each path in #paths. */
+  blender::Vector<int> file_types; /* eFileSel_File_Types */
+  /* Bit flag of file types in #paths. */
+  int file_types_bit_flag; /* eFileSel_File_Types */
+  std::string tooltip;
 };
 
 struct wmDragGreasePencilLayer {
@@ -1189,6 +1199,9 @@ using WMDropboxTooltipFunc = char *(*)(bContext *C,
                                        wmDropBox *drop);
 
 struct wmDragActiveDropState {
+  wmDragActiveDropState();
+  ~wmDragActiveDropState();
+
   /**
    * Informs which dropbox is activated with the drag item.
    * When this value changes, the #on_enter() and #on_exit() dropbox callbacks are triggered.

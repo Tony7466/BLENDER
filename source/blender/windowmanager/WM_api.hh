@@ -593,7 +593,8 @@ void WM_report_banner_show(wmWindowManager *wm, wmWindow *win) ATTR_NONNULL(1);
  * Hide all currently displayed banners and abort their timer.
  */
 void WM_report_banners_cancel(Main *bmain);
-/** Move a whole list of reports to the WM ReportList, and show the banner.
+/**
+ * Move a whole list of reports to the WM ReportList, and show the banner.
  *
  * \note In case the given \a reports is a `nullptr`, or has its #RPT_OP_HOLD flag set, this
  * function does nothing.
@@ -604,7 +605,8 @@ void WM_report_banners_cancel(Main *bmain);
  *
  * \params reports The #ReportList from which to move reports to the WM one, may be `nullptr`.
  * \params wm the WindowManager to add given \a reports to. If `nullptr`, the first WM of current
- * #G_MAIN will be used. */
+ * #G_MAIN will be used.
+ */
 void WM_reports_from_reports_move(wmWindowManager *wm, ReportList *reports);
 void WM_report(eReportType type, const char *message);
 void WM_reportf(eReportType type, const char *format, ...) ATTR_PRINTF_FORMAT(2, 3);
@@ -632,8 +634,10 @@ void WM_event_timer_free_data(wmTimer *timer);
  */
 void WM_event_timers_free_all(wmWindowManager *wm);
 
-/** Mark the given `timer` to be removed, actual removal and deletion is deferred and handled
- * internally by the window manager code. */
+/**
+ * Mark the given `timer` to be removed, actual removal and deletion is deferred and handled
+ * internally by the window manager code.
+ */
 void WM_event_timer_remove(wmWindowManager *wm, wmWindow *win, wmTimer *timer);
 void WM_event_timer_remove_notifier(wmWindowManager *wm, wmWindow *win, wmTimer *timer);
 /**
@@ -1420,16 +1424,32 @@ const ListBase *WM_drag_asset_list_get(const wmDrag *drag);
 
 const char *WM_drag_get_item_name(wmDrag *drag);
 
-/* Path drag and drop. */
+/* Paths drag and drop. */
 /**
- * \param path: The path to drag. Value will be copied into the drag data so the passed string may
- *              be destructed.
+ * \param paths: The paths to drag. Values will be copied into the drag data so the passed strings
+ * may be destructed.
  */
-wmDragPath *WM_drag_create_path_data(const char *path);
-const char *WM_drag_get_path(const wmDrag *drag);
+wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths);
+/* If #drag contains path data, returns the first path int he path list. */
+const char *WM_drag_get_single_path(const wmDrag *drag);
+/* If #drag contains path data, returns the first path in the path list that maches a
+ * a `file_type`.*/
+/*
+ * \param drag: The drag that could contain drag path data.
+ * \param file_type: `eFileSel_File_Types` bit flag
+ */
+const char *WM_drag_get_single_path(const wmDrag *drag, int file_type);
+blender::Span<std::string> WM_drag_get_paths(const wmDrag *drag);
+/* If #drag contains path data, returns if any file path match a `file_type`.*/
+/*
+ * \param drag: The drag that could contain drag path data.
+ * \param file_type: `eFileSel_File_Types` bit flag
+ */
+bool WM_drag_has_path_file_type(const wmDrag *drag, int file_type);
 /**
  * Note that even though the enum return type uses bit-flags, this should never have multiple
- * type-bits set, so `ELEM()` like comparison is possible.
+ * type-bits set, so `ELEM()` like comparison is possible. To check all paths or to do a bit-flag
+ * check use `WM_drag_has_path_file_type(drag,file_type)` instead.
  */
 int /* eFileSel_File_Types */ WM_drag_get_path_file_type(const wmDrag *drag);
 
@@ -1754,7 +1774,7 @@ bool WM_event_is_xr(const wmEvent *event);
  * If this is a tablet event, return tablet pressure and set `*pen_flip`
  * to 1 if the eraser tool is being used, 0 otherwise.
  */
-float WM_event_tablet_data(const wmEvent *event, int *pen_flip, float tilt[2]);
+float WM_event_tablet_data(const wmEvent *event, bool *r_pen_flip, float r_tilt[2]);
 bool WM_event_is_tablet(const wmEvent *event);
 
 int WM_event_absolute_delta_x(const wmEvent *event);

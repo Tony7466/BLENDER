@@ -242,7 +242,7 @@ static int retiming_key_add_to_editable_strips(bContext *C,
   bool inserted = false;
 
   blender::Map selection = SEQ_retiming_selection_get(ed);
-  if (selection.size() == 0) {
+  if (selection.is_empty()) {
     return OPERATOR_CANCELLED;
   }
 
@@ -690,7 +690,7 @@ int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
   }
 
   /* Click on strip, do strip selection. */
-  const Sequence *seq_click_exact = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
+  const Sequence *seq_click_exact = find_nearest_seq(scene, UI_view2d_fromcontext(C), mval, &hand);
   if (seq_click_exact != nullptr && key == nullptr) {
     SEQ_retiming_selection_clear(ed);
     return sequencer_select_exec(C, op);
