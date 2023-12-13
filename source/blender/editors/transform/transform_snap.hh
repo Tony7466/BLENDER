@@ -46,6 +46,19 @@ bool validSnap(const TransInfo *t);
 void initSnapping(TransInfo *t, wmOperator *op);
 void freeSnapping(TransInfo *t);
 void initSnapAngleIncrements(TransInfo *t);
+/**
+ * Projects a point onto a plane in the context of snapping transformations.
+ *
+ * \return 0 if there is no hit,
+ *         -1 if the point is behind the projection,
+ *         1 if the point is on or in front of the projection.
+ */
+int transform_snap_project(const TransInfo *t,
+                           SnapObjectContext *sctx,
+                           const blender::float3 &loc_curr,
+                           const blender::float4 &plane_near,
+                           blender::float3 &r_loc,
+                           blender::float3 &r_no);
 bool transform_snap_project_individual_is_active(const TransInfo *t);
 void transform_snap_project_individual_apply(TransInfo *t);
 void transform_snap_mixed_apply(TransInfo *t, float *vec);

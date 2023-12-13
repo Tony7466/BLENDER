@@ -2847,6 +2847,7 @@ class USERPREF_PT_experimental_new_features(ExperimentalPanel, Panel):
                 ({"property": "use_new_file_import_nodes"}, ("blender/blender/issues/122846", "#122846")),
                 ({"property": "use_shader_node_previews"}, ("blender/blender/issues/110353", "#110353")),
                 ({"property": "use_docking"}, ("blender/blender/issues/124915", "#124915")),
+                ({"property": "angle_for_mixed_snap"}, ("blender/blender/issues/110353", "#116149")),
             ),
         )
 

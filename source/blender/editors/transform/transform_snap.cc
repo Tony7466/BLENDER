@@ -412,25 +412,28 @@ eRedrawFlag handleSnapping(TransInfo *t, const wmEvent *event)
   return status;
 }
 
-static bool applyFaceProject(TransInfo *t, TransDataContainer *tc, TransData *td)
+int transform_snap_project(const TransInfo *t,
+                           SnapObjectContext *sctx,
+                           const float3 &loc_curr,
+                           const float4 &plane_near,
+                           float3 &r_loc,
+                           float3 &r_no)
 {
-  float iloc[3], loc[3], no[3];
-  float mval_fl[2];
+  float3 view_vec;
+  float lambda, ray_depth = FLT_MAX;
 
-  copy_v3_v3(iloc, td->loc);
-  if (tc->use_local_mat) {
-    mul_m4_v3(tc->mat, iloc);
-  }
-  else if (t->options & CTX_OBJECT) {
-    BKE_object_eval_transform_all(t->depsgraph, t->scene, td->ob);
-    copy_v3_v3(iloc, td->ob->object_to_world().location());
-  }
+  transform_view_vector_calc(t, loc_curr, view_vec);
 
-  if (ED_view3d_project_float_global(t->region, iloc, mval_fl, V3D_PROJ_TEST_NOP) !=
-      V3D_PROJ_RET_OK)
-  {
+  if (dot_v3v3(view_vec, plane_near) > 0.0f) {
+    /* Behind the view origin. */
     return false;
   }
+
+  if (!isect_ray_plane_v3(loc_curr, view_vec, plane_near, &lambda, false)) {
+    return false;
+  }
+
+  float3 view_orig = loc_curr + view_vec * lambda;
 
   SnapObjectParams snap_object_params{};
   snap_object_params.snap_target_select = t->tsnap.target_operation;
@@ -438,63 +441,39 @@ static bool applyFaceProject(TransInfo *t, TransDataContainer *tc, TransData *td
   snap_object_params.use_occlusion_test = false;
   snap_object_params.use_backface_culling = (t->tsnap.flag & SCE_SNAP_BACKFACE_CULLING) != 0;
 
-  eSnapMode hit = ED_transform_snap_object_project_view3d(t->tsnap.object_context,
-                                                          t->depsgraph,
-                                                          t->region,
-                                                          static_cast<const View3D *>(t->view),
-                                                          SCE_SNAP_TO_FACE,
-                                                          &snap_object_params,
-                                                          nullptr,
-                                                          mval_fl,
-                                                          nullptr,
-                                                          nullptr,
-                                                          loc,
-                                                          no);
-  if (hit != SCE_SNAP_TO_FACE) {
-    return false;
+  bool has_hit = ED_transform_snap_object_project_ray_ex(sctx,
+                                                         t->depsgraph,
+                                                         static_cast<const View3D *>(t->view),
+                                                         &snap_object_params,
+                                                         view_orig,
+                                                         -view_vec,
+                                                         &ray_depth,
+                                                         r_loc,
+                                                         r_no,
+                                                         nullptr,
+                                                         nullptr,
+                                                         nullptr);
+  if (!has_hit) {
+    return 0;
   }
 
-  float tvec[3];
-  sub_v3_v3v3(tvec, loc, iloc);
-
-  mul_m3_v3(td->smtx, tvec);
-
-  add_v3_v3(td->loc, tvec);
-
-  if ((t->tsnap.flag & SCE_SNAP_ROTATE) && (t->options & CTX_OBJECT)) {
-    /* Handle alignment as well. */
-    const float *original_normal;
-    float mat[3][3];
-
-    /* In pose mode, we want to align normals with Y axis of bones. */
-    original_normal = td->axismtx[2];
-
-    rotation_between_vecs_to_mat3(mat, original_normal, no);
-
-    transform_data_ext_rotate(td, mat, true);
-
-    /* TODO: support constraints for rotation too? see #ElementRotation. */
+  if (lambda > (ray_depth + 0.0001f)) {
+    return -1;
   }
-  return true;
+
+  return 1;
 }
 
-static void applyFaceNearest(TransInfo *t, TransDataContainer *tc, TransData *td)
+static bool is_point_occluded(const TransInfo *t, float3 &loc, const float4 &plane_near)
 {
-  float init_loc[3];
-  float prev_loc[3];
-  float snap_loc[3], snap_no[3];
+  float3 dummy_loc, dummy_nor;
+  return transform_snap_project(
+             t, t->tsnap.object_context, loc, plane_near, dummy_loc, dummy_nor) == -1;
+}
 
-  copy_v3_v3(init_loc, td->iloc);
-  copy_v3_v3(prev_loc, td->loc);
-  if (tc->use_local_mat) {
-    mul_m4_v3(tc->mat, init_loc);
-    mul_m4_v3(tc->mat, prev_loc);
-  }
-  else if (t->options & CTX_OBJECT) {
-    BKE_object_eval_transform_all(t->depsgraph, t->scene, td->ob);
-    copy_v3_v3(init_loc, td->ob->object_to_world().location());
-  }
-
+static bool snap_nearest(
+    const TransInfo *t, float3 &init_loc, float3 &prev_loc, float3 &r_loc, float3 &r_no)
+{
   SnapObjectParams snap_object_params{};
   snap_object_params.snap_target_select = t->tsnap.target_operation;
   snap_object_params.edit_mode_type = (t->flag & T_EDIT) != 0 ? SNAP_GEOM_EDIT : SNAP_GEOM_FINAL;
@@ -513,19 +492,96 @@ static void applyFaceNearest(TransInfo *t, TransDataContainer *tc, TransData *td
                                                           nullptr,
                                                           prev_loc,
                                                           nullptr,
-                                                          snap_loc,
-                                                          snap_no);
+                                                          r_loc,
+                                                          r_no);
 
-  if (hit != SCE_SNAP_INDIVIDUAL_NEAREST) {
+  return (hit == SCE_SNAP_INDIVIDUAL_NEAREST);
+}
+
+static void snap_individual(const TransInfo *t,
+                            const TransDataContainer *tc,
+                            TransData *td,
+                            const float4 &plane_near)
+{
+  float3 loc_init;
+  float3 loc_curr;
+  float3 loc_proj, no_proj;
+  float3 loc_near, no_near;
+
+  copy_v3_v3(loc_init, td->iloc);
+  copy_v3_v3(loc_curr, td->loc);
+  if (tc->use_local_mat) {
+    mul_m4_v3(tc->mat, loc_init);
+    mul_m4_v3(tc->mat, loc_curr);
+  }
+  else if (t->options & CTX_OBJECT) {
+    BKE_object_eval_transform_all(t->depsgraph, t->scene, td->ob);
+    copy_v3_v3(loc_init, td->ob->object_to_world().location());
+  }
+
+  bool has_nearest = false;
+  bool has_project = false;
+
+  if (t->tsnap.mode & SCE_SNAP_INDIVIDUAL_NEAREST) {
+    has_nearest = snap_nearest(t, loc_init, loc_curr, loc_near, no_near);
+  }
+
+  if (t->tsnap.mode & SCE_SNAP_INDIVIDUAL_PROJECT) {
+    /* Only try projecting if the nearest snap is not occluded.
+     * Using the nearest snap for what is not visible is usually more desirable. */
+    if (!has_nearest || !is_point_occluded(t, loc_near, plane_near)) {
+      has_project = transform_snap_project(
+                        t, t->tsnap.object_context, loc_curr, plane_near, loc_proj, no_proj) != 0;
+    }
+  }
+
+  if (!has_project && !has_nearest) {
     return;
   }
 
+  float3 loc_result, no_result;
+  if (has_project && has_nearest) {
+    float3 dir_proj = math::normalize(loc_proj - loc_curr);
+    float3 dir_near = math::normalize(loc_near - loc_curr);
+    float dot_product = math::dot(dir_proj, dir_near);
+    if (dot_product > math::cos(U.experimental.angle_for_mixed_snap)) {
+      has_nearest = false;
+    }
+    else {
+      has_project = false;
+    }
+  }
+
+  if (has_project) {
+    loc_result = loc_proj;
+    no_result = no_proj;
+  }
+  else {
+    loc_result = loc_near;
+    no_result = no_near;
+  }
+
   float tvec[3];
-  sub_v3_v3v3(tvec, snap_loc, prev_loc);
+  sub_v3_v3v3(tvec, loc_result, loc_curr);
+
   mul_m3_v3(td->smtx, tvec);
+
   add_v3_v3(td->loc, tvec);
 
-  /* TODO: support snap alignment similar to #SCE_SNAP_INDIVIDUAL_PROJECT? */
+  if ((t->tsnap.flag & SCE_SNAP_ROTATE) && (t->options & CTX_OBJECT)) {
+    /* handle alignment as well */
+    const float *original_normal;
+    float mat[3][3];
+
+    /* In pose mode, we want to align normals with Y axis of bones. */
+    original_normal = td->axismtx[2];
+
+    rotation_between_vecs_to_mat3(mat, original_normal, no_result);
+
+    transform_data_ext_rotate(td, mat, true);
+
+    /* TODO: support constraints for rotation too? see #ElementRotation. */
+  }
 }
 
 bool transform_snap_project_individual_is_active(const TransInfo *t)
@@ -543,6 +599,9 @@ void transform_snap_project_individual_apply(TransInfo *t)
     return;
   }
 
+  float4 plane_near;
+  planes_from_projmat(t->persmat, nullptr, nullptr, nullptr, nullptr, plane_near, nullptr);
+
   /* XXX: flickers in object mode. */
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     TransData *td = tc->data;
@@ -557,14 +616,7 @@ void transform_snap_project_individual_apply(TransInfo *t)
 
       /* If both face ray-cast and face nearest methods are enabled, start with face ray-cast and
        * fallback to face nearest ray-cast does not hit. */
-      bool hit = false;
-      if (t->tsnap.mode & SCE_SNAP_INDIVIDUAL_PROJECT) {
-        hit = applyFaceProject(t, tc, td);
-      }
-
-      if (!hit && t->tsnap.mode & SCE_SNAP_INDIVIDUAL_NEAREST) {
-        applyFaceNearest(t, tc, td);
-      }
+      snap_individual(t, tc, td, plane_near);
 #if 0 /* TODO: support this? */
       constraintTransLim(t, td);
 #endif

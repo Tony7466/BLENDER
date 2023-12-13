@@ -196,42 +196,9 @@ static bool is_vert_slide_visible(TransInfo *t,
   float3 hit_loc;
   for (float3 &p : points) {
     p = math::transform_point(obmat, p);
-    float3 view_vec;
-    float lambda, ray_depth = FLT_MAX;
-
-    transform_view_vector_calc(t, p, view_vec);
-
-    if (dot_v3v3(view_vec, plane_near) > 0.0f) {
-      /* Behind the view origin. */
-      return false;
-    }
-
-    if (!isect_ray_plane_v3(p, view_vec, plane_near, &lambda, false)) {
-      return false;
-    }
-
-    float3 view_orig = p + view_vec * lambda;
-
-    SnapObjectParams snap_object_params{};
-    snap_object_params.snap_target_select = t->tsnap.target_operation;
-    snap_object_params.edit_mode_type = (t->flag & T_EDIT) != 0 ? SNAP_GEOM_EDIT : SNAP_GEOM_FINAL;
-    snap_object_params.use_occlusion_test = false;
-    snap_object_params.use_backface_culling = (t->tsnap.flag & SCE_SNAP_BACKFACE_CULLING) != 0;
-
-    bool has_hit = ED_transform_snap_object_project_ray_ex(sctx,
-                                                           t->depsgraph,
-                                                           static_cast<const View3D *>(t->view),
-                                                           &snap_object_params,
-                                                           view_orig,
-                                                           -view_vec,
-                                                           &ray_depth,
-                                                           hit_loc,
-                                                           nullptr,
-                                                           nullptr,
-                                                           nullptr,
-                                                           nullptr);
-
-    const bool is_occluded = has_hit && lambda > (ray_depth + 0.0001f);
+    float3 dummy_loc, dummy_nor;
+    const bool is_occluded = transform_snap_project(
+                                 t, sctx, p, plane_near, dummy_loc, dummy_nor) == -1;
     if (!is_occluded) {
       return true;
     }

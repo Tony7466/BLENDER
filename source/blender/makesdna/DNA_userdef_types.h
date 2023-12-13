@@ -762,6 +762,8 @@ typedef struct UserDef_Experimental {
   char use_docking;
   char enable_new_cpu_compositor;
   char _pad[1];
+  float angle_for_mixed_snap;
+  char _pad2[4];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 

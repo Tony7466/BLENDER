@@ -7498,6 +7498,13 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
                            "Interactive Editor Docking",
                            "Move editor areas to new locations, including between windows");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "angle_for_mixed_snap", PROP_FLOAT, PROP_ANGLE);
+  RNA_def_property_ui_range(prop, 0, M_PI * 2, 10, 2);
+  RNA_def_property_ui_text(
+      prop,
+      "Angle to Switch Project/Nearest",
+      "Minimum angle between Project and Nearest snap vectors to use Project");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)

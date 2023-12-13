@@ -71,17 +71,6 @@ static void projection_matrix_calc(const TransInfo *t, float r_pmtx[3][3])
   mul_m3_m3m3(r_pmtx, t->spacemtx, mat);
 }
 
-static void view_vector_calc(const TransInfo *t, const float focus[3], float r_vec[3])
-{
-  if (t->persp != RV3D_ORTHO) {
-    sub_v3_v3v3(r_vec, t->viewinv[3], focus);
-  }
-  else {
-    copy_v3_v3(r_vec, t->viewinv[2]);
-  }
-  normalize_v3(r_vec);
-}
-
 /* ************************** CONSTRAINTS ************************* */
 #define CONSTRAIN_EPSILON 0.0001f
 
@@ -220,14 +209,14 @@ static void axisProjection(const TransInfo *t,
     float norm[3], norm_center[3];
     float plane[3];
 
-    view_vector_calc(t, t_con_center, norm_center);
+    transform_view_vector_calc(t, t_con_center, norm_center);
     cross_v3_v3v3(plane, norm_center, axis);
 
     project_v3_v3v3(vec, in, plane);
     sub_v3_v3v3(vec, in, vec);
 
     add_v3_v3v3(v, vec, t_con_center);
-    view_vector_calc(t, v, norm);
+    transform_view_vector_calc(t, v, norm);
 
     /* Give arbitrary large value if projection is impossible. */
     factor = dot_v3v3(axis, norm);
@@ -338,7 +327,7 @@ static bool isPlaneProjectionViewAligned(const TransInfo *t, const float plane_n
 {
   const float eps = 0.001f;
   float view_to_plane[3];
-  view_vector_calc(t, t->center_global, view_to_plane);
+  transform_view_vector_calc(t, t->center_global, view_to_plane);
 
   float factor = dot_v3v3(plane_no, view_to_plane);
   return fabsf(factor) < eps;
@@ -353,7 +342,7 @@ static void planeProjection(const TransInfo *t,
   float pos[3], view_vec[3], factor;
 
   add_v3_v3v3(pos, in, t->center_global);
-  view_vector_calc(t, pos, view_vec);
+  transform_view_vector_calc(t, pos, view_vec);
 
   if (isect_ray_plane_v3_factor(pos, view_vec, t->center_global, plane_no, &factor)) {
     madd_v3_v3v3fl(out, in, view_vec, factor);
@@ -589,7 +578,7 @@ static void constraints_rotation_impl(const TransInfo *t,
       !((mode & CON_NOFLIP) || hasNumInput(&t->num) || (t->flag & T_INPUT_IS_VALUES_FINAL)))
   {
     float view_vector[3];
-    view_vector_calc(t, t->center_global, view_vector);
+    transform_view_vector_calc(t, t->center_global, view_vector);
     if (dot_v3v3(r_axis, view_vector) > 0.0f) {
       *r_angle = -(*r_angle);
     }
