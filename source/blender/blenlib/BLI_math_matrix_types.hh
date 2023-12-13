@@ -381,8 +381,8 @@ struct alignas(Alignment) MatBase : public vec_struct_base<VecBase<T, NumRow>, N
   }
 
   /** Multiply two compatible matrices using matrix multiplication. */
-  template<int OtherNumRow>
-  MatBase<T, OtherNumRow, NumRow> operator*(const MatBase<T, OtherNumRow, NumCol> &b) const
+  template<int OtherNumRow, int OtherNumCol = NumCol>
+  MatBase<T, OtherNumRow, NumRow> operator*(const MatBase<T, OtherNumRow, OtherNumCol> &b) const
   {
     const MatBase &a = *this;
     /* This is the reference implementation.
@@ -391,7 +391,7 @@ struct alignas(Alignment) MatBase : public vec_struct_base<VecBase<T, NumRow>, N
     unroll<OtherNumRow>([&](auto j) {
       unroll<NumRow>([&](auto i) {
         /* Same as dot product, but avoid dependency on vector math. */
-        unroll<NumCol>([&](auto k) { result[j][i] += a[k][i] * b[j][k]; });
+        unroll<OtherNumCol>([&](auto k) { result[j][i] += a[k][i] * b[j][k]; });
       });
     });
     return result;
