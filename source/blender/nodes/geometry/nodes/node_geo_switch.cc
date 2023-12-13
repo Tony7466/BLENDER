@@ -17,20 +17,21 @@ namespace blender::nodes::node_geo_switch_cc {
 
 NODE_STORAGE_FUNCS(NodeSwitch)
 
-static void node_declare_dynamic(const bNodeTree & /*ntree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const NodeSwitch &storage = node_storage(node);
-  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(storage.input_type);
-  const bool supports_field = socket_type_supports_fields(socket_type);
-
   auto &switch_decl = b.add_input<decl::Bool>("Switch").default_value(false);
+  const bNode *node = b.node_or_null();
+  if (!node) {
+    return;
+  }
+  const NodeSwitch &storage = node_storage(*node);
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(storage.input_type);
+
   auto &false_decl = b.add_input(socket_type, "False");
   auto &true_decl = b.add_input(socket_type, "True");
   auto &output_decl = b.add_output(socket_type, "Output");
 
-  if (supports_field) {
+  if (socket_type_supports_fields(socket_type)) {
     switch_decl.supports_field();
     false_decl.supports_field();
     true_decl.supports_field();
@@ -51,37 +52,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   NodeSwitch *data = MEM_cnew<NodeSwitch>(__func__);
   data->input_type = SOCK_GEOMETRY;
   node->storage = data;
-}
-
-static void node_update(bNodeTree *ntree, bNode *node)
-{
-  const NodeSwitch &storage = node_storage(*node);
-  int index = 0;
-  bNodeSocket *field_switch = static_cast<bNodeSocket *>(node->inputs.first);
-  bNodeSocket *non_field_switch = static_cast<bNodeSocket *>(field_switch->next);
-
-  const bool fields_type = ELEM(storage.input_type,
-                                SOCK_FLOAT,
-                                SOCK_INT,
-                                SOCK_BOOLEAN,
-                                SOCK_VECTOR,
-                                SOCK_RGBA,
-                                SOCK_STRING,
-                                SOCK_ROTATION);
-
-  bke::nodeSetSocketAvailability(ntree, field_switch, fields_type);
-  bke::nodeSetSocketAvailability(ntree, non_field_switch, !fields_type);
-
-  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &node->inputs, index) {
-    if (index <= 1) {
-      continue;
-    }
-    bke::nodeSetSocketAvailability(ntree, socket, socket->type == storage.input_type);
-  }
-
-  LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
-    bke::nodeSetSocketAvailability(ntree, socket, socket->type == storage.input_type);
-  }
 }
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
@@ -268,7 +238,6 @@ static void node_rna(StructRNA *srna)
                                                SOCK_GEOMETRY,
                                                SOCK_OBJECT,
                                                SOCK_COLLECTION,
-                                               SOCK_TEXTURE,
                                                SOCK_MATERIAL,
                                                SOCK_IMAGE);
                                  });
@@ -280,9 +249,8 @@ static void register_node()
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_SWITCH, "Switch", NODE_CLASS_CONVERTER);
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.initfunc = node_init;
-  ntype.updatefunc = node_update;
   node_type_storage(&ntype, "NodeSwitch", node_free_standard_storage, node_copy_standard_storage);
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.draw_buttons = node_layout;
