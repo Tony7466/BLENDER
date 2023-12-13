@@ -79,7 +79,7 @@ set(OPENEXR_FILE openexr-${OPENEXR_VERSION}.tar.gz)
 set(OPENEXR_CPE "cpe:2.3:a:openexr:openexr:${OPENEXR_VERSION}:*:*:*:*:*:*:*")
 
 set(IMATH_VERSION 3.1.7)
-set(IMATH_URI https://github.com/AcademySoftwareFoundation/Imath/archive/v${OPENEXR_VERSION}.tar.gz)
+set(IMATH_URI https://github.com/AcademySoftwareFoundation/Imath/archive/v${IMATH_VERSION}.tar.gz)
 set(IMATH_HASH 5cedab446ab296c080957c3037c6d097)
 set(IMATH_HASH_TYPE MD5)
 set(IMATH_FILE imath-${IMATH_VERSION}.tar.gz)
