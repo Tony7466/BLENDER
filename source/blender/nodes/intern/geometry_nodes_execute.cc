@@ -104,6 +104,7 @@ static bool node_needs_own_transform_relation(const bNode &node)
 static void process_nodes_for_depsgraph(const bNodeTree &tree,
                                         Set<ID *> &ids,
                                         bool &r_needs_own_transform_relation,
+                                        bool &r_needs_scene_camera_relation,
                                         Set<const bNodeTree *> &checked_groups)
 {
   if (!checked_groups.add(&tree)) {
@@ -115,21 +116,28 @@ static void process_nodes_for_depsgraph(const bNodeTree &tree,
     add_used_ids_from_sockets(node->inputs, ids);
     add_used_ids_from_sockets(node->outputs, ids);
     r_needs_own_transform_relation |= node_needs_own_transform_relation(*node);
+    r_needs_scene_camera_relation |= (node->type == GEO_NODE_INPUT_ACTIVE_CAMERA);
   }
 
   for (const bNode *node : tree.group_nodes()) {
     if (const bNodeTree *sub_tree = reinterpret_cast<const bNodeTree *>(node->id)) {
-      process_nodes_for_depsgraph(*sub_tree, ids, r_needs_own_transform_relation, checked_groups);
+      process_nodes_for_depsgraph(*sub_tree,
+                                  ids,
+                                  r_needs_own_transform_relation,
+                                  r_needs_scene_camera_relation,
+                                  checked_groups);
     }
   }
 }
 
 void find_node_tree_dependencies(const bNodeTree &tree,
                                  Set<ID *> &r_ids,
-                                 bool &r_needs_own_transform_relation)
+                                 bool &r_needs_own_transform_relation,
+                                 bool &r_needs_scene_camera_relation)
 {
   Set<const bNodeTree *> checked_groups;
-  process_nodes_for_depsgraph(tree, r_ids, r_needs_own_transform_relation, checked_groups);
+  process_nodes_for_depsgraph(
+      tree, r_ids, r_needs_own_transform_relation, r_needs_scene_camera_relation, checked_groups);
 }
 
 StringRef input_use_attribute_suffix()
@@ -680,12 +688,11 @@ static void store_output_attributes(bke::GeometrySet &geometry,
   store_computed_output_attributes(geometry, attributes_to_store);
 }
 
-bke::GeometrySet execute_geometry_nodes_on_geometry(
-    const bNodeTree &btree,
-    const IDProperty *properties,
-    const ComputeContext &base_compute_context,
-    bke::GeometrySet input_geometry,
-    const FunctionRef<void(nodes::GeoNodesLFUserData &)> fill_user_data)
+bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
+                                                    const IDProperty *properties,
+                                                    const ComputeContext &base_compute_context,
+                                                    GeoNodesCallData &call_data,
+                                                    bke::GeometrySet input_geometry)
 {
   const nodes::GeometryNodesLazyFunctionGraphInfo &lf_graph_info =
       *nodes::ensure_geometry_nodes_lazy_function_graph(btree);
@@ -707,8 +714,9 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
       .fill(lf::ValueUsage::Unused);
 
   nodes::GeoNodesLFUserData user_data;
-  fill_user_data(user_data);
-  user_data.root_ntree = &btree;
+  user_data.call_data = &call_data;
+  call_data.root_ntree = &btree;
+
   user_data.compute_context = &base_compute_context;
 
   LinearAllocator<> allocator;
@@ -888,7 +896,7 @@ void update_output_properties_from_node_tree(const bNodeTree &tree,
     }
 
     const std::string idprop_name = socket_identifier + input_attribute_name_suffix();
-    IDProperty *new_prop = IDP_NewStringMaxSize("", idprop_name.c_str(), MAX_NAME);
+    IDProperty *new_prop = IDP_NewStringMaxSize("", MAX_NAME, idprop_name.c_str());
     if (socket.description && socket.description[0] != '\0') {
       IDPropertyUIData *ui_data = IDP_ui_data_ensure(new_prop);
       ui_data->description = BLI_strdup(socket.description);
