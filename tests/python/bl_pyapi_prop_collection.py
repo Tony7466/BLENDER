@@ -21,6 +21,10 @@ import ctypes
 id_inst = bpy.context.scene
 id_type = bpy.types.Scene
 
+# If an enum property is set to an integer value for which no enum item exists then an empty string is returned and
+# looking up the integer value of the enum property would fail. In such cases, return this value instead.
+MISSING_ENUM_VALUE = -1
+
 
 # -----------------------------------------------------------------------------
 # Utility Classes and Functions
@@ -118,8 +122,8 @@ def prop_as_sequence(collection, prop_rna):
     elif prop_rna.type == 'ENUM':
         # Enum properties are a special case where foreach_get/set access the enum as an index, but accessing the
         # enum property directly is done using the string identifiers of the enum's items.
-        index_lookup = {item.identifier: i for i, item in enumerate(prop_rna.enum_items)}
-        return [index_lookup.get(getattr(group, prop_name), -1) for group in collection]
+        index_lookup = {item.identifier: item.value for item in prop_rna.enum_items}
+        return [index_lookup.get(getattr(group, prop_name), MISSING_ENUM_VALUE) for group in collection]
     else:
         return [getattr(group, prop_name) for group in collection]
 
@@ -174,7 +178,10 @@ class BaseTestForeachGetSet(unittest.TestCase):
                     initial_value = initial_value[0]
             elif prop_rna.type == 'ENUM':
                 # Get the integer value of the string identifier
-                initial_value = prop_rna.enum_items[initial_value].value if initial_value in prop_rna.enum_items else -1
+                if initial_value in prop_rna.enum_items:
+                    initial_value = prop_rna.enum_items[initial_value].value
+                else:
+                    initial_value = MISSING_ENUM_VALUE
         else:
             # The collection is empty, so the initial value is irrelevant.
             initial_value = 0
