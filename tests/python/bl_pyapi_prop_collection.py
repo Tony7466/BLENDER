@@ -607,6 +607,143 @@ class TestPropCollectionForeachGetSetAttribute(BaseTestForeachGetSet):
         self.check_set(self.int_attributes)
 
 
+class TestPropCollectionForeachGetSetNoRawAccess(BaseTestForeachGetSet):
+    """
+    Test the bpy.types.Collection.objects collection.
+
+    This should test properties without raw array access because the Objects in the collection are not stored in
+    contiguous memory.
+    """
+    def setUp(self):
+        VECTOR_SIZE = 3
+
+        DEFAULT_INT = 0  # Must be either 0 or 1 so that bool and enum tests can work properly.
+        DEFAULT_BOOL = bool(DEFAULT_INT)
+        DEFAULT_FLOAT = float(DEFAULT_INT)
+
+        cls = bpy.types.Object
+
+        cls.runtime_bool = BoolProperty(default=DEFAULT_BOOL)
+        cls.runtime_bool_vector = BoolVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_BOOL] * VECTOR_SIZE)
+        cls.runtime_float = FloatProperty(default=DEFAULT_FLOAT)
+        cls.runtime_float_vector = FloatVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_FLOAT] * VECTOR_SIZE)
+        cls.runtime_int = IntProperty(default=DEFAULT_INT)
+        cls.runtime_int_vector = IntVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_INT] * VECTOR_SIZE)
+        cls.runtime_unsigned_int = IntProperty(subtype='UNSIGNED', default=DEFAULT_INT)
+        _ENUM_ITEMS = (("0", "Item 0", ""), ("1", "Item 1", ""))
+        cls.runtime_enum = EnumProperty(items=_ENUM_ITEMS, default=_ENUM_ITEMS[DEFAULT_INT][0])
+
+        self.property_group_class = bpy.types.Object
+
+        self.collection = bpy.data.collections.new("")
+        self.objects = []
+        for _ in range(5):
+            obj = bpy.data.objects.new("", None)
+            self.objects.append(obj)
+            self.collection.objects.link(obj)
+
+    def tearDown(self):
+        bpy.data.collections.remove(self.collection)
+        for obj in self.objects:
+            bpy.data.objects.remove(obj)
+
+        cls = bpy.types.Object
+
+        del cls.runtime_bool
+        del cls.runtime_bool_vector
+        del cls.runtime_float
+        del cls.runtime_float_vector
+        del cls.runtime_int
+        del cls.runtime_int_vector
+        del cls.runtime_unsigned_int
+        del cls.runtime_enum
+
+    def check_getset(self, prop_names, is_set):
+        for prop_name in prop_names:
+            prop_rna = bpy.types.Object.bl_rna.properties[prop_name]
+            self.check_foreach_getset(self.collection.objects, prop_rna, is_set)
+
+    def check_get(self, *prop_names):
+        self.check_getset(prop_names, is_set=False)
+
+    def check_set(self, *prop_names):
+        self.check_getset(prop_names, is_set=True)
+
+    # Test methods
+
+    def test_foreach_get_bool(self):
+        self.check_get(
+            "runtime_bool",
+            "runtime_bool_vector",
+
+            "show_bounds",
+            "is_missing",  # read-only
+        )
+
+    def test_foreach_set_bool(self):
+        self.check_set(
+            "runtime_bool",
+            "runtime_bool_vector",
+
+            "show_bounds",
+        )
+
+    def test_foreach_get_float(self):
+        self.check_get(
+            "runtime_float",
+            "runtime_float_vector",  # 1D array
+
+            "color",  # 1D array
+            "location",  # 1D array
+            "matrix_world",  # 2D array
+            "bound_box",  # read-only, 2D array
+        )
+
+    def test_foreach_set_float(self):
+        self.check_set(
+            "runtime_float",
+            "runtime_float_vector",  # 1D array
+
+            "color",  # 1D array
+            "location",  # 1D array
+            "matrix_world",  # 2D array
+        )
+
+    def test_foreach_get_int(self):
+        self.check_get(
+            "runtime_int",
+            "runtime_int_vector",
+            "runtime_unsigned_int",
+
+            "active_material_index",
+            "users",  # read-only
+        )
+
+    def test_foreach_set_int(self):
+        self.check_set(
+            "runtime_int",
+            "runtime_int_vector",
+            "runtime_unsigned_int",
+
+            "active_material_index",
+        )
+
+    def test_foreach_get_enum(self):
+        self.check_get(
+            "runtime_enum",
+
+            "display_bounds_type",
+            "type",  # read-only
+        )
+
+    def test_foreach_set_enum(self):
+        self.check_set(
+            "runtime_enum",
+
+            "display_bounds_type",
+        )
+
+
 if __name__ == '__main__':
     import sys
     sys.argv = [__file__] + (sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
