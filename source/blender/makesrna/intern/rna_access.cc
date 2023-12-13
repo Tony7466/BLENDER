@@ -4622,7 +4622,7 @@ static int rna_raw_access(ReportList *reports,
       /* Could also be faster with non-matching types,
        * for now we just do slower loop. */
     }
-    BLI_assert_msg(itemlen == 0 || itemtype != PROP_ENUM,
+    BLI_assert_msg(arraylen == 0 || itemtype != PROP_ENUM,
                    "Enum array properties should not exist");
   }
 
@@ -4668,7 +4668,7 @@ static int rna_raw_access(ReportList *reports,
             err = 1;
             break;
           }
-          BLI_assert_msg(itemlen == 0 || itemtype != PROP_ENUM,
+          BLI_assert_msg(arraylen == 0 || itemtype != PROP_ENUM,
                          "Enum array properties should not exist");
         }
 
