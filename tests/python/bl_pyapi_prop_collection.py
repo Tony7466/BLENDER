@@ -17,6 +17,7 @@ from bpy.props import (
 import unittest
 import numpy as np
 import ctypes
+from itertools import chain
 
 id_inst = bpy.context.scene
 id_type = bpy.types.Scene
@@ -115,10 +116,12 @@ def prop_as_sequence(collection, prop_rna):
     """
     prop_name = prop_rna.identifier
     if getattr(prop_rna, "is_array", False):
-        # Only 1D arrays are currently supported.
-        assert prop_rna.array_dimensions[1] == 0
-        assert prop_rna.array_dimensions[2] == 0
-        return [x for group in collection for x in getattr(group, prop_name)]
+        gen = (getattr(array_prop, prop_name) for array_prop in collection)
+        for dim_size in prop_rna.array_dimensions:
+            if dim_size == 0:
+                break
+            gen = chain.from_iterable(gen)
+        return list(gen)
     elif prop_rna.type == 'ENUM':
         # Enum properties are a special case where foreach_get/set access the enum as an index, but accessing the
         # enum property directly is done using the string identifiers of the enum's items.
