@@ -19,7 +19,7 @@ NODE_STORAGE_FUNCS(NodeSwitch)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  auto &switch_decl = b.add_input<decl::Bool>("Switch").default_value(false);
+  auto &switch_decl = b.add_input<decl::Bool>("Switch");
   const bNode *node = b.node_or_null();
   if (!node) {
     return;
