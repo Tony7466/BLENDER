@@ -62,6 +62,8 @@
 
 #include "BLF_api.h"
 
+#include "BPY_extern_run.h"
+
 #include "interface_intern.hh"
 
 #include "RNA_access.hh"
@@ -3705,24 +3707,70 @@ static eStrCursorJumpType ui_textedit_jump_type_from_event(const wmEvent *event)
 
 static void ui_do_but_text_completion(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
-  const Scene *scene = CTX_data_scene(C);
+  PropertyRNA *prop = but->rnaprop;
+  if (!prop) {
+    return;
+  }
+  const PropertySubType subtype = RNA_property_subtype(prop);
+  if (!ui_but_is_unit(but) && !ELEM(subtype, PROP_PIXEL, PROP_PERCENTAGE)) {
+    UI_but_completion_set(but, nullptr);
+    return;
+  }
+
+  std::string name_short;
   const int unit_type = RNA_SUBTYPE_UNIT_VALUE(UI_but_unit_type_get(but));
-  double value;
-  if (user_string_to_number(C, data->str, &scene->unit, unit_type, &value, false, nullptr) &&
-      !BKE_unit_string_contains_unit(data->str, unit_type))
-  {
+  if (unit_type != PROP_NONE) {
+    /* If the string contains the unit already, don't add it as a hint. */
+    if (BKE_unit_string_contains_unit(data->str, unit_type)) {
+      UI_but_completion_set(but, nullptr);
+      return;
+    }
+
+    /* If the number we're entering is not valid, don't show the hint. */
+    double value;
+    if (!BPY_run_string_as_number(C, nullptr, data->str, nullptr, &value)) {
+      UI_but_completion_set(but, nullptr);
+      return;
+    }
+
     const void *usys;
     int len;
-    BKE_unit_system_get(scene->unit.system, unit_type, &usys, &len);
-    const int unit_index = BKE_unit_of_type_or_default(&scene->unit, unit_type);
-    const char *name_short = BKE_unit_display_name_short_get(usys, unit_index);
-    /* Add a space before the short unit name. */
-    std::string text_completion = " " + std::string(name_short);
-    UI_but_completion_set(but, text_completion.c_str());
+    UnitSettings &unit_settings = CTX_data_scene(C)->unit;
+    BKE_unit_system_get(unit_settings.system, unit_type, &usys, &len);
+    const int unit_index = BKE_unit_of_type_or_default(&unit_settings, unit_type);
+    name_short = BKE_unit_display_name_short_get(usys, unit_index);
   }
-  else {
-    UI_but_completion_set(but, nullptr);
+  /* Special handling for PROP_PIXEL and PROP_PERCENTAGE (because they are not treated as units
+   * unfortunatly). */
+  else if (ELEM(subtype, PROP_PIXEL, PROP_PERCENTAGE)) {
+    switch (subtype) {
+      case PROP_PIXEL:
+        name_short = "px";
+        break;
+      case PROP_PERCENTAGE:
+        name_short = "%";
+      default:
+        break;
+    }
+
+    /* If the string contains the unit already, don't add it as a hint. */
+    std::string str = data->str;
+    if (str.find(name_short) != std::string::npos) {
+      UI_but_completion_set(but, nullptr);
+      return;
+    }
+
+    /* If the number we're entering is not valid, don't show the hint. */
+    double value;
+    if (!BPY_run_string_as_number(C, nullptr, data->str, nullptr, &value)) {
+      UI_but_completion_set(but, nullptr);
+      return;
+    }
   }
+
+  /* Add a space before the short unit name. */
+  std::string text_completion = " " + name_short;
+  UI_but_completion_set(but, text_completion.c_str());
 }
 
 static void ui_do_but_textedit(
@@ -4075,10 +4123,8 @@ static void ui_do_but_textedit(
       ui_textedit_undo_push(data->undo_stack_text, data->str, but->pos);
     }
 
-    /* If the button is a unit button, add text completion for the unit that will be used. */
-    if (ui_but_is_unit(but)) {
-      ui_do_but_text_completion(C, but, data);
-    }
+    /* Handle text completion. */
+    ui_do_but_text_completion(C, but, data);
 
     /* only do live update when but flag request it (UI_BUT_TEXTEDIT_UPDATE). */
     if (update && data->interactive) {
