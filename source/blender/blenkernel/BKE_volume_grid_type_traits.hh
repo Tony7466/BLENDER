@@ -15,6 +15,8 @@
 #  include "openvdb_fwd.hh"
 #endif
 
+#include "BKE_volume_enums.hh"
+
 #ifdef WITH_OPENVDB
 namespace blender::bke {
 
@@ -22,12 +24,14 @@ template<typename T> struct VolumeGridTraits {
   using BlenderType = void;
   using PrimitiveType = void;
   using TreeType = void;
+  static constexpr VolumeGridType EnumType = VOLUME_GRID_UNKNOWN;
 };
 
 template<> struct VolumeGridTraits<bool> {
   using BlenderType = bool;
   using PrimitiveType = bool;
   using TreeType = openvdb::BoolTree;
+  static constexpr VolumeGridType EnumType = VOLUME_GRID_BOOLEAN;
 
   static bool to_openvdb(const bool &value)
   {
@@ -43,6 +47,7 @@ template<> struct VolumeGridTraits<int> {
   using BlenderType = int;
   using PrimitiveType = int;
   using TreeType = openvdb::Int32Tree;
+  static constexpr VolumeGridType EnumType = VOLUME_GRID_INT;
 
   static int to_openvdb(const int &value)
   {
@@ -58,6 +63,7 @@ template<> struct VolumeGridTraits<float> {
   using BlenderType = float;
   using PrimitiveType = float;
   using TreeType = openvdb::FloatTree;
+  static constexpr VolumeGridType EnumType = VOLUME_GRID_FLOAT;
 
   static float to_openvdb(const float &value)
   {
@@ -73,6 +79,7 @@ template<> struct VolumeGridTraits<float3> {
   using BlenderType = float3;
   using PrimitiveType = openvdb::Vec3f;
   using TreeType = openvdb::Vec3STree;
+  static constexpr VolumeGridType EnumType = VOLUME_GRID_VECTOR_FLOAT;
 
   static openvdb::Vec3f to_openvdb(const float3 &value)
   {
@@ -84,20 +91,8 @@ template<> struct VolumeGridTraits<float3> {
   }
 };
 
-template<> struct VolumeGridTraits<math::Quaternion> {
-  using BlenderType = math::Quaternion;
-  using PrimitiveType = openvdb::Vec4f;
-  using TreeType = openvdb::Vec4fTree;
-
-  static openvdb::Vec4f to_openvdb(const math::Quaternion &value)
-  {
-    return openvdb::Vec4f(value.w, value.x, value.y, value.z);
-  }
-  static math::Quaternion to_blender(const openvdb::Vec4f &value)
-  {
-    return math::Quaternion(value.asV());
-  }
-};
+template<typename T> using OpenvdbTreeType = typename VolumeGridTraits<T>::TreeType;
+template<typename T> using OpenvdbGridType = openvdb::Grid<std::shared_ptr<OpenvdbTreeType<T>>>;
 
 }  // namespace blender::bke
 

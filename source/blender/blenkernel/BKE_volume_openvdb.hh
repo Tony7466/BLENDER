@@ -8,6 +8,7 @@
 
 #  include <openvdb/openvdb.h>
 #  include <openvdb/points/PointDataGrid.h>
+#  include <optional>
 
 #  include "BLI_bounds_types.hh"
 #  include "BLI_math_matrix_types.hh"
