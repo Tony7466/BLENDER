@@ -291,6 +291,7 @@ class NODE_MT_geometry_node_GEO_INPUT_SCENE(Menu):
         if context.preferences.experimental.use_grease_pencil_version3:
             node_add_menu.add_node_type(layout, "GeometryNodeInputNamedLayerSelection")
         node_add_menu.add_node_type(layout, "GeometryNodeObjectInfo")
+        node_add_menu.add_node_type(layout, "GeometryNodeObjectTransform")
         node_add_menu.add_node_type(layout, "GeometryNodeInputSceneTime")
         node_add_menu.add_node_type(layout, "GeometryNodeSelfObject")
         node_add_menu.draw_assets_for_catalog(layout, "Input/Scene")
@@ -539,6 +540,7 @@ class NODE_MT_category_GEO_UTILITIES(Menu):
         layout.separator()
         layout.menu("NODE_MT_category_GEO_UTILITIES_FIELD")
         layout.menu("NODE_MT_category_GEO_UTILITIES_MATH")
+        layout.menu("NODE_MT_category_utilities_matrix")
         layout.menu("NODE_MT_category_GEO_UTILITIES_ROTATION")
         layout.separator()
         node_add_menu.add_node_type(layout, "FunctionNodeRandomValue")
@@ -577,6 +579,24 @@ class NODE_MT_category_GEO_UTILITIES_ROTATION(Menu):
         node_add_menu.add_node_type(layout, "FunctionNodeRotationToQuaternion")
         node_add_menu.add_node_type(layout, "FunctionNodeQuaternionToRotation")
         node_add_menu.draw_assets_for_catalog(layout, "Utilities/Rotation")
+
+
+class NODE_MT_category_utilities_matrix(Menu):
+    bl_idname = "NODE_MT_category_utilities_matrix"
+    bl_label = "Matrix"
+
+    def draw(self, _context):
+        layout = self.layout
+        node_add_menu.add_node_type(layout, "FunctionNodeTransformVector")
+        node_add_menu.add_node_type(layout, "FunctionNodeTransformDirection")
+        node_add_menu.add_node_type(layout, "FunctionNodeProjectVector")
+        node_add_menu.add_node_type(layout, "FunctionNodeMatrixMultiply")
+        node_add_menu.add_node_type(layout, "FunctionNodeLocationToTransform")
+        node_add_menu.add_node_type(layout, "FunctionNodeRotationToTransform")
+        node_add_menu.add_node_type(layout, "FunctionNodeScaleToTransform")
+        node_add_menu.add_node_type(layout, "FunctionNodeInvertMatrix")
+        node_add_menu.add_node_type(layout, "FunctionNodeTransposeMatrix")
+        node_add_menu.draw_assets_for_catalog(layout, "Utilities/Matrix")
 
 
 class NODE_MT_category_GEO_UTILITIES_MATH(Menu):
@@ -718,6 +738,7 @@ classes = (
     NODE_MT_category_GEO_UTILITIES_FIELD,
     NODE_MT_category_GEO_UTILITIES_MATH,
     NODE_MT_category_GEO_UTILITIES_ROTATION,
+    NODE_MT_category_utilities_matrix,
     NODE_MT_category_GEO_GROUP,
 )
 
