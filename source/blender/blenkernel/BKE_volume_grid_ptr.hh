@@ -11,6 +11,7 @@
 #include "BLI_implicit_sharing_ptr.hh"
 
 #include "BKE_volume_grid.hh"
+#include "BKE_volume_grid_type_traits.hh"
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
@@ -79,75 +80,9 @@ struct GVolumeGridPtr : public VolumeGridPtrCommon {
  * Owning pointer to a #VolumeGrid of a known type.
  * \{ */
 
-namespace detail {
-
-#ifdef WITH_OPENVDB
-/**
- * Tree types for commonly used values.
- */
-template<typename T> struct VolumeGridTraits;
-
-template<> struct VolumeGridTraits<bool> {
-  using TreeType = openvdb::BoolTree;
-};
-template<> struct VolumeGridTraits<float> {
-  using TreeType = openvdb::FloatTree;
-};
-template<> struct VolumeGridTraits<float2> {
-  using TreeType = openvdb::Vec2STree;
-};
-template<> struct VolumeGridTraits<float3> {
-  using TreeType = openvdb::Vec3STree;
-};
-template<> struct VolumeGridTraits<double> {
-  using TreeType = openvdb::DoubleTree;
-};
-template<> struct VolumeGridTraits<double3> {
-  using TreeType = openvdb::Vec3DTree;
-};
-template<> struct VolumeGridTraits<int8_t> {
-  using TreeType = openvdb::Int8Grid;
-};
-template<> struct VolumeGridTraits<int32_t> {
-  using TreeType = openvdb::Int32Tree;
-};
-template<> struct VolumeGridTraits<int64_t> {
-  using TreeType = openvdb::Int64Tree;
-};
-template<> struct VolumeGridTraits<int2> {
-  using TreeType = openvdb::Vec2ITree;
-};
-template<> struct VolumeGridTraits<int3> {
-  using TreeType = openvdb::Vec3ITree;
-};
-template<> struct VolumeGridTraits<uint32_t> {
-  using TreeType = openvdb::UInt32Tree;
-};
-template<> struct VolumeGridTraits<ColorGeometry4f> {
-  using TreeType = openvdb::Vec4fTree;
-};
-template<> struct VolumeGridTraits<blender::ColorGeometry4b> {
-  using TreeType = openvdb::UInt32Tree;
-};
-template<> struct VolumeGridTraits<math::Quaternion> {
-  using TreeType = openvdb::Vec4fTree;
-};
-/* Stub class for string attributes, not supported. */
-template<> struct VolumeGridTraits<std::string> {
-  using TreeType = void;
-};
-
-template<typename T> using VolumeGridType = openvdb::Grid<typename VolumeGridTraits<T>::TreeType>;
-#else  /* WITH_OPENVDB */
-template<typename T> struct VolumeGridType {
-};
-#endif /* WITH_OPENVDB */
-
-}  // namespace detail
-
 #ifdef WITH_OPENVDB
 template<typename T> struct VolumeGridPtr : public VolumeGridPtrCommon {
-  using GridType = detail::VolumeGridType<T>;
+  using GridType = openvdb::Grid<typename VolumeGridTraits<T>::TreeType>;
   using GridPtr = std::shared_ptr<GridType>;
   using GridConstPtr = std::shared_ptr<const GridType>;
 
@@ -201,7 +136,7 @@ namespace grid_utils {
 template<typename T> std::optional<T> get_background_value(const VolumeGridPtr<T> &grid)
 {
 #ifdef WITH_OPENVDB
-  return grids::Converter<T>::to_blender(grid.grid()->background());
+  return VolumeGridTraits<T>::to_blender(grid.grid()->background());
 #else
   return std::nullopt;
 #endif /* WITH_OPENVDB */
@@ -217,7 +152,7 @@ template<typename T> VolumeGridPtr<T> make_empty_grid(const T background_value)
     grid = nullptr;
   }
   else {
-    grid = GridType::create(grids::Converter<T>::to_openvdb(background_value));
+    grid = GridType::create(VolumeGridTraits<T>::to_openvdb(background_value));
   }
   return make_volume_grid_ptr(grid).template typed<T>();
 #else
