@@ -8469,6 +8469,11 @@ class VIEW3D_PT_paint_weight_context_menu(Panel):
             pressure_name="use_pressure_strength",
             slider=True,
         )
+        layout.prop(
+            brush,
+            "falloff_shape",
+            expand=True,
+        )
 
 
 class VIEW3D_PT_sculpt_automasking(Panel):
