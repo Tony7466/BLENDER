@@ -1514,11 +1514,13 @@ void RNA_property_enum_items_ex(bContext *C,
         for (const IDPropertyUIDataEnumItem &idprop_item :
              blender::Span(ui_data->enum_items, ui_data->enum_items_num))
         {
+          BLI_assert(idprop_item.identifier != nullptr);
+          BLI_assert(idprop_item.name != nullptr);
           const EnumPropertyItem item = {idprop_item.value,
                                          idprop_item.identifier,
                                          idprop_item.icon,
                                          idprop_item.name,
-                                         idprop_item.description};
+                                         idprop_item.description ? idprop_item.description : ""};
           RNA_enum_item_add(&result, &totitem, &item);
         }
       }
