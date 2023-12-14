@@ -66,22 +66,6 @@ static bool idprop_ui_data_update_base(IDPropertyUIData *ui_data,
   return true;
 }
 
-static int icon_id_from_name(const char *name)
-{
-  const EnumPropertyItem *item;
-  int id;
-
-  if (name[0]) {
-    for (item = rna_enum_icon_items, id = 0; item->identifier; item++, id++) {
-      if (STREQ(item->name, name)) {
-        return item->value;
-      }
-    }
-  }
-
-  return 0;
-}
-
 /* Utility function for parsing ints in an if statement. */
 static bool py_long_as_int(PyObject *py_long, int *r_int)
 {
@@ -138,7 +122,7 @@ static bool try_parse_enum_item(PyObject *py_item, const int index, IDPropertyUI
   item.name = BLI_strdup(name);
   item.description = BLI_strdup(description);
   if (icon_name) {
-    item.icon = icon_id_from_name(icon_name);
+    RNA_enum_value_from_identifier(rna_enum_icon_items, icon_name, &item.icon);
   }
   return true;
 }
