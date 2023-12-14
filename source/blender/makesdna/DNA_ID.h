@@ -193,7 +193,7 @@ typedef enum eIDPropertyType {
    */
   IDP_BOOLEAN = 10,
 } eIDPropertyType;
-#define IDP_NUMTYPES 12
+#define IDP_NUMTYPES 11
 
 /** Used by some IDP utils, keep values in sync with type enum above. */
 enum {

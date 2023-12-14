@@ -437,7 +437,6 @@ static PropertyRNA *typemap[IDP_NUMTYPES] = {
     &rna_PropertyGroupItem_double,
     &rna_PropertyGroupItem_idp_array,
     &rna_PropertyGroupItem_bool,
-    &rna_PropertyGroupItem_enum,
 };
 
 static PropertyRNA *arraytypemap[IDP_NUMTYPES] = {
@@ -452,7 +451,6 @@ static PropertyRNA *arraytypemap[IDP_NUMTYPES] = {
     &rna_PropertyGroupItem_double_array,
     nullptr,
     (PropertyRNA *)&rna_PropertyGroupItem_bool_array,
-    nullptr,
 };
 
 void rna_property_rna_or_id_get(PropertyRNA *prop,
@@ -521,6 +519,14 @@ void rna_property_rna_or_id_get(PropertyRNA *prop,
       r_prop_rna_or_id->array_len = idprop_evaluated != nullptr ? uint(idprop_evaluated->len) : 0;
     }
     else {
+      /* Special case for int properties with enum items, these are displayed as a PROP_ENUM. */
+      if (idprop->type == IDP_INT) {
+        const IDPropertyUIDataInt *ui_data_int = reinterpret_cast<IDPropertyUIDataInt *>(
+            idprop->ui_data);
+        if (ui_data_int && ui_data_int->enum_items_num > 0) {
+          r_prop_rna_or_id->rnaprop = &rna_PropertyGroupItem_enum;
+        }
+      }
       r_prop_rna_or_id->rnaprop = typemap[int(idprop->type)];
     }
   }
@@ -561,6 +567,14 @@ PropertyRNA *rna_ensure_property(PropertyRNA *prop)
 
     if (idprop->type == IDP_ARRAY) {
       return arraytypemap[int(idprop->subtype)];
+    }
+    /* Special case for int properties with enum items, these are displayed as a PROP_ENUM. */
+    if (idprop->type == IDP_INT) {
+      const IDPropertyUIDataInt *ui_data_int = reinterpret_cast<IDPropertyUIDataInt *>(
+          idprop->ui_data);
+      if (ui_data_int && ui_data_int->enum_items_num > 0) {
+        return &rna_PropertyGroupItem_enum;
+      }
     }
     return typemap[int(idprop->type)];
   }
