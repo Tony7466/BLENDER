@@ -4,11 +4,11 @@
 
 #include <iostream>
 
+#include "IO_subdiv_disabler.hh"
 #include "usd.h"
 #include "usd.hh"
 #include "usd_hierarchy_iterator.h"
 #include "usd_hook.h"
-#include "IO_subdiv_disabler.hh"
 
 #include <pxr/base/plug/registry.h>
 #include <pxr/base/tf/token.h>
@@ -226,12 +226,13 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   wmJobWorkerStatus *worker_status = params.worker_status;
   Scene *scene = DEG_get_input_scene(depsgraph);
   Main *bmain = DEG_get_bmain(depsgraph);
-  
+
   SubdivModifierDisabler mod_disabler(depsgraph);
-  
+
   /* If we want to set the subdiv scheme, then we need to the export the mesh
    * without the subdiv modifier applied. */
-  if ((params.export_subdiv == USD_SUBDIV_BEST_MATCH) || (params.export_subdiv == USD_SUBDIV_IGNORE)) {
+  if ((params.export_subdiv == USD_SUBDIV_BEST_MATCH) ||
+      (params.export_subdiv == USD_SUBDIV_IGNORE)) {
     mod_disabler.disable_modifiers();
     BKE_scene_graph_update_tagged(depsgraph, bmain);
   }

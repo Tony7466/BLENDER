@@ -27,7 +27,9 @@ namespace blender::io {
  * which are allowed.
  * Returns nullptr if there is not any subdiv modifier to disable.
  */
-ModifierData *SubdivModifierDisabler::get_subdiv_modifier(Scene *scene, const Object *ob, ModifierMode mode)
+ModifierData *SubdivModifierDisabler::get_subdiv_modifier(Scene *scene,
+                                                          const Object *ob,
+                                                          ModifierMode mode)
 {
   ModifierData *md = static_cast<ModifierData *>(ob->modifiers.last);
 
@@ -59,10 +61,7 @@ ModifierData *SubdivModifierDisabler::get_subdiv_modifier(Scene *scene, const Ob
   return nullptr;
 }
 
-SubdivModifierDisabler::SubdivModifierDisabler(Depsgraph *depsgraph)
-    : depsgraph_(depsgraph)
-{
-}
+SubdivModifierDisabler::SubdivModifierDisabler(Depsgraph *depsgraph) : depsgraph_(depsgraph) {}
 
 SubdivModifierDisabler::~SubdivModifierDisabler()
 {
@@ -80,9 +79,8 @@ SubdivModifierDisabler::~SubdivModifierDisabler()
 void SubdivModifierDisabler::disable_modifiers()
 {
   eEvaluationMode eval_mode = DEG_get_mode(depsgraph_);
-  const ModifierMode mode = eval_mode == DAG_EVAL_VIEWPORT ?
-                                eModifierMode_Realtime :
-                                eModifierMode_Render;
+  const ModifierMode mode = eval_mode == DAG_EVAL_VIEWPORT ? eModifierMode_Realtime :
+                                                             eModifierMode_Render;
 
   Scene *scene = DEG_get_input_scene(depsgraph_);
   ViewLayer *view_layer = DEG_get_input_view_layer(depsgraph_);
@@ -117,4 +115,4 @@ void SubdivModifierDisabler::disable_modifier(ModifierData *mod)
   disabled_modifiers_.insert(mod);
 }
 
-}  // namespace blender::io::usd
+}  // namespace blender::io

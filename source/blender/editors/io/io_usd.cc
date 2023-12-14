@@ -175,7 +175,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_mesh_colors = RNA_boolean_get(op->ptr, "export_mesh_colors");
   const bool export_normals = RNA_boolean_get(op->ptr, "export_normals");
   const bool export_materials = RNA_boolean_get(op->ptr, "export_materials");
-  const eSubdivExportMode export_subdiv = eSubdivExportMode(RNA_enum_get(op->ptr, "export_subdivision"));
+  const eSubdivExportMode export_subdiv = eSubdivExportMode(
+      RNA_enum_get(op->ptr, "export_subdivision"));
   const bool use_instancing = RNA_boolean_get(op->ptr, "use_instancing");
   const bool evaluation_mode = RNA_enum_get(op->ptr, "evaluation_mode");
 
@@ -357,13 +358,14 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Materials",
                   "Export viewport settings of materials as USD preview materials, and export "
                   "material assignments as geometry subsets");
-  
+
   RNA_def_enum(ot->srna,
-                  "export_subdivision",
-                  rna_enum_usd_export_subdiv_mode_items,
-                  USD_SUBDIV_BEST_MATCH,
-                  "Subdivision Scheme",
-                  "Choose how subdivision modifiers will be mapped to the USD subdivision scheme during export");
+               "export_subdivision",
+               rna_enum_usd_export_subdiv_mode_items,
+               USD_SUBDIV_BEST_MATCH,
+               "Subdivision Scheme",
+               "Choose how subdivision modifiers will be mapped to the USD subdivision scheme "
+               "during export");
 
   RNA_def_boolean(ot->srna,
                   "use_instancing",

@@ -99,7 +99,7 @@ void USDGenericMeshWriter::do_write(HierarchyContext &context)
     /* Fetch the subdiv modifier, if one exists and it is the last modifier. */
     const SubsurfModifierData *subsurfData = get_last_subdiv_modifier(
         usd_export_context_.export_params.evaluation_mode, object_eval);
-    
+
     write_mesh(context, mesh, subsurfData);
 
     if (needsfree) {
@@ -502,12 +502,24 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context,
   write_custom_data(mesh, usd_mesh);
   write_surface_velocity(mesh, usd_mesh);
 
+  const pxr::TfToken subdiv_scheme = get_subdiv_scheme(subsurfData);
+
+  /* Normals can be animated, so ensure these are written for each frame,
+   * unless a subdiv modifier is used, in which case normals are computed,
+   * not stored with the mesh. */
+  if (usd_export_context_.export_params.export_normals &&
+      subdiv_scheme == pxr::UsdGeomTokens->none) {
+    write_normals(mesh, usd_mesh);
+  }
+
   /* TODO(Sybren): figure out what happens when the face groups change. */
   if (frame_has_been_written_) {
     return;
   }
 
-  write_subdiv_and_normals(mesh, usd_mesh, subsurfData);
+  /* The subdivision scheme is a uniform according to spec,
+   * so this value cannot be animated. */
+  write_subdiv(subdiv_scheme, usd_mesh, subsurfData);
 
   if (usd_export_context_.export_params.export_materials) {
     assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
@@ -522,7 +534,7 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context,
   }
 }
 
-void USDGenericMeshWriter::write_subdiv_and_normals(Mesh *mesh, pxr::UsdGeomMesh& usd_mesh, const SubsurfModifierData* subsurfData)
+pxr::TfToken USDGenericMeshWriter::get_subdiv_scheme(const SubsurfModifierData *subsurfData)
 {
   /* Default to setting the subdivision scheme to None. */
   pxr::TfToken subdiv_scheme = pxr::UsdGeomTokens->none;
@@ -544,6 +556,13 @@ void USDGenericMeshWriter::write_subdiv_and_normals(Mesh *mesh, pxr::UsdGeomMesh
     }
   }
 
+  return subdiv_scheme;
+}
+
+void USDGenericMeshWriter::write_subdiv(const pxr::TfToken &subdiv_scheme,
+                                        pxr::UsdGeomMesh &usd_mesh,
+                                        const SubsurfModifierData *subsurfData)
+{
   usd_mesh.CreateSubdivisionSchemeAttr().Set(subdiv_scheme);
   if (subdiv_scheme == pxr::UsdGeomTokens->catmullClark) {
     /* For Catmull-Clark, also consider the various interpolation modes. */
@@ -586,11 +605,6 @@ void USDGenericMeshWriter::write_subdiv_and_normals(Mesh *mesh, pxr::UsdGeomMesh
       default:
         BLI_assert_msg(0, "Unsupported boundary smoothing mode.");
     }
-  }
-
-  if (usd_export_context_.export_params.export_normals &&
-      subdiv_scheme == pxr::UsdGeomTokens->none) {
-    write_normals(mesh, usd_mesh);
   }
 }
 
