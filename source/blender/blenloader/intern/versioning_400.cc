@@ -2590,6 +2590,11 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         versioning_switch_node_dynamic_socket(*ntree);
       }
     }
+
+    if (U.keying_flag & AUTOKEY_FLAG_INSERTNEEDED) {
+      U.keying_flag |= MANUALKEY_FLAG_INSERTNEEDED;
+    }
+    U.keying_flag |= AUTOKEY_FLAG_INSERTNEEDED;
   }
 
   /* Always run this versioning; meshes are written with the legacy format which always needs to
