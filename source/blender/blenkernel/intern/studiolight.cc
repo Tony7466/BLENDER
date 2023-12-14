@@ -929,7 +929,6 @@ void BKE_studiolight_preview(uint *icon_buffer, StudioLight *sl, int icon_id_typ
       break;
     }
     case STUDIOLIGHT_ICON_ID_TYPE_IRRADIANCE: {
-      /* used */
       studiolight_irradiance_preview(icon_buffer, sl);
       break;
     }
