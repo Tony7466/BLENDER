@@ -164,7 +164,10 @@ class BaseTestForeachGetSet(unittest.TestCase):
                 self.assertAlmostEqual(v1, v2, places=places, msg=msg, delta=delta)
 
     @staticmethod
-    def sequence_generator(collection, prop_rna, sequence_length, is_set, dtype_modifier=None):
+    def sequence_generator(collection, prop_rna, is_set, dtype_modifier=None):
+        item_length = prop_rna.array_length if getattr(prop_rna, "is_array", False) else 1
+        sequence_length = len(collection) * item_length
+
         def next_sequence(next_fill_value, dtype):
             if dtype == list:
                 return [next_fill_value] * sequence_length
@@ -292,10 +295,7 @@ class BaseTestForeachGetSet(unittest.TestCase):
         return sequences
 
     def make_subtest_sequences(self, collection, prop_rna, is_set, is_arrays, dtype_modifier):
-        item_length = prop_rna.array_length if getattr(prop_rna, "is_array", False) else 1
-        sequence_length = len(collection) * item_length
-
-        generate_sequence = self.sequence_generator(collection, prop_rna, sequence_length, is_set, dtype_modifier)
+        generate_sequence = self.sequence_generator(collection, prop_rna, is_set, dtype_modifier)
 
         ndarray_only = dtype_modifier is not None
 
@@ -449,6 +449,12 @@ class BaseTestForeachGetSet(unittest.TestCase):
     def check_foreach_getset(self, collection, prop_rna, is_set):
         for sequence_type in self.SEQUENCE_TYPES:
             self.do_getset_subtest(collection, prop_rna, sequence_type, is_set=is_set)
+
+    def check_foreach_get(self, collection, prop_rna):
+        self.check_foreach_getset(collection, prop_rna, is_set=False)
+
+    def check_foreach_set(self, collection, prop_rna):
+        self.check_foreach_getset(collection, prop_rna, is_set=True)
 
 
 class TestPropCollectionIDPropForeachGetSet(BaseTestForeachGetSet):
@@ -760,29 +766,83 @@ class TestPropCollectionForeachGetSetNoItemPropertyPointer(BaseTestForeachGetSet
     collection's item type is defined dynamically.
 
     `ShapeKey.data` can be a collection of `ShapeKeyPoint`, `ShapeKeyCurvePoint` or `ShapeKeyBezierPoint`, with Curve
-    instances allowing a mix of both `ShapeKeyCurvePoint` and `ShapeKeyBezierPoint` in the same collection. The
-    collection's `fixed_type` is `UnknownType` until it is looked up.
+    instances allowing a mix of both `ShapeKeyCurvePoint` and `ShapeKeyBezierPoint` in the same collection.
     """
     def setUp(self):
-        self.mesh = bpy.data.meshes.new("")
-        # The only reason an Object is needed is that the API for adding shape keys requires an Object.
-        self.object = bpy.data.objects.new("", self.mesh)
-        # Add some vertices to the Mesh so that the ShapeKey's collection won't be empty.
-        self.mesh.vertices.add(5)
-        self.shape_key = self.object.shape_key_add()
+        self.mixed_curve = bpy.data.curves.new("", 'CURVE')
+        bezier_spline = self.mixed_curve.splines.new('BEZIER')
+        bezier_spline.bezier_points.add(5)
+        poly_spline = self.mixed_curve.splines.new('POLY')
+        poly_spline.points.add(5)
+        self.mixed_curve_object = bpy.data.objects.new("", self.mixed_curve)
+        self.mixed_curve_shape_key = self.mixed_curve_object.shape_key_add()
+
+        self.bezier_curve = bpy.data.curves.new("", 'CURVE')
+        bezier_spline2 = self.bezier_curve.splines.new('BEZIER')
+        bezier_spline2.bezier_points.add(5)
+        bezier_spline3 = self.bezier_curve.splines.new('BEZIER')
+        bezier_spline3.bezier_points.add(5)
+        self.bezier_curve_object = bpy.data.objects.new("", self.bezier_curve)
+        self.bezier_curve_shape_key = self.bezier_curve_object.shape_key_add()
 
     def tearDown(self):
-        self.object.shape_key_clear()
-        bpy.data.objects.remove(self.object)
-        bpy.data.meshes.remove(self.mesh)
+        self.mixed_curve_object.shape_key_clear()
+        bpy.data.objects.remove(self.mixed_curve_object)
+        bpy.data.curves.remove(self.mixed_curve)
+
+        self.bezier_curve_object.shape_key_clear()
+        bpy.data.objects.remove(self.bezier_curve_object)
+        bpy.data.curves.remove(self.bezier_curve)
 
     # Test methods
 
-    def test_foreach_get_no_item_property_pointer(self):
-        self.check_foreach_getset(self.shape_key.data, bpy.types.ShapeKeyPoint.bl_rna.properties["co"], is_set=False)
+    def test_foreach_get_no_item_property_pointer_non_array(self):
+        prop_rna = bpy.types.ShapeKeyBezierPoint.bl_rna.properties["radius"]
+        assert not prop_rna.is_array
+        self.check_foreach_get(self.bezier_curve_shape_key.data, prop_rna)
 
-    def test_foreach_set_no_item_property_pointer(self):
-        self.check_foreach_getset(self.shape_key.data, bpy.types.ShapeKeyPoint.bl_rna.properties["co"], is_set=True)
+    def test_foreach_set_no_item_property_pointer_non_array(self):
+        prop_rna = bpy.types.ShapeKeyBezierPoint.bl_rna.properties["radius"]
+        assert not prop_rna.is_array
+        self.check_foreach_set(self.bezier_curve_shape_key.data, prop_rna)
+
+    def test_foreach_get_no_item_property_pointer_array(self):
+        prop_rna = bpy.types.ShapeKeyBezierPoint.bl_rna.properties["co"]
+        assert prop_rna.is_array
+        self.check_foreach_get(self.bezier_curve_shape_key.data, prop_rna)
+
+    def test_foreach_set_no_item_property_pointer_array(self):
+        prop_rna = bpy.types.ShapeKeyBezierPoint.bl_rna.properties["co"]
+        assert prop_rna.is_array
+        self.check_foreach_set(self.bezier_curve_shape_key.data, prop_rna)
+
+    def test_foreach_get_no_item_property_pointer_mixed_property_not_found_for_some_items(self):
+        prop_rna = bpy.types.ShapeKeyBezierPoint.bl_rna.properties["handle_left"]
+        assert "handle_left" not in bpy.types.ShapeKeyCurvePoint.bl_rna.properties
+
+        collection_bezier_only = self.bezier_curve_shape_key.data
+        self.check_foreach_get(collection_bezier_only, prop_rna)
+
+        collection_mixed = self.mixed_curve_shape_key.data
+        sequence_get = self.sequence_generator(collection_mixed, prop_rna, is_set=False)(list)
+        # Error: Property named 'handle_left' not found
+        # RuntimeError: internal error setting the array
+        with self.assertRaises(RuntimeError):
+            collection_mixed.foreach_get(prop_rna.identifier, sequence_get)
+
+    def test_foreach_set_no_item_property_pointer_mixed_property_not_found_for_some_items(self):
+        prop_rna = bpy.types.ShapeKeyBezierPoint.bl_rna.properties["handle_left"]
+        assert "handle_left" not in bpy.types.ShapeKeyCurvePoint.bl_rna.properties
+
+        collection_bezier_only = self.bezier_curve_shape_key.data
+        self.check_foreach_set(collection_bezier_only, prop_rna)
+
+        collection_mixed = self.mixed_curve_shape_key.data
+        sequence_set = self.sequence_generator(collection_mixed, prop_rna, is_set=True)(list)
+        # Error: Property named 'handle_left' not found
+        # RuntimeError: internal error setting the array
+        with self.assertRaises(RuntimeError):
+            collection_mixed.foreach_set(prop_rna.identifier, sequence_set)
 
 
 if __name__ == '__main__':
