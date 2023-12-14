@@ -29,7 +29,7 @@
 #include "BKE_paint.hh"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
-#include "BKE_vfont.h"
+#include "BKE_vfont.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -253,6 +253,14 @@ void ViewOpsData::init_navigation(bContext *C,
            &ViewOpsType_ndof_all))
   {
     calc_rv3d_dist = false;
+
+    /* When using "Free" NDOF navigation, ignore "Orbit Around Selected" preference.
+     * Logically it doesn't make sense to use the selection as a pivot when the first-person
+     * navigation pivots from the view-point. This also interferes with zoom-speed,
+     * causing zoom-speed scale based on the distance to the selection center, see: #115253. */
+    if ((U.ndof_flag & NDOF_MODE_ORBIT) == 0) {
+      viewops_flag &= ~VIEWOPS_FLAG_ORBIT_SELECT;
+    }
   }
 #endif
 
@@ -825,14 +833,14 @@ bool view3d_orbit_calc_center(bContext *C, float r_dyn_ofs[3])
     is_set = true;
   }
   else if (ob_act == nullptr || ob_act->mode == OB_MODE_OBJECT) {
-    /* object mode use boundbox centers */
+    /* Object mode uses bounding-box centers. */
     uint tot = 0;
     float select_center[3];
 
     zero_v3(select_center);
     LISTBASE_FOREACH (Base *, base_eval, BKE_view_layer_object_bases_get(view_layer_eval)) {
       if (BASE_SELECTED(v3d, base_eval)) {
-        /* use the boundbox if we can */
+        /* Use the bounding-box if we can. */
         Object *ob_eval = base_eval->object;
 
         if (ob_eval->runtime->bounds_eval) {

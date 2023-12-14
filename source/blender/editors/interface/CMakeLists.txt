@@ -12,6 +12,7 @@ set(INC
   ../../draw
   ../../functions
   ../../gpu
+  ../../imbuf
   ../../makesrna
   ../../nodes
   ../../python
@@ -100,7 +101,6 @@ set(LIB
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_datafiles
-  PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::animrig
 )

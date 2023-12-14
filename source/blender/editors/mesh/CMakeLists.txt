@@ -12,6 +12,7 @@ set(INC
   ../../functions
   ../../geometry
   ../../gpu
+  ../../imbuf
   ../../makesrna
   ../../render
   ../../windowmanager
@@ -65,7 +66,6 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  PRIVATE bf::imbuf
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_windowmanager

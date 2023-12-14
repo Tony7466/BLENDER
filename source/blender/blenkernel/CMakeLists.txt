@@ -13,6 +13,7 @@ set(INC
   ../gpencil_modifiers_legacy
   ../gpu
   ../ikplugin
+  ../imbuf
   ../makesrna
   ../modifiers
   ../nodes
@@ -128,6 +129,7 @@ set(SRC
   intern/fcurve.cc
   intern/fcurve_cache.cc
   intern/fcurve_driver.cc
+  intern/file_handler.cc
   intern/fluid.cc
   intern/fmodifier.cc
   intern/freestyle.cc
@@ -195,8 +197,8 @@ set(SRC
   intern/mesh.cc
   intern/mesh_boolean_convert.cc
   intern/mesh_calc_edges.cc
-  intern/mesh_convert.cc
   intern/mesh_compare.cc
+  intern/mesh_convert.cc
   intern/mesh_debug.cc
   intern/mesh_evaluate.cc
   intern/mesh_fair.cc
@@ -277,7 +279,6 @@ set(SRC
   intern/subdiv.cc
   intern/subdiv_ccg.cc
   intern/subdiv_ccg_mask.cc
-  intern/subdiv_ccg_material.cc
   intern/subdiv_converter.cc
   intern/subdiv_converter_mesh.cc
   intern/subdiv_deform.cc
@@ -340,8 +341,8 @@ set(SRC
   BKE_blender_undo.h
   BKE_blender_user_menu.h
   BKE_blender_version.h
-  BKE_blendfile.h
-  BKE_blendfile_link_append.h
+  BKE_blendfile.hh
+  BKE_blendfile_link_append.hh
   BKE_boids.h
   BKE_bpath.h
   BKE_brush.hh
@@ -385,6 +386,7 @@ set(SRC
   BKE_effect.h
   BKE_fcurve.h
   BKE_fcurve_driver.h
+  BKE_file_handler.hh
   BKE_fluid.h
   BKE_freestyle.h
   BKE_geometry_fields.hh
@@ -417,13 +419,13 @@ set(SRC
   BKE_lib_id.h
   BKE_lib_override.hh
   BKE_lib_query.h
-  BKE_lib_remap.h
-  BKE_library.h
+  BKE_lib_remap.hh
+  BKE_library.hh
   BKE_light.h
   BKE_light_linking.h
   BKE_lightprobe.h
   BKE_linestyle.h
-  BKE_main.h
+  BKE_main.hh
   BKE_main_idmap.hh
   BKE_main_namemap.hh
   BKE_mask.h
@@ -461,8 +463,8 @@ set(SRC
   BKE_node_tree_update.hh
   BKE_node_tree_zones.hh
   BKE_object.hh
-  BKE_object_types.hh
   BKE_object_deform.h
+  BKE_object_types.hh
   BKE_ocean.h
   BKE_outliner_treehash.hh
   BKE_packedFile.h
@@ -482,7 +484,7 @@ set(SRC
   BKE_screen.hh
   BKE_sequencer_offscreen.h
   BKE_shader_fx.h
-  BKE_shrinkwrap.h
+  BKE_shrinkwrap.hh
   BKE_softbody.h
   BKE_sound.h
   BKE_speaker.h
@@ -502,9 +504,9 @@ set(SRC
   BKE_tracking.h
   BKE_type_conversions.hh
   BKE_undo_system.h
-  BKE_unit.h
-  BKE_vfont.h
-  BKE_vfontdata.h
+  BKE_unit.hh
+  BKE_vfont.hh
+  BKE_vfontdata.hh
   BKE_viewer_path.hh
   BKE_volume.hh
   BKE_volume_openvdb.hh
@@ -523,7 +525,7 @@ set(SRC
   intern/CCGSubSurf_intern.h
   intern/attribute_access_intern.hh
   intern/data_transfer_intern.h
-  intern/lib_intern.h
+  intern/lib_intern.hh
   intern/multires_inline.hh
   intern/multires_reshape.hh
   intern/multires_unsubdivide.hh
@@ -551,7 +553,7 @@ set(LIB
   bf_gpencil_modifiers_legacy
   bf_gpu
   bf_ikplugin
-  PRIVATE bf::imbuf
+  bf_imbuf
   PRIVATE bf::intern::clog
   bf_intern_ghost
   PRIVATE bf::intern::guardedalloc
@@ -639,8 +641,8 @@ endif()
 
 if(WITH_CODEC_FFMPEG)
   list(APPEND SRC
-    intern/writeffmpeg.c
-    BKE_writeffmpeg.h
+    intern/writeffmpeg.cc
+    BKE_writeffmpeg.hh
   )
   list(APPEND INC
     ../../../intern/ffmpeg
@@ -839,6 +841,7 @@ if(WITH_GTESTS)
     intern/cryptomatte_test.cc
     intern/curves_geometry_test.cc
     intern/fcurve_test.cc
+    intern/file_handler_test.cc
     intern/grease_pencil_test.cc
     intern/idprop_serialize_test.cc
     intern/image_partial_update_test.cc
@@ -848,6 +851,7 @@ if(WITH_GTESTS)
     intern/lib_id_remapper_test.cc
     intern/lib_id_test.cc
     intern/lib_remap_test.cc
+    intern/main_test.cc
     intern/nla_test.cc
     intern/tracking_test.cc
   )
