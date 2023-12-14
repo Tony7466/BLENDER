@@ -29,6 +29,11 @@ class OpenvdbTreeSharingInfo : public ImplicitSharingInfo {
   }
 };
 
+VolumeGridData::VolumeGridData()
+{
+  tree_user_token_ = std::make_shared<TreeUserToken>();
+}
+
 VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid)
     : tree_loaded_(true), transform_loaded_(true), meta_data_loaded_(true), grid_(std::move(grid))
 {
@@ -37,6 +42,7 @@ VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid)
   BLI_assert(grid_->isTreeUnique());
 
   tree_sharing_info_ = MEM_new<OpenvdbTreeSharingInfo>(__func__, grid_->baseTreePtr());
+  tree_user_token_ = std::make_shared<TreeUserToken>();
 }
 
 VolumeGridData::VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid,
@@ -47,6 +53,7 @@ VolumeGridData::VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>(
     transform_loaded_ = true;
     meta_data_loaded_ = true;
   }
+  tree_user_token_ = std::make_shared<TreeUserToken>();
 }
 
 VolumeGridData::~VolumeGridData()
@@ -61,24 +68,33 @@ void VolumeGridData::delete_self()
   MEM_delete(this);
 }
 
-const openvdb::GridBase &VolumeGridData::grid() const
+VolumeTreeUser VolumeGridData::tree_user() const
 {
-  return *this->grid_ptr();
+  VolumeTreeUser user;
+  user.token_ = tree_user_token_;
+  return user;
 }
 
-openvdb::GridBase &VolumeGridData::grid_for_write()
+const openvdb::GridBase &VolumeGridData::grid(const VolumeTreeUser &tree_user) const
 {
-  return *this->grid_ptr_for_write();
+  return *this->grid_ptr(tree_user);
 }
 
-std::shared_ptr<const openvdb::GridBase> VolumeGridData::grid_ptr() const
+openvdb::GridBase &VolumeGridData::grid_for_write(const VolumeTreeUser &tree_user)
+{
+  return *this->grid_ptr_for_write(tree_user);
+}
+
+std::shared_ptr<const openvdb::GridBase> VolumeGridData::grid_ptr(
+    const VolumeTreeUser & /*tree_user*/) const
 {
   std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
   return grid_;
 }
 
-std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write()
+std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write(
+    const VolumeTreeUser & /*tree_user*/)
 {
   BLI_assert(this->is_mutable());
   std::lock_guard lock{mutex_};
@@ -140,6 +156,28 @@ VolumeGridType VolumeGridData::grid_type() const
     this->ensure_grid_loaded();
   }
   return BKE_volume_grid_type_openvdb(*grid_);
+}
+
+bool VolumeGridData::can_be_reloaded() const
+{
+  return bool(lazy_load_grid_);
+}
+
+void VolumeGridData::unload_tree_if_possible() const
+{
+  std::lock_guard lock{mutex_};
+  if (!grid_) {
+    return;
+  }
+  if (!this->can_be_reloaded()) {
+    return;
+  }
+  if (!tree_user_token_.unique()) {
+    /* Some code is using the tree currently, so it can't be freed. */
+    return;
+  }
+  grid_->newTree();
+  tree_loaded_ = false;
 }
 
 GVolumeGrid VolumeGridData::copy() const

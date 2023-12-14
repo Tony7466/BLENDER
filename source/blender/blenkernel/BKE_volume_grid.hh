@@ -8,6 +8,7 @@
  * \ingroup bke
  */
 
+#include <atomic>
 #include <functional>
 #include <mutex>
 
@@ -21,9 +22,13 @@
 namespace blender::bke {
 
 class GVolumeGrid;
+class VolumeTreeUser;
 
 class VolumeGridData : public ImplicitSharingMixin {
  private:
+  struct TreeUserToken {
+  };
+
   mutable std::mutex mutex_;
   mutable std::shared_ptr<openvdb::GridBase> grid_;
   mutable const ImplicitSharingInfo *tree_sharing_info_ = nullptr;
@@ -33,7 +38,11 @@ class VolumeGridData : public ImplicitSharingMixin {
   std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid_;
   mutable std::string error_message_;
 
-  VolumeGridData() = default;
+  std::shared_ptr<TreeUserToken> tree_user_token_;
+
+  friend class VolumeTreeUser;
+
+  VolumeGridData();
 
  public:
   explicit VolumeGridData(std::shared_ptr<openvdb::GridBase> grid);
@@ -41,25 +50,37 @@ class VolumeGridData : public ImplicitSharingMixin {
                           std::shared_ptr<openvdb::GridBase> meta_data_and_transform_grid = {});
   ~VolumeGridData();
 
+  VolumeTreeUser tree_user() const;
+
   GVolumeGrid copy() const;
 
-  const openvdb::GridBase &grid() const;
-  openvdb::GridBase &grid_for_write();
+  const openvdb::GridBase &grid(const VolumeTreeUser &tree_user) const;
+  openvdb::GridBase &grid_for_write(const VolumeTreeUser &tree_user);
 
   StringRefNull name() const;
   void set_name(StringRef name);
 
-  std::shared_ptr<const openvdb::GridBase> grid_ptr() const;
-  std::shared_ptr<openvdb::GridBase> grid_ptr_for_write();
+  std::shared_ptr<const openvdb::GridBase> grid_ptr(const VolumeTreeUser &tree_user) const;
+  std::shared_ptr<openvdb::GridBase> grid_ptr_for_write(const VolumeTreeUser &tree_user);
 
   const openvdb::math::Transform &transform() const;
   openvdb::math::Transform &transform_for_write();
 
   VolumeGridType grid_type() const;
 
+  bool can_be_reloaded() const;
+  void unload_tree_if_possible() const;
+
  private:
   void ensure_grid_loaded() const;
   void delete_self();
+};
+
+class VolumeTreeUser {
+ private:
+  std::shared_ptr<VolumeGridData::TreeUserToken> token_;
+
+  friend VolumeGridData;
 };
 
 class GVolumeGrid {
