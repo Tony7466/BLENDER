@@ -13,6 +13,7 @@
 #include <mutex>
 
 #include "BKE_volume_enums.hh"
+#include "BKE_volume_grid_fwd.hh"
 #include "BKE_volume_grid_type_traits.hh"
 
 #include "BLI_implicit_sharing_ptr.hh"
@@ -21,9 +22,6 @@
 #include "openvdb_fwd.hh"
 
 namespace blender::bke {
-
-class GVolumeGrid;
-class VolumeTreeUser;
 
 class VolumeGridData : public ImplicitSharingMixin {
  private:
