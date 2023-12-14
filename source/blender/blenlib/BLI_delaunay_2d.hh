@@ -5,6 +5,7 @@
 #pragma once
 
 #include "BLI_array.hh"
+#include "BLI_math_mpq.hh"
 #include "BLI_math_vector_mpq_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
