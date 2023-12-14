@@ -67,7 +67,6 @@ static Collection *create_collection(Main *bmain, Collection *parent, const char
   Collection *coll = BKE_collection_add(bmain, parent, name);
 
   if (coll) {
-    id_fake_user_set(&coll->id);
     DEG_id_tag_update(&coll->id, ID_RECALC_COPY_ON_WRITE);
   }
 
