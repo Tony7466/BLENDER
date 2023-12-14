@@ -77,12 +77,6 @@ struct GWL_LibDecor_Window {
     int32_t size[2] = {0, 0};
   } applied;
 
-  /**
-   * Used at startup to set the initial window size
-   * (before fractional scale information is available).
-   */
-  int scale_fractional_from_output = 0;
-
   /** The window has been configured (see #xdg_surface_ack_configure). */
   bool initial_configure_seen = false;
   /** The window size has been configured. */
@@ -1170,7 +1164,7 @@ static void libdecor_frame_handle_configure(libdecor_frame *frame,
   }();
 #  endif
 
-  GWL_WindowFrame *frame_pending = &static_cast<GWL_Window *>(data)->frame_pending;
+  GWL_WindowFrame &frame_pending = static_cast<GWL_Window *>(data)->frame_pending;
 
   /* Set the size. */
   int size_next[2] = {0, 0};
@@ -1190,9 +1184,7 @@ static void libdecor_frame_handle_configure(libdecor_frame *frame,
 
   {
     GWL_Window *win = static_cast<GWL_Window *>(data);
-    const int fractional_scale = win->frame.fractional_scale ?
-                                     win->frame.fractional_scale :
-                                     win->libdecor->scale_fractional_from_output;
+    const int fractional_scale = win->frame.fractional_scale;
     /* It's important `fractional_scale` has a fractional component or rounding up will fail
      * to produce the correct whole-number scale. */
     GHOST_ASSERT((fractional_scale == 0) ||
@@ -1206,26 +1198,24 @@ static void libdecor_frame_handle_configure(libdecor_frame *frame,
     const int scale_as_fractional = scale * FRACTIONAL_DENOMINATOR;
     if (libdecor_configuration_get_content_size(
             configuration, frame, &size_next[0], &size_next[1])) {
-      if (win->frame.fractional_scale) {
-        win->frame_pending.size[0] = gwl_window_fractional_to_viewport_round(win->frame,
-                                                                             size_next[0]);
-        win->frame_pending.size[1] = gwl_window_fractional_to_viewport_round(win->frame,
-                                                                             size_next[1]);
+      if (fractional_scale) {
+        frame_pending.size[0] = gwl_window_fractional_to_viewport_round(win->frame, size_next[0]);
+        frame_pending.size[1] = gwl_window_fractional_to_viewport_round(win->frame, size_next[1]);
       }
       else if (fractional_scale && (fractional_scale != (scale * FRACTIONAL_DENOMINATOR))) {
         /* The windows `preferred_scale` is not yet available,
          * set the size as if fractional scale is available. */
-        frame_pending->size[0] = ((size_next[0] * scale) * fractional_scale) / scale_as_fractional;
-        frame_pending->size[1] = ((size_next[1] * scale) * fractional_scale) / scale_as_fractional;
+        frame_pending.size[0] = ((size_next[0] * scale) * fractional_scale) / scale_as_fractional;
+        frame_pending.size[1] = ((size_next[1] * scale) * fractional_scale) / scale_as_fractional;
       }
       else {
-        frame_pending->size[0] = size_next[0] * scale;
-        frame_pending->size[1] = size_next[1] * scale;
+        frame_pending.size[0] = size_next[0] * scale;
+        frame_pending.size[1] = size_next[1] * scale;
       }
 
       /* Account for buffer rounding requirement, once fractional scaling is enabled
        * the buffer scale will be 1, rounding is a requirement until then. */
-      gwl_round_int2_by(frame_pending->size, win->frame.buffer_scale);
+      gwl_round_int2_by(frame_pending.size, win->frame.buffer_scale);
 
       has_size = true;
     }
@@ -1247,25 +1237,15 @@ static void libdecor_frame_handle_configure(libdecor_frame *frame,
         }
       }
     }
-
-#  ifdef USE_EVENT_BACKGROUND_THREAD
-    /* NOTE(@ideasman42): when running from the event handling thread,
-     * don't apply the new window size back to LIBDECOR, otherwise the window content
-     * (which uses a deferred update) and the window get noticeably out of sync.
-     * Rely on the new `frame_pending->size` to resize the window later. */
-    if (is_main_thread == false) {
-      has_size = false;
-    }
-#  endif
   }
 
   /* Set the state. */
   {
     enum libdecor_window_state window_state;
     if (libdecor_configuration_get_window_state(configuration, &window_state)) {
-      frame_pending->is_maximised = window_state & LIBDECOR_WINDOW_STATE_MAXIMIZED;
-      frame_pending->is_fullscreen = window_state & LIBDECOR_WINDOW_STATE_FULLSCREEN;
-      frame_pending->is_active = window_state & LIBDECOR_WINDOW_STATE_ACTIVE;
+      frame_pending.is_maximised = window_state & LIBDECOR_WINDOW_STATE_MAXIMIZED;
+      frame_pending.is_fullscreen = window_state & LIBDECOR_WINDOW_STATE_FULLSCREEN;
+      frame_pending.is_active = window_state & LIBDECOR_WINDOW_STATE_ACTIVE;
     }
   }
 
@@ -1303,10 +1283,6 @@ static void libdecor_frame_handle_configure(libdecor_frame *frame,
       libdecor_frame_commit(frame, state, configuration);
       libdecor_state_free(state);
     }
-
-    /* Only ever use this once, after initial creation:
-     * #wp_fractional_scale_v1_listener::preferred_scale provides fractional scaling values. */
-    decor.scale_fractional_from_output = 0;
 
     if (decor.initial_configure_seen == false) {
       decor.initial_configure_seen = true;
@@ -1619,12 +1595,7 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
   /* Causes a glitch with `libdecor` for some reason. */
 #ifdef WITH_GHOST_WAYLAND_LIBDECOR
   if (use_libdecor) {
-    GWL_LibDecor_Window &decor = *window_->libdecor;
-    if (fractional_scale_manager &&
-        (gwl_round_int_test(scale_fractional_from_output, FRACTIONAL_DENOMINATOR) == false))
-    {
-      decor.scale_fractional_from_output = scale_fractional_from_output;
-    }
+    /* Pass. */
   }
   else
 #endif /* WITH_GHOST_WAYLAND_LIBDECOR */
@@ -1780,7 +1751,6 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
   else
 #endif /* WITH_GHOST_WAYLAND_LIBDECOR */
   {
-    GWL_XDG_Decor_Window &decor = *window_->xdg_decor;
     gwl_window_state_set(window_, state);
   }
 
