@@ -39,6 +39,7 @@
 
 #include "ANIM_bone_collections.hh"
 #include "ANIM_keyframing.hh"
+#include "ANIM_rna.hh"
 
 #include "transform.hh"
 #include "transform_orientations.hh"
@@ -1266,6 +1267,44 @@ static void restoreMirrorPoseBones(TransDataContainer *tc)
   }
 }
 
+static void autokeyframe_pose(
+    bContext *C, Scene *scene, Object *ob, short targetless_ik, const eTfmMode tmode)
+{
+  blender::Vector<std::string> rna_paths;
+  std::string rotation_path = blender::animrig::get_rotation_mode_path(
+      eRotationModes(ob->rotmode));
+
+  if (tmode == TFM_TRANSLATION) {
+    if (targetless_ik) {
+      rna_paths.append(rotation_path);
+    }
+    else {
+      rna_paths.append("location");
+    }
+  }
+  else if (ELEM(tmode, TFM_ROTATION, TFM_TRACKBALL)) {
+    if (ELEM(scene->toolsettings->transform_pivot_point, V3D_AROUND_CURSOR, V3D_AROUND_ACTIVE)) {
+      rna_paths.append("location");
+    }
+
+    if ((scene->toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) == 0) {
+      rna_paths.append(rotation_path);
+    }
+  }
+  else if (tmode == TFM_RESIZE) {
+    if (ELEM(scene->toolsettings->transform_pivot_point, V3D_AROUND_CURSOR, V3D_AROUND_ACTIVE)) {
+      rna_paths.append("location");
+    }
+
+    if ((scene->toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) == 0) {
+      rna_paths.append("scale");
+    }
+  }
+
+  bPose *pose = ob->pose;
+  blender::animrig::autokeyframe_pose(C, scene, ob, targetless_ik, rna_paths.as_span());
+}
+
 static void recalcData_pose(TransInfo *t)
 {
   if (t->mode == TFM_BONESIZE) {
@@ -1326,7 +1365,7 @@ static void recalcData_pose(TransInfo *t)
         int targetless_ik = (t->flag & T_AUTOIK);
 
         animrecord_check_state(t, &ob->id);
-        blender::animrig::autokeyframe_pose(t->context, t->scene, ob, targetless_ik);
+        autokeyframe_pose(t->context, t->scene, ob, targetless_ik, t->mode);
       }
 
       if (motionpath_need_update_pose(t->scene, ob)) {
@@ -1589,7 +1628,7 @@ static void special_aftertrans_update__pose(bContext *C, TransInfo *t)
       /* automatic inserting of keys and unkeyed tagging -
        * only if transform wasn't canceled (or TFM_DUMMY) */
       if (!canceled && (t->mode != TFM_DUMMY)) {
-        blender::animrig::autokeyframe_pose(C, t->scene, ob, targetless_ik);
+        autokeyframe_pose(C, t->scene, ob, targetless_ik, t->mode);
         DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
       }
       else {

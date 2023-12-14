@@ -26,6 +26,7 @@
 #include "ED_transform.hh"
 
 #include "ANIM_keyframing.hh"
+#include "ANIM_rna.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -82,19 +83,7 @@ bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
   return true;
 }
 
-static std::string get_rotation_mode_path(const eRotationModes rotmode)
-{
-  switch (rotmode) {
-    case ROT_MODE_QUAT:
-      return "rotation_quaternion";
-    case ROT_MODE_AXISANGLE:
-      return "rotation_axis_angle";
-    default:
-      return "rotation_euler";
-  }
-}
-
-void autokeyframe_object(bContext *C, Scene *scene, Object *ob)
+void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string> rna_paths)
 {
   ID *id = &ob->id;
   if (!autokeyframe_cfra_can_key(scene, id)) {
@@ -148,13 +137,11 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob)
   }
 
   const float scene_frame = BKE_scene_frame_get(scene);
-  std::string rotation_rna_path = get_rotation_mode_path(eRotationModes(ob->rotmode));
-  Vector<std::string> rna_paths = {"location", rotation_rna_path, "scale"};
   Main *bmain = CTX_data_main(C);
 
   for (PointerRNA ptr : sources) {
     insert_key_rna(&ptr,
-                   rna_paths.as_span(),
+                   rna_paths,
                    scene_frame,
                    flag,
                    eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
@@ -199,7 +186,12 @@ bool autokeyframe_pchan(bContext *C, Scene *scene, Object *ob, bPoseChannel *pch
   return true;
 }
 
-void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, short targetless_ik)
+void autokeyframe_pose(bContext *C,
+                       Scene *scene,
+                       Object *ob,
+                       bPoseChannel &pose_channel,
+                       Span<std::string> rna_paths,
+                       short targetless_ik)
 {
   Main *bmain = CTX_data_main(C);
   ID *id = &ob->id;
@@ -281,8 +273,6 @@ void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, short targetless_i
     }
 
     Main *bmain = CTX_data_main(C);
-    std::string rotation_rna_path = get_rotation_mode_path(eRotationModes(pchan->rotmode));
-    Vector<std::string> rna_paths = {"location", rotation_rna_path, "scale"};
     for (PointerRNA &ptr : sources) {
       insert_key_rna(&ptr,
                      rna_paths,
