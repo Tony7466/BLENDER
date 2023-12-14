@@ -132,7 +132,7 @@ openvdb::math::Transform &VolumeGridData::transform_for_write()
   return grid_->transform();
 }
 
-StringRefNull VolumeGridData::name() const
+std::string VolumeGridData::name() const
 {
   std::lock_guard lock{mutex_};
   if (!meta_data_loaded_) {

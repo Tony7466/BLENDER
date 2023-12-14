@@ -58,7 +58,7 @@ class VolumeGridData : public ImplicitSharingMixin {
   const openvdb::GridBase &grid(const VolumeTreeUser &tree_user) const;
   openvdb::GridBase &grid_for_write(const VolumeTreeUser &tree_user);
 
-  StringRefNull name() const;
+  std::string name() const;
   void set_name(StringRef name);
 
   std::shared_ptr<const openvdb::GridBase> grid_ptr(const VolumeTreeUser &tree_user) const;
@@ -152,6 +152,13 @@ inline const VolumeGridData *GVolumeGrid::operator->() const
 
 template<typename T>
 inline VolumeGrid<T>::VolumeGrid(const VolumeGridData *data) : GVolumeGrid(data)
+{
+  this->assert_correct_type();
+}
+
+template<typename T>
+inline VolumeGrid<T>::VolumeGrid(std::shared_ptr<OpenvdbGridType<T>> grid)
+    : GVolumeGrid(std::move(grid))
 {
   this->assert_correct_type();
 }

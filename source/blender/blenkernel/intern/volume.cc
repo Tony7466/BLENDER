@@ -1103,7 +1103,7 @@ blender::bke::VolumeGridData *BKE_volume_grid_add_vdb(Volume &volume,
   BLI_assert(BKE_volume_grid_type_openvdb(*vdb_grid) != VOLUME_GRID_UNKNOWN);
 
   vdb_grid->setName(name);
-  grids.emplace_back(GVolumeGrid(vdb_grid));
+  grids.emplace_back(GVolumeGrid(std::move(vdb_grid)));
   return &grids.back().get_for_write();
 }
 #endif

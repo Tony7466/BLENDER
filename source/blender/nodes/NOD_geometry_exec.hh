@@ -106,6 +106,20 @@ class GeoNodeExecParams {
           this->extract_input<SocketValueVariant<BaseType>>(identifier);
       return value_variant.as_field();
     }
+    else if constexpr (std::is_same_v<T, bke::GVolumeGrid>) {
+      const int index = this->get_input_index(identifier);
+      const CPPType &type = *node_.input_socket(index).typeinfo->geometry_nodes_cpp_type;
+      if (type.is<SocketValueVariant<float>>()) {
+        return this->extract_input<SocketValueVariant<float>>(identifier).as_grid();
+      }
+      /* TODO */
+      BLI_assert_unreachable();
+      return T();
+    }
+    else if constexpr (bke::is_VolumeGrid_v<T>) {
+      using BaseType = typename T::base_type;
+      return this->extract_input<SocketValueVariant<BaseType>>(identifier).as_grid();
+    }
     else if constexpr (std::is_same_v<std::decay_t<T>, GField>) {
       const int index = this->get_input_index(identifier);
       const bNodeSocket &input_socket = node_.input_by_identifier(identifier);
@@ -152,6 +166,7 @@ class GeoNodeExecParams {
         return this->get_input<SocketValueVariant<float>>(identifier).as_grid();
       }
       /* TODO */
+      BLI_assert_unreachable();
       return T();
     }
     else if constexpr (bke::is_VolumeGrid_v<T>) {
@@ -193,12 +208,15 @@ class GeoNodeExecParams {
       });
     }
     else if constexpr (std::is_same_v<StoredT, bke::GVolumeGrid>) {
-      const int index = this->get_input_index(identifier);
-      const CPPType &type = *node_.input_socket(index).typeinfo->geometry_nodes_cpp_type;
+      const int index = this->get_output_index(identifier);
+      const CPPType &type = *node_.output_socket(index).typeinfo->geometry_nodes_cpp_type;
       if (type.is<SocketValueVariant<float>>()) {
         this->set_output(identifier, SocketValueVariant<float>(value.template typed<float>()));
       }
-      /* TODO */
+      else {
+        /* TODO */
+        BLI_assert_unreachable();
+      }
     }
     else if constexpr (bke::is_VolumeGrid_v<T>) {
       using BaseType = typename T::base_type;
