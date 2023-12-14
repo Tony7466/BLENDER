@@ -31,7 +31,7 @@ namespace blender::meshintersect {
 template<typename T> struct InputStorage {
   Array<vec2<T>> vert;
   Array<std::pair<int, int>> edge;
-  Array<int> face;
+  Array<int> face_offsets;
   Vector<int> face_vert_indices;
 };
 
@@ -55,7 +55,7 @@ CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage
   }
   r_storage.vert.reinitialize(nverts);
   r_storage.edge.reinitialize(nedges);
-  r_storage.face.reinitialize(nfaces + 1);
+  r_storage.face_offsets.reinitialize(nfaces + 1);
   int i = 0;
   while (i < nverts && getline(ss, line)) {
     std::istringstream iss(line);
@@ -76,7 +76,7 @@ CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage
   }
   i = 0;
   while (i < nfaces && getline(ss, line)) {
-    r_storage.face[i] = r_storage.face_vert_indices.size();
+    r_storage.face_offsets[i] = r_storage.face_vert_indices.size();
     std::istringstream fss(line);
     int v;
     while (fss >> v) {
@@ -84,7 +84,7 @@ CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage
     }
     i++;
   }
-  r_storage.face.last() = r_storage.face_vert_indices.size();
+  r_storage.face_offsets.last() = r_storage.face_vert_indices.size();
 
   CDT_input<T> ans;
   ans.vert = r_storage.vert;
