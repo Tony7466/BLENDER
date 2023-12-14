@@ -168,10 +168,12 @@ bool input_has_attribute_toggle(const bNodeTree &node_tree, const int socket_ind
 static void id_property_int_update_enum_items(const bNodeSocketValueMenu *value,
                                               IDPropertyUIDataInt *ui_data)
 {
+  int idprop_items_num = 0;
+  IDPropertyUIDataEnumItem *idprop_items = nullptr;
+
   if (const NodeEnumDefinition *enum_def = value->enum_ref.get_definition()) {
-    const int idprop_items_num = enum_def->items_num;
-    IDPropertyUIDataEnumItem *idprop_items = MEM_cnew_array<IDPropertyUIDataEnumItem>(
-        enum_def->items_num, __func__);
+    idprop_items_num = enum_def->items_num;
+    idprop_items = MEM_cnew_array<IDPropertyUIDataEnumItem>(enum_def->items_num, __func__);
     for (const int i : enum_def->items().index_range()) {
       const NodeEnumItem &item = enum_def->items()[i];
       IDPropertyUIDataEnumItem &idprop_item = idprop_items[i];
@@ -184,11 +186,24 @@ static void id_property_int_update_enum_items(const bNodeSocketValueMenu *value,
       idprop_item.description = BLI_strdup_null(item.description);
       idprop_item.icon = ICON_NONE;
     }
-    /* Node enum definitions should already be valid. */
-    BLI_assert(IDP_EnumItemsValidate(idprop_items, idprop_items_num, nullptr));
-    ui_data->enum_items = idprop_items;
-    ui_data->enum_items_num = idprop_items_num;
   }
+
+  /* Fallback: if no items are defined, use a dummy item so the id property is not shown as a plain
+   * int value. */
+  if (idprop_items_num == 0) {
+    idprop_items_num = 1;
+    idprop_items = MEM_cnew_array<IDPropertyUIDataEnumItem>(1, __func__);
+    idprop_items->value = 0;
+    idprop_items->identifier = BLI_strdup("DUMMY");
+    idprop_items->name = BLI_strdup("");
+    idprop_items->description = BLI_strdup("");
+    idprop_items->icon = ICON_NONE;
+  }
+
+  /* Node enum definitions should already be valid. */
+  BLI_assert(IDP_EnumItemsValidate(idprop_items, idprop_items_num, nullptr));
+  ui_data->enum_items = idprop_items;
+  ui_data->enum_items_num = idprop_items_num;
 }
 
 std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_from_socket(
