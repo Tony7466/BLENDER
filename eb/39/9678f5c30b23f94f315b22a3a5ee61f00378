@@ -2,3 +2,4 @@ Referenced by pull request #115479, Fix #115366: missing task isolation when com
 Referenced by issue #115334, Regression: Crash when snap vertex
 Referenced by issue #114706, 4.0: Candidates for corrective releases
 Referenced by issue #115366, Crash of quick moving of 3d model
+Referenced by issue #116156, Crash when rotating a bone (pose mode) on a model with subdiv modifier
