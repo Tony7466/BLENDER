@@ -135,8 +135,6 @@ def prop_as_sequence(collection, prop_rna):
 # Tests
 
 class BaseTestForeachGetSet(unittest.TestCase):
-    SEQUENCE_TYPES = ('LIST', 'IMPLICIT_NATIVE_ARRAY', 'EXPLICIT_NATIVE_ARRAY', 'NON_NATIVE_ARRAY')
-
     def assertSequenceEqual(self, seq1, seq2, msg=None, seq_type=None):
         """
         Replace any NumPy arrays with lists to avoid comparison issues in TestCase.assertSequenceEqual() and then call
@@ -294,12 +292,12 @@ class BaseTestForeachGetSet(unittest.TestCase):
         sequences.extend(BaseTestForeachGetSet.make_sequences_buffer_int(next_sequence, ndarray_only))
         return sequences
 
-    def make_subtest_sequences(self, collection, prop_rna, is_set, is_arrays, dtype_modifier):
+    def make_subtest_sequences(self, collection, prop_rna, is_set, make_buffers, dtype_modifier):
         generate_sequence = self.sequence_generator(collection, prop_rna, is_set, dtype_modifier)
 
         ndarray_only = dtype_modifier is not None
 
-        if is_arrays:
+        if make_buffers:
             match prop_rna.type:
                 case 'BOOLEAN':
                     return self.make_sequences_buffer_bool(generate_sequence, ndarray_only)
@@ -339,13 +337,16 @@ class BaseTestForeachGetSet(unittest.TestCase):
             accessed_as_buffer = not ndarray_with_sequence_check.used_as_sequence
         elif isinstance(seq, memoryview):
             # memoryview objects are not writable as a sequence, only readable, so if they are not accessed as a buffer,
-            # writing to them as a sequence will fail (the memoryview type only implements PyObject_SetItem and not
+            # writing to them as a sequence will fail (the memoryview C type only implements PyObject_SetItem and not
             # PySequence_SetItem). `memoryview` cannot be subclassed, but this may be fixable once Python 3.12 is in use
             # because it makes the buffer protocol accessible to Python.
             try:
                 collection.foreach_get(prop_name, seq)
             except TypeError:
-                # Most likely the memoryview was accessed as a sequence.
+                # Printed to console: "TypeError: memoryview is not a sequence"
+                # Raised: "TypeError: couldn't access the py sequence"
+                # While it is possible some other error occurred, it is most likely that the memoryview was accessed as
+                # a sequence.
                 return False
             else:
                 accessed_as_buffer = True
@@ -367,8 +368,8 @@ class BaseTestForeachGetSet(unittest.TestCase):
             # as a buffer.
             ndarray_with_sequence_check = seq.view(SequenceCheckNdarray)
             collection.foreach_set(prop_name, ndarray_with_sequence_check)
-            # If the sequence wasn't used at all, this can result in a false positive, but assertions should fail in
-            # that case.
+            # If the sequence wasn't used at all, this can result in a false positive, but other assertions should fail
+            # in that case.
             accessed_as_buffer = not ndarray_with_sequence_check.used_as_sequence
         elif 0:  # isinstance(seq, memoryview):
             # There is currently no way to tell if a memoryview was accessed as a sequence or as a buffer. Once Python
@@ -391,64 +392,65 @@ class BaseTestForeachGetSet(unittest.TestCase):
     @staticmethod
     def get_sequence_description(seq):
         """
-        Helper to get a description of an input sequence, to be printed when a subtest fails.
+        Helper to get a description that can be used to identify an input sequence, to be printed when a subtest fails.
         """
         if isinstance(seq, (list, tuple)):
-            return "%s ('%s')" % (type(seq).__name__, type(seq[0]).__name__ if seq else "None")
+            class_name = type(seq).__name__
+            element_type_name = type(seq[0]).__name__ if seq else "no elements"
+            return "%s (element type: '%s')" % (class_name, element_type_name)
         elif isinstance(seq, np.ndarray):
             element_type = seq.dtype
-            # Numpy cannot represent non-native long double ("g") arrays as a buffer. Getting `.data` will fail in that
-            # case.
-            buffer_format = seq.data.format if element_type.char != "g" else None
-            return "%s ('%s')" % (element_type, buffer_format)
+            # NumPy cannot expose explicit-byteorder ('<'/'>') `long double` ("g") arrays as a buffer.
+            # When `long long` is not 64-bit, NumPy cannot expose explicit-byteorder `long long` ("q") arrays either.
+            # Getting `.data` will fail in these cases.
+            try:
+                buffer_format = seq.data.format
+            except ValueError:
+                assert element_type.char == "g"
+                buffer_format = None
+            return "np.ndarray[%s] (format: '%s')" % (element_type, buffer_format)
         elif isinstance(seq, ctypes.Array):
             element_type_name = seq._type_.__name__
             buffer_format = memoryview(seq).format
-            return "%s ('%s')" % (element_type_name, buffer_format)
+            return "ctypes.Array[%s] (format: '%s')" % (element_type_name, buffer_format)
         elif isinstance(seq, memoryview):
-            return "memoryview ('%s')" % seq.format
+            return "memoryview (format: '%s')" % seq.format
         else:
             raise TypeError("Unsupported type '%s'" % type(seq))
 
-    def do_getset_subtest(self, collection, prop_rna, sequence_type, is_set):
-        match sequence_type:
-            case 'LIST':
-                assert_buffer_usage = False
-                is_arrays = False
-                dtype_modifier = None
-            case 'IMPLICIT_NATIVE_ARRAY':
-                assert_buffer_usage = True
-                is_arrays = True
-                dtype_modifier = None
-            case 'EXPLICIT_NATIVE_ARRAY':
-                assert_buffer_usage = True
-                is_arrays = True
-                dtype_modifier = dtype_explicit_endian_standard_size
-            case 'NON_NATIVE_ARRAY':
-                assert_buffer_usage = False
-                is_arrays = True
-                dtype_modifier = dtype_byteorder_swap_standard_size
-            case _:
-                raise RuntimeError("Unrecognised sequence type '%s'" % sequence_type)
-
-        sequences = self.make_subtest_sequences(collection, prop_rna, is_set, is_arrays, dtype_modifier)
-
-        subtest_func = self.do_set_subtest if is_set else self.do_get_subtest
-        with self.subTest(prop_name=prop_rna.identifier, sequence_type=sequence_type):
-            # Due to varying itemsizes of C types depending on the current system, and the itemsize of a
-            # property not being exposed to Blender's Python API, we only check that at least one sequence
-            # was considered a compatible buffer.
-            at_least_one_accessed_as_buffer = False
-            for seq in sequences:
-                with self.subTest(subsequence=self.get_sequence_description(seq)):
-                    accessed_as_buffer = subtest_func(collection, prop_rna, seq)
-                    at_least_one_accessed_as_buffer |= accessed_as_buffer
-            if assert_buffer_usage:
-                self.assertTrue(at_least_one_accessed_as_buffer, "at least one sequence should be accessed as a buffer")
-
     def check_foreach_getset(self, collection, prop_rna, is_set):
-        for sequence_type in self.SEQUENCE_TYPES:
-            self.do_getset_subtest(collection, prop_rna, sequence_type, is_set=is_set)
+        # (sequence_type, assert_buffer_usage, is_buffers, dtype_modifier)
+        sequence_types = (
+            # List and Tuple with foreach_set and only List with foreach_get.
+            ("Pure Python Sequence", False, False, None),
+            # Buffers in native byteorder, their formats without any prefixes.
+            ("Implicit-native buffer", True, True, None),
+            # Buffers in native byteorder, their format explicitly prefixed by "<" on little-endian systems and ">" on
+            # big-endian systems when byteorder is applicable to the data type.
+            ("Explicit-native buffer", True, True, dtype_explicit_endian_standard_size),
+            # Buffers in non-native byteorder, their formats prefixed by ">" on little-endian systems and "<" on
+            # big-endian systems when byteorder is applicable to the data type.
+            ("Non-native buffer", False, True, dtype_byteorder_swap_standard_size),
+        )
+        for sequence_type, assert_buffer_usage, is_buffers, dtype_modifier in sequence_types:
+            sequences = self.make_subtest_sequences(collection, prop_rna, is_set, is_buffers, dtype_modifier)
+            sequence_descriptions = [self.get_sequence_description(seq) for seq in sequences]
+
+            with self.subTest(prop_name=prop_rna.identifier, sequence_type=sequence_type):
+                # Due to varying itemsizes of C types depending on the current system, and the itemsize of a
+                # property not being exposed to Blender's Python API, we only check that at least one sequence
+                # was considered a compatible buffer.
+                at_least_one_accessed_as_buffer = False
+                for seq, description in zip(sequences, sequence_descriptions):
+                    with self.subTest(sequence_description=description):
+                        if is_set:
+                            accessed_as_buffer = self.do_set_subtest(collection, prop_rna, seq)
+                        else:
+                            accessed_as_buffer = self.do_get_subtest(collection, prop_rna, seq)
+                        at_least_one_accessed_as_buffer |= accessed_as_buffer
+                if assert_buffer_usage:
+                    self.assertTrue(at_least_one_accessed_as_buffer,
+                                    "at least one sequence should be accessed as a buffer")
 
     def check_foreach_get(self, collection, prop_rna):
         self.check_foreach_getset(collection, prop_rna, is_set=False)
@@ -631,23 +633,23 @@ class TestPropCollectionForeachGetSetNoRawAccess(BaseTestForeachGetSet):
     collection are not stored in contiguous memory.
     """
     def setUp(self):
-        VECTOR_SIZE = 3
+        vector_size = 3
 
-        DEFAULT_INT = 0  # Must be either 0 or 1 so that bool and enum tests can work properly.
-        DEFAULT_BOOL = bool(DEFAULT_INT)
-        DEFAULT_FLOAT = float(DEFAULT_INT)
+        default_int = 0  # Must be either 0 or 1 so that bool and enum tests can work properly.
+        default_bool = bool(default_int)
+        default_float = float(default_int)
 
         cls = bpy.types.Object
 
-        cls.runtime_bool = BoolProperty(default=DEFAULT_BOOL)
-        cls.runtime_bool_vector = BoolVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_BOOL] * VECTOR_SIZE)
-        cls.runtime_float = FloatProperty(default=DEFAULT_FLOAT)
-        cls.runtime_float_vector = FloatVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_FLOAT] * VECTOR_SIZE)
-        cls.runtime_int = IntProperty(default=DEFAULT_INT)
-        cls.runtime_int_vector = IntVectorProperty(size=VECTOR_SIZE, default=[DEFAULT_INT] * VECTOR_SIZE)
-        cls.runtime_unsigned_int = IntProperty(subtype='UNSIGNED', default=DEFAULT_INT)
+        cls.runtime_bool = BoolProperty(default=default_bool)
+        cls.runtime_bool_vector = BoolVectorProperty(size=vector_size, default=[default_bool] * vector_size)
+        cls.runtime_float = FloatProperty(default=default_float)
+        cls.runtime_float_vector = FloatVectorProperty(size=vector_size, default=[default_float] * vector_size)
+        cls.runtime_int = IntProperty(default=default_int)
+        cls.runtime_int_vector = IntVectorProperty(size=vector_size, default=[default_int] * vector_size)
+        cls.runtime_unsigned_int = IntProperty(subtype='UNSIGNED', default=default_int)
         _ENUM_ITEMS = (("0", "Item 0", ""), ("1", "Item 1", ""))
-        cls.runtime_enum = EnumProperty(items=_ENUM_ITEMS, default=_ENUM_ITEMS[DEFAULT_INT][0])
+        cls.runtime_enum = EnumProperty(items=_ENUM_ITEMS, default=_ENUM_ITEMS[default_int][0])
 
         self.property_group_class = bpy.types.Object
 
@@ -825,8 +827,8 @@ class TestPropCollectionForeachGetSetNoItemPropertyPointer(BaseTestForeachGetSet
 
         collection_mixed = self.mixed_curve_shape_key.data
         sequence_get = self.sequence_generator(collection_mixed, prop_rna, is_set=False)(list)
-        # Error: Property named 'handle_left' not found
-        # RuntimeError: internal error setting the array
+        # Printed to console: "Error: Property named 'handle_left' not found"
+        # Raised: "RuntimeError: internal error setting the array"
         with self.assertRaises(RuntimeError):
             collection_mixed.foreach_get(prop_rna.identifier, sequence_get)
 
@@ -839,8 +841,8 @@ class TestPropCollectionForeachGetSetNoItemPropertyPointer(BaseTestForeachGetSet
 
         collection_mixed = self.mixed_curve_shape_key.data
         sequence_set = self.sequence_generator(collection_mixed, prop_rna, is_set=True)(list)
-        # Error: Property named 'handle_left' not found
-        # RuntimeError: internal error setting the array
+        # Printed to console: "Error: Property named 'handle_left' not found"
+        # Raised: "RuntimeError: internal error setting the array"
         with self.assertRaises(RuntimeError):
             collection_mixed.foreach_set(prop_rna.identifier, sequence_set)
 
