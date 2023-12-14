@@ -1166,6 +1166,19 @@ void file_draw_list(const bContext *C, ARegion *region)
     }
   }
 
+  if (numfiles == 0) {
+    const rcti tile_draw_rect = tile_draw_rect_get(
+        v2d, layout, eFileDisplayType(params->display), 0, 0);
+    const uiStyle *style = UI_style_get();
+    uchar text_col[4];
+    UI_GetThemeColor4ubv(TH_TEXT, text_col);
+    UI_fontstyle_draw_simple(&style->widget,
+                             tile_draw_rect.xmin + UI_UNIT_X,
+                             tile_draw_rect.ymax - UI_UNIT_Y,
+                             IFACE_("No results found"),
+                             text_col);
+  }
+
   BLF_batch_draw_end();
 
   UI_block_end(C, block);
