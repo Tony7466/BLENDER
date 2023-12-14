@@ -20,7 +20,7 @@
 
 namespace blender::bke {
 
-class GVolumeGrid2;
+class GVolumeGrid;
 
 class VolumeGridData : public ImplicitSharingMixin {
  private:
@@ -36,10 +36,15 @@ class VolumeGridData : public ImplicitSharingMixin {
   explicit VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid);
   ~VolumeGridData();
 
-  GVolumeGrid2 copy() const;
+  GVolumeGrid copy() const;
 
   const openvdb::GridBase &grid() const;
   openvdb::GridBase &grid_for_write();
+
+  StringRefNull name() const;
+
+  std::shared_ptr<const openvdb::GridBase> grid_ptr() const;
+  std::shared_ptr<openvdb::GridBase> grid_ptr_for_write();
 
   const openvdb::math::Transform &transform() const;
   openvdb::math::Transform &transform_for_write();
@@ -51,14 +56,14 @@ class VolumeGridData : public ImplicitSharingMixin {
   void delete_self();
 };
 
-class GVolumeGrid2 {
+class GVolumeGrid {
  private:
   ImplicitSharingPtr<VolumeGridData> data_;
 
  public:
-  GVolumeGrid2() = default;
-  explicit GVolumeGrid2(const VolumeGridData *data);
-  explicit GVolumeGrid2(std::shared_ptr<openvdb::GridBase> grid);
+  GVolumeGrid() = default;
+  explicit GVolumeGrid(const VolumeGridData *data);
+  explicit GVolumeGrid(std::shared_ptr<openvdb::GridBase> grid);
 
   const VolumeGridData &get() const;
   VolumeGridData &get_for_write();
@@ -68,42 +73,42 @@ class GVolumeGrid2 {
   operator bool() const;
 };
 
-template<typename T> class VolumeGrid2 : public GVolumeGrid2 {
+template<typename T> class VolumeGrid : public GVolumeGrid {
  public:
-  VolumeGrid2() = default;
-  explicit VolumeGrid2(const VolumeGridData *data);
-  explicit VolumeGrid2(std::shared_ptr<OpenvdbGridType<T>> grid);
+  VolumeGrid() = default;
+  explicit VolumeGrid(const VolumeGridData *data);
+  explicit VolumeGrid(std::shared_ptr<OpenvdbGridType<T>> grid);
 
  private:
   void assert_correct_type() const;
 };
 
-inline GVolumeGrid2::GVolumeGrid2(const VolumeGridData *data) : data_(data) {}
+inline GVolumeGrid::GVolumeGrid(const VolumeGridData *data) : data_(data) {}
 
-inline const VolumeGridData &GVolumeGrid2::get() const
+inline const VolumeGridData &GVolumeGrid::get() const
 {
   BLI_assert(*this);
   return *data_.get();
 }
 
-inline GVolumeGrid2::operator bool() const
+inline GVolumeGrid::operator bool() const
 {
   return bool(data_);
 }
 
-inline const VolumeGridData *GVolumeGrid2::operator->() const
+inline const VolumeGridData *GVolumeGrid::operator->() const
 {
   BLI_assert(*this);
   return data_.get();
 }
 
 template<typename T>
-inline VolumeGrid2<T>::VolumeGrid2(const VolumeGridData *data) : GVolumeGrid2(data)
+inline VolumeGrid<T>::VolumeGrid(const VolumeGridData *data) : GVolumeGrid(data)
 {
   this->assert_correct_type();
 }
 
-template<typename T> inline void VolumeGrid2<T>::assert_correct_type() const
+template<typename T> inline void VolumeGrid<T>::assert_correct_type() const
 {
 #ifndef NDEBUG
   if (data_) {

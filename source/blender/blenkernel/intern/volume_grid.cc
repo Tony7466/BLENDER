@@ -77,6 +77,18 @@ openvdb::GridBase &VolumeGridData::grid_for_write()
   return *grid_;
 }
 
+std::shared_ptr<const openvdb::GridBase> VolumeGridData::grid_ptr() const
+{
+  this->grid();
+  return grid_;
+}
+
+std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write()
+{
+  this->grid_for_write();
+  return grid_;
+}
+
 const openvdb::math::Transform &VolumeGridData::transform() const
 {
   return this->grid().transform();
@@ -89,12 +101,17 @@ openvdb::math::Transform &VolumeGridData::transform_for_write()
   return grid_->transform();
 }
 
+StringRefNull VolumeGridData::name() const
+{
+  return this->grid().getName();
+}
+
 VolumeGridType VolumeGridData::grid_type() const
 {
   return BKE_volume_grid_type_openvdb(this->grid());
 }
 
-GVolumeGrid2 VolumeGridData::copy() const
+GVolumeGrid VolumeGridData::copy() const
 {
   this->ensure_grid_loaded();
   std::lock_guard lock{grid_mutex_};
@@ -104,7 +121,7 @@ GVolumeGrid2 VolumeGridData::copy() const
   new_copy->grid_ = grid_->copyGrid();
   new_copy->tree_sharing_info_ = tree_sharing_info_;
   new_copy->tree_sharing_info_->add_user();
-  return GVolumeGrid2(new_copy);
+  return GVolumeGrid(new_copy);
 }
 
 void VolumeGridData::ensure_grid_loaded() const
@@ -122,12 +139,12 @@ void VolumeGridData::ensure_grid_loaded() const
   tree_sharing_info_ = MEM_new<OpenvdbTreeSharingInfo>(__func__, grid_->baseTreePtr());
 }
 
-GVolumeGrid2::GVolumeGrid2(std::shared_ptr<openvdb::GridBase> grid)
+GVolumeGrid::GVolumeGrid(std::shared_ptr<openvdb::GridBase> grid)
 {
   data_ = ImplicitSharingPtr(MEM_new<VolumeGridData>(__func__, std::move(grid)));
 }
 
-VolumeGridData &GVolumeGrid2::get_for_write()
+VolumeGridData &GVolumeGrid::get_for_write()
 {
   BLI_assert(*this);
   if (data_->is_mutable()) {

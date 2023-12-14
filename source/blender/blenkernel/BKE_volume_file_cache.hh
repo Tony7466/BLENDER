@@ -27,7 +27,7 @@ struct CacheKey {
   }
 };
 
-GVolumeGrid2 get(const CacheKey &key);
+GVolumeGrid get(const CacheKey &key);
 
 void unload_unused();
 

@@ -15,7 +15,7 @@ namespace blender::bke::volume_file_cache {
 
 struct Cache {
   std::mutex mutex;
-  Map<CacheKey, GVolumeGrid2> map;
+  Map<CacheKey, GVolumeGrid> map;
 };
 
 static Cache &get_global_cache()
@@ -39,7 +39,7 @@ static std::shared_ptr<openvdb::GridBase> load_grid_from_disk(const CacheKey &ke
     return grid;
   }
 
-  const GVolumeGrid2 main_grid = volume_file_cache::get({key.file_path, key.grid_name, 0});
+  const GVolumeGrid main_grid = volume_file_cache::get({key.file_path, key.grid_name, 0});
   const VolumeGridType grid_type = main_grid->grid_type();
   const float resolution_factor = 1.0f / (1 << key.simplify_level);
   std::shared_ptr<openvdb::GridBase> simplified_grid =
@@ -48,14 +48,14 @@ static std::shared_ptr<openvdb::GridBase> load_grid_from_disk(const CacheKey &ke
   return simplified_grid;
 }
 
-GVolumeGrid2 get(const CacheKey &key)
+GVolumeGrid get(const CacheKey &key)
 {
   Cache &cache = get_global_cache();
   std::lock_guard lock{cache.mutex};
   return cache.map.lookup_or_add_cb(key, [&]() {
     auto lazy_load_function = [key]() { return load_grid_from_disk(key); };
     auto *volume_grid = MEM_new<VolumeGridData>(__func__, std::move(lazy_load_function));
-    return GVolumeGrid2(volume_grid);
+    return GVolumeGrid(volume_grid);
   });
 }
 
@@ -64,7 +64,7 @@ void unload_unused()
   Cache &cache = get_global_cache();
   std::lock_guard lock{cache.mutex};
   cache.map.remove_if(
-      [](MapItem<CacheKey, GVolumeGrid2> item) { return item.value->is_mutable(); });
+      [](MapItem<CacheKey, GVolumeGrid> item) { return item.value->is_mutable(); });
 }
 
 }  // namespace blender::bke::volume_file_cache
