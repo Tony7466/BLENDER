@@ -1850,6 +1850,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
   const char *drawstr_right = nullptr;
   bool use_right_only = false;
   const char *indeterminate_str = UI_VALUE_INDETERMINATE_CHAR;
+  const char *completion = ui_but_completion_get(but);
 
 #ifdef WITH_INPUT_IME
   const wmIMEData *ime_data;
@@ -1874,6 +1875,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     uiBut *but_edit = ui_but_drag_multi_edit_get(but);
     if (but_edit) {
       drawstr = but_edit->editstr;
+      completion = but_edit->completion;
       align = UI_STYLE_TEXT_LEFT;
     }
   }
@@ -2179,8 +2181,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
         }
       }
 
-      const char *completion = ui_but_completion_get(but);
-      if (ui_but_is_editing(but) && completion && completion[0]) {
+      if (completion && completion[0] != '\0' && drawstr[0] != '\0') {
         rcti text_bounds;
         BLF_boundbox(fstyle->uifont_id, drawstr + but->ofs, drawlen, &text_bounds);
 
