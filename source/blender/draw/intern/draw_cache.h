@@ -25,10 +25,6 @@ struct Volume;
 struct bGPDstroke;
 struct bGPdata;
 struct Scene;
-namespace blender::bke {
-struct VolumeGrid;
-}
-using VolumeGrid = blender::bke::VolumeGrid;
 
 /**
  * Shape resolution level of detail.
@@ -255,7 +251,7 @@ typedef struct DRWVolumeGrid {
   float bounds_to_texture[4][4];
 } DRWVolumeGrid;
 
-DRWVolumeGrid *DRW_volume_batch_cache_get_grid(struct Volume *volume, const VolumeGrid *grid);
+DRWVolumeGrid *DRW_volume_batch_cache_get_grid(struct Volume *volume, const VolumeGridData *grid);
 struct GPUBatch *DRW_cache_volume_face_wireframe_get(struct Object *ob);
 struct GPUBatch *DRW_cache_volume_selection_surface_get(struct Object *ob);
 

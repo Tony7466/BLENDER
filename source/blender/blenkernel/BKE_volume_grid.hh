@@ -16,6 +16,7 @@
 #include "BKE_volume_grid_type_traits.hh"
 
 #include "BLI_implicit_sharing_ptr.hh"
+#include "BLI_string_ref.hh"
 
 #include "openvdb_fwd.hh"
 
@@ -67,7 +68,9 @@ class VolumeGridData : public ImplicitSharingMixin {
   openvdb::math::Transform &transform_for_write();
 
   VolumeGridType grid_type() const;
+  openvdb::GridClass grid_class() const;
 
+  bool is_loaded() const;
   bool can_be_reloaded() const;
   void unload_tree_if_possible() const;
 
@@ -81,6 +84,9 @@ class VolumeTreeUser {
   std::shared_ptr<VolumeGridData::TreeUserToken> token_;
 
   friend VolumeGridData;
+
+ public:
+  bool valid_for(const VolumeGridData &grid) const;
 };
 
 class GVolumeGrid {
@@ -144,6 +150,11 @@ template<typename T> inline void VolumeGrid<T>::assert_correct_type() const
     BLI_assert(expected_type == actual_type);
   }
 #endif
+}
+
+inline bool VolumeTreeUser::valid_for(const VolumeGridData &grid) const
+{
+  return grid.tree_user_token_ == token_;
 }
 
 }  // namespace blender::bke

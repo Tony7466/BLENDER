@@ -286,14 +286,15 @@ static void displace_volume(ModifierData *md, const ModifierEvalContext *ctx, Vo
   BKE_volume_load(volume, DEG_get_bmain(ctx->depsgraph));
   const int grid_amount = BKE_volume_num_grids(volume);
   for (int grid_index = 0; grid_index < grid_amount; grid_index++) {
-    VolumeGrid *volume_grid = const_cast<VolumeGrid *>(
+    VolumeGridData *volume_grid = const_cast<VolumeGrid *>(
         BKE_volume_grid_get_for_write(volume, grid_index));
     BLI_assert(volume_grid);
 
-    openvdb::GridBase::Ptr grid = BKE_volume_grid_openvdb_for_write(volume, volume_grid);
+    blender::bke::VolumeTreeUser tree_user = volume_grid->tree_user();
+    openvdb::GridBase &grid = volume_grid->grid_for_write(tree_user);
     VolumeGridType grid_type = BKE_volume_grid_type(volume_grid);
 
-    DisplaceGridOp displace_grid_op{*grid, *vdmd, *ctx};
+    DisplaceGridOp displace_grid_op{grid, *vdmd, *ctx};
     BKE_volume_grid_type_operation(grid_type, displace_grid_op);
   }
 

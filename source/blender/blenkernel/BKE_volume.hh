@@ -24,7 +24,6 @@ struct ReportList;
 struct Scene;
 struct Volume;
 struct VolumeGridVector;
-using VolumeFileCacheKey = blender::bke::VolumeFileCacheKey;
 using VolumeGridData = blender::bke::VolumeGridData;
 
 /* Module */
@@ -91,7 +90,7 @@ void BKE_volume_grid_unload(const Volume *volume, const VolumeGridData *grid);
 
 /* Metadata */
 
-const char *BKE_volume_grid_name(const VolumeGridData *grid);
+std::string BKE_volume_grid_name(const VolumeGridData *grid);
 VolumeGridType BKE_volume_grid_type(const VolumeGridData *grid);
 int BKE_volume_grid_channels(const VolumeGridData *grid);
 /**
@@ -115,8 +114,6 @@ void BKE_volume_grid_transform_matrix_set(const Volume *volume,
 Volume *BKE_volume_new_for_eval(const Volume *volume_src);
 Volume *BKE_volume_copy_for_eval(const Volume *volume_src);
 
-VolumeGridData *BKE_volume_grid_add(Volume *volume, const char *name, VolumeGridType type);
-void BKE_volume_grid_move(Volume *volume, const char *name, VolumeGridData *grid);
 void BKE_volume_grid_remove(Volume *volume, const VolumeGridData *grid);
 
 /**

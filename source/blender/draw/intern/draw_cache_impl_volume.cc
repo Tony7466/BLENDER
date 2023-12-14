@@ -271,7 +271,7 @@ GPUBatch *DRW_volume_batch_cache_get_selection_surface(Volume *volume)
 }
 
 static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
-                                            const VolumeGrid *grid,
+                                            const VolumeGridData *grid,
                                             VolumeBatchCache *cache)
 {
   const char *name = BKE_volume_grid_name(grid);
@@ -298,8 +298,7 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
     return cache_grid;
   }
 
-  /* If grid is a placeholder the grid data is discarded after the GPUTexture has been created. */
-  const bool is_placeholder = false /* TODO */;
+  const bool was_loaded = grid->is_loaded();
 
   DenseFloatVolumeGrid dense_grid;
   if (BKE_volume_grid_dense_floats(volume, grid, &dense_grid)) {
@@ -328,14 +327,14 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
   }
 
   /* Free grid from memory if it wasn't previously loaded. */
-  if (is_placeholder) {
-    BKE_volume_grid_unload(volume, grid);
+  if (!was_loaded) {
+    grid->unload_tree_if_possible();
   }
 
   return cache_grid;
 }
 
-DRWVolumeGrid *DRW_volume_batch_cache_get_grid(Volume *volume, const VolumeGrid *volume_grid)
+DRWVolumeGrid *DRW_volume_batch_cache_get_grid(Volume *volume, const VolumeGridData *volume_grid)
 {
   VolumeBatchCache *cache = volume_batch_cache_get(volume);
   DRWVolumeGrid *grid = volume_grid_cache_get(volume, volume_grid, cache);

@@ -86,16 +86,18 @@ openvdb::GridBase &VolumeGridData::grid_for_write(const VolumeTreeUser &tree_use
 }
 
 std::shared_ptr<const openvdb::GridBase> VolumeGridData::grid_ptr(
-    const VolumeTreeUser & /*tree_user*/) const
+    const VolumeTreeUser &tree_user) const
 {
+  tree_user.valid_for(*this);
   std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
   return grid_;
 }
 
 std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write(
-    const VolumeTreeUser & /*tree_user*/)
+    const VolumeTreeUser &tree_user)
 {
+  tree_user.valid_for(*this);
   BLI_assert(this->is_mutable());
   std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
@@ -158,9 +160,24 @@ VolumeGridType VolumeGridData::grid_type() const
   return BKE_volume_grid_type_openvdb(*grid_);
 }
 
+openvdb::GridClass VolumeGridData::grid_class() const
+{
+  std::lock_guard lock{mutex_};
+  if (!meta_data_loaded_) {
+    this->ensure_grid_loaded();
+  }
+  return grid_->getGridClass();
+}
+
 bool VolumeGridData::can_be_reloaded() const
 {
   return bool(lazy_load_grid_);
+}
+
+bool VolumeGridData::is_loaded() const
+{
+  std::lock_guard lock{mutex_};
+  return tree_loaded_ && transform_loaded_ && meta_data_loaded_;
 }
 
 void VolumeGridData::unload_tree_if_possible() const

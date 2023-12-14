@@ -11,15 +11,8 @@
 #include "blender/sync.h"
 #include "blender/util.h"
 
-#ifdef WITH_OPENVDB
-#  include <openvdb/openvdb.h>
-namespace blender::bke {
-struct VolumeGrid;
-}
-using VolumeGrid = blender::bke::VolumeGrid;
-openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_read(const Volume *volume,
-                                                             const VolumeGrid *grid);
-#endif
+#include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 
 CCL_NAMESPACE_BEGIN
 
@@ -240,12 +233,9 @@ class BlenderVolumeLoader : public VDBImageLoader {
                                      BL::VolumeGrid::tree_source_FILE_PLACEHOLDER);
 
         ::Volume *volume = (::Volume *)b_volume.ptr.data;
-        const VolumeGrid *volume_grid = (VolumeGrid *)b_volume_grid.ptr.data;
-        grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
-
-        if (is_placeholder) {
-          b_volume_grid.unload();
-        }
+        const VolumeGridData *volume_grid = (VolumeGridData *)b_volume_grid.ptr.data;
+        tree_user_ = volume_grid->tree_user();
+        grid = volume_grid->grid_ptr(tree_user_);
 
         break;
       }
@@ -270,6 +260,7 @@ class BlenderVolumeLoader : public VDBImageLoader {
   }
 
   BL::Volume b_volume;
+  blender::bke::VolumeTreeUser tree_user_;
 };
 
 static void sync_volume_object(BL::BlendData &b_data,
