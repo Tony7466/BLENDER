@@ -14,8 +14,8 @@ class ANIM_MT_keyframe_insert_pie(Menu):
         prop = pie.operator("anim.keyframe_insert_by_name", text="Scale")
         prop.type = "Scaling"
 
-        prop = pie.operator("anim.keyframe_insert_by_name", text="All")
-        prop.type = "LocRotScaleCProp"
+        prop = pie.operator("anim.keyframe_insert_by_name", text="Available")
+        prop.type = "Available"
 
         prop = pie.operator("anim.keyframe_insert_by_name", text="Rotation")
         prop.type = "Rotation"
