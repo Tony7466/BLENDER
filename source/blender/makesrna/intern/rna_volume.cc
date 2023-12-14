@@ -137,16 +137,15 @@ static void rna_VolumeGrid_matrix_object_get(PointerRNA *ptr, float *value)
   BKE_volume_grid_transform_matrix(grid, (float(*)[4])value);
 }
 
-static int rna_VolumeGrid_tree_source_get(PointerRNA *ptr)
+static int rna_VolumeGrid_tree_source_get(PointerRNA * /*ptr*/)
 {
-  VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
-  return BKE_volume_grid_tree_source(grid);
+  return 0;
 }
 
 static bool rna_VolumeGrid_load(ID *id, DummyVolumeGrid *grid)
 {
-  return BKE_volume_grid_load(reinterpret_cast<Volume *>(id),
-                              reinterpret_cast<VolumeGrid *>(grid));
+  /* Doesn't have to do anything. */
+  return true;
 }
 
 static void rna_VolumeGrid_unload(ID *id, DummyVolumeGrid *grid)

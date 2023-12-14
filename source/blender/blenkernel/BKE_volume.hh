@@ -87,9 +87,7 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name)
 
 /* Grid */
 
-bool BKE_volume_grid_load(const Volume *volume, const VolumeGridData *grid);
 void BKE_volume_grid_unload(const Volume *volume, const VolumeGridData *grid);
-VolumeTreeSource BKE_volume_grid_tree_source(const VolumeGridData *grid);
 
 /* Metadata */
 

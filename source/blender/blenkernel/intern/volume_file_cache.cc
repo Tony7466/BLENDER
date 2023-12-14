@@ -154,16 +154,22 @@ GVolumeGrid get_grid_from_file(const StringRef file_path,
   return {};
 }
 
-Vector<GVolumeGrid> get_all_grids_from_file(const StringRef file_path, const int simplify_level)
+GridsFromFile get_all_grids_from_file(const StringRef file_path, const int simplify_level)
 {
+  GridsFromFile result;
   Cache &cache = get_global_cache();
   std::lock_guard lock{cache.mutex};
-  Vector<GVolumeGrid> grids;
   FileCache &file_cache = get_file_cache(file_path);
-  for (GridCache &grid_cache : file_cache.grids) {
-    grids.append(get_cached_grid(file_path, grid_cache, simplify_level));
+
+  if (!file_cache.error_message.empty()) {
+    result.error_message = file_cache.error_message;
+    return result;
   }
-  return grids;
+  result.meta_data = std::make_shared<openvdb::MetaMap>(file_cache.meta_data);
+  for (GridCache &grid_cache : file_cache.grids) {
+    result.grids.append(get_cached_grid(file_path, grid_cache, simplify_level));
+  }
+  return result;
 }
 
 void unload_unused()

@@ -299,8 +299,7 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
   }
 
   /* If grid is a placeholder the grid data is discarded after the GPUTexture has been created. */
-  const bool is_placeholder = (BKE_volume_grid_tree_source(grid) ==
-                               VOLUME_TREE_SOURCE_FILE_PLACEHOLDER);
+  const bool is_placeholder = false /* TODO */;
 
   DenseFloatVolumeGrid dense_grid;
   if (BKE_volume_grid_dense_floats(volume, grid, &dense_grid)) {
