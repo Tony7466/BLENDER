@@ -89,7 +89,7 @@ CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage
   CDT_input<T> ans;
   ans.vert = r_storage.vert;
   ans.edge = r_storage.edge;
-  ans.face_offsets = r_storage.face.as_span();
+  ans.face_offsets = r_storage.face_offsets.as_span();
   ans.face_vert_indices = r_storage.face_vert_indices;
 #ifdef WITH_GMP
   if (std::is_same<mpq_class, T>::value) {
