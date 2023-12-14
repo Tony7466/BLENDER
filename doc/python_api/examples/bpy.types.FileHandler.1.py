@@ -37,7 +37,7 @@ class CurveTextImport(bpy.types.Operator):
 
     """
     By default the file handler invokes the operator with the filepath property set,
-    if this property are set we can show a menu or just execute the operator.
+    so if this property is set we can show a menu or just execute the operator.
     This specific behavior requires to set 'options={'SKIP_SAVE'}' in the property options so we can avoid
     reused data from previous operator calls and check if the operator is called with new drag&drop path data or not.
     """
@@ -49,8 +49,8 @@ class CurveTextImport(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
 
-class Curve_FH_text_import(bpy.types.FileHandler):
-    bl_idname = "Curve_FH_text_import"
+class CURVE_FH_text_import(bpy.types.FileHandler):
+    bl_idname = "CURVE_FH_text_import"
     bl_label = "File handler for curve text object import"
     bl_import_operator = "curve.text_import"
     bl_file_extensions = ".txt"
@@ -61,4 +61,4 @@ class Curve_FH_text_import(bpy.types.FileHandler):
 
 
 bpy.utils.register_class(CurveTextImport)
-bpy.utils.register_class(Curve_FH_text_import)
+bpy.utils.register_class(CURVE_FH_text_import)

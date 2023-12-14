@@ -56,6 +56,7 @@ set(LIB
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::intern::clog
 )
 
 if(WITH_OPENCOLLADA)

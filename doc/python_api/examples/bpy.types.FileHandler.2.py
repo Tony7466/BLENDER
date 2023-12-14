@@ -52,7 +52,7 @@ class ShaderScriptImport(bpy.types.Operator):
 
     """
     By default the file handler invokes the operator with the directory and files properties set,
-    if this properties are set we can show a menu or just execute the operator.
+    so if this properties are set we can show a menu or just execute the operator.
     This specific behavior requires to set 'options={'SKIP_SAVE'}' in the properties options so we can avoid
     reused data from previous operator calls and check if the operator is called with new drag&drop path data or not.
     """
@@ -64,8 +64,8 @@ class ShaderScriptImport(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
 
-class Shader_FH_script_import(bpy.types.FileHandler):
-    bl_idname = "Shader_FH_script_import"
+class SHADER_FH_script_import(bpy.types.FileHandler):
+    bl_idname = "SHADER_FH_script_import"
     bl_label = "File handler for shader script node import"
     bl_import_operator = "shader.script_import"
     bl_file_extensions = ".txt"
@@ -77,4 +77,4 @@ class Shader_FH_script_import(bpy.types.FileHandler):
 
 
 bpy.utils.register_class(ShaderScriptImport)
-bpy.utils.register_class(Shader_FH_script_import)
+bpy.utils.register_class(SHADER_FH_script_import)

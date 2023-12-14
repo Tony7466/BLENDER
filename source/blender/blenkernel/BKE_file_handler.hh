@@ -34,15 +34,6 @@ struct FileHandlerType {
    * Return a vector of indices in #paths of file paths supported by the file handler.
    */
   blender::Vector<int64_t> filter_supported_paths(const blender::Span<std::string> paths) const;
-
-  /** Get the operator set as #import_operator, if not exists returns #nullptr. */
-  wmOperatorType *get_import_operator(const bool quiet = false) const;
-
-  /**
-   * Creates a RNA pointer for the #import_operator and sets on it all supported file paths from
-   * #paths.
-   */
-  PointerRNA import_operator_create_ptr(const blender::Span<std::string> paths) const;
 };
 
 /**
@@ -65,8 +56,9 @@ void BKE_file_handler_remove(FileHandlerType *file_handler);
 const blender::RawVector<std::unique_ptr<FileHandlerType>> &BKE_file_handlers();
 
 /**
- * Return a vector of file handlers that support any file path in #paths, has a valid
- * #import_operator assigned and the call to #poll_drop returns #true.
+ * Return a vector of file handlers that support any file path in `paths` and the call to
+ * `poll_drop` returns #true. Caller must check if each file handler have a valid
+ * `import_operator`.
  */
 blender::Vector<FileHandlerType *> BKE_file_handlers_poll_file_drop(
-    const bContext *C, const blender::Span<std::string> paths, const bool quiet = false);
+    const bContext *C, const blender::Span<std::string> paths);
