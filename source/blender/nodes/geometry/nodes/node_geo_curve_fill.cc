@@ -117,8 +117,7 @@ static meshintersect::CDT_result<double> do_cdt_with_mask(const bke::CurvesGeome
   input.face_vert_indices = face_vert_indices;
   input.need_ids = false;
 
-  meshintersect::CDT_result<double> result = delaunay_2d_calc(input, output_type);
-  return result;
+  return delaunay_2d_calc(input, output_type);
 }
 
 static Array<meshintersect::CDT_result<double>> do_group_aware_cdt(
