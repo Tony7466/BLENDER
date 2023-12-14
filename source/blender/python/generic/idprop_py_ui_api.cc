@@ -76,6 +76,11 @@ static bool py_long_as_int(PyObject *py_long, int *r_int)
   return false;
 }
 
+/**
+ * Similar to #enum_items_from_py, which parses enum items for RNA properties.
+ * This function is simpler, since it doesn't have to parse a default value or handle the case of
+ * enum flags (PROP_ENUM_FLAG).
+ */
 static bool try_parse_enum_item(PyObject *py_item, const int index, IDPropertyUIDataEnumItem &item)
 {
   if (!PyTuple_CheckExact(py_item)) {
