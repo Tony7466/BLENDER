@@ -3431,8 +3431,8 @@ const wmIMEData *ui_but_ime_data_get(uiBut *but)
 
 static void ui_do_but_text_completion(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
-  /* Unit completion (hint) is only done for buttons with a unit or with a property of type PROP_PIXEL or
-   * PROP_PERCENTAGE. For everything else, we reset the completion to nullptr. */
+  /* Unit completion (hint) is only done for buttons with a unit or with a property of type
+   * PROP_PIXEL or PROP_PERCENTAGE. For everything else, we reset the completion to nullptr. */
   if (!ui_but_is_unit(but) &&
       (but->rnaprop && !ELEM(RNA_property_subtype(but->rnaprop), PROP_PIXEL, PROP_PERCENTAGE)))
   {
