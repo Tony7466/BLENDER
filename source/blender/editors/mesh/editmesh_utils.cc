@@ -1272,6 +1272,42 @@ static BMVert *cache_mirr_intptr_as_bmvert(const intptr_t *index_lookup, int ind
 #define BM_SEARCH_MAXDIST_MIRR 0.00002f
 #define BM_CD_LAYER_ID "__mirror_index"
 
+static BMVert *best_mirror_vert(BMVert *v_cmp, BMVert *va, BMVert *vb, int axis)
+{
+  BMIter iter;
+  BMEdge *e;
+  BMVert *verts[3] = {v_cmp, va, vb};
+  float dists[3] = {0.0f};
+
+  /* Compare the normal. */
+  for (int i = 0; i < 3; i++) {
+    BMVert *v = verts[i];
+    dists[i] = v->no[axis];
+  }
+
+  if (dists[1] == dists[2]) {
+    /* If the normals are the same, compare the connected edges. */
+    zero_v3(dists);
+    for (int i = 0; i < 3; i++) {
+      BMVert *v = verts[i];
+      BM_ITER_ELEM (e, &iter, v, BM_EDGES_OF_VERT) {
+        BMVert *v_other = BM_edge_other_vert(e, v);
+        dists[i] += v_other->co[axis];
+      }
+    }
+  }
+
+  dists[1] = fabs(dists[1] + dists[0]);
+  dists[2] = fabs(dists[2] + dists[0]);
+
+  if (dists[1] < dists[2]) {
+    return va;
+  }
+  else {
+    return vb;
+  }
+}
+
 void EDBM_verts_mirror_cache_begin_ex(BMEditMesh *em,
                                       const int axis,
                                       const bool use_self,
@@ -1287,7 +1323,6 @@ void EDBM_verts_mirror_cache_begin_ex(BMEditMesh *em,
   BMVert *v;
   int cd_vmirr_offset = 0;
   int i;
-  const float maxdist_sq = square_f(maxdist);
 
   /* one or the other is used depending if topo is enabled */
   KDTree_3d *tree = nullptr;
@@ -1353,19 +1388,23 @@ void EDBM_verts_mirror_cache_begin_ex(BMEditMesh *em,
       }
     }
     else {
-      int i_mirr;
       float co[3];
       copy_v3_v3(co, v->co);
       co[axis] *= -1.0f;
 
       v_mirr = nullptr;
-      i_mirr = BLI_kdtree_3d_find_nearest(tree, co, nullptr);
-      if (i_mirr != -1) {
-        BMVert *v_test = BM_vert_at_index(bm, i_mirr);
-        if (len_squared_v3v3(co, v_test->co) < maxdist_sq) {
-          v_mirr = v_test;
+
+      KDTreeNearest_3d *mirrors = nullptr;
+      int mirrors_len = BLI_kdtree_3d_range_search(tree, co, &mirrors, maxdist);
+      if (mirrors_len) {
+        /* Find the best mirror. */
+        v_mirr = BM_vert_at_index(bm, mirrors[0].index);
+        for (int j = 1; j < mirrors_len; j++) {
+          BMVert *v_test = BM_vert_at_index(bm, mirrors[j].index);
+          v_mirr = best_mirror_vert(v, v_mirr, v_test, axis);
         }
       }
+      MEM_SAFE_FREE(mirrors);
     }
 
     if (v_mirr && (use_self || (v_mirr != v))) {
