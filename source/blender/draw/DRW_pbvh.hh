@@ -10,7 +10,6 @@
 
 /* Needed for BKE_ccg.h. */
 #include "BLI_assert.h"
-#include "BLI_bitmap.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
@@ -22,7 +21,6 @@
 
 struct GPUBatch;
 struct PBVHNode;
-struct DMFlagMat;
 struct Mesh;
 struct MLoopTri;
 struct CustomData;
@@ -59,7 +57,7 @@ struct PBVH_GPU_Args {
   int pbvh_type;
 
   BMesh *bm;
-  const Mesh *me;
+  const Mesh *mesh;
   MutableSpan<float3> vert_positions;
   Span<int> corner_verts;
   Span<int> corner_edges;
@@ -76,17 +74,15 @@ struct PBVH_GPU_Args {
   int face_sets_color_default;
 
   SubdivCCG *subdiv_ccg;
-  Span<DMFlagMat> grid_flag_mats;
   Span<int> grid_indices;
   CCGKey ccg_key;
   Span<CCGElem *> grids;
-  Span<const BLI_bitmap *> grid_hidden;
 
   Span<int> prim_indices;
 
-  const bool *hide_poly;
+  VArraySpan<bool> hide_poly;
 
-  Span<MLoopTri> mlooptri;
+  Span<MLoopTri> looptris;
   Span<int> looptri_faces;
 
   /* BMesh. */
