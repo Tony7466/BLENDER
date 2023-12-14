@@ -12,6 +12,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_compiler_attrs.h"
+#include "BLI_vector.hh"
 
 struct DynStr;
 
@@ -193,9 +194,9 @@ int mathutils_array_parse_alloc_vi(int **array,
  * \param r_data: Stores the groups contiguously in slices described by \a r_offsets.
  */
 bool mathutils_array_parse_alloc_viseq(PyObject *value,
-                                      const char *error_prefix,
-                                      blender::Array<int> &r_offsets,
-                                      blender::Array<int> &r_data);
+                                       const char *error_prefix,
+                                       blender::Array<int> &r_offsets,
+                                       blender::Array<int> &r_data);
 int mathutils_any_to_rotmat(float rmat[3][3], PyObject *value, const char *error_prefix);
 
 /**

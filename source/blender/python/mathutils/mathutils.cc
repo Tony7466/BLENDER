@@ -383,28 +383,33 @@ bool mathutils_array_parse_alloc_viseq(PyObject *value,
 
   const int size = PySequence_Fast_GET_SIZE(value_fast);
   if (size != 0) {
-    Py_DECREF(value_fast);
-    return false;
-  }
+    PyObject **value_fast_items = PySequence_Fast_ITEMS(value_fast);
 
-  r_offsets.reinitialize(size + 1);
-  PyObject **value_fast_items = PySequence_Fast_ITEMS(value_fast);
-  int count = 0;
-  for (int i = 0; i < size; i++) {
-    r_offsets[i] = count;
-    count += int(PySequence_Size(value_fast_items[i]));
-  }
-  r_offsets.last() = count;
-  const blender::OffsetIndices<int> offsets(r_offsets);
+    r_offsets.reinitialize(size + 1);
+    int count = 0;
+    for (int i = 0; i < size; i++) {
+      r_offsets[i] = count;
+      const int subseq_len = int(PySequence_Size(value_fast_items[i]));
+      if (subseq_len == -1) {
+        PyErr_Format(
+            PyExc_ValueError, "%.200s: sequence expected to have subsequences", error_prefix);
+        Py_DECREF(value_fast);
+        return false;
+      }
+      count += int(PySequence_Size(value_fast_items[i]));
+    }
+    r_offsets.last() = count;
+    const blender::OffsetIndices<int> offsets(r_offsets);
 
-  r_data.reinitialize(offsets.total_size());
+    r_data.reinitialize(offsets.total_size());
 
-  for (const int i : offsets.index_range()) {
-    blender::MutableSpan<int> group = r_data.as_mutable_span().slice(offsets[i]);
-    if (mathutils_int_array_parse(group.data(), group.size(), value_fast_items[i], error_prefix)) {
-      Py_DECREF(value_fast);
-
-      return false;
+    for (const int64_t i : r_data.index_range()) {
+      PyObject *subseq = value_fast_items[i];
+      blender::MutableSpan<int> group = r_data.as_mutable_span().slice(offsets[i]);
+      if (mathutils_int_array_parse(group.data(), group.size(), subseq, error_prefix) == -1) {
+        Py_DECREF(value_fast);
+        return false;
+      }
     }
   }
 

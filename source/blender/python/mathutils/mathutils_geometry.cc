@@ -1542,7 +1542,7 @@ static PyObject *list_of_lists_from_arrays(const blender::GroupedSpan<int> data)
   if (data.is_empty()) {
     return PyList_New(0);
   }
-  PyObject *ret = PyList_New(data.offsets.size());
+  PyObject *ret = PyList_New(data.size());
   for (const int i : data.index_range()) {
     const blender::Span<int> group = data[i];
     PyObject *sublist = PyList_New(group.size());
@@ -1604,6 +1604,17 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
   int output_type;
   float epsilon;
   bool need_ids = true;
+  float(*in_coords)[2] = nullptr;
+  int(*in_edges)[2] = nullptr;
+  Py_ssize_t vert_coords_len, edges_len;
+  PyObject *out_vert_coords = nullptr;
+  PyObject *out_edges = nullptr;
+  PyObject *out_faces = nullptr;
+  PyObject *out_orig_verts = nullptr;
+  PyObject *out_orig_edges = nullptr;
+  PyObject *out_orig_faces = nullptr;
+  PyObject *ret_value = nullptr;
+
   if (!PyArg_ParseTuple(args,
                         "OOOif|p:delaunay_2d_cdt",
                         &vert_coords,
@@ -1616,8 +1627,16 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
     return nullptr;
   }
 
-  float(*in_coords)[2] = nullptr;
-  const Py_ssize_t vert_coords_len = mathutils_array_parse_alloc_v(
+  BLI_SCOPED_DEFER([&]() {
+    if (in_coords != nullptr) {
+      PyMem_Free(in_coords);
+    }
+    if (in_edges != nullptr) {
+      PyMem_Free(in_edges);
+    }
+  });
+
+  vert_coords_len = mathutils_array_parse_alloc_v(
       (float **)&in_coords, 2, vert_coords, error_prefix);
   if (in_coords == nullptr) {
     return nullptr;
@@ -1646,16 +1665,25 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
     return nullptr;
   }
 
-  Array<double2> in_coords_db(vert_coords_len);
-  for (const int i : in_coords_db.index_range()) {
-    in_coords_db[i] = double2(in_coords[i]);
+  edges_len = mathutils_array_parse_alloc_vi((int **)&in_edges, 2, edges, error_prefix);
+  if (edges_len == -1) {
+    return nullptr;
+  }
+
+  Array<Vector<int>> in_faces;
+  if (!mathutils_array_parse_alloc_viseq(faces, error_prefix, in_faces)) {
+    return nullptr;
+  }
+
+  Array<double2> verts(vert_coords_len);
+  for (const int i : verts.index_range()) {
+    verts[i] = {double(in_coords[i][0]), double(in_coords[i][1])};
   }
 
   meshintersect::CDT_input<double> in;
-  in.vert = in_coords_db;
+  in.vert = std::move(verts);
   in.edge = Span(reinterpret_cast<std::pair<int, int> *>(in_edges), edges_len);
-  in.face_offsets = face_offsets.as_span();
-  in.face_vert_indices = face_vert_indices;
+  in.face = std::move(in_faces);
   in.epsilon = epsilon;
   in.need_ids = need_ids;
 
@@ -1664,9 +1692,10 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
 
   PyObject *ret_value = PyTuple_New(6);
 
-  PyObject *out_vert_coords = PyList_New(res.vert.size());
+  out_vert_coords = PyList_New(res.vert.size());
   for (const int i : res.vert.index_range()) {
-    PyObject *item = Vector_CreatePyObject(float2(res.vert[i]), 2, nullptr);
+    const float2 vert_float(res.vert[i]);
+    PyObject *item = Vector_CreatePyObject(vert_float, 2, nullptr);
     if (item == nullptr) {
       Py_DECREF(ret_value);
       Py_DECREF(out_vert_coords);
@@ -1676,7 +1705,7 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
   }
   PyTuple_SET_ITEM(ret_value, 0, out_vert_coords);
 
-  PyObject *out_edges = PyList_New(res.edge.size());
+  out_edges = PyList_New(res.edge.size());
   for (const int i : res.edge.index_range()) {
     PyObject *item = PyTuple_New(2);
     PyTuple_SET_ITEM(item, 0, PyLong_FromLong(long(res.edge[i].first)));
@@ -1685,16 +1714,16 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
   }
   PyTuple_SET_ITEM(ret_value, 1, out_edges);
 
-  PyObject *out_faces = list_of_lists_from_arrays(res.faces());
+  out_faces = list_of_lists_from_arrays(res.faces());
   PyTuple_SET_ITEM(ret_value, 2, out_faces);
 
-  PyObject *out_orig_verts = list_of_lists_from_arrays(res.orig_verts());
+  out_orig_verts = list_of_lists_from_arrays(res.orig_verts());
   PyTuple_SET_ITEM(ret_value, 3, out_orig_verts);
 
-  PyObject *out_orig_edges = list_of_lists_from_arrays(res.orig_edges());
+  out_orig_edges = list_of_lists_from_arrays(res.orig_edges());
   PyTuple_SET_ITEM(ret_value, 4, out_orig_edges);
 
-  PyObject *out_orig_faces = list_of_lists_from_arrays(res.orig_faces());
+  out_orig_faces = list_of_lists_from_arrays(res.orig_faces());
   PyTuple_SET_ITEM(ret_value, 5, out_orig_faces);
 
   return ret_value;

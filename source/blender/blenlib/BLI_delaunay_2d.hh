@@ -166,9 +166,9 @@ template<typename Arith_t> class CDT_input {
  * These are only set if need_ids is true in the input.
  *
  *
- * For edges, the edges_orig triple can also say which original face
+ * For edges, the edge_orig triple can also say which original face
  * edge is part of a given output edge. See the comment below for how
- * to decode the entries in the edges_orig table.
+ * to decode the entries in the edge_orig table.
  */
 template<typename Arith_t> class CDT_result {
  public:
