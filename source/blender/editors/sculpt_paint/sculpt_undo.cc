@@ -284,6 +284,7 @@ struct PartialUpdateData {
   bool changed_hide_vert;
   bool changed_mask;
   Span<bool> modified_grids;
+  Span<bool> modified_position_verts;
   Span<bool> modified_hidden_verts;
   Span<bool> modified_hidden_faces;
   Span<bool> modified_mask_verts;
@@ -294,10 +295,14 @@ struct PartialUpdateData {
 static void update_modified_node_mesh(PBVHNode *node, void *userdata)
 {
   PartialUpdateData *data = static_cast<PartialUpdateData *>(userdata);
-  if (BKE_pbvh_node_has_vert_with_normal_update_tag(data->pbvh, node)) {
-    BKE_pbvh_node_mark_update(node);
-  }
   const Span<int> verts = BKE_pbvh_node_get_vert_indices(node);
+  if (!data->modified_position_verts.is_empty()) {
+    for (const int vert : verts) {
+      if (data->modified_position_verts[vert]) {
+        BKE_pbvh_node_mark_normals_update(node);
+      }
+    }
+  }
   if (!data->modified_mask_verts.is_empty()) {
     for (const int vert : verts) {
       if (data->modified_mask_verts[vert]) {
@@ -412,7 +417,8 @@ static bool sculpt_undo_restore_deformed(
   return false;
 }
 
-static bool sculpt_undo_restore_coords(bContext *C, Object *ob, Depsgraph *depsgraph, Node &unode)
+static bool sculpt_undo_restore_coords(
+    bContext *C, Object *ob, Depsgraph *depsgraph, Node &unode, MutableSpan<bool> modified_verts)
 {
   SculptSession *ss = ob->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
@@ -476,20 +482,20 @@ static bool sculpt_undo_restore_coords(bContext *C, Object *ob, Depsgraph *depsg
         if (ss->deform_modifiers_active) {
           for (int i = 0; i < unode.totvert; i++) {
             sculpt_undo_restore_deformed(ss, unode, i, index[i], positions[index[i]]);
-            BKE_pbvh_vert_tag_update_normal(ss->pbvh, BKE_pbvh_make_vref(index[i]));
+            modified_verts[index[i]] = true;
           }
         }
         else {
           for (int i = 0; i < unode.totvert; i++) {
             swap_v3_v3(positions[index[i]], unode.orig_co[i]);
-            BKE_pbvh_vert_tag_update_normal(ss->pbvh, BKE_pbvh_make_vref(index[i]));
+            modified_verts[index[i]] = true;
           }
         }
       }
       else {
         for (int i = 0; i < unode.totvert; i++) {
           swap_v3_v3(positions[index[i]], unode.co[i]);
-          BKE_pbvh_vert_tag_update_normal(ss->pbvh, BKE_pbvh_make_vref(index[i]));
+          modified_verts[index[i]] = true;
         }
       }
     }
@@ -944,6 +950,7 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, UndoScul
   /* The PBVH already keeps track of which vertices need updated normals, but it doesn't keep
    * track of other updates. In order to tell the corresponding PBVH nodes to update, keep track
    * of which elements were updated for specific layers. */
+  Vector<bool> modified_verts_position;
   Vector<bool> modified_verts_hide;
   Vector<bool> modified_faces_hide;
   Vector<bool> modified_verts_mask;
@@ -972,7 +979,7 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, UndoScul
 
     switch (unode->type) {
       case Type::Position:
-        if (sculpt_undo_restore_coords(C, ob, depsgraph, *unode)) {
+        if (sculpt_undo_restore_coords(C, ob, depsgraph, *unode, modified_verts_position)) {
           changed_position = true;
         }
         break;
@@ -1051,6 +1058,7 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, UndoScul
   data.changed_mask = changed_mask;
   data.pbvh = ss->pbvh;
   data.modified_grids = modified_grids;
+  data.modified_hidden_verts = modified_verts_position;
   data.modified_hidden_verts = modified_verts_hide;
   data.modified_hidden_faces = modified_faces_hide;
   data.modified_mask_verts = modified_verts_mask;

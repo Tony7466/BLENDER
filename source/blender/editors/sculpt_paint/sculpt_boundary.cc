@@ -696,10 +696,6 @@ static void do_boundary_brush_bend_task(Object *ob, const Brush *brush, PBVHNode
                      boundary->bend.pivot_rotation_axis[vd.index],
                      angle * boundary->edit_info[vd.index].strength_factor * mask * automask);
     add_v3_v3(target_co, boundary->bend.pivot_positions[vd.index]);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -741,10 +737,6 @@ static void do_boundary_brush_slide_task(Object *ob, const Brush *brush, PBVHNod
                    boundary->slide.directions[vd.index],
                    boundary->edit_info[vd.index].strength_factor * disp * mask * automask *
                        strength);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -786,10 +778,6 @@ static void do_boundary_brush_inflate_task(Object *ob, const Brush *brush, PBVHN
                    orig_data.no,
                    boundary->edit_info[vd.index].strength_factor * disp * mask * automask *
                        strength);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -828,10 +816,6 @@ static void do_boundary_brush_grab_task(Object *ob, const Brush *brush, PBVHNode
                    orig_data.co,
                    ss->cache->grab_delta_symmetry,
                    boundary->edit_info[vd.index].strength_factor * mask * automask * strength);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -881,10 +865,6 @@ static void do_boundary_brush_twist_task(Object *ob, const Brush *brush, PBVHNod
                      boundary->twist.rotation_axis,
                      angle * mask * automask * boundary->edit_info[vd.index].strength_factor);
     add_v3_v3(target_co, boundary->twist.pivot_position);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -936,10 +916,6 @@ static void do_boundary_brush_smooth_task(Object *ob, const Brush *brush, PBVHNo
     float *target_co = SCULPT_brush_deform_target_vertex_co_get(ss, brush->deform_target, &vd);
     madd_v3_v3v3fl(
         target_co, vd.co, disp, boundary->edit_info[vd.index].strength_factor * mask * strength);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
