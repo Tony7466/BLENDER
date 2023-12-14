@@ -172,7 +172,9 @@ void Light::shape_parameters_set(const ::Light *la, const float scale[3])
       _area_size_x = tanf(min_ff(la->sun_angle, DEG2RADF(179.9f)) / 2.0f);
     }
     else {
-      _area_size_x = la->radius;
+      /* Ensure a minimum radius/energy ratio to avoid harsh cut-offs. (See 114284) */
+      float min_radius = la->energy * 2e-05f;
+      _area_size_x = std::max(la->radius, min_radius);
     }
     _area_size_y = _area_size_x = max_ff(0.001f, _area_size_x);
     radius_squared = square_f(_area_size_x);
@@ -238,7 +240,7 @@ float Light::point_radiance_get(const ::Light *la)
 void Light::debug_draw()
 {
 #ifndef NDEBUG
-  drw_debug_sphere(_position, influence_radius_max, float4(0.8f, 0.3f, 0.0f, 1.0f));
+  drw_debug_sphere(float3(_position), influence_radius_max, float4(0.8f, 0.3f, 0.0f, 1.0f));
 #endif
 }
 

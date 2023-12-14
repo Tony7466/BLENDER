@@ -31,6 +31,15 @@
 namespace blender::bke::pbvh::pixels {
 
 /**
+ * Splitting of pixel nodes has been disabled as it was designed for C. When migrating to CPP
+ * the splitting data structure will corrupt memory.
+ *
+ * TODO(jbakker): This should be fixed or replaced with a different solution. If we go into a
+ * direction of compute shaders this might not be needed anymore.
+ */
+constexpr bool PBVH_PIXELS_SPLIT_NODES_ENABLED = false;
+
+/**
  * Calculate the delta of two neighbor UV coordinates in the given image buffer.
  */
 static float2 calc_barycentric_delta(const float2 uvs[3],
@@ -409,10 +418,10 @@ static void update_geom_primitives(PBVH &pbvh, const uv_islands::MeshData &mesh_
 {
   PBVHData &pbvh_data = BKE_pbvh_pixels_data_get(pbvh);
   pbvh_data.clear_data();
-  for (const MLoopTri &looptri : mesh_data.looptris) {
-    pbvh_data.geom_primitives.append(int3(mesh_data.corner_verts[looptri.tri[0]],
-                                          mesh_data.corner_verts[looptri.tri[1]],
-                                          mesh_data.corner_verts[looptri.tri[2]]));
+  for (const MLoopTri &lt : mesh_data.looptris) {
+    pbvh_data.geom_primitives.append(int3(mesh_data.corner_verts[lt.tri[0]],
+                                          mesh_data.corner_verts[lt.tri[1]],
+                                          mesh_data.corner_verts[lt.tri[2]]));
   }
 }
 
@@ -667,7 +676,7 @@ static bool update_pixels(PBVH *pbvh, Mesh *mesh, Image *image, ImageUser *image
   const VArraySpan uv_map = *attributes.lookup<float2>(active_uv_name, ATTR_DOMAIN_CORNER);
 
   uv_islands::MeshData mesh_data(
-      pbvh->looptri, mesh->corner_verts(), uv_map, pbvh->vert_positions);
+      pbvh->looptris, mesh->corner_verts(), uv_map, pbvh->vert_positions);
   uv_islands::UVIslands islands(mesh_data);
 
   uv_islands::UVIslandsMask uv_masks;
@@ -805,7 +814,7 @@ using namespace blender::bke::pbvh::pixels;
 
 void BKE_pbvh_build_pixels(PBVH *pbvh, Mesh *mesh, Image *image, ImageUser *image_user)
 {
-  if (update_pixels(pbvh, mesh, image, image_user)) {
+  if (update_pixels(pbvh, mesh, image, image_user) && PBVH_PIXELS_SPLIT_NODES_ENABLED) {
     split_pixel_nodes(pbvh, mesh, image, image_user);
   }
 }

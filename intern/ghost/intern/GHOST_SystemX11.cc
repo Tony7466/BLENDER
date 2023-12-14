@@ -109,6 +109,9 @@ GHOST_SystemX11::GHOST_SystemX11()
       m_start_time(0),
       m_start_time_monotonic(0),
       m_keyboard_vector{0},
+#ifdef WITH_X11_XINPUT
+      m_last_key_time(0),
+#endif
       m_keycode_last_repeat_key(uint(-1))
 {
   XInitThreads();
@@ -188,7 +191,7 @@ GHOST_SystemX11::GHOST_SystemX11()
     if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
       GHOST_ASSERT(false, "Could not instantiate monotonic timer!");
     }
-    m_start_time_monotonic = ((uint64_t(ts.tv_sec) * 1000) + (ts.tv_nsec / 1000000));
+    m_start_time_monotonic = (uint64_t(ts.tv_sec) * 1000) + uint64_t(ts.tv_nsec / 1000000);
   }
 
   /* Use detectable auto-repeat, mac and windows also do this. */
@@ -291,7 +294,7 @@ uint64_t GHOST_SystemX11::getMilliSeconds() const
 
 uint64_t GHOST_SystemX11::ms_from_input_time(const Time timestamp) const
 {
-  GHOST_ASSERT(timestamp >= m_start_time_monotonic, "Invalid time-stemp");
+  GHOST_ASSERT(timestamp >= m_start_time_monotonic, "Invalid time-stamp");
   /* NOTE(@ideasman42): Return a time compatible with `getMilliSeconds()`,
    * this is needed as X11 time-stamps use monotonic time.
    * The X11 implementation *could* use any basis, in practice though we are supporting
@@ -611,6 +614,13 @@ bool GHOST_SystemX11::processEvents(bool waitForEvent)
               XSetICFocus(window->getX11_XIC());
             }
           }
+        }
+      }
+
+      /* Ensure generated time-stamps are non-zero. */
+      if (ELEM(xevent.type, KeyPress, KeyRelease)) {
+        if (xevent.xkey.time != 0) {
+          m_last_key_time = xevent.xkey.time;
         }
       }
 
@@ -979,7 +989,14 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
     case KeyPress:
     case KeyRelease: {
       XKeyEvent *xke = &(xe->xkey);
-      const uint64_t event_ms = ms_from_input_time(xke->time);
+#ifdef WITH_X11_XINPUT
+      /* Can be zero for XIM generated events. */
+      const Time time = xke->time ? xke->time : m_last_key_time;
+#else
+      const Time time = xke->time;
+#endif
+      const uint64_t event_ms = ms_from_input_time(time);
+
       KeySym key_sym;
       char *utf8_buf = nullptr;
       char ascii;
@@ -1768,8 +1785,6 @@ GHOST_TCapabilityFlag GHOST_SystemX11::getCapabilities() const
 {
   return GHOST_TCapabilityFlag(GHOST_CAPABILITY_FLAG_ALL &
                                ~(
-                                   /* No support yet for desktop sampling. */
-                                   GHOST_kCapabilityDesktopSample |
                                    /* No support yet for image copy/paste. */
                                    GHOST_kCapabilityClipboardImages |
                                    /* No support yet for IME input methods. */
