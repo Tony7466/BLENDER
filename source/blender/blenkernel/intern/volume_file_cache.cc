@@ -132,8 +132,9 @@ static GVolumeGrid get_cached_grid(const StringRef file_path,
     const GVolumeGrid main_grid = volume_file_cache::get_grid_from_file(file_path, grid_name, 0);
     const VolumeGridType grid_type = main_grid->grid_type();
     const float resolution_factor = 1.0f / (1 << simplify_level);
+    const VolumeTreeUser tree_user = main_grid->tree_user();
     return BKE_volume_grid_create_with_changed_resolution(
-        grid_type, main_grid->grid(), resolution_factor);
+        grid_type, main_grid->grid(tree_user), resolution_factor);
   };
   GVolumeGrid grid{
       MEM_new<VolumeGridData>(__func__, load_grid_fn, grid_cache.meta_data_grid->copyGrid())};
@@ -179,7 +180,7 @@ void unload_unused()
   for (FileCache &file_cache : cache.file_map.values()) {
     for (GridCache &grid_cache : file_cache.grids) {
       grid_cache.grid_by_simplify_level.remove_if(
-          [&](const GVolumeGrid &grid) { return grid->is_mutable(); });
+          [&](const auto &item) { return item.value->is_mutable(); });
     }
   }
 }

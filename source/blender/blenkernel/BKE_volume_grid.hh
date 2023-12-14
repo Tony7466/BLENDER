@@ -21,6 +21,8 @@
 
 #include "openvdb_fwd.hh"
 
+#include <openvdb/openvdb.h>
+
 namespace blender::bke {
 
 class VolumeGridData : public ImplicitSharingMixin {
@@ -88,7 +90,7 @@ class VolumeTreeUser {
 };
 
 class GVolumeGrid {
- private:
+ protected:
   ImplicitSharingPtr<VolumeGridData> data_;
 
  public:
@@ -102,13 +104,20 @@ class GVolumeGrid {
   const VolumeGridData *operator->() const;
 
   operator bool() const;
+
+  template<typename T> VolumeGrid<T> typed() const;
 };
 
 template<typename T> class VolumeGrid : public GVolumeGrid {
  public:
+  using base_type = T;
+
   VolumeGrid() = default;
   explicit VolumeGrid(const VolumeGridData *data);
   explicit VolumeGrid(std::shared_ptr<OpenvdbGridType<T>> grid);
+
+  const OpenvdbGridType<T> &grid(const VolumeTreeUser &tree_user) const;
+  OpenvdbGridType<T> &grid_for_write(const VolumeTreeUser &tree_user);
 
  private:
   void assert_correct_type() const;
@@ -127,6 +136,14 @@ inline GVolumeGrid::operator bool() const
   return bool(data_);
 }
 
+template<typename T> inline VolumeGrid<T> GVolumeGrid::typed() const
+{
+  if (data_) {
+    data_->add_user();
+  }
+  return VolumeGrid<T>(data_.get());
+}
+
 inline const VolumeGridData *GVolumeGrid::operator->() const
 {
   BLI_assert(*this);
@@ -137,6 +154,18 @@ template<typename T>
 inline VolumeGrid<T>::VolumeGrid(const VolumeGridData *data) : GVolumeGrid(data)
 {
   this->assert_correct_type();
+}
+
+template<typename T>
+inline const OpenvdbGridType<T> &VolumeGrid<T>::grid(const VolumeTreeUser &tree_user) const
+{
+  return static_cast<const OpenvdbGridType<T> &>(data_->grid(tree_user));
+}
+
+template<typename T>
+inline OpenvdbGridType<T> &VolumeGrid<T>::grid_for_write(const VolumeTreeUser &tree_user)
+{
+  return static_cast<OpenvdbGridType<T> &>(this->get_for_write().grid_for_write(tree_user));
 }
 
 template<typename T> inline void VolumeGrid<T>::assert_correct_type() const

@@ -30,7 +30,7 @@ template<typename T> struct SocketValueVariant {
 
   SocketValueVariant(T value) : value(std::move(value)) {}
   SocketValueVariant(fn::Field<T> field) : field(std::move(field)) {}
-  SocketValueVariant(VolumeGridPtr<T> grid) : grid(std::move(grid)) {}
+  SocketValueVariant(VolumeGrid<T> grid) : grid(std::move(grid)) {}
 
   bool is_field() const
   {
@@ -50,12 +50,12 @@ template<typename T> struct SocketValueVariant {
     return fn::make_constant_field(this->value);
   }
 
-  VolumeGridPtr<T> as_grid() const
+  VolumeGrid<T> as_grid() const
   {
     if (this->grid) {
       return this->grid;
     }
-    return grid_utils::make_empty_grid(this->as_value());
+    return VolumeGrid<T>(OpenvdbGridType<T>::create());
   }
 
   T as_value() const

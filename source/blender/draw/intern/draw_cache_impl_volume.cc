@@ -211,7 +211,7 @@ GPUBatch *DRW_volume_batch_cache_get_wireframes_face(Volume *volume)
   VolumeBatchCache *cache = volume_batch_cache_get(volume);
 
   if (cache->face_wire.batch == nullptr) {
-    const VolumeGrid *volume_grid = BKE_volume_grid_active_get_for_read(volume);
+    const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_active_get_for_read(volume);
     if (volume_grid == nullptr) {
       return nullptr;
     }
@@ -260,7 +260,7 @@ GPUBatch *DRW_volume_batch_cache_get_selection_surface(Volume *volume)
 {
   VolumeBatchCache *cache = volume_batch_cache_get(volume);
   if (cache->selection_surface == nullptr) {
-    const VolumeGrid *volume_grid = BKE_volume_grid_active_get_for_read(volume);
+    const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_active_get_for_read(volume);
     if (volume_grid == nullptr) {
       return nullptr;
     }
@@ -271,21 +271,21 @@ GPUBatch *DRW_volume_batch_cache_get_selection_surface(Volume *volume)
 }
 
 static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
-                                            const VolumeGridData *grid,
+                                            const blender::bke::VolumeGridData *grid,
                                             VolumeBatchCache *cache)
 {
-  const char *name = BKE_volume_grid_name(grid);
+  const std::string name = grid->name();
 
   /* Return cached grid. */
   LISTBASE_FOREACH (DRWVolumeGrid *, cache_grid, &cache->grids) {
-    if (STREQ(cache_grid->name, name)) {
+    if (cache_grid->name == name) {
       return cache_grid;
     }
   }
 
   /* Allocate new grid. */
   DRWVolumeGrid *cache_grid = MEM_cnew<DRWVolumeGrid>(__func__);
-  cache_grid->name = BLI_strdup(name);
+  cache_grid->name = BLI_strdup(name.c_str());
   BLI_addtail(&cache->grids, cache_grid);
 
   /* TODO: can we load this earlier, avoid accessing the global and take
@@ -334,7 +334,8 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
   return cache_grid;
 }
 
-DRWVolumeGrid *DRW_volume_batch_cache_get_grid(Volume *volume, const VolumeGridData *volume_grid)
+DRWVolumeGrid *DRW_volume_batch_cache_get_grid(Volume *volume,
+                                               const blender::bke::VolumeGridData *volume_grid)
 {
   VolumeBatchCache *cache = volume_batch_cache_get(volume);
   DRWVolumeGrid *grid = volume_grid_cache_get(volume, volume_grid, cache);

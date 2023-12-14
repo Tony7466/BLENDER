@@ -229,14 +229,10 @@ class BlenderVolumeLoader : public VDBImageLoader {
 #ifdef WITH_OPENVDB
     for (BL::VolumeGrid &b_volume_grid : b_volume.grids) {
       if (b_volume_grid.name() == grid_name) {
-        const bool is_placeholder = (b_volume_grid.tree_source() ==
-                                     BL::VolumeGrid::tree_source_FILE_PLACEHOLDER);
-
-        ::Volume *volume = (::Volume *)b_volume.ptr.data;
-        const VolumeGridData *volume_grid = (VolumeGridData *)b_volume_grid.ptr.data;
+        const auto *volume_grid = static_cast<const blender::bke::VolumeGridData *>(
+            b_volume_grid.ptr.data);
         tree_user_ = volume_grid->tree_user();
         grid = volume_grid->grid_ptr(tree_user_);
-
         break;
       }
     }

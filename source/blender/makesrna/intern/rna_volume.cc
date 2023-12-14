@@ -108,13 +108,13 @@ static void rna_Volume_velocity_grid_set(PointerRNA *ptr, const char *value)
 static void rna_VolumeGrid_name_get(PointerRNA *ptr, char *value)
 {
   auto *grid = static_cast<blender::bke::VolumeGridData *>(ptr->data);
-  strcpy(value, BKE_volume_grid_name(grid));
+  strcpy(value, BKE_volume_grid_name(grid).c_str());
 }
 
 static int rna_VolumeGrid_name_length(PointerRNA *ptr)
 {
   auto *grid = static_cast<blender::bke::VolumeGridData *>(ptr->data);
-  return strlen(BKE_volume_grid_name(grid));
+  return BKE_volume_grid_name(grid).size();
 }
 
 static int rna_VolumeGrid_data_type_get(PointerRNA *ptr)
@@ -135,12 +135,7 @@ static void rna_VolumeGrid_matrix_object_get(PointerRNA *ptr, float *value)
   BKE_volume_grid_transform_matrix(grid, (float(*)[4])value);
 }
 
-static int rna_VolumeGrid_tree_source_get(PointerRNA * /*ptr*/)
-{
-  return 0;
-}
-
-static bool rna_VolumeGrid_load(ID *id, DummyVolumeGrid *grid)
+static bool rna_VolumeGrid_load(ID * /*id*/, DummyVolumeGrid * /*grid*/)
 {
   /* Doesn't have to do anything. */
   return true;
@@ -148,7 +143,8 @@ static bool rna_VolumeGrid_load(ID *id, DummyVolumeGrid *grid)
 
 static void rna_VolumeGrid_unload(ID *id, DummyVolumeGrid *grid)
 {
-  BKE_volume_grid_unload(reinterpret_cast<Volume *>(id), reinterpret_cast<VolumeGrid *>(grid));
+  BKE_volume_grid_unload(reinterpret_cast<Volume *>(id),
+                         reinterpret_cast<blender::bke::VolumeGridData *>(grid));
 }
 
 /* Grids Iterator */
@@ -175,7 +171,8 @@ static void rna_Volume_grids_end(CollectionPropertyIterator * /*iter*/) {}
 static PointerRNA rna_Volume_grids_get(CollectionPropertyIterator *iter)
 {
   Volume *volume = static_cast<Volume *>(iter->internal.count.ptr);
-  const VolumeGrid *grid = BKE_volume_grid_get_for_read(volume, iter->internal.count.item);
+  const blender::bke::VolumeGridData *grid = BKE_volume_grid_get(volume,
+                                                                 iter->internal.count.item);
   return rna_pointer_inherit_refine(&iter->parent, &RNA_VolumeGrid, (void *)grid);
 }
 

@@ -13,6 +13,7 @@
 #include "BKE_object.hh"
 #include "BKE_texture.h"
 #include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "BLT_translation.h"
@@ -286,8 +287,7 @@ static void displace_volume(ModifierData *md, const ModifierEvalContext *ctx, Vo
   BKE_volume_load(volume, DEG_get_bmain(ctx->depsgraph));
   const int grid_amount = BKE_volume_num_grids(volume);
   for (int grid_index = 0; grid_index < grid_amount; grid_index++) {
-    VolumeGridData *volume_grid = const_cast<VolumeGrid *>(
-        BKE_volume_grid_get_for_write(volume, grid_index));
+    blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_get_for_write(volume, grid_index);
     BLI_assert(volume_grid);
 
     blender::bke::VolumeTreeUser tree_user = volume_grid->tree_user();

@@ -92,7 +92,7 @@ template<> struct VolumeGridTraits<float3> {
 };
 
 template<typename T> using OpenvdbTreeType = typename VolumeGridTraits<T>::TreeType;
-template<typename T> using OpenvdbGridType = openvdb::Grid<std::shared_ptr<OpenvdbTreeType<T>>>;
+template<typename T> using OpenvdbGridType = openvdb::Grid<OpenvdbTreeType<T>>;
 
 }  // namespace blender::bke
 

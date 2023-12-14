@@ -17,6 +17,7 @@
 #include "DNA_volume_types.h"
 
 #include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 #include "BKE_volume_render.hh"
 
@@ -92,7 +93,7 @@ static void create_texture_to_object_matrix(const openvdb::Mat4d &grid_transform
 #endif
 
 bool BKE_volume_grid_dense_floats(const Volume *volume,
-                                  const VolumeGridData *volume_grid,
+                                  const blender::bke::VolumeGridData *volume_grid,
                                   DenseFloatVolumeGrid *r_dense_grid)
 {
 #ifdef WITH_OPENVDB
@@ -322,7 +323,7 @@ static void boxes_to_cube_mesh(blender::Span<openvdb::CoordBBox> boxes,
 #endif
 
 void BKE_volume_grid_wireframe(const Volume *volume,
-                               const VolumeGridData *volume_grid,
+                               const blender::bke::VolumeGridData *volume_grid,
                                BKE_volume_wireframe_cb cb,
                                void *cb_userdata)
 {
@@ -405,8 +406,8 @@ static void grow_triangles(blender::MutableSpan<blender::float3> verts,
 }
 #endif /* WITH_OPENVDB */
 
-void BKE_volume_grid_selection_surface(const Volume *volume,
-                                       const VolumeGridData *volume_grid,
+void BKE_volume_grid_selection_surface(const Volume * /*volume*/,
+                                       const blender::bke::VolumeGridData *volume_grid,
                                        BKE_volume_selection_surface_cb cb,
                                        void *cb_userdata)
 {

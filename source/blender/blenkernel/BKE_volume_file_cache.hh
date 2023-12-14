@@ -11,6 +11,7 @@
 #include "BKE_volume_grid.hh"
 
 #include "BLI_hash.hh"
+#include "BLI_vector.hh"
 
 namespace blender::bke::volume_file_cache {
 

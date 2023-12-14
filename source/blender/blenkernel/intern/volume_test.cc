@@ -43,16 +43,16 @@ namespace blender {
 //     Volume *volume = static_cast<Volume *>(BKE_id_new(context.bmain, ID_VO, nullptr));
 //     EXPECT_EQ(BKE_volume_num_grids(volume), 0);
 
-//     EXPECT_EQ(BKE_volume_grid_get_for_read(volume, 0), nullptr);
-//     EXPECT_EQ(BKE_volume_grid_get_for_read(volume, 1), nullptr);
+//     EXPECT_EQ(BKE_volume_grid_get(volume, 0), nullptr);
+//     EXPECT_EQ(BKE_volume_grid_get(volume, 1), nullptr);
 //     EXPECT_EQ(BKE_volume_grid_get_for_write(volume, 0), nullptr);
 //     EXPECT_EQ(BKE_volume_grid_get_for_write(volume, 1), nullptr);
 
 //     Volume *volume_copy = reinterpret_cast<Volume *>(BKE_id_copy(context.bmain, &volume->id));
 //     EXPECT_EQ(BKE_volume_num_grids(volume_copy), 0);
 
-//     EXPECT_EQ(BKE_volume_grid_get_for_read(volume_copy, 0), nullptr);
-//     EXPECT_EQ(BKE_volume_grid_get_for_read(volume_copy, 1), nullptr);
+//     EXPECT_EQ(BKE_volume_grid_get(volume_copy, 0), nullptr);
+//     EXPECT_EQ(BKE_volume_grid_get(volume_copy, 1), nullptr);
 //     EXPECT_EQ(BKE_volume_grid_get_for_write(volume_copy, 0), nullptr);
 //     EXPECT_EQ(BKE_volume_grid_get_for_write(volume_copy, 1), nullptr);
 
@@ -68,10 +68,10 @@ namespace blender {
 //     BKE_volume_grid_add(volume, "Grid", VOLUME_GRID_FLOAT);
 //     EXPECT_EQ(BKE_volume_num_grids(volume), 1);
 
-//     EXPECT_NE(BKE_volume_grid_get_for_read(volume, 0), nullptr);
+//     EXPECT_NE(BKE_volume_grid_get(volume, 0), nullptr);
 //     EXPECT_NE(BKE_volume_grid_get_for_write(volume, 0), nullptr);
 
-//     const VolumeGrid *grid = BKE_volume_grid_get_for_read(volume, 0);
+//     const VolumeGrid *grid = BKE_volume_grid_get(volume, 0);
 //     EXPECT_TRUE(grid->is_mutable());
 //     EXPECT_FALSE(grid->is_expired());
 
@@ -91,7 +91,7 @@ namespace blender {
 
 //     BKE_volume_grid_add(volume, "Grid", VOLUME_GRID_FLOAT);
 
-//     const VolumeGrid *grid = BKE_volume_grid_get_for_read(volume, 0);
+//     const VolumeGrid *grid = BKE_volume_grid_get(volume, 0);
 //     EXPECT_TRUE(grid->is_mutable());
 //     EXPECT_FALSE(grid->is_expired());
 

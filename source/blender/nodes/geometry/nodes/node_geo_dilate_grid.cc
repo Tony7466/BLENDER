@@ -6,7 +6,11 @@
 
 #include "RNA_enum_types.hh"
 
+#include "NOD_rna_define.hh"
 #include "NOD_socket_search_link.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/tools/Morphology.h>
@@ -53,21 +57,18 @@ static void try_dilate_grid(GeoNodeExecParams params,
                             const int iterations,
                             const GeometryNodeGridNeighborTopology neighbors_mode)
 {
-  const bke::SocketValueVariant<T> value = params.extract_input<bke::SocketValueVariant<T>>(
-      "Grid");
-  if (!value.is_grid()) {
+  bke::VolumeGrid<T> volume_grid = params.extract_input<bke::VolumeGrid<T>>("Grid");
+  if (!volume_grid) {
     return;
   }
 
-  using GridType = typename bke::VolumeGridPtr<T>::GridType;
-  typename GridType::Ptr grid = value.grid.grid_for_write();
-  BLI_assert(grid);
+  bke::VolumeTreeUser tree_user = volume_grid->tree_user();
+  bke::OpenvdbGridType<T> &grid = volume_grid.grid_for_write(tree_user);
 
   openvdb::tools::dilateActiveValues(
-      grid->tree(), iterations, grids::get_vdb_neighbors_mode(neighbors_mode));
+      grid.tree(), iterations, grids::get_vdb_neighbors_mode(neighbors_mode));
 
-  params.set_output(
-      "Grid", bke::SocketValueVariant<T>(bke::make_volume_grid_ptr(grid).template typed<T>()));
+  params.set_output("Grid", std::move(volume_grid));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

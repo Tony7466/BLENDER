@@ -402,7 +402,7 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name)
 {
   const StringRefNull ref_base_name = base_name;
 
-  if (BKE_volume_grid_find_for_read(volume, base_name)) {
+  if (BKE_volume_grid_find(volume, base_name)) {
     STRNCPY(volume->velocity_grid, base_name);
     volume->runtime.velocity_x_grid[0] = '\0';
     volume->runtime.velocity_y_grid[0] = '\0';
@@ -417,7 +417,7 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name)
     bool found = true;
     for (int i = 0; i < 3; i++) {
       std::string post_fixed_name = ref_base_name + postfix[i];
-      if (!BKE_volume_grid_find_for_read(volume, post_fixed_name.c_str())) {
+      if (!BKE_volume_grid_find(volume, post_fixed_name.c_str())) {
         found = false;
         break;
       }
@@ -489,7 +489,7 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
   if (!grids_from_file.error_message.empty()) {
     grids.error_msg = grids_from_file.error_message;
     CLOG_INFO(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
-    return;
+    return false;
   }
 
   grids.metadata = std::move(grids_from_file.meta_data);
@@ -581,7 +581,7 @@ std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume 
   if (BKE_volume_load(const_cast<Volume *>(volume), G.main)) {
     std::optional<blender::Bounds<blender::float3>> result;
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
-      const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_get_for_read(volume, i);
+      const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, i);
       {
         blender::bke::VolumeTreeUser tree_user = volume_grid->tree_user();
         result = blender::bounds::merge(result,
@@ -625,7 +625,7 @@ bool BKE_volume_is_points_only(const Volume *volume)
   }
 
   for (int i = 0; i < num_grids; i++) {
-    const blender::bke::VolumeGridData *grid = BKE_volume_grid_get_for_read(volume, i);
+    const blender::bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
     if (BKE_volume_grid_type(grid) != VOLUME_GRID_POINTS) {
       return false;
     }
@@ -835,8 +835,7 @@ const char *BKE_volume_grids_frame_filepath(const Volume *volume)
 #endif
 }
 
-const blender::bke::VolumeGridData *BKE_volume_grid_get_for_read(const Volume *volume,
-                                                                 int grid_index)
+const blender::bke::VolumeGridData *BKE_volume_grid_get(const Volume *volume, int grid_index)
 {
 #ifdef WITH_OPENVDB
   const VolumeGridVector &grids = *volume->runtime.grids;
@@ -876,15 +875,14 @@ const blender::bke::VolumeGridData *BKE_volume_grid_active_get_for_read(const Vo
   }
 
   const int index = clamp_i(volume->active_grid, 0, num_grids - 1);
-  return BKE_volume_grid_get_for_read(volume, index);
+  return BKE_volume_grid_get(volume, index);
 }
 
-const blender::bke::VolumeGridData *BKE_volume_grid_find_for_read(const Volume *volume,
-                                                                  const char *name)
+const blender::bke::VolumeGridData *BKE_volume_grid_find(const Volume *volume, const char *name)
 {
   int num_grids = BKE_volume_num_grids(volume);
   for (int i = 0; i < num_grids; i++) {
-    const blender::bke::VolumeGridData *grid = BKE_volume_grid_get_for_read(volume, i);
+    const blender::bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
     if (BKE_volume_grid_name(grid) == name) {
       return grid;
     }
@@ -897,7 +895,7 @@ blender::bke::VolumeGridData *BKE_volume_grid_find_for_write(Volume *volume, con
 {
   int num_grids = BKE_volume_num_grids(volume);
   for (int i = 0; i < num_grids; i++) {
-    const blender::bke::VolumeGridData *grid = BKE_volume_grid_get_for_read(volume, i);
+    const blender::bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
     if (BKE_volume_grid_name(grid) == name) {
       return BKE_volume_grid_get_for_write(volume, i);
     }
@@ -944,7 +942,7 @@ void BKE_volume_grid_clear_tree(openvdb::GridBase &grid)
   ClearGridOp op{grid};
   BKE_volume_grid_type_operation(grid_type, op);
 }
-void BKE_volume_grid_clear_tree(Volume &volume, blender::bke::VolumeGridData &volume_grid)
+void BKE_volume_grid_clear_tree(Volume & /*volume*/, blender::bke::VolumeGridData &volume_grid)
 {
   blender::bke::VolumeTreeUser tree_user;
   BKE_volume_grid_clear_tree(volume_grid.grid_for_write(tree_user));
@@ -1039,7 +1037,7 @@ void BKE_volume_grid_transform_matrix(const blender::bke::VolumeGridData *volume
 #endif
 }
 
-void BKE_volume_grid_transform_matrix_set(const Volume *volume,
+void BKE_volume_grid_transform_matrix_set(const Volume * /*volume*/,
                                           blender::bke::VolumeGridData *volume_grid,
                                           const float mat[4][4])
 {
@@ -1101,7 +1099,7 @@ blender::bke::VolumeGridData *BKE_volume_grid_add_vdb(Volume &volume,
                                                       openvdb::GridBase::Ptr vdb_grid)
 {
   VolumeGridVector &grids = *volume.runtime.grids;
-  BLI_assert(BKE_volume_grid_find_for_read(&volume, name.data()) == nullptr);
+  BLI_assert(BKE_volume_grid_find(&volume, name.data()) == nullptr);
   BLI_assert(BKE_volume_grid_type_openvdb(*vdb_grid) != VOLUME_GRID_UNKNOWN);
 
   vdb_grid->setName(name);
@@ -1120,6 +1118,16 @@ void BKE_volume_grid_remove(Volume *volume, const blender::bke::VolumeGridData *
       break;
     }
   }
+#else
+  UNUSED_VARS(volume, grid);
+#endif
+}
+
+void BKE_volume_grid_add(Volume *volume, const blender::bke::VolumeGridData *grid)
+{
+#ifdef WITH_OPENVDB
+  VolumeGridVector &grids = *volume->runtime.grids;
+  grids.push_back(GVolumeGrid(grid));
 #else
   UNUSED_VARS(volume, grid);
 #endif

@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "BKE_volume_enums.hh"
+#include "BKE_volume_grid_fwd.hh"
 
 #ifdef __cplusplus
 extern "C" {
@@ -251,7 +251,8 @@ typedef struct DRWVolumeGrid {
   float bounds_to_texture[4][4];
 } DRWVolumeGrid;
 
-DRWVolumeGrid *DRW_volume_batch_cache_get_grid(struct Volume *volume, const VolumeGridData *grid);
+DRWVolumeGrid *DRW_volume_batch_cache_get_grid(struct Volume *volume,
+                                               const blender::bke::VolumeGridData *grid);
 struct GPUBatch *DRW_cache_volume_face_wireframe_get(struct Object *ob);
 struct GPUBatch *DRW_cache_volume_selection_surface_get(struct Object *ob);
 

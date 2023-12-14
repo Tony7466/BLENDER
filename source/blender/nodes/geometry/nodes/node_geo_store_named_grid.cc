@@ -55,23 +55,19 @@ static void try_store_grid(GeoNodeExecParams params, Volume *volume)
 {
   BLI_assert(volume);
 
-  const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  BLI_assert(grids::grid_type_supported(data_type));
   const std::string grid_name = params.extract_input<std::string>("Name");
 
-  bke::GVolumeGridPtr grid = grids::extract_grid_input(params, "Grid", data_type);
+  bke::GVolumeGrid grid = params.extract_input<bke::GVolumeGrid>("Grid");
   if (!grid) {
     return;
   }
 
-  if (bke::VolumeGrid *existing_grid = BKE_volume_grid_find_for_write(volume, grid_name.data())) {
+  if (const bke::VolumeGridData *existing_grid = BKE_volume_grid_find(volume, grid_name.data())) {
     BKE_volume_grid_remove(volume, existing_grid);
   }
-
-  VolumeGrid *output_grid = grid->is_mutable() ? const_cast<VolumeGrid *>(grid.get()) :
-                                                 grid->copy();
-  output_grid->tag_ensured_mutable();
-  /* TODO: Actually store. */
+  grid.get_for_write().set_name(grid_name);
+  grid->add_user();
+  BKE_volume_grid_add(volume, &grid.get());
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

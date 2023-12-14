@@ -220,7 +220,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     Vector<float3> positions;
 
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
-      const VolumeGridData *volume_grid = BKE_volume_grid_get_for_read(volume, i);
+      const bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, i);
       if (volume_grid == nullptr) {
         continue;
       }

@@ -54,27 +54,25 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
-  const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  BLI_assert(grids::grid_type_supported(data_type));
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");
   const std::string grid_name = params.extract_input<std::string>("Name");
   const bool remove_grid = params.extract_input<bool>("Remove");
 
   if (Volume *volume = geometry_set.get_volume_for_write()) {
-    if (VolumeGrid *grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
+    if (const bke::VolumeGridData *grid = BKE_volume_grid_find(volume, grid_name.c_str())) {
       /* Increment user count before removing from volume. */
       grid->add_user();
       if (remove_grid) {
         BKE_volume_grid_remove(volume, grid);
       }
 
-      grids::set_output_grid(params, "Grid", data_type, bke::GVolumeGridPtr(grid));
+      params.set_output("Grid", bke::GVolumeGrid(grid));
       params.set_output("Volume", geometry_set);
       return;
     }
   }
 
-  grids::set_output_grid(params, "Grid", data_type, nullptr);
+  params.set_output("Grid", bke::GVolumeGrid());
   params.set_output("Volume", geometry_set);
 #else
   params.set_default_remaining_outputs();

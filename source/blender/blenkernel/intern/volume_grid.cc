@@ -35,7 +35,7 @@ VolumeGridData::VolumeGridData()
 }
 
 VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid)
-    : tree_loaded_(true), transform_loaded_(true), meta_data_loaded_(true), grid_(std::move(grid))
+    : grid_(std::move(grid)), tree_loaded_(true), transform_loaded_(true), meta_data_loaded_(true)
 {
   BLI_assert(grid_);
   BLI_assert(grid_.unique());

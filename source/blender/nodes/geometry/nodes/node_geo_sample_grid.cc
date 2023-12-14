@@ -81,13 +81,14 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 #ifdef WITH_OPENVDB
 
-template<typename T, typename GridType>
-void sample_grid(const GridType &grid,
+template<typename T>
+void sample_grid(const bke::OpenvdbGridType<T> &grid,
                  const Span<float3> positions,
                  const IndexMask &mask,
                  MutableSpan<T> dst,
                  const GeometryNodeSampleGridInterpolationMode interpolation_mode)
 {
+  using GridType = typename bke::OpenvdbGridType<T>;
   using GridValueT = typename GridType::ValueType;
   using AccessorT = typename GridType::ConstAccessor;
   using GridTraits = bke::VolumeGridTraits<T>;
@@ -130,15 +131,12 @@ void sample_grid(const GridType &grid,
 }
 
 template<typename T> class SampleGridFunction : public mf::MultiFunction {
-  using GridType = typename bke::VolumeGridPtr<T>::GridType;
-  using GridConstPtr = typename bke::VolumeGridPtr<T>::GridConstPtr;
-
-  bke::VolumeGridPtr<T> volume_grid_;
+  bke::VolumeGrid<T> volume_grid_;
   GeometryNodeSampleGridInterpolationMode interpolation_mode_;
   mf::Signature signature_;
 
  public:
-  SampleGridFunction(bke::VolumeGridPtr<T> volume_grid,
+  SampleGridFunction(bke::VolumeGrid<T> volume_grid,
                      GeometryNodeSampleGridInterpolationMode interpolation_mode)
       : volume_grid_(std::move(volume_grid)), interpolation_mode_(interpolation_mode)
   {
@@ -156,7 +154,8 @@ template<typename T> class SampleGridFunction : public mf::MultiFunction {
     const VArraySpan<float3> positions = params.readonly_single_input<float3>(0, "Position");
     MutableSpan<T> dst = params.uninitialized_single_output<T>(1, "Value");
 
-    sample_grid<T, GridType>(*volume_grid_.grid(), positions, mask, dst, interpolation_mode_);
+    const bke::VolumeTreeUser tree_user = volume_grid_->tree_user();
+    sample_grid<T>(volume_grid_.grid(tree_user), positions, mask, dst, interpolation_mode_);
   }
 };
 
@@ -166,14 +165,15 @@ struct SampleGridOp {
 
   template<typename T> void operator()()
   {
-    const bke::VolumeGridPtr<T> volume_grid = grids::extract_grid_input<T>(this->params, "Grid");
+    const bke::VolumeGrid<T> volume_grid = params.extract_input<bke::VolumeGrid<T>>("Grid");
     if (!volume_grid) {
       this->params.set_default_remaining_outputs();
       return;
     }
 
     fn::Field<float3> position_field = this->params.extract_input<fn::Field<float3>>("Position");
-    auto fn = std::make_shared<SampleGridFunction<T>>(volume_grid, this->interpolation_mode);
+    auto fn = std::make_shared<SampleGridFunction<T>>(std::move(volume_grid),
+                                                      this->interpolation_mode);
     auto op = FieldOperation::Create(std::move(fn), {position_field});
     fn::Field<T> output_field = fn::Field<T>(std::move(op));
 

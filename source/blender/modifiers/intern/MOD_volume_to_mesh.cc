@@ -12,6 +12,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 #include "BKE_volume_to_mesh.hh"
 
@@ -152,14 +153,13 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   const Volume *volume = static_cast<Volume *>(vmmd->object->data);
 
   BKE_volume_load(volume, DEG_get_bmain(ctx->depsgraph));
-  const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_find_for_read(volume,
-                                                                                  vmmd->grid_name);
+  const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_find(volume, vmmd->grid_name);
   if (volume_grid == nullptr) {
     BKE_modifier_set_error(ctx->object, md, "Cannot find '%s' grid", vmmd->grid_name);
     return create_empty_mesh(input_mesh);
   }
 
-  blender::bke::VolumeTreeUser tree_user = volume_grid->tree_user();
+  const blender::bke::VolumeTreeUser tree_user = volume_grid->tree_user();
   const openvdb::GridBase &local_grid = volume_grid->grid(tree_user);
 
   openvdb::math::Transform::Ptr transform = local_grid.transform().copy();

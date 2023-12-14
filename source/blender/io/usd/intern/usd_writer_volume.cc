@@ -73,7 +73,7 @@ void USDVolumeWriter::do_write(HierarchyContext &context)
   pxr::UsdVolVolume usd_volume = pxr::UsdVolVolume::Define(stage, volume_path);
 
   for (const int i : IndexRange(num_grids)) {
-    const VolumeGrid *grid = BKE_volume_grid_get_for_read(volume, i);
+    const bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
     const std::string grid_name = BKE_volume_grid_name(grid);
     const std::string grid_id = pxr::TfMakeValidIdentifier(grid_name);
     const pxr::SdfPath grid_path = volume_path.AppendPath(pxr::SdfPath(grid_id));

@@ -149,40 +149,6 @@ BaseSocketDeclarationBuilder &declare_grid_type_output(NodeDeclarationBuilder &b
   return b.add_output<decl::Float>(name, identifier);
 }
 
-bke::GVolumeGridPtr extract_grid_input(GeoNodeExecParams params,
-                                       StringRef identifier,
-                                       const eCustomDataType data_type)
-{
-  switch (data_type) {
-    case CD_PROP_FLOAT:
-      return params.extract_input<bke::SocketValueVariant<float>>(identifier).grid;
-    case CD_PROP_FLOAT3:
-      return params.extract_input<bke::SocketValueVariant<float3>>(identifier).grid;
-    default:
-      BLI_assert_unreachable();
-      break;
-  }
-  return nullptr;
-}
-
-void set_output_grid(GeoNodeExecParams params,
-                     StringRef identifier,
-                     const eCustomDataType data_type,
-                     const bke::GVolumeGridPtr &grid)
-{
-  switch (data_type) {
-    case CD_PROP_FLOAT:
-      params.set_output(identifier, SocketValueVariant<float>(grid.typed<float>()));
-      break;
-    case CD_PROP_FLOAT3:
-      params.set_output(identifier, SocketValueVariant<float3>(grid.typed<float3>()));
-      break;
-    default:
-      BLI_assert_unreachable();
-      break;
-  }
-}
-
 openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
     GeometryNodeGridNeighborTopology neighbors_mode)
 {
