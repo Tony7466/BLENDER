@@ -1542,7 +1542,8 @@ void RNA_property_enum_items_ex(bContext *C,
       RNA_enum_item_end(&result, &totitem);
       *r_item = result;
       if (r_totitem) {
-        *r_totitem = totitem;
+        /* Exclude the terminator item. */
+        *r_totitem = totitem - 1;
       }
       *r_free = true;
       return;
