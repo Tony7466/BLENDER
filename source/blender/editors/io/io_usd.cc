@@ -505,7 +505,8 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   params.import_blendshapes = import_blendshapes;
   params.prim_path_mask = prim_path_mask;
   params.import_subdiv = import_subdiv;
-  params.support_scene_instancing = convert_instances_to_copies;
+  /* Enable instancing if converting instances to copies if off. */
+  params.support_scene_instancing = !convert_instances_to_copies;
   params.create_collection = create_collection;
   params.import_guide = import_guide;
   params.import_proxy = import_proxy;
