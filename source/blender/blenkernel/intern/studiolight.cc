@@ -122,7 +122,6 @@ static void studiolight_free(StudioLight *sl)
   GPU_TEXTURE_SAFE_FREE(sl->equirect_radiance_gputexture);
   GPU_TEXTURE_SAFE_FREE(sl->equirect_irradiance_gputexture);
   IMB_SAFE_FREE(sl->equirect_radiance_buffer);
-  IMB_SAFE_FREE(sl->equirect_irradiance_buffer);
   GPU_TEXTURE_SAFE_FREE(sl->matcap_diffuse.gputexture);
   GPU_TEXTURE_SAFE_FREE(sl->matcap_specular.gputexture);
   IMB_SAFE_FREE(sl->matcap_diffuse.ibuf);
@@ -487,52 +486,6 @@ static void studiolight_calculate_radiance(ImBuf *ibuf, float color[4], const fl
 BLI_INLINE float area_element(float x, float y)
 {
   return atan2(x * y, sqrtf(x * x + y * y + 1));
-}
-
-BLI_INLINE float texel_solid_angle(float x, float y, float halfpix)
-{
-  float v1x = (x - halfpix) * 2.0f - 1.0f;
-  float v1y = (y - halfpix) * 2.0f - 1.0f;
-  float v2x = (x + halfpix) * 2.0f - 1.0f;
-  float v2y = (y + halfpix) * 2.0f - 1.0f;
-
-  return area_element(v1x, v1y) - area_element(v1x, v2y) - area_element(v2x, v1y) +
-         area_element(v2x, v2y);
-}
-
-BLI_INLINE void studiolight_evaluate_specular_radiance_buffer(ImBuf *radiance_buffer,
-                                                              const float normal[3],
-                                                              float color[3],
-                                                              int xoffset,
-                                                              int yoffset,
-                                                              int zoffset,
-                                                              float zsign)
-{
-  if (radiance_buffer == nullptr) {
-    return;
-  }
-
-  float accum[3] = {0.0f, 0.0f, 0.0f};
-  float accum_weight = 0.00001f;
-  ITER_PIXELS (float,
-               radiance_buffer->float_buffer.data,
-               4,
-               STUDIOLIGHT_RADIANCE_CUBEMAP_SIZE,
-               STUDIOLIGHT_RADIANCE_CUBEMAP_SIZE)
-  {
-    float direction[3];
-    direction[zoffset] = zsign * 0.5f;
-    direction[xoffset] = x - 0.5f;
-    direction[yoffset] = y - 0.5f;
-    normalize_v3(direction);
-    float weight = dot_v3v3(direction, normal) > 0.95f ? 1.0f : 0.0f;
-    // float solid_angle = texel_solid_angle(x, y, texel_size[0] * 0.5f);
-    madd_v3_v3fl(accum, pixel, weight);
-    accum_weight += weight;
-  }
-  ITER_PIXELS_END;
-
-  madd_v3_v3fl(color, accum, 1.0f / accum_weight);
 }
 
 static float brdf_approx(float spec_color, float roughness, float NV)
