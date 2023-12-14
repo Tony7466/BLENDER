@@ -62,8 +62,6 @@ struct DummyVolumeGrid;
 #  include "WM_api.hh"
 #  include "WM_types.hh"
 
-using VolumeGrid = blender::bke::VolumeGrid;
-
 static char *rna_VolumeRender_path(const PointerRNA * /*ptr*/)
 {
   return BLI_strdup("render");
@@ -109,31 +107,31 @@ static void rna_Volume_velocity_grid_set(PointerRNA *ptr, const char *value)
 
 static void rna_VolumeGrid_name_get(PointerRNA *ptr, char *value)
 {
-  VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
+  auto *grid = static_cast<blender::bke::VolumeGridData *>(ptr->data);
   strcpy(value, BKE_volume_grid_name(grid));
 }
 
 static int rna_VolumeGrid_name_length(PointerRNA *ptr)
 {
-  VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
+  auto *grid = static_cast<blender::bke::VolumeGridData *>(ptr->data);
   return strlen(BKE_volume_grid_name(grid));
 }
 
 static int rna_VolumeGrid_data_type_get(PointerRNA *ptr)
 {
-  const VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
+  const auto *grid = static_cast<blender::bke::VolumeGridData *>(ptr->data);
   return BKE_volume_grid_type(grid);
 }
 
 static int rna_VolumeGrid_channels_get(PointerRNA *ptr)
 {
-  const VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
+  const auto *grid = static_cast<blender::bke::VolumeGridData *>(ptr->data);
   return BKE_volume_grid_channels(grid);
 }
 
 static void rna_VolumeGrid_matrix_object_get(PointerRNA *ptr, float *value)
 {
-  VolumeGrid *grid = static_cast<VolumeGrid *>(ptr->data);
+  auto *grid = static_cast<blender::bke::VolumeGridData *>(ptr->data);
   BKE_volume_grid_transform_matrix(grid, (float(*)[4])value);
 }
 
@@ -261,30 +259,6 @@ static bool rna_Volume_save(Volume *volume, Main *bmain, ReportList *reports, co
 
 static void rna_def_volume_grid(BlenderRNA *brna)
 {
-  static const EnumPropertyItem tree_source_items[] = {
-      {VOLUME_TREE_SOURCE_GENERATED,
-       "GENERATED",
-       0,
-       "Generated",
-       "Tree data has been generated at runtime"},
-      {VOLUME_TREE_SOURCE_FILE_PLACEHOLDER,
-       "FILE_PLACEHOLDER",
-       0,
-       "File Placeholder",
-       "Tree is an empty placeholder for lazily loaded file data"},
-      {VOLUME_TREE_SOURCE_FILE_LOADED,
-       "FILE_LOADED",
-       0,
-       "File Loaded",
-       "Tree data has been loaded from file"},
-      {VOLUME_TREE_SOURCE_FILE_SIMPLIFIED,
-       "FILE_SIMPLIFIED",
-       0,
-       "File Simplified",
-       "Tree is a simplified version of file data"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   StructRNA *srna;
   PropertyRNA *prop;
 
@@ -318,12 +292,6 @@ static void rna_def_volume_grid(BlenderRNA *brna)
   RNA_def_property_float_funcs(prop, "rna_VolumeGrid_matrix_object_get", nullptr, nullptr);
   RNA_def_property_ui_text(
       prop, "Matrix Object", "Transformation matrix from voxel index to object space");
-
-  prop = RNA_def_property(srna, "tree_source", PROP_ENUM, PROP_NONE);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_enum_items(prop, tree_source_items);
-  RNA_def_property_enum_funcs(prop, "rna_VolumeGrid_tree_source_get", nullptr, nullptr);
-  RNA_def_property_ui_text(prop, "Tree Source", "Source of the tree data in the grid");
 
   /* API */
   FunctionRNA *func;

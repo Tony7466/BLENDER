@@ -67,9 +67,7 @@ static void try_erode_grid(GeoNodeExecParams params,
       grid->tree(), iterations, grids::get_vdb_neighbors_mode(neighbors_mode));
 
   params.set_output(
-      "Grid",
-      bke::SocketValueVariant<T>(
-          bke::make_volume_grid_ptr(grid, VOLUME_TREE_SOURCE_GENERATED).template typed<T>()));
+      "Grid", bke::SocketValueVariant<T>(bke::make_volume_grid_ptr(grid).template typed<T>()));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
