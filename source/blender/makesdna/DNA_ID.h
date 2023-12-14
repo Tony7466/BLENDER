@@ -54,12 +54,24 @@ typedef struct IDPropertyUIData {
   char _pad[4];
 } IDPropertyUIData;
 
+typedef struct IDPropertyUIDataEnumItem {
+  /* Unique identifier, used for string lookup. */
+  char *identifier;
+  /* UI name of the item. */
+  char *name;
+  /* Optional description. */
+  char *description;
+  /* Unique integer value, should never change. */
+  int value;
+  /* Optional icon. */
+  int icon;
+} IDPropertyUIDataEnumItem;
+
 /* IDP_UI_DATA_TYPE_INT */
 typedef struct IDPropertyUIDataInt {
   IDPropertyUIData base;
   int *default_array; /* Only for array properties. */
   int default_array_len;
-  char _pad[4];
 
   int min;
   int max;
@@ -67,6 +79,9 @@ typedef struct IDPropertyUIDataInt {
   int soft_max;
   int step;
   int default_value;
+
+  int enum_items_num;
+  IDPropertyUIDataEnumItem *enum_items;
 } IDPropertyUIDataInt;
 
 /** For #IDP_UI_DATA_TYPE_BOOLEAN Use `int8_t` because DNA does not support `bool`. */
@@ -115,26 +130,6 @@ typedef struct IDPropertyUIDataID {
   short id_type;
   char _pad[6];
 } IDPropertyUIDataID;
-
-typedef struct IDPropertyUIDataEnumItem {
-  /* Unique identifier, used for string lookup. */
-  char *identifier;
-  /* UI name of the item. */
-  char *name;
-  /* Optional description. */
-  char *description;
-  /* Unique integer value, should never change. */
-  int value;
-  /* Optional icon. */
-  int icon;
-} IDPropertyUIDataEnumItem;
-
-typedef struct IDPropertyUIDataEnum {
-  IDPropertyUIData base;
-  IDPropertyUIDataEnumItem *items;
-  int items_num;
-  char _pad[4];
-} IDPropertyUIDataEnum;
 
 typedef struct IDPropertyData {
   void *pointer;
@@ -196,8 +191,6 @@ typedef enum eIDPropertyType {
    * be 0 or 1.
    */
   IDP_BOOLEAN = 10,
-  /* Integer value with a list of enum items for selection. */
-  IDP_ENUM = 11,
 } eIDPropertyType;
 #define IDP_NUMTYPES 12
 

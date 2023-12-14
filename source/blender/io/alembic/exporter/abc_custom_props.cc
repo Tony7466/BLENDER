@@ -74,9 +74,6 @@ void CustomPropertiesExporter::write(const IDProperty *id_property)
     case IDP_BOOLEAN:
       set_scalar_property<OBoolArrayProperty, bool>(id_property->name, IDP_Bool(id_property));
       break;
-    case IDP_ENUM:
-      set_scalar_property<OInt32ArrayProperty, int32_t>(id_property->name, IDP_Enum(id_property));
-      break;
     case IDP_ARRAY:
       write_array(id_property);
       break;

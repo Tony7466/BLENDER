@@ -261,7 +261,6 @@ void IDP_Reset(struct IDProperty *prop, const struct IDProperty *reference);
 
 #define IDP_Int(prop) ((prop)->data.val)
 #define IDP_Bool(prop) ((prop)->data.val)
-#define IDP_Enum(prop) ((prop)->data.val)
 #define IDP_Array(prop) ((prop)->data.pointer)
 /* C11 const correctness for casts */
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
@@ -343,8 +342,6 @@ typedef enum eIDPropertyUIDataType {
   IDP_UI_DATA_TYPE_ID = 3,
   /** IDP_BOOLEAN or IDP_ARRAY with subtype IDP_BOOLEAN. */
   IDP_UI_DATA_TYPE_BOOLEAN = 4,
-  /** IDP_ENUM. */
-  IDP_UI_DATA_TYPE_ENUM = 5,
 } eIDPropertyUIDataType;
 
 bool IDP_ui_data_supported(const struct IDProperty *prop);

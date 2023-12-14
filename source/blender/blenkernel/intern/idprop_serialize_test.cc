@@ -99,7 +99,7 @@ TEST(idprop, convert_idp_string_to_value)
 
 static void test_enum_to_value(const StringRefNull prop_name, int prop_content)
 {
-  std::unique_ptr<IDProperty, IDPropertyDeleter> property = create_enum(prop_name, prop_content);
+  std::unique_ptr<IDProperty, IDPropertyDeleter> property = create(prop_name, prop_content);
 
   std::unique_ptr<ArrayValue> value = convert_to_serialize_values(property.get());
   check_container_value(value.get());
@@ -109,7 +109,7 @@ static void test_enum_to_value(const StringRefNull prop_name, int prop_content)
 
   EXPECT_EQ(lookup.size(), 3);
   check_object_attribute(lookup, "name", prop_name);
-  check_object_attribute(lookup, "type", "IDP_ENUM");
+  check_object_attribute(lookup, "type", "IDP_INT");
   check_object_attribute_enum(lookup, "value", prop_content);
 }
 
@@ -286,9 +286,9 @@ static void test_idprop_enum(const IDProperty *id_property,
                              int32_t expected_value)
 {
   ASSERT_NE(id_property, nullptr);
-  EXPECT_EQ(id_property->type, IDP_ENUM);
+  EXPECT_EQ(id_property->type, IDP_INT);
   EXPECT_EQ(id_property->name, expected_name);
-  EXPECT_EQ(IDP_Enum(id_property), expected_value);
+  EXPECT_EQ(IDP_Int(id_property), expected_value);
 }
 
 static void test_idprop(const IDProperty *id_property,

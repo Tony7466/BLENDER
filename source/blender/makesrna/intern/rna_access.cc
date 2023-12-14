@@ -412,11 +412,6 @@ static bool rna_idproperty_verify_valid(PointerRNA *ptr, PropertyRNA *prop, IDPr
         return false;
       }
       break;
-    case IDP_ENUM:
-      if (!ELEM(prop->type, PROP_ENUM)) {
-        return false;
-      }
-      break;
     case IDP_GROUP:
     case IDP_ID:
       if (prop->type != PROP_POINTER) {
@@ -1510,14 +1505,14 @@ void RNA_property_enum_items_ex(bContext *C,
 {
   if (!use_static && prop->magic != RNA_MAGIC) {
     const IDProperty *idprop = (IDProperty *)prop;
-    if (idprop->type == IDP_ENUM) {
-      IDPropertyUIDataEnum *ui_data = reinterpret_cast<IDPropertyUIDataEnum *>(idprop->ui_data);
+    if (idprop->type == IDP_INT) {
+      IDPropertyUIDataInt *ui_data = reinterpret_cast<IDPropertyUIDataInt *>(idprop->ui_data);
 
       int totitem = 0;
       EnumPropertyItem *result = nullptr;
       if (ui_data) {
         for (const IDPropertyUIDataEnumItem &idprop_item :
-             blender::Span(ui_data->items, ui_data->items_num))
+             blender::Span(ui_data->enum_items, ui_data->enum_items_num))
         {
           const EnumPropertyItem item = {idprop_item.value,
                                          idprop_item.identifier,
@@ -3613,7 +3608,7 @@ int RNA_property_enum_get(PointerRNA *ptr, PropertyRNA *prop)
   BLI_assert(RNA_property_type(prop) == PROP_ENUM);
 
   if ((idprop = rna_idproperty_check(&prop, ptr))) {
-    return IDP_Enum(idprop);
+    return IDP_Int(idprop);
   }
   if (eprop->get) {
     return eprop->get(ptr);
@@ -3632,7 +3627,7 @@ void RNA_property_enum_set(PointerRNA *ptr, PropertyRNA *prop, int value)
   BLI_assert(RNA_property_type(prop) == PROP_ENUM);
 
   if ((idprop = rna_idproperty_check(&prop, ptr))) {
-    IDP_Enum(idprop) = value;
+    IDP_Int(idprop) = value;
     rna_idproperty_touch(idprop);
   }
   else if (eprop->set) {
@@ -3649,7 +3644,7 @@ void RNA_property_enum_set(PointerRNA *ptr, PropertyRNA *prop, int value)
 
     group = RNA_struct_idprops(ptr, true);
     if (group) {
-      IDP_AddToGroup(group, IDP_New(IDP_ENUM, &val, prop->identifier));
+      IDP_AddToGroup(group, IDP_New(IDP_INT, &val, prop->identifier));
     }
   }
 }
