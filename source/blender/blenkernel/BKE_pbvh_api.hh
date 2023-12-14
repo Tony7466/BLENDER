@@ -654,8 +654,4 @@ void update_node_bounds_mesh(Span<float3> positions, PBVHNode &node);
 void update_node_bounds_grids(const CCGKey &key, Span<CCGElem *> grids, PBVHNode &node);
 void update_node_bounds_bmesh(PBVHNode &node);
 
-void node_face_indices_calc_mesh(Span<int> looptri_faces,
-                                 const PBVHNode &node,
-                                 Vector<int> &faces);
-
 }  // namespace blender::bke::pbvh

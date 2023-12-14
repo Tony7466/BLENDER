@@ -1181,7 +1181,7 @@ static void normals_calc_faces(const Span<float3> positions,
 static void normals_calc_node_faces(const Span<float3> positions,
                                     const OffsetIndices<int> faces,
                                     const Span<int> corner_verts,
-                                    const Span<int> looptri_faces,
+                                    const PBVH &pbvh,
                                     const Span<const PBVHNode *> nodes,
                                     MutableSpan<float3> face_normals)
 {
@@ -1189,9 +1189,7 @@ static void normals_calc_node_faces(const Span<float3> positions,
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     Vector<int> &node_faces = all_index_data.local();
     for (const PBVHNode *node : nodes.slice(range)) {
-      node_faces.clear();
-      node_face_indices_calc_mesh(looptri_faces, *node, node_faces);
-      for (const int i : node_faces) {
+      for (const int i : node_face_indices_calc_mesh(pbvh, *node, node_faces)) {
         face_normals[i] = mesh::face_normal_calc(positions, corner_verts.slice(faces[i]));
       }
     }
@@ -1249,19 +1247,14 @@ static void update_normals_faces(PBVH &pbvh, Span<PBVHNode *> nodes, Mesh &mesh)
   threading::parallel_invoke(
       [&]() {
         if (pbvh.deformed) {
-          normals_calc_node_faces(positions,
-                                  faces,
-                                  corner_verts,
-                                  pbvh.looptri_faces,
-                                  nodes,
-                                  pbvh.face_normals_deformed);
+          normals_calc_node_faces(
+              positions, faces, corner_verts, pbvh, nodes, pbvh.face_normals_deformed);
           normals_calc_faces(
               positions, faces, corner_verts, boundary_faces, pbvh.face_normals_deformed);
         }
         else {
           mesh.runtime->face_normals_cache.update([&](Vector<float3> &r_data) {
-            normals_calc_node_faces(
-                positions, faces, corner_verts, pbvh.looptri_faces, nodes, r_data);
+            normals_calc_node_faces(positions, faces, corner_verts, pbvh, nodes, r_data);
             normals_calc_faces(positions, faces, corner_verts, boundary_faces, r_data);
           });
           /* #SharedCache::update() reallocates cached vectors if they were shared initially. */
