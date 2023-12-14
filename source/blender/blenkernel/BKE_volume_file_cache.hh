@@ -14,20 +14,9 @@
 
 namespace blender::bke::volume_file_cache {
 
-struct CacheKey {
-  std::string file_path;
-  std::string grid_name;
-  int simplify_level = 0;
+GVolumeGrid get_grid_from_file(StringRef file_path, StringRef grid_name, int simplify_level = 0);
 
-  BLI_STRUCT_EQUALITY_OPERATORS_3(CacheKey, file_path, grid_name, simplify_level)
-
-  uint64_t hash() const
-  {
-    return get_default_hash_3(this->file_path, this->grid_name, this->simplify_level);
-  }
-};
-
-GVolumeGrid get(const CacheKey &key);
+Vector<GVolumeGrid> get_all_grids_from_file(StringRef file_path, int simplify_level = 0);
 
 void unload_unused();
 
