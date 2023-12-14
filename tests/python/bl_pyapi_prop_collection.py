@@ -17,14 +17,17 @@ from bpy.props import (
 import unittest
 import numpy as np
 import ctypes
+import sys
 from itertools import chain
-
-id_inst = bpy.context.scene
-id_type = bpy.types.Scene
 
 # If an enum property is set to an integer value for which no enum item exists then an empty string is returned and
 # looking up the integer value of the enum property would fail. In such cases, return this value instead.
 MISSING_ENUM_VALUE = -1
+# Standard-size, explicit byteorder buffer prefixes for native and non-native byteorder.
+NATIVE_STANDARD_SIZE_PREFIX, NON_NATIVE_STANDARD_SIZE_PREFIX = ('<', '>') if sys.byteorder == 'little' else ('>', '<')
+
+id_inst = bpy.context.scene
+id_type = bpy.types.Scene
 
 
 # -----------------------------------------------------------------------------
@@ -64,50 +67,6 @@ class SequenceCheckNdarray(np.ndarray):
         """
         self.used_as_sequence = True
         super().__setitem__(key, value)
-
-
-def ctypes_void_p_array_as_forced_numeric(cls):
-    """
-    ctypes.c_void_p arrays return None instead of zero when accessed as a sequence, which breaks tests.
-
-    This decorator returns a subtype of the input class, but where __getitem__ checks for `None` and then returns `0`
-    instead.
-    """
-    assert issubclass(cls, ctypes.Array)
-    assert cls._type_ == ctypes.c_void_p
-
-    class ForcedNumericCVoidPArray(cls):
-        def __getitem__(self, key):
-            item = super().__getitem__(key)
-            if item is None:
-                return 0
-            else:
-                return item
-
-    return ForcedNumericCVoidPArray
-
-
-def dtype_byteorder_swap_standard_size(dtype):
-    """
-    Return a copy of the input NumPy dtype, but with the byteorder swapped and in standard size.
-
-    Used to help test buffer formats with "<" or ">" prefixes that do not match native byteorder.
-    """
-    dtype = np.dtype(dtype)  # Allow passing in anything that can be coerced into a dtype.
-    # assert dtype.byteorder != '|', "Byteorder is not applicable to %s" % dtype
-    return dtype.newbyteorder('S')
-
-
-def dtype_explicit_endian_standard_size(dtype):
-    """
-    Return a copy of the input NumPy dtype, but with native byteorder replaced with explicit little-endian/big-endian
-    byteorder that matches the native byteorder and uses standard sizes.
-    Normally when a "<" or ">" dtype is created that matches native byteorder, NumPy will replace it with implicit
-    native byteorder instead, but this function forces "<" or ">" to be used.
-
-    Used to help test buffer formats with "<" or ">" prefixes that match native byteorder.
-    """
-    return dtype_byteorder_swap_standard_size(dtype_byteorder_swap_standard_size(dtype))
 
 
 def prop_as_sequence(collection, prop_rna):
@@ -418,39 +377,59 @@ class BaseTestForeachGetSet(unittest.TestCase):
         else:
             raise TypeError("Unsupported type '%s'" % type(seq))
 
-    def check_foreach_getset(self, collection, prop_rna, is_set):
-        # (sequence_type, assert_buffer_usage, is_buffers, dtype_modifier)
-        sequence_types = (
-            # List and Tuple with foreach_set and only List with foreach_get.
-            ("Pure Python Sequence", False, False, None),
-            # Buffers in native byteorder, their formats without any prefixes.
-            ("Implicit-native buffer", True, True, None),
-            # Buffers in native byteorder, their format explicitly prefixed by "<" on little-endian systems and ">" on
-            # big-endian systems when byteorder is applicable to the data type.
-            ("Explicit-native buffer", True, True, dtype_explicit_endian_standard_size),
-            # Buffers in non-native byteorder, their formats prefixed by ">" on little-endian systems and "<" on
-            # big-endian systems when byteorder is applicable to the data type.
-            ("Non-native buffer", False, True, dtype_byteorder_swap_standard_size),
-        )
-        for sequence_type, assert_buffer_usage, is_buffers, dtype_modifier in sequence_types:
-            sequences = self.make_subtest_sequences(collection, prop_rna, is_set, is_buffers, dtype_modifier)
-            sequence_descriptions = [self.get_sequence_description(seq) for seq in sequences]
+    def do_getset_subtest(self, collection, prop_rna, is_set, *, sequence_type, assert_buffer_usage=False, is_buffers,
+                          dtype_modifier=None):
+        sequences = self.make_subtest_sequences(collection, prop_rna, is_set, is_buffers, dtype_modifier)
+        sequence_descriptions = [self.get_sequence_description(seq) for seq in sequences]
 
-            with self.subTest(prop_name=prop_rna.identifier, sequence_type=sequence_type):
-                # Due to varying itemsizes of C types depending on the current system, and the itemsize of a
-                # property not being exposed to Blender's Python API, we only check that at least one sequence
-                # was considered a compatible buffer.
-                at_least_one_accessed_as_buffer = False
-                for seq, description in zip(sequences, sequence_descriptions):
-                    with self.subTest(sequence_description=description):
-                        if is_set:
-                            accessed_as_buffer = self.do_set_subtest(collection, prop_rna, seq)
-                        else:
-                            accessed_as_buffer = self.do_get_subtest(collection, prop_rna, seq)
-                        at_least_one_accessed_as_buffer |= accessed_as_buffer
-                if assert_buffer_usage:
-                    self.assertTrue(at_least_one_accessed_as_buffer,
-                                    "at least one sequence should be accessed as a buffer")
+        with self.subTest(prop_name=prop_rna.identifier, sequence_type=sequence_type):
+            # Due to varying itemsizes of C types depending on the current system, and the itemsize of a
+            # property not being exposed to Blender's Python API, we only check that at least one sequence
+            # was considered a compatible buffer.
+            at_least_one_accessed_as_buffer = False
+            for seq, description in zip(sequences, sequence_descriptions):
+                with self.subTest(sequence_description=description):
+                    if is_set:
+                        accessed_as_buffer = self.do_set_subtest(collection, prop_rna, seq)
+                    else:
+                        accessed_as_buffer = self.do_get_subtest(collection, prop_rna, seq)
+                    at_least_one_accessed_as_buffer |= accessed_as_buffer
+            if assert_buffer_usage:
+                self.assertTrue(at_least_one_accessed_as_buffer,
+                                "at least one sequence should be accessed as a buffer")
+
+    def check_foreach_getset(self, collection, prop_rna, is_set):
+        # List and Tuple with foreach_set and only List with foreach_get.
+        self.do_getset_subtest(
+            collection, prop_rna, is_set,
+            sequence_type="Pure Python Sequence",
+            is_buffers=False)
+        # Buffers in native byteorder, their formats without any prefixes.
+        # At least one buffer is expected to be considered compatible with the property.
+        self.do_getset_subtest(
+            collection, prop_rna, is_set,
+            sequence_type="Implicit-native buffer",
+            assert_buffer_usage=True,
+            is_buffers=True)
+        # Buffers in native byteorder, their format explicitly prefixed by "<" on little-endian systems and ">" on
+        # big-endian systems when byteorder is applicable to the data type.
+        # At least one buffer is expected to be considered compatible with the property.
+        self.do_getset_subtest(
+            collection, prop_rna, is_set,
+            sequence_type="Explicit-native buffer",
+            assert_buffer_usage=True,
+            is_buffers=True,
+            dtype_modifier=lambda dtype: np.dtype(dtype).newbyteorder(NATIVE_STANDARD_SIZE_PREFIX))
+        # Buffers in non-native byteorder, their formats prefixed by ">" on little-endian systems and "<" on big-endian
+        # systems when byteorder is applicable to the data type.
+        # Non-native byteorder buffers are expected to be incompatible with the property (falling back to accessing as a
+        # sequence), however, byteorder is irrelevant for some buffers, such as `np.byte` (`signed char`), so those
+        # could still be considered compatible.
+        self.do_getset_subtest(
+            collection, prop_rna, is_set,
+            sequence_type="Non-native buffer",
+            is_buffers=True,
+            dtype_modifier=lambda dtype: np.dtype(dtype).newbyteorder(NON_NATIVE_STANDARD_SIZE_PREFIX))
 
     def check_foreach_get(self, collection, prop_rna):
         self.check_foreach_getset(collection, prop_rna, is_set=False)
