@@ -43,24 +43,12 @@ struct ImBuf;
 
 #define STUDIOLIGHT_ICON_SIZE 96
 
-/* Only 1 - 5 is supported */
-#define STUDIOLIGHT_SH_BANDS 2
-
-#define STUDIOLIGHT_SH_COEFS_LEN (STUDIOLIGHT_SH_BANDS * STUDIOLIGHT_SH_BANDS)
-
-#if STUDIOLIGHT_SH_BANDS > 3
-/* Bypass L3 */
-#  define STUDIOLIGHT_SH_EFFECTIVE_COEFS_LEN (STUDIOLIGHT_SH_COEFS_LEN - 7)
-#else
-#  define STUDIOLIGHT_SH_EFFECTIVE_COEFS_LEN STUDIOLIGHT_SH_COEFS_LEN
-#endif
-
 struct GPUTexture;
 struct StudioLight;
 
 /** #StudioLight.flag */
 enum StudioLightFlag {
-  STUDIOLIGHT_SPHERICAL_HARMONICS_COEFFICIENTS_CALCULATED = (1 << 0),
+  // STUDIOLIGHT_SPHERICAL_HARMONICS_COEFFICIENTS_CALCULATED = (1 << 0),
   /*  STUDIOLIGHT_LIGHT_DIRECTION_CALCULATED                  = (1 << 1), */
   STUDIOLIGHT_INTERNAL = (1 << 2),
   STUDIOLIGHT_EXTERNAL_FILE = (1 << 3),
@@ -68,12 +56,9 @@ enum StudioLightFlag {
   STUDIOLIGHT_TYPE_WORLD = (1 << 5),
   STUDIOLIGHT_TYPE_MATCAP = (1 << 6),
   STUDIOLIGHT_EXTERNAL_IMAGE_LOADED = (1 << 7),
-  STUDIOLIGHT_EQUIRECT_IRRADIANCE_IMAGE_CALCULATED = (1 << 8),
+  /** GPU Texture used for lookdev mode. */
   STUDIOLIGHT_EQUIRECT_RADIANCE_GPUTEXTURE = (1 << 9),
-  STUDIOLIGHT_EQUIRECT_IRRADIANCE_GPUTEXTURE = (1 << 10),
-  STUDIOLIGHT_RADIANCE_BUFFERS_CALCULATED = (1 << 11),
   STUDIOLIGHT_USER_DEFINED = (1 << 12),
-  STUDIOLIGHT_UI_EXPANDED = (1 << 13),
 
   STUDIOLIGHT_MATCAP_DIFFUSE_GPUTEXTURE = (1 << 14),
   STUDIOLIGHT_MATCAP_SPECULAR_GPUTEXTURE = (1 << 15),
@@ -101,13 +86,10 @@ typedef struct StudioLight {
   int flag;
   char name[FILE_MAXFILE];
   char filepath[FILE_MAX];
-  char *path_irr_cache;
-  char *path_sh_cache;
   int icon_id_irradiance;
   int icon_id_radiance;
   int icon_id_matcap;
   int icon_id_matcap_flipped;
-  float spherical_harmonics_coefs[STUDIOLIGHT_SH_EFFECTIVE_COEFS_LEN][3];
   float light_direction[3];
   StudioLightImage matcap_diffuse;
   StudioLightImage matcap_specular;
